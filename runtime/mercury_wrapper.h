@@ -89,13 +89,16 @@ extern	void		(*address_of_init_gc)(void);
 extern	int		(*MR_address_of_do_load_aditi_rl_code)(void);
 
 /*
-** MR_trace_getline(const char *, FILE *, FILE *) is defined in
-** trace/mercury_trace_internal.c but is called in browser/util.m.  As
-** we cannot do direct calls from browser/ to trace/, we do an indirect 
-** call via the following pointer.
+** MR_trace_getline(const char *, FILE *, FILE *) and
+** MR_trace_get_command(const char *, FILE *, FILE *) are defined in
+** trace/mercury_trace_internal.c but are called in browser/util.m.  As
+** we cannot do direct calls from browser/ to trace/, we do indirect 
+** calls via the following pointers.
 */
 
 extern	char *		(*MR_address_of_trace_getline)(const char *,
+				FILE *, FILE *);
+extern	char *		(*MR_address_of_trace_get_command)(const char *,
 				FILE *, FILE *);
 
 /*

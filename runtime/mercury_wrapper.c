@@ -175,6 +175,7 @@ void	(*address_of_init_modules)(void);
 int	(*MR_address_of_do_load_aditi_rl_code)(void);
 
 char *	(*MR_address_of_trace_getline)(const char *, FILE *, FILE *);
+char *	(*MR_address_of_trace_get_command)(const char *, FILE *, FILE *);
 
 #ifdef	MR_USE_EXTERNAL_DEBUGGER
 void	(*MR_address_of_trace_init_external)(void);

@@ -5,10 +5,8 @@ mdb> goto 3
        3:      2  2 EXIT pred browser_test:big_data/1-0 (det) browser_test.m:18 (browser_test.m:12)
 mdb> print *
        HeadVar__1             	big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big/3), 6, small))
-mdb> browse 1
-browser> print
+mdb> browse 1; print; quit
 big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big/3), 6, small))
-browser> quit
 mdb> browse HeadVar__1
 browser> ls
 big

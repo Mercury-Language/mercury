@@ -136,22 +136,13 @@
 	.
 
 parse__read_command(Prompt, Comm) -->
-	util__trace_getline(Prompt, Result),
-	( { Result = ok(Line) },
-		{ string__to_char_list(Line, Cs) },
-		{ lexer(Cs, Tokens) },
-		( { parse(Tokens, Comm2) } ->
-			{ Comm = Comm2 }
-		;
-			{ Comm = unknown }
-		)
-	; { Result = eof },
-		{ Comm = quit }
-	; { Result = error(Error) },
-		{ io__error_message(Error, Msg) },
-		io__write_string(Msg),
-		io__nl,
-		parse__read_command(Prompt, Comm)
+	util__trace_get_command(Prompt, Line),
+	{ string__to_char_list(Line, Cs) },
+	{ lexer(Cs, Tokens) },
+	( { parse(Tokens, Comm2) } ->
+		{ Comm = Comm2 }
+	;
+		{ Comm = unknown }
 	).
 
 parse__read_command_external(Comm) -->

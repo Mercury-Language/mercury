@@ -121,6 +121,7 @@ extern	void	ML_io_print_to_cur_stream(MR_Word, MR_Box);
 
 /* in trace/mercury_trace_internal.h */
 extern	char	*MR_trace_getline(const char *, FILE *mdb_in, FILE *mdb_out);
+extern	char	*MR_trace_get_command(const char *, FILE *, FILE *);
 
 /* in trace/mercury_trace_external.h */
 extern	void	MR_trace_init_external(void);

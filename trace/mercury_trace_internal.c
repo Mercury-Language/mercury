@@ -250,7 +250,7 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 	jumpaddr = NULL;
 
 	do {
-		line = MR_trace_getline("mdb> ", MR_mdb_in, MR_mdb_out);
+		line = MR_trace_get_command("mdb> ", MR_mdb_in, MR_mdb_out);
 		res = MR_trace_debug_cmd(line, cmd, event_info, &event_details,
 				&jumpaddr);
 	} while (res == KEEP_INTERACTING);
@@ -484,27 +484,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 	int		word_max;
 	int		word_count;
 	const char	*problem;
-	char		*semicolon;
 	MR_Next		next;
-
-	if (line == NULL) {
-		/*
-		** We got an EOF.
-		** We arrange things so we don't have to treat this case
-		** specially in the command interpreter below.
-		*/
-		line = MR_copy_string("quit");
-	}
-
-	if ((semicolon = strchr(line, ';')) != NULL) {
-		/*
-		** The line contains at least two commands.
-		** Execute only the first command now; put the others
-		** back in the input to be processed later.
-		*/
-		*semicolon = '\0';
-		MR_insert_line_at_head(MR_copy_string(semicolon + 1));
-	}
 
 	problem = MR_trace_parse_line(line, &words, &word_max, &word_count);
 	if (problem != NULL) {
@@ -2307,6 +2287,36 @@ MR_trace_source_from_open_file(FILE *fp)
 	}
 
 	MR_trace_internal_interacting = FALSE;
+}
+
+char *
+MR_trace_get_command(const char *prompt, FILE *mdb_in, FILE *mdb_out)
+{
+	char		*line;
+	char		*semicolon;
+
+	line = MR_trace_getline(prompt, mdb_in, mdb_out);
+
+	if (line == NULL) {
+		/*
+		** We got an EOF.
+		** We arrange things so we don't have to treat this case
+		** specially in the command interpreter below.
+		*/
+		line = MR_copy_string("quit");
+	}
+
+	if ((semicolon = strchr(line, ';')) != NULL) {
+		/*
+		** The line contains at least two commands.
+		** Execute only the first command now; put the others
+		** back in the input to be processed later.
+		*/
+		*semicolon = '\0';
+		MR_insert_line_at_head(MR_copy_string(semicolon + 1));
+	}
+
+	return line;
 }
 
 /*

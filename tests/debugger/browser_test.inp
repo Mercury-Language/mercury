@@ -1,9 +1,7 @@
 echo on
 goto 3
 print *
-browse 1
-print
-quit
+browse 1; print; quit
 browse HeadVar__1
 ls
 cd /1

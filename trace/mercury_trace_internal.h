@@ -64,5 +64,7 @@ extern	void	MR_trace_interrupt_message(void);
 
 extern	char	*MR_trace_getline(const char *prompt, FILE *mdb_in,
 				FILE *mdb_out);
+extern	char	*MR_trace_get_command(const char *prompt, FILE *mdb_in,
+				FILE *mdb_out);
 
 #endif	/* MERCURY_TRACE_INTERNAL_H */
