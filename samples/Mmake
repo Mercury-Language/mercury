@@ -10,10 +10,8 @@
 # To build these programs, first install the Mercury compiler, then
 # type `mmake depend; mmake'.
 
-# You can also type `mmake strip' to strip the executables
-# (this can reduce the size of executables considerably).
-
-PROGS=	all_solutions cat calculator committed_choice eliza hello sort ultra_sub
+PROGS=	hello cat calculator sort eliza ultra_sub \
+	all_solutions committed_choice
 
 DEPENDS=$(PROGS:%=%.depend)
 
@@ -28,9 +26,5 @@ all : $(PROGS)
 
 .PHONY: depend
 depend: $(DEPENDS)
-
-.PHONY: strip
-strip: $(PROGS)
-	strip $(PROGS)
 
 #-----------------------------------------------------------------------------#
