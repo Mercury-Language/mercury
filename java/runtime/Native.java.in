@@ -129,6 +129,15 @@ public class Native {
 	public static native int[] times();
 
 	/*
+	** clk_tck():
+	**	Returns the number of "clock ticks" per second as defined by
+	**	sysconf(_SC_CLK_TCK).  A `clock_t' value returned by
+	**	'times()' can be divided by this value to obtain a time in
+	**	seconds.
+	*/
+	public static native int clk_tck();
+
+	/*
 	** get_user_cpu_miliseconds():
 	**	Native method to return the CPU time consumed by the process,
 	**	in miliseconds, from an arbitrary initial time.

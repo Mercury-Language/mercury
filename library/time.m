@@ -375,13 +375,8 @@ time__clk_tck = Ret :-
 	time__c_clk_tck = (Ret::out),
 	[will_not_call_mercury, promise_pure],
 "{
-#if defined(MR_HAVE_SYSCONF) && defined(_SC_CLK_TCK)
-	Ret = (MR_Integer) sysconf(_SC_CLK_TCK);
-#elif defined(CLK_TCK)
-	/*
-	** If sysconf is not available, try using the (obsolete) macro CLK_TCK.
-	*/
-	Ret = (MR_Integer) CLK_TCK;
+#if defined(MR_CLOCK_TICKS_PER_SECOND)
+	Ret = MR_CLOCK_TICKS_PER_SECOND;
 #else
 	Ret = -1;
 #endif
@@ -394,7 +389,18 @@ time__c_clk_tck = -1.	% default is to throw an exception.
 	// TicksPerSecond is guaranteed to be 10,000,000
 	Ret = (int) System.TimeSpan.TicksPerSecond;
 }").
-% XXX Java implementation still to come, will require some native code.
+:- pragma foreign_proc("Java", time__c_clk_tck = (Ret::out),
+	[will_not_call_mercury, promise_pure],
+"
+	if (mercury.runtime.Native.isAvailable()) {
+		Ret = mercury.runtime.Native.clk_tck();
+	} else {
+		throw new java.lang.RuntimeException(
+				""time__clk_tck is not implemented "" +
+				""in pure Java.  Native dynamic link "" +
+				""library is required."");
+	}
+").
 
 %-----------------------------------------------------------------------------%
 

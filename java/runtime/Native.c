@@ -35,6 +35,13 @@ JNIEXPORT jintArray JNICALL Java_mercury_runtime_Native_times(
 
 /*
  * Class:     Native
+ * Method:    clk_tck
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_mercury_runtime_Native_clk_1tck(JNIEnv *, jclass);
+
+/*
+ * Class:     Native
  * Method:    get_user_cpu_miliseconds
  * Signature: ()I
  */
@@ -88,6 +95,16 @@ Java_mercury_runtime_Native_times(JNIEnv *env, jclass obj) {
 	}
 
 	return result;
+}
+
+JNIEXPORT jint JNICALL Java_mercury_runtime_Native_clk_1tck(
+		JNIEnv *env, jclass obj)
+{
+#if defined(MR_CLOCK_TICKS_PER_SECOND)
+	return MR_CLOCK_TICKS_PER_SECOND;
+#else
+	return -1;
+#endif
 }
 
 JNIEXPORT jint JNICALL
