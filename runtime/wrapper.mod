@@ -86,6 +86,14 @@ int main(int argc, char **argv)
 	/* call the init_gc() function defined in <foo>_init.c -
 	   this is to work around a Solaris 2.X (X <= 4) linker bug */
 	init_gc();
+	{
+	  /* The following code is necessary to tell the conservative
+	     garbage collector that we are using tagged pointers */
+	  int i;
+	  for (i = 1; i < (1 << TAGBITS); i++) {
+	  	GC_register_displacement(i);
+	  }
+	}
 #endif
 	/* initialize label table to be empty */
 	init_entries();
