@@ -49,6 +49,9 @@
 :- pred rbtree__set(rbtree(K, V), K, V, rbtree(K, V)).
 :- mode rbtree__set(in, in, in, out) is det.
 
+:- pred rbtree__insert_duplicate(rbtree(K, V), K, V, rbtree(K, V)).
+:- mode rbtree__insert_duplicate(in, in, in, out) is det.
+
 :- pred rbtree__lookup(rbtree(K, V), K, V).
 :- mode rbtree__lookup(in, in, out) is det.
 
@@ -75,6 +78,9 @@
 
 :- pred rbtree__rbtree_to_assoc_list(rbtree(K, V), assoc_list(K, V)).
 :- mode rbtree__rbtree_to_assoc_list(in, out) is det.
+
+:- pred rbtree__flatten_values(rbtree(K, V), list(V)).
+:- mode rbtree__flatten_values(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 :- implementation.
@@ -374,6 +380,158 @@ rbtree__set_2(black(K0, V0, L0, R0), K, V, Tree) :-
 
 %-----------------------------------------------------------------------------%
 
+% Special conditions that must be satisfied by Red-Black trees.
+%	* The root node must be black.
+%	* There can never be 2 red nodes in a row.
+
+rbtree__insert_duplicate(empty, K, V, black(K, V, empty, empty)).
+rbtree__insert_duplicate(red(_, _, _, _), _K, _V, _Tree) :-
+	error("rbtree__insert_duplicate: root node cannot be red!").
+rbtree__insert_duplicate(black(K0, V0, L0, R0), K, V, Tree) :-
+	rbtree__insert_duplicate_2(black(K0, V0, L0, R0), K, V, Tree0),
+	% Ensure that the root of the tree is black.
+	(
+		Tree0 = red(K1, V1, L1, R1)
+	->
+		Tree = black(K1, V1, L1, R1)
+	;
+		Tree = Tree0
+	).
+
+
+:- pred rbtree__insert_duplicate_2(rbtree(K, V), K, V, rbtree(K, V)). 
+:- mode rbtree__insert_duplicate_2(in, in, in, out) is det.
+
+% rbtree__insert_duplicate_2:
+%	We traverse down the tree until we find the correct spot to insert.
+%	Then as we fall back out of the recursions we look for possible
+%	rotation cases.
+
+% Red node always inserted at the bottom as it will be rotated into the 
+% correct place as we move back up the tree.
+rbtree__insert_duplicate_2(empty, K, V, red(K, V, empty, empty)).
+rbtree__insert_duplicate_2(red(K0, V0, L0, R0), K, V, Tree) :-
+	% Work out which side of the rbtree to insert.
+	compare(Result, K, K0),
+	(
+		Result = (<),
+		rbtree__insert_duplicate_2(L0, K, V, NewL),
+		Tree = red(K0, V0, NewL, R0)
+	;
+		Result = (>),
+		rbtree__insert_duplicate_2(R0, K, V, NewR),
+		Tree = red(K0, V0, L0, NewR)
+	;
+		Result = (=),
+		rbtree__insert_duplicate_2(L0, K, V, NewL),
+		Tree = red(K0, V0, NewL, R0)
+	).
+% Only ever need to look for a possible rotation if we are in a black node.
+% The rotation criteria is when there is 2 red nodes in a row.
+rbtree__insert_duplicate_2(black(K0, V0, L0, R0), K, V, Tree) :-
+	(
+		L0 = red(LK, LV, LL, LR),
+		R0 = red(RK, RV, RL, RR)
+	->
+		% On the way down the rbtree we split any 4-nodes we find.
+		% This converts the current node to a red node, so we call
+		% the red node version of rbtree__insert_duplicate_2/4.
+		L = black(LK, LV, LL, LR),
+		R = black(RK, RV, RL, RR),
+		Tree0 = red(K0, V0, L, R),
+		rbtree__insert_duplicate_2(Tree0, K, V, Tree)
+	;
+		% Work out which side of the rbtree to insert.
+		compare(Result, K, K0),
+		( 	
+			Result = (<),
+			rbtree__insert_duplicate_2(L0, K, V, NewL),
+			(
+				% Only need to start looking for a rotation case
+				% if the current node is black(known), and it's
+				% new child red. 
+				NewL = red(LK, LV, LL, LR)
+			->
+				% Check to see if a grandchild is red and if so
+				% rotate.
+				( 
+					LL = red(_LLK, _LLV, _LLL, _LLR) 
+				->
+					TreeR = red(K0, V0, LR, R0),
+					Tree = black(LK, LV, LL, TreeR)
+				; 
+					LR = red(LRK, LRV, LRL, LRR) 
+				->
+					TreeL = red(LK, LV, LL, LRL),
+					TreeR = red(K0, V0, LRR, R0),
+					Tree = black(LRK, LRV, TreeL, TreeR)
+				;
+					Tree = black(K0, V0, NewL, R0)
+				)
+			;
+				Tree = black(K0, V0, NewL, R0)
+			)
+		;
+			Result = (>),
+			rbtree__insert_duplicate_2(R0, K, V, NewR),
+			(
+				% Only need to start looking for a rotation case
+				% if the current node is black(known), and it's
+				% new child red. 
+				NewR = red(RK, RV, RL, RR)
+			->
+				% Check to see if a grandchild is red and if so
+				% rotate.
+				( 
+					RL = red(RLK, RLV, RLL, RLR) 
+				->
+					TreeL = red(K0, V0, L0, RLL),
+					TreeR = red(RK, RV, RLR, RR),
+					Tree = black(RLK, RLV, TreeL, TreeR)
+				; 
+					RR = red(_RRK, _RRV, _RRL, _RRR) 
+				->
+					TreeL = red(K0, V0, L0, RL),
+					Tree = black(RK, RV, TreeL, RR)
+				;
+					Tree = black(K0, V0, L0, NewR)
+				)
+			;
+				Tree = black(K0, V0, L0, NewR)
+			)
+		;
+			Result = (=),
+			rbtree__insert_duplicate_2(L0, K, V, NewL),
+			(
+				% Only need to start looking for a rotation case
+				% if the current node is black(known), and it's
+				% new child red. 
+				NewL = red(LK, LV, LL, LR)
+			->
+				% Check to see if a grandchild is red and if so
+				% rotate.
+				( 
+					LL = red(_LLK, _LLV, _LLL, _LLR) 
+				->
+					TreeR = red(K0, V0, LR, R0),
+					Tree = black(LK, LV, LL, TreeR)
+				; 
+					LR = red(LRK, LRV, LRL, LRR) 
+				->
+					TreeL = red(LK, LV, LL, LRL),
+					TreeR = red(K0, V0, LRR, R0),
+					Tree = black(LRK, LRV, TreeL, TreeR)
+				;
+					Tree = black(K0, V0, NewL, R0)
+				)
+			;
+				Tree = black(K0, V0, NewL, R0)
+			)
+		)
+	).
+
+%-----------------------------------------------------------------------------%
+
 rbtree__lookup(T, K, V) :-
         (
                 rbtree__search(T, K, V0)
@@ -624,5 +782,17 @@ rbtree__rbtree_to_assoc_list(black(K0, V0, Left, Right), L) :-
         rbtree__rbtree_to_assoc_list(Left, L0),
         rbtree__rbtree_to_assoc_list(Right, L1),
         list__append(L0, [K0 - V0|L1], L).
+
+%-----------------------------------------------------------------------------%
+
+rbtree__flatten_values(empty, []).
+rbtree__flatten_values(red(_K0, V0, Left, Right), L) :-
+	rbtree__flatten_values(Left, L0),
+	rbtree__flatten_values(Right, L1),
+	list__append(L0, [V0|L1], L).
+rbtree__flatten_values(black(_K0, V0, Left, Right), L) :-
+	rbtree__flatten_values(Left, L0),
+	rbtree__flatten_values(Right, L1),
+	list__append(L0, [V0|L1], L).
 
 %-----------------------------------------------------------------------------%
