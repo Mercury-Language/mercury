@@ -1000,6 +1000,7 @@
  *			;	user_error.
  * In C:
  *	io__stream	==	pointer to MercuryFile
+ *				(which is defined in runtime/mercury_types.h)
  */
 
 	% This inter-language stuff is tricky.

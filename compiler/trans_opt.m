@@ -51,8 +51,8 @@
 
 :- interface.
 
-:- import_module hlds_module, modules.
 :- import_module io, bool, list.
+:- import_module hlds_module, modules, prog_data.
 
 :- pred trans_opt__write_optfile(module_info, io__state, io__state).
 :- mode trans_opt__write_optfile(in, di, uo) is det.
@@ -61,7 +61,7 @@
 	% 	Error, IO0, IO).
 	% Add the items from each of the modules in ModuleList.trans_opt to
 	% the items in ModuleImports.
-:- pred trans_opt__grab_optfiles(module_imports, list(string), 
+:- pred trans_opt__grab_optfiles(module_imports, list(module_name), 
 	module_imports, bool, io__state, io__state).
 :- mode trans_opt__grab_optfiles(in, in, out, out, di, uo) is det.
 
@@ -70,18 +70,20 @@
 
 :- implementation.
 
-:- import_module hlds_pred, mercury_to_mercury, varset, term, std_util.
-:- import_module prog_io, string, list, map, globals, code_util.
-:- import_module passes_aux, prog_data, prog_out, options, termination.
+:- import_module hlds_pred, mercury_to_mercury.
+:- import_module prog_io, globals, code_util.
+:- import_module passes_aux, prog_out, options, termination.
+
+:- import_module string, list, map, varset, term, std_util.
 
 %-----------------------------------------------------------------------------%
 
-% Open the file "<module-name>.trans_opt", and write out the
+% Open the file "<module-name>.trans_opt.tmp", and write out the
 % declarations.
 
 trans_opt__write_optfile(Module) -->
 	{ module_info_name(Module, ModuleName) },
-	{ string__append(ModuleName, ".trans_opt.tmp", TmpOptName) },
+	module_name_to_file_name(ModuleName, ".trans_opt.tmp", TmpOptName),
 	io__open_output(TmpOptName, Result),
 	(
 		{ Result = error(Error) },
@@ -102,7 +104,7 @@ trans_opt__write_optfile(Module) -->
 		io__set_output_stream(Stream, OldStream),
 		{ module_info_name(Module, ModName) },
 		io__write_string(":- module "),
-		mercury_output_bracketed_constant(term__atom(ModName)),
+		mercury_output_bracketed_sym_name(ModName),
 		io__write_string(".\n"),
 
 		% All predicates to write global items into the .trans_opt 
@@ -114,7 +116,7 @@ trans_opt__write_optfile(Module) -->
 		io__set_output_stream(OldStream, _),
 		io__close_output(Stream),
 
-		{ string__append(ModuleName, ".trans_opt", OptName) },
+		module_name_to_file_name(ModuleName, ".trans_opt", OptName),
 		update_interface(OptName),
 		touch_interface_datestamp(ModuleName, ".trans_opt_date")
 	).
@@ -174,15 +176,15 @@ trans_opt__grab_optfiles(Module0, TransOptDeps, Module, FoundError) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Reading .trans_opt files..\n"),
 	maybe_flush_output(Verbose),
-	{ Module0 = module_imports(ModuleName, DirectImports0,
-		IndirectImports0, Items0, _) },
+
 	read_trans_opt_files(TransOptDeps, [], OptItems, no, FoundError),
-	{ term__context_init(Context) },
-	{ varset__init(Varset) },
-	{ OptDefn = module_defn(Varset, opt_imported) - Context },
-	{ list__append(Items0, [ OptDefn | OptItems ], Items) },
-	{ Module = module_imports(ModuleName, DirectImports0, 
-		IndirectImports0, Items, no) },
+
+	{ append_pseudo_decl(Module0, opt_imported, Module1) },
+	{ module_imports_get_items(Module1, Items0) },
+	{ list__append(Items0, OptItems, Items) },
+	{ module_imports_set_items(Module1, Items, Module2) },
+	{ module_imports_set_error(Module2, no, Module) },
+
 	maybe_write_string(Verbose, "% Done.\n").
 
 :- pred read_trans_opt_files(list(module_name), item_list,
@@ -196,12 +198,13 @@ read_trans_opt_files([Import | Imports],
 	maybe_write_string(VeryVerbose,
 		"% Reading transitive optimization interface for module"),
 	maybe_write_string(VeryVerbose, " `"),
-	maybe_write_string(VeryVerbose, Import),
+	{ prog_out__sym_name_to_string(Import, ImportString) },
+	maybe_write_string(VeryVerbose, ImportString),
 	maybe_write_string(VeryVerbose, "'... "),
 	maybe_flush_output(VeryVerbose),
 	maybe_write_string(VeryVerbose, "% done.\n"),
 
-	{ string__append(Import, ".trans_opt", FileName) },
+	module_name_to_file_name(Import, ".trans_opt", FileName),
 	prog_io__read_module(FileName, Import, yes,
 			ModuleError, Messages, Items1),
 	update_error_status(ModuleError, Messages, Error0, Error1),

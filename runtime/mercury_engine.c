@@ -3,7 +3,7 @@ INIT mercury_sys_init_engine
 ENDINIT
 */
 /*
-** Copyright (C) 1993-1997 The University of Melbourne.
+** Copyright (C) 1993-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -170,7 +170,7 @@ call_engine_inner(Code *entry_point)
 	unsigned char locals[LOCALS_SIZE];
 {
 
-#ifndef SPEED
+#ifdef MR_LOWLEVEL_DEBUG
 {
 	/* ensure that we only make the label once */
 	static	bool	initialized = FALSE;
@@ -197,7 +197,7 @@ call_engine_inner(Code *entry_point)
 
 	global_pointer = locals;
 
-#ifndef SPEED
+#ifdef MR_LOWLEVEL_DEBUG
 	memset((void *)locals, MAGIC_MARKER, LOCALS_SIZE);
 #endif
 	debugmsg1("in `call_engine', locals at %p\n", (void *)locals);
@@ -226,7 +226,7 @@ Define_label(engine_done);
 
 	debugmsg1("in label `engine_done', locals at %p\n", locals);
 
-#ifndef SPEED
+#ifdef MR_LOWLEVEL_DEBUG
 	/*
 	** Check how much of the space we reserved for local variables
 	** was actually used.
@@ -248,7 +248,7 @@ Define_label(engine_done);
 			min(high, LOCALS_SIZE - low));
 		printf("(low mark = %d, high mark = %d)\n", low, high);
 	}
-#endif /* not SPEED */
+#endif /* MR_LOWLEVEL_DEBUG */
 
 	/*
 	** Despite the above precautions with allocating a large chunk
@@ -322,7 +322,7 @@ dump_prev_locations(void)
 {
 	int i, pos;
 
-#if defined(SPEED) && !defined(DEBUG_GOTOS)
+#if !defined(MR_DEBUG_GOTOS)
 	if (tracedebug) 
 #endif
 	{
@@ -348,7 +348,7 @@ call_engine_inner(Code *entry_point)
 	fp = (*fp)();
 	fp = entry_point;
 
-#if defined(SPEED) && !defined(DEBUG_GOTOS)
+#if !defined(MR_DEBUG_GOTOS)
 if (!tracedebug) {
 	for (;;)
 	{

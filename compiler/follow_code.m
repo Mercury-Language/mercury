@@ -31,10 +31,9 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, goal_util, mode_util.
+:- import_module hlds_data, goal_util, mode_util.
 :- import_module globals, options, det_analysis, quantification.
-:- import_module bool, list, map, set.
-:- import_module term, std_util, require.
+:- import_module bool, map, set, term, std_util, require.
 
 %-----------------------------------------------------------------------------%
 

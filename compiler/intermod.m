@@ -18,7 +18,6 @@
 %	- pragma declarations for the exported preds.
 %	- pragma c_header declarations if any pragma_c_code preds are written.
 % All these items should be module qualified.
-% Constructors should be explicitly type qualified.
 %
 % This module also contains predicates to read in the .opt files and
 % to adjust the import status of local predicates which are exported for
@@ -60,7 +59,7 @@
 
 :- implementation.
 
-:- import_module assoc_list, bool, dir, getopt, int, list, map, require, set.
+:- import_module assoc_list, dir, getopt, int, list, map, require, set.
 :- import_module std_util, string, term, varset.
 
 :- import_module code_util, globals, goal_util, instmap.
@@ -80,7 +79,7 @@
 
 intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 	{ module_info_name(ModuleInfo0, ModuleName) },
-	{ string__append(ModuleName, ".opt.tmp", TmpName) },
+	module_name_to_file_name(ModuleName, ".opt.tmp", TmpName),
 	io__tell(TmpName, Result2),
 	(
 		{ Result2 = error(Err2) },
@@ -349,6 +348,9 @@ intermod__traverse_goal(
 	call(PredId0, B, Args, D, MaybeUnifyContext, PredName0) - Info,
 	call(PredId, B, Args, D, MaybeUnifyContext, PredName) - Info, DoWrite)
 		-->
+	%
+	% Fully module-qualify the pred name
+	%
 	intermod_info_get_module_info(ModuleInfo),
 	intermod_info_get_var_types(VarTypes),
 	intermod_info_get_tvarset(TVarSet),
@@ -359,15 +361,14 @@ intermod__traverse_goal(
 		{ PredId = PredId0 },
 		{ PredName1 = PredName0 }
 	),	
-	(
-		{ PredName1 = qualified(_, _) },
-		{ PredName = PredName1 }
-	;
-		{ PredName1 = unqualified(Name) },
-		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-		{ pred_info_module(PredInfo, PredModule) },
-		{ PredName = qualified(PredModule, Name) }
-	),
+	{ unqualify_name(PredName1, UnqualPredName) },
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	{ pred_info_module(PredInfo, PredModule) },
+	{ PredName = qualified(PredModule, UnqualPredName) },
+
+	%
+	% Ensure that the called predicate will be exported.
+	%
 	(
 		% We don't need to export complicated unification
 		% pred declarations, since they will be recreated when 
@@ -511,8 +512,7 @@ intermod__module_qualify_unify_rhs(_LVar, lambda_goal(A,B,C,Modes,E,F,Goal0),
 	intermod__gather_proc_modes(ModuleInfo, ModeDefns,
 				UserInstDefns, ArgModes).
 
-	% Check if the functor is a function call, a higher-order
-	% term, or an unqualified symbol. If so, module qualify.
+	% Fully module-qualify the right-hand-side of a unification.
 	% For function calls and higher-order terms, call intermod__add_proc
 	% so that the predicate or function will be exported if necessary.
 intermod__module_qualify_unify_rhs(LVar, functor(Functor0, Vars),
@@ -522,6 +522,19 @@ intermod__module_qualify_unify_rhs(LVar, functor(Functor0, Vars),
 	intermod_info_get_tvarset(TVarSet),
 	intermod_info_get_var_types(VarTypes),
 	(
+		% Is it a higher-order function call?
+		% (higher-order predicate calls are transformed into
+		% higher_order_call goals by make_hlds.m).
+		{ Functor0 = cons(unqualified(ApplyName), _) },
+		{ ApplyName = "apply"
+		; ApplyName = ""
+		},
+		{ list__length(Vars, ApplyArity) },
+		{ ApplyArity >= 1 }
+	->
+		{ Functor = Functor0 },
+		{ DoWrite = yes }
+	;
 		%
 		% Is it a function call?
 		%
@@ -535,7 +548,7 @@ intermod__module_qualify_unify_rhs(LVar, functor(Functor0, Vars),
 	->
 		%
 		% Yes, it is a function call.
-		% Module-qualify it.
+		% Fully module-qualify it.
 		% Make sure that the called function will be exported.
 		%
 		{ Functor = cons(QualifiedFuncName, Arity) },
@@ -560,27 +573,32 @@ intermod__module_qualify_unify_rhs(LVar, functor(Functor0, Vars),
 			TVarSet, ArgTypes, ModuleInfo, PredId, _ProcId) },
 		intermod_info_add_proc(PredId, DoWrite),
 		%
-		% Module-qualify it, if necessary.
+		% Fully module-qualify it.
 		%
-		{ PredName = unqualified(UnqualPredName) ->
-			predicate_module(ModuleInfo, PredId, Module),
-			QualifiedPredName = qualified(Module, UnqualPredName),
-			Functor = cons(QualifiedPredName, Arity)
-		;
-			Functor = Functor0
-		}
+		{ unqualify_name(PredName, UnqualPredName) },
+		{ predicate_module(ModuleInfo, PredId, Module) },
+		{ QualifiedPredName = qualified(Module, UnqualPredName) },
+		{ Functor = cons(QualifiedPredName, Arity) }
 	;
 		%
-		% Is it an unqualified functor symbol?
+		% Is it a functor symbol for which we can add
+		% a module qualifier?
 		%
-		{ Functor0 = cons(unqualified(ConsName), ConsArity) },
+		{ Functor0 = cons(ConsName, ConsArity) },
 		{ map__lookup(VarTypes, LVar, VarType) },
 		{ type_to_type_id(VarType, TypeId, _) },
 		{ TypeId = qualified(TypeModule, _) - _ }
 	->
-		{ Functor = cons(qualified(TypeModule, ConsName), ConsArity) },
+		%
+		% Fully module-qualify it
+		%
+		{ unqualify_name(ConsName, UnqualConsName) },
+		{ Functor = cons(qualified(TypeModule, UnqualConsName),
+				ConsArity) },
 		{ DoWrite = yes }
 	;
+		% It is a constant of a builtin type.
+		% No module qualification needed.
 		{ Functor = Functor0 },
 		{ DoWrite = yes }
 	).
@@ -712,7 +730,7 @@ intermod__write_intermod_info(IntermodInfo) -->
 	{ set__to_sorted_list(Insts0, Insts) },
 	{ module_info_name(ModuleInfo, ModName) },
 	io__write_string(":- module "),
-	mercury_output_bracketed_constant(term__atom(ModName)),
+	mercury_output_bracketed_sym_name(ModName),
 	io__write_string(".\n"),
 	( { Modules \= [] } ->
 		io__write_string(":- use_module "),
@@ -746,7 +764,7 @@ intermod__write_intermod_info(IntermodInfo) -->
 
 intermod__write_modules([]) --> [].
 intermod__write_modules([Module | Rest]) -->
-	mercury_output_bracketed_constant(term__atom(Module)),
+	mercury_output_bracketed_sym_name(Module),
 	(
 		{ Rest = [] },
 		io__write_string(".\n")
@@ -1164,7 +1182,8 @@ intermod__adjust_pred_import_status(Module0, Module) :-
 	globals__lookup_int_option(Globals, intermod_inline_simple_threshold, 
 			Threshold),
 	intermod__gather_preds(PredIds, yes, Threshold, Info0, Info1),
-	do_adjust_pred_import_status(Info1, Module0, Module).
+	intermod__gather_abstract_exported_types(Info1, Info),
+	do_adjust_pred_import_status(Info, Module0, Module).
 
 :- pred do_adjust_pred_import_status(intermod_info::in,
 		module_info::in, module_info::out) is det.
@@ -1233,27 +1252,36 @@ set_list_of_preds_exported([PredId | PredIds], Preds0, Preds) :-
 	% Read in and process the optimization interfaces.
 
 intermod__grab_optfiles(Module0, Module, FoundError) -->
-	{ Module0 = module_imports(ModuleName, DirectImports0,
-					IndirectImports0, Items0, _) },
-	{ list__sort_and_remove_dups(DirectImports0, DirectImports1) },
-	read_optimization_interfaces(DirectImports1, [],
-		OptItems, no, OptError),
+		%
+		% Let make_hlds know the opt_imported stuff is coming.
+		%
+	{ append_pseudo_decl(Module0, opt_imported, Module1) },
+	{ module_imports_get_items(Module1, Items0) },
+
+		%
+		% Read in the .opt files for imported and ancestor modules.
+		%
+	{ Module1 = module_imports(ModuleName, Ancestors0, InterfaceDeps0,
+					ImplementationDeps0, _, _, _, _, _) },
+	{ list__condense([Ancestors0, InterfaceDeps0, ImplementationDeps0],
+		OptFiles) },
+	read_optimization_interfaces(OptFiles, [], OptItems, no, OptError),
 	{ get_dependencies(OptItems, NewImportDeps0, NewUseDeps0) },
 	{ list__append(NewImportDeps0, NewUseDeps0, NewDeps0) },
 	{ set__list_to_set(NewDeps0, NewDepsSet0) },
-	{ set__delete_list(NewDepsSet0, [ModuleName | DirectImports1],
-						NewDepsSet) },
+	{ set__delete_list(NewDepsSet0, [ModuleName | OptFiles], NewDepsSet) },
 	{ set__to_sorted_list(NewDepsSet, NewDeps) },
-	{ Module1 = module_imports(ModuleName, DirectImports1,
-					IndirectImports0, [], no) },
-	process_module_interfaces(NewDeps, [], Module1, Module2),
-	{ Module2 = module_imports(_, DirectImports, IndirectImports,
-		InterfaceItems, IntError) },
-	{ list__append(OptItems, InterfaceItems, NewItems) },
-	{ term__context_init("blah", 0, Context) },
-		% Let make_hlds know the opt_imported stuff is coming.
-	globals__io_lookup_bool_option(intermod_unused_args, UnusedArgs),
-	{ varset__init(Varset) },
+
+		%
+		% Read in the .int, and .int2 files needed by the .opt files.
+		% (XXX do we also need to read in .int0 files here?)
+		%
+	{ module_imports_set_items(Module1, [], Module2) },
+	process_module_long_interfaces(NewDeps, ".int", [], NewIndirectDeps,
+				Module2, Module3),
+	process_module_indirect_imports(NewIndirectDeps, ".int2",
+				Module3, Module4),
+	{ module_imports_get_items(Module4, InterfaceItems) },
 
 		%
 		% Get the :- pragma unused_args(...) declarations created
@@ -1262,7 +1290,7 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 		% with intermod_unused_args, but the interface for other
 		% modules must remain the same.
 		%
-
+	globals__io_lookup_bool_option(intermod_unused_args, UnusedArgs),
 	( { UnusedArgs = yes } ->
 		read_optimization_interfaces([ModuleName], [],
 				LocalItems, no, UAError),
@@ -1275,16 +1303,23 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 		{ PragmaItems = [] },
 		{ UAError = no }
 	),
-	{ ( IntError \= no ; OptError = yes ; UAError = yes) ->
+
+		%
+		% Figure out whether anything went wrong
+		%
+	{ module_imports_get_error(Module4, FoundError0) },
+	{ ( FoundError0 \= no ; OptError = yes ; UAError = yes) ->
 		FoundError = yes
 	;
 		FoundError = no
 	},
-	{ OptDefn = module_defn(Varset, opt_imported) - Context },
-	{ list__append([OptDefn | PragmaItems], NewItems, NewItems2) }, 
-	{ list__append(Items0, NewItems2, Items) },
-	{ Module = module_imports(ModuleName, DirectImports,
-				IndirectImports, Items, no) }.
+
+		%
+		% Concatenate everything together.
+		%
+	{ list__condense([Items0, PragmaItems, OptItems, InterfaceItems],
+		Items) },
+	{ module_imports_set_items(Module4, Items, Module) }.
 
 :- pred read_optimization_interfaces(list(module_name)::in, item_list::in,
 			item_list::out, bool::in, bool::out,
@@ -1297,12 +1332,13 @@ read_optimization_interfaces([Import | Imports],
 	maybe_write_string(VeryVerbose,
 			"% Reading optimization interface for module"),
 	maybe_write_string(VeryVerbose, " `"),
-	maybe_write_string(VeryVerbose, Import),
+	{ prog_out__sym_name_to_string(Import, ImportString) },
+	maybe_write_string(VeryVerbose, ImportString),
 	maybe_write_string(VeryVerbose, "'... "),
 	maybe_flush_output(VeryVerbose),
 	maybe_write_string(VeryVerbose, "% done.\n"),
 
-	{ string__append(Import, ".opt", FileName) },
+	module_name_to_file_name(Import, ".opt", FileName),
 	prog_io__read_module(FileName, Import, yes,
 			ModuleError, Messages, Items1),
 	update_error_status(FileName, ModuleError, Messages, Error0, Error1),

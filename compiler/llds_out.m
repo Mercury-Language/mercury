@@ -17,8 +17,8 @@
 
 :- interface.
 
-:- import_module llds, hlds_data, prog_data.
-:- import_module io, bool.
+:- import_module llds, hlds_data, prog_data, hlds_data.
+:- import_module bool, io.
 
 	% Given a 'c_file' structure, open the appropriate .c file
 	% and output the code into that file.
@@ -79,6 +79,12 @@
 :- pred llds_out__name_mangle(string, string).
 :- mode llds_out__name_mangle(in, out) is det.
 
+	% Mangle a possibly module-qualified Mercury symbol name
+	% into a C identifier.
+
+:- pred llds_out__sym_name_mangle(sym_name, string).
+:- mode llds_out__sym_name_mangle(in, out) is det.
+
 	% Produces a string of the form Module__Name.
 
 :- pred llds_out__qualify_name(string, string, string).
@@ -97,14 +103,22 @@
 :- pred llds_out__make_base_typeclass_info_name(class_id, string, string).
 :- mode llds_out__make_base_typeclass_info_name(in, in, out) is det.
 
+	% Returns the name of the initialization function
+	% for a given module.
+
+:- pred llds_out__make_init_name(module_name, string).
+:- mode llds_out__make_init_name(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module export.
-:- import_module exprn_aux, prog_data, prog_out, hlds_pred, mercury_to_mercury.
-:- import_module bool, int, list, char, string, set, std_util, term, varset.
-:- import_module assoc_list, require, globals, options.
+:- import_module globals, options.
+:- import_module exprn_aux, prog_util, prog_out, hlds_pred.
+:- import_module export, mercury_to_mercury, modules.
+
+:- import_module int, list, char, string, set, std_util, term, varset.
+:- import_module assoc_list, require.
 :- import_module library.	% for the version number.
 
 %-----------------------------------------------------------------------------%
@@ -124,11 +138,11 @@
 output_c_file(C_File) -->
 	globals__io_lookup_bool_option(split_c_files, SplitFiles),
 	( { SplitFiles = yes } ->
-		{ C_File = c_file(BaseName, C_HeaderInfo, Modules) },
-		{ string__append(BaseName, ".dir", ObjDirName) },
+		{ C_File = c_file(ModuleName, C_HeaderInfo, C_Modules) },
+		module_name_to_file_name(ModuleName, ".dir", ObjDirName),
 		make_directory(ObjDirName),
-		output_c_file_init(BaseName, Modules),
-		output_c_file_list(Modules, 1, BaseName, C_HeaderInfo)
+		output_c_file_init(ModuleName, C_Modules),
+		output_c_file_list(C_Modules, 1, ModuleName, C_HeaderInfo)
 	;
 		output_single_c_file(C_File, no)
 	).
@@ -141,42 +155,45 @@ make_directory(DirName) -->
 		Command) },
 	io__call_system(Command, _Result).
 
-:- pred output_c_file_list(list(c_module), int, string, list(c_header_code),
-			io__state, io__state).
+:- pred output_c_file_list(list(c_module), int, module_name,
+			list(c_header_code), io__state, io__state).
 :- mode output_c_file_list(in, in, in, in, di, uo) is det.
 
 output_c_file_list([], _, _, _) --> [].
-output_c_file_list([Module|Modules], Num, BaseName, C_HeaderLines) -->
-	output_single_c_file(c_file(BaseName, C_HeaderLines, [Module]),
+output_c_file_list([Module|Modules], Num, ModuleName, C_HeaderLines) -->
+	output_single_c_file(c_file(ModuleName, C_HeaderLines, [Module]),
 		yes(Num)),
 	{ Num1 is Num + 1 },
-	output_c_file_list(Modules, Num1, BaseName, C_HeaderLines).
+	output_c_file_list(Modules, Num1, ModuleName, C_HeaderLines).
 
-:- pred output_c_file_init(string, list(c_module), io__state, io__state).
+:- pred output_c_file_init(module_name, list(c_module), io__state, io__state).
 :- mode output_c_file_init(in, in, di, uo) is det.
 
-output_c_file_init(BaseName, Modules) -->
-	{ string__format("%s.dir/%s_%03d", [s(BaseName), s(BaseName), i(0)],
-		NewName) },
-	{ string__append(NewName, ".c", FileName) },
+output_c_file_init(ModuleName, C_Modules) -->
+	module_name_to_file_name(ModuleName, ".m", SourceFileName),
+	module_name_to_split_c_file_name(ModuleName, 0, ".c", FileName),
+
 	io__tell(FileName, Result),
 	(
 		{ Result = ok }
 	->
 		{ library__version(Version) },
 		io__write_strings(
-			["/*\n** Automatically generated from `", BaseName,
-			".m' by the Mercury compiler,\n** version ", Version,
-			".\n** Do not edit.\n*/\n"]),
+			["/*\n",
+			"** Automatically generated from `", SourceFileName,
+				"' by the Mercury compiler,\n",
+			"** version ", Version, ".\n",
+			"** Do not edit.\n",
+			"*/\n"]),
 		io__write_string("/*\n"),
 		io__write_string("INIT "),
-		output_init_name(BaseName),
+		output_init_name(ModuleName),
 		io__write_string("\n"),
 		io__write_string("ENDINIT\n"),
 		io__write_string("*/\n\n"),
 		io__write_string("#include ""mercury_imp.h""\n"),
 		io__write_string("\n"),
-		output_c_module_init_list(BaseName, Modules),
+		output_c_module_init_list(ModuleName, C_Modules),
 		io__told
 	;
 		io__progname_base("llds.m", ProgName),
@@ -191,29 +208,33 @@ output_c_file_init(BaseName, Modules) -->
 :- pred output_single_c_file(c_file, maybe(int), io__state, io__state).
 :- mode output_single_c_file(in, in, di, uo) is det.
 
-output_single_c_file(c_file(BaseName, C_HeaderLines, Modules), SplitFiles) 
+output_single_c_file(c_file(ModuleName, C_HeaderLines, Modules), SplitFiles) 
 		-->
 	( { SplitFiles = yes(Num) } ->
-		{ string__format("%s.dir/%s_%03d.c", [s(BaseName), s(BaseName), 
-			i(Num)], FileName) }
+		module_name_to_split_c_file_name(ModuleName, Num, ".c",
+			FileName)
 	;
-		{ string__append(BaseName, ".c", FileName) }
+		module_name_to_file_name(ModuleName, ".c", FileName)
 	),
 	io__tell(FileName, Result),
 	(
 		{ Result = ok }
 	->
 		{ library__version(Version) },
+		module_name_to_file_name(ModuleName, ".m", SourceFileName),
 		io__write_strings(
-			["/*\n** Automatically generated from `", BaseName,
-			".m' by the Mercury compiler,\n** version ", Version,
-			".\n** Do not edit.\n*/\n"]),
+			["/*\n",
+			"** Automatically generated from `", SourceFileName,
+				"' by the Mercury compiler,\n",
+			"** version ", Version, ".\n",
+			"** Do not edit.\n",
+			"*/\n"]),
 		( { SplitFiles = yes(_) } ->
 			[]
 		;
 			io__write_string("/*\n"),
 			io__write_string("INIT "),
-			output_init_name(BaseName),
+			output_init_name(ModuleName),
 			io__write_string("\n"),
 			io__write_string("ENDINIT\n"),
 			io__write_string("*/\n\n")
@@ -224,12 +245,12 @@ output_single_c_file(c_file(BaseName, C_HeaderLines, Modules), SplitFiles)
 		{ gather_c_file_labels(Modules, Labels) },
 		{ set__init(DeclSet0) },
 		output_c_label_decl_list(Labels, DeclSet0, DeclSet),
-		output_c_module_list(Modules, DeclSet, BaseName),
+		output_c_module_list(Modules, DeclSet),
 		( { SplitFiles = yes(_) } ->
 			[]
 		;
 			io__write_string("\n"),
-			output_c_module_init_list(BaseName, Modules)
+			output_c_module_init_list(ModuleName, Modules)
 		),
 		io__told
 	;
@@ -242,44 +263,37 @@ output_single_c_file(c_file(BaseName, C_HeaderLines, Modules), SplitFiles)
 		io__set_exit_status(1)
 	).
 
-:- pred output_c_module_init_list(string, list(c_module), io__state, io__state).
+:- pred output_c_module_init_list(module_name, list(c_module),
+					io__state, io__state).
 :- mode output_c_module_init_list(in, in, di, uo) is det.
 
-output_c_module_init_list(BaseName, Modules) -->
+output_c_module_init_list(ModuleName, Modules) -->
 
 		% Output initialization functions, bunched into groups
 		% of 40.
-	io__write_string("#if (defined(USE_GCC_NONLOCAL_GOTOS) && "),
-	io__write_string("!defined(USE_ASM_LABELS)) \\\n\t|| "),
-	io__write_string("defined(PROFILE_CALLS) || defined(DEBUG_GOTOS) \\\n"),
-	io__write_string("\t|| defined(DEBUG_LABELS) || !defined(SPEED) \\\n"),
-	io__write_string("\t|| defined(NATIVE_GC) \n\n"),
+	io__write_string("#if defined(MR_NEED_INITIALIZATION_CODE)\n\n"),
 	io__write_string("static void "),
-	output_bunch_name(BaseName, 0),
+	output_bunch_name(ModuleName, 0),
 	io__write_string("(void)\n"),
 	io__write_string("{\n"),
-	output_c_module_init_list_2(Modules, BaseName, 0, 40, 0, InitFuncs),
+	output_c_module_init_list_2(Modules, ModuleName, 0, 40, 0, InitFuncs),
 	io__write_string("}\n\n#endif\n\n"),
 
 		% Output code to call each of the init functions created
 		% above.
 	io__write_string("void "),
-	output_init_name(BaseName),
+	output_init_name(ModuleName),
 	io__write_string("(void);"),
 	io__write_string("/* suppress gcc -Wmissing-decls warning */\n"),
 	io__write_string("void "),
-	output_init_name(BaseName),
+	output_init_name(ModuleName),
 	io__write_string("(void)\n"),
 	io__write_string("{\n"),
-	io__write_string("#if (defined(USE_GCC_NONLOCAL_GOTOS) && "),
-	io__write_string("!defined(USE_ASM_LABELS)) \\\n\t|| "),
-	io__write_string("defined(PROFILE_CALLS) || defined(DEBUG_GOTOS) \\\n"),
-	io__write_string("\t|| defined(DEBUG_LABELS) || !defined(SPEED) \\\n"),
-	io__write_string("\t|| defined(NATIVE_GC) \n\n"),
+	io__write_string("#if defined(MR_NEED_INITIALIZATION_CODE)\n\n"),
 	io__write_string("\tstatic bool done = FALSE;\n"),
 	io__write_string("\tif (!done) {\n"),
 	io__write_string("\t\tdone = TRUE;\n"),
-	output_c_module_init_list_3(0, BaseName, InitFuncs),
+	output_c_module_init_list_3(0, ModuleName, InitFuncs),
 	io__write_string("\t}\n"),
 	io__write_string("#endif\n"),
 	output_c_data_init_list(Modules),
@@ -290,8 +304,8 @@ output_c_module_init_list(BaseName, Modules) -->
 	io__write_string(
 		"static const void *const MR_grade = &MR_GRADE_VAR;\n").
 
-:- pred output_c_module_init_list_2(list(c_module), string, int, int, int, int,
-	io__state, io__state).
+:- pred output_c_module_init_list_2(list(c_module), module_name, int, int, int,
+		int, io__state, io__state).
 :- mode output_c_module_init_list_2(in, in, in, in, in, out, di, uo) is det.
 
 output_c_module_init_list_2([], _, _, _, InitFunc, InitFunc) --> [].
@@ -301,13 +315,13 @@ output_c_module_init_list_2([c_export(_) | Ms], A, B, C, D, E) -->
 	output_c_module_init_list_2(Ms, A, B, C, D, E).
 output_c_module_init_list_2([c_code(_, _) | Ms], A, B, C, D, E) -->
 	output_c_module_init_list_2(Ms, A, B, C, D, E).
-output_c_module_init_list_2([c_module(ModuleName, _) | Ms], BaseName,
+output_c_module_init_list_2([c_module(C_ModuleName, _) | Ms], ModuleName,
 		Calls0, MaxCalls, InitFunc0, InitFunc) -->
 	( { Calls0 > MaxCalls } ->
 		io__write_string("}\n\n"),
 		{ InitFunc1 is InitFunc0 + 1 },
 		io__write_string("static void "),
-		output_bunch_name(BaseName, InitFunc1),
+		output_bunch_name(ModuleName, InitFunc1),
 		io__write_string("(void)\n"),
 		io__write_string("{\n"),
 		{ Calls1 = 1 }
@@ -318,33 +332,34 @@ output_c_module_init_list_2([c_module(ModuleName, _) | Ms], BaseName,
 	globals__io_lookup_bool_option(split_c_files, SplitFiles),
 	( { SplitFiles = yes } ->
 		io__write_string("\t{ extern ModuleFunc "),
-		output_module_name(ModuleName),
+		io__write_string(C_ModuleName),
 		io__write_string(";\n"),
 		io__write_string("\t  "),
-		output_module_name(ModuleName),
+		io__write_string(C_ModuleName),
 		io__write_string("(); }\n")
 	;
 		io__write_string("\t"),
-		output_module_name(ModuleName),
+		io__write_string(C_ModuleName),
 		io__write_string("();\n")
 	),
-	output_c_module_init_list_2(Ms, BaseName,
+	output_c_module_init_list_2(Ms, ModuleName,
 		Calls1, MaxCalls, InitFunc1, InitFunc).
 
 	% Output calls to all the bunched initialization functions.
 
-:- pred output_c_module_init_list_3(int, string, int, io__state, io__state).
+:- pred output_c_module_init_list_3(int, module_name, int,
+				io__state, io__state).
 :- mode output_c_module_init_list_3(in, in, in, di, uo) is det.
 
-output_c_module_init_list_3(InitFunc0, BaseName, MaxInitFunc) -->
+output_c_module_init_list_3(InitFunc0, ModuleName, MaxInitFunc) -->
 	( { InitFunc0 > MaxInitFunc } ->
 		[]
 	;
 		io__write_string("\t\t"),
-		output_bunch_name(BaseName, InitFunc0),
+		output_bunch_name(ModuleName, InitFunc0),
 		io__write_string("();\n"),
 		{ InitFunc1 is InitFunc0 + 1},
-		output_c_module_init_list_3(InitFunc1, BaseName, MaxInitFunc)
+		output_c_module_init_list_3(InitFunc1, ModuleName, MaxInitFunc)
 	).
 
 
@@ -361,14 +376,15 @@ output_c_data_init_list([c_code(_, _) | Ms]) -->
 	output_c_data_init_list(Ms).
 output_c_data_init_list([c_module(_, _) | Ms]) -->
 	output_c_data_init_list(Ms).
-output_c_data_init_list([c_data(BaseName, DataName, _, _, _) | Ms])  -->
+output_c_data_init_list([c_data(ModuleName, DataName, _, _, _) | Ms])  -->
 	(
 		{ DataName = base_type(info, TypeName, Arity) }
 	->
 		io__write_string("\tMR_INIT_BASE_TYPE_INFO(\n\t\t"),
-		output_data_addr(BaseName, DataName),
+		output_data_addr(ModuleName, DataName),
 		io__write_string(",\n\t\t"),
-		{ string__append(BaseName, "__", UnderscoresModule) },
+		{ llds_out__sym_name_mangle(ModuleName, ModuleNameString) },
+		{ string__append(ModuleNameString, "__", UnderscoresModule) },
 		( 
 			{ string__append(UnderscoresModule, _, TypeName) } 
 		->
@@ -386,52 +402,45 @@ output_c_data_init_list([c_data(BaseName, DataName, _, _, _) | Ms])  -->
 	),
 	output_c_data_init_list(Ms).
 
-:- pred output_init_name(string, io__state, io__state).
+:- pred output_init_name(module_name, io__state, io__state).
 :- mode output_init_name(in, di, uo) is det.
 
-output_init_name(BaseName0) -->
-	io__write_string("mercury__"),
-	{ llds_out__name_mangle(BaseName0, BaseName) },
-	io__write_string(BaseName),
-	io__write_string("__init").
+output_init_name(ModuleName) -->
+	{ llds_out__make_init_name(ModuleName, InitName) },
+	io__write_string(InitName).
 
-:- pred output_bunch_name(string, int, io__state, io__state).
+llds_out__make_init_name(ModuleName, InitName) :-
+	llds_out__sym_name_mangle(ModuleName, MangledModuleName),
+	string__append_list(["mercury__", MangledModuleName, "__init"],
+		InitName).
+
+:- pred output_bunch_name(module_name, int, io__state, io__state).
 :- mode output_bunch_name(in, in, di, uo) is det.
 
-output_bunch_name(BaseName0, Number) -->
+output_bunch_name(ModuleName, Number) -->
 	io__write_string("mercury__"),
-	{ llds_out__name_mangle(BaseName0, BaseName) },
-	io__write_string(BaseName),
+	{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
+	io__write_string(MangledModuleName),
 	io__write_string("_bunch_"),
 	io__write_int(Number).
 
-:- pred output_module_name(string, io__state, io__state).
-:- mode output_module_name(in, di, uo) is det.
+:- pred output_c_module_list(list(c_module), decl_set, io__state, io__state).
+:- mode output_c_module_list(in, in, di, uo) is det.
 
-output_module_name(ModuleName0) -->
-	io__write_string("mercury__"),
-	{ llds_out__name_mangle(ModuleName0, ModuleName) },
-	io__write_string(ModuleName).
+output_c_module_list([], _) --> [].
+output_c_module_list([M | Ms], DeclSet0) -->
+	output_c_module(M, DeclSet0, DeclSet),
+	output_c_module_list(Ms, DeclSet).
 
-:- pred output_c_module_list(list(c_module), decl_set, string,
-	io__state, io__state).
-:- mode output_c_module_list(in, in, in, di, uo) is det.
+:- pred output_c_module(c_module, decl_set, decl_set, io__state, io__state).
+:- mode output_c_module(in, in, out, di, uo) is det.
 
-output_c_module_list([], _, _) --> [].
-output_c_module_list([M | Ms], DeclSet0, BaseName) -->
-	output_c_module(M, DeclSet0, DeclSet, BaseName),
-	output_c_module_list(Ms, DeclSet, BaseName).
-
-:- pred output_c_module(c_module, decl_set, decl_set, string,
-	io__state, io__state).
-:- mode output_c_module(in, in, out, in, di, uo) is det.
-
-output_c_module(c_module(ModuleName, Procedures), DeclSet0, DeclSet, _) -->
+output_c_module(c_module(ModuleName, Procedures), DeclSet0, DeclSet) -->
 	io__write_string("\n"),
 	output_c_procedure_list_decls(Procedures, DeclSet0, DeclSet),
 	io__write_string("\n"),
 	io__write_string("BEGIN_MODULE("),
-	output_module_name(ModuleName),
+	io__write_string(ModuleName),
 	io__write_string(")\n"),
 	{ gather_c_module_labels(Procedures, Labels) },
 	output_c_label_init_list(Labels),
@@ -442,10 +451,10 @@ output_c_module(c_module(ModuleName, Procedures), DeclSet0, DeclSet, _) -->
 	output_c_procedure_list(Procedures, PrintComments, EmitCLoops),
 	io__write_string("END_MODULE\n").
 
-output_c_module(c_data(BaseName, VarName, ExportedFromModule, ArgVals, _Refs),
-		DeclSet0, DeclSet, _) -->
+output_c_module(c_data(ModuleName, VarName, ExportedFromModule, ArgVals,
+		_Refs), DeclSet0, DeclSet) -->
 	io__write_string("\n"),
-	{ DataAddr = data_addr(data_addr(BaseName, VarName)) },
+	{ DataAddr = data_addr(data_addr(ModuleName, VarName)) },
 	output_cons_arg_decls(ArgVals, "", "", 0, _, DeclSet0, DeclSet1),
 		% The code for data local to a Mercury module
 		% should normally be visible only within the C file
@@ -462,7 +471,7 @@ output_c_module(c_data(BaseName, VarName, ExportedFromModule, ArgVals, _Refs),
 		0, _),
 	{ set__insert(DeclSet1, DataAddr, DeclSet) }.
 
-output_c_module(c_code(C_Code, Context), DeclSet, DeclSet, _) -->
+output_c_module(c_code(C_Code, Context), DeclSet, DeclSet) -->
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
 	( { PrintComments = yes } ->
 		io__write_string("/* "),
@@ -476,7 +485,7 @@ output_c_module(c_code(C_Code, Context), DeclSet, DeclSet, _) -->
 	io__write_string("\n"),
 	output_reset_line_num.
 
-output_c_module(c_export(PragmaExports), DeclSet, DeclSet, _BaseName) -->
+output_c_module(c_export(PragmaExports), DeclSet, DeclSet) -->
 	output_exported_c_functions(PragmaExports).
 
 	% output_c_header_include_lines reverses the list of c header lines
@@ -957,8 +966,10 @@ output_instruction_and_comment(Instr, Comment, PrintComments, ProfInfo) -->
 output_instruction_and_comment(Instr, Comment, PrintComments) -->
 	{ set__init(ContLabelSet) },
 	{ hlds_pred__initial_proc_id(ProcId) },
-	{ ProfInfo = local(proc("DEBUG", predicate, "DEBUG", "DEBUG", 0,
-			ProcId)) - ContLabelSet },
+	{ DummyModule = unqualified("DEBUG") },
+	{ DummyPredName = "DEBUG" },
+	{ ProfInfo = local(proc(DummyModule, predicate, DummyModule,
+			DummyPredName, 0, ProcId)) - ContLabelSet },
 	output_instruction_and_comment(Instr, Comment, PrintComments, ProfInfo).
 
 	% output_instruction/3 is only for debugging.
@@ -967,8 +978,10 @@ output_instruction_and_comment(Instr, Comment, PrintComments) -->
 output_instruction(Instr) -->
 	{ set__init(ContLabelSet) },
 	{ hlds_pred__initial_proc_id(ProcId) },
-	{ ProfInfo = local(proc("DEBUG", predicate, "DEBUG", "DEBUG", 0,
-			ProcId)) - ContLabelSet },
+	{ DummyModule = unqualified("DEBUG") },
+	{ DummyPredName = "DEBUG" },
+	{ ProfInfo = local(proc(DummyModule, predicate, DummyModule,
+			DummyPredName, 0, ProcId)) - ContLabelSet },
 	output_instruction(Instr, ProfInfo).
 
 :- pred output_instruction(instr, pair(label, set(label)),
@@ -2005,7 +2018,7 @@ output_label_as_code_addr_decls(local(_, _)) --> [].
 	io__state, io__state).
 :- mode output_data_addr_decls(in, in, in, in, out, di, uo) is det.
 
-output_data_addr_decls(data_addr(BaseName, VarName),
+output_data_addr_decls(data_addr(ModuleName, VarName),
 		FirstIndent, LaterIndent, N0, N) -->
 	output_indent(FirstIndent, LaterIndent, N0),
 	{ N is N0 + 1 },
@@ -2023,11 +2036,11 @@ output_data_addr_decls(data_addr(BaseName, VarName),
 		io__write_string("const ")
 	),
 	io__write_string("struct "),
-	output_data_addr(BaseName, VarName), 
+	output_data_addr(ModuleName, VarName), 
 	io__write_string("_struct\n"),
 	io__write_string(LaterIndent),
 	io__write_string("\t"),
-	output_data_addr(BaseName, VarName), 
+	output_data_addr(ModuleName, VarName), 
 	io__write_string(";\n").
 
 %-----------------------------------------------------------------------------%
@@ -2237,21 +2250,21 @@ output_code_addr(do_not_reached) -->
 
 	% Output a data address. 
 
-:- pred output_data_addr(string, data_name, io__state, io__state).
+:- pred output_data_addr(module_name, data_name, io__state, io__state).
 :- mode output_data_addr(in, in, di, uo) is det.
 
-output_data_addr(BaseName0, VarName) -->
-	{ llds_out__name_mangle(BaseName0, BaseName) },
+output_data_addr(ModuleName, VarName) -->
+	{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
 	io__write_string("mercury_data_"),
 	(
 		{ VarName = common(N) },
-		io__write_string(BaseName),
+		io__write_string(MangledModuleName),
 		io__write_string("__common_"),
 		{ string__int_to_string(N, NStr) },
 		io__write_string(NStr)
 	;
 		{ VarName = base_type(BaseData, TypeName0, TypeArity) },
-		io__write_string(BaseName),
+		io__write_string(MangledModuleName),
 		{ llds_out__make_base_type_name(BaseData, TypeName0, TypeArity,
 			Str) },
 		io__write_string("__"),
@@ -2400,8 +2413,8 @@ llds_out__get_proc_label(special_proc(Module, PredName, TypeModule,
 		TypeName, TypeArity, ModeNum0), AddPrefix, ProcLabelString) :-
 	% figure out the LabelName
 	DummyArity = -1,	% not used by get_label_name.
-	get_label_name("", predicate, "", PredName, DummyArity, AddPrefix,
-		LabelName),
+	get_label_name(unqualified(""), predicate, unqualified(""),
+		PredName, DummyArity, AddPrefix, LabelName),
 
 	% figure out the ModeNumString
 	string__int_to_string(TypeArity, TypeArityString),
@@ -2409,8 +2422,8 @@ llds_out__get_proc_label(special_proc(Module, PredName, TypeModule,
 	string__int_to_string(ModeInt, ModeNumString),
 
 	% mangle all the relevent names
-	llds_out__name_mangle(Module, MangledModule),
-	llds_out__name_mangle(TypeModule, MangledTypeModule),
+	llds_out__sym_name_mangle(Module, MangledModule),
+	llds_out__sym_name_mangle(TypeModule, MangledTypeModule),
 	llds_out__name_mangle(TypeName, MangledTypeName),
 
 	% Module-qualify the type name.
@@ -2432,14 +2445,19 @@ llds_out__get_proc_label(special_proc(Module, PredName, TypeModule,
 	%  function indicator, declaring module, predicate name, arity,
 	%  and whether or not to add a prefix.
 
-:- pred get_label_name(string, pred_or_func, string, string, int, bool, string).
+:- pred get_label_name(module_name, pred_or_func, module_name, string, arity,
+			bool, string).
 :- mode get_label_name(in, in, in, in, in, in, out) is det.
 
 get_label_name(DefiningModule, PredOrFunc, DeclaringModule,
 		Name0, Arity, AddPrefix, LabelName) :-
+	llds_out__sym_name_mangle(DeclaringModule, DeclaringModuleName),
+	llds_out__sym_name_mangle(DefiningModule, DefiningModuleName),
 	(
 		( 
-			DeclaringModule = "mercury_builtin"
+			mercury_private_builtin_module(DeclaringModule)
+		;
+			mercury_public_builtin_module(DeclaringModule)
 		;
 			Name0 = "main",
 			Arity = 2
@@ -2453,7 +2471,7 @@ get_label_name(DefiningModule, PredOrFunc, DeclaringModule,
 	->
 		LabelName0 = Name0
 	;
-		llds_out__qualify_name(DeclaringModule, Name0,
+		llds_out__qualify_name(DeclaringModuleName, Name0,
 			LabelName0)
 	),
 	(
@@ -2462,7 +2480,7 @@ get_label_name(DefiningModule, PredOrFunc, DeclaringModule,
 		% module prefixes
 		DefiningModule \= DeclaringModule
 	->
-		string__append_list([DefiningModule, "__", LabelName0],
+		string__append_list([DefiningModuleName, "__", LabelName0],
 			LabelName1)
 	;
 		LabelName1 = LabelName0
@@ -2861,11 +2879,11 @@ output_rval_const(false) -->
 	io__write_string("FALSE").
 output_rval_const(code_addr_const(CodeAddress)) -->
 	output_code_addr(CodeAddress).
-output_rval_const(data_addr_const(data_addr(BaseName, VarName))) -->
+output_rval_const(data_addr_const(data_addr(ModuleName, VarName))) -->
 	% data addresses are all assumed to be of type `Word *';
 	% we need to cast them here to avoid type errors
 	io__write_string("(const Word *) &"),
-	output_data_addr(BaseName, VarName).
+	output_data_addr(ModuleName, VarName).
 output_rval_const(label_entry(Label)) -->
 	io__write_string("ENTRY("),
 	output_label(Label),
@@ -3065,6 +3083,14 @@ llds_out__reg_to_string(f, N, Description) :-
 
 %-----------------------------------------------------------------------------%
 
+llds_out__sym_name_mangle(unqualified(Name), MangledName) :-
+	llds_out__name_mangle(Name, MangledName).
+llds_out__sym_name_mangle(qualified(ModuleName, PlainName), MangledName) :-
+	llds_out__sym_name_mangle(ModuleName, MangledModuleName),
+	llds_out__name_mangle(PlainName, MangledPlainName),
+	llds_out__qualify_name(MangledModuleName, MangledPlainName,
+			MangledName).
+	
 	% Convert a Mercury predicate name into something that can form
 	% part of a C identifier.  This predicate is necessary because
 	% quoted names such as 'name with embedded spaces' are valid
@@ -3192,20 +3218,21 @@ llds_out__make_base_type_name(BaseData, TypeName0, TypeArity, Str) :-
 %-----------------------------------------------------------------------------%
 
 llds_out__make_base_typeclass_info_name(class_id(ClassSym, ClassArity),
-		TypeNames0, Str) :-
+		TypeNames, Str) :-
 	(
 		ClassSym = unqualified(_),
 		error("llds_out__make_base_typeclass_info_name: unqualified name")
 	;
-		ClassSym = qualified(ModuleName, ClassName0),
-			% Mangle the class name in case it is an operator
-		llds_out__name_mangle(ClassName0, ClassName),
-		string__append_list([ModuleName, "__", ClassName], ClassString)
+		ClassSym = qualified(ModuleName, ClassName),
+		llds_out__sym_name_mangle(ModuleName, MangledModuleName),
+		llds_out__name_mangle(ClassName, MangledClassName),
+		llds_out__qualify_name(MangledModuleName, MangledClassName,
+			MangledClassString)
 	),
-	string__int_to_string(ClassArity, A_str),
-	llds_out__name_mangle(TypeNames0, TypeNames),
-	string__append_list(["base_typeclass_info_", ClassString, "_", A_str,
-		"__", TypeNames], Str).
+	string__int_to_string(ClassArity, ArityString),
+	llds_out__name_mangle(TypeNames, MangledTypeNames),
+	string__append_list(["base_typeclass_info_", MangledClassString,
+		"_", ArityString, "__", MangledTypeNames], Str).
 
 %-----------------------------------------------------------------------------%
 

@@ -22,7 +22,8 @@
 
 :- implementation.
 
-:- import_module prog_io_goal, hlds_pred, hlds_data, term_util, term_errors.
+:- import_module prog_io, prog_io_goal, hlds_pred, term_util, term_errors.
+:- import_module hlds_data.
 :- import_module int, string, std_util, bool, require.
 
 parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
@@ -219,9 +220,9 @@ parse_pragma_type(ModuleName, "import", PragmaTerms,
 		    PredAndModesTerm = term__functor(term__atom("="),
 				[FuncAndArgModesTerm, RetModeTerm], _)
 		->
-		    parse_qualified_term(ModuleName, FuncAndArgModesTerm,
-			PredAndModesTerm, "pragma import declaration",
-			FuncAndArgModesResult),  
+		    parse_implicitly_qualified_term(ModuleName,
+		    	FuncAndArgModesTerm, PredAndModesTerm,
+			"pragma import declaration", FuncAndArgModesResult),  
 		    (
 			FuncAndArgModesResult = ok(FuncName, ArgModeTerms),
 			(
@@ -252,9 +253,9 @@ parse_pragma_type(ModuleName, "import", PragmaTerms,
 			Result = error(Msg, Term)
 		    )
 		;
-		    parse_qualified_term(ModuleName, PredAndModesTerm,
-			ErrorTerm, "pragma import declaration",
-			PredAndModesResult),  
+		    parse_implicitly_qualified_term(ModuleName,
+		    	PredAndModesTerm, ErrorTerm,
+			"pragma import declaration", PredAndModesResult),  
 		    (
 			PredAndModesResult = ok(PredName, ModeTerms),
 			(
@@ -300,9 +301,9 @@ parse_pragma_type(ModuleName, "import", PragmaTerms,
 		    PredAndModesTerm = term__functor(term__atom("="),
 				[FuncAndArgModesTerm, RetModeTerm], _)
 		->
-		    parse_qualified_term(ModuleName, FuncAndArgModesTerm,
-			PredAndModesTerm, "pragma import declaration",
-			FuncAndArgModesResult),  
+		    parse_implicitly_qualified_term(ModuleName,
+		    	FuncAndArgModesTerm, PredAndModesTerm,
+			"pragma import declaration", FuncAndArgModesResult),  
 		    (
 			FuncAndArgModesResult = ok(FuncName, ArgModeTerms),
 			(
@@ -325,9 +326,9 @@ parse_pragma_type(ModuleName, "import", PragmaTerms,
 			Result = error(Msg, Term)
 		    )
 		;
-		    parse_qualified_term(ModuleName, PredAndModesTerm,
-			ErrorTerm, "pragma import declaration",
-			PredAndModesResult),  
+		    parse_implicitly_qualified_term(ModuleName,
+		    	PredAndModesTerm, ErrorTerm,
+			"pragma import declaration", PredAndModesResult),  
 		    (
 			PredAndModesResult = ok(PredName, ModeTerms),
 			(
@@ -505,7 +506,7 @@ parse_pragma_type(ModuleName, "fact_table", PragmaTerms,
 			[PredNameTerm, ArityTerm], _)
 	    ->
 	    	(
-		    parse_qualified_term(ModuleName, PredNameTerm,
+		    parse_implicitly_qualified_term(ModuleName, PredNameTerm,
 		            PredAndArityTerm, "pragma fact_table declaration",
 			    ok(PredName, [])),
 		    ArityTerm = term__functor(term__integer(Arity), [], _)
@@ -570,7 +571,8 @@ parse_pragma_type(ModuleName, "termination_info", PragmaTerms, ErrorTerm,
 		PredAndModesTerm = PredAndModesTerm0,
 		FuncResultTerm = []
 	    ),
-	    parse_qualified_term(ModuleName, PredAndModesTerm, ErrorTerm,
+	    parse_implicitly_qualified_term(ModuleName,
+	    	PredAndModesTerm, ErrorTerm,
 		"`pragma termination_info' declaration", PredNameResult),
 	    PredNameResult = ok(PredName, ModeListTerm0),
 	    (
@@ -660,8 +662,8 @@ parse_simple_pragma(ModuleName, PragmaType, MakePragma,
 	    		[PredNameTerm, ArityTerm], _)
 	    ->
 		(
-		    parse_qualified_term(ModuleName, PredNameTerm, ErrorTerm,
-		    		"", ok(PredName, [])),
+		    parse_implicitly_qualified_term(ModuleName,
+		    	PredNameTerm, ErrorTerm, "", ok(PredName, [])),
 		    ArityTerm = term__functor(term__integer(Arity), [], _)
 		->
 		    call(MakePragma, PredName, Arity, Pragma),
@@ -730,7 +732,8 @@ parse_pragma_c_code(ModuleName, MayCallMercury, PredAndVarsTerm0, PragmaImpl,
 	    PredAndVarsTerm = PredAndVarsTerm0,
 	    FuncResultTerms = []
 	),
-	parse_qualified_term(ModuleName, PredAndVarsTerm, PredAndVarsTerm0,
+	parse_implicitly_qualified_term(ModuleName,
+	    PredAndVarsTerm, PredAndVarsTerm0,
 	    "pragma c_code declaration", PredNameResult),
 	(
 	    PredNameResult = ok(PredName, VarList0),

@@ -43,7 +43,7 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, llds, mode_util, prog_data.
+:- import_module hlds_data, llds, mode_util, prog_data.
 :- import_module code_util, quantification, arg_info, globals.
 :- import_module bool, list, map, set, std_util, term, require.
 
@@ -95,9 +95,9 @@ find_follow_vars_in_goal(Goal0, InstTable, ModuleInfo, FollowVars0,
 :- mode find_follow_vars_in_goal(in, in, in, out, out) is det.
 
 find_follow_vars_in_goal(Goal0 - GoalInfo, FVInfo, FollowVars0,
-					Goal - GoalInfo, FollowVars) :-
+                                        Goal - GoalInfo, FollowVars) :-
 	find_follow_vars_in_goal_expr(Goal0, FVInfo, FollowVars0,
-			Goal, FollowVars).
+					Goal, FollowVars).
 
 %-----------------------------------------------------------------------------%
 
@@ -236,8 +236,7 @@ find_follow_vars_in_goal_expr(unify(A,B,C,D,E), _FVInfo,
 	).
 
 find_follow_vars_in_goal_expr(pragma_c_code(A,B,C,D,E,F,G), _FVInfo,
-		FollowVars,
-		pragma_c_code(A,B,C,D,E,F,G), FollowVars).
+		FollowVars, pragma_c_code(A,B,C,D,E,F,G), FollowVars).
 
 %-----------------------------------------------------------------------------%
 

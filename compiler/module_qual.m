@@ -5,9 +5,8 @@
 %-----------------------------------------------------------------------------%
 %
 :- module module_qual.
-%	Main author: stayl
+%	Main authors: stayl, fjh.
 %
-%	Based on undef_types and undef_modes by fjh.
 %	Module qualifies types, insts and modes within declaration items.
 %	The head of all declarations should be module qualified in prog_io.m.
 %	This module qualifies the bodies of the declarations.
@@ -21,10 +20,10 @@
 :- interface.
 
 :- import_module prog_data.
-:- import_module bool, io, list.
+:- import_module bool, list, io.
 
-	% module_qualify_items(Items0, Items, ReportUndefErrors,
-	%				NumErrors, UndefTypes, UndefModes).
+	% module_qualify_items(Items0, Items, ModuleName, ReportUndefErrors,
+	%			MQ_Info, NumErrors, UndefTypes, UndefModes):
 	%
 	% Items is Items0 with all items module qualified as much
 	% as possible. If ReportUndefErrors is yes, then
@@ -32,7 +31,8 @@
 	% ReportUndefErrors should be no when module qualifying the
 	% short interface.
 :- pred module_qual__module_qualify_items(item_list, item_list,
-		string, bool, mq_info, int, bool, bool, io__state, io__state).
+		module_name, bool, mq_info, int, bool, bool,
+		io__state, io__state).
 :- mode module_qual__module_qualify_items(in, out, in, in,
 		out, out, out, out, di, uo) is det.
 
@@ -64,9 +64,9 @@
 :- implementation.
 
 :- import_module hlds_data, hlds_module, hlds_pred, type_util, prog_out.
-:- import_module prog_util, mercury_to_mercury, globals, options.
+:- import_module prog_util, mercury_to_mercury, modules, globals, options.
 :- import_module (inst), instmap.
-:- import_module int, list, map, require, set, std_util, string, term, varset.
+:- import_module int, map, require, set, std_util, string, term, varset.
 
 module_qual__module_qualify_items(Items0, Items, ModuleName, ReportErrors,
 			Info, NumErrors, UndefTypes, UndefModes) -->
@@ -94,10 +94,16 @@ module_qual__qualify_type_qualification(Type0, Type, Context, Info0, Info) -->
 
 :- type mq_info
 	--->	mq_info(
-			type_id_set,	% Sets of all types, modes and
-			inst_id_set,	% insts visible in this module.
+				% Sets of all types, insts, modes,
+				% and typeclasses visible
+				% in this module.
+				% XXX we ought to also keep track of
+				% which modules are visible.
+			type_id_set,
+			inst_id_set,
 			mode_id_set,
 			class_id_set,
+
 			set(module_name), % modules imported in the
 				% interface that are not definitely
 				% needed in the interface.
@@ -196,6 +202,7 @@ add_typeclass_defn(SymName, Params, Info0, Info) :-
 :- pred process_module_defn(module_defn::in, mq_info::in, mq_info::out) is det.
 
 process_module_defn(module(_), Info, Info).
+process_module_defn(include_module(_), Info, Info).
 process_module_defn(interface, Info0, Info) :-
 	mq_info_set_import_status(Info0, exported, Info).
 process_module_defn(implementation, Info0, Info) :-
@@ -346,7 +353,7 @@ module_qualify_item(instance(Constraints0, Name0, Types0, Interface0, VarSet) -
 	{ list__length(Types0, Arity) },
 	{ Id = Name0 - Arity },
 	{ mq_info_set_error_context(Info0, instance(Id) - Context, Info1) },
-		% We don't qualify the interface yet, since that requires
+		% We don't qualify the implementation yet, since that requires
 		% us to resolve overloading.
 	qualify_class_constraints(Constraints0, Constraints, Info1, Info2),
 	qualify_class_name(Id, Name - _, Info2, Info3),
@@ -369,6 +376,12 @@ update_import_status(end_module(_), Info, Info, yes).
 update_import_status(export(_), Info, Info, yes).
 update_import_status(import(_), Info, Info, yes).
 update_import_status(use(_), Info, Info, yes).
+update_import_status(include_module(_), Info0, Info, yes) :-
+	% The sub-module might make use of *any* of the imported modules.
+	% There's no way for us to tell which ones.
+	% So we conservatively assume that it uses all of them.
+	set__init(UnusedInterfaceModules),
+	mq_info_set_interface_modules(Info0, UnusedInterfaceModules, Info).
 
 	% Qualify the constructors or other types in a type definition.	
 :- pred qualify_type_defn(type_defn::in, type_defn::out, mq_info::in,
@@ -636,7 +649,10 @@ qualify_type(Type0, Type, Info0, Info) -->
 		; Typename = "float"
 		)
 	->
-		mq_info_set_module_used(Info2, Typename, Info)
+		% -- not yet:
+		% StdLibraryModule = qualified(unqualified("std"), Typename),
+		StdLibraryModule = unqualified(Typename),
+		mq_info_set_module_used(Info2, StdLibraryModule, Info)
 	;
 		Info = Info2
 	}.
@@ -783,93 +799,88 @@ qualify_class_method(
 	instance_interface::out) is det. 
 
 qualify_instance_interface(ClassName, M0s, Ms) :-
-	(
-		ClassName = qualified(Module, _)
+	( ClassName = unqualified(_) ->
+		Ms = M0s
 	;
-		ClassName = unqualified( _),
-		Module = ""
-	),
-	Qualify = lambda([M0::in, M::out] is det,
-		(
-			M0 = pred_instance(unqualified(Method), A, B),
-			M = pred_instance(qualified(Module, Method), A, B)
-		;
-			M0 = pred_instance(qualified(_, _), _A, _B),
-			M = M0
-		;
-			M0 = func_instance(unqualified(Method), A, B),
-			M = func_instance(qualified(Module, Method), A, B)
-		;
-			M0 = func_instance(qualified(_, _), _A, _B),
-			M = M0
-		)),
-	list__map(Qualify, M0s, Ms).
+		sym_name_get_module_name(ClassName, unqualified(""), Module),
+		Qualify = lambda([M0::in, M::out] is det,
+			(
+				M0 = pred_instance(Method0, A, B),
+				add_module_qualifier(Module, Method0, Method),
+				M = pred_instance(Method, A, B)
+			;
+				M0 = func_instance(Method0, A, B),
+				add_module_qualifier(Module, Method0, Method),
+				M = func_instance(Method, A, B)
+			)),
+		list__map(Qualify, M0s, Ms)
+	).
+
+:- pred add_module_qualifier(sym_name::in, sym_name::in, sym_name::out) is det.
+
+add_module_qualifier(Module, unqualified(SymName), qualified(Module, SymName)).
+add_module_qualifier(DefaultModule, qualified(SymModule, SymName),
+			qualified(Module, SymName)) :-
+	( match_sym_name(SymModule, DefaultModule) ->
+		Module = DefaultModule
+	;
+		% This case is an error.  The user must have written something
+		% like
+		%	:- instance foo:bar(some_type) where [
+		%		pred(baz:p/1) is q
+		%	].
+		% where the module qualifier on the pred or func in the
+		% instance (`baz:') does not match the qualifier for the 
+		% class name (`foo:').
+		%
+		% We don't report the error here, we just leave the original
+		% module qualifier intact so that the error can be reported
+		% later on.
+
+		Module = SymModule
+	).
 
 	% Find the unique match in the current name space for a given id
 	% from a list of ids. If none exists, either because no match was
-	% found or mulitiple matches were found, report an error.
+	% found or multiple matches were found, report an error.
 	% This predicate assumes that type_ids, inst_ids, mode_ids and
 	% class_ids have the same representation.
 :- pred find_unique_match(id::in, id::out, id_set::in, id_type::in,
 		mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.
 
 find_unique_match(Id0, Id, Ids, TypeOfId, Info0, Info) -->
-	(
-		{ Id0 = qualified(Module, Name) - Arity },
+
+	% Find all IDs which match the current id.
+	{ Id0 = SymName - Arity },
+	{ id_set_search_sym_arity(Ids, SymName, Arity, Modules) },
+
+	( { Modules = [] } ->
+		% No matches for this id.
 		{ Id = Id0 },
-		( { id_set_search_m_n_a(Ids, Module, Name, Arity) } ->
-			{ mq_info_set_module_used(Info0, Module, Info) }
+		( { mq_info_get_report_error_flag(Info0, yes) } ->
+			{ mq_info_get_error_context(Info0, ErrorContext) },
+			report_undefined(ErrorContext, Id0, TypeOfId),
+			{ mq_info_set_error_flag(Info0, TypeOfId, Info1) },
+			{ mq_info_incr_errors(Info1, Info) }
 		;
-			( { mq_info_get_report_error_flag(Info0, yes) } ->
-				{ mq_info_get_error_context(Info0,
-							ErrorContext) },
-				report_undefined(ErrorContext, Id, TypeOfId),
-				{ mq_info_set_error_flag(Info0,
-							TypeOfId, Info1) },
-				{ mq_info_incr_errors(Info1, Info) }
-			;
-				{ Info = Info0 }
-			)
+			{ Info = Info0 }
 		)
+	; { Modules = [Module] } ->
+		% A unique match for this ID.
+		{ unqualify_name(SymName, IdName) },
+		{ Id = qualified(Module, IdName) - Arity },
+		{ mq_info_set_module_used(Info0, Module, Info) }
 	;
-		{ Id0 = unqualified(IdName) - Arity },
-
-		% Find all IDs which match the current ID's name and
-		% arity and which come from modules imported by the
-		% module where the current ID is used.
-
-		{ id_set_search_name_arity(Ids, IdName, Arity, Modules) },
-		( { Modules = [] } ->
-			% No matches for this id.
-			{ Id = Id0 },
-			( { mq_info_get_report_error_flag(Info0, yes) } ->
-				{ mq_info_get_error_context(Info0,
-							ErrorContext) },
-				report_undefined(ErrorContext, Id0, TypeOfId),
-				{ mq_info_set_error_flag(Info0,
-							TypeOfId, Info1) },
-				{ mq_info_incr_errors(Info1, Info) }
-			;
-				{ Info = Info0 }
-			)
-		; { Modules = [Module] } ->
-			% A unique match for this ID.
-			{ Id = qualified(Module, IdName) - Arity },
-			{ mq_info_set_module_used(Info0, Module, Info) }
+		% There are multiple matches.
+		{ Id = Id0 },
+		( { mq_info_get_report_error_flag(Info0, yes) } ->
+			{ mq_info_get_error_context(Info0, ErrorContext) },
+			report_ambiguous_match(ErrorContext, Id0, TypeOfId,
+						Modules),
+			{ mq_info_set_error_flag(Info0, TypeOfId, Info1) },
+			{ mq_info_incr_errors(Info1, Info) }
 		;
-			% There are multiple matches.
-			{ Id = Id0 },
-			( { mq_info_get_report_error_flag(Info0, yes) } ->
-				{ mq_info_get_error_context(Info0,
-							ErrorContext) },
-				report_multiply_defined(ErrorContext, Id0,
-							TypeOfId, Modules),
-				{ mq_info_set_error_flag(Info0,
-							TypeOfId, Info1) },
-				{ mq_info_incr_errors(Info1, Info) }
-			;
-				{ Info = Info0 }
-			)
+			{ Info = Info0 }
 		)
 	).
 				
@@ -920,10 +931,10 @@ report_undefined(ErrorContext - Context, Id, IdType) -->
 
 	% Report an error where a type, inst or mode had multiple possible
 	% matches.
-:- pred report_multiply_defined(error_context::in, id::in, id_type::in,
+:- pred report_ambiguous_match(error_context::in, id::in, id_type::in,
 		list(module_name)::in, io__state::di, io__state::uo) is det.
 
-report_multiply_defined(ErrorContext - Context, Id, IdType, Modules) -->
+report_ambiguous_match(ErrorContext - Context, Id, IdType, Modules) -->
 	io__set_exit_status(1),
 	prog_out__write_context(Context),
 	io__write_string("In "),
@@ -1018,10 +1029,14 @@ maybe_warn_unused_interface_imports(ModuleName, UnusedImports) -->
 	->
 		[]
 	;
-		{ string__append(ModuleName, ".m", FileName) },
+		module_name_to_file_name(ModuleName, ".m", FileName),
 		{ term__context_init(FileName, 1, Context) },
 		prog_out__write_context(Context),
-		io__write_string("Warning: "),
+		io__write_string("In module `"),
+		prog_out__write_sym_name(ModuleName),
+		io__write_string("':\n"),
+		prog_out__write_context(Context),
+		io__write_string("  warning: "),
 		( { UnusedImports = [_] } ->
 			io__write_string("module ")
 		;
@@ -1187,7 +1202,9 @@ mq_info_set_error_flag(Info0, class_id, Info) :-
 	mq_info_set_type_error_flag(Info0, Info).
 
 	% If the current item is in the interface, remove its module 
-	% name from the list of modules not used in the interface.
+	% name from the list of modules not used in the interface
+	% (and if the module name is itself module-qualified,
+	% recursively mark its parent module as used).
 :- pred mq_info_set_module_used(mq_info::in, module_name::in,
 						mq_info::out) is det.
 
@@ -1195,7 +1212,14 @@ mq_info_set_module_used(Info0, Module, Info) :-
 	( mq_info_get_import_status(Info0, exported) ->
 		mq_info_get_interface_modules(Info0, Modules0),
 		set__delete(Modules0, Module, Modules),
-		mq_info_set_interface_modules(Info0, Modules, Info)
+		mq_info_set_interface_modules(Info0, Modules, Info1),
+		(
+			Module = qualified(ParentModule, _),
+			mq_info_set_module_used(Info1, ParentModule, Info)
+		;
+			Module = unqualified(_),
+			Info = Info1
+		)
 	;
 		Info = Info0
 	).
@@ -1260,25 +1284,41 @@ id_set_insert(NeedQualifier, qualified(Module, Name) - Arity, IdSet0, IdSet) :-
 	),
 	map__set(IdSet0, Name - Arity, ImportModules - UseModules, IdSet).
 
-:- pred id_set_search_name_arity(id_set::in, string::in, int::in,
+:- pred id_set_search_sym_arity(id_set::in, sym_name::in, int::in,
 				list(module_name)::out) is det.
 
-id_set_search_name_arity(IdSet0, Name, Arity, Modules) :-
-	( map__search(IdSet0, Name - Arity, ImportModules - _) ->
-		set__to_sorted_list(ImportModules, Modules)
+id_set_search_sym_arity(IdSet, Sym, Arity, Modules) :-
+	unqualify_name(Sym, UnqualName),
+	(
+		map__search(IdSet, UnqualName - Arity,
+			ImportModules - UseModules)
+	->
+		(
+			Sym = unqualified(_),
+			set__to_sorted_list(ImportModules, Modules)
+		;
+			Sym = qualified(Module, _),
+			% XXX The code below is not quite right -
+			% it doesn't handle the cases where
+			% a module is imported but its parent module is used,
+			% or vice versa.
+			% E.g. It allows the use of `bar:baz' to match
+			% `:foo:bar:baz' if `bar' is imported,
+			% whereas this ought to be allowed only if `foo'
+			% is imported.
+			FindMatch =
+				lambda([MatchModule::out] is nondet, (
+				    (   
+					set__member(MatchModule, ImportModules)
+				    ;   
+					set__member(MatchModule, UseModules)
+				    ),
+				    match_sym_name(Module, MatchModule)
+				)),
+			solutions(FindMatch, Modules)
+		)
 	;
 		Modules = []
-	).
-
-:- pred id_set_search_m_n_a(id_set::in, module_name::in,
-			 	string::in, int::in) is semidet.
-
-id_set_search_m_n_a(IdSet0, Module, Name, Arity) :-
-	map__search(IdSet0, Name - Arity, ImportModules - UseModules),
-	( 
-		set__member(Module, ImportModules)
-	;
-		set__member(Module, UseModules)
 	).
 
 %----------------------------------------------------------------------------%

@@ -6,14 +6,23 @@
 
 /*
 ** mercury_conf.h.in -
-**	Various configuration parameters, determined automatically by
-**	the auto-configuration script.  Implications of configuration 
-**	parameters, and combinations of paramters.
+**	Defines various configuration parameters. 
+**
+**	Configuration parameters fall into three groups.
+**	They can be set automatically by autoconf.
+**	They can be passed on the command line (e.g. the mgnuc
+**	script sets some options based on the grade).
+**	Or their values can be entirely determined by the settings
+**	of other parameters.
+**
+**	The ones defined in this file are determined by autoconf.
+**	The remainder are documented and/or defined in mercury_conf_param.h, 
+**	which is #included by this file.
 */
 
 /*
 ** IMPORTANT NOTE:
-** This file must not contain any #include statements,
+** This file must not contain any other #include statements,
 ** and may not define any global variables,
 ** for reasons explained in mercury_imp.h.
 ** This file should contain _only_ configuration macros.
@@ -21,6 +30,11 @@
 
 #ifndef MERCURY_CONF_H
 #define MERCURY_CONF_H
+
+/*---------------------------------------------------------------------------*/
+/*
+** Configuration parameters determined by autoconf.
+*/
 
 /*
 ** WORD_TYPE: the base type for the definition of Word.
@@ -199,49 +213,8 @@
 */
 #undef MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE
 
-/*
-** Implications of configuration parameters.
-**
-** Meaning of parameters:
-**
-** MR_USE_STACK_LAYOUTS -- stack layouts are in use, generate stack
-**                         layout structures.
-** MR_INSERT_LABELS     -- labels need to be inserted into the label table. 
-**			   (this also means the initialization code needs
-**			   to be run).
-** MR_NEED_INITIALIZATION_CODE -- the module specific initialization code
-**				  is needed (doesn't actually run the code,
-**				  however).
-*/
+/*---------------------------------------------------------------------------*/
 
-#if defined(MR_STACK_TRACE) || defined(NATIVE_GC)
-  #define MR_USE_STACK_LAYOUTS
-  #define MR_INSERT_LABELS
-#endif
-
-#if !defined(SPEED) || defined(DEBUG_GOTOS)
-  #define MR_INSERT_LABELS
-#endif
-
-/*
-** Static code addresses are available unless using gcc non-local gotos,
-** without assembler labels.
-*/
-#if	(defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS))
-	#undef MR_STATIC_CODE_ADDRESSES
-#else
-	#define MR_STATIC_CODE_ADDRESSES
-#endif
-
-/*
-** You need to run initialization code for grades without static
-** code addresses, for profiling, and any time you need to insert
-** labels into the label table.
-*/
-#if !defined(MR_STATIC_CODE_ADDRESSES) || defined(PROFILE_CALLS) \
-	|| defined(DEBUG_LABELS) || defined(MR_INSERT_LABELS)
-  #define MR_NEED_INITIALIZATION_CODE
-#endif
-
+#include "mercury_conf_param.h"
 
 #endif /* MERCURY_CONF_H */

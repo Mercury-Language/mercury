@@ -14,6 +14,8 @@
 
 . ../handle_options
 
+echo "diff=`which diff`"
+
 mmake $jfactor clean > /dev/null 2>&1
 mmake $jfactor depend || exit 1
 eval mmake -k $jfactor $gradeopt $flagsopt $cflagsopt check

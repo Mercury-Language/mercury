@@ -56,8 +56,7 @@
 
 :- implementation.
 
-:- import_module type_util.
-:- import_module std_util.
+:- import_module type_util, mode_util, prog_util.
 
 special_pred_list([unify, index, compare]).
 
@@ -89,22 +88,11 @@ special_pred_info_2(index, Type, "__Index__", [Type, IntType], [In, Out],
 
 special_pred_info_2(compare, Type,
 		 "__Compare__", [ResType, Type, Type], [Uo, In, In], det) :-
-	construct_type(qualified("mercury_builtin", "comparison_result") - 0,
+	mercury_public_builtin_module(PublicBuiltin),
+	construct_type(qualified(PublicBuiltin, "comparison_result") - 0,
 							[], ResType),
 	in_mode(In),
 	uo_mode(Uo).
-
-:- pred in_mode((mode)::out) is det.
-
-in_mode(user_defined_mode(qualified("mercury_builtin", "in"), [])).
-
-:- pred out_mode((mode)::out) is det.
-
-out_mode(user_defined_mode(qualified("mercury_builtin", "out"), [])).
-
-:- pred uo_mode((mode)::out) is det.
-
-uo_mode(user_defined_mode(qualified("mercury_builtin", "uo"), [])).
 
 	% Given the mangled predicate name and the list of argument types,
 	% work out which type this special predicate is for.

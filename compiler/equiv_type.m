@@ -11,7 +11,7 @@
 
 :- module equiv_type.
 :- interface.
-:- import_module prog_data, list, io, bool.
+:- import_module bool, prog_data, list, io.
 
 %-----------------------------------------------------------------------------%
 

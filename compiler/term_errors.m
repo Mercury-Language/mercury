@@ -128,7 +128,7 @@
 
 :- implementation.
 
-:- import_module hlds_out, prog_out, hlds_pred, passes_aux, error_util.
+:- import_module hlds_out, prog_out, passes_aux, error_util.
 :- import_module mercury_to_mercury, term_util, options, globals.
 
 :- import_module bool, int, string, map, bag, require, varset.
@@ -143,16 +143,18 @@ indirect_error(does_not_term_pragma(_)).
 term_errors__report_term_errors(SCC, Errors, Module) -->
 	{ get_context_from_scc(SCC, Module, Context) },
 	( { SCC = [PPId] } ->
-		{ Pieces0 = ["Termination", "of"] },
+		{ Pieces0 = [words("Termination of")] },
 		{ term_errors__describe_one_proc_name(PPId, Module, PredName) },
-		{ list__append(Pieces0, [PredName], Pieces1) },
+		{ list__append(Pieces0, [fixed(PredName)], Pieces1) },
 		{ Single = yes(PPId) }
 	;
-		{ Pieces0 = ["Termination", "of", "the",
-			"mutually", "recursive", "procedures"] },
+		{ Pieces0 = [words("Termination of the mutually recursive procedures")] },
 		{ term_errors__describe_several_proc_names(SCC, Module, Context,
-			PredNames) },
-		{ list__append(Pieces0, PredNames, Pieces1) },
+			ProcNames) },
+		{ list__map(lambda([PN::in, FPN::out] is det,
+			(FPN = fixed(PN))),
+			ProcNames, ProcNamePieces) },
+		{ list__append(Pieces0, ProcNamePieces, Pieces1) },
 		{ Single = no }
 	),
 	(
@@ -160,21 +162,18 @@ term_errors__report_term_errors(SCC, Errors, Module) -->
 		% XXX this should never happen
 		% XXX but for some reason, it often does
 		% { error("empty list of errors") }
-		{ Pieces2 = ["not", "proven,", "for", "unknown",
-			"reason(s)."] },
+		{ Pieces2 = [words("not proven, for unknown reason(s).")] },
 		{ list__append(Pieces1, Pieces2, Pieces) },
 		write_error_pieces(Context, 0, Pieces)
 	;
 		{ Errors = [Error] },
-		{ Pieces2 = ["not", "proven", "for", "the",
-			"following", "reason:"] },
+		{ Pieces2 = [words("not proven for the following reason:")] },
 		{ list__append(Pieces1, Pieces2, Pieces) },
 		write_error_pieces(Context, 0, Pieces),
 		term_errors__output_error(Error, Single, no, 0, Module)
 	;
 		{ Errors = [_, _ | _] },
-		{ Pieces2 = ["not", "proven", "for", "the",
-			"following", "reasons:"] },
+		{ Pieces2 = [words("not proven for the following reasons:")] },
 		{ list__append(Pieces1, Pieces2, Pieces) },
 		write_error_pieces(Context, 0, Pieces),
 		term_errors__output_errors(Errors, Single, 1, 0, Module)
@@ -187,33 +186,35 @@ term_errors__report_term_errors(SCC, Errors, Module) -->
 term_errors__report_arg_size_errors(SCC, Errors, Module) -->
 	{ get_context_from_scc(SCC, Module, Context) },
 	( { SCC = [PPId] } ->
-		{ Pieces0 = ["Termination", "constant", "of"] },
-		{ term_errors__describe_one_proc_name(PPId, Module, PredName) },
-		{ list__append(Pieces0, [PredName], Pieces1) },
+		{ Pieces0 = [words("Termination constant of")] },
+		{ term_errors__describe_one_proc_name(PPId, Module, ProcName) },
+		{ list__append(Pieces0, [fixed(ProcName)], Pieces1) },
 		{ Single = yes(PPId) }
 	;
-		{ Pieces0 = ["Termination", "constants", "of", "the",
-			"mutually", "recursive", "procedures"] },
-		{ term_errors__describe_several_proc_names(SCC, Module, Context,
-			PredNames) },
-		{ list__append(Pieces0, PredNames, Pieces1) },
+		{ Pieces0 = [words("Termination constants"),
+			words("of the mutually recursive procedures")] },
+		{ term_errors__describe_several_proc_names(SCC, Module,
+			Context, ProcNames) },
+		{ list__map(lambda([PN::in, FPN::out] is det,
+			(FPN = fixed(PN))),
+			ProcNames, ProcNamePieces) },
+		{ list__append(Pieces0, ProcNamePieces, Pieces1) },
 		{ Single = no }
 	),
+	{ Piece2 = words("set to infinity for the following") },
 	(
 		{ Errors = [] },
 		{ error("empty list of errors") }
 	;
 		{ Errors = [Error] },
-		{ Pieces2 = ["set", "to", "infinity", "for", "the",
-			"following", "reason:"] },
-		{ list__append(Pieces1, Pieces2, Pieces) },
+		{ Piece3 = words("reason:") },
+		{ list__append(Pieces1, [Piece2, Piece3], Pieces) },
 		write_error_pieces(Context, 0, Pieces),
 		term_errors__output_error(Error, Single, no, 0, Module)
 	;
 		{ Errors = [_, _ | _] },
-		{ Pieces2 = ["set", "to", "infinity", "for", "the",
-			"following", "reasons:"] },
-		{ list__append(Pieces1, Pieces2, Pieces) },
+		{ Piece3 = words("reasons:") },
+		{ list__append(Pieces1, [Piece2, Piece3], Pieces) },
 		write_error_pieces(Context, 0, Pieces),
 		term_errors__output_errors(Errors, Single, 1, 0, Module)
 	).
@@ -238,7 +239,7 @@ term_errors__output_error(Context - Error, Single, ErrorNum, Indent, Module) -->
 	{ ErrorNum = yes(N) ->
 		string__int_to_string(N, Nstr),
 		string__append_list(["Reason ", Nstr, ":"], Preamble),
-		Pieces = [Preamble | Pieces0]
+		Pieces = [fixed(Preamble) | Pieces0]
 	;
 		Pieces = Pieces0
 	},
@@ -258,188 +259,178 @@ term_errors__output_error(Context - Error, Single, ErrorNum, Indent, Module) -->
 	).
 
 :- pred term_errors__description(termination_error::in,
-	maybe(pred_proc_id)::in, module_info::in, list(string)::out,
+	maybe(pred_proc_id)::in, module_info::in, list(format_component)::out,
 	maybe(pred_proc_id)::out) is det.
 
 term_errors__description(horder_call, _, _, Pieces, no) :-
-	Pieces = ["It", "contains", "a", "higher", "order", "call."].
+	Pieces = [words("It contains a higher order call.")].
 
 term_errors__description(pragma_c_code, _, _, Pieces, no) :-
-	Pieces = ["It", "depends", "on", "the", "properties", "of",
-		"foreign", "language", "code", "included", "via", "a",
-		"`pragma c_code'", "declaration."].
+	Pieces = [words("It depends on the properties of"),
+		words("foreign language code included via a"),
+		fixed("`pragma c_code'"),
+		words("declaration.")].
 
 term_errors__description(inf_call(CallerPPId, CalleePPId),
 		Single, Module, Pieces, no) :-
 	(
 		Single = yes(PPId),
 		require(unify(PPId, CallerPPId), "caller outside this SCC"),
-		Piece1 = "It"
+		Piece1 = words("It")
 	;
 		Single = no,
-		term_errors__describe_one_proc_name(CallerPPId, Module, Piece1)
+		term_errors__describe_one_proc_name(CallerPPId, Module,
+			ProcName),
+		Piece1 = fixed(ProcName)
 	),
-	Piece2 = "calls",
+	Piece2 = words("calls"),
 	term_errors__describe_one_proc_name(CalleePPId, Module, CalleePiece),
-	Pieces3 = ["with", "an", "unbounded", "increase", "in", "the",
-		"size", "of", "the", "input", "arguments."],
-	Pieces = [Piece1, Piece2, CalleePiece | Pieces3].
+	Pieces3 = [words("with an unbounded increase"),
+		words("in the size of the input arguments.")],
+	Pieces = [Piece1, Piece2, fixed(CalleePiece) | Pieces3].
 
 term_errors__description(can_loop_proc_called(CallerPPId, CalleePPId),
 		Single, Module, Pieces, no) :-
 	(
 		Single = yes(PPId),
 		require(unify(PPId, CallerPPId), "caller outside this SCC"),
-		Piece1 = "It"
+		Piece1 = words("It")
 	;
 		Single = no,
-		term_errors__describe_one_proc_name(CallerPPId, Module, Piece1)
+		term_errors__describe_one_proc_name(CallerPPId, Module,
+			ProcName),
+		Piece1 = fixed(ProcName)
 	),
-	Piece2 = "calls",
+	Piece2 = words("calls"),
 	term_errors__describe_one_proc_name(CalleePPId, Module, CalleePiece),
-	Pieces3 = ["which", "could", "not", "be", "proven", "to", "terminate."],
-	Pieces = [Piece1, Piece2, CalleePiece | Pieces3].
+	Pieces3 = [words("which could not be proven to terminate.")],
+	Pieces = [Piece1, Piece2, fixed(CalleePiece) | Pieces3].
 
 term_errors__description(imported_pred, _, _, Pieces, no) :-
-	Pieces = ["It", "contains", "one", "or", "more",
-		"predicates", "and/or", "functions",
-		"imported", "from", "another", "module."].
+	Pieces = [words("It contains one or more"),
+		words("predicates and/or functions"),
+		words("imported from another module.")].
 
 term_errors__description(horder_args(CallerPPId, CalleePPId), Single, Module,
 		Pieces, no) :-
 	(
 		Single = yes(PPId),
 		require(unify(PPId, CallerPPId), "caller outside this SCC"),
-		Piece1 = "It"
+		Piece1 = words("It")
 	;
 		Single = no,
-		term_errors__describe_one_proc_name(CallerPPId, Module, Piece1)
+		term_errors__describe_one_proc_name(CallerPPId, Module,
+			ProcName),
+		Piece1 = fixed(ProcName)
 	),
-	Piece2 = "calls",
+	Piece2 = words("calls"),
 	term_errors__describe_one_proc_name(CalleePPId, Module, CalleePiece),
-	Pieces3 = ["with", "one", "or", "more",
-		"higher", "order", "arguments."],
-	Pieces = [Piece1, Piece2, CalleePiece | Pieces3].
+	Pieces3 = [words("with one or more higher order arguments.")],
+	Pieces = [Piece1, Piece2, fixed(CalleePiece) | Pieces3].
 
 term_errors__description(inf_termination_const(CallerPPId, CalleePPId),
 		Single, Module, Pieces, yes(CalleePPId)) :-
 	(
 		Single = yes(PPId),
 		require(unify(PPId, CallerPPId), "caller outside this SCC"),
-		Piece1 = "It"
+		Piece1 = words("It")
 	;
 		Single = no,
-		term_errors__describe_one_proc_name(CallerPPId, Module, Piece1)
+		term_errors__describe_one_proc_name(CallerPPId, Module,
+			ProcName),
+		Piece1 = fixed(ProcName)
 	),
-	Piece2 = "calls",
+	Piece2 = words("calls"),
 	term_errors__describe_one_proc_name(CalleePPId, Module, CalleePiece),
-	Pieces3 = ["which", "has", "a", "termination", "constant", "of",
-		"infinity."],
-	Pieces = [Piece1, Piece2, CalleePiece | Pieces3].
+	Pieces3 = [words("which has a termination constant of infinity.")],
+	Pieces = [Piece1, Piece2, fixed(CalleePiece) | Pieces3].
 
 term_errors__description(not_subset(ProcPPId, OutputSuppliers, HeadVars),
 		Single, Module, Pieces, no) :-
 	(
 		Single = yes(PPId),
 		( PPId = ProcPPId ->
-			Pieces1 = ["The", "set", "of", "its", "output",
-				"supplier", "variables"]
+			Pieces1 = [words("The set of"),
+				words("its output supplier variables")]
 		;
 			% XXX this should never happen (but it does)
 			% error("not_subset outside this SCC"),
 			term_errors__describe_one_proc_name(ProcPPId, Module,
 				PPIdPiece),
-			Pieces1 = ["The", "set", "of", "output", "supplier",
-				"variables", "of", PPIdPiece]
+			Pieces1 = [words("The set of"),
+				words("output supplier variables of"),
+				fixed(PPIdPiece)]
 		)
 	;
 		Single = no,
 		term_errors__describe_one_proc_name(ProcPPId, Module,
 			PPIdPiece),
-		Pieces1 = ["The", "set", "of", "output", "supplier",
-			"variables", "of", PPIdPiece]
+		Pieces1 = [words("The set of output supplier variables of"),
+			fixed(PPIdPiece)]
 	),
 	ProcPPId = proc(PredId, ProcId),
 	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
 	proc_info_varset(ProcInfo, Varset),
 	term_errors_var_bag_description(OutputSuppliers, Varset,
-		OutputSuppliersPieces),
-	Pieces3 = ["was", "not", "a", "subset", "of", "the", "head",
-		"variables"],
-	term_errors_var_bag_description(HeadVars, Varset, HeadVarsPieces),
+		OutputSuppliersNames),
+	list__map(lambda([OS::in, FOS::out] is det, (FOS = fixed(OS))),
+		OutputSuppliersNames, OutputSuppliersPieces),
+	Pieces3 = [words("was not a subset of the head variables")],
+	term_errors_var_bag_description(HeadVars, Varset, HeadVarsNames),
+	list__map(lambda([HV::in, FHV::out] is det, (FHV = fixed(HV))),
+		HeadVarsNames, HeadVarsPieces),
 	list__condense([Pieces1, OutputSuppliersPieces, Pieces3,
 		HeadVarsPieces], Pieces).
 
 term_errors__description(cycle(_StartPPId, CallSites), _, Module, Pieces, no) :-
 	( CallSites = [DirectCall] ->
 		term_errors__describe_one_call_site(DirectCall, Module, Site),
-		Pieces = ["At", "the", "recursive", "call", "to", Site,
-			"the", "arguments", "are", "not", "guaranteed",
-			"to", "decrease", "in", "size."]
+		Pieces = [words("At the recursive call to"),
+			fixed(Site),
+			words("the arguments are"),
+			words("not guaranteed to decrease in size.")]
 	;
-		Pieces1 = ["In", "the", "recursive", "cycle",
-			"through", "the", "calls", "to"],
+		Pieces1 = [words("In the recursive cycle"),
+			words("through the calls to")],
 		term_errors__describe_several_call_sites(CallSites, Module,
 			Sites),
-		Pieces2 = ["the", "arguments", "are", "not", "guaranteed",
-			"to", "decrease", "in", "size."],
-		list__condense([Pieces1, Sites, Pieces2], Pieces)
+		list__map(lambda([S::in, FS::out] is det, (FS = fixed(S))),
+			Sites, SitePieces),
+		Pieces2 = [words("the arguments are"),
+			words("not guaranteed to decrease in size.")],
+		list__condense([Pieces1, SitePieces, Pieces2], Pieces)
 	).
-	% Pieces = ["there", "was", "a", "cycle", "in", "the", "call", "graph",
-	% "of", "this", "SCC", "where", "the", "variables", "did", "not",
-	% "decrease", "in", "size."].
-
-% term_errors__description(positive_value(CallerPPId, CalleePPId),
-% 		Single, Module, Pieces, no) :-
-% 	(
-% 		Single = yes(PPId),
-% 		PPId = CallerPPId,
-% 		Piece1 = "it"
-% 	;
-% 		Single = no,
-% 		term_errors__describe_one_proc_name(CallerPPId, Module, Piece1)
-% 	),
-% 	( CallerPPId = CalleePPId ->
-% 		Pieces2 = ["contains", "a", "directly", "recursive", "call"]
-% 	;
-% 		term_errors__describe_one_proc_name(CalleePPId, Module,
-% 			CalleePiece),
-% 		Pieces2 = ["recursive", "call", "to", CalleePiece]
-% 	),
-% 	Pieces3 = ["with", "the", "size", "of", "the", "inputs", "increased."],
-% 	list__append([Piece1 | Pieces2], Pieces3, Pieces).
 
 term_errors__description(too_many_paths, _, _, Pieces, no) :-
-	Pieces = ["There", "were", "too", "many", "execution", "paths",
-		"for", "the", "analysis", "to", "process."].
+	Pieces = [words("There were too many execution paths"),
+		words("for the analysis to process.")].
 
 term_errors__description(no_eqns, _, _, Pieces, no) :-
-	Pieces = ["The", "analysis", "was", "unable", "to", "form", "any",
-		"constraints", "between", "the", "arguments", "of", "this",
-		"group", "of", "procedures."].
+	Pieces = [words("The analysis was unable to form any constraints"),
+		words("between the arguments of this group of procedures.")].
 
 term_errors__description(solver_failed, _, _, Pieces, no)  :-
-	Pieces = ["The", "solver", "found", "the", "constraints", "produced",
-		"by", "the", "analysis", "to", "be", "infeasible."].
+	Pieces = [words("The solver found the constraints produced"),
+		words("by the analysis to be infeasible.")].
 
 term_errors__description(is_builtin(_PredId), _Single, _, Pieces, no) :-
 	% XXX require(unify(Single, yes(_)), "builtin not alone in SCC"),
-	Pieces = ["It", "is", "a", "builtin", "predicate."].
+	Pieces = [words("It is a builtin predicate.")].
 
 term_errors__description(does_not_term_pragma(PredId), Single, Module,
 		Pieces, no) :-
-	Pieces1 = ["There", "was", "a", "`does_not_terminate'", "pragma",
-		"defined", "on"],
+	Pieces1 = [words("There was a `does_not_terminate' pragma defined on")],
 	(
 		Single = yes(PPId),
 		PPId = proc(SCCPredId, _),
 		require(unify(PredId, SCCPredId), "does not terminate pragma outside this SCC"),
-		Piece2 = "it."
+		Piece2 = words("It")
 	;
 		Single = no,
 		term_errors__describe_one_pred_name(PredId, Module,
 			Piece2Nodot),
-		string__append(Piece2Nodot, ".", Piece2)
+		string__append(Piece2Nodot, ".", Piece2Str),
+		Piece2 = fixed(Piece2Str)
 	),
 	list__append(Pieces1, [Piece2], Pieces).
 
@@ -492,6 +483,7 @@ term_errors_var_bag_description_2([Var - Count | VarCounts], Varset, First,
 term_errors__describe_one_pred_name(PredId, Module, Piece) :-
 	module_info_pred_info(Module, PredId, PredInfo),
 	pred_info_module(PredInfo, ModuleName),
+	prog_out__sym_name_to_string(ModuleName, ModuleNameString),
 	pred_info_name(PredInfo, PredName),
 	pred_info_arity(PredInfo, Arity),
 	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
@@ -507,7 +499,7 @@ term_errors__describe_one_pred_name(PredId, Module, Piece) :-
 	string__int_to_string(OrigArity, ArityPart),
 	string__append_list([
 		PredOrFuncPart,
-		ModuleName,
+		ModuleNameString,
 		":",
 		PredName,
 		"/",

@@ -22,7 +22,7 @@
 :- import_module term_errors, prog_data.
 :- import_module hlds_module, hlds_pred, hlds_data, hlds_goal.
 
-:- import_module bool, int, list, map, bag, term, std_util.
+:- import_module std_util, bool, int, list, map, bag, term.
 
 %-----------------------------------------------------------------------------%
 
@@ -180,7 +180,7 @@
 :- import_module inst_match, prog_out, mode_util, type_util.
 :- import_module globals, options.
 
-:- import_module io, std_util, assoc_list, require.
+:- import_module assoc_list, require.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -360,8 +360,10 @@ functor_norm_filter_args([no | Bools], [_Arg0 | Args0], Args,
 
 %-----------------------------------------------------------------------------%
 
-partition_call_args(Module, ArgInstTable, ArgModes, Args, InVarsBag, OutVarsBag) :-
-	partition_call_args_2(Module, ArgInstTable, ArgModes, Args, InVars, OutVars),
+partition_call_args(Module, ArgInstTable, ArgModes, Args, InVarsBag,
+			OutVarsBag) :-
+	partition_call_args_2(Module, ArgInstTable, ArgModes, Args, InVars,
+			OutVars),
 	bag__from_list(InVars, InVarsBag),
 	bag__from_list(OutVars, OutVarsBag).
 

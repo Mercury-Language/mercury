@@ -62,9 +62,9 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_pred, prog_data, code_util, (inst).
+:- import_module hlds_module, hlds_pred, prog_data, prog_out, code_util.
 :- import_module mode_util, type_util, code_aux, hlds_out, tree, arg_info.
-:- import_module bool, string, int, map, term, require, std_util.
+:- import_module bool, string, int, map, require, std_util.
 
 :- type uni_val		--->	ref(var)
 			;	lval(lval).
@@ -773,14 +773,7 @@ unify_gen__generate_sub_assign(ref(Lvar), ref(Rvar), empty) -->
 unify_gen__var_type_msg(Type, Msg) :-
 	( type_to_type_id(Type, TypeId, _) ->
 		TypeId = TypeSym - TypeArity,
-		(
-			TypeSym = qualified(ModuleName, TypeName),
-			string__append_list([ModuleName, ":", TypeName],
-				TypeSymStr)
-		;
-			TypeSym = unqualified(TypeName),
-			TypeSymStr = TypeName
-		),
+		prog_out__sym_name_to_string(TypeSym, TypeSymStr),
 		string__int_to_string(TypeArity, TypeArityStr),
 		string__append_list([TypeSymStr, "/", TypeArityStr], Msg)
 	;

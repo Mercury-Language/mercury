@@ -50,8 +50,9 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, prog_data, make_hlds, globals, (inst).
-:- import_module int, list, set, map, std_util.
+:- import_module hlds_goal, hlds_data, prog_data, mode_util, make_hlds.
+:- import_module globals.
+:- import_module int, set, map.
 
 maybe_add_default_modes(_, [], Preds, Preds).
 maybe_add_default_modes(ModuleInfo, [PredId | PredIds], Preds0, Preds) :-
@@ -80,10 +81,8 @@ maybe_add_default_mode(ModuleInfo, PredInfo0, PredInfo, MaybeProcId) :-
 		%
 		pred_info_arity(PredInfo0, PredArity),
 		FuncArity is PredArity - 1,
-		InMode = user_defined_mode(
-				qualified("mercury_builtin", "in"), []),
-		OutMode = user_defined_mode(
-				qualified("mercury_builtin", "out"), []),
+		in_mode(InMode),
+		out_mode(OutMode),
 		list__duplicate(FuncArity, InMode, FuncArgModes),
 		FuncRetMode = OutMode,
 		list__append(FuncArgModes, [FuncRetMode], PredArgModes),

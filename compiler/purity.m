@@ -132,7 +132,7 @@
 
 :- implementation.
 
-:- import_module make_hlds, hlds_data, hlds_pred, hlds_goal, prog_io_util.
+:- import_module make_hlds, hlds_data, hlds_pred, prog_io_util.
 :- import_module type_util, mode_util, code_util, prog_data, unify_proc.
 :- import_module globals, options, mercury_to_mercury, hlds_out.
 :- import_module passes_aux, typecheck, module_qual, clause_to_proc.

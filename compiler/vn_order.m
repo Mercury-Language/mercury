@@ -28,7 +28,7 @@
 
 :- implementation.
 
-:- import_module map, set, string, int, require, std_util, assoc_list.
+:- import_module map, set, string, int, require, assoc_list.
 
 :- import_module atsort, vn_util, vn_debug, opt_util.
 

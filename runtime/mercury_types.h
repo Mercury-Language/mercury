@@ -56,7 +56,13 @@ typedef void (*Cont) (void);
 /* spinlocks -- see mercury_spinlock.h */
 typedef Word	SpinLock;
 
-/* MercuryFile is used for the Mercury io__stream type in library/io.m */
+/*
+** The C `MercuryFile' type is used for the Mercury `io__stream' type
+** in library/io.m.
+** Mercury files are not quite the same as C stdio FILEs,
+** because we keep track of a little bit more information.
+*/
+
 typedef struct mercury_file {
 	FILE *file;
 	int line_number;

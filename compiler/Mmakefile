@@ -21,13 +21,18 @@ VPATH=$(LIBRARY_DIR)
 
 MCD	=	MERCURY_INT_DIR=. $(MC) --generate-dependencies
 MCI	=	MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) --make-interface
+MCSI	=	MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) --make-short-interface
+MCOI	=	MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) \
+			--make-optimization-interface
+MCTOI	=	MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) \
+			--make-transitive-optimization-interface
 MCG	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) \
 		MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) --compile-to-c
 MCS	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) \
 		MERCURY_INT_DIR=$(LIBRARY_DIR) \
 		$(MC) --cflags -I$(BOEHM_GC_DIR) --split-c-files -c 
 MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(SCRIPTS_DIR)/mgnuc
-MGNUCFLAGS =	-I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)
+MGNUCFLAGS =	$(EXTRA_MGNUCFLAGS) -I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)
 C2INIT =	\
 MERCURY_MOD_LIB_MODS="$(RUNTIME_DIR)/runtime.init $(LIBRARY_DIR)/libmercury.init" \
 		MERCURY_MKINIT=$(UTIL_DIR)/mkinit $(SCRIPTS_DIR)/c2init

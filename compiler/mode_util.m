@@ -16,7 +16,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data.
 :- import_module (inst), instmap.
-:- import_module list, term, bool, map.
+:- import_module bool, list, term, map.
 
 	% mode_get_insts returns the initial instantiatedness and
 	% the final instantiatedness for a given mode, aborting
@@ -204,11 +204,19 @@
 :- mode get_live_vars(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
+
+	% Construct a mode corresponding to the standard `in',
+	% `out', or `uo' mode.
+:- pred in_mode((mode)::out) is det.
+:- pred out_mode((mode)::out) is det.
+:- pred uo_mode((mode)::out) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, int, map, set, term, std_util, assoc_list, bool, bag.
-:- import_module prog_util, type_util, mode_info, unify_proc.
+:- import_module require, int, map, set, std_util, assoc_list, bag.
+:- import_module prog_util, type_util, unify_proc.
 :- import_module inst_match, inst_util.
 
 %-----------------------------------------------------------------------------%
@@ -242,36 +250,29 @@ insts_to_mode(Initial, Final, Mode) :-
 	% more readable.
 	%
 	( Initial = free, Final = ground(shared, no) ->
-		Mode = user_defined_mode(
-				qualified("mercury_builtin", "out"), [])
+		make_std_mode("out", [], Mode)
 	; Initial = free, Final = ground(unique, no) ->
-		Mode = user_defined_mode(qualified("mercury_builtin", "uo"), [])
+		make_std_mode("uo", [], Mode)
 	; Initial = free, Final = ground(mostly_unique, no) ->
-		Mode = user_defined_mode(qualified("mercury_builtin", "muo"),
-								[])
+		make_std_mode("muo", [], Mode)
 	; Initial = ground(shared, no), Final = ground(shared, no) ->
-		Mode = user_defined_mode(qualified("mercury_builtin", "in"), [])
+		make_std_mode("in", [], Mode)
 	; Initial = ground(unique, no), Final = ground(clobbered, no) ->
-		Mode = user_defined_mode(qualified("mercury_builtin", "di"), [])
+		make_std_mode("di", [], Mode)
 	; Initial = ground(mostly_unique, no),
 	  Final = ground(mostly_clobbered, no) ->
-		Mode = user_defined_mode(qualified("mercury_builtin", "mdi"),
-								[])
+		make_std_mode("mdi", [], Mode)
 	; Initial = ground(unique, no), Final = ground(unique, no) ->
-		Mode = user_defined_mode(qualified("mercury_builtin", "ui"), [])
+		make_std_mode("ui", [], Mode)
 	; Initial = ground(mostly_unique, no),
 	  Final = ground(mostly_unique, no) ->
-		Mode = user_defined_mode(qualified("mercury_builtin", "mui"),
-								[])
+		make_std_mode("mdi", [], Mode)
 	; Initial = free ->
-		Mode = user_defined_mode(qualified("mercury_builtin", "out"),
-								[Final])
+		make_std_mode("out", [Final], Mode)
 	; Final = ground(clobbered, no) ->
-		Mode = user_defined_mode(qualified("mercury_builtin", "di"),
-								[Initial])
+		make_std_mode("di", [Initial], Mode)
 	; Initial = Final ->
-		Mode = user_defined_mode(qualified("mercury_builtin", "in"),
-								[Initial])
+		make_std_mode("in", [Initial], Mode)
 	;
 		Mode = (Initial -> Final)
 	).
@@ -1005,7 +1006,7 @@ propagate_ctor_info_2(BoundInsts0, Type, InstTable, ModuleInfo, BoundInsts) :-
 		BoundInsts = BoundInsts0
 	).
 
-:- pred propagate_ctor_info_3(list(bound_inst), string, list(constructor),
+:- pred propagate_ctor_info_3(list(bound_inst), sym_name, list(constructor),
 		tsubst, inst_table, module_info, list(bound_inst)).
 :- mode propagate_ctor_info_3(in, in, in, in, in, in, out) is det.
 
@@ -2080,7 +2081,12 @@ strip_builtin_qualifier_from_cons_id(ConsId0, ConsId) :-
 						sym_name::out) is det.
 
 strip_builtin_qualifier_from_sym_name(SymName0, SymName) :-
-	( SymName0 = qualified("mercury_builtin", Name) ->
+	(
+		SymName0 = qualified(Module, Name),
+		( mercury_public_builtin_module(Module)
+		; mercury_private_builtin_module(Module)
+		)
+	->
 		SymName = unqualified(Name)
 	;
 		SymName = SymName0
@@ -2247,6 +2253,25 @@ bind_inst_to_functor(Inst0, ConsId, Inst, Sub, InstTable0, ModuleInfo0,
 		Inst = not_reached,
 		map__init(Sub)
 	).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+in_mode(Mode) :- make_std_mode("in", [], Mode).
+
+out_mode(Mode) :- make_std_mode("out", [], Mode).
+
+uo_mode(Mode) :- make_std_mode("uo", [], Mode).
+
+%-----------------------------------------------------------------------------%
+
+:- pred make_std_mode(string, list(inst), mode).
+:- mode make_std_mode(in, in, out) is det.
+
+make_std_mode(Name, Args, Mode) :-
+	mercury_public_builtin_module(MercuryBuiltin),
+	QualifiedName = qualified(MercuryBuiltin, Name),
+	Mode = user_defined_mode(QualifiedName, Args).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -29,7 +29,7 @@
 :- implementation.
 
 :- import_module code_aux, det_analysis, follow_code, goal_util.
-:- import_module hlds_module, hlds_goal, hlds_data, instmap, inst_match.
+:- import_module hlds_goal, hlds_data, instmap, inst_match.
 :- import_module globals, options, passes_aux, prog_data, mode_util, type_util.
 :- import_module code_util, quantification, modes.
 :- import_module bool, list, int, float, map, require.
@@ -57,8 +57,11 @@ evaluate_builtin(PredId, ProcId, Args, GoalInfo0, Goal, GoalInfo,
 
 	% Module_info is not actually used at the moment.
 
-evaluate_builtin_2(Mod, Pred, ModeNum, Args, GoalInfo0, Goal, GoalInfo,
+evaluate_builtin_2(Module, Pred, ModeNum, Args, GoalInfo0, Goal, GoalInfo,
 		ModuleInfo, ModuleInfo) :-
+	% -- not yet:
+	% Module = qualified(unqualified("std"), Mod),
+	Module = unqualified(Mod),
 	(
 		Args = [X, Y],
 		evaluate_builtin_bi(Mod, Pred, ModeNum, X, Y, W, Cons)

@@ -15,7 +15,7 @@
 :- interface.
 
 :- import_module hlds_data, prog_data, llds, tree.
-:- import_module list, std_util, io, char.
+:- import_module char, list, std_util, io.
 
 :- type byte_tree	==	tree(list(byte_code)).
 
@@ -106,7 +106,7 @@
 			;	to_none
 			.
 
-:- type byte_module_id	==	string.
+:- type byte_module_id	==	module_name.
 :- type byte_pred_id	==	string.
 :- type byte_proc_id	==	int.
 :- type byte_label_id	==	int.
@@ -124,8 +124,8 @@
 
 :- implementation.
 
-:- import_module hlds_pred, llds_out.
-:- import_module char, library, int, string, require.
+:- import_module hlds_pred, prog_out, llds_out.
+:- import_module library, int, string, require.
 
 :- pred bytecode__version(int::out) is det.
 
@@ -635,13 +635,14 @@ debug_var_dirs([Var - Dir | VarDirs]) -->
 :- mode output_module_id(in, di, uo) is det.
 
 output_module_id(ModuleId) -->
-	output_string(ModuleId).
+	{ prog_out__sym_name_to_string(ModuleId, ModuleIdString) },
+	output_string(ModuleIdString).
 
 :- pred debug_module_id(byte_module_id, io__state, io__state).
 :- mode debug_module_id(in, di, uo) is det.
 
 debug_module_id(ModuleId) -->
-	debug_string(ModuleId).
+	debug_sym_name(ModuleId).
 
 %---------------------------------------------------------------------------%
 
@@ -692,7 +693,7 @@ debug_label_id(LabelId) -->
 
 output_cons_id(cons(ModuleId, Functor, Arity, Tag)) -->
 	output_byte(0),
-	output_string(ModuleId),
+	output_module_id(ModuleId),
 	output_string(Functor),
 	output_short(Arity),
 	output_tag(Tag).
@@ -737,7 +738,7 @@ output_cons_id(base_typeclass_info_const(_, _, _)) -->
 
 debug_cons_id(cons(ModuleId, Functor, Arity, Tag)) -->
 	debug_string("functor"),
-	debug_string(ModuleId),
+	debug_sym_name(ModuleId),
 	debug_string(Functor),
 	debug_int(Arity),
 	debug_tag(Tag).
@@ -1289,7 +1290,7 @@ debug_sym_name(unqualified(Val)) -->
 	io__write_string(Val),
 	io__write_char(' ').
 debug_sym_name(qualified(Module, Val)) -->
-	io__write_string(Module),
+	debug_sym_name(Module),
 	io__write_char(':'),
 	io__write_string(Val),
 	io__write_char(' ').

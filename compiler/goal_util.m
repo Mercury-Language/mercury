@@ -27,7 +27,7 @@
 :- interface.
 
 :- import_module hlds_goal, hlds_pred, prog_data.
-:- import_module bool, list, map, term, varset, set.
+:- import_module bool, list, set, map, varset, term.
 
 	% goal_util__rename_vars_in_goals(GoalList, MustRename, Substitution,
 	%	NewGoalList).
@@ -78,8 +78,8 @@
 
 :- implementation.
 
-:- import_module hlds_data, mode_util, code_aux, prog_data, instmap.
-:- import_module int, set, std_util, assoc_list, term, require, varset.
+:- import_module hlds_data, mode_util, code_aux, instmap.
+:- import_module int, std_util, assoc_list, require.
 
 %-----------------------------------------------------------------------------%
 

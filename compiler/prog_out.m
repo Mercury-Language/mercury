@@ -18,7 +18,8 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module prog_data, io, term, list.
+:- import_module prog_data.
+:- import_module list, io, term.
 
 :- pred prog_out__write_messages(message_list, io__state, io__state).
 :- mode prog_out__write_messages(in, di, uo) is det.
@@ -36,6 +37,20 @@
 :- pred prog_out__write_sym_name(sym_name, io__state, io__state).
 :- mode prog_out__write_sym_name(in, di, uo) is det.
 
+	% sym_name_to_string(SymName, String):
+	%	convert a symbol name to a string,
+	%	with module qualifiers separated by
+	%	the standard Mercury module qualifier operator
+	%	(currently ":", but may eventually change to ".")
+:- pred prog_out__sym_name_to_string(sym_name, string).
+:- mode prog_out__sym_name_to_string(in, out) is det.
+
+	% sym_name_to_string(SymName, Separator, String):
+	%	convert a symbol name to a string,
+	%	with module qualifiers separated by Separator.
+:- pred prog_out__sym_name_to_string(sym_name, string, string).
+:- mode prog_out__sym_name_to_string(in, in, out) is det.
+
 :- pred prog_out__write_module_spec(module_specifier, io__state, io__state).
 :- mode prog_out__write_module_spec(in, di, uo) is det.
 
@@ -46,7 +61,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, string, list, varset, std_util, term_io, int.
+:- import_module require, string, varset, std_util, term_io, int.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -156,20 +171,45 @@ prog_out__write_sym_name(qualified(ModuleSpec,Name)) -->
 prog_out__write_sym_name(unqualified(Name)) -->
 	io__write_string(Name).
 
+prog_out__sym_name_to_string(SymName, String) :-
+	prog_out__sym_name_to_string(SymName, ":", String).
+
+prog_out__sym_name_to_string(SymName, Separator, String) :-
+	prog_out__sym_name_to_string_2(SymName, Separator, Parts, []),
+	string__append_list(Parts, String).
+	
+:- pred prog_out__sym_name_to_string_2(sym_name, string,
+				list(string), list(string)).
+:- mode prog_out__sym_name_to_string_2(in, in, out, in) is det.
+
+prog_out__sym_name_to_string_2(qualified(ModuleSpec,Name), Separator) -->
+	prog_out__sym_name_to_string_2(ModuleSpec, Separator),
+	[Separator, Name].
+prog_out__sym_name_to_string_2(unqualified(Name), _) -->
+	[Name].
+
 	% write out a module specifier
 
 prog_out__write_module_spec(ModuleSpec) -->
-	io__write_string(ModuleSpec).
+	prog_out__write_sym_name(ModuleSpec).
 
 %-----------------------------------------------------------------------------%
 
 prog_out__write_module_list([Import1, Import2, Import3 | Imports]) --> 
-	io__write_strings(["`", Import1, "', "]),
+	io__write_string("`"),
+	prog_out__write_sym_name(Import1),
+	io__write_string("', "),
 	write_module_list([Import2, Import3 | Imports]).
 prog_out__write_module_list([Import1, Import2]) -->
-	io__write_strings(["`", Import1, "' and `", Import2 ,"'"]).
+	io__write_string("`"),
+	prog_out__write_sym_name(Import1),
+	io__write_string("' and `"),
+	prog_out__write_sym_name(Import2),
+	io__write_string("'").
 prog_out__write_module_list([Import]) -->
-	io__write_strings(["`", Import, "'"]).
+	io__write_string("`"),
+	prog_out__write_sym_name(Import),
+	io__write_string("'").
 prog_out__write_module_list([]) -->
 	{ error("prog_out__write_module_list") }.
 

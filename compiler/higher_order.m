@@ -32,7 +32,7 @@
 
 :- import_module hlds_pred, hlds_goal, hlds_data, instmap, (inst), inst_util.
 :- import_module code_util, globals, make_hlds, mode_util, goal_util.
-:- import_module type_util, options, prog_data, quantification.
+:- import_module type_util, options, prog_data, prog_out, quantification.
 :- import_module mercury_to_mercury.
 
 :- import_module hlds_out.	% XXX
@@ -864,8 +864,10 @@ create_new_pred(request(_CallingPredProc, CalledPredProc, HOArgs),
 	(
  		VeryVerbose = yes
 	->
-		io__write_strings(["% Specializing calls to `", PredModule, ":",
-			Name0, "'/", ArStr, " with higher-order arguments:\n"],
+		prog_out__sym_name_to_string(PredModule, PredModuleString),
+		io__write_strings(["% Specializing calls to `",
+			PredModuleString, ":", Name0, "'/", ArStr,
+			" with higher-order arguments:\n"],
 			IOState1, IOState2),
 		list__length(Types0, ActualArity),
 		NumToDrop is ActualArity - Arity,

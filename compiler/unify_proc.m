@@ -48,7 +48,7 @@
 :- interface.
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
 :- import_module modes, prog_data, special_pred.
-:- import_module std_util, io, list, bool.
+:- import_module bool, std_util, io, list.
 
 :- type proc_requests.
 
@@ -106,10 +106,11 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, tree, map, queue, int, string, require, bool.
+:- import_module tree, map, queue, int, string, require, term.
+
 :- import_module code_util, code_info, type_util, varset.
-:- import_module mercury_to_mercury, hlds_out, hlds_module, hlds_pred.
-:- import_module make_hlds, term, prog_util, inst_match.
+:- import_module mercury_to_mercury, hlds_out.
+:- import_module make_hlds, prog_util, prog_out, inst_match.
 :- import_module quantification, clause_to_proc.
 :- import_module globals, options, mode_util, (inst).
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
@@ -754,7 +755,8 @@ unify_proc__generate_du_compare_clauses(Ctors, Res, X, Y, Context, [Clause]) -->
 
 unify_proc__generate_du_compare_clauses_2(Ctors, Res, X, Y, Context, Goal) -->
 	{ construct_type(unqualified("int") - 0, [], IntType) },
-	{ construct_type(qualified("mercury_builtin", "comparison_result") - 0,
+	{ mercury_public_builtin_module(MercuryBuiltin) },
+	{ construct_type(qualified(MercuryBuiltin, "comparison_result") - 0,
 					[], ResType) },
 	unify_proc__info_new_var(IntType, X_Index),
 	unify_proc__info_new_var(IntType, Y_Index),
@@ -907,8 +909,9 @@ unify_proc__compare_args([X|Xs], [Y|Ys], R, Context, Goal) -->
 	( { Xs = [], Ys = [] } ->
 		unify_proc__build_call("compare", [R, X, Y], Context, Goal)
 	;
+		{ mercury_public_builtin_module(MercuryBuiltin) },
 		{ construct_type(
-			qualified("mercury_builtin", "comparison_result") - 0,
+			qualified(MercuryBuiltin, "comparison_result") - 0,
 			[], ResType) },
 		unify_proc__info_new_var(ResType, R1),
 
@@ -945,14 +948,19 @@ unify_proc__build_call(Name, ArgVars, Context, Goal) -->
 	unify_proc__info_get_module_info(ModuleInfo),
 	{ module_info_get_predicate_table(ModuleInfo, PredicateTable) },
 	{ list__length(ArgVars, Arity) },
+	{ MercuryBuiltin = unqualified("mercury_builtin") },
 	{
 		predicate_table_search_pred_m_n_a(PredicateTable,
-			"mercury_builtin", Name, Arity, [PredId])
+			MercuryBuiltin, Name, Arity, [PredId])
 	->
 		IndexPredId = PredId
 	;
+		prog_out__sym_name_to_string(qualified(MercuryBuiltin, Name),
+			QualName),
+		string__int_to_string(Arity, ArityString),
 		string__append_list(["unify_proc__build_call: ",
-			"invalid/ambiguous pred `mercury_builtin:", Name, "'"],
+			"invalid/ambiguous pred `",
+			QualName, "/", ArityString, "'"],
 			ErrorMessage),
 		error(ErrorMessage)
 	},

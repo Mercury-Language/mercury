@@ -29,7 +29,7 @@
 
 :- implementation.
 
-:- import_module hlds_data, code_gen, trace, tree.
+:- import_module code_gen, trace, tree.
 :- import_module bool, int, string, list, map, std_util, assoc_list, require.
 
 string_switch__generate(Cases, Var, CodeModel, _CanFail, StoreMap,

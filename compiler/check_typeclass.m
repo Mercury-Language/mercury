@@ -134,15 +134,8 @@ check_instance_pred(ClassVars, ClassInterface, ModuleInfo, PredId,
 	pred_info_name(PredInfo, PredName0),
 	pred_info_module(PredInfo, PredModule),
 	PredName = qualified(PredModule, PredName0),
-	pred_info_arity(PredInfo, PredArity0),
+	pred_info_arity(PredInfo, PredArity),
 	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
-	(
-		PredOrFunc = predicate,
-		PredArity = PredArity0
-	;
-		PredOrFunc = function,
-		PredArity is PredArity0 - 1
-	),
 	pred_info_procedures(PredInfo, ProcTable),
 	list__map(
 		lambda([TheProcId::in, ModesAndDetism::out] is det, 
@@ -244,12 +237,13 @@ get_matching_instance_names(InstanceInterface, PredOrFunc, PredName,
 			InstanceNames)
 	;
 		PredOrFunc = function,
+		FuncArity is PredArity - 1,
 		solutions(
 			lambda([SymName::out] is nondet, 
 				(
 					list__member(Method, InstanceInterface),
 					Method = func_instance(PredName, 
-							SymName, PredArity)
+							SymName, FuncArity)
 				)),
 			InstanceNames)
 	).
@@ -258,39 +252,18 @@ get_matching_instance_names(InstanceInterface, PredOrFunc, PredName,
 	arity, list(pred_id)).
 :- mode get_matching_instance_pred_ids(in, in, in, in, out) is semidet.
 
-get_matching_instance_pred_ids(ModuleInfo, InstancePredName, PredOrFunc,
+get_matching_instance_pred_ids(ModuleInfo, InstancePredName0, PredOrFunc,
 		PredArity, InstancePredIds) :-
-	module_info_get_predicate_table(ModuleInfo, PredicateTable),
-	(
-		(
-			InstancePredName = unqualified(InstancePred)
-		;
-			InstancePredName = qualified("", InstancePred)
-		)
-	->
-		(
-			PredOrFunc = predicate,
-			predicate_table_search_pred_name_arity( PredicateTable,
-				InstancePred, PredArity, InstancePredIds)
-		;	
-			PredOrFunc = function,
-			predicate_table_search_func_name_arity( PredicateTable,
-				InstancePred, PredArity, InstancePredIds)
-		)
+	% strip off any empty module qualifiers
+	% XXX how do these bogus empty qualifiers get here in the first place?
+	( InstancePredName0 = qualified(unqualified(""), Name) ->
+		InstancePredName = unqualified(Name)
 	;
-		InstancePredName = qualified(InstanceModule, InstancePred),
-		(
-			PredOrFunc = predicate,
-			predicate_table_search_pred_m_n_a( PredicateTable,
-				InstanceModule, InstancePred, PredArity,
-				InstancePredIds)
-		;	
-			PredOrFunc = function,
-			predicate_table_search_func_m_n_a( PredicateTable,
-				InstanceModule, InstancePred, PredArity,
-				InstancePredIds)
-		)
-	).
+		InstancePredName = InstancePredName0
+	),
+	module_info_get_predicate_table(ModuleInfo, PredicateTable),
+	predicate_table_search_pf_sym_arity(PredicateTable,
+		PredOrFunc, InstancePredName, PredArity, InstancePredIds).
 
 :- pred handle_instance_method_overloading(module_info, list(var), list(type),
 	list(type), list(pair(argument_modes, determinism)), list(pred_id), 
@@ -347,7 +320,8 @@ handle_instance_method_overloading(ModuleInfo, ClassVars, InstanceTypes,
 			invalid_pred_id(InstancePredId),
 			InstanceProcIds = [],
 				% XXX improve error message
-			NewError = "instance method not found",
+			NewError = 
+	    "no type/mode-correct match for overloaded instance method name",
 			Errors = [NewError|Errors0]
 		;
 				% There is a single matching
@@ -361,7 +335,7 @@ handle_instance_method_overloading(ModuleInfo, ClassVars, InstanceTypes,
 			invalid_pred_id(InstancePredId),
 			InstanceProcIds = [],
 				% XXX improve error message
-			NewError = "unresolved overloading in instance method",
+			NewError = "ambiguous overloading in instance method",
 			Errors = [NewError|Errors0]
 		)
 	).

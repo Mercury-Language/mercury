@@ -17,7 +17,7 @@
 :- module term_pass2.
 :- interface.
 
-:- import_module hlds_pred, hlds_module, term_util.
+:- import_module hlds_module, hlds_pred, term_util.
 :- import_module list.
 
 :- pred prove_termination_in_scc(list(pred_proc_id)::in, module_info::in,
@@ -25,10 +25,10 @@
 
 :- implementation.
 
-:- import_module term_traversal, term_util, term_errors, type_util.
-:- import_module hlds_pred, hlds_goal, hlds_data, prog_data, mode_util.
+:- import_module term_traversal, term_errors.
+:- import_module hlds_data, hlds_goal, prog_data, type_util, mode_util.
 
-:- import_module std_util, bool, int, list, assoc_list.
+:- import_module std_util, bool, int, assoc_list.
 :- import_module set, bag, map, term, require.
 
 :- type fixpoint_dir

@@ -146,7 +146,8 @@
 :- import_module hlds_goal, hlds_data, llds, quantification, (inst), instmap.
 :- import_module hlds_out, mode_util, code_util, quantification, options.
 :- import_module prog_data, globals, passes_aux.
-:- import_module bool, list, map, set, std_util, term, assoc_list, require.
+
+:- import_module bool, map, std_util, list, assoc_list, require.
 :- import_module varset, string.
 
 detect_liveness_proc(ProcInfo0, ModuleInfo, ProcInfo) :-

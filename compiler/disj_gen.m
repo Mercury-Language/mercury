@@ -40,7 +40,7 @@
 :- implementation.
 
 :- import_module hlds_data, code_gen, code_util, trace, options, globals.
-:- import_module bool, set, tree, list, map, std_util, require.
+:- import_module bool, set, tree, map, std_util, require.
 
 %---------------------------------------------------------------------------%
 

@@ -33,7 +33,7 @@
 :- implementation.
 
 :- import_module opt_util.
-:- import_module std_util, require, string, bool.
+:- import_module require, string, bool.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -145,7 +145,8 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 
 		set__delete(Livevals0, Lval, Livevals1),
 		opt_util__lval_access_rvals(Lval, Rvals),
-		livemap__make_live_in_rvals([Rval | Rvals], Livevals1, Livevals),
+		livemap__make_live_in_rvals([Rval | Rvals], Livevals1,
+			Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,
 		Ccode = Ccode0
@@ -224,7 +225,12 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		(
 			Found = yes,
 			% This if_val was put here by middle_rec.
-			Livevals3 = Livevals1
+			% We must make sure that the locations mentioned
+			% in the livevals annotation become live,
+			% since they will be needed at CodeAddr.
+			% The locations in Livevals0 may be needed
+			% in the fall-through continuation.
+			set__union(Livevals0, Livevals1, Livevals3)
 		;
 			Found = no,
 			livemap__make_live_in_rvals([Rval],

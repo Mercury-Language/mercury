@@ -13,7 +13,7 @@
 :- module opt_util.
 
 :- interface.
-:- import_module bool, list, std_util, map.
+:- import_module bool, map, list, std_util.
 :- import_module llds.
 
 :- type instrmap == map(label, instruction).
@@ -312,7 +312,7 @@
 :- implementation.
 
 :- import_module exprn_aux, llds_out, hlds_pred.
-:- import_module int, string, set, map, require.
+:- import_module int, string, set, require.
 
 opt_util__get_prologue(Instrs0, ProcLabel, LabelInstr, Comments, Instrs) :-
 	opt_util__gather_comments(Instrs0, Comments1, Instrs1),

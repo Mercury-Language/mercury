@@ -39,7 +39,7 @@ mode system to distinguish between different representations.
 
 :- interface.
 
-:- import_module hlds_module, (inst), hlds_data, prog_data.
+:- import_module hlds_module, hlds_data, prog_data, (inst).
 :- import_module list, term.
 
 %-----------------------------------------------------------------------------%
@@ -271,7 +271,7 @@ mode system to distinguish between different representations.
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module hlds_data, mode_util, det_analysis, prog_data, inst_util.
+:- import_module hlds_data, mode_util, prog_data, inst_util.
 :- import_module list, set, map, term, std_util, require.
 
 inst_matches_initial(InstA, InstB, InstTable, ModuleInfo) :-

@@ -22,7 +22,7 @@
 
 :- module arg_info.
 :- interface. 
-:- import_module hlds_data, hlds_pred, hlds_module, llds, globals, prog_data.
+:- import_module hlds_module, hlds_data, hlds_pred, llds, globals, prog_data.
 :- import_module bool, list.
 
 :- pred generate_arg_info(module_info, module_info).
@@ -50,8 +50,7 @@
 
 :- implementation.
 
-:- import_module hlds_pred, (inst).
-:- import_module map, int, mode_util, list, require.
+:- import_module map, int, mode_util, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -86,7 +85,8 @@ generate_proc_list_arg_info(PredId, [ProcId | ProcIds],
 	pred_info_arg_types(PredInfo0, _TVarSet, ArgTypes),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 
-	generate_proc_arg_info(ProcInfo0, ArgTypes, ModuleInfo0, ProcInfo),
+	generate_proc_arg_info(ProcInfo0, ArgTypes, ModuleInfo0,
+		ProcInfo),
 
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),

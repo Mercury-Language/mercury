@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module hlds_data, hlds_pred, tree, prog_data, (inst).
+:- import_module hlds_pred, hlds_data, tree, prog_data, (inst).
 :- import_module assoc_list, bool, list, set, term, std_util.
 
 %-----------------------------------------------------------------------------%
@@ -28,7 +28,7 @@
 
 :- type c_file	
 	--->	c_file(
-			string,		% filename
+			module_name,
 			c_header_info,
 			list(c_module)
 		).
@@ -42,13 +42,13 @@
 :- type c_module
 		% a bunch of low-level C code
 	--->	c_module(
-			string,			% module name
+			string,			% the name of this C module
 			list(c_procedure) 	% code
 		)
 
 		% readonly data, usually containing a typeinfo structure
 	;	c_data(
-			string,			% The basename of this C file.
+			module_name,		% The basename of this C file.
 			data_name,		% A representation of the name
 						% of the variable; it will be
 						% qualified with the basename.
@@ -530,7 +530,7 @@
 			% the address of the label (uses ENTRY macro).
 
 :- type data_addr
-	--->	data_addr(string, data_name).
+	--->	data_addr(module_name, data_name).
 			% module name; which var
 
 :- type data_name
@@ -637,10 +637,12 @@
 	% from `.opt' files, the defining module's name is added as a
 	% qualifier to the label.
 :- type proc_label
-	--->	proc(string, pred_or_func, string, string, int, proc_id)
+	--->	proc(module_name, pred_or_func, module_name, string,
+								int, proc_id)
 			% defining module, predicate/function,
 			% declaring module, name, arity, mode #
-	;	special_proc(string, string, string, string, int, proc_id).
+	;	special_proc(module_name, string, module_name, string, int,
+								proc_id).
 			% defining module, pred name, type module,
 			% type name, type arity, mode #
 

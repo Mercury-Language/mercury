@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module io, list, term, string, int.
+:- import_module io, list, term.
 
 	% Given a context, a starting indentation level and a list of words,
 	% print an error message that looks like this:
@@ -31,15 +31,32 @@
 	% on the first line and Indent+3 spaces on later lines, and that every
 	% line contains at most 79 characters (unless a long single word
 	% forces the line over this limit).
+	%
+	% The caller supplies the list of words to be printed in the form
+	% of a list of error message components. Each component may specify
+	% a string to printed exactly as it is, or it may specify a string
+	% containing a list of words, which may be broken at white space.
 
-:- pred write_error_pieces(term__context::in, int::in, list(string)::in,
-	io__state::di, io__state::uo) is det.
+:- type format_component
+	--->	fixed(string)	% This string should appear in the output
+				% in one piece, as it is.
+
+	;	words(string).	% This string contains words separated by
+				% white space. The words should appear in
+				% the output in the given order, but the
+				% white space may be rearranged and line
+				% breaks may be inserted.
+
+:- pred write_error_pieces(term__context::in, int::in,
+	list(format_component)::in, io__state::di, io__state::uo) is det.
 
 :- implementation.
 
 :- import_module prog_out.
+:- import_module char.
+:- import_module io, list, term, char, string, int.
 
-write_error_pieces(Context, Indent, Words) -->
+write_error_pieces(Context, Indent, Components) -->
 	{
 			% The fixed characters at the start of the line are:
 			% filename
@@ -59,6 +76,7 @@ write_error_pieces(Context, Indent, Words) -->
 		),
 		Remain is 79 - (FileNameLength + 1 +
 			LineNumberStrLength + 2 + Indent),
+		convert_components_to_word_list(Components, Words),
 		group_words(Words, Remain, Lines)
 	},
 	write_lines(Lines, Context, Indent).
@@ -101,6 +119,67 @@ write_line_rest([Word | Words]) -->
 	io__write_char(' '),
 	io__write_string(Word),
 	write_line_rest(Words).
+
+%----------------------------------------------------------------------------%
+
+:- pred convert_components_to_word_list(list(format_component)::in,
+	list(string)::out) is det.
+
+convert_components_to_word_list([], []).
+convert_components_to_word_list([Component | Components], Words) :-
+	convert_components_to_word_list(Components, TailWords),
+	(
+		Component = fixed(Word),
+		Words = [Word | TailWords]
+	;
+		Component = words(WordsStr),
+		break_into_words(WordsStr, HeadWords),
+		list__append(HeadWords, TailWords, Words)
+	).
+
+:- pred break_into_words(string::in, list(string)::out) is det.
+
+break_into_words(String, Words) :-
+	break_into_words_from(String, 0, Words).
+
+:- pred break_into_words_from(string::in, int::in, list(string)::out) is det.
+
+break_into_words_from(String, Cur, Words) :-
+	( find_word_start(String, Cur, Start) ->
+		find_word_end(String, Start, End),
+		Length is End - Start + 1,
+		string__substring(String, Start, Length, Word),
+		Next is End + 1,
+		break_into_words_from(String, Next, MoreWords),
+		Words = [Word | MoreWords]
+	;
+		Words = []
+	).
+
+:- pred find_word_start(string::in, int::in, int::out) is semidet.
+
+find_word_start(String, Cur, WordStart) :-
+	string__index(String, Cur, Char),
+	( char__is_whitespace(Char) ->
+		Next is Cur + 1,
+		find_word_start(String, Next, WordStart)
+	;
+		WordStart = Cur
+	).
+
+:- pred find_word_end(string::in, int::in, int::out) is det.
+
+find_word_end(String, Cur, WordEnd) :-
+	Next is Cur + 1,
+	( string__index(String, Next, Char) ->
+		( char__is_whitespace(Char) ->
+			WordEnd = Cur
+		;
+			find_word_end(String, Next, WordEnd)
+		)
+	;
+		WordEnd = Cur
+	).
 
 %----------------------------------------------------------------------------%
 

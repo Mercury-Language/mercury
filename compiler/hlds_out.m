@@ -35,7 +35,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
 :- import_module prog_data, llds.
-:- import_module io, bool, list, map, term, varset.
+:- import_module io, bool, term, map, list, varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -182,10 +182,10 @@
 
 :- import_module mercury_to_mercury, globals, options, purity, special_pred.
 :- import_module llds_out, prog_out, prog_util, (inst), instmap, trace.
-
-:- import_module bool, int, string, list, set, map, std_util, assoc_list.
-:- import_module term, term_io, varset, require, getopt.
 :- import_module termination, term_errors.
+
+:- import_module int, string, set, std_util, assoc_list.
+:- import_module term_io, require, getopt.
 
 
 hlds_out__write_type_id(Name - Arity) -->
@@ -194,15 +194,23 @@ hlds_out__write_type_id(Name - Arity) -->
 	io__write_int(Arity).
 
 hlds_out__cons_id_to_string(cons(SymName, Arity), String) :-
-	string__int_to_string(Arity, ArityString),
-	(
-		SymName = unqualified(Name),	
-		string__append_list(["'", Name, "'/", ArityString], String)
+	prog_out__sym_name_to_string(SymName, SymNameString0),
+	( string__contains_char(SymNameString0, '*') ->
+		% We need to protect against the * appearing next to a /
+		Stuff = lambda([Char::in, Str0::in, Str::out] is det, (
+			( Char = ('*') ->
+				string__append(Str0, "star", Str)
+			;
+				string__char_to_string(Char, CharStr),
+				string__append(Str0, CharStr, Str)
+			)
+		)),
+		string__foldl(Stuff, SymNameString0, "", SymNameString)
 	;
-		SymName = qualified(Module, Name),
-		string__append_list(["'", Module, ":",
-			Name, "'/", ArityString], String)
-	).
+		SymNameString = SymNameString0
+	),
+	string__int_to_string(Arity, ArityString),
+	string__append_list([SymNameString, "/", ArityString], String).
 hlds_out__cons_id_to_string(int_const(Int), String) :-
 	string__int_to_string(Int, String).
 hlds_out__cons_id_to_string(string_const(String), S) :-
@@ -215,14 +223,7 @@ hlds_out__cons_id_to_string(base_typeclass_info_const(_, _, _),
 	"<base_typeclass_info>").
 
 hlds_out__write_cons_id(cons(SymName, Arity)) -->
-	(
-		{ SymName = qualified(Module, Name) },
-		io__write_string(Module),
-		io__write_string(":")
-	;
-		{ SymName = unqualified(Name) }
-	),
-	io__write_string(Name),
+	prog_out__write_sym_name(SymName),
 	io__write_string("/"),
 	io__write_int(Arity).
 hlds_out__write_cons_id(int_const(Int)) -->
@@ -265,7 +266,7 @@ hlds_out__write_pred_id(ModuleInfo, PredId) -->
 	;
 		hlds_out__write_pred_or_func(PredOrFunc),
 		io__write_string(" `"),
-		io__write_string(Module),
+		prog_out__write_sym_name(Module),
 		io__write_string(":"),
 		{ PredOrFunc = function ->
 			OrigArity is Arity - 1
@@ -296,14 +297,7 @@ hlds_out__write_call_id(PredOrFunc, Name/Arity) -->
 	io__write_string("'").
 
 hlds_out__write_pred_call_id(Name / Arity) -->
-	( { Name = qualified(ModuleName, _) } ->
-		io__write_string(ModuleName),
-		io__write_char(':')
-	;
-		[]
-	),
-	{ unqualify_name(Name, PredName) },
-	io__write_string(PredName),
+	prog_out__write_sym_name(Name),
 	io__write_char('/'),
 	io__write_int(Arity).
 
@@ -409,7 +403,7 @@ hlds_out__write_header(Indent, Module) -->
 	{ module_info_name(Module, Name) },
 	hlds_out__write_indent(Indent),
 	io__write_string(":- module "),
-	io__write_string(Name),
+	prog_out__write_sym_name(Name),
 	io__write_string(".\n").
 
 :- pred hlds_out__write_footer(int, module_info, io__state, io__state).
@@ -419,7 +413,7 @@ hlds_out__write_footer(Indent, Module) -->
 	{ module_info_name(Module, Name) },
 	hlds_out__write_indent(Indent),
 	io__write_string(":- end_module "),
-	io__write_string(Name),
+	prog_out__write_sym_name(Name),
 	io__write_string(".\n").
 
 :- pred hlds_out__write_preds(int, module_info, pred_table,
@@ -1030,7 +1024,8 @@ hlds_out__write_goal_2(disj(List, _), InstTable, ModuleInfo, VarSet, AppendVarnu
 	).
 
 hlds_out__write_goal_2(higher_order_call(PredVar, ArgVars, _, _, _, PredOrFunc),
-		_InstTable, _ModuleInfo, VarSet, AppendVarnums, Indent, Follow, _) -->
+		_InstTable, _ModuleInfo, VarSet, AppendVarnums, Indent,
+		Follow, _) -->
 		% XXX we should print more info here
 	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
 	hlds_out__write_indent(Indent),
@@ -1063,7 +1058,8 @@ hlds_out__write_goal_2(higher_order_call(PredVar, ArgVars, _, _, _, PredOrFunc),
 	io__write_string("\n").
 
 hlds_out__write_goal_2(class_method_call(TCInfoVar, _, ArgVars, _, _, _),
-		_InstTable, _ModuleInfo, VarSet, AppendVarnums, Indent, Follow, _) -->
+		_InstTable, _ModuleInfo, VarSet, AppendVarnums, Indent,
+		Follow, _) -->
 		% XXX we should print more info here too
 	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
 	hlds_out__write_indent(Indent),
@@ -1136,7 +1132,7 @@ hlds_out__write_goal_2(call(PredId, ProcId, ArgVars, Builtin,
 			{ CallUnifyContext = call_unify_context(Var,
 					RHS, _UnifyContext) },
 			hlds_out__write_indent(Indent),
-			io__write_string("% Complicated unify: "),
+			io__write_string("% unify context: "),
 			mercury_output_var(Var, VarSet, AppendVarnums),
 			io__write_string(" = "),
 			hlds_out__write_unify_rhs_2(RHS, InstTable, ModuleInfo,
@@ -1447,13 +1443,13 @@ hlds_out__write_functor(Functor, ArgVars, VarSet, AppendVarnums) -->
 	{ Term = term__functor(Functor, ArgTerms, Context) },
 	mercury_output_term(Term, VarSet, AppendVarnums).
 
-:- pred hlds_out__write_qualified_functor(string, const, list(var), varset,
-	bool, io__state, io__state).
+:- pred hlds_out__write_qualified_functor(module_name, const, list(var),
+		varset, bool, io__state, io__state).
 :- mode hlds_out__write_qualified_functor(in, in, in, in, in, di, uo) is det.
 
 hlds_out__write_qualified_functor(ModuleName, Functor, ArgVars, VarSet,
 		AppendVarnums) -->
-	io__write_string(ModuleName),
+	prog_out__write_sym_name(ModuleName),
 	io__write_string(":"),
 	hlds_out__write_functor(Functor, ArgVars, VarSet, AppendVarnums).
 
@@ -1491,7 +1487,7 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, AppendVarnums) -->
 	;
 		{ ConsId = base_type_info_const(Module, Name, Arity) },
 		io__write_string("base_type_info("""),
-		io__write_string(Module),
+		prog_out__write_sym_name(Module),
 		io__write_string(""", """),
 		io__write_string(Name),
 		io__write_string(""", "),
@@ -1501,7 +1497,7 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, AppendVarnums) -->
 		{ ConsId = base_typeclass_info_const(Module,
 			class_id(Name, Arity), Instance) },
 		io__write_string("base_typeclass_info("""),
-		io__write_string(Module),
+		prog_out__write_sym_name(Module),
 		io__write_string(""", """),
 		io__write_string("class_id("),
 		prog_out__write_sym_name(Name),
@@ -2001,7 +1997,6 @@ hlds_out__write_constructor(Tvarset, Name - Args) -->
 
 hlds_out__write_classes(Indent, ClassTable) -->
 	hlds_out__write_indent(Indent),
-
 	io__write_string("%-------- Classes --------\n"),
 	{ map__to_assoc_list(ClassTable, ClassTableList) },
 	io__write_list(ClassTableList, "\n",
@@ -2077,11 +2072,15 @@ hlds_out__write_class_proc(hlds_class_proc(PredId, ProcId)) -->
 :- pred hlds_out__write_user_insts(int, user_inst_table, io__state, io__state).
 :- mode hlds_out__write_user_insts(in, in, di, uo) is det.
 
-hlds_out__write_user_insts(Indent, _X) -->
+hlds_out__write_user_insts(Indent, _UserInstTable) -->
+		% XXX fix this up.
 	hlds_out__write_indent(Indent),
 	io__write_string("%-------- User insts --------\n"),
 	hlds_out__write_indent(Indent),
-	io__write_string("%%% Not yet implemented, sorry\n").
+	io__write_string("%%% Not yet implemented, sorry.\n").
+	% io__write_string("% ").
+	% io__print(InstTable),
+	% io__nl.
 
 %-----------------------------------------------------------------------------%
 

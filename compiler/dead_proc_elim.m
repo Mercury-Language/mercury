@@ -18,8 +18,8 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, io.
-:- import_module std_util, map.
+:- import_module prog_data, hlds_module, hlds_pred.
+:- import_module map, std_util, io.
 
 :- pred dead_proc_elim(module_info, module_info, io__state, io__state).
 :- mode dead_proc_elim(in, out, di, uo) is det.
@@ -39,18 +39,21 @@
 :- pred dead_pred_elim(module_info, module_info).
 :- mode dead_pred_elim(in, out) is det.
 
-:- type entity		--->	proc(pred_id, proc_id)
-			;	base_gen_info(string, string, int).
+:- type entity	
+	--->	proc(pred_id, proc_id)
+	;	base_gen_info(module_name, string, int).
 
-:- type needed_map ==	map(entity, maybe(int)).
+:- type needed_map == map(entity, maybe(int)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module hlds_pred, hlds_goal, hlds_data, prog_data, llds.
+
+:- import_module hlds_goal, hlds_data, prog_util, llds.
 :- import_module passes_aux, globals, options, code_util.
-:- import_module int, string, list, set, queue, map, bool, std_util, require.
+
+:- import_module int, string, list, set, queue, bool, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -294,8 +297,8 @@ dead_proc_elim__examine(Queue0, Examined0, ModuleInfo, Needed0, Needed) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred dead_proc_elim__examine_base_gen_info(string, string, int, module_info,
-	entity_queue, entity_queue, needed_map, needed_map).
+:- pred dead_proc_elim__examine_base_gen_info(module_name, string, arity,
+	module_info, entity_queue, entity_queue, needed_map, needed_map).
 :- mode dead_proc_elim__examine_base_gen_info(in, in, in, in, in, out, in, out)
 	is det.
 
@@ -313,7 +316,7 @@ dead_proc_elim__examine_base_gen_info(ModuleName, TypeName, Arity, ModuleInfo,
 		Needed = Needed0
 	).
 
-:- pred dead_proc_elim__find_base_gen_info(string, string, int,
+:- pred dead_proc_elim__find_base_gen_info(module_name, string, arity,
 	list(base_gen_info), list(pred_proc_id)).
 :- mode dead_proc_elim__find_base_gen_info(in, in, in, in, out) is semidet.
 
@@ -691,7 +694,9 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
 		;
 			% Don't eliminate preds from mercury_builtin.m since
 			% polymorphism.m needs unify/2 and friends.
-			PredModule = "mercury_builtin"
+			mercury_public_builtin_module(PredModule)
+		;
+			mercury_private_builtin_module(PredModule)
 		;
 			% Don't attempt to eliminate local preds here, since we
 			% want to do semantic checking on those even if they 

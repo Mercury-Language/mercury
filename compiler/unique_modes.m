@@ -33,7 +33,7 @@
 :- module unique_modes.
 :- interface. 
 :- import_module hlds_module, hlds_pred, hlds_goal, mode_info.
-:- import_module bool, io.
+:- import_module io, bool.
 
 	% check every predicate in a module
 :- pred unique_modes__check_module(module_info, module_info,
@@ -58,7 +58,7 @@
 :- import_module mode_util, prog_out, hlds_out, mercury_to_mercury, passes_aux.
 :- import_module modes, prog_data, mode_errors, llds, unify_proc.
 :- import_module (inst), instmap, inst_match, inst_util.
-:- import_module bool, int, list, map, set, std_util, require, term, varset.
+:- import_module int, list, map, set, std_util, require, term, varset.
 :- import_module assoc_list.
 
 %-----------------------------------------------------------------------------%

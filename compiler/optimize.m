@@ -27,7 +27,7 @@
 
 :- implementation.
 
-:- import_module bool, list, map, bimap, int, std_util.
+:- import_module bool, map, bimap, int, std_util.
 
 :- import_module jumpopt, labelopt, dupelim, peephole.
 :- import_module frameopt, delay_slot, value_number, options.

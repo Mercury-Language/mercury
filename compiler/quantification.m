@@ -35,7 +35,7 @@
 :- interface.
 
 :- import_module hlds_goal, hlds_pred, prog_data.
-:- import_module list, set, term, varset, map.
+:- import_module map, list, set, term, varset.
 
 :- pred implicitly_quantify_clause_body(list(var),
 		hlds_goal, varset, map(var, type),
@@ -66,7 +66,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module std_util, bool, map, goal_util, require.
+:- import_module std_util, bool, goal_util, require.
 
 	% The `outside vars', `lambda outside vars', and `quant vars'
 	% fields are inputs; the `nonlocals' field is output; and

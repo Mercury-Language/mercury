@@ -28,30 +28,30 @@
 :- import_module io, list, std_util.
 
 :- type arg_size_result
---->	ok(
-		list(pair(pred_proc_id, int)),
-				% Gives the gamma of each procedure
-				% in the SCC.
-		used_args
-				% Gives the output suppliers of
-				% each procedure in the SCC.
-	)
-;	error(
-		list(term_errors__error)
-	).
+	--->	ok(
+			list(pair(pred_proc_id, int)),
+					% Gives the gamma of each procedure
+					% in the SCC.
+			used_args
+					% Gives the output suppliers of
+					% each procedure in the SCC.
+		)
+	;	error(
+			list(term_errors__error)
+		).
 
 :- pred find_arg_sizes_in_scc(list(pred_proc_id)::in, module_info::in,
-pass_info::in, arg_size_result::out, list(term_errors__error)::out,
-io__state::di, io__state::uo) is det.
+	pass_info::in, arg_size_result::out, list(term_errors__error)::out,
+	io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module term_traversal, hlds_pred, hlds_goal, hlds_data, prog_data.
-:- import_module term_errors, mode_util, type_util, lp.
+:- import_module term_traversal, term_errors, hlds_goal, hlds_data.
+:- import_module mode_util, type_util, lp, prog_data.
 
-:- import_module int, float, char, string, bool, std_util, list, set, bag, map.
+:- import_module int, float, char, string, bool, set, bag, map.
 :- import_module term, varset, require.
 
 %-----------------------------------------------------------------------------%

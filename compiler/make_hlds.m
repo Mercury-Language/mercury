@@ -25,7 +25,7 @@
 :- import_module prog_data, hlds_module, hlds_pred, hlds_goal, hlds_data.
 :- import_module equiv_type, module_qual, globals.
 
-:- import_module io, std_util, bool, term, list.
+:- import_module io, std_util, list, bool, term.
 
 % parse_tree_to_hlds(ParseTree, MQInfo, EqvMap, HLDS, UndefTypes, UndefModes):
 %	Given MQInfo (returned by module_qual.m) and EqvMap (returned by
@@ -33,8 +33,8 @@
 %	Any errors found are recorded in the HLDS num_errors field.
 %	Returns UndefTypes = yes if undefined types found.
 %	Returns UndefModes = yes if undefined modes found.
-:- pred parse_tree_to_hlds(program, mq_info, eqv_map, module_info, bool, bool,
-			io__state, io__state).
+:- pred parse_tree_to_hlds(compilation_unit, mq_info, eqv_map, module_info,
+			bool, bool, io__state, io__state).
 :- mode parse_tree_to_hlds(in, in, in, out, out, out, di, uo) is det.
 
 :- pred create_atomic_unification(var, unify_rhs, term__context,
@@ -57,14 +57,14 @@
 :- implementation.
 
 :- import_module prog_io, prog_io_goal, prog_io_dcg, prog_io_util, prog_out.
-:- import_module modules, module_qual, prog_util, globals, options, hlds_out.
+:- import_module modules, module_qual, prog_util, options, hlds_out.
 :- import_module make_tags, quantification, (inst), instmap.
 :- import_module code_util, unify_proc, special_pred, type_util, mode_util.
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc, inst_match.
 :- import_module fact_table, purity, goal_util, term_util, export, llds.
 
-:- import_module string, char, int, set, bintree, list, map, require.
-:- import_module bool, getopt, assoc_list, term, term_io, varset.
+:- import_module string, char, int, set, bintree, map, multi_map, require.
+:- import_module getopt, assoc_list, term_io, varset.
 
 parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, 
 		UndefTypes, UndefModes) -->
@@ -228,6 +228,9 @@ add_item_decl_pass_1(module_defn(_VarSet, ModuleDefn), Context,
 		{ Status = Status0 },
 		{ Module = Module0 }
 	; { ModuleDefn = use(module(_)) } ->
+		{ Status = Status0 },
+		{ Module = Module0 }
+	; { ModuleDefn = include_module(_) } ->
 		{ Status = Status0 },
 		{ Module = Module0 }
 	; { ModuleDefn = external(External) } ->
@@ -1178,28 +1181,39 @@ ctors_add([Name - Args | Rest], TypeId, NeedQual, Context, Ctors0, Ctors) -->
 		{ QualifiedConsDefns = [ConsDefn | QualifiedConsDefns1] }	
 	),
 	{ map__set(Ctors0, QualifiedConsId, QualifiedConsDefns, Ctors1) },
+
+	% XXX the code below does the wrong thing if you mix
+	% `import_module' and `use_module' declarations for
+	% parent and child modules.
+	% It assumes that all parents of an imported module were imported,
+	% and that all parents of a used module were used.
+
 	{
-		QualifiedConsId = cons(qualified(_, ConsName), Arity),
+		QualifiedConsId = cons(qualified(Module, ConsName), Arity),
 		NeedQual = may_be_unqualified
 	->
-		% Add an unqualified version of the cons_id to the cons_table.
+		% Add unqualified version of the cons_id to the cons_table.
 		UnqualifiedConsId = cons(unqualified(ConsName), Arity),
-		(
-			map__search(Ctors1, UnqualifiedConsId,
-				UnqualifiedConsDefns)
-		->
-			map__det_update(Ctors1, UnqualifiedConsId,
-				[ConsDefn | UnqualifiedConsDefns], Ctors2)
-		;
-			map__det_insert(Ctors1, UnqualifiedConsId, 
-				[ConsDefn], Ctors2)
-		)
-	;
-		Ctors2 = Ctors1
-	},
-	ctors_add(Rest, TypeId, NeedQual, Context, Ctors2, Ctors).
+		multi_map__set(Ctors1, UnqualifiedConsId, ConsDefn, Ctors2),
 
-%---------------------------------------------------------------------------%
+		% Add partially qualified versions of the cons_id
+		get_partial_qualifiers(Module, PartialQuals),
+		list__map_foldl(add_ctor(ConsName, Arity, ConsDefn),
+			PartialQuals, _PartiallyQualifiedConsIds,
+			Ctors2, Ctors3)
+	;
+		Ctors3 = Ctors1
+	},
+	ctors_add(Rest, TypeId, NeedQual, Context, Ctors3, Ctors).
+
+:- pred add_ctor(string::in, int::in, hlds_cons_defn::in, module_name::in,
+		cons_id::out, cons_table::in, cons_table::out) is det.
+
+add_ctor(ConsName, Arity, ConsDefn, ModuleQual, ConsId, CtorsIn, CtorsOut) :-
+	ConsId = cons(qualified(ModuleQual, ConsName), Arity),
+	multi_map__set(CtorsIn, ConsId, ConsDefn, CtorsOut).
+
+%-----------------------------------------------------------------------------%
 
 :- pred module_add_pred(module_info, varset, sym_name, types_and_modes,
 		maybe(determinism), condition, purity, list(class_constraint), 
@@ -1398,15 +1412,22 @@ add_default_class_method_func_modes([M|Ms], PredProcIds0, PredProcIds,
 	(
 		M = func(_, FuncName, TypesAndModes, _, _, _, _, _)
 	->
-		module_info_name(Module0, ModuleName0),
-		sym_name_get_module_name(FuncName, ModuleName0, ModuleName),
-		unqualify_name(FuncName, Func),
+		( FuncName = qualified(ModuleName0, Func0) ->
+			ModuleName = ModuleName0,
+			Func = Func0
+		;
+			% The class interface should be fully module qualified
+			% by prog_io.m at the time it is read in.
+			error(
+		       "add_default_class_method_func_modes: unqualified func")
+		),
+
 		TypesAndModes = types_and_modes(_, TMs),
 		list__length(TMs, FuncArity),
 		module_info_get_predicate_table(Module0, PredTable),
 		(
-			predicate_table_search_func_m_n_a(PredTable, ModuleName,
-				Func, FuncArity, [PredId])
+			predicate_table_search_func_m_n_a(PredTable,
+				ModuleName, Func, FuncArity, [PredId])
 		->
 			module_info_pred_info(Module0, PredId, PredInfo0),
 			maybe_add_default_mode(Module0, PredInfo0, 

@@ -13,8 +13,8 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, prog_data, hlds_data.
-:- import_module io, std_util, bool, list.
+:- import_module hlds_module, hlds_pred, hlds_data, prog_data.
+:- import_module io, std_util, list, bool.
 
 %-----------------------------------------------------------------------------%
 
@@ -128,7 +128,7 @@ about unbound type variables.
 
 :- import_module options, globals, hlds_out, prog_out, mode_util.
 :- import_module mercury_to_mercury.
-:- import_module bool, int, map, tree234, std_util, require, list.
+:- import_module int, map, tree234, require.
 :- import_module varset.
 
 process_all_nonimported_procs(Task, ModuleInfo0, ModuleInfo) -->

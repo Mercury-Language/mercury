@@ -21,8 +21,8 @@
 :- module modecheck_call.
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, mode_info.
-:- import_module prog_data, modes.
+:- import_module hlds_goal, hlds_pred, hlds_module, hlds_data.
+:- import_module prog_data, modes, mode_info.
 :- import_module term, list, std_util.
 
 :- pred modecheck_call_pred(pred_id, list(var), maybe(determinism),
@@ -60,11 +60,11 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module prog_data, hlds_pred, hlds_data, hlds_module, instmap, (inst).
+:- import_module prog_data, instmap, (inst).
 :- import_module mode_info, mode_debug, modes, mode_util, mode_errors.
-:- import_module clause_to_proc, inst_match, make_hlds, inst_util.
+:- import_module clause_to_proc, inst_match, inst_util, make_hlds.
 :- import_module det_report, unify_proc.
-:- import_module map, list, bool, std_util, set, io, int, require.
+:- import_module map, bool, set, require.
 
 modecheck_higher_order_pred_call(PredVar, Args0, PredOrFunc, GoalInfo0, Goal)
 		-->
@@ -177,10 +177,8 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 		ExtraGoals = no_extra_goals
 	).
 
-%-----------------------------------------------------------------------------%
-
-modecheck_call_pred(PredId, ArgVars0, DeterminismKnown, TheProcId, ArgVars,
-		ExtraGoals, ModeInfo0, ModeInfo) :-
+modecheck_call_pred(PredId, ArgVars0, DeterminismKnown,
+		TheProcId, ArgVars, ExtraGoals, ModeInfo0, ModeInfo) :-
 
 		% Get the list of different possible modes for the called
 		% predicate
@@ -230,17 +228,18 @@ modecheck_call_pred(PredId, ArgVars0, DeterminismKnown, TheProcId, ArgVars,
 		ProcArgModes = argument_modes(ArgInstTable, ArgModes0),
 
 		mode_info_get_inst_table(ModeInfo1, InstTable0),
-		inst_table_create_sub(InstTable0, ArgInstTable, Sub, InstTable1),
+		inst_table_create_sub(InstTable0, ArgInstTable, Sub,
+					InstTable1),
 		list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes),
 		mode_info_set_inst_table(InstTable1, ModeInfo1, ModeInfo2),
 
 		mode_list_get_initial_insts(ArgModes, ModuleInfo,
 					InitialInsts),
 		modecheck_var_has_inst_list(ArgVars0, InitialInsts, 0,
-				ModeInfo2, ModeInfo3),
+					ModeInfo2, ModeInfo3),
 
 		modecheck_end_of_call(ProcInfo, ArgVars0, ArgVars,
-				ExtraGoals, ModeInfo3, ModeInfo)
+					ExtraGoals, ModeInfo3, ModeInfo)
 	;
 			% set the current error list to empty (and
 			% save the old one in `OldErrors').  This is so the
@@ -578,7 +577,8 @@ to the following specification:
 
 :- pred choose_best_match(list(proc_id), pred_id, proc_table, list(var),
 				proc_id, mode_info).
-:- mode choose_best_match(in, in, in, in, out, mode_info_ui) is det.
+:- mode choose_best_match(in, in, in, in, out,
+				mode_info_ui) is det.
 
 choose_best_match([], _, _, _, _, _) :-
 	error("choose_best_match: no best match").
@@ -674,13 +674,12 @@ compare_inst_list(InstsA, InstsB, ArgInsts, InstTable, Result, ModuleInfo) :-
 				inst_table, match, module_info).
 :- mode compare_inst_list_2(in, in, in, in, out, in) is semidet.
 
-compare_inst_list_2([], [], _,_,  same, _).
+compare_inst_list_2([], [], _, _, same, _).
 compare_inst_list_2([InstA | InstsA], [InstB | InstsB],
 		no, InstTable, Result, ModuleInfo) :-
 	compare_inst(InstA, InstB, no, InstTable, Result0, ModuleInfo),
 	compare_inst_list_2(InstsA, InstsB, no, InstTable, Result1, ModuleInfo),
 	combine_results(Result0, Result1, Result).
-
 compare_inst_list_2([InstA | InstsA], [InstB | InstsB],
 		yes([ArgInst|ArgInsts]), InstTable, Result, ModuleInfo) :-
 	compare_inst(InstA, InstB, yes(ArgInst), InstTable, Result0,

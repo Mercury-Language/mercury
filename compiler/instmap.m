@@ -18,9 +18,11 @@
 :- module instmap.
 
 :- interface.
+
 :- import_module hlds_module, prog_data, mode_info, (inst), mode_errors.
 :- import_module hlds_data.
-:- import_module set, term, list, assoc_list, map, bool.
+
+:- import_module map, bool, set, term, list, assoc_list.
 
 :- type instmap.
 :- type instmap_delta.
@@ -260,10 +262,10 @@
 
 :- implementation.
 
-:- import_module mode_util, inst_match, prog_data, mode_errors, goal_util.
-:- import_module mercury_to_mercury, hlds_data, hlds_module, inst_util.
-:- import_module std_util, bool, map, set, assoc_list, require, multi_map.
-:- import_module int, list, varset, set_bbbtree.
+:- import_module mode_util, inst_match, prog_data, goal_util.
+:- import_module hlds_data, inst_util.
+
+:- import_module std_util, require, multi_map, set_bbbtree.
 
 :- type instmap_delta	==	instmap.
 

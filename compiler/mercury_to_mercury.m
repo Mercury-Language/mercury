@@ -15,15 +15,15 @@
 :- interface.
 
 :- import_module hlds_goal, hlds_data, hlds_pred, prog_data, (inst), purity.
-:- import_module list, io, varset, term, std_util, bool.
+:- import_module bool, std_util, list, io, varset, term.
 
 :- type expand_inst_alias --->
 		dont_expand		% alias(IK)
 	;	expand_silently		% Expansion
 	;	expand_noisily.		% alias(IK, Expansion)
 
-%	convert_to_mercury(ProgName, OutputFileName, Items)
-:- pred convert_to_mercury(string, string, list(item_and_context),
+%	convert_to_mercury(ModuleName, OutputFileName, Items)
+:- pred convert_to_mercury(module_name, string, list(item_and_context),
 				io__state, io__state).
 :- mode convert_to_mercury(in, in, in, di, uo) is det.
 
@@ -181,12 +181,12 @@
 
 :- import_module prog_out, prog_util, hlds_pred, hlds_out, (inst), instmap.
 :- import_module globals, options, termination.
-:- import_module bool, int, string, set, term_io, lexer, std_util, require.
+:- import_module int, string, set, term_io, lexer, require.
 :- import_module char.
 
 %-----------------------------------------------------------------------------%
 
-convert_to_mercury(ProgName, OutputFileName, Items) -->
+convert_to_mercury(ModuleName, OutputFileName, Items) -->
 	io__stderr_stream(StdErr),
 	io__tell(OutputFileName, Res),
 	( { Res = ok } ->
@@ -200,7 +200,7 @@ convert_to_mercury(ProgName, OutputFileName, Items) -->
 			[]
 		),
 		io__write_string(":- module "),
-		mercury_output_bracketed_constant(term__atom(ProgName)),
+		mercury_output_bracketed_sym_name(ModuleName),
 		io__write_string(".\n"),
 		{ inst_table_init(InstTable) },
 		mercury_output_item_list(Items, InstTable),
@@ -490,13 +490,13 @@ output_instance_method(Method) -->
 	io__write_char('\t'),
 	(
 		{ Method = func_instance(Name1, Name2, Arity) },
-		io__write_string("func(")
+		io__write_string("func((")
 	;
 		{ Method = pred_instance(Name1, Name2, Arity) },
-		io__write_string("pred(")
+		io__write_string("pred((")
 	),
 	mercury_output_bracketed_sym_name(Name1),
-	io__write_string("/"),
+	io__write_string(")/"),
 	io__write_int(Arity),
 	io__write_string(") is "),
 	mercury_output_bracketed_sym_name(Name2).
@@ -539,19 +539,23 @@ mercury_output_int_list_2([First | Rest]) -->
 			io__state, io__state).
 :- mode mercury_output_module_defn(in, in, in, di, uo) is det.
 
-mercury_output_module_defn(_VarSet, Module, _Context) -->
-	( { Module = import(module(ImportedModules)) } ->
+mercury_output_module_defn(_VarSet, ModuleDefn, _Context) -->
+	( { ModuleDefn = import(module(ImportedModules)) } ->
 		io__write_string(":- import_module "),
 		mercury_write_module_spec_list(ImportedModules),
 		io__write_string(".\n")
-	; { Module = use(module(UsedModules)) } ->
+	; { ModuleDefn = use(module(UsedModules)) } ->
 		io__write_string(":- use_module "),
 		mercury_write_module_spec_list(UsedModules),
 		io__write_string(".\n")
-	; { Module = interface } ->
+	; { ModuleDefn = interface } ->
 		io__write_string(":- interface.\n")
-	; { Module = implementation } ->
+	; { ModuleDefn = implementation } ->
 		io__write_string(":- implementation.\n")
+	; { ModuleDefn = include_module(IncludedModules) } ->
+		io__write_string(":- include_module "),
+		mercury_write_module_spec_list(IncludedModules),
+		io__write_string(".\n")
 	;
 		% XXX unimplemented
 		io__write_string("% unimplemented module declaration\n")
@@ -563,7 +567,7 @@ mercury_output_module_defn(_VarSet, Module, _Context) -->
 
 mercury_write_module_spec_list([]) --> [].
 mercury_write_module_spec_list([ModuleName | ModuleNames]) -->
-	mercury_output_bracketed_constant(term__atom(ModuleName)),
+	mercury_output_bracketed_sym_name(ModuleName),
 	( { ModuleNames = [] } ->
 		[]
 	;
@@ -1139,14 +1143,16 @@ mercury_output_cons_id(code_addr_const(PredId, ProcId), _) -->
 	io__write_int(ProcInt),
 	io__write_string(")>").
 mercury_output_cons_id(base_type_info_const(Module, Type, Arity), _) -->
+	{ prog_out__sym_name_to_string(Module, ModuleString) },
 	{ string__int_to_string(Arity, ArityString) },
-	io__write_strings(["<base_type_info for ", Module, ":", Type, "/",
-		ArityString, ">"]).
+	io__write_strings(["<base_type_info for ",
+		ModuleString, ":", Type, "/", ArityString, ">"]).
 mercury_output_cons_id(base_typeclass_info_const(Module, Class, InstanceString),
 		_) -->
+	{ prog_out__sym_name_to_string(Module, ModuleString) },
 	io__write_string("<base_typeclass_info for "),
 	io__write(Class),
-	io__write_strings([" from module ", Module, ", instance number",
+	io__write_strings([" from module ", ModuleString, ", instance number",
 		InstanceString]).
 
 mercury_output_mode_defn(VarSet, eqv_mode(Name, Args, Mode), Context,
@@ -1327,8 +1333,7 @@ mercury_output_ctor_arg_name_prefix(Name) -->
 
 :- pred mercury_output_pred_decl(varset, sym_name, types_and_modes,
 		maybe(determinism), purity, list(class_constraint),
-		term__context, string, string, string,
-		io__state, io__state).
+		term__context, string, string, string, io__state, io__state).
 :- mode mercury_output_pred_decl(in, in, in, in, in, in, in, in, in, in,
 		di, uo) is det.
 
@@ -1411,8 +1416,8 @@ mercury_output_pred_type_2(VarSet, PredName, Types, MaybeDet, Purity,
 
 :- pred mercury_output_func_decl(varset, sym_name, types_and_modes,
 		type_and_mode, maybe(determinism), 
-		purity, list(class_constraint), term__context,
-		string, string, string, io__state, io__state).
+		purity, list(class_constraint), term__context, string, string,
+		string, io__state, io__state).
 :- mode mercury_output_func_decl(in, in, in, in, in, in, in, in, in, in, in,
 		di, uo) is det.
 
@@ -1624,7 +1629,7 @@ mercury_output_det(erroneous) -->
 
 mercury_output_bracketed_sym_name(Name) -->
 	(	{ Name = qualified(ModuleName, Name2) },
-		mercury_output_bracketed_constant(term__atom(ModuleName)),
+		mercury_output_bracketed_sym_name(ModuleName),
 		io__write_char(':')
 	;
 		{ Name = unqualified(Name2) }
@@ -1636,7 +1641,7 @@ mercury_output_bracketed_sym_name(Name) -->
 
 mercury_output_sym_name(Name) -->
 	(	{ Name = qualified(ModuleName, PredName) },
-		mercury_output_bracketed_constant(term__atom(ModuleName)),
+		mercury_output_bracketed_sym_name(ModuleName),
 		io__write_char(':'),
 		mercury_quote_qualified_atom(PredName)
 	;
@@ -1848,7 +1853,7 @@ mercury_output_goal_2(unify(A, B), VarSet, _Indent) -->
 mercury_output_call(Name, Term, VarSet, _Indent) -->
 	(	
 		{ Name = qualified(ModuleName, PredName) },
-		io__write_string(ModuleName),
+		mercury_output_bracketed_sym_name(ModuleName),
 		io__write_string(":")
 	;
 		{ Name = unqualified(PredName) }
@@ -2506,6 +2511,7 @@ mercury_unary_prefix_op("end_module").
 mercury_unary_prefix_op("func").
 mercury_unary_prefix_op("if").
 mercury_unary_prefix_op("import_module").
+mercury_unary_prefix_op("include_module").
 mercury_unary_prefix_op("impure").
 mercury_unary_prefix_op("insert").
 mercury_unary_prefix_op("inst").

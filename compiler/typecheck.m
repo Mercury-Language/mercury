@@ -106,7 +106,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_data, prog_data.
-:- import_module bool, io, term, map, list.
+:- import_module bool, io, list, map, term.
 
 :- pred typecheck(module_info, module_info, bool, bool, io__state, io__state).
 :- mode typecheck(in, out, in, out, di, uo) is det.
@@ -171,13 +171,13 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, prog_util, type_util, code_util.
+:- import_module hlds_goal, prog_util, type_util, code_util.
 :- import_module prog_data, prog_io, prog_io_util, prog_out, hlds_out.
 :- import_module mercury_to_mercury, mode_util, options, getopt, globals.
 :- import_module passes_aux, clause_to_proc, special_pred, inst_match.
 
-:- import_module int, list, map, set, string, require, std_util, tree234.
-:- import_module assoc_list, varset, term, term_io, (inst).
+:- import_module int, set, string, require, std_util, tree234.
+:- import_module assoc_list, varset, term_io.
 
 %-----------------------------------------------------------------------------%
 
@@ -2386,7 +2386,7 @@ typecheck_info_set_io_state(typecheck_info(_,B,C,D,E,F,G,H,I,J,K,L,M,N),
 
 %-----------------------------------------------------------------------------%
 
-:- pred typecheck_info_get_module_name(typecheck_info, string).
+:- pred typecheck_info_get_module_name(typecheck_info, module_name).
 :- mode typecheck_info_get_module_name(in, out) is det.
 
 typecheck_info_get_module_name(TypeCheckInfo, Name) :-
@@ -4593,7 +4593,8 @@ strip_builtin_qualifiers_from_type(Type0, Type) :-
 		strip_builtin_qualifiers_from_type_list(Args0, Args),
 		TypeId0 = SymName0 - Arity,
 		(
-			SymName0 = qualified("mercury_builtin", Name)
+			SymName0 = qualified(Module, Name),
+			mercury_public_builtin_module(Module)
 		->
 			SymName = unqualified(Name)
 		;

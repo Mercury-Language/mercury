@@ -21,7 +21,7 @@
 :- interface.
 
 :- import_module hlds_goal, mode_errors.
-:- import_module term, list.
+:- import_module list, term.
 
 %-----------------------------------------------------------------------------%
 
@@ -89,7 +89,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, list, stack, set, map, require, std_util.
+:- import_module int, stack, set, map, require, std_util.
 :- import_module mode_errors.	% for the mode_error_info and delay_info
 				% types.
 

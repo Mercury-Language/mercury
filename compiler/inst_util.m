@@ -84,9 +84,10 @@ in the general case.
 		list(inst), inst_table, module_info, inst_key_sub).
 :- mode make_shared_inst_list(in, in, in, in, out, out, out, out) is det.
 
-	% Given an inst, return a new inst which is the same as the
-	% original inst but with all occurrences of `unique' or
-	% `mostly_uniq' replaced % with `shared'.
+	% Given a list of insts, return a new list of insts which is the
+	% same as the original list of insts, but with all occurrences
+	% of `unique' replaced with `shared'.  It is an error if any part
+	% of the inst list is free.
 
 %-----------------------------------------------------------------------------%
 

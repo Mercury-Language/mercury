@@ -96,6 +96,57 @@ EXT_FOR_SHARED_LIB	= @EXT_FOR_SHARED_LIB@
 RM_C		= rm
 
 #-----------------------------------------------------------------------------#
+#
+# The following variables specify the names of the subdirectories used,
+# so that you can write code which works both with and without the
+# `--use-subdirs' option.
+#
+
+ifeq ($(MMAKE_USE_SUBDIRS),yes)
+
+SUBDIR=Mercury/
+
+nos_subdir=$(SUBDIR)nos/
+qls_subdir=$(SUBDIR)qls/
+deps_subdir=$(SUBDIR)deps/
+int0s_subdir=$(SUBDIR)int0s/
+ints_subdir=$(SUBDIR)ints/
+int2s_subdir=$(SUBDIR)int2s/
+int3s_subdir=$(SUBDIR)int3s/
+opts_subdir=$(SUBDIR)opts/
+trans_opts_subdir=$(SUBDIR)trans_opts/
+date0s_subdir=$(SUBDIR)date0s/
+dates_subdir=$(SUBDIR)dates/
+date3s_subdir=$(SUBDIR)date3s/
+optdates_subdir=$(SUBDIR)optdates/
+trans_opt_dates_subdir=$(SUBDIR)trans_opt_dates/
+cs_subdir=$(SUBDIR)cs/
+os_subdir=$(SUBDIR)os/
+dirs_subdir=$(SUBDIR)dirs/
+
+else
+
+SUBDIR=
+
+nos_subdir=
+qls_subdir=
+deps_subdir=
+ints_subdir=
+int2s_subdir=
+int3s_subdir=
+opts_subdir=
+trans_opts_subdir=
+dates_subdir=
+date3s_subdir=
+optdates_subdir=
+trans_opt_dates_subdir=
+cs_subdir=
+os_subdir=
+dirs_subdir=
+
+endif
+
+#-----------------------------------------------------------------------------#
 
 # This needs to go here so that user Mmake files can add new suffixes.
 

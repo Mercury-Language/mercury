@@ -53,7 +53,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_data, det_report, globals.
-:- import_module std_util, list, io.
+:- import_module list, std_util, io.
 
 	% Perform determinism inference for local predicates with no
 	% determinism declarations, and determinism checking for all other
@@ -109,9 +109,9 @@
 :- implementation.
 
 :- import_module hlds_goal, prog_data, det_report, det_util.
-:- import_module type_util, mode_util, globals, options, passes_aux.
+:- import_module type_util, mode_util, options, passes_aux.
 :- import_module hlds_out, mercury_to_mercury, instmap.
-:- import_module bool, list, map, set, std_util, require, term.
+:- import_module bool, map, set, require, term.
 
 %-----------------------------------------------------------------------------%
 

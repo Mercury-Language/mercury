@@ -174,7 +174,7 @@ mercury_runtime_init(int argc, char **argv)
 	*/
 	save_regs_to_mem(c_regs);
 
-#ifndef	SPEED
+#ifdef	MR_LOWLEVEL_DEBUG
 	/*
 	** Ensure stdio & stderr are unbuffered even if redirected.
 	** Using setvbuf() is more complicated than using setlinebuf(),
@@ -734,7 +734,7 @@ mercury_runtime_main(void)
 	Word c_regs[NUM_REAL_REGS];
 #endif
 
-#if !defined(SPEED) && defined(USE_GCC_NONLOCAL_GOTOS)
+#if defined(MR_LOWLEVEL_DEBUG) && defined(USE_GCC_NONLOCAL_GOTOS)
 	unsigned char	safety_buffer[SAFETY_BUFFER_SIZE];
 #endif
 
@@ -747,7 +747,7 @@ mercury_runtime_main(void)
 	save_regs_to_mem(c_regs);
 	restore_registers();
 
-#if !defined(SPEED) && defined(USE_GCC_NONLOCAL_GOTOS)
+#if defined(MR_LOWLEVEL_DEBUG) && defined(USE_GCC_NONLOCAL_GOTOS)
 	/*
 	** double-check to make sure that we're not corrupting
 	** the C stack with these non-local gotos, by filling
@@ -759,10 +759,10 @@ mercury_runtime_main(void)
 	memset(safety_buffer, MAGIC_MARKER_2, SAFETY_BUFFER_SIZE);
 #endif
 
-#ifndef SPEED
-#ifndef CONSERVATIVE_GC
+#ifdef MR_LOWLEVEL_DEBUG
+  #ifndef CONSERVATIVE_GC
 	heap_zone->max      = heap_zone->min;
-#endif
+  #endif
 	detstack_zone->max  = detstack_zone->min;
 	nondetstack_zone->max = nondetstack_zone->min;
 #endif
@@ -780,7 +780,7 @@ mercury_runtime_main(void)
 		time_at_finish = MR_get_user_cpu_miliseconds();
 	}
 
-#if defined(USE_GCC_NONLOCAL_GOTOS) && !defined(SPEED)
+#if defined(USE_GCC_NONLOCAL_GOTOS) && defined(MR_LOWLEVEL_DEBUG)
 	{
 		int i;
 
@@ -793,13 +793,13 @@ mercury_runtime_main(void)
 		debugregs("after final call");
 	}
 
-#ifndef	SPEED
+#ifdef MR_LOWLEVEL_DEBUG
 	if (memdebug) {
 		printf("\n");
-#ifndef	CONSERVATIVE_GC
+  #ifndef CONSERVATIVE_GC
 		printf("max heap used:      %6ld words\n",
 			(long) (heap_zone->max - heap_zone->min));
-#endif
+  #endif
 		printf("max detstack used:  %6ld words\n",
 			(long)(detstack_zone->max - detstack_zone->min));
 		printf("max nondstack used: %6ld words\n",
@@ -906,7 +906,7 @@ Define_entry(do_interpreter);
 	noprof_call(program_entry_point, LABEL(global_success));
 
 Define_label(global_success);
-#ifndef	SPEED
+#ifdef	MR_LOWLEVEL_DEBUG
 	if (finaldebug) {
 		save_transient_registers();
 		printregs("global succeeded");
@@ -921,7 +921,7 @@ Define_label(global_success);
 		GOTO_LABEL(all_done);
 
 Define_label(global_fail);
-#ifndef	SPEED
+#ifdef	MR_LOWLEVEL_DEBUG
 	if (finaldebug) {
 		save_transient_registers();
 		printregs("global failed");
@@ -941,7 +941,7 @@ Define_label(all_done);
 	MR_succip = (Code *) pop();
 	MR_hp = (Word *) pop();
 
-#ifndef SPEED
+#ifdef MR_LOWLEVEL_DEBUG
 	if (finaldebug && detaildebug) {
 		save_transient_registers();
 		printregs("after popping...");

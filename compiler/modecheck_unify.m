@@ -20,8 +20,8 @@
 :- module modecheck_unify.
 :- interface.
 
-:- import_module hlds_goal, hlds_data, mode_info, modes, prog_data.
-:- import_module term, map, list.
+:- import_module hlds_goal, hlds_data, prog_data, mode_info, modes.
+:- import_module map, term, list.
 
 	% Modecheck a unification
 :- pred modecheck_unification( var, unify_rhs, unification, unify_context,
@@ -49,12 +49,14 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module llds, prog_data, prog_util, type_util, module_qual, instmap.
-:- import_module hlds_module, hlds_goal, hlds_pred, hlds_data, hlds_out.
+
+:- import_module llds, prog_util, type_util, module_qual, instmap.
+:- import_module hlds_module, hlds_goal, hlds_pred, hlds_out.
 :- import_module mode_debug, mode_util, mode_info, modes, mode_errors.
 :- import_module inst_match, inst_util, unify_proc, code_util, unique_modes.
 :- import_module typecheck, modecheck_call, (inst), quantification.
-:- import_module bool, list, std_util, int, map, set, require, varset.
+
+:- import_module bool, std_util, int, set, require, varset.
 :- import_module string, assoc_list.
 
 %-----------------------------------------------------------------------------%
@@ -220,27 +222,19 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 		%
 
 		\+ code_util__compiler_generated(PredInfo),
-		(
-			PredName = unqualified(UnqualPName),
-			predicate_table_search_func_name_arity(PredTable,
-				UnqualPName, Arity, PredIds),
-  
-			% Check if there any of the candidate functions,
-			% have argument/return types which subsume the actual
-			% argument/return types of this function call
-  
-			pred_info_typevarset(PredInfo, TVarSet),
-			map__apply_to_list(ArgVars0, VarTypes0, ArgTypes0),
-			list__append(ArgTypes0, [TypeOfX], ArgTypes),
-			typecheck__find_matching_pred_id(PredIds, ModuleInfo0,
-				TVarSet, ArgTypes, PredId, QualifiedFuncName)
 
-		;
-			PredName = qualified(FuncModule, UnqualName),
-			predicate_table_search_func_m_n_a(PredTable,
-				    FuncModule, UnqualName, Arity, [PredId]),
-			QualifiedFuncName = PredName
-		)
+		predicate_table_search_func_sym_arity(PredTable,
+			PredName, Arity, PredIds),
+
+		% Check if any of the candidate functions have
+		% argument/return types which subsume the actual
+		% argument/return types of this function call
+
+		pred_info_typevarset(PredInfo, TVarSet),
+		map__apply_to_list(ArgVars0, VarTypes0, ArgTypes0),
+		list__append(ArgTypes0, [TypeOfX], ArgTypes),
+		typecheck__find_matching_pred_id(PredIds, ModuleInfo0,
+			TVarSet, ArgTypes, PredId, QualifiedFuncName)
 	->
 		%
 		% Convert function calls into predicate calls:
@@ -396,8 +390,8 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 modecheck_unification(X, 
 		lambda_goal(PredOrFunc, ArgVars, Vars, Modes0, Det,
 				_, LambdaGoal0),
-		Unification0, UnifyContext,
-		GoalInfo0, HowToCheckGoal, Goal, ModeInfo0, ModeInfo) :-
+		Unification0, UnifyContext, GoalInfo0, HowToCheckGoal,
+		Goal, ModeInfo0, ModeInfo) :-
 	%
 	% First modecheck the lambda goal itself:
 	%
@@ -665,14 +659,18 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes,
 modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 			UnifyContext, HowToCheckGoal, GoalInfo0,
 			Goal, ModeInfo0, ModeInfo) :-
+	%
+	% fully module qualify all cons_ids
+	% (except for builtins such as ints and characters).
+	%
 	list__length(ArgVars0, Arity),
 	(
-		% module qualify cons_ids
-		ConsId0 = cons(unqualified(ConsName), _),
+		ConsId0 = cons(Name, _),
 		type_to_type_id(TypeOfX, TypeId, _),
 		TypeId = qualified(TypeModule, _) - _
 	->
-		ConsId = cons(qualified(TypeModule, ConsName), Arity)
+		unqualify_name(Name, UnqualName),
+		ConsId = cons(qualified(TypeModule, UnqualName), Arity)
 	;
 		ConsId = ConsId0
 	),

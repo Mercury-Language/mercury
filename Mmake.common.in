@@ -171,6 +171,14 @@ UTIL_DIR = $(MERCURY_DIR)/util
 # Options to pass to the Mercury compiler
 MCFLAGS	= --no-infer-all --halt-at-warn $(EXTRA_MCFLAGS)
 
+# Do we want to deal with intermodule information when building the library?
+# By default yes, since this way we note immediately when intermodule
+# optimization breaks, and always at installation time, since we must install
+# the library's .opt and .trans_opt files as well. However, during development
+# some problems are easier to track down without intermodule optimization
+# complicating things.
+LIBRARY_INTERMODULE = yes
+
 #-----------------------------------------------------------------------------#
 
 # The Mmake.params file can be used to override definitions in this file

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1995, 1997 The University of Melbourne.
+** Copyright (C) 1993-1995, 1997-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -51,12 +51,13 @@
 #endif
 
 /*
-** turn assertions off for speed
+** For speed, turn assertions off,
+** unless low-level debugging is enabled.
 */
-#ifdef SPEED
-#define MR_assert(ASSERTION)	((void)0)
+#ifdef MR_LOWLEVEL_DEBUG
+  #define MR_assert(ASSERTION)	assert(ASSERTION)
 #else
-#define	MR_assert(ASSERTION)	assert(ASSERTION)
+  #define MR_assert(ASSERTION)	((void)0)
 #endif
 
 

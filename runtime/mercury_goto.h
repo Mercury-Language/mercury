@@ -48,7 +48,7 @@
 #endif
 
 #if defined(MR_INSERT_LABELS) || defined(PROFILE_CALLS) \
-		|| defined(DEBUG_LABELS)
+		|| defined(MR_CHOOSE_ENTRY_POINT)
   #define make_entry(n, a, l)	insert_entry(n, a, MR_STACK_LAYOUT(l))
 #else
   #define make_entry(n, a, l)	/* nothing */

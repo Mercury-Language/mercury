@@ -19,7 +19,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_data, prog_data.
-:- import_module list, map, term.
+:- import_module list, term, map.
 
 %-----------------------------------------------------------------------------%
 
@@ -185,11 +185,11 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, list, term, require, map, std_util.
+:- import_module bool, require, std_util.
 :- import_module prog_io, prog_io_goal, prog_util.
 
-type_util__type_id_module(_ModuleInfo, qualified(ModuleName, _) -_, ModuleName).
-type_util__type_id_module(_ModuleInfo, unqualified(_) - _, "").
+type_util__type_id_module(_ModuleInfo, TypeName - _Arity, ModuleName) :-
+	sym_name_get_module_name(TypeName, unqualified(""), ModuleName).
 
 type_util__type_id_name(_ModuleInfo, Name0 - _Arity, Name) :-
 	unqualify_name(Name0, Name).
@@ -368,22 +368,24 @@ type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 
 %-----------------------------------------------------------------------------%
 
-	% the checks for type_info and base_type_info
+	% The checks for type_info and base_type_info
 	% are needed because those types lie about their
 	% arity; it might be cleaner to change that in
 	% mercury_builtin.m, but that would cause some
 	% bootstrapping difficulties.
+	% It might be slightly better to check for mercury_builtin:type_info
+	% etc. rather than just checking the unqualified type name,
+	% but I found it difficult to verify that the constructors
+	% would always be fully module-qualified at points where
+	% type_is_no_tag_type/3 is called.
 
 type_is_no_tag_type(Ctors, Ctor, Type) :-
 	Ctors = [Ctor - [_FieldName - Type]],
-	Ctor \= qualified("mercury_builtin", "type_info"),
-	Ctor \= qualified("mercury_builtin", "base_type_info"),
-	Ctor \= unqualified("type_info"),
-	Ctor \= unqualified("base_type_info"),
-	Ctor \= qualified("mercury_builtin", "typeclass_info"),
-	Ctor \= qualified("mercury_builtin", "base_typeclass_info"),
-	Ctor \= unqualified("typeclass_info"),
-	Ctor \= unqualified("base_typeclass_info").
+	unqualify_name(Ctor, Name),
+	Name \= "type_info",
+	Name \= "base_type_info",
+	Name \= "typeclass_info",
+	Name \= "base_typeclass_info".
 
 %-----------------------------------------------------------------------------%
 

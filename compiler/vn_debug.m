@@ -14,8 +14,8 @@
 
 :- interface.
 
-:- import_module atsort, vn_type, vn_table, livemap, llds.
-:- import_module assoc_list, bool, list, io, std_util.
+:- import_module atsort, vn_type, vn_table, llds, livemap.
+:- import_module assoc_list, bool, list, std_util, io.
 
 :- pred vn_debug__tuple_msg(maybe(bool), list(instruction), vn_ctrl_tuple,
 	io__state, io__state).
@@ -95,8 +95,8 @@
 
 :- implementation.
 
-:- import_module llds, llds_out, globals, options, opt_debug.
-:- import_module string, int, std_util, map.
+:- import_module llds_out, globals, options, opt_debug.
+:- import_module string, int, map.
 
 vn_debug__tuple_msg(Intermediate, Instrs, Tuple) -->
 	vn_debug__tuple_msg_flag(Flag),
