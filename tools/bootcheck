@@ -61,6 +61,7 @@ mkdir stage2/library
 ln -s $root/compiler/*.m stage2/compiler
 ln -s $root/compiler/Mmake* stage2/compiler
 ln -s $root/library/*.m stage2/library
+ln -s $root/library/*.nl stage2/library
 ln -s $root/library/Mmake* stage2/library
 ln -s $root/library/library.init stage2/library
 ln -s $root/boehm_gc stage2/boehm_gc
@@ -144,6 +145,7 @@ mkdir stage3/library
 ln -s $root/stage2/compiler/*.m stage3/compiler
 ln -s $root/stage2/compiler/Mmake* stage3/compiler
 ln -s $root/stage2/library/*.m stage3/library
+ln -s $root/stage2/library/*.nl stage3/library
 ln -s $root/stage2/library/Mmake* stage3/library
 ln -s $root/stage2/library/library.init stage3/library
 ln -s $root/boehm_gc stage3/boehm_gc
