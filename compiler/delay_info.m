@@ -70,13 +70,18 @@
 :- pred delay_info__bind_var(delay_info, var, delay_info).
 :- mode delay_info__bind_var(in, in, out) is det.
 
-	% Check if there are any "pending" goals, and if so,
-	% select one to wake up, remove it from the delay_info,
-	% and return it.  If there are no pending goals, this
-	% predicate will fail.
+	% Mark all variables as having been bound.
+	% This will allow all previously delayed goals to change status
+	% from "delayed" to "pending".
 	%
-:- pred delay_info__wakeup_goal(delay_info, hlds__goal, delay_info).
-:- mode delay_info__wakeup_goal(in, out, out) is semidet.
+:- pred delay_info__bind_all_vars(delay_info, delay_info).
+:- mode delay_info__bind_all_vars(in, out) is det.
+
+	% Check if there are any "pending" goals, and if so,
+	% remove them from the delay_info and return them.
+	%
+:- pred delay_info__wakeup_goals(delay_info, list(hlds__goal), delay_info).
+:- mode delay_info__wakeup_goals(in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -336,6 +341,17 @@ add_waiting_vars([Var | Vars], Goal, AllVars, WaitingGoalsTable0,
 
 %-----------------------------------------------------------------------------%
 
+	% Whenever we hit a goal which cannot succeed, we need to wake
+	% up all the delayed goals, so that we don't get mode errors in
+	% unreachable code.  We remove all the goals from the waiting
+	% goals table and add them to the pending goals table.  They
+	% will be woken up next time we get back to their conjunction.
+
+delay_info__bind_all_vars(DelayInfo0, DelayInfo) :-
+	DelayInfo0 = delay_info(_, _, WaitingGoalsTable0, _, _),
+	map__keys(WaitingGoalsTable0, WaitingVars),
+	delay_info__bind_var_list(WaitingVars, DelayInfo0, DelayInfo).
+
 delay_info__bind_var_list([], DelayInfo, DelayInfo).
 delay_info__bind_var_list([Var|Vars], DelayInfo0, DelayInfo) :-
 	delay_info__bind_var(DelayInfo0, Var, DelayInfo1),
@@ -424,6 +440,29 @@ delete_waiting_vars([Var | Vars], GoalNum, WaitingGoalsTable0,
 				WaitingGoalsTable).
 
 %-----------------------------------------------------------------------------%
+
+	% delay_info__wakeup_goals(DelayInfo0, Goals, DelayInfo):
+	% Goals is the list of pending goal in the order that they should
+	% be woken up, and DelayInfo is the new delay_info, updated to
+	% reflect the fact that the Goals have been woken up and is
+	% hence are longer pending.
+
+delay_info__wakeup_goals(DelayInfo0, Goals, DelayInfo) :-
+	( delay_info__wakeup_goal(DelayInfo0, Goal, DelayInfo1) ->
+		Goals = [Goal | Goals1],
+		delay_info__wakeup_goals(DelayInfo1, Goals1, DelayInfo)
+	;
+		Goals = [],
+		DelayInfo = DelayInfo0
+	).
+
+	% Check if there are any "pending" goals, and if so,
+	% select one to wake up, remove it from the delay_info,
+	% and return it.  If there are no pending goals, this
+	% predicate will fail.
+	%
+:- pred delay_info__wakeup_goal(delay_info, hlds__goal, delay_info).
+:- mode delay_info__wakeup_goal(in, out, out) is semidet.
 
 	% delay_info__wakeup_goal(DelayInfo0, Goal, DelayInfo) is true iff
 	% DelayInfo0 specifies that there is at least one goal which is

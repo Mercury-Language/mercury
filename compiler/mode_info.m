@@ -402,8 +402,14 @@ mode_info_get_vars_instmap(ModeInfo, _Vars, InstMap) :-
 
 %-----------------------------------------------------------------------------%
 
-mode_info_set_instmap( InstMap, mode_info(A,B,C,D,E,F,G,H,_,J,K,L,M),
-			mode_info(A,B,C,D,E,F,G,H,InstMap,J,K,L,M)).
+mode_info_set_instmap( InstMap,
+			mode_info(A,B,C,D,E,F,G,H,InstMap0,J,DelayInfo0,L,M),
+			mode_info(A,B,C,D,E,F,G,H,InstMap,J,DelayInfo,L,M)) :-
+	( InstMap = unreachable, InstMap0 \= unreachable ->
+		delay_info__bind_all_vars(DelayInfo0, DelayInfo)
+	;
+		DelayInfo = DelayInfo0
+	).
 
 %-----------------------------------------------------------------------------%
 

@@ -60,11 +60,11 @@ reschedule__conj([Goal0 | Goals0], Goals) -->
 	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
 	{ mode_info_get_delay_info(ModeInfo0, DelayInfo0) },
 
-	( { delay_info__wakeup_goal(DelayInfo0, WokenGoal, DelayInfo1) } ->
-	    { Goals1 = [WokenGoal, Goal0 | Goals0] },
-	    mode_info_set_delay_info(DelayInfo1),
-	    reschedule__conj(Goals1, Goals2),
-	    { Goals = Goals2 }
+	{ delay_info__wakeup_goals(DelayInfo0, WokenGoals, DelayInfo1) },
+	mode_info_set_delay_info(DelayInfo1),
+	( { WokenGoals \= [] } ->
+	    { list__append(WokenGoals, [Goal0 | Goals0], Goals1) },
+	    reschedule__conj(Goals1, Goals)
 	;
 	    { Goal0 = _Goal0Goal - Goal0Info },
 	    { goal_info_get_instmap_delta(Goal0Info, InstMapDelta) },

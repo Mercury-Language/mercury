@@ -772,26 +772,27 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals) -->
 
 		% Next, we attempt to wake up any pending goals,
 		% and then continue scheduling the rest of the goal.
-	( { delay_info__wakeup_goal(DelayInfo1, WokenGoal, DelayInfo2) } ->
-		mode_checkpoint(wakeup, "goal"),
-		{ DelayInfo = DelayInfo2 },
-		{ Goals1 = [WokenGoal | Goals0] }
+	{ delay_info__wakeup_goals(DelayInfo1, WokenGoals, DelayInfo) },
+	{ list__append(WokenGoals, Goals0, Goals1) },
+	( { WokenGoals = [] } ->
+		[]
+	; { WokenGoals = [_] } ->
+		mode_checkpoint(wakeup, "goal")
 	;
-		{ DelayInfo = DelayInfo1 },
-		{ Goals1 = Goals0 }
+		mode_checkpoint(wakeup, "goals")
 	),
 	mode_info_set_delay_info(DelayInfo),
-	( { Errors = [] } ->
-		{ Goals = [Goal | Goals2] }
-	;
-		{ Goals = Goals2 }
-	),
 	mode_info_dcg_get_instmap(InstMap),
 	( { InstMap = unreachable } ->
 		mode_info_remove_goals_live_vars(Goals1),
 		{ Goals2  = [] }
 	;
 		modecheck_conj_list_2(Goals1, Goals2)
+	),
+	( { Errors = [] } ->
+		{ Goals = [Goal | Goals2] }
+	;
+		{ Goals = Goals2 }
 	).
 
 :- pred dcg_set_state(T, T, T).
