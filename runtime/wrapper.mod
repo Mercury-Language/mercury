@@ -233,7 +233,10 @@ static void process_options(int argc, char **argv)
 
 		}
 	}
-	if (strcmp(argv[optind],"--") == 0) {
+	mercury_argc = argc - optind;
+	mercury_argv = argv + optind;
+#if 0
+	if (optind < argc && strcmp(argv[optind],"--") == 0) {
 		/* this is a workaround for broken (?) versions of getopt() */
 		/* printf("getopt() is broken\n"); */
 		mercury_argc = argc - optind - 1;
@@ -241,9 +244,8 @@ static void process_options(int argc, char **argv)
 	} else {
 		/* printf("getopt() works\n");
 		   printf("argv[optind] = '%s'\n", argv[optind]); */
-		mercury_argc = argc - optind;
-		mercury_argv = argv + optind;
 	}
+#endif
 
 	if (which == NULL)
 	{
