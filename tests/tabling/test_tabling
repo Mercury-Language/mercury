@@ -63,7 +63,7 @@ do
 			else
 				mmake $testcase.depend > /dev/null 2>&1
 				mmake $testcase.realclean > /dev/null 2>&1
-				/bin/rm $testcase $testcase.out $testcase.res > /dev/null 2>&1
+				/bin/rm $testcase $testcase.out $testcase.res $testcase.res1 > /dev/null 2>&1
 			fi
 		else
 			echo "execution of $testcase failed"
