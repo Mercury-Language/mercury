@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1145,7 +1145,7 @@ unop_debug(unmktag,		"unmktag").
 unop_debug(mkbody,		"mkbody").
 unop_debug(unmkbody,		"unmkbody").
 unop_debug(strip_tag,		"strip_tag").
-unop_debug(hash_string,		"has_string").
+unop_debug(hash_string,		"hash_string").
 unop_debug(bitwise_complement,	"bitwise_complement").
 unop_debug((not),		"not").
 
