@@ -247,6 +247,9 @@ set_ordlist__remove_list(Set0, Elems, Set) :-
 	set_ordlist__subset(ElemSet, Set0),
 	set_ordlist__difference(Set0, ElemSet, Set).
 
+	% set_ordlist__sort_no_dups(List, Set) is true iff
+	% List is a list with the same elements as Set and
+	% List contains no duplicates.
 :- pred set_ordlist__sort_no_dups(list(T), set_ordlist(T)).
 :- mode set_ordlist__sort_no_dups(in, out) is semidet.
 
@@ -259,7 +262,9 @@ set_ordlist__sort_no_dups(List, Set) :-
 		set_ordlist__no_dups(Elem, Elems)
 	).
 
-:- pred set_ordlist__no_dups(T::in, set_ordlist(T)::in) is semidet.
+	% set_ordlist__no_dups(Elem, Set) is true iff Set does not
+	% contain Elem, and Set does not contains duplicates.
+:- pred set_ordlist__no_dups(T::in, list(T)::in) is semidet.
 
 set_ordlist__no_dups(_, []).
 set_ordlist__no_dups(Elem, [Elem0|Elems]) :-
