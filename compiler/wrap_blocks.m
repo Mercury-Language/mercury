@@ -8,7 +8,7 @@
 %
 % Author: zs.
 %
-% The optimizations in value_number.m and use_local_vars.m insert into
+% The optimizations in use_local_vars.m insert into
 % instruction sequences references to temporary variables whose values
 % need be preserved only within an extended basic block. The wrap_blocks pass
 % looks for references to temporaries and introduces block instructions
