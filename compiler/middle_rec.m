@@ -39,7 +39,7 @@ middle_rec__match_det(Goal, Switch, CodeInfo, CodeInfo) :-
 	Case2 = case(ConsId2, Goal2),
 	(
 		code_aux__contains_only_builtins(Goal1),
-		code_aux__contains_simple_recursive_call(Goal2, no, CodeInfo, _)
+		code_aux__contains_simple_recursive_call(Goal2, CodeInfo, no)
 	->
 		Switch = switch(Var, cannot_fail, [
 			case(ConsId1, Goal1),
@@ -47,7 +47,7 @@ middle_rec__match_det(Goal, Switch, CodeInfo, CodeInfo) :-
 		]) - GoalInfo
 	;
 		code_aux__contains_only_builtins(Goal2),
-		code_aux__contains_simple_recursive_call(Goal1, no, CodeInfo, _)
+		code_aux__contains_simple_recursive_call(Goal1, CodeInfo, no)
 	->
 		Switch = switch(Var, cannot_fail, [
 			case(ConsId2, Goal2),
@@ -170,39 +170,75 @@ middle_rec__gen_det(Goal, Instrs) -->
 					- "test on upward loop" ] }
 		),
 
-		{ list__condense([
-			[
-				label(Entry) - "Procedure entry point",
-				comment(CallInfoComment) - ""
-			],
-			EntryTestList,
-			InitAuxReg,
-			[
-				label(Loop1Label) - "start of the down loop"
-			],
-			MaybeIncrSp,
-			IncrAuxReg,
-			BeforeList,
-			Loop1Test,
-			BaseList,
-			[
-				label(Loop2Label) - ""
-			],
-			AfterList,
-			MaybeDecrSp,
-			DecrAuxReg,
-			TestAuxReg,
-			LiveValCode,
-			[
-				goto(succip) - "exit from recursive case",
-				label(BaseLabel) - "start of base case"
-			],
-			BaseList,
-			LiveValCode,
-			[
-				goto(succip) - "exit from base case"
-			]
-		], InstrList) },
+		% Even though the recursive call is followed by some goals
+		% in the HLDS, these goals may generate no LLDS code, so
+		% it is in fact possible for AfterList to be empty.
+		% There is no point in testing BeforeList for empty,
+		% since if it is, the code is an infinite loop anyway.
+
+		{ AfterList = [] ->
+			list__condense([
+				[
+					label(Entry) - "Procedure entry point",
+					comment(CallInfoComment) - ""
+				],
+				EntryTestList,
+				[
+					label(Loop1Label)
+						- "start of the down loop"
+				],
+				BeforeList,
+				Loop1Test,
+				[
+					label(BaseLabel)
+						- "start of base case"
+				],
+				BaseList,
+				LiveValCode,
+				[
+					goto(succip)	
+					- "exit from base case"
+				]
+			], InstrList)
+		;
+			list__condense([
+				[
+					label(Entry) - "Procedure entry point",
+					comment(CallInfoComment) - ""
+				],
+				EntryTestList,
+				InitAuxReg,
+				[
+					label(Loop1Label)
+						- "start of the down loop"
+				],
+				MaybeIncrSp,
+				IncrAuxReg,
+				BeforeList,
+				Loop1Test,
+				BaseList,
+				[
+					label(Loop2Label) - ""
+				],
+				AfterList,
+				MaybeDecrSp,
+				DecrAuxReg,
+				TestAuxReg,
+				LiveValCode,
+				[
+					goto(succip)	
+						- "exit from recursive case",
+					label(BaseLabel)
+						- "start of base case"
+				],
+				BaseList,
+				LiveValCode,
+				[
+					goto(succip)	
+					- "exit from base case"
+				]
+			], InstrList)
+		},
 		{ Instrs = node(InstrList) }
 	;
 		{ error("middle_rec__gen_det match failed") }

@@ -160,13 +160,6 @@
 			;	unop(unary_op, rval)
 			;	binop(binary_op, rval, rval).
 
-			/* any additions to `rval' also require additions in
-			   code_info__generate_expression
-			   code_info__generate_expression_vars
-			   code_info__expression_dependencies
-			   value_number__make_live
-			*/
-
 :- type rval_const	--->	true
 			;	false
 			;	int_const(int)
@@ -437,7 +430,9 @@ output_c_module(c_module(ModuleName, Procedures)) -->
 	output_c_label_init_list(Labels),
 	io__write_string("BEGIN_CODE\n"),
 	io__write_string("\n"),
-	output_c_procedure_list(Procedures),
+	globals__io_lookup_bool_option(auto_comments, PrintComments),
+	globals__io_lookup_bool_option(emit_c_loops, EmitCLoops),
+	output_c_procedure_list(Procedures, PrintComments, EmitCLoops),
 	io__write_string("END_MODULE\n").
 
 :- pred output_c_header_include_lines(list(string), io__state, io__state).
@@ -543,20 +538,21 @@ output_c_label_init(Label, ProcPerFunc) -->
 	% to avoid having to explicitly shuffle the state-of-the-world
 	% arguments around all the time, as discussed in my hons thesis. -fjh.
 
-:- pred output_c_procedure_list(list(c_procedure), io__state, io__state).
-:- mode output_c_procedure_list(in, di, uo) is det.
+:- pred output_c_procedure_list(list(c_procedure), bool, bool,
+	io__state, io__state).
+:- mode output_c_procedure_list(in, in, in, di, uo) is det.
 
-output_c_procedure_list([]) --> [].
-output_c_procedure_list([P|Ps]) -->
-	output_c_procedure(P),
-	output_c_procedure_list(Ps).
+output_c_procedure_list([], _, _) --> [].
+output_c_procedure_list([Proc | Procs], PrintComments, EmitCLoops) -->
+	output_c_procedure(Proc, PrintComments, EmitCLoops),
+	output_c_procedure_list(Procs, PrintComments, EmitCLoops).
 
-:- pred output_c_procedure(c_procedure, io__state, io__state).
-:- mode output_c_procedure(in, di, uo) is det.
+:- pred output_c_procedure(c_procedure, bool, bool, io__state, io__state).
+:- mode output_c_procedure(in, in, in, di, uo) is det.
 
-output_c_procedure(c_procedure(Name, Arity, ModeNum0, Instrs)) -->
-	globals__io_lookup_bool_option(auto_comments, PrintAutoComments),
-	( { PrintAutoComments = yes } ->
+output_c_procedure(Proc, PrintComments, EmitCLoops) -->
+	{ Proc = c_procedure(Name, Arity, ModeNum0, Instrs) },
+	( { PrintComments = yes } ->
 		io__write_string("\n/*-------------------------------------"),
 		io__write_string("------------------------------------*/\n")
 	;
@@ -570,10 +566,17 @@ output_c_procedure(c_procedure(Name, Arity, ModeNum0, Instrs)) -->
 	{ ModeNum is ModeNum0 mod 10000 },	% strip off the priority
 	io__write_int(ModeNum),
 	io__write_string(" */\n"),
-	{ set__init(ContLabelSet0) },
 	{ llds__find_caller_label(Instrs, CallerLabel) },
+	{ set__init(ContLabelSet0) },
 	{ llds__find_cont_labels(Instrs, ContLabelSet0, ContLabelSet) },
-	output_instruction_list(Instrs, CallerLabel - ContLabelSet).
+	{ set__init(WhileSet0) },
+	( { EmitCLoops = yes } ->
+		{ llds__find_while_labels(Instrs, WhileSet0, WhileSet) }
+	;
+		{ WhileSet = WhileSet0 }
+	),
+	output_instruction_list(Instrs, PrintComments,
+		CallerLabel - ContLabelSet, WhileSet).
 
 :- pred llds__find_caller_label(list(instruction), label).
 :- mode llds__find_caller_label(in, out) is det.
@@ -617,33 +620,143 @@ llds__find_cont_labels([Instr - _ | Instrs], ContLabelSet0, ContLabelSet) :-
 	),
 	llds__find_cont_labels(Instrs, ContLabelSet1, ContLabelSet).
 
-:- pred output_instruction_list(list(instruction), pair(label, set(label)),
-	io__state, io__state).
-:- mode output_instruction_list(in, in, di, uo) is det.
+	% Locate all the labels which can be profitably turned into
+	% labels starting while loops. The idea is to do this transform:
+	%
+	% L1:				L1:
+	%				     while (1) {
+	%	...				...
+	%	if (...) goto L1		if (...) continue
+	%	...		   =>		...
+	%	if (...) goto L?		if (...) goto L?
+	%	...				...
+	%	if (...) goto L1		if (...) continue
+	%	...				...
+	%					break;
+	%				     }
+	% L2:				L2:
+	%
+	% The second of these is better if we don't have fast jumps.
 
-output_instruction_list([], _) --> [].
-output_instruction_list([Instr0 - Comment0 | Instrs], ProfInfo) -->
-	globals__io_lookup_bool_option(auto_comments, PrintAutoComments),
+:- pred llds__find_while_labels(list(instruction), set(label), set(label)).
+:- mode llds__find_while_labels(in, in, out) is det.
+
+llds__find_while_labels([], WhileSet, WhileSet).
+llds__find_while_labels([Instr0 - _ | Instrs0], WhileSet0, WhileSet) :-
 	(
-		{ PrintAutoComments = no },
-		{ Instr0 = comment(_) ; Instr0 = livevals(_) }
+		Instr0 = label(Label),
+		llds__is_while_label(Label, Instrs0, Instrs1, 0, UseCount),
+		UseCount > 0
 	->
-		[]
+		set__insert(WhileSet0, Label, WhileSet1),
+		llds__find_while_labels(Instrs1, WhileSet1, WhileSet)
 	;
-		output_instruction(Instr0, ProfInfo),
-		io__write_string("\n")
-	),
+		llds__find_while_labels(Instrs0, WhileSet0, WhileSet)
+	).
+
+:- pred llds__is_while_label(label, list(instruction), list(instruction),
+	int, int).
+:- mode llds__is_while_label(in, in, out, in, out) is det.
+
+llds__is_while_label(_, [], [], Count, Count).
+llds__is_while_label(Label, [Instr0 - Comment0 | Instrs0], Instrs,
+		Count0, Count) :-
+	( Instr0 = label(_) ->
+		Count = Count0,
+		Instrs = [Instr0 - Comment0 | Instrs0]
+	; Instr0 = goto(label(Label)) ->
+		Count1 is Count0 + 1,
+		llds__is_while_label(Label, Instrs0, Instrs, Count1, Count)
+	; Instr0 = if_val(_, label(Label)) ->
+		Count1 is Count0 + 1,
+		llds__is_while_label(Label, Instrs0, Instrs, Count1, Count)
+	;
+		llds__is_while_label(Label, Instrs0, Instrs, Count0, Count)
+	).
+
+:- pred output_instruction_list(list(instruction), bool,
+	pair(label, set(label)), set(label), io__state, io__state).
+:- mode output_instruction_list(in, in, in, in, di, uo) is det.
+
+output_instruction_list([], _, _, _) --> [].
+output_instruction_list([Instr0 - Comment0 | Instrs], PrintComments,
+		ProfInfo, WhileSet) -->
+	output_instruction_and_comment(Instr0, Comment0, PrintComments,
+		ProfInfo),
+	( { Instr0 = label(Label), set__member(Label, WhileSet) } ->
+		io__write_string("\twhile (1) {\n"),
+		output_instruction_list_while(Instrs, Label, PrintComments,
+			ProfInfo, WhileSet)
+	;
+		output_instruction_list(Instrs, PrintComments,
+			ProfInfo, WhileSet)
+	).
+
+:- pred output_instruction_list_while(list(instruction), label,
+	bool, pair(label, set(label)), set(label), io__state, io__state).
+:- mode output_instruction_list_while(in, in, in, in, in, di, uo) is det.
+
+output_instruction_list_while([], _, _, _, _) -->
+	io__write_string("\tbreak; } /* end while */\n").
+output_instruction_list_while([Instr0 - Comment0 | Instrs], Label,
+		PrintComments, ProfInfo, WhileSet) -->
+	( { Instr0 = label(_) } ->
+		io__write_string("\tbreak; } /* end while */\n"),
+		output_instruction_list([Instr0 - Comment0 | Instrs],
+			PrintComments, ProfInfo, WhileSet)
+	; { Instr0 = goto(label(Label)) } ->
+		io__write_string("\t/* continue */ } /* end while */\n"),
+		output_instruction_list(Instrs,
+			PrintComments, ProfInfo, WhileSet)
+	; { Instr0 = if_val(Rval, label(Label)) } ->
+		io__write_string("\t{ "),
+		{ set__init(DeclSet0) },
+		output_rval_decls(Rval, DeclSet0, DeclSet1),
+		output_code_addr_decls(label(Label), DeclSet1, _),
+		io__write_string("if ("),
+		output_rval(Rval),
+		io__write_string(")\n\t\tcontinue; }\n"),
+		( { PrintComments = yes, Comment0 \= "" } ->
+			io__write_string("\t\t/* "),
+			io__write_string(Comment0),
+			io__write_string(" */\n")
+		;
+			[]
+		),
+		output_instruction_list_while(Instrs, Label, PrintComments,
+			ProfInfo, WhileSet)
+	;
+		output_instruction_and_comment(Instr0, Comment0, PrintComments,
+			ProfInfo),
+		output_instruction_list_while(Instrs, Label, PrintComments,
+			ProfInfo, WhileSet)
+	).
+
+:- pred output_instruction_and_comment(instr, string, bool,
+	pair(label, set(label)), io__state, io__state).
+:- mode output_instruction_and_comment(in, in, in, in, di, uo) is det.
+
+output_instruction_and_comment(Instr, Comment, PrintComments, ProfInfo) -->
 	(
-		{ Comment0 \= "" },
-		{ PrintAutoComments = yes }
-	->
-		io__write_string("\t\t/* "),
-		io__write_string(Comment0),
-		io__write_string(" */\n")
+		{ PrintComments = no },
+		( { Instr = comment(_) ; Instr = livevals(_) } ->
+			[]
+		;
+			output_instruction(Instr, ProfInfo),
+			io__write_string("\n")
+		)
 	;
-		[]
-	),
-	output_instruction_list(Instrs, ProfInfo).
+		{ PrintComments = yes },
+		output_instruction(Instr, ProfInfo),
+		io__write_string("\n"),
+		( { Comment = "" } ->
+			[]
+		;
+			io__write_string("\t\t/* "),
+			io__write_string(Comment),
+			io__write_string(" */\n")
+		)
+	).
 
 	% The three-argument output_instruction is only for debugging.
 
@@ -657,34 +770,21 @@ output_instruction(Instr) -->
 :- mode output_instruction(in, in, di, uo) is det.
 
 output_instruction(comment(Comment), _) -->
-	globals__io_lookup_bool_option(auto_comments, PrintAutoComments),
-	(
-		{ Comment \= "" },
-		{ PrintAutoComments = yes }
-	->
-		io__write_strings(["/* ", Comment, " */"])
-	;
-		[]
-	).
+	io__write_strings(["/* ", Comment, " */"]).
 
 output_instruction(livevals(LiveVals), _) -->
-	globals__io_lookup_bool_option(auto_comments, PrintAutoComments),
-	(
-		{ PrintAutoComments = yes }
-	->
-		io__write_string("/*\n * Live lvalues:\n"),
-		{ set__to_sorted_list(LiveVals, LiveValsList) },
-		output_livevals(LiveValsList),
-		io__write_string(" */")
-	;
-		[]
-	).
+	io__write_string("/*\n * Live lvalues:\n"),
+	{ set__to_sorted_list(LiveVals, LiveValsList) },
+	output_livevals(LiveValsList),
+	io__write_string(" */").
 
 output_instruction(block(N, Instrs), ProfInfo) -->
 	io__write_string("\t{ Word "),
 	output_temp_decls(N),
 	io__write_string(";\n"),
-	output_instruction_list(Instrs, ProfInfo),
+	globals__io_lookup_bool_option(auto_comments, PrintComments),
+	{ set__init(WhileSet0) },
+	output_instruction_list(Instrs, PrintComments, ProfInfo, WhileSet0),
 	io__write_string("\t}\n").
 
 output_instruction(assign(Lval, Rval), _) -->

@@ -24,9 +24,8 @@
 :- pred code_aux__goal_is_flat(hlds__goal).
 :- mode code_aux__goal_is_flat(in) is semidet.
 
-:- pred code_aux__contains_simple_recursive_call(hlds__goal, bool,
-	code_info, code_info).
-:- mode code_aux__contains_simple_recursive_call(in, out, in, out) is semidet.
+:- pred code_aux__contains_simple_recursive_call(hlds__goal, code_info, bool).
+:- mode code_aux__contains_simple_recursive_call(in, in, out) is semidet.
 
 :- pred code_aux__pre_goal_update(hlds__goal_info, code_info, code_info).
 :- mode code_aux__pre_goal_update(in, in, out) is det.
@@ -126,22 +125,20 @@ code_aux__goal_is_flat_list([Goal|Goals]) :-
 
 %-----------------------------------------------------------------------------%
 
-code_aux__contains_simple_recursive_call(Goal - _, Last, CodeInfo, CodeInfo) :-
+code_aux__contains_simple_recursive_call(Goal - _, CodeInfo, Last) :-
 	Goal = conj(Goals),
-	code_aux__contains_simple_recursive_call_2(Goals, Last, CodeInfo, _).
+	code_aux__contains_simple_recursive_call_2(Goals, CodeInfo, Last).
 
-:- pred code_aux__contains_simple_recursive_call_2(list(hlds__goal),
-	bool, code_info, code_info).
-:- mode code_aux__contains_simple_recursive_call_2(in, out, in, out) is semidet.
+:- pred code_aux__contains_simple_recursive_call_2(list(hlds__goal), code_info,
+	bool).
+:- mode code_aux__contains_simple_recursive_call_2(in, in, out) is semidet.
 
-code_aux__contains_simple_recursive_call_2([Goal|Goals], Last,
-		CodeInfo, CodeInfo) :-
+code_aux__contains_simple_recursive_call_2([Goal|Goals], CodeInfo, Last) :-
 	Goal = GoalExpr - _,
 	(
 		code_aux__contains_only_builtins_2(GoalExpr)
 	->
-		code_aux__contains_simple_recursive_call_2(Goals, Last,
-			CodeInfo, _)
+		code_aux__contains_simple_recursive_call_2(Goals, CodeInfo, Last)
 	;
 		code_aux__is_recursive_call(GoalExpr, CodeInfo),
 		( Goals = [] ->

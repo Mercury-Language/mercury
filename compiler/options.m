@@ -106,6 +106,7 @@
 		;	gcc_non_local_gotos
 		;	gcc_global_registers
 		;	asm_labels
+		;	emit_c_loops
 	% Optimisation Options
 		;	optimize
 		;	optimize_peep
@@ -231,7 +232,8 @@ option_defaults_2(code_gen_option, [
 	link_flags		-	string(""),
 	gcc_non_local_gotos	-	bool(yes),
 	gcc_global_registers	-	bool(yes),
-	asm_labels		-	bool(yes)
+	asm_labels		-	bool(yes),
+	emit_c_loops		-	bool(yes)
 ]).
 option_defaults_2(optimization_option, [
 		% Optimization options
@@ -368,6 +370,7 @@ long_option("c-include-directory",	c_include_directory).
 long_option("gcc-non-local-gotos",	gcc_non_local_gotos).
 long_option("gcc-global-registers",	gcc_global_registers).
 long_option("asm-labels",		asm_labels).
+long_option("emit-c-loops",		emit_c_loops).
 long_option("auto-comments",		auto_comments).
 long_option("optimize",			optimize).
 long_option("optimise",			optimize).
@@ -567,7 +570,11 @@ options_help -->
 
 	io__write_string("\nCode generation options\n"),
 	io__write_string("\t--no-trad-passes\n"),
-	io__write_string("\t\tGenerate code by phases, not by predicates.\n"),
+	io__write_string("\t\tThe default --trad-passes completely processes each predicate\n"),
+	io__write_string("\t\tbefore going on to the next predicate.\n"),
+	io__write_string("\t\tThis option tells the compiler\n"),
+	io__write_string("\t\tto complete each phase of code generation on all predicates\n"),
+	io__write_string("\t\tbefore going on the next phase on all predicates.\n"),
 	% io__write_string("\t--no-polymorphism\n"),
 	% io__write_string("\t\tDon't handle polymorphic types.\n"),
 	% io__write_string("\t\t(Generates slightly more efficient code, but stops\n"),
@@ -587,6 +594,8 @@ options_help -->
 	io__write_string("\t\tto the fail or redo code in the runtime system.\n"),
 	io__write_string("\t--no-simple-neg\n"),
 	io__write_string("\t\tDon't generate simplified code for simple negations.\n"),
+	io__write_string("\t--no-emit-c-loops\n"),
+	io__write_string("\t\tUse only gotos, don't emit C loop constructs.\n"),
 	io__write_string("\t--cc <compiler-name>\n"),
 	io__write_string("\t\tSpecify which C compiler to use.\n"),
 	io__write_string("\t--c-include-directory <dir>\n"),

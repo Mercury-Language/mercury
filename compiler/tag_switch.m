@@ -25,7 +25,7 @@
 
 :- implementation.
 
-:- import_module options, globals, code_gen.
+:- import_module options, globals, code_gen, code_exprn.
 :- import_module map, tree, type_util, std_util, int, require.
 
 % where is the secondary tag (if any) for this primary tag value
@@ -69,10 +69,22 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, EndLabel, Code) -->
 	{ tag_switch__group_tags(Cases, TagCaseMap0, TagCaseMap) },
 	{ tag_switch__order_tags(TagCountList, TagCaseMap, TagCaseList) },
 
+	% We get a register for holding the tag. The tag is needed only
+	% by the switch, and noe other code gets control between producing
+	% the tag value and all uses of it, so we can release the register
+	% for use by the code of the various cases.
+	code_info__produce_variable(Var, VarCode, VarRval),
+	code_info__acquire_reg(TagReg),
+	code_info__release_reg(TagReg),
+	{ TagCode = node([assign(reg(TagReg), unop(tag, VarRval))
+			- "compute tag to switch on"]) },
+	{ TagRval = lval(reg(TagReg)) },
+
 	code_info__get_next_label(FailLabel),
-	code_info__produce_variable(Var, VarCode, Rval),
-	tag_switch__generate_primary_tag_codes(TagCaseList, Var, Rval,
-		CodeModel, CanFail, EndLabel, FailLabel, TagCountMap, CasesCode),
+	tag_switch__generate_primary_tag_codes(TagCaseList, Var,
+		TagRval, VarRval, CodeModel, CanFail, EndLabel, FailLabel,
+		TagCountMap, CasesCode),
+
 	% we generate FailCode and EndCode here because the last case within
 	% a primary tag may not be the last case overall
 	(
@@ -86,22 +98,24 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, EndLabel, Code) -->
 			FailCode1) }
 	),
 	{ EndCode = node([label(EndLabel) - "end of tag switch"]) },
-	{ Code = tree(tree(VarCode, CasesCode), tree(FailCode, EndCode)) }.
+	{ Code = tree(tree(tree(VarCode, TagCode), CasesCode),
+		tree(FailCode, EndCode)) }.
 
 	% Generate a series of if-then-elses, one for each primary tag value.
 	% Jump tables are used only on secondary tags.
 
 :- pred tag_switch__generate_primary_tag_codes(tag_case_list,
-	var, rval, code_model, can_fail, label, label,
+	var, rval, rval, code_model, can_fail, label, label,
 	tag_count_map, code_tree, code_info, code_info).
-:- mode tag_switch__generate_primary_tag_codes(in, in, in, in, in, in, in,
+:- mode tag_switch__generate_primary_tag_codes(in, in, in, in, in, in, in, in,
 	in, out, in, out) is det.
 
-tag_switch__generate_primary_tag_codes([], _Var, _Rval, _CodeModel, _CanFail,
-		_EndLabel, _FailLabel, _TagCountMap, empty) -->
+tag_switch__generate_primary_tag_codes([], _Var, _TagRval, _VarRval, _CodeModel,
+		_CanFail, _EndLabel, _FailLabel, _TagCountMap, empty) -->
 	[].
-tag_switch__generate_primary_tag_codes([TagGroup | TagGroups], Var, Rval,
-		CodeModel, CanFail, EndLabel, FailLabel, TagCountMap, Code) -->
+tag_switch__generate_primary_tag_codes([TagGroup | TagGroups],
+		Var, TagRval, VarRval, CodeModel, CanFail,
+		EndLabel, FailLabel, TagCountMap, Code) -->
 	{ TagGroup = Primary - (StagLoc - TagGoalMap) },
 	{ map__lookup(TagCountMap, Primary, CountInfo) },
 	{ CountInfo = StagLoc1 - MaxSecondary },
@@ -115,13 +129,12 @@ tag_switch__generate_primary_tag_codes([TagGroup | TagGroups], Var, Rval,
 	->
 		code_info__grab_code_info(CodeInfo),
 		code_info__get_next_label(ElseLabel),
-		% XXX may be able to dispense with the tag operation
-		{ TestRval = binop(ne, unop(tag, Rval),
+		{ TestRval = binop(ne, TagRval,
 			unop(mktag, const(int_const(Primary)))) },
 		{ TestCode = node([if_val(TestRval, label(ElseLabel))
 			- "test primary tag only"]) },
 		tag_switch__generate_primary_tag_code(TagGoalMap,
-			Primary, MaxSecondary, StagLoc, Rval, CodeModel,
+			Primary, MaxSecondary, StagLoc, VarRval, CodeModel,
 			EndLabel, FailLabel, TagCode),
 		{ ElseCode = node([
 			goto(label(EndLabel)) - "skip to end of tag switch",
@@ -134,11 +147,11 @@ tag_switch__generate_primary_tag_codes([TagGroup | TagGroups], Var, Rval,
 		)
 	;
 		tag_switch__generate_primary_tag_code(TagGoalMap,
-			Primary, MaxSecondary, StagLoc, Rval, CodeModel,
+			Primary, MaxSecondary, StagLoc, VarRval, CodeModel,
 			EndLabel, FailLabel, ThisTagCode)
 	),
 	tag_switch__generate_primary_tag_codes(TagGroups,
-		Var, Rval, CodeModel, CanFail, EndLabel, FailLabel,
+		Var, TagRval, VarRval, CodeModel, CanFail, EndLabel, FailLabel,
 		TagCountMap, OtherTagsCode),
 	{ Code = tree(ThisTagCode, OtherTagsCode) }.
 
@@ -161,7 +174,8 @@ tag_switch__generate_primary_tag_code(GoalMap, Primary, MaxSecondary,
 		)
 	;
 		code_info__get_globals(Globals),
-		{ globals__lookup_int_option(Globals, dense_switch_size, Size) },
+		{ globals__lookup_int_option(Globals, dense_switch_size,
+			Size) },
 		{ MaxSecondary < Size }
 	->
 		tag_switch__generate_secondary_tag_tests(GoalList, Rval,
@@ -248,10 +262,12 @@ tag_switch__generate_secondary_tag_codes(CaseList, CurSecondary, MaxSecondary,
 		( { CaseList = [CurSecondary - Goal | CaseList1] } ->
 			code_info__get_next_label(NewLabel),
 			( { CaseList1 = [] } ->
-				code_gen__generate_forced_goal(CodeModel, Goal, GoalCode)
+				code_gen__generate_forced_goal(CodeModel, Goal,
+					GoalCode)
 			;
 				code_info__grab_code_info(CodeInfo),
-				code_gen__generate_forced_goal(CodeModel, Goal, GoalCode),
+				code_gen__generate_forced_goal(CodeModel, Goal,
+					GoalCode),
 				code_info__slap_code_info(CodeInfo)
 			),
 			{ LabelCode = node([label(NewLabel) -
