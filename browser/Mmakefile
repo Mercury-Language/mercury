@@ -62,6 +62,10 @@ LDLIBS	=	-l$(STD_LIB_NAME) -l$(RT_LIB_NAME) \
 # not working in this directory.
 MCFLAGS += --no-warn-smart-recompilation
 
+# XXX There is a bug in deforestation which causes the compiler
+# to abort compiling declarative_user.m.
+MCFLAGS-mdb.declarative_user = --no-deforestation
+
 MTAGS	=	$(SCRIPTS_DIR)/mtags
 
 #-----------------------------------------------------------------------------#
