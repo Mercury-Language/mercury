@@ -315,6 +315,8 @@
 
 #define TYPELAYOUT_MAX_VARINT		1024
 
+#define TYPEINFO_IS_VARIABLE(T)		( (Word) T <= TYPELAYOUT_MAX_VARINT )
+
 /*
 ** Offsets into the type_layout structure for functors and arities.
 **
@@ -590,7 +592,7 @@
 	*/
 
 typedef struct {
-	Word enum_or_comp_const;
+	int enum_or_comp_const;
 	Word num_sharers;		
 	ConstString functor1;
 /* other functors follow, num_sharers of them.
@@ -598,6 +600,9 @@ typedef struct {
 ** 	...
 */
 } MR_TypeLayout_EnumVector;
+
+#define MR_TYPELAYOUT_ENUM_VECTOR_IS_ENUM(Vector)			\
+	((MR_TypeLayout_EnumVector *) (Vector))->enum_or_comp_const
 
 #define MR_TYPELAYOUT_ENUM_VECTOR_NUM_FUNCTORS(Vector)			\
 	((MR_TypeLayout_EnumVector *) (Vector))->num_sharers
@@ -630,6 +635,25 @@ typedef struct {
 		((Word) ((V)[MR_TYPELAYOUT_SIMPLE_VECTOR_ARITY(V) +	\
 			MR_TYPELAYOUT_SIMPLE_VECTOR_OFFSET_FOR_FUNCTOR_TAG]))
 
+	/*
+	** Macros for dealing with complicated vectors.
+	*/
+
+typedef struct {
+	Word num_sharers;		
+	Word simple_vector1;
+/* other simple_vectors follow, num_sharers of them.
+**	Word simple_vector2;
+** 	...
+*/
+} MR_TypeLayout_ComplicatedVector;
+
+#define MR_TYPELAYOUT_COMPLICATED_VECTOR_NUM_SHARERS(Vector) 	\
+	((MR_TypeLayout_ComplicatedVector *) (Vector))->num_sharers
+
+#define MR_TYPELAYOUT_COMPLICATED_VECTOR_GET_SIMPLE_VECTOR(Vector, N) 	\
+	( (&((MR_TypeLayout_ComplicatedVector *)(Vector))->simple_vector1) [N] )
+		
 	/* 
 	** Macros for dealing with no_tag vectors 
 	**
@@ -637,18 +661,39 @@ typedef struct {
 	*/
 
 typedef struct {
-	Word arity;
+	int is_no_tag;
 	Word arg;
 	ConstString name;
 } MR_TypeLayout_NoTagVector;
 
+#define MR_TYPELAYOUT_NO_TAG_VECTOR_IS_NO_TAG(Vector)			\
+		((MR_TypeLayout_NoTagVector *) (Vector))->is_no_tag
+
 #define MR_TYPELAYOUT_NO_TAG_VECTOR_ARITY(Vector)			\
 		(1)
+
 #define MR_TYPELAYOUT_NO_TAG_VECTOR_ARGS(Vector)			\
-		(&(((MR_TypeLayout_NoTagVector *) (Vector))->arg))
+		&(((MR_TypeLayout_NoTagVector *) (Vector))->arg)
 		
 #define MR_TYPELAYOUT_NO_TAG_VECTOR_FUNCTOR_NAME(Vector)		\
-		(((MR_TypeLayout_NoTagVector *) (Vector))->name)
+		((MR_TypeLayout_NoTagVector *) (Vector))->name
+
+	/* 
+	** Macros for dealing with equivalent vectors 
+	*/	
+
+typedef struct {
+	int is_no_tag;		/* might be a no_tag */
+	Word equiv_type;
+} MR_TypeLayout_EquivVector;
+
+#define MR_TYPELAYOUT_EQUIV_OFFSET_FOR_TYPE	((Integer) 1)
+
+#define MR_TYPELAYOUT_EQUIV_IS_EQUIV(Vector)				\
+		(!((MR_TypeLayout_EquivVector *) (Vector))->is_no_tag)
+
+#define MR_TYPELAYOUT_EQUIV_TYPE(Vector)				\
+		((MR_TypeLayout_EquivVector *) (Vector))->equiv_type
 
 /*---------------------------------------------------------------------------*/
 

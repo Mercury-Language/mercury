@@ -702,7 +702,6 @@ univ(X) = Univ :- type_to_univ(X, Univ).
 
 univ_value(Univ) = X :- type_to_univ(X, Univ).
 
-
 :- pragma c_header_code("
 
 #include ""type_info.h""
@@ -1347,7 +1346,6 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 		FunctorName::out, Arity::out, TypeInfoList::out), 
 	will_not_call_mercury, "
 {
-	int i;
 	ML_Construct_Info info;
 	bool success;
 
@@ -1383,9 +1381,7 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 :- pragma c_code(construct(TypeInfo::in, FunctorNumber::in, ArgList::in) =
 	(Term::out), will_not_call_mercury, "
 {
-	Word 	arg_list, arg_type_info, layout_entry, new_data, 
-		term_vector, list_arg_type_info;
-	int i;
+	Word 	layout_entry, new_data, term_vector;
 	ML_Construct_Info info;
 	bool success;
 
@@ -1963,28 +1959,17 @@ static void mercury_expand_complicated(Word data_value, Word entry_value,
 void 
 mercury_expand(Word* type_info, Word data_word, ML_Expand_Info *info)
 {
-	Word *base_type_info, *arg_type_info, *base_type_layout;
+	Word *base_type_info, *arg_type_info;
 	Word data_value, entry_value, base_type_layout_entry;
 	int entry_tag, data_tag; 
 
-	base_type_info = (Word *) type_info[0];
-
-		/* 
-		 * Find the base_type_info - type_infos for types with no args 
-		 * are themselves base_type_infos
-		 */
-
-	if(base_type_info == 0) {
-		base_type_info = type_info;
-	}
-
-		/* Retrieve base_type_layout */
-	base_type_layout = (Word *) base_type_info[OFFSET_FOR_BASE_TYPE_LAYOUT];
+	base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(type_info);
 
 	data_tag = tag(data_word);
 	data_value = body(data_word, data_tag);
 	
-	base_type_layout_entry = base_type_layout[data_tag];
+	base_type_layout_entry = MR_BASE_TYPEINFO_GET_TYPELAYOUT_ENTRY(
+		base_type_info, data_tag);
 
 	entry_tag = tag(base_type_layout_entry);
 	entry_value = body(base_type_layout_entry, entry_tag);
@@ -1993,13 +1978,23 @@ mercury_expand(Word* type_info, Word data_word, ML_Expand_Info *info)
 
 	case TYPELAYOUT_CONST_TAG: /* case TYPELAYOUT_COMP_CONST_TAG: */
 
-		/* Is it a builtin or a constant/enum? */ 
+		/* 
+		** This tag represents builtins, enums or complicated
+		** constants.
+		*/ 
 
-		if (entry_value > TYPELAYOUT_MAX_VARINT) {
+		if (TYPEINFO_IS_VARIABLE(entry_value)) {
 
-			/* Check enum indicator */
-
-			if (((Word *) entry_value)[0]) {
+			/* 
+			** It's a builtin, the rest of the layout 
+			** entry value represents the type of builtin.
+			*/
+			entry_value = unmkbody(entry_value);
+			mercury_expand_builtin(data_word, entry_value,
+				info);
+		} else {
+			/* It's a complicated constant or enum */
+			if (MR_TYPELAYOUT_ENUM_VECTOR_IS_ENUM(entry_value)) {
 				mercury_expand_enum(data_word, entry_value, 
 					info);
 			} else {
@@ -2007,10 +2002,6 @@ mercury_expand(Word* type_info, Word data_word, ML_Expand_Info *info)
 				mercury_expand_const(data_value, entry_value, 
 					info);
 			}
-		} else {
-			entry_value = unmkbody(entry_value);
-			mercury_expand_builtin(data_word, entry_value,
-				info);
 		}
 		break;
 
@@ -2025,37 +2016,36 @@ mercury_expand(Word* type_info, Word data_word, ML_Expand_Info *info)
 		break;
 
 	case TYPELAYOUT_EQUIV_TAG: /* case TYPELAYOUT_NO_TAG: */
-	{
-		int allocated = 0; 
 
-#ifdef DEBUG_STD_UTIL__EXPAND
-		fprintf(stderr, ""Equivalent to:\n""); 
-#endif
-
-		/* is it equivalent to a type variable? */
-
-		if (entry_value < TYPELAYOUT_MAX_VARINT) {
+			/* 
+			** Is it a type variable? 
+			*/
+		if (TYPEINFO_IS_VARIABLE(entry_value)) {
 			arg_type_info = create_type_info(type_info, 
 				(Word *) entry_value);
 			mercury_expand(arg_type_info, data_word, info);
 		}
-			/* is it a no_tag type? */
-		else if (((Word *) entry_value)[0]) {
+			/* 
+			** is it a no_tag type?
+			*/
+		else if (MR_TYPELAYOUT_NO_TAG_VECTOR_IS_NO_TAG(entry_value)) {
 			Word new_arg_vector; 
 			incr_saved_hp(new_arg_vector, 1);
 			field(0, new_arg_vector, 0) = data_word;
 			mercury_expand_simple(new_arg_vector, 
 				(Word *) entry_value, type_info, info);
 		}
-			/* is it an equivalent type */
+			/* 
+			** It must be an equivalent type.
+			*/
 		else {
 			arg_type_info = create_type_info(type_info, 
-				(Word *) ((Word *) entry_value)[1]);
+				(Word *) MR_TYPELAYOUT_EQUIV_TYPE(
+					entry_value));
 			mercury_expand(arg_type_info, data_word, info);
 		}
 
-	}
-	break;
+		break;
 
 	default:
 		/* If this happens, the layout data is corrupt */
@@ -2072,17 +2062,11 @@ void
 mercury_expand_const(Word data_value, Word entry_value, ML_Expand_Info *info) 
 {
 
-#ifdef DEBUG_STD_UTIL__EXPAND
-	fprintf(stderr, 
-		""This is a constant functor, %ld of %ld with this tag\n"",
-            data_value + 1, ((Word *) entry_value)[1]); 
-#endif
-
 	/* the functors are stored after the enum_indicator and
 	 * the number of functors
 	 */
-	info->functor = (ConstString) ((Word *) entry_value)[data_value +
-		TYPELAYOUT_CONST_FUNCTOR_OFFSET];	
+	info->functor = MR_TYPELAYOUT_ENUM_VECTOR_FUNCTOR_NAME(entry_value,
+		data_value);
 	info->arity = 0;
 	info->argument_vector = NULL;
 	info->type_info_vector = NULL;
@@ -2094,21 +2078,10 @@ mercury_expand_const(Word data_value, Word entry_value, ML_Expand_Info *info)
  */
 
 void
-mercury_expand_enum(Word data_value, Word entry_value, ML_Expand_Info *info) 
+mercury_expand_enum(Word data_value, Word enum_vector, ML_Expand_Info *info) 
 {
-
-#ifdef DEBUG_STD_UTIL__EXPAND
-	fprintf(stderr, 
-		""This is a constant functor, %ld of %ld in this enum\n"",
-            data_value + 1, ((Word *) entry_value)[1]); 
-#endif
-
-	/* the functors are stored after the enum_indicator and
-	 * the number of functors
-	 */
-
-	info->functor = (ConstString) ((Word *) entry_value)[data_value + 
-		TYPELAYOUT_ENUM_FUNCTOR_OFFSET];	
+	info->functor = MR_TYPELAYOUT_ENUM_VECTOR_FUNCTOR_NAME(enum_vector,
+		data_value);
 	info->arity = 0;
 	info->argument_vector = NULL;
 	info->type_info_vector = NULL;
@@ -2126,17 +2099,17 @@ mercury_expand_enum(Word data_value, Word entry_value, ML_Expand_Info *info)
  *
  */
 void 
-mercury_expand_simple(Word data_value, Word* arg_type_infos, Word * type_info,
+mercury_expand_simple(Word data_value, Word* simple_vector, Word * type_info,
 	ML_Expand_Info *info)
 {
 	int i;
 
-	info->arity = arg_type_infos[TYPELAYOUT_SIMPLE_ARITY_OFFSET];
-
+	info->arity = MR_TYPELAYOUT_SIMPLE_VECTOR_ARITY(simple_vector);
+	
 	if (info->need_functor) {
 		make_aligned_string(info->functor, 
-			(String) arg_type_infos[info->arity + 
-			TYPELAYOUT_SIMPLE_FUNCTOR_OFFSET]);
+			MR_TYPELAYOUT_SIMPLE_VECTOR_FUNCTOR_NAME(
+				simple_vector));
 	}
 
 	if (info->need_args) {
@@ -2146,12 +2119,14 @@ mercury_expand_simple(Word data_value, Word* arg_type_infos, Word * type_info,
 			checked_malloc(info->arity * sizeof(Word));
 
 		for (i = 0; i < info->arity ; i++) {
-			Word * arg_pseudo_type_info;
+			Word *arg_pseudo_type_info;
 
-			arg_pseudo_type_info = (Word *) arg_type_infos[i + 1];
+			arg_pseudo_type_info = (Word *)
+				MR_TYPELAYOUT_SIMPLE_VECTOR_ARGS(
+					simple_vector)[i];
 			info->type_info_vector[i] = (Word) 
 				create_type_info(type_info, 
-					(Word *) arg_pseudo_type_info);
+					arg_pseudo_type_info);
 		}
 	}
 }
@@ -2172,22 +2147,17 @@ void
 mercury_expand_complicated(Word data_value, Word entry_value, Word * type_info,
 	ML_Expand_Info *info)
 {
-	Word new_data_value, new_entry_value, new_entry_body,
-		new_entry_tag, secondary_tag;
+	Word new_data_value, simple_vector, simple_vector_tag, secondary_tag;
 
 	secondary_tag = ((Word *) data_value)[0];
-
-#ifdef DEBUG_STD_UTIL__EXPAND
-	fprintf(stderr, ""This is %ld of %ld functors sharing this tag\n"",
-		secondary_tag + 1, ((Word *) entry_value)[0]); 
-#endif
-
-	new_entry_value = ((Word *) entry_value)[secondary_tag + 1];
-	new_entry_tag = tag(new_entry_value);
-	new_entry_body = body(new_entry_value, new_entry_tag);
 	new_data_value = (Word) ((Word *) data_value + 1);
 
-	mercury_expand_simple(new_data_value, (Word *) new_entry_body, 
+	simple_vector = MR_TYPELAYOUT_COMPLICATED_VECTOR_GET_SIMPLE_VECTOR(
+		entry_value, secondary_tag);
+	simple_vector_tag = tag(simple_vector);
+	simple_vector = body(simple_vector, simple_vector_tag);
+
+	mercury_expand_simple(new_data_value, (Word *) simple_vector, 
 		type_info, info);
 }
 
@@ -2293,6 +2263,23 @@ mercury_expand_builtin(Word data_value, Word entry_value, ML_Expand_Info *info)
 		info->arity = 0;
 		break;
 
+	case TYPELAYOUT_VOID_VALUE:
+		fatal_error(""mercury_expand: found void"");
+		break;
+
+	case TYPELAYOUT_UNIQ_ARRAY_VALUE:
+		fatal_error(""mercury_expand: found uniq_array"");
+		break;
+
+	case TYPELAYOUT_TYPEINFO_VALUE:
+		fatal_error(""mercury_expand: found type_info"");
+		break;
+
+	case TYPELAYOUT_C_POINTER_VALUE:
+		fatal_error(""mercury_expand: found c_pointer"");
+		break;
+		
+		
 	default:
 		fatal_error(""Invalid tag value in expand"");
 		break;
@@ -2357,7 +2344,7 @@ create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 		** if so - substitute.
 		*/
 
-	if ((Word) arg_pseudo_type_info < TYPELAYOUT_MAX_VARINT) {
+	if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
 		arg_pseudo_type_info = (Word *) 
 			term_type_info[(Word) arg_pseudo_type_info];
 	}
@@ -2368,7 +2355,7 @@ create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 	if (arg_pseudo_type_info == NULL) {
 		return (Word *) (Word) &mercury_data___base_type_info_void_0;
 	}
-	else if ((Word) arg_pseudo_type_info < TYPELAYOUT_MAX_VARINT) {
+	else if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
 		fatal_error(""unbound type variable"");
 	}
 
@@ -2384,7 +2371,7 @@ create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 	incr_saved_hp(LVALUE_CAST(Word, type_info), arity + 1);
 
 	for (i = 0; i <= arity; i++) {
-		if (arg_pseudo_type_info[i] < TYPELAYOUT_MAX_VARINT) {
+		if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info[i])) {
 			type_info[i] = term_type_info[arg_pseudo_type_info[i]];
 
 			/* 
@@ -2395,7 +2382,7 @@ create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 				type_info[i] = (Word) 
 					&mercury_data___base_type_info_void_0;
 			}
-			else if (type_info[i] < TYPELAYOUT_MAX_VARINT) {
+			else if (TYPEINFO_IS_VARIABLE(type_info[i])) {
 				fatal_error(""unbound type variable"");
 			}
 
@@ -2456,7 +2443,7 @@ create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 			/* Allocate enough room for a univ */
 		incr_hp(Argument, 2);
 		arg_pseudo_type_info = info.type_info_vector[ArgumentIndex];
-		if (arg_pseudo_type_info < TYPELAYOUT_MAX_VARINT) {
+		if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
 			field(0, Argument, UNIV_OFFSET_FOR_TYPEINFO) = 
 				((Word *) TypeInfo_for_T)[arg_pseudo_type_info];
 		}
@@ -2533,7 +2520,7 @@ det_argument(Type, ArgumentIndex, Argument) :-
 			/* Fill in the arguments */
 		arg_pseudo_type_info = info.type_info_vector[i];
 
-		if (arg_pseudo_type_info < TYPELAYOUT_MAX_VARINT) {
+		if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
 
 				/* It's a type variable, get its value */
 			field(0, Argument, UNIV_OFFSET_FOR_TYPEINFO) = 
