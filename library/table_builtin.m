@@ -612,6 +612,18 @@ table_io_copy_io_state(_, _) :-
 	% matching foreign_proc version.
 	private_builtin__sorry("table_io_copy_io_state").
 
+table_io_left_bracket_unitized_goal(_TraceEnabled) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry("table_io_left_bracket_unitized_goal").
+
+table_io_right_bracket_unitized_goal(_TraceEnabled) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry("table_io_right_bracket_unitized_goal").
+
 %-----------------------------------------------------------------------------%
 
 :- interface.
