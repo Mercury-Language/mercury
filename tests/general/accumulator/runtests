@@ -15,8 +15,8 @@
 . ../../handle_options
 . ../../startup
 
-mmake $jfactor depend || exit 1
-eval mmake -k $jfactor $gradeopt $flagsopt $cflagsopt check
+eval mmake $mmakeopts depend || exit 1
+eval mmake -k $mmakeopts check
 checkstatus=$?
 
 cat *.res > .allres
@@ -34,21 +34,21 @@ then
     if [ -s INTRODUCED.diff ]; then
         echo "the tests in the general/accumulator directory failed"
         echo "as some predicates didn't have accumulators introduced"
-        echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"
+        echo "mmakeopts=$mmakeopts"
 	    echo "the predicates are:"
         cat INTRODUCED.diff
         exit 1
     fi
 
 	echo "the tests in the general/accumulator directory succeeded"
-	echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"
+	echo "mmakeopts=$mmakeopts"
 	rm -f .allres INTRODUCED.diff
 	. ../../shutdown
 	exit 0
 else
 	echo "the tests in the general/accumulator directory failed"
 	echo "as some test cases didn't produce the correct output"
-	echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"
+	echo "mmakeopts=$mmakeopts"
 	echo "the differences are:"
 	cat .allres
 	exit 1

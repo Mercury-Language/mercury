@@ -9,10 +9,10 @@
 if test "$subdir_failures" = ""
 then
 	echo "all tests have succeeded"
-	echo "gradeopt=$gflag, flagsopt=$fflag, cflagsopt=$cflag"
+	echo "mmakeopts=$mmakeopts"
 	exit 0
 else
 	echo "some tests have failed in: $subdir_failures"
-	echo "gradeopt=$gflag, flagsopt=$fflag, cflagsopt=$cflag"
+	echo "mmakeopts=$mmakeopts"
 	exit 1
 fi

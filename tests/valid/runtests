@@ -5,11 +5,11 @@
 . ../handle_options
 . ../startup
 
-mmake $gradeopt $jfactor depend || exit 1
-eval mmake -k $jfactor $gradeopt $flagsopt $cflagsopt check
+eval mmake $mmakeopts depend || exit 1
+eval mmake -k $mmakeopts check
 checkstatus=$?
 
-objs=`mmake $gradeopt printobjs`
+objs=`mmake $mmakeopts printobjs`
 failed=""
 for obj in $objs
 do
@@ -22,11 +22,11 @@ done
 if test "$failed" = "" -a "$checkstatus" = 0
 then
 	echo "the tests in the valid directory succeeded"
-	echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"
+	echo "mmakeopts=$mmakeopts"
 	. ../shutdown
 	exit 0
 else
 	echo "some tests in the valid directory failed: $failed"
-	echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"
+	echo "mmakeopts=$mmakeopts"
 	exit 1
 fi

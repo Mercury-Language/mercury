@@ -6,21 +6,21 @@
 . ../handle_options
 . ../startup
 
-mmake $jfactor depend || exit 1
-eval mmake -k $jfactor $gradeopt $flagsopt $cflagsopt check
+eval mmake $mmakeopts depend || exit 1
+eval mmake -k $mmakeopts check
 checkstatus=$?
 
 cat *.res > .allres
 if test ! -s .allres -a "$checkstatus" = 0
 then
 	echo "the tests in the tabling directory succeeded"
-	echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"
+	echo "mmakeopts=$mmakeopts"
 	rm -f .allres
 	. ../shutdown
 	exit 0
 else
 	echo "the tests in the tabling directory failed"
-	echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"
+	echo "mmakeopts=$mmakeopts"
 	echo "the differences are:"
 	cat .allres
 	exit 1

@@ -7,8 +7,8 @@ do
         then
                 cd $dir
                 # we need to use `eval' here to get the quoting right in
-                # the case when $fflag or $cflag contains embedded spaces
-                if eval ./runtests $jfactor $gflag $fflag $cflag
+                # the case when $runtestopts contains embedded spaces
+                if eval ./runtests $runtestopts
                 then
                         true
                 else

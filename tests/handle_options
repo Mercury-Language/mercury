@@ -5,6 +5,8 @@ Options:
 		Pass EXTRA_MCFLAGS=<mcflags> as an option to \`mmake check'.
 	-c <cflags>, --cflags <cflags>
 		Pass EXTRA_CFLAGS=<cflags> as an option to \`mmake check'.
+	-l <mlflags>, --mlflags <mlflags>
+		Pass EXTRA_MLFLAGS=<mlflags> as an option to \`mmake check'.
 	-g <grade>, --grade <grade>
 		Pass GRADE=<grade> as an option to \`mmake check'.
 	-j <num-jobs>, --jobs <num-jobs>
@@ -14,6 +16,7 @@ Options:
 jfactor=""
 flagsopt=""
 cflagsopt=""
+mlflagsopt=""
 gradeopt=""
 fflag=""
 cflag=""
@@ -25,6 +28,11 @@ while [ $# -gt 0 ]; do
 	-c|--cflags)
 		cflag="-c '$2'"
 		cflagsopt="EXTRA_CFLAGS='$2'"
+		shift ;;
+
+	-l|--mlflags)
+		lflag="-l '$2'"
+		mlflagsopt="EXTRA_MLFLAGS='$2'"
 		shift ;;
 
 	-f|--flags)
@@ -61,3 +69,6 @@ if [ $# -ne 0 ]; then
 	echo "$usage" 1>&2
 	exit 1
 fi
+
+mmakeopts="$jfactor $flagsopt $cflagsopt $mlflagsopt $gradeopt"
+runtestopts="$jfactor $cflag $lflag $fflag $gflag"
