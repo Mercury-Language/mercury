@@ -11,8 +11,12 @@
 /is[ 	]*det/		{ det_preds++; }
 /is[ 	]*semidet/	{ semidet_preds++; }
 /is[ 	]*nondet/	{ nondet_preds++; }
+/is[ 	]*multi/	{ multidet_preds++; }
+/is[ 	]*erroneous/	{ erroneous_preds++; }
+/is[ 	]*failure/	{ failure_preds++; }
 
 /^:-[ 	]*pred/		{ pred_count++; in_pred = 1; }
+/^:-[ 	]*pred.*::/	{ predmode_count++; in_pred = 1; }
 /^:-[ 	]*mode/		{ mode_count++; in_mode = 1; }
 /^:-[ 	]*type/		{ type_count++; in_type = 1; }
 /^:-[ 	]*inst/		{ inst_count++; in_inst = 1; }
@@ -26,14 +30,19 @@
 }
 /\.[ 	]*$/	{ in_pred = in_mode = in_type = in_inst = in_decl = 0; }
 END {
+	total_mode_count = mode_count + predmode_count;
 	printf("Number of types:                %6d\n", type_count);
 	printf("Number of insts:                %6d\n", inst_count);
 	printf("Number of predicates:           %6d\n", pred_count);
-	printf("Number of modes:                %6d\n", mode_count);
-	printf("        - det:                  %6d (%6.2f%%)\n",				det_preds, 100 * det_preds / mode_count);
-	printf("        - semidet:              %6d (%6.2f%%)\n",				semidet_preds, 100 * semidet_preds / mode_count);
-	printf("        - nondet:               %6d (%6.2f%%)\n",				nondet_preds, 100 * nondet_preds / mode_count);
-	printf("Average modes per predicate:    %6.3f\n",					mode_count / pred_count);
+	printf("Number of predmodes:            %6d\n", predmode_count);
+	printf("Number of separate modes:       %6d\n", mode_count);
+	printf("        - det:                  %6d (%6.2f%%)\n",				det_preds, 100 * det_preds / total_mode_count);
+	printf("        - semidet:              %6d (%6.2f%%)\n",				semidet_preds, 100 * semidet_preds / total_mode_count);
+	printf("        - nondet:               %6d (%6.2f%%)\n",				nondet_preds, 100 * nondet_preds / total_mode_count);
+	printf("        - multi:                %6d (%6.2f%%)\n",				multidet_preds, 100 * multidet_preds / total_mode_count);
+	printf("        - erroneous:            %6d (%6.2f%%)\n",				erroneous_preds, 100 * erroneous_preds / total_mode_count);
+	printf("        - failure:              %6d (%6.2f%%)\n",				failure_preds, 100 * failure_preds / total_mode_count);
+	printf("Average modes per predicate:    %6.3f\n",					total_mode_count / pred_count);
 	printf("\n");
 	printf("Blank lines:                    %6d (%6.2f%%)\n", 				blank, 100 * blank / lines);
 	printf("Comment lines:                  %6d (%6.2f%%)\n",				comments, 100 * comments / lines);

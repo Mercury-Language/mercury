@@ -227,7 +227,8 @@ det_infer_proc(ModuleInfo0, PredId, PredMode, State0, ModuleInfo, State) :-
 	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, Detism1),
 
 		% Take the worst of the old and new detisms.
-		% This is needed to prevent loops on p :- not(p).
+		% This is needed to prevent loops on p :- not(p)
+		% at least if the initial assumed detism is det.
 	determinism_components(Detism0, CanFail0, MaxSoln0),
 	determinism_components(Detism1, CanFail1, MaxSoln1),
 	det_switch_canfail(CanFail0, CanFail1, CanFail),
@@ -282,8 +283,8 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 	goal_info_get_nonlocals(GoalInfo0, NonLocalVars),
 	goal_info_get_instmap_delta(GoalInfo0, DeltaInstMap),
 	apply_instmap_delta(InstMap0, DeltaInstMap, InstMap),
-	det_infer_goal_2(Goal0, InstMap0, MiscInfo, NonLocalVars, DeltaInstMap,
-		Goal1, InternalDetism),
+	det_infer_goal_2(Goal0, GoalInfo0, InstMap0, MiscInfo, NonLocalVars,
+		DeltaInstMap, Goal1, InternalDetism),
 
 	% If a goal with possibly multiple solutions doesn't have any
 	% output variables, then we make it succeed at most once.
@@ -367,25 +368,46 @@ det__disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred det_infer_goal_2(hlds__goal_expr, instmap, misc_info, set(var),
-				instmap_delta, hlds__goal_expr, determinism).
-:- mode det_infer_goal_2(in, in, in, in, in, out, out) is det.
+:- pred det_infer_goal_2(hlds__goal_expr, hlds__goal_info, instmap, misc_info,
+	set(var), instmap_delta, hlds__goal_expr, determinism).
+:- mode det_infer_goal_2(in, in, in, in, in, in, out, out) is det.
 
 	% The determinism of a conjunction is the worst case of the elements
 	% of that conjuction.
 
-det_infer_goal_2(conj(Goals0), InstMap0, MiscInfo, _, _, conj(Goals), Detism) :-
+det_infer_goal_2(conj(Goals0), GoalInfo0, InstMap0, MiscInfo, _, _,
+		Goal, Detism) :-
 	( Goals0 = [SingleGoal0] ->
 		% a singleton conjunction is equivalent to the goal itself
 		det_infer_goal(SingleGoal0, InstMap0, MiscInfo,
 				SingleGoal, _InstMap, Detism),
-		Goals = [SingleGoal]
+		Goal = conj([SingleGoal])
 	;
 		det_infer_conj(Goals0, InstMap0, MiscInfo,
-			cannot_fail, at_most_one, Goals, Detism)
+			cannot_fail, at_most_one, Goals1, Detism),
+		% Conjunctions that cannot produce solutions may nevertheless
+		% contain nondet and multidet goals. If this happens, the part
+		% of the conjunction up to and including the always-failing
+		% goal are put inside a some to appease the code generator.
+		( determinism_components(Detism, CanFail, at_most_zero) ->
+			det_fixup_nosoln_conj(Goals1, Goals, no, NeedCut),
+			( NeedCut = yes ->
+				determinism_components(InnerDetism,
+					CanFail, at_most_many),
+				goal_info_set_determinism(GoalInfo0,
+					InnerDetism, InnerInfo),
+				InnerGoal = conj(Goals) - InnerInfo,
+				Goal = some([], InnerGoal)
+			;
+				Goal = conj(Goals)
+			)
+		;
+			Goal = conj(Goals1)
+		)
 	).
 
-det_infer_goal_2(disj(Goals0), InstMap0, MiscInfo, _, _, disj(Goals), Detism) :-
+det_infer_goal_2(disj(Goals0), _, InstMap0, MiscInfo, _, _,
+		disj(Goals), Detism) :-
 	( Goals0 = [SingleGoal0] ->
 		% a singleton disjunction is equivalent to the goal itself
 		det_infer_goal(SingleGoal0, InstMap0, MiscInfo,
@@ -401,8 +423,8 @@ det_infer_goal_2(disj(Goals0), InstMap0, MiscInfo, _, _, disj(Goals), Detism) :-
 	% then it is semideterministic or worse - this is determined
 	% in switch_detection.m and handled via the SwitchCanFail field.
 
-det_infer_goal_2(switch(Var, SwitchCanFail, Cases0), InstMap0, MiscInfo, _, _,
-		switch(Var, SwitchCanFail, Cases), Detism) :-
+det_infer_goal_2(switch(Var, SwitchCanFail, Cases0), _, InstMap0, MiscInfo,
+		_, _, switch(Var, SwitchCanFail, Cases), Detism) :-
 	det_infer_switch(Cases0, InstMap0, MiscInfo, cannot_fail, at_most_zero,
 		Cases, CasesDetism),
 	determinism_components(CasesDetism, CasesCanFail, CasesSolns),
@@ -413,13 +435,13 @@ det_infer_goal_2(switch(Var, SwitchCanFail, Cases0), InstMap0, MiscInfo, _, _,
 	% This is the point at which annotations start changing
 	% when we iterate to fixpoint for global determinism analysis.
 
-det_infer_goal_2(call(PredId, ModeId, A, B, C, N, F), _, MiscInfo, _, _,
+det_infer_goal_2(call(PredId, ModeId, A, B, C, N, F), _, _, MiscInfo, _, _,
 		call(PredId, ModeId, A, B, C, N, F), Detism) :-
 	det_lookup_detism(MiscInfo, PredId, ModeId, Detism).
 
 	% unifications are either deterministic or semideterministic.
 	% (see det_infer_unify).
-det_infer_goal_2(unify(LT, RT, M, U, C), _, MiscInfo, _, _,
+det_infer_goal_2(unify(LT, RT, M, U, C), _, _, MiscInfo, _, _,
 		unify(LT, RT, M, U, C), D) :-
 	det_infer_unify(U, MiscInfo, D).
 
@@ -427,8 +449,8 @@ det_infer_goal_2(unify(LT, RT, M, U, C), _, MiscInfo, _, _,
 	% and erroneous conditions?
 	% Answer: yes, probably, but it's not a high priority.
 
-det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), InstMap0, MiscInfo,
-		NonLocalVars, DeltaInstMap, Goal, Detism) :-
+det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, InstMap0,
+		MiscInfo, NonLocalVars, DeltaInstMap, Goal, Detism) :-
 	det_infer_goal(Cond0, InstMap0, MiscInfo, Cond, InstMap1, CondDetism),
 	determinism_components(CondDetism, CondCanFail, CondSolns),
 	( CondCanFail = cannot_fail ->
@@ -442,7 +464,7 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), InstMap0, MiscInfo,
 		goal_to_conj_list(Cond, CondList),
 		goal_to_conj_list(Then0, ThenList),
 		list__append(CondList, ThenList, List),
-		det_infer_goal_2(conj(List), InstMap0, MiscInfo,
+		det_infer_goal_2(conj(List), GoalInfo0, InstMap0, MiscInfo,
 			NonLocalVars, DeltaInstMap, Goal, Detism)
 /***********
 % The following optimization is not semantically valid if Cond can raise
@@ -466,7 +488,7 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), InstMap0, MiscInfo,
 		determinism_components(Detism, CanFail, Solns)
 	).
 
-	% Negations are always semideterministic.  It is an error for
+	% Negations are almost always semideterministic.  It is an error for
 	% a negation to further instantiate any non-local variable. Such
 	% errors will be reported by the mode analysis.
 	%
@@ -474,39 +496,45 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), InstMap0, MiscInfo,
 	% cannot succeed or cannot fail?
 	% Answer: yes, probably, but it's not a high priority.
 
-det_infer_goal_2(not(Goal0), InstMap0, MiscInfo, _, _, Goal, Det) :-
+det_infer_goal_2(not(Goal0), _, InstMap0, MiscInfo, _, _, Goal, Det) :-
 	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal1, _InstMap, NegDet),
-	det_negation_det(NegDet, Det),
+	det_negation_det(NegDet, MaybeDet),
 	(
-	% replace `not true' with `fail'
-		Goal1 = conj([]) - _GoalInfo
-	->
-		Goal = disj([])
+		MaybeDet = no,
+		error("inappropriate determinism inside a negation")
 	;
-	% replace `not fail' with `true'
-		Goal1 = disj([]) - _GoalInfo2
-	->
-		Goal = conj([])
-	;
-		Goal = not(Goal1)
+		MaybeDet = yes(Det),
+		(
+		% replace `not true' with `fail'
+			Goal1 = conj([]) - _GoalInfo
+		->
+			Goal = disj([])
+		;
+		% replace `not fail' with `true'
+			Goal1 = disj([]) - _GoalInfo2
+		->
+			Goal = conj([])
+		;
+			Goal = not(Goal1)
+		)
 	).
-% The following optimizations are generic versions of the ones above,
-% but they are semantically valid only if we know that the goal concerned
-% cannot raise exceptions.
-%	determinism_components(NegDet, NegCanFail, NegSolns),
-%	( NegCanFail = cannot_fail, NegDet \= erroneous ->
-%		Goal = disj([])
-%	; NegSolns = at_most_zero ->
-%		Goal = conj([])
-%	;
-%		Goal = not(Goal1)
-%	).
+	% The following optimizations are generic versions of the ones above,
+	% but they are semantically valid only if we know that the goal
+	% concerned cannot raise exceptions.
+	%	determinism_components(NegDet, NegCanFail, NegSolns),
+	%	( NegCanFail = cannot_fail, NegDet \= erroneous ->
+	%		Goal = disj([])
+	%	; NegSolns = at_most_zero ->
+	%		Goal = conj([])
+	%	;
+	%		Goal = not(Goal1)
+	%	).
 
 	% Existential quantification may require a cut to throw away solutions,
 	% but we cannot rely on explicit quantification to detect this.
 	% Therefore cuts are handled in det_infer_goal.
 
-det_infer_goal_2(some(Vars, Goal0), InstMap0, MiscInfo, _, _,
+det_infer_goal_2(some(Vars, Goal0), _, InstMap0, MiscInfo, _, _,
 			some(Vars, Goal), Det) :-
 	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, Det).
 
@@ -530,6 +558,28 @@ det_infer_conj([Goal0 | Goals0], InstMap0, MiscInfo, CanFail0, MaxSolns0,
 	det_conjunction_maxsoln(MaxSolns0, MaxSolns1, MaxSolns2),
 	det_infer_conj(Goals0, InstMap1, MiscInfo, CanFail2, MaxSolns2,
 		Goals, Detism).
+
+:- pred det_fixup_nosoln_conj(list(hlds__goal), list(hlds__goal), bool, bool).
+:- mode det_fixup_nosoln_conj(in, out, in, out) is det.
+
+det_fixup_nosoln_conj([], _, _, _) :-
+	error("conjunction without solutions has no failing goal").
+det_fixup_nosoln_conj([Goal0 | Goals0], Goals, NeedCut0, NeedCut) :-
+	Goal0 = _ - GoalInfo0,
+	goal_info_get_determinism(GoalInfo0, Detism0),
+	determinism_components(Detism0, _, MaxSolns0),
+	( MaxSolns0 = at_most_zero ->
+		Goals = [Goal0],
+		NeedCut = NeedCut0
+	;
+		( MaxSolns0 = at_most_many ->
+			NeedCut1 = yes
+		;
+			NeedCut1 = NeedCut0
+		),
+		det_fixup_nosoln_conj(Goals0, Goals1, NeedCut1, NeedCut),
+		Goals = [Goal0 | Goals1]
+	).
 
 :- pred det_infer_disj(list(hlds__goal), instmap, misc_info,
 	can_fail, soln_count, list(hlds__goal), determinism).
@@ -653,15 +703,15 @@ det_switch_canfail(can_fail,    cannot_fail, can_fail).
 det_switch_canfail(cannot_fail, can_fail,    can_fail).
 det_switch_canfail(cannot_fail, cannot_fail, cannot_fail).
 
-:- pred det_negation_det(determinism, determinism).
+:- pred det_negation_det(determinism, maybe(determinism)).
 :- mode det_negation_det(in, out) is det.
 
-det_negation_det(det,		failure).
-det_negation_det(semidet,	semidet).
-det_negation_det(multidet,	failure).
-det_negation_det(nondet,	semidet).
-det_negation_det(erroneous,	erroneous).
-det_negation_det(failure,	det).
+det_negation_det(det,		yes(failure)).
+det_negation_det(semidet,	yes(semidet)).
+det_negation_det(multidet,	no).
+det_negation_det(nondet,	no).
+det_negation_det(erroneous,	yes(erroneous)).
+det_negation_det(failure,	yes(det)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
