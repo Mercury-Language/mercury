@@ -123,11 +123,11 @@ io__call(Goal) :-
 :- pred io__call_2(list(_)).
 io__call_2(Solutions) :-
 	(if Solutions = [] then
-		write('io.nl: error: top-level goal failed.\n')
+		write('\nio.nl: error: top-level goal failed.\n')
 	else if Solutions = [_] then
 		true
 	else
-		write('io.nl: error: top-level goal not deterministic.\n')
+		write('\nio.nl: error: top-level goal not deterministic.\n')
 	).
 
 :- pred atoms_to_strings(list(atom), list(string)).
@@ -154,7 +154,10 @@ io__op(Prec, Type, OpName) -->
 
 :- io__current_ops(_, IO0, _) when IO0.
 io__current_ops(Ops) -->
-	{ findall(op(Prec, Type, Op), currentOp(Prec, Type, Op), Ops) }. 
+	{ findall(op(Prec, Type, OpName),
+		  (currentOp(Prec, Type, Op), name(Op, OpName)),
+		  Ops)
+	}. 
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -457,6 +460,7 @@ io__write_constant(Const) -->
 io__write_constant_2(term_integer(I))   :- write(I).
 io__write_constant_2(term_float(F)) :- write(F).
 io__write_constant_2(term_atom(A))  :- write_string(A).
+io__write_constant_2(term_string(S)) :- write('"'), write_string(S), write('"').
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -497,7 +501,7 @@ io__init_state(io__state(current)).
 :- pred io__update_state(io__state, io__state).
 io__update_state(IOState0, IOState) :-
 	require(IOState0 = io__state(current),
-		"io.nl: cannot retry I/O operation"),
+		"\nio.nl: cannot retry I/O operation"),
 	$replacn(1, IOState0, old),
 	IOState = io__state(current).
 
