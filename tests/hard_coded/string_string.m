@@ -21,7 +21,7 @@
 
 :- implementation.
 
-:- import_module string.
+:- import_module string, list.
 
 :- type tree ---> leaf; branch(tree, tree).
 
@@ -29,7 +29,8 @@
 
 main(!IO) :-
     io.write_string(string.string(leaf) ++ "\n", !IO),
-    io.write_string(string.string(branch(leaf, leaf)) ++ "\n", !IO).
+    io.write_string(string.string(branch(leaf, leaf)) ++ "\n", !IO),
+    io.write_string(string.string([1,2,3]) ++ "\n", !IO).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -4156,7 +4156,8 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
 	->
 		add_revstring("[", !Rs),
 		arg_to_revstrings(NonCanon, OpsTable, ListHead, !Rs),
-		list_tail_to_revstrings(NonCanon, OpsTable, ListTail, !Rs),
+		univ_list_tail_to_revstrings(NonCanon, OpsTable, ListTail, 
+			!Rs),
 		add_revstring("]", !Rs)
 	;
 		Functor = "[]",
@@ -4288,25 +4289,26 @@ adjust_priority(Priority, ops__x, Priority - 1).
 
 
 
-:- pred list_tail_to_revstrings(deconstruct__noncanon_handling,
-	ops__table, T, revstrings, revstrings).
-:- mode list_tail_to_revstrings(in(do_not_allow), in, in, in, out) is det.
-:- mode list_tail_to_revstrings(in(canonicalize), in, in, in, out) is det.
-:- mode list_tail_to_revstrings(in(include_details_cc), in, in, in, out)
+:- pred univ_list_tail_to_revstrings(deconstruct__noncanon_handling,
+	ops__table, univ, revstrings, revstrings).
+:- mode univ_list_tail_to_revstrings(in(do_not_allow), in, in, in, out) is det.
+:- mode univ_list_tail_to_revstrings(in(canonicalize), in, in, in, out) is det.
+:- mode univ_list_tail_to_revstrings(in(include_details_cc), in, in, in, out)
 	is cc_multi.
-:- mode list_tail_to_revstrings(in, in, in, in, out) is cc_multi.
+:- mode univ_list_tail_to_revstrings(in, in, in, in, out) is cc_multi.
 
-list_tail_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
-	deconstruct__deconstruct(X, NonCanon, Functor, _Arity, Args),
+univ_list_tail_to_revstrings(NonCanon, OpsTable, Univ, !Rs) :-
+	deconstruct__deconstruct(univ_value(Univ), NonCanon, Functor, _Arity, 
+		Args),
 	( Functor = "[|]", Args = [ListHead, ListTail] ->
 		add_revstring(", ", !Rs),
 		arg_to_revstrings(NonCanon, OpsTable, ListHead, !Rs),
-		list_tail_to_revstrings(NonCanon, OpsTable, ListTail, !Rs)
+		univ_list_tail_to_revstrings(NonCanon, OpsTable, ListTail, !Rs)
 	; Functor = "[]", Args = [] ->
 		true
 	;
 		add_revstring(" | ", !Rs),
-		value_to_revstrings(NonCanon, OpsTable, X, !Rs)
+		value_to_revstrings(NonCanon, OpsTable, univ_value(Univ), !Rs)
 	).
 
 

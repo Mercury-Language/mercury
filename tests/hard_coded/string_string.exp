@@ -1,2 +1,3 @@
 leaf
 branch(leaf, leaf)
+[1, 2, 3]
