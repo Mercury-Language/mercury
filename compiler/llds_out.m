@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -761,7 +761,7 @@ output_bunch_name(ModuleName, InitStatus, Number, !IO) :-
 :- pred output_c_data_type_def(comp_gen_c_data::in,
 	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
 
-output_c_data_type_def(common_data(ModuleName, CellNum, TypeNum, ArgsTypes),
+output_c_data_type_def(common_data(ModuleName, CellNum, TypeAndValue),
 		!DeclSet, !IO) :-
 	io__write_string("\n", !IO),
 
@@ -772,20 +772,19 @@ output_c_data_type_def(common_data(ModuleName, CellNum, TypeNum, ArgsTypes),
 		% visible to the other C files for that Mercury module.
 	globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
 	ExportedFromFile = SplitFiles,
-
+	TypeNum = common_cell_get_type_num(TypeAndValue),
 	TypeDeclId = common_type(ModuleName, TypeNum),
 	( decl_set_is_member(TypeDeclId, !.DeclSet) ->
 		true
 	;
-		assoc_list__values(ArgsTypes, Types),
-		output_const_term_type(Types, ModuleName, TypeNum,
+		output_const_term_type(TypeAndValue, ModuleName,
 			"", "", 0, _, !IO),
 		io__write_string("\n", !IO),
 		decl_set_insert(TypeDeclId, !DeclSet)
 	),
 	VarName = common(CellNum, TypeNum),
 	VarDeclId = data_addr(data_addr(ModuleName, VarName)),
-	output_const_term_decl_or_defn(ArgsTypes, ModuleName, CellNum, TypeNum,
+	output_const_term_decl_or_defn(TypeAndValue, ModuleName, CellNum,
 		ExportedFromFile, no, "", "", 0, _, !IO),
 	decl_set_insert(VarDeclId, !DeclSet).
 output_c_data_type_def(rtti_data(RttiData), !DeclSet, !IO) :-
@@ -831,10 +830,10 @@ output_comp_gen_c_var(tabling_pointer_var(ModuleName, ProcLabel),
 :- pred output_comp_gen_c_data(comp_gen_c_data::in,
 	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
 
-output_comp_gen_c_data(common_data(ModuleName, CellNum, TypeNum, ArgsTypes),
+output_comp_gen_c_data(common_data(ModuleName, CellNum, TypeAndValue),
 		!DeclSet, !IO) :-
 	io__write_string("\n", !IO),
-	assoc_list__keys(ArgsTypes, Args),
+	Args = common_cell_get_rvals(TypeAndValue),
 	output_rvals_decls(Args, !DeclSet, !IO),
 
 		% The code for data local to a Mercury module
@@ -845,9 +844,10 @@ output_comp_gen_c_data(common_data(ModuleName, CellNum, TypeNum, ArgsTypes),
 	globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
 	ExportedFromFile = SplitFiles,
 
+	TypeNum = common_cell_get_type_num(TypeAndValue),
 	VarName = common(CellNum, TypeNum),
 	VarDeclId = data_addr(data_addr(ModuleName, VarName)),
-	output_const_term_decl_or_defn(ArgsTypes, ModuleName, CellNum, TypeNum,
+	output_const_term_decl_or_defn(TypeAndValue, ModuleName, CellNum,
 		ExportedFromFile, yes, "", "", 0, _, !IO),
 	decl_set_insert(VarDeclId, !DeclSet).
 output_comp_gen_c_data(rtti_data(RttiData), !DeclSet, !IO) :-
@@ -1022,7 +1022,7 @@ label_is_proc_entry(exported(_), yes).
 
 output_c_procedure_decls(StackLayoutLabels, Proc, !DeclSet, !IO) :-
 	Proc = c_procedure(_Name, _Arity, _PredProcId, Instrs, _, _, _),
-	list__foldl2(output_instruction_decls(StackLayoutLabels), Instrs, 
+	list__foldl2(output_instruction_decls(StackLayoutLabels), Instrs,
 		!DeclSet, !IO).
 
 :- pred output_c_procedure(bool::in, bool::in, c_procedure::in,
@@ -2179,6 +2179,33 @@ llds_out__float_op_name(float_divide, "divide").
 
 %-----------------------------------------------------------------------------%
 
+:- func common_cell_get_type_num(common_cell_type_and_value) = int.
+
+common_cell_get_type_num(TypeAndValue) = TypeNum :-
+	(
+		TypeAndValue = plain_type_and_value(TypeNum, _)
+	;
+		TypeAndValue = grouped_type_and_value(TypeNum, _)
+	).
+
+:- func common_cell_get_rvals(common_cell_type_and_value) = list(rval).
+
+common_cell_get_rvals(TypeAndValue) = Rvals :-
+	(
+		TypeAndValue = plain_type_and_value(_, RvalsTypes),
+		assoc_list__keys(RvalsTypes, Rvals)
+	;
+		TypeAndValue = grouped_type_and_value(_, Groups),
+		RvalLists = list__map(common_group_get_rvals, Groups),
+		list__condense(RvalLists, Rvals)
+	).
+
+:- func common_group_get_rvals(common_cell_arg_group) = list(rval).
+
+common_group_get_rvals(common_cell_arg_group(_, _, Rvals)) = Rvals.
+
+%-----------------------------------------------------------------------------%
+
 	% We output constant terms as follows:
 	%
 	%	struct <prefix>_common_type_<TypeNum> {		// Type
@@ -2201,27 +2228,35 @@ llds_out__float_op_name(float_divide, "divide").
 	% output_const_term_type outputs the first part above. The second
 	% and third parts are output by output_const_term_decl_or_defn.
 
-:- pred output_const_term_type(list(llds_type)::in, module_name::in, int::in,
+:- pred output_const_term_type(common_cell_type_and_value::in, module_name::in,
 	string::in, string::in, int::in, int::out,
 	io__state::di, io__state::uo) is det.
 
-output_const_term_type(Types, ModuleName, TypeNum, FirstIndent, LaterIndent,
+output_const_term_type(TypeAndValue, ModuleName, FirstIndent, LaterIndent,
 		!N, !IO) :-
 	output_indent(FirstIndent, LaterIndent, !.N, !IO),
 	!:N = !.N + 1,
 	io__write_string("struct ", !IO),
+	TypeNum = common_cell_get_type_num(TypeAndValue),
 	output_common_cell_type_name(ModuleName, TypeNum, !IO),
 	io__write_string(" {\n", !IO),
-	output_cons_arg_types(Types, "\t", 1, !IO),
+	(
+		TypeAndValue = plain_type_and_value(_, ArgsTypes),
+		assoc_list__values(ArgsTypes, Types),
+		output_cons_arg_types(Types, "\t", 1, !IO)
+	;
+		TypeAndValue = grouped_type_and_value(_, ArgGroups),
+		output_cons_arg_group_types(ArgGroups, "\t", 1, !IO)
+	),
 	io__write_string("};\n", !IO).
 
-:- pred output_const_term_decl_or_defn(assoc_list(rval, llds_type)::in,
-	module_name::in, int::in, int::in, bool::in, bool::in,
+:- pred output_const_term_decl_or_defn(common_cell_type_and_value::in,
+	module_name::in, int::in, bool::in, bool::in,
 	string::in, string::in, int::in, int::out,
 	io__state::di, io__state::uo) is det.
 
-output_const_term_decl_or_defn(ArgsTypes, ModuleName, CellNum, TypeNum,
-		Exported, IsDefn, FirstIndent, LaterIndent, !N, !IO) :-
+output_const_term_decl_or_defn(TypeAndValue, ModuleName, CellNum, Exported,
+		IsDefn, FirstIndent, LaterIndent, !N, !IO) :-
 	output_indent(FirstIndent, LaterIndent, !.N, !IO),
 	!:N = !.N + 1,
 	(
@@ -2231,6 +2266,7 @@ output_const_term_decl_or_defn(ArgsTypes, ModuleName, CellNum, TypeNum,
 		Exported = no,
 		io__write_string("static const struct ", !IO)
 	),
+	TypeNum = common_cell_get_type_num(TypeAndValue),
 	output_common_cell_type_name(ModuleName, TypeNum, !IO),
 	io__write_string("\n\t", !IO),
 	VarDeclId = data_addr(ModuleName, common(CellNum, TypeNum)),
@@ -2241,7 +2277,13 @@ output_const_term_decl_or_defn(ArgsTypes, ModuleName, CellNum, TypeNum,
 	;
 		IsDefn = yes,
 		io__write_string(" =\n{\n", !IO),
-		output_cons_args(ArgsTypes, "\t", !IO),
+		(
+			TypeAndValue = plain_type_and_value(_, ArgsTypes),
+			output_cons_args(ArgsTypes, "\t", !IO)
+		;
+			TypeAndValue = grouped_type_and_value(_, ArgGroups),
+			output_cons_arg_groups(ArgGroups, "\t", !IO)
+		),
 		io__write_string(LaterIndent, !IO),
 		io__write_string("};\n", !IO)
 	).
@@ -2294,6 +2336,21 @@ output_cons_arg_types([Type | Types], Indent, ArgNum, !IO) :-
 	io__write_string(";\n", !IO),
 	output_cons_arg_types(Types, Indent, ArgNum + 1, !IO).
 
+:- pred output_cons_arg_group_types(list(common_cell_arg_group)::in,
+	string::in, int::in, io__state::di, io__state::uo) is det.
+
+output_cons_arg_group_types([], _, _, !IO).
+output_cons_arg_group_types([Group | Groups], Indent, ArgNum, !IO) :-
+	io__write_string(Indent, !IO),
+	Group = common_cell_arg_group(Type, ArraySize, _),
+	output_llds_type(Type, !IO),
+	io__write_string(" f", !IO),
+	io__write_int(ArgNum, !IO),
+	io__write_string("[", !IO),
+	io__write_int(ArraySize, !IO),
+	io__write_string("];\n", !IO),
+	output_cons_arg_group_types(Groups, Indent, ArgNum + 1, !IO).
+
 	% Given an rval, figure out the type it would have as
 	% an argument.  Normally that's the same as its usual type;
 	% the exception is that for boxed floats, the type is data_ptr
@@ -2317,7 +2374,7 @@ llds_out__rval_type_as_arg(Rval, ArgType, !IO) :-
 
 	% Same as output_llds_type, but will put parentheses
 	% around the llds_type.
-:- pred output_llds_type_cast(llds_type::in, 
+:- pred output_llds_type_cast(llds_type::in,
 	io__state::di, io__state::uo) is det.
 
 output_llds_type_cast(LLDSType, !IO) :-
@@ -2351,13 +2408,76 @@ output_llds_type(code_ptr)     --> io__write_string("MR_Code *").
 output_cons_args([], _Indent, !IO).
 output_cons_args([Rval - Type | RvalsTypes], Indent, !IO) :-
 	io__write_string(Indent, !IO),
-	output_rval_as_type(Rval, Type, !IO),
+	(
+		direct_field_int_constant(Type) = yes,
+		Rval = const(int_const(N))
+	->
+		io__write_int(N, !IO)
+	;
+		output_rval_as_type(Rval, Type, !IO)
+	),
 	( RvalsTypes \= [] ->
 		io__write_string(",\n", !IO),
 		output_cons_args(RvalsTypes, Indent, !IO)
 	;
 		io__write_string("\n", !IO)
 	).
+
+:- pred output_cons_arg_groups(list(common_cell_arg_group)::in, string::in,
+	io__state::di, io__state::uo) is det.
+
+output_cons_arg_groups([], _Indent, !IO).
+output_cons_arg_groups([Group | Groups], Indent, !IO) :-
+	Group = common_cell_arg_group(Type, _, Rvals),
+	io__write_string(Indent, !IO),
+	io__write_string("{\n", !IO),
+	(
+		direct_field_int_constant(Type) = yes,
+		list__map(project_int_constant, Rvals, Ints)
+	->
+		output_cons_arg_group_ints(Ints, Indent, !IO)
+	;
+		output_cons_arg_group_elements(Type, Rvals, Indent, !IO)
+	),
+	io__write_string(Indent, !IO),
+	( Groups \= [] ->
+		io__write_string("},\n", !IO),
+		output_cons_arg_groups(Groups, Indent, !IO)
+	;
+		io__write_string("}\n", !IO)
+	).
+
+:- pred output_cons_arg_group_elements(llds_type::in, list(rval)::in,
+	string::in, io__state::di, io__state::uo) is det.
+
+output_cons_arg_group_elements(_, [], _Indent, !IO).
+output_cons_arg_group_elements(Type, [Rval | Rvals], Indent, !IO) :-
+	io__write_string(Indent, !IO),
+	output_rval_as_type(Rval, Type, !IO),
+	( Rvals \= [] ->
+		io__write_string(",\n", !IO),
+		output_cons_arg_group_elements(Type, Rvals, Indent, !IO)
+	;
+		io__write_string("\n", !IO)
+	).
+
+:- pred output_cons_arg_group_ints(list(int)::in, string::in,
+	io__state::di, io__state::uo) is det.
+
+output_cons_arg_group_ints([], _Indent, !IO).
+output_cons_arg_group_ints([Int | Ints], Indent, !IO) :-
+	io__write_string(Indent, !IO),
+	io__write_int(Int, !IO),
+	( Ints \= [] ->
+		io__write_string(",\n", !IO),
+		output_cons_arg_group_ints(Ints, Indent, !IO)
+	;
+		io__write_string("\n", !IO)
+	).
+
+:- pred project_int_constant(rval::in, int::out) is semidet.
+
+project_int_constant(const(int_const(N)), N).
 
 %-----------------------------------------------------------------------------%
 
@@ -2712,6 +2832,9 @@ output_goto(label(Label), CallerLabel, !IO) :-
 	).
 output_goto(imported(ProcLabel), CallerLabel, !IO) :-
 	io__write_string("MR_tailcall(MR_ENTRY(", !IO),
+/* ### In clause for predicate `ll_backend.llds_out.output_goto/4': */
+/* ###   error: wrong number of arguments (3; should be 4) */
+/* ###   in call to predicate `output_proc_label'. */
 	output_proc_label(ProcLabel, !IO),
 	io__write_string("),\n\t\t", !IO),
 	output_label_as_code_addr(CallerLabel, !IO),
@@ -2843,6 +2966,9 @@ output_code_addr(label(Label), !IO) :-
 	output_label_as_code_addr(Label, !IO).
 output_code_addr(imported(ProcLabel), !IO) :-
 	io__write_string("MR_ENTRY(", !IO),
+/* ### In clause for predicate `ll_backend.llds_out.output_code_addr/3': */
+/* ###   error: wrong number of arguments (3; should be 4) */
+/* ###   in call to predicate `output_proc_label'. */
 	output_proc_label(ProcLabel, !IO),
 	io__write_string(")", !IO).
 output_code_addr(succip, !IO) :-
@@ -2923,10 +3049,7 @@ output_data_addr(layout_addr(LayoutName), !IO) :-
 output_data_addr(ModuleName, VarName, !IO) :-
 	(
 		VarName = common(CellNum, _TypeNum),
-		MangledModuleName = sym_name_mangle(ModuleName),
-		io__write_string(mercury_data_prefix, !IO),
-		io__write_string(MangledModuleName, !IO),
-		io__write_string("__common_", !IO),
+		output_common_prefix(ModuleName, common_prefix_var, !IO),
 		io__write_int(CellNum, !IO)
 	;
 		VarName = tabling_pointer(ProcLabel),
@@ -2937,11 +3060,38 @@ output_data_addr(ModuleName, VarName, !IO) :-
 	io__state::di, io__state::uo) is det.
 
 output_common_cell_type_name(ModuleName, TypeNum, !IO) :-
-	MangledModuleName = sym_name_mangle(ModuleName),
-	io__write_string(mercury_data_prefix, !IO),
-	io__write_string(MangledModuleName, !IO),
-	io__write_string("__common_type_", !IO),
+	output_common_prefix(ModuleName, common_prefix_type, !IO),
 	io__write_int(TypeNum, !IO).
+
+:- type common_prefix
+	--->	common_prefix_var
+	;	common_prefix_type.
+
+:- pred output_common_prefix(module_name::in, common_prefix::in,
+	io::di, io::uo) is det.
+
+output_common_prefix(ModuleName, Prefix, !IO) :-
+	(
+		Prefix = common_prefix_var,
+		io__write_string(mercury_common_prefix, !IO)
+	;
+		Prefix = common_prefix_type,
+		io__write_string(mercury_common_type_prefix, !IO)
+	),
+	globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
+	(
+		SplitFiles = no
+		% In the absence of split_c_files, common cells are always
+		% local to a C file, so we don't have to module qualify them,
+		% or the names of their types, and omitting the module
+		% qualification makes the generated C file significantly
+		% smaller in debugging grades.
+	;
+		SplitFiles = yes,
+		MangledModuleName = sym_name_mangle(ModuleName),
+		io__write_string(MangledModuleName, !IO),
+		io__write_string("__", !IO)
+	).
 
 :- pred output_label_as_code_addr(label::in, io__state::di, io__state::uo)
 	is det.
@@ -3081,9 +3231,23 @@ output_rval_as_type(Rval, DesiredType, !IO) :-
 				error("output_rval_as_type: type error")
 			)
 		;
-			% cast value to desired type
-			output_llds_type_cast(DesiredType, !IO),
-			output_rval(Rval, !IO)
+			(
+				Rval = const(int_const(N)),
+				direct_field_int_constant(DesiredType) = yes
+			->
+				% The condition above increases the runtime of
+				% the compiler very slightly. The elimination
+				% of the unnecessary casts reduces the size
+				% of the generated C source file, which has
+				% a considerably longer lifetime. In debugging
+				% grades, the file size difference can be
+				% very substantial (in the range of megabytes).
+				io__write_int(N, !IO)
+			;
+				% cast value to desired type
+				output_llds_type_cast(DesiredType, !IO),
+				output_rval(Rval, !IO)
+			)
 		)
 	).
 
@@ -3101,6 +3265,31 @@ types_match(bool, integer).
 types_match(bool, unsigned).
 types_match(bool, word).
 types_match(integer, bool).
+
+	% Return true iff an integer constant can be used directly as a value
+	% in a structure field of the given type, instead of being cast to
+	% MR_Integer first and then to the type. The answer can be
+	% conservative: it is always ok to return `no'.
+	%
+	% Only the compiler generates values of the uint_leastN types,
+	% and for these the constant will never be negative.
+	%
+:- func direct_field_int_constant(llds_type) = bool.
+
+direct_field_int_constant(bool) = no.
+direct_field_int_constant(int_least8) = yes.
+direct_field_int_constant(uint_least8) = yes.
+direct_field_int_constant(int_least16) = yes.
+direct_field_int_constant(uint_least16) = yes.
+direct_field_int_constant(int_least32) = yes.
+direct_field_int_constant(uint_least32) = yes.
+direct_field_int_constant(integer) = yes.
+direct_field_int_constant(unsigned) = yes.
+direct_field_int_constant(float) = no.
+direct_field_int_constant(string) = no.
+direct_field_int_constant(data_ptr) = no.
+direct_field_int_constant(code_ptr) = no.
+direct_field_int_constant(word) = no.
 
 	% output a float rval, converted to type `MR_Word *'
 	%
@@ -3206,25 +3395,23 @@ output_rval(binop(Op, X, Y)) -->
 		output_rval_as_type(Y, float),
 		io__write_string(")")
 	;
-/****
-XXX broken for C == minint
-(since `NewC is 0 - C' overflows)
-		{ Op = (+) },
-		{ Y = const(int_const(C)) },
-		{ C < 0 }
-	->
-		{ NewOp = (-) },
-		{ NewC is 0 - C },
-		{ NewY = const(int_const(NewC)) },
-		io__write_string("("),
-		output_rval(X),
-		io__write_string(" "),
-		output_binary_op(NewOp),
-		io__write_string(" "),
-		output_rval(NewY),
-		io__write_string(")")
-	;
-******/
+% XXX broken for C == minint
+% (since `NewC is 0 - C' overflows)
+% 		{ Op = (+) },
+% 		{ Y = const(int_const(C)) },
+% 		{ C < 0 }
+% 	->
+% 		{ NewOp = (-) },
+% 		{ NewC is 0 - C },
+% 		{ NewY = const(int_const(NewC)) },
+% 		io__write_string("("),
+% 		output_rval(X),
+% 		io__write_string(" "),
+% 		output_binary_op(NewOp),
+% 		io__write_string(" "),
+% 		output_rval(NewY),
+% 		io__write_string(")")
+% 	;
 		% special-case equality ops to avoid some unnecessary
 		% casts -- there's no difference between signed and
 		% unsigned equality, so if both args are unsigned, we

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2003 The University of Melbourne.
+% Copyright (C) 2001-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -188,6 +188,10 @@ output_layout_decl(LayoutName, !DeclSet, !IO) :-
 
 	% This code should be kept in sync with output_layout_name/3 below.
 make_label_layout_name(Label) = Name :-
+	% We can't omit the mercury_ prefix on LabelName, even though the
+	% mercury_data_prefix duplicates it, because there is no simply way
+	% to make the MR_init_label_sl macro delete that prefix from the
+	% label's name to get the name of its layout structure.
 	LabelName = label_to_c_string(Label, yes),
 	string__append_list([
 		mercury_data_prefix,
@@ -203,19 +207,23 @@ output_layout_name(label_layout(Label, _)) -->
 output_layout_name(proc_layout(ProcLabel, _)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_proc_layout__"),
-	output_proc_label(ProcLabel).
+	% We can't omit the mercury_ prefix on ProcLabel, even though the
+	% mercury_data_prefix duplicates it, because there is no simply way
+	% to make the MR_init_entryl_sl macro delete that prefix from the
+	% entry label's name to get the name of its layout structure.
+	output_proc_label(ProcLabel, yes).
 output_layout_name(proc_layout_head_var_nums(ProcLabel)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_head_var_nums__"),
-	output_proc_label(ProcLabel).
+	output_proc_label(ProcLabel, no).
 output_layout_name(proc_layout_var_names(ProcLabel)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_var_names__"),
-	output_proc_label(ProcLabel).
+	output_proc_label(ProcLabel, no).
 output_layout_name(closure_proc_id(CallerProcLabel, SeqNo, _)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_closure_layout__"),
-	output_proc_label(CallerProcLabel),
+	output_proc_label(CallerProcLabel, no),
 	io__write_string("_"),
 	io__write_int(SeqNo).
 output_layout_name(file_layout(ModuleName, FileNum)) -->
@@ -263,32 +271,32 @@ output_layout_name(proc_static(RttiProcLabel)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_proc_static__"),
 	{ ProcLabel = make_proc_label_from_rtti(RttiProcLabel) },
-	output_proc_label(ProcLabel).
+	output_proc_label(ProcLabel, no).
 output_layout_name(proc_static_call_sites(RttiProcLabel)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_proc_static_call_sites__"),
 	{ ProcLabel = make_proc_label_from_rtti(RttiProcLabel) },
-	output_proc_label(ProcLabel).
+	output_proc_label(ProcLabel, no).
 output_layout_name(table_io_decl(RttiProcLabel)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_table_io_decl__"),
 	{ ProcLabel = make_proc_label_from_rtti(RttiProcLabel) },
-	output_proc_label(ProcLabel).
+	output_proc_label(ProcLabel, no).
 output_layout_name(table_gen_info(RttiProcLabel)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_table_gen__"),
 	{ ProcLabel = make_proc_label_from_rtti(RttiProcLabel) },
-	output_proc_label(ProcLabel).
+	output_proc_label(ProcLabel, no).
 output_layout_name(table_gen_enum_params(RttiProcLabel)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_table_enum_params__"),
 	{ ProcLabel = make_proc_label_from_rtti(RttiProcLabel) },
-	output_proc_label(ProcLabel).
+	output_proc_label(ProcLabel, no).
 output_layout_name(table_gen_steps(RttiProcLabel)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_table_steps__"),
 	{ ProcLabel = make_proc_label_from_rtti(RttiProcLabel) },
-	output_proc_label(ProcLabel).
+	output_proc_label(ProcLabel, no).
 
 output_layout_name_storage_type_name(label_layout(Label, LabelVars),
 		_BeingDefined) -->
@@ -495,19 +503,33 @@ output_label_layout_data_defn(Label, ProcLayoutAddr, MaybePort, MaybeIsHidden,
 		VarInfo = label_var_info(EncodedVarCount,
 			LocnsTypes, VarNums, TypeParams),
 		io__write_int(EncodedVarCount, !IO),
-		io__write_string(",\n\t(const void *)\n\t\t", !IO),
-		output_rval(LocnsTypes, !IO),
-		io__write_string(",\n\t(const MR_uint_least16_t *)\n\t\t", !IO),
-		output_rval(VarNums, !IO),
-		io__write_string(",\n\t(const MR_Type_Param_Locns *)\n\t\t",
-			!IO),
-		output_rval(TypeParams, !IO)
+		io__write_string(",\n\t(const void *)", !IO),
+		output_rval_as_addr(LocnsTypes, !IO),
+		io__write_string(",\n\t(const MR_uint_least16_t *)", !IO),
+		output_rval_as_addr(VarNums, !IO),
+		io__write_string(",\n\t(const MR_Type_Param_Locns *)", !IO),
+		output_rval_as_addr(TypeParams, !IO)
 	;
 		MaybeVarInfo = no,
 		io__write_int(-1, !IO)
 	),
 	io__write_string("\n};\n", !IO),
 	decl_set_insert(data_addr(layout_addr(LayoutName)), !DeclSet).
+
+	% Output the rval in a context in which it is immediately cast to an
+	% address.
+:- pred output_rval_as_addr(rval::in, io::di, io::uo) is det.
+
+output_rval_as_addr(Rval, !IO) :-
+	( Rval = const(int_const(0)) ->
+		io__write_string(" 0", !IO)
+	; Rval = const(data_addr_const(DataAddr, no)) ->
+		io__write_string(" &", !IO),
+		output_data_addr(DataAddr, !IO)
+	;
+		io__write_string("\n\t\t", !IO),
+		output_rval(Rval, !IO)
+	).
 
 :- func trace_port_to_string(trace_port) = string.
 

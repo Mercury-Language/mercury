@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003 The University of Melbourne.
+% Copyright (C) 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -76,8 +76,8 @@
 :- pred add_static_cell_natural_types(list(rval)::in, data_addr::out,
 	static_cell_info::in, static_cell_info::out) is det.
 
-:- pred search_static_cell(static_cell_info::in, data_addr::in,
-	assoc_list(rval, llds_type)::out) is semidet.
+:- pred search_static_cell_offset(static_cell_info::in, data_addr::in, int::in,
+	rval::out) is semidet.
 
 :- func get_static_cells(static_cell_info) = list(comp_gen_c_data).
 
@@ -95,7 +95,7 @@
 :- import_module ll_backend__layout.
 :- import_module ll_backend__llds_out.
 
-:- import_module int, counter, set, map, std_util.
+:- import_module int, counter, set, map, std_util, require.
 
 :- type proc_var_map	==	map(pred_proc_id, comp_gen_c_var).
 :- type proc_layout_map	==	map(pred_proc_id, proc_layout_info).
@@ -194,9 +194,20 @@ global_data_set_static_cell_info(StaticCellInfo, GlobalData0, GlobalData) :-
 
 %-----------------------------------------------------------------------------%
 
+:- type cell_type
+	--->	plain_type(list(llds_type))
+	;	grouped_type(assoc_list(llds_type, int)).
+
+:- type cell_args
+	--->	plain_args(assoc_list(rval, llds_type))
+	;	grouped_args(list(common_cell_arg_group)).
+
+	% There is one cell_type_group for every group of cells that share
+	% the same sequence of argument types. We don't actually need the
+	% cell type here, since we can't get to a cell_type_group from
+	% the cell_group_map without knowing it.
 :- type cell_type_group
 	--->	cell_type_group(
-			% cell_arg_types		:: list(llds_type)
 			cell_type_number 	:: int,
 			cell_group_members	:: map(list(rval), data_name)
 		).
@@ -209,8 +220,7 @@ global_data_set_static_cell_info(StaticCellInfo, GlobalData0, GlobalData) :-
 			cell_counter	:: counter,	% next cell number
 			type_counter	:: counter,	% next type number
 			cells		:: map(int, comp_gen_c_data),
-			cell_group_map	:: map(list(llds_type),
-						cell_type_group)
+			cell_group_map	:: map(cell_type, cell_type_group)
 					% map cell argument types and then cell
 					% contents to the id of the common cell
 		).
@@ -221,6 +231,11 @@ init_static_cell_info(BaseName, UnboxFloat, CommonData) = Info0 :-
 	Info0 = static_cell_info(BaseName, UnboxFloat, CommonData,
 		counter__init(0), counter__init(0), Cells0, CellMap0).
 
+add_static_cell_natural_types(Args, DataAddr, !Info) :-
+	list__map(associate_natural_type(!.Info ^ unbox_float), Args,
+		ArgsTypes),
+	add_static_cell(ArgsTypes, DataAddr, !Info).
+
 add_static_cell(ArgsTypes0, DataAddr, !Info) :-
 		% If we have an empty cell, place a dummy field in it,
 		% so that the generated C structure isn't empty.
@@ -229,10 +244,18 @@ add_static_cell(ArgsTypes0, DataAddr, !Info) :-
 	;
 		ArgsTypes = ArgsTypes0
 	),
+	compute_cell_type(ArgsTypes, CellType, CellTypeAndValue), 
+	do_add_static_cell(ArgsTypes, CellType, CellTypeAndValue, DataAddr,
+		!Info).
+
+:- pred do_add_static_cell(assoc_list(rval, llds_type)::in, cell_type::in,
+	cell_args::in, data_addr::out,
+	static_cell_info::in, static_cell_info::out) is det.
+
+do_add_static_cell(ArgsTypes, CellType, CellArgs, DataAddr, !Info) :-
 	assoc_list__keys(ArgsTypes, Args),
-	assoc_list__values(ArgsTypes, Types),
 	CellGroupMap0 = !.Info ^ cell_group_map,
-	( map__search(CellGroupMap0, Types, CellGroup0) ->
+	( map__search(CellGroupMap0, CellType, CellGroup0) ->
 		TypeNum = CellGroup0 ^ cell_type_number,
 		CellGroup1 = CellGroup0
 	;
@@ -255,7 +278,8 @@ add_static_cell(ArgsTypes0, DataAddr, !Info) :-
 			map__set(MembersMap0, Args, DataName, MembersMap),
 			CellGroup = CellGroup1 ^ cell_group_members
 				:= MembersMap,
-			map__set(CellGroupMap0, Types, CellGroup, CellGroupMap),
+			map__set(CellGroupMap0, CellType, CellGroup,
+				CellGroupMap),
 			!:Info = !.Info ^ cell_group_map := CellGroupMap
 		;
 			!.Info ^ common_data = no
@@ -264,90 +288,101 @@ add_static_cell(ArgsTypes0, DataAddr, !Info) :-
 			% be useful when comparing the LLDS and MLDS backends.
 		),
 		Cells0 = !.Info ^ cells,
-		Cell = common_data(ModuleName, CellNum, TypeNum, ArgsTypes),
+		(
+			CellArgs = plain_args(PlainArgs),
+			CellTypeAndValue =
+				plain_type_and_value(TypeNum, PlainArgs)
+		;
+			CellArgs = grouped_args(GroupedArgs),
+			CellTypeAndValue =
+				grouped_type_and_value(TypeNum, GroupedArgs)
+		),
+		Cell = common_data(ModuleName, CellNum, CellTypeAndValue),
 		map__det_insert(Cells0, CellNum, Cell, Cells),
 		!:Info = !.Info ^ cells := Cells
 	),
 	DataAddr = data_addr(ModuleName, DataName).
 
-add_static_cell_natural_types(Args, DataAddr, !Info) :-
-	list__map(associate_natural_type(!.Info ^ unbox_float), Args,
-		ArgsTypes),
-	add_static_cell(ArgsTypes, DataAddr, !Info).
+:- pred compute_cell_type(assoc_list(rval, llds_type)::in, cell_type::out,
+	cell_args::out) is det.
 
-search_static_cell(Info, DataAddr, ArgsTypes) :-
+compute_cell_type(ArgsTypes, CellType, CellTypeAndValue) :-
+	(
+		ArgsTypes = [FirstArg - FirstArgType | LaterArgsTypes],
+		threshold_group_types(FirstArgType, [FirstArg], LaterArgsTypes,
+			TypeGroups, TypeAndArgGroups),
+		OldLength = list__length(ArgsTypes),
+		NewLength = list__length(TypeAndArgGroups),
+		OldLength >= NewLength * 2
+	->
+		CellType = grouped_type(TypeGroups),
+		CellTypeAndValue = grouped_args(TypeAndArgGroups)
+	;
+		CellType = plain_type(assoc_list__values(ArgsTypes)),
+		CellTypeAndValue = plain_args(ArgsTypes)
+	).
+
+:- pred threshold_group_types(llds_type::in, list(rval)::in,
+	assoc_list(rval, llds_type)::in, assoc_list(llds_type, int)::out,
+	list(common_cell_arg_group)::out) is semidet.
+
+threshold_group_types(CurType, RevArgsSoFar, LaterArgsTypes, TypeGroups,
+		TypeAndArgGroups) :-
+	(
+		LaterArgsTypes = [],
+		list__length(RevArgsSoFar, NumArgsSoFar),
+		TypeGroup = CurType - NumArgsSoFar,
+		TypeAndArgGroup = common_cell_arg_group(CurType,
+			NumArgsSoFar, list__reverse(RevArgsSoFar)),
+		TypeGroups = [TypeGroup],
+		TypeAndArgGroups = [TypeAndArgGroup]
+	;
+		LaterArgsTypes = [NextArg - NextType | MoreArgsTypes],
+		( CurType = NextType ->
+			threshold_group_types(CurType,
+				[NextArg | RevArgsSoFar], MoreArgsTypes,
+				TypeGroups, TypeAndArgGroups)
+		;
+			list__length(RevArgsSoFar, NumArgsSoFar),
+			threshold_group_types(NextType, [NextArg],
+				MoreArgsTypes,
+				TypeGroupsTail, TypeAndArgGroupsTail),
+			TypeGroup = CurType - NumArgsSoFar,
+			TypeAndArgGroup = common_cell_arg_group(CurType,
+				NumArgsSoFar, list__reverse(RevArgsSoFar)),
+			TypeGroups = [TypeGroup | TypeGroupsTail],
+			TypeAndArgGroups = [TypeAndArgGroup |
+				TypeAndArgGroupsTail]
+		)
+	).
+
+search_static_cell_offset(Info, DataAddr, Offset, Rval) :-
 	DataAddr = data_addr(Info ^ module_name, DataName),
 	DataName = common(CellNum, _),
 	map__search(Info ^ cells, CellNum, CompGenCData),
-	CompGenCData = common_data(_, _, _, ArgsTypes).
+	CompGenCData = common_data(_, _, TypeAndValue),
+	(
+		TypeAndValue = plain_type_and_value(_, ArgsTypes),
+		list__index0_det(ArgsTypes, Offset, Rval - _)
+	;
+		TypeAndValue = grouped_type_and_value(_, ArgGroups),
+		offset_into_group(ArgGroups, Offset, Rval)
+	).
+
+:- pred offset_into_group(list(common_cell_arg_group)::in, int::in, rval::out)
+	is det.
+
+offset_into_group([], _, _) :-
+	error("offset_into_group: offset out of bounds").
+offset_into_group([Group | Groups], Offset, Rval) :-
+	Group = common_cell_arg_group(_, NumRvalsInGroup, Rvals),
+	( Offset < NumRvalsInGroup ->
+		list__index0_det(Rvals, Offset, Rval)
+	;
+		offset_into_group(Groups, Offset - NumRvalsInGroup, Rval)
+	).
 
 get_static_cells(Info) = map__values(Info ^ cells).
-
-% %-----------------------------------------------------------------------------%
-% 
-% :- pred flatten_arg_types(list(rval)::in, create_arg_types::in,
-% 	bool::in, assoc_list(rval, llds_type)::out) is det.
-% 
-% flatten_arg_types(Args, uniform(MaybeType), UnboxFloat, TypedRvals) :-
-% 	flatten_uniform_arg_types(Args, MaybeType, UnboxFloat, TypedRvals).
-% flatten_arg_types(Args, initial(InitialTypes, RestTypes), UnboxFloat,
-% 		TypedRvals) :-
-% 	flatten_initial_arg_types(Args, InitialTypes, RestTypes, UnboxFloat,
-% 		TypedRvals).
-% flatten_arg_types(Args, none, _, []) :-
-% 	require(unify(Args, []), "too many args for specified arg types").
-% 
-% :- pred flatten_uniform_arg_types(list(rval)::in, maybe(llds_type)::in,
-% 	bool::in, assoc_list(rval, llds_type)::out) is det.
-% 
-% flatten_uniform_arg_types([], _, _, []).
-% flatten_uniform_arg_types([Rval | Rvals], MaybeType, UnboxFloat,
-% 		[Rval - Type | TypedRvals]) :-
-% 	llds_arg_type(Rval, MaybeType, UnboxFloat, Type),
-% 	flatten_uniform_arg_types(Rvals, MaybeType, UnboxFloat, TypedRvals).
-% 
-% :- pred flatten_initial_arg_types(list(rval)::in, initial_arg_types::in,
-% 	create_arg_types::in, bool::in, assoc_list(rval, llds_type)::out)
-% 	is det.
-% 
-% flatten_initial_arg_types(Args, [], RestTypes, UnboxFloat, TypedRvals) :-
-% 	flatten_arg_types(Args, RestTypes, UnboxFloat, TypedRvals).
-% flatten_initial_arg_types(Args, [N - MaybeType | InitTypes], RestTypes,
-% 		UnboxFloat, TypedRvals) :-
-% 	flatten_initial_arg_types_2(Args, N, MaybeType, InitTypes, RestTypes,
-% 		UnboxFloat, TypedRvals).
-% 
-% :- pred flatten_initial_arg_types_2(list(rval)::in, int::in,
-% 	maybe(llds_type)::in, initial_arg_types::in, create_arg_types::in,
-% 	bool::in, assoc_list(rval, llds_type)::out) is det.
-% 
-% flatten_initial_arg_types_2([], N, _, _, _, _, []) :-
-% 	require(unify(N, 0), "not enough args for specified arg types").
-% flatten_initial_arg_types_2([Rval | Rvals], N, MaybeType, InitTypes,
-% 		RestTypes, UnboxFloat, TypedRvals) :-
-% 	( N = 0 ->
-% 		flatten_initial_arg_types([Rval | Rvals], InitTypes,
-% 			RestTypes, UnboxFloat, TypedRvals)
-% 	;
-% 		llds_arg_type(Rval, MaybeType, UnboxFloat, Type),
-% 		flatten_initial_arg_types_2(Rvals, N - 1, MaybeType,
-% 			InitTypes, RestTypes, UnboxFloat,
-% 			TypedRvalsTail),
-% 		TypedRvals = [Rval - Type | TypedRvalsTail]
-% 	).
-% 
-% 	% Given an rval, figure out the type it would have as an argument,
-% 	% if it is not explicitly specified.
-% 
-% :- pred llds_arg_type(rval::in, maybe(llds_type)::in, bool::in,
-% 	llds_type::out) is det.
-% 
-% llds_arg_type(Rval, MaybeType, UnboxFloat, Type) :-
-% 	( MaybeType = yes(SpecType) ->
-% 		Type = SpecType
-% 	;
-% 		rval_type_as_arg(Rval, UnboxFloat, Type)
-% 	).
 
 rval_type_as_arg(Rval, ExprnOpts, Type) :-
 	natural_type(ExprnOpts ^ unboxed_float, Rval, Type).

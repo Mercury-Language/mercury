@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003 The University of Melbourne.
+% Copyright (C) 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -26,9 +26,14 @@
 
 :- import_module io, bool, string.
 
-	% Output a proc label (used for building static call graph for prof).
+	% Output a proc label.
 
-:- pred output_proc_label(proc_label::in, io__state::di, io__state::uo) is det.
+:- pred output_proc_label(proc_label::in, io::di, io::uo) is det.
+
+	% Output a proc label. The boolean controls whether label_prefixs
+	% is added to it.
+
+:- pred output_proc_label(proc_label::in, bool::in, io::di, io::uo) is det.
 
 	% Get a proc label string (used by procs which are exported to C).
 	% The boolean controls whether label_prefix is added to the string.
@@ -85,10 +90,16 @@
 :- func mercury_label_prefix = string.
 
 	% All the C data structures we generate which are either fully static
-	% or static after initialization should have this prefix, to ensure
-	% that Mercury global variables don't clash with C symbols.
+	% or static after initialization should have one of these two prefixes,
+	% to ensure that Mercury global variables don't clash with C symbols.
 
 :- func mercury_data_prefix = string.
+:- func mercury_common_prefix = string.
+
+	% All the C types we generate should have this prefix to ensure
+	% that they don't clash with C symbols.
+
+:- func mercury_common_type_prefix = string.
 
 :- implementation.
 
@@ -101,7 +112,10 @@
 %-----------------------------------------------------------------------------%
 
 output_proc_label(ProcLabel, !IO) :-
-	ProcLabelString = proc_label_to_c_string(ProcLabel, yes),
+	output_proc_label(ProcLabel, yes, !IO).
+
+output_proc_label(ProcLabel, AddPrefix, !IO) :-
+	ProcLabelString = proc_label_to_c_string(ProcLabel, AddPrefix),
 	io__write_string(ProcLabelString, !IO).
 
 proc_label_to_c_string(proc(DefiningModule, PredOrFunc, PredModule,
@@ -359,6 +373,9 @@ make_rl_data_name(ModuleName) = RLDataConstName :-
 
 output_tabling_pointer_var_name(ProcLabel, !IO) :-
 	io__write_string("mercury_var__table_root__", !IO),
+/* ### In clause for predicate `backend_libs.name_mangle.output_tabling_pointer_var_name/3': */
+/* ###   error: wrong number of arguments (3; should be 4) */
+/* ###   in call to predicate `output_proc_label'. */
 	output_proc_label(ProcLabel, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -366,5 +383,9 @@ output_tabling_pointer_var_name(ProcLabel, !IO) :-
 mercury_label_prefix = "mercury__".
 
 mercury_data_prefix = "mercury_data_".
+
+mercury_common_prefix = "mercury_common_".
+
+mercury_common_type_prefix = "mercury_type_".
 
 %-----------------------------------------------------------------------------%

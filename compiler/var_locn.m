@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2003 The University of Melbourne.
+% Copyright (C) 2000-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -110,6 +110,7 @@
 %		operation may already have been executed on Var; otherwise,
 %		var_locn__var_becomes_dead will throw an exception if it does
 %		not know about Var.
+
 :- pred var_locn__var_becomes_dead(prog_var::in, bool::in,
 	var_locn_info::in, var_locn_info::out) is det.
 
@@ -439,9 +440,9 @@
 						% operation that moves a
 						% variable to the (free or
 						% freeable) lval associated
-						% with it in the exceptions.
+						% with it in the exceptions
 						% field. Used to implement
-						% calls, pragma_c_codes and the
+						% calls, foreign_procs and the
 						% store_maps at the ends of
 						% branched control structures.
 		exceptions	:: assoc_list(prog_var, lval)
@@ -506,8 +507,7 @@ var_locn__init_state_2([Var - Lval |  Rest], MaybeLiveness,
 			map__det_insert(!.VarStateMap, Var, State,
 				!:VarStateMap)
 		),
-		var_locn__make_var_depend_on_lval_roots(Var, Lval,
-			!LocVarMap)
+		var_locn__make_var_depend_on_lval_roots(Var, Lval, !LocVarMap)
 	),
 	var_locn__init_state_2(Rest, MaybeLiveness, !VarStateMap, !LocVarMap).
 
@@ -688,20 +688,15 @@ var_locn__assign_lval_to_var(Var, Lval0, StaticCellInfo, Code, !VLI) :-
 			% XXX We could drop the MaybeBaseOffset = no condition,
 			% but this would require more complex code below.
 			MaybeBaseOffset = no,
-			search_static_cell(StaticCellInfo, DataAddr,
-				StaticCellArgsTypes)
+			search_static_cell_offset(StaticCellInfo, DataAddr,
+				Offset, SelectedArgRval)
 		->
-			list__index0_det(StaticCellArgsTypes, Offset,
-				SelectedArgRval - _SelectedArgType),
 			MaybeConstRval = yes(SelectedArgRval),
-			Lvals = set__map(var_locn__add_field_offset(
-				yes(Ptag), const(int_const(Offset))),
-				BaseVarLvals),
+			Lvals = set__map(var_locn__add_field_offset(yes(Ptag),
+				const(int_const(Offset))), BaseVarLvals),
 			set__init(Using),
-			State = state(Lvals, MaybeConstRval, no,
-				Using, alive),
-			map__det_insert(VarStateMap0, Var, State,
-				VarStateMap),
+			State = state(Lvals, MaybeConstRval, no, Using, alive),
+			map__det_insert(VarStateMap0, Var, State, VarStateMap),
 			var_locn__set_var_state_map(VarStateMap, !VLI),
 
 			var_locn__get_loc_var_map(!.VLI, LocVarMap0),
@@ -848,8 +843,8 @@ var_locn__assign_dynamic_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector,
 		( MaybeOffset = yes(_) ->
 			% Accurate GC and term profiling both want to own
 			% the word before this object
-			sorry(this_file,
-			  "accurate GC combined with term size profiling")
+			sorry(this_file, "accurate GC combined with " ++
+				"term size profiling")
 		;
 			TotalOffset = yes(1)
 		),
@@ -1270,8 +1265,7 @@ var_locn__free_up_lval_with_copy(Lval, ToBeAssignedVars, ForbiddenLvals, Code,
 		var_locn__get_var_state_map(!.VLI, VarStateMap0),
 		(
 			var_locn__find_one_occupying_var(EffAffectedVars,
-				Lval, VarStateMap0, OccupyingVar,
-				OtherSources)
+				Lval, VarStateMap0, OccupyingVar, OtherSources)
 		->
 			MovedVar = OccupyingVar,
 			list__delete_all(EffAffectedVars, MovedVar,
@@ -1486,7 +1480,7 @@ var_locn__substitute_lval_in_lval(Old, New, Lval0) = Lval :-
 
 %----------------------------------------------------------------------------%
 
-% Var has become dead. If there are no expression that depend on its value,
+% Var has become dead. If there are no expressions that depend on its value,
 % delete the record of its state, thus freeing up the resources it has
 % tied down: the locations it occupies, or the variables whose values its own
 % expression refers to. If there *are* expressions that depend on its value,
@@ -1525,8 +1519,7 @@ var_locn__var_becomes_dead(Var, FirstTime, !VLI) :-
 		;
 			State = state(Lvals, MaybeConstRval, MaybeExprRval,
 				Using, dead),
-			map__det_update(VarStateMap0, Var, State,
-				VarStateMap),
+			map__det_update(VarStateMap0, Var, State, VarStateMap),
 			var_locn__set_var_state_map(VarStateMap, !VLI)
 		)
 	;
