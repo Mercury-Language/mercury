@@ -314,6 +314,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	% XXX The Java backend should eventually support optimizing tailcalls.
 	( { Target = java } ->
 		globals__io_set_option(highlevel_code, bool(yes)),
+		globals__io_set_option(highlevel_data, bool(yes)),	
 		globals__io_set_option(gcc_nested_functions, bool(no)),
 		globals__io_set_option(nondet_copy_out, bool(yes)),
 		globals__io_set_option(det_copy_out, bool(yes)),
