@@ -191,11 +191,6 @@ init_memory(void)
 	}
 #endif
 
-#ifdef	MR_THREAD_SAFE
-	free_memory_zones_lock = make(MercuryLock);
-	pthread_mutex_init(free_memory_zones_lock, MR_MUTEX_ATTR);
-#endif
-
 	init_zones();
 	setup_signals();
 
