@@ -217,7 +217,10 @@ main_2(no, OptionArgs, Args, Link) -->
 		io__set_output_stream(OldOutputStream, _)
 	; { OutputGrade = yes } ->
 		globals__io_get_globals(Globals),
-		{ compute_grade(Globals, Grade) },
+		% When Mmake asks for the grade, it really wants
+		% the directory component to use. This is consistent
+		% with scripts/canonical_grade.
+		{ grade_directory_component(Globals, Grade) },
 		io__stdout_stream(Stdout),
 		io__write_string(Stdout, Grade),
 		io__write_string(Stdout, "\n")
