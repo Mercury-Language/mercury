@@ -42,7 +42,7 @@ umask 002
 ulimit -S -t 300
 
 # Host to use to build the release of the day.
-ROTD_HOST=venus
+ROTD_HOST=earth
 
 #-----------------------------------------------------------------------------#
 
