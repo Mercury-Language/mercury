@@ -61,3 +61,15 @@ Each symbol is followed by the correct decoding.
 	higher order specialization
 <predicate 'copy'/2 mode 1 (specialized)>
 <predicate 'copy'/2 mode 1 (specialized)>
+
+	higher order specialization (regression test for 1 char pred names)
+<predicate 'c'/2 mode 1 (specialized)>
+<predicate 'c'/2 mode 1 (specialized)>
+
+	higher order specialization and unused args
+<predicate 'copy'/2 mode 1 (specialized) (minus unused args)>
+<predicate 'copy'/2 mode 1 (specialized) (minus unused args)>
+
+	mangled name with unused args
+<predicate '!'/2 mode 0 (minus unused args)>
+<predicate '!'/2 mode 0 (minus unused args)>

@@ -51,13 +51,25 @@ entry_mercury__copy_2_1_i5
 <predicate 'copy'/2 mode 1 label 5>
 
 	unused args
-entry_mercury__copy__ua1_2_1
+entry_mercury__copy__ua1_2_0
 <predicate 'copy'/2 mode 1 (minus unused args)>
 
 	unused args
-entry_mercury__copy__uab1_2_1
+entry_mercury__copy__uab1_2_0
 <predicate 'copy'/2 mode 1 (minus unused args)>
 
 	higher order specialization
 entry_mercury__copy__ho7_2_1
 <predicate 'copy'/2 mode 1 (specialized)>
+
+	higher order specialization (regression test for 1 char pred names)
+entry_mercury__c__ho7_2_1
+<predicate 'c'/2 mode 1 (specialized)>
+
+	higher order specialization and unused args
+entry_mercury__copy__ho7__ua1_2_0
+<predicate 'copy'/2 mode 1 (specialized) (minus unused args)>
+
+	mangled name with unused args
+mercury__f_33_95_95_117_97_49_48_48_48_48_2_0
+<predicate '!'/2 mode 0 (minus unused args)>
