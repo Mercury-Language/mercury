@@ -3,13 +3,42 @@ NEWS for Mercury release 0.6
 
 * We now provide some support for functional syntax.
 
-  This is still work-in-progress, and should be considered
+  Functions can be declared with `:- func' declarations,
+  and defined using equations or conditional equations,
+  in a similar manner to the way predicates are declared
+  with `:- pred' declarations and defined using facts and rules.
+  Terms can contain function calls and if-then-elses.
+  For example:
+
+	:- func sum(list(int)) = int.	
+	sum([]) = 0.				% unconditional equations
+	sum([X|Xs]) = X + sum(Xs).		% using function calls
+
+	:- func max(int, int) = int.
+	max(X, Y) = Max :-			% conditional equation
+		(X >= Y -> Max = X ; Max = Y).
+
+	:- func min(int, int) = int.
+	min(X, Y) = (if X >= Y then X else Y).	% unconditional equation
+						% using if-then-else expression
+
+  By default, functions are assumed to have a single det mode with
+  all arguments input and the result output, but you can override
+  this default by supplying explicit mode declarations; for example,
+  this allows you to use functions in a backwards mode to compute the
+  function inverse. 
+
+  Zero-arity functions can be used to define constants.
+
+	:- func pi = float.
+	pi = 3.14159265359.
+  
+  This is all still work-in-progress, and should be considered
   experimental.  Higher-order functions are not supported yet (use
   higher-order predicates instead).  The compiler will probably get
   very confused if you try to define a function of arity N and a
   predicate of arity N+1 with the same name.  There is no support for
-  debugging programs using functional syntax.  There is no
-  documentation.
+  debugging programs using functional syntax.
 
 * We now support overloading of predicates (and functions) with the
   same name and arity defined in different modules. 
@@ -20,6 +49,9 @@ NEWS for Mercury release 0.6
   predicate with the same name and arity in the same module.  Allowing
   that would add considerable complexity to the syntax, and would be
   of arguable utility, so we do not anticipate lifting that restriction.)
+
+* We have removed the limitations on the number and order of arguments in
+  higher-order predicate calls.
 
 * Support for floating point is much improved.
   

@@ -7,11 +7,6 @@ are the following:
   Without this, partially instantiated modes are unusable, 
   and so are nested unique modes :-(
 
-* Higher-order predicates terms can have at most 3 uncurried arguments :-(
-  (although they can have any number of curried arguments).
-
-* call/N will not allow input arguments after any output arguments.
-
 * The compiler does not yet use structure reuse or compile-time
   garbage collection to exploit unique modes :-(
 
@@ -26,9 +21,11 @@ are the following:
 
 * Predicates can have at most about 1000 arguments.
 
-We are working on eliminating all of these problems.
-Of course, those are not the only things we're working on.  Among
-other things, we'd like to provide a better C interface and a
-better garbage collector.  We're also working on a parallel/multithreaded
-version of Mercury, and on adding support for constraint solving.
+We are working on eliminating all of these problems. 
+
+Of course, those are not the only things we're working on.  Among other
+things, we'd like to provide better support for debugging, a better C
+interface and a better garbage collector.  We're also working on a
+parallel/multithreaded version of Mercury, and on adding support for
+constraint solving.
 
