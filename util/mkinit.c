@@ -81,7 +81,6 @@ static const char header2[] =
 static const char mercury_funcs[] =
 	"\n"
 	"Declare_entry(%s);\n"
-	"Declare_entry(mercury__io__print_4_0);\n"
 	"\n"
 	"#ifdef CONSERVATIVE_GC\n"
 	"extern char *GC_stackbottom;\n"
