@@ -26,17 +26,40 @@
 
 :- type assoc_list(T)	==	list(pair(T,T)).
 
+	% Swap the two sides of the pairs in each member of the list.
+
 :- pred assoc_list__reverse_members(assoc_list(K, V), assoc_list(V, K)).
 :- mode assoc_list__reverse_members(in, out) is det.
+
+	% Zip together two lists; abort if they are of different lengths.
 
 :- pred assoc_list__from_corresponding_lists(list(K), list(V), assoc_list(K,V)).
 :- mode assoc_list__from_corresponding_lists(in, in, out) is det.
 
+	% Return the first member of each pair.
+
 :- pred assoc_list__keys(assoc_list(K, V), list(K)).
 :- mode assoc_list__keys(in, out) is det.
 
+	% Return the second member of each pair.
+
 :- pred assoc_list__values(assoc_list(K, V), list(V)).
 :- mode assoc_list__values(in, out) is det.
+
+	% Find the first element of the association list that matches
+	% the given key, and return the associated value.
+
+:- pred assoc_list__find_key(assoc_list(K, V), K, V).
+:- mode assoc_list__find_key(in, in, out) is semidet.
+
+	% Find the first element of the association list that matches
+	% the given key, and return the associated value. Return also
+	% all the other elements of the list, including those before
+	% the element selected by the key.
+
+:- pred assoc_list__find_key_return_rest(assoc_list(K, V), K, V,
+	assoc_list(K, V)).
+:- mode assoc_list__find_key_return_rest(in, in, out, out) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -69,5 +92,21 @@ assoc_list__keys([K - _ | KVs], [K | Ks]) :-
 assoc_list__values([], []).
 assoc_list__values([_ - V | KVs], [V | Vs]) :-
 	assoc_list__values(KVs, Vs).
+
+assoc_list__find_key([K - V | KVs], Key, Value) :-
+	( K = Key ->
+		Value = V
+	;
+		assoc_list__find_key(KVs, Key, Value)
+	).
+
+assoc_list__find_key_return_rest([K - V | KVs], Key, Value, Rest) :-
+	( K = Key ->
+		Value = V,
+		Rest = KVs
+	;
+		assoc_list__find_key_return_rest(KVs, Key, Value, Rest1),
+		Rest = [K - V | Rest1]
+	).
 
 %-----------------------------------------------------------------------------%

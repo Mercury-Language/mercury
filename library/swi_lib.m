@@ -1,40 +1,18 @@
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1995 University of Melbourne.
-% This file may only be copied under the terms of the GNU Library General
-% Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
-%
-% File: sp_lib.nl:
-% Main author: fjh.
-%
-% This file is for Sicstus Prolog compatibility.
-%
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-?- prompt(_, '').	% turn off that silly '|:' interactive input prompt.
+% Various predicates for SWI-Prolog compatibility.
 
-% Translate various NU-Prolog-isms into Sicstus Prolog.
+%-----------------------------------------------------------------------------%
 
 nuprolog :-
 	fail.
 
-some(_Vars, Goal) :-
-	call(Goal).
-
-not(Goal) :-
-	\+ Goal.
-
-all(Vars, Goal) :-
-	not some(Vars, not Goal).
-
-(P => Q) :-
-	not (P, not Q).
-
-(P <= Q) :-
-	Q => P.
-
-(P <=> Q) :-
-	(P => Q), (Q => P).
+compound(X) :-
+	functor(X, _, _).
 
 putprop(Atom, Key, Property) :-
 	retractall(property(Atom, Key, _)),
@@ -59,9 +37,8 @@ setInput(X) :-
 setOutput(X) :-
 	set_output(X).
 
-lineCount(X,Y1) :-
-	line_count(X,Y),
-	Y1 is Y + 1.
+lineCount(X,Y) :-
+	line_count(X,Y).
 
 eof(end_of_file).
 
@@ -69,66 +46,16 @@ member(Element, List, SubList) :-
 	SubList = [Element | _],
 	append(_, SubList, List).
 
-system(Command, Status) :-
-	atom_chars(Com, Command),
-	( sicstus3 ->
-		use_module(library(system), []),
-		system:system(Com, Status)
-	;
-		unix(system(Com, Status))
-	).
-
-	% test whether we are running version 3 of SICStus or not
-sicstus3 :-
-	% there is probably a more elegant way of doing this, but the
-	% following test seems to do the trick - it fails with SICStus 2.x
-	% but succeeds with SICStus 3.x
-	prolog_flag(argv, _).
-
-portray(Stream, Term) :-
-	currentOutput(S),
-	setOutput(Stream),
-	( portray(Term) -> true ; print(Term) ),
-	setOutput(S).
-
-intToString(I, S) :-
-	number_chars(I, S).
-
-string__to_float(String, Float) :-
-	number_chars(Float, String).
-
-duplicate(Term, Copy) :-
-	copy_term(Term, Copy).
-
-%-----------------------------------------------------------------------------%
-
-% Sheesh - do I really have to define these myself!
-
-member(X, [X|_]).
-member(X, [_|Xs]) :- member(X, Xs).
-
-append([], X, X).
-append([X|Xs], Ys, [X|Zs]) :-
-	append(Xs, Ys, Zs).
-
-A \= B :- \+ A = B.
-
 	% define =/3 for DCGs
 =(A, A, A).
 
-%-----------------------------------------------------------------------------%
-
-error(Message) :-
-	format("Software Error: ~s\n", [Message]),
-	atom_chars(Msg, Message),
-	raise_exception(software_error(Msg)).
+system(Command, Status) :-
+	name(Com, Command),
+	shell(Com, Status).
 
 %-----------------------------------------------------------------------------%
 
 % Various hacks to get things to work
-
-
-/***** temp hack - this code is now in random.nl
 
 random__random(R, X, X1) :-
 	X1 is X + 1,
@@ -143,18 +70,19 @@ bit_reverse(A, B) :-
 	bit_rev(A2, B0),
 	B is (B2 << 16) + (B1 << 8) + B0.
 
-% bit_rev(A, B) :-
-% 	A0 is A /\ 1,
-% 	A1 is (A >> 1) /\ 1,
-% 	A2 is (A >> 2) /\ 1,
-% 	A3 is (A >> 3) /\ 1,
-% 	A4 is (A >> 4) /\ 1,
-% 	A5 is (A >> 5) /\ 1,
-% 	A6 is (A >> 6) /\ 1,
-% 	A7 is (A >> 7) /\ 1,
-% 	B is (A0 << 7) + (A1 << 6) + (A2 << 5) + (A3 << 4) + (A4 << 3) +
-% 		(A5 << 2) + (A6 << 1) + A7.
-
+/*
+bit_rev(A, B) :-
+	A0 is A /\ 1,
+	A1 is (A >> 1) /\ 1,
+	A2 is (A >> 2) /\ 1,
+	A3 is (A >> 3) /\ 1,
+	A4 is (A >> 4) /\ 1,
+	A5 is (A >> 5) /\ 1,
+	A6 is (A >> 6) /\ 1,
+	A7 is (A >> 7) /\ 1,
+	B is (A0 << 7) + (A1 << 6) + (A2 << 5) + (A3 << 4) + (A4 << 3) +
+		(A5 << 2) + (A6 << 1) + A7.
+*/
 bit_rev(0, 0).
 bit_rev(1, 128).
 bit_rev(2, 64).
@@ -412,8 +340,6 @@ bit_rev(253, 191).
 bit_rev(254, 127).
 bit_rev(255, 255).
 
-********/
-
 bimap__search(bimap(O, C), K, V) :-
 	( nonvar(K) ->
 		map__search(O, K, V),
@@ -425,51 +351,18 @@ bimap__search(bimap(O, C), K, V) :-
 		error("bimap__search")
 	).
 
-call(G0, X) :-
-	G0 =.. L0,
-	append(L0, [X], L),
-	G =.. L,
-	call(G).
-call(G0, X, Y) :-
-	G0 =.. L0,
-	append(L0, [X, Y], L),
-	G =.. L,
-	call(G).
-call(G0, X, Y, Z) :-
-	G0 =.. L0,
-	append(L0, [X, Y, Z], L),
-	G =.. L,
-	call(G).
-call(G0, X, Y, Z, W) :-
-	G0 =.. L0,
-	append(L0, [X, Y, Z, W], L),
-	G =.. L,
-	call(G).
+portray(Stream, Term) :-
+	currentOutput(S),
+	setOutput(Stream),
+	( portray(Term) -> true ; print(Term) ),
+	setOutput(S).
 
-char__to_int(C, N) :-
-	atom_chars(C, [N]).
-
-report_stats :-
-	statistics(global_stack, [Heap,_]),
-	statistics(program, [Program,_]),
-	statistics(memory, [TotalMemory,_]),
-	statistics(runtime, [Time,_]),
-	TimeInSeconds is Time / 1000.0,
-	format(user_error,
-		"[Heap ~3dk, Program ~3dk, Total ~3dk, Time ~3f]
-",
-		[Heap, Program, TotalMemory, TimeInSeconds]),
-	fail ; true.
-
-io__gc_call(X) -->
-	io__call(X).
-	% { garbage_collect }.
-
-%-----------------------------------------------------------------------------%
-
-% Use the Mercury parser rather than the Prolog one.
-
-term_io__read_term(Result) -->
-	parser__read_term(Result).
+code_info__current_store_map(Map) -->
+        code_info__get_store_map(Maps0),
+        { stack__top(Maps0, Map0) },
+        !,
+        { Map = Map0 }.
+code_info__current_store_map(_) -->
+        { error("No store map on stack") }.
 
 %-----------------------------------------------------------------------------%
