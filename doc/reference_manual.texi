@@ -2295,11 +2295,18 @@ entities are only used in the implementation section, the
 @code{import_module} or @code{use_module} declaration should be in 
 the implementation section.
 
-Declarations, predicate calls, types, modes and insts
-can be explicitly module qualified using the `:' operator,
-i.e. @code{module:name}.  This is useful both for readability and
+The names of predicates, functions, constructors, types, modes and insts
+can be explicitly module qualified using the @samp{:} operator,
+i.e. @samp{module:name}.  This is useful both for readability and
 for resolving name conflicts.  Uses of entities imported using 
 @code{use_module} declarations @emph{must} be explicitly module qualified.
+
+Currently we also support @samp{__} as an alternative module qualifier,
+so you can write @code{module__name} instead of @code{module:name}.
+We are considering changing the module qualifier from @samp{:}
+to @samp{.} in a future version, so that we can use @samp{:} as
+a type qualifier instead.  Hence for the time being we recommend
+that you use @samp{__} rather than @samp{:} as module qualifier.
 
 Certain optimizations require information or source code for predicates
 defined in other modules to be as effective as possible.  At the moment,
