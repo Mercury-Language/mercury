@@ -265,7 +265,7 @@ MR_trace_print_histogram(FILE *fp, const char *which, int *histogram, int max)
 Define_extern_entry(MR_do_trace_redo_fail);
 
 BEGIN_MODULE(MR_trace_labels_module)
-	init_label(MR_do_trace_redo_fail);
+	init_entry(MR_do_trace_redo_fail);
 BEGIN_CODE
 
 Define_entry(MR_do_trace_redo_fail);
