@@ -1,0 +1,26 @@
+#!/bin/sh
+
+if test $# != 2
+then
+	echo "Usage: divide filename module_count"
+	exit 1
+fi
+
+TERMCAP=/etc/termcap; export TERMCAP
+cp $1 tmp
+
+i=0
+while test $i -lt $2
+do
+	ed - tmp > /dev/null << END
+	/^END_MODULE/
+	1,.w $1.part.$i
+	1,.d
+	w
+	q
+END
+	echo done part $i
+	i=`expr $i + 1`
+done
+mv tmp $1.part.$i
+echo done final part $i

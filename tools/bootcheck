@@ -11,6 +11,8 @@ Options:
 		Output results to <filename>.
 	-m <mmake-args>, --mmake-args <mmake-args>
 		Pass <mmake-args> as options to \`mmake'.
+	-r, --copy-runtime
+		Copy the runtime directory instead of linking it.
 	-2, --keep-stage-2
 		Don't rebuild the stage 2 directory from scratch after
 		building stage 1.  Instead use the existing stage 2 directory.
@@ -22,6 +24,7 @@ Options:
 jfactor=""
 mmake_opts="-k"
 outfile=""
+copy_runtime=false
 keep_stage_2=false
 keep_stage_3=false
 
@@ -43,6 +46,8 @@ while [ $# -gt 0 ]; do
 	-o*)
 		outfile="` expr $1 : '-o\(.*\)' `"; ;;
 
+	-r|--copy-runtime)
+		copy_runtime=true ;;
 	-2|--keep-stage-2)
 		keep_stage_2=true ;;
 	-3|--keep-stage-3)
@@ -114,9 +119,21 @@ ln -s ../../library/*.nl .
 ln -s ../../library/Mmake* .
 ln -s ../../library/library.init .
 cd ..
+if [ $copy_runtime = "true" ]; then
+	mkdir runtime
+	cd runtime
+	ln -s ../../runtime/*.h .
+	ln -s ../../runtime/*.c .
+	ln -s ../../runtime/*.mod .
+	ln -s ../../runtime/*.in .
+	ln -s ../../runtime/Mmake* .
+	ln -s ../../runtime/machdeps .
+	cd ..
+else
+	ln -s ../runtime .
+fi
 ln -s ../boehm_gc .
 ln -s ../doc .
-ln -s ../runtime .
 ln -s ../scripts .
 ln -s ../util .
 ln -s ../profiler .
@@ -124,8 +141,18 @@ ln -s ../Mmake* .
 ln -s ../conf* .
 rm -f config*.log
 cd ..
+
 set -x
-if (cd stage2 ; mmake $mmake_opts depend)
+
+if (cd stage2 ; mmake $mmake_opts $jfactor runtime)
+then
+	echo "building of stage 2 runtime successful"
+else
+	echo "building of stage 2 runtime not successful"
+	exit 1
+fi
+
+if (cd stage2 ; mmake $mmake_opts depend_library depend_compiler)
 then
 	echo "building of stage 2 dependencies successful"
 else
@@ -203,7 +230,7 @@ rm -f config*.log
 cd ..
 set -x
 
-if (cd stage3 ; mmake $mmake_opts depend)
+if (cd stage3 ; mmake $mmake_opts depend_library depend_compiler)
 then
 	echo "building of stage 3 dependencies successful"
 else
