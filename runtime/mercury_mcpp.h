@@ -40,7 +40,7 @@ typedef void (*MR_Cont) (void *);
 
 typedef __gc public class System::Object * MR_Word[];
 typedef __gc public class System::Object * MR_Box;
-typedef __gc public class System::Object * MR_Array[];
+typedef __gc public class System::Array  * MR_Array;
 
 #define MR_Ref(type) type __gc *
 typedef MR_Ref(MR_Box) MR_Box_Ref;

@@ -603,16 +603,15 @@ sys_init_array_module_builtins_write_out_proc_statics(FILE *fp)
     MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(array, array, 1, MR_TYPECTOR_REP_ARRAY)
 
     static int
-    __Unify____array_1_0(MR_Word type_info, 
-		MR_Word x, MR_Word y)
+    special___Unify___array_1_0(MR_Word type_info, MR_Array x, MR_Array y)
     {
             mercury::runtime::Errors::SORRY(""unify for array"");
             return 0;
     }
 
     static void
-    __Compare____array_1_0(
-            MR_Word type_info, MR_Word_Ref result, MR_Word x, MR_Word y)
+    special___Compare___array_1_0(
+            MR_Word type_info, MR_Word_Ref result, MR_Array x, MR_Array y)
     {
             mercury::runtime::Errors::SORRY(""compare for array"");
     }
@@ -620,7 +619,7 @@ sys_init_array_module_builtins_write_out_proc_statics(FILE *fp)
     static int
     do_unify__array_1_0(MR_Word type_info, MR_Box x, MR_Box y)
     {
-            return mercury::array__cpp_code::mercury_code::__Unify____array_1_0(
+            return mercury::array__cpp_code::mercury_code::special___Unify___array_1_0(
                     type_info, 
                     dynamic_cast<MR_Array>(x),
                     dynamic_cast<MR_Array>(y));
@@ -630,7 +629,7 @@ sys_init_array_module_builtins_write_out_proc_statics(FILE *fp)
     do_compare__array_1_0(
             MR_Word type_info, MR_Word_Ref result, MR_Box x, MR_Box y)
     {
-            mercury::array__cpp_code::mercury_code::__Compare____array_1_0(
+            mercury::array__cpp_code::mercury_code::special___Compare___array_1_0(
                     type_info, result, 
                     dynamic_cast<MR_Array>(x),
                     dynamic_cast<MR_Array>(y));
