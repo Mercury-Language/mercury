@@ -16,6 +16,12 @@
 
 #include "memory.h"
 
+#ifdef MR_USE_TRAIL
+  #define MR_IF_USE_TRAIL(x) x
+#else
+  #define MR_IF_USE_TRAIL(x)
+#endif
+
 /*---------------------------------------------------------------------------*/
 /*
 ** The following macros define how to store and retrieve a 'ticket' -

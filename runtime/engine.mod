@@ -31,7 +31,7 @@ static	Code	*engine_init_registers(void);
 
 bool	debugflag[MAXFLAG];
 
-static jmp_buf *engine_jmp_buf;
+jmp_buf *MR_engine_jmp_buf;
 
 /*---------------------------------------------------------------------------*/
 
@@ -121,25 +121,25 @@ call_engine(Code *entry_point)
 	jmp_buf		* volatile prev_jmp_buf;
 
 	/*
-	** Preserve the value of engine_jmp_buf on the C stack.
+	** Preserve the value of MR_engine_jmp_buf on the C stack.
 	** This is so "C calls Mercury which calls C which calls Mercury" etc.
 	** will work.
 	*/
 
-	prev_jmp_buf = engine_jmp_buf;
-	engine_jmp_buf = &curr_jmp_buf;
+	prev_jmp_buf = MR_engine_jmp_buf;
+	MR_engine_jmp_buf = &curr_jmp_buf;
 
 	/*
 	** Mark this as the spot to return to.
 	** On return, restore the registers (since longjmp may clobber
-	** them), restore the saved value of engine_jmp_buf, and then
+	** them), restore the saved value of MR_engine_jmp_buf, and then
 	** exit.
 	*/
 
 	if (setjmp(curr_jmp_buf)) {
 		debugmsg0("...caught longjmp\n");
 		restore_registers();
-		engine_jmp_buf = prev_jmp_buf;
+		MR_engine_jmp_buf = prev_jmp_buf;
 		return;
 	}
 
@@ -266,7 +266,7 @@ Define_label(engine_done);
 	*/
 	save_registers();
 	debugmsg0("longjmping out...\n");
-	longjmp(*engine_jmp_buf, 1);
+	longjmp(*MR_engine_jmp_buf, 1);
 }} /* end call_engine_inner() */
 
 /* with nonlocal gotos, we don't save the previous locations */
@@ -295,7 +295,7 @@ engine_done(void)
 {
 	save_registers();
 	debugmsg0("longjmping out...\n");
-	longjmp(*engine_jmp_buf, 1);
+	longjmp(*MR_engine_jmp_buf, 1);
 }
 
 static Code *

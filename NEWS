@@ -96,3 +96,8 @@ NEWS since Mercury release 0.7
   XXX This is not yet enabled by default, though, because it has not
   yet been tested.
 
+* We have added an interface to ODBC databases in extras/odbc. 
+
+  Thanks to the people from Mission Critical, in particular Renaud Paquay,
+  for providing the original version. 
+
