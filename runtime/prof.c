@@ -12,14 +12,59 @@
 
 #include        "prof.h"
 #include        "std.h"
-#include	"imp.h"
 
 #include	<signal.h>
 #include	<sys/param.h>
 #include	<sys/time.h>
 #include	<unistd.h>
 
+
+/*******************
+  Need to make these command line options
+*******************/
+#define CALL_TABLE_SIZE 4096
+#define TIME_TABLE_SIZE 4096
+#define CLOCK_TICKS     1
+
+#define USEC            1000000
+
+/*
+** profiling node information 
+*/
+typedef struct s_prof_call_node
+{
+        Code *Callee, *Caller;
+        unsigned long count;
+        struct s_prof_call_node *next;
+} prof_call_node;
+
+typedef struct s_prof_time_node
+{
+        Code *Addr;
+        unsigned long count;
+        struct s_prof_time_node *next;
+} prof_time_node;
+
+
+/* 
+** Macro definitions 
+*/
+#define hash_addr_pair(Callee, Caller)                                      \
+        (int) ((( (unsigned long)(Callee) ^ (unsigned long)(Caller) ) >> 2) \
+                % CALL_TABLE_SIZE )
+
+#define hash_prof_addr(Addr)                                                \
+        (int) ( (unsigned long)(Addr) % TIME_TABLE_SIZE )
+
+
+/*
+** Global Variables
+*/
 	Code		*prof_current_proc;
+
+/* 
+** Private global variables
+*/
 static	FILE	 	*declfptr = NULL;
 static	prof_call_node	*addr_pair_table[CALL_TABLE_SIZE] = {NULL};
 static	prof_time_node	*addr_table[TIME_TABLE_SIZE] = {NULL};
