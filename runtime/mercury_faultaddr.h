@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -26,7 +26,7 @@
 
   #define MR_GET_FAULT_ADDR(sc)					\
 	({ 								\
-		struct sigcontext *scp = (struct sigcontext *)(&sc);	\
+		struct sigcontext *scp = (struct sigcontext *) sc;	\
 		int format = (scp->sc_formatvec >> 12) & 0xf;		\
 		unsigned long *framedata = (unsigned long *)(scp + 1);	\
 		unsigned long ea; 					\
