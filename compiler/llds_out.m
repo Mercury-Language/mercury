@@ -2902,6 +2902,11 @@ llds_out__get_label(local(ProcLabel, Num), AddPrefix, LabelStr) :-
 	string__append("_i", NumStr, NumSuffix),
 	string__append(ProcLabelStr, NumSuffix, LabelStr).
 
+%
+% Warning: any changes to the name mangling algorithm here will also
+% require changes to extras/dynamic_linking/name_mangle.m,
+% profiler/demangle.m and util/mdemangle.c.
+%
 llds_out__get_proc_label(proc(DefiningModule, PredOrFunc, PredModule,
 		PredName, Arity, ModeNum0), AddPrefix, ProcLabelString) :-
 	get_label_name(DefiningModule, PredOrFunc, PredModule,
@@ -2959,6 +2964,11 @@ llds_out__get_proc_label(special_proc(Module, PredName, TypeModule,
 			bool, string).
 :- mode get_label_name(in, in, in, in, in, in, out) is det.
 
+%
+% Warning: any changes to the name mangling algorithm here will also
+% require changes to extras/dynamic_linking/name_mangle.m,
+% profiler/demangle.m and util/mdemangle.c.
+%
 get_label_name(DefiningModule, PredOrFunc, DeclaringModule,
 		Name0, Arity, AddPrefix, LabelName) :-
 	llds_out__sym_name_mangle(DeclaringModule, DeclaringModuleName),
@@ -3590,6 +3600,12 @@ llds_out__reg_to_string(f, N, Description) :-
 	string__append(Tmp, ")", Description).
 
 %-----------------------------------------------------------------------------%
+
+%
+% Warning: any changes to the name mangling algorithm here will also
+% require changes to extras/dynamic_linking/name_mangle.m,
+% profiler/demangle.m and util/mdemangle.c.
+%
 
 llds_out__sym_name_mangle(unqualified(Name), MangledName) :-
 	llds_out__name_mangle(Name, MangledName).
