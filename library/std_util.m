@@ -266,6 +266,7 @@ mercury_compare_type_info(Word type_info_1, Word type_info_2)
 	else
 		unify_pred_2 = field(mktag(0), base_type_info_2,
 				OFFSET_FOR_UNIFY_PRED);
+
 #else
 	unify_pred_1 = field(mktag(0), type_info_1, OFFSET_FOR_UNIFY_PRED);
 	unify_pred_2 = field(mktag(0), type_info_2, OFFSET_FOR_UNIFY_PRED);
@@ -294,9 +295,9 @@ mercury_compare_type_info(Word type_info_1, Word type_info_2)
 				OFFSET_FOR_COUNT);
 		for (i = 1; i <= num_arg_types; i++) {
 			Word arg_type_info_1 = field(mktag(0),
-						base_type_info_1, i);
+						type_info_1, i);
 			Word arg_type_info_2 = field(mktag(0),
-						base_type_info_2, i);
+						type_info_2, i);
 			comp = mercury_compare_type_info(
 					arg_type_info_1, arg_type_info_2);
 			if (comp != COMPARE_EQUAL)
