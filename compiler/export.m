@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -138,15 +138,15 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 	%	restore_registers();
 	%	<copy input arguments from Mercury__Arguments into registers>
 	%		/* save the registers which may be clobbered      */
-	%		/* by the C function call call_engine().          */
+	%		/* by the C function call MR_call_engine().       */
 	%	save_transient_registers();
 	%	{
 	%	Declare_entry(<label of called proc>);
-	%	call_engine(ENTRY(<label of called proc>);
+	%	(void) MR_call_engine(ENTRY(<label of called proc>), FALSE);
 	%	}
 	%		/* restore the registers which may have been      */
 	%		/* clobbered by the return from the C function    */
-	%		/* call_engine()				  */
+	%		/* MR_call_engine()				  */
 	%	restore_transient_registers();
 	% #if SEMIDET
 	%	if (!r1) {
@@ -199,9 +199,9 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 				"\t{\n\tDeclare_entry(",
 				ProcLabelString,
 				");\n",
-				"\tcall_engine(ENTRY(",
+				"\t(void) MR_call_engine(ENTRY(",
 				ProcLabelString,
-				"));\n\t}\n",
+				"), FALSE);\n\t}\n",
 				"\trestore_transient_registers();\n",
 				MaybeFail,
 				OutputArgs,

@@ -212,6 +212,7 @@ typedef struct MR_mercury_engine_struct {
 		*/
 #endif
 	jmp_buf		*e_jmp_buf;
+	Word		*e_exception;
 #ifndef	CONSERVATIVE_GC
 	MemoryZone	*heap_zone;
 	MemoryZone	*solutions_heap_zone;
@@ -313,8 +314,9 @@ extern	void	finalize_engine(MercuryEngine *engine);
 
 /*
 ** Functions that act on the current Mercury engine.
+** See the comments in mercury_engine.c for documentation on MR_call_engine().
 */
-extern	void	call_engine(Code *entry_point);
+extern	Word *	MR_call_engine(Code *entry_point, bool catch_exceptions);
 extern	void	terminate_engine(void);
 extern	void	dump_prev_locations(void);
 
@@ -330,5 +332,6 @@ Declare_entry(do_reset_hp_fail);
 Declare_entry(do_reset_framevar0_fail);
 Declare_entry(do_succeed);
 Declare_entry(do_not_reached);
+Declare_entry(exception_handler_do_fail);
 
 #endif /* not MERCURY_ENGINE_H */

@@ -21,7 +21,7 @@ ENDINIT
 **	processes options (which are specified via an environment variable).
 **
 **	It also defines mercury_runtime_main(), which invokes
-**	call_engine(do_interpreter), which invokes main/2.
+**	MR_call_engine(do_interpreter), which invokes main/2.
 **
 **	It also defines mercury_runtime_terminate(), which performs
 **	various cleanups that are needed to terminate cleanly.
@@ -342,7 +342,7 @@ mercury_runtime_init(int argc, char **argv)
 	*/
 	restore_regs_from_mem(c_regs);
 
-} /* end runtime_mercury_main() */
+} /* end runtime_mercury_init() */
 
 void 
 do_init_modules(void)
@@ -859,8 +859,8 @@ mercury_runtime_main(void)
 
 	for (repcounter = 0; repcounter < repeats; repcounter++) {
 		debugmsg0("About to call engine\n");
-		call_engine(ENTRY(do_interpreter));
-		debugmsg0("Returning from call_engine()\n");
+		(void) MR_call_engine(ENTRY(do_interpreter), FALSE);
+		debugmsg0("Returning from MR_call_engine()\n");
 	}
 
         if (use_own_timer) {
@@ -999,10 +999,11 @@ BEGIN_MODULE(interpreter_module)
 BEGIN_CODE
 
 Define_entry(do_interpreter);
-	MR_incr_sp(3);
+	MR_incr_sp(4);
 	MR_stackvar(1) = (Word) MR_hp;
 	MR_stackvar(2) = (Word) MR_succip;
 	MR_stackvar(3) = (Word) MR_maxfr;
+	MR_stackvar(4) = (Word) MR_curfr;
 
 	MR_mkframe("interpreter", 1, LABEL(global_fail));
 
@@ -1054,7 +1055,8 @@ Define_label(all_done);
 	MR_hp     = (Word *) MR_stackvar(1);
 	MR_succip = (Code *) MR_stackvar(2);
 	MR_maxfr  = (Word *) MR_stackvar(3);
-	MR_decr_sp(3);
+	MR_curfr  = (Word *) MR_stackvar(4);
+	MR_decr_sp(4);
 
 #ifdef MR_LOWLEVEL_DEBUG
 	if (MR_finaldebug && MR_detaildebug) {

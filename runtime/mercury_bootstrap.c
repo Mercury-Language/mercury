@@ -114,3 +114,7 @@ void sys_init_unify_univ_module_bootstrap(void) {
 	unify_univ_module_bootstrap();
 }
 
+void
+call_engine(Code *entry_point) {
+	(void) MR_call_engine(entry_point, FALSE);
+}

@@ -463,8 +463,6 @@ wrap_exception(Exception, exception(Exception)).
 
 :- pragma c_code("
 
-Define_extern_entry(exception_handler_do_fail);
-
 /*
 ** MR_trace_throw():
 **	Unwind the stack as far as possible, until we reach a frame
@@ -546,8 +544,6 @@ MR_trace_throw(Code *success_pointer, Word *det_stack_pointer,
 	return NULL;
 }
 
-enum CodeModel { MODEL_DET, MODEL_SEMI, MODEL_NON };
-
 /* swap the heap with the solutions heap */
 #define swap_heaps()							\\
 {									\\
@@ -563,29 +559,6 @@ enum CodeModel { MODEL_DET, MODEL_SEMI, MODEL_NON };
 	MR_sol_hp = swap_heaps_temp_hp;					\\
 	MR_solutions_heap_zone = swap_heaps_temp_hp_zone;		\\
 }
-
-/*
-** Define a struct for the framevars that we use in an exception handler
-** nondet stack frame.  This struct gets allocated on the nondet stack
-** using mkpragmaframe().
-*/
-typedef struct Exception_Handler_Frame_struct {
-	Word code_model;
-	Word handler;
-	Word *stack_ptr;
-#ifdef MR_USE_TRAIL
-	Word trail_ptr;
-	Word ticket_counter;
-#endif
-#ifndef CONSERVATIVE_GC
-	Word *heap_ptr;
-	Word *solns_heap_ptr;
-	MemoryZone *heap_zone;
-#endif
-} Exception_Handler_Frame;
-
-#define FRAMEVARS \\
-	(((Exception_Handler_Frame *) (MR_curfr - MR_NONDET_FIXED_SIZE)) - 1)
 
 Define_extern_entry(mercury__exception__builtin_catch_3_0); /* det */
 Define_extern_entry(mercury__exception__builtin_catch_3_1); /* semidet */
@@ -619,7 +592,6 @@ Declare_label(mercury__exception__builtin_throw_1_0_i1);
 ** MR_MAKE_PROC_LAYOUT(entry, detism, slots, succip_locn, pred_or_func,
 **			module, name, arity, mode)                         
 */
-/* do we need one for exception_handler_do_fail? */
 
 MR_MAKE_PROC_LAYOUT(mercury__exception__builtin_throw_1_0,
         MR_DETISM_DET, BUILTIN_THROW_STACK_SIZE, MR_LONG_LVAL_STACKVAR(1),
@@ -670,14 +642,13 @@ BEGIN_MODULE(exceptions_module)
 #endif
 	init_entry(mercury__exception__builtin_throw_1_0);
 	init_label(mercury__exception__builtin_throw_1_0_i1);
-	init_entry(exception_handler_do_fail);
 BEGIN_CODE
 
 /*
 ** builtin_catch(Goal, Handler, Result)
 **	call Goal(R).
 **	if succeeds, set Result = R.
-**	if throws an exception, call Handler(Result).
+**	if throws an exception, call Handler(Exception, Result).
 **
 ** This is the model_det version.
 ** On entry, we have a type_info (which we don't use) in r1,
@@ -693,45 +664,12 @@ Define_entry(mercury__exception__builtin_catch_3_0); /* det */
 #endif
 Define_entry(mercury__exception__builtin_catch_3_2); /* cc_multi */
 	/*
-	** Create a handler on the stack with the special redoip
-	** of `exception_handler_do_fail' (we'll look for this redoip
-	** when unwinding the nondet stack in builtin_throw/1),
-	** and save the stuff we will need if an exception is thrown.
+	** Create an exception handler entry on the nondet stack.
+	** (Register r3 holds the Handler closure.)
 	*/
-	mkpragmaframe(""builtin_catch/3 [model_det]"", 0,
-		Exception_Handler_Frame_struct,
-		ENTRY(exception_handler_do_fail));
-	FRAMEVARS->code_model = MODEL_DET;
-	FRAMEVARS->handler = r3;		/* save the Handler closure */
-	FRAMEVARS->stack_ptr = MR_sp;	/* save the det stack pointer */
-#ifndef CONSERVATIVE_GC
-	/* save the heap and solutions heap pointers */
-	FRAMEVARS->heap_ptr = MR_hp;
-	FRAMEVARS->solns_heap_ptr = MR_sol_hp;
-	FRAMEVARS->heap_zone = MR_heap_zone;
-#endif
-#ifdef MR_USE_TRAIL
-	/* save the trail state */
-	MR_mark_ticket_stack(FRAMEVARS->ticket_counter);
-	MR_store_ticket(FRAMEVARS->trail_ptr);
-#endif
-
-	/*
-	** Now we need to create another frame.
-	** This is so that we can be sure that no-one will hijack
-	** the redoip of the special frame we created above.
-	** (The compiler sometimes generates ``hijacking'' code that saves
-	** the topmost redoip on the stack, and temporarily replaces it
-	** with a new redoip that will do some processing on failure
-	** before restoring the original redoip.  This would cause
-	** problems when doing stack unwinding in builtin_throw/1,
-	** because we wouldn't be able to find the special redoip.
-	** But code will only ever hijack the topmost frame, so we
-	** can avoid this by creating a second frame above the special
-	** frame.)
-	*/
-	mktempframe(ENTRY(do_fail));
-
+	MR_create_exception_handler(""builtin_catch/3 [model_det]"",
+		MR_MODEL_DET_HANDLER, r3, ENTRY(do_fail));
+	
 	/*
 	** Now call `Goal(Result)'.
 	*/
@@ -746,6 +684,9 @@ Define_label(mercury__exception__builtin_catch_3_2_i2);
 	update_prof_current_proc(LABEL(mercury__exception__builtin_catch_3_2));
 	/*
 	** On exit from do_call_det_closure, Result is in r1
+	**
+	** We must now deallocate the ticket and nondet stack frame that
+	** were allocated by MR_create_exception_handler().
 	*/
 #ifdef MR_USE_TRAIL
 	MR_discard_ticket();
@@ -757,7 +698,7 @@ Define_label(mercury__exception__builtin_catch_3_2_i2);
 **	call Goal(R).
 **	if succeeds, set Result = R.
 **	if fails, fail.
-**	if throws an exception, call Handler(Result).
+**	if throws an exception, call Handler(Exception, Result).
 **
 ** This is the model_semi version.
 ** On entry, we have a type_info (which we don't use) in r1,
@@ -773,46 +714,12 @@ Define_entry(mercury__exception__builtin_catch_3_1); /* semidet */
 #endif
 Define_entry(mercury__exception__builtin_catch_3_3); /* cc_nondet */
 	/*
-	** Create a handler on the stack with the special redoip
-	** of `exception_handler_do_fail' (we'll look for this redoip
-	** when unwinding the nondet stack in builtin_throw/1),
-	** and save the stuff we will need if an exception is thrown.
+	** Create an exception handler entry on the nondet stack.
+	** (Register r3 holds the Handler closure.)
 	*/
-	mkpragmaframe(""builtin_catch/3 [model_semi]"", 0,
-		Exception_Handler_Frame_struct,
-		ENTRY(exception_handler_do_fail));
-	FRAMEVARS->code_model = MODEL_SEMI;
-	FRAMEVARS->handler = r3;	/* save the Handler closure */
-	FRAMEVARS->stack_ptr = MR_sp;	/* save the det stack pointer */
-#ifndef CONSERVATIVE_GC
-	/* save the heap and solutions heap pointers */
-	FRAMEVARS->heap_ptr = MR_hp;
-	FRAMEVARS->solns_heap_ptr = MR_sol_hp;
-	FRAMEVARS->heap_zone = MR_heap_zone;
-#endif
-#ifdef MR_USE_TRAIL
-	/* save the trail state */
-	MR_mark_ticket_stack(FRAMEVARS->ticket_counter);
-	MR_store_ticket(FRAMEVARS->trail_ptr);
-#endif
-
-
-	/*
-	** Now we need to create another frame.
-	** This is so that we can be sure that no-one will hijack
-	** the redoip of the special frame we created above.
-	** (The compiler sometimes generates ``hijacking'' code that saves
-	** the topmost redoip on the stack, and temporarily replaces it
-	** with a new redoip that will do some processing on failure
-	** before restoring the original redoip.  This would cause
-	** problems when doing stack unwinding in builtin_throw/1,
-	** because we wouldn't be able to find the special redoip.
-	** But code will only ever hijacks the topmost frame, so we
-	** can avoid this by creating a second frame above the special
-	** frame.)
-	*/
-	mktempframe(ENTRY(do_fail));
-
+	MR_create_exception_handler(""builtin_catch/3 [model_semi]"",
+		MR_MODEL_SEMI_HANDLER, r3, ENTRY(do_fail));
+	
 	/*
 	** Now call `Goal(Result)'.
 	*/
@@ -842,7 +749,7 @@ Define_label(mercury__exception__builtin_catch_3_3_i2);
 **	call Goal(R).
 **	if succeeds, set Result = R.
 **	if fails, fail.
-**	if throws an exception, call Handler(Result).
+**	if throws an exception, call Handler(Exception, Result).
 **
 ** This is the model_non version.
 ** On entry, we have a type_info (which we don't use) in r1,
@@ -858,48 +765,18 @@ Define_entry(mercury__exception__builtin_catch_3_4); /* multi */
 #endif
 Define_entry(mercury__exception__builtin_catch_3_5); /* nondet */
 	/*
-	** Create a handler on the stack with the special redoip
-	** of `exception_handler_do_fail' (we'll look for this redoip
-	** when unwinding the nondet stack in builtin_throw/1),
-	** and save the stuff we will need if an exception is thrown.
-	*/
-	mkpragmaframe(""builtin_catch/3 [model_nondet]"", 0,
-		Exception_Handler_Frame_struct,
-		ENTRY(exception_handler_do_fail));
-	FRAMEVARS->code_model = MODEL_NON;
-	FRAMEVARS->handler = r3;		/* save the Handler closure */
-	FRAMEVARS->stack_ptr = MR_sp;	/* save the det stack pointer */
-#ifndef CONSERVATIVE_GC
-	/* save the heap and solutions heap pointers */
-	FRAMEVARS->heap_ptr = MR_hp;
-	FRAMEVARS->solns_heap_ptr = MR_sol_hp;
-	FRAMEVARS->heap_zone = MR_heap_zone;
-#endif
-#ifdef MR_USE_TRAIL
-	/* save the trail state */
-	MR_mark_ticket_stack(FRAMEVARS->ticket_counter);
-	MR_store_ticket(FRAMEVARS->trail_ptr);
-#endif
-
-	/*
-	** Now we need to create another frame.
-	** This is so that we can be sure that no-one will hijack
-	** the redoip of the special frame we created above.
-	** (The compiler sometimes generates ``hijacking'' code that saves
-	** the topmost redoip on the stack, and temporarily replaces it
-	** with a new redoip that will do some processing on failure
-	** before restoring the original redoip.  This would cause
-	** problems when doing stack unwinding in builtin_throw/1,
-	** because we wouldn't be able to find the special redoip.
-	** But code will only ever hijacks the topmost frame, so we
-	** can avoid this by creating a second frame above the special
-	** frame.)
+	** Create an exception handler entry on the nondet stack.
+	** (Register r3 holds the Handler closure.)
 	*/
 #ifdef MR_USE_TRAIL
-	mktempframe(LABEL(mercury__exception__builtin_catch_3_5_i3));
+	MR_create_exception_handler(""builtin_catch/3 [model_nondet]"",
+		MR_MODEL_NON_HANDLER, r3,
+		LABEL(mercury__exception__builtin_catch_3_5_i3));
 #else
-	mktempframe(ENTRY(do_fail));
+	MR_create_exception_handler(""builtin_catch/3 [model_nondet]"",
+		MR_MODEL_NON_HANDLER, r3, ENTRY(do_fail));
 #endif
+	
 
 	/*
 	** Now call `Goal(Result)'.
@@ -932,8 +809,11 @@ Define_label(mercury__exception__builtin_catch_3_5_i3);
 /*
 ** builtin_throw(Exception):
 **	Throw the specified exception.
-**	That means unwinding the nondet stack until we find a handler, and then
-**	calling Handler(Result).
+**	That means unwinding the nondet stack until we find a handler,
+**	unwinding all the other Mercury stacks, and then
+**	calling longjmp() to unwind the C stack.
+**	The longjmp() will branch to builtin_catch which will then
+**	call Handler(Exception, Result).
 **
 ** On entry, we have Exception in r1.
 */
@@ -941,7 +821,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 {
 	Word exception = r1;
 	Word handler;
-	enum CodeModel catch_code_model;
+	enum MR_HandlerCodeModel catch_code_model;
 	Word *orig_curfr;
 	Unsigned exception_event_number = MR_trace_event_number;
 
@@ -1016,19 +896,29 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	}
 
 	/*
-	** Save the handler we found, and reset the det stack top.
+	** Save the handler we found
+	*/
+	catch_code_model = MR_EXCEPTION_FRAMEVARS->code_model;
+	handler = MR_EXCEPTION_FRAMEVARS->handler;	
+
+	/*
+	** Reset the success ip (i.e. return address).
+	** This ensures that when we return from this procedure,
+	** we will return to the caller of `builtin_catch'.
 	*/
 	MR_succip = MR_succip_slot(MR_curfr);
-	catch_code_model = FRAMEVARS->code_model;
-	handler = FRAMEVARS->handler;	
-	MR_sp = FRAMEVARS->stack_ptr;	/* reset the det stack pointer */
+
+	/*
+	** Reset the det stack.
+	*/
+	MR_sp = MR_EXCEPTION_FRAMEVARS->stack_ptr;
 
 #ifdef MR_USE_TRAIL
 	/*
 	** Reset the trail.
 	*/
-	MR_reset_ticket(FRAMEVARS->trail_ptr, MR_exception);
-	MR_discard_tickets_to(FRAMEVARS->ticket_counter);
+	MR_reset_ticket(MR_EXCEPTION_FRAMEVARS->trail_ptr, MR_exception);
+	MR_discard_tickets_to(MR_EXCEPTION_FRAMEVARS->ticket_counter);
 #endif
 #ifndef CONSERVATIVE_GC
 	/*
@@ -1049,7 +939,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	Word * saved_solns_heap_ptr;
 
 	/* switch to the solutions heap */
-	if (MR_heap_zone == FRAMEVARS->heap_zone) {
+	if (MR_heap_zone == MR_EXCEPTION_FRAMEVARS->heap_zone) {
 		swap_heaps();
 	}
 
@@ -1060,22 +950,23 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	** Note that we need to save/restore the hp register, if it
 	** is transient, before/after calling deep_copy().
 	*/
-	assert(FRAMEVARS->heap_ptr <= FRAMEVARS->heap_zone->top);
+	assert(FRAMEVARS->heap_ptr <= MR_EXCEPTION_FRAMEVARS->heap_zone->top);
 	save_transient_registers();
 	exception = deep_copy((Word *) exception,
 		(Word *) &mercury_data_std_util__type_ctor_info_univ_0,
-		FRAMEVARS->heap_ptr, FRAMEVARS->heap_zone->top);
+		FRAMEVARS->heap_ptr, MR_EXCEPTION_FRAMEVARS->heap_zone->top);
 	restore_transient_registers();
 
 	/* switch back to the ordinary heap */
 	swap_heaps();
 
 	/* reset the heap */
-	assert(FRAMEVARS->heap_ptr <= MR_hp);
-	MR_hp = FRAMEVARS->heap_ptr;
+	assert(MR_EXCEPTION_FRAMEVARS->heap_ptr <= MR_hp);
+	MR_hp = MR_EXCEPTION_FRAMEVARS->heap_ptr;
 
 	/* deep_copy the exception back to the ordinary heap */
-	assert(FRAMEVARS->solns_heap_ptr <= MR_solutions_heap_zone->top);
+	assert(MR_EXCEPTION_FRAMEVARS->solns_heap_ptr <=
+		MR_solutions_heap_zone->top);
 	save_transient_registers();
 	exception = deep_copy((Word *) exception,
 		(Word *) &mercury_data_std_util__type_ctor_info_univ_0,
@@ -1083,10 +974,9 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	restore_transient_registers();
 
 	/* reset the solutions heap */
-	fflush(NULL);
-	assert(FRAMEVARS->solns_heap_ptr <= saved_solns_heap_ptr);
+	assert(MR_EXCEPTION_FRAMEVARS->solns_heap_ptr <= saved_solns_heap_ptr);
 	assert(saved_solns_heap_ptr <= MR_sol_hp);
-	if (catch_code_model == MODEL_NON) {
+	if (catch_code_model == MR_MODEL_NON_HANDLER) {
 		/*
 		** If the code inside the try (catch) was nondet,
 		** then its caller (which may be solutions/2) may
@@ -1094,7 +984,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 		** after the goal succeeded; the goal may have
 		** only thrown after being re-entered on backtracking.
 		** Thus we can only reset the solutions heap to
-		** where it was before
+		** where it was before copying the exception object to it.
 		*/
 		MR_sol_hp = saved_solns_heap_ptr;
 	} else {
@@ -1103,7 +993,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 		** we can safely reset the solutions heap to where
 		** it was when it try (catch) was entered.
 		*/
-		MR_sol_hp = FRAMEVARS->solns_heap_ptr;
+		MR_sol_hp = MR_EXCEPTION_FRAMEVARS->solns_heap_ptr;
 	}
 }
 #endif /* !defined(CONSERVATIVE_GC) */
@@ -1117,9 +1007,20 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	MR_curfr = MR_maxfr;
 
 	/*
-	** Now invoke the handler that we found, as `Handler(Result)',
+	** Now longjmp to the catch, which will invoke the handler
+	** that we found.
 	*/
 
+	if (catch_code_model == MR_C_LONGJMP_HANDLER) {
+		MR_ENGINE(e_exception) = (Word *) exception;
+		save_registers();
+		longjmp(*(MR_ENGINE(e_jmp_buf)), 1);
+	}
+
+	/*
+	** Otherwise, the handler is a Mercury closure.
+	** Invoke the handler as `Handler(Exception, Result)'.
+	*/
 	r1 = handler;		/* get the Handler closure */
 	r2 = 1;			/* One additional input argument */
 	r3 = 1;			/* One output argument */
@@ -1131,7 +1032,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	** the result in r1, which is where do_call_det_closure puts it,
 	** so we can to a tailcall.
 	*/
-	if (catch_code_model != MODEL_SEMI) {
+	if (catch_code_model != MR_MODEL_SEMI_HANDLER) {
 		tailcall(ENTRY(do_call_det_closure), 
 			ENTRY(mercury__exception__builtin_throw_1_0));
 	}
@@ -1148,17 +1049,8 @@ Define_label(mercury__exception__builtin_throw_1_0_i1);
 	r1 = TRUE;
 	MR_succip = (Code *) MR_stackvar(1);
 	decr_sp_pop_msg(1);
-	proceed();
+	proceed(); /* return to the caller of `builtin_catch' */
 
-Define_entry(exception_handler_do_fail);
-	/*
-	** `exception_handler_do_fail' is the same as `do_fail':
-	** it just invokes fail().  The reason we don't just use
-	** `do_fail' for this is that when unwinding the stack we
-	** check for a redoip of `exception_handler_do_fail' and
-	** handle it specially.
-	*/
-	fail();
 END_MODULE
 
 
