@@ -5,7 +5,7 @@ HIGHLIGHTS
 ==========
 
 Changes to the Mercury language:
-* Nothing yet.
+* Infix `.' is now accepted as a module name separator.
 
 Changes to the Mercury compiler:
 * Nothing yet.
@@ -26,7 +26,11 @@ DETAILED LISTING
 
 Changes to the Mercury language:
 
-* Nothing yet.
+* Infix `.' is now accepted as a module name separator.  Hence it is
+  now possible to write io.write_string and list.member to mean the
+  same thing as io__write_string and list__member, for instance.  This
+  has required changing the associativity of `.' from xfy to yfx and
+  from precedence 600 to 10.
 
 Changes to the Mercury standard library:
 
