@@ -81,6 +81,7 @@ ORDINARY_PROGS=	\
 	no_fully_strict \
 	no_inline \
 	nondet_ctrl_vn \
+	nondet_copy_out \
 	nullary_ho_func \
 	pragma_c_code \
 	pragma_export \
@@ -216,6 +217,7 @@ MCFLAGS-ho_order2	=	--optimize-higher-order
 MCFLAGS-no_fully_strict	=	--no-fully-strict
 MCFLAGS-intermod_c_code =	--intermodule-optimization
 MCFLAGS-intermod_c_code2 =	--intermodule-optimization
+MCFLAGS-nondet_copy_out =	--no-inlining --nondet-copy-out
 MCFLAGS-redoip_clobber	=	--no-inlining
 MCFLAGS-rnd		=	-O6
 MCFLAGS-split_c_files	=	--trace deep
