@@ -1,6 +1,6 @@
 
 /*
- *	$Id: bytecode.h,v 1.3 1997-01-29 01:41:04 aet Exp $
+ *	$Id: bytecode.h,v 1.4 1997-01-31 04:23:41 aet Exp $
  *
  *	Copyright: The University of Melbourne, 1996
  */
@@ -10,7 +10,7 @@
 
 
 typedef struct Tag {
-		Byte	tag_type;
+		Byte	tag_type;	/* XXX: use shorter name. id? */
 		union {
 			Byte	primary;
 			struct {
@@ -50,7 +50,7 @@ typedef Byte
 #define	FAILURE		7
 
 typedef struct Op_arg {
-	Byte	arg_type;
+	Byte	arg_type;	/* XXX: use shorter name. id? */
 	union {
 		ushort	var;
 		Int	int_const;
@@ -78,12 +78,12 @@ typedef struct Var_dir {
 } Var_dir;
 
 typedef struct Cons_id {
-	Byte	cons_id_type;
+	Byte	cons_id_type;	/* XXX: use shorter name: id? */
 	union {
 		struct {
 			CString		string;
 			ushort		arity;
-			Tag	tag;
+			Tag		tag;
 		} cons;
 		Int 	int_const;	
 		CString	string_const;
@@ -119,6 +119,7 @@ typedef struct Cons_id {
 
 typedef struct Bytecode {
 	Byte	bc;	/* Which bytecode instruction. e.g. BC_fail */
+			/* XXX: use better name than bc. id? */
 	union {
 		struct {
 			CString		pred_name;	/* XXX: malloc */
@@ -131,6 +132,7 @@ typedef struct Bytecode {
 			Byte		proc_id;
 			Determinism	det;
 			ushort		label_count;
+			ushort		temp_count;
 			ushort		list_length;
 			CString		*var_info_list; /* XXX: malloc */
 		} enter_proc;
@@ -150,6 +152,10 @@ typedef struct Bytecode {
 		} enter_disjunct;
 
 		struct {
+			ushort		label; /* XXX: what's label for? */
+		} endof_disjunct;
+
+		struct {
 			ushort		var;
 			ushort		end_label;
 		} enter_switch;
@@ -158,20 +164,26 @@ typedef struct Bytecode {
 
 		struct {
 			Cons_id		cons_id;
-			ushort			next_label;
+			ushort		next_label;
 		} enter_switch_arm;
 
-
-		/* endof_switch_arm */
+		struct {
+			ushort	label;	/* XXX: what's this label for? */
+		} endof_switch_arm;
 
 		struct {
 			ushort	else_label;
 			ushort	end_label;
+			ushort	frame_ptr_tmp;
 		} enter_if;
 
-		/* enter_then */
+		struct {
+			ushort	frame_ptr_tmp;
+		} enter_then;
 		
-		/* enter_else */
+		struct {
+			ushort	follow_label;
+		} endof_then;	/* XXX: should rename to enter_else */
 
 		/* endof_if */
 	
@@ -181,9 +193,13 @@ typedef struct Bytecode {
 
 		/* endof_negation */
 
-		/* enter_commit */
+		struct {
+			ushort	temp;	
+		} enter_commit;
 
-		/* endof_commit */
+		struct {
+			ushort	temp;	
+		} endof_commit;
 
 		struct {
 			ushort	to_var;
@@ -196,30 +212,30 @@ typedef struct Bytecode {
 		} test;
 
 		struct {
-			ushort			to_var;
+			ushort		to_var;
 			Cons_id		consid;
-			ushort			list_length;
+			ushort		list_length;
 			ushort		*var_list;	/* XXX: malloc */
 		} construct;
 
 		struct {
-			ushort			from_var;
+			ushort		from_var;
 			Cons_id		consid;
-			ushort			list_length;
+			ushort		list_length;
 			ushort		*var_list;	/* XXX: malloc */
 		} deconstruct;
 
 		struct {
-			ushort			from_var;
+			ushort		to_var;
 			Cons_id		consid;
-			ushort			list_length;
+			ushort		list_length;
 			Var_dir		*var_dir_list;/* XXX: malloc */	
 		} complex_construct;
 
 		struct {
-			ushort			from_var;
+			ushort		from_var;
 			Cons_id		consid;
-			ushort			list_length;
+			ushort		list_length;
 			Var_dir		*var_dir_list;/* XXX: malloc */
 		} complex_deconstruct;
 
@@ -229,18 +245,24 @@ typedef struct Bytecode {
 		} place_arg;
 
 		struct {
+			Byte		from_reg;
+			ushort		to_var;
+		} pickup_arg;
+			
+		struct {
 			CString		module_id;	/* XXX: malloc */
 			CString		pred_id;	/* XXX: malloc */
 			ushort		arity;
 			Byte		proc_id;
 		} call;
 
+		struct  {
+			ushort		pred_var;
+			ushort		in_var_count;
+			ushort		out_var_count;
+			Determinism	det;
+		} higher_order_call;
 
-		struct {
-			Byte		from_reg;
-			ushort		to_var;
-		} pickup_arg;
-			
 		struct {
 			Byte		binop;
 			Op_arg		arg1;
@@ -261,11 +283,18 @@ typedef struct Bytecode {
 		} builtin_bintest;	
 
 		struct {
-			Byte		binop;
+			Byte		unop;
 			Op_arg		arg;
 		} builtin_untest;	
 
+		/* semidet_succeed */
+
+		/* semidet_success_check */
+
+		/* fail */
+
 		struct {
+			/* XXX: is this int or ushort?? */
 			ushort		line_number;
 		} context;
 
@@ -274,14 +303,20 @@ typedef struct Bytecode {
 	} opt;
 } Bytecode;
 
-Bool
-bytecode_to_name(Byte bytecode, CString *name_p);
+CString
+bytecode_to_name(Byte bytecode_id);
+
+CString
+determinism_to_name(Byte determinism_id);
+
+CString
+binop_to_name(Byte binop);
+
+CString
+unop_to_name(Byte binop);
 
 Bool
-determinism_to_name(Byte determinism_code, CString *name_p);
-
-Bool
-read_bytecode_version_number(FILE* fp, ushort *version_number_p);
+read_bytecode_version_number(FILE *fp, ushort *version_number_p);
 
 Bool
 read_tag(FILE *fp, Tag *tag_p);
@@ -314,16 +349,16 @@ Bool
 read_word(FILE *fp, Word *word_p);
 
 Bool
-read_byte(FILE* fp, Byte *byte_p);
+read_byte(FILE *fp, Byte *byte_p);
 
 Bool
-read_cstring(FILE* fp, CString *str);
+read_cstring(FILE *fp, CString *str);
 
 Bool
-read_ushort(FILE* fp, ushort *ushort_p);
+read_ushort(FILE *fp, ushort *ushort_p);
 
 Bool
-read_bytecode(FILE* fp, struct Bytecode *bc_p);
+read_bytecode(FILE *fp, struct Bytecode *bc_p);
 
 /*
  *	We use #defines rather than an enumeration here since
@@ -366,27 +401,12 @@ read_bytecode(FILE* fp, struct Bytecode *bc_p);
 #define	BC_builtin_unop			32
 #define	BC_builtin_bintest		33
 #define	BC_builtin_untest		34
-#define	BC_fail				35
-#define	BC_context			36
+#define	BC_semidet_succeed		35
+#define	BC_semidet_success_check	36
+#define	BC_fail				37
+#define	BC_context			38
 	/* NOTE: BC_not_supported must be the last bytecode */
-#define	BC_not_supported		37
-
-/*
-CString
-bytecode_to_string[];
-*/
-
-#if	0
-main()
-{
-	ushort		shit;
-	bytecode_t	bc;
-
-	shit = bc.args.enter_proc.label_count;
-
-	return;
-}
-#endif	/* 0 */
+#define	BC_not_supported		39
 
 
 #endif	/* BYTECODE_H */

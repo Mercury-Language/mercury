@@ -1,5 +1,5 @@
 /*
- *	$Id: util.h,v 1.2 1997-01-28 02:02:10 aet Exp $
+ *	$Id: util.h,v 1.3 1997-01-31 04:27:17 aet Exp $
  *
  *	Copyright: The University of Melbourne, 1996
  */
@@ -18,19 +18,26 @@
  */
 typedef unsigned char
 	Byte;
-typedef	short
-	Short;
+typedef int
+	Word;
 typedef int
 	Int;
+typedef	short
+	Short;
 typedef long
 	Long;
+typedef float
+	Float;
+typedef double
+	Double;
 typedef char*
 	CString;
 typedef int
 	Bool;
 
-/* For some bizzare reason TRUE and FALSE are often defined by the C
- * libraries!
+/* 
+ * XXX: For some bizzare reason TRUE and FALSE are often defined by the C
+ * libraries! Are they defined in pure POSIX or pure ANSI?
  */
 #if	! defined(TRUE)
 #define	TRUE	1
@@ -52,7 +59,7 @@ typedef int
  */
 #if	defined(DEBUGGING)
 #define	XXXdebug(msg, fmt, val) \
-	{ fprintf(stderr, "%s: %s = " #fmt "\n", msg, #val, val); }
+	{ fprintf(stderr, "%s: %s = %" #fmt "\n", msg, #val, val); }
 #else
 #define	XXXdebug(msg, fmt, val)	{}
 #endif	/* DEBUGGING */
