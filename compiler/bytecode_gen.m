@@ -91,6 +91,7 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 	proc_info_vartypes(ProcInfo, VarTypes),
 	proc_info_variables(ProcInfo, VarSet),
 	proc_info_interface_determinism(ProcInfo, Detism),
+	proc_info_inst_key_table(ProcInfo, IKT),
 	determinism_to_code_model(Detism, CodeModel),
 
 	goal_util__goal_vars(Goal, GoalVars),
@@ -101,8 +102,6 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 	bytecode_gen__create_varmap(VarList, VarSet, VarTypes, 0,
 		VarMap0, VarMap, VarInfos),
 
-	% YYY Change for local inst_key_tables
-	module_info_inst_key_table(ModuleInfo, IKT),
 	bytecode_gen__init_byte_info(ModuleInfo, VarMap, VarTypes, IKT,
 		ByteInfo0),
 	bytecode_gen__get_next_label(ByteInfo0, ZeroLabel, ByteInfo1),
@@ -269,16 +268,17 @@ bytecode_gen__gen_pickups([Var - Loc | OutputArgs], ByteInfo, Code) :-
 	% Generate bytecode for a higher order call.
 
 :- pred bytecode_gen__higher_order_call(var::in, list(var)::in, list(type)::in,
-	list(mode)::in, determinism::in, byte_info::in, byte_tree::out) is det.
+	argument_modes::in, determinism::in, byte_info::in, byte_tree::out)
+	is det.
 
 bytecode_gen__higher_order_call(PredVar, ArgVars, ArgTypes, ArgModes, Detism,
 		ByteInfo, Code) :-
 	determinism_to_code_model(Detism, CodeModel),
 	bytecode_gen__get_module_info(ByteInfo, ModuleInfo),
-	bytecode_gen__get_inst_key_table(ByteInfo, IKT),
+	ArgModes = argument_modes(IKT, Modes),
 	module_info_globals(ModuleInfo, Globals),
 	globals__get_args_method(Globals, ArgsMethod),
-	make_arg_infos(ArgsMethod, ArgTypes, ArgModes, CodeModel, IKT,
+	make_arg_infos(ArgsMethod, ArgTypes, Modes, CodeModel, IKT,
 		ModuleInfo, ArgInfo),
 	assoc_list__from_corresponding_lists(ArgVars, ArgInfo, ArgVarsInfos),
 

@@ -322,9 +322,7 @@ typecheck_propagate_types_into_proc_modes(_, _, [], _, Procs, Procs) --> [].
 typecheck_propagate_types_into_proc_modes(ModuleInfo, PredId,
 		[ProcId | ProcIds], ArgTypes, Procs0, Procs) -->
 	{ map__lookup(Procs0, ProcId, ProcInfo0) },
-	{ proc_info_argmodes(ProcInfo0, ArgModes0) },
-	% YYY Hack alert!
-	{ inst_key_table_init(IKT) },
+	{ proc_info_argmodes(ProcInfo0, argument_modes(IKT, ArgModes0)) },
 	{ propagate_types_into_mode_list(ArgTypes, IKT, ModuleInfo,
 		ArgModes0, ArgModes) },
 	%
@@ -341,7 +339,8 @@ typecheck_propagate_types_into_proc_modes(ModuleInfo, PredId,
 		% delete this mode, to avoid internal errors
 		{ map__det_remove(Procs0, ProcId, _, Procs1) }
 	;
-		{ proc_info_set_argmodes(ProcInfo0, ArgModes, ProcInfo) },
+		{ proc_info_set_argmodes(ProcInfo0,
+			argument_modes(IKT, ArgModes), ProcInfo) },
 		{ map__det_update(Procs0, ProcId, ProcInfo, Procs1) }
 	),
 	typecheck_propagate_types_into_proc_modes(ModuleInfo, PredId, ProcIds,
@@ -1637,8 +1636,9 @@ typecheck_unification(X, var(Y), var(Y)) -->
 	typecheck_unify_var_var(X, Y).
 typecheck_unification(X, functor(F, As), functor(F, As)) -->
 	typecheck_unify_var_functor(X, F, As).
-typecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes, Det, Goal0),
-			 lambda_goal(PredOrFunc, Vars, Modes, Det, Goal)) -->
+typecheck_unification(X,
+		lambda_goal(PredOrFunc, Vars, Modes, Det, IMDelta, Goal0),
+		lambda_goal(PredOrFunc, Vars, Modes, Det, IMDelta, Goal)) -->
  	typecheck_lambda_var_has_type(PredOrFunc, X, Vars),
 	typecheck_goal(Goal0, Goal).
 

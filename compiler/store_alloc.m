@@ -44,13 +44,12 @@
 %-----------------------------------------------------------------------------%
 
 store_alloc_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
-	% YYY Change for local inst_key_tables
-	module_info_inst_key_table(ModuleInfo, IKT),
 	module_info_globals(ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals, follow_vars, ApplyFollowVars),
 	( ApplyFollowVars = yes ->
 		globals__get_args_method(Globals, ArgsMethod),
 		proc_info_goal(ProcInfo0, Goal0),
+		proc_info_inst_key_table(ProcInfo0, IKT),
 
 		find_final_follow_vars(ProcInfo0, FollowVars0),
 		find_follow_vars_in_goal(Goal0, ArgsMethod, IKT, ModuleInfo,

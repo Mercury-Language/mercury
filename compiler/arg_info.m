@@ -93,11 +93,9 @@ generate_proc_list_arg_info(PredId, [ProcId | ProcIds], Method,
 :- mode generate_proc_arg_info(in, in, in, in, out) is det.
 
 generate_proc_arg_info(ProcInfo0, Method, ArgTypes, ModuleInfo, ProcInfo) :-
-	proc_info_argmodes(ProcInfo0, ArgModes),
+	proc_info_argmodes(ProcInfo0, argument_modes(IKT, ArgModes)),
 	proc_info_interface_code_model(ProcInfo0, CodeModel),
 
-	% YYY Change for local inst_key_tables
-	module_info_inst_key_table(ModuleInfo, IKT),
 	make_arg_infos(Method, ArgTypes, ArgModes, CodeModel, IKT, ModuleInfo,
 		ArgInfo),
 

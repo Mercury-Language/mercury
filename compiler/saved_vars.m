@@ -62,18 +62,16 @@ saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo,
 	{ implicitly_quantify_clause_body(HeadVars, Goal1, Varset1,
 		VarTypes1, Goal2, Varset, VarTypes, _Warnings) },
 	{ proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0) },
-	% YYY Change for local inst_key_tables
-	{ module_info_inst_key_table(ModuleInfo0, IKT0) },
+	{ proc_info_inst_key_table(ProcInfo0, IKT0) },
 	{ recompute_instmap_delta(no, Goal2, Goal, InstMap0, 
-		IKT0, IKT, ModuleInfo0, ModuleInfo1) },
-	% YYY Change for local inst_key_tables
-	{ module_info_set_inst_key_table(ModuleInfo1, IKT, ModuleInfo) },
+		IKT0, IKT, ModuleInfo0, ModuleInfo) },
 
 	% hlds_out__write_goal(Goal, ModuleInfo, Varset, 0, ""),
 
 	{ proc_info_set_goal(ProcInfo0, Goal, ProcInfo1) },
 	{ proc_info_set_variables(ProcInfo1, Varset, ProcInfo2) },
-	{ proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo) }.
+	{ proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3) },
+	{ proc_info_set_inst_key_table(ProcInfo3, IKT, ProcInfo) }.
 
 %-----------------------------------------------------------------------------%
 

@@ -306,9 +306,8 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 	proc_info_variables(ProcInfo0, VarSet0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_goal(ProcInfo0, Goal0),
-	proc_info_argmodes(ProcInfo0, ArgModes0),
-	% YYY Change for local inst_key_tables
-	module_info_inst_key_table(ModuleInfo0, IKT0),
+	proc_info_argmodes(ProcInfo0, argument_modes(ArgIKT, ArgModes0)),
+	proc_info_inst_key_table(ProcInfo0, IKT0),
 
 	% insert extra head variables to hold the address of the
 	% equality predicate for each polymorphic type in the predicate's
@@ -338,7 +337,8 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 	proc_info_set_goal(ProcInfo1, Goal, ProcInfo2),
 	proc_info_set_varset(ProcInfo2, VarSet, ProcInfo3),
 	proc_info_set_vartypes(ProcInfo3, VarTypes, ProcInfo4),
-	proc_info_set_argmodes(ProcInfo4, ArgModes, ProcInfo5),
+	proc_info_set_argmodes(ProcInfo4, argument_modes(ArgIKT, ArgModes),
+		ProcInfo5),
 	proc_info_set_typeinfo_varmap(ProcInfo5, TypeInfoMap, ProcInfo),
 	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo).
 
@@ -489,7 +489,10 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 		;
 			{ error("polymorphism: type_to_type_id failed") }
 		)
-	; { Y = lambda_goal(PredOrFunc, Vars, Modes, Det, LambdaGoal0) } ->
+	;
+		{ Y = lambda_goal(PredOrFunc, Vars, Modes, Det, _IMDelta,
+				LambdaGoal0) }
+	->
 		% for lambda expressions, we must recursively traverse the
 		% lambda goal and then convert the lambda expression
 		% into a new predicate
@@ -698,7 +701,7 @@ polymorphism__fixup_quantification(Goal0, Goal, Info0, Info) :-
 	).
 
 :- pred polymorphism__process_lambda(pred_or_func, list(var),
-		list(mode), determinism, set(var), hlds_goal, unification,
+		argument_modes, determinism, set(var), hlds_goal, unification,
 		unify_rhs, unification, poly_info, poly_info).
 :- mode polymorphism__process_lambda(in, in, in, in, in, in, in, out, out,
 		in, out) is det.

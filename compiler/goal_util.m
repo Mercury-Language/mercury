@@ -304,8 +304,14 @@ goal_util__rename_unify_rhs(var(Var0), Must, Subn, var(Var)) :-
 goal_util__rename_unify_rhs(functor(Functor, ArgVars0), Must, Subn,
 			functor(Functor, ArgVars)) :-
 	goal_util__rename_var_list(ArgVars0, Must, Subn, ArgVars).
-goal_util__rename_unify_rhs(lambda_goal(PredOrFunc, Vars0, Modes, Det, Goal0),
-		Must, Subn, lambda_goal(PredOrFunc, Vars, Modes, Det, Goal)) :-
+goal_util__rename_unify_rhs(
+		lambda_goal(PredOrFunc, Vars0, Modes, Det, InstMapDelta0,
+				Goal0),
+		Must, Subn,
+		lambda_goal(PredOrFunc, Vars, Modes, Det, InstMapDelta,
+				Goal)
+		) :-
+	instmap_delta_apply_sub(InstMapDelta0, Must, Subn, InstMapDelta),
 	goal_util__rename_var_list(Vars0, Must, Subn, Vars),
 	goal_util__rename_vars_in_goal(Goal0, Must, Subn, Goal).
 
@@ -480,7 +486,7 @@ goal_util__rhs_goal_vars(var(X), Set0, Set) :-
 goal_util__rhs_goal_vars(functor(_Functor, ArgVars), Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
 goal_util__rhs_goal_vars(lambda_goal(_PredOrFunc, LambdaVars, _Modes, _Detism,
-		Goal - _), Set0, Set) :-
+		_IMDelta, Goal - _), Set0, Set) :-
 	set__insert_list(Set0, LambdaVars, Set1),
 	goal_util__goal_vars_2(Goal, Set1, Set).
 

@@ -757,9 +757,8 @@ code_info__set_maybe_trace_info(V, CI0, CI) :-
 %-----------------------------------------------------------------------------%
 
 code_info__get_inst_key_table(IKT, CI, CI) :-
-	% YYY Change for local inst_key_tables
-	code_info__get_module_info(ModuleInfo, CI, _),
-	module_info_inst_key_table(ModuleInfo, IKT).
+	code_info__get_proc_info(ProcInfo, CI, _),
+	proc_info_inst_key_table(ProcInfo, IKT).
 
 %-----------------------------------------------------------------------------%
 

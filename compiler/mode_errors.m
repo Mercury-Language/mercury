@@ -274,7 +274,8 @@ report_mode_error_conj_2([delayed_goal(Vars, Error, Goal) | Rest],
 	( { VeryVerbose = yes } ->
 		io__write_string("\t\t"),
 		{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
-		hlds_out__write_goal(Goal, ModuleInfo, VarSet, no, 2, ".")
+		{ mode_info_get_inst_key_table(ModeInfo, IKT) },
+		hlds_out__write_goal(Goal, IKT, ModuleInfo, VarSet, no, 2, ".")
 	;
 		[]
 	),
@@ -664,13 +665,12 @@ mode_info_write_context(ModeInfo) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_predid(ModeInfo, PredId) },
 	{ mode_info_get_procid(ModeInfo, ProcId) },
-	{ mode_info_get_inst_key_table(ModeInfo, InstKeyTable) },
 	{ module_info_preds(ModuleInfo, Preds) },
 	{ map__lookup(Preds, PredId, PredInfo) },
 	{ pred_info_procedures(PredInfo, Procs) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ map__lookup(Procs, ProcId, ProcInfo) },
-	{ proc_info_declared_argmodes(ProcInfo, Modes0) },
+	{ proc_info_declared_argmodes(ProcInfo, argument_modes(IKT, Modes0)) },
 	{ strip_builtin_qualifiers_from_mode_list(Modes0, Modes) },
 	{ pred_info_name(PredInfo, Name0) },
 	{ Name = unqualified(Name0) },
@@ -681,11 +681,11 @@ mode_info_write_context(ModeInfo) -->
 	io__write_string("In clause for `"),
 	(	{ PredOrFunc = predicate },
 		mercury_output_pred_mode_subdecl(InstVarSet, Name, Modes,
-				MaybeDet, Context, InstKeyTable)
+				MaybeDet, Context, IKT)
 	;	{ PredOrFunc = function },
 		{ pred_args_to_func_args(Modes, ArgModes, RetMode) },
 		mercury_output_func_mode_subdecl(InstVarSet, Name, ArgModes,
-				RetMode, MaybeDet, Context, InstKeyTable)
+				RetMode, MaybeDet, Context, IKT)
 	),
 	io__write_string("':\n"),
 	{ mode_info_get_mode_context(ModeInfo, ModeContext) },
@@ -837,14 +837,11 @@ maybe_report_error_no_modes(PredId, PredInfo, ModuleInfo) -->
 write_mode_inference_messages([], _) --> [].
 write_mode_inference_messages([PredId | PredIds], ModuleInfo) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	% YYY Change for local inst_key_tables
-	{ module_info_inst_key_table(ModuleInfo, InstKeyTable) },
 	{ pred_info_get_marker_list(PredInfo, Markers) },
 	( { list__member(request(infer_modes), Markers) } ->
 		{ pred_info_procedures(PredInfo, Procs) },
 		{ map__keys(Procs, ProcIds) },
-		write_mode_inference_messages_2(ProcIds, Procs, PredInfo,
-			InstKeyTable)
+		write_mode_inference_messages_2(ProcIds, Procs, PredInfo)
 	;
 		[]
 	),
@@ -854,28 +851,27 @@ write_mode_inference_messages([PredId | PredIds], ModuleInfo) -->
 	% proc_ids
 
 :- pred write_mode_inference_messages_2(list(proc_id), proc_table, pred_info,
-		inst_key_table, io__state, io__state).
-:- mode write_mode_inference_messages_2(in, in, in, in, di, uo) is det.
+		io__state, io__state).
+:- mode write_mode_inference_messages_2(in, in, in, di, uo) is det.
 
-write_mode_inference_messages_2([], _, _, _) --> [].
-write_mode_inference_messages_2([ProcId | ProcIds], Procs, PredInfo,
-		InstKeyTable) -->
+write_mode_inference_messages_2([], _, _) --> [].
+write_mode_inference_messages_2([ProcId | ProcIds], Procs, PredInfo) -->
 	{ map__lookup(Procs, ProcId, ProcInfo) },
-	write_mode_inference_message(PredInfo, ProcInfo, InstKeyTable),
-	write_mode_inference_messages_2(ProcIds, Procs, PredInfo, InstKeyTable).
+	write_mode_inference_message(PredInfo, ProcInfo),
+	write_mode_inference_messages_2(ProcIds, Procs, PredInfo).
 
 	% write out the inferred `mode' declaration
 	% for a single function or predicate.
 
-:- pred write_mode_inference_message(pred_info, proc_info, inst_key_table,
+:- pred write_mode_inference_message(pred_info, proc_info,
 				io__state, io__state).
-:- mode write_mode_inference_message(in, in, in, di, uo) is det.
+:- mode write_mode_inference_message(in, in, di, uo) is det.
 
-write_mode_inference_message(PredInfo, ProcInfo, InstKeyTable) -->
+write_mode_inference_message(PredInfo, ProcInfo) -->
 	{ pred_info_name(PredInfo, PredName) },
 	{ Name = unqualified(PredName) },
 	{ pred_info_context(PredInfo, Context) },
-	{ proc_info_argmodes(ProcInfo, Modes0) },
+	{ proc_info_argmodes(ProcInfo, argument_modes(IKT, Modes0)) },
 	{ varset__init(VarSet) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ MaybeDet = no },
@@ -884,11 +880,11 @@ write_mode_inference_message(PredInfo, ProcInfo, InstKeyTable) -->
 	io__write_string("Inferred "),
 	(	{ PredOrFunc = predicate },
 		mercury_output_pred_mode_decl(VarSet, Name, Modes,
-				MaybeDet, Context, InstKeyTable)
+				MaybeDet, Context, IKT)
 	;	{ PredOrFunc = function },
 		{ pred_args_to_func_args(Modes, ArgModes, RetMode) },
 		mercury_output_func_mode_decl(VarSet, Name, ArgModes, RetMode,
-				MaybeDet, Context, InstKeyTable)
+				MaybeDet, Context, IKT)
 	).
 
 %-----------------------------------------------------------------------------%

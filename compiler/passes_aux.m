@@ -330,13 +330,11 @@ tree_stats(Description, Tree) -->
 report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context) -->
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo) },
-	% YYY Change for local inst_key_tables
-	{ module_info_inst_key_table(ModuleInfo, InstKeyTable) },
 	{ pred_info_name(PredInfo, PredName) },
 	{ pred_info_arity(PredInfo, Arity) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ proc_info_context(ProcInfo, Context) },
-	{ proc_info_argmodes(ProcInfo, ArgModes0) },
+	{ proc_info_argmodes(ProcInfo, argument_modes(ArgIKT, ArgModes0)) },
 
 	% We need to strip off the extra type_info arguments inserted at the
 	% front by polymorphism.m - we only want the last `PredArity' of them.
@@ -356,7 +354,7 @@ report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context) -->
 	),
 	prog_out__write_context(OutContext),
 	io__write_string("In `"),
-	report_pred_name_mode(PredOrFunc, PredName, ArgModes, InstKeyTable),
+	report_pred_name_mode(PredOrFunc, PredName, ArgModes, ArgIKT),
 	io__write_string("':\n").
 
 

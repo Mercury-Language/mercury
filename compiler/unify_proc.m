@@ -230,7 +230,10 @@ unify_proc__request_unify(UnifyId, Determinism, Context, IKT, ModuleInfo0,
 		ArgModes = [(X_Initial -> X_Final), (Y_Initial -> Y_Final)],
 		MaybeDet = yes(Determinism),
 		ArgLives = no,  % XXX ArgLives should be part of the UnifyId
-		add_new_proc(PredInfo0, Arity, ArgModes, no, ArgLives,
+		% XXX IKT may contain a LOT more info than is necessary.
+		%     We should optimise it here.
+		ArgumentModes = argument_modes(IKT, ArgModes),
+		add_new_proc(PredInfo0, Arity, ArgumentModes, no, ArgLives,
 				MaybeDet, Context, PredInfo1, ProcId),
 
 		%
@@ -295,9 +298,7 @@ modecheck_unify_procs(HowToCheckGoal, ModuleInfo0, ModuleInfo) -->
 			io__write_string("% with insts `"),
 			{ UniMode = ((InstA - InstB) -> _FinalInst) },
 			{ varset__init(InstVarSet) },
-			% YYY Change for local inst_key_tables
-			{ module_info_inst_key_table(ModuleInfo1,
-				InstKeyTable) },
+			{ inst_key_table_init(InstKeyTable) },	% YYY
 			mercury_output_inst(expand_noisily, InstA, InstVarSet,
 				InstKeyTable),
 			io__write_string("', `"),

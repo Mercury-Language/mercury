@@ -41,15 +41,16 @@ mode system to distinguish between different representations.
 
 %-----------------------------------------------------------------------------%
 
-:- pred inst_expand(inst_key_table, module_info, inst, inst).
-:- mode inst_expand(in, in, in, out) is det.
+:- pred inst_expand(inst_key_table, module_info, inst, inst_key_table, inst).
+:- mode inst_expand(in, in, in, out, out) is det.
 
 	% inst_expand(IKT, ModuleInfo, Inst0, Inst) checks if the top-level 
 	% part of the inst is a defined inst or an alias, and if so
 	% replaces it with the definition.
 
-:- pred inst_expand_defined_inst(inst_key_table, module_info, inst, inst).
-:- mode inst_expand_defined_inst(in, in, in, out) is det.
+:- pred inst_expand_defined_inst(inst_key_table, module_info, inst,
+		inst_key_table, inst).
+:- mode inst_expand_defined_inst(in, in, in, out, out) is det.
 
 	% inst_expand_defined_inst(ModuleInfo, Inst0, Inst) checks if the
 	% top-level part of the inst is a defined inst, and if so replaces
@@ -283,7 +284,7 @@ inst_matches_initial(InstA, InstB, IKT, ModuleInfo) :-
 		expansions).
 :- mode inst_matches_initial_2(in, in, in, in, in) is semidet.
 
-inst_matches_initial_2(InstA, InstB, IKT, ModuleInfo, Expansions) :-
+inst_matches_initial_2(InstA, InstB, IKT0, ModuleInfo, Expansions) :-
 	ThisExpansion = InstA - InstB,
 	( set__member(ThisExpansion, Expansions) ->
 		true
@@ -293,8 +294,8 @@ inst_matches_initial_2(InstA, InstB, IKT, ModuleInfo, Expansions) :-
 		true
 **********/
 	;
-		inst_expand(IKT, ModuleInfo, InstA, InstA2),
-		inst_expand(IKT, ModuleInfo, InstB, InstB2),
+		inst_expand(IKT0, ModuleInfo, InstA, IKT1, InstA2),
+		inst_expand(IKT1, ModuleInfo, InstB, IKT, InstB2),
 		set__insert(Expansions, ThisExpansion, Expansions2),
 		inst_matches_initial_3(InstA2, InstB2, IKT, ModuleInfo,
 			Expansions2)
@@ -400,9 +401,12 @@ pred_inst_matches(PredInstA, PredInstB, IKT, ModuleInfo) :-
 			module_info, expansions).
 :- mode pred_inst_matches_2(in, in, in, in, in) is semidet.
 
-pred_inst_matches_2(pred_inst_info(PredOrFunc, ModesA, Det),
-		pred_inst_info(PredOrFunc, ModesB, Det),
+pred_inst_matches_2(
+		pred_inst_info(PredOrFunc, argument_modes(_IKTA, ModesA), Det),
+		pred_inst_info(PredOrFunc, argument_modes(_IKTB, ModesB), Det),
 		IKT, ModuleInfo, Expansions) :-
+	% XXX This is incorrect in the case where the pred insts have
+	%     aliasing in their argument_modes.
 	pred_inst_argmodes_matches(ModesA, ModesB, IKT, ModuleInfo, Expansions).
 
 	% pred_inst_matches_argmodes(ModesA, ModesB, ModuleInfo, Expansions):
@@ -517,23 +521,25 @@ inst_list_matches_initial([X|Xs], [Y|Ys], IKT, ModuleInfo, Expansions) :-
 
 %-----------------------------------------------------------------------------%
 
-inst_expand(IKT, ModuleInfo, Inst0, Inst) :-
+inst_expand(IKT0, ModuleInfo, Inst0, IKT, Inst) :-
 	( Inst0 = defined_inst(InstName) ->
-		inst_lookup(IKT, ModuleInfo, InstName, Inst1),
-		inst_expand(IKT, ModuleInfo, Inst1, Inst)
+		inst_lookup(IKT0, ModuleInfo, InstName, IKT1, Inst1),
+		inst_expand(IKT1, ModuleInfo, Inst1, IKT, Inst)
 	; Inst0 = alias(InstKey) ->
-		inst_key_table_lookup(IKT, InstKey, Inst1),
-		inst_expand(IKT, ModuleInfo, Inst1, Inst)
+		inst_key_table_lookup(IKT0, InstKey, Inst1),
+		inst_expand(IKT0, ModuleInfo, Inst1, IKT, Inst)
 	;
-		Inst = Inst0
+		Inst = Inst0,
+		IKT = IKT0
 	).
 
-inst_expand_defined_inst(IKT, ModuleInfo, Inst0, Inst) :-
+inst_expand_defined_inst(IKT0, ModuleInfo, Inst0, IKT, Inst) :-
 	( Inst0 = defined_inst(InstName) ->
-		inst_lookup(IKT, ModuleInfo, InstName, Inst1),
-		inst_expand_defined_inst(IKT, ModuleInfo, Inst1, Inst)
+		inst_lookup(IKT0, ModuleInfo, InstName, IKT1, Inst1),
+		inst_expand_defined_inst(IKT1, ModuleInfo, Inst1, IKT, Inst)
 	;
-		Inst = Inst0
+		Inst = Inst0,
+		IKT = IKT0
 	).
 
 %-----------------------------------------------------------------------------%
@@ -546,15 +552,15 @@ inst_matches_final(InstA, InstB, IKT, ModuleInfo) :-
 		expansions).
 :- mode inst_matches_final_2(in, in, in, in, in) is semidet.
 
-inst_matches_final_2(InstA, InstB, IKT, ModuleInfo, Expansions) :-
+inst_matches_final_2(InstA, InstB, IKT0, ModuleInfo, Expansions) :-
 	ThisExpansion = InstA - InstB,
 	( set__member(ThisExpansion, Expansions) ->
 		true
 	; InstA = InstB ->
 		true
 	;
-		inst_expand(IKT, ModuleInfo, InstA, InstA2),
-		inst_expand(IKT, ModuleInfo, InstB, InstB2),
+		inst_expand(IKT0, ModuleInfo, InstA, IKT1, InstA2),
+		inst_expand(IKT1, ModuleInfo, InstB, IKT, InstB2),
 		set__insert(Expansions, ThisExpansion, Expansions2),
 		inst_matches_final_3(InstA2, InstB2, IKT, ModuleInfo,
 			Expansions2)
@@ -669,13 +675,13 @@ inst_matches_binding(InstA, InstB, IKT, ModuleInfo) :-
 		expansions).
 :- mode inst_matches_binding_2(in, in, in, in, in) is semidet.
 
-inst_matches_binding_2(InstA, InstB, IKT, ModuleInfo, Expansions) :-
+inst_matches_binding_2(InstA, InstB, IKT0, ModuleInfo, Expansions) :-
 	ThisExpansion = InstA - InstB,
 	( set__member(ThisExpansion, Expansions) ->
 		true
 	;
-		inst_expand(IKT, ModuleInfo, InstA, InstA2),
-		inst_expand(IKT, ModuleInfo, InstB, InstB2),
+		inst_expand(IKT0, ModuleInfo, InstA, IKT1, InstA2),
+		inst_expand(IKT1, ModuleInfo, InstB, IKT, InstB2),
 		set__insert(Expansions, ThisExpansion, Expansions2),
 		inst_matches_binding_3(InstA2, InstB2, IKT, ModuleInfo,
 			Expansions2)
@@ -779,8 +785,8 @@ inst_is_clobbered(bound(clobbered, _), _, _).
 inst_is_clobbered(bound(mostly_clobbered, _), _, _).
 inst_is_clobbered(inst_var(_), _, _) :-
         error("internal error: uninstantiated inst parameter").
-inst_is_clobbered(defined_inst(InstName), IKT, ModuleInfo) :-
-        inst_lookup(IKT, ModuleInfo, InstName, Inst),
+inst_is_clobbered(defined_inst(InstName), IKT0, ModuleInfo) :-
+        inst_lookup(IKT0, ModuleInfo, InstName, IKT, Inst),
         inst_is_clobbered(Inst, IKT, ModuleInfo).
 inst_is_clobbered(alias(Key), IKT, ModuleInfo) :-
 	inst_key_table_lookup(IKT, Key, Inst),
@@ -795,8 +801,8 @@ inst_is_free(free, _, _).
 inst_is_free(free(_Type), _, _).
 inst_is_free(inst_var(_), _, _) :-
         error("internal error: uninstantiated inst parameter").
-inst_is_free(defined_inst(InstName), IKT, ModuleInfo) :-
-        inst_lookup(IKT, ModuleInfo, InstName, Inst),
+inst_is_free(defined_inst(InstName), IKT0, ModuleInfo) :-
+        inst_lookup(IKT0, ModuleInfo, InstName, IKT, Inst),
         inst_is_free(Inst, IKT, ModuleInfo).
 inst_is_free(alias(Key), IKT, ModuleInfo) :-
 	inst_key_table_lookup(IKT, Key, Inst),
@@ -812,8 +818,8 @@ inst_is_bound(ground(_, _), _, _).
 inst_is_bound(bound(_, _), _, _).
 inst_is_bound(inst_var(_), _, _) :-
         error("internal error: uninstantiated inst parameter").
-inst_is_bound(defined_inst(InstName), IKT, ModuleInfo) :-
-        inst_lookup(IKT, ModuleInfo, InstName, Inst),
+inst_is_bound(defined_inst(InstName), IKT0, ModuleInfo) :-
+        inst_lookup(IKT0, ModuleInfo, InstName, IKT, Inst),
         inst_is_bound(Inst, IKT, ModuleInfo).
 inst_is_bound(abstract_inst(_, _), _, _).
 inst_is_bound(alias(Key), IKT, ModuleInfo) :-
@@ -827,8 +833,8 @@ inst_is_bound(alias(Key), IKT, ModuleInfo) :-
 inst_is_bound_to_functors(bound(_Uniq, Functors), _, _, Functors).
 inst_is_bound_to_functors(inst_var(_), _, _, _) :-
         error("internal error: uninstantiated inst parameter").
-inst_is_bound_to_functors(defined_inst(InstName), IKT, ModuleInfo, Functors) :-
-        inst_lookup(IKT, ModuleInfo, InstName, Inst),
+inst_is_bound_to_functors(defined_inst(InstName), IKT0, ModuleInfo, Functors) :-
+        inst_lookup(IKT0, ModuleInfo, InstName, IKT, Inst),
         inst_is_bound_to_functors(Inst, IKT, ModuleInfo, Functors).
 inst_is_bound_to_functors(alias(Key), IKT, ModuleInfo, Functors) :-
 	inst_key_table_lookup(IKT, Key, Inst),
@@ -857,13 +863,13 @@ inst_is_ground_2(bound(_, List), IKT, ModuleInfo, Expansions) :-
 inst_is_ground_2(ground(_, _), _, _, _).
 inst_is_ground_2(inst_var(_), _, _, _) :-
         error("internal error: uninstantiated inst parameter").
-inst_is_ground_2(Inst, IKT, ModuleInfo, Expansions) :-
+inst_is_ground_2(Inst, IKT0, ModuleInfo, Expansions) :-
 	Inst = defined_inst(InstName),
         ( set__member(Inst, Expansions) ->
                 true
         ;
                 set__insert(Expansions, Inst, Expansions2),
-                inst_lookup(IKT, ModuleInfo, InstName, Inst2),
+                inst_lookup(IKT0, ModuleInfo, InstName, IKT, Inst2),
                 inst_is_ground_2(Inst2, IKT, ModuleInfo, Expansions2)
         ).
 inst_is_ground_2(alias(Key), IKT, ModuleInfo, Expansions) :-
@@ -892,13 +898,13 @@ inst_is_ground_or_any_2(ground(_, _), _, _, _).
 inst_is_ground_or_any_2(any(_), _, _, _).
 inst_is_ground_or_any_2(inst_var(_), _, _, _) :-
         error("internal error: uninstantiated inst parameter").
-inst_is_ground_or_any_2(Inst, IKT, ModuleInfo, Expansions) :-
+inst_is_ground_or_any_2(Inst, IKT0, ModuleInfo, Expansions) :-
 	Inst = defined_inst(InstName),
         ( set__member(Inst, Expansions) ->
                 true
         ;
                 set__insert(Expansions, Inst, Expansions2),
-                inst_lookup(IKT, ModuleInfo, InstName, Inst2),
+                inst_lookup(IKT0, ModuleInfo, InstName, IKT, Inst2),
                 inst_is_ground_or_any_2(Inst2, IKT, ModuleInfo, Expansions2)
         ).
 inst_is_ground_or_any_2(alias(Key), IKT, ModuleInfo, Expansions) :-
@@ -928,13 +934,13 @@ inst_is_unique_2(free, _, _, _).
 inst_is_unique_2(ground(unique, _), _, _, _).
 inst_is_unique_2(inst_var(_), _, _, _) :-
         error("internal error: uninstantiated inst parameter").
-inst_is_unique_2(Inst, IKT, ModuleInfo, Expansions) :-
+inst_is_unique_2(Inst, IKT0, ModuleInfo, Expansions) :-
 	Inst = defined_inst(InstName),
         ( set__member(Inst, Expansions) ->
                 true
         ;
                 set__insert(Expansions, Inst, Expansions2),
-                inst_lookup(IKT, ModuleInfo, InstName, Inst2),
+                inst_lookup(IKT0, ModuleInfo, InstName, IKT, Inst2),
                 inst_is_unique_2(Inst2, IKT, ModuleInfo, Expansions2)
         ).
 inst_is_unique_2(alias(Key), IKT, ModuleInfo, Expansions) :-
@@ -967,13 +973,13 @@ inst_is_mostly_unique_2(ground(unique, _), _, _, _).
 inst_is_mostly_unique_2(ground(mostly_unique, _), _, _, _).
 inst_is_mostly_unique_2(inst_var(_), _, _, _) :-
         error("internal error: uninstantiated inst parameter").
-inst_is_mostly_unique_2(Inst, IKT, ModuleInfo, Expansions) :-
+inst_is_mostly_unique_2(Inst, IKT0, ModuleInfo, Expansions) :-
 	Inst = defined_inst(InstName),
         ( set__member(Inst, Expansions) ->
                 true
         ;
                 set__insert(Expansions, Inst, Expansions2),
-                inst_lookup(IKT, ModuleInfo, InstName, Inst2),
+                inst_lookup(IKT0, ModuleInfo, InstName, IKT, Inst2),
                 inst_is_mostly_unique_2(Inst2, IKT, ModuleInfo, Expansions2)
         ).
 inst_is_mostly_unique_2(alias(Key), IKT, ModuleInfo, Expansions) :-
@@ -1005,13 +1011,13 @@ inst_is_not_partly_unique_2(any(shared), _, _, _).
 inst_is_not_partly_unique_2(ground(shared, _), _, _, _).
 inst_is_not_partly_unique_2(inst_var(_), _, _, _) :-
         error("internal error: uninstantiated inst parameter").
-inst_is_not_partly_unique_2(Inst, IKT, ModuleInfo, Expansions) :-
+inst_is_not_partly_unique_2(Inst, IKT0, ModuleInfo, Expansions) :-
 	Inst = defined_inst(InstName),
         ( set__member(Inst, Expansions) ->
                 true
         ;
                 set__insert(Expansions, Inst, Expansions2),
-                inst_lookup(IKT, ModuleInfo, InstName, Inst2),
+                inst_lookup(IKT0, ModuleInfo, InstName, IKT, Inst2),
                 inst_is_not_partly_unique_2(Inst2, IKT, ModuleInfo, Expansions2)
         ).
 inst_is_not_partly_unique_2(alias(Key), IKT, ModuleInfo, Expansions) :-
@@ -1049,13 +1055,13 @@ inst_is_not_fully_unique_2(ground(shared, _), _, _, _).
 inst_is_not_fully_unique_2(ground(mostly_unique, _), _, _, _).
 inst_is_not_fully_unique_2(inst_var(_), _, _, _) :-
         error("internal error: uninstantiated inst parameter").
-inst_is_not_fully_unique_2(Inst, IKT, ModuleInfo, Expansions) :-
+inst_is_not_fully_unique_2(Inst, IKT0, ModuleInfo, Expansions) :-
         Inst = defined_inst(InstName),
 	( set__member(Inst, Expansions) ->
 		true
         ;
                 set__insert(Expansions, Inst, Expansions2),
-                inst_lookup(IKT, ModuleInfo, InstName, Inst2),
+                inst_lookup(IKT0, ModuleInfo, InstName, IKT, Inst2),
                 inst_is_not_fully_unique_2(Inst2, IKT, ModuleInfo, Expansions2)
         ).
 inst_is_not_fully_unique_2(alias(Key), IKT, ModuleInfo, Expansions) :-
@@ -1190,13 +1196,13 @@ inst_contains_instname(Inst, IKT, ModuleInfo, InstName) :-
 		set(inst_name), inst_name).
 :- mode inst_contains_instname_2(in, in, in, in, in) is semidet.
 
-inst_contains_instname_2(defined_inst(InstName1), IKT, ModuleInfo, Expansions0,
+inst_contains_instname_2(defined_inst(InstName1), IKT0, ModuleInfo, Expansions0,
 		InstName) :-
 	(
 		InstName = InstName1
 	;
 		not set__member(InstName1, Expansions0),
-		inst_lookup(IKT, ModuleInfo, InstName1, Inst1),
+		inst_lookup(IKT0, ModuleInfo, InstName1, IKT, Inst1),
 		set__insert(Expansions0, InstName1, Expansions),
 		inst_contains_instname_2(Inst1, IKT, ModuleInfo, Expansions,
 			InstName)
@@ -1256,20 +1262,21 @@ inst_contains_inst_var_2(inst_var(InstVar), _, _, _, InstVar).
 inst_contains_inst_var_2(alias(Key), IKT, ModuleInfo, Expansions, InstVar) :-
 	inst_key_table_lookup(IKT, Key, Inst),
 	inst_contains_inst_var_2(Inst, IKT, ModuleInfo, Expansions, InstVar).
-inst_contains_inst_var_2(defined_inst(InstName), IKT, ModuleInfo, Expansions0,
+inst_contains_inst_var_2(defined_inst(InstName), IKT0, ModuleInfo, Expansions0,
 		InstVar) :-
 	\+ set__member(InstName, Expansions0),
-	inst_lookup(IKT, ModuleInfo, InstName, Inst),
+	inst_lookup(IKT0, ModuleInfo, InstName, IKT, Inst),
 	set__insert(Expansions0, InstName, Expansions),
 	inst_contains_inst_var_2(Inst, IKT, ModuleInfo, Expansions, InstVar).
 inst_contains_inst_var_2(bound(_Uniq, ArgInsts), IKT, ModuleInfo, Expansions,
 		InstVar) :-
 	bound_inst_list_contains_inst_var(ArgInsts, IKT, ModuleInfo, Expansions,
 		InstVar).
-inst_contains_inst_var_2(ground(_Uniq, PredInstInfo), IKT, ModuleInfo,
+inst_contains_inst_var_2(ground(_Uniq, PredInstInfo), _IKT, ModuleInfo,
 		Expansions, InstVar) :-
-	PredInstInfo = yes(pred_inst_info(_PredOrFunc, Modes, _Det)),
-	mode_list_contains_inst_var_2(Modes, IKT, ModuleInfo, Expansions,
+	PredInstInfo = yes(pred_inst_info(_PredOrFunc,
+		argument_modes(ArgIKT, Modes), _Det)),
+	mode_list_contains_inst_var_2(Modes, ArgIKT, ModuleInfo, Expansions,
 		InstVar).
 inst_contains_inst_var_2(abstract_inst(_Name, ArgInsts), IKT, ModuleInfo,
 		Expansions, InstVar) :-

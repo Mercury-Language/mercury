@@ -217,7 +217,8 @@ build_live_sets_in_goal_2(some(_Vs, Goal0), Liveness0, ResumeVars0, LiveSets0,
 	).
 
 build_live_sets_in_goal_2(higher_order_call(_PredVar, ArgVars,
-				Types, Modes, Det, _IsPredOrFunc),
+				Types, argument_modes(IKT, Modes), Det,
+				_IsPredOrFunc),
 		Liveness, ResumeVars0, LiveSets0,
 		GoalInfo, ModuleInfo, ProcInfo,
 		Liveness, ResumeVars, LiveSets) :-
@@ -232,8 +233,6 @@ build_live_sets_in_goal_2(higher_order_call(_PredVar, ArgVars,
 	% so we can just pass convention `simple' to make_arg_infos.
 
 	determinism_to_code_model(Det, CallModel),
-	% YYY Change for local inst_key_tables
-	module_info_inst_key_table(ModuleInfo, IKT),
 	make_arg_infos(simple, Types, Modes, CallModel, IKT, ModuleInfo,
 			ArgInfos),
 	find_output_vars_from_arg_info(ArgVars, ArgInfos, OutVars),

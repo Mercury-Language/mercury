@@ -240,13 +240,13 @@ setup_pred_args(ModuleInfo, PredId, [ProcId | Rest], UnusedArgInfo, VarUsage0,
 		OptProcs1 = OptProcs0,
 		VarUsage1 = VarUsage0
 	;
-		proc_info_argmodes(ProcInfo, ArgModes),
+		proc_info_argmodes(ProcInfo, argument_modes(ArgIKT, ArgModes)),
 		proc_info_headvars(ProcInfo, HeadVars),
 		proc_info_vartypes(ProcInfo, VarTypes),
 		map__keys(VarTypes, Vars),
 		initialise_vardep(VarDep0, Vars, VarDep1),
-		setup_output_args(ModuleInfo, HeadVars,
-			ArgModes, VarDep1, VarDep2),
+		setup_output_args(ModuleInfo, HeadVars, ArgIKT, ArgModes,
+			VarDep1, VarDep2),
 		proc_info_goal(ProcInfo, Goal - _),
 		traverse_goal(ModuleInfo, Goal, VarDep2, VarDep),
 		map__set(VarUsage0, proc(PredId, ProcId), VarDep, VarUsage1),
@@ -271,10 +271,10 @@ initialise_vardep(VarDep0, [Var | Vars], VarDep) :-
 
 	% Get output arguments for a procedure given the headvars and the
 	% argument modes.
-:- pred setup_output_args(module_info::in, list(var)::in, list(mode)::in,
-			var_dep::in, var_dep::out) is det.
+:- pred setup_output_args(module_info::in, list(var)::in, inst_key_table::in,
+		list(mode)::in, var_dep::in, var_dep::out) is det.
 
-setup_output_args(ModuleInfo, HVars, ArgModes, VarDep0, VarDep) :-
+setup_output_args(ModuleInfo, HVars, ArgIKT, ArgModes, VarDep0, VarDep) :-
 	(
 		HVars = [Var | Vars], ArgModes = [Mode | Modes]
 	->
@@ -282,15 +282,15 @@ setup_output_args(ModuleInfo, HVars, ArgModes, VarDep0, VarDep) :-
 			% Any argument which has its instantiatedness
 			% changed by the predicate is used.
 			mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
-			% YYY Change for local inst_key_tables
-			module_info_inst_key_table(ModuleInfo, IKT),
-			\+ inst_matches_binding(Inst1, Inst2, IKT, ModuleInfo)
+			\+ inst_matches_binding(Inst1, Inst2, ArgIKT,
+					ModuleInfo)
 		->
 			set_var_used(VarDep0, Var, VarDep1)		
 		;
 			VarDep1 = VarDep0	
 		),
-		setup_output_args(ModuleInfo, Vars, Modes, VarDep1, VarDep)
+		setup_output_args(ModuleInfo, Vars, ArgIKT, Modes,
+			VarDep1, VarDep)
 	;
 		HVars = [], ArgModes = []
 	->
@@ -503,8 +503,7 @@ get_instantiating_variables(ModuleInfo, ArgVars, ArgModes, InstVars) :-
 	->
 		Mode = ((Inst1 - _) -> (Inst2 - _)),
 		(
-			% YYY Change for local inst_key_tables
-			module_info_inst_key_table(ModuleInfo, IKT),
+			inst_key_table_init(IKT),	% YYY
 			inst_matches_binding(Inst1, Inst2, IKT, ModuleInfo)
 		->
 			InstVars = InstVars1
@@ -786,11 +785,15 @@ create_new_pred(proc(PredId, ProcId), UnusedArgInfo,
 				IntermodHeadVars),
 			proc_info_set_headvars(ExtraProc0, IntermodHeadVars,
 				ExtraProc1),
-			proc_info_argmodes(OldProc0, ArgModes0),
+			proc_info_argmodes(OldProc0,
+				argument_modes(ArgIKT, ArgModes0)),
 			remove_listof_elements(ArgModes0, 1, UnusedArgs2,
 				IntermodArgModes),
-			proc_info_set_argmodes(ExtraProc1, IntermodArgModes,
-					ExtraProc),
+				% XXX ArgIKT has more entries than it has
+				%     to here.  Nevertheless, it is safe.
+			proc_info_set_argmodes(ExtraProc1,
+				argument_modes(ArgIKT, IntermodArgModes),
+				ExtraProc),
 			pred_info_procedures(ExtraPredInfo0, ExtraProcs0),
 			next_mode_id(ExtraProcs0, no, ExtraProcId),
 			map__set(ExtraProcs0, ExtraProcId,
@@ -949,9 +952,12 @@ create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule,
 	proc_info_headvars(ProcInfo0, HeadVars0),
 	remove_listof_elements(HeadVars0, 1, UnusedArgs, HeadVars),
 	proc_info_set_headvars(ProcInfo0, HeadVars, ProcInfo1),
-	proc_info_argmodes(ProcInfo1, ArgModes0),
+	proc_info_argmodes(ProcInfo1, argument_modes(ArgIKT, ArgModes0)),
 	remove_listof_elements(ArgModes0, 1, UnusedArgs, ArgModes),
-	proc_info_set_argmodes(ProcInfo0, ArgModes, ProcInfo),
+			% XXX ArgIKT has more elements that it needs
+			%     to here.  Nevertheless, this is safe.
+	proc_info_set_argmodes(ProcInfo0, argument_modes(ArgIKT, ArgModes),
+		ProcInfo),
 	map__set(NewProcs0, NewProcId, ProcInfo, NewProcs),
 	pred_info_set_procedures(NewPredInfo0, NewProcs, NewPredInfo),
 
@@ -1071,15 +1077,17 @@ do_fixup_unused_args(VarUsage, proc(OldPredId, OldProcId), ProcCallInfo,
 	pred_info_procedures(PredInfo0, Procs0),
 
 	proc_info_headvars(ProcInfo0, HeadVars0),
-	proc_info_argmodes(ProcInfo0, ArgModes0),
+	proc_info_argmodes(ProcInfo0, argument_modes(ArgIKT, ArgModes0)),
 	proc_info_variables(ProcInfo0, Varset0),
 	proc_info_goal(ProcInfo0, Goal0),
+	proc_info_inst_key_table(ProcInfo0, IKT),
 	remove_listof_elements(HeadVars0, 1, UnusedArgs, HeadVars),
 	remove_listof_elements(ArgModes0, 1, UnusedArgs, ArgModes),
 	proc_info_set_headvars(ProcInfo0, HeadVars, FixedProc1),
-	proc_info_set_argmodes(FixedProc1, ArgModes, FixedProc2),
-	% YYY Fix for local inst_key_tables
-	module_info_inst_key_table(Mod0, IKT),
+			% XXX ArgIKT has more elements that it needs
+			%     to here.  Nevertheless, this is safe.
+	proc_info_set_argmodes(FixedProc1, argument_modes(ArgIKT, ArgModes),
+			FixedProc2),
 
 		% remove unused vars from goal
 	fixup_goal(IKT, Mod0, UnusedVars, ProcCallInfo, Changed, Goal0, Goal1),

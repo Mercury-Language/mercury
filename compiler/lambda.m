@@ -41,8 +41,8 @@
 :- pred lambda__process_pred(pred_id, module_info, module_info).
 :- mode lambda__process_pred(in, in, out) is det.
 
-:- pred lambda__transform_lambda(pred_or_func, string, list(var), list(mode), 
-		determinism, set(var), hlds_goal, unification,
+:- pred lambda__transform_lambda(pred_or_func, string, list(var),
+		argument_modes, determinism, set(var), hlds_goal, unification,
 		varset, map(var, type), tvarset, map(tvar, var), inst_key_table,
 		module_info, unify_rhs, unification, module_info).
 :- mode lambda__transform_lambda(in, in, in, in, in, in, in, in, in, in, in,
@@ -125,9 +125,7 @@ lambda__process_proc_2(ProcInfo0, PredInfo0, ModuleInfo0,
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_typeinfo_varmap(ProcInfo0, TVarMap0),
-
-	% YYY Change for local inst_key_tables
-	module_info_inst_key_table(ModuleInfo0, IKT),
+	proc_info_inst_key_table(ProcInfo0, IKT),
 
 	% process the goal
 	Info0 = lambda_info(VarSet0, VarTypes0, TypeVarSet0, TVarMap0, 
@@ -157,7 +155,10 @@ lambda__process_goal(Goal0 - GoalInfo0, Goal) -->
 
 lambda__process_goal_2(unify(XVar, Y, Mode, Unification, Context), GoalInfo,
 			Unify - GoalInfo) -->
-	( { Y = lambda_goal(PredOrFunc, Vars, Modes, Det, LambdaGoal0) } ->
+	(
+		{ Y = lambda_goal(PredOrFunc, Vars, Modes, Det, _IMDelta,
+			LambdaGoal0) }
+	->
 		% for lambda expressions, we must convert the lambda expression
 		% into a new predicate
 		{ LambdaGoal0 = _ - GoalInfo0 },
@@ -219,9 +220,9 @@ lambda__process_cases([case(ConsId, Goal0) | Cases0],
 	lambda__process_goal(Goal0, Goal),
 	lambda__process_cases(Cases0, Cases).
 
-:- pred lambda__process_lambda(pred_or_func, list(var), list(mode), determinism,
-		set(var), hlds_goal, unification, unify_rhs, unification,
-		lambda_info, lambda_info).
+:- pred lambda__process_lambda(pred_or_func, list(var), argument_modes,
+		determinism, set(var), hlds_goal, unification, unify_rhs,
+		unification, lambda_info, lambda_info).
 :- mode lambda__process_lambda(in, in, in, in, in, in, in, out, out,
 		in, out) is det.
 
@@ -288,15 +289,17 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		; CodeModel = model_non, Call_CodeModel = model_det
 		),
 			% check that the curried arguments are all input
-		proc_info_argmodes(Call_ProcInfo, Call_ArgModes),
+		proc_info_argmodes(Call_ProcInfo,
+			argument_modes(Call_ArgIKT, Call_ArgModes)),
 		list__length(InitialVars, NumInitialVars),
 		list__split_list(NumInitialVars, Call_ArgModes,
 			CurriedArgModes, UncurriedArgModes),
 		\+ (	list__member(Mode, CurriedArgModes), 
-			\+ mode_is_input(IKT, ModuleInfo0, Mode)
+			\+ mode_is_input(Call_ArgIKT, ModuleInfo0, Mode)
 		),
 			% and that all the inputs precede the outputs
-		inputs_precede_outputs(UncurriedArgModes, IKT, ModuleInfo0)
+		inputs_precede_outputs(UncurriedArgModes, Call_ArgIKT,
+			ModuleInfo0)
 	->
 		ArgVars = InitialVars,
 		PredId = PredId0,
@@ -348,7 +351,10 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		map__overlay(ArgModesMap, OrigArgModesMap, ArgModesMap1),
 		map__values(ArgModesMap1, ArgModes1),
 
-		list__append(ArgModes1, Modes, AllArgModes),
+		% XXX This will have to revisited for aliasing information
+		%     in lambda argmodes.
+		Modes = argument_modes(_, LambdaArgModes),
+		list__append(ArgModes1, LambdaArgModes, AllArgModes),
 
 		% Even after we've done all that, we still need to
 		% permute the argument variables so that all the inputs
@@ -361,9 +367,11 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		% Now construct the proc_info and pred_info for the new
 		% single-mode predicate, using the information computed above
 
+		ArgIKT = IKT,	% XXX Should optimise ArgIKT
+		PermutedModes = argument_modes(ArgIKT, PermutedArgModes),
 		proc_info_create(VarSet, VarTypes, PermutedArgVars,
-			PermutedArgModes, Detism, LambdaGoal, LambdaContext,
-			TVarMap, ProcInfo),
+			PermutedModes, Detism, LambdaGoal, LambdaContext,
+			TVarMap, ArgIKT, ProcInfo),
 
 		pred_info_create(ModuleName, PredName, TVarSet, ArgTypes,
 			true, LambdaContext, local, [], PredOrFunc, ProcInfo,

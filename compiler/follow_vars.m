@@ -43,7 +43,7 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, llds, mode_util.
+:- import_module hlds_goal, hlds_data, llds, mode_util, prog_data.
 :- import_module code_util, quantification, arg_info, globals.
 :- import_module bool, list, map, set, std_util, term, require.
 
@@ -178,10 +178,11 @@ find_follow_vars_in_goal_expr(
 		higher_order_call(PredVar, Args, Types, Modes, Det,
 			IsPredOrFunc),
 		FollowVars) :-
-	FVInfo = follow_vars_info(ArgsMethod, ModuleInfo, IKT),
+	FVInfo = follow_vars_info(ArgsMethod, ModuleInfo, _IKT),
 	determinism_to_code_model(Det, CodeModel),
-	make_arg_infos(ArgsMethod, Types, Modes, CodeModel, IKT, ModuleInfo,
-		ArgInfo),
+	Modes = argument_modes(ArgIKT, ArgModes),
+	make_arg_infos(ArgsMethod, Types, ArgModes, CodeModel, ArgIKT,
+		ModuleInfo, ArgInfo),
 	find_follow_vars_from_arginfo(ArgInfo, Args, FollowVars).
 
 find_follow_vars_in_goal_expr(call(A,B,C,D,E,F), FVInfo,

@@ -97,8 +97,9 @@
 	% Given a user-defined or compiler-defined inst name,
 	% lookup the corresponding inst in the inst table.
 	%
-:- pred inst_lookup(inst_key_table, module_info, inst_name, inst).
-:- mode inst_lookup(in, in, in, out) is det.
+:- pred inst_lookup(inst_key_table, module_info, inst_name, inst_key_table,
+		inst).
+:- mode inst_lookup(in, in, in, out, out) is det.
 
 	% Use the instmap deltas for all the atomic sub-goals to recompute
 	% the instmap deltas for all the non-atomic sub-goals of a goal.
@@ -178,6 +179,11 @@
 :- pred apply_inst_key_sub(inst_key_sub, instmap, instmap,
 		inst_key_table, inst_key_table).
 :- mode apply_inst_key_sub(in, in, out, in, out) is det.
+
+%-----------------------------------------------------------------------------%
+
+:- pred apply_inst_key_sub_mode(inst_key_sub, mode, mode).
+:- mode apply_inst_key_sub_mode(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -282,7 +288,7 @@ mode_is_unused(IKT, ModuleInfo, Mode) :-
 
 %-----------------------------------------------------------------------------%
 
-mode_to_arg_mode(IKT, ModuleInfo, Mode, Type, ArgMode) :-
+mode_to_arg_mode(IKT0, ModuleInfo, Mode, Type, ArgMode) :-
 	%
 	% We need to handle no_tag types (types which have
 	% exactly one constructor, and whose one constructor
@@ -302,14 +308,14 @@ mode_to_arg_mode(IKT, ModuleInfo, Mode, Type, ArgMode) :-
 		% and then recurse
 		mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
 		ConsId = cons(FunctorName, 1),
-		get_single_arg_inst(InitialInst, IKT, ModuleInfo, ConsId,
-			InitialArgInst),
-		get_single_arg_inst(FinalInst, IKT, ModuleInfo, ConsId,
-			FinalArgInst),
+		get_single_arg_inst(InitialInst, IKT0, ModuleInfo, ConsId,
+			IKT1, InitialArgInst),
+		get_single_arg_inst(FinalInst, IKT1, ModuleInfo, ConsId,
+			IKT, FinalArgInst),
 		ModeOfArg = (InitialArgInst -> FinalArgInst),
 		mode_to_arg_mode(IKT, ModuleInfo, ModeOfArg, ArgType, ArgMode)
 	;
-		mode_to_arg_mode_2(IKT, ModuleInfo, Mode, ArgMode)
+		mode_to_arg_mode_2(IKT0, ModuleInfo, Mode, ArgMode)
 	).
 
 :- pred mode_to_arg_mode_2(inst_key_table, module_info, mode, arg_mode).
@@ -331,30 +337,32 @@ mode_to_arg_mode_2(IKT, ModuleInfo, Mode, ArgMode) :-
 	% argument would be, assuming that the functor is
 	% the one given by the specified ConsId, whose arity is 1.
 	%
-:- pred get_single_arg_inst(inst, inst_key_table, module_info, cons_id, inst).
-:- mode get_single_arg_inst(in, in, in, in, out) is det.
+:- pred get_single_arg_inst(inst, inst_key_table, module_info, cons_id,
+		inst_key_table, inst).
+:- mode get_single_arg_inst(in, in, in, in, out, out) is det.
 
-get_single_arg_inst(defined_inst(InstName), IKT, ModuleInfo, ConsId, ArgInst) :-
-	inst_lookup(IKT, ModuleInfo, InstName, Inst),
-	get_single_arg_inst(Inst, IKT, ModuleInfo, ConsId, ArgInst).
-get_single_arg_inst(not_reached, _, _, _, not_reached).
-get_single_arg_inst(ground(Uniq, _PredInst), _, _, _, ground(Uniq, no)).
-get_single_arg_inst(bound(_Uniq, List), _, _, ConsId, ArgInst) :-
+get_single_arg_inst(defined_inst(InstName), IKT0, ModuleInfo, ConsId, IKT,
+			ArgInst) :-
+	inst_lookup(IKT0, ModuleInfo, InstName, IKT1, Inst),
+	get_single_arg_inst(Inst, IKT1, ModuleInfo, ConsId, IKT, ArgInst).
+get_single_arg_inst(not_reached, IKT, _, _, IKT, not_reached).
+get_single_arg_inst(ground(Uniq, _PredInst), IKT, _, _, IKT, ground(Uniq, no)).
+get_single_arg_inst(bound(_Uniq, List), IKT, _, ConsId, IKT, ArgInst) :-
 	( get_single_arg_inst_2(List, ConsId, ArgInst0) ->
 		ArgInst = ArgInst0
 	;
 		% the code is unreachable
 		ArgInst = not_reached
 	).
-get_single_arg_inst(free, _, _, _, free).
-get_single_arg_inst(free(_Type), _, _, _, free).	% XXX loses type info
-get_single_arg_inst(alias(Key), IKT, ModuleInfo, ConsId, Inst) :-
-	inst_key_table_lookup(IKT, Key, Inst0),
-	get_single_arg_inst(Inst0, IKT, ModuleInfo, ConsId, Inst).
-get_single_arg_inst(any(Uniq), _, _, _, any(Uniq)).
-get_single_arg_inst(abstract_inst(_, _), _, _, _, _) :-
+get_single_arg_inst(free, IKT, _, _, IKT, free).
+get_single_arg_inst(free(_Type), IKT, _, _, IKT, free).	% XXX loses type info
+get_single_arg_inst(alias(Key), IKT0, ModuleInfo, ConsId, IKT, Inst) :-
+	inst_key_table_lookup(IKT0, Key, Inst0),
+	get_single_arg_inst(Inst0, IKT0, ModuleInfo, ConsId, IKT, Inst).
+get_single_arg_inst(any(Uniq), IKT, _, _, IKT, any(Uniq)).
+get_single_arg_inst(abstract_inst(_, _), _, _, _, _, _) :-
 	error("get_single_arg_inst: abstract insts not supported").
-get_single_arg_inst(inst_var(_), _, _, _, _) :-
+get_single_arg_inst(inst_var(_), _, _, _, _, _) :-
 	error("get_single_arg_inst: inst_var").
 
 :- pred get_single_arg_inst_2(list(bound_inst), cons_id, inst).
@@ -426,67 +434,80 @@ get_arg_insts_2([BoundInst | BoundInsts], ConsId, ArgInsts) :-
 
 %-----------------------------------------------------------------------------%
 
-inst_lookup(IKT, ModuleInfo, InstName, Inst) :-
-	inst_lookup_2(InstName, IKT, ModuleInfo, Inst).
+inst_lookup(IKT0, ModuleInfo, InstName, IKT, Inst) :-
+	inst_lookup_2(InstName, IKT0, ModuleInfo, IKT, Inst).
 
-:- pred inst_lookup_2(inst_name, inst_key_table, module_info, inst).
-:- mode inst_lookup_2(in, in, in, out) is det.
+:- pred inst_lookup_2(inst_name, inst_key_table, module_info, inst_key_table,
+		inst).
+:- mode inst_lookup_2(in, in, in, out, out) is det.
 
-inst_lookup_2(InstName, IKT, ModuleInfo, Inst) :-
+inst_lookup_2(InstName, IKT0, ModuleInfo, IKT, Inst) :-
 	( InstName = unify_inst(_, _, _, _),
 		module_info_insts(ModuleInfo, InstTable),
 		inst_table_get_unify_insts(InstTable, UnifyInstTable),
 		map__lookup(UnifyInstTable, InstName, MaybeInst),
-		( MaybeInst = known(Inst0, _) ->
-			Inst = Inst0
+		( MaybeInst = known(Inst0, InstIKT, _) ->
+			inst_key_table_create_sub(IKT0, InstIKT, Sub, IKT),
+			inst_apply_sub(Sub, Inst0, Inst)
 		;
-			Inst = defined_inst(InstName)
+			Inst = defined_inst(InstName),
+			IKT = IKT0
 		)
 	; InstName = merge_inst(A, B),
 		module_info_insts(ModuleInfo, InstTable),
 		inst_table_get_merge_insts(InstTable, MergeInstTable),
 		map__lookup(MergeInstTable, A - B, MaybeInst),
-		( MaybeInst = known(Inst0) ->
-			Inst = Inst0
+		( MaybeInst = known(Inst0, InstIKT) ->
+			inst_key_table_create_sub(IKT0, InstIKT, Sub, IKT),
+			inst_apply_sub(Sub, Inst0, Inst)
 		;
-			Inst = defined_inst(InstName)
+			Inst = defined_inst(InstName),
+			IKT = IKT0
 		)
 	; InstName = ground_inst(_, _, _, _),
 		module_info_insts(ModuleInfo, InstTable),
 		inst_table_get_ground_insts(InstTable, GroundInstTable),
 		map__lookup(GroundInstTable, InstName, MaybeInst),
-		( MaybeInst = known(Inst0, _) ->
-			Inst = Inst0
+		( MaybeInst = known(Inst0, InstIKT, _) ->
+			inst_key_table_create_sub(IKT0, InstIKT, Sub, IKT),
+			inst_apply_sub(Sub, Inst0, Inst)
 		;
-			Inst = defined_inst(InstName)
+			Inst = defined_inst(InstName),
+			IKT = IKT0
 		)
 	; InstName = any_inst(_, _, _, _),
 		module_info_insts(ModuleInfo, InstTable),
 		inst_table_get_any_insts(InstTable, AnyInstTable),
 		map__lookup(AnyInstTable, InstName, MaybeInst),
-		( MaybeInst = known(Inst0, _) ->
-			Inst = Inst0
+		( MaybeInst = known(Inst0, InstIKT, _) ->
+			inst_key_table_create_sub(IKT0, InstIKT, Sub, IKT),
+			inst_apply_sub(Sub, Inst0, Inst)
 		;
-			Inst = defined_inst(InstName)
+			Inst = defined_inst(InstName),
+			IKT = IKT0
 		)
 	; InstName = shared_inst(SharedInstName),
 		module_info_insts(ModuleInfo, InstTable),
 		inst_table_get_shared_insts(InstTable, SharedInstTable),
 		map__lookup(SharedInstTable, SharedInstName, MaybeInst),
-		( MaybeInst = known(Inst0) ->
-			Inst = Inst0
+		( MaybeInst = known(Inst0, InstIKT) ->
+			inst_key_table_create_sub(IKT0, InstIKT, Sub, IKT),
+			inst_apply_sub(Sub, Inst0, Inst)
 		;
-			Inst = defined_inst(InstName)
+			Inst = defined_inst(InstName),
+			IKT = IKT0
 		)
 	; InstName = mostly_uniq_inst(NondetLiveInstName),
 		module_info_insts(ModuleInfo, InstTable),
 		inst_table_get_mostly_uniq_insts(InstTable,
 			NondetLiveInstTable),
 		map__lookup(NondetLiveInstTable, NondetLiveInstName, MaybeInst),
-		( MaybeInst = known(Inst0) ->
-			Inst = Inst0
+		( MaybeInst = known(Inst0, InstIKT) ->
+			inst_key_table_create_sub(IKT0, InstIKT, Sub, IKT),
+			inst_apply_sub(Sub, Inst0, Inst)
 		;
-			Inst = defined_inst(InstName)
+			Inst = defined_inst(InstName),
+			IKT = IKT0
 		)
 	; InstName = user_inst(Name, Args),
 		module_info_insts(ModuleInfo, InstTable),
@@ -496,16 +517,19 @@ inst_lookup_2(InstName, IKT, ModuleInfo, Inst) :-
 		( map__search(InstDefns, Name - Arity, InstDefn) ->
 			InstDefn = hlds_inst_defn(_VarSet, Params, Inst0,
 					_Cond, _C, _),
-			inst_lookup_subst_args(Inst0, Params, Name, Args, Inst)
+			inst_lookup_subst_args(Inst0, Params, Name, IKT0,
+				Args, IKT, Inst)
 		;
-			Inst = abstract_inst(Name, Args)
+			Inst = abstract_inst(Name, Args),
+			IKT = IKT0
 		)
 	; InstName = typed_ground(Uniq, Type),
 		map__init(Subst),
 		propagate_type_into_inst(Type, Subst, IKT, ModuleInfo,
-			ground(Uniq, no), Inst)
+			ground(Uniq, no), Inst),
+		IKT = IKT0
 	; InstName = typed_inst(Type, TypedInstName),
-		inst_lookup_2(TypedInstName, IKT, ModuleInfo, Inst0),
+		inst_lookup_2(TypedInstName, IKT0, ModuleInfo, IKT, Inst0),
 		map__init(Subst),
 		propagate_type_into_inst(Type, Subst, IKT, ModuleInfo,
 			Inst0, Inst)
@@ -698,22 +722,26 @@ propagate_type_into_inst_lazily(Type, Subst, IKT, ModuleInfo, Inst0, Inst) :-
 %-----------------------------------------------------------------------------%
 
 :- pred propagate_ctor_info(inst, type, list(constructor), inst_key_table,
-		module_info, inst).
-:- mode propagate_ctor_info(in, in, in, in, in, out) is det.
+		module_info, inst_key_table, inst).
+:- mode propagate_ctor_info(in, in, in, in, in, out, out) is det.
 
-propagate_ctor_info(any(Uniq), _Type, _, _, _, any(Uniq)).
+propagate_ctor_info(any(Uniq), _Type, _, IKT, _, IKT, any(Uniq)).
 			% XXX loses type info!
-propagate_ctor_info(alias(Key), Type, Constructors, IKT, ModuleInfo, Inst) :-
-	inst_key_table_lookup(IKT, Key, Inst0),
-	propagate_ctor_info(Inst0, Type, Constructors, IKT, ModuleInfo, Inst).
+propagate_ctor_info(alias(Key), Type, Constructors, IKT0, ModuleInfo, IKT,
+			alias(Key)) :-
+	inst_key_table_lookup(IKT0, Key, Inst0),
+	propagate_ctor_info(Inst0, Type, Constructors, IKT0, ModuleInfo, IKT1,
+			Inst),
+	inst_key_table_update(IKT1, Key, Inst, IKT).
 
-% propagate_ctor_info(free, Type, _, _, _, free(Type)).	% temporarily disabled
-propagate_ctor_info(free, _Type, _, _, _, free).	% XXX temporary hack
+% propagate_ctor_info(free, Type, _, IKT, _, IKT, free(Type)).
+				% temporarily disabled
+propagate_ctor_info(free, _Type, _, IKT, _, IKT, free).	% XXX temporary hack
 
-propagate_ctor_info(free(_), _, _, _, _, _) :-
+propagate_ctor_info(free(_), _, _, _, _, _, _) :-
 	error("propagate_ctor_info: type info already present").
 propagate_ctor_info(bound(Uniq, BoundInsts0), Type, _Constructors, IKT,
-		ModuleInfo, Inst) :-
+		ModuleInfo, IKT, Inst) :-
 	propagate_ctor_info_2(BoundInsts0, Type, IKT, ModuleInfo, BoundInsts),
 	( BoundInsts = [] ->
 		Inst = not_reached
@@ -722,9 +750,9 @@ propagate_ctor_info(bound(Uniq, BoundInsts0), Type, _Constructors, IKT,
 		Inst = bound(Uniq, BoundInsts)
 	).
 propagate_ctor_info(ground(Uniq, no), Type, Constructors, IKT, ModuleInfo,
-		Inst) :-
+		IKT, Inst) :-
 	( type_is_higher_order(Type, function, ArgTypes) ->
-		default_higher_order_func_inst(ArgTypes, IKT, ModuleInfo,
+		default_higher_order_func_inst(ArgTypes, ModuleInfo,
 			HigherOrderInstInfo),
 		Inst = ground(Uniq, yes(HigherOrderInstInfo))
 	;
@@ -734,32 +762,34 @@ propagate_ctor_info(ground(Uniq, no), Type, Constructors, IKT, ModuleInfo,
 		Inst = bound(Uniq, BoundInsts)
 	).
 propagate_ctor_info(ground(Uniq, yes(PredInstInfo0)), Type, _Ctors, IKT,
-		ModuleInfo, ground(Uniq, yes(PredInstInfo))) :-
-	PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, Det),
-	PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
+		ModuleInfo, IKT, ground(Uniq, yes(PredInstInfo))) :-
+	PredInstInfo0 = pred_inst_info(PredOrFunc,
+		argument_modes(ArgIKT, ArgModes0), Det),
+	PredInstInfo = pred_inst_info(PredOrFunc,
+		argument_modes(ArgIKT, ArgModes), Det),
 	(
 		type_is_higher_order(Type, PredOrFunc, ArgTypes),
-		list__same_length(ArgTypes, Modes0)
+		list__same_length(ArgTypes, ArgModes0)
 	->
-		propagate_types_into_mode_list(ArgTypes, IKT, ModuleInfo,
-			Modes0, Modes)
+		propagate_types_into_mode_list(ArgTypes, ArgIKT, ModuleInfo,
+			ArgModes0, ArgModes)
 	;
 		% The inst is not a valid inst for the type,
 		% so leave it alone. This can only happen if the user
 		% has made a mistake.  A mode error should hopefully
 		% be reported if anything tries to match with the inst.
-		Modes = Modes0
+		ArgModes = ArgModes0
 	).
 
-propagate_ctor_info(not_reached, _Type, _Constructors, _IKT, _ModuleInfo,
-		not_reached).
-propagate_ctor_info(inst_var(V), _, _, _, _, inst_var(V)).
-propagate_ctor_info(abstract_inst(Name, Args), _, _, _, _,
+propagate_ctor_info(not_reached, _Type, _Constructors, IKT, _ModuleInfo,
+		IKT, not_reached).
+propagate_ctor_info(inst_var(V), _, _, IKT, _, IKT, inst_var(V)).
+propagate_ctor_info(abstract_inst(Name, Args), _, _, IKT, _, IKT,
 		abstract_inst(Name, Args)).	% XXX loses info
-propagate_ctor_info(defined_inst(InstName), Type, Ctors, IKT, ModuleInfo,
-		Inst) :-
-	inst_lookup(IKT, ModuleInfo, InstName, Inst0),
-	propagate_ctor_info(Inst0, Type, Ctors, IKT, ModuleInfo, Inst).
+propagate_ctor_info(defined_inst(InstName), Type, Ctors, IKT0, ModuleInfo,
+		IKT, Inst) :-
+	inst_lookup(IKT0, ModuleInfo, InstName, IKT1, Inst0),
+	propagate_ctor_info(Inst0, Type, Ctors, IKT1, ModuleInfo, IKT, Inst).
 
 :- pred propagate_ctor_info_lazily(inst, type, tsubst, inst_key_table,
 		module_info, inst).
@@ -790,11 +820,11 @@ propagate_ctor_info_lazily(bound(Uniq, BoundInsts0), Type0, Subst,
 		% XXX do we need to sort the BoundInsts?
 		Inst = bound(Uniq, BoundInsts)
 	).
-propagate_ctor_info_lazily(ground(Uniq, no), Type0, Subst, IKT, ModuleInfo,
+propagate_ctor_info_lazily(ground(Uniq, no), Type0, Subst, _IKT, ModuleInfo,
 		Inst) :-
 	apply_type_subst(Type0, Subst, Type),
 	( type_is_higher_order(Type, function, ArgTypes) ->
-		default_higher_order_func_inst(ArgTypes, IKT, ModuleInfo,
+		default_higher_order_func_inst(ArgTypes, ModuleInfo,
 			HigherOrderInstInfo),
 		Inst = ground(Uniq, yes(HigherOrderInstInfo))
 	;
@@ -808,22 +838,24 @@ propagate_ctor_info_lazily(ground(Uniq, no), Type0, Subst, IKT, ModuleInfo,
 	).
 
 propagate_ctor_info_lazily(ground(Uniq, yes(PredInstInfo0)), Type0, Subst,
-		IKT, ModuleInfo, ground(Uniq, yes(PredInstInfo))) :-
-	PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, Det),
-	PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
+		_IKT, ModuleInfo, ground(Uniq, yes(PredInstInfo))) :-
+	PredInstInfo0 = pred_inst_info(PredOrFunc,
+		argument_modes(ArgIKT, ArgModes0), Det),
+	PredInstInfo = pred_inst_info(PredOrFunc,
+		argument_modes(ArgIKT, ArgModes), Det),
 	apply_type_subst(Type0, Subst, Type),
 	(
 		type_is_higher_order(Type, PredOrFunc, ArgTypes),
-		list__same_length(ArgTypes, Modes0)
+		list__same_length(ArgTypes, ArgModes0)
 	->
-		propagate_types_into_mode_list(ArgTypes, IKT, ModuleInfo,
-			Modes0, Modes)
+		propagate_types_into_mode_list(ArgTypes, ArgIKT, ModuleInfo,
+			ArgModes0, ArgModes)
 	;
 		% The inst is not a valid inst for the type,
 		% so leave it alone. This can only happen if the user
 		% has made a mistake.  A mode error should hopefully
 		% be reported if anything tries to match with the inst.
-		Modes = Modes0
+		ArgModes = ArgModes0
 	).
 propagate_ctor_info_lazily(not_reached, _Type, _, _IKT, _M, not_reached).
 propagate_ctor_info_lazily(inst_var(Var), _, _, _, _, inst_var(Var)).
@@ -852,11 +884,10 @@ propagate_ctor_info_lazily(defined_inst(InstName0), Type0, Subst, _, _,
 	% This applies recursively to the arguments and return
 	% value too.
 	%
-:- pred default_higher_order_func_inst(list(type), inst_key_table, module_info,
-		pred_inst_info).
-:- mode default_higher_order_func_inst(in, in, in, out) is det.
+:- pred default_higher_order_func_inst(list(type), module_info, pred_inst_info).
+:- mode default_higher_order_func_inst(in, in, out) is det.
 
-default_higher_order_func_inst(PredArgTypes, IKT, ModuleInfo, PredInstInfo) :-
+default_higher_order_func_inst(PredArgTypes, ModuleInfo, PredInstInfo) :-
 	In = (ground(shared, no) -> ground(shared, no)),
 	Out = (free -> ground(shared, no)),
 	list__length(PredArgTypes, NumPredArgs),
@@ -864,9 +895,11 @@ default_higher_order_func_inst(PredArgTypes, IKT, ModuleInfo, PredInstInfo) :-
 	list__duplicate(NumFuncArgs, In, FuncArgModes),
 	FuncRetMode = Out,
 	list__append(FuncArgModes, [FuncRetMode], PredArgModes0),
+	inst_key_table_init(IKT),
 	propagate_types_into_mode_list(PredArgTypes, IKT, ModuleInfo,
 		PredArgModes0, PredArgModes),
-	PredInstInfo = pred_inst_info(function, PredArgModes, det).
+	PredInstInfo = pred_inst_info(function,
+		argument_modes(IKT, PredArgModes), det).
 
 :- pred constructors_to_bound_insts(list(constructor), uniqueness, module_info,
 				list(bound_inst)).
@@ -970,12 +1003,15 @@ apply_type_subst(Type0, Subst, Type) :-
 %-----------------------------------------------------------------------------%
 
 :- pred inst_lookup_subst_args(hlds_inst_body, list(inst_param), sym_name,
-			list(inst), inst).
-:- mode inst_lookup_subst_args(in, in, in, in, out) is det.
+		inst_key_table, list(inst), inst_key_table, inst).
+:- mode inst_lookup_subst_args(in, in, in, in, in, out, out) is det.
 
-inst_lookup_subst_args(eqv_inst(Inst0), Params, _Name, Args, Inst) :-
-	inst_substitute_arg_list(Inst0, Params, Args, Inst).
-inst_lookup_subst_args(abstract_inst, _Params, Name, Args,
+inst_lookup_subst_args(eqv_inst(InstIKT, Inst0), Params, _Name, IKT0,
+			Args, IKT, Inst) :-
+	inst_key_table_create_sub(IKT0, InstIKT, Sub, IKT),
+	inst_apply_sub(Sub, Inst0, Inst1),
+	inst_substitute_arg_list(Inst1, Params, Args, Inst).
+inst_lookup_subst_args(abstract_inst, _Params, Name, IKT, Args, IKT,
 		abstract_inst(Name, Args)).
 
 %-----------------------------------------------------------------------------%
@@ -1146,7 +1182,11 @@ alt_list_apply_substitution([Alt0|Alts0], Subst, [Alt|Alts]) :-
 maybe_pred_inst_apply_substitution(no, _, no).
 maybe_pred_inst_apply_substitution(yes(pred_inst_info(PredOrFunc, Modes0, Det)),
 			Subst, yes(pred_inst_info(PredOrFunc, Modes, Det))) :-
-	mode_list_apply_substitution(Modes0, Subst, Modes).
+	% XXX This will not work properly if the pred has aliasing in
+	%     its argument_modes.
+	Modes0 = argument_modes(ArgIKT, ArgModes0),
+	Modes  = argument_modes(ArgIKT, ArgModes),
+	mode_list_apply_substitution(ArgModes0, Subst, ArgModes).
 
 	% mode_list_apply_substitution(Modes0, Subst, Modes) is true
 	% iff Mode is the mode that results from applying Subst to Modes0.
@@ -1269,10 +1309,16 @@ recompute_instmap_delta_3(some(Vars, Goal0), _, some(Vars, Goal),
 
 recompute_instmap_delta_3(higher_order_call(A, Vars, B, Modes, C, D), _,
 		higher_order_call(A, Vars, B, Modes, C, D),
-		_InstMap, InstMapDelta) -->
-	=(recompute_info(_, ModuleInfo, _)),
-	{ instmap_delta_from_mode_list(Vars, Modes,
-		ModuleInfo, InstMapDelta) }.
+		InstMap0, InstMapDelta, RI0, RI) :-
+	RI0 = recompute_info(Atomic, ModuleInfo, IKT0),
+	Modes = argument_modes(ArgIKT, ArgModes0),
+	inst_key_table_create_sub(IKT0, ArgIKT, Sub, IKT),
+	list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes),
+	RI1 = recompute_info(Atomic, ModuleInfo, IKT),
+	recompute_instmap_delta_call_2(Vars, InstMap0, ArgModes, InstMap,
+		RI1, RI),
+	instmap__vars(InstMap, NonLocals),
+	compute_instmap_delta(InstMap0, InstMap, NonLocals, InstMapDelta).
 
 recompute_instmap_delta_3(call(PredId, ProcId, Args, D, E, F), _,
 		call(PredId, ProcId, Args, D, E, F), InstMap, InstMapDelta) -->
@@ -1363,16 +1409,19 @@ recompute_instmap_delta_cases(Var, [Case0 | Cases0], [Case | Cases],
 
 recompute_instmap_delta_call(PredId, ProcId, Args, InstMap0,
 		InstMapDelta, RI0, RI) :-
-	RI0 = recompute_info(_, ModuleInfo0, _),
+	RI0 = recompute_info(Atomic, ModuleInfo0, IKT0),
 	module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, _, ProcInfo),
 	proc_info_interface_determinism(ProcInfo, Detism),
 	( determinism_components(Detism, _, at_most_zero) ->
 		instmap_delta_init_unreachable(InstMapDelta),
 		RI = RI0
 	;
-		proc_info_argmodes(ProcInfo, ArgModes),
+		proc_info_argmodes(ProcInfo, argument_modes(ArgIKT, ArgModes0)),
+		inst_key_table_create_sub(IKT0, ArgIKT, Sub, IKT),
+		list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes),
+		RI1 = recompute_info(Atomic, ModuleInfo0, IKT),
 		recompute_instmap_delta_call_2(Args, InstMap0,
-			ArgModes, InstMap, RI0, RI),
+			ArgModes, InstMap, RI1, RI),
 		instmap__vars(InstMap, NonLocals),
 		compute_instmap_delta(InstMap0, InstMap, NonLocals,
 			InstMapDelta)
@@ -1474,43 +1523,39 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, _Unification,
 			InstMapDelta),
 		RI = recompute_info(Atomic, ModuleInfo, IKT)
 	; UnifyRhs0 = lambda_goal(PredOrFunc, Vars, LambdaModes, LambdaDet,
-			Goal0),
+			_, Goal0),
 
 		% var-lambda unification
 
 		% First, compute the instmap_delta of the goal.
 
 		% Set the head modes of the lambda.
-		RI0 = recompute_info(_, ModuleInfo0, _),
-		mode_list_get_initial_insts(LambdaModes, ModuleInfo0,
-			LambdaInitialInsts),
-		assoc_list__from_corresponding_lists(Vars, LambdaInitialInsts,
-			VarInstAL),
-		instmap_delta_from_assoc_list(VarInstAL, VarsInstmapDelta),
-		instmap__apply_instmap_delta(InstMap0, VarsInstmapDelta,
-			InstMap1),
+		RI0 = recompute_info(Atomic, ModuleInfo0, IKT0),
+		instmap__pre_lambda_update(ModuleInfo0, Vars, LambdaModes,
+			IMDelta, IKT0, IKT1, InstMap0, InstMap1),
+		RI1 = recompute_info(Atomic, ModuleInfo0, IKT1),
 
 		% Analyse the lambda goal
 		recompute_instmap_delta_2(Goal0, Goal, InstMap1,
-			_, _, RI0, RI1),
+			_, _, RI1, RI2),
 
 		instmap__lookup_var(InstMap0, Var, InstOfX),
 
 		LambdaPredInfo = pred_inst_info(PredOrFunc, LambdaModes,
 			LambdaDet),
 
-		RI1 = recompute_info(Atomic, ModuleInfo1, IKT1),
+		RI2 = recompute_info(_, ModuleInfo2, IKT2),
 		InstOfY = ground(unique, yes(LambdaPredInfo)),
 
 		(
 			map__init(Sub0),
 			abstractly_unify_inst(dead, InstOfX, InstOfY,
-				real_unify, IKT1, ModuleInfo1, Sub0, UnifyInst0,
-				_Det, IKT2, ModuleInfo2, Sub)
+				real_unify, IKT2, ModuleInfo2, Sub0, UnifyInst0,
+				_Det, IKT3, ModuleInfo3, Sub)
 		->
-			apply_inst_key_sub(Sub, InstMap1, InstMap2, IKT2, IKT),
+			apply_inst_key_sub(Sub, InstMap1, InstMap2, IKT3, IKT),
 			UnifyInst0 = UnifyInst,
-			ModuleInfo = ModuleInfo2
+			ModuleInfo = ModuleInfo3
 		;
 			error("recompute_instmap_delta_unify: var-lambda unify failed")
 		),
@@ -1521,7 +1566,7 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, _Unification,
 
 		UniMode = UniMode0,
 		UnifyRhs = lambda_goal(PredOrFunc, Vars, LambdaModes,
-				LambdaDet, Goal),
+				LambdaDet, IMDelta, Goal),
 		RI = recompute_info(Atomic, ModuleInfo, IKT)
 
 	; UnifyRhs0 = var(VarY),
@@ -1703,7 +1748,9 @@ strip_builtin_qualifiers_from_pred_inst(no, no).
 strip_builtin_qualifiers_from_pred_inst(yes(Pred0), yes(Pred)) :-
 	Pred0 = pred_inst_info(Uniq, Modes0, Det),
 	Pred = pred_inst_info(Uniq, Modes, Det),
-	strip_builtin_qualifiers_from_mode_list(Modes0, Modes).
+	Modes0 = argument_modes(ArgIKT, ArgModes0),
+	Modes = argument_modes(ArgIKT, ArgModes),
+	strip_builtin_qualifiers_from_mode_list(ArgModes0, ArgModes).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1718,8 +1765,8 @@ normalise_insts([Inst0|Insts0], IKT, ModuleInfo, [Inst|Insts]) :-
 	% of ever-expanding insts.
 	% XXX should also normalise partially instantiated insts.
 
-normalise_inst(Inst0, IKT, ModuleInfo, NormalisedInst) :-
-	inst_expand(IKT, ModuleInfo, Inst0, Inst),
+normalise_inst(Inst0, IKT0, ModuleInfo, NormalisedInst) :-
+	inst_expand(IKT0, ModuleInfo, Inst0, IKT, Inst),
 	( Inst = bound(_, _) ->
 		(
 			inst_is_ground(Inst, IKT, ModuleInfo),
@@ -1881,6 +1928,15 @@ apply_inst_key_sub_inst_key_table([Key0 | Keys], Sub, DeadKeys0, DeadKeys,
 	),
 	apply_inst_key_sub_inst_key_table(Keys, Sub, DeadKeys1, DeadKeys,
 		NewSub1, NewSub, IKT1, IKT).
+
+%-----------------------------------------------------------------------------%
+
+apply_inst_key_sub_mode(Sub, (I0 -> F0), (I -> F)) :-
+	inst_apply_sub(Sub, I0, I),
+	inst_apply_sub(Sub, F0, F).
+apply_inst_key_sub_mode(Sub, user_defined_mode(SymName, Insts0),
+		user_defined_mode(SymName, Insts)) :-
+	list__map(inst_apply_sub(Sub), Insts0, Insts).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

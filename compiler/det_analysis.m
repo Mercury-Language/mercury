@@ -246,7 +246,8 @@ det_infer_proc(PredId, ProcId, ModuleInfo0, ModuleInfo, Globals,
 		% Infer the determinism of the goal
 	proc_info_goal(Proc0, Goal0),
 	proc_info_get_initial_instmap(Proc0, ModuleInfo0, InstMap0),
-	det_info_init(ModuleInfo0, PredId, ProcId, Globals, DetInfo),
+	proc_info_inst_key_table(Proc0, IKT0),
+	det_info_init(ModuleInfo0, PredId, ProcId, IKT0, Globals, DetInfo),
 	det_infer_goal(Goal0, InstMap0, SolnContext, DetInfo,
 			Goal, Detism1, Msgs),
 
@@ -466,7 +467,7 @@ det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, SolnContext,
 		DetInfo, _, _, unify(LT, RT, M, U, C), UnifyDet, Msgs) :-
 	(
 		RT0 = lambda_goal(PredOrFunc, Vars, Modes, LambdaDeclaredDet,
-				Goal0)
+				InstMapDelta, Goal0)
 	->
 		(
 			determinism_components(LambdaDeclaredDet, _,
@@ -476,16 +477,14 @@ det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, SolnContext,
 		;	
 			LambdaSolnContext = all_solns
 		),
-		det_info_get_module_info(DetInfo, ModuleInfo),
-		instmap__pre_lambda_update(ModuleInfo, Vars, Modes,
-			InstMap0, InstMap1),
+		instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
 		det_infer_goal(Goal0, InstMap1, LambdaSolnContext, DetInfo,
 				Goal, LambdaInferredDet, Msgs1),
 		det_check_lambda(LambdaDeclaredDet, LambdaInferredDet,
 				Goal, GoalInfo, DetInfo, Msgs2),
 		list__append(Msgs1, Msgs2, Msgs3),
 		RT = lambda_goal(PredOrFunc, Vars, Modes, LambdaDeclaredDet,
-				Goal)
+				InstMapDelta, Goal)
 	;
 		RT = RT0,
 		Msgs3 = []

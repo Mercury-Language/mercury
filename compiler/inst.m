@@ -67,7 +67,7 @@
 			pred_or_func,		% is this a higher-order func
 						% mode or a higher-order pred
 						% mode?
-			list(mode),		% the modes of the additional
+			argument_modes,		% the modes of the additional
 						% (i.e. not-yet-supplied)
 						% arguments of the pred;
 						% for a function, this includes
@@ -94,12 +94,23 @@
 :- pred inst_key_table_add(inst_key_table, inst, inst_key, inst_key_table).
 :- mode inst_key_table_add(in, in, out, out) is det.
 
+:- pred inst_key_table_update(inst_key_table, inst_key, inst, inst_key_table).
+:- mode inst_key_table_update(in, in, in, out) is det.
+
 :- pred inst_key_table_dependent_keys(inst_key_table, inst_key, list(inst_key)).
 :- mode inst_key_table_dependent_keys(in, in, out) is det.
 
 :- pred inst_key_table_added_keys(inst_key_table, inst_key_table,
 		set(inst_key)).
 :- mode inst_key_table_added_keys(in, in, out) is det.
+
+	% `inst_key_table_create_sub(IKT0, IKT1, Sub, IKT)' renames
+	% apart all the inst_keys in IKT1 with respect to IKT0 and
+	% returns the substitution used (Sub) and IKT0 with all of
+	% the inst_keys from IKT1 renamed and added (IKT).
+:- pred inst_key_table_create_sub(inst_key_table, inst_key_table,
+		inst_key_sub, inst_key_table).
+:- mode inst_key_table_create_sub(in, in, out, out) is det.
 
 :- pred inst_key_table_write_inst_key(inst_key_table, inst_key,
 		io__state, io__state).
@@ -116,8 +127,11 @@
 :- pred inst_keys_in_inst(inst, list(inst_key), list(inst_key)).
 :- mode inst_keys_in_inst(in, in, out) is det.
 
-:- pred inst_expand_fully(inst, inst_key_table, inst).
+:- pred inst_expand_fully(inst_key_table, inst, inst).
 :- mode inst_expand_fully(in, in, out) is det.
+
+:- pred inst_apply_sub(inst_key_sub, inst, inst).
+:- mode inst_apply_sub(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -158,6 +172,19 @@ inst_key_table_add(InstKeyTable0, Inst, ThisKey, InstKeyTable) :-
 		error("inst_key_table_add: Failed sanity check")
 	).
 
+inst_key_table_update(InstKeyTable0, Key, Inst, InstKeyTable) :-
+	InstKeyTable0 = inst_key_table(NextKey, FwdMap0, BwdMap0),
+	map__det_update(FwdMap0, Key, Inst, FwdMap),
+	inst_keys_in_inst(Inst, [], DependentKeys0),
+	list__sort_and_remove_dups(DependentKeys0, DependentKeys),
+	add_backward_dependencies(DependentKeys, Key, BwdMap0, BwdMap),
+	InstKeyTable = inst_key_table(NextKey, FwdMap, BwdMap),
+	( inst_key_table_sanity_check(InstKeyTable) ->
+		true
+	;
+		error("inst_key_table_update: Failed sanity check")
+	).
+
 inst_key_table_dependent_keys(inst_key_table(_NextKey, _FwdMap, BwdMap),
 		Key, DependentKeys) :-
 	( multi_map__search(BwdMap, Key, DependentKeys0) ->
@@ -187,6 +214,43 @@ inst_key_table_added_keys_2(FirstKey, LastKey, AddedKeys0, AddedKeys) :-
 		inst_key_table_added_keys_2(FirstKey, LastKey1,
 				AddedKeys1, AddedKeys)
 	).
+
+%-----------------------------------------------------------------------------%
+
+inst_key_table_create_sub(IKT0, IKT1, Sub, IKT) :-
+	IKT0 = inst_key_table(NextKey0, FwdMap0, BwdMap0),
+	IKT1 = inst_key_table(_, FwdMap1, _),
+	map__to_assoc_list(FwdMap1, FwdAL),
+	map__init(Sub0),
+	inst_key_table_create_sub_2(FwdAL, NextKey0, NextKey, Sub0, Sub),
+	inst_key_table_create_sub_3(FwdAL, Sub, FwdMap0, FwdMap,
+		BwdMap0, BwdMap),
+	IKT  = inst_key_table(NextKey, FwdMap, BwdMap).
+
+:- pred inst_key_table_create_sub_2(assoc_list(inst_key, inst), inst_key,
+		inst_key, inst_key_sub, inst_key_sub).
+:- mode inst_key_table_create_sub_2(in, in, out, in, out) is det.
+
+inst_key_table_create_sub_2([], NextKey, NextKey, Sub, Sub).
+inst_key_table_create_sub_2([K - _ | AL], NextKey0, NextKey, Sub0, Sub) :-
+	map__det_insert(Sub0, K, NextKey0, Sub1),
+	NextKey1 is NextKey0 + 1,
+	inst_key_table_create_sub_2(AL, NextKey1, NextKey, Sub1, Sub).
+
+:- pred inst_key_table_create_sub_3(assoc_list(inst_key, inst), inst_key_sub,
+		map(inst_key, inst), map(inst_key, inst),
+		multi_map(inst_key, inst_key), multi_map(inst_key, inst_key)).
+:- mode inst_key_table_create_sub_3(in, in, in, out, in, out) is det.
+
+inst_key_table_create_sub_3([], _Sub, Fwd, Fwd, Bwd, Bwd).
+inst_key_table_create_sub_3([K0 - I0 | AL], Sub, Fwd0, Fwd, Bwd0, Bwd) :-
+	map__lookup(Sub, K0, K),
+	inst_apply_sub(Sub, I0, I),
+	map__det_insert(Fwd0, K, I, Fwd1),
+	inst_keys_in_inst(I, [], Deps0),
+	list__sort_and_remove_dups(Deps0, Deps),
+	add_backward_dependencies(Deps, K, Bwd0, Bwd1),
+	inst_key_table_create_sub_3(AL, Sub, Fwd1, Fwd, Bwd1, Bwd).
 
 %-----------------------------------------------------------------------------%
 
@@ -309,39 +373,60 @@ inst_keys_in_bound_insts([functor(_ConsId, Insts) | BIs], Keys0, Keys) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-inst_expand_fully(any(Uniq), _IKT, any(Uniq)).
-inst_expand_fully(alias(Key), IKT, Inst) :-
+inst_expand_fully(_IKT, any(Uniq), any(Uniq)).
+inst_expand_fully(IKT, alias(Key), Inst) :-
 	inst_key_table_lookup(IKT, Key, Inst0),
-	inst_expand_fully(Inst0, IKT, Inst).
-inst_expand_fully(free, _IKT, free).
-inst_expand_fully(free(Type), _IKT, free(Type)).
-inst_expand_fully(bound(Uniq, BoundInsts0), IKT, bound(Uniq, BoundInsts)) :-
-	bound_insts_expand_fully(BoundInsts0, IKT, BoundInsts).
-inst_expand_fully(ground(Uniq, PredInstInfo), _IKT, ground(Uniq, PredInstInfo)).
-inst_expand_fully(not_reached, _IKT, not_reached).
-inst_expand_fully(inst_var(Var), _IKT, inst_var(Var)).
-inst_expand_fully(defined_inst(InstName), _IKT, defined_inst(InstName)).
-inst_expand_fully(abstract_inst(SymName, Insts0), IKT,
+	inst_expand_fully(IKT, Inst0, Inst).
+inst_expand_fully(_IKT, free, free).
+inst_expand_fully(_IKT, free(Type), free(Type)).
+inst_expand_fully(IKT, bound(Uniq, BoundInsts0), bound(Uniq, BoundInsts)) :-
+	bound_insts_expand_fully(IKT, BoundInsts0, BoundInsts).
+inst_expand_fully(_IKT, ground(Uniq, PredInstInfo), ground(Uniq, PredInstInfo)).
+inst_expand_fully(_IKT, not_reached, not_reached).
+inst_expand_fully(_IKT, inst_var(Var), inst_var(Var)).
+inst_expand_fully(_IKT, defined_inst(InstName), defined_inst(InstName)).
+inst_expand_fully(IKT, abstract_inst(SymName, Insts0),
 			abstract_inst(SymName, Insts)) :-
-	inst_list_expand_fully(Insts0, IKT, Insts).
+	list__map(inst_expand_fully(IKT), Insts0, Insts).
 
-:- pred bound_insts_expand_fully(list(bound_inst), inst_key_table,
+:- pred bound_insts_expand_fully(inst_key_table, list(bound_inst),
 		list(bound_inst)).
 :- mode bound_insts_expand_fully(in, in, out) is det.
 
-bound_insts_expand_fully([], _IKT, []).
-bound_insts_expand_fully([functor(ConsId, Insts0) | BIs0], IKT,
+bound_insts_expand_fully(_IKT, [], []).
+bound_insts_expand_fully(IKT, [functor(ConsId, Insts0) | BIs0],
 		[functor(ConsId, Insts) | BIs]) :-
-	inst_list_expand_fully(Insts0, IKT, Insts),
-	bound_insts_expand_fully(BIs0, IKT, BIs).
+	list__map(inst_expand_fully(IKT), Insts0, Insts),
+	bound_insts_expand_fully(IKT, BIs0, BIs).
 
-:- pred inst_list_expand_fully(list(inst), inst_key_table, list(inst)).
-:- mode inst_list_expand_fully(in, in, out) is det.
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-inst_list_expand_fully([], _IKT, []).
-inst_list_expand_fully([I0 | Is0], IKT, [I | Is]) :-
-	inst_expand_fully(I0, IKT, I),
-	inst_list_expand_fully(Is0, IKT, Is).
+inst_apply_sub(_Sub, any(Uniq), any(Uniq)).
+inst_apply_sub(Sub, alias(Key0), alias(Key)) :-
+	( map__search(Sub, Key0, Key1) ->
+		Key = Key1
+	;
+		Key = Key0
+	).
+inst_apply_sub(_Sub, free, free).
+inst_apply_sub(_Sub, free(Type), free(Type)).
+inst_apply_sub(Sub, bound(Uniq, BoundInsts0), bound(Uniq, BoundInsts)) :-
+	list__map(bound_inst_apply_sub(Sub), BoundInsts0, BoundInsts).
+inst_apply_sub(_Sub, ground(Uniq, MaybePredInstInfo),
+		ground(Uniq, MaybePredInstInfo)).
+inst_apply_sub(_Sub, not_reached, not_reached).
+inst_apply_sub(_Sub, inst_var(V), inst_var(V)).
+inst_apply_sub(_Sub, defined_inst(Name), defined_inst(Name)).
+inst_apply_sub(Sub, abstract_inst(SymName, Insts0),
+		abstract_inst(SymName, Insts)) :-
+	list__map(inst_apply_sub(Sub), Insts0, Insts).
+
+:- pred bound_inst_apply_sub(map(inst_key, inst_key), bound_inst, bound_inst).
+:- mode bound_inst_apply_sub(in, in, out) is det.
+
+bound_inst_apply_sub(Sub, functor(ConsId, Insts0), functor(ConsId, Insts)) :-
+	list__map(inst_apply_sub(Sub), Insts0, Insts).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -122,6 +122,7 @@ check_determinism(PredId, ProcId, _PredInfo, ProcInfo,
 		ModuleInfo0, ModuleInfo) -->
 	{ proc_info_declared_determinism(ProcInfo, MaybeDetism) },
 	{ proc_info_inferred_determinism(ProcInfo, InferredDetism) },
+	{ proc_info_inst_key_table(ProcInfo, IKT) },
 	(
 		{ MaybeDetism = no },
 		{ ModuleInfo = ModuleInfo0 }
@@ -154,8 +155,8 @@ check_determinism(PredId, ProcId, _PredInfo, ProcInfo,
 				DeclaredDetism, InferredDetism),
 			{ proc_info_goal(ProcInfo, Goal) },
 			globals__io_get_globals(Globals),
-			{ det_info_init(ModuleInfo, PredId, ProcId, Globals,
-				DetInfo) },
+			{ det_info_init(ModuleInfo, PredId, ProcId, IKT,
+				Globals, DetInfo) },
 			det_diagnose_goal(Goal, DeclaredDetism, [], DetInfo, _)
 			% XXX with the right verbosity options, we want to
 			% call report_determinism_problem only if diagnose
@@ -202,8 +203,6 @@ check_if_main_can_fail(_PredId, _ProcId, PredInfo, ProcInfo,
 check_for_multisoln_func(_PredId, _ProcId, PredInfo, ProcInfo,
 		ModuleInfo0, ModuleInfo) -->
 	{ proc_info_inferred_determinism(ProcInfo, InferredDetism) },
-	% YYY Change for local inst_key_tables
-	{ module_info_inst_key_table(ModuleInfo0, IKT0) },
 
 	% Functions can only have more than one solution if it is a
 	% non-standard mode.  Otherwise, they would not be referentially
@@ -217,12 +216,13 @@ check_for_multisoln_func(_PredId, _ProcId, PredInfo, ProcInfo,
 		{ NumSolns \= at_most_zero },
 		{ NumSolns \= at_most_one },
 		% ... but for which all the arguments are input ...
-		{ proc_info_argmodes(ProcInfo, PredArgModes) },
+		{ proc_info_argmodes(ProcInfo,
+			argument_modes(ArgIKT, PredArgModes)) },
 		{ pred_args_to_func_args(PredArgModes,
 			FuncArgModes, _FuncResultMode) },
 		{ \+ (
 			list__member(FuncArgMode, FuncArgModes),
-			\+ mode_is_fully_input(IKT0, ModuleInfo0, FuncArgMode)
+			\+ mode_is_fully_input(ArgIKT, ModuleInfo0, FuncArgMode)
 		  )
 	 	} 
 	->
@@ -233,7 +233,7 @@ check_for_multisoln_func(_PredId, _ProcId, PredInfo, ProcInfo,
 		io__write_string("Error: invalid determinism for function\n"),
 		prog_out__write_context(FuncContext),
 		io__write_string("  `"),
-		report_pred_name_mode(function, PredName, PredArgModes, IKT0),
+		report_pred_name_mode(function, PredName, PredArgModes, ArgIKT),
 		io__write_string("':\n"),
 		prog_out__write_context(FuncContext),
 		io__write_string(
@@ -716,7 +716,6 @@ det_diagnose_write_switch_context(Context, [SwitchContext | SwitchContexts],
 det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ModeId) -->
 	{ det_info_get_module_info(DetInfo, ModuleInfo) },
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ module_info_inst_key_table(ModuleInfo, InstKeyTable) },
 	{ pred_info_name(PredInfo, PredName) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	%
@@ -754,11 +753,11 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ModeId) -->
 		),
 		{ pred_info_procedures(PredInfo, ProcTable) },
 		{ map__lookup(ProcTable, ModeId, ProcInfo) },
-		{ proc_info_declared_argmodes(ProcInfo, ArgModes) },
+		{ proc_info_declared_argmodes(ProcInfo,
+			argument_modes(ArgIKT, ArgModes)) },
 		prog_out__write_context(Context),
 		io__write_string("  call to `"),
-		report_pred_name_mode(PredOrFunc, PredName, ArgModes,
-			InstKeyTable),
+		report_pred_name_mode(PredOrFunc, PredName, ArgModes, ArgIKT),
 		io__write_string("'")
 	).
 
@@ -781,6 +780,7 @@ det_report_unify_context(First0, Last, Context, UnifyContext, DetInfo, LT, RT)
 	prog_out__write_context(Context),
 	{ det_get_proc_info(DetInfo, ProcInfo) },
 	{ proc_info_variables(ProcInfo, Varset) },
+	{ proc_info_inst_key_table(ProcInfo, IKT) },
 	{ det_info_get_module_info(DetInfo, ModuleInfo) },
 	( { First = yes } ->
 		( { Last = yes } ->
@@ -808,11 +808,12 @@ det_report_unify_context(First0, Last, Context, UnifyContext, DetInfo, LT, RT)
 			io__write_string("of `"),
 			mercury_output_var(LT, Varset, no),
 			io__write_string("' and `"),
-			hlds_out__write_unify_rhs(RT, ModuleInfo, Varset, no, 3)
+			hlds_out__write_unify_rhs(RT, IKT, ModuleInfo, Varset,
+				no, 3)
 		)
 	;
 		io__write_string("with `"),
-		hlds_out__write_unify_rhs(RT, ModuleInfo, Varset, no, 3)
+		hlds_out__write_unify_rhs(RT, IKT, ModuleInfo, Varset, no, 3)
 	),
 	io__write_string("'").
 
@@ -1104,7 +1105,10 @@ det_report_msg(error_in_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo,
 	hlds_out__write_determinism(InferredDetism),
 	io__write_string("'.\n"),
 	globals__io_get_globals(Globals),
-	{ det_info_init(ModuleInfo, PredId, ProcId, Globals, DetInfo) },
+	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _,
+		ProcInfo) },
+	{ proc_info_inst_key_table(ProcInfo, IKT) },
+	{ det_info_init(ModuleInfo, PredId, ProcId, IKT, Globals, DetInfo) },
 	det_diagnose_goal(Goal, DeclaredDetism, [], DetInfo, _),
 	io__set_exit_status(1).
 

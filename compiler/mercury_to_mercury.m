@@ -470,7 +470,7 @@ mercury_output_structured_inst(Expand, bound(Uniq, BoundInsts), Indent,
 	mercury_output_tabs(Indent),
 	io__write_string(")\n").
 mercury_output_structured_inst(_Expand, ground(Uniq, MaybePredInfo), Indent,
-		VarSet, IKT) -->
+		VarSet, _IKT) -->
 	mercury_output_tabs(Indent),
 	(
 		{ MaybePredInfo = yes(pred_inst_info(PredOrFunc, Modes, Det)) }
@@ -482,32 +482,34 @@ mercury_output_structured_inst(_Expand, ground(Uniq, MaybePredInfo), Indent,
 			mercury_output_uniqueness(Uniq, "ground"),
 			io__write_string(" */")
 		),
+		{ Modes = argument_modes(ArgIKT, ArgModes) },
 		(
 			{ PredOrFunc = predicate },
-			( { Modes = [] } ->
+			( { ArgModes = [] } ->
 				io__write_string("(pred) is "),
 				mercury_output_det(Det),
 				io__write_string(")\n")
 			;
 				io__write_string("(pred("),
-				mercury_output_mode_list(Modes, VarSet,
-					IKT),
+				mercury_output_mode_list(ArgModes, VarSet,
+					ArgIKT),
 				io__write_string(") is "),
 				mercury_output_det(Det),
 				io__write_string(")\n")
 			)
 		;
 			{ PredOrFunc = function },
-			{ pred_args_to_func_args(Modes, ArgModes, RetMode) },
-			( { Modes = [] } ->
+			{ pred_args_to_func_args(ArgModes, FuncArgModes,
+				RetMode) },
+			( { ArgModes = [] } ->
 				io__write_string("((func) = ")
 			;
 				io__write_string("(func("),
-				mercury_output_mode_list(ArgModes, VarSet,
-					IKT),
+				mercury_output_mode_list(FuncArgModes, VarSet,
+					ArgIKT),
 				io__write_string(") = ")
 			),
-			mercury_output_mode(RetMode, VarSet, IKT),
+			mercury_output_mode(RetMode, VarSet, ArgIKT),
 			io__write_string(" is "),
 			mercury_output_det(Det),
 			io__write_string(")\n")
@@ -561,7 +563,7 @@ mercury_output_inst(Expand, bound(Uniq, BoundInsts), VarSet, IKT) -->
 	mercury_output_bound_insts(Expand, BoundInsts, VarSet, IKT),
 	io__write_string(")").
 mercury_output_inst(_, ground(Uniq, MaybePredInfo), VarSet,
-		IKT) -->
+		_IKT) -->
 	(	
 		{ MaybePredInfo = yes(pred_inst_info(PredOrFunc, Modes, Det)) }
 	->
@@ -572,32 +574,35 @@ mercury_output_inst(_, ground(Uniq, MaybePredInfo), VarSet,
 			mercury_output_uniqueness(Uniq, "ground"),
 			io__write_string(" */")
 		),
+		{ Modes = argument_modes(ArgIKT, ArgModes) },
 		(
 			{ PredOrFunc = predicate },
-			( { Modes = [] } ->
+			( { ArgModes = [] } ->
 				io__write_string("((pred) is "),
 				mercury_output_det(Det),
 				io__write_string(")")
 			;
 				io__write_string("(pred("),
-				mercury_output_mode_list(Modes, VarSet,
-					IKT),
+				mercury_output_mode_list(ArgModes, VarSet,
+					ArgIKT),
 				io__write_string(") is "),
 				mercury_output_det(Det),
 				io__write_string(")")
 			)
 		;
 			{ PredOrFunc = function },
-			{ pred_args_to_func_args(Modes, ArgModes, RetMode) },
+			{ pred_args_to_func_args(ArgModes, FuncArgModes,
+				RetMode) },
 			( { ArgModes = [] } ->
 				io__write_string("((func)")
 			;
 				io__write_string("(func("),
-				mercury_output_mode_list(ArgModes, VarSet, IKT),
+				mercury_output_mode_list(FuncArgModes, VarSet,
+					ArgIKT),
 				io__write_string(")")
 			),
 			io__write_string(" = "),
-			mercury_output_mode(RetMode, VarSet, IKT),
+			mercury_output_mode(RetMode, VarSet, ArgIKT),
 			io__write_string(" is "),
 			mercury_output_det(Det),
 			io__write_string(")")

@@ -94,8 +94,7 @@ constraint__propagate_in_proc(PredId, ProcId, ModuleInfo0, ModuleInfo,
 
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
 	proc_info_context(ProcInfo0, Context),
-	% YYY Change for local inst_key_tables
-	module_info_inst_key_table(ModuleInfo0, IKT0),
+	proc_info_inst_key_table(ProcInfo0, IKT0),
 	mode_info_init(IoState0, ModuleInfo0, IKT0, PredId, ProcId,
 			Context, VarSet1, InstMap0, ModeInfo0),
 
@@ -104,19 +103,18 @@ constraint__propagate_in_proc(PredId, ProcId, ModuleInfo0, ModuleInfo,
 	mode_info_get_io_state(ModeInfo, IoState),
 	mode_info_get_varset(ModeInfo, VarSet),
 	mode_info_get_var_types(ModeInfo, VarTypes),
-	mode_info_get_module_info(ModeInfo, ModuleInfo1),
 	mode_info_get_inst_key_table(ModeInfo, IKT),
-	% YYY Change for local inst_key_tables
-	module_info_set_inst_key_table(ModuleInfo1, IKT, ModuleInfo2),
+	mode_info_get_module_info(ModeInfo, ModuleInfo1),
 
 	proc_info_set_variables(ProcInfo0, VarSet, ProcInfo1),
 	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
-	proc_info_set_goal(ProcInfo2, Goal, ProcInfo),
+	proc_info_set_goal(ProcInfo2, Goal, ProcInfo3),
+	proc_info_set_inst_key_table(ProcInfo3, IKT, ProcInfo),
 
 	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 	map__set(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo2, PredTable, ModuleInfo).
+	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -349,8 +347,9 @@ mode_info_write_goal(Goal, Indent, ModeInfo0, ModeInfo) :-
 	( semidet_succeed ->
 		mode_info_get_module_info(ModeInfo0, ModuleInfo),
 		mode_info_get_varset(ModeInfo0, VarSet),
-		hlds_out__write_goal(Goal, ModuleInfo, VarSet, no, Indent, "",
-				IOState1, IOState)
+		mode_info_get_inst_key_table(ModeInfo0, IKT),
+		hlds_out__write_goal(Goal, IKT, ModuleInfo, VarSet, no, Indent,
+				"", IOState1, IOState)
 	;
 		IOState = IOState1
 	),

@@ -248,11 +248,10 @@ intermod__traverse_clauses([clause(P, Goal0, C) | Clauses0],
 
 has_ho_input(ModuleInfo, ProcInfo) :-
 	proc_info_headvars(ProcInfo, HeadVars),
-	proc_info_argmodes(ProcInfo, ArgModes),
+	proc_info_argmodes(ProcInfo, argument_modes(ArgIKT, ArgModes)),
 	proc_info_vartypes(ProcInfo, VarTypes),
-	% YYY Change for local inst_key_tables
-	module_info_inst_key_table(ModuleInfo, IKT),
-	check_for_ho_input_args(IKT, ModuleInfo, HeadVars, ArgModes, VarTypes).
+	check_for_ho_input_args(ArgIKT, ModuleInfo, HeadVars, ArgModes,
+		VarTypes).
 
 :- pred check_for_ho_input_args(inst_key_table::in, module_info::in,
 		list(var)::in, list(mode)::in, map(var, type)::in) is semidet.
@@ -500,8 +499,8 @@ intermod_info_add_proc(PredId, DoWrite) -->
 		intermod_info::out) is det.
 
 intermod__module_qualify_unify_rhs(_, var(Var), var(Var), yes) --> [].
-intermod__module_qualify_unify_rhs(_LVar, lambda_goal(A,B,Modes,D,Goal0),
-		lambda_goal(A,B,Modes,D,Goal), DoWrite) -->
+intermod__module_qualify_unify_rhs(_LVar, lambda_goal(A,B,Modes,D,E,Goal0),
+		lambda_goal(A,B,Modes,D,E,Goal), DoWrite) -->
 	intermod__traverse_goal(Goal0, Goal, DoWrite),
 	intermod_info_get_module_info(ModuleInfo),
 	{ module_info_modes(ModuleInfo, ModeTable) },
@@ -509,8 +508,9 @@ intermod__module_qualify_unify_rhs(_LVar, lambda_goal(A,B,Modes,D,Goal0),
 	{ module_info_insts(ModuleInfo, Insts) },
 	{ inst_table_get_user_insts(Insts, UserInsts) },
 	{ user_inst_table_get_inst_defns(UserInsts, UserInstDefns) },
+	{ Modes = argument_modes(_ArgIKT, ArgModes) },
 	intermod__gather_proc_modes(ModuleInfo, ModeDefns,
-				UserInstDefns, Modes).
+				UserInstDefns, ArgModes).
 
 	% Check if the functor is a function call, a higher-order
 	% term, or an unqualified symbol. If so, module qualify.
@@ -610,11 +610,14 @@ intermod__gather_pred_modes(_, _, _, _, []) --> [].
 intermod__gather_pred_modes(ModuleInfo, Modes, Insts, Procs, [ProcId | ProcIds])
 		-->
 	{ map__lookup(Procs, ProcId, ProcInfo) }, 
-	{ proc_info_declared_argmodes(ProcInfo, ArgModes) },
+	{ proc_info_declared_argmodes(ProcInfo, argument_modes(_, ArgModes)) },
 	intermod__gather_proc_modes(ModuleInfo, Modes, Insts, ArgModes),
 	intermod__gather_pred_modes(ModuleInfo, Modes, Insts, Procs, ProcIds).
 
 	% Get the modes from pred and func declarations.
+	%
+	% XXX This may have to be revisited for the case of alias
+	%     information in mode declarations.
 :- pred intermod__gather_proc_modes(module_info::in, mode_defns::in,
 		user_inst_defns::in, list(mode)::in,
 		intermod_info::in, intermod_info::out) is det.
@@ -804,8 +807,7 @@ intermod__write_modes(ModuleInfo, ModeTable, [ModeId | Modes]) -->
 	{ map__lookup(ModeTable, ModeId, ModeDefn) },
 	{ ModeDefn = hlds_mode_defn(Varset, Args, eqv_mode(Mode),
 							_, Context, _) },
-	% YYY Change for local inst_key_tables
-	{ module_info_inst_key_table(ModuleInfo, InstKeyTable) },
+	{ inst_key_table_init(InstKeyTable) },	% YYY
 	mercury_output_mode_defn(
 			Varset,
 			eqv_mode(SymName, Args, Mode),
@@ -822,10 +824,8 @@ intermod__write_insts(ModuleInfo, UserInstTable, [Inst | Insts]) -->
 	{ Inst = SymName - _Arity },
 	{ map__lookup(UserInstTable, Inst, InstDefn) },
 	{ InstDefn = hlds_inst_defn(Varset, Args, Body, _, Context, _) },
-	% YYY Change for local inst_key_tables
-	{ module_info_inst_key_table(ModuleInfo, InstKeyTable) },
 	(
-		{ Body = eqv_inst(Inst2) },
+		{ Body = eqv_inst(InstKeyTable, Inst2) },
 		mercury_output_inst_defn(
 				Varset,
 				eqv_inst(SymName, Args, Inst2),
@@ -834,6 +834,7 @@ intermod__write_insts(ModuleInfo, UserInstTable, [Inst | Insts]) -->
 		)
 	;
 		{ Body = abstract_inst },
+		{ inst_key_table_init(InstKeyTable) },	% YYY
 		mercury_output_inst_defn(
 				Varset,
 				abstract_inst(SymName, Args),
@@ -851,8 +852,6 @@ intermod__write_insts(ModuleInfo, UserInstTable, [Inst | Insts]) -->
 intermod__write_pred_decls(_, []) --> [].
 intermod__write_pred_decls(ModuleInfo, [PredId | PredIds]) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	% YYY Change for local inst_key_tables
-	{ module_info_inst_key_table(ModuleInfo, InstKeyTable) },
 	{ pred_info_module(PredInfo, Module) },
 	{ pred_info_name(PredInfo, Name) },
 	{ pred_info_arg_types(PredInfo, TVarSet, ArgTypes) },
@@ -884,21 +883,24 @@ intermod__write_pred_decls(ModuleInfo, [PredId | PredIds]) -->
 		)) },
 	{ list__sort(CompareProcId, ProcIds, SortedProcIds) },
 	intermod__write_pred_modes(Procs, qualified(Module, Name),
-				PredOrFunc, SortedProcIds, InstKeyTable),
+				PredOrFunc, SortedProcIds),
 	intermod__write_pred_decls(ModuleInfo, PredIds).
 
 :- pred intermod__write_pred_modes(map(proc_id, proc_info)::in, 
 		sym_name::in, pred_or_func::in, list(proc_id)::in,
-		inst_key_table::in, io__state::di, io__state::uo) is det.
+		io__state::di, io__state::uo) is det.
 
-intermod__write_pred_modes(_, _, _, [], _) --> [].
-intermod__write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds],
-		InstKeyTable) -->
+intermod__write_pred_modes(_, _, _, []) --> [].
+intermod__write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds]) -->
 	{ map__lookup(Procs, ProcId, ProcInfo) },
 	{ proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes) },
 	{ proc_info_declared_determinism(ProcInfo, MaybeDetism) },
-	{ MaybeArgModes = yes(ArgModes0), MaybeDetism = yes(Detism0) ->
+	{
+		MaybeArgModes = yes(argument_modes(ArgIKT0, ArgModes0)),
+		MaybeDetism = yes(Detism0)
+	->
 		ArgModes = ArgModes0,
+		ArgIKT = ArgIKT0,
 		Detism = Detism0
 	;
 		error("intermod__write_pred_modes: attempt to write undeclared mode")
@@ -910,14 +912,13 @@ intermod__write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds],
 		{ pred_args_to_func_args(ArgModes, FuncArgModes, FuncRetMode) },
 		mercury_output_func_mode_decl(Varset, SymName,
 			FuncArgModes, FuncRetMode,
-			yes(Detism), Context, InstKeyTable)
+			yes(Detism), Context, ArgIKT)
 	;
 		{ PredOrFunc = predicate },
 		mercury_output_pred_mode_decl(Varset, SymName,
-				ArgModes, yes(Detism), Context, InstKeyTable)
+				ArgModes, yes(Detism), Context, ArgIKT)
 	),
-	intermod__write_pred_modes(Procs, SymName, PredOrFunc, ProcIds,
-		InstKeyTable).	
+	intermod__write_pred_modes(Procs, SymName, PredOrFunc, ProcIds).
 
 :- pred intermod__write_preds(module_info::in, list(pred_id)::in,
 				io__state::di, io__state::uo) is det.
@@ -925,8 +926,6 @@ intermod__write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds],
 intermod__write_preds(_, []) --> [].
 intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	% YYY Change for local inst_key_tables
-	{ module_info_inst_key_table(ModuleInfo, InstKeyTable) },
 	{ pred_info_arg_types(PredInfo, _, ArgTypes) },
 	{ list__length(ArgTypes, Arity) },
 	{ pred_info_module(PredInfo, Module) },
@@ -938,13 +937,14 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 	{ ClausesInfo = clauses_info(Varset, _, _VarTypes, HeadVars, Clauses) },
 		% handle pragma(c_code, ...) separately
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	{ inst_key_table_init(IKT) },	% YYY
 	( { pred_info_get_goal_type(PredInfo, pragmas) } ->
 		{ pred_info_procedures(PredInfo, Procs) },
 		intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
-						Clauses, Procs, InstKeyTable)
+						Clauses, Procs, IKT)
 	;
 		% { pred_info_typevarset(PredInfo, TVarSet) },
-		hlds_out__write_clauses(1, ModuleInfo, PredId, Varset, no,
+		hlds_out__write_clauses(1, IKT, ModuleInfo, PredId, Varset, no,
 			HeadVars, PredOrFunc, Clauses, no)
 		%	HeadVars, Clauses, yes(TVarSet, VarTypes))
 	),
@@ -1018,7 +1018,9 @@ intermod__write_c_clauses(Procs, [ProcId | ProcIds], PredOrFunc,
 		CCode, MayCallMercury, Vars, Varset, SymName, InstKeyTable) -->
 	{ map__lookup(Procs, ProcId, ProcInfo) },
 	{ proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes) },
-	( { MaybeArgModes = yes(ArgModes) } ->
+	% XXX will need modification for alias declarations in arguments
+	%     of pragma_c_code
+	( { MaybeArgModes = yes(argument_modes(_ArgIKT, ArgModes)) } ->
 		{ get_pragma_c_code_vars(Vars, Varset, ArgModes, PragmaVars) },
 		% XXX will need modification for nondet pragma C code
 		mercury_output_pragma_c_code(MayCallMercury, SymName,

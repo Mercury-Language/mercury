@@ -22,8 +22,8 @@
 :- import_module term.
 
 :- pred call_gen__generate_higher_order_call(code_model, var, list(var),
-			list(type), list(mode), determinism, hlds_goal_info,
-			code_tree, code_info, code_info).
+			list(type), argument_modes, determinism,
+			hlds_goal_info, code_tree, code_info, code_info).
 :- mode call_gen__generate_higher_order_call(in, in, in, in, in, in, in, out,
 				in, out) is det.
 
@@ -164,13 +164,13 @@ call_gen__generate_call(CodeModel, PredId, ModeId, Arguments, GoalInfo, Code)
 
 call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 		Modes, Det, GoalInfo, Code) -->
+	{ Modes = argument_modes(ArgIKT, ArgModes) },
 	{ determinism_to_code_model(Det, CodeModel) },
 	code_info__get_globals(Globals),
 	code_info__get_module_info(ModuleInfo),
 	{ globals__get_args_method(Globals, ArgsMethod) },
-	code_info__get_inst_key_table(IKT),
-	{ make_arg_infos(ArgsMethod, Types, Modes, CodeModel, IKT, ModuleInfo,
-		ArgInfos) },
+	{ make_arg_infos(ArgsMethod, Types, ArgModes, CodeModel, ArgIKT,
+		ModuleInfo, ArgInfos) },
 	{ assoc_list__from_corresponding_lists(Args, ArgInfos, ArgsInfos) },
 	{ call_gen__partition_args(ArgsInfos, InVars, OutVars) },
 	code_info__succip_is_used,
@@ -647,8 +647,7 @@ call_gen__insert_arg_livelvals([Var - L | As], GC_Method, AfterCallInstMap,
 		code_info__variable_type(Var, Type),
 		{ type_util__vars(Type, TypeVars) },
 		code_info__find_type_infos(TypeVars, TypeParams),
-		code_info__get_module_info(ModuleInfo),
-		{ module_info_inst_key_table(ModuleInfo, IKT) },
+		code_info__get_inst_key_table(IKT),
 		{ QualifiedInst = qualified_inst(IKT, Inst) },	% YYY
 		{ LiveVal = live_lvalue(R, var(Type, QualifiedInst),
 			TypeParams) }

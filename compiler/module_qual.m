@@ -458,7 +458,11 @@ qualify_inst(ground(Uniq, MaybePredInstInfo0), ground(Uniq, MaybePredInstInfo),
 				Info0, Info) -->
 	(
 		{ MaybePredInstInfo0 = yes(pred_inst_info(A, Modes0, Det)) },
-		qualify_mode_list(Modes0, Modes, Info0, Info),
+		% XXX This code is not correct if the pred inst has
+		%     aliasing in the argument_modes.
+		{ Modes0 = argument_modes(ArgIKT, ArgModes0) },
+		qualify_mode_list(ArgModes0, ArgModes, Info0, Info),
+		{ Modes = argument_modes(ArgIKT, ArgModes) },
 		{ MaybePredInstInfo = yes(pred_inst_info(A, Modes, Det)) }
 	;
 		{ MaybePredInstInfo0 = no },

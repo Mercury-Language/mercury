@@ -60,8 +60,9 @@
 :- pred det_no_output_vars(set(var), instmap, instmap_delta, det_info).
 :- mode det_no_output_vars(in, in, in, in) is semidet.
 
-:- pred det_info_init(module_info, pred_id, proc_id, globals, det_info).
-:- mode det_info_init(in, in, in, in, out) is det.
+:- pred det_info_init(module_info, pred_id, proc_id, inst_key_table,
+		globals, det_info).
+:- mode det_info_init(in, in, in, in, in, out) is det.
 
 :- pred det_info_get_module_info(det_info, module_info).
 :- mode det_info_get_module_info(in, out) is det.
@@ -120,7 +121,9 @@ interpret_unify(X, functor(ConsId, ArgVars), Subst0, Subst) :-
 	term__var_list_to_term_list(ArgVars, ArgTerms),
 	cons_id_and_args_to_term(ConsId, ArgTerms, RhsTerm),
 	term__unify(term__variable(X), RhsTerm, Subst0, Subst).
-interpret_unify(_X, lambda_goal(_PredOrFunc, _LambdaVars, _Modes, _Det, _Goal),
+interpret_unify(_X,
+		lambda_goal(_PredOrFunc, _LambdaVars, _Modes, _Det, _IMDelta,
+			_Goal),
 		Subst0, Subst) :-
 		% For ease of implementation we just ignore unifications with
 		% lambda terms.  This is a safe approximation, it just
@@ -159,41 +162,40 @@ det_no_output_vars(Vars, InstMap, InstMapDelta, DetInfo) :-
 	det_info_get_inst_key_table(DetInfo, IKT),
 	instmap__no_output_vars(InstMap, InstMapDelta, Vars, IKT, ModuleInfo).
 
-det_info_get_inst_key_table(DetInfo, IKT) :-
-	% YYY Change for local inst_key_tables
-	det_info_get_module_info(DetInfo, ModuleInfo),
-	module_info_inst_key_table(ModuleInfo, IKT).
-
-det_info_set_inst_key_table(DetInfo0, IKT, DetInfo) :-
-	% YYY Change for local inst_key_tables
-	det_info_get_module_info(DetInfo0, ModuleInfo0),
-	module_info_set_inst_key_table(ModuleInfo0, IKT, ModuleInfo),
-	det_info_set_module_info(DetInfo0, ModuleInfo, DetInfo).
-
 %-----------------------------------------------------------------------------%
 
 :- type det_info	--->	det_info(
 					module_info,
 					pred_id,	% the id of the proc
 					proc_id, 	% currently processed
+					inst_key_table,	% the IKT of the
+							% current proc
 					bool,		% --reorder-conj
 					bool,		% --reorder-disj
 					bool		% --fully-strict
 				).
 
-det_info_init(ModuleInfo, PredId, ProcId, Globals, DetInfo) :-
+/*###177 [cc] Error: clause for predicate `det_util:det_info_init/6'%%%*/
+/*###177 [cc] without preceding `pred' declaration.%%%*/
+/*###177 [cc] Inferred :- pred det_info_init((hlds_module:module_info), (hlds_pred:pred_id), (hlds_pred:proc_id), ((inst):inst_key_table), (globals:globals), (det_util:det_info)).%%%*/
+det_info_init(ModuleInfo, PredId, ProcId, IKT, Globals, DetInfo) :-
 	globals__lookup_bool_option(Globals, reorder_conj, ReorderConj),
 	globals__lookup_bool_option(Globals, reorder_disj, ReorderDisj),
 	globals__lookup_bool_option(Globals, fully_strict, FullyStrict),
-	DetInfo = det_info(ModuleInfo, PredId, ProcId,
+	DetInfo = det_info(ModuleInfo, PredId, ProcId, IKT,
 		ReorderConj, ReorderDisj, FullyStrict).
 
-det_info_get_module_info(det_info(ModuleInfo, _, _, _, _, _), ModuleInfo).
-det_info_get_pred_id(det_info(_, PredId, _, _, _, _), PredId).
-det_info_get_proc_id(det_info(_, _, ProcId, _, _, _), ProcId).
-det_info_get_reorder_conj(det_info(_, _, _, ReorderConj, _, _), ReorderConj).
-det_info_get_reorder_disj(det_info(_, _, _, _, ReorderDisj, _), ReorderDisj).
-det_info_get_fully_strict(det_info(_, _, _, _, _, FullyStrict), FullyStrict).
+det_info_get_module_info(det_info(ModuleInfo, _, _, _, _, _, _), ModuleInfo).
+det_info_get_pred_id(det_info(_, PredId, _, _, _, _, _), PredId).
+det_info_get_proc_id(det_info(_, _, ProcId, _, _, _, _), ProcId).
+det_info_get_inst_key_table(det_info(_, _, _, IKT, _, _, _), IKT).
+det_info_get_reorder_conj(det_info(_, _, _, _, ReorderConj, _, _), ReorderConj).
+det_info_get_reorder_disj(det_info(_, _, _, _, _, ReorderDisj, _), ReorderDisj).
+det_info_get_fully_strict(det_info(_, _, _, _, _, _, FullyStrict), FullyStrict).
 
-det_info_set_module_info(det_info(_, B, C, D, E, F), ModuleInfo,
-		det_info(ModuleInfo, B, C, D, E, F)).
+det_info_set_module_info(det_info(_, B, C, D, E, F, G), ModuleInfo,
+		det_info(ModuleInfo, B, C, D, E, F, G)).
+
+det_info_set_inst_key_table(det_info(A, B, C, _, E, F, G), IKT,
+		det_info(A, B, C, IKT, E, F, G)).
+

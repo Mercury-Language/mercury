@@ -826,11 +826,10 @@ require_equal(LivenessFirst, LivenessRest, GoalType, LiveInfo) :-
 
 initial_liveness(ProcInfo, ModuleInfo, Liveness) :-
 	proc_info_headvars(ProcInfo, Vars),
-	proc_info_argmodes(ProcInfo, Modes),
+	proc_info_argmodes(ProcInfo, argument_modes(_, Modes)),
 	proc_info_vartypes(ProcInfo, VarTypes),
+	proc_info_inst_key_table(ProcInfo, IKT),
 	map__apply_to_list(Vars, VarTypes, Types),
-	% YYY Change for local inst_key_tables
-	module_info_inst_key_table(ModuleInfo, IKT),
 	set__init(Liveness0),
 	(
 		initial_liveness_2(Vars, Modes, Types, IKT, ModuleInfo,
@@ -886,12 +885,11 @@ initial_liveness_2([V | Vs], [M | Ms], [T | Ts], IKT, ModuleInfo,
 
 initial_deadness(ProcInfo, ModuleInfo, Deadness) :-
 	proc_info_headvars(ProcInfo, Vars),
-	proc_info_argmodes(ProcInfo, Modes),
+	proc_info_argmodes(ProcInfo, argument_modes(_, Modes)),
 	proc_info_vartypes(ProcInfo, VarTypes),
+	proc_info_inst_key_table(ProcInfo, IKT),
 	map__apply_to_list(Vars, VarTypes, Types),
 	set__init(Deadness0),
-	% YYY Change for local inst_key_tables
-	module_info_inst_key_table(ModuleInfo, IKT),
 	(
 		initial_deadness_2(Vars, Modes, Types, IKT, ModuleInfo,
 			Deadness0, Deadness1)
@@ -1023,9 +1021,8 @@ live_info_get_varset(live_info(_, _, _, Varset), Varset).
 :- mode live_info_get_inst_key_table(in, out) is det.
 
 live_info_get_inst_key_table(LiveInfo, IKT) :-
-	live_info_get_module_info(LiveInfo, ModuleInfo),
-	% YYY Change for local inst_key_tables
-	module_info_inst_key_table(ModuleInfo, IKT).
+	live_info_get_proc_info(LiveInfo, ProcInfo),
+	proc_info_inst_key_table(ProcInfo, IKT).
 
 %-----------------------------------------------------------------------------%
 

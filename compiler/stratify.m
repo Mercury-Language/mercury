@@ -695,13 +695,11 @@ process_procs([], _, _, _, _, ProcCalls, ProcCalls, HOInfo, HOInfo,
 process_procs([ProcId|Procs], Module, PredId, ArgTypes, ProcTable, ProcCalls0,
 		ProcCalls, HOInfo0, HOInfo, CallsHO0, CallsHO) :- 
 	map__lookup(ProcTable, ProcId, ProcInfo),
-	proc_info_argmodes(ProcInfo, ArgModes),
+	proc_info_argmodes(ProcInfo, argument_modes(IKT, ArgModes)),
 	proc_info_goal(ProcInfo, Goal - _GoalInfo),
 	PredProcId = proc(PredId, ProcId),
 	check_goal(Goal, Calls, HaveAT, CallsHigherOrder),
 	map__det_insert(ProcCalls0, PredProcId, Calls, ProcCalls1),
-	% YYY Change for local inst_key_tables
-	module_info_inst_key_table(Module, IKT),
 	higherorder_in_out(ArgTypes, ArgModes, IKT, Module, HOInOut),
 	map__det_insert(HOInfo0, PredProcId, info(HaveAT, HOInOut), 
 		HOInfo1),
@@ -797,7 +795,7 @@ check_goal1(unify(_Var, RHS, _Mode, Unification, _Context), Calls,
 		% always to case, but should be a suitable approximation for
 		% the stratification analysis
 		RHS = lambda_goal(_PredOrFunc, _Vars, _Modes, _Determinism,
-		                                Goal - _GoalInfo)
+					_InstMapDelta, Goal - _GoalInfo)
 	->
 		get_called_procs(Goal, [], CalledProcs),
 		set__insert_list(HasAT0, CalledProcs, HasAT)
@@ -895,7 +893,7 @@ get_called_procs(unify(_Var, RHS, _Mode, Unification, _Context), Calls0,
 		% always to case, but should be a suitable approximation for
 		% the stratification analysis
 		RHS = lambda_goal(_PredOrFunc, _Vars, _Modes, _Determinism,
-		                                Goal - _GoalInfo)
+					_InstMapDelta, Goal - _GoalInfo)
 	->
 		get_called_procs(Goal, Calls0, Calls)
 	;

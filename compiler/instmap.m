@@ -136,9 +136,9 @@
 
 	% Update the given instmap to include the initial insts of the
 	% lambda variables.
-:- pred instmap__pre_lambda_update(module_info, list(var), list(mode),
-		instmap, instmap).
-:- mode instmap__pre_lambda_update(in, in, in, in, out) is det.
+:- pred instmap__pre_lambda_update(module_info, list(var), argument_modes,
+	instmap_delta, inst_key_table, inst_key_table, instmap, instmap).
+:- mode instmap__pre_lambda_update(in, in, in, out, in, out, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -424,8 +424,13 @@ instmap_delta_set(reachable(InstMapping0, BwdMap0), Var, Inst, Instmap) :-
 
 %-----------------------------------------------------------------------------%
 
-instmap__pre_lambda_update(ModuleInfo, Vars, Modes, InstMap0, InstMap) :-
-	mode_list_get_initial_insts(Modes, ModuleInfo, Insts),
+instmap__pre_lambda_update(ModuleInfo, Vars, Modes, InstMapDelta, IKT0, IKT,
+		InstMap0, InstMap) :-
+	% XXX Slightly bogus if Modes has any aliasing.
+	Modes = argument_modes(ArgIKT, ArgModes0),
+	inst_key_table_create_sub(IKT0, ArgIKT, Sub, IKT),
+	list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes),
+	mode_list_get_initial_insts(ArgModes, ModuleInfo, Insts),
 	assoc_list__from_corresponding_lists(Vars, Insts, VarInsts),
 	instmap_delta_from_assoc_list(VarInsts, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap).
@@ -534,7 +539,7 @@ instmap__merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 		IKT = IKT0
 	),
 	mode_info_set_instmap(InstMap, ModeInfo2, ModeInfo3),
-	mode_info_set_inst_key_table(ModeInfo3, IKT, ModeInfo).
+	mode_info_set_inst_key_table(IKT, ModeInfo3, ModeInfo).
 
 :- pred get_reachable_instmaps(list(instmap), list(map(var,inst))).
 :- mode get_reachable_instmaps(in, out) is det.
@@ -592,7 +597,7 @@ instmap__merge_var([InstMap | InstMaps], Var, IKT0, ModuleInfo0,
 	instmap__merge_var(InstMaps, Var, IKT0, ModuleInfo0,
 		InstList0, Inst0, IKT1, ModuleInfo1, Error0),
 	instmap__lookup_var(InstMap, Var, VarInst0),
-	inst_expand_fully(VarInst0, IKT1, VarInst),
+	inst_expand_fully(IKT1, VarInst0, VarInst),
 	InstList = [VarInst | InstList0],
 	( inst_merge(Inst0, VarInst, IKT1, ModuleInfo1,
 			Inst1, IKT2, ModuleInfo2) ->

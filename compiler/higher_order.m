@@ -208,8 +208,7 @@ get_specialization_requests_2([PredId | PredIds], Requests0, Requests,
 			% first time through we can only specialize call/N
 		map__init(NewPreds0),
 		PredProcId = proc(PredId, ProcId),
-		% YYY Change for local inst_key_tables
-		module_info_inst_key_table(ModuleInfo0, IKT),
+		proc_info_inst_key_table(ProcInfo0, IKT),
 		Info0 = info(PredVars0, Requests0, NewPreds0, ModuleInfo0, IKT),
 		traverse_goal(Goal0, Goal1, PredProcId, Changed,
 				GoalSize, Info0, info(_, Requests1,_,_,_)),
@@ -255,8 +254,7 @@ traverse_other_procs(PredId, [ProcId | ProcIds], ModuleInfo, Requests0,
 	map__lookup(Procs0, ProcId, ProcInfo0),
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
-	% YYY Change for local inst_key_tables
-	module_info_inst_key_table(ModuleInfo, IKT),
+	proc_info_inst_key_table(ProcInfo0, IKT),
 	Info0 = info(PredVars0, Requests0, NewPreds0, ModuleInfo, IKT),
 	traverse_goal(Goal0, Goal1, proc(PredId, ProcId), _, _,
 					Info0, info(_, Requests1,_,_,_)),
@@ -566,8 +564,9 @@ maybe_specialize_higher_order_call(Goal0 - GoalInfo, Goal - GoalInfo,
 		% We need to permute the arguments so that inputs come before
 		% outputs, since lambda.m will have done that to the arguments
 		% of the closure.
-		lambda__permute_argvars(Args, Modes, IKT, Module, PermutedArgs,
-			_),
+		Modes = argument_modes(ArgIKT, ArgModes),
+		lambda__permute_argvars(Args, ArgModes, ArgIKT, Module,
+			PermutedArgs, _),
 
 		list__append(CurriedArgs, PermutedArgs, AllArgs),
 		MaybeContext = no,
@@ -936,8 +935,7 @@ fixup_preds([PredProcId | PredProcIds], NewPreds, ModuleInfo0, ModuleInfo) :-
 	proc_info_goal(ProcInfo0, Goal0),
 	map__init(PredVars0),
 	set__init(Requests0),
-	% YYY Change for local inst_key_tables
-	module_info_inst_key_table(ModuleInfo0, IKT),
+	proc_info_inst_key_table(ProcInfo0, IKT),
 	traverse_goal(Goal0, Goal1, PredProcId, _, _,
 		info(PredVars0, Requests0, NewPreds, ModuleInfo0, IKT), _),
 	proc_info_variables(ProcInfo0, Varset0),
@@ -982,8 +980,8 @@ create_specialized_versions([PredProc | PredProcs], NewPreds, Requests0,
 create_specialized_versions_2([], _, _, Requests, Requests, Sizes, Sizes,
 					ModuleInfo, ModuleInfo).
 create_specialized_versions_2([NewPred | NewPreds], NewPredMap, NewProcInfo0,
-	Requests0, Requests, GoalSizes0, GoalSizes, ModuleInfo0, ModuleInfo)
-		:-
+		Requests0, Requests, GoalSizes0, GoalSizes,
+		ModuleInfo0, ModuleInfo) :-
 	NewPred = new_pred(NewPredId, NewProcId, _Name, HOArgs),
 	module_info_get_predicate_table(ModuleInfo0, PredTable0),
 	predicate_table_get_preds(PredTable0, Preds0),
@@ -991,7 +989,7 @@ create_specialized_versions_2([NewPred | NewPreds], NewPredMap, NewProcInfo0,
 	pred_info_procedures(NewPredInfo0, NewProcs0),
 	map__init(Substitution0),
 	proc_info_headvars(NewProcInfo0, HeadVars0),
-	proc_info_argmodes(NewProcInfo0, ArgModes0),
+	proc_info_argmodes(NewProcInfo0, argument_modes(ArgIKT, ArgModes0)),
 	construct_higher_order_terms(ModuleInfo0, HeadVars0, HeadVars1,
 		ArgModes0, ArgModes1, HOArgs, NewProcInfo0, NewProcInfo1,
 		NewPredInfo0, NewPredInfo1, Substitution0,
@@ -1026,11 +1024,10 @@ create_specialized_versions_2([NewPred | NewPreds], NewPredMap, NewProcInfo0,
 	pred_info_set_arg_types(NewPredInfo1, ArgTVarset, ArgTypes,
 							 NewPredInfo2),
 	map__init(PredVars0),
-	% YYY Change for local inst_key_tables
-	module_info_inst_key_table(ModuleInfo0, IKT),
+	inst_key_table_init(IKT0),
         traverse_goal(Goal1, Goal2, proc(NewPredId, NewProcId), _, GoalSize,
-		info(PredVars0, Requests0, NewPredMap, ModuleInfo0, IKT),
-		info(_, Requests1,_,_,_)),
+		info(PredVars0, Requests0, NewPredMap, ModuleInfo0, IKT0),
+		info(_, Requests1,_,_,IKT1)),
 	map__set(GoalSizes0, NewPredId, GoalSize, GoalSizes1),
 	proc_info_variables(NewProcInfo1, Varset0),
 					
@@ -1039,11 +1036,9 @@ create_specialized_versions_2([NewPred | NewPreds], NewPredMap, NewProcInfo0,
 	proc_info_get_initial_instmap(NewProcInfo1, ModuleInfo0, InstMap0),
 	proc_info_set_variables(NewProcInfo1, Varset, NewProcInfo2),
 	proc_info_set_vartypes(NewProcInfo2, VarTypes, NewProcInfo3),
-	proc_info_set_argmodes(NewProcInfo3, ArgModes, NewProcInfo4),
+	proc_info_set_argmodes(NewProcInfo3, argument_modes(ArgIKT, ArgModes),
+		NewProcInfo4),
 	proc_info_set_headvars(NewProcInfo4, HeadVars, NewProcInfo5),
-
-	% YYY Change for local inst_key_tables
-	module_info_inst_key_table(ModuleInfo0, IKT0),
 
 	% Temporarily put the ProcInfo into the ModuleInfo just in case
 	% the new pred calls itself recursively.
@@ -1056,20 +1051,19 @@ create_specialized_versions_2([NewPred | NewPreds], NewPredMap, NewProcInfo0,
 	% YYY NewProcInfo1 is not in the ModuleInfo here!  What to do
 	%     about it?
 	recompute_instmap_delta(no, Goal3, Goal4, InstMap0,
-		IKT0, IKT1, ModuleInfo5, ModuleInfo6),
-	% YYY Change for local inst_key_tables
-	proc_info_set_goal(NewProcInfo5, Goal4, NewProcInfo),
-	module_info_set_inst_key_table(ModuleInfo6, IKT1, ModuleInfo7),
+		IKT1, IKT2, ModuleInfo5, ModuleInfo6),
+	proc_info_set_goal(NewProcInfo5, Goal4, NewProcInfo6),
+	proc_info_set_inst_key_table(NewProcInfo6, IKT2, NewProcInfo),
 
 	map__det_insert(NewProcs0, NewProcId, NewProcInfo5, NewProcs),
 	pred_info_set_procedures(NewPredInfo2, NewProcs, NewPredInfo),
 	map__det_update(Preds0, NewPredId, NewPredInfo, Preds),
 	predicate_table_set_preds(PredTable0, Preds, PredTable),
-	module_info_set_predicate_table(ModuleInfo7, PredTable, ModuleInfo8),
+	module_info_set_predicate_table(ModuleInfo6, PredTable, ModuleInfo7),
 
 	create_specialized_versions_2(NewPreds, NewPredMap, NewProcInfo,
 			Requests1, Requests, GoalSizes1, GoalSizes,
-			ModuleInfo8, ModuleInfo).
+			ModuleInfo7, ModuleInfo).
 
 	
 		% Returns a list of hlds_goals which construct the list of
@@ -1107,7 +1101,8 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 	pred_info_arg_types(CalledPredInfo, CalledTVarset, CalledArgTypes0),
 					
 	% Add the curried arguments to the procedure's argument list.
-	proc_info_argmodes(CalledProcInfo, CalledArgModes),
+	proc_info_argmodes(CalledProcInfo,
+		argument_modes(CalledArgIKT, CalledArgModes)),
 	(
 		list__split_list(NumArgs, CalledArgModes,
 				CurriedArgModes0a, UnCurriedArgModes0)
@@ -1185,7 +1180,8 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 					NewHeadVars0, UniModes),
 	proc_info_interface_determinism(CalledProcInfo, Detism),
 	pred_info_get_is_pred_or_func(CalledPredInfo, PredOrFunc),
-	PredInstInfo = pred_inst_info(PredOrFunc, UnCurriedArgModes, Detism),
+	PredInstInfo = pred_inst_info(PredOrFunc,
+		argument_modes(CalledArgIKT, UnCurriedArgModes), Detism),
 	Inst = ground(shared, yes(PredInstInfo)),
 	Unimode = (free -> Inst) - (Inst -> Inst),
 	Goal = unify(LVar, Rhs, Unimode, Unify, Context),

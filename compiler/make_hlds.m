@@ -41,7 +41,7 @@
 			unify_main_context, unify_sub_contexts, hlds_goal).
 :- mode create_atomic_unification(in, in, in, in, in, out) is det.
 
-:- pred add_new_proc(pred_info, arity, list(mode), maybe(list(mode)),
+:- pred add_new_proc(pred_info, arity, argument_modes, maybe(argument_modes),
 		maybe(list(is_live)), maybe(determinism),
 		term__context, pred_info, proc_id).
 :- mode add_new_proc(in, in, in, in, in, in, in, out, out) is det.
@@ -58,7 +58,7 @@
 
 :- import_module prog_io, prog_io_goal, prog_io_util, prog_out, hlds_out.
 :- import_module module_qual, prog_util, globals, options.
-:- import_module make_tags, quantification, (inst).
+:- import_module make_tags, quantification, (inst), instmap.
 :- import_module code_util, unify_proc, special_pred, type_util, mode_util.
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc, inst_match.
 :- import_module fact_table.
@@ -640,7 +640,9 @@ insts_add(Insts0, VarSet, eqv_inst(Name, Args, Body),
 			Cond, Context, Status, Insts) -->
 	{ list__length(Args, Arity) },
 	(
-		{ I = hlds_inst_defn(VarSet, Args, eqv_inst(Body), Cond,
+		% XXX For now, Body has no aliasing declarations.
+		{ inst_key_table_init(IKT) },
+		{ I = hlds_inst_defn(VarSet, Args, eqv_inst(IKT, Body), Cond,
 					Context, Status) },
 		{ user_inst_table_insert(Insts0, Name - Arity, I, Insts1) }
 	->
@@ -1239,8 +1241,11 @@ add_special_pred_decl(SpecialPredId,
 	pred_info_init(ModuleName, PredName, Arity, TVarSet, ArgTypes, Cond,
 		Context, ClausesInfo0, Status, [], none, predicate, PredInfo0),
 	ArgLives = no,
-	add_new_proc(PredInfo0, Arity, ArgModes, yes(ArgModes),
-		ArgLives, yes(Det), Context, PredInfo, _),
+	% XXX Code may break if the pred has aliased argument modes.
+	inst_key_table_init(ArgIKT),
+	Modes = argument_modes(ArgIKT, ArgModes),
+	add_new_proc(PredInfo0, Arity, Modes, yes(Modes), ArgLives,
+		yes(Det), Context, PredInfo, _),
 
 	module_info_get_predicate_table(Module0, PredicateTable0),
 	predicate_table_insert(PredicateTable0, PredInfo, may_be_unqualified, 
@@ -1358,8 +1363,11 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 		% XXX we should check that this mode declaration
 		% isn't the same as an existing one
 	{ ArgLives = no },
-	{ add_new_proc(PredInfo0, Arity, Modes, yes(Modes), ArgLives,
-			MaybeDet, MContext, PredInfo, _) },
+	% XXX This code may break if the proc has aliased argument modes.
+	{ inst_key_table_init(ArgIKT) },
+	{ ArgModes = argument_modes(ArgIKT, Modes) },
+	{ add_new_proc(PredInfo0, Arity, ArgModes, yes(ArgModes), ArgLives,
+		MaybeDet, MContext, PredInfo, _) },
 	{ map__det_update(Preds0, PredId, PredInfo, Preds) },
 	{ predicate_table_set_preds(PredicateTable1, Preds, PredicateTable) },
 	{ module_info_set_predicate_table(ModuleInfo0, PredicateTable,
@@ -1830,7 +1838,7 @@ pragma_add_markers_2([Marker | Markers], MarkerList0, MarkerList) :-
 
 get_matching_procedure([P|Procs], Modes, ModuleInfo, OurProcId) :-
 	P = ProcId - ProcInfo,
-	proc_info_argmodes(ProcInfo, ArgModes),
+	proc_info_argmodes(ProcInfo, argument_modes(_, ArgModes)),
 	( mode_list_matches(Modes, ArgModes, ModuleInfo) ->
 		OurProcId = ProcId
 	;
@@ -2048,7 +2056,7 @@ warn_singletons_in_unify(X, functor(_ConsId, Vars), GoalInfo, QuantVars, VarSet,
 			Context, CallPredId).
 
 warn_singletons_in_unify(X, lambda_goal(_PredOrFunc, LambdaVars, _Modes, _Det,
-				LambdaGoal),
+				_InstMapDelta, LambdaGoal),
 				GoalInfo, QuantVars, VarSet, CallPredId) -->
 	%
 	% warn if any lambda-quantified variables occur only in the quantifier
@@ -2524,8 +2532,10 @@ transform_goal_2(call(Name, Args0), Context, VarSet0, Subst, Goal, VarSet,
 			Types = [],
 			Modes = [],
 			Det = erroneous,
+			inst_key_table_init(IKT),
+			ArgModes = argument_modes(IKT, Modes),
 			Call = higher_order_call(PredVar, RealHeadVars,
-					Types, Modes, Det, predicate)
+					Types, ArgModes, Det, predicate)
 		;
 			% initialize some fields to junk
 			invalid_pred_id(PredId),
@@ -2801,8 +2811,11 @@ unravel_unification(term__variable(X), Rhs,
 				HLDS_Goal0, VarSet3, Info1, Info2),
 		insert_arg_unifications(Vars, Vars1, Context, head,
 			HLDS_Goal0, VarSet3, HLDS_Goal, VarSet, Info2, Info),
+		{ instmap_delta_init_reachable(InstMapDelta) },
+		{ inst_key_table_init(IKT) },
 		{ create_atomic_unification(X,
-			lambda_goal(predicate, Vars, Modes, Det, HLDS_Goal),
+			lambda_goal(predicate, Vars, argument_modes(IKT, Modes),
+				Det, InstMapDelta, HLDS_Goal),
 			Context, MainContext, SubContext, Goal) }
 	;
 	    {
@@ -2832,8 +2845,11 @@ unravel_unification(term__variable(X), Rhs,
 				HLDS_Goal0, VarSet3, Info1, Info2),
 		insert_arg_unifications(Vars, Vars1, Context, head,
 			HLDS_Goal0, VarSet3, HLDS_Goal, VarSet, Info2, Info),
+		{ instmap_delta_init_reachable(InstMapDelta) },
+		{ inst_key_table_init(IKT) },
 		{ create_atomic_unification(X,
-			lambda_goal(function, Vars, Modes, Det, HLDS_Goal),
+			lambda_goal(function, Vars, argument_modes(IKT, Modes),
+				Det, InstMapDelta, HLDS_Goal),
 			Context, MainContext, SubContext, Goal) }
 	;
 	        % handle if-then-else expressions
@@ -3442,7 +3458,8 @@ module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
 	{ map__lookup(ProcTable, ProcID, ProcInfo) },
 	{ varset__init(VarSet0) },
 	{ varset__new_vars(VarSet0, Arity, Vars, VarSet) },
-	{ proc_info_argmodes(ProcInfo, Modes) },
+	% XXX This code may break if the proc has aliased argument modes.
+	{ proc_info_argmodes(ProcInfo, argument_modes(_, Modes)) },
 	{ fact_table_pragma_vars(Vars, Modes, VarSet, PragmaVars) },
 	fact_table_generate_c_code(SymName, PragmaVars, ProcID, PrimaryProcID,
 		ProcInfo, ArgTypes, Module0, C_ProcCode, C_ExtraCode),

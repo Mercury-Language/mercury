@@ -51,7 +51,10 @@
 			var,		% the predicate to call
 			list(var),	% the list of argument variables
 			list(type),	% the types of the argument variables
-			list(mode),	% the modes of the argument variables
+			argument_modes,	% the argument modes of the called
+					% pred or func (since we can't look
+					% these up in the proc_info of the
+					% called pred/func)
 			determinism,	% the determinism of the called pred
 			pred_or_func	% call/N (pred) or apply/N (func)
 		)
@@ -225,9 +228,22 @@
 	% the unify_rhs field is used.
 :- type unify_rhs
 	--->	var(var)
-	;	functor(cons_id, list(var))
-	;	lambda_goal(pred_or_func, list(var), list(mode), determinism,
-				hlds_goal).
+	;	functor(
+			cons_id, 
+			list(var)
+		)
+	;	lambda_goal(
+			pred_or_func,	% Is this a predicate or a function
+			list(var),	% The list of the argument variables
+			argument_modes,	% The (currently declared) argument
+					% modes of this lambda
+			determinism,	% The (currently declared) determinism
+					% of this lambda
+			instmap_delta,	% The instmap_delta between the
+					% preceding goal and the lambda
+					% body.
+			hlds_goal	% The body of the lambda
+		).
 
 :- type unification
 		% A construction unification is a unification with a functor

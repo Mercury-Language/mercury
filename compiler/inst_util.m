@@ -176,9 +176,12 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, UI0, Inst, Det, UI) :-
 	module_info_insts(ModuleInfo0, InstTable0),
 	inst_table_get_unify_insts(InstTable0, UnifyInsts0),
 	( map__search(UnifyInsts0, ThisInstPair, Result) ->
-		( Result = known(UnifyInst, UnifyDet) ->
-			Inst0 = UnifyInst,
-			Det = UnifyDet
+		( Result = known(UnifyInst, UnifyIKT, UnifyDet) ->
+			inst_key_table_create_sub(IKT0, UnifyIKT, UnifySub,
+				IKT),
+			inst_apply_sub(UnifySub, UnifyInst, Inst0),
+			Det = UnifyDet,
+			UI = unify_inst_info(ModuleInfo0, IKT, Sub0)
 		;
 			Inst0 = defined_inst(ThisInstPair),
 				% It's ok to assume that the unification is
@@ -187,9 +190,9 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, UI0, Inst, Det, UI) :-
 				% recursive case for a recursively defined inst.
 				% If the unification as a whole is semidet then
 				% it must be semidet somewhere else too.
-			Det = det
+			Det = det,
+			UI = UI0
 		),
-		UI = UI0,
 		Inst1 = Inst0
 	;
 			% insert ThisInstPair into the table with value
@@ -217,8 +220,9 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, UI0, Inst, Det, UI) :-
 			% now update the value associated with ThisInstPair
 		module_info_insts(ModuleInfo2, InstTable2),
 		inst_table_get_unify_insts(InstTable2, UnifyInsts2),
-		map__det_update(UnifyInsts2, ThisInstPair, known(Inst1, Det),
-			UnifyInsts),
+		UnifyIKT = IKT,		% YYY Should optimise here
+		map__det_update(UnifyInsts2, ThisInstPair,
+			known(Inst1, UnifyIKT, Det), UnifyInsts),
 		inst_table_set_unify_insts(InstTable2, UnifyInsts, InstTable),
 		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo3),
 		UI = unify_inst_info(ModuleInfo3, IKT, Sub)
@@ -237,18 +241,18 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, UI0, Inst, Det, UI) :-
 			unify_inst_info, inst, determinism, unify_inst_info).
 :- mode abstractly_unify_inst_2(in, in, in, in, in, out, out, out) is semidet.
 
-abstractly_unify_inst_2(IsLive, Real, InstA, InstB, UnifyInstInfo0,
-                Inst, Det, UnifyInstInfo) :-
-	unify_inst_info_get_module_info(UnifyInstInfo0, ModuleInfo0),
-	unify_inst_info_get_inst_key_table(UnifyInstInfo0, IKT0),
-        inst_expand_defined_inst(IKT0, ModuleInfo0, InstA, InstA2),
-        inst_expand_defined_inst(IKT0, ModuleInfo0, InstB, InstB2),
+abstractly_unify_inst_2(IsLive, Real, InstA, InstB, UI0, Inst, Det, UI) :-
+	unify_inst_info_get_module_info(UI0, ModuleInfo0),
+	unify_inst_info_get_inst_key_table(UI0, IKT0),
+        inst_expand_defined_inst(IKT0, ModuleInfo0, InstA, IKT1, InstA2),
+        inst_expand_defined_inst(IKT1, ModuleInfo0, InstB, IKT2, InstB2),
+	unify_inst_info_set_inst_key_table(UI0, IKT2, UI1),
         (
                 InstB2 = not_reached
         ->
                 Inst = not_reached,
                 Det = det,
-		UnifyInstInfo = UnifyInstInfo0
+		UI = UI1
         ;
                 ( InstA2 = alias(_) ; InstB2 = alias(_) )
         ->
@@ -264,9 +268,9 @@ abstractly_unify_inst_2(IsLive, Real, InstA, InstB, UnifyInstInfo0,
                         (
                                 IsLive = live
                         =>
-                                \+ inst_is_free(InstB2, IKT0, ModuleInfo0)
+                                \+ inst_is_free(InstB2, IKT2, ModuleInfo0)
                         ),
-			UnifyInstInfo = UnifyInstInfo0,
+			UI = UI1,
                         Inst = InstB2, Det = det
                 ;
                         % alias(K) = free
@@ -278,25 +282,25 @@ abstractly_unify_inst_2(IsLive, Real, InstA, InstB, UnifyInstInfo0,
                         (
                                 IsLive = live
                         =>
-                                \+ inst_is_free(InstA2, IKT0, ModuleInfo0)
+                                \+ inst_is_free(InstA2, IKT2, ModuleInfo0)
                         ),
-			UnifyInstInfo = UnifyInstInfo0,
+			UI = UI1,
                         Inst = InstA2, Det = det
                 ;
                         % alias(K) = alias(K)
 
                         InstA2 = InstB2
                 ->
-			UnifyInstInfo = UnifyInstInfo0,
+			UI = UI1,
                         Inst = InstA2, Det = det
                 ;
                         % At least one inst is an alias, so we must preserve
                         % this.
 
-			unify_inst_info_get_inst_key_sub(UnifyInstInfo0, Sub0),
+			unify_inst_info_get_inst_key_sub(UI1, Sub0),
                         ( InstA2 = alias(KeyA0) ->
                                 find_latest_inst_key(Sub0, KeyA0, KeyA),
-                                inst_key_table_lookup(IKT0, KeyA, InstA3),
+                                inst_key_table_lookup(IKT2, KeyA, InstA3),
                                 KeysToUpdate0 = [KeyA0]
                         ;
                                 InstA3 = InstA2,
@@ -304,7 +308,7 @@ abstractly_unify_inst_2(IsLive, Real, InstA, InstB, UnifyInstInfo0,
                         ),
                         ( InstB2 = alias(KeyB0) ->
                                 find_latest_inst_key(Sub0, KeyB0, KeyB),
-                                inst_key_table_lookup(IKT0, KeyB, InstB3),
+                                inst_key_table_lookup(IKT2, KeyB, InstB3),
                                 KeysToUpdate = [KeyB0 | KeysToUpdate0]
                         ;
                                 InstB3 = InstB2,
@@ -312,9 +316,9 @@ abstractly_unify_inst_2(IsLive, Real, InstA, InstB, UnifyInstInfo0,
                         ), 
 
                         abstractly_unify_inst_2(IsLive, Real, InstA3, InstB3,
-                                UnifyInstInfo0, Inst0, Det, UnifyInstInfo1),
+                                UI1, Inst0, Det, UI2),
 
-			unify_inst_info_get_inst_key_sub(UnifyInstInfo1, Sub1),
+			unify_inst_info_get_inst_key_sub(UI2, Sub1),
                         % Optimise some more common cases
                         (
                                 % If the unified inst is the same as
@@ -330,8 +334,7 @@ abstractly_unify_inst_2(IsLive, Real, InstA, InstB, UnifyInstInfo0,
                                 ;
                                         Sub1 = Sub
                                 ),
-				unify_inst_info_set_inst_key_sub(UnifyInstInfo1,
-					Sub, UnifyInstInfo)
+				unify_inst_info_set_inst_key_sub(UI2, Sub, UI)
                         ;
                                 % If the unified inst is the same as
                                 % InstB and InstB was aliased, don't
@@ -346,25 +349,22 @@ abstractly_unify_inst_2(IsLive, Real, InstA, InstB, UnifyInstInfo0,
                                 ;
                                         Sub1 = Sub
                                 ),
-				unify_inst_info_set_inst_key_sub(UnifyInstInfo1,
-					Sub, UnifyInstInfo)
+				unify_inst_info_set_inst_key_sub(UI2, Sub, UI)
                         ;
-				unify_inst_info_get_inst_key_table(
-					UnifyInstInfo1, IKT1),
-                                inst_key_table_add(IKT1, Inst0, NewKey,
+				unify_inst_info_get_inst_key_table(UI2, IKT3),
+                                inst_key_table_add(IKT3, Inst0, NewKey,
                                         IKT),
                                 Inst = alias(NewKey),
                                 add_new_keys_to_sub(Sub1, KeysToUpdate, NewKey,
                                         Sub),
-				unify_inst_info_set_inst_key_table(
-					UnifyInstInfo1, IKT, UnifyInstInfo2),
-				unify_inst_info_set_inst_key_sub(UnifyInstInfo2,
-					Sub, UnifyInstInfo)
+				unify_inst_info_set_inst_key_table(UI2, IKT,
+					UI3),
+				unify_inst_info_set_inst_key_sub(UI3, Sub, UI)
                         )
                 )
         ;
                 abstractly_unify_inst_3(IsLive, Real, InstA2, InstB2,
-			UnifyInstInfo0, Inst, Det, UnifyInstInfo)
+			UI1, Inst, Det, UI)
         ).
 
 
@@ -645,24 +645,24 @@ abstractly_unify_inst_list([X|Xs], [Y|Ys], Live, Real, UI0, [Z|Zs], Det, UI) :-
 
 abstractly_unify_inst_functor(Live, InstA, ConsId, ArgInsts, ArgLives, Real,
 		IKT0, ModuleInfo0, Sub0, Inst, Det, IKT, ModuleInfo, Sub) :-
-	inst_expand(IKT0, ModuleInfo0, InstA, InstA2),
+	inst_expand(IKT0, ModuleInfo0, InstA, IKT1, InstA2),
 
-	UnifyInstInfo0 = unify_inst_info(ModuleInfo0, IKT0, Sub0),
+	UnifyInstInfo0 = unify_inst_info(ModuleInfo0, IKT1, Sub0),
 
 	( InstA2 = alias(KeyA0) ->
 		find_latest_inst_key(Sub0, KeyA0, KeyA),
-		inst_key_table_lookup(IKT0, KeyA, InstA3),
+		inst_key_table_lookup(IKT1, KeyA, InstA3),
 
 		abstractly_unify_inst_functor_2(Live, Real, InstA3, ConsId,
 			ArgInsts,
 			ArgLives, UnifyInstInfo0, Inst0, Det, UnifyInstInfo),
-		UnifyInstInfo = unify_inst_info(ModuleInfo, IKT1, Sub1),
+		UnifyInstInfo = unify_inst_info(ModuleInfo, IKT2, Sub1),
 		( determinism_components(Det, _, at_most_zero) ->
 			Inst = Inst0,
 			Sub = Sub1,
-			IKT = IKT1
+			IKT = IKT2
 		;
-			inst_key_table_add(IKT1, Inst0, NewKey, IKT),
+			inst_key_table_add(IKT2, Inst0, NewKey, IKT),
 			Inst = alias(NewKey),
 			map__set(Sub1, KeyA0, NewKey, Sub)
 		)
@@ -1008,18 +1008,22 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, UI0,
 	(
 		map__search(GroundInsts0, GroundInstKey, Result)
 	->
-		( Result = known(GroundInst0, Det0) ->
-			GroundInst = GroundInst0,
-			Det = Det0
+		( Result = known(GroundInst0, GroundIKT, Det0) ->
+			unify_inst_info_get_inst_key_table(UI0, IKT0),
+			inst_key_table_create_sub(IKT0, GroundIKT, UnifySub,
+				IKT),
+			inst_apply_sub(UnifySub, GroundInst0, GroundInst),
+			Det = Det0,
+			unify_inst_info_set_inst_key_table(UI0, IKT, UI)
 		;
 			GroundInst = defined_inst(GroundInstKey),
-			Det = det
+			Det = det,
+			UI = UI0
 				% We can safely assume this is det, since
 				% if it were semidet, we would have noticed
 				% this in the process of unfolding the
 				% definition.
-		),
-		UI = UI0
+		)
 	;
 		% insert the inst name in the ground_inst table, with
 		% value `unknown' for the moment
@@ -1033,24 +1037,27 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, UI0,
 		% expand the inst name, and invoke ourself recursively on
 		% it's expansion
 		unify_inst_info_get_inst_key_table(UI1, IKT1),
-		inst_lookup(IKT1, ModuleInfo1, InstName, Inst0),
-		inst_expand(IKT1, ModuleInfo1, Inst0, Inst1),
+		inst_lookup(IKT1, ModuleInfo1, InstName, IKT2, Inst0),
+		inst_expand(IKT2, ModuleInfo1, Inst0, IKT3, Inst1),
 		unify_inst_info_set_module_info(UI, ModuleInfo1, UI1),
-		make_ground_inst(Inst1, IsLive, Uniq, Real, UI1, 
-				GroundInst, Det, UI2),
-		unify_inst_info_get_module_info(UI2, ModuleInfo2),
+		unify_inst_info_set_inst_key_table(UI1, IKT3, UI2),
+		make_ground_inst(Inst1, IsLive, Uniq, Real, UI2, 
+				GroundInst, Det, UI3),
+		unify_inst_info_get_module_info(UI3, ModuleInfo3),
 
 		% now that we have determined the resulting Inst, store
 		% the appropriate value `known(GroundInst, Det)' in the
 		% ground_inst table
-		module_info_insts(ModuleInfo2, InstTable2),
-		inst_table_get_ground_insts(InstTable2, GroundInsts2),
-		map__det_update(GroundInsts2, GroundInstKey,
-			known(GroundInst, Det), GroundInsts),
-		inst_table_set_ground_insts(InstTable2, GroundInsts,
+		module_info_insts(ModuleInfo3, InstTable3),
+		inst_table_get_ground_insts(InstTable3, GroundInsts3),
+		unify_inst_info_get_inst_key_table(UI3, IKT),
+		UnifyIKT = IKT,		% YYY Should optimise here
+		map__det_update(GroundInsts3, GroundInstKey,
+			known(GroundInst, UnifyIKT, Det), GroundInsts),
+		inst_table_set_ground_insts(InstTable3, GroundInsts,
 			InstTable),
-		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo3),
-		unify_inst_info_set_module_info(UI2, ModuleInfo3, UI)
+		module_info_set_insts(ModuleInfo3, InstTable, ModuleInfo4),
+		unify_inst_info_set_module_info(UI3, ModuleInfo4, UI)
 	),
 		% avoid expanding recursive insts
 	unify_inst_info_get_module_info(UI, ModuleInfo),
@@ -1146,18 +1153,22 @@ make_any_inst(defined_inst(InstName), IsLive, Uniq, Real, UI0,
 	(
 		map__search(AnyInsts0, AnyInstKey, Result)
 	->
-		( Result = known(AnyInst0, Det0) ->
-			AnyInst = AnyInst0,
+		( Result = known(AnyInst0, UnifyIKT, Det0) ->
+			unify_inst_info_get_inst_key_table(UI0, IKT0),
+			inst_key_table_create_sub(IKT0, UnifyIKT, UnifySub,
+				IKT),
+			inst_apply_sub(UnifySub, AnyInst0, AnyInst),
+			unify_inst_info_set_inst_key_table(UI0, IKT, UI),
 			Det = Det0
 		;
 			AnyInst = defined_inst(AnyInstKey),
+			UI = UI0,
 			Det = det
 				% We can safely assume this is det, since
 				% if it were semidet, we would have noticed
 				% this in the process of unfolding the
 				% definition.
 		),
-		UI = UI0,
 		ModuleInfo = ModuleInfo0
 	;
 		% insert the inst name in the any_inst table, with
@@ -1172,23 +1183,26 @@ make_any_inst(defined_inst(InstName), IsLive, Uniq, Real, UI0,
 
 		% expand the inst name, and invoke ourself recursively on
 		% it's expansion
-		inst_lookup(IKT1, ModuleInfo1, InstName, Inst0),
-		inst_expand(IKT1, ModuleInfo1, Inst0, Inst1),
-		make_any_inst(Inst1, IsLive, Uniq, Real, UI1,
-				AnyInst, Det, UI2),
+		inst_lookup(IKT1, ModuleInfo1, InstName, IKT2, Inst0),
+		inst_expand(IKT2, ModuleInfo1, Inst0, IKT3, Inst1),
+		unify_inst_info_set_inst_key_table(UI1, IKT3, UI2),
+		make_any_inst(Inst1, IsLive, Uniq, Real, UI2,
+				AnyInst, Det, UI3),
 
 		% now that we have determined the resulting Inst, store
 		% the appropriate value `known(AnyInst, Det)' in the
 		% any_inst table
-		unify_inst_info_get_module_info(UI2, ModuleInfo2),
-		module_info_insts(ModuleInfo2, InstTable2),
-		inst_table_get_any_insts(InstTable2, AnyInsts2),
-		map__det_update(AnyInsts2, AnyInstKey,
-			known(AnyInst, Det), AnyInsts),
-		inst_table_set_any_insts(InstTable2, AnyInsts,
+		unify_inst_info_get_module_info(UI3, ModuleInfo3),
+		module_info_insts(ModuleInfo3, InstTable3),
+		inst_table_get_any_insts(InstTable3, AnyInsts3),
+		unify_inst_info_get_inst_key_table(UI3, IKT4),
+		UnifyIKT = IKT4,		% YYY Should optimise here
+		map__det_update(AnyInsts3, AnyInstKey,
+			known(AnyInst, UnifyIKT, Det), AnyInsts),
+		inst_table_set_any_insts(InstTable3, AnyInsts,
 			InstTable),
-		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo),
-		unify_inst_info_set_module_info(UI2, ModuleInfo, UI)
+		module_info_set_insts(ModuleInfo3, InstTable, ModuleInfo),
+		unify_inst_info_set_module_info(UI3, ModuleInfo, UI)
 	),
 		% avoid expanding recursive insts
 	unify_inst_info_get_inst_key_table(UI, FinalIKT),
@@ -1305,13 +1319,17 @@ make_shared_inst(defined_inst(InstName), UI0, Inst, UI) :-
 	(
 		map__search(SharedInsts0, InstName, Result)
 	->
-		( Result = known(SharedInst0) ->
-			SharedInst = SharedInst0
+		( Result = known(SharedInst0, UnifyIKT) ->
+			unify_inst_info_get_inst_key_table(UI0, IKT0),
+			inst_key_table_create_sub(IKT0, UnifyIKT, UnifySub,
+				IKT),
+			inst_apply_sub(UnifySub, SharedInst0, SharedInst),
+			unify_inst_info_set_inst_key_table(UI0, IKT, UI)
 		;
-			SharedInst = defined_inst(InstName)
+			SharedInst = defined_inst(InstName),
+			UI = UI0
 		),
-		ModuleInfo = ModuleInfo0,
-		UI = UI0
+		ModuleInfo = ModuleInfo0
 	;
 		% insert the inst name in the shared_inst table, with
 		% value `unknown' for the moment
@@ -1324,22 +1342,25 @@ make_shared_inst(defined_inst(InstName), UI0, Inst, UI) :-
 		% expand the inst name, and invoke ourself recursively on
 		% it's expansion
 		unify_inst_info_get_inst_key_table(UI1, IKT1),
-		inst_lookup(IKT1, ModuleInfo1, InstName, Inst0),
-		inst_expand(IKT1, ModuleInfo1, Inst0, Inst1),
-		make_shared_inst(Inst1, UI1, SharedInst, UI2),
-		unify_inst_info_get_module_info(UI2, ModuleInfo2),
+		inst_lookup(IKT1, ModuleInfo1, InstName, IKT2, Inst0),
+		inst_expand(IKT2, ModuleInfo1, Inst0, IKT3, Inst1),
+		unify_inst_info_set_inst_key_table(UI1, IKT3, UI3),
+		make_shared_inst(Inst1, UI3, SharedInst, UI4),
+		unify_inst_info_get_module_info(UI4, ModuleInfo4),
 
 		% now that we have determined the resulting Inst, store
 		% the appropriate value `known(SharedInst)' in the shared_inst
 		% table
-		module_info_insts(ModuleInfo2, InstTable2),
-		inst_table_get_shared_insts(InstTable2, SharedInsts2),
-		map__det_update(SharedInsts2, InstName, known(SharedInst),
-			SharedInsts),
-		inst_table_set_shared_insts(InstTable2, SharedInsts,
+		module_info_insts(ModuleInfo4, InstTable4),
+		inst_table_get_shared_insts(InstTable4, SharedInsts4),
+		unify_inst_info_get_inst_key_table(UI4, IKT4),
+		UnifyIKT = IKT4,		% YYY Should optimise
+		map__det_update(SharedInsts4, InstName,
+			known(SharedInst, UnifyIKT), SharedInsts),
+		inst_table_set_shared_insts(InstTable4, SharedInsts,
 			InstTable),
-		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo),
-		unify_inst_info_set_module_info(UI2, ModuleInfo1, UI)
+		module_info_set_insts(ModuleInfo4, InstTable, ModuleInfo),
+		unify_inst_info_set_module_info(UI4, ModuleInfo, UI)
 	),
 		% avoid expanding recursive insts
 	unify_inst_info_get_inst_key_table(UI, LastIKT),
@@ -1409,12 +1430,17 @@ make_mostly_uniq_inst_2(defined_inst(InstName), UI0, Inst, UI) :-
 	(
 		map__search(NondetLiveInsts0, InstName, Result)
 	->
-		( Result = known(NondetLiveInst0) ->
-			NondetLiveInst = NondetLiveInst0
+		( Result = known(NondetLiveInst0, UnifyIKT) ->
+			unify_inst_info_get_inst_key_table(UI0, IKT0),
+			inst_key_table_create_sub(IKT0, UnifyIKT, UnifySub,
+				IKT),
+			inst_apply_sub(UnifySub, NondetLiveInst0,
+				NondetLiveInst),
+			unify_inst_info_set_inst_key_table(UI0, IKT, UI)
 		;
-			NondetLiveInst = defined_inst(InstName)
-		),
-		UI = UI0
+			NondetLiveInst = defined_inst(InstName),
+			UI = UI0
+		)
 	;
 		% insert the inst name in the mostly_uniq_inst table, with
 		% value `unknown' for the moment
@@ -1428,23 +1454,26 @@ make_mostly_uniq_inst_2(defined_inst(InstName), UI0, Inst, UI) :-
 		% expand the inst name, and invoke ourself recursively on
 		% it's expansion
 		unify_inst_info_get_inst_key_table(UI1, IKT1),
-		inst_lookup(IKT1, ModuleInfo1, InstName, Inst0),
-		inst_expand(IKT1, ModuleInfo1, Inst0, Inst1),
-		make_mostly_uniq_inst_2(Inst1, UI1, NondetLiveInst,
-			UI2),
-		unify_inst_info_get_module_info(UI2, ModuleInfo2),
+		inst_lookup(IKT1, ModuleInfo1, InstName, IKT2, Inst0),
+		inst_expand(IKT2, ModuleInfo1, Inst0, IKT3, Inst1),
+		unify_inst_info_set_inst_key_table(UI1, IKT3, UI3),
+		make_mostly_uniq_inst_2(Inst1, UI3, NondetLiveInst,
+			UI4),
+		unify_inst_info_get_module_info(UI4, ModuleInfo4),
 
 		% now that we have determined the resulting Inst, store
 		% the appropriate value `known(NondetLiveInst)' in the
 		% mostly_uniq_inst table
-		module_info_insts(ModuleInfo2, InstTable2),
-		inst_table_get_mostly_uniq_insts(InstTable2, NondetLiveInsts2),
-		map__det_update(NondetLiveInsts2, InstName,
-			known(NondetLiveInst), NondetLiveInsts),
-		inst_table_set_mostly_uniq_insts(InstTable2, NondetLiveInsts,
+		module_info_insts(ModuleInfo4, InstTable4),
+		inst_table_get_mostly_uniq_insts(InstTable4, NondetLiveInsts4),
+		unify_inst_info_get_inst_key_table(UI4, IKT4),
+		UnifyIKT = IKT4,		% YYY Should optimise
+		map__det_update(NondetLiveInsts4, InstName,
+			known(NondetLiveInst, UnifyIKT), NondetLiveInsts),
+		inst_table_set_mostly_uniq_insts(InstTable4, NondetLiveInsts,
 			InstTable),
-		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo3),
-		unify_inst_info_set_module_info(UI2, ModuleInfo3, UI)
+		module_info_set_insts(ModuleInfo4, InstTable, ModuleInfo5),
+		unify_inst_info_set_module_info(UI4, ModuleInfo5, UI)
 	),
 		% avoid expanding recursive insts
 	unify_inst_info_get_module_info(UI, ModuleInfo),
@@ -1530,12 +1559,14 @@ inst_merge(InstA, InstB, IKT0, ModuleInfo0, Inst, IKT, ModuleInfo) :-
 	ThisInstPair = InstA - InstB,
 	( map__search(MergeInstTable0, ThisInstPair, Result) ->
 		ModuleInfo = ModuleInfo0,
-		( Result = known(MergedInst) ->
-			Inst0 = MergedInst
+		( Result = known(MergedInst, UnifyIKT) ->
+			inst_key_table_create_sub(IKT0, UnifyIKT, UnifySub,
+				IKT),
+			inst_apply_sub(UnifySub, MergedInst, Inst0)
 		;
-			Inst0 = defined_inst(merge_inst(InstA, InstB))
-		),
-		IKT = IKT0
+			Inst0 = defined_inst(merge_inst(InstA, InstB)),
+			IKT = IKT0
+		)
 	;
 			% insert ThisInstPair into the table with value
 			%`unknown'
@@ -1552,8 +1583,9 @@ inst_merge(InstA, InstB, IKT0, ModuleInfo0, Inst, IKT, ModuleInfo) :-
 			% now update the value associated with ThisInstPair
 		module_info_insts(ModuleInfo2, InstTable2),
 		inst_table_get_merge_insts(InstTable2, MergeInstTable2),
-		map__det_update(MergeInstTable2, ThisInstPair, known(Inst0),
-			MergeInstTable3),
+		MergeIKT = IKT,		% YYY Should optimise
+		map__det_update(MergeInstTable2, ThisInstPair,
+			known(Inst0, MergeIKT), MergeInstTable3),
 		inst_table_set_merge_insts(InstTable2, MergeInstTable3,
 			InstTable3),
 		module_info_set_insts(ModuleInfo2, InstTable3, ModuleInfo)
@@ -1581,16 +1613,16 @@ inst_merge_2(InstA, InstB, IKT0, ModuleInfo0, Inst, IKT, ModuleInfo) :-
 	% YYY The following calls implement `may alias' semantics.
 	%     DO NOT merge this with the main branch without this
 	%     fixed!
-	inst_expand(IKT0, ModuleInfo0, InstA, InstA2),
-	inst_expand_fully(InstA2, IKT0, InstA3),
-	inst_expand(IKT0, ModuleInfo0, InstB, InstB2),
-	inst_expand_fully(InstB2, IKT0, InstB3),
+	inst_expand(IKT0, ModuleInfo0, InstA, IKT1, InstA2),
+	inst_expand_fully(IKT0, InstA2, InstA3),
+	inst_expand(IKT1, ModuleInfo0, InstB, IKT2, InstB2),
+	inst_expand_fully(IKT2, InstB2, InstB3),
 	( InstB3 = not_reached ->
 		Inst = InstA3,
 		ModuleInfo = ModuleInfo0,
-		IKT = IKT0
+		IKT = IKT2
 	;
-		inst_merge_3(InstA3, InstB3, IKT0, ModuleInfo0, Inst, IKT,
+		inst_merge_3(InstA3, InstB3, IKT2, ModuleInfo0, Inst, IKT,
 			ModuleInfo)
 	).
 
@@ -1758,7 +1790,7 @@ merge_inst_uniq(defined_inst(InstName), UniqB, ModuleInfo, Expansions,
 		set__insert(Expansions, InstName, Expansions1),
 		% YYY Hack alert!
 		inst_key_table_init(IKT),
-		inst_lookup(IKT, ModuleInfo, InstName, Inst),
+		inst_lookup(IKT, ModuleInfo, InstName, _, Inst),
 		merge_inst_uniq(Inst, UniqB, ModuleInfo, Expansions1, Uniq)
 	).
 merge_inst_uniq(not_reached, Uniq, _, _, Uniq).

@@ -499,7 +499,7 @@ modecheck_proc_3(ProcId, PredId, ModuleInfo0, ProcInfo0, Changed0,
 				IOState0, IOState) :-
 		% extract the useful fields in the proc_info
 	proc_info_headvars(ProcInfo0, HeadVars),
-	proc_info_argmodes(ProcInfo0, ArgModes0),
+	proc_info_argmodes(ProcInfo0, argument_modes(IKT0, ArgModes0)),
 	proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives0),
 	proc_info_goal(ProcInfo0, Body0),
 
@@ -526,8 +526,6 @@ modecheck_proc_3(ProcId, PredId, ModuleInfo0, ProcInfo0, Changed0,
 	mode_list_get_final_insts(ArgModes0, ModuleInfo0, ArgFinalInsts0),
 	get_live_vars(HeadVars, ArgLives0, LiveVarsList),
 	set__list_to_set(LiveVarsList, LiveVars),
-	% YYY Change for local inst_key_tables
-	module_info_inst_key_table(ModuleInfo0, IKT0),
 	mode_info_init(IOState0, ModuleInfo0, IKT0, PredId, ProcId,
 			Context, LiveVars, InstMap0, ModeInfo0),
 	mode_info_set_changed_flag(Changed0, ModeInfo0, ModeInfo1),
@@ -543,18 +541,18 @@ modecheck_proc_3(ProcId, PredId, ModuleInfo0, ProcInfo0, Changed0,
 	inst_lists_to_mode_list(ArgInitialInsts, ArgFinalInsts, ArgModes),
 	report_mode_errors(ModeInfo3, ModeInfo),
 	mode_info_get_changed_flag(ModeInfo, Changed),
-	mode_info_get_module_info(ModeInfo, ModuleInfo99),
+	mode_info_get_module_info(ModeInfo, ModuleInfo),
 	mode_info_get_num_errors(ModeInfo, NumErrors),
 	mode_info_get_io_state(ModeInfo, IOState),
 	mode_info_get_varset(ModeInfo, VarSet),
 	mode_info_get_var_types(ModeInfo, VarTypes),
 	mode_info_get_inst_key_table(ModeInfo, IKT),
-	% YYY Change for local inst_key_tables
-	module_info_set_inst_key_table(ModuleInfo99, IKT, ModuleInfo),
 	proc_info_set_goal(ProcInfo0, Body, ProcInfo1),
 	proc_info_set_variables(ProcInfo1, VarSet, ProcInfo2),
 	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3),
-	proc_info_set_argmodes(ProcInfo3, ArgModes, ProcInfo).
+	proc_info_set_argmodes(ProcInfo3, argument_modes(IKT0, ArgModes),
+		ProcInfo4),
+	proc_info_set_inst_key_table(ProcInfo4, IKT, ProcInfo).
 
 	% modecheck_final_insts for a lambda expression
 modecheck_final_insts(HeadVars, ArgFinalInsts, ModeInfo0, ModeInfo) :-
@@ -576,12 +574,15 @@ modecheck_final_insts_2(HeadVars, FinalInsts0, ModeInfo0, InferModes,
 			FinalInsts, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	mode_info_get_instmap(ModeInfo0, InstMap),
-	mode_info_get_inst_key_table(ModeInfo0, IKT),
 	instmap__lookup_vars(HeadVars, InstMap, VarFinalInsts1),
+	% YYY Check for non-legitimate aliasing here.
 
 	( InferModes = yes ->
-		normalise_insts(VarFinalInsts1, IKT, ModuleInfo,
+		mode_info_get_inst_key_table(ModeInfo0, IKT),
+		list__map(inst_expand_fully(IKT), VarFinalInsts1,
 			VarFinalInsts2),
+		normalise_insts(VarFinalInsts2, IKT, ModuleInfo,
+			VarFinalInsts3),
 		%
 		% make sure we set the final insts of any variables which
 		% we assumed were dead to `clobbered'.
@@ -593,7 +594,7 @@ modecheck_final_insts_2(HeadVars, FinalInsts0, ModeInfo0, InferModes,
 		mode_info_get_procid(ModeInfo0, ProcId),
 		map__lookup(Procs, ProcId, ProcInfo),
 		proc_info_arglives(ProcInfo, ModuleInfo, ArgLives),
-		maybe_clobber_insts(VarFinalInsts2, ArgLives, FinalInsts),
+		maybe_clobber_insts(VarFinalInsts3, ArgLives, FinalInsts),
 		check_final_insts(HeadVars, FinalInsts0, FinalInsts,
 			InferModes, 1, no, Changed1,
 			ModeInfo0, ModeInfo1),
@@ -851,7 +852,7 @@ modecheck_goal_expr(pragma_c_code(IsRecursive, C_Code, PredId, _ProcId0, Args0,
 
 unify_rhs_vars(var(Var), [Var]).
 unify_rhs_vars(functor(_Functor, Vars), Vars).
-unify_rhs_vars(lambda_goal(_PredOrFunc, LambdaVars, _Modes, _Det,
+unify_rhs_vars(lambda_goal(_PredOrFunc, LambdaVars, _Modes, _Det, _IMDelta,
 			_Goal - GoalInfo), Vars) :-
 	goal_info_get_nonlocals(GoalInfo, NonLocals0),
 	set__delete_list(NonLocals0, LambdaVars, NonLocals),
@@ -1239,7 +1240,7 @@ modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var,
 			map__overlay(Sub0, NewSub, Sub1),
 			mode_info_set_module_info(ModeInfo0, ModuleInfo,
 				ModeInfo1),
-			mode_info_set_inst_key_table(ModeInfo1, IKT, ModeInfo2),
+			mode_info_set_inst_key_table(IKT, ModeInfo1, ModeInfo2),
 			mode_info_apply_inst_key_sub(NewSub,
 				ModeInfo2, ModeInfo3),
 			handle_implied_mode(Var0,
@@ -1298,14 +1299,14 @@ modecheck_set_var_inst(Var0, FinalInst, Sub0, Sub, ModeInfo0, ModeInfo) :-
 			error("modecheck_set_var_inst: unify failed")
 		),
 		mode_info_set_module_info(ModeInfo0, ModuleInfo2, ModeInfo1),
-		mode_info_set_inst_key_table(ModeInfo1, IKT2, ModeInfo2),
+		mode_info_set_inst_key_table(IKT2, ModeInfo1, ModeInfo2),
 		mode_info_apply_inst_key_sub(Sub, ModeInfo2, ModeInfo3),
 		mode_info_get_inst_key_table(ModeInfo3, IKT3),
 		mode_info_get_module_info(ModeInfo3, ModuleInfo3),
 		(
 			% if the top-level inst of the variable is not_reached,
 			% then the instmap as a whole must be unreachable
-			inst_expand(IKT3, ModuleInfo3, Inst, not_reached)
+			inst_expand(IKT3, ModuleInfo3, Inst, _, not_reached)
 		->
 			instmap__init_unreachable(InstMap),
 			mode_info_set_instmap(InstMap, ModeInfo3, ModeInfo)
@@ -1366,7 +1367,7 @@ modecheck_force_set_var_inst(Var0, Inst, ModeInfo0, ModeInfo) :-
 		(
 			% if the top-level inst of the variable is not_reached,
 			% then the instmap as a whole must be unreachable
-			inst_expand(IKT0, ModuleInfo0, Inst, not_reached)
+			inst_expand(IKT0, ModuleInfo0, Inst, _, not_reached)
 		->
 			instmap__init_unreachable(InstMap),
 			mode_info_set_instmap(InstMap, ModeInfo0, ModeInfo)

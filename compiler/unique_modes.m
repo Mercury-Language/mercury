@@ -131,7 +131,7 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	% Extract the useful fields in the proc_info.
 	%
 	proc_info_headvars(ProcInfo0, Args),
-	proc_info_argmodes(ProcInfo0, ArgModes),
+	proc_info_argmodes(ProcInfo0, argument_modes(ArgIKT, ArgModes)),
 	proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives),
 	proc_info_goal(ProcInfo0, Goal0),
 
@@ -167,9 +167,7 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	%
 	% At last we're ready to construct the initial mode_info
 	%
-	% YYY Change for local inst_key_tables
-	module_info_inst_key_table(ModuleInfo0, IKT0),
-	mode_info_init(IOState0, ModuleInfo0, IKT0, PredId, ProcId, Context,
+	mode_info_init(IOState0, ModuleInfo0, ArgIKT, PredId, ProcId, Context,
 			LiveVars, InstMap0, ModeInfo0),
 	%
 	% Modecheck the goal
@@ -191,10 +189,8 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	% Get the info we need from the mode_info and stuff it back
 	% in the proc_info
 	%
-	mode_info_get_module_info(ModeInfo, ModuleInfo1),
 	mode_info_get_inst_key_table(ModeInfo, IKT),
-	% YYY Change for local inst_key_tables
-	module_info_set_inst_key_table(ModuleInfo1, IKT, ModuleInfo),
+	mode_info_get_module_info(ModeInfo, ModuleInfo),
 	mode_info_get_io_state(ModeInfo, IOState1),
 	mode_info_get_errors(ModeInfo, Errors),
 	( Errors = [] ->
@@ -206,7 +202,8 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	mode_info_get_var_types(ModeInfo, VarTypes),
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
 	proc_info_set_variables(ProcInfo1, VarSet, ProcInfo2),
-	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo).
+	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3),
+	proc_info_set_inst_key_table(ProcInfo3, IKT, ProcInfo).
 
 	% XXX we currently make the conservative assumption that
 	% any non-local variable in a disjunction or nondet call
@@ -360,7 +357,7 @@ make_var_mostly_uniq(Var, ModeInfo0, ModeInfo) :-
 		instmap__vars_list(InstMap0, Vars),
 		list__member(Var, Vars),
 		instmap__lookup_var(InstMap0, Var, Inst0),
-		inst_expand(IKT0, ModuleInfo0, Inst0, Inst1),
+		inst_expand(IKT0, ModuleInfo0, Inst0, _, Inst1),
 		( Inst1 = ground(unique, _)
 		; Inst1 = bound(unique, _)
 		; Inst1 = any(unique)
@@ -370,7 +367,7 @@ make_var_mostly_uniq(Var, ModeInfo0, ModeInfo) :-
 		make_mostly_uniq_inst(Inst0, IKT0, ModuleInfo0, Sub0, Inst,
 			IKT, ModuleInfo, Sub),
 		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
-		mode_info_set_inst_key_table(ModeInfo1, IKT, ModeInfo2),
+		mode_info_set_inst_key_table(IKT, ModeInfo1, ModeInfo2),
 		mode_info_apply_inst_key_sub(Sub, ModeInfo2, ModeInfo3),
 		instmap__set(InstMap0, Var, Inst, InstMap),
 		mode_info_set_instmap(InstMap, ModeInfo3, ModeInfo)
@@ -500,7 +497,14 @@ unique_modes__check_goal_2(higher_order_call(PredVar, Args, Types, Modes, Det,
 		NeverSucceeds = no
 	},
 	{ determinism_to_code_model(Det, CodeModel) },
-	unique_modes__check_call_modes(Args, Modes, CodeModel, NeverSucceeds),
+	{ Modes = argument_modes(ArgIKT, ArgModes0) },
+	mode_info_dcg_get_inst_key_table(IKT0),
+	{ inst_key_table_create_sub(IKT0, ArgIKT, Sub, IKT) },
+	mode_info_set_inst_key_table(IKT),
+	{ list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes) },
+
+	unique_modes__check_call_modes(Args, ArgModes, CodeModel,
+		NeverSucceeds),
 	{ Goal = higher_order_call(PredVar, Args, Types, Modes, Det,
 			PredOrFunc) },
 	mode_info_unset_call_context,
@@ -562,10 +566,17 @@ unique_modes__check_call(PredId, ProcId, ArgVars,
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
 	proc_info_argmodes(ProcInfo, ProcArgModes0),
+
+	ProcArgModes0 = argument_modes(ArgIKT, ArgModes0),
+	mode_info_get_inst_key_table(ModeInfo0, IKT0),
+	inst_key_table_create_sub(IKT0, ArgIKT, Sub, IKT),
+	mode_info_set_inst_key_table(IKT, ModeInfo0, ModeInfo1),
+	list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes),
+
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	proc_info_never_succeeds(ProcInfo, NeverSucceeds),
-	unique_modes__check_call_modes(ArgVars, ProcArgModes0, CodeModel,
-				NeverSucceeds, ModeInfo0, ModeInfo).
+	unique_modes__check_call_modes(ArgVars, ArgModes, CodeModel,
+				NeverSucceeds, ModeInfo1, ModeInfo).
 
 	% to check a call, we just look up the required initial insts
 	% for the arguments of the call, and then check for each

@@ -71,11 +71,15 @@
 :- pred mode_info_get_module_info(mode_info, module_info).
 :- mode mode_info_get_module_info(mode_info_ui, out) is det.
 
-:- pred mode_info_set_inst_key_table(mode_info, inst_key_table, mode_info).
-:- mode mode_info_set_inst_key_table(mode_info_di, in, mode_info_uo) is det.
+:- pred mode_info_set_inst_key_table(inst_key_table, mode_info, mode_info).
+:- mode mode_info_set_inst_key_table(in, mode_info_di, mode_info_uo) is det.
 
 :- pred mode_info_get_inst_key_table(mode_info, inst_key_table).
 :- mode mode_info_get_inst_key_table(mode_info_ui, out) is det.
+
+:- pred mode_info_dcg_get_inst_key_table(inst_key_table, mode_info, mode_info).
+:- mode mode_info_dcg_get_inst_key_table(out, mode_info_di, mode_info_uo)
+		is det.
 
 :- pred mode_info_set_module_info(mode_info, module_info, mode_info).
 :- mode mode_info_set_module_info(mode_info_di, in, mode_info_uo) is det.
@@ -223,9 +227,6 @@
 
 :- pred mode_info_apply_inst_key_sub(inst_key_sub, mode_info, mode_info).
 :- mode mode_info_apply_inst_key_sub(in, mode_info_di, mode_info_uo) is det.
-
-:- pred inst_apply_sub(inst_key_sub, inst, inst).
-:- mode inst_apply_sub(in, in, out) is det.
 
 /*
 :- inst uniq_mode_info	=	bound_unique(
@@ -419,10 +420,13 @@ mode_info_get_insts(mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
 mode_info_get_inst_key_table(mode_info(_,_,IKT,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
 				IKT).
 
+mode_info_dcg_get_inst_key_table(IKT, ModeInfo, ModeInfo) :-
+	mode_info_get_inst_key_table(ModeInfo, IKT).
+
 %-----------------------------------------------------------------------------%
 
-mode_info_set_inst_key_table(mode_info(A,B,_,D,E,F,G,H,I,J,K,L,M,N,O,P,Q),
-			IKT,
+mode_info_set_inst_key_table(IKT,
+			mode_info(A,B,_,D,E,F,G,H,I,J,K,L,M,N,O,P,Q),
 			mode_info(A,B,IKT,D,E,F,G,H,I,J,K,L,M,N,O,P,Q)).
 
 %-----------------------------------------------------------------------------%
@@ -735,7 +739,7 @@ mode_info_bind_var_to_functor(Var, ConsId, ModeInfo0, ModeInfo) :-
 		IKT0, IKT, ModuleInfo0, ModuleInfo),
 
         mode_info_set_instmap(InstMap, ModeInfo0, ModeInfo1),
-        mode_info_set_inst_key_table(ModeInfo1, IKT, ModeInfo2),
+        mode_info_set_inst_key_table(IKT, ModeInfo1, ModeInfo2),
 	mode_info_set_module_info(ModeInfo2, ModuleInfo, ModeInfo).
 
 %-----------------------------------------------------------------------------%
@@ -747,33 +751,7 @@ mode_info_apply_inst_key_sub(Sub, ModeInfo0, ModeInfo) :-
 	apply_inst_key_sub(Sub, InstMap0, InstMap, IKT0, IKT),
 
 	mode_info_set_instmap(InstMap, ModeInfo0, ModeInfo1),
-	mode_info_set_inst_key_table(ModeInfo1, IKT, ModeInfo).
-
-inst_apply_sub(_Sub, any(Uniq), any(Uniq)).
-inst_apply_sub(Sub, alias(Key0), alias(Key)) :-
-	( map__search(Sub, Key0, Key1) ->
-		Key = Key1
-	;
-		Key = Key0
-	).
-inst_apply_sub(_Sub, free, free).
-inst_apply_sub(_Sub, free(Type), free(Type)).
-inst_apply_sub(Sub, bound(Uniq, BoundInsts0), bound(Uniq, BoundInsts)) :-
-	list__map(bound_inst_apply_sub(Sub), BoundInsts0, BoundInsts).
-inst_apply_sub(_Sub, ground(Uniq, MaybePredInstInfo),
-		ground(Uniq, MaybePredInstInfo)).
-inst_apply_sub(_Sub, not_reached, not_reached).
-inst_apply_sub(_Sub, inst_var(V), inst_var(V)).
-inst_apply_sub(_Sub, defined_inst(Name), defined_inst(Name)).
-inst_apply_sub(Sub, abstract_inst(SymName, Insts0),
-		abstract_inst(SymName, Insts)) :-
-	list__map(inst_apply_sub(Sub), Insts0, Insts).
-
-:- pred bound_inst_apply_sub(map(inst_key, inst_key), bound_inst, bound_inst).
-:- mode bound_inst_apply_sub(in, in, out) is det.
-
-bound_inst_apply_sub(Sub, functor(ConsId, Insts0), functor(ConsId, Insts)) :-
-	list__map(inst_apply_sub(Sub), Insts0, Insts).
+	mode_info_set_inst_key_table(IKT, ModeInfo1, ModeInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

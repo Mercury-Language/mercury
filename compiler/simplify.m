@@ -73,10 +73,11 @@
 simplify__proc(Simplify, PredId, ProcId, ModuleInfo0, ModuleInfo,
 		Proc0, Proc, WarnCnt, ErrCnt, State0, State) :-
 	globals__io_get_globals(Globals, State0, State1),
-	det_info_init(ModuleInfo0, PredId, ProcId, Globals, DetInfo0),
 	proc_info_get_initial_instmap(Proc0, ModuleInfo0, InstMap0),
 	proc_info_variables(Proc0, VarSet0),
 	proc_info_vartypes(Proc0, VarTypes0),
+	proc_info_inst_key_table(Proc0, IKT0),
+	det_info_init(ModuleInfo0, PredId, ProcId, IKT0, Globals, DetInfo0),
 	simplify_info_init(DetInfo0, Simplify, InstMap0,
 		VarSet0, VarTypes0, Info0),
 	write_pred_progress_message("% Simplifying ", PredId, ModuleInfo0,
@@ -161,7 +162,8 @@ simplify__proc_2(Proc0, Proc, Info0, Info, State0, State) :-
 			InstMap0, IKT1, IKT, ModuleInfo1, ModuleInfo),
 		simplify_info_set_module_info(Info1, ModuleInfo, Info2),
 		simplify_info_set_inst_key_table(Info2, IKT, Info),
-		proc_info_set_goal(Proc4, Goal3, Proc),
+		proc_info_set_inst_key_table(Proc4, IKT, Proc5),
+		proc_info_set_goal(Proc5, Goal3, Proc),
 		State = State0
 	;
 		Info = Info1,
@@ -360,8 +362,7 @@ simplify__goal_2(switch(Var, SwitchCanFail, Cases0, SM),
 	simplify_info_get_instmap(Info0, InstMap0),
 	simplify_info_get_module_info(Info0, ModuleInfo0),
 	instmap__lookup_var(InstMap0, Var, VarInst),
-	% YYY Change for local inst_key_tables
-	module_info_inst_key_table(ModuleInfo0, IKT),
+	simplify_info_get_inst_key_table(Info0, IKT),
 	( inst_is_bound_to_functors(VarInst, IKT, ModuleInfo0, Functors) ->
 		functors_to_cons_ids(Functors, ConsIds0),
 		list__sort(ConsIds0, ConsIds),
@@ -507,11 +508,10 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		module_info_pred_proc_info(ModuleInfo1, PredId, ProcId,
 			_PredInfo1, ProcInfo1),
 		proc_info_headvars(ProcInfo1, HeadVars),
-		proc_info_argmodes(ProcInfo1, ArgModes),
+		proc_info_argmodes(ProcInfo1, argument_modes(ArgIKT, ArgModes)),
 		simplify_info_get_common_info(Info1, CommonInfo1),
-		simplify_info_get_inst_key_table(Info1, IKT1),
 		simplify__input_args_are_equiv(Args, HeadVars, ArgModes,
-			CommonInfo1, IKT1, ModuleInfo1)
+			CommonInfo1, ArgIKT, ModuleInfo1)
 	->
 		goal_info_get_context(GoalInfo0, Context2),
 		simplify_info_add_msg(Info1, warn_infinite_recursion(Context2),
@@ -569,29 +569,27 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	Goal0 = unify(LT0, RT0, M, U0, C),
 	(
 		RT0 = lambda_goal(PredOrFunc, Vars, Modes, LambdaDeclaredDet,
-			LambdaGoal0)
+			IMDelta, LambdaGoal0)
 	->
 		simplify_info_enter_lambda(Info0, Info1),
 		simplify_info_get_common_info(Info1, Common1),
-		simplify_info_get_module_info(Info1, ModuleInfo),
 		simplify_info_get_instmap(Info1, InstMap1),
-		instmap__pre_lambda_update(ModuleInfo, Vars, Modes,
-			InstMap1, InstMap2),
+		instmap__apply_instmap_delta(InstMap1, IMDelta, InstMap2),
 		simplify_info_set_instmap(Info1, InstMap2, Info2),
 
 		% Don't attempt to pass structs into lambda_goals,
 		% since that could change the curried non-locals of the 
 		% lambda_goal, and that would be difficult to fix up.
 		common_info_init(Common2),
-		simplify_info_set_common_info(Info2, Common2, Info3),
+		simplify_info_set_common_info(Info2, Common2, Info4),
 
 		% Don't attempt to pass structs out of lambda_goals.
-		simplify__goal(LambdaGoal0, LambdaGoal, Info3, Info4),
-		simplify_info_set_common_info(Info4, Common1, Info5),
-		simplify_info_set_instmap(Info5, InstMap1, Info6),
+		simplify__goal(LambdaGoal0, LambdaGoal, Info4, Info5),
+		simplify_info_set_common_info(Info5, Common1, Info6),
+		simplify_info_set_instmap(Info6, InstMap1, Info7),
 		RT = lambda_goal(PredOrFunc, Vars, Modes, LambdaDeclaredDet,
-			LambdaGoal),
-		simplify_info_leave_lambda(Info6, Info),
+			IMDelta, LambdaGoal),
+		simplify_info_leave_lambda(Info7, Info),
 		Goal = unify(LT0, RT, M, U0, C),
 		GoalInfo = GoalInfo0
 	;
@@ -1202,9 +1200,8 @@ simplify__create_test_unification(Var, ConsId, ConsArity,
 	simplify_info_get_instmap(Info, InstMap),
 	instmap__lookup_var(InstMap, Var, Inst0),
 	(
-		% YYY Change for local inst_key_tables
-		module_info_inst_key_table(ModuleInfo, IKT),
-		inst_expand(IKT, ModuleInfo, Inst0, Inst1),
+		simplify_info_get_inst_key_table(Info, IKT),
+		inst_expand(IKT, ModuleInfo, Inst0, _, Inst1),
 		get_arg_insts(Inst1, ConsId, ConsArity, ArgInsts1)
 	->
 		ArgInsts = ArgInsts1

@@ -341,10 +341,10 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 :- type mostly_uniq_inst_table == map(inst_name, maybe_inst).
 
 :- type maybe_inst	--->	unknown
-			;	known(inst).
+			;	known(inst, inst_key_table).
 
 :- type maybe_inst_det	--->	unknown
-			;	known(inst, determinism).
+			;	known(inst, inst_key_table, determinism).
 
 	% An `hlds_inst_defn' holds the information we need to store
 	% about inst definitions such as
@@ -356,7 +356,7 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 						% parameters (if any).
 			list(inst_param),	% The inst parameters (if any).
 						% ([I] in the above example.)
-			hlds_inst_body,	% The definition of this inst.
+			hlds_inst_body,		% The definition of this inst.
 			condition,		% Unused (reserved for
 						% holding a user-defined 
 						% invariant).
@@ -368,7 +368,7 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 		).
 
 :- type hlds_inst_body
-	--->	eqv_inst(inst)			% This inst is equivalent to
+	--->	eqv_inst(inst_key_table, inst)	% This inst is equivalent to
 						% some other inst.
 	;	abstract_inst.			% This inst is just a forward
 						% declaration; the real

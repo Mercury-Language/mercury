@@ -35,7 +35,7 @@
 
 :- import_module hlds_goal, hlds_data, options, globals, goal_util, hlds_out.
 :- import_module modes, mode_util, make_hlds, quantification, instmap.
-:- import_module prog_data, switch_detection, det_util, inst_match.
+:- import_module prog_data, switch_detection, det_util, inst_match, (inst).
 
 :- import_module int, bool, list, map, set, std_util, require, term, varset.
 
@@ -125,7 +125,13 @@ detect_cse_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) -->
 		detect_cse_in_proc(ProcId, PredId, ModuleInfo3, ModuleInfo)
 	).
 
-:- type cse_info	--->	cse_info(varset, map(var, type), module_info).
+:- type cse_info
+	--->	cse_info(
+			varset,
+			map(var, type),
+			inst_key_table,
+			module_info
+		).
 
 :- pred detect_cse_in_proc_2(proc_id, pred_id, bool, module_info, module_info).
 % :- mode detect_cse_in_proc_2(in, in, out, di, uo) is det.
@@ -145,7 +151,8 @@ detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
 	proc_info_variables(ProcInfo0, Varset0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
-	CseInfo0 = cse_info(Varset0, VarTypes0, ModuleInfo0),
+	proc_info_inst_key_table(ProcInfo0, IKT0),
+	CseInfo0 = cse_info(Varset0, VarTypes0, IKT0, ModuleInfo0),
 	detect_cse_in_goal(Goal0, InstMap0, CseInfo0, CseInfo, Redo, Goal1),
 
 	(
@@ -155,7 +162,7 @@ detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
 		Redo = yes,
 
 		% ModuleInfo should not be changed by detect_cse_in_goal
-		CseInfo = cse_info(Varset1, VarTypes1, _),
+		CseInfo = cse_info(Varset1, VarTypes1, _, _),
 		proc_info_headvars(ProcInfo0, HeadVars),
 
 		implicitly_quantify_clause_body(HeadVars, Goal1, Varset1,
@@ -219,13 +226,11 @@ detect_cse_in_goal_2(call(A,B,C,D,E,F), _, _, CseInfo, CseInfo, no,
 
 detect_cse_in_goal_2(unify(A,B0,C,D,E), _, InstMap0, CseInfo0, CseInfo, Redo,
 		unify(A,B,C,D,E)) :-
-	( B0 = lambda_goal(PredOrFunc, Vars, Modes, Det, Goal0) ->
-		CseInfo0 = cse_info(_, _, ModuleInfo),
-		instmap__pre_lambda_update(ModuleInfo, 
-			Vars, Modes, InstMap0, InstMap),
+	( B0 = lambda_goal(PredOrFunc, Vars, Modes, Det, IMDelta, Goal0) ->
+		instmap__apply_instmap_delta(InstMap0, IMDelta, InstMap),
 		detect_cse_in_goal(Goal0, InstMap, CseInfo0, CseInfo, Redo,
 			Goal),
-		B = lambda_goal(PredOrFunc, Vars, Modes, Det, Goal)
+		B = lambda_goal(PredOrFunc, Vars, Modes, Det, IMDelta, Goal)
 	;
 		B = B0,
 		CseInfo = CseInfo0,
@@ -308,9 +313,7 @@ detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, SM, InstMap,
 		CseInfo0, CseInfo, Redo, Goal) :-
 	(
 		instmap__lookup_var(InstMap, Var, VarInst0),
-		CseInfo0 = cse_info(_, _, ModuleInfo),
-		% YYY Change for local inst_key_tables
-		module_info_inst_key_table(ModuleInfo, IKT),
+		CseInfo0 = cse_info(_, _, IKT, ModuleInfo),
 		% XXX we only need inst_is_bound, but leave this as it is
 		% until mode analysis can handle aliasing between free
 		% variables.
@@ -352,9 +355,7 @@ detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
 	(
 		Var \= SwitchVar,
 		instmap__lookup_var(InstMap, Var, VarInst0),
-		CseInfo0 = cse_info(_, _, ModuleInfo),
-		% YYY Change for local inst_key_tables
-		module_info_inst_key_table(ModuleInfo, IKT),
+		CseInfo0 = cse_info(_, _, IKT, ModuleInfo),
 
 		% XXX we only need inst_is_bound, but leave this as it is
 		% until mode analysis can handle aliasing between free
@@ -398,10 +399,8 @@ detect_cse_in_ite([], IfVars, Cond0, Then0, Else0, _, SM, InstMap, CseInfo0,
 detect_cse_in_ite([Var | Vars], IfVars, Cond0, Then0, Else0, GoalInfo,
 		SM, InstMap, CseInfo0, CseInfo, Redo, Goal) :-
 	(
-		CseInfo0 = cse_info(_, _, ModuleInfo),
+		CseInfo0 = cse_info(_, _, IKT, ModuleInfo),
 		instmap__lookup_var(InstMap, Var, VarInst0),
-		% YYY Change for local inst_key_tables
-		module_info_inst_key_table(ModuleInfo, IKT),
 
 		% XXX we only need inst_is_bound, but leave this as it is
 		% until mode analysis can handle aliasing between free
@@ -560,11 +559,11 @@ find_bind_var_for_cse([GoalPair0 | Goals0], Substitution0, Var, MaybeUnify0,
 			Var1 = UnifyVar1,
 			MaybeUnify0 = no
 		->
-			CseInfo0 = cse_info(Varset0, Typemap0, ModuleInfo),
+			CseInfo0 = cse_info(Varset0, Typemap0, IKT, ModuleInfo),
 			construct_common_unify(Var, Goal0 - GoalInfo, Goal,
 				Varset0, Varset, Typemap0, Typemap,
 				Replacements),
-			CseInfo = cse_info(Varset, Typemap, ModuleInfo),
+			CseInfo = cse_info(Varset, Typemap, IKT, ModuleInfo),
 			MaybeUnify = yes(Goal),
 			list__append(Replacements, Goals0, Goals),
 			Substitution = Substitution0

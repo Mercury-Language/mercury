@@ -825,9 +825,7 @@ infer_proc_determinism_pass_1([ProcID | ProcIDs], ProcTable0, ProcTable,
 		WriteHashTables, WriteDataTable, FactArgInfos0,
 		FactArgInfos) -->
 	{ map__lookup(ProcTable0, ProcID, ProcInfo0) },
-	{ proc_info_argmodes(ProcInfo0, ArgModes) },
-	% YYY Change for local inst_key_tables
-	{ module_info_inst_key_table(ModuleInfo, IKT) },
+	{ proc_info_argmodes(ProcInfo0, argument_modes(IKT, ArgModes)) },
 	{ fill_in_fact_arg_infos(ArgModes, IKT, ModuleInfo, FactArgInfos0, 
 		FactArgInfos1) },
 	{ fact_table_mode_type(ArgModes, IKT, ModuleInfo, ModeType) },
@@ -990,10 +988,8 @@ write_sort_file_lines([], _, _, _, _, _, _) --> [].
 write_sort_file_lines([proc_stream(ProcID, Stream) | ProcStreams], ProcTable,
 		Terms, ModuleInfo, FactNumStr, FactArgInfos, IsPrimary) -->
 	{ map__lookup(ProcTable, ProcID, ProcInfo) },
-	{ proc_info_argmodes(ProcInfo, ArgModes) },
+	{ proc_info_argmodes(ProcInfo, argument_modes(IKT, ArgModes)) },
 	{ assoc_list__from_corresponding_lists(ArgModes, Terms, ModeTerms) },
-	% YYY Change for local inst_key_tables
-	{ module_info_inst_key_table(ModuleInfo, IKT) },
 	{ make_sort_file_key(ModeTerms, IKT, ModuleInfo, Key) },
 	{
 		IsPrimary = yes,
@@ -1425,16 +1421,15 @@ write_primary_hash_table(ProcID, FileName, DataFileName, StructName, ProcTable,
 			{ string__format("extern %s0;\n", [s(HashTableName)],
 				C_HeaderCode0) },
 			{ map__lookup(ProcTable, ProcID, ProcInfo) },
-			{ proc_info_argmodes(ProcInfo, ArgModes) },
-			% YYY Change for local inst_key_tables
-			{ module_info_inst_key_table(ModuleInfo, IKT) },
-			read_sort_file_line(FactArgInfos, ArgModes, IKT,
+			{ proc_info_argmodes(ProcInfo,
+				argument_modes(ArgIKT, ArgModes)) },
+			read_sort_file_line(FactArgInfos, ArgModes, ArgIKT,
 				ModuleInfo, MaybeFirstFact),
 			( 
 				{ MaybeFirstFact = yes(FirstFact) },
 				build_hash_table(0, 0, HashTableName,
 					StructName, 0, ArgModes,
-					IKT, ModuleInfo,
+					ArgIKT, ModuleInfo,
 					FactArgInfos, yes, OutputStream,
 					FirstFact, MaybeDataStream,
 					CreateFactMap, FactMap0, FactMap),
@@ -1503,15 +1498,14 @@ write_secondary_hash_tables([ProcID - FileName | ProcFiles], StructName,
 		{ string__append(C_HeaderCode1, C_HeaderCode0,
 			C_HeaderCode2) },
 		{ map__lookup(ProcTable, ProcID, ProcInfo) },
-		{ proc_info_argmodes(ProcInfo, ArgModes) },
-		% YYY Fix for local inst_key_tables
-		{ module_info_inst_key_table(ModuleInfo, IKT) },
-		read_sort_file_line(FactArgInfos, ArgModes, IKT, ModuleInfo,
+		{ proc_info_argmodes(ProcInfo,
+			argument_modes(ArgIKT, ArgModes)) },
+		read_sort_file_line(FactArgInfos, ArgModes, ArgIKT, ModuleInfo,
 			MaybeFirstFact),
 		(
 			{ MaybeFirstFact = yes(FirstFact) },
 			build_hash_table(0, 0, HashTableName, StructName, 0,
-				ArgModes, IKT, ModuleInfo, FactArgInfos, no,
+				ArgModes, ArgIKT, ModuleInfo, FactArgInfos, no,
 				OutputStream, FirstFact, no, no, FactMap, _),
 			io__seen,
 			delete_temporary_file(FileName),
@@ -2466,19 +2460,17 @@ fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID,
 		ProcInfo, ArgTypes, ModuleInfo, ProcCode, ExtraCode) -->
 	fact_table_size(FactTableSize),
 	globals__io_get_args_method(ArgsMethod),
-	{ proc_info_argmodes(ProcInfo, ArgModes) },
+	{ proc_info_argmodes(ProcInfo, argument_modes(ArgIKT, ArgModes)) },
 	{ proc_info_interface_determinism(ProcInfo, Determinism) },
-	% YYY Fix for local inst_key_tables
-	{ module_info_inst_key_table(ModuleInfo, IKT) },
-	{ fact_table_mode_type(ArgModes, IKT, ModuleInfo, ModeType) },
+	{ fact_table_mode_type(ArgModes, ArgIKT, ModuleInfo, ModeType) },
 	{ make_fact_table_identifier(PredName, Identifier) },
 	{
 		ModeType = all_out,
 		Determinism = multidet
 	->
 		generate_multidet_code(Identifier, PragmaVars, ProcID,
-			ArgTypes, ArgsMethod, ModuleInfo, FactTableSize,
-			ProcCode, ExtraCode)
+			ArgTypes, ArgsMethod, ArgIKT, ModuleInfo,
+			FactTableSize, ProcCode, ExtraCode)
 	;
 		ModeType = all_out,
 		Determinism = cc_multidet
@@ -2490,14 +2482,14 @@ fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID,
 		Determinism = semidet
 	->
 		generate_all_in_code(Identifier, PragmaVars, ProcID,
-			ArgTypes, IKT, ModuleInfo, FactTableSize, ProcCode),
+			ArgTypes, ArgIKT, ModuleInfo, FactTableSize, ProcCode),
 		ExtraCode = ""
 	;
 		ModeType = in_out,
 		( Determinism = semidet ; Determinism = cc_nondet )
 	->
 		generate_semidet_in_out_code(Identifier, PragmaVars, ProcID,
-			ArgTypes, IKT, ModuleInfo, FactTableSize, ProcCode),
+			ArgTypes, ArgIKT, ModuleInfo, FactTableSize, ProcCode),
 		ExtraCode = ""
 	;
 		ModeType = in_out,
@@ -2505,7 +2497,7 @@ fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID,
 		ProcID = PrimaryProcID
 	->
 		generate_primary_nondet_code(Identifier, PragmaVars,
-			ProcID, ArgTypes, ArgsMethod, IKT, ModuleInfo,
+			ProcID, ArgTypes, ArgsMethod, ArgIKT, ModuleInfo,
 			FactTableSize, ProcCode, ExtraCode)
 	;
 		ModeType = in_out,
@@ -2513,7 +2505,7 @@ fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID,
 		ProcID \= PrimaryProcID
 	->
 		generate_secondary_nondet_code(Identifier, PragmaVars,
-			ProcID, ArgTypes, ArgsMethod, IKT, ModuleInfo,
+			ProcID, ArgTypes, ArgsMethod, ArgIKT, ModuleInfo,
 			FactTableSize, ProcCode, ExtraCode)
 	;
 		% There is a determinism error in this procedure which will be 
@@ -2534,11 +2526,12 @@ fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID,
 	% XXX this should change to use the new model_non pragma c_code when
 	% it has been implemented.
 :- pred generate_multidet_code(string, list(pragma_var), proc_id, 
-		list(type), args_method, module_info, int, string, string).
-:- mode generate_multidet_code(in, in, in, in, in, in, in, out, out) is det.
+		list(type), args_method, inst_key_table, module_info, int,
+		string, string).
+:- mode generate_multidet_code(in, in, in, in, in, in, in, in, out, out) is det.
 
 generate_multidet_code(PredName, PragmaVars, ProcID, ArgTypes, ArgsMethod,
-	    ModuleInfo, FactTableSize, ProcCode, ExtraCode) :-
+	    IKT, ModuleInfo, FactTableSize, ProcCode, ExtraCode) :-
 	generate_nondet_proc_code(PragmaVars, PredName, ProcID, ExtraCodeLabel,
 		ProcCode),
 
@@ -2585,8 +2578,6 @@ void sys_init_%s_module(void) {
 	string__append_list(["mercury__", PredName, "_fact_table_num_facts"],
 		NumFactsVar),
 	list__length(PragmaVars, Arity), 
-	% YYY Change for local inst_key_tables
-	module_info_inst_key_table(ModuleInfo, IKT),
 	generate_argument_vars_code(PragmaVars, ArgTypes, ArgsMethod,
 		IKT, ModuleInfo, ArgDeclCode, _InputCode, OutputCode, _, _, _),
 	generate_fact_lookup_code(PredName, PragmaVars, ArgTypes, IKT,

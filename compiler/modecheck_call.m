@@ -30,8 +30,8 @@
 				mode_info_di, mode_info_uo) is det.
 
 :- pred modecheck_higher_order_call(pred_or_func, var, list(var),
-				list(type), list(mode), determinism, list(var),
-				extra_goals, mode_info, mode_info).
+				list(type), argument_modes, determinism,
+				list(var), extra_goals, mode_info, mode_info).
 :- mode modecheck_higher_order_call(in, in, in, out, out, out, out, out,
 				mode_info_di, mode_info_uo) is det.
 
@@ -107,12 +107,14 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 	instmap__lookup_var(InstMap0, PredVar, PredVarInst0),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_inst_key_table(ModeInfo0, IKT0),
-	inst_expand(IKT0, ModuleInfo0, PredVarInst0, PredVarInst),
+	inst_expand(IKT0, ModuleInfo0, PredVarInst0, IKT1, PredVarInst),
+	mode_info_set_inst_key_table(IKT1, ModeInfo0, ModeInfo1),
 	list__length(Args0, Arity),
 	(
 		PredVarInst = ground(_Uniq, yes(PredInstInfo)),
 		PredInstInfo = pred_inst_info(_PredOrFunc, Modes0, Det0),
-		list__length(Modes0, Arity)
+		Modes0 = argument_modes(ArgIKT, ArgModes0),
+		list__length(ArgModes0, Arity)
 	->
 		Det = Det0,
 		Modes = Modes0,
@@ -121,9 +123,13 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 		% Check that `Args0' have livenesses which match the
 		% expected livenesses.
 		%
-		get_arg_lives(Modes, IKT0, ModuleInfo0, ExpectedArgLives),
+		get_arg_lives(ArgModes0, ArgIKT, ModuleInfo0, ExpectedArgLives),
 		modecheck_var_list_is_live(Args0, ExpectedArgLives, 1,
-			ModeInfo0, ModeInfo1),
+			ModeInfo1, ModeInfo2),
+
+		inst_key_table_create_sub(IKT1, ArgIKT, Sub, IKT2),
+		list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes),
+		mode_info_set_inst_key_table(IKT2, ModeInfo2, ModeInfo3),
 
 		%
 		% Check that `Args0' have insts which match the expected
@@ -132,28 +138,30 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 		% then check that the final insts of the vars match the
 		% declared final insts.
 		%
-		mode_list_get_initial_insts(Modes, ModuleInfo0, InitialInsts),
+		mode_list_get_initial_insts(ArgModes, ModuleInfo0,
+			InitialInsts),
 		modecheck_var_has_inst_list(Args0, InitialInsts, 1,
-					ModeInfo1, ModeInfo2),
-		mode_list_get_final_insts(Modes, ModuleInfo0, FinalInsts),
+					ModeInfo3, ModeInfo4),
+		mode_list_get_final_insts(ArgModes, ModuleInfo0, FinalInsts),
 		modecheck_set_var_inst_list(Args0, InitialInsts, FinalInsts,
-			Args, ExtraGoals, ModeInfo2, ModeInfo3),
+			Args, ExtraGoals, ModeInfo4, ModeInfo5),
 		modecheck_var_has_final_inst_list(Args0, FinalInsts, 1,
-			ModeInfo3, ModeInfo4),
+			ModeInfo5, ModeInfo6),
 		( determinism_components(Det, _, at_most_zero) ->
 			instmap__init_unreachable(Instmap),
-			mode_info_set_instmap(Instmap, ModeInfo4, ModeInfo)
+			mode_info_set_instmap(Instmap, ModeInfo6, ModeInfo)
 		;
-			ModeInfo = ModeInfo4
+			ModeInfo = ModeInfo6
 		)
 	;
 		% the error occurred in argument 1, i.e. the pred term
-		mode_info_set_call_arg_context(1, ModeInfo0, ModeInfo1),
+		mode_info_set_call_arg_context(1, ModeInfo1, ModeInfo2),
 		set__singleton_set(WaitingVars, PredVar),
 		mode_info_error(WaitingVars, mode_error_higher_order_pred_var(
 				PredOrFunc, PredVar, PredVarInst, Arity),
-				ModeInfo1, ModeInfo),
-		Modes = [],
+				ModeInfo2, ModeInfo),
+		inst_key_table_init(ArgIKT),
+		Modes = argument_modes(ArgIKT, []),
 		Det = erroneous,
 		Args = Args0,
 		ExtraGoals = no_extra_goals
@@ -210,21 +218,28 @@ modecheck_call_pred(PredId, ArgVars0, TheProcId, ArgVars, ExtraGoals,
 		% then check that the final insts of the vars match the
 		% declared final insts.
 		%
-		mode_list_get_initial_insts(ProcArgModes, ModuleInfo,
+		ProcArgModes = argument_modes(ArgIKT, ArgModes0),
+
+		mode_info_get_inst_key_table(ModeInfo1, IKT0),
+		inst_key_table_create_sub(IKT0, ArgIKT, Sub, IKT1),
+		list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes),
+		mode_info_set_inst_key_table(IKT1, ModeInfo1, ModeInfo2),
+
+		mode_list_get_initial_insts(ArgModes, ModuleInfo,
 					InitialInsts),
 		modecheck_var_has_inst_list(ArgVars0, InitialInsts, 0,
-					ModeInfo1, ModeInfo2),
-		mode_list_get_final_insts(ProcArgModes, ModuleInfo, FinalInsts),
+					ModeInfo2, ModeInfo3),
+		mode_list_get_final_insts(ArgModes, ModuleInfo, FinalInsts),
 		modecheck_set_var_inst_list(ArgVars0, InitialInsts, FinalInsts,
-			ArgVars, ExtraGoals, ModeInfo2, ModeInfo3),
+			ArgVars, ExtraGoals, ModeInfo3, ModeInfo4),
 		modecheck_var_has_final_inst_list(ArgVars0, FinalInsts, 1,
-			ModeInfo3, ModeInfo4),
+			ModeInfo4, ModeInfo5),
 		proc_info_never_succeeds(ProcInfo, NeverSucceeds),
 		( NeverSucceeds = yes ->
 			instmap__init_unreachable(Instmap),
-			mode_info_set_instmap(Instmap, ModeInfo4, ModeInfo)
+			mode_info_set_instmap(Instmap, ModeInfo5, ModeInfo)
 		;
-			ModeInfo = ModeInfo4
+			ModeInfo = ModeInfo5
 		)
 	;
 			% set the current error list to empty (and
@@ -286,25 +301,31 @@ modecheck_call_pred_2([ProcId | ProcIds], PredId, Procs, ArgVars0, WaitingVars,
 		% find the initial insts and the final livenesses
 		% of the arguments for this mode of the called pred
 	map__lookup(Procs, ProcId, ProcInfo),
-	proc_info_argmodes(ProcInfo, ProcArgModes),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	proc_info_arglives(ProcInfo, ModuleInfo, ProcArgLives0),
-	mode_list_get_initial_insts(ProcArgModes, ModuleInfo, InitialInsts),
-	mode_list_get_final_insts(ProcArgModes, ModuleInfo, FinalInsts),
+
+	proc_info_argmodes(ProcInfo, argument_modes(ArgIKT, ArgModes0)),
+	mode_info_get_inst_key_table(ModeInfo0, IKT0),
+	inst_key_table_create_sub(IKT0, ArgIKT, Sub, IKT1),
+	list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes),
+	mode_info_set_inst_key_table(IKT1, ModeInfo0, ModeInfo1),
+
+	mode_list_get_initial_insts(ArgModes, ModuleInfo, InitialInsts),
+	mode_list_get_final_insts(ArgModes, ModuleInfo, FinalInsts),
 
 		% check whether the livenesses of the args matches their
 		% expected liveness
 	modecheck_var_list_is_live(ArgVars0, ProcArgLives0, 0,
-				ModeInfo0, ModeInfo1),
+				ModeInfo1, ModeInfo2),
 
 		% check whether the insts of the args matches their expected
 		% initial insts
 	modecheck_var_has_inst_list(ArgVars0, InitialInsts, 0,
-				ModeInfo1, ModeInfo2),
-	modecheck_var_has_final_inst_list(ArgVars0, FinalInsts, 1,
 				ModeInfo2, ModeInfo3),
+	modecheck_var_has_final_inst_list(ArgVars0, FinalInsts, 1,
+				ModeInfo3, ModeInfo4),
 
-	mode_info_get_errors(ModeInfo3, Errors),
+	mode_info_get_errors(ModeInfo4, Errors),
 	(
 			% if error(s) occured, keep trying with the other modes
 			% for the called pred
@@ -312,22 +333,22 @@ modecheck_call_pred_2([ProcId | ProcIds], PredId, Procs, ArgVars0, WaitingVars,
 	->
 		FirstError = mode_error_info(WaitingVars2, _, _, _),
 		set__union(WaitingVars, WaitingVars2, WaitingVars3),
-		mode_info_set_errors([], ModeInfo3, ModeInfo4),
+		mode_info_set_errors([], ModeInfo4, ModeInfo5),
 		modecheck_call_pred_2(ProcIds, PredId, Procs, ArgVars0,
 				WaitingVars3, TheProcId, ArgVars, ExtraGoals,
-				ModeInfo4, ModeInfo)
+				ModeInfo5, ModeInfo)
 	;
 			% if there are no errors, then set their insts to the
 			% final insts specified in the mode for the called pred
 		modecheck_set_var_inst_list(ArgVars0, InitialInsts, FinalInsts,
-				ArgVars, ExtraGoals, ModeInfo3, ModeInfo4),
+				ArgVars, ExtraGoals, ModeInfo4, ModeInfo5),
 		TheProcId = ProcId,
 		proc_info_never_succeeds(ProcInfo, NeverSucceeds),
 		( NeverSucceeds = yes ->
 			instmap__init_unreachable(Instmap),
-			mode_info_set_instmap(Instmap, ModeInfo4, ModeInfo)
+			mode_info_set_instmap(Instmap, ModeInfo5, ModeInfo)
 		;
-			ModeInfo = ModeInfo4
+			ModeInfo = ModeInfo5
 		)
 	).
 
@@ -381,8 +402,9 @@ insert_new_mode(PredId, ArgVars, ProcId, ModeInfo0, ModeInfo) :-
 	MaybeDeterminism = no,
 
 	% create the new mode
-	add_new_proc(PredInfo0, Arity, Modes, no, yes(ArgLives),
-		MaybeDeterminism, Context, PredInfo1, ProcId),
+	inst_key_table_init(ArgIKT),
+	add_new_proc(PredInfo0, Arity, argument_modes(ArgIKT, Modes), no,
+		yes(ArgLives), MaybeDeterminism, Context, PredInfo1, ProcId),
 
 	% copy the clauses for the predicate to this procedure,
 	% and then store the new proc_info and pred_info
