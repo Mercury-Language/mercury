@@ -1,0 +1,11 @@
+arg_order_rearrangment.m:008: In predicate `arg_order_rearrangment:r/2'
+arg_order_rearrangment.m:014:   warning: the call to predicate
+arg_order_rearrangment.m:014:     `arg_order_rearrangment:app/3' has had the
+arg_order_rearrangment.m:014:     location of the variables `V_7' and `R0'
+arg_order_rearrangment.m:014:     swapped to allow accumulator introduction.
+arg_order_rearrangment.m:008:   Please ensure that these argument
+arg_order_rearrangment.m:008:     rearrangements do not introduce performance
+arg_order_rearrangment.m:008:     problems. These warnings can be suppressed by
+arg_order_rearrangment.m:008:     `--inhibit-accumulator-warnings'.
+arg_order_rearrangment.m: In function `r':
+arg_order_rearrangment.m:0: note: can't optimize tail call: callee arg size > caller arg size

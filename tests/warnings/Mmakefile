@@ -46,11 +46,25 @@ $(ERRORCHECK_PROGS:%=%.runtest): %.runtest: %.res_error ;
 
 %.res_error:	%.exp %.err
 	-rm -f $@
-	diff $(DIFF_OPTS) $*.exp $*.err > $@ || { cat $@ && exit 1; }
+	diff $(DIFF_OPTS) $*.exp $*.err > $@ || \
+                { [ -f $*.exp2 ] && \
+                  diff $(DIFF_OPTS) $*.exp2 $*.err > $@; } || \
+                { [ -f $*.exp3 ] && \
+                  diff $(DIFF_OPTS) $*.exp3 $*.err > $@; } || \
+                { [ -f $*.exp4 ] && \
+                  diff $(DIFF_OPTS) $*.exp4 $*.err > $@; } || \
+                { cat $*.err; cat $@; exit 1; }
 
 %.res_compile:	%.exp %.c
 	-rm -f $@
-	diff $(DIFF_OPTS) $*.exp $*.err > $@ || { cat $@ && exit 1; }
+	diff $(DIFF_OPTS) $*.exp $*.err > $@ || \
+                { [ -f $*.exp2 ] && \
+                  diff $(DIFF_OPTS) $*.exp2 $*.err > $@; } || \
+                { [ -f $*.exp3 ] && \
+                  diff $(DIFF_OPTS) $*.exp3 $*.err > $@; } || \
+                { [ -f $*.exp4 ] && \
+                  diff $(DIFF_OPTS) $*.exp4 $*.err > $@; } || \
+                { cat $*.err; cat $@; exit 1; }
 
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 %.c: %.m
