@@ -1773,7 +1773,7 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], ModuleInfo0,
 		( { Verbose = yes } ->
 			io__write_string("% Processing ..."),
 			hlds_out__write_pred_id(ModuleInfo0, PredId),
-			io__write_string("... "),
+			io__write_string("...\n"),
 			io__flush_output
 		;
 			[]
@@ -1786,7 +1786,7 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], ModuleInfo0,
 		{ module_info_set_shapes(ModuleInfo0, Shapes, ModuleInfo1) },
 
 		( { Verbose = yes } ->
-			io__write_string("done\n"),
+			io__write_string("% done\n"),
 			io__flush_output
 		;
 			[]

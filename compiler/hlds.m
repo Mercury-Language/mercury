@@ -214,12 +214,8 @@ special_pred_info(compare, Type,
 
 :- type shape		--->	quad(shape_tag, shape_tag, shape_tag,
 					 shape_tag)
-<<<<<<< hlds.m
 			;	abstract(type, list(shape_num))
 			;	equivalent(shape_num)
-=======
-			;	abstract(type)
->>>>>>> 1.148.4.1
 			;	polymorphic(type)
 			;	closure(type).
 

@@ -146,47 +146,19 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	( { pred_info_is_imported(PredInfo0) } ->
 		{ ModuleInfo3 = ModuleInfo0 }
 	;
-<<<<<<< modes.m
-		globals__io_lookup_bool_option(very_verbose, VeryVerbose),
-		( { VeryVerbose = yes } ->
-			io__write_string("% Mode-checking predicate "),
-			hlds_out__write_pred_id(ModuleInfo0, PredId),
-			io__write_string("\n")
-		;
-			[]
-		),
-		{ copy_clauses_to_procs(PredInfo0, PredInfo1) },
-		{ map__set(Preds0, PredId, PredInfo1, Preds1) },
-		{ module_info_set_preds(ModuleInfo0, Preds1, ModuleInfo1) },
-		modecheck_procs(PredId, ModuleInfo1, PredInfo1, PredInfo, Errs),
-		{ map__set(Preds1, PredId, PredInfo, Preds) },
-		{ module_info_set_preds(ModuleInfo1, Preds, ModuleInfo2) },
-		{ module_info_num_errors(ModuleInfo2, NumErrors0) },
-		{ NumErrors is NumErrors0 + Errs },
-		{ module_info_set_num_errors(ModuleInfo2, NumErrors,
-						ModuleInfo3) },
-		{ Errs \= 0 ->
-			module_info_remove_predid(ModuleInfo3, PredId,
-				ModuleInfo4)
-=======
 		write_progress_message("% Mode-checking predicate ",
 			PredId, ModuleInfo0),
 		modecheck_pred_mode(PredId, PredInfo0, ModuleInfo0,
 			ModuleInfo1, Errs),
 		{ Errs = 0 ->
 			ModuleInfo3 = ModuleInfo1
->>>>>>> 1.101.2.1
 		;
-<<<<<<< modes.m
-			ModuleInfo4 = ModuleInfo3
-=======
 			module_info_num_errors(ModuleInfo1, NumErrors0),
 			NumErrors is NumErrors0 + Errs,
 			module_info_set_num_errors(ModuleInfo1, NumErrors,
 				ModuleInfo2),
 			module_info_remove_predid(ModuleInfo2, PredId,
 				ModuleInfo3)
->>>>>>> 1.101.2.1
 		}
 	),
 	modecheck_pred_modes_2(PredIds, ModuleInfo3, ModuleInfo).
