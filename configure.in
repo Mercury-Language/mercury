@@ -77,32 +77,22 @@ if test "$BOOTSTRAP_MC" != ""; then
 	cat > conftest.m << EOF
 		% this module contains features which didn't work in
 		% previous versions of the Mercury compiler
+		% We may also test to see if the installed compiler is
+		% recent enough by checking what flags mmc takes.
 		% Use [[ ]] for lists.
 		:- module conftest.
 		:- interface.
 		:- import_module io.
 		:- pred main(io__state::di, io__state::uo) is det.
 		:- implementation.
-		:- import_module list.
-
-		% Check that record syntax is recognised.
-		:- type foo ---> foo(field1::int).
-
-		% Check that promise declarations can be parsed
-		% and that every variable in the assertion doesn't
-		% need to be explicitly quantified.
-		:- promise all [[H,T,L]] (list__last([[H|T]], L)).
 		main --> 
-			{ Foo = foo(1) },
-			( { Foo ^ field1 = 1 } ->
-				print("Hello, world\n")
-			;
-				[[]]
-			).
+				% Currently we test that mmc accepts
+				% the --object-file-extension flag.
+			print("Hello, world\n").
 EOF
 	if
 	 	 echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
-	 	 $BOOTSTRAP_MC --high-level-code conftest \
+	 	 $BOOTSTRAP_MC --object-file-extension "o" conftest \
 		 	</dev/null >&AC_FD_CC 2>&1 &&
 		 test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world"
 	then
