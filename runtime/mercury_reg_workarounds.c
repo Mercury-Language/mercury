@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998, 2000 The University of Melbourne.
+** Copyright (C) 1998, 2000, 2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -35,6 +35,9 @@ MR_fd_zero(fd_set *fdset)
 ** See the header file for documentation on why we need this function.
 */
 
+#if defined(MR_CANNOT_USE_STRUCTURE_ASSIGNMENT) && \
+        defined(MR_USE_GCC_GLOBAL_REGISTERS)
+
 void
 MR_memcpy(void *dest, const void *src, size_t nbytes)
 {
@@ -44,3 +47,5 @@ MR_memcpy(void *dest, const void *src, size_t nbytes)
 	while (nbytes-- > 0)
 		*d++ = *s++;
 }
+
+#endif /* MR_CANNOT_USE_STRUCTURE_ASSIGNMENT && MR_USE_GCC_GLOBAL_REGISTERS */

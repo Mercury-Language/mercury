@@ -11,32 +11,7 @@
 #ifndef MERCURY_ARRAY_MACROS_H
 #define MERCURY_ARRAY_MACROS_H
 
-#include	"mercury_reg_workarounds.h"	/* for MR_memcpy */
-
-/*
-** This macro defines a safe way to perform assignment between
-** array elements that are structures. The obvious way can cause
-** gcc 2.7.2.3 to abort on x86 processors with the message 
-** "fixed or forbidden register was spilled."
-*/
-
-#ifdef	MR_CANNOT_USE_STRUCTURE_ASSIGNMENT
-
-  #define MR_copy_array_element(array, to_index, from_index)		\
-	do {								\
-		MR_memcpy((void *) &array[to_index],			\
-			(const void *) &array[from_index],		\
-			sizeof(array[to_index]));			\
-	} while(0)
-
-#else
-
-  #define MR_copy_array_element(array, to_index, from_index)		\
-	do {								\
-		array[to_index] = array[from_index];			\
-	} while(0)
-
-#endif /* ! MR_CANNOT_USE_STRUCTURE_ASSIGNMENT */
+#include	"mercury_reg_workarounds.h"	/* for MR_assign_structure */
 
 /*
 ** The MR_ensure_room_for_next macro works with a group of three variables
@@ -214,8 +189,8 @@
 	do {								\
 		(element) = (next) - 1;					\
 		while ((element) >= 0 && (COMPARE) > 0) {		\
-			MR_copy_array_element(items, element + 1,	\
-				element);				\
+			MR_assign_structure(items[element + 1],		\
+				items[element]);			\
 			(element) -= 1;					\
 		}							\
 		(element) += 1;						\
