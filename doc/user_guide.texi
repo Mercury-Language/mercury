@@ -2201,8 +2201,9 @@ if the command is strict, it is @samp{none}, otherwise it is @samp{some}.
 @subsection Backward movement commands
 @sp 1
 @table @code
-@item retry
+@item retry [-f]
 @kindex retry (mdb command)
+If
 Restarts execution at the call port
 of the call corresponding to the current event.
 @sp 1
@@ -2211,10 +2212,14 @@ the values of all the input arguments are available at the current port.
 (The compiler will keep the values
 of the input arguments of traced predicates as long as possible,
 but it cannot keep them beyond the point where they are destructively updated.)
-@c XXX THE EXCEPTION IS NOT YET IMPLEMENTED.
-@c The exception is values of type `io__state';
-@c the debugger can perform a retry if the only missing value is of
-@c type `io__state' (there can be only one io__state at any given time).
+The exception is values of type `io__state';
+the debugger can perform a retry if the only missing value is of
+type `io__state' (there can be only one io__state at any given time).
+@sp 1
+Since retries over I/O actions are not always safe,
+the debugger will normally ask the user if they really want to do this.
+The option @samp{-f} or @samp{--force} suppresses the question,
+and tells the debugger that retrying over I/O is OK.
 @c @sp 1
 @c A retry in which the values of all input arguments are available
 @c works fine, provided that the predicates defined in C code that are
@@ -2247,10 +2252,25 @@ This may require a noticeable amount of time.
 @c XXX not yet
 @c and may result in the execution of I/O and/or other side-effects.
 @sp 1
-@item retry @var{num}
+@item retry [-f] @var{num}
 Restarts execution at the call port of the call corresponding to
 the @var{num}'th ancestor of the call to which the current event belongs.
 For example, if @var{num} is 1, it restarts the parent of the current call.
+@sp 1
+The command will report an error unless
+the values of all the input arguments of the selected call are available
+at the return site at which control would reenter the selected call.
+(The compiler will keep the values
+of the input arguments of traced predicates as long as possible,
+but it cannot keep them beyond the point where they are destructively updated.)
+The exception is values of type `io__state';
+the debugger can perform a retry if the only missing value is of
+type `io__state' (there can be only one io__state at any given time).
+@sp 1
+Since retries over I/O actions are not always safe,
+the debugger will normally ask the user if they really want to do this.
+The option @samp{-f} or @samp{--force} suppresses the question,
+and tells the debugger that retrying over I/O is OK.
 @end table
 @sp 1
 @node Browsing commands

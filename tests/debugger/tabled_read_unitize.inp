@@ -5,5 +5,5 @@ table_io start
 break unitize
 continue
 finish -a
-retry
+retry -f
 continue -S

@@ -497,7 +497,7 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 
 MR_Retry_Result
 MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
-	int ancestor_level, MR_bool unconditional_allow_io,
+	int ancestor_level, MR_bool force_retry,
 	const char **problem, FILE *in_fp, FILE *out_fp, MR_Code **jumpaddr)
 {
 	MR_Word				*base_sp;
@@ -632,7 +632,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 		}
 	}
 
-	if (has_io_state && !unconditional_allow_io) {
+	if (has_io_state && !force_retry) {
 		if (in_fp != NULL && out_fp != NULL) {
 			MR_bool	allow_retry;
 			char	*answer;

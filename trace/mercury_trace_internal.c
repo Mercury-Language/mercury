@@ -466,6 +466,9 @@ static	void	MR_trace_maybe_close_source_window(MR_bool verbose);
 static	MR_bool	MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
 			char ***words, int *word_count,
 			const char *cat, const char *item);
+static	MR_bool	MR_trace_options_retry(MR_bool *allow_io,
+			char ***words, int *word_count,
+			const char *cat, const char *item);
 static	MR_bool	MR_trace_options_when_action_multi_ignore(MR_Spy_When *when,
 			MR_Spy_Action *action, MR_MultiMatch *multi_match,
 			MR_Spy_Ignore_When *ignore_when, int *ignore_count,
@@ -1576,10 +1579,16 @@ MR_trace_cmd_retry(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 {
 	int		n;
 	int		ancestor_level;
+	MR_bool		force_retry;
 	const char	*problem;
 	MR_Retry_Result	result;
 
-	if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
+	force_retry = MR_FALSE;
+	if (! MR_trace_options_retry(&force_retry,
+			&words, &word_count, "backward", "retry"))
+	{
+		; /* the usage message has already been printed */
+	} else if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
 		ancestor_level = n;
 	} else if (word_count == 1) {
 		ancestor_level = 0;
@@ -1596,7 +1605,7 @@ MR_trace_cmd_retry(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	}
 
 	result = MR_trace_retry(event_info, event_details,
-			ancestor_level, MR_FALSE, &problem,
+			ancestor_level, force_retry, &problem,
 			MR_mdb_in, MR_mdb_out, jumpaddr);
 	switch (result) {
 
@@ -3718,6 +3727,39 @@ MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
 
 			case 's':
 				cmd->MR_trace_print_level = MR_PRINT_LEVEL_SOME;
+				break;
+
+			default:
+				MR_trace_usage(cat, item);
+				return MR_FALSE;
+		}
+	}
+
+	*words = *words + MR_optind - 1;
+	*word_count = *word_count - MR_optind + 1;
+	return MR_TRUE;
+}
+
+static struct MR_option MR_trace_retry_opts[] =
+{
+	{ "allow-io",	MR_no_argument,	NULL,	'a' },
+	{ NULL,		MR_no_argument,	NULL,	0 }
+};
+
+static MR_bool
+MR_trace_options_retry(MR_bool *force_retry,
+	char ***words, int *word_count, const char *cat, const char *item)
+{
+	int	c;
+
+	MR_optind = 0;
+	while ((c = MR_getopt_long(*word_count, *words, "f",
+			MR_trace_retry_opts, NULL)) != EOF)
+	{
+		switch (c) {
+
+			case 'f':
+				*force_retry = MR_TRUE;
 				break;
 
 			default:
