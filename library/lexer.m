@@ -380,16 +380,17 @@ lexer__get_quoted_name_escape(QuoteChar, Chars, Token) -->
 		{ Token = io_error(Error) }
 	; { Result = eof }, !,
 		{ Token = error("unterminated quoted name") }
-	; { Result = ok(Char0) }, !,
-		( { Char0 = '\n' } ->
+	; { Result = ok(Char) }, !,
+		( { Char = '\n' } ->
 			lexer__get_quoted_name(QuoteChar, Chars, Token)
-		; { lexer__escape_char(Char0, EscapedChar) } ->
+		; { lexer__escape_char(Char, EscapedChar) } ->
 			{ Chars1 = [EscapedChar | Chars] },
 			lexer__get_quoted_name(QuoteChar, Chars1, Token)
-		; { Char0 = 'x' } ->
+		; { Char = 'x' } ->
 			lexer__get_hex_escape(QuoteChar, Chars, [], Token)
-		; { char__is_octal_digit(Char0) } ->
-			lexer__get_octal_escape(QuoteChar, Chars, [], Token)
+		; { char__is_octal_digit(Char) } ->
+			lexer__get_octal_escape(QuoteChar, Chars, [Char],
+				Token)
 		;
 			{ Token = error("invalid escape character") }
 		)
@@ -420,11 +421,11 @@ lexer__get_hex_escape(QuoteChar, Chars, HexChars, Token) -->
 		{ Token = io_error(Error) }
 	; { Result = eof }, !,
 		{ Token = error("unterminated quote") }
-	; { Result = ok(Char0) }, !,
-		( { char__is_hex_digit(Char0) } ->
-			lexer__get_hex_escape(QuoteChar, [Char0 | Chars],
-						HexChars, Token)
-		; { Char0 = '\\' } ->
+	; { Result = ok(Char) }, !,
+		( { char__is_hex_digit(Char) } ->
+			lexer__get_hex_escape(QuoteChar, Chars,
+						[Char | HexChars], Token)
+		; { Char = '\\' } ->
 			lexer__finish_hex_escape(QuoteChar, Chars, HexChars,
 				Token)
 		;
@@ -463,8 +464,8 @@ lexer__get_octal_escape(QuoteChar, Chars, OctalChars, Token) -->
 		{ Token = error("unterminated quote") }
 	; { Result = ok(Char) }, !,
 		( { char__is_octal_digit(Char) } ->
-			lexer__get_octal_escape(QuoteChar, [Char | Chars],
-						OctalChars, Token)
+			lexer__get_octal_escape(QuoteChar, Chars,
+						[Char | OctalChars], Token)
 		; { Char = '\\' } ->
 			lexer__finish_octal_escape(QuoteChar, Chars, OctalChars,
 				Token)
@@ -796,7 +797,7 @@ lexer__get_float_exponent(Chars, Token) -->
 	; { Result = eof }, !,
 		{ lexer__rev_char_list_to_float(Chars, Token) }
 	; { Result = ok(Char) },
-		( { Char = '+' ; Char = '-' } ->
+		( { Char = ('+') ; Char = ('-') } ->
 			lexer__get_float_exponent_2([Char | Chars], Token)
 		; { char__is_digit(Char) } ->
 			lexer__get_float_exponent_3([Char | Chars], Token)
