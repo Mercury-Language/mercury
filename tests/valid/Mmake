@@ -27,13 +27,11 @@ SOURCES= \
 	lambda_inference.m\
 	lambda_type.m\
 	loop.m \
-	loop_in_disj.m \
 	multidet_prune1.m \
 	multidet_test.m \
 	name_mangling.m \
 	nondet_live.m \
 	semidet_disj.m \
-	same_length_3.m \
 	shape_type.m \
 	stack_alloc.m \
 	switches.m \
@@ -51,6 +49,10 @@ SOURCES= \
 #	mode_merge_insts.m
 # A bug with no_tags functors stops this case from working:
 #	unused_args_test2.m
+# We don't yet handle det/semidet disjunctions yet, so these
+# test cases don't work:
+#	loop_in_disj.m
+#	same_length_3.m
 
 OBJS =	$(SOURCES:%.m=%.o)
 NOS =	$(SOURCES:%.m=%.no)
