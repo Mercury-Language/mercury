@@ -182,7 +182,7 @@
 :- import_module llds_out, prog_out, prog_util, (inst), instmap, trace.
 :- import_module termination, term_errors.
 
-:- import_module int, string, set, std_util, assoc_list.
+:- import_module int, string, set, std_util, assoc_list, multi_map.
 :- import_module term_io, require, getopt.
 
 
@@ -368,7 +368,9 @@ hlds_out__write_hlds(Indent, Module) -->
 		module_info_types(Module, TypeTable),
 		module_info_insts(Module, InstTable),
 		module_info_modes(Module, ModeTable),
-		module_info_classes(Module, ClassTable)
+		module_info_classes(Module, ClassTable),
+		module_info_superclasses(Module, SuperClassTable),
+		module_info_instances(Module, InstanceTable)
 	},
 	io__write_string("\n"),
 	hlds_out__write_header(Indent, Module),
@@ -378,6 +380,10 @@ hlds_out__write_hlds(Indent, Module) -->
 		hlds_out__write_types(Indent, TypeTable),
 		io__write_string("\n"),
 		hlds_out__write_classes(Indent, ClassTable),
+		io__write_string("\n"),
+		hlds_out__write_superclasses(Indent, SuperClassTable),
+		io__write_string("\n"),
+		hlds_out__write_instances(Indent, InstanceTable),
 		io__write_string("\n")
 	;
 		[]
@@ -485,6 +491,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	{ pred_info_get_markers(PredInfo, Markers) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ pred_info_get_class_context(PredInfo, ClassContext) },
+	{ pred_info_get_constraint_proofs(PredInfo, Proofs) },
 	{ pred_info_get_purity(PredInfo, Purity) },
 	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
 	( { string__contains_char(Verbose, 'C') } ->
@@ -512,6 +519,13 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 		;
 			io__write_string("% markers:"),
 			hlds_out__write_marker_list(MarkerList),
+			io__write_string("\n")
+		),
+		( { map__is_empty(Proofs) } ->
+			[]
+		;
+			hlds_out__write_constraint_proofs(Indent, VarSet,
+				Proofs),
 			io__write_string("\n")
 		)
 	;
@@ -2047,6 +2061,139 @@ hlds_out__write_class_proc(hlds_class_proc(PredId, ProcId)) -->
 
 %-----------------------------------------------------------------------------%
 
+:- pred hlds_out__write_superclasses(int, superclass_table, 
+	io__state, io__state).
+:- mode hlds_out__write_superclasses(in, in, di, uo) is det.
+
+hlds_out__write_superclasses(Indent, SuperClassTable) -->
+	hlds_out__write_indent(Indent),
+	io__write_string("%-------- Super Classes --------\n"),
+	{ multi_map__to_assoc_list(SuperClassTable, SuperClassTableList) },
+	io__write_list(SuperClassTableList, "\n\n",
+		hlds_out__write_superclass(Indent)),
+	io__nl.
+
+:- pred hlds_out__write_superclass(int, pair(class_id, list(subclass_details)), 
+			io__state, io__state).
+:- mode hlds_out__write_superclass(in, in, di, uo) is det.
+
+hlds_out__write_superclass(Indent, ClassId - SubClassDetailsList) -->
+	hlds_out__write_indent(Indent),
+	io__write_string("% "),
+
+	{ ClassId = class_id(SymName, Arity) },
+	prog_out__write_sym_name(SymName),
+	io__write_string("/"),
+	io__write_int(Arity),
+	io__write_string(":\n"),
+
+	io__write_list(SubClassDetailsList, "\n",
+		hlds_out__write_subclass_details(Indent, ClassId)).
+
+:- pred hlds_out__write_subclass_details(int, class_id, subclass_details, 
+			io__state, io__state).
+:- mode hlds_out__write_subclass_details(in, in, in, di, uo) is det.
+
+hlds_out__write_subclass_details(Indent, SuperClassId, SubClassDetails) -->
+	{ SubClassDetails = subclass_details(SuperClassVars, SubClassId,
+		SubClassVars, VarSet) },
+
+		% curry the varset for term_io__write_variable/4
+	{ PrintVar = lambda([VarName::in, IO0::di, IO::uo] is det,
+			term_io__write_variable(VarName, VarSet, IO0, IO)
+		) },
+	hlds_out__write_indent(Indent),
+	io__write_string("% "),
+	{ SubClassId = class_id(SubSymName, _SubArity) },
+	prog_out__write_sym_name(SubSymName),
+	io__write_char('('),
+	io__write_list(SubClassVars, ", ", PrintVar),
+	io__write_string(") <= "),
+
+	{ SuperClassId = class_id(SuperSymName, _SuperArity) },
+	prog_out__write_sym_name(SuperSymName),
+	io__write_char('('),
+	io__write_list(SuperClassVars, ", ", PrintVar),
+	io__write_char(')').
+
+%-----------------------------------------------------------------------------%
+
+:- pred hlds_out__write_instances(int, instance_table, io__state, io__state).
+:- mode hlds_out__write_instances(in, in, di, uo) is det.
+
+hlds_out__write_instances(Indent, InstanceTable) -->
+	hlds_out__write_indent(Indent),
+	io__write_string("%-------- Instances --------\n"),
+	{ map__to_assoc_list(InstanceTable, InstanceTableList) },
+	io__write_list(InstanceTableList, "\n\n",
+		hlds_out__write_instance_defns(Indent)),
+	io__nl.
+
+:- pred hlds_out__write_instance_defns(int, 
+	pair(class_id, list(hlds_instance_defn)), io__state, io__state).
+:- mode hlds_out__write_instance_defns(in, in, di, uo) is det.
+
+hlds_out__write_instance_defns(Indent, ClassId - InstanceDefns) -->
+	hlds_out__write_indent(Indent),
+	io__write_string("% "),
+
+	{ ClassId = class_id(SymName, Arity) },
+	prog_out__write_sym_name(SymName),
+	io__write_string("/"),
+	io__write_int(Arity),
+	io__write_string(":\n"),
+
+	io__write_list(InstanceDefns, "\n",
+		hlds_out__write_instance_defn(Indent)).
+
+:- pred hlds_out__write_instance_defn(int, hlds_instance_defn, 
+			io__state, io__state).
+:- mode hlds_out__write_instance_defn(in, in, di, uo) is det.
+
+hlds_out__write_instance_defn(Indent, InstanceDefn) -->
+
+	{ InstanceDefn = hlds_instance_defn(_, Constraints, Types, Interface,
+		_MaybeClassInterface, VarSet, Proofs) },
+
+	/*
+	{ term__context_file(Context, FileName) },
+	{ term__context_line(Context, LineNumber) },
+	( { FileName \= "" } ->
+		hlds_out__write_indent(Indent),
+		io__write_string("% context: file `"),
+		io__write_string(FileName),
+		io__write_string("', line "),
+		io__write_int(LineNumber),
+		io__write_string("\n")
+	;
+		[]
+	),
+	*/
+
+		% curry the varset for term_io__write_variable/4
+	{ PrintTerm = lambda([TypeName::in, IO0::di, IO::uo] is det,
+			term_io__write_term(VarSet, TypeName, IO0, IO)
+		) },
+	hlds_out__write_indent(Indent),
+	io__write_string("% Types: "),
+	io__write_list(Types, ", ", PrintTerm),
+	io__nl,
+
+	hlds_out__write_indent(Indent),
+	io__write_string("% Constraints: "),
+	io__write_list(Constraints, ", ",  mercury_output_constraint(VarSet)),
+	io__nl,
+
+	hlds_out__write_indent(Indent),
+	io__write_string("% Instance Methods: "),
+	mercury_output_instance_methods(Interface),
+	io__nl,
+
+	hlds_out__write_constraint_proofs(Indent, VarSet, Proofs),
+	io__nl.
+
+%-----------------------------------------------------------------------------%
+
 :- pred hlds_out__write_insts(int, inst_table, io__state, io__state).
 :- mode hlds_out__write_insts(in, in, di, uo) is det.
 
@@ -2296,5 +2443,36 @@ hlds_out__write_indent(Indent) -->
 		hlds_out__write_indent(Indent1)
 	).
 
+%-----------------------------------------------------------------------------%
+:- pred hlds_out__write_constraint_proofs(int, varset,
+	map(class_constraint, constraint_proof), io__state, io__state).
+:- mode hlds_out__write_constraint_proofs(in, in, in, di, uo) is det.
+
+hlds_out__write_constraint_proofs(Indent, VarSet, Proofs) -->
+	hlds_out__write_indent(Indent),
+	io__write_string("% Proofs: \n"),
+	{ map__to_assoc_list(Proofs, ProofsList) },
+	io__write_list(ProofsList, "\n", 
+		hlds_out__write_constraint_proof(Indent, VarSet)).
+
+:- pred hlds_out__write_constraint_proof(int, varset,
+	pair(class_constraint, constraint_proof), io__state, io__state).
+:- mode hlds_out__write_constraint_proof(in, in, in, di, uo) is det.
+
+hlds_out__write_constraint_proof(Indent, VarSet, Constraint - Proof) -->
+	hlds_out__write_indent(Indent),
+	io__write_string("% "),
+	mercury_output_constraint(VarSet, Constraint),
+	io__write_string(": "),
+	(
+		{ Proof = apply_instance(_, Num) },
+		io__write_string("apply instance decl #"),
+		io__write_int(Num)
+	;
+		{ Proof = superclass(Super) },
+		io__write_string("super class of "),
+		mercury_output_constraint(VarSet, Super)
+	).
+	
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
