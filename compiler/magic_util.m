@@ -420,7 +420,7 @@ magic_util__setup_call(PrevGoals, DBCall1, NonLocals, Goals) -->
 			InnerNonLocals, InnerDelta) },
 		{ goal_list_determinism(NegGoals, InnerDet) },
 		{ goal_info_init(InnerNonLocals, InnerDelta,
-			InnerDet, InnerInfo) },
+			InnerDet, pure, InnerInfo) },
 
 		{ conj_list_to_goal(NegGoals, InnerInfo, InnerConj) },
 		{ list__append(BeforeGoals, [not(InnerConj) - NegGoalInfo],
@@ -611,7 +611,7 @@ magic_util__create_input_test_unification(ModuleInfo, Var, Mode, OutputVar,
 
 	set__list_to_set([Var, OutputVar], NonLocals),
 	instmap_delta_init_reachable(InstMapDelta),
-	goal_info_init(NonLocals, InstMapDelta, semidet, GoalInfo),
+	goal_info_init(NonLocals, InstMapDelta, semidet, pure, GoalInfo),
 	( type_is_atomic(VarType, ModuleInfo) ->
 		%
 		% The type is a builtin, so create a simple_test unification.
@@ -843,7 +843,8 @@ magic_util__create_closure(_CurrVar, InputVar, InputMode, LambdaGoal,
 		{ instmap_delta_init_reachable(InstMapDelta0) },
 		{ instmap_delta_insert(InstMapDelta0, InputVar, LambdaInst, 
 			InstMapDelta) },
-		{ goal_info_init(NonLocals, InstMapDelta, det, GoalInfo) },
+		{ goal_info_init(NonLocals, InstMapDelta,
+			det, pure, GoalInfo) },
 
 		{ InputGoal = unify(InputVar, Rhs, UnifyMode, 
 				Unify, UnifyContext) - GoalInfo }
@@ -1044,7 +1045,7 @@ magic_util__create_supp_call(Goals, MagicVars, SuppOutputArgs, Context,
 	{ goal_list_instmap_delta(Goals, Delta0) },
 	{ set__list_to_set(SuppArgs, SuppArgSet) },
 	{ instmap_delta_restrict(Delta0, SuppArgSet, Delta) },
-	{ goal_info_init(SuppArgSet, Delta, nondet, GoalInfo) },
+	{ goal_info_init(SuppArgSet, Delta, nondet, pure, GoalInfo) },
 
 	%
 	% Verify that the supplementary predicate does not have any partially

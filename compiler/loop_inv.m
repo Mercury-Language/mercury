@@ -3,7 +3,7 @@
 % Main author: rafe
 % vim: ft=mercury ts=4 sw=4 et tw=0 wm=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -416,7 +416,7 @@ add_recursive_call(Goal, IGCs) =
 invariant_goal_candidates_handle_non_recursive_call(
         Goal @ (_GoalExpr - GoalInfo), IGCs) =
     ( if   not model_non(GoalInfo),
-           purity__goal_info_is_pure(GoalInfo)
+           goal_info_is_pure(GoalInfo)
       then IGCs ^ path_candidates := [Goal | IGCs ^ path_candidates]
       else IGCs
     ).
@@ -645,7 +645,7 @@ const_goal(ModuleInfo, Goal) :-
 :- mode impure_goal(in) is semidet.
 
 impure_goal(_GoalExpr - GoalInfo) :-
-    purity__goal_info_is_impure(GoalInfo).
+    goal_info_is_impure(GoalInfo).
 
 %------------------------------------------------------------------------------%
 

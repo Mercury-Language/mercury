@@ -1068,7 +1068,7 @@ magic__create_input_join_proc(CPredProcId, AditiPredProcId, JoinPredProcId,
 		HOCallNonLocals),
 	instmap_delta_from_mode_list(InputArgs, MagicArgModes,
 		ModuleInfo0, HOCallDelta),
-	goal_info_init(HOCallNonLocals, HOCallDelta, nondet,
+	goal_info_init(HOCallNonLocals, HOCallDelta, nondet, pure,
 		InputGoalInfo),
 	list__length(InputArgs, Arity),
 	InputGoal = generic_call(
@@ -1116,7 +1116,7 @@ magic__create_input_join_proc(CPredProcId, AditiPredProcId, JoinPredProcId,
 		ModuleInfo1, GoalDelta),
 	set__list_to_set([ClosureVar | OutputArgs],
 		GoalNonLocals),
-	goal_info_init(GoalNonLocals, GoalDelta, nondet, GoalInfo),
+	goal_info_init(GoalNonLocals, GoalDelta, nondet, pure, GoalInfo),
 	conj_list_to_goal([InputGoal, CallGoal | Tests], GoalInfo,
 		JoinGoal),
 	proc_info_set_goal(JoinProcInfo4, JoinGoal, JoinProcInfo),
@@ -1229,7 +1229,8 @@ magic__create_aditi_call_proc(CPredProcId, AditiPredProcId) -->
 	{ instmap_delta_from_mode_list(DoCallAditiArgs, DoCallAditiArgModes,
 		ModuleInfo1, GoalDelta) },
 	{ proc_info_inferred_determinism(CProcInfo2, Detism) },
-	{ goal_info_init(CallNonLocals, GoalDelta, Detism, CallGoalInfo) },
+	{ goal_info_init(CallNonLocals, GoalDelta,
+		Detism, pure, CallGoalInfo) },
 	{ pred_info_get_is_pred_or_func(CPredInfo1, CPredOrFunc) },
 	{ pred_info_module(CPredInfo1, CPredModule) },
 	{ pred_info_name(CPredInfo1, CPredName) },
@@ -1243,7 +1244,8 @@ magic__create_aditi_call_proc(CPredProcId, AditiPredProcId) -->
 	{ list__append(TypeInfoGoals, [DoCallAditiGoal], Goals) },
 	{ set__list_to_set(HeadVars, GoalNonLocals) },
 	{ goal_list_determinism(Goals, GoalDetism) },
-	{ goal_info_init(GoalNonLocals, GoalDelta, GoalDetism, GoalInfo) },
+	{ goal_info_init(GoalNonLocals, GoalDelta, GoalDetism,
+		pure, GoalInfo) },
 	{ Goal = conj(Goals) - GoalInfo },
 	{ proc_info_set_goal(CProcInfo2, Goal, CProcInfo) },
 
@@ -1266,24 +1268,6 @@ magic__make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals,
 		ProcInfo0, ProcInfo, ModuleInfo) },
 	magic_info_set_module_info(ModuleInfo).
 
-:- pred magic__make_const((type)::in, cons_id::in, prog_var::out,
-		hlds_goal::out, proc_info::in, proc_info::out) is det.
-
-magic__make_const(Type, ConsId, Var, Goal, ProcInfo0, ProcInfo) :-
-	proc_info_create_var_from_type(ProcInfo0, Type, no, Var, ProcInfo),
-	set__singleton_set(NonLocals, Var),
-	Inst = bound(unique, [functor(ConsId, [])]),
-	instmap_delta_init_reachable(Delta0),
-	instmap_delta_insert(Delta0, Var, Inst, Delta),
-	UnifyMode = (free -> Inst) - (Inst -> Inst),
-	RLExprnId = no,
-	Uni = construct(Var, ConsId, [], [],
-		construct_dynamically, cell_is_unique, RLExprnId),
-	Context = unify_context(explicit, []),
-	goal_info_init(NonLocals, Delta, det, GoalInfo),
-	Goal = unify(Var, functor(ConsId, no, []), UnifyMode, Uni, Context) -
-			GoalInfo.
-		
 %-----------------------------------------------------------------------------%
 
 	% Allocate a predicate to collect the input for the current predicate.
@@ -1354,7 +1338,7 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 			OutputInsts0, InstAL0) },
 		{ instmap_delta_from_assoc_list(InstAL0, InstMapDelta0) },
 		{ goal_info_init(NonLocals0, InstMapDelta0,
-			nondet, GoalInfo0) },
+			nondet, pure, GoalInfo0) },
 		{ list__length(InputArgs0, Arity) },
 		{ Goal0 = generic_call(
 			higher_order(CurrPredVar, (pure), predicate, Arity),
@@ -1370,7 +1354,7 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 			{ instmap_delta_from_assoc_list(InstAL, InstMapDelta) },
 			{ set__list_to_set([CurrPredVar | InputArgs],
 				NonLocals) },
-			{ goal_info_init(NonLocals, InstMapDelta, nondet,
+			{ goal_info_init(NonLocals, InstMapDelta, nondet, pure,
 				GoalInfo) },
 			{ conj_list_to_goal([Goal0 | Assigns],
 				GoalInfo, Goal) }
@@ -1448,7 +1432,7 @@ magic__create_assignments(ModuleInfo, [Arg0 - Arg | ArgsAL],
 			assign(Arg, Arg0), unify_context(explicit, [])),
 	set__list_to_set([Arg0, Arg], NonLocals),
 	instmap_delta_from_assoc_list([Arg - Inst], Delta),
-	goal_info_init(NonLocals, Delta, det, GoalInfo),
+	goal_info_init(NonLocals, Delta, det, pure, GoalInfo),
 	magic__create_assignments(ModuleInfo, ArgsAL, Modes, Assigns).	
 
 %-----------------------------------------------------------------------------%
@@ -1641,7 +1625,7 @@ magic__preprocess_call_args([Arg | Args], [NewArg | NewArgs], SeenArgs,
 		{ Inst = ground(shared, none) },
 		{ set__list_to_set([Arg, NewArg], NonLocals) },
 		{ instmap_delta_from_assoc_list([NewArg - Inst], Delta) },
-		{ goal_info_init(NonLocals, Delta, det, GoalInfo) },
+		{ goal_info_init(NonLocals, Delta, det, pure, GoalInfo) },
 		{ ExtraGoal = unify(NewArg, var(Arg), OutMode - InMode,
 			assign(NewArg, Arg), unify_context(explicit, []))
 			- GoalInfo },
@@ -1957,7 +1941,7 @@ magic__create_magic_call(MagicCall) -->
 	magic_info_get_module_info(ModuleInfo),
 	{ instmap_delta_from_mode_list(InputArgs, MagicOutputModes,
 		ModuleInfo, InstMapDelta) },
-	{ goal_info_init(NonLocals, InstMapDelta, nondet, GoalInfo) },
+	{ goal_info_init(NonLocals, InstMapDelta, nondet, pure, GoalInfo) },
 
 	{ MagicCall = call(MagicPredId, MagicProcId, MagicArgs,
 			not_builtin, no, PredName) - GoalInfo }.

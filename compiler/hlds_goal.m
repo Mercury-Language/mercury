@@ -615,12 +615,12 @@
 :- pred goal_info_init(prog_context, hlds_goal_info).
 :- mode goal_info_init(in, out) is det.
 
-:- pred goal_info_init(set(prog_var), instmap_delta, determinism,
+:- pred goal_info_init(set(prog_var), instmap_delta, determinism, purity,
 		hlds_goal_info).
-:- mode goal_info_init(in, in, in, out) is det.
+:- mode goal_info_init(in, in, in, in, out) is det.
 
 :- pred goal_info_init(set(prog_var)::in, instmap_delta::in, determinism::in,
-	prog_context::in, hlds_goal_info::out) is det.
+	purity::in, prog_context::in, hlds_goal_info::out) is det.
 
 % Instead of recording the liveness of every variable at every
 % part of the goal, we just keep track of the initial liveness
@@ -705,6 +705,23 @@
 
 :- pred goal_has_feature(hlds_goal, goal_feature).
 :- mode goal_has_feature(in, in) is semidet.
+
+%  Update a goal info to reflect the specified purity
+:- pred add_goal_info_purity_feature(hlds_goal_info, purity, hlds_goal_info).
+:- mode add_goal_info_purity_feature(in, in, out) is det.
+
+%  Determine the purity of a goal from its hlds_goal_info.
+:- pred infer_goal_info_purity(hlds_goal_info, purity).
+:- mode infer_goal_info_purity(in, out) is det.
+
+%  Check if a hlds_goal_info is for a pure goal
+:- pred goal_info_is_pure(hlds_goal_info).
+:- mode goal_info_is_pure(in) is semidet.
+
+%  Check if a hlds_goal_info is for an impure goal.  Fails if the goal is
+%  semipure, so this isn't the same as \+ goal_info_is_pure.
+:- pred goal_info_is_impure(hlds_goal_info).
+:- mode goal_info_is_impure(in) is semidet.
 
 :- type goal_feature
 	--->	constraint	% This is included if the goal is
@@ -888,6 +905,10 @@
        % Compute the determinism of a list of goals.
 :- pred goal_list_determinism(list(hlds_goal), determinism).
 :- mode goal_list_determinism(in, out) is det.
+
+	% Compute the purity of a list of goals. 
+:- pred goal_list_purity(list(hlds_goal), purity).
+:- mode goal_list_purity(in, out) is det.
 
 	% Change the contexts of the goal_infos of all the sub-goals
 	% of the given goal. This is used to ensure that error messages
@@ -1107,6 +1128,7 @@
 
 :- implementation.
 
+:- import_module check_hlds__purity.
 :- import_module check_hlds__det_analysis, parse_tree__prog_util.
 :- import_module check_hlds__type_util.
 :- import_module require, string, term, varset.
@@ -1215,6 +1237,7 @@ simple_call_id_pred_or_func(PredOrFunc - _) = PredOrFunc.
 		code_gen_info :: hlds_goal_code_gen_info
 	).
 
+:- pragma inline(goal_info_init/1).
 goal_info_init(GoalInfo) :-
 	Detism = erroneous,
 	instmap_delta_init_unreachable(InstMapDelta),
@@ -1224,22 +1247,25 @@ goal_info_init(GoalInfo) :-
 	GoalInfo = goal_info(Detism, InstMapDelta, Context, NonLocals,
 		Features, [], no_code_gen_info).
 
+:- pragma inline(goal_info_init/2).
 goal_info_init(Context, GoalInfo) :-
-	goal_info_init(GoalInfo0),
-	goal_info_set_context(GoalInfo0, Context, GoalInfo).
+	Detism = erroneous,
+	instmap_delta_init_unreachable(InstMapDelta),
+	set__init(NonLocals),
+	set__init(Features),
+	GoalInfo = goal_info(Detism, InstMapDelta, Context, NonLocals,
+		Features, [], no_code_gen_info).
 
-goal_info_init(NonLocals, InstMapDelta, Detism, GoalInfo) :-
-	goal_info_init(GoalInfo0),
-	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
-	goal_info_set_instmap_delta(GoalInfo1, InstMapDelta, GoalInfo2),
-	goal_info_set_determinism(GoalInfo2, Detism, GoalInfo).
+goal_info_init(NonLocals, InstMapDelta, Detism, Purity, GoalInfo) :-
+	term__context_init(Context),
+	purity_features(Purity, _, Features),
+	GoalInfo = goal_info(Detism, InstMapDelta, Context, NonLocals,
+		list_to_set(Features), [], no_code_gen_info).
 
-goal_info_init(NonLocals, InstMapDelta, Detism, Context, GoalInfo) :-
-	goal_info_init(GoalInfo0),
-	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
-	goal_info_set_instmap_delta(GoalInfo1, InstMapDelta, GoalInfo2),
-	goal_info_set_determinism(GoalInfo2, Detism, GoalInfo3),
-	goal_info_set_context(GoalInfo3, Context, GoalInfo).
+goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context, GoalInfo) :-
+	purity_features(Purity, _, Features),
+	GoalInfo = goal_info(Detism, InstMapDelta, Context, NonLocals,
+		list_to_set(Features), [], no_code_gen_info).
 
 goal_info_get_determinism(GoalInfo, GoalInfo ^ determinism).
 
@@ -1284,6 +1310,44 @@ goal_info_set_goal_path(GoalInfo0, GoalPath,
 goal_info_set_code_gen_info(GoalInfo0, CodeGenInfo,
 		GoalInfo0 ^ code_gen_info := CodeGenInfo).
 
+%-----------------------------------------------------------------------------%
+
+add_goal_info_purity_feature(GoalInfo0, Purity, GoalInfo) :-
+	infer_goal_info_purity(GoalInfo0, Purity0),
+	( Purity = Purity0 ->
+		GoalInfo = GoalInfo0
+	;
+		purity_features(Purity, FeaturesToRemove, FeaturesToAdd),
+		goal_info_get_features(GoalInfo0, Features0),
+		Features = set__union(list_to_set(FeaturesToAdd),
+				set__difference(Features0,
+					list_to_set(FeaturesToRemove))),
+		goal_info_set_features(GoalInfo0, Features, GoalInfo)
+	).
+
+:- pred purity_features(purity::in, list(goal_feature)::out,
+		list(goal_feature)::out) is det.
+
+purity_features(pure, [(impure), (semipure)], []).
+purity_features((semipure), [(impure)], [(semipure)]).
+purity_features((impure), [(semipure)], [(impure)]).
+
+infer_goal_info_purity(GoalInfo, Purity) :-
+	( goal_info_has_feature(GoalInfo, (impure)) ->
+		Purity = (impure)
+	; goal_info_has_feature(GoalInfo, (semipure)) ->
+		Purity = (semipure)
+	;
+		Purity = pure
+	).
+			
+goal_info_is_pure(GoalInfo) :-
+	\+ goal_info_has_feature(GoalInfo, (impure)),
+	\+ goal_info_has_feature(GoalInfo, (semipure)).
+	
+goal_info_is_impure(GoalInfo) :-
+	goal_info_has_feature(GoalInfo, (impure)).
+	
 %-----------------------------------------------------------------------------%
 
 goal_info_add_feature(GoalInfo0, Feature, GoalInfo) :-
@@ -1519,20 +1583,16 @@ goal_is_atomic(foreign_proc(_,_,_,_,_,_,_)).
 %-----------------------------------------------------------------------------%
 
 true_goal(conj([]) - GoalInfo) :-
-	goal_info_init(GoalInfo0),
-	goal_info_set_determinism(GoalInfo0, det, GoalInfo1),
 	instmap_delta_init_reachable(InstMapDelta),
-	goal_info_set_instmap_delta(GoalInfo1, InstMapDelta, GoalInfo).
+	goal_info_init(set__init, InstMapDelta, det, pure, GoalInfo).
 
 true_goal(Context, Goal - GoalInfo) :-
 	true_goal(Goal - GoalInfo0),
 	goal_info_set_context(GoalInfo0, Context, GoalInfo).
 
 fail_goal(disj([]) - GoalInfo) :-
-	goal_info_init(GoalInfo0),
-	goal_info_set_determinism(GoalInfo0, failure, GoalInfo1),
 	instmap_delta_init_unreachable(InstMapDelta),
-	goal_info_set_instmap_delta(GoalInfo1, InstMapDelta, GoalInfo).
+	goal_info_init(set__init, InstMapDelta, failure, pure, GoalInfo).
 
 fail_goal(Context, Goal - GoalInfo) :-
 	fail_goal(Goal - GoalInfo0),
@@ -1569,6 +1629,13 @@ goal_list_determinism(Goals, Determinism) :-
                        det_conjunction_detism(Det0, Det1, Det)
                )),
        list__foldl(ComputeDeterminism, Goals, det, Determinism).
+
+goal_list_purity(Goals, Purity) :-
+	Purity = list__foldl(
+			(func(_ - GoalInfo, Purity0) = Purity1 :-
+				infer_goal_info_purity(GoalInfo, GoalPurity),
+		    		worst_purity(GoalPurity, Purity0, Purity1)
+			), Goals, pure).
 
 %-----------------------------------------------------------------------------%
 
@@ -1720,7 +1787,7 @@ make_const_construction(Var, ConsId, Goal - GoalInfo) :-
 	set__singleton_set(NonLocals, Var),
 	instmap_delta_init_reachable(InstMapDelta0),
 	instmap_delta_insert(InstMapDelta0, Var, Inst, InstMapDelta),
-	goal_info_init(NonLocals, InstMapDelta, det, GoalInfo).
+	goal_info_init(NonLocals, InstMapDelta, det, pure, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 

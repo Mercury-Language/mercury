@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000,2002 The University of Melbourne.
+% Copyright (C) 1999-2000,2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1855,7 +1855,7 @@ acc_unification(Out - Acc, Goal) :-
 	instmap_delta_from_assoc_list([Out - ground(shared, none)],
 		InstMapDelta),
 
-	goal_info_init(NonLocalVars, InstMapDelta, det, Info),
+	goal_info_init(NonLocalVars, InstMapDelta, det, pure, Info),
 					   
 	Goal = Expr - Info.
 
@@ -2034,7 +2034,8 @@ calculate_goal_info(GoalExpr, GoalExpr - GoalInfo) :-
 		goal_list_instmap_delta(GoalList, InstMapDelta),
 		goal_list_determinism(GoalList, Determinism),
 
-		goal_info_init(NonLocals, InstMapDelta, Determinism, GoalInfo)
+		goal_info_init(NonLocals, InstMapDelta,
+			Determinism, pure, GoalInfo)
 	;
 		error("calculate_goal_info: not a conj.")
 	).

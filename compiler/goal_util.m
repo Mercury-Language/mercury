@@ -1031,7 +1031,8 @@ goal_util__case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct, VarSet0,
 	instmap_delta_bind_var_to_functor(Var, VarType, ConsId, InstMap,
 		ExtraInstMapDelta0, ExtraInstMapDelta, 
 		ModuleInfo0, ModuleInfo),
-	goal_info_init(NonLocals, ExtraInstMapDelta, semidet, ExtraGoalInfo),
+	goal_info_init(NonLocals, ExtraInstMapDelta,
+		semidet, pure, ExtraGoalInfo),
 
 	% Conjoin the test and the rest of the case.
 	goal_to_conj_list(CaseGoal, CaseGoalConj),
@@ -1047,7 +1048,9 @@ goal_util__case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct, VarSet0,
 		CaseInstMapDelta, InstMapDelta),
 	goal_info_get_determinism(CaseGoalInfo, CaseDetism0),
 	det_conjunction_detism(semidet, CaseDetism0, Detism),
-	goal_info_init(CaseNonLocals, InstMapDelta, Detism, CombinedGoalInfo),
+	infer_goal_info_purity(CaseGoalInfo, CasePurity),
+	goal_info_init(CaseNonLocals, InstMapDelta,
+		Detism, CasePurity, CombinedGoalInfo),
 	Disjunct = conj(GoalList) - CombinedGoalInfo.
 
 %-----------------------------------------------------------------------------%
@@ -1088,7 +1091,9 @@ goal_util__if_then_else_to_disjunction(Cond0, Then, Else, GoalInfo, Goal) :-
 		instmap_delta_init_reachable(NegCondDelta)
 	),
 	goal_info_get_nonlocals(CondInfo, CondNonLocals),
-	goal_info_init(CondNonLocals, NegCondDelta, NegCondDet, NegCondInfo),
+	infer_goal_info_purity(CondInfo, CondPurity),
+	goal_info_init(CondNonLocals, NegCondDelta, NegCondDet, CondPurity,
+		NegCondInfo),
 
 	goal_util__compute_disjunct_goal_info(not(Cond) - NegCondInfo, Else, 
 		GoalInfo, NegCondElseInfo),
@@ -1119,8 +1124,10 @@ goal_util__compute_disjunct_goal_info(Goal1, Goal2, GoalInfo, CombinedInfo) :-
 	goal_info_get_determinism(GoalInfo2, Detism2),
 	det_conjunction_detism(Detism1, Detism2, CombinedDetism),
 
+	goal_list_purity([Goal1, Goal2], CombinedPurity),
+
 	goal_info_init(CombinedNonLocals, CombinedDelta, 
-		CombinedDetism, CombinedInfo).
+		CombinedDetism, CombinedPurity, CombinedInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1237,7 +1244,9 @@ goal_util__generate_simple_call(ModuleName, PredName, Args, ModeNo, Detism,
 	;
 		instmap_delta_from_assoc_list(InstMap, InstMapDelta)
 	),
-	goal_info_init(NonLocals, InstMapDelta, Detism, Context,
+	module_info_pred_info(Module, PredId, PredInfo),
+	pred_info_get_purity(PredInfo, Purity),
+	goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
 		CallGoalInfo0),
 	(
 		MaybeFeature = yes(Feature),

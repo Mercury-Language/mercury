@@ -691,7 +691,7 @@ common__generate_assign(ToVar, FromVar, UniMode,
 			det, no, [], ModuleInfo, Context, GoalExpr - _),
 		instmap_delta_restrict(InstMapDelta0, NonLocals, InstMapDelta)
 	),
-	goal_info_init(NonLocals, InstMapDelta, det, GoalInfo),
+	goal_info_init(NonLocals, InstMapDelta, det, pure, GoalInfo),
 	Goal = GoalExpr - GoalInfo,	
 	common__record_equivalence(ToVar, FromVar, Info0, Info).
 

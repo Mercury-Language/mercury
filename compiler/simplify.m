@@ -674,11 +674,9 @@ simplify__goal_2(switch(Var, SwitchCanFail0, Cases0),
 				ModuleInfo, Info3),	
 			goal_info_get_determinism(GoalInfo0, CaseDetism),
 			det_conjunction_detism(semidet, CaseDetism, Detism),
-			goal_info_init(NonLocals, InstMapDelta, Detism, 
-				CombinedGoalInfo0),
 			goal_list_purity(GoalList, Purity),
-			add_goal_info_purity_feature(CombinedGoalInfo0,
-				Purity, CombinedGoalInfo),
+			goal_info_init(NonLocals, InstMapDelta, Detism, Purity,
+				CombinedGoalInfo),
 
 			simplify_info_set_requantify(Info3, Info4),
 			Goal = conj(GoalList),
@@ -2023,7 +2021,7 @@ simplify__create_test_unification(Var, ConsId, ConsArity,
 		% The test can't bind any variables, so the
 		% InstMapDelta should be empty.
 	instmap_delta_init_reachable(InstMapDelta),
-	goal_info_init(NonLocals, InstMapDelta, semidet, ExtraGoalInfo).
+	goal_info_init(NonLocals, InstMapDelta, semidet, pure, ExtraGoalInfo).
 
 %-----------------------------------------------------------------------------%
 

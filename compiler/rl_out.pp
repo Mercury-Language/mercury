@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001 University of Melbourne.
+% Copyright (C) 1998-2001, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1306,10 +1306,10 @@ rl_out__generate_subtract(Output, Input1, Input2, Type,
 				NegDetism = semidet
 			},
 			{ instmap_delta_init_reachable(IMDelta) },
-			{ goal_info_init(NonLocals, IMDelta, Detism0,
+			{ goal_info_init(NonLocals, IMDelta, Detism0, pure,
 				GoalInfo) },
 			{ conj_list_to_goal(Goals0, GoalInfo, Conj) },
-			{ goal_info_init(NonLocals, IMDelta, NegDetism,
+			{ goal_info_init(NonLocals, IMDelta, NegDetism, pure,
 				NegGoalInfo) },
 			{ NegGoal = not(Conj) - NegGoalInfo },
 			{ ProjectCond = ProjectCond0 ^ goal := [NegGoal] },

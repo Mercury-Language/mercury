@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 University of Melbourne.
+% Copyright (C) 1998-2000, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -396,7 +396,7 @@ context__transform_rule(PredProcId, right_linear(CallList, Goals, Call) - _,
 	{ list__append(FactoredGoal, Goals, AllGoals) },
 	{ goal_list_instmap_delta(AllGoals, Delta) },
 	{ goal_list_determinism(AllGoals, Det) },
-	{ goal_info_init(AllNonLocals, Delta, Det, MagicRuleInfo) },
+	{ goal_info_init(AllNonLocals, Delta, Det, pure, MagicRuleInfo) },
 	{ conj_list_to_goal(AllGoals, MagicRuleInfo, MagicGoal) },
 	magic_util__add_to_magic_predicate(PredProcId1, MagicGoal, MagicArgs).
 
@@ -440,7 +440,7 @@ context__transform_rule(PredProcId,
 	{ list__append(FactoredGoal, Goals1, AllGoals) },
 	{ goal_list_instmap_delta(AllGoals, Delta) },
 	{ goal_list_determinism(AllGoals, Det) },
-	{ goal_info_init(NonLocals2, Delta, Det, MagicRuleInfo) },
+	{ goal_info_init(NonLocals2, Delta, Det, pure, MagicRuleInfo) },
 	{ conj_list_to_goal(AllGoals, MagicRuleInfo, MagicGoal) },
 	magic_info_get_curr_pred_proc_id(PredProcId1),
 	magic_util__add_to_magic_predicate(PredProcId1, MagicGoal, MagicArgs).
@@ -563,7 +563,7 @@ context__create_magic_call(MagicCall, RenameInputs, Subn, MagicInputArgs) -->
 	magic_info_get_module_info(ModuleInfo),
 	{ instmap_delta_from_mode_list(AllInputArgs, AllOutputModes,
 		ModuleInfo, InstMapDelta) },
-	{ goal_info_init(NonLocals, InstMapDelta, nondet, GoalInfo) },
+	{ goal_info_init(NonLocals, InstMapDelta, nondet, pure, GoalInfo) },
 
 	{ MagicCall = call(MagicPredId, MagicProcId, MagicArgs, 
 			not_builtin, no, PredName) - GoalInfo }.
