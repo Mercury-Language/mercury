@@ -1355,6 +1355,8 @@ ml_translate_builtin_2("int", "builtin_bit_xor", 0, [X, Y, Z],
 	no, yes(Z - binop((^), lval(X), lval(Y)))).
 ml_translate_builtin_2("int", "^", 0, [X, Y, Z],
 	no, yes(Z - binop((^), lval(X), lval(Y)))).
+ml_translate_builtin_2("int", "xor", 0, [X, Y, Z],
+	no, yes(Z - binop((^), lval(X), lval(Y)))).
 ml_translate_builtin_2("int", "builtin_unary_plus", 0, [X, Y],
 	no, yes(Y - lval(X))).
 ml_translate_builtin_2("int", "+", 0, [X, Y],

@@ -157,10 +157,7 @@
 	% is needed for record syntax.
 :- func int ^ int = int.
 :- mode in  ^ in  = uo  is det.
-/***
-XXX this can't be added yet, for bootstrapping reasons
-:- pragma obsolete('^'/2).
-***/
+:- pragma obsolete(('^')/2).
 
 	% bitwise complement
 :- func \ int = int.
@@ -277,8 +274,6 @@ XXX this can't be added yet, for bootstrapping reasons
 
 % Most of the arithmetic and comparison operators are recognized by
 % the compiler as builtins, so we don't need to define them here.
-
-:- external(int__xor/2).
 
 X div Y = Div :-
 	Trunc = X // Y,

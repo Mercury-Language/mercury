@@ -125,6 +125,9 @@ Changes to the Mercury standard library:
   and `int:unchecked_right_shift/2' that, like the previous implementations
   of `int:>>/2' and `int:<</2', do not check for these cases.
 
+* `int:^/2' has been replaced by `int__xor/2', and will be removed in
+  a future release. The operator `^' will be used by record syntax.
+
 New library packages in the Mercury extras distribution:
 ********************************************************
 

@@ -84,8 +84,8 @@ if test "$BOOTSTRAP_MC" != ""; then
 		:- implementation.
 		:- import_module int.
 		main --> 
-			% check that we have unchecked_left_shift
-			{ _X = unchecked_left_shift(2,2) },
+			% check that we have int__xor.
+			{ _X = int__xor(2,2) },
 			print("Hello, world\n").
 EOF
 	if
