@@ -16,7 +16,7 @@
 % 	- finish texture mapping stuff
 % 	- finish pixel rectangle stuff
 % 	- vertex arrays
-% 	- evaluators
+% 	- 2d evaluators
 % 	- various state queries
 % 	- stuff from later versions of OpenGL
 %	- break this module up into submodules
@@ -323,38 +323,46 @@
 
 :- pred pixel_transfer(pixel_transfer_mode::in, io::di, io::uo) is det.
 
-/*
+:- type copy_type ---> color ; stencil ; depth.
 
-% pixel_map not implemented
+:- pred copy_pixels(int::in, int::in, int::in, int::in, copy_type::in, 
+	io::di, io::uo) is det.
 
-:- type draw_mode
-		--->	color_index
-		;	stencil_index
-		;	depth_component
-		;	red
-		;	green
-		;	blue
-		;	alpha
-		;	rgb
-		;	rgba
-		;	luminance
-		;	luminance_alpha
-		.
+:- type pixel_format
+	--->	color_index
+	;	stencil_index
+	;	depth_component
+	;	red
+	;	green
+	;	blue
+	;	alpha
+	;	rgb
+	;	rgba
+	;	luminance
+	;	luminance_alpha.
 
-:- type draw_data
-		--->	bitmap(list(int))	% 32 bits
-%		;	ubyte(list(int))	% 4 x 8 bits -> 4 x ubyte
-%		;	byte(list(int))		% 4 x 8 bits -> 4 x byte
-%		;	ushort(list(int))	% 2 x 16 bits -> 2 x ushort
-%		;	short(list(int))	% 2 x 16 bits -> 2 x short
-%		;	int(list(int))		% 1 x 32 bits -> 1 x int
-		;	float(list(float))
-		.
+:- type pixel_type
+	--->	unsigned_byte
+	;	bitmap
+	;	byte
+	;	unsigned_short
+	;	unsigned_int
+	;	int
+	;	float.
 
-:- pred draw_pixels(int, int, draw_mode, draw_data, io__state, io__state).
-:- mode draw_pixels(in, in, in, in, di, uo) is det.
+:- type read_buffer
+	--->	front_left
+	;	front_right
+	;	back_left
+	;	back_right
+	;	front
+	;	back
+	;	left
+	;	right
+	;	front_and_back
+	;	aux(int).
 
-*/
+:- pred read_buffer(read_buffer::in, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
@@ -531,12 +539,12 @@
 	is det.
 
 :- type stencil_op
-		--->	keep
-		;	zero
-		;	replace
-		;	incr
-		;	decr
-		;	invert.
+	--->	keep
+	;	zero
+	;	replace
+	;	incr
+	;	decr
+	;	invert.
 
 :- pred stencil_op(stencil_op::in, stencil_op::in, stencil_op::in, io::di,
 	io::uo) is det.
@@ -566,32 +574,32 @@
 
 :- pred blend_func(blend_src::in, blend_dst::in, io::di, io::uo) is det.
 
-:- type logical_op
-		--->	clear
-		;	(and)
-		;	and_reverse
-		;	copy
-		;	and_inverted
-		;	no_op
-		;	xor
-		;	(or)
-		;	nor
-		;	equiv
-		;	invert
-		;	or_reverse
-		;	copy_inverted
-		;	or_inverted
-		;	nand
-		;	set.
+:- type logic_op
+	--->	clear
+	;	(and)
+	;	and_reverse
+	;	copy
+	;	and_inverted
+	;	no_op
+	;	xor
+	;	(or)
+	;	nor
+	;	equiv
+	;	invert
+	;	or_reverse
+	;	copy_inverted
+	;	or_inverted
+	;	nand
+	;	set.
 
-:- pred logical_op(logical_op::in, io::di, io::uo) is det.
+:- pred logic_op(logic_op::in, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
 % Whole framebuffer operations.
 %
 
-:- type buffer
+:- type draw_buffer
 	--->	none
 	;	front_left
 	;	front_right
@@ -604,7 +612,7 @@
 	;	front_and_back
 	;	aux(int).
 
-:- pred draw_buffer(buffer::in, io::di, io::uo) is det.
+:- pred draw_buffer(draw_buffer::in, io::di, io::uo) is det.
 
 :- pred index_mask(int::in, io::di, io::uo) is det.
 
@@ -649,7 +657,107 @@
 % Evaluators.
 %
 
-% Evaluators not implemented
+:- type control_points(One, Two, Three, Four)
+	--->	one(One)	% Control points that have 1 dimension.
+	;	two(Two)	% Control points that have 2 dimensions.
+	;	three(Three)	% Control points have have 3 dimensions.
+	;	four(Four).	% Control points have have 4 dimensions.
+
+	% 1D control points are just lists containing tuples
+	% of the appropriate number of values.
+	%
+:- type control_points_1d == control_points(list(float),
+		list({float, float}),
+		list({float, float, float}),
+		list({float, float, float, float})
+	).
+
+:- type eval_target
+	--->	vertex_3
+	;	vertex_4
+	;	index
+	;	color_4
+	;	normal
+	;	texture_coord_1
+	;	texture_coord_2
+	;	texture_coord_3
+	;	texture_coord_4.
+
+:- type curve_points.
+
+:- func make_curve(control_points_1d) = curve_points.
+
+	% This version performs a runtime check to make sure that
+	% the evaluator target is compatible with the control points
+	% supplied.  It throws an exception if the evaluator target
+	% is not compatible with the control points.
+	%
+:- pred map1(eval_target::in, float::in, float::in, curve_points::in,
+	io::di, io::uo) is det.
+
+	% This version does perform the runtime check above.
+	%
+:- pred unsafe_map1(eval_target::in, float::in, float::in,
+	curve_points::in, io::di, io::uo) is det.
+
+	% This version does not perform the runtime check above
+	% and allows you to override the `stride' and `order'
+	% parameters.
+	%
+:- pred unsafe_map1(eval_target::in, float::in, float::in, 
+	maybe(int)::in, maybe(int)::in, curve_points::in,
+	io::di, io::uo) is det.
+
+:- pred eval_coord1(float::in, io::di, io::uo) is det.
+
+:- type mesh_mode ---> point ; line ; fill.
+
+:- inst mesh_mode_1d ---> point ; line.
+
+:- pred eval_mesh1(mesh_mode::in(mesh_mode_1d), int::in, int::in,
+	io::di, io::uo) is det.
+
+:- pred map_grid1(int::in, float::in, float::in, io::di, io::uo) is det.
+
+:- pred eval_point1(int::in, io::di, io::uo) is det.
+
+	% 2D control points are lists of lists of tuples of the
+	% appropriate size.  All the inner lists must have the
+	% same length.
+	%
+:- type control_points_2d == control_points(list(list(float)),
+		list(list({float, float})),
+		list(list({float, float, float})),
+		list(list({float, float, float, float}))
+	).
+
+:- type surface_points.
+
+	% XXX NYI.
+	%
+% :- func make_surface(control_points_2d) = surface_points.
+
+	% XXX NYI.
+	%
+% :- pred map2(surface, float::in, float::in, float::in, float::in,
+%  	io:di, io::uo) is det.
+
+:- pred eval_coord2(float::in, float::in, io::di, io::uo) is det.
+
+:- pred eval_mesh2(mesh_mode::in, int::in, int::in, int::in, int::in,
+	io::di, io::uo) is det.
+
+:- pred map_grid2(int::in, float::in, float::in, int::in, float::in,
+	float::in, io::di, io::uo) is det.
+
+:- pred eval_point2(int::in, int::in, io::di, io::uo) is det.
+
+%------------------------------------------------------------------------------%
+%
+% Feedback.
+%
+
+:- pred pass_through(float::in, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
@@ -733,7 +841,32 @@
 		;	scissor_test
 		;	stencil_test
 		;	texture_1d
-		;	texture_2d.
+		;	texture_2d
+
+	% 1D evaluator control flags
+
+		;	map1_vertex_3
+		;	map1_vertex_4
+		;	map1_index
+		;	map1_color_4
+		;	map1_normal
+		;	map1_texture_coord_1
+		;	map1_texture_coord_2
+		;	map1_texture_coord_3
+		;	map1_texture_coord_4
+ 
+	% 2D evaluator control flags
+
+		;	map2_vertex_3
+		;	map2_vertex_4
+		;	map2_index
+		;	map2_color_4
+		;	map2_normal
+		;	map2_texture_coord_1
+		;	map2_texture_coord_2
+		;	map2_texture_coord_3
+		;	map2_texture_coord_4.	
+	
 
 :- pred enable(control_flag::in, io::di, io::uo) is det.
 
@@ -990,7 +1123,7 @@
 
 :- implementation.
 
-:- import_module list, int, float, require, std_util.
+:- import_module exception, list, int, float, require, std_util.
 
 	% XXX Check that this works on Windows.
 	% We may need to #include <windows.h> to make it work.
@@ -1118,7 +1251,7 @@ begin(Blk, !IO) :-
 
 edge_flag(no, !IO) :-
 	edge_flag_2(0, !IO).
-edge_flag(yes, !IO) :- 
+edge_flag(yes, !IO) :-
 	edge_flag_2(1, !IO).
 
 :- pred edge_flag_2(int::in, io::di, io::uo) is det.
@@ -2299,6 +2432,79 @@ pixel_transfer(depth_bias(Bias), !IO) :-
 	IO = IO0;
 ").
 
+copy_pixels(X, Y, Width, Height, WhatToCopy, !IO) :-
+	copy_pixels_2(X, Y, Width, Height, copy_type_to_int(WhatToCopy),
+		!IO).
+
+:- pred copy_pixels_2(int::in, int::in, int::in, int::in, int::in,
+	io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	copy_pixels_2(X::in, Y::in, W::in, H::in, WhatFlag::in,
+		IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glCopyPixels((GLint) X, (GLint) Y, (GLsizei) W, (GLsizei) H,
+		copy_type_flags[WhatFlag]);
+	IO = IO0;
+").
+
+:- func copy_type_to_int(copy_type) = int.
+
+copy_type_to_int(color)   = 0.
+copy_type_to_int(stencil) = 1.
+copy_type_to_int(depth)   = 2.
+
+:- pragma foreign_decl("C", "extern const GLenum copy_type_flags[];").
+:- pragma foreign_code("C",
+"
+	const GLenum copy_type_flags[] = {
+		GL_COLOR,
+		GL_STENCIL,
+		GL_DEPTH
+	};
+").
+
+:- type pixels
+	---> pixels(
+		pixel_format :: int,
+		pixel_type   :: int,
+		pixle_data   :: pixel_data
+	).
+
+:- type pixel_data.
+:- pragma foreign_type("C", pixel_data, "const GLvoid *").	
+
+read_buffer(Buffer, !IO) :-
+	read_buffer_to_int_and_offset(Buffer, BufferFlag, Offset),
+	read_buffer_2(BufferFlag, Offset, !IO).
+
+:- pred read_buffer_2(int::in, int::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	read_buffer_2(BufferFlag::in, Offset::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glReadBuffer(buffer_flags[BufferFlag] + Offset);
+	IO = IO0;
+").
+	% The draw and read buffer types both map
+	% into the same array - hence the indices here
+	% start at 1 rather than 0 (corresponding to
+	% none, which is only for draw buffers).
+	%
+:- pred read_buffer_to_int_and_offset(read_buffer::in, int::out, int::out)
+	is det.
+
+read_buffer_to_int_and_offset(front_left, 1, 0).
+read_buffer_to_int_and_offset(front_right, 2, 0).
+read_buffer_to_int_and_offset(back_left, 3, 0).
+read_buffer_to_int_and_offset(back_right, 4, 0).
+read_buffer_to_int_and_offset(front, 5, 0).
+read_buffer_to_int_and_offset(back, 6, 0).
+read_buffer_to_int_and_offset(left, 7, 0).
+read_buffer_to_int_and_offset(right, 8, 0).
+read_buffer_to_int_and_offset(front_and_back, 9, 0).
+read_buffer_to_int_and_offset(aux(I), 10, I).
+
 %------------------------------------------------------------------------------%
 %
 % Bitmaps
@@ -2588,7 +2794,7 @@ delete_textures(Textures @ [_|_], !IO) :-
 	io::uo) is det.
 :- pragma foreign_proc("C", 
 	delete_textures_2(Textures::in, NumTextures::in, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure],
+	[may_call_mercury, promise_pure, terminates],
 "
 {
 	GLuint *textures;
@@ -2611,7 +2817,7 @@ delete_textures(Textures @ [_|_], !IO) :-
 
 :- pragma foreign_proc("C",
 	gen_textures(Num::in, Textures::out, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure],
+	[may_call_mercury, promise_pure, terminates],
 "
 {
 	GLuint *new_textures;
@@ -2634,13 +2840,13 @@ delete_textures(Textures @ [_|_], !IO) :-
 }").
 	
 :- pragma foreign_proc("C",
-	is_texture(Name::in, IsList::out, IO0::di, IO::uo),
+	is_texture(Name::in, IsTexture::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure], 
 "
 	if (glIsTexture(Name)) {
-		IsList = MR_YES;
+		IsTexture = MR_YES;
 	} else {
-		IsList = MR_NO;
+		IsTexture = MR_NO;
 	}
 	IO = IO0;
 ").
@@ -3116,31 +3322,31 @@ blend_func(Src, Dst, !IO) :-
 	IO = IO0;
 ").
 
-:- func logical_op_to_int(logical_op) = int.
+:- func logic_op_to_int(logic_op) = int.
 
-logical_op_to_int(clear) = 0.
-logical_op_to_int((and)) = 1.
-logical_op_to_int(and_reverse) = 2.
-logical_op_to_int(copy) = 3.
-logical_op_to_int(and_inverted) = 4.
-logical_op_to_int(no_op) = 5.
-logical_op_to_int(xor) = 6.
-logical_op_to_int((or)) = 7.
-logical_op_to_int(nor) = 8.
-logical_op_to_int(equiv) = 9.
-logical_op_to_int(invert) = 10.
-logical_op_to_int(or_reverse) = 11.
-logical_op_to_int(copy_inverted) = 12.
-logical_op_to_int(or_inverted) = 13.
-logical_op_to_int(nand) = 14.
-logical_op_to_int(set) = 15.
+logic_op_to_int(clear) = 0.
+logic_op_to_int((and)) = 1.
+logic_op_to_int(and_reverse) = 2.
+logic_op_to_int(copy) = 3.
+logic_op_to_int(and_inverted) = 4.
+logic_op_to_int(no_op) = 5.
+logic_op_to_int(xor) = 6.
+logic_op_to_int((or)) = 7.
+logic_op_to_int(nor) = 8.
+logic_op_to_int(equiv) = 9.
+logic_op_to_int(invert) = 10.
+logic_op_to_int(or_reverse) = 11.
+logic_op_to_int(copy_inverted) = 12.
+logic_op_to_int(or_inverted) = 13.
+logic_op_to_int(nand) = 14.
+logic_op_to_int(set) = 15.
 
 :- pragma foreign_decl("C", "
-	extern const GLenum logical_op_flags[];
+	extern const GLenum logic_op_flags[];
 ").
 
 :- pragma foreign_code("C", "
-	const GLenum logical_op_flags[] = {
+	const GLenum logic_op_flags[] = {
 		GL_CLEAR,
 		GL_AND,
 		GL_AND_REVERSE,
@@ -3160,15 +3366,15 @@ logical_op_to_int(set) = 15.
 	};
 ").
 
-logical_op(Op, !IO) :-
-	logical_op_2(logical_op_to_int(Op), !IO).
+logic_op(Op, !IO) :-
+	logic_op_2(logic_op_to_int(Op), !IO).
 
-:- pred logical_op_2(int::in, io::di, io::uo) is det.
+:- pred logic_op_2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-	logical_op_2(Op::in, IO0::di, IO::uo),
+	logic_op_2(Op::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure], 
 "
-	glLogicOp(logical_op_flags[Op]);
+	glLogicOp(logic_op_flags[Op]);
 	IO = IO0;
 ").
 
@@ -3177,19 +3383,19 @@ logical_op(Op, !IO) :-
 % Whole framebuffer operations.
 %
 
-:- func buffer_to_int(buffer) = int.
+:- pred buffer_to_int_and_offset(draw_buffer::in, int::out, int::out) is det.
 
-buffer_to_int(none)		= 0.
-buffer_to_int(front_left)	= 1.
-buffer_to_int(front_right)	= 2.
-buffer_to_int(back_left)	= 3.
-buffer_to_int(back_right)	= 4.
-buffer_to_int(front)		= 5.
-buffer_to_int(back)		= 6.
-buffer_to_int(left)		= 7.
-buffer_to_int(right)		= 8.
-buffer_to_int(front_and_back) 	= 9.
-buffer_to_int(aux(I))		= 10 + I.
+buffer_to_int_and_offset(none, 0, 0).	
+buffer_to_int_and_offset(front_left, 1, 0).
+buffer_to_int_and_offset(front_right, 2, 0).
+buffer_to_int_and_offset(back_left, 3, 0).
+buffer_to_int_and_offset(back_right, 4, 0).
+buffer_to_int_and_offset(front, 5, 0).
+buffer_to_int_and_offset(back, 6, 0).
+buffer_to_int_and_offset(left, 7, 0).
+buffer_to_int_and_offset(right, 8, 0).
+buffer_to_int_and_offset(front_and_back, 9, 0).
+buffer_to_int_and_offset(aux(I), 10, I).	
 
 :- pragma foreign_decl("C", "
 	extern const GLenum buffer_flags[];
@@ -3207,22 +3413,20 @@ buffer_to_int(aux(I))		= 10 + I.
 		GL_LEFT,
 		GL_RIGHT,
 		GL_FRONT_AND_BACK,
-		GL_AUX0,
-		GL_AUX1,
-		GL_AUX2,
-		GL_AUX3
+		GL_AUX0
 	};
 ").
 
 draw_buffer(Buffer, !IO) :-
-	draw_buffer_2(buffer_to_int(Buffer), !IO).
+	buffer_to_int_and_offset(Buffer, Flag, Offset),
+	draw_buffer_2(Flag, Offset, !IO).
 
-:- pred draw_buffer_2(int::in, io::di, io::uo) is det.
+:- pred draw_buffer_2(int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-	draw_buffer_2(B::in, IO0::di, IO::uo), 
+	draw_buffer_2(BufferFlag::in, Offset::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "
-	glDrawBuffer(buffer_flags[B]);
+	glDrawBuffer(buffer_flags[BufferFlag] + Offset);
 	IO = IO0;
 ").
 
@@ -3388,7 +3592,372 @@ accum(Op, Param, !IO) :-
 % Evaluators.
 %
 
-% XXX NYI.
+map1(Target, U1, U2, curve(Stride, Order, CtrlPoints), !IO) :-
+	( target_matches_stride_1d(Target, Stride) ->	
+	 	map1_2(eval_1d_to_int(Target), U1, U2, Stride, Order, 
+			CtrlPoints, !IO)
+	;
+		throw(software_error("mogl.map_1/6: bad data dimension."))
+	).
+
+:- pred target_matches_stride_1d(eval_target::in, int::in) is semidet.
+
+target_matches_stride_1d(vertex_3, 3).
+target_matches_stride_1d(vertex_4, 4).
+target_matches_stride_1d(index, 1).
+target_matches_stride_1d(color_4, 4).
+target_matches_stride_1d(normal, 3).
+target_matches_stride_1d(texture_coord_1, 1).
+target_matches_stride_1d(texture_coord_2, 2).
+target_matches_stride_1d(texture_coord_3, 3).
+target_matches_stride_1d(texture_coord_4, 4).
+
+unsafe_map1(Target, U1, U2, curve(Stride, Order, CtrlPoints), !IO) :-
+	map1_2(eval_1d_to_int(Target), U1, U2, Stride, Order,
+		CtrlPoints, !IO).
+
+unsafe_map1(Target, U1, U2, MaybeAltStride, MaybeAltOrder,
+		curve(AutoStride, AutoOrder, CtrlPoints), !IO) :-
+	Stride = ( MaybeAltStride = yes(Stride0) -> Stride0 ; AutoStride ),
+	Order  = ( MaybeAltOrder  = yes(Order0)  -> Order0  ; AutoOrder  ),
+	map1_2(eval_1d_to_int(Target), U1, U2, Stride, Order, CtrlPoints,
+		!IO).
+
+:- pred map1_2(int::in, float::in, float::in, int::in, int::in,
+	ctrl_points::in, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+	map1_2(CtrlFlagIndex::in, U1::in, U2::in, Stride::in, Order::in,
+		Points::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
+		glMap1f(control_flag_flags[CtrlFlagIndex], U1, U2,
+			Stride, Order, (const GLfloat *) Points); 
+	} else {
+		glMap1d(control_flag_flags[CtrlFlagIndex], U1, U2,
+			Stride, Order, (const GLdouble *) Points);
+	}
+	
+	IO = IO0;
+").
+
+	% NOTE: We just reuse the control_flag_flags array
+	% for these, which is why the indicies are not what
+	% you might expect.
+:- func eval_1d_to_int(eval_target) = int.
+
+eval_1d_to_int(vertex_3) = 25.
+eval_1d_to_int(vertex_4) = 26.
+eval_1d_to_int(index)    = 27.
+eval_1d_to_int(color_4)  = 28.
+eval_1d_to_int(normal)   = 29.
+eval_1d_to_int(texture_coord_1) = 30.
+eval_1d_to_int(texture_coord_2) = 31.
+eval_1d_to_int(texture_coord_3) = 32. 
+eval_1d_to_int(texture_coord_4) = 33.
+
+:- type curve_points
+	--->	curve(
+			stride          :: int,	
+			order           :: int,
+			curve_ctrl_pts  :: ctrl_points
+	).
+
+:- type ctrl_points.
+:- pragma foreign_type("C", ctrl_points, "const GLvoid *"). 
+
+make_curve(one(Verticies)) = curve(1, Order, CtrlPts) :-
+	Order   = list.length(Verticies),
+	CtrlPts = pack_ctrl_pts1_1d(Order, Verticies).
+make_curve(two(Verticies)) = curve(2, Order, CtrlPts) :-
+	Order    = list.length(Verticies),
+	CtrlPts = pack_ctrl_pts2_1d(Order, Verticies).
+make_curve(three(Verticies)) = curve(3, Order, CtrlPts) :-
+	Order   = list.length(Verticies),
+	CtrlPts = pack_ctrl_pts3_1d(Order, Verticies).
+make_curve(four(Verticies)) = curve(4, Order, CtrlPts) :-
+	Order   = list.length(Verticies),
+	CtrlPts = pack_ctrl_pts4_1d(Order, Verticies). 	
+
+
+:- pragma foreign_decl("C", "
+/* 
+** The following macros create and manipulate control point arrays.
+** These macros abstract away the differences that occur
+** when we use arrays of GLfloat as opposed to GLdouble (which in turn
+** depends upon whether MR_float is single or double-precision).
+*/ 
+
+/* 
+** The MOGL_make_ctrl_point_array() macro allocates an array large
+** enough to hold `size' control points of the specified dimension.
+*/
+#define MOGL_make_ctrl_point_array(array, size, dimension)		\
+	do {								\
+		if (sizeof(MR_Float) == sizeof(GLfloat)) {		\
+			array = MR_GC_NEW_ARRAY(GLfloat,		\
+				(size) * (dimension));			\
+		} else {						\
+			array = MR_GC_NEW_ARRAY(GLdouble,		\
+				(size) * (dimension)); 			\
+		}							\
+	} while(0)
+
+/* The MGOGL_set_ctrl_point() macro sets the value of a particular
+** index in a control point array.
+*/ 
+#define MOGL_set_ctrl_point(array, address, value)			\
+	do {					        		\
+		if (sizeof(MR_Float) == sizeof(GLfloat)) {		\
+			((GLfloat *) (array))[(address)] = (value);	\
+		} else {						\
+			((GLdouble *) (array))[(address)] = (value);	\
+		}							\
+	} while(0)	 	
+").
+
+:- func pack_ctrl_pts1_1d(int, list(float)) = ctrl_points.
+:- pragma foreign_proc("C",
+	pack_ctrl_pts1_1d(Order::in, Verticies::in) = (Points::out),
+	[will_not_call_mercury, promise_pure],
+"
+	int i = 0;
+
+	MOGL_make_ctrl_point_array(Points, Order, 1);
+	
+	while (!MR_list_is_empty(Verticies)) {
+
+		MOGL_set_ctrl_point(Points, i, MR_list_head(Verticies));	
+		Verticies = MR_list_tail(Verticies);
+		i++;
+	}			
+").
+
+:- func pack_ctrl_pts2_1d(int, list({float, float})) = ctrl_points.
+:- pragma foreign_proc("C",
+	pack_ctrl_pts2_1d(Order::in, Verticies::in) = (Points::out),
+	[may_call_mercury, promise_pure, terminates],
+"
+	MR_Float x, y;
+	int i = 0;
+
+	MOGL_make_ctrl_point_array(Points, Order, 2);
+	
+	while (!MR_list_is_empty(Verticies)) {
+		
+		MOGL_deconstruct_double(MR_list_head(Verticies), &x, &y);
+
+		MOGL_set_ctrl_point(Points, i, x);
+		MOGL_set_ctrl_point(Points, i + 1, y);
+
+		Verticies = MR_list_tail(Verticies);
+		i += 2;
+	}
+").
+
+:- func pack_ctrl_pts3_1d(int, list({float, float, float})) = ctrl_points.
+:- pragma foreign_proc("C",
+	pack_ctrl_pts3_1d(Order::in, Verticies::in) = (Points::out),
+	[may_call_mercury, promise_pure, terminates],
+"
+	MR_Float x, y, z;
+	int i = 0;
+
+	MOGL_make_ctrl_point_array(Points, Order, 3);
+
+	while (!MR_list_is_empty(Verticies)) {
+		
+		MOGL_deconstruct_triple(MR_list_head(Verticies), &x, &y, &z);
+
+		MOGL_set_ctrl_point(Points, i,     x);
+		MOGL_set_ctrl_point(Points, i + 1, y);
+		MOGL_set_ctrl_point(Points, i + 2, z);
+		
+		Verticies = MR_list_tail(Verticies);
+		i += 3;	
+	}
+").
+
+
+:- func pack_ctrl_pts4_1d(int, list({float, float, float, float}))
+	= ctrl_points.
+:- pragma foreign_proc("C",
+	pack_ctrl_pts4_1d(Order::in, Verticies::in) = (Points::out),
+	[may_call_mercury, promise_pure, terminates],
+
+"
+	MR_Float x, y, z, w;
+	int i = 0;
+
+	MOGL_make_ctrl_point_array(Points, Order, 4);
+
+	while(!MR_list_is_empty(Verticies)) {
+
+		MOGL_deconstruct_quadruple(MR_list_head(Verticies),
+			&x, &y, &z, &w);
+	
+		MOGL_set_ctrl_point(Points, i, x);
+		MOGL_set_ctrl_point(Points, i + 1, y);
+		MOGL_set_ctrl_point(Points, i + 2, z);
+		MOGL_set_ctrl_point(Points, i + 3, w);
+		
+		Verticies = MR_list_tail(Verticies);
+		i += 4;
+	}
+").
+
+:- pragma export(deconstruct_double(in, out, out), 
+	"MOGL_deconstruct_double").
+:- pred deconstruct_double({float, float}::in, float::out, float::out) is det.
+
+deconstruct_double({A, B}, A, B).
+
+:- pragma export(deconstruct_triple(in, out, out, out),
+	"MOGL_deconstruct_triple").
+:- pred deconstruct_triple({float, float, float}::in, float::out, float::out,
+	float::out) is det.
+
+deconstruct_triple({A, B, C}, A, B, C).
+
+:- pragma export(deconstruct_quadruple(in, out, out, out, out),
+	"MOGL_deconstruct_quadruple").
+:- pred deconstruct_quadruple({float, float, float, float}::in, 
+	float::out, float::out, float::out, float::out) is det.
+
+deconstruct_quadruple({A, B, C, D}, A, B, C, D).
+
+:- type surface_points
+	--->	surface(
+			ustride	:: int,
+			uorder  :: int,
+	                vstride :: int,
+			vorder  :: int,
+		        surface_ctrl_points :: ctrl_points
+	).	
+
+
+:- pragma foreign_proc("C",
+	eval_coord1(U::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
+		glEvalCoord1f((GLfloat) U);
+	} else {
+		glEvalCoord1d((GLdouble) U);
+	}
+	IO = IO0;
+").
+	
+:- pragma foreign_proc("C",
+	eval_coord2(U::in, V::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
+		glEvalCoord2f((GLfloat) U, (GLfloat) V);
+	} else {
+		glEvalCoord2d((GLdouble) U, (GLdouble) V);
+	}
+	IO = IO0;
+").
+
+:- func mesh_mode_to_int(mesh_mode) = int.
+
+mesh_mode_to_int(point) = 0.
+mesh_mode_to_int(line)  = 1.
+mesh_mode_to_int(fill)  = 2.
+
+:- pragma foreign_decl("C", "
+	extern const GLenum mesh_mode_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLenum mesh_mode_flags[] = {
+		GL_POINT,
+		GL_LINE,
+		GL_FILL
+	};
+").
+
+eval_mesh1(Mode, P1, P2, !IO) :-
+	eval_mesh1_2(mesh_mode_to_int(Mode), P1, P2, !IO).
+
+:- pred eval_mesh1_2(int::in, int::in, int::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	eval_mesh1_2(MeshFlag::in, P1::in, P2::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glEvalMesh1(mesh_mode_flags[MeshFlag], (GLint) P1, (GLint) P2);
+	IO = IO0;
+").
+
+eval_mesh2(Mode, P1, P2, Q1, Q2, !IO) :-
+	eval_mesh2_2(mesh_mode_to_int(Mode), P1, P2, Q1, Q2, !IO).
+
+:- pred eval_mesh2_2(int::in, int::in, int::in, int::in, int::in,
+	io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	eval_mesh2_2(MeshFlag::in, P1::in, P2::in, Q1::in, Q2::in, 
+		IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glEvalMesh2(mesh_mode_flags[MeshFlag], P1, P2, Q1, Q2);
+	IO = IO0;
+").
+
+:- pragma foreign_proc("C",
+	map_grid1(N::in, U1::in, U2::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
+		glMapGrid1f(N, U1, U2);
+	} else {
+		glMapGrid1d(N, U1, U2);
+	}
+	IO = IO0;
+").
+
+:- pragma foreign_proc("C",
+	eval_point1(I::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glEvalPoint1((GLint) I);
+	IO = IO0;
+").
+
+:- pragma foreign_proc("C",
+	map_grid2(Nu::in, U1::in, U2::in, Nv::in, V1::in, V2::in,
+		IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
+		glMapGrid2f(Nu, U1, U2, Nv, V1, V2);
+	} else {
+		glMapGrid2d(Nu, U1, U2, Nv, V1, V2);
+	}
+	IO = IO0;
+").
+
+:- pragma foreign_proc("C",
+	eval_point2(I::in, J::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glEvalPoint2((GLint) I, (GLint) J);
+	IO = IO0;
+").
+
+%------------------------------------------------------------------------------%
+%
+% Feedback.
+%
+
+:- pragma foreign_proc("C",
+	pass_through(Token::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glPassThrough((GLfloat) Token);
+	IO = IO0;
+").
 
 %------------------------------------------------------------------------------%
 %
@@ -3564,6 +4133,9 @@ new_list(Num, Mode, !IO) :-
 
 %------------------------------------------------------------------------------%
 
+% NOTE: The ordering of these control flags is important.  The code for
+% handling evaluator targets depends upon this ordering.
+
 :- pred control_flag_to_int_and_offset(control_flag::in, int::out, int::out)
 	is det.
 
@@ -3592,6 +4164,24 @@ control_flag_to_int_and_offset(scissor_test,         21, 0).
 control_flag_to_int_and_offset(stencil_test,         22, 0).
 control_flag_to_int_and_offset(texture_1d,           23, 0).
 control_flag_to_int_and_offset(texture_2d,           24, 0).
+control_flag_to_int_and_offset(map1_vertex_3,	     25, 0).	
+control_flag_to_int_and_offset(map1_vertex_4,        26, 0).
+control_flag_to_int_and_offset(map1_index,           27, 0).
+control_flag_to_int_and_offset(map1_color_4,         28, 0).
+control_flag_to_int_and_offset(map1_normal,          29, 0).
+control_flag_to_int_and_offset(map1_texture_coord_1, 30, 0).
+control_flag_to_int_and_offset(map1_texture_coord_2, 31, 0).
+control_flag_to_int_and_offset(map1_texture_coord_3, 32, 0).
+control_flag_to_int_and_offset(map1_texture_coord_4, 33, 0).
+control_flag_to_int_and_offset(map2_vertex_3,        34, 0).
+control_flag_to_int_and_offset(map2_vertex_4,        35, 0).
+control_flag_to_int_and_offset(map2_index,           36, 0).
+control_flag_to_int_and_offset(map2_color_4,         37, 0).
+control_flag_to_int_and_offset(map2_normal,          38, 0).
+control_flag_to_int_and_offset(map2_texture_coord_1, 39, 0).
+control_flag_to_int_and_offset(map2_texture_coord_2, 40, 0).
+control_flag_to_int_and_offset(map2_texture_coord_3, 41, 0).
+control_flag_to_int_and_offset(map2_texture_coord_4, 42, 0).	
 
 :- pragma foreign_decl("C", "
 	extern const GLenum control_flag_flags[];
@@ -3623,7 +4213,25 @@ control_flag_to_int_and_offset(texture_2d,           24, 0).
 		GL_SCISSOR_TEST,
 		GL_STENCIL_TEST,
 		GL_TEXTURE_1D,
-		GL_TEXTURE_2D
+		GL_TEXTURE_2D,
+		GL_MAP1_VERTEX_3,
+		GL_MAP1_VERTEX_4,
+		GL_MAP1_INDEX,
+		GL_MAP1_COLOR_4,
+		GL_MAP1_NORMAL,
+		GL_MAP1_TEXTURE_COORD_1,
+		GL_MAP1_TEXTURE_COORD_2,
+		GL_MAP1_TEXTURE_COORD_3,
+		GL_MAP1_TEXTURE_COORD_4,
+		GL_MAP2_VERTEX_3,
+		GL_MAP2_VERTEX_4,
+		GL_MAP2_INDEX,
+		GL_MAP2_COLOR_4,
+		GL_MAP2_NORMAL,
+		GL_MAP2_TEXTURE_COORD_1,
+		GL_MAP2_TEXTURE_COORD_2,
+		GL_MAP2_TEXTURE_COORD_3,
+		GL_MAP2_TEXTURE_COORD_4
 	};
 ").
 
