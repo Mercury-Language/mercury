@@ -152,10 +152,8 @@
 #define	MR_mktempframe(redoip)						\
 			do {						\
 				reg	MR_Word	*prevfr;		\
-				reg	MR_Word	*succfr;		\
 									\
 				prevfr = MR_maxfr;			\
-				succfr = MR_curfr;			\
 				MR_maxfr += MR_NONDET_TEMP_SIZE;	\
 				MR_prevfr_slot(MR_maxfr) = prevfr;	\
 				MR_redoip_slot(MR_maxfr) = redoip;	\
@@ -166,10 +164,8 @@
 #define	MR_mkdettempframe(redoip)					\
 			do {						\
 				reg	MR_Word	*prevfr;		\
-				reg	MR_Word	*succfr;		\
 									\
 				prevfr = MR_maxfr;			\
-				succfr = MR_curfr;			\
 				MR_maxfr += MR_DET_TEMP_SIZE;		\
 				MR_prevfr_slot(MR_maxfr) = prevfr;	\
 				MR_redoip_slot(MR_maxfr) = redoip;	\
