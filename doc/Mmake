@@ -160,15 +160,13 @@ uninstall:
 # INSTALL_WEBPAGE_DIR).
 
 .PHONY: install_webpage
-install_webpage: split_html ps 
+install_webpage: library-chapters.texi split_html ps 
 	[ -d $(INSTALL_WEBPAGE_DIR) ] || mkdir -p $(INSTALL_WEBPAGE_DIR)
 	cp *.ps $(INSTALL_WEBPAGE_DIR)
 	for file in $(INSTALL_WEBPAGE_DIR)/*.ps ; do \
 		gzip -f -9 $$file ; \
 	done
-	-chmod a+r $(INSTALL_WEBPAGE_DIR)/*.ps.gz
 	cp *.html $(INSTALL_WEBPAGE_DIR)
-	-chmod a+r $(INSTALL_WEBPAGE_DIR)/*.html
 
 #-----------------------------------------------------------------------------#
 
