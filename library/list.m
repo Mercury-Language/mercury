@@ -86,6 +86,10 @@
 	% to a rewrite rule.
 :- promise all [L,H,T] ( append([H], T, L) <=> L = [H|T] ).
 
+	% L1 ++ L2 = L :- list__append(L1, L2, L).
+	% 
+:- func list(T) ++ list(T) = list(T).
+
 
 	% list__remove_suffix(List, Suffix, Prefix):
 	%	The same as list__append(Prefix, Suffix, List) except that
@@ -1321,3 +1325,9 @@ list__merge_and_remove_dups(F, Xs, Ys) = Zs :-
 	P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
 	list__merge_and_remove_dups(P, Xs, Ys, Zs).
 
+% ---------------------------------------------------------------------------- %
+
+L1 ++ L2 = list__append(L1, L2).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %

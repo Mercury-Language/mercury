@@ -34,6 +34,11 @@
 %       that it is semidet.  Use string__remove_suffix instead.
 % :- mode string__append(out, in, in) is semidet.
 
+:- func string ++ string = string.
+%	S1 ++ S2 = S :- string__append(S1, S2, S).
+%
+%	Nicer syntax.
+
 :- pred string__remove_suffix(string, string, string).
 :- mode string__remove_suffix(in, in, out) is semidet.
 %	string__remove_suffix(String, Suffix, Prefix):
@@ -1874,6 +1879,10 @@ preceding_boundary(SepP, String, I) =
 	  else
 		preceding_boundary(SepP, String, I - 1)
 	).
+
+% ---------------------------------------------------------------------------- %
+
+S1 ++ S2 = string__append(S1, S2).
 
 % ---------------------------------------------------------------------------- %
 % ---------------------------------------------------------------------------- %
