@@ -93,9 +93,11 @@ middle_rec__gen_det(Goal, Instrs) -->
 		{ code_util__negate_the_test(NegTestList, EntryTestList) },
 
 		code_info__grab_code_info(CodeInfo),
-		code_gen__generate_forced_det_goal(Base, BaseCodeFrag),
+		code_gen__generate_forced_goal(model_det,
+			Base, BaseCodeFrag),
 		code_info__slap_code_info(CodeInfo),
-		code_gen__generate_forced_det_goal(Recursive, RecCodeFrag),
+		code_gen__generate_forced_goal(model_det,
+			Recursive, RecCodeFrag),
 
 		code_aux__post_goal_update(SwitchGoalInfo),
 		code_info__remake_with_store_map,
@@ -110,7 +112,8 @@ middle_rec__gen_det(Goal, Instrs) -->
 
 		code_info__get_arginfo(ArgModes),
 		code_info__get_headvars(HeadVars),
-		{ assoc_list__from_corresponding_lists(HeadVars, ArgModes, Args) },
+		{ assoc_list__from_corresponding_lists(HeadVars, ArgModes,
+			Args) },
 		code_info__setup_call(Args, callee, EpilogFrag),
 
 		{ code_gen__output_args(Args, LiveArgs) },
@@ -125,7 +128,7 @@ middle_rec__gen_det(Goal, Instrs) -->
 		{ list__append(BeforeList0, AfterList, RecCodeList) },
 		{ middle_rec__find_unused_register(RecCodeList, AuxReg) },
 		{ middle_rec__add_counter_to_livevals(BeforeList0, AuxReg,
-								BeforeList) },
+			BeforeList) },
 
 		{ tree__flatten(BaseCode, BaseListList) },
 		{ list__condense(BaseListList, BaseList) },

@@ -522,7 +522,7 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 :- type hlds__goal_info
 	---> goal_info(
 		delta_liveness,	% the changes in liveness after goal
-		determinism,	% the `local' determinism of the goal
+		unit,		% was the `local' determinism of the goal
 		determinism, 	% the overall determinism of the goal
 		instmap_delta,
 		term__context,
@@ -697,8 +697,8 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 :- pred module_info_get_special_pred_map(module_info, special_pred_map).
 :- mode module_info_get_special_pred_map(in, out) is det.
 
-:- pred module_info_shapes(module_info, shape_table).
-:- mode module_info_shapes(in, out) is det.
+:- pred module_info_get_shapes(module_info, shape_table).
+:- mode module_info_get_shapes(in, out) is det.
 
 :- pred module_info_shape_info(module_info, shape_info).
 :- mode module_info_shape_info(in, out) is det.
@@ -857,7 +857,7 @@ module_info_reverse_predids(ModuleInfo0, ModuleInfo) :-
 module_info_get_unify_requests(ModuleInfo, Requests) :-
 	ModuleInfo = module(_, _, _, Requests, _, _, _, _, _, _, _, _, _).
 
-module_info_shapes(ModuleInfo, Shapes) :-
+module_info_get_shapes(ModuleInfo, Shapes) :-
 	module_info_shape_info(ModuleInfo, Shape_Info),
 	Shape_Info = shape_info(Shapes, _AbsExports).
 
@@ -998,7 +998,7 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 	predicate_table_optimize(Preds0, Preds),
 	module_info_set_predicate_table(ModuleInfo0, Preds, ModuleInfo2),
 
-	module_info_shapes(ModuleInfo2, (Shapes0 - N)),
+	module_info_get_shapes(ModuleInfo2, (Shapes0 - N)),
 	map__optimize(Shapes0, Shapes),
 	module_info_set_shapes(ModuleInfo2, (Shapes - N), ModuleInfo3),
 
@@ -1828,19 +1828,6 @@ proc_info_set_vartypes(ProcInfo0, Vars, ProcInfo) :-
 	hlds__goal_info).
 :- mode goal_info_set_determinism(in, in, out) is det.
 
-	% The `internal' determinism is the determinism _before_ we
-	% prune nondet goals that don't have any output variables.
-
-:- pred goal_info_get_internal_code_model(hlds__goal_info, code_model).
-:- mode goal_info_get_internal_code_model(in, out) is det.
-
-:- pred goal_info_get_internal_determinism(hlds__goal_info, determinism).
-:- mode goal_info_get_internal_determinism(in, out) is det.
-
-:- pred goal_info_set_internal_determinism(hlds__goal_info, determinism,
-					hlds__goal_info).
-:- mode goal_info_set_internal_determinism(in, in, out) is det.
-
 :- pred goal_info_get_nonlocals(hlds__goal_info, set(var)).
 :- mode goal_info_get_nonlocals(in, out) is det.
 
@@ -1924,7 +1911,6 @@ proc_info_set_vartypes(ProcInfo0, Vars, ProcInfo) :-
 :- implementation.
 
 goal_info_init(GoalInfo) :-
-	InternalDetism = det,
 	ExternalDetism = det,
 	set__init(Births),
 	set__init(Deaths),
@@ -1933,7 +1919,7 @@ goal_info_init(GoalInfo) :-
 	set__init(NonLocals),
 	term__context_init(Context),
 	set__init(Features),
-	GoalInfo = goal_info(DeltaLiveness, InternalDetism, ExternalDetism,
+	GoalInfo = goal_info(DeltaLiveness, unit, ExternalDetism,
 		InstMapDelta, Context, NonLocals, DeltaLiveness, no, no,
 		Features).
 
@@ -1950,17 +1936,6 @@ goal_info_post_delta_liveness(GoalInfo, DeltaLiveness) :-
 goal_info_set_post_delta_liveness(GoalInfo0, DeltaLiveness, GoalInfo) :-
 	GoalInfo0 = goal_info(A, B, C, D, E, F, _, H, I, J),
 	GoalInfo = goal_info(A, B, C, D, E, F, DeltaLiveness, H, I, J).
-
-goal_info_get_internal_code_model(GoalInfo, CodeModel) :-
-	goal_info_get_internal_determinism(GoalInfo, Determinism),
-	determinism_to_code_model(Determinism, CodeModel).
-
-goal_info_get_internal_determinism(GoalInfo, Determinism) :-
-	GoalInfo = goal_info(_, Determinism, _, _, _, _, _, _, _, _).
-
-goal_info_set_internal_determinism(GoalInfo0, Determinism, GoalInfo) :-
-	GoalInfo0 = goal_info(A, _, C, D, E, F, G, H, I, J),
-	GoalInfo = goal_info(A, Determinism, C, D, E, F, G, H, I, J).
 
 goal_info_get_code_model(GoalInfo, CodeModel) :-
 	goal_info_get_determinism(GoalInfo, Determinism),

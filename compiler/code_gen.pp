@@ -37,43 +37,19 @@
 	shape_table, shape_table, c_procedure, io__state, io__state).
 :- mode generate_proc_code(in, in, in, in, di, uo, out, di, uo) is det.
 
-		% These predicates generate code for a goal
+		% This predicate generates code for a goal.
 
 :- pred code_gen__generate_goal(code_model, hlds__goal, code_tree,
 						code_info, code_info).
 :- mode code_gen__generate_goal(in, in, out, in, out) is det.
 
-:- pred code_gen__generate_det_goal(hlds__goal, code_tree,
-						code_info, code_info).
-:- mode code_gen__generate_det_goal(in, out, in, out) is det.
-
-:- pred code_gen__generate_semi_goal(hlds__goal, code_tree,
-							code_info, code_info).
-:- mode code_gen__generate_semi_goal(in, out, in, out) is det.
-
-:- pred code_gen__generate_non_goal(hlds__goal, code_tree,
-							code_info, code_info).
-:- mode code_gen__generate_non_goal(in, out, in, out) is det.
-
-		% These predicates generate code for a goal
-		% and leave all live values in locations
+		% This predicate generates code for a goal
+		% and leaves all live values in locations
 		% determined by the call_info structure.
 
 :- pred code_gen__generate_forced_goal(code_model, hlds__goal, code_tree,
 						code_info, code_info).
 :- mode code_gen__generate_forced_goal(in, in, out, in, out) is det.
-
-:- pred code_gen__generate_forced_det_goal(hlds__goal, code_tree,
-						code_info, code_info).
-:- mode code_gen__generate_forced_det_goal(in, out, in, out) is det.
-
-:- pred code_gen__generate_forced_semi_goal(hlds__goal, code_tree,
-						code_info, code_info).
-:- mode code_gen__generate_forced_semi_goal(in, out, in, out) is det.
-
-:- pred code_gen__generate_forced_non_goal(hlds__goal, code_tree,
-						code_info, code_info).
-:- mode code_gen__generate_forced_non_goal(in, out, in, out) is det.
 
 :- pred code_gen__output_args(assoc_list(var, arg_info), set(lval)).
 :- mode code_gen__output_args(in, out) is det.
@@ -129,7 +105,7 @@ generate_pred_list_code(ModuleInfo0, ModuleInfo, [PredId | PredIds],
 					PredInfo, ProcIds, Predicates0) 
 	),
 #if NU_PROLOG
-	{ module_info_shapes(ModuleInfo1, Shape_Table) },
+	{ module_info_get_shapes(ModuleInfo1, Shape_Table) },
 	{ putprop(codegen, codegen, Predicates0 - Shape_Table ), fail }.
 generate_pred_list_code(ModuleInfo0, ModuleInfo, [PredId | PredIds], 
 			Predicates) -->
@@ -166,7 +142,7 @@ generate_pred_code(ModuleInfo0, ModuleInfo, PredId, PredInfo, ProcIds, Code) -->
 		[]
 	),
 		% generate all the procedures for this predicate
-	{ module_info_shapes(ModuleInfo0, Shapes0) },
+	{ module_info_get_shapes(ModuleInfo0, Shapes0) },
 	generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
 		Shapes0, Shapes, [], Code),
 	{ module_info_set_shapes(ModuleInfo0, Shapes, ModuleInfo) }.
@@ -217,7 +193,7 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo,
 		PredId, ProcId, ProcInfo, CodeModel, InitialInst, FollowVars,
 		ModuleInfo, Shapes0, CodeInfo0) },
 		% generate code for the procedure
-	{ generate_category_code_2(CodeModel, Goal, CodeTree, SUsed, CodeInfo0,
+	{ generate_category_code(CodeModel, Goal, CodeTree, SUsed, CodeInfo0,
 		CodeInfo) },
 		% extract the new shape table
 	{ code_info__get_shapes(Shapes, CodeInfo, _CodeInfo1) },
@@ -241,11 +217,11 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo,
 		% construct a c_procedure structure with all the information
 	{ Proc = c_procedure(Name, Arity, ProcId, Instructions) }.
 
-:- pred generate_category_code_2(code_model, hlds__goal, code_tree, maybe(int),
+:- pred generate_category_code(code_model, hlds__goal, code_tree, maybe(int),
 				code_info, code_info).
-:- mode generate_category_code_2(in, in, out, out, in, out) is det.
+:- mode generate_category_code(in, in, out, out, in, out) is det.
 
-generate_category_code_2(model_det, Goal, Instrs, Used) -->
+generate_category_code(model_det, Goal, Instrs, Used) -->
 		% generate the code for the body of the clause
 	(
 		code_info__get_globals(Globals),
@@ -260,7 +236,7 @@ generate_category_code_2(model_det, Goal, Instrs, Used) -->
 		% but is a place holder.
 		code_info__manufacture_failure_cont(no),
 
-		code_gen__generate_det_goal(Goal, Instr1),
+		code_gen__generate_goal(model_det, Goal, Instr1),
 		code_info__get_instmap(InstMap),
 
 		% generate the prolog for the clause, which for deterministic
@@ -289,200 +265,31 @@ generate_category_code_2(model_det, Goal, Instrs, Used) -->
 		{ Instrs = tree(Instr0, tree(Instr1,Instr2)) }
 	).
 
-generate_category_code_2(model_semi, Goal, Instrs, Used) -->
+generate_category_code(model_semi, Goal, Instrs, Used) -->
 		% Make a new failure cont (not model_non)
 	code_info__manufacture_failure_cont(no),
 
 		% generate the code for the body of the clause
-	code_gen__generate_semi_goal(Goal, Instr1),
+	code_gen__generate_goal(model_semi, Goal, Instr1),
 	code_gen__generate_semi_prolog(Instr0, Used),
 	code_gen__generate_semi_epilog(Instr2),
 
 		% combine the prolog, body and epilog
 	{ Instrs = tree(Instr0, tree(Instr1,Instr2)) }.
 
-generate_category_code_2(model_non, Goal, Instrs, Used) -->
+generate_category_code(model_non, Goal, Instrs, Used) -->
 		% Make a failure continuation, we lie and
 		% say that it is nondet, and then unset it
 		% so that it points to do_fail
 	code_info__manufacture_failure_cont(yes),
 
 		% generate the code for the body of the clause
-	code_gen__generate_non_goal(Goal, Instr1),
+	code_gen__generate_goal(model_non, Goal, Instr1),
 	code_gen__generate_non_prolog(Instr0, Used),
 	code_gen__generate_non_epilog(Instr2),
 
 		% combine the prolog, body and epilog
 	{ Instrs = tree(Instr0, tree(Instr1,Instr2)) }.
-
-%---------------------------------------------------------------------------%
-
-code_gen__generate_goal(model_det, Goal, Code) -->
-	code_gen__generate_det_goal(Goal, Code).
-code_gen__generate_goal(model_semi, Goal, Code) -->
-	code_gen__generate_semi_goal(Goal, Code).
-code_gen__generate_goal(model_non, Goal, Code) -->
-	code_gen__generate_non_goal(Goal, Code).
-
-%---------------------------------------------------------------------------%
-
-code_gen__generate_forced_goal(Det, Goal, Code) -->
-	code_gen__generate_goal(Det, Goal, CodeA),
-	code_info__generate_forced_saves(CodeB),
-	{ Code = tree(CodeA, CodeB) },
-	code_info__remake_with_store_map.
-
-%---------------------------------------------------------------------------%
-
-code_gen__generate_forced_det_goal(Goal, Code) -->
-	code_gen__generate_forced_goal(model_det, Goal, Code).
-
-code_gen__generate_forced_semi_goal(Goal, Code) -->
-	code_gen__generate_forced_goal(model_semi, Goal, Code).
-
-code_gen__generate_forced_non_goal(Goal, Code) -->
-	code_gen__generate_forced_goal(model_non, Goal, Code).
-
-%---------------------------------------------------------------------------%
-
-% generate a deterministic goal - this predicate really just
-% arranges the information a bit more conveniently
-
-code_gen__generate_det_goal(Goal - GoalInfo, Instr) -->
-		% Make any changes to liveness before Goal
-	code_aux__pre_goal_update(GoalInfo),
-	code_info__get_instmap(InstMap),
-	(
-		{ InstMap \= unreachable }
-	->
-		{ goal_info_get_internal_code_model(GoalInfo, CodeModel) },
-		(
-			{ CodeModel \= model_det }
-		->
-			{error("code_gen__generate_det_goal: not a det goal.")}
-		;
-			{ true }
-		),
-			% generate goal
-		code_gen__generate_det_goal_2(Goal, GoalInfo, Instr0),
-			% Make live any variables which subsequent goals
-			% will expect to be live, but were not generated
-		code_info__set_instmap(InstMap),
-		code_aux__post_goal_update(GoalInfo),
-		code_info__get_globals(Options),
-		(
-			{ globals__lookup_bool_option(Options, lazy_code, yes) }
-		->
-			{ Instr1 = empty }
-		;
-			{ error("Eager code unavailable") }
-%%%			code_info__generate_eager_flush(Instr1)
-		),
-		{ Instr = tree(Instr0, Instr1) }
-	;
-		{ Instr = empty }
-	).
-
-:- pred code_gen__generate_det_goal_2(hlds__goal_expr, hlds__goal_info,
-					code_tree, code_info, code_info).
-:- mode code_gen__generate_det_goal_2(in, in, out, in, out) is det.
-
-code_gen__generate_det_goal_2(conj(Goals), _GoalInfo, Instr) -->
-	code_gen__generate_det_goals(Goals, Instr).
-code_gen__generate_det_goal_2(some(_Vars, Goal), _GoalInfo, Instr) -->
-	code_gen__generate_det_goal(Goal, Instr).
-code_gen__generate_det_goal_2(disj(_Goals), _GoalInfo, _Instr) -->
-	{ error("Disjunction cannot occur in deterministic code.") }.
-code_gen__generate_det_goal_2(not(_), _GoalInfo, _Instr) -->
-	{ error("Negation cannot occur in deterministic code.") }.
-code_gen__generate_det_goal_2(
-		call(PredId, ProcId, Args, Builtin, _, _Follow),
-							_GoalInfo, Instr) -->
-	(
-		{ is_builtin__is_internal(Builtin) }
-	->
-		call_gen__generate_det_builtin(PredId, ProcId, Args, Instr)
-	;
-		code_info__set_succip_used(yes),
-		call_gen__generate_det_call(PredId, ProcId, Args, Instr)
-	).
-code_gen__generate_det_goal_2(switch(Var, CanFail, CaseList), GoalInfo, Instr) -->
-	{ goal_info_store_map(GoalInfo, StoreMap0) },
-	(
-		{ StoreMap0 = yes(StoreMap) }
-	->
-		code_info__push_store_map(StoreMap),
-		switch_gen__generate_switch(model_det,
-						Var, CanFail, CaseList, Instr),
-		code_info__pop_store_map
-	;
-		switch_gen__generate_switch(model_det,
-						Var, CanFail, CaseList, Instr)
-	).
-code_gen__generate_det_goal_2(
-		if_then_else(_Vars, CondGoal, ThenGoal, ElseGoal),
-							GoalInfo, Instr) -->
-	{ goal_info_store_map(GoalInfo, StoreMap0) },
-	(
-		{ StoreMap0 = yes(StoreMap) }
-	->
-		code_info__push_store_map(StoreMap),
-		ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr),
-		code_info__pop_store_map
-	;
-		ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr)
-	).
-code_gen__generate_det_goal_2(unify(L, R, _U, Uni, _C), _GoalInfo, Instr) -->
-	(
-		{ Uni = assign(Left, Right) },
-		unify_gen__generate_assignment(Left, Right, Instr)
-	;
-		{ Uni = construct(Var, ConsId, Args, Modes) },
-		unify_gen__generate_construction(Var, ConsId, Args,
-								Modes, Instr)
-	;
-		{ Uni = deconstruct(Var, ConsId, Args, Modes, _Det) },
-		unify_gen__generate_det_deconstruction(Var, ConsId, Args,
-								Modes, Instr)
-	;
-		{ Uni = complicated_unify(UniMode, CanFail, _Follow) },
-		( { R = var(RVar) } ->
-			call_gen__generate_complicated_unify(L, RVar, UniMode,
-				CanFail, Instr)
-		;
-			{ error("generate_det_goal_2: invalid complicated unify") }
-		)
-	;
-		{ Uni = simple_test(_, _) },
-		{ error("generate_det_goal_2: cannot have det simple_test") }
-	).
-
-%---------------------------------------------------------------------------%
-
-% Generate a conjoined series of goals.
-% Note of course, that with a [deterministic] conjunction, state information
-% flows directly from one to the next atom.
-
-:- pred code_gen__generate_det_goals(hlds__goals, code_tree,
-							code_info, code_info).
-:- mode code_gen__generate_det_goals(in, out, in, out) is det.
-
-		% generating a deterministic
-		% conjunction is straight forward.
-code_gen__generate_det_goals([], empty) --> [].
-code_gen__generate_det_goals([Goal | Goals], Instr) -->
-		% generate this goal
-	code_gen__generate_det_goal(Goal, Instr1),
-	code_info__get_instmap(InstMap),
-	(
-		{ InstMap = unreachable }
-	->
-		{ Instr = Instr1 }
-	;
-			% generate the rest of the goals
-		code_gen__generate_det_goals(Goals, Instr2),
-		{ Instr = tree(Instr1, Instr2) }
-	).
 
 %---------------------------------------------------------------------------%
 
@@ -776,51 +583,197 @@ code_gen__generate_non_epilog(Instr) -->
 
 %---------------------------------------------------------------------------%
 
-code_gen__generate_semi_goal(Goal - GoalInfo, Instr) -->
+code_gen__generate_forced_goal(Det, Goal, Code) -->
+	code_gen__generate_goal(Det, Goal, CodeA),
+	code_info__generate_forced_saves(CodeB),
+	{ Code = tree(CodeA, CodeB) },
+	code_info__remake_with_store_map.
+
+%---------------------------------------------------------------------------%
+
+% Generate a goal. This predicate arranges for the necessary updates of
+% the generic data structures before and after the actual code generation,
+% which is delegated to context-specific predicates.
+
+code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
+		% Make any changes to liveness before Goal
 	code_aux__pre_goal_update(GoalInfo),
 	code_info__get_instmap(InstMap),
 	(
 		{ InstMap \= unreachable }
 	->
-		{ goal_info_get_internal_code_model(GoalInfo, CodeModel) },
+		{ goal_info_get_code_model(GoalInfo, CodeModel) },
 		(
 			{ CodeModel = model_det },
-			code_gen__generate_det_goal_2(Goal, GoalInfo, Instr0)
+			code_gen__generate_det_goal_2(Goal, GoalInfo, Code0)
 		;
 			{ CodeModel = model_semi },
-			code_gen__generate_semi_goal_2(Goal, GoalInfo, Instr0)
+			( { ContextModel \= model_det } ->
+				code_gen__generate_semi_goal_2(Goal, GoalInfo, Code0)
+			;
+				{ error("semidet model in det context") }
+			)
 		;
 			{ CodeModel = model_non },
-			code_info__generate_pre_commit(Label, PreCommit),
-			code_gen__generate_non_goal_2(Goal, GoalInfo, GoalCode),
-			code_info__generate_commit(Label, Commit),
-			{ Instr0 = tree(PreCommit, tree(GoalCode, Commit)) }
+			( { ContextModel = model_non } ->
+				code_gen__generate_non_goal_2(Goal, GoalInfo, Code0)
+			;
+				{ error("nondet model in det/semidet context") }
+			)
 		),
+			% Make live any variables which subsequent goals
+			% will expect to be live, but were not generated
 		code_info__set_instmap(InstMap),
 		code_aux__post_goal_update(GoalInfo),
 		code_info__get_globals(Options),
 		(
 			{ globals__lookup_bool_option(Options, lazy_code, yes) }
 		->
-			{ Instr1 = empty }
+			{ Code1 = empty }
 		;
 			{ error("Eager code unavailable") }
-%%%			code_info__generate_eager_flush(Instr1)
+%%%			code_info__generate_eager_flush(Code1)
 		),
-		{ Instr = tree(Instr0, Instr1) }
+		{ Code = tree(Code0, Code1) }
 	;
-		{ Instr = empty }
+		{ Code = empty }
 	),
 	!.
+
+%---------------------------------------------------------------------------%
+
+% Generate a conjoined series of goals.
+% Note of course, that with a conjunction, state information
+% flows directly from one to the next atom.
+
+:- pred code_gen__generate_goals(hlds__goals, code_model, code_tree,
+							code_info, code_info).
+:- mode code_gen__generate_goals(in, in, out, in, out) is det.
+
+code_gen__generate_goals([], _, empty) --> [].
+code_gen__generate_goals([Goal | Goals], CodeModel, Instr) -->
+	code_gen__generate_goal(CodeModel, Goal, Instr1),
+	code_info__get_instmap(InstMap),
+	(
+		{ InstMap = unreachable }
+	->
+		{ Instr = Instr1 }
+	;
+		code_gen__generate_goals(Goals, CodeModel, Instr2),
+		{ Instr = tree(Instr1, Instr2) }
+	).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_gen__generate_det_goal_2(hlds__goal_expr, hlds__goal_info,
+					code_tree, code_info, code_info).
+:- mode code_gen__generate_det_goal_2(in, in, out, in, out) is det.
+
+code_gen__generate_det_goal_2(conj(Goals), _GoalInfo, Instr) -->
+	code_gen__generate_goals(Goals, model_det, Instr).
+code_gen__generate_det_goal_2(some(_Vars, Goal), _GoalInfo, Instr) -->
+	{ Goal = _ - InnerGoalInfo },
+	{ goal_info_get_code_model(InnerGoalInfo, CodeModel) },
+	(
+		{ CodeModel = model_det },
+		code_gen__generate_goal(model_det, Goal, Instr)
+	;
+		{ CodeModel = model_semi },
+		{ error("unimplemented: semidet model in det context") }
+	;
+		{ CodeModel = model_non },
+		{ error("unimplemented: nondet model in det context") }
+	).
+code_gen__generate_det_goal_2(disj(_Goals), _GoalInfo, _Instr) -->
+	{ error("Disjunction cannot occur in deterministic code.") }.
+code_gen__generate_det_goal_2(not(_), _GoalInfo, _Instr) -->
+	{ error("Negation cannot occur in deterministic code.") }.
+code_gen__generate_det_goal_2(
+		call(PredId, ProcId, Args, Builtin, _, _Follow),
+							_GoalInfo, Instr) -->
+	(
+		{ is_builtin__is_internal(Builtin) }
+	->
+		call_gen__generate_det_builtin(PredId, ProcId, Args, Instr)
+	;
+		code_info__set_succip_used(yes),
+		call_gen__generate_det_call(PredId, ProcId, Args, Instr)
+	).
+code_gen__generate_det_goal_2(switch(Var, CanFail, CaseList), GoalInfo, Instr) -->
+	{ goal_info_store_map(GoalInfo, StoreMap0) },
+	(
+		{ StoreMap0 = yes(StoreMap) }
+	->
+		code_info__push_store_map(StoreMap),
+		switch_gen__generate_switch(model_det,
+						Var, CanFail, CaseList, Instr),
+		code_info__pop_store_map
+	;
+		switch_gen__generate_switch(model_det,
+						Var, CanFail, CaseList, Instr)
+	).
+code_gen__generate_det_goal_2(
+		if_then_else(_Vars, CondGoal, ThenGoal, ElseGoal),
+							GoalInfo, Instr) -->
+	{ goal_info_store_map(GoalInfo, StoreMap0) },
+	(
+		{ StoreMap0 = yes(StoreMap) }
+	->
+		code_info__push_store_map(StoreMap),
+		ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr),
+		code_info__pop_store_map
+	;
+		ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr)
+	).
+code_gen__generate_det_goal_2(unify(L, R, _U, Uni, _C), _GoalInfo, Instr) -->
+	(
+		{ Uni = assign(Left, Right) },
+		unify_gen__generate_assignment(Left, Right, Instr)
+	;
+		{ Uni = construct(Var, ConsId, Args, Modes) },
+		unify_gen__generate_construction(Var, ConsId, Args,
+								Modes, Instr)
+	;
+		{ Uni = deconstruct(Var, ConsId, Args, Modes, _Det) },
+		unify_gen__generate_det_deconstruction(Var, ConsId, Args,
+								Modes, Instr)
+	;
+		{ Uni = complicated_unify(UniMode, CanFail, _Follow) },
+		( { R = var(RVar) } ->
+			call_gen__generate_complicated_unify(L, RVar, UniMode,
+				CanFail, Instr)
+		;
+			{ error("generate_det_goal_2: invalid complicated unify") }
+		)
+	;
+		{ Uni = simple_test(_, _) },
+		{ error("generate_det_goal_2: cannot have det simple_test") }
+	).
+
+%---------------------------------------------------------------------------%
 
 :- pred code_gen__generate_semi_goal_2(hlds__goal_expr, hlds__goal_info,
 					code_tree, code_info, code_info).
 :- mode code_gen__generate_semi_goal_2(in, in, out, in, out) is det.
 
 code_gen__generate_semi_goal_2(conj(Goals), _GoalInfo, Code) -->
-	code_gen__generate_semi_goals(Goals, Code).
+	code_gen__generate_goals(Goals, model_semi, Code).
 code_gen__generate_semi_goal_2(some(_Vars, Goal), _GoalInfo, Code) -->
-	code_gen__generate_semi_goal(Goal, Code).
+	{ Goal = _ - InnerGoalInfo },
+	{ goal_info_get_code_model(InnerGoalInfo, CodeModel) },
+	(
+		{ CodeModel = model_det },
+		code_gen__generate_goal(model_det, Goal, Code)
+	;
+		{ CodeModel = model_semi },
+		code_gen__generate_goal(model_semi, Goal, Code)
+	;
+		{ CodeModel = model_non },
+		code_info__generate_pre_commit(Label, PreCommit),
+		code_gen__generate_goal(model_non, Goal, GoalCode),
+		code_info__generate_commit(Label, Commit),
+		{ Code = tree(PreCommit, tree(GoalCode, Commit)) }
+	).
 code_gen__generate_semi_goal_2(disj(Goals), GoalInfo, Code) -->
 	{ goal_info_store_map(GoalInfo, StoreMap0) },
 	(
@@ -900,30 +853,6 @@ code_gen__generate_semi_goal_2(unify(L, R, _U, Uni, _C),
 	).
 
 %---------------------------------------------------------------------------%
-
-:- pred code_gen__generate_semi_goals(hlds__goals, code_tree,
-							code_info, code_info).
-:- mode code_gen__generate_semi_goals(in, out, in, out) is det.
-
-		% generating a deterministic
-		% conjunction is straight forward.
-code_gen__generate_semi_goals([], empty) --> [].
-code_gen__generate_semi_goals([Goal | Goals], Instr) -->
-		% generate this goal
-	code_gen__generate_semi_goal(Goal, Instr1),
-		% generate the rest of the goals
-	code_info__get_instmap(InstMap),
-	(
-		{ InstMap = unreachable }
-	->
-		{ Instr = Instr1 }
-	;
-			% generate the rest of the goals
-		code_gen__generate_semi_goals(Goals, Instr2),
-		{ Instr = tree(Instr1, Instr2) }
-	).
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- pred code_gen__generate_negation(hlds__goal, code_tree,
@@ -957,7 +886,7 @@ code_gen__generate_negation(Goal, Code) -->
 		% The contained goal cannot be nondet, because if it's
 		% mode-correct, it won't have any output vars, and so
 		% it will be semi-det.
-	code_gen__generate_semi_goal(Goal, GoalCode),
+	code_gen__generate_goal(model_semi, Goal, GoalCode),
 	code_info__generate_under_failure(FailCode),
 	code_info__restore_failure_cont(RestoreContCode),
 	code_info__maybe_restore_hp(Reclaim, RestoreHeapCode),
@@ -968,47 +897,25 @@ code_gen__generate_negation(Goal, Code) -->
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-code_gen__generate_non_goal(Goal - GoalInfo, Instr) -->
-	code_aux__pre_goal_update(GoalInfo),
-	code_info__get_instmap(InstMap),
-	(
-		{ InstMap \= unreachable }
-	->
-		{ goal_info_get_internal_code_model(GoalInfo, CodeModel) },
-		(
-			{ CodeModel = model_det },
-			code_gen__generate_det_goal_2(Goal, GoalInfo, Instr0)
-		;
-			{ CodeModel = model_semi },
-			code_gen__generate_semi_goal_2(Goal, GoalInfo, Instr0)
-		;
-			{ CodeModel = model_non },
-			code_gen__generate_non_goal_2(Goal, GoalInfo, Instr0)
-		),
-		code_info__set_instmap(InstMap),
-		code_aux__post_goal_update(GoalInfo),
-		code_info__get_globals(Options),
-		(
-			{ globals__lookup_bool_option(Options, lazy_code, yes) }
-		->
-			{ Instr1 = empty }
-		;
-			{ error("Eager code unavailable") }
-%%%		       code_info__generate_eager_flush(Instr1)
-		),
-		{ Instr = tree(Instr0, Instr1) }
-	;
-		{ Instr = empty }
-	).
-
 :- pred code_gen__generate_non_goal_2(hlds__goal_expr, hlds__goal_info,
 					code_tree, code_info, code_info).
 :- mode code_gen__generate_non_goal_2(in, in, out, in, out) is det.
 
 code_gen__generate_non_goal_2(conj(Goals), _GoalInfo, Code) -->
-	code_gen__generate_non_goals(Goals, Code).
+	code_gen__generate_goals(Goals, model_non, Code).
 code_gen__generate_non_goal_2(some(_Vars, Goal), _GoalInfo, Code) -->
-	code_gen__generate_non_goal(Goal, Code).
+	{ Goal = _ - InnerGoalInfo },
+	{ goal_info_get_code_model(InnerGoalInfo, CodeModel) },
+	(
+		{ CodeModel = model_det },
+		code_gen__generate_goal(model_det, Goal, Code)
+	;
+		{ CodeModel = model_semi },
+		code_gen__generate_goal(model_semi, Goal, Code)
+	;
+		{ CodeModel = model_non },
+		code_gen__generate_goal(model_non, Goal, Code)
+	).
 code_gen__generate_non_goal_2(disj(Goals), GoalInfo, Code) -->
 	{ goal_info_store_map(GoalInfo, StoreMap0) },
 	(
@@ -1062,30 +969,6 @@ code_gen__generate_non_goal_2(
 code_gen__generate_non_goal_2(unify(_L, _R, _U, _Uni, _C),
 							_GoalInfo, _Code) -->
 	{ error("Cannot have a nondet unification.") }.
-
-%---------------------------------------------------------------------------%
-
-:- pred code_gen__generate_non_goals(hlds__goals, code_tree,
-							code_info, code_info).
-:- mode code_gen__generate_non_goals(in, out, in, out) is det.
-
-		% generating a deterministic
-		% conjunction is straight forward.
-code_gen__generate_non_goals([], empty) --> [].
-code_gen__generate_non_goals([Goal | Goals], Instr) -->
-		% generate this goal
-	code_gen__generate_non_goal(Goal, Instr1),
-		% generate the rest of the goals
-	code_info__get_instmap(InstMap),
-	(
-		{ InstMap = unreachable }
-	->
-		{ Instr = Instr1 }
-	;
-			% generate the rest of the goals
-		code_gen__generate_non_goals(Goals, Instr2),
-		{ Instr = tree(Instr1, Instr2) }
-	).
 
 %---------------------------------------------------------------------------%
 

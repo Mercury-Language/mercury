@@ -124,6 +124,7 @@ detect_cse_in_procs([ProcId | ProcIds], PredId, Redo0, Redo,
 		% To process each ProcInfo, we get the goal,
 		% initialize the instmap based on the modes of the head vars,
 		% and pass these to `detect_cse_in_goal'.
+
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
 	detect_cse_in_goal(Goal0, InstMap0, ModuleInfo0, Redo1, Goal1),
@@ -142,23 +143,12 @@ detect_cse_in_procs([ProcId | ProcIds], PredId, Redo0, Redo,
 		pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 		map__set(PredTable0, PredId, PredInfo, PredTable),
 		module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
-		% cse_debug(ProcInfo, ModuleInfo1, IOstate0, IOstate1)
 		IOstate1 = IOstate0
 	),
 
 	bool__or(Redo0, Redo1, Redo2),
 	detect_cse_in_procs(ProcIds, PredId, Redo2, Redo,
 		ModuleInfo1, ModuleInfo, IOstate1, IOstate).
-
-:- pred cse_debug(proc_info, module_info, io__state, io__state).
-:- mode cse_debug(in, in, di, uo) is det.
-
-cse_debug(ProcInfo, ModuleInfo) -->
-	{ proc_info_goal(ProcInfo, Goal) },
-	{ proc_info_variables(ProcInfo, Varset) },
-	io__write_string("\n"),
-	hlds_out__write_goal(Goal, ModuleInfo, Varset, 0),
-	io__write_string("\n").
 
 %-----------------------------------------------------------------------------%
 

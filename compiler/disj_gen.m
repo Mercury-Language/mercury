@@ -85,7 +85,7 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 	code_info__get_live_variables(Vars),
 	code_gen__ensure_vars_are_saved(Vars, GoalCode0), 
 	code_info__grab_code_info(CodeInfo),
-	code_gen__generate_forced_non_goal(Goal, GoalCode1),
+	code_gen__generate_forced_goal(model_non, Goal, GoalCode1),
 	{ GoalCode = tree(GoalCode0, GoalCode1) },
 	code_info__slap_code_info(CodeInfo),
 	{ SuccCode =
@@ -101,7 +101,7 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 		code_info__restore_failure_cont(RestoreAfterFailureCode),
 		code_info__maybe_get_old_hp(ReclaimHeap, RestoreHeapCode),
 		code_info__maybe_pop_stack(ReclaimHeap, PopCode),
-		code_gen__generate_forced_non_goal(Goal2, Goal2Code),
+		code_gen__generate_forced_goal(model_non, Goal2, Goal2Code),
 		{ EndCode = node([
 			label(EndLab) - "End of disj"
 		]) },

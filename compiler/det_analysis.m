@@ -41,6 +41,12 @@
 :- pred determinism_pass(module_info, module_info, io__state, io__state).
 :- mode determinism_pass(in, out, di, uo) is det.
 
+:- pred det_conjunction_maxsoln(soln_count, soln_count, soln_count).
+:- mode det_conjunction_maxsoln(in, in, out) is det.
+
+:- pred det_conjunction_canfail(can_fail, can_fail, can_fail).
+:- mode det_conjunction_canfail(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -239,6 +245,22 @@ det_infer_proc(ModuleInfo0, PredId, PredMode, State0, ModuleInfo, State) :-
 	% It annotates the goal and all its subgoals with their determinism
 	% and returns the annotated goal in `Goal'.
 
+/*****************
+%	;
+%		It would nice to do this, but the transformation is valid
+%		only if the goal being pruned may not raise an exception,
+%		and at the moment we do not gather information on this.
+%		In any case, without further changes this transformation
+%		screws up delta-instantiations and liveness.
+%
+%		Detism = failure
+%	->
+%		Goal2 = disj([]),
+%		goal_info_set_internal_determinism(GoalInfo0, InternalDetism,
+%			GoalInfo1),
+%		goal_info_set_determinism(GoalInfo1, Detism, GoalInfo2)
+******************/
+
 :- pred det_infer_goal(hlds__goal, instmap, misc_info,
 			hlds__goal, instmap, determinism).
 :- mode det_infer_goal(in, in, in, out, out, out) is det.
@@ -253,8 +275,6 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 
 	% If a goal with possibly multiple solutions doesn't have any
 	% output variables, then we make it succeed at most once.
-	% By setting the InternalDetism different from the external Detism
-	% we tell the code generator to generate a commit after the goal.
 
 	determinism_components(InternalDetism, CanFail, InternalSolns),
 	(
@@ -266,12 +286,16 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 		Detism = InternalDetism
 	),
 
-	determinism_components(Detism, _CanFail2, ExternalSolns),
+	% See how we should introduce the commit operator, if one is needed.
+
 	(
-		ExternalSolns = at_most_one,
+		determinism_components(Detism, _CanFail2, ExternalSolns),
+		\+ ExternalSolns = at_most_many,
 		Goal1 = disj(Disjuncts),
 		Disjuncts \= []
 	->
+		% Disjunctions should always be able succeed several times.
+
 		det__disj_to_ite(Disjuncts, GoalInfo0, Goal2),
 		implicitly_quantify_goal(Goal2 - GoalInfo0, NonLocalVars,
 			GoalPair3),
@@ -282,25 +306,15 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 		;
 			error("transformation of pruned disj to ite changes its determinism")
 		)
-/*****************
-%	;
-%		It would nice to do this, but without further changes
-%		it screws up delta-instantiations and liveness.
-%		It is also not clear whether this optimization is allowed
-%		by the semantics of Mercury.
-%
-%		Detism = failure
-%	->
-%		Goal = disj([]),
-%		goal_info_set_internal_determinism(GoalInfo0, InternalDetism,
-%			GoalInfo1),
-%		goal_info_set_determinism(GoalInfo1, Detism, GoalInfo)
-******************/
+	;
+		Detism \= InternalDetism
+	->
+		Goal = some([], Goal1 - InnerInfo),
+		goal_info_set_determinism(GoalInfo0, InternalDetism, InnerInfo),
+		goal_info_set_determinism(GoalInfo0, Detism, GoalInfo)
 	;
 		Goal = Goal1,
-		goal_info_set_internal_determinism(GoalInfo0, InternalDetism,
-			GoalInfo1),
-		goal_info_set_determinism(GoalInfo1, Detism, GoalInfo)
+		goal_info_set_determinism(GoalInfo0, Detism, GoalInfo)
 	).
 
 :- pred det__disj_to_ite(list(hlds__goal), hlds__goal_info, hlds__goal_expr).
@@ -426,13 +440,13 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), InstMap0, MiscInfo,
 /***********
 % The following optimization is not semantically valid - fjh.
 % That depends on your view of semantics - zs.
-	; CondSolns = at_most_zero ->
-		% Optimize away the condition and the `then' part.
-		% XXX We could give a warning if the condition
-		% contains a (possibly indirect) call to error.
-		Else0 = ElseGoal0 - _,
-		det_infer_goal_2(ElseGoal0, InstMap0, MiscInfo,
-			NonLocalVars, DeltaInstMap, Goal, Detism)
+%	; CondSolns = at_most_zero ->
+%		% Optimize away the condition and the `then' part.
+%		% XXX We could give a warning if the condition
+%		% contains a (possibly indirect) call to error.
+%		Else0 = ElseGoal0 - _,
+%		det_infer_goal_2(ElseGoal0, InstMap0, MiscInfo,
+%			NonLocalVars, DeltaInstMap, Goal, Detism)
 ************/
 	;
 		det_infer_goal(Then0, InstMap1, MiscInfo, Then, _, ThenDetism),
@@ -470,18 +484,16 @@ det_infer_goal_2(not(Goal0), InstMap0, MiscInfo, _, _, Goal, Det) :-
 	;
 		Goal = not(Goal1)
 	).
-/*************
-% The following optimizations are not semantically valid - fjh.
-% That depends on your view of semantics - zs.
-	determinism_components(NegDet, NegCanFail, NegSolns),
-	( NegCanFail = cannot_fail, NegDet \= erroneous ->
-		Goal = disj([])
-	; NegSolns = at_most_zero ->
-		Goal = conj([])
-	;
-		Goal = not(Goal1)
-	).
-************/
+% The following optimizations are semantically valid only if we know that
+% the goal concerned cannot raise exceptions.
+%	determinism_components(NegDet, NegCanFail, NegSolns),
+%	( NegCanFail = cannot_fail, NegDet \= erroneous ->
+%		Goal = disj([])
+%	; NegSolns = at_most_zero ->
+%		Goal = conj([])
+%	;
+%		Goal = not(Goal1)
+%	).
 
 	% explicit quantification isn't important, since we've already
 	% stored the information about variable scope in the goal_info.
@@ -514,6 +526,7 @@ det_infer_conj([Goal0 | Goals0], InstMap0, MiscInfo, CanFail0, MaxSolns0,
 	% We should look to see when we get to a not_reached point
 	% and optimize away the remaining elements of the conjunction.
 	% But that optimization is done in the code generation anyway.
+
 	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, InstMap1, Detism1),
 	determinism_components(Detism1, CanFail1, MaxSolns1),
 	det_conjunction_canfail(CanFail0, CanFail1, CanFail2),
@@ -586,9 +599,6 @@ det_infer_unify(complicated_unify(_, CanFail, _), _MiscInfo, Detism) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred det_conjunction_maxsoln(soln_count, soln_count, soln_count).
-:- mode det_conjunction_maxsoln(in, in, out) is det.
-
 det_conjunction_maxsoln(at_most_zero, at_most_zero, at_most_zero).
 det_conjunction_maxsoln(at_most_zero, at_most_one,  at_most_zero).
 det_conjunction_maxsoln(at_most_zero, at_most_many, at_most_zero).
@@ -598,9 +608,6 @@ det_conjunction_maxsoln(at_most_one,  at_most_many, at_most_many).
 det_conjunction_maxsoln(at_most_many, at_most_zero, at_most_zero).
 det_conjunction_maxsoln(at_most_many, at_most_one,  at_most_many).
 det_conjunction_maxsoln(at_most_many, at_most_many, at_most_many).
-
-:- pred det_conjunction_canfail(can_fail, can_fail, can_fail).
-:- mode det_conjunction_canfail(in, in, out) is det.
 
 det_conjunction_canfail(can_fail,    can_fail,    can_fail).
 det_conjunction_canfail(can_fail,    cannot_fail, can_fail).
@@ -790,10 +797,12 @@ compare_determinisms(DeclaredDetism, InferredDetism, CmpDetism) :-
 	determinism_components(InferredDetism, InferredCanFail, InferredSolns),
 	compare_canfails(DeclaredCanFail, InferredCanFail, CmpCanFail),
 	compare_solncounts(DeclaredSolns, InferredSolns, CmpSolns),
+
 	% We can get e.g. tighter canfail and looser solncount
 	% e.g. for a predicate declared multidet and inferred semidet.
 	% Therefore the ordering of the following two tests is important:
 	% we want errors to take precedence over warnings.
+
 	( ( CmpCanFail = tighter ; CmpSolns = tighter ) ->
 		CmpDetism = tighter
 	; ( CmpCanFail = looser ; CmpSolns = looser ) ->
@@ -833,21 +842,10 @@ compare_solncounts(at_most_many, at_most_many, sameas).
 :- mode det_diagnose_goal(in, in, in, out, di, uo) is det.
 
 det_diagnose_goal(Goal - GoalInfo, Desired, MiscInfo, Diagnosed) -->
-	{ goal_info_get_determinism(GoalInfo, External) },
-	( { compare_determinisms(Desired, External, tighter) } ->
-		{ goal_info_get_internal_determinism(GoalInfo, Internal) },
-		{ External = Internal ->
-			Desired1 = Desired
-		;
-			determinism_components(Desired, CanFail, _),
-			determinism_components(Desired1, CanFail, at_most_many)
-		},
-		( { compare_determinisms(Desired1, Internal, tighter) } ->
-			det_diagnose_goal_2(Goal, GoalInfo, Desired1, Internal,
-				MiscInfo, Diagnosed)
-		;
-			{ Diagnosed = no }
-		)
+	{ goal_info_get_determinism(GoalInfo, Actual) },
+	( { compare_determinisms(Desired, Actual, tighter) } ->
+		det_diagnose_goal_2(Goal, GoalInfo, Desired, Actual,
+			MiscInfo, Diagnosed)
 	;
 		{ Diagnosed = no }
 	).
@@ -1034,8 +1032,17 @@ det_diagnose_goal_2(not(_), GoalInfo, _, _, _, yes) -->
 	prog_out__write_context(Context),
 	io__write_string("  with a negated goal that stays a negation.\n").
 
-det_diagnose_goal_2(some(_Vars, Goal), _, Desired, _, MiscInfo, Diagnosed) -->
-	det_diagnose_goal(Goal, Desired, MiscInfo, Diagnosed).
+det_diagnose_goal_2(some(_Vars, Goal), _, Desired, Actual,
+		MiscInfo, Diagnosed) -->
+	{ Goal = _ - GoalInfo },
+	{ goal_info_get_determinism(GoalInfo, Internal) },
+	{ Actual = Internal ->
+		InternalDesired = Desired
+	;
+		determinism_components(Desired, CanFail, _),
+		determinism_components(InternalDesired, CanFail, at_most_many)
+	},
+	det_diagnose_goal(Goal, InternalDesired, MiscInfo, Diagnosed).
 
 %-----------------------------------------------------------------------------%
 

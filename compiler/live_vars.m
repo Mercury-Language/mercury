@@ -113,22 +113,9 @@ detect_live_vars_in_goal(Goal0 - GoalInfo, ExtraLives0, Liveness0,
 	set__union(Liveness1, PreBirths, Liveness2),
 	set__difference(Liveness2, PostDeaths, Liveness3),
 
-	goal_info_get_internal_code_model(GoalInfo, GoalModel),
 	detect_live_vars_in_goal_2(Goal0, ExtraLives0, Liveness3, LiveSets0,
-		GoalModel, ModuleInfo, ExtraLives1, Liveness4, LiveSets1),
+		CodeModel, ModuleInfo, ExtraLives, Liveness4, LiveSets1),
 
-	(
-		(
-			CodeModel = model_det
-		;
-			CodeModel = model_semi
-		),
-		GoalModel = model_non
-	->
-		ExtraLives = ExtraLives0
-	;
-		ExtraLives = ExtraLives1
-	),
         set__union(Liveness4, PostBirths, Liveness),
 
 		% Add extra interference for variables that become live
@@ -205,7 +192,17 @@ detect_live_vars_in_goal_2(not(Goal0), ExtraLives0, Liveness0, LiveSets0,
 detect_live_vars_in_goal_2(some(_Vs, Goal0), ExtraLives0, Liveness0, LiveSets0,
 		CodeModel, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
 	detect_live_vars_in_goal(Goal0, ExtraLives0, Liveness0, LiveSets0,
-		CodeModel, ModuleInfo, ExtraLives, Liveness, LiveSets).
+		CodeModel, ModuleInfo, ExtraLives1, Liveness, LiveSets),
+	Goal0 = _ - GoalInfo0,
+	goal_info_get_code_model(GoalInfo0, InnerModel),
+	(
+		InnerModel = model_non,
+		( CodeModel = model_det ; CodeModel = model_semi )
+	->
+		ExtraLives = ExtraLives0
+	;
+		ExtraLives = ExtraLives1
+	).
 
 detect_live_vars_in_goal_2(
 		call(PredId, ProcId, ArgVars, Builtin, _SymName, _Follow),

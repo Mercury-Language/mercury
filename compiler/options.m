@@ -92,6 +92,7 @@
 		;	use_macro_for_redo_fail
 		;	tags
 		;	num_tag_bits
+		;	prev_code
 		;	follow_code
 		;	follow_vars
 		;	gc
@@ -202,6 +203,7 @@ option_defaults_2(code_gen_option, [
 		% Code Generation Options
 	tags			-	string("low"),
 	polymorphism		-	bool(yes),
+	prev_code		-	bool(no),
 	follow_code		-	bool(yes),
 	follow_vars		-	bool(yes),
 	lazy_code		-	bool(yes),
@@ -316,11 +318,13 @@ long_option("warn-missing-det-decls",	warn_missing_det_decls).
 long_option("warn-det-decls-too-lax",	warn_det_decls_too_lax).
 long_option("inhibit-warnings",		inhibit_warnings).
 long_option("typecheck-only",		typecheck_only).
+long_option("errorcheck-only",		errorcheck_only).
 long_option("debug-types",		debug_types).
 long_option("debug-modes",		debug_modes).
 long_option("vndebug",			vndebug).
 long_option("generate-dependencies",	generate_dependencies).
 long_option("tags",			tags).
+long_option("prev-code",		prev_code).
 long_option("follow-code",		follow_code).
 long_option("follow-vars",		follow_vars).
 long_option("lazy-code",		lazy_code).
@@ -490,8 +494,10 @@ options_help -->
 	io__write_string("\t--garbage-collection {none, conservative, accurate}\n"),
 	io__write_string("\t\tSpecify which method of garbage collection to use\n"),
 	io__write_string("\t\t (default: conservative). `accurate' GC is not yet implemented.\n"),
+	io__write_string("\t--prev-code\n"),
+	io__write_string("\t\tMigrate into the start of branched goals.\n"),
 	io__write_string("\t--no-follow-code\n"),
-	io__write_string("\t\tDon't migrate builtin goals into branched goals.\n"),
+	io__write_string("\t\tDon't migrate into the end of branched goals.\n"),
 	io__write_string("\t--no-follow-vars\n"),
 	io__write_string("\t\tDon't optimise the assignment of registers in branched goals.\n"),
 	io__write_string("\t--no-reclaim-heap-on-nondet-failure\n"),

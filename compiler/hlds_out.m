@@ -426,13 +426,6 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 		io__write_string("% determinism: "),
 		{ goal_info_get_determinism(GoalInfo, Determinism) },
 		hlds_out__write_determinism(Determinism),
-		{ goal_info_get_internal_determinism(GoalInfo, IDeterminism) },
-		( { Determinism \= IDeterminism } ->
-			io__write_string(", internal determinism: "),
-			hlds_out__write_determinism(IDeterminism)
-		;
-			[]
-		),
 		mercury_output_newline(Indent)
 	;
 		[]

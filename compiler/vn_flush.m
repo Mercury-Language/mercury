@@ -77,6 +77,9 @@ vn__flush_node(Node, Ctrlmap, Nodes0, Nodes, VnTables0, VnTables,
 		{ vn__flush_ctrl_node(VnInstr, N,
 			VnTables0, VnTables, Templocs0, Templocs, Instrs) }
 	),
+	% we should look at all the temporary regs here and call reuse_temploc
+	% for the ones that store values that are not live and are not needed
+	% any more.
 	vn__flush_end_msg(Instrs, VnTables).
 
 %-----------------------------------------------------------------------------%
@@ -577,15 +580,7 @@ vn__flush_vn(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 			)
 		)
 	),
-	vn__del_old_use(Vn, Src, VnTables3, VnTables),
-	true.
-	% vn__lookup_uses(Vn, NewUses, "vn__flush_vn", VnTables),
-	% ( NewUses = [_|_] ->
-	% 	NewlyFree = NewlyFree0
-	% ;
-	% 	vn__lookup_current_locs(Vn, NewlyFree1, "vn__flush_vn", VnTables0)
-	% 	list__append(NewlyFree0, NewlyFree1, NewlyFree)
-	% ).
+	vn__del_old_use(Vn, Src, VnTables3, VnTables).
 
 %-----------------------------------------------------------------------------%
 
