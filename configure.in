@@ -1418,7 +1418,7 @@ case "$host" in
 	# due to problems with the `gp' register.  Ideally we
 	# ought to write a big enough example program to trigger
 	# the problem, but that would be too much work.
-	alpha-dec-*)
+	alpha*-dec-*)
 		MERCURY_MSG("asm labels work on the Alpha")
 		MERCURY_MSG("but plain gcc labels do not")
 		mercury_cv_asm_labels=yes
@@ -1620,7 +1620,7 @@ AC_MSG_RESULT($mercury_cv_gcc_model_reg)
 # Figure out which flavour of pthreads to use, since none of the
 # implementations seem to be exactly the same
 case $host in
-	alpha-dec-osf*)
+	alpha*-dec-osf*)
 		mercury_cv_use_digital_unix_threads=yes ;;
 
 	*)
@@ -1881,7 +1881,7 @@ case "$host" in
 		NUM_REAL_R_TEMPS=0
 		HAVE_DELAY_SLOT=
 		;;
-	alpha-*)
+	alpha*-*)
 		# NUM_REAL_REGS=6
 		# but succip, sp, and hp are real regs, so subtract 3
 		NUM_REAL_R_REGS=3
@@ -2092,7 +2092,7 @@ case "$host" in
 
 		EXT_FOR_SHARED_LIB=so
 		;;
-	alpha-dec-osf*)
+	alpha*-dec-osf*)
 		AC_MSG_RESULT(yes)
 		LINK_SHARED_OBJ="gcc -shared \
 		-Wl,-O3,-update_registry,\$(SO_LOCATIONS_DIR)so_locations"

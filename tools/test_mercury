@@ -557,6 +557,16 @@ case $HOST in
 		fullname=$fullarch
 		;;
 esac
+
+# For alphas, we don't care about the differences between
+# different processor revisions, since the generated
+# binaries work on all of them.
+case $fullname in
+	alpha*-dec-osf3.2)
+		fullname=alpha-dec-osf3.2
+		;;
+esac
+
 # cvs does not allow `.' in tag names, so we use `_' instead
 fullname_tag=`echo $fullname | tr . _`
 
