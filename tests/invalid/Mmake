@@ -15,7 +15,9 @@ SOURCES= \
 	errors.m \
 	errors1.m \
 	errors2.m \
+	freefree.m \
 	io_in_ite_cond.m \
+	lambda_type_bad.m \
 	missing_det_decls.m \
 	modes_erroneous.m \
 	mostly_uniq1.m \
