@@ -1,3 +1,7 @@
+% If this test fails when run natively under Win32 (no cygwin) then make
+% sure that either the TMPDIR environment variable points somewhere
+% sensible or that a directory <drive letter>:\tmp exists.
+
 :- module remove_file.
 :- interface.
 :- use_module io.
@@ -7,7 +11,7 @@
 :- implementation.
 
 main -->
-	io__tmpnam(Name),
+	io__make_temp(Name),
 %%%%%%%	io__print("Temp file name = "), io__print(Name), io__nl,
 	io__tell(Name, TellResult),
 	( { TellResult = io__ok },

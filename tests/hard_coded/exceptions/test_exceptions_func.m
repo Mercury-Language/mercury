@@ -20,7 +20,6 @@
 :- pred main(io__state::di, io__state::uo) is cc_multi.
 
 :- implementation.
-:- import_module std_util.
 :- import_module exception.
 
 main --> 
@@ -44,7 +43,6 @@ det_throw(throw("det_throw")).
 
 :- pred semidet_throw(string::out) is semidet.
 semidet_throw(throw("semidet_throw")).
-
 
 :- pred det_succeed(string::out) is det.
 det_succeed("det_succeed").

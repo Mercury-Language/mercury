@@ -12,6 +12,7 @@ ORDINARY_PROGS=	\
 	agg \
 	bidirectional \
 	bigtest \
+	bitset \
 	boyer \
 	c_write_string \
 	cc_and_non_cc_test \
@@ -106,7 +107,6 @@ ORDINARY_PROGS=	\
 	string_loop \
 	term_io_test \
 	term_to_univ_test \
-	test_bitset \
 	test_imported_no_tag \
 	tim_qual1 \
 	tuple_test \
