@@ -210,6 +210,10 @@ maybe_pred(Pred, X, Y) :-
 #include ""imp.h""
 #include ""deep_copy.h""
 
+extern const struct
+	mercury_data_mercury_builtin__base_type_info_list_1_struct
+	mercury_data_mercury_builtin__base_type_info_list_1;
+
 Declare_entry(do_call_nondet_closure);
 
 Define_extern_entry(mercury__std_util__builtin_solutions_2_0);
@@ -356,10 +360,6 @@ Define_label(mercury__std_util__builtin_solutions_2_0_i2);
 
 	  Word* new_type_info[2];
 	 
-	  extern const struct 
-		  mercury_data_mercury_builtin__base_type_info_list_1_struct
-		  mercury_data_mercury_builtin__base_type_info_list_1;
-
 	  new_type_info[0] = (Word *) (Word)
 	  	&mercury_data_mercury_builtin__base_type_info_list_1;
 	  new_type_info[1] = (Word *) type_info_fv;
@@ -428,9 +428,9 @@ END_MODULE
 /*
 INIT sys_init_solutions_module
 */
+extern ModuleFunc solutions_module;
 void sys_init_solutions_module(void); /* suppress gcc -Wmissing-decl warning */
 void sys_init_solutions_module(void) {
-	extern ModuleFunc solutions_module;
 	solutions_module();
 }
 
@@ -479,6 +479,10 @@ int	mercury_compare_type_info(Word type_info_1, Word type_info_2);
 ** (based on the addresses of the unification predicates, or in
 ** the case of higher order types, the arity).
 */
+
+extern const struct
+	mercury_data___base_type_info_pred_0_struct
+	mercury_data___base_type_info_pred_0;
 
 int
 mercury_compare_type_info(Word type_info_1, Word type_info_2)
@@ -557,9 +561,6 @@ mercury_compare_type_info(Word type_info_1, Word type_info_2)
 		return COMPARE_EQUAL;
 	else
 	{
-		extern const struct mercury_data___base_type_info_pred_0_struct
-			mercury_data___base_type_info_pred_0;
-
 				/* Check for higher order */
 		if (base_type_info_1 ==
 				(Word) &mercury_data___base_type_info_pred_0) {
@@ -816,9 +817,9 @@ END_MODULE
 /*
 INIT sys_init_unify_univ_module
 */
+extern ModuleFunc unify_univ_module;
 void sys_init_unify_univ_module(void); /* suppress gcc -Wmissing-decl warning */
 void sys_init_unify_univ_module(void) {
-	extern ModuleFunc unify_univ_module;
 	unify_univ_module();
 }
 
