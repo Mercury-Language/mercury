@@ -321,8 +321,7 @@ then
 	fi
 	ln -s $root/conf* .
 	ln -s $root/VERSION .
-	ln -s $root/.README.in .
-	ln -s $root/.INSTALL.in .
+	ln -s $root/.*.in .
 	rm -f config*.log
 	cp $root/Mmake* .
 	if test -f $root/Mmake.stage.params
@@ -468,8 +467,7 @@ then
 	ln -s $root/profiler .
 	ln -s $root/conf* .
 	ln -s $root/VERSION .
-	ln -s $root/.README.in .
-	ln -s $root/.INSTALL.in .
+	ln -s $root/.*.in .
 	rm -f config*.log
 	cp $root/Mmake* .
 	if test -f $root/Mmake.stage.params
