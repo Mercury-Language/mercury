@@ -55,6 +55,7 @@ MLFLAGS-mode_choice = --no-strip
 # statically, and we do want to have at least one test case to test
 # static linking.
 MGNUCFLAGS-parse	=	--no-pic-reg
+MGNUCFLAGS-parse_init	=	--no-pic-reg
 MLFLAGS-parse		=	--trace --static
 
 MLFLAGS-split-c-files	=	--trace
