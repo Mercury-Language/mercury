@@ -304,8 +304,8 @@ esac
 
 BETA_FTPHOST=ftp.mercury.cs.mu.oz.au
 BETA_FTPDIR=/home/ftp/pub/mercury/beta-releases/$FTP_DIR_NAME
-BETA_WEBDIR=/home/mercury5/installed_w3/download/files/beta-releases/$FTP_DIR_NAME
-BETA_WEBDIR_TOP=/home/mercury5/installed_w3/download/files
+BETA_WEBDIR_TOP=/home/mercury/public/installed_w3/download/files
+BETA_WEBDIR=$BETA_WEBDIR_TOP/beta-releases/$FTP_DIR_NAME
 
 STABLE=$HOSTDIR/$INSTALL_DIR_NAME-stable
 UNSTABLE=$HOSTDIR/$INSTALL_DIR_NAME-unstable
@@ -1025,7 +1025,8 @@ case $HOST in $ROTD_HOST)
 	rm -f $BETA_WEBDIR/mercury-extras-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
 	rm -f $BETA_WEBDIR/mercury-tests-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
 	rm -f $BETA_WEBDIR/mercury-*-$RELEASE_VERSION_PATTERN-unstable.txt &&
-	cp $UNSTABLE/mercury-*-$version-unstable.* $BETA_WEBDIR
+	cp $UNSTABLE/mercury-*-$version-unstable.* $BETA_WEBDIR \
+	|| set_status "copying ROTD"
 	;;
 esac
 case $HOST in $GCC_ROTD_HOST)
@@ -1037,7 +1038,8 @@ case $HOST in $GCC_ROTD_HOST)
 	    $BETA_FTPHOST:$BETA_FTPDIR/mercury-gcc-$version-unstable.tar.gz  &&
 	rm -f $BETA_WEBDIR/mercury-gcc-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
 	cp $UNSTABLE/mercury-gcc-$version.tar.gz \
-		$BETA_WEBDIR/mercury-gcc-$version-unstable.tar.gz
+		$BETA_WEBDIR/mercury-gcc-$version-unstable.tar.gz \
+	|| set_status "copying mercury-gcc ROTD"
 	;;
 esac
 
@@ -1291,7 +1293,7 @@ case $HOST in
     $ROTD_HOST)
 	echo "test_mercury generating www index files, starting at `date`" 1>&2
 	(
-	cd $BETA_WEBDIR_TOP
+	cd $BETA_WEBDIR_TOP &&
 	generate_index_html
 	) || set_status "generating www index"
 	echo "test_mercury generating www index files, finished at `date`" 1>&2
