@@ -2292,7 +2292,7 @@ if test "$BEST_GRADE_FOR_COMPILER" != "$BOOTSTRAP_GRADE"; then
 "using grade \`$GRADE' to compile the compiler
 	compiler and library will be rebuilt with new grade
 	installation may take a long time")
-		find library compiler browser profiler deep_profiler \
+		find library compiler browser analysis profiler deep_profiler \
 			-name \*.c -o -name \*.c_date | xargs rm
 	fi
 else
