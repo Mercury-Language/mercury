@@ -412,7 +412,7 @@
     #define ENTRY(label) 	(entry(label))
     #define STATIC(label) 	(entry(label))
 
-    #ifndef JUMP(label)
+    #ifndef JUMP
     #define JUMP(label)		goto *(label)
     #endif
 
