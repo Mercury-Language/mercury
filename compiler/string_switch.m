@@ -51,7 +51,7 @@ string_switch__generate(Cases, Var, Det, _LocalDet, EndLabel, Code) -->
 
 		% Compute the hash table
 		%
-		string_switch__hash_cases(Cases, TableSize, HashValsMap),
+		string_switch__hash_cases(Cases, HashMask, HashValsMap),
 		map__to_assoc_list(HashValsMap, HashValsList),
 		string_switch__calc_hash_slots(HashValsList, HashValsMap,
 			HashSlotsMap)
@@ -113,15 +113,15 @@ string_switch__generate(Cases, Var, Det, _LocalDet, EndLabel, Code) -->
 
 string_switch__hash_cases([], _, Map) :-
 	map__init(Map).
-string_switch__hash_cases([Case | Cases], TableSize, Map) :-
-	string_switch__hash_cases(Cases, TableSize, Map0),
+string_switch__hash_cases([Case | Cases], HashMask, Map) :-
+	string_switch__hash_cases(Cases, HashMask, Map0),
 	( Case = case(_, string_constant(String0), _, _) ->
 		String = String0
 	;
 		error("string_switch__hash_cases: non-string case?")
 	),
 	string__hash(String, HashVal0),
-	HashVal is HashVal0 mod TableSize,
+	HashVal is HashVal0 /\ HashMask,
 	( map__search(Map0, HashVal, CaseList0) ->
 		map__set(Map0, HashVal, [Case | CaseList0], Map)
 	;
