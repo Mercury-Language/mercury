@@ -235,9 +235,13 @@
 
 	% fold_up(F, Acc, Low, High) = list.foldl(F, Low `..` High, Acc)
 	%
+	% NOTE: fold_up/4 is undefined if High = int__max_int.
+	%
 :- func int__fold_up(func(int, T) = T, T, int, int) = T.
 
 	% fold_down(F, Acc, Low, High) = list.foldr(F, Low `..` High, Acc)
+	%
+	% NOTE: fold_down/4 is undefined if Low = int__min_int.
 	%
 :- func int__fold_down(func(int, T) = T, T, int, int) = T.
 
