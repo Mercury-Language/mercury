@@ -1054,6 +1054,11 @@ mercury_sys_init_copy_module_write_out_proc_statics(FILE *fp)
 namespace mercury.builtin {
 	public class void_0
 	{
+		// Make the constructor private to ensure that we can
+		// never create an instance of this class.
+		private void_0()
+		{
+		}
 	}
 }
 ").
