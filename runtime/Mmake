@@ -1,0 +1,73 @@
+#-----------------------------------------------------------------------------#
+
+MAIN_TARGET=lib
+
+#-----------------------------------------------------------------------------#
+
+CFLAGS		= -I. -I.. `sed 's/\#.*//' CFLAGSFILE`
+MGNUC		= MERCURY_C_INCL_DIR=. mgnuc
+MGNUCFLAGS	= $(CFLAGS)
+
+include ../Mmake.common
+
+#-----------------------------------------------------------------------------#
+
+HDRS		= access.h aux.h conf.h dummy.h engine.h getopt.h imp.h init.h \
+		  label.h list.h memory.h regorder.h regs.h std.h table.h \
+		  tags.h timing.h wrapper.h ext_signal.h ext_stdio.h \
+		  ext_stdlib.h \
+		  machdeps/no_regs.h machdeps/i386_regs.h \
+		  machdeps/mips_regs.h machdeps/sparc_regs.h
+MODS		= engine.mod io.mod wrapper.mod call.mod
+OBJS		= engine.o io.o wrapper.o call.o \
+		  access.o aux.o dummy.o label.o \
+		  list.o memory.o table.o timing.o
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: lib
+lib: libmer.a libmer.so
+
+libmer.a: $(OBJS)
+	ar cr libmer.a $(OBJS)
+	$(RANLIB) libmer.a
+
+libmer.so: $(OBJS)
+	mgnuc -- -shared -o libmer.so $(OBJS)
+
+#-----------------------------------------------------------------------------#
+
+# installation rules
+
+.PHONY: install
+install: install_headers install_mods install_lib
+
+.PHONY: install_headers
+install_headers: $(HDRS)
+	mkdir -p $(INSTALL_INC_DIR)/machdeps
+	cp `vpath_find $(HDRS)` $(INSTALL_INC_DIR)
+
+.PHONY: install_mods
+install_mods:
+	mkdir -p $(INSTALL_MODULE_DIR)
+	for file in $(MODS); do \
+		grep '^BEGIN_MODULE' $$file \
+			> $(INSTALL_MODULE_DIR)/`basename $$file .mod`.c_init; \
+	done
+
+.PHONY: install_lib
+install_lib: libmer.a libmer.so
+	mkdir -p $(INSTALL_MERC_LIB_DIR)
+	cp `vpath_find libmer.a libmer.so` $(INSTALL_MERC_LIB_DIR)
+
+#-----------------------------------------------------------------------------#
+
+clean_c: clean_mod_c
+
+.PHONY: clean_mod_c
+clean_mod_c:
+	for file in *.mod; do \
+		rm -f `basename $$file .mod`.c; \
+	done
+
+#-----------------------------------------------------------------------------#

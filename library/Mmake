@@ -124,6 +124,14 @@ install_ints: $(LIBRARY_INTS)
 	mkdir -p $(INSTALL_INT_DIR)
 	cp `vpath_find $(LIBRARY_INTS)` $(INSTALL_INT_DIR)
 
+.PHONY: install_mods
+install_mods: $(library.cs)
+	mkdir -p $(INSTALL_MODULE_DIR)
+	for file in `vpath_find $(library.cs)`; do \
+		grep '^BEGIN_MODULE' $$file > \
+			$(INSTALL_MODULE_DIR)/`basename $$file .c`.init; \
+	done
+
 .PHONY: install_library
 install_library: libmercury.a libmercury.so
 	mkdir -p $(INSTALL_MERC_LIB_DIR)
