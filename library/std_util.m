@@ -1724,7 +1724,8 @@ Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info)
 					mercury__fn__std_util__construct_3_0,
 					""<unknown type from ""
 					""std_util:construct/3>"");
-				MR_field(0, new_data, 0) = info.secondary_tag;
+				MR_field(MR_mktag(0), new_data, 0)
+					= info.secondary_tag;
 				term_vector = (Word) (new_data + sizeof(Word));
 
 			} else if (MR_tag(layout_entry) == TYPE_CTOR_LAYOUT_CONST_TAG) {
@@ -2262,7 +2263,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 
     layout_for_tag = type_ctor_layout[data_tag];
     layout_vector_for_tag = MR_strip_tag(layout_for_tag);
-	
+
     switch(type_ctor_info->type_ctor_rep) {
 
         case MR_TYPECTOR_REP_ENUM:
@@ -2275,7 +2276,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 
         case MR_TYPECTOR_REP_DU:
             tag_rep = MR_get_tag_representation((Word) layout_for_tag);
-            switch(tag_rep) {
+            switch (tag_rep) {
             case MR_DISCUNIONTAG_SHARED_LOCAL:
                 data_value = MR_unmkbody(data_value);
                 info->functor = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_FUNCTOR_NAME(
@@ -2667,9 +2668,9 @@ ML_arg(Word term_type_info, Word *term_ptr, Word argument_index,
 		incr_hp_msg(ArgumentUniv, 2,
 			mercury__fn__std_util__argument_2_0,
 			""std_util:univ/0"");
-		MR_field(0, ArgumentUniv, UNIV_OFFSET_FOR_TYPEINFO) =
+		MR_field(MR_mktag(0), ArgumentUniv, UNIV_OFFSET_FOR_TYPEINFO) =
 			arg_type_info;
-		MR_field(0, ArgumentUniv, UNIV_OFFSET_FOR_DATA)
+		MR_field(MR_mktag(0), ArgumentUniv, UNIV_OFFSET_FOR_DATA)
 			= *argument_ptr;
 	}
 
