@@ -29,6 +29,12 @@ ERRORCHECK_PROGS= \
 # some files need to be compiled with special options
 
 MCFLAGS-arg_order_rearrangment	= --introduce-accumulators
+					--excess-assign --common-struct
+					# we need to explicitly enable those
+					# optimizations because otherwise the
+					# arg_order_rearrangement warning
+					# doesn't show up at lower
+					# optimization levels
 MCFLAGS-duplicate_call		= --warn-duplicate-calls
 MCFLAGS-unused_args_test	= --warn-unused-args
 MCFLAGS-unused_import		= --warn-interface-imports
