@@ -430,6 +430,7 @@ choose_file_name(_ModuleName, BaseName, Ext, MkDir, FileName) -->
 		; Ext = ".sicstus"
 		; Ext = ".sicstus.debug"
 		% output files intended for use by the user
+		; Ext = ".h"
 		; Ext = ".err"
 		; Ext = ".ugly"
 		; Ext = ".hlds_dump"

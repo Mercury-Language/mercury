@@ -1890,6 +1890,15 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	globals__io_lookup_accumulating_option(cflags, C_Flags_List),
 	{ join_string_list(C_Flags_List, "", "", " ", CFLAGS) },
 
+	globals__io_lookup_bool_option(use_subdirs, UseSubdirs),
+	{ UseSubdirs = yes ->
+		% the file will be compiled in the "Mercury/cs" subdir,
+		% so we need to add `-I.' so it can
+		% include header files in the source directory.
+		SubDirInclOpt = "-I. "
+	;
+		SubDirInclOpt = ""
+	},
 	globals__io_lookup_string_option(c_include_directory, C_INCL),
 	{ C_INCL = "" ->
 		InclOpt = ""
@@ -2034,7 +2043,8 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	% e.g. CFLAGS_FOR_REGS must come after OptimizeOpt so that
 	% it can override -fomit-frame-pointer with -fno-omit-frame-pointer.
 	% Also be careful that each option is separated by spaces.
-	{ string__append_list([CC, " ", InclOpt, SplitOpt, OptimizeOpt,
+	{ string__append_list([CC, " ", SubDirInclOpt, InclOpt,
+		SplitOpt, OptimizeOpt,
 		RegOpt, GotoOpt, AsmOpt,
 		CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
 		GC_Opt, ProfileCallsOpt, ProfileTimeOpt, ProfileMemoryOpt,

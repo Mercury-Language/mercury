@@ -41,6 +41,9 @@ Options:
 		Don't rebuild the SICStus stage 2 directory from scratch after
 		building stage 1.  Instead use the existing SICStus stage 2
 		directory.
+	--use-subdirs
+		Assume intermediate files are built in subdirectories.
+		(Same as the \`--use-subdirs' option to mmake and mmc.)
 "
 
 jfactor=""
@@ -53,6 +56,7 @@ keep_stage_2=false
 keep_stage_3=false
 keep_stage_2_sicstus=false
 test_sicstus=false
+use_subdirs=${MMAKE_USE_SUBDIRS=no}
 
 while [ $# -gt 0 ]; do
 	case "$1" in
@@ -97,6 +101,11 @@ while [ $# -gt 0 ]; do
 	--keep-stage-2-sicstus)
 		keep_stage_2_sicstus=true ;;
 
+	--use-subdirs)
+		use_subdirs=yes ;;
+	--no-use-subdirs)
+		use_subdirs=no ;;
+
 	--)	
 		shift; break ;;
 	-*)
@@ -114,6 +123,13 @@ if [ $# -ne 0 ]; then
 	echo "$usage" 1>&2
 	exit 1
 fi
+
+case $use_subdirs in
+	yes)	cs_subdir=Mercury/cs/
+		;;
+	no)	cs_subdir=
+		;;
+esac
 
 echo "starting at `date`"
 
@@ -275,10 +291,11 @@ then
 	fi
 
 	for dir in library compiler; do
-		for file in stage2/$dir/*.c; do
-			diff -u $file stage2_sicstus/$dir/`basename $file` ||
+	    for file in stage2/$dir/${cs_subdir}*.c; do
+		diff -u $file \
+			stage2_sicstus/${cs_subdir}$dir/`basename $file` ||
 				sicstus_diff_status=1
-		done
+	    done
 	done
 
 	exec >&3		# restore stdout from fd 3
@@ -546,8 +563,9 @@ then
 	fi
 
 	for dir in library compiler; do
-		for file in stage2/$dir/*.c; do
-			diff -u $file stage3/$dir/`basename $file` || diff_status=1
+		for file in stage2/$dir/${cs_subdir}*.c; do
+		    diff -u $file stage3/$dir/${cs_subdir}`basename $file` ||
+			diff_status=1
 		done
 	done
 

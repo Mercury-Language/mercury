@@ -22,257 +22,168 @@ main_target: $(MAIN_TARGET)
 		.i .s .pic_s \
 		.ql .pl
 
+#-----------------------------------------------------------------------------#
+#
+# Code to set variables based on the setting of MMAKE_USE_SUBDIRS
+# (i.e. --use-subdirs).
+#
+
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
 
 MCFLAGS += --use-subdirs
-
-SUBDIR=Mercury/
-# SUBDIR=
-
-.PRECIOUS: $(SUBDIR)date0s/%.date0
-.PRECIOUS: $(SUBDIR)dates/%.date
-.PRECIOUS: $(SUBDIR)date3s/%.date3
-.PRECIOUS: $(SUBDIR)optdates/%.optdate
-.PRECIOUS: $(SUBDIR)trans_opt_dates/%.trans_opt_date
-
-$(SUBDIR)nos/%.no : %.m
-	$(MNC) $(MNCFLAGS) -o $@ $<
-
-$(SUBDIR)nos/%.no : %.nl
-	$(MNC) $(MNCFLAGS) -o $@ $<
-
-$(SUBDIR)nos/%.ql : %.m
-	$(MSC) $(MSCFLAGS) -o $@ $<
-
-$(SUBDIR)nos/%.ql : %.nl
-	$(MSC) $(MSCFLAGS) -o $@ $<
-
-$(SUBDIR)date0s/%.date0 : %.m
-	$(MCPI) $(MCPIFLAGS) $<
-
-$(SUBDIR)dates/%.date : %.m
-	$(MCI) $(MCIFLAGS) $<
-
-$(SUBDIR)date3s/%.date3 : %.m
-	$(MCSI) $(MCSIFLAGS) $<
-
-$(SUBDIR)optdates/%.optdate : %.m
-	$(MCOI) $(MCOIFLAGS) $<
-
-$(SUBDIR)trans_opt_dates/%.trans_opt_date : %.m
-	$(MCTOI) $(MCTOIFLAGS) $<
-
-# Be very careful about changing the following rules.
-# The `@:' is a silent do-nothing command.
-# It is used to force GNU Make to recheck the timestamp
-# on the target file.  (It is a pity that GNU Make doesn't
-# have a way of handling these sorts of rules in a nicer manner.)
-
-$(SUBDIR)int0s/%.int0 : $(SUBDIR)date0s/%.date0
-	@:
-
-$(SUBDIR)ints/%.int : $(SUBDIR)dates/%.date
-	@:
-
-$(SUBDIR)int2s/%.int2 : $(SUBDIR)dates/%.date
-	@:
-
-$(SUBDIR)int3s/%.int3 : $(SUBDIR)date3s/%.date3
-	@:
-
-$(SUBDIR)opts/%.opt : $(SUBDIR)opt_dates/%.opt_date
-	@:
-
-$(SUBDIR)trans_opts/%.trans_opt : $(SUBDIR)trans_opt_dates/%.trans_opt_date
-	@:
-
-%.dep : $(SUBDIR)deps/%.dep
-
-$(SUBDIR)deps/%.dep: %.m
-	$(MCD) $(MCDFLAGS) $<
-
-# When creating the dependencies, we need to create the `dates' directory
-# in order to get things started.  This should not be necessary,
-# but there is a bug in GNU Make with regard to directory caching.
-# I have sent off a bug report to the GNU Make maintainers (19 March 1998).
-#	-fjh.
-
-%.depend : %.m
-	$(MCD) $(MCDFLAGS) $<
-	-rm -f $(SUBDIR)cs/$*_init.c
-	[ -d Mercury/dates ] || mkdir Mercury/dates
-
-%.doit : $(SUBDIR)deps/%.dep
-	sed -e ':a' -e '/\\/N' -e 's/\\\n	//' -e 't a' $< |  \
-	tee tmp | \
-	grep 'srcs *=' | \
-	sed	-e 's/.*=/:-[ '\''nu_library.doit'\'', /' \
-		-e 's/\.nl/,/g' \
-		-e 's/$$/ portray ]./' \
-		> $@
-
-$(SUBDIR)cs/%.c : %.m
-	rm -f $(SUBDIR)cs/$*.c
-	$(MCG) $(GRADEFLAGS) $(MCGFLAGS) $< > $*.err 2>&1
-
-$(SUBDIR)os/%.o : $(SUBDIR)cs/%.c
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -c $< -o $@
-
-# If we aren't removing the .c files, we generate .pic_o files
-# without invoking mmake.
-ifeq ($(RM_C),:)
-$(SUBDIR)os/%.pic_o : $(SUBDIR)cs/%.c
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $< -o $@
-endif
-
-%.s: $(SUBDIR)cs/%.c
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -S $< -o $@
-
-%.pic_s: $(SUBDIR)cs/%.c
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -S $< -o $@
-
-%.i: $(SUBDIR)cs/%.c
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -E $< > $@
-
-# If we aren't removing the .c files, we don't need to invoke mmake
-# for each .c file
-ifneq ($(RM_C),:)
-$(SUBDIR)os/%.o : %.m
-	$(MMAKE_MAKE_CMD) $(MAKEOVERRIDES) $(SUBDIR)cs/$*.c
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -c $(SUBDIR)cs/$*.c -o $@
-	$(RM_C) $(SUBDIR)cs/$*.c
-
-$(SUBDIR)os/%.pic_o : %.m
-	$(MMAKE_MAKE_CMD) $(MAKEOVERRIDES) $(SUBDIR)cs/$*.c
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
-		-c $(SUBDIR)cs/$*.c -o $@
+MGNUCFLAGS += -I.
 
 endif
 
-$(SUBDIR)dirs/%.dir/*.o: %.m
-	rm -f $@
-	$(MCS) $(GRADEFLAGS) $(MCSFLAGS) $<
+#-----------------------------------------------------------------------------#
 
-else # USE_SUBDIRS=no
+.PRECIOUS: $(date0s_subdir)%.date0
+.PRECIOUS: $(dates_subdir)%.date
+.PRECIOUS: $(date3s_subdir)%.date3
+.PRECIOUS: $(optdates_subdir)%.optdate
+.PRECIOUS: $(trans_opt_dates_subdir)%.trans_opt_date
 
-.PRECIOUS: %.date0 %.date %.date3 %.optdate %.trans_opt_date
-
-.m.no:
-	$(MNC) $(MNCFLAGS) -o $@ $<
-
-.nl.no:
-	$(MNC) $(MNCFLAGS) -o $@ $<
-
-.m.ql:
-	$(MSC) $(MSCFLAGS) -o $@ $<
-
-.nl.ql:
-	$(MSC) $(MSCFLAGS) -o $@ $<
-
-.m.date0:
-	$(MCPI) $(MCPIFLAGS) $<
-
-.m.date:
-	$(MCI) $(MCIFLAGS) $<
-
-.m.date3:
-	$(MCSI) $(MCSIFLAGS) $<
-
-.m.optdate:
-	$(MCOI) $(MCOIFLAGS) $<
-
-.m.trans_opt_date:
-	$(MCTOI) $(MCTOIFLAGS) $<
-
-# Be very careful about changing the following rules.
-# The `@:' is a silent do-nothing command.
-# It is used to force GNU Make to recheck the timestamp
-# on the target file.  (It is a pity that GNU Make doesn't
-# have a way of handling these sorts of rules in a nicer manner.)
-
-.date0.int0:
-	@:
-
-.date.int:
-	@:
-
-.date.int2:
-	@:
-
-.date3.int3:
-	@:
-
-.optdate.opt:
-	@:
-
-.trans_opt_date.trans_opt:
-	@:
-
-.m.dep:
-	@-[ ! -f $*.dep ] || chmod +w $*.dep
-	$(MCD) $(MCDFLAGS) $<
-
-.m.depend:
-	@-[ ! -f $*.dep ] || chmod +w $*.dep
-	$(MCD) $(MCDFLAGS) $<
-	-rm -f $*_init.c
-
-.dep.doit:
-	sed -e ':a' -e '/\\/N' -e 's/\\\n	//' -e 't a' $< |  \
-	tee tmp | \
-	grep 'srcs *=' | \
-	sed	-e 's/.*=/:-[ '\''nu_library.doit'\'', /' \
-		-e 's/\.nl/,/g' \
-		-e 's/$$/ portray ]./' \
-		> $@
-
-.m.c:
-	rm -f $*.c
-	$(MCG) $(GRADEFLAGS) $(MCGFLAGS) $< > $*.err 2>&1
-
-.c.o:
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -c $< -o $@
-
-# If we aren't removing the .c files, we generate .pic_o files
-# without invoking mmake.
-ifeq ($(RM_C),:)
-.c.pic_o:
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $< -o $@
-endif
-
-.c.s:
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -S $< -o $@
-
-.c.pic_s:
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -S $< -o $@
-
-.c.i:
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -E $< > $@
-
-# If we aren't removing the .c files, we don't need to invoke mmake
-# for each .c file
-ifneq ($(RM_C),:)
-.m.o:
-	$(MMAKE_MAKE_CMD) $(MAKEOVERRIDES) $*.c
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -c $*.c -o $@
-	$(RM_C) $*.c
-
-.o.pic_o:
-	$(MMAKE_MAKE_CMD) $(MAKEOVERRIDES) $*.c
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $*.c -o $@
-endif
-
-%.dir/*.o: %.m
-	rm -f $@
-	$(MCS) $(GRADEFLAGS) $(MCSFLAGS) $<
-
-endif	# !USE_SUBDIRS
+#-----------------------------------------------------------------------------#
+#
+# Rules for NU-Prolog and SICStus Prolog.
+#
 
 .m.pl:
 	sicstus_conv $<
 
 .nl.pl:
 	sicstus_conv $<
+
+$(nos_subdir)%.no : %.m
+	$(MNC) $(MNCFLAGS) -o $@ $<
+
+$(nos_subdir)%.no : %.nl
+	$(MNC) $(MNCFLAGS) -o $@ $<
+
+$(qls_subdir)%.ql : %.m
+	$(MSC) $(MSCFLAGS) -o $@ $<
+
+$(qls_subdir)%.ql : %.nl
+	$(MSC) $(MSCFLAGS) -o $@ $<
+
+#-----------------------------------------------------------------------------#
+#
+# Rules for building dependency files
+#
+
+$(deps_subdir)%.dep: %.m
+	@-[ ! -f $(deps_subdir)$*.dep ] || chmod +w $(deps_subdir)$*.dep
+	$(MCD) $(MCDFLAGS) $<
+
+# When creating the dependencies with `--use-subdirs' enabled,
+# we need to create the `Mercury/dates' directory manually
+# in order to get things started.  This should not be necessary,
+# but there is a bug in GNU Make with regard to directory caching.
+# I have sent off a bug report to the GNU Make maintainers (19 March 1998).
+#	-fjh.
+
+.PHONY: %.depend
+%.depend : %.m
+	$(MCD) $(MCDFLAGS) $<
+	-rm -f $(cs_subdir)$*_init.c
+ifeq ($(MMAKE_USE_SUBDIRS),yes)
+	# the following mkdirs work around a bug in GNU Make
+	-[ -d Mercury/dates ] || mkdir Mercury/dates
+	-[ -d Mercury/date0s ] || mkdir Mercury/date0s
+	-[ -d Mercury/optdates ] || mkdir Mercury/optdates
+endif
+
+# The `.doit' files are helpful when using Prolog.
+
+%.doit : $(deps_subdir)%.dep
+	sed -e ':a' -e '/\\/N' -e 's/\\\n	//' -e 't a' $< |  \
+	grep '\.ms *=' | \
+	sed	-e 's/.*=/:-[ '\''nu_library.doit'\'', /' \
+		-e 's/\.m/,/g' \
+		-e 's/$$/ portray ]./' \
+		> $@
+
+#-----------------------------------------------------------------------------#
+#
+# Rules for building interface files
+#
+
+$(date0s_subdir)%.date0 : %.m
+	$(MCPI) $(MCPIFLAGS) $<
+
+$(dates_subdir)%.date : %.m
+	$(MCI) $(MCIFLAGS) $<
+
+$(date3s_subdir)%.date3 : %.m
+	$(MCSI) $(MCSIFLAGS) $<
+
+$(optdates_subdir)%.optdate : %.m
+	$(MCOI) $(MCOIFLAGS) $<
+
+$(trans_opt_dates_subdir)%.trans_opt_date : %.m
+	$(MCTOI) $(MCTOIFLAGS) $<
+
+# Be very careful about changing the following rules.
+# The `@:' is a silent do-nothing command.
+# It is used to force GNU Make to recheck the timestamp
+# on the target file.  (It is a pity that GNU Make doesn't
+# have a way of handling these sorts of rules in a nicer manner.)
+
+$(int0s_subdir)%.int0 : $(date0s_subdir)%.date0
+	@:
+
+$(ints_subdir)%.int : $(dates_subdir)%.date
+	@:
+
+$(int2s_subdir)%.int2 : $(dates_subdir)%.date
+	@:
+
+$(int3s_subdir)%.int3 : $(date3s_subdir)%.date3
+	@:
+
+$(opts_subdir)%.opt : $(optdates_subdir)%.optdate
+	@:
+
+$(trans_opts_subdir)%.trans_opt : $(trans_opt_dates_subdir)%.trans_opt_date
+	@:
+
+#-----------------------------------------------------------------------------#
+#
+# Rules for compiling Mercury source files
+#
+
+$(cs_subdir)%.c : %.m
+	rm -f $(cs_subdir)$*.c
+	$(MCG) $(GRADEFLAGS) $(MCGFLAGS) $< > $*.err 2>&1
+
+# If we are removing the .c files, we need to tell Make that we're
+# generating the .o files directly from the .m files, but
+# in order to avoid remaking the .c files if they're already there,
+# we need to invoke mmake recursively for each .c file.
+# This can be pretty inefficient.
+
+ifneq ($(RM_C),:)
+
+$(os_subdir)%.o : %.m
+	$(MMAKE_MAKE_CMD) $(MAKEOVERRIDES) $(cs_subdir)$*.c
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -c $(cs_subdir)$*.c -o $@
+	$(RM_C) $(cs_subdir)$*.c
+
+$(os_subdir)%.pic_o : %.m
+	$(MMAKE_MAKE_CMD) $(MAKEOVERRIDES) $(cs_subdir)$*.c
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
+		-c $(cs_subdir)$*.c -o $@
+
+endif # RM_C != :
+
+# For --split-c-files, we generate the .o files directly from the .m files.
+# (One reason for this is that there's no easy of telling Make how many
+# `.o' files it should make, since the number of them depends on what's
+# in the source files.)
+
+$(dirs_subdir)%.dir/*.o: %.m
+	rm -f $@
+	$(MCS) $(GRADEFLAGS) $(MCSFLAGS) $<
 
 # The `touch' is necessary, since otherwise if
 # the old .err file was of size zero and
@@ -288,6 +199,53 @@ endif	# !USE_SUBDIRS
 	$(MC) --convert-to-mercury $(MCFLAGS) $<
 
 #-----------------------------------------------------------------------------#
+#
+# Rules for compiling C files in the user's source directory.
+#
+
+.c.o:
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -c $< -o $@
+
+.c.pic_o:
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $< -o $@
+
+.c.s:
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -S $< -o $@
+
+.c.pic_s:
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -S $< -o $@
+
+.c.i:
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -E $< > $@
+
+#-----------------------------------------------------------------------------#
+#
+# Rules for compiling C files in a subdirectory.
+# Note that we need both these rules and the ones above,
+# since even if the compiler generates all of its files in subdirectories,
+# the user may have some C files of their own which need to be compiled.
+#
+
+ifneq ("$(cs_subdir)","")
+
+$(os_subdir)%.o : $(cs_subdir)%.c
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -c $< -o $@
+
+$(os_subdir)%.pic_o : $(cs_subdir)%.c
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $< -o $@
+
+%.s: $(cs_subdir)%.c
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -S $< -o $@
+
+%.pic_s: $(cs_subdir)%.c
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -S $< -o $@
+
+%.i: $(cs_subdir)%.c
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -E $< > $@
+
+endif # $(cs_subdir) != ""
+
+#-----------------------------------------------------------------------------#
 
 MLOBJS-%: $(MLOBJS)
 	@
@@ -296,10 +254,14 @@ MLPICOBJS-%: $(MLPICOBJS)
 	@
 
 #-----------------------------------------------------------------------------#
+#
+# Targets for cleaning up.
+#
+# Note that the actions for most of these targets are in the
+# automatically generated `.d' files.
+#
 
-# The actions for `mmake clean' etc. are in the `.d' files.
-
-.PHONY: clean realclean clean_nu clean_sicstus
+.PHONY: clean realclean change_clean clean_nu clean_sicstus clean_prof_files
 
 realclean: clean
 

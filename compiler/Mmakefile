@@ -123,8 +123,8 @@ dates		:
 #-----------------------------------------------------------------------------#
 
 .PHONY: os cs
-os: $(mercury_compile.os) mercury_compile_init.o
-cs: $(mercury_compile.cs) mercury_compile_init.c
+os: $(mercury_compile.os) $(os_subdir)mercury_compile_init.o
+cs: $(mercury_compile.cs) $(cs_subdir)mercury_compile_init.c
 
 #-----------------------------------------------------------------------------#
 

@@ -35,21 +35,21 @@ SUBDIR_MMAKE =	PATH=../scripts:../util:$$PATH \
 dep: dep_library dep_compiler dep_profiler
 
 .PHONY: dep_library
-dep_library: library/library.dep
+dep_library: library/$(dep_subdir)library.dep
 
 library/library.dep:
 	cd library && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_compiler
-dep_compiler: compiler/mercury_compile.dep
+dep_compiler: compiler/$(dep_subdir)mercury_compile.dep
 
-compiler/mercury_compile.dep: library/library.dep
+compiler/$(dep_subdir)mercury_compile.dep: library/$(dep_subdir)library.dep
 	cd compiler && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_profiler
-dep_profiler: profiler/mercury_profile.dep
+dep_profiler: profiler/$(dep_subdir)mercury_profile.dep
 
-profiler/mercury_profile.dep: library/library.dep
+profiler/$(dep_subdir)mercury_profile.dep: library/$(dep_subdir)library.dep
 	cd profiler && $(SUBDIR_MMAKE) depend
 
 # depend_library MUST be done before depend_compiler and depend_profiler

@@ -63,19 +63,19 @@ PROGS=	\
 	vangelder
 
 DEPENDS = $(PROGS:%=%.depend)
-TRANS_OPTS = $(PROGS:%=%.trans_opt)
+TRANS_OPTS = $(PROGS:%=$(trans_opts_subdir)%.trans_opt)
 TRANS_OPT_RESS = $(PROGS:%=%.trans_opt_res)
 
 #-----------------------------------------------------------------------------#
 
 MCTRANSOPTFLAGS = --enable-termination --term-single-arg 5 --term-norm simple
 
-%.trans_opt: %.m
+$(trans_opts_subdir)%.trans_opt: %.m
 	$(MC) $(MCFLAGS) --make-trans-opt $(MCTRANSOPTFLAGS) $< \
 		> $*.trans_opt_err 2>&1
 
-%.trans_opt_res: %.trans_opt_exp %.trans_opt
-	diff -c $*.trans_opt_exp $*.trans_opt > $@
+%.trans_opt_res: %.trans_opt_exp $(trans_opts_subdir)%.trans_opt
+	diff -c $*.trans_opt_exp $(trans_opts_subdir)$*.trans_opt > $@
 
 #-----------------------------------------------------------------------------#
 
