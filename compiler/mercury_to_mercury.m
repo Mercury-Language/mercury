@@ -204,6 +204,9 @@ mercury_output_item(pragma(Pragma), Context) -->
 		{ Pragma = export(Pred, ModeList, C_Function) },
 		mercury_output_pragma_export(Pred, ModeList, C_Function)
 	;
+		{ Pragma = obsolete(Pred, Arity) },
+		mercury_output_pragma_decl(Pred, Arity, "obsolete")
+	;
 		{ Pragma = memo(Pred, Arity) },
 		mercury_output_pragma_decl(Pred, Arity, "memo")
 	;
@@ -1046,7 +1049,7 @@ mercury_output_some(Vars, VarSet) -->
 :- mode mercury_output_pragma_c_header(in, di, uo) is det.
 
 mercury_output_pragma_c_header(C_HeaderString) -->
-	io__write_string(":- pragma(c_header_code, "),
+	io__write_string(":- pragma c_header_code("),
 	io__write_string(""""),
 	% XXX need to quote special characters
 	io__write_string(C_HeaderString),
@@ -1060,7 +1063,7 @@ mercury_output_pragma_c_header(C_HeaderString) -->
 :- mode mercury_output_pragma_c_body_code(in, di, uo) is det.
 
 mercury_output_pragma_c_body_code(C_CodeString) -->
-	io__write_string(":- pragma(c_code, "),
+	io__write_string(":- pragma c_code("),
 	io__write_string(""""),
 	% XXX need to quote special characters
 	io__write_string(C_CodeString),
@@ -1069,12 +1072,12 @@ mercury_output_pragma_c_body_code(C_CodeString) -->
 
 %-----------------------------------------------------------------------------%
 
-	% Output the given pragma(c_code, ...) declaration
+	% Output the given pragma c_code declaration
 :- pred mercury_output_pragma_c_code(sym_name, list(pragma_var), varset,
 		string, io__state, io__state).
 :- mode mercury_output_pragma_c_code(in ,in, in, in, di, uo) is det.
 mercury_output_pragma_c_code(PredName, Vars, VarSet, C_CodeString) -->
-	io__write_string(":- pragma(c_code, "),
+	io__write_string(":- pragma c_code("),
 	mercury_output_sym_name(PredName),
 	io__write_string("("),
 	mercury_output_pragma_c_code_vars(Vars, VarSet),
@@ -1111,9 +1114,9 @@ mercury_output_pragma_c_code_vars([V|Vars], VarSet) -->
 :- mode mercury_output_pragma_decl(in, in, in, di, uo) is det.
 
 mercury_output_pragma_decl(PredName, Arity, PragmaName) -->
-	io__write_string(":- pragma("),
+	io__write_string(":- pragma "),
 	io__write_string(PragmaName),
-	io__write_string(", "),
+	io__write_string("("),
 	mercury_output_sym_name(PredName),
 	io__write_string("/"),
 	io__write_int(Arity),
@@ -1126,14 +1129,12 @@ mercury_output_pragma_decl(PredName, Arity, PragmaName) -->
 :- mode mercury_output_pragma_export(in, in, in, di, uo) is det.
 
 mercury_output_pragma_export(Pred, ModeList, C_Function) -->
-	io__write_string(":- pragma(export, "),
+	io__write_string(":- pragma export("),
 	mercury_output_sym_name(Pred),
 	io__write_string("("),
-
-		% XXX Okay... this might seem dodgy... but the varset isn't 
-		% actually used.
-
 	{ varset__init(Varset) },
+		% Okay... varset__init might seem dodgy... but the varset isn't 
+		% actually used.
 	mercury_output_mode_list(ModeList, Varset),
 
 	io__write_string("), "),
@@ -1401,6 +1402,7 @@ mercury_unary_prefix_op("module").
 mercury_unary_prefix_op("nospy").
 mercury_unary_prefix_op("not").
 mercury_unary_prefix_op("once").
+mercury_unary_prefix_op("pragma").
 mercury_unary_prefix_op("pred").
 mercury_unary_prefix_op("pure").
 mercury_unary_prefix_op("sorted").

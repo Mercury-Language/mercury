@@ -1426,16 +1426,35 @@ parse_mode_decl_pred(ModuleName, VarSet, Pred, Result) :-
 
 %-----------------------------------------------------------------------------%
 	% parse the pragma declaration. 
-	% It fails if the arguments
-	% to the declaration were empty (ie. a pragma dec. with arity 0).
 :- pred parse_pragma(varset, list(term), maybe1(item)).
 :- mode parse_pragma(in, in, out) is semidet.
 
-parse_pragma(VarSet, Pragma, Result) :-
-    Pragma = [PragmaType | PragmaTerms],
-    (
-       	PragmaType = term__functor(term__atom("c_header_code"),[], _) 
-    ->
+parse_pragma(VarSet, PragmaTerms, Result) :-
+	(
+		% new syntax: `:- pragma foo(...).'
+		PragmaTerms = [SinglePragmaTerm],
+		SinglePragmaTerm = term__functor(term__atom(PragmaType), 
+					PragmaArgs, _),
+		parse_pragma_type(PragmaType, PragmaArgs, SinglePragmaTerm,
+			VarSet, Result0)
+	->
+		Result = Result0
+	;
+		% old syntax: `:- pragma(foo, ...).'
+		PragmaTerms = [PragmaTypeTerm | PragmaArgs2],
+		PragmaTypeTerm = term__functor(term__atom(PragmaType), [], _),
+		parse_pragma_type(PragmaType, PragmaArgs2, PragmaTypeTerm,
+			VarSet, Result1)
+	->
+		Result = Result1
+	;
+		fail
+	).
+
+:- pred parse_pragma_type(string, list(term), term, varset, maybe1(item)).
+:- mode parse_pragma_type(in, in, in, in, out) is semidet.
+
+parse_pragma_type("c_header_code", PragmaTerms, ErrorTerm, _VarSet, Result) :-
     	(
        	    PragmaTerms = [HeaderTerm]
         ->
@@ -1447,12 +1466,12 @@ parse_pragma(VarSet, Pragma, Result) :-
 		Result = error("Expected string for C header code", HeaderTerm)
 	    )
 	;
-	    Result = error("wrong number of arguments in pragma(c_header_code, ...) declaration.", 
-		    PragmaType)
-        )
-    ; 
-    	PragmaType = term__functor(term__atom("c_code"), [], _) 
-    ->
+	    Result = error(
+"Wrong number of arguments in `pragma c_header_code(...) declaration.", 
+			    ErrorTerm)
+        ).
+
+parse_pragma_type("c_code", PragmaTerms, ErrorTerm, VarSet, Result) :-
 	(
     	    PragmaTerms = [Just_C_Code_Term]
 	->
@@ -1492,47 +1511,14 @@ parse_pragma(VarSet, Pragma, Result) :-
 		Result = error("Term is not a predicate", PredAndVarsTerm)
 	    )
 	;
-	    Result = error("wrong number of arguments in pragma(c_code, ...) declaration.", 
-		    PragmaType)
-	)
-    ;
-       PragmaType = term__functor(term__atom("inline"),[], _)
-    ->
+	    Result = error(
+	    "wrong number of arguments in pragma(c_code, ...) declaration.", 
+		    ErrorTerm)
+	).
+
+parse_pragma_type("export", PragmaTerms, ErrorTerm, _VarSet, Result) :-
        (
-            PragmaTerms = [PredAndArityTerm]
-       ->
-	    (
-                PredAndArityTerm = term__functor(term__atom("/"), 
-	    		[PredNameTerm, ArityTerm], _)
-	    ->
-		(
-		    (
-		    PredNameTerm = term__functor(term__atom(PredName), [], _),
-		    ArityTerm = term__functor(term__integer(Arity), [], _)
-		    )
-		->
-		    Result = 
-			ok(pragma(inline(unqualified(PredName), Arity)))
-		;
-	    	    Result = 
-		        error("Expected predname/arity for pragma(inline, ...)",
-			PredAndArityTerm)
-		)
-	    ;
-	    	Result = error("Expected predname/arity for pragma(inline, ...)",
-			PredAndArityTerm)
-	    )
-	;
-	    Result = 
-	    	error(
-		"wrong number of arguments in pragma(inline, ...) declaration.",
-		PragmaType)
-       )
-    ;
-       PragmaType = term__functor(term__atom("export"),[], _)
-    ->
-       (
-       PragmaTerms = [PredAndModesTerm, C_FunctionTerm]
+	    PragmaTerms = [PredAndModesTerm, C_FunctionTerm]
        ->
 	    (
 		(
@@ -1548,7 +1534,8 @@ parse_pragma(VarSet, Pragma, Result) :-
 			ok(pragma(export(unqualified(PredName), Modes, 
 				C_Function)))
 		;
-	    	    Result = error("Expected pragma(export, PredName(ModeList), C_Function).",
+	    	    Result = error(
+		    "Expected pragma(export, PredName(ModeList), C_Function).",
 			PredAndModesTerm)
 		)
 	    ;
@@ -1560,11 +1547,26 @@ parse_pragma(VarSet, Pragma, Result) :-
 	    Result = 
 	    	error(
 		"wrong number of arguments in pragma(export, ...) declaration.",
-		PragmaType)
-       )
-    ;
-       PragmaType = term__functor(term__atom("memo"),[], _)
-    ->
+		ErrorTerm)
+       ).
+
+parse_pragma_type("inline", PragmaTerms, ErrorTerm, _VarSet, Result) :-
+	parse_simple_pragma("inline",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = inline(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
+parse_pragma_type("memo", PragmaTerms, ErrorTerm, _VarSet, Result) :-
+	parse_simple_pragma("memo",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = memo(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
+:- pred parse_simple_pragma(string, pred(sym_name, int, pragma),
+			list(term), term, maybe1(item)).
+:- mode parse_simple_pragma(in, pred(in, in, out) is det, in, in, out) is det.
+
+parse_simple_pragma(PragmaType, MakePragma, PragmaTerms, ErrorTerm, Result) :-
        (
             PragmaTerms = [PredAndArityTerm]
        ->
@@ -1573,31 +1575,27 @@ parse_pragma(VarSet, Pragma, Result) :-
 	    		[PredNameTerm, ArityTerm], _)
 	    ->
 		(
-		    (
 		    PredNameTerm = term__functor(term__atom(PredName), [], _),
 		    ArityTerm = term__functor(term__integer(Arity), [], _)
-		    )
 		->
-		    Result = 
-			ok(pragma(memo(unqualified(PredName), Arity)))
+		    call(MakePragma, unqualified(PredName), Arity, Pragma),
+		    Result = ok(pragma(Pragma))
 		;
-	    	    Result = 
-		        error("Expected predname/arity for pragma(memo, ...)",
-			PredAndArityTerm)
+		    string__append_list(
+			["Expected predname/arity for `pragma ",
+			 PragmaType, "(...)' declaration"], ErrorMsg),
+	    	    Result = error(ErrorMsg, PredAndArityTerm)
 		)
 	    ;
-	    	Result = error("Expected predname/arity for pragma(memo, ...)",
-			PredAndArityTerm)
+	        string__append_list(["Expected predname/arity for `pragma ",
+			 PragmaType, "(...)' declaration"], ErrorMsg),
+	        Result = error(ErrorMsg, PredAndArityTerm)
 	    )
 	;
-	    Result = 
-	    	error(
-		"wrong number of arguments in pragma(memo, ...) declaration.",
-		PragmaType)
-       )
-    ;
-    	Result = error("Unknown pragma declaration type", PragmaType)
-    ).
+	    string__append_list(["Wrong number of arguments in `pragma ",
+		 PragmaType, "(...)' declaration"], ErrorMsg),
+	    Result = error(ErrorMsg, ErrorTerm)
+       ).
 
 %-----------------------------------------------------------------------------%
 
