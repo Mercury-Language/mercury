@@ -97,6 +97,25 @@
 	% dump_var prints out a representation of a variable.
 :- pred dump_var(var(T)::in(any), io__state::di, io__state::uo) is cc_multi.
 
+	% var__is_ground/2 can be used to test if a variable is ground.
+	%
+	% Declaratively, is_ground(Var, Result) is true iff
+	% either Result = no or Var = var(Value) and Result = yes(Value);
+	% that is, it is equivalent to the following clauses:
+	%
+	%	is_ground(var(Value), yes(Value)).
+	%	is_ground(_, no).
+	%
+	% Operationally, is_ground(Var, Result) returns Result = no
+	% if Var is non-ground, and Result = yes(Value) if Var is ground;
+	% that is, execution will select the first clause if the variable
+	% is ground, and the second clause if the variable is non-ground.
+	%
+	% Beware that is_ground is, and must be, `cc_multi';
+	% making it `det' would not be safe.
+
+:- pred is_ground(var(T)::in(any), maybe(T)::out) is cc_multi.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 :- implementation.
@@ -320,6 +339,32 @@ var__rep_unify_with_val(Value, VarPtr) :-
 		Var = free(DelayedGoals),
 		destructively_update_binding(VarPtr, ground(Value)),
 		wakeup_delayed_goals(DelayedGoals, Value)
+	).
+
+:- pragma c_code( is_ground(Var::in(any), Result::out) /* cc_multi */,
+	may_call_mercury,
+"
+	ML_var_is_ground(TypeInfo_for_T, Var, &Result);
+").
+
+:- pred var__rep_is_ground(var_rep(T), maybe(T)).
+:- mode var__rep_is_ground(in(ptr(var_rep_any)), out) is det.
+:- pragma export(var__rep_is_ground(in(ptr(var_rep_any)), out),
+	"ML_var_is_ground").
+var__rep_is_ground(VarPtr, Result) :-
+	VarPtr = alias(Var),
+	( 
+		Var = alias(_),
+		var__rep_is_ground(Var, Result)
+	;
+		Var = ground(Value),
+		Result = yes(Value)
+	;
+		Var = free,
+		Result = no
+	;
+		Var = free(_DelayedGoals),
+		Result = no
 	).
 
 %-----------------------------------------------------------------------------%
@@ -739,8 +784,11 @@ var__rep_unify(XPtr, YPtr) :-
 		var__rep_unify(X, YPtr)
 	;
 		X = free,
-		% would it be better to deref YPtr here?
-		destructively_update_binding(XPtr, YPtr)
+		( var__identical(XPtr, YPtr) ->
+			true
+		;
+			destructively_update_binding(XPtr, YPtr)
+		)
 	;
 		X = ground(_),
 		var__rep_unify_gr(X, YPtr)
@@ -792,10 +840,26 @@ var__rep_unify_fr(XPtr, YPtr, X) :-
 	;
 		Y = free(YGoals),
 		X = free(XGoals),
-		XY = free((XGoals, YGoals)),
-		destructively_update_binding(XPtr, XY),
-		destructively_update_binding(YPtr, XY)
+		( identical(XPtr, YPtr) ->
+			true
+		;
+			XY = free((XGoals, YGoals)),
+			destructively_update_binding(XPtr, XY),
+			destructively_update_binding(YPtr, XY)
+		)
 	).
+
+%-----------------------------------------------------------------------------%
+
+/* impure */
+:- pred identical(var_rep(T), var_rep(T)).
+:- mode identical(in(ptr(var_rep_any)), in(ptr(var_rep_any))) is semidet.
+
+:- pragma c_code(identical(X::in(ptr(var_rep_any)), Y::in(ptr(var_rep_any))),
+		will_not_call_mercury,
+"{
+	SUCCESS_INDICATOR = (X == Y);
+}").
 
 %-----------------------------------------------------------------------------%
 
