@@ -16,6 +16,9 @@
 :- interface.
 :- import_module char.
 
+:- pred string__length(string, int).
+:- mode string__length(in, out).
+
 :- pred string__append(string, string, string).
 :- mode string__append(input, input, output).
 :- mode string__append(output, output, input).
@@ -83,16 +86,20 @@
 :- mode string__to_int_list(input, output).
 :- mode string__to_int_list(output, input).
 
+:- pred intToString(int, string).
+:- mode intToString(out, in).
+
 /*
 :- external("NU-Prolog", string__to_int_list).
 :- external("NU-Prolog", intToString).
 */
 
-:- pred intToString(int, string).
-:- mode intToString(out, in).
-
 string__to_int(String, Int) :-
 	intToString(Int, String).
+
+string__length(String, Length) :-
+	string__to_int_list(String, List),
+	length(List, Length).
 
 string__append(A, B, C) :-
 	string__to_int_list(A, LA),

@@ -15,7 +15,7 @@ require(Goal, Message) :-
 	).
 
 error(Message) :-
-	format("~s\n", [Message]),
+	format("\nSoftware error: ~s\n", [Message]),
 	abort.
 
 %-----------------------------------------------------------------------------%

@@ -348,8 +348,6 @@ output_tag(Tag) -->
 :- pred output_rval(rval, io__state, io__state).
 :- mode output_rval(in, di, uo).
 
-	% XXX it looks like there's lots of unhandled cases here.
-
 output_rval(binop(Op, X, Y)) -->
 	io__write_string("("),
 	output_rval(X),
@@ -358,7 +356,13 @@ output_rval(binop(Op, X, Y)) -->
 	io__write_string(")").
 output_rval(iconst(N)) -->
 	io__write_int(N).
-% XXX sconsts are not handled yet.
+output_rval(sconst(String)) -->
+	io__write_string("string_const(\""),
+	output_c_quoted_string(String),
+	{ string__length(String, StringLength) },
+	io__write_string("\", "),
+	io__write_int(StringLength),
+	io__write_string(")").
 output_rval(mkword(Tag, Exprn)) -->
 	io__write_string("mkword("),
 	output_tag(Tag),
@@ -396,6 +400,35 @@ output_lval(stackvar(N)) -->
 	io__write_string("detstackvar("),
 	io__write_int(N),
 	io__write_string(")").
+
+%-----------------------------------------------------------------------------%
+
+:- pred output_c_quoted_string(string, io__state, io__state).
+:- mode output_c_quoted_string(input, di, uo).
+
+output_c_quoted_string(S0) -->
+	( { string__first_char(S0, Char, S1) } ->
+		( { quote_c_char(Char, QuoteChar) } ->
+			io__write_char('\\'),
+			io__write_char(QuoteChar)
+		;
+			io__write_char(Char)
+		),
+		output_c_quoted_string(S1)
+	;
+		[]
+	).
+
+:- pred quote_c_char(character, character).
+:- mode quote_c_char(input, output).
+
+quote_c_char('\"', '"').
+quote_c_char('\\', '\\').
+quote_c_char('\n', 'n').
+quote_c_char('\t', 't').
+quote_c_char('\b', 'b').
+
+%-----------------------------------------------------------------------------%
 
 :- pred output_operator(operator, io__state, io__state).
 :- mode output_operator(input, di, uo).

@@ -83,6 +83,7 @@ a local variable, then report the error.
 
 :- implementation.
 :- import_module list, map, varset, term, prog_out, string, require, std_util.
+:- import_module mode_util.
 :- import_module globals, options, mercury_to_mercury, hlds_out.
 
 %-----------------------------------------------------------------------------%
@@ -1263,24 +1264,6 @@ abstractly_unify_bound_inst_list([X|Xs], [Y|Ys], ModuleInfo, L) :-
 		abstractly_unify_bound_inst_list([X|Xs], Ys, ModuleInfo, L)
 	    )
 	).
-
-%-----------------------------------------------------------------------------%
-
-:- pred bound_inst_list_is_ground(list(bound_inst), module_info).
-:- mode bound_inst_list_is_ground(in, in) is semidet.
-
-bound_inst_list_is_ground([], _).
-bound_inst_list_is_ground([functor(_Name, Args)|BoundInsts], ModuleInfo) :-
-	inst_list_is_ground(Args, ModuleInfo),
-	bound_inst_list_is_ground(BoundInsts, ModuleInfo).
-
-:- pred inst_list_is_ground(list(inst), module_info).
-:- mode inst_list_is_ground(in, in) is semidet.
-
-inst_list_is_ground([], _).
-inst_list_is_ground([Inst | Insts], ModuleInfo) :-
-	inst_is_ground(ModuleInfo, Inst),
-	inst_list_is_ground(Insts, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
