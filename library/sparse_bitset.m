@@ -419,6 +419,8 @@ foldr(F, sparse_bitset(Set), Acc0) = Acc :-
 :- mode foldr_2(pred(in, in, out) is nondet, in, in, out) is nondet.
 :- mode foldr_2(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
 :- mode foldr_2(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
+:- pragma type_spec(foldr_2/4, T = int).
+:- pragma type_spec(foldr_2/4, T = var(_)).
 
 	% We don't just use list__foldr here because the
 	% overhead of allocating the closure for fold_bits
