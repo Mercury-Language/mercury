@@ -449,13 +449,24 @@ modecheck_goal_2(if_then_else(Vs, A0, B0, C0), GoalInfo0, Goal) -->
 		%	if some [Vs] A then B else C
 		% with
 		%	(not some [Vs] A), C
-		{ goal_get_nonlocals(A0, A_Vars) },
+		{ A = _A_Goal - A_GoalInfo },
+		{ goal_info_get_nonlocals(A_GoalInfo, A_Vars) },
+		{ goal_info_get_instmap_delta(A_GoalInfo, A_InstmapDelta) },
+		{ A_InstmapDelta = reachable(A_Instmapping) ->
+			map_delete_list(Vs, A_Instmapping, Instmapping),
+			InstmapDelta = reachable(Instmapping)
+		;
+			InstmapDelta = unreachable
+		},
 		{ set__union(NonLocals, C_Vars, OutsideVars) },
 		{ set__delete_list(OutsideVars, Vs, OutsideVars1) },
 		{ set__intersect(OutsideVars1, A_Vars, A_NonLocals) },
 		{ goal_info_init(GoalInfoA0) },
-		{ goal_info_set_nonlocals(GoalInfoA0, A_NonLocals, GoalInfoA) },
-		{ Goal = conj([not(some(Vs, A) - GoalInfoA) - GoalInfoA, C]) }
+		{ goal_info_set_nonlocals(GoalInfoA0, A_NonLocals,
+			GoalInfoA1) },
+		{ goal_info_set_instmap_delta(GoalInfoA1, InstmapDelta,
+			GoalInfoA) },
+		{ Goal = conj([not(some(Vs, A) - GoalInfoA1) - GoalInfoA, C]) }
 	;
 		{ Goal = if_then_else(Vs, A, B, C) }
 	),
@@ -557,6 +568,14 @@ modecheck_goal_2(pragma_c_code(C_Code, PredId, ProcId, Args0, ArgNameMap),
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "pragma_c_code").
 
+
+:- pred map_delete_list(list(K), map(K, V), map(K, V)).
+:- mode map_delete_list(in, in, out) is det.
+
+map_delete_list([], Map, Map).
+map_delete_list([Key|Keys], Map0, Map) :-
+	map__delete(Map0, Key, Map1),
+	map_delete_list(Keys, Map1, Map).
 
  	% given the right-hand-side of a unification, return a list of
 	% the potentially non-local variables of that unification.
