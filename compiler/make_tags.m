@@ -83,8 +83,8 @@ assign_constructor_tags(TypeName, TypeArity,
 			Ctors = [SingleFunc - [SingleArg]],
 			create_cons_id(SingleFunc, [SingleArg], SingleConsId),
 			\+ (
-			    TypeName =
-				 qualified("mercury_builtin", "type_info"),
+			    TypeName = qualified("mercury_builtin", Name),
+			    ( Name = "type_info" ; Name = "base_type_info" ),
 			    TypeArity = 1
 			)
 		->

@@ -36,7 +36,7 @@
 :- import_module polymorphism, intermod, higher_order, inlining, common, dnf.
 :- import_module constraint, unused_args, dead_proc_elim, excess, liveness.
 :- import_module follow_code, follow_vars, live_vars, arg_info, store_alloc.
-:- import_module code_gen, optimize, export.
+:- import_module code_gen, optimize, export, base_type_info.
 :- import_module llds_common, llds_out.
 
 	% miscellaneous compiler modules
@@ -556,9 +556,12 @@ mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50) -->
 	mercury_compile__maybe_polymorphism(HLDS26, Verbose, Stats, HLDS28),
 	mercury_compile__maybe_dump_hlds(HLDS28, "28", "polymorphism"),
 
-	mercury_compile__maybe_bytecodes(HLDS28, ModuleName, Verbose, Stats),
+	mercury_compile__maybe_base_type_infos(HLDS28, Verbose, Stats, HLDS29),
+	mercury_compile__maybe_dump_hlds(HLDS29, "29", "base_type_infos"),
 
-	mercury_compile__maybe_higher_order(HLDS28, Verbose, Stats, HLDS31),
+	mercury_compile__maybe_bytecodes(HLDS29, ModuleName, Verbose, Stats),
+
+	mercury_compile__maybe_higher_order(HLDS29, Verbose, Stats, HLDS31),
 	mercury_compile__maybe_dump_hlds(HLDS31, "31", "higher_order"),
 
 	mercury_compile__maybe_do_inlining(HLDS31, Verbose, Stats, HLDS34),
@@ -966,6 +969,23 @@ mercury_compile__maybe_polymorphism(HLDS0, Verbose, Stats, HLDS) -->
 		{ HLDS = HLDS0 }
 	).
 
+:- pred mercury_compile__maybe_base_type_infos(module_info, bool, bool,
+	module_info, io__state, io__state).
+:- mode mercury_compile__maybe_base_type_infos(in, in, in, out, di, uo) is det.
+
+mercury_compile__maybe_base_type_infos(HLDS0, Verbose, Stats, HLDS) -->
+	globals__io_get_type_info_method(TypeInfoMethod),
+	( { TypeInfoMethod = shared_one_or_two_cell } ->
+		maybe_write_string(Verbose,
+			"% Generating base_type_info structures...\n"),
+		maybe_flush_output(Verbose),
+		{ base_type_info__generate_hlds(HLDS0, HLDS) },
+		maybe_write_string(Verbose, " done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ HLDS = HLDS0 }
+	).
+
 :- pred mercury_compile__maybe_bytecodes(module_info, string, bool, bool,
 	io__state, io__state).
 :- mode mercury_compile__maybe_bytecodes(in, in, in, in, di, uo) is det.
@@ -1274,8 +1294,9 @@ mercury_compile__output_pass(HLDS0, LLDS0, ModuleName, CompileErrors) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
+	{ base_type_info__generate_llds(HLDS0, BaseTypeInfos) },
 	{ llds_common(LLDS0, ModuleName, LLDS1, CommonData) },
-	mercury_compile__chunk_llds(HLDS0, LLDS1, CommonData,
+	mercury_compile__chunk_llds(HLDS0, LLDS1, BaseTypeInfos, CommonData,
 		LLDS2, NumChunks),
 	mercury_compile__output_llds(ModuleName, LLDS2, Verbose, Stats),
 
@@ -1298,10 +1319,11 @@ mercury_compile__output_pass(HLDS0, LLDS0, ModuleName, CompileErrors) -->
 	% Split the code up into bite-size chunks for the C compiler.
 
 :- pred mercury_compile__chunk_llds(module_info, list(c_procedure),
-	list(c_module), c_file, int, io__state, io__state).
-:- mode mercury_compile__chunk_llds(in, in, in, out, out, di, uo) is det.
+	list(c_module), list(c_module), c_file, int, io__state, io__state).
+% :- mode mercury_compile__chunk_llds(in, di, di, uo, out, di, uo) is det.
+:- mode mercury_compile__chunk_llds(in, in, in, in, out, out, di, uo) is det.
 
-mercury_compile__chunk_llds(HLDS, Procedures, CommonDataModules,
+mercury_compile__chunk_llds(HLDS, Procedures, BaseTypeInfos, CommonDataModules,
 		c_file(Name, C_HeaderCode, ModuleList), NumChunks) -->
 	{ module_info_name(HLDS, Name) },
 	{ string__append(Name, "_module", ModName) },
@@ -1319,7 +1341,7 @@ mercury_compile__chunk_llds(HLDS, Procedures, CommonDataModules,
 			ProcModules) }
 	),
 	{ export__get_pragma_exported_procs(HLDS, PragmaExports) },
-	{ list__condense([C_BodyCode, CommonDataModules,
+	{ list__condense([C_BodyCode, BaseTypeInfos, CommonDataModules,
 		ProcModules, [c_export(PragmaExports)]], ModuleList) },
 	{ list__length(ModuleList, NumChunks) }.
 

@@ -155,21 +155,23 @@ inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo,
 		{ pred_info_procedures(PredInfo, Procs) },
 		{ map__lookup(Procs, ProcId, ProcInfo) },
 		{ proc_info_goal(ProcInfo, CalledGoal) },
+		{ Entity = proc(PredId, ProcId) },
+		% the heuristic represented by this disjunction
+		% could be improved
 		(
-				% this heuristic could be improved
 			(
 				{ Simple = yes },
 				{ inlining__simple_goal(CalledGoal,
 					SimpleThreshold) }
 			;
-				{ map__search(NeededMap, PredProcId, Needed) },
+				{ map__search(NeededMap, Entity, Needed) },
 				{ Needed = yes(NumUses) },
 				{ goal_size(CalledGoal, Size) },
 				{ Size * NumUses =< CompoundThreshold }
 			)
 		;
 			{ SingleUse = yes },
-			{ map__search(NeededMap, PredProcId, Needed) },
+			{ map__search(NeededMap, Entity, Needed) },
 			{ Needed = yes(NumUses) },
 			{ NumUses = 1 }
 		),
