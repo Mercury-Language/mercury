@@ -324,30 +324,32 @@ run_command(Debugger, Command, State, NewState) -->
 		{ true }
 	).
 
-	% XXX: default depth is hardwired to 10.
 :- pred help(debugger::in, io__state::di, io__state::uo) is det.
 help(Debugger) -->
-	write_string_debugger(Debugger,
-"Commands are:\n\
-\tls [path]      -- list subterm (expanded)\n\
-\tcd [path]      -- cd current subterm (default is root)\n\
-\thelp           -- show this help message\n\
-\tset var value  -- set a setting\n\
-\tset            -- show settings\n\
-\tprint          -- show single line representation of current term\n\
-\tquit           -- quit browser\n\
-SICStus Prolog style commands are:\n\
-\tp              -- print\n\
-\t< [n]          -- set depth (default is 10)\n\
-\t^ [path]       -- cd [path]\n\
-\t?              -- help\n\
-\th              -- help\n\
-\n\
--- settings:\n\
---    size; depth; path; format (flat pretty verbose); clipx; clipy\n\
---    Paths can be Unix-style or SICStus-style: /2/3/1 or ^2^3^1\n\
-\n"
-	).
+	{ default_depth(Default) },
+	{ string__int_to_string(Default, DefaultStr) },
+	{ string__append_list([
+"Commands are:\n",
+"\tls [path]      -- list subterm (expanded)\n",
+"\tcd [path]      -- cd current subterm (default is root)\n",
+"\thelp           -- show this help message\n",
+"\tset var value  -- set a setting\n",
+"\tset            -- show settings\n",
+"\tprint          -- show single line representation of current term\n",
+"\tquit           -- quit browser\n",
+"SICStus Prolog style commands are:\n",
+"\tp              -- print\n",
+"\t< [n]          -- set depth (default is ", DefaultStr, ")\n",
+"\t^ [path]       -- cd [path]\n",
+"\t?              -- help\n",
+"\th              -- help\n",
+"\n",
+"-- settings:\n",
+"--    size; depth; path; format (flat pretty verbose); clipx; clipy\n",
+"--    Paths can be Unix-style or SICStus-style: /2/3/1 or ^2^3^1\n",
+"\n"],
+		HelpMessage) },
+	write_string_debugger(Debugger, HelpMessage).
 
 %---------------------------------------------------------------------------%
 %
@@ -794,7 +796,12 @@ default_state(State) :-
 	DummyObject = "",
 	type_to_univ(DummyObject, Univ),
 	default_depth(DefaultDepth),
-	State = browser_state(Univ, 3, DefaultDepth, [], verbose, 79, 25).
+	MaxTermSize = 10,
+	DefaultFormat = verbose,
+	ClipX = 79,
+	ClipY = 25,
+	State = browser_state(Univ, DefaultDepth, MaxTermSize, [],
+			DefaultFormat, ClipX, ClipY).
 
 :- pred get_term(browser_state, univ).
 :- mode get_term(in, out) is det.

@@ -308,7 +308,7 @@ start([Tok | Toks], Comm) :-
 		)
 	).
 
-default_depth(10).
+default_depth(3).
 
 :- pred parse_path(list(token), path).
 :- mode parse_path(in, out) is semidet.
