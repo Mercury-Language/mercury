@@ -1511,6 +1511,15 @@ the argument type specified in the corresponding @samp{:- func} declaration,
 and the type assigned to the result term in a function clause must exactly
 match the result type specified in the corresponding @samp{:- func} declaration.
 
+The type assigned to each data-term with an explicit type qualification
+(@pxref{Explicit type qualification}) must match the type specified
+by the type qualification expression@footnote{The type of an explicitly
+type qualified term may be an instance of the type specified by the
+qualifier. This allows explicit type qualifications to constrain the
+types of two data-terms to be identical, without knowing the exact types
+of the data-terms. It also allows type qualifications to refer to the
+types of the results of existentially typed predicates or functions.}.
+
 (Here ``match'' means to be an instance of,
 i.e. to be identical to for some substitution of the type parameters,
 and ``exactly match'' means to be identical up to renaming of type parameters.)
@@ -3981,14 +3990,14 @@ constraints on existentially quantified type variables.
 @section Existentially typed predicates and functions
 
 @menu
-* Syntax for explicit type qualifiers::
-* Semantics of type qualifiers::
+* Syntax for explicit type quantifiers::
+* Semantics of type quantifiers::
 * Examples of correct code using type quantifiers::
 * Examples of incorrect code using type quantifiers::
 @end menu
 
-@node Syntax for explicit type qualifiers
-@subsection Syntax for explicit type qualifiers
+@node Syntax for explicit type quantifiers
+@subsection Syntax for explicit type quantifiers
 
 Type variables in type declarations for polymorphic predicates or functions
 are normally universally quantified.  
@@ -4024,8 +4033,8 @@ quantifiers.)  For example:
 :- all [T3] some [T2] pred foo(T1, T2, T3).
 @end example
 
-@node Semantics of type qualifiers
-@subsection Semantics of type qualifiers
+@node Semantics of type quantifiers
+@subsection Semantics of type quantifiers
 
 If a type variable in the type declaration for a polymorphic predicate
 or function is universally quantified, this means the caller will

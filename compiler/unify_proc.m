@@ -679,10 +679,11 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 		error("unknown special pred")
 	),
 	unify_proc__info_extract(VarTypeInfo, VarSet, Types),
+	map__init(TVarNameMap),
 	map__init(TI_VarMap),
 	map__init(TCI_VarMap),
-	ClauseInfo = clauses_info(VarSet, Types, Types, Args, Clauses,
-			TI_VarMap, TCI_VarMap).
+	ClauseInfo = clauses_info(VarSet, Types, TVarNameMap,
+			Types, Args, Clauses, TI_VarMap, TCI_VarMap).
 
 :- pred unify_proc__generate_unify_clauses(hlds_type_body, prog_var, prog_var,
 		prog_context, list(clause), unify_proc_info, unify_proc_info).

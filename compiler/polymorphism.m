@@ -553,8 +553,9 @@ polymorphism__process_clause_info(ClausesInfo0, PredInfo0, ModuleInfo0,
 	poly_info_get_type_info_map(PolyInfo, TypeInfoMap),
 	poly_info_get_typeclass_info_map(PolyInfo, TypeClassInfoMap),
 	clauses_info_explicit_vartypes(ClausesInfo0, ExplicitVarTypes),
-	ClausesInfo = clauses_info(VarSet, ExplicitVarTypes, VarTypes,
-				HeadVars, Clauses,
+	map__init(TVarNameMap), % This is only used while adding the clauses.
+	ClausesInfo = clauses_info(VarSet, ExplicitVarTypes, TVarNameMap,
+				VarTypes, HeadVars, Clauses,
 				TypeInfoMap, TypeClassInfoMap).
 
 :- pred polymorphism__process_clause(pred_info, list(prog_var), list(prog_var),

@@ -362,6 +362,10 @@
 	map(class_constraint, constraint_proof)).
 :- mode apply_rec_subst_to_constraint_proofs(in, in, out) is det.
 
+:- pred apply_variable_renaming_to_type_map(map(tvar, tvar),
+		vartypes, vartypes).
+:- mode apply_variable_renaming_to_type_map(in, in, out) is det.
+
 :- pred apply_variable_renaming_to_constraints(map(tvar, tvar), 
 	class_constraints, class_constraints).
 :- mode apply_variable_renaming_to_constraints(in, in, out) is det.
@@ -1401,6 +1405,12 @@ apply_rec_subst_to_constraint_proofs(Subst, Proofs0, Proofs) :-
 			map__set(Map0, Constraint, Proof, Map)
 		)),
 	Proofs0, Empty, Proofs).
+
+apply_variable_renaming_to_type_map(Renaming, Map0, Map) :-
+	map__map_values(
+		(pred(_::in, Type0::in, Type::out) is det :-
+			term__apply_variable_renaming(Type0, Renaming, Type)
+		), Map0, Map).
 
 apply_variable_renaming_to_constraints(Renaming,
 		constraints(UniversalCs0, ExistentialCs0),

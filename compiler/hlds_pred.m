@@ -118,6 +118,15 @@
 							% variable types from
 							% explicit
 							% qualifications
+			tvar_name_map		:: tvar_name_map,
+							% map from variable
+							% name to type variable
+							% for the type
+							% variables occurring
+							% in the argument
+							% types. This is used
+							% to process explicit
+							% type qualifications.
 			vartypes		:: vartypes,
 							% variable types
 							% inferred by
@@ -133,6 +142,8 @@
 		).
 
 :- type vartypes == map(prog_var, type).
+
+:- type tvar_name_map == map(string, tvar).
 
 :- pred clauses_info_varset(clauses_info, prog_varset).
 :- mode clauses_info_varset(in, out) is det.
@@ -864,8 +875,9 @@ pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types, Cond,
 	unqualify_name(SymName, PredName),
 	% The empty list of clauses is a little white lie.
 	Clauses = [],
-	ClausesInfo = clauses_info(VarSet, VarTypes, VarTypes, HeadVars,
-		Clauses, TypeInfoMap, TypeClassInfoMap),
+	map__init(TVarNameMap),
+	ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap,
+		VarTypes, HeadVars, Clauses, TypeInfoMap, TypeClassInfoMap),
 	map__init(ClassProofs),
 	term__vars_list(Types, TVars),
 	list__delete_elems(TVars, ExistQVars, HeadTypeParams),

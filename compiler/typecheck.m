@@ -345,7 +345,7 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 	    clauses_info_clauses(ClausesInfo0, Clauses0),
 	    clauses_info_headvars(ClausesInfo0, HeadVars),
 	    clauses_info_varset(ClausesInfo0, VarSet),
-	    clauses_info_explicit_vartypes(ClausesInfo0, ExplicitVarTypes),
+	    clauses_info_explicit_vartypes(ClausesInfo0, ExplicitVarTypes0),
 	    ( 
 		Clauses0 = [] 
 	    ->
@@ -417,7 +417,7 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 		dual_constraints(PredConstraints, Constraints),
 
 		typecheck_info_init(IOState1, ModuleInfo, PredId,
-				TypeVarSet0, VarSet, ExplicitVarTypes,
+				TypeVarSet0, VarSet, ExplicitVarTypes0,
 				HeadTypeParams1, Constraints, Status,
 				TypeCheckInfo1),
 		typecheck_info_get_type_assign_set(TypeCheckInfo1,
@@ -431,14 +431,29 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 		typecheck_check_for_ambiguity(whole_pred, HeadVars,
 				TypeCheckInfo3, TypeCheckInfo4),
 		typecheck_info_get_final_info(TypeCheckInfo4, HeadTypeParams1, 
-				ExistQVars0, TypeVarSet, HeadTypeParams2,
-				InferredVarTypes0, InferredTypeConstraints0,
-				ConstraintProofs, TVarRenaming,
-				ExistTypeRenaming),
+				ExistQVars0, ExplicitVarTypes0, TypeVarSet,
+				HeadTypeParams2, InferredVarTypes0,
+				InferredTypeConstraints0, ConstraintProofs,
+				TVarRenaming, ExistTypeRenaming),
 		map__optimize(InferredVarTypes0, InferredVarTypes),
 		clauses_info_set_vartypes(ClausesInfo0, InferredVarTypes,
 				ClausesInfo1),
-		clauses_info_set_clauses(ClausesInfo1, Clauses, ClausesInfo),
+
+		%
+		% Apply substitutions to the explicit vartypes.
+		%
+		( ExistQVars0 = [] ->
+			ExplicitVarTypes1 = ExplicitVarTypes0
+		;
+			apply_variable_renaming_to_type_map(ExistTypeRenaming,
+				ExplicitVarTypes0, ExplicitVarTypes1)
+		),
+		apply_variable_renaming_to_type_map(TVarRenaming,
+			ExplicitVarTypes1, ExplicitVarTypes),
+
+		clauses_info_set_explicit_vartypes(ClausesInfo1,
+			ExplicitVarTypes, ClausesInfo2),
+		clauses_info_set_clauses(ClausesInfo2, Clauses, ClausesInfo),
 		pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo2),
 		pred_info_set_typevarset(PredInfo2, TypeVarSet, PredInfo3),
 		pred_info_set_constraint_proofs(PredInfo3, ConstraintProofs,
@@ -3349,7 +3364,7 @@ typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet) :-
 %-----------------------------------------------------------------------------%
 
 % typecheck_info_get_final_info(TypeCheckInfo, 
-% 		OldHeadTypeParams, OldExistQVars,
+% 		OldHeadTypeParams, OldExistQVars, OldExplicitVarTypes,
 %		NewTypeVarSet, New* ..., TypeRenaming, ExistTypeRenaming):
 %	extracts the final inferred types from TypeCheckInfo.
 %
@@ -3357,6 +3372,8 @@ typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet) :-
 %	predicate.
 %	OldExistQVars should be the declared existentially quantified
 %	type variables (if any).
+%	OldExplicitVarTypes is the vartypes map containing the explicit 
+%	type qualifications.
 %	New* is the newly inferred types, in NewTypeVarSet.
 %	TypeRenaming is a map to rename things from the old TypeVarSet
 %	to the NewTypeVarSet.
@@ -3365,15 +3382,15 @@ typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet) :-
 %	in OldExistQVars.
 
 :- pred typecheck_info_get_final_info(typecheck_info, list(tvar), existq_tvars,
-		tvarset, existq_tvars, map(prog_var, type),
+		vartypes, tvarset, existq_tvars, map(prog_var, type),
 		class_constraints, map(class_constraint, constraint_proof),
 		map(tvar, tvar), map(tvar, tvar)).
-:- mode typecheck_info_get_final_info(in, in, in, 
+:- mode typecheck_info_get_final_info(in, in, in, in,
 		out, out, out, out, out, out, out) is det.
 
 typecheck_info_get_final_info(TypeCheckInfo, OldHeadTypeParams, OldExistQVars, 
-		NewTypeVarSet, NewHeadTypeParams, NewVarTypes,
-		NewTypeConstraints, NewConstraintProofs, TSubst,
+		OldExplicitVarTypes, NewTypeVarSet, NewHeadTypeParams,
+		NewVarTypes, NewTypeConstraints, NewConstraintProofs, TSubst,
 		ExistTypeRenaming) :-
 	typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet),
 	( TypeAssignSet = [TypeAssign | _] ->
@@ -3413,8 +3430,9 @@ typecheck_info_get_final_info(TypeCheckInfo, OldHeadTypeParams, OldExistQVars,
 		%
 		% First, find the set (sorted list) of type variables
 		% that we need.  This must include any type variables
-		% in the inferred types, plus any existentially typed
-		% variables that will remain in the declaration.
+		% in the inferred types, the explicit type qualifications,
+		% and any existentially typed variables that will remain
+		% in the declaration.
 		%
 		% There may also be some type variables in the HeadTypeParams
 		% which do not occur in the type of any variable (e.g. this
@@ -3426,11 +3444,13 @@ typecheck_info_get_final_info(TypeCheckInfo, OldHeadTypeParams, OldExistQVars,
 		%
 		map__values(VarTypes, Types),
 		term__vars_list(Types, TypeVars0),
+		map__values(OldExplicitVarTypes, ExplicitTypes),
+		term__vars_list(ExplicitTypes, ExplicitTypeVars0),
 		map__keys(ExistTypeRenaming, ExistQVarsToBeRenamed),
 		list__delete_elems(OldExistQVars, ExistQVarsToBeRenamed,
 			ExistQVarsToRemain),
-		list__condense([ExistQVarsToRemain, HeadTypeParams, TypeVars0],
-			TypeVars1),
+		list__condense([ExistQVarsToRemain, HeadTypeParams,
+			TypeVars0, ExplicitTypeVars0], TypeVars1),
 		list__sort_and_remove_dups(TypeVars1, TypeVars),
 		%
 		% Next, create a new typevarset with the same number of

@@ -104,10 +104,11 @@ PROGS=	\
 	string_alignment \
 	string_alignment_bug \
 	string_loop \
-	test_imported_no_tag \
 	term_io_test \
-	type_to_term_bug \
+	test_imported_no_tag \
 	tim_qual1 \
+	type_qual \
+	type_to_term_bug \
 	tuple_test \
 	user_defined_equality \
 	write \
@@ -136,6 +137,7 @@ MCFLAGS-nondet_ctrl_vn	=	--optimize-value-number
 MCFLAGS-redoip_clobber	=	--no-inlining
 MCFLAGS-rnd		=	-O6
 MCFLAGS-split_c_files	=	--trace deep
+MCFLAGS-type_qual	= 	--infer-all
 MCFLAGS-type_spec	=	--user-guided-type-specialization
 MCFLAGS-existential_types_test = --infer-all
 MCFLAGS-existential_float = --infer-all
