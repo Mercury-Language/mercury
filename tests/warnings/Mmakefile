@@ -28,7 +28,7 @@ ERRORCHECK_PROGS= \
 
 # some files need to be compiled with special options
 
-	# The warnings for this module are reported twice when
+	# XXX The warnings for this module are reported twice when
 	# compiling with --intermodule-optimization due to a
 	# performance bug in the handling of assertions
 	# which causes typechecking to be run twice.
