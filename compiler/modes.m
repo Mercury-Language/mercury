@@ -1251,13 +1251,13 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo0, ModeInfo) :-
 			mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo)
 		;
 			% We must have either added some information,
-			% or bound part of the var.  The call to
-			% inst_matches_final will fail iff we have
-			% bound part of a var.
-			% XXX bug - what if we lost some uniqueness?
-			inst_matches_final(Inst, Inst0, ModuleInfo)
+			% lost some uniqueness, or bound part of the var.
+			% The call to inst_matches_binding will succeed
+			% only if we haven't bound any part of the var.
+			inst_matches_binding(Inst, Inst0, ModuleInfo)
 		->
 			% We've just added some information
+			% or lost some uniqueness.
 			map__set(InstMapping0, Var0, Inst, InstMapping),
 			InstMap = reachable(InstMapping),
 			mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo2),
@@ -1304,7 +1304,7 @@ handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
 		% the initial inst specified in the pred's mode declaration,
 		% then it's not a call to an implied mode, it's an exact
 		% match with a genuine mode.
-		inst_matches_final(VarInst0, InitialInst, ModuleInfo0)
+		inst_matches_binding(VarInst0, InitialInst, ModuleInfo0)
 	->
 		Var = Var0,
 		Goals = [] - [],

@@ -777,10 +777,11 @@ no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, ModuleInfo) :-
 		% The instmap delta contains the variable, but the variable may
 		% still not be output, if the change is just an increase in
 		% information rather than an increase in instantiatedness.
-		% We use `inst_matches_final' to check that the new inst
-		% has only added information, not bound anything.
+		% We use `inst_matches_binding' to check that the new inst
+		% has only added information or lost uniqueness,
+		% not bound anything.
 		instmap_lookup_var(InstMap0, Var, Inst0),
-		inst_matches_final(Inst, Inst0, ModuleInfo)
+		inst_matches_binding(Inst, Inst0, ModuleInfo)
 	;
 		true
 	),

@@ -323,7 +323,7 @@ constraint__no_output_vars_2([Var | Vars], InstMap0, InstMapDelta,
 				ModuleInfo) :-
 	( map__search(InstMapDelta, Var, Inst) ->
 	    instmap_lookup_var(InstMap0, Var, Inst0),
-	    inst_matches_final(Inst, Inst0, ModuleInfo)
+	    inst_matches_binding(Inst, Inst0, ModuleInfo)
 	;
 	    true
 	),
