@@ -566,12 +566,6 @@
 %		Retrieves the standard input stream.
 %		Does not modify the IO state.
 
-:- pred io__current_input_stream(io__input_stream, io__state, io__state).
-:- mode io__current_input_stream(out, di, uo) is det.
-%       io__current_input_stream(CurrentStream, IO0, IO1)
-%		Returns the current input stream in CurrentStream.
-%		Does not modify the IO state.
-
 :- pred io__input_stream_name(string, io__state, io__state).
 :- mode io__input_stream_name(out, di, uo) is det.
 %	Retrieves the human-readable name associated with the current input
@@ -667,12 +661,6 @@
 :- pred io__stderr_stream(io__output_stream, io__state, io__state).
 :- mode io__stderr_stream(out, di, uo) is det.
 %		Retrieves the standard error stream.
-%		Does not modify the IO state.
-
-:- pred io__current_output_stream(io__output_stream, io__state, io__state).
-:- mode io__current_output_stream(out, di, uo) is det.
-%       io__current_output_stream(CurrentStream, IO0, IO1)
-%		Returns the current output stream in CurrentStream.
 %		Does not modify the IO state.
 
 :- pred io__output_stream_name(string, io__state, io__state).
@@ -952,13 +940,6 @@
 %		Retrieves the standard binary input stream.
 %		Does not modify the IO state.
 
-:- pred io__current_binary_input_stream(io__binary_input_stream,
-			io__state, io__state).
-:- mode io__current_binary_input_stream(out, di, uo) is det.
-%       io__current_binary_input_stream(CurrentStream, IO0, IO1)
-%		Returns the current binary input stream in CurrentStream.
-%		Does not modify the IO state.
-
 :- pred io__binary_input_stream_name(string, io__state, io__state).
 :- mode io__binary_input_stream_name(out, di, uo) is det.
 %	Retrieves the human-readable name associated with the current binary
@@ -1033,13 +1014,6 @@
 %	io__set_binary_output_stream(NewStream, OldStream, IO0, IO)
 %		Changes the current binary output stream to the stream
 %		specified. Returns the previous stream.
-
-:- pred io__current_binary_output_stream(io__binary_output_stream,
-			io__state, io__state).
-:- mode io__current_binary_output_stream(out, di, uo) is det.
-%       io__current_binary_output_stream(CurrentStream, IO0, IO1)
-%		Returns the current binary output stream in CurrentStream.
-%		Does not modify the IO state.
 
 :- pred io__binary_output_stream_name(string, io__state, io__state).
 :- mode io__binary_output_stream_name(out, di, uo) is det.
@@ -1126,28 +1100,6 @@
 
 % File handling predicates
 
-:- pragma obsolete(io__tmpnam/3). % use io__make_temp/3 instead
-:- pred io__tmpnam(string, io__state, io__state).
-:- mode io__tmpnam(out, di, uo) is det.
-	% io__tmpnam(Name, IO0, IO) binds `Name' to a temporary
-	% file name which is different to the name of any existing file.
-	% It will reside in /tmp if the TMPDIR environment variable
-	% is not set, or in the directory specified by TMPDIR if it
-	% is set.
-	% Use of this predicate is deprecated, because it may
-	% result in race conditions.  Use io__make_temp/3 instead.
-
-:- pragma obsolete(io__tmpnam/5). % use io__make_temp/5 instead
-:- pred io__tmpnam(string, string, string, io__state, io__state).
-:- mode io__tmpnam(in, in, out, di, uo) is det.
-	% io__tmpnam(Dir, Prefix, Name, IO0, IO) binds `Name' to a
-	% temporary file name which is different to the name of any
-	% existing file. It will reside in the directory specified by
-	% `Dir' and have a prefix using up to the first 5 characters
-	% of `Prefix'.
-	% Use of this predicate is deprecated, because it may
-	% result in race conditions.  Use io__make_temp/5 instead.
-
 :- pred io__make_temp(string, io__state, io__state).
 :- mode io__make_temp(out, di, uo) is det.
 	% io__make_temp(Name, IO0, IO) creates an empty file
@@ -1206,17 +1158,6 @@
 
 :- pred io__report_stats(io__state, io__state).
 :- mode io__report_stats(di, uo) is det.
-
-	% Write complete memory usage statistics to stderr,
-	% including information about all procedures and types.
-	% (You need to compile with memory profiling enabled.)
-	%
-	% OBSOLETE: call io__report_stats/3 instead, with the first
-	% specified as "full_memory_stats".
-
-:- pragma obsolete(io__report_full_memory_stats/2).
-:- pred io__report_full_memory_stats(io__state, io__state).
-:- mode io__report_full_memory_stats(di, uo) is det.
 
 	% Write statistics to stderr; what statistics will be written
 	% is controlled by the first argument, which acts a selector.
@@ -1290,6 +1231,66 @@
 %	io__error_message(ErrorCode, ErrorMessage).
 %		Look up the error message corresponding to a particular error
 %		code.
+
+%-----------------------------------------------------------------------------%
+%
+% Deprecated predicates.
+%
+% Do not use these in new programs!
+% They may be deleted in the next release.
+
+	% use io__input_stream/3 instead -- it has identical semantics
+:- pragma obsolete(io__current_input_stream/3).
+:- pred io__current_input_stream(io__input_stream, io__state, io__state).
+:- mode io__current_input_stream(out, di, uo) is det.
+
+	% use io__output_stream/3 instead -- it has identical semantics
+:- pragma obsolete(io__current_output_stream/3).
+:- pred io__current_output_stream(io__output_stream, io__state, io__state).
+:- mode io__current_output_stream(out, di, uo) is det.
+
+	% use io__binary_input_stream/3 instead -- it has identical semantics
+:- pragma obsolete(io__current_binary_input_stream/3).
+:- pred io__current_binary_input_stream(io__binary_input_stream,
+			io__state, io__state).
+:- mode io__current_binary_input_stream(out, di, uo) is det.
+
+	% use io__binary_output_stream/3 instead -- it has identical semantics
+:- pragma obsolete(io__current_binary_output_stream/3).
+:- pred io__current_binary_output_stream(io__binary_output_stream,
+			io__state, io__state).
+:- mode io__current_binary_output_stream(out, di, uo) is det.
+
+:- pragma obsolete(io__tmpnam/3). % use io__make_temp/3 instead
+:- pred io__tmpnam(string, io__state, io__state).
+:- mode io__tmpnam(out, di, uo) is det.
+	% io__tmpnam(Name, IO0, IO) binds `Name' to a temporary
+	% file name which is different to the name of any existing file.
+	% It will reside in /tmp if the TMPDIR environment variable
+	% is not set, or in the directory specified by TMPDIR if it
+	% is set.
+	% Use of this predicate is deprecated, because it may
+	% result in race conditions.  Use io__make_temp/3 instead.
+
+:- pragma obsolete(io__tmpnam/5). % use io__make_temp/5 instead
+:- pred io__tmpnam(string, string, string, io__state, io__state).
+:- mode io__tmpnam(in, in, out, di, uo) is det.
+	% io__tmpnam(Dir, Prefix, Name, IO0, IO) binds `Name' to a
+	% temporary file name which is different to the name of any
+	% existing file. It will reside in the directory specified by
+	% `Dir' and have a prefix using up to the first 5 characters
+	% of `Prefix'.
+	% Use of this predicate is deprecated, because it may
+	% result in race conditions.  Use io__make_temp/5 instead.
+
+	% OBSOLETE: call io__report_stats/3 instead, with the first argument
+	% specified as "full_memory_stats".
+:- pragma obsolete(io__report_full_memory_stats/2).
+:- pred io__report_full_memory_stats(io__state, io__state).
+:- mode io__report_full_memory_stats(di, uo) is det.
+	% Write complete memory usage statistics to stderr,
+	% including information about all procedures and types.
+	% (You need to compile with memory profiling enabled.)
 
 %-----------------------------------------------------------------------------%
 :- implementation.
@@ -4943,37 +4944,10 @@ io__write_float(Stream, Float) -->
 	MR_update_io(IO0, IO);
 }").
 
-:- pragma foreign_proc("C",
-	io__current_input_stream(OutStream::out, IO0::di, IO::uo),
-		[will_not_call_mercury, promise_pure, tabled_for_io],
-"
-	OutStream = (MR_Word) mercury_current_text_input;
-	MR_update_io(IO0, IO);
-").
-
-:- pragma foreign_proc("C",
-	io__current_output_stream(OutStream::out, IO0::di, IO::uo),
-		[will_not_call_mercury, promise_pure, tabled_for_io],
-"
-	OutStream = (MR_Word) mercury_current_text_output;
-	MR_update_io(IO0, IO);
-").
-
-:- pragma foreign_proc("C",
-	io__current_binary_input_stream(OutStream::out, IO0::di, IO::uo),
-		[will_not_call_mercury, promise_pure, tabled_for_io],
-"
-	OutStream = (MR_Word) mercury_current_binary_input;
-	MR_update_io(IO0, IO);
-").
-
-:- pragma foreign_proc("C",
-	io__current_binary_output_stream(OutStream::out, IO0::di, IO::uo),
-		[will_not_call_mercury, promise_pure, tabled_for_io],
-"
-	OutStream = (MR_Word) mercury_current_binary_output;
-	MR_update_io(IO0, IO);
-").
+current_input_stream(S) --> input_stream(S).
+current_output_stream(S) --> output_stream(S).
+current_binary_input_stream(S) --> binary_input_stream(S).
+current_binary_output_stream(S) --> binary_output_stream(S).
 
 % io__set_input_stream(NewStream, OldStream, IO0, IO1)
 %	Changes the current input stream to the stream specified.
