@@ -1,0 +1,24 @@
+Forward map is:
+map([
+ hydrogen -> 
+   h, 
+ helium -> 
+   he, 
+ lithium -> 
+   li, 
+ beryllium -> 
+   be, 
+ sodium -> 
+   na])
+Reverse map is:
+map([
+ h -> 
+   hydrogen, 
+ he -> 
+   helium, 
+ li -> 
+   lithium, 
+ be -> 
+   beryllium, 
+ na -> 
+   sodium])
