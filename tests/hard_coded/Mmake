@@ -40,6 +40,7 @@ PROGS=	\
 	name_mangling \
 	no_fully_strict \
 	no_inline \
+	nullary_ho_func \
 	pragma_c_code \
 	pragma_inline \
 	qual_adv_test \
