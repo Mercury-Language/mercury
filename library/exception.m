@@ -2491,6 +2491,6 @@ throw_if_near_stack_limits :-
 ").
 
 now_near_stack_limits :-
-	fail.
+	semidet_fail.
 
 %-----------------------------------------------------------------------------%
