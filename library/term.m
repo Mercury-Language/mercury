@@ -143,6 +143,17 @@
 %	term__relabel_variables(Terms0, OldVar, NewVar, Terms) :
 %		same as term__relabel_variable but for a list of terms.
 
+:- pred term__apply_variable_renaming(term, map(var, var), term).
+:- mode term__apply_variable_renaming(in, in, out) is det.
+% 		same as term__relabel_variable, except relabels
+% 		multiple variables. If a variable is not in the
+% 		map, it is not replaced.
+
+:- pred term__apply_variable_renaming_to_list(list(term), map(var, var),
+							 list(term)).
+:- mode term__apply_variable_renaming_to_list(in, in, out) is det.
+%		applies term__apply_variable_renaming to a list of terms.
+		
 
 :- pred term__is_ground(term, substitution).
 :- mode term__is_ground(in, in) is semidet.
@@ -571,6 +582,25 @@ term__relabel_variables([], _, _, []).
 term__relabel_variables([Term0|Terms0], OldVar, NewVar, [Term|Terms]):-
 	term__relabel_variable(Term0, OldVar, NewVar, Term),
 	term__relabel_variables(Terms0, OldVar, NewVar, Terms).
+
+
+term__apply_variable_renaming(term__functor(Const, Args0, Cont), Renaming,
+				 term__functor(Const, Args, Cont)) :-
+	term__apply_variable_renaming_to_list(Args0, Renaming, Args).
+term__apply_variable_renaming(term__variable(Var0), Renaming,
+				 term__variable(Var)) :-
+	(
+		map__search(Renaming, Var0, NewVar)
+	->
+		Var = NewVar
+	;
+		Var = Var0
+	).	
+
+term__apply_variable_renaming_to_list([], _, []).
+term__apply_variable_renaming_to_list([Term0|Terms0], Renaming, [Term|Terms]) :-
+	term__apply_variable_renaming(Term0, Renaming, Term),
+	term__apply_variable_renaming_to_list(Terms0, Renaming, Terms).
 
 %-----------------------------------------------------------------------------%
 

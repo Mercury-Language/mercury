@@ -95,6 +95,21 @@
 :- pred type_list_subsumes(list(type), list(type), tsubst).
 :- mode type_list_subsumes(in, in, out) is semidet.
 
+	% apply a type substitution (i.e. map from tvar -> type)
+	% to all the types in a variable typing (i.e. map from var -> type).
+
+:- pred apply_substitution_to_type_map(map(var, type), tsubst, map(var, type)).
+:- mode apply_substitution_to_type_map(in, in, out) is det.
+
+        % same thing as above, except for a recursive substitution
+        % (i.e. we keep applying the substitution recursively until
+        % there are no more changes).
+
+:- pred apply_rec_substitution_to_type_map(map(var, type), tsubst,
+						 map(var, type)).
+:- mode apply_rec_substitution_to_type_map(in, in, out) is det.
+
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -412,6 +427,54 @@ type_unify_head_type_param(Var, HeadVar, HeadTypeParams, Bindings0,
 				Bindings)
 		)
 	).
+
+%-----------------------------------------------------------------------------%
+
+apply_substitution_to_type_map(VarTypes0, Subst, VarTypes) :-
+	% optimize the common case of an empty type substitution
+	( map__is_empty(Subst) ->
+		VarTypes = VarTypes0
+	;
+		map__keys(VarTypes0, Vars),
+		apply_substitution_to_type_map_2(Vars, VarTypes0, Subst,
+			VarTypes)
+	).
+
+:- pred apply_substitution_to_type_map_2(list(var)::in, map(var, type)::in,
+				tsubst::in, map(var, type)::out) is det.
+
+apply_substitution_to_type_map_2([], VarTypes, _Subst, VarTypes).
+apply_substitution_to_type_map_2([Var | Vars], VarTypes0, Subst,
+		VarTypes) :-
+	map__lookup(VarTypes0, Var, VarType0),
+	term__apply_substitution(VarType0, Subst, VarType),
+	map__det_update(VarTypes0, Var, VarType, VarTypes1),
+	apply_substitution_to_type_map_2(Vars, VarTypes1, Subst, VarTypes).
+
+%-----------------------------------------------------------------------------%
+
+apply_rec_substitution_to_type_map(VarTypes0, Subst, VarTypes) :-
+	% optimize the common case of an empty type substitution
+	( map__is_empty(Subst) ->
+		VarTypes = VarTypes0
+	;
+		map__keys(VarTypes0, Vars),
+		apply_rec_substitution_to_type_map_2(Vars, VarTypes0, Subst,
+			VarTypes)
+	).
+
+:- pred apply_rec_substitution_to_type_map_2(list(var)::in, map(var, type)::in,
+				tsubst::in, map(var, type)::out) is det.
+
+apply_rec_substitution_to_type_map_2([], VarTypes, _Subst, VarTypes).
+apply_rec_substitution_to_type_map_2([Var | Vars], VarTypes0, Subst,
+		VarTypes) :-
+	map__lookup(VarTypes0, Var, VarType0),
+	term__apply_rec_substitution(VarType0, Subst, VarType),
+	map__det_update(VarTypes0, Var, VarType, VarTypes1),
+	apply_rec_substitution_to_type_map_2(Vars, VarTypes1, Subst, VarTypes).
+
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

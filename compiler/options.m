@@ -335,11 +335,7 @@ option_defaults_2(optimization_option, [
 	prev_code		-	bool(no),
 	follow_code		-	bool(no),
 	optimize_unused_args	-	bool(no),
-		% unused_args is disabled by default since it is broken
-		% (see David Kemp's bug report)
 	optimize_higher_order	-	bool(no),
-		% higher_order is disabled by default since it is broken
-		% (see Philip Dart's bug report)
 	optimize_dead_procs	-	bool(no),
 
 % HLDS -> LLDS
@@ -747,8 +743,8 @@ opt_level(3, _, [
 	optimize_value_number	-	bool(yes),
 	optimize_dead_procs	-	bool(yes),
 %%%	optimize_copyprop	-	bool(yes),
-%%%	optimize_unused_args	-	bool(yes),	% currently broken
-%%%	optimize_higher_order	-	bool(yes),	% currently broken
+	optimize_unused_args	-	bool(yes),	
+	optimize_higher_order	-	bool(yes),
 	optimize_repeat		-	int(4),
 	optimize_vnrepeat	-	int(1)
 ]).

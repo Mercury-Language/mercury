@@ -50,15 +50,11 @@ NEWS for Mercury release 0.6
   - We now specialize calls to higher-order predicates within the same module
     in the case when the higher-order arguments have known values.
     This optimization is enabled by the `--optimize-higher-order' option.
-    (XXX Unfortunately, this optimization has some bugs, so it is not
-    enabled by default.)
 
   - We now specialize calls to predicates within the same module which have
     unused arguments.  This often happens for polymorphic predicates, since
     the compiler introduces type_info arguments which are often unused.
     This optimization is enabled by the `--optimize-unused-args' option.
-    (XXX Unfortunately, this optimization has some bugs, so it is not
-    enabled by default.)
 
   - There's a new option `--optimize-dead-proc' option to eliminate unused
     procedures within a module.  This is useful even if the original source

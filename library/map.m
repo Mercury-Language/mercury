@@ -69,6 +69,11 @@
 :- pred map__det_insert(map(K,V), K, V, map(K,V)).
 :- mode map__det_insert(in, in, in, out) is det.
 
+	% Apply map__det_insert to key - value pairs from corresponding lists.
+:- pred map__det_insert_from_corresponding_lists(map(K,V), list(K),
+						list(V), map(K,V)).
+:- mode map__det_insert_from_corresponding_lists(in, in, in, out) is det.
+
 	% Update the value corresponding to a given key
 	% Fail if the key doesn't already exist.
 :- pred map__update(map(K,V), K, V, map(K,V)).
@@ -219,6 +224,19 @@ map__det_insert(Map0, K, V, Map) :-
 		error("map__det_insert: key already present")
 	).
  
+map__det_insert_from_corresponding_lists(Map0, Ks, Vs, Map) :-
+	( Ks = [Key | Keys], Vs = [Value | Values] ->
+		map__det_insert(Map0, Key, Value, Map1),
+		map__det_insert_from_corresponding_lists(Map1, Keys,
+							Values, Map)
+	;
+		Ks = [], Vs = []
+	->
+		Map = Map0
+	;
+		error("map__det_insert_from_corresponding_lists - lists do not correspond")
+	).
+
 map__update(Map0, K, V, Map) :-
 	tree234__update(Map0, K, V, Map).
 

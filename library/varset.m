@@ -45,6 +45,10 @@
 :- pred varset__new_var(varset, var, varset).
 :- mode varset__new_var(in, out, out) is det.
 
+	% create multiple new variables
+:- pred varset__new_vars(varset, int, list(var), varset).
+:- mode varset__new_vars(in, in, out, out) is det.
+
 	% delete an old variable
 :- pred varset__delete_var(varset, var, varset).
 :- mode varset__delete_var(in, in, out) is det.
@@ -149,6 +153,29 @@ varset__new_var(varset(MaxId0, Names, Vals), Var,
 		varset(MaxId, Names, Vals)) :-
 	term__create_var(MaxId0, Var, MaxId).
 
+varset__new_vars(Varset0, NumVars, NewVars, Varset) :-
+	varset__new_vars_2(Varset0, NumVars, [], NewVars, Varset).
+
+:- pred varset__new_vars_2(varset, int, list(var), list(var), varset).
+:- mode varset__new_vars_2(in, in, in, out, out) is det.
+
+varset__new_vars_2(Varset0, NumVars, NewVars0, NewVars, Varset) :-
+	(
+		NumVars > 0
+	->
+		NumVars1 is NumVars - 1,
+		varset__new_var(Varset0, Var, Varset1),
+		varset__new_vars_2(Varset1, NumVars1, [Var | NewVars0],
+							NewVars, Varset)
+	;
+		NumVars = 0
+	->
+		NewVars = NewVars0,
+		Varset = Varset0
+	;
+		error("varset__new_vars - invalid call")
+	).
+		
 %-----------------------------------------------------------------------------%
 
 varset__delete_var(varset(MaxId, Names0, Vals0), Var,

@@ -19,6 +19,8 @@ SOURCES= \
 	error.m \
 	followcode_det_problem.m \
 	higher_order.m \
+	higher_order2.m\
+	higher_order3.m\
 	implied_mode.m \
 	indexing.m \
 	loop.m \
@@ -36,6 +38,8 @@ SOURCES= \
 #	mode_merge_insts.m
 # There is a bug which prevents us from passing this test case:
 #	same_length_2.m
+# Bug in code_exprn.m stops this case from working:
+#	unused_args_test2.m
 
 OBJS=	$(SOURCES:%.m=%.o)
 NOS =	$(SOURCES:%.m=%.no)
