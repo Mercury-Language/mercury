@@ -1810,22 +1810,22 @@ pred_inst_info_standard_func_mode(Arity) =
 %-----------------------------------------------------------------------------%
 
 inst_contains_unconstrained_var(bound(_Uniqueness, BoundInsts)) :-
-	member(BoundInst, BoundInsts),
+	list.member(BoundInst, BoundInsts),
 	BoundInst = functor(_ConsId, ArgInsts),
-	member(ArgInst, ArgInsts),
+	list.member(ArgInst, ArgInsts),
 	inst_contains_unconstrained_var(ArgInst).
 
 inst_contains_unconstrained_var(ground(_Uniqueness, GroundInstInfo)) :-
 	GroundInstInfo = higher_order(PredInstInfo),
 	PredInstInfo = pred_inst_info(_PredOrFunc, Modes, _Detism),
-	member(Mode, Modes),
+	list.member(Mode, Modes),
 	(
 		Mode = (Inst -> _)
 	;
 		Mode = (_ -> Inst)
 	;
 		Mode = user_defined_mode(_SymName, Insts),
-		member(Inst, Insts)
+		list.member(Inst, Insts)
 	),
 	inst_contains_unconstrained_var(Inst).
 
@@ -1834,7 +1834,7 @@ inst_contains_unconstrained_var(inst_var(_InstVar)).
 inst_contains_unconstrained_var(defined_inst(InstName)) :-
 	(
 		InstName = user_inst(_, Insts),
-		member(Inst, Insts),
+		list.member(Inst, Insts),
 		inst_contains_unconstrained_var(Inst)
 	;
 		InstName = merge_inst(Inst, _),
@@ -1866,7 +1866,7 @@ inst_contains_unconstrained_var(defined_inst(InstName)) :-
 	).
 
 inst_contains_unconstrained_var(abstract_inst(_SymName, Insts)) :-
-	member(Inst, Insts),
+	list.member(Inst, Insts),
 	inst_contains_unconstrained_var(Inst).
 
 %-----------------------------------------------------------------------------%
