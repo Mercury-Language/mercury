@@ -181,11 +181,11 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
     SUCCESS_INDICATOR = (S == NULL);
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
     null(S::in),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-    SUCCESS_INDICATOR = (S == NULL);
+    SUCCESS_INDICATOR = (S == null);
 ").
 
 :- pred get_functor_2(type_desc__type_desc::in, int::in, string::out, int::out,
