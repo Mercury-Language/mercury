@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -260,7 +260,7 @@ parse_dcg_goal_2(";", [A0, B0], Context, Goal, !VarSet, !Counter, Var0, Var) :-
 			Goal = (A1 ; B2) - Context
 		;
 			Var = VarB,
-			prog_util__rename_in_goal(A1, VarA, VarB, A2),
+			prog_util__rename_in_goal(VarA, VarB, A1, A2),
 			Goal = (A2 ; B1) - Context
 		)
 	).
@@ -471,7 +471,7 @@ parse_dcg_if_then_else(Cond0, Then0, Else0, Context, Goal,
 		% don't need to do the substitution in the condition.
 
 		Var = VarElse,
-		prog_util__rename_in_goal(Then1, VarThen, VarElse, Then),
+		prog_util__rename_in_goal(VarThen, VarElse, Then1, Then),
 		Else = Else1
 	),
 	Goal = if_then_else(SomeVars, StateVars, Cond, Then, Else) - Context.
