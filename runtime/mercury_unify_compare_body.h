@@ -9,12 +9,14 @@
 
 /*
 ** This file contains a piece of code that is included by mercury_ho_call.c
-** four times:
+** six times:
 ** 
 ** - as the body of the mercury__unify_2_0 Mercury procedure,
-** - as the body of the mercury__compare_3_3 Mercury procedure, and
-** - as the body of the MR_generic_unify C function.
-** - as the body of the MR_generic_compare C function.
+** - as the body of the mercury__compare_3_3 Mercury procedure,
+** - as the body of the mercury__compare_representation_3_0 Mercury procedure,
+** - as the body of the MR_generic_unify C function,
+** - as the body of the MR_generic_compare C function, and
+** - as the body of the MR_generic_compare_representation C function.
 **
 ** The inclusions are surrounded by #defines and #undefs of the macros
 ** that personalize each copy of the code.
@@ -22,7 +24,8 @@
 ** The reason why the unify and compare Mercury procedures share code is
 ** that unify is mostly just a special case of comparison; it differs only
 ** by treating "less than" and "greater than" the same way, and returning
-** its result slightly differently.
+** its result slightly differently.  Likewise, compare_representation
+** is mostly the same as compare.
 **
 ** The reason why there is both a Mercury procedure and a C function for
 ** unifications and comparisons is that the Mercury procedure needs a
@@ -53,7 +56,7 @@ start_label:
 
     switch (MR_type_ctor_rep(type_ctor_info)) {
 
-#ifdef  MR_COMPARE_BY_RTTI
+#if defined(MR_COMPARE_BY_RTTI) || defined(include_compare_rep_code)
 
         case MR_TYPECTOR_REP_EQUIV:
             MR_save_transient_hp();
@@ -68,6 +71,10 @@ start_label:
                 MR_type_ctor_layout(type_ctor_info).layout_equiv;
             goto start_label;
 
+  #ifdef include_compare_rep_code
+        case MR_TYPECTOR_REP_NOTAG_USEREQ:
+            /* fall through */
+  #endif
         case MR_TYPECTOR_REP_NOTAG:
             MR_save_transient_hp();
             type_info = MR_create_type_info(
@@ -77,15 +84,33 @@ start_label:
             MR_restore_transient_hp();
             goto start_label;
 
+  #ifdef include_compare_rep_code
+        case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
+            /* fall through */
+  #endif
         case MR_TYPECTOR_REP_NOTAG_GROUND:
             type_info = (MR_TypeInfo) MR_type_ctor_layout(type_ctor_info).
                 layout_notag->MR_notag_functor_arg_type;
             goto start_label;
 
+  #ifdef include_compare_rep_code
+        case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
+            /* fall through */
+  #endif
         case MR_TYPECTOR_REP_RESERVED_ADDR:
             MR_fatal_error("sorry, not implemented: "
                 "MR_COMPARE_BY_RTTI for RESERVED_ADDR");
 
+  #ifdef include_compare_rep_code
+        case MR_TYPECTOR_REP_ARRAY:
+            MR_fatal_error("sorry, not implemented: "
+                "compare_representation for arrays");
+  #endif
+
+  #ifdef include_compare_rep_code
+        case MR_TYPECTOR_REP_DU_USEREQ:
+            /* fall through */
+  #endif
         case MR_TYPECTOR_REP_DU:
             {
                 const MR_DuFunctorDesc  *functor_desc;
@@ -272,8 +297,13 @@ start_label:
                     }
   #ifdef  select_compare_code
                     MR_save_transient_registers();
+    #ifdef include_compare_rep_code
+                    result = MR_generic_compare_representation(arg_type_info,
+                        x_data_value[cur_slot], y_data_value[cur_slot]);
+    #else
                     result = MR_generic_compare(arg_type_info,
                         x_data_value[cur_slot], y_data_value[cur_slot]);
+    #endif
                     MR_restore_transient_registers();
                     if (result != MR_COMPARE_EQUAL) {
                         return_answer(result);
@@ -299,8 +329,10 @@ start_label:
 
             break;
 
-#else /* ! MR_COMPARE_BY_RTTI */
+#endif  /* defined(MR_COMPARE_BY_RTTI) || defined(include_compare_rep_code) */
 
+#ifndef include_compare_rep_code
+  #ifndef MR_COMPARE_BY_RTTI
         case MR_TYPECTOR_REP_EQUIV:
         case MR_TYPECTOR_REP_EQUIV_GROUND:
         case MR_TYPECTOR_REP_NOTAG:
@@ -308,8 +340,7 @@ start_label:
         case MR_TYPECTOR_REP_RESERVED_ADDR:
         case MR_TYPECTOR_REP_DU:
             /* fall through */
-
-#endif
+  #endif
 
         case MR_TYPECTOR_REP_ENUM_USEREQ:
         case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
@@ -380,6 +411,7 @@ start_label:
             }
 
             tailcall_user_pred();
+#endif  /* !include_compare_rep_code */
 
         case MR_TYPECTOR_REP_TUPLE:
             {
@@ -421,6 +453,10 @@ start_label:
 #endif
             }
 
+#ifdef  include_compare_rep_code
+        case MR_TYPECTOR_REP_ENUM_USEREQ:
+            /* fall through */
+#endif
         case MR_TYPECTOR_REP_ENUM:
         case MR_TYPECTOR_REP_INT:
         case MR_TYPECTOR_REP_CHAR:
@@ -674,7 +710,19 @@ start_label:
 
         case MR_TYPECTOR_REP_FUNC:
         case MR_TYPECTOR_REP_PRED:
-            MR_fatal_error(attempt_msg "higher-order terms");
+            {
+#ifdef  include_compare_rep_code
+                int     result;
+
+                MR_save_transient_registers();
+                result = MR_compare_closures((MR_Closure *) x,
+                            (MR_Closure *) y);
+                MR_restore_transient_registers();
+                return_answer(result);
+#else
+                MR_fatal_error(attempt_msg "higher-order terms");
+#endif
+            }
 
         case MR_TYPECTOR_REP_TYPECLASSINFO:
             MR_fatal_error(attempt_msg "typeclass_infos");

@@ -238,10 +238,15 @@ endif
 
 $(OBJS) $(PIC_OBJS): $(HDRS) $(MACHHDRS)
 
-mercury_deconstruct.o:	mercury_ml_expand_body.h
-mercury_deep_copy.o:	mercury_deep_copy_body.h
-mercury_type_info.o:	mercury_make_type_info_body.h
-mercury_ho_call.o:	mercury_unify_compare_body.h
+mercury_deconstruct.$(O):	mercury_ml_expand_body.h
+mercury_deep_copy.$(O):		mercury_deep_copy_body.h
+mercury_type_info.$(O):		mercury_make_type_info_body.h
+mercury_ho_call.$(O):		mercury_unify_compare_body.h
+
+mercury_deconstruct.$(EXT_FOR_PIC_OBJECTS):	mercury_ml_expand_body.h
+mercury_deep_copy.$(EXT_FOR_PIC_OBJECTS):	mercury_deep_copy_body.h
+mercury_type_info.$(EXT_FOR_PIC_OBJECTS):	mercury_make_type_info_body.h
+mercury_ho_call.$(EXT_FOR_PIC_OBJECTS):		mercury_unify_compare_body.h
 
 #-----------------------------------------------------------------------------#
 

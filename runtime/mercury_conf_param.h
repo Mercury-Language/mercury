@@ -274,6 +274,8 @@
 ** index and compare functions are invoked with various kinds of type
 ** constructors, then set this macro to a string giving the name of the file
 ** to which the statistics should be appended when the program exits.
+** Note that calls to the generic compare_representation are counted as
+** calls to compare.
 **
 ** MR_TABLE_STATISTICS
 ** Enable this if you want to gather statistics about the operation of the

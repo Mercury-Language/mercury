@@ -24,6 +24,7 @@ ENDINIT
 #include "mercury_type_desc.h"
 #include "mercury_deep_profiling.h"
 #include "mercury_deep_profiling_hand.h"
+#include "mercury_layout_util.h"
 
 #ifdef	MR_DEEP_PROFILING
   #ifdef MR_DEEP_PROFILING_STATISTICS
@@ -117,6 +118,9 @@ MR_proc_static_user_builtin_empty(typectordesc_compare, 3, 0,
 #ifndef MR_HIGHLEVEL_CODE
 static	MR_Word	MR_generic_compare(MR_TypeInfo type_info, MR_Word x, MR_Word y);
 static	MR_Word	MR_generic_unify(MR_TypeInfo type_info, MR_Word x, MR_Word y);
+static	MR_Word	MR_generic_compare_representation(MR_TypeInfo type_info,
+			MR_Word x, MR_Word y);
+static	MR_Word	MR_compare_closures(MR_Closure *x, MR_Closure *y);
 
 /*
 ** The called closure may contain only input arguments. The extra arguments
@@ -169,6 +173,7 @@ MR_define_extern_entry(mercury__compare_3_1);
 MR_define_extern_entry(mercury__compare_3_2);
 MR_define_extern_entry(mercury__compare_3_3);
 MR_declare_label(mercury__compare_3_0_i1);
+MR_define_extern_entry(mercury__std_util__compare_representation_3_0);
 
 MR_BEGIN_MODULE(call_module)
 	MR_init_entry_an(mercury__do_call_closure);
@@ -178,6 +183,7 @@ MR_BEGIN_MODULE(call_module)
 	MR_init_entry_an(mercury__compare_3_1);
 	MR_init_entry_an(mercury__compare_3_2);
 	MR_init_entry_an(mercury__compare_3_3);
+	MR_init_entry_an(mercury__std_util__compare_representation_3_0);
 MR_BEGIN_CODE
 
 /*
@@ -329,15 +335,15 @@ MR_define_entry(mercury__unify_2_0);
 
 #include "mercury_unify_compare_body.h"
 
-#undef  DECLARE_LOCALS
-#undef  initialize
-#undef  return_answer
+#undef	DECLARE_LOCALS
+#undef	initialize
+#undef	return_answer
 #undef	tailcall_user_pred
-#undef  start_label
+#undef	start_label
 #undef	call_user_code_label
-#undef  type_stat_struct
-#undef  attempt_msg
-#undef  entry_point_is_mercury
+#undef	type_stat_struct
+#undef	attempt_msg
+#undef	entry_point_is_mercury
 
 }
 
@@ -403,18 +409,72 @@ MR_define_entry(mercury__compare_3_3);
 
 #include "mercury_unify_compare_body.h"
 
-#undef  DECLARE_LOCALS
-#undef  initialize
-#undef  return_answer
+#undef	DECLARE_LOCALS
+#undef	initialize
+#undef	return_answer
 #undef	tailcall_user_pred
-#undef  start_label
+#undef	start_label
 #undef	call_user_code_label
-#undef  type_stat_struct
-#undef  attempt_msg
+#undef	type_stat_struct
+#undef	attempt_msg
 #undef	select_compare_code
 #undef	entry_point_is_mercury
 
 }
+
+/*
+** mercury__std_util__compare_representation_3_0 is called as
+** `compare_representation(TypeInfo, Result, X, Y)' in the mode
+** `compare_representation(in, uo, in, in) is cc_multi'.
+*/
+
+MR_define_entry(mercury__std_util__compare_representation_3_0);
+{
+
+#define	DECLARE_LOCALS							\
+	MR_TypeCtorInfo	type_ctor_info;					\
+	MR_TypeInfo	type_info;					\
+	MR_Word		x, y;						\
+	MR_Code		*saved_succip;
+
+#define initialize()							\
+	do {								\
+		type_info = (MR_TypeInfo) MR_r1;			\
+		x = MR_r2;						\
+		y = MR_r3;						\
+		saved_succip = MR_succip;				\
+	} while(0)
+
+#define return_answer(answer)						\
+	do {								\
+		MR_r1 = (answer);					\
+		MR_succip = saved_succip;				\
+		MR_proceed();						\
+	} while(0)
+
+#define	start_label		compare_rep_start
+#define	call_user_code_label	call_compare_rep_in_proc
+#define	type_stat_struct	MR_type_stat_mer_compare
+#define	attempt_msg		"attempt to compare representation "
+#define	select_compare_code
+#define	include_compare_rep_code
+#define	entry_point_is_mercury
+
+#include "mercury_unify_compare_body.h"
+
+#undef	DECLARE_LOCALS
+#undef	initialize
+#undef	return_answer
+#undef	start_label
+#undef	call_user_code_label
+#undef	type_stat_struct
+#undef	attempt_msg
+#undef	select_compare_code
+#undef	include_compare_rep_code
+#undef	entry_point_is_mercury
+
+}
+
 MR_END_MODULE
 
 static MR_Word
@@ -451,14 +511,14 @@ MR_generic_unify(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 
 #include "mercury_unify_compare_body.h"
 
-#undef  DECLARE_LOCALS
-#undef  initialize
-#undef  return_answer
+#undef	DECLARE_LOCALS
+#undef	initialize
+#undef	return_answer
 #undef	tailcall_user_pred
-#undef  start_label
+#undef	start_label
 #undef	call_user_code_label
-#undef  type_stat_struct
-#undef  attempt_msg
+#undef	type_stat_struct
+#undef	attempt_msg
 }
 
 static MR_Word
@@ -495,15 +555,165 @@ MR_generic_compare(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 
 #include "mercury_unify_compare_body.h"
 
-#undef  DECLARE_LOCALS
-#undef  initialize
-#undef  return_answer
+#undef	DECLARE_LOCALS
+#undef	initialize
+#undef	return_answer
 #undef	tailcall_user_pred
-#undef  start_label
+#undef	start_label
 #undef	call_user_code_label
-#undef  type_stat_struct
-#undef  attempt_msg
+#undef	type_stat_struct
+#undef	attempt_msg
 #undef	select_compare_code
+}
+
+static MR_Word
+MR_generic_compare_representation(MR_TypeInfo type_info, MR_Word x, MR_Word y)
+{
+#define	DECLARE_LOCALS							\
+	MR_TypeCtorInfo	type_ctor_info;
+
+#define initialize()							\
+	do {								\
+		MR_restore_transient_registers();			\
+	} while (0)
+
+#define return_answer(answer)						\
+	do {								\
+		MR_save_transient_registers();				\
+		return (answer);					\
+	} while (0)
+
+#define	start_label		compare_rep_func_start
+#define	call_user_code_label	call_compare_rep_in_func
+#define	type_stat_struct	MR_type_stat_c_compare
+#define	attempt_msg		"attempt to compare representation"
+#define	select_compare_code
+#define	include_compare_rep_code
+
+#include "mercury_unify_compare_body.h"
+
+#undef	DECLARE_LOCALS
+#undef	initialize
+#undef	return_answer
+#undef	start_label
+#undef	call_user_code_label
+#undef	type_stat_struct
+#undef	attempt_msg
+#undef	select_compare_code
+#undef	include_compare_rep_code
+}
+
+static	MR_Word
+MR_compare_closures(MR_Closure *x, MR_Closure *y)
+{
+	MR_Closure_Layout   *x_layout;
+	MR_Closure_Layout   *y_layout;
+	MR_Proc_Id          *x_proc_id;
+	MR_Proc_Id          *y_proc_id;
+	MR_ConstString      x_module_name;
+	MR_ConstString      y_module_name;
+	MR_ConstString      x_pred_name;
+	MR_ConstString      y_pred_name;
+	MR_TypeInfo         *x_type_params;
+	MR_TypeInfo         *y_type_params;
+	int                 x_num_args;
+	int                 y_num_args;
+	int                 num_args;
+	int                 i;
+	int                 result;
+
+	/*
+	** Optimize the simple case.
+	*/
+	if (x == y) {
+		return MR_COMPARE_EQUAL;
+	}
+
+	x_layout = x->MR_closure_layout;
+	y_layout = y->MR_closure_layout;
+
+	x_proc_id = &x_layout->MR_closure_id->MR_closure_proc_id;
+	y_proc_id = &y_layout->MR_closure_id->MR_closure_proc_id;
+
+	if (x_proc_id != y_proc_id) {
+		if (MR_PROC_ID_COMPILER_GENERATED(*x_proc_id)) {
+			x_module_name = x_proc_id->MR_proc_comp.
+						MR_comp_def_module;
+			x_pred_name = x_proc_id->MR_proc_comp.MR_comp_pred_name;
+		} else {
+			x_module_name = x_proc_id->MR_proc_user.
+						MR_user_decl_module;
+			x_pred_name = x_proc_id->MR_proc_user.MR_user_name;
+		}
+		if (MR_PROC_ID_COMPILER_GENERATED(*y_proc_id)) {
+			y_module_name = y_proc_id->MR_proc_comp.
+						MR_comp_def_module;
+			y_pred_name = y_proc_id->MR_proc_comp.MR_comp_pred_name;
+		} else {
+			y_module_name = y_proc_id->MR_proc_user.
+						MR_user_decl_module;
+			y_pred_name = y_proc_id->MR_proc_user.MR_user_name;
+		}
+
+		result = strcmp(x_module_name, y_module_name);
+		if (result < 0) {
+			return MR_COMPARE_LESS;
+		} else if (result > 0) {
+			return MR_COMPARE_GREATER;
+		}
+
+		result = strcmp(x_pred_name, y_pred_name);
+		if (result < 0) {
+			return MR_COMPARE_LESS;
+		} else if (result > 0) {
+			return MR_COMPARE_GREATER;
+		}
+	}
+
+	x_num_args = x->MR_closure_num_hidden_args;
+	y_num_args = y->MR_closure_num_hidden_args;
+	if (x_num_args < y_num_args) {
+		return MR_COMPARE_LESS;
+	} else if (x_num_args > y_num_args) {
+		return MR_COMPARE_GREATER;
+	}
+
+	num_args = x_num_args;
+	x_type_params = MR_materialize_closure_type_params(x);
+	y_type_params = MR_materialize_closure_type_params(y);
+	for (i = 0; i < num_args; i++) {
+		MR_TypeInfo	x_arg_type_info;
+		MR_TypeInfo	y_arg_type_info;
+		MR_TypeInfo	arg_type_info;
+
+		x_arg_type_info = MR_create_type_info(x_type_params,
+				x_layout->MR_closure_arg_pseudo_type_info[i]);
+		y_arg_type_info = MR_create_type_info(y_type_params,
+				y_layout->MR_closure_arg_pseudo_type_info[i]);
+		result = MR_compare_type_info(x_arg_type_info, y_arg_type_info);
+		if (result != MR_COMPARE_EQUAL) {
+			goto finish_closure_compare;
+		}
+
+		arg_type_info = x_arg_type_info;
+		result = MR_generic_compare(arg_type_info,
+				x->MR_closure_hidden_args_0[i],
+				y->MR_closure_hidden_args_0[i]);
+		if (result != MR_COMPARE_EQUAL) {
+			goto finish_closure_compare;
+		}
+	}
+
+	result = MR_COMPARE_EQUAL;
+
+finish_closure_compare:
+	if (x_type_params != NULL) {
+		MR_free(x_type_params);
+	}
+	if (y_type_params != NULL) {
+		MR_free(y_type_params);
+	}
+	return result;
 }
 
 #endif /* not MR_HIGHLEVEL_CODE */

@@ -327,6 +327,13 @@ mercury__builtin__compare_3_p_3(
 	mercury__builtin__compare_3_p_0(type_info, res, x, y);
 }
 
+void MR_CALL
+mercury__std_util__compare_representation_3_p_0(MR_Mercury_Type_Info ti,
+	MR_Comparison_Result *res, MR_Box x, MR_Box y)
+{
+	SORRY("compare_representation/3 for HIGHLEVEL_CODE");
+}
+
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 /*

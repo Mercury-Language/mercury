@@ -142,7 +142,7 @@ ORDINARY_PROGS=	\
 	write_reg1 \
 	write_reg2
 
-# These test require the implementation to support closure layouts
+# These tests require the implementation to support closure layouts
 CLOSURE_LAYOUT_PROGS = \
 	copy_pred \
 	copy_pred_2
@@ -156,6 +156,9 @@ CLOSURE_LAYOUT_PROGS = \
 # XXX csharp_test doesn't work yet (not even in il* grades)
 #
 # XXX needs_init doesn't work yet in profiling grades.
+#
+# XXX compare_rep_array doesn't work because MR_COMPARE_BY_RTTI is
+# not yet implemented for arrays.
 
 # The following tests are passed only in some grades.
 
@@ -169,11 +172,13 @@ else
 	EXCEPTION_PROGS =
 endif
 
+# compare_representation does not work in the hl* grades (e.g. hlc.gc),
+# because comparison of closures gives "Sorry, not implemented" when
+# HIGHLEVEL_CODE is set.
 #
-# factt_non does not work in the hl* grades (e.g. hlc.gc),
-# because the code for nondet fact tables assumes that
-# we're using the LLDS back-end. Also, fact tables and deep profiling do not
-# (yet) mix.
+# factt_non does not work in the hl* grades because the code for nondet
+# fact tables assumes that we're using the LLDS back-end. Also, fact tables
+# and deep profiling do not (yet) mix.
 #
 # type_tables does not work in the hl* grades because the test itself
 # is a quick hack that assumes the use of the LLDS backend; it should
@@ -182,13 +187,17 @@ endif
 
 ifeq "$(findstring hl,$(GRADE))" ""
 	ifeq "$(findstring profdeep,$(GRADE))" ""
-		BACKEND_PROGS = \
-			factt_non \
-			type_tables 
+		BACKEND_PROGS_2 = \
+			factt_non
 	else
-		BACKEND_PROGS = \
-			type_tables
+		BACKEND_PROGS_2 =
 	endif
+	
+	BACKEND_PROGS = \
+		$(BACKEND_PROGS_2) \
+		compare_representation \
+		compare_rep_usereq \
+		type_tables 
 else
 	BACKEND_PROGS =
 endif

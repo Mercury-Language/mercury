@@ -682,6 +682,8 @@ void MR_CALL mercury__builtin__compare_3_p_2(MR_Mercury_Type_Info,
 	MR_Comparison_Result *, MR_Box, MR_Box);
 void MR_CALL mercury__builtin__compare_3_p_3(MR_Mercury_Type_Info,
 	MR_Comparison_Result *, MR_Box, MR_Box);
+void MR_CALL mercury__std_util__compare_representation_3_p_0(
+	MR_Mercury_Type_Info, MR_Comparison_Result *, MR_Box, MR_Box);
 
 MR_bool MR_CALL mercury__builtin____Unify____int_0_0(MR_Integer x,
 	MR_Integer y); 

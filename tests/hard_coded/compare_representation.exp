@@ -1,0 +1,20 @@
+1 : int
+1 : int
+Result = '='.
+
+1 : int
+main : pred(io__state, io__state)
+Result = '<'.
+
+main : pred(io__state, io__state)
+main : pred(io__state, io__state)
+Result = '='.
+
+main : pred(io__state, io__state)
+test(d1, dm) : pred(io__state, io__state)
+Result = '<'.
+
+foo(1) : func(int) = int
+foo(2) : func(int) = int
+Result = '<'.
+

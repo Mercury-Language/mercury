@@ -721,6 +721,27 @@
 	%
 :- pred dynamic_cast(T1::in, T2::out) is semidet.
 
+	% compare_representation(Result, X, Y)
+	%
+	% compare_representation is similar to the builtin predicate
+	% compare/3, except that it does not abort when asked to compare
+	% non-canonical terms.
+	%
+	% The declarative semantics of compare_representation for unequal
+	% non-canonical terms is that the result is either (<) or (>).  For
+	% equal non-canonical terms the result can be anything.
+	%
+	% Operationally, the result of compare_representation for
+	% non-canonical terms is the same as that for comparing the internal
+	% representations of the terms, where the internal representation is
+	% that which would be produced by deconstruct__cc.
+	%
+	% XXX This predicate is not yet implemented for highlevel code.  This
+	% is the reason it is not in the official part of the interface.
+	%
+:- pred compare_representation(comparison_result, T, T).
+:- mode compare_representation(uo, in, in) is cc_multi.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1619,6 +1640,8 @@ det_named_argument(Type, Name) = ArgumentUniv :-
 det_named_argument_cc(Type, Name, ArgumentUniv) :-
 	deconstruct__det_named_arg(Type, include_details_cc, Name, Argument),
 	type_to_univ(Argument, ArgumentUniv).
+
+:- external(compare_representation/3).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
