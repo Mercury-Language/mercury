@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -15,7 +15,8 @@
 #define MERCURY_TRACE_BROWSE_H
 
 #include "mercury_conf.h"	/* for MR_USE_EXTERNAL_DEBUGGER */
-#include "mercury_types.h"	/* for MR_Word, MR_String */
+#include "mercury_types.h"	/* for MR_Word, MR_String       */
+#include "mercury_std.h"	/* for bool                     */
 
 /*
 ** The following types must correspond with browse_caller_type and

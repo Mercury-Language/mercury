@@ -14,6 +14,9 @@
 #ifndef	MERCURY_TRACE_SPY_H
 #define	MERCURY_TRACE_SPY_H
 
+#include "mercury_stack_layout.h"	/* for MR_Proc_Layout etc */
+#include "mercury_trace_base.h"		/* for MR_Trace_Port etc  */
+
 typedef enum {
 	MR_SPY_PRINT, MR_SPY_STOP
 } MR_Spy_Action;

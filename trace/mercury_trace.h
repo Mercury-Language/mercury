@@ -21,6 +21,11 @@
 #ifndef MERCURY_TRACE_H
 #define MERCURY_TRACE_H
 
+#include "mercury_memory_zones.h"	/* for MR_MAX_FAKE_REG */
+#include "mercury_types.h"		/* for MR_Unsigned etc */
+#include "mercury_trace_base.h"		/* for MR_Trace_Port   */
+#include "mercury_std.h"		/* for bool            */
+
 /*
 ** MR_Event_Info is used to hold the information for a trace event.  One
 ** of these is built by MR_trace_event and is passed (by reference)

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -7,11 +7,10 @@
 #ifndef	MERCURY_TRACE_EXTERNAL_H
 #define	MERCURY_TRACE_EXTERNAL_H
 
+#include "mercury_trace.h"		/* for MR_Trace_Cmd_Info, etc.  */
 #include "mercury_conf.h"		/* for MR_USE_EXTERNAL_DEBUGGER */
-#include "mercury_types.h"		/* for MR_Code */
-#include "mercury_library_types.h"	/* for MercuryFile */
-
-#include "mercury_trace.h"		/* for MR_Trace_Cmd_Info, etc. */
+#include "mercury_types.h"		/* for MR_Code                  */
+#include "mercury_library_types.h"	/* for MercuryFile              */
 
 #ifdef	MR_USE_EXTERNAL_DEBUGGER
 

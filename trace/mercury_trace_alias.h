@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998,2000 The University of Melbourne.
+** Copyright (C) 1998,2000-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -13,6 +13,7 @@
 #ifndef	MERCURY_TRACE_ALIAS_H
 #define MERCURY_TRACE_ALIAS_H
 
+#include "mercury_std.h"	/* for bool */
 #include <stdio.h>
 
 typedef struct {

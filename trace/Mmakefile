@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2000 The University of Melbourne.
+# Copyright (C) 1998-2001 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -76,6 +76,11 @@ RUNTIME_HDRS	=	\
 OBJS		= $(CFILES:.c=.$O)
 PIC_OBJS	= $(CFILES:.c=.$(EXT_FOR_PIC_OBJECTS))
 
+HDR_CHECK_CS	= $(HDRS:.h=_check.c)
+HDR_CHECK_OBJS	= $(HDRS:.h=_check.$O)
+HDR_CHECK_MACROS = $(HDRS:.h=_check.macros)
+OBJ_CHECKS	= $(OBJS:%=%.obj_check)
+
 LDFLAGS		= -L$(BROWSER_DIR) -L$(LIBRARY_DIR) \
 			-L$(RUNTIME_DIR) -L$(BOEHM_GC_DIR)
 LDLIBS		= -l$(BROWSER_LIB_NAME) -l$(STD_LIB_NAME) -l$(RT_LIB_NAME) \
@@ -146,14 +151,30 @@ cs: $(CFILES)
 tags: $(CFILES) $(HDRS)
 	ctags $(CFILES) $(HDRS) ../runtime/*.c ../runtime/*.h
 
+#-----------------------------------------------------------------------------#
+#
+# `mmake check_namespace' performs various checks on the header files
+# and object files to make sure that they conform with our coding standards.
+#
+
+HEADER_CLEAN_FILTER = \
+	grep -v -e '^MR_' -e '^GC_' -e '^MERCURY_' | \
+	fgrep -v -x -f ../runtime/RESERVED_MACRO_NAMES
+
+.PHONY: check_headers_self_contained
+check_headers_self_contained: $(HDR_CHECK_OBJS)
+
+.PHONY: check_headers_macros
+check_headers_macros: $(HDR_CHECK_MACROS)
+
 .PHONY: check_headers
-check_headers:
-	for file in $(HDRS); do \
-		echo "$$file"; \
-		echo "#include \"$$file\"" > tmp.c; \
-		$(MGNUC) $(MGNUCFLAGS) -c tmp.c || exit 1; \
-	done
-	rm -f tmp.c
+check_headers: check_headers_self_contained check_headers_macros
+
+.PHONY: check_objs
+check_objs: $(OBJ_CHECKS)
+
+.PHONY: check_namespace
+check_namespace: check_headers check_objs
 
 #-----------------------------------------------------------------------------#
 
@@ -180,12 +201,18 @@ RM_C=:
 
 #-----------------------------------------------------------------------------#
 
-clean_local: clean_o
+clean_local: clean_o clean_check
 
 .PHONY: clean_o
 clean_o:
-	rm -f $(OBJS) $(PIC_OBJS) 
+	rm -f $(OBJS) $(PIC_OBJS)
 
+.PHONY: clean_check
+clean_check:
+	rm -f $(HDR_CHECK_OBJS) $(HDR_CHECK_CS) $(HDR_CHECK_MACROS)
+	rm -f $(OBJ_CHECKS)
+
+.PHONY: realclean_local
 realclean_local:
 	rm -f lib$(TRACE_LIB_NAME).$A lib$(TRACE_LIB_NAME).so
 

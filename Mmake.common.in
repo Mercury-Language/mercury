@@ -237,3 +237,56 @@ BOEHMGC_MAKEFILE=@BOEHMGC_MAKEFILE@
 -include $(MERCURY_DIR)/Mmake.params
 
 #-----------------------------------------------------------------------------#
+
+# This rule checks that object files are properly namespace-clean, with
+# regard to the global symbols that they define.
+# For an object file foo.o, it produces a file foo.o.obj_check that
+# contains a list of all the globals defined by that object that
+# do not start with `MR_', `mercury_', or `entry_'.
+
+%.obj_check: %
+	nm -g $< | awk '$$1 != "U" { print $$3; }' | \
+		grep -v -e '^_entry' -e '^MR_' -e '^mercury_' | \
+		sort -u > $@
+	@if cmp -s /dev/null $@; then \
+		true; \
+	else \
+		echo "** Global symbols in user namespace:"; \
+		cat $@; \
+		echo "(You may need to add MR_ prefixes to these names.)"; \
+		exit 1; \
+	fi
+
+# This rule helps to check that header files is self-contained, i.e. that each
+# header file foo.h includes any other header files that define types
+# used by foo.h. It creates a foo_check.c file that contains only a single
+# `#include' statement that includes foo.h; compiling foo_check.c will fail
+# if foo.h is not self-contained.
+
+%_check.c : %.h
+	echo "#include \"$*.h\"" > $*_check.c
+
+# This rule checks whether a header file defines any macros it shouldn't.
+# It generates the list of macros defined in the header file, and filters this
+# list through a command that is intended to filter out all references to macro
+# names that are all right. Each directory that uses this rule must set
+# the HEADER_CLEAN_FILTER make variable to contain this command.
+
+AWK = awk
+%_check.macros: %.h %_check.c
+	-$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) \
+		-DMERCURY_BOOTSTRAP_H \
+		-E $*_check.c \
+		-nostdinc -dN \
+		2> /dev/null | $(AWK) '/^#define/ { print $$2; }' | \
+		$(HEADER_CLEAN_FILTER) | sort -u > $@
+	@if cmp -s /dev/null $@; then \
+		true; \
+	else \
+		echo "** Macro name(s) in user namespace:"; \
+		cat $@; \
+		echo "(You may need to add a distinguishing prefix to these names.)"; \
+		exit 1; \
+	fi
+
+#-----------------------------------------------------------------------------#
