@@ -70,6 +70,10 @@ general
 
 - improve efficiency of the module import handling (currently O(N^2))
 
+- {type,mode}check and generate code for solutions/2.
+
+- {type,mode}check and generate code for "lambda" expressions.
+
 - renaming apart of different occurences
   of the same variable; warning about variables which occur in
   overlapping scopes.
