@@ -16,7 +16,7 @@
 nuprolog :-
 	fail.
 
-some(Vars, Goal) :-
+some(_Vars, Goal) :-
 	call(Goal).
 
 not(Goal) :-
