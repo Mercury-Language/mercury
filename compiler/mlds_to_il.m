@@ -1849,10 +1849,11 @@ get_load_store_lval_instrs(Lval, LoadMemRefInstrs,
 			ClassType) } -> 
 		{ get_fieldref(DataRep, FieldNum, FieldType, ClassType,
 			FieldRef, CastClassInstrs) },
-		load(FieldRval, LoadMemRefInstrs),
-		{ StoreLvalInstrs = tree__list([
-			CastClassInstrs,
-			instr_node(stfld(FieldRef))]) } 
+		load(FieldRval, LoadMemRefInstrs0),
+		{ LoadMemRefInstrs = tree__list([
+			LoadMemRefInstrs0,
+			CastClassInstrs]) },
+		{ StoreLvalInstrs = instr_node(stfld(FieldRef)) } 
 	;
 		{ LoadMemRefInstrs = empty },
 		store(Lval, StoreLvalInstrs)
@@ -2001,8 +2002,8 @@ store(field(_MaybeTag, Rval, FieldNum, FieldType, ClassType), Instrs) -->
 		FieldRef, CastClassInstrs) },
 	load(Rval, RvalLoadInstrs),
 	{ Instrs = tree__list([
-		RvalLoadInstrs,
 		CastClassInstrs,
+		RvalLoadInstrs,
 		instr_node(stfld(FieldRef))]) }.
 
 store(mem_ref(_Rval, _Type), _Instrs, Info, Info) :- 
