@@ -45,7 +45,6 @@
 % [ ] Computed gotos need testing.
 % [ ] :- extern doesn't work -- it needs to be treated like pragma c code.
 % [ ] nested modules need testing
-% [ ] Implement pragma export.
 % [ ] Fix issues with abstract types so that we can implement C
 %     pointers as MR_Box rather than MR_Word.
 % [ ] When generating target_code, sometimes we output more calls than
@@ -194,7 +193,9 @@
 %-----------------------------------------------------------------------------%
 
 generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
-	mlds(MercuryModuleName, _, Imports, Defns) = transform_mlds(MLDS),
+
+	mlds(MercuryModuleName, _ForeignCode, Imports, Defns) =
+		transform_mlds(MLDS),
 
 	ModuleName = mercury_module_name_to_mlds(MercuryModuleName),
 	prog_out__sym_name_to_string(mlds_module_name_to_sym_name(ModuleName),
@@ -213,6 +214,7 @@ generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
 	IlInfo0 = il_info_init(ModuleName, AssemblyName, Imports,
 			ILDataRep, DebugIlAsm, VerifiableCode, ByRefTailCalls),
 
+		% Generate code for all the methods.
 	list__map_foldl(mlds_defn_to_ilasm_decl, Defns, ILDecls,
 			IlInfo0, IlInfo),
 
@@ -276,11 +278,21 @@ get_il_data_rep(ILDataRep, IO0, IO) :-
 :- func transform_mlds(mlds) = mlds.
 
 transform_mlds(MLDS0) = MLDS :-
+	AllExports = list__condense(
+		list__map(
+			(func(mlds__foreign_code(_, _, Exports)) = Exports),
+			map__values(MLDS0 ^ foreign_code))
+		),
+
+		% Generate the exports for this file, they will be placed
+		% into class methods inside the wrapper class.
+	list__map(mlds_export_to_mlds_defn, AllExports, ExportDefns),
+
 	list__filter((pred(D::in) is semidet :-
 			( D = mlds__defn(_, _, _, mlds__function(_, _, _))
 			; D = mlds__defn(_, _, _, mlds__data(_, _))
 			)
-		), MLDS0 ^ defns, MercuryCodeMembers, Others),
+		), MLDS0 ^ defns ++ ExportDefns, MercuryCodeMembers, Others),
 	WrapperClass = wrapper_class(list__map(rename_defn, MercuryCodeMembers)),
 		% Note that ILASM requires that the type definitions in Others
 		% must precede the references to those types in WrapperClass.
@@ -1082,6 +1094,84 @@ mangle_dataname(tabling_pointer(_)) = _MangledName :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+	% MLDS exports are converted into forwarding functions, which are
+	% marked as public, are given the specified name, and simply call to
+	% the "exported" function.
+	%
+	% They will be placed inside the "mercury_code" wrapper class with
+	% all the other procedures.
+	%
+	% XXX much of this code should be generalized and turned into a
+	% more general routine for generating MLDS forwarding functions.
+	% We could use almost the same approach for outline_foreign_code
+	% to generate the forwarding function.
+
+:- pred mlds_export_to_mlds_defn(mlds__pragma_export::in, mlds__defn::out)
+	is det.
+
+mlds_export_to_mlds_defn(
+	ml_pragma_export(ExportName, EntityName, Params, Context), Defn) :- 
+	EntityName = qual(ModuleName, UnqualName),
+
+	Params = mlds__func_params(Inputs, RetTypes),
+	list__map_foldl(
+		(pred(RT::in, RV - Lval::out, N0::in, N0 + 1::out) is det :-
+			VN = var_name("returnval" ++ int_to_string(N0), no),
+			RV = ml_gen_mlds_var_decl(
+				var(VN), RT, no_initializer, Context),
+			Lval = var(qual(ModuleName, VN), RT)
+		), RetTypes, ReturnVars, 0, _),
+
+	EntNameToVarName = (func(EntName) = VarName :-
+		( EntName = data(var(VarName0)) ->
+			VarName = qual(ModuleName, VarName0)
+		;
+			error("exported method has argument without var name")
+		)
+	),
+	ArgTypes = assoc_list__values(Inputs),
+	ArgRvals = list__map(
+		(func(EntName - Type) = lval(var(VarName, Type)) :-
+			VarName = EntNameToVarName(EntName)
+		), Inputs),
+	ReturnVarDecls = assoc_list__keys(ReturnVars),
+	ReturnLvals = assoc_list__values(ReturnVars),
+	ReturnRvals = list__map((func(X) = lval(X)), ReturnLvals),
+
+	Signature = func_signature(ArgTypes, RetTypes),
+	( 
+		UnqualName = function(PredLabel, ProcId, _MaybeSeq, _PredId)
+	->
+		CodeRval = const(code_addr_const(proc(
+			qual(ModuleName, PredLabel - ProcId),
+			Signature)))
+	;
+		error("exported entity is not a function")
+	),
+
+		% XXX should we look for tail calls?
+	CallStatement = statement(
+		call(Signature, CodeRval, no, ArgRvals, ReturnLvals,
+			call), Context),
+	ReturnStatement = statement(return(ReturnRvals), Context),
+
+	Statement = statement(mlds__block(ReturnVarDecls,
+		( ReturnRvals = [] ->
+			[CallStatement]
+		;
+			[CallStatement, ReturnStatement]
+		)
+		), Context),
+		
+	DefnEntity = function(no, Params, defined_here(Statement)),
+
+	Flags = init_decl_flags(public, one_copy, non_virtual, overridable,
+		const, concrete),
+	Defn = defn(export(ExportName), Context, Flags, DefnEntity).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 	%
 	% Code for generating initializers.
 	%
@@ -1399,6 +1489,8 @@ statement_to_il(statement(return(Rvals), Context), Instrs) -->
 			context_node(Context),
 			LoadInstrs,
 			instr_node(ret)]) }
+	; { Rvals = [] } ->
+		{ unexpected(this_file, "empty list of return values") }
 	;
 		% MS IL doesn't support multiple return values
 		{ sorry(this_file, "multiple return values") }

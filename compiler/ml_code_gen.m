@@ -819,8 +819,8 @@ ml_gen_foreign_code(ModuleInfo, All_MLDS_ForeignCode) -->
 			MLDSWantedForeignBodys = list__map(ConvBody, 
 				WantedForeignBodys),
 			 	% XXX exports are only implemented for
-				% C at the moment
-			( Lang = c ->
+				% C and IL at the moment
+			( ( Lang = c ; Lang = il ) ->
 				ml_gen_pragma_export(ModuleInfo,
 					MLDS_PragmaExports)
 			;
