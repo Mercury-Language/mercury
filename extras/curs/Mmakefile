@@ -39,10 +39,10 @@ MLLIBS = -lpanel -lncurses
 #
 #EXTRA_LIBRARIES = curs
 
--include ../Mmake.params
-
 # Needed to avoid conflicts with `bool'
 CFLAGS = -DMERCURY_BOOTSTRAP_H
+
+-include ../Mmake.params
 
 MAIN_TARGET = libcurs
 depend: curs.depend

@@ -1,17 +1,26 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2001 The University of Melbourne.
+# Copyright (C) 2001, 2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
+
+INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
 
 -include ../Mmake.params
 
 MAIN_TARGET = all
 
-all:	test_qcheck
+.PHONY: depend
+depend:	qcheck.depend test_qcheck.depend
 
-depend:	test_qcheck.depend
+.PHONY: all
+all:	libqcheck test_qcheck
+
+.PHONY: install
+install: libqcheck.install
 
 .PHONY: check
-check:
-	true
+check:  test_qcheck
+	./test_qcheck
+	@echo "All tests passed"
+

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2002 The University of Melbourne.
+# Copyright (C) 2002-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -35,6 +35,8 @@ main_target: all
 depend: $(SUBDIRS:%=%_depend)
 all: $(SUBDIRS)
 install: all $(SUBDIRS:%=%_install)
+clean: $(SUBDIRS:%=%_clean)
+realclean: $(SUBDIRS:%=%_realclean)
 
 $(SUBDIRS:%=%_depend): %_depend:
 	cd $* && $(MMAKE) $(MMAKEFLAGS) depend
@@ -44,5 +46,11 @@ $(SUBDIRS): %:
 
 $(SUBDIRS:%=%_install): %_install:
 	cd $* && $(MMAKE) $(MMAKEFLAGS) install
+
+$(SUBDIRS:%=%_clean): %_clean:
+	cd $* && $(MMAKE) $(MMAKEFLAGS) clean
+
+$(SUBDIRS:%=%_realclean): %_realclean:
+	cd $* && $(MMAKE) $(MMAKEFLAGS) realclean
 
 .PHONY: $(SUBDIRS)
