@@ -62,8 +62,9 @@
 			% you can get the tvarset from the hlds__type_defn.
 			existq_tvars,		% existential type vars
 			list(class_constraint), % existential class constraints
-			list(type),		% The types of the arguments
-						% of this functor (if any)
+			list(constructor_arg),	% The field names and types of
+						% the arguments of this functor
+						% (if any)
 			type_id,		% The result type, i.e. the
 						% type to which this
 						% cons_defn belongs.

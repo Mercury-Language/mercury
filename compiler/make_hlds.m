@@ -1935,8 +1935,7 @@ ctors_add([Ctor | Rest], TypeId, TVarSet, NeedQual, PQInfo, Context,
 		Ctors0, Ctors) -->
 	{ Ctor = ctor(ExistQVars, Constraints, Name, Args) },
 	{ make_cons_id(Name, Args, TypeId, QualifiedConsId) },
-	{ assoc_list__values(Args, Types) },
-	{ ConsDefn = hlds_cons_defn(ExistQVars, Constraints, Types, TypeId,
+	{ ConsDefn = hlds_cons_defn(ExistQVars, Constraints, Args, TypeId,
 				Context) },
 	%
 	% Insert the fully-qualified version of this cons_id into the

@@ -1157,7 +1157,7 @@ mlds_output_type_prefix(mlds__class_type(Name, Arity, ClassKind)) -->
 		% actual enumeration type as a comment.
 		%
 		io__write_string("MR_Integer /* actually `enum "),
-		mlds_output_fully_qualified(Name, io__write_string),
+		mlds_output_fully_qualified(Name, mlds_output_mangled_name),
 		io__format("_%d_e", [i(Arity)]),
 		io__write_string("' */")
 	;
@@ -1165,7 +1165,7 @@ mlds_output_type_prefix(mlds__class_type(Name, Arity, ClassKind)) -->
 		% since don't use these types directly, we only
 		% use pointers to them.
 		io__write_string("struct "),
-		mlds_output_fully_qualified(Name, io__write_string),
+		mlds_output_fully_qualified(Name, mlds_output_mangled_name),
 		io__format("_%d_s", [i(Arity)])
 	).
 mlds_output_type_prefix(mlds__ptr_type(Type)) -->
@@ -2038,28 +2038,34 @@ mlds_output_lval(field(MaybeTag, Rval, offset(OffsetRval),
 	io__write_string(", "),
 	mlds_output_rval(OffsetRval),
 	io__write_string("))").
-mlds_output_lval(field(MaybeTag, PtrRval, named_field(FieldId), _, _)) -->
+mlds_output_lval(field(MaybeTag, PtrRval, named_field(FieldName, CtorType),
+		_FieldType, _PtrType)) -->
+	% XXX we shouldn't bother with this cast in the case where
+	% PtrType == CtorType
+	io__write_string("(("),
+	mlds_output_type(CtorType),
+	io__write_string(") "),
 	( { MaybeTag = yes(0) } ->
 		( { PtrRval = mem_addr(Lval) } ->
-			mlds_output_bracketed_lval(Lval),
-			io__write_string(".")
+			mlds_output_lval(Lval),
+			io__write_string(").")
 		;
 			mlds_output_bracketed_rval(PtrRval),
-			io__write_string("->")
+			io__write_string(")->")
 		)
 	;
 		( { MaybeTag = yes(Tag) } ->
 			io__write_string("MR_body("),
-			mlds_output_tag(Tag),
-			io__write_string(", ")
+			mlds_output_rval(PtrRval),
+			io__write_string(", "),
+			mlds_output_tag(Tag)
 		;
-			io__write_string("MR_strip_tag(")
+			io__write_string("MR_strip_tag("),
+			mlds_output_rval(PtrRval)
 		),
-		mlds_output_rval(PtrRval),
-		io__write_string(")"),
-		io__write_string("->")
+		io__write_string("))->")
 	),
-	mlds_output_fully_qualified(FieldId, io__write_string).
+	mlds_output_fully_qualified(FieldName, mlds_output_mangled_name).
 mlds_output_lval(mem_ref(Rval, _Type)) -->
 	io__write_string("*"),
 	mlds_output_bracketed_rval(Rval).

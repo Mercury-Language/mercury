@@ -224,6 +224,22 @@
 
 %-----------------------------------------------------------------------------%
 %
+% Routines for dealing with fields
+%
+
+	% Given the user-specified field name, if any,
+	% and the argument number (starting from one),
+	% generate an MLDS field name.
+:- func ml_gen_field_name(maybe(ctor_field_name), int) = mlds__field_name.
+
+	% Succeed iff the specified type must be boxed when used as a field.
+	% We need to box types that are not word-sized, because the code
+	% for `arg' etc. in std_util.m rely on all arguments being word-sized.
+:- pred ml_must_box_field_type(prog_type, module_info).
+:- mode ml_must_box_field_type(in, in) is semidet.
+
+%-----------------------------------------------------------------------------%
+%
 % Routines for handling success and failure
 %
 
@@ -1098,6 +1114,37 @@ ml_gen_var_decl_flags = MLDS_DeclFlags :-
 	Abstractness = concrete,
 	MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
 		Virtuality, Finality, Constness, Abstractness).
+
+%-----------------------------------------------------------------------------%
+%
+% Code for dealing with fields
+%
+
+	% Given the user-specified field name, if any,
+	% and the argument number (starting from one),
+	% generate an MLDS field name.
+	%
+ml_gen_field_name(MaybeFieldName, ArgNum) = FieldName :-
+	%
+	% If the programmer specified a field name, we use that,
+	% otherwise we just use `F' followed by the field number.
+	%
+	(
+		MaybeFieldName = yes(QualifiedFieldName),
+		unqualify_name(QualifiedFieldName, FieldName)
+	;
+		MaybeFieldName = no,
+		FieldName = string__format("F%d", [i(ArgNum)])
+	).
+
+	% Succeed iff the specified type must be boxed when used as a field.
+	% We need to box types that are not word-sized, because the code
+	% for `arg' etc. in std_util.m rely on all arguments being word-sized.
+ml_must_box_field_type(Type, ModuleInfo) :-
+	classify_type(Type, ModuleInfo, Category),
+	( Category = float_type
+	; Category = char_type
+	).
 
 %-----------------------------------------------------------------------------%
 %

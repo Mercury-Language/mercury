@@ -941,9 +941,17 @@ XXX Full exception handling support is not yet implemented.
 	--->		% offset(N) represents the field
 			% at offset N Words.
 	 	offset(mlds__rval)
-	;		% named_field(Name) represents the field
-			% with the specified name.
-		named_field(mlds__fully_qualified_name(field_name))
+	;		% named_field(Name, CtorType) represents the field
+			% with the specified name.  The CtorType gives the
+			% MLDS type for this particular constructor.
+			% The type of the object is given by the PtrType
+			% in the field(..) lval; CtorType may either be
+			% the same as PtrType, or it may be a pointer to
+			% a derived class.  In the latter case, the
+			% MLDS->target code back-end is responsible
+			% for inserting a downcast from PtrType to CtorType
+			% before accessing the field.
+		named_field(mlds__fully_qualified_name(field_name), mlds__type)
 	.
 
 :- type field_name == string.
@@ -967,7 +975,7 @@ XXX Full exception handling support is not yet implemented.
 	--->	field(maybe(mlds__tag), mlds__rval, field_id, 
 			mlds__type, mlds__type)
 				% field(Tag, Address, FieldName, FieldType,
-				%	ClassType)
+				%	PtrType)
 				% selects a field of a compound term.
 				% Address is a tagged pointer to a cell
 				% on the heap; the offset into the cell
@@ -978,8 +986,8 @@ XXX Full exception handling support is not yet implemented.
 				% it is known, since this will lead to
 				% faster code.
 				% The FieldType is the type of the field.
-				% The ClassType is the type of the object from
-				% which we are fetching the field.
+				% The PtrType is the type of the pointer
+				% from which we are fetching the field.
 				%
 				% Note that currently we store all fields
 				% of objects created with new_object

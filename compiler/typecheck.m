@@ -4247,8 +4247,9 @@ convert_cons_defn_list(TypeCheckInfo, [X|Xs], [Y|Ys]) :-
 :- mode convert_cons_defn(typecheck_info_ui, in, out) is det.
 
 convert_cons_defn(TypeCheckInfo, HLDS_ConsDefn, ConsTypeInfo) :-
-	HLDS_ConsDefn = hlds_cons_defn(ExistQVars, ExistConstraints, ArgTypes,
+	HLDS_ConsDefn = hlds_cons_defn(ExistQVars, ExistConstraints, Args,
 				TypeId, Context),
+	assoc_list__values(Args, ArgTypes),
 	typecheck_info_get_types(TypeCheckInfo, Types),
 	map__lookup(Types, TypeId, TypeDefn),
 	hlds_data__get_type_defn_tvarset(TypeDefn, ConsTypeVarSet),

@@ -986,13 +986,14 @@ find_matching_constructor(ModuleInfo, TVarSet, ConsId, Type, ArgTypes) :-
 
 	% Overloading resolution ignores the class constraints.
 	ConsDefn = hlds_cons_defn(ConsExistQVars, _,
-			ConsArgTypes, ConsTypeId, _),
+			ConsArgs, ConsTypeId, _),
 	ConsTypeId = TypeId,
 
 	module_info_types(ModuleInfo, Types),
 	map__search(Types, TypeId, TypeDefn),
 	hlds_data__get_type_defn_tvarset(TypeDefn, TypeTVarSet),
 
+	assoc_list__values(ConsArgs, ConsArgTypes),
 	arg_type_list_subsumes(TVarSet, ArgTypes,
 		TypeTVarSet, ConsExistQVars, ConsArgTypes).
 
@@ -1147,7 +1148,8 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, ConsId, TermType,
 	%
 	type_util__get_type_and_cons_defn(ModuleInfo, TermType,
 		ConsId, TypeDefn, ConsDefn),
-	ConsDefn = hlds_cons_defn(ExistQVars, _, ArgTypes0, _, _),
+	ConsDefn = hlds_cons_defn(ExistQVars, _, Args, _, _),
+	assoc_list__values(Args, ArgTypes0),
 	( ExistQVars = [] ->
 		ArgTypes1 = ArgTypes0,
 		PredInfo = PredInfo0,

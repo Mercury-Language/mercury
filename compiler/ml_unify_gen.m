@@ -75,7 +75,7 @@
 :- implementation.
 
 :- import_module hlds_module, hlds_out, builtin_ops.
-:- import_module ml_call_gen, prog_util, type_util, mode_util.
+:- import_module ml_call_gen, ml_type_gen, prog_util, type_util, mode_util.
 :- import_module rtti.
 :- import_module code_util. % XXX needed for `code_util__cons_id_to_tag'.
 :- import_module globals, options.
@@ -1153,16 +1153,16 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context,
 		{ Tag = unshared_tag(UnsharedTag) },
 		ml_gen_var(Var, VarLval),
 		ml_variable_types(Args, ArgTypes),
-		ml_field_types(Type, ConsId, ArgTypes, FieldTypes),
-		ml_gen_unify_args(Args, Modes, ArgTypes, FieldTypes, Type,
-			VarLval, 0, UnsharedTag, Context, MLDS_Statements)
+		ml_field_names_and_types(Type, ConsId, ArgTypes, Fields),
+		ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, Type,
+			VarLval, 0, 1, UnsharedTag, Context, MLDS_Statements)
 	;
 		{ Tag = shared_remote_tag(PrimaryTag, _SecondaryTag) },
 		ml_gen_var(Var, VarLval),
 		ml_variable_types(Args, ArgTypes),
-		ml_field_types(Type, ConsId, ArgTypes, FieldTypes),
-		ml_gen_unify_args(Args, Modes, ArgTypes, FieldTypes, Type,
-			VarLval, 1, PrimaryTag, Context, MLDS_Statements)
+		ml_field_names_and_types(Type, ConsId, ArgTypes, Fields),
+		ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, Type,
+			VarLval, 1, 1, PrimaryTag, Context, MLDS_Statements)
 	;
 		{ Tag = shared_local_tag(_Bits1, _Num1) },
 		{ MLDS_Statements = [] } % if this is det, then nothing happens
@@ -1176,11 +1176,11 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context,
 	% the types of the actual arguments can be an instance of the
 	% field types.
 	%
-:- pred ml_field_types(prog_type, cons_id, list(prog_type), list(prog_type),
-		ml_gen_info, ml_gen_info).
-:- mode ml_field_types(in, in, in, out, in, out) is det.
+:- pred ml_field_names_and_types(prog_type, cons_id, list(prog_type),
+		list(constructor_arg), ml_gen_info, ml_gen_info).
+:- mode ml_field_names_and_types(in, in, in, out, in, out) is det.
 
-ml_field_types(Type, ConsId, ArgTypes, FieldTypes) -->
+ml_field_names_and_types(Type, ConsId, ArgTypes, Fields) -->
 	%
 	% Lookup the field types for the arguments of this cons_id
 	%
@@ -1188,29 +1188,32 @@ ml_field_types(Type, ConsId, ArgTypes, FieldTypes) -->
 	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
 	{ type_util__get_type_and_cons_defn(ModuleInfo, Type, ConsId,
 			_TypeDefn, ConsDefn) },
-	{ ConsDefn = hlds_cons_defn(_, _, FieldTypes0, _, _) },
+	{ ConsDefn = hlds_cons_defn(_, _, Fields0, _, _) },
 	%
-	% Add the types for any type_infos and/or typeclass_infos
+	% Add the fields for any type_infos and/or typeclass_infos
 	% inserted for existentially quantified data types.
 	% For these, we just copy the types from the ArgTypes.
 	%
 	{ NumArgs = list__length(ArgTypes) },
-	{ NumFieldTypes0 = list__length(FieldTypes0) },
+	{ NumFieldTypes0 = list__length(Fields0) },
 	{ NumExtraTypes = NumArgs - NumFieldTypes0 },
 	{ ExtraFieldTypes = list__take_upto(NumExtraTypes, ArgTypes) },
-	{ FieldTypes = list__append(ExtraFieldTypes, FieldTypes0) }.
+	{ ExtraFields = list__map(func(FieldType) = no - FieldType,
+		ExtraFieldTypes) },
+	{ Fields = list__append(ExtraFields, Fields0) }.
 
-:- pred ml_gen_unify_args(prog_vars, list(uni_mode), list(prog_type),
-		list(prog_type), prog_type, mlds__lval, int, mlds__tag,
-		prog_context, mlds__statements, ml_gen_info, ml_gen_info).
-:- mode ml_gen_unify_args(in, in, in, in, in, in, in, in, in, out, in, out)
-		is det.
+:- pred ml_gen_unify_args(cons_id, prog_vars, list(uni_mode), list(prog_type),
+		list(constructor_arg), prog_type, mlds__lval, int, int,
+		mlds__tag, prog_context, mlds__statements,
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_unify_args(in, in, in, in, in, in, in, in, in, in, in, out,
+		in, out) is det.
 
-ml_gen_unify_args(Args, Modes, ArgTypes, FieldTypes, VarType, VarLval, ArgNum,
-		PrimaryTag, Context, MLDS_Statements) -->
+ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, VarType, VarLval,
+		Offset, ArgNum, PrimaryTag, Context, MLDS_Statements) -->
 	(
-		ml_gen_unify_args_2(Args, Modes, ArgTypes, FieldTypes, VarType,
-			VarLval, ArgNum, PrimaryTag, Context,
+		ml_gen_unify_args_2(ConsId, Args, Modes, ArgTypes, Fields,
+			VarType, VarLval, Offset, ArgNum, PrimaryTag, Context,
 			[], MLDS_Statements0)
 	->
 		{ MLDS_Statements = MLDS_Statements0 }
@@ -1218,55 +1221,103 @@ ml_gen_unify_args(Args, Modes, ArgTypes, FieldTypes, VarType, VarLval, ArgNum,
 		{ error("ml_gen_unify_args: length mismatch") }
 	).
 
-:- pred ml_gen_unify_args_2(prog_vars, list(uni_mode), list(prog_type),
-		list(prog_type), prog_type, mlds__lval, int, mlds__tag,
-		prog_context, mlds__statements, mlds__statements,
+:- pred ml_gen_unify_args_2(cons_id, prog_vars, list(uni_mode), list(prog_type),
+		list(constructor_arg), prog_type, mlds__lval, int, int,
+		mlds__tag, prog_context, mlds__statements, mlds__statements,
 		ml_gen_info, ml_gen_info).
-:- mode ml_gen_unify_args_2(in, in, in, in, in, in, in, in, in, in, out,
+:- mode ml_gen_unify_args_2(in, in, in, in, in, in, in, in, in, in, in, in, out,
 		in, out) is semidet.
 
-ml_gen_unify_args_2([], [], [], _, _, _, _, _, _, Statements, Statements) -->
-	[].
-ml_gen_unify_args_2([Arg|Args], [Mode|Modes], [ArgType|ArgTypes],
-		[FieldType|FieldTypes], VarType, VarLval, ArgNum, PrimaryTag,
+ml_gen_unify_args_2(_, [], [], [], _, _, _, _, _, _, _, Statements, Statements)
+		--> [].
+ml_gen_unify_args_2(ConsId, [Arg|Args], [Mode|Modes], [ArgType|ArgTypes],
+		[Field|Fields], VarType, VarLval, Offset, ArgNum, PrimaryTag,
 		Context, MLDS_Statements0, MLDS_Statements) -->
+	{ Offset1 = Offset + 1 },
 	{ ArgNum1 = ArgNum + 1 },
-	ml_gen_unify_args_2(Args, Modes, ArgTypes, FieldTypes, VarType,
-		VarLval, ArgNum1, PrimaryTag, Context,
+	ml_gen_unify_args_2(ConsId, Args, Modes, ArgTypes, Fields, VarType,
+		VarLval, Offset1, ArgNum1, PrimaryTag, Context,
 		MLDS_Statements0, MLDS_Statements1),
-	ml_gen_unify_arg(Arg, Mode, ArgType, FieldType, VarType, VarLval,
-		ArgNum, PrimaryTag, Context,
+	ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
+		Offset, ArgNum, PrimaryTag, Context,
 		MLDS_Statements1, MLDS_Statements).
 
-:- pred ml_gen_unify_arg(prog_var, uni_mode, prog_type, prog_type, prog_type,
-		mlds__lval, int, mlds__tag, prog_context,
-		mlds__statements, mlds__statements, ml_gen_info, ml_gen_info).
-:- mode ml_gen_unify_arg(in, in, in, in, in, in, in, in, in, in, out, in, out)
-		is det.
+:- pred ml_gen_unify_arg(cons_id, prog_var, uni_mode, prog_type,
+		constructor_arg, prog_type, mlds__lval, int, int, mlds__tag,
+		prog_context, mlds__statements, mlds__statements,
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_unify_arg(in, in, in, in, in, in, in, in, in, in, in, in, out,
+		in, out) is det.
 
-ml_gen_unify_arg(Arg, Mode, ArgType, _FieldType, VarType, VarLval, ArgNum,
-		PrimaryTag, Context, MLDS_Statements0, MLDS_Statements) -->
-	%
-	% With the current low-level data representation,
-	% we store all fields as boxed, so we ignore _FieldType
-	% and instead generate a polymorphic type BoxedFieldType
-	% here.  This type is used in the calls to
-	% ml_gen_box_or_unbox_rval below to ensure that we
-	% box values when storing them into fields and
-	% unbox them when extracting them from fields.
-	%
-	{ varset__init(TypeVarSet0) },
-	{ varset__new_var(TypeVarSet0, TypeVar, _TypeVarSet) },
-	{ type_util__var(BoxedFieldType, TypeVar) },
+ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
+		Offset, ArgNum, PrimaryTag, Context,
+		MLDS_Statements0, MLDS_Statements) -->
+	{ Field = MaybeFieldName - FieldType },
+	=(Info),
+	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
+	{ module_info_globals(ModuleInfo, Globals) },
+	{ globals__lookup_bool_option(Globals, highlevel_data,
+		HighLevelData) },
+	{
+		%
+		% With the low-level data representation,
+		% we access all fields using offsets.
+		%
+		HighLevelData = no,
+		FieldId = offset(const(int_const(Offset)))
+	;
+		%
+		% With the high-level data representation,
+		% we always used named fields.
+		% 
+		HighLevelData = yes,
+		FieldName = ml_gen_field_name(MaybeFieldName, ArgNum),
+		(
+			ConsId = cons(ConsName, ConsArity)
+		->
+			unqualify_name(ConsName, UnqualConsName),
+			FieldId = ml_gen_field_id(VarType,
+				UnqualConsName, ConsArity, FieldName)
+		;
+			error("ml_gen_unify_args: invalid cons_id")
+		)
+	},
+	{
+		%
+		% With the low-level data representation,
+		% we store all fields as boxed, so we ignore the field
+		% type from `Field' and instead generate a polymorphic
+		% type BoxedFieldType which we use for the type of the field.
+		% This type is used in the calls to
+		% ml_gen_box_or_unbox_rval below to ensure that we
+		% box values when storing them into fields and
+		% unbox them when extracting them from fields.
+		%
+		% With the high-level data representation,
+		% we don't box everything, but we still need
+		% to box floating point fields.
+		%
+		(
+			HighLevelData = no
+		;
+			HighLevelData = yes,
+			ml_must_box_field_type(FieldType, ModuleInfo)
+		)
+	->
+		varset__init(TypeVarSet0),
+		varset__new_var(TypeVarSet0, TypeVar, _TypeVarSet),
+		type_util__var(BoxedFieldType, TypeVar)
+	;
+		BoxedFieldType = FieldType
+	},
 
-	%
-	% Generate lvals for the LHS and the RHS
-	%
-	{ FieldId = offset(const(int_const(ArgNum))) },
-	ml_gen_type(BoxedFieldType, MLDS_FieldType),
+		%
+		% Generate lvals for the LHS and the RHS
+		%
 	ml_gen_type(VarType, MLDS_VarType),
+	ml_gen_type(BoxedFieldType, MLDS_BoxedFieldType),
 	{ FieldLval = field(yes(PrimaryTag), lval(VarLval), FieldId,
-		MLDS_FieldType, MLDS_VarType) },
+		MLDS_BoxedFieldType, MLDS_VarType) },
 	ml_gen_var(Arg, ArgLval),
 
 	%
@@ -1397,10 +1448,9 @@ ml_gen_tag_test(Var, ConsId, TagTestDecls, TagTestStatements,
 	ml_gen_var(Var, VarLval),
 	ml_variable_type(Var, Type),
 	ml_cons_id_to_tag(ConsId, Type, Tag),
-	ml_gen_type(Type, MLDS_Type),
 	=(Info),
 	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
-	{ TagTestExpression = ml_gen_tag_test_rval(Tag, MLDS_Type, ModuleInfo,
+	{ TagTestExpression = ml_gen_tag_test_rval(Tag, Type, ModuleInfo,
 		lval(VarLval)) },
 	{ TagTestDecls = [] },
 	{ TagTestStatements = [] }.
@@ -1410,7 +1460,7 @@ ml_gen_tag_test(Var, ConsId, TagTestDecls, TagTestStatements,
 	%	true if VarRval has the specified Tag and false otherwise.
 	%	VarType is the type of VarRval. 
 	%
-:- func ml_gen_tag_test_rval(cons_tag, mlds__type, module_info, mlds__rval)
+:- func ml_gen_tag_test_rval(cons_tag, prog_type, module_info, mlds__rval)
 	= mlds__rval.
 
 ml_gen_tag_test_rval(string_constant(String), _, _, Rval) =
@@ -1439,19 +1489,29 @@ ml_gen_tag_test_rval(no_tag, _, _, _Rval) = const(true).
 ml_gen_tag_test_rval(unshared_tag(UnsharedTag), _, _, Rval) =
 	binop(eq, unop(std_unop(tag), Rval),
 		  unop(std_unop(mktag), const(int_const(UnsharedTag)))).
-ml_gen_tag_test_rval(shared_remote_tag(PrimaryTag, SecondaryTag), MLDS_VarType,
-		ModuleInfo, Rval) = TagTest :-
-	SecondaryTagTest = binop(eq,
-		% Note: with the current low-level data representation,
+ml_gen_tag_test_rval(shared_remote_tag(PrimaryTagVal, SecondaryTagVal),
+		VarType, ModuleInfo, Rval) = TagTest :-
+	MLDS_VarType = mercury_type_to_mlds_type(ModuleInfo, VarType),
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_bool_option(Globals, highlevel_data, HighLevelData),
+	( HighLevelData = no ->
+		% Note: with the low-level data representation,
 		% all fields -- even the secondary tag -- are boxed,
 		% and so we need to unbox (i.e. cast) it back to the
 		% right type here.
-		unop(unbox(mlds__native_int_type),
-			lval(field(yes(PrimaryTag), Rval,
-			offset(const(int_const(0))),
-			mlds__generic_type, MLDS_VarType))),
-		const(int_const(SecondaryTag))),
-	module_info_globals(ModuleInfo, Globals),
+		SecondaryTagField = 
+			unop(unbox(mlds__native_int_type),
+				lval(field(yes(PrimaryTagVal), Rval,
+				offset(const(int_const(0))),
+				mlds__generic_type, MLDS_VarType)))
+	;
+		FieldId = ml_gen_field_id(VarType, "tag_type", 0,
+			"data_tag"),
+		SecondaryTagField = lval(field(yes(PrimaryTagVal), Rval,
+			FieldId, mlds__native_int_type, MLDS_VarType))
+	),
+	SecondaryTagTest = binop(eq, SecondaryTagField,
+		const(int_const(SecondaryTagVal))),
 	globals__lookup_int_option(Globals, num_tag_bits, NumTagBits),
 	( NumTagBits = 0 ->
 		% no need to test the primary tag
@@ -1459,11 +1519,35 @@ ml_gen_tag_test_rval(shared_remote_tag(PrimaryTag, SecondaryTag), MLDS_VarType,
 	;
 		PrimaryTagTest = binop(eq,
 			unop(std_unop(tag), Rval),
-			unop(std_unop(mktag), const(int_const(PrimaryTag)))), 
+			unop(std_unop(mktag),
+				const(int_const(PrimaryTagVal)))), 
 		TagTest = binop(and, PrimaryTagTest, SecondaryTagTest)
 	).
-ml_gen_tag_test_rval(shared_local_tag(Bits, Num), MLDS_VarType, _, Rval) =
-	binop(eq, Rval,
+ml_gen_tag_test_rval(shared_local_tag(Bits, Num), VarType, ModuleInfo, Rval) =
+		TestRval :-
+	MLDS_VarType = mercury_type_to_mlds_type(ModuleInfo, VarType),
+	TestRval = binop(eq, Rval,
 		  unop(cast(MLDS_VarType), mkword(Bits,
 		  	unop(std_unop(mkbody), const(int_const(Num)))))).
 
+:- func ml_gen_field_id(prog_type, mlds__class_name, arity, mlds__field_name) =
+	mlds__field_id.
+
+ml_gen_field_id(Type, ClassName, ClassArity, FieldName) = FieldId :-
+	(
+		type_to_type_id(Type, TypeId, _)
+	->
+		ml_gen_type_name(TypeId,
+			qual(MLDS_Module, TypeName), TypeArity),
+		ClassQualifier = mlds__append_class_qualifier(
+			MLDS_Module, TypeName, TypeArity),
+		QualClassName = qual(ClassQualifier, ClassName),
+		ClassPtrType = mlds__ptr_type(mlds__class_type(
+			QualClassName, ClassArity, mlds__class)),
+		FieldQualifier = mlds__append_class_qualifier(
+			ClassQualifier, ClassName, ClassArity),
+		QualifiedFieldName = qual(FieldQualifier, FieldName),
+		FieldId = named_field(QualifiedFieldName, ClassPtrType)
+	;
+		error("ml_gen_field_id: invalid type")
+	).

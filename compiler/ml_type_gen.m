@@ -39,7 +39,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module hlds_pred, prog_data, prog_util.
+:- import_module hlds_pred, prog_data, prog_util, type_util.
 :- import_module ml_code_util.
 :- import_module globals, options.
 
@@ -188,15 +188,38 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
 	%
 	%	class <ClassName> {
 	%	public:
-	%		int data_tag;
-	%		/* constants used for data_tag */
-	%		static const int <ctor1> = 0;
-	%		static const int <ctor2> = 1;
+	% #if some_but_not_all_ctors_use_secondary_tag
+	%		/* A nested derived class for the secondary tag */
+	%		class tag_type : public <ClassName> {
+	%		public:
+	% #endif
+	% #if some_ctors_use_secondary_tag
+	%			int data_tag;
+	%   #if 0
+	%   /*
+	%   ** XXX we don't yet bother with these;
+	%   ** mlds_to_c.m doesn't support static members.
+	%   */
+	%			/* constants used for data_tag */
+	%			static const int <ctor1> = 0;
+	%			static const int <ctor2> = 1;
+	%   #endif
+	% #endif
+	% #if some_but_not_all_ctors_use_secondary_tag
+	%		};
+	% #endif
 	%		...
 	%		/*
 	%		** Derived classes, one for each constructor;
 	%		** these are generated as nested classes to
 	%		** avoid name clashes.
+	%		** These will derive either directly from
+	%		** <ClassName> or from <ClassName>::tag_type
+	%		** (which in turn derives from <ClassName>),
+	%		** depending on whether they need a secondary
+	%		** tag.  If all the ctors for a type need a
+	%		** secondary tag, we put the secondary tag members
+	%		** directly in the base class.
 	%		*/
 	%		class <ctor1> : public <ClassName> {
 	%		public:
@@ -208,7 +231,7 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
 	%			MR_Word F2;
 	%			...
 	%		};
-	%		class <ctor2> : public <ClassName> {
+	%		class <ctor2> : public <ClassName>::tag_type {
 	%		public:
 	%			...
 	%		};
@@ -220,27 +243,70 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
 		mlds__defns, mlds__defns).
 :- mode ml_gen_du_parent_type(in, in, in, in, in, in, in, out) is det.
 
-ml_gen_du_parent_type(ModuleInfo, TypeId, TypeDefn, Ctors, _TagValues,
+ml_gen_du_parent_type(ModuleInfo, TypeId, TypeDefn, Ctors, TagValues,
 		MaybeEqualityMembers, MLDS_Defns0, MLDS_Defns) :-
 	hlds_data__get_type_defn_context(TypeDefn, Context),
 	MLDS_Context = mlds__make_context(Context),
 
 	% generate the class name
-	ml_gen_type_name(TypeId, qual(_, MLDS_ClassName), MLDS_ClassArity),
+	ml_gen_type_name(TypeId, QualBaseClassName, BaseClassArity),
+	BaseClassId = mlds__class_type(QualBaseClassName, BaseClassArity,
+		mlds__class),
+	QualBaseClassName = qual(BaseClassModuleName, BaseClassName),
+	BaseClassQualifier = mlds__append_class_qualifier(
+		BaseClassModuleName, BaseClassName, BaseClassArity),
 
-	% generate the class members
-	TagMember = ml_gen_tag_member("data_tag", Context),
-	TagConstMembers = [],
-	% XXX we don't yet bother with these;
-	% mlds_to_c.m doesn't support static members.
-	%	TagConstMembers = list__condense(list__map(
-	% 		ml_gen_tag_constant(Context, TagValues), Ctors)),
-	Members0 = list__append(MaybeEqualityMembers,
-		[TagMember|TagConstMembers]),
+	(
+		%
+		% If none of the constructors for this type need
+		% a secondary tag, then we don't need the
+		% members for the secondary tag.
+		%
+		\+ (some [Ctor] (
+			list__member(Ctor, Ctors),
+			ml_uses_secondary_tag(TagValues, Ctor, _)
+		))
+	->
+		TagMembers = [],
+		TagClassId = BaseClassId
+	;
+		%
+		% Generate the members for the secondary tag.
+		%
+		TagDataMember = ml_gen_tag_member("data_tag", Context),
+		TagConstMembers = [],
+		% XXX we don't yet bother with these;
+		% mlds_to_c.m doesn't support static members.
+		%	TagConstMembers = list__condense(list__map(
+		% 		ml_gen_tag_constant(Context, TagValues), Ctors)),
+		TagMembers0 = [TagDataMember | TagConstMembers],
+
+		%
+		% If all the constructors for this type need a
+		% secondary tag, then we put the secondary tag members
+		% directly in the base class, otherwise we put it in
+		% a separate nested derived class.
+		%
+		(
+			(all [Ctor] (
+				list__member(Ctor, Ctors)
+			=>
+				ml_uses_secondary_tag(TagValues, Ctor, _)
+			))
+		->
+			TagMembers = TagMembers0,
+			TagClassId = BaseClassId
+		;
+			ml_gen_secondary_tag_class(MLDS_Context,
+				BaseClassQualifier, BaseClassId, TagMembers0,
+				TagTypeDefn, TagClassId),
+			TagMembers = [TagTypeDefn]
+		)
+	),
 
 	% generate the nested derived classes
-	list__foldl(ml_gen_du_ctor_type(ModuleInfo, TypeId, TypeDefn), Ctors,
-		Members0, Members),
+	list__foldl(ml_gen_du_ctor_type(ModuleInfo, BaseClassId, TagClassId,
+		TypeDefn, TagValues), Ctors, [], CtorMembers),
 
 	% the base class doesn't import or inherit anything
 	Imports = [],
@@ -248,7 +314,9 @@ ml_gen_du_parent_type(ModuleInfo, TypeId, TypeDefn, Ctors, _TagValues,
 	Implements = [],
 
 	% put it all together
-	MLDS_TypeName = type(MLDS_ClassName, MLDS_ClassArity),
+	Members = list__condense([MaybeEqualityMembers, TagMembers,
+		CtorMembers]),
+	MLDS_TypeName = type(BaseClassName, BaseClassArity),
 	MLDS_TypeFlags = ml_gen_type_decl_flags,
 	MLDS_TypeDefnBody = mlds__class(mlds__class_defn(mlds__class,
 		Imports, Inherits, Implements, Members)),
@@ -257,6 +325,9 @@ ml_gen_du_parent_type(ModuleInfo, TypeId, TypeDefn, Ctors, _TagValues,
 	
 	MLDS_Defns = [MLDS_TypeDefn | MLDS_Defns0].
 
+	%
+	% Generate the declaration for the field that holds the secondary tag.
+	%
 :- func ml_gen_tag_member(mlds__var_name, prog_context) = mlds__defn.
 ml_gen_tag_member(Name, Context) =
 	mlds__defn(data(var(Name)),
@@ -271,10 +342,7 @@ ml_gen_tag_constant(Context, ConsTagValues, Ctor) = MLDS_Defns :-
 	%
 	% Check if this constructor uses a secondary tag.
 	%
-	Ctor = ctor(_ExistQTVars, _Constraints, Name, Args),
-	list__length(Args, Arity),
-	map__lookup(ConsTagValues, cons(Name, Arity), TagVal),
-	( TagVal = shared_remote_tag(_PrimaryTag, SecondaryTag) ->
+	( ml_uses_secondary_tag(ConsTagValues, Ctor, SecondaryTag) ->
 		%
 		% Generate an MLDS definition for this secondary
 		% tag constant.  We do this mainly for readability
@@ -283,6 +351,7 @@ ml_gen_tag_constant(Context, ConsTagValues, Ctor) = MLDS_Defns :-
 		% useful in the `--tags none' case, where there
 		% will be no primary tags.
 		%
+		Ctor = ctor(_ExistQTVars, _Constraints, Name, _Args),
 		unqualify_name(Name, UnqualifiedName),
 		ConstValue = const(int_const(SecondaryTag)),
 		MLDS_Defn = mlds__defn(data(var(UnqualifiedName)),
@@ -295,11 +364,63 @@ ml_gen_tag_constant(Context, ConsTagValues, Ctor) = MLDS_Defns :-
 		MLDS_Defns = []
 	).
 
-:- pred ml_gen_du_ctor_type(module_info, type_id, hlds_type_defn, constructor,
-		mlds__defns, mlds__defns).
-:- mode ml_gen_du_ctor_type(in, in, in, in, in, out) is det.
+	%
+	% Check if this constructor uses a secondary tag,
+	% and if so, return the secondary tag value.
+	%
+:- pred ml_uses_secondary_tag(cons_tag_values, constructor, int).
+:- mode ml_uses_secondary_tag(in, in, out) is semidet.
 
-ml_gen_du_ctor_type(ModuleInfo, TypeId, TypeDefn, Ctor,
+ml_uses_secondary_tag(ConsTagValues, Ctor, SecondaryTag) :-
+	Ctor = ctor(_ExistQTVars, _Constraints, Name, Args),
+	list__length(Args, Arity),
+	map__lookup(ConsTagValues, cons(Name, Arity), TagVal),
+	TagVal = shared_remote_tag(_PrimaryTag, SecondaryTag).
+
+	%
+	% Generate a definition for the class used for the secondary tag
+	% type.  This is needed for discriminated unions for which some
+	% but not all constructors use secondary tags.
+	%
+:- pred ml_gen_secondary_tag_class(mlds__context, mlds_module_name,
+		mlds__class_id, mlds__defns, mlds__defn, mlds__class_id).
+:- mode ml_gen_secondary_tag_class(in, in, in, in, out, out) is det.
+
+ml_gen_secondary_tag_class(MLDS_Context, BaseClassQualifier, BaseClassId, Members,
+		MLDS_TypeDefn, SecondaryTagClassId) :-
+	% Generate the class name for the secondary tag class.
+	% Note: the secondary tag class is nested inside the
+	% base class for this type.
+	UnqualClassName = "tag_type",
+	ClassName = qual(BaseClassQualifier, UnqualClassName),
+	ClassArity = 0,
+	SecondaryTagClassId = mlds__class_type(ClassName, ClassArity,
+		mlds__class),
+
+	% the secondary tag class inherits the base class for this type
+	Imports = [],
+	Inherits = [BaseClassId],
+	Implements = [],
+
+	% put it all together
+	MLDS_TypeName = type(UnqualClassName, ClassArity),
+	MLDS_TypeFlags = ml_gen_type_decl_flags,
+	MLDS_TypeDefnBody = mlds__class(mlds__class_defn(mlds__class,
+		Imports, Inherits, Implements, Members)),
+	MLDS_TypeDefn = mlds__defn(MLDS_TypeName, MLDS_Context, MLDS_TypeFlags,
+		MLDS_TypeDefnBody).
+	
+	%
+	% Generate a definition for the class corresponding to
+	% a constructor of a discriminated union type.
+	%
+:- pred ml_gen_du_ctor_type(module_info, mlds__class_id, mlds__class_id,
+		hlds_type_defn, cons_tag_values, constructor,
+		mlds__defns, mlds__defns).
+:- mode ml_gen_du_ctor_type(in, in, in, in, in, in, in, out) is det.
+
+ml_gen_du_ctor_type(ModuleInfo, BaseClassId, SecondaryTagClassId,
+		TypeDefn, ConsTagValues, Ctor,
 		MLDS_Defns0, MLDS_Defns) :-
 	Ctor = ctor(_ExistQTVars, _Constraints, CtorName, Args),
 
@@ -307,12 +428,6 @@ ml_gen_du_ctor_type(ModuleInfo, TypeId, TypeDefn, Ctor,
 	% but we don't, so we just use the context from the type.
 	hlds_data__get_type_defn_context(TypeDefn, Context),
 	MLDS_Context = mlds__make_context(Context),
-
-	% generate the base class name
-	ClassKind = mlds__class,
-	ml_gen_type_name(TypeId, BaseClassName, BaseClassArity),
-	BaseClassId = mlds__class_type(BaseClassName, BaseClassArity,
-		ClassKind),
 
 	% generate the class name for this constructor
 	unqualify_name(CtorName, CtorClassName),
@@ -323,15 +438,22 @@ ml_gen_du_ctor_type(ModuleInfo, TypeId, TypeDefn, Ctor,
 	list__map_foldl(ml_gen_du_ctor_member(ModuleInfo, Context),
 		Args, Members, 1, _),
 
-	% we inherit the base class for this type
+	% we inherit either the base class for this type,
+	% or the secondary tag class, depending on whether
+	% we need a secondary tag
+	( ml_uses_secondary_tag(ConsTagValues, Ctor, _) ->
+		ParentClassId = SecondaryTagClassId
+	;
+		ParentClassId = BaseClassId
+	),
 	Imports = [],
-	Inherits = [BaseClassId],
+	Inherits = [ParentClassId],
 	Implements = [],
 
 	% put it all together
 	MLDS_TypeName = type(CtorClassName, CtorArity),
 	MLDS_TypeFlags = ml_gen_type_decl_flags,
-	MLDS_TypeDefnBody = mlds__class(mlds__class_defn(ClassKind,
+	MLDS_TypeDefnBody = mlds__class(mlds__class_defn(mlds__class,
 		Imports, Inherits, Implements, Members)),
 	MLDS_TypeDefn = mlds__defn(MLDS_TypeName, MLDS_Context, MLDS_TypeFlags,
 		MLDS_TypeDefnBody),
@@ -344,15 +466,14 @@ ml_gen_du_ctor_type(ModuleInfo, TypeId, TypeDefn, Ctor,
 
 ml_gen_du_ctor_member(ModuleInfo, Context, MaybeFieldName - Type, MLDS_Defn,
 		ArgNum0, ArgNum) :-
-	(
-		MaybeFieldName = yes(QualifiedFieldName),
-		unqualify_name(QualifiedFieldName, FieldName)
+	FieldName = ml_gen_field_name(MaybeFieldName, ArgNum0),
+	( ml_must_box_field_type(Type, ModuleInfo) ->
+		MLDS_Type = mlds__generic_type
 	;
-		MaybeFieldName = no,
-		FieldName = string__format("F%d", [i(ArgNum0)])
+		MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type)
 	),
-	MLDS_Defn = ml_gen_var_decl(FieldName, Type,
-		mlds__make_context(Context), ModuleInfo),
+	MLDS_Defn = ml_gen_mlds_var_decl(var(FieldName), MLDS_Type,
+		mlds__make_context(Context)),
 	ArgNum = ArgNum0 + 1.
 
 %-----------------------------------------------------------------------------%

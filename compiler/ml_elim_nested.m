@@ -273,11 +273,12 @@ ml_maybe_copy_args([Arg|Args], FuncBody, ModuleName, ClassType, Context,
 		%
 		QualVarName = qual(ModuleName, VarName),
 		EnvModuleName = ml_env_module_name(ClassType),
-		FieldName = named_field(qual(EnvModuleName, VarName)),
+		FieldName = named_field(qual(EnvModuleName, VarName),
+			mlds__ptr_type(ClassType)),
 		Tag = yes(0),
 		EnvPtr = lval(var(qual(ModuleName, "env_ptr"))),
 		EnvArgLval = field(Tag, EnvPtr, FieldName, FieldType, 
-			ClassType),
+			mlds__ptr_type(ClassType)),
 		ArgRval = lval(var(QualVarName)),
 		AssignToEnv = assign(EnvArgLval, ArgRval),
 		CodeToCopyArg = mlds__statement(atomic(AssignToEnv), Context),
@@ -834,8 +835,8 @@ fixup_lvals([X0|Xs0], [X|Xs]) -->
 :- pred fixup_lval(mlds__lval, mlds__lval, elim_info, elim_info).
 :- mode fixup_lval(in, out, in, out) is det.
 
-fixup_lval(field(MaybeTag, Rval0, FieldId, FieldType, ClassType), 
-		field(MaybeTag, Rval, FieldId, FieldType, ClassType)) --> 
+fixup_lval(field(MaybeTag, Rval0, FieldId, FieldType, PtrType), 
+		field(MaybeTag, Rval, FieldId, FieldType, PtrType)) --> 
 	fixup_rval(Rval0, Rval).
 fixup_lval(mem_ref(Rval0, Type), mem_ref(Rval, Type)) --> 
 	fixup_rval(Rval0, Rval).
@@ -874,7 +875,8 @@ fixup_var(ThisVar, Lval, ElimInfo, ElimInfo) :-
 	->
 		EnvPtr = lval(var(qual(ModuleName, "env_ptr"))),
 		EnvModuleName = ml_env_module_name(ClassType),
-		FieldName = named_field(qual(EnvModuleName, ThisVarName)),
+		FieldName = named_field(qual(EnvModuleName, ThisVarName),
+			mlds__ptr_type(ClassType)),
 		Tag = yes(0),
 		Lval = field(Tag, EnvPtr, FieldName, FieldType, ClassType)
 	;
