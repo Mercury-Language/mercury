@@ -35,11 +35,8 @@
 :- import_module prog_util, prog_out, hlds_out.
 :- import_module globals, options.
 :- import_module make_tags, quantification.
-<<<<<<< make_hlds.nl
 :- import_module unify_proc, type_util, implication.
-=======
-:- import_module unify_proc.
->>>>>>> 1.96
+
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ module_info_init(Name, Module0) },
