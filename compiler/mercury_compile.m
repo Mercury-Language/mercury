@@ -840,10 +840,10 @@ mercury_compile__modecheck(HLDS0, Verbose, Stats, HLDS, FoundModeError,
 :- mode mercury_compile__detect_switches(in, in, in, out, di, uo) is det.
 
 mercury_compile__detect_switches(HLDS0, Verbose, Stats, HLDS) -->
-	maybe_write_string(Verbose, "% Detecting switches..."),
+	maybe_write_string(Verbose, "% Detecting switches...\n"),
 	maybe_flush_output(Verbose),
 	detect_switches(HLDS0, HLDS),
-	maybe_write_string(Verbose, " done.\n"),
+	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats).
 
 :- pred mercury_compile__detect_cse(module_info, bool, bool, module_info,

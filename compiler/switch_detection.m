@@ -31,6 +31,7 @@
 
 :- import_module hlds_goal, hlds_data, prog_data, instmap.
 :- import_module modes, mode_util, type_util, det_util.
+:- import_module passes_aux.
 :- import_module char, int, list, assoc_list, map, set, std_util, term, require.
 
 %-----------------------------------------------------------------------------%
@@ -57,10 +58,11 @@ detect_switches_in_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	io__state, io__state).
 :- mode detect_switches_in_pred(in, in, in, out, di, uo) is det.
 
-detect_switches_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo,
-		IOstate, IOstate) :-
-	pred_info_non_imported_procids(PredInfo0, ProcIds),
-	detect_switches_in_procs(ProcIds, PredId, ModuleInfo0, ModuleInfo).
+detect_switches_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo) -->
+	write_pred_progress_message("% Detecting switches in ", PredId,
+		ModuleInfo0),
+	{ pred_info_non_imported_procids(PredInfo0, ProcIds) },
+	{ detect_switches_in_procs(ProcIds, PredId, ModuleInfo0, ModuleInfo) }.
 
 :- pred detect_switches_in_procs(list(proc_id), pred_id,
 	module_info, module_info).
