@@ -156,7 +156,6 @@
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 %
 % Transformation of code using existentially quantified types:
 % 
@@ -2447,10 +2446,29 @@ polymorphism__construct_type_info(Type, TypeId, TypeArgs, IsHigherOrder,
 polymorphism__maybe_init_second_cell(ArgTypeInfoVars, ArgTypeInfoGoals, Type,
 		IsHigherOrder, BaseVar, VarSet0, VarTypes0, ExtraGoals0,
 		Var, VarSet, VarTypes, ExtraGoals) :-
-	( 
-		ArgTypeInfoVars = [],
-		IsHigherOrder = no
-	->
+	% Unfortunately, if we have higher order terms, we
+	% can no longer just optimise them to be the actual
+	% type_ctor_info
+	( IsHigherOrder = yes ->
+		list__length(ArgTypeInfoVars, PredArity),
+		polymorphism__make_count_var(PredArity,
+			VarSet0, VarTypes0, ArityVar, ArityGoal,
+			VarSet1, VarTypes1),
+		polymorphism__init_type_info_var(Type,
+			[BaseVar, ArityVar | ArgTypeInfoVars], "type_info",
+			VarSet1, VarTypes1, Var, TypeInfoGoal,
+			VarSet, VarTypes),
+		list__append([ArityGoal |  ArgTypeInfoGoals], [TypeInfoGoal],
+			ExtraGoals1),
+		list__append(ExtraGoals0, ExtraGoals1, ExtraGoals)
+	; ArgTypeInfoVars = [_ | _] ->
+		polymorphism__init_type_info_var(Type,
+			[BaseVar | ArgTypeInfoVars], "type_info",
+			VarSet0, VarTypes0, Var, TypeInfoGoal,
+			VarSet, VarTypes),
+		list__append(ArgTypeInfoGoals, [TypeInfoGoal], ExtraGoals1),
+		list__append(ExtraGoals0, ExtraGoals1, ExtraGoals)
+	;
 		Var = BaseVar,
 
 		% Since this type_ctor_info is pretending to be
@@ -2462,31 +2480,6 @@ polymorphism__maybe_init_second_cell(ArgTypeInfoVars, ArgTypeInfoGoals, Type,
 
 		VarSet = VarSet0,
 		ExtraGoals = ExtraGoals0
-	;
-		% Unfortunately, if we have higher order terms, we
-		% can no longer just optimise them to be the actual
-		% type_ctor_info
-		(
-			IsHigherOrder = yes
-		->
-			list__length(ArgTypeInfoVars, PredArity),
-			polymorphism__make_count_var(PredArity, VarSet0,
-				VarTypes0, ArityVar, ArityGoal, VarSet1,
-				VarTypes1),
-			TypeInfoArgVars = [BaseVar, ArityVar | ArgTypeInfoVars],
-			TypeInfoArgGoals = [ArityGoal |  ArgTypeInfoGoals]
-		;
-			TypeInfoArgVars = [BaseVar | ArgTypeInfoVars],
-			TypeInfoArgGoals = ArgTypeInfoGoals,
-			VarTypes1 = VarTypes0,
-			VarSet1 = VarSet0
-		),
-		polymorphism__init_type_info_var(Type,
-			TypeInfoArgVars, "type_info",
-			VarSet1, VarTypes1, Var, TypeInfoGoal,
-			VarSet, VarTypes),
-		list__append(TypeInfoArgGoals, [TypeInfoGoal], ExtraGoals1),
-		list__append(ExtraGoals0, ExtraGoals1, ExtraGoals)
 	).
 
 	% Create a unification `CountVar = <NumTypeArgs>'
