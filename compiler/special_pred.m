@@ -30,6 +30,12 @@
 			list(mode), determinism).
 :- mode special_pred_info(in, in, out, out, out, out) is det.
 
+	% special_pred_name_arity(SpecialPredType, GenericPredName,
+	%		TypeSpecificVersionPredName, Arity):
+	%	true iff there is a special predicate of category
+	%	SpecialPredType, called mercury_builtin:GenericPredName/Arity,
+	%	for which the type-specific versions will be called
+	%	TypeSpecificVersionPredName.
 :- pred special_pred_name_arity(special_pred_id, string, string, int).
 :- mode special_pred_name_arity(in, out, out, out) is det.
 :- mode special_pred_name_arity(out, in, out, in) is semidet.
