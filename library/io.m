@@ -758,6 +758,8 @@
 			io__external_state
 		).
 
+:- type io__external_state == c_pointer.
+
 :- type io__stream_names ==	map(io__stream, string).
 :- type io__stream_putback ==	map(io__stream, list(char)).
 
@@ -2045,67 +2047,3 @@ io__remove_file(FileName, Result, IO, IO) :-
 
 
 /*---------------------------------------------------------------------------*/
-
-:- pragma(c_code, "
-
-#ifdef  USE_TYPE_LAYOUT
-
-	/* 
-	 * We'll just pretend the io__external_state is an
-	 * integer. For memory copying application, this is
-	 * close enough.
-	 */
-
-const struct mercury_data_io__base_type_layout_io__external_state_0_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data_io__base_type_layout_io__external_state_0 = {
-	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
-		mkbody(TYPELAYOUT_INT_VALUE))
-};
-
-const struct mercury_data_io__base_type_functors_io__external_state_0_struct {
-	Integer f1;
-} mercury_data_io__base_type_functors_io__external_state_0 = {
-	MR_TYPEFUNCTORS_SPECIAL
-};
-
-#endif
-
-Define_extern_entry(mercury____Unify___io__external_state_0_0);
-Define_extern_entry(mercury____Compare___io__external_state_0_0);
-Declare_label(mercury____Compare___io__external_state_0_0_i1);
-Define_extern_entry(mercury____Index___io__external_state_0_0);
-Define_extern_entry(mercury____Type_To_Term___io__external_state_0_0);
-Define_extern_entry(mercury____Term_To_Type___io__external_state_0_0);
-
-BEGIN_MODULE(unify_external_state_module)
-	init_entry(mercury____Unify___io__external_state_0_0);
-	init_entry(mercury____Compare___io__external_state_0_0);
-	init_entry(mercury____Index___io__external_state_0_0);
-	init_entry(mercury____Type_To_Term___io__external_state_0_0);
-	init_entry(mercury____Term_To_Type___io__external_state_0_0);
-BEGIN_CODE
-
-Define_entry(mercury____Unify___io__external_state_0_0);
-Define_entry(mercury____Compare___io__external_state_0_0);
-Define_entry(mercury____Index___io__external_state_0_0);
-Define_entry(mercury____Term_To_Type___io__external_state_0_0);
-Define_entry(mercury____Type_To_Term___io__external_state_0_0);
-	/* the unique mode system should prevent these */
-	fatal_error(""cannot unify/compare/index/term_to_type/type_to_term io__external_state"");
-
-END_MODULE
-
-/* Ensure that the initialization code for the above module gets run. */
-/*
-INIT sys_init_unify_external_state_module
-*/
-	/* suppress gcc -Wmissing-decl warning */
-void sys_init_unify_external_state_module(void);
-void sys_init_unify_external_state_module(void) {
-	extern ModuleFunc unify_external_state_module;
-	unify_external_state_module();
-}
-
-").
-
