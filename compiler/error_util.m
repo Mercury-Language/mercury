@@ -58,6 +58,11 @@
 	;	sym_name(sym_name)
 				% The output should contain the string form of
 				% the sym_name, surrounded by `' quotes.
+	
+	;	sym_name_and_arity(sym_name_and_arity)
+				% The output should contain the string form of
+				% the sym_name, followed by '/' and the arity,
+				% all surrounded by `' quotes.
 
 	;	nl.		% Insert a line break if there has been text
 				% output since the last line break.
@@ -335,6 +340,14 @@ error_pieces_to_string([Component | Components]) = Str :-
 			Str = Word ++ " " ++ TailStr
 		)
 	;
+		Component = sym_name_and_arity(SymNameAndArity),
+		Word = sym_name_and_arity_to_word(SymNameAndArity),
+		( TailStr = "" ->
+			Str = Word
+		;
+			Str = Word ++ " " ++ TailStr
+		)
+	;
 		Component = nl,
 		Str = "\n" ++ TailStr
 	).
@@ -369,6 +382,11 @@ convert_components_to_word_list([Component | Components], RevWords0,
 	;
 		Component = sym_name(SymName),
 		RevWords1 = [word(sym_name_to_word(SymName)) | RevWords0],
+		Paras1 = Paras0
+	;
+		Component = sym_name_and_arity(SymNameAndArity),
+		Word = sym_name_and_arity_to_word(SymNameAndArity),
+		RevWords1 = [word(Word) | RevWords0],
 		Paras1 = Paras0
 	;
 		Component = nl,
@@ -410,6 +428,11 @@ rev_words_to_rev_strings([Word | Words]) = Strings :-
 
 sym_name_to_word(SymName) = "`" ++ SymStr ++ "'" :-
 	sym_name_to_string(SymName, SymStr).
+
+:- func sym_name_and_arity_to_word(sym_name_and_arity) = string.
+
+sym_name_and_arity_to_word(SymNameAndArity) = "`" ++ SymStr ++ "'" :-
+	sym_name_and_arity_to_string(SymNameAndArity, SymStr).
 
 :- pred break_into_words(string::in, list(word)::in, list(word)::out) is det.
 
@@ -561,6 +584,10 @@ append_punctuation([Piece0], Punc) = [Piece] :-
 	;
 		Piece0 = sym_name(SymName),
 		String = sym_name_to_word(SymName),
+		Piece = fixed(string__append(String, char_to_string(Punc)))
+	;
+		Piece0 = sym_name_and_arity(SymNameAndArity),
+		String = sym_name_and_arity_to_word(SymNameAndArity),
 		Piece = fixed(string__append(String, char_to_string(Punc)))
 	;
 		Piece0 = nl,

@@ -1,0 +1,5 @@
+cyclic_typeclass_2.m:014: Error: cyclic superclass relation detected:
+cyclic_typeclass_2.m:014:   `cyclic_typeclass_2.bar/1' <=
+cyclic_typeclass_2.m:014:   `cyclic_typeclass_2.foo/1' <=
+cyclic_typeclass_2.m:014:   `cyclic_typeclass_2.bar/1'
+For more information, try recompiling with `-E'.

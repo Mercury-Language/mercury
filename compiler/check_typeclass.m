@@ -37,6 +37,8 @@
 % In addition, this pass checks that all superclass constraints are satisfied
 % by the instance declaration.
 %
+% This pass also checks for cycles in the typeclass hierarchy.
+%
 % This pass fills in the super class proofs and instance method pred/proc ids
 % in the instance table of the HLDS.
 %
@@ -53,7 +55,7 @@
 
 :- import_module bool, io.
 
-:- pred check_typeclass__check_instance_decls(qual_info::in, qual_info::out,
+:- pred check_typeclass__check_typeclasses(qual_info::in, qual_info::out,
 	module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
 
 :- implementation.
@@ -77,11 +79,23 @@
 :- import_module parse_tree__prog_util.
 
 :- import_module int, string.
-:- import_module list, assoc_list, map, set, term, varset.
+:- import_module list, assoc_list, map, set, svset, term, varset.
 :- import_module std_util, require.
+
+check_typeclass__check_typeclasses(!QualInfo, !ModuleInfo, FoundError, !IO) :-
+	check_typeclass__check_instance_decls(!QualInfo, !ModuleInfo,
+		FoundInstanceError, !IO),
+	module_info_classes(!.ModuleInfo, ClassTable),
+	check_for_cyclic_classes(ClassTable, FoundCycleError, !IO),
+	FoundError = bool.or(FoundInstanceError, FoundCycleError).
+
+%---------------------------------------------------------------------------%
 
 :- type error_message == pair(prog_context, list(format_component)).
 :- type error_messages == list(error_message).
+
+:- pred check_typeclass__check_instance_decls(qual_info::in, qual_info::out,
+	module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
 
 check_typeclass__check_instance_decls(!QualInfo, !ModuleInfo, FoundError,
 		!IO) :-
@@ -876,3 +890,111 @@ constraint_list_to_string_2(VarSet, [C | Cs], String) :-
 	string__append_list([", `", String0, "'", String1], String).
 
 %---------------------------------------------------------------------------%
+
+:- pred check_for_cyclic_classes(class_table::in, bool::out, io::di, io::uo)
+	is det.
+
+check_for_cyclic_classes(ClassTable, Errors, !IO) :-
+	ClassIds = map__keys(ClassTable),
+	foldl2(find_cycles(ClassTable, []), ClassIds, set.init, _, [], Cycles),
+	(
+		Cycles = [],
+		Errors = no
+	;
+		Cycles = [_ | _],
+		Errors = yes,
+		foldl(report_cyclic_classes(ClassTable), Cycles, !IO)
+	).
+
+:- type class_path == list(class_id).
+
+	% find_cycles(ClassTable, Path, ClassId, !Visited, !Cycles)
+	%
+	% Perform a depth first traversal of the class hierarchy, starting
+	% from ClassId.  Path contains a list of nodes joining the current
+	% node to the root.  When we reach a node that has already been
+	% visited, check whether there is a cycle in the Path.
+	%
+:- pred find_cycles(class_table::in, class_path::in, class_id::in,
+	set(class_id)::in, set(class_id)::out,
+	list(class_path)::in, list(class_path)::out) is det.
+
+find_cycles(ClassTable, Path, ClassId, !Visited, !Cycles) :-
+	(
+		set.member(ClassId, !.Visited)
+	->
+		(
+			find_cycle(ClassId, Path, [ClassId], Cycle)
+		->
+			!:Cycles = [Cycle | !.Cycles]
+		;
+			true
+		)
+	;
+		svset.insert(ClassId, !Visited),
+		ClassIds = get_superclass_ids(ClassTable, ClassId),
+		foldl2(find_cycles(ClassTable, [ClassId | Path]), ClassIds,
+			!Visited, !Cycles)
+	).
+
+	% find_cycle(ClassId, PathRemaining, PathSoFar, Cycle)
+	%
+	% Check if ClassId is present in PathRemaining, and if so then make
+	% a cycle out of the front part of the path up to the point where
+	% the ClassId is found.  The part of the path checked so far is
+	% accumulated in PathSoFar.
+	%
+:- pred find_cycle(class_id::in, class_path::in, class_path::in,
+	class_path::out) is semidet.
+
+find_cycle(ClassId, [Head | Tail], Path0, Cycle) :-
+	Path = [Head | Path0],
+	(
+		ClassId = Head
+	->
+		Cycle = Path
+	;
+		find_cycle(ClassId, Tail, Path, Cycle)
+	).
+
+:- func get_superclass_ids(class_table, class_id) = list(class_id).
+
+get_superclass_ids(ClassTable, ClassId) = SuperclassIds :-
+	ClassDefn = map.lookup(ClassTable, ClassId),
+	SuperclassIds = list.map(get_constraint_id, ClassDefn ^ class_supers).
+
+:- func get_constraint_id(class_constraint) = class_id.
+
+get_constraint_id(constraint(Name, Args)) = class_id(Name, length(Args)).
+
+	% Report an error using the format
+	%
+	%	module.m:NNN: Error: cyclic superclass relation detected:
+	%	module.m:NNN:   `foo/N' <= `bar/N' <= `baz/N' <= `foo/N'
+	%
+:- pred report_cyclic_classes(class_table::in, class_path::in, io::di, io::uo)
+	is det.
+
+report_cyclic_classes(ClassTable, ClassPath, !IO) :-
+	(
+		ClassPath = [],
+		error("report_cyclic_classes: empty cycle found")
+	;
+		ClassPath = [ClassId | Tail],
+		Context = map.lookup(ClassTable, ClassId) ^ class_context,
+		ClassId = class_id(Name, Arity),
+		RevPieces0 = [
+			sym_name_and_arity(Name/Arity),
+			words("Error: cyclic superclass relation detected:")
+		],
+		RevPieces1 = foldl(add_path_element, Tail, RevPieces0),
+		Pieces = list.reverse(RevPieces1),
+		write_error_pieces(Context, 0, Pieces, !IO)
+	).
+
+:- func add_path_element(class_id, list(format_component))
+	= list(format_component).
+
+add_path_element(class_id(Name, Arity), RevPieces0) =
+	[sym_name_and_arity(Name/Arity), words("<=") | RevPieces0].
+

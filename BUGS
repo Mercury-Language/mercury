@@ -152,18 +152,3 @@ test(Args0) :-
 	list__map_foldl(MakeIndex, Args0, _, 0, _).
 
 -----------------------------------------------------------------------------
-
-Date: Wed, 1 Dec 1999 22:52:57 +1100
-Subject: compiler infinite loop for cyclic type classes
-
-According to the language reference manual:
-
-|  Typeclass constraints on type class declarations gives rise to a
-|  superclass relation.  This relation must be acyclic.  That is, it is an
-|  error if a type class is its own (direct or indirect) superclass.
-
-But if you try to compile modules containing cyclic typeclasses,
-the compiler goes into an infinite loop and eventually gets a
-stack overflow, rather than reporting a proper error message.
-
------------------------------------------------------------------------------

@@ -56,6 +56,9 @@ SINGLEMODULE= \
 	conflicting_tabling_pragmas \
 	constrained_poly_insts \
 	constructor_warning \
+	cyclic_typeclass \
+	cyclic_typeclass_2 \
+	cyclic_typeclass_3 \
 	det_errors \
 	duplicate_modes \
 	duplicate_module_test \
@@ -188,7 +191,6 @@ TYPE_SPEC_MODULES = \
 #	typeclass_test_8 (minor formatting error in the output --
 #			the type class name should be in quotes)
 #	typeclass_mode_{2,3,4} (compiler calls error/1)
-#	cyclic_typeclass (compiler goes into an infinite loop)
 #	ho_default_func_4 (due to a bug in the mode-checker ---
 #			see XXX comment in inst_match:inst_matches_final_3)
 #	inst_matches_final_bug (due to same bug as ho_default_func_4)
