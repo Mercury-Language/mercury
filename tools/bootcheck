@@ -459,6 +459,7 @@ then
 	else
 		$LN_S $root/boehm_gc .
 	fi
+	$LN_S $root/bindist .
 	$LN_S $root/doc .
 	$LN_S $root/scripts .
 	$LN_S $root/util .
@@ -628,6 +629,7 @@ then
 	$LN_S $root/browser/$BROWSER_LIB_NAME.init .
 	cd $root/stage3
 	$LN_S $root/boehm_gc .
+	$LN_S $root/bindist .
 	$LN_S $root/doc .
 	$LN_S $root/runtime .
 	$LN_S $root/trace .
