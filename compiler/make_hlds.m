@@ -1956,14 +1956,36 @@ unravel_unification(term_variable(X), term_functor(F, Args, FunctorContext),
 			Context, MainContext, SubContext, VarSet0,
 			Goal, VarSet) :-
 	(
-		% handle lambda expressions
+	    (	% handle lambda expressions
 		F = term_atom("lambda"),
-		Args = [LambdaExpressionTerm, GoalTerm],
-		parse_lambda_expression(LambdaExpressionTerm, Vars, Modes, Det)
+		Args = [LambdaExpressionTerm, GoalTerm0],
+		parse_lambda_expression(LambdaExpressionTerm,
+			Vars0, Modes0, Det0)
+	    ->
+		Vars1 = Vars0, Modes1 = Modes0, Det1 = Det0,
+		GoalTerm = GoalTerm0
+	    ;
+		% handle higher-order pred expressions -
+		% same semantics as lambda expressions, different syntax
+		% (the original lambda expression syntax is now deprecated)
+		F = term_atom(":-"),
+		Args = [PredTerm, GoalTerm0],
+		parse_pred_expression(PredTerm, Vars0, Modes0, Det0)
+	    ->
+		Vars1 = Vars0, Modes1 = Modes0, Det1 = Det0,
+		GoalTerm = GoalTerm0
+	    ;
+		parse_pred_expression(term_functor(F, Args, FunctorContext),
+			Vars1, Modes1, Det1),
+		GoalTerm = term_functor(term_atom("true"), [], Context)
+	    )
 	->
-		parse_goal(GoalTerm, VarSet0, ParsedGoal, VarSet1),
+		Modes = Modes1,
+		Det = Det1,
+		make_fresh_arg_vars(Vars1, VarSet0, Vars, VarSet1),
+		parse_goal(GoalTerm, VarSet1, ParsedGoal, VarSet2),
 		map__init(Substitution),
-		transform_goal(ParsedGoal, VarSet1, Substitution,
+		transform_goal(ParsedGoal, VarSet2, Substitution,
 				HLDS_Goal, VarSet),
 		create_atomic_unification(X,
 				lambda_goal(Vars, Modes, Det, HLDS_Goal),

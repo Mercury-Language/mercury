@@ -368,10 +368,23 @@
 	% parse_lambda_expression/3 converts the first argument to a lambda/2
 	% expression into a list of variables, a list of their corresponding
 	% modes, and a determinism.
-	% The syntax is `[Var1::Mode1, ..., VarN::ModeN] is Det'.
-
-:- pred parse_lambda_expression(term, list(var), list(mode), determinism).
+	% The syntax of a lambda expression is
+	%	`lambda([Var1::Mode1, ..., VarN::ModeN] is Det, Goal)'
+	% but this predicate just parses the first argument, i.e. the
+	% 	`[Var1::Mode1, ..., VarN::ModeN] is Det'
+	% part.
+	%
+:- pred parse_lambda_expression(term, list(term), list(mode), determinism).
 :- mode parse_lambda_expression(in, out, out, out) is semidet.
+
+	% parse_pred_expression/3 converts the first argument to a :-/2
+	% higher-order pred expression into a list of variables, a list
+	% of their corresponding modes, and a determinism.  This is just
+	% a variant on parse_lambda_expression with a different syntax:
+	% 	`(pred(Var1::Mode1, ..., VarN::ModeN) is Det :- Goal)'.
+
+:- pred parse_pred_expression(term, list(term), list(mode), determinism).
+:- mode parse_pred_expression(in, out, out, out) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -984,7 +997,7 @@ parse_lambda_expression(LambdaExpressionTerm, Vars, Modes, Det) :-
 	standard_det(DetString, Det),
 	parse_lambda_args(LambdaArgsTerm, Vars, Modes).
 
-:- pred parse_lambda_args(term, list(var), list(mode)).
+:- pred parse_lambda_args(term, list(term), list(mode)).
 :- mode parse_lambda_args(in, out, out) is semidet.
 
 parse_lambda_args(Term, Vars, Modes) :-
@@ -1002,13 +1015,30 @@ parse_lambda_args(Term, Vars, Modes) :-
 		parse_lambda_arg(Term, Var, Mode)
 	).
 
-:- pred parse_lambda_arg(term, var, mode).
+:- pred parse_lambda_arg(term, term, mode).
 :- mode parse_lambda_arg(in, out, out) is semidet.
 
-parse_lambda_arg(Term, Var, Mode) :-
+parse_lambda_arg(Term, VarTerm, Mode) :-
 	Term = term_functor(term_atom("::"), [VarTerm, ModeTerm], _),
-	VarTerm = term_variable(Var),
 	convert_mode(ModeTerm, Mode).
+
+%-----------------------------------------------------------------------------%
+
+parse_pred_expression(PredTerm, Vars, Modes, Det) :-
+	PredTerm = term_functor(term_atom("is"),
+				[PredArgsTerm, DetTerm], _),
+	DetTerm = term_functor(term_atom(DetString), [], _),
+	standard_det(DetString, Det),
+	PredArgsTerm = term_functor(term_atom("pred"), PredArgsList, _),
+	parse_pred_expr_args(PredArgsList, Vars, Modes).
+
+:- pred parse_pred_expr_args(list(term), list(term), list(mode)).
+:- mode parse_pred_expr_args(in, out, out) is semidet.
+
+parse_pred_expr_args([], [], []).
+parse_pred_expr_args([Term|Terms], [Arg|Args], [Mode|Modes]) :-
+	parse_lambda_arg(Term, Arg, Mode),
+	parse_pred_expr_args(Terms, Args, Modes).
 
 %-----------------------------------------------------------------------------%
 
@@ -2141,12 +2171,15 @@ process_rule(VarSet, RuleType, Cond, Result) :-
 :- mode parse_inst_decl(in, in, out) is det.
 parse_inst_decl(VarSet, InstDefn, Result) :-
 	(
-		InstDefn = term_functor(term_atom("="), [H,B], _Context)
+		InstDefn = term_functor(term_atom(Op), [H,B], _Context),
+		( Op = "=" ; Op = "==" )
 	->
 		get_condition(B, Body, Condition),
 		convert_inst_defn(H, Body, R),
 		process_inst_defn(R, VarSet, Condition, Result)
 	;
+		% XXX this is for `abstract inst' declarations,
+		% which are not really supported
 		InstDefn = term_functor(term_atom("is"), [
 				Head,
 				term_functor(term_atom("private"), [], _)
@@ -2154,6 +2187,13 @@ parse_inst_decl(VarSet, InstDefn, Result) :-
 	->
 		Condition = true,
 		convert_abstract_inst_defn(Head, R),
+		process_inst_defn(R, VarSet, Condition, Result)
+	;
+		InstDefn = term_functor(term_atom("--->"), [H,B], Context)
+	->
+		get_condition(B, Body, Condition),
+		Body1 = term_functor(term_atom("bound"), [Body], Context),
+		convert_inst_defn(H, Body1, R),
 		process_inst_defn(R, VarSet, Condition, Result)
 	;
 		Result = error("`=' expected in `:- inst' definition", InstDefn)
@@ -2346,8 +2386,14 @@ parse_mode_decl(ModuleName, VarSet, ModeDefn, Result) :-
 :- pred mode_op(term, term, term).
 :- mode mode_op(in, out, out) is semidet.
 mode_op(term_functor(term_atom(Op),[H,B],_), H, B) :-
-	(
-		Op = "::"
+		% People never seem to remember what the right
+		% operator to use in a `:- mode' declaration is,
+		% so the syntax is very forgiving.
+		% We allow `::', the standard one which has the right
+		% precedence, but we also allow `==' and `=' just to be nice.
+	(	Op = "::"
+	->	true
+	;	Op = "=="
 	->	true
 	;	Op = "="
 	).
