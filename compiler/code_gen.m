@@ -936,17 +936,14 @@ code_gen__generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs,
 		% to have no output vars
 	code_gen__generate_goal(model_semi, Goal, GoalCode),
 
-		% XXX we should check for delayed goals
-		% (e.g. delayed non-linear constraints) here
-
 	( { CodeModel = model_det } ->
 		{ DiscardTicketCode = empty },
 		{ FailCode = empty }
 	;
 		code_info__grab_code_info(CodeInfo),
 		code_info__pop_failure_cont,
-		% Is this necessary?  Must we reset things each step
-		% of the way, or can we just reset at the end?
+		% The call to reset_ticket(..., commit) here is necessary
+		% in order to properly detect floundering.
 		code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot,
 			commit, DiscardTicketCode),
 		code_info__generate_failure(FailCode),
