@@ -2538,18 +2538,29 @@ set_equals(S1, S2) :-
         subset(S2, S1).
 @end example
 
-A type declaration for a type @var{T} may contain a
+A type declaration for a type @samp{foo(T1, @dots{}, TN)} may contain a
 @samp{where equality is @var{equalitypred}} specification only
 if the following conditions are satisfied:
 
 @itemize @bullet
 @item
-@var{T} must be a discriminated union type; it may not be an
-equivalence type
+The type @samp{foo(T1, @dots{}, TN)} must be a discriminated union type;
+it may not be an equivalence type
 
 @item
-@var{equalitypred} must be the name of a predicate with type
-@samp{pred(T, T)} and mode @samp{(in, in) is semidet}.
+@var{equalitypred} must be the name of a predicate which can
+be called with two ground arguments of type @samp{pred(foo(T1, @dots{}, TN))},
+and whose determinism in that mode is @samp{semidet}.
+Typically the equality predicate would have type
+@samp{pred(foo(T1, @dots{}, TN), foo(T1, @dots{}, TN)}
+and mode @samp{(in, in) is semidet}, but it is also legal
+for the type, mode and determinism to be more permissive:
+the type or the mode's initial insts may be more general
+(e.g. the type could be just the polymorphic type @samp{pred(T, T)})
+and the mode's final insts or the determinism may be more
+specific (e.g. the determinism could be any of @samp{det},
+@samp{failure} or @samp{erroneous}).
+The equality predicate must also be ``pure'' (@pxref{Impurity}).
 
 @end itemize
 
