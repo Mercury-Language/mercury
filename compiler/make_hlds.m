@@ -22,7 +22,7 @@
 :- module make_hlds.
 :- interface.
 
-:- import_module prog_data, hlds_module, hlds_pred, hlds_goal, hlds_data.
+:- import_module prog_data, hlds_module, hlds_pred, hlds_goal.
 :- import_module equiv_type, module_qual.
 
 :- import_module io, std_util, list, bool.
@@ -56,12 +56,13 @@
 
 :- implementation.
 
+:- import_module hlds_data.
 :- import_module prog_io, prog_io_goal, prog_io_dcg, prog_io_util, prog_out.
 :- import_module modules, module_qual, prog_util, options, hlds_out.
 :- import_module make_tags, quantification, (inst), globals.
 :- import_module code_util, unify_proc, special_pred, type_util, mode_util.
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc, inst_match.
-:- import_module fact_table, purity, goal_util, term_util, export, llds, rl.
+:- import_module fact_table, purity, goal_util, term_util, export, llds.
 
 :- import_module string, char, int, set, bintree, map, multi_map, require.
 :- import_module term, varset, getopt, assoc_list, term_io.
@@ -392,7 +393,7 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 			% Used for inter-module unused argument elimination.
 			% This can only appear in .opt files.
 		{ Pragma = unused_args(PredOrFunc, SymName,
-				Arity, ProcId, UnusedArgs) },
+				Arity, ModeNum, UnusedArgs) },
 		( { ImportStatus \= opt_imported } ->
 			prog_out__write_context(Context),
 			io__write_string(
@@ -400,7 +401,7 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 			{ module_info_incr_errors(Module0, Module) }
 		;
 			add_pragma_unused_args(PredOrFunc, SymName, Arity,
-				ProcId, UnusedArgs, Context, Module0, Module)
+				ModeNum, UnusedArgs, Context, Module0, Module)
 		)
 	;
 		{ Pragma = type_spec(Name, SpecName, Arity, PorF,
@@ -755,19 +756,21 @@ add_pragma_export(Name, PredOrFunc, Modes, C_Function, Context,
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_pragma_unused_args(pred_or_func, sym_name, arity, proc_id,
+:- pred add_pragma_unused_args(pred_or_func, sym_name, arity, mode_num,
 		list(int), prog_context, module_info, module_info,
 		io__state, io__state).
 :- mode add_pragma_unused_args(in, in, in, in, in, in, in, out, di, uo) is det.
 
-add_pragma_unused_args(PredOrFunc, SymName, Arity, ProcId, UnusedArgs, Context,
-		Module0, Module) -->
+add_pragma_unused_args(PredOrFunc, SymName, Arity, ModeNum, UnusedArgs,
+		Context, Module0, Module) -->
 	{ module_info_get_predicate_table(Module0, Preds) },
 	(
 		{ predicate_table_search_pf_sym_arity(Preds,
 			PredOrFunc, SymName, Arity, [PredId]) }
 	->
 		{ module_info_unused_arg_info(Module0, UnusedArgInfo0) },
+		% convert the mode number to a proc_id
+		{ proc_id_to_int(ProcId, ModeNum) },
 		{ map__set(UnusedArgInfo0, proc(PredId, ProcId), UnusedArgs,
 			UnusedArgInfo) },
 		{ module_info_set_unused_arg_info(Module0, UnusedArgInfo,
@@ -1158,13 +1161,14 @@ handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes, ProcIds,
 %-----------------------------------------------------------------------------%
 
 :- pred add_pragma_termination_info(pred_or_func, sym_name, list(mode),
-		maybe(arg_size_info), maybe(termination_info),
+		maybe(pragma_arg_size_info), maybe(pragma_termination_info),
 		prog_context, module_info, module_info, io__state, io__state).
 :- mode add_pragma_termination_info(in, in, in, in, in, in, in, out, di, uo)
 		is det.
 
-add_pragma_termination_info(PredOrFunc, SymName, ModeList, MaybeArgSizeInfo,
-		MaybeTerminationInfo, Context, Module0, Module) -->
+add_pragma_termination_info(PredOrFunc, SymName, ModeList,
+		MaybePragmaArgSizeInfo, MaybePragmaTerminationInfo,
+		Context, Module0, Module) -->
 	{ module_info_get_predicate_table(Module0, Preds) },
 	{ list__length(ModeList, Arity) },
 	(
@@ -1181,6 +1185,11 @@ add_pragma_termination_info(PredOrFunc, SymName, ModeList, MaybeArgSizeInfo,
 			{ get_procedure_matching_declmodes(ProcList, 
 				ModeList, Module0, ProcId) }
 		->
+			{ add_context_to_arg_size_info(MaybePragmaArgSizeInfo,
+				Context, MaybeArgSizeInfo) },
+			{ add_context_to_termination_info(
+				MaybePragmaTerminationInfo, Context,
+				MaybeTerminationInfo) },
 			{ map__lookup(ProcTable0, ProcId, ProcInfo0) },
 			{ proc_info_set_maybe_arg_size_info(ProcInfo0, 
 				MaybeArgSizeInfo, ProcInfo1) },

@@ -21,7 +21,7 @@
 :- module modecheck_call.
 :- interface.
 
-:- import_module hlds_goal, hlds_pred, hlds_module, hlds_data.
+:- import_module hlds_goal, hlds_pred, hlds_module.
 :- import_module prog_data, modes, mode_info.
 :- import_module list, std_util.
 
@@ -73,7 +73,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module prog_data, instmap, (inst).
+:- import_module hlds_data, instmap, prog_data, (inst).
 :- import_module mode_info, mode_debug, modes, mode_util, mode_errors.
 :- import_module clause_to_proc, inst_match, make_hlds.
 :- import_module det_report, unify_proc.

@@ -14,7 +14,7 @@
 :- interface.
 
 :- import_module hlds_data, hlds_goal, hlds_module, llds, prog_data, instmap.
-:- import_module purity, rl, term_util.
+:- import_module term_util.
 :- import_module bool, list, set, map, std_util, term, varset.
 
 :- implementation.
@@ -181,15 +181,6 @@
 			;	clauses		
 			;	none.
 
-	% The evaluation method that should be used for a pred.
-	% Ignored for Aditi procedures.
-:- type eval_method	--->	eval_normal		% normal mercury 
-							% evaluation
-			;	eval_loop_check		% loop check only
-			;	eval_memo		% memoing + loop check 
-			;	eval_minimal.		% minimal model 
-							% evaluation 
-							
 	% Note: `liveness' and `liveness_info' record liveness in the sense
 	% used by code generation.  This is *not* the same thing as the notion
 	% of liveness used by mode analysis!  See compiler/notes/glossary.html.
@@ -261,18 +252,6 @@
 	% defined in this module.  This is the opposite of
 	% status_is_imported.
 :- pred status_defined_in_this_module(import_status::in, bool::out) is det.
-
-	% N-ary functions are converted into N+1-ary predicates.
-	% (Clauses are converted in make_hlds, but calls to functions
-	% cannot be converted until after type-checking, once we have
-	% resolved overloading. So we do that during mode analysis.)
-	% The `is_pred_or_func' field of the pred_info records whether
-	% a pred_info is really for a predicate or whether it is for
-	% what was originally a function.
-
-:- type pred_or_func
-	--->	predicate
-	;	function.
 
 	% Predicates can be marked with various boolean flags, called
 	% "markers".
@@ -588,6 +567,14 @@
 
 :- pred pred_info_requested_no_inlining(pred_info).
 :- mode pred_info_requested_no_inlining(in) is semidet.
+
+	% N-ary functions are converted into N+1-ary predicates.
+	% (Clauses are converted in make_hlds, but calls to functions
+	% cannot be converted until after type-checking, once we have
+	% resolved overloading. So we do that during mode analysis.)
+	% The `is_pred_or_func' field of the pred_info records whether
+	% a pred_info is really for a predicate or whether it is for
+	% what was originally a function.
 
 :- pred pred_info_get_is_pred_or_func(pred_info, pred_or_func).
 :- mode pred_info_get_is_pred_or_func(in, out) is det.

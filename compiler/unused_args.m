@@ -1519,8 +1519,9 @@ write_unused_args_to_opt_file(yes(OptStream), PredInfo, ProcId, UnusedArgs) -->
 		{ pred_info_arity(PredInfo, Arity) },
 		{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 		io__set_output_stream(OptStream, OldOutput),	
+		{ proc_id_to_int(ProcId, ModeNum) },
 		mercury_output_pragma_unused_args(PredOrFunc,
-			qualified(Module, Name), Arity, ProcId, UnusedArgs),
+			qualified(Module, Name), Arity, ModeNum, UnusedArgs),
 		io__set_output_stream(OldOutput, _)
 	;
 		[]

@@ -69,7 +69,7 @@
 
 :- interface. 
 
-:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data.
+:- import_module hlds_module, hlds_pred, hlds_goal, prog_data.
 :- import_module list, map, set.
 
 :- pred lambda__process_module(module_info, module_info).
@@ -92,10 +92,10 @@
 
 :- implementation.
 
-:- import_module make_hlds, globals, options, term, varset, type_util.
+:- import_module hlds_data, make_hlds, globals, options, type_util.
 :- import_module goal_util, prog_util, mode_util, inst_match, llds, arg_info.
 
-:- import_module bool, string, std_util, require.
+:- import_module term, varset, bool, string, std_util, require.
 
 :- type lambda_info --->
 		lambda_info(

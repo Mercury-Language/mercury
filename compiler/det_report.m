@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
+:- import_module hlds_module, hlds_pred, hlds_goal.
 :- import_module det_util, prog_data.
 :- import_module io, list.
 

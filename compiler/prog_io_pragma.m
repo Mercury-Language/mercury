@@ -22,8 +22,8 @@
 
 :- implementation.
 
-:- import_module prog_io, prog_io_goal, prog_util, hlds_pred.
-:- import_module term_util, term_errors, rl.
+:- import_module prog_io, prog_io_goal, prog_util.
+:- import_module term_util, term_errors.
 :- import_module int, map, string, std_util, bool, require.
 
 parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
@@ -336,10 +336,9 @@ parse_pragma_type(ModuleName, "unused_args", PragmaTerms,
 			PredOrFuncTerm,
 			PredNameTerm,
 			term__functor(term__integer(Arity), [], _),
-			term__functor(term__integer(ProcInt), [], _),
+			term__functor(term__integer(ModeNum), [], _),
 			UnusedArgsTerm
 		],
-		proc_id_to_int(ProcId, ProcInt),
 		(
 			PredOrFuncTerm = term__functor(
 					term__atom("predicate"), [], _),
@@ -357,7 +356,7 @@ parse_pragma_type(ModuleName, "unused_args", PragmaTerms,
 		UnusedArgsResult = ok(UnusedArgs)
 	->	
 		Result = ok(pragma(unused_args(PredOrFunc, PredName,
-				Arity, ProcId, UnusedArgs)))
+				Arity, ModeNum, UnusedArgs)))
 	;
 		Result = error("error in `:- pragma unused_args'", ErrorTerm)
 	).
@@ -585,10 +584,8 @@ parse_pragma_type(ModuleName, "termination_info", PragmaTerms, ErrorTerm,
 		ArgSizeTerm = term__functor(term__atom("not_set"), [], _),
 		MaybeArgSizeInfo = no
 	;
-		ArgSizeTerm = term__functor(term__atom("infinite"), [],
-			ArgSizeContext),
-		MaybeArgSizeInfo = yes(infinite(
-			[ArgSizeContext - imported_pred]))
+		ArgSizeTerm = term__functor(term__atom("infinite"), [], _),
+		MaybeArgSizeInfo = yes(infinite)
 	;
 		ArgSizeTerm = term__functor(term__atom("finite"),
 			[IntTerm, UsedArgsTerm], _),
@@ -600,17 +597,15 @@ parse_pragma_type(ModuleName, "termination_info", PragmaTerms, ErrorTerm,
 		TerminationTerm = term__functor(term__atom("not_set"), [], _),
 		MaybeTerminationInfo = no
 	;
-		TerminationTerm = term__functor(term__atom("can_loop"),
-			[], TermContext),
-		MaybeTerminationInfo = yes(can_loop(
-			[TermContext - imported_pred]))
+		TerminationTerm = term__functor(term__atom("can_loop"), [], _),
+		MaybeTerminationInfo = yes(can_loop)
 	;
 		TerminationTerm = term__functor(term__atom("cannot_loop"),
 			[], _),
 		MaybeTerminationInfo = yes(cannot_loop)
 	),
 	Result0 = ok(pragma(termination_info(PredOrFunc, PredName, 
-	ModeList, MaybeArgSizeInfo, MaybeTerminationInfo)))
+			ModeList, MaybeArgSizeInfo, MaybeTerminationInfo)))
     ->
 	Result = Result0
     ;

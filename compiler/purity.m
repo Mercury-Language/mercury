@@ -79,13 +79,13 @@
 :- module purity.
 :- interface.
 
-:- import_module hlds_module, hlds_goal.
+:- import_module prog_data, hlds_module, hlds_goal.
 :- import_module io, bool.
 
-:- type purity		--->	pure
-			;	(semipure)
-			;	(impure).
-
+% The purity type itself is defined in prog_data.m as follows:
+% :- type purity	--->	pure
+% 			;	(semipure)
+% 			;	(impure).
 
 %  Purity check a whole module.
 %  The first argument specifies whether there were any type

@@ -18,7 +18,7 @@
 
 :- interface.
 
-:- import_module prog_data, hlds_pred, hlds_data, hlds_goal, llds, code_info.
+:- import_module prog_data, hlds_pred, hlds_goal, llds, code_info.
 :- import_module list, set, assoc_list.
 
 :- pred call_gen__generate_higher_order_call(code_model, prog_var,
@@ -61,7 +61,7 @@
 
 :- implementation.
 
-:- import_module hlds_module, code_util.
+:- import_module hlds_module, hlds_data, code_util.
 :- import_module arg_info, type_util, mode_util, unify_proc, instmap.
 :- import_module trace, globals, options.
 :- import_module std_util, bool, int, tree, map.

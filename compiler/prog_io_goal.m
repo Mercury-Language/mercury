@@ -13,7 +13,7 @@
 
 :- interface.
 
-:- import_module prog_data, hlds_data.
+:- import_module prog_data.
 :- import_module list, term.
 
 	% Convert a single term into a goal.

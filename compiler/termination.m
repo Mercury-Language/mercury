@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -48,7 +48,7 @@
 :- interface.
 
 :- import_module io, bool, std_util, list.
-:- import_module prog_data, hlds_module, hlds_pred, term_util.
+:- import_module prog_data, hlds_module, term_util.
 
 	% Perform termination analysis on the module.
 
@@ -79,7 +79,7 @@
 
 :- import_module term_pass1, term_pass2, term_errors.
 :- import_module inst_match, passes_aux, options, globals.
-:- import_module hlds_data, hlds_goal, dependency_graph, varset.
+:- import_module hlds_data, hlds_goal, hlds_pred, dependency_graph, varset.
 :- import_module mode_util, hlds_out, code_util, prog_out, prog_util.
 :- import_module mercury_to_mercury, type_util, special_pred.
 :- import_module modules.
@@ -372,8 +372,10 @@ report_termination_errors(SCC, Errors, Module0, Module) -->
 
 check_preds([], Module, Module, State, State).
 check_preds([PredId | PredIds] , Module0, Module, State0, State) :-
+	write_pred_progress_message("% Checking ", PredId, Module0,
+		State0, State1),
 	globals__io_lookup_bool_option(make_optimization_interface,
-		MakeOptInt, State0, State1),
+		MakeOptInt, State1, State2),
 	module_info_preds(Module0, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_import_status(PredInfo0, ImportStatus),
@@ -441,7 +443,7 @@ check_preds([PredId | PredIds] , Module0, Module, State0, State) :-
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 	map__set(PredTable0, PredId, PredInfo, PredTable),
 	module_info_set_preds(Module0, PredTable, Module1),
-	check_preds(PredIds, Module1, Module, State1, State).
+	check_preds(PredIds, Module1, Module, State2, State).
 
 %----------------------------------------------------------------------------%
 
@@ -660,14 +662,23 @@ change_procs_termination_info([ProcId | ProcIds], Override, Termination,
 termination__make_opt_int(PredIds, Module) -->
 	{ module_info_name(Module, ModuleName) },
 	module_name_to_file_name(ModuleName, ".opt.tmp", no, OptFileName),
+	globals__io_lookup_bool_option(verbose, Verbose),
+	maybe_write_string(Verbose,
+		"% Appending termination_info pragmas to `"),
+	maybe_write_string(Verbose, OptFileName),
+	maybe_write_string(Verbose, "'..."),
+	maybe_flush_output(Verbose),
+
 	io__open_append(OptFileName, OptFileRes),
 	( { OptFileRes = ok(OptFile) },
 		io__set_output_stream(OptFile, OldStream),
 		termination__make_opt_int_preds(PredIds, Module),
 		io__set_output_stream(OldStream, _),
-		io__close_output(OptFile)
+		io__close_output(OptFile),
+		maybe_write_string(Verbose, " done.\n")
 	; { OptFileRes = error(IOError) },
 		% failed to open the .opt file for processing
+		maybe_write_string(Verbose, " failed!\n"),
 		{ io__error_message(IOError, IOErrorMessage) },
 		io__write_strings(["Error opening file `",
 			OptFileName, "' for output: ", IOErrorMessage]),

@@ -25,8 +25,7 @@
 
 :- interface.
 
-:- import_module prog_data, hlds_data, (inst).
-:- import_module term.
+:- import_module prog_data, (inst).
 :- import_module list, map, term, io.
 
 :- type maybe2(T1, T2)	--->	error(string, term)
@@ -108,7 +107,13 @@
 
 :- implementation.
 
-:- import_module prog_io, prog_io_goal, hlds_pred, options, globals.
+:- import_module prog_io, prog_io_goal, options, globals.
+
+% XXX we should not need to import hlds*.m here.
+% But currently we need to import hlds_data.m for the `cons_id' type
+% that is used in insts.
+:- import_module hlds_data.
+
 :- import_module bool, string, std_util, term.
 
 add_context(error(M, T), _, error(M, T)).

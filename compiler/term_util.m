@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -25,6 +25,16 @@
 :- import_module std_util, bool, int, list, map, bag.
 
 %-----------------------------------------------------------------------------%
+%
+% The types `arg_size_info' and `termination_info' hold information
+% about procedures which is used for termination analysis.
+% These types are stored as fields in the HLDS proc_info.
+% For cross-module analysis, the information is written out as
+% `pragma termination_info(...)' declarations in the
+% `.opt' and `.trans_opt' files.  The module prog_data.m defines
+% types similar to these two (but without the `list(term_errors__error)')
+% which are used when parsing `termination_info' pragmas.
+%
 
 % The arg size info defines an upper bound on the difference
 % between the sizes of the output arguments of a procedure and the sizes
@@ -55,6 +65,9 @@
 	;	can_loop(list(term_errors__error)).
 				% The analysis could not prove that the
 				% procedure terminates.
+
+% The type `used_args' holds a mapping which specifies for each procedure
+% which of its arguments are used.
 
 :- type used_args	==	map(pred_proc_id, list(bool)).
 
@@ -172,6 +185,22 @@
 
 :- pred get_context_from_scc(list(pred_proc_id)::in, module_info::in,
 	prog_context::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+% Convert a prog_data__pragma_termination_info into a
+% term_util__termination_info, by adding the appropriate context.
+
+:- pred add_context_to_termination_info(maybe(pragma_termination_info),
+		prog_context, maybe(termination_info)).
+:- mode add_context_to_termination_info(in, in, out) is det.
+
+% Convert a prog_data__pragma_arg_size_info into a
+% term_util__arg_size_info, by adding the appropriate context.
+
+:- pred add_context_to_arg_size_info(maybe(pragma_arg_size_info),
+		prog_context, maybe(arg_size_info)).
+:- mode add_context_to_arg_size_info(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -553,5 +582,17 @@ get_context_from_scc(SCC, Module, Context) :-
 	;
 		error("Empty SCC in pass 2 of termination analysis")
 	).
+
+%-----------------------------------------------------------------------------%
+
+add_context_to_termination_info(no, _, no).
+add_context_to_termination_info(yes(cannot_loop), _, yes(cannot_loop)).
+add_context_to_termination_info(yes(can_loop), Context,
+		yes(can_loop([Context - imported_pred]))).
+
+add_context_to_arg_size_info(no, _, no).
+add_context_to_arg_size_info(yes(finite(A, B)), _, yes(finite(A, B))).
+add_context_to_arg_size_info(yes(infinite), Context,
+				yes(infinite([Context - imported_pred]))).
 
 %-----------------------------------------------------------------------------%

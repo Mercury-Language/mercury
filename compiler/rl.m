@@ -74,17 +74,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type index_spec
-	---> index_spec(
-		index_type,
-		list(int)	% which attributes are being indexed on.
-	).
-
-	% Hash indexes?
-:- type index_type
-	--->	unique_B_tree
-	;	non_unique_B_tree.
-
 	% A key range gives an upper and lower bound for the part of the
 	% indexed relation to search. For example, a simple B-tree join
 	% algorithm takes a tuple from first relation and uses it to build

@@ -18,8 +18,12 @@
 
 :- interface.
 
-:- import_module hlds_data, hlds_pred, (inst), purity, rl, term_util.
-:- import_module assoc_list, list, map, varset, term, std_util.
+% This module should NOT import hlds*.m, either directly or indirectly.
+% Any types which are needed in both the parse tree and in the HLDS
+% should be defined here, rather than in hlds*.m.
+
+:- import_module (inst).
+:- import_module bool, list, assoc_list, map, varset, term, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -98,6 +102,35 @@
 	--->	type_only(type)
 	;	type_and_mode(type, mode).
 
+:- type pred_or_func
+	--->	predicate
+	;	function.
+
+	% Purity indicates whether a goal can have side effects or can
+	% depend on global state.  See purity.m and the "Purity" section
+	% of the Mercury language reference manual.
+:- type purity		--->	pure
+			;	(semipure)
+			;	(impure).
+
+	% The `determinism' type specifies how many solutions a given
+	% procedure may have.  Procedures for manipulating this type
+	% are defined in det_analysis.m and hlds_data.m.
+:- type determinism	
+	--->	det
+	;	semidet
+	;	nondet
+	;	multidet
+	;	cc_nondet
+	;	cc_multidet
+	;	erroneous
+	;	failure.
+
+%-----------------------------------------------------------------------------%
+%
+% Pragmas
+%
+
 :- type pragma_type 
 	--->	c_header_code(string)
 
@@ -143,9 +176,9 @@
 	;	source_file(string)
 			% Source file name.
 
-	;	unused_args(pred_or_func, sym_name, int,
-			proc_id, list(int))
-			% PredName, Arity, Mode, Optimized pred name,
+	;	unused_args(pred_or_func, sym_name, arity,
+			mode_num, list(int))
+			% PredName, Arity, Mode number, Optimized pred name,
 			% 	Removed arguments.
 			% Used for inter-module unused argument
 			% removal, should only appear in .opt files.
@@ -200,7 +233,8 @@
 			% Predname, Arity
 
 	;	termination_info(pred_or_func, sym_name, list(mode),
-			maybe(arg_size_info), maybe(termination_info))
+				maybe(pragma_arg_size_info),
+				maybe(pragma_termination_info))
 			% the list(mode) is the declared argmodes of the
 			% procedure, unless there are no declared argmodes,
 			% in which case the inferred argmodes are used.
@@ -222,12 +256,86 @@
 	;	check_termination(sym_name, arity).
 			% Predname, Arity
 
+%
+% Stuff for tabling pragmas
+%
+
+	% The evaluation method that should be used for a pred.
+	% Ignored for Aditi procedures.
+:- type eval_method
+	--->	eval_normal		% normal mercury 
+					% evaluation
+	;	eval_loop_check		% loop check only
+	;	eval_memo		% memoing + loop check 
+	;	eval_minimal.		% minimal model 
+					% evaluation 
+%
+% Stuff for the `aditi_index' pragma
+%
+
+	% For Aditi base relations, an index_spec specifies how the base
+	% relation is indexed.
+:- type index_spec
+	---> index_spec(
+		index_type,
+		list(int)	% which attributes are being indexed on.
+	).
+
+	% Hash indexes?
+:- type index_type
+	--->	unique_B_tree
+	;	non_unique_B_tree.
+
+%
+% Stuff for the `termination_info' pragma.
+% See term_util.m.
+%
+
+:- type pragma_arg_size_info
+	--->	finite(int, list(bool))
+				% The termination constant is a finite integer.
+				% The list of bool has a 1:1 correspondence
+				% with the input arguments of the procedure.
+				% It stores whether the argument contributes
+				% to the size of the output arguments.
+	;	infinite.
+				% There is no finite integer for which the
+				% above equation is true.
+
+:- type pragma_termination_info
+	---> 	cannot_loop	% This procedure definitely terminates for all
+				% possible inputs.
+	;	can_loop.	% This procedure might not terminate.
+
+
+%
+% Stuff for the `unused_args' pragma.
+%
+
+	% This `mode_num' type is only used for mode numbers written out in
+	% automatically-generateed `pragma unused_args' pragmas in `.opt'
+	% files. 
+	% The mode_num gets converted to an HLDS proc_id by make_hlds.m.
+	% We don't want to use the `proc_id' type here since the parse tree
+	% (prog_data.m) should not depend on the HLDS.
+:- type mode_num == int.
+
+%
+% Stuff for the `type_spec' pragma.
+%
+
 	% The type substitution for a `pragma type_spec' declaration.
+	% Elsewhere in the compiler we generally use the `tsubst' type
+	% which is a map rather than an assoc_list.
 :- type type_subst == assoc_list(tvar, type).
+
+%
+% Stuff for `c_code' pragma.
+%
 
 	% This type holds information about the implementation details
 	% of procedures defined via `pragma c_code'.
-
+	%
 	% All the strings in this type may be accompanied by the context
 	% of their appearance in the source code. These contexts are
 	% used to tell the C compiler where the included C code comes from,
@@ -282,6 +390,11 @@
 	--->	duplicate
 	;	share
 	;	automatic.
+
+%-----------------------------------------------------------------------------%
+%
+% Stuff for type classes
+%
 
 	% A class constraint represents a constraint that a given
 	% list of types is a member of the specified type class.
@@ -357,6 +470,11 @@
 
 :- type instance_methods ==	list(instance_method).
 
+%-----------------------------------------------------------------------------%
+%
+% Some more stuff for `pragma c_code'.
+%
+
 		% an abstract type for representing a set of
 		% `pragma_c_code_attribute's.
 :- type pragma_c_code_attributes.
@@ -400,6 +518,9 @@
 		% name in code_gen
 
 %-----------------------------------------------------------------------------%
+%
+% Goals
+%
 
 	% Here's how clauses and goals are represented.
 	% a => b --> implies(a, b)
@@ -441,6 +562,7 @@
 	;	call(sym_name, list(prog_term), purity)
 	;	unify(prog_term, prog_term).
 
+:- type goals		==	list(goal).
 
 	% These type equivalences are for the type of program variables
 	% and associated structures.
@@ -456,9 +578,10 @@
 
 :- type prog_context	==	term__context.
 
-:- type goals		==	list(goal).
-
 %-----------------------------------------------------------------------------%
+%
+% Types
+%
 
 	% This is how types are represented.
 
@@ -523,11 +646,16 @@
 	;	where(term).
 
 %-----------------------------------------------------------------------------%
+%
+% insts and modes
+%
 
 	% This is how instantiatednesses and modes are represented.
 	% Note that while we use the normal term data structure to represent 
 	% type terms (see above), we need a separate data structure for inst 
-	% terms.
+	% terms. 
+
+	% The `inst' data type itself is defined in the module `inst.m'.
 
 :- type inst_var_type	--->	inst_var_type.
 :- type inst_var	==	var(inst_var_type).
@@ -611,6 +739,9 @@
 % mode/4 defined above
 
 %-----------------------------------------------------------------------------%
+%
+% Module system
+%
 
 	% This is how module-system declarations (such as imports
 	% and exports) are represented.
@@ -717,6 +848,7 @@
 	;	may_be_unqualified.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -741,3 +873,5 @@ set_may_call_mercury(Attrs0, MayCallMercury, Attrs) :-
 set_thread_safe(Attrs0, ThreadSafe, Attrs) :-
 	Attrs0 = attributes(MayCallMercury, _),
 	Attrs  = attributes(MayCallMercury, ThreadSafe).
+
+%-----------------------------------------------------------------------------%

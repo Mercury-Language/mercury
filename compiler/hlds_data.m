@@ -668,14 +668,10 @@ mode_table_optimize(mode_table(ModeDefns0, ModeIds0),
 %-----------------------------------------------------------------------------%
 :- interface.
 
-:- type determinism	--->	det
-			;	semidet
-			;	nondet
-			;	multidet
-			;	cc_nondet
-			;	cc_multidet
-			;	erroneous
-			;	failure.
+%
+% Types and procedures for decomposing and analysing determinism.
+% The `determinism' type itself is defined in prog_data.m.
+%
 
 :- type can_fail	--->	can_fail
 			;	cannot_fail.

@@ -23,8 +23,7 @@
 						% is another graphic token
 	;	not_next_to_graphic_token.	% doesn't need quotes
 
-:- import_module hlds_goal, hlds_data, hlds_pred, prog_data, (inst), purity.
-:- import_module rl.
+:- import_module hlds_goal, hlds_data, prog_data, (inst).
 :- import_module bool, std_util, list, io, varset, term.
 
 %	convert_to_mercury(ModuleName, OutputFileName, Items)
@@ -78,7 +77,7 @@
 :- mode mercury_output_pragma_c_code(in, in, in, in, in, in, di, uo) is det.
 
 :- pred mercury_output_pragma_unused_args(pred_or_func, sym_name,
-		int, proc_id, list(int), io__state, io__state) is det.
+		int, mode_num, list(int), io__state, io__state) is det.
 :- mode mercury_output_pragma_unused_args(in, in, in, in, in, di, uo) is det.
 
 	% Write an Aditi index specifier.
@@ -208,6 +207,7 @@
 :- implementation.
 
 :- import_module prog_out, prog_util, hlds_pred, hlds_out, instmap.
+:- import_module purity, term_util.
 :- import_module globals, options, termination.
 
 :- import_module assoc_list, char, int, string, set, lexer, require.
@@ -358,9 +358,9 @@ mercury_output_item(pragma(Pragma), Context) -->
 		mercury_output_pragma_decl(Pred, Arity, predicate, "no_inline")
 	;
 		{ Pragma = unused_args(PredOrFunc, PredName,
-			Arity, ProcId, UnusedArgs) },
+			Arity, ModeNum, UnusedArgs) },
 		mercury_output_pragma_unused_args(PredOrFunc,
-			PredName, Arity, ProcId, UnusedArgs)
+			PredName, Arity, ModeNum, UnusedArgs)
 	;
 		{ Pragma = fact_table(Pred, Arity, FileName) },
 		mercury_output_pragma_fact_table(Pred, Arity, FileName)
@@ -405,7 +405,12 @@ mercury_output_item(pragma(Pragma), Context) -->
 					   "promise_pure")
 	;
 		{ Pragma = termination_info(PredOrFunc, PredName, 
-			ModeList, MaybeArgSizeInfo, MaybeTerminationInfo) },
+			ModeList, MaybePragmaArgSizeInfo,
+			MaybePragmaTerminationInfo) },
+		{ add_context_to_arg_size_info(MaybePragmaArgSizeInfo, Context,
+			MaybeArgSizeInfo) },
+		{ add_context_to_termination_info(MaybePragmaTerminationInfo,
+			Context, MaybeTerminationInfo) },
 		termination__write_pragma_termination_info(PredOrFunc,
 			PredName, ModeList, Context,
 			MaybeArgSizeInfo, MaybeTerminationInfo)
@@ -2242,7 +2247,7 @@ mercury_output_type_subst(VarSet, Var - Type) -->
 %-----------------------------------------------------------------------------%
 
 mercury_output_pragma_unused_args(PredOrFunc, SymName,
-		Arity, ProcId, UnusedArgs) -->
+		Arity, ModeNum, UnusedArgs) -->
 	io__write_string(":- pragma unused_args("),
 	hlds_out__write_pred_or_func(PredOrFunc),
 	io__write_string(", "),
@@ -2250,8 +2255,7 @@ mercury_output_pragma_unused_args(PredOrFunc, SymName,
 	io__write_string(", "),
 	io__write_int(Arity),
 	io__write_string(", "),
-	{ proc_id_to_int(ProcId, ProcInt) },
-	io__write_int(ProcInt),
+	io__write_int(ModeNum),
 	io__write_string(", ["),
 	mercury_output_int_list(UnusedArgs),
 	io__write_string("]).\n").
