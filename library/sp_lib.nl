@@ -425,26 +425,56 @@ bimap__search(bimap(O, C), K, V) :-
 		error("bimap__search")
 	).
 
-call(G0, X) :-
-	G0 =.. L0,
-	append(L0, [X], L),
-	G =.. L,
-	call(G).
-call(G0, X, Y) :-
-	G0 =.. L0,
-	append(L0, [X, Y], L),
-	G =.. L,
-	call(G).
-call(G0, X, Y, Z) :-
-	G0 =.. L0,
-	append(L0, [X, Y, Z], L),
-	G =.. L,
-	call(G).
-call(G0, X, Y, Z, W) :-
-	G0 =.. L0,
-	append(L0, [X, Y, Z, W], L),
-	G =.. L,
-	call(G).
+call(Goal0, A) :-
+	Goal0 =.. L0,
+	append(L0, [A], L),
+	Goal =.. L,
+	call(Goal).
+call(Goal0, A, B) :-
+	Goal0 =.. L0,
+	append(L0, [A, B], L),
+	Goal =.. L,
+	call(Goal).
+call(Goal0, A, B, C) :-
+	Goal0 =.. L0,
+	append(L0, [A, B, C], L),
+	Goal =.. L,
+	call(Goal).
+call(Goal0, A, B, C, D) :-
+	Goal0 =.. L0,
+	append(L0, [A, B, C, D], L),
+	Goal =.. L,
+	call(Goal).
+call(Goal0, A, B, C, D, E) :-
+	Goal0 =.. L0,
+	append(L0, [A, B, C, D, E], L),
+	Goal =.. L,
+	call(Goal).
+call(Goal0, A, B, C, D, E, F) :-
+	Goal0 =.. L0,
+	append(L0, [A, B, C, D, E, F], L),
+	Goal =.. L,
+	call(Goal).
+call(Goal0, A, B, C, D, E, F, G) :-
+	Goal0 =.. L0,
+	append(L0, [A, B, C, D, E, F, G], L),
+	Goal =.. L,
+	call(Goal).
+call(Goal0, A, B, C, D, E, F, G, H) :-
+	Goal0 =.. L0,
+	append(L0, [A, B, C, D, E, F, G, H], L),
+	Goal =.. L,
+	call(Goal).
+call(Goal0, A, B, C, D, E, F, G, H, I) :-
+	Goal0 =.. L0,
+	append(L0, [A, B, C, D, E, F, G, H, I], L),
+	Goal =.. L,
+	call(Goal).
+call(Goal0, A, B, C, D, E, F, G, H, I, J) :-
+	Goal0 =.. L0,
+	append(L0, [A, B, C, D, E, F, G, H, I, J], L),
+	Goal =.. L,
+	call(Goal).
 
 char__to_int(C, N) :-
 	atom_chars(C, [N]).
