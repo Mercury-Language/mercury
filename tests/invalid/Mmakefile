@@ -39,6 +39,8 @@ SOURCES= \
 	prog_io_erroneous.m \
 	qual_basic_test2.m \
 	qualified_cons_id2.m \
+	sub_b.m \
+	sub_c.m \
 	test_nested.m \
 	type_inf_loop.m \
 	type_loop.m \
@@ -48,12 +50,12 @@ SOURCES= \
 	typeclass_test_3.m \
 	typeclass_test_4.m \
 	typeclass_test_5.m \
+	types.m	\
 	unbound_inst_var.m \
 	undef_lambda_mode.m \
 	undef_mode.m \
 	undef_symbol.m \
 	undef_type.m \
-	types.m	\
 	vars_in_wrong_places.m
 
 # we do not yet pass the following tests:
