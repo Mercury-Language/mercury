@@ -19,7 +19,7 @@ main -->
 	),
 	
 	% Sunday 2001-01-07 03:02:01
-	{ TM = tm(1, 2, 3, 0, 7, 6, 0, 101, no) },
+	{ TM = tm(101, 0, 7, 3, 2, 1, 6, 0, no) },
 	io__write_string(asctime(TM)),
 	io__nl.
 

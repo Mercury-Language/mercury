@@ -29,6 +29,10 @@ Changes to the Mercury standard library:
   which meant that the functions which required that field (e.g. time__asctime,
   time__mktime) did not work.
 
+  The order of the fields of type `time__tm' has been changed so that
+  comparison of values of type `tm' whose `tm_dst' fields are identical
+  is equivalent to comparison of the times those values represent.
+
 Changes to the Mercury implementation:
 * We've fixed a long-standing bug in the handling of module imports.
   Previously, if `module1' imported `module2' which imported `module3' in
