@@ -152,12 +152,16 @@
 % XXX Accurate GC is still not yet fully implemented.
 % TODO:
 %	- fix problem with undeclared local vars for some test cases
-%	  (e.g. tests/valid/agc_unbound_typevars*).
-%	- fix problem with type classes & `constraint(...)' types
-%	  (the compiler goes into an infinite loop and runs out of
-%	  stack space for test cases using type classes)
+%	  (this seems to be due to the problems with higher-order code)
 %	- handle `pragma export'
 %	- support higher-order code: fix problems with tracing closures
+%	  (the MLDS back-end doesn't generate closure layouts)
+%	  and with tracing the wrapper functions generated for
+%	  higher-order code.
+%	- support type classes: same issues as for higher-order code, I think
+%	- support --nondet-copy-out (see comment in flatten_nested_defn)
+%	- support --high-level-data (fixup_newobj_in_atomic_statement
+%	  gets the types wrong; see comment in ml_code_util.m)
 %
 % There are also some things that could be done to improve efficiency,
 % e.g.
@@ -393,8 +397,10 @@ ml_elim_nested(Action, MLDS0, MLDS) -->
 ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0)
 		= Defns :-
 	Defn0 = mlds__defn(Name, Context, Flags, DefnBody0),
-	( DefnBody0 = mlds__function(PredProcId, Params0,
-			defined_here(FuncBody0), Attributes) ->
+	(
+		DefnBody0 = mlds__function(PredProcId, Params0,
+			defined_here(FuncBody0), Attributes)
+	->
 		EnvName = ml_env_name(Name, Action),
 		EnvTypeName = ml_create_env_type_name(EnvName,
 			 ModuleName, Globals),
@@ -408,15 +414,17 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0)
 		% structure (e.g. because they occur in nested functions,
 		% or to make them visible to the garbage collector)
 		%
+		% Also, for accurate GC, add code to save and restore the
+		% stack chain pointer at any `try_commit' statements.
+		%
 		ElimInfo0 = elim_info_init(Action, ModuleName,
 			OuterVars, EnvTypeName, EnvPtrTypeName),
 		Params0 = mlds__func_params(Arguments0, RetValues),
 		ml_maybe_add_args(Arguments0, FuncBody0, ModuleName,
 			Context, ElimInfo0, ElimInfo1),
-		flatten_arguments(Arguments0, Arguments, ElimInfo1, ElimInfo2),
+		flatten_arguments(Arguments0, Arguments1, ElimInfo1, ElimInfo2),
 		flatten_statement(FuncBody0, FuncBody1, ElimInfo2, ElimInfo),
 		elim_info_finish(ElimInfo, NestedFuncs0, Locals),
-		Params = mlds__func_params(Arguments, RetValues),
 
 		%
 		% Split the locals that we need to process
@@ -496,7 +504,7 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0)
 				% variables in the environment
 				% structure.
 				%
-				ml_maybe_copy_args(Arguments, FuncBody0,
+				ml_maybe_copy_args(Arguments1, FuncBody0,
 					ElimInfo, EnvTypeName, EnvPtrTypeName,
 					Context, _ArgsToCopy, CodeToCopyArgs),
 
@@ -577,6 +585,20 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0)
 				HoistedDefns = [EnvTypeDefn | HoistedDefns0]
 			)
 		),
+		(	
+			Action = chain_gc_stack_frames,
+			% This pass will have put the GC tracing code for the
+			% arguments in the GC tracing function.  So we don't
+			% need the GC tracing code annotation on the arguments
+			% anymore.  We delete them here, because otherwise
+			% the `#if 0 ... #endif' blocks output for the
+			% annotations clutter up the generated C files.
+			Arguments = list__map(strip_gc_trace_code, Arguments1)
+		;
+			Action = hoist_nested_funcs,
+			Arguments = Arguments1
+		),
+		Params = mlds__func_params(Arguments, RetValues),
 		DefnBody = mlds__function(PredProcId, Params,
 			defined_here(FuncBody), Attributes),
 		Defn = mlds__defn(Name, Context, Flags, DefnBody),
@@ -585,6 +607,11 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0)
 		% leave definitions of things other than functions unchanged
 		Defns = [Defn0]
 	).
+
+:- func strip_gc_trace_code(mlds__argument) = mlds__argument.
+strip_gc_trace_code(Argument0) = Argument :-
+	Argument0 = mlds__argument(Name, Type, _MaybeGCTraceCode),
+	Argument = mlds__argument(Name, Type, no).
 
 	%
 	% Add any arguments which are used in nested functions
@@ -848,7 +875,7 @@ ml_chain_stack_frames(Fields0, GCTraceStatements, EnvTypeName, Context,
 	%
 	PrevFieldName = data(var(var_name("prev", no))),
 	PrevFieldFlags = ml_gen_public_field_decl_flags,
-	PrevFieldType = mlds__generic_env_ptr_type,
+	PrevFieldType = ml_stack_chain_type,
 	PrevFieldDefnBody = mlds__data(PrevFieldType,
 		no_initializer, no),
 	PrevFieldDecl = mlds__defn(PrevFieldName, Context,
@@ -1158,7 +1185,11 @@ ml_stack_chain_var = StackChain :-
 	mercury_private_builtin_module(PrivateBuiltin),
 	MLDS_Module = mercury_module_name_to_mlds(PrivateBuiltin),
 	StackChain = var(qual(MLDS_Module, var_name("stack_chain", no)),
-		mlds__generic_env_ptr_type).
+		ml_stack_chain_type).
+
+	% the type of the `stack_chain' pointer, i.e. `void *'.
+:- func ml_stack_chain_type = mlds__type.
+ml_stack_chain_type = mlds__generic_env_ptr_type.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1249,6 +1280,9 @@ ml_module_name_string(ModuleName) = ModuleNameString :-
 %	use of a variable inside them, and calling flatten_nested_defns
 %	for every definition they contain (e.g. definitions of local
 %	variables and nested functions).
+%
+%	Also, for Action = chain_gc_stack_frames, add code to save and
+%	restore the stack chain pointer at any `try_commit' statements.
 %
 
 :- pred flatten_arguments(mlds__arguments, mlds__arguments,
@@ -1353,9 +1387,32 @@ flatten_stmt(Stmt0, Stmt) -->
 	;
 		{ Stmt0 = try_commit(Ref0, Statement0, Handler0) },
 		fixup_lval(Ref0, Ref),
-		flatten_statement(Statement0, Statement),
-		flatten_statement(Handler0, Handler),
-		{ Stmt = try_commit(Ref, Statement, Handler) }
+		flatten_statement(Statement0, Statement1),
+		flatten_statement(Handler0, Handler1),
+		%
+		% add code to save/restore the stack chain pointer
+		%
+		Action =^ action,
+		ModuleName =^ module_name,
+		{ Action = chain_gc_stack_frames ->
+			Statement1 = mlds__statement(_, StatementContext),
+			Handler1 = mlds__statement(_, HandlerContext),
+			Handler = mlds__statement(
+				block(
+				    [],
+				    [gen_restore_stack_chain_var(ModuleName,
+						HandlerContext),
+				     Handler1]
+				),
+				HandlerContext),
+			TryCommit = try_commit(Ref, Statement1, Handler),
+			Stmt = block(
+				[gen_saved_stack_chain_var(StatementContext)],
+				[mlds__statement(TryCommit, StatementContext)]
+			)
+		;
+			Stmt = try_commit(Ref, Statement1, Handler1)
+		}
 	;
 		{ Stmt0 = atomic(AtomicStmt0) },
 		fixup_atomic_stmt(AtomicStmt0, AtomicStmt),
@@ -1411,7 +1468,41 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements, Defns) -->
 		%
 		% recursively flatten the nested function
 		%
-		flatten_function_body(FuncBody0, FuncBody),
+		flatten_function_body(FuncBody0, FuncBody1),
+
+		%
+		% for accurate GC,
+		% add a call to GC_check() at start of every
+		% nested function that might allocate memory
+		%
+		% (XXX we could perhaps reduce the overhead of
+		% this slightly by only doing it for
+		% possibly-recursive functions, i.e.
+		% by not doing it for leaf functions).
+		%
+		% XXX This won't work properly with --nondet-copy-out:
+		% we'd need to check out to come after
+		% we copy the arguments to the GC frame struct.
+		% In fact, do we even copy the arguments of
+		% nested functions to the GC frame struct?
+		% 
+		{
+			FuncBody1 = defined_here(FuncBody2),
+			Action = chain_gc_stack_frames,
+			some [NewObjectStmt] (
+				statement_contains_statement(FuncBody2,
+					NewObjectStmt),
+				NewObjectStmt = mlds__statement(atomic(
+				    new_object(_, _, _, _, _, _, _, _)
+				    ), _)
+			)
+		->
+			GC_Check = mlds__statement(atomic(gc_check), Context),
+			FuncBody = defined_here(mlds__statement(
+				block([], [GC_Check, FuncBody2]), Context))
+		;
+			FuncBody = FuncBody1
+		},
 
 		%
 		% mark the function as private / one_copy,
@@ -2204,6 +2295,8 @@ target_code_component_contains_var(name(EntityName), VarName) :-
 
 %-----------------------------------------------------------------------------%
 
+% Add code to unlink the stack chain before any explicit returns or tail calls.
+
 :- pred add_unchain_stack_to_maybe_statement(maybe(mlds__statement),
 		maybe(mlds__statement), elim_info, elim_info).
 :- mode add_unchain_stack_to_maybe_statement(in, out, in, out) is det.
@@ -2347,6 +2440,34 @@ ml_gen_unchain_frame(Context, ElimInfo) = UnchainFrame :-
 		PrevFieldType, EnvPtrTypeName)),
 	Assignment = assign(StackChain, PrevFieldRval),
 	UnchainFrame = mlds__statement(atomic(Assignment), Context).
+
+	% Generate a local variable declaration
+	% to save the stack chain pointer:
+	%	void *saved_stack_chain = stack_chain;
+:- func gen_saved_stack_chain_var(mlds__context) = mlds__defn.
+gen_saved_stack_chain_var(Context) = Defn :-
+	Name = data(var(ml_saved_stack_chain_name)),
+	Flags = ml_gen_local_var_decl_flags,
+	Type = ml_stack_chain_type,
+	Initializer = init_obj(lval(ml_stack_chain_var)),
+	% The saved stack chain never needs to be traced by the GC,
+	% since it will always point to the stack, not into the heap.
+	GCTraceCode = no,
+	DefnBody = mlds__data(Type, Initializer, GCTraceCode),
+	Defn = mlds__defn(Name, Context, Flags, DefnBody).
+
+	% Generate a statement to restore the stack chain pointer:
+	%	stack_chain = saved_stack_chain;
+:- func gen_restore_stack_chain_var(mlds_module_name, mlds__context) =
+	mlds__statement.
+gen_restore_stack_chain_var(MLDS_Module, Context) = RestoreStatement :-
+	SavedStackChain = var(qual(MLDS_Module,
+		ml_saved_stack_chain_name), ml_stack_chain_type),
+	Assignment = assign(ml_stack_chain_var, lval(SavedStackChain)),
+	RestoreStatement = mlds__statement(atomic(Assignment), Context).
+
+:- func ml_saved_stack_chain_name = mlds__var_name.
+ml_saved_stack_chain_name = var_name("saved_stack_chain", no).
 
 %-----------------------------------------------------------------------------%
 

@@ -156,9 +156,6 @@ MR_garbage_collect(void)
 
 #endif
 
-    /* Reset the redzone on the old heap */
-    MR_reset_redzone(old_heap);
-
 #ifdef MR_DEBUG_AGC_COLLECTION
     fprintf(stderr, "garbage_collect() done.\n\n");
 #endif
@@ -168,10 +165,8 @@ static void
 traverse_stack(struct MR_StackChain *stack_chain)
 {
 	/*
-	** The trace() routines may themselves allocate heap space.
-	** However, the space that they allocate is only used transiently.
-	** XXX We ought to therefore reset the heap pointer
-	** after each iteration of this loop.
+	** The trace() routines themselves should not allocate heap space;
+	** they should use stack allocation.
 	*/
 	while (stack_chain != NULL) {
 		(*stack_chain->trace)(stack_chain);

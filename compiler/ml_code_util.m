@@ -779,7 +779,7 @@
 :- import_module ml_code_gen, ml_call_gen.
 :- import_module globals, options.
 
-:- import_module stack, string, require, set, term, varset.
+:- import_module counter, stack, string, require, set, term, varset.
 
 %-----------------------------------------------------------------------------%
 %
@@ -2159,7 +2159,19 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode) -->
 	{ conj_list_to_goal(HLDS_TypeInfoGoals, GoalInfo, Conj) },
 
 	% Convert this HLDS code to MLDS
-	ml_gen_goal(model_det, Conj, MLDS_TypeInfoStatement),
+	ml_gen_goal(model_det, Conj, MLDS_TypeInfoStatement0),
+
+	% Replace all heap allocation (new_object instructions)
+	% with stack allocation (local variable declarations)
+	% in the code to construct type_infos.  This is safe
+	% because those type_infos will only be used in the
+	% immediately following call to gc_trace/1.
+	=(MLGenInfo),
+	{ ml_gen_info_get_module_info(MLGenInfo, ModuleInfo) },
+	{ module_info_name(ModuleInfo, ModuleName) },
+	{ fixup_newobj(MLDS_TypeInfoStatement0,
+		mercury_module_name_to_mlds(ModuleName),
+		MLDS_TypeInfoStatement, MLDS_NewobjLocals) },
 
 	% Build MLDS code to trace the variable
 	ml_gen_trace_var(VarName, DeclType, TypeInfoVar, Context,
@@ -2174,8 +2186,6 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode) -->
 	% get put in the GC frame, rather than these declarations,
 	% which will get ignored.
 	% XXX This is not a very robust way of doing things...
-	=(MLGenInfo),
-	{ ml_gen_info_get_module_info(MLGenInfo, ModuleInfo) },
 	{ ml_gen_info_get_varset(MLGenInfo, VarSet) },
 	{ ml_gen_info_get_var_types(MLGenInfo, VarTypes) },
 	{ MLDS_Context = mlds__make_context(Context) },
@@ -2188,11 +2198,12 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode) -->
 					LocalVarType),
 				no, MLDS_Context)
 		) },
-	{ set__to_sorted_list(NonLocals, VarList) },
-	{ MLDS_VarDecls = list__map(GenLocalVarDecl, VarList) },
+	{ set__to_sorted_list(NonLocals, NonLocalVarList) },
+	{ MLDS_NonLocalVarDecls = list__map(GenLocalVarDecl, NonLocalVarList) },
 
 	% Combine the MLDS code fragments together.
-	{ GC_TraceCode = ml_gen_block(MLDS_VarDecls,
+	{ GC_TraceCode = ml_gen_block(
+		MLDS_NewobjLocals ++ MLDS_NonLocalVarDecls,
 		[MLDS_TypeInfoStatement] ++ [MLDS_TraceStatement],
 		Context) }.
 
@@ -2276,6 +2287,198 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals,
 	MLGenInfo = (((MLGenInfo0 ^ module_info := ModuleInfo)
 				  ^ varset := VarSet)
 				  ^ var_types := VarTypes).
+
+%-----------------------------------------------------------------------------%
+
+:- type fixup_newobj_info
+	---> fixup_newobj_info(
+		module_name :: mlds_module_name,% the current module
+		context :: mlds__context,	% the current context
+		locals :: mlds__defns,	% the local variable declarations
+					% accumulated so far
+		next_id :: counter	% a counter used to allocate
+					% variable names
+	).
+
+	% Replace all heap allocation (new_object instructions)
+	% with stack allocation (local variable declarations)
+	% in the specified statement, returning the local
+	% variable declarations needed for the stack allocation.
+	%
+:- pred fixup_newobj(mlds__statement::in, mlds_module_name::in,
+	 mlds__statement::out, mlds__defns::out) is det.
+
+fixup_newobj(Statement0, ModuleName, Statement, Defns) :-
+	Statement0 = mlds__statement(Stmt0, Context),
+	Info0 = fixup_newobj_info(ModuleName, Context, [], counter__init(0)),
+	fixup_newobj_in_stmt(Stmt0, Stmt, Info0, Info),
+	Statement = mlds__statement(Stmt, Context),
+	Defns = Info^locals.
+
+:- pred fixup_newobj_in_statement(mlds__statement::in, mlds__statement::out,
+		fixup_newobj_info::in, fixup_newobj_info::out) is det.
+fixup_newobj_in_statement(MLDS_Statement0, MLDS_Statement) -->
+	{ MLDS_Statement0 = mlds__statement(MLDS_Stmt0, Context) },
+	^context := Context,
+	fixup_newobj_in_stmt(MLDS_Stmt0, MLDS_Stmt),
+	{ MLDS_Statement = mlds__statement(MLDS_Stmt, Context) }.
+
+:- pred fixup_newobj_in_stmt(mlds__stmt::in, mlds__stmt::out,
+		fixup_newobj_info::in, fixup_newobj_info::out) is det.
+
+fixup_newobj_in_stmt(Stmt0, Stmt) -->
+	(
+		{ Stmt0 = block(Defns, Statements0) },
+		list__map_foldl(fixup_newobj_in_statement,
+			Statements0, Statements),
+		{ Stmt = block(Defns, Statements) }
+	;
+		{ Stmt0 = while(Rval, Statement0, Once) },
+		fixup_newobj_in_statement(Statement0, Statement),
+		{ Stmt = while(Rval, Statement, Once) }
+	;
+		{ Stmt0 = if_then_else(Cond, Then0, MaybeElse0) },
+		fixup_newobj_in_statement(Then0, Then),
+		fixup_newobj_in_maybe_statement(MaybeElse0, MaybeElse),
+		{ Stmt = if_then_else(Cond, Then, MaybeElse) }
+	;
+		{ Stmt0 = switch(Type, Val, Range, Cases0, Default0) },
+		list__map_foldl(fixup_newobj_in_case, Cases0, Cases),
+		fixup_newobj_in_default(Default0, Default),
+		{ Stmt = switch(Type, Val, Range, Cases, Default) }
+	;
+		{ Stmt0 = label(_) },
+		{ Stmt = Stmt0 }
+	;
+		{ Stmt0 = goto(_) },
+		{ Stmt = Stmt0 }
+	;
+		{ Stmt0 = computed_goto(Rval, Labels) },
+		{ Stmt = computed_goto(Rval, Labels) }
+	;
+		{ Stmt0 = call(_Sig, _Func, _Obj, _Args, _RetLvals,
+			_TailCall) },
+		{ Stmt = Stmt0 }
+	;
+		{ Stmt0 = return(_Rvals) },
+		{ Stmt = Stmt0 }
+	;
+		{ Stmt0 = do_commit(_Ref) },
+		{ Stmt = Stmt0 }
+	;
+		{ Stmt0 = try_commit(Ref, Statement0, Handler0) },
+		fixup_newobj_in_statement(Statement0, Statement),
+		fixup_newobj_in_statement(Handler0, Handler),
+		{ Stmt = try_commit(Ref, Statement, Handler) }
+	;
+		{ Stmt0 = atomic(AtomicStmt0) },
+		fixup_newobj_in_atomic_statement(AtomicStmt0, Stmt)
+	).
+
+:- pred fixup_newobj_in_case(mlds__switch_case, mlds__switch_case,
+		fixup_newobj_info, fixup_newobj_info).
+:- mode fixup_newobj_in_case(in, out, in, out) is det.
+
+fixup_newobj_in_case(Conds - Statement0, Conds - Statement) -->
+	fixup_newobj_in_statement(Statement0, Statement).
+
+:- pred fixup_newobj_in_maybe_statement(maybe(mlds__statement),
+		maybe(mlds__statement), fixup_newobj_info, fixup_newobj_info).
+:- mode fixup_newobj_in_maybe_statement(in, out, in, out) is det.
+
+fixup_newobj_in_maybe_statement(no, no) --> [].
+fixup_newobj_in_maybe_statement(yes(Statement0), yes(Statement)) -->
+	fixup_newobj_in_statement(Statement0, Statement).
+
+:- pred fixup_newobj_in_default(mlds__switch_default, mlds__switch_default,
+		fixup_newobj_info, fixup_newobj_info).
+:- mode fixup_newobj_in_default(in, out, in, out) is det.
+
+fixup_newobj_in_default(default_is_unreachable, default_is_unreachable) --> [].
+fixup_newobj_in_default(default_do_nothing, default_do_nothing) --> [].
+fixup_newobj_in_default(default_case(Statement0), default_case(Statement)) -->
+	fixup_newobj_in_statement(Statement0, Statement).
+
+:- pred fixup_newobj_in_atomic_statement(mlds__atomic_statement::in,
+		mlds__stmt::out, fixup_newobj_info::in,
+		fixup_newobj_info::out) is det.
+fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, Info0, Info) :-
+	(
+		AtomicStatement0 = new_object(Lval, MaybeTag, _HasSecTag,
+			PointerType, _MaybeSizeInWordsRval, _MaybeCtorName,
+			ArgRvals, _ArgTypes)
+	->
+		%
+		% generate the declaration of the new local variable
+		%
+		% XXX Using array(generic_type) is wrong for
+		% --high-level-data.
+		%
+		% We need to specify an initializer to tell the
+		% C back-end what the length of the array is.
+		% We initialize it with null pointers and then
+		% later generate assignment statements to fill
+		% in the values properly (see below).
+		%
+		counter__allocate(Id, Info0 ^ next_id, NextId),
+		VarName = var_name("new_obj", yes(Id)),
+		VarType = mlds__array_type(mlds__generic_type),
+		NullPointers = list__duplicate(list__length(ArgRvals),
+			init_obj(const(mlds__null(mlds__generic_type)))),
+		Initializer = init_array(NullPointers),
+		% this is used for the type_infos allocated during tracing,
+		% and we don't need to trace them
+		MaybeGCTraceCode = no,
+		Context = Info0 ^ context,
+		VarDecl = ml_gen_mlds_var_decl(var(VarName),
+			VarType, Initializer, MaybeGCTraceCode, Context),
+		Info1 = Info0 ^ next_id := NextId,
+		Info = Info1 ^ locals := Info1 ^ locals ++ [VarDecl],
+		%
+		% Generate code to initialize the variable.
+		%
+		% Note that we need to use assignment statements,
+		% rather than an initializer, to initialize the
+		% local variable, because the initialization code
+		% needs to occur at exactly the point where the
+		% atomic_statement occurs, rather than at the
+		% local variable declaration.
+		%
+		VarLval = mlds__var(qual(Info ^ module_name, VarName),
+			VarType),
+		PtrRval = mlds__unop(cast(PointerType), mem_addr(VarLval)),
+		list__map_foldl(
+			init_field_n(PointerType, PtrRval, Context),
+			ArgRvals, ArgInitStatements, 0, _NumFields),
+		%
+		% generate code to assign the address of the new local
+		% variable to the Lval
+		%
+		TaggedPtrRval = maybe_tag_rval(MaybeTag, PointerType, PtrRval),
+		AssignStmt = atomic(assign(Lval, TaggedPtrRval)),
+		AssignStatement = mlds__statement(AssignStmt, Context),
+		Stmt = block([], ArgInitStatements ++ [AssignStatement])
+	;
+		Stmt = atomic(AtomicStatement0),
+		Info = Info0
+	).
+
+:- pred init_field_n(mlds__type::in, mlds__rval::in,
+		mlds__context::in, mlds__rval::in, mlds__statement::out,
+		int::in, int::out) is det.
+init_field_n(PointerType, PointerRval, Context, ArgRval, Statement,
+		FieldNum, FieldNum + 1) :-
+	FieldId = offset(const(int_const(FieldNum))),
+	% XXX FieldType is wrong for --high-level-data
+	FieldType = mlds__generic_type,
+	MaybeTag = yes(0),
+	Field = field(MaybeTag, PointerRval, FieldId, FieldType, PointerType),
+	AssignStmt = atomic(assign(Field, ArgRval)),
+	Statement = mlds__statement(AssignStmt, Context).
+
+:- func maybe_tag_rval(maybe(mlds__tag), mlds__type, mlds__rval) = mlds__rval.
+maybe_tag_rval(no, _Type, Rval) = Rval.
+maybe_tag_rval(yes(Tag), Type, Rval) = unop(cast(Type), mkword(Tag, Rval)).
 
 %-----------------------------------------------------------------------------%
 %
