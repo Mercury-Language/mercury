@@ -129,6 +129,9 @@
 :- pred construct_qualified_term(sym_name, list(term(T)), prog_context, term(T)).
 :- mode construct_qualified_term(in, in, in, out) is det.
 
+	% Given a sym_name return the top level qualifier of that name.
+:- func outermost_qualifier(sym_name) = string.
+
 %-----------------------------------------------------------------------------%
 
 	% adjust_func_arity(PredOrFunc, FuncArity, PredArity).
@@ -237,6 +240,9 @@ construct_qualified_term(unqualified(Name), Args, Context, Term) :-
 construct_qualified_term(SymName, Args, Term) :-
 	term__context_init(Context),
 	construct_qualified_term(SymName, Args, Context, Term).
+
+outermost_qualifier(unqualified(Name)) = Name.
+outermost_qualifier(qualified(Module, _Name)) = outermost_qualifier(Module).
 
 %-----------------------------------------------------------------------------%
 

@@ -63,7 +63,19 @@
 :- type structured_name ---> 
 		structured_name(assembly_name, namespace_qual_name).
 
-:- type assembly_name == ilds__id. 
+	% If we are referencing a sub-module, then we need to record two
+	% names.  One is the sub-module name, which is used for
+	% references from the parent module, and the other is the
+	% assembly name for when the name is referenced from anywhere
+	% else.
+:- type assembly_name
+	--->	module(
+			il_module_name			:: ilds__id,
+			containing_assembly_name	:: ilds__id
+
+		)
+	;	assembly(ilds__id).
+
 :- type namespace_qual_name == list(ilds__id). 
 
 	

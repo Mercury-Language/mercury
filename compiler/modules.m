@@ -2051,6 +2051,24 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 
 		globals__io_get_target(Target),
 		globals__io_get_globals(Globals),
+
+			
+		    % If we are on the IL backend, add the dependency that the
+		    % top level dll of a nested module hierachy depends on all
+		    % of it sub-modules dlls, as they are referenced from
+		    % inside the top level dll.
+
+		{ SubModules = submodules(ModuleName, AllDeps) },
+		( { Target = il, SubModules \= [] } ->
+			module_name_to_file_name(ModuleName, ".dll", no,
+					DllFileName),
+			io__write_strings(DepStream, [DllFileName, " : "]),
+			write_dll_dependencies_list(SubModules, "", DepStream),
+			io__nl(DepStream)
+		;
+			[]
+		),
+		
 		(
 			{ Target = il },
 			{
@@ -3438,8 +3456,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	module_name_to_file_name(SourceModuleName, "", no, ExeFileName),
 
 	{ If = ["ifeq ($(findstring il,$(GRADE)),il)\n"] },
-	{ ILMainRule = [ExeFileName, " : ", ExeFileName, ".exe ",
-			"$(", MakeVarName, ".dlls) ",
+	{ ILMainRule = [ExeFileName, " : ", ExeFileName, ".exe\n",
+			ExeFileName, ".exe : ", "$(", MakeVarName, ".dlls) ",
 			"$(", MakeVarName, ".foreign_dlls)\n"] },
 	{ Else = ["else\n"] },
 	{ MainRule =
@@ -4013,6 +4031,23 @@ referenced_dlls(Module, Modules0) = Modules :-
 			)
 		),
 		Modules = list__remove_dups(list__map(F, Modules0))
+	).
+
+	% submodules(Module, Imports)
+	% returns the list of submodules from Imports which are sub-modules of
+	% Module, if Module is a top level module and not in the std library.
+	% Otherwise it returns the empty list.
+:- func submodules(module_name, list(module_name)) = list(module_name).
+
+submodules(Module, Modules0) = Modules :-
+	( Module = unqualified(Str), \+ mercury_std_library_module(Str) ->
+		P = (pred(M::in) is semidet :-
+			Str = outermost_qualifier(M),
+			M \= Module
+		),
+		list__filter(P, Modules0, Modules)
+	;
+		Modules = []
 	).
 
 :- pred write_dll_dependencies_list(list(module_name),

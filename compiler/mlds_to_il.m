@@ -141,7 +141,7 @@
 
 :- import_module globals, options, passes_aux.
 :- import_module builtin_ops, c_util, modules, tree.
-:- import_module prog_data, prog_out, llds_out.
+:- import_module prog_data, prog_out, prog_util, llds_out.
 :- import_module rtti, type_util, code_model, foreign.
 
 :- import_module ilasm, il_peephole.
@@ -160,7 +160,7 @@
 :- type il_info ---> il_info(
 		% file-wide attributes (all static)
 	module_name 	:: mlds_module_name,	% the module name
-	assembly_name 	:: assembly_name,	% the assembly name
+	assembly_name 	:: ilds__id,		% the assembly name
 	imports 	:: mlds__imports,	% the imports
 	file_foreign_langs :: set(foreign_language), % file foreign code
 	il_data_rep	:: il_data_rep,		% data representation.
@@ -222,14 +222,25 @@ generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
 		% library.  Standard library modules all go in the one
 		% assembly in a separate step during the build (using
 		% AL.EXE).  
+	PackageName = mlds_module_name_to_package_name(ModuleName),
 	(
-		PackageName = mlds_module_name_to_package_name(ModuleName),
 		PackageName = qualified(unqualified("mercury"), _)
 	->
 		ThisAssembly = [],
 		AssemblerRefs = Imports
 	;
-		ThisAssembly = [assembly(AssemblyName)],
+			% If the package name is qualified then the
+			% we have a sub-module which shouldn't be placed
+			% in its own assembly.
+		( PackageName = unqualified(_) ->
+			ThisAssembly = [assembly(AssemblyName)]
+		;
+			ThisAssembly = []
+		),
+
+			% XXX at a later date we should make foreign
+			% code behave like a submodule.
+			%
 			% If not in the library, but we have foreign code,
 			% declare the foreign module as an assembly we
 			% reference
@@ -238,7 +249,7 @@ generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
 			ForeignCodeAssemblerRefs),
 		AssemblerRefs = list__append(ForeignCodeAssemblerRefs, Imports)
 	),
-	generate_extern_assembly(AssemblerRefs, ExternAssemblies),
+	generate_extern_assembly(AssemblyName, AssemblerRefs, ExternAssemblies),
 	Namespace = [namespace(NamespaceName, ILDecls)],
 	ILAsm = list__condense([ThisAssembly, ExternAssemblies, Namespace]).
 
@@ -509,7 +520,7 @@ mlds_defn_to_ilasm_decl(defn(Name, _Context, Flags0, class(ClassDefn)),
 		% when that assembly is created by al.exe.
 		% This occurs for nondet environment classes in the
 		% mercury std library.
-	( ClassName = structured_name("mercury", _) ->
+	( ClassName = structured_name(assembly("mercury"), _) ->
 		Flags = set_access(Flags0, public)
 	;
 		Flags = Flags0
@@ -565,18 +576,8 @@ generate_parent_and_extends(DataRep, Kind, Inherits) = Parent - Extends :-
 		)
 	).
 
-class_name(Module, Name) = structured_name(Assembly, ClassName ++ [Name]) :-
-	ClassName = sym_name_to_list(mlds_module_name_to_sym_name(Module)),
-		% Any name beginning with mercury is in the standard
-		% library.  The standard library is placed into one
-		% assembly called mercury.
-	( ClassName = ["mercury" | _] ->
-		Assembly = "mercury"
-	;
-		prog_out__sym_name_to_string(
-				mlds_module_name_to_package_name(Module),
-				".", Assembly)
-	).
+class_name(Module, Name)
+	= append_class_name(mlds_module_name_to_class_name(Module), [Name]).
 
 :- func sym_name_to_list(sym_name) = list(string).
 
@@ -732,7 +733,7 @@ interface_id_to_class_name(_) = Result :-
 	( semidet_succeed ->
 		sorry(this_file, "interface_id_to_class_name NYI")
 	;
-		Result = structured_name("XXX", [])
+		Result = structured_name(assembly("XXX"), [])
 		
 	).
 
@@ -959,11 +960,11 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassDecl) -->
 		)},
 		{ RenameNode = (func(N) = list__map(RenameRets, N)) },
 
-		{ ExceptionClassName = structured_name("mscorlib",
+		{ ExceptionClassName = structured_name(assembly("mscorlib"),
 				["System", "Exception"]) },
 
 		{ ConsoleWriteName = class_member_name(structured_name(
-				"mscorlib", ["System", "Console"]),
+				il_system_assembly_name, ["System", "Console"]),
 				id("Write")) },
 		{ WriteString = methoddef(call_conv(no, default),
 					void, ConsoleWriteName,
@@ -2985,15 +2986,29 @@ mlds_to_il__sym_name_to_string_2(unqualified(Name), _) -->
 mlds_module_name_to_class_name(MldsModuleName) = 
 		structured_name(AssemblyName, ClassName) :-
 	SymName = mlds_module_name_to_sym_name(MldsModuleName),
+	sym_name_to_class_name(SymName, ClassName),
+	AssemblyName = mlds_module_name_to_assembly_name(MldsModuleName).
+
+:- func mlds_module_name_to_assembly_name(mlds_module_name) = assembly_name.
+
+mlds_module_name_to_assembly_name(MldsModuleName) = AssemblyName :-
+	SymName = mlds_module_name_to_sym_name(MldsModuleName),
 	PackageSymName = mlds_module_name_to_package_name(MldsModuleName),
 	sym_name_to_class_name(SymName, ClassName),
 	( 
 		ClassName = ["mercury" | _]
 	->
-		AssemblyName = "mercury"
+		AssemblyName = assembly("mercury")
 	;
-		mlds_to_il__sym_name_to_string(PackageSymName, AssemblyName)
+		mlds_to_il__sym_name_to_string(PackageSymName, PackageString),
+		( PackageSymName = unqualified(_),
+			AssemblyName = assembly(PackageString)
+		; PackageSymName = qualified(_, _),
+			AssemblyName = module(PackageString,
+					outermost_qualifier(PackageSymName))
+		)
 	).
+	
 
 :- pred sym_name_to_class_name(sym_name, list(ilds__id)).
 :- mode sym_name_to_class_name(in, out) is det.
@@ -3416,7 +3431,8 @@ mercury_library_name(Name) =
 	append_class_name(mercury_library_namespace_name, Name).
 
 :- func mercury_library_namespace_name = ilds__class_name.
-mercury_library_namespace_name = structured_name("mercury", ["mercury"]).
+mercury_library_namespace_name
+	= structured_name(assembly("mercury"), ["mercury"]).
 
 %-----------------------------------------------------------------------------
 
@@ -3426,8 +3442,8 @@ mercury_runtime_name(Name) =
 	append_class_name(mercury_runtime_class_name, Name).
 
 :- func mercury_runtime_class_name = ilds__class_name.
-mercury_runtime_class_name = structured_name("mercury",
-	["mercury", "runtime"]).
+mercury_runtime_class_name
+	= structured_name(assembly("mercury"), ["mercury", "runtime"]).
 
 %-----------------------------------------------------------------------------
 
@@ -3436,8 +3452,8 @@ mercury_runtime_class_name = structured_name("mercury",
 il_system_name(Name) = structured_name(il_system_assembly_name, 
 		[il_system_namespace_name | Name]).
 
-:- func il_system_assembly_name = string.
-il_system_assembly_name = "mscorlib".
+:- func il_system_assembly_name = assembly_name.
+il_system_assembly_name = assembly("mscorlib").
 
 :- func il_system_namespace_name = string.
 il_system_namespace_name = "System".
@@ -3445,18 +3461,28 @@ il_system_namespace_name = "System".
 %-----------------------------------------------------------------------------
 
 	% Generate extern decls for any assembly we reference.
-:- pred mlds_to_il__generate_extern_assembly(mlds__imports, list(decl)).
-:- mode mlds_to_il__generate_extern_assembly(in, out) is det.
+:- pred mlds_to_il__generate_extern_assembly(string, mlds__imports, list(decl)).
+:- mode mlds_to_il__generate_extern_assembly(in, in, out) is det.
 
-mlds_to_il__generate_extern_assembly(Imports, AllDecls) :-
+mlds_to_il__generate_extern_assembly(CurrentAssembly, Imports, AllDecls) :-
 	Gen = (pred(Import::in, Decl::out) is semidet :-
-		ClassName = mlds_module_name_to_class_name(Import),
-		ClassName = structured_name(Assembly, _),
-		not (Assembly = "mercury"),
-		Decl = extern_assembly(Assembly, [])
+		AsmName = mlds_module_name_to_assembly_name(Import),
+		( AsmName = assembly(Assembly),
+			Assembly \= "mercury",
+			Decl = [extern_assembly(Assembly, [])]
+		; AsmName = module(ModuleName, Assembly),
+			( Assembly = CurrentAssembly ->
+				ModuleStr = ModuleName ++ ".dll",
+				Decl = [file(ModuleStr),
+					extern_module(ModuleStr)]
+			;
+				Assembly \= "mercury",
+				Decl = [extern_assembly(Assembly, [])]
+			)
+		)
 	),
 	list__filter_map(Gen, Imports, Decls0),
-	list__sort_and_remove_dups(Decls0, Decls),
+	list__sort_and_remove_dups(list__condense(Decls0), Decls),
 	AllDecls = [
 		extern_assembly("mercury", [
 			version(0, 0, 0, 0),
@@ -3564,7 +3590,7 @@ runtime_initialization_instrs = [
 
 :- func runtime_init_module_name = ilds__class_name.
 runtime_init_module_name = 
-	structured_name("mercury",
+	structured_name(assembly("mercury"),
 		["mercury", "private_builtin__cpp_code", wrapper_class_name]).
 
 :- func runtime_init_method_name = ilds__member_name.
@@ -3575,7 +3601,7 @@ runtime_init_method_name = id("init_runtime").
 % Predicates for manipulating il_info.
 %
 
-:- func il_info_init(mlds_module_name, assembly_name, mlds__imports,
+:- func il_info_init(mlds_module_name, ilds__id, mlds__imports,
 		il_data_rep, bool, bool, bool) = il_info.
 
 il_info_init(ModuleName, AssemblyName, Imports, ILDataRep,

@@ -134,6 +134,10 @@ the name of the dll you want to use from Mercury via C#.
 We are working on a tool that automatically generates a Mercury interface
 for any .NET component, but it is not yet ready for public use.
 
+Currently each top level Mercury module is placed into its own assembly.
+For example, module.m will be placed into the assembly `module', while
+module.sub.m will also be placed into the assembly `module'.
+
 -----------------------------------------------------------------------------
 
 RESOURCES
