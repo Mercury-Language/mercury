@@ -1112,7 +1112,7 @@ output_gc_livevals(LiveVals) -->
 		io__write_string("/*\n"),
 		io__write_string(" * Garbage collection livevals info\n"),
 		output_gc_livevals_2(LiveVals),
-		io__write_string(" */")
+		io__write_string(" */\n")
 	;
 		[]
 	).

@@ -29,7 +29,8 @@
 
 :- import_module bool, list, map, bimap, int, std_util.
 
-:- import_module jumpopt, labelopt, dupelim, frameopt, peephole, value_number.
+:- import_module jumpopt, labelopt, dupelim, peephole.
+:- import_module frameopt, delay_slot, value_number.
 :- import_module globals, passes_aux, opt_util, opt_debug, vn_debug.
 
 optimize__main([], []) --> [].
@@ -48,11 +49,13 @@ optimize__proc(c_procedure(Name, Arity, Mode, Instrs0),
 	( { ValueNumber = yes } ->
 		{ NovnRepeat is AllRepeat - VnRepeat },
 		optimize__repeat(NovnRepeat, no,  Instrs0, Instrs1),
-		optimize__repeat(VnRepeat, yes, Instrs1, Instrs2)
+		optimize__middle(Instrs1, no, Instrs2),
+		optimize__repeat(VnRepeat, yes, Instrs2, Instrs3)
 	;
-		optimize__repeat(AllRepeat, no,  Instrs0, Instrs2)
+		optimize__repeat(AllRepeat, no,  Instrs0, Instrs1),
+		optimize__middle(Instrs1, yes, Instrs3)
 	),
-	optimize__nonrepeat(Instrs2, Instrs).
+	optimize__last(Instrs3, Instrs).
 
 %-----------------------------------------------------------------------------%
 
@@ -64,11 +67,14 @@ optimize__repeat(Iter0, DoVn, Instrs0, Instrs) -->
 	(
 		{ Iter0 > 0 }
 	->
-		{ bimap__init(TeardownMap) },
-		optimize__repeated(Instrs0, DoVn, no, TeardownMap,
-			Instrs1, Mod),
+		{ Iter1 is Iter0 - 1 },
+		( { Iter1 = 0 } ->
+			{ Final = yes }
+		;
+			{ Final = no }
+		),
+		optimize__repeated(Instrs0, DoVn, Final, Instrs1, Mod),
 		( { Mod = yes } ->
-			{ Iter1 is Iter0 - 1 },
 			optimize__repeat(Iter1, DoVn, Instrs1, Instrs)
 		;
 			{ Instrs = Instrs1 }
@@ -81,10 +87,10 @@ optimize__repeat(Iter0, DoVn, Instrs0, Instrs) -->
 	% to create more opportunities for use of the tailcall macro.
 
 :- pred optimize__repeated(list(instruction), bool, bool,
-	bimap(label, label), list(instruction), bool, io__state, io__state).
-:- mode optimize__repeated(in, in, in, in, out, out, di, uo) is det.
+	list(instruction), bool, io__state, io__state).
+:- mode optimize__repeated(in, in, in, out, out, di, uo) is det.
 
-optimize__repeated(Instrs0, DoVn, Final, TeardownMap, Instrs, Mod) -->
+optimize__repeated(Instrs0, DoVn, Final, Instrs, Mod) -->
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	globals__io_lookup_bool_option(debug_opt, DebugOpt),
 	{ opt_util__find_first_label(Instrs0, Label) },
@@ -120,11 +126,11 @@ optimize__repeated(Instrs0, DoVn, Final, TeardownMap, Instrs, Mod) -->
 			[]
 		),
 		{ jumpopt__main(Instrs1, FullJumpopt, Final, Instrs2, Mod1) },
-		( { Instrs2 = Instrs1 } ->
-			[]
-		;
+		( { Mod1 = yes } ->
 			opt_debug__msg(DebugOpt, "after jump optimization"),
 			opt_debug__dump_instrs(DebugOpt, Instrs2)
+		;
+			[]
 		)
 	;
 		{ Instrs2 = Instrs1 },
@@ -139,13 +145,12 @@ optimize__repeated(Instrs0, DoVn, Final, TeardownMap, Instrs, Mod) -->
 		;
 			[]
 		),
-		{ peephole__optimize(Instrs2, Instrs3, TeardownMap, Final,
-			Mod2) },
-		( { Instrs3 = Instrs2 } ->
-			[]
-		;
+		{ peephole__optimize(Instrs2, Instrs3, Mod2) },
+		( { Mod2 = yes } ->
 			opt_debug__msg(DebugOpt, "after peepholing"),
 			opt_debug__dump_instrs(DebugOpt, Instrs3)
+		;
+			[]
 		)
 	;
 		{ Instrs3 = Instrs2 },
@@ -161,11 +166,11 @@ optimize__repeated(Instrs0, DoVn, Final, TeardownMap, Instrs, Mod) -->
 			[]
 		),
 		{ labelopt__main(Instrs3, Final, Instrs4, Mod3) },
-		( { Instrs4 = Instrs3 } ->
-			[]
-		;
+		( { Mod3 = yes } ->
 			opt_debug__msg(DebugOpt, "after label optimization"),
 			opt_debug__dump_instrs(DebugOpt, Instrs4)
+		;
+			[]
 		)
 	;
 		{ Instrs4 = Instrs3 },
@@ -198,11 +203,11 @@ optimize__repeated(Instrs0, DoVn, Final, TeardownMap, Instrs, Mod) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics).
 
-:- pred optimize__nonrepeat(list(instruction), list(instruction),
+:- pred optimize__middle(list(instruction), bool, list(instruction),
 	io__state, io__state).
-:- mode optimize__nonrepeat(in, out, di, uo) is det.
+:- mode optimize__middle(in, in, out, di, uo) is det.
 
-optimize__nonrepeat(Instrs0, Instrs) -->
+optimize__middle(Instrs0, Final, Instrs) -->
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	globals__io_lookup_bool_option(debug_opt, DebugOpt),
 	{ opt_util__find_first_label(Instrs0, Label) },
@@ -217,32 +222,104 @@ optimize__nonrepeat(Instrs0, Instrs) -->
 		;
 			[]
 		),
-		globals__io_lookup_bool_option(optimize_delay_slot, DelaySlot),
-		{ frameopt__main(Instrs0, Instrs1, DelaySlot, TeardownMap, _) },
-		( { Instrs1 = Instrs0 } ->
-			[]
-		;
+		{ frameopt__main(Instrs0, Instrs1, Mod1, Jumps) },
+		( { Mod1 = yes } ->
 			opt_debug__msg(DebugOpt, "after frame optimization"),
 			opt_debug__dump_instrs(DebugOpt, Instrs1)
+		;
+			[]
+		),
+		globals__io_lookup_bool_option(optimize_fulljumps, FullJumpopt),
+		( { Jumps = yes, FullJumpopt = yes } ->
+			( { VeryVerbose = yes } ->
+				io__write_string("% Optimizing jumps for "),
+				io__write_string(LabelStr),
+				io__write_string("\n")
+			;
+				[]
+			),
+			{ jumpopt__main(Instrs1, FullJumpopt, Final, Instrs2, Mod2) },
+			( { Mod2 = yes } ->
+				opt_debug__msg(DebugOpt, "after jump optimization"),
+				opt_debug__dump_instrs(DebugOpt, Instrs2)
+			;
+				[]
+			)
+		;
+			{ Instrs2 = Instrs1 }
+		),
+		( { Mod1 = yes } ->
+			( { VeryVerbose = yes } ->
+				io__write_string("% Optimizing labels for "),
+				io__write_string(LabelStr),
+				io__write_string("\n")
+			;
+				[]
+			),
+			{ labelopt__main(Instrs2, Final, Instrs, Mod3) },
+			( { Mod3 = yes } ->
+				opt_debug__msg(DebugOpt, "after label optimization"),
+				opt_debug__dump_instrs(DebugOpt, Instrs)
+			;
+				[]
+			)
+		;
+			{ Instrs = Instrs2 }
 		)
 	;
-		{ Instrs1 = Instrs0 },
-		{ bimap__init(TeardownMap) }
-	),
-	globals__io_lookup_bool_option(optimize_peep, Peephole),
-	( { FrameOpt = yes, Peephole = yes } ->
-		% get rid of useless incr_sp/decr_sp pairs
-		{ peephole__optimize(Instrs1, Instrs2, TeardownMap, yes, _) },
-		( { Instrs2 = Instrs1 } ->
-			[]
+		{ Instrs = Instrs0 }
+	).
+
+:- pred optimize__last(list(instruction), list(instruction),
+	io__state, io__state).
+:- mode optimize__last(in, out, di, uo) is det.
+
+optimize__last(Instrs0, Instrs) -->
+	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
+	globals__io_lookup_bool_option(debug_opt, DebugOpt),
+	{ opt_util__find_first_label(Instrs0, Label) },
+	{ opt_util__format_label(Label, LabelStr) },
+
+	globals__io_lookup_bool_option(optimize_delay_slot, DelaySlot),
+	globals__io_lookup_bool_option(optimize_value_number, ValueNumber),
+	( { DelaySlot = yes ; ValueNumber = yes } ->
+		% We must get rid of any extra labels added by other passes,
+		% since they can confuse both post_value_number and delay_slot.
+		( { VeryVerbose = yes } ->
+			io__write_string("% Optimizing labels for "),
+			io__write_string(LabelStr),
+			io__write_string("\n")
 		;
-			opt_debug__msg(DebugOpt, "after peepholing"),
+			[]
+		),
+		{ labelopt__main(Instrs0, no, Instrs1, Mod1) },
+		( { Mod1 = yes } ->
+			opt_debug__msg(DebugOpt, "after label optimization"),
+			opt_debug__dump_instrs(DebugOpt, Instrs1)
+		;
+			[]
+		)
+	;
+		{ Instrs1 = Instrs0 }
+	),
+	( { DelaySlot = yes } ->
+		( { VeryVerbose = yes } ->
+			io__write_string("% Optimizing delay slot for "),
+			io__write_string(LabelStr),
+			io__write_string("\n")
+		;
+			[]
+		),
+		{ fill_branch_delay_slot(Instrs1, Instrs2) },
+		( { Instrs1 = Instrs0 } ->
+			opt_debug__msg(DebugOpt, "after delay slot filling"),
 			opt_debug__dump_instrs(DebugOpt, Instrs2)
+		;
+			[]
 		)
 	;
 		{ Instrs2 = Instrs1 }
 	),
-	globals__io_lookup_bool_option(optimize_value_number, ValueNumber),
 	( { ValueNumber = yes } ->
 		( { VeryVerbose = yes } ->
 			io__write_string("% Optimizing post value number for "),
@@ -251,43 +328,13 @@ optimize__nonrepeat(Instrs0, Instrs) -->
 		;
 			[]
 		),
-		{ value_number__post_main(Instrs2, Instrs3) },
-		( { Instrs3 = Instrs2 } ->
+		{ value_number__post_main(Instrs2, Instrs) },
+		( { Instrs = Instrs2 } ->
 			[]
 		;
 			opt_debug__msg(DebugOpt, "after post value number"),
-			opt_debug__dump_instrs(DebugOpt, Instrs3)
+			opt_debug__dump_instrs(DebugOpt, Instrs)
 		)
 	;
-		{ Instrs3 = Instrs2 }
-	),
-	( { FrameOpt = yes ; ValueNumber = yes } ->
-		optimize__repeated(Instrs3, no, yes, TeardownMap,
-			Instrs4, RepMod),
-		( { RepMod = yes, FrameOpt = yes, Peephole = yes } ->
-			{ bimap__init(Empty2) },
-			{ peephole__optimize(Instrs4, Instrs5, Empty2, yes,
-				_) },
-			( { Instrs5 = Instrs4 } ->
-				[]
-			;
-				opt_debug__msg(DebugOpt, "after peepholing"),
-				opt_debug__dump_instrs(DebugOpt, Instrs5)
-			)
-		;
-			{ Instrs5 = Instrs4 }
-		),
-		( { frameopt__is_succip_restored(Instrs4) } ->
-			{ Instrs = Instrs5 }
-		;
-			{ frameopt__dont_save_succip(Instrs5, Instrs) },
-			( { Instrs = Instrs5 } ->
-				[]
-			;
-				opt_debug__msg(DebugOpt, "after unsave succip"),
-				opt_debug__dump_instrs(DebugOpt, Instrs)
-			)
-		)
-	;
-		{ Instrs = Instrs3 }
+		{ Instrs = Instrs1 }
 	).

@@ -50,9 +50,10 @@
 	% so we don't optimize any predicates containing them.
 
 value_number__main(Instrs0, Instrs) -->
-	{ opt_util__get_prologue(Instrs0, ProcLabel, Comments, Instrs1) },
+	{ opt_util__get_prologue(Instrs0, ProcLabel,
+		LabelInstr, Comments, Instrs1) },
 	{ opt_util__new_label_no(Instrs1, 1000, N0) },
-	{ value_number__prepare_for_vn(Instrs1, ProcLabel,
+	{ value_number__prepare_for_vn([LabelInstr | Instrs1], ProcLabel,
 		no, AllocSet, BreakSet, N0, N, Instrs2) },
 	{ labelopt__build_useset(Instrs2, UseSet) },
 	{ livemap__build(Instrs2, MaybeLiveMap) },
@@ -406,8 +407,7 @@ value_number__optimize_fragment_2(Instrs0, LiveMap, Params, ParEntries,
 		{ value_number__push_livevals_back(Instrs3, Instrs4) },
 		{ value_number__convert_back_modframe(Instrs4, Instrs5) },
 		{ vn_filter__block(Instrs5, Instrs6) },
-		{ bimap__init(TeardownMap) },
-		{ peephole__optimize(Instrs6, Instrs7, TeardownMap, no, _) },
+		{ peephole__optimize(Instrs6, Instrs7, _) },
 
 		vn_debug__cost_header_msg("original code sequence"),
 		vn_cost__block_cost(Instrs0, Params, yes, OrigCost),
@@ -545,10 +545,8 @@ value_number__try_again([Instr0 | Instrs0], RevInstrs0, RestartLabel, LiveMap,
 				Params, [], LabelNo0, _, BackInstrs),
 			{ list__append(FrontInstrs, [Instr0 | BackInstrs],
 				Instrs1) },
-			{ bimap__init(TeardownMap) },
 			% to get rid of the introduced goto
-			{ peephole__optimize(Instrs1, Instrs, TeardownMap,
-				no, _) }
+			{ peephole__optimize(Instrs1, Instrs, _) }
 		)
 	;
 		{ RevInstrs1 = [Instr0 | RevInstrs0] },

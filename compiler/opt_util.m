@@ -21,9 +21,9 @@
 :- type tailmap == map(label, list(instruction)).
 :- type succmap == map(label, bool).
 
-:- pred opt_util__get_prologue(list(instruction), proc_label,
+:- pred opt_util__get_prologue(list(instruction), proc_label, instruction,
 	list(instruction), list(instruction)).
-:- mode opt_util__get_prologue(in, out, out, out) is det.
+:- mode opt_util__get_prologue(in, out, out, out, out) is det.
 
 :- pred opt_util__gather_comments(list(instruction),
 	list(instruction), list(instruction)).
@@ -68,9 +68,6 @@
 
 :- pred opt_util__find_first_label(list(instruction), label).
 :- mode opt_util__find_first_label(in, out) is det.
-
-	% Check whether the named label follows without any intervening code.
-	% If yes, return the instructions after the label.
 
 	% Skip to the next label, returning the code before the label,
 	% and the label together with the code after the label.
@@ -179,18 +176,6 @@
 
 :- pred opt_util__is_const_condition(rval, bool).
 :- mode opt_util__is_const_condition(in, out) is semidet.
-
-	% See if an instruction sequence contains incr_sp, and if yes,
-	% what is the increment.
-
-% :- pred opt_util__has_incr_sp(list(instruction), int).
-% :- mode opt_util__has_incr_sp(in, out) is semidet.
-
-	% See if an instruction sequence contains decr_sp, and if yes,
-	% what is the decrement.
-
-% :- pred opt_util__has_decr_sp(list(instruction), int).
-% :- mode opt_util__has_decr_sp(in, out) is semidet.
 
 	% Check whether an instruction can possibly branch away.
 
@@ -327,12 +312,13 @@
 :- import_module exprn_aux, llds_out.
 :- import_module int, string, set, map, require.
 
-opt_util__get_prologue(Instrs0, ProcLabel, Comments, Instrs) :-
+opt_util__get_prologue(Instrs0, ProcLabel, LabelInstr, Comments, Instrs) :-
 	opt_util__gather_comments(Instrs0, Comments1, Instrs1),
 	(
 		Instrs1 = [Instr1 | Instrs2],
 		Instr1 = label(FirstLabel) - _
 	->
+		LabelInstr = Instr1,
 		( FirstLabel = exported(ProcLabelPrime) ->
 			ProcLabel = ProcLabelPrime
 		; FirstLabel = local(ProcLabelPrime) ->
@@ -340,9 +326,8 @@ opt_util__get_prologue(Instrs0, ProcLabel, Comments, Instrs) :-
 		;
 			error("procedure begins with bad label type")
 		),
-		opt_util__gather_comments(Instrs2, Comments2, Instrs3),
-		list__append(Comments1, Comments2, Comments),
-		Instrs = [Instr1 | Instrs3]
+		opt_util__gather_comments(Instrs2, Comments2, Instrs),
+		list__append(Comments1, Comments2, Comments)
 	;
 		error("procedure does not begin with label")
 	).
@@ -941,20 +926,6 @@ opt_util__is_const_condition(binop(Op, Rval1, Rval2), Taken) :-
 	Op = eq,
 	Rval1 = Rval2,
 	Taken = yes.
-
-% opt_util__has_incr_sp([Instr0 | Instrs0], Inc) :-
-% 	( Instr0 = incr_sp(N) - _ ->
-% 		Inc = N
-% 	;
-% 		opt_util__has_incr_sp(Instrs0, Inc)
-% 	).
-
-% opt_util__has_decr_sp([Instr0 | Instrs0], Dec) :-
-% 	( Instr0 = decr_sp(N) - _ ->
-% 		Dec = N
-% 	;
-% 		opt_util__has_decr_sp(Instrs0, Dec)
-% 	).
 
 opt_util__new_label_no([], N, N).
 opt_util__new_label_no([Instr0 | Instrs0], N0, N) :-

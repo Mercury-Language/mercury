@@ -342,8 +342,12 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 				),
 				\+ needs_workaround(reg(r, 1), NewCond)
 			->
-				NewAssign = assign(reg(r, 1), NewCond)
-					- "shortcircuited bool computation",
+				( NewCond = lval(reg(r, 1)) ->
+					NewAssign = comment("r1 = old r1") - ""
+				;
+					NewAssign = assign(reg(r, 1), NewCond) -
+						"shortcircuit bool computation"
+				),
 				Proceed = goto(succip) - "shortcircuit",
 				list__append([NewAssign | Between], [Proceed],
 					NewInstrs),
