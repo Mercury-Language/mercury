@@ -123,7 +123,7 @@ FINAL_INSTALL_MERC_GC_LIB_DIR = $(FINAL_INSTALL_MERC_GRADELESS_LIB_DIR)
 # Note that the definition below does _not_ include GRADEFLAGS.
 # So any changes to the grade flags for the standard library or 
 # compiler itself should be done by setting GRADE, not GRADEFLAGS.
-GRADESTRING		= $(GRADE)
+GRADESTRING		= $(shell $(SCRIPTS_DIR)/canonical_grade $(ALL_GRADEFLAGS))
 
 # Options to pass to the Mercury compiler
 MCFLAGS	+= --no-infer-all --halt-at-warn --no-warn-inferred-erroneous
