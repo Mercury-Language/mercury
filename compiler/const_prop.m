@@ -51,7 +51,7 @@
 :- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, list, int, float, map, require.
+:- import_module bool, list, int, float, map, require, string.
 :- import_module std_util.
 
 %------------------------------------------------------------------------------%
@@ -291,6 +291,20 @@ evaluate_builtin_tri("float", "unchecked_quotient", 0, X, Y, Z, Z,
 	Y = _YVar - bound(_YUniq, [functor(float_const(YVal), [])]),
 	YVal \= 0.0,
 	ZVal = unchecked_quotient(XVal, YVal).
+
+	% This isn't actually a builtin.
+evaluate_builtin_tri("string", Name, _, X, Y, Z, Z, string_const(ZVal)) :-
+	( Name = "++"
+	; Name = "append"
+	),
+	X = _XVar - bound(_XUniq, [functor(string_const(XVal), [])]),
+	Y = _YVar - bound(_YUniq, [functor(string_const(YVal), [])]),
+
+		% We can only do the append if Z is free (this allows
+		% us to ignore the mode number and pick up both the
+		% predicate and function versions of append)
+	Z = _ZVar - free,
+	ZVal = XVal ++ YVal.
 
 %------------------------------------------------------------------------------%
 
