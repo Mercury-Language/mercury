@@ -299,10 +299,11 @@ parser__parse_simple_term(Priority, Term) -->
 	    ( parser__parse_simple_term_2(Token, Context, Priority, Term0) ->
 		{ Term = Term0 }
 	    ;
-		parser__error("unexpected token", Term)
+		parser__unexpected_tok(Token, Context,
+			"unexpected token at start of (sub)term", Term)
 	    )
 	;
-	    parser__error("unexpected end-of-file", Term)
+	    parser__error("unexpected end-of-file at start of sub-term", Term)
 	).
 
 	% term --> integer		% priority 0
@@ -439,7 +440,7 @@ parser__parse_list(List) -->
 		    { List = ok(term__functor(term__atom("."), [Arg, Tail],
 				TermContext)) }
 		;
-		    parser__unexpected_tok(Token,
+		    parser__unexpected_tok(Token, Context,
 			"expected comma, `|', `]', or operator", List)
 		)
 	    ;
@@ -458,7 +459,7 @@ parser__parse_list(List) -->
 parser__parse_args(List) -->
 	parser__parse_arg(Arg0),
 	(   { Arg0 = ok(Arg) },
-	    ( parser__get_token(Token) ->
+	    ( parser__get_token(Token, Context) ->
 		( { Token = comma } ->
 		    parser__parse_args(Tail0),
 		    ( { Tail0 = ok(Tail) } ->
@@ -470,7 +471,7 @@ parser__parse_args(List) -->
 		; { Token = close } ->
 		    { List = ok([Arg]) }
 		;
-		    parser__unexpected_tok(Token,
+		    parser__unexpected_tok(Token, Context,
 				"expected `,', `)', or operator", List)
 		)
 	    ;
@@ -509,17 +510,20 @@ parser__parse_args(List) -->
 :- mode parser__unexpected(in, out, di, uo) is det.
 
 parser__unexpected(UsualMessage, Error) -->
-	( parser__get_token(Token) ->
-		parser__unexpected_tok(Token, UsualMessage, Error)
+	( parser__get_token(Token, Context) ->
+		parser__unexpected_tok(Token, Context, UsualMessage, Error)
 	;
 		parser__error(UsualMessage, Error)
 	).
 
-:- pred parser__unexpected_tok(token, string, parse(T),
+:- pred parser__unexpected_tok(token, token_context, string, parse(T),
 				parser__state, parser__state).
-:- mode parser__unexpected_tok(in, in, out, di, uo) is det.
+:- mode parser__unexpected_tok(in, in, in, out, di, uo) is det.
 
-parser__unexpected_tok(Token, UsualMessage, Error) -->
+parser__unexpected_tok(Token, Context, UsualMessage, Error) -->
+	% push the token back, so that the error message
+	% points at it rather than at the following token
+	parser__unget_token(Token, Context),
 	(
 		{ Token = name(Op)
 		; Token = comma, Op = ","
@@ -569,11 +573,21 @@ parser__get_token(Token) -->
 
 :- pred parser__get_token(token, token_context, parser__state, parser__state).
 :- mode parser__get_token(out, out, in, out) is semidet.
+:- mode parser__get_token(in, in, out, in) is det.
 
 parser__get_token(Token, Context,
 			parser__state(FileName, OpTable, VarSet, Tokens0),
 			parser__state(FileName, OpTable, VarSet, Tokens)) :-
 	Tokens0 = [Token - Context | Tokens].
+
+:- pred parser__unget_token(token, token_context, parser__state, parser__state).
+:- mode parser__unget_token(in, in, in, out) is det.
+:- mode parser__unget_token(out, out, out, in) is semidet.
+
+parser__unget_token(Token, Context, ParseState0, ParseState) :-
+	parser__get_token(Token, Context, ParseState, ParseState0).
+
+/**** This is not used
 
 :- pred parser__peek_token(token, parser__state, parser__state).
 :- mode parser__peek_token(out, in, out) is semidet.
@@ -587,6 +601,8 @@ parser__peek_token(Token) -->
 parser__peek_token(Token, Context) -->
 	=(parser__state(_, _, _, Tokens)),
 	{ Tokens = [Token - Context | _] }.
+
+****/
 
 %-----------------------------------------------------------------------------%
 
