@@ -23,13 +23,15 @@ exiting from signal handler
 :- implementation.
 
 main -->
-	solutions(bug, List), 
-	( List = [] ->
+	{ solutions(bug, List) },
+	( { List = [] } ->
 		io__write_string("No solution\n")
 	;
 		print_solnlist(List)
 	).
 		
+:- pred print_solnlist(list(pair(list(int)))::in, io__state::di, io__state::uo)
+	is det.
 
 print_solnlist([]) --> [].
 print_solnlist([Le - Gr | Rest]) -->
