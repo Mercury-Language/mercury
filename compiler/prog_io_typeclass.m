@@ -371,13 +371,28 @@ parse_underived_instance(_ModuleName, Name, VarSet, Result) :-
 		IsFunctorAndVarArgs = lambda([Type::in] is semidet,
 			(
 					% Is the top level functor an atom?
-				Type = term__functor(term__atom(_), Args, _),
-					% Are all the args of the functor
-					% variables?
-				list__map(
-					lambda([A::in, B::out] is semidet, 
-						type_util__var(A,B)), 
-					Args, _)
+				Type = term__functor(term__atom(Functor), 
+						Args, _),
+				(
+					Functor = ":"
+				->
+					Args = [_Module, Type1],
+						% Is the top level functor an
+						% atom?
+					Type1 = term__functor(term__atom(_), 
+							Args1, _),
+						% Are all the args of the
+						% functor variables?
+					list__map(lambda([A::in, B::out] 
+							is semidet, 
+						type_util__var(A,B)), Args1, _)
+				;
+						% Are all the args of the
+						% functor variables?
+					list__map(lambda([A::in, B::out] 
+							is semidet, 
+						type_util__var(A,B)), Args, _)
+				)
 			)),
 		list__filter(IsFunctorAndVarArgs, TermTypes, _,
 			ErroneousTypes),

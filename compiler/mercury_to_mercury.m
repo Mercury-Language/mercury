@@ -445,12 +445,12 @@ output_class_method(Method) -->
 		{ Method = pred_mode(VarSet, Name, Modes, Detism, 
 			_Condition, Context) },
 		mercury_output_pred_mode_decl_2(VarSet, Name, Modes, Detism,
-			Context, ":- ", "\n")
+			Context, "", "\n")
 	;
 		{ Method = func_mode(VarSet, Name, Modes, Mode, 
 			Detism, _Condition, Context) },
 		mercury_output_func_mode_decl_2(VarSet, Name, Modes, 
-			Mode, Detism, Context, ":- ", "\n")
+			Mode, Detism, Context, "", "\n")
 	),
 	io__write_char(')').
 
