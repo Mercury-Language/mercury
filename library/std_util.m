@@ -482,6 +482,17 @@
 :- pred get_functor(type_desc::in, int::in, string::out, int::out,
 		list(type_desc)::out) is semidet.
 
+	% get_functor(Type, I, Functor, Arity, ArgTypes, ArgNames)
+	%
+	% Binds Functor and Arity to the name and arity of functor number I
+	% for the specified type, ArgTypes to the type_descs for the types
+	% of the arguments of that functor, and ArgNames to the field name
+	% of each functor argument, if any.  Fails if the type is not a
+	% discriminated union type, or if I is out of range.
+	%
+:- pred get_functor(type_desc::in, int::in, string::out, int::out,
+		list(type_desc)::out, list(maybe(string))::out) is semidet.
+
 	% get_functor_ordinal(Type, I, Ordinal)
 	%
 	% Returns Ordinal, where Ordinal is the position in declaration order
@@ -1610,6 +1621,7 @@ typedef struct ML_Construct_Info_Struct {
     MR_ConstString          functor_name;
     MR_Integer              arity;
     const MR_PseudoTypeInfo *arg_pseudo_type_infos;
+    MR_ConstString          *arg_names;
     MR_TypeCtorRep          type_ctor_rep;
     union {
         const MR_EnumFunctorDesc  *enum_functor_desc;
@@ -1627,6 +1639,8 @@ extern  void            ML_type_ctor_and_args(MR_TypeInfo type_info,
 extern  int     	    ML_get_num_functors(MR_TypeInfo type_info);
 extern	MR_Word		    ML_type_params_vector_to_list(int arity,
                             MR_TypeInfoParams type_params);
+extern	MR_Word		    ML_arg_name_vector_to_list(int arity,
+                            MR_ConstString *arg_names);
 extern	MR_Word		    ML_pseudo_type_info_vector_to_type_info_list(int arity,
                             MR_TypeInfoParams type_params,
                             const MR_PseudoTypeInfo *arg_pseudo_type_infos);
@@ -2076,6 +2090,81 @@ type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
 }
 ").
 
+get_functor(TypeDesc, I, Functor, Arity, TypeInfoList, ArgNameList) :-
+    get_functor_2(TypeDesc, I, Functor, Arity, TypeInfoList, ArgNameList0),
+    ArgNameList = map(null_to_no, ArgNameList0).
+
+:- func null_to_no(string) = maybe(string).
+
+null_to_no(S) = ( if null(S) then no else yes(S) ).
+
+:- pred null(string).
+:- mode null(in) is semidet.
+
+:- pragma foreign_proc("C", null(S::in), will_not_call_mercury, "
+    SUCCESS_INDICATOR = (S == NULL);
+").
+
+:- pred get_functor_2(type_desc::in, int::in, string::out, int::out,
+		list(type_desc)::out, list(string)::out) is semidet.
+
+:- pragma foreign_proc("C", get_functor_2(TypeDesc::in, FunctorNumber::in,
+        FunctorName::out, Arity::out, TypeInfoList::out, ArgNameList::out),
+    will_not_call_mercury, "
+{
+    MR_TypeInfo         type_info;
+    int                 arity;
+    ML_Construct_Info   construct_info;
+    bool                success;
+
+    type_info = (MR_TypeInfo) TypeDesc;
+
+        /*
+        ** Get information for this functor number and
+        ** store in construct_info. If this is a discriminated union
+        ** type and if the functor number is in range, we
+        ** succeed.
+        */
+    MR_save_transient_registers();
+    success = ML_get_functors_check_range(FunctorNumber,
+                type_info, &construct_info);
+    MR_restore_transient_registers();
+
+        /*
+        ** Get the functor name and arity, construct the list
+        ** of type_infos for arguments.
+        */
+
+    if (success) {
+        MR_make_aligned_string(FunctorName, (MR_String) (MR_Word)
+                construct_info.functor_name);
+        arity = construct_info.arity;
+        Arity = arity;
+
+        if (MR_TYPE_CTOR_INFO_IS_TUPLE(
+                        MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info)))
+        {
+            MR_save_transient_registers();
+            TypeInfoList = ML_type_params_vector_to_list(Arity,
+                    MR_TYPEINFO_GET_TUPLE_ARG_VECTOR(type_info));
+	    ArgNameList = MR_list_empty();
+            MR_restore_transient_registers();
+        } else {
+            MR_save_transient_registers();
+            TypeInfoList = ML_pseudo_type_info_vector_to_type_info_list(
+                arity,
+                MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                construct_info.arg_pseudo_type_infos);
+	    ArgNameList = ML_arg_name_vector_to_list(
+		arity,
+		construct_info.arg_names);
+            MR_restore_transient_registers();
+        }
+    }
+    SUCCESS_INDICATOR = success;
+}
+").
+
 :- pragma foreign_proc("C", 
 	get_functor_ordinal(TypeDesc::in, FunctorNumber::in,
 		Ordinal::out), will_not_call_mercury, "
@@ -2460,6 +2549,8 @@ ML_get_functor_info(MR_TypeInfo type_info, int functor_number,
             construct_info->arity = functor_desc->MR_du_functor_orig_arity;
             construct_info->arg_pseudo_type_infos =
                 functor_desc->MR_du_functor_arg_types;
+            construct_info->arg_names =
+                functor_desc->MR_du_functor_arg_names;
         }
         break;
 
@@ -2481,6 +2572,7 @@ ML_get_functor_info(MR_TypeInfo type_info, int functor_number,
             construct_info->functor_name = functor_desc->MR_enum_functor_name;
             construct_info->arity = 0;
             construct_info->arg_pseudo_type_infos = NULL;
+            construct_info->arg_names = NULL;
         }
         break;
 
@@ -2502,6 +2594,8 @@ ML_get_functor_info(MR_TypeInfo type_info, int functor_number,
             construct_info->arity = 1;
             construct_info->arg_pseudo_type_infos =
                 &functor_desc->MR_notag_functor_arg_type;
+            construct_info->arg_names =
+                &functor_desc->MR_notag_functor_arg_name;
         }
         break;
 
@@ -2527,6 +2621,7 @@ ML_get_functor_info(MR_TypeInfo type_info, int functor_number,
 
         /* Tuple types don't have pseudo-type_infos for the functors. */
         construct_info->arg_pseudo_type_infos = NULL;
+        construct_info->arg_names = NULL;
         break;
 
     case MR_TYPECTOR_REP_INT:
@@ -2750,6 +2845,35 @@ ML_type_params_vector_to_list(int arity, MR_TypeInfoParams type_params)
     MR_save_transient_registers();
 
     return type_info_list;
+}
+
+    /*
+    ** ML_arg_name_vector_to_list:
+    **
+    ** Copy `arity' argument names from the `arg_names' vector, which starts
+    ** at index 0, onto the Mercury heap in a list.
+    **
+    ** You need to save and restore transient registers around
+    ** calls to this function.
+    */
+
+MR_Word
+ML_arg_name_vector_to_list(int arity, MR_ConstString *arg_names)
+{
+    MR_TypeInfo arg_type;
+    MR_Word     arg_names_list;
+
+    MR_restore_transient_registers();
+    arg_names_list = MR_list_empty();
+
+    while (arity > 0) {
+	--arity;
+        arg_names_list = MR_list_cons((MR_Word) arg_names[arity],
+		arg_names_list);
+    }
+    MR_save_transient_registers();
+
+    return arg_names_list;
 }
 
     /*
