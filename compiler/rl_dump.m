@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -628,7 +628,7 @@ rl_dump__write_goal(ModuleInfo, RLGoal) -->
 		[]
 	),
 	hlds_out__write_goal_list(GoalList, ModuleInfo,
-		VarSet, yes, 2, ",", no).
+		VarSet, yes, 2, ",\n", no).
 
 :- pred rl_dump__write_bounds(module_info::in, prog_varset::in,
 		rl_var_bounds::in, io__state::di, io__state::uo) is det.

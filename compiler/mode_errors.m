@@ -334,7 +334,7 @@ report_mode_error_conj_2([delayed_goal(Vars, Error, Goal) | Rest],
 	( { VeryVerbose = yes } ->
 		io__write_string("\t\t"),
 		{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
-		hlds_out__write_goal(Goal, ModuleInfo, VarSet, no, 2, ".")
+		hlds_out__write_goal(Goal, ModuleInfo, VarSet, no, 2, ".\n")
 	;
 		[]
 	),

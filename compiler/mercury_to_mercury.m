@@ -1039,7 +1039,7 @@ mercury_output_cons_id(int_const(X), _) -->
 mercury_output_cons_id(float_const(X), _) -->
 	io__write_float(X).
 mercury_output_cons_id(string_const(X), _) -->
-	io__write_strings(["""", X, """"]).
+	term_io__quote_string(X).
 mercury_output_cons_id(pred_const(PredId, ProcId), _) -->
 	% XXX Sufficient, but probably should print this out in
 	%     name/arity form.

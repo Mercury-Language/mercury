@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1998 The University of Melbourne.
+% Copyright (C) 1993-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -37,8 +37,18 @@
 	io__state, io__state).
 :- mode prog_out__write_strings_with_context(in, in, di, uo) is det.
 
+	% Write out a symbol name, with special characters escaped,
+	% but without any quotes.  This is suitable for use in
+	% error messages, where the caller should print out an
+	% enclosing forward/backward-quote pair (`...').
 :- pred prog_out__write_sym_name(sym_name, io__state, io__state).
 :- mode prog_out__write_sym_name(in, di, uo) is det.
+
+	% Write out a symbol name, enclosed in single forward quotes ('...')
+	% if necessary, and with any special characters escaped.
+	% The output should be a syntactically valid Mercury term.
+:- pred prog_out__write_quoted_sym_name(sym_name, io__state, io__state).
+:- mode prog_out__write_quoted_sym_name(in, di, uo) is det.
 
 	% sym_name_to_string(SymName, String):
 	%	convert a symbol name to a string,
@@ -186,9 +196,14 @@ num_columns(80).
 prog_out__write_sym_name(qualified(ModuleSpec,Name)) -->
 	prog_out__write_module_spec(ModuleSpec),
 	io__write_string(":"),
-	io__write_string(Name).
+	term_io__write_escaped_string(Name).
 prog_out__write_sym_name(unqualified(Name)) -->
-	io__write_string(Name).
+	term_io__write_escaped_string(Name).
+
+prog_out__write_quoted_sym_name(SymName) -->
+	io__write_string("'"),
+	prog_out__write_sym_name(SymName),
+	io__write_string("'").
 
 prog_out__sym_name_to_string(SymName, String) :-
 	prog_out__sym_name_to_string(SymName, ":", String).
