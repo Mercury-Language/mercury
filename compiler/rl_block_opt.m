@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -537,8 +537,8 @@ rl_block_opt__rewrite_node(Node, NodeInfo0, Changed) -->
 	->
 		rl_block_opt__ensure_index(IOLoc, IndexSpec),
 		{ NewInstr = union_diff(IOLoc, NewRel, IndexSpec) },
-		rl_block_opt__update_node(Node, [OutputRel0, DiffOutput],
-			[IOLoc, NewRel], NewInstr),
+		rl_block_opt__update_node(Node, NewInstr, [IOLoc, NewRel],
+			[OutputRel0, DiffOutput]),
 
 		% Point users of the difference output to its new location.
 		% The union output is still in the same place.
@@ -713,10 +713,11 @@ rl_block_opt__add_index_to_input(Instr, OutputNo, InputLoc) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred rl_block_opt__update_node(node_id::in, list(output_node)::in, 
-		list(output_id)::in, instr::in, dag::in, dag::out) is det.
+	% Update the nodes instruction, inputs and outputs.
+:- pred rl_block_opt__update_node(node_id::in, instr::in, list(output_id)::in, 
+		list(output_node)::in, dag::in, dag::out) is det.
 
-rl_block_opt__update_node(Node, OutputRels, InputLocs, Instr) -->
+rl_block_opt__update_node(Node, Instr, InputLocs, OutputRels) -->
 	dag_get_node_info_map(NodeInfoMap0),
 	{ map__det_update(NodeInfoMap0, Node, node_info(Instr, OutputRels),
 		NodeInfoMap) },
@@ -814,6 +815,8 @@ rl_block_opt__merge_output_projections(Node, no) -->
 		list(output_projection)
 	).
 
+	% Work out which of the uses of the outputs of the current node
+	% are projections.
 :- pred rl_block_opt__find_output_project_nodes(node_id::in, int::in,
 	list(output_node)::in, list(list(output_projection))::in,
 	list(list(output_projection))::out, dag::in, dag::out) is det.
@@ -868,6 +871,11 @@ rl_block_opt__find_output_project_nodes_2([UsingNode | UsingNodes],
 		\+ (
 			OutputGoals = [OutputGoal],
 			rl__goal_is_independent_of_input(one, OutputGoal, _)
+		),
+		\+ (
+			list__member(OtherOutputProjn, OutputProjns0),
+			OtherOutputProjn = output_projection(UsingNode,
+				_, _, _)
 		)
 	->
 		OutputProjn = output_projection(UsingNode,
@@ -879,14 +887,14 @@ rl_block_opt__find_output_project_nodes_2([UsingNode | UsingNodes],
 	rl_block_opt__find_output_project_nodes_2(UsingNodes,
 		OutputProjns1, OutputProjns).
 
+	% Partition the projections according to the indexes / key ranges
+	% used to access the inputs.
 :- pred rl_block_opt__partition_project_outputs(list(output_projection)::in,
 		list(project_partition)::out) is det.
 
 rl_block_opt__partition_project_outputs(Projects, Partitions) :-
 	rl_block_opt__partition_project_outputs_2(Projects, [], Partitions).
 
-	% Partition the projections according to the indexes / key ranges
-	% used to access the inputs.
 :- pred rl_block_opt__partition_project_outputs_2(list(output_projection)::in,
 	list(project_partition)::in, list(project_partition)::out) is det.
 
