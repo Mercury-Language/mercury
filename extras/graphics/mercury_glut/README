@@ -1,0 +1,12 @@
+This directory contains the package `mercury_glut'
+which is a Mercury binding to the GL utility toolkit (GLUT).
+
+GLUT provides a (relatively) platform independent API for
+writing OpenGL applications.  It provides most of the system
+dependent bits, such as window management, that the OpenGL API doesn't.
+
+See <http://www.opengl.org/resources/libraries/glut.html> for further 
+details.
+
+The Mmakefile includes instructions for building and installing
+the library.

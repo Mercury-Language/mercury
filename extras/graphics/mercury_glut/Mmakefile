@@ -1,0 +1,33 @@
+# To build the GLUT binding, do the following:
+#
+# $ mmake depend
+# $ mmake
+#
+# After which you can install by ...
+#
+# $ mmake install
+
+
+MAIN_TARGET = libmercury_glut
+
+# The following libraries are for X on Linux (Debian) using Mesa.
+	
+# Libaries required by X windows.
+X_LIBS = -lX11 -lXext -lXmu -lXt -lXi -lSM -lICE -L/usr/X11R6/lib
+
+# Libraries required by OpenGL.
+GL_LIBS = -lGL -LGL
+
+MCFLAGS-mercury_glut+=--no-warn-nothing-exported --no-warn-interface-imports
+
+MCFLAGS += --halt-at-warn --transitive-intermodule-optimization \
+	--enable-termination
+
+MGNUCFLAGS = --pic-reg
+EXTRA_MLFLAGS = -shared
+
+MLLIBS = -lglut $(X_LIBS) $(GL_LIBS)
+
+depend: mercury_glut.depend
+
+install: libmercury_glut.install
