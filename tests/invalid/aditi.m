@@ -8,6 +8,7 @@
 :- mode aditi_di :: in.
 :- mode aditi_uo :: out.
 :- mode aditi_mui :: in.
+:- mode aditi_ui :: in.
 
 :- implementation.
 

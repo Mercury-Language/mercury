@@ -7,47 +7,55 @@
 
 :- type relation_ticket == c_pointer.
 
-	% do_call_returning_relation(ProcName, InputSchema, InputTuple,
+	% do_call_returning_relation(DB, ProcName, InputSchema, InputTuple,
 	%		OutputRel).
 	%
 	% Call an Aditi procedure, returning a reference to the output
 	% relation. InputTuple is a tuple containing the
 	% input arguments. InputSchema is an Aditi schema string
 	% describing the tuple of input arguments.
-:- impure pred do_call_returning_relation(string, string,
+:- impure pred do_call_returning_relation(aditi__state, string, string,
 			T, relation_ticket).
-:- mode do_call_returning_relation(in, in, in, out) is det.
+:- mode do_call_returning_relation(aditi_ui, in, in, in, out) is det.
 
 	% Find the single solution for a deterministic database call.
 	% Abort the transaction if the call does not succeed at
 	% least once.
 	% InputTuple and OutputTuple must have type '{}/N' (the arity
 	% depends on the relation being called).
-:- impure pred do_det_call(string, string, InputTuple, OutputTuple).
-:- mode do_det_call(in, in, in, out) is det.
+:- impure pred do_det_call(aditi__state, string, string,
+		InputTuple, OutputTuple).
+:- mode do_det_call(aditi_ui, in, in, in, out) is det.
 
-:- impure pred do_semidet_call(string, string, InputTuple, OutputTuple).
-:- mode do_semidet_call(in, in, in, out) is semidet.
+:- impure pred do_semidet_call(aditi__state, string, string,
+		InputTuple, OutputTuple).
+:- mode do_semidet_call(aditi_ui, in, in, in, out) is semidet.
 
-:- impure pred do_nondet_call(string, string, InputTuple, OutputTuple).
-:- mode do_nondet_call(in, in, in, out) is nondet.
+:- impure pred do_nondet_call(aditi__state, string, string,
+		InputTuple, OutputTuple).
+:- mode do_nondet_call(aditi_ui, in, in, in, out) is nondet.
 
-:- impure pred do_multi_call(string, string, InputTuple, OutputTuple).
-:- mode do_multi_call(in, in, in, out) is multi.
+:- impure pred do_multi_call(aditi__state, string, string,
+		InputTuple, OutputTuple).
+:- mode do_multi_call(aditi_ui, in, in, in, out) is multi.
 
 	% XXX I'm not sure whether it makes sense to have
 	% committed choice Aditi predicates.
-:- impure pred do_cc_nondet_call(string, string, InputTuple, OutputTuple).
-:- mode do_cc_nondet_call(in, in, in, out) is cc_nondet.
+:- impure pred do_cc_nondet_call(aditi__state, string, string,
+		InputTuple, OutputTuple).
+:- mode do_cc_nondet_call(aditi_ui, in, in, in, out) is cc_nondet.
 
-:- impure pred do_cc_multi_call(string, string, InputTuple, OutputTuple).
-:- mode do_cc_multi_call(in, in, in, out) is cc_multi.
+:- impure pred do_cc_multi_call(aditi__state, string, string,
+		InputTuple, OutputTuple).
+:- mode do_cc_multi_call(aditi_ui, in, in, in, out) is cc_multi.
 
-:- impure pred do_erroneous_call(string, string, InputTuple, OutputTuple).
-:- mode do_erroneous_call(in, in, in, out) is erroneous.
+:- impure pred do_erroneous_call(aditi__state, string, string,
+		InputTuple, OutputTuple).
+:- mode do_erroneous_call(aditi_ui, in, in, in, out) is erroneous.
 
-:- impure pred do_failure_call(string, string, InputTuple, OutputTuple).
-:- mode do_failure_call(in, in, in, out) is failure.
+:- impure pred do_failure_call(aditi__state, string, string,
+		InputTuple, OutputTuple).
+:- mode do_failure_call(aditi_ui, in, in, in, out) is failure.
 
 	% do_insert_tuple(BaseRelationName, Tuple).
 	%
