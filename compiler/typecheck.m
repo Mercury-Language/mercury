@@ -381,7 +381,7 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 				Status, TypeCheckInfo1),
 		typecheck_clause_list(Clauses0, HeadVars, ArgTypes0, Clauses,
 				TypeCheckInfo1, TypeCheckInfo2),
-		typecheck_check_for_ambiguity(whole_pred,
+		typecheck_check_for_ambiguity(whole_pred, HeadVars,
 				TypeCheckInfo2, TypeCheckInfo3),
 		typecheck_info_get_final_info(TypeCheckInfo3, TypeVarSet, 
 				VarTypes1),
@@ -470,7 +470,7 @@ typecheck_clause(Clause0, HeadVars, ArgTypes, Clause) -->
 	typecheck_goal(Body0, Body),
 	{ Clause = clause(Modes, Body, Context) },
 	typecheck_info_set_context(Context),
-	typecheck_check_for_ambiguity(clause_only(HeadVars)).
+	typecheck_check_for_ambiguity(clause_only, HeadVars).
 
 %-----------------------------------------------------------------------------%
 
@@ -481,7 +481,7 @@ typecheck_clause(Clause0, HeadVars, ArgTypes, Clause) -->
 	%
 	% If stuff-to-check = whole_pred, report an error for any ambiguity,
 	% and also check for unbound type variables.
-	% But if stuff-to-check = clause_only(HeadVars), then only report
+	% But if stuff-to-check = clause_only, then only report
 	% errors for type ambiguities that don't involve the head vars,
 	% because we may be able to resolve a type ambiguity for a head var
 	% in one clause by looking at later clauses.
@@ -489,15 +489,16 @@ typecheck_clause(Clause0, HeadVars, ArgTypes, Clause) -->
 	% inferring the type for this pred.)
 	% 
 :- type stuff_to_check
-	--->	clause_only(list(var))	
+	--->	clause_only
 	;	whole_pred.
 
-:- pred typecheck_check_for_ambiguity(stuff_to_check,
+:- pred typecheck_check_for_ambiguity(stuff_to_check, list(var),
 				typecheck_info, typecheck_info).
-:- mode typecheck_check_for_ambiguity(in,
+:- mode typecheck_check_for_ambiguity(in, in,
 				typecheck_info_di, typecheck_info_uo) is det.
 
-typecheck_check_for_ambiguity(StuffToCheck, TypeCheckInfo0, TypeCheckInfo) :-
+typecheck_check_for_ambiguity(StuffToCheck, HeadVars,
+		TypeCheckInfo0, TypeCheckInfo) :-
 	typecheck_info_get_type_assign_set(TypeCheckInfo0, TypeAssignSet),
 	( TypeAssignSet = [TypeAssign] ->
 		typecheck_info_get_found_error(TypeCheckInfo0, FoundError),
@@ -505,7 +506,7 @@ typecheck_check_for_ambiguity(StuffToCheck, TypeCheckInfo0, TypeCheckInfo) :-
 			StuffToCheck = whole_pred,
 			FoundError = no
 		->
-			check_type_bindings(TypeAssign,
+			check_type_bindings(TypeAssign, HeadVars,
 				TypeCheckInfo0, TypeCheckInfo)
 		;
 			TypeCheckInfo = TypeCheckInfo0
@@ -525,7 +526,7 @@ typecheck_check_for_ambiguity(StuffToCheck, TypeCheckInfo0, TypeCheckInfo) :-
 			(
 			    StuffToCheck = whole_pred
 			;
-			    StuffToCheck = clause_only(HeadVars),
+			    StuffToCheck = clause_only,
 			    %
 			    % only report an error if the headvar types
 			    % are identical (which means that the ambiguity
@@ -570,18 +571,24 @@ typecheck_check_for_ambiguity(StuffToCheck, TypeCheckInfo0, TypeCheckInfo) :-
 
 	% Check that the all of the types which have been inferred
 	% for the variables in the clause do not contain any unbound type
-	% variables other than the HeadTypeParams.
+	% variables other than those that occur in the types of head
+	% variables.
 
-:- pred check_type_bindings(type_assign, typecheck_info, typecheck_info).
-:- mode check_type_bindings(in, typecheck_info_di, typecheck_info_uo) is det.
+:- pred check_type_bindings(type_assign, list(var),
+			typecheck_info, typecheck_info).
+:- mode check_type_bindings(in, in,
+			typecheck_info_di, typecheck_info_uo) is det.
 
-check_type_bindings(TypeAssign, TypeCheckInfo0, TypeCheckInfo) :-
-	typecheck_info_get_head_type_params(TypeCheckInfo0, HeadTypeParams),
+check_type_bindings(TypeAssign, HeadVars, TypeCheckInfo0, TypeCheckInfo) :-
 	type_assign_get_type_bindings(TypeAssign, TypeBindings),
 	type_assign_get_var_types(TypeAssign, VarTypesMap),
+	map__apply_to_list(HeadVars, VarTypesMap, HeadVarTypes0),
+	term__apply_rec_substitution_to_list(HeadVarTypes0, TypeBindings,
+		HeadVarTypes),
+	term__vars_list(HeadVarTypes, HeadVarTypeParams),
 	map__to_assoc_list(VarTypesMap, VarTypesList),
 	set__init(Set0),
-	check_type_bindings_2(VarTypesList, TypeBindings, HeadTypeParams,
+	check_type_bindings_2(VarTypesList, TypeBindings, HeadVarTypeParams,
 		[], Errs, Set0, _Set),
 	% ... we could at this point bind all the type variables in `Set'
 	% to `void' ...
@@ -615,7 +622,7 @@ check_type_bindings_2([Var - Type0 | VarTypes], TypeBindings, HeadTypeParams,
 	check_type_bindings_2(VarTypes, TypeBindings, HeadTypeParams,
 		Errs1, Errs, Set1, Set).
 
-	% report an error: uninstantiated type parameter
+	% report a warning: uninstantiated type parameter
 
 :- pred report_unresolved_type_error(assoc_list(var, (type)), tvarset,
 				typecheck_info, typecheck_info).
@@ -624,8 +631,26 @@ check_type_bindings_2([Var - Type0 | VarTypes], TypeBindings, HeadTypeParams,
 
 report_unresolved_type_error(Errs, TVarSet, TypeCheckInfo0, TypeCheckInfo) :-
 	typecheck_info_get_io_state(TypeCheckInfo0, IOState0),
-	report_unresolved_type_error_2(TypeCheckInfo0, Errs, TVarSet,
-		IOState0, IOState),
+	globals__io_lookup_bool_option(infer_types, Inferring,
+		IOState0, IOState1),
+	( Inferring = yes ->
+		%
+		% If type inferences is enabled, it can result in spurious
+		% unresolved type warnings in the early passes; the warnings
+		% may be spurious because the types may get resolved in later
+		% passes.  Unfortunately there's no way to tell which
+		% is the last pass until after it is finished... 
+		% probably these warnings ought to be issued in a different
+		% pass than type checking.
+		%
+		% For the moment, if type inference is enabled, you just don't
+		% get these warnings.
+		%
+		IOState = IOState1
+	;
+		report_unresolved_type_error_2(TypeCheckInfo0, Errs, TVarSet,
+			IOState1, IOState)
+	),
 	typecheck_info_set_io_state(TypeCheckInfo0, IOState, TypeCheckInfo).
 	% Currently it is just a warning, not an error.
 	% typecheck_info_set_found_error(TypeCheckInfo1, yes, TypeCheckInfo).
