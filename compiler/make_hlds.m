@@ -789,8 +789,7 @@ add_special_preds(Module0, TVarSet, Type, TypeId,
 
 convert_type_defn(du_type(Name, Args, Body), Globals, Name, Args,
 		du_type(Body, CtorTags, IsEnum)) :-
-	list__length(Args, Arity),
-	assign_constructor_tags(Name, Arity, Body, Globals, CtorTags, IsEnum).
+	assign_constructor_tags(Body, Globals, CtorTags, IsEnum).
 convert_type_defn(uu_type(Name, Args, Body), _, Name, Args, uu_type(Body)).
 convert_type_defn(eqv_type(Name, Args, Body), _, Name, Args, eqv_type(Body)).
 convert_type_defn(abstract_type(Name, Args), _, Name, Args, abstract_type).
