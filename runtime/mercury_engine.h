@@ -221,7 +221,7 @@ typedef struct MR_mercury_engine_struct {
 	MemoryZone	*debug_heap_zone;
   #endif
 #endif
-#ifndef	SPEED
+#ifdef	MR_LOWLEVEL_DEBUG
 	MemoryZone	*dumpstack_zone;
 	int		dumpindex;
 #endif
