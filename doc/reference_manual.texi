@@ -1442,16 +1442,28 @@ expression is just the same as the specified @var{Term}.
 @node Variable scoping
 @section Variable scoping
 
-Variables occurring in data-terms, other than in the right-hand
-(@var{Type}) operand of an explicit type qualification,
-are called ordinary variables,
-while variables occurring in types are called type variables.
-Type variables and ordinary variables occupy different namespaces:
-there is no semantic relationship between a type variable and
-an ordinary variable even if they happen to share the same name.
+There are three sorts of variables in Mercury: ordinary variables,
+type variables, and inst variables.
+
+Variables occurring in types are called type variables.
+Variables occurring in insts or modes are called inst variables.
+Variables that occur in data-terms,
+and that are not inst variables
+or type variables, are called ordinary variables.
+
+(Type variables can occur in data-terms in the right-hand [@var{Type}]
+operand of an explicit type qualification.
+Inst variables can occur in data-terms in the right-hand [@var{Mode}]
+operand of an explicit mode qualification.  Apart from that,
+all other variables in data-terms are ordinary variables.)
+
+The three different variable sorts occupy different namespaces:
+there is no semantic relationship between two variables of different sorts
+(e.g. a type variable and an ordinary variable) even if they happen to
+share the same name.
 (However, as a matter of programming style, it is generally a
-bad idea to use the same name for both a type variable and
-an ordinary variable in the same clause.)
+bad idea to use the same name for variables of different sorts
+in the same clause.)
 
 The scope of ordinary variables is the clause or declaration in which
 they occur, unless they are quantified, either explicitly
@@ -1467,6 +1479,9 @@ function, so that explicit type qualifications and
 type variables. The scope of any type variables in an explicit
 type qualification which do not occur in the predicate or function's
 type declaration is the clause in which they occur.
+
+The scope of inst variables is the clause or declaration in which
+they occur.
 
 @node Implicit quantification
 @section Implicit quantification
