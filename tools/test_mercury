@@ -867,15 +867,24 @@ rm -f $test_error_file
 for grade in $GRADES
 do
 	echo "test_mercury starting tests for grade $grade at `date`" 1>&2
-	mmake GRADE="$grade" \
-		EXTRA_MCFLAGS="$TEST_MCFLAGS" \
-		EXTRA_CFLAGS="$TEST_CFLAGS" \
-		EXTRA_MGNUCFLAGS="$TEST_MGNUCFLAGS" \
-		EXTRA_MLFLAGS="$TEST_MLFLAGS" \
-		$PARALLEL runtests || status=1
-	if [ -f runtests.errs ]; then
-		cat runtest.errs >> $test_error_file
-	fi
+	case $BRANCH in
+	    0.10)
+		./runtests -f "$TEST_MCFLAGS" -c "$TEST_CFLAGS" -g "$grade" \
+		       -m "$TEST_MGNUCFLAGS" -l "$TEST_MLFLAGS" \
+		       $PARALLEL || status=1
+		;;
+	    *)
+		mmake GRADE="$grade" \
+			EXTRA_MCFLAGS="$TEST_MCFLAGS" \
+			EXTRA_CFLAGS="$TEST_CFLAGS" \
+			EXTRA_MGNUCFLAGS="$TEST_MGNUCFLAGS" \
+			EXTRA_MLFLAGS="$TEST_MLFLAGS" \
+			$PARALLEL runtests || status=1
+		if [ -f runtests.errs ]; then
+			cat runtest.errs >> $test_error_file
+		fi
+		;;
+	esac
 	case $grade in
 		*.memprof*)
 			# we need to set LD_BIND_NOW=1
@@ -918,15 +927,24 @@ case $HOST in hg)
 	# XXX Note that some of these tests are currently expected to fail
 	# with `--target asm' (in particular the tests of tabling and
 	# nested modules), so we don't set status=1 if these tests fail.
-	mmake --target asm GRADE=hlc.gc \
-		EXTRA_MCFLAGS="$TEST_MCFLAGS" \
-		EXTRA_CFLAGS="$TEST_CFLAGS" \
-		EXTRA_MGNUCFLAGS="$TEST_MGNUCFLAGS" \
-		EXTRA_MLFLAGS="$TEST_MLFLAGS" \
-		$PARALLEL runtests
-	if [ -f runtests.errs ]; then
-		cat runtest.errs >> $test_error_file
-	fi
+	case $BRANCH in
+	    0.10)
+		./runtests --target asm -f "$TEST_MCFLAGS" -c "$TEST_CFLAGS" \
+			-g hlc.gc -m "$TEST_MGNUCFLAGS" -l "$TEST_MLFLAGS" \
+			$PARALLEL
+		;;
+	    *)
+		mmake --target asm GRADE=hlc.gc \
+			EXTRA_MCFLAGS="$TEST_MCFLAGS" \
+			EXTRA_CFLAGS="$TEST_CFLAGS" \
+			EXTRA_MGNUCFLAGS="$TEST_MGNUCFLAGS" \
+			EXTRA_MLFLAGS="$TEST_MLFLAGS" \
+			$PARALLEL runtests
+		if [ -f runtests.errs ]; then
+			cat runtest.errs >> $test_error_file
+		fi
+		;;
+	esac
 	;;
 esac
 echo "test_mercury finished tests at `date`" 1>&2
