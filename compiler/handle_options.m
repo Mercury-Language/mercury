@@ -44,21 +44,25 @@ handle_options(MaybeError, Args, Link) -->
 	% io__write_string("final arguments\n"),
 	% dump_arguments(Args),
 	postprocess_options(Result, MaybeError),
-	globals__io_lookup_bool_option(generate_dependencies,
-		GenerateDependencies),
-	globals__io_lookup_bool_option(make_interface, MakeInterface),
-	globals__io_lookup_bool_option(convert_to_mercury,
-		ConvertToMercury),
-	globals__io_lookup_bool_option(convert_to_goedel,
-		ConvertToGoedel),
-	globals__io_lookup_bool_option(typecheck_only, TypecheckOnly),
-	globals__io_lookup_bool_option(errorcheck_only, ErrorcheckOnly),
-	globals__io_lookup_bool_option(compile_to_c, CompileToC),
-	globals__io_lookup_bool_option(compile_only, CompileOnly),
-	{ bool__or_list([GenerateDependencies, MakeInterface, ConvertToMercury,
-		ConvertToGoedel, TypecheckOnly, ErrorcheckOnly, CompileToC,
-		CompileOnly], NotLink) },
-	{ bool__not(NotLink, Link) }.
+	( { MaybeError = yes(_) } ->
+		{ Link = no }
+	;
+		globals__io_lookup_bool_option(generate_dependencies,
+			GenerateDependencies),
+		globals__io_lookup_bool_option(make_interface, MakeInterface),
+		globals__io_lookup_bool_option(convert_to_mercury,
+			ConvertToMercury),
+		globals__io_lookup_bool_option(convert_to_goedel,
+			ConvertToGoedel),
+		globals__io_lookup_bool_option(typecheck_only, TypecheckOnly),
+		globals__io_lookup_bool_option(errorcheck_only, ErrorcheckOnly),
+		globals__io_lookup_bool_option(compile_to_c, CompileToC),
+		globals__io_lookup_bool_option(compile_only, CompileOnly),
+		{ bool__or_list([GenerateDependencies, MakeInterface,
+			ConvertToMercury, ConvertToGoedel, TypecheckOnly,
+			ErrorcheckOnly, CompileToC, CompileOnly], NotLink) },
+		{ bool__not(NotLink, Link) }
+	).
 
 :- pred dump_arguments(list(string), io__state, io__state).
 :- mode dump_arguments(in, di, uo) is det.
