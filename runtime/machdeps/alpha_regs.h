@@ -14,17 +14,23 @@
 ** The others are just slots in a global array.
 **
 ** At the moment we're only using the callee-save registers.
-** We should modify this to optionally use the caller-save registers.
+** We have to use *all* of the callee-save registers if we
+** want non-local gotos to work, because otherwise there are
+** problems where a register such as $15 is saved in the
+** function prologue and restored in the function epilogue,
+** but since we jump into and out of the middle of the function
+** it gets clobbered.
 */
 
-#define NUM_REAL_REGS 6
+#define NUM_REAL_REGS 7
 
-register 	Word	mr0 __asm__("$9");
-register	Word	mr1 __asm__("$10");
-register	Word	mr2 __asm__("$11");
-register	Word	mr3 __asm__("$12");
-register	Word	mr4 __asm__("$13");
-register	Word	mr5 __asm__("$14");
+register 	Word	mr0 __asm__("$9");	/* register s0 */
+register	Word	mr1 __asm__("$10");	/* register s1 */
+register	Word	mr2 __asm__("$11");	/* register s2 */
+register	Word	mr3 __asm__("$12");	/* register s3 */
+register	Word	mr4 __asm__("$13");	/* register s4 */
+register	Word	mr5 __asm__("$14");	/* register s5 */
+register	Word	mr6 __asm__("$15");	/* the frame pointer (fp) */
 
 #define save_registers()	(	\
 	fake_reg[0] = mr0,			\
@@ -33,6 +39,7 @@ register	Word	mr5 __asm__("$14");
 	fake_reg[3] = mr3,			\
 	fake_reg[4] = mr4,			\
 	fake_reg[5] = mr5,			\
+	fake_reg[6] = mr6,			\
 	(void)0					\
 )
 
@@ -43,13 +50,13 @@ register	Word	mr5 __asm__("$14");
 	mr3 = fake_reg[3],			\
 	mr4 = fake_reg[4],			\
 	mr5 = fake_reg[5],			\
+	mr6 = fake_reg[6],			\
 	(void)0					\
 )
 
 #define save_transient_registers()	((void)0)
 #define restore_transient_registers()	((void)0)
 
-#define	mr6	fake_reg[6]
 #define	mr7	fake_reg[7]
 #define	mr8	fake_reg[8]
 #define	mr9	fake_reg[9]
