@@ -2171,12 +2171,12 @@ is_bool(_).
 :- pred mercury_compile__output_trans_opt_file(module_info::in,
 	io::di, io::uo) is det.
 
-mercury_compile__output_trans_opt_file(HLDS25, !IO) :-
+mercury_compile__output_trans_opt_file(HLDS0, !IO) :-
 	globals__io_lookup_bool_option(verbose, Verbose, !IO),
 	globals__io_lookup_bool_option(statistics, Stats, !IO),
-	mercury_compile__maybe_termination(Verbose, Stats, HLDS25, HLDS28, !IO),
-	mercury_compile__maybe_dump_hlds(HLDS28, 25, "termination", !IO),
-	trans_opt__write_optfile(HLDS28, !IO).
+	mercury_compile__maybe_termination(Verbose, Stats, HLDS0, HLDS, !IO),
+	mercury_compile__maybe_dump_hlds(HLDS, 120, "termination", !IO),
+	trans_opt__write_optfile(HLDS, !IO).
 
 :- pred mercury_compile__frontend_pass_by_phases(module_info::in,
 	module_info::out, bool::out, io::di, io::uo) is det.
