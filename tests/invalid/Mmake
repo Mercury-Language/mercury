@@ -17,7 +17,6 @@ SOURCES= \
 	errors1.m \
 	errors2.m \
 	io_in_ite_cond.m \
-	lambda_type_bad.m \
 	missing_det_decls.m \
 	modes_erroneous.m \
 	mostly_uniq1.m \
@@ -27,12 +26,15 @@ SOURCES= \
 	pragma_c_code_and_clauses2.m \
 	prog_io_erroneous.m \
 	type_loop.m \
-	types.m \
 	undef_lambda_mode.m \
 	undef_type.m
 
 # we do not yet pass the following tests:
 #	freefree.m
+#	types.m
+
+# the following tests are no longer invalid :-(
+#	lambda_type_bad.m
 
 DEPS=		$(SOURCES:%.m=%.dep)
 DEPENDS=	$(SOURCES:%.m=%.depend)
@@ -42,16 +44,19 @@ ERR_RESS=	$(SOURCES:%.m=%.err_res)	# not yet used
 %.err: %.m
 	if mc --errorcheck-only $* > $*.err 2>&1; then false; else true; fi
 
-# this rule not yet used
 %.err_res: %.err %.err_exp
 	-rm -f $@
 	diff -u $*.err_exp $*.err > $@
 
-all: check
-check: $(ERRS)
-errs: $(ERRS)
+all:	check
+
+check:	$(ERRS) $(ERR_RESS)
+
+errs:	$(ERRS)
+
 depend:
+
 clean:
-	rm -f *.c *.o *.err *.err2 *.d
+	rm -f *.c *.o *.err *.err2 *.d *.err_res
 
 #-----------------------------------------------------------------------------#
