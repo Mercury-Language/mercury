@@ -141,9 +141,11 @@ MP_delete_timeout_files(void)
 			perror(MP_timeout_file2);
 		}
 
+		/*
 		if (remove(MP_timeout_file3) != 0) {
 			perror(MP_timeout_file3);
 		}
+		*/
 	}
 }
 

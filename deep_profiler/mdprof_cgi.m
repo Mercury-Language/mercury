@@ -129,7 +129,7 @@ handle_query(CmdStr, MaybePrefStr, ToServer, FromServer) -->
 	{ MaybeCmd = url_component_to_cmd(CmdStr) },
 	{
 		MaybePrefStr = yes(PrefStr),
-		MaybePref = url_component_to_preferences(PrefStr)
+		MaybePref = url_component_to_pref(PrefStr)
 	;
 		MaybePrefStr = no,
 		MaybePref = yes(default_preferences)
@@ -140,4 +140,34 @@ handle_query(CmdStr, MaybePrefStr, ToServer, FromServer) -->
 		io__write_string(Page)
 	;
 		io__write_string("mdprof: unknown URL format")
+	).
+
+	% Send a query to the server.
+:- pred to(string::in, cmd_pref::in, io__state::di, io__state::uo) is det.
+
+to(ToServerPipeName, CmdPref) -->
+	io__tell(ToServerPipeName, Res),
+	( { Res = ok } ->
+		io__write(CmdPref),
+		io__write_string(".\n"),
+		io__told
+	;
+		{ error("mdprof_cgi to: couldn't open pipe") }
+	).
+
+	% Read a response from the server.
+:- pred from(string::in, resp::out, io__state::di, io__state::uo) is det.
+
+from(FromServerPipeName, Resp) -->
+	io__see(FromServerPipeName, Res0),
+	( { Res0 = ok } ->
+		io__read(Res1),
+		( { Res1 = ok(Resp0) } ->
+			{ Resp = Resp0 }
+		;
+			{ error("mdprof_cgi from: read failed") }
+		),
+		io__seen
+	;
+		{ error("mdprof_cgi from: couldn't open pipe") }
 	).

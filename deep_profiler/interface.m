@@ -6,23 +6,53 @@
 %
 % Author: zs.
 %
-% This module defines the type of the commands that the CGI program
-% (mdprof_cgi.m) passes to the deep profiling server (mdprof_server.m),
-% as well as utility predicates for manipulating commands and responses.
+% This module defines interface between the CGI program (mdprof_cgi.m)
+% and the deep profiling server (mdprof_server.m).
+%
+% The interface consists of queries (sent from the CGI program to the server)
+% and responses (sent back from the server to the CGI program), and shared
+% knowledge of how to derive the names of some files from the name of the
+% profiling data file being explored.
+%
+% A query consists of three components, a command, a set of preferences, and
+% the name of the profiling data file. The command tells the server what
+% information the user wants displayed. The preferences tell the server how the
+% user wants data displayed; they persist across queries unless the user
+% changes them.
+%
+% This module defines the types of commands and preferences. It provides
+% mechanisms for converting queries to URLs and URLs to queries, but it
+% does not expose the encoding. The encoding is compositional; each component
+% of the query (say x) has a x_to_string function to convert it to the URL form
+% and a string_to_x predicate to try to convert an URL fragment back to it.
+% The function/predicate pairs are adjacent to make it easy to update both at
+% the same time. This is essential, because we have no other mechanism to
+% ensure that the URLs we embed in the HTML pages we generate will be
+% recognized and correctly parsed by the CGI program.
 
 :- module interface.
 
 :- interface.
 
-:- import_module std_util, io.
+:- import_module std_util.
+
+	% These functions derive the names of auxiliary files from the name of
+	% the profiling data file being explored. The auxiliary files are:
+	%
+	% - the name of the named pipe for transmitting queries to the server;
+	% - the name of the named pipe for transmitting responses back to the
+	%   CGI program;
+	% - the name of the file containing the output of the server program,
+	%   which prints statistics about its own performance at startup
+	%   (and if invoked with the --debug option, debugging information
+	%   during its execution)
+	% - the name of the file containing contour exclusion information
+	%   (see exclude.m).
 
 :- func to_server_pipe_name(string) = string.
 :- func from_server_pipe_name(string) = string.
 :- func server_startup_name(string) = string.
 :- func contour_file_name(string) = string.
-
-:- pred to(string::in, cmd_pref::in, io__state::di, io__state::uo) is det.
-:- pred from(string::in, resp::out, io__state::di, io__state::uo) is det.
 
 :- type resp
 	--->	html(string).
@@ -68,8 +98,12 @@
 	;	self_and_desc.
 
 :- type display_limit
-	--->	rank_range(int, int)
-	;	threshold(float).
+	--->	rank_range(int, int)	% rank_range(M, N): display procedures
+					% with rank M to N, both inclusive.
+	;	threshold(float).	% threshold(Percent): display
+					% procedures whose cost is at least
+					% Fraction% of the whole program's
+					% cost.
 
 :- type preferences
 	--->	preferences(
@@ -179,7 +213,7 @@
 
 :- func cmd_pref_to_url(string, string, cmd, preferences) = string.
 :- func url_component_to_cmd(string) = maybe(cmd).
-:- func url_component_to_preferences(string) = maybe(preferences).
+:- func url_component_to_pref(string) = maybe(preferences).
 
 %-----------------------------------------------------------------------------%
 
@@ -259,32 +293,6 @@ filename_mangle_2([First | Rest]) = MangledChars :-
 		MangledChars = [':', ':' | MangledRest]
 	;
 		MangledChars = [First | MangledRest]
-	).
-
-%-----------------------------------------------------------------------------%
-
-to(Where, CmdPref) -->
-	io__tell(Where, Res),
-	( { Res = ok } ->
-		io__write(CmdPref),
-		io__write_string(".\n"),
-		io__told
-	;
-		{ error("mdprof to: couldn't open pipe") }
-	).
-
-from(Where, Resp) -->
-	io__see(Where, Res0),
-	( { Res0 = ok } ->
-		io__read(Res1),
-		( { Res1 = ok(Resp0) } ->
-			{ Resp = Resp0 }
-		;
-			{ error("mdprof from: read failed") }
-		),
-		io__seen
-	;
-		{ error("mdprof from: couldn't open pipe") }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -480,7 +488,7 @@ url_component_to_cmd(QueryString) = MaybeCmd :-
 		MaybeCmd = no
 	).
 
-url_component_to_preferences(QueryString) = MaybePreferences :-
+url_component_to_pref(QueryString) = MaybePreferences :-
 	split(QueryString, ('+'), Pieces),
 	(
 		Pieces = [FieldsStr, BoxStr, ColourStr, MaybeAncestorLimitStr,

@@ -1186,8 +1186,8 @@ accumulate_csd_prof_info(Deep, CallerPSPtr, CSDPtr, Own0, Own, Desc0, Desc) :-
 	deep_lookup_csd_desc(Deep, CSDPtr, CSDDesc),
 	add_own_to_own(Own0, CSDOwn) = Own,
 	add_inherit_to_inherit(Desc0, CSDDesc) = Desc1,
-	deep_lookup_csd_zero_map(Deep, CSDPtr, ZeroMapArray),
-	( map__search(ZeroMapArray, CallerPSPtr, InnerTotal) ->
+	deep_lookup_csd_comp_table(Deep, CSDPtr, CompTableArray),
+	( map__search(CompTableArray, CallerPSPtr, InnerTotal) ->
 		Desc = subtract_inherit_from_inherit(InnerTotal, Desc1)
 	;
 		Desc = Desc1
@@ -1597,8 +1597,8 @@ proc_callers_banner(PSI, ProcName, Pref, Deep, NumLines, BunchSize, BunchNum,
 			[i(NumLines), s(Parent), s(WrappedProcName),
 			i(BunchSize)])
 	;
-		First = BunchNum * BunchSize + 1,
-		Last0 = (BunchNum + 1) * BunchSize,
+		First = (BunchNum - 1) * BunchSize + 1,
+		Last0 = (BunchNum) * BunchSize,
 		( Last0 > NumLines ->
 			Last = NumLines
 		;
@@ -1766,17 +1766,17 @@ accumulate_parent_csd_prof_info(Deep, CallerPSPtr, CSDPtr,
 			CalleeCliquePtr),
 		deep_lookup_clique_members(Deep, CalleeCliquePtr,
 			CalleeCliquePDPtrs),
-		list__foldl(compensate_for_zero_map(Deep, CallerPSPtr),
+		list__foldl(compensate_using_comp_table(Deep, CallerPSPtr),
 			CalleeCliquePDPtrs, Desc1, Desc)
 	).
 
-:- pred compensate_for_zero_map(deep::in, proc_static_ptr::in,
+:- pred compensate_using_comp_table(deep::in, proc_static_ptr::in,
 	proc_dynamic_ptr::in, inherit_prof_info::in, inherit_prof_info::out)
 	is det.
 
-compensate_for_zero_map(Deep, CallerPSPtr, PDPtr, Desc0, Desc) :-
-	deep_lookup_pd_zero_map(Deep, PDPtr, ZeroMapArray),
-	( map__search(ZeroMapArray, CallerPSPtr, InnerTotal) ->
+compensate_using_comp_table(Deep, CallerPSPtr, PDPtr, Desc0, Desc) :-
+	deep_lookup_pd_comp_table(Deep, PDPtr, CompTableArray),
+	( map__search(CompTableArray, CallerPSPtr, InnerTotal) ->
 		Desc = subtract_inherit_from_inherit(InnerTotal, Desc0)
 	;
 		Desc = Desc0

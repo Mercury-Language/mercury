@@ -87,13 +87,13 @@
 			% Additional propagated timing info to solve the
 			% problem of undetected recursion through higher order
 			% calls, which is caused by our use of zeroing.
-		pd_zero_total_map	:: array(zero_total_map),
-		csd_zero_total_map	:: array(zero_total_map),
+		pd_comp_table		:: array(compensation_table),
+		csd_comp_table		:: array(compensation_table),
 			% Information about modules.
 		module_data		:: map(string, module_data)
 	).
 
-:- type zero_total_map == map(proc_static_ptr, inherit_prof_info).
+:- type compensation_table == map(proc_static_ptr, inherit_prof_info).
 
 :- type module_data
 	--->	module_data(
@@ -292,10 +292,10 @@
 	call_site_static_ptr::in, own_prof_info::out) is det.
 :- pred lookup_css_desc(array(inherit_prof_info)::in,
 	call_site_static_ptr::in, inherit_prof_info::out) is det.
-:- pred lookup_pd_zero_map(array(zero_total_map)::in,
-	proc_dynamic_ptr::in, zero_total_map::out) is det.
-:- pred lookup_csd_zero_map(array(zero_total_map)::in,
-	call_site_dynamic_ptr::in, zero_total_map::out) is det.
+:- pred lookup_pd_comp_table(array(compensation_table)::in,
+	proc_dynamic_ptr::in, compensation_table::out) is det.
+:- pred lookup_csd_comp_table(array(compensation_table)::in,
+	call_site_dynamic_ptr::in, compensation_table::out) is det.
 
 :- pred deep_lookup_call_site_dynamics(deep::in, call_site_dynamic_ptr::in,
 	call_site_dynamic::out) is det.
@@ -321,10 +321,10 @@
 	map(proc_static_ptr, list(call_site_dynamic_ptr))::out) is det.
 :- pred deep_lookup_proc_dynamic_sites(deep::in, proc_dynamic_ptr::in,
 	array(call_site_array_slot)::out) is det.
-:- pred deep_lookup_pd_zero_map(deep::in, proc_dynamic_ptr::in,
-	zero_total_map::out) is det.
-:- pred deep_lookup_csd_zero_map(deep::in, call_site_dynamic_ptr::in,
-	zero_total_map::out) is det.
+:- pred deep_lookup_pd_comp_table(deep::in, proc_dynamic_ptr::in,
+	compensation_table::out) is det.
+:- pred deep_lookup_csd_comp_table(deep::in, call_site_dynamic_ptr::in,
+	compensation_table::out) is det.
 
 :- pred deep_lookup_pd_own(deep::in, proc_dynamic_ptr::in,
 	own_prof_info::out) is det.
@@ -379,10 +379,10 @@
 	inherit_prof_info::in, deep::out) is det.
 :- pred deep_update_pd_own(deep::in, proc_dynamic_ptr::in,
 	own_prof_info::in, deep::out) is det.
-:- pred deep_update_pd_zero_map(deep::in, proc_dynamic_ptr::in,
-	zero_total_map::in, deep::out) is det.
-:- pred deep_update_csd_zero_map(deep::in, call_site_dynamic_ptr::in,
-	zero_total_map::in, deep::out) is det.
+:- pred deep_update_pd_comp_table(deep::in, proc_dynamic_ptr::in,
+	compensation_table::in, deep::out) is det.
+:- pred deep_update_csd_comp_table(deep::in, call_site_dynamic_ptr::in,
+	compensation_table::in, deep::out) is det.
 
 :- pred extract_pd_sites(proc_dynamic::in, array(call_site_array_slot)::out)
 	is det.
@@ -646,20 +646,20 @@ lookup_css_desc(CSSDescs, CSSPtr, CSSDesc) :-
 		error("lookup_css_desc: bounds error")
 	).
 
-lookup_pd_zero_map(PDZeroMaps, PDPtr, ZeroMap) :-
+lookup_pd_comp_table(PDCompTables, PDPtr, CompTable) :-
 	PDPtr = proc_dynamic_ptr(PDI),
-	( PDI > 0, array__in_bounds(PDZeroMaps, PDI) ->
-		array__lookup(PDZeroMaps, PDI, ZeroMap)
+	( PDI > 0, array__in_bounds(PDCompTables, PDI) ->
+		array__lookup(PDCompTables, PDI, CompTable)
 	;
-		error("lookup_pd_zero_map: bounds error")
+		error("lookup_pd_comp_table: bounds error")
 	).
 
-lookup_csd_zero_map(CSDZeroMaps, CSDPtr, ZeroMap) :-
+lookup_csd_comp_table(CSDCompTables, CSDPtr, CompTable) :-
 	CSDPtr = call_site_dynamic_ptr(CSDI),
-	( CSDI > 0, array__in_bounds(CSDZeroMaps, CSDI) ->
-		array__lookup(CSDZeroMaps, CSDI, ZeroMap)
+	( CSDI > 0, array__in_bounds(CSDCompTables, CSDI) ->
+		array__lookup(CSDCompTables, CSDI, CompTable)
 	;
-		error("lookup_csd_zero_map: bounds error")
+		error("lookup_csd_comp_table: bounds error")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -703,11 +703,11 @@ deep_lookup_proc_dynamic_sites(Deep, PDPtr, PDSites) :-
 	deep_lookup_proc_dynamics(Deep, PDPtr, PD),
 	PDSites = PD ^ pd_sites.
 
-deep_lookup_pd_zero_map(Deep, PDPtr, ZeroMap) :-
-	lookup_pd_zero_map(Deep ^ pd_zero_total_map, PDPtr, ZeroMap).
+deep_lookup_pd_comp_table(Deep, PDPtr, CompTable) :-
+	lookup_pd_comp_table(Deep ^ pd_comp_table, PDPtr, CompTable).
 
-deep_lookup_csd_zero_map(Deep, CSDPtr, ZeroMap) :-
-	lookup_csd_zero_map(Deep ^ csd_zero_total_map, CSDPtr, ZeroMap).
+deep_lookup_csd_comp_table(Deep, CSDPtr, CompTable) :-
+	lookup_csd_comp_table(Deep ^ csd_comp_table, CSDPtr, CompTable).
 
 %-----------------------------------------------------------------------------%
 
@@ -804,15 +804,15 @@ deep_update_pd_own(Deep0, PDPtr, PDOwn, Deep) :-
 	array__set(u(Deep0 ^ pd_own), PDI, PDOwn, PDOwns),
 	Deep = Deep0 ^ pd_own := PDOwns.
 
-deep_update_pd_zero_map(Deep0, PDPtr, ZeroMap, Deep) :-
+deep_update_pd_comp_table(Deep0, PDPtr, CompTable, Deep) :-
 	PDPtr = proc_dynamic_ptr(PDI),
-	array__set(u(Deep0 ^ pd_zero_total_map), PDI, ZeroMap, PDZeroMaps),
-	Deep = Deep0 ^ pd_zero_total_map := PDZeroMaps.
+	array__set(u(Deep0 ^ pd_comp_table), PDI, CompTable, PDCompTables),
+	Deep = Deep0 ^ pd_comp_table := PDCompTables.
 
-deep_update_csd_zero_map(Deep0, CSDPtr, ZeroMap, Deep) :-
+deep_update_csd_comp_table(Deep0, CSDPtr, CompTable, Deep) :-
 	CSDPtr = call_site_dynamic_ptr(CSDI),
-	array__set(u(Deep0 ^ csd_zero_total_map), CSDI, ZeroMap, CSDZeroMaps),
-	Deep = Deep0 ^ csd_zero_total_map := CSDZeroMaps.
+	array__set(u(Deep0 ^ csd_comp_table), CSDI, CompTable, CSDCompTables),
+	Deep = Deep0 ^ csd_comp_table := CSDCompTables.
 
 %-----------------------------------------------------------------------------%
 

@@ -173,8 +173,8 @@ startup(Machine, DataFileName, CanonicalClique, InitDeep0, Deep) -->
 	{ array__init(NPSs, zero_inherit_prof_info, PSDesc0) },
 	{ array__init(NCSSs, zero_own_prof_info, CSSOwn0) },
 	{ array__init(NCSSs, zero_inherit_prof_info, CSSDesc0) },
-	{ array__init(NPDs, map__init, PDZeroMap0) },
-	{ array__init(NCSDs, map__init, CSDZeroMap0) },
+	{ array__init(NPDs, map__init, PDCompTable0) },
+	{ array__init(NCSDs, map__init, CSDCompTable0) },
 
 	{ ModuleData = map__map_values(initialize_module_data, ModuleProcs) },
 	{ Deep0 = deep(InitStats, Machine, DataFileName, Root,
@@ -183,7 +183,7 @@ startup(Machine, DataFileName, CanonicalClique, InitDeep0, Deep) -->
 		ProcCallers, CallSiteStaticMap, CallSiteCalls,
 		PDOwn, PDDesc0, CSDDesc0,
 		PSOwn0, PSDesc0, CSSOwn0, CSSDesc0,
-		PDZeroMap0, CSDZeroMap0, ModuleData) },
+		PDCompTable0, CSDCompTable0, ModuleData) },
 
 	{ array_foldl_from_1(propagate_to_clique, Cliques, Deep0, Deep1) },
 	io__format(StdErr, "  Done.\n", []),
@@ -543,7 +543,7 @@ summarize_proc_dynamics(Deep0, Deep) :-
 	PSDescArray0 = Deep0 ^ ps_desc,
 	array_foldl2_from_1(
 		summarize_proc_dynamic(Deep0 ^ pd_own, Deep0 ^ pd_desc,
-			Deep0 ^ pd_zero_total_map),
+			Deep0 ^ pd_comp_table),
 		Deep0 ^ proc_dynamics,
 		copy(PSOwnArray0), PSOwnArray,
 		copy(PSDescArray0), PSDescArray),
@@ -552,20 +552,20 @@ summarize_proc_dynamics(Deep0, Deep) :-
 		^ ps_desc := PSDescArray).
 
 :- pred summarize_proc_dynamic(array(own_prof_info)::in,
-	array(inherit_prof_info)::in, array(zero_total_map)::in,
+	array(inherit_prof_info)::in, array(compensation_table)::in,
 	int::in, proc_dynamic::in,
 	array(own_prof_info)::array_di, array(own_prof_info)::array_uo,
 	array(inherit_prof_info)::array_di, array(inherit_prof_info)::array_uo)
 	is det.
 
-summarize_proc_dynamic(PDOwnArray, PDDescArray, PDZeroMapArray, PDI, PD,
+summarize_proc_dynamic(PDOwnArray, PDDescArray, PDCompTableArray, PDI, PD,
 		PSOwnArray0, PSOwnArray, PSDescArray0, PSDescArray) :-
 	PSPtr = PD ^ pd_proc_static,
 	PDPtr = proc_dynamic_ptr(PDI),
 	lookup_pd_own(PDOwnArray, PDPtr, PDOwn),
 	lookup_pd_desc(PDDescArray, PDPtr, PDDesc0),
-	lookup_pd_zero_map(PDZeroMapArray, PDPtr, PDZeroMap),
-	( map__search(PDZeroMap, PSPtr, InnerTotal) ->
+	lookup_pd_comp_table(PDCompTableArray, PDPtr, PDCompTable),
+	( map__search(PDCompTable, PSPtr, InnerTotal) ->
 		PDDesc = subtract_inherit_from_inherit(InnerTotal, PDDesc0)
 	;
 		PDDesc = PDDesc0
@@ -588,7 +588,7 @@ summarize_call_site_dynamics(Deep0, Deep) :-
 		summarize_call_site_dynamic(
 			Deep0 ^ call_site_static_map,
 			Deep0 ^ call_site_statics, Deep0 ^ csd_desc,
-			Deep0 ^ csd_zero_total_map),
+			Deep0 ^ csd_comp_table),
 		Deep0 ^ call_site_dynamics,
 		copy(CSSOwnArray0), CSSOwnArray,
 		copy(CSSDescArray0), CSSDescArray),
@@ -598,13 +598,13 @@ summarize_call_site_dynamics(Deep0, Deep) :-
 
 :- pred summarize_call_site_dynamic(call_site_static_map::in,
 	call_site_statics::in, array(inherit_prof_info)::in,
-	array(zero_total_map)::in, int::in, call_site_dynamic::in,
+	array(compensation_table)::in, int::in, call_site_dynamic::in,
 	array(own_prof_info)::array_di, array(own_prof_info)::array_uo,
 	array(inherit_prof_info)::array_di, array(inherit_prof_info)::array_uo)
 	is det.
 
 summarize_call_site_dynamic(CallSiteStaticMap, CallSiteStatics,
-		CSDDescs, CSDZeroMapArray, CSDI, CSD,
+		CSDDescs, CSDCompTableArray, CSDI, CSD,
 		CSSOwnArray0, CSSOwnArray, CSSDescArray0, CSSDescArray) :-
 	CSDPtr = call_site_dynamic_ptr(CSDI),
 	lookup_call_site_static_map(CallSiteStaticMap, CSDPtr, CSSPtr),
@@ -612,9 +612,9 @@ summarize_call_site_dynamic(CallSiteStaticMap, CallSiteStatics,
 	( CSSI > 0 ->
 		CSDOwn = CSD ^ csd_own_prof,
 		lookup_csd_desc(CSDDescs, CSDPtr, CSDDesc0),
-		lookup_csd_zero_map(CSDZeroMapArray, CSDPtr, CSDZeroMap),
+		lookup_csd_comp_table(CSDCompTableArray, CSDPtr, CSDCompTable),
 		lookup_call_site_statics(CallSiteStatics, CSSPtr, CSS),
-		( map__search(CSDZeroMap, CSS ^ css_container, InnerTotal) ->
+		( map__search(CSDCompTable, CSS ^ css_container, InnerTotal) ->
 			CSDDesc = subtract_inherit_from_inherit(InnerTotal,
 				CSDDesc0)
 		;
@@ -667,8 +667,9 @@ accumulate_ps_costs(Deep, PSPtr, Own0, Own, Desc0, Desc) :-
 
 propagate_to_clique(CliqueNumber, Members, Deep0, Deep) :-
 	array__lookup(Deep0 ^ clique_parents, CliqueNumber, ParentCSDPtr),
-	list__foldl2(propagate_to_proc_dynamic(CliqueNumber, ParentCSDPtr),
-		Members, Deep0, Deep1, map__init, CSDZeroMap),
+	list__foldl3(propagate_to_proc_dynamic(CliqueNumber, ParentCSDPtr),
+		Members, Deep0, Deep1, map__init, SumTable,
+		map__init, OverrideMap),
 	( valid_call_site_dynamic_ptr(Deep1, ParentCSDPtr) ->
 		deep_lookup_call_site_dynamics(Deep1, ParentCSDPtr, ParentCSD),
 		ParentOwn = ParentCSD ^ csd_own_prof,
@@ -676,34 +677,38 @@ propagate_to_clique(CliqueNumber, Members, Deep0, Deep) :-
 		subtract_own_from_inherit(ParentOwn, ParentDesc0) =
 			ParentDesc,
 		deep_update_csd_desc(Deep1, ParentCSDPtr, ParentDesc, Deep2),
-		deep_update_csd_zero_map(Deep2, ParentCSDPtr, CSDZeroMap, Deep)
+		CSDCompTable = apply_override(OverrideMap, SumTable),
+		deep_update_csd_comp_table(Deep2, ParentCSDPtr, CSDCompTable,
+			Deep)
 	;
 		Deep = Deep1
 	).
 
 :- pred propagate_to_proc_dynamic(int::in, call_site_dynamic_ptr::in,
 	proc_dynamic_ptr::in, deep::in, deep::out,
-	zero_total_map::in, zero_total_map::out) is det.
+	compensation_table::in, compensation_table::out,
+	compensation_table::in, compensation_table::out) is det.
 
 propagate_to_proc_dynamic(CliqueNumber, ParentCSDPtr, PDPtr, Deep0, Deep,
-		CSDZeroMap0, CSDZeroMap) :-
+		SumTable0, SumTable, OverrideTable0, OverrideTable) :-
 	flat_call_sites(Deep0 ^ proc_dynamics, PDPtr, CSDPtrs),
 	list__foldl2(propagate_to_call_site(CliqueNumber, PDPtr),
-		CSDPtrs, Deep0, Deep1, map__init, PDZeroMap),
-	deep_update_pd_zero_map(Deep1, PDPtr, PDZeroMap, Deep2),
+		CSDPtrs, Deep0, Deep1, map__init, PDCompTable),
+	deep_update_pd_comp_table(Deep1, PDPtr, PDCompTable, Deep2),
 
 	deep_lookup_pd_desc(Deep2, PDPtr, ProcDesc),
 	deep_lookup_pd_own(Deep2, PDPtr, ProcOwn),
 	ProcTotal = add_own_to_inherit(ProcOwn, ProcDesc),
 
-	CSDZeroMap1 = add_zero_maps(CSDZeroMap0, PDZeroMap),
+	SumTable = add_comp_tables(SumTable0, PDCompTable),
 	deep_lookup_proc_dynamics(Deep2, PDPtr, PD),
 	PSPtr = PD ^ pd_proc_static,
 	deep_lookup_proc_statics(Deep2, PSPtr, PS),
 	( PS ^ ps_is_zeroed = zeroed ->
-		CSDZeroMap = add_to_zero_map(CSDZeroMap1, PSPtr, ProcTotal)
+		OverrideTable = add_to_override(OverrideTable0,
+			PSPtr, ProcTotal)
 	;
-		CSDZeroMap = CSDZeroMap1
+		OverrideTable = OverrideTable0
 	),
 
 	( valid_call_site_dynamic_ptr(Deep1, ParentCSDPtr) ->
@@ -716,10 +721,10 @@ propagate_to_proc_dynamic(CliqueNumber, ParentCSDPtr, PDPtr, Deep0, Deep,
 
 :- pred propagate_to_call_site(int::in, proc_dynamic_ptr::in,
 	call_site_dynamic_ptr::in, deep::in, deep::out,
-	zero_total_map::in, zero_total_map::out) is det.
+	compensation_table::in, compensation_table::out) is det.
 
 propagate_to_call_site(CliqueNumber, PDPtr, CSDPtr, Deep0, Deep,
-		PDZeroMap0, PDZeroMap) :-
+		PDCompTable0, PDCompTable) :-
 	deep_lookup_call_site_dynamics(Deep0, CSDPtr, CSD),
 	CalleeOwn = CSD ^ csd_own_prof,
 	CalleePDPtr = CSD ^ csd_callee,
@@ -731,37 +736,58 @@ propagate_to_call_site(CliqueNumber, PDPtr, CSDPtr, Deep0, Deep,
 		CalleeTotal = add_own_to_inherit(CalleeOwn, CalleeDesc),
 		ProcDesc = add_inherit_to_inherit(ProcDesc0, CalleeTotal),
 		deep_update_pd_desc(Deep0, PDPtr, ProcDesc, Deep),
-		deep_lookup_csd_zero_map(Deep, CSDPtr, CSDZeroMap),
-		PDZeroMap = add_zero_maps(PDZeroMap0, CSDZeroMap)
+		deep_lookup_csd_comp_table(Deep, CSDPtr, CSDCompTable),
+		PDCompTable = add_comp_tables(PDCompTable0, CSDCompTable)
 	;
 		% We don't propagate profiling measurements
 		% along intra-clique calls.
 		Deep = Deep0,
-		PDZeroMap = PDZeroMap0
+		PDCompTable = PDCompTable0
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- func add_zero_maps(zero_total_map, zero_total_map) = zero_total_map.
+:- func add_comp_tables(compensation_table, compensation_table)
+	= compensation_table.
 
-add_zero_maps(ZeroMap1, ZeroMap2) = ZeroMap :-
-	( map__is_empty(ZeroMap1) ->
-		ZeroMap = ZeroMap2
-	; map__is_empty(ZeroMap2) ->
-		ZeroMap = ZeroMap1
+add_comp_tables(CompTable1, CompTable2) = CompTable :-
+	( map__is_empty(CompTable1) ->
+		CompTable = CompTable2
+	; map__is_empty(CompTable2) ->
+		CompTable = CompTable1
 	;
-		ZeroMap = map__union(add_inherit_to_inherit,
-			ZeroMap1, ZeroMap2)
+		CompTable = map__union(add_inherit_to_inherit,
+			CompTable1, CompTable2)
 	).
 
-:- func add_to_zero_map(zero_total_map, proc_static_ptr, inherit_prof_info) =
-	zero_total_map.
+:- func apply_override(compensation_table, compensation_table)
+	= compensation_table.
 
-add_to_zero_map(ZeroMap0, PSPtr, PDTotal) = ZeroMap :-
-	% Even if the map already contained an entry for PSPtr, the costs
-	% incurred by the calls represented by that entry have already been
-	% propagated to PDTotal.
-	map__set(ZeroMap0, PSPtr, PDTotal, ZeroMap).
+apply_override(CompTable1, CompTable2) = CompTable :-
+	( map__is_empty(CompTable1) ->
+		CompTable = CompTable2
+	; map__is_empty(CompTable2) ->
+		CompTable = CompTable1
+	;
+		CompTable = map__union(select_override_comp,
+			CompTable1, CompTable2)
+	).
+
+:- func select_override_comp(inherit_prof_info, inherit_prof_info)
+	= inherit_prof_info.
+
+select_override_comp(OverrideComp, _) = OverrideComp.
+
+:- func add_to_override(compensation_table,
+	proc_static_ptr, inherit_prof_info) = compensation_table.
+
+add_to_override(CompTable0, PSPtr, PDTotal) = CompTable :-
+	( map__search(CompTable0, PSPtr, Comp0) ->
+		Comp = add_inherit_to_inherit(Comp0, PDTotal),
+		map__det_update(CompTable0, PSPtr, Comp, CompTable)
+	;
+		map__det_insert(CompTable0, PSPtr, PDTotal, CompTable)
+	).
 
 %-----------------------------------------------------------------------------%
 
