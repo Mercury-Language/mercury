@@ -125,7 +125,7 @@
 		case "$grade" in
 			*.debug)
 				stack_trace=true
-				require_tracing=false
+				require_tracing=true
 				grade="` expr $grade : '\(.*\).debug' `"
 				;;
 # The following alternatives have been omitted since
