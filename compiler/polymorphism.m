@@ -44,12 +44,13 @@
 %	word 1		<=/2 predicate for type>
 %	word 2		<index/2 predicate for type>
 %	word 3		<compare/3 predicate for type>
-%	word 4		<type_ctor_layout for type>
+%	word 4		<MR_TypeCtorRepresentation for type constructor>
 %	word 5		<type_ctor_functors for type>
-%	word 6		<string name of type constructor>
+%	word 6		<type_ctor_layout for type>
+%	word 7		<string name of type constructor>
 %			e.g. "int" for `int', "list" for `list(T)',
 %			"map" for `map(K,V)'
-%	word 7		<string name of module>
+%	word 8		<string name of module>
 %
 % The other cell is the type_info structure, laid out like this:
 %

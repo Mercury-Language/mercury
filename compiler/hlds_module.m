@@ -63,10 +63,11 @@
 			import_status,	% of the type
 			maybe(int),	% eliminated procs?
 					% and how many if so
-			list(pred_proc_id)
+			list(pred_proc_id),
 					% the ids of the procs
 					% referred to from the
 					% type_ctor_info
+			hlds_type_defn	% defn of type
 		).
 
 	% This structure contains the information we need to generate
