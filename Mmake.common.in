@@ -103,6 +103,8 @@ SCRIPTS_DIR = $(MERCURY_DIR)/scripts
 RUNTIME_DIR = $(MERCURY_DIR)/runtime
 LIBRARY_DIR = $(MERCURY_DIR)/library
 BOEHM_GC_DIR = $(MERCURY_DIR)/boehm_gc
+COMPILER_DIR = $(MERCURY_DIR)/compiler
+UTIL_DIR = $(MERCURY_DIR)/util
 
 #-----------------------------------------------------------------------------#
 
