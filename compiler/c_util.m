@@ -205,7 +205,7 @@ c_util__unary_prefix_op(unmktag,		"MR_unmktag").
 c_util__unary_prefix_op(mkbody,			"MR_mkbody").
 c_util__unary_prefix_op(body,			"MR_body").
 c_util__unary_prefix_op(unmkbody,		"MR_unmkbody").
-c_util__unary_prefix_op(hash_string,		"hash_string").
+c_util__unary_prefix_op(hash_string,		"MR_hash_string").
 c_util__unary_prefix_op(bitwise_complement,	"~").
 c_util__unary_prefix_op(not,			"!").
 c_util__unary_prefix_op(cast_to_unsigned,	"(Unsigned)").
