@@ -345,12 +345,6 @@ MR_create3_func(MR_Word w1, MR_Word w2, MR_Word w3)
 
 #else /* ! MR_HIGHLEVEL_CODE */
 
-/*
-** Note that gcc optimizes `hp += 2; return hp - 2;'
-** to `tmp = hp; hp += 2; return tmp;', so we don't need to use
-** gcc's expression statements in the code below.
-*/
-
 #ifdef	MR_RECORD_TERM_SIZES
   #define MR_SIZE_SLOT_SIZE	1
   #ifdef MR_RECORD_TERM_SIZES_AS_CELLS
@@ -390,6 +384,12 @@ MR_create3_func(MR_Word w1, MR_Word w2, MR_Word w3)
   #define MR_fill_create2_size(hp, ti1, w1, ti2, w2)		0
   #define MR_fill_create3_size(hp, ti1, w1, ti2, w2, ti3, w3)	0
 #endif
+
+/*
+** Note that gcc optimizes `hp += 2; return hp - 2;'
+** to `tmp = hp; hp += 2; return tmp;', so we don't need to use
+** gcc's expression statements in the code below.
+*/
 
 /* used only by hand-written code not by the automatically generated code */
 #define MR_create1(ti1, w1)						\
