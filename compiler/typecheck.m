@@ -603,7 +603,10 @@ typecheck_call_pred(PredName, Args, PredId, TypeInfo0, TypeInfo) :-
 	;
 		invalid_pred_id(PredId),
 		type_info_get_io_state(TypeInfo1, IOState0),
-		( predicate_table_search_name(PredicateTable, Name, OtherIds) ->
+		(
+			predicate_table_search_sym(PredicateTable, PredName,
+				OtherIds)
+		->
 			typecheck_find_arities(ModuleInfo, OtherIds, Arities),
 			report_error_pred_num_args(TypeInfo1, PredCallId,
 				Arities, IOState0, IOState)
@@ -2857,11 +2860,11 @@ report_error_overloading_unqual_pred(TypeInfo, PredCallId) -->
 	{ type_info_get_context(TypeInfo, Context) },
 	io__write_string("Sorry, not implemented: predicate overloading. \n"),
 	prog_out__write_context(Context),
-	io__write_string("Call to "),
+	io__write_string("  Call to "),
 	hlds_out__write_pred_call_id(PredCallId),
 	io__write_string(" matches to more than one predicate.\n"),
 	prog_out__write_context(Context),
-	io__write_string("An explicit module qualifier may help.\n").
+	io__write_string("  An explicit module qualifier may help.\n").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -1371,6 +1371,12 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 :- mode predicate_table_remove_predid(in, in, out) is det.
 
 	% Search the table for predicates matching this
+	% (possibly module-qualified) sym_name.
+	%
+:- pred predicate_table_search_sym(predicate_table, sym_name, list(pred_id)).
+:- mode predicate_table_search_sym(in, in, out) is semidet.
+
+	% Search the table for predicates matching this
 	% (possibly module-qualified) sym_name & arity.
 	%
 :- pred predicate_table_search_sym_arity(predicate_table, sym_name, arity,
@@ -1479,6 +1485,37 @@ predicate_table_reverse_predids(PredicateTable0, PredicateTable) :-
 	PredicateTable0 = predicate_table(A, B, PredIds0, D, E, F),
 	list__reverse(PredIds0, PredIds),
 	PredicateTable = predicate_table(A, B, PredIds, D, E, F).
+
+:- predicate_table_search_sym(_, X, _) when X. % NU-Prolog indexing.
+
+predicate_table_search_sym(PredicateTable, unqualified(Name), PredIdList) :-
+	predicate_table_search_name(PredicateTable, Name, PredIdList).
+predicate_table_search_sym(PredicateTable, qualified(Module, Name),
+		PredIdList) :-
+	predicate_table_search_name(PredicateTable, Name, PredIdList0),
+	predicate_table_get_preds(PredicateTable, PredTable),
+	find_preds_matching_module(PredIdList0, Module, PredTable, PredIdList),
+	PredIdList \= [].
+
+	%
+	% Given a list of predicates, and a module name, find all the
+	% predicates which came from that module.
+	%
+:- pred find_preds_matching_module(list(pred_id), module_name, pred_table,
+		list(pred_id)).
+:- mode find_preds_matching_module(in, in, in, out) is det.
+
+find_preds_matching_module([], _, _, []).
+find_preds_matching_module([PredId | PredIds0], Module, PredTable, PredIds) :-
+	(
+		map__search(PredTable, PredId, PredInfo),
+		pred_info_module(PredInfo, Module)
+	->
+		PredIds = [PredId | PredIds1]
+	;
+		PredIds = PredIds1
+	),
+	find_preds_matching_module(PredIds0, Module, PredTable, PredIds1).
 
 :- predicate_table_search_sym_arity(_, X, _, _) when X. % NU-Prolog indexing.
 
