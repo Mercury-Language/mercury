@@ -128,6 +128,7 @@ case $HOST in
 				gcc)	OPTIMIZE=-O5 ;;
 				*)	OPTIMIZE=-O2 ;;
 			esac ;;
+	earth)		OPTIMIZE="-O5 --intermodule-optimization" ;;
 	kryten) 	OPTIMIZE=-O1 ;;	# currently not used
 	rimmer) 	OPTIMIZE=-O1 ;; # currently not used
 esac
@@ -172,7 +173,7 @@ TESTDIR=/home/mercury/public/test_mercury
 DIR=$TESTDIR/test_dirs/$HOST
 
 case $HOST in
-	hg|ender|roy|venus) 	
+	hg|ender|roy|venus|earth) 	
 		INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH ;;
 	*)		
 		INSTALL_DIR=/home/mercury/public/$INSTALL_DIR_NAME/$FULLARCH ;;
@@ -223,12 +224,15 @@ case $HOST in
 	ender) 		PARALLEL= ;; 	# one CPU
 	roy) 		PARALLEL= ;; 	# one CPU
 	venus) 		PARALLEL= ;; 	# one CPU
+	earth) 		PARALLEL= ;; 	# one CPU
 	*)		PARALLEL= ;;
 esac
 
 # version of the mercury compiler to use for bootstrapping
 case $HOST in
 	hg|ender|roy|venus)
+		# XXX Add earth to the list above once a compiler
+		# is installed there.
 		BOOTSTRAP_MERCURY_COMPILER=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
 		;;
 	*)
@@ -382,7 +386,7 @@ case $HOST in
 		;;
 esac
 case $HOST in
-	murlibobo|kryten|taifun|quicksilver|hg|hydra|roy|venus|ender)
+	murlibobo|kryten|taifun|quicksilver|hg|hydra|roy|venus|ender|earth)
 		[ -d mercury/extras/clpr/CVS ] ||
 		(cd mercury/extras && cvs checkout $CHECKOUT_OPTS clpr) ||
 			{ false; exit 1; }
@@ -507,7 +511,7 @@ case $HOST in
 		# requires --enable-all-grades
 		GRADES="asm_fast.gc.tr asm_fast.tr"
 		;;
-	hg|quicksilver|hydra|ender|kryten|taifun|venus)
+	hg|quicksilver|hydra|ender|kryten|taifun|venus|earth)
 		case $C_COMPILER in
 			gcc)	GRADES="asm_fast.gc.tr" ;;
 			*)	GRADES="" ;;
@@ -635,6 +639,13 @@ case $HOST in
 			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
 			asm_fast.par.gc hlc.gc"
 		;;
+
+	earth)	GRADES="asm_fast.gc asm_fast
+			asm_fast.gc.prof asm_fast.prof
+			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
+			hlc.gc hlc.par.gc"
+		;;
+
 	venus)
 		case $C_COMPILER in
 			gcc)	GRADES="asm_fast.gc asm_fast
@@ -752,6 +763,9 @@ case $HOST in
 		;;
 	venus)	
 		fullname=i686-pc-linux-libc2.1-gnu-O5
+		;;
+	earth)	
+		fullname=i686-pc-linux-libc2.1-gnu-O5-intermod
 		;;
 	roy)	
 		fullname=i686-pc-linux-libc2.1-gnu-O4-hlc
