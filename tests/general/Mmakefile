@@ -55,16 +55,6 @@ ORDINARY_PROGS=	\
 		state_vars_typeclasses \
 		string_foldl_substring \
 		string_foldr_substring \
-		string_format_c \
-		string_format_d \
-		string_format_e \
-		string_format_f \
-		string_format_g \
-		string_format_o \
-		string_format_p \
-		string_format_s \
-		string_format_u \
-		string_format_x \
 		string_format_test \
 		string_format_test_2 \
 		string_format_test_3 \
@@ -78,6 +68,18 @@ ORDINARY_PROGS=	\
 EXCEPTION_PROGS = \
 		map_corresponding \
 		unused_arg_determinism
+
+STRING_FORMAT_PROGS = \
+		string_format_c \
+		string_format_d \
+		string_format_e \
+		string_format_f \
+		string_format_g \
+		string_format_o \
+		string_format_p \
+		string_format_s \
+		string_format_u \
+		string_format_x 
 
 ifneq "$(findstring profdeep,$(GRADE))" ""
 	PROGS = $(ORDINARY_PROGS)
