@@ -210,19 +210,13 @@ lco_in_conj([Goal0 | Goals0], Unifies0, Goals, Module0, Module, InstMap0,
 	goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
 	(
-		GoalExpr0 = unify(_, _, LHSMode - RHSMode, Unif, _),
-		Unif = construct(_, _, _, _),
+		GoalExpr0 = unify(_, _, _, Unif, _),
+		Unif = construct(_, ConsId, _, _),
 
 		% XXX For now, don't allow LCO on constructions of
 		% higher-order terms.  This is because we currently
 		% can't express non-ground higher-order terms.
-		proc_info_inst_table(Proc0, InstTable),
-		LHSMode = _ - LFinalInst,
-		RHSMode = _ - RFinalInst,
-		\+ inst_is_higher_order_ground(LFinalInst, InstMap1,
-				InstTable, Module0),
-		\+ inst_is_higher_order_ground(RFinalInst, InstMap1,
-				InstTable, Module0)
+		ConsId \= pred_const(_, _)
 	->
 		Unifies1 = [Goal0 | Unifies0],
 		lco_in_conj(Goals0, Unifies1, Goals, Module0, Module, InstMap1,
@@ -244,7 +238,9 @@ lco_in_conj([Goal0 | Goals0], Unifies0, Goals, Module0, Module, InstMap0,
 		% This is because a new proc will need to be created for the
 		% pred that is called.
 		module_info_pred_info(Module0, CalledPredId, PredInfo),
-		\+ pred_info_is_imported(PredInfo),
+		pred_info_import_status(PredInfo, ImportStatus),
+		ImportStatus \= imported,
+		ImportStatus \= opt_imported,
 
 		% XXX - Also, we currently only allow one reference per
 		% variable, so make sure there is no more than one reference

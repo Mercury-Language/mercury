@@ -219,17 +219,18 @@ detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, Refs0, LiveInfo0,
 			InstMapAfter),
 	( instmap_delta_is_unreachable(InstMapDelta) ->
 		Births = Empty,
-		RefBirths = Empty
+		Refs = Refs0
 	;
 		set__init(Births0),
 		set__init(RefBirths0),
 		find_value_giving_occurrences(NewVarsList, LiveInfo0,
 			InstMapBefore, InstMapAfter, Births0, Births,
-			RefBirths0, RefBirths)
+			RefBirths0, RefBirths),
+		set__union(Refs0, RefBirths, Refs1),
+		remove_bound_refs(Refs1, LiveInfo0, InstMapBefore,
+			InstMapAfter, Refs)
 	),
 	set__union(Liveness0, Births, Liveness),
-	set__union(Refs0, RefBirths, Refs1),
-	remove_bound_refs(Refs1, LiveInfo0, InstMapBefore, InstMapAfter, Refs),
 	(
 		goal_is_atomic(Goal0)
 	->
