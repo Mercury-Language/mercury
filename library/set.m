@@ -19,6 +19,10 @@
 :- pred set__superset(set(T), set(T)).
 :- mode set__superset(in, in).
 
+% The mode for set__member should be more general to
+% allow for matching within set__member ie matching on
+% top level functors or whatever.
+
 :- pred set__member(T, set(T)).
 :- mode set__member(in, in) is det.
 :- mode set__member(out, in) is nondet.
