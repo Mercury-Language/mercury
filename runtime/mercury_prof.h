@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997,2000-2001 The University of Melbourne.
+** Copyright (C) 1995-1997,2000-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -42,7 +42,7 @@ extern MR_Code *	volatile	MR_prof_current_proc;
 
 /*
 ** This variable holds the address of the calling procedure
-** for a call to MR_do_call_closure or MR_do_call_class_method.
+** for a call to mercury__do_call_closure or mercury__do_call_class_method.
 */
 
 #ifdef MR_MPROF_PROFILE_CALLS
