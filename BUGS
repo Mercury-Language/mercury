@@ -45,9 +45,7 @@ This problem occurs with several different combinations of GCC version
 and C source file.
 
 This seems to be a bug in GCC's handling of global register variables.
-The GCC maintainers have shown no interest in fixing it. They appear
-to consider global register variables to be a deprecated feature, even
-though it isn't documented as such in the GCC manual.
+The bug seems to be finally fixed in GCC 3.3 or 3.4.
 
 If this problem occurs when compiling the source distribution, install
 from the binary distribution instead.
