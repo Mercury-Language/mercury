@@ -976,7 +976,7 @@ Word * create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 
 	arity = ((Word *) base_type_info)[0];
 
-	incr_hp(type_info, (arity + 1));
+	incr_hp(LVALUE_CAST(Word, type_info), arity + 1);
 
 	for (i = 0; i <= arity; i++) {
 		if (arg_pseudo_type_info[i] < TYPELAYOUT_MAX_VARINT) {
