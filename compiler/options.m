@@ -101,6 +101,7 @@
 		;	optimize_peep
 		;	optimize_jumps
 		;	optimize_labels
+		;	optimize_dups
 		;	optimize_value_number
 		;	optimize_frames
 		;	optimize_repeat
@@ -213,6 +214,7 @@ option_defaults_2(optimization_option, [
 	optimize_peep		-	bool(yes),
 	optimize_jumps		-	bool(yes),
 	optimize_labels		-	bool(yes),
+	optimize_dups		-	bool(yes),
 	optimize_value_number	-	bool(no),
 	optimize_frames		-	bool(yes),
 	optimize_repeat		-	int(5),
@@ -227,7 +229,7 @@ option_defaults_2(optimization_option, [
 	inlining		-	bool(yes),
 	common_struct		-	bool(no),
 	common_goal		-	bool(no),
-	procs_per_c_function	-	int(1)
+	procs_per_c_function	-	int(5)
 ]).
 option_defaults_2(miscellaneous_option, [
 		% Miscellaneous Options
@@ -327,6 +329,8 @@ long_option("optimize-jumps",		optimize_jumps).
 long_option("optimise-jumps",		optimize_jumps).
 long_option("optimize-labels",		optimize_labels).
 long_option("optimise-labels",		optimize_labels).
+long_option("optimize-dups",		optimize_dups).
+long_option("optimise-dups",		optimize_dups).
 long_option("optimize-value-number",	optimize_value_number).
 long_option("optimise-value-number",	optimize_value_number).
 long_option("optimize-frames",		optimize_frames).
@@ -403,12 +407,14 @@ options_help -->
 	io__write_string("\t-d <n>, --dump-hlds <stage number or name>\n"),
 	io__write_string("\t\tDump the HLDS (intermediate representation) after\n"),
 	io__write_string("\t\tthe specified stage to `<module>.hlds_dump.<num>-<name>'.\n"),
-	io__write_string("\t\tStage numbers range from 0-12.\n"),
+	io__write_string("\t\tStage numbers range from 0-17.\n"),
 	io__write_string("\t\tMultiple dump options accumulate.)\n"),
 	io__write_string("\t-D, --verbose-dump-hlds\n"),
 	io__write_string("\t\tWith --dump-hlds, dumps some additional info.\n"),
+	io__write_string("\t--no-trad-passes\n"),
+	io__write_string("\t\tGenerate code by phases, not by predicates.\n"),
 	io__write_string("\t-g, --generate-code\n"),
-	io__write_string("\t\tGenerate .mod code in `<module>.mod'.\n"),
+	io__write_string("\t\tGenerate code in `<module>.c'.\n"),
 	io__write_string("\t-c, --compile\n"),
 	io__write_string("\t\tInvoke the C compiler on the generated .c file.\n"),
 	io__write_string("\t\tThis implies --generate-code.\n"),
@@ -478,6 +484,8 @@ options_help -->
 	io__write_string("\t\tDisable elimination of jumps to jumps.\n"),
 	io__write_string("\t--no-optimize-labels\n"),
 	io__write_string("\t\tDisable elimination of dead labels and code\n"),
+	io__write_string("\t--no-optimize-dups\n"),
+	io__write_string("\t\tDisable elimination of duplicate code\n"),
 	io__write_string("\t--optimize-value-number\n"),
 	io__write_string("\t\tPerform value numbering\n"),
 	io__write_string("\t--no-optimize-frames\n"),

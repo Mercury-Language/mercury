@@ -29,7 +29,7 @@
 
 :- import_module list, globals, opt_util.
 
-:- import_module jumpopt, labelopt, frameopt, peephole, value_number.
+:- import_module jumpopt, labelopt, dupelim, frameopt, peephole, value_number.
 :- import_module int, std_util.
 
 optimize__main([], []) --> [].
@@ -137,10 +137,23 @@ optimize__repeated(Instructions0, DoVn, Instructions, Mod) -->
 		;
 			[]
 		),
-		{ labelopt__main(Instructions3, Instructions, Mod3) }
+		{ labelopt__main(Instructions3, Instructions4, Mod3) }
 	;
-		{ Instructions = Instructions3 },
+		{ Instructions4 = Instructions3 },
 		{ Mod3 = no }
+	),
+	globals__io_lookup_bool_option(optimize_dups, DupElim),
+	( { DupElim = yes } ->
+		( { VeryVerbose = yes } ->
+			io__write_string("% Optimizing duplicates for "),
+			io__write_string(LabelStr),
+			io__write_string("\n")
+		;
+			[]
+		),
+		{ dupelim__main(Instructions4, Instructions) }
+	;
+		{ Instructions = Instructions4 }
 	),
 	{ Mod1 = no, Mod2 = no, Mod3 = no, Instructions = Instructions0 ->
 		Mod = no

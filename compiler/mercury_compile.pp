@@ -1528,32 +1528,38 @@ mercury_compile__semantic_pass_by_preds(HLDS1, HLDS9, Proceed0, Proceed) -->
 
 mercury_compile__middle_pass(HLDS9, HLDS11, Proceed) -->
 	globals__io_lookup_bool_option(trad_passes, TradPasses),
+	globals__io_lookup_bool_option(generate_code, GenerateCode),
 	(
 		{ TradPasses = no },
 		mercury_compile__middle_pass_by_phases(HLDS9, HLDS11,
-			Proceed)
+			GenerateCode, Proceed)
 	;
 		{ TradPasses = yes },
 		mercury_compile__middle_pass_by_preds(HLDS9, HLDS11,
-			Proceed)
+			GenerateCode, Proceed)
 	).
 
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__middle_pass_by_phases(module_info, module_info,
-	bool, io__state, io__state).
-:- mode mercury_compile__middle_pass_by_phases(di, uo, out, di, uo) is det.
+	bool, bool, io__state, io__state).
+:- mode mercury_compile__middle_pass_by_phases(di, uo, in, out, di, uo) is det.
 
-mercury_compile__middle_pass_by_phases(HLDS9, HLDS11, Proceed) -->
+mercury_compile__middle_pass_by_phases(HLDS9, HLDS11, GenerateCode, Proceed) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 
 	mercury_compile__check_determinism(HLDS9, HLDS10, FoundError),
 	maybe_report_stats(Statistics),
 	mercury_compile__maybe_dump_hlds(HLDS10, "10", "determinism"),
-
-	mercury_compile__map_args_to_regs(HLDS10, HLDS11),
-	maybe_report_stats(Statistics),
-	mercury_compile__maybe_dump_hlds(HLDS11, "11", "args_to_regs"),
+	(
+		{ GenerateCode = yes },
+		mercury_compile__map_args_to_regs(HLDS10, HLDS11),
+		maybe_report_stats(Statistics),
+		mercury_compile__maybe_dump_hlds(HLDS11, "11", "args_to_regs")
+	;
+		{ GenerateCode = no },
+		{ HLDS11 = HLDS10 }
+	),
 	{ bool__not(FoundError, Proceed) }.
 
 :- pred mercury_compile__check_determinism(module_info, module_info, bool,
@@ -1589,11 +1595,12 @@ mercury_compile__map_args_to_regs(HLDS0, HLDS) -->
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__middle_pass_by_preds(module_info, module_info,
-	bool, io__state, io__state).
-:- mode mercury_compile__middle_pass_by_preds(di, uo, out, di, uo) is det.
+	bool, bool, io__state, io__state).
+:- mode mercury_compile__middle_pass_by_preds(di, uo, in, out, di, uo) is det.
 
-mercury_compile__middle_pass_by_preds(HLDS9, HLDS11, Proceed) -->
-	mercury_compile__middle_pass_by_phases(HLDS9, HLDS11, Proceed).
+mercury_compile__middle_pass_by_preds(HLDS9, HLDS11, GenerateCode, Proceed) -->
+	mercury_compile__middle_pass_by_phases(HLDS9, HLDS11, GenerateCode,
+		Proceed).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1771,9 +1778,9 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], ModuleInfo0,
 	;
 		globals__io_lookup_bool_option(verbose, Verbose),
 		( { Verbose = yes } ->
-			io__write_string("% Processing ..."),
+			io__write_string("% Processing "),
 			hlds_out__write_pred_id(ModuleInfo0, PredId),
-			io__write_string("...\n"),
+			io__write_string(" ...\n"),
 			io__flush_output
 		;
 			[]

@@ -867,9 +867,27 @@ output_lval_decls(temp(_)) --> [].
 :- mode output_code_addr_decls(in, di, uo) is det.
 
 output_code_addr_decls(succip) --> [].
-output_code_addr_decls(do_fail) --> [].
 output_code_addr_decls(do_succeed(_)) --> [].
-output_code_addr_decls(do_redo) --> [].
+output_code_addr_decls(do_fail) -->
+	{ use_macro_for_redo_fail(UseMacro) },
+	(
+		{ UseMacro = yes }
+	;
+		{ UseMacro = no },
+		io__write_string("Declare_entry("),
+		io__write_string("do_fail"),
+		io__write_string(");\n\t  ")
+	).
+output_code_addr_decls(do_redo) -->
+	{ use_macro_for_redo_fail(UseMacro) },
+	(
+		{ UseMacro = yes }
+	;
+		{ UseMacro = no },
+		io__write_string("Declare_entry("),
+		io__write_string("do_redo"),
+		io__write_string(");\n\t  ")
+	).
 output_code_addr_decls(label(_)) --> [].
 output_code_addr_decls(imported(ProcLabel)) -->
 	io__write_string("Declare_entry("),
@@ -907,8 +925,6 @@ maybe_output_update_prof_counter(Label) -->
 
 output_goto(succip, _) -->
 	io__write_string("proceed();").
-output_goto(do_fail, _) -->
-	io__write_string("fail();").
 output_goto(do_succeed(Last), _) -->
 	(
 		{ Last = no },
@@ -917,8 +933,24 @@ output_goto(do_succeed(Last), _) -->
 		{ Last = yes },
 		io__write_string("succeed_discard();")
 	).
+output_goto(do_fail, _) -->
+	{ use_macro_for_redo_fail(UseMacro) },
+	(
+		{ UseMacro = yes },
+		io__write_string("fail();")
+	;
+		{ UseMacro = no },
+		io__write_string("GOTO_LABEL(do_fail);")
+	).
 output_goto(do_redo, _) -->
-	io__write_string("redo();").
+	{ use_macro_for_redo_fail(UseMacro) },
+	(
+		{ UseMacro = yes },
+		io__write_string("redo();")
+	;
+		{ UseMacro = no },
+		io__write_string("GOTO_LABEL(do_redo);")
+	).
 output_goto(imported(ProcLabel), CallerAddr) -->
 	io__write_string("tailcall(ENTRY("),
 	output_proc_label(ProcLabel),
@@ -1000,8 +1032,6 @@ output_call_closure(CodeModel, Continuation) -->
 
 output_code_addr(succip) -->
 	io__write_string("succip").
-output_code_addr(do_fail) -->
-	io__write_string("ENTRY(do_fail)").
 output_code_addr(do_succeed(Last)) -->
 	(
 		{ Last = no },
@@ -1010,6 +1040,8 @@ output_code_addr(do_succeed(Last)) -->
 		{ Last = yes },
 		io__write_string("ENTRY(do_last_succeed)")
 	).
+output_code_addr(do_fail) -->
+	io__write_string("ENTRY(do_fail)").
 output_code_addr(do_redo) -->
 	io__write_string("ENTRY(do_redo)").
 output_code_addr(label(Label)) -->
@@ -1583,7 +1615,6 @@ llds__reg_to_string(f(N), Description) :-
 	string__append("f(", N_String, Tmp),
 	string__append(Tmp, ")", Description).
 
-
 	% XXX This is a quick hack!
 
 :- pred llds__name_mangle(string, string).
@@ -1645,6 +1676,11 @@ gather_labels_from_instrs([Instr | Instrs], Labels0, Labels) :-
 		Labels1 = Labels0
 	),
 	gather_labels_from_instrs(Instrs, Labels1, Labels).
+
+:- pred use_macro_for_redo_fail(bool).
+:- mode use_macro_for_redo_fail(out) is det.
+
+use_macro_for_redo_fail(yes).
 
 :- end_module llds.
 
