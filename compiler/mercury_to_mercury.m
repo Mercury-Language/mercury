@@ -324,6 +324,10 @@ mercury_output_inst_name(shared_inst(InstName), VarSet) -->
 	io__write_string("$shared_inst("),
 	mercury_output_inst_name(InstName, VarSet),
 	io__write_string(")").
+mercury_output_inst_name(mostly_uniq_inst(InstName), VarSet) -->
+	io__write_string("$mostly_uniq_inst("),
+	mercury_output_inst_name(InstName, VarSet),
+	io__write_string(")").
 mercury_output_inst_name(unify_inst(Liveness, InstA, InstB, Real), VarSet) -->
 	io__write_string("$unify("),
 	( { Liveness = live } ->

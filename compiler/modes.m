@@ -18,6 +18,10 @@
 
 % The input to this pass must be type-correct and in superhomogeneous form.
 
+% This pass does not check that `unique' modes are not used in contexts
+% which might require backtracking - that is done by unique_modes.m.
+% Changes here may also require changes to unique_modes.m.
+
 % XXX we need to allow unification of free with free even when both
 %     *variables* are live, if one of the particular *sub-nodes* is 
 %     dead (causes problems handling e.g. `same_length').
@@ -102,6 +106,114 @@ a variable live if its value will be used later on in the computation.
 :- pred modecheck_proc(proc_id, pred_id, module_info, module_info, int,
 			io__state, io__state).
 :- mode modecheck_proc(in, in, in, out, out, di, uo) is det.
+
+%-----------------------------------------------------------------------------%
+
+% The following predicates are used by unique_modes.m.
+
+:- import_module mode_info, mode_errors.
+
+	% If there were any errors recorded in the mode_info,
+	% report them to the user now.
+	%
+:- pred modecheck_report_errors(mode_info, mode_info).
+:- mode modecheck_report_errors(mode_info_di, mode_info_uo) is det.
+
+	% Modecheck a unification.
+	%
+:- pred modecheck_unification( var, unify_rhs, unification, unify_context,
+			hlds__goal_info, var, unify_rhs, pair(list(hlds__goal)),
+			pair(mode), unification, mode_info, mode_info).
+:- mode modecheck_unification(in, in, in, in, in, out, out, out, out, out,
+			mode_info_di, mode_info_uo) is det.
+
+	% handle_extra_goals combines MainGoal and ExtraGoals into a single
+	% hlds__goal_expr.
+	%
+:- pred handle_extra_goals(hlds__goal_expr, pair(list(hlds__goal)),
+		hlds__goal_info, list(var), list(var),
+		mode_info, mode_info, hlds__goal_expr).
+:- mode handle_extra_goals(in, in, in, in, in, mode_info_ui, mode_info_ui, out)
+	is det.
+
+	% Given two instmaps and a set of variables, compute an instmap delta
+	% which records the change in the instantiation state of those
+	% variables.
+	%
+:- pred compute_instmap_delta(instmap, instmap, set(var), instmap_delta).
+:- mode compute_instmap_delta(in, in, in, out) is det.
+
+	% Print a debugging message which includes the port, message string,
+	% and the current instmap (but only if `--debug-modes' was enabled).
+	%
+:- pred mode_checkpoint(port, string, mode_info, mode_info).
+:- mode mode_checkpoint(in, in, mode_info_di, mode_info_uo) is det.
+
+:- type port
+	--->	enter
+	;	exit
+	;	wakeup.
+
+	% instmap_merge(NonLocalVars, InstMaps, MergeContext):
+	%	Merge the `InstMaps' resulting from different branches
+	%	of a disjunction or if-then-else, and update the
+	%	instantiatedness of all the nonlocal variables, 
+	%	checking that it is the same for every branch.
+	%
+:- pred instmap_merge(set(var), list(instmap), merge_context,
+		mode_info, mode_info).
+:- mode instmap_merge(in, in, in, mode_info_di, mode_info_uo) is det.
+
+ 	% given the right-hand-side of a unification, return a list of
+	% the potentially non-local variables of that unification.
+	%
+:- pred unify_rhs_vars(unify_rhs, list(var)).
+:- mode unify_rhs_vars(in, out) is det.
+
+	% Given the head vars and the final insts of a predicate,
+	% work out which of those variables may be used again
+	% by the caller of that predicate (i.e. which variables
+	% did not have final inst `clobbered').
+	%
+:- pred get_live_vars(list(var), list(inst), module_info, list(var)).
+:- mode get_live_vars(in, in, in, out) is det.
+
+	% Given a list of variables and a list of initial insts, ensure
+	% that the inst of each variable matches the corresponding initial
+	% inst.
+	%
+:- pred modecheck_var_has_inst_list(list(var), list(inst), int, mode_info,
+					mode_info).
+:- mode modecheck_var_has_inst_list(in, in, in, mode_info_di, mode_info_uo)
+	is det.
+
+:- pred modecheck_set_var_inst(var, inst, mode_info, mode_info).
+:- mode modecheck_set_var_inst(in, in, mode_info_di, mode_info_uo) is det.
+
+:- pred modecheck_set_var_inst_list(list(var), list(inst), list(inst),
+					list(var), pair(list(hlds__goal)),
+					mode_info, mode_info).
+:- mode modecheck_set_var_inst_list(in, in, in, out, out,
+					mode_info_di, mode_info_uo) is det.
+
+	% check that the final insts of the head vars matches their
+	% expected insts
+	%
+:- pred modecheck_final_insts(list(var), list(inst), mode_info, mode_info).
+:- mode modecheck_final_insts(in, in, mode_info_di, mode_info_uo) is det.
+
+	% mode_info_never_succeeds(ModeInfo, PredId, ProcId, Result):
+	% return Result = yes if the called predicate is known to never succeed.
+	%
+:- pred mode_info_never_succeeds(mode_info, pred_id, proc_id, bool).
+:- mode mode_info_never_succeeds(mode_info_ui, in, in, out) is det.
+
+:- pred mode_info_add_goals_live_vars(list(hlds__goal), mode_info, mode_info).
+:- mode mode_info_add_goals_live_vars(in, mode_info_di, mode_info_uo) is det.
+
+:- pred mode_info_remove_goals_live_vars(list(hlds__goal), mode_info,
+					mode_info).
+:- mode mode_info_remove_goals_live_vars(in, mode_info_di, mode_info_uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -288,8 +400,10 @@ modecheck_proc_2(ProcId, PredId, ModuleInfo0, ProcInfo0,
 	proc_info_set_variables(ProcInfo1, VarSet, ProcInfo2),
 	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo).
 
-:- pred get_live_vars(list(var), list(inst), module_info, list(var)).
-:- mode get_live_vars(in, in, in, out) is det.
+	% Given the head vars and the final insts of a predicate,
+	% work out which of those variables may be used again
+	% by the caller of that predicate (i.e. which variables
+	% did not have final inst `clobbered').
 
 get_live_vars([], [], _, []).
 get_live_vars([Var|Vars], [FinalInst|FinalInsts], ModuleInfo, LiveVars) :-
@@ -303,9 +417,9 @@ get_live_vars([Var|Vars], [FinalInst|FinalInsts], ModuleInfo, LiveVars) :-
 get_live_vars([_|_], [], _, _) :- error("get_live_vars: length mismatch").
 get_live_vars([], [_|_], _, _) :- error("get_live_vars: length mismatch").
 
-:- pred modecheck_final_insts(list(var), list(inst), mode_info, mode_info).
-:- mode modecheck_final_insts(in, in, mode_info_di, mode_info_uo) is det.
-
+	% check that the final insts of the head vars matches their
+	% expected insts
+	%
 modecheck_final_insts(HeadVars, ArgFinalInsts, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	mode_info_get_instmap(ModeInfo0, InstMap),
@@ -350,6 +464,8 @@ check_final_insts([Var | Vars], [Inst | Insts], ArgNum, InstMap, ModuleInfo)
 % Modecheck a goal by abstractly interpreteting it, as explained
 % at the top of this file.
 
+% Note: any changes here may need to be duplicated in unique_modes.m.
+
 % Input-output: InstMap - Stored in the ModeInfo, which is passed as an
 %			  argument pair
 %		DelayInfo - Stored in the ModeInfo
@@ -377,25 +493,17 @@ modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ModeInfo0, ModeInfo) :-
 	),
 		%
 		% modecheck the goal, and then store the changes in
-		% instantiation of the non-local vars and the changes
-		% in liveness in the goal's goal_info.
+		% instantiation of the non-local vars in the delta_instmap
+		% in the goal's goal_info.
 		%
 	goal_info_get_nonlocals(GoalInfo0, NonLocals),
 	mode_info_get_vars_instmap(ModeInfo1, NonLocals, InstMap0),
+
 	modecheck_goal_2(Goal0, GoalInfo0, Goal, ModeInfo1, ModeInfo),
-		%
-		% save the changes in instantiation of the non-local vars
-		%
+
 	mode_info_get_vars_instmap(ModeInfo, NonLocals, InstMap),
 	compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap),
 	goal_info_set_instmap_delta(GoalInfo0, DeltaInstMap, GoalInfo).
-
-% :- pred compute_liveness_delta(set(var), set(var), delta_liveness).
-% :- mode compute_liveness_delta(in, in, out) is det.
-% 
-% compute_liveness_delta(Liveness0, Liveness, Births - Deaths) :-
-% 	set__difference(Liveness0, Liveness, Deaths),
-% 	set__difference(Liveness, Liveness0, Births).
 
 :- pred modecheck_goal_2(hlds__goal_expr, hlds__goal_info, hlds__goal_expr,
 			mode_info, mode_info).
@@ -432,8 +540,8 @@ modecheck_goal_2(if_then_else(Vs, A0, B0, C0), GoalInfo0, Goal) -->
 	mode_info_add_live_vars(B_Vars),
 	mode_info_add_live_vars(C_Vars),
 	modecheck_goal(A0, A),
-	mode_info_remove_live_vars(B_Vars),
 	mode_info_remove_live_vars(C_Vars),
+	mode_info_remove_live_vars(B_Vars),
 	mode_info_unlock_vars(NonLocals),
 	mode_info_dcg_get_instmap(InstMapA),
 	modecheck_goal(B0, B),
@@ -576,9 +684,6 @@ map_delete_list([Key|Keys], Map0, Map) :-
  	% given the right-hand-side of a unification, return a list of
 	% the potentially non-local variables of that unification.
 
-:- pred unify_rhs_vars(unify_rhs, list(var)).
-:- mode unify_rhs_vars(in, out) is det.
-
 unify_rhs_vars(var(Var), [Var]).
 unify_rhs_vars(functor(_Functor, Vars), Vars).
 unify_rhs_vars(lambda_goal(LambdaVars, _Modes, _Det, _Goal - GoalInfo), Vars) :-
@@ -588,12 +693,6 @@ unify_rhs_vars(lambda_goal(LambdaVars, _Modes, _Det, _Goal - GoalInfo), Vars) :-
 
 	% handle_extra_goals combines MainGoal and ExtraGoals into a single
 	% hlds__goal_expr.
-
-:- pred handle_extra_goals(hlds__goal_expr, pair(list(hlds__goal)),
-		hlds__goal_info, list(var), list(var),
-		mode_info, mode_info, hlds__goal_expr).
-:- mode handle_extra_goals(in, in, in, in, in, mode_info_ui, mode_info_ui, out)
-	is det.
 
 handle_extra_goals(MainGoal, ExtraGoals, GoalInfo0, Args0, Args,
 		ModeInfo0, ModeInfo, Goal) :-
@@ -639,10 +738,7 @@ handle_extra_goals_contexts([Goal0 | Goals0], Context, [Goal | Goals]) :-
 	handle_extra_goals_contexts(Goals0, Context, Goals).
 
 	% Return Result = yes if the called predicate is known to never succeed.
-
-:- pred mode_info_never_succeeds(mode_info, pred_id, proc_id, bool).
-:- mode mode_info_never_succeeds(mode_info_ui, in, in, out) is det.
-
+	%
 mode_info_never_succeeds(ModeInfo, PredId, ProcId, Result) :-
 	mode_info_get_module_info(ModeInfo, ModuleInfo),
 	module_info_preds(ModuleInfo, Preds),
@@ -671,8 +767,9 @@ goal_get_nonlocals(_Goal - GoalInfo, NonLocals) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred compute_instmap_delta(instmap, instmap, set(var), instmap_delta).
-:- mode compute_instmap_delta(in, in, in, out) is det.
+	% Given two instmaps and a set of variables, compute an instmap delta
+	% which records the change in the instantiation state of those
+	% variables.
 
 compute_instmap_delta(unreachable, _, _, unreachable).
 compute_instmap_delta(reachable(_), unreachable, _, unreachable).
@@ -741,18 +838,11 @@ modecheck_conj_list(Goals0, Goals) -->
 		mode_info_error(Vars, mode_error_conj(DelayedGoals))
 	).
 
-:- pred mode_info_add_goals_live_vars(list(hlds__goal), mode_info, mode_info).
-:- mode mode_info_add_goals_live_vars(in, mode_info_di, mode_info_uo) is det.
-
 mode_info_add_goals_live_vars([]) --> [].
 mode_info_add_goals_live_vars([Goal | Goals]) -->
 	{ goal_get_nonlocals(Goal, Vars) },
 	mode_info_add_live_vars(Vars),
 	mode_info_add_goals_live_vars(Goals).
-
-:- pred mode_info_remove_goals_live_vars(list(hlds__goal), mode_info,
-					mode_info).
-:- mode mode_info_remove_goals_live_vars(in, mode_info_di, mode_info_uo) is det.
 
 mode_info_remove_goals_live_vars([]) --> [].
 mode_info_remove_goals_live_vars([Goal | Goals]) -->
@@ -899,10 +989,6 @@ modecheck_case_list([Case0 | Cases0], Var,
 	%	of a disjunction or if-then-else, and update the
 	%	instantiatedness of all the nonlocal variables, 
 	%	checking that it is the same for every branch.
-
-:- pred instmap_merge(set(var), list(instmap), merge_context,
-		mode_info, mode_info).
-:- mode instmap_merge(in, in, in, mode_info_di, mode_info_uo) is det.
 
 instmap_merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
@@ -1147,11 +1233,6 @@ get_var_insts([Var | Vars], InstMap, [Inst | Insts]) :-
 	% that the inst of each variable matches the corresponding initial
 	% inst.
 
-:- pred modecheck_var_has_inst_list(list(var), list(inst), int, mode_info,
-					mode_info).
-:- mode modecheck_var_has_inst_list(in, in, in, mode_info_di, mode_info_uo)
-	is det.
-
 modecheck_var_has_inst_list([_|_], [], _) -->
 	{ error("modecheck_var_has_inst_list: length mismatch") }.
 modecheck_var_has_inst_list([], [_|_], _) -->
@@ -1182,12 +1263,6 @@ modecheck_var_has_inst(VarId, Inst, ModeInfo0, ModeInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred modecheck_set_var_inst_list(list(var), list(inst), list(inst),
-					list(var), pair(list(hlds__goal)),
-					mode_info, mode_info).
-:- mode modecheck_set_var_inst_list(in, in, in, out, out,
-					mode_info_di, mode_info_uo) is det.
-
 modecheck_set_var_inst_list(Vars0, InitialInsts, FinalInsts, Vars, Goals) -->
 	(
 		modecheck_set_var_inst_list_2(Vars0, InitialInsts, FinalInsts,
@@ -1215,12 +1290,12 @@ modecheck_set_var_inst_list_2([Var0 | Vars0], [InitialInst | InitialInsts],
 	{ list__append(AfterGoals0, AfterGoals1, AfterGoals) },
 	{ Goals = BeforeGoals - AfterGoals }.
 
+% XXX this might need to be revisited to handle unique modes
+
 :- pred modecheck_set_var_inst(var, inst, inst, var, pair(list(hlds__goal)),
 				mode_info, mode_info).
 :- mode modecheck_set_var_inst(in, in, in, out, out,
 				mode_info_di, mode_info_uo) is det.
-
-% XXX this might need to be revisited to handle unique modes
 
 modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var, Goals,
 			ModeInfo0, ModeInfo) :-
@@ -1257,9 +1332,6 @@ modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var, Goals,
 	% one with arity 7 and one with arity 4.
 	% The former is used for predicate calls, where we may need
 	% to introduce unifications to handle calls to implied modes.
-
-:- pred modecheck_set_var_inst(var, inst, mode_info, mode_info).
-:- mode modecheck_set_var_inst(in, in, mode_info_di, mode_info_uo) is det.
 
 % XXX this might need to be revisited to handle unique modes
 
@@ -1423,14 +1495,6 @@ mode_context_to_unify_context(uninitialized, _) :-
 
 	% This code is used to trace the actions of the mode checker.
 
-:- type port
-	--->	enter
-	;	exit
-	;	wakeup.
-
-:- pred mode_checkpoint(port, string, mode_info, mode_info).
-:- mode mode_checkpoint(in, in, mode_info_di, mode_info_uo) is det.
-
 mode_checkpoint(Port, Msg, ModeInfo0, ModeInfo) :-
 	mode_info_get_io_state(ModeInfo0, IOState0),
         globals__io_lookup_bool_option(debug_modes, DoCheckPoint,
@@ -1504,12 +1568,6 @@ write_var_insts([Var - Inst | VarInsts], VarSet, InstVarSet) -->
 %-----------------------------------------------------------------------------%
 
 	% Mode check a unification.
-
-:- pred modecheck_unification( var, unify_rhs, unification, unify_context,
-			hlds__goal_info, var, unify_rhs, pair(list(hlds__goal)),
-			pair(mode), unification, mode_info, mode_info).
-:- mode modecheck_unification(in, in, in, in, in, out, out, out, out, out,
-			mode_info_di, mode_info_uo) is det.
 
 modecheck_unification(X, var(Y), _Unification0, _UnifyContext, _GoalInfo,
 			X, var(Y), ExtraGoals, Modes, Unification,
@@ -2431,9 +2489,6 @@ mode_info_add_error(ModeErrorInfo, ModeInfo0, ModeInfo) :-
 
 	% If there were any errors recorded in the mode_info,
 	% report them to the user now.
-
-:- pred modecheck_report_errors(mode_info, mode_info).
-:- mode modecheck_report_errors(mode_info_di, mode_info_uo) is det.
 
 modecheck_report_errors(ModeInfo0, ModeInfo) :-
 	mode_info_get_errors(ModeInfo0, Errors),

@@ -117,6 +117,15 @@
 	% `not_reached'.
 
 %-----------------------------------------------------------------------------%
+
+:- pred make_mostly_uniq_inst(inst, module_info, inst, module_info).
+:- mode make_mostly_uniq_inst(in, in, out, out) is det.
+
+	% Given an inst, return a new inst which is the same as the
+	% original inst but with all occurrences of `unique' replaced
+	% with `mostly_unique'.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1075,8 +1084,8 @@ abstractly_unify_inst_functor_2(live, bound(Uniq, ListX), Name, Args,
 					Real, M0, List, M).
 
 abstractly_unify_inst_functor_2(live, ground(Uniq, _), Name, ArgInsts,
-		_ArgLives, Real, M0, Inst, M) :-
-	make_ground_inst_list(ArgInsts, live, Uniq, Real, M0,
+		ArgLives, Real, M0, Inst, M) :-
+	make_ground_inst_list_lives(ArgInsts, live, ArgLives, Uniq, Real, M0,
 		GroundArgInsts, M), 
 	Inst = bound(Uniq, [functor(Name, GroundArgInsts)]).
 
@@ -1105,6 +1114,25 @@ abstractly_unify_inst_functor_2(dead, ground(Uniq, _), Name, ArgInsts,
 % 	fail.
 
 %-----------------------------------------------------------------------------%
+
+:- pred make_ground_inst_list_lives(list(inst), is_live, list(is_live),
+				uniqueness, unify_is_real,
+				module_info, list(inst), module_info).
+:- mode make_ground_inst_list_lives(in, in, in, in, in, in, out, out)
+				is semidet.
+
+make_ground_inst_list_lives([], _, _, _, _, ModuleInfo, [], ModuleInfo).
+make_ground_inst_list_lives([Inst0 | Insts0], Live, [ArgLive | ArgLives],
+		Uniq, Real, ModuleInfo0, [Inst | Insts], ModuleInfo) :-
+	( Live = live, ArgLive = live ->
+		BothLive = live
+	;
+		BothLive = dead
+	),
+	make_ground_inst(Inst0, BothLive, Uniq, Real, ModuleInfo0,
+		Inst, ModuleInfo1),
+	make_ground_inst_list_lives(Insts0, Live, ArgLives, Uniq, Real,
+		ModuleInfo1, Insts, ModuleInfo).
 
 :- pred make_ground_inst_list(list(inst), is_live, uniqueness, unify_is_real,
 				module_info, list(inst), module_info).
@@ -1309,6 +1337,99 @@ make_shared_bound_inst_list([Bound0 | Bounds0], ModuleInfo0,
 	Bound = functor(Name, ArgInsts),
 	make_shared_bound_inst_list(Bounds0, ModuleInfo1,
 				Bounds, ModuleInfo).
+
+%-----------------------------------------------------------------------------%
+
+% make an inst mostly-uniq: replace all occurrences of `unique'
+% in the inst with `mostly_unique'.  (Used by unique_modes.m to
+% change the insts of semidet-live or nondet-live insts.)
+
+make_mostly_uniq_inst(not_reached, M, not_reached, M).
+make_mostly_uniq_inst(free, M, free, M).
+make_mostly_uniq_inst(free(T), M, free(T), M).
+make_mostly_uniq_inst(bound(Uniq0, BoundInsts0), M0, bound(Uniq, BoundInsts),
+		M) :-
+		% XXX could improve efficiency by avoiding recursion here
+	make_mostly_uniq(Uniq0, Uniq),
+	make_mostly_uniq_bound_inst_list(BoundInsts0, M0, BoundInsts, M).
+make_mostly_uniq_inst(ground(Uniq0, PredInst), M, ground(Uniq, PredInst), M) :-
+	make_mostly_uniq(Uniq0, Uniq).
+make_mostly_uniq_inst(inst_var(_), _, _, _) :-
+	error("free inst var").
+make_mostly_uniq_inst(abstract_inst(_,_), M, _, M) :-
+	error("make_mostly_uniq_inst(abstract_inst)").
+make_mostly_uniq_inst(defined_inst(InstName), ModuleInfo0, Inst, ModuleInfo) :-
+		% check whether the inst name is already in the
+		% mostly_uniq_inst table
+	module_info_insts(ModuleInfo0, InstTable0),
+	inst_table_get_mostly_uniq_insts(InstTable0, NondetLiveInsts0),
+	(
+		map__search(NondetLiveInsts0, InstName, Result)
+	->
+		( Result = known(NondetLiveInst) ->
+			Inst = NondetLiveInst
+		;
+			Inst = defined_inst(InstName)
+		),
+		ModuleInfo = ModuleInfo0
+	;
+		% insert the inst name in the mostly_uniq_inst table, with
+		% value `unknown' for the moment
+		map__set(NondetLiveInsts0, InstName, unknown, NondetLiveInsts1),
+		inst_table_set_mostly_uniq_insts(InstTable0, NondetLiveInsts1,
+			InstTable1),
+		module_info_set_insts(ModuleInfo0, InstTable1, ModuleInfo1),
+
+		% expand the inst name, and invoke ourself recursively on
+		% it's expansion
+		inst_lookup(ModuleInfo1, InstName, Inst0),
+		inst_expand(ModuleInfo1, Inst0, Inst1),
+		make_mostly_uniq_inst(Inst1, ModuleInfo1, Inst, ModuleInfo2),
+
+		% now that we have determined the resulting Inst, store
+		% the appropriate value `known(Inst)' in the mostly_uniq_inst
+		% table
+		module_info_insts(ModuleInfo2, InstTable2),
+		inst_table_get_mostly_uniq_insts(InstTable2, NondetLiveInsts2),
+		map__set(NondetLiveInsts2, InstName, known(Inst),
+			NondetLiveInsts),
+		inst_table_set_mostly_uniq_insts(InstTable2, NondetLiveInsts,
+			InstTable),
+		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo)
+	).
+
+:- pred make_mostly_uniq(uniqueness, uniqueness).
+:- mode make_mostly_uniq(in, out) is det.
+
+make_mostly_uniq(unique, mostly_unique).
+make_mostly_uniq(mostly_unique, mostly_unique).
+make_mostly_uniq(shared, shared).
+make_mostly_uniq(mostly_clobbered, mostly_clobbered).
+make_mostly_uniq(clobbered, clobbered).
+
+:- pred make_mostly_uniq_bound_inst_list(list(bound_inst), module_info,
+					list(bound_inst), module_info).
+:- mode make_mostly_uniq_bound_inst_list(in, in, out, out) is det.
+
+make_mostly_uniq_bound_inst_list([], ModuleInfo, [], ModuleInfo).
+make_mostly_uniq_bound_inst_list([Bound0 | Bounds0], ModuleInfo0,
+				[Bound | Bounds], ModuleInfo) :-
+	Bound0 = functor(Name, ArgInsts0),
+	make_mostly_uniq_inst_list(ArgInsts0, ModuleInfo0,
+				ArgInsts, ModuleInfo1),
+	Bound = functor(Name, ArgInsts),
+	make_mostly_uniq_bound_inst_list(Bounds0, ModuleInfo1,
+				Bounds, ModuleInfo).
+
+:- pred make_mostly_uniq_inst_list(list(inst), module_info,
+				list(inst), module_info).
+:- mode make_mostly_uniq_inst_list(in, in, out, out) is det.
+
+make_mostly_uniq_inst_list([], ModuleInfo, [], ModuleInfo).
+make_mostly_uniq_inst_list([Inst0 | Insts0], ModuleInfo0,
+		[Inst | Insts], ModuleInfo) :-
+	make_mostly_uniq_inst(Inst0, ModuleInfo0, Inst, ModuleInfo1),
+	make_mostly_uniq_inst_list(Insts0, ModuleInfo1, Insts, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 

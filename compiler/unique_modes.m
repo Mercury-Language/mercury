@@ -37,8 +37,8 @@
 
 	% just check a single procedure
 :- pred unique_modes__check_proc(proc_info, pred_id, proc_id, module_info,
-				proc_info, io__state, io__state).
-:- mode unique_modes__check_proc(in, in, in, in, out, di, uo) is det.
+				proc_info, module_info, io__state, io__state).
+:- mode unique_modes__check_proc(in, in, in, in, out, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -46,14 +46,14 @@
 :- implementation.
 :- import_module int, list, map, set, std_util, require, term, varset.
 :- import_module mode_util, prog_out, hlds_out, mercury_to_mercury.
+:- import_module mode_info, modes, inst_match, prog_io, mode_errors.
 
 %-----------------------------------------------------------------------------%
 
 	% This section just traverses the module structure.
 
 unique_modes__check_module(ModuleInfo0, ModuleInfo) -->
-	{ module_info_preds(ModuleInfo0, Preds) },
-	{ map__keys(Preds, PredIds) },
+	{ module_info_predids(ModuleInfo0, PredIds) },
 	unique_modes__check_preds(PredIds, ModuleInfo0, ModuleInfo).
 
 :- pred unique_modes__check_preds(list(pred_id), module_info, module_info,
@@ -64,7 +64,7 @@ unique_modes__check_preds([], ModuleInfo, ModuleInfo) --> [].
 unique_modes__check_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	{ module_info_preds(ModuleInfo0, PredTable) },
 	{ map__lookup(PredTable, PredId, PredInfo) },
-	{ pred_info_procids(PredInfo, ProcIds) },
+	{ pred_info_non_imported_procids(PredInfo, ProcIds) },
 	unique_modes__check_procs(PredId, ProcIds, ModuleInfo0, ModuleInfo1),
 	unique_modes__check_preds(PredIds, ModuleInfo1, ModuleInfo).
 
@@ -82,473 +82,598 @@ unique_modes__check_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 	{ map__lookup(ProcTable0, ProcId, ProcInfo0) },
 
 	unique_modes__check_proc(ProcInfo0, PredId, ProcId, ModuleInfo0,
-		ProcInfo),
+		ProcInfo, ModuleInfo1),
 
 	{ map__set(ProcTable0, ProcId, ProcInfo, ProcTable) },
 	{ pred_info_set_procedures(PredInfo0, ProcTable, PredInfo) },
 	{ map__set(PredTable0, PredId, PredInfo, PredTable) },
-	{ module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1) },
+	{ module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo2) },
 
-	unique_modes__check_procs(PredId, ProcIds, ModuleInfo1, ModuleInfo).
+	unique_modes__check_procs(PredId, ProcIds, ModuleInfo2, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-unique_modes__check_proc(ProcInfo0, PredId, ProcId, ModuleInfo, ProcInfo) -->
+unique_modes__check_proc(ProcInfo0, PredId, ProcId, ModuleInfo0,
+			ProcInfo, ModuleInfo,
+			IOState0, IOState) :-
 	%
-	% first check the initial insts of all the predicate calls in the goal
+	% Extract the useful fields in the proc_info.
 	%
-	{ proc_info_goal(ProcInfo0, Goal0) },
-	{ proc_info_get_initial_instmap(ProcInfo0, ModuleInfo, Instmap0) },
-	{ uniq_info_init(ModuleInfo, Instmap0, UniqModesInfo0) },
-	{ unique_modes__check_goal(Goal0, UniqModesInfo0,
-				Goal, UniqModesInfo1) },
-	{ proc_info_set_goal(ProcInfo0, Goal, ProcInfo) },
+	proc_info_headvars(ProcInfo0, Args),
+	proc_info_argmodes(ProcInfo0, ArgModes),
+	proc_info_goal(ProcInfo0, Goal0),
+
+/**************
+	%
+	% extract the predicate's type from the pred_info
+	% and propagate the type information into the modes
+	%
+	pred_info_arg_types(PredInfo, _TypeVars, ArgTypes),
+	propagate_type_info_mode_list(ArgTypes, ModuleInfo0, ArgModes0,
+			ArgModes),
+**************/
 
 	%
-	% then check that the final insts of the head vars is OK
+	% Figure out the right context to use.
+	% We use the context of the first clause, unless
+	% there weren't any clauses at all, in which case
+	% we use the context of the mode declaration.
 	%
-	{ proc_info_headvars(ProcInfo0, Args) },
-	{ proc_info_argmodes(ProcInfo0, ArgModes) },
-	{ proc_info_context(ProcInfo0, Context) },
-	{ mode_list_get_final_insts(ArgModes, ModuleInfo, ArgInsts) },
-	{ unique_modes__check_args(Args, ArgInsts, PredId, ProcId, 1,
-		Context, no, UniqModesInfo1, UniqModesInfo) },
-
-	%
-	% finally if we encountered any errors then report them
-	%
-	{ uniq_info_get_errors(UniqModesInfo, Errors) },
-	( { Errors \= [] } ->
-		unique_modes__report_errors(Errors, ModuleInfo),
-		io__set_exit_status(1)
+	module_info_preds(ModuleInfo0, Preds),
+	map__lookup(Preds, PredId, PredInfo),
+	pred_info_clauses_info(PredInfo, ClausesInfo),
+	ClausesInfo = clauses_info(_, _, _, ClauseList),
+	( ClauseList = [FirstClause | _] ->
+		FirstClause = clause(_, _, Context)
 	;
-		[]
-	).
+		proc_info_context(ProcInfo0, Context)
+	),
 
-:- pred unique_modes__check_goal(hlds__goal, uniq_info,
-				   hlds__goal, uniq_info).
-:- mode unique_modes__check_goal(in, in, out, out) is det.
+	%
+	% Construct the initial instmap
+	%
+	mode_list_get_initial_insts(ArgModes, ModuleInfo0, ArgInitialInsts),
+	map__from_corresponding_lists(Args, ArgInitialInsts, InstMapping0),
+	InstMap0 = reachable(InstMapping0),
+
+	%
+	% Construct the initial set of live variables:
+	% initially, only the non-clobbered head variables are live
+	%
+	mode_list_get_final_insts(ArgModes, ModuleInfo0, ArgFinalInsts),
+	get_live_vars(Args, ArgFinalInsts, ModuleInfo0, LiveVarsList),
+	set__list_to_set(LiveVarsList, LiveVars),
+
+	%
+	% At last we're ready to construct the initial mode_info
+	%
+	mode_info_init(IOState0, ModuleInfo0, PredId, ProcId, Context, LiveVars,
+			InstMap0, ModeInfo0),
+	%
+	% Modecheck the goal
+	%
+	unique_modes__check_goal(Goal0, Goal, ModeInfo0, ModeInfo1),
+
+	%
+	% Check that the final insts of the head vars is OK
+	%
+	modecheck_final_insts(Args, ArgFinalInsts, ModeInfo1, ModeInfo2),
+
+	%
+	% If we encountered any errors then report them
+	%
+	modecheck_report_errors(ModeInfo2, ModeInfo),
+
+	%
+	% Get the info we need from the mode_info and stuff it back
+	% in the proc_info
+	%
+	mode_info_get_module_info(ModeInfo, ModuleInfo),
+	mode_info_get_io_state(ModeInfo, IOState1),
+	mode_info_get_errors(ModeInfo, Errors),
+	( Errors = [] ->
+		IOState = IOState1
+	;
+		io__set_exit_status(1, IOState1, IOState)
+	),
+	mode_info_get_varset(ModeInfo, VarSet),
+	mode_info_get_var_types(ModeInfo, VarTypes),
+	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
+	proc_info_set_variables(ProcInfo1, VarSet, ProcInfo2),
+	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo).
+
+:- pred unique_modes__check_goal(hlds__goal, hlds__goal, mode_info, mode_info).
+:- mode unique_modes__check_goal(in, out, mode_info_di, mode_info_uo) is det.
 
 	% XXX we currently make the conservative assumption that
 	% any non-local variable in a disjunction or nondet call
 	% is nondet-live - and stays nondet-live.
 
-unique_modes__check_goal(Goal0, UniqModesInfo0, Goal, UniqModesInfo) :-
-	uniq_info_get_instmap(UniqModesInfo0, InstMap0),
+unique_modes__check_goal(Goal0, Goal, ModeInfo0, ModeInfo) :-
+	%
+	% store the current context in the mode_info
+	%
 	Goal0 = GoalExpr0 - GoalInfo0,
+	goal_info_context(GoalInfo0, Context),
+	term_context_init(EmptyContext),
+	( Context = EmptyContext ->
+		ModeInfo1 = ModeInfo0
+	;
+		mode_info_set_context(Context, ModeInfo0, ModeInfo1)
+	),
+
+	%
+	% Grab the original instmap
+	%
+	goal_info_get_nonlocals(GoalInfo0, NonLocals),
+	mode_info_get_vars_instmap(ModeInfo1, NonLocals, InstMap0),
+
+	% 
+	% Grab the original bag of nondet-live vars
+	%
+	mode_info_get_nondet_live_vars(ModeInfo1, NondetLiveVars0),
+
+	% 
+	% If the goal is not nondet, then nothing is nondet-live,
+	% so reset the bag of nondet-live vars to be empty.
+	%
 	goal_info_get_code_model(GoalInfo0, CodeModel),
+	( CodeModel = model_non ->
+		ModeInfo2 = ModeInfo1
+	;
+		mode_info_set_nondet_live_vars([], ModeInfo1, ModeInfo2)
+	),
+
+	%
+	% Modecheck the goal
+	%
+	unique_modes__check_goal_2(GoalExpr0, GoalInfo0, GoalExpr,
+		ModeInfo2, ModeInfo3),
+
+	% 
+	% Restore the original bag of nondet-live vars
+	%
+	mode_info_set_nondet_live_vars(NondetLiveVars0, ModeInfo3, ModeInfo),
+
+	%
+	% Grab the final instmap, compute the change in insts
+	% over this goal, and save that instmap_delta in the goal_info.
+	%
+	mode_info_get_vars_instmap(ModeInfo, NonLocals, InstMap),
+	compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap),
+	goal_info_set_instmap_delta(GoalInfo0, DeltaInstMap, GoalInfo),
+
+	Goal = GoalExpr - GoalInfo.
+
+	% Make all nondet-live variables whose current inst
+	% is `unique' become `mostly_unique'.
+	%
+:- pred make_all_nondet_live_vars_mostly_uniq(mode_info, mode_info).
+:- mode make_all_nondet_live_vars_mostly_uniq(mode_info_di, mode_info_uo)
+	is det.
+
+make_all_nondet_live_vars_mostly_uniq(ModeInfo0, ModeInfo) :-
+	mode_info_get_instmap(ModeInfo0, FullInstMap0),
+	( FullInstMap0 = reachable(InstMapping0) ->
+		map__keys(InstMapping0, AllVars),
+		select_nondet_live_vars(AllVars, ModeInfo0, NondetLiveVars),
+		make_var_list_mostly_uniq(NondetLiveVars, ModeInfo0, ModeInfo)
+	;
+		ModeInfo = ModeInfo0
+	).
+
+:- pred select_live_vars(list(var), mode_info, list(var)).
+:- mode select_live_vars(in, mode_info_ui, out) is det.
+
+select_live_vars([], _, []).
+select_live_vars([Var|Vars], ModeInfo, NondetLiveVars) :-
+	( mode_info_var_is_live(ModeInfo, Var, live) ->
+		NondetLiveVars = [Var | NondetLiveVars1],
+		select_live_vars(Vars, ModeInfo, NondetLiveVars1)
+	;
+		select_live_vars(Vars, ModeInfo, NondetLiveVars)
+	).
+
+:- pred select_nondet_live_vars(list(var), mode_info, list(var)).
+:- mode select_nondet_live_vars(in, mode_info_ui, out) is det.
+
+select_nondet_live_vars([], _, []).
+select_nondet_live_vars([Var|Vars], ModeInfo, NondetLiveVars) :-
+	( mode_info_var_is_nondet_live(ModeInfo, Var, live) ->
+		NondetLiveVars = [Var | NondetLiveVars1],
+		select_nondet_live_vars(Vars, ModeInfo, NondetLiveVars1)
+	;
+		select_nondet_live_vars(Vars, ModeInfo, NondetLiveVars)
+	).
+
+	% Given a list of variables, a delta instmap, and a mode_info,
+	% select all the variables whose inst changed in the delta instmap
+	% (other than changes which just add information,
+	% e.g. `ground -> bound(42)'.)
+	%
+:- pred select_changed_inst_vars(list(var), instmap_delta, mode_info,
+				list(var)).
+:- mode select_changed_inst_vars(in, in, mode_info_ui, out) is det.
+
+select_changed_inst_vars([], _DeltaInstMap, _ModeInfo, []).
+select_changed_inst_vars([Var | Vars], DeltaInstMap, ModeInfo, ChangedVars) :-
+	mode_info_get_module_info(ModeInfo, ModuleInfo),
+	mode_info_get_instmap(ModeInfo, InstMap0),
+	instmap_lookup_var(InstMap0, Var, Inst0),
 	(
-		CodeModel = model_non,
-		( GoalExpr0 = disj(_) ; GoalExpr0 = call(_,_,_,_,_,_,_) )
+		DeltaInstMap = reachable(DeltaInstMapping),
+		map__search(DeltaInstMapping, Var, Inst),
+		\+ inst_matches_final(Inst, Inst0, ModuleInfo)
 	->
-		uniq_info_get_nondet_live_vars(UniqModesInfo0, Vars0),
-		goal_info_get_nonlocals(GoalInfo0, NonLocals),
-		set__union(Vars0, NonLocals, Vars),
-		uniq_info_set_nondet_live_vars(UniqModesInfo0, Vars,
-			UniqModesInfo1)
+		ChangedVars = [Var | ChangedVars1],
+		select_changed_inst_vars(Vars, DeltaInstMap, ModeInfo,
+			ChangedVars1)
 	;
-		UniqModesInfo1 = UniqModesInfo0
-	),
-	unique_modes__check_goal_2(Goal0, UniqModesInfo1, Goal, UniqModesInfo2),
-	Goal = _GoalExpr - GoalInfo,
-	goal_info_get_instmap_delta(GoalInfo, InstmapDelta),
-	apply_instmap_delta(InstMap0, InstmapDelta, InstMap),
-	uniq_info_set_instmap(UniqModesInfo2, InstMap, UniqModesInfo).
+		select_changed_inst_vars(Vars, DeltaInstMap, ModeInfo,
+			ChangedVars)
+	).
 
-:- pred unique_modes__check_goal_2(hlds__goal, uniq_info,
-				   hlds__goal, uniq_info).
-:- mode unique_modes__check_goal_2(in, in, out, out) is det.
+:- pred make_var_list_mostly_uniq(list(var), mode_info, mode_info).
+:- mode make_var_list_mostly_uniq(in, mode_info_di, mode_info_uo) is det.
 
-unique_modes__check_goal_2(GoalExpr0 - GoalInfo0, UniqModesInfo0,
-		Goal, UniqModesInfo) :-
+make_var_list_mostly_uniq([], ModeInfo, ModeInfo).
+make_var_list_mostly_uniq([Var | Vars], ModeInfo0, ModeInfo) :-
+	make_var_mostly_uniq(Var, ModeInfo0, ModeInfo1),
+	make_var_list_mostly_uniq(Vars, ModeInfo1, ModeInfo).
+
+:- pred make_var_mostly_uniq(var, mode_info, mode_info).
+:- mode make_var_mostly_uniq(in, mode_info_di, mode_info_uo) is det.
+
+make_var_mostly_uniq(Var, ModeInfo0, ModeInfo) :-
+	mode_info_get_instmap(ModeInfo0, InstMap0),
+	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	(
-		GoalExpr0 = disj(Goals0),
-		uniq_info_get_instmap(UniqModesInfo0, InstMap0),
-		unique_modes__check_disj(Goals0, UniqModesInfo0, InstMap0,
-					Goals, UniqModesInfo),
-		Goal = disj(Goals) - GoalInfo0
-	;
-		GoalExpr0 = call(PredId, ProcId, ArgVars, _IsBuiltin,
-				CallContext, _SymName, _FollowVars),
-		goal_info_context(GoalInfo0, Context),
-		unique_modes__check_call(PredId, ProcId, ArgVars,
-				Context, CallContext,
-				UniqModesInfo0, UniqModesInfo),
-		Goal = GoalExpr0 - GoalInfo0
-	;
-		GoalExpr0 = unify(LHS, RHS, _, _, _),
-		unique_modes__propagate_nondet_liveness(RHS, LHS,
-				UniqModesInfo0, UniqModesInfo),
-		Goal = GoalExpr0 - GoalInfo0
-	;
-		GoalExpr0 = pragma_c_code(_, _, _, _, _),
-		Goal = GoalExpr0 - GoalInfo0,
-		UniqModesInfo = UniqModesInfo0
-	
-	% for the remaining cases, we just process goals recursively
-
-	;
-		GoalExpr0 = conj(Goals0),
-		unique_modes__check_conj(Goals0, UniqModesInfo0,
-					Goals, UniqModesInfo),
-		conj_list_to_goal(Goals, GoalInfo0, Goal)
-	;
-		GoalExpr0 = not(NegGoal0),
-		unique_modes__check_goal(NegGoal0, UniqModesInfo0,
-						NegGoal, UniqModesInfo),
-		Goal = not(NegGoal) - GoalInfo0
-	;
-		GoalExpr0 = switch(Var, CanFail, Cases0),
-		uniq_info_get_instmap(UniqModesInfo0, InstMap0),
-		unique_modes__check_switch(Cases0, UniqModesInfo0, InstMap0,
-						Cases, UniqModesInfo),
-		Goal = switch(Var, CanFail, Cases) - GoalInfo0
-	;
-		GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-		uniq_info_get_instmap(UniqModesInfo0, InstMap0),
-		unique_modes__check_goal(Cond0, UniqModesInfo0,
-					Cond, UniqModesInfo1),
-		unique_modes__check_goal(Then0, UniqModesInfo1,
-					Then, UniqModesInfo2),
-		uniq_info_set_instmap(UniqModesInfo2, InstMap0,
-					UniqModesInfo3),
-		unique_modes__check_goal(Else0, UniqModesInfo3,
-					Else, UniqModesInfo),
-		Goal = if_then_else(Vars, Cond, Then, Else) - GoalInfo0
-	;
-		GoalExpr0 = some(Vars, SubGoal0),
-		unique_modes__check_goal(SubGoal0, UniqModesInfo0,
-					   SubGoal, UniqModesInfo),
-		Goal = some(Vars, SubGoal) - GoalInfo0
-	),
-	!.
-
-:- pred unique_modes__update_instmap(hlds__goal_info, uniq_info, uniq_info).
-:- mode unique_modes__update_instmap(in, in, out) is det.
-
-unique_modes__update_instmap(GoalInfo, UniqModesInfo0, UniqModesInfo) :-
-	goal_info_get_instmap_delta(GoalInfo, InstmapDelta),
-	uniq_info_get_instmap(UniqModesInfo0, InstMap0),
-	apply_instmap_delta(InstMap0, InstmapDelta, InstMap),
-	uniq_info_set_instmap(UniqModesInfo0, InstMap, UniqModesInfo).
-
-:- pred unique_modes__propagate_nondet_liveness(unify_rhs, var, 
-			uniq_info, uniq_info).
-:- mode unique_modes__propagate_nondet_liveness(in, in, in, out) is det.
-
-unique_modes__propagate_nondet_liveness(var(RHS), LHS, UniqInfo0, UniqInfo) :-
-	uniq_info_get_nondet_live_vars(UniqInfo0, NondetLiveVars0),
-	( set__member(LHS, NondetLiveVars0) ->
-		set__insert(NondetLiveVars0, RHS, NondetLiveVars)
-	; set__member(RHS, NondetLiveVars0) ->
-		set__insert(NondetLiveVars0, LHS, NondetLiveVars)
-	;
-		NondetLiveVars = NondetLiveVars0
-	),
-	uniq_info_set_nondet_live_vars(UniqInfo0, NondetLiveVars, UniqInfo).
-unique_modes__propagate_nondet_liveness(functor(_, Args), Var,
-		UniqInfo0, UniqInfo) :-
-	uniq_info_get_nondet_live_vars(UniqInfo0, NondetLiveVars0),
-	( set__member(Var, NondetLiveVars0) ->
-		set__insert_list(NondetLiveVars0, Args, NondetLiveVars)
-	;
-		set__list_to_set(Args, ArgsSet),
-		set__intersect(ArgsSet, NondetLiveVars0, NondetLiveArgs),
-		\+ set__empty(NondetLiveArgs)
+		%
+		% only variables which are `unique' need to be changed
+		%
+		InstMap0 = reachable(InstMapping0),
+		map__search(InstMapping0, Var, Inst0),
+		inst_expand(ModuleInfo0, Inst0, Inst1),
+		( Inst1 = ground(unique, _) ; Inst1 = bound(unique, _) )
 	->
-		set__insert(NondetLiveVars0, Var, NondetLiveVars)
+		make_mostly_uniq_inst(Inst0, ModuleInfo0, Inst, ModuleInfo),
+		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
+		map__set(InstMapping0, Var, Inst, InstMapping),
+		mode_info_set_instmap(reachable(InstMapping), ModeInfo1,
+			ModeInfo)
 	;
-		NondetLiveVars = NondetLiveVars0
-	),
-	uniq_info_set_nondet_live_vars(UniqInfo0, NondetLiveVars, UniqInfo).
-unique_modes__propagate_nondet_liveness(lambda_goal(_, _, _, _), _, _, _) :-
-	% lambda expressions should get preprocessed away by lambda.m
-	% before we get to here
-	error("unique_modes.m: unexpected lambda goal").
+		ModeInfo = ModeInfo0
+	).
 
-:- pred unique_modes__check_call(pred_id, proc_id, list(var), term_context,
-			maybe(call_unify_context), uniq_info, uniq_info).
-:- mode unique_modes__check_call(in, in, in, in, in, in, out) is det.
+:- pred unique_modes__check_goal_2(hlds__goal_expr, hlds__goal_info,
+		hlds__goal_expr, mode_info, mode_info).
+:- mode unique_modes__check_goal_2(in, in, out, mode_info_di, mode_info_uo)
+		is det.
+
+unique_modes__check_goal_2(conj(List0), _GoalInfo0, conj(List)) -->
+	mode_checkpoint(enter, "conj"),
+	mode_info_add_goals_live_vars(List0),
+	( { List0 = [] } ->	% for efficiency, optimize common case
+		{ List = [] }
+	;
+		unique_modes__check_conj(List0, List)
+	),
+	mode_checkpoint(exit, "conj").
+
+unique_modes__check_goal_2(disj(List0), GoalInfo0, disj(List)) -->
+	mode_checkpoint(enter, "disj"),
+	( { List0 = [] } ->	% for efficiency, optimize common case
+		{ List = [] },
+		mode_info_set_instmap(unreachable)
+	;
+		%
+		% Mark all the variables which are nondet-live at the
+		% start of the disjunction and whose inst is `unique'
+		% as instead being only `mostly_unique'.
+		%
+		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
+		mode_info_add_live_vars(NonLocals),
+		make_all_nondet_live_vars_mostly_uniq,
+		mode_info_remove_live_vars(NonLocals),
+
+		%
+		% Now just modecheck each disjunction in turn, and then
+		% merge the resulting instmaps.
+		%
+		unique_modes__check_disj(List0, List, InstMapList),
+		instmap_merge(NonLocals, InstMapList, disj)
+	),
+	mode_checkpoint(exit, "disj").
+
+unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0), GoalInfo0, Goal) -->
+	mode_checkpoint(enter, "if-then-else"),
+	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
+	{ unique_modes__goal_get_nonlocals(A0, A_Vars) },
+	{ unique_modes__goal_get_nonlocals(B0, B_Vars) },
+	{ unique_modes__goal_get_nonlocals(C0, C_Vars) },
+	mode_info_dcg_get_instmap(InstMap0),
+	mode_info_lock_vars(NonLocals),
+	mode_info_add_live_vars(C_Vars),
+
+	%
+	% At this point, we should set the inst of any `unique'
+	% variables which occur in the condition and which
+	% are live to `mostly_unique'.  However, if a variable's
+	% inst was unchanged over the condition (i.e. it remains
+	% `unique' on exit from the condition), then it is
+	% safe to leave it as `unique' on entry to the condition.
+	% The only case we need to set it to `mostly_unique' is
+	% if the condition would clobber it.
+	%
+	=(ModeInfo),
+	{ set__to_sorted_list(A_Vars, A_Vars_List) },
+	{ select_live_vars(A_Vars_List, ModeInfo, A_Live_Vars) },
+	{ A0 = _ - A0_GoalInfo },
+	{ goal_info_get_instmap_delta(A0_GoalInfo, A0_DeltaInstMap) },
+	{ select_changed_inst_vars(A_Live_Vars, A0_DeltaInstMap, ModeInfo,
+				ChangedVars) },
+	make_var_list_mostly_uniq(ChangedVars),
+
+	mode_info_add_live_vars(B_Vars),
+	unique_modes__check_goal(A0, A),
+	mode_info_remove_live_vars(B_Vars),
+	mode_info_remove_live_vars(C_Vars),
+	mode_info_unlock_vars(NonLocals),
+	% mode_info_dcg_get_instmap(InstMapA),
+	unique_modes__check_goal(B0, B),
+	mode_info_dcg_get_instmap(InstMapB),
+	mode_info_set_instmap(InstMap0),
+	unique_modes__check_goal(C0, C),
+	mode_info_dcg_get_instmap(InstMapC),
+	mode_info_set_instmap(InstMap0),
+	instmap_merge(NonLocals, [InstMapB, InstMapC], if_then_else),
+/*
+% this optimization from modes.m does not need to be repeated here
+	( { InstMapA = unreachable } ->
+		% if the condition can never succeed, we delete the
+		% unreachable `then' part by replacing
+		%	if some [Vs] A then B else C
+		% with
+		%	(not some [Vs] A), C
+		{ A = _A_Goal - A_GoalInfo },
+		{ goal_info_get_nonlocals(A_GoalInfo, A_Vars) },
+		{ set__union(NonLocals, C_Vars, OutsideVars) },
+		{ set__delete_list(OutsideVars, Vs, OutsideVars1) },
+		{ set__intersect(OutsideVars1, A_Vars, SomeA_NonLocals) },
+		{ goal_info_init(EmptyGoalInfo) },
+		{ goal_info_set_nonlocals(EmptyGoalInfo, SomeA_NonLocals,
+			SomeA_GoalInfo) },
+		{ map__init(EmptyInstmapDelta) },
+		{ goal_info_set_instmap_delta(SomeA_GoalInfo,
+			reachable(EmptyInstmapDelta), NotSomeA_GoalInfo) },
+		
+		{ Goal = conj([not(some(Vs, A) - SomeA_GoalInfo) -
+				NotSomeA_GoalInfo, C]) }
+	;
+		{ Goal = if_then_else(Vs, A, B, C) }
+	),
+*/
+	{ Goal = if_then_else(Vs, A, B, C) },
+	mode_checkpoint(exit, "if-then-else").
+
+unique_modes__check_goal_2(not(A0), GoalInfo0, not(A)) -->
+	mode_checkpoint(enter, "not"),
+	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
+	mode_info_dcg_get_instmap(InstMap0),
+	{ set__to_sorted_list(NonLocals, NonLocalsList) },
+	=(ModeInfo),
+	{ select_live_vars(NonLocalsList, ModeInfo, LiveNonLocals) },
+	make_var_list_mostly_uniq(LiveNonLocals),
+	mode_info_lock_vars(NonLocals),
+	unique_modes__check_goal(A0, A),
+	mode_info_unlock_vars(NonLocals),
+	mode_info_set_instmap(InstMap0),
+	mode_checkpoint(exit, "not").
+
+unique_modes__check_goal_2(some(Vs, G0), _, some(Vs, G)) -->
+	mode_checkpoint(enter, "some"),
+	unique_modes__check_goal(G0, G),
+	mode_checkpoint(exit, "some").
+
+unique_modes__check_goal_2(call(PredId, ProcId, Args, Builtin, CallContext,
+		PredName, Follow), _GoalInfo0, Goal) -->
+	mode_checkpoint(enter, "call"),
+	{ list__length(Args, Arity) },
+	mode_info_set_call_context(call(PredName/Arity)),
+	unique_modes__check_call(PredId, ProcId, Args),
+	{ Goal = call(PredId, ProcId, Args, Builtin, CallContext,
+		PredName, Follow) },
+	mode_info_unset_call_context,
+	mode_checkpoint(exit, "call").
+
+unique_modes__check_goal_2(unify(A0, B0, _, UnifyInfo0, UnifyContext),
+		GoalInfo0, Goal) -->
+	mode_checkpoint(enter, "unify"),
+	mode_info_set_call_context(unify(UnifyContext)),
+	=(ModeInfo0),
+	modecheck_unification(A0, B0, UnifyInfo0, UnifyContext, GoalInfo0,
+				A, B, ExtraGoals, Mode, UnifyInfo),
+% this optimization from modes.m does not need to be repeated here
+	=(ModeInfo),
+	% optimize away unifications with dead variables
+	(
+		{ UnifyInfo = assign(AssignTarget, _),
+		  mode_info_var_is_live(ModeInfo, AssignTarget, dead)
+		; UnifyInfo = construct(ConstructTarget, _, _, _),
+		  mode_info_var_is_live(ModeInfo, ConstructTarget, dead)
+		}
+	->
+		% replace the unification with `true'
+		{ Goal = conj([]) }
+	;
+		{ Unify = unify(A, B, Mode, UnifyInfo, UnifyContext) },
+		{ unify_rhs_vars(B0, B0Vars) },
+		{ unify_rhs_vars(B, BVars) },
+		{ handle_extra_goals(Unify, ExtraGoals, GoalInfo0,
+					[A0|B0Vars], [A|BVars],
+					ModeInfo0, ModeInfo, Goal) }
+	),
+	mode_info_unset_call_context,
+	mode_checkpoint(exit, "unify").
+
+unique_modes__check_goal_2(switch(Var, CanFail, Cases0), GoalInfo0,
+		switch(Var, CanFail, Cases)) -->
+	mode_checkpoint(enter, "switch"),
+	( { Cases0 = [] } ->
+		{ Cases = [] },
+		mode_info_set_instmap(unreachable)
+	;
+		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
+		unique_modes__check_case_list(Cases0, Var, Cases, InstMapList),
+		instmap_merge(NonLocals, InstMapList, disj)
+	),
+	mode_checkpoint(exit, "switch").
+
+	% to modecheck a pragma_c_code, we just modecheck the proc for 
+	% which it is the goal.
+unique_modes__check_goal_2(pragma_c_code(C_Code, PredId, ProcId, Args,
+		ArgNameMap), _GoalInfo, Goal) -->
+	mode_checkpoint(enter, "pragma_c_code"),
+	=(ModeInfo0),
+	{ mode_info_get_preds(ModeInfo0, Preds) },
+	{ map__lookup(Preds, PredId, PredInfo) },
+	{ pred_info_name(PredInfo, PredName) },
+	{ pred_info_arity(PredInfo, Arity) },
+	mode_info_set_call_context(call(unqualified(PredName)/Arity)),
+	unique_modes__check_call(PredId, ProcId, Args),
+	{ Goal = pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap) },
+	mode_info_unset_call_context,
+	mode_checkpoint(exit, "pragma_c_code").
+
+:- pred unique_modes__check_call(pred_id, proc_id, list(var), 
+			mode_info, mode_info).
+:- mode unique_modes__check_call(in, in, in, mode_info_di, mode_info_uo) is det.
 
 	% to check a call, we just look up the required initial insts
 	% for the arguments of the call, and then check for each
 	% argument if the variable is nondet-live and the required initial
 	% inst was unique.
 
-unique_modes__check_call(PredId, ProcId, Args, Context, CallContext,
-		UniqInfo0, UniqInfo) :-
-	uniq_info_get_module_info(UniqInfo0, ModuleInfo),
+unique_modes__check_call(PredId, ProcId, ArgVars, 
+		ModeInfo0, ModeInfo) :-
+	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-	proc_info_argmodes(ProcInfo, ArgModes),
-	mode_list_get_initial_insts(ArgModes, ModuleInfo, InitialArgInsts),
-	unique_modes__check_args(Args, InitialArgInsts, PredId, ProcId, 1,
-		Context, CallContext, UniqInfo0, UniqInfo).
-
-:- pred unique_modes__check_args(list(var), list(inst),
-			pred_id, proc_id, int, term_context,
-			maybe(call_unify_context), uniq_info, uniq_info).
-:- mode unique_modes__check_args(in, in, in, in, in, in, in, in, out) is det.
-
-unique_modes__check_args(Vars, Insts, 
-		PredId, ProcId, ArgNum, Context, CallContext,
-		UniqInfo0, UniqInfo) :-
-	( Vars = [], Insts = [] ->
-		UniqInfo = UniqInfo0
-	; Vars = [Var|Vars1], Insts = [Inst|Insts1] ->
-		uniq_info_get_nondet_live_vars(UniqInfo0, NondetLiveVars),
-		uniq_info_get_module_info(UniqInfo0, ModuleInfo),
-		(
-			set__member(Var, NondetLiveVars),
-			inst_is_unique(ModuleInfo, Inst),
-			\+ inst_is_free(ModuleInfo, Inst)
-		->
-			Error = uniq_error(PredId, ProcId, ArgNum, Var,
-					Context, CallContext),
-			uniq_info_get_errors(UniqInfo0, Errors0),
-			list__append(Errors0, [Error], Errors),
-			uniq_info_set_errors(UniqInfo0, Errors, UniqInfo1)
-		;
-			UniqInfo1 = UniqInfo0
-		),
-		ArgNum1 is ArgNum + 1,
-		unique_modes__check_args(Vars1, Insts1,
-			PredId, ProcId, ArgNum1, Context, CallContext,
-			UniqInfo1, UniqInfo)
-	;
-		error("mode_modes__check_args: length mismatch")
-	).
-
-%-----------------------------------------------------------------------------%
-
-:- pred unique_modes__check_conj(list(hlds__goal),
-	uniq_info, list(hlds__goal), uniq_info).
-:- mode unique_modes__check_conj(in, in, out, out) is det.
-
-	% just process each conjunct in turn
-
-unique_modes__check_conj([], UniqModesInfo, [], UniqModesInfo).
-unique_modes__check_conj([Goal0 | Goals0], UniqModesInfo0, 
-		[Goal | Goals], UniqModesInfo) :-
-	unique_modes__check_goal(Goal0, UniqModesInfo0, Goal, UniqModesInfo1),
-	unique_modes__check_conj(Goals0, UniqModesInfo1, Goals, UniqModesInfo).
-
-%-----------------------------------------------------------------------------%
-
-:- pred unique_modes__check_disj(list(hlds__goal), uniq_info, instmap,
-	list(hlds__goal), uniq_info).
-:- mode unique_modes__check_disj(in, in, in, out, out) is det.
-
-	% process each of the disjunctions in turn, making sure to restore
-	% the original instmap before processing the next one
-
-unique_modes__check_disj([], UniqModesInfo, _, [], UniqModesInfo).
-unique_modes__check_disj([Goal0 | Goals0], UniqModesInfo0, InstMap0,
-			   [Goal | Goals], UniqModesInfo) :-
-	unique_modes__check_goal(Goal0, UniqModesInfo0, Goal, UniqModesInfo1),
-	uniq_info_set_instmap(UniqModesInfo1, InstMap0, UniqModesInfo2),
-	unique_modes__check_disj(Goals0, UniqModesInfo2, InstMap0,
-		Goals, UniqModesInfo).
-
-%-----------------------------------------------------------------------------%
-
-:- pred unique_modes__check_switch(list(case), uniq_info, instmap,
-				     list(case), uniq_info).
-:- mode unique_modes__check_switch(in, in, in, out, out) is det.
-
-	% process each of the cases in turn, making sure to restore
-	% the original instmap before processing the next one
-
-unique_modes__check_switch([], UniqModesInfo, _, [], UniqModesInfo).
-unique_modes__check_switch([case(Cons, Goal0) | Cases0], UniqModesInfo0,
-		InstMap0, [case(Cons, Goal) | Cases], UniqModesInfo) :-
-	unique_modes__check_goal(Goal0, UniqModesInfo0, Goal, UniqModesInfo1),
-	uniq_info_set_instmap(UniqModesInfo1, InstMap0, UniqModesInfo2),
-	unique_modes__check_switch(Cases0, UniqModesInfo2, InstMap0,
-			Cases, UniqModesInfo).
-
-%-----------------------------------------------------------------------------%
-%
-% The uniq_info type and access predicates.
-%
-%-----------------------------------------------------------------------------%
-
-:- type uniq_info
-	--->	uniq_info(
-			module_info,
-			set(var),	% the nondet-live variables
-			instmap,
-			list(unique_modes__error)
-		).
-
-:- pred uniq_info_init(module_info::in, instmap::in, uniq_info::out) is det.
-
-uniq_info_init(ModuleInfo, InstMap, UniqInfo) :-
-	set__init(NondetLiveVars),
-	Errors = [],
-	UniqInfo = uniq_info(ModuleInfo, NondetLiveVars, InstMap, Errors).
-
-:- pred uniq_info_get_module_info(uniq_info::in, module_info::out) is det.
-
-uniq_info_get_module_info(uniq_info(ModuleInfo, _, _, _), ModuleInfo).
-
-:- pred uniq_info_get_nondet_live_vars(uniq_info::in, set(var)::out) is det.
-
-uniq_info_get_nondet_live_vars(uniq_info(_, NondetLiveVars, _, _),
-	NondetLiveVars).
-
-:- pred uniq_info_set_nondet_live_vars(uniq_info::in, set(var)::in,
-		uniq_info::out) is det.
-
-uniq_info_set_nondet_live_vars(uniq_info(A, _, C, D), NondetLiveVars,
-		uniq_info(A, NondetLiveVars, C, D)).
-
-:- pred uniq_info_get_instmap(uniq_info::in, instmap::out) is det.
-
-uniq_info_get_instmap(uniq_info(_, _, InstMap, _), InstMap).
-
-:- pred uniq_info_set_instmap(uniq_info::in, instmap::in, uniq_info::out)
-	is det.
-
-uniq_info_set_instmap(uniq_info(A, B, _, D), InstMap,
-		uniq_info(A, B, InstMap, D)).
-
-:- pred uniq_info_get_errors(uniq_info::in,
-		list(unique_modes__error)::out) is det.
-
-uniq_info_get_errors(uniq_info(_, _, _, Errors), Errors).
-
-:- pred uniq_info_set_errors(uniq_info::in, list(unique_modes__error)::in,
-		uniq_info::out) is det.
-
-uniq_info_set_errors(uniq_info(A, B, C, _), Errors, uniq_info(A, B, C, Errors)).
-
-%-----------------------------------------------------------------------------%
-%
-% Error reporting
-%
-% XXX should improve error message - print var name,
-% and if --verbose-errors specified, give explanation
-%
-%-----------------------------------------------------------------------------%
-
-:- type unique_modes__error
-	--->	uniq_error(pred_id, proc_id, int, var, term_context,
-			maybe(call_unify_context)).
-
-:- pred unique_modes__report_errors(list(unique_modes__error)::in,
-		module_info::in, io__state::di, io__state::uo) is det.
-
-unique_modes__report_errors([], _) --> [].
-unique_modes__report_errors([Error|Errors], ModuleInfo) -->
-	unique_modes__report_error(Error, ModuleInfo),
-	unique_modes__report_errors(Errors, ModuleInfo).
-
-:- pred unique_modes__report_error(unique_modes__error::in, module_info::in,
-					io__state::di, io__state::uo) is det.
-
-unique_modes__report_error(uniq_error(PredId, ProcId, ArgNum, Var, Context,
-			CallUnifyContext), ModuleInfo) -->
-	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-			_PredInfo, ProcInfo) },
-	{ proc_info_variables(ProcInfo, VarSet) },
-	unique_modes__report_call_context(PredId, ProcId, ArgNum,
-			Context, CallUnifyContext, ModuleInfo),
-	prog_out__write_context(Context),
-	io__write_string("  Unique mode error: "),
-	unique_modes__write_argument_name(VarSet, Var),
-	io__write_string(" is not `unique',\n"),
-	prog_out__write_context(Context),
-	io__write_string("  since it's value may be needed again on backtracking.\n").
-
-:- pred unique_modes__write_argument_name(varset, var, io__state, io__state).
-:- mode unique_modes__write_argument_name(in, in, di, uo) is det.
-
-unique_modes__write_argument_name(VarSet, VarId) -->
-	( { varset__lookup_name(VarSet, VarId, _) } ->
-		io__write_string("variable `"),
-		mercury_output_var(VarId, VarSet),
-		io__write_string("'")
-	;
-		io__write_string("argument")
-	).
-
-%-----------------------------------------------------------------------------%
-
-:- pred unique_modes__report_call_context(pred_id, proc_id, int, term_context,
-	maybe(call_unify_context), module_info, io__state, io__state).
-:- mode unique_modes__report_call_context(in, in, in, in, in, in, di, uo)
-	is det.
-
-unique_modes__report_call_context(PredId, ProcId, ArgNum, Context,
-		CallUnifyContext, ModuleInfo) -->
-	(
-		{ CallUnifyContext = yes(call_unify_context(LT, RT, UC)) },
-		unique_modes__report_unify_context(Context, UC, ModuleInfo,
-			PredId, ProcId, LT, RT)
-	;
-		{ CallUnifyContext = no },
-		{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-				PredInfo, ProcInfo) },
-		{ pred_info_name(PredInfo, PredName) },
-		{ proc_info_argmodes(ProcInfo, ArgModes) },
-		prog_out__write_context(Context),
-		io__write_string("In argument "),
-		io__write_int(ArgNum),
-		io__write_string(" of `"),
-		unique_modes__report_pred_name_mode(PredName, ArgModes),
-		io__write_string("':\n")
-	).
-
-%-----------------------------------------------------------------------------%
-
-:- pred unique_modes__report_unify_context(term_context, unify_context,
-	module_info, pred_id, proc_id, var, unify_rhs, io__state, io__state).
-:- mode unique_modes__report_unify_context(in, in, in, in, in, in, in, di, uo)
-	is det.
-
-unique_modes__report_unify_context(Context, UnifyContext, ModuleInfo, 
-		PredId, ProcId, LT, RT)
-		-->
-	hlds_out__write_unify_context(UnifyContext, Context),
-	prog_out__write_context(Context),
-	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo) },
-	{ proc_info_variables(ProcInfo, Varset) },
-	(
-		{ varset__lookup_name(Varset, LT, _) }
-	->
-		(
-			{ RT = var(RV) },
-			\+ { varset__lookup_name(Varset, RV, _) }
-		->
-			io__write_string("  unification with `"),
-			mercury_output_var(LT, Varset)
-		;
-			io__write_string("  unification of `"),
-			mercury_output_var(LT, Varset),
-			io__write_string("' and `"),
-			hlds_out__write_unify_rhs(RT, ModuleInfo, Varset, 3)
-		)
-	;
-		io__write_string("  unification with `"),
-		hlds_out__write_unify_rhs(RT, ModuleInfo, Varset, 3)
+	proc_info_argmodes(ProcInfo, ProcArgModes0),
+/*********************
+	% propagate type info into modes
+	mode_info_get_types_of_vars(ModeInfo0, ArgVars, ArgTypes),
+	propagate_type_info_mode_list(ArgTypes, ModuleInfo,
+		ProcArgModes0, ProcArgModes),
+*********************/
+	ProcArgModes = ProcArgModes0,
+	mode_list_get_initial_insts(ProcArgModes, ModuleInfo,
+				InitialInsts),
+	modecheck_var_has_inst_list(ArgVars, InitialInsts, 0,
+				ModeInfo0, ModeInfo1),
+	mode_list_get_final_insts(ProcArgModes, ModuleInfo, FinalInsts),
+	modecheck_set_var_inst_list(ArgVars, InitialInsts, FinalInsts,
+		NewArgVars, ExtraGoals, ModeInfo1, ModeInfo2),
+	( NewArgVars = ArgVars, ExtraGoals = [] - [] ->
+		true
+	;	
+		% this shouldn't happen, since modes.m should do
+		% all the handling of implied modes
+		error("unique_modes.m: call to implied mode?")
 	),
-	io__write_string("':\n").
+	mode_info_never_succeeds(ModeInfo2, PredId, ProcId, Result),
+	( Result = yes ->
+		mode_info_set_instmap(unreachable, ModeInfo2, ModeInfo)
+	;
+		%
+		% Check whether we are at a call to a nondet predicate.
+		% If so, mark all the currently nondet-live variables
+		% whose inst is `unique' as instead being only `mostly_unique'.
+		%
+		proc_info_interface_code_model(ProcInfo, CodeModel),
+		( CodeModel = model_non ->
+			make_all_nondet_live_vars_mostly_uniq(ModeInfo2,
+				ModeInfo)
+		;
+			ModeInfo = ModeInfo2
+		)
+	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred unique_modes__report_pred_name_mode(string, list(mode),
-		io__state, io__state).
-:- mode unique_modes__report_pred_name_mode(in, in, di, uo) is det.
+:- pred unique_modes__check_conj(list(hlds__goal), list(hlds__goal),
+		mode_info, mode_info).
+:- mode unique_modes__check_conj(in, out, mode_info_di, mode_info_uo) is det.
 
-unique_modes__report_pred_name_mode(PredName, ArgModes) -->
-	io__write_string(PredName),
-	( { ArgModes \= [] } ->
-		{ varset__init(InstVarSet) },	% XXX inst var names
-		io__write_string("("),
-		mercury_output_mode_list(ArgModes, InstVarSet),
-		io__write_string(")")
+	% Just process each conjunct in turn.
+	% Note that we don't do any reordering of conjuncts here.
+
+unique_modes__check_conj([], []) --> [].
+unique_modes__check_conj([Goal0 | Goals0], [Goal | Goals]) -->
+	{ unique_modes__goal_get_nonlocals(Goal0, NonLocals) },
+	mode_info_remove_live_vars(NonLocals),
+	unique_modes__check_goal(Goal0, Goal),
+	unique_modes__check_conj(Goals0, Goals).
+
+%-----------------------------------------------------------------------------%
+
+	% Process each of the disjunctions in turn, making sure to restore
+	% the original instmap before processing the next one.
+	% Collect up a list of the resulting instmaps.
+
+:- pred unique_modes__check_disj(list(hlds__goal), list(hlds__goal),
+		list(instmap), mode_info, mode_info).
+:- mode unique_modes__check_disj(in, out, out, mode_info_di, mode_info_uo)
+		is det.
+
+unique_modes__check_disj([], [], []) --> [].
+unique_modes__check_disj([Goal0 | Goals0], [Goal | Goals],
+		[InstMap | InstMaps]) -->
+	mode_info_dcg_get_instmap(InstMap0),
+	unique_modes__check_goal(Goal0, Goal),
+	mode_info_dcg_get_instmap(InstMap),
+	mode_info_set_instmap(InstMap0),
+	unique_modes__check_disj(Goals0, Goals, InstMaps).
+
+%-----------------------------------------------------------------------------%
+
+:- pred unique_modes__check_case_list(list(case), var, list(case),
+		list(instmap), mode_info, mode_info).
+:- mode unique_modes__check_case_list(in, in, out, out,
+		mode_info_di, mode_info_uo) is det.
+
+unique_modes__check_case_list([], _Var, [], []) --> [].
+unique_modes__check_case_list([Case0 | Cases0], Var,
+			[Case | Cases], [InstMap | InstMaps]) -->
+	{ Case0 = case(ConsId, Goal0) },
+	{ Case = case(ConsId, Goal) },
+	mode_info_dcg_get_instmap(InstMap0),
+
+		% record the fact that Var was bound to ConsId in the
+		% instmap before processing this case
+	( { cons_id_to_const(ConsId, Const, Arity) } ->
+		{ list__duplicate(Arity, free, ArgInsts) },
+		modecheck_set_var_inst(Var,
+			bound(unique, [functor(Const, ArgInsts)]))
 	;
+		% cons_id_to_const will fail for pred_consts and
+		% address_consts; we don't worry about them,
+		% since you can't have a switch on a higher-order
+		% pred term anyway.
 		[]
-	).
+	),
+
+	unique_modes__check_goal(Goal0, Goal),
+	mode_info_dcg_get_instmap(InstMap),
+	mode_info_set_instmap(InstMap0),
+	unique_modes__check_case_list(Cases0, Var, Cases, InstMaps).
+
+%-----------------------------------------------------------------------------%
+
+:- pred unique_modes__goal_get_nonlocals(hlds__goal, set(var)).
+:- mode unique_modes__goal_get_nonlocals(in, out) is det.
+
+unique_modes__goal_get_nonlocals(_Goal - GoalInfo, NonLocals) :-
+	goal_info_get_nonlocals(GoalInfo, NonLocals).
 
 %-----------------------------------------------------------------------------%

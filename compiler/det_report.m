@@ -166,7 +166,8 @@ report_determinism_problem(PredId, ModeId, ModuleInfo, Message,
 	{ proc_info_context(ProcInfo, Context) },
 	{ proc_info_argmodes(ProcInfo, ArgModes0) },
 
-	( globals__io_lookup_bool_option( halt_at_warn, yes) ->
+	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),
+	( { HaltAtWarn = yes } ->
 		 io__set_exit_status(1)
 	;
 		[]

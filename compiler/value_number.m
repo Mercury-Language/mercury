@@ -225,7 +225,9 @@ value_number__optimize_block(Instrs0, Livemap, ParEntries, LabelNo0, LabelNo, In
 	int, vn_ctrl_tuple, list(instruction), io__state, io__state).
 :- mode value_number__optimize_fragment(in, in, in, in, out, out, di, uo) is det.
 
-value_number__optimize_fragment(Instrs0, Livemap, ParEntries, LabelNo0, Tuple, Instrs) -->
+value_number__optimize_fragment(Instrs0, Livemap, ParEntries, LabelNo0,
+		Tuple, Instrs) -->
+	globals__io_get_gc_method(GC),
 	(
 		% Value numbering currently combines multiple heap pointer
 		% increments into a single heap pointer increment.  If we're
@@ -236,7 +238,6 @@ value_number__optimize_fragment(Instrs0, Livemap, ParEntries, LabelNo0, Tuple, I
 		% perform value numbering on a block that contains more
 		% than one heap pointer increment.
 
-		globals__io_get_gc_method(GC),
 		{ GC = conservative ->
 			opt_util__count_incr_hp(Instrs0, NumIncrs),
 			NumIncrs < 2

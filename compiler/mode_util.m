@@ -434,7 +434,7 @@ inst_is_not_partly_unique_2(ModuleInfo, defined_inst(InstName), Inst,
 	).
 
 	% inst_is_not_fully_unique succeeds iff the inst passed is 
-	% not unique or mostly_unique, i.e. if it is shared
+	% not unique, i.e. if it is mostly_unique, shared,
 	% or free.  It fails for abstract insts.
 
 inst_is_not_fully_unique(ModuleInfo, Inst) :-
@@ -675,6 +675,16 @@ inst_lookup_2(InstName, ModuleInfo, Inst) :-
 		module_info_insts(ModuleInfo, InstTable),
 		inst_table_get_shared_insts(InstTable, SharedInstTable),
 		map__lookup(SharedInstTable, SharedInstName, MaybeInst),
+		( MaybeInst = known(Inst0) ->
+			Inst = Inst0
+		;
+			Inst = defined_inst(InstName)
+		)
+	; InstName = mostly_uniq_inst(NondetLiveInstName),
+		module_info_insts(ModuleInfo, InstTable),
+		inst_table_get_mostly_uniq_insts(InstTable,
+			NondetLiveInstTable),
+		map__lookup(NondetLiveInstTable, NondetLiveInstName, MaybeInst),
 		( MaybeInst = known(Inst0) ->
 			Inst = Inst0
 		;
@@ -1004,6 +1014,9 @@ inst_name_apply_substitution(ground_inst(Inst0, IsLive, Uniq, Real), Subst,
 	inst_name_apply_substitution(Inst0, Subst, Inst).
 inst_name_apply_substitution(shared_inst(InstName0), Subst,
 				shared_inst(InstName)) :-
+	inst_name_apply_substitution(InstName0, Subst, InstName).
+inst_name_apply_substitution(mostly_uniq_inst(InstName0), Subst,
+				mostly_uniq_inst(InstName)) :-
 	inst_name_apply_substitution(InstName0, Subst, InstName).
 inst_name_apply_substitution(typed_inst(T, Inst0), Subst,
 		typed_inst(T, Inst)) :-

@@ -259,6 +259,7 @@
 			;	ground_inst(inst_name, is_live, uniqueness,
 						unify_is_real)
 			;	shared_inst(inst_name)
+			;	mostly_uniq_inst(inst_name)
 			;	typed_ground(uniqueness, type)
 			;	typed_inst(type, inst_name).
 
@@ -3340,7 +3341,8 @@ convert_type(T, T).
 
 report_warning(Message) -->
 	io__stderr_stream(StdErr),
-	( globals__io_lookup_bool_option(halt_at_warn, yes) ->
+	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),
+	( { HaltAtWarn = yes } ->
 		io__set_exit_status(1)
 	;
 		[]
@@ -3348,7 +3350,8 @@ report_warning(Message) -->
 	io__write_string(StdErr, Message).
 
 report_warning(Stream, Message) -->
-	( globals__io_lookup_bool_option(halt_at_warn, yes) ->
+	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),
+	( { HaltAtWarn = yes } ->
 		io__set_exit_status(1)
 	;
 		[]
@@ -3361,10 +3364,11 @@ report_warning(Module_name, Line_num, Message) -->
 			Message, "\n"], Message_0) },
 	io__stderr_stream(StdErr),
 	io__write_string(StdErr, Message_0),
-	(
-		globals__io_lookup_bool_option(halt_at_warn, yes)
-	->
+	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),
+	( { HaltAtWarn = yes } ->
 		io__set_exit_status(1)
 	;
 		[]
 	).
+
+%-----------------------------------------------------------------------------%

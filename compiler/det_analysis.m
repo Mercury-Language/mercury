@@ -194,7 +194,8 @@ global_analysis_single_pass([PredId - PredMode | PredProcs],
 		Changed0, Changed1, Msgs) },
 	( { Msgs \= [] } ->
 		det_report_msgs(Msgs),
-		( globals__io_lookup_bool_option(halt_at_warn, yes) ->
+		globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),
+		( { HaltAtWarn = yes } ->
 			{ module_info_incr_errors(ModuleInfo1, ModuleInfo2) }
 		;
 			{ ModuleInfo2 = ModuleInfo1 }

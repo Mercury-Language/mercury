@@ -762,11 +762,14 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 		;
 			globals__io_lookup_bool_option(warn_missing_det_decls,
 				ShouldWarn),
-			{ ShouldWarn = yes }
-		->
-			unspecified_det_warning(PredName, Arity, MContext)
-		;
-			[]
+			(
+				{ ShouldWarn = yes }
+			->
+				unspecified_det_warning(PredName, Arity,
+					MContext)
+			;
+				[]
+			)
 		)
 	;
 		[]

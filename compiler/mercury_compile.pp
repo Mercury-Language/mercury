@@ -444,12 +444,15 @@ process_module_2(ModuleName) -->
 		( { ExportWarning = yes, 
 			InterfaceItems = ShortInterfaceItems }
 		->
-			report_warning( ModuleName, 1, "Interface does not export anyting."),
+			report_warning( ModuleName, 1,
+				"Interface does not export anyting."),
+			globals__io_lookup_bool_option(verbose_errors,
+				VerboseErrors),
 			(
-				globals__io_lookup_bool_option(verbose_errors, yes)
+				{ VerboseErrors = yes }
 			->
 				io__stderr_stream(StdErr),
-				io__write_string(StdErr, "\t\tA file should contain at least one declaration other than\n\t\t`:- import_module' in it's interface section(s).\n\t\tIMHO, to be useful, a module should output something.\n\t\tThis would normally be a `:- pred', `:- type' or \n\t\t`:- mode' declaration.\n")
+				io__write_string(StdErr, "\t\tA file should contain at least one declaration other than\n\t\t`:- import_module' in it's interface section(s).\n\t\tTo be useful, a module should export something.\n\t\tThis would normally be a `:- pred', `:- type' or \n\t\t`:- mode' declaration.\n")
 			;
 				[]
 			)
@@ -1162,16 +1165,16 @@ get_dependencies(ModuleName, Items, Deps) -->
 	( 	
 		{ Found_useful_interface = no, ExportWarning = yes }
 	->
-		report_warning( ModuleName, 1, "interface does not export anything useful."),
+		report_warning( ModuleName, 1,
+			"interface does not export anything useful."),
 		% line 1 is used as there should both be one, and since it 
 		% is hard to give a line number for something that doesn't
 		% exist.  It would be acceptable to give the line-number of the
 		% last ":- implementation" declaration.
-		(
-			globals__io_lookup_bool_option(verbose_errors, yes)
-		->
+		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+		( { VerboseErrors = yes } ->
 			io__stderr_stream(StdErr),
-			io__write_string(StdErr, "\t\tA file should contain at least one declaration other than\n\t\t`:- import_module' in it's interface section(s).\n\t\tIMHO, to be useful, a module should output something.\n\t\tThis would normally be a `:- pred', `:- type' or \n\t\t`:- mode' declaration.\n")
+			io__write_string(StdErr, "\t\tA file should contain at least one declaration other than\n\t\t`:- import_module' in it's interface section(s).\n\t\tTo be useful, a module should export something.\n\t\tThis would normally be a `:- pred', `:- type' or \n\t\t`:- mode' declaration.\n")
 		;
 			[]
 		)

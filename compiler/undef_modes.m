@@ -240,6 +240,8 @@ find_undef_inst_name(typed_ground(_, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
 find_undef_inst_name(shared_inst(_), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
+find_undef_inst_name(mostly_uniq_inst(_), _, _, _) -->
+	{ error("compiler generated inst unexpected") }.
 find_undef_inst_name(typed_inst(_,_), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
 
