@@ -66,7 +66,7 @@ ifneq "$(findstring .debug,$(GRADE))" ""
     PROGS_2=$(DECLARATIVE_PROGS)
     INP=inp2
 else
-    ifneq "$(findstring .mm,$(GRADE))" ""
+    ifneq "$(findstring mm,$(GRADE))" ""
         PROGS_2=$(DECLARATIVE_PROGS)
         INP=inp
     else

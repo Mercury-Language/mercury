@@ -63,7 +63,7 @@ ifneq "$(findstring .gc,$(GRADE))" ""
 		PROGS=
 		NONLOOP_PROGS=
 	else
-		ifneq "$(findstring .mm,$(GRADE))" ""
+		ifneq "$(findstring mm,$(GRADE))" ""
 			PROGS=$(ALL_SIMPLE_PROGS) $(ALL_NONDET_PROGS)
 			NONLOOP_PROGS=$(SIMPLE_NONLOOP_PROGS) \
 				$(NONDET_NONLOOP_PROGS)
