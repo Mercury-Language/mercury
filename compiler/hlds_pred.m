@@ -2030,6 +2030,8 @@ hlds_pred__aditi_aggregate(unqualified("aditi"),
 		"aggregate_compute_initial", 5).
 
 hlds_pred__is_aditi_memoed(ModuleInfo, PredId) :-
+	% XXX memoing doesn't work yet.
+	semidet_fail,
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_get_markers(PredInfo, Markers),
 	(
