@@ -33,7 +33,5 @@ extern	void	printframe(const char *);
 extern	void	printregs(const char *msg);
 
 extern	Word	do_mklist(int start, int len);
-extern	void	*newmem(size_t n);
-extern	void	oldmem(void *p);
 
 #endif
