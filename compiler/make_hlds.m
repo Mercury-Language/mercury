@@ -432,7 +432,7 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, Det, _Cond, MContext,
 	{ pred_info_procedures(PredInfo0, Procs0) },
 		% XXX we should check that this mode declaration
 		% isn't the same as an existing one
-	{ next_mode_id(Procs0, ModeId) },
+	{ next_mode_id(Procs0, Det, ModeId) },
 	{ proc_info_init(Modes, Det, MContext, NewProc) },
 	{ map__set(Procs0, ModeId, NewProc, Procs) },
 	{ pred_info_set_procedures(PredInfo0, Procs, PredInfo) },
@@ -444,7 +444,8 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, Det, _Cond, MContext,
 	% Whenever there is a clause or mode declaration for an undeclared
 	% predicate, we add an implicit declaration
 	%	:- pred p(_, _, ..., _).
-	% for that predicate.
+	% for that predicate, so that calls to the pred don't get
+	% spurious errors.
 
 :- pred preds_add_implicit(predicate_table, module_name, sym_name, arity,
 				term__context, pred_id, predicate_table).
@@ -465,21 +466,42 @@ preds_add_implicit(PredicateTable0,
 			PredicateTable1)
 	->
 		PredId = PredId0,
-		PredicateTable = PredicateTable1
+		predicate_table_remove_predid(PredicateTable1, PredId,
+			PredicateTable)
 	;	
 		error("preds_add_implicit")
 	).
 
-	% efficiency could be improved -
+	% This is a quick hack, especially the trick with
+	% determinism_priority.  Efficiency could be improved -
 	% we should probably store the next available ModeId rather
-	% than recomputing it all the time
+	% than recomputing it all the time.
 
-:- pred next_mode_id(proc_table, proc_id).
-:- mode next_mode_id(in, out) is det.
+:- pred next_mode_id(proc_table, determinism, proc_id).
+:- mode next_mode_id(in, in, out) is det.
 
-next_mode_id(Procs, ModeId) :-
+next_mode_id(Procs, Det, ModeId) :-
 	map__to_assoc_list(Procs, List),
-	list__length(List, ModeId).
+	list__length(List, ModeId0),
+	determinism_priority(Det, Priority),
+	ModeId is ModeId0 + Priority.
+
+	% If we can call a predicate in either of two different modes,
+	% we should prefer to call it in a deterministic mode
+	% rather than a non-deterministic one.
+	% Higher numbers mean lower priority.
+	% This works because mode analysis tries each mode in turn,
+	% starting with the lowest-numbered modes.
+
+:- pred determinism_priority(determinism, int).
+:- mode determinism_priority(in, out) is det.
+
+determinism_priority(det, 0).
+determinism_priority(erroneous, 0).
+determinism_priority(failure, 10000).
+determinism_priority(semidet, 10000).
+determinism_priority(unspecified, 15000).
+determinism_priority(nondet, 20000).
 
 %-----------------------------------------------------------------------------%
 
