@@ -669,7 +669,9 @@ This bug will hopefully be fixed soon.
 @section Displaying the profile
 
 To display the profile, just type @samp{mprof}.  This will read the 
-@file{Prof.*} files and display the results in a nice human-readable format.
+@file{Prof.*} files and display the flat profile in a nice human-readable 
+format.  If you also want to see the call graph profile, which takes a lot
+longer to generate, type @samp{mprof -c}.
 
 Note that @samp{mprof} can take quite a while to execute, and will
 usually produce quite a lot of output, so you will usually want to
