@@ -1,0 +1,6 @@
+float (boxed): true
+float (unboxed): true
+foreign_type (boxed): true
+foreign_type (unboxed): true
+foreign_type(T) (boxed): true
+foreign_type(T) (unboxed): true

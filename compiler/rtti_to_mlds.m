@@ -195,17 +195,32 @@ gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, SubDefns) :-
 	prog_out__sym_name_to_string(TypeModule, TypeModuleName),
 	NumPtags = type_ctor_details_num_ptags(TypeCtorDetails),
 	NumFunctors = type_ctor_details_num_functors(TypeCtorDetails),
-	gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
-		FunctorsInfo, LayoutInfo, SubDefns),
 	FunctorsRttiId = ctor_rtti_id(RttiTypeCtor, type_functors),
 	LayoutRttiId = ctor_rtti_id(RttiTypeCtor, type_layout),
+
+	some [!Defns] (
+	    gen_functors_layout_info(ModuleInfo, RttiTypeCtor,
+			TypeCtorDetails, FunctorsInfo, LayoutInfo, !:Defns),
+
+	    %
+	    % Note that gen_init_special_pred will by necessity add an extra
+	    % level of indirection to calling the special preds.  However the
+	    % backend compiler should be smart enough to ensure that this is
+	    % inlined away.
+	    %
+	    gen_init_special_pred(ModuleInfo, UnifyUniv, UnifyInit, !Defns),
+	    gen_init_special_pred(ModuleInfo, CompareUniv, CompareInit, !Defns),
+
+	    SubDefns = !.Defns
+	),
+
 	Init = init_struct(mlds__rtti_type(RttiId), [
 		gen_init_int(TypeArity),
 		gen_init_int(Version),
 		gen_init_int(NumPtags),
 		gen_init_type_ctor_rep(TypeCtorData),
-		gen_init_proc_id_from_univ(ModuleInfo, UnifyUniv),
-		gen_init_proc_id_from_univ(ModuleInfo, CompareUniv),
+		UnifyInit,
+		CompareInit,
 		gen_init_string(TypeModuleName),
 		gen_init_string(TypeName),
 		% In the C back-end, these two "structs" are actually unions.
@@ -224,6 +239,8 @@ gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, SubDefns) :-
 			% commented out.
 		% gen_init_maybe(gen_init_rtti_name(RttiTypeCtor),
 		%	MaybeHashCons),
+		% XXX this may need to change to call
+		% gen_init_special_pred, if this is re-enabled.
 		% gen_init_proc_id_from_univ(ModuleInfo, PrettyprinterProc)
 	]).
 
@@ -1048,8 +1065,7 @@ mlds_module_name_from_tc_name(TCName) = MLDS_ModuleName :-
 		list(mlds__defn), list(mlds__defn)).
 :- mode gen_init_method(in, in, in, out, in, out) is det.
 
-gen_init_method(ModuleInfo, NumExtra, RttiProcId, Init,
-		ExtraDefns0, ExtraDefns) :-
+gen_init_method(ModuleInfo, NumExtra, RttiProcId, Init, !ExtraDefns) :-
 	%
 	% we can't store the address of the typeclass method directly in
 	% the base_typeclass_info; instead, we need to generate
@@ -1064,7 +1080,36 @@ gen_init_method(ModuleInfo, NumExtra, RttiProcId, Init,
 	% Hopefully the Mercury HLDS->HLDS inlining and/or
 	% the target code compiler will be able to optimize this...
 	%
+	gen_wrapper_func_and_initializer(ModuleInfo, NumExtra, RttiProcId,
+			typeclass_info_closure, Init, !ExtraDefns).
 
+:- pred gen_init_special_pred(module_info::in, univ::in, mlds__initializer::out,
+		list(mlds__defn)::in, list(mlds__defn)::out) is det.
+
+gen_init_special_pred(ModuleInfo, RttiProcIdUniv, Init, !ExtraDefns) :-
+	%
+	% we can't store the address of the special pred procedure directly
+	% in the type_ctor_info because when the special pred is called
+	% by looking up its address in the type_ctor_info its always called
+	% with its arguments boxed, but the generated special pred may operate
+	% on unboxed values, hence we need to generate a wrapper function
+	% which unboxes the arguments if necessary.
+	%
+	( univ_to_type(RttiProcIdUniv, RttiProcId) ->
+		NumExtra = 0,
+		gen_wrapper_func_and_initializer(ModuleInfo, NumExtra,
+				RttiProcId, special_pred, Init, !ExtraDefns)
+	;
+		error("gen_init_special_pred: cannot extract univ value")
+	).
+
+:- pred gen_wrapper_func_and_initializer(module_info, int, rtti_proc_label,
+		closure_kind, mlds__initializer,
+		list(mlds__defn), list(mlds__defn)).
+:- mode gen_wrapper_func_and_initializer(in, in, in, in, out, in, out) is det.
+
+gen_wrapper_func_and_initializer(ModuleInfo, NumExtra, RttiProcId,
+		ClosureKind, Init, ExtraDefns0, ExtraDefns) :-
 	%
 	% We start off by creating a fresh MLGenInfo here,
 	% using the pred_id and proc_id of the wrapped procedure.
@@ -1083,16 +1128,15 @@ gen_init_method(ModuleInfo, NumExtra, RttiProcId, Init,
 	% Now we can safely go ahead and generate the wrapper function
 	%
 	term__context_init(Context),
-	ml_gen_closure_wrapper(PredId, ProcId, typeclass_info_closure,
+	ml_gen_closure_wrapper(PredId, ProcId, ClosureKind,
 		NumExtra, Context, WrapperFuncRval, WrapperFuncType,
 		MLGenInfo1, MLGenInfo),
 	ml_gen_info_get_extra_defns(MLGenInfo, ExtraDefns1),
 	ExtraDefns = list__append(ExtraDefns1, ExtraDefns0),
 	
 	%
-	% The initializer for the method field of the base_typeclass_info
-	% is just the wrapper function's address, converted to
-	% mlds__generic_type (by boxing).
+	% The initializer for the wrapper is just the wrapper function's
+	% address, converted to mlds__generic_type (by boxing).
 	%
 	Init = init_obj(unop(box(WrapperFuncType), WrapperFuncRval)).
 

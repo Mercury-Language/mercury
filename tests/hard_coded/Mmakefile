@@ -43,6 +43,7 @@ ORDINARY_PROGS=	\
 	dupcall_types_bug \
 	dupcall_impurity \
 	elim_special_pred \
+	equality_pred_which_requires_boxing \
 	eqv_type_bug \
 	erroneous_liveness \
 	error_func \
