@@ -173,15 +173,15 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
                         fatal_error("Attempt to use a VOID tag in deep_copy");
                         break;
 
-                    case TYPELAYOUT_UNIQ_ARRAY_VALUE:
+                    case TYPELAYOUT_ARRAY_VALUE:
                         if (in_range(data_value)) {
-			    MR_UniqArrayType *new_array;
-			    MR_UniqArrayType *old_array;
+			    MR_ArrayType *new_array;
+			    MR_ArrayType *old_array;
 			    Integer array_size;
 
-			    old_array = (MR_UniqArrayType *) data_value;
+			    old_array = (MR_ArrayType *) data_value;
 			    array_size = old_array->size;
-			    new_array = MR_make_uniq_array(array_size);
+			    new_array = MR_make_array(array_size);
 			    new_array->size = array_size;
 			    for (i = 0; i < array_size; i++) {
 				new_array->elements[i] = old_array->elements[i];

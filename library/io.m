@@ -936,7 +936,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, dir, term, term_io, varset, require, time, uniq_array.
+:- import_module map, dir, term, term_io, varset, require, time, array.
 :- import_module int, std_util.
 
 :- type io__state
@@ -1357,7 +1357,7 @@ io__write_univ(Univ, Priority) -->
 	%
 	% we need to special-case the builtin types:
 	%	int, char, float, string
-	%	type_info, univ, c_pointer, uniq_array
+	%	type_info, univ, c_pointer, array
 	%
 	( { univ_to_type(Univ, String) } ->
 		term_io__quote_string(String)
@@ -1373,17 +1373,17 @@ io__write_univ(Univ, Priority) -->
 		io__write_univ_as_univ(OrigUniv)
 	; { univ_to_type(Univ, C_Pointer) } ->
 		io__write_c_pointer(C_Pointer)
-	; { type_ctor_name(type_ctor(univ_type(Univ))) = "uniq_array" } ->
+	; { type_ctor_name(type_ctor(univ_type(Univ))) = "array" } ->
 		%
 		% XXX shouldn't type names be module-qualified?
-		%     shouldn't that be "uniq_array:uniq_array"?
+		%     shouldn't that be "array:array"?
 		%
 		% Note that we can't use univ_to_type above, because we
-		% want to match on a non-ground type `uniq_array(T)'
-		% (matching against `uniq_array(void)' isn't much use).
+		% want to match on a non-ground type `array(T)'
+		% (matching against `array(void)' isn't much use).
 		% Instead, we explicitly check the type name.
 		% That makes it tricky to get the value, so
-		% we can't use io__write_uniq_array below... instead we
+		% we can't use io__write_array below... instead we
 		% use the following, which is a bit of a hack.
 		%
 		{ term__univ_to_term(Univ, Term) },
@@ -1555,12 +1555,12 @@ io__write_term_args([X|Xs]) -->
 	io__write_univ(X),
 	io__write_term_args(Xs).
 
-:- pred io__write_uniq_array(uniq_array(T), io__state, io__state).
-:- mode io__write_uniq_array(in, di, uo) is det.
+:- pred io__write_array(array(T), io__state, io__state).
+:- mode io__write_array(in, di, uo) is det.
 
-io__write_uniq_array(UniqArray) -->
-	io__write_string("uniq_array("),
-	{ uniq_array__to_list(UniqArray, List) },
+io__write_array(Array) -->
+	io__write_string("array("),
+	{ array__to_list(Array, List) },
 	io__write(List),
 	io__write_string(")").
 

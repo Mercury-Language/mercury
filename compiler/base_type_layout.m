@@ -30,7 +30,7 @@
 %
 % library:	std_util.m		- functor, arg, expand,
 % 					  solutions
-% 		uniq_array.m		- uniq_array type
+% 		array.m			- array type
 % 		io.m			- io__stream type
 % 		mercury_builtin.m	- builtin types
 %
@@ -62,7 +62,7 @@
 % Tag 0 - 	CONST   Word = 6	- univ
 % Tag 0 - 	CONST   Word = 7	- pred
 % Tag 0 - 	CONST   Word = 8	- void
-% Tag 0 - 	CONST   Word = 9	- uniq_array
+% Tag 0 - 	CONST   Word = 9	- array
 % Tag 0 - 	CONST   Word = 10	- type_info
 % Tag 0 - 	CONST   Word = 11	- c_pointer
 % 			Words 12 - 1024 reserved for future use

@@ -2359,8 +2359,8 @@ ML_expand_builtin(Word data_value, Word entry_value, ML_Expand_Info *info)
 		fatal_error(""ML_expand: found void"");
 		break;
 
-	case TYPELAYOUT_UNIQ_ARRAY_VALUE:
-		fatal_error(""ML_expand: found uniq_array"");
+	case TYPELAYOUT_ARRAY_VALUE:
+		fatal_error(""ML_expand: found array"");
 		break;
 
 	case TYPELAYOUT_TYPEINFO_VALUE:

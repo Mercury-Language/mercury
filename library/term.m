@@ -291,7 +291,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module std_util, require, uniq_array, int, string.
+:- import_module std_util, require, array, int, string.
 
 %-----------------------------------------------------------------------------%
 
@@ -378,21 +378,21 @@ term__term_to_univ_special_case("string", [], Term, _, _, ok(Univ)) :-
 term__term_to_univ_special_case("float", [], Term, _, _, ok(Univ)) :-
 	Term = term__functor(term__float(Float), [], _),
 	type_to_univ(Float, Univ).
-term__term_to_univ_special_case("uniq_array", [ElemType], Term, _Type,
+term__term_to_univ_special_case("array", [ElemType], Term, _Type,
 		PrevContext, Result) :-
 	%
-	% uniq_arrays are represented as terms of the form
-	%	uniq_array([elem1, elem2, ...])
+	% arrays are represented as terms of the form
+	%	array([elem1, elem2, ...])
 	%
-	Term = term__functor(term__atom("uniq_array"), [ArgList], TermContext),
+	Term = term__functor(term__atom("array"), [ArgList], TermContext),
 
-	% To convert such terms back to uniq_arrays, we first
+	% To convert such terms back to arrays, we first
 	% convert the term representing the list of elements back to a list,
-	% and then (if successful) we just call the uniq_array/1 function.
+	% and then (if successful) we just call the array/1 function.
 	%
 	ListTypeCtor = type_ctor(type_of([0])),
 	ListType = det_make_type(ListTypeCtor, [ElemType]),
-	ArgContext = arg_context(term__atom("uniq_array"), 1, TermContext),
+	ArgContext = arg_context(term__atom("array"), 1, TermContext),
 	NewContext = [ArgContext | PrevContext],
 	term__try_term_to_univ_2(ArgList, ListType, NewContext, ArgResult),
 	(
@@ -402,7 +402,7 @@ term__term_to_univ_special_case("uniq_array", [ElemType], Term, _Type,
 		% :- some [T] pred has_type(T::unused, type_info::in) is det.
 		has_type(List, ListType),
 		det_univ_to_type(ListUniv, List),
-		Array = uniq_array(List),
+		Array = array(List),
 		Result = ok(univ(Array))
 ****************/
 		% since we don't have existential types, we have to use
@@ -411,7 +411,7 @@ term__term_to_univ_special_case("uniq_array", [ElemType], Term, _Type,
 		list_of_any(List),   % explicit type qualification
 				     % to avoid unbound type variables
 		List = unsafe_cast(univ_value_as_type_any(ListUniv)),
-		Array = uniq_array(List),
+		Array = array(List),
 		ArrayTypeCtor = type_ctor(type_of(Array)),
 		ArrayType = det_make_type(ArrayTypeCtor, [ElemType]),
 		Result = ok(unsafe_any_to_univ(ArrayType, unsafe_cast(Array)))
@@ -521,7 +521,7 @@ XXX existential types not yet implemented
 
 :- type any == c_pointer.
 
-:- pred array_of_any(uniq_array(any)::unused) is det.
+:- pred array_of_any(array(any)::unused) is det.
 array_of_any(_).
 
 :- pred list_of_any(list(any)::unused) is det.
@@ -618,23 +618,22 @@ XXX existential types not implemented
 	type_info_to_term(Context, univ_type(UnivValue), TypeTerm),
 	term__univ_to_term(UnivValue, ValueTerm).
 
-term__univ_to_term_special_case("uniq_array", [ElemType], Univ, Context,
-		Term) :-
-	Term = term__functor(term__atom("uniq_array"), [ArgsTerm], Context),
+term__univ_to_term_special_case("array", [ElemType], Univ, Context, Term) :-
+	Term = term__functor(term__atom("array"), [ArgsTerm], Context),
 	ListTypeCtor = type_ctor(type_of([0])),
 	ListType = det_make_type(ListTypeCtor, [ElemType]),
 /***
 XXX existential types not yet implemented
 	has_type(List, ListType),
 	det__univ_to_type(Univ, Array),	
-	uniq_array__to_list(Array, List),
+	array__to_list(Array, List),
 	term__type_to_term(List, ArgsTerm).
 ***/
 	% instead, we need to use some unsafe casts...
 	array_of_any(Array), % explicit type qualification
 			     % to avoid unbound type variables
 	Array = unsafe_cast(univ_value_as_type_any(Univ)),	
-	uniq_array__to_list(Array, List),
+	array__to_list(Array, List),
 	ListUniv = unsafe_any_to_univ(ListType, unsafe_cast(List)),
 	term__univ_to_term(ListUniv, ArgsTerm).
 

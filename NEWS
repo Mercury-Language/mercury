@@ -210,8 +210,48 @@ DRAFT NEWS for Mercury release 0.7
 
   - XXX cleanup of integer division, mod & rem
 
-  - uniq_array__shrink/3 has been added to the library.  This is similar
-    to uniq_array__resize/4 except that it's designed for cases when you
-    only want to make an array smaller, so you don't have to supply a
-    filler element.
+  - The interface to arrays has changed significantly.  array.m has been
+    renamed bt_array.m (short for `backtrackable array') and uniq_array.m
+    has been renamed array.m.
+
+    The interfaces of both modules have been extended to make them closer
+    to each other.
+
+    The following predicates have been added to array.m (formerly
+    uniq_array.m):
+
+	+ array__shrink/3   This is similar to array__resize/4 except
+	  that it's designed for cases when you only want to make an
+	  array smaller, so you don't have to supply a filler element.
+
+	+ array__min/2, array__max/2, array__bounds/3  Finds the lower
+	  (in this implementation, always 0), upper and both bounds of
+	  a array respectively.
+
+    The following predicated have been added to bt_array.m (formerly
+    array.m):
+
+	+ bt_array__min/2, bt_array__max/2, bt_array__size/2  Finds
+	  the lower bound, upper bound and size of a bt_array
+	  respectively.
+	
+	+ bt_array__in_bounds/2  Checks if an index is within the
+	  bounds of a bt_array.
+	
+	+ bt_array__semidet_set/4  The semidet version of bt_array__set/4.
+
+        + bt_array__from_list/3  A replacement for bt_array__from_list/2,
+	  which has been removed.  The extra argument is the lower bound
+	  for the new bt_array.
+
+	+ bt_array__shrink/4  Analogous to array__shrink/3.
+
+	+ bt_array__resize/5  A replacement for bt_array__resize/4.  There
+	  was a design flaw in the previous interface, in that if the
+	  array increased in bounds, the extra slots were filled with one
+	  particular element from the old bt_array.  The extra argument is
+	  the element to use to fill these slots instead.
+
+    See the modules array.m and bt_array.m or consult the library
+    reference for further details.
 
