@@ -116,6 +116,11 @@ set_status () {
 # (Not the full path, just the final directory name.)
 # More generally used for naming stuff related to this branch.
 #
+# FTP_DIR_NAME:
+# The name of the directory in which to put the source & binary
+# distributions for this branch, on the ftp and web sites.
+# (Not the full path, just the final directory name.)
+#
 # CHECKOUT_OPTS:
 # Options to pass to cvs checkout.
 #
@@ -142,26 +147,38 @@ case $BRANCH in
 	latest)
 		CHECKOUT_OPTS=-A
 		BASE_TAG_NAME=rotd
+		FTP_DIR_NAME=rotd
 		RELEASE_VERSION=rotd-$DATE
 		RELEASE_VERSION_PATTERN=rotd-*
 		;;
 	0.11)
 		CHECKOUT_OPTS=-rversion-0_11-branch
 		BASE_TAG_NAME=version-0_11-branch
+		FTP_DIR_NAME=0.11.1-beta
 		RELEASE_VERSION=0.11.1-beta-$DATE
 		RELEASE_VERSION_PATTERN=0.11.1-beta-*
+
+		# This is for release 0.11.0 itself
+		# (as opposed to beta releases).
 		#CHECKOUT_OPTS=-rversion-0_11_0
 		#BASE_TAG_NAME=version-0_11_0
+		#FTP_DIR_NAME=0.11.0
 		#RELEASE_VERSION=0.11.0
 		#RELEASE_VERSION_PATTERN=0.11.0*
 		;;
 	0.10)
 		CHECKOUT_OPTS=-rversion-0_10_y
-		#CHECKOUT_OPTS=-rversion-0_10_2
+		FTP_DIR_NAME=0.10.2-beta
 		BASE_TAG_NAME=version-0_10_y
 		RELEASE_VERSION=0.10.2-beta-$DATE
-		#RELEASE_VERSION=0.10.2
 		RELEASE_VERSION_PATTERN=0.10.2-beta-*
+
+		# This is for release 0.10.2 itself
+		# (as opposed to beta releases).
+		#CHECKOUT_OPTS=-rversion-0_10_2
+		#BASE_TAG_NAME=version-0_10_y
+		#RELEASE_VERSION=0.10.2
+		#RELEASE_VERSION_PATTERN=0.10.2
 		;;
 esac
 case "$C_COMPILER" in
@@ -280,7 +297,7 @@ case "$C_COMPILER" in
 esac
 
 BETA_FTPHOST=ftp.mercury.cs.mu.oz.au
-BETA_FTPDIR=/home/ftp/pub/mercury/beta-releases
+BETA_FTPDIR=/home/ftp/pub/mercury/beta-releases/$FTP_DIR_NAME
 BETA_WEBDIR=/home/mercury5/installed_w3/download/files/beta-releases
 BETA_WEBDIR_TOP=/home/mercury5/installed_w3/download/files
 
@@ -978,16 +995,15 @@ case $HOST in $ROTD_HOST)
 	else 
 		rm -f $UNSTABLE/mercury-test-failures-$version-unstable.txt
 	fi &&
-	ssh $BETA_FTPHOST \
-		"rm -f $BETA_FTPDIR/mercury-compiler-$RELEASE_VERSION_PATTERN-unstable.tar.gz" &&
-	ssh $BETA_FTPHOST \
-		"rm -f $BETA_FTPDIR/mercury-extras-$RELEASE_VERSION_PATTERN-unstable.tar.gz" &&
-	ssh $BETA_FTPHOST \
-		"rm -f $BETA_FTPDIR/mercury-tests-$RELEASE_VERSION_PATTERN-unstable.tar.gz" &&
-	ssh $BETA_FTPHOST \
-		"rm -f $BETA_FTPDIR/mercury-*-$RELEASE_VERSION_PATTERN-unstable.txt" &&
+	ssh $BETA_FTPHOST "\
+	    [ -d $BETA_FTPDIR ] || mkdir $BETA_FTPDIR
+	    rm -f \
+		$BETA_FTPDIR/mercury-compiler-$RELEASE_VERSION_PATTERN-unstable.tar.gz \
+		$BETA_FTPDIR/mercury-extras-$RELEASE_VERSION_PATTERN-unstable.tar.gz \
+		$BETA_FTPDIR/mercury-tests-$RELEASE_VERSION_PATTERN-unstable.tar.gz \
+		$BETA_FTPDIR/mercury-*-$RELEASE_VERSION_PATTERN-unstable.txt" &&
 	scp $UNSTABLE/mercury-*-$version-unstable.* \
-		$BETA_FTPHOST:$BETA_FTPDIR  &&
+		$BETA_FTPHOST:$BETA_FTPDIR &&
 	rm -f $BETA_WEBDIR/mercury-compiler-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
 	rm -f $BETA_WEBDIR/mercury-extras-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
 	rm -f $BETA_WEBDIR/mercury-tests-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
@@ -996,8 +1012,10 @@ case $HOST in $ROTD_HOST)
 	;;
 esac
 case $HOST in $GCC_ROTD_HOST)
-	ssh $BETA_FTPHOST \
-		"rm -f $BETA_FTPDIR/mercury-gcc-$RELEASE_VERSION_PATTERN-unstable.tar.gz" &&
+	ssh $BETA_FTPHOST "\
+	  [ -d $BETA_FTPDIR ] || mkdir $BETA_FTPDIR
+	  rm -f \
+	    $BETA_FTPDIR/mercury-gcc-$RELEASE_VERSION_PATTERN-unstable.tar.gz" &&
 	scp $UNSTABLE/mercury-gcc-$version.tar.gz \
 	    $BETA_FTPHOST:$BETA_FTPDIR/mercury-gcc-$version-unstable.tar.gz  &&
 	rm -f $BETA_WEBDIR/mercury-gcc-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
@@ -1131,7 +1149,9 @@ case $status in
 		$STABLE/mercury-NEWS-$version.$fullname.txt &&
 	$LN $UNSTABLE/mercury-INSTALL-$version.$fullname.txt \
 		$STABLE/mercury-INSTALL-$version.$fullname.txt &&
-	ssh $BETA_FTPHOST "rm -f \
+	ssh $BETA_FTPHOST "\
+	    [ -d $BETA_FTPDIR ] || mkdir $BETA_FTPDIR
+	    rm -f \
 		$BETA_FTPDIR/mercury-$RELEASE_VERSION_PATTERN.$fullname.tar.gz \
 		$BETA_FTPDIR/mercury*-$RELEASE_VERSION_PATTERN.$fullname.txt" &&
 	scp $STABLE/mercury*-$version.$fullname.* $BETA_FTPHOST:$BETA_FTPDIR &&
@@ -1189,10 +1209,11 @@ case $status in
 	        $STABLE/mercury-INSTALL-$version.txt &&
 
 	    ssh $BETA_FTPHOST "\
-	    rm -f $BETA_FTPDIR/mercury-*-$RELEASE_VERSION_PATTERN[0-9].tar.gz && 
-	    rm -f $BETA_FTPDIR/mercury-*-$version.tar.gz && 
-	    rm -f $BETA_FTPDIR/mercury-*-$RELEASE_VERSION_PATTERN[0-9].txt && 
-	    rm -f $BETA_FTPDIR/mercury-*-$version.txt && 
+	    [ -d $BETA_FTPDIR ] || mkdir $BETA_FTPDIR
+	    rm -f $BETA_FTPDIR/mercury-*-$RELEASE_VERSION_PATTERN[0-9].tar.gz \
+	          $BETA_FTPDIR/mercury-*-$version.tar.gz \
+	          $BETA_FTPDIR/mercury-*-$RELEASE_VERSION_PATTERN[0-9].txt \
+	          $BETA_FTPDIR/mercury-*-$version.txt && 
 	    $LN $BETA_FTPDIR/mercury-compiler-$version-unstable.tar.gz \
 	        $BETA_FTPDIR/mercury-compiler-$version.tar.gz &&
 	    $LN $BETA_FTPDIR/mercury-extras-$version-unstable.tar.gz \
@@ -1229,8 +1250,9 @@ case $status in
 	        $STABLE/mercury-gcc-$version.tar.gz &&
 
 	    ssh $BETA_FTPHOST "\
-	    rm -f $BETA_FTPDIR/mercury-gcc-$RELEASE_VERSION_PATTERN[0-9].tar.gz && 
-	    rm -f $BETA_FTPDIR/mercury-gcc-$version.tar.gz && 
+	    [ -d $BETA_FTPDIR ] || mkdir $BETA_FTPDIR
+	    rm -f $BETA_FTPDIR/mercury-gcc-$RELEASE_VERSION_PATTERN[0-9].tar.gz \
+		  $BETA_FTPDIR/mercury-gcc-$version.tar.gz && 
 	    $LN $BETA_FTPDIR/mercury-gcc-$version-unstable.tar.gz \
 	        $BETA_FTPDIR/mercury-gcc-$version.tar.gz" &&
 
@@ -1263,6 +1285,7 @@ echo "test_mercury generating ftp index files, starting at `date`" 1>&2
 rsh $BETA_FTPHOST "\
 	PATH=/home/mercury/public/cron/scripts:\$PATH &&
 	export PATH &&
+	( [ -d $BETA_FTPDIR ] || mkdir $BETA_FTPDIR ) &&
 	cd $BETA_FTPDIR &&
 	generate_index_html" || set_status "generating ftp index"
 echo "test_mercury generating ftp index files, finished at `date`" 1>&2
