@@ -85,6 +85,15 @@ while true; do
 done
 
 case "$grade" in
+	*.prof)	PROF_OPTS="-DPROFILE_TIME -DPROFILE_CALLS"
+		grade="` expr $grade : '\(.*\).prof' `"
+		;;
+	*)
+		PROF_OPTS="-DNO_SIGNALS"
+		;;
+esac
+
+case "$grade" in
 	*.gc)	GC_OPTS="-DCONSERVATIVE_GC"
 		grade="` expr $grade : '\(.*\).gc' `"
 		;;
@@ -161,7 +170,7 @@ esac
 
 if $verbose; then
 	echo $CC -I $C_INCL_DIR $ARCH_OPTS $HOST_OPTS $ANSI_OPTS $CHECK_OPTS \
-		$GRADE_OPTS $GC_OPTS "$@"
+		$GRADE_OPTS $GC_OPTS $PROF_OPTS "$@"
 fi
 exec $CC -I $C_INCL_DIR $ARCH_OPTS $HOST_OPTS $ANSI_OPTS $CHECK_OPTS \
-	$GRADE_OPTS $GC_OPTS "$@"
+	$GRADE_OPTS $GC_OPTS $PROF_OPTS "$@"
