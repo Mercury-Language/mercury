@@ -1,0 +1,54 @@
+-----------------------------------------------------------------------------
+
+INTRODUCTION
+
+Mercury is in the process of being ported to use the Microsoft Visual
+C++ 6
+compiler.  However not all dependencies on Cygwin have been removed and
+cygwin is still required for installation (see README.MS-Windows).
+
+-----------------------------------------------------------------------------
+
+CONFIGURATION
+
+To use MSVC to build the compiler issue the following configure command.
+
+CC='CL /nologo' CPP='CL /nologo /E' configure
+
+configure defaults to using the hlc.gc grade as this is the only grade
+currently supported.
+
+-----------------------------------------------------------------------------
+
+INSTALLING ON NETWORK DRIVES
+
+If you want to install on the machine, foo, in the directory \usr\local
+you need to add `--prefix //foo/usr/local' as an option to configure.
+
+Then ensure that the directory that you wish to install into is mounted
+somewhere, ie
+
+mount //foo/usr/local /temp_mount_point
+
+and then use that mount point as the location to install into
+
+make install INSTALL_PREFIX=/temp_mount_point
+
+This avoids the problem that
+
+        mkdir -p //foo/usr/local/xxx
+
+fails.
+
+-----------------------------------------------------------------------------
+
+NONE.* GRADES
+
+Are not supported yet! But if they were and you have a file with
+a large
+switch in it you need to pass the following flag to mmc
+
+--max-jump-table-size 512
+
+
+-----------------------------------------------------------------------------
