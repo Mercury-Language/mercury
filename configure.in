@@ -219,9 +219,14 @@ EOF
 			--halt-at-warn $link_static_opt conftest \
 			</dev/null >&AC_FD_CC 2>&1 &&
 		test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world" &&
+		# Test for the --record-term-sizes-as-words option.
+		# Note that we need to set --grade to an LLDS grade
+		# when doing this test because term size profiling
+		# requires an LLDS grade.
 		$BOOTSTRAP_MC \
+			--grade none.gc \
 			--record-term-sizes-as-words \
-			--compile-to-c conftest \
+			--output-grade-string \
 			</dev/null >&AC_FD_CC 2>&1
 	then
 		AC_MSG_RESULT(yes)
