@@ -9,6 +9,7 @@ include ../Mmake.common
 SOURCES= \
 	bigtest.m \
 	circ_type.m \
+	constructor_warning.m \
 	det_errors.m \
 	funcs_as_preds.m \
 	errors.m \
