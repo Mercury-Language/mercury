@@ -282,6 +282,7 @@
 				% percentage.
 
 		;	gcc_local_labels
+		;	prefer_switch
 
 	% Optimization Options
 		;	opt_level
@@ -633,7 +634,8 @@ option_defaults_2(code_gen_option, [
 					% 0 indicates any size.
 	fact_table_max_array_size -	int(1024),
 	fact_table_hash_percent_full - 	int(90),
-	gcc_local_labels	-	bool(no)
+	gcc_local_labels	-	bool(no),
+	prefer_switch		-	bool(yes)
 ]).
 option_defaults_2(special_optimization_option, [
 		% Special optimization options.
@@ -1009,6 +1011,7 @@ long_option("fact-table-max-array-size",fact_table_max_array_size).
 long_option("fact-table-hash-percent-full",
 					fact_table_hash_percent_full).
 long_option("gcc-local-labels",		gcc_local_labels).
+long_option("prefer-switch",		prefer_switch).
 
 % optimization options
 
@@ -2121,6 +2124,17 @@ options_help_code_generation -->
 %		"\tvia a `goto'.",
 %		"\tIf this option is not enabled, the default behaviour is to",
 %		"\tuse the standard ANSI/ISO C setjmp() and longjmp() functions."
+
+% This option is not yet documented because it is not yet useful -- currently
+% we don't take advantage of GNU C's computed gotos extension.
+%		"--no-prefer-switch",
+%		"\tGenerate code using computed gotos rather than switches.",
+%		"\tThis makes the generated code less readable, but potentially",
+%		"\tslightly more efficient.",
+%		"\tThis option has no effect unless the `--high-level-code' option",
+%		"\tis enabled.  It also has no effect if the `--target' option is",
+%		"\tset to `il'.",
+
 	]),
 
 	io__write_string("\n    Code generation target options:\n"),

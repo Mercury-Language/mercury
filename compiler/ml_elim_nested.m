@@ -670,6 +670,12 @@ flatten_stmt(Stmt0, Stmt) -->
 		flatten_maybe_statement(MaybeElse0, MaybeElse),
 		{ Stmt = if_then_else(Cond, Then, MaybeElse) }
 	;
+		{ Stmt0 = switch(Type, Val0, Cases0, Default0) },
+		fixup_rval(Val0, Val),
+		list__map_foldl(flatten_case, Cases0, Cases),
+		flatten_default(Default0, Default),
+		{ Stmt = switch(Type, Val, Cases, Default) }
+	;
 		{ Stmt0 = label(_) },
 		{ Stmt = Stmt0 }
 	;
@@ -706,6 +712,23 @@ flatten_stmt(Stmt0, Stmt) -->
 		{ Stmt = atomic(AtomicStmt) }
 	).
 
+:- pred flatten_case(mlds__switch_case, mlds__switch_case,
+		elim_info, elim_info).
+:- mode flatten_case(in, out, in, out) is det.
+
+flatten_case(Conds0 - Statement0, Conds - Statement) -->
+	list__map_foldl(fixup_case_cond, Conds0, Conds),
+	flatten_statement(Statement0, Statement).
+
+:- pred flatten_default(mlds__switch_default, mlds__switch_default,
+		elim_info, elim_info).
+:- mode flatten_default(in, out, in, out) is det.
+
+flatten_default(default_is_unreachable, default_is_unreachable) --> [].
+flatten_default(default_do_nothing, default_do_nothing) --> [].
+flatten_default(default_case(Statement0), default_case(Statement)) -->
+	flatten_statement(Statement0, Statement).
+	
 %-----------------------------------------------------------------------------%
 
 %
@@ -837,10 +860,11 @@ ml_should_add_local_data(ModuleName, VarName,
 
 %
 % fixup_atomic_stmt:
+% fixup_case_cond:
+% fixup_trail_op:
 % fixup_rvals:
 % fixup_maybe_rval:
 % fixup_rval:
-% fixup_trail_op:
 % fixup_lvals:
 % fixup_lval:
 %	Recursively process the specified construct, calling fixup_var on
@@ -873,6 +897,16 @@ fixup_atomic_stmt(target_code(Lang, Components0),
 		target_code(Lang, Components)) -->
 	list__map_foldl(fixup_target_code_component,
 		Components0, Components).
+
+:- pred fixup_case_cond(mlds__case_match_cond, mlds__case_match_cond,
+		elim_info, elim_info).
+:- mode fixup_case_cond(in, out, in, out) is det.
+
+fixup_case_cond(match_value(Rval0), match_value(Rval)) -->
+	fixup_rval(Rval0, Rval).
+fixup_case_cond(match_range(Low0, High0), match_range(Low, High)) -->
+	fixup_rval(Low0, Low),
+	fixup_rval(High0, High).
 
 :- pred fixup_target_code_component(target_code_component,
 		target_code_component, elim_info, elim_info).
@@ -1156,6 +1190,11 @@ stmt_contains_defn(Stmt, Defn) :-
 		; maybe_statement_contains_defn(MaybeElse, Defn)
 		)
 	;
+		Stmt = switch(_Type, _Val, Cases, Default),
+		( cases_contains_defn(Cases, Defn)
+		; default_contains_defn(Default, Defn)
+		)
+	;
 		Stmt = label(_Label),
 		fail
 	;
@@ -1182,6 +1221,22 @@ stmt_contains_defn(Stmt, Defn) :-
 		Stmt = atomic(_AtomicStmt),
 		fail
 	).
+
+:- pred cases_contains_defn(list(mlds__switch_case), mlds__defn).
+:- mode cases_contains_defn(in, out) is nondet.
+
+cases_contains_defn(Cases, Defn) :-
+	list__member(Case, Cases),
+	Case = _MatchConds - Statement,
+	statement_contains_defn(Statement, Defn).
+
+:- pred default_contains_defn(mlds__switch_default, mlds__defn).
+:- mode default_contains_defn(in, out) is nondet.
+
+default_contains_defn(default_do_nothing, _) :- fail.
+default_contains_defn(default_is_unreachable, _) :- fail.
+default_contains_defn(default_case(Statement), Defn) :-
+	statement_contains_defn(Statement, Defn).
 
 %-----------------------------------------------------------------------------%
 
@@ -1284,6 +1339,12 @@ stmt_contains_var(Stmt, Name) :-
 		; maybe_statement_contains_var(MaybeElse, Name)
 		)
 	;
+		Stmt = switch(_Type, Val, Cases, Default),
+		( rval_contains_var(Val, Name)
+		; cases_contains_var(Cases, Name)
+		; default_contains_var(Default, Name)
+		)
+	;
 		Stmt = label(_Label),
 		fail
 	;
@@ -1315,6 +1376,22 @@ stmt_contains_var(Stmt, Name) :-
 		Stmt = atomic(AtomicStmt),
 		atomic_stmt_contains_var(AtomicStmt, Name)
 	).
+
+:- pred cases_contains_var(list(mlds__switch_case), mlds__var).
+:- mode cases_contains_var(in, in) is semidet.
+
+cases_contains_var(Cases, Name) :-
+	list__member(Case, Cases),
+	Case = _MatchConds - Statement,
+	statement_contains_var(Statement, Name).
+
+:- pred default_contains_var(mlds__switch_default, mlds__var).
+:- mode default_contains_var(in, in) is semidet.
+
+default_contains_var(default_do_nothing, _) :- fail.
+default_contains_var(default_is_unreachable, _) :- fail.
+default_contains_var(default_case(Statement), Name) :-
+	statement_contains_var(Statement, Name).
 
 :- pred atomic_stmt_contains_var(mlds__atomic_statement, mlds__var).
 :- mode atomic_stmt_contains_var(in, in) is semidet.

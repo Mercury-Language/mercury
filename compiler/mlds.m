@@ -554,6 +554,9 @@
 :- type mlds__interface_id == mlds__type.
 
 %-----------------------------------------------------------------------------%
+%
+% Declaration flags
+%
 
 :- type mlds__decl_flags.
 
@@ -605,6 +608,9 @@
 		constness, abstractness) = mlds__decl_flags.
 
 %-----------------------------------------------------------------------------%
+%
+% Foreign code interfacing
+%
 
 	%
 	% Foreign code required for the foreign language interface.
@@ -633,6 +639,9 @@
 
 
 %-----------------------------------------------------------------------------%
+%
+% Contexts (i.e. source code locations)
+%
 
 	% mlds__context is probably == prog_context,
 	% but might also contain goal_path or other information.
@@ -643,6 +652,9 @@
 :- func mlds__get_prog_context(mlds__context) = prog_context.
 
 %-----------------------------------------------------------------------------%
+%
+% Statements
+%
 
 :- type mlds__statements == list(mlds__statement).
 
@@ -672,19 +684,30 @@
 	%
 	% selection (see also computed_goto)
 	%
+
 	;	if_then_else(mlds__rval, mlds__statement,
 			maybe(mlds__statement))
 
-/******
-	% Is it worth including this?  We already have `computed_goto'...
+		% This representation for switches is very general:
+		% it allows switching on any type, and cases can match
+		% on ranges as well as on values.
+		% Many target languages only allow switches on ints or enums.
+		% Some (e.g. C#) also allow switches on strings.
+		% Most target languages only allow matching on values;
+		% only some (e.g. GNU C) allow matching on ranges.
+		% Note that unlike C, MLDS cases do NOT fall through; if you
+		% want to achieve that effect, you need to use an explicit goto.
 	;	switch(
+			% The value to switch on
+			mlds__type,
 			mlds__rval,
 
-			% other representations might be better...
-			assoc_list(mlds__rval, mlds__statement),
-			mlds__statement		% the default case
+			% The different cases
+			list(mlds__switch_case),
+
+			% What to do if none of the cases match
+			mlds__switch_default
 		)
-******/
 
 	%
 	% transfer of control
@@ -786,14 +809,67 @@ XXX Full exception handling support is not yet implemented.
 	
 	.
 
+%-----------------------------------------------------------------------------%
+%
+% Extra info for switches
+%
+
+	% Each switch case consists of the conditions to match against,
+	% and the statement to execute if the match succeeds.
+	% Unlike C, cases do NOT fall through; if you want to achieve that
+	% effect, you need to use an explicit goto.
+:- type mlds__switch_case == pair(mlds__case_match_conds, mlds__statement).
+
+	% case_match_conds should be a _non-empty_ list of conditions;
+	% if _any_ of the conditions match, this case will be selected.
+:- type mlds__case_match_conds == list(mlds__case_match_cond).
+
+	% A case_match_cond specifies when a switch case will be selected
+:- type mlds__case_match_cond
+	--->	match_value(mlds__rval)		% match_value(Val) matches if
+						% the switch value is equal to
+						% the specified Val
+
+	;	match_range(mlds__rval, mlds__rval).  % match_range(Min, Max)
+						% matches if the switch value
+						% is between Min and Max,
+						% inclusive
+
+	% The switch_default specifies what to do if none of the switch
+	% conditions match.
+:- type mlds__switch_default
+	--->	default_is_unreachable		% The switch is exhaustive,
+						% so the default case should
+						% never be reached.
+
+	;	default_do_nothing		% The default action is to
+						% just fall through to the
+						% statement after the switch.
+
+	;	default_case(mlds__statement).	% The default is to execute
+						% the specified statement.
+
+%-----------------------------------------------------------------------------%
+%
+% Extra info for labels
+%
 
 :- type mlds__label == string.
+
+%-----------------------------------------------------------------------------%
+%
+% Extra info for calls
+%
 
 :- type is_tail_call
 	--->	tail_call	% a tail call
 	;	call		% just an ordinary call
 	.
 
+%-----------------------------------------------------------------------------%
+%
+% Extra info for exception handling
+%
 
 	% XXX This is tentative -- the current definition may be
 	% a bit too specific to C++-style exceptions.
@@ -810,6 +886,7 @@ XXX Full exception handling support is not yet implemented.
 				% if `no', then exception value will not be used
 		).
 
+%-----------------------------------------------------------------------------%
 
 	%
 	% atomic statements

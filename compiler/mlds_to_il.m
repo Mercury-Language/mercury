@@ -760,6 +760,12 @@ statement_to_il(statement(if_then_else(Condition, ThenCase, ElseCase),
 		instr_node(label(DoneLabel))
 		]) }.
 
+statement_to_il(statement(switch(_Type, _Val, _Cases, _Default),
+		_Context), _Instrs) -->
+	% The IL back-end only supports computed_gotos and if-then-else chains;
+	% the MLDS code generator should avoid generating MLDS switches.
+	{ error("mlds_to_il.m: `switch' not supported") }.
+
 statement_to_il(statement(while(Condition, Body, AtLeastOnce), 
 		_Context), Instrs) -->
 	generate_condition(Condition, ConditionInstrs, EndLabel),
@@ -2167,7 +2173,7 @@ defn_to_local(ModuleName,
 		mangle_mlds_var(qual(ModuleName, MangledDataName), Id),
 		MLDSType0 = MLDSType
 	;
-		error("definintion name was not data/1")
+		error("definition name was not data/1")
 	).
 
 %-----------------------------------------------------------------------------%

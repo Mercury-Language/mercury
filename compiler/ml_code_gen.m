@@ -683,7 +683,9 @@
 
 :- interface.
 
-:- import_module hlds_module, mlds.
+:- import_module hlds_module, hlds_goal.
+:- import_module mlds, ml_code_util.
+:- import_module llds. % XXX needed for `code_model'.
 :- import_module io.
 
 %-----------------------------------------------------------------------------%
@@ -694,13 +696,30 @@
 :- pred ml_code_gen(module_info, mlds, io__state, io__state).
 :- mode ml_code_gen(in, out, di, uo) is det.
 
+	% Generate MLDS code for the specified goal in the
+	% specified code model.  Return the result as a single statement
+	% (which may be a block statement containing nested declarations).
+	%
+:- pred ml_gen_goal(code_model, hlds_goal, mlds__statement,
+			ml_gen_info, ml_gen_info).
+:- mode ml_gen_goal(in, in, out, in, out) is det.
+
+	% Generate MLDS code for the specified goal in the
+	% specified code model.  Return the result as two lists,
+	% one containing the necessary declarations and the other
+	% containing the generated statements.
+	%
+:- pred ml_gen_goal(code_model, hlds_goal, mlds__defns, mlds__statements,
+			ml_gen_info, ml_gen_info).
+:- mode ml_gen_goal(in, in, out, out, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module ml_type_gen, ml_call_gen, ml_unify_gen, ml_code_util.
-:- import_module llds. % XXX needed for `code_model'.
+:- import_module ml_type_gen, ml_call_gen, ml_unify_gen, ml_switch_gen.
+:- import_module ml_code_util.
 :- import_module arg_info, export, llds_out. % XXX needed for pragma C code
 :- import_module hlds_pred, hlds_goal, hlds_data, prog_data.
 :- import_module goal_util, type_util, mode_util, builtin_ops.
@@ -1263,10 +1282,6 @@ ml_gen_convert_headvars([_|_], [], _, _, _, _, _) -->
 	% specified code model.  Return the result as a single statement
 	% (which may be a block statement containing nested declarations).
 	%
-:- pred ml_gen_goal(code_model, hlds_goal, mlds__statement,
-			ml_gen_info, ml_gen_info).
-:- mode ml_gen_goal(in, in, out, in, out) is det.
-
 ml_gen_goal(CodeModel, Goal, MLDS_Statement) -->
 	ml_gen_goal(CodeModel, Goal, MLDS_Decls, MLDS_Statements),
 	{ Goal = _ - GoalInfo },
@@ -1279,10 +1294,6 @@ ml_gen_goal(CodeModel, Goal, MLDS_Statement) -->
 	% one containing the necessary declarations and the other
 	% containing the generated statements.
 	%
-:- pred ml_gen_goal(code_model, hlds_goal, mlds__defns, mlds__statements,
-			ml_gen_info, ml_gen_info).
-:- mode ml_gen_goal(in, in, out, out, in, out) is det.
-
 ml_gen_goal(CodeModel, Goal, MLDS_Decls, MLDS_Statements) -->
 	{ Goal = GoalExpr - GoalInfo },
 	%
@@ -2440,123 +2451,6 @@ ml_gen_pragma_c_output_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
 		{ AssignOutput = [] },
 		{ ConvDecls = [] },
 		{ ConvOutputStatements = [] }
-	).
-
-%-----------------------------------------------------------------------------%
-%
-% Code for switches
-%
-
-	% Generate MLDS code for a switch.
-	%
-:- pred ml_gen_switch(prog_var, can_fail, list(case), code_model, prog_context,
-			mlds__defns, mlds__statements,
-			ml_gen_info, ml_gen_info).
-:- mode ml_gen_switch(in, in, in, in, in, out, out, in, out) is det.
-
-
-:- type extended_case ---> case(int, cons_tag, cons_id, hlds_goal).
-:- type cases_list == list(extended_case).
-
-	% TODO: optimize various different special kinds of switches,
-	% such as string switches, dense switches, lookup switches,
-	% etc. (see switch_gen.m, etc.).
-	% TODO: optimize switches so that the recursive case comes
-	% first (see switch_gen.m).
-
-ml_gen_switch(Var, CanFail, Cases, CodeModel, Context,
-		MLDS_Decls, MLDS_Statements) -->
-	%
-	% Lookup the representation of the constructors for the tag tests
-	% and their corresponding priorities.
-	%
-	ml_switch_lookup_tags(Cases, Var, TaggedCases0),
-	%
-	% Sort the cases according to the priority of their tag tests.
-	%
-	{ list__sort_and_remove_dups(TaggedCases0, TaggedCases) },
-	%
-	% Generate an if-then-else chain which tests each of the cases
-	% in turn.
-	%
-	ml_switch_generate_cases(TaggedCases, Var,
-		CodeModel, CanFail, Context,
-		MLDS_Decls, MLDS_Statements).
-
-	% Look up the representation (tag) for the cons_id in each case.
-	% Also look up the priority of each tag test.
-	%
-:- pred ml_switch_lookup_tags(list(case), prog_var, cases_list,
-				ml_gen_info, ml_gen_info).
-:- mode ml_switch_lookup_tags(in, in, out, in, out) is det.
-
-ml_switch_lookup_tags([], _, []) --> [].
-ml_switch_lookup_tags([Case | Cases], Var, [TaggedCase | TaggedCases]) -->
-	{ Case = case(ConsId, Goal) },
-	ml_variable_type(Var, Type),
-	ml_cons_id_to_tag(ConsId, Type, Tag),
-	{ ml_switch_priority(Tag, Priority) },
-	{ TaggedCase = case(Priority, Tag, ConsId, Goal) },
-	ml_switch_lookup_tags(Cases, Var, TaggedCases).
-
-	% Return the priority of a tag test.
-	% A low number here indicates a high priority.
-	% We prioritize the tag tests so that the cheapest
-	% (most efficient) ones come first.
-	%
-:- pred ml_switch_priority(cons_tag, int).
-:- mode ml_switch_priority(in, out) is det.
-
-ml_switch_priority(no_tag, 0).			% should never occur
-ml_switch_priority(int_constant(_), 1).
-ml_switch_priority(shared_local_tag(_, _), 1).
-ml_switch_priority(unshared_tag(_), 2).
-ml_switch_priority(float_constant(_), 3).
-ml_switch_priority(shared_remote_tag(_, _), 4).
-ml_switch_priority(string_constant(_), 5).
-	% The following tags should all never occur in switches.
-ml_switch_priority(pred_closure_tag(_, _, _), 6).
-ml_switch_priority(code_addr_constant(_, _), 6).
-ml_switch_priority(type_ctor_info_constant(_, _, _), 6).
-ml_switch_priority(base_typeclass_info_constant(_, _, _), 6).
-ml_switch_priority(tabling_pointer_constant(_, _), 6).
-
-	% Generate a chain of if-then-elses to test each case in turn.
-	%
-:- pred ml_switch_generate_cases(list(extended_case), prog_var,
-	code_model, can_fail, prog_context, mlds__defns, mlds__statements,
-	ml_gen_info, ml_gen_info).
-:- mode ml_switch_generate_cases(in, in, in, in, in, out, out,
-	in, out) is det.
-
-ml_switch_generate_cases([], _Var, CodeModel, CanFail, Context,
-		[], MLDS_Statements) -->
-	( { CanFail = can_fail } ->
-		ml_gen_failure(CodeModel, Context, MLDS_Statements)
-	;
-		{ error("switch failure") }
-	).
-ml_switch_generate_cases([Case | Cases], Var, CodeModel, CanFail, Context,
-		MLDS_Decls, MLDS_Statements) -->
-	{ Case = case(_, _Tag, ConsId, Goal) },
-	(
-		{ Cases = [], CanFail = cannot_fail }
-	->
-		ml_gen_goal(CodeModel, Goal, MLDS_Decls, MLDS_Statements)
-	;
-		ml_gen_tag_test(Var, ConsId, TagTestDecls, TagTestStatements,
-			TagTestExpression),
-		ml_gen_goal(CodeModel, Goal, GoalStatement),
-		ml_switch_generate_cases(Cases, Var, CodeModel, CanFail,
-			Context, RestDecls, RestStatements),
-		{ Rest = ml_gen_block(RestDecls, RestStatements, Context) },
-		{ IfStmt = if_then_else(TagTestExpression,
-				GoalStatement, yes(Rest)) },
-		{ IfStatement = mlds__statement(IfStmt,
-			mlds__make_context(Context)) },
-		{ MLDS_Decls = TagTestDecls },
-		{ MLDS_Statements = list__append(TagTestStatements,
-			[IfStatement]) }
 	).
 
 %-----------------------------------------------------------------------------%

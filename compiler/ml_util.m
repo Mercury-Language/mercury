@@ -111,6 +111,11 @@ stmt_contains_statement(Stmt, SubStatement) :-
 		; maybe_statement_contains_statement(MaybeElse, SubStatement)
 		)
 	;
+		Stmt = switch(_Type, _Val, Cases, Default),
+		( cases_contains_statement(Cases, SubStatement)
+		; default_contains_statement(Default, SubStatement)
+		)
+	;
 		Stmt = label(_Label),
 		fail
 	;
@@ -137,5 +142,21 @@ stmt_contains_statement(Stmt, SubStatement) :-
 		Stmt = atomic(_AtomicStmt),
 		fail
 	).
+
+:- pred cases_contains_statement(list(mlds__switch_case), mlds__statement).
+:- mode cases_contains_statement(in, out) is nondet.
+
+cases_contains_statement(Cases, SubStatement) :-
+	list__member(Case, Cases),
+	Case = _MatchCond - Statement,
+	statement_contains_statement(Statement, SubStatement).
+
+:- pred default_contains_statement(mlds__switch_default, mlds__statement).
+:- mode default_contains_statement(in, out) is nondet.
+
+default_contains_statement(default_do_nothing, _) :- fail.
+default_contains_statement(default_is_unreachable, _) :- fail.
+default_contains_statement(default_case(Statement), SubStatement) :-
+	statement_contains_statement(Statement, SubStatement).
 
 %-----------------------------------------------------------------------------%

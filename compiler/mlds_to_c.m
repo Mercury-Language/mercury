@@ -1876,6 +1876,17 @@ mlds_output_stmt(Indent, FuncInfo, if_then_else(Cond, Then0, MaybeElse),
 	;
 		[]
 	).
+mlds_output_stmt(Indent, FuncInfo, switch(_Type, Val, Cases, Default),
+		Context) -->
+	mlds_indent(Context, Indent),
+	io__write_string("switch ("),
+	mlds_output_rval(Val),
+	io__write_string(") {\n"),
+	list__foldl(mlds_output_switch_case(Indent + 1, FuncInfo, Context),
+		Cases),
+	mlds_output_switch_default(Indent + 1, FuncInfo, Context, Default),
+	mlds_indent(Context, Indent),
+	io__write_string("}\n").
 
 	%
 	% transfer of control
@@ -1901,7 +1912,7 @@ mlds_output_stmt(Indent, _FuncInfo, computed_goto(Expr, Labels), Context) -->
 	mlds_indent(Indent),
 	io__write_string("switch ("),
 	mlds_output_rval(Expr),
-	io__write_string(") {"),
+	io__write_string(") {\n"),
 	{ OutputLabel =
 	    (pred(Label::in, Count0::in, Count::out, di, uo) is det -->
 		mlds_indent(Context, Indent + 1),
@@ -2057,8 +2068,8 @@ mlds_output_stmt(Indent, FuncInfo, try_commit(Ref, Stmt0, Handler), Context) -->
 		%               <Handler>
 
 		%
-		% XXX do we need to declare the local variables as volatile,
-		% because of the setjmp()?
+		% XXX we need to declare the local variables as volatile,
+		% because of the setjmp()!
 		%
 
 		%
@@ -2085,6 +2096,56 @@ mlds_output_stmt(Indent, FuncInfo, try_commit(Ref, Stmt0, Handler), Context) -->
 
 		mlds_output_statement(Indent + 1, FuncInfo, Handler)
 	).
+
+%-----------------------------------------------------------------------------%
+
+%
+% Extra code for outputting switch statements
+%
+
+:- pred mlds_output_switch_case(indent, func_info, mlds__context,
+		mlds__switch_case, io__state, io__state).
+:- mode mlds_output_switch_case(in, in, in, in, di, uo) is det.
+
+mlds_output_switch_case(Indent, FuncInfo, Context, Case) -->
+	{ Case = (Conds - Statement) },
+	list__foldl(mlds_output_case_cond(Indent, Context), Conds),
+	mlds_output_statement(Indent + 1, FuncInfo, Statement),
+	mlds_indent(Context, Indent + 1),
+	io__write_string("break;\n").
+
+:- pred mlds_output_case_cond(indent, mlds__context,
+		mlds__case_match_cond, io__state, io__state).
+:- mode mlds_output_case_cond(in, in, in, di, uo) is det.
+
+mlds_output_case_cond(Indent, Context, match_value(Val)) -->
+	mlds_indent(Context, Indent),
+	io__write_string("case "),
+	mlds_output_rval(Val),
+	io__write_string(":\n").
+mlds_output_case_cond(Indent, Context, match_range(Low, High)) -->
+	% This uses the GNU C extension `case <Low> ... <High>:'.
+	mlds_indent(Context, Indent),
+	io__write_string("case "),
+	mlds_output_rval(Low),
+	io__write_string(" ... "),
+	mlds_output_rval(High),
+	io__write_string(":\n").
+
+:- pred mlds_output_switch_default(indent, func_info, mlds__context,
+		mlds__switch_default, io__state, io__state).
+:- mode mlds_output_switch_default(in, in, in, in, di, uo) is det.
+
+mlds_output_switch_default(Indent, _FuncInfo, Context, default_is_unreachable) -->
+	mlds_indent(Context, Indent),
+	io__write_string("default: /*NOTREACHED*/ assert(0);\n").
+mlds_output_switch_default(_Indent, _FuncInfo, _Context, default_do_nothing) --> [].
+mlds_output_switch_default(Indent, FuncInfo, Context, default_case(Statement)) -->
+	mlds_indent(Context, Indent),
+	io__write_string("default:\n"),
+	mlds_output_statement(Indent + 1, FuncInfo, Statement).
+
+%-----------------------------------------------------------------------------%
 
 	%
 	% If memory profiling is turned on output an instruction to
@@ -2219,7 +2280,7 @@ mlds_output_atomic_stmt(Indent, _FuncInfo, comment(Comment), _) -->
 	mlds_indent(Indent),
 	io__write_string("/* "),
 	io__write_string(Comment),
-	io__write_string(" */").
+	io__write_string(" */\n").
 
 	%
 	% assignment

@@ -173,6 +173,11 @@
 		mlds__pred_label, mlds_module_name).
 :- mode ml_gen_pred_label_from_rtti(in, out, out) is det.
 
+	% Allocate a new label name, for use in label statements.
+	%
+:- pred ml_gen_new_label(mlds__label, ml_gen_info, ml_gen_info).
+:- mode ml_gen_new_label(out, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %
 % Routines for dealing with variables
@@ -476,6 +481,14 @@
 
 :- pred ml_gen_info_use_gcc_nested_functions(bool, ml_gen_info, ml_gen_info).
 :- mode ml_gen_info_use_gcc_nested_functions(out, in, out) is det.
+
+
+	% Generate a new label number for use in label statements.
+	% This is used to give unique names to the case labels generated
+	% for dense switch statements.
+:- type label_num == int.
+:- pred ml_gen_info_new_label(label_num, ml_gen_info, ml_gen_info).
+:- mode ml_gen_info_new_label(out, in, out) is det.
 
 	% A number corresponding to an MLDS nested function which serves as a
 	% label (i.e. a continuation function).
@@ -1200,6 +1213,10 @@ ml_gen_pred_label_from_rtti(RttiProcLabel, MLDS_PredLabel, MLDS_Module) :-
 	),
 	MLDS_Module = mercury_module_name_to_mlds(DefiningModule).
 
+ml_gen_new_label(Label) -->
+	ml_gen_info_new_label(LabelNum),
+	{ string__format("label_%d", [i(LabelNum)], Label) }.
+
 %-----------------------------------------------------------------------------%
 %
 % Code for dealing with variables
@@ -1679,6 +1696,7 @@ ml_declare_env_ptr_arg(Name - mlds__generic_env_ptr_type) -->
 
 			func_label :: mlds__func_sequence_num,
 			commit_label :: commit_sequence_num,
+			label :: label_num,
 			cond_var :: cond_seq,
 			conv_var :: conv_seq,
 			const_num :: const_seq,
@@ -1705,6 +1723,7 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = MLDSGenInfo :-
 	ByRefOutputVars = select_output_vars(ModuleInfo, HeadVars, HeadModes,
 		VarTypes),
 
+	LabelCounter = 0,
 	FuncLabelCounter = 0,
 	CommitLabelCounter = 0,
 	CondVarCounter = 0,
@@ -1722,6 +1741,7 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = MLDSGenInfo :-
 			VarSet,
 			VarTypes,
 			ByRefOutputVars,
+			LabelCounter,
 			FuncLabelCounter,
 			CommitLabelCounter,
 			CondVarCounter,
@@ -1756,6 +1776,9 @@ ml_gen_info_get_globals(Globals) -->
 	=(Info),
 	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
 	{ module_info_globals(ModuleInfo, Globals) }.
+
+ml_gen_info_new_label(Label, Info, Info^label := Label) :-
+	Label = Info^label + 1.
 
 ml_gen_info_new_func_label(Label, Info, Info^func_label := Label) :-
 	Label = Info^func_label + 1.
