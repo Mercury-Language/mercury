@@ -75,21 +75,26 @@
 :- pred store__set_mutvar(mutvar(T, S), T, store(S), store(S)).
 :- mode store__set_mutvar(in, in, di, uo) is det.
 
-/* 
-The syntax might be nicer if we used some new operators
-
-	:- op(.., xfx, ('<-')).
-	:- op(.., fy, ('!')).
-	:- op(.., xfx, (':=')).
-
-Then we could do something like this:
-
-	Ptr <- new(Val)	  -->	new_mutvar(Val, Ptr).
-	Val <- !Ptr 	  -->	get_mutvar(Ptr, Val).
-	!Ptr := Val	  -->	set_mutvar(Ptr, Val).
-
-I wonder whether it is worth it?
-*/
+	% new_cyclic_mutvar(Func, Mutvar):
+	% create a new mutable variable, whose value is initialized
+	% with the value returned from the specified function `Func'.
+	% The argument passed to the function is the mutvar itself,
+	% whose value has not yet been initialized (this is safe
+	% because the function does not get passed the store, so
+	% it can't examine the uninitialized value).
+	%
+	% This predicate is useful for creating self-referential values
+	% such as circular linked lists. 
+	% For example:
+	%	:- type clist(T, S) ---> node(T, mutvar(clist(T, S))).
+	%	:- pred init_cl(T::in, clist(T, S)::out,
+	%			store(S)::di, store(S)::uo) is det.
+	%	init_cl(X, CList) -->
+	%	    store__new_cyclic_mutvar(func(CL) = node(X, CL), CList).
+	%
+:- pred store__new_cyclic_mutvar(func(mutvar(T, S)) = T, mutvar(T, S),
+		store(S), store(S)).
+:- mode store__new_cyclic_mutvar(in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -158,6 +163,7 @@ I wonder whether it is worth it?
 	% Note that this requires making a copy, so this pred may
 	% be inefficient if used to return large terms; it
 	% is most efficient with atomic terms.
+	% XXX current implementation buggy (does shallow copy)
 :- pred store__copy_ref_value(ref(T, S), T, store(S), store(S)).
 :- mode store__copy_ref_value(in, uo, di, uo) is det.
 
@@ -211,6 +217,23 @@ I wonder whether it is worth it?
 
 :- pragma c_code(init(_S0::uo), will_not_call_mercury, "").
 
+/* 
+Note -- the syntax for the operations on stores
+might be nicer if we used some new operators, e.g.
+
+	:- op(.., xfx, ('<-')).
+	:- op(.., fy, ('!')).
+	:- op(.., xfx, (':=')).
+
+Then we could do something like this:
+
+	Ptr <- new(Val)	  -->	new_mutvar(Val, Ptr).
+	Val <- !Ptr 	  -->	get_mutvar(Ptr, Val).
+	!Ptr := Val	  -->	set_mutvar(Ptr, Val).
+
+I wonder whether it is worth it?  Hmm, probably not.
+*/
+
 :- pragma c_code(new_mutvar(Val::in, Mutvar::out, S0::di, S::uo),
 		will_not_call_mercury,
 "
@@ -232,6 +255,22 @@ I wonder whether it is worth it?
 	*(Word *)Mutvar = Val;
 	S = S0;
 ").
+
+:- pred store__unsafe_new_uninitialized_mutvar(mutvar(T, S),
+						store(S), store(S)).
+:- mode store__unsafe_new_uninitialized_mutvar(out, di, uo) is det.
+
+:- pragma c_code(unsafe_new_uninitialized_mutvar(Mutvar::out, S0::di, S::uo),
+		will_not_call_mercury,
+"
+	incr_hp(Mutvar, 1);
+	S = S0;
+").
+
+store__new_cyclic_mutvar(Func, MutVar) -->
+	store__unsafe_new_uninitialized_mutvar(MutVar),
+	{ Value = Func(MutVar) },
+	store__set_mutvar(MutVar, Value).
 
 %-----------------------------------------------------------------------------%
 
