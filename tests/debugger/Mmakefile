@@ -28,6 +28,11 @@ MCFLAGS = --trace deep
 MLFLAGS = --trace
 C2INITFLAGS = --trace
 
+# We need to use shared libraries for interactive queries to work.
+# The following is necessary for shared libraries to work on Linux.
+MGNUCFLAGS-queens = --pic-reg
+MLFLAGS-queens = --shared
+
 # Base grades `jump' and `fast' cannot be used with
 # stack layouts (which are required for tracing).
 
