@@ -124,14 +124,32 @@
 :- pred varset__set_bindings(varset, substitution, varset).
 :- mode varset__set_bindings(in, in, out) is det.
 
-	% Create a map from name to variable.
+	% Create a map from names to variables.
+	% Each name is mapped to only one variable, even if a name is
+	% shared by more than one variable. Therefore this predicate
+	% is only really useful if it is already known that no two
+	% variables share the same name.
 :- pred varset__create_name_var_map(varset, map(string, var)).
 :- mode varset__create_name_var_map(in, out) is det.
+
+	% Return an association list giving the name of each variable.
+	% Every variable has an entry in the returned association list,
+	% even if it shares its name with another variable.
+:- pred varset__var_name_list(varset, assoc_list(var, string)).
+:- mode varset__var_name_list(in, out) is det.
+
+	% Given a list of variable and varset in which some variables have
+	% no name but some other variables may have the same name,
+	% return another varset in which every variable has a unique name.
+	% If necessary, names will have suffixes added on the end;
+	% the second argument gives the suffix to use.
+:- pred varset__ensure_unique_names(list(var), string, varset, varset).
+:- mode varset__ensure_unique_names(in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, list, map, std_util, assoc_list, require.
+:- import_module int, list, map, std_util, assoc_list, set, require.
 
 :- type varset		--->	varset(
 					var_supply,
@@ -350,6 +368,59 @@ varset__create_name_var_map(varset(_, VarNameIndex, _), NameVarIndex) :-
 	map__keys(VarNameIndex, Vars),
 	map__values(VarNameIndex, Names),
 	map__from_corresponding_lists(Names, Vars, NameVarIndex).
+
+%-----------------------------------------------------------------------------%
+
+varset__var_name_list(varset(_, VarNameIndex, _), VarNameList) :-
+	map__to_assoc_list(VarNameIndex, VarNameList).
+
+%-----------------------------------------------------------------------------%
+
+varset__ensure_unique_names(AllVars, Suffix,
+		varset(Supply, VarNameMap0, Values),
+		varset(Supply, VarNameMap, Values)) :-
+	set__init(UsedNames),
+	map__init(VarNameMap1),
+	varset__ensure_unique_names_2(AllVars, Suffix, UsedNames, VarNameMap0,
+		VarNameMap1, VarNameMap).
+
+:- pred varset__ensure_unique_names_2(list(var), string, set(string),
+	map(var, string), map(var, string), map(var, string)).
+:- mode varset__ensure_unique_names_2(in, in, in, in, in, out) is det.
+
+varset__ensure_unique_names_2([], _, _, _, VarNameMap, VarNameMap).
+varset__ensure_unique_names_2([Var | Vars], Suffix, UsedNames0,
+		OldVarNameMap, VarNameMap0, VarNameMap) :-
+	( map__search(OldVarNameMap, Var, OldName) ->
+		( set__member(OldName, UsedNames0) ->
+			term__var_to_int(Var, VarNum),
+			string__int_to_string(VarNum, NumStr),
+			string__append("_", NumStr, NumSuffix),
+			string__append(OldName, NumSuffix, TrialName)
+		;
+			TrialName = OldName
+		)
+	;
+		term__var_to_int(Var, VarNum),
+		string__int_to_string(VarNum, NumStr),
+		string__append("Var_", NumStr, TrialName)
+	),
+	varset__ensure_unique_names_3(TrialName, Suffix, UsedNames0, FinalName),
+	set__insert(UsedNames0, FinalName, UsedNames1),
+	map__det_insert(VarNameMap0, Var, FinalName, VarNameMap1),
+	varset__ensure_unique_names_2(Vars, Suffix, UsedNames1, OldVarNameMap,
+		VarNameMap1, VarNameMap).
+
+:- pred varset__ensure_unique_names_3(string, string, set(string), string).
+:- mode varset__ensure_unique_names_3(in, in, in, out) is det.
+
+varset__ensure_unique_names_3(Trial0, Suffix, UsedNames, Final) :-
+	( set__member(Trial0, UsedNames) ->
+		string__append(Trial0, Suffix, Trial1),
+		varset__ensure_unique_names_3(Trial1, Suffix, UsedNames, Final)
+	;
+		Final = Trial0
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
