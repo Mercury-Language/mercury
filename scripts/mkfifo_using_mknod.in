@@ -1,5 +1,17 @@
 #! /bin/sh
 # @configure_input@
+#---------------------------------------------------------------------------#
+# Copyright (C) 1995 University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# mkfifo_using_mknod:
+#	This script implements `mkfifo' using the `mknod' command,
+#	for systems which have `mknod' but not `mkfifo'.
+#
+# ENVIRONMENT VARIABLES: MERCURY_MKNOD
+
 MKNOD=${MERCURY_MKNOD=@MKNOD@}
 if [ $# -ne 1 ]; then
 	echo "Usage: `basename $0` filename" 1>&2
