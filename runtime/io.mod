@@ -18,13 +18,21 @@ typedef struct {
 	int line_number;
 } MercuryFile;
 
-MercuryFile mercury_stdin = { stdin, 0 };
-MercuryFile mercury_stdout = { stdout, 0 };
-MercuryFile mercury_stderr = { stderr, 0 };
+MercuryFile mercury_stdin = { NULL, 0 };
+MercuryFile mercury_stdout = { NULL, 0 };
+MercuryFile mercury_stderr = { NULL, 0 };
 MercuryFile *mercury_current_input = &mercury_stdin;
 MercuryFile *mercury_current_output = &mercury_stdout;
 
 #define update_io(r_src, r_dest) ((r_dest) = (r_src))
+
+static void
+mercury_init_io(void)
+{
+	mercury_stdin.file = stdin;
+	mercury_stdout.file = stdout;
+	mercury_stderr.file = stderr;
+}
 
 static MercuryFile*
 mercury_open(const char *filename, const char *type)
@@ -76,20 +84,25 @@ mercury_close(MercuryFile* mf)
 }
 
 BEGIN_MODULE(io_module)
-
+	mercury_init_io();
 BEGIN_CODE
 
 /* input predicates */
 
-mercury__io__read_char_code_3_0:
-	r1 = mercury_getc(mercury_current_input);
-	update_io(r2, r3);
+mercury__io__read_char_code_4_0:
+	r2 = mercury_getc((MercuryFile*)r1);
+	update_io(r3, r4);
 	proceed();
 
 /* output predicates - with output to mercury_current_output */
 
 mercury__io__write_string_3_0:
 	mercury_print_string(mercury_current_output, (char *) r1);
+	update_io(r2, r3);
+	proceed();
+
+mercury__io__write_char_3_0:
+	fprintf(mercury_current_output->file, "%c", (int) r1);
 	update_io(r2, r3);
 	proceed();
 
@@ -116,6 +129,11 @@ mercury__io__flush_output_2_0:
 
 mercury__io__write_string_4_0:
 	mercury_print_string((MercuryFile*)r1, (char *)r2);
+	update_io(r3, r4);
+	proceed();
+
+mercury__io__write_char_4_0:
+	fprintf(((MercuryFile*)r1)->file, "%c", (int) r2);
 	update_io(r3, r4);
 	proceed();
 
@@ -217,7 +235,7 @@ mercury__io__preallocate_heap_space_3_0:
 	update_io(r2, r3);
 	proceed();
 
-mercury__io_call_system_code_4_0:
+mercury__io__call_system_code_4_0:
 	r2 = system((char *)r1);
 	update_io(r3, r4);
 	proceed();
@@ -250,5 +268,54 @@ mercury__type_to_univ_2_1:
 	r2 = r3;
 	r1 = TRUE;  /* for the moment, run-time type check not implemented */
 	proceed();
+
+/* from string.nl */
+
+mercury__intToString_2_0:
+		/* mode intToString(out, in) is semidet */
+	{ int tmp;
+		/* use a temporary, since we can't take the address of a reg */
+	  r1 = sscanf((char *)r3, "%d", &tmp);
+		/* r1 is TRUE if sscanf succeeds, FALSE otherwise */
+	  r2 = tmp;
+	}
+	proceed();
+
+mercury__string__to_int_list_2_0:
+		/* mode (in, out) is det */
+	{ char *p = (char*)r1 + strlen((char*)r1);
+	  r2 = mkword(TAG_NIL, 0);
+	  while (--p >= (char*)r1) {
+		r2 = mkword(TAG_CONS, create2(*p, r2));
+	  }
+	}
+	proceed();
+
+mercury__string__to_int_list_2_1:
+		/* mode (out, in) is det */
+	r1 = r2;
+	{ extern EntryPoint ENTRY(mercury__list__length_2_0);
+	  call(ENTRY(mercury__list__length_2_0),
+		LABEL(mercury__string__to_int_list_2_1_i1)); }
+mercury__string__to_int_list_2_1_i1:
+	r2 = (int)hp;
+	incr_hp(r1);
+
+mercury__string__to_int_list_2_2:
+		/* mode (in, in) is semidet */
+	incr_sp(1);
+	detstackvar(1) = r2;
+	r2 = r3;
+	localcall(mercury__string__to_int_list_2_1,
+		LABEL(mercury__string__to_int_list_2_2_i1));
+mercury__string__to_int_list_2_2_i1:
+	r1 = string_equal(r1, detstackvar(1));
+	proceed();
+		
+/* XXX The following predicates have not yet been implemented! */
+
+mercury__compare_3_0:
+mercury__compare_3_1:
+	fatal_error("not yet implemented");
 
 END_MODULE

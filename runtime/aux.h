@@ -33,6 +33,11 @@ extern	void	printregs(const char *msg);
 
 extern	Word	do_mklist(int start, int len);
 
-extern	void	fatal_error(const char *msg);
+#if __GNUC__
+	#define NO_RETURN __attribute__((noreturn))
+#else
+	#define NO_RETURN
+#endif
+extern	void	fatal_error(const char *msg) NO_RETURN;
 
 #endif
