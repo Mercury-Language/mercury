@@ -59,6 +59,7 @@ MMAKE_VARS=${MMAKE_VARS=$MMAKE_DIR/Mmake.vars}
 MMAKE_RULES=${MMAKE_RULES=$MMAKE_DIR/Mmake.rules}
 MERCURY_INT_DIR=${MERCURY_INT_DIR=@LIBDIR@/ints}
 MERCURY_DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
+MKTEMP=@MKTEMP@
 
 MMAKE=$0
 verbose=false
@@ -148,8 +149,24 @@ MMAKE_USE_SUBDIRS=$use_subdirs
 if $save_makefile; then
 	tmp=Mmake.makefile
 else
-	tmp=/tmp/mmake.$$
-	trap 'status=$?; rm -f $tmp; exit $status' 0 1 2 3 13 15
+	case "$MKTEMP" in
+		"") 	old_umask=`umask`
+			umask 022
+			mmake_tmpdir=/tmp/mmake$$
+			tmp=$mmake_tmpdir/mmake
+			if ! mkdir $mmake_tmpdir ; then
+				echo "Unable to create temporary makefile" 1>&2
+				exit 1
+			fi
+			trap 'status=$?; rm -rf $mmake_tmpdir; exit $status' 0 1 2 3 13 15
+			umask $old_umask
+			;;
+		*)
+			# mktemp should give its own error message.
+			tmp=`$MKTEMP /tmp/mmake.XXXXXX` || exit 1
+			trap 'status=$?; rm -f $tmp; exit $status' 0 1 2 3 13 15
+			;;
+	esac
 fi
 
 MMAKE_MAKE_CMD="${MMAKE_MAKE} -f $tmp -r"
@@ -176,7 +193,7 @@ if $verbose; then
 	echo export MERCURY_INT_DIR
 	echo MERCURY_DEFAULT_GRADE=$MERCURY_DEFAULT_GRADE
 	echo export MERCURY_DEFAULT_GRADE
-	echo cat ${MMAKE_VARS} $deps $ds $mmake ${MMAKE_RULES} ">" $tmp
+	echo cat ${MMAKE_VARS} $deps $ds $mmake ${MMAKE_RULES} ">>" $tmp
 	echo ${MMAKE_MAKE} ${MMAKE_MAKE_OPTS} -f $tmp -r "$@"
 fi
 export MMAKE

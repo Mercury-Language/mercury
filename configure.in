@@ -197,6 +197,23 @@ AC_SUBST(MKNOD)
 
 PATH="$save_PATH"
 #-----------------------------------------------------------------------------#
+MERCURY_MSG("looking for a way to create temporary files...")
+
+AC_PATH_PROG(MKTEMP,mktemp)
+if test "$MKTEMP" != ""; then
+	# check that it really works
+	TMPFILE=`mktemp /tmp/configure.XXXXXX`
+	case "$TMPFILE" in 
+		"") MKTEMP="" ;;
+		*) rm -f $TMPFILE ;;
+	esac
+fi
+if test "$MKTEMP" = ""; then
+	AC_MSG_WARN(cannot find a working \`mktemp', using \`mkdir || exit'')
+	MKTEMP=""
+fi
+AC_SUBST(MKTEMP)
+#-----------------------------------------------------------------------------#
 AC_PROG_CC
 AC_SUBST(CC)
 

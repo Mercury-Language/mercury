@@ -417,8 +417,16 @@ case $demangle in
 	# pipes, then we don't use the demangler
 
 		# create the pipe, making sure we remove it if interrupted
-	PIPE=/tmp/ml.$$
-	trap 'rm -f $PIPE; exit 1' 1 2 3 13 15 
+	old_umask=`umask`
+	umask 022
+	ML_TMPDIR=/tmp/ml$$
+	PIPE=$ML_TMPDIR/pipe
+	if ! mkdir $ML_TMPDIR ; then
+		echo "Unable to create temporary pipe" 1>&2
+		exit 1
+	fi
+	trap 'rm -rf $ML_TMPDIR; exit 1' 1 2 3 13 15 
+	umask $old_umask
 	$MKFIFO $PIPE
 		# execute the demangler in the background, with stdin 
 		# coming from the pipe and with stdout redirected to stderr
@@ -427,7 +435,7 @@ case $demangle in
 	exec >$PIPE 2>&1
 		# now we can remove the pipe; since is an open file, it will
 		# stay around until $CC and $DEMANGLER exit
-	rm -f $PIPE
+	rm -rf $ML_TMPDIR
 		# finally execute $CC; stdout & stderr will
 		# go via the pipe to $DEMANGLER and then to stderr
 	;;
