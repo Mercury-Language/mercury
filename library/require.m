@@ -25,7 +25,7 @@
 %		message.
 
 :- func func_error(string) = _.
-:- mode func_error(in) = unused is erroneous.
+:- mode func_error(in) = out is erroneous.
 
 %	func_error(Message)
 %		An expression that results in a `software_error(Message)'
