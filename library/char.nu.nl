@@ -12,7 +12,7 @@
 % in sp_lib.nl.
 
 % NU-Prolog atoms can only include 7-bit ASCII chars.
-char__max_value(127).
+char__max_char_value(127).
 
 %%% char__to_int('\000', 0).	% not supported by NU-Prolog
 char__to_int('\001', 1).

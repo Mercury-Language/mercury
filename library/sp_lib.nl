@@ -194,7 +194,7 @@ call(Goal0, A, B, C, D, E, F, G, H, I, J) :-
 char__to_int(C, N) :-
 	atom_chars(C, [N]).
 
-char__max_value(255).
+char__max_char_value(255).
 
 % This predicate is defined in C in lexer.m
 lexer__rev_char_list_to_string(RevChars, String) :-
