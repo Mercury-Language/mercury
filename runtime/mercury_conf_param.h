@@ -225,7 +225,7 @@
 ** XXX we really ought to fix that...
 */
 #ifdef MR_HIGHLEVEL_CODE
-  #define BOXED_FLOAT
+  #define BOXED_FLOAT 1
 #endif
 
 /* MR_LOWLEVEL_DEBUG implies MR_DEBUG_GOTOS and MR_CHECK_FOR_OVERFLOW */
