@@ -49,10 +49,46 @@
 %		Keep reading until either we encounter either an `end' token
 %		(i.e. a full stop followed by whitespace) or the end-of-file.
 
+:- pred lexer__token_to_string(token, string).
+:- mode lexer__token_to_string(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module require.
+
+lexer__token_to_string(name(Name), String) :-
+	string__append_list(["token '", Name, "'"], String).
+lexer__token_to_string(variable(Var), String) :-
+	string__append_list(["variable `", Var, "'"], String).
+lexer__token_to_string(integer(Int), String) :-
+	string__int_to_string(Int, IntString),
+	string__append_list(["integer `", IntString, "'"], String).
+lexer__token_to_string(float(Float), String) :-
+	string__float_to_string(Float, FloatString),
+	string__append_list(["float `", FloatString, "'"], String).
+lexer__token_to_string(string(Token), String) :-
+	string__append_list(["string """, Token, """"], String).
+lexer__token_to_string(open, "token ` ('").
+lexer__token_to_string(open_ct, "token `('").
+lexer__token_to_string(close, "token `)'").
+lexer__token_to_string(open_list, "token `['").
+lexer__token_to_string(close_list, "token `]'").
+lexer__token_to_string(open_curly, "token `{'").
+lexer__token_to_string(close_curly, "token `}'").
+lexer__token_to_string(ht_sep, "token `|'").
+lexer__token_to_string(comma, "token `,'").
+lexer__token_to_string(end, "token `. '").
+lexer__token_to_string(eof, "end-of-file").
+lexer__token_to_string(junk(JunkChar), String) :-
+	char_to_int(JunkChar, Code),
+	string__int_to_base_string(Code, 16, Hex),
+	string__append_list(["illegal character <<0x", Hex, ">>"], String).
+lexer__token_to_string(io_error(IO_Error), String) :-
+	io__error_message(IO_Error, IO_ErrorMessage),
+	string__append("I/O error: ", IO_ErrorMessage, String).
+lexer__token_to_string(error(Message), String) :-
+	string__append_list(["illegal token (", Message, ")"], String).
 
 	% We build the tokens up as lists of characters in reverse order.
 	% When we get to the end of each token, we call

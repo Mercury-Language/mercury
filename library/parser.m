@@ -27,8 +27,6 @@
 % operators are handled could potentially cause parts of the input
 % to be parsed many times over.
 %
-% XXX We should improve the error messages!
-%
 %-----------------------------------------------------------------------------%
 
 :- module parser.
@@ -41,44 +39,123 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, float, list, std_util, term, varset.
+:- import_module string, char, int, float, list, std_util, require.
+:- import_module term, varset.
 :- import_module lexer, ops.
+
+:- type parse(T)
+	--->	ok(T)
+	;	error(string, token_list).
 
 %-----------------------------------------------------------------------------%
 
 parser__read_term(Result) -->
 	lexer__get_token_list(Tokens),
-	( { Tokens = [] }, !,
+	( { Tokens = [] } ->
 		{ Result = eof }
-	; { Tokens = [FirstToken | _] },
+	;
 		parser__init_state(Tokens, ParserState0),
-		{
-			parser__parse_whole_term(Term, ParserState0,
-				ParserState),
-			parser__final_state(ParserState, VarSet)
-		->
-			Result = term(VarSet, Term)
-		;
-			FirstToken = _Token - LineNum,
-			Result = error("syntax error", LineNum)
-		}
+		{ parser__parse_whole_term(Term, ParserState0, ParserState) },
+		{ parser__final_state(ParserState, VarSet, LeftOverTokens) },
+		{ parser__check_for_errors(Term, VarSet,
+			Tokens, LeftOverTokens, Result) }
 	).
 
-:- pred parser__parse_whole_term(term, parser__state, parser__state).
-:- mode parser__parse_whole_term(out, in, out) is semidet.
+:- pred parser__check_for_errors(parse(term), varset, token_list, token_list,
+				 read_term).
+:- mode parser__check_for_errors(in, in, in, in, out) is det.
+
+parser__check_for_errors(error(ErrorMessage, ErrorTokens), _VarSet, Tokens,
+		_LeftOverTokens, Result) :-
+	% determine the right error message
+	(
+		parser__check_for_bad_token(ErrorTokens, BadTokenMessage, _)
+	->
+		Message = BadTokenMessage
+	;
+		ErrorTokens = [FirstTok - _| _]
+	->
+		lexer__token_to_string(FirstTok, TokString),
+		string__append_list(
+			["Syntax error at ", TokString, ": ", ErrorMessage],
+			Message)
+	;
+		string__append("Syntax error: ", ErrorMessage, Message)
+	),
+	% determine the appropriate line number
+	(
+		ErrorTokens = [_ - LineNum0 | _]
+	->
+		LineNum = LineNum0
+	;
+		Tokens = [_ - LineNum1 | _]
+	->
+		LineNum = LineNum1
+	;
+		error("parser__check_for_errors")
+	),
+	Result = error(Message, LineNum).
+
+parser__check_for_errors(ok(Term), VarSet, _Tokens, LeftOverTokens, Result) :-
+	(
+		parser__check_for_bad_token(LeftOverTokens, Message, LineNum)
+	->
+		Result = error(Message, LineNum)
+	;
+		LeftOverTokens = [Token - LineNum | _]
+	->
+		lexer__token_to_string(Token, TokString),
+		string__append("Syntax error: unexpected ", TokString,
+			Message),
+		Result = error(Message, LineNum)
+	;
+		Result = term(VarSet, Term)
+	).
+
+:- pred parser__check_for_bad_token(token_list, string, int).
+:- mode parser__check_for_bad_token(in, out, out) is semidet.
+
+parser__check_for_bad_token([Token - LineNum | _], Message, LineNum) :-
+	(
+		Token = io_error(IO_Error),
+		io__error_message(IO_Error, IO_ErrorMessage),
+		string__append("I/O error: ", IO_ErrorMessage, Message)
+	;
+		Token = junk(Char),
+		char_to_int(Char, Code),
+		string__int_to_base_string(Code, 10, Decimal),
+		string__int_to_base_string(Code, 16, Hex),
+		string__append_list(["Syntax error: Illegal character 0x",
+			Hex, " (", Decimal, ") in input"], Message)
+	;
+		Token = error(ErrorMessage),
+		string__append("Syntax error: ", ErrorMessage, Message)
+	).
+
+:- pred parser__parse_whole_term(parse(term), parser__state, parser__state).
+:- mode parser__parse_whole_term(out, in, out) is det.
 
 parser__parse_whole_term(Term) -->
-	parser__parse_term(Term),
-	parser__get_token(end).
+	parser__parse_term(Term0),
+	( { Term0 = ok(_) } ->
+		( parser__get_token(end) ->
+			{ Term = Term0 }
+		;
+			parser__error("operator or `.' expected", Term)
+		)
+	;
+		% propagate error upwards
+		{ Term = Term0 }
+	).
 
-:- pred parser__parse_term(term, parser__state, parser__state).
-:- mode parser__parse_term(out, in, out) is semidet.
+:- pred parser__parse_term(parse(term), parser__state, parser__state).
+:- mode parser__parse_term(out, in, out) is det.
 
 parser__parse_term(Term) -->
 	parser__parse_term_2(1201, no, Term).
 
-:- pred parser__parse_arg(term, parser__state, parser__state).
-:- mode parser__parse_arg(out, in, out) is semidet.
+:- pred parser__parse_arg(parse(term), parser__state, parser__state).
+:- mode parser__parse_arg(out, in, out) is det.
 
 parser__parse_arg(Term) -->
 	parser__parse_term_2(1201, yes, Term).
@@ -89,16 +166,23 @@ parser__parse_arg(Term) -->
 	% The above is because we need bug-for-bug compatibility
 	% with the NU-Prolog parser in order to support e.g. `::' in args.
 
-:- pred parser__parse_term_2(int, bool, term, parser__state, parser__state).
-:- mode parser__parse_term_2(in, in, out, in, out) is semidet.
+:- pred parser__parse_term_2(int, bool, parse(term),
+				parser__state, parser__state).
+:- mode parser__parse_term_2(in, in, out, in, out) is det.
 
 parser__parse_term_2(MaxPriority, IsArg, Term) -->
-	parser__parse_left_term(MaxPriority, IsArg, LeftPriority, LeftTerm),
-	parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm, Term).
+	parser__parse_left_term(MaxPriority, IsArg, LeftPriority, LeftTerm0),
+	( { LeftTerm0 = ok(LeftTerm) } ->
+		parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm,
+			Term)
+	;
+		% propagate error upwards
+		{ Term = LeftTerm0 }
+	).
 
-:- pred parser__parse_left_term(int, bool, int, term,
+:- pred parser__parse_left_term(int, bool, int, parse(term),
 				parser__state, parser__state).
-:- mode parser__parse_left_term(in, in, out, out, in, out) is semidet.
+:- mode parser__parse_left_term(in, in, out, out, in, out) is det.
 
 parser__parse_left_term(MaxPriority, IsArg, OpPriority, Term) -->
 	(
@@ -113,13 +197,14 @@ parser__parse_left_term(MaxPriority, IsArg, OpPriority, Term) -->
 							RightPriority) },
 		{ parser__adjust_priority(RightRightAssoc, BinOpPriority,
 							RightRightPriority) },
-		parser__parse_term_2(RightPriority, IsArg, RightTerm),
-		parser__parse_term_2(RightRightPriority, IsArg, RightRightTerm)
+		parser__parse_term_2(RightPriority, IsArg, ok(RightTerm)),
+		parser__parse_term_2(RightRightPriority, IsArg,
+						ok(RightRightTerm))
 	->
 		parser__get_term_context(Context, TermContext),
 		{ OpPriority = BinOpPriority },
-		{ Term = term__functor(term__atom(Op),
-			[RightTerm, RightRightTerm], TermContext) }
+		{ Term = ok(term__functor(term__atom(Op),
+			[RightTerm, RightRightTerm], TermContext)) }
 	;
 		% prefix op
 		parser__get_token(name(Op), Context),
@@ -130,7 +215,7 @@ parser__parse_left_term(MaxPriority, IsArg, OpPriority, Term) -->
 		{ UnOpPriority =< MaxPriority },
 		{ parser__adjust_priority(RightAssoc, UnOpPriority,
 						RightPriority) },
-		parser__parse_term_2(RightPriority, IsArg, RightTerm)
+		parser__parse_term_2(RightPriority, IsArg, ok(RightTerm))
 	->
 		parser__get_term_context(Context, TermContext),
 		{ OpPriority = UnOpPriority },
@@ -139,23 +224,24 @@ parser__parse_left_term(MaxPriority, IsArg, OpPriority, Term) -->
 			RightTerm = term__functor(term__integer(X), [], _)
 		->
 			NegX is 0 - X,
-			Term = term__functor(term__integer(NegX), [],
-						TermContext)
+			Term = ok(term__functor(term__integer(NegX), [],
+						TermContext))
 		; Op = "-", RightTerm = term__functor(term__float(F), [], _) ->
 			builtin_float_minus(0.0, F, NegF),
-			Term = term__functor(term__float(NegF), [], TermContext)
+			Term = ok(term__functor(term__float(NegF), [],
+				TermContext))
 		;
-			Term = term__functor(term__atom(Op), [RightTerm],
-						TermContext)
+			Term = ok(term__functor(term__atom(Op), [RightTerm],
+						TermContext))
 		}
 	;
 		parser__parse_simple_term(MaxPriority, Term),
 		{ OpPriority = 0 }
 	).
 
-:- pred parser__parse_rest(int, bool, int, term, term,
+:- pred parser__parse_rest(int, bool, int, term, parse(term),
 				parser__state, parser__state).
-:- mode parser__parse_rest(in, in, in, in, out, in, out) is semidet.
+:- mode parser__parse_rest(in, in, in, in, out, in, out) is det.
 
 parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm, Term) -->
 	(
@@ -175,11 +261,17 @@ parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm, Term) -->
 	->
 		{ parser__adjust_priority(RightAssoc, OpPriority,
 					RightPriority) },
-		parser__parse_term_2(RightPriority, IsArg, RightTerm),
-		parser__get_term_context(Context, TermContext),
-		{ OpTerm = term__functor(term__atom(Op), [LeftTerm, RightTerm],
-					TermContext) },
-		parser__parse_rest(MaxPriority, IsArg, OpPriority, OpTerm, Term)
+		parser__parse_term_2(RightPriority, IsArg, RightTerm0),
+		( { RightTerm0 = ok(RightTerm) } ->
+			parser__get_term_context(Context, TermContext),
+			{ OpTerm = term__functor(term__atom(Op),
+				[LeftTerm, RightTerm], TermContext) },
+			parser__parse_rest(MaxPriority, IsArg, OpPriority,
+				OpTerm, Term)
+		;
+			% propagate error upwards
+			{ Term = RightTerm0 }
+		)
 	;
 		% postfix op
 		parser__get_token(name(Op), Context),
@@ -194,17 +286,25 @@ parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm, Term) -->
 			TermContext) },
 		parser__parse_rest(MaxPriority, IsArg, OpPriority, OpTerm, Term)
 	;
-		{ Term = LeftTerm }
+		{ Term = ok(LeftTerm) }
 	).
 
 %-----------------------------------------------------------------------------%
 	
-:- pred parser__parse_simple_term(int, term, parser__state, parser__state).
-:- mode parser__parse_simple_term(in, out, in, out) is semidet.
+:- pred parser__parse_simple_term(int, parse(term),
+				parser__state, parser__state).
+:- mode parser__parse_simple_term(in, out, in, out) is det.
 
 parser__parse_simple_term(Priority, Term) -->
-	parser__get_token(Token, Context),
-	parser__parse_simple_term_2(Token, Context, Priority, Term).
+	( parser__get_token(Token, Context) ->
+	    ( parser__parse_simple_term_2(Token, Context, Priority, Term0) ->
+		{ Term = Term0 }
+	    ;
+		parser__error("unexpected token", Term)
+	    )
+	;
+	    parser__error("unexpected end-of-file", Term)
+	).
 
 	% term --> integer		% priority 0
 	% term --> float		% priority 0
@@ -218,47 +318,77 @@ parser__parse_simple_term(Priority, Term) -->
 	% term --> variable		% priority 0
 	% term -->
 	
-:- pred parser__parse_simple_term_2(token, token_context, int, term,
+:- pred parser__parse_simple_term_2(token, token_context, int, parse(term),
 				parser__state, parser__state).
 :- mode parser__parse_simple_term_2(in, in, in, out, in, out) is semidet.
 
-parser__parse_simple_term_2(name(Atom), Context, _, Term) -->
+parser__parse_simple_term_2(name(Atom), Context, Prec, Term) -->
 	parser__get_term_context(Context, TermContext),
 	( parser__get_token(open_ct) ->
-		parser__parse_args(Args)
+		parser__parse_args(Args0),
+		(	{ Args0 = ok(Args) },
+			{ Term = ok(term__functor(term__atom(Atom), Args,
+				TermContext)) }
+		;
+			{ Args0 = error(Message, Tokens) },
+			{ Term = error(Message, Tokens) }
+		)
 	;
-		{ Args = [] }
-	),
-	{ Term = term__functor(term__atom(Atom), Args, TermContext) }.
+		parser__get_ops_table(OpTable),
+		{ ops__lookup_op(OpTable, Atom) ->
+			Prec >= 1201
+		;
+			true
+		},
+		{ Term = ok(term__functor(term__atom(Atom), [], TermContext)) }
+	).
 
 parser__parse_simple_term_2(variable(VarName), _, _, Term) -->
 	parser__add_var(VarName, Var),
-	{ Term = term__variable(Var) }.
+	{ Term = ok(term__variable(Var)) }.
 
 parser__parse_simple_term_2(integer(Int), Context, _, Term) -->
 	parser__get_term_context(Context, TermContext),
-	{ Term = term__functor(term__integer(Int), [], TermContext) }.
+	{ Term = ok(term__functor(term__integer(Int), [], TermContext)) }.
 
 parser__parse_simple_term_2(float(Float), Context, _, Term) -->
 	parser__get_term_context(Context, TermContext),
-	{ Term = term__functor(term__float(Float), [], TermContext) }.
+	{ Term = ok(term__functor(term__float(Float), [], TermContext)) }.
 
 parser__parse_simple_term_2(string(String), Context, _, Term) -->
 	parser__get_term_context(Context, TermContext),
-	{ Term = term__functor(term__string(String), [], TermContext) }.
+	{ Term = ok(term__functor(term__string(String), [], TermContext)) }.
 
 parser__parse_simple_term_2(open, _, _, Term) -->
-	parser__parse_term(Term),
-	parser__get_token(close).
+	parser__parse_term(Term0),
+	( { Term0 = ok(_) } ->
+		( parser__get_token(close) ->
+			{ Term = Term0 }
+		;
+			parser__error("missing `)'", Term)
+		)
+	;
+		% propagate error upwards
+		{ Term = Term0 }
+	).
 
 parser__parse_simple_term_2(open_ct, _, _, Term) -->
-	parser__parse_term(Term),
-	parser__get_token(close).
+	parser__parse_term(Term0),
+	( { Term0 = ok(_) } ->
+		( parser__get_token(close) ->
+			{ Term = Term0 }
+		;
+			parser__error("missing `)'", Term)
+		)
+	;
+		% propagate error upwards
+		{ Term = Term0 }
+	).
 
 parser__parse_simple_term_2(open_list, Context, _, Term) -->
 	( parser__get_token(close_list) ->
 		parser__get_term_context(Context, TermContext),
-		{ Term = term__functor(term__atom("[]"), [], TermContext) }
+		{ Term = ok(term__functor(term__atom("[]"), [], TermContext)) }
 	;
 		parser__parse_list(Term)
 	).
@@ -266,43 +396,96 @@ parser__parse_simple_term_2(open_list, Context, _, Term) -->
 parser__parse_simple_term_2(open_curly, Context, _, Term) -->
 	parser__get_term_context(Context, TermContext),
 	( parser__get_token(close_curly) ->
-		{ Args = [] }
+		{ Term = ok(term__functor(term__atom("{}"), [], TermContext)) }
 	;
-		parser__parse_term(SubTerm),
-		parser__get_token(close_curly),
-		{ Args = [SubTerm] }
-	),
-	{ Term = term__functor(term__atom("{}"), Args, TermContext) }.
+		parser__parse_term(SubTerm0),
+		( { SubTerm0 = ok(SubTerm) } ->
+			( parser__get_token(close_curly) ->
+				{ Term = ok(term__functor(term__atom("{}"), 
+					[SubTerm], TermContext)) }
+			;
+				parser__error("missing `}'", Term)
+			)
+		;
+			% propagate error upwards
+			{ Term = SubTerm0 }
+		)
+	).
 
-:- pred parser__parse_list(term, parser__state, parser__state).
-:- mode parser__parse_list(out, in, out) is semidet.
+:- pred parser__parse_list(parse(term), parser__state, parser__state).
+:- mode parser__parse_list(out, in, out) is det.
 
 parser__parse_list(List) -->
-	parser__parse_arg(Arg),
-	parser__get_token(Token, Context),
-	parser__get_term_context(Context, TermContext),
-	( { Token = comma } ->
-		parser__parse_list(Tail)
-	; { Token = ht_sep } ->
-		parser__parse_arg(Tail),
-		parser__get_token(close_list)
-	; { Token = close_list },
-		{ Tail = term__functor(term__atom("[]"), [], TermContext) }
-	),
-	{ List = term__functor(term__atom("."), [Arg, Tail], TermContext) }.
+	parser__parse_arg(Arg0),
+	( { Arg0 = ok(Arg) } ->
+	    ( parser__get_token(Token, Context) ->
+		parser__get_term_context(Context, TermContext),
+		( { Token = comma } ->
+		    parser__parse_list(Tail0),
+		    ( { Tail0 = ok(Tail) } ->
+		        { List = ok(term__functor(term__atom("."), [Arg, Tail],
+						TermContext)) }
+		    ;
+			% propagate error
+			{ List = Tail0 }
+		    )
+		; { Token = ht_sep } ->
+		    parser__parse_arg(Tail0),
+		    ( { Tail0 = ok(Tail) } ->
+			( parser__get_token(close_list) ->
+		            { List = ok(term__functor(term__atom("."),
+					[Arg, Tail], TermContext)) }
+			;
+			    parser__error("missing ']'", List)
+			)
+		    ;
+			% propagate error
+			{ List = Tail0 }
+		    )
+		; { Token = close_list } ->
+		    { List = ok(term__functor(term__atom("[]"), [Arg],
+				TermContext)) }
+		;
+		    parser__error("expected comma, `|', or `]'", List)
+		)
+	    ;
+		% XXX error message should state the line that the
+		% list started on
+		parser__error("unexpected end-of-file in list", List)
+	    )
+	;
+	    % propagate error
+	    { List = Arg0 }
+	).
 
-:- pred parser__parse_args(list(term), parser__state, parser__state).
-:- mode parser__parse_args(out, in, out) is semidet.
+:- pred parser__parse_args(parse(list(term)), parser__state, parser__state).
+:- mode parser__parse_args(out, in, out) is det.
 
 parser__parse_args(List) -->
-	parser__parse_arg(Arg),
-	parser__get_token(Token),
-	( { Token = comma } ->
-		parser__parse_args(Tail)
-	; { Token = close },
-		{ Tail = [] }
-	),
-	{ List = [Arg | Tail] }.
+	parser__parse_arg(Arg0),
+	(   { Arg0 = ok(Arg) },
+	    ( parser__get_token(Token) ->
+		( { Token = comma } ->
+		    parser__parse_args(Tail0),
+		    ( { Tail0 = ok(Tail) } ->
+			{ List = ok([Arg|Tail]) }
+		    ;
+			% propagate error upwards
+		        { List = Tail0 }
+		    )
+		; { Token = close } ->
+		    { List = ok([Arg]) }
+		;
+		    parser__error("expected `,' or `)'", List)
+		)
+	    ;
+		parser__error("unexpected end-of-file in argument list", List)
+	    )
+	;
+	    { Arg0 = error(Message, Tokens) },
+	    % propagate error upwards
+	    { List = error(Message, Tokens) }
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -321,6 +504,14 @@ parser__parse_args(List) -->
 
 %-----------------------------------------------------------------------------%
 
+:- pred parser__error(string, parse(T), parser__state, parser__state).
+:- mode parser__error(in, out, di, uo) is det.
+
+parser__error(Message, error(Message, Tokens), ParserState, ParserState) :-
+	ParserState = parser__state(_, _, _, Tokens).
+
+%-----------------------------------------------------------------------------%
+
 :- pred parser__init_state(token_list, parser__state, io__state, io__state).
 :- mode parser__init_state(in, out, di, uo) is det.
 
@@ -330,10 +521,11 @@ parser__init_state(Tokens, ParserState) -->
 	io__input_stream_name(FileName),
 	{ ParserState = parser__state(FileName, OpTable, VarSet, Tokens) }.
 
-:- pred parser__final_state(parser__state, varset).
-:- mode parser__final_state(in, out) is semidet.
+:- pred parser__final_state(parser__state, varset, token_list).
+:- mode parser__final_state(in, out, out) is det.
 
-parser__final_state(parser__state(_FileName, _OpTable, VarSet, []), VarSet).
+parser__final_state(parser__state(_FileName, _OpTable, VarSet, TokenList),
+			VarSet, TokenList).
 
 %-----------------------------------------------------------------------------%
 

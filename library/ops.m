@@ -49,6 +49,9 @@
 :- pred ops__lookup_postfix_op(ops__table, string, int, ops__assoc).
 :- mode ops__lookup_postfix_op(in, in, out, out) is semidet.
 
+:- pred ops__lookup_op(ops__table, string).
+:- mode ops__lookup_op(in, in) is semidet.
+
 :- pred ops__op_specifier_to_class(ops__specifier, ops__class).
 :- mode ops__op_specifier_to_class(in, out) is det.
 % :- mode ops__op_specifier_to_class(out, in) is semidet.
@@ -88,8 +91,12 @@ ops__lookup_postfix_op(_OpTable, Name, Priority, LeftAssoc) :-
 	ops__op_table(Name, after, Specifier, Priority), !,
 	ops__op_specifier_to_class(Specifier, postfix(LeftAssoc)).
 
+ops__lookup_op(_OpTable, Name) :-
+	ops__op_table(Name, _, _, _).
+
 :- pred ops__op_table(string, ops__category, ops__specifier, ops__priority).
 :- mode ops__op_table(in, in, out, out) is semidet.
+:- mode ops__op_table(in, out, out, out) is nondet.
 
 ops__op_table("*", after, yfx, 400).
 ops__op_table("**", after, xfy, 300).
