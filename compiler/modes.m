@@ -283,9 +283,19 @@ modecheck_proc(ProcId, PredId, ModuleInfo, ProcInfo0, ProcInfo, NumErrors,
 			IOState0, IOState) :-
 		% extract the useful fields in the proc_info
 	proc_info_goal(ProcInfo0, Body0),
-	proc_info_argmodes(ProcInfo0, ArgModes),
+	proc_info_argmodes(ProcInfo0, ArgModes0),
 	proc_info_context(ProcInfo0, Context),
 	proc_info_headvars(ProcInfo0, HeadVars),
+/**************
+		% extract the predicate's type from the pred_info
+		% and propagate the type information into the modes
+	module_info_preds(ModuleInfo, Preds),
+	map__lookup(Preds, PredId, PredInfo),
+	pred_info_arg_types(PredInfo, _TypeVars, ArgTypes),
+	propagate_type_info_mode_list(ArgTypes, ModuleInfo, ArgModes0,
+			ArgModes),
+**************/
+	ArgModes = ArgModes0,
 		% modecheck the clause - first set the initial instantiation
 		% of the head arguments, mode-check the body, and
 		% then check that the final instantiation matches that in
@@ -720,9 +730,6 @@ instmap_merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 :- pred get_reachable_instmaps(list(instmap), list(map(var,inst))).
 :- mode get_reachable_instmaps(in, out) is det.
 
-:- get_reachable_instmaps([], _) when ever.
-:- get_reachable_instmaps([X|_], _) when X.
-
 get_reachable_instmaps([], []).
 get_reachable_instmaps([InstMap | InstMaps], Reachables) :-
 	( InstMap = reachable(InstMapping) ->
@@ -809,7 +816,14 @@ modecheck_call_pred(PredId, Args, TheProcId, ModeInfo0, ModeInfo) :-
 	->
 		TheProcId = ProcId,
 		map__lookup(Procs, ProcId, ProcInfo),
-		proc_info_argmodes(ProcInfo, ProcArgModes),
+		proc_info_argmodes(ProcInfo, ProcArgModes0),
+/*********************
+		% propagate type info into modes
+		mode_info_get_types_of_vars(ModeInfo0, ArgVars, ArgTypes),
+		propagate_type_info_mode_list(ArgTypes, ModuleInfo,
+			ProcArgModes0, ProcArgModes),
+*********************/
+		ProcArgModes = ProcArgModes0,
 		mode_list_get_initial_insts(ProcArgModes, ModuleInfo,
 					InitialInsts),
 		modecheck_var_has_inst_list(ArgVars, InitialInsts,
@@ -858,8 +872,15 @@ modecheck_call_pred_2([ProcId | ProcIds], PredId, Procs, ArgVars, WaitingVars,
 
 		% find the initial insts for this mode of the called pred
 	map__lookup(Procs, ProcId, ProcInfo),
-	proc_info_argmodes(ProcInfo, ProcArgModes),
+	proc_info_argmodes(ProcInfo, ProcArgModes0),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
+/**************
+		% propagate the type information into the modes
+	mode_info_get_types_of_vars(ModeInfo0, ArgVars, ArgTypes),
+	propagate_type_info_mode_list(ArgTypes, ModuleInfo,
+		ProcArgModes0, ProcArgModes),
+**************/
+	ProcArgModes = ProcArgModes0,
 	mode_list_get_initial_insts(ProcArgModes, ModuleInfo, InitialInsts),
 
 		% check whether the insts of the args matches their expected
@@ -959,6 +980,11 @@ inst_matches_initial_2(InstA, InstB, ModuleInfo, Expansions) :-
 	ThisExpansion = InstA - InstB,
 	( set__member(ThisExpansion, Expansions) ->
 		true
+/********* 
+		% does this test improve efficiency??
+	; InstA = InstB ->
+		true
+**********/
 	;
 		inst_expand(ModuleInfo, InstA, InstA2),
 		inst_expand(ModuleInfo, InstB, InstB2),
@@ -986,7 +1012,7 @@ inst_matches_initial_3(bound(List), abstract_inst(_,_), ModuleInfo, _) :-
 inst_matches_initial_3(ground, free, _, _).
 inst_matches_initial_3(ground, bound(_List), _, _ModuleInfo) :-
 	true.	% XXX BUG! should fail if 
-		% and List does not include all the constructors for the type.
+		% List does not include all the constructors for the type,
 		% or if List contains some not_reached insts.
 inst_matches_initial_3(ground, ground, _, _).
 inst_matches_initial_3(ground, abstract_inst(_,_), _, _) :-
@@ -1183,6 +1209,13 @@ inst_merge(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
 :- mode inst_merge_2(in, in, in, out, out) is semidet.
 			
 inst_merge_2(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
+/*********
+		% would this test improve efficiency??
+	( InstA = InstB ->
+		Inst = InstA,
+		ModuleInfo = ModuleInfo0
+	;
+*********/
 	inst_expand(ModuleInfo0, InstA, InstA2),
 	inst_expand(ModuleInfo0, InstB, InstB2),
 	( InstB2 = not_reached ->
@@ -1303,6 +1336,8 @@ inst_matches_final(InstA, InstB, ModuleInfo) :-
 inst_matches_final_2(InstA, InstB, ModuleInfo, Expansions) :-
 	ThisExpansion = InstA - InstB,
 	( set__member(ThisExpansion, Expansions) ->
+		true
+	; InstA = InstB ->
 		true
 	;
 		inst_expand(ModuleInfo, InstA, InstA2),
@@ -1541,8 +1576,9 @@ modecheck_unification(term__variable(X), term__functor(Name, Args, _),
 	Mode = ModeX - ModeY,
 	get_mode_of_args(Inst, InstArgs, ModeArgs),
 	mode_info_get_module_info(ModeInfo, ModuleInfo),
+	mode_info_get_var_types(ModeInfo, VarTypes),
 	categorize_unify_var_functor(ModeX, ModeArgs, X, Name, ArgVars,
-			ModuleInfo, Unification).
+			VarTypes, ModuleInfo, Unification).
 
 modecheck_unification(term__functor(F, As, Context), term__variable(Y),
 		Modes, Unification, ModeInfo0, ModeInfo) :-
@@ -1661,19 +1697,38 @@ abstractly_unify_inst(Live, InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
 			% unify the insts
 		inst_expand(ModuleInfo0, InstA, InstA2),
 		inst_expand(ModuleInfo0, InstB, InstB2),
-		( InstB2 = not_reached ->
-			Inst = InstA2,
-			ModuleInfo2 = ModuleInfo1
-		;
-			abstractly_unify_inst_3(Live, InstA2, InstB2,
-				ModuleInfo1, Inst, ModuleInfo2)
-		),
+		abstractly_unify_inst_2(Live, InstA2, InstB2, ModuleInfo1,
+			Inst, ModuleInfo2),
 			% now update the value associated with ThisInstPair
 		module_info_insts(ModuleInfo2, InstTable2),
 		inst_table_get_unify_insts(InstTable2, UnifyInsts2),
 		map__set(UnifyInsts2, ThisInstPair, known(Inst), UnifyInsts),
 		inst_table_set_unify_insts(InstTable2, UnifyInsts, InstTable),
 		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo)
+	).
+
+:- pred abstractly_unify_inst_2(is_live, inst, inst, module_info,
+				inst, module_info).
+:- mode abstractly_unify_inst_2(in, in, in, in, out, out) is semidet.
+
+abstractly_unify_inst_2(IsLive, InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
+	( InstB = not_reached ->
+		Inst = InstA,
+		ModuleInfo = ModuleInfo0
+/****************
+		% does this test improve efficiency??
+	; InstA = InstB ->
+		( IsLive = dead ->
+			true
+		;
+			inst_is_ground(ModuleInfo0, InstA)
+		),
+		Inst = InstA,
+		ModuleInfo = ModuleInfo0
+****************/
+	;
+		abstractly_unify_inst_3(IsLive, InstA, InstB, ModuleInfo0,
+			Inst, ModuleInfo)
 	).
 
 	% Abstractly unify two expanded insts.
@@ -2036,11 +2091,11 @@ categorize_unify_var_var(ModeX, ModeY, LiveX, LiveY, X, Y, VarTypes,
 	).
 
 :- pred categorize_unify_var_functor(mode, list(mode), var, const,
-				list(var), module_info, unification).
-:- mode categorize_unify_var_functor(in, in, in, in, in, in, out) is det.
+			list(var), map(var, type), module_info, unification).
+:- mode categorize_unify_var_functor(in, in, in, in, in, in, in, out) is det.
 
-categorize_unify_var_functor(ModeX, ArgModes0, X, Name, ArgVars, ModuleInfo,
-		Unification) :-
+categorize_unify_var_functor(ModeX, ArgModes0, X, Name, ArgVars, VarTypes,
+		ModuleInfo, Unification) :-
 	list__length(ArgVars, Arity),
 	make_functor_cons_id(Name, Arity, ConsId),
 	mode_util__modes_to_uni_modes(ModeX, ArgModes0,
@@ -2051,22 +2106,31 @@ categorize_unify_var_functor(ModeX, ArgModes0, X, Name, ArgVars, ModuleInfo,
 		Unification = construct(X, ConsId, ArgVars, ArgModes)
 	; 
 		% It's a deconstruction.
-		% If the variable was already known to be bound to a
-		% single particular functor, then the unification either
-		% always succeeds or always fails.  In the latter case,
-		% the final inst will be `not_reached' or `bound([])'.
-		% So if both the initial and final inst are `bound([_])',
-		% then the unification must be deterministic.
-
-		mode_get_insts(ModuleInfo, ModeX, InitialInst0, FinalInst0),
-		inst_expand(ModuleInfo, InitialInst0, InitialInst),
-		inst_expand(ModuleInfo, FinalInst0, FinalInst),
 		(
+			% If the variable was already known to be bound
+			% to a single particular functor, then the
+			% unification either always succeeds or always
+			% fails.  In the latter case, the final inst will
+			% be `not_reached' or `bound([])'.  So if both
+			% the initial and final inst are `bound([_])',
+			% then the unification must be deterministic.
+			mode_get_insts(ModuleInfo, ModeX,
+					InitialInst0, FinalInst0),
+			inst_expand(ModuleInfo, InitialInst0, InitialInst),
+			inst_expand(ModuleInfo, FinalInst0, FinalInst),
 			InitialInst = bound([_]),
 			FinalInst = bound([_])
 		->
 			Det = deterministic
 		;
+			% If the type has only one constructor, then the
+			% unification must be deterministic
+			map__lookup(VarTypes, X, TypeX),
+			type_constructors(TypeX, ModuleInfo, [_])
+		->
+			Det = deterministic
+		;
+			% Otherwise, it's semidet
 			Det = semideterministic
 		),
 		Unification = deconstruct(X, ConsId, ArgVars, ArgModes, Det)

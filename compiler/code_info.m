@@ -1159,7 +1159,12 @@ code_info__cons_id_to_tag(Var, cons(Name, Arity), Tag) -->
 	code_info__get_proc_info(ProcInfo),
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
 	{ map__lookup(VarTypes, Var, Type) },
-	{ type_to_type_id(Type, TypeId, _) },
+	{ type_to_type_id(Type, TypeId0, _) ->
+		TypeId = TypeId0
+	;
+		error("cons_info__cons_id_to_tag: invalid type")
+	},
+
 		%
 		% Given the type_id, lookup up the constructor tag
 		% table for that type

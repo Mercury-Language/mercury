@@ -12,9 +12,9 @@
 :- mode check_undefined_types(in, out, di, uo) is det.
 
 :- implementation.
-:- import_module std_util, map, list, term.
+:- import_module std_util, map, list, term, varset.
 :- import_module globals, options.
-:- import_module prog_out, prog_util, hlds_out, type_util.
+:- import_module prog_out, prog_util, hlds_out, type_util, mercury_to_mercury.
 
 check_undefined_types(Module, Module) -->
 	{ module_info_types(Module, TypeDefns) },
@@ -103,26 +103,28 @@ find_undef_type_du_body([Constructor | Constructors], ErrorContext,
 :- mode find_undef_type(in, in, in, di, uo) is det.
 
 find_undef_type(term__variable(_), _ErrorContext, _TypeDefns) --> [].
-find_undef_type(term__functor(F, As, _), ErrorContext, TypeDefns) -->
-	% Efficiency is important here - this is the inner loop
-	% of checking for undefined types.
-	% The tests are ordered so as to maximize effiency.
+find_undef_type(term__functor(F, As, C), ErrorContext, TypeDefns) -->
 	{ list__length(As, Arity) },
-	{ make_type_id(F, Arity, TypeId) },
 	(
-		{ is_builtin_atomic_type(TypeId) }
+		{ make_type_id(F, Arity, TypeId) }
 	->
-		[]
+		(
+			{ is_builtin_atomic_type(TypeId) }
+		->
+			[]
+		;
+			{ map__contains(TypeDefns, TypeId) }
+		->
+			[]
+		;
+			{ is_builtin_pred_type(TypeId) }
+		->
+			[]
+		;
+			report_undef_type(TypeId, ErrorContext)
+		)
 	;
-		{ map__contains(TypeDefns, TypeId) }
-	->
-		[]
-	;
-		{ is_builtin_pred_type(TypeId) }
-	->
-		[]
-	;
-		report_undef_type(TypeId, ErrorContext)
+		report_invalid_type(term__functor(F, As, C), ErrorContext)
 	),
 	find_undef_type_list(As, ErrorContext, TypeDefns).
 
@@ -130,6 +132,23 @@ find_undef_type(term__functor(F, As, _), ErrorContext, TypeDefns) -->
 
 :- type error_context == pair(error_context_2, term__context).
 :- type error_context_2 ---> type(type_id) ; pred(pred_id).
+
+	% Output an error message about an ill-formed type
+	% in the specified context.
+
+:- pred report_invalid_type(term, error_context, io__state, io__state).
+:- mode report_invalid_type(in, in, di, uo) is det.
+
+report_invalid_type(Type, ErrorContext - Context) -->
+	prog_out__write_context(Context),
+	io__write_string("In definition of "),
+	write_error_context(ErrorContext),
+	io__write_string(":\n"),
+	prog_out__write_context(Context),
+	io__write_string("  error: ill-formed type `"),
+	{ varset__init(VarSet) },
+	mercury_output_term(Type, VarSet),
+	io__write_string("'.\n").
 
 	% Output an error message about an undefined type
 	% in the specified context.

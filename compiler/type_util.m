@@ -45,9 +45,10 @@
 :- mode type_to_type_id(in, out, out) is det.
 
 	% Given a constant and an arity, return a type_id.
+	% Fails if the constant is not an atom.
 
 :- pred make_type_id(const, int, type_id).
-:- mode make_type_id(in, in, out) is det.
+:- mode make_type_id(in, in, out) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -90,7 +91,6 @@ classify_type(VarType, ModuleInfo, Type) :-
 :- mode type_is_enumeration(in, in) is semidet.
 
 type_is_enumeration(Type, ModuleInfo) :-
-	Type = term__functor(_, _, _),
 	type_to_type_id(Type, TypeId, _),
 	module_info_types(ModuleInfo, TypeDefnTable),
 	map__lookup(TypeDefnTable, TypeId, TypeDefn),
@@ -98,8 +98,6 @@ type_is_enumeration(Type, ModuleInfo) :-
 	TypeBody = du_type(_, _, IsEnum),
 	IsEnum = yes.
 
-type_to_type_id(term__variable(_), _, _) :-
-	error("cannot make type_id for a type variable").
 type_to_type_id(term__functor(Name, Args, _), TypeId, Args) :-
 	list__length(Args, Arity),
 	make_type_id(Name, Arity, TypeId).
@@ -107,17 +105,11 @@ type_to_type_id(term__functor(Name, Args, _), TypeId, Args) :-
 %-----------------------------------------------------------------------------%
 
 	% Given a constant and an arity, return a type_id.
-	% XXX this should take a name and an arity;
+	% This really ought to take a name and an arity -
 	% use of integers/floats/strings as type names should
-	% be rejected by the parser in prog_io.nl, not here.
+	% be rejected by the parser in prog_io.nl, not in undef_types.nl.
 
 make_type_id(term__atom(Name), Arity, unqualified(Name) - Arity).
-make_type_id(term__integer(_), _, unqualified("<error>") - 0) :-
-	error("atom expected").
-make_type_id(term__float(_), _, unqualified("<error>") - 0) :-
-	error("atom expected").
-make_type_id(term__string(_), _, unqualified("<error>") - 0) :-
-	error("atom expected").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

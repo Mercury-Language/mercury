@@ -364,7 +364,6 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 		),
 		{ goal_info_pre_delta_liveness(GoalInfo, PreBirths - PreDeaths) },
 		{ set__to_sorted_list(PreBirths, PreBirthList) },
-		{ set__to_sorted_list(PreDeaths, PreDeathList) },
 		( { PreBirthList \= [] } ->
 			io__write_string("% pre-births: "),
 			mercury_output_vars(PreBirthList, VarSet),
@@ -372,6 +371,7 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 		;
 			[]
 		),
+		{ set__to_sorted_list(PreDeaths, PreDeathList) },
 		( { PreDeathList \= [] } ->
 			io__write_string("% pre-deaths: "),
 			mercury_output_vars(PreDeathList, VarSet),
@@ -379,7 +379,6 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 		;
 			[]
 		),
-		mercury_output_newline(Indent),
 		io__write_string("% determinism: "),
 		{ goal_info_determinism(GoalInfo, Category) },
 		hlds_out__write_category(Category),
@@ -390,19 +389,31 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 	hlds_out__write_goal_2(Goal, ModuleInfo, VarSet, Indent),
 	( { Verbose = yes } ->
 		mercury_output_newline(Indent),
-		io__write_string("% new insts: "),
 		{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
-		hlds_out__write_instmap(InstMapDelta, VarSet),
-		mercury_output_newline(Indent),
+		( { InstMapDelta = reachable(Map), map__is_empty(Map) } ->
+			[]
+		;
+			io__write_string("% new insts: "),
+			hlds_out__write_instmap(InstMapDelta, VarSet),
+			mercury_output_newline(Indent)
+		),
 		{ goal_info_post_delta_liveness(GoalInfo, PostBirths - PostDeaths) },
 		{ set__to_sorted_list(PostBirths, PostBirthList) },
+		( { PostBirthList \= [] } ->
+			io__write_string("% post-births: "),
+			mercury_output_vars(PostBirthList, VarSet),
+			mercury_output_newline(Indent)
+		;
+			[]
+		),
 		{ set__to_sorted_list(PostDeaths, PostDeathList) },
-		io__write_string("% post-births: "),
-		mercury_output_vars(PostBirthList, VarSet),
-		mercury_output_newline(Indent),
-		io__write_string("% post-deaths: "),
-		mercury_output_vars(PostDeathList, VarSet),
-		mercury_output_newline(Indent)
+		( { PostDeathList \= [] } ->
+			io__write_string("% post-deaths: "),
+			mercury_output_vars(PostDeathList, VarSet),
+			mercury_output_newline(Indent)
+		;
+			[]
+		)
 	;
 		[]
 	).
