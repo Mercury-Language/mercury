@@ -3004,6 +3004,16 @@ mlds_module_name_to_assembly_name(MldsModuleName) = AssemblyName :-
 	->
 		AssemblyName = assembly("mercury")
 	;
+			% Foreign code currently resides in it's own
+			% assembly even if it is in a sub-module.
+		PackageSymName = qualified(_, Name),
+		( string__remove_suffix(Name, "__csharp_code", _)
+		; string__remove_suffix(Name, "__cpp_code", _)
+		)
+	->
+		mlds_to_il__sym_name_to_string(PackageSymName, PackageString),
+		AssemblyName = assembly(PackageString)
+	;
 		mlds_to_il__sym_name_to_string(PackageSymName, PackageString),
 		( PackageSymName = unqualified(_),
 			AssemblyName = assembly(PackageString)
