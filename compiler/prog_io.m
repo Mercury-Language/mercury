@@ -55,8 +55,8 @@
 
 :- interface.
 
-:- import_module prog_data, hlds_data, hlds_pred, globals, options.
-:- import_module string, int, list, varset, term, std_util, require.
+:- import_module prog_data.
+:- import_module string, list, varset, term, io.
 
 %-----------------------------------------------------------------------------%
 
@@ -144,7 +144,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, io, term_io, dir, require.
+
+:- import_module hlds_data, hlds_pred, prog_util, globals, options.
+:- import_module bool, int, std_util, term_io, dir, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -965,21 +967,25 @@ parse_dcg_goal_2(";", [A0,B0], Cx, VarSet0, N0, Var0,
 					term__variable(VarB)) - Cx) - Cx) - Cx
 		)
 	;
-		parse_dcg_goal(A0, VarSet0, N0, Var0, A, VarSet1, N1, VarA),
-		parse_dcg_goal(B0, VarSet1, N1, Var0, B, VarSet, N, VarB),
+		parse_dcg_goal(A0, VarSet0, N0, Var0, A1, VarSet1, N1, VarA),
+		parse_dcg_goal(B0, VarSet1, N1, Var0, B1, VarSet, N, VarB),
 		( VarA = Var0, VarB = Var0 ->
 			Var = Var0,
-			Goal = (A ; B) - Cx
+			Goal = (A1 ; B1) - Cx
 		; VarA = Var0 ->
 			Var = VarB,
-			append_to_disjunct(A, unify(term__variable(Var),
-					term__variable(VarA)), Cx, A1),
-			Goal = (A1 ; B) - Cx
-		;
+			append_to_disjunct(A1, unify(term__variable(Var),
+					term__variable(VarA)), Cx, A2),
+			Goal = (A2 ; B1) - Cx
+		; VarB = Var0 ->
 			Var = VarA,
-			append_to_disjunct(B, unify(term__variable(Var),
-					term__variable(VarB)), Cx, B1),
-			Goal = (A ; B1) - Cx
+			append_to_disjunct(B1, unify(term__variable(Var),
+					term__variable(VarB)), Cx, B2),
+			Goal = (A1 ; B2) - Cx
+		;
+			Var = VarB,
+			prog_util__rename_in_goal(A1, VarA, VarB, A2),
+			Goal = (A2 ; B1) - Cx
 		)
 	).
 

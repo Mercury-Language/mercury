@@ -54,6 +54,13 @@
 :- mode split_type_and_mode(in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
+
+	% Perform a substitution on a goal.
+
+:- pred prog_util__rename_in_goal(goal, var, var, goal).
+:- mode prog_util__rename_in_goal(in, in, in, out) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -309,4 +316,70 @@ split_type_and_mode(type_only(T), T, no).
 split_type_and_mode(type_and_mode(T,M), T, yes(M)).
 
 %-----------------------------------------------------------------------------%
+
+prog_util__rename_in_goal(Goal0 - Context, OldVar, NewVar, Goal - Context) :-
+	prog_util__rename_in_goal_expr(Goal0, OldVar, NewVar, Goal).
+
+:- pred prog_util__rename_in_goal_expr(goal_expr, var, var, goal_expr).
+:- mode prog_util__rename_in_goal_expr(in, in, in, out) is det.
+
+prog_util__rename_in_goal_expr((GoalA0, GoalB0), OldVar, NewVar,
+		(GoalA, GoalB)) :-
+	prog_util__rename_in_goal(GoalA0, OldVar, NewVar, GoalA),
+	prog_util__rename_in_goal(GoalB0, OldVar, NewVar, GoalB).
+prog_util__rename_in_goal_expr(true, _Var, _NewVar, true).
+prog_util__rename_in_goal_expr((GoalA0; GoalB0), OldVar, NewVar,
+		(GoalA; GoalB)) :-
+	prog_util__rename_in_goal(GoalA0, OldVar, NewVar, GoalA),
+	prog_util__rename_in_goal(GoalB0, OldVar, NewVar, GoalB).
+prog_util__rename_in_goal_expr(fail, _Var, _NewVar, fail).
+prog_util__rename_in_goal_expr(not(Goal0), OldVar, NewVar, not(Goal)) :-
+	prog_util__rename_in_goal(Goal0, OldVar, NewVar, Goal).
+prog_util__rename_in_goal_expr(some(Vars0, Goal0), OldVar, NewVar,
+		some(Vars, Goal)) :-
+	prog_util__rename_in_vars(Vars0, OldVar, NewVar, Vars),
+	prog_util__rename_in_goal(Goal0, OldVar, NewVar, Goal).
+prog_util__rename_in_goal_expr(all(Vars0, Goal0), OldVar, NewVar,
+		all(Vars, Goal)) :-
+	prog_util__rename_in_vars(Vars0, OldVar, NewVar, Vars),
+	prog_util__rename_in_goal(Goal0, OldVar, NewVar, Goal).
+prog_util__rename_in_goal_expr(implies(GoalA0, GoalB0), OldVar, NewVar,
+		implies(GoalA, GoalB)) :-
+	prog_util__rename_in_goal(GoalA0, OldVar, NewVar, GoalA),
+	prog_util__rename_in_goal(GoalB0, OldVar, NewVar, GoalB).
+prog_util__rename_in_goal_expr(equivalent(GoalA0, GoalB0), OldVar, NewVar,
+		equivalent(GoalA, GoalB)) :-
+	prog_util__rename_in_goal(GoalA0, OldVar, NewVar, GoalA),
+	prog_util__rename_in_goal(GoalB0, OldVar, NewVar, GoalB).
+prog_util__rename_in_goal_expr(if_then(Vars0, Cond0, Then0), OldVar, NewVar,
+		if_then(Vars, Cond, Then)) :-
+	prog_util__rename_in_vars(Vars0, OldVar, NewVar, Vars),
+	prog_util__rename_in_goal(Cond0, OldVar, NewVar, Cond),
+	prog_util__rename_in_goal(Then0, OldVar, NewVar, Then).
+prog_util__rename_in_goal_expr(if_then_else(Vars0, Cond0, Then0, Else0),
+		OldVar, NewVar, if_then_else(Vars, Cond, Then, Else)) :-
+	prog_util__rename_in_vars(Vars0, OldVar, NewVar, Vars),
+	prog_util__rename_in_goal(Cond0, OldVar, NewVar, Cond),
+	prog_util__rename_in_goal(Then0, OldVar, NewVar, Then),
+	prog_util__rename_in_goal(Else0, OldVar, NewVar, Else).
+prog_util__rename_in_goal_expr(call(SymName, Terms0), OldVar, NewVar,
+		call(SymName, Terms)) :-
+	term__substitute_list(Terms0, OldVar, term__variable(NewVar), Terms).
+prog_util__rename_in_goal_expr(unify(TermA0, TermB0), OldVar, NewVar,
+		unify(TermA, TermB)) :-
+	term__substitute(TermA0, OldVar, term__variable(NewVar), TermA),
+	term__substitute(TermB0, OldVar, term__variable(NewVar), TermB).
+
+:- pred prog_util__rename_in_vars(list(var), var, var, list(var)).
+:- mode prog_util__rename_in_vars(in, in, in, out) is det.
+
+prog_util__rename_in_vars([], _, _, []).
+prog_util__rename_in_vars([Var0 | Vars0], OldVar, NewVar, [Var | Vars]) :-
+	( Var0 = OldVar ->
+		Var = NewVar
+	;
+		Var = Var0
+	),
+	prog_util__rename_in_vars(Vars0, OldVar, NewVar, Vars).
+
 %-----------------------------------------------------------------------------%
