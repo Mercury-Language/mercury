@@ -97,6 +97,7 @@ PROGS=	\
 	reverse_arith \
 	rnd \
 	rtc_bug \
+	rtti_strings \
 	shift_test \
 	space \
 	string_alignment \

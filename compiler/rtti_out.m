@@ -45,7 +45,7 @@
 
 :- implementation.
 
-:- import_module llds, prog_out, options, globals.
+:- import_module llds, prog_out, c_util, options, globals.
 :- import_module string, list, require, std_util.
 
 %-----------------------------------------------------------------------------%
@@ -77,14 +77,14 @@ output_rtti_data_defn(field_names(RttiTypeId, Ordinal, MaybeNames),
 	output_generic_rtti_data_defn_start(RttiTypeId, field_names(Ordinal),
 		DeclSet0, DeclSet),
 	io__write_string(" = {\n"),
-	output_maybe_strings(MaybeNames),
+	output_maybe_quoted_strings(MaybeNames),
 	io__write_string("};\n").
 output_rtti_data_defn(enum_functor_desc(RttiTypeId, FunctorName, Ordinal),
 		DeclSet0, DeclSet) -->
 	output_generic_rtti_data_defn_start(RttiTypeId,
 		enum_functor_desc(Ordinal), DeclSet0, DeclSet),
 	io__write_string(" = {\n\t"""),
-	io__write_string(FunctorName),
+	c_util__output_quoted_string(FunctorName),
 	io__write_string(""",\n\t"),
 	io__write_int(Ordinal),
 	io__write_string("\n};\n").
@@ -94,7 +94,7 @@ output_rtti_data_defn(notag_functor_desc(RttiTypeId, FunctorName, ArgType),
 	output_generic_rtti_data_defn_start(RttiTypeId, notag_functor_desc,
 		DeclSet1, DeclSet),
 	io__write_string(" = {\n\t"""),
-	io__write_string(FunctorName),
+	c_util__output_quoted_string(FunctorName),
 	io__write_string(""",\n\t (MR_PseudoTypeInfo) "),
 	output_rval(ArgType),
 	io__write_string("\n};\n").
@@ -122,7 +122,7 @@ output_rtti_data_defn(du_functor_desc(RttiTypeId, FunctorName, Ptag, Stag,
 	output_generic_rtti_data_defn_start(RttiTypeId,
 		du_functor_desc(Ordinal), DeclSet3, DeclSet),
 	io__write_string(" = {\n\t"""),
-	io__write_string(FunctorName),
+	c_util__output_quoted_string(FunctorName),
 	io__write_string(""",\n\t"),
 	io__write_int(Arity),
 	io__write_string(",\n\t"),
@@ -231,9 +231,9 @@ output_rtti_data_defn(type_ctor_info(RttiTypeId, Unify, Index, Compare,
 	output_maybe_code_addr(Init),
 	io__write_string(",\n\t"""),
 	{ prog_out__sym_name_to_string(Module, ModuleName) },
-	io__write_string(ModuleName),
+	c_util__output_quoted_string(ModuleName),
 	io__write_string(""",\n\t"""),
-	io__write_string(Type),
+	c_util__output_quoted_string(Type),
 	io__write_string(""",\n\t"),
 	io__write_int(Version),
 	io__write_string(",\n\t"),
@@ -433,7 +433,7 @@ output_rtti_addr_storage_type_name(RttiTypeId, RttiName, BeingDefined) -->
 	io__write_string(ConstStr),
 
 	{ rtti_name_c_type(RttiName, CType, Suffix) },
-	io__write_string(CType),
+	c_util__output_quoted_string(CType),
 	io__write_string(" "),
 	output_rtti_addr(RttiTypeId, RttiName),
 	io__write_string(Suffix).
@@ -554,26 +554,26 @@ output_rtti_addr(RttiTypeId, RttiName) -->
 	{ rtti__addr_to_string(RttiTypeId, RttiName, Str) },
 	io__write_string(Str).
 
-:- pred output_maybe_string(maybe(string)::in,
+:- pred output_maybe_quoted_string(maybe(string)::in,
 	io__state::di, io__state::uo) is det.
 
-output_maybe_string(MaybeName) -->
+output_maybe_quoted_string(MaybeName) -->
 	(
 		{ MaybeName = yes(Name) },
 		io__write_string(""""),
-		io__write_string(Name),
+		c_util__output_quoted_string(Name),
 		io__write_string("""")
 	;
 		{ MaybeName = no },
 		io__write_string("NULL")
 	).
 
-:- pred output_maybe_strings(list(maybe(string))::in,
+:- pred output_maybe_quoted_strings(list(maybe(string))::in,
 	io__state::di, io__state::uo) is det.
 
-output_maybe_strings(MaybeNames) -->
+output_maybe_quoted_strings(MaybeNames) -->
 	io__write_string("\t"),
-	io__write_list(MaybeNames, ",\n\t", output_maybe_string),
+	io__write_list(MaybeNames, ",\n\t", output_maybe_quoted_string),
 	io__write_string("\n").
 
 :- pred output_exist_locn(exist_typeinfo_locn::in,
