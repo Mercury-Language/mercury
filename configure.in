@@ -328,55 +328,6 @@ if test "$ac_cv_func_sigaction" = yes; then
 	fi
 fi
 #
-# see whether SA_RESTART is defined
-# (we use it if possible, if not available warn about it, because
-# it could cause problems with signal handling).
-#
-AC_MSG_CHECKING(for SA_RESTART)
-AC_CACHE_VAL(mercury_cv_sa_restart,
-AC_TRY_RUN([
-
-#include <signal.h>
-#include <stdlib.h>
-
-#define FAULT_ADDRESS ((int *)112)
-
-extern void handler(int signum, siginfo_t *info, void *context);
-
-int main() {
-	struct sigaction act;
-	act.sa_flags = SA_SIGINFO | SA_RESTART;
-	act.sa_sigaction = handler;
-	if (sigemptyset(&act.sa_mask) != 0)
-		exit(1);
-	if (sigaction(SIGSEGV, &act, NULL) != 0)
-		exit(1);
-	/* provoke a SIGSEGV */
-	(*FAULT_ADDRESS)++;
-	exit(1);
-}
-
-void handler(int signum, siginfo_t *info, void *context) {
-	if (signum == SIGSEGV &&
-	    info->si_signo == SIGSEGV &&
-	    info->si_code > 0 &&
-	    (int *)info->si_addr == FAULT_ADDRESS)
-	{
-		exit(0);
-	} else {
-		exit(1);
-	}
-}],
-[mercury_cv_sa_restart=yes],
-[mercury_cv_sa_restart=no],
-[mercury_cv_sa_restart=no]))
-AC_MSG_RESULT($mercury_cv_sa_restart)
-if test $mercury_cv_sa_restart = yes; then
-	AC_DEFINE(HAVE_SIGINFO)
-else
-	AC_MSG_WARN("using sigaction without SA_RESTART")
-fi
-#
 # check the basics of sigcontext_struct
 #
 AC_MSG_CHECKING(for working \`sigcontext_struct' in second arg)
