@@ -111,7 +111,7 @@ awk '
 	{ pair_counts[$1 " " $2] += $3; }
 	END {
 		for (addrpair in pair_counts) {
-			printf("%s %d\n", addrpair, pair_counts[addr]);
+			printf("%s %d\n", addrpair, pair_counts[addrpair]);
 		}
 	}
 ' Prof.CallPair.total Prof.CallPair > Prof.CallPair.newtotal &&
