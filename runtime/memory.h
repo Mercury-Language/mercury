@@ -13,8 +13,10 @@
 #define MAX_REAL_REG 32		/* r1 .. r32 */
 #define NUM_SPECIAL_REG 5	/* succip, sp, hp, maxfr, curfr */
 
-/* this can be changed at will */
+/* this can be changed at will, including by -D options to the C compiler */
+#ifndef MAX_VIRTUAL_REG
 #define MAX_VIRTUAL_REG	1024
+#endif
 
 /* allocate enough fake_regs to hold both the special regs */
 /* and all the virtual registers */
