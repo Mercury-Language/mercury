@@ -387,6 +387,7 @@ static MR_bool
 __Unify____type_ctor_desc_0_0(MR_Word x, MR_Word y)
 {
 	mercury::runtime::Errors::SORRY(""foreign code for unifying type_ctor_descs"");
+	return 0;
 }
 
 static void
@@ -400,6 +401,7 @@ static MR_bool
 special___Unify___type_ctor_desc_0_0(MR_Word x, MR_Word y)
 {
 	mercury::runtime::Errors::SORRY(""foreign code for unifying type_ctor_descs"");
+	return 0;
 }
 
 static int
