@@ -435,6 +435,10 @@ opt_debug__dump_layout_name(label_layout(Label, LabelVars), Str) :-
 opt_debug__dump_layout_name(proc_layout(ProcLabel, _), Str) :-
 	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
 	string__append_list(["proc_layout(", ProcLabelStr, ")"], Str).
+opt_debug__dump_layout_name(proc_layout_head_var_nums(ProcLabel), Str) :-
+	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
+	string__append_list(["proc_layout_head_var_nums(", ProcLabelStr, ")"],
+		Str).
 opt_debug__dump_layout_name(proc_layout_var_names(ProcLabel), Str) :-
 	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
 	string__append_list(["proc_layout_var_names(", ProcLabelStr, ")"],

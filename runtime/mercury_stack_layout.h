@@ -245,7 +245,9 @@ typedef enum {
 ** The MR_sll_goal_path field contains an offset into the module-wide string
 ** table, leading to a string that gives the goal path associated with the
 ** label. If there is no meaningful goal path associated with the label,
-** the offset will be zero, leading to the empty string.
+** the offset will be zero, leading to the empty string. You can use the macro
+** MR_label_goal_path to convert the value in the MR_sll_goal_path field to a
+** string.
 **
 ** The remaining fields give information about the values live at the given
 ** label, if this information is available. If it is available, the
@@ -614,7 +616,9 @@ typedef	struct MR_Exec_Trace_Struct {
 	const MR_Module_Layout	*MR_exec_module_layout;
 	MR_Word			*MR_exec_proc_rep;
 	const MR_Table_Io_Decl	*MR_exec_table_io_decl;
+	const MR_int_least16_t	*MR_exec_head_var_nums;
 	const MR_int_least16_t	*MR_exec_used_var_names;
+	MR_int_least16_t	MR_exec_num_head_vars;
 	MR_int_least16_t	MR_exec_max_named_var_num;
 	MR_int_least16_t	MR_exec_max_r_num;
 	MR_int_least8_t		MR_exec_maybe_from_full;
@@ -728,6 +732,8 @@ typedef	struct MR_Proc_Layout_Compiler_Exec_Struct {
 #define	MR_sle_call_label	MR_sle_exec_trace.MR_exec_call_label
 #define	MR_sle_module_layout	MR_sle_exec_trace.MR_exec_module_layout
 #define	MR_sle_proc_rep	MR_sle_exec_trace.MR_exec_proc_rep
+#define	MR_sle_head_var_nums	MR_sle_exec_trace.MR_exec_head_var_nums
+#define	MR_sle_num_head_vars	MR_sle_exec_trace.MR_exec_num_head_vars
 #define	MR_sle_used_var_names	MR_sle_exec_trace.MR_exec_used_var_names
 #define	MR_sle_max_named_var_num MR_sle_exec_trace.MR_exec_max_named_var_num
 #define	MR_sle_max_r_num	MR_sle_exec_trace.MR_exec_max_r_num

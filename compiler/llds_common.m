@@ -204,14 +204,14 @@ llds_common__process_layout_data(LayoutData0, LayoutData, Info0, Info) :-
 
 llds_common__process_exec_trace(ExecTrace0, ExecTrace, Info0, Info) :-
 	ExecTrace0 = proc_layout_exec_trace(CallLabel, MaybeProcBody0,
-		MaybeTableIoDecl, VarNames, MaxVarNum, MaxReg,
+		MaybeTableIoDecl, HeadVarNums, VarNames, MaxVarNum, MaxReg,
 		MaybeFromFullSlot, MaybeIoSeqSlot, MaybeTrailSlot,
 		MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot,
 		MaybeDeclDebugSlot),
 	llds_common__process_maybe_rval(MaybeProcBody0, MaybeProcBody,
 		Info0, Info),
 	ExecTrace = proc_layout_exec_trace(CallLabel, MaybeProcBody,
-		MaybeTableIoDecl, VarNames, MaxVarNum, MaxReg,
+		MaybeTableIoDecl, HeadVarNums, VarNames, MaxVarNum, MaxReg,
 		MaybeFromFullSlot, MaybeIoSeqSlot, MaybeTrailSlot,
 		MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot,
 		MaybeDeclDebugSlot).

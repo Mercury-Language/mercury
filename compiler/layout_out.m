@@ -195,6 +195,10 @@ output_layout_name(proc_layout(ProcLabel, _)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_proc_layout__"),
 	output_proc_label(ProcLabel).
+output_layout_name(proc_layout_head_var_nums(ProcLabel)) -->
+	io__write_string(mercury_data_prefix),
+	io__write_string("_head_var_nums__"),
+	output_proc_label(ProcLabel).
 output_layout_name(proc_layout_var_names(ProcLabel)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_var_names__"),
@@ -274,6 +278,12 @@ output_layout_name_storage_type_name(proc_layout(ProcLabel, Kind),
 	io__write_string(kind_to_type(Kind)),
 	io__write_string(" "),
 	output_layout_name(proc_layout(ProcLabel, Kind)).
+output_layout_name_storage_type_name(proc_layout_head_var_nums(ProcLabel),
+		_BeingDefined) -->
+	io__write_string("static const "),
+	io__write_string("MR_int_least16_t "),
+	output_layout_name(proc_layout_head_var_nums(ProcLabel)),
+	io__write_string("[]").
 output_layout_name_storage_type_name(proc_layout_var_names(ProcLabel),
 		_BeingDefined) -->
 	io__write_string("static const "),
@@ -355,6 +365,7 @@ output_layout_name_storage_type_name(table_io_decl(RttiProcLabel),
 
 layout_name_would_include_code_addr(label_layout(_, _)) = no.
 layout_name_would_include_code_addr(proc_layout(_, _)) = yes.
+layout_name_would_include_code_addr(proc_layout_head_var_nums(_)) = no.
 layout_name_would_include_code_addr(proc_layout_var_names(_)) = no.
 layout_name_would_include_code_addr(closure_proc_id(_, _, _)) = no.
 layout_name_would_include_code_addr(file_layout(_, _)) = no.
@@ -477,33 +488,36 @@ output_proc_layout_data_defn(ProcLabel, Traversal, MaybeRest,
 	{ Kind = maybe_proc_layout_and_exec_trace_kind(MaybeRest, ProcLabel) },
 	(
 		{ MaybeRest = no_proc_id },
-		output_layout_traversal_decls(Traversal, DeclSet0, DeclSet3),
+		output_layout_traversal_decls(Traversal, DeclSet0, DeclSet4),
 		output_proc_layout_data_defn_start(ProcLabel, Kind, Traversal),
 		output_layout_no_proc_id_group,
 		output_proc_layout_data_defn_end
 	;
 		{ MaybeRest = proc_id_only },
-		output_layout_traversal_decls(Traversal, DeclSet0, DeclSet3),
+		output_layout_traversal_decls(Traversal, DeclSet0, DeclSet4),
 		output_proc_layout_data_defn_start(ProcLabel, Kind, Traversal),
 		output_layout_proc_id_group(ProcLabel),
 		output_layout_no_exec_trace_group,
 		output_proc_layout_data_defn_end
 	;
 		{ MaybeRest = proc_id_and_exec_trace(ExecTrace) },
+		{ HeadVarNums = ExecTrace ^ head_var_nums },
+		output_proc_layout_head_var_nums(ProcLabel, HeadVarNums,
+			DeclSet0, DeclSet1),
 		{ VarNames = ExecTrace ^ var_names },
 		{ MaxVarNum = ExecTrace ^ max_var_num },
 		output_proc_layout_var_names(ProcLabel, VarNames, MaxVarNum,
-			DeclSet0, DeclSet1),
-		output_layout_traversal_decls(Traversal, DeclSet1, DeclSet2),
+			DeclSet1, DeclSet2),
+		output_layout_traversal_decls(Traversal, DeclSet2, DeclSet3),
 		output_layout_exec_trace_decls(ProcLabel, ExecTrace,
-			DeclSet2, DeclSet3),
+			DeclSet3, DeclSet4),
 
 		output_proc_layout_data_defn_start(ProcLabel, Kind, Traversal),
 		output_layout_proc_id_group(ProcLabel),
 		output_layout_exec_trace_group(ProcLabel, ExecTrace),
 		output_proc_layout_data_defn_end
 	),
-	{ decl_set_insert(DeclSet3, data_addr(
+	{ decl_set_insert(DeclSet4, data_addr(
 		layout_addr(proc_layout(ProcLabel, Kind))), DeclSet) }.
 
 :- func maybe_proc_layout_and_exec_trace_kind(maybe_proc_id_and_exec_trace,
@@ -520,7 +534,7 @@ maybe_proc_layout_and_exec_trace_kind(MaybeRest, ProcLabel) = Kind :-
 	;
 		MaybeRest = proc_id_and_exec_trace(_),
 		Kind = proc_layout_exec_trace(
-		    proc_label_user_or_compiler(ProcLabel))
+			proc_label_user_or_compiler(ProcLabel))
 	).
 
 proc_label_user_or_compiler(proc(_, _, _, _, _, _)) = user.
@@ -617,10 +631,10 @@ output_layout_no_proc_id_group -->
 
 output_layout_exec_trace_decls(ProcLabel, ExecTrace, DeclSet0, DeclSet) -->
 	{ ExecTrace = proc_layout_exec_trace(CallLabelLayout, MaybeProcBody,
-		MaybeTableIoDecl, _VarNames, _MaxVarNum, _MaxRegNum,
-		_MaybeFromFullSlot, _MaybeIoSeqSlot, _MaybeTrailSlot,
-		_MaybeMaxfrSlot, _EvalMethod, _MaybeCallTableSlot,
-		_MaybeDeclDebugSlot) },
+		MaybeTableIoDecl, _HeadVarNums, _VarNames, _MaxVarNum,
+		_MaxRegNum, _MaybeFromFullSlot, _MaybeIoSeqSlot,
+		_MaybeTrailSlot, _MaybeMaxfrSlot, _EvalMethod,
+		_MaybeCallTableSlot, _MaybeDeclDebugSlot) },
 	{ ModuleName = get_defining_module_name(ProcLabel) },
 	output_layout_decl(CallLabelLayout, DeclSet0, DeclSet1),
 	output_layout_decl(module_layout(ModuleName), DeclSet1, DeclSet2),
@@ -644,8 +658,8 @@ output_layout_exec_trace_decls(ProcLabel, ExecTrace, DeclSet0, DeclSet) -->
 
 output_layout_exec_trace_group(ProcLabel, ExecTrace) -->
 	{ ExecTrace = proc_layout_exec_trace(CallLabelLayout, MaybeProcBody,
-		MaybeTableIoDecl, _VarNames, MaxVarNum, MaxRegNum,
-		MaybeFromFullSlot, MaybeIoSeqSlot, MaybeTrailSlot,
+		MaybeTableIoDecl, _VarNames, HeadVarNums, MaxVarNum,
+		MaxRegNum, MaybeFromFullSlot, MaybeIoSeqSlot, MaybeTrailSlot,
 		MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot,
 		MaybeDeclDebugSlot) },
 	io__write_string("\t{\n\t(const MR_Label_Layout *) &"),
@@ -671,7 +685,11 @@ output_layout_exec_trace_group(ProcLabel, ExecTrace) -->
 		io__write_string("NULL")
 	),
 	io__write_string(",\n\t"),
+	output_layout_name(proc_layout_head_var_nums(ProcLabel)),
+	io__write_string(",\n\t"),
 	output_layout_name(proc_layout_var_names(ProcLabel)),
+	io__write_string(",\n\t"),
+	io__write_int(list__length(HeadVarNums)),
 	io__write_string(",\n\t"),
 	io__write_int(MaxVarNum),
 	io__write_string(",\n\t"),
@@ -708,6 +726,25 @@ eval_method_to_c_string(eval_memo) =          "MR_EVAL_METHOD_MEMO".
 eval_method_to_c_string(eval_table_io) =      "MR_EVAL_METHOD_TABLE_IO".
 eval_method_to_c_string(eval_table_io_decl) = "MR_EVAL_METHOD_TABLE_IO_DECL".
 eval_method_to_c_string(eval_minimal) =	      "MR_EVAL_METHOD_MINIMAL".
+
+:- pred output_proc_layout_head_var_nums(proc_label::in, list(int)::in,
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+
+output_proc_layout_head_var_nums(ProcLabel, HeadVarNums, DeclSet0, DeclSet) -->
+	io__write_string("\n"),
+	output_layout_name_storage_type_name(
+		proc_layout_head_var_nums(ProcLabel), yes),
+	io__write_string(" = {\n"),
+	( { HeadVarNums = [] } ->
+			% ANSI/ISO C doesn't allow empty arrays, so
+			% place a dummy value in the array.
+		io__write_string("\t0\n")
+	;
+		list__foldl(output_number_in_vector, HeadVarNums)
+	),
+	io__write_string("};\n"),
+	{ decl_set_insert(DeclSet0, data_addr(
+		layout_addr(proc_layout_head_var_nums(ProcLabel))), DeclSet) }.
 
 :- pred output_proc_layout_var_names(proc_label::in, list(int)::in, int::in,
 	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.

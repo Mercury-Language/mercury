@@ -486,20 +486,21 @@ stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, MaybeCallLabel,
 		VarTypes, UsedVarNameMap, MaybeTableIoDecl, ExecTrace) -->
 	stack_layout__construct_var_name_vector(VarSet, UsedVarNameMap,
 		MaxVarNum, VarNameVector),
+	{ list__map(term__var_to_int, HeadVars, HeadVarNumVector) },
 	stack_layout__get_trace_level(TraceLevel),
 	stack_layout__get_trace_suppress(TraceSuppress),
 	{ BodyReps = trace_needs_proc_body_reps(TraceLevel, TraceSuppress) },
 	(
 		{ BodyReps = no },
-		{ MaybeGoalRepRval = no }
+		{ MaybeProcRepRval = no }
 	;
 		{ BodyReps = yes },
 		stack_layout__get_module_info(ModuleInfo),
 		{ prog_rep__represent_proc(HeadVars, Goal, InstMap, VarTypes,
-			ModuleInfo, GoalRep) },
-		{ type_to_univ(GoalRep, GoalRepUniv) },
+			ModuleInfo, ProcRep) },
+		{ type_to_univ(ProcRep, ProcRepUniv) },
 		stack_layout__get_cell_counter(CellCounter0),
-		{ static_term__term_to_rval(GoalRepUniv, MaybeGoalRepRval,
+		{ static_term__term_to_rval(ProcRepUniv, MaybeProcRepRval,
 			CellCounter0, CellCounter) },
 		stack_layout__set_cell_counter(CellCounter)
 	),
@@ -522,11 +523,11 @@ stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, MaybeCallLabel,
 		MaybeTableIoDecl = yes(_),
 		MaybeTableIoDeclName = yes(table_io_decl(RttiProcLabel))
 	},
-	{ ExecTrace = proc_layout_exec_trace(CallLabelLayout, MaybeGoalRepRval,
-		MaybeTableIoDeclName, VarNameVector, MaxVarNum, MaxTraceReg,
-		MaybeFromFullSlot, MaybeIoSeqSlot, MaybeTrailSlots,
-		MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot,
-		MaybeDeclSlots) }.
+	{ ExecTrace = proc_layout_exec_trace(CallLabelLayout, MaybeProcRepRval,
+		MaybeTableIoDeclName, HeadVarNumVector, VarNameVector,
+		MaxVarNum, MaxTraceReg, MaybeFromFullSlot, MaybeIoSeqSlot,
+		MaybeTrailSlots, MaybeMaxfrSlot, EvalMethod,
+		MaybeCallTableSlot, MaybeDeclSlots) }.
 
 :- pred stack_layout__construct_var_name_vector(prog_varset::in,
 	map(int, string)::in, int::out, list(int)::out,
