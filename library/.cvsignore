@@ -10,6 +10,10 @@
 *.date
 *.date3
 *.pic_o
+*.opt
+*.optdate
+*.trans_opt
+*.trans_opt_date
 sicstus_compile sicstus_saved_state
 io.h std_util.h
 library.nu.nl
