@@ -158,12 +158,6 @@ stack_layout__valid_proc_layout(ProcLayoutInfo) :-
 		ProcLabel = special_proc(_, _, _, _, _, _)
 	).
 
-:- pred stack_layout__data_addr_to_maybe_rval(data_addr::in, maybe(rval)::out)
-	is det.
-
-stack_layout__data_addr_to_maybe_rval(DataAddr, yes(Rval)) :-
-	Rval = const(data_addr_const(DataAddr)).
-
 %---------------------------------------------------------------------------%
 
 	% concat_string_list appends a list of strings together,
