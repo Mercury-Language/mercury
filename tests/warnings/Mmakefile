@@ -10,6 +10,7 @@ PROGS=	\
 	duplicate_call \
 	inf_recursion_lambda \
 	infinite_recursion \
+	inference_test \
 	missing_if \
 	pragma_source_file \
 	simple_code \
@@ -24,6 +25,7 @@ PROGS=	\
 MCFLAGS-duplicate_call		= --warn-duplicate-calls
 MCFLAGS-unused_args_test	= --warn-unused-args
 MCFLAGS-unused_import		= --warn-interface-imports
+MCFLAGS-inference_test		= --infer-all
 
 #-----------------------------------------------------------------------------#
 
