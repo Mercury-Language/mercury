@@ -535,10 +535,9 @@ vn_block__new_if_node(TargetAddr, Livemap, Params, Ctrlmap0, Ctrl0,
 	;
 		TargetAddr = do_redo
 	->
-		set__to_sorted_list(Liveset0, Vnlivelist0),
-		vn_block__filter_redo_livelist(Vnlivelist0, Vnlivelist),
-		vn_block__record_livevnlvals(Vnlivelist, VnTables0, VnTables,
-			Liveset0, Liveset, FlushEntry0, FlushEntry),
+		vn_block__record_compulsory_lvals(VnTables0, Liveset0, Liveset,
+			FlushEntry0, FlushEntry),
+		VnTables = VnTables0,
 		LabelNo = LabelNo0,
 		Parallels = []
 	;

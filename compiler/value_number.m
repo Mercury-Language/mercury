@@ -103,9 +103,11 @@ value_number__main(Instrs0, Instrs) -->
 	% therefore insert labels before and after such assignments.
 	% Our caller will break the code sequence at these labels.
 	%
-	% We do the same thing for assignments to the control slots in
-	% nondet stack frames, since otherwise a bug in the rest of value
-	% numbering may cause them to be improperly deleted.
+	% Mkframe operations also change curfr, and therefore get the
+	% same treatment. We also apply this treatment to assignments
+	% to the control slots in, nondet stack frames, since otherwise
+	% a bug in the rest of value numbering may cause them to be
+	% improperly deleted.
 
 :- pred value_number__prepare_for_vn(list(instruction), proc_label,
 	bool, set(label), set(label), int, int, list(instruction)).
@@ -158,19 +160,23 @@ value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel,
 			Instrs = [Instr0 | Instrs1]
 		)
 	;
-		Uinstr0 = assign(Target, _),
 		(
-			Target = curfr
+			Uinstr0 = assign(Target, _),
+			(
+				Target = curfr
+			;
+				Target = maxfr
+			;
+				Target = redoip(_)
+			;
+				Target = succip(_)
+			;
+				Target = prevfr(_)
+			;
+				Target = succfr(_)
+			)
 		;
-			Target = maxfr
-		;
-			Target = redoip(_)
-		;
-			Target = succip(_)
-		;
-			Target = prevfr(_)
-		;
-			Target = succfr(_)
+			Uinstr0 = mkframe(_, _, _)
 		)
 	->
 		N1 is N0 + 1,
