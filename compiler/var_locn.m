@@ -152,8 +152,8 @@
 	var_locn_info::in, var_locn_info::out) is det.
 
 %	var_locn__assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector,
-%			TypeMsg, Code, StaticCellInfo0, StaticCellInfo,
-%			VarLocnInfo0, VarLocnInfo)
+%			SizeInfo, TypeMsg, Code, !StaticCellInfo,
+%			!VarLocnInfo)
 %		Generates code to assign to Var a pointer, tagged by Ptag, to
 %		the cell whose contents are given by the other arguments,
 %		and updates the state of VarLocnInfo0 accordingly.
@@ -161,6 +161,13 @@
 %		the heap (rather than statically), then reserve an extra
 %		word immediately before the allocated object, for the
 %		garbage collector to use to hold a forwarding pointer.
+%		If SizeInfo is yes(SizeVal), then reserve an extra word
+%		immediately before the allocated object (regardless
+%		of whether it is allocated statically or dynamically),
+%		and initialize this word with the value determined by
+%		SizeVal.
+%		NOTE: ReserveWordAtStart and SizeInfo should not both be
+%		yes / yes(_), because that will cause an obvious conflict!
 
 :- pred var_locn__assign_cell_to_var(prog_var::in, bool::in, tag::in,
 	list(maybe(rval))::in, maybe(term_size_value)::in, string::in,

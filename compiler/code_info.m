@@ -3000,6 +3000,9 @@ code_info__maybe_reset_discard_and_release_ticket(MaybeTicketSlot, Reason,
 
 	% Submodule to deal with var_locn.
 
+	% Most of these procedures just forward to the var_locn module.
+	% See var_locn for documentation.
+
 :- interface.
 
 :- pred code_info__variable_locations(code_info::in,
@@ -3021,7 +3024,7 @@ code_info__maybe_reset_discard_and_release_ticket(MaybeTicketSlot, Reason,
 	code_info::in, code_info::out) is det.
 
 	% code_info__assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector,
-	% 	Size, TypeMsg, Code, !CI)
+	% 	Size, TypeMsg, Code, !CI):
 :- pred code_info__assign_cell_to_var(prog_var::in, bool::in, tag::in,
 	list(maybe(rval))::in, maybe(term_size_value)::in, string::in,
 	code_tree::out, code_info::in, code_info::out) is det.
