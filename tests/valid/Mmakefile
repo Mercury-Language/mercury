@@ -130,6 +130,7 @@ OTHER_PROGS= \
 	livevals_seq \
 	loop \
 	loop_in_disj \
+	loop_inv_bug \
 	merge_ground_any \
 	middle_rec_labels \
 	modes_bug \

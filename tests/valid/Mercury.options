@@ -78,6 +78,7 @@ MCFLAGS-intermod_user_equality_nested	= --intermodule-optimization
 MCFLAGS-ite_to_disj		= --aditi
 MCFLAGS-lambda_inference	= --infer-all
 MCFLAGS-livevals_seq		= -O5 --opt-space
+MCFLAGS-loop_inv_bug		= --common-struct --loop-invariants
 MCFLAGS-middle_rec_labels	= --middle-rec
 MCFLAGS-mostly_uniq_mode_inf	= --infer-all
 MCFLAGS-pred_with_no_modes	= --infer-all
