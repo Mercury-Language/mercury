@@ -688,7 +688,6 @@ make_init_file(ErrorStream, MainModuleName, AllModules, Succeeded) -->
 		io__nl(ErrorStream),
 		io__write_string(ErrorStream, io__error_message(Error)),
 		io__nl(ErrorStream),
-		io__set_exit_status(1),
 		{ Succeeded = no }
 	)
     ).
@@ -1065,8 +1064,7 @@ write_num_split_c_files(ModuleName, NumChunks, Succeeded) -->
 		io__write_string(ProgName),
 		io__write_string(": can't open `"),
 		io__write_string(NumChunksFileName),
-		io__write_string("' for output\n"),
-		io__set_exit_status(1)
+		io__write_string("' for output\n")
 	).
 
 read_num_split_c_files(ModuleName, MaybeNumChunks) -->
