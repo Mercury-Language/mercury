@@ -491,7 +491,7 @@ typecheck_var_has_type(VarId, Type, TypeInfo0, TypeInfo) :-
 
 :- type type_stuff ---> type_stuff(type, tvarset, tsubst).
 
-:- pred get_type_stuff(type_assign_set, variable, list(type_stuff)).
+:- pred get_type_stuff(type_assign_set, var, list(type_stuff)).
 :- mode get_type_stuff(input, input, output).
 get_type_stuff([], _VarId, []).
 get_type_stuff([TypeAssign | TypeAssigns], VarId, L) :-
@@ -885,7 +885,7 @@ type_assign_unify_term(term_functor(FX, AsX, _), term_functor(FY, AsY, _),
 	% type assignment into the type assignment set.
 
 :- pred type_assign_unify_var_functor(list(hlds__cons_defn), list(term),
-		variable, type_assign,
+		var, type_assign,
 		type_info, type_assign_set, type_assign_set).
 :- mode type_assign_unify_var_functor(input, input, input, input,
 		typeinfo_ui, input, output).
@@ -1222,8 +1222,8 @@ find_undef_type(term_functor(F, As, _), ErrorContext, TypeDefns) -->
 	{ length(As, Arity) },
 	{ make_type_id(F, Arity, TypeId) },
 	(
-		{ not map__contains(TypeDefns, TypeId), 
-		  not is_builtin_type(TypeId)
+		{ \+ map__contains(TypeDefns, TypeId), 
+		  \+ is_builtin_type(TypeId)
 		}
 	->
 		report_undef_type(TypeId, ErrorContext)
@@ -1649,7 +1649,7 @@ write_type_assign(TypeAssign, VarSet) -->
 	write_type_assign_2(Vars1, VarSet, VarTypes, TypeBindings, TypeVarSet),
 	io__write_string("\n").
 
-:- pred write_type_assign_2(list(variable), varset, map(var, type),
+:- pred write_type_assign_2(list(var), varset, map(var, type),
 			tsubst, tvarset, io__state, io__state).
 :- mode write_type_assign_2(input, input, input, input, input, di, uo).
 
