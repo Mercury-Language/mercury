@@ -29,6 +29,7 @@ SOURCES= \
 	mostly_uniq1.m \
 	mostly_uniq2.m \
 	multisoln_func.m \
+	nested_impl_in_int.m \
 	nullary_ho_func_error.m \
 	occurs.m \
 	pragma_c_code_and_clauses1.m \
