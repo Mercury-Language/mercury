@@ -6,19 +6,23 @@ include ../Mmake
 
 #-----------------------------------------------------------------------------#
 
-# uncomment the following line to test the performance
+# uncomment the following lines to test the performance
 # of the benchmarks (with I/O suppressed)
-# C2INITFLAGS=-w"`extract $(*:_init=) '' BenchEntry`"
+# C2INITFLAGS=-w "`extract $(*:_init=) '' BenchEntry`"
+# MLFLAGS=-- -static
 
 #-----------------------------------------------------------------------------#
 
 PROGS=	cqueens crypt deriv deriv2 nrev poly primes qsort queens \
 	tak query
 DEPENDS=$(PROGS:%=%.depend)
+DEPS=	$(PROGS:%=%.dep)
 OUTS=	$(PROGS:%=%.out)
 EXPS=	$(PROGS:%=%.exp)
 RESS=	$(PROGS:%=%.res)
 SS=	$(PROGS:%=%.s)
+
+dep: $(DEPS)
 
 depend: $(DEPENDS)
 
@@ -26,7 +30,7 @@ check: $(EXPS) $(OUTS) $(RESS)
 
 ss: $(SS)
 
-all:	$(PROGS)
+all: $(PROGS)
 
 dir.%: $(PROGS) $(SS)
 	-mkdir $@
