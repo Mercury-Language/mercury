@@ -471,6 +471,11 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
 		ModuleName = DefaultModuleName,
 		Messages0 = []
 	    ;
+		match_sym_name(DefaultModuleName, StartModuleName)
+	    ->
+		ModuleName = StartModuleName,
+		Messages0 = []
+	    ;
 	    	prog_out__sym_name_to_string(StartModuleName,
 			StartModuleNameString),
 	    	string__append_list(["source file `", SourceFileName,
