@@ -342,6 +342,13 @@ MR_add_line_spy_point(MR_Spy_Action action,
 	int		point_slot;
 	int		old_size, new_size;
 
+	/*
+	** The original filename string may have come from a buffer
+	** or other volatile storage.
+	*/
+
+	filename = MR_copy_string(filename);
+
 	point_slot = MR_spy_point_next;
 
 	old_size = MR_spied_label_next;
@@ -420,6 +427,9 @@ MR_delete_spy_point(int point_table_slot)
 	point->spy_exists = FALSE;
 
 	if (point->spy_when == MR_SPY_LINENO) {
+		/* Release the storage acquired by MR_copy_string. */
+		MR_free((void *) point->spy_filename);
+
 		/*
 		** Remove the spy point from the spied label table list.
 		*/
