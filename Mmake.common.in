@@ -79,6 +79,26 @@ LIBRARY_RM_C		= @LIBRARY_RM_C@
 # LINK_SHARED_OBJ  	= gcc -shared	# for Solaris etc.
 LINK_SHARED_OBJ  	= @LINK_SHARED_OBJ@
 
+# The following variables specify how to pass options to the # $(CC) or
+# $(LINK_SHARED_OBJ) command to specify directories to be searched at
+# runtime for shared libraries.
+# Normally RPATH_OPT is either "-R" or "-rpath ", but you may need to
+# do something special to get the C compiler to pass this option on
+# to the linker (e.g. with gcc you can use "-Wl,-rpath,").
+# RPATH_SEP is a path separator; normally either ":"
+# or just RPATH_OPT with a space in front of it.
+# The SHLIB_ versions are used when linking shared libraries
+# (perhaps invoking ld directory, rather than gcc).
+# The EXE_ versions are used when linking executables.
+# The empty single quote pairs below are there to ensure that `make'
+# does not throw away any important trailing or leading whitespace.
+SHLIB_RPATH_OPT	= @SHLIB_RPATH_OPT@''
+SHLIB_RPATH_SEP	= ''@SHLIB_RPATH_SEP@''
+EXE_RPATH_OPT	= @EXE_RPATH_OPT@''
+EXE_RPATH_SEP	= ''@EXE_RPATH_SEP@''
+
+# Specify any extra libraries that must be linked in when linking shared
+# objects.
 SHARED_LIBS		= @SHARED_LIBS@
 
 # Set NUPROLOG to `nuprolog' and set INSTALL_NUPROLOG to `install_nuprolog'
