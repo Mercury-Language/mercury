@@ -441,7 +441,7 @@ LIBDIR_OPTS="$user_libdir_opts $merc_libdir_opts"
 case $mercury_libs in
 	shared)
 		MERCURY_LIBS=${MERCURY_LIBS="$TRACE_LIBS -l$STD_LIB_NAME -l$RT_LIB_NAME $LIBGC"}
-		LIBS=${LIBS="$MERCURY_LIBS $STDLIBS $TRACE_LIBS_SYSTEM"}
+		LIBS=${LIBS="$MERCURY_LIBS $TRACE_LIBS_SYSTEM $STDLIBS"}
 		merc_shlib_dirs="$merc_shlib_dirs $LIBDIR/$GRADE/$FULLARCH"
 		merc_shlib_dirs="$merc_shlib_dirs $LIBDIR/$FULLARCH"
 		;;
@@ -450,10 +450,10 @@ case $mercury_libs in
 			$LIBDIR/$GRADE/$FULLARCH/lib$STD_LIB_NAME.a \
 			$LIBDIR/$GRADE/$FULLARCH/lib$RT_LIB_NAME.a \
 			$LIBGC_STATIC"}
-		LIBS=${LIBS="$MERCURY_LIBS $STDLIBS $TRACE_LIBS_SYSTEM"}
+		LIBS=${LIBS="$MERCURY_LIBS $TRACE_LIBS_SYSTEM $STDLIBS"}
 		merc_shlib_dirs=""
 		;;
-	none)	LIBS="$STDLIBS"
+	none)	LIBS="$TRACE_LIBS_SYSTEM $STDLIBS"
 		LIBDIR_OPTS="$user_libdir_opts"
 		merc_shlib_dirs=""
 		;;
