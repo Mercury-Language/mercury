@@ -44,7 +44,7 @@
 #error "INLINE_ALLOC requires the use of GCC"
 #endif
 
-#include "include/gc_inl.h"
+#include "gc_inl.h"
 #define	tag_incr_hp(dest,tag,count) 					\
 	( __builtin_constant_p(count) && (count) < 16 			\
 	? ({ 	void * temp; 						\
