@@ -53,11 +53,11 @@
 	%	declarations for exported access predicates
 	%	declarations for non-exported access predicates
 	%	the definition of the type and the init predicate
-	%	the definition of the read access predicates
-	%	the definition of the write access predicates
+	%	the definition of the get access predicates
+	%	the definition of the set access predicates
 	%
-	% Please keep the order of mention of the various field consistent
-	% in each of these five components.
+	% Please keep the order of mention of the various fields
+	% consistent in each of these five components.
 
 :- interface.
 
@@ -2812,10 +2812,6 @@ code_info__get_shape_num(ticket, ticket).
 %---------------------------------------------------------------------------%
 
 :- implementation.
-
-	% `push_temp' doesn't actually increment the stack pointer, it just
-	% increments the push count.  The space will be allocated in the
-	% procedure prologue.
 
 :- pred code_info__push_temp(lval_or_ticket, lval, code_info, code_info).
 :- mode code_info__push_temp(in, out, in, out) is det.
