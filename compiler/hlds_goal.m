@@ -12,10 +12,15 @@
 
 :- interface.
 
-:- import_module hlds_data, hlds_pred, llds, prog_data, (inst), instmap.
+:- import_module hlds_data, hlds_pred, prog_data, (inst), instmap.
+:- import_module llds.	% XXX needed for `lval'
 :- import_module bool, char, list, set, map, std_util.
 
+%-----------------------------------------------------------------------------%
+
 	% Here is how goals are represented
+
+:- type hlds_goals	== list(hlds_goal).
 
 :- type hlds_goal	== pair(hlds_goal_expr, hlds_goal_info).
 
@@ -204,6 +209,11 @@
 
 	.
 
+%-----------------------------------------------------------------------------%
+%
+% Information for generic_calls
+%
+
 :- type generic_call
 	--->	higher_order(
 			prog_var,
@@ -225,112 +235,27 @@
 		)
 	.
 
+	% Get a description of a generic_call goal.
+:- pred hlds_goal__generic_call_id(generic_call, call_id).
+:- mode hlds_goal__generic_call_id(in, out) is det.
+
+	% Determine whether a generic_call is calling
+	% a predicate or a function
 :- func generic_call_pred_or_func(generic_call) = pred_or_func.
 
-	% Builtin Aditi operations. 
-:- type aditi_builtin
-	--->
-		% Call an Aditi predicate from Mercury compiled to C.
-		% This is introduced by magic.m.
-		% Arguments: 
-		%   type-infos for the input arguments
-		%   the input arguments
-		%   type-infos for the output arguments
-		%   the output arguments
-		aditi_call(
-			pred_proc_id,	% procedure to call
-			int,		% number of inputs
-			list(type),	% types of input arguments
-			int		% number of outputs
-		)
-
-		% Insert or delete a single tuple into/from a base relation.
-		% Arguments:
-		%   type-infos for the arguments of the tuple to insert
-		%   the arguments of tuple to insert
-		% aditi__state::di, aditi__state::uo
-	;	aditi_tuple_insert_delete(
-			aditi_insert_delete,
-			pred_id		% base relation to insert into
-		)
-
-		% Insert/delete/modify operations which take
-		% an input closure.
-		% These operations all have two variants. 
-		%
-		% A pretty syntax:
-		%
-		% aditi_bulk_insert(p(DB, X, Y) :- q(DB, X, Y)).
-		% aditi_bulk_delete(p(DB, X, Y) :- q(DB, X, Y)).
-		% aditi_bulk_modify(
-		%	(p(DB, X0, Y0) ==> p(_, X, Y) :-
-		%		X = X0 + 1,
-		%		Y = Y0 + 3
-		%	)).
-		%
-		% An ugly syntax:
-		%
-		% InsertPred = (aditi_bottom_up
-		%	pred(DB::aditi_mui, X::out, Y::out) :- 
-		%		q(DB, X, Y)
-		% ),
-		% aditi_bulk_insert(pred p/3, InsertPred).
-		%
-		% DeletePred = (aditi_bottom_up
-		%	pred(DB::aditi_mui, X::out, Y::out) :- 
-		%		p(DB, X, Y),
-		%		q(DB, X, Y)
-		% ),
-		% aditi_bulk_delete(pred p/3, DeletePred).
-	;	aditi_insert_delete_modify(
-			aditi_insert_delete_modify,
-			pred_id,
-			aditi_builtin_syntax
-		)
-	.
-
-:- type aditi_insert_delete
-	--->	delete			% `aditi_delete'
-	;	insert			% `aditi_insert'
-	.
-
-:- type aditi_insert_delete_modify
-	--->	delete(bulk_or_filter)	% `aditi_bulk_delete' or `aditi_filter'
-	;	bulk_insert		% `aditi_bulk_insert'
-	;	modify(bulk_or_filter)	% `aditi_bulk_modify' or `aditi_modify'
-	.
-
-	% Deletions and modifications can either be done by computing
-	% all tuples for which the update applies, then applying the
-	% update for all tuples in one go (`bulk'), or by applying
-	% the update to each tuple during a pass over the relation
-	% being modified (`filter').
-	%
-	% The `filter' updates are not yet implemented in Aditi, and
-	% it may be difficult to ever implement them.
-:- type bulk_or_filter
-	--->	bulk
-	;	filter
-	.
-
-	% Which syntax was used for an `aditi_delete' or `aditi_modify'
-	% call. The first syntax is prettier, the second is used
-	% where the closure to be passed in is not known at the call site.
-	% (See the "Aditi update syntax" section of the Mercury Language
-	% Reference Manual).
-:- type aditi_builtin_syntax
-	--->	pred_term		% e.g.
-					% aditi_bulk_insert(p(_, X) :- X = 1).
-	;	sym_name_and_closure	% e.g.
-					% aditi_insert(p/2,
-					%    (pred(_::in, X::out) is nondet:-
-					%	X = 1)
-					%    )
-	.
+%-----------------------------------------------------------------------------%
+%
+% Information for quantifications
+%
 
 :- type can_remove
 	--->	can_remove
 	;	cannot_remove.
+
+%-----------------------------------------------------------------------------%
+%
+% Information for calls
+%
 
 	% There may be two sorts of "builtin" predicates - those that we
 	% open-code using inline instructions (e.g. arithmetic predicates),
@@ -343,40 +268,19 @@
 			;	out_of_line_builtin
 			;	not_builtin.
 
+%-----------------------------------------------------------------------------%
+%
+% Information for switches
+%
+
 :- type case		--->	case(cons_id, hlds_goal).
 			%	functor to match with,
 			%	goal to execute if match succeeds.
 
-:- type stack_slots	==	map(prog_var, lval).
-				% Maps variables to their stack slots.
-				% The only legal lvals in the range are
-				% stackvars and framevars.
-
-:- type follow_vars_map	==	map(prog_var, lval).
-
-:- type follow_vars	--->	follow_vars(follow_vars_map, int).
-				% Advisory information about where variables
-				% ought to be put next. Variables may or may
-				% not appear in the map. If they do, then the
-				% associated lval says where the value of that
-				% variable ought to be put when it is computed,
-				% or, if the lval refers to the nonexistent
-				% register r(-1), it says that it should be
-				% put into an available register. The integer
-				% in the second half of the pair gives the
-				% number of the first register that is
-				% not reserved for other purposes, and is
-				% free to hold such variables.
-
-:- type store_map	==	map(prog_var, lval).
-				% Authoritative information about where
-				% variables must be put at the ends of
-				% branches of branched control structures.
-				% However, between the follow_vars and
-				% and store_alloc passes, these fields
-				% temporarily hold follow_vars information.
-				% Apart from this, the legal range is
-				% the set of legal lvals.
+%-----------------------------------------------------------------------------%
+%
+% Information for unifications
+%
 
 	% Initially all unifications are represented as
 	% unify(prog_var, unify_rhs, _, _, _), but mode analysis replaces
@@ -402,22 +306,6 @@
 			determinism,
 			hlds_goal
 		).
-
-	% For lambda expressions built automatically for Aditi updates
-	% the modes of `aditi__state' arguments may need to be fixed
-	% by purity.m because make_hlds.m does not know which relation
-	% is being updated, so it doesn't know which are the `aditi__state'
-	% arguments.
-:- type fix_aditi_state_modes
-	--->	modes_need_fixing
-	;	modes_are_ok
-	.
-
-	% `yes' iff the cell is available for compile time garbage collection.
-	% Compile time garbage collection is when the compiler
-	% recognises that a memory cell is no longer needed and can be
-	% safely deallocated (ie by inserting an explicit call to free).
-:- type can_cgc == bool.
 
 :- type unification
 		% A construction unification is a unification with a functor
@@ -540,6 +428,12 @@
 					% being a complicated unify.
 		).
 
+	% `yes' iff the cell is available for compile time garbage collection.
+	% Compile time garbage collection is when the compiler
+	% recognises that a memory cell is no longer needed and can be
+	% safely deallocated (ie by inserting an explicit call to free).
+:- type can_cgc == bool.
+
 	% A unify_context describes the location in the original source
 	% code of a unification, for use in error messages.
 
@@ -646,201 +540,6 @@
 	;	cell_is_shared
 	.
 
-:- type hlds_goals == list(hlds_goal).
-
-:- type hlds_goal_info.
-
-:- type goal_feature
-	--->	constraint	% This is included if the goal is
-				% a constraint.  See constraint.m
-				% for the definition of this.
-	;	(impure)	% This goal is impure.  See hlds_pred.m.
-	;	(semipure)	% This goal is semipure.  See hlds_pred.m.
-	;	call_table_gen.	% This goal generates the variable that
-				% represents the call table tip. If debugging
-				% is enabled, the code generator needs to save
-				% the value of this variable in its stack slot
-				% as soon as it is generated; this marker
-				% tells the code generator when this happens.
-
-	% see compiler/notes/allocation.html for what these alternatives mean
-:- type resume_point	--->	resume_point(set(prog_var), resume_locs)
-			;	no_resume_point.
-
-:- type resume_locs	--->	orig_only
-			;	stack_only
-			;	orig_and_stack
-			;	stack_and_orig.
-
-	% We can think of the goal that defines a procedure to be a tree,
-	% whose leaves are primitive goals and whose interior nodes are
-	% compound goals. These two types describe the position of a goal
-	% in this tree. A goal_path_step type says which branch to take at an
-	% interior node; the integer counts start at one. (For switches,
-	% the second int gives the total number of function symbols in the type
-	% of the switched-on var; for builtin types such as integer and string,
-	% for which this number is effectively infinite, we store a negative
-	% number.) The goal_path type gives the sequence of steps from the root
-	% to the given goal *in reverse order*, so that the step closest to
-	% the root is last. (Keeping the list in reverse order makes the
-	% common operations constant-time instead of linear in the length
-	% of the list.)
-
-:- type goal_path_step	--->	conj(int)
-			;	disj(int)
-			;	switch(int, int)
-			;	ite_cond
-			;	ite_then
-			;	ite_else
-			;	neg
-			;	exist(maybe_cut)
-			;	first
-			;	later.
-
-:- type maybe_cut	--->	cut ; no_cut.
-
-:- type goal_path == list(goal_path_step).
-
-	% Given the variable info field from a pragma foreign_code, get all the
-	% variable names.
-:- pred get_pragma_foreign_var_names(list(maybe(pair(string, mode))),
-		list(string)).
-:- mode get_pragma_foreign_var_names(in, out) is det.
-
-	% Get a description of a generic_call goal.
-:- pred hlds_goal__generic_call_id(generic_call, call_id).
-:- mode hlds_goal__generic_call_id(in, out) is det.
-
-%-----------------------------------------------------------------------------%
-
-:- implementation.
-
-	% NB. Don't forget to check goal_util__name_apart_goalinfo
-	% if this structure is modified.
-:- type hlds_goal_info
-	---> goal_info(
-		pre_births :: set(prog_var),	% the pre-birth set
-		post_births :: set(prog_var),	% the post-birth set
-		pre_deaths :: set(prog_var),	% the pre-death set
-		post_deaths :: set(prog_var),	% the post-death set
-				% (all four are computed by liveness.m)
-				% NB for atomic goals, the post-deadness
-				% should be applied _before_ the goal
-
-		determinism :: determinism, 
-				% the overall determinism of the goal
-				% (computed during determinism analysis)
-				% [because true determinism is undecidable,
-				% this may be a conservative approximation]
-
-		instmap_delta :: instmap_delta,
-				% the change in insts over this goal
-				% (computed during mode analysis)
-				% [because true unreachability is undecidable,
-				% the instmap_delta may be reachable even
-				% when the goal really never succeeds]
-				%
-				% The following invariant is required
-				% by the code generator and is enforced
-				% by the final simplification pass:
-				% the determinism specifies at_most_zero solns
-				% iff the instmap_delta is unreachable.
-				%
-				% Before the final simplification pass,
-				% the determinism and instmap_delta
-				% might not be consistent with regard to
-				% unreachability, but both will be
-				% conservative approximations, so if either
-				% says a goal is unreachable then it is.
-				%
-				% Normally the instmap_delta will list only
-				% the nonlocal variables of the goal.
-
-		context :: prog_context,
-
-		nonlocals :: set(prog_var),
-				% the non-local vars in the goal,
-				% i.e. the variables that occur both inside
-				% and outside of the goal.
-				% (computed by quantification.m)
-				% [in some circumstances, this may be a
-				% conservative approximation: it may be
-				% a superset of the real non-locals]
-
-		/*
-		code_gen_nonlocals :: maybe(set(prog_var)),
-				% the non-local vars in the goal,
-				% modified slightly for code generation.
-				% The difference between the code-gen nonlocals
-				% and the ordinary nonlocals is that arguments
-				% of a reconstruction which are taken from the
-				% reused cell are not considered to be
-				% `code_gen_nonlocals' of the goal.
-				% This avoids allocating stack slots and
-				% generating unnecessary field extraction
-				% instructions for those arguments.
-				% Mode information is still computed using
-				% the ordinary non-locals.
-				% 
-				% If the field has value `no', the ordinary
-				% nonlocals are used instead. This will
-				% be the case if the procedure body does not
-				% contain any reconstructions.
-		*/
-
-		follow_vars :: maybe(follow_vars),
-				% advisory information about where variables
-				% ought to be put next. The legal range
-				% includes the nonexistent register r(-1),
-				% which indicates any available register.
-
-		features :: set(goal_feature),
-				% The set of used-defined "features" of
-				% this goal, which optimisers may wish
-				% to know about.
-
-		resume_point :: resume_point,
-				% If this goal establishes a resumption point,
-				% state what variables need to be saved for
-				% that resumption point, and which entry
-				% labels of the resumption point will be
-				% needed. (See compiler/notes/allocation.html)
-
-		goal_path :: goal_path
-				% The path to this goal from the root in
-				% reverse order.
-	).
-
-get_pragma_foreign_var_names(MaybeVarNames, VarNames) :-
-	get_pragma_foreign_var_names_2(MaybeVarNames, [], VarNames0),
-	list__reverse(VarNames0, VarNames).
-
-:- pred get_pragma_foreign_var_names_2(list(maybe(pair(string, mode)))::in,
-	list(string)::in, list(string)::out) is det.
-
-get_pragma_foreign_var_names_2([], Names, Names).
-get_pragma_foreign_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
-	(
-		MaybeName = yes(Name - _),
-		Names1 = [Name | Names0]
-	;
-		MaybeName = no,
-		Names1 = Names0
-	),
-	get_pragma_foreign_var_names_2(MaybeNames, Names1, Names).
-
-hlds_goal__generic_call_id(higher_order(_, PorF, Arity),
-		generic_call(higher_order(PorF, Arity))).
-hlds_goal__generic_call_id(
-		class_method(_, _, ClassId, MethodId),
-		generic_call(class_method(ClassId, MethodId))).
-hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
-		generic_call(aditi_builtin(Builtin, Name))).
-
-%-----------------------------------------------------------------------------%
-
-:- interface.
-
 :- type unify_mode	==	pair(mode, mode).
 
 :- type uni_mode	--->	pair(inst) -> pair(inst).
@@ -850,17 +549,23 @@ hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
 					% of the LHS and the RHS respectively
 
 %-----------------------------------------------------------------------------%
+%
+% Information for all kinds of goals
+%
 
-	% Access predicates for the hlds_goal_info data structure.
+%
+% Access predicates for the hlds_goal_info data structure.
+% For documentation on the meaning of the fields that these
+% procedures access, see the definition of the hlds_goal_info type.
+%
 
-:- interface.
+:- type hlds_goal_info.
 
 :- pred goal_info_init(hlds_goal_info).
 :- mode goal_info_init(out) is det.
 
 :- pred goal_info_init(prog_context, hlds_goal_info).
 :- mode goal_info_init(in, out) is det.
-
 
 :- pred goal_info_init(set(prog_var), instmap_delta, determinism,
 		hlds_goal_info).
@@ -983,6 +688,55 @@ hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
 :- pred goal_info_resume_vars_and_loc(resume_point, set(prog_var), resume_locs).
 :- mode goal_info_resume_vars_and_loc(in, out, out) is det.
 
+
+:- type goal_feature
+	--->	constraint	% This is included if the goal is
+				% a constraint.  See constraint.m
+				% for the definition of this.
+	;	(impure)	% This goal is impure.  See hlds_pred.m.
+	;	(semipure)	% This goal is semipure.  See hlds_pred.m.
+	;	call_table_gen.	% This goal generates the variable that
+				% represents the call table tip. If debugging
+				% is enabled, the code generator needs to save
+				% the value of this variable in its stack slot
+				% as soon as it is generated; this marker
+				% tells the code generator when this happens.
+
+
+	% We can think of the goal that defines a procedure to be a tree,
+	% whose leaves are primitive goals and whose interior nodes are
+	% compound goals. These two types describe the position of a goal
+	% in this tree. A goal_path_step type says which branch to take at an
+	% interior node; the integer counts start at one. (For switches,
+	% the second int gives the total number of function symbols in the type
+	% of the switched-on var; for builtin types such as integer and string,
+	% for which this number is effectively infinite, we store a negative
+	% number.) The goal_path type gives the sequence of steps from the root
+	% to the given goal *in reverse order*, so that the step closest to
+	% the root is last. (Keeping the list in reverse order makes the
+	% common operations constant-time instead of linear in the length
+	% of the list.)
+
+:- type goal_path == list(goal_path_step).
+
+:- type goal_path_step	--->	conj(int)
+			;	disj(int)
+			;	switch(int, int)
+			;	ite_cond
+			;	ite_then
+			;	ite_else
+			;	neg
+			;	exist(maybe_cut)
+			;	first
+			;	later.
+
+:- type maybe_cut	--->	cut ; no_cut.
+
+%-----------------------------------------------------------------------------%
+%
+% Miscellaneous utility procedures for dealing with HLDS goals
+%
+
 	% Convert a goal to a list of conjuncts.
 	% If the goal is a conjunction, then return its conjuncts,
 	% otherwise return the goal as a singleton list.
@@ -1087,6 +841,7 @@ hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
 :- pred set_goal_contexts(prog_context, hlds_goal, hlds_goal).
 :- mode set_goal_contexts(in, in, out) is det.
 
+
 	% Create the hlds_goal for a unification, filling in all the as yet
 	% unknown slots with dummy values.
 :- pred create_atomic_unification(prog_var, unify_rhs, prog_context,
@@ -1161,12 +916,311 @@ hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
 		proc_info, proc_info).
 :- mode make_const_construction(in, in, out, out, in, out) is det.
 
+
+	% Given the variable info field from a pragma foreign_code, get all the
+	% variable names.
+:- pred get_pragma_foreign_var_names(list(maybe(pair(string, mode))),
+		list(string)).
+:- mode get_pragma_foreign_var_names(in, out) is det.
+
+%-----------------------------------------------------------------------------%
+%
+% Stuff specific to Aditi.
+%
+
+	% Builtin Aditi operations. 
+:- type aditi_builtin
+	--->
+		% Call an Aditi predicate from Mercury compiled to C.
+		% This is introduced by magic.m.
+		% Arguments: 
+		%   type-infos for the input arguments
+		%   the input arguments
+		%   type-infos for the output arguments
+		%   the output arguments
+		aditi_call(
+			pred_proc_id,	% procedure to call
+			int,		% number of inputs
+			list(type),	% types of input arguments
+			int		% number of outputs
+		)
+
+		% Insert or delete a single tuple into/from a base relation.
+		% Arguments:
+		%   type-infos for the arguments of the tuple to insert
+		%   the arguments of tuple to insert
+		% aditi__state::di, aditi__state::uo
+	;	aditi_tuple_insert_delete(
+			aditi_insert_delete,
+			pred_id		% base relation to insert into
+		)
+
+		% Insert/delete/modify operations which take
+		% an input closure.
+		% These operations all have two variants. 
+		%
+		% A pretty syntax:
+		%
+		% aditi_bulk_insert(p(DB, X, Y) :- q(DB, X, Y)).
+		% aditi_bulk_delete(p(DB, X, Y) :- q(DB, X, Y)).
+		% aditi_bulk_modify(
+		%	(p(DB, X0, Y0) ==> p(_, X, Y) :-
+		%		X = X0 + 1,
+		%		Y = Y0 + 3
+		%	)).
+		%
+		% An ugly syntax:
+		%
+		% InsertPred = (aditi_bottom_up
+		%	pred(DB::aditi_mui, X::out, Y::out) :- 
+		%		q(DB, X, Y)
+		% ),
+		% aditi_bulk_insert(pred p/3, InsertPred).
+		%
+		% DeletePred = (aditi_bottom_up
+		%	pred(DB::aditi_mui, X::out, Y::out) :- 
+		%		p(DB, X, Y),
+		%		q(DB, X, Y)
+		% ),
+		% aditi_bulk_delete(pred p/3, DeletePred).
+	;	aditi_insert_delete_modify(
+			aditi_insert_delete_modify,
+			pred_id,
+			aditi_builtin_syntax
+		)
+	.
+
+:- type aditi_insert_delete
+	--->	delete			% `aditi_delete'
+	;	insert			% `aditi_insert'
+	.
+
+:- type aditi_insert_delete_modify
+	--->	delete(bulk_or_filter)	% `aditi_bulk_delete' or `aditi_filter'
+	;	bulk_insert		% `aditi_bulk_insert'
+	;	modify(bulk_or_filter)	% `aditi_bulk_modify' or `aditi_modify'
+	.
+
+	% Deletions and modifications can either be done by computing
+	% all tuples for which the update applies, then applying the
+	% update for all tuples in one go (`bulk'), or by applying
+	% the update to each tuple during a pass over the relation
+	% being modified (`filter').
+	%
+	% The `filter' updates are not yet implemented in Aditi, and
+	% it may be difficult to ever implement them.
+:- type bulk_or_filter
+	--->	bulk
+	;	filter
+	.
+
+	% Which syntax was used for an `aditi_delete' or `aditi_modify'
+	% call. The first syntax is prettier, the second is used
+	% where the closure to be passed in is not known at the call site.
+	% (See the "Aditi update syntax" section of the Mercury Language
+	% Reference Manual).
+:- type aditi_builtin_syntax
+	--->	pred_term		% e.g.
+					% aditi_bulk_insert(p(_, X) :- X = 1).
+	;	sym_name_and_closure	% e.g.
+					% aditi_insert(p/2,
+					%    (pred(_::in, X::out) is nondet:-
+					%	X = 1)
+					%    )
+	.
+
+
+	% For lambda expressions built automatically for Aditi updates
+	% the modes of `aditi__state' arguments may need to be fixed
+	% by purity.m because make_hlds.m does not know which relation
+	% is being updated, so it doesn't know which are the `aditi__state'
+	% arguments.
+:- type fix_aditi_state_modes
+	--->	modes_need_fixing
+	;	modes_are_ok
+	.
+
+%-----------------------------------------------------------------------------%
+%
+% Stuff specific to the LLDS back-end.
+%
+
+%
+% The following types are annotations on the HLDS
+% that are used only by the LLDS back-end.
+%
+
+:- type stack_slots	==	map(prog_var, lval).
+				% Maps variables to their stack slots.
+				% The only legal lvals in the range are
+				% stackvars and framevars.
+
+:- type follow_vars_map	==	map(prog_var, lval).
+
+:- type follow_vars	--->	follow_vars(follow_vars_map, int).
+				% Advisory information about where variables
+				% ought to be put next. Variables may or may
+				% not appear in the map. If they do, then the
+				% associated lval says where the value of that
+				% variable ought to be put when it is computed,
+				% or, if the lval refers to the nonexistent
+				% register r(-1), it says that it should be
+				% put into an available register. The integer
+				% in the second half of the pair gives the
+				% number of the first register that is
+				% not reserved for other purposes, and is
+				% free to hold such variables.
+
+:- type store_map	==	map(prog_var, lval).
+				% Authoritative information about where
+				% variables must be put at the ends of
+				% branches of branched control structures.
+				% However, between the follow_vars and
+				% and store_alloc passes, these fields
+				% temporarily hold follow_vars information.
+				% Apart from this, the legal range is
+				% the set of legal lvals.
+
+	% see compiler/notes/allocation.html for what these alternatives mean
+:- type resume_point	--->	resume_point(set(prog_var), resume_locs)
+			;	no_resume_point.
+
+:- type resume_locs	--->	orig_only
+			;	stack_only
+			;	orig_and_stack
+			;	stack_and_orig.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module det_analysis, prog_util, type_util.
 :- import_module require, string, term, varset.
+
+%-----------------------------------------------------------------------------%
+%
+% Predicates dealing with generic_calls
+%
+
+hlds_goal__generic_call_id(higher_order(_, PorF, Arity),
+		generic_call(higher_order(PorF, Arity))).
+hlds_goal__generic_call_id(
+		class_method(_, _, ClassId, MethodId),
+		generic_call(class_method(ClassId, MethodId))).
+hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
+		generic_call(aditi_builtin(Builtin, Name))).
+
+generic_call_pred_or_func(higher_order(_, PredOrFunc, _)) = PredOrFunc.
+generic_call_pred_or_func(class_method(_, _, _, CallId)) =
+	simple_call_id_pred_or_func(CallId).
+generic_call_pred_or_func(aditi_builtin(_, CallId)) =
+	simple_call_id_pred_or_func(CallId).
+
+:- func simple_call_id_pred_or_func(simple_call_id) = pred_or_func.
+simple_call_id_pred_or_func(PredOrFunc - _) = PredOrFunc.
+
+%-----------------------------------------------------------------------------%
+%
+% Information stored with all kinds of goals
+%
+
+	% NB. Don't forget to check goal_util__name_apart_goalinfo
+	% if this structure is modified.
+:- type hlds_goal_info
+	---> goal_info(
+		pre_births :: set(prog_var),	% the pre-birth set
+		post_births :: set(prog_var),	% the post-birth set
+		pre_deaths :: set(prog_var),	% the pre-death set
+		post_deaths :: set(prog_var),	% the post-death set
+				% (all four are computed by liveness.m)
+				% NB for atomic goals, the post-deadness
+				% should be applied _before_ the goal
+
+		determinism :: determinism, 
+				% the overall determinism of the goal
+				% (computed during determinism analysis)
+				% [because true determinism is undecidable,
+				% this may be a conservative approximation]
+
+		instmap_delta :: instmap_delta,
+				% the change in insts over this goal
+				% (computed during mode analysis)
+				% [because true unreachability is undecidable,
+				% the instmap_delta may be reachable even
+				% when the goal really never succeeds]
+				%
+				% The following invariant is required
+				% by the code generator and is enforced
+				% by the final simplification pass:
+				% the determinism specifies at_most_zero solns
+				% iff the instmap_delta is unreachable.
+				%
+				% Before the final simplification pass,
+				% the determinism and instmap_delta
+				% might not be consistent with regard to
+				% unreachability, but both will be
+				% conservative approximations, so if either
+				% says a goal is unreachable then it is.
+				%
+				% Normally the instmap_delta will list only
+				% the nonlocal variables of the goal.
+
+		context :: prog_context,
+
+		nonlocals :: set(prog_var),
+				% the non-local vars in the goal,
+				% i.e. the variables that occur both inside
+				% and outside of the goal.
+				% (computed by quantification.m)
+				% [in some circumstances, this may be a
+				% conservative approximation: it may be
+				% a superset of the real non-locals]
+
+		/*
+		code_gen_nonlocals :: maybe(set(prog_var)),
+				% the non-local vars in the goal,
+				% modified slightly for code generation.
+				% The difference between the code-gen nonlocals
+				% and the ordinary nonlocals is that arguments
+				% of a reconstruction which are taken from the
+				% reused cell are not considered to be
+				% `code_gen_nonlocals' of the goal.
+				% This avoids allocating stack slots and
+				% generating unnecessary field extraction
+				% instructions for those arguments.
+				% Mode information is still computed using
+				% the ordinary non-locals.
+				% 
+				% If the field has value `no', the ordinary
+				% nonlocals are used instead. This will
+				% be the case if the procedure body does not
+				% contain any reconstructions.
+		*/
+
+		follow_vars :: maybe(follow_vars),
+				% advisory information about where variables
+				% ought to be put next. The legal range
+				% includes the nonexistent register r(-1),
+				% which indicates any available register.
+
+		features :: set(goal_feature),
+				% The set of used-defined "features" of
+				% this goal, which optimisers may wish
+				% to know about.
+
+		resume_point :: resume_point,
+				% If this goal establishes a resumption point,
+				% state what variables need to be saved for
+				% that resumption point, and which entry
+				% labels of the resumption point will be
+				% needed. (See compiler/notes/allocation.html)
+
+		goal_path :: goal_path
+				% The path to this goal from the root in
+				% reverse order.
+	).
+
 
 goal_info_init(GoalInfo) :-
 	Detism = erroneous,
@@ -1287,8 +1341,6 @@ goal_set_follow_vars(Goal - GoalInfo0, FollowVars, Goal - GoalInfo) :-
 goal_set_resume_point(Goal - GoalInfo0, ResumePoint, Goal - GoalInfo) :-
 	goal_info_set_resume_point(GoalInfo0, ResumePoint, GoalInfo).
 
-%-----------------------------------------------------------------------------%
-
 goal_info_resume_vars_and_loc(Resume, Vars, Locs) :-
 	(
 		Resume = resume_point(Vars, Locs)
@@ -1298,6 +1350,9 @@ goal_info_resume_vars_and_loc(Resume, Vars, Locs) :-
 	).
 
 %-----------------------------------------------------------------------------%
+%
+% Miscellaneous utility procedures for dealing with HLDS goals
+%
 
 	% Convert a goal to a list of conjuncts.
 	% If the goal is a conjunction, then return its conjuncts,
@@ -1617,14 +1672,25 @@ make_const_construction(Var, ConsId, Goal - GoalInfo) :-
 	instmap_delta_insert(InstMapDelta0, Var, Inst, InstMapDelta),
 	goal_info_init(NonLocals, InstMapDelta, det, GoalInfo).
 
-generic_call_pred_or_func(higher_order(_, PredOrFunc, _)) = PredOrFunc.
-generic_call_pred_or_func(class_method(_, _, _, CallId)) =
-	simple_call_id_pred_or_func(CallId).
-generic_call_pred_or_func(aditi_builtin(_, CallId)) =
-	simple_call_id_pred_or_func(CallId).
+%-----------------------------------------------------------------------------%
 
-:- func simple_call_id_pred_or_func(simple_call_id) = pred_or_func.
-simple_call_id_pred_or_func(PredOrFunc - _) = PredOrFunc.
+get_pragma_foreign_var_names(MaybeVarNames, VarNames) :-
+	get_pragma_foreign_var_names_2(MaybeVarNames, [], VarNames0),
+	list__reverse(VarNames0, VarNames).
+
+:- pred get_pragma_foreign_var_names_2(list(maybe(pair(string, mode)))::in,
+	list(string)::in, list(string)::out) is det.
+
+get_pragma_foreign_var_names_2([], Names, Names).
+get_pragma_foreign_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
+	(
+		MaybeName = yes(Name - _),
+		Names1 = [Name | Names0]
+	;
+		MaybeName = no,
+		Names1 = Names0
+	),
+	get_pragma_foreign_var_names_2(MaybeNames, Names1, Names).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
