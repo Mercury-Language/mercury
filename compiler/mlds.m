@@ -492,7 +492,7 @@
 		% that can be used to point to the environment
 		% (set of local variables) of the containing function.
 		% This is used for handling nondeterminism,
-		% if the target language doesn't supported
+		% if the target language doesn't support
 		% nested functions, and also for handling
 		% closures for higher-order code.
 	;	mlds__generic_env_ptr_type
@@ -905,8 +905,10 @@ XXX Full exception handling support is not yet implemented.
 	% values on the heap
 	% or fields of a structure
 	%
-	--->	field(maybe(mlds__tag), mlds__rval, field_id)
-				% field(Tag, Address, FieldName)
+	--->	field(maybe(mlds__tag), mlds__rval, field_id, 
+			mlds__type, mlds__type)
+				% field(Tag, Address, FieldName, FieldType,
+				%	ClassType)
 				% selects a field of a compound term.
 				% Address is a tagged pointer to a cell
 				% on the heap; the offset into the cell
@@ -916,13 +918,19 @@ XXX Full exception handling support is not yet implemented.
 				% The value of the tag should be given if
 				% it is known, since this will lead to
 				% faster code.
+				% The FieldType is the type of the field.
+				% The ClassType is the type of the object from
+				% which we are fetching the field.
 
 	%
 	% values somewhere in memory
 	% this is the deference operator (e.g. unary `*' in C)
 	%
-	;	mem_ref(mlds__rval)	% The rval should have
-				% originally come from a mem_addr rval.
+	;	mem_ref(mlds__rval, mlds__type)	
+				% The rval should have originally come
+				% from a mem_addr rval.
+				% The type is the type of the value being
+				% dereferenced
 
 	%
 	% variables
@@ -962,6 +970,8 @@ XXX Full exception handling support is not yet implemented.
 :- type mlds__unary_op
 	--->	box(mlds__type)
 	;	unbox(mlds__type)
+	;	cast(mlds__type) % XXX it might be worthwhile adding the 
+				 % type that we cast from.
 	;	std_unop(builtin_ops__unary_op).
 
 :- type mlds__rval_const
@@ -979,8 +989,9 @@ XXX Full exception handling support is not yet implemented.
 	;	data_addr_const(mlds__data_addr).
 
 :- type mlds__code_addr
-	--->	proc(mlds__qualified_proc_label)
-	;	internal(mlds__qualified_proc_label, mlds__func_sequence_num).
+	--->	proc(mlds__qualified_proc_label, mlds__func_signature)
+	;	internal(mlds__qualified_proc_label, mlds__func_sequence_num,
+			mlds__func_signature).
 
 :- type mlds__data_addr
 	--->	data_addr(mlds_module_name, mlds__data_name).

@@ -883,16 +883,19 @@ ml_gen_all_local_var_decls(Goal, VarSet, VarTypes, HeadVars) =
 	%
 :- func ml_gen_local_var_decls(prog_varset, map(prog_var, prog_type),
 		mlds__context, prog_vars) = mlds__defns.
-ml_gen_local_var_decls(VarSet, VarTypes, Context, Vars) =
-	list__map(ml_gen_local_var_decl(VarSet, VarTypes, Context), Vars).
+ml_gen_local_var_decls(VarSet, VarTypes, Context, Vars) = LocalDecls :-
+	list__filter_map(ml_gen_local_var_decl(VarSet, VarTypes, Context), 
+		Vars, LocalDecls).
 
 	% Generate a declaration for a local variable.
 	%
-:- func ml_gen_local_var_decl(prog_varset, map(prog_var, prog_type),
-		mlds__context, prog_var) = mlds__defn.
-ml_gen_local_var_decl(VarSet, VarTypes, Context, Var) = MLDS_Defn :-
-	VarName = ml_gen_var_name(VarSet, Var),
+:- pred ml_gen_local_var_decl(prog_varset, map(prog_var, prog_type),
+		mlds__context, prog_var, mlds__defn).
+:- mode ml_gen_local_var_decl(in, in, in, in, out) is semidet.
+ml_gen_local_var_decl(VarSet, VarTypes, Context, Var, MLDS_Defn) :-
 	map__lookup(VarTypes, Var, Type),
+	not type_util__is_dummy_argument_type(Type),
+	VarName = ml_gen_var_name(VarSet, Var),
 	MLDS_Defn = ml_gen_var_decl(VarName, Type, Context).
 
 	% Generate the code for a procedure body.
@@ -1803,7 +1806,7 @@ ml_gen_c_code_for_rval(ArgRval, Var_ArgName) :-
 		llds_out__name_mangle(VarName, MangledVarName),
 		string__append_list([MangledModuleName, "__",
 			MangledVarName], Var_ArgName)
-	; ArgRval = lval(mem_ref(lval(var(qual(ModuleName, VarName))))) ->
+	; ArgRval = lval(mem_ref(lval(var(qual(ModuleName, VarName))), _)) ->
 		SymName = mlds_module_name_to_sym_name(ModuleName),
 		llds_out__sym_name_mangle(SymName, MangledModuleName),
 		llds_out__name_mangle(VarName, MangledVarName),

@@ -430,7 +430,8 @@ mercury_compile(Module) -->
 		    ( { AditiOnly = yes } ->
 		    	[]
 		    ; { HighLevelCode = yes } ->
-			mercury_compile__mlds_backend(HLDS50),
+			mercury_compile__mlds_backend(HLDS50, MLDS),
+			mercury_compile__mlds_to_high_level_c(MLDS),
 			globals__io_lookup_bool_option(compile_to_c, 
 				CompileToC),
 			( { CompileToC = no } ->
@@ -2182,12 +2183,12 @@ mercury_compile__output_llds(ModuleName, LLDS0, StackLayoutLabels, MaybeRLFile,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-% The `--high-level-C' MLDS-based alternative backend
+% The MLDS-based alternative backend
 
-:- pred mercury_compile__mlds_backend(module_info, io__state, io__state).
-:- mode mercury_compile__mlds_backend(in, di, uo) is det.
+:- pred mercury_compile__mlds_backend(module_info, mlds, io__state, io__state).
+:- mode mercury_compile__mlds_backend(in, out, di, uo) is det.
 
-mercury_compile__mlds_backend(HLDS50) -->
+mercury_compile__mlds_backend(HLDS50, MLDS) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
@@ -2214,7 +2215,16 @@ mercury_compile__mlds_backend(HLDS50) -->
 		ml_elim_nested(MLDS1, MLDS)
 	;
 		{ MLDS = MLDS1 }
-	),
+	).
+
+% The `--high-level-C' MLDS output pass
+
+:- pred mercury_compile__mlds_to_high_level_c(mlds, io__state, io__state).
+:- mode mercury_compile__mlds_to_high_level_c(in, di, uo) is det.
+
+mercury_compile__mlds_to_high_level_c(MLDS) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	globals__io_lookup_bool_option(statistics, Stats),
 
 	maybe_write_string(Verbose, "% Converting MLDS to C...\n"),
 	mlds_to_c__output_mlds(MLDS),

@@ -668,7 +668,8 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, Lvals) -->
 		;
 			% output arguments are passed by reference,
 			% so we need to dereference them
-			Lval = mem_ref(lval(VarLval))
+			MLDS_Type = mercury_type_to_mlds_type(Type),
+			Lval = mem_ref(lval(VarLval), MLDS_Type)
 		},
 		ml_gen_wrapper_arg_lvals(Names1, Types1, Modes1, Lvals1),
 		{ Lvals = [Lval|Lvals1] }
@@ -690,7 +691,9 @@ ml_gen_closure_field_lvals(ClosureLval, Offset, ArgNum, NumClosureArgs,
 		% generate `MR_field(MR_mktag(0), closure, <N>)'
 		%
 		{ FieldId = offset(const(int_const(ArgNum + Offset))) },
-		{ FieldLval = field(yes(0), lval(ClosureLval), FieldId) },
+			% XXX these types might not be right
+		{ FieldLval = field(yes(0), lval(ClosureLval), FieldId,
+			mlds__generic_env_ptr_type, mlds__generic_type) },
 		%
 		% recursively handle the remaining fields
 		%
@@ -888,13 +891,13 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context,
 		{ Tag = unshared_tag(UnsharedTag) },
 		ml_gen_var(Var, VarLval),
 		ml_variable_types(Args, ArgTypes),
-		ml_gen_unify_args(Args, Modes, ArgTypes,
+		ml_gen_unify_args(Args, Modes, ArgTypes, Type,
 			VarLval, 0, UnsharedTag, Context, MLDS_Statements)
 	;
 		{ Tag = shared_remote_tag(PrimaryTag, _SecondaryTag) },
 		ml_gen_var(Var, VarLval),
 		ml_variable_types(Args, ArgTypes),
-		ml_gen_unify_args(Args, Modes, ArgTypes,
+		ml_gen_unify_args(Args, Modes, ArgTypes, Type,
 			VarLval, 1, PrimaryTag, Context, MLDS_Statements)
 	;
 		{ Tag = shared_local_tag(_Bits1, _Num1) },
@@ -902,14 +905,14 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context,
 	).
 
 :- pred ml_gen_unify_args(prog_vars, list(uni_mode), list(prog_type),
-		mlds__lval, int, mlds__tag, prog_context,
+		prog_type, mlds__lval, int, mlds__tag, prog_context,
 		mlds__statements, ml_gen_info, ml_gen_info).
-:- mode ml_gen_unify_args(in, in, in, in, in, in, in, out, in, out) is det.
+:- mode ml_gen_unify_args(in, in, in, in, in, in, in, in, out, in, out) is det.
 
-ml_gen_unify_args(Args, Modes, ArgTypes, VarLval, ArgNum, PrimaryTag, Context,
-		MLDS_Statements) -->
+ml_gen_unify_args(Args, Modes, ArgTypes, VarType, VarLval, ArgNum,
+		PrimaryTag, Context, MLDS_Statements) -->
 	(
-		ml_gen_unify_args_2(Args, Modes, ArgTypes,
+		ml_gen_unify_args_2(Args, Modes, ArgTypes, VarType,
 			VarLval, ArgNum, PrimaryTag, Context,
 			[], MLDS_Statements0)
 	->
@@ -919,34 +922,37 @@ ml_gen_unify_args(Args, Modes, ArgTypes, VarLval, ArgNum, PrimaryTag, Context,
 	).
 
 :- pred ml_gen_unify_args_2(prog_vars, list(uni_mode), list(prog_type),
-		mlds__lval, int, mlds__tag, prog_context,
+		prog_type, mlds__lval, int, mlds__tag, prog_context,
 		mlds__statements, mlds__statements, ml_gen_info, ml_gen_info).
-:- mode ml_gen_unify_args_2(in, in, in, in, in, in, in, in, out, in, out)
+:- mode ml_gen_unify_args_2(in, in, in, in, in, in, in, in, in, out, in, out)
 		is semidet.
 
-ml_gen_unify_args_2([], [], [], _, _, _, _, Statements, Statements) --> [].
+ml_gen_unify_args_2([], [], [], _, _, _, _, _, Statements, Statements) --> [].
 ml_gen_unify_args_2([Arg|Args], [Mode|Modes], [ArgType|ArgTypes],
-			VarLval, ArgNum, PrimaryTag, Context,
+			VarType, VarLval, ArgNum, PrimaryTag, Context,
 			MLDS_Statements0, MLDS_Statements) -->
 	{ ArgNum1 = ArgNum + 1 },
-	ml_gen_unify_args_2(Args, Modes, ArgTypes, VarLval, ArgNum1,
+	ml_gen_unify_args_2(Args, Modes, ArgTypes, VarType, VarLval, ArgNum1,
 		PrimaryTag, Context, MLDS_Statements0, MLDS_Statements1),
-	ml_gen_unify_arg(Arg, Mode, ArgType, VarLval, ArgNum, PrimaryTag,
-		Context, MLDS_Statements1, MLDS_Statements).
+	ml_gen_unify_arg(Arg, Mode, ArgType, VarType, VarLval, ArgNum,
+		PrimaryTag, Context, MLDS_Statements1, MLDS_Statements).
 
-:- pred ml_gen_unify_arg(prog_var, uni_mode, prog_type,
+:- pred ml_gen_unify_arg(prog_var, uni_mode, prog_type, prog_type,
 		mlds__lval, int, mlds__tag, prog_context,
 		mlds__statements, mlds__statements, ml_gen_info, ml_gen_info).
-:- mode ml_gen_unify_arg(in, in, in, in, in, in, in, in, out, in, out)
+:- mode ml_gen_unify_arg(in, in, in, in, in, in, in, in, in, out, in, out)
 		is det.
 
-ml_gen_unify_arg(Arg, Mode, ArgType, VarLval, ArgNum, PrimaryTag, Context,
-		MLDS_Statements0, MLDS_Statements) -->
+ml_gen_unify_arg(Arg, Mode, ArgType, VarType, VarLval, ArgNum, PrimaryTag,
+		Context, MLDS_Statements0, MLDS_Statements) -->
 	%
 	% Generate lvals for the LHS and the RHS
 	%
 	{ FieldId = offset(const(int_const(ArgNum))) },
-	{ FieldLval = field(yes(PrimaryTag), lval(VarLval), FieldId) },
+	{ MLDS_ArgType = mercury_type_to_mlds_type(ArgType) },
+	{ MLDS_VarType = mercury_type_to_mlds_type(VarType) },
+	{ FieldLval = field(yes(PrimaryTag), lval(VarLval), FieldId,
+		MLDS_ArgType, MLDS_VarType) },
 	ml_gen_var(Arg, ArgLval),
 	%
 	% Now generate code to unify them
@@ -1088,50 +1094,53 @@ ml_gen_tag_test(Var, ConsId, TagTestDecls, TagTestStatements,
 	ml_gen_var(Var, VarLval),
 	ml_variable_type(Var, Type),
 	ml_cons_id_to_tag(ConsId, Type, Tag),
-	{ TagTestExpression = ml_gen_tag_test_rval(Tag, lval(VarLval)) },
+	{ TagTestExpression = ml_gen_tag_test_rval(Tag, Type, lval(VarLval)) },
 	{ TagTestDecls = [] },
 	{ TagTestStatements = [] }.
 
-	% ml_gen_tag_test_rval(Tag, VarRval) = TestRval:
+	% ml_gen_tag_test_rval(Tag, VarType, VarRval) = TestRval:
 	%	TestRval is a Rval of type bool which evaluates to
 	%	true if VarRval has the specified Tag and false otherwise.
+	%	VarType is the type of VarRval. 
 	%
-:- func ml_gen_tag_test_rval(cons_tag, mlds__rval) = mlds__rval.
+:- func ml_gen_tag_test_rval(cons_tag, prog_type, mlds__rval) = mlds__rval.
 
-ml_gen_tag_test_rval(string_constant(String), Rval) =
+ml_gen_tag_test_rval(string_constant(String), _, Rval) =
 	binop(str_eq, Rval, const(string_const(String))).
-ml_gen_tag_test_rval(float_constant(Float), Rval) =
+ml_gen_tag_test_rval(float_constant(Float), _, Rval) =
 	binop(float_eq, Rval, const(float_const(Float))).
-ml_gen_tag_test_rval(int_constant(Int), Rval) =
+ml_gen_tag_test_rval(int_constant(Int), _, Rval) =
 	binop(eq, Rval, const(int_const(Int))).
-ml_gen_tag_test_rval(pred_closure_tag(_, _, _), _Rval) = _TestRval :-
+ml_gen_tag_test_rval(pred_closure_tag(_, _, _), _, _Rval) = _TestRval :-
 	% This should never happen, since the error will be detected
 	% during mode checking.
 	error("Attempted higher-order unification").
-ml_gen_tag_test_rval(code_addr_constant(_, _), _Rval) = _TestRval :-
+ml_gen_tag_test_rval(code_addr_constant(_, _), _, _Rval) = _TestRval :-
 	% This should never happen
 	error("Attempted code_addr unification").
-ml_gen_tag_test_rval(type_ctor_info_constant(_, _, _), _) = _ :-
+ml_gen_tag_test_rval(type_ctor_info_constant(_, _, _), _, _) = _ :-
 	% This should never happen
 	error("Attempted type_ctor_info unification").
-ml_gen_tag_test_rval(base_typeclass_info_constant(_, _, _), _) = _ :-
+ml_gen_tag_test_rval(base_typeclass_info_constant(_, _, _), _, _) = _ :-
 	% This should never happen
 	error("Attempted base_typeclass_info unification").
-ml_gen_tag_test_rval(tabling_pointer_constant(_, _), _) = _ :-
+ml_gen_tag_test_rval(tabling_pointer_constant(_, _), _, _) = _ :-
 	% This should never happen
 	error("Attempted tabling_pointer unification").
-ml_gen_tag_test_rval(no_tag, _Rval) = const(true).
-ml_gen_tag_test_rval(unshared_tag(UnsharedTag), Rval) =
+ml_gen_tag_test_rval(no_tag, _, _Rval) = const(true).
+ml_gen_tag_test_rval(unshared_tag(UnsharedTag), _, Rval) =
 	binop(eq, unop(std_unop(tag), Rval),
 		  unop(std_unop(mktag), const(int_const(UnsharedTag)))).
-ml_gen_tag_test_rval(shared_remote_tag(Bits, Num), Rval) =
+ml_gen_tag_test_rval(shared_remote_tag(Bits, Num), VarType, Rval) =
 	binop(and,
 		binop(eq,	unop(std_unop(tag), Rval),
 				unop(std_unop(mktag), const(int_const(Bits)))), 
 		binop(eq,	lval(field(yes(Bits), Rval,
-					offset(const(int_const(0))))),
+					offset(const(int_const(0))),
+					mlds__native_int_type, 
+					mercury_type_to_mlds_type(VarType))),
 				const(int_const(Num)))).
-ml_gen_tag_test_rval(shared_local_tag(Bits, Num), Rval) =
+ml_gen_tag_test_rval(shared_local_tag(Bits, Num), _, Rval) =
 	binop(eq, Rval,
 		  mkword(Bits, unop(std_unop(mkbody), const(int_const(Num))))).
 

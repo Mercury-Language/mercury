@@ -727,9 +727,17 @@ ml_gen_new_func_label(FuncLabel, FuncLabelRval) -->
 	{ ml_gen_info_get_proc_id(Info, ProcId) },
 	{ ml_gen_pred_label(ModuleInfo, PredId, ProcId,
 		PredLabel, PredModule) },
+	{ ml_gen_info_use_gcc_nested_functions(UseNestedFuncs, Info, _) },
+	{ UseNestedFuncs = yes ->
+		ArgTypes = []
+	;
+		ArgTypes = [mlds__generic_env_ptr_type]
+	},
+	{ Signature = mlds__func_signature(ArgTypes, []) },
+
 	{ ProcLabel = qual(PredModule, PredLabel - ProcId) },
 	{ FuncLabelRval = const(code_addr_const(internal(ProcLabel,
-		FuncLabel))) }.
+		FuncLabel, Signature))) }.
 
 	% Generate the mlds__pred_label and module name
 	% for a given procedure.
@@ -826,9 +834,10 @@ ml_gen_var(Var, Lval) -->
 		{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
 		{ VarName = ml_gen_var_name(VarSet, Var) },
 		{ VarLval = var(qual(MLDS_Module, VarName)) },
+		{ MLDS_Type = mercury_type_to_mlds_type(Type) },
 		% output variables are passed by reference...
 		{ list__member(Var, OutputVars) ->
-			Lval = mem_ref(lval(VarLval))
+			Lval = mem_ref(lval(VarLval), MLDS_Type)
 		;
 			Lval = VarLval
 		}

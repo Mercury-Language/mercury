@@ -1269,10 +1269,10 @@ can_optimize_tailcall(CallerFuncInfo, Call) :-
 	%
 	FuncRval = const(code_addr_const(CodeAddr)),
 	(	
-		CodeAddr = proc(QualifiedProcLabel),
+		CodeAddr = proc(QualifiedProcLabel, _Sig),
 		MaybeSeqNum = no
 	;
-		CodeAddr = internal(QualifiedProcLabel, SeqNum),
+		CodeAddr = internal(QualifiedProcLabel, SeqNum, _Sig),
 		MaybeSeqNum = yes(SeqNum)
 	),
 	QualifiedProcLabel = qual(ModuleName, PredLabel - ProcId),
@@ -1473,7 +1473,7 @@ mlds_output_init_args([Arg|Args], [ArgType|ArgTypes], Context,
 :- pred mlds_output_lval(mlds__lval, io__state, io__state).
 :- mode mlds_output_lval(in, di, uo) is det.
 
-mlds_output_lval(field(MaybeTag, Rval, offset(OffsetRval))) -->
+mlds_output_lval(field(MaybeTag, Rval, offset(OffsetRval), _, _)) -->
 	( { MaybeTag = yes(Tag) } ->
 		io__write_string("MR_field("),
 		mlds_output_tag(Tag),
@@ -1485,7 +1485,7 @@ mlds_output_lval(field(MaybeTag, Rval, offset(OffsetRval))) -->
 	io__write_string(", "),
 	mlds_output_rval(OffsetRval),
 	io__write_string(")").
-mlds_output_lval(field(MaybeTag, PtrRval, named_field(FieldId))) -->
+mlds_output_lval(field(MaybeTag, PtrRval, named_field(FieldId), _, _)) -->
 	( { MaybeTag = yes(0) } ->
 		( { PtrRval = mem_addr(Lval) } ->
 			mlds_output_bracketed_lval(Lval),
@@ -1507,7 +1507,7 @@ mlds_output_lval(field(MaybeTag, PtrRval, named_field(FieldId))) -->
 		io__write_string("->")
 	),
 	mlds_output_fully_qualified(FieldId, io__write_string).
-mlds_output_lval(mem_ref(Rval)) -->
+mlds_output_lval(mem_ref(Rval, _Type)) -->
 	io__write_string("*"),
 	mlds_output_bracketed_rval(Rval).
 mlds_output_lval(var(VarName)) -->
@@ -1562,7 +1562,7 @@ mlds_output_rval(lval(Lval)) -->
 	% the MR_const_field() macro, not the MR_field() macro,
 	% to avoid warnings about discarding const,
 	% and similarly for MR_mask_field.
-	( { Lval = field(MaybeTag, Rval, FieldNum) } ->
+	( { Lval = field(MaybeTag, Rval, FieldNum, _, _) } ->
 		( { MaybeTag = yes(Tag) } ->
 			io__write_string("MR_const_field("),
 			mlds_output_tag(Tag),
@@ -1603,12 +1603,23 @@ mlds_output_rval(mem_addr(Lval)) -->
 :- pred mlds_output_unop(mlds__unary_op, mlds__rval, io__state, io__state).
 :- mode mlds_output_unop(in, in, di, uo) is det.
 	
+mlds_output_unop(cast(Type), Exprn) -->
+	mlds_output_cast_rval(Type, Exprn).
 mlds_output_unop(box(Type), Exprn) -->
 	mlds_output_boxed_rval(Type, Exprn).
 mlds_output_unop(unbox(Type), Exprn) -->
 	mlds_output_unboxed_rval(Type, Exprn).
 mlds_output_unop(std_unop(Unop), Exprn) -->
 	mlds_output_std_unop(Unop, Exprn).
+
+:- pred mlds_output_cast_rval(mlds__type, mlds__rval, io__state, io__state).
+:- mode mlds_output_cast_rval(in, in, di, uo) is det.
+	
+mlds_output_cast_rval(Type, Exprn) -->
+	io__write_string("("),
+	mlds_output_type(Type),
+	io__write_string(") "),
+	mlds_output_rval(Exprn).
 
 :- pred mlds_output_boxed_rval(mlds__type, mlds__rval, io__state, io__state).
 :- mode mlds_output_boxed_rval(in, in, di, uo) is det.
@@ -1787,9 +1798,9 @@ mlds_output_tag(Tag) -->
 :- pred mlds_output_code_addr(mlds__code_addr, io__state, io__state).
 :- mode mlds_output_code_addr(in, di, uo) is det.
 
-mlds_output_code_addr(proc(Label)) -->
+mlds_output_code_addr(proc(Label, _Sig)) -->
 	mlds_output_fully_qualified(Label, mlds_output_proc_label).
-mlds_output_code_addr(internal(Label, SeqNum)) -->
+mlds_output_code_addr(internal(Label, SeqNum, _Sig)) -->
 	mlds_output_fully_qualified(Label, mlds_output_proc_label),
 	io__write_string("_"),
 	io__write_int(SeqNum).

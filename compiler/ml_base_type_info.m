@@ -211,7 +211,10 @@ ml_base_type_info__construct_pred_addrs_2([proc(PredId, ProcId) | Procs],
 	%
         ml_gen_pred_label(ModuleInfo, PredId, ProcId, PredLabel, PredModule),
         QualifiedProcLabel = qual(PredModule, PredLabel - ProcId),
-        ProcAddrRval = const(code_addr_const(proc(QualifiedProcLabel))),
+	Params = ml_gen_proc_params(ModuleInfo, PredId, ProcId),
+	Signature = mlds__get_func_signature(Params),
+	ProcAddrRval = const(code_addr_const(proc(QualifiedProcLabel, 
+		Signature))),
 	%
 	% Convert the procedure address to a generic type.
 	% We need to use a generic type because since the actual type
