@@ -15,6 +15,17 @@ taken when releasing a new version of Mercury.
 <!-------------------------->
 
 <ol>
+<li> Items for the next version (0.8) only:
+	<ol>
+	<li>
+	Make sure that the runtime headers contain no symbols (function names,
+	variable names, type names, struct/enum tags or macros) that do not
+	begin with MR_.
+	<li>
+	Make sure nondet pragma C codes, tabling and the debugger
+	are documented.
+	</ol>
+
 <li> Make sure configure.in is updated to check for new features.
 
 <li> Update the RELEASE_NOTES, NEWS, WORK_IN_PROGRESS, HISTORY,
@@ -92,7 +103,7 @@ taken when releasing a new version of Mercury.
       ftp://turiel.cs.mu.oz.au/pub/mercury. <br>
     Email kostis@cs.sunysb.edu (Konstantinos Sagonas) to tell him
     to make copies of it on ftp://ftp.cs.sunysb.edu/pub/XSB/mercury
-    respectively. <br>
+    respectively. XXX Kostis is now at Leuven, so this won't work. <br>
     The mirror on ftp://ftp.csd.uu.se/pub/Mercury is supposedly automated.
 
 <li> Prepare a new "mercury-VERSION.lsm" file for this Mercury release
@@ -124,6 +135,6 @@ taken when releasing a new version of Mercury.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1998-06-30 10:22:19 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 1998-07-09 04:35:30 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>
