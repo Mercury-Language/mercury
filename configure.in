@@ -84,9 +84,15 @@ if test "$HAVE_SIGINFO_H" = 1; then
 	AC_DEFINE(HAVE_SIGINFO)
 fi
 #-----------------------------------------------------------------------------#
-AC_CHECK_HEADER(sys/ucontext.h, HAVE_UCONTEXT_H=1)
+AC_CHECK_HEADER(ucontext.h, HAVE_UCONTEXT_H=1)
 if test "$HAVE_UCONTEXT_H" = 1; then
 	AC_DEFINE(HAVE_UCONTEXT)
+	CFLAGS="$CFLAGS -DHAVE_UCONTEXT"
+else
+	AC_CHECK_HEADER(sys/ucontext.h, HAVE_SYS_UCONTEXT_H=1)
+	if test "$HAVE_SYS_UCONTEXT_H" = 1; then
+		AC_DEFINE(HAVE_SYS_UCONTEXT)
+	fi
 fi
 #-----------------------------------------------------------------------------#
 if test "$ac_cv_func_sigaction" = yes; then
@@ -114,7 +120,8 @@ if test "$ac_cv_func_sigaction" = yes; then
 	AC_MSG_RESULT($mercury_cv_sigaction_field)
 	AC_DEFINE_UNQUOTED(SIGACTION_FIELD,$mercury_cv_sigaction_field)
 #-----------------------------------------------------------------------------#
-	if test "$HAVE_SIGINFO_H" = 1 && test "$HAVE_UCONTEXT_H" = 1
+	if test "$HAVE_SIGINFO_H" = 1 &&
+	   (test "$HAVE_UCONTEXT_H" = 1 || test "$HAVE_SYS_UCONTEXT_H" = 1)
 	then
 		AC_MSG_CHECKING(for pc access at signals)
 		AC_CACHE_VAL(mercury_cv_pc_index,
@@ -123,7 +130,11 @@ if test "$ac_cv_func_sigaction" = yes; then
 		#include <stdio.h>
 		#include <signal.h>
 		#include <sys/siginfo.h>
+		#ifdef HAVE_UCONTEXT
+		#include <ucontext.h>
+		#else
 		#include <sys/ucontext.h>
+		#endif
 		int save_signum = 0;
 		int save_cause;
 		int save_pc;
@@ -168,7 +179,11 @@ if test "$ac_cv_func_sigaction" = yes; then
 		#include <stdio.h>
 		#include <signal.h>
 		#include <sys/siginfo.h>
+		#ifdef HAVE_UCONTEXT
+		#include <ucontext.h>
+		#else
 		#include <sys/ucontext.h>
+		#endif
 		int save_signum = 0;
 		int save_cause;
 		int save_pc;
