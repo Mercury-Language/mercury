@@ -5949,19 +5949,19 @@ See the section on using pragma foreign_type for IL
 @node Using pragma foreign_proc for MC++
 @subsubsection Using pragma foreign_proc for MC++
 
-Currenly undocumented, sorry.
+Currently undocumented, sorry.
 @c XXX
 
 @node Using pragma foreign_decl for MC++
 @subsubsection Using pragma foreign_decl for MC++
 
-Currenly undocumented, sorry.
+Currently undocumented, sorry.
 @c XXX
 
 @node Using pragma foreign_code for MC++
 @subsubsection Using pragma foreign_code for MC++
 
-Currenly undocumented, sorry.
+Currently undocumented, sorry.
 @c XXX
 
 @c -----------------------------------------------------------------------
