@@ -1,3 +1,13 @@
+Use of language features
+------------------------
+
+Language features that do not work in SICStus Prolog
+(including functions, reverse modes of arithmentic,
+the NU-Prolog syntax for negation and if-then-else,
+and code requiring mode reordering) should not be used
+in the Mercury compiler --- at least not until we
+have implemented a proper debugger.
+
 Documentation
 -------------
 
@@ -104,19 +114,98 @@ Tabs should be every 8 spaces.
 Indentation should be one tab per level of indentation.
 except for highly intended code which may be
 indented at 4 spaces per level of indentation.
-Each line should not extend beyond 80 characters,
+Each line should not extend beyond 79 characters,
 unless this is necessary due to the use of long string literals.
-If-then-elses should always be parenthesized
-(except that an if-then-else that occurs as the else
-part of another if-then-else doesn't need to be parenthesized).
+If-then-elses should always be parenthesized,
+except that an if-then-else that occurs as the else
+part of another if-then-else doesn't need to be parenthesized.
 The condition of an if-then-else can either be on the same
-line as the opening parenthesis and the `->', or it can
-be on a line of its own.
+line as the opening parenthesis and the `->',
 
-Sections of code that are conceptually separate should be
-separated with dashed lines:
+	( test1 ->
+		goal1
+	; test2 ->
+		goal2
+	;
+		goal
+	)
+
+or, if the test is complicated, it can be on a line of its own:
+
+	(
+		very_long_test_that_does_not_fit_on_one_line(VeryLongArgument1,
+			VeryLongArgument2)
+	->
+		goal1
+	;
+		test2a,
+		test2b,
+	->
+		goal2
+	;
+		test3	% would fit one one line, but separate for consistency
+	->
+		goal3
+	;
+		goal
+	).
+
+Type definitions should be formatted in the following style:
+
+	:- type my_type
+		--->	my_type(
+				some_other_type	% comment explaining it
+			).
+
+	:- type some_other_type == int.
+
+	:- type foo
+		--->	bar(
+				int,		% comment explaining it
+				float		% comment explaining it
+			)
+		;	baz
+		;	quux.
+
+If an individual clause is long, it should be broken into sections,
+and each section should have a "block comment" describing what it does;
+blank lines should be used to show the separation into sections.
+Comments should precede the code to which they apply, rather than
+following it.
+
+	%
+	% This is a block comment; it applies to the code in the next
+	% section (up to the next blank line).
+	%
+	blah,
+	blah,
+	blahblah,
+	blah,
+
+If a particular line or two needs explanation, a "line" comment
+
+	% This is a "line" comment; it applies to the next line or two
+	% of code
+	blahblah
+
+or an "inline" comment
+
+	blahblah	% This is an "inline" comment
+
+should be used.
+	
+At a higher level, code should be grouped into bunches of related
+predicates, functions, etc., and sections of code that are conceptually
+separate should be separated with dashed lines:
 
 %---------------------------------------------------------------------------%
+
+Double-dashed lines, i.e.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+can also be used to indicate divisions into major sections.
 
 
 Testing
@@ -147,8 +236,9 @@ changes.  Normally this should be done by sending the output of `cvs
 diff -u' to fjh@cs.mu.oz.au, together with a description of the changes
 for the CVS log.  The description should state why the changes were
 made, not just what the changes were.  If you have added any new files
-or directories, you *must* check the group-id and permissions of the
+or directories, you must check the group-id and permissions of the
 newly created files or directories in the CVS repository.  Files should
 be readable by group mercury and directories should be both readable
-and writeable by group mercury.
+and writeable by group mercury.  (Setting of permissions will be
+enforced by the pre-commit check script `CVSROOT/check.pl'.)
 
