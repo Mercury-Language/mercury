@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 University of Melbourne.
+% Copyright (C) 2002-2003 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -133,13 +133,13 @@ build_with_check_for_interrupt(Build, Cleanup, Succeeded, Info0, Info) -->
 			""mercury_compile: cannot install signal handler"");
 
 	/* Have we received a signal. */
-volatile sig_atomic_t MC_signalled;
+extern volatile sig_atomic_t MC_signalled;
 
 	/*
 	** Which signal did we receive.
 	** XXX This assumes a signal number will fit into a sig_atomic_t.
 	*/
-volatile sig_atomic_t MC_signal_received;
+extern volatile sig_atomic_t MC_signal_received;
 
 void MC_mercury_compile_signal_handler(int sig);
 ").
