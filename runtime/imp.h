@@ -54,37 +54,7 @@ typedef void (*Cont) (void);
 */
 #define SUCCESS_INDICATOR r1
 
-/* DEFINITIONS FOR PROFILING */
-
-#ifdef	PROFILE_CALLS
-
 #include	"prof.h"
-#define	PROFILE(callee, caller)		prof_call_profile((callee), (caller))
-
-#else
-
-#define	PROFILE(callee, caller)		((void)0)
-
-#endif
-
-#ifdef PROFILE_TIME
-#include "prof.h"
-
-/*
-** the following two macros are used to ensure that the profiler can
-** use `prof_current_proc' to determine what procedure is currently
-** being executed when a profiling interrupt occurs
-*/
-
-#define set_prof_current_proc(target)		(prof_current_proc = (target))
-#define update_prof_current_proc(target)	(prof_current_proc = (target))	
-
-#else
-
-#define set_prof_current_proc(target)		((void)0)
-#define update_prof_current_proc(target)	((void)0)
-
-#endif
 
 /* DEFINITIONS FOR CALLS AND RETURNS */
 

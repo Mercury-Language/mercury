@@ -10,7 +10,7 @@
 **	Main Author : petdr
 */
 
-#include        "prof.h"
+#include        "imp.h"
 #include        "std.h"
 
 #include	<unistd.h>
@@ -54,44 +54,52 @@
 /*
 ** profiling node information 
 */
+
 typedef struct s_prof_call_node
 {
-        Code *Callee, *Caller;
-        unsigned long count;
-        struct s_prof_call_node *next;
+        Code			*Callee;
+        Code			*Caller;
+        unsigned long		count;
+        struct s_prof_call_node	*left;
+        struct s_prof_call_node	*right;
 } prof_call_node;
 
 typedef struct s_prof_time_node
 {
-        Code *Addr;
-        unsigned long count;
-        struct s_prof_time_node *next;
+        Code			*Addr;
+        unsigned long		count;
+        struct s_prof_time_node	*left;
+        struct s_prof_time_node	*right;
 } prof_time_node;
-
 
 /* 
 ** Macro definitions 
 */
+
 #define hash_addr_pair(Callee, Caller)                                      \
         (int) ((( (unsigned long)(Callee) ^ (unsigned long)(Caller) ) >> 2) \
                 % CALL_TABLE_SIZE )
 
 #define hash_prof_addr(Addr)                                                \
-        (int) ( (unsigned long)(Addr) % TIME_TABLE_SIZE )
+	(int) ( (( (unsigned long)(Addr) ) >> 2) % TIME_TABLE_SIZE )
 
 
 /*
 ** Global Variables
 */
-	Code		*prof_current_proc;
+
+Code *		volatile	prof_current_proc;
+static volatile	int		in_profiling_code = FALSE;
 
 /* 
 ** Private global variables
 */
-static	FILE	 	*declfptr = NULL;
+
 #ifdef PROFILE_CALLS
+static	FILE	 	*declfptr = NULL;
 static	prof_call_node	*addr_pair_table[CALL_TABLE_SIZE] = {NULL};
 #endif
+
 #ifdef PROFILE_TIME
 static	prof_time_node	*addr_table[TIME_TABLE_SIZE] = {NULL};
 #endif
@@ -202,6 +210,8 @@ checked_signal(int sig, void (*handler)(int))
 
 #ifdef PROFILE_TIME
 
+static void prof_time_profile(int);
+
 /*
 **	prof_init_time_profile:
 **		Writes the value of HZ (no. of ticks per second.) at the start
@@ -246,26 +256,40 @@ prof_init_time_profile()
 void
 prof_call_profile(Code *Callee, Code *Caller)
 {
-        prof_call_node *node, **node_addr, *new_node;
-	int hash_value;
+	prof_call_node	*node, **node_addr, *new_node;
+	int		 hash_value;
+
+	in_profiling_code = TRUE;
 
 	hash_value = hash_addr_pair(Callee, Caller);
 
-        node_addr = &addr_pair_table[hash_value];
-        while ((node = *node_addr) != NULL) {
-                if (node->Callee == Callee && node->Caller == Caller) {
-                        node->count++;
-                        return;
-                }
-                node_addr = &node->next;
-        }
+	node_addr = &addr_pair_table[hash_value];
+	while ((node = *node_addr) != NULL) {
+		if (node->Callee < Callee)
+			node_addr = &node->left;
+		else if (node->Callee > Callee)
+			node_addr = &node->right;
+		else if (node->Caller < Caller)
+			node_addr = &node->left;
+		else if (node->Caller > Caller)
+			node_addr = &node->right;
+		else {
+			node->count++;
+			in_profiling_code = FALSE;
+			return;
+		}
+	}
 
-        new_node = make(prof_call_node);
-        new_node->Callee = Callee;
-        new_node->Caller = Caller;
-        new_node->count = 1;
-        new_node->next = NULL;
-        *node_addr = new_node;
+	new_node = make(prof_call_node);
+	new_node->Callee = Callee;
+	new_node->Caller = Caller;
+	new_node->count  = 1;
+	new_node->left   = NULL;
+	new_node->right  = NULL;
+	*node_addr = new_node;
+
+	in_profiling_code = FALSE;
+	return;
 }
 
 #endif /* PROFILE_CALLS */
@@ -277,39 +301,46 @@ prof_call_profile(Code *Callee, Code *Caller)
 /*
 **	prof_time_profile:
 **		Signal handler to be called when ever a SIGPROF is received.
-**		Saves the current code address into a hash table.  If the
+**		Saves the current code address into a hash table. If the
 **		address already exists, it increments its count.
 */
 
-void
+static void
 prof_time_profile(int signum)
 {
-        prof_time_node *node, **node_addr, *new_node;
-        int hash_value;
+	prof_time_node	*node, **node_addr, *new_node;
+	int		hash_value;
 
-	/* Ignore any signals we get in this function. */
-	checked_signal(SIGPROF, SIG_IGN);
+	/* Ignore any signals we get in this function or in prof_call_profile */
+	if (in_profiling_code)
+		return;
 
-        hash_value = hash_prof_addr(prof_current_proc);
+	in_profiling_code = TRUE;
 
-        node_addr = &addr_table[hash_value];
-        while ((node = *node_addr) != NULL) {
-                if (node->Addr == prof_current_proc) {
-                        node->count++;
-			checked_signal(SIGPROF, prof_time_profile);
-                        return;
-                }
-                node_addr = &node->next;
-        }
+	hash_value = hash_prof_addr(prof_current_proc);
 
-        new_node = make(prof_time_node);
-        new_node->Addr = prof_current_proc;
-        new_node->count = 1;
-        new_node->next = NULL;
-        *node_addr = new_node;
+	node_addr = &addr_table[hash_value];
+	while ((node = *node_addr) != NULL) {
+		if (node->Addr < prof_current_proc)
+			node_addr = &node->left;
+		else if (node->Addr > prof_current_proc)
+			node_addr = &node->right;
+		else {
+			node->count++;
+			in_profiling_code = FALSE;
+			return;
+		}
+	}
 
-	checked_signal(SIGPROF, prof_time_profile);
-        return;
+	new_node = make(prof_time_node);
+	new_node->Addr  = prof_current_proc;
+	new_node->count = 1;
+	new_node->left  = NULL;
+	new_node->right = NULL;
+	*node_addr = new_node;
+
+	in_profiling_code = FALSE;
+	return;
 }
 
 /* ======================================================================== */
@@ -324,12 +355,12 @@ prof_turn_off_time_profiling()
 {
 	struct itimerval itime;
 
-        itime.it_value.tv_sec = 0;
-        itime.it_value.tv_usec = 0;
-        itime.it_interval.tv_sec = 0;
-        itime.it_interval.tv_usec = 0;
+	itime.it_value.tv_sec = 0;
+	itime.it_value.tv_usec = 0;
+	itime.it_interval.tv_sec = 0;
+	itime.it_interval.tv_usec = 0;
 
-        checked_setitimer(ITIMER_PROF, &itime);
+	checked_setitimer(ITIMER_PROF, &itime);
 }
 	
 #endif /* PROFILE_TIME */
@@ -344,25 +375,32 @@ prof_turn_off_time_profiling()
 **		Caller then callee followed by count.
 */
 
+static	void	print_addr_pair_node(FILE *fptr, prof_call_node *node);
+
 void
 prof_output_addr_pair_table(void)
 {
-	FILE *fptr;
-	int  i;
-	prof_call_node *current;
+	FILE		*fptr;
+	int		i;
 
 	fptr = checked_fopen("Prof.CallPair", "create", "w");
-	for (i = 0; i < CALL_TABLE_SIZE ; i++) {
-		current = addr_pair_table[i];
-		while (current) {
-			fprintf(fptr, "%ld %ld %lu\n",
-				(long) current->Caller,
-				(long) current->Callee,
-				current->count);
-			current = current->next;
-		}
-	}
+	for (i = 0; i < CALL_TABLE_SIZE ; i++)
+		print_addr_pair_node(fptr, addr_pair_table[i]);
+
 	checked_fclose(fptr, "Prof.CallPair");
+}
+
+static void
+print_addr_pair_node(FILE *fptr, prof_call_node *node)
+{
+	if (node != (prof_call_node *) NULL) {
+		fprintf(fptr, "%ld %ld %lu\n",
+			(long) node->Caller,
+			(long) node->Callee,
+			node->count);
+		print_addr_pair_node(fptr, node->left);
+		print_addr_pair_node(fptr, node->right);
+	}
 }
 
 #endif /* PROFILE_CALLS */
@@ -399,24 +437,31 @@ prof_output_addr_decls(const char *name, const Code *address)
 **		the file "Prof.Counts"
 */
 
+static	void	print_time_node(FILE *fptr, prof_time_node *node);
+
 void
 prof_output_addr_table()
 {
 	FILE *fptr;
 	int  i;
-	prof_time_node *current;
 
 	fptr = checked_fopen("Prof.Counts", "append to", "a");
-	for (i = 0; i < TIME_TABLE_SIZE ; i++) {
-		current = addr_table[i];
-		while (current) {
-			fprintf(fptr, "%ld %lu\n",
-				(long) current->Addr,
-				current->count);
-			current = current->next;
-		}
-	}
+	for (i = 0; i < TIME_TABLE_SIZE ; i++)
+		print_time_node(fptr, addr_table[i]);
+
 	checked_fclose(fptr, "Prof.Counts");
+}
+
+static void
+print_time_node(FILE *fptr, prof_time_node *node)
+{
+	if (node != (prof_time_node *) NULL) {
+		fprintf(fptr, "%ld %lu\n",
+			(long) node->Addr,
+			node->count);
+		print_time_node(fptr, node->left);
+		print_time_node(fptr, node->right);
+	}
 }
 
 #endif /* PROFILE_TIME */
