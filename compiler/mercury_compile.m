@@ -295,7 +295,8 @@ compile_using_gcc_backend(FirstFileOrModule, CallBack, ModulesToLink) -->
 		globals__io_lookup_bool_option(target_code_only, 
 				TargetCodeOnly),
 		( { Result = ok, TargetCodeOnly = no } ->
-			object_extension(Obj),
+			globals__io_lookup_string_option(object_file_extension,
+				Obj),
 			module_name_to_file_name(ModuleName, Obj,
 				yes, O_File),
 			mercury_compile__asm_to_obj(
@@ -854,7 +855,8 @@ find_smart_recompilation_target_files(TopLevelModuleName,
 			% We don't know how many chunks there should
 			% be, so just check the first.
 			{ Chunk = 0 },
-			object_extension(Obj),
+			globals__io_lookup_string_option(object_file_extension,
+				Obj),
 			module_name_to_split_c_file_name(ModuleName, Chunk,
 				Obj, FileName)
 		)
@@ -1069,7 +1071,8 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles) -->
 				( { ContainsCCode = yes } ->
 					module_name_to_file_name(ModuleName,
 						".c", no, CCode_C_File),
-					object_extension(Obj),
+					globals__io_lookup_string_option(
+						object_file_extension, Obj),
 					module_name_to_file_name(ModuleName,
 						"__c_code" ++ Obj,
 						yes, CCode_O_File),
@@ -1096,7 +1099,8 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles) -->
 			;
 				module_name_to_file_name(ModuleName, ".c", no,
 					C_File),
-				object_extension(Obj),
+				globals__io_lookup_string_option(
+					object_file_extension, Obj),
 				module_name_to_file_name(ModuleName, Obj, yes,
 					O_File),
 				mercury_compile__single_c_to_obj(
@@ -3338,7 +3342,7 @@ mercury_compile__c_to_obj(ModuleName, NumChunks, Succeeded) -->
 		mercury_compile__c_to_obj_list(ModuleName, 0, NumChunks,
 			Succeeded)
 	;
-		object_extension(Obj),
+		globals__io_lookup_string_option(object_file_extension, Obj),
 		module_name_to_file_name(ModuleName, ".c", no, C_File),
 		module_name_to_file_name(ModuleName, Obj, yes, O_File),
 		mercury_compile__single_c_to_obj(C_File, O_File, Succeeded)
@@ -3354,7 +3358,7 @@ mercury_compile__c_to_obj_list(ModuleName, Chunk, NumChunks, Succeeded) -->
 	( { Chunk > NumChunks } ->
 		{ Succeeded = yes }
 	;
-		object_extension(Obj),
+		globals__io_lookup_string_option(object_file_extension, Obj),
 		module_name_to_split_c_file_name(ModuleName, Chunk,
 			".c", C_File),
 		module_name_to_split_c_file_name(ModuleName, Chunk,
@@ -3708,7 +3712,7 @@ mercury_compile__link_module_list(Modules) -->
 	),
 
 	{ file_name_to_module_name(OutputFileName, ModuleName) },
-	object_extension(Obj),
+	globals__io_lookup_string_option(object_file_extension, Obj),
 	{ string__append("_init", Obj, InitObj) },
 	module_name_to_file_name(ModuleName, "_init.c", yes, InitCFileName),
 	module_name_to_file_name(ModuleName, InitObj, yes, InitObjFileName),
@@ -3999,14 +4003,5 @@ mercury_compile__maybe_dump_rl(Procs, ModuleInfo, _StageNum, StageName) -->
 		[]
 	).
 
-%-----------------------------------------------------------------------------%
-
-	% Extension for object files.
-:- pred object_extension(string::out, io__state::di, io__state::uo) is det.
-
-object_extension(Extension) -->
-	globals__io_lookup_string_option(object_file_extension, Extension0),
-	{ string__append(".", Extension0, Extension) }. 
-	
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

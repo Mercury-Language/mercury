@@ -758,10 +758,10 @@ option_defaults_2(code_gen_option, [
 					% the `mmc' script will override the
 					% above default with a value determined
 					% at configuration time
-	object_file_extension	-	string("o"),
-	pic_object_file_extension -	string("o"),
-	shared_library_extension -	string("so"),
-	library_extension -		string("a"),
+	object_file_extension	-	string(".o"),
+	pic_object_file_extension -	string(".o"),
+	shared_library_extension -	string(".so"),
+	library_extension -		string(".a"),
 	executable_file_extension -	string(""),
 	create_archive_command -	string("ar"),
 	create_archive_command_flags -	accumulating([]), % "cr"
