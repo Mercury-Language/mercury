@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 The University of Melbourne.
+% Copyright (C) 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -313,7 +313,7 @@ ml_gen_static_const_arg(Var, StaticCons, Rval) -->
 :- mode ml_gen_static_const_arg_2(in, in, in, in, out, in, out) is det.
 
 ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval) -->
-	{ StaticCons = static_cons(_ConsId, ArgVars, StaticArgs) }, 
+	{ StaticCons = static_cons(ConsId, ArgVars, StaticArgs) }, 
 	(
 		%
 		% types for which some other constructor has a
@@ -355,17 +355,20 @@ ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval) -->
 		% If this argument is something that would normally be allocated
 		% on the heap, just generate a reference to the static constant
 		% that we must have already generated for it.
-		% XXX Using mlds__array_type(mlds__generic_type) is probably 
-		% wrong when `--high-level-data' is enabled.
 		%
-		{ ConstType = mlds__array_type(mlds__generic_type) },	
+		ml_gen_type(VarType, MLDS_VarType),
+		ml_gen_info_get_globals(Globals),
+		{ globals__lookup_bool_option(Globals, highlevel_data,
+			HighLevelData) },
+		{ UsesBaseClass = (ml_tag_uses_base_class(Tag) -> yes ; no) },
+		{ ConstType = get_type_for_cons_id(MLDS_VarType,
+			UsesBaseClass, yes(ConsId), HighLevelData) },
 		ml_gen_static_const_addr(Var, ConstType, ConstAddrRval),
 		{ TagVal = 0 ->
 			TaggedRval = ConstAddrRval
 		;
 			TaggedRval = mkword(TagVal, ConstAddrRval)
 		},
-		ml_gen_type(VarType, MLDS_VarType),
 		{ Rval = unop(cast(MLDS_VarType), TaggedRval) }
 	;
 		%
@@ -1141,15 +1144,8 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
 		ml_gen_var_list(ArgVars, ArgLvals),
 		=(Info),
 		{ ml_gen_info_get_module_info(Info, ModuleInfo) },
-		{ MaybeConsId = yes(ConsId) ->
-			ConsArgTypes = constructor_arg_types(ConsId,
-				ArgTypes, Type, ModuleInfo)
-		;
-			% it's a closure
-			% in this case, the arguments are all boxed
-			ConsArgTypes = ml_make_boxed_types(
-					list__length(ArgTypes))
-		},
+		{ get_maybe_cons_id_arg_types(MaybeConsId, ArgTypes, Type,
+			ModuleInfo, ConsArgTypes) },
 		ml_gen_cons_args(ArgLvals, ArgTypes, ConsArgTypes, ArgModes,
 			ModuleInfo, ArgRvals0, MLDS_ArgTypes0),
 
@@ -1181,48 +1177,68 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
 		{ MLDS_Decls = [] }
 	;
 		{ HowToConstruct = construct_statically(StaticArgs) },
-
-		% XXX This code gets the types wrong
-		% for the --high-level-data case
-
-		list__map_foldl(ml_gen_type, ArgTypes, MLDS_ArgTypes0),
-		/****
-		XXX We ought to do something like this instead:
+		%
+		% Find out the types of the constructor arguments
+		%
 		=(Info),
 		{ ml_gen_info_get_module_info(Info, ModuleInfo) },
-		{ ConsArgTypes = constructor_arg_types(CtorId,
-			ArgTypes, Type, ModuleInfo) },
+		{ get_maybe_cons_id_arg_types(MaybeConsId, ArgTypes, Type,
+			ModuleInfo, ConsArgTypes) },
 		list__map_foldl(ml_gen_field_type, ConsArgTypes,
-			MLDS_ArgTypes0),
-		...
-		*****/
+			FieldTypes),
 
 		%
 		% Generate rvals for the arguments
 		%
+		list__map_foldl(ml_gen_type, ArgTypes, MLDS_ArgTypes0),
 		ml_gen_static_const_arg_list(ArgVars, StaticArgs, ArgRvals0),
 
 		%
-		% Insert the extra rvals at the start
+		% Box or unbox the arguments, if needed,
+		% and insert the extra rvals at the start
 		%
-		{ list__append(ExtraRvals, ArgRvals0, ArgRvals1) },
-		{ list__append(ExtraTypes, MLDS_ArgTypes0, MLDS_ArgTypes) },
-
-		%
-		% Box all the arguments
-		%
-		ml_gen_box_const_rval_list(MLDS_ArgTypes, ArgRvals1,
-			Context, BoxConstDefns, ArgRvals),
+		ml_gen_info_get_globals(Globals),
+		{ globals__lookup_bool_option(Globals, highlevel_data,
+			HighLevelData) },
+		(
+			{ HighLevelData = no },
+			%
+			% Box *all* the arguments, including the ExtraRvals
+			%
+			{ list__append(ExtraRvals, ArgRvals0, ArgRvals1) },
+			{ list__append(ExtraTypes, MLDS_ArgTypes0,
+				MLDS_ArgTypes) },
+			ml_gen_box_const_rval_list(MLDS_ArgTypes, ArgRvals1,
+				Context, BoxConstDefns, ArgRvals)
+		;
+			{ HighLevelData = yes },
+			ml_gen_box_or_unbox_const_rval_list(ArgTypes,
+				FieldTypes, ArgRvals0,
+				Context, BoxConstDefns, ArgRvals1),
+			% For --high-level-data, the ExtraRvals should
+			% already have the right type, so we don't need
+			% to worry about boxing or unboxing them
+			{ list__append(ExtraRvals, ArgRvals1, ArgRvals) }
+		),
 
 		%
 		% Generate a local static constant for this term.
-		% XXX Using mlds__array_type(mlds__generic_type) is probably 
-		% wrong when `--high-level-data' is enabled.
 		%
 		ml_gen_static_const_name(Var, ConstName),
-		{ ConstType = mlds__array_type(mlds__generic_type) },
+		{ UsesBaseClass = (MaybeCtorName = yes(_) -> no ; yes) },
+		{ ConstType = get_type_for_cons_id(MLDS_Type, UsesBaseClass,
+				MaybeConsId, HighLevelData) },
+		% XXX if the secondary tag is in a base class, then ideally its
+		% initializer should be wrapped in `init_struct([init_obj(X)])'
+		% rather than just `init_obj(X)' -- the fact that we don't
+		% leads to some warnings from GNU C about missing braces in
+		% initializers.
 		{ ArgInits = list__map(func(X) = init_obj(X), ArgRvals) },
-		{ Initializer = init_array(ArgInits) },
+		{ ConstType = mlds__array_type(_) ->
+			Initializer = init_array(ArgInits)
+		;
+			Initializer = init_struct(ArgInits)
+		},
 		{ ConstDefn = ml_gen_static_const_defn(ConstName, ConstType,
 			local, Initializer, Context) },
 
@@ -1304,6 +1320,96 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
 		{ MLDS_Statements = [MLDS_Statement | MLDS_Statements0] }
 	).
 
+	% Return the MLDS type suitable for constructing a constant static
+	% ground term with the specified cons_id.
+:- func get_type_for_cons_id(mlds__type, bool, maybe(cons_id), bool)
+	= mlds__type.
+get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData)
+		= ConstType :-
+	(
+		HighLevelData = no,
+		ConstType = mlds__array_type(mlds__generic_type)
+	;
+		HighLevelData = yes,
+		(
+			% Check for type_infos and typeclass_infos,
+			% since these need to be handled specially;
+			% their Mercury type definitions are lies.
+			MLDS_Type = mercury_type(MercuryType, user_type, _),
+			type_util__is_introduced_type_info_type(MercuryType)
+		->
+			ConstType = mlds__array_type(mlds__generic_type)
+		;
+			% Check if we're constructing a value for a 
+			% discriminated union where the specified cons_id
+			% which is represented as a derived class that
+			% is derived from the base class for this
+			% discriminated union type.
+			UsesBaseClass = no,
+			MaybeConsId = yes(ConsId),
+			ConsId = cons(CtorSymName, CtorArity),
+			( MLDS_Type = mlds__class_type(QualTypeName,
+				TypeArity, _)
+			; MLDS_Type = mercury_type(MercuryType, user_type, _),
+			  type_to_type_id(MercuryType, TypeId, _ArgsTypes),
+			  ml_gen_type_name(TypeId, QualTypeName, TypeArity)
+			)
+		->
+			% If so, append the name of the derived class to
+			% the name of the base class for this type
+			% (since the derived class will also be nested
+			% inside the base class).
+			unqualify_name(CtorSymName, CtorName),
+			QualTypeName = qual(MLDS_Module, TypeName),
+			ClassQualifier = mlds__append_class_qualifier(
+				MLDS_Module, TypeName, TypeArity),
+			ConstType = mlds__class_type(
+				qual(ClassQualifier, CtorName),
+				CtorArity, mlds__class)
+		;
+			% Convert mercury_types for user-defined types
+			% to the corresponding `mlds__class_type'.
+			% This is needed because these types get mapped to
+			% `mlds__ptr_type(mlds__class_type(...))', but when
+			% declarating static constants we want just the
+			% class type, not the pointer type.
+			MLDS_Type = mercury_type(MercuryType, user_type, _),
+			type_to_type_id(MercuryType, TypeId, _ArgsTypes)
+		->
+			ml_gen_type_name(TypeId, ClassName, ClassArity),
+			ConstType = mlds__class_type(ClassName, ClassArity,
+				mlds__class)
+		;
+			% For tuples, a similar issue arises;
+			% we want tuple constants to have array type,
+			% not the pointer type MR_Tuple.
+			MLDS_Type = mercury_type(_, tuple_type, _)
+		->
+			ConstType = mlds__array_type(mlds__generic_type)
+		;
+			% Likewise for closures, we need to use an array type
+			% rather than the pointer type MR_ClosurePtr.
+			% Note that we're still using a low-level data
+			% representation for closures, even when
+			% --high-level-data is enabled.
+			MLDS_Type = mercury_type(_, pred_type, _)
+		->
+			ConstType = mlds__array_type(mlds__generic_type)
+		;
+			ConstType = MLDS_Type
+		)
+	).
+
+:- pred ml_gen_field_type(prog_type, prog_type, ml_gen_info, ml_gen_info).
+:- mode ml_gen_field_type(in, out, in, out) is det.
+ml_gen_field_type(Type, FieldType) -->
+	=(Info),
+	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
+	{ module_info_globals(ModuleInfo, Globals) },
+	{ globals__lookup_bool_option(Globals, highlevel_data,
+		HighLevelData) },
+	{ ml_type_as_field(Type, ModuleInfo, HighLevelData, FieldType) }.
+
 :- pred ml_type_as_field(prog_type, module_info, bool, prog_type).
 :- mode ml_type_as_field(in, in, in, out) is det.
 ml_type_as_field(FieldType, ModuleInfo, HighLevelData, BoxedFieldType) :-
@@ -1334,6 +1440,21 @@ ml_type_as_field(FieldType, ModuleInfo, HighLevelData, BoxedFieldType) :-
 		type_util__var(BoxedFieldType, TypeVar)
 	;
 		BoxedFieldType = FieldType
+	).
+
+:- pred get_maybe_cons_id_arg_types(maybe(cons_id)::in, list(prog_type)::in,
+		prog_type::in, module_info::in, list(prog_type)::out) is det.
+
+get_maybe_cons_id_arg_types(MaybeConsId, ArgTypes, Type, ModuleInfo,
+		ConsArgTypes) :-
+	( MaybeConsId = yes(ConsId) ->
+		ConsArgTypes = constructor_arg_types(ConsId,
+			ArgTypes, Type, ModuleInfo)
+	;
+		% it's a closure
+		% in this case, the arguments are all boxed
+		ConsArgTypes = ml_make_boxed_types(
+				list__length(ArgTypes))
 	).
 
 :- func constructor_arg_types(cons_id, list(prog_type), prog_type,
@@ -1401,6 +1522,50 @@ constructor_arg_types(CtorId, ArgTypes, Type, ModuleInfo) = ConsArgTypes :-
 
 :- func ml_gen_mktag(int) = mlds__rval.
 ml_gen_mktag(Tag) = unop(std_unop(mktag), const(int_const(Tag))).
+
+
+:- pred ml_gen_box_or_unbox_const_rval_list(list(prog_type), list(prog_type),
+		list(mlds__rval), prog_context, mlds__defns, list(mlds__rval),
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_box_or_unbox_const_rval_list(in, in, in, in, out, out, in, out)
+		is det.
+
+ml_gen_box_or_unbox_const_rval_list(ArgTypes, FieldTypes, ArgRvals,
+		Context, BoxConstDefns, FieldRvals) -->
+	(
+		{ ArgTypes = [], FieldTypes = [], ArgRvals = [] }
+	->
+		{ BoxConstDefns = [], FieldRvals = [] }
+	;
+		{ ArgTypes = [ArgType | ArgTypes1] },
+		{ FieldTypes = [FieldType | FieldTypes1] },
+		{ ArgRvals = [ArgRval | ArgRvals1] }
+	->
+		(
+			% Handle the case where the field type is a boxed
+			% type -- in that case, we can just box the argument
+			% type.
+			{ FieldType = term__variable(_) }
+		->
+			ml_gen_type(ArgType, MLDS_ArgType),
+			ml_gen_box_const_rval(MLDS_ArgType, ArgRval, Context,
+				BoxConstDefns0, FieldRval)
+		;
+			% Otherwise, fall back on ml_gen_box_or_unbox_rval.
+			% XXX this might still generate stuff which is not
+			% legal in a static initializer!
+			ml_gen_box_or_unbox_rval(ArgType, FieldType, ArgRval,
+				FieldRval),
+			{ BoxConstDefns0 = [] }
+		),
+		ml_gen_box_or_unbox_const_rval_list(ArgTypes1, FieldTypes1,
+			ArgRvals1, Context, BoxConstDefns1, FieldRvals1),
+		{ BoxConstDefns = BoxConstDefns0 ++ BoxConstDefns1 },
+		{ FieldRvals = [FieldRval | FieldRvals1] }
+	;
+		{ unexpected(this_file, "ml_gen_box_or_unbox_const_rval_list: "
+			++ "list length mismatch") }
+	).
 
 :- pred ml_gen_box_const_rval_list(list(mlds__type), list(mlds__rval),
 		prog_context, mlds__defns, list(mlds__rval),
