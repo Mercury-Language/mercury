@@ -19,6 +19,7 @@ SOURCES= \
 	easy_nondet_test_2.m \
 	empty_switch.m \
 	error.m \
+	fail_ite.m \
 	followcode_det_problem.m \
 	headvar_not_found.m \
 	higher_order.m \
