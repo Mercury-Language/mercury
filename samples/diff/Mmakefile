@@ -18,5 +18,5 @@ all: diff
 #
 # BTW, the predicate which isn't compiled correctly is diff_out__show_file_2
 # in diff_out.m.
-MGNUCFLAGS=-O0
+CFLAGS=-O0
 
