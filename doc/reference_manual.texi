@@ -4835,7 +4835,7 @@ implementation specific rules.
 @c If they are actually pure or semipure, they must be explicitly
 @c promised as such by the user (either by using foreign language
 @c attributes specified below, or a promise_pure or promise_semipure pragma
-@c as specified in the @ref{Impurity}.
+@c as specified in @ref{Impurity}.
 
 Additional restrictions on the foreign language interface code
 depend on the foreign language and compilation options.
@@ -4909,7 +4909,7 @@ behaviour is undefined.
 This attribute promises that the purity of the given predicate or
 function definition is pure or semipure.
 It is equivalent to a corresponding @samp{pragma promise_pure}
-or@samp{pragma promise_semipure} declaration (@pxref{Impurity}).
+or @samp{pragma promise_semipure} declaration (@pxref{Impurity}).
 If omitted, the default purity will be used instead (pure, but this is
 expected to change to impure).
 @c If omitted, the clause specified by the @samp{foreign_proc} is
