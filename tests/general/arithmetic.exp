@@ -10,4 +10,6 @@ X >> Y: 0
 X /\ Y: 0
 X \/ Y: 7
 X `xor` Y: 7
+Z such that X = Z `xor` Y: 7
+Z such that Y = X `xor` Z: 7
 \ X: -4
