@@ -499,8 +499,6 @@ polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 	),
 	polymorphism__fixup_preds(PredIds, ModuleInfo2, ModuleInfo).
 
-:- import_module unsafe.	% BBB
-:- pragma promise_pure(polymorphism__fixup_procs/6).
 :- pred polymorphism__fixup_procs(list(proc_id), pred_id,
 			proc_table, proc_table, module_info, module_info).
 :- mode polymorphism__fixup_procs(in, in, in, out, in, out) is det.
@@ -519,8 +517,6 @@ polymorphism__fixup_procs([ProcId | ProcIds], PredId, ProcTable0, ProcTable,
 	->
 		proc_info_goal(ProcInfo0, Goal0)
 	;
-		impure unsafe_perform_io(hlds_out__write_proc(1, no,
-			ModuleInfo0, PredId, ProcId, local, ProcInfo0)),
 		error("polymorphism__fixup_procs")
 	),
 	recompute_instmap_delta(HeadVars, ArgLives, VarTypes, Goal0, Goal,
