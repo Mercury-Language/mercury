@@ -1,0 +1,55 @@
+#-----------------------------------------------------------------------------#
+
+# Mmake - Mmake file for Hans Boehm's conservative garbage collector.
+
+MAIN_TARGET=libgc
+
+MERCURY_DIR=..
+include ../Mmake.common
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: libgc
+libgc: libgc.a libgc.so
+
+libgc.a: gc.a
+	rm -f libgc.a
+	ln -s gc.a libgc.a
+
+libgc.so: gc.so
+	rm -f libgc.so
+	ln -s gc.so libgc.so
+
+gc.so: force
+	$(MAKE) gc.so
+
+gc.a: force
+	$(MAKE) gc.a
+
+.PHONY: force
+force:
+
+#-----------------------------------------------------------------------------#
+
+# installation rules
+
+.PHONY: install
+install: install_headers install_lib
+
+.PHONY: install_headers
+install_headers: gc.h
+	mkdir -p $(INSTALL_INC_DIR)/machdeps
+	cp `vpath_find gc.h` $(INSTALL_INC_DIR)
+
+.PHONY: install_lib
+install_lib: libgc.a libgc.so
+	mkdir -p $(INSTALL_MERC_GC_LIB_DIR)
+	cp `vpath_find libgc.a libgc.so` $(INSTALL_MERC_GC_LIB_DIR)
+
+#-----------------------------------------------------------------------------#
+
+# suppress the Mmake default rules for cleaning .c and .mod files.
+CLEAN_C=
+CLEAN_MOD=
+
+#-----------------------------------------------------------------------------#
