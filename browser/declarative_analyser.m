@@ -194,7 +194,8 @@ top_down_search_mode = top_down.
 :- type search_response
 	--->	question(suspect_id)
 	;	require_explicit_subtree(suspect_id)
-	;	require_explicit_supertree.
+	;	require_explicit_supertree
+	;	no_suspects.
 
 	% The analyser state records all of the information that needs
 	% to be remembered across multiple invocations of the analyser.
@@ -412,8 +413,6 @@ decide_analyser_response(Store, Response, !Analyser) :-
 				[RootId | CorrectDescendents], 
 				InadmissibleChildren, Response)
 		;
-			are_unknown_suspects(!.SearchSpace)
-		->
 			search(Store, !SearchSpace, !.Analyser ^ search_mode,
 				!.Analyser ^ fallback_search_mode, NewMode, 
 				SearchResponse),
@@ -422,37 +421,6 @@ decide_analyser_response(Store, Response, !Analyser) :-
 			!:Analyser = !.Analyser ^ search_mode := NewMode,
 			handle_search_response(Store, SearchResponse, 
 				!Analyser, Response)
-		;		
-			%
-			% Try to extend the search space upwards.  If this
-			% fails and we're not at the topmost traced node, then
-			% request that an explicit supertree be generated.
-			%
-			(
-				extend_search_space_upwards(Store,
-					!SearchSpace)
-			->
-				!:Analyser = !.Analyser ^ search_space :=
-					!.SearchSpace,
-				decide_analyser_response(Store, Response,
-					!Analyser)
-			;
-				topmost_det(!.SearchSpace, TopMostId),
-				TopMostNode = get_edt_node(!.SearchSpace,
-					TopMostId),
-				(
-					edt_topmost_node(Store, TopMostNode)
-				->
-					% We can't look any higher.
-					Response = no_suspects
-				;
-					Response = require_explicit_supertree(
-						TopMostNode),
-					!:Analyser = !.Analyser ^
-						require_explicit := yes(
-							explicit_supertree)
-				)
-			)
 		)
 	),
 	% Do a sanity check after the search to determine if the search 
@@ -460,7 +428,6 @@ decide_analyser_response(Store, Response, !Analyser) :-
 	% XXX this should be removed at some stage as it's relatively slow.
 	check_search_space_consistency(Store, !.Analyser ^ search_space,
 		"End of decide_analyser_response").
-
 
 :- pred handle_search_response(S::in, search_response::in, 
 	analyser_state(T)::in, analyser_state(T)::out, 
@@ -508,6 +475,8 @@ handle_search_response(_, require_explicit_supertree, !Analyser, Response) :-
 	topmost_det(SearchSpace, TopMostId),
 	TopMost = get_edt_node(SearchSpace, TopMostId),
 	Response = require_explicit_supertree(TopMost).
+
+handle_search_response(_, no_suspects, !Analyser, no_suspects).
 
 	% bug_response(Store, IoActionMap, SearchSpace, BugId, Evidence, 
 	%	InadmissibleChildren, Response)
@@ -601,8 +570,36 @@ top_down_search(Store, !SearchSpace, Response) :-
 			->
 				Response = question(SkippedSuspect)
 			;
-				throw(internal_error("top_down_search",
-					"no unknown or skipped suspects"))
+				%
+				% Try to extend the search space upwards.  If
+				% this fails and we're not at the topmost
+				% traced node, then request that an explicit
+				% supertree be generated.
+				%
+				(
+					extend_search_space_upwards(Store,
+						!.SearchSpace,
+						ExtendedSearchSpace)
+				->
+					top_down_search(Store,
+						ExtendedSearchSpace,
+						!:SearchSpace, Response)
+				;
+					topmost_det(!.SearchSpace, TopMostId),
+					TopMostNode =
+						get_edt_node(!.SearchSpace,
+						TopMostId),
+					(
+						edt_topmost_node(Store,
+							TopMostNode)
+					->
+						% We can't look any higher.
+						Response = no_suspects
+					;
+						Response =
+						    require_explicit_supertree
+					)
+				)
 			)
 		)
 	;

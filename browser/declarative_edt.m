@@ -442,10 +442,6 @@
 :- pred give_up_subterm_tracking(search_space(T)::in, suspect_id::in) 
 	is semidet.
 
-	% Are there any unknown or skipped suspects in the search space?
-	%
-:- pred are_unknown_suspects(search_space(T)::in) is semidet.
-
 	% Mark the root and it's non-ignored children as unknown.
 	% Throws an exception if the search space doesn't have a root.
 	%
@@ -552,22 +548,11 @@
 				% We use a bimap so we can also find the
 				% implicit root given an explicit root.
 				%
-			implicit_roots_to_explicit_roots	:: bimap(T, T),
-
-				% How many skipped or unknown suspects are in
-				% the search space?
-			unknown_count		:: int,
-
-				% How many suspects in the search space have
-				% we not explored the children of whos children
-				% might be worth exploring? (i.e. we don't 
-				% include unexplored children of correct,
-				% inadmissible or pruned suspects)
-			unexplored_leaves	:: int
+			implicit_roots_to_explicit_roots	:: bimap(T, T)
 	).
 
 empty_search_space = search_space(no, no, counter.init(0), counter.init(0), 
-	map.init, bimap.init, 0, 0).
+	map.init, bimap.init).
 
 root(SearchSpace, RootId) :- SearchSpace ^ root = yes(RootId).
 
@@ -579,9 +564,6 @@ topmost_det(SearchSpace, TopMostId) :-
 		SearchSpace ^ topmost = no,
 		throw(internal_error("topmost_det", "search space empty"))
 	).
-
-are_unknown_suspects(SearchSpace) :- SearchSpace ^ unknown_count > 0.
-are_unknown_suspects(SearchSpace) :- SearchSpace ^ unexplored_leaves > 0.
 
 suspect_is_bug(Store, SuspectId, !SearchSpace, CorrectDescendents,
 		InadmissibleChildren) :-
@@ -752,15 +734,12 @@ assert_suspect_is_valid(Status, SuspectId, !SearchSpace) :-
 	map.set(!.SearchSpace ^ store, SuspectId, 
 		(Suspect ^ status := Status) ^ weight := 0, SuspectStore),
 	!:SearchSpace = !.SearchSpace ^ store := SuspectStore,
-	adjust_unknown_count(yes(Suspect ^ status), Status, !SearchSpace),
 	(
 		Suspect ^ children = yes(Children),
 		list.foldl(propagate_status_downwards(pruned, 
 			[correct, inadmissible]), Children, !SearchSpace)
 	;
-		Suspect ^ children = no,
-		adjust_unexplored_leaves(yes(Suspect ^ status), Status, 
-			!SearchSpace)
+		Suspect ^ children = no
 	),
 	% Remove the suspect's weight from its ancestors, since its weight is
 	% now zero.
@@ -800,14 +779,6 @@ assert_suspect_is_erroneous(SuspectId, !SearchSpace) :-
 	map.set(!.SearchSpace ^ store, SuspectId, Suspect ^ status :=
 		erroneous, Store),
 	!:SearchSpace = !.SearchSpace ^ store := Store,
-	adjust_unknown_count(yes(Suspect ^ status), erroneous, !SearchSpace),
-	(
-		Suspect ^ children = no,
-		adjust_unexplored_leaves(yes(Suspect ^ status), erroneous, 
-			!SearchSpace)
-	;
-		Suspect ^ children = yes(_)
-	),
 	propagate_status_upwards(in_erroneous_subtree_complement, 
 		[erroneous, correct, inadmissible], SuspectId, _,
 		!SearchSpace),
@@ -815,7 +786,6 @@ assert_suspect_is_erroneous(SuspectId, !SearchSpace) :-
 
 ignore_suspect(Store, SuspectId, !SearchSpace) :-
 	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-	adjust_unknown_count(yes(Suspect ^ status), ignored, !SearchSpace),
 	calc_suspect_weight(Store, Suspect ^ edt_node, Suspect ^ children, 
 		ignored, !.SearchSpace, Weight, _),
 	map.set(!.SearchSpace ^ store, SuspectId, 
@@ -1073,12 +1043,8 @@ propagate_status_downwards(Status, StopStatusSet, SuspectId, !StopSuspects,
 				StopStatusSet), Children, !StopSuspects,
 				!SearchSpace)
 		;
-			Suspect ^ children = no,
-			adjust_unexplored_leaves(yes(Suspect ^ status), Status, 
-				!SearchSpace)
-		),
-		adjust_unknown_count(yes(Suspect ^ status), Status, 
-			!SearchSpace)
+			Suspect ^ children = no
+		)
 	;
 		list.cons(SuspectId, !StopSuspects)
 	).
@@ -1112,112 +1078,15 @@ force_propagate_status_downwards(Status, StopStatusSet, SuspectId,
 			Children, [], StopSuspects, !SearchSpace)
 	;
 		Suspect ^ children = no,
-		adjust_unexplored_leaves(yes(Suspect ^ status), Status, 
-			!SearchSpace),
 		StopSuspects = []
-	),
-	adjust_unknown_count(yes(Suspect ^ status), Status, !SearchSpace).
-
-	% Increments or decrements the unknown suspect count after a status
-	% change.  The first argument should be the previous status of the 
-	% changed suspect or no if a new suspect is being added and the second
-	% argument should be the suspect's new status.
-	%
-:- pred adjust_unknown_count(maybe(suspect_status)::in, suspect_status::in, 
-	search_space(T)::in, search_space(T)::out) is det.
-
-adjust_unknown_count(MaybeOldStatus, NewStatus, !SearchSpace) :- 
-	(
-		MaybeOldStatus = yes(OldStatus),
-		questionable(OldStatus, yes),
-		questionable(NewStatus, no)
-	->
-		!:SearchSpace = !.SearchSpace ^ unknown_count :=
-			!.SearchSpace ^ unknown_count - 1
-	;
-		questionable(NewStatus, yes),
-		(
-			MaybeOldStatus = no
-		;
-			MaybeOldStatus = yes(OldStatus),
-			questionable(OldStatus, no)
-		)
-	->
-		!:SearchSpace = !.SearchSpace ^ unknown_count :=
-			!.SearchSpace ^ unknown_count + 1
-	;
-		true
-	).
-
-	% Increments or decrements the unexplored leaves count after a status
-	% change.  The first argument should be the previous status of the 
-	% changed suspect or no if a new suspect is being added and the second
-	% argument should be the suspect's new status.  The changed suspect
-	% should be a leaf node (i.e. have its children field set to no).
-	%
-:- pred adjust_unexplored_leaves(maybe(suspect_status)::in, suspect_status::in, 
-	search_space(T)::in, search_space(T)::out) is det.
-
-adjust_unexplored_leaves(MaybeOldStatus, NewStatus, !SearchSpace) :- 
-	(
-		MaybeOldStatus = yes(OldStatus),
-		in_buggy_subtree(OldStatus, yes),
-		in_buggy_subtree(NewStatus, no)
-	->
-		!:SearchSpace = !.SearchSpace ^ unexplored_leaves :=
-			!.SearchSpace ^ unexplored_leaves - 1
-	;
-		in_buggy_subtree(NewStatus, yes),
-		(
-			MaybeOldStatus = no
-		;
-			MaybeOldStatus = yes(OldStatus),
-			in_buggy_subtree(OldStatus, no)
-		)
-	->
-		!:SearchSpace = !.SearchSpace ^ unexplored_leaves :=
-			!.SearchSpace ^ unexplored_leaves + 1
-	;
-		true
-	).
-
-	% Decrement the unexplored leaves count if the given status indicates
-	% that the suspect is in a potentially buggy part of the search space.
-	%
-:- pred decrement_unexplored_leaves(suspect_status::in, 
-	search_space(T)::in, search_space(T)::out) is det.
-
-decrement_unexplored_leaves(OldStatus, !SearchSpace) :-
-	(
-		in_buggy_subtree(OldStatus, yes)
-	->
-		!:SearchSpace = !.SearchSpace ^ unexplored_leaves :=
-			!.SearchSpace ^ unexplored_leaves - 1
-	;
-		true
 	).
 
 check_search_space_consistency(Store, SearchSpace, Context) :-
 	(
-		SearchSpace ^ unknown_count \= calc_num_unknown(SearchSpace)
-	->
-		throw(internal_error("check_search_space_consistency",
-			"unknown count incorrect. search space follows.\n" 
-			++ string(SearchSpace) ++ "\n Context is:\n" ++
-			Context))
-	;
-		SearchSpace ^ unexplored_leaves \= calc_num_unexplored(
-			SearchSpace)
-	->
-		throw(internal_error("check_search_space_consistency",
-			"unexplored leaves incorrect. search space follows.\n"
-			++ string(SearchSpace) ++ "\n Context is:\n" ++
-			Context))
-	;
 		find_inconsistency_in_weights(Store, SearchSpace, Message)
 	->
 		throw(internal_error("check_search_space_consistency",
-			Message))
+			Message ++ "\n Context = " ++ Context))
 	;
 		true
 	).
@@ -1460,8 +1329,6 @@ propagate_status_upwards(Status, StopStatusSet, SuspectId, Lowest,
 				ParentId, Lowest, !SearchSpace),
 			map.set(!.SearchSpace ^ store, ParentId, 
 				Parent ^ status := Status, Store),
-			adjust_unknown_count(yes(Parent ^ status), Status,
-				!SearchSpace),
 			!:SearchSpace = !.SearchSpace ^ store := Store
 		;
 			Lowest = ParentId
@@ -1539,8 +1406,7 @@ add_children(Store, EDTChildren, SuspectId, Status, !SearchSpace, Children) :-
 		map.set(!.SearchSpace ^ store, SuspectId, 
 			Suspect ^ children := yes(Children), SuspectStore),
 		!:SearchSpace = !.SearchSpace ^ store := SuspectStore
-	),
-	decrement_unexplored_leaves(Suspect ^ status, !SearchSpace).
+	).
 
 :- pred add_children_2(S::in, list(T)::in, suspect_id::in, suspect_status::in, 
 	int::in, search_space(T)::in, search_space(T)::out, counter::in,
@@ -1558,8 +1424,6 @@ add_children_2(Store, [EDTChild | EDTChildren], SuspectId, Status, Depth,
 		SuspectStore),
 	!:SearchSpace = !.SearchSpace ^ store := SuspectStore,
 	add_weight_to_ancestors(NextId, ExcessWeight, !SearchSpace),
-	adjust_unknown_count(no, Status, !SearchSpace),
-	adjust_unexplored_leaves(no, Status, !SearchSpace),
 	add_children_2(Store, EDTChildren, SuspectId, Status, Depth, 
 		!SearchSpace, !Counter, OtherChildren),
 	Children = [NextId | OtherChildren].
@@ -1569,7 +1433,7 @@ initialise_search_space(Store, Node, SearchSpace) :-
 	map.set(init, 0, suspect(no, Node, unknown, 0, no, Weight), 
 		SuspectStore),
 	SearchSpace = search_space(no, yes(0), counter.init(1), 
-		counter.init(0), SuspectStore, bimap.init, 1, 1).
+		counter.init(0), SuspectStore, bimap.init).
 
 incorporate_explicit_subtree(SuspectId, Node, !SearchSpace) :-
 	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
@@ -1664,14 +1528,6 @@ insert_new_topmost_node(Store, NewTopMostEDTNode, !SearchSpace) :-
 				NewTopMostId, SiblingStatus,
 				!SearchSpace, ChildrenIds),
 			
-			% 
-			% Adjust the unexplored leaves count since the new top
-			% most node was added with no children (so add_children
-			% would have incorrectly subtracted 1 from the count).
-			%
-			adjust_unexplored_leaves(no, NewTopMostStatus, 
-				!SearchSpace),
-
 			%
 			% Now add the old topmost node as a child to the new
 			% topmost node.
@@ -1710,10 +1566,7 @@ insert_new_topmost_node(Store, NewTopMostEDTNode, !SearchSpace) :-
 					!.SuspectStore
 			),
 			!:SearchSpace = !.SearchSpace ^ topmost :=
-				yes(NewTopMostId),
-
-			adjust_unknown_count(no, NewTopMostStatus, 
-				!SearchSpace)
+				yes(NewTopMostId)
 		;
 			throw(internal_error("insert_new_topmost_node",
 				"couldn't find event number"))
@@ -1811,7 +1664,7 @@ choose_skipped_suspect(SearchSpace, Skipped) :-
 	%	LeastSkipped) :-
 	% LeastSkipped is whichever of SuspectId1 and SuspectId2 has the lowest
 	% skip order?  If neither has been skipped then LeastSuspect =
-	% SuspectId1.  Suspect1 is the suspect referenced by SuspectId1 and is
+	% SuspectId2.  Suspect1 is the suspect referenced by SuspectId1 and is
 	% present so we can use this predicate with map.foldl.
 	%
 :- pred least_skipped(search_space(T)::in, suspect_id::in, suspect(T)::in, 
@@ -1831,11 +1684,11 @@ least_skipped(SearchSpace, SuspectId1, Suspect1, SuspectId2, LeastSkipped) :-
 			LeastSkipped = SuspectId1
 		)
 	;
-		Status2 = skipped(_)
+		Status1 = skipped(_)
 	->
-		LeastSkipped = SuspectId2
-	;
 		LeastSkipped = SuspectId1
+	;
+		LeastSkipped = SuspectId2
 	).
 
 first_unknown_descendent(Store, SuspectId, !SearchSpace, 
@@ -1918,8 +1771,13 @@ get_children_list(Store, [SuspectId | SuspectIds], !SearchSpace,
 	).
 
 pick_implicit_root(Store, SearchSpace, ImplicitRoot) :-
-	SearchSpace ^ root = yes(RootId),
-	find_first_implicit_root(Store, SearchSpace, [RootId], ImplicitRoot).
+	(
+		SearchSpace ^ root = yes(StartId)
+	;
+		SearchSpace ^ root = no,
+		SearchSpace ^ topmost = yes(StartId)
+	),
+	find_first_implicit_root(Store, SearchSpace, [StartId], ImplicitRoot).
 
 	% Look for an implicit root in the descendents of each suspect in
 	% the list in a depth first fashion.

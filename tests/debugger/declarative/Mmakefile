@@ -6,6 +6,7 @@ THIS_DIR = debugger/declarative
 
 DECLARATIVE_PROGS=		\
 	aadebug			\
+	all_trusted		\
 	app			\
 	args			\
 	backtrack		\
@@ -166,6 +167,10 @@ include Mercury.options
 
 aadebug.out: aadebug aadebug.inp
 	$(MDB_STD) ./aadebug < aadebug.inp > aadebug.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
+
+all_trusted.out: all_trusted all_trusted.inp
+	$(MDB_STD) ./all_trusted < all_trusted.inp > all_trusted.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 app.out: app app.inp
