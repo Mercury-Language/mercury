@@ -146,6 +146,7 @@ mlds_output_hdr_file(Indent, MLDS) -->
 	{ MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName) },
 	mlds_output_defns(Indent, MLDS_ModuleName, PublicTypeDefns), io__nl,
 	mlds_output_decls(Indent, MLDS_ModuleName, PublicNonTypeDefns), io__nl,
+	mlds_maybe_output_init_fn_decl(MLDS_ModuleName), io__nl,
 	mlds_output_hdr_end(Indent, ModuleName).
 
 :- pred defn_is_public(mlds__defn).
@@ -240,6 +241,7 @@ mlds_output_src_file(Indent, MLDS) -->
 
 	mlds_output_c_defns(MLDS_ModuleName, Indent, ForeignCode), io__nl,
 	mlds_output_defns(Indent, MLDS_ModuleName, NonTypeDefns), io__nl,
+	mlds_maybe_output_init_fn_defn(MLDS_ModuleName, NonTypeDefns), io__nl,
 	mlds_output_src_end(Indent, ModuleName).
 
 :- pred mlds_output_hdr_start(indent, mercury_module_name,
@@ -280,7 +282,6 @@ mlds_output_src_start(Indent, ModuleName) -->
 	io__write_string(". */\n"),
 	mlds_indent(Indent),
 	io__write_string("/* :- implementation. */\n"),
-	io__nl,
 	mlds_output_src_import(Indent,
 		mercury_module_name_to_mlds(ModuleName)),
 	io__nl.
@@ -309,6 +310,98 @@ mlds_output_src_end(Indent, ModuleName) -->
 	io__write_string("/* :- end_module "),
 	prog_out__write_sym_name(ModuleName),
 	io__write_string(". */\n").
+
+%-----------------------------------------------------------------------------%
+
+	%
+	% Maybe output the function `mercury__<modulename>__init()'.
+	% The body of the function consists of calls
+	% MR_init_entry(<function>) for each function defined in the
+	% module.
+	%
+:- pred mlds_maybe_output_init_fn_decl(mlds_module_name::in,
+		io__state::di, io__state::uo) is det.
+
+mlds_maybe_output_init_fn_decl(ModuleName) -->
+	io_get_globals(Globals),
+	(
+		{ output_init_fn(Globals) }
+	->
+		output_init_fn_name(ModuleName),
+		io__write_string(";\n")
+	;
+		[]
+	).
+
+:- pred mlds_maybe_output_init_fn_defn(mlds_module_name::in, mlds__defns::in,
+		io__state::di, io__state::uo) is det.
+
+mlds_maybe_output_init_fn_defn(ModuleName, Defns) -->
+	io_get_globals(Globals),
+	(
+		{ output_init_fn(Globals) }
+	->
+		output_init_fn_name(ModuleName),
+		io__write_string("\n{\n"),
+		io__write_strings(["\tstatic int initialised = 0;\n",
+				"\tif (initialised) return;\n",
+				"\tinitialised = 1;\n\n"]),
+		mlds_output_init_fn_2(ModuleName, Defns),
+		io__write_string("\n}\n")
+	;
+		[]
+	).
+
+	%
+	% Do we need an init function?
+	%
+:- pred output_init_fn(globals::in) is semidet.
+
+output_init_fn(Globals) :-
+	( Option = profile_calls
+	; Option = profile_time
+	; Option = profile_memory
+	),
+	globals__lookup_bool_option(Globals, Option, yes).
+	
+:- pred output_init_fn_name(mlds_module_name::in,
+		io__state::di, io__state::uo) is det.
+
+output_init_fn_name(ModuleName) -->
+		% Here we ensure that we only get one "mercury__" at the
+		% start of the function name.
+	{ prog_out__sym_name_to_string(
+			mlds_module_name_to_sym_name(ModuleName), "__", 
+			ModuleNameString0) },
+	{
+		string__prefix(ModuleNameString0, "mercury__")
+	->
+		ModuleNameString = ModuleNameString0
+	;
+		string__append("mercury__", ModuleNameString0,
+				ModuleNameString)
+	},
+	io__write_string("void "),
+	io__write_string(ModuleNameString),
+	io__write_string("__init(void)").
+
+:- pred mlds_output_init_fn_2(mlds_module_name::in, mlds__defns::in,
+		io__state::di, io__state::uo) is det.
+
+mlds_output_init_fn_2(_ModuleName, []) --> [].
+mlds_output_init_fn_2(ModuleName, [Defn | Defns]) --> 
+	{ Defn = mlds__defn(EntityName, _Context, _Flags, _EntityDefn) },
+	(
+		{ EntityName = function(_, _, _, _) }
+	->
+		{ QualName = qual(ModuleName, EntityName) },
+		io__write_string("\tMR_init_entry("),
+		mlds_output_fully_qualified_name(QualName),
+		io__write_string(");\n")
+	;
+		[]
+	),
+	mlds_output_init_fn_2(ModuleName, Defns).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1851,13 +1944,15 @@ mlds_output_stmt(Indent, CallerFuncInfo, Call, Context) -->
 		% is e.g. inside an if-then-else.
 		%
 		mlds_indent(Indent),
-		( { IsTailCall = tail_call } ->
-			( { Results \= [] } ->
-				io__write_string("return ")
-			;
-				io__write_string("{\n"),
-				mlds_indent(Context, Indent + 1)
-			)
+		io__write_string("{\n"),
+
+		mlds_maybe_output_call_profile_instr(Context,
+				Indent + 1, FuncRval, Name),
+
+		mlds_indent(Context, Indent + 1),
+
+		( { IsTailCall = tail_call, Results \= [] } ->
+			io__write_string("return ")
 		;
 			[]
 		),
@@ -1882,12 +1977,12 @@ mlds_output_stmt(Indent, CallerFuncInfo, Call, Context) -->
 
 		( { IsTailCall = tail_call, Results = [] } ->
 			mlds_indent(Context, Indent + 1),
-			io__write_string("return;\n"),
-			mlds_indent(Context, Indent),
-			io__write_string("}\n")
+			io__write_string("return;\n")
 		;
 			[]
-		)
+		),
+		mlds_indent(Indent),
+		io__write_string("}\n")
 	).
 
 mlds_output_stmt(Indent, _FuncInfo, return(Results), _) -->
@@ -1994,6 +2089,82 @@ mlds_output_stmt(Indent, FuncInfo, try_commit(Ref, Stmt0, Handler), Context) -->
 
 		mlds_output_statement(Indent + 1, FuncInfo, Handler)
 	).
+
+	%
+	% If memory profiling is turned on output an instruction to
+	% record the heap allocation.
+	%
+:- pred mlds_maybe_output_heap_profile_instr(mlds__context::in,
+		indent::in, list(mlds__rval)::in,
+		mlds__qualified_entity_name::in, maybe(ctor_name)::in,
+		io__state::di, io__state::uo) is det.
+
+mlds_maybe_output_heap_profile_instr(Context, Indent, Args, FuncName,
+		MaybeCtorName) -->
+	globals__io_lookup_bool_option(profile_memory, ProfileMem),
+	(
+		{ ProfileMem = yes }
+	->
+		mlds_indent(Context, Indent),
+		io__write_string("MR_record_allocation("),
+		io__write_int(list__length(Args)),
+		io__write_string(", "),
+		mlds_output_fully_qualified_name(FuncName),
+		io__write_string(", """),
+		mlds_output_fully_qualified_name(FuncName),
+		io__write_string(""", "),
+		( { MaybeCtorName = yes(CtorName) } ->
+			io__write_char('"'),
+			c_util__output_quoted_string(CtorName),
+			io__write_char('"')
+		;
+			io__write_string("NULL")
+		),
+		io__write_string(");\n")
+	;
+		[]
+	).
+
+	%
+	% If call profiling is turned on output an instruction to record
+	% an arc in the call profile between the callee and caller.
+	%
+:- pred mlds_maybe_output_call_profile_instr(mlds__context::in,
+		indent::in, mlds__rval::in, mlds__qualified_entity_name::in,
+		io__state::di, io__state::uo) is det.
+
+mlds_maybe_output_call_profile_instr(Context, Indent,
+		CalleeFuncRval, CallerName) -->
+	globals__io_lookup_bool_option(profile_calls, ProfileCalls),
+	(
+		{
+			ProfileCalls = yes,
+
+				% Some functions don't have a
+				% code_addr so we can't record the arc.
+			\+ no_code_address(CalleeFuncRval)
+		}
+	->
+		mlds_indent(Context, Indent),
+		io__write_string("MR_prof_call_profile("),
+		mlds_output_bracketed_rval(CalleeFuncRval),
+		io__write_string(", "),
+		mlds_output_fully_qualified_name(CallerName),
+		io__write_string(");\n")
+	;
+		[]
+	).
+
+	%
+	% Does the rval represent a special procedure for which a
+	% code address doesn't exist.
+	%
+:- pred no_code_address(mlds__rval::in) is semidet.
+
+no_code_address(const(code_addr_const(proc(qual(Module, PredLabel - _), _)))) :-
+	SymName = mlds_module_name_to_sym_name(Module),
+	SymName = qualified(unqualified("mercury"), "private_builtin"),
+	PredLabel = pred(predicate, _, "unsafe_type_cast", 2).
 
 	% return `true' if the statement is a tail call which
 	% can be optimized into a jump back to the start of the
@@ -2108,8 +2279,8 @@ mlds_output_assign_args(Indent, ModuleName, Context,
 	%
 	% atomic statements
 	%
-mlds_output_stmt(Indent, _FuncInfo, atomic(AtomicStatement), Context) -->
-	mlds_output_atomic_stmt(Indent, AtomicStatement, Context).
+mlds_output_stmt(Indent, FuncInfo, atomic(AtomicStatement), Context) -->
+	mlds_output_atomic_stmt(Indent, FuncInfo, AtomicStatement, Context).
 
 :- pred mlds_output_label_name(mlds__label, io__state, io__state).
 :- mode mlds_output_label_name(in, di, uo) is det.
@@ -2117,14 +2288,14 @@ mlds_output_stmt(Indent, _FuncInfo, atomic(AtomicStatement), Context) -->
 mlds_output_label_name(LabelName) -->
 	mlds_output_mangled_name(LabelName).
 
-:- pred mlds_output_atomic_stmt(indent, mlds__atomic_statement, mlds__context,
-				io__state, io__state).
-:- mode mlds_output_atomic_stmt(in, in, in, di, uo) is det.
+:- pred mlds_output_atomic_stmt(indent, func_info,
+		mlds__atomic_statement, mlds__context, io__state, io__state).
+:- mode mlds_output_atomic_stmt(in, in, in, in, di, uo) is det.
 
 	%
 	% comments
 	%
-mlds_output_atomic_stmt(Indent, comment(Comment), _) -->
+mlds_output_atomic_stmt(Indent, _FuncInfo, comment(Comment), _) -->
 	% XXX we should escape any "*/"'s in the Comment.
 	%     we should also split the comment into lines and indent
 	%     each line appropriately.
@@ -2136,7 +2307,7 @@ mlds_output_atomic_stmt(Indent, comment(Comment), _) -->
 	%
 	% assignment
 	%
-mlds_output_atomic_stmt(Indent, assign(Lval, Rval), _) -->
+mlds_output_atomic_stmt(Indent, _FuncInfo, assign(Lval, Rval), _) -->
 	mlds_indent(Indent),
 	mlds_output_lval(Lval),
 	io__write_string(" = "),
@@ -2146,11 +2317,16 @@ mlds_output_atomic_stmt(Indent, assign(Lval, Rval), _) -->
 	%
 	% heap management
 	%
-mlds_output_atomic_stmt(Indent, NewObject, Context) -->
+mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context) -->
 	{ NewObject = new_object(Target, MaybeTag, Type, MaybeSize,
 		MaybeCtorName, Args, ArgTypes) },
 	mlds_indent(Indent),
 	io__write_string("{\n"),
+
+	{ FuncInfo = func_info(FuncName, _) },
+	mlds_maybe_output_heap_profile_instr(Context, Indent + 1, Args,
+			FuncName, MaybeCtorName),
+
 	mlds_indent(Context, Indent + 1),
 	mlds_output_lval(Target),
 	io__write_string(" = "),
@@ -2201,13 +2377,13 @@ mlds_output_atomic_stmt(Indent, NewObject, Context) -->
 	mlds_indent(Context, Indent),
 	io__write_string("}\n").
 
-mlds_output_atomic_stmt(Indent, mark_hp(Lval), _) -->
+mlds_output_atomic_stmt(Indent, _FuncInfo, mark_hp(Lval), _) -->
 	mlds_indent(Indent),
 	io__write_string("MR_mark_hp("),
 	mlds_output_lval(Lval),
 	io__write_string(");\n").
 
-mlds_output_atomic_stmt(Indent, restore_hp(Rval), _) -->
+mlds_output_atomic_stmt(Indent, _FuncInfo, restore_hp(Rval), _) -->
 	mlds_indent(Indent),
 	io__write_string("MR_mark_hp("),
 	mlds_output_rval(Rval),
@@ -2216,26 +2392,28 @@ mlds_output_atomic_stmt(Indent, restore_hp(Rval), _) -->
 	%
 	% trail management
 	%
-mlds_output_atomic_stmt(_Indent, trail_op(_TrailOp), _) -->
+mlds_output_atomic_stmt(_Indent, _FuncInfo, trail_op(_TrailOp), _) -->
 	{ error("mlds_to_c.m: sorry, trail_ops not implemented") }.
 
 	%
 	% foreign language interfacing
 	%
-mlds_output_atomic_stmt(_Indent, target_code(TargetLang, Components),
+mlds_output_atomic_stmt(_Indent, FuncInfo, target_code(TargetLang, Components),
 		Context) -->
 	( { TargetLang = lang_C } ->
-		list__foldl(mlds_output_target_code_component(Context),
+		{ FuncInfo = func_info(qual(ModuleName, _), _FuncParams) },
+		list__foldl(
+			mlds_output_target_code_component(ModuleName, Context),
 			Components)
 	;
 		{ error("mlds_to_c.m: sorry, target_code only works for lang_C") }
 	).
 
-:- pred mlds_output_target_code_component(mlds__context, target_code_component,
-		io__state, io__state).
-:- mode mlds_output_target_code_component(in, in, di, uo) is det.
+:- pred mlds_output_target_code_component(mlds_module_name, mlds__context,
+		target_code_component, io__state, io__state).
+:- mode mlds_output_target_code_component(in, in, in, di, uo) is det.
 
-mlds_output_target_code_component(Context,
+mlds_output_target_code_component(_ModuleName, Context,
 		user_target_code(CodeString, MaybeUserContext)) -->
 	( { MaybeUserContext = yes(UserContext) } ->
 		mlds_output_context(mlds__make_context(UserContext))
@@ -2244,17 +2422,23 @@ mlds_output_target_code_component(Context,
 	),
 	io__write_string(CodeString),
 	io__write_string("\n").
-mlds_output_target_code_component(Context, raw_target_code(CodeString)) -->
+mlds_output_target_code_component(_ModuleName, Context,
+		raw_target_code(CodeString)) -->
 	mlds_output_context(Context),
 	io__write_string(CodeString).
-mlds_output_target_code_component(Context, target_code_input(Rval)) -->
+mlds_output_target_code_component(_ModuleName, Context,
+		target_code_input(Rval)) -->
 	mlds_output_context(Context),
 	mlds_output_rval(Rval),
 	io__write_string("\n").
-mlds_output_target_code_component(Context, target_code_output(Lval)) -->
+mlds_output_target_code_component(_ModuleName, Context,
+		target_code_output(Lval)) -->
 	mlds_output_context(Context),
 	mlds_output_lval(Lval),
 	io__write_string("\n").
+mlds_output_target_code_component(ModuleName, _Context, name(Name)) -->
+	mlds_output_fully_qualified_name(qual(ModuleName, Name)).
+	
 
 :- pred mlds_output_init_args(list(mlds__rval), list(mlds__type), mlds__context,
 		int, mlds__lval, mlds__tag, indent, io__state, io__state).

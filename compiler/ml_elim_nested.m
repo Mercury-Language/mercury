@@ -779,6 +779,7 @@ fixup_target_code_component(target_code_input(Rval0),
 fixup_target_code_component(target_code_output(Lval0),
 		target_code_output(Lval)) -->
 	fixup_lval(Lval0, Lval).
+fixup_target_code_component(name(Name), name(Name)) --> [].
 
 :- pred fixup_trail_op(trail_op, trail_op, elim_info, elim_info).
 :- mode fixup_trail_op(in, out, in, out) is det.

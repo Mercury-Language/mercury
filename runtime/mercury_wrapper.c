@@ -423,6 +423,10 @@ do_init_modules(void)
 		(*address_of_init_modules)();
 		done = TRUE;
 	}
+
+#ifdef PROFILE_CALLS
+	fclose(decl_fptr);
+#endif
 }
 
 /*

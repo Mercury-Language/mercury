@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1997,2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -14,6 +14,8 @@
 
 #include "mercury_types.h"	/* for `Code *' */
 
+#include <stdio.h>
+
 /*
 ** This variable holds the address of the "current" procedure so that
 ** when a profiling interrupt occurs, the profiler knows where we are,
@@ -21,6 +23,13 @@
 */
 
 extern	Code *	volatile	MR_prof_current_proc;
+
+/*
+** A pointer to the "Prof.Decl" file.
+*/
+#ifdef PROFILE_CALLS
+  extern FILE	*decl_fptr;
+#endif
 
 /*
 ** The following two macros are used to ensure that the profiler can

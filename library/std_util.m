@@ -1040,7 +1040,10 @@ det_univ_to_type(Univ, X) :-
 
 :- pragma c_code("
 
-#ifndef MR_HIGHLEVEL_CODE
+#ifdef MR_HIGHLEVEL_CODE
+void sys_init_unify_univ_module(void); /* suppress gcc -Wmissing-decl warning */
+void sys_init_unify_univ_module(void) { return; }
+#else
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(std_util, type_desc, 0,
 	MR_TYPECTOR_REP_C_POINTER);

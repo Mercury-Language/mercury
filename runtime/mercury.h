@@ -35,6 +35,18 @@
   #endif
 #endif
 
+#ifdef PROFILE_CALLS
+  #include "mercury_prof.h"		/* for MR_prof_call_profile */
+#endif
+
+#ifdef PROFILE_MEMORY
+  #include "mercury_heap_profile.h"	/* for MR_record_allocation */
+#endif
+
+#if defined(PROFILE_CALLS) || defined(PROFILE_MEMORY)
+  #include "mercury_goto.h"		/* for MR_init_entry */
+#endif
+
 #include <setjmp.h>	/* for jmp_buf etc., which are used for commits */
 #include <string.h>	/* for strcmp(), which is used for =/2 on strings */
 
@@ -222,7 +234,7 @@ extern const MR_TypeCtorInfo_Struct
 ** have a `sizeof' operator.
 */
 #ifdef MR_AVOID_MACROS
-  enum { mercury__private_builtin__SIZEOF_WORD = sizeof(MR_Word); }
+  enum { mercury__private_builtin__SIZEOF_WORD = sizeof(MR_Word) };
 #else
   #define mercury__private_builtin__SIZEOF_WORD sizeof(MR_Word)
 #endif

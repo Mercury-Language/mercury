@@ -162,6 +162,7 @@ static	MR_TypeCtorInfo
 MR_trace_ignored_type_ctors[] =
 {
 	/* we ignore these until the debugger can handle their varying arity */
+#ifndef MR_HIGHLEVEL_CODE
 	&mercury_data_private_builtin__type_ctor_info_type_info_1,
 	&mercury_data_private_builtin__type_ctor_info_type_ctor_info_1,
 	&mercury_data_private_builtin__type_ctor_info_typeclass_info_1,
@@ -175,6 +176,7 @@ MR_trace_ignored_type_ctors[] =
 
 	/* we ignore these because they should never be needed */
 	&mercury_data___type_ctor_info_void_0,
+#endif
 
 #ifdef	NATIVE_GC
 	/* we ignore these because they are not interesting */
@@ -185,6 +187,8 @@ MR_trace_ignored_type_ctors[] =
 	&mercury_data___type_ctor_info_redoip_0,
 	&mercury_data___type_ctor_info_redofr_0,
 #endif
+	/* dummy member */
+	NULL
 };
 
 static bool

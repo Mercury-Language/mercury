@@ -1581,6 +1581,7 @@ ml_gen_goal_expr(bi_implication(_, _), _, _, _, _) -->
 	% For model_non pragma c_code,
 	% we generate code of the following form:
 	%
+	%	#define MR_PROC_LABEL <procedure name>
 	% 	<declaration of locals needed for boxing/unboxing>
 	%	{
 	% 		<declaration of one local variable for each arg>
@@ -1617,9 +1618,19 @@ ml_gen_goal_expr(bi_implication(_, _), _, _, _, _) -->
 	%		#undef SUCCEED_LAST
 	%		#undef LOCALS
 	%	}
+	%	#undef MR_PROC_LABEL
+	%
+	% We insert a #define for MR_PROC_LABEL, so that the C code in
+	% the Mercury standard library that allocates memory manually
+	% can use MR_PROC_LABEL as the procname argument to
+	% incr_hp_msg(), for memory profiling.  Hard-coding the procname
+	% argument in the C code would be wrong, since it wouldn't
+	% handle the case where the original pragma c_code procedure
+	% gets inlined and optimized away.  Of course we also need to
+	% #undef it afterwards.
 	%		
 ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
-		PredId, _ProcId, ArgVars, ArgDatas, OrigArgTypes, Context,
+		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes, Context,
 		LocalVarsDecls, LocalVarsContext, FirstCode, FirstContext,
 		LaterCode, LaterContext, SharedCode, SharedContext,
 		MLDS_Decls, MLDS_Statements) -->
@@ -1670,10 +1681,16 @@ ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
 		ObtainLock, ReleaseLock),
 
 	%
+	% Generate the MR_PROC_LABEL #define
+	%
+	ml_gen_hash_define_mr_proc_label(PredId, ProcId, HashDefine),
+
+	%
 	% Put it all together
 	%
 	{ Starting_C_Code = list__condense([
 			[raw_target_code("{\n")],
+			HashDefine,
 			ArgDeclsList,
 			[raw_target_code("\tstruct {\n"),
 			user_target_code(LocalVarsDecls, LocalVarsContext),
@@ -1693,6 +1710,7 @@ ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
 			raw_target_code("\t\t{\n"),
 			user_target_code(SharedCode, SharedContext),
 			raw_target_code("\n\t\t;}\n"),
+			raw_target_code("#undef MR_PROC_LABEL\n"),
 			raw_target_code(ReleaseLock),
 			raw_target_code("\t\tif (MR_succeeded) {\n")],
 			AssignOutputsList
@@ -1741,6 +1759,7 @@ ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
 	%
 	% model_det pragma_c_code:
 	%
+	%	#define MR_PROC_LABEL <procedure name>
 	% 	<declaration of locals needed for boxing/unboxing>
 	%	{
 	% 		<declaration of one local variable for each arg>
@@ -1752,9 +1771,11 @@ ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
 	%		<release global lock>
 	%		<assign output args>
 	%	}
+	%	#undef MR_PROC_LABEL
 	%		
 	% model_semi pragma_c_code:
 	%
+	%	#define MR_PROC_LABEL <procedure name>
 	% 	<declaration of locals needed for boxing/unboxing>
 	%	{
 	% 		<declaration of one local variable for each arg>
@@ -1771,6 +1792,16 @@ ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
 	%		
 	%		<succeeded> = SUCCESS_INDICATOR;
 	%	}
+	%	#undef MR_PROC_LABEL
+	%
+	% We insert a #define for MR_PROC_LABEL, so that the C code in
+	% the Mercury standard library that allocates memory manually
+	% can use MR_PROC_LABEL as the procname argument to
+	% incr_hp_msg(), for memory profiling.  Hard-coding the procname
+	% argument in the C code would be wrong, since it wouldn't
+	% handle the case where the original pragma c_code procedure
+	% gets inlined and optimized away.  Of course we also need to
+	% #undef it afterwards.
 	%		
 	% Note that we generate this code directly as
 	% `target_code(lang_C, <string>)' instructions in the MLDS.
@@ -1782,7 +1813,7 @@ ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
 	% Java.
 	%
 ml_gen_ordinary_pragma_c_code(CodeModel, Attributes,
-		PredId, _ProcId, ArgVars, ArgDatas, OrigArgTypes,
+		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
 		C_Code, Context, MLDS_Decls, MLDS_Statements) -->
 	%
 	% Combine all the information about the each arg
@@ -1814,11 +1845,17 @@ ml_gen_ordinary_pragma_c_code(CodeModel, Attributes,
 		ObtainLock, ReleaseLock),
 
 	%
+	% Generate the MR_PROC_LABEL #define
+	%
+	ml_gen_hash_define_mr_proc_label(PredId, ProcId, HashDefine),
+
+	%
 	% Put it all together
 	%
 	( { CodeModel = model_det } ->
 		{ Starting_C_Code = list__condense([
 			[raw_target_code("{\n")],
+			HashDefine,
 			ArgDeclsList,
 			[raw_target_code("\n")],
 			AssignInputsList,
@@ -1826,6 +1863,7 @@ ml_gen_ordinary_pragma_c_code(CodeModel, Attributes,
 			raw_target_code("\t\t{\n"),
 			user_target_code(C_Code, yes(Context)),
 			raw_target_code("\n\t\t;}\n"),
+			raw_target_code("#undef MR_PROC_LABEL\n"),
 			raw_target_code(ReleaseLock)],
 			AssignOutputsList
 		]) },
@@ -1834,6 +1872,7 @@ ml_gen_ordinary_pragma_c_code(CodeModel, Attributes,
 		ml_success_lval(SucceededLval),
 		{ Starting_C_Code = list__condense([
 			[raw_target_code("{\n")],
+			HashDefine,
 			ArgDeclsList,
 			[raw_target_code("\tbool SUCCESS_INDICATOR;\n"),
 			raw_target_code("\n")],
@@ -1842,6 +1881,7 @@ ml_gen_ordinary_pragma_c_code(CodeModel, Attributes,
 			raw_target_code("\t\t{\n"),
 			user_target_code(C_Code, yes(Context)),
 			raw_target_code("\n\t\t;}\n"),
+			raw_target_code("#undef MR_PROC_LABEL\n"),
 			raw_target_code(ReleaseLock),
 			raw_target_code("\tif (SUCCESS_INDICATOR) {\n")],
 			AssignOutputsList
@@ -1897,6 +1937,18 @@ ml_gen_obtain_release_global_lock(ThreadSafe, PredId,
 		ObtainLock = "",
 		ReleaseLock = ""
 	}.
+
+:- pred ml_gen_hash_define_mr_proc_label(pred_id::in, proc_id::in,
+		list(target_code_component)::out,
+		ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_hash_define_mr_proc_label(PredId, ProcId, HashDefine) -->
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
+	{ HashDefine = [raw_target_code("#define MR_PROC_LABEL "),
+			name(ml_gen_proc_label(ModuleInfo, PredId, ProcId)),
+			raw_target_code("\n")] }.
+
 
 %---------------------------------------------------------------------------%
 

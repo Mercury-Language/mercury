@@ -279,7 +279,10 @@ typed_compare(R, X, Y) :- compare(R, univ(X), univ(Y)).
 
 :- pragma c_code("
 
-#ifndef MR_HIGHLEVEL_CODE
+#ifdef MR_HIGHLEVEL_CODE
+void sys_init_type_info_module(void); /* suppress gcc -Wmissing-decl warning */
+void sys_init_type_info_module(void) { return; }
+#else
 
 	/*
 	** For most purposes, type_ctor_info can be treated just like

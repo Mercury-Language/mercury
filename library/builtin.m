@@ -234,7 +234,10 @@ promise_only_solution(Pred) = OutVal :-
 
 :- pragma c_code("
 
-#ifndef MR_HIGHLEVEL_CODE
+#ifdef MR_HIGHLEVEL_CODE
+void sys_init_builtin_types_module(void); /* suppress gcc warning */
+void sys_init_builtin_types_module(void) { return; }
+#else
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_NOCM(builtin, int, 0,
 	MR_TYPECTOR_REP_INT,
@@ -388,6 +391,13 @@ mercury__builtin__copy_2_p_1(MR_Type_Info type_info, MR_Box x, MR_Box * y)
 	mercury__builtin__copy_2_p_0(type_info, x, y);
 }
 
+void sys_init_copy_module(void);
+void sys_init_copy_module(void)
+{
+	MR_init_entry(mercury__builtin__copy_2_p_0);
+	MR_init_entry(mercury__builtin__copy_2_p_1);
+}
+
 #else /* ! MR_HIGHLEVEL_CODE */
 
 Define_extern_entry(mercury__copy_2_0);
@@ -443,7 +453,10 @@ void sys_init_copy_module(void) {
 
 :- pragma c_code("
 
-#ifndef MR_HIGHLEVEL_CODE
+#ifdef MR_HIGHLEVEL_CODE
+void sys_init_unify_c_pointer_module(void);
+void sys_init_unify_c_pointer_module(void) { return; }
+#else
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(builtin, c_pointer, 0,
 	MR_TYPECTOR_REP_C_POINTER,

@@ -842,4 +842,55 @@ create3(Word w1, Word w2, Word w3)
 
 /*---------------------------------------------------------------------------*/
 
+/*
+INIT mercury_sys_init_mercury_hlc
+ENDINIT
+*/
+void mercury_sys_init_mercury_hlc(void);
+void mercury_sys_init_mercury_hlc(void)
+{
+	MR_init_entry(mercury__builtin__unify_2_p_0);
+	MR_init_entry(mercury__builtin__compare_3_p_0);
+	MR_init_entry(mercury__builtin__compare_3_p_1);
+	MR_init_entry(mercury__builtin__compare_3_p_2);
+	MR_init_entry(mercury__builtin__compare_3_p_3);
+
+	MR_init_entry(mercury__builtin____Unify____int_0_0);
+	MR_init_entry(mercury__builtin____Unify____string_0_0);
+	MR_init_entry(mercury__builtin____Unify____float_0_0);
+	MR_init_entry(mercury__builtin____Unify____character_0_0);
+	MR_init_entry(mercury__builtin____Unify____void_0_0);
+	MR_init_entry(mercury__builtin____Unify____c_pointer_0_0);
+	MR_init_entry(mercury__builtin____Unify____func_0_0);
+	MR_init_entry(mercury__builtin____Unify____pred_0_0);
+	MR_init_entry(mercury__array____Unify____array_1_0);
+	MR_init_entry(mercury__std_util____Unify____univ_0_0);
+	MR_init_entry(mercury__std_util____Unify____type_desc_0_0);
+	MR_init_entry(mercury__private_builtin____Unify____type_ctor_info_1_0);
+	MR_init_entry(mercury__private_builtin____Unify____type_info_1_0);
+	MR_init_entry(mercury__private_builtin____Unify____typeclass_info_1_0);
+	MR_init_entry(mercury__private_builtin____Unify____base_typeclass_info_1_0);
+
+	MR_init_entry(mercury__builtin____Compare____int_0_0);
+	MR_init_entry(mercury__builtin____Compare____string_0_0);
+	MR_init_entry(mercury__builtin____Compare____float_0_0);
+	MR_init_entry(mercury__builtin____Compare____character_0_0);
+	MR_init_entry(mercury__builtin____Compare____void_0_0);
+	MR_init_entry(mercury__builtin____Compare____c_pointer_0_0);
+	MR_init_entry(mercury__builtin____Compare____func_0_0);
+	MR_init_entry(mercury__builtin____Compare____pred_0_0);
+	MR_init_entry(mercury__array____Compare____array_1_0);
+	MR_init_entry(mercury__std_util____Compare____univ_0_0);
+	MR_init_entry(mercury__std_util____Compare____type_desc_0_0);
+	MR_init_entry(mercury__private_builtin____Compare____type_ctor_info_1_0);
+	MR_init_entry(mercury__private_builtin____Compare____type_info_1_0);
+	MR_init_entry(mercury__private_builtin____Compare____typeclass_info_1_0);
+	MR_init_entry(mercury__private_builtin____Compare____base_typeclass_info_1_0);
+}
+
+/*---------------------------------------------------------------------------*/
+
+#else
+void mercury_sys_init_mercury_hlc(void);
+void mercury_sys_init_mercury_hlc(void) { return; }
 #endif /* MR_HIGHLEVEL_CODE */

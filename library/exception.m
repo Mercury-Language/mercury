@@ -893,7 +893,10 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 ").
 
 :- pragma c_code("
-#ifndef MR_HIGHLEVEL_CODE
+#ifdef MR_HIGHLEVEL_CODE
+void mercury_sys_init_exceptions(void);
+void mercury_sys_init_exceptions(void) { return; }
+#else
 
 /*
 ** MR_trace_throw():

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1999 The University of Melbourne.
+** Copyright (C) 1995-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -24,6 +24,8 @@
 				&(paste(mercury_data__layout__,label))
 #define MR_INTERNAL_LAYOUT(label)	(const MR_Stack_Layout_Label *) (Word) \
 				&(paste(mercury_data__layout__,label))
+
+#define MR_init_entry(label)	init_entry(label)
 
 /*
 ** Passing the name of a label to MR_insert_{internal,entry}_label

@@ -925,6 +925,7 @@ XXX Full exception handling support is not yet implemented.
 			% end in `\n' (or `\n' followed by whitespace).
 	;	target_code_input(mlds__rval)
 	;	target_code_output(mlds__lval)
+	;	name(mlds__entity_name)
 	.
 
 	% XXX I'm not sure what representation we should use here

@@ -101,7 +101,7 @@ static volatile	int		in_profiling_code = FALSE;
 
 
 #ifdef PROFILE_CALLS
-  static FILE 		*decl_fptr = NULL;
+  FILE 			*decl_fptr = NULL;
   static prof_call_node	*addr_pair_table[CALL_TABLE_SIZE] = {NULL};
 #endif
 

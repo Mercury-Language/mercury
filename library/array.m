@@ -271,7 +271,12 @@ lower bounds other than zero are not supported
 
 :- pragma c_code("
 
-#ifndef MR_HIGHLEVEL_CODE
+#ifdef MR_HIGHLEVEL_CODE
+void sys_init_array_module_builtins(void);
+void sys_init_array_module_builtins(void) {
+	return;
+}
+#else
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(array, array, 1, MR_TYPECTOR_REP_ARRAY);
 
