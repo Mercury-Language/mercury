@@ -43,8 +43,8 @@ compiler/mercury_compile.dep: library/library.dep
 .PHONY: dep_profiler
 dep_profiler: profiler/mercury_profile.dep
 
-compiler/mercury_compile.dep: library/library.dep
-	cd compiler && $(SUBDIR_MMAKE) depend
+compiler/mercury_profile.dep: library/library.dep
+	cd profiler && $(SUBDIR_MMAKE) depend
 
 # depend_library MUST be done before depend_compiler and depend_profiler
 
