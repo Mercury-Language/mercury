@@ -32,7 +32,7 @@ environment__test(Var, ShouldBeSet) -->
 
 main -->
 	% PATH should be set on all Unix systems
-	environment__test("TERM", yes),
+	environment__test("PATH", yes),
 
 	% This one probably isn't. :-)
 	environment__test("SHOULD_NOT_BE_SET", no),
