@@ -48,6 +48,8 @@ all : mercury_profile
 mercury_profile: $(RUNTIME_DIR)/libmer.a $(LIBRARY_DIR)/libmercury.a \
 	$(BOEHM_GC_DIR)/libgc.a
 
+mercury_profile_init.c: $(UTIL_DIR)/mkinit
+
 #-----------------------------------------------------------------------------#
 
 .PHONY: check
