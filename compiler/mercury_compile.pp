@@ -379,9 +379,9 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundError) -->
 	),
 
 #if NU_PROLOG
-	{ putprop(mc, mc, HLDS - Proceed), fail }.
-mercury_compile__frontend_pass(_, HLDS, _, Proceed) -->
-	{ getprop(mc, mc, HLDS - Proceed, Ref), erase(Ref) },
+	{ putprop(mc, mc, HLDS - FoundError), fail }.
+mercury_compile__frontend_pass(_, HLDS, FoundError) -->
+	{ getprop(mc, mc, HLDS - FoundError, Ref), erase(Ref) },
 #endif
 
 	{ true }.
