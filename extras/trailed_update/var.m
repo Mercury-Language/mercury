@@ -85,11 +85,11 @@
 	% is the same as `freeze(Var, Pred)' except
 	% that it also prints out some debugging information.
 	% WARNING: this is a non-logical hack, use only for debugging!
-:- pred debug_freeze(string, var(T), pred(T)).
+:- impure pred debug_freeze(string, var(T), pred(T)).
 :- mode debug_freeze(in, in(any), pred(in) is semidet) is semidet.
 :- mode debug_freeze(in, out(any), pred(in) is semidet) is semidet.
 
-:- pred debug_freeze(string, var(T1), pred(T1, T2), var(T2)).
+:- impure pred debug_freeze(string, var(T1), pred(T1, T2), var(T2)).
 :- mode debug_freeze(in, in,	   pred(in, out) is semidet, out) is semidet.
 :- mode debug_freeze(in, out(any), pred(in, out) is semidet, out(any))
 	is semidet.
@@ -320,25 +320,25 @@ var__rep_test_value(Var, Value) :-
 	SUCCESS_INDICATOR = ML_var_unify_with_val(TypeInfo_for_T, Value, Var);
 ").
 
-:- pred var__rep_unify_with_val(T, var_rep(T)).
-:- mode var__rep_unify_with_val(in, in(ptr(var_rep_any))) is semidet.
+:- impure pred var__rep_unify_with_val(T, var_rep(T)).
+:-        mode var__rep_unify_with_val(in, in(ptr(var_rep_any))) is semidet.
 :- pragma export(var__rep_unify_with_val(in, in(ptr(var_rep_any))),
 	"ML_var_unify_with_val").
 var__rep_unify_with_val(Value, VarPtr) :-
 	VarPtr = alias(Var),
 	( 
 		Var = alias(_),
-		var__rep_unify_with_val(Value, Var)
+		impure var__rep_unify_with_val(Value, Var)
 	;
 		Var = ground(OldValue),
 		Value = OldValue
 	;
 		Var = free,
-		destructively_update_binding(VarPtr, ground(Value))
+		impure destructively_update_binding(VarPtr, ground(Value))
 	;
 		Var = free(DelayedGoals),
-		destructively_update_binding(VarPtr, ground(Value)),
-		wakeup_delayed_goals(DelayedGoals, Value)
+		impure destructively_update_binding(VarPtr, ground(Value)),
+		impure wakeup_delayed_goals(DelayedGoals, Value)
 	).
 
 :- pragma c_code( is_ground(Var::in(any), Result::out) /* cc_multi */,
@@ -403,16 +403,17 @@ var__rep_is_ground(VarPtr, Result) :-
 	};
 ").
 
-/* impure */
-:- pred get_last_delayed_goal(delayed_conj(_)::out(delayed_goal_list)) is det.
+:- semipure
+   pred get_last_delayed_goal(delayed_conj(_)::out(delayed_goal_list))
+	is det.
 :- pragma c_code(get_last_delayed_goal(Ptr::out(delayed_goal_list)),
 	will_not_call_mercury,
 "
 	Ptr = (Word) &ML_var_last_goal;
 ").
 
-/* impure */
-:- pred set_last_delayed_goal_prev(delayed_conj(_)::in(delayed_goal_list))
+:- impure
+   pred set_last_delayed_goal_prev(delayed_conj(_)::in(delayed_goal_list))
 	is det.
 :- pragma c_code(set_last_delayed_goal_prev(Ptr::in(delayed_goal_list)),
 	will_not_call_mercury,
@@ -423,23 +424,21 @@ var__rep_is_ground(VarPtr, Result) :-
 
 %-----------------------------------------------------------------------------%
 
-/* impure */
-:- pred new_delayed_goal(delayed_goal(T), delayed_conj(T)).
-:- mode new_delayed_goal(in(delayed_goal), out(delayed_conj)) is det.
+:- impure pred new_delayed_goal(delayed_goal(T), delayed_conj(T)).
+:-        mode new_delayed_goal(in(delayed_goal), out(delayed_conj)) is det.
 
 new_delayed_goal(Pred, Goal) :-
 	%
 	% insert Pred at the end of the global list of delayed goals
 	%
-	/* impure */ get_last_delayed_goal(LastGoal),
+	semipure get_last_delayed_goal(LastGoal),
 	LastGoal = goal(_, _LastWoken, LastPrev, _LastNext),
 	Goal = goal(Pred, no, LastPrev, LastGoal),
-	setarg(LastPrev, 4, Goal),		       % LastPrev->next := Goal
-	/* impure */ set_last_delayed_goal_prev(Goal). % LastGoal->prev := Goal
+	impure setarg(LastPrev, 4, Goal),	 % LastPrev->next := Goal
+	impure set_last_delayed_goal_prev(Goal). % LastGoal->prev := Goal
 
-/* impure */
-:- pred wakeup_delayed_goals(delayed_conj(T), T).
-:- mode wakeup_delayed_goals(in(delayed_conj), in) is semidet.
+:- impure pred wakeup_delayed_goals(delayed_conj(T), T).
+:-        mode wakeup_delayed_goals(in(delayed_conj), in) is semidet.
 
 wakeup_delayed_goals(Goal, Value) :-
 	Goal = goal(DelayedGoal, _Woken, Prev, Next),
@@ -447,17 +446,17 @@ wakeup_delayed_goals(Goal, Value) :-
 	% Delete the goal from the global list of delayed goals,
 	% and mark it as woken.
 	%
-	/* impure */ setarg(Goal, 2, yes),	% Goal->woken := yes
-	/* impure */ setarg(Next, 3, Prev),	% Next->prev := Prev
-	/* impure */ setarg(Prev, 4, Next),	% Prev->next := Next
+	impure setarg(Goal, 2, yes),	% Goal->woken := yes
+	impure setarg(Next, 3, Prev),	% Next->prev := Prev
+	impure setarg(Prev, 4, Next),	% Prev->next := Next
 	%
 	% Call it.
 	%
 	call_delayed_goal(DelayedGoal, Value).
 
 wakeup_delayed_goals((GoalsX, GoalsY), Value) :-
-	wakeup_delayed_goals(GoalsX, Value),
-	wakeup_delayed_goals(GoalsY, Value).
+	impure wakeup_delayed_goals(GoalsX, Value),
+	impure wakeup_delayed_goals(GoalsY, Value).
 
 %-----------------------------------------------------------------------------%
 
@@ -574,18 +573,19 @@ freeze(Var, Pred) :-
 ").
 
 
-:- pred var__rep_freeze_out(var_rep(T), delayed_goal(T)).
-:- mode var__rep_freeze_out(out(ptr(var_rep_any)), in(delayed_goal))
-	is det.
+:- impure pred var__rep_freeze_out(var_rep(T), delayed_goal(T)).
+:-        mode var__rep_freeze_out(out(ptr(var_rep_any)), in(delayed_goal))
+	       is det.
 :- pragma export(
 	var__rep_freeze_out(out(ptr(var_rep_any)), in(delayed_goal)),
 	"ML_var_freeze_out").
 
 var__rep_freeze_out(Var, Pred) :-
-	new_delayed_goal(Pred, Goal),
+	impure new_delayed_goal(Pred, Goal),
 	Var = alias(free(Goal)).
 
-:- pred var__rep_freeze_in(var_rep(T), delayed_goal(T)).
+:- impure
+   pred var__rep_freeze_in(var_rep(T), delayed_goal(T)).
 :- mode var__rep_freeze_in(in(ptr(var_rep_any)), in(delayed_goal)) is semidet.
 :- pragma export(
 	var__rep_freeze_in(in(ptr(var_rep_any)), in(delayed_goal)),
@@ -595,20 +595,20 @@ var__rep_freeze_in(VarPtr, Pred) :-
 	VarPtr = alias(Var),
 	(
 		Var = alias(_),
-		var__rep_freeze_in(Var, Pred)
+		impure var__rep_freeze_in(Var, Pred)
 	;
 		Var = ground(Value),
 		call_delayed_goal(Pred, Value)
 	;
 		Var = free,
-		new_delayed_goal(Pred, Goal),
+		impure new_delayed_goal(Pred, Goal),
 		NewVar = free(Goal),
-		destructively_update_binding(VarPtr, NewVar)
+		impure destructively_update_binding(VarPtr, NewVar)
 	;
 		Var = free(OldGoals),
-		new_delayed_goal(Pred, Goal),
+		impure new_delayed_goal(Pred, Goal),
 		NewVar = free((OldGoals, Goal)),
-		destructively_update_binding(VarPtr, NewVar)
+		impure destructively_update_binding(VarPtr, NewVar)
 	).
 
 /*
@@ -773,7 +773,8 @@ call_semidet_pred(Pred, X, Y) :-
 :- pragma c_code((X::out(any)) == (Y::out(any)) /* semidet */, may_call_mercury,
 	"X = Y = ML_var_alias(TypeInfo_for_T, ML_var_free(TypeInfo_for_T));").
 
-:- pred var__rep_unify(var_rep(T), var_rep(T)).
+:- impure
+   pred var__rep_unify(var_rep(T), var_rep(T)).
 :- mode var__rep_unify(in(ptr(var_rep_any)), in(ptr(var_rep_any))) is semidet.
 :- pragma export(var__rep_unify(in(ptr(var_rep_any)), in(ptr(var_rep_any))),
 	"ML_var_unify").
@@ -781,46 +782,48 @@ var__rep_unify(XPtr, YPtr) :-
 	XPtr = alias(X),
 	(
 		X = alias(_),
-		var__rep_unify(X, YPtr)
+		impure var__rep_unify(X, YPtr)
 	;
 		X = free,
-		( var__identical(XPtr, YPtr) ->
+		( impure identical(XPtr, YPtr) ->
 			true
 		;
-			destructively_update_binding(XPtr, YPtr)
+			impure destructively_update_binding(XPtr, YPtr)
 		)
 	;
 		X = ground(_),
-		var__rep_unify_gr(X, YPtr)
+		impure var__rep_unify_gr(X, YPtr)
 	;
 		X = free(_),
-		var__rep_unify_fr(XPtr, YPtr, X)
+		impure var__rep_unify_fr(XPtr, YPtr, X)
 	).
 
 	% This is the case when the first var is ground
-:- pred var__rep_unify_gr(var_rep(T), var_rep(T)).
+:- impure
+   pred var__rep_unify_gr(var_rep(T), var_rep(T)).
 :- mode var__rep_unify_gr(in(var_rep_deref_ground), in(ptr(var_rep_any)))
 	is semidet.
 var__rep_unify_gr(X, YPtr) :-
 	YPtr = alias(Y),
 	(
 		Y = alias(_),
-		var__rep_unify_gr(X, Y)
+		impure var__rep_unify_gr(X, Y)
 	;
 		Y = ground(Value),
 		X = ground(Value)
 	;
 		Y = free,
-		destructively_update_binding(YPtr, X)
+		impure destructively_update_binding(YPtr, X)
 	;
 		Y = free(DelayedGoals),
 		X = ground(Value),
-		wakeup_delayed_goals(DelayedGoals, Value),
-		destructively_update_binding(YPtr, X)
+		impure wakeup_delayed_goals(DelayedGoals, Value),
+		impure destructively_update_binding(YPtr, X)
 	).
 
 	% This is the case when the first var is free(DelayedGoals).
-:- pred var__rep_unify_fr(var_rep(T), var_rep(T), var_rep(T)).
+:- impure
+   pred var__rep_unify_fr(var_rep(T), var_rep(T), var_rep(T)).
 :- mode var__rep_unify_fr(in(ptr(var_rep_any)), % really deref_delayed
 			in(ptr(var_rep_any)),
 			in(var_rep_deref_delayed)) is semidet.
@@ -828,31 +831,30 @@ var__rep_unify_fr(XPtr, YPtr, X) :-
 	YPtr = alias(Y),
 	(
 		Y = alias(_),
-		var__rep_unify_fr(XPtr, Y, X)
+		impure var__rep_unify_fr(XPtr, Y, X)
 	;
 		Y = free,
-		destructively_update_binding(YPtr, X)
+		impure destructively_update_binding(YPtr, X)
 	;
 		Y = ground(Value),
 		X = free(XGoals),
-		wakeup_delayed_goals(XGoals, Value),
-		destructively_update_binding(XPtr, Y)
+		impure wakeup_delayed_goals(XGoals, Value),
+		impure destructively_update_binding(XPtr, Y)
 	;
 		Y = free(YGoals),
 		X = free(XGoals),
-		( identical(XPtr, YPtr) ->
+		( impure identical(XPtr, YPtr) ->
 			true
 		;
 			XY = free((XGoals, YGoals)),
-			destructively_update_binding(XPtr, XY),
-			destructively_update_binding(YPtr, XY)
+			impure destructively_update_binding(XPtr, XY),
+			impure destructively_update_binding(YPtr, XY)
 		)
 	).
 
 %-----------------------------------------------------------------------------%
 
-/* impure */
-:- pred identical(var_rep(T), var_rep(T)).
+:- impure pred identical(var_rep(T), var_rep(T)).
 :- mode identical(in(ptr(var_rep_any)), in(ptr(var_rep_any))) is semidet.
 
 :- pragma c_code(identical(X::in(ptr(var_rep_any)), Y::in(ptr(var_rep_any))),
@@ -863,13 +865,12 @@ var__rep_unify_fr(XPtr, YPtr, X) :-
 
 %-----------------------------------------------------------------------------%
 
-/* impure */
-:- pred destructively_update_binding(var_rep(T), var_rep(T)).
+:- impure pred destructively_update_binding(var_rep(T), var_rep(T)).
 :- mode destructively_update_binding(in(ptr(var_rep_any)), in(var_rep_any))
 	is det.
 
 destructively_update_binding(VarPtr, NewBinding) :-
-	setarg(VarPtr, 1, NewBinding).
+	impure setarg(VarPtr, 1, NewBinding).
 
 %-----------------------------------------------------------------------------%
 
@@ -886,8 +887,8 @@ destructively_update_binding(VarPtr, NewBinding) :-
 **	    or with other Mercury implementations.
 **          Use only with great care!
 */
-:- pred setarg(T1, int, T2).
-:- mode setarg(in(any), in, in(any)) is det.
+:- impure pred setarg(T1, int, T2).
+:-        mode setarg(in(any), in, in(any)) is det.
 
 :- pragma c_code(
 	setarg(MercuryTerm::in(any), ArgNum::in, NewValue::in(any)),
@@ -916,104 +917,104 @@ destructively_update_binding(VarPtr, NewBinding) :-
 :- pragma no_inline(debug_freeze/3).
 
 debug_freeze(Msg, Var, Pred) :-
-	unsafe_perform_io(print("freezing: ")),
-	unsafe_perform_io(print(Msg)),
-	unsafe_perform_io(print(": ")),
-	unsafe_perform_io(dump_var(Var)),
-	unsafe_perform_io(nl),
+	init(Var),
+	(
+		impure unsafe_perform_io(print("freezing: ")),
+		impure unsafe_perform_io(print(Msg)),
+		impure unsafe_perform_io(print(": ")),
+		impure unsafe_perform_io(dump_var(Var)),
+		impure unsafe_perform_io(nl),
 
-	freeze(Var, debug_pred(Msg, Pred)),
+		freeze(Var, debug_pred(Msg, Pred)),
 
-	unsafe_perform_io(print("frozen: ")),
-	unsafe_perform_io(print(Msg)),
-	unsafe_perform_io(print(": ")),
-	unsafe_perform_io(dump_var(Var)),
-	unsafe_perform_io(nl)
-
+		impure unsafe_perform_io(print("frozen: ")),
+		impure unsafe_perform_io(print(Msg)),
+		impure unsafe_perform_io(print(": ")),
+		impure unsafe_perform_io(dump_var(Var)),
+		impure unsafe_perform_io(nl)
 	;
-
-	unsafe_perform_io(print("freeze failed: ")),
-	unsafe_perform_io(print(Msg)),
-	unsafe_perform_io(print(": ")),
-	unsafe_perform_io(dump_var(Var)),
-	unsafe_perform_io(nl),
-	fail.
+		impure unsafe_perform_io(print("freeze failed: ")),
+		impure unsafe_perform_io(print(Msg)),
+		impure unsafe_perform_io(print(": ")),
+		impure unsafe_perform_io(dump_var(Var)),
+		impure unsafe_perform_io(nl),
+		fail
+	).
 
 :- pragma no_inline(debug_freeze/4).
 
 debug_freeze(Msg, X, Pred, Y) :-
-	unsafe_perform_io(print("freezing: ")),
-	unsafe_perform_io(print(Msg)),
-	% unsafe_perform_io(print(": ")),
-	% unsafe_perform_io(dump_var(X)),
-	unsafe_perform_io(nl),
+	init(X),
+	(
+		impure unsafe_perform_io(print("freezing: ")),
+		impure unsafe_perform_io(print(Msg)),
+		impure unsafe_perform_io(print(": ")),
+		impure unsafe_perform_io(dump_var(X)),
+		impure unsafe_perform_io(nl),
 
-	freeze(X, debug_pred2(Msg, Pred), Y),
+		freeze(X, debug_pred2(Msg, Pred), Y),
 
-	unsafe_perform_io(print("frozen: ")),
-	unsafe_perform_io(print(Msg)),
-	unsafe_perform_io(print(": ")),
-	unsafe_perform_io(dump_var(X)),
-	unsafe_perform_io(nl)
-
+		impure unsafe_perform_io(print("frozen: ")),
+		impure unsafe_perform_io(print(Msg)),
+		impure unsafe_perform_io(print(": ")),
+		impure unsafe_perform_io(dump_var(X)),
+		impure unsafe_perform_io(nl)
 	;
+		impure unsafe_perform_io(print("freeze failed: ")),
+		impure unsafe_perform_io(print(Msg)),
+		impure unsafe_perform_io(print(": ")),
+		impure unsafe_perform_io(dump_var(X)),
+		impure unsafe_perform_io(nl),
+		fail
+	).
 
-	unsafe_perform_io(print("freeze failed: ")),
-	unsafe_perform_io(print(Msg)),
-	unsafe_perform_io(print(": ")),
-	unsafe_perform_io(dump_var(X)),
-	unsafe_perform_io(nl),
-	fail.
-
-:- pred debug_pred(string, pred(T), T) is semidet.
+:- impure pred debug_pred(string, pred(T), T) is semidet.
 :- mode debug_pred(in, pred(in) is semidet, in) is semidet.
 
 debug_pred(Msg, Pred, Var) :-
-	unsafe_perform_io(print("woke: ")),
-	unsafe_perform_io(print(Msg)),
-	unsafe_perform_io(print(": ")),
-	unsafe_perform_io(print(Var)),
-	unsafe_perform_io(nl),
+	impure unsafe_perform_io(print("woke: ")),
+	impure unsafe_perform_io(print(Msg)),
+	impure unsafe_perform_io(print(": ")),
+	impure unsafe_perform_io(print(Var)),
+	impure unsafe_perform_io(nl),
 	( call(Pred, Var) ->
-		unsafe_perform_io(print("succeeded: ")),
-		unsafe_perform_io(print(Msg)),
-		unsafe_perform_io(print(": ")),
-		unsafe_perform_io(print(Var)),
-		unsafe_perform_io(nl)
+		impure unsafe_perform_io(print("succeeded: ")),
+		impure unsafe_perform_io(print(Msg)),
+		impure unsafe_perform_io(print(": ")),
+		impure unsafe_perform_io(print(Var)),
+		impure unsafe_perform_io(nl)
 	;
-		unsafe_perform_io(print("failed: ")),
-		unsafe_perform_io(print(Msg)),
-		unsafe_perform_io(print(": ")),
-		unsafe_perform_io(print(Var)),
-		unsafe_perform_io(nl),
+		impure unsafe_perform_io(print("failed: ")),
+		impure unsafe_perform_io(print(Msg)),
+		impure unsafe_perform_io(print(": ")),
+		impure unsafe_perform_io(print(Var)),
+		impure unsafe_perform_io(nl),
 		semidet_fail
 	).
 
-:- pred debug_pred2(string, pred(T1, T2), T1, T2) is semidet.
+:- impure pred debug_pred2(string, pred(T1, T2), T1, T2) is semidet.
 :- mode debug_pred2(in, pred(in, out) is semidet, in, out) is semidet.
 
 debug_pred2(Msg, Pred, X, Y) :-
-	unsafe_perform_io(print("woke: ")),
-	unsafe_perform_io(print(Msg)),
-	unsafe_perform_io(print(": ")),
-	unsafe_perform_io(print(X)),
-	unsafe_perform_io(nl),
+	impure unsafe_perform_io(print("woke: ")),
+	impure unsafe_perform_io(print(Msg)),
+	impure unsafe_perform_io(print(": ")),
+	impure unsafe_perform_io(print(X)),
+	impure unsafe_perform_io(nl),
 	(	call(Pred, X, Y),
-		unsafe_perform_io(print("succeeded: ")),
-		unsafe_perform_io(print(Msg)),
-		unsafe_perform_io(print(": ")),
-		unsafe_perform_io(print(X)),
-		unsafe_perform_io(print(", ")),
-		unsafe_perform_io(print(Y)),
-		unsafe_perform_io(nl)
+		impure unsafe_perform_io(print("succeeded: ")),
+		impure unsafe_perform_io(print(Msg)),
+		impure unsafe_perform_io(print(": ")),
+		impure unsafe_perform_io(print(X)),
+		impure unsafe_perform_io(print(", ")),
+		impure unsafe_perform_io(print(Y)),
+		impure unsafe_perform_io(nl)
 	;
-		unsafe_perform_io(print("failed: ")),
-		unsafe_perform_io(print(Msg)),
-		unsafe_perform_io(print(": ")),
-		unsafe_perform_io(print(X)),
-		unsafe_perform_io(print(", ")),
-		unsafe_perform_io(print(Y)),
-		unsafe_perform_io(nl),
+		impure unsafe_perform_io(print("failed: ")),
+		impure unsafe_perform_io(print(Msg)),
+		impure unsafe_perform_io(print(": ")),
+		impure unsafe_perform_io(print(X)),
+		impure unsafe_perform_io(nl),
 		fail
 	).
 

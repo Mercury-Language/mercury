@@ -35,7 +35,7 @@
 ** can be very dangerous indeed, because with certain
 ** memory allocation policies it can result in dangling pointers.
 */
-:- pred unsafe_perform_io(pred(io__state, io__state)).
+:- impure pred unsafe_perform_io(pred(io__state, io__state)).
 :- mode unsafe_perform_io(pred(di, uo) is det) is det.
 :- mode unsafe_perform_io(pred(di, uo) is cc_multi) is det.
 
