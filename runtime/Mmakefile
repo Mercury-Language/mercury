@@ -78,7 +78,7 @@ conf.h.date: $(MERCURY_DIR)/config.status conf.h.in
 	echo datestamp > conf.h.date
 
 conf.h: conf.h.date
-	
+	@true
 
 .PHONY: cs
 cs: $(MOD_CS)
