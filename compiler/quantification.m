@@ -50,6 +50,11 @@
 :- implementation.
 :- import_module std_util, map, goal_util, require.
 
+	% The outside vars and quant vars are essentially inputs,
+	% nonlocals output, and seen so far, the varset and the
+	% types are threaded and thus input and output.
+	% The input fields are callee save, and the outputs caller
+	% save.
 :- type quant_info	--->
 		quant_info(
 			set(var), % outside vars
@@ -259,25 +264,42 @@ implicitly_quantify_unify_rhs(functor(Functor, ArgVars),
 				functor(Functor, ArgVars)) -->
 	{ set__list_to_set(ArgVars, Vars) },
 	quantification__set_nonlocals(Vars).
-implicitly_quantify_unify_rhs(lambda_goal(LambdaVars, Modes, Det, Goal0),
+implicitly_quantify_unify_rhs(lambda_goal(LambdaVars0, Modes, Det, Goal0),
 				lambda_goal(LambdaVars, Modes, Det, Goal)) -->
-	% XXX lambdas may introduce new instances of a variable,
-	% so we had better rename them apart.
-	% quantified variables cannot be pushed inside a lambda goal,
+	% Quantified variables cannot be pushed inside a lambda goal,
 	% so we insert the quantified vars into the outside vars set,
-	% and initialize the new quantified vars set to be empty
-	quantification__get_outside(OutsideVars),
-	quantification__get_quant_vars(QuantVars),
-	{ set__union(OutsideVars, QuantVars, OutsideVars1) },
-	{ set__init(QuantVars1) },
-	quantification__set_outside(OutsideVars1),
-	quantification__set_quant_vars(QuantVars1),
-	implicitly_quantify_goal(Goal0, Goal),
-	quantification__get_nonlocals(NonLocals0),
-	% lambda-quantified variables are local
-	{ set__delete_list(NonLocals0, LambdaVars, NonLocals) },
-	quantification__set_quant_vars(QuantVars),
+	% and initialize the new quantified vars set to be empty.
+	quantification__get_outside(OutsideVars0),
+	{ set__list_to_set(LambdaVars0, QVars) },
+	{ set__intersect(OutsideVars0, QVars, RenameVars) },
+	(
+		{ set__empty(RenameVars) }
+	->
+		{ Goal1 = Goal0 },
+		{ LambdaVars = LambdaVars0 }
+	;
+		quantification__rename_apart(RenameVars, Vars1, Goal0, Goal1),
+			% add to the renamed variables those
+			% quantified variables that didn't get
+			% renamed.
+		{ set__difference(QVars, RenameVars, OtherVars) },
+		{ set__union(OtherVars, Vars1, Vars2) },
+		{ set__to_sorted_list(Vars2, LambdaVars) }
+	),
+	quantification__get_quant_vars(QuantVars0),
+	{ set__union(OutsideVars0, QuantVars0, OutsideVars1) },
+		% Add the lambda vars as outside vars, since they are
+		% wrt the goal inside the lambda
+	{ set__insert_list(OutsideVars1, LambdaVars, OutsideVars) },
+	{ set__init(QuantVars) },
 	quantification__set_outside(OutsideVars),
+	quantification__set_quant_vars(QuantVars),
+	implicitly_quantify_goal(Goal1, Goal),
+	quantification__get_nonlocals(NonLocals0),
+		% lambda-quantified variables are local
+	{ set__delete_list(NonLocals0, LambdaVars, NonLocals) },
+	quantification__set_quant_vars(QuantVars0),
+	quantification__set_outside(OutsideVars0),
 	quantification__set_nonlocals(NonLocals).
 
 :- pred implicitly_quantify_conj(list(hlds__goal), list(hlds__goal), 
@@ -359,27 +381,6 @@ implicitly_quantify_cases([case(Cons, Goal0) | Cases0],
 	quantification__set_quant_vars(QuantVars),
 	quantification__set_outside(OutsideVars),
 	quantification__set_nonlocals(NonLocalVars).
-
-%-----------------------------------------------------------------------------%
-
-	% overlapping scopes are currently not implemented
-
-:- pred check_overlapping_scopes(list(var), set(var), set(var)).
-:- mode check_overlapping_scopes(in, in, in) is det.
-
-check_overlapping_scopes(Vars, OutsideVars, QuantVars) :-
-	(
-		list__member(Var, Vars),
-		(	set__member(Var, OutsideVars)
-		;	set__member(Var, QuantVars)
-		)
-	->
-		% XXX we should rename apart variables with overlapping
-		% scopes
-		error("implicitly_quantify_goal_2: sorry, not implemented: variable has overlapping scopes")
-	;
-		true
-	).
 
 %-----------------------------------------------------------------------------%
 
