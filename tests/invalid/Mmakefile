@@ -60,6 +60,7 @@ SOURCES= \
 	typeclass_test_4.m \
 	typeclass_test_5.m \
 	typeclass_test_7.m \
+	typeclass_test_9.m \
 	types.m	\
 	type_spec.m \
 	unbound_inst_var.m \
@@ -79,7 +80,6 @@ SOURCES= \
 #	typeclass_test_8.m (minor formatting error in the output --
 #			the type class name should be in quotes;
 #			also a software_error)
-#	typeclass_test_9.m (we don't catch all the errors that we should)
 
 MCFLAGS-aditi_update_errors =	--aditi
 MCFLAGS-aditi_update_mode_errors = --aditi

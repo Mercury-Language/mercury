@@ -146,7 +146,7 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 		ModuleInfo1 = ModuleInfo0,
 		Errors2 = Errors0
 	;
-		InstanceBody = concrete(_Methods),
+		InstanceBody = concrete(InstanceMethods),
 		list__foldl2(
 			check_instance_pred(ClassId, Vars, ClassInterface), 
 			PredIds, InstanceDefn0, InstanceDefn1,
@@ -178,7 +178,17 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 				_, MaybePredProcs, _, _),
 		(
 			MaybePredProcs = yes(PredProcs),
-			list__same_length(PredProcs, ClassInterface)
+
+				% Check that we wind with a procedure for each
+				% proc in the type class interface.
+			list__same_length(PredProcs, ClassInterface),
+
+				% Check that we wind with a pred for each
+				% pred in the instance class interface.
+			list__map((pred(PP::in, P::out) is det :-
+				PP = hlds_class_proc(P, _)), PredProcs, Preds0),
+			list__remove_dups(Preds0, Preds),
+			list__same_length(Preds, InstanceMethods)
 		->
 			Errors2 = Errors1
 		;
