@@ -288,7 +288,7 @@ PrintRegFunc	*regtable[MAXENTRIES][32] =
 /* F_1 */
 	{ P_INT, P_INT, FNULL },
 /* COLOR_1 */
-	{ P_INT, P_INT, FNULL },
+	{ P_INT, P_INT, P_INT, P_INT, P_INT, FNULL },
 /* NEXT_1 */
 	{ P_INT, P_INT, FNULL },
 /* NEXT_2 */
@@ -302,7 +302,7 @@ PrintRegFunc	*regtable[MAXENTRIES][32] =
 /* OK_3 */
 	{ P_INT, P_INT, FNULL },
 /* OK_4 */
-	{ P_INT, P_INT, P_INT, P_INT, P_INT, FNULL },
+	{ P_INT, P_INT, FNULL },
 };
 
 void printframe(const char *msg)
