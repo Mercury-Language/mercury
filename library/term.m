@@ -89,6 +89,13 @@
 %	        length as Repls, the behaviour is undefined and probably
 %		harmful.
 
+:- pred term__substitute_corresponding_list(list(var), list(term), list(term),
+						list(term)).
+:- mode term__substitute_corresponding_list(in, in, in, out) is det.
+%       term__substitute_corresponding_list(Vars, Repls, TermList0, TermList).
+%		As above, except applies to a list of terms rather than a
+%		single term.
+
 :- pred term__apply_rec_substitution(term, substitution, term).
 :- mode term__apply_rec_substitution(in, in, out) is det.
 %	term__apply_rec_substitution(Term0, Substitution, Term) :
@@ -309,22 +316,6 @@ term__context_init(File, LineNumber, term__context(File, LineNumber)).
 
 %-----------------------------------------------------------------------------%
 
-:- interface.
-
-:- pred term__get_int(term, int).
-:- mode term__get_int(in, out) is semidet.
-
-:- pred term__get_string(term, string).
-:- mode term__get_string(in, out) is semidet.
-
-:- implementation.
-
-term__get_int(term__functor(term__integer(Int), _, _), Int).
-
-term__get_string(term__functor(term__string(String), _, _), String).
-
-%-----------------------------------------------------------------------------%
-
 	% Unify two terms (with occurs check), updating the bindings of
 	% the variables in the terms.  
 
@@ -467,6 +458,16 @@ term__substitute_corresponding(Ss, Rs, Term0, Term) :-
 		term__apply_substitution(Term0, Subst, Term)
 	;
 		error("term__substitute_corresponding: different length lists")
+	).
+
+term__substitute_corresponding_list(Ss, Rs, TermList0, TermList) :-
+	map__init(Subst0),
+	( term__substitute_corresponding_2(Ss, Rs, Subst0, Subst) ->
+		term__apply_substitution_to_list(TermList0, Subst, TermList)
+	;
+		error(
+		  "term__substitute_corresponding_list: different length lists"
+		)
 	).
 
 :- pred term__substitute_corresponding_2(list(var), list(term),

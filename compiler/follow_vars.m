@@ -157,6 +157,7 @@ find_follow_vars_in_goal_2(call(A,B,C,D,E,_F), ModuleInfo, FollowVars0,
 						FollowVars0, FollowVars)
 	).
 
+	% XXX complicated unifies?
 find_follow_vars_in_goal_2(unify(A,B,C,D,E), _ModuleInfo, FollowVars,
 					unify(A,B,C,D,E), FollowVars).
 
