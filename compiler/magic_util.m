@@ -439,7 +439,8 @@ magic_util__setup_aggregate_input(Closure, InputAndClosure) -->
 	(
 		{ Closure = unify(_, _, UniMode, Uni0, Context) - Info },
 		{ Uni0 = construct(Var, ConsId0, _, Modes, _, _, _) },
-		{ ConsId0 = pred_const(PredId0, ProcId0, Method) },
+		{ ConsId0 = pred_const(PredId0, ProcId0, Method) }
+	->
 		%
 		% Replace the pred_proc_id of the procedure being aggregated
 		% over with its Aditi version.
@@ -452,22 +453,32 @@ magic_util__setup_aggregate_input(Closure, InputAndClosure) -->
 			ProcId = ProcId0,
 			ConsId = ConsId0
 		},
-		{ hlds_pred__is_derived_relation(ModuleInfo0, PredId) }
-	->
 
-		%
-		% Create the input relation for the aggregate query.
-		% This is just `true', since we don't allow curried
-		% arguments (except for aditi:states).
-		%
-		magic_info_get_magic_proc_info(MagicProcInfo),
-		{ map__lookup(MagicProcInfo, proc(PredId, ProcId),
-			CallProcInfo) },
-		{ CallProcInfo = magic_proc_info(_, MagicInputs, _, _, _) },
+		( { hlds_pred__is_derived_relation(ModuleInfo0, PredId) } ->
 
-		{ true_goal(InputGoal) },
-		magic_util__create_input_closures(MagicInputs, [], [],
-			InputGoal, CallProcInfo, 1, InputGoals, InputVars),
+			%
+			% Create the input relation for the aggregate query.
+			% This is just `true', since we don't allow curried
+			% arguments (except for aditi:states).
+			%
+			magic_info_get_magic_proc_info(MagicProcInfo),
+			{ map__lookup(MagicProcInfo, proc(PredId, ProcId),
+				CallProcInfo) },
+			{ CallProcInfo = magic_proc_info(_, MagicInputs,
+						_, _, _) },
+
+			{ true_goal(InputGoal) },
+			magic_util__create_input_closures(MagicInputs, [], [],
+				InputGoal, CallProcInfo, 1,
+				InputGoals, InputVars)
+		;
+			% Base relation. It could actually be another
+			% aggregate, but if aggregate becomes a new goal
+			% type we won't be able to handle that, in the
+			% same way that call(call(X)) doesn't work. 
+			{ InputGoals = [] },
+			{ InputVars = [] }
+		),
 
 		% Update the unify_rhs.
 		magic_info_get_module_info(ModuleInfo),
@@ -475,8 +486,8 @@ magic_util__setup_aggregate_input(Closure, InputAndClosure) -->
 		{ pred_info_module(CallPredInfo, PredModule) },
 		{ pred_info_name(CallPredInfo, PredName) },
 		{ list__length(InputVars, Arity) },
-		{ Rhs = functor(cons(qualified(PredModule, PredName), Arity),
-				InputVars) },
+		{ Rhs = functor(cons(qualified(PredModule, PredName),
+				Arity), InputVars) },
 
 		{ VarToReuse = no },
 		{ RLExprnId = no },
@@ -486,10 +497,8 @@ magic_util__setup_aggregate_input(Closure, InputAndClosure) -->
 
 		{ list__append(InputGoals, [Goal1], InputAndClosure) }
 	;
-		% Base relation. It could actually be another aggregate,
-		% but if aggregate becomes a new goal type we won't be able to
-		% handle that, in the same way that call(call(X)) doesn't work. 
-		{ InputAndClosure = [Closure] }
+		{ error(
+	"magic_util__setup_aggregate_input: non-closure input to aggregate") }
 	).
 
 %-----------------------------------------------------------------------------%
