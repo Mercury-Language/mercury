@@ -10,3 +10,6 @@ p.
 :- pred q(undef2).
 q(_).
 
+:- pred r(io__state).
+r(_).
+

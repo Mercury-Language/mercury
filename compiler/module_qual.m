@@ -113,7 +113,7 @@ module_qual__module_qualify_items(Items0, Items, ModuleName, ReportErrors,
 	{ mq_info_get_type_error_flag(Info, UndefTypes) },
 	{ mq_info_get_mode_error_flag(Info, UndefModes) },
 	( { ReportErrors = yes } ->
-		{ mq_info_get_interface_modules(Info, UnusedImports0) },
+		{ mq_info_get_unused_interface_modules(Info, UnusedImports0) },
 		{ set__to_sorted_list(UnusedImports0, UnusedImports) },
 		maybe_warn_unused_interface_imports(ModuleName, UnusedImports)
 	;
@@ -131,8 +131,11 @@ module_qual__qualify_type_qualification(Type0, Type, Context, Info0, Info) -->
 
 :- type mq_info
 	--->	mq_info(
-				% Unused junk
-			junk,
+				% Modules which have been imported or used,
+				% i.e. ones for which there was a
+				% `:- import_module' or `:- use_module'
+				% declaration in this module.
+			set(module_name),
 
 				% Sets of all modules, types, insts, modes,
 				% and typeclasses visible in this module.
@@ -168,9 +171,6 @@ mq_info_get_partial_qualifier_info(MQInfo, QualifierInfo) :-
 	--->	exported
 	;	not_exported.
 		
-	% The `junk' field is unused junk -- feel free to replace it.
-:- type junk == unit.
-
 	% Pass over the item list collecting all defined module, type, mode and
 	% inst ids, all module synonym definitions, and the names of all
 	% modules imported in the interface.
@@ -263,7 +263,7 @@ add_typeclass_defn(SymName, Params, Info0, Info) :-
 	%
 	% - For import declarations (`:- import_module' or `:- use_module'),
 	%   if we're currently in the interface section, then add the
-	%   imported modules to the interface_modules list.
+	%   imported modules to the unused_interface_modules list.
 
 :- pred process_module_defn(module_defn::in, mq_info::in, mq_info::out) is det.
 
@@ -290,9 +290,9 @@ process_module_defn(external(_), Info, Info).
 process_module_defn(end_module(_), Info, Info).
 process_module_defn(export(_), Info, Info).
 process_module_defn(import(Imports), Info0, Info) :-
-	add_interface_imports(Imports, Info0, Info).
+	add_imports(Imports, Info0, Info).
 process_module_defn(use(Imports), Info0, Info) :-
-	add_interface_imports(Imports, Info0, Info).
+	add_imports(Imports, Info0, Info).
 
 :- pred add_module_defn(module_name, mq_info, mq_info).
 :- mode add_module_defn(in, in, out) is det.
@@ -304,12 +304,17 @@ add_module_defn(ModuleName, Info0, Info) :-
 	id_set_insert(NeedQualifier, ModuleName - Arity, Modules0, Modules),
 	mq_info_set_modules(Info0, Modules, Info).
 
-:- pred add_interface_imports(sym_list::in,
-		mq_info::in, mq_info::out) is det.
+:- pred add_imports(sym_list::in, mq_info::in, mq_info::out) is det.
 
-add_interface_imports(Imports, Info0, Info) :-
+add_imports(Imports, Info0, Info) :-
 	( Imports = module(ImportedModules) ->
-		mq_info_add_interface_modules(Info0, ImportedModules, Info)
+		mq_info_add_imported_modules(Info0, ImportedModules, Info1),
+		( mq_info_get_import_status(Info1, exported) ->
+			mq_info_add_unused_interface_modules(Info1,
+				ImportedModules, Info)
+		;
+			Info = Info1
+		)
 	;
 		Info = Info0
 	).
@@ -459,7 +464,8 @@ update_import_status(include_module(_), Info0, Info, yes) :-
 	% There's no way for us to tell which ones.
 	% So we conservatively assume that it uses all of them.
 	set__init(UnusedInterfaceModules),
-	mq_info_set_interface_modules(Info0, UnusedInterfaceModules, Info).
+	mq_info_set_unused_interface_modules(Info0, UnusedInterfaceModules,
+		Info).
 
 	% Qualify the constructors or other types in a type definition.	
 :- pred qualify_type_defn(type_defn::in, type_defn::out, mq_info::in,
@@ -975,8 +981,7 @@ find_unique_match(Id0, Id, Ids, TypeOfId, Info0, Info) -->
 		% No matches for this id.
 		{ Id = Id0 },
 		( { mq_info_get_report_error_flag(Info0, yes) } ->
-			{ mq_info_get_error_context(Info0, ErrorContext) },
-			report_undefined(ErrorContext, Id0, TypeOfId),
+			report_undefined(Info0, Id0, TypeOfId),
 			{ mq_info_set_error_flag(Info0, TypeOfId, Info1) },
 			{ mq_info_incr_errors(Info1, Info) }
 		;
@@ -1028,11 +1033,12 @@ find_unique_match(Id0, Id, Ids, TypeOfId, Info0, Info) -->
 	;	instance(id).
 
 	% Report an undefined type, inst or mode.
-:- pred report_undefined(error_context, pair(sym_name, int),
+:- pred report_undefined(mq_info, pair(sym_name, int),
 				id_type, io__state, io__state).
 :- mode report_undefined(in, in, in, di, uo) is det.
 
-report_undefined(ErrorContext - Context, Id, IdType) -->
+report_undefined(Info, Id, IdType) -->
+	{ mq_info_get_error_context(Info, ErrorContext - Context) },
 	io__set_exit_status(1),
 	prog_out__write_context(Context),
 	io__write_string("In "),
@@ -1044,7 +1050,23 @@ report_undefined(ErrorContext - Context, Id, IdType) -->
 	io__write_string(IdStr),
 	io__write_string(" "),
 	write_id(Id),
-	io__write_string(".\n").
+	(
+		%
+		% if it is a qualified symbol, then check whether the module
+		% specified has been imported
+		%
+		{ Id = qualified(ModuleName, _) - _Arity },
+		{ mq_info_get_imported_modules(Info, ImportedModules) },
+		{ \+ set__member(ModuleName, ImportedModules) }
+	->
+		io__write_string("\n"),
+		prog_out__write_context(Context),
+		io__write_string("  (the module `"),
+		mercury_output_bracketed_sym_name(ModuleName),
+		io__write_string("' has not been imported).\n")
+	;
+		io__write_string(".\n")
+	).
 
 	% Report an error where a type, inst or mode had multiple possible
 	% matches.
@@ -1218,19 +1240,19 @@ init_mq_info(ReportErrors, Info0) :-
 	term__context_init(Context),
 	ErrorContext = type(unqualified("") - 0) - Context,
 	set__init(InterfaceModules0),
-	Junk = unit,
+	set__init(ImportedModules),
 	id_set_init(Empty),
-	Info0 = mq_info(Junk, Empty, Empty, Empty, Empty, Empty,
-			InterfaceModules0, not_exported, 0, no, no,
+	Info0 = mq_info(ImportedModules, Empty, Empty, Empty, Empty,
+			Empty, InterfaceModules0, not_exported, 0, no, no,
 			ReportErrors, ErrorContext, may_be_unqualified).
 
-:- pred mq_info_get_junk(mq_info::in, junk::out) is det.
+:- pred mq_info_get_imported_modules(mq_info::in, set(module_name)::out) is det.
 :- pred mq_info_get_modules(mq_info::in, module_id_set::out) is det.
 :- pred mq_info_get_types(mq_info::in, type_id_set::out) is det.
 :- pred mq_info_get_insts(mq_info::in, inst_id_set::out) is det.
 :- pred mq_info_get_modes(mq_info::in, mode_id_set::out) is det.
 :- pred mq_info_get_classes(mq_info::in, class_id_set::out) is det.
-:- pred mq_info_get_interface_modules(mq_info::in,
+:- pred mq_info_get_unused_interface_modules(mq_info::in,
 					set(module_name)::out) is det.
 :- pred mq_info_get_import_status(mq_info::in, import_status::out) is det.
 % :- pred mq_info_get_num_errors(mq_info::in, int::out) is det.
@@ -1239,15 +1261,15 @@ init_mq_info(ReportErrors, Info0) :-
 :- pred mq_info_get_report_error_flag(mq_info::in, bool::out) is det.
 :- pred mq_info_get_error_context(mq_info::in, error_context::out) is det.
 
-mq_info_get_junk(mq_info(Junk, _, _,_,_,_,_,_,_,_,_,_,_,_),
-	Junk).
+mq_info_get_imported_modules(mq_info(ImportedModules, _,_,_,_,_,_,_,_,_,_,_,
+	_,_), ImportedModules).
 mq_info_get_modules(mq_info(_, Modules, _,_,_,_,_,_,_,_,_,_,_,_), Modules).
 mq_info_get_types(mq_info(_,_, Types, _,_,_,_,_,_,_,_,_,_,_), Types).
 mq_info_get_insts(mq_info(_,_,_, Insts, _,_,_,_,_,_,_,_,_,_), Insts).
 mq_info_get_modes(mq_info(_,_,_,_, Modes, _,_,_,_,_,_,_,_,_), Modes).
 mq_info_get_classes(mq_info(_,_,_,_,_, Classes, _,_,_,_,_,_,_,_), Classes).
-mq_info_get_interface_modules(mq_info(_,_,_,_,_,_, Modules, _,_,_,_,_,_,_),
-	Modules).
+mq_info_get_unused_interface_modules(mq_info(_,_,_,_,_,_, Modules, _,_,_,_,_,
+	_,_), Modules).
 mq_info_get_import_status(mq_info(_,_,_,_,_,_,_, Status, _,_,_,_,_,_), Status).
 mq_info_get_num_errors(mq_info(_,_,_,_,_,_,_,_, NumErrors, _,_,_,_,_),
 	NumErrors).
@@ -1262,7 +1284,7 @@ mq_info_get_error_context(mq_info(_,_,_,_,_,_,_,_,_,_,_,_, Context, _),
 mq_info_get_need_qual_flag(mq_info(_,_,_,_,_,_,_,_,_,_,_,_,_, UseModule),
 	UseModule).
 
-:- pred mq_info_set_junk(mq_info::in, junk::in,
+:- pred mq_info_set_imported_modules(mq_info::in, set(module_name)::in,
 		mq_info::out) is det.
 :- pred mq_info_set_modules(mq_info::in, module_id_set::in, mq_info::out)
 		is det.
@@ -1270,7 +1292,7 @@ mq_info_get_need_qual_flag(mq_info(_,_,_,_,_,_,_,_,_,_,_,_,_, UseModule),
 :- pred mq_info_set_insts(mq_info::in, inst_id_set::in, mq_info::out) is det.
 :- pred mq_info_set_modes(mq_info::in, mode_id_set::in, mq_info::out) is det.
 :- pred mq_info_set_classes(mq_info::in, class_id_set::in, mq_info::out) is det.
-:- pred mq_info_set_interface_modules(mq_info::in, set(module_name)::in,
+:- pred mq_info_set_unused_interface_modules(mq_info::in, set(module_name)::in,
 						mq_info::out) is det.
 :- pred mq_info_set_import_status(mq_info::in, import_status::in,
 						mq_info::out) is det.
@@ -1279,8 +1301,9 @@ mq_info_get_need_qual_flag(mq_info(_,_,_,_,_,_,_,_,_,_,_,_,_, UseModule),
 :- pred mq_info_set_error_context(mq_info::in, error_context::in,
 						mq_info::out) is det.
 
-mq_info_set_junk(mq_info(_, B,C,D,E,F,G,H,I,J,K,L,M,N), Junk,
-		mq_info(Junk, B,C,D,E,F,G,H,I,J,K,L,M,N)).
+mq_info_set_imported_modules(mq_info(_, B,C,D,E,F,G,H,I,J,K,L,M,N),
+		ImportedModules,
+		mq_info(ImportedModules, B,C,D,E,F,G,H,I,J,K,L,M,N)).
 mq_info_set_modules(mq_info(A, _, C,D,E,F,G,H,I,J,K,L,M,N), Modules,
 		mq_info(A, Modules, C,D,E,F,G,H,I,J,K,L,M,N)).
 mq_info_set_types(mq_info(A,B, _, D,E,F,G,H,I,J,K,L,M,N), Types,
@@ -1291,7 +1314,8 @@ mq_info_set_modes(mq_info(A,B,C,D, _, F,G,H,I,J,K,L,M,N), Modes,
 		mq_info(A,B,C,D, Modes, F,G,H,I,J,K,L,M,N)).
 mq_info_set_classes(mq_info(A,B,C,D,E, _, G,H,I,J,K,L,M,N), Classes,
 		mq_info(A,B,C,D,E, Classes, G,H,I,J,K,L,M,N)).
-mq_info_set_interface_modules(mq_info(A,B,C,D,E,F, _, H,I,J,K,L,M,N), Modules,
+mq_info_set_unused_interface_modules(mq_info(A,B,C,D,E,F, _, H,I,J,K,L,M,N),
+		Modules,
 		mq_info(A,B,C,D,E,F, Modules, H,I,J,K,L,M,N)).
 mq_info_set_import_status(mq_info(A,B,C,D,E,F,G, _, I,J,K,L,M,N), Status,
 		mq_info(A,B,C,D,E,F,G, Status, I,J,K,L,M,N)).
@@ -1330,9 +1354,9 @@ mq_info_set_error_flag(Info0, class_id, Info) :-
 
 mq_info_set_module_used(Info0, Module, Info) :-
 	( mq_info_get_import_status(Info0, exported) ->
-		mq_info_get_interface_modules(Info0, Modules0),
+		mq_info_get_unused_interface_modules(Info0, Modules0),
 		set__delete(Modules0, Module, Modules),
-		mq_info_set_interface_modules(Info0, Modules, Info1),
+		mq_info_set_unused_interface_modules(Info0, Modules, Info1),
 		(
 			Module = qualified(ParentModule, _),
 			mq_info_set_module_used(Info1, ParentModule, Info)
@@ -1344,18 +1368,23 @@ mq_info_set_module_used(Info0, Module, Info) :-
 		Info = Info0
 	).
 
-	% Add to the list of modules imported in the interface.
-:- pred mq_info_add_interface_modules(mq_info::in, list(module_name)::in,
+	% Add to the list of modules imported in the interface and not used.
+:- pred mq_info_add_unused_interface_modules(mq_info::in, list(module_name)::in,
 						mq_info::out) is det.
 
-mq_info_add_interface_modules(Info0, NewModules, Info) :-
-	( mq_info_get_import_status(Info0, exported) ->
-		mq_info_get_interface_modules(Info0, Modules0),
-		set__insert_list(Modules0, NewModules, Modules),
-		mq_info_set_interface_modules(Info0, Modules, Info)
-	;
-		Info = Info0
-	).
+mq_info_add_unused_interface_modules(Info0, NewModules, Info) :-
+	mq_info_get_unused_interface_modules(Info0, Modules0),
+	set__insert_list(Modules0, NewModules, Modules),
+	mq_info_set_unused_interface_modules(Info0, Modules, Info).
+
+	% Add to the list of imported modules.
+:- pred mq_info_add_imported_modules(mq_info::in, list(module_name)::in,
+						mq_info::out) is det.
+
+mq_info_add_imported_modules(Info0, NewModules, Info) :-
+	mq_info_get_imported_modules(Info0, Modules0),
+	set__insert_list(Modules0, NewModules, Modules),
+	mq_info_set_imported_modules(Info0, Modules, Info).
 
 %----------------------------------------------------------------------------%
 % Define a type for representing sets of ids during module qualification
