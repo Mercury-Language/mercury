@@ -657,7 +657,9 @@ echo "test_mercury starting to create distribution at `date`" 1>&2
 
 MERCURY_COMPILER=$BOOTSTRAP_MERCURY_COMPILER
 export MERCURY_COMPILER
-case $HOST in murlibobo)
+case $HOST in mars)
+	# XXX This mmake realclean was needed when the source distribution
+	# was built on murlibobo. Is it needed now?
 	{ cd $DIR/mercury &&
 	mmake realclean MMAKEFLAGS=$PARALLEL &&
 	(cd $DIR/tests &&
@@ -669,7 +671,7 @@ case $HOST in murlibobo)
 	mercury_cv_bits_per_word=32 \
 	mercury_cv_unboxed_floats=no \
 	sh configure --prefix=$INSTALL_DIR &&
-	mmake MMAKEFLAGS='EXTRA_MCFLAGS="-O5 --opt-space" -j6' tar &&
+	mmake MMAKEFLAGS='EXTRA_MCFLAGS="-O5 --opt-space" $PARALLEL' tar &&
 	cd .. &&
 	rm -f $UNSTABLE/* &&
 	mv mercury-compiler-$version.tar.gz	\
