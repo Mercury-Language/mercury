@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2003 The University of Melbourne.
+# Copyright (C) 1998-2004 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -363,7 +363,10 @@ install_dirs:
 
 ifeq ($(findstring java,$(GRADE)),java)        
 
-# For grade java, there's nothing to do
+# For grade java, there's nothing to do.
+# (The java version of the Mercury runtime is in mercury/java/runtime,
+# not mercury/runtime, and its build and installation is handled by
+# mercury/library/Mmakefile.)
 
 .PHONY: install_headers 
 install_headers:
@@ -371,8 +374,8 @@ install_headers:
 .PHONY: install_init 
 install_init:
 
-.PHONY: install_init 
-install_init:
+.PHONY: install_lib 
+install_lib:
 
 else
 ifeq ($(findstring il,$(GRADE)),il)        
