@@ -24,7 +24,9 @@
 #
 # You can also ask the script to enable low level debugging of the generated
 # code by setting the environment variable MMC_LOWLEVEL_DEBUG to the string
-# "true".
+# "true", and you can ask it to enable low level debugguing of tabling
+# operations by setting the environment variable MMC_TABLE_CDEBUG to the same
+# string.
 #
 # You can ask for additional C flags to compile with by setting the environment
 # variable MMC_ADDED_CFLAGS to those flags. Setting up this environment
@@ -69,6 +71,11 @@ fi
 if test "$MMC_LOWLEVEL_DEBUG" != ""
 then
 	CDEBUG_FLAGS="$CDEBUG_FLAGS --cflags -DMR_LOWLEVEL_DEBUG"
+fi
+
+if test "$MMC_TABLE_DEBUG" != ""
+then
+	CDEBUG_FLAGS="$CDEBUG_FLAGS --cflags -DMR_TABLE_DEBUG"
 fi
 
 if test "$MMC_ADDED_CFLAGS" != ""
