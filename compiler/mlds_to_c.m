@@ -676,6 +676,25 @@ mlds_output_fully_qualified_name(QualifiedName) -->
 		mlds_output_fully_qualified(QualifiedName, mlds_output_name)
 	).
 
+:- pred mlds_output_fully_qualified_proc_label(mlds__qualified_proc_label,
+		io__state, io__state).
+:- mode mlds_output_fully_qualified_proc_label(in, di, uo) is det.
+
+mlds_output_fully_qualified_proc_label(QualifiedName) -->
+	(
+		%
+		% don't module-qualify main/2
+		%
+		{ QualifiedName = qual(_ModuleName, Name) },
+		{ Name = PredLabel - _ProcId },
+		{ PredLabel = pred(predicate, no, "main", 2) }
+	->
+		mlds_output_proc_label(Name)
+	;
+		mlds_output_fully_qualified(QualifiedName,
+			mlds_output_proc_label)
+	).
+
 :- pred mlds_output_fully_qualified(mlds__fully_qualified_name(T),
 		pred(T, io__state, io__state), io__state, io__state).
 :- mode mlds_output_fully_qualified(in, pred(in, di, uo) is det,
@@ -1845,9 +1864,9 @@ mlds_output_tag(Tag) -->
 :- mode mlds_output_code_addr(in, di, uo) is det.
 
 mlds_output_code_addr(proc(Label, _Sig)) -->
-	mlds_output_fully_qualified(Label, mlds_output_proc_label).
+	mlds_output_fully_qualified_proc_label(Label).
 mlds_output_code_addr(internal(Label, SeqNum, _Sig)) -->
-	mlds_output_fully_qualified(Label, mlds_output_proc_label),
+	mlds_output_fully_qualified_proc_label(Label),
 	io__write_string("_"),
 	io__write_int(SeqNum).
 
