@@ -109,9 +109,9 @@ mlds_to_gcc__compile_to_asm(MLDS) -->
 	% 
 	{ list__filter(defn_is_type, Defns, TypeDefns, NonTypeDefns) },
 	{ MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName) },
-	mlds_output_defns(Indent, MLDS_ModuleName, TypeDefns), io__nl,
-	mlds_output_decls(Indent, MLDS_ModuleName, NonTypeDefns), io__nl,
-	mlds_output_defns(Indent, MLDS_ModuleName, NonTypeDefns), io__nl,
+	gen_defns(MLDS_ModuleName, TypeDefns), io__nl,
+	% mlds_output_decls(Indent, MLDS_ModuleName, NonTypeDefns), io__nl,
+	gen_defns(MLDS_ModuleName, NonTypeDefns), io__nl,
 	mlds_output_init_fn_defns(MLDS_ModuleName), io__nl.
 
 
@@ -487,19 +487,12 @@ det_func_signature(mlds__func_params(Args, _RetTypes)) = Params :-
 %
 
 
-:- pred mlds_output_decls(indent, mlds_module_name, mlds__defns,
+:- pred gen_defns(mlds_module_name, mlds__defns,
 		io__state, io__state).
-:- mode mlds_output_decls(in, in, in, di, uo) is det.
+:- mode gen_defns(in, in, di, uo) is det.
 
-mlds_output_decls(Indent, ModuleName, Defns) -->
-	list__foldl(mlds_output_decl(Indent, ModuleName), Defns).
-
-:- pred mlds_output_defns(indent, mlds_module_name, mlds__defns,
-		io__state, io__state).
-:- mode mlds_output_defns(in, in, in, di, uo) is det.
-
-mlds_output_defns(Indent, ModuleName, Defns) -->
-	{ OutputDefn = mlds_output_defn(Indent, ModuleName) },
+gen_defns(ModuleName, Defns) -->
+	{ OutputDefn = gen_defn(ModuleName) },
 	globals__io_lookup_bool_option(gcc_local_labels, GCC_LocalLabels),
 	( { GCC_LocalLabels = yes } ->
 		%
@@ -514,13 +507,13 @@ mlds_output_defns(Indent, ModuleName, Defns) -->
 		list__foldl(OutputDefn, Defns)
 	).
 
-:- pred build_defns(mlds__defns, func_info, mlds_module_name, 
+:- pred build_local_defns(mlds__defns, func_info, mlds_module_name, 
 		symbol_table, symbol_table, io__state, io__state).
-:- mode build_defns(in, in, in, in, out, di, uo) is det.
+:- mode build_local_defns(in, in, in, in, out, di, uo) is det.
 
-build_defns([], _, _, SymbolTable, SymbolTable) --> [].
-build_defns([Defn|Defns], FuncInfo, ModuleName, SymbolTable0, SymbolTable) -->
-	build_defn(Defn, FuncInfo, ModuleName, GCC_Defn),
+build_local_defns([], _, _, SymbolTable, SymbolTable) --> [].
+build_local_defns([Defn|Defns], FuncInfo, ModuleName, SymbolTable0, SymbolTable) -->
+	build_local_defn(Defn, FuncInfo, ModuleName, GCC_Defn),
 	% Insert the variable definition into our symbol table.
 	% The MLDS code that the MLDS code generator generates should
 	% not have any shadowing of parameters or local variables by
@@ -530,177 +523,33 @@ build_defns([Defn|Defns], FuncInfo, ModuleName, SymbolTable0, SymbolTable) -->
 	{ Defn = mlds__defn(Name, _, _, _) },
 	{ SymbolTable1 = map__det_insert(SymbolTable0,
 		qual(ModuleName, Name), GCC_Defn) },
-	build_defns(Defns, FuncInfo, ModuleName, SymbolTable1, SymbolTable).
+	build_local_defns(Defns, FuncInfo, ModuleName, SymbolTable1, SymbolTable).
 
-
-:- pred mlds_output_decl(indent, mlds_module_name, mlds__defn,
+:- pred gen_defn(mlds_module_name, mlds__defn,
 		io__state, io__state).
-:- mode mlds_output_decl(in, in, in, di, uo) is det.
+:- mode gen_defn(in, in, di, uo) is det.
 
-mlds_output_decl(Indent, ModuleName, Defn) -->
-	{ Defn = mlds__defn(Name, Context, Flags, DefnBody) },
-	(
-		%
-		% ANSI C does not permit forward declarations
-		% of enumeration types.  So we just skip those.
-		% Currently they're not needed since we don't
-		% actually use the enum types.
-		%
-		{ DefnBody = mlds__class(ClassDefn) },
-		{ ClassDefn^kind = mlds__enum }
-	->
-		[]
-	;
-		%
-		% If we're using --high-level-data, then
-		% for function declarations, we need to ensure
-		% that we forward-declare any types used in
-		% the function parameters.  This is because
-		% otherwise, for any struct names whose first
-		% occurence is in the function parameters,
-		% the scope of such struct names is just that
-		% function declaration, which is never right.
-		%
-		% We generate such forward declarations here,
-		% rather than generating type declarations in a
-		% header file and #including that header file,
-		% because doing the latter would significantly
-		% complicate the dependencies (to avoid cyclic
-		% #includes, you'd need to generate the type
-		% declarations in a different header file than
-		% the function declarations).
-		%
-		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
-		(
-			{ HighLevelData = yes },
-			{ DefnBody = mlds__function(_, Signature, _) }
-		->
-			{ Signature = mlds__func_params(Parameters,
-				_RetTypes) },
-			{ assoc_list__values(Parameters, ParamTypes) },
-			mlds_output_type_forward_decls(Indent, ParamTypes)
-		;
-			[]
-		),
-		%
-		% Now output the declaration for this mlds__defn.
-		%
-		mlds_indent(Context, Indent),
-		mlds_output_decl_flags(Flags, forward_decl, Name, DefnBody),
-		mlds_output_decl_body(Indent, qual(ModuleName, Name), Context,
-			DefnBody)
-	).
-
-:- pred mlds_output_type_forward_decls(indent, list(mlds__type),
-		io__state, io__state).
-:- mode mlds_output_type_forward_decls(in, in, di, uo) is det.
-
-mlds_output_type_forward_decls(Indent, ParamTypes) -->
-	%
-	% Output forward declarations for all struct types
-	% that are contained in the parameter types.
-	%
-	aggregate(mlds_type_list_contains_type(ParamTypes),
-		mlds_output_type_forward_decl(Indent)).
-
-	% mlds_type_list_contains_type(Types, SubType):
-	%	True iff the type SubType occurs (directly or indirectly)
-	%	in the specified list of Types.
-	%
-:- pred mlds_type_list_contains_type(list(mlds__type), mlds__type).
-:- mode mlds_type_list_contains_type(in, out) is nondet.
-
-mlds_type_list_contains_type(Types, SubType) :-
-	list__member(Type, Types),
-	mlds_type_contains_type(Type, SubType).
-
-	% mlds_type_contains_type(Type, SubType):
-	%	True iff the type Type contains the type SubType.
-	%
-:- pred mlds_type_contains_type(mlds__type, mlds__type).
-:- mode mlds_type_contains_type(in, out) is multi.
-
-mlds_type_contains_type(Type, Type).
-mlds_type_contains_type(mlds__array_type(Type), Type).
-mlds_type_contains_type(mlds__ptr_type(Type), Type).
-mlds_type_contains_type(mlds__func_type(Parameters), Type) :-
-	Parameters = mlds__func_params(Arguments, RetTypes),
-	( list__member(_Name - Type, Arguments)
-	; list__member(Type, RetTypes)
-	).
-
-:- pred mlds_output_type_forward_decl(indent, mlds__type,
-		io__state, io__state).
-:- mode mlds_output_type_forward_decl(in, in, di, uo) is det.
-
-mlds_output_type_forward_decl(Indent, Type) -->
-	(
-		{
-			Type = mlds__class_type(_Name, _Arity, Kind),
-			Kind \= mlds__enum,
-			ClassType = Type
-		;
-			Type = mercury_type(MercuryType, user_type),
-			type_to_type_id(MercuryType, TypeId, _ArgsTypes),
-			ml_gen_type_name(TypeId, ClassName, ClassArity),
-			ClassType = mlds__class_type(ClassName, ClassArity,
-				mlds__class)
-		}
-	->
-		mlds_indent(Indent),
-		mlds_output_type(ClassType),
-		io__write_string(";\n")
-	;
-		[]
-	).
-
-:- pred mlds_output_defn(indent, mlds_module_name, mlds__defn,
-		io__state, io__state).
-:- mode mlds_output_defn(in, in, in, di, uo) is det.
-
-mlds_output_defn(Indent, ModuleName, Defn) -->
-	{ Defn = mlds__defn(Name, Context, Flags, DefnBody) },
-	mlds_indent(Context, Indent),
-	mlds_output_decl_flags(Flags, definition, Name, DefnBody),
-	mlds_output_defn_body(Indent, qual(ModuleName, Name), Context,
+gen_defn(ModuleName, Defn) -->
+	{ Defn = mlds__defn(Name, Context, _Flags, DefnBody) },
+	% mlds_output_decl_flags(Flags, definition, Name, DefnBody),
+	gen_defn_body(qual(ModuleName, Name), Context,
 			DefnBody).
 
-:- pred build_defn(mlds__defn, func_info, mlds_module_name, gcc__var_decl,
+:- pred build_local_defn(mlds__defn, func_info, mlds_module_name, gcc__var_decl,
 		io__state, io__state).
-:- mode build_defn(in, in, in, out, di, uo) is det.
+:- mode build_local_defn(in, in, in, out, di, uo) is det.
 
-build_defn(Defn, FuncInfo, ModuleName, GCC_Defn) -->
+build_local_defn(Defn, FuncInfo, ModuleName, GCC_Defn) -->
 	{ Defn = mlds__defn(Name, Context, _Flags, DefnBody) },
-	% mlds_indent(Context, Indent),
 	% mlds_output_decl_flags(Flags, definition, Name, DefnBody),
-	build_defn_body(qual(ModuleName, Name), FuncInfo, Context, DefnBody,
+	build_local_defn_body(qual(ModuleName, Name), FuncInfo, Context, DefnBody,
 		GCC_Defn).
 
-:- pred mlds_output_decl_body(indent, mlds__qualified_entity_name,
+:- pred gen_defn_body(mlds__qualified_entity_name,
 		mlds__context, mlds__entity_defn, io__state, io__state).
-:- mode mlds_output_decl_body(in, in, in, in, di, uo) is det.
+:- mode gen_defn_body(in, in, in, di, uo) is det.
 
-mlds_output_decl_body(Indent, Name, Context, DefnBody) -->
-	(
-		{ DefnBody = mlds__data(Type, Initializer) },
-		mlds_output_data_decl(Name, Type,
-			initializer_array_size(Initializer))
-	;
-		{ DefnBody = mlds__function(_MaybePredProcId, Signature,
-			_MaybeBody) },
-		% mlds_output_maybe(MaybePredProcId, mlds_output_pred_proc_id),
-		mlds_output_func_decl(Indent, Name, Context, Signature)
-	;
-		{ DefnBody = mlds__class(ClassDefn) },
-		mlds_output_class_decl(Indent, Name, ClassDefn)
-	),
-	io__write_string(";\n").
-
-:- pred mlds_output_defn_body(indent, mlds__qualified_entity_name,
-		mlds__context, mlds__entity_defn, io__state, io__state).
-:- mode mlds_output_defn_body(in, in, in, in, di, uo) is det.
-
-mlds_output_defn_body(Indent, Name, Context, DefnBody) -->
+gen_defn_body(Name, Context, DefnBody) -->
 	(
 		{ DefnBody = mlds__data(Type, Initializer) },
 		mlds_output_data_defn(Name, Type, Initializer)
@@ -708,45 +557,46 @@ mlds_output_defn_body(Indent, Name, Context, DefnBody) -->
 		{ DefnBody = mlds__function(MaybePredProcId, Signature,
 			MaybeBody) },
 		mlds_output_maybe(MaybePredProcId, mlds_output_pred_proc_id),
-		mlds_output_func(Indent, Name, Context, Signature, MaybeBody)
+		gen_func(Name, Context, Signature, MaybeBody)
 	;
 		{ DefnBody = mlds__class(ClassDefn) },
+		{ Indent = 0 },
 		mlds_output_class(Indent, Name, Context, ClassDefn)
 	).
 
-:- pred build_defn_body(mlds__qualified_entity_name, func_info,
+:- pred build_local_defn_body(mlds__qualified_entity_name, func_info,
 		mlds__context, mlds__entity_defn, gcc__var_decl,
 		io__state, io__state).
-:- mode build_defn_body(in, in, in, in, out, di, uo) is det.
+:- mode build_local_defn_body(in, in, in, in, out, di, uo) is det.
 
-build_defn_body(Name, FuncInfo, Context, DefnBody, GCC_Defn) -->
+build_local_defn_body(Name, FuncInfo, Context, DefnBody, GCC_Defn) -->
 	(
 		{ DefnBody = mlds__data(Type, Initializer) },
-		build_data_defn(Name, Type, Initializer, FuncInfo, GCC_Defn)
+		build_local_data_defn(Name, Type, Initializer, FuncInfo, GCC_Defn)
 	;
 		{ DefnBody = mlds__function(MaybePredProcId, Signature,
 			MaybeBody) },
 		{ sorry(this_file, "nested function") },
 		mlds_output_maybe(MaybePredProcId, mlds_output_pred_proc_id),
-		mlds_output_func(0, Name, Context, Signature, MaybeBody)
+		gen_func(Name, Context, Signature, MaybeBody)
 	;
 		{ DefnBody = mlds__class(ClassDefn) },
 		{ sorry(this_file, "nested type") },
 		mlds_output_class(0, Name, Context, ClassDefn)
 	).
 
-:- pred build_data_defn(mlds__qualified_entity_name, mlds__type,
+:- pred build_local_data_defn(mlds__qualified_entity_name, mlds__type,
 		mlds__initializer, func_info, gcc__var_decl,
 		io__state, io__state).
-:- mode build_data_defn(in, in, in, in, out, di, uo) is det.
+:- mode build_local_data_defn(in, in, in, in, out, di, uo) is det.
 
-build_data_defn(Name, Type, Initializer, FuncInfo, GCC_Defn) -->
+build_local_data_defn(Name, Type, Initializer, FuncInfo, GCC_Defn) -->
 	build_type(Type, initializer_array_size(Initializer), GCC_Type),
 	{ Name = qual(_ModuleName, UnqualName) },
 	( { UnqualName = data(var(VarName)) } ->
 		gcc__build_local_var_decl(VarName, GCC_Type, GCC_Defn)
 	;
-		{ sorry(this_file, "build_data_defn: non-var") }
+		{ sorry(this_file, "build_local_data_defn: non-var") }
 	),
 	( { Initializer = no_initializer } ->
 		[]
@@ -878,12 +728,14 @@ mlds_output_class(Indent, Name, Context, ClassDefn) -->
 		mlds_output_enum_constants(Indent + 1, ClassModuleName,
 			BasesAndMembers)
 	;
-		mlds_output_defns(Indent + 1, ClassModuleName,
-			BasesAndMembers)
+		[]
+		% XXX FIXME
+		% mlds_output_defns(Indent + 1, ClassModuleName,
+		% 	BasesAndMembers)
 	),
 	mlds_indent(Context, Indent),
 	io__write_string("};\n"),
-	mlds_output_defns(Indent, ClassModuleName, StaticMembers).
+	gen_defns(ClassModuleName, StaticMembers).
 
 :- pred is_static_member(mlds__defn::in) is semidet.
 
@@ -1065,11 +917,11 @@ mlds_output_pred_proc_id(proc(PredId, ProcId)) -->
 		[]
 	).
 
-:- pred mlds_output_func(indent, qualified_entity_name, mlds__context,
+:- pred gen_func(qualified_entity_name, mlds__context,
 		func_params, maybe(statement), io__state, io__state).
-:- mode mlds_output_func(in, in, in, in, in, di, uo) is det.
+:- mode gen_func(in, in, in, in, di, uo) is det.
 
-mlds_output_func(_Indent, Name, Context, Signature, MaybeBody) -->
+gen_func(Name, Context, Signature, MaybeBody) -->
 	(
 		{ MaybeBody = no }
 	;
@@ -1291,9 +1143,10 @@ build_type(mlds__native_int_type, _, gcc__integer_type_node) --> [].
 build_type(mlds__native_float_type, _, gcc__double_type_node) --> [].
 build_type(mlds__native_bool_type, _, gcc__boolean_type_node) --> [].
 build_type(mlds__native_char_type, _, gcc__char_type_node)  --> [].
-build_type(mlds__class_type(Name, Arity, ClassKind), _, _) -->
-	{ sorry(this_file, "class_type") },
+build_type(mlds__class_type(Name, Arity, ClassKind), _, GCC_Type) -->
 	( { ClassKind = mlds__enum } ->
+		%
+		% XXX following comment is wrong for gcc back-end
 		%
 		% We can't just use the enumeration type,
 		% since the enumeration type's definition
@@ -1302,20 +1155,23 @@ build_type(mlds__class_type(Name, Arity, ClassKind), _, _) -->
 		% require writing enum definitions to a separate header file.)
 		% Also the enumeration might not be word-sized,
 		% which would cause problems for e.g. `std_util:arg/2'.
-		% So we just use `MR_Integer', and output the
-		% actual enumeration type as a comment.
+		% So we just use `MR_Integer'.
 		%
-		io__write_string("MR_Integer /* actually `enum "),
-		mlds_output_fully_qualified(Name, mlds_output_mangled_name),
-		io__format("_%d_e", [i(Arity)]),
-		io__write_string("' */")
+		{ GCC_Type = 'MR_Integer' }
 	;
 		% For struct types it's OK to output an incomplete type,
 		% since don't use these types directly, we only
 		% use pointers to them.
-		io__write_string("struct "),
-		mlds_output_fully_qualified(Name, mlds_output_mangled_name),
-		io__format("_%d_s", [i(Arity)])
+		{ Name = qual(ModuleName, TypeName) },
+		{ EntityName = qual(ModuleName, type(TypeName, Arity)) },
+		{ UnqualAsmName = build_name(type(TypeName, Arity)) },
+		{ maybe_add_module_qualifier(EntityName, UnqualAsmName,
+			AsmName) },
+		% XXX FIXME
+		{ GCC_Type = 'MR_Word' },
+		io__write_string("class_type "),
+		io__write_string(AsmName),
+		io__nl
 	).
 build_type(mlds__ptr_type(Type), _, GCC_PtrType) -->
 	build_type(Type, GCC_Type),
@@ -2175,9 +2031,9 @@ mlds_output_stmt(Indent, FuncInfo, block(Defns, Statements), Context) -->
 	mlds_indent(Indent),
 	io__write_string("{\n"),
 	( { Defns \= [] } ->
-		{ FuncName = FuncInfo ^ func_name },
-		{ FuncName = qual(ModuleName, _) },
-		mlds_output_defns(Indent + 1, ModuleName, Defns),
+		% { FuncName = FuncInfo ^ func_name },
+		% { FuncName = qual(ModuleName, _) },
+		% gen_defns(Indent + 1, ModuleName, Defns),
 		io__write_string("\n")
 	;
 		[]
@@ -2193,7 +2049,7 @@ gen_stmt(FuncInfo0, block(Defns, Statements), _Context) -->
 	{ FuncName = FuncInfo0 ^ func_name },
 	{ FuncName = qual(ModuleName, _) },
 	{ SymbolTable0 = FuncInfo0 ^ symbol_table },
-	build_defns(Defns, FuncInfo0, ModuleName, SymbolTable0, SymbolTable),
+	build_local_defns(Defns, FuncInfo0, ModuleName, SymbolTable0, SymbolTable),
 	{ FuncInfo = FuncInfo0 ^ symbol_table := SymbolTable },
 	gen_statements(FuncInfo, Statements).
 
