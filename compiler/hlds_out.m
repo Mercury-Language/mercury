@@ -49,8 +49,15 @@
 :- pred hlds_out__write_pred_id(module_info, pred_id, io__state, io__state).
 :- mode hlds_out__write_pred_id(in, in, di, uo) is det.
 
+:- pred hlds_out__write_call_id(pred_or_func, pred_call_id,
+				io__state, io__state).
+:- mode hlds_out__write_call_id(in, in, di, uo) is det.
+
 :- pred hlds_out__write_pred_call_id(pred_call_id, io__state, io__state).
 :- mode hlds_out__write_pred_call_id(in, di, uo) is det.
+
+:- pred hlds_out__write_pred_or_func(pred_or_func,  io__state, io__state).
+:- mode hlds_out__write_pred_or_func(in, di, uo) is det.
 
 :- pred hlds_out__write_unify_context(unify_context, term__context,
 				io__state, io__state).
@@ -143,13 +150,7 @@ hlds_out__write_pred_id(ModuleInfo, PredId) -->
 	{ pred_info_name(PredInfo, Name) },
 	{ pred_info_arity(PredInfo, Arity) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-	( { PredOrFunc = function }, !,
-		io__write_string("function"),
-		{ OrigArity is Arity - 1 }
-	; { PredOrFunc = predicate },
-		io__write_string("predicate"),
-		{ OrigArity = Arity }
-	),
+	hlds_out__write_pred_or_func(PredOrFunc),
 	io__write_string(" `"),
 	io__write_string(Module),
 	io__write_string(":"),
@@ -159,10 +160,21 @@ hlds_out__write_pred_id(ModuleInfo, PredId) -->
 		mercury_output_term(term__functor(term__atom(Name),
 				ArgTypes, Context), TVarSet)
 	;
+		{ PredOrFunc = function ->
+			OrigArity is Arity - 1
+		;
+			OrigArity = Arity
+		},
 		io__write_string(Name),
 		io__write_string("/"),
 		io__write_int(OrigArity)
 	),
+	io__write_string("'").
+
+hlds_out__write_call_id(PredOrFunc, NameAndArity) -->
+	hlds_out__write_pred_or_func(PredOrFunc),
+	io__write_string(" `"),
+	hlds_out__write_pred_call_id(NameAndArity),
 	io__write_string("'").
 
 hlds_out__write_pred_call_id(Name / Arity) -->
@@ -176,6 +188,11 @@ hlds_out__write_pred_call_id(Name / Arity) -->
 	io__write_string(PredName),
 	io__write_char('/'),
 	io__write_int(Arity).
+
+hlds_out__write_pred_or_func(predicate) -->
+	io__write_string("predicate").
+hlds_out__write_pred_or_func(function) -->
+	io__write_string("function").
 
 %-----------------------------------------------------------------------------%
 
@@ -319,11 +336,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	io__write_string("% pred id: "),
 	io__write_int(PredId),
 	io__write_string(", category: "),
-	( { PredOrFunc = function }, !,
-		io__write_string("function")
-	; { PredOrFunc = predicate },
-		io__write_string("predicate")
-	),
+	hlds_out__write_pred_or_func(PredOrFunc),
 	io__write_string(", status: "),
 	hlds_out__write_import_status(ImportStatus),
 	io__write_string("\n"),
