@@ -1,0 +1,161 @@
+%------------------------------------------------------------------------------%
+% Copyright (C) 2001 IFSIC.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file License in the Morphine distribution.
+% 
+% Author : Erwan Jahier <jahier@irisa.fr>
+%
+% This file implements the coverage scenario, which provides various commands
+% to perform test coverage.
+
+
+opium_scenario(
+	name		: coverage,
+	files		: [coverage],
+	scenarios	: [],
+	message		:
+"Provides commands to perform predicate and call site coverage.\
+"
+	).
+
+
+%-----------------------------------------------------------------------%
+opium_command(
+	name		: pred_cov,
+	arg_list	: [Module, Uncovered],
+	arg_type_list	: [string, var],
+	abbrev		: pc,
+	interface	: menu,
+	command_type	: opium,
+	implementation	: pred_cov_Op,
+	parameters	: [],
+	message		:
+"Takes a Mercury module name \"Module\", and unifies its 2nd argument with the \
+uncovered predicate criteria of \"Module\" and the modules it imports which \
+are in the current directory. A predicate criterion is a \
+3-tuple containing a module name, a procedure name, and a list of `exit' and \
+`fail' atoms; for example, the predicate criterion \
+`pc(mod, foo, [exit, fail])' means that the procedure foo in module mod \
+has to succeed and fail exactly once to be considered as covered. \
+\n\
+\n\
+pred_cov/2 works as follows; it calls `morphine/bin/generate_pred_cov \
+<Module>.m' which generates 2 files: \"Module__pred_cov\" that contains \
+a monitor to perform the coverage, and \"Module__pred\" that contains \
+the list of call sites of Module. Then it runs the \"Module__pred_cov\" \
+monitor, which outputs the list of uncovered call sites. The file \
+\"Module__pred\" is used to display the coverage ratio.\
+").
+
+pred_cov_Op(ProgramCall, Uncovered) :-
+	split_string(ProgramCall, " ", " ", [Module|_Args]),
+	append_strings(Module, ".m", FileName),
+	getenv("MERCURY_MORPHINE_DIR", MorphineDir),
+	( exists("pred_cov.in") ->
+	    true
+	;
+	    concat_string(["ln -s ", MorphineDir, 
+	            "/source/pred_cov.in "], Cmd1),
+	    sh(Cmd1)
+	),
+	append_strings(Module, "__pred_cov", MonitorName),
+	append_strings(Module, "__pred", CritListFile),
+	( exists(MonitorName) ->
+	    true
+	;
+	    concat_string([MorphineDir, "/bin/generate_pred_cov ", FileName], 
+	        Cmd2),
+	    print(Cmd2), nl,
+	    sh(Cmd2)
+	),
+	crit_cov(pred, ProgramCall, MonitorName, CritListFile, Uncovered).
+
+%-----------------------------------------------------------------------%
+opium_command(
+	name		: call_site_cov,
+	arg_list	: [Module, Uncovered],
+	arg_type_list	: [string, var],
+	abbrev		: csc,
+	interface	: menu,
+	command_type	: opium,
+	implementation	: call_site_cov_Op,
+	parameters	: [],
+	message		:
+"Takes a Mercury module name \"Module\", and unifies  its 2nd argument \
+with the uncovered call sites criteria of \"Module\" and the modules it \
+imports which are in the current directory. A call site  criterion is a \
+4-tuple containing a module name, a procedure name, a line number, and a \
+list of `exit' and `fail' atoms; for example, the call site criterion \
+`csc(mod, foo, 14, [exit, fail])' denotes the call to procedure foo in \
+module mod at line 14, which has to succeed and fail exactly once to be \
+considered as covered. \
+\n\
+\n\
+call_site_cov/2 works as follows; it calls `morphine/bin/generate_call_site_cov \
+<Module>.m' which generates 2 files: \"Module__call_site_cov\" that contains \
+a monitor to perform the coverage, and \"Module__call_site\" that contains \
+the list of call sites of Module. Then it runs the \"Module__call_site_cov\" \
+monitor, which outputs the list of uncovered call sites. The file \
+\"Module__call_site\" is used to display the coverage ratio.\
+").
+
+
+call_site_cov_Op(ProgramCall, Uncovered) :-
+	split_string(ProgramCall, " ", " ", [Module|_Args]),
+	append_strings(Module, ".m", FileName),
+	getenv("MERCURY_MORPHINE_DIR", MorphineDir),
+	( exists("call_site_cov.in") ->
+	    true
+	;
+	    concat_string(["ln -s ", MorphineDir, 
+	            "/source/call_site_cov.in "], Cmd1),
+	    sh(Cmd1)
+	),
+	append_strings(Module, "__call_site_cov", MonitorName),
+	append_strings(Module, "__call_site", CritListFile),
+	( exists(MonitorName) ->
+	    true
+	;
+	    concat_string([MorphineDir, "/bin/generate_call_site_cov ", 
+	        FileName, " ", MorphineDir, "/../../library/"], Cmd2),
+	    print(Cmd2), nl,
+	    sh(Cmd2)
+	),
+	crit_cov(call_site, ProgramCall, MonitorName, CritListFile, Uncovered).
+
+
+
+%-----------------------------------------------------------------------%
+
+crit_cov(CovType, ProgramCall, MonitorName, CritListFile, Uncovered) :-
+	run(ProgramCall),
+	collect(MonitorName, Uncovered),
+	count_crit(CovType, Uncovered, UncoveredCard),
+	print("Uncovered: "), print(UncoveredCard), nl,
+	get_crit_list_from_file(CritListFile, ToCover),
+	count_crit(CovType, ToCover, ToCoverCard),
+	print("To cover: "), print(ToCoverCard), nl,
+	
+	CoverageRate is ((ToCoverCard-UncoveredCard)/ToCoverCard*100),
+	printf("The coverage rate is %2g \% \n", CoverageRate).
+	
+
+get_crit_list_from_file(CritListFileName, CritList) :-
+	open(CritListFileName, read, Stream),
+	read(Stream, CritList),
+	close(Stream).
+
+
+count_crit(call_site, [], 0).
+count_crit(call_site, [csc(_,_,_,List) | Tail], N) :-
+	length(List, L),
+	count_crit(call_site, Tail, N0),
+	N is N0 + L.
+
+count_crit(pred, [], 0).
+count_crit(pred, [pc(_,_,List) | Tail], N) :-
+	length(List, L),
+	count_crit(pred, Tail, N0),
+	N is N0 + L.
+
+

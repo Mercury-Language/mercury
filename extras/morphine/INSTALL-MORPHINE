@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright (C) 1999-2000 INRIA/INSA de Rennes.
+# Copyright (C) 1999-2001 INRIA/INSA de Rennes/IFSIC.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file License in the Morphine distribution.
 #
@@ -63,7 +63,7 @@ echo \$COMMAND
 EOF
 cd ..
 
-echo "Compiling the Mercury program listing.m..."
+echo "Compiling Mercury programs..."
 [ -d bin ] || mkdir bin
 cd ${MERCURY_MORPHINE_DIR}/source
 mmake listing.depend
@@ -71,6 +71,19 @@ mmake listing
 mv ${MERCURY_MORPHINE_DIR}/source/listing ${MERCURY_MORPHINE_DIR}/bin/
 chmod a+x ${MERCURY_MORPHINE_DIR}/bin/listing
 mmake listing.realclean
+
+mmake generate_pred_cov.depend
+mmake generate_pred_cov
+mv ${MERCURY_MORPHINE_DIR}/source/generate_pred_cov ${MERCURY_MORPHINE_DIR}/bin/
+chmod a+x ${MERCURY_MORPHINE_DIR}/bin/generate_pred_cov
+
+mmake generate_call_site_cov.depend
+mmake generate_call_site_cov
+mv ${MERCURY_MORPHINE_DIR}/source/generate_call_site_cov ${MERCURY_MORPHINE_DIR}/bin/
+chmod a+x ${MERCURY_MORPHINE_DIR}/bin/generate_call_site_cov
+
+mmake generate_pred_cov.realclean
+mmake generate_call_site_cov.realclean
 
 chmod a+x ${MERCURY_MORPHINE_DIR}/scripts/morphine
 

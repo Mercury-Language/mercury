@@ -1,0 +1,26 @@
+%
+
+:- import_module string.
+
+:- type pred_crit --->
+	pc(declared_module_name, proc_name, list(trace_port_type)). 
+    
+:- type accumulator_type == list(pred_crit).
+
+filter(Event, CSL0, CSL, continue) :-
+	solutions(update_pred_list(port(Event), decl_module(Event), 
+		proc_name(Event), CSL0), Sol),
+	( Sol = [CSL1|_] -> CSL = CSL1 ; CSL = CSL0 ).
+
+:- pred update_pred_list(trace_port_type::in, string::in, string::in, 
+	accumulator_type::in, accumulator_type::out) is nondet.
+update_pred_list(Port, Mod, ProcName, CSL0, CSL) :-
+	( Port = exit ; Port = fail ), 
+	list__delete(CSL0, pc(Mod, ProcName, Crit), CSL1),
+	list__delete(Crit, Port, NewCrit),
+	( NewCrit = [] -> 
+	        CSL = CSL1
+	;
+	        list__insert(pc(Mod, ProcName, NewCrit), CSL1, CSL)
+	).
+

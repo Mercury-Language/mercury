@@ -268,6 +268,48 @@ Result = [sol(proc(predicate, "queens", "main", 2, 0), [univ_cons(state('<<c_poi
 Result2 = 38511     More? (;) 
 [morphine 9]: 
 **************************************************
+**** Testing call_site_cov...
+
+Start debugging queens program.
+  1: 1 [1] call main(state('<<c_pointer>>'), -) []  0 
+[1, 3, 5, 2, 4]
+End of connection with the traced program
+Uncovered: 9
+To cover: 33
+The coverage rate is 72.7273 
+Uncovered call sites are:
+csc(queens, qperm, 43, [fail])
+csc(queens, queen, 16, [exit, fail])
+csc(queens, write_string, 19, [exit])
+csc(queens, fail, 66, [])
+csc(queens, fail, 68, [])
+csc(queens, write_string, 82, [exit])
+csc(queens, write_string, 84, [exit])
+csc(queens, write_string, 86, [exit])
+csc(queens, write_int, 94, [exit])
+csc(queens, write_string, 100, [exit])
+
+*** call_site_cov: ok.
+
+Uncovered = [csc("queens", "qperm", 43, [fail]), csc("queens", "queen", 16, [exit, fail]), csc("queens", "write_string", 19, [exit]), csc("queens", "fail", 66, []), csc("queens", "fail", 68, []), csc("queens", "write_string", 82, [exit]), csc("queens", "write_string", 84, [exit]), csc("queens", "write_string", 86, [exit]), csc("queens", "write_int", 94, [exit]), csc("queens", "write_string", 100, [exit])]     More? (;) 
+[morphine 10]: 
+**************************************************
+**** Testing pred_cov...
+Start debugging queens program.
+  1: 1 [1] call main(state('<<c_pointer>>'), -) []  0 
+[1, 3, 5, 2, 4]
+End of connection with the traced program
+Uncovered: 2
+To cover: 17
+The coverage rate is 88.2353 
+Uncovered predicates are:
+pc(queens, queen, [exit, fail])
+
+*** pred_cov: ok.
+
+Uncovered = [pc("queens", "queen", [exit, fail])]     More? (;) 
+[morphine 11]: 
+**************************************************
 **** Testing other Morphine commands...
 apropos(window)
     man
@@ -298,5 +340,5 @@ scenario : help (GloLoc in morphine)
 
 *** other Morphine commands: ok.
 **************************************************
-[morphine 10]: 
+[morphine 12]: 
 bye

@@ -1,0 +1,26 @@
+%
+
+:- import_module string.
+
+:- type call_site_crit --->
+	csc(defined_module_name, proc_name, line_number, list(trace_port_type)). 
+    
+:- type accumulator_type == list(call_site_crit).
+
+filter(Event, CSL0, CSL, continue) :-
+	solutions(update_call_site_list(port(Event), def_module(Event), 
+		proc_name(Event), line_number(Event), CSL0), Sol),
+	( Sol = [CSL1|_] -> CSL = CSL1 ; CSL = CSL0 ).
+
+:- pred update_call_site_list(trace_port_type::in, string::in, string::in, int::in, 
+	accumulator_type::in, accumulator_type::out) is nondet.
+update_call_site_list(Port, Mod, ProcName, Ln, CSL0, CSL) :-
+	( Port = exit ; Port = fail ), 
+	list__delete(CSL0, csc(Mod, ProcName, Ln, Crit), CSL1),
+	list__delete(Crit, Port, NewCrit),
+	( NewCrit = [] -> 
+	    CSL = CSL1
+	;
+	    list__insert(csc(Mod, ProcName, Ln, NewCrit), CSL1, CSL)
+	).
+

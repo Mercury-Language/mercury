@@ -189,6 +189,21 @@ write("\n**************************************************"),
 	write("\n*** collect: ok.\n").
 
 write("\n**************************************************"),
+	write("\n**** Testing call_site_cov...\n"),
+	make(coverage),
+	call_site_cov("queens", Uncovered), 
+	write("\nUncovered call sites are:\n"), 
+	checklist(printf("%w\n"), Uncovered),
+	write("\n*** call_site_cov: ok.\n").
+
+write("\n**************************************************"),
+	write("\n**** Testing pred_cov...\n"),
+	pred_cov("queens", Uncovered), 
+	write("\nUncovered predicates are:\n"), 
+	checklist(printf("%w\n"), Uncovered),
+	write("\n*** pred_cov: ok.\n").
+
+write("\n**************************************************"),
 	write("\n**** Testing other Morphine commands...\n"),
 	write("apropos(window)"), nl, 
 	apropos(man),
