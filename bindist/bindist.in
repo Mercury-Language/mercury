@@ -1,0 +1,22 @@
+# @configure_input@
+#---------------------------------------------------------------------------#
+# Copyright (C) 1995 University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# This file contains definitions generated as part of the configuration
+# for the host on which the binary distribution was created.
+
+LIBGRADES="@LIBGRADES@"
+DEFAULT_GRADE="@DEFAULT_GRADE@"
+NUM_REAL_R_REGS="@NUM_REAL_R_REGS@"
+CFLAGS_FOR_REGS="@CFLAGS_FOR_REGS@"
+CFLAGS_FOR_GOTOS="@CFLAGS_FOR_GOTOS@"
+LOW_TAG_BITS="@LOW_TAG_BITS@"
+FULLARCH="@FULLARCH@"
+LINK_SHARED_OBJ="@LINK_SHARED_OBJ@"
+EXT_FOR_PIC_OBJECTS="@EXT_FOR_PIC_OBJECTS@"
+EXT_FOR_SHARED_LIB="@EXT_FOR_SHARED_LIB@"
+CFLAGS_FOR_PIC="@CFLAGS_FOR_PIC@"
+

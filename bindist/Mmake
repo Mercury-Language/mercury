@@ -1,0 +1,40 @@
+#---------------------------------------------------------------------------#
+# Copyright (C) 1995 University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+
+MERCURY_DIR=..
+include $(MERCURY_DIR)/Mmake.common
+
+INSTALL_LIB_DIR	= $(INSTALL_PREFIX)/lib
+
+LIB_FILES	= bin doc html inc ints lib modules \
+			$(NUPROLOG) $(SICSTUS)
+
+MERCURY_VERSION	= mercury-0.5-beta.$(FULLARCH)
+
+README_ETC	= ../COPYING ../COPYING.LIB ../HISTORY ../LIMITATIONS \
+		../NEWS ../README ../RELEASE_NOTES
+
+binary_distribution: configure
+	# Make a quick check that there is a mercury installation in
+	# $(INSTALL_DIR) by looking for mc and mercury_compile.
+	test -x $(INSTALL_BINDIR)/mc
+	test -x $(INSTALL_MERC_BIN_DIR)/mercury_compile
+	# create a temporary directory in which to assemble the distribution
+	test -d $(MERCURY_VERSION) || mkdir $(MERCURY_VERSION)
+	(cd $(INSTALL_LIB_DIR)/mercury; tar -cf - $(LIB_FILES)) | \
+		gzip > $(MERCURY_VERSION)/lib.tar.gz
+	(cd $(INSTALL_INFO_DIR)/..; tar -cf - info) | gzip > $(MERCURY_VERSION)/info.tar.gz
+	test -d $(MERCURY_VERSION)/scripts || mkdir $(MERCURY_VERSION)/scripts
+	cp ../scripts/*.in ../scripts/Mmake.rules $(MERCURY_VERSION)/scripts
+	cp ../scripts/vpath_find $(MERCURY_VERSION)/scripts
+	cp ../config.sub ../config.guess ../install-sh $(MERCURY_VERSION)
+	cp bindist Makefile.in configure $(MERCURY_VERSION)
+	cp $(README_ETC) $(MERCURY_VERSION)
+	tar -cf - $(MERCURY_VERSION) | gzip > $(MERCURY_VERSION).tar.gz
+	# rm -rf $(MERCURY_VERSION)
+
+configure : configure.in
+	autoconf
