@@ -578,7 +578,7 @@ string__int_list_to_char_list([Code | Codes], [Char | Chars]) :-
 	( char__to_int(Char0, Code) ->
 		Char = Char0
 	;
-		error("string__int_list_to_char_list: char_to_int failed")
+		error("string__int_list_to_char_list: char__to_int failed")
 	),
 	string__int_list_to_char_list(Codes, Chars).
 
@@ -590,7 +590,7 @@ string__char_list_to_int_list([Char | Chars], [Code | Codes]) :-
 	( char__to_int(Char, Code0) ->
 		Code = Code0
 	;
-		error("string__char_list_to_int_list: char_to_int failed")
+		error("string__char_list_to_int_list: char__to_int failed")
 	),
 	string__char_list_to_int_list(Chars, Codes).
 
