@@ -103,11 +103,13 @@
 output_c_file(c_file(Name, Modules)) -->
 	{ string__append(Name, ".xmod", FileName) },
 	io__tell(FileName, Result),
-	(if { Result = ok } then
+	(
+		{ Result = ok }
+	->
 		io__write_string("#include \"imp.h\"\n"),
 		output_c_module_list(Modules),
 		io__told
-	else
+	;
 		io__progname("llds.nl", ProgName),
 		io__write_string(ProgName),
 		io__write_string(": can't open '"),
@@ -166,9 +168,11 @@ output_c_procedure(c_procedure(Name,Arity,Mode,Instructions)) -->
 output_instruction_list([]) --> [].
 output_instruction_list([Inst - Comment|Instructions]) -->
 	output_instruction(Inst),
-	(if { Comment = "" } then
+	(
+		{ Comment = "" }
+	->
 		io__write_string("\n")
-	else
+	;
 		io__write_string("\t/* "),
 		io__write_string(Comment),
 		io__write_string(" */\n")
@@ -373,9 +377,11 @@ output_operator(/) -->
 :- pred clause_num_to_string(int::in, string::out).
 
 clause_num_to_string(N, Str) :-
-	(if N < 26 then
+	(
+		N < 26
+	->
 		int_to_letter(N, Str)
-	else
+	;
 		N_Low is N mod 26,
 		N_High is N // 26,
 		int_to_letter(N_Low, L),
