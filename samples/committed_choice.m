@@ -1,12 +1,14 @@
 % An example module to illustrate committed choice nondeterminism in Mercury.
-% This program should print out _either_
+% In the standard "commutative" semantics, this program should print out
+% _either_
 %
 %	Hello, World
 % or
 %	Goodbye, World
 %
-% Which one it prints out is unspecified.
-% The implementation can pick either.
+% Which one it prints out is unspecified: the implementation can pick either.
+% In the "strict sequential semantics" (enabled by the `--strict-sequential'
+% option to the Mercury compiler), it is guaranteed to print "Hello, World".
 
 :- module committed_choice.
 :- interface.
