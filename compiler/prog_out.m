@@ -30,13 +30,6 @@
 :- pred prog_out__context_to_string(prog_context, string).
 :- mode prog_out__context_to_string(in, out) is det.
 
-	% XXX This pred should be deleted, and all uses replaced with
-	% XXX error_util:write_error_pieces, once zs has committed that
-	% XXX error_util.m.
-:- pred prog_out__write_strings_with_context(prog_context, list(string),
-	io__state, io__state).
-:- mode prog_out__write_strings_with_context(in, in, di, uo) is det.
-
 	% Write out a symbol name, with special characters escaped,
 	% but without any quotes.  This is suitable for use in
 	% error messages, where the caller should print out an
@@ -162,52 +155,6 @@ prog_out__context_to_string(Context, ContextMessage) :-
 		string__format("%s:%03d: ", [s(FileName), i(LineNumber)],
 			ContextMessage)
 	).
-
-%-----------------------------------------------------------------------------%
-
-prog_out__write_strings_with_context(Context, Strings) -->
-	{ prog_out__context_to_string(Context, ContextMessage) },
-	{ string__length(ContextMessage, ContextLength) },
-	prog_out__write_strings_with_context_2(ContextMessage,
-			ContextLength, Strings, 0).
-
-:- pred prog_out__write_strings_with_context_2(string, int, list(string), int,
-	io__state, io__state).
-:- mode prog_out__write_strings_with_context_2(in, in, in, in, di, uo) is det.
-
-prog_out__write_strings_with_context_2(_ContextMessage, _ContextLength,
-		[], _) --> [].
-prog_out__write_strings_with_context_2(ContextMessage, ContextLength,
-		[S|Ss], N0) -->
-	{ string__length(S, MessageLength) },
-	(
-		{ N0 = 0 }
-	->
-		io__write_string(ContextMessage),
-		io__write_string("  "),
-		io__write_string(S),
-		{ N is ContextLength + MessageLength },
-		{ Rest = Ss }
-	;
-		{ N1 is MessageLength + N0 },
-		{ num_columns(NumColumns) },
-		{ N1 < NumColumns }
-	->
-		io__write_string(S),
-		{ N = N1 },
-		{ Rest = Ss }
-	;
-		io__write_char('\n'),
-		{ N = 0 },
-		{ Rest = [S|Ss] }
-	),
-	prog_out__write_strings_with_context_2(ContextMessage,
-			ContextLength, Rest, N).
-
-
-:- pred num_columns(int::out) is det.
-
-num_columns(80).
 
 %-----------------------------------------------------------------------------%
 
