@@ -50,6 +50,7 @@ SOURCES= \
 	stack_alloc.m \
 	subtype_switch.m \
 	switches.m \
+	switch_detection_bug.m \
 	two_pragma_c_codes.m \
 	two_way_unif.m \
 	type_inf_ambig_test.m \
