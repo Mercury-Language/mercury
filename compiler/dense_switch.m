@@ -16,8 +16,9 @@
 
 :- interface.
 
-:- import_module llds, prog_data, switch_gen, code_info, type_util.
-:- import_module hlds_data, hlds_goal.
+:- import_module prog_data, hlds_data, hlds_goal.
+:- import_module switch_util, type_util.
+:- import_module llds, code_info.
 
 	% Should this switch be implemented as a dense jump table?
 	% If so, we return the starting and ending values for the table,

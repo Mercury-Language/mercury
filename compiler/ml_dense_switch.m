@@ -19,8 +19,8 @@
 :- interface.
 
 :- import_module prog_data.
-:- import_module hlds_data, type_util.
-:- import_module mlds, ml_switch_gen, ml_code_util.
+:- import_module hlds_data, switch_util, type_util.
+:- import_module mlds, ml_code_util.
 :- import_module llds. % XXX for code_model
 
 	% Should this switch be implemented as a dense jump table?
@@ -29,13 +29,13 @@
 	% (we may convert locally semidet switches into locally det
 	% switches by adding extra cases whose body is just `fail').
 
-:- pred ml_dense_switch__is_dense_switch(prog_var::in, ml_cases_list::in,
+:- pred ml_dense_switch__is_dense_switch(prog_var::in, cases_list::in,
 		can_fail::in, int::in, int::out, int::out, can_fail::out,
 		ml_gen_info::in, ml_gen_info::out) is semidet.
 
 	% Generate code for a switch using a dense jump table.
 
-:- pred ml_dense_switch__generate(ml_cases_list::in, int::in, int::in,
+:- pred ml_dense_switch__generate(cases_list::in, int::in, int::in,
 		prog_var::in, code_model::in, can_fail::in,
 		prog_context::in, mlds__defns::out, mlds__statements::out,
 		ml_gen_info::in, ml_gen_info::out) is det.
@@ -198,7 +198,7 @@ ml_dense_switch__generate(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
 	),
 	{ MLDS_Decls = CasesDecls }.
 
-:- pred ml_dense_switch__generate_cases(ml_cases_list::in, int::in, int::in,
+:- pred ml_dense_switch__generate_cases(cases_list::in, int::in, int::in,
 		code_model::in, prog_context::in,
 		mlds__label::in, list(mlds__label)::out,
 		mlds__defns::out, mlds__statements::out,
@@ -232,9 +232,9 @@ ml_dense_switch__generate_cases(Cases0, NextVal, EndVal, CodeModel, Context,
 
 %-----------------------------------------------------------------------------%
 
-:- pred ml_dense_switch__generate_case(ml_cases_list::in, int::in,
+:- pred ml_dense_switch__generate_case(cases_list::in, int::in,
 		code_model::in, prog_context::in, mlds__label::in,
-		ml_cases_list::out, mlds__label::out, mlds__statements::out,
+		cases_list::out, mlds__label::out, mlds__statements::out,
 		ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_dense_switch__generate_case(Cases0, NextVal, CodeModel, Context,
@@ -257,8 +257,8 @@ ml_dense_switch__generate_case(Cases0, NextVal, CodeModel, Context,
 	{ MLDS_Statements = [LabelComment, LabelCode, CaseStatement,
 		JumpComment, JumpCode] }.
 		
-:- pred ml_dense_switch__generate_case_body(ml_cases_list::in, int::in,
-		code_model::in, prog_context::in, ml_cases_list::out,
+:- pred ml_dense_switch__generate_case_body(cases_list::in, int::in,
+		code_model::in, prog_context::in, cases_list::out,
 		string::out, mlds__statement::out,
 		ml_gen_info::in, ml_gen_info::out) is det.
 
