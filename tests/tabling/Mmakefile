@@ -28,6 +28,8 @@ NONDET_PROGS = \
 	repeat \
 	seq \
 	seq2 \
+	seq3 \
+	sg \
 	tc_loop \
 	tc_minimal
 
@@ -38,6 +40,8 @@ NONDET_PROGS = \
 #	consumer_in_commit
 #	consumer_in_solutions
 #	combine
+#	coup2
+#	seq4
 
 # Tabling does not yet work in .rt grades
 ifneq "$(findstring .gc,$(GRADE))" ""
