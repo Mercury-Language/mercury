@@ -146,12 +146,13 @@
 	% the instance rules or superclass rules, building up proofs for
 	% redundant constraints
 :- pred typecheck__reduce_context_by_rule_application(instance_table,
-	superclass_table, list(class_constraint), tsubst, tvarset, tvarset, 
+	superclass_table, list(class_constraint), list(tvar),
+	tsubst, tvarset, tvarset, 
 	map(class_constraint, constraint_proof), 
 	map(class_constraint, constraint_proof),
 	list(class_constraint), list(class_constraint)).
-:- mode typecheck__reduce_context_by_rule_application(in, in, in, in, in, out, 
-	in, out, in, out) is det.
+:- mode typecheck__reduce_context_by_rule_application(in, in, in, in, in, 
+	in, out, in, out, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -3948,7 +3949,7 @@ reduce_type_assign_context(SuperClassTable, InstanceTable,
 	Constraints0 = constraints(UnprovenConstraints0, AssumedConstraints),
 
 	typecheck__reduce_context_by_rule_application(InstanceTable, 
-		SuperClassTable, AssumedConstraints,
+		SuperClassTable, AssumedConstraints, HeadTypeParams,
 		Bindings, Tvarset0, Tvarset, Proofs0, Proofs,
 		UnprovenConstraints0, UnprovenConstraints),
 
@@ -3963,7 +3964,7 @@ reduce_type_assign_context(SuperClassTable, InstanceTable,
 
 
 typecheck__reduce_context_by_rule_application(InstanceTable, SuperClassTable, 
-		AssumedConstraints, Bindings, Tvarset0, Tvarset,
+		AssumedConstraints, HeadTypeParams, Bindings, Tvarset0, Tvarset,
 		Proofs0, Proofs, Constraints0, Constraints) :-
 	apply_rec_subst_to_constraint_list(Bindings, Constraints0,
 		Constraints1),
@@ -3971,8 +3972,9 @@ typecheck__reduce_context_by_rule_application(InstanceTable, SuperClassTable,
 		Constraints2, Changed1),
 	apply_instance_rules(Constraints2, InstanceTable, 
 		Tvarset0, Tvarset1, Proofs0, Proofs1, Constraints3, Changed2),
-	apply_class_rules(Constraints3, AssumedConstraints, SuperClassTable,
-		Tvarset0, Proofs1, Proofs2, Constraints4, Changed3),
+	apply_class_rules(Constraints3, AssumedConstraints, HeadTypeParams,
+		SuperClassTable, Tvarset0, Proofs1, Proofs2, Constraints4,
+		Changed3),
 	(
 		Changed1 = no, Changed2 = no, Changed3 = no
 	->
@@ -3982,8 +3984,8 @@ typecheck__reduce_context_by_rule_application(InstanceTable, SuperClassTable,
 		Proofs = Proofs2
 	;
 		typecheck__reduce_context_by_rule_application(InstanceTable,
-			SuperClassTable, AssumedConstraints, Bindings,
-			Tvarset1, Tvarset, Proofs2, Proofs, 
+			SuperClassTable, AssumedConstraints, HeadTypeParams,
+			Bindings, Tvarset1, Tvarset, Proofs2, Proofs, 
 			Constraints4, Constraints)
 	).
 
@@ -4099,29 +4101,29 @@ find_matching_instance_rule_2([I|Is], N0, ClassName, Types, TVarSet,
 	% superclass relation to find a path from the inferred constraint to
 	% another (declared or inferred) constraint.
 :- pred apply_class_rules(list(class_constraint), list(class_constraint),
-	superclass_table, tvarset, map(class_constraint, constraint_proof),
+	list(tvar), superclass_table, tvarset, 
+	map(class_constraint, constraint_proof),
 	map(class_constraint, constraint_proof), list(class_constraint), bool).
-:- mode apply_class_rules(in, in, in, in, in, out, out, out) is det.
+:- mode apply_class_rules(in, in, in, in, in, in, out, out, out) is det.
 
-apply_class_rules([], _, _, _, Proofs, Proofs, [], no).
-apply_class_rules([C|Constraints0], AssumedConstraints, SuperClassTable,
-		TVarSet, Proofs0, Proofs, Constraints, Changed) :-
+apply_class_rules([], _, _, _, _, Proofs, Proofs, [], no).
+apply_class_rules([C|Constraints0], AssumedConstraints, HeadTypeParams,
+		SuperClassTable, TVarSet, Proofs0, Proofs, 
+		Constraints, Changed) :-
 	(
 		Parents = [],
-		C = constraint(_, CTypes),
-		term__vars_list(CTypes, CVars),
-		eliminate_constraint_by_class_rules(C, CVars, 
+		eliminate_constraint_by_class_rules(C, HeadTypeParams, 
 			AssumedConstraints,
 			SuperClassTable, TVarSet, Parents, Proofs0, Proofs1)
 	->
-		apply_class_rules(Constraints0, AssumedConstraints,
-			SuperClassTable, TVarSet, Proofs1, Proofs, 
-			Constraints, _),
+		apply_class_rules(Constraints0, AssumedConstraints, 
+			HeadTypeParams, SuperClassTable, TVarSet, 
+			Proofs1, Proofs, Constraints, _),
 		Changed = yes
 	;
 		apply_class_rules(Constraints0, AssumedConstraints,
-			SuperClassTable, TVarSet, Proofs0, Proofs, 
-			Constraints1, Changed),
+			HeadTypeParams, SuperClassTable, TVarSet, 
+			Proofs0, Proofs, Constraints1, Changed),
 		Constraints = [C|Constraints1]
 	).
 
