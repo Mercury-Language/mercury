@@ -19,12 +19,11 @@ mode analysis
 
 general
 -------
-- renaming apart of different occurences
-  of the same variable; warning about variables which occur in
-  overlapping scopes.
 
 - warn about non-underscore variables which occur only once in any given
-  branch, even if they occur in other branches.
+  branch, even if they occur in other branches. (this will involve moving
+  the checking until after the first occurence of implicit quantification
+  and renaming apart.)
 
 mercury_to_goedel.m
 -------------------
