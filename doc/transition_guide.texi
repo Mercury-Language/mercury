@@ -581,6 +581,7 @@ expressions.
 
 The current implementation of solutions/2 is a "zero-copy" implementation,
 so the cost of solutions/2 is proportional the number of solutions, but
-independant of the size of the solutions.
+independant of the size of the solutions.  (This may change in
+future implementations.)
 
 @bye
