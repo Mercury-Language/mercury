@@ -410,95 +410,95 @@ while ``xfy'' indicates a right-associative infix operator.
 
 @example
 
-Operator          Category  Specifier Priority
+Operator          Specifier Priority
 
-^                 after     xfy       99
-^                 before    fx        100
-**                after     xfy       200
--                 before    fx        200
-\                 before    fx        200
-*                 after     yfx       400
-//                after     yfx       400
-/                 after     yfx       400
-<<                after     yfx       400
->>                after     yfx       400
-div               after     yfx       400
-mod               after     xfx       400
-rem               after     xfx       400
-++                after     xfy       500
-+                 after     yfx       500
-+                 before    fx        500
---                after     yfx       500
--                 after     yfx       500
-/\                after     yfx       500
-\/                after     yfx       500
-aditi_bottom_up   before    fx        500
-aditi_top_down    before    fx        500
-.                 after     xfy       600
-:                 after     yfx       600
-:=                after     xfx       650
-=^                after     xfx       650
-<                 after     xfx       700
-=..               after     xfx       700
-=:=               after     xfx       700
-=<                after     xfx       700
-==                after     xfx       700
-=\=               after     xfx       700
-=                 after     xfx       700
->=                after     xfx       700
->                 after     xfx       700
-@@<                after     xfx       700
-@@=<               after     xfx       700
-@@>=               after     xfx       700
-@@>                after     xfx       700
-\==               after     xfx       700
-\=                after     xfx       700
-~=                after     xfx       700
-is                after     xfx       701
-and               after     xfy       720
-or                after     xfy       740
-func              before    fx        800
-impure            before    fy        800
-pred              before    fx        800
-semipure          before    fy        800
-\+                before    fy        900
-not               before    fy        900
-when              after     xfx       900
-~                 before    fy        900
-<=>               after     xfy       920
-<=                after     xfy       920
-=>                after     xfy       920
-all               before    fxy       950
-lambda            before    fxy       950
-some              before    fxy       950
-,                 after     xfy       1000
-&                 after     xfy       1025
-->                after     xfy       1050
-;                 after     xfy       1100
-then              after     xfx       1150
-if                before    fx        1160
-else              after     xfy       1170
-::                after     xfx       1175
-==>               after     xfx       1175
-where             after     xfx       1175
---->              after     xfy       1179
-type              before    fx        1180
-end_module        before    fx        1199
-import_module     before    fx        1199
-include_module    before    fx        1199
-instance          before    fx        1199
-inst              before    fx        1199
-mode              before    fx        1199
-module            before    fx        1199
-pragma            before    fx        1199
-promise           before    fx        1199
-rule              before    fx        1199
-typeclass         before    fx        1199
-use_module        before    fx        1199
--->               after     xfx       1200
-:-                after     xfx       1200
-:-                before    fx        1200
-?-                before    fx        1200
+^                 xfy       99
+^                 fx        100
+**                xfy       200
+-                 fx        200
+\                 fx        200
+*                 yfx       400
+//                yfx       400
+/                 yfx       400
+<<                yfx       400
+>>                yfx       400
+div               yfx       400
+mod               xfx       400
+rem               xfx       400
+++                xfy       500
++                 yfx       500
++                 fx        500
+--                yfx       500
+-                 yfx       500
+/\                yfx       500
+\/                yfx       500
+aditi_bottom_up   fx        500
+aditi_top_down    fx        500
+.                 xfy       600
+:                 yfx       600
+:=                xfx       650
+=^                xfx       650
+<                 xfx       700
+=..               xfx       700
+=:=               xfx       700
+=<                xfx       700
+==                xfx       700
+=\=               xfx       700
+=                 xfx       700
+>=                xfx       700
+>                 xfx       700
+@@<                xfx       700
+@@=<               xfx       700
+@@>=               xfx       700
+@@>                xfx       700
+\==               xfx       700
+\=                xfx       700
+~=                xfx       700
+is                xfx       701
+and               xfy       720
+or                xfy       740
+func              fx        800
+impure            fy        800
+pred              fx        800
+semipure          fy        800
+\+                fy        900
+not               fy        900
+when              xfx       900
+~                 fy        900
+<=>               xfy       920
+<=                xfy       920
+=>                xfy       920
+all               fxy       950
+lambda            fxy       950
+some              fxy       950
+,                 xfy       1000
+&                 xfy       1025
+->                xfy       1050
+;                 xfy       1100
+then              xfx       1150
+if                fx        1160
+else              xfy       1170
+::                xfx       1175
+==>               xfx       1175
+where             xfx       1175
+--->              xfy       1179
+type              fx        1180
+end_module        fx        1199
+import_module     fx        1199
+include_module    fx        1199
+instance          fx        1199
+inst              fx        1199
+mode              fx        1199
+module            fx        1199
+pragma            fx        1199
+promise           fx        1199
+rule              fx        1199
+typeclass         fx        1199
+use_module        fx        1199
+-->               xfx       1200
+:-                xfx       1200
+:-                fx        1200
+?-                fx        1200
 
 @end example
 
