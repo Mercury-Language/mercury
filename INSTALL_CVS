@@ -26,6 +26,7 @@ export MERCURY_COMPILER
 
 parallel=-j3
 
+touch Mmake.params
 (cd scripts; mmake $parallel) &&
 mmake depend $parallel &&
 mmake MMAKEFLAGS=$parallel &&

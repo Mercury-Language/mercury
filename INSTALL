@@ -16,5 +16,6 @@
 
 PATH=`pwd`/scripts:$PATH
 export PATH
+touch Mmake.params
 (cd scripts && make -f Mmake.makefile) &&
 mmake install # MMAKEFLAGS=-j3
