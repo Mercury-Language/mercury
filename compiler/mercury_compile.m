@@ -1676,7 +1676,7 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 		% if --inline-alloc is enabled, don't enable missing-prototype
 		% warnings, since gc_inline.h is missing lots of prototypes
 		( InlineAlloc = yes ->
-			WarningOpt = "-Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wtraditional -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized"
+			WarningOpt = "-Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wtraditional -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized "
 		;
 			WarningOpt = "-Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wtraditional -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized -Wstrict-prototypes "
 		)
