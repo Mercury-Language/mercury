@@ -520,14 +520,15 @@ LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 		;;
 	# We need a special-case hack here, because the auto-config 
 	# gets it wrong on the Alpha: the little example program
-	# works fine in asm_fast.gc mode, but big programs don't,
+	# works fine in fast.gc mode, but big programs don't,
 	# due to problems with the `gp' register.  Ideally we
 	# ought to write a big enough example program to trigger
 	# the problem, but that would be too much work.
 	alpha-dec-*)
-		MERCURY_MSG("gcc labels do not work on the Alpha")
+		MERCURY_MSG("asm labels work on the Alpha")
+		MERCURY_MSG("but plain gcc labels do not")
+		mercury_cv_asm_labels=yes
 		mercury_cv_gcc_labels=no
-		mercury_cv_asm_labels=no
 		;;
 esac
 AC_SUBST(CFLAGS_FOR_REGS)
@@ -595,7 +596,7 @@ if test $mercury_cv_gcc_labels = yes; then
 	)
 	AC_MSG_RESULT($mercury_cv_asm_labels)
 else
-	mercury_cv_asm_labels=no
+	mercury_cv_asm_labels=${mercury_cv_asm_labels-no}
 fi
 HAVE_ASM_LABELS=$mercury_cv_asm_labels
 AC_SUBST(HAVE_ASM_LABELS)
