@@ -52,7 +52,13 @@
 
 	% Test specialization of unifications involving no tag types.
 :- pred unify_no_tag(no_tag::in, no_tag::in) is semidet.
-:- pragma no_inline(unify_no_tag/2).
+
+:- func id(T) = T.
+:- pragma type_spec(id/1, T = int).
+
+	% Test specialization of overloaded procedures.
+:- func length(list(T)) = int.
+:- pragma type_spec(length/1, T = int).
 
 :- implementation.
 
@@ -92,7 +98,14 @@ main -->
 		io__write_string("Succeeded\n")
 	;
 		io__write_string("Failed\n")
+	),
+	( { id(1) = 1 } ->
+		io__write_string("Succeeded\n")
+	;
+		io__write_string("Failed\n")
 	).
+
+
 
 type_spec([], [], []).
 type_spec([_ | _], [], []).
@@ -140,4 +153,10 @@ is_zero(0).
 
 my_unify(X, X).
 
+:- pragma no_inline(unify_no_tag/2).
+
 unify_no_tag(X, X).
+
+id(X) = X.
+
+type_spec__length(List) = list__length(List).

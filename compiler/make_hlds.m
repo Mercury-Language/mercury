@@ -899,8 +899,10 @@ add_pragma_type_spec_2(Pragma, SymName, SpecName, Arity,
 		% specified types to force the specialization. For imported
 		% predicates this forces the creation of the proper interface. 
 		%
+		pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc),
+		adjust_func_arity(PredOrFunc, Arity, PredArity),
 		varset__init(ArgVarSet0),
-		make_n_fresh_vars("HeadVar__", Arity,
+		make_n_fresh_vars("HeadVar__", PredArity,
 			ArgVarSet0, Args, ArgVarSet),
 		% XXX We could use explicit type qualifications here
 		% for the argument types, but explicit type qualification
@@ -914,9 +916,19 @@ add_pragma_type_spec_2(Pragma, SymName, SpecName, Arity,
 		set__list_to_set(Args, NonLocals),
 		goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
 		goal_info_set_context(GoalInfo1, Context, GoalInfo),
-		invalid_proc_id(DummyProcId),
-		Goal = call(PredId, DummyProcId, Args,
-			not_builtin, no, SymName) - GoalInfo,
+		(
+			PredOrFunc = predicate,
+			invalid_proc_id(DummyProcId),
+			Goal = call(PredId, DummyProcId, Args,
+				not_builtin, no, SymName) - GoalInfo
+		;
+			PredOrFunc = function,
+			pred_args_to_func_args(Args, FuncArgs, RetArg),
+			ConsId = cons(SymName, Arity),
+			create_atomic_unification(RetArg,
+				functor(ConsId, FuncArgs), Context,
+				explicit, [], Goal)
+		),
 		Clause = clause(ProcIds, Goal, Context),
 		map__init(TI_VarMap),
 		map__init(TCI_VarMap),
@@ -932,8 +944,7 @@ add_pragma_type_spec_2(Pragma, SymName, SpecName, Arity,
 
 		pred_info_module(PredInfo0, ModuleName),
 		pred_info_get_aditi_owner(PredInfo0, Owner),
-		pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc),
-		pred_info_init(ModuleName, SpecName, Arity, TVarSet,
+		pred_info_init(ModuleName, SpecName, PredArity, TVarSet,
 			ExistQVars, Types, true, Context, Clauses,
 			Status, Markers, none, PredOrFunc,
 			ClassContext, Proofs, Owner, NewPredInfo0),
