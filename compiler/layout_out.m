@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2004 The University of Melbourne.
+% Copyright (C) 2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -187,7 +187,7 @@ output_layout_decl(LayoutName, !DeclSet, !IO) :-
 	% This code should be kept in sync with output_layout_name/3 below.
 make_label_layout_name(Label) = Name :-
 	% We can't omit the mercury_ prefix on LabelName, even though the
-	% mercury_data_prefix duplicates it, because there is no simply way
+	% mercury_data_prefix duplicates it, because there is no simple way
 	% to make the MR_init_label_sl macro delete that prefix from the
 	% label's name to get the name of its layout structure.
 	LabelName = label_to_c_string(Label, yes),
@@ -197,241 +197,242 @@ make_label_layout_name(Label) = Name :-
 		LabelName
 	], Name).
 
-output_layout_name(label_layout(ProcLabel, LabelNum, _)) -->
+output_layout_name(label_layout(ProcLabel, LabelNum, _), !IO) :-
 	% This code should be kept in sync with make_label_layout_name/1 above.
-	io__write_string(mercury_data_prefix),
-	io__write_string("_label_layout__"),
+	io__write_string(mercury_data_prefix, !IO),
+	io__write_string("_label_layout__", !IO),
 	io__write_string(label_to_c_string(internal(LabelNum, ProcLabel),
-		yes)).
-output_layout_name(proc_layout(RttiProcLabel, _)) -->
-	io__write_string(mercury_data_prefix),
-	io__write_string("_proc_layout__"),
+		yes), !IO).
+output_layout_name(proc_layout(RttiProcLabel, _), !IO) :-
+	io__write_string(mercury_data_prefix, !IO),
+	io__write_string("_proc_layout__", !IO),
 	% We can't omit the mercury_ prefix on ProcLabel, even though the
 	% mercury_data_prefix duplicates it, because there is no simply way
 	% to make the MR_init_entryl_sl macro delete that prefix from the
 	% entry label's name to get the name of its layout structure.
-	output_proc_label(make_proc_label_from_rtti(RttiProcLabel), yes).
-output_layout_name(proc_layout_exec_trace(RttiProcLabel)) -->
-	io__write_string(mercury_data_prefix),
-	io__write_string("_proc_layout_exec_trace__"),
-	output_proc_label(make_proc_label_from_rtti(RttiProcLabel), no).
-output_layout_name(proc_layout_head_var_nums(RttiProcLabel)) -->
-	io__write_string(mercury_data_prefix),
-	io__write_string("_head_var_nums__"),
-	output_proc_label(make_proc_label_from_rtti(RttiProcLabel), no).
-output_layout_name(proc_layout_var_names(RttiProcLabel)) -->
-	io__write_string(mercury_data_prefix),
-	io__write_string("_var_names__"),
-	output_proc_label(make_proc_label_from_rtti(RttiProcLabel), no).
-output_layout_name(closure_proc_id(CallerProcLabel, SeqNo, _)) -->
-	io__write_string(mercury_data_prefix),
-	io__write_string("_closure_layout__"),
-	output_proc_label(CallerProcLabel, no),
-	io__write_string("_"),
-	io__write_int(SeqNo).
-output_layout_name(file_layout(ModuleName, FileNum)) -->
-	io__write_string(mercury_data_prefix),
-	io__write_string("_file_layout__"),
-	{ ModuleNameStr = sym_name_mangle(ModuleName) },
-	io__write_string(ModuleNameStr),
-	io__write_string("_"),
-	io__write_int(FileNum).
-output_layout_name(file_layout_line_number_vector(ModuleName, FileNum)) -->
-	io__write_string(mercury_data_prefix),
-	io__write_string("_file_lines__"),
-	{ ModuleNameStr = sym_name_mangle(ModuleName) },
-	io__write_string(ModuleNameStr),
-	io__write_string("_"),
-	io__write_int(FileNum).
-output_layout_name(file_layout_label_layout_vector(ModuleName, FileNum)) -->
-	io__write_string(mercury_data_prefix),
-	io__write_string("_file_label_layouts__"),
-	{ ModuleNameStr = sym_name_mangle(ModuleName) },
-	io__write_string(ModuleNameStr),
-	io__write_string("_"),
-	io__write_int(FileNum).
-output_layout_name(module_layout_string_table(ModuleName)) -->
-	io__write_string(mercury_data_prefix),
-	io__write_string("_module_strings__"),
-	{ ModuleNameStr = sym_name_mangle(ModuleName) },
-	io__write_string(ModuleNameStr).
-output_layout_name(module_layout_file_vector(ModuleName)) -->
-	io__write_string(mercury_data_prefix),
-	io__write_string("_module_files__"),
-	{ ModuleNameStr = sym_name_mangle(ModuleName) },
-	io__write_string(ModuleNameStr).
-output_layout_name(module_layout_proc_vector(ModuleName)) -->
-	io__write_string(mercury_data_prefix),
-	io__write_string("_module_procs__"),
-	{ ModuleNameStr = sym_name_mangle(ModuleName) },
-	io__write_string(ModuleNameStr).
-output_layout_name(module_layout_label_exec_count(ModuleName, _)) -->
-	io__write_string(mercury_data_prefix),
-	io__write_string("_module_label_exec_counts__"),
-	{ ModuleNameStr = sym_name_mangle(ModuleName) },
-	io__write_string(ModuleNameStr).
-output_layout_name(module_layout(ModuleName)) -->
-	io__write_string(mercury_data_prefix),
-	io__write_string("_module_layout__"),
-	{ ModuleNameStr = sym_name_mangle(ModuleName) },
-	io__write_string(ModuleNameStr).
-output_layout_name(proc_static(RttiProcLabel)) -->
-	io__write_string(mercury_data_prefix),
-	io__write_string("_proc_static__"),
-	{ ProcLabel = make_proc_label_from_rtti(RttiProcLabel) },
-	output_proc_label(ProcLabel, no).
-output_layout_name(proc_static_call_sites(RttiProcLabel)) -->
-	io__write_string(mercury_data_prefix),
-	io__write_string("_proc_static_call_sites__"),
-	{ ProcLabel = make_proc_label_from_rtti(RttiProcLabel) },
-	output_proc_label(ProcLabel, no).
-output_layout_name(table_io_decl(RttiProcLabel)) -->
-	io__write_string(mercury_data_prefix),
-	io__write_string("_table_io_decl__"),
-	{ ProcLabel = make_proc_label_from_rtti(RttiProcLabel) },
-	output_proc_label(ProcLabel, no).
-output_layout_name(table_gen_info(RttiProcLabel)) -->
-	io__write_string(mercury_data_prefix),
-	io__write_string("_table_gen__"),
-	{ ProcLabel = make_proc_label_from_rtti(RttiProcLabel) },
-	output_proc_label(ProcLabel, no).
-output_layout_name(table_gen_enum_params(RttiProcLabel)) -->
-	io__write_string(mercury_data_prefix),
-	io__write_string("_table_enum_params__"),
-	{ ProcLabel = make_proc_label_from_rtti(RttiProcLabel) },
-	output_proc_label(ProcLabel, no).
-output_layout_name(table_gen_steps(RttiProcLabel)) -->
-	io__write_string(mercury_data_prefix),
-	io__write_string("_table_steps__"),
-	{ ProcLabel = make_proc_label_from_rtti(RttiProcLabel) },
-	output_proc_label(ProcLabel, no).
+	output_proc_label(make_proc_label_from_rtti(RttiProcLabel), yes, !IO).
+output_layout_name(proc_layout_exec_trace(RttiProcLabel), !IO) :-
+	io__write_string(mercury_data_prefix, !IO),
+	io__write_string("_proc_layout_exec_trace__", !IO),
+	output_proc_label(make_proc_label_from_rtti(RttiProcLabel), no, !IO).
+output_layout_name(proc_layout_head_var_nums(RttiProcLabel), !IO) :-
+	io__write_string(mercury_data_prefix, !IO),
+	io__write_string("_head_var_nums__", !IO),
+	output_proc_label(make_proc_label_from_rtti(RttiProcLabel), no, !IO).
+output_layout_name(proc_layout_var_names(RttiProcLabel), !IO) :-
+	io__write_string(mercury_data_prefix, !IO),
+	io__write_string("_var_names__", !IO),
+	output_proc_label(make_proc_label_from_rtti(RttiProcLabel), no, !IO).
+output_layout_name(closure_proc_id(CallerProcLabel, SeqNo, _), !IO) :-
+	io__write_string(mercury_data_prefix, !IO),
+	io__write_string("_closure_layout__", !IO),
+	output_proc_label(CallerProcLabel, no, !IO),
+	io__write_string("_", !IO),
+	io__write_int(SeqNo, !IO).
+output_layout_name(file_layout(ModuleName, FileNum), !IO) :-
+	io__write_string(mercury_data_prefix, !IO),
+	io__write_string("_file_layout__", !IO),
+	ModuleNameStr = sym_name_mangle(ModuleName),
+	io__write_string(ModuleNameStr, !IO),
+	io__write_string("_", !IO),
+	io__write_int(FileNum, !IO).
+output_layout_name(file_layout_line_number_vector(ModuleName, FileNum), !IO) :-
+	io__write_string(mercury_data_prefix, !IO),
+	io__write_string("_file_lines__", !IO),
+	ModuleNameStr = sym_name_mangle(ModuleName),
+	io__write_string(ModuleNameStr, !IO),
+	io__write_string("_", !IO),
+	io__write_int(FileNum, !IO).
+output_layout_name(file_layout_label_layout_vector(ModuleName, FileNum),
+		!IO) :-
+	io__write_string(mercury_data_prefix, !IO),
+	io__write_string("_file_label_layouts__", !IO),
+	ModuleNameStr = sym_name_mangle(ModuleName),
+	io__write_string(ModuleNameStr, !IO),
+	io__write_string("_", !IO),
+	io__write_int(FileNum, !IO).
+output_layout_name(module_layout_string_table(ModuleName), !IO) :-
+	io__write_string(mercury_data_prefix, !IO),
+	io__write_string("_module_strings__", !IO),
+	ModuleNameStr = sym_name_mangle(ModuleName),
+	io__write_string(ModuleNameStr, !IO).
+output_layout_name(module_layout_file_vector(ModuleName), !IO) :-
+	io__write_string(mercury_data_prefix, !IO),
+	io__write_string("_module_files__", !IO),
+	ModuleNameStr = sym_name_mangle(ModuleName),
+	io__write_string(ModuleNameStr, !IO).
+output_layout_name(module_layout_proc_vector(ModuleName), !IO) :-
+	io__write_string(mercury_data_prefix, !IO),
+	io__write_string("_module_procs__", !IO),
+	ModuleNameStr = sym_name_mangle(ModuleName),
+	io__write_string(ModuleNameStr, !IO).
+output_layout_name(module_layout_label_exec_count(ModuleName, _), !IO) :-
+	io__write_string(mercury_data_prefix, !IO),
+	io__write_string("_module_label_exec_counts__", !IO),
+	ModuleNameStr = sym_name_mangle(ModuleName),
+	io__write_string(ModuleNameStr, !IO).
+output_layout_name(module_layout(ModuleName), !IO) :-
+	io__write_string(mercury_data_prefix, !IO),
+	io__write_string("_module_layout__", !IO),
+	ModuleNameStr = sym_name_mangle(ModuleName),
+	io__write_string(ModuleNameStr, !IO).
+output_layout_name(proc_static(RttiProcLabel), !IO) :-
+	io__write_string(mercury_data_prefix, !IO),
+	io__write_string("_proc_static__", !IO),
+	ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
+	output_proc_label(ProcLabel, no, !IO).
+output_layout_name(proc_static_call_sites(RttiProcLabel), !IO) :-
+	io__write_string(mercury_data_prefix, !IO),
+	io__write_string("_proc_static_call_sites__", !IO),
+	ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
+	output_proc_label(ProcLabel, no, !IO).
+output_layout_name(table_io_decl(RttiProcLabel), !IO) :-
+	io__write_string(mercury_data_prefix, !IO),
+	io__write_string("_table_io_decl__", !IO),
+	ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
+	output_proc_label(ProcLabel, no, !IO).
+output_layout_name(table_gen_info(RttiProcLabel), !IO) :-
+	io__write_string(mercury_data_prefix, !IO),
+	io__write_string("_table_gen__", !IO),
+	ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
+	output_proc_label(ProcLabel, no, !IO).
+output_layout_name(table_gen_enum_params(RttiProcLabel), !IO) :-
+	io__write_string(mercury_data_prefix, !IO),
+	io__write_string("_table_enum_params__", !IO),
+	ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
+	output_proc_label(ProcLabel, no, !IO).
+output_layout_name(table_gen_steps(RttiProcLabel), !IO) :-
+	io__write_string(mercury_data_prefix, !IO),
+	io__write_string("_table_steps__", !IO),
+	ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
+	output_proc_label(ProcLabel, no, !IO).
 
 output_layout_name_storage_type_name(
 		label_layout(ProcLabel, LabelNum, LabelVars),
-		_BeingDefined) -->
-	io__write_string("static const "),
-	io__write_string(label_vars_to_type(LabelVars)),
-	io__write_string(" "),
-	output_layout_name(label_layout(ProcLabel, LabelNum, LabelVars)).
+		_BeingDefined, !IO) :-
+	io__write_string("static const ", !IO),
+	io__write_string(label_vars_to_type(LabelVars), !IO),
+	io__write_string(" ", !IO),
+	output_layout_name(label_layout(ProcLabel, LabelNum, LabelVars), !IO).
 output_layout_name_storage_type_name(proc_layout(ProcLabel, Kind),
-		BeingDefined) -->
-	{ ProcIsImported = ProcLabel ^ proc_is_imported },
-	{ ProcIsExported = ProcLabel ^ proc_is_exported },
+		BeingDefined, !IO) :-
+	ProcIsImported = ProcLabel ^ proc_is_imported,
+	ProcIsExported = ProcLabel ^ proc_is_exported,
 	(
-		{ ProcIsImported = no },
-		{ ProcIsExported = no }
+		ProcIsImported = no,
+		ProcIsExported = no
 	->
-		io__write_string("static ")
+		io__write_string("static ", !IO)
 	;
 		(
-			{ BeingDefined = yes }
+			BeingDefined = yes
 		;
-			{ BeingDefined = no },
-			io__write_string("extern ")
+			BeingDefined = no,
+			io__write_string("extern ", !IO)
 		)
 	),
-	io__write_string("const "),
-	io__write_string(proc_layout_kind_to_type(Kind)),
-	io__write_string(" "),
-	output_layout_name(proc_layout(ProcLabel, Kind)).
+	io__write_string("const ", !IO),
+	io__write_string(proc_layout_kind_to_type(Kind), !IO),
+	io__write_string(" ", !IO),
+	output_layout_name(proc_layout(ProcLabel, Kind), !IO).
 output_layout_name_storage_type_name(proc_layout_exec_trace(ProcLabel),
-		_BeingDefined) -->
-	io__write_string("static MR_STATIC_CODE_CONST MR_Exec_Trace\n\t"),
-	output_layout_name(proc_layout_exec_trace(ProcLabel)).
+		_BeingDefined, !IO) :-
+	io__write_string("static MR_STATIC_CODE_CONST MR_Exec_Trace\n\t", !IO),
+	output_layout_name(proc_layout_exec_trace(ProcLabel), !IO).
 output_layout_name_storage_type_name(proc_layout_head_var_nums(ProcLabel),
-		_BeingDefined) -->
-	io__write_string("static const "),
-	io__write_string("MR_uint_least16_t "),
-	output_layout_name(proc_layout_head_var_nums(ProcLabel)),
-	io__write_string("[]").
+		_BeingDefined, !IO) :-
+	io__write_string("static const ", !IO),
+	io__write_string("MR_uint_least16_t ", !IO),
+	output_layout_name(proc_layout_head_var_nums(ProcLabel), !IO),
+	io__write_string("[]", !IO).
 output_layout_name_storage_type_name(proc_layout_var_names(ProcLabel),
-		_BeingDefined) -->
-	io__write_string("static const "),
-	io__write_string("MR_uint_least32_t "),
-	output_layout_name(proc_layout_var_names(ProcLabel)),
-	io__write_string("[]").
+		_BeingDefined, !IO) :-
+	io__write_string("static const ", !IO),
+	io__write_string("MR_uint_least32_t ", !IO),
+	output_layout_name(proc_layout_var_names(ProcLabel), !IO),
+	io__write_string("[]", !IO).
 output_layout_name_storage_type_name(closure_proc_id(CallerProcLabel, SeqNo,
-		ClosureProcLabel), _BeingDefined) -->
-	io__write_string("static const "),
+		ClosureProcLabel), _BeingDefined, !IO) :-
+	io__write_string("static const ", !IO),
 	(
-		{ ClosureProcLabel = proc(_, _, _, _, _, _) },
-		io__write_string("MR_User_Closure_Id\n")
+		ClosureProcLabel = proc(_, _, _, _, _, _),
+		io__write_string("MR_User_Closure_Id\n", !IO)
 	;
-		{ ClosureProcLabel = special_proc(_, _, _, _, _, _) },
-		io__write_string("MR_UCI_Closure_Id\n")
+		ClosureProcLabel = special_proc(_, _, _, _, _, _),
+		io__write_string("MR_UCI_Closure_Id\n", !IO)
 	),
 	output_layout_name(closure_proc_id(CallerProcLabel, SeqNo,
-		ClosureProcLabel)).
+		ClosureProcLabel), !IO).
 output_layout_name_storage_type_name(file_layout(ModuleName, FileNum),
-		_BeingDefined) -->
-	io__write_string("static const MR_Module_File_Layout "),
-	output_layout_name(file_layout(ModuleName, FileNum)).
+		_BeingDefined, !IO) :-
+	io__write_string("static const MR_Module_File_Layout ", !IO),
+	output_layout_name(file_layout(ModuleName, FileNum), !IO).
 output_layout_name_storage_type_name(file_layout_line_number_vector(
-		ModuleName, FileNum), _BeingDefined) -->
-	io__write_string("static const MR_int_least16_t "),
+		ModuleName, FileNum), _BeingDefined, !IO) :-
+	io__write_string("static const MR_int_least16_t ", !IO),
 	output_layout_name(
-		file_layout_line_number_vector(ModuleName, FileNum)),
-	io__write_string("[]").
+		file_layout_line_number_vector(ModuleName, FileNum), !IO),
+	io__write_string("[]", !IO).
 output_layout_name_storage_type_name(file_layout_label_layout_vector(
-		ModuleName, FileNum), _BeingDefined) -->
-	io__write_string("static const MR_Label_Layout *"),
+		ModuleName, FileNum), _BeingDefined, !IO) :-
+	io__write_string("static const MR_Label_Layout *", !IO),
 	output_layout_name(
-		file_layout_label_layout_vector(ModuleName, FileNum)),
-	io__write_string("[]").
+		file_layout_label_layout_vector(ModuleName, FileNum), !IO),
+	io__write_string("[]", !IO).
 output_layout_name_storage_type_name(module_layout_string_table(ModuleName),
-		_BeingDefined) -->
-	io__write_string("static const char "),
-	output_layout_name(module_layout_string_table(ModuleName)),
-	io__write_string("[]").
+		_BeingDefined, !IO) :-
+	io__write_string("static const char ", !IO),
+	output_layout_name(module_layout_string_table(ModuleName), !IO),
+	io__write_string("[]", !IO).
 output_layout_name_storage_type_name(module_layout_file_vector(ModuleName),
-		_BeingDefined) -->
-	io__write_string("static const MR_Module_File_Layout *"),
-	output_layout_name(module_layout_file_vector(ModuleName)),
-	io__write_string("[]").
+		_BeingDefined, !IO) :-
+	io__write_string("static const MR_Module_File_Layout *", !IO),
+	output_layout_name(module_layout_file_vector(ModuleName), !IO),
+	io__write_string("[]", !IO).
 output_layout_name_storage_type_name(module_layout_label_exec_count(
-		ModuleName, NumElements), _BeingDefined) -->
-	io__write_string("static MR_Unsigned "),
+		ModuleName, NumElements), _BeingDefined, !IO) :-
+	io__write_string("static MR_Unsigned ", !IO),
 	output_layout_name(
-		module_layout_label_exec_count(ModuleName, NumElements)),
-	io__write_string("["),
-	io__write_int(NumElements),
-	io__write_string("]").
+		module_layout_label_exec_count(ModuleName, NumElements), !IO),
+	io__write_string("[", !IO),
+	io__write_int(NumElements, !IO),
+	io__write_string("]", !IO).
 output_layout_name_storage_type_name(module_layout_proc_vector(ModuleName),
-		_BeingDefined) -->
-	io__write_string("static const MR_Proc_Layout *"),
-	output_layout_name(module_layout_proc_vector(ModuleName)),
-	io__write_string("[]").
+		_BeingDefined, !IO) :-
+	io__write_string("static const MR_Proc_Layout *", !IO),
+	output_layout_name(module_layout_proc_vector(ModuleName), !IO),
+	io__write_string("[]", !IO).
 output_layout_name_storage_type_name(module_layout(ModuleName),
-		_BeingDefined) -->
-	io__write_string("static const MR_Module_Layout "),
-	output_layout_name(module_layout(ModuleName)).
+		_BeingDefined, !IO) :-
+	io__write_string("static const MR_Module_Layout ", !IO),
+	output_layout_name(module_layout(ModuleName), !IO).
 output_layout_name_storage_type_name(proc_static(RttiProcLabel),
-		_BeingDefined) -->
-	io__write_string("static MR_ProcStatic "),
-	output_layout_name(proc_static(RttiProcLabel)).
+		_BeingDefined, !IO) :-
+	io__write_string("static MR_ProcStatic ", !IO),
+	output_layout_name(proc_static(RttiProcLabel), !IO).
 output_layout_name_storage_type_name(proc_static_call_sites(RttiProcLabel),
-		_BeingDefined) -->
-	io__write_string("static const MR_CallSiteStatic "),
-	output_layout_name(proc_static_call_sites(RttiProcLabel)),
-	io__write_string("[]").
+		_BeingDefined, !IO) :-
+	io__write_string("static const MR_CallSiteStatic ", !IO),
+	output_layout_name(proc_static_call_sites(RttiProcLabel), !IO),
+	io__write_string("[]", !IO).
 output_layout_name_storage_type_name(table_io_decl(RttiProcLabel),
-		_BeingDefined) -->
-	io__write_string("static const MR_Table_Io_Decl "),
-	output_layout_name(table_io_decl(RttiProcLabel)).
+		_BeingDefined, !IO) :-
+	io__write_string("static const MR_Table_Io_Decl ", !IO),
+	output_layout_name(table_io_decl(RttiProcLabel), !IO).
 output_layout_name_storage_type_name(table_gen_info(RttiProcLabel),
-		_BeingDefined) -->
-	io__write_string("static const MR_Table_Gen "),
-	output_layout_name(table_gen_info(RttiProcLabel)).
+		_BeingDefined, !IO) :-
+	io__write_string("static const MR_Table_Gen ", !IO),
+	output_layout_name(table_gen_info(RttiProcLabel), !IO).
 output_layout_name_storage_type_name(table_gen_enum_params(RttiProcLabel),
-		_BeingDefined) -->
-	io__write_string("static const MR_Integer "),
-	output_layout_name(table_gen_enum_params(RttiProcLabel)),
-	io__write_string("[]").
+		_BeingDefined, !IO) :-
+	io__write_string("static const MR_Integer ", !IO),
+	output_layout_name(table_gen_enum_params(RttiProcLabel), !IO),
+	io__write_string("[]", !IO).
 output_layout_name_storage_type_name(table_gen_steps(RttiProcLabel),
-		_BeingDefined) -->
-	io__write_string("static const MR_Table_Trie_Step "),
-	output_layout_name(table_gen_steps(RttiProcLabel)),
-	io__write_string("[]").
+		_BeingDefined, !IO) :-
+	io__write_string("static const MR_Table_Trie_Step ", !IO),
+	output_layout_name(table_gen_steps(RttiProcLabel), !IO),
+	io__write_string("[]", !IO).
 
 layout_name_would_include_code_addr(label_layout(_, _, _)) = no.
 layout_name_would_include_code_addr(proc_layout(_, _)) = no.
@@ -725,17 +726,17 @@ proc_label_user_or_uci(special_proc(_, _, _, _, _, _)) = uci.
 	proc_layout_kind::in, proc_layout_stack_traversal::in,
 	io::di, io::uo) is det.
 
-output_proc_layout_data_defn_start(RttiProcLabel, Kind, Traversal) -->
-	io__write_string("\n"),
+output_proc_layout_data_defn_start(RttiProcLabel, Kind, Traversal, !IO) :-
+	io__write_string("\n", !IO),
 	output_layout_name_storage_type_name(proc_layout(RttiProcLabel, Kind),
-		yes),
-	io__write_string(" = {\n"),
-	output_layout_traversal_group(Traversal).
+		yes, !IO),
+	io__write_string(" = {\n", !IO),
+	output_layout_traversal_group(Traversal, !IO).
 
 :- pred output_proc_layout_data_defn_end(io::di, io::uo) is det.
 
-output_proc_layout_data_defn_end -->
-	io__write_string("};\n").
+output_proc_layout_data_defn_end(!IO) :-
+	io__write_string("};\n", !IO).
 
 :- pred output_layout_traversal_decls(proc_layout_stack_traversal::in,
 	decl_set::in, decl_set::out, io::di, io::uo) is det.
@@ -793,15 +794,15 @@ detism_to_c_detism(cc_multidet) = "MR_DETISM_CCMULTI".
 
 :- pred output_layout_proc_id_group(proc_label::in, io::di, io::uo) is det.
 
-output_layout_proc_id_group(ProcLabel) -->
-	io__write_string("{\n"),
-	output_proc_id(ProcLabel),
-	io__write_string("},\n").
+output_layout_proc_id_group(ProcLabel, !IO) :-
+	io__write_string("{\n", !IO),
+	output_proc_id(ProcLabel, !IO),
+	io__write_string("},\n", !IO).
 
 :- pred output_layout_no_proc_id_group(io::di, io::uo) is det.
 
-output_layout_no_proc_id_group -->
-	io__write_string("-1\n").
+output_layout_no_proc_id_group(!IO) :-
+	io__write_string("-1\n", !IO).
 
 :- pred output_layout_exec_trace_decls(rtti_proc_label::in,
 	proc_layout_exec_trace::in, decl_set::in, decl_set::out,
@@ -909,10 +910,10 @@ output_layout_exec_trace(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
 
 :- pred write_maybe_slot_num(maybe(int)::in, io::di, io::uo) is det.
 
-write_maybe_slot_num(yes(SlotNum)) -->
-	io__write_int(SlotNum).
-write_maybe_slot_num(no) -->
-	io__write_int(-1).
+write_maybe_slot_num(yes(SlotNum), !IO) :-
+	io__write_int(SlotNum, !IO).
+write_maybe_slot_num(no, !IO) :-
+	io__write_int(-1, !IO).
 
 :- func eval_method_to_c_string(eval_method) = string.
 
@@ -998,71 +999,68 @@ output_proc_layout_var_names(ProcLabel, VarNames, MaxVarNum, !DeclSet, !IO) :-
 	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_closure_proc_id_data_defn(CallerProcLabel, SeqNo, ClosureProcLabel,
-		ModuleName, FileName, LineNumber, GoalPath,
-		!DeclSet) -->
-	io__write_string("\n"),
-	{ LayoutName = closure_proc_id(CallerProcLabel, SeqNo,
-		ClosureProcLabel) },
-	output_layout_name_storage_type_name(LayoutName, yes),
-	io__write_string(" = {\n{\n"),
-	output_proc_id(ClosureProcLabel),
-	io__write_string("},\n"),
-	{ prog_out__sym_name_to_string(ModuleName, ModuleNameStr) },
-	quote_and_write_string(ModuleNameStr),
-	io__write_string(",\n"),
-	quote_and_write_string(FileName),
-	io__write_string(",\n"),
-	io__write_int(LineNumber),
-	io__write_string(",\n"),
-	quote_and_write_string(GoalPath),
-	io__write_string("\n};\n"),
-	{ decl_set_insert(data_addr(layout_addr(LayoutName)),
-		!DeclSet) }.
+		ModuleName, FileName, LineNumber, GoalPath, !DeclSet, !IO) :-
+	io__write_string("\n", !IO),
+	LayoutName = closure_proc_id(CallerProcLabel, SeqNo, ClosureProcLabel),
+	output_layout_name_storage_type_name(LayoutName, yes, !IO),
+	io__write_string(" = {\n{\n", !IO),
+	output_proc_id(ClosureProcLabel, !IO),
+	io__write_string("},\n", !IO),
+	prog_out__sym_name_to_string(ModuleName, ModuleNameStr),
+	quote_and_write_string(ModuleNameStr, !IO),
+	io__write_string(",\n", !IO),
+	quote_and_write_string(FileName, !IO),
+	io__write_string(",\n", !IO),
+	io__write_int(LineNumber, !IO),
+	io__write_string(",\n", !IO),
+	quote_and_write_string(GoalPath, !IO),
+	io__write_string("\n};\n", !IO),
+	decl_set_insert(data_addr(layout_addr(LayoutName)), !DeclSet).
 
 :- pred output_proc_id(proc_label::in, io::di, io::uo) is det.
 
-output_proc_id(ProcLabel) -->
+output_proc_id(ProcLabel, !IO) :-
 	(
-		{ ProcLabel = proc(DefiningModule, PredOrFunc, DeclaringModule,
-			Name, Arity, Mode) },
-		{ prog_out__sym_name_to_string(DefiningModule,
-			DefiningModuleStr) },
-		{ prog_out__sym_name_to_string(DeclaringModule,
-			DeclaringModuleStr) },
-		{ proc_id_to_int(Mode, ModeInt) },
-		output_pred_or_func(PredOrFunc),
-		io__write_string(",\n"),
-		quote_and_write_string(DeclaringModuleStr),
-		io__write_string(",\n"),
-		quote_and_write_string(DefiningModuleStr),
-		io__write_string(",\n"),
-		quote_and_write_string(Name),
-		io__write_string(",\n"),
-		io__write_int(Arity),
-		io__write_string(",\n"),
-		io__write_int(ModeInt),
-		io__write_string("\n")
+		ProcLabel = proc(DefiningModule, PredOrFunc, DeclaringModule,
+			Name, Arity, Mode),
+		prog_out__sym_name_to_string(DefiningModule,
+			DefiningModuleStr),
+		prog_out__sym_name_to_string(DeclaringModule,
+			DeclaringModuleStr),
+		proc_id_to_int(Mode, ModeInt),
+		output_pred_or_func(PredOrFunc, !IO),
+		io__write_string(",\n", !IO),
+		quote_and_write_string(DeclaringModuleStr, !IO),
+		io__write_string(",\n", !IO),
+		quote_and_write_string(DefiningModuleStr, !IO),
+		io__write_string(",\n", !IO),
+		quote_and_write_string(Name, !IO),
+		io__write_string(",\n", !IO),
+		io__write_int(Arity, !IO),
+		io__write_string(",\n", !IO),
+		io__write_int(ModeInt, !IO),
+		io__write_string("\n", !IO)
 	;
-		{ ProcLabel = special_proc(DefiningModule, SpecialPredId,
-			TypeModule, TypeName, TypeArity, Mode) },
-		{ prog_out__sym_name_to_string(DefiningModule,
-			DefiningModuleStr) },
-		{ prog_out__sym_name_to_string(TypeModule, TypeModuleStr) },
-		{ proc_id_to_int(Mode, ModeInt) },
-		quote_and_write_string(TypeName),
-		io__write_string(",\n"),
-		quote_and_write_string(TypeModuleStr),
-		io__write_string(",\n"),
-		quote_and_write_string(DefiningModuleStr),
-		io__write_string(",\n"),
-		{ TypeCtor = qualified(TypeModule, TypeName) - TypeArity },
-		{ PredName = special_pred_name(SpecialPredId, TypeCtor) },
-		quote_and_write_string(PredName),
-		io__write_string(",\n"),
-		io__write_int(TypeArity),
-		io__write_string(",\n"),
-		io__write_int(ModeInt),
-		io__write_string("\n")
+		ProcLabel = special_proc(DefiningModule, SpecialPredId,
+			TypeModule, TypeName, TypeArity, Mode),
+		prog_out__sym_name_to_string(DefiningModule,
+			DefiningModuleStr),
+		prog_out__sym_name_to_string(TypeModule, TypeModuleStr),
+		proc_id_to_int(Mode, ModeInt),
+		quote_and_write_string(TypeName, !IO),
+		io__write_string(",\n", !IO),
+		quote_and_write_string(TypeModuleStr, !IO),
+		io__write_string(",\n", !IO),
+		quote_and_write_string(DefiningModuleStr, !IO),
+		io__write_string(",\n", !IO),
+		TypeCtor = qualified(TypeModule, TypeName) - TypeArity,
+		PredName = special_pred_name(SpecialPredId, TypeCtor),
+		quote_and_write_string(PredName, !IO),
+		io__write_string(",\n", !IO),
+		io__write_int(TypeArity, !IO),
+		io__write_string(",\n", !IO),
+		io__write_int(ModeInt, !IO),
+		io__write_string("\n", !IO)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1134,11 +1132,13 @@ output_module_layout_proc_vector_defn(ModuleName, ProcLayoutNames,
 	io__write_string("\n", !IO),
 	output_layout_name_storage_type_name(VectorName, yes, !IO),
 	io__write_string(" = {\n", !IO),
-	( ProcLayoutNames = [] ->
+	(
+		ProcLayoutNames = [],
 			% ANSI/ISO C doesn't allow empty arrays, so
 			% place a dummy value in the array.
 		io__write_string("NULL\n", !IO)
 	;
+		ProcLayoutNames = [_ | _],
 		list__foldl(output_proc_layout_name_in_vector, ProcLayoutNames,
 			!IO)
 	),
@@ -1168,16 +1168,15 @@ output_proc_layout_name_in_vector(LayoutName, !IO) :-
 	io::di, io::uo) is det.
 
 output_module_string_table(ModuleName, StringTableSize, StringTable,
-		!DeclSet) -->
-	{ TableName = module_layout_string_table(ModuleName) },
-	io__write_string("\n"),
-	output_layout_name_storage_type_name(TableName, yes),
-	io__write_string(" = {"),
+		!DeclSet, !IO) :-
+	TableName = module_layout_string_table(ModuleName),
+	io__write_string("\n", !IO),
+	output_layout_name_storage_type_name(TableName, yes, !IO),
+	io__write_string(" = {", !IO),
 	output_module_string_table_chars_driver(0, StringTableSize - 1,
-		StringTable),
-	io__write_string("};\n"),
-	{ decl_set_insert(data_addr(layout_addr(TableName)),
-		!DeclSet) }.
+		StringTable, !IO),
+	io__write_string("};\n", !IO),
+	decl_set_insert(data_addr(layout_addr(TableName)), !DeclSet).
 
 % The jobs of this predicate is to minimize stack space consumption in
 % grades that do not allow output_module_string_table_chars to be tail
@@ -1188,37 +1187,38 @@ output_module_string_table(ModuleName, StringTableSize, StringTable,
 :- pred output_module_string_table_chars_driver(int::in, int::in,
 	string_with_0s::in, io::di, io::uo) is det.
 
-output_module_string_table_chars_driver(CurIndex, MaxIndex, StringWithNulls) -->
-	( { CurIndex < MaxIndex } ->
-		{ SubMaxIndex = int__min(MaxIndex, CurIndex + 255) },
+output_module_string_table_chars_driver(CurIndex, MaxIndex, StringWithNulls,
+		!IO) :-
+	( CurIndex < MaxIndex ->
+		SubMaxIndex = int__min(MaxIndex, CurIndex + 255),
 		output_module_string_table_chars(CurIndex, SubMaxIndex,
-			StringWithNulls),
+			StringWithNulls, !IO),
 		output_module_string_table_chars_driver(SubMaxIndex + 1,
-			MaxIndex, StringWithNulls)
+			MaxIndex, StringWithNulls, !IO)
 	;
-		[]
+		true
 	).
 
 :- pred output_module_string_table_chars(int::in, int::in, string_with_0s::in,
 	io::di, io::uo) is det.
 
-output_module_string_table_chars(CurIndex, MaxIndex, StringWithNulls) -->
-	( { CurIndex mod 10 = 0 } ->
-		io__write_string("\n")
+output_module_string_table_chars(CurIndex, MaxIndex, StringWithNulls, !IO) :-
+	( CurIndex mod 10 = 0 ->
+		io__write_string("\n", !IO)
 	;
-		[]
+		true
 	),
-	{ StringWithNulls = string_with_0s(String) },
-	{ string__unsafe_index(String, CurIndex, Char) },
-	io__write_char(''''),
-	c_util__output_quoted_char(Char),
-	io__write_char(''''),
-	io__write_string(", "),
-	( { CurIndex < MaxIndex } ->
+	StringWithNulls = string_with_0s(String),
+	string__unsafe_index(String, CurIndex, Char),
+	io__write_char('''', !IO),
+	c_util__output_quoted_char(Char, !IO),
+	io__write_char('''', !IO),
+	io__write_string(", ", !IO),
+	( CurIndex < MaxIndex ->
 		output_module_string_table_chars(CurIndex + 1, MaxIndex,
-			StringWithNulls)
+			StringWithNulls, !IO)
 	;
-		[]
+		true
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1249,13 +1249,13 @@ output_file_layout_vector_data_defn(ModuleName, FileLayoutNames, VectorName,
 	list(file_layout_data)::in, list(layout_name)::out,
 	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_file_layout_data_defns(_, _, [], [], !DeclSet) --> [].
+output_file_layout_data_defns(_, _, [], [], !DeclSet, !IO).
 output_file_layout_data_defns(ModuleName, FileNum, [FileLayout | FileLayouts],
-		[FileLayoutName | FileLayoutNames], !DeclSet) -->
+		[FileLayoutName | FileLayoutNames], !DeclSet, !IO) :-
 	output_file_layout_data_defn(ModuleName, FileNum, FileLayout,
-		FileLayoutName, !DeclSet),
+		FileLayoutName, !DeclSet, !IO),
 	output_file_layout_data_defns(ModuleName, FileNum + 1, FileLayouts,
-		FileLayoutNames, !DeclSet).
+		FileLayoutNames, !DeclSet, !IO).
 
 :- pred output_file_layout_data_defn(module_name::in, int::in,
 	file_layout_data::in, layout_name::out,
@@ -1398,32 +1398,32 @@ line_no_label_to_label_layout_addr(LineNo - LabelLayout, LineNo, DataAddr) :-
 
 :- pred quote_and_write_string(string::in, io::di, io::uo) is det.
 
-quote_and_write_string(String) -->
-	io__write_string(""""),
-	c_util__output_quoted_string(String),
-	io__write_string("""").
+quote_and_write_string(String, !IO) :-
+	io__write_string("""", !IO),
+	c_util__output_quoted_string(String, !IO),
+	io__write_string("""", !IO).
 
 :- pred output_number_in_vector(int::in, io::di, io::uo) is det.
 
-output_number_in_vector(Num) -->
-	io__write_int(Num),
-	io__write_string(",\n").
+output_number_in_vector(Num, !IO) :-
+	io__write_int(Num, !IO),
+	io__write_string(",\n", !IO).
 
 :- pred output_layout_name_in_vector(string::in, layout_name::in,
 	io::di, io::uo) is det.
 
-output_layout_name_in_vector(Prefix, Name) -->
-	io__write_string(Prefix),
-	output_layout_name(Name),
-	io__write_string(",\n").
+output_layout_name_in_vector(Prefix, Name, !IO) :-
+	io__write_string(Prefix, !IO),
+	output_layout_name(Name, !IO),
+	io__write_string(",\n", !IO).
 
 :- pred output_data_addr_in_vector(string::in, data_addr::in,
 	io::di, io::uo) is det.
 
-output_data_addr_in_vector(Prefix, DataAddr) -->
-	io__write_string(Prefix),
-	output_data_addr(DataAddr),
-	io__write_string(",\n").
+output_data_addr_in_vector(Prefix, DataAddr, !IO) :-
+	io__write_string(Prefix, !IO),
+	output_data_addr(DataAddr, !IO),
+	io__write_string(",\n", !IO).
 
 %-----------------------------------------------------------------------------%
 
