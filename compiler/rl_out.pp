@@ -1227,7 +1227,9 @@ rl_out__compute_join_bytecode(nested_loop, yes(Tuple),
 rl_out__compute_join_bytecode(sort_merge(_, _), no, rl_PROC_join_sm, no).
 rl_out__compute_join_bytecode(sort_merge(_, _), yes(Tuple),
 		rl_PROC_semijoin_sm, Swap) :-
-	rl_out__should_swap_inputs(Tuple, Swap).
+	rl_out__should_swap_inputs(Tuple, Swap),
+	error(
+"rl_out__compute_join_bytecode: sort-merge semi-joins not yet implemented in Aditi").
 
 rl_out__compute_join_bytecode(hash(_, _), no, rl_PROC_join_hj, no).
 rl_out__compute_join_bytecode(hash(_, _), yes(Tuple),
