@@ -1793,7 +1793,7 @@ warn_if_duplicate_use_import_decls(ModuleName,
 
 write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 	{ Module = module_imports(SourceFileName, ModuleName, ParentDeps,
-			IntDeps, ImplDeps, IndirectDeps, _InclDeps, FactDeps0,
+			IntDeps, ImplDeps, IndirectDeps, InclDeps, FactDeps0,
 			ContainsForeignCode, ForeignImports0,
 			Items, _Error, _Timestamps) },
 	globals__io_lookup_bool_option(verbose, Verbose),
@@ -1906,6 +1906,8 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			ILDateFileName),
 		module_name_to_file_name(ModuleName, ".pic_o", no,
 							PicObjFileName),
+		module_name_to_file_name(ModuleName, ".int0", no,
+							Int0FileName),
 		module_name_to_split_c_file_pattern(ModuleName, ".$O",
 			SplitObjPattern),
 		io__write_strings(DepStream, ["\n\n",
@@ -1920,6 +1922,13 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			ILDateFileName, " : ",
 			SourceFileName
 		] ),
+		% If the module contains nested sub-modules then `.int0'
+		% file must first be built.
+		( { InclDeps = [_ | _] } ->
+			io__write_strings(DepStream, [" ", Int0FileName])
+		;
+			[]
+		),
 		write_dependencies_list(ParentDeps, ".int0", DepStream),
 		write_dependencies_list(LongDeps, ".int", DepStream),
 		write_dependencies_list(ShortDeps, ".int2", DepStream),
@@ -2054,9 +2063,12 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		% parent modules also depend on the same things as the
 		% `.date' files for this module, since all the `.date'
 		% files will get produced by a single mmc command.
-		% XXX The same is true for the `.date0' files, but
-		% including those dependencies here might result in
-		% cyclic dependencies(?).
+		% Similarly for `.date0' files, except these don't
+		% depend on the `.int0' files, because when doing the
+		% `--make-private-interface' for nested modules, mmc
+		% will process the modules in outermost to innermost
+		% order so as to produce each `.int0' file before it is
+		% needed.
 
 		module_name_to_file_name(ModuleName, ".date", no,
 						DateFileName),
@@ -2072,6 +2084,15 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 				SourceFileName
 		]),
 		write_dependencies_list(ParentDeps, ".int0", DepStream),
+		write_dependencies_list(LongDeps, ".int3", DepStream),
+		write_dependencies_list(ShortDeps, ".int3", DepStream),
+
+		io__write_strings(DepStream, ["\n\n", Date0FileName]),
+		write_dependencies_list(ParentDeps, ".date0", DepStream),
+		io__write_strings(DepStream, [
+				" : ",
+				SourceFileName
+		]),
 		write_dependencies_list(LongDeps, ".int3", DepStream),
 		write_dependencies_list(ShortDeps, ".int3", DepStream),
 
@@ -2169,8 +2190,6 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			[]
 		),
 
-		module_name_to_file_name(ModuleName, ".int0", no,
-							Int0FileName),
 		module_name_to_file_name(ModuleName, ".int", no,
 							IntFileName),
 		module_name_to_file_name(ModuleName, ".int2", no,
@@ -2694,10 +2713,68 @@ generate_dependencies(ModuleName, DepsMap0) -->
 		%
 		{ relation__tc(ImplDepsRel, IndirectOptDepsRel) },
 
+		/* 
+		write_relations("Rel", IntDepsRel, TransIntDepsRel, ImplDepsRel,
+				IndirectDepsRel, IndirectOptDepsRel),
+		*/
+
 		generate_dependencies_write_d_files(DepsList,
 			IntDepsRel, ImplDepsRel, IndirectDepsRel,
 			IndirectOptDepsRel, TransOptDepsOrdering, DepsMap)
 	).
+
+/*
+	% Output the various relations into a file which can be
+	% processed by the dot package to draw the relations.
+:- pred write_relations(string::in, relation(sym_name)::in,
+		relation(sym_name)::in, relation(sym_name)::in,
+		relation(sym_name)::in, relation(sym_name)::in,
+		io__state::di, io__state::uo) is det.
+
+write_relations(FileName, IntDepsRel, TransIntDepsRel,
+		ImplDepsRel, IndirectDepsRel, IndirectOptDepsRel) -->
+	io__open_output(FileName, Result),
+	( { Result = ok(Stream) } ->
+		write_relation(Stream, "IntDepsRel", IntDepsRel),
+		write_relation(Stream, "TransIntDepsRel", TransIntDepsRel),
+		write_relation(Stream, "ImplDepsRel", ImplDepsRel),
+		write_relation(Stream, "IndirectDepsRel", IndirectDepsRel),
+		write_relation(Stream, "IndirectOptDepsRel",
+				IndirectOptDepsRel)
+	;
+		{ error("unable to open file: " ++ FileName) }
+	).
+
+:- pred write_relation(io__output_stream::in,
+		string::in, relation(sym_name)::in,
+		io__state::di, io__state::uo) is det.
+
+write_relation(Stream, Name, Relation) -->
+	io__write_string(Stream, "digraph " ++ Name ++ " {\n"),
+	io__write_string(Stream, "label=\"" ++ Name ++ "\";\n"),
+	io__write_string(Stream, "center=true;\n"),
+	relation__traverse(Relation, write_node(Stream), write_edge(Stream)),
+	io__write_string(Stream, "}\n").
+
+:- pred write_node(io__output_stream::in, sym_name::in,
+		io__state::di, io__state::uo) is det.
+
+write_node(Stream, Node) -->
+	{ sym_name_to_string(Node, "__", NodeStr) },
+	io__write_string(Stream, NodeStr),
+	io__write_string(Stream, ";\n").
+
+:- pred write_edge(io__output_stream::in, sym_name::in, sym_name::in, 
+		io__state::di, io__state::uo) is det.
+
+write_edge(Stream, A, B) -->
+	{ sym_name_to_string(A, "__", AStr) },
+	{ sym_name_to_string(B, "__", BStr) },
+	io__write_string(Stream, AStr),
+	io__write_string(Stream, " -> "),
+	io__write_string(Stream, BStr),
+	io__write_string(Stream, ";\n").
+*/
 
 :- pred maybe_output_module_order(module_name::in, list(set(module_name))::in,
 	io__state::di, io__state::uo) is det.
@@ -2936,8 +3013,7 @@ deps_list_to_deps_rel([Deps | DepsList], DepsMap,
 add_int_deps(ModuleKey, ModuleImports, Rel0, Rel) :-
 	AddDep = add_dep(ModuleKey),
 	list__foldl(AddDep, ModuleImports ^ parent_deps, Rel0, Rel1),
-	list__foldl(AddDep, ModuleImports ^ int_deps, Rel1, Rel2),
-	list__foldl(AddDep, ModuleImports ^ public_children, Rel2, Rel).
+	list__foldl(AddDep, ModuleImports ^ int_deps, Rel1, Rel).
 
 % add direct implementation dependencies for a module to the
 % impl. deps relation
