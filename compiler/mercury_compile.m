@@ -162,9 +162,9 @@ process_module(PathName) -->
 process_module_2(ModuleName) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Parsing `"),
-	{ module_name_to_file_name(ModuleName, BaseFileName) },
-	maybe_write_string(Verbose, BaseFileName),
-	maybe_write_string(Verbose, ".m' and imported interfaces...\n"),
+	module_name_to_file_name(ModuleName, ".m", FileName),
+	maybe_write_string(Verbose, FileName),
+	maybe_write_string(Verbose, "' and imported interfaces...\n"),
 	read_mod(ModuleName, ".m", "Reading module", yes, Items0, Error), !,
 	globals__io_lookup_bool_option(statistics, Stats),
 	maybe_report_stats(Stats),
@@ -188,7 +188,7 @@ process_module_2(ModuleName) -->
 	; { MakePrivateInterface = yes } ->
 		make_private_interface(ModuleName, Items0)
 	; { ConvertToMercury = yes } ->
-		{ string__append(BaseFileName, ".ugly", OutputFileName) },
+		module_name_to_file_name(ModuleName, ".ugly", OutputFileName),
 		convert_to_mercury(ModuleName, OutputFileName, Items0)
 	; { ConvertToGoedel = yes } ->
 		convert_to_goedel(ModuleName, Items0)
@@ -257,14 +257,14 @@ mercury_compile(Module) -->
 		mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50), !,
 		globals__io_lookup_bool_option(highlevel_c, HighLevelC),
 		( { HighLevelC = yes } ->
-			{ module_name_to_file_name(ModuleName, BaseFileName) },
-			{ string__append(BaseFileName, ".c", C_File) },
+			module_name_to_file_name(ModuleName, ".c", C_File),
+			module_name_to_file_name(ModuleName, ".o", O_File),
 			mercury_compile__gen_hlds(C_File, HLDS50),
 			globals__io_lookup_bool_option(compile_to_c,
 				CompileToC),
 			( { CompileToC = no } ->
-				mercury_compile__single_c_to_obj(BaseFileName,
-					_CompileOK)
+				mercury_compile__single_c_to_obj(
+					C_File, O_File, _CompileOK)
 			;
 				[]
 			)
@@ -395,14 +395,12 @@ mercury_compile__maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps,
 			( { WarnNoTransOptDeps = yes } ->
 				{ prog_out__sym_name_to_string(ModuleName,
 					ModuleString) },
-				{ module_name_to_file_name(ModuleName,
-					BaseFileName) },
 				io__write_strings([
 				    "Warning: cannot read trans-opt ",
 				    "dependencies for module `",
 				    ModuleString, "'.\n",
-				    "  Run `mmake ", BaseFileName, ".depend' ",
-				    "to remake the dependencies.\n"]),
+				    "  You need to remake ",
+				    "the dependencies.\n"]),
 				globals__io_lookup_bool_option(halt_at_warn,
 					Halt),
 				( { Halt = yes } ->
@@ -596,8 +594,7 @@ mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
 			{ HLDS = HLDS1 }
 		),
 		{ module_info_name(HLDS, ModuleName) },
-		{ module_name_to_file_name(ModuleName, BaseFileName) },
-		{ string__append(BaseFileName, ".opt", OptName) },
+		module_name_to_file_name(ModuleName, ".opt", OptName),
 		update_interface(OptName),
 		touch_interface_datestamp(ModuleName, ".optdate")
 	;
@@ -1218,8 +1215,8 @@ mercury_compile__maybe_write_dependency_graph(ModuleInfo0, Verbose, Stats,
 	( { ShowDepGraph = yes } ->
 		maybe_write_string(Verbose, "% Writing dependency graph..."),
 		{ module_info_name(ModuleInfo0, ModuleName) },
-		{ module_name_to_file_name(ModuleName, BaseFileName) },
-		{ string__append(BaseFileName, ".dependency_graph", FileName) },
+		module_name_to_file_name(ModuleName, ".dependency_graph",
+			FileName),
 		io__tell(FileName, Res),
 		( { Res = ok } ->
 			dependency_graph__write_dependency_graph(ModuleInfo0,
@@ -1253,9 +1250,8 @@ mercury_compile__maybe_output_prof_call_graph(ModuleInfo0, Verbose, Stats,
 		maybe_write_string(Verbose, "% Outputing profiling call graph..."),
 		maybe_flush_output(Verbose),
 		{ module_info_name(ModuleInfo0, ModuleName) },
-		{ module_name_to_file_name(ModuleName, BaseFileName) },
-		{ string__append(BaseFileName, ".prof", WholeFileName) },
-		io__tell(WholeFileName, Res),
+		module_name_to_file_name(ModuleName, ".prof", ProfFileName),
+		io__tell(ProfFileName, Res),
 		(
 			{ Res = ok }
 		->
@@ -1342,8 +1338,8 @@ mercury_compile__maybe_bytecodes(HLDS0, ModuleName, Verbose, Stats) -->
 		bytecode_gen__module(HLDS1, Bytecode),
 		maybe_write_string(Verbose, "% done.\n"),
 		maybe_report_stats(Stats),
-		{ module_name_to_file_name(ModuleName, BaseFileName) },
-		{ string__append(BaseFileName, ".bytedebug", BytedebugFile) },
+		module_name_to_file_name(ModuleName, ".bytedebug",
+			BytedebugFile),
 		maybe_write_string(Verbose,
 			"% Writing bytecodes to `"),
 		maybe_write_string(Verbose, BytedebugFile),
@@ -1351,7 +1347,7 @@ mercury_compile__maybe_bytecodes(HLDS0, ModuleName, Verbose, Stats) -->
 		maybe_flush_output(Verbose),
 		debug_bytecode_file(BytedebugFile, Bytecode),
 		maybe_write_string(Verbose, " done.\n"),
-		{ string__append(BaseFileName, ".mbc", BytecodeFile) },
+		module_name_to_file_name(ModuleName, ".mbc", BytecodeFile),
 		maybe_write_string(Verbose,
 			"% Writing bytecodes to `"),
 		maybe_write_string(Verbose, BytecodeFile),
@@ -1735,7 +1731,7 @@ mercury_compile__chunk_llds(HLDS, Procedures, BaseTypeData, CommonDataModules,
 
 maybe_add_header_file_include(PragmaExports, ModuleName, 
 		C_HeaderCode0, C_HeaderCode) -->
-	{ module_name_to_file_name(ModuleName, BaseName) },
+	module_name_to_file_name(ModuleName, ".h", HeaderFileName),
 	(
 		{ PragmaExports = [] },
 		{ C_HeaderCode = C_HeaderCode0 }
@@ -1744,14 +1740,13 @@ maybe_add_header_file_include(PragmaExports, ModuleName,
                 globals__io_lookup_bool_option(split_c_files, SplitFiles),
                 { 
 			SplitFiles = yes,
-			
                         string__append_list(
-                                ["#include ""../", BaseName, ".h""\n"],
+                                ["#include ""../", HeaderFileName, """\n"],
 				Include0)
                 ;
 			SplitFiles = no,
                         string__append_list(
-				["#include """, BaseName, ".h""\n"],
+				["#include """, HeaderFileName, """\n"],
 				Include0)
                 },
 
@@ -1799,9 +1794,9 @@ mercury_compile__combine_chunks_2([Chunk|Chunks], ModName, Num,
 mercury_compile__output_llds(ModuleName, LLDS, Verbose, Stats) -->
 	maybe_write_string(Verbose,
 		"% Writing output to `"),
-	{ module_name_to_file_name(ModuleName, FileName) },
+	module_name_to_file_name(ModuleName, ".c", FileName),
 	maybe_write_string(Verbose, FileName),
-	maybe_write_string(Verbose, ".c'..."),
+	maybe_write_string(Verbose, "'..."),
 	maybe_flush_output(Verbose),
 	output_c_file(LLDS),
 	maybe_write_string(Verbose, " done.\n"),
@@ -1845,44 +1840,45 @@ mercury_compile__gen_hlds(DumpFile, HLDS) -->
 :- mode mercury_compile__c_to_obj(in, in, out, di, uo) is det.
 
 mercury_compile__c_to_obj(ModuleName, NumChunks, Succeeded) -->
-	{ module_name_to_file_name(ModuleName, BaseFileName) },
 	globals__io_lookup_bool_option(split_c_files, SplitFiles),
 	( { SplitFiles = yes } ->
-		mercury_compile__c_to_obj_list(BaseFileName, 0, NumChunks,
+		mercury_compile__c_to_obj_list(ModuleName, 0, NumChunks,
 			Succeeded)
 	;
-		mercury_compile__single_c_to_obj(BaseFileName, Succeeded)
+		module_name_to_file_name(ModuleName, ".c", C_File),
+		module_name_to_file_name(ModuleName, ".o", O_File),
+		mercury_compile__single_c_to_obj(C_File, O_File, Succeeded)
 	).
 
-:- pred mercury_compile__c_to_obj_list(string, int, int, bool,
+:- pred mercury_compile__c_to_obj_list(module_name, int, int, bool,
 					io__state, io__state).
 :- mode mercury_compile__c_to_obj_list(in, in, in, out, di, uo) is det.
 
 	% compile each of the C files in `<module>.dir'
 
-mercury_compile__c_to_obj_list(BaseFileName, Chunk, NumChunks, Succeeded) -->
+mercury_compile__c_to_obj_list(ModuleName, Chunk, NumChunks, Succeeded) -->
 	( { Chunk > NumChunks } ->
 		{ Succeeded = yes }
 	;
-		{ dir__basename(BaseFileName, BaseName) },
-		{ string__format("%s.dir/%s_%03d",
-			[s(BaseName), s(BaseName), i(Chunk)], NewName) },
-		mercury_compile__single_c_to_obj(NewName, Succeeded0),
+		module_name_to_split_c_file_name(ModuleName, Chunk,
+			".c", C_File),
+		module_name_to_split_c_file_name(ModuleName, Chunk,
+			".o", O_File),
+		mercury_compile__single_c_to_obj(C_File, O_File, Succeeded0),
 		( { Succeeded0 = no } ->
 			{ Succeeded = no }
 		;
 			{ Chunk1 is Chunk + 1 },
-			mercury_compile__c_to_obj_list(BaseFileName,
+			mercury_compile__c_to_obj_list(ModuleName,
 				Chunk1, NumChunks, Succeeded)
 		)
 	).
 
-:- pred mercury_compile__single_c_to_obj(string, bool, io__state, io__state).
-:- mode mercury_compile__single_c_to_obj(in, out, di, uo) is det.
+:- pred mercury_compile__single_c_to_obj(string, string, bool,
+					io__state, io__state).
+:- mode mercury_compile__single_c_to_obj(in, in, out, di, uo) is det.
 
-mercury_compile__single_c_to_obj(BaseFileName, Succeeded) -->
-	{ string__append(BaseFileName, ".c", C_File) },
-	{ string__append(BaseFileName, ".o", O_File) },
+mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Compiling `"),
 	maybe_write_string(Verbose, C_File),
@@ -2102,7 +2098,10 @@ mercury_compile__link_module_list(Modules) -->
 		% compile it
 		maybe_write_string(Verbose,
 			"% Compiling initialization file...\n"),
-		mercury_compile__single_c_to_obj(C_Init_Base, CompileOK),
+		{ string__append(C_Init_Base, ".c", C_InitSrc) },
+		{ string__append(C_Init_Base, ".o", C_InitObj) },
+		mercury_compile__single_c_to_obj(C_InitSrc, C_InitObj,
+			CompileOK),
 		maybe_report_stats(Stats),
 		( { CompileOK = no } ->
 		    report_error("compilation of init file failed.")
@@ -2201,9 +2200,11 @@ mercury_compile__maybe_dump_hlds(HLDS, StageNum, StageName) -->
 		}
 	->
 		{ module_info_name(HLDS, ModuleName) },
-		{ module_name_to_file_name(ModuleName, BaseFileName) },
-		{ string__append_list( [BaseFileName, ".hlds_dump.",
-				StageNum, "-", StageName], DumpFile) },
+		module_name_to_file_name(ModuleName, ".hlds_dump",
+			BaseFileName),
+		{ string__append_list(
+			[BaseFileName, ".", StageNum, "-", StageName],
+			DumpFile) },
 		mercury_compile__dump_hlds(DumpFile, HLDS)
 	;
 		[]

@@ -78,13 +78,12 @@
 
 %-----------------------------------------------------------------------------%
 
-% Open the file "<module-name>.trans_opt", and write out the
+% Open the file "<module-name>.trans_opt.tmp", and write out the
 % declarations.
 
 trans_opt__write_optfile(Module) -->
 	{ module_info_name(Module, ModuleName) },
-	{ module_name_to_file_name(ModuleName, BaseFileName) },
-	{ string__append(BaseFileName, ".trans_opt.tmp", TmpOptName) },
+	module_name_to_file_name(ModuleName, ".trans_opt.tmp", TmpOptName),
 	io__open_output(TmpOptName, Result),
 	(
 		{ Result = error(Error) },
@@ -117,7 +116,7 @@ trans_opt__write_optfile(Module) -->
 		io__set_output_stream(OldStream, _),
 		io__close_output(Stream),
 
-		{ string__append(BaseFileName, ".trans_opt", OptName) },
+		module_name_to_file_name(ModuleName, ".trans_opt", OptName),
 		update_interface(OptName),
 		touch_interface_datestamp(ModuleName, ".trans_opt_date")
 	).
@@ -205,8 +204,7 @@ read_trans_opt_files([Import | Imports],
 	maybe_flush_output(VeryVerbose),
 	maybe_write_string(VeryVerbose, "% done.\n"),
 
-	{ module_name_to_file_name(Import, BaseFileName) },
-	{ string__append(BaseFileName, ".trans_opt", FileName) },
+	module_name_to_file_name(Import, ".trans_opt", FileName),
 	prog_io__read_module(FileName, Import, yes,
 			ModuleError, Messages, Items1),
 	update_error_status(ModuleError, Messages, Error0, Error1),

@@ -103,6 +103,12 @@
 :- pred llds_out__make_base_typeclass_info_name(class_id, string, string).
 :- mode llds_out__make_base_typeclass_info_name(in, in, out) is det.
 
+	% Returns the name of the initialization function
+	% for a given module.
+
+:- pred llds_out__make_init_name(module_name, string).
+:- mode llds_out__make_init_name(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -133,8 +139,7 @@ output_c_file(C_File) -->
 	globals__io_lookup_bool_option(split_c_files, SplitFiles),
 	( { SplitFiles = yes } ->
 		{ C_File = c_file(ModuleName, C_HeaderInfo, C_Modules) },
-		{ module_name_to_file_name(ModuleName, BaseFileName) },
-		{ string__append(BaseFileName, ".dir", ObjDirName) },
+		module_name_to_file_name(ModuleName, ".dir", ObjDirName),
 		make_directory(ObjDirName),
 		output_c_file_init(ModuleName, C_Modules),
 		output_c_file_list(C_Modules, 1, ModuleName, C_HeaderInfo)
@@ -165,18 +170,21 @@ output_c_file_list([Module|Modules], Num, ModuleName, C_HeaderLines) -->
 :- mode output_c_file_init(in, in, di, uo) is det.
 
 output_c_file_init(ModuleName, C_Modules) -->
-	{ module_name_to_file_name(ModuleName, BaseFileName) },
-	{ string__format("%s.dir/%s_%03d.c",
-		[s(BaseFileName), s(BaseFileName), i(0)], FileName) },
+	module_name_to_file_name(ModuleName, ".m", SourceFileName),
+	module_name_to_split_c_file_name(ModuleName, 0, ".c", FileName),
+
 	io__tell(FileName, Result),
 	(
 		{ Result = ok }
 	->
 		{ library__version(Version) },
 		io__write_strings(
-			["/*\n** Automatically generated from `", BaseFileName,
-			".m' by the Mercury compiler,\n** version ", Version,
-			".\n** Do not edit.\n*/\n"]),
+			["/*\n",
+			"** Automatically generated from `", SourceFileName,
+				"' by the Mercury compiler,\n",
+			"** version ", Version, ".\n",
+			"** Do not edit.\n",
+			"*/\n"]),
 		io__write_string("/*\n"),
 		io__write_string("INIT "),
 		output_init_name(ModuleName),
@@ -202,23 +210,25 @@ output_c_file_init(ModuleName, C_Modules) -->
 
 output_single_c_file(c_file(ModuleName, C_HeaderLines, Modules), SplitFiles) 
 		-->
-	{ module_name_to_file_name(ModuleName, BaseFileName) },
 	( { SplitFiles = yes(Num) } ->
-		{ string__format("%s.dir/%s_%03d.c",
-			[s(BaseFileName), s(BaseFileName), i(Num)],
-			FileName) }
+		module_name_to_split_c_file_name(ModuleName, Num, ".c",
+			FileName)
 	;
-		{ string__append(BaseFileName, ".c", FileName) }
+		module_name_to_file_name(ModuleName, ".c", FileName)
 	),
 	io__tell(FileName, Result),
 	(
 		{ Result = ok }
 	->
 		{ library__version(Version) },
+		module_name_to_file_name(ModuleName, ".m", SourceFileName),
 		io__write_strings(
-			["/*\n** Automatically generated from `", BaseFileName,
-			".m' by the Mercury compiler,\n** version ", Version,
-			".\n** Do not edit.\n*/\n"]),
+			["/*\n",
+			"** Automatically generated from `", SourceFileName,
+				"' by the Mercury compiler,\n",
+			"** version ", Version, ".\n",
+			"** Do not edit.\n",
+			"*/\n"]),
 		( { SplitFiles = yes(_) } ->
 			[]
 		;
@@ -396,10 +406,13 @@ output_c_data_init_list([c_data(ModuleName, DataName, _, _, _) | Ms])  -->
 :- mode output_init_name(in, di, uo) is det.
 
 output_init_name(ModuleName) -->
-	io__write_string("mercury__"),
-	{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
-	io__write_string(MangledModuleName),
-	io__write_string("__init").
+	{ llds_out__make_init_name(ModuleName, InitName) },
+	io__write_string(InitName).
+
+llds_out__make_init_name(ModuleName, InitName) :-
+	llds_out__sym_name_mangle(ModuleName, MangledModuleName),
+	string__append_list(["mercury__", MangledModuleName, "__init"],
+		InitName).
 
 :- pred output_bunch_name(module_name, int, io__state, io__state).
 :- mode output_bunch_name(in, in, di, uo) is det.

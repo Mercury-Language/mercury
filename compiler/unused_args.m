@@ -98,8 +98,7 @@ unused_args__process_module(ModuleInfo0, ModuleInfo) -->
 	globals__io_lookup_bool_option(make_optimization_interface, MakeOpt),
 	( { MakeOpt = yes } ->
 		{ module_info_name(ModuleInfo0, ModuleName) },
-		{ module_name_to_file_name(ModuleName, BaseFileName) },
-		{ string__append(BaseFileName, ".opt.tmp", OptFileName) },
+		module_name_to_file_name(ModuleName, ".opt.tmp", OptFileName),
 		io__open_append(OptFileName, OptFileRes),
 		( { OptFileRes = ok(OptFile) } ->
 			{ MaybeOptFile = yes(OptFile) }

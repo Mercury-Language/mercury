@@ -668,8 +668,7 @@ change_procs_termination_info([ProcId | ProcIds], Override, Termination,
 
 termination__make_opt_int(PredIds, Module) -->
 	{ module_info_name(Module, ModuleName) },
-	{ module_name_to_file_name(ModuleName, BaseFileName) },
-	{ string__append(BaseFileName, ".opt.tmp", OptFileName) },
+	module_name_to_file_name(ModuleName, ".opt.tmp", OptFileName),
 	io__open_append(OptFileName, OptFileRes),
 	( { OptFileRes = ok(OptFile) } ->
 		io__set_output_stream(OptFile, OldStream),

@@ -449,16 +449,17 @@ export__produce_header_file(Module, ModuleName) -->
 	->
 		{ module_info_get_predicate_table(Module, PredicateTable) },
 		{ predicate_table_get_preds(PredicateTable, Preds) },
-		{ module_name_to_file_name(ModuleName, BaseFileName) },
-		{ string__append(BaseFileName, ".h", FileName) },
+		module_name_to_file_name(ModuleName, ".h", FileName),
 		io__tell(FileName, Result),
 		(
 			{ Result = ok }
 		->
+			module_name_to_file_name(ModuleName, ".m",
+				SourceFileName),
 			{ library__version(Version) },
 			io__write_strings(
 				["/*\n** Automatically generated from `", 
-				BaseFileName,
+				SourceFileName,
 				".m' by the\n** Mercury compiler, version ", 
 				Version,
 				".  Do not edit.\n*/\n"]),

@@ -44,20 +44,57 @@
 
 %-----------------------------------------------------------------------------%
 
-	% Convert a module name to the corresponding file name
-	% (excluding the trailing `.m').
+	% module_name_to_file_name(Module, Extension, FileName):
+	%	Convert a module name and file extension to the
+	%	corresponding file name.
 	%
-	% Currently we use the convention that the module
-	% `foo:bar:baz' should be named `foo.bar.baz.m'.
+	%	Currently we use the convention that the module
+	%	`foo:bar:baz' should be named `foo.bar.baz.m',
+	%	but eventually we will also allow other file
+	%	naming conventions.
 	%
-:- pred module_name_to_file_name(module_name, file_name).
-:- mode module_name_to_file_name(in, out) is det.
+	%	Note that this predicate is also used to create
+	%	some "phony" Makefile targets that do not have
+	%	corresponding files, e.g. `<foo>.clean'.
+	%
+:- pred module_name_to_file_name(module_name, string, file_name,
+				io__state, io__state).
+:- mode module_name_to_file_name(in, in, out, di, uo) is det.
+
+	% module_name_to_lib_file_name(Prefix, Module, Extension, FileName):
+	%	Like module_name_to_file_name, but also allows a prefix.
+	%
+	%	Used for creating library names, e.g. `lib<foo>.a'
+	%	and `lib<foo>.so'.
+	%
+:- pred module_name_to_lib_file_name(string, module_name, string, file_name,
+				io__state, io__state).
+:- mode module_name_to_lib_file_name(in, in, in, out, di, uo)
+	is det.
+
+	% module_name_to_split_c_file_name(Module, Num, Extension, FileName):
+	%	Like module_name_to_file_name, but also allows a sequence
+	%	number.  The files produced by this predicate will all be
+	%	in a subdirectory DirName, which be obtained by calling
+	%	`module_name_to_file_name(Module, ".dir", DirName)'.
+	%
+	%	This predicate is used for the names of .c and .o files
+	%	for --split-c-files.
+	%
+:- pred module_name_to_split_c_file_name(module_name, int, string, file_name,
+				io__state, io__state).
+:- mode module_name_to_split_c_file_name(in, in, in, out, di, uo) is det.
 
 	% convert a file name (excluding the trailing `.m')
 	% to the corresponding module name
 	% 
 :- pred file_name_to_module_name(file_name, module_name).
 :- mode file_name_to_module_name(in, out) is det.
+
+	% Convert a module name to something that is suitable
+	% for use as a variable name in makefiles.
+:- pred module_name_to_make_var_name(module_name, string).
+:- mode module_name_to_make_var_name(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -326,7 +363,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module passes_aux, prog_out, prog_util, mercury_to_mercury.
+:- import_module llds_out, passes_aux, prog_out, prog_util, mercury_to_mercury.
 :- import_module prog_io_util, globals, options, intermod, module_qual.
 
 :- import_module string, set, map, term, varset, dir, library.
@@ -339,11 +376,27 @@
 	% `foo:bar:baz' will be in files `foo.bar.baz.{m,int,etc.}'.
 	% It would be nice to allow a more flexible mapping.
 
-module_name_to_file_name(ModuleName, BaseFileName) :-
-	prog_out__sym_name_to_string(ModuleName, ".", BaseFileName).
+module_name_to_file_name(ModuleName, Ext, FileName) -->
+	{ prog_out__sym_name_to_string(ModuleName, ".", BaseFileName) },
+	{ string__append(BaseFileName, Ext, FileName) }.
 
+module_name_to_lib_file_name(Prefix, ModuleName, Ext, FileName) -->
+	{ prog_out__sym_name_to_string(ModuleName, ".", BaseFileName) },
+	{ string__append_list([Prefix, BaseFileName, Ext], FileName) }.
+
+module_name_to_split_c_file_name(ModuleName, Num, Ext, FileName) -->
+	module_name_to_file_name(ModuleName, ".dir", DirName),
+	{ unqualify_name(ModuleName, BaseFileName) },
+	{ dir__directory_separator(Slash) },
+	{ string__format("%s%c%s_%03d%s",
+		[s(DirName), c(Slash), s(BaseFileName), i(Num), s(Ext)],
+		FileName) }.
+		
 file_name_to_module_name(FileName, ModuleName) :-
 	string_to_sym_name(FileName, ".", ModuleName).
+
+module_name_to_make_var_name(ModuleName, MakeVarName) :-
+	prog_out__sym_name_to_string(ModuleName, ".", MakeVarName).
 
 %-----------------------------------------------------------------------------%
 
@@ -355,10 +408,10 @@ make_private_interface(ModuleName, Items0) -->
 		%
 		% Check whether we succeeded
 		%
-	{ module_name_to_file_name(ModuleName, BaseFileName) },
+	module_name_to_file_name(ModuleName, ".int0", FileName),
 	( { Error = yes } ->
 		io__write_strings(["Error reading interface files.\n",
-				"`", BaseFileName, ".int0' not written.\n"])
+				"`", FileName, "' not written.\n"])
 	;
 			%
 			% Module-qualify all items.
@@ -368,8 +421,7 @@ make_private_interface(ModuleName, Items0) -->
 				Items2, ModuleName, yes, _, _, _, _),
 		io__get_exit_status(Status),
 		( { Status \= 0 } ->
-			io__write_strings(["`", BaseFileName, ".int0' ",
-				"not written.\n"])
+			io__write_strings(["`", FileName, "' not written.\n"])
 		;
 				%
 				% Write out the `.int0' file.
@@ -395,12 +447,13 @@ make_interface(ModuleName, Items0) -->
 		%
 		% Check whether we succeeded
 		%
-	{ module_name_to_file_name(ModuleName, BaseFileName) },
 	{ module_imports_get_items(Module0, InterfaceItems1) },
 	( { Error = yes } ->
+		module_name_to_file_name(ModuleName, ".int", IntFileName),
+		module_name_to_file_name(ModuleName, ".int2", Int2FileName),
 		io__write_strings(["Error reading short interface files.\n",
-				"`", BaseFileName, ".int' and ",
-				"`", BaseFileName, ".int2' not written.\n"])
+				"`", IntFileName, "' and ",
+				"`", Int2FileName, "' not written.\n"])
 	;
 			%
 			% Module-qualify all items.
@@ -409,7 +462,9 @@ make_interface(ModuleName, Items0) -->
 				InterfaceItems2, ModuleName, yes, _, _, _, _),
 		io__get_exit_status(Status),
 		( { Status \= 0 } ->
-			io__write_strings(["`", BaseFileName, ".int' ",
+			module_name_to_file_name(ModuleName, ".int",
+				IntFileName),
+			io__write_strings(["`", IntFileName, "' ",
 				"not written.\n"])
 		;
 			%
@@ -583,8 +638,7 @@ warn_no_exports(ModuleName) -->
 	( 	
 		{ ExportWarning = yes }
 	->
-		{ module_name_to_file_name(ModuleName, BaseFileName) },
-		{ string__append(BaseFileName, ".m", FileName) },
+		module_name_to_file_name(ModuleName, ".m", FileName),
 		{ sym_name_to_string(ModuleName, ModuleNameString) },
 		{ string__append_list(["interface for module `",
 			ModuleNameString, "' does not export anything."],
@@ -618,14 +672,14 @@ write_interface_file(ModuleName, Suffix, InterfaceItems) -->
 
 		% create (e.g.) `foo.int.tmp'
 
-	{ module_name_to_file_name(ModuleName, BaseFileName) },
-	{ string__append(BaseFileName, Suffix, OutputFileName) },
-	{ string__append(OutputFileName, ".tmp", TmpOutputFileName) },
+	{ string__append(Suffix, ".tmp", TmpSuffix) },
+	module_name_to_file_name(ModuleName, Suffix, OutputFileName),
+	module_name_to_file_name(ModuleName, TmpSuffix, TmpOutputFileName),
 
 		% we need to add a `:- interface' declaration at the start
 		% of the item list
 	{ varset__init(VarSet) },
-	{ term__context_init(BaseFileName, 0, Context) },
+	{ term__context_init(Context) },
 	{ InterfaceDeclaration = module_defn(VarSet, interface) - Context },
 	{ InterfaceItems1 = [InterfaceDeclaration | InterfaceItems] },
 
@@ -655,8 +709,7 @@ update_interface(OutputFileName) -->
 %-----------------------------------------------------------------------------%
 
 touch_interface_datestamp(ModuleName, Ext) -->
-	{ module_name_to_file_name(ModuleName, BaseFileName) },
-	{ string__append(BaseFileName, Ext, OutputFileName) },
+	module_name_to_file_name(ModuleName, Ext, OutputFileName),
 
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Touching `"),
@@ -868,10 +921,7 @@ warn_if_import_self_or_ancestor(ModuleName, AncestorModules,
 			; list__member(ModuleName, UsedModules)
 			}
 		->
-			{ module_name_to_file_name(ModuleName,
-				BaseFileName) },
-			{ string__append(BaseFileName, ".m",
-				FileName) },
+			module_name_to_file_name(ModuleName, ".m", FileName),
 			{ term__context_init(FileName, 1, Context) },
 			prog_out__write_context(Context),
 			report_warning("Warning: module `"),
@@ -895,8 +945,7 @@ warn_if_import_self_or_ancestor(ModuleName, AncestorModules,
 :- mode warn_imported_ancestor(in, in, di, uo) is det.
 
 warn_imported_ancestor(ModuleName, AncestorName) -->
-	{ module_name_to_file_name(ModuleName, BaseFileName) },
-	{ string__append(BaseFileName, ".m", FileName) },
+	module_name_to_file_name(ModuleName, ".m", FileName),
 	{ term__context_init(FileName, 1, Context) },
 	prog_out__write_context(Context),
 	report_warning("module `"),
@@ -938,8 +987,7 @@ warn_if_duplicate_use_import_decls(ModuleName,
 		{ set__to_sorted_list(BothSet, BothList) },
 		globals__io_lookup_bool_option(warn_simple_code, WarnSimple),
 		( { WarnSimple = yes } ->
-			{ module_name_to_file_name(ModuleName, BaseFileName) },
-			{ string__append(BaseFileName, ".m", FileName) },
+			module_name_to_file_name(ModuleName, ".m", FileName),
 			{ term__context_init(FileName, 1, Context) },
 			prog_out__write_context(Context),
 			io__write_string("Warning:"),
@@ -979,8 +1027,10 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 	{ Module = module_imports(ModuleName, ParentDeps, IntDeps, ImplDeps,
 			IndirectDeps, _InclDeps, FactDeps0, _Items, _Error) },
 	globals__io_lookup_bool_option(verbose, Verbose),
-	{ module_name_to_file_name(ModuleName, BaseFileName) },
-	{ string__append(BaseFileName, ".d", DependencyFileName) },
+	{ module_name_to_make_var_name(ModuleName, MakeVarName) },
+	module_name_to_file_name(ModuleName, ".d", DependencyFileName),
+	module_name_to_file_name(ModuleName, ".trans_opt_date",
+						TransOptDateFileName),
 	%
 	% To avoid problems with concurrent updates of `.d' files
 	% during parallel makes, we first create the file with a
@@ -1017,7 +1067,7 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 			% this exact pattern
 			%
 			io__write_strings(DepStream,
-				[BaseFileName, ".trans_opt_date :"]),
+				[TransOptDateFileName, " :"]),
 			write_dependencies_list(TransOptDateDeps, ".trans_opt", 
 				DepStream)
 		;
@@ -1026,29 +1076,29 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 
 		( { FactDeps \= [] } ->
 			io__write_strings(DepStream, 
-				["\n\n", BaseFileName, ".fact_tables ="]),
+				["\n\n", MakeVarName, ".fact_tables ="]),
 			write_file_dependencies_list(FactDeps, "", DepStream),
 			io__nl(DepStream),
 			globals__io_lookup_bool_option(assume_gmake,
 				AssumeGmake),
 			( { AssumeGmake = no } ->
 				io__write_strings(DepStream,
-					[BaseFileName, ".fact_tables.os ="]),
+					[MakeVarName, ".fact_tables.os ="]),
 				write_file_dependencies_list(FactDeps, ".o",
 					DepStream),
 				io__write_strings(DepStream, [
 					"\n\n", 
-					BaseFileName, ".fact_tables.cs ="]),
+					MakeVarName, ".fact_tables.cs ="]),
 				write_file_dependencies_list(FactDeps, ".c",
 					DepStream),
 				io__nl(DepStream)
 			;
 				io__write_strings(DepStream, [
-					"\n\n", BaseFileName,
-					".fact_tables.os = $(", BaseFileName,
+					"\n\n", MakeVarName,
+					".fact_tables.os = $(", MakeVarName,
 					".fact_tables:%=%.o)\n\n",
-					BaseFileName,
-					".fact_tables.cs = $(", BaseFileName,
+					MakeVarName,
+					".fact_tables.cs = $(", MakeVarName,
 					".fact_tables:%=%.c)\n\n"
 				])
 			)
@@ -1056,13 +1106,19 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 			[]
 		),
 
+		module_name_to_file_name(ModuleName, ".optdate",
+					OptDateFileName),
+		module_name_to_file_name(ModuleName, ".c", CFileName),
+		module_name_to_file_name(ModuleName, ".err", ErrFileName),
+		module_name_to_file_name(ModuleName, ".o", ObjFileName),
+		module_name_to_file_name(ModuleName, ".m", SourceFileName),
 		io__write_strings(DepStream, ["\n\n",
-			BaseFileName, ".optdate ",
-			BaseFileName, ".trans_opt_date ",
-			BaseFileName, ".c ",
-			BaseFileName, ".err ",
-			BaseFileName, ".o : ",
-			BaseFileName, ".m"
+			OptDateFileName, " ",
+			TransOptDateFileName, " ",
+			CFileName, " ",
+			ErrFileName, " ",
+			ObjFileName, " : ",
+			SourceFileName
 		] ),
 		write_dependencies_list(ParentDeps, ".int0", DepStream),
 		write_dependencies_list(LongDeps, ".int", DepStream),
@@ -1070,12 +1126,12 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 
 		( { FactDeps \= [] } ->
 			io__write_strings(DepStream, [
-				" \\\n\t$(", BaseFileName, ".fact_tables)\n\n",
-				"$(", BaseFileName, ".fact_tables.os) : $(",
-				BaseFileName, ".fact_tables) ",
-				BaseFileName, ".m\n\n",
-				"$(", BaseFileName, ".fact_tables.cs) : ",
-				BaseFileName, ".o\n"
+				" \\\n\t$(", MakeVarName, ".fact_tables)\n\n",
+				"$(", MakeVarName, ".fact_tables.os) : $(",
+				MakeVarName, ".fact_tables) ",
+				SourceFileName, "\n\n",
+				"$(", MakeVarName, ".fact_tables.cs) : ",
+				ObjFileName, ".o\n"
 			] )
 		;
 			[]
@@ -1086,10 +1142,10 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 		( { Intermod = yes } ->
 			io__write_strings(DepStream, [
 				"\n\n", 
-				BaseFileName, ".c ",
-				BaseFileName, ".trans_opt_date ",
-				BaseFileName, ".err ", 
-				BaseFileName, ".o :"
+				CFileName, " ",
+				TransOptDateFileName, " ",
+				ErrFileName, " ", 
+				ObjFileName, " :"
 			]),
 			% The .c file only depends on the .opt files from 
 			% the current directory, so that inter-module
@@ -1111,9 +1167,9 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 					".opt", DepStream),
 				io__write_strings(DepStream, [
 					"\n\n", 
-					BaseFileName, ".c ",
-					BaseFileName, ".err ", 
-					BaseFileName, ".o :"
+					CFileName, " ",
+					ErrFileName, " ", 
+					ObjFileName, " :"
 				]),
 				write_dependencies_list(TransOptDeps,
 					".trans_opt", DepStream)
@@ -1127,22 +1183,27 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 			[]
 		),
 
+		module_name_to_file_name(ModuleName, ".date", DateFileName),
+		module_name_to_file_name(ModuleName, ".date0", Date0FileName),
 		io__write_strings(DepStream, [
-				"\n\n", BaseFileName, ".date ",
-				BaseFileName, ".date0 : ",
-				BaseFileName, ".m"
+				"\n\n", DateFileName, " ",
+				Date0FileName, " : ",
+				SourceFileName
 		]),
 		write_dependencies_list(ParentDeps, ".int0", DepStream),
 		write_dependencies_list(LongDeps, ".int3", DepStream),
 		write_dependencies_list(ShortDeps, ".int3", DepStream),
 
+		module_name_to_file_name(ModuleName, ".dir", DirFileName),
+		module_name_to_split_c_file_name(ModuleName, 0, ".o",
+			SplitCObj0FileName),
 		io__write_strings(DepStream, [
 			"\n\n",
-			BaseFileName, ".dir/", BaseFileName, "_000.o : ",
-				BaseFileName, ".m\n",
-			"\trm -rf ", BaseFileName, ".dir\n",
+			SplitCObj0FileName, " : ",
+				SourceFileName, "\n",
+			"\trm -rf ", DirFileName, "\n",
 			"\t$(MCS) $(GRADEFLAGS) $(MCSFLAGS) ",
-				BaseFileName, ".m\n"
+				SourceFileName, "\n"
 		]),
 
 		io__close_output(DepStream),
@@ -1168,8 +1229,7 @@ maybe_read_dependency_file(ModuleName, MaybeTransOptDeps) -->
 	globals__io_lookup_bool_option(transitive_optimization, TransOpt),
 	( { TransOpt = yes } ->
 		globals__io_lookup_bool_option(verbose, Verbose),
-		{ module_name_to_file_name(ModuleName, BaseFileName) },
-		{ string__append(BaseFileName, ".d", DependencyFileName) },
+		module_name_to_file_name(ModuleName, ".d", DependencyFileName),
 		maybe_write_string(Verbose, "% Reading auto-dependency file `"),
 		maybe_write_string(Verbose, DependencyFileName),
 		maybe_write_string(Verbose, "'..."),
@@ -1177,11 +1237,13 @@ maybe_read_dependency_file(ModuleName, MaybeTransOptDeps) -->
 		io__open_input(DependencyFileName, OpenResult),
 		( { OpenResult = ok(Stream) } ->
 			io__set_input_stream(Stream, OldStream),
-			{ string__append(BaseFileName, ".trans_opt_date :", 
-				TransOptFileName0) },
-			{ string__to_char_list(TransOptFileName0, 
-				TransOptFileName) },
-			read_dependency_file_find_start(TransOptFileName, 
+			module_name_to_file_name(ModuleName, ".trans_opt_date", 
+				TransOptDateFileName0),
+			{ string__to_char_list(TransOptDateFileName0, 
+				TransOptDateFileName) },
+			{ list__append(TransOptDateFileName, [' ', ':'],
+				SearchPattern) },
+			read_dependency_file_find_start(SearchPattern,
 				FindResult),
 			( { FindResult = yes } ->
 				read_dependency_file_get_modules(TransOptDeps),
@@ -1205,18 +1267,17 @@ maybe_read_dependency_file(ModuleName, MaybeTransOptDeps) -->
 	).
 			
 	% Read lines from the dependency file (module.d) until one is found
-	% which begins with TransOptFileName.
+	% which begins with SearchPattern.
 :- pred read_dependency_file_find_start(list(char)::in, bool::out, 
 	io__state::di, io__state::uo) is det.
-read_dependency_file_find_start(TransOptFileName, Success) -->
+read_dependency_file_find_start(SearchPattern, Success) -->
 	io__read_line(Result),
 	( { Result = ok(CharList) } ->
-		( { list__append(TransOptFileName, _, CharList) } ->
+		( { list__append(SearchPattern, _, CharList) } ->
 			% Have found the start
 			{ Success = yes }
 		;
-			read_dependency_file_find_start(TransOptFileName, 
-				Success)
+			read_dependency_file_find_start(SearchPattern, Success)
 		)
 	; 
 		{ Success = no }
@@ -1264,8 +1325,7 @@ read_dependency_file_get_modules(TransOptDeps) -->
 	io__state::di, io__state::uo) is det.
 get_both_opt_deps([], _, [], []) --> [].
 get_both_opt_deps([Dep | Deps], IntermodDirs, OptDeps, TransOptDeps) -->
-	{ module_name_to_file_name(Dep, BaseFileName) },
-	{ string__append(BaseFileName, ".m", DepName) },
+	module_name_to_file_name(Dep, ".m", DepName), 
 	search_for_file(IntermodDirs, DepName, Result1),
 	get_both_opt_deps(Deps, IntermodDirs, OptDeps0, TransOptDeps0),
 	( { Result1 = yes } ->
@@ -1273,7 +1333,7 @@ get_both_opt_deps([Dep | Deps], IntermodDirs, OptDeps, TransOptDeps) -->
 		{ TransOptDeps = [Dep | TransOptDeps0] },
 		io__seen
 	;
-		{ string__append(BaseFileName, ".opt", OptName) },
+		module_name_to_file_name(Dep, ".opt", OptName), 
 		search_for_file(IntermodDirs, OptName, Result2),
 		( { Result2 = yes } ->
 			{ OptDeps = [Dep | OptDeps0] },
@@ -1281,7 +1341,7 @@ get_both_opt_deps([Dep | Deps], IntermodDirs, OptDeps, TransOptDeps) -->
 		;
 			{ OptDeps = OptDeps0 }
 		),
-		{ string__append(BaseFileName, ".trans_opt", TransOptName) },
+		module_name_to_file_name(Dep, ".trans_opt", TransOptName), 
 		search_for_file(IntermodDirs, TransOptName, Result3),
 		( { Result3 = yes } ->
 			{ TransOptDeps = [Dep | TransOptDeps0] },
@@ -1297,15 +1357,14 @@ get_both_opt_deps([Dep | Deps], IntermodDirs, OptDeps, TransOptDeps) -->
 	list(module_name)::out, io__state::di, io__state::uo) is det.
 get_opt_deps([], _, _, []) --> [].
 get_opt_deps([Dep | Deps], IntermodDirs, Suffix, OptDeps) -->
-	{ module_name_to_file_name(Dep, BaseFileName) },
-	{ string__append(BaseFileName, ".m", DepName) },
+	module_name_to_file_name(Dep, ".m", DepName),
 	search_for_file(IntermodDirs, DepName, Result1),
 	get_opt_deps(Deps, IntermodDirs, Suffix, OptDeps0),
 	( { Result1 = yes } ->
 		{ OptDeps = [Dep | OptDeps0] },
 		io__seen
 	;
-		{ string__append(BaseFileName, Suffix, OptName) },
+		module_name_to_file_name(Dep, Suffix, OptName),
 		search_for_file(IntermodDirs, OptName, Result2),
 		( { Result2 = yes } ->
 			{ OptDeps = [Dep | OptDeps0] },
@@ -1360,8 +1419,7 @@ maybe_output_module_order(Module, DepsOrdering) -->
 	globals__io_lookup_bool_option(generate_module_order, Order),
 	globals__io_lookup_bool_option(verbose, Verbose),
 	( { Order = yes } ->
-		{ module_name_to_file_name(Module, BaseFileName) },
-		{ string__append(BaseFileName, ".order", OrdFileName) },
+		module_name_to_file_name(Module, ".order", OrdFileName),
 		maybe_write_string(Verbose, "% Creating module order file `"),
 		maybe_write_string(Verbose, OrdFileName),
 		maybe_write_string(Verbose, "'...\n"),
@@ -1541,8 +1599,7 @@ add_dep(ModuleRelKey, Dep, Relation0, Relation) :-
 	io__state::di, io__state::uo) is det.
 generate_dependencies_write_dep_file(ModuleName, DepsMap) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
-	{ module_name_to_file_name(ModuleName, BaseFileName) },
-	{ string__append(BaseFileName, ".dep", DepFileName) },
+	module_name_to_file_name(ModuleName, ".dep", DepFileName),
 	maybe_write_string(Verbose, "% Creating auto-dependency file `"),
 	maybe_write_string(Verbose, DepFileName),
 	maybe_write_string(Verbose, "'...\n"),
@@ -1563,7 +1620,6 @@ generate_dependencies_write_dep_file(ModuleName, DepsMap) -->
 :- mode generate_dep_file(in, in, in, di, uo) is det.
 
 generate_dep_file(ModuleName, DepsMap, DepStream) -->
-	{ module_name_to_file_name(ModuleName, BaseFileName) },
 	io__write_string(DepStream,
 		"# Automatically generated dependencies for module `"),
 	{ prog_out__sym_name_to_string(ModuleName, ModuleNameString) },
@@ -1578,7 +1634,8 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	{ map__keys(DepsMap, Modules0) },
 	{ select_ok_modules(Modules0, DepsMap, Modules) },
 
-	io__write_string(DepStream, BaseFileName),
+	{ module_name_to_make_var_name(ModuleName, MakeVarName) },
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".ms ="),
 	write_dependencies_list(Modules, ".m", DepStream),
 	io__write_string(DepStream, "\n\n"),
@@ -1586,7 +1643,7 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	globals__io_lookup_bool_option(assume_gmake, Gmake),
 	(
 		{ Gmake = yes },
-		{ string__append(BaseFileName, ".ms", VarName) },
+		{ string__append(MakeVarName, ".ms", VarName) },
 		{ Basis = yes(VarName - ".m") }
 	;
 		{ Gmake = no },
@@ -1595,298 +1652,355 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 
 	{ get_extra_link_objects(Modules, DepsMap, ExtraLinkObjs) },
 
-	io__write_string(DepStream, BaseFileName),
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".nos = "),
 	write_compact_dependencies_list(Modules, ".no", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
-	io__write_string(DepStream, BaseFileName),
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".qls = "),
 	write_compact_dependencies_list(Modules, ".ql", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
-	io__write_string(DepStream, BaseFileName),
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".cs = "),
 	write_compact_dependencies_list(Modules, ".c", Basis, DepStream),
 	write_file_dependencies_list(ExtraLinkObjs, ".c", DepStream),
 	io__write_string(DepStream, "\n"),
 
-	io__write_string(DepStream, BaseFileName),
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".os = "),
 	write_compact_dependencies_list(Modules, ".o", Basis, DepStream),
 	write_file_dependencies_list(ExtraLinkObjs, ".o", DepStream),
 	io__write_string(DepStream, "\n"),
 
-	io__write_string(DepStream, BaseFileName),
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".pic_os = "),
 	write_compact_dependencies_list(Modules, ".$(EXT_FOR_PIC_OBJECTS)",
 		Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
-	io__write_string(DepStream, BaseFileName),
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".dirs = "),
 	write_compact_dependencies_list(Modules, ".dir", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
-	io__write_string(DepStream, BaseFileName),
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".dir_os = "),
 	write_compact_dependencies_list(Modules, ".dir/*.o", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
-	io__write_string(DepStream, BaseFileName),
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".ss = "),
 	write_compact_dependencies_list(Modules, ".s", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
-	io__write_string(DepStream, BaseFileName),
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".errs = "),
 	write_compact_dependencies_list(Modules, ".err", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
-	io__write_string(DepStream, BaseFileName),
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".dates = "),
 	write_compact_dependencies_list(Modules, ".date", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
-	io__write_string(DepStream, BaseFileName),
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".date0s = "),
 	write_compact_dependencies_list(Modules, ".date0", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
-	io__write_string(DepStream, BaseFileName),
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".date3s = "),
 	write_compact_dependencies_list(Modules, ".date3", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
-	io__write_string(DepStream, BaseFileName),
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".optdates = "),
 	write_compact_dependencies_list(Modules, ".optdate", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
-	io__write_string(DepStream, BaseFileName),
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".trans_opt_dates = "),
 	write_compact_dependencies_list(Modules, ".trans_opt_date", Basis,
 								DepStream),
 	io__write_string(DepStream, "\n"),
 
-	io__write_string(DepStream, BaseFileName),
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".ds = "),
 	write_compact_dependencies_list(Modules, ".d", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
-	io__write_string(DepStream, BaseFileName),
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".hs = "),
 	write_compact_dependencies_list(Modules, ".h", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
-	io__write_string(DepStream, BaseFileName),
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".ints = "),
 	write_compact_dependencies_list(Modules, ".int", Basis, DepStream),
 	write_compact_dependencies_separator(Basis, DepStream),
 	write_compact_dependencies_list(Modules, ".int2", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
-	io__write_string(DepStream, BaseFileName),
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".int0s = "),
 	write_compact_dependencies_list(Modules, ".int0", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
-	io__write_string(DepStream, BaseFileName),
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".int3s = "),
 	write_compact_dependencies_list(Modules, ".int3", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
-	io__write_string(DepStream, BaseFileName),
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".opts = "),
 	write_compact_dependencies_list(Modules, ".opt", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
-	io__write_string(DepStream, BaseFileName),
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".trans_opts = "),
 	write_compact_dependencies_list(Modules, ".trans_opt", Basis,
 								DepStream),
 	io__write_string(DepStream, "\n"),
 
-	io__write_string(DepStream, BaseFileName),
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".profs = "),
 	write_compact_dependencies_list(Modules, ".prof", Basis, DepStream),
 	io__write_string(DepStream, "\n\n"),
 
+	module_name_to_file_name(ModuleName, ".init", InitFileName),
+	module_name_to_file_name(ModuleName, "_init.c", InitCFileName),
+	module_name_to_file_name(ModuleName, "_init.s", InitAsmFileName),
+	module_name_to_file_name(ModuleName, "_init.o", InitObjFileName),
+	module_name_to_file_name(ModuleName, "_init.pic_o",
+							InitPicObjFileName),
+
+	module_name_to_file_name(ModuleName, "", ExeFileName),
 	io__write_strings(DepStream, [
-		BaseFileName, " : $(", BaseFileName, ".os) ",
-		BaseFileName, "_init.o MLOBJS-", BaseFileName, "\n",
-		"\t$(ML) $(GRADEFLAGS) $(MLFLAGS) -o ", BaseFileName, " ",
-		BaseFileName, "_init.o \\\n",
-		"\t	$(", BaseFileName, ".os) $(MLOBJS) $(MLLIBS)\n\n"
+		ExeFileName, " : $(", MakeVarName, ".os) ",
+		InitObjFileName, " MLOBJS-", MakeVarName, "\n",
+		"\t$(ML) $(GRADEFLAGS) $(MLFLAGS) -o ", ExeFileName, " ",
+		InitObjFileName, " \\\n",
+		"\t	$(", MakeVarName, ".os) $(MLOBJS) $(MLLIBS)\n\n"
+	]),
+
+	module_name_to_file_name(ModuleName, ".split", SplitExeFileName),
+	module_name_to_file_name(ModuleName, ".split.a", SplitLibFileName),
+	io__write_strings(DepStream, [
+		SplitExeFileName, " : ", SplitLibFileName, " ",
+				InitObjFileName, "\n",
+		"\t$(ML) $(GRADEFLAGS) $(MLFLAGS) -o ", SplitExeFileName,
+			" ", InitObjFileName, " \\\n",
+		"\t	", SplitLibFileName, " $(MLLIBS)\n\n"
 	]),
 
 	io__write_strings(DepStream, [
-		BaseFileName, ".split : ", BaseFileName, ".split.a ",
-				BaseFileName, "_init.o\n",
-		"\t$(ML) $(GRADEFLAGS) $(MLFLAGS) -o ", BaseFileName, ".split ",
-			BaseFileName, "_init.o \\\n",
-		"\t	", BaseFileName, ".split.a $(MLLIBS)\n\n"
-	]),
-
-	io__write_strings(DepStream, [
-		BaseFileName, ".split.a : $(", BaseFileName, ".dir_os) ",
-				"MLOBJS-", BaseFileName, "\n",
-		"\trm -f ", BaseFileName, ".split.a\n",
-		"\t$(AR) $(ARFLAGS) ", BaseFileName, ".split.a $(MLOBJS)\n",
-		"\tfor dir in $(", BaseFileName, ".dirs); do \\\n",
-		"\t	$(AR) q ", BaseFileName, ".split.a $$dir/*.o; \\\n",
+		SplitLibFileName, " : $(", MakeVarName, ".dir_os) ",
+				"MLOBJS-", MakeVarName, "\n",
+		"\trm -f ", SplitLibFileName, "\n",
+		"\t$(AR) $(ARFLAGS) ", SplitLibFileName, " $(MLOBJS)\n",
+		"\tfor dir in $(", MakeVarName, ".dirs); do \\\n",
+		"\t	$(AR) q ", SplitLibFileName, " $$dir/*.o; \\\n",
 		"\tdone\n",
-		"\t$(RANLIB) $(RANLIBFLAGS) ", BaseFileName, ".split.a\n\n"
+		"\t$(RANLIB) $(RANLIBFLAGS) ", SplitLibFileName, "\n\n"
+	]),
+
+	module_name_to_lib_file_name("lib", ModuleName, "", LibTargetName),
+	module_name_to_lib_file_name("lib", ModuleName, ".a", LibFileName),
+	module_name_to_lib_file_name("lib", ModuleName,
+		".so", SharedLibFileName),
+	module_name_to_lib_file_name("lib", ModuleName,
+		".$(EXT_FOR_SHARED_LIB)", MaybeSharedLibFileName),
+	io__write_strings(DepStream, [
+		".PHONY : ", LibTargetName, "\n",
+		LibTargetName, " : ",
+		LibFileName, " ",
+		MaybeSharedLibFileName, " \\\n",
+		"\t\t$(", MakeVarName, ".ints) ",
+		"$(", MakeVarName, ".int3s) ",
+		"$(", MakeVarName, ".opts) ",
+		InitFileName, "\n\n"
 	]),
 
 	io__write_strings(DepStream, [
-		"lib", BaseFileName, " : ",
-		"lib", BaseFileName, ".a ",
-		"lib", BaseFileName, ".$(EXT_FOR_SHARED_LIB) \\\n",
-		"\t\t$(", BaseFileName, ".ints) ",
-		"$(", BaseFileName, ".int3s) ",
-		"$(", BaseFileName, ".opts) ",
-		BaseFileName, ".init\n\n"
-	]),
-
-	io__write_strings(DepStream, [
-		"lib", BaseFileName, ".so : $(", BaseFileName, ".pic_os) ",
-				"MLPICOBJS-", BaseFileName, "\n",
+		SharedLibFileName, " : $(", MakeVarName, ".pic_os) ",
+				"MLPICOBJS-", MakeVarName, "\n",
 		"\t$(ML) --make-shared-lib $(GRADEFLAGS) $(MLFLAGS) -o ",
-			"lib", BaseFileName, ".so \\\n",
-		"\t\t$(", BaseFileName, ".pic_os) $(MLPICOBJS) $(MLLIBS)\n\n"
+			SharedLibFileName, " \\\n",
+		"\t\t$(", MakeVarName, ".pic_os) $(MLPICOBJS) $(MLLIBS)\n\n"
 	]),
 
 	io__write_strings(DepStream, [
-		"lib", BaseFileName, ".a : $(", BaseFileName,
-				".os) MLOBJS-", BaseFileName, "\n",
-		"\trm -f ", BaseFileName, ".a\n",
-		"\t$(AR) $(ARFLAGS) lib", BaseFileName, ".a ",
-			"$(", BaseFileName, ".os) $(MLOBJS)\n",
-		"\t$(RANLIB) $(RANLIBFLAGS) lib", BaseFileName, ".a\n\n"
+		LibFileName, " : $(", MakeVarName, ".os) ",
+				"MLOBJS-", MakeVarName, "\n",
+		"\trm -f ", LibFileName, "\n",
+		"\t$(AR) $(ARFLAGS) ", LibFileName, " ",
+			"$(", MakeVarName, ".os) $(MLOBJS)\n",
+		"\t$(RANLIB) $(RANLIBFLAGS) ", LibFileName, "\n\n"
 	]),
 
+	module_name_to_file_name(ModuleName, ".dep", DepFileName),
 	io__write_strings(DepStream, [
-		BaseFileName, ".init : ", BaseFileName, ".dep\n",
-		"\tfor file in $(", BaseFileName, ".ms); do \\\n",
-		"\t\techo ""INIT mercury__`basename $$file .m`__init""; \\\n",
-		"\tdone > ", BaseFileName, ".init\n\n"
+		InitFileName, " : ", DepFileName, "\n",
+		"\techo > ", InitFileName, "\n"
+	]),
+	list__foldl(append_to_init_list(DepStream, InitFileName), Modules),
+	io__write_string(DepStream, "\n"),
+
+	io__write_strings(DepStream, [
+		InitCFileName, " :\n",
+		"\t$(C2INIT) $(C2INITFLAGS) $(", MakeVarName, ".ms) > ",
+			InitCFileName, "\n\n"
 	]),
 
+	module_name_to_file_name(ModuleName, ".nu", NU_ExeFileName),
+	module_name_to_file_name(ModuleName, ".nu.debug", NU_DebugExeFileName),
 	io__write_strings(DepStream, [
-		BaseFileName, "_init.c :\n",
-		"\t$(C2INIT) $(C2INITFLAGS) $(", BaseFileName, ".ms) > ",
-			BaseFileName, "_init.c\n\n"
+		NU_ExeFileName, " : $(", MakeVarName, ".nos)\n",
+		"\t$(MNL) $(MNLFLAGS) -o ", NU_ExeFileName, " ",
+			"$(", MakeVarName, ".nos)\n\n",
+
+		NU_DebugExeFileName, " : $(", MakeVarName, ".nos)\n",
+		"\t$(MNL) --debug $(MNLFLAGS) -o ", NU_DebugExeFileName, " ",
+			"$(", MakeVarName, ".nos)\n\n"
 	]),
 
+	module_name_to_file_name(ModuleName, ".sicstus", SicstusExeFileName),
+	module_name_to_file_name(ModuleName, ".sicstus.debug",
+						SicstusDebugExeFileName),
 	io__write_strings(DepStream, [
-		BaseFileName, ".nu : $(", BaseFileName, ".nos)\n",
-		"\t$(MNL) $(MNLFLAGS) -o ", BaseFileName, ".nu ",
-			"$(", BaseFileName, ".nos)\n\n",
+		SicstusExeFileName, " : $(", MakeVarName, ".qls)\n",
+		"\t$(MSL) $(MSLFLAGS) -o ", SicstusExeFileName, " ",
+			"$(", MakeVarName, ".qls)\n\n",
 
-		BaseFileName, ".nu.debug : $(", BaseFileName, ".nos)\n",
-		"\t$(MNL) --debug $(MNLFLAGS) -o ", BaseFileName, ".nu.debug ",
-			"$(", BaseFileName, ".nos)\n\n"
+		SicstusDebugExeFileName, " : $(", MakeVarName, ".qls)\n",
+		"\t$(MSL) --debug $(MSLFLAGS) -o ", SicstusDebugExeFileName,
+			" $(", MakeVarName, ".qls)\n\n"
 	]),
 
+	module_name_to_file_name(ModuleName, ".check", CheckTargetName),
+	module_name_to_file_name(ModuleName, ".ints", IntsTargetName),
+	module_name_to_file_name(ModuleName, ".int3s", Int3sTargetName),
+	module_name_to_file_name(ModuleName, ".opts", OptsTargetName),
+	module_name_to_file_name(ModuleName, ".trans_opts",
+						TransOptsTargetName),
 	io__write_strings(DepStream, [
-		BaseFileName, ".sicstus : $(", BaseFileName, ".qls)\n",
-		"\t$(MSL) $(MSLFLAGS) -o ", BaseFileName, ".sicstus ",
-			"$(", BaseFileName, ".qls)\n\n",
-
-		BaseFileName, ".sicstus.debug : $(", BaseFileName, ".qls)\n",
-			"\t$(MSL) --debug $(MSLFLAGS) -o ", BaseFileName,
-			".sicstus.debug $(", BaseFileName, ".qls)\n\n"
+		CheckTargetName, " : $(", MakeVarName, ".errs)\n\n",
+		IntsTargetName, " : $(", MakeVarName, ".dates)\n\n",
+		Int3sTargetName, " : $(", MakeVarName, ".date3s)\n\n",
+		OptsTargetName, " : $(", MakeVarName, ".optdates)\n\n",
+		TransOptsTargetName, " : $(", MakeVarName,
+						".trans_opt_dates)\n\n"
 	]),
 
+	module_name_to_file_name(ModuleName, ".clean", CleanTargetName),
 	io__write_strings(DepStream, [
-		BaseFileName, ".check : $(", BaseFileName, ".errs)\n\n",
-
-		BaseFileName, ".ints : $(", BaseFileName, ".dates)\n\n",
-		BaseFileName, ".int3s : $(", BaseFileName, ".date3s)\n\n",
-		BaseFileName, ".opts : $(", BaseFileName, ".optdates)\n\n"
+		"clean : ", CleanTargetName, "\n"
 	]),
-
 	io__write_strings(DepStream, [
-		"clean : ", BaseFileName, ".clean\n"
-	]),
-
-	io__write_strings(DepStream, [
-		BaseFileName, ".clean :\n",
-		"\t-rm -rf ", BaseFileName, ".dir\n",
-		"\t-rm -f $(", BaseFileName, ".cs) ", BaseFileName, "_init.c\n",
-		"\t-rm -f $(", BaseFileName, ".ss) ", BaseFileName, "_init.s\n",
-		"\t-rm -f $(", BaseFileName, ".os) ", BaseFileName, "_init.o\n",
-		"\t-rm -f $(", BaseFileName, ".pic_os) ",
-						BaseFileName, "_init.pic_o\n",
-		"\t-rm -f $(", BaseFileName, ".trans_opt_dates)\n",
-		"\t-rm -f $(", BaseFileName, ".trans_opts)\n",
-		"\t-rm -f $(", BaseFileName, ".profs)\n",
-		"\t-rm -f $(", BaseFileName, ".nos)\n",
-		"\t-rm -f $(", BaseFileName, ".qls)\n",
-		"\t-rm -f $(", BaseFileName, ".errs)\n"
+		".PHONY : ", CleanTargetName, "\n",
+		CleanTargetName, " :\n",
+		"\t-rm -rf ", MakeVarName, ".dir\n",
+		"\t-rm -f $(", MakeVarName, ".cs) ", InitCFileName, "\n",
+		"\t-rm -f $(", MakeVarName, ".ss) ", InitAsmFileName, "\n",
+		"\t-rm -f $(", MakeVarName, ".os) ", InitObjFileName, "\n",
+		"\t-rm -f $(", MakeVarName, ".pic_os) ", InitPicObjFileName,
+									"\n",
+		"\t-rm -f $(", MakeVarName, ".trans_opt_dates)\n",
+		"\t-rm -f $(", MakeVarName, ".trans_opts)\n",
+		"\t-rm -f $(", MakeVarName, ".profs)\n",
+		"\t-rm -f $(", MakeVarName, ".nos)\n",
+		"\t-rm -f $(", MakeVarName, ".qls)\n",
+		"\t-rm -f $(", MakeVarName, ".errs)\n"
 	]),
 
 	io__write_string(DepStream, "\n"),
 
+	module_name_to_file_name(ModuleName, ".change_clean",
+			ChangeCleanTargetName),
 	io__write_strings(DepStream, [
-		BaseFileName, ".change_clean :\n",
-		"\t-rm -f $(", BaseFileName, ".cs) ", BaseFileName, "_init.c\n",
-		"\t-rm -f $(", BaseFileName, ".ss) ", BaseFileName, "_init.s\n",
-		"\t-rm -f $(", BaseFileName, ".os) ", BaseFileName, "_init.o\n",
-		"\t-rm -f $(", BaseFileName, ".hs)\n",
-		"\t-rm -f $(", BaseFileName, ".ds)\n",
+		".PHONY : ", ChangeCleanTargetName, "\n",
+		ChangeCleanTargetName, " :\n",
+		"\t-rm -f $(", MakeVarName, ".cs) ", InitCFileName, "\n",
+		"\t-rm -f $(", MakeVarName, ".ss) ", InitAsmFileName, "\n",
+		"\t-rm -f $(", MakeVarName, ".os) ", InitObjFileName, "\n",
+		"\t-rm -f $(", MakeVarName, ".pic_os) ", InitPicObjFileName,
+									"\n",
+		"\t-rm -f $(", MakeVarName, ".hs)\n",
+		"\t-rm -f $(", MakeVarName, ".ds)\n",
 		"\t-rm -f ",
-			BaseFileName, " ",
-			BaseFileName, ".split ",
-			BaseFileName, ".split.a ",
-			BaseFileName, ".init ",
-			"lib", BaseFileName, ".a ",
-			"lib", BaseFileName, ".so ",
-			BaseFileName, ".dep\n\n"
+			ExeFileName, " ",
+			SplitExeFileName, " ",
+			SplitLibFileName, " ",
+			InitFileName, " ",
+			LibFileName, " ",
+			SharedLibFileName, " ",
+			DepFileName, "\n\n"
 	]),
 
+	module_name_to_file_name(ModuleName, ".realclean",
+			RealCleanTargetName),
 	io__write_strings(DepStream, [
-		"realclean : ", BaseFileName, ".realclean\n"
+		"realclean : ", RealCleanTargetName, "\n"
 	]),
-
 	io__write_strings(DepStream, [
-		BaseFileName, ".realclean : ", BaseFileName, ".clean\n",
-		"\t-rm -f $(", BaseFileName, ".dates)\n",
-		"\t-rm -f $(", BaseFileName, ".date0s)\n",
-		"\t-rm -f $(", BaseFileName, ".date3s)\n",
-		"\t-rm -f $(", BaseFileName, ".optdates)\n",
-		"\t-rm -f $(", BaseFileName, ".ints)\n",
-		"\t-rm -f $(", BaseFileName, ".int0s)\n",
-		"\t-rm -f $(", BaseFileName, ".int3s)\n",
-		"\t-rm -f $(", BaseFileName, ".opts)\n",
-		"\t-rm -f $(", BaseFileName, ".ds)\n",
-		"\t-rm -f $(", BaseFileName, ".hs)\n"
+		".PHONY : ", RealCleanTargetName, "\n",
+		RealCleanTargetName, " : ", CleanTargetName, "\n",
+		"\t-rm -f $(", MakeVarName, ".dates)\n",
+		"\t-rm -f $(", MakeVarName, ".date0s)\n",
+		"\t-rm -f $(", MakeVarName, ".date3s)\n",
+		"\t-rm -f $(", MakeVarName, ".optdates)\n",
+		"\t-rm -f $(", MakeVarName, ".ints)\n",
+		"\t-rm -f $(", MakeVarName, ".int0s)\n",
+		"\t-rm -f $(", MakeVarName, ".int3s)\n",
+		"\t-rm -f $(", MakeVarName, ".opts)\n",
+		"\t-rm -f $(", MakeVarName, ".ds)\n",
+		"\t-rm -f $(", MakeVarName, ".hs)\n"
 	]),
+	module_name_to_file_name(ModuleName, ".nu.save", NU_SaveExeFileName),
+	module_name_to_file_name(ModuleName, ".nu.debug.save",
+						NU_DebugSaveExeFileName),
 	io__write_strings(DepStream, [
 		"\t-rm -f ",
-			BaseFileName, " ",
-			BaseFileName, ".split ",
-			BaseFileName, ".split.a ",
-			BaseFileName, ".init ",
-			"lib", BaseFileName, ".a ",
-			"lib", BaseFileName, ".so ",
-			BaseFileName, ".nu ",
-			BaseFileName, ".nu.save ",
-			BaseFileName, ".nu.debug.save ",
-			BaseFileName, ".nu.debug ",
-			BaseFileName, ".sicstus ",
-			BaseFileName, ".sicstus.debug ",
-			BaseFileName, ".dep\n\n"
+			ExeFileName, " ",
+			SplitExeFileName, " ",
+			SplitLibFileName, " ",
+			InitFileName, " ",
+			LibFileName, " ",
+			SharedLibFileName, " ",
+			NU_ExeFileName, " ",
+			NU_SaveExeFileName, " ",
+			NU_DebugExeFileName, " ",
+			NU_DebugSaveExeFileName, " ",
+			SicstusExeFileName, " ",
+			SicstusDebugExeFileName, " ",
+			DepFileName, "\n\n"
 	]),
-	io__write_strings(DepStream, [
-		"clean_nu : ", BaseFileName, ".clean_nu\n",
-		BaseFileName, ".clean_nu :\n",
-		"\t-rm -f $(", BaseFileName, ".nos)\n\n",
 
-		"clean_sicstus : ", BaseFileName, ".clean_sicstus\n",
-		BaseFileName, ".clean_sicstus :\n",
-		"\t-rm -f $(", BaseFileName, ".qls)\n\n"
+	module_name_to_file_name(ModuleName, ".clean_nu", CleanNU_TargetName),
+	module_name_to_file_name(ModuleName, ".clean_sicstus",
+						CleanSicstusTargetName),
+	io__write_strings(DepStream, [
+		"clean_nu : ", CleanNU_TargetName, "\n",
+		".PHONY : ", CleanNU_TargetName, "\n",
+		CleanNU_TargetName, " :\n",
+		"\t-rm -f $(", MakeVarName, ".nos)\n\n",
+
+		"clean_sicstus : ", CleanSicstusTargetName, "\n",
+		".PHONY : ", CleanSicstusTargetName, "\n",
+		CleanSicstusTargetName, " :\n",
+		"\t-rm -f $(", MakeVarName, ".qls)\n\n"
+	]).
+
+:- pred append_to_init_list(io__output_stream, file_name, module_name,
+				io__state, io__state).
+:- mode append_to_init_list(in, in, in, di, uo) is det.
+
+append_to_init_list(DepStream, InitFileName, Module) -->
+	{ llds_out__make_init_name(Module, InitFuncName) },
+	io__write_strings(DepStream, [
+		"\techo ""INIT ", InitFuncName, """ >> ", InitFileName, "\n"
 	]).
 
 %-----------------------------------------------------------------------------%
@@ -1934,9 +2048,12 @@ select_ok_modules([Module | Modules0], DepsMap, Modules) :-
 				io__state, io__state).
 :- mode write_dependencies_list(in, in, in, di, uo) is det.
 
-write_dependencies_list(Modules, Suffix, DepStream) -->
-	{ list__map(module_name_to_file_name, Modules, FileNames) },
-	write_file_dependencies_list(FileNames, Suffix, DepStream).
+write_dependencies_list([], _, _) --> [].
+write_dependencies_list([Module | Modules], Suffix, DepStream) -->
+	module_name_to_file_name(Module, Suffix, FileName),
+	io__write_string(DepStream, " \\\n\t"),
+	io__write_string(DepStream, FileName),
+	write_dependencies_list(Modules, Suffix, DepStream).
 
 :- pred write_file_dependencies_list(list(string), string, io__output_stream,
 				io__state, io__state).
@@ -2046,8 +2163,7 @@ read_dependencies(ModuleName, Search, ModuleImports) -->
 %-----------------------------------------------------------------------------%
 
 read_mod(ModuleName, Extension, Descr, Search, Items, Error) -->
-	{ module_name_to_file_name(ModuleName, BaseFileName) },
-	{ string__append(BaseFileName, Extension, FileName) },
+	module_name_to_file_name(ModuleName, Extension, FileName),
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	maybe_write_string(VeryVerbose, "% "),
 	maybe_write_string(VeryVerbose, Descr),
@@ -2080,8 +2196,7 @@ combine_module_errors(no, Error, Error).
 */
 
 read_mod_ignore_errors(ModuleName, Extension, Descr, Search, Items, Error) -->
-	{ module_name_to_file_name(ModuleName, BaseFileName) },
-	{ string__append(BaseFileName, Extension, FileName) },
+	module_name_to_file_name(ModuleName, Extension, FileName),
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	maybe_write_string(VeryVerbose, "% "),
 	maybe_write_string(VeryVerbose, Descr),

@@ -1003,8 +1003,7 @@ maybe_warn_unused_interface_imports(ModuleName, UnusedImports) -->
 	->
 		[]
 	;
-		{ module_name_to_file_name(ModuleName, BaseFileName) },
-		{ string__append(BaseFileName, ".m", FileName) },
+		module_name_to_file_name(ModuleName, ".m", FileName),
 		{ term__context_init(FileName, 1, Context) },
 		prog_out__write_context(Context),
 		io__write_string("In module `"),
