@@ -297,9 +297,6 @@ standardize_instr(Instr1, Instr) :-
 		Instr1 = mkframe(_, _),
 		Instr = Instr1
 	;
-		Instr1 = modframe(_),
-		Instr = Instr1
-	;
 		Instr1 = label(_),
 		Instr = Instr1
 	;
@@ -569,10 +566,6 @@ most_specific_instr(Instr1, Instr2, Instr) :-
 		Instr2 = Instr1,
 		Instr = Instr1
 	;
-		Instr1 = modframe(_),
-		Instr2 = Instr1,
-		Instr = Instr1
-	;
 		Instr1 = label(_),
 		Instr2 = Instr1,
 		Instr = Instr1
@@ -802,8 +795,6 @@ dupelim__replace_labels_instr(call(Target, Return0, LiveInfo, CM),
 	dupelim__replace_labels_code_addr(Return0, ReplMap, Return).
 dupelim__replace_labels_instr(mkframe(NondetFrameInfo, Redoip0), ReplMap,
 		mkframe(NondetFrameInfo, Redoip)) :-
-	dupelim__replace_labels_code_addr(Redoip0, ReplMap, Redoip).
-dupelim__replace_labels_instr(modframe(Redoip0), ReplMap, modframe(Redoip)) :-
 	dupelim__replace_labels_code_addr(Redoip0, ReplMap, Redoip).
 dupelim__replace_labels_instr(label(Label), ReplMap, label(Label)) :-
 	( map__search(ReplMap, Label, _) ->

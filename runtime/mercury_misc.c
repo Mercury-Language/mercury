@@ -41,21 +41,6 @@ mkframe_msg(void)
 }
 
 void 
-modframe_msg(void)
-{
-	restore_transient_registers();
-
-	printf("\nmodifying choice point for procedure %s\n", curprednm);
-	printf("redo ip: "); printlabel(curredoip);
-
-	if (detaildebug) {
-		dumpnondstack();
-	}
-
-	return;
-}
-
-void 
 succeed_msg(void)
 {
 	restore_transient_registers();

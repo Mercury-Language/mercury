@@ -744,11 +744,9 @@ llds_out__find_cont_labels([Instr - _ | Instrs], ContLabelSet0, ContLabelSet)
 		;
 			Instr = mkframe(_, label(ContLabel))
 		;
-			Instr = modframe(label(ContLabel))
-		;
 			Instr = join_and_continue(_, ContLabel)
 		;
-			Instr = assign(redoip(lval(maxfr)), 
+			Instr = assign(redoip(lval(_)), 
 				const(code_addr_const(label(ContLabel))))
 		)
 	->
@@ -885,9 +883,6 @@ output_instruction_decls(mkframe(FrameInfo, FailureContinuation),
 	),
 	output_code_addr_decls(FailureContinuation, "", "", 0, _,
 		DeclSet1, DeclSet).
-output_instruction_decls(modframe(FailureContinuation), DeclSet0, DeclSet) -->
-	output_code_addr_decls(FailureContinuation, "", "", 0, _,
-		DeclSet0, DeclSet).
 output_instruction_decls(label(_), DeclSet, DeclSet) --> [].
 output_instruction_decls(goto(CodeAddr), DeclSet0, DeclSet) -->
 	output_code_addr_decls(CodeAddr, "", "", 0, _, DeclSet0, DeclSet).
@@ -1131,16 +1126,19 @@ output_instruction(mkframe(FrameInfo, FailCont), _) -->
 			io__write_string(");\n")
 		)
 	;
-		{ FrameInfo = temp_frame },
-		io__write_string("\tmktempframe("),
-		output_code_addr(FailCont),
-		io__write_string(");\n")
+		{ FrameInfo = temp_frame(Kind) },
+		(
+			{ Kind = det_stack_proc },
+			io__write_string("\tmkdettempframe("),
+			output_code_addr(FailCont),
+			io__write_string(");\n")
+		;
+			{ Kind = nondet_stack_proc },
+			io__write_string("\tmktempframe("),
+			output_code_addr(FailCont),
+			io__write_string(");\n")
+		)
 	).
-
-output_instruction(modframe(FailureContinuation), _) -->
-	io__write_string("\tmodframe("),
-	output_code_addr(FailureContinuation),
-	io__write_string(");\n").
 
 output_instruction(label(Label), ProfInfo) -->
 	output_label_defn(Label),

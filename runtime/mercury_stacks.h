@@ -74,32 +74,41 @@
 
 /* DEFINITIONS FOR NONDET STACK FRAMES */
 
-#define	PREVFR		(-0)	/* prev frame on stack, set up at call	*/
-#define	REDOIP		(-1)	/* in this proc, set up at clause entry	*/
-#define	REDOFR		(-2)	/* value for curfr on backtracking      */
-#define	SUCCIP		(-3)	/* in caller proc, set up at call	*/
-#define	SUCCFR		(-4)	/* frame of caller proc, set up at call	*/
+#define	MR_PREVFR	(-0)	/* prev frame on stack, set up at call	*/
+#define	MR_REDOIP	(-1)	/* in this proc, set up at clause entry	*/
+#define	MR_REDOFR	(-2)	/* value for curfr on backtracking      */
+#define	MR_SUCCIP	(-3)	/* in caller proc, set up at call	*/
+#define	MR_SUCCFR	(-4)	/* frame of caller proc, set up at call	*/
+#define	MR_DETFR	(-3)	/* sp, in model_det temp frames only	*/
 
 #ifdef MR_DEBUG_NONDET_STACK
-  #define PREDNM		(-5)	/* for debugging, set up at call */
-  #define MR_prednm(fr)		LVALUE_CAST(const char *, ((Word *) fr)[PREDNM])
-  #define NONDET_FIXED_SIZE	6	/* units: words */
+  #define MR_PREDNM		(-5)	/* for debugging, set up at call */
+  #define MR_prednm_slot(fr)	LVALUE_CAST(const char *, \
+		  			((Word *) fr)[MR_PREDNM])
+  #define MR_NONDET_FIXED_SIZE	6	/* units: words */
 #else
-  #define MR_prednm(fr)	"unknown"
-  #define NONDET_FIXED_SIZE	5	/* units: words */
+  #define MR_prednm_slot(fr)	"unknown"
+  #define MR_NONDET_FIXED_SIZE	5	/* units: words */
 #endif
 
-#define	NONDET_TEMP_SIZE	3	/* prevfr, redoip, redofr */
+/*
+** Code that traverses the nondet stack depends on the relationship
+** MR_NONDET_TEMP_SIZE < MR_DET_TEMP_SIZE < MR_NONDET_FIXED_SIZE.
+*/
 
-#define	SAVEVAL			(-NONDET_FIXED_SIZE)
+#define	MR_NONDET_TEMP_SIZE	3	/* prevfr, redoip, redofr */
+#define	MR_DET_TEMP_SIZE	4	/* prevfr, redoip, redofr, detfr */
+
+#define	MR_SAVEVAL			(-MR_NONDET_FIXED_SIZE)
 				/* saved values start at this offset	*/
 
-#define	MR_prevfr_slot(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[PREVFR])
-#define	MR_redoip_slot(fr)	LVALUE_CAST(Code *, ((Word *) (fr))[REDOIP])
-#define	MR_redofr_slot(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[REDOFR])
-#define	MR_succip_slot(fr)	LVALUE_CAST(Code *, ((Word *) (fr))[SUCCIP])
-#define	MR_succfr_slot(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[SUCCFR])
-#define	MR_based_framevar(fr,n)	(((Word *) (fr))[SAVEVAL+1-(n)])
+#define	MR_prevfr_slot(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[MR_PREVFR])
+#define	MR_redoip_slot(fr)	LVALUE_CAST(Code *, ((Word *) (fr))[MR_REDOIP])
+#define	MR_redofr_slot(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[MR_REDOFR])
+#define	MR_succip_slot(fr)	LVALUE_CAST(Code *, ((Word *) (fr))[MR_SUCCIP])
+#define	MR_succfr_slot(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[MR_SUCCFR])
+#define	MR_detfr_slot(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[MR_DETFR])
+#define	MR_based_framevar(fr,n)	(((Word *) (fr))[MR_SAVEVAL+1-(n)])
 
 #define	bt_prevfr(fr)		MR_prevfr_slot(fr)
 #define	bt_redoip(fr)		MR_redoip_slot(fr)
@@ -126,106 +135,115 @@
 /* DEFINITIONS FOR MANIPULATING THE NONDET STACK */
 
 #ifdef MR_DEBUG_NONDET_STACK
-  #define mkframe_save_prednm(prednm) (curprednm = prednm)
+  #define mkframe_save_prednm(prednm) (MR_prednm_slot(MR_curfr) = prednm)
 #else
   #define mkframe_save_prednm(prednm) /* nothing */
 #endif
 
-#define	mkframe(prednm, numslots, redoip)			\
-			do {					\
-				reg	Word	*prevfr;	\
-				reg	Word	*succfr;	\
-								\
-				prevfr = MR_maxfr;		\
-				succfr = MR_curfr;		\
-				MR_maxfr += (NONDET_FIXED_SIZE + numslots);\
-				MR_curfr = MR_maxfr;		\
-				curredoip = redoip;		\
-				curprevfr = prevfr;		\
-				cursuccip = MR_succip;		\
-				cursuccfr = succfr;		\
-				curredofr = MR_curfr;		\
-				mkframe_save_prednm(prednm);	\
-				debugmkframe();			\
-				nondstack_overflow_check();	\
+#define	mkframe(prednm, numslots, redoip)				\
+			do {						\
+				reg	Word	*prevfr;		\
+				reg	Word	*succfr;		\
+									\
+				prevfr = MR_maxfr;			\
+				succfr = MR_curfr;			\
+				MR_maxfr += (MR_NONDET_FIXED_SIZE + numslots);\
+				MR_curfr = MR_maxfr;			\
+				MR_redoip_slot(MR_curfr) = redoip;	\
+				MR_prevfr_slot(MR_curfr) = prevfr;	\
+				MR_succip_slot(MR_curfr) = MR_succip;	\
+				MR_succfr_slot(MR_curfr) = succfr;	\
+				MR_redofr_slot(MR_curfr) = MR_curfr;	\
+				mkframe_save_prednm(prednm);		\
+				debugmkframe();				\
+				nondstack_overflow_check();		\
 			} while (0)
 
 /* just like mkframe, but also reserves space for a struct     */
 /* with the given tag at the bottom of the nondet stack frame  */
-#define	mkpragmaframe(prednm, numslots, structname, redoip)	\
-			do {					\
-				reg	Word	*prevfr;	\
-				reg	Word	*succfr;	\
-								\
-				prevfr = MR_maxfr;		\
-				succfr = MR_curfr;		\
-				MR_maxfr += (NONDET_FIXED_SIZE + numslots \
+#define	mkpragmaframe(prednm, numslots, structname, redoip)		\
+			do {						\
+				reg	Word	*prevfr;		\
+				reg	Word	*succfr;		\
+									\
+				prevfr = MR_maxfr;			\
+				succfr = MR_curfr;			\
+				MR_maxfr += (MR_NONDET_FIXED_SIZE + numslots \
 					+ sizeof(struct structname));	\
-				MR_curfr = MR_maxfr;		\
-				curredoip = redoip;		\
-				curprevfr = prevfr;		\
-				cursuccip = MR_succip;		\
-				cursuccfr = succfr;		\
-				curredofr = MR_curfr;		\
-				mkframe_save_prednm(prednm);	\
-				debugmkframe();			\
-				nondstack_overflow_check();	\
+				MR_curfr = MR_maxfr;			\
+				MR_redoip_slot(MR_curfr) = redoip;	\
+				MR_prevfr_slot(MR_curfr) = prevfr;	\
+				MR_succip_slot(MR_curfr) = MR_succip;	\
+				MR_succfr_slot(MR_curfr) = succfr;	\
+				MR_redofr_slot(MR_curfr) = MR_curfr;	\
+				mkframe_save_prednm(prednm);		\
+				debugmkframe();				\
+				nondstack_overflow_check();		\
 			} while (0)
 
 #define	mktempframe(redoip)						\
-			do {					\
-				reg	Word	*prevfr;	\
-				reg	Word	*succfr;	\
-								\
-				prevfr = MR_maxfr;		\
-				succfr = MR_curfr;		\
-				MR_maxfr += NONDET_TEMP_SIZE;	\
-				bt_prevfr(MR_maxfr) = prevfr;	\
-				bt_redoip(MR_maxfr) = redoip;	\
-				bt_redofr(MR_maxfr) = MR_curfr;	\
-				nondstack_overflow_check();	\
+			do {						\
+				reg	Word	*prevfr;		\
+				reg	Word	*succfr;		\
+									\
+				prevfr = MR_maxfr;			\
+				succfr = MR_curfr;			\
+				MR_maxfr += MR_NONDET_TEMP_SIZE;	\
+				MR_prevfr_slot(MR_maxfr) = prevfr;	\
+				MR_redoip_slot(MR_maxfr) = redoip;	\
+				MR_redofr_slot(MR_maxfr) = MR_curfr;	\
+				nondstack_overflow_check();		\
 			} while (0)
 
-#define	modframe(redoip)					\
-			do {					\
-				curredoip = redoip;		\
-				debugmodframe();		\
+#define	mkdettempframe(redoip)						\
+			do {						\
+				reg	Word	*prevfr;		\
+				reg	Word	*succfr;		\
+									\
+				prevfr = MR_maxfr;			\
+				succfr = MR_curfr;			\
+				MR_maxfr += MR_DET_TEMP_SIZE;		\
+				MR_prevfr_slot(MR_maxfr) = prevfr;	\
+				MR_redoip_slot(MR_maxfr) = redoip;	\
+				MR_redofr_slot(MR_maxfr) = MR_curfr;	\
+				MR_detfr_slot(MR_maxfr)  = MR_sp;	\
+				nondstack_overflow_check();		\
 			} while (0)
 
-#define	succeed()	do {					\
-				reg	Word	*childfr;	\
-								\
-				debugsucceed();			\
-				childfr = MR_curfr;		\
-				MR_curfr = cursuccfr;		\
-				GOTO(bt_succip(childfr));	\
+#define	succeed()	do {						\
+				reg	Word	*childfr;		\
+									\
+				debugsucceed();				\
+				childfr = MR_curfr;			\
+				MR_curfr = MR_succfr_slot(childfr);	\
+				GOTO(MR_succip_slot(childfr));		\
 			} while (0)
 
-#define	succeed_discard()					\
-			do {					\
-				reg	Word	*childfr;	\
-								\
-				debugsucceeddiscard();		\
-				childfr = MR_curfr;		\
-				MR_maxfr = curprevfr;		\
-				MR_curfr = cursuccfr;		\
-				GOTO(bt_succip(childfr));	\
-			} while (0)
-
-
-#define	fail()		do {					\
-				debugfail();			\
-				MR_maxfr = bt_prevfr(MR_maxfr);	\
-				nondstack_underflow_check();	\
-				MR_curfr = bt_redofr(MR_maxfr);	\
-				GOTO(bt_redoip(MR_maxfr));	\
+#define	succeed_discard()						\
+			do {						\
+				reg	Word	*childfr;		\
+									\
+				debugsucceeddiscard();			\
+				childfr = MR_curfr;			\
+				MR_maxfr = MR_prevfr_slot(childfr);	\
+				MR_curfr = MR_succfr_slot(childfr);	\
+				GOTO(MR_succip_slot(childfr));		\
 			} while (0)
 
 
-#define	redo()		do {					\
-				debugredo();			\
-				MR_curfr = bt_redofr(MR_maxfr);	\
-				GOTO(bt_redoip(MR_maxfr));	\
+#define	fail()		do {						\
+				debugfail();				\
+				MR_maxfr = MR_prevfr_slot(MR_maxfr);	\
+				nondstack_underflow_check();		\
+				MR_curfr = MR_redofr_slot(MR_maxfr);	\
+				GOTO(MR_redoip_slot(MR_maxfr));		\
+			} while (0)
+
+
+#define	redo()		do {						\
+				debugredo();				\
+				MR_curfr = MR_redofr_slot(MR_maxfr);	\
+				GOTO(MR_redoip_slot(MR_maxfr));		\
 			} while (0)
 
 #endif /* not MERCURY_STACKS_H */

@@ -241,13 +241,6 @@ vn_block__handle_instr(mkframe(NondetFrameInfo, Redoip), Livemap, Params,
 		const(code_addr_const(Redoip))),
 		Livemap, Params, VnTables1, VnTables, Liveset1, Liveset,
 		SeenIncr0, SeenIncr, Tuple1, Tuple).
-vn_block__handle_instr(modframe(Redoip), Livemap, Params,
-		VnTables0, VnTables, Liveset0, Liveset,
-		SeenIncr0, SeenIncr, Tuple0, Tuple) :-
-	vn_block__handle_instr(assign(redoip(lval(curfr)),
-		const(code_addr_const(Redoip))),
-		Livemap, Params, VnTables0, VnTables, Liveset0, Liveset,
-		SeenIncr0, SeenIncr, Tuple0, Tuple).
 vn_block__handle_instr(label(Label),
 		Livemap, Params, VnTables0, VnTables, Liveset0, Liveset,
 		SeenIncr, SeenIncr, Tuple0, Tuple) :-
@@ -894,7 +887,6 @@ vn_block__is_ctrl_instr(block(_, _, _), no).
 vn_block__is_ctrl_instr(assign(_, _), no).
 vn_block__is_ctrl_instr(call(_, _, _, _), yes).
 vn_block__is_ctrl_instr(mkframe(_, _), yes).
-vn_block__is_ctrl_instr(modframe(_), no).
 vn_block__is_ctrl_instr(label(_), yes).
 vn_block__is_ctrl_instr(goto(_), yes).
 vn_block__is_ctrl_instr(computed_goto(_, _), yes).

@@ -114,9 +114,6 @@ vn_cost__instr_cost(Uinstr, Params, Cost) :-
 		Uinstr = mkframe(_, _),
 		Cost = 0
 	;
-		Uinstr = modframe(_),
-		Cost = 0
-	;
 		Uinstr = label(_),
 		Cost = 0
 	;

@@ -275,8 +275,16 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 	code_exprn__init_state(ArgList, Varset, StackSlots, FollowVars,
 		Options, ExprnInfo),
 	stack__init(ResumePoints),
+	globals__lookup_bool_option(Globals, allow_hijacks, AllowHijack),
+	(
+		AllowHijack = yes,
+		Hijack = allowed
+	;
+		AllowHijack = no,
+		Hijack = not_allowed
+	),
 	DummyFailInfo = fail_info(ResumePoints, resume_point_unknown,
-		may_be_different),
+		may_be_different, Hijack),
 	set__init(AvailSlots),
 	map__init(TempsInUse),
 	set__init(Zombies),
@@ -754,7 +762,7 @@ code_info__get_pred_proc_arginfo(PredId, ProcId, ArgInfo) -->
 
 code_info__current_resume_point_vars(ResumeVars) -->
 	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePointStack, _, _) },
+	{ FailInfo = fail_info(ResumePointStack, _, _, _) },
 	{ stack__top_det(ResumePointStack, ResumePointInfo) },
 	{ code_info__pick_first_resume_point(ResumePointInfo, ResumeMap, _) },
 	{ map__keys(ResumeMap, ResumeMapVarList) },
@@ -885,8 +893,8 @@ code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code) -->
 			% branched structure with is valid for all branches.
 		code_info__get_fail_info(FailInfo0, EndCodeInfo0, _),
 		code_info__get_fail_info(FailInfo1, EndCodeInfo1, _),
-		FailInfo0 = fail_info(_, ResumeKnown0, CurfrMaxfr0),
-		FailInfo1 = fail_info(R, ResumeKnown1, CurfrMaxfr1),
+		FailInfo0 = fail_info(_, ResumeKnown0, CurfrMaxfr0, Hijack0),
+		FailInfo1 = fail_info(R, ResumeKnown1, CurfrMaxfr1, Hijack1),
 		(
 			ResumeKnown0 = resume_point_known,
 			ResumeKnown1 = resume_point_known
@@ -903,7 +911,15 @@ code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code) -->
 		;
 			CurfrMaxfr = may_be_different
 		),
-		FailInfo = fail_info(R, ResumeKnown, CurfrMaxfr),
+		(
+			Hijack0 = allowed,
+			Hijack1 = allowed
+		->
+			Hijack = allowed
+		;
+			Hijack = not_allowed
+		),
+		FailInfo = fail_info(R, ResumeKnown, CurfrMaxfr, Hijack),
 		code_info__set_fail_info(FailInfo, EndCodeInfo1, EndCodeInfo)
 	},
 	{ MaybeEnd = yes(branch_end_info(EndCodeInfo)) }.
@@ -986,14 +1002,6 @@ code_info__fixup_lvallist([V - L | Ls], [V - lval(L) | Rs]) :-
 	% will then override the redoip slot to point to the start of
 	% the else part before generating the code of the condition.
 	%
-	% However, some conditions will themselves hijack this redoip slot.
-	% If this is the case, `maybe_push_temp_frame' will protect against
-	% this by pushing a temporary nondet frame solely for the purpose
-	% of having its redoip and redofr slots hijacked by the condition.
-	% In any case it returns the lval that `ite_enter_then' should use to
-	% refer to the stack frame containing the redoip slot that was
-	% overridden for the if-then-else.
-	%
 	% `ite_enter_then', which should be called generating code for
 	% the condition, sets up the failure state of the code generator
 	% for generating the then-part, and returns the code sequences
@@ -1006,11 +1014,7 @@ code_info__fixup_lvallist([V - L | Ls], [V - lval(L) | Rs]) :-
 	ite_hijack_info::out, code_tree::out,
 	code_info::in, code_info::out) is det.
 
-:- pred code_info__maybe_push_temp_frame(code_model::in, bool::in,
-	ite_hijack_info::in, lval::out, code_tree::out,
-	code_info::in, code_info::out) is det.
-
-:- pred code_info__ite_enter_then(ite_hijack_info::in, lval::in,
+:- pred code_info__ite_enter_then(ite_hijack_info::in,
 	code_tree::out, code_tree::out, code_info::in, code_info::out) is det.
 
 	% `enter_simple_neg' and `leave_simple_neg' should be called before
@@ -1158,7 +1162,8 @@ code_info__fixup_lvallist([V - L | Ls], [V - lval(L) | Rs]) :-
 	--->	fail_info(
 			stack(resume_point_info),
 			resume_point_known,
-			curfr_vs_maxfr
+			curfr_vs_maxfr,
+			hijack_allowed
 		).
 
 	% A resumption point has one or two labels associated with it.
@@ -1190,10 +1195,14 @@ code_info__fixup_lvallist([V - L | Ls], [V - lval(L) | Rs]) :-
 :- type curfr_vs_maxfr		--->	must_be_equal
 				;	may_be_different.
 
+:- type hijack_allowed		--->	allowed
+				;	not_allowed.
+
 %---------------------------------------------------------------------------%
 
 :- type disj_hijack_info
 	--->	disj_no_hijack
+	;	disj_temp_frame
 	;	disj_quarter_hijack
 	;	disj_half_hijack(
 			lval		% The stack slot in which we saved
@@ -1207,70 +1216,70 @@ code_info__fixup_lvallist([V - L | Ls], [V - lval(L) | Rs]) :-
 		).
 
 code_info__prepare_for_disj_hijack(CodeModel, HijackInfo, Code) -->
-	( { CodeModel = model_non } ->
-		code_info__get_fail_info(FailInfo),
-		{ FailInfo = fail_info(_, ResumeKnown, CurfrMaxfr) },
-		(
-			{ CurfrMaxfr = may_be_different },
-			code_info__acquire_temp_slot(lval(redoip(lval(maxfr))),
-				RedoipSlot),
-			code_info__acquire_temp_slot(lval(redofr(lval(maxfr))),
-				RedofrSlot),
-			{ HijackInfo = disj_full_hijack(RedoipSlot,
-				RedofrSlot) },
-			{ Code = node([
-				assign(RedoipSlot, lval(redoip(lval(maxfr))))
-					- "prepare for full disj hijack",
-				assign(RedofrSlot, lval(redofr(lval(maxfr))))
-					- "prepare for full disj hijack",
-				assign(redofr(lval(maxfr)), lval(curfr))
-					- "prepare for full disj hijack"
-			]) }
-		;
-			{ CurfrMaxfr = must_be_equal },
-			(
-				{ ResumeKnown = resume_point_unknown },
-				code_info__acquire_temp_slot(
-					lval(redoip(lval(curfr))), RedoipSlot),
-				{ HijackInfo = disj_half_hijack(RedoipSlot) },
-				{ Code = node([
-					assign(RedoipSlot,
-						lval(redoip(lval(curfr))))
-						- "prepare for half disj hijack"
-				]) }
-			;
-				{ ResumeKnown = resume_point_known },
-				{ HijackInfo = disj_quarter_hijack },
-				{ Code = empty }
-			)
-		)
-	;
+	code_info__get_fail_info(FailInfo),
+	{ FailInfo = fail_info(_, ResumeKnown, CurfrMaxfr, Allow) },
+	(
+		{ CodeModel \= model_non }
+	->
 		{ HijackInfo = disj_no_hijack },
-		{ Code = empty }
+		{ Code = node([
+			comment("disj no hijack")
+				- ""
+		]) }
+	;
+		{ Allow = not_allowed }
+	->
+		{ HijackInfo = disj_temp_frame },
+		code_info__create_temp_frame(do_fail,
+			"prepare for disjunction", Code)
+	;
+		{ CurfrMaxfr = must_be_equal },
+		{ ResumeKnown = resume_point_known }
+	->
+		{ HijackInfo = disj_quarter_hijack },
+		{ Code = node([
+			comment("disj quarter hijack")
+				- ""
+		]) }
+	;
+		{ CurfrMaxfr = must_be_equal }
+	->
+		% Here ResumeKnown must be resume_point_unknown.
+		code_info__acquire_temp_slot(lval(redoip(lval(curfr))),
+			RedoipSlot),
+		{ HijackInfo = disj_half_hijack(RedoipSlot) },
+		{ Code = node([
+			assign(RedoipSlot, lval(redoip(lval(curfr))))
+				- "prepare for half disj hijack"
+		]) }
+	;
+		% Here CurfrMaxfr must be may_be_different.
+		code_info__acquire_temp_slot(lval(redoip(lval(maxfr))),
+			RedoipSlot),
+		code_info__acquire_temp_slot(lval(redofr(lval(maxfr))),
+			RedofrSlot),
+		{ HijackInfo = disj_full_hijack(RedoipSlot, RedofrSlot) },
+		{ Code = node([
+			assign(RedoipSlot, lval(redoip(lval(maxfr))))
+				- "prepare for full disj hijack",
+			assign(RedofrSlot, lval(redofr(lval(maxfr))))
+				- "prepare for full disj hijack",
+			assign(redofr(lval(maxfr)), lval(curfr))
+				- "prepare for full disj hijack"
+		]) }
 	).
 
 code_info__undo_disj_hijack(HijackInfo, Code) -->
 	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr) },
+	{ FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr, _) },
 	(
-		{ HijackInfo = disj_full_hijack(RedoipSlot, RedofrSlot) },
-		{ require(unify(CurfrMaxfr, may_be_different),
-			"maxfr same as curfr in disj_full_hijack") },
-		{ Code = node([
-			assign(redoip(lval(maxfr)), lval(RedoipSlot))
-				- "restore redoip for full disj hijack",
-			assign(redofr(lval(maxfr)), lval(RedofrSlot))
-				- "restore redofr for full disj hijack"
-		]) }
+		{ HijackInfo = disj_no_hijack },
+		{ Code = empty }
 	;
-		{ HijackInfo = disj_half_hijack(RedoipSlot) },
-		{ require(unify(ResumeKnown, resume_point_unknown),
-			"resume point known in disj_half_hijack") },
-		{ require(unify(CurfrMaxfr, must_be_equal),
-			"maxfr may differ from curfr in disj_half_hijack") },
+		{ HijackInfo = disj_temp_frame },
 		{ Code = node([
-			assign(redoip(lval(curfr)), lval(RedoipSlot))
-				- "restore redoip for half disj hijack"
+			assign(maxfr, lval(prevfr(lval(maxfr))))
+				- "restore maxfr for temp frame disj"
 		]) }
 	;
 		{ HijackInfo = disj_quarter_hijack },
@@ -1287,26 +1296,48 @@ code_info__undo_disj_hijack(HijackInfo, Code) -->
 				- "restore redoip for quarter disj hijack"
 		]) }
 	;
-		{ HijackInfo = disj_no_hijack },
-		{ Code = empty }
+		{ HijackInfo = disj_half_hijack(RedoipSlot) },
+		{ require(unify(ResumeKnown, resume_point_unknown),
+			"resume point known in disj_half_hijack") },
+		{ require(unify(CurfrMaxfr, must_be_equal),
+			"maxfr may differ from curfr in disj_half_hijack") },
+		{ Code = node([
+			assign(redoip(lval(curfr)), lval(RedoipSlot))
+				- "restore redoip for half disj hijack"
+		]) }
+	;
+		{ HijackInfo = disj_full_hijack(RedoipSlot, RedofrSlot) },
+		{ require(unify(CurfrMaxfr, may_be_different),
+			"maxfr same as curfr in disj_full_hijack") },
+		{ Code = node([
+			assign(redoip(lval(maxfr)), lval(RedoipSlot))
+				- "restore redoip for full disj hijack",
+			assign(redofr(lval(maxfr)), lval(RedofrSlot))
+				- "restore redofr for full disj hijack"
+		]) }
 	).
 
 %---------------------------------------------------------------------------%
 
 :- type ite_hijack_info
-	--->	ite_no_hijack(
-			resume_point_known
-		)
-	;	ite_quarter_hijack(
-			resume_point_known
-		)
-	;	ite_half_hijack(
+	--->	ite_info(
 			resume_point_known,
+			hijack_allowed,
+			ite_hijack_type
+		).
+
+:- type ite_hijack_type
+	--->	ite_no_hijack
+	;	ite_temp_frame(
+			lval		% The stack slot in which we saved
+					% the value of maxfr.
+		)
+	;	ite_quarter_hijack
+	;	ite_half_hijack(
 			lval		% The stack slot in which we saved
 					% the value of the hijacked redoip.
 		)
 	;	ite_full_hijack(
-			resume_point_known,
 			lval,		% The stack slot in which we saved
 					% the value of the hijacked redoip.
 			lval,		% The stack slot in which we saved
@@ -1316,90 +1347,122 @@ code_info__undo_disj_hijack(HijackInfo, Code) -->
 		).
 
 code_info__prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code) -->
-	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(_ResumePoints, ResumeKnown, CurfrMaxfr) },
-	( { EffCodeModel = model_non } ->
-		(
-			{ CurfrMaxfr = may_be_different },
-			code_info__acquire_temp_slot(lval(redoip(lval(maxfr))),
-				RedoipSlot),
-			code_info__acquire_temp_slot(lval(redofr(lval(maxfr))),
-				RedofrSlot),
-			code_info__acquire_temp_slot(lval(maxfr),
-				MaxfrSlot),
-			{ HijackInfo = ite_full_hijack(ResumeKnown,
-				RedoipSlot, RedofrSlot, MaxfrSlot) },
-			{ Code = node([
-				assign(MaxfrSlot, lval(maxfr))
-					- "prepare for full ite hijack",
-				assign(RedoipSlot, lval(redoip(lval(maxfr))))
-					- "prepare for full ite hijack",
-				assign(RedofrSlot, lval(redofr(lval(maxfr))))
-					- "prepare for full ite hijack",
-				assign(redofr(lval(maxfr)), lval(curfr))
-					- "prepare for full ite hijack"
-			]) }
-		;
-			{ CurfrMaxfr = must_be_equal },
-			(
-				{ ResumeKnown = resume_point_unknown },
-				code_info__acquire_temp_slot(
-					lval(redoip(lval(curfr))), RedoipSlot),
-				{ HijackInfo = ite_half_hijack(ResumeKnown,
-					RedoipSlot) },
-				{ Code = node([
-					assign(RedoipSlot,
-						lval(redoip(lval(curfr))))
-						- "prepare for half ite hijack"
-				]) }
-			;
-				{ ResumeKnown = resume_point_known },
-				{ HijackInfo = ite_quarter_hijack(
-					ResumeKnown) },
-				{ Code = empty }
-			)
-		)
+	code_info__get_fail_info(FailInfo),
+	{ FailInfo = fail_info(_, ResumeKnown, CurfrMaxfr, Allow) },
+	(
+		{ EffCodeModel \= model_non }
+	->
+		{ HijackType = ite_no_hijack },
+		{ Code = node([
+			comment("ite no hijack")
+				- ""
+		]) }
 	;
-		{ HijackInfo = ite_no_hijack(ResumeKnown) },
-		{ Code = empty }
-	).
-
-code_info__maybe_push_temp_frame(EffCodeModel, CanHijack, HijackInfo,
-		CutFrame, Code) -->
-	( { EffCodeModel = model_non } ->
-		( { HijackInfo = ite_full_hijack(_, _, _, MaxfrSlot0) } ->
-			{ CutFrame = MaxfrSlot0 }
-		;
-			{ CutFrame = curfr }
-		),
-		(
-			{ CanHijack = yes },
-			{ Code = node([
-				mkframe(temp_frame, do_fail)
-					- "protect slots hijacked by ite"
-			]) },
-			code_info__get_fail_info(FailInfo0),
-			{ FailInfo0 = fail_info(ResumePoints, ResumeKnown,
-				_) },
-			{ FailInfo = fail_info(ResumePoints, ResumeKnown,
-				may_be_different) },
-			code_info__set_fail_info(FailInfo)
-		;
-			{ CanHijack = no },
-			{ Code = empty }
-		)
+		{ Allow = not_allowed }
+	->
+		code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot),
+		{ HijackType = ite_temp_frame(MaxfrSlot) },
+		code_info__create_temp_frame(do_fail, "prepare for ite",
+			TempFrameCode),
+		{ MaxfrCode = node([
+			assign(MaxfrSlot, lval(maxfr))
+				- "prepare for ite"
+		]) },
+		{ Code = tree(TempFrameCode, MaxfrCode) }
 	;
-		{ CutFrame = maxfr },
-		{ Code = empty }
-	).
+		{ CurfrMaxfr = must_be_equal },
+		{ ResumeKnown = resume_point_known }
+	->
+		{ HijackType = ite_quarter_hijack },
+		{ Code = node([
+			comment("ite quarter hijack")
+				- ""
+		]) }
+	;
+		{ CurfrMaxfr = must_be_equal }
+	->
+		% Here ResumeKnown must be resume_point_unknown.
+		code_info__acquire_temp_slot(lval(redoip(lval(curfr))),
+			RedoipSlot),
+		{ HijackType = ite_half_hijack(RedoipSlot) },
+		{ Code = node([
+			assign(RedoipSlot, lval(redoip(lval(curfr))))
+				- "prepare for half ite hijack"
+		]) }
+	;
+		% Here CurfrMaxfr must be may_be_different.
+		code_info__acquire_temp_slot(lval(redoip(lval(maxfr))),
+			RedoipSlot),
+		code_info__acquire_temp_slot(lval(redofr(lval(maxfr))),
+			RedofrSlot),
+		code_info__acquire_temp_slot(lval(maxfr),
+			MaxfrSlot),
+		{ HijackType = ite_full_hijack(RedoipSlot, RedofrSlot,
+			MaxfrSlot) },
+		{ Code = node([
+			assign(MaxfrSlot, lval(maxfr))
+				- "prepare for full ite hijack",
+			assign(RedoipSlot, lval(redoip(lval(maxfr))))
+				- "prepare for full ite hijack",
+			assign(RedofrSlot, lval(redofr(lval(maxfr))))
+				- "prepare for full ite hijack",
+			assign(redofr(lval(maxfr)), lval(curfr))
+				- "prepare for full ite hijack"
+		]) }
+	),
+	{ HijackInfo = ite_info(ResumeKnown, Allow, HijackType) },
+	code_info__disallow_hijack.
 
-code_info__ite_enter_then(HijackInfo, CutFrame, ThenCode, ElseCode) -->
+code_info__ite_enter_then(HijackInfo, ThenCode, ElseCode) -->
 	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(ResumePoints0, ResumeKnown0, CurfrMaxfr) },
+	{ FailInfo0 = fail_info(ResumePoints0, ResumeKnown0, CurfrMaxfr,
+		_) },
 	{ stack__pop_det(ResumePoints0, _, ResumePoints) },
+	{ HijackInfo = ite_info(ResumeKnown1, Allow1, HijackType) },
 	{
-		HijackInfo = ite_full_hijack(ResumeKnown1,
-			RedoipSlot, RedofrSlot, MaxfrSlot),
+		HijackType = ite_no_hijack,
+		ThenCode = empty,
+		ElseCode = ThenCode
+	;
+		HijackType = ite_temp_frame(MaxfrSlot),
+		ThenCode = node([
+			% We can't remove the frame, it may not be on top.
+			assign(redoip(lval(MaxfrSlot)),
+				const(code_addr_const(do_fail)))
+				- "soft cut for temp frame ite"
+		]),
+		ElseCode = node([
+			assign(maxfr, lval(prevfr(lval(MaxfrSlot))))
+				- "restore maxfr for temp frame ite"
+		])
+	;
+		HijackType = ite_quarter_hijack,
+		stack__top_det(ResumePoints, ResumePoint),
+		(
+			code_info__maybe_pick_stack_resume_point(ResumePoint,
+				_, StackLabel)
+		->
+			LabelConst = const(code_addr_const(StackLabel)),
+			ThenCode = node([
+				assign(redoip(lval(curfr)), LabelConst) -
+					"restore redoip for quarter ite hijack"
+			])
+		;
+			% This can happen only if ResumePoint is unreachable
+			% from here.
+			ThenCode = empty
+		),
+		ElseCode = ThenCode
+	;
+		HijackType = ite_half_hijack(RedoipSlot),
+		ThenCode = node([
+			assign(redoip(lval(curfr)), lval(RedoipSlot))
+				- "restore redoip for half ite hijack"
+		]),
+		ElseCode = ThenCode
+	;
+		HijackType = ite_full_hijack(RedoipSlot, RedofrSlot,
+			MaxfrSlot),
 		ThenCode = node([
 			assign(redoip(lval(MaxfrSlot)), lval(RedoipSlot))
 				- "restore redoip for full ite hijack",
@@ -1412,33 +1475,6 @@ code_info__ite_enter_then(HijackInfo, CutFrame, ThenCode, ElseCode) -->
 			assign(redofr(lval(maxfr)), lval(RedofrSlot))
 				- "restore redofr for full ite hijack"
 		])
-	;
-		HijackInfo = ite_half_hijack(ResumeKnown1, RedoipSlot),
-		ThenCode = node([
-			assign(redoip(lval(CutFrame)), lval(RedoipSlot))
-				- "restore redoip for half ite hijack"
-		]),
-		ElseCode = ThenCode
-	;
-		HijackInfo = ite_quarter_hijack(ResumeKnown1),
-		stack__top_det(ResumePoints, ResumePoint),
-		(
-			code_info__maybe_pick_stack_resume_point(ResumePoint,
-				_, StackLabel)
-		->
-			LabelConst = const(code_addr_const(StackLabel)),
-			ThenCode = node([
-				assign(redoip(lval(CutFrame)), LabelConst) -
-					"restore redoip for quarter ite hijack"
-			])
-		;
-			ThenCode = empty
-		),
-		ElseCode = ThenCode
-	;
-		HijackInfo = ite_no_hijack(ResumeKnown1),
-		ThenCode = empty,
-		ElseCode = ThenCode
 	},
 	{
 		ResumeKnown0 = resume_point_known,
@@ -1448,7 +1484,8 @@ code_info__ite_enter_then(HijackInfo, CutFrame, ThenCode, ElseCode) -->
 	;
 		ResumeKnown = resume_point_unknown
 	},
-	{ FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr) },
+	{ FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
+		Allow1) },
 	code_info__set_fail_info(FailInfo).
 
 %---------------------------------------------------------------------------%
@@ -1500,7 +1537,7 @@ code_info__make_fake_resume_map([Var | Vars], ResumeMap0, ResumeMap) :-
 
 code_info__prepare_for_det_commit(DetCommitInfo, Code) -->
 	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(_, _, CurfrMaxfr) },
+	{ FailInfo0 = fail_info(_, _, CurfrMaxfr, _) },
 	(
 		{ CurfrMaxfr = may_be_different },
 		code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot),
@@ -1550,7 +1587,11 @@ code_info__generate_det_commit(DetCommitInfo, Code) -->
 		).
 
 :- type commit_hijack_info
-	--->	commit_quarter_hijack
+	--->	commit_temp_frame(
+			lval		% The stack slot in which we saved
+					% the old value of maxfr.
+		)
+	;	commit_quarter_hijack
 	;	commit_half_hijack(
 			lval		% The stack slot in which we saved
 					% the value of the hijacked redoip.
@@ -1566,23 +1607,57 @@ code_info__generate_det_commit(DetCommitInfo, Code) -->
 
 code_info__prepare_for_semi_commit(SemiCommitInfo, Code) -->
 	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(ResumePoints0, ResumeKnown, CurfrMaxfr) },
+	{ FailInfo0 = fail_info(ResumePoints0, ResumeKnown, CurfrMaxfr,
+		Allow) },
 	{ stack__top_det(ResumePoints0, TopResumePoint) },
 	code_info__clone_resume_point(TopResumePoint, NewResumePoint),
 	{ stack__push(ResumePoints0, NewResumePoint, ResumePoints) },
-	{ FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr) },
+	{ FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr, Allow) },
 	code_info__set_fail_info(FailInfo),
 
 	{ code_info__pick_stack_resume_point(NewResumePoint, _, StackLabel) },
 	{ StackLabelConst = const(code_addr_const(StackLabel)) },
 	(
-		{ CurfrMaxfr = may_be_different },
+		{ Allow = not_allowed }
+	->
+		code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot),
+		{ HijackInfo = commit_temp_frame(MaxfrSlot) },
+		{ MaxfrCode = node([
+			assign(MaxfrSlot, lval(maxfr))
+				- "prepare for temp frame commit"
+		]) },
+		code_info__create_temp_frame(StackLabel,
+			"prepare for temp frame commit", TempFrameCode),
+		{ HijackCode = tree(MaxfrCode, TempFrameCode) }
+	;
+		{ ResumeKnown = resume_point_known },
+		{ CurfrMaxfr = must_be_equal }
+	->
+		{ HijackInfo = commit_quarter_hijack },
+		{ HijackCode = node([
+			assign(redoip(lval(curfr)), StackLabelConst)
+				- "hijack the redofr slot"
+		]) }
+	;
+		{ CurfrMaxfr = must_be_equal }
+	->
+		% Here ResumeKnown must be resume_point_unknown.
+		code_info__acquire_temp_slot(lval(redoip(lval(curfr))),
+			RedoipSlot),
+		{ HijackInfo = commit_half_hijack(RedoipSlot) },
+		{ HijackCode = node([
+			assign(RedoipSlot, lval(redoip(lval(curfr))))
+				- "prepare for half commit hijack",
+			assign(redoip(lval(curfr)), StackLabelConst)
+				- "hijack the redofr slot"
+		]) }
+	;
+		% Here CurfrMaxfr must be may_be_different.
 		code_info__acquire_temp_slot(lval(redoip(lval(maxfr))),
 			RedoipSlot),
 		code_info__acquire_temp_slot(lval(redofr(lval(maxfr))),
 			RedofrSlot),
-		code_info__acquire_temp_slot(lval(maxfr),
-			MaxfrSlot),
+		code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot),
 		{ HijackInfo = commit_full_hijack(RedoipSlot, RedofrSlot,
 			MaxfrSlot) },
 		{ HijackCode = node([
@@ -1597,27 +1672,6 @@ code_info__prepare_for_semi_commit(SemiCommitInfo, Code) -->
 			assign(redoip(lval(maxfr)), StackLabelConst)
 				- "hijack the redoip slot"
 		]) }
-	;
-		{ CurfrMaxfr = must_be_equal },
-		(
-			{ ResumeKnown = resume_point_unknown },
-			code_info__acquire_temp_slot(lval(redoip(lval(curfr))),
-				RedoipSlot),
-			{ HijackInfo = commit_half_hijack(RedoipSlot) },
-			{ HijackCode = node([
-				assign(RedoipSlot, lval(redoip(lval(curfr))))
-					- "prepare for half commit hijack",
-				assign(redoip(lval(curfr)), StackLabelConst)
-					- "hijack the redofr slot"
-			]) }
-		;
-			{ ResumeKnown = resume_point_known },
-			{ HijackInfo = commit_quarter_hijack },
-			{ HijackCode = node([
-				assign(redoip(lval(curfr)), StackLabelConst)
-					- "hijack the redofr slot"
-			]) }
-		)
 	),
 	code_info__maybe_save_trail_info(MaybeTrailSlots, SaveTrailCode),
 	{ SemiCommitInfo = semi_commit_info(FailInfo0, NewResumePoint,
@@ -1630,6 +1684,42 @@ code_info__generate_semi_commit(SemiCommitInfo, Code) -->
 
 	code_info__set_fail_info(FailInfo),
 	(
+		{ HijackInfo = commit_temp_frame(MaxfrSlot) },
+		{ SuccessUndoCode = node([
+			assign(maxfr, lval(MaxfrSlot))
+				- "restore maxfr for full commit hijack"
+		]) },
+		{ FailureUndoCode = SuccessUndoCode }
+	;
+		{ HijackInfo = commit_quarter_hijack },
+		{ FailInfo = fail_info(ResumePoints, _, _, _) },
+		{ stack__top_det(ResumePoints, TopResumePoint) },
+		{ code_info__pick_stack_resume_point(TopResumePoint,
+			_, StackLabel) },
+		{ StackLabelConst = const(code_addr_const(StackLabel)) },
+		{ SuccessUndoCode = node([
+			assign(maxfr, lval(curfr))
+				- "restore maxfr for quarter commit hijack",
+			assign(redoip(lval(maxfr)), StackLabelConst)
+				- "restore redoip for quarter commit hijack"
+		]) },
+		{ FailureUndoCode = node([
+			assign(redoip(lval(maxfr)), StackLabelConst)
+				- "restore redoip for quarter commit hijack"
+		]) }
+	;
+		{ HijackInfo = commit_half_hijack(RedoipSlot) },
+		{ SuccessUndoCode = node([
+			assign(maxfr, lval(curfr))
+				- "restore maxfr for half commit hijack",
+			assign(redoip(lval(maxfr)), lval(RedoipSlot))
+				- "restore redoip for half commit hijack"
+		]) },
+		{ FailureUndoCode = node([
+			assign(redoip(lval(maxfr)), lval(RedoipSlot))
+				- "restore redoip for half commit hijack"
+		]) }
+	;
 		{ HijackInfo = commit_full_hijack(RedoipSlot, RedofrSlot,
 			MaxfrSlot) },
 		{ SuccessUndoCode = node([
@@ -1645,35 +1735,6 @@ code_info__generate_semi_commit(SemiCommitInfo, Code) -->
 				- "restore redoip for full commit hijack",
 			assign(redofr(lval(maxfr)), lval(RedofrSlot))
 				- "restore redofr for full commit hijack"
-		]) }
-	;
-		{ HijackInfo = commit_half_hijack(RedoipSlot) },
-		{ SuccessUndoCode = node([
-			assign(maxfr, lval(curfr))
-				- "restore maxfr for half commit hijack",
-			assign(redoip(lval(maxfr)), lval(RedoipSlot))
-				- "restore redoip for half commit hijack"
-		]) },
-		{ FailureUndoCode = node([
-			assign(redoip(lval(maxfr)), lval(RedoipSlot))
-				- "restore redoip for half commit hijack"
-		]) }
-	;
-		{ HijackInfo = commit_quarter_hijack },
-		{ FailInfo = fail_info(ResumePoints, _, _) },
-		{ stack__top_det(ResumePoints, TopResumePoint) },
-		{ code_info__pick_stack_resume_point(TopResumePoint,
-			_, StackLabel) },
-		{ StackLabelConst = const(code_addr_const(StackLabel)) },
-		{ SuccessUndoCode = node([
-			assign(maxfr, lval(curfr))
-				- "restore maxfr for quarter commit hijack",
-			assign(redoip(lval(maxfr)), StackLabelConst)
-				- "restore redoip for quarter commit hijack"
-		]) },
-		{ FailureUndoCode = node([
-			assign(redoip(lval(maxfr)), StackLabelConst)
-				- "restore redoip for quarter commit hijack"
 		]) }
 	),
 
@@ -1711,9 +1772,41 @@ code_info__generate_semi_commit(SemiCommitInfo, Code) -->
 
 %---------------------------------------------------------------------------%
 
+:- pred code_info__disallow_hijack(code_info::in, code_info::out) is det.
+
+code_info__disallow_hijack -->
+	code_info__get_fail_info(FailInfo0),
+	{ FailInfo0 = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr, _) },
+	{ FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
+		not_allowed) },
+	code_info__set_fail_info(FailInfo).
+
+:- pred code_info__create_temp_frame(code_addr::in, string::in, code_tree::out,
+	code_info::in, code_info::out) is det.
+
+code_info__create_temp_frame(Redoip, Comment, Code) -->
+	code_info__get_proc_model(ProcModel),
+	{ ProcModel = model_non ->
+		Kind = nondet_stack_proc
+	;
+		Kind = det_stack_proc
+	},
+	{ Code = node([
+		mkframe(temp_frame(Kind), Redoip)
+			- Comment
+	]) },
+	code_info__get_fail_info(FailInfo0),
+	{ FailInfo0 = fail_info(ResumePoints, ResumeKnown, _, Allow) },
+	{ FailInfo = fail_info(ResumePoints, ResumeKnown, may_be_different,
+		Allow) },
+	code_info__set_fail_info(FailInfo).
+
+%---------------------------------------------------------------------------%
+
 code_info__effect_resume_point(ResumePoint, CodeModel, Code) -->
 	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(ResumePoints0, _ResumeKnown, CurfrMaxfr) },
+	{ FailInfo0 = fail_info(ResumePoints0, _ResumeKnown, CurfrMaxfr,
+		Allow) },
 
 	{ stack__top(ResumePoints0, OldResumePoint) ->
 		code_info__pick_first_resume_point(OldResumePoint, OldMap, _),
@@ -1729,7 +1822,8 @@ code_info__effect_resume_point(ResumePoint, CodeModel, Code) -->
 	},
 
 	{ stack__push(ResumePoints0, ResumePoint, ResumePoints) },
-	{ FailInfo = fail_info(ResumePoints, resume_point_known, CurfrMaxfr) },
+	{ FailInfo = fail_info(ResumePoints, resume_point_known, CurfrMaxfr,
+		Allow) },
 	code_info__set_fail_info(FailInfo),
 	( { CodeModel = model_non } ->
 		{ code_info__pick_stack_resume_point(ResumePoint,
@@ -1747,28 +1841,28 @@ code_info__effect_resume_point(ResumePoint, CodeModel, Code) -->
 
 code_info__top_resume_point(ResumePoint) -->
 	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePoints, _, _) },
+	{ FailInfo = fail_info(ResumePoints, _, _, _) },
 	{ stack__top_det(ResumePoints, ResumePoint) }.
 
 code_info__set_resume_point_to_unknown -->
 	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(ResumePoints, _, CurfrMaxfr) },
+	{ FailInfo0 = fail_info(ResumePoints, _, CurfrMaxfr, Allow) },
 	{ FailInfo = fail_info(ResumePoints, resume_point_unknown,
-		CurfrMaxfr) },
+		CurfrMaxfr, Allow) },
 	code_info__set_fail_info(FailInfo).
 
 code_info__set_resume_point_and_frame_to_unknown -->
 	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(ResumePoints, _, _) },
+	{ FailInfo0 = fail_info(ResumePoints, _, _, Allow) },
 	{ FailInfo = fail_info(ResumePoints, resume_point_unknown,
-		may_be_different) },
+		may_be_different, Allow) },
 	code_info__set_fail_info(FailInfo).
 
 %---------------------------------------------------------------------------%
 
 code_info__generate_failure(Code) -->
 	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePoints, ResumeKnown, _) },
+	{ FailInfo = fail_info(ResumePoints, ResumeKnown, _, _) },
 	(
 		{ ResumeKnown = resume_point_known },
 		{ stack__top_det(ResumePoints, TopResumePoint) },
@@ -1795,7 +1889,7 @@ code_info__generate_failure(Code) -->
 
 code_info__fail_if_rval_is_false(Rval0, Code) -->
 	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePoints, ResumeKnown, _) },
+	{ FailInfo = fail_info(ResumePoints, ResumeKnown, _, _) },
 	(
 		{ ResumeKnown = resume_point_known },
 		{ stack__top_det(ResumePoints, TopResumePoint) },
@@ -1849,13 +1943,13 @@ code_info__fail_if_rval_is_false(Rval0, Code) -->
 
 code_info__failure_is_direct_branch(CodeAddr) -->
 	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePoints, resume_point_known, _) },
+	{ FailInfo = fail_info(ResumePoints, resume_point_known, _, _) },
 	{ stack__top(ResumePoints, TopResumePoint) },
 	code_info__pick_matching_resume_addr(TopResumePoint, CodeAddr).
 
 code_info__may_use_nondet_tailcall(MayTailCall) -->
 	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePoints, ResumeKnown, _) },
+	{ FailInfo = fail_info(ResumePoints, ResumeKnown, _, _) },
 	(
 		{ ResumeKnown = resume_point_known },
 		{ stack__top_det(ResumePoints, TopResumePoint) },
@@ -1975,7 +2069,7 @@ code_info__produce_vars_2([V | Vs], Map, Code) -->
 
 code_info__flush_resume_vars_to_stack(Code) -->
 	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePointStack, _, _) },
+	{ FailInfo = fail_info(ResumePointStack, _, _, _) },
 	{ stack__top_det(ResumePointStack, ResumePoint) },
 	{ code_info__pick_stack_resume_point(ResumePoint, StackMap, _) },
 	{ map__to_assoc_list(StackMap, StackLocs) },
@@ -2024,7 +2118,9 @@ code_info__init_fail_info(CodeModel, MaybeFailVars, ResumePoint) -->
 	{ ResumePoint = stack_only(StackMap, ResumeAddress) },
 	{ stack__init(ResumeStack0) },
 	{ stack__push(ResumeStack0, ResumePoint, ResumeStack) },
-	{ FailInfo = fail_info(ResumeStack, ResumeKnown, CurfrMaxfr) },
+	code_info__get_fail_info(FailInfo0),
+	{ FailInfo0 = fail_info(_, _, _, Allow) },
+	{ FailInfo = fail_info(ResumeStack, ResumeKnown, CurfrMaxfr, Allow) },
 	code_info__set_fail_info(FailInfo).
 
 %---------------------------------------------------------------------------%

@@ -175,8 +175,8 @@ MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
 		*stack_trace_sp_ptr = *stack_trace_sp_ptr -
 			entry_layout->MR_sle_stack_slots;
 	} else {
-		success = bt_succip(*stack_trace_curfr_ptr);
-		*stack_trace_curfr_ptr = bt_succfr(*stack_trace_curfr_ptr);
+		success = MR_succip_slot(*stack_trace_curfr_ptr);
+		*stack_trace_curfr_ptr = MR_succfr_slot(*stack_trace_curfr_ptr);
 	}
 
 	if (success == MR_stack_trace_bottom) {
@@ -201,6 +201,8 @@ MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
 void
 MR_dump_nondet_stack_from_layout(FILE *fp, Word *base_maxfr)
 {
+	int	frame_size;
+
 	/*
 	** Change the >= below to > if you don't want the trace to include
 	** the bottom frame created by mercury_wrapper.c (whose redoip/redofr
@@ -208,22 +210,34 @@ MR_dump_nondet_stack_from_layout(FILE *fp, Word *base_maxfr)
 	*/
 
 	while (base_maxfr >= MR_nondet_stack_trace_bottom) {
-		if ((base_maxfr - bt_prevfr(base_maxfr)) < NONDET_FIXED_SIZE) {
-			fprintf(fp, "%p: temp\n", base_maxfr);
+		frame_size = base_maxfr - MR_prevfr_slot(base_maxfr);
+		if (frame_size == MR_NONDET_TEMP_SIZE) {
+			fprintf(fp, "%p: nondet temp\n", base_maxfr);
 			fprintf(fp, " redoip: ");
-			printlabel(bt_redoip(base_maxfr));
-			fprintf(fp, " redofr: %p\n", bt_redofr(base_maxfr));
+			printlabel(MR_redoip_slot(base_maxfr));
+			fprintf(fp, " redofr: %p\n",
+				MR_redofr_slot(base_maxfr));
+		} else if (frame_size == MR_DET_TEMP_SIZE) {
+			fprintf(fp, "%p: nondet temp\n", base_maxfr);
+			fprintf(fp, " redoip: ");
+			printlabel(MR_redoip_slot(base_maxfr));
+			fprintf(fp, " redofr: %p\n",
+				MR_redofr_slot(base_maxfr));
+			fprintf(fp, " detfr:  %p\n",
+				MR_detfr_slot(base_maxfr));
 		} else {
 			fprintf(fp, "%p: ordinary\n", base_maxfr);
 			fprintf(fp, " redoip: ");
-			printlabel(bt_redoip(base_maxfr));
-			fprintf(fp, " redofr: %p\n", bt_redofr(base_maxfr));
+			printlabel(MR_redoip_slot(base_maxfr));
+			fprintf(fp, " redofr: %p\n",
+				MR_redofr_slot(base_maxfr));
 			fprintf(fp, " succip: ");
-			printlabel(bt_succip(base_maxfr));
-			fprintf(fp, " succfr: %p\n", bt_succfr(base_maxfr));
+			printlabel(MR_succip_slot(base_maxfr));
+			fprintf(fp, " succfr: %p\n",
+				MR_succfr_slot(base_maxfr));
 		}
 
-		base_maxfr = bt_prevfr(base_maxfr);
+		base_maxfr = MR_prevfr_slot(base_maxfr);
 	}
 }
 

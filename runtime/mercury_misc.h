@@ -18,7 +18,6 @@
 
 #ifdef MR_LOWLEVEL_DEBUG
 extern	void	mkframe_msg(void);
-extern	void	modframe_msg(void);
 extern	void	succeed_msg(void);
 extern	void	succeeddiscard_msg(void);
 extern	void	fail_msg(void);

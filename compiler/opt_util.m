@@ -47,11 +47,13 @@
 	list(instruction)).
 :- mode opt_util__skip_comments_livevals_labels(in, out) is det.
 
-	% Find the next modframe if it is guaranteed to be reached from here
+	% Find the next assignment to the redoip of the frame whose address
+	% is given by the base addresses in the second argument, provided
+	% it is guaranteed to be reached from here.
 
-:- pred opt_util__next_modframe(list(instruction), list(instruction),
-	code_addr, list(instruction), list(instruction)).
-:- mode opt_util__next_modframe(in, in, out, out, out) is semidet.
+:- pred opt_util__next_assign_to_redoip(list(instruction), list(lval),
+	list(instruction), code_addr, list(instruction), list(instruction)).
+:- mode opt_util__next_assign_to_redoip(in, in, in, out, out, out) is semidet.
 
 	% See if these instructions touch nondet stack controls, i.e.
 	% the virtual machine registers that point to the nondet stack
@@ -389,18 +391,13 @@ opt_util__skip_comments_livevals_labels(Instrs0, Instrs) :-
 		Instrs = Instrs0
 	).
 
-opt_util__next_modframe([Instr | Instrs], RevSkip, Redoip, Skip, Rest) :-
+opt_util__next_assign_to_redoip([Instr | Instrs], AllowedBases,
+		RevSkip, Redoip, Skip, Rest) :-
 	Instr = Uinstr - _Comment,
 	(
-		Uinstr = modframe(Redoip0)
-	->
-		Redoip = Redoip0,
-		list__reverse(RevSkip, Skip),
-		Rest = Instrs
-	;
 		Uinstr = assign(redoip(lval(Fr)),
 			const(code_addr_const(Redoip0))),
-		( Fr = maxfr ; Fr = curfr )
+		list__member(Fr, AllowedBases)
 	->
 		Redoip = Redoip0,
 		list__reverse(RevSkip, Skip),
@@ -412,8 +409,8 @@ opt_util__next_modframe([Instr | Instrs], RevSkip, Redoip, Skip, Rest) :-
 	;
 		opt_util__can_instr_branch_away(Uinstr, Canbranchaway),
 		( Canbranchaway = no ->
-			opt_util__next_modframe(Instrs, [Instr | RevSkip],
-				Redoip, Skip, Rest)
+			opt_util__next_assign_to_redoip(Instrs, AllowedBases,
+				[Instr | RevSkip], Redoip, Skip, Rest)
 		;
 			fail
 		)
@@ -778,9 +775,6 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 		Uinstr0 = mkframe(_, _),
 		Need = no
 	;
-		Uinstr0 = modframe(_),
-		Need = no
-	;
 		Uinstr0 = label(_),
 		Need = no
 	;
@@ -981,7 +975,6 @@ opt_util__can_instr_branch_away(block(_, _, _), yes).
 opt_util__can_instr_branch_away(assign(_, _), no).
 opt_util__can_instr_branch_away(call(_, _, _, _), yes).
 opt_util__can_instr_branch_away(mkframe(_, _), no).
-opt_util__can_instr_branch_away(modframe(_), no).
 opt_util__can_instr_branch_away(label(_), no).
 opt_util__can_instr_branch_away(goto(_), yes).
 opt_util__can_instr_branch_away(computed_goto(_, _), yes).
@@ -1044,7 +1037,6 @@ opt_util__can_instr_fall_through(block(_, _, Instrs), FallThrough) :-
 opt_util__can_instr_fall_through(assign(_, _), yes).
 opt_util__can_instr_fall_through(call(_, _, _, _), no).
 opt_util__can_instr_fall_through(mkframe(_, _), yes).
-opt_util__can_instr_fall_through(modframe(_), yes).
 opt_util__can_instr_fall_through(label(_), yes).
 opt_util__can_instr_fall_through(goto(_), no).
 opt_util__can_instr_fall_through(computed_goto(_, _), no).
@@ -1089,7 +1081,6 @@ opt_util__can_use_livevals(block(_, _, _), no).
 opt_util__can_use_livevals(assign(_, _), no).
 opt_util__can_use_livevals(call(_, _, _, _), yes).
 opt_util__can_use_livevals(mkframe(_, _), no).
-opt_util__can_use_livevals(modframe(_), no).
 opt_util__can_use_livevals(label(_), no).
 opt_util__can_use_livevals(goto(_), yes).
 opt_util__can_use_livevals(computed_goto(_, _), no).
@@ -1151,7 +1142,6 @@ opt_util__instr_labels_2(block(_, _, Instrs), Labels, CodeAddrs) :-
 opt_util__instr_labels_2(assign(_,_), [], []).
 opt_util__instr_labels_2(call(Target, Ret, _, _), [], [Target, Ret]).
 opt_util__instr_labels_2(mkframe(_, Addr), [], [Addr]).
-opt_util__instr_labels_2(modframe(Addr), [], [Addr]).
 opt_util__instr_labels_2(label(_), [], []).
 opt_util__instr_labels_2(goto(Addr), [], [Addr]).
 opt_util__instr_labels_2(computed_goto(_, Labels), Labels, []).
@@ -1190,7 +1180,6 @@ opt_util__instr_rvals_and_lvals(block(_, _, Instrs), Labels, CodeAddrs) :-
 opt_util__instr_rvals_and_lvals(assign(Lval,Rval), [Rval], [Lval]).
 opt_util__instr_rvals_and_lvals(call(_, _, _, _), [], []).
 opt_util__instr_rvals_and_lvals(mkframe(_, _), [], []).
-opt_util__instr_rvals_and_lvals(modframe(_), [], []).
 opt_util__instr_rvals_and_lvals(label(_), [], []).
 opt_util__instr_rvals_and_lvals(goto(_), [], []).
 opt_util__instr_rvals_and_lvals(computed_goto(Rval, _), [Rval], []).
@@ -1313,7 +1302,6 @@ opt_util__count_temps_instr(assign(Lval, Rval), R0, R, F0, F) :-
 	opt_util__count_temps_rval(Rval, R1, R, F1, F).
 opt_util__count_temps_instr(call(_, _, _, _), R, R, F, F).
 opt_util__count_temps_instr(mkframe(_, _), R, R, F, F).
-opt_util__count_temps_instr(modframe(_), R, R, F, F).
 opt_util__count_temps_instr(label(_), R, R, F, F).
 opt_util__count_temps_instr(goto(_), R, R, F, F).
 opt_util__count_temps_instr(computed_goto(Rval, _), R0, R, F0, F) :-

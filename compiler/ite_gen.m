@@ -99,15 +99,10 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, StoreMap, Code)
 	code_info__effect_resume_point(ResumePoint, EffCodeModel,
 		EffectResumeCode),
 
-	{ goal_may_hijack_top_redoip(CondGoal, CondMayHijack) },
-	code_info__maybe_push_temp_frame(EffCodeModel, CondMayHijack,
-		HijackInfo, CurFrameLval, TempFrameCode),
-
 		% Generate the condition
 	code_gen__generate_goal(CondCodeModel, CondGoal, CondCode),
 
-	code_info__ite_enter_then(HijackInfo, CurFrameLval,
-		ThenNeckCode, ElseNeckCode),
+	code_info__ite_enter_then(HijackInfo, ThenNeckCode, ElseNeckCode),
 
 		% Kill again any variables that have become zombies
 	code_info__pickup_zombies(Zombies),
@@ -168,7 +163,6 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, StoreMap, Code)
 		tree(SaveTicketCode,
 		tree(PrepareHijackCode,
 		tree(EffectResumeCode,
-		tree(TempFrameCode,
 		tree(CondCode,
 		tree(ThenNeckCode,
 		tree(DiscardTicketCode,
@@ -183,7 +177,7 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, StoreMap, Code)
 		tree(ElseTraceCode,
 		tree(ElseCode,
 		tree(ElseSaveCode,
-		     EndLabelCode))))))))))))))))))))
+		     EndLabelCode)))))))))))))))))))
 	},
 	code_info__after_all_branches(StoreMap, MaybeEnd).
 
@@ -285,17 +279,12 @@ generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs, Code) -->
 	code_info__effect_resume_point(ResumePoint, CodeModel,
 		EffectResumeCode),
 
-	{ goal_may_hijack_top_redoip(Goal, MayHijack) },
-	code_info__maybe_push_temp_frame(CodeModel, MayHijack,
-		HijackInfo, CurFrameLval, TempFrameCode),
-
 		% Generate the negated goal as a semi-deterministic goal;
 		% it cannot be nondet, since mode correctness requires it
 		% to have no output vars.
 	code_gen__generate_goal(model_semi, Goal, GoalCode),
 
-	code_info__ite_enter_then(HijackInfo, CurFrameLval,
-		ThenNeckCode, ElseNeckCode),
+	code_info__ite_enter_then(HijackInfo, ThenNeckCode, ElseNeckCode),
 
 		% Kill again any variables that have become zombies
 	code_info__pickup_zombies(Zombies),
@@ -333,7 +322,6 @@ generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs, Code) -->
 		tree(FlushCode,
 		tree(PrepareHijackCode,
 		tree(EffectResumeCode,
-		tree(TempFrameCode,
 		tree(SaveHpCode,
 		tree(SaveTicketCode,
 		tree(GoalCode,
@@ -343,79 +331,7 @@ generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs, Code) -->
 		tree(ResumeCode,
 		tree(ElseNeckCode,
 		tree(RestoreTicketCode,
-		     RestoreHpCode)))))))))))))
+		     RestoreHpCode))))))))))))
 	}.
-
-%---------------------------------------------------------------------------%
-
-:- pred goal_may_hijack_top_redoip(hlds_goal::in, bool::out) is det.
-
-goal_may_hijack_top_redoip(GoalExpr - GoalInfo, MayHijack) :-
-	(
-		GoalExpr = conj(Conj),
-		goals_may_hijack_top_redoip(Conj, MayHijack)
-	;
-		GoalExpr = par_conj(Conj, _),
-		goals_may_hijack_top_redoip(Conj, MayHijack)
-	;
-		GoalExpr = call(_, _, _, _, _, _),
-		MayHijack = yes
-	;
-		GoalExpr = higher_order_call(_, _, _, _, _, _),
-		MayHijack = yes
-	;
-		GoalExpr = class_method_call(_, _, _, _, _, _),
-		MayHijack = yes
-	;
-		GoalExpr = switch(_, _, Cases, _),
-		cases_may_hijack_top_redoip(Cases, MayHijack)
-	;
-		GoalExpr = unify(_, _, _, _, _),
-		MayHijack = no
-	;
-		GoalExpr = disj(Disj, _),
-		(
-			goal_info_get_code_model(GoalInfo, CodeModel),
-			CodeModel = model_non
-		->
-			MayHijack = yes
-		;
-			goals_may_hijack_top_redoip(Disj, MayHijack)
-		)
-	;
-		GoalExpr = not(_SubGoal),
-		MayHijack = yes
-	;
-		GoalExpr = some(_, _SubGoal),
-		MayHijack = yes
-	;
-		GoalExpr = if_then_else(_, _, _, _, _),
-		MayHijack = yes
-	;
-		GoalExpr = pragma_c_code(_, _, _, _, _, _, _),
-		MayHijack = yes
-	).
-
-:- pred goals_may_hijack_top_redoip(list(hlds_goal)::in, bool::out) is det.
-
-goals_may_hijack_top_redoip([], no).
-goals_may_hijack_top_redoip([Goal | Goals], MayHijack) :-
-	goal_may_hijack_top_redoip(Goal, MayHijack0),
-	( MayHijack0 = yes ->
-		MayHijack = yes
-	;
-		goals_may_hijack_top_redoip(Goals, MayHijack)
-	).
-
-:- pred cases_may_hijack_top_redoip(list(case)::in, bool::out) is det.
-
-cases_may_hijack_top_redoip([], no).
-cases_may_hijack_top_redoip([case(_, Goal) | Goals], MayHijack) :-
-	goal_may_hijack_top_redoip(Goal, MayHijack0),
-	( MayHijack0 = yes ->
-		MayHijack = yes
-	;
-		cases_may_hijack_top_redoip(Goals, MayHijack)
-	).
 
 %---------------------------------------------------------------------------%

@@ -855,12 +855,16 @@ opt_debug__dump_instr(mkframe(FrameInfo, Redoip), Str) :-
 		string__append_list(["mkframe(", Name, ", ", S_str, ", ",
 			P_str, ", ", R_str, ")"], Str)
 	;
-		FrameInfo = temp_frame,
-		string__append_list(["mktempframe(", R_str, ")"], Str)
+		FrameInfo = temp_frame(Kind),
+		(
+			Kind = nondet_stack_proc,
+			string__append_list(["mktempframe(", R_str, ")"], Str)
+		;
+			Kind = det_stack_proc,
+			string__append_list(["mkdettempframe(", R_str, ")"],
+				Str)
+		)
 	).
-opt_debug__dump_instr(modframe(Redoip), Str) :-
-	opt_debug__dump_code_addr(Redoip, R_str),
-	string__append_list(["modframe(", R_str, ")"], Str).
 opt_debug__dump_instr(label(Label), Str) :-
 	opt_debug__dump_label(Label, L_str),
 	string__append_list(["label(", L_str, ")"], Str).

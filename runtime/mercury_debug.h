@@ -46,7 +46,6 @@
 #define	debugregs(msg)				((void)0)
 #define	debugframe(msg)				((void)0)
 #define	debugmkframe()				((void)0)
-#define	debugmodframe()				((void)0)
 #define	debugsucceed()				((void)0)
 #define	debugsucceeddiscard()			((void)0)
 #define	debugfail()				((void)0)
@@ -95,9 +94,6 @@
 
 #define	debugframe(msg)	 \
 	IF (progdebug, (save_transient_registers(), printframe(msg)))
-
-#define	debugmodframe() \
-	IF (nondstackdebug, (save_transient_registers(), modframe_msg()))
 
 #define	debugsucceed() \
 	IF (nondstackdebug, (save_transient_registers(), succeed_msg()))

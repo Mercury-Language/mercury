@@ -137,7 +137,6 @@ vn_filter__user_instr(block(_, _, _), _):-
 vn_filter__user_instr(assign(_, Rval), yes(Rval)).
 vn_filter__user_instr(call(_, _, _, _), no).
 vn_filter__user_instr(mkframe(_, _), no).
-vn_filter__user_instr(modframe(_), no).
 vn_filter__user_instr(label(_), no).
 vn_filter__user_instr(goto(_), no).
 vn_filter__user_instr(computed_goto(Rval, _), yes(Rval)).
@@ -185,8 +184,6 @@ vn_filter__replace_in_user_instr(assign(Lval, Rval0), Temp, Defn,
 vn_filter__replace_in_user_instr(call(_, _, _, _), _, _, _) :-
 	error("non-user instruction in vn_filter__replace_in_user_instr").
 vn_filter__replace_in_user_instr(mkframe(_, _), _, _, _) :-
-	error("non-user instruction in vn_filter__replace_in_user_instr").
-vn_filter__replace_in_user_instr(modframe(_), _, _, _) :-
 	error("non-user instruction in vn_filter__replace_in_user_instr").
 vn_filter__replace_in_user_instr(label(_), _, _, _) :-
 	error("non-user instruction in vn_filter__replace_in_user_instr").
@@ -247,7 +244,6 @@ vn_filter__defining_instr(block(_, _, _), _):-
 vn_filter__defining_instr(assign(Lval, _), yes(Lval)).
 vn_filter__defining_instr(call(_, _, _, _), no).
 vn_filter__defining_instr(mkframe(_, _), no).
-vn_filter__defining_instr(modframe(_), no).
 vn_filter__defining_instr(label(_), no).
 vn_filter__defining_instr(goto(_), no).
 vn_filter__defining_instr(computed_goto(_, _), no).
@@ -295,8 +291,6 @@ vn_filter__replace_in_defining_instr(assign(Lval0, Rval), Temp, Defn,
 vn_filter__replace_in_defining_instr(call(_, _, _, _), _, _, _) :-
 	error("non-def instruction in vn_filter__replace_in_defining_instr").
 vn_filter__replace_in_defining_instr(mkframe(_, _), _, _, _) :-
-	error("non-def instruction in vn_filter__replace_in_defining_instr").
-vn_filter__replace_in_defining_instr(modframe(_), _, _, _) :-
 	error("non-def instruction in vn_filter__replace_in_defining_instr").
 vn_filter__replace_in_defining_instr(label(_), _, _, _) :-
 	error("non-def instruction in vn_filter__replace_in_defining_instr").

@@ -667,7 +667,6 @@ possible_targets(call(_, ReturnAddr, _, _), Labels) :-
 		Labels = []
 	).
 possible_targets(mkframe(_, _), []).
-possible_targets(modframe(_), []).
 possible_targets(label(_), []).
 possible_targets(goto(CodeAddr), Targets) :-
 	( CodeAddr = label(Label) ->
@@ -1276,7 +1275,6 @@ substitute_labels_instr(call(Target, ReturnAddr0, LiveInfo, Model), LabelMap,
 	).
 substitute_labels_instr(mkframe(NondetFrameInfo, Redoip), _,
 		mkframe(NondetFrameInfo, Redoip)).
-substitute_labels_instr(modframe(Redoip), _, modframe(Redoip)).
 substitute_labels_instr(label(_), _, _) :-
 	error("label in substitute_labels_instr").
 substitute_labels_instr(goto(CodeAddr0), LabelMap, goto(CodeAddr)) :-

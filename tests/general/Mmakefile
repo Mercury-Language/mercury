@@ -15,24 +15,15 @@ endif
 
 # Any program added here should also be added to the `.cvsignore' file.
 
-PROGS=		array_test \
+PROGS=		\
+		arithmetic \
+		array_test \
 		commit_bug \
 		commit_bug_2 \
-		disj_disj \
-		hello_again \
-		interpreter \
-		nasty_nondet \
-		nondet_disj \
-		nondet_ite \
-		nondet_ite_3 \
-		nondet_ite_4 \
-		nondetlive \
-		partition \
-		semidet_lambda \
-		\
-		arithmetic \
+		complex_failure \
 		det_complicated_unify \
 		determinism_inlining \
+		disj_disj \
 		double_error \
 		double_error2 \
 		duplicate_label \
@@ -40,17 +31,27 @@ PROGS=		array_test \
 		fail_detism \
 		float_test \
 		frameopt_mkframe_bug \
+		hello_again \
 		higher_order \
 		intermod_type \
+		interpreter \
 		liveness \
 		liveness2 \
-		mode_inf_bug \
 		mode_inf \
+		mode_inf_bug \
 		mu \
+		nasty_nondet \
+		nondet_disj \
+		nondet_ite \
 		nondet_ite_2 \
+		nondet_ite_3 \
+		nondet_ite_4 \
+		nondetlive \
 		parse_list \
+		partition \
 		petdr1 \
 		prune_switch \
+		semidet_lambda \
 		semidet_map \
 		set_test \
 		string_format_test \
@@ -59,10 +60,9 @@ PROGS=		array_test \
 		univ \
 		unreachable 
 
-# space.m does not work, due to an unfixed bug in code generation.
 # dnf.m does not work in non-gc grades, because it uses `pragma memo'
 # (i.e. tabling) and tabling is not yet implemented for non-gc grades.
-NOT_WORKING =	space dnf
+NOT_WORKING =	dnf
 
 # mode_inf and mode_inf_bug need to be compiled with `--infer-all'.
 MCFLAGS-mode_inf = --infer-all

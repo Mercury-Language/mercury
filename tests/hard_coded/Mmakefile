@@ -19,6 +19,8 @@ PROGS=	\
 	curry \
 	curry2 \
 	cut_test \
+ 	cycles \
+ 	cycles2 \
 	deep_copy_bug \
 	det_in_semidet_cntxt \
 	division_test \
@@ -76,16 +78,13 @@ PROGS=	\
 	reverse_arith \
 	rnd \
 	rtc_bug \
+	space \
 	string_alignment \
 	string_loop \
 	test_imported_no_tag \
 	tim_qual1 \
 	write \
 	write_reg1
-
-# Not working:
-# 	cycles - loops when compiled in a non-GC grade with --deforestation.
-# 	cycles2 - loops when compiled in a non-GC grade.
 
 # The following is required to make the test cases
 #	nested, nested2, and nested3

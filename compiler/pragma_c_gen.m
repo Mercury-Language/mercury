@@ -513,8 +513,9 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, MayCallMercury,
 
 	code_info__get_next_label(RetryLabel),
 	{ ModFrameCode = node([
-		modframe(label(RetryLabel)) -
-			"Set up backtracking to retry label"
+		assign(redoip(lval(curfr)),
+			const(code_addr_const(label(RetryLabel))))
+			- "Set up backtracking to retry label"
 	]) },
 	{ RetryLabelCode = node([
 		label(RetryLabel) -

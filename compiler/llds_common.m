@@ -184,10 +184,6 @@ llds_common__process_instr(Instr0, Info0, Info, Instr) :-
 		Instr = Instr0,
 		Info = Info0
 	;
-		Instr0 = modframe(_),
-		Instr = Instr0,
-		Info = Info0
-	;
 		Instr0 = label(_),
 		Instr = Instr0,
 		Info = Info0

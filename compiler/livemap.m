@@ -166,12 +166,6 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Instrs = Instrs0,
 		DontValueNumber = DontValueNumber0
 	;
-		Uinstr0 = modframe(_),
-		Livemap = Livemap0,
-		Livevals = Livevals0,
-		Instrs = Instrs0,
-		DontValueNumber = DontValueNumber0
-	;
 		Uinstr0 = label(Label),
 		map__set(Livemap0, Label, Livevals0, Livemap),
 		Livevals = Livevals0,

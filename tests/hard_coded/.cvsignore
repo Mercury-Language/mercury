@@ -8,10 +8,12 @@ boyer
 c_write_string
 cc_nondet_disj
 common_type_cast
+complex_failure
 construct
 curry
 curry2
 cycles
+cycles2
 deep_copy_bug
 det_in_semidet_cntxt
 division_test
@@ -62,6 +64,7 @@ rev_arith
 reverse_arith
 rnd
 rtc_bug
+space
 string_alignment
 string_loop
 test_imported_no_tag
