@@ -116,6 +116,8 @@
 		;	gc
 		;	cc
 		;	cflags
+		;	cflags_for_regs
+		;	cflags_for_gotos
 		;	c_include_directory
 		;	link_flags
 		;	gcc_non_local_gotos
@@ -262,6 +264,11 @@ option_defaults_2(code_gen_option, [
 					% above default with a value determined
 					% at configuration time
 	cflags			-	string(""),
+	cflags_for_regs		-	string(""),
+	cflags_for_gotos	-	string(""),
+					% the `mc' script will override the
+					% above two defaults with values
+					% determined at configuration time
 	c_include_directory	-	string(""),
 					% the `mc' script will override the
 					% above default with a value determined
@@ -411,6 +418,8 @@ long_option("compile-to-C",		compile_to_c).
 long_option("compile-only",		compile_only).
 long_option("cc",			cc).
 long_option("cflags",			cflags).
+long_option("cflags-for-regs",		cflags_for_regs).
+long_option("cflags-for-gotos",		cflags_for_gotos).
 long_option("link-flags",		link_flags).
 long_option("output-file",		output_file_name).
 long_option("c-include-directory",	c_include_directory).

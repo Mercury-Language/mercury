@@ -435,19 +435,24 @@ LOW_TAG_BITS=$mercury_cv_low_tag_bits
 AC_SUBST(LOW_TAG_BITS)
 #-----------------------------------------------------------------------------#
 #
-# For Irix 5, gcc labels don't work with shared libraries
+# For Irix 5, gcc labels don't work with shared libraries.
 # For x86, gcc global registers only work with -fno-builtin
+# and -fno-omit-frame-pointer.
 #
 save_CC="$CC"
 save_LIBRARY_PATH="$LIBRARY_PATH"
+CFLAGS_FOR_REGS=
+CFLAGS_FOR_GOTOS=
 case "$host" in
 	mips-sgi-irix5.*)
 		CC="$CC -non_shared -mno-abicalls"
+		CFLAGS_FOR_GOTOS="-non_shared -mno-abicalls"
 LIBRARY_PATH="$$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 		export LIBRARY_PATH
 		;;
 	i?86-*)
-		CC="$CC -fno-builtin"
+		CC="$CC -fno-builtin -fno-omit-frame-pointer"
+		CFLAGS_FOR_REGS="-fno-builtin -fno-omit-frame-pointer"
 		;;
 	# We need a special-case hack here, because the auto-config 
 	# gets it wrong on the Alpha: the little example program
@@ -461,6 +466,8 @@ LIBRARY_PATH="$$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 		mercury_cv_asm_labels=no
 		;;
 esac
+AC_SUBST(CFLAGS_FOR_REGS)
+AC_SUBST(CFLAGS_FOR_GOTOS)
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether we can use gcc labels)
 AC_CACHE_VAL(mercury_cv_gcc_labels,

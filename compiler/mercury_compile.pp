@@ -2313,17 +2313,23 @@ mercury_compile__c_to_obj(C_File, Succeeded) -->
 		string__append_list(["-I", C_INCL, " "], InclOpt)
 	},
 	globals__io_lookup_bool_option(gcc_global_registers, GCC_Regs),
-	{ GCC_Regs = yes ->
-		RegOpt = "-DUSE_GCC_GLOBAL_REGISTERS "
+	( { GCC_Regs = yes } ->
+		{ RegOpt = " -DUSE_GCC_GLOBAL_REGISTERS " },
+		globals__io_lookup_string_option(cflags_for_regs,
+			CFLAGS_FOR_REGS)
 	;
-		RegOpt = ""
-	},
+		{ RegOpt = "" },
+		{ CFLAGS_FOR_REGS = "" }
+	),
 	globals__io_lookup_bool_option(gcc_non_local_gotos, GCC_Gotos),
-	{ GCC_Gotos = yes ->
-		GotoOpt = "-DUSE_GCC_NONLOCAL_GOTOS "
+	( { GCC_Gotos = yes } ->
+		{ GotoOpt = " -DUSE_GCC_NONLOCAL_GOTOS " },
+		globals__io_lookup_string_option(cflags_for_gotos,
+			CFLAGS_FOR_GOTOS)
 	;
-		GotoOpt = ""
-	},
+		{ GotoOpt = "" },
+		{ CFLAGS_FOR_GOTOS = "" }
+	),
 	globals__io_lookup_bool_option(asm_labels, ASM_Labels),
 	{ ASM_Labels = yes ->
 		AsmOpt = "-DUSE_ASM_LABELS "
@@ -2364,7 +2370,8 @@ mercury_compile__c_to_obj(C_File, Succeeded) -->
 	;
 		OptimizeOpt = ""
 	},
-	{ string__append_list([CC, " ", InclOpt, RegOpt, GotoOpt, AsmOpt,
+	{ string__append_list([CC, " ", InclOpt, CFLAGS_FOR_REGS, RegOpt,
+		CFLAGS_FOR_GOTOS, GotoOpt, AsmOpt,
 		GC_Opt, ProfileOpt, TagsOpt, NumTagBitsOpt, DebugOpt,
 		OptimizeOpt, CFLAGS, " -c ", C_File], Command) },
 	mercury_compile__invoke_system_command(Command, Succeeded),
