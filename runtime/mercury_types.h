@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1999 The University of Melbourne.
+** Copyright (C) 1995-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -91,15 +91,17 @@ typedef unsigned char UnsignedChar;
 typedef Char *String;
 typedef const Char *ConstString;
 
-/* continuation function type, for --high-level-C option */
+/* continuation function type, for --high-level-code option */
 typedef void (*MR_NestedCont) (void);	/* for --gcc-nested-functions */
 typedef void (*MR_Cont) (void *);	/* for --no-gcc-nested-functions */
 
-/*
-** semidet predicates indicate success or failure by leaving nonzero or zero
-** respectively in register r1
-** (should this #define go in some other header file?)
-*/
-#define SUCCESS_INDICATOR r1
+#ifndef MR_HIGHLEVEL_CODE
+  /*
+  ** semidet predicates indicate success or failure by leaving nonzero or zero
+  ** respectively in register r1
+  ** (should this #define go in some other header file?)
+  */
+  #define SUCCESS_INDICATOR r1
+#endif
 
 #endif /* not MERCURY_TYPES_H */
