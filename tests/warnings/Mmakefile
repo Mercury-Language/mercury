@@ -23,7 +23,7 @@ ERRORCHECK_PROGS= \
 	unused_args_test \
 	unused_import
 
-PROGS=$(COMPILE_PROGS) $(ERRORCHECK_PROGS)
+PROGS=$(COMPILE_PROGS) $(ERRORCHECK_PROGS) up_to_date
 
 TESTS = $(PROGS)
 SUBDIRS=
@@ -41,6 +41,12 @@ MCFLAGS += --output-compile-error-lines 0
 $(COMPILE_PROGS:%=%.runtest): %.runtest: %.res_compile ;
 
 $(ERRORCHECK_PROGS:%=%.runtest): %.runtest: %.res_error ;
+
+# Check that `mmc --make up_to_date.m' generates a warning.
+up_to_date.runtest:
+	$(MCM) up_to_date.m >& up_to_date.err
+	diff $(DIFF_OPTS) up_to_date.exp up_to_date.err > up_to_date.res_make \
+		|| { cat up_to_date.err; cat up_to_date.res_make; exit 1; }
 
 #-----------------------------------------------------------------------------#
 
@@ -76,6 +82,6 @@ endif
 clean_local:	clean_err clean_res
 
 clean_err:
-	rm -f *.err
+	rm -f *.err up_to_date.res_make
 
 #-----------------------------------------------------------------------------#

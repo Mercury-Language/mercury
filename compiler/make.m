@@ -105,7 +105,11 @@
 
 			% Used for reporting which module imported
 			% a nonexistent module.
-		importing_module :: maybe(module_name)
+		importing_module :: maybe(module_name),
+
+			% Targets specified on the command line.
+		command_line_targets :: set(pair(module_name, target_type))
+
 	).
 
 :- type make_error
@@ -241,59 +245,74 @@ make__process_args(OptionArgs, Targets0) -->
     ( { Continue = no } ->	
 	io__set_exit_status(1)
     ;
-	{ ShouldRebuildDeps = yes },
 	globals__io_lookup_bool_option(keep_going, KeepGoing),
+	globals__io_get_globals(Globals),
+
+	%
+	% Accept and ignore `.depend' targets.
+	% `mmc --make' does not need a separate
+	% make depend step. The dependencies for
+	% each module are regenerated on demand.
+	%
+	{ NonDependTargets = list__filter(
+		(pred(Target::in) is semidet :-
+			\+ string__remove_suffix(Target, ".depend", _)
+		), Targets) },
+
+	%
+	% Classify the remaining targets.
+	%
+	{ list__filter_map(classify_target(Globals), NonDependTargets,
+		ClassifiedTargets, InvalidTargets) },
+
+	%
+	% Report errors for unknown targets.
+	%
+	list__foldl(
+		(pred(InvalidTarget::in, di, uo) is det -->
+			io__write_string("** Unknown target: "),
+			io__write_string(InvalidTarget),
+			io__write_string(".\n")
+		), InvalidTargets),
+
+	{ ShouldRebuildDeps = yes },
 	{ MakeInfo0 = make_info(map__init, map__init,
 		OptionArgs, Variables, map__init,
 		init_cached_direct_imports,
 		init_cached_transitive_dependencies,
-		ShouldRebuildDeps, KeepGoing, set__init, no) },
+		ShouldRebuildDeps, KeepGoing,
+		set__init, no, set__list_to_set(ClassifiedTargets)) },
 
-	globals__io_get_globals(Globals),
-	foldl2_maybe_stop_at_error(KeepGoing,
-	    (pred(TargetStr::in, Success0::out,
-	    		Info0::in, Info::out, di, uo) is det -->	
-		(
-			% Accept and ignore `.depend' targets.
-			% `mmc --make' does not need a separate
-			% make depend step. The dependencies for
-			% each module are regenerated on demand.
-			{ string__length(TargetStr, NameLength) },
-			{ search_backwards_for_dot(TargetStr,
-				NameLength - 1, DotLocn) },
-			{ string__split(TargetStr, DotLocn, _, ".depend") }
-		->
-			{ Success0 = yes },
-			{ Info = Info0 }
-		;
-			{ target_file(Globals, TargetStr,
-				ModuleName, TargetType) }
-		->
-			(
-			    { TargetType = module_target(ModuleTargetType) },
-			    make_module_target(
+	%
+	% Build the targets, stopping on any errors if
+	% `--keep-going' was not set.
+	%
+	( { InvalidTargets = [] ; KeepGoing = yes } ->
+	    foldl2_maybe_stop_at_error(KeepGoing,
+		(pred(Target::in, Success0::out, Info0::in, Info::out,
+		    		di, uo) is det -->
+		    { Target = ModuleName - TargetType },
+		    (
+			{ TargetType = module_target(ModuleTargetType) },
+			make_module_target(
 			    	target(ModuleName - ModuleTargetType),
 			    	Success0, Info0, Info)
-			;
-			    { TargetType = linked_target(ProgramTargetType) },
-			    make_linked_target(
+		    ;
+			{ TargetType = linked_target(ProgramTargetType) },
+			make_linked_target(
 			    	ModuleName - ProgramTargetType, Success0,
 			    	Info0, Info)
-			;
-			    { TargetType = misc_target(MiscTargetType) },
-			    make_misc_target(ModuleName - MiscTargetType,
+		    ;
+			{ TargetType = misc_target(MiscTargetType) },
+			make_misc_target(ModuleName - MiscTargetType,
 			    	Success0, Info0, Info)
-			)
-		;
-			{ Info = Info0 },
-			{ Success0 = no },
-			io__write_string("** Unknown target: "),
-			io__write_string(TargetStr),
-			io__write_string(".\n")
-		)
-	    ), Targets, Success, MakeInfo0, _MakeInfo),
+		    )
+		), ClassifiedTargets, Success, MakeInfo0, _MakeInfo)
+	;
+		{ Success = no }
+	),
 
-	( { Success = no } ->
+	( { InvalidTargets \= [] ; Success = no } ->
 		io__set_exit_status(1)
 	;
 		[]
@@ -308,10 +327,10 @@ make__process_args(OptionArgs, Targets0) -->
 	;	misc_target(misc_target_type)
 	.
 
-:- pred target_file(globals::in, string::in,
-		module_name::out, target_type::out) is semidet.
+:- pred classify_target(globals::in, string::in,
+		pair(module_name, target_type)::out) is semidet.
 
-target_file(Globals, FileName, ModuleName, TargetType) :-
+classify_target(Globals, FileName, ModuleName - TargetType) :-
     (
 	string__length(FileName, NameLength),
 	search_backwards_for_dot(FileName, NameLength - 1, DotLocn),

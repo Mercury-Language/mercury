@@ -262,8 +262,10 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 		{ Info = Info3 }
 	;
 		{ DepsResult = up_to_date },
-		{ Succeeded = yes },
-		{ Info = Info3 }
+		maybe_warn_up_to_date_target(
+			MainModuleName - linked_target(FileType),
+			Info3, Info),
+		{ Succeeded = yes }
 	;
 		{ DepsResult = out_of_date },
 		maybe_make_linked_target_message(OutputFileName),
@@ -322,9 +324,6 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 					FileType, MainModuleName, AllObjects),
 				Succeeded)
 		;
-			%
-			% IL doesn't need any linking. XXX Is this right?
-			%
 			{ CompilationTarget = il },
 			{ Succeeded = yes }
 		;
@@ -334,13 +333,16 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 			"Sorry, not implemented, linking for `--target java'")
 		),
 
+		{ Info5 = Info4 ^ command_line_targets :=
+			set__delete(Info4 ^ command_line_targets, 
+				MainModuleName - linked_target(FileType)) },
 		( { Succeeded = yes } ->
-			{ Info = Info4 ^ file_timestamps :=
-				map__delete(Info4 ^ file_timestamps,
+			{ Info = Info5 ^ file_timestamps :=
+				map__delete(Info5 ^ file_timestamps,
 					OutputFileName) }
 		;
 			file_error(OutputFileName),
-			{ Info = Info4 }
+			{ Info = Info5 }
 		)
 	),
 	globals__io_set_option(link_objects, accumulating(LinkObjects)).

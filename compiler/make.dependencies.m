@@ -890,7 +890,8 @@ dependency_status(target(Target) @ Dep, Status, Info0, Info) -->
     { Target = ModuleName - FileType },
     ( { FileType = source } ->
 	% Source files are always up-to-date.
-	{ Info = Info0 },
+	maybe_warn_up_to_date_target(ModuleName - module_target(source),
+		Info0, Info),
 	{ Status = up_to_date }
     ; { Status0 = Info0 ^ dependency_status ^ elem(Dep) } ->
 		{ Info = Info0 },

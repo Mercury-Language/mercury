@@ -144,16 +144,23 @@ make_module_target(target(TargetFile) @ Dep, Succeeded, Info0, Info) -->
 	    			TouchedTargetFiles, Info6, Info) }
 		;
 			{ DepsResult = out_of_date },
+			{ Info7 = Info6 ^ command_line_targets :=
+				set__delete(Info6 ^ command_line_targets,
+				    ModuleName - module_target(FileType)) },
 			build_target(CompilationTask, TargetFile, Imports,
 				TouchedTargetFiles, TouchedFiles, Succeeded,
-				Info6, Info)
+				Info7, Info)
 		;
 			{ DepsResult = up_to_date },
+			maybe_warn_up_to_date_target(
+				ModuleName - module_target(FileType),
+				Info6, Info7),
+
 			debug_file_msg(TargetFile, "up to date"),
 			{ Succeeded = yes },
 			{ list__foldl(update_target_status(up_to_date),
 	    			[TargetFile | TouchedTargetFiles],
-				Info6, Info) }
+				Info7, Info) }
 		)
 	    )
     	)

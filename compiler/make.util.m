@@ -198,6 +198,11 @@
 	% Write a message "** Error making <filename>".
 :- pred file_error(file_name::in, io__state::di, io__state::uo) is det.
 
+	% If the given target was specified on the command
+	% line, warn that it was already up to date.
+:- pred maybe_warn_up_to_date_target(pair(module_name, target_type)::in,
+	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+
 %-----------------------------------------------------------------------------%
 :- implementation.
 
@@ -760,5 +765,33 @@ file_error(TargetFile) -->
 	io__write_string("** Error making `"),
 	io__write_string(TargetFile),
 	io__write_string("'.\n").
+
+maybe_warn_up_to_date_target(Target @ (ModuleName - FileType), Info0, Info) -->
+	globals__io_lookup_bool_option(warn_up_to_date, Warn),
+	( { Warn = yes } ->
+		( { set__member(Target, Info0 ^ command_line_targets) } ->
+			io__write_string("** Nothing to be done for `"),
+			(
+				{ FileType = module_target(ModuleTargetType) },
+				write_target_file(ModuleName - ModuleTargetType)
+			;
+				{ FileType = linked_target(LinkedTargetType) },
+				linked_target_file_name(ModuleName,
+					LinkedTargetType, FileName),
+				io__write_string(FileName)
+			;
+				{ FileType = misc_target(_) },
+				{ error(
+			"maybe_warn_up_to_date_target: misc_target") }
+			),
+			io__write_string("'.\n")
+		;
+			[]
+		)
+	;
+		[]
+	),
+	{ Info = Info0 ^ command_line_targets :=
+		set__delete(Info0 ^ command_line_targets, Target) }.
 
 %-----------------------------------------------------------------------------%

@@ -4122,6 +4122,13 @@ options files with @samp{--make}.
 @findex --warn-non-tail-recursion
 Warn about any directly recursive calls that are not tail recursive.
 This option also requires @samp{--high-level-code}.
+
+@sp 1
+@item --no-warn-up-to-date
+@findex --no-warn-up-to-date
+@findex --warn-up-to-date
+Don't warn if targets specified on the command line
+with @samp{--make} are already up to date.
 @end table
 
 @node Verbosity options

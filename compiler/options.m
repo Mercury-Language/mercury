@@ -90,6 +90,7 @@
 		;	warn_smart_recompilation
 		;	warn_undefined_options_variables
 		;	warn_non_tail_recursion
+		;	warn_up_to_date
 	% Verbosity options
 		;	verbose
 		;	very_verbose
@@ -663,7 +664,8 @@ option_defaults_2(warning_option, [
 	warn_wrong_module_name -	bool(yes),
 	warn_smart_recompilation -	bool(yes),
 	warn_undefined_options_variables - bool(yes),
-	warn_non_tail_recursion -	bool(no)
+	warn_non_tail_recursion -	bool(no),
+	warn_up_to_date -		bool(yes)
 ]).
 option_defaults_2(verbosity_option, [
 		% Verbosity Options
@@ -1212,6 +1214,7 @@ long_option("warn-smart-recompilation",	warn_smart_recompilation).
 long_option("warn-undefined-options-variables",
 					warn_undefined_options_variables).
 long_option("warn-non-tail-recursion",	warn_non_tail_recursion).
+long_option("warn-up-to-date",		warn_up_to_date).
 
 % verbosity options
 long_option("verbose",			verbose).
@@ -1836,7 +1839,8 @@ special_handler(inhibit_warnings, bool(Inhibit), OptionTable0, ok(OptionTable))
 			warn_missing_module_name -	bool(Enable),
 			warn_wrong_module_name	-	bool(Enable),
 			warn_smart_recompilation -	bool(Enable),
-			warn_undefined_options_variables - bool(Enable)
+			warn_undefined_options_variables - bool(Enable),
+			warn_up_to_date -		bool(Enable)
 		], OptionTable0, OptionTable).
 special_handler(infer_all, bool(Infer), OptionTable0, ok(OptionTable)) :-
 	override_options([
@@ -2273,7 +2277,10 @@ options_help_warning -->
 		"\toptions files with `--make'.",
 		"--warn-non-tail-recursion",
 		"\tWarn about any directly recursive calls that are not tail calls.",
-		"\tThis requires --high-level-code."
+		"\tThis requires --high-level-code.",
+		"--no-warn-up-to-date",
+		"\tDon't warn if targets specified on the command line",
+		"\twith `--make' are already up to date."
 	]).
 
 :- pred options_help_verbosity(io__state::di, io__state::uo) is det.
