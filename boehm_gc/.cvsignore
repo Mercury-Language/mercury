@@ -1,4 +1,6 @@
 if_mach
 if_not_there
+threadlibs
+base_lib
 on_sparc_sunos5
 gctest
