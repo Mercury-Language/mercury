@@ -195,7 +195,7 @@ find_undef_type_bodies([], _) --> [].
 find_undef_type_bodies([TypeId | TypeIds], TypeDefns) -->
 	{ map__search(TypeDefns, TypeId, HLDS_TypeDefn) },
 		% XXX abstract hlds__type_defn/4
-	{ HLDS_TypeDefn = hlds__type_defn(_, _, TypeBody, _) },
+	{ HLDS_TypeDefn = hlds__type_defn(_, _, TypeBody, _, _) },
 	find_undef_type_body(TypeBody, type(TypeId), TypeDefns),
 	find_undef_type_bodies(TypeIds, TypeDefns).
 
@@ -246,7 +246,7 @@ find_undef_type_du_body([Constructor | Constructors], Context, TypeDefns) -->
 :- mode find_undef_type(input, input, input, di, uo).
 
 find_undef_type(term_variable(_), _Context, _TypeDefns) --> [].
-find_undef_type(term_functor(F, As), Context, TypeDefns) -->
+find_undef_type(term_functor(F, As, _), Context, TypeDefns) -->
 	{ length(As, Arity) },
 	{ make_type_id(F, Arity, TypeId) },
 	(if { not map__contains(TypeDefns, TypeId) } then
@@ -350,7 +350,7 @@ types_type_template(Types, Name, VarSet, Args, Template, Cond) :-
 	types_type_template_2(TypeDecl, Name, Args, Template).
 types_type_template(_, Name, VarSet, [], Template, true) :-
 	builtin_type(Const, Name),
-	Template = functor(term_functor(Const,[])), 
+	Template = functor(term_functor(Const,[]),_), 	% XXX
 	varset_init(VarSet).
 
 :- pred types_type_template_2(type_defn, string, list(variable), type_template).
@@ -363,21 +363,21 @@ types_type_template_2(eqv_type(Name, Args, Term), Name, Args, type(Term)).
 	% Given a predicate name, look up the types of its arguments
 :- pred types_pred_type(types, string, varset, list(term), condition).
 types_pred_type(Types, Functor, VarSet, ArgTypes, Cond) :-
-	bag_contains(Types, pred(VarSet, term_functor(Functor,ArgTypes), Cond)).
+	bag_contains(Types, pred(VarSet, term_functor(Functor,ArgTypes,_), Cond)).
 
 %-----------------------------------------------------------------------------%
 
     % builtin types
 :- mode types_lookup_type(input, output, output, output, input, output).
-types_lookup_type(_, BuiltInType, VarSet, [], term_functor(Const,[]), true) :-
+types_lookup_type(_, BuiltInType, VarSet, [], term_functor(Const,[],_), true) :-
 	builtin_type(Const, BuiltInType),
 	varset_init(VarSet).
     % user-defined types
-types_lookup_type(Types, Functor, VarSet, Args, term_functor(F1,As1), Cond) :-
+types_lookup_type(Types, Functor, VarSet, Args, term_functor(F1,As1,_), Cond) :-
 	bag_contains(Types, type(VarSet, du_type(Functor, Args, RHS), Cond)),
 	length(As1,Arity),
 	length(As2,Arity),
-	member(term_functor(F1, As2), RHS).
+	member(term_functor(F1, As2, _), RHS).
 
 %-----------------------------------------------------------------------------%
 

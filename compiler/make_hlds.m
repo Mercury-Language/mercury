@@ -12,6 +12,7 @@
 % transform clause bodies from (A,B,C) into conj([A,B,C]) form.
 
 %-----------------------------------------------------------------------------%
+
 :- pred parse_tree_to_hlds(program, module_info, io__state, io__state).
 :- mode parse_tree_to_hlds(input, output, di, uo).
 
@@ -23,13 +24,11 @@ parse_tree_to_hlds(module(Name, Items), Module) -->
 
 %-----------------------------------------------------------------------------%
 
-%-----------------------------------------------------------------------------%
-
 	% add the declarations one by one to the module
 
 add_item_list_decls([], Module, Module) --> [].
-add_item_list_decls([Item|Items], Module0, Module) -->
-	(add_item_decl(Item, Module0, Module1) ->
+add_item_list_decls([Item - Context | Items], Module0, Module) -->
+	(add_item_decl(Item, Context, Module0, Module1) ->
 		{ true }
 	;
 		{ write('failed: '),
@@ -42,8 +41,8 @@ add_item_list_decls([Item|Items], Module0, Module) -->
 	% add the clauses one by one to the module
 
 add_item_list_clauses([], Module, Module) --> [].
-add_item_list_clauses([Item|Items], Module0, Module) -->
-	(add_item_clause(Item, Module0, Module1) ->
+add_item_list_clauses([Item - Context | Items], Module0, Module) -->
+	(add_item_clause(Item, Context, Module0, Module1) ->
 		{ true }
 	;
 		{ write('failed: '),
@@ -57,57 +56,63 @@ add_item_list_clauses([Item|Items], Module0, Module) -->
 
 	% dispatch on the different types of items
 
-add_item_decl(clause(_, _, _, _), Module, Module) --> [].	% skip clauses
+add_item_decl(clause(_, _, _, _), _, Module, Module) --> [].	% skip clauses
 
-add_item_decl(type_defn(VarSet, TypeDefn, Cond), Module0, Module) -->
-	module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Module).
+add_item_decl(type_defn(VarSet, TypeDefn, Cond), Context, Module0, Module) -->
+	module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module).
 
-add_item_decl(inst_defn(VarSet, InstDefn, Cond), Module0, Module) -->
-	module_add_inst_defn(Module0, VarSet, InstDefn, Cond, Module).
+add_item_decl(inst_defn(VarSet, InstDefn, Cond), Context, Module0, Module) -->
+	module_add_inst_defn(Module0, VarSet, InstDefn, Cond, Context, Module).
 
-add_item_decl(mode_defn(VarSet, ModeDefn, Cond), Module0, Module) -->
-	module_add_mode_defn(Module0, VarSet, ModeDefn, Cond, Module).
+add_item_decl(mode_defn(VarSet, ModeDefn, Cond), Context, Module0, Module) -->
+	module_add_mode_defn(Module0, VarSet, ModeDefn, Cond, Context, Module).
 
-add_item_decl(pred(VarSet, PredName, TypesAndModes, Cond), Module0, Module) -->
-	module_add_pred(Module0, VarSet, PredName, TypesAndModes, Cond, Module).
+add_item_decl(pred(VarSet, PredName, TypesAndModes, Cond), Context, Module0,
+		Module) -->
+	module_add_pred(Module0, VarSet, PredName, TypesAndModes, Cond,
+		Context, Module).
 
-add_item_decl(mode(VarSet, PredName, Modes, Cond), Module0, Module) -->
-	module_add_mode(Module0, VarSet, PredName, Modes, Cond, Module).
+add_item_decl(mode(VarSet, PredName, Modes, Cond), Context, Module0, Module) -->
+	module_add_mode(Module0, VarSet, PredName, Modes, Cond, Context,
+		Module).
 
-add_item_decl(module_defn(_VarSet, _ModuleDefn), Module, Module) -->
-	io__write_string("warning: module declarations not yet implemented\n").
+add_item_decl(module_defn(_VarSet, _ModuleDefn), Context, Module, Module) -->
+	prog_out__write_context(Context),
+	io__write_string("warning: module declarations not yet implemented.\n").
 
 %-----------------------------------------------------------------------------%
 
 	% dispatch on the different types of items
 
-add_item_clause(clause(VarSet, PredName, Args, Body), Module0, Module) -->
-	module_add_clause(Module0, VarSet, PredName, Args, Body, Module).
-add_item_clause(type_defn(_, _, _), Module, Module) --> [].
-add_item_clause(inst_defn(_, _, _), Module, Module) --> [].
-add_item_clause(mode_defn(_, _, _), Module, Module) --> [].
-add_item_clause(pred(_, _, _, _), Module, Module) --> [].
-add_item_clause(mode(_, _, _, _), Module, Module) --> [].
-add_item_clause(module_defn(_, _), Module, Module) --> [].
+add_item_clause(clause(VarSet, PredName, Args, Body), Context, Module0,
+			Module) -->
+	module_add_clause(Module0, VarSet, PredName, Args, Body, Context,
+			Module).
+add_item_clause(type_defn(_, _, _), _, Module, Module) --> [].
+add_item_clause(inst_defn(_, _, _), _, Module, Module) --> [].
+add_item_clause(mode_defn(_, _, _), _, Module, Module) --> [].
+add_item_clause(pred(_, _, _, _), _, Module, Module) --> [].
+add_item_clause(mode(_, _, _, _), _, Module, Module) --> [].
+add_item_clause(module_defn(_, _), _, Module, Module) --> [].
 
 %-----------------------------------------------------------------------------%
 
 
 :- pred module_add_inst_defn(module_info, varset, inst_defn, condition,
-				module_info, io__state, io__state).
-:- mode module_add_inst_defn(input, input, input, input, output, di, uo).
+			term__context, module_info, io__state, io__state).
+:- mode module_add_inst_defn(input, input, input, input, input, output, di, uo).
 
-module_add_inst_defn(Module0, VarSet, InstDefn, Cond, Module) -->
+module_add_inst_defn(Module0, VarSet, InstDefn, Cond, Context, Module) -->
 	{ moduleinfo_insts(Module0, Insts0) },
-	insts_add(Insts0, VarSet, InstDefn, Cond, Insts),
+	insts_add(Insts0, VarSet, InstDefn, Cond, Context, Insts),
 	{ moduleinfo_set_insts(Module0, Insts, Module) }.
 
-:- pred insts_add(inst_table, varset, hlds__inst_defn, condition, inst_table,
-			io__state, io__state).
-:- mode insts_add(input, input, input, input, output, di, uo).
-insts_add(Insts0, VarSet, inst_defn(Name, Args, Body), Cond, Insts) -->
+:- pred insts_add(inst_table, varset, hlds__inst_defn, condition, term__context,
+			inst_table, io__state, io__state).
+:- mode insts_add(input, input, input, input, input, output, di, uo).
+insts_add(Insts0, VarSet, inst_defn(Name, Args, Body), Cond, Context, Insts) -->
 	{ length(Args, Arity),
-	  I = hlds__inst_defn(VarSet, Args, Body, Cond) },
+	  I = hlds__inst_defn(VarSet, Args, Body, Cond, Context) },
 	(if %%% some [I2]		% NU-Prolog inconsistency
 		{ map__search(Insts0, Name - Arity, I2) }
 	then
@@ -115,19 +120,23 @@ insts_add(Insts0, VarSet, inst_defn(Name, Args, Body), Cond, Insts) -->
 		(if
 			{ inst_is_compat(I, I2) }
 		then
-			duplicate_def_warning(Name, Arity, "inst")
+			duplicate_def_warning(Name, Arity, "inst", Context)
 		else
-			multiple_def_error(Name, Arity, "inst")
+			multiple_def_error(Name, Arity, "inst", Context)
 		)
 	else
 		{ map__insert(Insts0, Name - Arity, I, Insts) }
 	).
 
+	% Two different inst definitions are compatible if
+	% their mode parameters and their bodies are identical.
+	% (This is perhaps more strict than it need be.)
+
 :- pred inst_is_compat(hlds__inst_defn, hlds__inst_defn).
 :- mode inst_is_compat(input, input).
 
-inst_is_compat(I1, I2) :-
-	I1 = I2.
+inst_is_compat(hlds__inst_defn(_, Args, Body, _, _),
+		hlds__inst_defn(_, Args, Body, _, _)).
 
 	% XXX should be in hlds.nl.
 
@@ -140,29 +149,29 @@ make_predid(_, qualified(ModName, Name), Arity, pred(ModName, Name, Arity)).
 %-----------------------------------------------------------------------------%
 
 :- pred module_add_mode_defn(module_info, varset, mode_defn, condition,
-				module_info, io__state, io__state).
-:- mode module_add_mode_defn(input, input, input, input, output, di, uo).
+			term__context, module_info, io__state, io__state).
+:- mode module_add_mode_defn(input, input, input, input, input, output, di, uo).
 
-module_add_mode_defn(Module0, VarSet, ModeDefn, Cond, Module) -->
+module_add_mode_defn(Module0, VarSet, ModeDefn, Cond, Context, Module) -->
 	{ moduleinfo_modes(Module0, Modes0) },
-	modes_add(Modes0, VarSet, ModeDefn, Cond, Modes),
+	modes_add(Modes0, VarSet, ModeDefn, Cond, Context, Modes),
 	{ moduleinfo_set_modes(Module0, Modes, Module) }.
 
-:- pred modes_add(mode_table, varset, hlds__mode_defn, condition, mode_table,
-			io__state, io__state).
-:- mode modes_add(input, input, input, input, output, di, uo).
+:- pred modes_add(mode_table, varset, hlds__mode_defn, condition, term__context,
+			mode_table, io__state, io__state).
+:- mode modes_add(input, input, input, input, input, output, di, uo).
 
-modes_add(Modes0, VarSet, mode_defn(Name, Args, Body), Cond, Modes) -->
+modes_add(Modes0, VarSet, mode_defn(Name, Args, Body), Cond, Context, Modes) -->
 	{ length(Args, Arity),
-	  I = hlds__mode_defn(VarSet, Args, Body, Cond) },
+	  I = hlds__mode_defn(VarSet, Args, Body, Cond, Context) },
 	(if %%% some [I2]		% NU-Prolog inconsistency
 		{ map__search(Modes0, Name - Arity, I2) }
 	then
 		{ Modes = Modes0 },
 		(if { mode_is_compat(I, I2) } then
-			duplicate_def_warning(Name, Arity, "mode")
+			duplicate_def_warning(Name, Arity, "mode", Context)
 		else
-			multiple_def_error(Name, Arity, "mode")
+			multiple_def_error(Name, Arity, "mode", Context)
 		)
 	else
 		{ map__insert(Modes0, Name - Arity, I, Modes) }
@@ -171,17 +180,17 @@ modes_add(Modes0, VarSet, mode_defn(Name, Args, Body), Cond, Modes) -->
 :- pred mode_is_compat(hlds__mode_defn, hlds__mode_defn).
 :- mode mode_is_compat(input, input).
 
-mode_is_compat(M1, M2) :-
-	M1 = M2.
+mode_is_compat(hlds__mode_defn(_, Args, Body, _, _),
+		hlds__mode_defn(_, Args, Body, _, _)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred module_add_type_defn(module_info, varset, hlds__type_defn, condition,
-				module_info, io__state, io__state).
-:- mode module_add_type_defn(input, input, input, input, output, di, uo).
-module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Module) -->
+			term__context, module_info, io__state, io__state).
+:- mode module_add_type_defn(input, input, input, input, input, output, di, uo).
+module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module) -->
 	{ moduleinfo_types(Module0, Types0) },
-	types_add(Types0, VarSet, TypeDefn, Cond, Types),
+	types_add(Types0, VarSet, TypeDefn, Cond, Context, Types),
 	{ moduleinfo_set_types(Module0, Types, Module) }.
 
 :- pred type_name_args(type_defn, sym_name, list(type_param), hlds__type_body).
@@ -191,51 +200,55 @@ type_name_args(du_type(Name, Args, Body), Name, Args, du_type(Body)).
 type_name_args(uu_type(Name, Args, Body), Name, Args, uu_type(Body)).
 type_name_args(eqv_type(Name, Args, Body), Name, Args, eqv_type(Body)).
 
-:- pred types_add(type_table, varset, type_defn, condition, type_table,
-		io__state, io__state).
-:- mode types_add(input, input, input, input, output, di, uo).
+:- pred types_add(type_table, varset, type_defn, condition, term__context,
+		type_table, io__state, io__state).
+:- mode types_add(input, input, input, input, input, output, di, uo).
 
-types_add(Types0, VarSet, TypeDefn, Cond, Types) -->
+types_add(Types0, VarSet, TypeDefn, Cond, Context, Types) -->
 	{ type_name_args(TypeDefn, Name, Args, Body),
 	  length(Args, Arity),
-	  I = hlds__type_defn(VarSet, Args, Body, Cond) },
-	(if %%% some [I2]
-		{ map__search(Types0, Name - Arity, I2) }
+	  T = hlds__type_defn(VarSet, Args, Body, Cond, Context) },
+	(if %%% some [T2]
+		{ map__search(Types0, Name - Arity, T2) }
 	then
 		{ Types = Types0 },
 		(if 
-			{ type_is_compat(I, I2) }
+			{ type_is_compat(T, T2) }
 		then
-			duplicate_def_warning(Name, Arity, "type")
+			duplicate_def_warning(Name, Arity, "type", Context)
 		else
-			multiple_def_error(Name, Arity, "type")
+			multiple_def_error(Name, Arity, "type", Context)
 		)
 	else
-		{ map__insert(Types0, Name - Arity, I, Types) }
+		{ map__insert(Types0, Name - Arity, T, Types) }
 	).
 
 :- pred type_is_compat(hlds__type_defn, hlds__type_defn).
 :- mode type_is_compat(input, input).
 
-type_is_compat(T1, T2) :-
-	T1 = T2.
+type_is_compat( hlds__type_defn(_, Args, Body, _, _),
+		hlds__type_defn(_, Args, Body, _, _)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred module_add_pred(module_info, varset, sym_name, list(type_and_mode),
-			condition, module_info, io__state, io__state).
-:- mode module_add_pred(input, input, input, input, input, output, di, uo).
+		condition, term__context, module_info, io__state, io__state).
+:- mode module_add_pred(input, input, input, input, input, input, output,
+		di, uo).
 
-module_add_pred(Module0, VarSet, PredName, TypesAndModes, Cond, Module) -->
+module_add_pred(Module0, VarSet, PredName, TypesAndModes, Cond, Context,
+		Module) -->
 	{ moduleinfo_preds(Module0, Preds0) },
 	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
 	{ moduleinfo_name(Module0, ModuleName) },
-	preds_add(Preds0, ModuleName, VarSet, PredName, Types, Cond, Preds),
+	preds_add(Preds0, ModuleName, VarSet, PredName, Types, Cond, Context,
+		Preds),
 	{ moduleinfo_set_preds(Module0, Preds, Module1) },
 	(if %%% some [Modes]
 		{ MaybeModes = yes(Modes) }
 	then
-		module_add_mode(Module1, VarSet, PredName, Modes, Cond, Module)
+		module_add_mode(Module1, VarSet, PredName, Modes, Cond,
+			Context, Module)
 	else
 		{ Module = Module1 }
 	).
@@ -284,62 +297,68 @@ split_type_and_mode(type_only(T), _, T, (free -> free), yes).
 split_type_and_mode(type_and_mode(T,M), R, T, M, R).
 
 :- pred preds_add(pred_table, module_name, varset, sym_name, list(type),
-		condition, pred_table, io__state, io__state).
-:- mode preds_add(input, input, input, input, input, input, output, di, uo).
+		condition, term__context, pred_table, io__state, io__state).
+:- mode preds_add(input, input, input, input, input, input, input, output,
+		di, uo).
 
-preds_add(Preds0, ModNm, VarSet, Name, Types, Cond, Preds) -->
+preds_add(Preds0, ModNm, VarSet, Name, Types, Cond, Context, Preds) -->
 	{ length(Types, Arity),
 	  map__init(Procs),
 	  make_predid(ModNm, Name, Arity, PredId),
-	  I = predicate(VarSet, Types, Cond, [], Procs) },
-	(if %%% some [I2]
-		{ map__search(Preds0, PredId, I2) }
+	  P = predicate(VarSet, Types, Cond, [], Procs, Context) },
+	(if %%% some [P2]
+		{ map__search(Preds0, PredId, P2) }
 	then
 		{ Preds = Preds0 },
 		(if 
-			{ pred_is_compat(I, I2) }
+			{ pred_is_compat(P, P2) }
 		then
-			duplicate_def_warning(Name, Arity, "pred")
+			duplicate_def_warning(Name, Arity, "pred", Context)
 		else
-			multiple_def_error(Name, Arity, "pred")
+			multiple_def_error(Name, Arity, "pred", Context)
 		)
 	else
-		{ map__insert(Preds0, PredId, I, Preds) }
+		{ map__insert(Preds0, PredId, P, Preds) }
 	).
 
 :- pred pred_is_compat(pred_info, pred_info).
 :- mode pred_is_compat(input, input).
 
-pred_is_compat(predicate(VarSet, Types, Cond, _, _),
-	       predicate(VarSet, Types, Cond, _, _)).
+pred_is_compat(predicate(_, Types, _, _, _, _),
+	       predicate(_, Types, _, _, _, _)).
 
 %-----------------------------------------------------------------------------%
 
-:- pred module_add_mode(module_info, varset, sym_name, list(mode), condition,
-			module_info, io__state, io__state).
-:- mode module_add_mode(input, input, input, input, input, output, di, uo).
+	% Add a mode declaration for a predicate.
 
-module_add_mode(Module0, VarSet, PredName, Modes, Cond, Module) -->
+:- pred module_add_mode(module_info, varset, sym_name, list(mode), condition,
+			term__context, module_info, io__state, io__state).
+:- mode module_add_mode(input, input, input, input, input, input, output,
+			di, uo).
+
+module_add_mode(Module0, VarSet, PredName, Modes, Cond, Context, Module) -->
 	{ moduleinfo_preds(Module0, Preds0) },
 	{ moduleinfo_name(Module0, ModuleName) },
 	pred_modes_add(Preds0, ModuleName, VarSet, PredName, Modes, Cond,
-			Preds),
+			Context, Preds),
 	{ moduleinfo_set_preds(Module0, Preds, Module) }.
 
 :- pred pred_modes_add(pred_table, module_name, varset, sym_name, list(mode),
-			condition, pred_table, io__state, io__state).
-:- mode pred_modes_add(input, input, input, input, input, input, output,
-			di, uo).
+		condition, term__context, pred_table, io__state, io__state).
+:- mode pred_modes_add(input, input, input, input, input, input, input, output,
+		di, uo).
 
 	% XXX we should store the mode varset and the mode condition
 	% in the hlds - at the moment we just ignore those two arguments
-pred_modes_add(Preds0, ModuleName, _VarSet, PredName, Modes, _Cond, Preds) -->
+pred_modes_add(Preds0, ModuleName, _VarSet, PredName, Modes, _Cond, MContext,
+		Preds) -->
 	{ length(Modes, Arity),
 	  make_predid(ModuleName, PredName, Arity, PredId) },
 	(if %%% some [P0]
 		{ map__search(Preds0, PredId, P0) }
 	then
-		{ P0 = predicate(TVarSet, ArgTypes, TCond, Clauses, Procs0) },
+		{ P0 = predicate(TVarSet, ArgTypes, TCond, Clauses, Procs0,
+			TContext) },
 			% XXX we should check that this mode declaration
 			% isn't the same as an existing one
 		
@@ -351,13 +370,15 @@ pred_modes_add(Preds0, ModuleName, _VarSet, PredName, Modes, _Cond, Preds) -->
 		{ goalinfo_init(GoalInfo) },
 		{ varset__init(BodyVarSet) },
 		{ HeadVars = [] },
-		{ NewProc = procedure(nondeterministic, BodyVarSet,
-			BodyTypes, HeadVars, Modes, conj([]) - GoalInfo) },
+		{ NewProc = procedure(nondeterministic, BodyVarSet, BodyTypes,
+			HeadVars, Modes, conj([]) - GoalInfo, MContext) },
 		{ map__insert(Procs0, ModeId, NewProc, Procs) },
-		{ P = predicate(TVarSet, ArgTypes, TCond, Clauses, Procs) },
+		{ P = predicate(TVarSet, ArgTypes, TCond, Clauses, Procs,
+			TContext) },
 		{ map__set(Preds0, PredId, P, Preds) }
 	else
-		undefined_pred_error(PredName, Arity, "mode declaration"),
+		undefined_pred_error(PredName, Arity, MContext,	
+			"mode declaration"),
 		{ Preds = Preds0 }
 	).
 
@@ -374,36 +395,43 @@ next_mode_id(Procs, ModeId) :-
 %-----------------------------------------------------------------------------%
 
 :- pred module_add_clause(module_info, varset, sym_name, list(term), goal,
-				module_info, io__state, io__state).
-:- mode module_add_clause(input, input, input, input, input, output, di, uo).
+			term__context, module_info, io__state, io__state).
+:- mode module_add_clause(input, input, input, input, input, input, output,
+			di, uo).
 
-module_add_clause(Module0, VarSet, PredName, Args, Body, Module) -->
+module_add_clause(Module0, VarSet, PredName, Args, Body, Context, Module) -->
 	{ moduleinfo_preds(Module0, Preds0) },
 	{ moduleinfo_name(Module0, ModuleName) },
-	clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Preds),
+	clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Context,
+		Preds),
 	{ moduleinfo_set_preds(Module0, Preds, Module) }.
 
 :- pred clauses_add(pred_table, module_name, varset, sym_name, list(term),
-			goal, pred_table, io__state, io__state).
-:- mode clauses_add(input, input, input, input, input, input, output, di, uo).
+			goal, term__context, pred_table, io__state, io__state).
+:- mode clauses_add(input, input, input, input, input, input, input, output,
+			di, uo).
 
-clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Preds) -->
+clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Context,
+		Preds) -->
 	{ length(Args, Arity) },
 	{ make_predid(ModuleName, PredName, Arity, PredId) },
 	(if %%% some [PredInfo0]
 		{ map__search(Preds0, PredId, PredInfo0) }
 	then
 			% XXX abstract predicate/4
-		{ PredInfo0 = predicate(TVarSet, Types, Cond, Clauses0, Procs),
+		{ PredInfo0 = predicate(TVarSet, Types, Cond, Clauses0, Procs,
+				TContext),
 		  map__keys(Procs, ModeIds),
 		  transform(VarSet, Args, Body, NewVarSet, HeadVars, Goal),
 		  map__init(VarTypes),
 		  Clauses = [clause(ModeIds, NewVarSet, VarTypes,
 				HeadVars, Goal) | Clauses0],
-		  PredInfo = predicate(TVarSet, Types, Cond, Clauses, Procs),
+		  PredInfo = predicate(TVarSet, Types, Cond, Clauses, Procs,
+				TContext),
 		  map__set(Preds0, PredId, PredInfo, Preds) }
 	else
-		undefined_pred_error(PredName, Arity, "clause")
+		undefined_pred_error(PredName, Arity, Context, "clause"),
+		{ Preds = Preds0 }
 	).
 
 :- pred transform(varset, list(term), goal, varset, list(var), hlds__goal).
@@ -430,28 +458,13 @@ make_n_fresh_vars(N, VarSet0, Vars, VarSet) :-
 	).
 
 :- pred insert_head_unifications(list(term), list(term), goal, goal).
+:- mode insert_head_unifications(input, input, input, output).
 
 insert_head_unifications([], [], Body, Body).
 insert_head_unifications([Arg|Args], [Var|Vars], Body0, Body) :-
 	Body = (unify(Arg, Var), Body1),
 	insert_head_unifications(Args, Vars, Body0, Body1).
 
-:- type goal		--->	(goal,goal)
-			;	fail	
-					% could use conj(goals) instead 
-			;	{goal;goal}	% {...} quotes ';'/2.
-			;	true	
-					% could use disj(goals) instead
-			;	not(vars,goal)
-			;	some(vars,goal)
-			;	all(vars,goal)
-			;	if_then(vars,goal,goal)
-			;	if_then_else(vars,goal,goal,goal)
-			;	call(term)
-			;	unify(term, term).
-
-
-	% XXX unfinished
 :- pred transform_goal(goal, hlds__goal).
 :- mode transform_goal(input, output).
 
@@ -557,10 +570,12 @@ get_disj(Goal, Disj0, Disj) :-
 
 	% Predicates to write out the different warning and error messages.
 
-:- pred duplicate_def_warning(sym_name, int, string, io__state, io__state).
-:- mode duplicate_def_warning(input, input, input, di, uo).
+:- pred duplicate_def_warning(sym_name, int, string, term__context,
+				io__state, io__state).
+:- mode duplicate_def_warning(input, input, input, input, di, uo).
 
-duplicate_def_warning(Name, Arity, DefType) -->
+duplicate_def_warning(Name, Arity, DefType, Context) -->
+	prog_out__write_context(Context),
 	io__write_string("warning: duplicate definition for "),
 	io__write_string(DefType),
 	io__write_string(" `"),
@@ -569,10 +584,12 @@ duplicate_def_warning(Name, Arity, DefType) -->
 	io__write_int(Arity),
 	io__write_string("'\n").
 
-:- pred multiple_def_error(sym_name, int, string, io__state, io__state).
-:- mode multiple_def_error(input, input, input, di, uo).
+:- pred multiple_def_error(sym_name, int, string, term__context,
+				io__state, io__state).
+:- mode multiple_def_error(input, input, input, input, di, uo).
 
-multiple_def_error(Name, Arity, DefType) -->
+multiple_def_error(Name, Arity, DefType, Context) -->
+	prog_out__write_context(Context),
 	io__write_string("error: "),
 	io__write_string(DefType),
 	io__write_string(" `"),
@@ -581,10 +598,12 @@ multiple_def_error(Name, Arity, DefType) -->
 	io__write_int(Arity),
 	io__write_string("' multiply defined\n").
 
-:- pred undefined_pred_error(sym_name, int, string, io__state, io__state).
-:- mode undefined_pred_error(input, input, input, di, uo).
+:- pred undefined_pred_error(sym_name, int, term__context, string,
+				io__state, io__state).
+:- mode undefined_pred_error(input, input, input, input, di, uo).
 
-undefined_pred_error(Name, Arity, Description) -->
+undefined_pred_error(Name, Arity, Context, Description) -->
+	prog_out__write_context(Context),
 	io__write_string("error: "),
 	io__write_string(Description),
 	io__write_string(" for `"),

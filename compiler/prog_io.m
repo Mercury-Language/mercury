@@ -29,7 +29,7 @@
 % Simplifications are done only by make_hlds.nl, which transforms
 % the parse tree which we built here into the HLDS.
 %
-% Some of this code is a nightmare of cut-and-paste style reuse.
+% Some of this code is a rather bad example of cut-and-paste style reuse.
 % It should be cleaned up to eliminate most of the duplication.
 % But that task really needs to wait until we implement higher-order
 % predicates.  For the moment, just be careful that any changes
@@ -59,10 +59,18 @@
 
 :- type maybe_program	--->	ok(message_list, program)
 			;	error(message_list).
+
 :- type message_list	==	list(pair(string, term)).
 				% the error/warning message, and the
 				% term to which it relates
-:- type program		--->	module(module_name, list(item)).
+
+:- type program		--->	module(
+					module_name,
+					list(item_and_context)
+				).
+
+:- type item_and_context ==	pair(item, term__context).
+
 :- type item		--->	clause(varset, sym_name, list(term), goal)
 				%      VarNames, PredName, HeadArgs, ClauseBody
 			; 	type_defn(varset, type_defn, condition)
@@ -245,6 +253,8 @@
 :- type maybe2(T1, T2)	--->	error(string, term)
 			;	ok(T1, T2).
 :- type maybe_functor	== 	maybe2(sym_name, list(term)).
+:- type maybe_item_and_context
+			==	maybe2(item, term__context).
 
 % This implementation uses io__read_term to read in the program
 % term at a time, and then converts those terms into clauses and
@@ -285,18 +295,20 @@ prog_io__read_program(FileName, Result) -->
 
 	% extract the final `:- end_module' declaration if any
 
-:- type module_end ---> no ; yes(module_name).
+:- type module_end ---> no ; yes(module_name, term__context).
 
-:- pred get_end_module(list(item), list(item), module_end).
+:- pred get_end_module(list(item_and_context), list(item_and_context),
+			module_end).
 :- mode get_end_module(input, output, output).
 
 get_end_module(RevItems0, RevItems, EndModule) :-
 	(if some [VarSet, ModuleName, RevItems1]
-		RevItems0 = [module_defn(VarSet, end_module(ModuleName))
+		RevItems0 = [
+			module_defn(VarSet, end_module(ModuleName)) - Context
 			    | RevItems1]
 	then
 		RevItems = RevItems1,
-		EndModule = yes(ModuleName)
+		EndModule = yes(ModuleName, Context)
 	else
 		RevItems = RevItems0,
 		EndModule = no
@@ -308,7 +320,7 @@ get_end_module(RevItems0, RevItems, EndModule) :-
 	% and that the end_module declaration (if any) is correct,
 	% and construct the final parsing result.
 
-:- pred check_begin_module(message_list, list(item), yes_or_no,
+:- pred check_begin_module(message_list, list(item_and_context), yes_or_no,
 			   module_end, maybe_program).
 :- mode check_begin_module(input, input, input, input, output).
 
@@ -317,19 +329,19 @@ check_begin_module(Messages0, Items0, Error, EndModule, Result) :-
     % check that the first item is a `:- module ModuleName'
     % declaration
 
-    (if some [VarSet, ModuleName1, Items1]
-        Items0 = [module_defn(VarSet, module(ModuleName1))
+    (if some [VarSet, ModuleName1, Items1, Context]
+        Items0 = [module_defn(VarSet, module(ModuleName1)) - Context
               | Items1]
     then
         % check that the end module declaration (if any)
         % matches the begin module declaration 
 
-        (if some [ModuleName2] (
-            EndModule = yes(ModuleName2),
+        (if some [ModuleName2, Context2] (
+            EndModule = yes(ModuleName2, Context2),
             ModuleName1 \= ModuleName2
             )
         then
-	    dummy_term(Term),
+	    dummy_term_with_context(Context2, Term),
             ThisError = 
 "`:- end_module' declaration doesn't match `:- module' declaration" - Term,
             append([ThisError], Messages0, Messages),
@@ -350,11 +362,21 @@ check_begin_module(Messages0, Items0, Error, EndModule, Result) :-
 
 	% Create a dummy term.
 	% Used for error messages that are not associated with any
-	% term.
+	% particular term or context.
 :- pred dummy_term(term).
 :- mode dummy_term(output).
 dummy_term(Term) :-
 	term__context_init(0, Context),
+	dummy_term_with_context(Context, Term).
+
+	% Create a dummy term with the specified context.
+	% Used for error messages that are associated with some specific
+	% context, but for which we don't want to print out the term
+	% (or for which the term isn't available to be printed out).
+
+:- pred dummy_term_with_context(term__context, term).
+:- mode dummy_term_with_context(input, output).
+dummy_term_with_context(Context, Term) :-
 	Term = term_functor(term_atom(""), [], Context).
 
 %-----------------------------------------------------------------------------%
@@ -372,8 +394,8 @@ dummy_term(Term) :-
 
 :- type yes_or_no ---> yes ; no.
 
-:- pred read_all_items(message_list, list(item), yes_or_no, io__state,
-			io__state).
+:- pred read_all_items(message_list, list(item_and_context), yes_or_no,
+			io__state, io__state).
 :- mode read_all_items(output, output, output, di, uo).
 
 read_all_items(Messages, Items, Error) -->
@@ -422,7 +444,8 @@ read_items_loop_2(syntax_error(ErrorMsg), Msgs0, Items0, _Error0,
 	io__get_line_number(LineNumber),
 	{
 	  term__context_init(LineNumber, Context),
-	  ThisError = ErrorMsg - term_functor(term_atom(""), [], Context),
+	  dummy_term_with_context(Context, Term),
+	  ThisError = ErrorMsg - Term,
 	  Msgs1 = [ThisError | Msgs0],
 	  Items1 = Items0,
 	  Error1 = yes
@@ -439,12 +462,13 @@ read_items_loop_2(error(M,T), Msgs0, Items0, _Error0, Msgs, Items, Error) -->
 	},
  	read_items_loop(Msgs1, Items1, Error1, Msgs, Items, Error).
 
-read_items_loop_2(ok(Item), Msgs0, Items0, Error0, Msgs, Items, Error) -->
+read_items_loop_2(ok(Item, Context), Msgs0, Items0, Error0,
+			Msgs, Items, Error) -->
 	% if the next item was a valid item, then insert it in
 	% the list of items and continue looping
 	{
 	  Msgs1 = Msgs0,
-	  Items1 = [Item|Items0],
+	  Items1 = [Item - Context | Items0],
 	  Error1 = Error0
 	},
  	read_items_loop(Msgs1, Items1, Error1, Msgs, Items, Error).
@@ -454,8 +478,10 @@ read_items_loop_2(ok(Item), Msgs0, Items0, Error0, Msgs, Items, Error) -->
 	% read_item/1 reads a single item, and if it is a valid term
 	% parses it.
 
-:- type maybe_item_or_eof --->
-	eof ; syntax_error(string) ; error(string, term) ; ok(item).
+:- type maybe_item_or_eof --->	eof
+			;	syntax_error(string)
+			;	error(string, term)
+			;	ok(item, term__context).
 
 :- pred read_item(maybe_item_or_eof, io__state, io__state).
 :- mode read_item(output, di, uo).
@@ -473,36 +499,53 @@ process_read_term(term(VarSet, Term), MaybeItemOrEof) :-
 	parse_item(VarSet, Term, MaybeItem),
 	convert_item(MaybeItem, MaybeItemOrEof).
 
-:- pred convert_item(maybe_item, maybe_item_or_eof).
+:- pred convert_item(maybe_item_and_context, maybe_item_or_eof).
 :- mode convert_item(input, output).
 
-convert_item(ok(Item), ok(Item)).
+convert_item(ok(Item, Context), ok(Item, Context)).
 convert_item(error(M,T), error(M,T)).
 
-:- pred parse_item(varset, term, maybe(item)).
+:- pred parse_item(varset, term, maybe_item_and_context).
 :- mode parse_item(input, input, output).
 
 parse_item(VarSet, Term, Result) :-
  	(if some [Decl, Context]
 		Term = term_functor(term_atom(":-"), [Decl], Context)
 	then
-		parse_decl(VarSet, Decl, Result)
+		parse_decl(VarSet, Decl, R),
+		add_context(R, Context, Result)
 	else
 			% OK, it's not a declaration. Is it a fact, or a rule?
 		(if some [H, B, Context2]
 			Term = term_functor(term_atom(":-"), [H,B], Context2)
-		then		% it's a fact
+		then		% it's a rule
 			Head = H,
-			Body = B
-		else		% it's a rule
+			Body = B,
+			TheContext = Context2
+		else		% it's a fact
 			Head = Term,
-			term__context_init(0, Context3),
-			Body = term_functor(term_atom("true"), [], Context3)
+			(if some [Functor, Args, Context3]
+				Head = term_functor(Functor, Args, Context3)
+			then
+				TheContext = Context3
+			else
+					% term consists of just a single
+					% variable - the context has been lost
+				term__context_init(0, TheContext)
+			),
+			Body = term_functor(term_atom("true"), [], TheContext)
 		),
 		parse_goal(Body, Body2),
 		parse_qualified_term(Head, "clause head", R),
-		process_clause(R, VarSet, Body2, Result)
+		process_clause(R, VarSet, Body2, R2),
+		add_context(R2, TheContext, Result)
 	).
+
+:- pred add_context(maybe(item), term__context, maybe_item_and_context).
+:- mode add_context(input, input, output).
+
+add_context(error(M, T), _, error(M, T)).
+add_context(ok(Item), Context, ok(Item, Context)).
 
 :- pred process_clause(maybe_functor, varset, goal, maybe(item)).
 :- mode process_clause(input, input, input, output).

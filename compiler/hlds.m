@@ -45,7 +45,10 @@
 
 					clause_list,
 
-					proc_table
+					proc_table,
+
+					term__context	% the location (line #)
+							% of the :- pred decl.
 				).
 
 :- type clause_list	=	list(clause).
@@ -56,7 +59,8 @@
 					varset,		% variable names
 					map(var_id, type), % variable types
 					list(var_id),	% head vars
-					hlds__goal  % Body
+					hlds__goal,	% Body
+					term__context
 				).
 
 :- export_type proc_table.
@@ -68,7 +72,10 @@
 					map(var_id, type), % variable types
 					list(var_id),	% head vars
 					list(mode),
-					hlds__goal  % Body
+					hlds__goal,	% Body
+					term__context	% The context of
+							% the :- mode decl,
+							% not the clause.
 				).
 
 :- export_type category.
@@ -236,7 +243,8 @@
 					hlds__type_body,
 						% a class invariant for the
 						% type (not used)
-					condition
+					condition,
+					term__context
 				).
 
 	% du = discriminated union, uu = undiscriminated union,
@@ -249,10 +257,10 @@
 
 
 :- type hlds__inst_defn --->	hlds__inst_defn(varset, list(inst_param),
-					inst, condition).
+					inst, condition, term__context).
 
 :- type hlds__mode_defn --->	hlds__mode_defn(varset, list(inst_param),
-					mode, condition).
+					mode, condition, term__context).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -414,17 +422,17 @@ predicate_name(pred(_Module,Name,_Arity), Name).
 predicate_arity(pred(_Module,_Name,Arity), Arity).
 
 predinfo_modes(PredInfo, Modes) :-
-	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, _Clauses, Procs),
+	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, _Clauses, Procs, _),
 	map__keys(Procs, Modes).
 
 predinfo_procedures(PredInfo, Procs) :-
-	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, _Clauses, Procs).
+	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, _Clauses, Procs, _).
 
 predinfo_clauses(PredInfo, Clauses) :-
-	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, Clauses, _Procs).
+	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, Clauses, _Procs, _).
 
 predinfo_arg_types(PredInfo, TypeVars, ArgTypes) :-
-	PredInfo = predicate(TypeVars, ArgTypes, _Cond, _Clauses, _Procs).
+	PredInfo = predicate(TypeVars, ArgTypes, _Cond, _Clauses, _Procs, _).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -455,22 +463,22 @@ predinfo_arg_types(PredInfo, TypeVars, ArgTypes) :-
 
 procinfo_category(ProcInfo, Category) :-
 	ProcInfo = procedure(Category, _Names, _Types, _HeadVars,
-				_ModeInfo, _Goal).
+				_ModeInfo, _Goal, _Context).
 procinfo_variables(ProcInfo, VarSet) :-
 	ProcInfo = procedure(_Category, VarSet, _Types, _HeadVars,
-				_ModeInfo, _Goal).
+				_ModeInfo, _Goal, _Context).
 procinfo_vartypes(ProcInfo, VarTypes) :-
 	ProcInfo = procedure(_Category, _Names, VarTypes, _HeadVars,
-				_ModeInfo, _Goal).
+				_ModeInfo, _Goal, _Context).
 procinfo_headvars(ProcInfo, HeadVars) :-
 	ProcInfo = procedure(_Category, _Names, _Types, HeadVars,
-				_ModeInfo, _Goal).
+				_ModeInfo, _Goal, _Context).
 procinfo_modeinfo(ProcInfo, ModeInfo) :-
 	ProcInfo = procedure(_Category, _Names, _Types, _HeadVars,
-				ModeInfo, _Goal).
+				ModeInfo, _Goal, _Context).
 procinfo_goal(ProcInfo, Goal) :-
 	ProcInfo = procedure(_Category, _Names, _Types, _HeadVars,
-				_ModeInfo, Goal).
+				_ModeInfo, Goal, _Context).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -568,7 +576,7 @@ inst_lookup(ModuleInfo, Name, Args, Inst) :-
 	length(Args, Arity),
 	moduleinfo_modes(ModuleInfo, Modes),
 	map__search(Modes, Name - Arity, ModeDefn),
-	ModeDefn = hlds__inst_defn(_VarSet, Params, Inst0, _Cond),
+	ModeDefn = hlds__inst_defn(_VarSet, Params, Inst0, _Cond, _Context),
 	inst_substitute_args(Inst0, Args, Params, Inst).
 
 	% mode_get_insts returns the initial instantiatedness and

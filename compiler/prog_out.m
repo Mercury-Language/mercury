@@ -27,14 +27,15 @@
 	% returned when a module is parsed.
 
 prog_out__write_messages([]) --> [].
-prog_out__write_messages([Msg - Term | Rest]) -->
+prog_out__write_messages([Message | Messages]) -->
+	prog_out__write_message(Message),
+	prog_out__write_messages(Messages).
+
+prog_out__write_message(Msg - Term) -->
 	(if %%% some [Functor, Args, Context]	% NU-Prolog DCG inconsistency
 		{ Term = term_functor(Functor, Args, Context) }
 	then
-		{ term__context_line(Context, LineNumber) },
-		io__write_string("Line "),
-		io__write_int(LineNumber),
-		io__write_string(": ")
+		prog_out__write_context(Context)
 	),
 	io__write_string(Msg),
 	(if %%% some [_Context]		% NU-Prolog DCG inconsistency
@@ -44,9 +45,18 @@ prog_out__write_messages([Msg - Term | Rest]) -->
 	else
 		io__write_string(": "),
 		{ varset__init(VarSet) }, % XXX variable names in error messages
-		io__write_term_nl(VarSet, Term),
-		prog_out__write_messages(Rest)
+		io__write_term_nl(VarSet, Term)
 	).
+
+	% Write out the information in term context (at the moment, just
+	% the line number) in a form suitable for the beginning of an
+	% error message.
+
+prog_out__write_context(Context) -->
+	{ term__context_line(Context, LineNumber) },
+	io__write_string("Line "),
+	io__write_int(LineNumber),
+	io__write_string(": ").
 
 	% write out a whole module
 
