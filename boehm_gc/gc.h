@@ -169,7 +169,6 @@ extern int GC_expand_hp GC_PROTO((size_t number_of_bytes));
 /* Limit the heap size to n bytes.  Useful when you're debugging, 	*/
 /* especially on systems that don't handle running out of memory well.	*/
 /* n == 0 ==> unbounded.  This is the default.				*/
-=======
 extern void GC_set_max_heap_size GC_PROTO((GC_word n));
 
 /* Clear the set of root segments.  Wizards only. */
