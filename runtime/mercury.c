@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2000 The University of Melbourne.
+** Copyright (C) 1999-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -82,7 +82,6 @@ static MR_UnifyFunc_0
 	mercury__builtin__do_unify__c_pointer_0_0,
 	mercury__builtin__do_unify__func_0_0,
 	mercury__builtin__do_unify__pred_0_0,
-	mercury__std_util__do_unify__univ_0_0,
 	mercury__std_util__do_unify__type_desc_0_0;
 
 static MR_UnifyFunc_1
@@ -102,7 +101,6 @@ static MR_CompareFunc_0
 	mercury__builtin__do_compare__c_pointer_0_0,
 	mercury__builtin__do_compare__func_0_0,
 	mercury__builtin__do_compare__pred_0_0,
-	mercury__std_util__do_compare__univ_0_0,
 	mercury__std_util__do_compare__type_desc_0_0;
 
 static MR_CompareFunc_1
@@ -440,26 +438,6 @@ mercury__builtin____Unify____tuple_0_0(MR_Mercury_Type_Info ti,
 }
 
 bool MR_CALL
-mercury__std_util____Unify____univ_0_0(MR_Univ x, MR_Univ y)
-{
-	MR_TypeInfo     typeinfo_x, typeinfo_y;
-	MR_Word         value_x, value_y;
-	int             comp;
-
-	MR_unravel_univ(x, typeinfo_x, value_x);
-	MR_unravel_univ(y, typeinfo_y, value_y);
-
-	comp = MR_compare_type_info(typeinfo_x, typeinfo_y);
-
-	if (comp != MR_COMPARE_EQUAL) {
-		return FALSE;
-	}
-
-	return mercury__builtin__unify_2_p_0((MR_Mercury_Type_Info) typeinfo_x,
-			(MR_Box) value_x, (MR_Box) value_y);
-}
-
-bool MR_CALL
 mercury__std_util____Unify____type_desc_0_0(MR_Type_Desc x, MR_Type_Desc y)
 {
 	int             comp;
@@ -607,28 +585,6 @@ mercury__builtin____Compare____tuple_0_0(MR_Mercury_Type_Info ti,
 }
 
 void MR_CALL
-mercury__std_util____Compare____univ_0_0(MR_Comparison_Result *result,
-	MR_Univ x, MR_Univ y)
-{
-	MR_TypeInfo     typeinfo_x, typeinfo_y;
-	MR_Word         value_x, value_y;
-	int             comp;
-
-	MR_unravel_univ(x, typeinfo_x, value_x);
-	MR_unravel_univ(y, typeinfo_y, value_y);
-
-	comp = MR_compare_type_info(typeinfo_x, typeinfo_y);
-
-	if (comp != MR_COMPARE_EQUAL) {
-		*result = comp;
-		return;
-	}
-
-	mercury__builtin__compare_3_p_0((MR_Mercury_Type_Info) typeinfo_x,
-			result, (MR_Box) value_x, (MR_Box) value_y);
-}
-
-void MR_CALL
 mercury__std_util____Compare____type_desc_0_0(
 	MR_Comparison_Result *result, MR_Type_Desc x, MR_Type_Desc y)
 {
@@ -746,13 +702,6 @@ mercury__array__do_unify__array_1_0(MR_Mercury_Type_Info type_info,
 {
 	return mercury__array____Unify____array_1_0(
 		type_info, (MR_Array) x, (MR_Array) y);
-}
-
-static bool MR_CALL
-mercury__std_util__do_unify__univ_0_0(MR_Box x, MR_Box y)
-{
-	return mercury__std_util____Unify____univ_0_0(
-		(MR_Univ) x, (MR_Univ) y);
 }
 
 static bool MR_CALL
@@ -879,14 +828,6 @@ mercury__array__do_compare__array_1_0(
 {
 	mercury__array____Compare____array_1_0(
 		type_info, result, (MR_Array) x, (MR_Array) y);
-}
-
-static void MR_CALL
-mercury__std_util__do_compare__univ_0_0(
-	MR_Comparison_Result *result, MR_Box x, MR_Box y)
-{
-	mercury__std_util____Compare____univ_0_0(
-		result, (MR_Univ) x, (MR_Univ) y);
 }
 
 static void MR_CALL
@@ -1021,7 +962,6 @@ void mercury_sys_init_mercury_hlc(void)
 	MR_init_entry(mercury__builtin____Unify____func_0_0);
 	MR_init_entry(mercury__builtin____Unify____pred_0_0);
 	MR_init_entry(mercury__array____Unify____array_1_0);
-	MR_init_entry(mercury__std_util____Unify____univ_0_0);
 	MR_init_entry(mercury__std_util____Unify____type_desc_0_0);
 	MR_init_entry(mercury__private_builtin____Unify____type_ctor_info_1_0);
 	MR_init_entry(mercury__private_builtin____Unify____type_info_1_0);
@@ -1037,7 +977,6 @@ void mercury_sys_init_mercury_hlc(void)
 	MR_init_entry(mercury__builtin____Compare____func_0_0);
 	MR_init_entry(mercury__builtin____Compare____pred_0_0);
 	MR_init_entry(mercury__array____Compare____array_1_0);
-	MR_init_entry(mercury__std_util____Compare____univ_0_0);
 	MR_init_entry(mercury__std_util____Compare____type_desc_0_0);
 	MR_init_entry(mercury__private_builtin____Compare____type_ctor_info_1_0);
 	MR_init_entry(mercury__private_builtin____Compare____type_info_1_0);
