@@ -73,8 +73,6 @@ MERCURY_MAIN_MODULES =
 #
 # Files which should be built using `mmc --make' rather than `make'
 # when `--use-mmc-make' is passed on the mmake command line.
-# XXX Once `mmc --make' allows library installation we should add
-# %.install to the list below
 #
 ALL_MC_BUILD_FILES = $(MERCURY_MAIN_MODULES:%=%$(EXT_FOR_EXE)) \
 			$(MERCURY_MAIN_MODULES:%=lib%.$A) \
@@ -82,6 +80,7 @@ ALL_MC_BUILD_FILES = $(MERCURY_MAIN_MODULES:%=%$(EXT_FOR_EXE)) \
 			$(MERCURY_MAIN_MODULES:%=%.clean) \
 			$(MERCURY_MAIN_MODULES:%=%.realclean) \
 			$(MERCURY_MAIN_MODULES:%=%.depend) \
+			$(MERCURY_MAIN_MODULES:%=lib%.install) \
 			$(MC_BUILD_FILES)
 MC_BUILD_FILES =
 
