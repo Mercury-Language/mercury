@@ -321,6 +321,7 @@
 :- type goal		==	pair(goal_expr, term__context).
 
 :- type goal_expr	
+
 	% conjunctions
 	--->	(goal , goal)	% (non-empty) conjunction
 	;	true		% empty conjunction

@@ -23,13 +23,14 @@
 						% is another graphic token
 	;	not_next_to_graphic_token.	% doesn't need quotes
 
-:- import_module hlds_goal, hlds_data, hlds_pred, prog_data, (inst), purity.
-:- import_module bool, std_util, list, io, varset, term.
-
 :- type expand_inst_alias --->
 		dont_expand		% alias(IK)
 	;	expand_silently		% Expansion
 	;	expand_noisily.		% alias(IK, Expansion)
+
+:- import_module hlds_goal, hlds_data, hlds_pred, prog_data, (inst), purity.
+:- import_module instmap.
+:- import_module bool, std_util, list, io, varset, term.
 
 %	convert_to_mercury(ModuleName, OutputFileName, Items)
 :- pred convert_to_mercury(module_name, string, list(item_and_context),
@@ -112,16 +113,17 @@
 :- mode mercury_output_mode_defn(in, in, in, in, di, uo) is det.
 
 :- pred mercury_output_structured_inst_list(expand_inst_alias, list(inst), int,
-		varset, inst_table, io__state, io__state).
-:- mode mercury_output_structured_inst_list(in, in, in, in, in, di, uo) is det.
+		varset, instmap, inst_table, io__state, io__state).
+:- mode mercury_output_structured_inst_list(in, in, in, in, in, in,
+		di, uo) is det.
 
 :- pred mercury_output_inst_list(expand_inst_alias, list(inst), varset,
 		inst_table, io__state, io__state).
 :- mode mercury_output_inst_list(in, in, in, in, di, uo) is det.
 
 :- pred mercury_output_structured_inst(expand_inst_alias, inst, int, varset,
-		inst_table, io__state, io__state).
-:- mode mercury_output_structured_inst(in, in, in, in, in, di, uo) is det.
+		instmap, inst_table, io__state, io__state).
+:- mode mercury_output_structured_inst(in, in, in, in, in, in, di, uo) is det.
 
 :- pred mercury_output_inst(expand_inst_alias, inst, varset, inst_table,
 		io__state, io__state).
@@ -584,13 +586,13 @@ mercury_output_inst_defn(VarSet, eqv_inst(Name, Args, Body), Context,
 	mercury_output_inst(expand_noisily, Body, VarSet, InstTable),
 	io__write_string(".\n").
 
-mercury_output_structured_inst_list(_, [], _, _, _) --> [].
+mercury_output_structured_inst_list(_, [], _, _, _, _) --> [].
 mercury_output_structured_inst_list(Expand, [Inst | Insts], Indent0, VarSet,
-		InstTable) -->
+		InstMap, InstTable) -->
 	mercury_output_structured_inst(Expand, Inst, Indent0, VarSet,
-		InstTable),
+		InstMap, InstTable),
 	mercury_output_structured_inst_list(Expand, Insts, Indent0, VarSet,
-		InstTable).
+		InstMap, InstTable).
 
 mercury_output_inst_list(_, [], _, _) --> [].
 mercury_output_inst_list(Expand, [Inst | Insts], VarSet, InstTable) -->
@@ -602,22 +604,22 @@ mercury_output_inst_list(Expand, [Inst | Insts], VarSet, InstTable) -->
 		mercury_output_inst_list(Expand, Insts, VarSet, InstTable)
 	).
   
-mercury_output_structured_inst(_, any(Uniq), Indent, _, _) -->
+mercury_output_structured_inst(_, any(Uniq), Indent, _, _, _) -->
 	mercury_output_tabs(Indent),
 	mercury_output_any_uniqueness(Uniq),
 	io__write_string("\n").
 mercury_output_structured_inst(Expand, alias(Key), Indent, VarSet,
-		InstTable) -->
+		InstMap, InstTable) -->
 	mercury_output_tabs(Indent),
 	{ inst_table_get_inst_key_table(InstTable, IKT) },
 	( { Expand = expand_noisily },
 		io__write_string("alias("),
 		inst_key_table_write_inst_key(IKT, Key),
 		io__write_string(",\n"),
-		{ inst_key_table_lookup(IKT, Key, Inst) },
+		{ instmap__inst_key_table_lookup(InstMap, IKT, Key, Inst) },
 		{ Indent1 is Indent + 1 },
 		mercury_output_structured_inst(expand_noisily, Inst, Indent1,
-			VarSet, InstTable),
+			VarSet, InstMap, InstTable),
 		mercury_output_tabs(Indent),
 		io__write_string(")\n")
 	; { Expand = dont_expand },
@@ -625,32 +627,33 @@ mercury_output_structured_inst(Expand, alias(Key), Indent, VarSet,
 		inst_key_table_write_inst_key(IKT, Key),
 		io__write_string(")\n")
 	; { Expand = expand_silently },
-		{ inst_key_table_lookup(IKT, Key, Inst) },
-		mercury_output_inst(Expand, Inst, VarSet, InstTable)
+		{ instmap__inst_key_table_lookup(InstMap, IKT, Key, Inst) },
+		mercury_output_structured_inst(Expand, Inst, Indent, VarSet,
+			InstMap, InstTable)
 	).
-mercury_output_structured_inst(_, free(unique), Indent, _, _) -->
+mercury_output_structured_inst(_, free(unique), Indent, _, _, _) -->
 	mercury_output_tabs(Indent),
 	io__write_string("free\n").
-mercury_output_structured_inst(_, free(alias), Indent, _, _) -->
+mercury_output_structured_inst(_, free(alias), Indent, _, _, _) -->
 	mercury_output_tabs(Indent),
 	io__write_string("free_alias\n").
-mercury_output_structured_inst(_, free(unique, _T), Indent, _, _) -->
+mercury_output_structured_inst(_, free(unique, _T), Indent, _, _, _) -->
 	mercury_output_tabs(Indent),
 	io__write_string("free(with some type)\n").
-mercury_output_structured_inst(_, free(alias, _T), Indent, _, _) -->
+mercury_output_structured_inst(_, free(alias, _T), Indent, _, _, _) -->
 	mercury_output_tabs(Indent),
 	io__write_string("free_alias(with some type)\n").
 mercury_output_structured_inst(Expand, bound(Uniq, BoundInsts), Indent,
-		VarSet, InstTable) -->
+		VarSet, InstMap, InstTable) -->
 	mercury_output_tabs(Indent),
 	mercury_output_uniqueness(Uniq, "bound"),
 	io__write_string("(\n"),
 	mercury_output_structured_bound_insts(Expand, BoundInsts, Indent,
-		VarSet, InstTable),
+		VarSet, InstMap, InstTable),
 	mercury_output_tabs(Indent),
 	io__write_string(")\n").
 mercury_output_structured_inst(_Expand, ground(Uniq, MaybePredInfo), Indent,
-		VarSet, _InstTable) -->
+		VarSet, _InstMap, _InstTable) -->
 	mercury_output_tabs(Indent),
 	(
 		{ MaybePredInfo = yes(pred_inst_info(PredOrFunc, Modes, Det)) }
@@ -698,19 +701,19 @@ mercury_output_structured_inst(_Expand, ground(Uniq, MaybePredInfo), Indent,
 		mercury_output_uniqueness(Uniq, "ground"),
 		io__write_string("\n")
 	).
-mercury_output_structured_inst(_, inst_var(Var), Indent, VarSet, _) -->
+mercury_output_structured_inst(_, inst_var(Var), Indent, VarSet, _, _) -->
 	mercury_output_tabs(Indent),
 	mercury_output_var(Var, VarSet, no),
 	io__write_string("\n").
 mercury_output_structured_inst(Expand, abstract_inst(Name, Args), Indent,
-		VarSet, InstTable) -->
+		VarSet, InstMap, InstTable) -->
 	mercury_output_structured_inst_name(Expand, user_inst(Name, Args),
-		Indent, VarSet, InstTable).
+		Indent, VarSet, InstMap, InstTable).
 mercury_output_structured_inst(Expand, defined_inst(InstName), Indent, VarSet,
-		InstTable) -->
+		InstMap, InstTable) -->
 	mercury_output_structured_inst_name(Expand, InstName, Indent, VarSet,
-		InstTable).
-mercury_output_structured_inst(_, not_reached, Indent, _, _) -->
+		InstMap, InstTable).
+mercury_output_structured_inst(_, not_reached, Indent, _, _, _) -->
 	mercury_output_tabs(Indent),
 	io__write_string("not_reached\n").
 
@@ -805,11 +808,12 @@ mercury_output_inst(_, not_reached, _, _) -->
 	io__write_string("not_reached").
 
 :- pred mercury_output_structured_inst_name(expand_inst_alias, inst_name, int,
-	varset, inst_table, io__state, io__state).
-:- mode mercury_output_structured_inst_name(in, in, in, in, in, di, uo) is det.
+	varset, instmap, inst_table, io__state, io__state).
+:- mode mercury_output_structured_inst_name(in, in, in, in, in, in,
+	di, uo) is det.
 
 mercury_output_structured_inst_name(Expand, user_inst(Name, Args), Indent,
-		VarSet, InstTable) -->
+		VarSet, InstMap, InstTable) -->
 	( { Args = [] } ->
 		mercury_output_tabs(Indent),
 		mercury_output_bracketed_sym_name(Name)
@@ -819,40 +823,40 @@ mercury_output_structured_inst_name(Expand, user_inst(Name, Args), Indent,
 		io__write_string("(\n"),
 		{ Indent1 is Indent + 1 },
 		mercury_output_structured_inst_list(Expand, Args, Indent1,
-			VarSet, InstTable),
+			VarSet, InstMap, InstTable),
 		mercury_output_tabs(Indent),
 		io__write_string(")\n")
 	).
 mercury_output_structured_inst_name(Expand, merge_inst(InstA, InstB), Indent,
-		VarSet, InstTable) -->
+		VarSet, InstMap, InstTable) -->
 	mercury_output_tabs(Indent),
 	io__write_string("$merge_inst(\n"),
 	{ Indent1 is Indent + 1 },
 	mercury_output_structured_inst_list(Expand, [InstA, InstB], Indent1,
-		VarSet, InstTable),
+		VarSet, InstMap, InstTable),
 	mercury_output_tabs(Indent),
 	io__write_string(")\n").
 mercury_output_structured_inst_name(Expand, shared_inst(InstName), Indent,
-		VarSet, InstTable) -->
+		VarSet, InstMap, InstTable) -->
 	mercury_output_tabs(Indent),
 	io__write_string("$shared_inst(\n"),
 	{ Indent1 is Indent + 1 },
 	mercury_output_structured_inst_name(Expand, InstName, Indent1, VarSet,
-		InstTable),
+		InstMap, InstTable),
 	mercury_output_tabs(Indent),
 	io__write_string(")\n").
 mercury_output_structured_inst_name(Expand, mostly_uniq_inst(InstName),
-		Indent, VarSet, InstTable) -->
+		Indent, VarSet, InstMap, InstTable) -->
 	mercury_output_tabs(Indent),
 	io__write_string("$mostly_uniq_inst(\n"),
 	{ Indent1 is Indent + 1 },
 	mercury_output_structured_inst_name(Expand, InstName, Indent1, VarSet,
-		InstTable),
+		InstMap, InstTable),
 	mercury_output_tabs(Indent),
 	io__write_string(")\n").
 mercury_output_structured_inst_name(Expand,
 		unify_inst(Liveness, InstA, InstB, Real), Indent, VarSet,
-		InstTable) -->
+		InstMap, InstTable) -->
 	mercury_output_tabs(Indent),
 	io__write_string("$unify("),
 	( { Liveness = live } ->
@@ -867,12 +871,12 @@ mercury_output_structured_inst_name(Expand,
 	),
 	{ Indent1 is Indent + 1 },
 	mercury_output_structured_inst_list(Expand, [InstA, InstB], Indent1,
-		VarSet, InstTable),
+		VarSet, InstMap, InstTable),
 	mercury_output_tabs(Indent),
 	io__write_string(")\n").
 mercury_output_structured_inst_name(Expand,
 		ground_inst(InstName, IsLive, Uniq, Real),
-		Indent, VarSet, InstTable) -->
+		Indent, VarSet, InstMap, InstTable) -->
 	mercury_output_tabs(Indent),
 	io__write_string("$ground("),
 	( { IsLive = live } ->
@@ -889,12 +893,12 @@ mercury_output_structured_inst_name(Expand,
 	io__write_string(",\n"),
 	{ Indent1 is Indent + 1 },
 	mercury_output_structured_inst_name(Expand, InstName, Indent1, VarSet,
-		InstTable),
+		InstMap, InstTable),
 	mercury_output_tabs(Indent),
 	io__write_string(")\n").
 mercury_output_structured_inst_name(Expand,
 		any_inst(InstName, IsLive, Uniq, Real),
-		Indent, VarSet, InstTable) -->
+		Indent, VarSet, InstMap, InstTable) -->
 	mercury_output_tabs(Indent),
 	io__write_string("$any("),
 	( { IsLive = live } ->
@@ -911,11 +915,11 @@ mercury_output_structured_inst_name(Expand,
 	io__write_string(",\n"),
 	{ Indent1 is Indent + 1 },
 	mercury_output_structured_inst_name(Expand, InstName, Indent1, VarSet,
-		InstTable),
+		InstMap, InstTable),
 	mercury_output_tabs(Indent),
 	io__write_string(")\n").
 mercury_output_structured_inst_name(_Expand, typed_ground(Uniqueness, Type),
-		Indent, _VarSet, _InstTable) -->
+		Indent, _VarSet, _InstMap, _InstTable) -->
 	mercury_output_tabs(Indent),
 	io__write_string("$typed_ground("),
 	mercury_output_uniqueness(Uniqueness, "shared"),
@@ -924,7 +928,7 @@ mercury_output_structured_inst_name(_Expand, typed_ground(Uniqueness, Type),
 	mercury_output_term(Type, TypeVarSet, no),
 	io__write_string(")\n").
 mercury_output_structured_inst_name(Expand, typed_inst(Type, InstName),
-		Indent, VarSet, InstTable) -->
+		Indent, VarSet, InstMap, InstTable) -->
 	mercury_output_tabs(Indent),
 	io__write_string("$typed_inst("),
 	{ varset__init(TypeVarSet) },
@@ -932,7 +936,7 @@ mercury_output_structured_inst_name(Expand, typed_inst(Type, InstName),
 	io__write_string(",\n"),
 	{ Indent1 is Indent + 1 },
 	mercury_output_structured_inst_name(Expand, InstName, Indent1, VarSet,
-		InstTable),
+		InstMap, InstTable),
 	mercury_output_tabs(Indent),
 	io__write_string(")\n").
 
@@ -1057,15 +1061,15 @@ mercury_output_any_uniqueness(mostly_clobbered) -->
 	io__write_string("mostly_clobbered_any").
 
 :- pred mercury_output_structured_bound_insts(expand_inst_alias,
-		list(bound_inst), int, varset, inst_table,
+		list(bound_inst), int, varset, instmap, inst_table,
 		io__state, io__state).
-:- mode mercury_output_structured_bound_insts(in, in, in, in, in,
+:- mode mercury_output_structured_bound_insts(in, in, in, in, in, in,
 		di, uo) is det.
 
-mercury_output_structured_bound_insts(_, [], _, _, _) --> [].
+mercury_output_structured_bound_insts(_, [], _, _, _, _) --> [].
 mercury_output_structured_bound_insts(Expand,
 		[functor(ConsId, Args) | BoundInsts], Indent0, VarSet,
-		InstTable) -->
+		InstMap, InstTable) -->
 	{ Indent1 is Indent0 + 1 },
 	{ Indent2 is Indent1 + 1 },
 	( { Args = [] } ->
@@ -1077,7 +1081,7 @@ mercury_output_structured_bound_insts(Expand,
 		mercury_output_cons_id(ConsId, does_not_need_brackets),
 		io__write_string("(\n"),
 		mercury_output_structured_inst_list(Expand, Args, Indent2,
-			VarSet, InstTable),
+			VarSet, InstMap, InstTable),
 		mercury_output_tabs(Indent1),
 		io__write_string(")\n")
 	),
@@ -1087,7 +1091,7 @@ mercury_output_structured_bound_insts(Expand,
 		mercury_output_tabs(Indent0),
 		io__write_string(";\n"),
 		mercury_output_structured_bound_insts(Expand, BoundInsts,
-			Indent0, VarSet, InstTable)
+			Indent0, VarSet, InstMap, InstTable)
 	).
 
 :- pred mercury_output_bound_insts(expand_inst_alias, list(bound_inst), varset,

@@ -19,7 +19,7 @@
 
 :- interface.
 
-:- import_module term_errors, prog_data.
+:- import_module term_errors, prog_data, instmap.
 :- import_module hlds_module, hlds_pred, hlds_data, hlds_goal.
 
 :- import_module std_util, bool, int, list, map, bag, term.
@@ -113,14 +113,15 @@
 % This predicate partitions the arguments of a call into a list of input
 % variables and a list of output variables,
 
-:- pred partition_call_args(module_info::in, inst_table::in, list(mode)::in,
-	list(var)::in, bag(var)::out, bag(var)::out) is det.
+:- pred partition_call_args(module_info::in, instmap::in, inst_table::in,
+	list(mode)::in, list(var)::in, bag(var)::out, bag(var)::out) is det.
 
 % Given a list of variables from a unification, this predicate divides the
 % list into a bag of input variables, and a bag of output variables.
 
 :- pred split_unification_vars(list(var)::in, list(uni_mode)::in,
-	inst_table::in, module_info::in, bag(var)::out, bag(var)::out) is det.
+	instmap::in, instmap::in, inst_table::in, module_info::in,
+	bag(var)::out, bag(var)::out) is det.
 
 %  Used to create lists of boolean values, which are used for used_args.
 %  make_bool_list(HeadVars, BoolIn, BoolOut) creates a bool list which is
@@ -362,29 +363,29 @@ functor_norm_filter_args([no | Bools], [_Arg0 | Args0], Args,
 
 %-----------------------------------------------------------------------------%
 
-partition_call_args(Module, ArgInstTable, ArgModes, Args, InVarsBag,
-			OutVarsBag) :-
-	partition_call_args_2(Module, ArgInstTable, ArgModes, Args, InVars,
-			OutVars),
+partition_call_args(Module, CallInstMap, ArgInstTable, ArgModes, Args,
+			InVarsBag, OutVarsBag) :-
+	partition_call_args_2(Module, CallInstMap, ArgInstTable, ArgModes,
+			Args, InVars, OutVars),
 	bag__from_list(InVars, InVarsBag),
 	bag__from_list(OutVars, OutVarsBag).
 
-:- pred partition_call_args_2(module_info::in, inst_table::in, list(mode)::in,
-	list(var)::in, list(var)::out, list(var)::out) is det.
+:- pred partition_call_args_2(module_info::in, instmap::in, inst_table::in,
+	list(mode)::in, list(var)::in, list(var)::out, list(var)::out) is det.
 
-partition_call_args_2(_, _, [], [], [], []).
-partition_call_args_2(_, _, [], [_ | _], _, _) :-
+partition_call_args_2(_, _, _, [], [], [], []).
+partition_call_args_2(_, _, _, [], [_ | _], _, _) :-
 	error("Unmatched variables in term_util:partition_call_args").
-partition_call_args_2(_, _, [_ | _], [], _, _) :-
+partition_call_args_2(_, _, _, [_ | _], [], _, _) :-
 	error("Unmatched variables in term_util__partition_call_args").
-partition_call_args_2(ModuleInfo, ArgInstTable, [ArgMode | ArgModes],
-		[Arg | Args], InputArgs, OutputArgs) :-
-	partition_call_args_2(ModuleInfo, ArgInstTable, ArgModes, Args,
-		InputArgs1, OutputArgs1),
-	( mode_is_input(ArgInstTable, ModuleInfo, ArgMode) ->
+partition_call_args_2(ModuleInfo, CallInstMap, ArgInstTable,
+		[ArgMode | ArgModes], [Arg | Args], InputArgs, OutputArgs) :-
+	partition_call_args_2(ModuleInfo, CallInstMap, ArgInstTable, ArgModes,
+		Args, InputArgs1, OutputArgs1),
+	( mode_is_input(CallInstMap, ArgInstTable, ModuleInfo, ArgMode) ->
 		InputArgs = [Arg | InputArgs1],
 		OutputArgs = OutputArgs1
-	; mode_is_output(ArgInstTable, ModuleInfo, ArgMode) ->
+	; mode_is_output(CallInstMap, ArgInstTable, ModuleInfo, ArgMode) ->
 		InputArgs = InputArgs1,
 		OutputArgs = [Arg | OutputArgs1]
 	;
@@ -406,28 +407,34 @@ partition_call_args_2(ModuleInfo, ArgInstTable, [ArgMode | ArgModes],
 % The current implementation does not correctly handle partially
 % instantiated data structures.
 
-split_unification_vars([], Modes, _InstTable, _ModuleInfo, Vars, Vars) :-
+split_unification_vars([], Modes, _InstMapBefore, _InstMapAfter,
+		_InstTable, _ModuleInfo, Vars, Vars) :-
 	bag__init(Vars),
 	( Modes = [] ->
 		true
 	;
 		error("term_util:split_unification_vars: Unmatched Variables")
 	).
-split_unification_vars([Arg | Args], Modes, InstTable, ModuleInfo,
+split_unification_vars([Arg | Args], Modes, InstMapBefore, InstMapAfter,
+		InstTable, ModuleInfo,
 		InVars, OutVars):-
 	( Modes = [UniMode | UniModes] ->
-		split_unification_vars(Args, UniModes, InstTable, ModuleInfo,
+		split_unification_vars(Args, UniModes, InstMapBefore,
+			InstMapAfter, InstTable, ModuleInfo,
 			InVars0, OutVars0),
 		UniMode = ((_VarInit - ArgInit) -> (_VarFinal - ArgFinal)),
 		( % if
-			inst_is_bound(ArgInit, InstTable, ModuleInfo)
+			inst_is_bound(ArgInit, InstMapBefore, InstTable,
+					ModuleInfo)
 		->
 			% Variable is an input variable
 			bag__insert(InVars0, Arg, InVars),
 			OutVars = OutVars0
 		; % else if
-			inst_is_free(ArgInit, InstTable, ModuleInfo),
-			inst_is_bound(ArgFinal, InstTable, ModuleInfo)
+			inst_is_free(ArgInit, InstMapBefore, InstTable,
+					ModuleInfo),
+			inst_is_bound(ArgFinal, InstMapAfter, InstTable,
+					ModuleInfo)
 		->
 			% Variable is an output variable
 			InVars = InVars0,

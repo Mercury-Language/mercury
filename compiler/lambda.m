@@ -364,10 +364,13 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 			% check that the curried arguments are all input
 		proc_info_argmodes(Call_ProcInfo,
 			argument_modes(Call_ArgInstTable, Call_ArgModes)),
+		proc_info_get_initial_instmap(Call_ProcInfo, ModuleInfo0,
+			Call_InstMap),
 		list__length(InitialVars, NumInitialVars),
 		list__take(NumInitialVars, Call_ArgModes, CurriedArgModes),
 		\+ (	list__member(Mode, CurriedArgModes), 
-			\+ mode_is_input(Call_ArgInstTable, ModuleInfo0, Mode)
+			\+ mode_is_input(Call_InstMap, Call_ArgInstTable,
+				ModuleInfo0, Mode)
 		)
 	->
 		ArgVars = InitialVars,
@@ -376,8 +379,8 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		PredName = PredName0,
 		ModuleInfo = ModuleInfo0,
 		NumArgVars = NumInitialVars,
-		mode_util__modes_to_uni_modes(CurriedArgModes, CurriedArgModes,
-			ModuleInfo0, UniModes)
+		mode_util__modes_to_uni_modes(CurriedArgModes, CurriedArgModes, 
+			ModuleInfo, UniModes)
 	;
 		% Prepare to create a new predicate for the lambda
 		% expression: work out the arguments, module name, predicate

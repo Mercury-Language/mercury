@@ -116,15 +116,9 @@
 :- pred inst_key_table_update(inst_key_table, inst_key, inst, inst_key_table).
 :- mode inst_key_table_update(in, in, in, out) is det.
 
-:- pred inst_key_table_dependent_keys(inst_key_table, inst_key, list(inst_key)).
-:- mode inst_key_table_dependent_keys(in, in, out) is det.
-
 :- pred inst_key_table_added_keys(inst_key_table, inst_key_table,
 		set(inst_key)).
 :- mode inst_key_table_added_keys(in, in, out) is det.
-
-:- pred inst_key_table_project(inst_key_table, list(inst_key), inst_key_table).
-:- mode inst_key_table_project(in, in, out) is det.
 
 	% `inst_key_table_create_sub(IKT0, IKT1, Sub, IKT)' renames
 	% apart all the inst_keys in IKT1 with respect to IKT0 and
@@ -159,8 +153,6 @@
 		io__state, io__state).
 :- mode inst_key_table_print_since_mark(in, in, di, uo) is det.
 
-:- pred inst_key_table_sanity_check(inst_key_table :: in) is semidet.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -178,7 +170,7 @@
 
 :- implementation.
 :- import_module mercury_to_mercury.	% ZZZ Remove this dependency!
-:- import_module set, multi_map, assoc_list, require, int, varset.
+:- import_module set, assoc_list, require, int, varset.
 :- import_module set_bbbtree, string.
 
 :- type inst_key == int.
@@ -186,58 +178,31 @@
 :- type inst_key_table --->
 	inst_key_table(
 		inst_key,
-		map(inst_key, inst),
-		multi_map(inst_key, inst_key)
+		map(inst_key, inst)
 	).
 
 inst_key_table_init(InstKeyTable) :-
 	map__init(FwdMap),
-	multi_map__init(BwdMap),
-	InstKeyTable = inst_key_table(0, FwdMap, BwdMap).
+	InstKeyTable = inst_key_table(0, FwdMap).
 
-inst_key_table_lookup(inst_key_table(_NextKey, FwdMap, _BwdMap),
-		Key, Inst) :-
+inst_key_table_lookup(inst_key_table(_NextKey, FwdMap), Key, Inst) :-
 	map__lookup(FwdMap, Key, Inst).
 
 inst_key_table_add(InstKeyTable0, Inst, ThisKey, InstKeyTable) :-
-	InstKeyTable0 = inst_key_table(ThisKey, FwdMap0, BwdMap0),
+	InstKeyTable0 = inst_key_table(ThisKey, FwdMap0),
 	NextKey is ThisKey + 1,
 	map__det_insert(FwdMap0, ThisKey, Inst, FwdMap),
-	inst_keys_in_inst(Inst, [], DependentKeys0),
-	list__sort_and_remove_dups(DependentKeys0, DependentKeys),
-	add_backward_dependencies(DependentKeys, ThisKey, BwdMap0, BwdMap),
-	InstKeyTable = inst_key_table(NextKey, FwdMap, BwdMap),
-	( inst_key_table_sanity_check(InstKeyTable) ->
-		true
-	;
-		error("inst_key_table_add: Failed sanity check")
-	).
+	InstKeyTable = inst_key_table(NextKey, FwdMap).
 
 inst_key_table_update(InstKeyTable0, Key, Inst, InstKeyTable) :-
-	InstKeyTable0 = inst_key_table(NextKey, FwdMap0, BwdMap0),
+	InstKeyTable0 = inst_key_table(NextKey, FwdMap0),
 	map__det_update(FwdMap0, Key, Inst, FwdMap),
-	inst_keys_in_inst(Inst, [], DependentKeys0),
-	list__sort_and_remove_dups(DependentKeys0, DependentKeys),
-	add_backward_dependencies(DependentKeys, Key, BwdMap0, BwdMap),
-	InstKeyTable = inst_key_table(NextKey, FwdMap, BwdMap),
-	( inst_key_table_sanity_check(InstKeyTable) ->
-		true
-	;
-		error("inst_key_table_update: Failed sanity check")
-	).
-
-inst_key_table_dependent_keys(inst_key_table(_NextKey, _FwdMap, BwdMap),
-		Key, DependentKeys) :-
-	( multi_map__search(BwdMap, Key, DependentKeys0) ->
-		DependentKeys = DependentKeys0
-	;
-		DependentKeys = []
-	).
+	InstKeyTable = inst_key_table(NextKey, FwdMap).
 
 %-----------------------------------------------------------------------------%
 
-inst_key_table_added_keys(inst_key_table(FirstKey, _, _),
-		inst_key_table(LastKey1, _, _), AddedKeys) :-
+inst_key_table_added_keys(inst_key_table(FirstKey, _),
+		inst_key_table(LastKey1, _), AddedKeys) :-
 	set__init(AddedKeys0),
 	LastKey is LastKey1 - 1,
 	inst_key_table_added_keys_2(FirstKey, LastKey, AddedKeys0, AddedKeys).
@@ -258,79 +223,14 @@ inst_key_table_added_keys_2(FirstKey, LastKey, AddedKeys0, AddedKeys) :-
 
 %-----------------------------------------------------------------------------%
 
-inst_key_table_project(inst_key_table(NextKey, FwdMap, BwdMap0), Keys0,
-		inst_key_table(NextKey, FwdMap, BwdMap)) :-
-	set_bbbtree__init(SeenKeys0),	
-	inst_key_table_project_2(Keys0, SeenKeys0, FwdMap, SeenKeys),
-	map__to_assoc_list(BwdMap0, BwdAL),
-	map__init(BwdMap1),
-	list__foldl(inst_key_table_project_bwd_mapping(SeenKeys), BwdAL,
-			BwdMap1, BwdMap).
-
-:- pred inst_key_table_project_2(list(inst_key), set_bbbtree(inst_key),
-		map(inst_key, inst), set_bbbtree(inst_key)).
-:- mode inst_key_table_project_2(in, in, in, out) is det.
-
-inst_key_table_project_2(KeysList, Keys0, FwdMap, Keys) :-
-	( KeysList = [] ->
-		Keys = Keys0
-	;
-		set_bbbtree__init(NewKeys0),
-		inst_key_table_project_3(KeysList, FwdMap, Keys0, Keys1,
-			NewKeys0, NewKeys),
-		set_bbbtree__to_sorted_list(NewKeys, NewKeysList),
-		inst_key_table_project_2(NewKeysList, Keys1, FwdMap, Keys)
-	).
-
-:- pred inst_key_table_project_3(list(inst_key), map(inst_key, inst),
-		set_bbbtree(inst_key), set_bbbtree(inst_key),
-		set_bbbtree(inst_key), set_bbbtree(inst_key)).
-:- mode inst_key_table_project_3(in, in, in, out, in, out) is det.
-
-inst_key_table_project_3([], _FwdMap, Keys, Keys, NewKeys, NewKeys).
-inst_key_table_project_3([K | Ks], FwdMap, Keys0, Keys, NewKeys0, NewKeys) :-
-	map__lookup(FwdMap, K, Inst),
-	inst_keys_in_inst(Inst, [], InstKeys),
-	inst_key_table_project_4(InstKeys, Keys0, Keys1, NewKeys0, NewKeys1),
-	inst_key_table_project_3(Ks, FwdMap, Keys1, Keys, NewKeys1, NewKeys).
-
-:- pred inst_key_table_project_4(list(inst_key),
-		set_bbbtree(inst_key), set_bbbtree(inst_key),
-		set_bbbtree(inst_key), set_bbbtree(inst_key)).
-:- mode inst_key_table_project_4(in, in, out, in, out) is det.
-
-inst_key_table_project_4([], Keys, Keys, NewKeys, NewKeys).
-inst_key_table_project_4([K | Ks], Keys0, Keys, NewKeys0, NewKeys) :-
-	( set_bbbtree__member(K, Keys0) ->
-		Keys1 = Keys0, NewKeys1 = NewKeys0
-	;
-		set_bbbtree__insert(Keys0, K, Keys1),
-		set_bbbtree__insert(NewKeys0, K, NewKeys1)
-	),
-	inst_key_table_project_4(Ks, Keys1, Keys, NewKeys1, NewKeys).
-
-:- pred inst_key_table_project_bwd_mapping(set_bbbtree(inst_key),
-		pair(inst_key, list(inst_key)),
-		map(inst_key, list(inst_key)), map(inst_key, list(inst_key))).
-:- mode inst_key_table_project_bwd_mapping(in, in, in, out) is det.
-
-inst_key_table_project_bwd_mapping(SeenKeys, IK - IKs0, Map0, Map) :-
-	list__filter(lambda([X :: in] is semidet,
-			set_bbbtree__member(X, SeenKeys)),
-		IKs0, IKs),
-	map__det_insert(Map0, IK, IKs, Map).
-
-%-----------------------------------------------------------------------------%
-
 inst_key_table_create_sub(IKT0, IKT1, Sub, IKT) :-
-	IKT0 = inst_key_table(NextKey0, FwdMap0, BwdMap0),
-	IKT1 = inst_key_table(_, FwdMap1, _),
+	IKT0 = inst_key_table(NextKey0, FwdMap0),
+	IKT1 = inst_key_table(_, FwdMap1),
 	map__to_assoc_list(FwdMap1, FwdAL),
 	map__init(Sub0),
 	inst_key_table_create_sub_2(FwdAL, NextKey0, NextKey, Sub0, Sub),
-	inst_key_table_create_sub_3(FwdAL, Sub, FwdMap0, FwdMap,
-		BwdMap0, BwdMap),
-	IKT  = inst_key_table(NextKey, FwdMap, BwdMap).
+	inst_key_table_create_sub_3(FwdAL, Sub, FwdMap0, FwdMap),
+	IKT  = inst_key_table(NextKey, FwdMap).
 
 :- pred inst_key_table_create_sub_2(assoc_list(inst_key, inst), inst_key,
 		inst_key, inst_key_sub, inst_key_sub).
@@ -343,24 +243,20 @@ inst_key_table_create_sub_2([K - _ | AL], NextKey0, NextKey, Sub0, Sub) :-
 	inst_key_table_create_sub_2(AL, NextKey1, NextKey, Sub1, Sub).
 
 :- pred inst_key_table_create_sub_3(assoc_list(inst_key, inst), inst_key_sub,
-		map(inst_key, inst), map(inst_key, inst),
-		multi_map(inst_key, inst_key), multi_map(inst_key, inst_key)).
-:- mode inst_key_table_create_sub_3(in, in, in, out, in, out) is det.
+		map(inst_key, inst), map(inst_key, inst)).
+:- mode inst_key_table_create_sub_3(in, in, in, out) is det.
 
-inst_key_table_create_sub_3([], _Sub, Fwd, Fwd, Bwd, Bwd).
-inst_key_table_create_sub_3([K0 - I0 | AL], Sub, Fwd0, Fwd, Bwd0, Bwd) :-
+inst_key_table_create_sub_3([], _Sub, Fwd, Fwd).
+inst_key_table_create_sub_3([K0 - I0 | AL], Sub, Fwd0, Fwd) :-
 	map__lookup(Sub, K0, K),
 	inst_apply_sub(Sub, I0, I),
 	map__det_insert(Fwd0, K, I, Fwd1),
-	inst_keys_in_inst(I, [], Deps0),
-	list__sort_and_remove_dups(Deps0, Deps),
-	add_backward_dependencies(Deps, K, Bwd0, Bwd1),
-	inst_key_table_create_sub_3(AL, Sub, Fwd1, Fwd, Bwd1, Bwd).
+	inst_key_table_create_sub_3(AL, Sub, Fwd1, Fwd).
 
 %-----------------------------------------------------------------------------%
 
 inst_key_table_optimise(IKT0, Insts, Sub, IKT) :-
-	IKT0 = inst_key_table(_, Fwd, _),
+	IKT0 = inst_key_table(_, Fwd),
 	set_bbbtree__init(Used0),
 	set_bbbtree__init(UsedMultiply0),
 	find_replacable_keys(Insts, Fwd, Used0, Used,
@@ -368,12 +264,11 @@ inst_key_table_optimise(IKT0, Insts, Sub, IKT) :-
 	set_bbbtree__difference(UsedMultiply, Used, UsedOnce),
 	set_bbbtree__to_sorted_list(UsedMultiply, KeysToRename),
 	map__init(NewFwd0),
-	multi_map__init(NewBwd0),
 	map__init(Sub0),
 	inst_key_table_optimise_2(KeysToRename, 0, NextKey, Sub0, Sub),
 	inst_key_table_optimise_3(Fwd, KeysToRename, UsedOnce, Sub,
-		NewFwd0, NewFwd, NewBwd0, NewBwd),
-	IKT = inst_key_table(NextKey, NewFwd, NewBwd).
+		NewFwd0, NewFwd),
+	IKT = inst_key_table(NextKey, NewFwd).
 
 :- pred inst_key_table_optimise_2(list(inst_key), inst_key, inst_key,
 		inst_key_sub, inst_key_sub).
@@ -387,78 +282,63 @@ inst_key_table_optimise_2([IK | IKs], ThisKey, NextKey, Sub0, Sub) :-
 
 :- pred inst_key_table_optimise_3(map(inst_key, inst), list(inst_key),
 		set_bbbtree(inst_key), inst_key_sub,
-		map(inst_key, inst), map(inst_key, inst),
-		multi_map(inst_key, inst_key), multi_map(inst_key, inst_key)).
-:- mode inst_key_table_optimise_3(in, in, in, in, in, out, in, out) is det.
+		map(inst_key, inst), map(inst_key, inst)).
+:- mode inst_key_table_optimise_3(in, in, in, in, in, out) is det.
 
-inst_key_table_optimise_3(_OldFwd, [], _UsedOnce, _Sub, Fwd, Fwd, Bwd, Bwd).
-inst_key_table_optimise_3(OldFwd, [IK0 | IKs], UsedOnce, Sub,
-		Fwd0, Fwd, Bwd0, Bwd) :-
+inst_key_table_optimise_3(_OldFwd, [], _UsedOnce, _Sub, Fwd, Fwd).
+inst_key_table_optimise_3(OldFwd, [IK0 | IKs], UsedOnce, Sub, Fwd0, Fwd) :-
 	( set_bbbtree__member(IK0, UsedOnce) ->
-		Fwd1 = Fwd0, Bwd1 = Bwd0
+		Fwd1 = Fwd0
 	;
 		map__lookup(OldFwd, IK0, Inst0),
 		map__lookup(Sub, IK0, IK),
-		optimise_inst_keys_in_inst(OldFwd, UsedOnce, Sub, Inst0, Inst,
-				[], Deps0),
-		list__sort_and_remove_dups(Deps0, Deps),
-		map__det_insert(Fwd0, IK, Inst, Fwd1),
-		add_backward_dependencies(Deps, IK, Bwd0, Bwd1)
+		optimise_inst_keys_in_inst(OldFwd, UsedOnce, Sub, Inst0, Inst),
+		map__det_insert(Fwd0, IK, Inst, Fwd1)
 	),
-	inst_key_table_optimise_3(OldFwd, IKs, UsedOnce, Sub, Fwd1, Fwd,
-		Bwd1, Bwd).
-		
-:- pred optimise_inst_keys_in_inst(map(inst_key, inst), set_bbbtree(inst_key),
-		inst_key_sub, inst, inst, list(inst_key), list(inst_key)).
-:- mode optimise_inst_keys_in_inst(in, in, in, in, out, in, out) is det.
+	inst_key_table_optimise_3(OldFwd, IKs, UsedOnce, Sub, Fwd1, Fwd).
 
-optimise_inst_keys_in_inst(OldFwd, UsedOnce, Sub,
-		alias(IK), Inst, IKs0, IKs) :-
+:- pred optimise_inst_keys_in_inst(map(inst_key, inst), set_bbbtree(inst_key),
+		inst_key_sub, inst, inst).
+:- mode optimise_inst_keys_in_inst(in, in, in, in, out) is det.
+
+optimise_inst_keys_in_inst(OldFwd, UsedOnce, Sub, alias(IK), Inst) :-
 	( set_bbbtree__member(IK, UsedOnce) ->
 		map__lookup(OldFwd, IK, Inst0),
-		optimise_inst_keys_in_inst(OldFwd, UsedOnce, Sub,
-		                Inst0, Inst, IKs0, IKs)
+		optimise_inst_keys_in_inst(OldFwd, UsedOnce, Sub, Inst0, Inst)
 	;
 		map__lookup(Sub, IK, NewIK),
-		IKs = [NewIK | IKs0],
 		Inst = alias(NewIK)
 	).
 optimise_inst_keys_in_inst(_OldFwd, _UsedOnce, _Sub,
-		any(Uniq), any(Uniq), IKs, IKs).
-optimise_inst_keys_in_inst(_OldFwd, _UsedOnce, _Sub, free(A), free(A), 
-		IKs, IKs).
-optimise_inst_keys_in_inst(_OldFwd, _UsedOnce, _Sub, free(A, T), free(A, T),
-		IKs, IKs).
+		any(Uniq), any(Uniq)).
+optimise_inst_keys_in_inst(_OldFwd, _UsedOnce, _Sub, free(A), free(A)).
+optimise_inst_keys_in_inst(_OldFwd, _UsedOnce, _Sub, free(A, T), free(A, T)).
 optimise_inst_keys_in_inst(OldFwd, UsedOnce, Sub,
-		bound(Uniq, Insts0), bound(Uniq, Insts), IKs0, IKs) :-
-	list__map_foldl(optimise_inst_keys_in_bound_inst(OldFwd, UsedOnce, Sub),
-		Insts0, Insts, IKs0, IKs).
+		bound(Uniq, Insts0), bound(Uniq, Insts)) :-
+	list__map(optimise_inst_keys_in_bound_inst(OldFwd, UsedOnce, Sub),
+		Insts0, Insts).
 optimise_inst_keys_in_inst(_OldFwd, _UsedOnce, _Sub,
-		ground(Uniq, no), ground(Uniq, no), IKs, IKs).
+		ground(Uniq, no), ground(Uniq, no)).
 optimise_inst_keys_in_inst(_OldFwd, _UsedOnce, _Sub,
-		ground(Uniq, yes(Pred)), ground(Uniq, yes(Pred)), IKs, IKs).
+		ground(Uniq, yes(Pred)), ground(Uniq, yes(Pred))).
 		% ZZZ ERROR
-optimise_inst_keys_in_inst(_OldFwd, _UsedOnce, _Sub, not_reached, not_reached,
-		IKs, IKs).
-optimise_inst_keys_in_inst(_OldFwd, _UsedOnce, _Sub, inst_var(V), inst_var(V),
-		IKs, IKs).
+optimise_inst_keys_in_inst(_OldFwd, _UsedOnce, _Sub, not_reached, not_reached).
+optimise_inst_keys_in_inst(_OldFwd, _UsedOnce, _Sub, inst_var(V), inst_var(V)).
 optimise_inst_keys_in_inst(_OldFwd, _UsedOnce, _Sub,
-		defined_inst(Name), defined_inst(Name), IKs, IKs).
+		defined_inst(Name), defined_inst(Name)).
 optimise_inst_keys_in_inst(OldFwd, UsedOnce, Sub,
-		abstract_inst(Name, Insts0), abstract_inst(Name, Insts),
-		IKs0, IKs) :-
-	list__map_foldl(optimise_inst_keys_in_inst(OldFwd, UsedOnce, Sub),
-		Insts0, Insts, IKs0, IKs).
+		abstract_inst(Name, Insts0), abstract_inst(Name, Insts)) :-
+	list__map(optimise_inst_keys_in_inst(OldFwd, UsedOnce, Sub),
+		Insts0, Insts).
 
 :- pred optimise_inst_keys_in_bound_inst(map(inst_key, inst),
-		set_bbbtree(inst_key), inst_key_sub, bound_inst, bound_inst,
-		list(inst_key), list(inst_key)).
-:- mode optimise_inst_keys_in_bound_inst(in, in, in, in, out, in, out) is det.
+		set_bbbtree(inst_key), inst_key_sub, bound_inst, bound_inst).
+:- mode optimise_inst_keys_in_bound_inst(in, in, in, in, out) is det.
 
 optimise_inst_keys_in_bound_inst(OldFwd, UsedOnce, Sub,
-	 	functor(Cons, Insts0), functor(Cons, Insts), IKs0, IKs) :-
-	list__map_foldl(optimise_inst_keys_in_inst(OldFwd, UsedOnce, Sub),
-		Insts0, Insts, IKs0, IKs).
+	 	functor(Cons, Insts0), functor(Cons, Insts)) :-
+	list__map(optimise_inst_keys_in_inst(OldFwd, UsedOnce, Sub),
+		Insts0, Insts).
 
 :- pred find_replacable_keys(list(inst), map(inst_key, inst),
 		set_bbbtree(inst_key), set_bbbtree(inst_key),
@@ -507,56 +387,15 @@ inst_key_table_write_inst_key(_IKT, InstKey) -->
 	io__write_int(InstKey).
 
 %-----------------------------------------------------------------------------%
-
-/***********
-inst_key_table_sanity_check(inst_key_table(_NextKey, FwdMap, BwdMap)) :-
-	map__to_assoc_list(FwdMap, FwdAL0),
-	list__map(lambda([Item0 :: in, Item :: out] is det,
-		(Item0 = InstKeyK - Inst, inst_keys_in_inst(Inst, [], Keys),
-			Item = InstKeyK - Keys)), FwdAL0, FwdMAL0),
-	break_multi_assoc_list(FwdMAL0, FwdAL),
-	set__list_to_set(FwdAL, FwdSet),
-
-	map__to_assoc_list(BwdMap, BwdAL0),
-	break_multi_assoc_list(BwdAL0, BwdAL1),
-	list__map(lambda([KV :: in, VK :: out] is det,
-			(KV = K - V, VK = V - K)),
-		BwdAL1, BwdAL),
-	set__list_to_set(BwdAL, BwdSet),
-
-	set__subset(FwdSet, BwdSet).
-***********/
-inst_key_table_sanity_check(_) :- semidet_succeed.
-
-
-	% break_multi_assoc_list makes no guarantee about the final
-	% order of the assoc_list.
-	%
-:- pred break_multi_assoc_list(assoc_list(K, list(V)), assoc_list(K, V)).
-:- mode break_multi_assoc_list(in, out) is det.
-
-break_multi_assoc_list([], []).
-break_multi_assoc_list([K - Vs | AL0], AL) :-
-	break_multi_assoc_list(AL0, AL1),
-	break_multi_assoc_list_2(K, Vs, AL1, AL).
-
-:- pred break_multi_assoc_list_2(K, list(V), assoc_list(K, V),assoc_list(K, V)).
-:- mode break_multi_assoc_list_2(in, in, in, out) is det.
-
-break_multi_assoc_list_2(_K, [], AL, AL).
-break_multi_assoc_list_2(K, [V | Vs], AL0, [K - V | AL]) :-
-	break_multi_assoc_list_2(K, Vs, AL0, AL).
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- type inst_key_table_mark == inst_key.
 
 inst_key_table_mark_init(-1).
 
-inst_key_table_get_mark(inst_key_table(NextKey, _, _), NextKey).
+inst_key_table_get_mark(inst_key_table(NextKey, _), NextKey).
 
-inst_key_table_print_since_mark(inst_key_table(_, FwdTable, _), Mark) -->
+inst_key_table_print_since_mark(inst_key_table(_, FwdTable), Mark) -->
 	{ map__keys(FwdTable, KeysList) },
 	inst_key_table_print_since_mark_2(KeysList, Mark, FwdTable).
 
@@ -575,23 +414,6 @@ inst_key_table_print_since_mark_2([K | Ks], Mark, FwdMap) -->
 		io__nl
 	),
 	inst_key_table_print_since_mark_2(Ks, Mark, FwdMap).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- pred add_backward_dependencies(list(K), V, multi_map(K, V), multi_map(K, V)).
-:- mode add_backward_dependencies(in, in, in, out) is det.
-
-add_backward_dependencies([], _V, BwdMap, BwdMap).
-add_backward_dependencies([K | Ks], V, BwdMap0, BwdMap) :-
-	( map__search(BwdMap0, K, Vs0) ->
-%		list__merge([V], Vs0, Vs)
-		Vs = [V | Vs0]
-	;
-		Vs = [V]
-	),
-	map__set(BwdMap0, K, Vs, BwdMap1),
-	add_backward_dependencies(Ks, V, BwdMap1, BwdMap).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -659,11 +481,11 @@ bound_insts_expand_fully(IKT, [functor(ConsId, Insts0) | BIs0],
 %-----------------------------------------------------------------------------%
 
 inst_apply_sub(_Sub, any(Uniq), any(Uniq)).
-inst_apply_sub(Sub, alias(Key0), alias(Key)) :-
+inst_apply_sub(Sub, alias(Key0), Inst) :-
 	( map__search(Sub, Key0, Key1) ->
-		Key = Key1
+		inst_apply_sub(Sub, alias(Key1), Inst)
 	;
-		Key = Key0
+		Inst = alias(Key0)
 	).
 inst_apply_sub(_Sub, free(Aliasing), free(Aliasing)).
 inst_apply_sub(_Sub, free(Aliasing, Type), free(Aliasing, Type)).

@@ -241,6 +241,7 @@ c_gen_proc(Indent, ModuleInfo, PredId, ProcId, Pred, Proc) -->
 	{ pred_info_name(Pred, PredName) },
 	{ proc_info_vartypes(Proc, VarTypes) },
 	{ proc_info_argmodes(Proc, argument_modes(HeadIT, HeadModes)) },
+	{ proc_info_get_initial_instmap(Proc, ModuleInfo, InstMap) },
 	{ proc_info_goal(Proc, Goal) },
 	{ proc_info_context(Proc, ModeContext) },
 	{ Indent1 is Indent + 1 },
@@ -264,8 +265,8 @@ c_gen_proc(Indent, ModuleInfo, PredId, ProcId, Pred, Proc) -->
 	c_gen_local_var_decls(Indent1, Goal, VarSet, VarTypes, HeadVars),
 	io__write_string("\n"),
 	{ determinism_to_code_model(InterfaceDeterminism, CodeModel) },
-	{ c_gen_select_output_vars(HeadIT, ModuleInfo, HeadVars, HeadModes,
-		OutputVars) },
+	{ c_gen_select_output_vars(InstMap, HeadIT, ModuleInfo, HeadVars,
+		HeadModes, OutputVars) },
 	{ c_gen_info_init(ModuleInfo, PredId, ProcId, Proc, VarSet, CodeModel,
 		OutputVars, CGenInfo0) },
 	( { CodeModel = model_non } ->
@@ -358,6 +359,7 @@ c_gen_prototype(ModuleInfo, PredId, ProcId) -->
 	{ proc_info_headvars(ProcInfo, HeadVars) },
 	{ pred_info_arg_types(PredInfo, HeadTypes) },
 	{ proc_info_argmodes(ProcInfo, argument_modes(HeadIT, HeadModes)) },
+	{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) },
 
 	( { CodeModel = model_semi } ->
 		io__write_string("bool")
@@ -374,8 +376,8 @@ c_gen_prototype(ModuleInfo, PredId, ProcId) -->
 			io__write_string("void")
 		)
 	;
-		c_gen_arg_decls(HeadIT, ModuleInfo, HeadVars, HeadTypes,
-			HeadModes, VarSet),
+		c_gen_arg_decls(InstMap, HeadIT, ModuleInfo, HeadVars,
+			HeadTypes, HeadModes, VarSet),
 		( { CodeModel = model_non } ->
 			io__write_string(", Cont cont")
 		;
@@ -406,11 +408,12 @@ c_gen_proc_name(ModuleInfo, PredId, ProcId) -->
 	{ proc_id_to_int(ProcId, ModeNum) },
 	io__write_int(ModeNum).
 
-:- pred c_gen_select_output_vars(inst_table, module_info, list(var),
+:- pred c_gen_select_output_vars(instmap, inst_table, module_info, list(var),
 		list(mode), list(var)).
-:- mode c_gen_select_output_vars(in, in, in, in, out) is det.
+:- mode c_gen_select_output_vars(in, in, in, in, in, out) is det.
 
-c_gen_select_output_vars(IT, ModuleInfo, HeadVars, HeadModes, OutputVars) :-
+c_gen_select_output_vars(InstMap, IT, ModuleInfo, HeadVars, HeadModes,
+		OutputVars) :-
 	(
 		HeadVars = [], HeadModes = []
 	->
@@ -419,23 +422,24 @@ c_gen_select_output_vars(IT, ModuleInfo, HeadVars, HeadModes, OutputVars) :-
 		HeadVars = [Var|Vars],
 		HeadModes = [Mode|Modes]
 	->
-		( mode_is_output(IT, ModuleInfo, Mode) ->
+		( mode_is_output(InstMap, IT, ModuleInfo, Mode) ->
 			OutputVars = [Var|OutputVars1],
-			c_gen_select_output_vars(IT, ModuleInfo, Vars, Modes,	
-				OutputVars1)
+			c_gen_select_output_vars(InstMap, IT, ModuleInfo,
+				Vars, Modes, OutputVars1)
 		;
-			c_gen_select_output_vars(IT, ModuleInfo, Vars, Modes,
-				OutputVars)
+			c_gen_select_output_vars(InstMap, IT, ModuleInfo,
+				Vars, Modes, OutputVars)
 		)
 	;
 		error("c_gen_select_output_vars: length mismatch")
 	).
 
-:- pred c_gen_arg_decls(inst_table, module_info, list(var), list(type),
+:- pred c_gen_arg_decls(instmap, inst_table, module_info, list(var), list(type),
 			list(mode), varset, io__state, io__state).
-:- mode c_gen_arg_decls(in, in, in, in, in, in, di, uo) is det.
+:- mode c_gen_arg_decls(in, in, in, in, in, in, in, di, uo) is det.
 
-c_gen_arg_decls(IT, ModuleInfo, HeadVars, HeadTypes, HeadModes, VarSet) -->
+c_gen_arg_decls(InstMap, IT, ModuleInfo, HeadVars, HeadTypes, HeadModes,
+		VarSet) -->
 	(
 		{ HeadVars = [], HeadTypes = [], HeadModes = [] }
 	->
@@ -445,24 +449,26 @@ c_gen_arg_decls(IT, ModuleInfo, HeadVars, HeadTypes, HeadModes, VarSet) -->
 		{ HeadTypes = [Type|Types] },
 		{ HeadModes = [Mode|Modes] }
 	->
-		c_gen_arg_decl(IT, ModuleInfo, Var, Type, Mode, VarSet),
+		c_gen_arg_decl(InstMap, IT, ModuleInfo, Var, Type, Mode,
+				VarSet),
 		( { Vars \= [] } ->
 			io__write_string(", ")
 		;
 			[]
 		),
-		c_gen_arg_decls(IT, ModuleInfo, Vars, Types, Modes, VarSet)
+		c_gen_arg_decls(InstMap, IT, ModuleInfo, Vars, Types, Modes,
+				VarSet)
 	;
 		{ error("c_gen_arg_decls: length mismatch") }
 	).
 
-:- pred c_gen_arg_decl(inst_table, module_info, var, type, mode, varset,
-			io__state, io__state).
-:- mode c_gen_arg_decl(in, in, in, in, in, in, di, uo) is det.
+:- pred c_gen_arg_decl(instmap, inst_table, module_info, var, type, mode,
+			varset, io__state, io__state).
+:- mode c_gen_arg_decl(in, in, in, in, in, in, in, di, uo) is det.
 
-c_gen_arg_decl(IT, ModuleInfo, Var, Type, Mode, VarSet) -->
+c_gen_arg_decl(InstMap, IT, ModuleInfo, Var, Type, Mode, VarSet) -->
 	c_gen_type(Type),
-	( { mode_is_output(IT, ModuleInfo, Mode) } ->
+	( { mode_is_output(InstMap, IT, ModuleInfo, Mode) } ->
 		io__write_string("* ")
 	;
 		io__write_string(" ")
@@ -646,6 +652,7 @@ c_gen_goal_2(call(PredId, ProcId, ArgVars, _, _, _PredName),
 		_PredInfo, ProcInfo) },
 	{ proc_info_interface_code_model(ProcInfo, CodeModel) },
 	{ proc_info_argmodes(ProcInfo, argument_modes(ArgIT, ArgModes)) },
+	{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) },
 	c_gen_indent(Indent),
 	( { CodeModel = model_non } ->
 		{ c_gen_info_new_label_func(Label, CGenInfo0, CGenInfo1) }
@@ -659,7 +666,8 @@ c_gen_goal_2(call(PredId, ProcId, ArgVars, _, _, _PredName),
 	),
 	c_gen_proc_name(ModuleInfo, PredId, ProcId),
 	io__write_string("("),
-	c_gen_arg_list(ArgVars, ArgIT, ArgModes, CGenInfo1, CGenInfo2),
+	c_gen_arg_list(ArgVars, InstMap, ArgIT, ArgModes, CGenInfo1,
+			CGenInfo2),
 	( { CodeModel = model_non } ->
 		( { ArgVars \= [] } ->
 			io__write_string(", ")
@@ -735,11 +743,11 @@ c_gen_unification(complicated_unify(_, _), _Indent, CGenInfo, CGenInfo) -->
 	{ sorry(3) },
 	io__write_string(" = ").
 
-:- pred c_gen_arg_list(list(var), inst_table, list(mode),
+:- pred c_gen_arg_list(list(var), instmap, inst_table, list(mode),
 			c_gen_info, c_gen_info, io__state, io__state).
-:- mode c_gen_arg_list(in, in, in, in, out, di, uo) is det.
+:- mode c_gen_arg_list(in, in, in, in, in, out, di, uo) is det.
 
-c_gen_arg_list(Vars, ArgIT, ArgModes, CGenInfo0, CGenInfo) -->
+c_gen_arg_list(Vars, InstMap, ArgIT, ArgModes, CGenInfo0, CGenInfo) -->
 	( { Vars = [], ArgModes = [] } ->
 		{ CGenInfo = CGenInfo0 }
 	; { Vars = [Var|Vars1], ArgModes = [Mode|ArgModes1] } ->
@@ -748,11 +756,11 @@ c_gen_arg_list(Vars, ArgIT, ArgModes, CGenInfo0, CGenInfo) -->
 		{ c_gen_info_get_output_vars(CGenInfo0, OutputVars) },
 		(
 			{ list__member(Var, OutputVars) },
-			{ \+ mode_is_output(ArgIT, ModuleInfo, Mode) }
+			{ \+ mode_is_output(InstMap, ArgIT, ModuleInfo, Mode) }
 		->
 			io__write_char('*')
 		;
-			{ mode_is_output(ArgIT, ModuleInfo, Mode) },
+			{ mode_is_output(InstMap, ArgIT, ModuleInfo, Mode) },
 			{ \+ list__member(Var, OutputVars) }
 		->
 			io__write_char('&')
@@ -765,7 +773,8 @@ c_gen_arg_list(Vars, ArgIT, ArgModes, CGenInfo0, CGenInfo) -->
 		;
 			io__write_string(", ")
 		),
-		c_gen_arg_list(Vars1, ArgIT, ArgModes1, CGenInfo0, CGenInfo)
+		c_gen_arg_list(Vars1, InstMap, ArgIT, ArgModes1,
+			CGenInfo0, CGenInfo)
 	;
 		{ error("c_gen_arg_list: length mismatch") }
 	).

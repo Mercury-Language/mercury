@@ -249,12 +249,14 @@ setup_pred_args(ModuleInfo, PredId, [ProcId | Rest], UnusedArgInfo, VarUsage0,
 	;
 		proc_info_argmodes(ProcInfo,
 			argument_modes(ArgInstTable, ArgModes)),
+		proc_info_get_initial_instmap(ProcInfo, ModuleInfo,
+			ProcInstMap),
 		proc_info_headvars(ProcInfo, HeadVars),
 		proc_info_vartypes(ProcInfo, VarTypes),
 		map__keys(VarTypes, Vars),
 		initialise_vardep(VarDep0, Vars, VarDep1),
-		setup_output_args(ModuleInfo, HeadVars, ArgInstTable, ArgModes,
-			VarDep1, VarDep2),
+		setup_output_args(ProcInstMap, ModuleInfo, HeadVars,
+			ArgInstTable, ArgModes, VarDep1, VarDep2),
 
 		module_info_globals(ModuleInfo, Globals),
 		globals__lookup_bool_option(Globals, typeinfo_liveness, 
@@ -268,9 +270,10 @@ setup_pred_args(ModuleInfo, PredId, [ProcId | Rest], UnusedArgInfo, VarUsage0,
 			VarDep2 = VarDep3
 		),
 
-		proc_info_goal(ProcInfo, Goal - _),
+		proc_info_goal(ProcInfo, Goal - GoalInfo),
 		proc_info_inst_table(ProcInfo, InstTable),
-		traverse_goal(InstTable, ModuleInfo, Goal, VarDep3, VarDep),
+		traverse_goal(ProcInstMap, InstTable, ModuleInfo, Goal,
+				GoalInfo, VarDep3, VarDep),
 		map__set(VarUsage0, proc(PredId, ProcId), VarDep, VarUsage1),
 		PredProcs1 = [proc(PredId, ProcId) | PredProcs0],
 		OptProcs1 = OptProcs0
@@ -322,10 +325,11 @@ setup_typeinfo_deps([Var | Vars], VarTypeMap, PredProcId, TVarMap, VarDep0,
 
 	% Get output arguments for a procedure given the headvars and the
 	% argument modes, and set them as used.
-:- pred setup_output_args(module_info::in, list(var)::in, inst_table::in,
-		list(mode)::in, var_dep::in, var_dep::out) is det.
+:- pred setup_output_args(instmap::in, module_info::in, list(var)::in,
+	inst_table::in, list(mode)::in, var_dep::in, var_dep::out) is det.
 
-setup_output_args(ModuleInfo, HVars, ArgInstTable, ArgModes, VarDep0, VarDep) :-
+setup_output_args(InstMap, ModuleInfo, HVars, ArgInstTable, ArgModes,
+			VarDep0, VarDep) :-
 	(
 		HVars = [Var | Vars], ArgModes = [Mode | Modes]
 	->
@@ -333,15 +337,15 @@ setup_output_args(ModuleInfo, HVars, ArgInstTable, ArgModes, VarDep0, VarDep) :-
 			% Any argument which has its instantiatedness
 			% changed by the predicate is used.
 			mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
-			\+ inst_matches_binding(Inst1, Inst2, ArgInstTable,
-					ModuleInfo)
+			\+ inst_matches_binding(Inst1, InstMap, Inst2, InstMap,
+					ArgInstTable, ModuleInfo)
 		->
 			set_var_used(VarDep0, Var, VarDep1)		
 		;
 			VarDep1 = VarDep0	
 		),
-		setup_output_args(ModuleInfo, Vars, ArgInstTable, Modes,
-			VarDep1, VarDep)
+		setup_output_args(InstMap, ModuleInfo, Vars, ArgInstTable,
+			Modes, VarDep1, VarDep)
 	;
 		HVars = [], ArgModes = []
 	->
@@ -402,65 +406,83 @@ lookup_local_var(VarDep, Var, UsageInfo) :-
 	% Traversal of goal structure, building up dependencies for all
 	% variables. 
 
-:- pred traverse_goal(inst_table::in, module_info::in, hlds_goal_expr::in,
-				var_dep::in, var_dep::out) is det.
+:- pred traverse_goal(instmap::in, inst_table::in, module_info::in,
+			hlds_goal_expr::in, hlds_goal_info::in,
+			var_dep::in, var_dep::out) is det.
 
 % handle conjunction
-traverse_goal(InstTable, ModuleInfo, conj(Goals), UseInf0, UseInf) :-
-	traverse_list_of_goals(InstTable, ModuleInfo, Goals, UseInf0, UseInf).
+traverse_goal(InstMap0, InstTable, ModuleInfo, conj(Goals), _,
+		UseInf0, UseInf) :-
+	traverse_conj(InstMap0, InstTable, ModuleInfo, Goals,
+		UseInf0, UseInf).
 
 % handle parallel conjunction
-traverse_goal(InstTable, ModuleInfo, par_conj(Goals, _SM), UseInf0, UseInf) :-
-	traverse_list_of_goals(InstTable, ModuleInfo, Goals, UseInf0, UseInf).
+traverse_goal(InstMap0, InstTable, ModuleInfo, par_conj(Goals, _SM), _,
+		UseInf0, UseInf) :-
+	traverse_par_conj(InstMap0, InstTable, ModuleInfo, Goals,
+		UseInf0, UseInf).
 
 % handle disjunction
-traverse_goal(InstTable, ModuleInfo, disj(Goals, _), UseInf0, UseInf) :-
-	traverse_list_of_goals(InstTable, ModuleInfo, Goals, UseInf0, UseInf).
+traverse_goal(InstMap0, InstTable, ModuleInfo, disj(Goals, _), _,
+		UseInf0, UseInf) :-
+	traverse_disj(InstMap0, InstTable, ModuleInfo, Goals, UseInf0, UseInf).
 
 % handle switch
-traverse_goal(InstTable, ModuleInfo, switch(Var, _, Cases, _),
+traverse_goal(InstMap0, InstTable, ModuleInfo, switch(Var, _, Cases, _), _,
 		UseInf0, UseInf) :-
 	set_var_used(UseInf0, Var, UseInf1),
-	list_case_to_list_goal(Cases, Goals),
-	traverse_list_of_goals(InstTable, ModuleInfo, Goals, UseInf1, UseInf).
+	traverse_cases(InstMap0, InstTable, ModuleInfo, Cases,
+		UseInf1, UseInf).
 
 % handle predicate call
-traverse_goal(_, ModuleInfo, call(PredId, ProcId, Args, _, _, _),
-						UseInf0, UseInf) :-
+traverse_goal(_, _, ModuleInfo, call(PredId, ProcId, Args, _, _, _), _,
+		UseInf0, UseInf) :-
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _Pred, Proc),
 	proc_info_headvars(Proc, HeadVars),
 	add_pred_call_arg_dep(proc(PredId, ProcId), Args, HeadVars,
 		UseInf0, UseInf).
 
 % handle if then else
-traverse_goal(InstTable, ModuleInfo,
-			if_then_else(_, Cond - _, Then - _, Else - _, _),
-			UseInf0, UseInf) :-
-	traverse_goal(InstTable, ModuleInfo, Cond, UseInf0, UseInf1),
-	traverse_goal(InstTable, ModuleInfo, Then, UseInf1, UseInf2),
-	traverse_goal(InstTable, ModuleInfo, Else, UseInf2, UseInf).
+traverse_goal(InstMap0, InstTable, ModuleInfo,
+		if_then_else(_, Cond - CondInfo, Then - ThenInfo,
+				Else - ElseInfo, _), _,
+		UseInf0, UseInf) :-
+	goal_info_get_instmap_delta(CondInfo, CondInstMapDelta),
+	instmap__apply_instmap_delta(InstMap0, CondInstMapDelta, InstMap1),
+	traverse_goal(InstMap0, InstTable, ModuleInfo, Cond, CondInfo,
+			UseInf0, UseInf1),
+	traverse_goal(InstMap1, InstTable, ModuleInfo, Then, ThenInfo,
+			UseInf1, UseInf2),
+	traverse_goal(InstMap0, InstTable, ModuleInfo, Else, ElseInfo,
+			UseInf2, UseInf).
 
 % handle negation
-traverse_goal(InstTable, ModuleInfo, not(Goal - _), UseInf0, UseInf) :-
-	traverse_goal(InstTable, ModuleInfo, Goal, UseInf0, UseInf).
+traverse_goal(InstMap0, InstTable, ModuleInfo, not(Goal - GoalInfo), _,
+		UseInf0, UseInf) :-
+	traverse_goal(InstMap0, InstTable, ModuleInfo, Goal, GoalInfo,
+		UseInf0, UseInf).
 
 % handle quantification
-traverse_goal(InstTable, ModuleInfo, some(_,  Goal - _), UseInf0, UseInf) :-
-	traverse_goal(InstTable, ModuleInfo, Goal, UseInf0, UseInf).
+traverse_goal(InstMap0, InstTable, ModuleInfo, some(_,  Goal - GoalInfo), _,
+		UseInf0, UseInf) :-
+	traverse_goal(InstMap0, InstTable, ModuleInfo, Goal, GoalInfo,
+		UseInf0, UseInf).
 
 
 % we assume that higher-order predicate calls use all variables involved
-traverse_goal(_, _, higher_order_call(PredVar,Args,_,_,_,_), UseInf0, UseInf) :-
+traverse_goal(_, _, _, higher_order_call(PredVar,Args,_,_,_,_), _,
+		UseInf0, UseInf) :-
 	set_list_vars_used(UseInf0, [PredVar|Args], UseInf).
 
 % we assume that class method calls use all variables involved
-traverse_goal(_, _, class_method_call(PredVar,_,Args,_,_,_), UseInf0, UseInf) :-
+traverse_goal(_, _, _, class_method_call(PredVar,_,Args,_,_,_), _,
+		UseInf0, UseInf) :-
 	set_list_vars_used(UseInf0, [PredVar|Args], UseInf).
 
 % handle pragma c_code(...) -
 % only those arguments which have C names can be used in the C code.
-traverse_goal(_, _, pragma_c_code(_, _, _, Args, ArgNames, _, _),
-				UseInf0, UseInf) :-
+traverse_goal(_, _, _, pragma_c_code(_, _, _, Args, ArgNames, _, _), _,
+		UseInf0, UseInf) :-
 	ArgNames = pragma_c_code_arg_info(_, Names),
 	assoc_list__from_corresponding_lists(Args, Names, ArgsAndNames),
 	ArgIsUsed = lambda([ArgAndName::in, Arg::out] is semidet, (
@@ -471,12 +493,13 @@ traverse_goal(_, _, pragma_c_code(_, _, _, Args, ArgNames, _, _),
 	set_list_vars_used(UseInf0, UsedArgs, UseInf).
 
 % cases to handle all the different types of unification
-traverse_goal(_, _, unify(_, _, _, simple_test(Var1, Var2),_), UseInf0, UseInf)
-		:-
+traverse_goal(_, _, _, unify(_, _, _, simple_test(Var1, Var2),_), _,
+		UseInf0, UseInf) :-
 	set_var_used(UseInf0, Var1, UseInf1),
 	set_var_used(UseInf1, Var2, UseInf).
 		
-traverse_goal(_, _, unify(_, _, _, assign(Var1, Var2), _), UseInf0, UseInf) :-
+traverse_goal(_, _, _, unify(_, _, _, assign(Var1, Var2), _), _,
+		UseInf0, UseInf) :-
 	( local_var_is_used(UseInf0, Var1) ->
 		% if Var1 used to instantiate an output argument, Var2 used
 		set_var_used(UseInf0, Var2, UseInf)
@@ -484,11 +507,13 @@ traverse_goal(_, _, unify(_, _, _, assign(Var1, Var2), _), UseInf0, UseInf) :-
 		add_aliases(UseInf0, Var2, [Var1], UseInf)
 	).
 
-traverse_goal(InstTable, ModuleInfo,
+traverse_goal(InstMap0, InstTable, ModuleInfo,
 		unify(Var1, _, _, deconstruct(_, _, Args, Modes, CanFail), _),
-		UseInf0, UseInf) :-
-	partition_deconstruct_args(InstTable, ModuleInfo, Args,
-		Modes, InputVars, OutputVars),
+		GoalInfo, UseInf0, UseInf) :-
+	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+	partition_deconstruct_args(InstMap0, InstMap, InstTable, ModuleInfo,
+		Args, Modes, InputVars, OutputVars),
 		% The deconstructed variable is used if any of the
 		% variables, that the deconstruction binds are used.
 	add_aliases(UseInf0, Var1, OutputVars, UseInf1),
@@ -505,7 +530,7 @@ traverse_goal(InstTable, ModuleInfo,
 
 	).
 
-traverse_goal(_, _, unify(Var1, _, _, construct(_, _, Args, _), _),
+traverse_goal(_, _, _, unify(Var1, _, _, construct(_, _, Args, _), _), _,
 					UseInf0, UseInf) :-
 	( local_var_is_used(UseInf0, Var1) ->
 		set_list_vars_used(UseInf0, Args, UseInf)
@@ -514,7 +539,7 @@ traverse_goal(_, _, unify(Var1, _, _, construct(_, _, Args, _), _),
 	).
 	
 	% These should be transformed into calls by polymorphism.m.
-traverse_goal(_, _, unify(Var, Rhs, _, complicated_unify(_, _), _),
+traverse_goal(_, _, _, unify(Var, Rhs, _, complicated_unify(_, _), _), _,
 		UseInf0, UseInf) :-
     	% This is here to cover the case where unused arguments is called 
 	% with --error-check-only and polymorphism has not been run.
@@ -562,26 +587,28 @@ add_arg_dep(UseInf0, Var, PredProc, Arg, UseInf) :-
 	).
 			
 	% Returns variables which further instantiate a deconstructed variable.
-:- pred partition_deconstruct_args(inst_table::in, module_info::in,
-		list(var)::in, list(uni_mode)::in, list(var)::out,
-		list(var)::out) is det.
+:- pred partition_deconstruct_args(instmap::in, instmap::in, inst_table::in,
+		module_info::in, list(var)::in, list(uni_mode)::in,
+		list(var)::out, list(var)::out) is det.
 
-partition_deconstruct_args(InstTable, ModuleInfo, ArgVars, ArgModes,
-		InputVars, OutputVars) :-
+partition_deconstruct_args(InstMapBefore, InstMapAfter, InstTable,
+		ModuleInfo, ArgVars, ArgModes, InputVars, OutputVars) :-
 	(
 		ArgVars = [Var | Vars],
 		ArgModes = [Mode | Modes]
 	->
-		partition_deconstruct_args(InstTable, ModuleInfo,
-			Vars, Modes, InputVars1, OutputVars1),
+		partition_deconstruct_args(InstMapBefore, InstMapAfter,
+			InstTable, ModuleInfo, Vars, Modes,
+			InputVars1, OutputVars1),
 		Mode = ((InitialInst1 - InitialInst2) ->
 			(FinalInst1 - FinalInst2)),
 
 		% If the inst of the argument of the LHS is changed,
 		% the argument is input.
 		(
-			inst_matches_binding(InitialInst1, FinalInst1,
-				InstTable, ModuleInfo)
+			inst_matches_binding(InitialInst1, InstMapBefore,
+					FinalInst1, InstMapAfter,
+					InstTable, ModuleInfo)
 		->
 			InputVars = InputVars1
 		;
@@ -591,8 +618,9 @@ partition_deconstruct_args(InstTable, ModuleInfo, ArgVars, ArgModes,
 		% If the inst of the argument of the RHS is changed,
 		% the argument is output.
 		( 
-			inst_matches_binding(InitialInst2, FinalInst2,
-				InstTable, ModuleInfo)
+			inst_matches_binding(InitialInst2, InstMapBefore,
+					FinalInst2, InstMapAfter,
+					InstTable, ModuleInfo)
 		->
 			OutputVars = OutputVars1
 		;
@@ -626,21 +654,50 @@ add_construction_aliases(UseInf0, Alias, [Var | Vars], UseInf) :-
 	add_construction_aliases(UseInf1, Alias, Vars, UseInf).
 
 
-:- pred list_case_to_list_goal(list(case)::in, list(hlds_goal)::out) is det.
-
-list_case_to_list_goal([], []).
-list_case_to_list_goal([case(_, _, Goal) | Cases], [Goal | Goals]) :-
-	list_case_to_list_goal(Cases, Goals).
-
-
-:- pred traverse_list_of_goals(inst_table::in, module_info::in,
+:- pred traverse_par_conj(instmap::in, inst_table::in, module_info::in,
 			list(hlds_goal)::in, var_dep::in, var_dep::out) is det.
 
-traverse_list_of_goals(_, _, [], UseInf, UseInf).
-traverse_list_of_goals(InstTable, ModuleInfo, [Goal - _ | Goals],
+traverse_par_conj(_, _, _, [], UseInf, UseInf).
+traverse_par_conj(InstMap0, InstTable, ModuleInfo, [Goal - GoalInfo | Goals],
 		UseInf0, UseInf) :-
-	traverse_goal(InstTable, ModuleInfo, Goal, UseInf0, UseInf1),
-	traverse_list_of_goals(InstTable, ModuleInfo, Goals, UseInf1, UseInf).  
+	traverse_goal(InstMap0, InstTable, ModuleInfo, Goal, GoalInfo,
+			UseInf0, UseInf1),
+	traverse_par_conj(InstMap0, InstTable, ModuleInfo, Goals,
+			UseInf1, UseInf).
+
+:- pred traverse_conj(instmap::in, inst_table::in, module_info::in,
+			list(hlds_goal)::in, var_dep::in, var_dep::out) is det.
+
+traverse_conj(_, _, _, [], UseInf, UseInf).
+traverse_conj(InstMap0, InstTable, ModuleInfo, [Goal - GoalInfo | Goals],
+		UseInf0, UseInf) :-
+	traverse_goal(InstMap0, InstTable, ModuleInfo, Goal, GoalInfo,
+			UseInf0, UseInf1),
+	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
+	traverse_conj(InstMap1, InstTable, ModuleInfo, Goals, UseInf1, UseInf).
+
+:- pred traverse_disj(instmap::in, inst_table::in, module_info::in,
+			list(hlds_goal)::in, var_dep::in, var_dep::out) is det.
+
+traverse_disj(_, _, _, [], UseInf, UseInf).
+traverse_disj(InstMap0, InstTable, ModuleInfo, [Goal - GoalInfo | Goals],
+		UseInf0, UseInf) :-
+	traverse_goal(InstMap0, InstTable, ModuleInfo, Goal, GoalInfo,
+			UseInf0, UseInf1),
+	traverse_disj(InstMap0, InstTable, ModuleInfo, Goals, UseInf1, UseInf).
+
+:- pred traverse_cases(instmap::in, inst_table::in, module_info::in,
+			list(case)::in, var_dep::in, var_dep::out) is det.
+
+traverse_cases(_, _, _, [], UseInf, UseInf).
+traverse_cases(InstMap0, InstTable, ModuleInfo,
+		[case(_, IMDelta, Goal - GoalInfo) | Goals],
+		UseInf0, UseInf) :-
+	instmap__apply_instmap_delta(InstMap0, IMDelta, InstMap1),
+	traverse_goal(InstMap1, InstTable, ModuleInfo, Goal, GoalInfo,
+			UseInf0, UseInf1),
+	traverse_cases(InstMap0, InstTable, ModuleInfo, Goals, UseInf1, UseInf).
 
 
 %-------------------------------------------------------------------------------
@@ -1177,6 +1234,7 @@ do_fixup_unused_args(VarUsage, proc(OldPredId, OldProcId), ProcCallInfo,
 	proc_info_varset(ProcInfo0, Varset0),
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_inst_table(ProcInfo0, InstTable),
+	proc_info_get_initial_instmap(ProcInfo0, Mod0, InstMap0),
 	remove_listof_elements(HeadVars0, 1, UnusedArgs, HeadVars),
 	remove_listof_elements(ArgModes0, 1, UnusedArgs, ArgModes),
 	proc_info_set_headvars(ProcInfo0, HeadVars, FixedProc1),
@@ -1186,7 +1244,8 @@ do_fixup_unused_args(VarUsage, proc(OldPredId, OldProcId), ProcCallInfo,
 			FixedProc2),
 
 		% remove unused vars from goal
-	fixup_goal(InstTable, Mod0, UnusedVars, ProcCallInfo, Changed, Goal0, Goal1),
+	fixup_goal(InstMap0, InstTable, Mod0, UnusedVars, ProcCallInfo,
+			Changed, Goal0, Goal1),
 	(
 		Changed = yes,
 			% if anything has changed, rerun quantification
@@ -1207,13 +1266,14 @@ do_fixup_unused_args(VarUsage, proc(OldPredId, OldProcId), ProcCallInfo,
 
 
 % 	this is the important bit of the transformation
-:- pred fixup_goal(inst_table::in, module_info::in, list(var)::in,
+:- pred fixup_goal(instmap::in, inst_table::in, module_info::in, list(var)::in,
 			proc_call_info::in, bool::out, hlds_goal::in,
 			hlds_goal::out) is det.
 
-fixup_goal(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed, Goal0, Goal) :-
-	fixup_goal_expr(InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
-						Changed, Goal0, Goal1),
+fixup_goal(InstMap, InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed,
+		Goal0, Goal) :-
+	fixup_goal_expr(InstMap, InstTable, ModuleInfo, UnusedVars,
+				ProcCallInfo, Changed, Goal0, Goal1),
 	Goal1 = GoalExpr - GoalInfo0,
 	(
 		Changed = yes
@@ -1225,55 +1285,61 @@ fixup_goal(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed, Goal0, Goal
 	Goal = GoalExpr - GoalInfo.
 		
 
-:- pred fixup_goal_expr(inst_table::in, module_info::in, list(var)::in,
-			proc_call_info::in, bool::out, hlds_goal::in,
-			hlds_goal::out) is det.
+:- pred fixup_goal_expr(instmap::in, inst_table::in, module_info::in,
+		list(var)::in, proc_call_info::in, bool::out, hlds_goal::in,
+		hlds_goal::out) is det.
 
-fixup_goal_expr(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed,
-		conj(Goals0) - GoalInfo, conj(Goals) - GoalInfo) :-
-	fixup_conjuncts(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, no,
-						Changed, Goals0, Goals).
+fixup_goal_expr(InstMap0, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
+		Changed, conj(Goals0) - GoalInfo, conj(Goals) - GoalInfo) :-
+	fixup_conjuncts(InstMap0, InstTable, ModuleInfo, UnusedVars,
+		ProcCallInfo, no, Changed, Goals0, Goals).
 
-fixup_goal_expr(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed,
-		par_conj(Goals0, SM) - GoalInfo,
+fixup_goal_expr(InstMap0, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
+		Changed, par_conj(Goals0, SM) - GoalInfo,
 		par_conj(Goals, SM) - GoalInfo) :-
-	fixup_conjuncts(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, no,
-						Changed, Goals0, Goals).
+	fixup_conjuncts(InstMap0, InstTable, ModuleInfo, UnusedVars,
+		ProcCallInfo, no, Changed, Goals0, Goals).
 
-fixup_goal_expr(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed,
-		disj(Goals0, SM) - GoalInfo, disj(Goals, SM) - GoalInfo) :-
-	fixup_disjuncts(InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
-				no, Changed, Goals0, Goals).
+fixup_goal_expr(InstMap0, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
+			Changed, disj(Goals0, SM) - GoalInfo,
+			disj(Goals, SM) - GoalInfo) :-
+	fixup_disjuncts(InstMap0, InstTable, ModuleInfo, UnusedVars,
+			ProcCallInfo, no, Changed, Goals0, Goals).
 
-fixup_goal_expr(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed,
-		not(NegGoal0) - GoalInfo, not(NegGoal) - GoalInfo) :-
-	fixup_goal(InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
+fixup_goal_expr(InstMap0, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
+		Changed, not(NegGoal0) - GoalInfo, not(NegGoal) - GoalInfo) :-
+	fixup_goal(InstMap0, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
 				Changed, NegGoal0, NegGoal).
 
-fixup_goal_expr(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed,
-		switch(Var, CanFail, Cases0, SM) - GoalInfo,
+fixup_goal_expr(InstMap0, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
+		Changed, switch(Var, CanFail, Cases0, SM) - GoalInfo,
 		switch(Var, CanFail, Cases, SM) - GoalInfo) :-
-	fixup_cases(InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
-				no, Changed, Cases0, Cases).
+	fixup_cases(InstMap0, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
+			no, Changed, Cases0, Cases).
 
-fixup_goal_expr(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed,
+fixup_goal_expr(InstMap0, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
+		Changed,
 		if_then_else(Vars, Cond0, Then0, Else0, SM) - GoalInfo, 
 		if_then_else(Vars, Cond, Then, Else, SM) - GoalInfo) :- 
-	fixup_goal(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed1, Cond0,
-			Cond),
-	fixup_goal(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed2, Then0,
-			Then),
-	fixup_goal(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed3, Else0,
-			Else),
+	Cond0 = _ - CondInfo,
+	goal_info_get_instmap_delta(CondInfo, InstMapDelta),
+	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
+	fixup_goal(InstMap0, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
+			Changed1, Cond0, Cond),
+	fixup_goal(InstMap1, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
+			Changed2, Then0, Then),
+	fixup_goal(InstMap0, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
+			Changed3, Else0, Else),
 	bool__or_list([Changed1, Changed2, Changed3], Changed).
 
-fixup_goal_expr(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed,
-		some(Vars, SubGoal0) - GoalInfo,
+fixup_goal_expr(InstMap0, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
+		Changed, some(Vars, SubGoal0) - GoalInfo,
 		some(Vars, SubGoal) - GoalInfo) :-
-	fixup_goal(InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
+	fixup_goal(InstMap0, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
 				Changed, SubGoal0, SubGoal).
 
-fixup_goal_expr(_InstTable, _ModuleInfo, _UnusedVars, ProcCallInfo, Changed,
+fixup_goal_expr(_, _InstTable, _ModuleInfo, _UnusedVars, ProcCallInfo,
+		Changed,
 		call(PredId0, ProcId0, ArgVars0, B, C, Name0) - GoalInfo, 
 		call(PredId, ProcId, ArgVars, B, C, Name) - GoalInfo) :-
 	(
@@ -1293,12 +1359,13 @@ fixup_goal_expr(_InstTable, _ModuleInfo, _UnusedVars, ProcCallInfo, Changed,
 		Name = Name0
 	). 
 
-fixup_goal_expr(InstTable, ModuleInfo, UnusedVars, _ProcCallInfo,
+fixup_goal_expr(InstMap0, InstTable, ModuleInfo, UnusedVars, _ProcCallInfo,
 			Changed, GoalExpr0 - GoalInfo, GoalExpr - GoalInfo) :-
 	GoalExpr0 = unify(Var, Rhs, Mode, Unify0, Context),
 	(
-		fixup_unify(InstTable, ModuleInfo, UnusedVars, Changed0, Unify0,
-			Unify)
+		goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+		fixup_unify(InstMap0, InstTable, ModuleInfo, UnusedVars,
+			Changed0, Unify0, InstMapDelta, Unify)
 	->
 		GoalExpr = unify(Var, Rhs, Mode, Unify, Context),
 		Changed = Changed0 
@@ -1307,28 +1374,31 @@ fixup_goal_expr(InstTable, ModuleInfo, UnusedVars, _ProcCallInfo,
 		Changed = yes
 	).
 
-fixup_goal_expr(_InstTable, _ModuleInfo, _UnusedVars, _ProcCallInfo, no,
+fixup_goal_expr(_, _InstTable, _ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-
 	GoalExpr = higher_order_call(_, _, _, _, _, _).
 
-fixup_goal_expr(_InstTable, _ModuleInfo, _UnusedVars, _ProcCallInfo, no,
+fixup_goal_expr(_, _InstTable, _ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-
 	GoalExpr = class_method_call(_, _, _, _, _, _).
 
-fixup_goal_expr(_InstTable, _ModuleInfo, _UnusedVars, _ProcCallInfo, no,
+fixup_goal_expr(_, _InstTable, _ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-
 	GoalExpr = pragma_c_code(_, _, _, _, _, _, _).
 
 	% Remove useless unifications from a list of conjuncts.
-:- pred fixup_conjuncts(inst_table::in, module_info::in, list(var)::in,
-		proc_call_info::in, bool::in, bool::out, hlds_goals::in,
-		hlds_goals::out) is det. 
+:- pred fixup_conjuncts(instmap::in, inst_table::in, module_info::in,
+		list(var)::in, proc_call_info::in, bool::in, bool::out,
+		hlds_goals::in, hlds_goals::out) is det. 
 
-fixup_conjuncts(_, _, _, _, Changed, Changed, [], []).
-fixup_conjuncts(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed0, Changed,
-					[Goal0 | Goals0], Goals) :-
-	fixup_goal(InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
+fixup_conjuncts(_, _, _, _, _, Changed, Changed, [], []).
+fixup_conjuncts(InstMap0, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
+			Changed0, Changed, [Goal0 | Goals0], Goals) :-
+	Goal0 = _ - GoalInfo,
+	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+	fixup_goal(InstMap0, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
 				LocalChanged, Goal0, Goal),
+	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
 	(
 		LocalChanged = yes
 	->
@@ -1345,21 +1415,21 @@ fixup_conjuncts(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed0, Chang
 	;
 		Goals = [Goal | Goals1]
 	),
-	fixup_conjuncts(InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
-			Changed1, Changed, Goals0, Goals1).
+	fixup_conjuncts(InstMap1, InstTable, ModuleInfo, UnusedVars,
+			ProcCallInfo, Changed1, Changed, Goals0, Goals1).
 	
 
 	% We can't remove unused goals from the list of disjuncts as we do
 	% for conjuncts, since that would change the determinism of
 	% the goal.
-:- pred fixup_disjuncts(inst_table::in, module_info::in, list(var)::in,
-		proc_call_info::in, bool::in, bool::out, hlds_goals::in,
-		hlds_goals::out) is det. 
+:- pred fixup_disjuncts(instmap::in, inst_table::in, module_info::in,
+		list(var)::in, proc_call_info::in, bool::in, bool::out,
+		hlds_goals::in, hlds_goals::out) is det. 
 
-fixup_disjuncts(_, _, _, _, Changed, Changed, [], []).
-fixup_disjuncts(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed0, Changed,
-					[Goal0 | Goals0], [Goal | Goals]) :-
-	fixup_goal(InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
+fixup_disjuncts(_, _, _, _, _, Changed, Changed, [], []).
+fixup_disjuncts(InstMap0, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
+			Changed0, Changed, [Goal0 | Goals0], [Goal | Goals]) :-
+	fixup_goal(InstMap0, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
 				LocalChanged, Goal0, Goal),
 	(
 		LocalChanged = yes
@@ -1368,18 +1438,19 @@ fixup_disjuncts(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed0, Chang
 	;
 		Changed1 = Changed0
 	),
-	fixup_disjuncts(InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
-			Changed1, Changed, Goals0, Goals).
+	fixup_disjuncts(InstMap0, InstTable, ModuleInfo, UnusedVars,
+			ProcCallInfo, Changed1, Changed, Goals0, Goals).
 
-:- pred fixup_cases(inst_table::in, module_info::in, list(var)::in,
+:- pred fixup_cases(instmap::in, inst_table::in, module_info::in, list(var)::in,
 		proc_call_info::in, bool::in, bool::out, list(case)::in,
 		list(case)::out) is det.
 		
-fixup_cases(_, _, _, _, Changed, Changed, [], []).
-fixup_cases(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed0, Changed, 
-		[case(ConsId, IMDelta, Goal0) | Cases0],
+fixup_cases(_, _, _, _, _, Changed, Changed, [], []).
+fixup_cases(InstMap0, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
+		Changed0, Changed, [case(ConsId, IMDelta, Goal0) | Cases0],
 		[case(ConsId, IMDelta, Goal) | Cases]) :-
-	fixup_goal(InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
+	instmap__apply_instmap_delta(InstMap0, IMDelta, InstMap1),
+	fixup_goal(InstMap1, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
 				LocalChanged, Goal0, Goal),
 	(	
 		LocalChanged = yes
@@ -1388,70 +1459,82 @@ fixup_cases(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed0, Changed,
 	;
 		Changed1 = Changed0
 	),
-	fixup_cases(InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
+	fixup_cases(InstMap0, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
 			Changed1, Changed, Cases0, Cases).
 
 
 		% fix up a unification, fail if the unification is no
 		%	longer needed
-:- pred fixup_unify(inst_table::in, module_info::in, list(var)::in,
-		bool::out, unification::in, unification::out) is semidet.
+:- pred fixup_unify(instmap::in, inst_table::in, module_info::in,
+		list(var)::in, bool::out, unification::in, instmap_delta::in,
+		unification::out) is semidet.
 
 	% a simple test doesn't have any unused vars to fixup
-fixup_unify(_, _, _UnusedVars, no, simple_test(A, B), simple_test(A, B)).
+fixup_unify(_, _, _, _UnusedVars, no, simple_test(A, B), _,
+		simple_test(A, B)).
 
 	% Var1 unused => we don't need the assignment
 	% Var2 unused => Var1 unused
-fixup_unify(_, _, UnusedVars, no, assign(Var1, Var2), assign(Var1, Var2)) :-
+fixup_unify(_, _, _, UnusedVars, no, assign(Var1, Var2), _,
+		assign(Var1, Var2)) :-
 	\+ list__member(Var1, UnusedVars).
 
 	% LVar unused => we don't need the unification
-fixup_unify(_, _, UnusedVars, no, construct(LVar, ConsId, ArgVars, ArgModes),
-				construct(LVar, ConsId, ArgVars, ArgModes)) :-	
+fixup_unify(_, _, _, UnusedVars, no,
+		construct(LVar, ConsId, ArgVars, ArgModes), _,
+		construct(LVar, ConsId, ArgVars, ArgModes)) :-	
 	\+ list__member(LVar, UnusedVars).
 	
-fixup_unify(InstTable, ModuleInfo, UnusedVars, Changed,
+fixup_unify(InstMapBefore, InstTable, ModuleInfo, UnusedVars, Changed,
 		deconstruct(LVar, ConsId, ArgVars, ArgModes, CanFail),
+		InstMapDelta,
 		deconstruct(LVar, ConsId, ArgVars, ArgModes, CanFail)) :-
 	\+ list__member(LVar, UnusedVars),
+	instmap__apply_instmap_delta(InstMapBefore, InstMapDelta,
+			InstMapAfter),
 	(
 			% are any of the args unused, if so we need to 	
 			% to fix up the goal_info
 		CanFail = cannot_fail,
-		check_deconstruct_args(InstTable, ModuleInfo, UnusedVars, ArgVars,
-						ArgModes, Changed, no)
+		check_deconstruct_args(InstMapBefore, InstMapAfter, InstTable,
+			ModuleInfo, UnusedVars, ArgVars, ArgModes, Changed, no)
 	;
 		CanFail = can_fail,
 		Changed = no
 	).
 
 	% These should be transformed into calls by polymorphism.m.
-fixup_unify(_, _, _, _, complicated_unify(_, _), _) :-
+fixup_unify(_, _, _, _, _, complicated_unify(_, _), _, _) :-
 		error("unused_args:fixup_goal : complicated unify").
 
 	% Check if any of the arguments of a deconstruction are unused, if
 	% so Changed will be yes and quantification will be rerun. Fails if
 	% none of the arguments are used. Arguments which further instantiate
 	% the deconstructed variable are ignored in this.
-:- pred check_deconstruct_args(inst_table::in, module_info::in,
-			list(var)::in, list(var)::in,
+:- pred check_deconstruct_args(instmap::in, instmap::in, inst_table::in,
+			module_info::in, list(var)::in, list(var)::in,
 			list(uni_mode)::in, bool::out, bool::in) is semidet.
 						
-check_deconstruct_args(InstTable, ModuleInfo, UnusedVars, Args, Modes, Changed,
-		Used) :-
+check_deconstruct_args(InstMapBefore, InstMapAfter, InstTable, ModuleInfo,
+		UnusedVars, Args, Modes, Changed, Used) :-
 	(
 		Args = [ArgVar | ArgVars], Modes = [ArgMode | ArgModes]
 	->
 		(
 			ArgMode = ((Inst1 - Inst2) -> _),
-			mode_is_output(InstTable, ModuleInfo, (Inst1 -> Inst2)),
+			inst_is_free(Inst1, InstMapBefore, InstTable,
+					ModuleInfo),
+			inst_is_bound(Inst2, InstMapAfter, InstTable,
+					ModuleInfo),
 			list__member(ArgVar, UnusedVars)
 		->
-			check_deconstruct_args(InstTable, ModuleInfo, UnusedVars,
-						ArgVars, ArgModes, _, Used),
+			check_deconstruct_args(InstMapBefore, InstMapAfter,
+					InstTable, ModuleInfo, UnusedVars,
+					ArgVars, ArgModes, _, Used),
 			Changed = yes
 		;
-			check_deconstruct_args(InstTable, ModuleInfo, UnusedVars,
+			check_deconstruct_args(InstMapBefore, InstMapAfter,
+					InstTable, ModuleInfo, UnusedVars,
 					ArgVars, ArgModes, Changed, yes)
 		)
 	;

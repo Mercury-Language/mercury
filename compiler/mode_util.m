@@ -15,8 +15,8 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data.
-:- import_module (inst), instmap.
-:- import_module bool, list, term, map.
+:- import_module instmap, (inst).
+:- import_module bool, list, term, map, assoc_list.
 
 	% mode_get_insts returns the initial instantiatedness and
 	% the final instantiatedness for a given mode, aborting
@@ -30,26 +30,26 @@
 :- mode mode_get_insts_semidet(in, in, out, out) is semidet.
 
 	% a mode is considered input if the initial inst is bound
-:- pred mode_is_input(inst_table, module_info, mode).
-:- mode mode_is_input(in, in, in) is semidet.
+:- pred mode_is_input(instmap, inst_table, module_info, mode).
+:- mode mode_is_input(in, in, in, in) is semidet.
 
 	% a mode is considered fully input if the inital inst is ground
-:- pred mode_is_fully_input(inst_table, module_info, mode).
-:- mode mode_is_fully_input(in, in, in) is semidet.
+:- pred mode_is_fully_input(instmap, inst_table, module_info, mode).
+:- mode mode_is_fully_input(in, in, in, in) is semidet.
 
 	% a mode is considered output if the initial inst is free
 	% and the final inst is bound
-:- pred mode_is_output(inst_table, module_info, mode).
-:- mode mode_is_output(in, in, in) is semidet.
+:- pred mode_is_output(instmap, inst_table, module_info, mode).
+:- mode mode_is_output(in, in, in, in) is semidet.
 
 	% a mode is considered fully output if the inital inst is free and
 	% the final inst is ground
-:- pred mode_is_fully_output(inst_table, module_info, mode).
-:- mode mode_is_fully_output(in, in, in) is semidet.
+:- pred mode_is_fully_output(instmap, inst_table, module_info, mode).
+:- mode mode_is_fully_output(in, in, in, in) is semidet.
 
 	% a mode is considered unused if both initial and final insts are free
-:- pred mode_is_unused(inst_table, module_info, mode).
-:- mode mode_is_unused(in, in, in) is semidet.
+:- pred mode_is_unused(instmap, inst_table, module_info, mode).
+:- mode mode_is_unused(in, in, in, in) is semidet.
 
 	% mode_to_arg_mode converts a mode (and corresponding type) to
 	% an arg_mode.  A mode is a high-level notion, the normal
@@ -60,8 +60,22 @@
 	% the mode, because the argument passing convention can depend
 	% on the type's representation.
 	%
-:- pred mode_to_arg_mode(inst_table, module_info, mode, type, arg_mode).
-:- mode mode_to_arg_mode(in, in, in, in, out) is det.
+:- pred mode_to_arg_mode(instmap, inst_table, module_info, mode, type,
+		arg_mode).
+:- mode mode_to_arg_mode(in, in, in, in, in, out) is det.
+
+	% mode_to_arg_mode converts a mode (and corresponding type) to
+	% an arg_mode.  A mode is a high-level notion, the normal
+	% Mercury language mode.  An `arg_mode' is a low-level notion
+	% used for code generation, which indicates the argument
+	% passing convention (top_in, top_out, or top_unused) that
+	% corresponds to that mode.  We need to know the type, not just
+	% the mode, because the argument passing convention can depend
+	% on the type's representation.
+	%
+:- pred insts_to_arg_mode(inst_table, module_info, inst, instmap,
+		inst, instmap, type, arg_mode).
+:- mode insts_to_arg_mode(in, in, in, in, in, in, in, out) is det.
 
 	% Given an expanded inst and a cons_id and its arity, return the 
 	% insts of the arguments of the top level functor, failing if the
@@ -74,9 +88,8 @@
 	%       given the final inst of the var
 	%       and the initial insts of the functor arguments,
 	%       compute the modes of the functor arguments
-:- pred get_mode_of_args(inst, list(inst), inst_table, module_info,
-		list(mode)).
-:- mode get_mode_of_args(in, in, in, in, out) is semidet.
+:- pred get_mode_of_args(inst, list(inst), assoc_list(inst, inst)).
+:- mode get_mode_of_args(in, in, out) is semidet.
 
 	% Given a list of bound_insts, get the corresponding list of cons_ids
 	%
@@ -93,8 +106,12 @@
 :- mode mode_list_get_final_insts(in, in, out) is det.
 
 :- pred mode_util__modes_to_uni_modes(list(mode), list(mode), module_info,
-							list(uni_mode)).
+			list(uni_mode)).
 :- mode mode_util__modes_to_uni_modes(in, in, in, out) is det.
+
+:- pred mode_util__inst_pairs_to_uni_modes(assoc_list(inst, inst),
+			assoc_list(inst, inst), list(uni_mode)).
+:- mode mode_util__inst_pairs_to_uni_modes(in, in, out) is det.
 
 	% inst_lists_to_mode_list(InitialInsts, FinalInsts, Modes):
 	%	Given two lists of corresponding initial and final
@@ -142,8 +159,9 @@
 	% Given the mode of a predicate,
 	% work out which arguments are live (might be used again
 	% by the caller of that predicate) and which are dead.
-:- pred get_arg_lives(list(mode), inst_table, module_info, list(is_live)).
-:- mode get_arg_lives(in, in, in, out) is det.
+:- pred get_arg_lives(list(mode), instmap, inst_table, module_info,
+			list(is_live)).
+:- mode get_arg_lives(in, in, in, in, out) is det.
 
 	% Predicates to make error messages more readable by stripping
 	% "builtin:" module qualifiers from modes.
@@ -163,32 +181,23 @@
 	% Given the switched on variable and the instmaps before the switch
 	% and after a branch make sure that any information added by the
 	% functor test gets added to the instmap for the case.
-:- pred fixup_switch_var(var, instmap, instmap, hlds_goal, hlds_goal). 
-:- mode fixup_switch_var(in, in, in, in, out) is det.
+% :- pred fixup_switch_var(var, instmap, instmap, hlds_goal, hlds_goal). 
+% :- mode fixup_switch_var(in, in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
-	% Bind a variable in an instmap to a functor at the beginning
-	% of a case in a switch.
-	% (note: cons_id_to_const must succeed given the cons_id).
+:- pred normalise_insts(list(inst), instmap, inst_table, module_info,
+		list(inst)).
+:- mode normalise_insts(in, in, in, in, out) is det.
 
-:- pred instmap_bind_var_to_functor(var, cons_id, instmap, instmap,
-		inst_table, inst_table, module_info, module_info).
-:- mode instmap_bind_var_to_functor(in, in, in, out, in, out, in, out) is det.
-
-%-----------------------------------------------------------------------------%
-
-:- pred normalise_insts(list(inst), inst_table, module_info, list(inst)).
-:- mode normalise_insts(in, in, in, out) is det.
-
-:- pred normalise_inst(inst, inst_table, module_info, inst).
-:- mode normalise_inst(in, in, in, out) is det.
+:- pred normalise_inst(inst, instmap, inst_table, module_info, inst).
+:- mode normalise_inst(in, in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
-:- pred apply_inst_key_sub(inst_key_sub, instmap, instmap,
-		inst_table, inst_table).
-:- mode apply_inst_key_sub(in, in, out, in, out) is det.
+% :- pred apply_inst_key_sub(inst_key_sub, instmap, instmap,
+% 		inst_table, inst_table).
+% :- mode apply_inst_key_sub(in, in, out, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -197,19 +206,19 @@
 
 %-----------------------------------------------------------------------------%
 
-	% Construct a mode corresponding to the standard `in',
-	% `out', or `uo' mode.
-:- pred in_mode((mode)::out) is det.
-:- pred out_mode((mode)::out) is det.
-:- pred uo_mode((mode)::out) is det.
-
-%-----------------------------------------------------------------------------%
-
 	% Given a list of variables, and a list of livenesses,
 	% select the live variables.
 	%
 :- pred get_live_vars(list(var), list(is_live), list(var)).
 :- mode get_live_vars(in, in, out) is det.
+
+%-----------------------------------------------------------------------------%
+
+	% Construct a mode corresponding to the standard `in',
+	% `out', or `uo' mode.
+:- pred in_mode((mode)::out) is det.
+:- pred out_mode((mode)::out) is det.
+:- pred uo_mode((mode)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -282,43 +291,49 @@ insts_to_mode(Initial, Final, Mode) :-
 	% A mode is considered an input mode if the top-level
 	% node is input.
 
-mode_is_input(InstTable, ModuleInfo, Mode) :-
+mode_is_input(InstMap, InstTable, ModuleInfo, Mode) :-
 	mode_get_insts(ModuleInfo, Mode, InitialInst, _FinalInst),
-	inst_is_bound(InitialInst, InstTable, ModuleInfo).
+	inst_is_bound(InitialInst, InstMap, InstTable, ModuleInfo).
 
 	% A mode is considered fully input if its initial inst is ground.
 
-mode_is_fully_input(InstTable, ModuleInfo, Mode) :-
+mode_is_fully_input(InstMap, InstTable, ModuleInfo, Mode) :-
 	mode_get_insts(ModuleInfo, Mode, InitialInst, _FinalInst),
-	inst_is_ground(InitialInst, InstTable, ModuleInfo).
+	inst_is_ground(InitialInst, InstMap, InstTable, ModuleInfo).
 
 	% A mode is considered an output mode if the top-level
 	% node is output.
 
-mode_is_output(InstTable, ModuleInfo, Mode) :-
+mode_is_output(InstMap, InstTable, ModuleInfo, Mode) :-
 	mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
-	inst_is_free(InitialInst, InstTable, ModuleInfo),
-	inst_is_bound(FinalInst, InstTable, ModuleInfo).
+	inst_is_free(InitialInst, InstMap, InstTable, ModuleInfo),
+	inst_is_bound(FinalInst, InstMap, InstTable, ModuleInfo).
 
 	% A mode is considered fully output if its initial inst is free
 	% and its final insts is ground.
 
-mode_is_fully_output(InstTable, ModuleInfo, Mode) :-
+mode_is_fully_output(InstMap, InstTable, ModuleInfo, Mode) :-
 	mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
-	inst_is_free(InitialInst, InstTable, ModuleInfo),
-	inst_is_ground(FinalInst, InstTable, ModuleInfo).
+	inst_is_free(InitialInst, InstMap, InstTable, ModuleInfo),
+	inst_is_ground(FinalInst, InstMap, InstTable, ModuleInfo).
 
 	% A mode is considered a unused mode if it is equivalent
 	% to free->free.
 
-mode_is_unused(InstTable, ModuleInfo, Mode) :-
+mode_is_unused(InstMap, InstTable, ModuleInfo, Mode) :-
 	mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
-	inst_is_free(InitialInst, InstTable, ModuleInfo),
-	inst_is_free(FinalInst, InstTable, ModuleInfo).
+	inst_is_free(InitialInst, InstMap, InstTable, ModuleInfo),
+	inst_is_free(FinalInst, InstMap, InstTable, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
-mode_to_arg_mode(InstTable, ModuleInfo, Mode, Type, ArgMode) :-
+mode_to_arg_mode(InstMap, InstTable, ModuleInfo, Mode, Type, ArgMode) :-
+	mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
+	insts_to_arg_mode(InstTable, ModuleInfo, InitialInst, InstMap,
+		FinalInst, InstMap, Type, ArgMode).
+
+insts_to_arg_mode(InstTable, ModuleInfo, InstA, InstMapA, InstB, InstMapB,
+		Type, ArgMode) :-
 	%
 	% We need to handle no_tag types (types which have
 	% exactly one constructor, and whose one constructor
@@ -330,41 +345,45 @@ mode_to_arg_mode(InstTable, ModuleInfo, Mode, Type, ArgMode) :-
 	(
 		% is this a no_tag type?
 		type_constructors(Type, ModuleInfo, Constructors),
-		type_is_no_tag_type(Constructors, FunctorName, ArgType)
+		type_is_no_tag_type(Constructors, FunctorName, Type)
 	->
 		% the arg_mode will be determined by the mode and
 		% type of the functor's argument,
 		% so we figure out the mode and type of the argument,
 		% and then recurse
-		mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
 		ConsId = cons(FunctorName, 1),
-		get_single_arg_inst(InitialInst, InstTable, ModuleInfo, ConsId,
-			InitialArgInst),
-		get_single_arg_inst(FinalInst, InstTable, ModuleInfo, ConsId,
-			FinalArgInst),
-		ModeOfArg = (InitialArgInst -> FinalArgInst),
-		mode_to_arg_mode(InstTable, ModuleInfo, ModeOfArg, ArgType,
-			ArgMode)
+		get_single_arg_inst(InstA, InstMapA, InstTable,
+			ModuleInfo, ConsId, ArgInstA),
+		get_single_arg_inst(InstB, InstMapB, InstTable,
+			ModuleInfo, ConsId, ArgInstB),
+		insts_to_arg_mode(InstTable, ModuleInfo, ArgInstA, InstMapA,
+			ArgInstB, InstMapB, Type, ArgMode)
 	;
-		mode_to_arg_mode_2(InstTable, ModuleInfo, Mode, ArgMode)
+		insts_to_arg_mode_2(InstTable, ModuleInfo, InstA, InstMapA,
+			InstB, InstMapB, ArgMode)
 	).
 
-:- pred mode_to_arg_mode_2(inst_table, module_info, mode, arg_mode).
-:- mode mode_to_arg_mode_2(in, in, in, out) is det.
+:- pred insts_to_arg_mode_2(inst_table, module_info, inst, instmap,
+		inst, instmap, arg_mode).
+:- mode insts_to_arg_mode_2(in, in, in, in, in, in, out) is det.
 
-mode_to_arg_mode_2(InstTable, ModuleInfo, Mode, ArgMode) :-
-	mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
-	( inst_is_bound(InitialInst, InstTable, ModuleInfo) ->
+insts_to_arg_mode_2(InstTable, ModuleInfo, InstA, InstMapA, InstB, InstMapB,
+		ArgMode) :-
+	( inst_is_bound(InstA, InstMapA, InstTable, ModuleInfo) ->
 		ArgMode = top_in
-	; inst_is_bound(FinalInst, InstTable, ModuleInfo) ->
-		( inst_is_free_alias(InitialInst, InstTable, ModuleInfo) ->
+	; inst_is_bound(InstB, InstMapB, InstTable, ModuleInfo) ->
+		(
+			inst_is_free_alias(InstA, InstMapA, InstTable,
+					ModuleInfo)
+		->
 			ArgMode = ref_in
 		;
 			ArgMode = top_out
 		)
 	;
 		( 
-			inst_is_free_alias(FinalInst, InstTable, ModuleInfo)
+			inst_is_free_alias(InstB, InstMapB, InstTable,
+					ModuleInfo)
 		->
 			ArgMode = ref_out
 		;
@@ -374,68 +393,31 @@ mode_to_arg_mode_2(InstTable, ModuleInfo, Mode, ArgMode) :-
 
 %-----------------------------------------------------------------------------%
 
-	% get_single_arg_inst(Inst, ConsId, Arity, ArgInsts):
-	% Given an inst `Inst', figure out what the inst of the
-	% argument would be, assuming that the functor is
-	% the one given by the specified ConsId, whose arity is 1.
-	%
-:- pred get_single_arg_inst(inst, inst_table, module_info, cons_id, inst).
-:- mode get_single_arg_inst(in, in, in, in, out) is det.
-
-get_single_arg_inst(defined_inst(InstName), InstTable, ModuleInfo, ConsId,
-			ArgInst) :-
-	inst_lookup(InstTable, ModuleInfo, InstName, Inst),
-	get_single_arg_inst(Inst, InstTable, ModuleInfo, ConsId, ArgInst).
-get_single_arg_inst(not_reached, _InstTable, _, _, not_reached).
-get_single_arg_inst(ground(Uniq, _PredInst), _InstTable, _, _,
-		ground(Uniq, no)).
-get_single_arg_inst(bound(_Uniq, List), _InstTable, _, ConsId, ArgInst) :-
-	( get_single_arg_inst_2(List, ConsId, ArgInst0) ->
-		ArgInst = ArgInst0
-	;
-		% the code is unreachable
-		ArgInst = not_reached
-	).
-get_single_arg_inst(free(A), _InstTable, _, _, free(A)).
-get_single_arg_inst(free(A, _Type), _InstTable, _, _, free(A)).  
-							% XXX loses type info
-get_single_arg_inst(alias(Key), InstTable, ModuleInfo, ConsId, Inst) :-
-	inst_table_get_inst_key_table(InstTable, IKT),
-	inst_key_table_lookup(IKT, Key, Inst0),
-	get_single_arg_inst(Inst0, InstTable, ModuleInfo, ConsId, Inst).
-get_single_arg_inst(any(Uniq), _InstTable, _, _, any(Uniq)).
-get_single_arg_inst(abstract_inst(_, _), _, _, _, _) :-
-	error("get_single_arg_inst: abstract insts not supported").
-get_single_arg_inst(inst_var(_), _, _, _, _) :-
-	error("get_single_arg_inst: inst_var").
-
-:- pred get_single_arg_inst_2(list(bound_inst), cons_id, inst).
-:- mode get_single_arg_inst_2(in, in, out) is semidet.
-
-get_single_arg_inst_2([BoundInst | BoundInsts], ConsId, ArgInst) :-
-	(
-		BoundInst = functor(ConsId, [ArgInst0])
-	->
-		ArgInst = ArgInst0
-	;
-		get_single_arg_inst_2(BoundInsts, ConsId, ArgInst)
-	).
-
-%-----------------------------------------------------------------------------%
-
 	% Given two lists of modes (inst mappings) of equal length,
 	% convert them into a single list of inst pair mappings.
 
-mode_util__modes_to_uni_modes([], [], _ModuleInfo, []).
+mode_util__modes_to_uni_modes([], [], _, []).
 mode_util__modes_to_uni_modes([], [_|_], _, _) :-
 	error("mode_util__modes_to_uni_modes: length mismatch").
 mode_util__modes_to_uni_modes([_|_], [], _, _) :-
 	error("mode_util__modes_to_uni_modes: length mismatch").
-mode_util__modes_to_uni_modes([X|Xs], [Y|Ys], ModuleInfo, [A|As]) :-
-	mode_get_insts(ModuleInfo, X, InitialX, FinalX),
-	mode_get_insts(ModuleInfo, Y, InitialY, FinalY),
-	A = ((InitialX - InitialY) -> (FinalX - FinalY)),
+mode_util__modes_to_uni_modes([ModeOfX|Xs], [ModeOfY|Ys], ModuleInfo, [A|As]) :-
+	mode_get_insts(ModuleInfo, ModeOfX, IX, FX),
+	mode_get_insts(ModuleInfo, ModeOfY, IY, FY),
+	A = ((IX - IY) -> (FX - FY)),
 	mode_util__modes_to_uni_modes(Xs, Ys, ModuleInfo, As).
+
+	% Given two lists of inst pairs (inst mappings) of equal length,
+	% convert them into a single list of inst pair mappings.
+
+mode_util__inst_pairs_to_uni_modes([], [], []).
+mode_util__inst_pairs_to_uni_modes([], [_|_], _) :-
+	error("mode_util__inst_pairs_to_uni_modes: length mismatch").
+mode_util__inst_pairs_to_uni_modes([_|_], [], _) :-
+	error("mode_util__inst_pairs_to_uni_modes: length mismatch").
+mode_util__inst_pairs_to_uni_modes([IX - FX|Xs], [IY - FY|Ys], [A|As]) :-
+	A = ((IX - IY) -> (FX - FY)),
+	mode_util__inst_pairs_to_uni_modes(Xs, Ys, As).
 
 %-----------------------------------------------------------------------------%
 
@@ -476,41 +458,38 @@ get_arg_insts_2([BoundInst | BoundInsts], ConsId, ArgInsts) :-
 		get_arg_insts_2(BoundInsts, ConsId, ArgInsts)
 	).
 
-get_mode_of_args(not_reached, ArgInsts, _InstTable, _ModuleInfo, ArgModes) :-
+	% YYY
+get_mode_of_args(FinalInst, InitialInsts, ArgModes) :-
+	mode_set_args(InitialInsts, FinalInst, ArgModes),
+	semidet_succeed.
+/********************
+get_mode_of_args(not_reached, ArgInsts, ArgModes) :-
         mode_set_args(ArgInsts, not_reached, ArgModes).
-get_mode_of_args(any(Uniq), ArgInsts, _InstTable, _ModuleInfo, ArgModes) :-
+get_mode_of_args(any(Uniq), ArgInsts, ArgModes) :-
         mode_set_args(ArgInsts, any(Uniq), ArgModes).
-get_mode_of_args(ground(Uniq, no), ArgInsts, _InstTable, _ModuleInfo, ArgModes)
-		:-
+get_mode_of_args(ground(Uniq, no), ArgInsts, ArgModes) :-
         mode_set_args(ArgInsts, ground(Uniq, no), ArgModes).
-get_mode_of_args(bound(_Uniq, List), ArgInstsA, _InstTable, _ModuleInfo,
-		ArgModes) :-
+get_mode_of_args(bound(_Uniq, List), ArgInstsA, ArgModes) :-
         ( List = [] ->
                 % the code is unreachable
                 mode_set_args(ArgInstsA, not_reached, ArgModes)
         ;
                 List = [functor(_Name, ArgInstsB)],
-                get_mode_of_args_2(ArgInstsA, ArgInstsB, ArgModes)
+                assoc_list__from_corresponding_lists(ArgInstsA, ArgInstsB,
+				ArgModes)
         ).
 get_mode_of_args(alias(Key), ArgInsts, InstTable, ModuleInfo, ArgModes) :-
         inst_table_get_inst_key_table(InstTable, IKT),
         inst_key_table_lookup(IKT, Key, Inst),
         get_mode_of_args(Inst, ArgInsts, InstTable, ModuleInfo, ArgModes).
+********************/
 
-:- pred get_mode_of_args_2(list(inst), list(inst), list(mode)).
-:- mode get_mode_of_args_2(in, in, out) is semidet.
-
-get_mode_of_args_2([], [], []).
-get_mode_of_args_2([InstA | InstsA], [InstB | InstsB], [Mode | Modes]) :-
-        Mode = (InstA -> InstB),
-        get_mode_of_args_2(InstsA, InstsB, Modes).
-
-:- pred mode_set_args(list(inst), inst, list(mode)).
+:- pred mode_set_args(list(inst), inst, assoc_list(inst, inst)).
 :- mode mode_set_args(in, in, out) is det.
 
 mode_set_args([], _, []).
 mode_set_args([Inst | Insts], FinalInst, [Mode | Modes]) :-
-        Mode = (Inst -> FinalInst),
+        Mode = (Inst - FinalInst),
         mode_set_args(Insts, FinalInst, Modes).
 
 %-----------------------------------------------------------------------------%
@@ -1265,32 +1244,31 @@ mode_list_apply_substitution([A0 | As0], Subst, [A | As]) :-
 	mode_apply_substitution(A0, Subst, A),
 	mode_list_apply_substitution(As0, Subst, As).
 
-:- pred recompute_instmap_delta_par_conj(list(hlds_goal),
-		list(hlds_goal), instmap, set(var), instmap_delta,
-		recompute_info, recompute_info).
-:- mode recompute_instmap_delta_par_conj(in, out, in, in, out,
-		in, out) is det.
+:- pred recompute_instmap_delta_par_conj(list(hlds_goal), list(hlds_goal),
+		instmap, list(pair(instmap, set(var))),
+		list(pair(instmap, set(var))), recompute_info, recompute_info).
+:- mode recompute_instmap_delta_par_conj(in, out, in, in, out, in, out) is det.
 
-recompute_instmap_delta_par_conj([], [], _, _, InstMapDelta) -->
-	{ instmap_delta_init_unreachable(InstMapDelta) }.
+recompute_instmap_delta_par_conj([], [], _, IMNonLocals, IMNonLocals) --> [].
 recompute_instmap_delta_par_conj([Goal0], [Goal],
-		InstMap, _, InstMapDelta) -->
-	recompute_instmap_delta_2(Goal0, Goal, InstMap, _, InstMapDelta).
+		InstMap0, IMNonLocals0, IMNonLocals) -->
+	recompute_instmap_delta_2(Goal0, Goal, InstMap0, InstMap, _),
+	{ instmap__vars(InstMap0, OuterNonLocals) },
+	{ Goal0 = _ - GoalInfo0 },
+	{ goal_info_get_nonlocals(GoalInfo0, InnerNonLocals) },
+	{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
+	{ IMNonLocals = [InstMap - NonLocals | IMNonLocals0] }.
 recompute_instmap_delta_par_conj([Goal0 | Goals0], [Goal | Goals],
-		InstMap, NonLocals, InstMapDelta) -->
+		InstMap0, IMNonLocals0, IMNonLocals) -->
 	{ Goals0 = [_|_] },
-	recompute_instmap_delta_2(Goal0, Goal,
-		InstMap, _, InstMapDelta0),
-	recompute_instmap_delta_par_conj(Goals0, Goals,
-		InstMap, NonLocals, InstMapDelta1),
-	=(RI),
-	{ recompute_info_get_module_info(RI, ModuleInfo0) },
-	{ recompute_info_get_inst_table(RI, InstTable0) },
-	{ unify_instmap_delta(InstMap, NonLocals, InstMapDelta0,
-		InstMapDelta1, InstMapDelta, InstTable0, InstTable,
-		ModuleInfo0, ModuleInfo) },
-	recompute_info_set_module_info(ModuleInfo),
-	recompute_info_set_inst_table(InstTable).
+	recompute_instmap_delta_2(Goal0, Goal, InstMap0, InstMap, _),
+	{ instmap__vars(InstMap0, OuterNonLocals) },
+	{ Goal0 = _ - GoalInfo0 },
+	{ goal_info_get_nonlocals(GoalInfo0, InnerNonLocals) },
+	{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
+	{ IMNonLocals1 = [InstMap - NonLocals | IMNonLocals0] },
+	recompute_instmap_delta_par_conj(Goals0, Goals, InstMap,
+			IMNonLocals1, IMNonLocals).
 
 %-----------------------------------------------------------------------------%
 
@@ -1436,40 +1414,19 @@ recompute_instmap_delta_2(Goal0, Goal, InstMap0) -->
 recompute_instmap_delta_2(Goal0 - GoalInfo0, Goal - GoalInfo,
 		InstMap0, InstMap, InstMapDelta, RI0, RI) :-
 	recompute_instmap_delta_3(Goal0, GoalInfo0, Goal, GoalInfo1, InstMap0,
-			InstMapDelta0, RI0, RI1),
+			InstMapDelta, RI0, RI1),
 	goal_info_get_determinism(GoalInfo0, Det),
 
 	% If the determinism is erroneous or failure the instmap_delta
 	% should be "unreachable".
 	( determinism_components(Det, _, at_most_zero) ->
-		breakpoint,
-		instmap_delta_init_unreachable(InstMapDelta),
-		goal_info_set_instmap_delta(GoalInfo1, InstMapDelta, GoalInfo),
+		instmap_delta_init_unreachable(Unreachable),
+		goal_info_set_instmap_delta(GoalInfo1, Unreachable, GoalInfo),
 		instmap__init_unreachable(InstMap)
 	;
-		% AAA some non-locals that have their insts changed by
-		% this call may not be in the non-locals set, if they were
-		% changed via aliases.   Andrew Bromage is working on
-		% a solution to this, but for now it is necessary to
-		% keep all vars in the instmap_delta, even if they're
-		% not in NonLocals.
-		%goal_info_get_nonlocals(GoalInfo1, NonLocals),
-		%instmap_delta_restrict(InstMapDelta0, NonLocals, InstMapDelta),
-		InstMapDelta = InstMapDelta0,
 		goal_info_set_instmap_delta(GoalInfo1, InstMapDelta, GoalInfo),
 		instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap)
 	),
-
-		% Optimisation: Remove any inst_keys which are not
-		% visible from outside this goal from the inst_key_table
-		% backward mapping.
-	% recompute_info_get_inst_table(RI1, InstTable1),
-	% instmap__get_inst_keys(InstMap, InstKeys),
-	% inst_table_get_inst_key_table(InstTable1, IKT1),
-	% inst_key_table_project(IKT1, InstKeys, IKT),
-	% inst_table_set_inst_key_table(InstTable1, IKT, InstTable),
-	% instmap_sanity_check(InstMap, InstTable),	% YYY Just in case
-	% recompute_info_set_inst_table(InstTable, RI1, RI).
 	RI = RI1.
 
 :- pred recompute_instmap_delta_3(hlds_goal_expr, hlds_goal_info,
@@ -1478,11 +1435,14 @@ recompute_instmap_delta_2(Goal0 - GoalInfo0, Goal - GoalInfo,
 :- mode recompute_instmap_delta_3(in, in, out, out, in, out, in, out) is det.
 
 recompute_instmap_delta_3(switch(Var, Det, Cases0, SM), GoalInfo,
-		switch(Var, Det, Cases, SM), GoalInfo, InstMap,
+		switch(Var, Det, Cases, SM), GoalInfo, InstMap0,
 		InstMapDelta) -->
-	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
+	{ instmap__vars(InstMap0, OuterNonLocals) },
+	{ goal_info_get_nonlocals(GoalInfo, InnerNonLocals) },
+	{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
 	recompute_instmap_delta_cases(Var, Cases0, Cases,
-		InstMap, NonLocals, InstMapDelta).
+		InstMap0, NonLocals, InstMap),
+	{ compute_instmap_delta(InstMap0, InstMap, InstMapDelta) }.
 
 recompute_instmap_delta_3(conj(Goals0), GoalInfo, conj(Goals), GoalInfo,
 		InstMap, InstMapDelta) -->
@@ -1495,16 +1455,34 @@ recompute_instmap_delta_3(conj(Goals0), GoalInfo, conj(Goals), GoalInfo,
 	recompute_instmap_delta_conj(Goals0, Goals, InstMap, InstMapDelta).
 
 recompute_instmap_delta_3(par_conj(Goals0, SM), GoalInfo,
-		par_conj(Goals, SM), GoalInfo, InstMap, InstMapDelta) -->
-	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
-	recompute_instmap_delta_par_conj(Goals0, Goals,
-		InstMap, NonLocals, InstMapDelta).
+		par_conj(Goals, SM), GoalInfo, InstMap0, InstMapDelta) -->
+	{ instmap__vars(InstMap0, OuterNonLocals) },
+	{ goal_info_get_nonlocals(GoalInfo, InnerNonLocals) },
+	{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
+	{ set__to_sorted_list(NonLocals, NonLocalsList) },
+	recompute_instmap_delta_par_conj(Goals0, Goals, InstMap0, [],
+			InstMapNonLocalsList),
+	=(RI0),
+	{ recompute_info_get_module_info(RI0, M0) },
+	{ recompute_info_get_inst_table(RI0, InstTable0) },
+	{ instmap__unify(NonLocalsList, InstMap0, InstMapNonLocalsList,
+		InstTable0, InstTable, M0, M, InstMap, Errors) },
+	{ Errors = [] ->
+		compute_instmap_delta(InstMap0, InstMap, InstMapDelta)
+	;
+		error("recompute_instmap_delta_3: Unexpected error in par_conj!")
+	},
+	recompute_info_set_module_info(M),
+	recompute_info_set_inst_table(InstTable).
 
 recompute_instmap_delta_3(disj(Goals0, SM), GoalInfo,
-		disj(Goals, SM), GoalInfo, InstMap, InstMapDelta) -->
-	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
+		disj(Goals, SM), GoalInfo, InstMap0, InstMapDelta) -->
+	{ instmap__vars(InstMap0, OuterNonLocals) },
+	{ goal_info_get_nonlocals(GoalInfo, InnerNonLocals) },
+	{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
 	recompute_instmap_delta_disj(Goals0, Goals,
-		InstMap, NonLocals, InstMapDelta).
+		InstMap0, NonLocals, InstMap),
+	{ compute_instmap_delta(InstMap0, InstMap, InstMapDelta) }.
 
 recompute_instmap_delta_3(not(Goal0), GoalInfo, not(Goal), GoalInfo,
 		InstMap, InstMapDelta) -->
@@ -1517,18 +1495,24 @@ recompute_instmap_delta_3(if_then_else(Vars, A0, B0, C0, SM), GoalInfo,
 	{ B0 = _ - GoalInfoB0 },
 	{ goal_info_get_nonlocals(GoalInfoB0, NonLocalsB) },
 	recompute_info_add_live_vars(NonLocalsB),
-	recompute_instmap_delta_2(A0, A, InstMap0, InstMap1, InstMapDelta1),
+	recompute_instmap_delta_2(A0, A, InstMap0, InstMap1, _InstMapDelta1),
 	recompute_info_remove_live_vars(NonLocalsB),
-	recompute_instmap_delta_2(B0, B, InstMap1, _, InstMapDelta2),
-	recompute_instmap_delta_2(C0, C, InstMap0, _, InstMapDelta3),
-	{ instmap_delta_apply_instmap_delta(InstMapDelta1, InstMapDelta2,
-		InstMapDelta4) },
-	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
+	recompute_instmap_delta_2(B0, B, InstMap1, InstMap2, _InstMapDelta2),
+	recompute_instmap_delta_2(C0, C, InstMap0, InstMap3, _InstMapDelta3),
+	{ instmap__vars(InstMap0, OuterNonLocals) },
+	{ goal_info_get_nonlocals(GoalInfo, InnerNonLocals) },
+	{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
 	=(RI4),
 	{ recompute_info_get_module_info(RI4, M4) },
 	{ recompute_info_get_inst_table(RI4, InstTable4) },
-	{ merge_instmap_delta(InstMap0, NonLocals, InstMapDelta3,
-		InstMapDelta4, InstMapDelta, InstTable4, InstTable, M4, M) },
+	{ instmap__merge(NonLocals, [InstMap2, InstMap3],
+		InstMap0, InstMapAfter, M4, InstTable4, M, InstTable,
+		Errors) },
+	{ Errors = [] ->
+		compute_instmap_delta(InstMap0, InstMapAfter, InstMapDelta)
+	;
+		error("recompute_instmap_delta_3: if_then_else merge error")
+	},
 	recompute_info_set_module_info(M),
 	recompute_info_set_inst_table(InstTable).
 
@@ -1546,8 +1530,7 @@ recompute_instmap_delta_3(higher_order_call(A, Vars, B, Modes, C, D), GoalInfo,
 	{ list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes) },
 	recompute_info_set_inst_table(InstTable),
 	recompute_instmap_delta_call_2(Vars, InstMap0, ArgModes, InstMap),
-	{ instmap__vars(InstMap, NonLocals) },
-	{ compute_instmap_delta(InstMap0, InstMap, NonLocals, InstMapDelta) }.
+	{ compute_instmap_delta(InstMap0, InstMap, InstMapDelta) }.
 
 recompute_instmap_delta_3(class_method_call(A, B, Vars, C, Modes, D), GoalInfo,
 		class_method_call(A, B, Vars, C, Modes, D), GoalInfo,
@@ -1559,8 +1542,7 @@ recompute_instmap_delta_3(class_method_call(A, B, Vars, C, Modes, D), GoalInfo,
 	{ list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes) },
 	recompute_info_set_inst_table(InstTable),
 	recompute_instmap_delta_call_2(Vars, InstMap0, ArgModes, InstMap),
-	{ instmap__vars(InstMap, NonLocals) },
-	{ compute_instmap_delta(InstMap0, InstMap, NonLocals, InstMapDelta) }.
+	{ compute_instmap_delta(InstMap0, InstMap, InstMapDelta) }.
 
 recompute_instmap_delta_3(call(PredId, ProcId, Args, D, E, F), GoalInfo,
 		call(PredId, ProcId, Args, D, E, F), GoalInfo, InstMap,
@@ -1617,58 +1599,68 @@ recompute_instmap_delta_conj([Goal0 | Goals0], [Goal | Goals],
 %-----------------------------------------------------------------------------%
 
 :- pred recompute_instmap_delta_disj(list(hlds_goal), list(hlds_goal), instmap,
-		set(var), instmap_delta, recompute_info, recompute_info).
+		set(var), instmap, recompute_info, recompute_info).
 :- mode recompute_instmap_delta_disj(in, out, in, in, out, in, out) is det.
 
-recompute_instmap_delta_disj([], [], _, _, InstMapDelta) -->
-	{ instmap_delta_init_unreachable(InstMapDelta) }.
+recompute_instmap_delta_disj([], [], _, _, InstMap) -->
+	{ instmap__init_unreachable(InstMap) }.
 recompute_instmap_delta_disj([Goal0], [Goal],
-		InstMap, _, InstMapDelta) -->
-	recompute_instmap_delta_2(Goal0, Goal, InstMap, _, InstMapDelta).
+		InstMap0, _, InstMap) -->
+	recompute_instmap_delta_2(Goal0, Goal, InstMap0, InstMap, _).
 recompute_instmap_delta_disj([Goal0 | Goals0], [Goal | Goals],
-		InstMap, NonLocals, InstMapDelta) -->
+		InstMap0, NonLocals, InstMap) -->
 	{ Goals0 = [_|_] },
-	recompute_instmap_delta_2(Goal0, Goal, InstMap, _, InstMapDelta0),
+	recompute_instmap_delta_2(Goal0, Goal, InstMap0, InstMapThisBranch, _),
 	recompute_instmap_delta_disj(Goals0, Goals,
-			InstMap, NonLocals, InstMapDelta1),
+			InstMap0, NonLocals, InstMapBranches),
 	=(RI2),
 	{ recompute_info_get_module_info(RI2, M2) },
 	{ recompute_info_get_inst_table(RI2, InstTable2) },
-	{ merge_instmap_delta(InstMap, NonLocals, InstMapDelta0,
-		InstMapDelta1, InstMapDelta, InstTable2, InstTable, M2, M) },
+	{ instmap__merge(NonLocals, [InstMapBranches, InstMapThisBranch],
+		InstMap0, InstMapAfter, M2, InstTable2, M, InstTable,
+		Errors) },
+	{ Errors = [] ->
+		InstMap = InstMapAfter
+	;
+		error("recompute_instmap_delta_disj: merge error")
+	},
 	recompute_info_set_module_info(M),
 	recompute_info_set_inst_table(InstTable).
 
 %-----------------------------------------------------------------------------%
 
 :- pred recompute_instmap_delta_cases(var, list(case), list(case), instmap,
-		set(var), instmap_delta, recompute_info, recompute_info).
+		set(var), instmap, recompute_info, recompute_info).
 :- mode recompute_instmap_delta_cases(in, in, out, in, in, out, in, out) is det.
 
-recompute_instmap_delta_cases(_, [], [], _, _, InstMapDelta) -->
-	{ instmap_delta_init_unreachable(InstMapDelta) }.
+recompute_instmap_delta_cases(_, [], [], _, _, InstMap) -->
+	{ instmap__init_unreachable(InstMap) }.
 recompute_instmap_delta_cases(Var, [Case0 | Cases0], [Case | Cases],
-		InstMap0, NonLocals, InstMapDelta) -->
+		InstMap0, NonLocals, InstMap) -->
 	{ Case0 = case(Functor, _, Goal0) },
 	=(RI0),
 	{ recompute_info_get_module_info(RI0, M0) },
 	{ recompute_info_get_inst_table(RI0, InstTable0) },
-	{ instmap_bind_var_to_functor(Var, Functor, InstMap0, InstMap1,
+	{ instmap__bind_var_to_functor(Var, Functor, InstMap0, InstMap1,
 		InstTable0, InstTable1, M0, M1) },
-	{ instmap__vars(InstMap0, InstMapVars) },
-	{ compute_instmap_delta(InstMap0, InstMap1, InstMapVars, IMDelta) },
+	{ compute_instmap_delta(InstMap0, InstMap1, IMDelta) },
 	recompute_info_set_module_info(M1),
 	recompute_info_set_inst_table(InstTable1),
-	recompute_instmap_delta_2(Goal0, Goal, InstMap1, InstMap, _),
-	{ compute_instmap_delta(InstMap0, InstMap, NonLocals, InstMapDelta1) },
+	recompute_instmap_delta_2(Goal0, Goal, InstMap1, InstMapThisBranch, _),
 	{ Case = case(Functor, IMDelta, Goal) },
 	recompute_instmap_delta_cases(Var, Cases0, Cases,
-		InstMap0, NonLocals, InstMapDelta2),
+		InstMap0, NonLocals, InstMapBranches),
 	=(RI4),
 	{ recompute_info_get_module_info(RI4, M4) },
 	{ recompute_info_get_inst_table(RI4, InstTable4) },
-	{ merge_instmap_delta(InstMap0, NonLocals, InstMapDelta1,
-		InstMapDelta2, InstMapDelta, InstTable4, InstTable, M4, M) },
+	{ instmap__merge(NonLocals, [InstMapBranches, InstMapThisBranch],
+		InstMap0, InstMapAfter, M4, InstTable4, M, InstTable,
+		Errors) },
+	{ Errors = [] ->
+		InstMap = InstMapAfter
+	;
+		error("recompute_instmap_delta_disj: merge error")
+	},
 	recompute_info_set_module_info(M),
 	recompute_info_set_inst_table(InstTable).
 
@@ -1685,7 +1677,6 @@ recompute_instmap_delta_call(PredId, ProcId, Args, InstMap0,
 	module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, _, ProcInfo),
 	proc_info_interface_determinism(ProcInfo, Detism),
 	( determinism_components(Detism, _, at_most_zero) ->
-		breakpoint,
 		instmap_delta_init_unreachable(InstMapDelta),
 		RI = RI0
 	;
@@ -1696,9 +1687,7 @@ recompute_instmap_delta_call(PredId, ProcId, Args, InstMap0,
 		recompute_info_set_inst_table(InstTable, RI0, RI1),
 		recompute_instmap_delta_call_2(Args, InstMap0,
 			ArgModes, InstMap, RI1, RI),
-		instmap__vars(InstMap, NonLocals),
-		compute_instmap_delta(InstMap0, InstMap, NonLocals,
-			InstMapDelta)
+		compute_instmap_delta(InstMap0, InstMap, InstMapDelta)
 	).
 
 :- pred recompute_instmap_delta_call_2(list(var), instmap, list(mode),
@@ -1720,15 +1709,12 @@ recompute_instmap_delta_call_2([Arg | Args], InstMap0, [Mode | Modes],
 		instmap__lookup_var(InstMap0, Arg, ArgInst0),
 		mode_get_insts(ModuleInfo0, Mode, _, FinalInst),
 		(
-			map__init(Sub0),
 			abstractly_unify_inst(dead, ArgInst0, FinalInst,
-				fake_unify, InstTable0, ModuleInfo0, Sub0,
-				UnifyInst, _, InstTable1, ModuleInfo1, Sub)
+				fake_unify, InstTable0, ModuleInfo0, InstMap0,
+				UnifyInst, _, InstTable, ModuleInfo1, InstMap1)
 		->
 			ModuleInfo = ModuleInfo1,
-			instmap__set(InstMap0, Arg, UnifyInst, InstMap1),
-			apply_inst_key_sub(Sub, InstMap1, InstMap2,
-				InstTable1, InstTable),
+			instmap__set(InstMap1, Arg, UnifyInst, InstMap2),
 			recompute_info_set_module_info(ModuleInfo, RI0, RI1),
 			recompute_info_set_inst_table(InstTable, RI1, RI2),
 			recompute_instmap_delta_call_2(Args, InstMap2,
@@ -1765,66 +1751,61 @@ recompute_instmap_delta_call_2([Arg | Args], InstMap0, [Mode | Modes],
 	%	  it an alias.
 	%
 recompute_instmap_delta_unify(Var, functor(ConsId, Vars), _UniMode0,
-		Unification0, UniContext, GoalInfo, Goal, Det, InstMap0,
+		Unification0, UniContext, _GoalInfo, Goal, Det, InstMap0,
 		InstMapDelta, RI0, RI) :-
 
 	recompute_info_get_module_info(RI0, ModuleInfo0),
 	recompute_info_get_inst_table(RI0, InstTable0),
 
 	inst_table_get_inst_key_table(InstTable0, IKT0),
-	make_var_aliases(Vars, InstMap0, InstMap1, IKT0, IKT1),
+	list__map(recompute_info_var_is_live(RI0), Vars, ArgLives),
+	make_var_aliases(Vars, ArgLives, InstMap0, InstMap1, IKT0, IKT1),
 	inst_table_set_inst_key_table(InstTable0, IKT1, InstTable1),
 	instmap__lookup_var(InstMap1, Var, InitialInst),
 
 	list__length(Vars, Arity),
-	list__map(recompute_info_var_is_live(RI0), Vars, ArgLives),
 	recompute_info_var_is_live(RI0, Var, VarLive),
 	list__map(instmap__lookup_var(InstMap1), Vars, ArgInsts),
 	(
-		map__init(Sub0),
 		abstractly_unify_inst_functor(VarLive, InitialInst,
 			ConsId, ArgInsts, ArgLives, real_unify,
-			InstTable1, ModuleInfo0, Sub0,
-			UnifyInst0, Det0, InstTable2, ModuleInfo2, Sub1)
+			InstTable1, ModuleInfo0, InstMap1,
+			UnifyInst0, Det0, InstTable2, ModuleInfo2, InstMap2)
 	->
 		ModuleInfo = ModuleInfo2,
-		apply_inst_key_sub(Sub1, InstMap1, InstMap2,
-			InstTable2, InstTable),
+		InstTable = InstTable2,
 		UnifyInst = UnifyInst0,
+		InstMap3 = InstMap2,
 		Det1 = Det0
 	;
 		error("recompute_instmap_delta_unify: var-functor unify failed")
 	),
-	instmap__set(InstMap2, Var, UnifyInst, InstMap),
-	ModeOfX = (InitialInst -> UnifyInst),
-	ModeOfY = (bound(unique, [functor(ConsId, ArgInsts)]) -> UnifyInst),
+	instmap__set(InstMap3, Var, UnifyInst, InstMap),
+	ModeOfX = (InitialInst - UnifyInst),
+	ModeOfY = (bound(unique, [functor(ConsId, ArgInsts)]) - UnifyInst),
 	UniMode = ModeOfX - ModeOfY,
 	UnifyRhs = functor(ConsId, Vars),
 	(
-		inst_expand(InstTable, ModuleInfo, InitialInst,
+		inst_expand(InstMap1, InstTable, ModuleInfo, InitialInst,
 			InstOfX2),
 		get_arg_insts(InstOfX2, ConsId, Arity, InstOfXArgs),
-		get_mode_of_args(UnifyInst, InstOfXArgs, InstTable,
-			ModuleInfo, ModeOfXArgs0)
+		get_mode_of_args(UnifyInst, InstOfXArgs, ModeOfXArgs0)
 	->
 		ModeOfXArgs = ModeOfXArgs0
 	;
 		error("recompute_instmap_delta_unify: get_(inst/mode)_of_args failed")
 	),
 	(
-		get_mode_of_args(UnifyInst, ArgInsts, InstTable,
-			ModuleInfo, ModeArgs0)
+		get_mode_of_args(UnifyInst, ArgInsts, ModeArgs0)
 	->
 		ModeArgs = ModeArgs0
 	;
 		error("recompute_instmap_delta_unify: get_mode_of_args failed")
 	),
 
-	goal_info_get_nonlocals(GoalInfo, NonLocals),
-	compute_instmap_delta(InstMap0, InstMap, NonLocals, InstMapDelta),
+	compute_instmap_delta(InstMap0, InstMap, InstMapDelta),
 
-	mode_util__modes_to_uni_modes(ModeOfXArgs, ModeArgs,
-			ModuleInfo, UniModes),
+	mode_util__inst_pairs_to_uni_modes(ModeOfXArgs, ModeArgs, UniModes),
 	(
 		Det1 = failure
 	->
@@ -1867,7 +1848,7 @@ recompute_instmap_delta_unify(Var, functor(ConsId, Vars), _UniMode0,
 	%
 recompute_instmap_delta_unify(Var, lambda_goal(PredOrFunc, LambdaNonLocals,
 		Vars, LambdaModes, LambdaDet, _, LambdaGoal0), _UniMode0,
-		Unification0, UniContext, GoalInfo, Goal, Det, InstMap0,
+		Unification0, UniContext, _GoalInfo, Goal, Det, InstMap0,
 		InstMapDelta, RI0, RI) :-
 
 	% First, compute the instmap_delta of the goal.
@@ -1884,7 +1865,8 @@ recompute_instmap_delta_unify(Var, lambda_goal(PredOrFunc, LambdaNonLocals,
 	recompute_info_set_inst_table(InstTable1, RI0, RI1),
 	LambdaModes = argument_modes(LambdaArgInstTable,
 			LambdaArgModes),
-	get_arg_lives(LambdaArgModes, LambdaArgInstTable,
+		% YYY is InstMap1 correct here?	
+	get_arg_lives(LambdaArgModes, InstMap1, LambdaArgInstTable,
 			ModuleInfo0, LambdaArgLives),
 	get_live_vars(Vars, LambdaArgLives, LiveVars),
 
@@ -1902,12 +1884,12 @@ recompute_instmap_delta_unify(Var, lambda_goal(PredOrFunc, LambdaNonLocals,
 	InstOfY = ground(unique, yes(LambdaPredInfo)),
 
 	(
-		map__init(Sub0),
 		abstractly_unify_inst(dead, InstOfX, InstOfY,
-			real_unify, InstTable2, ModuleInfo2, Sub0,
-			UnifyInst0, Det0, InstTable3, ModuleInfo3, Sub)
+			real_unify, InstTable2, ModuleInfo2, InstMap0,
+			UnifyInst0, Det0, InstTable3, ModuleInfo3, InstMap1)
 	->
-		apply_inst_key_sub(Sub, InstMap1, InstMap2, InstTable3, InstTable),
+		InstTable = InstTable3,
+		InstMap2 = InstMap1,
 		UnifyInst0 = UnifyInst,
 		ModuleInfo = ModuleInfo3,
 		Det = Det0
@@ -1915,21 +1897,20 @@ recompute_instmap_delta_unify(Var, lambda_goal(PredOrFunc, LambdaNonLocals,
 		error("recompute_instmap_delta_unify: var-lambda unify failed")
 	),
 	instmap__set(InstMap2, Var, UnifyInst, InstMapUnify),
-	goal_info_get_nonlocals(GoalInfo, NonLocals),
-	compute_instmap_delta(InstMap0, InstMapUnify, NonLocals,
-		InstMapDelta),
+	compute_instmap_delta(InstMap0, InstMapUnify, InstMapDelta),
 
-	ModeOfX = (InstOfX -> UnifyInst),
-	ModeOfY = (InstOfY -> UnifyInst),
+	ModeOfX = (InstOfX - UnifyInst),
+	ModeOfY = (InstOfY - UnifyInst),
 	UniMode = ModeOfX - ModeOfY,
 	UnifyRhs = lambda_goal(PredOrFunc, LambdaNonLocals, Vars,
 			LambdaModes, LambdaDet, IMDelta, LambdaGoal),
 	( Unification0 = construct(_, RealConsId, _, _) ->
 		list__delete_elems(LambdaNonLocals, Vars, ArgVars),
 		instmap__lookup_vars(ArgVars, InstMap0, ArgInsts),
-		inst_lists_to_mode_list(ArgInsts, ArgInsts, ArgModes0),
-		mode_util__modes_to_uni_modes(ArgModes0, ArgModes0,
-			ModuleInfo, ArgModes),
+		assoc_list__from_corresponding_lists(ArgInsts, ArgInsts,
+			ArgModes0),
+		mode_util__inst_pairs_to_uni_modes(ArgModes0, ArgModes0,
+			ArgModes),
 		Unification = construct(Var, RealConsId, Vars, ArgModes)
 	;
 		error("recompute_instmap_delta_unify: bad var-lambda unification")
@@ -1955,29 +1936,28 @@ recompute_instmap_delta_unify(Var, var(VarY), _UniMode0, Unification0,
 	recompute_info_get_inst_table(RI0, InstTable0),
 	instmap__lookup_var(InstMap0, VarX, InitialInstX0),
 	instmap__lookup_var(InstMap0, VarY, InitialInstY0),
+	recompute_info_var_is_live(RI0, VarX, LiveX),
+	recompute_info_var_is_live(RI0, VarY, LiveY),
 
 	inst_table_get_inst_key_table(InstTable0, IKT0),
-	make_var_alias(Var, InstMap0, InstMap1, IKT0, IKT1),
+	make_var_alias(Var, LiveX, InstMap0, InstMap1, IKT0, IKT1),
 	inst_table_set_inst_key_table(InstTable0, IKT1, InstTable1),
 	VarX = Var,	% Keep the names orthogonal
 	instmap__lookup_var(InstMap1, VarX, InitialInstX),
 	instmap__lookup_var(InstMap1, VarY, InitialInstY),
-	recompute_info_var_is_live(RI0, VarX, LiveX),
-	recompute_info_var_is_live(RI0, VarY, LiveY),
 	( LiveX = live, LiveY = live ->
 		BothLive = live
 	;
 		BothLive = dead
 	),
 	(
-		map__init(Sub0),
 		abstractly_unify_inst(BothLive, InitialInstX,
 			InitialInstY, real_unify, InstTable1,
-			ModuleInfo0, Sub0, UnifyInst0, Det0,
-			InstTable2, ModuleInfo1, Sub1)
+			ModuleInfo0, InstMap1, UnifyInst0, Det0,
+			InstTable2, ModuleInfo1, InstMap2)
 	->
-		apply_inst_key_sub(Sub1, InstMap1, InstMap2,
-			InstTable2, InstTable3),
+		InstMap3 = InstMap2,
+		InstTable3 = InstTable2,
 		UnifyInst = UnifyInst0,
 		InstTable = InstTable3,
 		ModuleInfo2 = ModuleInfo1,
@@ -1985,19 +1965,17 @@ recompute_instmap_delta_unify(Var, var(VarY), _UniMode0, Unification0,
 	;
 		error("recompute_instmap_delta_unify: var-var unify failed")
 	),
-	instmap__set(InstMap2, VarX, UnifyInst, InstMap3),
-	instmap__set(InstMap3, VarY, UnifyInst, InstMap4),
-	ModeOfX = (InitialInstX -> UnifyInst),
-	ModeOfY = (InitialInstY -> UnifyInst),
+	instmap__set(InstMap3, VarX, UnifyInst, InstMap4),
+	instmap__set(InstMap4, VarY, UnifyInst, InstMap5),
+	ModeOfX = (InitialInstX - UnifyInst),
+	ModeOfY = (InitialInstY - UnifyInst),
 	UniMode = ModeOfX - ModeOfY,
 	UnifyRhs = var(VarY),
 
-	goal_info_get_nonlocals(GoalInfo, NonLocals),
 	(
 		InitialInstX0 = alias(IK),
 		InitialInstY0 = alias(IK)
 	->
-		breakpoint,
 		Det = det,
 		Goal = conj([]),
 		ModuleInfo = ModuleInfo2,
@@ -2005,7 +1983,6 @@ recompute_instmap_delta_unify(Var, var(VarY), _UniMode0, Unification0,
 	;
 		Det1 = failure
 	->
-		breakpoint,
 		map__init(StoreMap),
 		Goal = disj([], StoreMap),
 		Det = failure,
@@ -2044,10 +2021,9 @@ recompute_instmap_delta_unify(Var, var(VarY), _UniMode0, Unification0,
 	;
 		error("recompute_instmap_delta_unify: bad var-var unification")
 	),
-	InstMap = InstMap4,
+	InstMap = InstMap5,
 
-	compute_instmap_delta(InstMap0, InstMap, NonLocals,
-		InstMapDelta),
+	compute_instmap_delta(InstMap0, InstMap, InstMapDelta),
 	recompute_info_set_module_info(ModuleInfo, RI0, RI1),
 	recompute_info_set_inst_table(InstTable, RI1, RI2),
 	( GoalChanged = yes ->
@@ -2056,24 +2032,20 @@ recompute_instmap_delta_unify(Var, var(VarY), _UniMode0, Unification0,
 		RI = RI2
 	).
 
-:- pred breakpoint is det.
-breakpoint.
-
 %-----------------------------------------------------------------------------%
 
-:- pred make_var_alias(var, instmap, instmap, inst_key_table, inst_key_table).
-:- mode make_var_alias(in, in, out, in, out) is det.
+:- pred make_var_alias(var, is_live, instmap, instmap,
+		inst_key_table, inst_key_table).
+:- mode make_var_alias(in, in, in, out, in, out) is det.
 
-make_var_alias(Var, InstMap0, InstMap, IKT0, IKT) :-
+make_var_alias(Var, Live, InstMap0, InstMap, IKT0, IKT) :-
 	instmap__lookup_var(InstMap0, Var, Inst),
 	( Inst = alias(_) ->
 		InstMap0 = InstMap,
 		IKT0 = IKT
 	;
-		( Inst = free(_) ->
+		( Inst = free(_), Live = live ->
 			NewInst = free(alias)
-		; Inst = free(_, T) ->
-			NewInst = free(alias, T)
 		;
 			NewInst = Inst
 		),
@@ -2081,29 +2053,33 @@ make_var_alias(Var, InstMap0, InstMap, IKT0, IKT) :-
 		instmap__set(InstMap0, Var, alias(InstKey), InstMap)
 	).
 
-:- pred make_var_aliases(list(var), instmap, instmap,
+:- pred make_var_aliases(list(var), list(is_live), instmap, instmap,
 		inst_key_table, inst_key_table).
-:- mode make_var_aliases(in, in, out, in, out) is det.
+:- mode make_var_aliases(in, in, in, out, in, out) is det.
 
-make_var_aliases([], InstMap, InstMap) --> [].
-make_var_aliases([V | Vs], InstMap0, InstMap) -->
-	make_var_alias(V, InstMap0, InstMap1),
-	make_var_aliases(Vs, InstMap1, InstMap).
+make_var_aliases([], [], InstMap, InstMap) --> [].
+make_var_aliases([V | Vs], [Live | Lives], InstMap0, InstMap) -->
+	make_var_alias(V, Live, InstMap0, InstMap1),
+	make_var_aliases(Vs, Lives, InstMap1, InstMap).
+make_var_aliases([], [_|_], _, _) -->
+	{ error("make_var_aliases") }.
+make_var_aliases([_|_], [], _, _) -->
+	{ error("make_var_aliases") }.
 
 %-----------------------------------------------------------------------------%
 
 	% Arguments with final inst `clobbered' are dead, any
 	% others are assumed to be live.
 
-get_arg_lives([], _, _, []).
-get_arg_lives([Mode|Modes], InstTable, ModuleInfo, [IsLive|IsLives]) :-
+get_arg_lives([], _, _, _, []).
+get_arg_lives([Mode|Modes], InstMap, InstTable, ModuleInfo, [IsLive|IsLives]) :-
 	mode_get_insts(ModuleInfo, Mode, _InitialInst, FinalInst),
-	( inst_is_clobbered(FinalInst, InstTable, ModuleInfo) ->
+	( inst_is_clobbered(FinalInst, InstMap, InstTable, ModuleInfo) ->
 		IsLive = dead
 	;
 		IsLive = live
 	),
-	get_arg_lives(Modes, InstTable, ModuleInfo, IsLives).
+	get_arg_lives(Modes, InstMap, InstTable, ModuleInfo, IsLives).
 
 %-----------------------------------------------------------------------------%
 
@@ -2219,32 +2195,34 @@ strip_builtin_qualifiers_from_pred_inst(yes(Pred0), yes(Pred)) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-normalise_insts([], _, _, []).
-normalise_insts([Inst0|Insts0], InstTable, ModuleInfo, [Inst|Insts]) :-
-	normalise_inst(Inst0, InstTable, ModuleInfo, Inst),
-	normalise_insts(Insts0, InstTable, ModuleInfo, Insts).
+normalise_insts([], _, _, _, []).
+normalise_insts([Inst0|Insts0], InstMap, InstTable, ModuleInfo, [Inst|Insts]) :-
+	normalise_inst(Inst0, InstMap, InstTable, ModuleInfo, Inst),
+	normalise_insts(Insts0, InstMap, InstTable, ModuleInfo, Insts).
 
 	% This is a bit of a hack.
 	% The aim is to avoid non-termination due to the creation
 	% of ever-expanding insts.
 	% XXX should also normalise partially instantiated insts.
 
-normalise_inst(Inst0, InstTable, ModuleInfo, NormalisedInst) :-
-	inst_expand(InstTable, ModuleInfo, Inst0, Inst),
+normalise_inst(Inst0, InstMap, InstTable, ModuleInfo, NormalisedInst) :-
+	inst_expand(InstMap, InstTable, ModuleInfo, Inst0, Inst),
 	( Inst = bound(_, _) ->
 		(
-			inst_is_ground(Inst, InstTable, ModuleInfo),
-			inst_is_unique(Inst, InstTable, ModuleInfo)
+			inst_is_ground(Inst, InstMap, InstTable, ModuleInfo),
+			inst_is_unique(Inst, InstMap, InstTable, ModuleInfo)
 		->
 			NormalisedInst = ground(unique, no)
 		;
-			inst_is_ground(Inst, InstTable, ModuleInfo),
-			inst_is_mostly_unique(Inst, InstTable, ModuleInfo)
+			inst_is_ground(Inst, InstMap, InstTable, ModuleInfo),
+			inst_is_mostly_unique(Inst, InstMap, InstTable,
+					ModuleInfo)
 		->
 			NormalisedInst = ground(mostly_unique, no)
 		;
-			inst_is_ground(Inst, InstTable, ModuleInfo),
-			\+ inst_is_clobbered(Inst, InstTable, ModuleInfo)
+			inst_is_ground(Inst, InstMap, InstTable, ModuleInfo),
+			\+ inst_is_clobbered(Inst, InstMap, InstTable,
+					ModuleInfo)
 		->
 			NormalisedInst = ground(shared, no)
 		;
@@ -2259,61 +2237,28 @@ normalise_inst(Inst0, InstTable, ModuleInfo, NormalisedInst) :-
 
 %-----------------------------------------------------------------------------%
 
-fixup_switch_var(Var, InstMap0, InstMap, Goal0, Goal) :-
-	Goal0 = GoalExpr - GoalInfo0,
-	goal_info_get_instmap_delta(GoalInfo0, InstMapDelta0),
-	instmap__lookup_var(InstMap0, Var, Inst0),
-	instmap__lookup_var(InstMap, Var, Inst),
-	( Inst = Inst0 ->
-		GoalInfo = GoalInfo0
-	;
-		instmap_delta_set(InstMapDelta0, Var, Inst, InstMapDelta),
-		goal_info_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo)
-	),
-	Goal = GoalExpr - GoalInfo.
+% fixup_switch_var(Var, InstMap0, InstMap, Goal0, Goal) :-
+% 	Goal0 = GoalExpr - GoalInfo0,
+% 	goal_info_get_instmap_delta(GoalInfo0, InstMapDelta0),
+% 	instmap__lookup_var(InstMap0, Var, Inst0),
+% 	instmap__lookup_var(InstMap, Var, Inst),
+% 	( Inst = Inst0 ->
+% 		GoalInfo = GoalInfo0
+% 	;
+% 		instmap_delta_set(InstMapDelta0, Var, Inst, InstMapDelta),
+% 		goal_info_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo)
+% 	),
+% 	Goal = GoalExpr - GoalInfo.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-instmap_bind_var_to_functor(Var, ConsId, InstMap0, InstMap,
-		InstTable0, InstTable, ModuleInfo0, ModuleInfo) :-
-	instmap__lookup_var(InstMap0, Var, Inst0),
-	bind_inst_to_functor(Inst0, ConsId, Inst, Sub, InstTable0, ModuleInfo0,
-			InstTable1, ModuleInfo),
-	instmap__set(InstMap0, Var, Inst, InstMap1),
-	apply_inst_key_sub(Sub, InstMap1, InstMap, InstTable1, InstTable).
+in_mode(Mode) :- make_std_mode("in", [], Mode).
 
-:- pred bind_inst_to_functor((inst), cons_id, (inst), inst_key_sub,
-		inst_table, module_info, inst_table, module_info).
-:- mode bind_inst_to_functor(in, in, out, out, in, in, out, out) is det.
+out_mode(Mode) :- make_std_mode("out", [], Mode).
 
-bind_inst_to_functor(Inst0, ConsId, Inst, Sub, InstTable0, ModuleInfo0,
-		InstTable, ModuleInfo) :-
-	( ConsId = cons(_, Arity) ->
-		list__duplicate(Arity, dead, ArgLives),
-		list__duplicate(Arity, free(unique), ArgInsts)
-	;
-		ArgLives = [],
-		ArgInsts = []
-	),
-	(
-		map__init(Sub0),
-		abstractly_unify_inst_functor(dead, Inst0, ConsId,
-			ArgInsts, ArgLives, real_unify, InstTable0, ModuleInfo0,
-			Sub0, Inst1, _, InstTable1, ModuleInfo1, Sub1)
-	->
-		ModuleInfo = ModuleInfo1,
-		InstTable = InstTable1,
-		Inst = Inst1,
-		Sub = Sub1
-	;
-		ModuleInfo = ModuleInfo0,
-		InstTable = InstTable0,
-		Inst = not_reached,
-		map__init(Sub)
-	).
+uo_mode(Mode) :- make_std_mode("uo", [], Mode).
 
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- pred make_std_mode(string, list(inst), mode).
@@ -2327,99 +2272,93 @@ make_std_mode(Name, Args, Mode) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-apply_inst_key_sub(Sub0, InstMap0, InstMap, InstTable0, InstTable) :-
-	set__init(DeadKeys),
-	inst_table_get_inst_key_table(InstTable0, IKT0),
-	apply_inst_key_sub_2(Sub0, Sub0, Sub, DeadKeys, IKT0, IKT),
-	map__keys(Sub, SubDomain),
-
-	% Do the instmap
-	set__init(VarsToChange0),
-	list__foldl(lambda([V :: in, Vs0 :: in, Vs :: out] is det,
-			(instmap__lookup_dependent_vars(InstMap0, V,
-				Vs1),
-			set__insert_list(Vs0, Vs1, Vs))
-		), SubDomain, VarsToChange0, VarsToChange),
-	set__to_sorted_list(VarsToChange, VarsToChangeList),
-	apply_inst_key_sub_instmap(VarsToChangeList, Sub, InstMap0, InstMap),
-
-	inst_table_get_all_tables(InstTable0, UnifyInsts0, MergeInsts0,
-		GroundInsts0, AnyInsts0, SharedInsts0, NondetLiveInsts0,
-		_IKT),
-	% YYY Should do renaming in these.
-	UnifyInsts = UnifyInsts0,
-	MergeInsts = MergeInsts0,
-	GroundInsts = GroundInsts0,
-	AnyInsts = AnyInsts0,
-	SharedInsts = SharedInsts0,
-	NondetLiveInsts = NondetLiveInsts0,
-	inst_table_set_all_tables(InstTable0, UnifyInsts, MergeInsts,
-		GroundInsts, AnyInsts, SharedInsts, NondetLiveInsts,
-		IKT, InstTable).
-
-:- pred apply_inst_key_sub_2(inst_key_sub, inst_key_sub, inst_key_sub,
-			set(inst_key), inst_key_table, inst_key_table).
-:- mode apply_inst_key_sub_2(in, in, out, in, in, out) is det.
-
-apply_inst_key_sub_2(ThisSub, Sub0, Sub, DeadKeys0, IKT0, IKT) :-
-	( map__is_empty(ThisSub) ->
-		IKT = IKT0,
-		Sub = Sub0
-	;
-		map__keys(ThisSub, SubDomain),
-		set__init(KeysToChange0),
-		list__foldl(lambda([K :: in, Ks0 :: in, Ks :: out]
-					is det,
-				( inst_key_table_dependent_keys(IKT0, K, Ks1),
-				  set__insert_list(Ks0, Ks1, Ks)
-				)
-			), SubDomain, KeysToChange0, KeysToChange1),
-		set__difference(KeysToChange1, DeadKeys0, KeysToChange),
-		set__to_sorted_list(KeysToChange, KeysToChangeList),
-
-		map__init(NewSub0),
-
-		apply_inst_key_sub_inst_key_table(KeysToChangeList, ThisSub,
-			DeadKeys0, DeadKeys, NewSub0, NewSub, IKT0, IKT1),
-		map__overlay(Sub0, NewSub, Sub1),
-
-		apply_inst_key_sub_2(NewSub, Sub1, Sub, DeadKeys, IKT1, IKT)
-	).
-
-:- pred apply_inst_key_sub_instmap(list(var), inst_key_sub, instmap, instmap).
-:- mode apply_inst_key_sub_instmap(in, in, in, out) is det.
-
-apply_inst_key_sub_instmap([], _Sub, InstMap, InstMap).
-apply_inst_key_sub_instmap([V | Vs], Sub, 
-		InstMap0, InstMap) :-
-	instmap__lookup_var(InstMap0, V, Inst0),
-	inst_apply_sub(Sub, Inst0, Inst),
-	instmap__set(InstMap0, V, Inst, InstMap1),
-	apply_inst_key_sub_instmap(Vs, Sub, InstMap1, InstMap).
-
-:- pred apply_inst_key_sub_inst_key_table(list(inst_key),
-		inst_key_sub, set(inst_key), set(inst_key),
-		inst_key_sub, inst_key_sub, inst_key_table, inst_key_table).
-:- mode apply_inst_key_sub_inst_key_table(in, in, in, out, in, out, in, out)
-		is det.
-
-apply_inst_key_sub_inst_key_table([], _Sub, DeadKeys, DeadKeys, NewSub, NewSub,
-		IKT, IKT).
-apply_inst_key_sub_inst_key_table([Key0 | Keys], Sub, DeadKeys0, DeadKeys,
-		NewSub0, NewSub, IKT0, IKT) :-
-	inst_key_table_lookup(IKT0, Key0, Inst0),
-	inst_apply_sub(Sub, Inst0, Inst),
-	( Inst0 = Inst ->
-		IKT0 = IKT1,
-		NewSub1 = NewSub0,
-		DeadKeys1 = DeadKeys0
-	;
-		inst_key_table_add(IKT0, Inst, Key, IKT1),
-		set__insert(DeadKeys0, Key0, DeadKeys1),
-		map__det_insert(NewSub0, Key0, Key, NewSub1)
-	),
-	apply_inst_key_sub_inst_key_table(Keys, Sub, DeadKeys1, DeadKeys,
-		NewSub1, NewSub, IKT1, IKT).
+% apply_inst_key_sub(Sub0, InstMap0, InstMap, InstTable0, InstTable) :-
+% 	set__init(DeadKeys),
+% 	inst_table_get_inst_key_table(InstTable0, IKT0),
+% 	apply_inst_key_sub_2(Sub0, Sub0, Sub, DeadKeys, IKT0, IKT),
+% 	map__keys(Sub, SubDomain),
+% 
+% 	% Do the instmap
+% 	instmap__vars(InstMap0, VarsToChangeList),
+% 	apply_inst_key_sub_instmap(VarsToChangeList, Sub, InstMap0, InstMap),
+% 
+% 	inst_table_get_all_tables(InstTable0, UnifyInsts0, MergeInsts0,
+% 		GroundInsts0, AnyInsts0, SharedInsts0, NondetLiveInsts0,
+% 		_IKT),
+% 	% YYY Should do renaming in these.
+% 	UnifyInsts = UnifyInsts0,
+% 	MergeInsts = MergeInsts0,
+% 	GroundInsts = GroundInsts0,
+% 	AnyInsts = AnyInsts0,
+% 	SharedInsts = SharedInsts0,
+% 	NondetLiveInsts = NondetLiveInsts0,
+% 	inst_table_set_all_tables(InstTable0, UnifyInsts, MergeInsts,
+% 		GroundInsts, AnyInsts, SharedInsts, NondetLiveInsts,
+% 		IKT, InstTable).
+% 
+% :- pred apply_inst_key_sub_2(inst_key_sub, inst_key_sub, inst_key_sub,
+% 			set(inst_key), inst_key_table, inst_key_table).
+% :- mode apply_inst_key_sub_2(in, in, out, in, in, out) is det.
+% 
+% apply_inst_key_sub_2(ThisSub, Sub0, Sub, DeadKeys0, IKT0, IKT) :-
+% 	( map__is_empty(ThisSub) ->
+% 		IKT = IKT0,
+% 		Sub = Sub0
+% 	;
+% 		map__keys(ThisSub, SubDomain),
+% 		set__init(KeysToChange0),
+% 		list__foldl(lambda([K :: in, Ks0 :: in, Ks :: out]
+% 					is det,
+% 				( inst_key_table_dependent_keys(IKT0, K, Ks1),
+% 				  set__insert_list(Ks0, Ks1, Ks)
+% 				)
+% 			), SubDomain, KeysToChange0, KeysToChange1),
+% 		set__difference(KeysToChange1, DeadKeys0, KeysToChange),
+% 		set__to_sorted_list(KeysToChange, KeysToChangeList),
+% 
+% 		map__init(NewSub0),
+% 
+% 		apply_inst_key_sub_inst_key_table(KeysToChangeList, ThisSub,
+% 			DeadKeys0, DeadKeys, NewSub0, NewSub, IKT0, IKT1),
+% 		map__overlay(Sub0, NewSub, Sub1),
+% 
+% 		apply_inst_key_sub_2(NewSub, Sub1, Sub, DeadKeys, IKT1, IKT)
+% 	).
+% 
+% :- pred apply_inst_key_sub_instmap(list(var), inst_key_sub, instmap, instmap).
+% :- mode apply_inst_key_sub_instmap(in, in, in, out) is det.
+% 
+% apply_inst_key_sub_instmap([], _Sub, InstMap, InstMap).
+% apply_inst_key_sub_instmap([V | Vs], Sub, 
+% 		InstMap0, InstMap) :-
+% 	instmap__lookup_var(InstMap0, V, Inst0),
+% 	inst_apply_sub(Sub, Inst0, Inst),
+% 	instmap__set(InstMap0, V, Inst, InstMap1),
+% 	apply_inst_key_sub_instmap(Vs, Sub, InstMap1, InstMap).
+% 
+% :- pred apply_inst_key_sub_inst_key_table(list(inst_key),
+% 		inst_key_sub, set(inst_key), set(inst_key),
+% 		inst_key_sub, inst_key_sub, inst_key_table, inst_key_table).
+% :- mode apply_inst_key_sub_inst_key_table(in, in, in, out, in, out, in, out)
+% 		is det.
+% 
+% apply_inst_key_sub_inst_key_table([], _Sub, DeadKeys, DeadKeys, NewSub, NewSub,
+% 		IKT, IKT).
+% apply_inst_key_sub_inst_key_table([Key0 | Keys], Sub, DeadKeys0, DeadKeys,
+% 		NewSub0, NewSub, IKT0, IKT) :-
+% 	inst_key_table_lookup(IKT0, Key0, Inst0),
+% 	inst_apply_sub(Sub, Inst0, Inst),
+% 	( Inst0 = Inst ->
+% 		IKT0 = IKT1,
+% 		NewSub1 = NewSub0,
+% 		DeadKeys1 = DeadKeys0
+% 	;
+% 		inst_key_table_add(IKT0, Inst, Key, IKT1),
+% 		set__insert(DeadKeys0, Key0, DeadKeys1),
+% 		map__det_insert(NewSub0, Key0, Key, NewSub1)
+% 	),
+% 	apply_inst_key_sub_inst_key_table(Keys, Sub, DeadKeys1, DeadKeys,
+% 		NewSub1, NewSub, IKT1, IKT).
 
 %-----------------------------------------------------------------------------%
 
@@ -2429,14 +2368,6 @@ apply_inst_key_sub_mode(Sub, (I0 -> F0), (I -> F)) :-
 apply_inst_key_sub_mode(Sub, user_defined_mode(SymName, Insts0),
 		user_defined_mode(SymName, Insts)) :-
 	list__map(inst_apply_sub(Sub), Insts0, Insts).
-
-%-----------------------------------------------------------------------------%
-
-in_mode(Mode) :- make_std_mode("in", [], Mode).
-
-out_mode(Mode) :- make_std_mode("out", [], Mode).
-
-uo_mode(Mode) :- make_std_mode("uo", [], Mode).
 
 %-----------------------------------------------------------------------------%
 

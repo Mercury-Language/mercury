@@ -537,7 +537,7 @@ polymorphism__process_proc(ProcId, ProcInfo0, PredId, PredInfo0, ModuleInfo0,
 	(
 		( pred_info_is_imported(PredInfo0)
 		; pred_info_is_pseudo_imported(PredInfo0),
-		  in_in_unification_proc_id(ProcId)
+		  hlds_pred__in_in_unification_proc_id(ProcId)
 		)
 	->
 		Goal = Goal0,
@@ -826,7 +826,7 @@ polymorphism__assign_var_2(Var1, Var2, Goal) :-
 	% 		[], Goal),
 
 	Ground = ground(shared, no),
-	Mode = ((free(unique) -> Ground) - (Ground -> Ground)),
+	Mode = ((free(unique) - Ground) - (Ground - Ground)),
 	UnifyInfo = assign(Var1, Var2),
 	UnifyC = unify_context(explicit, []),
 	set__list_to_set([Var1, Var2], NonLocals),
@@ -1320,27 +1320,29 @@ polymorphism__process_call(PredId0, ProcId0, ArgVars0, GoalInfo0,
 		% the goal, so they don't need to be mentioned in the
 		% instmap delta)
 		%
-		poly_info_get_type_info_map(Info, TypeVarMap),
-		poly_info_get_typeclass_info_map(Info, TypeClassVarMap),
-		goal_info_get_instmap_delta(GoalInfo1, InstmapDelta0),
-		AddInstDelta = lambda([TVar::in, IMD0::in, IMD::out] is det, (
-			map__lookup(TypeVarMap, TVar, TypeInfoLocn),
-			type_info_locn_var(TypeInfoLocn, TypeInfoVar),
-			instmap_delta_set(IMD0, TypeInfoVar,
-				ground(shared, no), IMD)
-			)),
-		AddTCInstDelta = lambda([Constraint::in, IMD0::in, IMD::out]
-					is det, (
-			map__lookup(TypeClassVarMap, Constraint,
-				TypeClassInfoVar),
-			instmap_delta_set(IMD0, TypeClassInfoVar,
-				ground(shared, no), IMD)
-			)),
-		list__foldl(AddInstDelta, PredExistQVars,
-			InstmapDelta0, InstmapDelta1),
-		list__foldl(AddTCInstDelta, ExistentialConstraints,
-			InstmapDelta1, InstmapDelta),
-		goal_info_set_instmap_delta(GoalInfo1, InstmapDelta, GoalInfo)
+
+% 		poly_info_get_type_info_map(Info, TypeVarMap),
+% 		poly_info_get_typeclass_info_map(Info, TypeClassVarMap),
+% 		goal_info_get_instmap_delta(GoalInfo1, InstmapDelta0),
+% 		AddInstDelta = lambda([TVar::in, IMD0::in, IMD::out] is det, (
+% 			map__lookup(TypeVarMap, TVar, TypeInfoLocn),
+% 			type_info_locn_var(TypeInfoLocn, TypeInfoVar),
+% 			instmap_delta_set(IMD0, TypeInfoVar,
+% 				ground(shared, no), IMD)
+% 			)),
+% 		AddTCInstDelta = lambda([Constraint::in, IMD0::in, IMD::out]
+% 					is det, (
+% 			map__lookup(TypeClassVarMap, Constraint,
+% 				TypeClassInfoVar),
+% 			instmap_delta_set(IMD0, TypeClassInfoVar,
+% 				ground(shared, no), IMD)
+% 			)),
+% 		list__foldl(AddInstDelta, PredExistQVars,
+% 			InstmapDelta0, InstmapDelta1),
+% 		list__foldl(AddTCInstDelta, ExistentialConstraints,
+% 			InstmapDelta1, InstmapDelta),
+% 		goal_info_set_instmap_delta(GoalInfo1, InstmapDelta, GoalInfo)
+		GoalInfo = GoalInfo1
 	).
 
 :- pred polymorphism__update_typeclass_infos(list(class_constraint), list(var),
@@ -1928,8 +1930,8 @@ polymorphism__construct_typeclass_info(ArgTypeInfoVars, ArgTypeClassInfoVars,
 
 		% create the construction unification to initialize the variable
 	BaseUnification = construct(BaseVar, ConsId, [], []),
-	BaseUnifyMode = (free(unique) -> ground(shared, no)) -
-			(ground(shared, no) -> ground(shared, no)),
+	BaseUnifyMode = (free(unique) - ground(shared, no)) -
+			(ground(shared, no) - ground(shared, no)),
 	BaseUnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
 	BaseUnify = unify(BaseVar, BaseTypeClassInfoTerm, BaseUnifyMode,
@@ -1962,8 +1964,8 @@ polymorphism__construct_typeclass_info(ArgTypeInfoVars, ArgTypeClassInfoVars,
 	list__duplicate(NumArgVars, UniMode, UniModes),
 	Unification = construct(NewVar, NewConsId, NewArgVars,
 		UniModes),
-	UnifyMode = (free(unique) -> ground(shared, no)) -
-			(ground(shared, no) -> ground(shared, no)),
+	UnifyMode = (free(unique) - ground(shared, no)) -
+			(ground(shared, no) - ground(shared, no)),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
 	Unify = unify(NewVar, TypeClassInfoTerm, UnifyMode,
@@ -2318,7 +2320,8 @@ polymorphism__init_with_int_constant(CountVar, Num, CountUnifyGoal) :-
 
 	CountTerm = functor(CountConsId, []),
 	CountInst = bound(unique, [functor(int_const(Num), [])]),
-	CountUnifyMode = (free(unique) -> CountInst) - (CountInst -> CountInst),
+	CountUnifyMode = (free(unique) - CountInst) -
+			(CountInst - CountInst),
 	CountUnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
 	CountUnify = unify(CountVar, CountTerm, CountUnifyMode,
@@ -2391,7 +2394,7 @@ polymorphism__get_special_proc_list_2([Id | Ids],
 	Term = functor(cons(PredName2, 0), []),
 
 	Inst = bound(unique, [functor(cons(PredName2, 0), [])]),
-	UnifyMode = (free(unique) -> Inst) - (Inst -> Inst),
+	UnifyMode = (free(unique) - Inst) - (Inst - Inst),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
 	Unify = unify(Var, Term, UnifyMode, Unification, UnifyContext),
@@ -2505,8 +2508,8 @@ polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 	list__length(ArgVars, NumArgVars),
 	list__duplicate(NumArgVars, UniMode, UniModes),
 	Unification = construct(TypeInfoVar, ConsId, ArgVars, UniModes),
-	UnifyMode = (free(unique) -> ground(shared, no)) -
-			(ground(shared, no) -> ground(shared, no)),
+	UnifyMode = (free(unique) - ground(shared, no)) -
+			(ground(shared, no) - ground(shared, no)),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
 	Unify = unify(TypeInfoVar, TypeInfoTerm, UnifyMode,
@@ -2558,8 +2561,8 @@ polymorphism__init_const_base_type_info_var(Type, TypeId,
 
 	% create the construction unification to initialize the variable
 	Unification = construct(BaseTypeInfoVar, ConsId, [], []),
-	UnifyMode = (free(unique) -> ground(shared, no)) -
-			(ground(shared, no) -> ground(shared, no)),
+	UnifyMode = (free(unique) - ground(shared, no)) -
+			(ground(shared, no) - ground(shared, no)),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
 	Unify = unify(BaseTypeInfoVar, TypeInfoTerm, UnifyMode,
@@ -2704,7 +2707,7 @@ extract_type_info_2(Type, _TypeVar, TypeClassInfoVar, Index, ModuleInfo, Goals,
 	map__det_update(TypeInfoLocns0, TVar, type_info(TypeInfoVar),
 		TypeInfoLocns).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 	% Create a head var for each class constraint, and make an entry in
 	% the typeinfo locations map for each constrained type var.
@@ -2908,16 +2911,31 @@ expand_one_body(hlds_class_proc(PredId, ProcId), ProcNum0, ProcNum,
 
 		% Make the goal info for the call. 
 	set__list_to_set(HeadVars0, NonLocals),
-	instmap_delta_from_mode_list(HeadVars0, Modes0, ModuleInfo0,
-			InstmapDelta),
-	goal_info_init(NonLocals, InstmapDelta, Detism, GoalInfo),
-	BodyGoal = BodyGoalExpr - GoalInfo,
 
-	proc_info_set_goal(ProcInfo0, BodyGoal, ProcInfo),
+	% YYY Is this valid if ArgIKT is non-empty?
+	% instmap_delta_from_mode_list(HeadVars0, ArgModes0, ModuleInfo0,
+	%		InstmapDelta),
+
+	% YYY No, but I think this is...
+	instmap_delta_init_reachable(InstmapDelta),
+	goal_info_init(NonLocals, InstmapDelta, Detism, GoalInfo),
+	BodyGoal0 = BodyGoalExpr - GoalInfo,
+
+	proc_info_arglives(ProcInfo0, ModuleInfo0, HeadLives),
+	proc_info_vartypes(ProcInfo0, VarTypes),
+	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
+	proc_info_inst_table(ProcInfo0, InstTable0),
+
+	recompute_instmap_delta(HeadVars0, HeadLives, VarTypes, BodyGoal0,
+		BodyGoal, InstMap0, InstTable0, InstTable, _, ModuleInfo0,
+		ModuleInfo1),
+
+	proc_info_set_goal(ProcInfo0, BodyGoal, ProcInfo1),
+	proc_info_set_inst_table(ProcInfo1, InstTable, ProcInfo),
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 	map__det_update(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo),
+	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo),
 
 	ProcNum is ProcNum0 + 1.
 	

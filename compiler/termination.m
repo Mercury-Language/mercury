@@ -78,7 +78,7 @@
 :- implementation.
 
 :- import_module term_pass1, term_pass2, term_errors.
-:- import_module inst_match, passes_aux, options, globals.
+:- import_module instmap, inst_match, passes_aux, options, globals.
 :- import_module hlds_data, hlds_goal, dependency_graph.
 :- import_module mode_util, hlds_out, code_util, prog_out, prog_util.
 :- import_module mercury_to_mercury, varset, type_util, special_pred.
@@ -568,27 +568,30 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, Module,
 all_args_input_or_zero_size(Module, PredInfo, ProcInfo) :-
 	pred_info_arg_types(PredInfo, TypeList),
 	proc_info_argmodes(ProcInfo, argument_modes(ModeInstTable, ModeList)),
-	all_args_input_or_zero_size_2(TypeList, ModeList, ModeInstTable,
-		Module). 
+	proc_info_get_initial_instmap(ProcInfo, Module, ProcInstMap),
+	all_args_input_or_zero_size_2(TypeList, ModeList, ProcInstMap,
+		ModeInstTable, Module). 
 
-:- pred all_args_input_or_zero_size_2(list(type), list(mode), inst_table,
-		module_info).
-:- mode all_args_input_or_zero_size_2(in, in, in, in) is semidet.
+:- pred all_args_input_or_zero_size_2(list(type), list(mode), instmap,
+		inst_table, module_info).
+:- mode all_args_input_or_zero_size_2(in, in, in, in, in) is semidet.
 
-all_args_input_or_zero_size_2([], [], _, _).
-all_args_input_or_zero_size_2([], [_|_], _, _) :- 
+all_args_input_or_zero_size_2([], [], _, _, _).
+all_args_input_or_zero_size_2([], [_|_], _, _, _) :- 
 	error("all_args_input_or_zero_size_2: Unmatched variables.").
-all_args_input_or_zero_size_2([_|_], [], _, _) :- 
+all_args_input_or_zero_size_2([_|_], [], _, _, _) :- 
 	error("all_args_input_or_zero_size_2: Unmatched variables").
-all_args_input_or_zero_size_2([Type | Types], [Mode | Modes], InstTable,
+all_args_input_or_zero_size_2([Type | Types], [Mode | Modes], InstMap, InstTable,
 		Module) :-
-	( mode_is_input(InstTable, Module, Mode) ->
+	( mode_is_input(InstMap, InstTable, Module, Mode) ->
 		% The variable is an input variables, so its size is
 		% irrelevant.
-		all_args_input_or_zero_size_2(Types, Modes, InstTable, Module)
+		all_args_input_or_zero_size_2(Types, Modes, InstMap,
+				InstTable, Module)
 	;
 		zero_size_type(Type, Module),
-		all_args_input_or_zero_size_2(Types, Modes, InstTable, Module)
+		all_args_input_or_zero_size_2(Types, Modes, InstMap,
+				InstTable, Module)
 	).
 
 %----------------------------------------------------------------------------%

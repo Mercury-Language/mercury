@@ -132,7 +132,8 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 	instmap__lookup_var(InstMap0, PredVar, PredVarInst0),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_inst_table(ModeInfo0, InstTable0),
-	inst_expand(InstTable0, ModuleInfo0, PredVarInst0, PredVarInst),
+	inst_expand(InstMap0, InstTable0, ModuleInfo0, PredVarInst0,
+			PredVarInst),
 	list__length(Args0, Arity),
 	(
 		PredVarInst = ground(_Uniq, yes(PredInstInfo)),
@@ -147,7 +148,8 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 		% Check that `Args0' have livenesses which match the
 		% expected livenesses.
 		%
-		get_arg_lives(ArgModes0, ArgInstTable, ModuleInfo0,
+			% YYY InstMap0 is probably incorrect here
+		get_arg_lives(ArgModes0, InstMap0, ArgInstTable, ModuleInfo0,
 			ExpectedArgLives),
 		modecheck_var_list_is_live(Args0, ExpectedArgLives, 1,
 			ModeInfo0, ModeInfo1),
@@ -169,7 +171,7 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 					ModeInfo2, ModeInfo3),
 		mode_list_get_final_insts(ArgModes, ModuleInfo0, FinalInsts),
 		modecheck_set_var_inst_list(Args0, InitialInsts, FinalInsts,
-			Args, ExtraGoals, ModeInfo3, ModeInfo4),
+				Args, ExtraGoals, ModeInfo3, ModeInfo4),
 		( determinism_components(Det, _, at_most_zero) ->
 			instmap__init_unreachable(Instmap),
 			mode_info_set_instmap(Instmap, ModeInfo4, ModeInfo)
@@ -469,7 +471,7 @@ get_var_insts_and_lives([Var | Vars], ModeInfo,
 	mode_info_get_instmap(ModeInfo, InstMap),
 	mode_info_get_inst_table(ModeInfo, InstTable),
 	instmap__lookup_var(InstMap, Var, Inst0),
-	normalise_inst(Inst0, InstTable, ModuleInfo, Inst),
+	normalise_inst(Inst0, InstMap, InstTable, ModuleInfo, Inst),
 
 	mode_info_var_is_live(ModeInfo, Var, IsLive0),
 
@@ -482,8 +484,8 @@ get_var_insts_and_lives([Var | Vars], ModeInfo,
 		% that it can do destructive update - if there really is
 		% a good chance of being able to do destructive update.
 		(
-			inst_is_ground(Inst, InstTable, ModuleInfo),
-			inst_is_unique(Inst, InstTable, ModuleInfo)
+			inst_is_ground(Inst, InstMap, InstTable, ModuleInfo),
+			inst_is_unique(Inst, InstMap, InstTable, ModuleInfo)
 		->
 			IsLive = dead
 		;
@@ -516,8 +518,12 @@ modes_are_indistinguishable(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
 	%
 	proc_info_argmodes(ProcInfo,
 		argument_modes(ProcArgInstTable, ProcArgModes)),
+	proc_info_get_initial_instmap(ProcInfo, ModuleInfo,
+		ProcInstMap),
 	proc_info_argmodes(OtherProcInfo,
 		argument_modes(OtherProcArgInstTable, OtherProcArgModes0)),
+	proc_info_get_initial_instmap(OtherProcInfo, ModuleInfo,
+		OtherProcInstMap),
 	inst_table_create_sub(ProcArgInstTable, OtherProcArgInstTable,
 			Sub, InstTable),
 	list__map(apply_inst_key_sub_mode(Sub), OtherProcArgModes0,
@@ -532,9 +538,10 @@ modes_are_indistinguishable(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
 	%
 	% Compare the expected livenesses of the arguments
 	%
-	get_arg_lives(ProcArgModes, ProcArgInstTable, ModuleInfo, ProcArgLives),
-	get_arg_lives(OtherProcArgModes, OtherProcArgInstTable, ModuleInfo,
-		OtherProcArgLives),
+	get_arg_lives(ProcArgModes, ProcInstMap,
+		ProcArgInstTable, ModuleInfo, ProcArgLives),
+	get_arg_lives(OtherProcArgModes, OtherProcInstMap,
+		OtherProcArgInstTable, ModuleInfo, OtherProcArgLives),
 	compare_liveness_list(ProcArgLives, OtherProcArgLives, CompareLives),
 	CompareLives = same,
 
@@ -569,10 +576,14 @@ modes_are_identical_bar_cc(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
 	%
 	% Compare the initial insts of the arguments
 	%
-	proc_info_argmodes(ProcInfo, 	
+	proc_info_argmodes(ProcInfo,
 		argument_modes(ProcArgInstTable, ProcArgModes)),
+	proc_info_get_initial_instmap(ProcInfo, ModuleInfo,
+		ProcInstMap),
 	proc_info_argmodes(OtherProcInfo,
 		argument_modes(OtherProcArgInstTable, OtherProcArgModes0)),
+	proc_info_get_initial_instmap(OtherProcInfo, ModuleInfo,
+		OtherProcInstMap),
 	inst_table_create_sub(ProcArgInstTable, OtherProcArgInstTable,
 		Sub, InstTable),
 	list__map(apply_inst_key_sub_mode(Sub), OtherProcArgModes0,
@@ -597,9 +608,10 @@ modes_are_identical_bar_cc(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
 	%
 	% Compare the expected livenesses of the arguments
 	%
-	get_arg_lives(ProcArgModes, InstTable, ModuleInfo, ProcArgLives),
-	get_arg_lives(OtherProcArgModes, InstTable, ModuleInfo,
-		OtherProcArgLives),
+	get_arg_lives(ProcArgModes, ProcInstMap, InstTable,
+			ModuleInfo, ProcArgLives),
+	get_arg_lives(OtherProcArgModes, OtherProcInstMap, InstTable,
+			ModuleInfo, OtherProcArgLives),
 	compare_liveness_list(ProcArgLives, OtherProcArgLives, CompareLives),
 	CompareLives = same,
 
@@ -699,15 +711,19 @@ compare_proc(ProcId, OtherProcId, ArgVars, Compare, Procs, ModeInfo) :-
 	%
 	% Compare the initial insts of the arguments
 	%
+	mode_info_get_module_info(ModeInfo, ModuleInfo),
 	proc_info_argmodes(ProcInfo,
 		argument_modes(ProcArgInstTable, ProcArgModes)),
+	proc_info_get_initial_instmap(ProcInfo, ModuleInfo,
+		ProcInstMap),
 	proc_info_argmodes(OtherProcInfo,
 		argument_modes(OtherProcArgInstTable, OtherProcArgModes0)),
+	proc_info_get_initial_instmap(OtherProcInfo, ModuleInfo,
+		OtherProcInstMap),
 	inst_table_create_sub(ProcArgInstTable, OtherProcArgInstTable,
 			Sub, InstTable),
 	list__map(apply_inst_key_sub_mode(Sub), OtherProcArgModes0,
 		OtherProcArgModes),
-	mode_info_get_module_info(ModeInfo, ModuleInfo),
 	mode_list_get_initial_insts(ProcArgModes, ModuleInfo, InitialInsts),
 	mode_list_get_initial_insts(OtherProcArgModes, ModuleInfo,
 							OtherInitialInsts),
@@ -717,9 +733,10 @@ compare_proc(ProcId, OtherProcId, ArgVars, Compare, Procs, ModeInfo) :-
 	%
 	% Compare the expected livenesses of the arguments
 	%
-	get_arg_lives(ProcArgModes, InstTable, ModuleInfo, ProcArgLives),
-	get_arg_lives(OtherProcArgModes, InstTable, ModuleInfo,
-		OtherProcArgLives),
+	get_arg_lives(ProcArgModes, ProcInstMap, InstTable,
+		ModuleInfo, ProcArgLives),
+	get_arg_lives(OtherProcArgModes, OtherProcInstMap, InstTable,
+		ModuleInfo, OtherProcArgLives),
 	compare_liveness_list(ProcArgLives, OtherProcArgLives, CompareLives),
 	%
 	% Compare the determinisms
@@ -851,12 +868,21 @@ compare_inst(InstA, InstB, MaybeArgInst, InstTable, Result, ModuleInfo) :-
 	%	and at least as much binding as B --
 	%	with the exception that `any' matches_initial `free'
 	% 	and perhaps vice versa.
-	( inst_matches_initial(InstA, InstB, InstTable, ModuleInfo) ->
+	instmap__init_reachable(InstMapA),	% YYY
+	instmap__init_reachable(InstMapB),	% YYY
+	instmap__init_reachable(MaybeInstMap),	% YYY
+	(
+		inst_matches_initial(InstA, InstMapA, InstB, InstMapB,
+				InstTable, ModuleInfo)
+	->
 		A_mi_B = yes
 	;
 		A_mi_B = no
 	),
-	( inst_matches_initial(InstB, InstA, InstTable, ModuleInfo) ->
+	(
+		inst_matches_initial(InstB, InstMapB, InstA, InstMapA,
+				InstTable, ModuleInfo)
+	->
 		B_mi_A = yes
 	;
 		B_mi_A = no
@@ -879,7 +905,8 @@ compare_inst(InstA, InstB, MaybeArgInst, InstTable, Result, ModuleInfo) :-
 		;
 			MaybeArgInst = yes(ArgInst),
 			(
-				inst_matches_final(ArgInst, InstA, InstTable,
+				inst_matches_final(ArgInst, MaybeInstMap,
+					InstA, InstMapA, InstTable,
 					ModuleInfo)
 			->
 				Arg_mf_A = yes
@@ -887,7 +914,8 @@ compare_inst(InstA, InstB, MaybeArgInst, InstTable, Result, ModuleInfo) :-
 				Arg_mf_A = no
 			),
 			(
-				inst_matches_final(ArgInst, InstB, InstTable,
+				inst_matches_final(ArgInst, MaybeInstMap,
+					InstB, InstMapB, InstTable,
 					ModuleInfo)
 			->
 				Arg_mf_B = yes
@@ -907,7 +935,8 @@ compare_inst(InstA, InstB, MaybeArgInst, InstTable, Result, ModuleInfo) :-
 			% then compare the two proc insts
 			%
 			(
-				inst_matches_final(InstA, InstB, InstTable,
+				inst_matches_final(InstA, InstMapA,
+					InstB, InstMapB, InstTable,
 					ModuleInfo)
 			->
 				A_mf_B = yes
@@ -915,7 +944,8 @@ compare_inst(InstA, InstB, MaybeArgInst, InstTable, Result, ModuleInfo) :-
 				A_mf_B = no
 			),
 			(
-				inst_matches_final(InstB, InstA, InstTable,
+				inst_matches_final(InstB, InstMapB,
+					InstA, InstMapA, InstTable,
 					ModuleInfo)
 			->
 				B_mf_A = yes

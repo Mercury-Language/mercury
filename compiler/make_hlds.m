@@ -2254,6 +2254,7 @@ pred_add_pragma_import(PredInfo0, PredId, ProcId, MayCallMercury, C_Function,
 	{ map__lookup(Procs, ProcId, ProcInfo) },
 	{ proc_info_argmodes(ProcInfo, Modes) },
 	{ proc_info_interface_code_model(ProcInfo, CodeModel) },
+	{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) },
 
 	%
 	% Build a list of argument variables, together with their
@@ -2276,11 +2277,12 @@ pred_add_pragma_import(PredInfo0, PredId, ProcId, MayCallMercury, C_Function,
 	% assigns the return value (if any) to the appropriate place.
 	%
 	{ handle_return_value(CodeModel, PredOrFunc, PragmaVarsAndTypes,
-		ArgInstTable, ModuleInfo, ArgPragmaVarsAndTypes, C_Code0) },
+		InstMap, ArgInstTable, ModuleInfo, ArgPragmaVarsAndTypes,
+		C_Code0) },
 	{ string__append_list([C_Code0, C_Function, "("], C_Code1) },
 	{ assoc_list__keys(ArgPragmaVarsAndTypes, ArgPragmaVars) },
-	{ create_pragma_import_c_code(ArgPragmaVars, ArgInstTable, ModuleInfo,
-			C_Code1, C_Code2) },
+	{ create_pragma_import_c_code(ArgPragmaVars, InstMap, ArgInstTable,
+			ModuleInfo, C_Code1, C_Code2) },
 	{ string__append(C_Code2, ");", C_Code) },
 
 	%
@@ -2309,19 +2311,19 @@ pred_add_pragma_import(PredInfo0, PredId, ProcId, MayCallMercury, C_Function,
 %	(i.e. all of them, or all of them except the return value).
 %
 :- pred handle_return_value(code_model, pred_or_func,
-		assoc_list(pragma_var, type), inst_table, module_info,
-		assoc_list(pragma_var, type), string).
-:- mode handle_return_value(in, in, in, in, in, out, out) is det.
+		assoc_list(pragma_var, type), instmap, inst_table,
+		module_info, assoc_list(pragma_var, type), string).
+:- mode handle_return_value(in, in, in, in, in, in, out, out) is det.
 
-handle_return_value(CodeModel, PredOrFunc, Args0, InstTable, ModuleInfo, Args,
-			C_Code0) :-
+handle_return_value(CodeModel, PredOrFunc, Args0, InstMap, InstTable,
+			ModuleInfo, Args, C_Code0) :-
 	( CodeModel = model_det,
 		(
 			PredOrFunc = function,
 			pred_args_to_func_args(Args0, Args1, RetArg),
 			RetArg = pragma_var(_, RetArgName, RetMode) - RetType,
-			mode_to_arg_mode(InstTable, ModuleInfo, RetMode,
-				RetType, RetArgMode),
+			mode_to_arg_mode(InstMap, InstTable, ModuleInfo,
+				RetMode, RetType, RetArgMode),
 			RetArgMode = top_out,
 			\+ export__exclude_argument_type(RetType)
 		->
@@ -2344,7 +2346,8 @@ handle_return_value(CodeModel, PredOrFunc, Args0, InstTable, ModuleInfo, Args,
 		C_Code0 = "\n#error ""cannot import nondet procedure""\n",
 		Args2 = Args0
 	),
-	list__filter(include_import_arg(InstTable, ModuleInfo), Args2, Args).
+	list__filter(include_import_arg(InstMap, InstTable, ModuleInfo),
+			Args2, Args).
 
 %
 % include_import_arg(M, Arg):
@@ -2352,12 +2355,13 @@ handle_return_value(CodeModel, PredOrFunc, Args0, InstTable, ModuleInfo, Args,
 %	function.  Fails if `Arg' has a type such as `io__state' that
 %	is just a dummy argument that should not be passed to C.
 %
-:- pred include_import_arg(inst_table, module_info, pair(pragma_var, type)).
-:- mode include_import_arg(in, in, in) is semidet.
+:- pred include_import_arg(instmap, inst_table, module_info,
+			pair(pragma_var, type)).
+:- mode include_import_arg(in, in, in, in) is semidet.
 
-include_import_arg(InstTable, ModuleInfo,
+include_import_arg(InstMap, InstTable, ModuleInfo,
 			pragma_var(_Var, _Name, Mode) - Type) :-
-	mode_to_arg_mode(InstTable, ModuleInfo, Mode, Type, ArgMode),
+	mode_to_arg_mode(InstMap, InstTable, ModuleInfo, Mode, Type, ArgMode),
 	ArgMode \= top_unused,
 	\+ export__exclude_argument_type(Type).
 
@@ -2395,14 +2399,15 @@ create_pragma_vars([], [_|_], _, _) :-
 %	This predicate creates the C code fragments for each argument
 %	in PragmaVars, and appends them to C_Code0, returning C_Code.
 %
-:- pred create_pragma_import_c_code(list(pragma_var), inst_table, module_info,
-				string, string).
-:- mode create_pragma_import_c_code(in, in, in, in, out) is det.
+:- pred create_pragma_import_c_code(list(pragma_var), instmap, inst_table,
+				module_info, string, string).
+:- mode create_pragma_import_c_code(in, in, in, in, in, out) is det.
 
-create_pragma_import_c_code([], _InstTable, _ModuleInfo, C_Code, C_Code).
+create_pragma_import_c_code([], _InstMap, _InstTable, _ModuleInfo,
+		C_Code, C_Code).
 
-create_pragma_import_c_code([PragmaVar | PragmaVars], InstTable, ModuleInfo,
-		C_Code0, C_Code) :-
+create_pragma_import_c_code([PragmaVar | PragmaVars], InstMap, InstTable,
+		ModuleInfo, C_Code0, C_Code) :-
 	PragmaVar = pragma_var(_Var, ArgName, Mode),
 
 	%
@@ -2412,7 +2417,7 @@ create_pragma_import_c_code([PragmaVar | PragmaVars], InstTable, ModuleInfo,
 	% address, so if the mode is output, we need to put an `&' before
 	% the variable name.
 	%
-	( mode_is_output(InstTable, ModuleInfo, Mode) ->
+	( mode_is_output(InstMap, InstTable, ModuleInfo, Mode) ->
 		string__append(C_Code0, "&", C_Code1)
 	;
 		C_Code1 = C_Code0
@@ -2424,7 +2429,7 @@ create_pragma_import_c_code([PragmaVar | PragmaVars], InstTable, ModuleInfo,
 		C_Code3 = C_Code2
 	),
 
-	create_pragma_import_c_code(PragmaVars, InstTable, ModuleInfo,
+	create_pragma_import_c_code(PragmaVars, InstMap, InstTable, ModuleInfo,
 			C_Code3, C_Code).
 
 %-----------------------------------------------------------------------------%
@@ -2531,10 +2536,11 @@ module_add_pragma_c_code(MayCallMercury, PredName, PredOrFunc, PVars, VarSet,
 			{ module_info_set_predicate_table(ModuleInfo0, 
 				PredicateTable, ModuleInfo) },
 			{ pragma_get_var_infos(PVars, ArgInfo) },
-			{ inst_table_init(InstTable) },	% YYY
-			maybe_warn_pragma_singletons(PragmaImpl, InstTable,
-				ArgInfo, Context, PredOrFunc - PredName/Arity,
-				ModuleInfo)
+			{ inst_table_init(InstTable) },		% YYY
+			{ instmap__init_reachable(InstMap) },	% YYY
+			maybe_warn_pragma_singletons(PragmaImpl, InstMap,
+				InstTable, ArgInfo, Context,
+				PredOrFunc - PredName/Arity, ModuleInfo)
 		;
 			{ module_info_incr_errors(ModuleInfo0, ModuleInfo) }, 
 			io__stderr_stream(StdErr),
@@ -3038,8 +3044,9 @@ warn_singletons_in_goal_2(pragma_c_code(_, _, _, _, ArgInfo0, _, PragmaImpl),
 		GoalInfo, _QuantVars, _VarSet, PredCallId, MI) --> 
 	{ goal_info_get_context(GoalInfo, Context) },
 	{ ArgInfo0 = pragma_c_code_arg_info(InstTable, ArgInfo) },
-	warn_singletons_in_pragma_c_code(PragmaImpl, InstTable, ArgInfo,
-		Context, PredCallId, MI).
+	{ instmap__init_reachable(InstMap) },	% YYY
+	warn_singletons_in_pragma_c_code(PragmaImpl, InstMap, InstTable,
+		ArgInfo, Context, PredCallId, MI).
 
 :- pred warn_singletons_in_goal_list(list(hlds_goal), set(var), varset,
 	pred_or_func_call_id, module_info, io__state, io__state).
@@ -3105,17 +3112,18 @@ warn_singletons_in_unify(X, lambda_goal(_PredOrFunc, _NonLocals, LambdaVars,
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_warn_pragma_singletons(pragma_c_code_impl, inst_table,
+:- pred maybe_warn_pragma_singletons(pragma_c_code_impl, instmap, inst_table,
 	list(maybe(pair(string, mode))), term__context, pred_or_func_call_id,
 	module_info, io__state, io__state).
-:- mode maybe_warn_pragma_singletons(in, in, in, in, in, in, di, uo) is det.
+:- mode maybe_warn_pragma_singletons(in, in, in, in, in, in, in,
+	di, uo) is det.
 
-maybe_warn_pragma_singletons(PragmaImpl, InstTable, ArgInfo, Context, CallId,
-			MI) -->
+maybe_warn_pragma_singletons(PragmaImpl, InstMap, InstTable, ArgInfo, Context,
+			CallId, MI) -->
 	globals__io_lookup_bool_option(warn_singleton_vars, WarnSingletonVars),
 	( { WarnSingletonVars = yes } ->
 		% YYY { ArgInfo0 = pragma_c_code_arg_info(InstTable, ArgInfo) },
-		warn_singletons_in_pragma_c_code(PragmaImpl, InstTable,
+		warn_singletons_in_pragma_c_code(PragmaImpl, InstMap, InstTable,
 			ArgInfo, Context, CallId, MI)
 	;	
 		[]
@@ -3124,12 +3132,13 @@ maybe_warn_pragma_singletons(PragmaImpl, InstTable, ArgInfo, Context, CallId,
 	% warn_singletons_in_pragma_c_code checks to see if each variable is
 	% mentioned at least once in the c code fragments that ought to
 	% mention it. If not, it gives a warning.
-:- pred warn_singletons_in_pragma_c_code(pragma_c_code_impl, inst_table,
-	list(maybe(pair(string, mode))), term__context, pred_or_func_call_id,
-	module_info, io__state, io__state).
-:- mode warn_singletons_in_pragma_c_code(in, in, in, in, in, in, di, uo) is det.
+:- pred warn_singletons_in_pragma_c_code(pragma_c_code_impl, instmap,
+		inst_table, list(maybe(pair(string, mode))), term__context,
+		pred_or_func_call_id, module_info, io__state, io__state).
+:- mode warn_singletons_in_pragma_c_code(in, in, in, in, in, in, in,
+		di, uo) is det.
 
-warn_singletons_in_pragma_c_code(PragmaImpl, InstTable, ArgInfo,
+warn_singletons_in_pragma_c_code(PragmaImpl, InstMap, InstTable, ArgInfo,
 		Context, PredOrFunc - PredCallId, ModuleInfo) -->
 	(
 		{ PragmaImpl = ordinary(C_Code, _) },
@@ -3168,7 +3177,8 @@ warn_singletons_in_pragma_c_code(PragmaImpl, InstTable, ArgInfo,
 		{ c_code_to_name_list(SharedCode, SharedCodeList) },
 		{ solutions(lambda([Name::out] is nondet, (
 				list__member(yes(Name - Mode), ArgInfo),
-				mode_is_input(InstTable, ModuleInfo, Mode),
+				mode_is_input(InstMap, InstTable, ModuleInfo,
+						Mode),
 				\+ string__prefix(Name, "_"),
 				\+ list__member(Name, FirstCodeList)
 			)), UnmentionedInputVars) },
@@ -3195,7 +3205,8 @@ warn_singletons_in_pragma_c_code(PragmaImpl, InstTable, ArgInfo,
 		),
 		{ solutions(lambda([Name::out] is nondet, (
 				list__member(yes(Name - Mode), ArgInfo),
-				mode_is_output(InstTable, ModuleInfo, Mode),
+				mode_is_output(InstMap, InstTable, ModuleInfo,
+						Mode),
 				\+ string__prefix(Name, "_"),
 				\+ list__member(Name, FirstCodeList),
 				\+ list__member(Name, SharedCodeList)
@@ -3223,7 +3234,8 @@ warn_singletons_in_pragma_c_code(PragmaImpl, InstTable, ArgInfo,
 		),
 		{ solutions(lambda([Name::out] is nondet, (
 				list__member(yes(Name - Mode), ArgInfo),
-				mode_is_output(InstTable, ModuleInfo, Mode),
+				mode_is_output(InstMap, InstTable, ModuleInfo,
+						Mode),
 				\+ string__prefix(Name, "_"),
 				\+ list__member(Name, LaterCodeList),
 				\+ list__member(Name, SharedCodeList)
@@ -4210,8 +4222,8 @@ create_atomic_unification(A, B, Context, UnifyMainContext, UnifySubContext,
 		Goal) :-
 	UMode = ((free(unique) - free(unique)) -> 
 		(free(unique) - free(unique))),
-	Mode = ((free(unique) -> free(unique)) - 
-		(free(unique) -> free(unique))),
+	Mode = ((free(unique) - free(unique)) - 
+		(free(unique) - free(unique))),
 	UnifyInfo = complicated_unify(UMode, can_fail),
 	UnifyC = unify_context(UnifyMainContext, UnifySubContext),
 	goal_info_init(GoalInfo0),

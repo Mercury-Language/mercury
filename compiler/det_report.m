@@ -298,10 +298,12 @@ check_for_multisoln_func(_PredId, _ProcId, PredInfo, ProcInfo,
 			argument_modes(ArgInstTable, PredArgModes)) },
 		{ pred_args_to_func_args(PredArgModes,
 			FuncArgModes, _FuncResultMode) },
+		{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo0,
+			InstMap) },
 		{ \+ (
 			list__member(FuncArgMode, FuncArgModes),
-			\+ mode_is_fully_input(ArgInstTable, ModuleInfo0,
-				FuncArgMode)
+			\+ mode_is_fully_input(InstMap, ArgInstTable,
+				ModuleInfo0, FuncArgMode)
 		  )
 	 	} 
 	->

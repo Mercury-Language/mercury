@@ -1316,7 +1316,8 @@ proc_info_arglives(ProcInfo, ModuleInfo, ArgLives) :-
 		ArgLives = ArgLives0
 	;
 		proc_info_argmodes(ProcInfo, argument_modes(InstTable, Modes)),
-		get_arg_lives(Modes, InstTable, ModuleInfo, ArgLives)
+		proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
+		get_arg_lives(Modes, InstMap, InstTable, ModuleInfo, ArgLives)
 	).
 
 proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) :-

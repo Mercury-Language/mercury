@@ -70,7 +70,7 @@
 :- import_module int, require, bool, assoc_list.
 :- import_module code_gen, type_util, tree.
 :- import_module dense_switch, globals, options, mode_util.
-:- import_module exprn_aux, getopt, prog_data, instmap.
+:- import_module exprn_aux, getopt, prog_data, instmap, inst_match.
 
 	% Most of this predicate is taken from dense_switch.m
 
@@ -172,17 +172,19 @@ lookup_switch__figure_out_output_vars(GoalInfo, OutVars) -->
 		code_info__get_instmap(CurrentInstMap),
 		code_info__get_module_info(ModuleInfo),
 		code_info__get_inst_table(InstTable),
-		{ instmap_delta_changed_vars(InstMapDelta, ChangedVars) },
 		{ instmap__apply_instmap_delta(CurrentInstMap, InstMapDelta,
 			InstMapAfter) },
+		{ instmap__vars(InstMapAfter, MaybeChangedVars) },
 		{ Lambda = lambda([Var::out] is nondet, (
 			% If a variable has a final inst, then it changed
 			% instantiatedness during the switch.
-			set__member(Var, ChangedVars),
+			set__member(Var, MaybeChangedVars),
 			instmap__lookup_var(CurrentInstMap, Var, Initial),
+			inst_is_free(Initial, CurrentInstMap, InstTable,
+				ModuleInfo),
 			instmap__lookup_var(InstMapAfter, Var, Final),
-			mode_is_output(InstTable, ModuleInfo,
-				(Initial -> Final))
+			inst_is_bound(Final, InstMapAfter, InstTable,
+				ModuleInfo)
 		)) },
 		{ solutions(Lambda, OutVars) }
 	).

@@ -121,29 +121,17 @@ unique_modes__check_goal(Goal0, Goal, ModeInfo0, ModeInfo) :-
 	% 
 	% Restore the original bag of nondet-live vars
 	%
-	mode_info_set_nondet_live_vars(NondetLiveVars0, ModeInfo3, ModeInfo4),
+	mode_info_set_nondet_live_vars(NondetLiveVars0, ModeInfo3, ModeInfo),
 
 	%
 	% Grab the final instmap, compute the change in insts
 	% over this goal, and save that instmap_delta in the goal_info.
 	%
-	mode_info_get_instmap(ModeInfo4, InstMap),
-	goal_info_get_nonlocals(GoalInfo0, NonLocals),
-	compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap),
+	mode_info_get_instmap(ModeInfo, InstMap),
+	compute_instmap_delta(InstMap0, InstMap, DeltaInstMap),
 	goal_info_set_instmap_delta(GoalInfo0, DeltaInstMap, GoalInfo),
 
-	Goal = GoalExpr - GoalInfo,
-
-	%
-	% Optimise the backward mapping in the inst_key_table.
-	%
-
-	mode_info_get_inst_table(ModeInfo4, InstTable0),
-	instmap__get_inst_keys(InstMap, InstKeys),
-	inst_table_get_inst_key_table(InstTable0, IKT0),
-	inst_key_table_project(IKT0, InstKeys, IKT),
-	inst_table_set_inst_key_table(InstTable0, IKT, InstTable),
-	mode_info_set_inst_table(InstTable, ModeInfo4, ModeInfo).
+	Goal = GoalExpr - GoalInfo.
 
 	% Make all nondet-live variables whose current inst
 	% is `unique' become `mostly_unique'.
@@ -191,27 +179,27 @@ select_nondet_live_vars([Var|Vars], ModeInfo, NondetLiveVars) :-
 	% (other than changes which just add information,
 	% e.g. `ground -> bound(42)'.)
 	%
-:- pred select_changed_inst_vars(list(var), instmap_delta, mode_info,
+:- pred select_changed_inst_vars(list(var), instmap, instmap, mode_info,
 				list(var)).
-:- mode select_changed_inst_vars(in, in, mode_info_ui, out) is det.
+:- mode select_changed_inst_vars(in, in, in, mode_info_ui, out) is det.
 
-select_changed_inst_vars([], _DeltaInstMap, _ModeInfo, []).
-select_changed_inst_vars([Var | Vars], DeltaInstMap, ModeInfo, ChangedVars) :-
+select_changed_inst_vars([], _InstMapBefore, _InstMapAfter, _ModeInfo, []).
+select_changed_inst_vars([Var | Vars], InstMapBefore, InstMapAfter,
+		ModeInfo, ChangedVars) :-
 	mode_info_get_module_info(ModeInfo, ModuleInfo),
-	mode_info_get_instmap(ModeInfo, InstMap0),
 	mode_info_get_inst_table(ModeInfo, InstTable),
-	instmap__lookup_var(InstMap0, Var, Inst0),
+	instmap__lookup_var(InstMapBefore, Var, Inst0),
+	instmap__lookup_var(InstMapAfter, Var, Inst),
 	(
-		instmap_delta_is_reachable(DeltaInstMap),
-		instmap_delta_search_var(DeltaInstMap, Var, Inst),
-		\+ inst_matches_final(Inst, Inst0, InstTable, ModuleInfo)
+		\+ inst_matches_final(Inst, InstMapAfter, Inst0, InstMapBefore,
+			InstTable, ModuleInfo)
 	->
 		ChangedVars = [Var | ChangedVars1],
-		select_changed_inst_vars(Vars, DeltaInstMap, ModeInfo,
-			ChangedVars1)
+		select_changed_inst_vars(Vars, InstMapBefore, InstMapAfter,
+			ModeInfo, ChangedVars1)
 	;
-		select_changed_inst_vars(Vars, DeltaInstMap, ModeInfo,
-			ChangedVars)
+		select_changed_inst_vars(Vars, InstMapBefore, InstMapAfter,
+			ModeInfo, ChangedVars)
 	).
 
 :- pred make_var_list_mostly_uniq(list(var), mode_info, mode_info).
@@ -237,20 +225,18 @@ make_var_mostly_uniq(Var, ModeInfo0, ModeInfo) :-
 		instmap__vars_list(InstMap0, Vars),
 		list__member(Var, Vars),
 		instmap__lookup_var(InstMap0, Var, Inst0),
-		inst_expand(InstTable0, ModuleInfo0, Inst0, Inst1),
+		inst_expand(InstMap0, InstTable0, ModuleInfo0, Inst0, Inst1),
 		( Inst1 = ground(unique, _)
 		; Inst1 = bound(unique, _)
 		; Inst1 = any(unique)
 		)
 	->
-		map__init(Sub0),
-		make_mostly_uniq_inst(Inst0, InstTable0, ModuleInfo0, Sub0,
-			Inst, InstTable, ModuleInfo, Sub),
+		make_mostly_uniq_inst(Inst0, InstTable0, ModuleInfo0, InstMap0,
+			Inst, InstTable, ModuleInfo, InstMap1),
 		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
 		mode_info_set_inst_table(InstTable, ModeInfo1, ModeInfo2),
-		mode_info_apply_inst_key_sub(Sub, ModeInfo2, ModeInfo3),
-		instmap__set(InstMap0, Var, Inst, InstMap),
-		mode_info_set_instmap(InstMap, ModeInfo3, ModeInfo)
+		instmap__set(InstMap1, Var, Inst, InstMap),
+		mode_info_set_instmap(InstMap, ModeInfo2, ModeInfo)
 	;
 		ModeInfo = ModeInfo0
 	).
@@ -274,9 +260,10 @@ unique_modes__check_goal_2(par_conj(List0, SM), GoalInfo0,
 		par_conj(List, SM)) -->
 	mode_checkpoint(enter, "par_conj", GoalInfo0),
 	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
+	mode_info_dcg_get_instmap(InstMapBefore),
 	mode_info_add_live_vars(NonLocals),
 	unique_modes__check_par_conj(List0, List, InstMapList),
-	instmap__unify(NonLocals, InstMapList),
+	instmap__unify(NonLocals, InstMapBefore, InstMapList),
 	mode_info_remove_live_vars(NonLocals),
 	mode_checkpoint(exit, "par_conj", GoalInfo0).
 
@@ -287,7 +274,11 @@ unique_modes__check_goal_2(disj(List0, SM), GoalInfo0, disj(List, SM)) -->
 		{ instmap__init_unreachable(InstMap) },
 		mode_info_set_instmap(InstMap)
 	;
-		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
+		mode_info_dcg_get_instmap(InstMap0),
+		{ instmap__vars(InstMap0, OuterNonLocals) },
+		{ goal_info_get_nonlocals(GoalInfo0, InnerNonLocals) },
+		{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
+
 		{ goal_info_get_code_model(GoalInfo0, CodeModel) },
 		% does this disjunction create a choice point?
 		( { CodeModel = model_non } ->
@@ -296,9 +287,9 @@ unique_modes__check_goal_2(disj(List0, SM), GoalInfo0, disj(List, SM)) -->
 			% start of the disjunction and whose inst is `unique'
 			% as instead being only `mostly_unique'.
 			%
-			mode_info_add_live_vars(NonLocals),
+			mode_info_add_live_vars(InnerNonLocals),
 			make_all_nondet_live_vars_mostly_uniq,
-			mode_info_remove_live_vars(NonLocals)
+			mode_info_remove_live_vars(InnerNonLocals)
 		;
 			[]
 		),
@@ -315,12 +306,16 @@ unique_modes__check_goal_2(disj(List0, SM), GoalInfo0, disj(List, SM)) -->
 unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal)
 		-->
 	mode_checkpoint(enter, "if-then-else", GoalInfo0),
-	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
+
+	mode_info_dcg_get_instmap(InstMap0),
+	{ instmap__vars(InstMap0, OuterNonLocals) },
+	{ goal_info_get_nonlocals(GoalInfo0, InnerNonLocals) },
+	{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
+
 	{ unique_modes__goal_get_nonlocals(A0, A_Vars) },
 	{ unique_modes__goal_get_nonlocals(B0, B_Vars) },
 	{ unique_modes__goal_get_nonlocals(C0, C_Vars) },
-	mode_info_dcg_get_instmap(InstMap0),
-	mode_info_lock_vars(if_then_else, NonLocals),
+	mode_info_lock_vars(if_then_else, InnerNonLocals),
 
 	%
 	% At this point, we should set the inst of any `unique'
@@ -338,15 +333,18 @@ unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal)
 	{ select_live_vars(A_Vars_List, ModeInfo, A_Live_Vars) },
 	{ A0 = _ - A0_GoalInfo },
 	{ goal_info_get_instmap_delta(A0_GoalInfo, A0_DeltaInstMap) },
-	{ select_changed_inst_vars(A_Live_Vars, A0_DeltaInstMap, ModeInfo,
-				ChangedVars) },
+	{ mode_info_get_instmap(ModeInfo, InstMapBefore) },
+	{ instmap__apply_instmap_delta(InstMapBefore, A0_DeltaInstMap,
+				InstMapAfter) },
+	{ select_changed_inst_vars(A_Live_Vars, InstMapBefore, InstMapAfter,
+				ModeInfo, ChangedVars) },
 	make_var_list_mostly_uniq(ChangedVars),
 	mode_info_remove_live_vars(C_Vars),
 
 	mode_info_add_live_vars(B_Vars),
 	unique_modes__check_goal(A0, A),
 	mode_info_remove_live_vars(B_Vars),
-	mode_info_unlock_vars(if_then_else, NonLocals),
+	mode_info_unlock_vars(if_then_else, InnerNonLocals),
 	% mode_info_dcg_get_instmap(InstMapA),
 	unique_modes__check_goal(B0, B),
 	mode_info_dcg_get_instmap(InstMapB),
@@ -451,7 +449,10 @@ unique_modes__check_goal_2(switch(Var, CanFail, Cases0, SM), GoalInfo0,
 		{ instmap__init_unreachable(InstMap) },
 		mode_info_set_instmap(InstMap)
 	;
-		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
+		mode_info_dcg_get_instmap(InstMap0),
+		{ instmap__vars(InstMap0, OuterNonLocals) },
+		{ goal_info_get_nonlocals(GoalInfo0, InnerNonLocals) },
+		{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
 		unique_modes__check_case_list(Cases0, Var, Cases, InstMapList),
 		instmap__merge(NonLocals, InstMapList, disj)
 	),
@@ -671,12 +672,13 @@ unique_modes__check_case_list([Case0 | Cases0], Var,
 		% instmap before processing this case
 	mode_info_bind_var_to_functor(Var, ConsId),
 	mode_info_dcg_get_instmap(InstMap1),
-	{ instmap__vars(InstMap0, InstMapVars) },
-	{ compute_instmap_delta(InstMap0, InstMap1, InstMapVars, IMDelta) },
+	% { instmap__vars(InstMap0, InstMapVars) },
+	{ compute_instmap_delta(InstMap0, InstMap1, IMDelta) },
 
 	unique_modes__check_goal(Goal0, Goal1),
 	mode_info_dcg_get_instmap(InstMap),
-	{ fixup_switch_var(Var, InstMap0, InstMap, Goal1, Goal) },
+	% { fixup_switch_var(Var, InstMap0, InstMap, Goal1, Goal) },
+	{ Goal = Goal1 },
 	mode_info_set_instmap(InstMap0),
 	unique_modes__check_case_list(Cases0, Var, Cases, InstMaps).
 

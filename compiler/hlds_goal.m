@@ -530,7 +530,7 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 
 :- interface.
 
-:- type unify_mode	==	pair(mode, mode).
+:- type unify_mode	==	pair(pair(inst)).
 
 :- type uni_mode	--->	pair(inst) -> pair(inst).
 					% Each uni_mode maps a pair

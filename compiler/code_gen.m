@@ -866,18 +866,20 @@ code_gen__generate_det_goal_2(
 							_GoalInfo, Instr) -->
 	ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, StoreMap,
 		Instr).
-code_gen__generate_det_goal_2(unify(_L, _R, _U, Uni, _C), _GoalInfo, Instr) -->
+code_gen__generate_det_goal_2(unify(_L, _R, _U, Uni, _C), GoalInfo, Instr) -->
 	(
 		{ Uni = assign(Left, Right) },
 		unify_gen__generate_assignment(Left, Right, Instr)
 	;
 		{ Uni = construct(Var, ConsId, Args, Modes) },
+		{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
 		unify_gen__generate_construction(Var, ConsId, Args,
-								Modes, Instr)
+					Modes, InstMapDelta, Instr)
 	;
 		{ Uni = deconstruct(Var, ConsId, Args, Modes, _Det) },
+		{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
 		unify_gen__generate_det_deconstruction(Var, ConsId, Args,
-								Modes, Instr)
+					Modes, InstMapDelta, Instr)
 	;
 		% These should have been transformed into calls by
 		% polymorphism.m.
@@ -957,18 +959,20 @@ code_gen__generate_semi_goal_2(
 	ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, StoreMap,
 		Instr).
 code_gen__generate_semi_goal_2(unify(_L, _R, _U, Uni, _C),
-							_GoalInfo, Code) -->
+							GoalInfo, Code) -->
 	(
 		{ Uni = assign(Left, Right) },
 		unify_gen__generate_assignment(Left, Right, Code)
 	;
 		{ Uni = construct(Var, ConsId, Args, Modes) },
+		{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
 		unify_gen__generate_construction(Var, ConsId, Args,
-								Modes, Code)
+					Modes, InstMapDelta, Code)
 	;
 		{ Uni = deconstruct(Var, ConsId, Args, Modes, _) },
+		{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
 		unify_gen__generate_semi_deconstruction(Var, ConsId, Args,
-								Modes, Code)
+					Modes, InstMapDelta, Code)
 	;
 		{ Uni = simple_test(Var1, Var2) },
 		unify_gen__generate_test(Var1, Var2, Code)

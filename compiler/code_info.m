@@ -1384,7 +1384,7 @@ code_info__stacklist_to_valrefs([], _, _, _, []).
 code_info__stacklist_to_valrefs([V - L | Rest0], InstMap, InstTable,
 		ModuleInfo, [V - Rs | Rest]) :-
 	instmap__lookup_var(InstMap, V, Inst),
-	( inst_is_free_alias(Inst, InstTable, ModuleInfo) ->
+	( inst_is_free_alias(Inst, InstMap, InstTable, ModuleInfo) ->
 		VVal = reference(L)
 	;
 		VVal = value(lval(L))
@@ -2917,7 +2917,7 @@ code_info__var_is_free_alias(Var) -->
 	code_info__get_inst_table(InstTable),
 	code_info__get_module_info(ModuleInfo),
 	{ instmap__lookup_var(InstMap, Var, Inst) },
-	{ inst_is_free_alias(Inst, InstTable, ModuleInfo) }.
+	{ inst_is_free_alias(Inst, InstMap, InstTable, ModuleInfo) }.
 
 code_info__max_reg_in_use(Max) -->
 	code_info__get_exprn_info(Exprn),

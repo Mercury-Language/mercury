@@ -826,8 +826,9 @@ hlds_out__write_goal_a(Goal - GoalInfo, InstTable, ModuleInfo, VarSet, AppendVar
 		{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
 		(
 			{ instmap_delta_is_reachable(InstMapDelta) },
-			{ instmap_delta_changed_vars(InstMapDelta, Vars) },
-			{ set__empty(Vars) }
+			{ semidet_fail }
+			% { instmap_delta_changed_vars(InstMapDelta, Vars) },
+			% { set__empty(Vars) }
 		->
 			[]
 		;
@@ -862,6 +863,19 @@ hlds_out__write_goal_a(Goal - GoalInfo, InstTable, ModuleInfo, VarSet, AppendVar
 			io__write_string("\n")
 		;
 			[]
+		),
+		{ goal_info_get_refs(GoalInfo, Refs) },
+		{ set__to_sorted_list(Refs, RefList) },
+		(
+			{ RefList = [] }
+		->
+			[]
+		;
+			hlds_out__write_indent(Indent),
+			io__write_string("% refs: "),
+			mercury_output_vars(RefList, VarSet,
+				AppendVarnums),
+			io__write_string("\n")
 		)
 	;
 		[]
@@ -1668,8 +1682,9 @@ hlds_out__write_case(case(ConsId, IMDelta, Goal), Var, InstTable, ModuleInfo,
 	( { string__contains_char(Verbose, 'i') } ->
 		(
 			{ instmap_delta_is_reachable(IMDelta) },
-			{ instmap_delta_changed_vars(IMDelta, Vars) },
-			{ set__empty(Vars) }
+			{ semidet_fail }
+			% { instmap_delta_changed_vars(IMDelta, Vars) },
+			% { set__empty(Vars) }
 		->
 			[]
 		;
@@ -1725,28 +1740,28 @@ hlds_out__write_instmap(InstMap, VarSet, AppendVarnums, Indent,
 	;
 		{ instmap__to_assoc_list(InstMap, AssocList) },
 		hlds_out__write_instmap_2(AssocList, VarSet, AppendVarnums,
-			Indent, InstTable)
+			Indent, InstMap, InstTable)
 	).
 
 :- pred hlds_out__write_instmap_2(assoc_list(var, inst), varset, bool, int,
-	inst_table, io__state, io__state).
-:- mode hlds_out__write_instmap_2(in, in, in, in, in, di, uo) is det.
+	instmap, inst_table, io__state, io__state).
+:- mode hlds_out__write_instmap_2(in, in, in, in, in, in, di, uo) is det.
 
-hlds_out__write_instmap_2([], _, _, _, _) --> [].
+hlds_out__write_instmap_2([], _, _, _, _, _) --> [].
 hlds_out__write_instmap_2([Var - Inst | Rest], VarSet, AppendVarnums, Indent,
-		InstTable) -->
+		InstMap, InstTable) -->
 	mercury_output_var(Var, VarSet, AppendVarnums),
 	io__write_string(" -> "),
 	{ varset__init(InstVarSet) },
 	mercury_output_structured_inst(expand_noisily, Inst, Indent,
-		InstVarSet, InstTable),
+		InstVarSet, InstMap, InstTable),
 	( { Rest = [] } ->
 		[]
 	;
 		mercury_output_newline(Indent),
 		io__write_string("%            "),
 		hlds_out__write_instmap_2(Rest, VarSet, AppendVarnums, Indent,
-			InstTable)
+			InstMap, InstTable)
 	).
 
 :- pred hlds_out__write_instmap_delta(instmap_delta, varset, bool, int,
@@ -1759,8 +1774,9 @@ hlds_out__write_instmap_delta(InstMapDelta, VarSet, AppendVarnums, Indent,
 		io__write_string("unreachable")
 	;
 		{ instmap_delta_to_assoc_list(InstMapDelta, AssocList) },
+		{ instmap__init_reachable(InstMap) },	% YYY
 		hlds_out__write_instmap_2(AssocList, VarSet, AppendVarnums,
-			Indent, InstTable)
+			Indent, InstMap, InstTable)
 	).
 
 hlds_out__write_import_status(local) -->

@@ -39,8 +39,9 @@ lco_modulo_constructors(PredId, ProcId, ProcInfo0, ProcInfo, ModuleInfo0,
 	write_proc_progress_message("% Trying to introduce LCO in ",
 		PredId, ProcId, ModuleInfo0),
 	{ proc_info_goal(ProcInfo0, Goal0) },
+	{ proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0) },
 	{ lco_in_goal(Goal0, Goal, ModuleInfo0, ModuleInfo1,
-		ProcInfo0, ProcInfo1, Changed) },
+		InstMap0, ProcInfo0, ProcInfo1, Changed) },
 	( { Changed = yes } ->
 		{ proc_info_set_goal(ProcInfo1, Goal, ProcInfo) },
 		{ ModuleInfo = ModuleInfo1 },
@@ -56,12 +57,13 @@ lco_modulo_constructors(PredId, ProcId, ProcInfo0, ProcInfo, ModuleInfo0,
 
 % Do the LCO optimisation and recompute the instmap deltas.
 :- pred lco_in_goal(hlds_goal, hlds_goal, module_info, module_info, 
-		proc_info, proc_info, bool).
-:- mode lco_in_goal(in, out, in, out, in, out, out) is det.
+		instmap, proc_info, proc_info, bool).
+:- mode lco_in_goal(in, out, in, out, in, in, out, out) is det.
 
-lco_in_goal(Goal0, Goal, Module0, Module, ProcInfo0, ProcInfo, Changed):-
-	lco_in_sub_goal(Goal0, Goal1, Module0, Module1, ProcInfo0, ProcInfo1,
-		Changed),
+lco_in_goal(Goal0, Goal, Module0, Module, InstMap0, ProcInfo0, ProcInfo,
+		Changed):-
+	lco_in_sub_goal(Goal0, Goal1, Module0, Module1, InstMap0,
+		ProcInfo0, ProcInfo1, Changed),
 	(
 		Changed = yes,
 		proc_info_inst_table(ProcInfo1, InstTable0),
@@ -82,95 +84,110 @@ lco_in_goal(Goal0, Goal, Module0, Module, ProcInfo0, ProcInfo, Changed):-
 
 % Do the LCO optimisation without recomputing instmap deltas.
 :- pred lco_in_sub_goal(hlds_goal, hlds_goal, module_info, module_info,
-		proc_info, proc_info, bool).
-:- mode lco_in_sub_goal(in, out, in, out, in, out, out) is det.
+		instmap, proc_info, proc_info, bool).
+:- mode lco_in_sub_goal(in, out, in, out, in, in, out, out) is det.
 
 lco_in_sub_goal(Goal0 - GoalInfo, Goal - GoalInfo, Module0, Module,
-		Proc0, Proc, Changed) :-
-	lco_in_goal_2(Goal0, Goal, Module0, Module, Proc0, Proc, Changed).
+		InstMap0, Proc0, Proc, Changed) :-
+	lco_in_goal_2(Goal0, Goal, Module0, Module, InstMap0,
+		Proc0, Proc, Changed).
 
 %-----------------------------------------------------------------------------%
 
 :- pred lco_in_goal_2(hlds_goal_expr, hlds_goal_expr, module_info, 
-		module_info, proc_info, proc_info, bool).
-:- mode lco_in_goal_2(in, out, in, out, in, out, out) is det.
+		module_info, instmap, proc_info, proc_info, bool).
+:- mode lco_in_goal_2(in, out, in, out, in, in, out, out) is det.
 
-lco_in_goal_2(conj(Goals0), conj(Goals), Module0, Module, Proc0, Proc, Changed)
-		:-
+lco_in_goal_2(conj(Goals0), conj(Goals), Module0, Module, InstMap0,
+		Proc0, Proc, Changed) :-
 	list__reverse(Goals0, RevGoals0),
-	lco_in_conj(RevGoals0, [], Goals, Module0, Module, Proc0, Proc,
-		Changed).
+	lco_in_conj(RevGoals0, [], Goals, Module0, Module, InstMap0,
+		Proc0, Proc, Changed).
 
 	% XXX Some execution algorithm issues here.
 lco_in_goal_2(par_conj(Goals, SM), par_conj(Goals, SM), Module, Module,
-		Proc, Proc, no).
+		_, Proc, Proc, no).
 
-lco_in_goal_2(disj(Goals0, SM), disj(Goals, SM), Module0, Module, Proc0, Proc,
-		Changed) :-
-	lco_in_disj(Goals0, Goals, Module0, Module, Proc0, Proc, Changed).
+lco_in_goal_2(disj(Goals0, SM), disj(Goals, SM), Module0, Module, InstMap0,
+		Proc0, Proc, Changed) :-
+	lco_in_disj(Goals0, Goals, Module0, Module, InstMap0, Proc0, Proc,
+		Changed).
 
 lco_in_goal_2(switch(Var, Det, Cases0, SM), switch(Var, Det, Cases, SM),
-		Module0, Module, Proc0, Proc, Changed) :-
-	lco_in_cases(Cases0, Cases, Module0, Module, Proc0, Proc, Changed).
+		Module0, Module, InstMap0, Proc0, Proc, Changed) :-
+	lco_in_cases(Cases0, Cases, Module0, Module, InstMap0, Proc0, Proc,
+		Changed).
 
 lco_in_goal_2(if_then_else(Vars, Cond, Then0, Else0, SM),
 		if_then_else(Vars, Cond, Then, Else, SM), Module0, Module,
-		Proc0, Proc, Changed) :-
-	lco_in_sub_goal(Then0, Then, Module0, Module1, Proc0, Proc1, Changed0),
-	lco_in_sub_goal(Else0, Else, Module1, Module, Proc1, Proc, Changed1),
+		InstMap0, Proc0, Proc, Changed) :-
+	Cond = _ - CondInfo,
+	goal_info_get_instmap_delta(CondInfo, InstMapDelta),
+	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
+	lco_in_sub_goal(Then0, Then, Module0, Module1, InstMap1,
+			Proc0, Proc1, Changed0),
+	lco_in_sub_goal(Else0, Else, Module1, Module, InstMap0,
+			Proc1, Proc, Changed1),
 	bool__or(Changed0, Changed1, Changed).
 
 lco_in_goal_2(some(Vars, Goal0), some(Vars, Goal), Module0, Module,
-		Proc0, Proc, Changed) :-
-	lco_in_sub_goal(Goal0, Goal, Module0, Module, Proc0, Proc, Changed).
+		InstMap0, Proc0, Proc, Changed) :-
+	lco_in_sub_goal(Goal0, Goal, Module0, Module, InstMap0,
+		Proc0, Proc, Changed).
 
-lco_in_goal_2(not(Goal), not(Goal), Module, Module, Proc, Proc, no).
+lco_in_goal_2(not(Goal), not(Goal), Module, Module, _, Proc, Proc, no).
 
 lco_in_goal_2(higher_order_call(A,B,C,D,E,F), higher_order_call(A,B,C,D,E,F),
-		Module, Module, Proc, Proc, no).
+		Module, Module, _, Proc, Proc, no).
 
 lco_in_goal_2(class_method_call(A,B,C,D,E,F), class_method_call(A,B,C,D,E,F),
-		Module, Module, Proc, Proc, no).
+		Module, Module, _, Proc, Proc, no).
 
 lco_in_goal_2(call(A,B,C,D,E,F), call(A,B,C,D,E,F), Module, Module,
-		Proc, Proc, no).
+		_, Proc, Proc, no).
 
-lco_in_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E), Module, Module, Proc, Proc,
-		no).
+lco_in_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E), Module, Module,
+		_, Proc, Proc, no).
 
 lco_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), pragma_c_code(A,B,C,D,E,F,G), 
-		Module, Module, Proc, Proc, no).
+		Module, Module, _, Proc, Proc, no).
 
 %-----------------------------------------------------------------------------%
 
 :- pred lco_in_disj(list(hlds_goal), list(hlds_goal), module_info, 
-		module_info, proc_info, proc_info, bool).
-:- mode lco_in_disj(in, out, in, out, in, out, out) is det.
+		module_info, instmap, proc_info, proc_info, bool).
+:- mode lco_in_disj(in, out, in, out, in, in, out, out) is det.
 
-lco_in_disj([], [], Module, Module, Proc, Proc, no).
-lco_in_disj([Goal0 | Goals0], [Goal | Goals], Module0, Module, Proc0, Proc,
-		Changed) :-
-	lco_in_sub_goal(Goal0, Goal, Module0, Module1, Proc0, Proc1, Changed0),
-	lco_in_disj(Goals0, Goals, Module1, Module, Proc1, Proc, Changed1),
+lco_in_disj([], [], Module, Module, _, Proc, Proc, no).
+lco_in_disj([Goal0 | Goals0], [Goal | Goals], Module0, Module, InstMap0,
+		Proc0, Proc, Changed) :-
+	lco_in_sub_goal(Goal0, Goal, Module0, Module1, InstMap0,
+			Proc0, Proc1, Changed0),
+	lco_in_disj(Goals0, Goals, Module1, Module, InstMap0,
+			Proc1, Proc, Changed1),
 	bool__or(Changed0, Changed1, Changed).
 
 %-----------------------------------------------------------------------------%
 
 :- pred lco_in_cases(list(case), list(case), module_info, module_info,
-		proc_info, proc_info, bool).
-:- mode lco_in_cases(in, out, in, out, in, out, out) is det.
+		instmap, proc_info, proc_info, bool).
+:- mode lco_in_cases(in, out, in, out, in, in, out, out) is det.
 
-lco_in_cases([], [], Module, Module, Proc, Proc, no).
+lco_in_cases([], [], Module, Module, _, Proc, Proc, no).
 lco_in_cases([case(Cons, IMD, Goal0) | Cases0], [case(Cons, IMD, Goal) | Cases],
-		Module0, Module, Proc0, Proc, Changed) :-
-	lco_in_sub_goal(Goal0, Goal, Module0, Module1, Proc0, Proc1, Changed0),
-	lco_in_cases(Cases0, Cases, Module1, Module, Proc1, Proc, Changed1),
+		Module0, Module, InstMap0, Proc0, Proc, Changed) :-
+	instmap__apply_instmap_delta(InstMap0, IMD, InstMap1),
+	lco_in_sub_goal(Goal0, Goal, Module0, Module1, InstMap1,
+			Proc0, Proc1, Changed0),
+	lco_in_cases(Cases0, Cases, Module1, Module, InstMap0,
+			Proc1, Proc, Changed1),
 	bool__or(Changed0, Changed1, Changed).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-% lco_in_conj(RevGoals, Unifies, Goals, Module0, Module, Proc0, Proc, Changed)
+% lco_in_conj(RevGoals, Unifies, Goals, Module0, Module, InstMap0,
+%			Proc0, Proc, Changed)
 %
 % Given a conjunction whose structure is: "goals*,call,construct*",
 % move the construction unifications before the call.
@@ -183,13 +200,15 @@ lco_in_cases([case(Cons, IMD, Goal0) | Cases0], [case(Cons, IMD, Goal) | Cases],
 % invariant: append(reverse(RevGoals), Unifies) = original conjunction
 
 :- pred lco_in_conj(list(hlds_goal), list(hlds_goal), list(hlds_goal),
-	module_info, module_info, proc_info, proc_info, bool).
-:- mode lco_in_conj(in, in, out, in, out, in, out, out) is det.
+	module_info, module_info, instmap, proc_info, proc_info, bool).
+:- mode lco_in_conj(in, in, out, in, out, in, in, out, out) is det.
 
-lco_in_conj([], Unifies, Unifies, Module, Module, Proc, Proc, no).
-lco_in_conj([Goal0 | Goals0], Unifies0, Goals, Module0, Module, Proc0, Proc,
-		Changed) :-
-	Goal0 = GoalExpr0 - _,
+lco_in_conj([], Unifies, Unifies, Module, Module, _, Proc, Proc, no).
+lco_in_conj([Goal0 | Goals0], Unifies0, Goals, Module0, Module, InstMap0,
+		Proc0, Proc, Changed) :-
+	Goal0 = GoalExpr0 - GoalInfo0,
+	goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
+	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
 	(
 		GoalExpr0 = unify(_, _, LHSMode - RHSMode, Unif, _),
 		Unif = construct(_, _, _, _),
@@ -198,14 +217,16 @@ lco_in_conj([Goal0 | Goals0], Unifies0, Goals, Module0, Module, Proc0, Proc,
 		% higher-order terms.  This is because we currently
 		% can't express non-ground higher-order terms.
 		proc_info_inst_table(Proc0, InstTable),
-		mode_get_insts(Module0, LHSMode, _, LFinalInst),
-		\+ inst_is_higher_order_ground(LFinalInst, InstTable, Module0),
-		mode_get_insts(Module0, RHSMode, _, RFinalInst),
-		\+ inst_is_higher_order_ground(RFinalInst, InstTable, Module0)
+		LHSMode = _ - LFinalInst,
+		RHSMode = _ - RFinalInst,
+		\+ inst_is_higher_order_ground(LFinalInst, InstMap1,
+				InstTable, Module0),
+		\+ inst_is_higher_order_ground(RFinalInst, InstMap1,
+				InstTable, Module0)
 	->
 		Unifies1 = [Goal0 | Unifies0],
-		lco_in_conj(Goals0, Unifies1, Goals, Module0, Module, Proc0,
-			Proc, Changed)
+		lco_in_conj(Goals0, Unifies1, Goals, Module0, Module, InstMap1,
+			Proc0, Proc, Changed)
 	;
 		GoalExpr0 = call(CalledPredId, ProcId, Vars, _, _, _),
 
@@ -247,9 +268,10 @@ lco_in_conj([Goal0 | Goals0], Unifies0, Goals, Module0, Module, Proc0, Proc,
 		)
 	->
 		set__init(ChangedVarsSet0),
-		modify_instantiations(Unifies1, Unifies, Goal0, Goal1, 
-			NoTagUnifies, Module0, ChangedVarsSet0, ChangedVarsSet,
-			Proc0, Proc),
+		Proc = Proc0,
+		Goal1 = Goal0,
+		Unifies = Unifies1,
+		ChangedVarsSet = ChangedVarsSet0,
 		Changed = yes,
 
 		maybe_create_new_proc(ChangedVarsSet, Module0, Module,
@@ -268,8 +290,10 @@ lco_in_conj([Goal0 | Goals0], Unifies0, Goals, Module0, Module, Proc0, Proc,
 		% give that a go.
 		list__reverse(Goals1, RevGoals0),
 		( RevGoals0 = [Last0 | RevGoals1] ->
+			apply_penultimate_instmap_deltas(Goals1, InstMap0,
+				InstMap),
 			lco_in_sub_goal(Last0, Last, Module0, Module,
-				Proc0, Proc, Changed),
+				InstMap, Proc0, Proc, Changed),
 			list__reverse([Last | RevGoals1], Goals)
 		;
 			Goals = Goals1,
@@ -278,6 +302,18 @@ lco_in_conj([Goal0 | Goals0], Unifies0, Goals, Module0, Module, Proc0, Proc,
 			Changed = no
 		)
 	).
+
+:- pred apply_penultimate_instmap_deltas(list(hlds_goal), instmap, instmap).
+:- mode apply_penultimate_instmap_deltas(in, in, out) is det.
+
+apply_penultimate_instmap_deltas([], _, _) :-
+	error("apply_penultimate_instmap_deltas: empty").
+apply_penultimate_instmap_deltas([_], InstMap, InstMap).
+apply_penultimate_instmap_deltas([_ - GoalInfo | Goals], InstMap0, InstMap) :-
+	Goals = [_|_],
+	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
+	apply_penultimate_instmap_deltas(Goals, InstMap1, InstMap).
 
 %-----------------------------------------------------------------------------%
 
@@ -313,32 +349,39 @@ check_only_one_ref_per_var(Unifies, CallVars, Module, CalledProcInfo,
 	list__map_foldl(Lambda, Unifies, UnifVars, 0, _),
 
 	proc_info_argmodes(CalledProcInfo,
-		argument_modes(CalledInstTable, CalledModes)),
+			argument_modes(CalledInstTable, CalledModes)),
+	proc_info_get_initial_instmap(CalledProcInfo, Module,
+			CalledInstMap),
 	assoc_list__from_corresponding_lists(CallVars, CalledModes,
-		CalledVarModes),
+			CalledVarModes),
 
 	proc_info_headvars(CallingProcInfo, CallingHeadVars),
 	proc_info_argmodes(CallingProcInfo, 
 		argument_modes(CallingInstTable, CallingHeadModes)),
+	proc_info_get_initial_instmap(CallingProcInfo, Module, CallingInstMap),
 	assoc_list__from_corresponding_lists(CallingHeadVars, CallingHeadModes,
-		CallingHeadVarModes),
+			CallingHeadVarModes),
 
 	proc_info_vartypes(CallingProcInfo, Types),
 
-	check_only_one_ref_per_var_2(CalledVarModes, UnifVars, CalledInstTable,
-		Module, Types, CallingHeadVarModes, CallingInstTable).
+	check_only_one_ref_per_var_2(CalledVarModes, UnifVars, CalledInstMap,
+		CalledInstTable, Module, Types, CallingHeadVarModes,
+		CallingInstMap, CallingInstTable).
 
 :- pred check_only_one_ref_per_var_2(assoc_list(var, mode),
-	list(pair(int, list(var))), inst_table, module_info, map(var, type),
-	assoc_list(var, mode), inst_table).
-:- mode check_only_one_ref_per_var_2(in, in, in, in, in, in, in) is semidet.
+	list(pair(int, list(var))), instmap, inst_table, module_info,
+	map(var, type), assoc_list(var, mode), instmap, inst_table).
+:- mode check_only_one_ref_per_var_2(in, in, in, in, in, in, in, in, in)
+	is semidet.
 
-check_only_one_ref_per_var_2([], _, _, _, _, _, _).
-check_only_one_ref_per_var_2([Var - Mode | VarModes], UnifVars, InstTable,
-		Module, Types, CallingHeadVarModes, CallingInstTable) :-
+check_only_one_ref_per_var_2([], _, _, _, _, _, _, _, _).
+check_only_one_ref_per_var_2([Var - Mode | VarModes], UnifVars, CalledInstMap,
+		CalledInstTable, Module, Types, CallingHeadVarModes,
+		CallingInstMap, CallingInstTable) :-
 	( 
 		map__search(Types, Var, Type),
-		mode_to_arg_mode(InstTable, Module, Mode, Type, top_out)
+		mode_to_arg_mode(CalledInstMap, CalledInstTable, Module,
+				Mode, Type, top_out)
 	->
 		% Ensure that there is at most one construction
 		% that has this variable on its RHS.
@@ -357,17 +400,17 @@ check_only_one_ref_per_var_2([Var - Mode | VarModes], UnifVars, InstTable,
 			list__member(_ - Vars, UnifVars),
 			list__member(Var, Vars),
 			list__member(Var - HMode, CallingHeadVarModes),
-			mode_to_arg_mode(CallingInstTable, Module,
-				HMode, Type, ArgMode),
-			( ArgMode = top_out 
+			mode_to_arg_mode(CallingInstMap, CallingInstTable,
+				Module, HMode, Type, ArgMode), ( ArgMode = top_out 
 			; ArgMode = ref_in
 			)
 		)
 	;
 		true
 	),
-	check_only_one_ref_per_var_2(VarModes, UnifVars, InstTable, Module,
-		Types, CallingHeadVarModes, CallingInstTable).
+	check_only_one_ref_per_var_2(VarModes, UnifVars, CalledInstMap,
+		CalledInstTable, Module, Types, CallingHeadVarModes,
+		CallingInstMap, CallingInstTable).
 
 %-----------------------------------------------------------------------------%
 
@@ -389,13 +432,18 @@ maybe_create_new_proc(ChangedVars, Module0, Module, Goal0, Goal) :-
 	    proc_info_argmodes(ProcInfo0, ArgModes0),
 	    ArgModes0 = argument_modes(ArgInstTable, Modes0),
 	    proc_info_inst_table(ProcInfo0, InstTable0),
+	    proc_info_get_initial_instmap(ProcInfo0, Module0, InstMap0),
 	    assoc_list__from_corresponding_lists(Vars, Modes0, VarModes0),
-	    list__map(change_arg_mode(ChangedVars, Module0, InstTable0), 
+	    list__map(change_arg_mode(ChangedVars, Module0, InstMap0,
+					InstTable0), 
 		    VarModes0, Modes),
 	    ArgModes = argument_modes(ArgInstTable, Modes),
 
 		% See if a procedure with these modes already exists
-	    ( find_matching_proc(ProcTable0, ArgModes, Module0, ProcId1) ->
+	    (
+		find_matching_proc(ProcTable0, InstMap0, ArgModes, Module0,
+				ProcId1)
+	    ->
 		Goal = call(PredId, ProcId1, Vars, A,B,C) - GoalInfo,
 		Module = Module0
 	    ;
@@ -408,21 +456,22 @@ maybe_create_new_proc(ChangedVars, Module0, Module, Goal0, Goal) :-
 		% Run lco on the new proc.
 		map__lookup(ProcTable1, ProcId, ProcInfo1),
 		proc_info_goal(ProcInfo1, ProcGoal0),
-		lco_in_goal(ProcGoal0, ProcGoal1, Module1, Module2, ProcInfo1,
-		    ProcInfo2, _),
+		lco_in_goal(ProcGoal0, ProcGoal1, Module1, Module2, InstMap0,
+			ProcInfo1, ProcInfo2, _),
 
 		% Fix modes of unifications and calls in the new proc
 		% that bind aliased output arguments.
 		proc_info_headvars(ProcInfo2, HeadVars),
 		proc_info_vartypes(ProcInfo2, Types0),
 		proc_info_inst_table(ProcInfo2, ProcInstTable0),
+		proc_info_get_initial_instmap(ProcInfo2, Module2, ProcInstMap2),
 		assoc_list__from_corresponding_lists(HeadVars, Modes, VarModes),
 		Filter = lambda([VarMode::in, Var::out] is semidet,
 		    (
 			VarMode = Var - Mode,
 			map__lookup(Types0, Var, Type),
-			mode_to_arg_mode(ProcInstTable0, Module2, Mode, Type,
-			    ref_in)
+			mode_to_arg_mode(ProcInstMap2, ProcInstTable0,
+				Module2, Mode, Type, ref_in)
 		    )),
 		list__filter_map(Filter, VarModes, AliasedVars),
 
@@ -465,14 +514,14 @@ get_unused_proc_id(ProcId0, ProcTable, ProcId) :-
 
 % If Var is in the set of variables that need their modes changed and mode
 % is (free(unique) -> I), then change mode to (free(alias) -> I).
-:- pred change_arg_mode(set(var), module_info, inst_table, pair(var, mode),
-		mode).
-:- mode change_arg_mode(in, in, in, in, out) is det.
+:- pred change_arg_mode(set(var), module_info, instmap, inst_table,
+		pair(var, mode), mode).
+:- mode change_arg_mode(in, in, in, in, in, out) is det.
 
-change_arg_mode(VarSet, Module, InstTable, Var - Mode0, Mode) :-
+change_arg_mode(VarSet, Module, InstMap, InstTable, Var - Mode0, Mode) :-
 	( 
 		set__member(Var, VarSet),
-		mode_is_output(InstTable, Module, Mode0) 
+		mode_is_output(InstMap, InstTable, Module, Mode0) 
 	->
 		mode_get_insts(Module, Mode0, _, FinalInst),
 		Mode = (free(alias) -> FinalInst)
@@ -482,14 +531,17 @@ change_arg_mode(VarSet, Module, InstTable, Var - Mode0, Mode) :-
 
 % Find a procedure in the ProcTable that has argmodes equivalent to those
 % given.
-:- pred find_matching_proc(proc_table, argument_modes, module_info, proc_id).
-:- mode find_matching_proc(in, in, in, out) is semidet.
+:- pred find_matching_proc(proc_table, instmap, argument_modes,
+		module_info, proc_id).
+:- mode find_matching_proc(in, in, in, in, out) is semidet.
 
-find_matching_proc(ProcTable, ArgModesA, Module, ProcId) :-
+find_matching_proc(ProcTable, InstMapA, ArgModesA, Module, ProcId) :-
 	ArgModesA = argument_modes(InstTableA, ModesA),
 	Lambda = lambda([ProcInfo::in] is semidet,
 		(
 			proc_info_argmodes(ProcInfo, ArgModesB),
+			proc_info_get_initial_instmap(ProcInfo, Module,
+					InstMapB),
 			ArgModesB = argument_modes(InstTableB, ModesB),
 			assoc_list__from_corresponding_lists(ModesA, ModesB,
 				ModesAB),
@@ -497,10 +549,14 @@ find_matching_proc(ProcTable, ArgModesA, Module, ProcId) :-
 			    \+ (
 				    mode_get_insts(Module, A, IA, FA),
 				    mode_get_insts(Module, B, IB, FB),
-				    inst_expand(InstTableA, Module, IA, I),
-				    inst_expand(InstTableB, Module, IB, I),
-				    inst_expand(InstTableA, Module, FA, F),
-				    inst_expand(InstTableB, Module, FB, F),
+				    inst_expand(InstMapA, InstTableA,
+						Module, IA, I),
+				    inst_expand(InstMapB, InstTableB,
+						Module, IB, I),
+				    inst_expand(InstMapA, InstTableA,
+						Module, FA, F),
+				    inst_expand(InstMapB, InstTableB,
+						Module, FB, F),
 				    alias_iff_alias(IA, IB),
 				    alias_iff_alias(FA, FB)
 			    )
@@ -531,118 +587,6 @@ create_new_proc(ProcTable0, OldProcId, ArgModes, InstTable, ProcTable,
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-:- pred modify_instantiations(list(hlds_goal), list(hlds_goal), hlds_goal,
-		hlds_goal, list(hlds_goal), module_info, set(var), set(var),
-		proc_info, proc_info).
-:- mode modify_instantiations(in, out, in, out, in, in, in, out, in, out)
-		is det.
-
-modify_instantiations([], [], Call, Call, _NoTagUnifies, _Module,
-		VarSet, VarSet, ProcInfo, ProcInfo).
-modify_instantiations([Unify0 | Unifies0], [Unify | Unifies], Call0, Call,
-		NoTagUnifies, Module, VarSet0, VarSet, ProcInfo0, ProcInfo) :-
-	(
-		Unify0 = UnifyExpr0 - UnifyInfo0,
-		UnifyExpr0 = unify(Var, RHS, Mode, Unification0, Context),
-		Unification0 = construct(UnifVar, ConsId, UnifVars, UniModes0),
-		Call0 = CallExpr - CallInfo0,
-		CallExpr = call(_, _, _CallVars, _, _, _)
-	->
-		goal_info_get_instmap_delta(UnifyInfo0, UnifIMD0),
-		goal_info_get_instmap_delta(CallInfo0, CallIMD0),
-		assoc_list__from_corresponding_lists(UnifVars, UniModes0,
-			UnifVarModes0),
-		proc_info_inst_table(ProcInfo0, InstTable0),
-
-		modify_instmap_deltas(UnifVarModes0, UniModes, NoTagUnifies,
-			InstTable0, InstTable, Module, UnifIMD0, UnifIMD,
-			CallIMD0, CallIMD, VarSet0, VarSet1),
-
-		proc_info_set_inst_table(ProcInfo0, InstTable, ProcInfo1),
-		Unification = construct(UnifVar, ConsId, UnifVars, UniModes),
-		UnifyExpr = unify(Var, RHS, Mode, Unification, Context),
-		goal_info_set_instmap_delta(UnifyInfo0, UnifIMD, UnifyInfo),
-		Unify = UnifyExpr - UnifyInfo,
-		goal_info_set_instmap_delta(CallInfo0, CallIMD, CallInfo),
-		Call1 = CallExpr - CallInfo,
-		modify_instantiations(Unifies0, Unifies, Call1, Call,
-			NoTagUnifies, Module, VarSet1, VarSet,
-			ProcInfo1, ProcInfo)
-	;
-		error("modify_instantiations: goal not of correct type")
-	).
-
-:- pred modify_instmap_deltas(assoc_list(var, uni_mode), list(uni_mode),
-		list(hlds_goal), inst_table, inst_table, module_info,
-		instmap_delta, instmap_delta, instmap_delta, instmap_delta,
-		set(var), set(var)).
-:- mode modify_instmap_deltas(in, out, in, in, out, in, in, out, in, out,
-		in, out) is det.
-
-modify_instmap_deltas([], [], _, InstTable, InstTable, _, UnifIMD, UnifIMD,
-		CallIMD, CallIMD, VarSet, VarSet).
-modify_instmap_deltas([UnifVar - UniMode0 | VarModes], [UniMode | UniModes],
-		NoTagUnifies, InstTable0, InstTable, Module, UnifIMD0, UnifIMD,
-		CallIMD0, CallIMD, VarSet0, VarSet) :-
-	( bound_in_imds(UnifVar, CallIMD0, NoTagUnifies, InstTable0, Module) ->
-		% We don't actually need to modify CallIMD here because it is
-		% done by `recompute_instmap_delta'.
-		CallIMD1 = CallIMD0,  
-		inst_table_get_inst_key_table(InstTable0, IKT0),
-		inst_key_table_add(IKT0, free(alias), IK, IKT),
-		inst_table_set_inst_key_table(InstTable0, IKT,
-			InstTable1),
-		NewInst = alias(IK),
-		UniMode = ((free(unique) - free(unique)) -> 
-				(NewInst - NewInst)),
-		( 
-			instmap_delta_search_var(UnifIMD0, UnifVar, Inst0),
-			Inst0 = alias(IK0)
-		->
-			instmap_delta_to_assoc_list(UnifIMD0, AL0),
-			assoc_list__values(AL0, Insts0),
-			map__init(Sub0),
-			map__set(Sub0, IK0, IK, Sub),
-			list__map(inst_apply_sub(Sub), Insts0, Insts),
-			assoc_list__keys(AL0, Vars),
-			assoc_list__from_corresponding_lists(Vars,
-				Insts, AL),
-			instmap_delta_from_assoc_list(AL, UnifIMD1)
-		;
-			UnifIMD1 = UnifIMD0
-		),
-		set__insert(VarSet0, UnifVar, VarSet1)
-	;
-		UniMode = UniMode0,
-		UnifIMD1 = UnifIMD0,
-		CallIMD1 = CallIMD0,
-		InstTable1 = InstTable0,
-		VarSet1 = VarSet0
-	),
-	modify_instmap_deltas(VarModes, UniModes, NoTagUnifies,
-		InstTable1, InstTable, Module, UnifIMD1, UnifIMD,
-		CallIMD1, CallIMD, VarSet1, VarSet).
-
-% bound_in_imds(Var, IMD, Goals, InstTable, Module)
-% succeeds if variable is bound in IMD or any of the IMD's in Goals..
-:- pred bound_in_imds(var::in, instmap_delta::in, list(hlds_goal)::in,
-	inst_table::in, module_info::in) is semidet.
-
-bound_in_imds(Var, IMD, _Goals, InstTable, Module) :- 
-	bound_in_imd(Var, IMD, InstTable, Module).
-bound_in_imds(Var, _IMD, Goals, InstTable, Module) :-
-	list__member(_ - GoalInfo, Goals),
-	goal_info_get_instmap_delta(GoalInfo, GoalIMD),
-	bound_in_imd(Var, GoalIMD, InstTable, Module).
-
-:- pred bound_in_imd(var::in, instmap_delta::in, inst_table::in,
-	module_info::in) is semidet.
-
-bound_in_imd(Var, IMD, InstTable, Module) :-
-	instmap_delta_search_var(IMD, Var, Inst),
-	inst_is_bound(Inst, InstTable, Module).
-
-%---------------------------------------------------------------------------%
 
 :- type fix_modes_info 
 	--->	fix_modes_info(varset, map(var, type), inst_table, instmap).
@@ -676,17 +620,18 @@ fix_modes_info_set_instmap(fix_modes_info(A, B, C, _), InstMap,
 		hlds_goal, hlds_goal, fix_modes_info, fix_modes_info).
 :- mode fix_modes_of_binding_goal(in, in, in, in, out, in, out) is det.
 
-fix_modes_of_binding_goal(Module, AliasedVars, Var, GoalExpr0 - GoalInfo,
-		GoalExpr - GoalInfo, FMI0, FMI) :-
-	goal_info_get_instmap_delta(GoalInfo, IMD),
+fix_modes_of_binding_goal(Module, AliasedVars, Var,
+		GoalExpr0 - GoalInfo, GoalExpr - GoalInfo, FMI0, FMI) :-
 	FMI0 = fix_modes_info(_, VarTypes, InstTable, InstMap0),
+	goal_info_get_instmap_delta(GoalInfo, IMD),
+	instmap__apply_instmap_delta(InstMap0, IMD, InstMap),
 	instmap__lookup_var(InstMap0, Var, InitialInst),
+	instmap__lookup_var(InstMap,  Var, FinalInst),
 	map__lookup(VarTypes, Var, Type),
 	(
 		% Does the goal bind Var?
-		instmap_delta_search_var(IMD, Var, FinalInst),
-		mode_to_arg_mode(InstTable, Module, (InitialInst -> FinalInst),
-			Type, ref_in)
+		insts_to_arg_mode(InstTable, Module, InitialInst, InstMap0,
+			FinalInst, InstMap, Type, ref_in)
 	->
 		fix_modes_of_binding_goal_2(GoalExpr0, FMI0, GoalInfo,
 			Module, AliasedVars, Var, GoalExpr, FMI1)
@@ -694,26 +639,26 @@ fix_modes_of_binding_goal(Module, AliasedVars, Var, GoalExpr0 - GoalInfo,
 		GoalExpr = GoalExpr0,
 		FMI1 = FMI0
 	),
-	fix_modes_info_apply_instmap_delta(FMI1, IMD, FMI).
+	fix_modes_info_set_instmap(FMI1, InstMap, FMI).
 
 :- pred fix_modes_of_binding_goal_2(hlds_goal_expr, fix_modes_info,
-		hlds_goal_info, module_info, set(var), var, hlds_goal_expr,
-		fix_modes_info).
+		hlds_goal_info, module_info, set(var), var,
+		hlds_goal_expr, fix_modes_info).
 :- mode fix_modes_of_binding_goal_2(in, in, in, in, in, in, out, out) is det.
 
-fix_modes_of_binding_goal_2(conj(Goals0), FMI0, _, Module, AliasedVars, Var,
-		conj(Goals), FMI) :-
+fix_modes_of_binding_goal_2(conj(Goals0), FMI0, _, Module,
+		AliasedVars, Var, conj(Goals), FMI) :-
 	list__map_foldl(fix_modes_of_binding_goal(Module, AliasedVars, Var),
 		Goals0, Goals, FMI0, FMI).
 
-fix_modes_of_binding_goal_2(par_conj(Goals0, SM), FMI0, _, Module,
-		AliasedVars, Var, par_conj(Goals, SM), FMI) :-
+fix_modes_of_binding_goal_2(par_conj(Goals0, SM), FMI0, _GoalInfo0,
+		Module, AliasedVars, Var, par_conj(Goals, SM), FMI) :-
+	fix_modes_info_get_instmap(FMI0, InstMap0),
 	Lambda = lambda([Goal0::in, Goal::out, F0::in, F::out] is det,
 		(
-			fix_modes_info_get_instmap(F0, InstMap),
+			fix_modes_info_set_instmap(F0, InstMap0, F1),
 			fix_modes_of_binding_goal(Module, AliasedVars, Var,
-				Goal0, Goal, F0, F1),
-			fix_modes_info_set_instmap(F1, InstMap, F)
+				Goal0, Goal, F1, F)
 		)),
 	list__map_foldl(Lambda, Goals0, Goals, FMI0, FMI).
 
@@ -745,14 +690,16 @@ fix_modes_of_binding_goal_2(higher_order_call(A, Vars0, C, D, E, F), FMI0,
 
 fix_modes_of_binding_goal_2(switch(SVar, Det, Cases0, SM), FMI0, _, 
 		Module, AliasedVars, Var, switch(SVar, Det, Cases, SM), FMI) :-
+	fix_modes_info_get_instmap(FMI0, InstMap0),
 	Lambda = lambda([Case0::in, Case::out, F0::in, F::out] is det,
 		(
 			Case0 = case(ConsId, CaseIMD, Goal0),
-			fix_modes_info_get_instmap(F0, InstMap),
+			instmap__apply_instmap_delta(InstMap0, CaseIMD,
+				InstMap),
+			fix_modes_info_set_instmap(F0, InstMap, F1),
 			fix_modes_of_binding_goal(Module, AliasedVars, Var,
-				Goal0, Goal, F0, F1),
-			Case = case(ConsId, CaseIMD, Goal),
-			fix_modes_info_set_instmap(F1, InstMap, F)
+				Goal0, Goal, F1, F),
+			Case = case(ConsId, CaseIMD, Goal)
 		)),
 	list__map_foldl(Lambda, Cases0, Cases, FMI0, FMI).
 
@@ -830,11 +777,8 @@ add_unification_to_goal(Vars0, FMI0, GoalInfo0, Module, Var,
 	FMI1 = fix_modes_info(VarSet, VarTypes, InstTable, InstMap),
 
 	goal_info_get_instmap_delta(GoalInfo0, IMD0),
-	( instmap_delta_search_var(IMD0, Var, Inst0) ->
-		Inst = Inst0
-	;
-		error("lco:fix_modes_of_binding_goal: internal error")
-	),
+	instmap__apply_instmap_delta(InstMap, IMD0, InstMapAfter),
+	instmap__lookup_var(InstMapAfter, Var, Inst),
 	map__init(Sub0),
 	map__det_insert(Sub0, Var, NewVar, Sub),
 	instmap_delta_apply_sub(IMD0, no, Sub, IMD),
@@ -845,10 +789,9 @@ add_unification_to_goal(Vars0, FMI0, GoalInfo0, Module, Var,
 	goal_info_set_nonlocals(CallGoalInfo1, CallNonLocals, CallGoalInfo),
 
 	list__replace_all(Vars0, Var, NewVar, Vars),
-	Modes = (free(alias) -> Inst) - (Inst -> Inst),
+	Modes = (free(alias) - Inst) - (Inst - Inst),
 	goal_info_init(AssignGoalInfo0),
-	instmap_delta_init_reachable(AssignIMD0),
-	instmap_delta_set(AssignIMD0, Var, Inst, AssignIMD),
+	instmap_delta_from_assoc_list([Var - Inst], AssignIMD),
 	goal_info_set_instmap_delta(AssignGoalInfo0, AssignIMD,
 		AssignGoalInfo1),
 	goal_info_set_determinism(AssignGoalInfo1, det, AssignGoalInfo2),
@@ -873,7 +816,7 @@ fix_modes_of_unify(construct(LHSVar, ConsId, Vars, UniModes0), RHS, Modes,
 		GoalInfo, no) :-
 	( LHSVar = Var ->
 		FMI0 = fix_modes_info(VarSet, VarTypes, InstTable0, InstMap),
-		list__map_foldl(fix_uni_mode(Module), 
+		list__map_foldl(fix_uni_mode(Module, InstMap), 
 			UniModes0, UniModes, InstTable0, InstTable),
 		FMI = fix_modes_info(VarSet, VarTypes, InstTable, InstMap)
 	;
@@ -904,13 +847,15 @@ fix_modes_of_unify(simple_test(_, _),_,_,_,_,_,_,_,_,_,_,_,_) :-
 fix_modes_of_unify(complicated_unify(_, _),_,_,_,_,_,_,_,_,_,_,_,_) :-
 	error("lco:fix_modes_of_unify: complicated_unify").
 
-:- pred fix_uni_mode(module_info, uni_mode, uni_mode, inst_table,
-		inst_table).
-:- mode fix_uni_mode(in, in, out, in, out) is det.
+:- pred fix_uni_mode(module_info, instmap, uni_mode, uni_mode,
+		inst_table, inst_table).
+:- mode fix_uni_mode(in, in, in, out, in, out) is det.
 
-fix_uni_mode(Module, UniMode0, UniMode, InstTable0, InstTable) :-
+fix_uni_mode(Module, InstMap0, UniMode0, UniMode, InstTable0, InstTable) :-
 	UniMode0 = ((LI0 - RI) -> (LF - RF)),
-	( inst_is_free(LI0, InstTable0, Module) ->
+	(
+		inst_is_free(LI0, InstMap0, InstTable0, Module)
+	->
 		( LI0 = alias(_) ->
 			LI = LI0,
 			InstTable = InstTable0
@@ -944,12 +889,14 @@ replace_call_proc_with_aliased_version(PredId, ProcId0, FMI, Module, Var,
 	pred_info_procedures(PredInfo, ProcTable),
 	map__lookup(ProcTable, ProcId0, ProcInfo0),
 	proc_info_argmodes(ProcInfo0, argument_modes(InstTableA, ModesA)),
+	proc_info_get_initial_instmap(ProcInfo0, Module, InstMapA),
 	FMI = fix_modes_info(_, _, InstTable, InstMap),
 
 	Lambda = lambda([ProcInfo::in] is semidet,
 	    (
 		proc_info_argmodes(ProcInfo, ArgModesB),
 		ArgModesB = argument_modes(InstTableB, ModesB),
+		proc_info_get_initial_instmap(ProcInfo, Module, InstMapB),
 		assoc_list__from_corresponding_lists(ModesA, ModesB, ModesAB),
 		assoc_list__from_corresponding_lists(ModesAB, CallVars,
 		    ModeVars),
@@ -957,15 +904,16 @@ replace_call_proc_with_aliased_version(PredId, ProcId0, FMI, Module, Var,
 		    \+ (
 			mode_get_insts(Module, A, IA, FA),
 			mode_get_insts(Module, B, IB, FB),
-			inst_expand(InstTableA, Module, FA, F),
-			inst_expand(InstTableB, Module, FB, F),
+			inst_expand(InstMapA, InstTableA, Module, FA, F),
+			inst_expand(InstMapB, InstTableB, Module, FB, F),
 			( V = Var ->
-			    inst_is_free_alias(IB, InstTableB, Module)
+			    inst_is_free_alias(IB, InstMapB, InstTableB, Module)
 			; set__member(V, AliasedVars) ->
 			    % Make sure mode is no worse than what we already
 			    % have.
-			    inst_is_free_alias(IA, InstTableA, Module)
-			    => inst_is_free_alias(IB, InstTableB, Module),
+			    inst_is_free_alias(IA, InstMapA, InstTableA, Module)
+			    => inst_is_free_alias(IB, InstMapB, InstTableB,
+					Module),
 
 			    % If V is free(alias) then either free(alias) or
 			    % free(unique) will do for the initial inst here.
@@ -974,11 +922,15 @@ replace_call_proc_with_aliased_version(PredId, ProcId0, FMI, Module, Var,
 			    % V and Var, then that proc will be found when
 			    % fix_modes_of_binding_goal is called for V.
 			    instmap__lookup_var(InstMap, V, InstV),
-			    inst_is_free_alias(InstV, InstTable, Module)
-				=> inst_is_free(IB, InstTableB, Module)
+			    inst_is_free_alias(InstV, InstMap, InstTable,
+					Module)
+				=> inst_is_free(IB, InstMapB, InstTableB,
+					Module)
 			;
-			    inst_expand(InstTableA, Module, IA, I),
-			    inst_expand(InstTableB, Module, IB, I)
+			    % This is safe because the procs being compared
+			    % have the same arg inst_table.
+			    inst_expand(InstMapA, InstTableA, Module, IA, I),
+			    inst_expand(InstMapB, InstTableB, Module, IB, I)
 			)
 		    )
 		)

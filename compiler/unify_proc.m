@@ -112,7 +112,7 @@
 :- import_module mercury_to_mercury, hlds_out.
 :- import_module make_hlds, prog_util, prog_out, inst_match.
 :- import_module quantification, clause_to_proc.
-:- import_module globals, options, modes, mode_util, (inst).
+:- import_module globals, options, modes, mode_util, (inst), instmap.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
 
 	% We keep track of all the complicated unification procs we need
@@ -194,10 +194,13 @@ unify_proc__lookup_mode_num(InstTable, ModuleInfo, TypeId, UniMode, Det, Num) :-
 unify_proc__search_mode_num(InstTable, ModuleInfo, TypeId, UniMode, Determinism,
 		ProcId) :-
 	UniMode = (XInitial - YInitial -> _Final),
+	instmap__init_reachable(InstMapBefore),	% YYY Certainly bogus
 	(
 		Determinism = semidet,
-		inst_is_ground_or_any(XInitial, InstTable, ModuleInfo),
-		inst_is_ground_or_any(YInitial, InstTable, ModuleInfo)
+		inst_is_ground_or_any(XInitial, InstMapBefore,
+				InstTable, ModuleInfo),
+		inst_is_ground_or_any(YInitial, InstMapBefore,
+				InstTable, ModuleInfo)
 	->
 		hlds_pred__in_in_unification_proc_id(ProcId)
 	;
@@ -1098,11 +1101,12 @@ unify_proc__sanity_check(HLDS) :-
 	module_info_get_unify_requests(HLDS, Requests),
 	unify_proc__get_req_map(Requests, ReqMap),
 	module_info_get_special_pred_map(HLDS, SpecialPredMap),
-	all [ProcId] (
-		map__member(ReqMap, TypeId - _UniMode, ProcId)
-	=>
-		( map__lookup(SpecialPredMap, unify - TypeId, PredId),
-		module_info_pred_proc_info(HLDS, PredId, ProcId, _, _) )
+	\+ (
+		map__member(ReqMap, TypeId - _UniMode, ProcId),
+		\+ (
+			map__lookup(SpecialPredMap, unify - TypeId, PredId),
+			module_info_pred_proc_info(HLDS, PredId, ProcId, _, _)
+		)
 	),
 	semidet_succeed.
 */

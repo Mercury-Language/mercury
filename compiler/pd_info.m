@@ -14,7 +14,7 @@
 :- interface.
 
 :- import_module pd_term, hlds_module, hlds_pred, options, instmap.
-:- import_module hlds_goal, prog_data.
+:- import_module hlds_goal, hlds_data, prog_data.
 :- import_module bool, map, list, io, set, std_util, term, getopt.
 
 :- type pd_info 
@@ -33,7 +33,7 @@
 		set(pair(pred_proc_id)),% pairs of procedures which when
 					% paired for deforestation produce
 					% little improvement
-		unit,
+		inst_table,
 		unit
 	).
 
@@ -53,8 +53,8 @@
 :- inst pd_info_no_io = ground.
 :- mode pd_info_set_io :: pd_info_no_io -> dead.
 
-:- pred pd_info_init(module_info, pd_arg_info, io__state, pd_info).
-:- mode pd_info_init(in, in, di, pd_info_uo) is det.
+:- pred pd_info_init(module_info, pd_arg_info, inst_table, io__state, pd_info).
+:- mode pd_info_init(in, in, in, di, pd_info_uo) is det.
 
 :- pred pd_info_init_unfold_info(pred_proc_id, 
 		pred_info, proc_info, pd_info, pd_info).
@@ -96,6 +96,9 @@
 :- pred pd_info_get_useless_versions(set(pair(pred_proc_id)), pd_info, pd_info).
 :- mode pd_info_get_useless_versions(out, pd_info_di, pd_info_uo) is det.
 
+:- pred pd_info_get_inst_table(inst_table, pd_info, pd_info).
+:- mode pd_info_get_inst_table(out, pd_info_di, pd_info_uo) is det.
+
 :- pred pd_info_set_io_state(io__state, pd_info, pd_info).
 :- mode pd_info_set_io_state(di, pd_info_set_io, pd_info_uo) is det.
 
@@ -132,6 +135,9 @@
 :- pred pd_info_set_useless_versions(set(pair(pred_proc_id)), pd_info, pd_info).
 :- mode pd_info_set_useless_versions(in, pd_info_di, pd_info_uo) is det.
 
+:- pred pd_info_set_inst_table(inst_table, pd_info, pd_info).
+:- mode pd_info_set_inst_table(in, pd_info_di, pd_info_uo) is det.
+
 :- pred pd_info_update_goal(hlds_goal, pd_info, pd_info).
 :- mode pd_info_update_goal(in, pd_info_di, pd_info_uo) is det.
 
@@ -164,7 +170,7 @@
 :- import_module inst_match, hlds_goal, prog_util, hlds_data.
 :- import_module assoc_list, bool, int, require, string.
 
-pd_info_init(ModuleInfo, ProcArgInfos, IO, PdInfo) :-
+pd_info_init(ModuleInfo, ProcArgInfos, InstTable, IO, PdInfo) :-
 	map__init(GoalVersionIndex),
 	map__init(Versions),
 	set__init(ParentVersions),
@@ -173,7 +179,7 @@ pd_info_init(ModuleInfo, ProcArgInfos, IO, PdInfo) :-
 	set__init(UselessVersions),
 	PdInfo = pd_info(IO, ModuleInfo, no, GoalVersionIndex, Versions, 
 		ProcArgInfos, 0, GlobalInfo, ParentVersions, 0, 
-		CreatedVersions, UselessVersions, unit, unit).
+		CreatedVersions, UselessVersions, InstTable, unit).
 
 pd_info_init_unfold_info(PredProcId, PredInfo, ProcInfo) -->
 	pd_info_get_module_info(ModuleInfo),
@@ -218,6 +224,8 @@ pd_info_get_created_versions(Versions, PdInfo, PdInfo) :-
 	PdInfo = pd_info(_,_,_,_,_,_,_,_,_,_,Versions,_,_,_).
 pd_info_get_useless_versions(Versions, PdInfo, PdInfo) :-
 	PdInfo = pd_info(_,_,_,_,_,_,_,_,_,_,_,Versions,_,_).
+pd_info_get_inst_table(InstTable, PdInfo, PdInfo) :-
+	PdInfo = pd_info(_,_,_,_,_,_,_,_,_,_,_,_,InstTable,_).
 
 pd_info_set_io_state(IO0, pd_info(_, B,C,D,E,F,G,H,I,J,K,L,M,N), 
 		pd_info(IO, B,C,D,E,F,G,H,I,J,K,L,M,N)) :-
@@ -246,12 +254,12 @@ pd_info_set_created_versions(Versions, pd_info(A,B,C,D,E,F,G,H,I,J,_,L,M,N),
 		pd_info(A,B,C,D,E,F,G,H,I,J,Versions,L,M,N)).
 pd_info_set_useless_versions(Versions, pd_info(A,B,C,D,E,F,G,H,I,J,K,_,M,N),
 		pd_info(A,B,C,D,E,F,G,H,I,J,K,Versions,M,N)).
+pd_info_set_inst_table(InstTable, pd_info(A,B,C,D,E,F,G,H,I,J,K,L,_,N),
+		pd_info(A,B,C,D,E,F,G,H,I,J,K,L,InstTable,N)).
 
 pd_info_update_goal(_ - GoalInfo) -->
-	pd_info_get_instmap(InstMap0),
 	{ goal_info_get_instmap_delta(GoalInfo, Delta) },
-	{ instmap__apply_instmap_delta(InstMap0, Delta, InstMap) },
-	pd_info_set_instmap(InstMap).
+	pd_info_apply_instmap_delta(Delta).
 
 pd_info_lookup_option(Option, OptionData) -->
 	pd_info_get_io_state(IO0),
@@ -560,8 +568,8 @@ pd_info__search_version(Goal, MaybeVersion) -->
 	pd_info_get_module_info(ModuleInfo),
 	pd_info_get_proc_info(ProcInfo),
 	pd_info_get_instmap(InstMap),
+	pd_info_get_inst_table(InstTable),
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
-	{ proc_info_inst_table(ProcInfo, InstTable) },
 	(
 		{ map__search(GoalVersionIndex, CalledPreds, VersionIds) },
 		{ pd_info__get_matching_version(InstTable, ModuleInfo, Goal,
@@ -695,13 +703,15 @@ pd_info__check_insts(InstTable, ModuleInfo, [OldVar | Vars], VarRenaming,
 	instmap__lookup_var(OldInstMap, OldVar, OldVarInst),
 	map__lookup(VarRenaming, OldVar, NewVar),
 	instmap__lookup_var(NewInstMap, NewVar, NewVarInst),
-	inst_matches_initial(NewVarInst, OldVarInst, InstTable, ModuleInfo),
+	inst_matches_initial(NewVarInst, NewInstMap, OldVarInst, OldInstMap,
+			InstTable, ModuleInfo),
 	( ExactSoFar0 = exact ->
 		% Does inst_matches_initial(Inst1, Inst2, M) and
 		% inst_matches_initial(Inst2, Inst1, M) imply that Inst1
 		% and Inst2 are interchangable? 
 		( 
-			inst_matches_initial(OldVarInst, NewVarInst, InstTable,
+			inst_matches_initial(OldVarInst, OldInstMap,
+				NewVarInst, NewInstMap, InstTable,
 				ModuleInfo)
 		->
 			ExactSoFar1 = exact

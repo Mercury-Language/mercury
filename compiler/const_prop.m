@@ -67,20 +67,22 @@ evaluate_builtin_2(Module, Pred, ModeNum, Args, GoalInfo0, Goal, GoalInfo,
 		evaluate_builtin_bi(Mod, Pred, ModeNum, X, Y, W, Cons)
 	->
 		make_construction(W, Cons, Goal),
-		goal_info_get_instmap_delta(GoalInfo0, Delta0),
+		% goal_info_get_instmap_delta(GoalInfo0, Delta0),
 		W = Var - _WInst,
-		instmap_delta_set(Delta0, Var,
-			bound(unique, [functor(Cons, [])]), Delta),
+		instmap_delta_from_assoc_list(
+			[Var - bound(unique, [functor(Cons, [])])],
+			Delta),
 		goal_info_set_instmap_delta(GoalInfo0, Delta, GoalInfo)
 	;
 		Args = [X, Y, Z],
 		evaluate_builtin_tri(Mod, Pred, ModeNum, X, Y, Z, W, Cons)
 	->
 		make_construction(W, Cons, Goal),
-		goal_info_get_instmap_delta(GoalInfo0, Delta0),
+		% goal_info_get_instmap_delta(GoalInfo0, Delta0),
 		W = Var - _WInst,
-		instmap_delta_set(Delta0, Var,
-			bound(unique, [functor(Cons, [])]), Delta),
+		instmap_delta_from_assoc_list(
+			[Var - bound(unique, [functor(Cons, [])])],
+			Delta),
 		goal_info_set_instmap_delta(GoalInfo0, Delta, GoalInfo)
 	;
 		evaluate_builtin_test(Mod, Pred, ModeNum, Args, Result)
@@ -372,7 +374,7 @@ evaluate_builtin_test("float", ">=", 0, Args, Result) :-
 make_construction(Var - VarInst, ConsId, Goal) :-
 	RHS = functor(ConsId, []),
 	CInst = bound(unique, [functor(ConsId, [])]),
-	Mode =  (VarInst -> CInst) - (CInst -> CInst),
+	Mode =  (VarInst - CInst) - (CInst - CInst),
 	Unification = construct(Var, ConsId, [], []),
 	Context = unify_context(explicit, []),
 	Goal = unify(Var, RHS, Mode, Unification, Context).

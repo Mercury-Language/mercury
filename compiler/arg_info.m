@@ -23,6 +23,7 @@
 :- module arg_info.
 :- interface. 
 :- import_module hlds_module, hlds_data, hlds_pred, llds, globals, prog_data.
+:- import_module instmap.
 :- import_module bool, list, assoc_list, term.
 
 :- pred generate_arg_info(module_info, module_info).
@@ -32,8 +33,8 @@
 :- mode arg_info__unify_arg_info(in, in, out) is det.
 
 :- pred make_arg_infos(args_method, list(type), list(mode), code_model,
-			inst_table, module_info, list(arg_info)).
-:- mode make_arg_infos(in, in, in, in, in, in, out) is det.
+			instmap, inst_table, module_info, list(arg_info)).
+:- mode make_arg_infos(in, in, in, in, in, in, in, out) is det.
 
 	% Return yes if a procedure using the given args_method
 	% can by called by do_call_*_closure.
@@ -56,7 +57,7 @@
 
 :- implementation.
 
-:- import_module code_util, mode_util.
+:- import_module code_util, mode_util, instmap.
 :- import_module std_util, map, int, require.
 
 %-----------------------------------------------------------------------------%
@@ -109,9 +110,10 @@ generate_proc_arg_info(ProcInfo0, ArgTypes, ModuleInfo, ProcInfo) :-
 	proc_info_argmodes(ProcInfo0, argument_modes(InstTable, ArgModes)),
 	proc_info_args_method(ProcInfo0, Method),
 	proc_info_interface_code_model(ProcInfo0, CodeModel),
+	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo, InstMap),
 
-	make_arg_infos(Method, ArgTypes, ArgModes, CodeModel, InstTable,
-		ModuleInfo, ArgInfo),
+	make_arg_infos(Method, ArgTypes, ArgModes, CodeModel, InstMap,
+		InstTable, ModuleInfo, ArgInfo),
 
 	proc_info_set_arg_info(ProcInfo0, ArgInfo, ProcInfo).
 
@@ -147,8 +149,8 @@ generate_proc_arg_info(ProcInfo0, ArgTypes, ModuleInfo, ProcInfo) :-
 	% so that mercury_ho_call.c can place the input arguments without
 	% knowing anything about the called procedure.
 
-make_arg_infos(Method, ArgTypes, ArgModes, CodeModel, InstTable, ModuleInfo,
-		ArgInfo) :-
+make_arg_infos(Method, ArgTypes, ArgModes, CodeModel, InstMap, InstTable,
+		ModuleInfo, ArgInfo) :-
 	( CodeModel = model_semi ->
 		StartReg = 2
 	;
@@ -156,39 +158,39 @@ make_arg_infos(Method, ArgTypes, ArgModes, CodeModel, InstTable, ModuleInfo,
 	),
 	(
 		Method = simple,
-		make_arg_infos_list(ArgModes, ArgTypes, StartReg, InstTable,
-			ModuleInfo, ArgInfo)
+		make_arg_infos_list(ArgModes, ArgTypes, StartReg, InstMap,
+			InstTable, ModuleInfo, ArgInfo)
 	;
 		Method = compact,
 		make_arg_infos_compact_list(ArgModes, ArgTypes, 1, StartReg,
-			InstTable, ModuleInfo, ArgInfo)
+			InstMap, InstTable, ModuleInfo, ArgInfo)
 	).
 
-:- pred make_arg_infos_list(list(mode), list(type), int, inst_table,
+:- pred make_arg_infos_list(list(mode), list(type), int, instmap, inst_table,
 				module_info, list(arg_info)).
-:- mode make_arg_infos_list(in, in, in, in, in, out) is det.
+:- mode make_arg_infos_list(in, in, in, in, in, in, out) is det.
 
-make_arg_infos_list([], [], _, _, _, []).
-make_arg_infos_list([Mode | Modes], [Type | Types], Reg0, InstTable,
+make_arg_infos_list([], [], _, _, _, _, []).
+make_arg_infos_list([Mode | Modes], [Type | Types], Reg0, InstMap, InstTable,
 		ModuleInfo, [ArgInfo | ArgInfos]) :-
-	mode_to_arg_mode(InstTable, ModuleInfo, Mode, Type, ArgMode),
+	mode_to_arg_mode(InstMap, InstTable, ModuleInfo, Mode, Type, ArgMode),
 	ArgInfo = arg_info(Reg0, ArgMode),
 	Reg1 is Reg0 + 1,
-	make_arg_infos_list(Modes, Types, Reg1, InstTable, ModuleInfo,
+	make_arg_infos_list(Modes, Types, Reg1, InstMap, InstTable, ModuleInfo,
 		ArgInfos).
-make_arg_infos_list([], [_|_], _, _, _, _) :-
+make_arg_infos_list([], [_|_], _, _, _, _, _) :-
 	error("make_arg_infos_list: length mis-match").
-make_arg_infos_list([_|_], [], _, _, _, _) :-
+make_arg_infos_list([_|_], [], _, _, _, _, _) :-
 	error("make_arg_infos_list: length mis-match").
 
 :- pred make_arg_infos_compact_list(list(mode), list(type), int, int,
-	inst_table, module_info, list(arg_info)).
-:- mode make_arg_infos_compact_list(in, in, in, in, in, in, out) is det.
+	instmap, inst_table, module_info, list(arg_info)).
+:- mode make_arg_infos_compact_list(in, in, in, in, in, in, in, out) is det.
 
-make_arg_infos_compact_list([], [], _, _, _, _, []).
+make_arg_infos_compact_list([], [], _, _, _, _, _, []).
 make_arg_infos_compact_list([Mode | Modes], [Type | Types], InReg0, OutReg0,
-		InstTable, ModuleInfo, [ArgInfo | ArgInfos]) :-
-	mode_to_arg_mode(InstTable, ModuleInfo, Mode, Type, ArgMode),
+		InstMap, InstTable, ModuleInfo, [ArgInfo | ArgInfos]) :-
+	mode_to_arg_mode(InstMap, InstTable, ModuleInfo, Mode, Type, ArgMode),
 	(
 		ArgMode = top_in,
 		ArgReg = InReg0,
@@ -224,10 +226,10 @@ make_arg_infos_compact_list([Mode | Modes], [Type | Types], InReg0, OutReg0,
 	),
 	ArgInfo = arg_info(ArgReg, ArgMode),
 	make_arg_infos_compact_list(Modes, Types, InReg1, OutReg1,
-		InstTable, ModuleInfo, ArgInfos).
-make_arg_infos_compact_list([], [_|_], _, _, _, _, _) :-
+		InstMap, InstTable, ModuleInfo, ArgInfos).
+make_arg_infos_compact_list([], [_|_], _, _, _, _, _, _) :-
 	error("make_arg_infos_list: length mis-match").
-make_arg_infos_compact_list([_|_], [], _, _, _, _, _) :-
+make_arg_infos_compact_list([_|_], [], _, _, _, _, _, _) :-
 	error("make_arg_infos_list: length mis-match").
 
 %---------------------------------------------------------------------------%

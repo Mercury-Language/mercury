@@ -111,7 +111,7 @@
 :- type mode_error_unify_rhs
 	--->	error_at_var(var)
 	;	error_at_functor(cons_id, list(var))
-	;	error_at_lambda(list(var), list(mode)).
+	;	error_at_lambda(list(var), argument_modes).
 
 :- type mode_error_info
 	---> mode_error_info(
@@ -639,7 +639,7 @@ report_mode_error_no_mode_decl(ModeInfo) -->
 :- mode report_mode_error_unify_pred(in, mode_info_ui, in, in, in, in,
 					di, uo) is det.
 
-report_mode_error_unify_pred(InstTable, ModeInfo, X, RHS, Type, PredOrFunc) -->
+report_mode_error_unify_pred(_InstTable, ModeInfo, X, RHS, Type, PredOrFunc) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	mode_info_write_context(ModeInfo),
@@ -654,10 +654,11 @@ report_mode_error_unify_pred(InstTable, ModeInfo, X, RHS, Type, PredOrFunc) -->
 		{ RHS = error_at_functor(ConsId, ArgVars) },
 		hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, no)
 	;
-		{ RHS = error_at_lambda(ArgVars, ArgModes) },
+		{ RHS = error_at_lambda(ArgVars,
+			argument_modes(ArgInstTable, ArgModes)) },
 		io__write_string("lambda(["),
 		hlds_out__write_var_modes(ArgVars, ArgModes, VarSet, no,
-			InstTable),
+			ArgInstTable),
 		io__write_string("] ... )")
 	),
 	io__write_string("':\n"),

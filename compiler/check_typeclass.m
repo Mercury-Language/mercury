@@ -59,7 +59,7 @@
 
 :- import_module type_util, assoc_list, mode_util, inst_match, hlds_module.
 :- import_module base_typeclass_info, hlds_goal, prog_out, hlds_pred.
-:- import_module inst_util.
+:- import_module inst_util, instmap.
 :- import_module typecheck, globals, make_hlds, hlds_data, prog_data. 
 :- import_module term, varset, int, std_util, list, string, set, map, require.
 
@@ -505,9 +505,10 @@ check_instance_modes(ModuleInfo, [ProcId - ProcInfo|Ps], Modes - Detism,
 		% If there was a decl. for the proc, then use that determinism,
 		% otherwise use what was inferred.
 	proc_info_interface_determinism(ProcInfo, ProcDetism),
+	proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
 	(
-		matching_mode_list(InstTable, ModuleInfo, ProcArgModes,
-				ArgModes),
+		matching_mode_list(InstMap, InstTable, ModuleInfo,
+				ProcArgModes, ArgModes),
 		ProcDetism = Detism
 	->
 		TheProcId = ProcId
@@ -516,16 +517,19 @@ check_instance_modes(ModuleInfo, [ProcId - ProcInfo|Ps], Modes - Detism,
 			TheProcId)
 	).
 
-:- pred matching_mode_list(inst_table, module_info, list(mode), list(mode)).
-:- mode matching_mode_list(in, in, in, in) is semidet.
+:- pred matching_mode_list(instmap, inst_table, module_info, list(mode),
+		list(mode)).
+:- mode matching_mode_list(in, in, in, in, in) is semidet.
 
-matching_mode_list(_, _, [], []).
-matching_mode_list(InstTable, ModuleInfo, [A|As], [B|Bs]) :-
+matching_mode_list(_, _, _, [], []).
+matching_mode_list(InstMap, InstTable, ModuleInfo, [A|As], [B|Bs]) :-
 	mode_get_insts(ModuleInfo, A, Ainit, Afinal),
 	mode_get_insts(ModuleInfo, B, Binit, Bfinal),
-	inst_matches_final(Ainit, Binit, InstTable, ModuleInfo),
-	inst_matches_final(Afinal, Bfinal, InstTable, ModuleInfo),
-	matching_mode_list(InstTable, ModuleInfo, As, Bs).
+	inst_matches_final(Ainit, InstMap, Binit, InstMap, InstTable,
+			ModuleInfo),
+	inst_matches_final(Afinal, InstMap, Bfinal, InstMap, InstTable,
+			ModuleInfo),
+	matching_mode_list(InstMap, InstTable, ModuleInfo, As, Bs).
 
 :- pred apply_substitution_to_var_list(list(var), map(var, term), list(var)).
 :- mode apply_substitution_to_var_list(in, in, out) is det.

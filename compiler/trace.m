@@ -149,10 +149,11 @@ trace__fail_vars(ModuleInfo, ProcInfo, FailVars) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_argmodes(ProcInfo, argument_modes(ArgInstTable, Modes)),
 	proc_info_arg_info(ProcInfo, ArgInfos),
+	proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
 	mode_list_get_final_insts(Modes, ModuleInfo, Insts),
 	(
 		trace__build_fail_vars(HeadVars, Insts, ArgInfos,
-			ArgInstTable, ModuleInfo, FailVarsList)
+			InstMap, ArgInstTable, ModuleInfo, FailVarsList)
 	->
 		set__list_to_set(FailVarsList, FailVars)
 	;
@@ -415,18 +416,18 @@ trace__find_typeinfos_for_tvars(TypeVars, VarLocs, TypeInfoMap, TypeInfoDatas)
 %-----------------------------------------------------------------------------%
 
 :- pred trace__build_fail_vars(list(var)::in, list(inst)::in,
-	list(arg_info)::in, inst_table::in, module_info::in, list(var)::out)
-	is semidet.
+	list(arg_info)::in, instmap::in, inst_table::in, module_info::in,
+	list(var)::out) is semidet.
 
-trace__build_fail_vars([], [], [], _, _, []).
+trace__build_fail_vars([], [], [], _, _, _, []).
 trace__build_fail_vars([Var | Vars], [Inst | Insts], [Info | Infos],
-		InstTable, ModuleInfo, FailVars) :-
-	trace__build_fail_vars(Vars, Insts, Infos, InstTable, ModuleInfo,
-		FailVars0),
+		InstMap, InstTable, ModuleInfo, FailVars) :-
+	trace__build_fail_vars(Vars, Insts, Infos, InstMap, InstTable,
+		ModuleInfo, FailVars0),
 	Info = arg_info(_Loc, ArgMode),
 	(
 		ArgMode = top_in,
-		\+ inst_is_clobbered(Inst, InstTable, ModuleInfo)
+		\+ inst_is_clobbered(Inst, InstMap, InstTable, ModuleInfo)
 	->
 		FailVars = [Var | FailVars0]
 	;

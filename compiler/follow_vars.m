@@ -43,7 +43,7 @@
 
 :- implementation.
 
-:- import_module hlds_data, llds, mode_util, prog_data.
+:- import_module hlds_data, llds, mode_util, prog_data, instmap.
 :- import_module code_util, quantification, arg_info, globals.
 :- import_module bool, list, map, set, std_util, term, require.
 
@@ -193,8 +193,9 @@ find_follow_vars_in_goal_expr(
 	Modes = argument_modes(ArgInstTable, ArgModes),
 	module_info_globals(ModuleInfo, Globals),
 	arg_info__ho_call_args_method(Globals, ArgsMethod),
-	make_arg_infos(ArgsMethod, Types, ArgModes, CodeModel, ArgInstTable,
-		ModuleInfo, ArgInfo),
+	instmap__init_reachable(BogusInstMap),
+	make_arg_infos(ArgsMethod, Types, ArgModes, CodeModel, BogusInstMap,
+		ArgInstTable, ModuleInfo, ArgInfo),
 	find_follow_vars_from_arginfo(ArgInfo, Args, FollowVars).
 
 	% XXX These follow-vars aren't correct since the desired positions for
@@ -217,8 +218,9 @@ find_follow_vars_in_goal_expr(
 	;
 		error("Sorry, typeclasses with simple args_method not yet implemented")
 	),
-	make_arg_infos(ArgsMethod, Types, ArgModes, CodeModel, ArgInstTable,
-		ModuleInfo, ArgInfo),
+	instmap__init_reachable(BogusInstMap),
+	make_arg_infos(ArgsMethod, Types, ArgModes, CodeModel, BogusInstMap,
+		ArgInstTable, ModuleInfo, ArgInfo),
 	find_follow_vars_from_arginfo(ArgInfo, Args, FollowVars).
 
 find_follow_vars_in_goal_expr(call(A,B,C,D,E,F), FVInfo,

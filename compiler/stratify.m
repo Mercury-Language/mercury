@@ -48,7 +48,7 @@
 
 :- import_module dependency_graph, hlds_pred, hlds_goal, hlds_data.
 :- import_module hlds_module, type_util, mode_util, prog_data, passes_aux.
-:- import_module prog_out, globals, options, (inst).
+:- import_module prog_out, globals, options, (inst), instmap.
 
 :- import_module assoc_list, map, list, set, bool, std_util, relation, require.
 
@@ -674,10 +674,12 @@ process_procs([ProcId|Procs], Module, PredId, ArgTypes, ProcTable, ProcCalls0,
 	map__lookup(ProcTable, ProcId, ProcInfo),
 	proc_info_argmodes(ProcInfo, argument_modes(IT, ArgModes)),
 	proc_info_goal(ProcInfo, Goal - _GoalInfo),
+	proc_info_get_initial_instmap(ProcInfo, Module, ProcInstMap),
 	PredProcId = proc(PredId, ProcId),
 	check_goal(Goal, Calls, HaveAT, CallsHigherOrder),
 	map__det_insert(ProcCalls0, PredProcId, Calls, ProcCalls1),
-	higherorder_in_out(ArgTypes, ArgModes, IT, Module, HOInOut),
+	higherorder_in_out(ArgTypes, ArgModes, IT, Module, ProcInstMap,
+			HOInOut),
 	map__det_insert(HOInfo0, PredProcId, info(HaveAT, HOInOut), 
 		HOInfo1),
 	(
@@ -693,11 +695,12 @@ process_procs([ProcId|Procs], Module, PredId, ArgTypes, ProcTable, ProcCalls0,
 	% determine if a given set of modes and types indicates that
 	% higher order values can be passed into and/or out of a proc
 :- pred higherorder_in_out(list(type), list(mode), inst_table, module_info,
-		ho_in_out). 
-:- mode higherorder_in_out(in, in, in, in, out) is det.
+		instmap, ho_in_out). 
+:- mode higherorder_in_out(in, in, in, in, in, out) is det.
 
-higherorder_in_out(Types, Modes, IT, Module, HOInOut) :-
-	higherorder_in_out1(Types, Modes, IT, Module, no, HOIn, no, HOOut),
+higherorder_in_out(Types, Modes, IT, Module, InstMap, HOInOut) :-
+	higherorder_in_out1(Types, Modes, IT, Module, InstMap,
+				no, HOIn, no, HOOut),
 	bool_2_ho_in_out(HOIn, HOOut, HOInOut).
 
 :- pred bool_2_ho_in_out(bool, bool, ho_in_out).
@@ -709,16 +712,16 @@ bool_2_ho_in_out(yes, yes, ho_in_out).
 bool_2_ho_in_out(no, no, ho_none).
 	
 :- pred higherorder_in_out1(list(type), list(mode), inst_table,
-		module_info, bool, bool, bool, bool).
-:- mode higherorder_in_out1(in, in, in, in, in, out, in, out) is det.
+		module_info, instmap, bool, bool, bool, bool).
+:- mode higherorder_in_out1(in, in, in, in, in, in, out, in, out) is det.
 
-higherorder_in_out1([], [], _IT, _Module, HOIn, HOIn, HOOut, HOOut).
-higherorder_in_out1([], [_|_], _, _, _, _, _, _) :-
+higherorder_in_out1([], [], _IT, _Module, _IM, HOIn, HOIn, HOOut, HOOut).
+higherorder_in_out1([], [_|_], _, _, _, _, _, _, _) :-
 	error("higherorder_in_out1: lists were different lengths").
-higherorder_in_out1([_|_], [], _, _, _, _, _, _) :-
+higherorder_in_out1([_|_], [], _, _, _, _, _, _, _) :-
 	error("higherorder_in_out1: lists were different lengths").
-higherorder_in_out1([Type|Types], [Mode|Modes], IT, Module, HOIn0, HOIn, 	
-		HOOut0, HOOut) :-
+higherorder_in_out1([Type|Types], [Mode|Modes], IT, Module, InstMap,
+		HOIn0, HOIn, 	HOOut0, HOOut) :-
 	(
 		% XXX : will have to use a more general check for higher
 		% order constants in parameters user could hide higher
@@ -726,12 +729,12 @@ higherorder_in_out1([Type|Types], [Mode|Modes], IT, Module, HOIn0, HOIn,
 		type_is_higher_order(Type, _, _)
 	->	
 		(
-			mode_is_input(IT, Module, Mode) 
+			mode_is_input(InstMap, IT, Module, Mode) 
 		->	
 			HOIn1 = yes,
 			HOOut1 = HOOut0
 		;	
-			mode_is_output(IT, Module, Mode)
+			mode_is_output(InstMap, IT, Module, Mode)
 		->
 			HOOut1 = yes,
 			HOIn1 = HOIn0
@@ -743,8 +746,8 @@ higherorder_in_out1([Type|Types], [Mode|Modes], IT, Module, HOIn0, HOIn,
 		HOIn1 = HOIn0,
 		HOOut1 = HOOut0
 	),
-	higherorder_in_out1(Types, Modes, IT, Module, HOIn1, HOIn, HOOut1,
-		HOOut).
+	higherorder_in_out1(Types, Modes, IT, Module, InstMap,
+			HOIn1, HOIn, HOOut1, HOOut).
 	
 	% return the set of all procs called in and all addresses
 	% taken, in a given goal

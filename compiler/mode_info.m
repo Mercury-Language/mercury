@@ -17,7 +17,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, instmap.
-:- import_module prog_data, mode_errors, delay_info, (inst), mode_debug.
+:- import_module prog_data, mode_errors, delay_info, mode_debug.
 :- import_module map, list, varset, set, bool, term, assoc_list, std_util.
 
 :- interface.
@@ -263,9 +263,6 @@
 :- mode mode_info_bind_var_to_functor(in, in, mode_info_di, mode_info_uo)
 	is det.
 
-:- pred mode_info_apply_inst_key_sub(inst_key_sub, mode_info, mode_info).
-:- mode mode_info_apply_inst_key_sub(in, mode_info_di, mode_info_uo) is det.
-
 :- pred mode_info_get_how_to_check(mode_info, how_to_check_goal).
 :- mode mode_info_get_how_to_check(mode_info_ui, out) is det.
 
@@ -327,7 +324,7 @@
 
 :- implementation.
 
-:- import_module delay_info, mode_errors, mode_util.
+:- import_module delay_info, mode_errors, mode_util, (inst).
 :- import_module require, std_util, queue.
 
 :- type mode_info 
@@ -832,23 +829,12 @@ mode_info_bind_var_to_functor(Var, ConsId, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_inst_table(ModeInfo0, InstTable0),
 
-	instmap_bind_var_to_functor(Var, ConsId, InstMap0, InstMap,
+	instmap__bind_var_to_functor(Var, ConsId, InstMap0, InstMap,
 		InstTable0, InstTable, ModuleInfo0, ModuleInfo),
 
         mode_info_set_instmap(InstMap, ModeInfo0, ModeInfo1),
         mode_info_set_inst_table(InstTable, ModeInfo1, ModeInfo2),
 	mode_info_set_module_info(ModeInfo2, ModuleInfo, ModeInfo).
-
-%-----------------------------------------------------------------------------%
-
-mode_info_apply_inst_key_sub(Sub, ModeInfo0, ModeInfo) :-
-	mode_info_get_instmap(ModeInfo0, InstMap0),
-	mode_info_get_inst_table(ModeInfo0, InstTable0),
-
-	apply_inst_key_sub(Sub, InstMap0, InstMap, InstTable0, InstTable),
-
-	mode_info_set_instmap(InstMap, ModeInfo0, ModeInfo1),
-	mode_info_set_inst_table(InstTable, ModeInfo1, ModeInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

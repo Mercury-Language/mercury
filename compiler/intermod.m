@@ -268,21 +268,22 @@ has_ho_input(ModuleInfo, ProcInfo) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_argmodes(ProcInfo, argument_modes(ArgInstTable, ArgModes)),
 	proc_info_vartypes(ProcInfo, VarTypes),
-	check_for_ho_input_args(ArgInstTable, ModuleInfo, HeadVars, ArgModes,
-		VarTypes).
+	proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
+	check_for_ho_input_args(InstMap, ArgInstTable, ModuleInfo, HeadVars,
+		ArgModes, VarTypes).
 
-:- pred check_for_ho_input_args(inst_table::in, module_info::in,
+:- pred check_for_ho_input_args(instmap::in, inst_table::in, module_info::in,
 		list(var)::in, list(mode)::in, map(var, type)::in) is semidet.
 
-check_for_ho_input_args(InstTable, ModuleInfo, [HeadVar | HeadVars],
+check_for_ho_input_args(InstMap, InstTable, ModuleInfo, [HeadVar | HeadVars],
 			[ArgMode | ArgModes], VarTypes) :-
 	(
-		mode_is_input(InstTable, ModuleInfo, ArgMode),
+		mode_is_input(InstMap, InstTable, ModuleInfo, ArgMode),
 		map__lookup(VarTypes, HeadVar, Type),
 		classify_type(Type, ModuleInfo, pred_type)
 	;
-		check_for_ho_input_args(InstTable, ModuleInfo, HeadVars,
-							ArgModes, VarTypes)
+		check_for_ho_input_args(InstMap, InstTable, ModuleInfo,
+				HeadVars, ArgModes, VarTypes)
 	).
 
 	% Rough guess: a goal is deforestable if it contains a single

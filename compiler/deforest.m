@@ -65,7 +65,8 @@ deforestation(ModuleInfo0, ModuleInfo, IO0, IO) :-
 	hlds_dependency_info_get_dependency_ordering(DepInfo, DepOrdering),
 	list__condense(DepOrdering, DepList),
 
-	pd_info_init(ModuleInfo2, ProcArgInfo, IO1, PdInfo0),
+	inst_table_init(InstTable),
+	pd_info_init(ModuleInfo2, ProcArgInfo, InstTable, IO1, PdInfo0),
 	pd_info_foldl(deforest__proc, DepList, PdInfo0, PdInfo1),
 	pd_info_get_module_info(ModuleInfo3, PdInfo1, PdInfo),
 	module_info_clobber_dependency_info(ModuleInfo3, ModuleInfo),
@@ -110,29 +111,33 @@ deforest__proc(proc(PredId, ProcId), CostDelta, SizeDelta) -->
 		PredInfo0, ProcInfo0) },
 	pd_info_init_unfold_info(proc(PredId, ProcId), PredInfo0, ProcInfo0),
 	{ proc_info_goal(ProcInfo0, Goal0) },
+	{ proc_info_inst_table(ProcInfo0, InstTable0) },
+	pd_info_set_inst_table(InstTable0),
 	deforest__goal(Goal0, Goal1),
 	pd_info_get_proc_info(ProcInfo1),
 	{ proc_info_set_goal(ProcInfo1, Goal1, ProcInfo2) },
+	pd_info_get_inst_table(InstTable1),
+	{ proc_info_set_inst_table(ProcInfo2, InstTable1, ProcInfo3) },
 	pd_info_get_changed(Changed),
 
 	( { Changed = yes } ->
 		pd_info_get_module_info(ModuleInfo2),
-		{ requantify_proc(ProcInfo2, ProcInfo3) },
-		{ proc_info_goal(ProcInfo3, Goal3) },
-		{ proc_info_get_initial_instmap(ProcInfo3,
+		{ requantify_proc(ProcInfo3, ProcInfo4) },
+		{ proc_info_goal(ProcInfo4, Goal4) },
+		{ proc_info_get_initial_instmap(ProcInfo4,
 			ModuleInfo2, InstMap0) },
-		{ proc_info_headvars(ProcInfo3, ArgVars) },
-		{ proc_info_arglives(ProcInfo3, ModuleInfo2, ArgLives) },
-		{ proc_info_vartypes(ProcInfo3, VarTypes) },
-		{ proc_info_inst_table(ProcInfo3, InstTable0) },
+		{ proc_info_headvars(ProcInfo4, ArgVars) },
+		{ proc_info_arglives(ProcInfo4, ModuleInfo2, ArgLives) },
+		{ proc_info_vartypes(ProcInfo4, VarTypes) },
+		{ proc_info_inst_table(ProcInfo4, InstTable4) },
 		{ recompute_instmap_delta(ArgVars, ArgLives, VarTypes,
-			Goal3, Goal, InstMap0, InstTable0, InstTable,
+			Goal4, Goal, InstMap0, InstTable4, InstTable,
 			_, ModuleInfo2, ModuleInfo3) },
 		pd_info_set_module_info(ModuleInfo3),
 
 		pd_info_get_pred_info(PredInfo),
-		{ proc_info_set_goal(ProcInfo3, Goal, ProcInfo4) },
-		{ proc_info_set_inst_table(ProcInfo4, InstTable, ProcInfo) },
+		{ proc_info_set_goal(ProcInfo4, Goal, ProcInfo5) },
+		{ proc_info_set_inst_table(ProcInfo5, InstTable, ProcInfo) },
 		{ module_info_set_pred_proc_info(ModuleInfo3, PredId, ProcId,
 			PredInfo, ProcInfo, ModuleInfo4) },
 
@@ -941,9 +946,10 @@ deforest__create_call_goal(proc(PredId, ProcId), VersionInfo,
 	{ VersionInfo = version_info(_, _, OldArgs, _, _, _, _, _, _) },
 	pd_info_get_module_info(ModuleInfo),
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-		CalledPredInfo, CalledProcInfo) },
+		CalledPredInfo, _CalledProcInfo) },
 	{ pred_info_arg_types(CalledPredInfo, CalledTVarSet, _CalledExistQVars,
-		ArgTypes0) },
+			ArgTypes0) },
+
 
 		% Rename the arguments in the version.
 	pd_info_get_proc_info(ProcInfo0),
@@ -968,9 +974,8 @@ deforest__create_call_goal(proc(PredId, ProcId), VersionInfo,
 	pd_info_set_proc_info(ProcInfo),
 
 		% Compute a goal_info.
-	{ proc_info_argmodes(CalledProcInfo, argument_modes(_, ArgModes)) },
-	{ instmap_delta_from_mode_list(Args, ArgModes,
-		ModuleInfo, InstMapDelta) },
+	% { proc_info_argmodes(CalledProcInfo, argument_modes(_, ArgModes)) },
+	{ instmap_delta_init_reachable(InstMapDelta) },	% YYY
 	{ proc_info_interface_determinism(ProcInfo, Detism) },
 	{ set__list_to_set(Args, NonLocals) },
 	{ goal_info_init(NonLocals, InstMapDelta, Detism, GoalInfo) },
@@ -1135,7 +1140,8 @@ deforest__try_MSG(InstTable, ModuleInfo, VersionInstMap,
 	(
 		map__search(Renaming, VersionArg, Arg),
 		instmap__lookup_var(InstMap0, Arg, VarInst),
-		inst_MSG(VersionInst, VarInst, InstTable, ModuleInfo, Inst) 
+		inst_MSG(VersionInst, VersionInstMap, VarInst, InstMap0,
+			InstTable, ModuleInfo, Inst) 
 	->
 		instmap__set(InstMap0, Arg, Inst, InstMap1)
 	;
@@ -1220,6 +1226,7 @@ deforest__match_generalised_version(ModuleInfo, VersionGoal, VersionArgs,
 	module_info_pred_info(ModuleInfo, NonGeneralisedPredId, 
 		NonGeneralisedPredInfo),
 	pred_info_arg_types(NonGeneralisedPredInfo, NonGeneralisedArgTypes),
+
 	deforest__create_deforest_call_args(NonGeneralisedArgs, 
 		NonGeneralisedArgTypes, GeneralRenaming, TypeRenaming,
 		NewArgs, VarSet, _, VarTypes, _),
@@ -1404,8 +1411,7 @@ deforest__push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
 	{ goal_list_instmap_delta([EarlierGoal | BetweenGoals], Delta0) },
 	{ LaterGoal = _ - LaterInfo },
 	{ goal_info_get_instmap_delta(LaterInfo, Delta1) },
-	{ instmap_delta_apply_instmap_delta(Delta0, Delta1, Delta2) },
-	{ instmap_delta_restrict(Delta2, NonLocals, Delta) },
+	{ instmap_delta_apply_instmap_delta(Delta0, Delta1, Delta) },
 	{ goal_list_determinism([EarlierGoal | BetweenGoals], Detism0) },
 	{ goal_info_get_determinism(LaterInfo, Detism1) },
 	{ det_conjunction_detism(Detism0, Detism1, Detism) },
@@ -1480,8 +1486,7 @@ deforest__append_goal(Goal0, BetweenGoals, GoalToAppend0,
 
 	{ goal_list_nonlocals(Goals, SubNonLocals) },
 	{ set__intersect(NonLocals0, SubNonLocals, NonLocals) },
-	{ goal_list_instmap_delta(Goals, Delta0) },
-	{ instmap_delta_restrict(Delta0, NonLocals, Delta) },
+	{ goal_list_instmap_delta(Goals, Delta) },
 	{ goal_list_determinism(Goals, Detism) },
 	{ goal_info_init(NonLocals, Delta, Detism, GoalInfo) }, 
 	{ Goal = conj(Goals) - GoalInfo }.
@@ -1515,7 +1520,7 @@ deforest__call(PredId, ProcId, Args, SymName, Goal0, Goal) -->
 		{ set__member(LeftArg, LeftArgs) },
 		{ list__index1_det(Args, LeftArg, Arg) },
 		{ instmap__lookup_var(InstMap, Arg, ArgInst) },
-		{ inst_is_bound_to_functors(ArgInst, InstTable,
+		{ inst_is_bound_to_functors(ArgInst, InstMap, InstTable,
 			ModuleInfo, [_]) }
 	->
 		pd_debug__message(Context, 

@@ -103,6 +103,7 @@
 
 :- import_module hlds_data, code_gen, code_util, options, globals, prog_data.
 :- import_module hlds_module, (inst), instmap, mode_util, code_info.
+:- import_module inst_match.
 :- import_module set, term, tree, list, map, std_util, require, int.
 
 %---------------------------------------------------------------------------%
@@ -213,8 +214,8 @@ par_conj_gen__find_outputs([Var|Vars],  Initial, Final, InstTable, ModuleInfo,
 	instmap__lookup_var(Initial, Var, InitialInst),
 	instmap__lookup_var(Final, Var, FinalInst),
 	(
-		mode_is_output(InstTable, ModuleInfo,
-			(InitialInst -> FinalInst))
+		inst_is_free(InitialInst, Initial, InstTable, ModuleInfo),
+		inst_is_bound(FinalInst, Final, InstTable, ModuleInfo)
 	->
 		Outputs1 = [Var|Outputs0]
 	;

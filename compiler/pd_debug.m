@@ -152,9 +152,9 @@ pd_debug__output_version(ModuleInfo, PredProcId,
 
 pd_debug__write_instmap -->
 	pd_info_get_instmap(InstMap),
+	pd_info_get_inst_table(InstTable),
 	pd_info_get_proc_info(ProcInfo),
 	{ proc_info_varset(ProcInfo, VarSet) },
-	{ proc_info_inst_table(ProcInfo, InstTable) },
 	pd_debug__do_io(hlds_out__write_instmap(InstMap, VarSet, yes, 1,
 		InstTable)).
 
@@ -180,10 +180,10 @@ pd_debug__output_goal(Msg, Goal - GoalInfo) -->
 	( { DoOutput = yes } ->
 		pd_info_get_proc_info(ProcInfo),
 		{ proc_info_varset(ProcInfo, VarSet) },
-		{ proc_info_inst_table(ProcInfo, InstTable) },
 		pd_info_get_instmap(InstMap),
 		pd_info_get_io_state(IO0),
 		pd_info_get_module_info(ModuleInfo),
+		pd_info_get_inst_table(InstTable),
 		{
 		io__write_string(Msg, IO0, IO1),
 		goal_util__goal_vars(Goal - GoalInfo, Vars),

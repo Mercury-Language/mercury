@@ -38,7 +38,7 @@
 
 :- implementation.
 :- import_module std_util, list, assoc_list, io, bool, map.
-:- import_module term, varset, string.
+:- import_module term, varset, string, require.
 :- import_module modes, options, mercury_to_mercury, passes_aux.
 :- import_module globals, hlds_goal, instmap, prog_data, (inst).
 :- import_module hlds_module, hlds_data.
@@ -129,7 +129,7 @@ mode_checkpoint_2(Port, Msg, GoalInfo, OldInstList, NewInstList, Mark,
 				Expand = expand_noisily
 			},
 			write_var_insts(Expand, NewInstList, OldInstList,
-				VarSet, InstVarSet, InstTable)
+				VarSet, InstVarSet, InstMap, InstTable)
 		;
 			{ NewInstList = [] },
 			io__write_string("\tUnreachable\n")
@@ -148,12 +148,12 @@ mode_checkpoint_2(Port, Msg, GoalInfo, OldInstList, NewInstList, Mark,
 
 :- pred write_var_insts(expand_inst_alias,
 		assoc_list(var, inst), assoc_list(var, inst),
-		varset, varset, inst_table, io__state, io__state).
-:- mode write_var_insts(in, in, in, in, in, in, di, uo) is det.
+		varset, varset, instmap, inst_table, io__state, io__state).
+:- mode write_var_insts(in, in, in, in, in, in, in, di, uo) is det.
 
-write_var_insts(_, [], _, _, _, _) --> [].
-write_var_insts(Expand, [Var - Inst | VarInsts], OldInstList, VarSet,
-		InstVarSet, InstTable) -->
+write_var_insts(_, [], _, _, _, _, _) --> [].
+write_var_insts(Expand, [Var - Inst | NewInstList], OldInstList, VarSet,
+		InstVarSet, InstMap, InstTable) -->
 	io__write_string("\t"),
 	mercury_output_var(Var, VarSet, no),
 	io__write_string(" ::"),
@@ -165,10 +165,10 @@ write_var_insts(Expand, [Var - Inst | VarInsts], OldInstList, VarSet,
 	;
 		io__write_string("\n"),
 		mercury_output_structured_inst(Expand, Inst, 2,
-			InstVarSet, InstTable)
+			InstVarSet, InstMap, InstTable)
 	),
-	write_var_insts(Expand, VarInsts, OldInstList, VarSet, InstVarSet,
-		InstTable).
+	write_var_insts(Expand, NewInstList, OldInstList, VarSet, InstVarSet,
+		InstMap, InstTable).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

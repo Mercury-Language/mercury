@@ -335,7 +335,7 @@ detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, SM, InstMap,
 		% XXX we only need inst_is_bound, but leave this as it is
 		% until mode analysis can handle aliasing between free
 		% variables.
-		inst_is_ground_or_any(VarInst0, InstTable, ModuleInfo),
+		inst_is_ground_or_any(VarInst0, InstMap, InstTable, ModuleInfo),
 		common_deconstruct(Goals0, Var, CseInfo0, CseInfo1,
 			Unify, Goals)
 	->
@@ -378,7 +378,7 @@ detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
 		% XXX we only need inst_is_bound, but leave this as it is
 		% until mode analysis can handle aliasing between free
 		% variables.
-		inst_is_ground_or_any(VarInst0, InstTable, ModuleInfo),
+		inst_is_ground_or_any(VarInst0, InstMap, InstTable, ModuleInfo),
 		common_deconstruct_cases(Cases0, Var, CseInfo0, CseInfo1,
 			Unify, Cases)
 	->
@@ -423,7 +423,7 @@ detect_cse_in_ite([Var | Vars], IfVars, Cond0, Then0, Else0, GoalInfo,
 		% XXX we only need inst_is_bound, but leave this as it is
 		% until mode analysis can handle aliasing between free
 		% variables.
-		inst_is_ground_or_any(VarInst0, InstTable, ModuleInfo),
+		inst_is_ground_or_any(VarInst0, InstMap, InstTable, ModuleInfo),
 		common_deconstruct([Then0, Else0], Var, CseInfo0, CseInfo1,
 			Unify, Goals),
 		Goals = [Then, Else]

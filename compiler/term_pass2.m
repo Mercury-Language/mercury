@@ -25,7 +25,7 @@
 
 :- implementation.
 
-:- import_module term_traversal, term_errors.
+:- import_module term_traversal, term_errors, instmap.
 :- import_module hlds_data, hlds_goal, prog_data, type_util, mode_util.
 
 :- import_module std_util, bool, int, assoc_list.
@@ -103,8 +103,9 @@ init_rec_input_suppliers([PPId | PPIds], Module, RecSupplierMap) :-
 	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_argmodes(ProcInfo, argument_modes(ArgInstTable, ArgModes)),
-	partition_call_args(Module, ArgInstTable, ArgModes, HeadVars, InArgs,
-			_OutVars),
+	proc_info_get_initial_instmap(ProcInfo, Module, ProcInstMap),
+	partition_call_args(Module, ProcInstMap, ArgInstTable, ArgModes,
+			HeadVars, InArgs, _OutVars),
 	MapIsInput = lambda([HeadVar::in, Bool::out] is det,
 	(
 		( bag__contains(InArgs, HeadVar) ->
@@ -197,8 +198,9 @@ init_rec_input_suppliers_single_arg(TrialPPId, RestSCC, ArgNum, Module,
 	TrialPPId = proc(PredId, ProcId),
 	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
 	proc_info_argmodes(ProcInfo, argument_modes(ArgInstTable, ArgModes)),
+	proc_info_get_initial_instmap(ProcInfo, Module, ProcInstMap),
 	init_rec_input_suppliers_add_single_arg(ArgModes, ArgNum,
-		ArgInstTable, Module, TrialPPIdRecSuppliers),
+		ProcInstMap, ArgInstTable, Module, TrialPPIdRecSuppliers),
 	map__init(RecSupplierMap0),
 	map__det_insert(RecSupplierMap0, TrialPPId, TrialPPIdRecSuppliers,
 		RecSupplierMap1),
@@ -206,12 +208,14 @@ init_rec_input_suppliers_single_arg(TrialPPId, RestSCC, ArgNum, Module,
 		RecSupplierMap1, RecSupplierMap).
 
 :- pred init_rec_input_suppliers_add_single_arg(list(mode)::in, int::in,
-	inst_table::in, module_info::in, list(bool)::out) is semidet.
+	instmap::in, inst_table::in, module_info::in, list(bool)::out)
+	is semidet.
 
-init_rec_input_suppliers_add_single_arg([Mode | Modes], ArgNum, ArgInstTable,
+init_rec_input_suppliers_add_single_arg([Mode | Modes], ArgNum, InstMap,
+		ArgInstTable,
 		Module, BoolList) :-
 	(
-		mode_is_input(ArgInstTable, Module, Mode),
+		mode_is_input(InstMap, ArgInstTable, Module, Mode),
 		ArgNum = 1
 	->
 		MapToNo = lambda([_Mode::in, Bool::out] is det,
@@ -222,11 +226,11 @@ init_rec_input_suppliers_add_single_arg([Mode | Modes], ArgNum, ArgInstTable,
 		BoolList = [yes | BoolList1]
 	;
 		(
-			mode_is_output(ArgInstTable, Module, Mode)
+			mode_is_output(InstMap, ArgInstTable, Module, Mode)
 		->
 			NextArgNum = ArgNum
 		;
-			mode_is_input(ArgInstTable, Module, Mode),
+			mode_is_input(InstMap, ArgInstTable, Module, Mode),
 			ArgNum > 1
 		->
 			NextArgNum is ArgNum - 1
@@ -235,7 +239,7 @@ init_rec_input_suppliers_add_single_arg([Mode | Modes], ArgNum, ArgInstTable,
 		)
 	->
 		init_rec_input_suppliers_add_single_arg(Modes, NextArgNum,
-			ArgInstTable, Module, BoolList1),
+			InstMap, ArgInstTable, Module, BoolList1),
 		BoolList = [no | BoolList1]
 	;
 		fail
@@ -354,6 +358,7 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, Module, PassInfo,
 	proc_info_inst_table(ProcInfo, InstTable),
 	proc_info_goal(ProcInfo, Goal),
 	proc_info_vartypes(ProcInfo, VarTypes),
+	proc_info_get_initial_instmap(ProcInfo, Module, ProcInstMap),
 	map__init(EmptyMap),
 	PassInfo = pass_info(FunctorInfo, MaxErrors, MaxPaths),
 	init_traversal_params(Module, InstTable, FunctorInfo, PPId, Context,
@@ -361,7 +366,7 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, Module, PassInfo,
 		Params),
 	set__init(PathSet0),
 	Info0 = ok(PathSet0, []),
-	traverse_goal(Goal, Params, Info0, Info),
+	traverse_goal(Goal, ProcInstMap, _, Params, Info0, Info),
 	(
 		Info = ok(Paths, CanLoop),
 		require(unify(CanLoop, []),
