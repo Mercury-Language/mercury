@@ -78,6 +78,7 @@
 :- import_module ml_call_gen, prog_util, type_util, mode_util.
 :- import_module rtti.
 :- import_module code_util. % XXX needed for `code_util__cons_id_to_tag'.
+:- import_module globals, options.
 
 :- import_module bool, int, string, list, require, std_util, term, varset.
 
@@ -1391,59 +1392,72 @@ ml_gen_tag_test(Var, ConsId, TagTestDecls, TagTestStatements,
 	ml_gen_var(Var, VarLval),
 	ml_variable_type(Var, Type),
 	ml_cons_id_to_tag(ConsId, Type, Tag),
-	{ TagTestExpression = ml_gen_tag_test_rval(Tag, Type, lval(VarLval)) },
+	=(Info),
+	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
+	{ TagTestExpression = ml_gen_tag_test_rval(Tag, Type, ModuleInfo,
+		lval(VarLval)) },
 	{ TagTestDecls = [] },
 	{ TagTestStatements = [] }.
 
-	% ml_gen_tag_test_rval(Tag, VarType, VarRval) = TestRval:
+	% ml_gen_tag_test_rval(Tag, VarType, ModuleInfo, VarRval) = TestRval:
 	%	TestRval is a Rval of type bool which evaluates to
 	%	true if VarRval has the specified Tag and false otherwise.
 	%	VarType is the type of VarRval. 
 	%
-:- func ml_gen_tag_test_rval(cons_tag, prog_type, mlds__rval) = mlds__rval.
+:- func ml_gen_tag_test_rval(cons_tag, prog_type, module_info, mlds__rval)
+	= mlds__rval.
 
-ml_gen_tag_test_rval(string_constant(String), _, Rval) =
+ml_gen_tag_test_rval(string_constant(String), _, _, Rval) =
 	binop(str_eq, Rval, const(string_const(String))).
-ml_gen_tag_test_rval(float_constant(Float), _, Rval) =
+ml_gen_tag_test_rval(float_constant(Float), _, _, Rval) =
 	binop(float_eq, Rval, const(float_const(Float))).
-ml_gen_tag_test_rval(int_constant(Int), _, Rval) =
+ml_gen_tag_test_rval(int_constant(Int), _, _, Rval) =
 	binop(eq, Rval, const(int_const(Int))).
-ml_gen_tag_test_rval(pred_closure_tag(_, _, _), _, _Rval) = _TestRval :-
+ml_gen_tag_test_rval(pred_closure_tag(_, _, _), _, _, _Rval) = _TestRval :-
 	% This should never happen, since the error will be detected
 	% during mode checking.
 	error("Attempted higher-order unification").
-ml_gen_tag_test_rval(code_addr_constant(_, _), _, _Rval) = _TestRval :-
+ml_gen_tag_test_rval(code_addr_constant(_, _), _, _, _Rval) = _TestRval :-
 	% This should never happen
 	error("Attempted code_addr unification").
-ml_gen_tag_test_rval(type_ctor_info_constant(_, _, _), _, _) = _ :-
+ml_gen_tag_test_rval(type_ctor_info_constant(_, _, _), _, _, _) = _ :-
 	% This should never happen
 	error("Attempted type_ctor_info unification").
-ml_gen_tag_test_rval(base_typeclass_info_constant(_, _, _), _, _) = _ :-
+ml_gen_tag_test_rval(base_typeclass_info_constant(_, _, _), _, _, _) = _ :-
 	% This should never happen
 	error("Attempted base_typeclass_info unification").
-ml_gen_tag_test_rval(tabling_pointer_constant(_, _), _, _) = _ :-
+ml_gen_tag_test_rval(tabling_pointer_constant(_, _), _, _, _) = _ :-
 	% This should never happen
 	error("Attempted tabling_pointer unification").
-ml_gen_tag_test_rval(no_tag, _, _Rval) = const(true).
-ml_gen_tag_test_rval(unshared_tag(UnsharedTag), _, Rval) =
+ml_gen_tag_test_rval(no_tag, _, _, _Rval) = const(true).
+ml_gen_tag_test_rval(unshared_tag(UnsharedTag), _, _, Rval) =
 	binop(eq, unop(std_unop(tag), Rval),
 		  unop(std_unop(mktag), const(int_const(UnsharedTag)))).
-ml_gen_tag_test_rval(shared_remote_tag(Bits, Num), VarType, Rval) =
-	binop(and,
-		binop(eq,	unop(std_unop(tag), Rval),
-				unop(std_unop(mktag), const(int_const(Bits)))), 
-		binop(eq,	% Note: with the current low-level data
-				% representation, all fields -- even the
-				% secondary tag -- are boxed, and so we
-				% need to unbox (i.e. cast) it back to 
-				% the right type here.
-				unop(unbox(mlds__native_int_type),
-				     lval(field(yes(Bits), Rval,
-					offset(const(int_const(0))),
-					mlds__generic_type, 
-					mercury_type_to_mlds_type(VarType)))),
-				const(int_const(Num)))).
-ml_gen_tag_test_rval(shared_local_tag(Bits, Num), _, Rval) =
+ml_gen_tag_test_rval(shared_remote_tag(PrimaryTag, SecondaryTag), VarType,
+		ModuleInfo, Rval) = TagTest :-
+	SecondaryTagTest = binop(eq,
+		% Note: with the current low-level data representation,
+		% all fields -- even the secondary tag -- are boxed,
+		% and so we need to unbox (i.e. cast) it back to the
+		% right type here.
+		unop(unbox(mlds__native_int_type),
+			lval(field(yes(PrimaryTag), Rval,
+			offset(const(int_const(0))),
+			mlds__generic_type, 
+			mercury_type_to_mlds_type(VarType)))),
+		const(int_const(SecondaryTag))),
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_int_option(Globals, num_tag_bits, NumTagBits),
+	( NumTagBits = 0 ->
+		% no need to test the primary tag
+		TagTest = SecondaryTagTest
+	;
+		PrimaryTagTest = binop(eq,
+			unop(std_unop(tag), Rval),
+			unop(std_unop(mktag), const(int_const(PrimaryTag)))), 
+		TagTest = binop(and, PrimaryTagTest, SecondaryTagTest)
+	).
+ml_gen_tag_test_rval(shared_local_tag(Bits, Num), _, _, Rval) =
 	binop(eq, Rval,
 		  mkword(Bits, unop(std_unop(mkbody), const(int_const(Num))))).
 
