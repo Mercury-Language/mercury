@@ -86,6 +86,7 @@ polymorphism__process_preds([], ModuleInfo, ModuleInfo).
 polymorphism__process_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
 	pred_info_name(PredInfo, PredName),
+	% The builtin predicates call/N don't need a type_info
 	( PredName = "call" ->
 		ModuleInfo1 = ModuleInfo0
 	;
@@ -204,6 +205,7 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo,
 	list__append(ExtraModes, ArgModes0, ArgModes),
 
 	pred_info_name(PredInfo0, PredName),
+	% The builtin predicates call/N don't need a type_info
 	( PredName = "call" ->
 		VarTypes = VarTypes1,
 		VarSet = VarSet1,
@@ -248,15 +250,21 @@ polymorphism__process_goal(Goal0 - GoalInfo0, Goal) -->
 polymorphism__process_goal_2(
 		call(PredId, ProcId, ArgVars0, Builtin, Context, Name, Follow),
 		GoalInfo, Goal) -->
-	polymorphism__process_call(PredId, ProcId, ArgVars0, 
-			ArgVars, ExtraVars, ExtraGoals),
-	{ goal_info_get_nonlocals(GoalInfo, NonLocals0) },
-	{ set__insert_list(NonLocals0, ExtraVars, NonLocals) },
-	{ goal_info_set_nonlocals(GoalInfo, NonLocals, CallGoalInfo) },
-	{ Call = call(PredId, ProcId, ArgVars, Builtin, Context, Name, Follow)
-			- CallGoalInfo },
-	{ list__append(ExtraGoals, [Call], GoalList) },
-	{ conj_list_to_goal(GoalList, GoalInfo, Goal) }.
+	% The builtin predicates call/N don't need a type_info
+	( { Name = unqualified("call") } ->
+		{ Goal = call(PredId, ProcId, ArgVars0, Builtin, Context,
+				Name, Follow) - GoalInfo }
+	;
+		polymorphism__process_call(PredId, ProcId, ArgVars0, 
+				ArgVars, ExtraVars, ExtraGoals),
+		{ goal_info_get_nonlocals(GoalInfo, NonLocals0) },
+		{ set__insert_list(NonLocals0, ExtraVars, NonLocals) },
+		{ goal_info_set_nonlocals(GoalInfo, NonLocals, CallGoalInfo) },
+		{ Call = call(PredId, ProcId, ArgVars, Builtin, Context, Name,
+				Follow) - CallGoalInfo },
+		{ list__append(ExtraGoals, [Call], GoalList) },
+		{ conj_list_to_goal(GoalList, GoalInfo, Goal) }
+	).
 
 polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 				GoalInfo, Goal) -->
