@@ -54,13 +54,6 @@
 :- pred get_proc_label(proc_label, string).
 :- mode get_proc_label(in, out) is det.
 
-	% Find out if the argument list of a create contains any pointers.
-	% This governs whether the declaration of the constant to hold these
-	% arguments should be Word * or just Word.
-
-:- pred args_contain_pointers(list(maybe(rval)), int).
-:- mode args_contain_pointers(in, in) is semidet.
-
 	% Mangle an arbitrary name into a C identifier
 
 :- pred llds_out__name_mangle(string, string).
@@ -233,7 +226,8 @@ output_c_module_init_list(BaseName, Modules) -->
 	io__write_string("}\n\n#endif\n\n"),
 	io__write_string("void "),
 	output_init_name(BaseName),
-	io__write_string("(void); /* suppress gcc warning */\n"),
+	io__write_string("(void);"),
+	io__write_string("/* suppress gcc -Wmissing-decls warning */\n"),
 	io__write_string("void "),
 	output_init_name(BaseName),
 	io__write_string("(void)\n"),
@@ -251,7 +245,7 @@ output_c_module_init_list(BaseName, Modules) -->
 :- mode output_c_module_init_list_2(in, in, in, in, in, out, di, uo) is det.
 
 output_c_module_init_list_2([], _, _, _, InitFunc, InitFunc) --> [].
-output_c_module_init_list_2([c_data(_, _, _, _, _, _) | Ms], A, B, C, D, E) -->
+output_c_module_init_list_2([c_data(_, _, _, _, _) | Ms], A, B, C, D, E) -->
 	output_c_module_init_list_2(Ms, A, B, C, D, E).
 output_c_module_init_list_2([c_export(_) | Ms], A, B, C, D, E) -->
 	output_c_module_init_list_2(Ms, A, B, C, D, E).
@@ -355,22 +349,25 @@ output_c_module(c_module(ModuleName, Procedures), DeclSet, DeclSet, _) -->
 	output_c_procedure_list(Procedures, DeclSet, PrintComments, EmitCLoops),
 	io__write_string("END_MODULE\n").
 
-output_c_module(c_data(BaseName, VarName, NeedPtr, _Exported, ArgVals, _Refs),
+output_c_module(c_data(BaseName, VarName, ExportedFromModule, ArgVals, _Refs),
 		DeclSet0, DeclSet, _) -->
 	io__write_string("\n"),
+	{ DataAddr = data_addr(data_addr(BaseName, VarName)) },
 	output_cons_arg_decls(ArgVals, "", "", 0, _, DeclSet0, DeclSet1),
-	io__write_string("Word "),
-	( { NeedPtr = yes } ->
-		io__write_string("* ")
+		% The code for data local to a Mercury module
+		% should normally be visible only within the C file
+		% generated for that module. However, if we generate
+		% multiple C files, the code in each C file must be
+		% visible to the other C files for that Mercury module.
+	( { ExportedFromModule = yes } ->
+		{ ExportedFromFile = yes }
 	;
-		[]
+		globals__io_lookup_bool_option(split_c_files, SplitFiles),
+		{ ExportedFromFile = SplitFiles }
 	),
-	output_data_addr(BaseName, VarName),
-	io__write_string("[] = {\n"),
-	output_cons_args(ArgVals, "\t", NeedPtr),
-	io__write_string("};\n"),
-	{ set__insert(DeclSet1,
-		data_addr(data_addr(BaseName, VarName, NeedPtr)), DeclSet) }.
+	output_const_term_decl(ArgVals, DataAddr, ExportedFromFile, "", "",
+		0, _),
+	{ set__insert(DeclSet1, DataAddr, DeclSet) }.
 
 output_c_module(c_code(C_Code, Context), DeclSet, DeclSet, _) -->
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
@@ -397,7 +394,7 @@ output_c_module(c_export(PragmaExports), DeclSet, DeclSet, BaseName) -->
 		),
 		output_exported_c_functions(PragmaExports)
 	;
-		% Don't spit out a #include if there are no pragma(export,...)s
+		% Don't spit out a #include if there are no pragma exports
 		[]	
 	).
 
@@ -513,8 +510,6 @@ output_c_label_init(Label) -->
 		io__write_string(");\n")
 	).
 
-	% The following code is mostly very straightforward and unremarkable.
-
 :- pred output_c_procedure_list(list(c_procedure), decl_set, bool, bool,
 	io__state, io__state).
 :- mode output_c_procedure_list(in, in, in, in, di, uo) is det.
@@ -557,6 +552,10 @@ output_c_procedure(Proc, DeclSet, PrintComments, EmitCLoops) -->
 	),
 	output_instruction_list(Instrs, DeclSet, PrintComments,
 		CallerLabel - ContLabelSet, WhileSet).
+
+	% Find the entry label for the procedure, 
+	% for use as the profiling "caller label"
+	% field in calls within this procedure.
 
 :- pred llds_out__find_caller_label(list(instruction), label).
 :- mode llds_out__find_caller_label(in, out) is det.
@@ -747,7 +746,8 @@ output_instruction_and_comment(Instr, Comment, DeclSet, PrintComments,
 		)
 	).
 
-	% The three-argument output_instruction is only for debugging.
+	% output_instruction/3 is only for debugging.
+	% Normally we use output_instruction/5.
 
 output_instruction(Instr) -->
 	{ set__init(DeclSet) },
@@ -800,11 +800,7 @@ output_instruction(assign(Lval, Rval), DeclSet0, _) -->
 	output_lval(Lval),
 	io__write_string(" = "),
 	{ llds__lval_type(Lval, Type) },
-	( { Type = float } ->
-		output_rval_as_float(Rval)
-	;
-		output_rval(Rval)
-	),
+	output_rval_as_type(Rval, Type),
 	io__write_string(";\n"),
 	( { N > 0 } ->
 		io__write_string("\t}\n")
@@ -876,7 +872,7 @@ output_instruction(goto(CodeAddr), DeclSet0, ProfInfo) -->
 output_instruction(computed_goto(Rval, Labels), DeclSet0, _) -->
 	output_rval_decls(Rval, "\t{\n\t", "\t", 0, N, DeclSet0, _),
 	io__write_string("\tCOMPUTED_GOTO("),
-	output_rval(Rval),
+	output_rval_as_type(Rval, unsigned),
 	io__write_string(",\n\t\t"),
 	output_label_list(Labels),
 	io__write_string(");\n"),
@@ -891,7 +887,7 @@ output_instruction(if_val(Rval, Target), DeclSet0, ProfInfo) -->
 	output_rval_decls(Rval, "\t{\n\t", "\t", 0, M, DeclSet0, DeclSet1),
 	output_code_addr_decls(Target, "\t{\n\t", "\t", M, N, DeclSet1, _),
 	io__write_string("\tif ("),
-	output_rval(Rval),
+	output_rval_as_type(Rval, bool),
 	io__write_string(")\n\t\t"),
 	output_goto(Target, CallerLabel),
 	( { N > 0 } ->
@@ -906,16 +902,16 @@ output_instruction(incr_hp(Lval, MaybeTag, Rval), DeclSet0, _) -->
 	(
 		{ MaybeTag = no },
 		io__write_string("\tincr_hp("),
-		output_lval(Lval)
+		output_lval_as_word(Lval)
 	;
 		{ MaybeTag = yes(Tag) },
 		io__write_string("\ttag_incr_hp("),
-		output_lval(Lval),
+		output_lval_as_word(Lval),
 		io__write_string(", "),
 		output_tag(Tag)
 	),
 	io__write_string(", "),
-	output_rval(Rval),
+	output_rval_as_type(Rval, word),
 	io__write_string(");\n"),
 	( { N > 0 } ->
 		io__write_string("\t}\n")
@@ -926,7 +922,7 @@ output_instruction(incr_hp(Lval, MaybeTag, Rval), DeclSet0, _) -->
 output_instruction(mark_hp(Lval), DeclSet0, _) -->
 	output_lval_decls(Lval, "\t{\n\t", "\t", 0, N, DeclSet0, _),
 	io__write_string("\tmark_hp("),
-	output_lval(Lval),
+	output_lval_as_word(Lval),
 	io__write_string(");\n"),
 	( { N > 0 } ->
 		io__write_string("\t}\n")
@@ -937,7 +933,7 @@ output_instruction(mark_hp(Lval), DeclSet0, _) -->
 output_instruction(restore_hp(Rval), DeclSet0, _) -->
 	output_rval_decls(Rval, "\t{\n\t", "\t", 0, N, DeclSet0, _),
 	io__write_string("\trestore_hp("),
-	output_rval(Rval),
+	output_rval_as_type(Rval, word),
 	io__write_string(");\n"),
 	( { N > 0 } ->
 		io__write_string("\t}\n")
@@ -948,7 +944,7 @@ output_instruction(restore_hp(Rval), DeclSet0, _) -->
 output_instruction(store_ticket(Lval), DeclSet0, _) -->
 	output_lval_decls(Lval, "\t{\n\t", "\t", 0, N, DeclSet0, _),
 	io__write_string("\tstore_ticket("),
-	output_lval(Lval),
+	output_lval_as_word(Lval),
 	io__write_string(");\n"),
 	( { N > 0 } ->
 		io__write_string("\t}\n")
@@ -959,7 +955,7 @@ output_instruction(store_ticket(Lval), DeclSet0, _) -->
 output_instruction(restore_ticket(Rval), DeclSet0, _) -->
 	output_rval_decls(Rval, "\t{\n\t", "\t", 0, N, DeclSet0, _),
 	io__write_string("\trestore_ticket("),
-	output_rval(Rval),
+	output_rval_as_type(Rval, word),
 	io__write_string(");\n"),
 	( { N > 0 } ->
 		io__write_string("\t}\n")
@@ -1051,9 +1047,7 @@ output_pragma_inputs([I|Inputs]) -->
 	;
         	{ Type = term__functor(term__atom("float"), [], _) }
 	->
-		io__write_string("word_to_float("),
-		output_rval(Rval),
-		io__write_string(")")
+		output_rval_as_type(Rval, float)
 	;
 		output_rval(Rval)
 	),
@@ -1080,7 +1074,7 @@ output_pragma_outputs([]) --> [].
 output_pragma_outputs([O|Outputs]) --> 
 	{ O = pragma_c_output(Lval, Type, VarName) },
 	io__write_string("\t\t"),
-	output_lval(Lval),
+	output_lval_as_word(Lval),
 	io__write_string(" = "),
 	(
         	{ Type = term__functor(term__atom("string"), [], _) }
@@ -1290,11 +1284,11 @@ output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent, N0, N,
 				% this avoids having to deal with some nasty
 				% issues regarding floating point accuracy
 				% when doing cross-compilation.
-			output_rval_as_float(Rval1),
+			output_rval_as_type(Rval1, float),
 			io__write_string(" "),
 			io__write_string(OpStr),
 			io__write_string(" "),
-			output_rval_as_float(Rval2),
+			output_rval_as_type(Rval2, float),
 			io__write_string(";\n")
 		)
 	    ;
@@ -1306,38 +1300,6 @@ output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent, N0, N,
 	    { DeclSet = DeclSet2 }
 	).
 
-	%
-	% Originally we used to output static constants as
-	%
-	%	static const Word mercury_const_...[] = { ... };
-	%
-	% However, if the initializer contains any code addresses,
-	% this causes problems with gcc when using shared libraries,
-	% because the constant will need to be dynamically linked,
-	% but gcc notices that it is of type `Word' which is not a pointer
-	% type and hence assumes that it will not need relocation,
-	% and places it in the `rdata' section.  This causes minor
-	% problems with Solaris: if you use gcc 2.7 and link with `gcc -shared',
-	% you get a link error; the work-around is to link with `gcc -G'.
-	% It also causes major problems with Irix 5: the relocation is not
-	% done, resulting in a core dump at runtime.  It also causes
-	% major problems on AIX RS/6000 systems: a link error or core dump.
-	%
-	% The gcc maintainers said that this was a bug in our code, since it
-	% converted a pointer to an integer, which is ANSI/ISO C says is
-	% implementation-defined.  Hmmph.
-	%
-	% So now we output it as
-	%
-	%	static const Word * mercury_const_...[] = { (Word *)... };
-	%
-	% if the constant refers to any code addresses or data addresses.
-	% This includes string literals, and references to other constants,
-	% including boxed float consts.
-	%
-	% We output the original format if possible, since we want it
-	% to go in rdata if it can, because rdata is shared.
-	%
 output_rval_decls(create(_Tag, ArgVals, _, Label), FirstIndent, LaterIndent,
 		N0, N, DeclSet0, DeclSet) -->
 	{ CreateLabel = create_label(Label) },
@@ -1348,49 +1310,9 @@ output_rval_decls(create(_Tag, ArgVals, _, Label), FirstIndent, LaterIndent,
 		{ set__insert(DeclSet0, CreateLabel, DeclSet1) },
 		output_cons_arg_decls(ArgVals, FirstIndent, LaterIndent, N0, N1,
 			DeclSet1, DeclSet),
-		output_indent(FirstIndent, LaterIndent, N1),
-		{ N is N1 + 1 },
-		(
-			% must we use use `Word *'?
-			{ args_contain_pointers(ArgVals, Label) }
-		->
-			io__write_string("static const Word * mercury_const_"),
-			io__write_int(Label),
-			io__write_string("[] = {\n"),
-			output_cons_args(ArgVals, "\t\t", yes)
-		;
-			io__write_string("static const Word mercury_const_"),
-			io__write_int(Label),
-			io__write_string("[] = {\n"),
-			output_cons_args(ArgVals, "\t\t", no)
-		),
-		io__write_string(LaterIndent),
-		io__write_string("};\n")
+		output_const_term_decl(ArgVals, CreateLabel, no, FirstIndent,
+			LaterIndent, N1, N)
 	).
-
-args_contain_pointers(ArgVals, Label) :-
-	(   
-		% yes if the constant refers to any addresses
-		exprn_aux__maybe_rval_list_addrs(ArgVals, CodeAddrs, DataAddrs),
-		( CodeAddrs \= [] ; DataAddrs \= [] )
-	;   
-		% yes if the constant contains any string constants
-		% or any float constants
-		% or any sub-creates
-		exprn_aux__args_contain_rval(ArgVals, Rval),
-		(
-			Rval = const(string_const(_))
-		;
-			Rval = const(float_const(_))
-		;
-			Rval = create(_, _, _, Label1),
-			% every create contains a create - itself.
-			% We don't want to count that one,
-			% so we check that the labels are different:
-			Label1 \= Label 
-		)
-	).
-
 %-----------------------------------------------------------------------------%
 
 % The following predicates are used to compute the names used for
@@ -1458,6 +1380,102 @@ llds_out__float_op_name(float_divide, "divide").
 
 %-----------------------------------------------------------------------------%
 
+	% We output constant terms as follows:
+	%
+	%	static const struct <foo>_struct {
+	%		Word field1;
+	%		Float field2;
+	%		Word * field3;
+	%		...
+	%	} <foo> = {
+	%		...
+	%	};
+	%
+:- pred output_const_term_decl(list(maybe(rval)), decl_id, bool, string, string,
+	int, int, io__state, io__state).
+:- mode output_const_term_decl(in, in, in, in, in, in, out, di, uo) is det.
+
+output_const_term_decl(ArgVals, DeclId, Exported, FirstIndent, LaterIndent,
+		N1, N) -->
+	output_indent(FirstIndent, LaterIndent, N1),
+	{ N is N1 + 1 },
+	( { Exported = yes } ->
+		[]
+	;
+		io__write_string("static ")
+	),
+	io__write_string("const struct "),
+	output_decl_id(DeclId),
+	io__write_string("_struct {\n"),
+	output_cons_arg_types(ArgVals, "\t", 1),
+	io__write_string("} "),
+	output_decl_id(DeclId),
+	io__write_string(" = {\n"),
+	output_cons_args(ArgVals, "\t"),
+	io__write_string(LaterIndent),
+	io__write_string("};\n").
+
+:- pred output_decl_id(decl_id, io__state, io__state).
+:- mode output_decl_id(in, di, uo) is det.
+
+output_decl_id(create_label(N)) -->
+	io__write_string("mercury_const_"),
+	io__write_int(N).
+output_decl_id(data_addr(data_addr(ModuleName, VarName))) -->
+	output_data_addr(ModuleName, VarName).
+output_decl_id(code_addr(_CodeAddress)) -->
+	{ error("output_decl_id: code_addr unexpected") }.
+output_decl_id(float_label(_Label)) -->
+	{ error("output_decl_id: float_label unexpected") }.
+
+:- pred output_cons_arg_types(list(maybe(rval)), string, int, 
+				io__state, io__state).
+:- mode output_cons_arg_types(in, in, in, di, uo) is det.
+
+output_cons_arg_types([], _, _) --> [].
+output_cons_arg_types([Arg | Args], Indent, ArgNum) -->
+	( { Arg = yes(Rval) } ->
+		io__write_string(Indent),
+		llds_out__rval_type_as_arg(Rval, Type),
+		output_llds_type(Type),
+		io__write_string(" f"),
+		io__write_int(ArgNum),
+		io__write_string(";\n")
+	;
+		{ error("output_cons_arg_types: missing arg") }
+	),
+	{ ArgNum1 is ArgNum + 1 },
+	output_cons_arg_types(Args, Indent, ArgNum1).
+
+	% Given an rval, figure out the type it would have as
+	% an argument.  Normally that's the same as its usual type;
+	% the exception is that for boxed floats, the type is data_ptr
+	% (i.e. the type of the boxed value) rather than float
+	% (the type of the unboxed value).
+	%
+:- pred llds_out__rval_type_as_arg(rval, llds_type, io__state, io__state).
+:- mode llds_out__rval_type_as_arg(in, out, di, uo) is det.
+
+llds_out__rval_type_as_arg(Rval, ArgType) -->
+	{ llds__rval_type(Rval, Type) },
+	globals__io_lookup_bool_option(unboxed_float, UnboxFloat),
+	( { Type = float, UnboxFloat = no } ->
+		{ ArgType = data_ptr }
+	;
+		{ ArgType = Type }
+	).
+
+:- pred output_llds_type(llds_type, io__state, io__state).
+:- mode output_llds_type(in, di, uo) is det.
+
+output_llds_type(bool)     --> io__write_string("Integer").
+output_llds_type(integer)  --> io__write_string("Integer").
+output_llds_type(unsigned) --> io__write_string("Unsigned").
+output_llds_type(float)    --> io__write_string("Float").
+output_llds_type(word)     --> io__write_string("Word").
+output_llds_type(data_ptr) --> io__write_string("const Word *").
+output_llds_type(code_ptr) --> io__write_string("Code *").
+
 :- pred output_cons_arg_decls(list(maybe(rval)), string, string, int, int,
 	decl_set, decl_set, io__state, io__state).
 :- mode output_cons_arg_decls(in, in, in, in, out, in, out, di, uo) is det.
@@ -1475,22 +1493,17 @@ output_cons_arg_decls([Arg | Args], FirstIndent, LaterIndent, N0, N,
 	output_cons_arg_decls(Args, FirstIndent, LaterIndent, N1, N,
 		DeclSet1, DeclSet).
 
-:- pred output_cons_args(list(maybe(rval)), string, bool, io__state, io__state).
-:- mode output_cons_args(in, in, in, di, uo) is det.
-% 	output_cons_args(Args, Indent, CastToPointer):
-%	output the arguments, each on its own line prefixing with Indent;
-%	if CastToPointer is yes, then cast them all to `(Word *)'.
+:- pred output_cons_args(list(maybe(rval)), string, io__state, io__state).
+:- mode output_cons_args(in, in, di, uo) is det.
+% 	output_cons_args(Args, Indent):
+%	output the arguments, each on its own line prefixing with Indent.
 
-output_cons_args([], _, _) --> [].
-output_cons_args([Arg | Args], Indent, CastToPointer) -->
+output_cons_args([], _) --> [].
+output_cons_args([Arg | Args], Indent) -->
 	( { Arg = yes(Rval) } ->
 		io__write_string(Indent),
-		( { CastToPointer = yes } ->
-			io__write_string("(Word *) ")
-		;
-			[]
-		),
-		output_rval(Rval)
+		llds_out__rval_type_as_arg(Rval, TypeAsArg),
+		output_rval_as_type(Rval, TypeAsArg)
 	;
 		% `Arg = no' means the argument is uninitialized,
 		% but that would mean the term isn't ground
@@ -1498,10 +1511,12 @@ output_cons_args([Arg | Args], Indent, CastToPointer) -->
 	),
 	( { Args \= [] } ->
 		io__write_string(",\n"),
-		output_cons_args(Args, Indent, CastToPointer)
+		output_cons_args(Args, Indent)
 	;
 		io__write_string("\n")
 	).
+
+%-----------------------------------------------------------------------------%
 
 % output_lval_decls(Lval, ...) outputs the declarations of any
 % static constants, etc. that need to be declared before
@@ -1672,18 +1687,19 @@ output_label_as_code_addr_decls(local(_, _)) --> [].
 	io__state, io__state).
 :- mode output_data_addr_decls(in, in, in, in, out, di, uo) is det.
 
-output_data_addr_decls(data_addr(BaseName, VarName, NeedPtr),
+output_data_addr_decls(data_addr(BaseName, VarName),
 		FirstIndent, LaterIndent, N0, N) -->
 	output_indent(FirstIndent, LaterIndent, N0),
 	{ N is N0 + 1 },
-	io__write_string("extern Word "),
-	( { NeedPtr = yes } ->
-		io__write_string("* ")
-	;
-		[]
-	),
+	io__write_string("extern const struct "),
 	output_data_addr(BaseName, VarName), 
-	io__write_string("[];\n").
+	io__write_string("_struct\n"),
+	io__write_string(LaterIndent),
+	io__write_string("\t"),
+	output_data_addr(BaseName, VarName), 
+	io__write_string(";\n").
+
+%-----------------------------------------------------------------------------%
 
 :- pred output_indent(string, string, int, io__state, io__state).
 :- mode output_indent(in, in, in, di, uo) is det.
@@ -1694,6 +1710,8 @@ output_indent(FirstIndent, LaterIndent, N0) -->
 	;
 		io__write_string(FirstIndent)
 	).
+
+%-----------------------------------------------------------------------------%
 
 :- pred maybe_output_update_prof_counter(label, pair(label, set(label)),
 	io__state, io__state).
@@ -1709,6 +1727,8 @@ maybe_output_update_prof_counter(Label, CallerLabel - ContLabelSet) -->
 	;
 		[]
 	).
+
+%-----------------------------------------------------------------------------%
 
 :- pred output_goto(code_addr, label, io__state, io__state).
 :- mode output_goto(in, in, di, uo) is det.
@@ -2079,9 +2099,91 @@ output_tag(Tag) -->
 	io__write_int(Tag),
 	io__write_string(")").
 
-% output an rval, as type `Integer', `Word', or `Unsigned'
-% (normally as `Integer', so that arithmetic operators use signed arithmetic.)
+	% output an rval, converted to the specified type
+	%
+:- pred output_rval_as_type(rval, llds_type, io__state, io__state).
+:- mode output_rval_as_type(in, in, di, uo) is det.
 
+output_rval_as_type(Rval, DesiredType) -->
+	{ llds__rval_type(Rval, ActualType) },
+	( { types_match(DesiredType, ActualType) } ->
+		% no casting needed
+		output_rval(Rval)
+	; { Rval = unop(cast_to_unsigned, _) } ->
+		% cast_to_unsigned overrides the ordinary type
+		% XXX this is a bit of a hack; we should probably
+		% eliminate cast_to_unsigned and instead use
+		% special unsigned operators
+		output_rval(Rval)
+	;
+		% We need to convert to the right type first.
+		% Convertions to/from float must be treated specially;
+		% for the others, we can just use a cast.
+		( { DesiredType = float } ->
+			io__write_string("word_to_float("),
+			output_rval(Rval),
+			io__write_string(")")
+		; { ActualType = float } ->
+			( { DesiredType = word } ->
+				output_float_rval_as_word(Rval)
+			;
+				{ error("output_rval_as_type: type error") }
+			)
+		;
+			% cast value to desired type
+			io__write_string("("),
+			output_llds_type(DesiredType),
+			io__write_string(") "),
+			output_rval(Rval)
+		)
+	).
+
+	
+	% types_match(DesiredType, ActualType) is true iff
+	% a value of type ActualType can be used as a value of
+	% type DesiredType without casting.
+	%
+:- pred types_match(llds_type, llds_type).
+:- mode types_match(in, in) is semidet.
+
+types_match(Type, Type).
+types_match(word, unsigned).
+types_match(word, integer).
+types_match(word, bool).
+types_match(bool, integer).
+types_match(bool, unsigned).
+types_match(bool, word).
+types_match(integer, bool).
+
+	% output a float rval, converted to type `Word'
+	%
+:- pred output_float_rval_as_word(rval, io__state, io__state).
+:- mode output_float_rval_as_word(in, di, uo) is det.
+
+output_float_rval_as_word(Rval) -->
+	%
+	% for float constant expressions, if we're using boxed
+	% boxed floats and --static-ground-terms is enabled,
+	% we just refer to the static const which we declared
+	% earlier
+	%
+	globals__io_lookup_bool_option(unboxed_float, UnboxFloat),
+	globals__io_lookup_bool_option(static_ground_terms, StaticGroundTerms),
+	(
+		{ UnboxFloat = no, StaticGroundTerms = yes },
+		{ llds_out__float_const_expr_name(Rval, FloatName) }
+	->
+		io__write_string("(Word) &mercury_float_const_"),
+		io__write_string(FloatName)
+	;
+		io__write_string("float_to_word("),
+		output_rval(Rval),
+		io__write_string(")")
+	).
+
+	% output an rval (not converted to any particular type,
+	% but instead output as its "natural" type)
+	%
 :- pred output_rval(rval, io__state, io__state).
 :- mode output_rval(in, di, uo) is det.
 
@@ -2090,68 +2192,50 @@ output_rval(const(Const)) -->
 output_rval(unop(UnaryOp, Exprn)) -->
 	output_unary_op(UnaryOp),
 	io__write_string("("),
-	output_rval(Exprn),
+	{ llds__unop_arg_type(UnaryOp, ArgType) },
+	output_rval_as_type(Exprn, ArgType),
 	io__write_string(")").
 output_rval(binop(Op, X, Y)) -->
 	(
 		{ Op = array_index }
 	->
-		io__write_string("((Integer *)"),
-		output_rval(X),
+		io__write_string("("),
+		output_rval_as_type(X, data_ptr),
 		io__write_string(")["),
-		output_rval(Y),
+		output_rval_as_type(Y, integer),
 		io__write_string("]")
 	;
 		{ llds_out__string_op(Op, OpStr) }
 	->
 		io__write_string("(strcmp((char *)"),
-		output_rval(X),
+		output_rval_as_type(X, word),
 		io__write_string(", (char *)"),
-		output_rval(Y),
+		output_rval_as_type(Y, word),
 		io__write_string(")"),
 		io__write_string(" "),
 		io__write_string(OpStr),
+		io__write_string(" "),
 		io__write_string("0)")
 	;
-		{ llds_out__float_compare_op(Op, OpStr) }
+		( { llds_out__float_compare_op(Op, OpStr1) } ->
+			{ OpStr = OpStr1 }
+		; { llds_out__float_op(Op, OpStr2) } ->
+			{ OpStr = OpStr2 }
+		;
+			{ fail }
+		)
 	->
 		io__write_string("("),
-		output_rval_as_float(X),
+		output_rval_as_type(X, float),
 		io__write_string(" "),
 		io__write_string(OpStr),
 		io__write_string(" "),
-		output_rval_as_float(Y),
+		output_rval_as_type(Y, float),
 		io__write_string(")")
 	;
-		{ llds_out__float_op(Op, OpStr) }
-	->
-		%
-		% for float constant expressions, if we're using boxed
-		% boxed floats and --static-ground-terms is enabled,
-		% we just refer to the static const which we declared
-		% earlier
-		%
-		globals__io_lookup_bool_option(unboxed_float, UnboxFloat),
-		globals__io_lookup_bool_option(static_ground_terms,
-			StaticGroundTerms),
-		(
-			{ UnboxFloat = no, StaticGroundTerms = yes },
-			{ llds_out__float_const_binop_expr_name(Op, X, Y,
-				FloatName) }
-		->
-			io__write_string("(Word)(&mercury_float_const_"),
-			io__write_string(FloatName),
-			io__write_string(")")
-		;
-			io__write_string("float_to_word("),
-			output_rval_as_float(X),
-			io__write_string(" "),
-			io__write_string(OpStr),
-			io__write_string(" "),
-			output_rval_as_float(Y),
-			io__write_string(")")
-		)
-	;
+/****
+XXX broken for C == minint
+(since `NewC is 0 - C' overflows)
 		{ Op = (+) },
 		{ Y = const(int_const(C)) },
 		{ C < 0 }
@@ -2167,6 +2251,17 @@ output_rval(binop(Op, X, Y)) -->
 		output_rval(NewY),
 		io__write_string(")")
 	;
+******/
+		% special-case equality ops to avoid some unnecessary
+		% casts -- there's no difference between signed and
+		% unsigned equality, so if both args are unsigned, we
+		% don't need to cast them to (Integer)
+		{ Op = eq ; Op = ne },
+		{ llds__rval_type(X, XType) },
+		{ XType = word ; XType = unsigned },
+		{ llds__rval_type(Y, YType) },
+		{ YType = word ; YType = unsigned }
+	->
 		io__write_string("("),
 		output_rval(X),
 		io__write_string(" "),
@@ -2174,53 +2269,38 @@ output_rval(binop(Op, X, Y)) -->
 		io__write_string(" "),
 		output_rval(Y),
 		io__write_string(")")
+	;
+		io__write_string("("),
+		output_rval_as_type(X, integer),
+		io__write_string(" "),
+		output_binary_op(Op),
+		io__write_string(" "),
+		output_rval_as_type(Y, integer),
+		io__write_string(")")
 	).
 output_rval(mkword(Tag, Exprn)) -->
-	io__write_string("(Integer) mkword("),
+	% XXX we should change the definition of mkword()
+	% so that this cast is not needed
+	io__write_string("(const Word *) mkword("),
 	output_tag(Tag),
 	io__write_string(", "),
-	output_rval(Exprn),
+	output_rval_as_type(Exprn, word),
 	io__write_string(")").
 output_rval(lval(Lval)) -->
-	output_rval_lval(Lval).
+	output_lval(Lval).
 output_rval(create(Tag, _Args, _Unique, LabelNum)) -->
 		% emit a reference to the static constant which we
 		% declared in output_rval_decls.
-	io__write_string("mkword(mktag("),
+	% XXX we should change the definition of mkword()
+	% so that this cast is not needed
+	io__write_string("(const Word *) mkword(mktag("),
 	io__write_int(Tag),
 	io__write_string("), "),
-	io__write_string("mercury_const_"),
+	io__write_string("&mercury_const_"),
 	io__write_int(LabelNum),
 	io__write_string(")").
 output_rval(var(_)) -->
 	{ error("Cannot output a var(_) expression in code") }.
-
-% output an rval, converted to type `Float' (the Mercury floating point type).
-
-:- pred output_rval_as_float(rval, io__state, io__state).
-:- mode output_rval_as_float(in, di, uo) is det.
-
-output_rval_as_float(Rval) -->
-	( { Rval = const(float_const(FloatVal)) } ->
-		io__write_string("((Float) "),
-		io__write_float(FloatVal),
-		io__write_string(")")
-	; { Rval = binop(Op, X, Y) }, { llds_out__float_op(Op, OpStr) } ->
-		io__write_string("("),
-		output_rval_as_float(X),
-		io__write_string(" "),
-		io__write_string(OpStr),
-		io__write_string(" "),
-		output_rval_as_float(Y),
-		io__write_string(")")
-	; { Rval = lval(temp(f(N))) } ->
-		io__write_string("tempf"),
-		io__write_int(N)
-	;
-		io__write_string("word_to_float("),
-		output_rval(Rval),
-		io__write_string(")")
-	).
 
 :- pred output_unary_op(unary_op, io__state, io__state).
 :- mode output_unary_op(in, di, uo) is det.
@@ -2278,28 +2358,21 @@ llds_out__float_compare_op(float_gt, ">").
 :- mode output_rval_const(in, di, uo) is det.
 
 output_rval_const(int_const(N)) -->
-	io__write_string("((Integer) "),
-	io__write_int(N),
-	io__write_string(")").
-output_rval_const(float_const(Float)) -->
-	globals__io_lookup_bool_option(unboxed_float, UnboxFloat),
-	globals__io_lookup_bool_option(static_ground_terms, StaticGroundTerms),
-	( { UnboxFloat = no, StaticGroundTerms = yes } ->
-		%
-		% for boxed floats, if --static-ground-terms is enabled,
-		% we just refer to the static const which we declared earlier
-		%
-		{ llds_out__float_literal_name(Float, FloatName) },
-		io__write_string("(Word)(&mercury_float_const_"),
-		io__write_string(FloatName),
-		io__write_string(")")
-	;
-		io__write_string("float_const("),
-		io__write_float(Float),
-		io__write_string(")")
-	).
+	% we need to cast to (Integer) to ensure
+	% things like 1 << 32 work when `Integer' is 64 bits
+	% but `int' is 32 bits.
+	io__write_string("(Integer) "),
+	io__write_int(N).
+output_rval_const(float_const(FloatVal)) -->
+	% the cast to (Float) here lets the C compiler
+	% do arithmetic in `float' rather than `double'
+	% if `Float' is `float' not `double'.
+	io__write_string("(Float) "),
+	io__write_float(FloatVal).
 output_rval_const(string_const(String)) -->
-	io__write_string("string_const("""),
+		% XXX we should change the definition of `string_const'
+		% so that this cast is not necessary
+	io__write_string("(const Word *) string_const("""),
 	output_c_quoted_string(String),
 	{ string__length(String, StringLength) },
 	io__write_string(""", "),
@@ -2310,11 +2383,28 @@ output_rval_const(true) -->
 output_rval_const(false) -->
 	io__write_string("FALSE").
 output_rval_const(code_addr_const(CodeAddress)) -->
-	io__write_string("(Integer) "),
 	output_code_addr(CodeAddress).
-output_rval_const(data_addr_const(data_addr(BaseName, VarName, _))) -->
-	io__write_string("(Integer) "),
+output_rval_const(data_addr_const(data_addr(BaseName, VarName))) -->
+	% data addresses are all assumed to be of type `Word *';
+	% we need to cast them here to avoid type errors
+	io__write_string("(const Word *) &"),
 	output_data_addr(BaseName, VarName).
+
+:- pred output_lval_as_word(lval, io__state, io__state).
+:- mode output_lval_as_word(in, di, uo) is det.
+
+output_lval_as_word(Lval) -->
+	{ llds__lval_type(Lval, ActualType) },
+	( { types_match(word, ActualType) } ->
+		output_lval(Lval)
+	; { ActualType = float } ->
+		% sanity check -- if this happens, the llds is ill-typed
+		{ error("output_lval_as_word: got float") }
+	;
+		io__write_string("LVALUE_CAST(Word,"),
+		output_lval(Lval),
+		io__write_string(")")
+	).
 
 :- pred output_lval(lval, io__state, io__state).
 :- mode output_lval(in, di, uo) is det.
@@ -2340,31 +2430,31 @@ output_lval(framevar(N)) -->
 	io__write_int(N),
 	io__write_string(")").
 output_lval(succip) -->
-	io__write_string("LVALUE_CAST(Word,succip)").
+	io__write_string("succip").
 output_lval(sp) -->
-	io__write_string("LVALUE_CAST(Word,sp)").
+	io__write_string("sp").
 output_lval(hp) -->
-	io__write_string("LVALUE_CAST(Word,hp)").
+	io__write_string("hp").
 output_lval(maxfr) -->
-	io__write_string("LVALUE_CAST(Word,maxfr)").
+	io__write_string("maxfr").
 output_lval(curfr) -->
-	io__write_string("LVALUE_CAST(Word,curfr)").
+	io__write_string("curfr").
 output_lval(succfr(Rval)) -->
-	io__write_string("LVALUE_CAST(Word,bt_succfr("),
+	io__write_string("bt_succfr("),
 	output_rval(Rval),
-	io__write_string("))").
+	io__write_string(")").
 output_lval(prevfr(Rval)) -->
-	io__write_string("LVALUE_CAST(Word,bt_prevfr("),
+	io__write_string("bt_prevfr("),
 	output_rval(Rval),
-	io__write_string("))").
+	io__write_string(")").
 output_lval(redoip(Rval)) -->
-	io__write_string("LVALUE_CAST(Word,bt_redoip("),
+	io__write_string("bt_redoip("),
 	output_rval(Rval),
-	io__write_string("))").
+	io__write_string(")").
 output_lval(succip(Rval)) -->
-	io__write_string("LVALUE_CAST(Word,bt_succip("),
+	io__write_string("bt_succip("),
 	output_rval(Rval),
-	io__write_string("))").
+	io__write_string(")").
 output_lval(field(Tag, Rval, FieldNum)) -->
 	io__write_string("field("),
 	output_tag(Tag),
@@ -2383,80 +2473,6 @@ output_lval(temp(R)) -->
 	;
 		{ R = f(N) },
 		io__write_string("tempf"),
-		io__write_int(N)
-	).
-
-% output_rval_lval is the same as output_lval,
-% except that the result is cast to (Integer).
-
-:- pred output_rval_lval(lval, io__state, io__state).
-:- mode output_rval_lval(in, di, uo) is det.
-
-output_rval_lval(reg(R)) -->
-	io__write_string("(Integer) "),
-	output_reg(R).
-output_rval_lval(stackvar(N)) -->
-	{ (N < 0) ->
-		error("stack var out of range")
-	;
-		true
-	},
-	io__write_string("(Integer) detstackvar("),
-	io__write_int(N),
-	io__write_string(")").
-output_rval_lval(framevar(N)) -->
-	{ (N < 0) ->
-		error("nondet stack var out of range")
-	;
-		true
-	},
-	io__write_string("(Integer) framevar("),
-	io__write_int(N),
-	io__write_string(")").
-output_rval_lval(succip) -->
-	io__write_string("(Integer) succip").
-output_rval_lval(sp) -->
-	io__write_string("(Integer) sp").
-output_rval_lval(hp) -->
-	io__write_string("(Integer) hp").
-output_rval_lval(maxfr) -->
-	io__write_string("(Integer) maxfr").
-output_rval_lval(curfr) -->
-	io__write_string("(Integer) curfr").
-output_rval_lval(succfr(Rval)) -->
-	io__write_string("(Integer) bt_succfr("),
-	output_rval(Rval),
-	io__write_string(")").
-output_rval_lval(prevfr(Rval)) -->
-	io__write_string("(Integer) bt_prevfr("),
-	output_rval(Rval),
-	io__write_string(")").
-output_rval_lval(redoip(Rval)) -->
-	io__write_string("(Integer) bt_redoip("),
-	output_rval(Rval),
-	io__write_string(")").
-output_rval_lval(succip(Rval)) -->
-	io__write_string("(Integer) bt_succip("),
-	output_rval(Rval),
-	io__write_string(")").
-output_rval_lval(field(Tag, Rval, FieldNum)) -->
-	io__write_string("(Integer) field("),
-	output_tag(Tag),
-	io__write_string(", "),
-	output_rval(Rval),
-	io__write_string(", "),
-	output_rval(FieldNum),
-	io__write_string(")").
-output_rval_lval(lvar(_)) -->
-	{ error("Illegal to output an lvar") }.
-output_rval_lval(temp(R)) -->
-	(
-		{ R = r(N) },
-		io__write_string("(Integer) tempr"),
-		io__write_int(N)
-	;
-		{ R = f(N) },
-		io__write_string("(Integer) tempf"),
 		io__write_int(N)
 	).
 
@@ -2762,7 +2778,7 @@ gather_labels_from_c_modules([Module | Modules], Labels0, Labels) :-
 
 gather_labels_from_c_module(c_module(_, Procs), Labels0, Labels) :-
 	gather_labels_from_c_procs(Procs, Labels0, Labels).
-gather_labels_from_c_module(c_data(_, _, _, _, _, _), Labels, Labels).
+gather_labels_from_c_module(c_data(_, _, _, _, _), Labels, Labels).
 gather_labels_from_c_module(c_code(_, _), Labels, Labels).
 gather_labels_from_c_module(c_export(_), Labels, Labels).
 

@@ -31,14 +31,13 @@
 :- import_module llds_out.
 :- import_module bool, int, list, assoc_list, map, std_util, require.
 
-:- type cell_info	--->
-		cell_info(
-			int,		% what is the number of the cell?
-			bool		% does it have addresses?
+:- type cell_info
+	--->	cell_info(
+			int		% what is the number of the cell?
 		).
 
-:- type common_info	--->
-		common_info(
+:- type common_info
+	--->	common_info(
 			string,		% base file name
 			int,		% next cell number
 			map(list(maybe(rval)), cell_info)
@@ -55,8 +54,8 @@ llds_common(Procedures0, Data0, BaseName, Procedures, Data, DataModules) :-
 	map__to_assoc_list(CellMap, CellPairs0),
 	list__sort(lambda([CellPairA::in, CellPairB::in, Compare::out] is det, 
 		(
-			CellPairA = _ - cell_info(ANum, _),
-			CellPairB = _ - cell_info(BNum, _),
+			CellPairA = _ - cell_info(ANum),
+			CellPairB = _ - cell_info(BNum),
 			compare(Compare, ANum, BNum)
 		)), CellPairs0, CellPairs),
 	llds_common__cell_pairs_to_modules(CellPairs, BaseName, DataModules).
@@ -68,33 +67,28 @@ llds_common(Procedures0, Data0, BaseName, Procedures, Data, DataModules) :-
 llds_common__cell_pairs_to_modules([], _, []).
 llds_common__cell_pairs_to_modules([Args - CellInfo | CellPairs], BaseName,
 		[Module | Modules]) :-
-	CellInfo = cell_info(VarNum, NeedPtr),
-	Module = c_data(BaseName, common(VarNum), NeedPtr, no, Args, []),
+	CellInfo = cell_info(VarNum),
+	Module = c_data(BaseName, common(VarNum), no, Args, []),
 	llds_common__cell_pairs_to_modules(CellPairs, BaseName, Modules).
 
-:- pred llds_common__process_create(tag, list(maybe(rval)), int,
+:- pred llds_common__process_create(tag, list(maybe(rval)),
 	common_info, common_info, rval).
-:- mode llds_common__process_create(in, in, in, in, out, out) is det.
+:- mode llds_common__process_create(in, in, in, out, out) is det.
 
-llds_common__process_create(Tag, Args0, LabelNo, Info0, Info, Rval) :-
+llds_common__process_create(Tag, Args0, Info0, Info, Rval) :-
 	llds_common__process_maybe_rvals(Args0, Info0, Info1, Args),
 	Info1 = common_info(BaseName, NextCell0, CellMap0),
 	( map__search(CellMap0, Args, CellInfo0) ->
-		CellInfo0 = cell_info(VarNum, NeedPtr),
+		CellInfo0 = cell_info(VarNum),
 		DataConst = data_addr_const(
-			data_addr(BaseName, common(VarNum), NeedPtr)),
+			data_addr(BaseName, common(VarNum))),
 		Rval = mkword(Tag, const(DataConst)),
 		Info = Info1
 	;
-		( args_contain_pointers(Args, LabelNo) ->
-			NeedPtr = yes
-		;
-			NeedPtr = no
-		),
 		DataConst = data_addr_const(
-			data_addr(BaseName, common(NextCell0), NeedPtr)),
+			data_addr(BaseName, common(NextCell0))),
 		Rval = mkword(Tag, const(DataConst)),
-		CellInfo = cell_info(NextCell0, NeedPtr),
+		CellInfo = cell_info(NextCell0),
 		NextCell is NextCell0 + 1,
 		map__det_insert(CellMap0, Args, CellInfo, CellMap),
 		Info = common_info(BaseName, NextCell, CellMap)
@@ -126,8 +120,8 @@ llds_common__process_module(c_module(Name, Ps), Info, Info, c_module(Name, Ps)).
 llds_common__process_module(c_code(Cde, Ctxt), Info, Info, c_code(Cde, Ctxt)).
 llds_common__process_module(c_export(Exports), Info, Info, c_export(Exports)).
 llds_common__process_module(
-		c_data(Name, DataName, NeedPtr, Export, Args0, Refs), Info0, 
-		Info, c_data(Name, DataName, NeedPtr, Export, Args, Refs)) :-
+		c_data(Name, DataName, Export, Args0, Refs), Info0, 
+		Info, c_data(Name, DataName, Export, Args, Refs)) :-
 	llds_common__process_maybe_rvals(Args0, Info0, Info, Args).
 
 :- pred llds_common__process_procs(list(c_procedure), common_info, common_info,
@@ -265,10 +259,10 @@ llds_common__process_rval(Rval0, Info0, Info, Rval) :-
 		Rval0 = var(_),
 		error("var rval found in llds_common__process_rval")
 	;
-		Rval0 = create(Tag, Args, Unique, LabelNo),
+		Rval0 = create(Tag, Args, Unique, _LabelNo),
 		( Unique = no ->
-			llds_common__process_create(Tag, Args, LabelNo,
-				Info0, Info, Rval)
+			llds_common__process_create(Tag, Args, Info0,
+				Info, Rval)
 		;
 			Rval = Rval0,
 			Info = Info0

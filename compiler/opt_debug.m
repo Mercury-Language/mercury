@@ -631,7 +631,7 @@ opt_debug__dump_const(string_const(I), Str) :-
 opt_debug__dump_const(code_addr_const(CodeAddr), Str) :-
 	opt_debug__dump_code_addr(CodeAddr, C_str),
 	string__append_list(["code_addr_const(", C_str, ")"], Str).
-opt_debug__dump_const(data_addr_const(data_addr(BaseName, VarName, _)), Str) :-
+opt_debug__dump_const(data_addr_const(data_addr(BaseName, VarName)), Str) :-
 	opt_debug__dump_data_name(VarName, N_str),
 	string__append_list(["data_addr_const(", BaseName, ", ", N_str, ")"],
 		Str).

@@ -116,7 +116,9 @@ base_type_info__construct_base_type_infos([BaseGenInfo | BaseGenInfos],
 	base_type_info__construct_pred_addrs(Procs, Elim, ModuleInfo, 
 		PredAddrArgs),
 	ArityArg = yes(const(int_const(TypeArity))),
-	( Status = exported ->
+	( 	
+		( Status = exported ; Status = abstract_exported )
+	->
 		Exported = yes
 	;
 		Exported = no
@@ -133,7 +135,7 @@ base_type_info__construct_base_type_infos([BaseGenInfo | BaseGenInfos],
 		FinalArgs = PredAddrArgs
 	),
 	CModule = c_data(ModuleName, base_type_info(TypeName, TypeArity),
-		yes, Exported, [ArityArg | FinalArgs], Procs),
+			Exported, [ArityArg | FinalArgs], Procs),
 	base_type_info__construct_base_type_infos(BaseGenInfos, ModuleInfo,
 		CModules).
 
@@ -142,7 +144,7 @@ base_type_info__construct_base_type_infos([BaseGenInfo | BaseGenInfos],
 base_type_info__construct_layout(ModuleInfo, TypeName, TypeArity, Rval) :-
 	module_info_name(ModuleInfo, ModuleName),
 	Rval = yes(const(data_addr_const(data_addr(ModuleName, 
-		base_type_layout(TypeName, TypeArity), yes)))).
+		base_type_layout(TypeName, TypeArity))))).
 
 :- pred base_type_info__construct_pred_addrs(list(pred_proc_id), maybe(int), 
 	module_info, list(maybe(rval))).

@@ -114,11 +114,9 @@ exprn_aux__const_is_constant(float_const(_), ExprnOpts, IsConst) :-
 	( UnboxedFloat = yes ->
 		%
 		% If we're using unboxed (single-precision) floats,
-		% floating point values cannot be considered constants because
-		% gcc doesn't allow type punning from float to word in
-		% static initializers.
+		% floating point values are always constants
 		%
-		IsConst = no
+		IsConst = yes
 	;
 		%
 		% If we're using boxed floats, then we can generate a static

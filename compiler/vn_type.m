@@ -169,9 +169,8 @@ vn_type__costof_heapref(vn_params(_, _, _, _, _, _, _, _, HeapCost),
 
 vn_type__vnrval_type(vn_origlval(Lval), Type) :-
 	vn_type__vnlval_type(Lval, Type).
-vn_type__vnrval_type(vn_create(_, _, _, _), word).
-	% the create() macro calls mkword().
-vn_type__vnrval_type(vn_mkword(_, _), word).
+vn_type__vnrval_type(vn_create(_, _, _, _), data_ptr).
+vn_type__vnrval_type(vn_mkword(_, _), data_ptr). % see comment in llds.m
 vn_type__vnrval_type(vn_const(Const), Type) :-
 	llds__const_type(Const, Type).
 vn_type__vnrval_type(vn_unop(UnOp, _), Type) :-
@@ -181,18 +180,18 @@ vn_type__vnrval_type(vn_binop(BinOp, _, _), Type) :-
 
 vn_type__vnlval_type(vn_reg(Reg), Type) :-
 	llds__register_type(Reg, Type).
-vn_type__vnlval_type(vn_succip, word).		% really `Code*'
-vn_type__vnlval_type(vn_maxfr, word).		% really `Word*'
-vn_type__vnlval_type(vn_curfr, word).		% really `Word*'
-vn_type__vnlval_type(vn_hp, word).		% really `Word*'
-vn_type__vnlval_type(vn_sp, word).		% really `Word*'
+vn_type__vnlval_type(vn_succip, code_ptr).
+vn_type__vnlval_type(vn_maxfr, data_ptr).
+vn_type__vnlval_type(vn_curfr, data_ptr).
+vn_type__vnlval_type(vn_hp, data_ptr).
+vn_type__vnlval_type(vn_sp, data_ptr).
 vn_type__vnlval_type(vn_temp(TempReg), Type) :-
 	llds__register_type(TempReg, Type).
 vn_type__vnlval_type(vn_stackvar(_), word).
 vn_type__vnlval_type(vn_framevar(_), word).
-vn_type__vnlval_type(vn_succip(_), word).	% really `Code*'
-vn_type__vnlval_type(vn_redoip(_), word).	% really `Code*'
-vn_type__vnlval_type(vn_succfr(_), word).	% really `Word*'
-vn_type__vnlval_type(vn_prevfr(_), word).	% really `Word*'
+vn_type__vnlval_type(vn_succip(_), code_ptr).
+vn_type__vnlval_type(vn_redoip(_), code_ptr).
+vn_type__vnlval_type(vn_succfr(_), data_ptr).
+vn_type__vnlval_type(vn_prevfr(_), data_ptr).
 vn_type__vnlval_type(vn_field(_, _, _), word).
 

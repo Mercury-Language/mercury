@@ -275,7 +275,9 @@ base_type_layout__construct_base_type_layouts([BaseGenInfo | BaseGenInfos],
 			)
 		)
 	),	
-	( Status = exported ->
+	(
+		( Status = exported ; Status = abstract_exported )
+	->
 		Exported = yes
 	;
 		Exported = no
@@ -288,7 +290,7 @@ base_type_layout__construct_base_type_layouts([BaseGenInfo | BaseGenInfos],
 		LayoutInfo3 = LayoutInfo2
 	;
 		CModule = c_data(ModuleName, base_type_layout(TypeName, 
-			TypeArity), yes, Exported, TypeData, []),
+			TypeArity), Exported, TypeData, []),
 		base_type_layout__add_cmodule(LayoutInfo2, CModule, 
 			LayoutInfo3)
 	),
@@ -775,7 +777,7 @@ base_type_layout__generate_pseudo_type_info(Type, LayoutInfo0, LayoutInfo,
 		base_type_layout__get_next_label(LayoutInfo0, NextLabel),
 		base_type_layout__incr_next_label(LayoutInfo0, LayoutInfo1),
 		Pseudo0 = yes(const(data_addr_const(data_addr(TypeModule,
-			base_type_info(TypeName, Arity), yes)))),
+			base_type_info(TypeName, Arity))))),
 
 			% generate args, but remove one level of create()s.
 		base_type_layout__generate_pseudo_type_infos(TypeArgs,

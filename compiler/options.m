@@ -581,7 +581,6 @@ long_option("highlevel-C",		highlevel_c).
 long_option("highlevel-c",		highlevel_c).
 long_option("high-level-C",		highlevel_c).
 long_option("high-level-c",		highlevel_c).
-long_option("single-prec-float",	unboxed_float).
 long_option("unboxed-float",		unboxed_float).
 
 % code generation options
@@ -1217,8 +1216,8 @@ options_help_compilation_model -->
 	io__write_string("\t\tthe <n>th input argument is passed using register r<n>,\n"),
 	io__write_string("\t\tand the <n>th output argument is returned using\n"),
 	io__write_string("\t\tregister r<n>. The compact convention generally leads to\n"),
-	io__write_string("\t\tmore efficient code. Its use requires the C code to be\n"),
-	io__write_string("\t\tcompiled with -DCOMPACT_ARGS.\n"),
+	io__write_string("\t\tmore efficient code. Use of the simple convention requires the\n"),
+	io__write_string("\t\tC code to be compiled with -UCOMPACT_ARGS.\n"),
 	io__write_string("\t--type-info {default, one-cell, one-or-two-cell, shared-one-or-two-cell}\n"),
 	io__write_string("\t--type-info-convention {default, one-cell, one-or-two-cell,\n"),
 	io__write_string("\t\t\tshared-one-or-two-cell}\n"),
@@ -1229,21 +1228,22 @@ options_help_compilation_model -->
 	io__write_string("\t\tstatic ground terms, while the shared-one-or-two-cell format\n"),
 	io__write_string("\t\tminimizes runtime memory allocation in grades that\n"),
 	io__write_string("\t\tcan use static ground terms. Use of any alternative except\n"),
-	io__write_string("\t\tone-cell requires the C code to be compiled with the relevant\n"),
-	io__write_string("\t\toption from `-DDEFAULT_TYPE_INFO', `-DONE_OR_TWO_CELL_TYPE_INFO'\n"),
+	io__write_string("\t\t`default' requires the C code to be compiled with the relevant\n"),
+	io__write_string("\t\toption from `-DONE_CELL_TYPE_INFO', `-DONE_OR_TWO_CELL_TYPE_INFO'\n"),
 	io__write_string("\t\tand `-DSHARED_ONE_OR_TWO_CELL_TYPE_INFO'.\n"),
 	io__write_string("\t--no-type-layout\n"),
 	io__write_string("\t(This option is not for general use.)\n"),
 	io__write_string("\t\tDon't output base_type_layout structures or references\n"),
 	io__write_string("\t\tto them. (The C code also needs to be compiled with\n"),
 	io__write_string("\t\t`-DNO_TYPE_LAYOUT').\n"),
-	io__write_string("\t--single-prec-float\n"),
 	io__write_string("\t--unboxed-float\n"),
 	io__write_string("\t(This option is not for general use.)\n"),
-	io__write_string("\t\tUse unboxed single-precision floating point numbers,\n"),
-	io__write_string("\t\trather than boxed double-precision floats.\n"),
-	io__write_string("\t\t(The C code also needs to be compiled with\n"),
-	io__write_string("\t\t`-DUSE_SINGLE_PREC_FLOAT'.)\n").
+	io__write_string("\t\tDon't box floating point numbers.\n"),
+	io__write_string("\t\tThis assumes that a Mercury float will fit in a word.\n"),
+	io__write_string("\t\tThe C code needs to be compiled with `-UBOXED_FLOAT'.\n"),
+	io__write_string("\t\tIt may also need to be compiled with\n"),
+	io__write_string("\t\t`-DUSE_SINGLE_PREC_FLOAT', if double precision\n"),
+	io__write_string("\t\tfloats don't fit into a word.\n").
 
 :- pred options_help_code_generation(io__state::di, io__state::uo) is det.
 

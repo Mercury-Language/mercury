@@ -52,9 +52,8 @@
 			data_name,		% A representation of the name
 						% of the variable; it will be
 						% qualified with the basename.
-			bool,			% Does it have to use Word *
-						% instead of Word?
-			bool,			% Should this item be exported?
+			bool,			% Should this item be exported
+						% from this Mercury module?
 			list(maybe(rval)),	% The arguments of the create.
 			list(pred_proc_id)	% The procedures referenced.
 						% Used by dead_proc_elim.
@@ -356,9 +355,8 @@
 	;	data_addr_const(data_addr).
 
 :- type data_addr
-	--->	data_addr(string, data_name, bool).
-			% module name; which var; does it have any
-			% addresses inside it (i.e. Word or Word *)?
+	--->	data_addr(string, data_name).
+			% module name; which var
 
 :- type data_name
 	--->	common(int)
@@ -459,12 +457,26 @@
 	% choosing the right sort of register for a given value
 	% to avoid unnecessary boxing/unboxing of floats.
 :- type llds_type
-	--->	bool
-	;	integer
-	;	unsigned
-	;	float
-	;	word.	% anything whose size is a word
-			% may really be integer, unsigned, or pointer
+	--->	bool		% a boolean value
+				% represented using the C type `Integer'
+	;	integer		% a Mercury `int', represented in C as a
+				% value of type `Integer' (which is
+				% a signed integral type of the same
+				% size as a pointer)
+	;	unsigned	% something whose C type is `Unsigned'
+				% (the unsigned equivalent of `Integer')
+	;	float		% a Mercury `float', represented in C as a
+				% value of type `Float' (which may be either
+				% `float' or `double', but is usually `double')
+	;	data_ptr	% a pointer to data; represented in C
+				% as a value of C type `Word *'
+	;	code_ptr	% a pointer to code; represented in C
+				% as a value of C type `Code *'
+	;	word.		% something that can be assigned to a value
+				% of C type `Word', i.e., something whose
+				% size is a word but which may be either
+				% signed or unsigned
+				% (used for registers, stack slots, etc.)
 
 	% given a non-var rval, figure out its type
 :- pred llds__rval_type(rval::in, llds_type::out) is det.
@@ -478,6 +490,9 @@
 	% given a unary operator, figure out its return type
 :- pred llds__unop_return_type(unary_op::in, llds_type::out) is det.
 
+	% given a unary operator, figure out the type of its argument
+:- pred llds__unop_arg_type(unary_op::in, llds_type::out) is det.
+
 	% given a binary operator, figure out its return type
 :- pred llds__binop_return_type(binary_op::in, llds_type::out) is det.
 
@@ -489,19 +504,19 @@
 
 llds__lval_type(reg(Reg), Type) :-
 	llds__register_type(Reg, Type).
-llds__lval_type(succip, word).		% really `Code*'
-llds__lval_type(maxfr, word).		% really `Word*'
-llds__lval_type(curfr, word).		% really `Word*'
-llds__lval_type(hp, word).		% really `Word*'
-llds__lval_type(sp, word).		% really `Word*'
+llds__lval_type(succip, code_ptr).
+llds__lval_type(maxfr, data_ptr).
+llds__lval_type(curfr, data_ptr).
+llds__lval_type(hp, data_ptr).
+llds__lval_type(sp, data_ptr).
 llds__lval_type(temp(TempReg), Type) :-
 	llds__register_type(TempReg, Type).
 llds__lval_type(stackvar(_), word).
 llds__lval_type(framevar(_), word).
-llds__lval_type(succip(_), word).	% really `Code*'
-llds__lval_type(redoip(_), word).	% really `Code*'
-llds__lval_type(succfr(_), word).	% really `Word*'
-llds__lval_type(prevfr(_), word).	% really `Word*'
+llds__lval_type(succip(_), code_ptr).
+llds__lval_type(redoip(_), code_ptr).
+llds__lval_type(succfr(_), data_ptr).
+llds__lval_type(prevfr(_), data_ptr).
 llds__lval_type(field(_, _, _), word).
 llds__lval_type(lvar(_), _) :-
 	error("lvar unexpected in llds__lval_type").
@@ -510,8 +525,20 @@ llds__rval_type(lval(Lval), Type) :-
 	llds__lval_type(Lval, Type).
 llds__rval_type(var(_), _) :-
 	error("var unexpected in llds__rval_type").
-llds__rval_type(create(_, _, _, _), word). % the create() macro calls mkword().
-llds__rval_type(mkword(_, _), word).
+llds__rval_type(create(_, _, _, _), data_ptr).
+	%
+	% Note that create and mkword must both be of type data_ptr,
+	% not of type word, to ensure that static consts containing
+	% them get type `const Word *', not type `Word'; this is
+	% necessary because casts from pointer to int must not be used
+	% in the initializers for constant expressions -- if they are,
+	% then lcc barfs, and gcc generates bogus code on some systems,
+	% (e.g. IRIX with shared libs).  If the second argument to mkword
+	% is an integer, not a pointer, then we will end up casting it
+	% to a pointer, but casts from integer to pointer are OK, it's
+	% only the reverse direction we need to avoid.
+	%
+llds__rval_type(mkword(_, _), data_ptr).
 llds__rval_type(const(Const), Type) :-
 	llds__const_type(Const, Type).
 llds__rval_type(unop(UnOp, _), Type) :-
@@ -523,10 +550,9 @@ llds__const_type(true, bool).
 llds__const_type(false, bool).
 llds__const_type(int_const(_), integer).
 llds__const_type(float_const(_), float).
-llds__const_type(string_const(_), word).
-	% the string_const() macro returns a value cast to type Word
-llds__const_type(code_addr_const(_), word).
-llds__const_type(data_addr_const(_), word).
+llds__const_type(string_const(_), data_ptr).
+llds__const_type(code_addr_const(_), code_ptr).
+llds__const_type(data_addr_const(_), data_ptr).
 
 llds__unop_return_type(mktag, word).
 llds__unop_return_type(tag, word).
@@ -538,6 +564,17 @@ llds__unop_return_type(cast_to_unsigned, unsigned).
 llds__unop_return_type(hash_string, integer).
 llds__unop_return_type(bitwise_complement, integer).
 llds__unop_return_type(not, bool).
+
+llds__unop_arg_type(mktag, word).
+llds__unop_arg_type(tag, word).
+llds__unop_arg_type(unmktag, word).
+llds__unop_arg_type(mkbody, word).
+llds__unop_arg_type(unmkbody, word).
+llds__unop_arg_type(body, word).
+llds__unop_arg_type(cast_to_unsigned, word).
+llds__unop_arg_type(hash_string, word).
+llds__unop_arg_type(bitwise_complement, integer).
+llds__unop_arg_type(not, bool).
 
 llds__binop_return_type((+), integer).
 llds__binop_return_type((-), integer).

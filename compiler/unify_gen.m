@@ -295,7 +295,7 @@ unify_gen__generate_construction_2(base_type_info_constant(ModuleName,
 	),
 	{ Code = empty },
 	code_info__cache_expression(Var, const(data_addr_const(data_addr(
-		ModuleName, base_type_info(TypeName, TypeArity), yes)))).
+		ModuleName, base_type_info(TypeName, TypeArity))))).
 unify_gen__generate_construction_2(code_addr_constant(PredId, ProcId),
 		Var, Args, _Modes, Code) -->
 	( { Args = [] } ->
