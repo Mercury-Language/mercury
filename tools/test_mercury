@@ -105,8 +105,10 @@ TESTDIR=/home/mercury/public/test_mercury
 DIR=$TESTDIR/test_dirs/$HOST
 
 case $HOST in
-	hg)	INSTALL_DIR=/home/hg/public/mercury-latest/$FULLARCH ;;
-	*)	INSTALL_DIR=/home/mercury/public/mercury-latest/$FULLARCH ;;
+	hg|ender)	
+		INSTALL_DIR=/home/$HOST/public/mercury-latest/$FULLARCH ;;
+	*)		
+		INSTALL_DIR=/home/mercury/public/mercury-latest/$FULLARCH ;;
 esac
 
 BETA_FTPHOST=ftp.mercury.cs.mu.oz.au
