@@ -60,13 +60,16 @@ union FloatWord {
 
 #ifdef __GNUC__
 
+/* GNU C allows you to cast to a union type */
 #define float_to_word(f) (__extension__ ((union FloatWord)(Float)(f)).w)
 #define word_to_float(w) (__extension__ ((union FloatWord)(Word)(w)).f)
 
 #else /* not __GNUC__ */
 
-static Word float_to_word(Float f) { union FloatWord tmp = f; return tmp.w; }
-static Float word_to_float(Word w) { union FloatWord tmp = w; return tmp.f; }
+static Word float_to_word(Float f)
+	{ union FloatWord tmp; tmp.f = f; return tmp.w; }
+static Float word_to_float(Word w)
+	{ union FloatWord tmp; tmp.w = w; return tmp.f; }
 
 #endif /* not __GNUC__ */
 
