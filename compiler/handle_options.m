@@ -473,16 +473,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	% On x86, using PIC takes a register away from us.
 	option_implies(pic, pic_reg, bool(yes)),
 
-	% If we're linking with shared Mercury libraries, we need
-	% to use the same calling convention as those libraries.
-	globals__io_lookup_string_option(mercury_linkage, MercuryLinkage),
-	( { MercuryLinkage = "shared" } ->
-		globals__io_set_option(pic_reg, bool(yes))
-	;
-		[]
-	),
-
-
 	% --high-level-code disables the use of low-level gcc extensions
 	option_implies(highlevel_code, gcc_non_local_gotos, bool(no)),
 	option_implies(highlevel_code, gcc_global_registers, bool(no)),
