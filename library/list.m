@@ -63,9 +63,36 @@
 	%	List is List0 sorted with duplicates removed.
 :- pred sort(list(T), list(T)).
 :- mode sort(in, out).
+
+:- pred nth_member_search(list(T), T, int).
+:- mode nth_member_search(in, in, out) is semidet.
+
+:- pred nth_member_lookup(list(T), int, T).
+:- mode nth_member_lookup(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module require.
+
+nth_member_search([X | Xs], Y, N) :-
+	( X = Y ->
+		N = 1
+	;
+		nth_member_search(Xs, Y, N0),
+		N is N0 + 1
+	).
+
+nth_member_lookup([], _, _) :-
+	error("invalid index in nth_member_lookup").
+nth_member_lookup([X | Xs], N, Y) :-
+	( N = 1 ->
+		Y = X
+	; 
+		N1 is N - 1,
+		nth_member_lookup(Xs, N1, Y)
+	).
 
 /*
 :- external("NU-Prolog", append/3).

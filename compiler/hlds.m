@@ -80,7 +80,7 @@
 					varset,		% variable names
 					map(var, type),	% variable types
 					list(var),	% head vars
-					list(mode), % modes of args
+					list(mode), 	% modes of args
 					hlds__goal,	% Body
 					term__context,	% The context of
 							% the :- mode decl,
@@ -156,8 +156,10 @@
 	% This table is used by the type-checker to look
 	% up the type of functors/constants.
 
-:- type cons_id		--->	cons(string, int).
-				% name, arity
+:- type cons_id		--->	cons(string, int)	% name, arity
+			;	int_const(int)
+			;	string_const(string)
+			;	float_const(float).
 
 %%% :- export_type cons_table.
 :- type cons_table	==	map(cons_id, list(hlds__cons_defn)).
@@ -165,10 +167,16 @@
 %-----------------------------------------------------------------------------%
 
 :- type arg_info	--->	arginfo(
-					lval,	% stored location
-					bool,	% mode is input
-					bool	% mode is output
+					arg_loc,	% stored location
+					arg_mode	% mode of top functor
 				).
+
+:- type arg_mode	
+	--->	top_in
+	;	top_out
+	;	top_unused.
+
+:- type arg_loc == int.
 
 %-----------------------------------------------------------------------------%
 
@@ -564,6 +572,33 @@ moduleinfo_incr_warnings(ModuleInfo0, ModuleInfo) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+	% Various predicates for accessing the cons_id type.
+
+:- interface.
+
+:- pred make_functor_cons_id(const, int, cons_id).
+:- mode make_functor_cons_id(in, in, out) is det.
+
+:- pred make_cons_id(sym_name, list(type), type_id, cons_id).
+:- mode make_cons_id(input, input, input, output) is det.
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+make_functor_cons_id(term_atom(Name), Arity, cons(Name, Arity)).
+make_functor_cons_id(term_integer(Int), _, int_const(Int)).
+make_functor_cons_id(term_string(String), _, string_const(String)).
+make_functor_cons_id(term_float(Float), _, float_const(Float)).
+
+make_cons_id(qualified(_Module, Name), Args, _TypeId, cons(Name, Arity)) :-
+	length(Args, Arity).
+make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
+	length(Args, Arity).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 	% Various predicates for accessing the information stored in the
 	% pred_id and pred_info data structures.
 
@@ -702,6 +737,12 @@ predinfo_is_imported(PredInfo) :-
 :- pred procinfo_set_goal(proc_info, hlds__goal, proc_info).
 :- mode procinfo_set_goal(input, input, output).
 
+:- pred procinfo_arginfo(proc_info, list(arg_info)).
+:- mode procinfo_arginfo(in, out).
+
+:- pred procinfo_set_arginfo(proc_info, list(arg_info), proc_info).
+:- mode procinfo_set_arginfo(in, in, out).
+
 :- implementation.
 
 	% Some parts of the procedure aren't known yet.  We initialize
@@ -714,10 +755,10 @@ procinfo_init(Modes, Det, MContext, NewProc) :-
 	HeadVars = [],
 	determinism_to_category(Det, Category),
 	map__init(CallInfo),
+	ArgInfo = [],
 	NewProc = procedure(
 		Det, BodyVarSet, BodyTypes, HeadVars, Modes,
-		conj([]) - GoalInfo, MContext, CallInfo, Category, []
-		% XXX [] == empty arginfo....
+		conj([]) - GoalInfo, MContext, CallInfo, Category, ArgInfo
 	).
 
 determinism_to_category(det, deterministic).
