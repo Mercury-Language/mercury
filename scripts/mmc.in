@@ -37,14 +37,16 @@ DEFAULT_OPT_LEVEL=${MERCURY_DEFAULT_OPT_LEVEL="-O2"}
 # The default optimization level should be after
 # all the options that describe the machine configuration.
 
+		# Need a version of the compiler which understands these
+		# options first.
+		# --c-flag-to-name-object-file "$CFLAG_TO_NAME_OBJECT_FILE" \
+		# --object-file-extension "$OBJECT_FILE_EXTENSION" \
 case $# in
 	0) exec $MC \
 		$MERC_ALL_MC_C_INCL_DIRS \
 		--cc "$CC" --grade "$DEFAULT_GRADE" \
 		--cflags-for-regs "$CFLAGS_FOR_REGS" \
 		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
-		# --c-flag-to-name-object-file "$CFLAG_TO_NAME_OBJECT_FILE" \
-		# --object-file-extension "$OBJECT_FILE_EXTENSION" \
 		--num-real-r-regs "$NUM_REAL_R_REGS" \
 		--num-real-r-temps "$NUM_REAL_R_TEMPS" \
 		--conf-low-tag-bits "$LOW_TAG_BITS" \
@@ -60,8 +62,6 @@ case $# in
 		--cc "$CC" --grade "$DEFAULT_GRADE" \
 		--cflags-for-regs "$CFLAGS_FOR_REGS" \
 		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
-		# --c-flag-to-name-object-file "$CFLAG_TO_NAME_OBJECT_FILE" \
-		# --object-file-extension "$OBJECT_FILE_EXTENSION" \
 		--num-real-r-regs "$NUM_REAL_R_REGS" \
 		--num-real-r-temps "$NUM_REAL_R_TEMPS" \
 		--conf-low-tag-bits "$LOW_TAG_BITS" \
