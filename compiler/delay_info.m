@@ -108,7 +108,17 @@
 	% Check that the invariants for the delay_info structure
 	% hold, and if not, call error/1.
 
+delay_info__check_invariant(_).
+/***
+	% for debugging purposes
 delay_info__check_invariant(DelayInfo) :-
+	delay_info__check_invariant_x(DelayInfo).
+***/
+
+:- pred delay_info__check_invariant_x(delay_info).
+:- mode delay_info__check_invariant_x(in) is det.
+
+delay_info__check_invariant_x(DelayInfo) :-
 	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
 				WaitingGoalsTable, _PendingGoals, NextSeqNums),
 	(
@@ -121,6 +131,7 @@ delay_info__check_invariant(DelayInfo) :-
 	;
 		error("delay_info: invariant violated")
 	).
+
 
 	% For every variable which goals are waiting on, check the
 	% consistency of all the goals waiting on that var.
