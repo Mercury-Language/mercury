@@ -21,6 +21,7 @@ PROGS=	\
 	det_in_semidet_cntxt \
 	division_test \
 	elim_special_pred \
+	error_func \
 	expand \
 	float_reg \
 	float_rounding_bug \
