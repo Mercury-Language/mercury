@@ -1717,8 +1717,8 @@ and when listing debuggable modules and/or procedures.
 @table @code
 @item mmc_options @var{option1} @var{option2} @dots{}
 This command sets the options that will be passed to @samp{mmc}
-to compile your query when you use one of the query commands
-(@samp{query}, @samp{cc_query}, or @samp{io_query}.
+to compile your query when you use one of the query commands:
+@samp{query}, @samp{cc_query}, or @samp{io_query}.
 For example, if a query results in a compile error,
 it may sometimes be helpful to use @samp{mmc_options --verbose-errors}.
 @sp 1
