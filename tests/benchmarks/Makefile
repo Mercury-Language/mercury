@@ -13,7 +13,7 @@ MC=mmc
 #-----------------------------------------------------------------------------#
 
 PROGS=	cqueens crypt deriv deriv2 nrev poly primes qsort queens \
-	tak query arithmetic
+	tak query
 OUTS=	$(PROGS:%=%.out)
 EXPS=	$(PROGS:%=%.exp)
 RESS=	$(PROGS:%=%.res)
