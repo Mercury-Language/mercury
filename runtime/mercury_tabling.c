@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2001 The University of Melbourne.
+** Copyright (C) 1997-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -451,7 +451,7 @@ MR_string_hash_lookup_or_add(MR_TrieNode t, MR_ConstString key)
 #define	key_cast		const char *
 #define	table_type		MR_StringHashTableSlot
 #define	table_field		string_slot_ptr
-#define	hash(key)		(MR_hash_string((MR_Word) key))
+#define	hash(key)		(MR_hash_string(key))
 #define	equal_keys(k1, k2)	(strtest(k1, k2) == 0)
 MR_GENERIC_HASH_LOOKUP_OR_ADD
 #undef	key_format

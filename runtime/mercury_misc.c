@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1996-2000 The University of Melbourne.
+** Copyright (C) 1996-2000, 2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -67,7 +67,7 @@ MR_fatal_error(const char *fmt, ...)
 #undef MR_hash_string
 
 int 
-MR_hash_string(MR_Word s)
+MR_hash_string(MR_ConstString s)
 {
 	MR_HASH_STRING_FUNC_BODY
 }

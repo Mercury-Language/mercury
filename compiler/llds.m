@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2001 The University of Melbourne.
+% Copyright (C) 1993-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1168,7 +1168,7 @@ llds__unop_arg_type(tag, word).
 llds__unop_arg_type(unmktag, word).
 llds__unop_arg_type(mkbody, word).
 llds__unop_arg_type(unmkbody, word).
-llds__unop_arg_type(hash_string, word).
+llds__unop_arg_type(hash_string, string).
 llds__unop_arg_type(bitwise_complement, integer).
 llds__unop_arg_type(not, bool).
 
