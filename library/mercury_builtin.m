@@ -188,9 +188,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- external(call/1).
-:- external(call/2).
-:- external(call/3).
 :- external(unify/2).
 :- external(index/2).
 :- external(compare/3).
