@@ -233,8 +233,8 @@ case $status in 0)
 		;;
     esac
     case $install_anyway in
-        true)	cd ../.. || status=1
-        false)	cd .. || status=1
+        true)	cd ../.. || status=1 ;;
+        false)	cd .. || status=1 ;;
     esac
 esac
 
