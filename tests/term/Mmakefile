@@ -68,6 +68,8 @@ TRANS_OPT_RESS = $(PROGS:%=%.trans_opt_res)
 
 #-----------------------------------------------------------------------------#
 
+MCFLAGS = --trans-intermod-opt $(EXTRA_MCFLAGS)
+
 MCTERMFLAGS = --enable-termination --term-single-arg 5 --term-norm simple
 MCOPTFLAGS  = --no-inlining --no-optimize-unused-args --no-deforestation \
 	      --no-optimize-higher-order
@@ -87,5 +89,11 @@ depend: $(DEPENDS)
 trans_opts: $(TRANS_OPTS)
 
 check: $(TRANS_OPT_RESS)
+
+clean:
+	rm -f *.trans_opt_err
+
+realclean:
+	rm -f *.trans_opt_res
 
 #-----------------------------------------------------------------------------#
