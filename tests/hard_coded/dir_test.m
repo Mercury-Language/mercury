@@ -4,7 +4,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io__state::di, io__state::uo) is cc_multi.
 
 :- implementation.
 
@@ -223,7 +223,7 @@ testp(Msg, P, T) -->
 		{ error(Msg ++ " " ++ io__error_message(Error)) }
 	).
 
-:- pred run_test(string::in, io__state::di, io__state::uo) is det.
+:- pred run_test(string::in, io__state::di, io__state::uo) is cc_multi.
 
 run_test(PathName) -->
 	test_split_name(PathName),
@@ -233,7 +233,7 @@ run_test(PathName) -->
 	test_path_name_is_root_directory(PathName),
 	io__nl.
 
-:- pred test_split_name(string::in, io__state::di, io__state::uo) is det.
+:- pred test_split_name(string::in, io__state::di, io__state::uo) is cc_multi.
 
 test_split_name(PathName) -->
 	io__write_string("dir__split_name("""),
@@ -300,7 +300,7 @@ test_path_name_is_root_directory(PathName) -->
 	).
 
 :- pred test_make_path_name(string::in, string::in,
-		io__state::di, io__state::uo) is det.
+		io__state::di, io__state::uo) is cc_multi.
 
 test_make_path_name(DirName, FileName) -->
 	io__write_string("\""),
@@ -308,8 +308,7 @@ test_make_path_name(DirName, FileName) -->
 	io__write_string("\"/\""),
 	io__write_string(FileName),
 	io__write_string("\""),
-	{ Res = promise_only_solution(try_det(
-		(pred(R::out) is det :- R = DirName/FileName))) },
+	{ try((pred(R::out) is det :- R = DirName/FileName), Res) },
 	(
 		{ Res = succeeded(Path) },
 		io__write_string(" = """),
