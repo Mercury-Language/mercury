@@ -145,7 +145,8 @@ base_type_info__construct_base_type_infos([BaseGenInfo | BaseGenInfos],
 	->
 		base_type_info__construct_layout(ModuleInfo, TypeName,
 			TypeArity, LayoutArg),
-		list__append(PredAddrArgs, [LayoutArg], FinalArgs)
+		NameArg = yes(const(string_const(TypeName))),
+		list__append(PredAddrArgs, [LayoutArg, NameArg], FinalArgs)
 	;
 		FinalArgs = PredAddrArgs
 	),

@@ -41,6 +41,9 @@
 %	word 2		<index/2 predicate for type>
 %	word 3		<compare/3 predicate for type>
 %	word 4		<base_type_layout for type>
+%	word 5		<string name of type>
+%			e.g. "int" for 'int', "list" for 'list(T),
+%			"map" for 'map(K,V)'
 %
 %	or if using type_to_term predicates:
 %
