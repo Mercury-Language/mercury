@@ -12,14 +12,11 @@ DEPENDS=$(PROGS:%=%.depend)
 OUTS=	$(PROGS:%=%.out)
 EXPS=	$(PROGS:%=%.exp)
 RESS=	$(PROGS:%=%.res)
-MODS=	$(PROGS:%=%.mod)
 SS=	$(PROGS:%=%.s)
 
 depend: $(DEPENDS)
 
 check: $(EXPS) $(OUTS) $(RESS)
-
-mods: $(MODS)
 
 ss: $(SS)
 
