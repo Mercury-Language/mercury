@@ -67,6 +67,10 @@
 :- pred varset__lookup_var(varset, var, term).
 :- mode varset__lookup_var(in, in, out).
 
+	% get the bindings for all the bound variables.
+:- pred varset__lookup_vars(varset, substitution).
+:- mode varset__lookup_vars(in, out).
+
 	% Combine two different varsets, renaming apart:
 	% varset__merge(VarSet0, NewVarSet, Terms0, VarSet, Terms) is
 	% true iff VarSet is the varset that results from joining
@@ -178,6 +182,10 @@ varset__bind_vars_2([V - T | Rest], Varset0, Varset) :-
 
 varset__lookup_var(varset(_, _, Vals), Id, Val) :-
 	map__search(Vals, Id, Val).
+
+%-----------------------------------------------------------------------------%
+
+varset__lookup_vars(varset(_,_,Subst), Subst).
 
 %-----------------------------------------------------------------------------%
 
