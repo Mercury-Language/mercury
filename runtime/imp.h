@@ -63,4 +63,6 @@
 #include	"prof.h"
 #include	"misc.h"
 
+#include	"mercury_grade.h"
+
 #endif /* not IMP_H */
