@@ -147,15 +147,15 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	%		*/
 	%
 	% #if MR_THREAD_SAFE
-	% 	must_finalize_engine = init_thread(MR_use_now);
+	% 	must_finalize_engine = MR_init_thread(MR_use_now);
 	% #endif 
 	%
 	%		/* 
 	%		** restore Mercury's registers that were saved as
 	%		** we entered C from Mercury.  For single threaded
 	%		** programs the process must always start in Mercury
-	%		** so that we can init_engine() etc.  For
-	%		** multi-threaded init_thread (above) takes care
+	%		** so that we can MR_init_engine() etc.  For
+	%		** multi-threaded MR_init_thread (above) takes care
 	%		** of making a new engine if required.
 	%		*/
 	%	MR_restore_registers();
@@ -181,7 +181,7 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	%	<copy output args from registers into *Mercury__Arguments>
 	% #if MR_THREAD_SAFE
 	% 	if (must_finalize_engine) {
-	% 		finalize_thread_engine();
+	% 		MR_finalize_thread_engine();
 	% 	}
 	% #endif 
 	%	MR_restore_regs_from_mem(c_regs);
@@ -226,7 +226,7 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 				"\n",
 				"\tMR_save_regs_to_mem(c_regs);\n", 
 				"#if MR_THREAD_SAFE\n",
-				"\tmust_finalize_engine = init_thread(MR_use_now);\n", 
+				"\tmust_finalize_engine = MR_init_thread(MR_use_now);\n", 
 				"#endif\n",
 				"\tMR_restore_registers();\n", 
 				InputArgs,
@@ -238,7 +238,7 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 				OutputArgs,
 				"#if MR_THREAD_SAFE\n",
 				"\tif (must_finalize_engine) {\n", 
-				"\t\t finalize_thread_engine();\n", 
+				"\t\t MR_finalize_thread_engine();\n", 
 				"\t}\n", 
 				"#endif\n",
 				"\tMR_restore_regs_from_mem(c_regs);\n", 
