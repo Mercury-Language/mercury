@@ -982,9 +982,26 @@ merge_instmapping_delta_2([Var | Vars], InstMap, VarTypes, InstMappingA,
 	),
 	(
 		inst_merge(InstA, InstB, yes(VarTypes ^ det_elem(Var)),
-			ModuleInfo0, Inst, ModuleInfoPrime)
+			ModuleInfo0, Inst1, ModuleInfoPrime)
 	->
+		% XXX Given instmap__lookup_var(InstMap, Var, OldInst),
+		% we should probably set Inst not directly from Inst1, but
+		% from a conjunction of OldInst and Inst1. If OldInst says that
+		% Var is bound to f, and Inst1 says that it is bound to g,
+		% Inst should be `unreachable', not bound(g). If OldInst says
+		% that Var is bound to f or g, and Inst1 says that it is bound
+		% to g or h, Inst should say that it is bound(g).
+		%
+		% If there is an invariant to the effect that such situations
+		% are not supposed to arise, then it is being broken, due to
+		% the XXX in recompute_instmap_delta_unify in mode_util.m.
+		%
+		% At present, I believe that the cases we mishandle here can
+		% arise only after inlining, as in puzzle_detism_bug.m in
+		% tests/hard_coded. -zs
+
 		ModuleInfo1 = ModuleInfoPrime,
+		Inst = Inst1,
 		map__det_insert(InstMapping0, Var, Inst, InstMapping1)
 	;
 		term__var_to_int(Var, VarInt),

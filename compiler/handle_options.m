@@ -1981,6 +1981,7 @@ char_is_not(A, B) :-
 
 convert_dump_alias("ALL", "abcdfgilmnprstuvCDIMPTU").
 convert_dump_alias("all", "abcdfgilmnprstuvCMPT").
+convert_dump_alias("allD", "abcdfgilmnprstuvCDMPT").
 convert_dump_alias("most", "bcdfgilmnprstuvP").
 convert_dump_alias("trans", "bcdglmnstuv").
 convert_dump_alias("codegen", "dfnprsu").

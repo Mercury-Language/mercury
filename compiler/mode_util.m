@@ -343,11 +343,6 @@ mode_util__modes_to_uni_modes([X|Xs], [Y|Ys], ModuleInfo, [A|As]) :-
 %-----------------------------------------------------------------------------%
 
 inst_lookup(ModuleInfo, InstName, Inst) :-
-	inst_lookup_2(InstName, ModuleInfo, Inst).
-
-:- pred inst_lookup_2(inst_name::in, module_info::in, (inst)::out) is det.
-
-inst_lookup_2(InstName, ModuleInfo, Inst) :-
 	(
 		InstName = unify_inst(_, _, _, _),
 		module_info_insts(ModuleInfo, InstTable),
@@ -429,7 +424,7 @@ inst_lookup_2(InstName, ModuleInfo, Inst) :-
 			ground(Uniq, none), Inst)
 	;
 		InstName = typed_inst(Type, TypedInstName),
-		inst_lookup_2(TypedInstName, ModuleInfo, Inst0),
+		inst_lookup(ModuleInfo, TypedInstName, Inst0),
 		map__init(Subst),
 		propagate_type_into_inst(Type, Subst, ModuleInfo, Inst0, Inst)
 	).
@@ -1263,6 +1258,12 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
 		goal_info_get_instmap_delta(GoalInfo, OldInstMapDelta),
 		instmap__lookup_var(InstMap, Var, InitialInst),
 		( instmap_delta_search_var(OldInstMapDelta, Var, FinalInst1) ->
+			% XXX we need to merge the information in InitialInst
+			% and FinalInst1. In puzzle_detism_bug, InitialInst
+			% has a var bound to one function symbol (james), while
+			% FinalInst1 has it bound to another (katherine).
+			% The correct final inst is thus `unreachable', but
+			% we don't return that.
 			FinalInst = FinalInst1
 		;
 			% it wasn't in the instmap_delta, so the inst didn't

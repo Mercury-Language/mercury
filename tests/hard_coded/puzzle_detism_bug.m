@@ -6,7 +6,14 @@
 % 	Uncaught Mercury exception:
 % 	Software Error: inappropriate determinism inside a negation
 %
-% The problem goes away when `--no-inlining' is enabled.
+% The problem goes away when inlining is disabled.
+%
+% The cause of the problem is that the recomputation of instmap_deltas after
+% inlining generates incorrect results. See the XXXs in the predicate
+% merge_instmapping_delta_2 in instmap.m and in recompute_instmap_delta_unify
+% in mode_util.m. There is no easy fix, since there seems to be no existing
+% predicate that takes two insts and computes the intersections of all the
+% bound insts inside them.
 %
 %----------------------------------------------------------------------------%
 
