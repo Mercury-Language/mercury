@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 INRIA/INSA.
+% Copyright (C) 1999-2000 INRIA/INSA.
 % 
 % Author : Erwan Jahier <jahier@irisa.fr>
 %
@@ -14,7 +14,7 @@ initialize([]).
 
 filter(Event, AccIn, AccOut, continue) :-
 	( 
-		port(Event) = call,
+		port(Event) = exit,
 		not(member(sol(proc(Event), arguments(Event)), AccIn))
 	->
 		AccOut = [sol(proc(Event), arguments(Event))|AccIn]

@@ -1,4 +1,4 @@
-write("\nCopyright (C) 1999 INRIA/INSA de Rennes."),
+write("\nCopyright (C) 1999-2000 INRIA/INSA de Rennes."),
 write("\n**************************************************\n"),
 write("******** Non regression test for Morphine *********\n"),
 write("**************************************************\n\n"),
