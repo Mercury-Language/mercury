@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000 The University of Melbourne.
+** Copyright (C) 1997-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1127,7 +1127,7 @@ MR_check_minimal_model_calls(MR_Event_Info *event_info, int ancestor_level,
 		}
 
 		if (proc_layout->MR_sle_maybe_call_table <= 0) {
-			fatal_error("minimal model procedure "
+			MR_fatal_error("minimal model procedure "
 					"has no call table slot");
 		}
 

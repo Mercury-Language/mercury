@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1420,9 +1420,9 @@ MR_define_entry(mercury____Unify___std_util__type_desc_0_0);
 	int	comp;
 
 	MR_save_transient_registers();
-	comp = MR_compare_type_info((MR_TypeInfo) r1, (MR_TypeInfo) r2);
+	comp = MR_compare_type_info((MR_TypeInfo) MR_r1, (MR_TypeInfo) MR_r2);
 	MR_restore_transient_registers();
-	r1 = (comp == MR_COMPARE_EQUAL);
+	MR_r1 = (comp == MR_COMPARE_EQUAL);
 	MR_proceed();
 }
 
@@ -1434,9 +1434,9 @@ MR_define_entry(mercury____Compare___std_util__type_desc_0_0);
 	int	comp;
 
 	MR_save_transient_registers();
-	comp = MR_compare_type_info((MR_TypeInfo) r1, (MR_TypeInfo) r2);
+	comp = MR_compare_type_info((MR_TypeInfo) MR_r1, (MR_TypeInfo) MR_r2);
 	MR_restore_transient_registers();
-	r1 = comp;
+	MR_r1 = comp;
 	MR_proceed();
 }
 

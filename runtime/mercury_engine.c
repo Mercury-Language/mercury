@@ -3,7 +3,7 @@ INIT mercury_sys_init_engine
 ENDINIT
 */
 /*
-** Copyright (C) 1993-2000 The University of Melbourne.
+** Copyright (C) 1993-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -163,7 +163,7 @@ MR_destroy_engine(MercuryEngine *eng)
 **	The called routine should be det/semidet/cc_multi/cc_nondet.
 **
 **	If the called routine returns normally (this includes the case of a
-**	semidet/cc_nondet routine failing, i.e. returning with r1 = FALSE),
+**	semidet/cc_nondet routine failing, i.e. returning with MR_r1 = FALSE),
 **	then MR_call_engine() will return NULL.
 **
 **	If the called routine exits by throwing an exception, then the
