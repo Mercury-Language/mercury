@@ -560,23 +560,20 @@
 	}	\
 	label:	\
 	{
-  #define init_local(label)	make_local(stringify(label), &&label, label)
-  #define init_local_ai(label)	make_local_ai(stringify(label), &&label, label)
-  #define init_local_sl(label)	make_local_sl(stringify(label), &&label, label)
+  #define init_local(label)	\
+  	make_local(stringify(label), &&entry(label), label)
+  #define init_local_ai(label)	\
+  	make_local_ai(stringify(label), &&entry(label), label)
+  #define init_local_sl(label)	\
+  	make_local_sl(stringify(label), &&entry(label), label)
   #define Define_label(label)	Define_local(label)
   #define Declare_label(label)	/* no declaration required */
-  #ifdef MR_INSERT_LABELS
-   #define init_label(label)	\
+  #define init_label(label)	\
 	make_label(stringify(label), &&entry(label), label)
-   #define init_label_ai(label)	\
+  #define init_label_ai(label)	\
 	make_label_ai(stringify(label), &&entry(label), label)
-   #define init_label_sl(label)	\
+  #define init_label_sl(label)	\
 	make_label_sl(stringify(label), &&entry(label), label)
-  #else
-   #define init_label(label)	make_label(stringify(label), &&label, label)
-   #define init_label_ai(label)	make_label_ai(stringify(label), &&label, label)
-   #define init_label_sl(label)	make_label_sl(stringify(label), &&label, label)
-  #endif
 
   #define LOCAL(label)		(&&entry(label))
   #define LABEL(label)		(&&entry(label))
@@ -584,7 +581,10 @@
   #define GOTO_ENTRY(label) 	GOTO(ENTRY(label))
   #define GOTO_STATIC(label) 	GOTO(STATIC(label))
   #define GOTO_LOCAL(label) 	GOTO_LABEL(label)
-  #define GOTO_LABEL(label) 	do { debuggoto(&&label); goto label; } while(0)
+  #define GOTO_LABEL(label) 	do {					\
+  					debuggoto(LABEL(label));	\
+					goto label;			\
+				} while(0)
 
   /*
   ** GOTO_LABEL(label) is the same as GOTO(LABEL(label)) except
