@@ -1360,11 +1360,12 @@ llds_out__float_literal_name(Float, FloatName) :-
 	%
 	% The name of the variable is based on the
 	% value of the float const, with "pt" instead
-	% of ".", and "neg" instead of "-".
+	% of ".", "plus" instead of "+", and "neg" instead of "-".
 	%
 	string__float_to_string(Float, FloatName0),
 	string__replace_all(FloatName0, ".", "pt", FloatName1),
-	string__replace_all(FloatName1, "-", "neg", FloatName).
+	string__replace_all(FloatName1, "+", "plus", FloatName2),
+	string__replace_all(FloatName2, "-", "neg", FloatName).
 
 :- pred llds_out__float_op_name(binary_op, string).
 :- mode llds_out__float_op_name(in, out) is semidet.
