@@ -47,6 +47,8 @@ require(Goal, Message) :-
 
 /* error/1, from require.m */
 
+:- pragma(c_header_code, "#include <stdio.h>").
+
 :- pragma(c_code, error(Message::in), "
 	fflush(stdout);
 	fprintf(stderr, ""Software error: %s\\n"", Message);

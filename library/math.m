@@ -189,6 +189,8 @@
 
 :- pragma(c_code, "
 
+	#include <stdio.h>
+
 	/*
 	** Handle domain errors.
 	*/
