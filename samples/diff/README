@@ -69,8 +69,8 @@ a lot more maintainable than it originally was.  :-)
 
 The changes from the previous version:
 
-	- Bug fix which was causing it to bomb out if the two
-	  files were identical.
+	- Bug fix for a problem which was causing it to bomb out if
+	  the two files were identical.
 
 	- Changed indenting so it more closely matches the Mercury
 	  compiler coding standard.
