@@ -334,6 +334,15 @@ hlds_out__write_goal(Goal - GoalInfo, VarSet, Indent) -->
 		{ set__to_sorted_list(NonLocalsSet, NonLocalsList) },
 		io__write_string("% nonlocals: "),
 		mercury_output_vars(NonLocalsList, VarSet),
+		mercury_output_newline(Indent),
+		{ goal_info_delta_liveness(GoalInfo, Births - Deaths) },
+		{ set__to_sorted_list(Births, BirthList) },
+		{ set__to_sorted_list(Deaths, DeathList) },
+		io__write_string("% births: "),
+		mercury_output_vars(BirthList, VarSet),
+		mercury_output_newline(Indent),
+		io__write_string("% deaths: "),
+		mercury_output_vars(DeathList, VarSet),
 		mercury_output_newline(Indent)
 	;
 		[]

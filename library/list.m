@@ -21,8 +21,9 @@
 :- pred list__append(list(T), list(T), list(T)).
 :- mode list__append(in, in, out) is det.
 :- mode list__append(out, out, in) is nondet.
-:- mode list__append(in, out, in) is semidet.
-:- mode list__append(out, in, in) is semidet.
+% 	% semidet, but the compiler can't deduce that
+% :- mode list__append(in, out, in) is semidet.
+% :- mode list__append(out, in, in) is semidet.
 
 	% merge - see NU-Prolog documentation
 

@@ -140,6 +140,7 @@ options_help -->
 	io__write_string("\t\tInvoke the mode analysis pass of the compiler.\n"),
 	io__write_string("\t-d, --dump-hlds\n"),
 	io__write_string("\t\tDump the HLDS to `<module>.hlds'.\n"),
+	io__write_string("\t\t(Gives additional info in combination with -V.)\n"),
 	io__write_string("\t-g, --generate-code\n"),
 	io__write_string("\t\tGenerate .mod code in `xxx.xmod'.\n"),
 	io__write_string("\t\tAs with -i, it disables type-checking, etc.\n"),
