@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -699,6 +699,7 @@
 
 :- interface.
 
+:- import_module prog_data.
 :- import_module hlds_module, hlds_goal.
 :- import_module code_model.
 :- import_module mlds, ml_code_util.
@@ -729,6 +730,21 @@
 			ml_gen_info, ml_gen_info).
 :- mode ml_gen_goal(in, in, out, out, in, out) is det.
 
+	% ml_gen_wrap_goal(OuterCodeModel, InnerCodeModel, Context,
+	%		MLDS_Statements0, MLDS_Statements):
+	%
+	%	OuterCodeModel is the code model expected by the
+	%	context in which a goal is called. InnerCodeModel
+	%	is the code model which the goal actually has.
+	%	This predicate converts the code generated for
+	%	the goal using InnerCodeModel into code that uses
+	%	the calling convention appropriate for OuterCodeModel.
+	%
+:- pred ml_gen_wrap_goal(code_model, code_model, prog_context,
+		mlds__statements, mlds__statements,
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_wrap_goal(in, in, in, in, out, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -738,7 +754,7 @@
 :- import_module ml_code_util.
 :- import_module arg_info, llds, llds_out. % XXX needed for pragma foreign code
 :- import_module export, foreign. % XXX needed for pragma foreign code
-:- import_module hlds_pred, hlds_goal, hlds_data, prog_data.
+:- import_module hlds_pred, hlds_data.
 :- import_module goal_util, type_util, mode_util, builtin_ops.
 :- import_module passes_aux, modules.
 :- import_module globals, options.
@@ -1416,12 +1432,8 @@ union_subgoal_locals(SubGoal, UnionOfSubGoalLocals0, UnionOfSubGoalLocals) :-
 	%	This predicate converts the code generated for
 	%	the goal using InnerCodeModel into code that uses
 	%	the calling convention appropriate for OuterCodeModel.
-	%
-:- pred ml_gen_wrap_goal(code_model, code_model, prog_context,
-		mlds__statements, mlds__statements,
-		ml_gen_info, ml_gen_info).
-:- mode ml_gen_wrap_goal(in, in, in, in, out, in, out) is det.
 
+	%
 	% If the inner and outer code models are equal,
 	% we don't need to do anything special.
 
