@@ -27,58 +27,63 @@
 :- instance enum(int).
 
 	% less than
+	%
 :- pred int < int.
 :- mode in  < in is semidet.
 
 	% greater than
+	%
 :- pred int > int.
 :- mode in  > in is semidet.
 
 	% less than or equal
+	%
 :- pred int =< int.
 :- mode in  =< in is semidet.
 
 	% greater than or equal
+	%
 :- pred int >= int.
 :- mode in >= in is semidet.
 
 	% absolute value
+	%
 :- func int__abs(int) = int.
-:- pred int__abs(int, int).
-:- mode int__abs(in, out) is det.
+:- pred int__abs(int::in, int::out) is det.
 
 	% maximum
+	%
 :- func int__max(int, int) = int.
-:- pred int__max(int, int, int).
-:- mode int__max(in, in, out) is det.
+:- pred int__max(int::in, int::in, int::out) is det.
 
 	% minimum
+	%
 :- func int__min(int, int) = int.
-:- pred int__min(int, int, int).
-:- mode int__min(in, in, out) is det.
+:- pred int__min(int::in, int::in, int::out) is det.
 
 	% conversion of integer to floating point
 	% OBSOLETE: use float__float/1 instead.
+	%
 :- pragma obsolete(int.to_float/2).
-:- pred int__to_float(int, float) is det.
-:- mode int__to_float(in, out) is det.
+:- pred int__to_float(int::in, float::out) is det.
 
 	% exponentiation
 	% int__pow(X, Y, Z): Z is X raised to the Yth power
 	% Throws a `math__domain_error' exception if Y is negative.
+	%
 :- func int__pow(int, int) = int.
-:- pred int__pow(int, int, int).
-:- mode int__pow(in, in, out) is det.
+:- pred int__pow(int::in, int::in, int::out) is det.
 
 	% base 2 logarithm
 	% int__log2(X) = N is the least integer such that 2 to the
 	% power N is greater than or equal to X.
 	% Throws a `math__domain_error' exception if X is not positive.
+	%
 :- func int__log2(int) = int.
-:- pred int__log2(int, int).
-:- mode int__log2(in, out) is det.
+:- pred int__log2(int::in, int::out) is det.
 
 	% addition
+	%
 :- func int + int = int.
 :- mode in  + in  = uo  is det.
 :- mode uo  + in  = in  is det.
@@ -87,12 +92,14 @@
 :- func int__plus(int, int) = int.
 
 	% multiplication
+	%
 :- func int * int = int.
 :- mode in  * in  = uo  is det.
 
 :- func int__times(int, int) = int.
 
 	% subtraction
+	%
 :- func int - int = int.
 :- mode in  - in  = uo  is det.
 :- mode uo  - in  = in  is det.
@@ -106,8 +113,8 @@
 	% Throws a `math__domain_error' exception if the right operand
 	% is zero. See the comments at the top of math.m to find out how to
 	% disable domain checks.
-:- func div(int, int) = int.
-:- mode div(in, in) = uo is det.
+	%
+:- func div(int::in, int::in) = (int::uo) is det.
 
 	% truncating integer division
 	% Truncates towards zero, e.g. (-10) // 3 = (-3).
@@ -117,6 +124,7 @@
 	% Throws a `math__domain_error' exception if the right operand
 	% is zero. See the comments at the top of math.m to find out how to
 	% disable domain checks.
+	%
 :- func int // int = int.
 :- mode in  // in  = uo  is det.
 
@@ -128,11 +136,12 @@
 
 	% unchecked_quotient(X, Y) is the same as X // Y, but the
 	% behaviour is undefined if the right operand is zero.
-:- func unchecked_quotient(int, int) = int.
-:- mode unchecked_quotient(in, in)  = uo  is det.
+	%
+:- func unchecked_quotient(int::in, int::in) = (int::uo) is det.
 
 	% modulus
 	% X mod Y = X - (X div Y) * Y
+	%
 :- func int mod int = int.
 :- mode in  mod in  = uo  is det.
 
@@ -144,6 +153,7 @@
 	% Throws a `math__domain_error' exception if the right operand
 	% is zero. See the comments at the top of math.m to find out how to
 	% disable domain checks.
+	%
 :- func int rem int = int.
 :- mode in rem in = uo is det.
 
@@ -156,6 +166,7 @@
 	% X << Y returns X "left shifted" by Y bits. 
 	% To be precise, if Y is negative, the result is
 	% X div (2^(-Y)), otherwise the result is X * (2^Y).
+	%
 :- func int << int = int.
 :- mode in  << in  = uo  is det.
 
@@ -163,13 +174,14 @@
 	% except that the behaviour is undefined if Y is negative,
 	% or greater than or equal to the result of `int__bits_per_int/1'.
 	% It will typically be implemented more efficiently than X << Y.
-:- func unchecked_left_shift(int, int) = int.
-:- mode unchecked_left_shift(in, in) = uo is det.
+	%
+:- func unchecked_left_shift(int::in, int::in) = (int::uo) is det.
 
 	% Right shift.
 	% X >> Y returns X "arithmetic right shifted" by Y bits.
 	% To be precise, if Y is negative, the result is
 	% X * (2^(-Y)), otherwise the result is X div (2^Y).
+	%
 :- func int >> int = int.
 :- mode in  >> in  = uo  is det.
 
@@ -177,64 +189,74 @@
 	% except that the behaviour is undefined if Y is negative,
 	% or greater than or equal to the result of `int__bits_per_int/1'.
 	% It will typically be implemented more efficiently than X >> Y.
-:- func unchecked_right_shift(int, int) = int.
-:- mode unchecked_right_shift(in, in) = uo is det.
+	%
+:- func unchecked_right_shift(int::in, int::in) = (int::uo) is det.
 
 	% even(X) is equivalent to (X mod 2 = 0).
-:- pred even(int).
-:- mode even(in) is semidet.
+	%
+:- pred even(int::in) is semidet.
 
 	% odd(X) is equivalent to (not even(X)), i.e. (X mod 2 = 1).
-:- pred odd(int).
-:- mode odd(in) is semidet.
+	%
+:- pred odd(int::in) is semidet.
 
 	% bitwise and
+	%
 :- func int /\ int = int.
 :- mode in  /\ in  = uo  is det.
 
 	% bitwise or
+	%
 :- func int \/ int = int.
 :- mode in  \/ in  = uo  is det.
 
 	% bitwise exclusive or (xor)
+	%
 :- func int__xor(int, int) = int.
 :- mode int__xor(in, in) = uo is det.
 :- mode int__xor(in, uo) = in is det.
 :- mode int__xor(uo, in) = in is det.
 
 	% bitwise complement
+	%
 :- func \ int = int.
 :- mode \ in  = uo  is det.
 
 	% unary plus
+	%
 :- func + int = int.
 :- mode + in = uo is det.
 
 	% unary minus
+	%
 :- func - int = int.
 :- mode - in = uo is det.
 
-	% is/2, for backwards compatibility with Prolog (and with
+	% is/2, for backwards compatibility with Prolog.
+	%
 :- pred is(T, T) is det.
 :- mode is(uo, di) is det.
 :- mode is(out, in) is det.
 
 	% int__max_int is the maximum value of an int
 	% on this machine.
+	%
 :- func int__max_int = int.
 :- pred int__max_int(int::out) is det.
 
 	% int__min_int is the minimum value of an int
 	% on this machine.
+	%
 :- func int__min_int = int.
 :- pred int__min_int(int::out) is det.
 
 	% int__bits_per_int is the number of bits in an int
 	% on this machine.
+	%
 :- func int__bits_per_int = int.
 :- pred int__bits_per_int(int::out) is det.
 
-	% fold_up(F, Low, High, !Acc) <=> list.foldl(F, Low `..` High, !Acc)
+	% fold_up(F, Low, High, !Acc) <=> list.foldl(F, Low .. High, !Acc)
 	%
 	% NOTE: fold_up/5 is undefined if High = int.max_int.
 	%
@@ -252,13 +274,13 @@
 :- mode int__fold_up(pred(in, in, out) is cc_multi, in, in, in, out)
 	is cc_multi.
 
-	% fold_up(F, Low, High, Acc) <=> list.foldl(F, Low `..` High, Acc)
+	% fold_up(F, Low, High, Acc) <=> list.foldl(F, Low .. High, Acc)
 	%
 	% NOTE: fold_up/4 is undefined if High = int.max_int.
 	%
 :- func int__fold_up(func(int, T) = T, int, int, T) = T.
 
-	% fold_down(F, Low, High, !Acc) <=> list.foldr(F, Low `..` High, !Acc)
+	% fold_down(F, Low, High, !Acc) <=> list.foldr(F, Low .. High, !Acc)
 	%
 	% NOTE: fold_down/5 is undefined if Low int.min_int.
 	%
@@ -276,14 +298,14 @@
 :- mode int__fold_down(pred(in, in, out) is cc_multi, in, in, in, out)
 	is cc_multi.
 	
-	% fold_down(F, Low, High, Acc) <=> list.foldr(F, Low `..` High, Acc)
+	% fold_down(F, Low, High, Acc) <=> list.foldr(F, Low .. High, Acc)
 	%
 	% NOTE: fold_down/4 is undefined if Low = int.min_int.
 	%
 :- func int__fold_down(func(int, T) = T, int, int, T) = T.
 
 	% fold_up2(F, Low, High, !Acc1, Acc2) <=>
-	% 	list.foldl2(F, Low `..` High, !Acc1, !Acc2)
+	% 	list.foldl2(F, Low .. High, !Acc1, !Acc2)
 	%
 	% NOTE: fold_up2/7 is undefined if High = int.max_int. 
 	%
@@ -300,7 +322,7 @@
 	di, uo) is det.
 
 	% fold_down2(F, Low, High, !Acc1, !Acc2) <=>
-	% 	list.foldr2(F, Low `..` High, !Acc1, Acc2).
+	% 	list.foldr2(F, Low .. High, !Acc1, Acc2).
 	%
 	% NOTE: fold_down2/7 is undefined if Low = int.min_int.
 	%
@@ -393,7 +415,7 @@ X div Y = Div :-
 :- pragma inline('//'/2).
 X // Y = Div :-
 	( domain_checks, Y = 0 ->
-		throw(math__domain_error("int:'//'"))
+		throw(math__domain_error("int.'//'"))
 	;
 		Div = unchecked_quotient(X, Y)
 	).
@@ -404,7 +426,7 @@ X / Y = X // Y.
 :- pragma inline(rem/2).
 X rem Y = Rem :-
 	( domain_checks, Y = 0 ->
-		throw(math__domain_error("int:rem"))
+		throw(math__domain_error("int.rem"))
 	;
 		Rem = unchecked_rem(X, Y)
 	).
@@ -534,7 +556,7 @@ int__pow(Base, Exp) = Result :-
 
 int__pow(Base, Exp, Result) :-
 	( domain_checks, Exp < 0 ->
-		throw(math__domain_error("int__pow"))
+		throw(math__domain_error("int.pow"))
 	;
 		Result = int__multiply_by_pow(1, Base, Exp)
 	).
@@ -778,4 +800,5 @@ int__fold_down2(P, Lo, Hi, !A, !B) :-
 	).
 
 %-----------------------------------------------------------------------------%
+:- end_module int.
 %-----------------------------------------------------------------------------%
