@@ -197,8 +197,10 @@
 :- mode string__to_int_list(in, in) is semidet. % implied
 
 :- external(string__to_float/2).
-:- external(string__to_int/2).
 :- external(string__to_int_list/2).
+
+string__to_int(String, Int) :-
+	string__base_string_to_int(10, String, Int).
 
 string__base_string_to_int(Base, String, Int) :-
 	string__base_string_to_int_2(Base, String, 0, Int).

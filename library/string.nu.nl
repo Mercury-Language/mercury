@@ -16,9 +16,6 @@ string__to_int_list(S, S).
 
 %-----------------------------------------------------------------------------%
 
-string__to_int(String, Int) :-
-	intToString(Int, String).
-
 string__to_float(String, Float) :-
 	sread(String, Float),
 	float(Float).
