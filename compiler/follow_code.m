@@ -68,17 +68,18 @@ move_follow_code_in_procs([ProcId | ProcIds], PredId, ModuleInfo0,
 			% we need to fix up the goal_info by recalculating
 			% the nonlocal vars and the non-atomic instmap deltas.
 		implicitly_quantify_clause_body(HeadVars, Goal1, Goal2),
-		recompute_instmap_delta(Goal2, Goal)
+		recompute_instmap_delta(Goal2, Goal, ModuleInfo0, ModuleInfo1)
 	;
-		Goal = Goal0
+		Goal = Goal0,
+		ModuleInfo1 = ModuleInfo0
 	),
 
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo),
 	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 	map__set(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
-	move_follow_code_in_procs(ProcIds, PredId, ModuleInfo1, ModuleInfo).
+	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo2),
+	move_follow_code_in_procs(ProcIds, PredId, ModuleInfo2, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -86,9 +86,12 @@
 	% the instmap deltas for all the non-atomic sub-goals of a goal.
 	% Used to ensure that the instmap deltas remain valid after
 	% code has been re-arranged, e.g. by followcode.
+	% This also takes the module_info as input and output since it
+	% may need to insert new merge_insts into the merge_inst table.
 
-:- pred recompute_instmap_delta(hlds__goal, hlds__goal).
-:- mode recompute_instmap_delta(in, out) is det.
+:- pred recompute_instmap_delta(hlds__goal, hlds__goal,
+				module_info, module_info).
+:- mode recompute_instmap_delta(in, out, in, out) is det.
 
 	% Given an instmap and a variable, determine the inst of
 	% that variable.
@@ -127,6 +130,7 @@
 :- implementation.
 :- import_module require, map, set, term, std_util.
 :- import_module prog_util, type_util.
+:- import_module modes.
 
 mode_list_get_final_insts([], _ModuleInfo, []).
 mode_list_get_final_insts([Mode | Modes], ModuleInfo, [Inst | Insts]) :-
@@ -686,29 +690,6 @@ apply_instmap_delta(reachable(InstMapping0), reachable(InstMappingDelta),
 
 %-----------------------------------------------------------------------------%
 
-	% Given two instmap deltas, merge them to produce a new instmap.
-	%
-	% Currently implemented by just choosing whichever one is reachable.
-	%
-	% XXX Bug! This gets the instantiatedness right, but the
-	% binding info may be wrong.  For example, if one branch has
-	% X -> bound(f) and the other branch has X -> bound(g), the
-	% correct merged instmap has X -> bound(f ; g), but this
-	% predicate will just randomly pick X -> bound(f).
-	%
-	% Note that this bug currently doesn't have any ill-effects,
-	% since code generation only cares whether a mode is
-	% top-in/top-out/top-unused/unreachable, not what the bindings
-	% are.  Only determinism analysis cares what the bindings are.
-
-:- pred merge_instmap_delta(instmap_delta, instmap_delta, instmap).
-:- mode merge_instmap_delta(in, in, out) is det.
-
-merge_instmap_delta(unreachable, InstMap, InstMap).
-merge_instmap_delta(reachable(InstMapping), _, reachable(InstMapping)).
-
-%-----------------------------------------------------------------------------%
-
 :- pred instmap_restrict(instmap, set(var), instmap).
 :- mode instmap_restrict(in, in, out) is det.
 
@@ -736,100 +717,151 @@ map_restrict(Map0, Domain0, Map) :-
 	% Used to ensure that the instmap deltas remain valid after
 	% code has been re-arranged, e.g. by followcode.
 
-recompute_instmap_delta(Goal0, Goal) :-
+recompute_instmap_delta(Goal0, Goal) -->
 	recompute_instmap_delta(Goal0, Goal, _).
 
-:- pred recompute_instmap_delta(hlds__goal, hlds__goal, instmap_delta).
-:- mode recompute_instmap_delta(in, out, out) is det.
+:- pred recompute_instmap_delta(hlds__goal, hlds__goal, instmap_delta,
+				module_info, module_info).
+:- mode recompute_instmap_delta(in, out, out, in, out) is det.
 
-recompute_instmap_delta(Goal0 - GoalInfo0, Goal - GoalInfo, InstMapDelta) :-
-	( goal_is_atomic(Goal0) ->
-		goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
-		Goal = Goal0,
-		GoalInfo = GoalInfo0
+recompute_instmap_delta(Goal0 - GoalInfo0, Goal - GoalInfo, InstMapDelta) -->
+	( { goal_is_atomic(Goal0) } ->
+		{ goal_info_get_instmap_delta(GoalInfo0, InstMapDelta) },
+		{ Goal = Goal0 },
+		{ GoalInfo = GoalInfo0 }
 	;
 		recompute_instmap_delta_2(Goal0, Goal, InstMapDelta0),
-		goal_info_get_nonlocals(GoalInfo0, NonLocals),
-		instmap_restrict(InstMapDelta0, NonLocals, InstMapDelta),
-		goal_info_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo)
+		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
+		{ instmap_restrict(InstMapDelta0, NonLocals, InstMapDelta) },
+		{ goal_info_set_instmap_delta(GoalInfo0, InstMapDelta,
+			GoalInfo) }
 	).
 
 :- pred recompute_instmap_delta_2(hlds__goal_expr, hlds__goal_expr,
-				instmap_delta).
-:- mode recompute_instmap_delta_2(in, out, out) is det.
+				instmap_delta, module_info, module_info).
+:- mode recompute_instmap_delta_2(in, out, out, in, out) is det.
 
 recompute_instmap_delta_2(switch(Var, Det, Cases0), switch(Var, Det, Cases),
-		InstMapDelta) :-
+		InstMapDelta) -->
 	recompute_instmap_delta_cases(Cases0, Cases, InstMapDelta).
 
-recompute_instmap_delta_2(conj(Goals0), conj(Goals), InstMapDelta) :-
+recompute_instmap_delta_2(conj(Goals0), conj(Goals), InstMapDelta) -->
 	recompute_instmap_delta_conj(Goals0, Goals, InstMapDelta).
 
-recompute_instmap_delta_2(disj(Goals0), disj(Goals), InstMapDelta) :-
+recompute_instmap_delta_2(disj(Goals0), disj(Goals), InstMapDelta) -->
 	recompute_instmap_delta_disj(Goals0, Goals, InstMapDelta).
 
-recompute_instmap_delta_2(not(Goal0), not(Goal), InstMapDelta) :-
-	instmap_init(InstMapDelta),
+recompute_instmap_delta_2(not(Goal0), not(Goal), InstMapDelta) -->
+	{ instmap_init(InstMapDelta) },
 	recompute_instmap_delta(Goal0, Goal).
 
 recompute_instmap_delta_2(if_then_else(Vars,A0,B0,C0),
-			if_then_else(Vars,A,B,C), InstMapDelta) :-
+			if_then_else(Vars,A,B,C), InstMapDelta) -->
 	recompute_instmap_delta(A0, A, InstMapDelta1),
 	recompute_instmap_delta(B0, B, InstMapDelta2),
 	recompute_instmap_delta(C0, C, InstMapDelta3),
-	apply_instmap_delta(InstMapDelta1, InstMapDelta2, InstMapDelta4),
+	{ apply_instmap_delta(InstMapDelta1, InstMapDelta2, InstMapDelta4) },
 	merge_instmap_delta(InstMapDelta3, InstMapDelta4, InstMapDelta).
 
-recompute_instmap_delta_2(some(Vars, Goal0), some(Vars, Goal), InstMapDelta) :-
+recompute_instmap_delta_2(some(Vars, Goal0), some(Vars, Goal), InstMapDelta) -->
 	recompute_instmap_delta(Goal0, Goal, InstMapDelta).
 
 	% calls and unifies shouldn't occur, since atomic goals are
 	% handled directly in recompute_instmap_delta
 
-recompute_instmap_delta_2(call(_, _, _, _, _, _), _, _) :-
-	error("recompute_instmap_delta: recomputing for atomic goal (call)").
+recompute_instmap_delta_2(call(_, _, _, _, _, _), _, _) -->
+	{ error("recompute_instmap_delta: recomputing for atomic goal (call)")
+	}.
 
-recompute_instmap_delta_2(unify(_, _, _, _, _), _, _) :-
-	error("recompute_instmap_delta: recomputing for atomic goal (unify)").
+recompute_instmap_delta_2(unify(_, _, _, _, _), _, _) -->
+	{ error("recompute_instmap_delta: recomputing for atomic goal (unify)")
+	}.
 
 %-----------------------------------------------------------------------------%
 
 :- pred recompute_instmap_delta_conj(list(hlds__goal), list(hlds__goal),
-		instmap_delta).
-:- mode recompute_instmap_delta_conj(in, out, out) is det.
+		instmap_delta, module_info, module_info).
+:- mode recompute_instmap_delta_conj(in, out, out, in, out) is det.
 
-recompute_instmap_delta_conj([], [], InstMapDelta) :-
-	instmap_init(InstMapDelta).
-recompute_instmap_delta_conj([Goal0 | Goals0], [Goal | Goals], InstMapDelta) :-
+recompute_instmap_delta_conj([], [], InstMapDelta) -->
+	{ instmap_init(InstMapDelta) }.
+recompute_instmap_delta_conj([Goal0 | Goals0], [Goal | Goals], InstMapDelta) -->
 	recompute_instmap_delta(Goal0, Goal, InstMapDelta0),
 	recompute_instmap_delta_conj(Goals0, Goals, InstMapDelta1),
-	apply_instmap_delta(InstMapDelta0, InstMapDelta1, InstMapDelta).
+	{ apply_instmap_delta(InstMapDelta0, InstMapDelta1, InstMapDelta) }.
 
 %-----------------------------------------------------------------------------%
 
 :- pred recompute_instmap_delta_disj(list(hlds__goal), list(hlds__goal),
-		instmap_delta).
-:- mode recompute_instmap_delta_disj(in, out, out) is det.
+		instmap_delta, module_info, module_info).
+:- mode recompute_instmap_delta_disj(in, out, out, in, out) is det.
 
-recompute_instmap_delta_disj([], [], InstMapDelta) :-
-	instmap_init(InstMapDelta).
-recompute_instmap_delta_disj([Goal0 | Goals0], [Goal | Goals], InstMapDelta) :-
+recompute_instmap_delta_disj([], [], InstMapDelta) -->
+	{ instmap_init(InstMapDelta) }.
+recompute_instmap_delta_disj([Goal0 | Goals0], [Goal | Goals], InstMapDelta) -->
 	recompute_instmap_delta(Goal0, Goal, InstMapDelta0),
 	recompute_instmap_delta_conj(Goals0, Goals, InstMapDelta1),
 	merge_instmap_delta(InstMapDelta0, InstMapDelta1, InstMapDelta).
 
 %-----------------------------------------------------------------------------%
 
-:- pred recompute_instmap_delta_cases(list(case), list(case), instmap_delta).
-:- mode recompute_instmap_delta_cases(in, out, out) is det.
+:- pred recompute_instmap_delta_cases(list(case), list(case), instmap_delta,
+					module_info, module_info).
+:- mode recompute_instmap_delta_cases(in, out, out, in, out) is det.
 
-recompute_instmap_delta_cases([], [], InstMapDelta) :-
-	instmap_init(InstMapDelta).
-recompute_instmap_delta_cases([Case0 | Cases0], [Case | Cases], InstMapDelta) :-
-	Case0 = case(Functor, Goal0),
+recompute_instmap_delta_cases([], [], InstMapDelta) -->
+	{ instmap_init(InstMapDelta) }.
+recompute_instmap_delta_cases([Case0 | Cases0], [Case | Cases], InstMapDelta) 
+		-->
+	{ Case0 = case(Functor, Goal0) },
 	recompute_instmap_delta(Goal0, Goal, InstMapDelta0),
-	Case = case(Functor, Goal),
+	{ Case = case(Functor, Goal) },
 	recompute_instmap_delta_cases(Cases0, Cases, InstMapDelta1),
 	merge_instmap_delta(InstMapDelta0, InstMapDelta1, InstMapDelta).
+
+%-----------------------------------------------------------------------------%
+
+	% Given two instmap deltas, merge them to produce a new instmap.
+
+:- pred merge_instmap_delta(instmap_delta, instmap_delta, instmap,
+				module_info, module_info).
+:- mode merge_instmap_delta(in, in, out, in, out) is det.
+
+merge_instmap_delta(unreachable, InstMap, InstMap) --> [].
+merge_instmap_delta(reachable(InstMapping), unreachable,
+				reachable(InstMapping)) --> [].
+merge_instmap_delta(reachable(InstMappingA), reachable(InstMappingB),
+			reachable(InstMapping))  -->
+	merge_instmapping_delta(InstMappingA, InstMappingB, InstMapping).
+
+:- pred merge_instmapping_delta(instmapping, instmapping, instmapping,
+				module_info, module_info).
+:- mode merge_instmapping_delta(in, in, out, in, out) is det.
+
+merge_instmapping_delta(InstMappingA, InstMappingB, InstMapping) -->
+	{ map__keys(InstMappingA, VarsInA) },
+	merge_instmapping_delta_2(VarsInA, InstMappingA, InstMappingB,
+		InstMapping).
+
+:- pred merge_instmapping_delta_2(list(var), instmapping, instmapping,
+				instmapping, module_info, module_info).
+:- mode merge_instmapping_delta_2(in, in, in, out, in, out) is det.
+
+merge_instmapping_delta_2([], _, InstMapping, InstMapping, ModInfo, ModInfo).
+merge_instmapping_delta_2([Var | Vars], MergeInstMapping, InstMapping0,
+			InstMapping, ModuleInfo0, ModuleInfo) :-
+	map__lookup(MergeInstMapping, Var, MergeInst),
+	( map__search(InstMapping0, Var, Inst0) ->
+	    ( inst_merge(Inst0, MergeInst, ModuleInfo0, Inst, ModuleInfo1) ->
+		map__det_update(InstMapping0, Var, Inst, InstMapping1)
+	    ;
+		error("merge_instmapping_delta_2: unexpected mode error")
+	    )
+	;
+	    ModuleInfo1 = ModuleInfo0,
+	    map__det_insert(InstMapping0, Var, MergeInst, InstMapping1)
+	),
+	merge_instmapping_delta_2(Vars, MergeInstMapping, InstMapping1,
+				InstMapping, ModuleInfo1, ModuleInfo).
 
 %-----------------------------------------------------------------------------%

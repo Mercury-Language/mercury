@@ -79,6 +79,10 @@ a local variable, then report the error [this idea not yet implemented].
 :- pred modecheck(module_info, module_info, io__state, io__state).
 :- mode modecheck(in, out, di, uo) is det.
 
+	% inst_merge should probably be moved to mode_util
+:- pred inst_merge(inst, inst, module_info, inst, module_info).
+:- mode inst_merge(in, in, in, out, out) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1301,9 +1305,6 @@ mode_context_to_unify_context(uninitialized, _) :-
 	%	information in InstA and InstB.  Where InstA and
 	%	InstB specify a binding (free or bound), it must be
 	%	the same in both.
-
-:- pred inst_merge(inst, inst, module_info, inst, module_info).
-:- mode inst_merge(in, in, in, out, out) is semidet.
 
 inst_merge(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
 		% check whether this pair of insts is already in
