@@ -1339,18 +1339,18 @@ generate_dependencies(Module) -->
 		{ relation__init(ImplDepsRel0) },
 		{ map__values(DepsMap, DepsList) },
 		{ deps_list_to_deps_rel(DepsList, DepsMap, 
-			IntDepsRel0, IntDepsRel, ImplDepsRel0, ImplDepsRel) },
-		{ relation__atsort(IntDepsRel, IntDepsOrdering0) },
+			IntDepsRel0, _IntDepsRel, ImplDepsRel0, ImplDepsRel) },
 		{ relation__atsort(ImplDepsRel, ImplDepsOrdering0) },
 		maybe_output_module_order(Module, ImplDepsOrdering0),
 		{ list__map(set__to_sorted_list, ImplDepsOrdering0, 
 			ImplDepsOrdering) },
-		{ list__map(set__to_sorted_list, IntDepsOrdering0, 
-			IntDepsOrdering) },
 		{ list__condense(ImplDepsOrdering, TransOptDepsOrdering0) },
 		get_opt_deps(TransOptDepsOrdering0, IntermodDirs, ".trans_opt",
 			TransOptDepsOrdering),
-		generate_dependencies_write_d_files(IntDepsOrdering,
+		% XXX using ImplDepsOrdering here is wrong.
+		% IntDeps is to little, ImplDeps is too much.
+		% (Better too much than too little, though.)
+		generate_dependencies_write_d_files(ImplDepsOrdering,
 			TransOptDepsOrdering, DepsMap)
 	).
 
