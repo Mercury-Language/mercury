@@ -1,4 +1,4 @@
-      E1:     C1  1 CALL pred print_table.main/2-0 (cc_multi) print_table.m:13
+      E1:     C1  1 CALL pred print_table.main/2-0 (det) print_table.m:13
 mdb> echo on
 Command echo enabled.
 mdb> context none
