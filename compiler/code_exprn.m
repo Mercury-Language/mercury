@@ -895,9 +895,7 @@ code_exprn__place_expr(Lval, Var, Rval0, StandAlone, IsConst, Code) -->
 	code_exprn__get_var_name(Var, VarName),
 	( { IsConst = yes } ->
 		{ string__append("Assigning from ", VarName, Comment) },
-		{ ExprnCode = node([
-			assign(Lval, Rval1) - Comment
-		]) },
+		{ ExprnCode = node([assign(Lval, Rval1) - Comment]) },
 		{ Rval = Rval1 }
 	;
 		( { StandAlone = yes } ->
@@ -909,29 +907,14 @@ code_exprn__place_expr(Lval, Var, Rval0, StandAlone, IsConst, Code) -->
 			code_exprn__rem_rval_reg_dependencies(Rval1),
 			{ exprn_aux__substitute_vars_in_rval(VarLocList,
 				Rval1, Rval) },
-			code_exprn__add_rval_reg_dependencies(Rval)
+			code_exprn__add_rval_reg_dependencies(Rval),
+			code_exprn__set_evaled(Var, [Rval])
 		),
 		code_exprn__construct_code(Lval, VarName, Rval, RealCode),
 		{ ExprnCode = tree(VarCode, RealCode) }
 	),
 	{ Code = tree(ClearCode, ExprnCode) },
-	code_exprn__get_vars(Vars0),
-	{ map__lookup(Vars0, Var, Stat0) },
-	{ NewRval = lval(Lval) },
-	{ StandAlone = yes ->
-		(
-			Stat0 = evaled(Rvals0),
-			set__insert(Rvals0, NewRval, Rvals)
-		;
-			Stat0 = cached(_),
-			set__singleton_set(Rvals, NewRval)
-		)
-	;
-		set__list_to_set([Rval, NewRval], Rvals)
-	},
-	{ Stat = evaled(Rvals) },
-	{ map__set(Vars0, Var, Stat, Vars) },
-	code_exprn__set_vars(Vars).
+	code_exprn__add_evaled(Var, lval(Lval)).
 
 %------------------------------------------------------------------------------%
 
@@ -1106,19 +1089,32 @@ code_exprn__construct_args([R|Rs], Tag, Lval, N0, Code) -->
 
 %------------------------------------------------------------------------------%
 
-:- pred code_exprn__get_var_rvals(var, set(rval), exprn_info, exprn_info).
-:- mode code_exprn__get_var_rvals(in, out, in, out) is det.
+:- pred code_exprn__set_evaled(var, list(rval), exprn_info, exprn_info).
+:- mode code_exprn__set_evaled(in, in, in, out) is det.
 
-code_exprn__get_var_rvals(Var, Rvals) -->
-	code_exprn__get_vars(Vars),
-	{ map__lookup(Vars, Var, Stat) },
-	(
-		{ Stat = evaled(Rvals0) },
-		{ Rvals = Rvals0 }
+code_exprn__set_evaled(Var, RvalList) -->
+	code_exprn__get_vars(Vars0),
+	{ set__list_to_set(RvalList, Rvals) },
+	{ Stat = evaled(Rvals) },
+	{ map__set(Vars0, Var, Stat, Vars) },
+	code_exprn__set_vars(Vars).
+
+:- pred code_exprn__add_evaled(var, rval, exprn_info, exprn_info).
+:- mode code_exprn__add_evaled(in, in, in, out) is det.
+
+code_exprn__add_evaled(Var, NewRval) -->
+	code_exprn__get_vars(Vars0),
+	{ map__lookup(Vars0, Var, Stat0) },
+	{
+		Stat0 = evaled(Rvals0),
+		set__insert(Rvals0, NewRval, Rvals)
 	;
-		{ Stat = cached(Rval0) },
-		{ set__singleton_set(Rvals, Rval0) }
-	).
+		Stat0 = cached(_),
+		set__singleton_set(Rvals, NewRval)
+	},
+	{ Stat = evaled(Rvals) },
+	{ map__set(Vars0, Var, Stat, Vars) },
+	code_exprn__set_vars(Vars).
 
 %------------------------------------------------------------------------------%
 
