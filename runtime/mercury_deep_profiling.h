@@ -1,11 +1,14 @@
 /*
-** Copyright (C) 2001-2003 The University of Melbourne.
+** Copyright (C) 2001-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
 /*
 ** mercury_deep_profiling.h -- definitions for deep profiling.
+**
+** See ../deep_profiler/README for some pointers to documentation on
+** deep profiling.
 */
 
 #ifndef MERCURY_DEEP_PROFILING_H

@@ -1,0 +1,17 @@
+For documentation on the deep profiler, see the following:
+
+  - The "Deep Profiler" section of the Mercury web page
+    <http://www.cs.mu.oz.au/mercury/information/deep_demo.html>
+    gives an overview of what deep profiling is.
+
+  - The deep profiling paper on our web site, "Deep profiling:
+    engineering a profiler for a declarative programming language"
+    <http://www.cs.mu.oz.au/mercury/information/papers.html#mu_01_24>
+    explains in detail what deep profiling is, why it is needed,
+    and how it is implemented in the Mercury compiler.
+
+  - The "Using mdprof" section of the "Profiling" chapter of the
+    Mercury user's guide explains how to use it.
+
+  - The file deep_profiler/notes/deep_profiling.html gives an overview of
+    the specifics details of our implementation of deep profiling.
