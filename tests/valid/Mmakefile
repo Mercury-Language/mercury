@@ -41,6 +41,7 @@ OTHER_SOURCES= \
 	empty_bound_inst_list.m \
 	empty_switch.m \
 	error.m \
+	existential_cons.m \
 	explicit_quant.m \
 	fail_ite.m \
 	followcode_det_problem.m \

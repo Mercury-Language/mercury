@@ -1309,8 +1309,11 @@ polymorphism__process_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 			IsConstruction, ActualArgTypes, TypeOfX, Context,
 			ExtraVars, ExtraGoals, PolyInfo0, PolyInfo),
 		list__append(ExtraVars, ArgVars0, ArgVars),
+		goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+		set__insert_list(NonLocals0, ExtraVars, NonLocals),
+		goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo),
 		Unify = unify(X0, functor(ConsId, ArgVars), Mode0,
-				Unification0, UnifyContext) - GoalInfo0,
+				Unification0, UnifyContext) - GoalInfo,
 		list__append(ExtraGoals, [Unify], GoalList),
 		conj_list_to_goal(GoalList, GoalInfo0, Goal)
 	;
