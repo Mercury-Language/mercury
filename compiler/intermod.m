@@ -1195,16 +1195,30 @@ intermod__write_type(TypeCtor - TypeDefn) -->
 		{ TypeBody = abstract_type }
 	;
 		{ Body = foreign_type(_, _) },
-		{ TypeBody = abstract_type },
-			% XXX trd
-			% Also here we need to output the pragma
-			% for the type body, we output a abstract type for
-			% the type definition which is fine.
-		{ error("foreign_type not yet implemented") }
-
+		{ TypeBody = abstract_type }
 	),
 	mercury_output_item(type_defn(VarSet, Name, Args, TypeBody, true),
-		Context).
+		Context),
+
+	( { Body = foreign_type(MaybeIL, MaybeC) } ->
+		{ construct_type(TypeCtor, [], Type) },
+		( { MaybeIL = yes(ILForeignType) },
+			mercury_output_item(pragma(
+				foreign_type(il(ILForeignType), Type, Name)),
+				Context)
+		; { MaybeIL = no },
+			[]
+		),
+		( { MaybeC = yes(CForeignType) },
+			mercury_output_item(pragma(
+				foreign_type(c(CForeignType), Type, Name)),
+				Context)
+		; { MaybeC = no },
+			[]
+		)
+	;
+		[]
+	).
 
 :- pred intermod__write_modes(module_info::in,
 		io__state::di, io__state::uo) is det.
