@@ -64,11 +64,30 @@ static const char header2[] =
 	"*/\n"
 	"\n"
 	"#ifdef CONSERVATIVE_GC\n"
-	"void init_gc(void)\n"
+	"static void init_gc(void)\n"
 	"{\n"
-	"\tGC_INIT();\n"
+	"	GC_INIT();\n"
 	"}\n"
 	"#endif\n"
+	"\n"
+	;
+
+static const char main_func[] =
+	"Declare_entry(%s);\n"
+	"\n"
+	"int main(int argc, char **argv)\n"
+	"{\n"
+	"	address_of_init_modules = init_modules;\n"
+	"#ifdef CONSERVATIVE_GC\n"
+	"	address_of_init_gc = init_gc;\n"
+	"#endif\n"
+	"	address_of_main_2_0 = ENTRY(mercury__main_2_0);\n"
+	"	address_of_io__init_state_2_0 = "
+		"ENTRY(mercury__io__init_state_2_0);\n"
+	"	entry_point = ENTRY(%s);\n"
+	"\n"
+	"	return mercury_main(argc, argv);\n"
+	"}\n"
 	"\n"
 	;
 
@@ -77,8 +96,8 @@ static	void parse_options(int argc, char *argv[]);
 static	void usage(void);
 static	void output_headers(void);
 static	void output_sub_init_functions(void);
-static	void output_entry_point_defn(void);
 static	void output_main_init_function(void);
+static	void output_main(void);
 static	void process_file(char *filename);
 static	void process_init_file(const char *filename);
 static	void output_init_function(const char *func_name);
@@ -94,8 +113,8 @@ int main(int argc, char **argv)
 
 	output_headers();
 	output_sub_init_functions();
-	output_entry_point_defn();
 	output_main_init_function();
+	output_main();
 
 	if (num_errors > 0)
 	{
@@ -155,6 +174,7 @@ static void output_headers(void)
 		fputs(files[filenum], stdout);
 		putc('\n', stdout);
 	}
+
 	fputs(header2, stdout);
 }
 
@@ -180,25 +200,11 @@ static void output_sub_init_functions(void)
 	fputs("\n#endif\n\n", stdout);
 }
 
-static void output_entry_point_defn(void)
-{
-	fputs("/*\n", stdout);
-	fputs("** Initialize entry_point statically if possible.\n", stdout);
-	fputs("*/\n\n", stdout);
-	printf("Declare_entry(%s);\n\n", entry_point);
-	fputs("#if defined(USE_GCC_NONLOCAL_GOTOS) && "
-		"!defined(USE_ASM_LABELS)\n", stdout);
-	fputs("Code\t*entry_point;\n", stdout);
-	fputs("#else\n", stdout);
-	printf("Code\t*entry_point = ENTRY(%s);\n", entry_point);
-	fputs("#endif\n\n", stdout);
-}
-
 static void output_main_init_function(void)
 {
 	int i;
 
-	fputs("void init_modules(void)\n", stdout);
+	fputs("static void init_modules(void)\n", stdout);
 	fputs("{\n", stdout);
 
 	fputs("#if (defined(USE_GCC_NONLOCAL_GOTOS) && "
@@ -208,14 +214,14 @@ static void output_main_init_function(void)
 	fputs("\t|| defined(DEBUG_LABELS) || !defined(SPEED)\n\n", stdout);
 	for (i = 0; i <= num_modules; i++)
 		printf("\tinit_modules_%d();\n", i);
-	fputs("#endif\n\n", stdout);
-
-	fputs("#if (defined(USE_GCC_NONLOCAL_GOTOS) && "
-		"!defined(USE_ASM_LABELS))\n", stdout);
-	printf("\tentry_point = ENTRY(%s);\n", entry_point);
 	fputs("#endif\n", stdout);
 
 	fputs("}\n", stdout);
+}
+
+static void output_main(void)
+{
+	printf(main_func, entry_point, entry_point);
 }
 
 /*---------------------------------------------------------------------------*/
