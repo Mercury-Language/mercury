@@ -925,7 +925,7 @@ the same module is an error.
 
 @item
 Equivalence types: these are type abbreviations.
-They are defined using `==' as follows.
+They are defined using @samp{==} as follows.
 They may be polymorphic.
 
 @example
@@ -936,6 +936,10 @@ They may be polymorphic.
 
 Like discriminated union type definitions,
 equivalence type definitions must be transparent.
+Unlike discriminated union type definitions,
+equivalence type definitions must not be cyclic;
+that is, the type on the left hand side of the @samp{==}
+must not occur on the right hand side of the @samp{==}.
 
 Mercury treats an equivalence type
 as an abbreviation for the type on the right hand side of the definition;
@@ -2853,8 +2857,10 @@ declaration.
 An @samp{instance} declaration gives a type for each parameter of the
 typeclass.  Each of these types must be either a type with no arguments, or 
 a polymorphic type whose arguments are all distinct type variables.  e.g. 
-@code{int}, @code{list(T)} and @code{map(K,V)} are allowed but
-@code{T}, @code{list(int)} and @code{map(T,T)} are not.
+@code{int}, @code{list(T)} and @code{bintree(K,V)} are allowed but
+@code{T}, @code{list(int)} and @code{bintree(T,T)} are not.
+The types in an instance declaration must not be abstract types which
+are elsewhere defined as equivalence types.
 A program may not contain more than one @code{instance} declaration for a
 particular type (or set of types, in the case of a multi-parameter
 typeclass).  These restrictions ensure that there are no overlapping instance
