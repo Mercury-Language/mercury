@@ -2091,7 +2091,7 @@ undefined_pred_error(Name, Arity, Context, Description) -->
 
 unspecified_det_warning(Name, Arity, Context) -->
 	prog_out__write_context(Context),
-	report_warning("Warning: no determinism declaration for local pred.\n"),
+	report_warning("Warning: no determinism declaration for local predicate\n"),
 	prog_out__write_context(Context),
 	io__write_string("  `"),
 	prog_out__write_sym_name(Name),
@@ -2102,7 +2102,10 @@ unspecified_det_warning(Name, Arity, Context) -->
 	( { VerboseErrors = yes } ->
 		prog_out__write_context(Context),
 		io__write_string("  (The determinism of this predicate will be automatically\n"),
-		io__write_string("  inferred by the compiler.)")
+		prog_out__write_context(Context),
+		io__write_string("  inferred by the compiler. To suppress this warning, use\n"),
+		prog_out__write_context(Context),
+		io__write_string("  the `--no-warn-missing-det-decls' option.)\n")
 	;
 		[]
 	).
