@@ -188,12 +188,7 @@
 	% Record whether a call is a builtin or not, and if so, which one.
 :- export_type is_builtin.
 :- type is_builtin	--->	not_builtin
-			;	is_builtin(builtin).
-
-:- export_type builtin.
-:- type builtin		--->	plus
-			;	times.
-				% etc.	XXX
+			;	is_builtin.
 
 :- export_type call_info.
 :- type call_info	--->	map(var_id, int).
