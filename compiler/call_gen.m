@@ -391,9 +391,10 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, CanFail, Code) -->
 	code_info__get_next_label(ReturnLabel),
 	code_info__get_module_info(ModuleInfo),
 	code_info__variable_type(Var1, VarType),
+	code_info__get_inst_key_table(InstKeyTable),
 	( { type_to_type_id(VarType, VarTypeId, _) } ->
-		{ unify_proc__lookup_mode_num(ModuleInfo, VarTypeId, UniMode,
-				Det, ModeNum) },
+		{ unify_proc__lookup_mode_num(ModuleInfo, InstKeyTable,
+			VarTypeId, UniMode, Det, ModeNum) },
 		{ call_gen__input_args(ArgInfo, InputArguments) },
 		call_gen__generate_call_livevals(OutArgs, InputArguments,
 			CodeC0),
@@ -573,7 +574,11 @@ call_gen__insert_arg_livelvals([Var - L | As], GC_Method, AfterCallInstMap,
 		code_info__variable_type(Var, Type),
 		{ type_util__vars(Type, TypeVars) },
 		code_info__find_type_infos(TypeVars, TypeParams),
-		{ LiveVal = live_lvalue(R, var(Type, Inst), TypeParams) }
+		code_info__get_module_info(ModuleInfo),
+		{ module_info_inst_key_table(ModuleInfo, IKT) },
+		{ QualifiedInst = qualified_inst(IKT, Inst) },	% YYY
+		{ LiveVal = live_lvalue(R, var(Type, QualifiedInst),
+			TypeParams) }
 	;
 		{ LiveVal = live_lvalue(R, unwanted, []) }
 	),
@@ -602,9 +607,10 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 	{ determinism_to_code_model(Det, InnerCodeModel) },
 	code_info__get_globals(Globals),
 	code_info__get_module_info(ModuleInfo),
+	code_info__get_inst_key_table(IKT),
 	{ globals__get_args_method(Globals, ArgsMethod) },
-	{ make_arg_infos(ArgsMethod, Types, Modes, InnerCodeModel, ModuleInfo,
-		ArgInfo) },
+	{ make_arg_infos(ArgsMethod, Types, Modes, InnerCodeModel, IKT,
+		ModuleInfo, ArgInfo) },
 	{ assoc_list__from_corresponding_lists(Args, ArgInfo, ArgsAndArgInfo) },
 	{ call_gen__partition_args(ArgsAndArgInfo, InVars, OutVars) },
 	call_gen__generate_higher_call(InnerCodeModel, PredVar, InVars, OutVars,

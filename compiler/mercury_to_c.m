@@ -53,7 +53,7 @@
 
 :- implementation.
 
-:- import_module hlds_pred, hlds_goal, hlds_data, prog_data.
+:- import_module hlds_pred, hlds_goal, hlds_data, prog_data, instmap, (inst).
 :- import_module llds, llds_out, prog_out, prog_io, mercury_to_mercury.
 :- import_module prog_util, mode_util, hlds_out, stack, quantification.
 :- import_module globals, options.
@@ -69,6 +69,7 @@
 			module_info,
 			pred_id,
 			proc_id,
+			proc_info,
 			varset,
 			list(var), % output variables
 				% these must be prefixed with `*', since they
@@ -238,6 +239,8 @@ c_gen_proc(Indent, ModuleInfo, PredId, ProcId, Pred, Proc) -->
 	{ proc_info_argmodes(Proc, HeadModes) },
 	{ proc_info_goal(Proc, Goal) },
 	{ proc_info_context(Proc, ModeContext) },
+	% YYY Change for local inst_key_tables
+	{ module_info_inst_key_table(ModuleInfo, IKT) },
 	{ Indent1 is Indent + 1 },
 
 	c_gen_indent(Indent),
@@ -245,8 +248,10 @@ c_gen_proc(Indent, ModuleInfo, PredId, ProcId, Pred, Proc) -->
 	c_gen_indent(Indent),
 	io__write_string("** "),
 	{ varset__init(ModeVarSet) },
+	{ module_info_inst_key_table(ModuleInfo, InstKeyTable) },
 	mercury_output_pred_mode_decl(ModeVarSet, unqualified(PredName), 
-			HeadModes, yes(InterfaceDeterminism), ModeContext),
+			HeadModes, yes(InterfaceDeterminism), ModeContext,
+			InstKeyTable),
 	c_gen_indent(Indent),
 	io__write_string("*/\n"),
 
@@ -258,9 +263,9 @@ c_gen_proc(Indent, ModuleInfo, PredId, ProcId, Pred, Proc) -->
 	c_gen_local_var_decls(Indent1, Goal, VarSet, VarTypes, HeadVars),
 	io__write_string("\n"),
 	{ determinism_to_code_model(InterfaceDeterminism, CodeModel) },
-	{ c_gen_select_output_vars(ModuleInfo, HeadVars, HeadModes,
+	{ c_gen_select_output_vars(IKT, ModuleInfo, HeadVars, HeadModes,
 		OutputVars) },
-	{ c_gen_info_init(ModuleInfo, PredId, ProcId, VarSet, CodeModel,
+	{ c_gen_info_init(ModuleInfo, PredId, ProcId, Proc, VarSet, CodeModel,
 		OutputVars, CGenInfo0) },
 	( { CodeModel = model_non } ->
 		c_gen_predeclare_labels(Goal, CGenInfo0),
@@ -352,6 +357,8 @@ c_gen_prototype(ModuleInfo, PredId, ProcId) -->
 	{ proc_info_headvars(ProcInfo, HeadVars) },
 	{ pred_info_arg_types(PredInfo, _HeadTypeVarSet, HeadTypes) },
 	{ proc_info_argmodes(ProcInfo, HeadModes) },
+	% YYY Change for local inst_key_tables
+	{ module_info_inst_key_table(ModuleInfo, IKT) },
 
 	( { CodeModel = model_semi } ->
 		io__write_string("bool")
@@ -368,7 +375,7 @@ c_gen_prototype(ModuleInfo, PredId, ProcId) -->
 			io__write_string("void")
 		)
 	;
-		c_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes,
+		c_gen_arg_decls(IKT, ModuleInfo, HeadVars, HeadTypes, HeadModes,
 			VarSet),
 		( { CodeModel = model_non } ->
 			io__write_string(", Cont cont")
@@ -400,10 +407,11 @@ c_gen_proc_name(ModuleInfo, PredId, ProcId) -->
 	{ ModeNum is ProcInt mod 10000 },	% strip off the priority
 	io__write_int(ModeNum).
 
-:- pred c_gen_select_output_vars(module_info, list(var), list(mode), list(var)).
-:- mode c_gen_select_output_vars(in, in, in, out) is det.
+:- pred c_gen_select_output_vars(inst_key_table, module_info, list(var),
+		list(mode), list(var)).
+:- mode c_gen_select_output_vars(in, in, in, in, out) is det.
 
-c_gen_select_output_vars(ModuleInfo, HeadVars, HeadModes, OutputVars) :-
+c_gen_select_output_vars(IKT, ModuleInfo, HeadVars, HeadModes, OutputVars) :-
 	(
 		HeadVars = [], HeadModes = []
 	->
@@ -412,23 +420,23 @@ c_gen_select_output_vars(ModuleInfo, HeadVars, HeadModes, OutputVars) :-
 		HeadVars = [Var|Vars],
 		HeadModes = [Mode|Modes]
 	->
-		( mode_is_output(ModuleInfo, Mode) ->
+		( mode_is_output(IKT, ModuleInfo, Mode) ->
 			OutputVars = [Var|OutputVars1],
-			c_gen_select_output_vars(ModuleInfo, Vars, Modes,
+			c_gen_select_output_vars(IKT, ModuleInfo, Vars, Modes,	
 				OutputVars1)
 		;
-			c_gen_select_output_vars(ModuleInfo, Vars, Modes,
+			c_gen_select_output_vars(IKT, ModuleInfo, Vars, Modes,
 				OutputVars)
 		)
 	;
 		error("c_gen_select_output_vars: length mismatch")
 	).
 
-:- pred c_gen_arg_decls(module_info, list(var), list(type), list(mode),
-			varset, io__state, io__state).
-:- mode c_gen_arg_decls(in, in, in, in, in, di, uo) is det.
+:- pred c_gen_arg_decls(inst_key_table, module_info, list(var), list(type),
+			list(mode), varset, io__state, io__state).
+:- mode c_gen_arg_decls(in, in, in, in, in, in, di, uo) is det.
 
-c_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, VarSet) -->
+c_gen_arg_decls(IKT, ModuleInfo, HeadVars, HeadTypes, HeadModes, VarSet) -->
 	(
 		{ HeadVars = [], HeadTypes = [], HeadModes = [] }
 	->
@@ -438,24 +446,24 @@ c_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, VarSet) -->
 		{ HeadTypes = [Type|Types] },
 		{ HeadModes = [Mode|Modes] }
 	->
-		c_gen_arg_decl(ModuleInfo, Var, Type, Mode, VarSet),
+		c_gen_arg_decl(IKT, ModuleInfo, Var, Type, Mode, VarSet),
 		( { Vars \= [] } ->
 			io__write_string(", ")
 		;
 			[]
 		),
-		c_gen_arg_decls(ModuleInfo, Vars, Types, Modes, VarSet)
+		c_gen_arg_decls(IKT, ModuleInfo, Vars, Types, Modes, VarSet)
 	;
 		{ error("c_gen_arg_decls: length mismatch") }
 	).
 
-:- pred c_gen_arg_decl(module_info, var, type, mode, varset,
+:- pred c_gen_arg_decl(inst_key_table, module_info, var, type, mode, varset,
 			io__state, io__state).
-:- mode c_gen_arg_decl(in, in, in, in, in, di, uo) is det.
+:- mode c_gen_arg_decl(in, in, in, in, in, in, di, uo) is det.
 
-c_gen_arg_decl(ModuleInfo, Var, Type, Mode, VarSet) -->
+c_gen_arg_decl(IKT, ModuleInfo, Var, Type, Mode, VarSet) -->
 	c_gen_type(Type),
-	( { mode_is_output(ModuleInfo, Mode) } ->
+	( { mode_is_output(IKT, ModuleInfo, Mode) } ->
 		io__write_string("* ")
 	;
 		io__write_string(" ")
@@ -728,15 +736,16 @@ c_gen_arg_list(Vars, Modes, CGenInfo0, CGenInfo) -->
 		{ CGenInfo = CGenInfo0 }
 	; { Vars = [Var|Vars1], Modes = [Mode|Modes1] } ->
 		{ c_gen_info_get_module_info(CGenInfo0, ModuleInfo) },
+		{ c_gen_info_get_inst_key_table(CGenInfo0, IKT) },
 		{ c_gen_info_get_varset(CGenInfo0, VarSet) },
 		{ c_gen_info_get_output_vars(CGenInfo0, OutputVars) },
 		(
 			{ list__member(Var, OutputVars) },
-			{ \+ mode_is_output(ModuleInfo, Mode) }
+			{ \+ mode_is_output(IKT, ModuleInfo, Mode) }
 		->
 			io__write_char('*')
 		;
-			{ mode_is_output(ModuleInfo, Mode) },
+			{ mode_is_output(IKT, ModuleInfo, Mode) },
 			{ \+ list__member(Var, OutputVars) }
 		->
 			io__write_char('&')
@@ -773,24 +782,24 @@ sorry(N) :-
 	string__format("Sorry, not implemented [%d]", [i(N)], ErrorMessage),
 	error(ErrorMessage).
 
-:- pred c_gen_var_modes(list(var), list(mode), varset,
+:- pred c_gen_var_modes(list(var), list(mode), varset, inst_key_table,
 					io__state, io__state).
-:- mode c_gen_var_modes(in, in, in, di, uo) is det.
+:- mode c_gen_var_modes(in, in, in, in, di, uo) is det.
 
-c_gen_var_modes([], [], _) --> [].
-c_gen_var_modes([Var|Vars], [Mode|Modes], VarSet) -->
+c_gen_var_modes([], [], _, _) --> [].
+c_gen_var_modes([Var|Vars], [Mode|Modes], VarSet, InstKeyTable) -->
 	mercury_output_var(Var, VarSet, no),
 	io__write_string("::"),
-	mercury_output_mode(Mode, VarSet),
+	mercury_output_mode(Mode, VarSet, InstKeyTable),
 	( { Vars \= [] } ->
 		io__write_string(", ")
 	;
 		[]
 	),
-	c_gen_var_modes(Vars, Modes, VarSet).
-c_gen_var_modes([], [_|_], _) -->
+	c_gen_var_modes(Vars, Modes, VarSet, InstKeyTable).
+c_gen_var_modes([], [_|_], _, _) -->
 	{ error("c_gen_var_modes: length mis-match") }.
-c_gen_var_modes([_|_], [], _) -->
+c_gen_var_modes([_|_], [], _, _) -->
 	{ error("c_gen_var_modes: length mis-match") }.
 
 :- pred c_gen_conj(list(hlds_goal), int, c_gen_info, c_gen_info,
@@ -935,12 +944,12 @@ c_gen_failure_2(call(Label)) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred c_gen_info_init(module_info, pred_id, proc_id, varset, code_model,
-			list(var), c_gen_info).
-:- mode c_gen_info_init(in, in, in, in, in, in, out) is det.
+:- pred c_gen_info_init(module_info, pred_id, proc_id, proc_info, varset,
+			code_model, list(var), c_gen_info).
+:- mode c_gen_info_init(in, in, in, in, in, in, in, out) is det.
 
-c_gen_info_init(ModuleInfo, PredId, ProcId, VarSet, CodeModel, OutputVars,
-		CGenInfo) :-
+c_gen_info_init(ModuleInfo, PredId, ProcId, ProcInfo, VarSet, CodeModel,
+		OutputVars, CGenInfo) :-
 	stack__init(FailureContStack0),
 	( CodeModel = model_non ->
 		stack__push(FailureContStack0, nondet_fail, FailureContStack)
@@ -956,6 +965,7 @@ c_gen_info_init(ModuleInfo, PredId, ProcId, VarSet, CodeModel, OutputVars,
 			ModuleInfo,
 			PredId,
 			ProcId,
+			ProcInfo,
 			VarSet,
 			OutputVars,
 			FailureContStack,
@@ -966,51 +976,67 @@ c_gen_info_init(ModuleInfo, PredId, ProcId, VarSet, CodeModel, OutputVars,
 :- pred c_gen_info_get_code_model(c_gen_info, code_model).
 :- mode c_gen_info_get_code_model(in, out) is det.
 
-c_gen_info_get_code_model(c_gen_info(CodeModel, _, _, _, _, _, _, _, _),
+c_gen_info_get_code_model(c_gen_info(CodeModel, _, _, _, _, _, _, _, _, _),
 	CodeModel).
 
 :- pred c_gen_info_get_module_info(c_gen_info, module_info).
 :- mode c_gen_info_get_module_info(in, out) is det.
 
-c_gen_info_get_module_info(c_gen_info(_, ModuleInfo, _, _, _, _, _, _, _),
+c_gen_info_get_module_info(c_gen_info(_, ModuleInfo, _, _, _, _, _, _, _, _),
 	ModuleInfo).
+
+:- pred c_gen_info_get_proc_info(c_gen_info, proc_info).
+:- mode c_gen_info_get_proc_info(in, out) is det.
+
+c_gen_info_get_proc_info(c_gen_info(_, _, _, _, ProcInfo, _, _, _, _, _),
+	ProcInfo).
 
 :- pred c_gen_info_get_varset(c_gen_info, varset).
 :- mode c_gen_info_get_varset(in, out) is det.
 
-c_gen_info_get_varset(c_gen_info(_, _, _, _, VarSet, _, _, _, _), VarSet).
+c_gen_info_get_varset(c_gen_info(_, _, _, _, _, VarSet, _, _, _, _), VarSet).
 
 :- pred c_gen_info_get_output_vars(c_gen_info, list(var)).
 :- mode c_gen_info_get_output_vars(in, out) is det.
 
-c_gen_info_get_output_vars(c_gen_info(_, _, _, _, _, OutputVars, _, _, _),
+c_gen_info_get_output_vars(c_gen_info(_, _, _, _, _, _, OutputVars, _, _, _),
 	OutputVars).
 
 :- pred c_gen_info_get_failconts(c_gen_info, stack(c_failure_cont)).
 :- mode c_gen_info_get_failconts(in, out) is det.
 
-c_gen_info_get_failconts(c_gen_info(_, _, _, _, _, _, FailConts, _, _),
+c_gen_info_get_failconts(c_gen_info(_, _, _, _, _, _, _, FailConts, _, _),
 	FailConts).
 
 :- pred c_gen_info_set_failconts(c_gen_info, stack(c_failure_cont), c_gen_info).
 :- mode c_gen_info_set_failconts(in, in, out) is det.
 
-c_gen_info_set_failconts(c_gen_info(A, B, C, D, E, F, _, H, I), FailConts,
-			 c_gen_info(A, B, C, D, E, F, FailConts, H, I)).
+c_gen_info_set_failconts(c_gen_info(A, B, C, D, E, F, G, _, I, J), FailConts,
+			 c_gen_info(A, B, C, D, E, F, G, FailConts, I, J)).
 
 :- pred c_gen_info_new_label(c_label, c_gen_info, c_gen_info).
 :- mode c_gen_info_new_label(out, in, out) is det.
 
-c_gen_info_new_label(Label, c_gen_info(A, B, C, D, E, F, G, Label0, I),
-			    c_gen_info(A, B, C, D, E, F, G, Label, I)) :-
+c_gen_info_new_label(Label, c_gen_info(A, B, C, D, E, F, G, H, Label0, J),
+			    c_gen_info(A, B, C, D, E, F, G, H, Label, J)) :-
 	Label is Label0 + 1.
 
 :- pred c_gen_info_new_label_func(c_label_func, c_gen_info, c_gen_info).
 :- mode c_gen_info_new_label_func(out, in, out) is det.
 
-c_gen_info_new_label_func(Label, c_gen_info(A, B, C, D, E, F, G, H, Label0),
-			    c_gen_info(A, B, C, D, E, F, G, H, Label)) :-
+c_gen_info_new_label_func(Label, c_gen_info(A, B, C, D, E, F, G, H, I, Label0),
+			    c_gen_info(A, B, C, D, E, F, G, H, I, Label)) :-
 	Label is Label0 + 1.
+
+%-----------------------------------------------------------------------------%
+
+:- pred c_gen_info_get_inst_key_table(c_gen_info, inst_key_table).
+:- mode c_gen_info_get_inst_key_table(in, out) is det.
+
+c_gen_info_get_inst_key_table(CGenInfo, IKT) :-
+	c_gen_info_get_module_info(CGenInfo, ModuleInfo),
+	% YYY Change for local inst_key_tables
+	module_info_inst_key_table(ModuleInfo, IKT).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

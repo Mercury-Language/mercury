@@ -26,7 +26,7 @@
 
 :- import_module hlds_pred, hlds_goal, hlds_data, prog_data, llds, arg_info.
 :- import_module passes_aux, call_gen, mode_util, code_util, goal_util.
-:- import_module globals, tree.
+:- import_module globals, tree, (inst).
 
 :- import_module bool, int, string, list, assoc_list, set, map, varset.
 :- import_module std_util, require, term.
@@ -101,7 +101,10 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 	bytecode_gen__create_varmap(VarList, VarSet, VarTypes, 0,
 		VarMap0, VarMap, VarInfos),
 
-	bytecode_gen__init_byte_info(ModuleInfo, VarMap, VarTypes, ByteInfo0),
+	% YYY Change for local inst_key_tables
+	module_info_inst_key_table(ModuleInfo, IKT),
+	bytecode_gen__init_byte_info(ModuleInfo, VarMap, VarTypes, IKT,
+		ByteInfo0),
 	bytecode_gen__get_next_label(ByteInfo0, ZeroLabel, ByteInfo1),
 
 	proc_info_arg_info(ProcInfo, ArgInfo),
@@ -272,10 +275,11 @@ bytecode_gen__higher_order_call(PredVar, ArgVars, ArgTypes, ArgModes, Detism,
 		ByteInfo, Code) :-
 	determinism_to_code_model(Detism, CodeModel),
 	bytecode_gen__get_module_info(ByteInfo, ModuleInfo),
+	bytecode_gen__get_inst_key_table(ByteInfo, IKT),
 	module_info_globals(ModuleInfo, Globals),
 	globals__get_args_method(Globals, ArgsMethod),
-	make_arg_infos(ArgsMethod, ArgTypes, ArgModes, CodeModel, ModuleInfo,
-		ArgInfo),
+	make_arg_infos(ArgsMethod, ArgTypes, ArgModes, CodeModel, IKT,
+		ModuleInfo, ArgInfo),
 	assoc_list__from_corresponding_lists(ArgVars, ArgInfo, ArgVarsInfos),
 
 	call_gen__partition_args(ArgVarsInfos, InVars, OutVars),
@@ -470,9 +474,12 @@ bytecode_gen__map_uni_modes([UniMode | UniModes], [Arg | Args], ByteInfo,
 		[Dir | Dirs]) :-
 	UniMode = ((VarInitial - ArgInitial) -> (VarFinal - ArgFinal)),
 	bytecode_gen__get_module_info(ByteInfo, ModuleInfo),
+	bytecode_gen__get_inst_key_table(ByteInfo, IKT),
 	bytecode_gen__get_var_type(ByteInfo, Arg, Type),
-	mode_to_arg_mode(ModuleInfo, (VarInitial -> VarFinal), Type, VarMode),
-	mode_to_arg_mode(ModuleInfo, (ArgInitial -> ArgFinal), Type, ArgMode),
+	mode_to_arg_mode(IKT, ModuleInfo, (VarInitial -> VarFinal), Type,
+		VarMode),
+	mode_to_arg_mode(IKT, ModuleInfo, (ArgInitial -> ArgFinal), Type,
+		ArgMode),
 	(
 		VarMode = top_in,
 		ArgMode = top_out
@@ -665,23 +672,24 @@ bytecode_gen__create_varmap([Var | VarList], VarSet, VarTypes, N0,
 			map(var, type),
 			module_info,
 			int,		% next label number to use
-			int		% next temp number to use
+			int,		% next temp number to use
+			inst_key_table
 		).
 
 :- pred bytecode_gen__init_byte_info(module_info::in, map(var, byte_var)::in,
-	map(var, type)::in, byte_info::out) is det.
+	map(var, type)::in, inst_key_table::in, byte_info::out) is det.
 
-bytecode_gen__init_byte_info(ModuleInfo, VarMap, VarTypes, ByteInfo) :-
-	ByteInfo = byte_info(VarMap, VarTypes, ModuleInfo, 0, 0).
+bytecode_gen__init_byte_info(ModuleInfo, VarMap, VarTypes, IKT, ByteInfo) :-
+	ByteInfo = byte_info(VarMap, VarTypes, ModuleInfo, 0, 0, IKT).
 
 :- pred bytecode_gen__get_module_info(byte_info::in, module_info::out) is det.
 
-bytecode_gen__get_module_info(byte_info(_, _, ModuleInfo, _, _), ModuleInfo).
+bytecode_gen__get_module_info(byte_info(_, _, ModuleInfo, _, _, _), ModuleInfo).
 
 :- pred bytecode_gen__map_vars(byte_info::in,
 	list(var)::in, list(byte_var)::out) is det.
 
-bytecode_gen__map_vars(byte_info(VarMap, _, _, _, _), Vars, ByteVars) :-
+bytecode_gen__map_vars(byte_info(VarMap, _, _, _, _, _), Vars, ByteVars) :-
 	bytecode_gen__map_vars_2(VarMap, Vars, ByteVars).
 
 :- pred bytecode_gen__map_vars_2(map(var, byte_var)::in,
@@ -694,32 +702,37 @@ bytecode_gen__map_vars_2(VarMap, [Var | Vars], [ByteVar | ByteVars]) :-
 
 :- pred bytecode_gen__map_var(byte_info::in, var::in, byte_var::out) is det.
 
-bytecode_gen__map_var(byte_info(VarMap, _, _, _, _), Var, ByteVar) :-
+bytecode_gen__map_var(byte_info(VarMap, _, _, _, _, _), Var, ByteVar) :-
 	map__lookup(VarMap, Var, ByteVar).
 
 :- pred bytecode_gen__get_var_type(byte_info::in, var::in, (type)::out) is det.
 
-bytecode_gen__get_var_type(byte_info(_, VarTypes, _, _, _), Var, Type) :-
+bytecode_gen__get_var_type(byte_info(_, VarTypes, _, _, _, _), Var, Type) :-
 	map__lookup(VarTypes, Var, Type).
 
 :- pred bytecode_gen__get_next_label(byte_info::in, int::out, byte_info::out)
 	is det.
 
 bytecode_gen__get_next_label(ByteInfo0, Label0, ByteInfo) :-
-	ByteInfo0 = byte_info(VarMap, VarTypes, ModuleInfo, Label0, Temp),
+	ByteInfo0 = byte_info(VarMap, VarTypes, ModuleInfo, Label0, Temp, IKT),
 	Label is Label0 + 1,
-	ByteInfo  = byte_info(VarMap, VarTypes, ModuleInfo, Label,  Temp).
+	ByteInfo  = byte_info(VarMap, VarTypes, ModuleInfo, Label,  Temp, IKT).
 
 :- pred bytecode_gen__get_next_temp(byte_info::in, int::out, byte_info::out)
 	is det.
 
 bytecode_gen__get_next_temp(ByteInfo0, Temp0, ByteInfo) :-
-	ByteInfo0 = byte_info(VarMap, VarTypes, ModuleInfo, Label, Temp0),
+	ByteInfo0 = byte_info(VarMap, VarTypes, ModuleInfo, Label, Temp0, IKT),
 	Temp is Temp0 + 1,
-	ByteInfo  = byte_info(VarMap, VarTypes, ModuleInfo, Label, Temp).
+	ByteInfo  = byte_info(VarMap, VarTypes, ModuleInfo, Label, Temp, IKT).
 
 :- pred bytecode_gen__get_counts(byte_info::in, int::out, int::out) is det.
 
-bytecode_gen__get_counts(byte_info(_, _, _, Label, Temp), Label, Temp).
+bytecode_gen__get_counts(byte_info(_, _, _, Label, Temp, _), Label, Temp).
+
+:- pred bytecode_gen__get_inst_key_table(byte_info::in, inst_key_table::out)
+		is det.
+
+bytecode_gen__get_inst_key_table(byte_info(_, _, _, _, _, IKT), IKT).
 
 %---------------------------------------------------------------------------%

@@ -26,8 +26,8 @@
 
 :- implementation.
 
-:- import_module hlds_data, hlds_out, llds, prog_data, prog_util.
-:- import_module typecheck.
+:- import_module hlds_data, hlds_out, llds, prog_data, (inst), prog_util.
+:- import_module typecheck, instmap.
 :- import_module bool, require, int, string, list, map, set, std_util.
 
 %-----------------------------------------------------------------------------%
@@ -167,6 +167,9 @@
 :- pred module_info_insts(module_info, inst_table).
 :- mode module_info_insts(in, out) is det.
 
+:- pred module_info_inst_key_table(module_info, inst_key_table).
+:- mode module_info_inst_key_table(in, out) is det.
+
 :- pred module_info_instids(module_info, list(inst_id)).
 :- mode module_info_instids(in, out) is det.
 
@@ -236,6 +239,10 @@
 
 :- pred module_info_set_insts(module_info, inst_table, module_info).
 :- mode module_info_set_insts(in, in, out) is det.
+
+:- pred module_info_set_inst_key_table(module_info, inst_key_table,
+		module_info).
+:- mode module_info_set_inst_key_table(in, in, out) is det.
 
 :- pred module_info_set_modes(module_info, mode_table, module_info).
 :- mode module_info_set_modes(in, in, out) is det.
@@ -486,6 +493,10 @@ module_info_instids(ModuleInfo, InstIDs) :-
 	inst_table_get_user_insts(InstTable, UserInstTable),
 	user_inst_table_get_inst_ids(UserInstTable, InstIDs).
 
+module_info_inst_key_table(ModuleInfo, InstKeyTable) :-
+	module_info_insts(ModuleInfo, InstTable),
+	inst_table_get_inst_key_table(InstTable, InstKeyTable).
+
 module_info_modes(ModuleInfo, Modes) :-
 	ModuleInfo = module(_, _, _, _, _, _, _, _, Modes, _, _, _, _, 
 		_, _, _, _, _, _).
@@ -603,6 +614,11 @@ module_info_set_insts(ModuleInfo0, Insts, ModuleInfo) :-
 		O, P, Q, R, S),
 	ModuleInfo = module(A, B, C, D, E, F, G, Insts, I, J, K, L, M, 
 		N, O, P, Q, R, S).
+
+module_info_set_inst_key_table(ModuleInfo0, InstKeyTable, ModuleInfo) :-
+	module_info_insts(ModuleInfo0, Insts0),
+	inst_table_set_inst_key_table(Insts0, InstKeyTable, Insts),
+	module_info_set_insts(ModuleInfo0, Insts, ModuleInfo).
 
 module_info_set_modes(ModuleInfo0, Modes, ModuleInfo) :-
 	ModuleInfo0 = module(A, B, C, D, E, F, G, H, _, J, K, L, M, N, 

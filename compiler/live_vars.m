@@ -232,7 +232,10 @@ build_live_sets_in_goal_2(higher_order_call(_PredVar, ArgVars,
 	% so we can just pass convention `simple' to make_arg_infos.
 
 	determinism_to_code_model(Det, CallModel),
-	make_arg_infos(simple, Types, Modes, CallModel, ModuleInfo, ArgInfos),
+	% YYY Change for local inst_key_tables
+	module_info_inst_key_table(ModuleInfo, IKT),
+	make_arg_infos(simple, Types, Modes, CallModel, IKT, ModuleInfo,
+			ArgInfos),
 	find_output_vars_from_arg_info(ArgVars, ArgInfos, OutVars),
 	set__difference(Liveness, OutVars, InputLiveness),
 	set__union(InputLiveness, ResumeVars0, StackVars0),

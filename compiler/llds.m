@@ -288,10 +288,16 @@
 	;	maxfr		% a stored maxfr
 	;	redoip
 	;	hp
-	;	var(type, inst)	% a variable
+	;	var(type, qualified_inst)
+				% a variable
 	;	unwanted.	% something we don't need, or used as
 				% a placeholder for non-accurate gc.
-	
+
+:- type qualified_inst
+	--->	qualified_inst(
+			inst_key_table,
+			inst
+		).
 
 	% An lval represents a data location or register that can be used
 	% as the target of an assignment.

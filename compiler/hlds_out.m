@@ -105,6 +105,10 @@
 
 %-----------------------------------------------------------------------------%
 
+:- pred hlds_out__write_proc(int, bool, module_info, pred_id, proc_id,
+	import_status, proc_info, io__state, io__state).
+:- mode hlds_out__write_proc(in, in, in, in, in, in, in, di, uo) is det.
+
 	% print out an entire hlds structure.
 
 :- pred hlds_out__write_hlds(int, module_info, io__state, io__state).
@@ -143,8 +147,8 @@
 	% (e.g. for a lambda expressions)
 
 :- pred hlds_out__write_var_modes(list(var), list(mode), varset, bool,
-	io__state, io__state).
-:- mode hlds_out__write_var_modes(in, in, in, in, di, uo) is det.
+	inst_key_table, io__state, io__state).
+:- mode hlds_out__write_var_modes(in, in, in, in, in, di, uo) is det.
 
 	% find the name of a marker
 
@@ -723,8 +727,10 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarnums,
 		;
 			hlds_out__write_indent(Indent),
 			io__write_string("% new insts: "),
+			{ module_info_inst_key_table(ModuleInfo,
+				InstKeyTable) },
 			hlds_out__write_instmap_delta(InstMapDelta, VarSet,
-				AppendVarnums, Indent),
+				AppendVarnums, Indent, InstKeyTable),
 			io__write_string("\n")
 		)
 	;
@@ -1048,7 +1054,8 @@ hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
 			{ CanFail = can_fail },
 			{ Mode = (free - free -> free - free) }
 		->
-			[]
+			hlds_out__write_indent(Indent),
+			io__write_string("% Not yet classified\n")
 		;
 			hlds_out__write_unification(Unification, ModuleInfo,
 				VarSet, AppendVarnums, Indent)
@@ -1168,7 +1175,7 @@ hlds_out__write_unification(deconstruct(Var, ConsId, ArgVars, ArgModes,
 	hlds_out_write_functor_and_submodes(ConsId, ArgVars, ArgModes,
 		ModuleInfo, VarSet, AppendVarnums, Indent).
 hlds_out__write_unification(complicated_unify(Mode, CanFail),
-		_ModuleInfo, VarSet, _, Indent) -->
+		ModuleInfo, VarSet, _, Indent) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("% "),
 	( { CanFail = can_fail },
@@ -1178,7 +1185,8 @@ hlds_out__write_unification(complicated_unify(Mode, CanFail),
 	),
 	!,
 	io__write_string("mode: "),
-	mercury_output_uni_mode(Mode, VarSet),
+	{ module_info_inst_key_table(ModuleInfo, InstKeyTable) },
+	mercury_output_uni_mode(Mode, VarSet, InstKeyTable),
 	io__write_string("\n").
 
 :- pred hlds_out_write_functor_and_submodes(cons_id, list(var), list(uni_mode),
@@ -1186,7 +1194,7 @@ hlds_out__write_unification(complicated_unify(Mode, CanFail),
 :- mode hlds_out_write_functor_and_submodes(in, in, in, in, in, in, in, di, uo)
 	is det.
 
-hlds_out_write_functor_and_submodes(ConsId, ArgVars, ArgModes, _ModuleInfo,
+hlds_out_write_functor_and_submodes(ConsId, ArgVars, ArgModes, ModuleInfo,
 		VarSet, AppendVarnums, Indent) -->
 	hlds_out__write_cons_id(ConsId),
 	( { ArgVars = [] } ->
@@ -1199,7 +1207,10 @@ hlds_out_write_functor_and_submodes(ConsId, ArgVars, ArgModes, _ModuleInfo,
 		( { string__contains_char(Verbose, 'a') } ->
 			hlds_out__write_indent(Indent),
 			io__write_string("% arg-modes "),
-			mercury_output_uni_mode_list(ArgModes, VarSet),
+			{ module_info_inst_key_table(ModuleInfo,
+				InstKeyTable) },
+			mercury_output_uni_mode_list(ArgModes, VarSet,
+				InstKeyTable),
 			io__write_string("\n")
 		;
 			[]
@@ -1243,7 +1254,9 @@ hlds_out__write_unify_rhs_3(lambda_goal(PredOrFunc, Vars, Modes, Det, Goal),
 	(
 		{ PredOrFunc = predicate },
 		io__write_string("(pred("),
-		hlds_out__write_var_modes(Vars, Modes, VarSet, AppendVarnums),
+		{ module_info_inst_key_table(ModuleInfo, InstKeyTable) },
+		hlds_out__write_var_modes(Vars, Modes, VarSet, AppendVarnums,
+			InstKeyTable),
 		io__write_string(") is "),
 		mercury_output_det(Det),
 		io__write_string(" :-\n"),
@@ -1257,11 +1270,12 @@ hlds_out__write_unify_rhs_3(lambda_goal(PredOrFunc, Vars, Modes, Det, Goal),
 		{ pred_args_to_func_args(Modes, ArgModes, RetMode) },
 		{ pred_args_to_func_args(Vars, ArgVars, RetVar) },
 		io__write_string("(func("),
+		{ module_info_inst_key_table(ModuleInfo, InstKeyTable) },
 		hlds_out__write_var_modes(ArgVars, ArgModes, VarSet,
-			AppendVarnums),
+			AppendVarnums, InstKeyTable),
 		io__write_string(") = ("),
 		hlds_out__write_var_mode(RetVar, RetMode, VarSet,
-			AppendVarnums),
+			AppendVarnums, InstKeyTable),
 		io__write_string(") is "),
 		mercury_output_det(Det),
 		io__write_string(" :-\n"),
@@ -1336,27 +1350,31 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, AppendVarnums) -->
 		io__write_string(")")
 	).
 
-hlds_out__write_var_modes([], [], _, _) --> [].
-hlds_out__write_var_modes([Var|Vars], [Mode|Modes], VarSet, AppendVarnums) -->
-	hlds_out__write_var_mode(Var, Mode, VarSet, AppendVarnums),
+hlds_out__write_var_modes([], [], _, _, _) --> [].
+hlds_out__write_var_modes([Var|Vars], [Mode|Modes], VarSet, AppendVarnums,
+		InstKeyTable) -->
+	hlds_out__write_var_mode(Var, Mode, VarSet, AppendVarnums,
+			InstKeyTable),
 	( { Vars \= [] } ->
 		io__write_string(", ")
 	;
 		[]
 	),
-	hlds_out__write_var_modes(Vars, Modes, VarSet, AppendVarnums).
-hlds_out__write_var_modes([], [_|_], _, _) -->
+	hlds_out__write_var_modes(Vars, Modes, VarSet, AppendVarnums,
+		InstKeyTable).
+hlds_out__write_var_modes([], [_|_], _, _, _) -->
 	{ error("hlds_out__write_var_modes: length mis-match") }.
-hlds_out__write_var_modes([_|_], [], _, _) -->
+hlds_out__write_var_modes([_|_], [], _, _, _) -->
 	{ error("hlds_out__write_var_modes: length mis-match") }.
 
-:- pred hlds_out__write_var_mode(var, mode, varset, bool, io__state, io__state).
-:- mode hlds_out__write_var_mode(in, in, in, in, di, uo) is det.
+:- pred hlds_out__write_var_mode(var, mode, varset, bool, inst_key_table,
+		io__state, io__state).
+:- mode hlds_out__write_var_mode(in, in, in, in, in, di, uo) is det.
 
-hlds_out__write_var_mode(Var, Mode, VarSet, AppendVarnums) -->
+hlds_out__write_var_mode(Var, Mode, VarSet, AppendVarnums, InstKeyTable) -->
 	mercury_output_var(Var, VarSet, AppendVarnums),
 	io__write_string("::"),
-	mercury_output_mode(Mode, VarSet).
+	mercury_output_mode(Mode, VarSet, InstKeyTable).
 
 :- pred hlds_out__write_conj(hlds_goal, list(hlds_goal), module_info, varset,
 	bool, int, string, string, vartypes, io__state, io__state).
@@ -1455,49 +1473,53 @@ hlds_out__write_cases(CasesList, Var, ModuleInfo, VarSet, AppendVarnums,
 
 hlds_out__write_some(_Vars, _VarSet) --> [].
 
-:- pred hlds_out__write_instmap(instmap, varset, bool, int,
+:- pred hlds_out__write_instmap(instmap, varset, bool, int, inst_key_table,
 	io__state, io__state).
-:- mode hlds_out__write_instmap(in, in, in, in, di, uo) is det.
+:- mode hlds_out__write_instmap(in, in, in, in, in, di, uo) is det.
 
-hlds_out__write_instmap(InstMap, VarSet, AppendVarnums, Indent) -->
+hlds_out__write_instmap(InstMap, VarSet, AppendVarnums, Indent,
+		InstKeyTable) -->
 	( { instmap__is_unreachable(InstMap) } ->
 		io__write_string("unreachable")
 	;
 		{ instmap__to_assoc_list(InstMap, AssocList) },
 		hlds_out__write_instmap_2(AssocList, VarSet, AppendVarnums,
-			Indent)
+			Indent, InstKeyTable)
 	).
 
 :- pred hlds_out__write_instmap_2(assoc_list(var, inst), varset, bool, int,
-	io__state, io__state).
-:- mode hlds_out__write_instmap_2(in, in, in, in, di, uo) is det.
+	inst_key_table, io__state, io__state).
+:- mode hlds_out__write_instmap_2(in, in, in, in, in, di, uo) is det.
 
-hlds_out__write_instmap_2([], _, _, _) --> [].
-hlds_out__write_instmap_2([Var - Inst | Rest], VarSet, AppendVarnums, Indent)
-		-->
+hlds_out__write_instmap_2([], _, _, _, _) --> [].
+hlds_out__write_instmap_2([Var - Inst | Rest], VarSet, AppendVarnums, Indent,
+		InstKeyTable) -->
 	mercury_output_var(Var, VarSet, AppendVarnums),
 	io__write_string(" -> "),
 	{ varset__init(InstVarSet) },
-	mercury_output_inst(Inst, InstVarSet),
+	mercury_output_structured_inst(expand_noisily, Inst, Indent,
+		InstVarSet, InstKeyTable),
 	( { Rest = [] } ->
 		[]
 	;
 		mercury_output_newline(Indent),
 		io__write_string("%            "),
-		hlds_out__write_instmap_2(Rest, VarSet, AppendVarnums, Indent)
+		hlds_out__write_instmap_2(Rest, VarSet, AppendVarnums, Indent,
+			InstKeyTable)
 	).
 
 :- pred hlds_out__write_instmap_delta(instmap_delta, varset, bool, int,
-	io__state, io__state).
-:- mode hlds_out__write_instmap_delta(in, in, in, in, di, uo) is det.
+		inst_key_table, io__state, io__state).
+:- mode hlds_out__write_instmap_delta(in, in, in, in, in, di, uo) is det.
 
-hlds_out__write_instmap_delta(InstMapDelta, VarSet, AppendVarnums, Indent) -->
+hlds_out__write_instmap_delta(InstMapDelta, VarSet, AppendVarnums, Indent,
+		InstKeyTable) -->
 	( { instmap_delta_is_unreachable(InstMapDelta) } ->
 		io__write_string("unreachable")
 	;
 		{ instmap_delta_to_assoc_list(InstMapDelta, AssocList) },
 		hlds_out__write_instmap_2(AssocList, VarSet, AppendVarnums,
-			Indent)
+			Indent, InstKeyTable)
 	).
 
 hlds_out__write_import_status(local) -->
@@ -1832,12 +1854,9 @@ hlds_out__write_procs_2([ProcId | ProcIds], AppendVarnums, ModuleInfo, Indent,
 	hlds_out__write_procs_2(ProcIds, AppendVarnums, ModuleInfo, Indent,
 		PredId, ImportStatus, ProcTable).
 
-:- pred hlds_out__write_proc(int, bool, module_info, pred_id, proc_id,
-	import_status, proc_info, io__state, io__state).
-:- mode hlds_out__write_proc(in, in, in, in, in, in, in, di, uo) is det.
-
 hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 		ImportStatus, Proc) -->
+	{ module_info_inst_key_table(ModuleInfo, InstKeyTable) },
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_typevarset(PredInfo, TVarSet) },
 	{ proc_info_vartypes(Proc, VarTypes) },
@@ -1870,7 +1889,7 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	{ varset__init(ModeVarSet) },
 	mercury_output_pred_mode_decl(ModeVarSet, unqualified(PredName),
-			HeadModes, DeclaredDeterminism, ModeContext),
+		HeadModes, DeclaredDeterminism, ModeContext, InstKeyTable),
 
 	(
 		{ ImportStatus = pseudo_imported },

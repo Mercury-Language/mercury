@@ -88,6 +88,12 @@
 :- pred det_disjunction_canfail(can_fail, can_fail, can_fail).
 :- mode det_disjunction_canfail(in, in, out) is det.
 
+:- pred det_conjunction_maxsoln(soln_count, soln_count, soln_count).
+:- mode det_conjunction_maxsoln(in, in, out) is det.
+
+:- pred det_conjunction_canfail(can_fail, can_fail, can_fail).
+:- mode det_conjunction_canfail(in, in, out) is det.
+
 :- pred det_switch_maxsoln(soln_count, soln_count, soln_count).
 :- mode det_switch_maxsoln(in, in, out) is det.
 
@@ -834,9 +840,6 @@ det_par_conjunction_detism(DetismA, DetismB, Detism) :-
 % pruning, but that the goal occurs in a single-solution
 % context, so only the first solution will be returned.
 
-:- pred det_conjunction_maxsoln(soln_count, soln_count, soln_count).
-:- mode det_conjunction_maxsoln(in, in, out) is det.
-
 det_conjunction_maxsoln(at_most_zero,    at_most_zero,    at_most_zero).
 det_conjunction_maxsoln(at_most_zero,    at_most_one,     at_most_zero).
 det_conjunction_maxsoln(at_most_zero,    at_most_many_cc, at_most_zero).
@@ -859,9 +862,6 @@ det_conjunction_maxsoln(at_most_many,    at_most_zero,    at_most_zero).
 det_conjunction_maxsoln(at_most_many,    at_most_one,     at_most_many).
 det_conjunction_maxsoln(at_most_many,    at_most_many_cc, at_most_many).
 det_conjunction_maxsoln(at_most_many,    at_most_many,    at_most_many).
-
-:- pred det_conjunction_canfail(can_fail, can_fail, can_fail).
-:- mode det_conjunction_canfail(in, in, out) is det.
 
 det_conjunction_canfail(can_fail,    can_fail,    can_fail).
 det_conjunction_canfail(can_fail,    cannot_fail, can_fail).

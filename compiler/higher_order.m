@@ -146,7 +146,13 @@ max_specialized_goal_size(20).
 
 	% used while traversing goals
 :- type higher_order_info --->
-		info(pred_vars, set(request), new_preds, module_info).
+		info(
+			pred_vars,
+			set(request),
+			new_preds,
+			module_info,
+			inst_key_table
+		).
 
 :- type new_preds == map(pred_proc_id, set(new_pred)).
 
@@ -202,9 +208,11 @@ get_specialization_requests_2([PredId | PredIds], Requests0, Requests,
 			% first time through we can only specialize call/N
 		map__init(NewPreds0),
 		PredProcId = proc(PredId, ProcId),
-		Info0 = info(PredVars0, Requests0, NewPreds0, ModuleInfo0),
+		% YYY Change for local inst_key_tables
+		module_info_inst_key_table(ModuleInfo0, IKT),
+		Info0 = info(PredVars0, Requests0, NewPreds0, ModuleInfo0, IKT),
 		traverse_goal(Goal0, Goal1, PredProcId, Changed,
-				GoalSize, Info0, info(_, Requests1,_,_)),
+				GoalSize, Info0, info(_, Requests1,_,_,_)),
 		map__set(GoalSizes0, PredId, GoalSize, GoalSizes1),
 		proc_info_set_goal(ProcInfo0, Goal1, ProcInfo1),
 		(
@@ -247,9 +255,11 @@ traverse_other_procs(PredId, [ProcId | ProcIds], ModuleInfo, Requests0,
 	map__lookup(Procs0, ProcId, ProcInfo0),
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
-	Info0 = info(PredVars0, Requests0, NewPreds0, ModuleInfo),
+	% YYY Change for local inst_key_tables
+	module_info_inst_key_table(ModuleInfo, IKT),
+	Info0 = info(PredVars0, Requests0, NewPreds0, ModuleInfo, IKT),
 	traverse_goal(Goal0, Goal1, proc(PredId, ProcId), _, _,
-					Info0, info(_, Requests1,_,_)),
+					Info0, info(_, Requests1,_,_,_)),
 	proc_info_headvars(ProcInfo0, HeadVars),
 	proc_info_variables(ProcInfo0, Varset0),
 	implicitly_quantify_clause_body(HeadVars, Goal1, Varset0, VarTypes0,
@@ -421,13 +431,13 @@ traverse_cases_2([Case0 | Cases0], [Case | Cases], PredProcId, Changed0,
 					higher_order_info::out) is det.
 
 merge_higher_order_infos(Info1, Info2, Info) :-
-	Info1 = info(PredVars1, Requests1, NewPreds, ModuleInfo),
-	Info2 = info(PredVars2, Requests2,_,_),
+	Info1 = info(PredVars1, Requests1, NewPreds, ModuleInfo,IKT),
+	Info2 = info(PredVars2, Requests2,_,_,_),
 	merge_pred_vars(PredVars1, PredVars2, PredVars),
 	set__union(Requests1, Requests2, Requests12),
 	set__to_sorted_list(Requests12, List12),
 	set__sorted_list_to_set(List12, Requests),
-	Info = info(PredVars, Requests, NewPreds, ModuleInfo).
+	Info = info(PredVars, Requests, NewPreds, ModuleInfo,IKT).
 
 
 :- pred merge_pred_vars(pred_vars::in, pred_vars::in, pred_vars::out) is det.
@@ -491,7 +501,7 @@ check_unify(assign(Var1, Var2)) -->
 check_unify(deconstruct(_, _, _, _, _)) --> [].
 	
 check_unify(construct(LVar, ConsId, Args, _Modes), Info0, Info) :- 
-	Info0 = info(PredVars0, Requests, NewPreds, ModuleInfo),
+	Info0 = info(PredVars0, Requests, NewPreds, ModuleInfo,IKT),
 	(
 		ConsId = pred_const(PredId, ProcId)
 	->
@@ -518,7 +528,7 @@ check_unify(construct(LVar, ConsId, Args, _Modes), Info0, Info) :-
 	;
 		PredVars = PredVars0	
 	),
-	Info = info(PredVars, Requests, NewPreds, ModuleInfo).
+	Info = info(PredVars, Requests, NewPreds, ModuleInfo,IKT).
 	
 check_unify(complicated_unify(_, _)) -->
 	{ error("higher_order:check_unify - complicated unification") }.
@@ -531,7 +541,7 @@ check_unify(complicated_unify(_, _)) -->
 
 maybe_specialize_higher_order_call(Goal0 - GoalInfo, Goal - GoalInfo,
 		PredProcId, Changed, Info0, Info) :-
-	Info0 = info(PredVars, Requests0, NewPreds, Module),
+	Info0 = info(PredVars, Requests0, NewPreds, Module, IKT),
 	(
 		Goal0 = higher_order_call(PredVar0, Args0, _Types, Modes0,
 				_Det, _IsPredOrFunc)
@@ -556,7 +566,8 @@ maybe_specialize_higher_order_call(Goal0 - GoalInfo, Goal - GoalInfo,
 		% We need to permute the arguments so that inputs come before
 		% outputs, since lambda.m will have done that to the arguments
 		% of the closure.
-		lambda__permute_argvars(Args, Modes, Module, PermutedArgs, _),
+		lambda__permute_argvars(Args, Modes, IKT, Module, PermutedArgs,
+			_),
 
 		list__append(CurriedArgs, PermutedArgs, AllArgs),
 		MaybeContext = no,
@@ -565,7 +576,7 @@ maybe_specialize_higher_order_call(Goal0 - GoalInfo, Goal - GoalInfo,
 			qualified(ModuleName, PredName)),
 		maybe_specialize_call(Goal1 - GoalInfo,
 			Goal - _, PredProcId, _, Info0,
-			info(_, Requests, _, _)),
+			info(_, Requests, _, _, _)),
 		Changed = changed 
 	;
 		% non-specializable call to call/N
@@ -573,7 +584,7 @@ maybe_specialize_higher_order_call(Goal0 - GoalInfo, Goal - GoalInfo,
 		Changed = unchanged,
 		Requests = Requests0
 	),
-	Info = info(PredVars, Requests, NewPreds, Module).
+	Info = info(PredVars, Requests, NewPreds, Module, IKT).
 
 		% Process a call to see if it could possibly be specialized.
 :- pred maybe_specialize_call( hlds_goal::in, hlds_goal::out,
@@ -582,7 +593,7 @@ maybe_specialize_higher_order_call(Goal0 - GoalInfo, Goal - GoalInfo,
 
 maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, PredProcId,
 		Changed, Info0, Info) :-
-	Info0 = info(PredVars, Requests0, NewPreds, Module),
+	Info0 = info(PredVars, Requests0, NewPreds, Module, IKT),
 	(
 		Goal0 = call(_, _, _, _, _, _)
 	->
@@ -646,7 +657,7 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, PredProcId,
 			Changed = request
 		)
 	),
-	Info = info(PredVars, Requests, NewPreds, Module).
+	Info = info(PredVars, Requests, NewPreds, Module, IKT).
 
 	% Returns a list of the higher-order arguments in a call that have
 	% a known value. Also update the argument list to now include
@@ -698,8 +709,8 @@ find_higher_order_args(ModuleInfo, [Arg | Args], [ArgType | ArgTypes],
 				higher_order_info::out) is det.
 
 maybe_add_alias(LVar, RVar,
-		info(PredVars0, Requests, NewPreds, ModuleInfo),
-		info(PredVars, Requests, NewPreds, ModuleInfo)) :-
+		info(PredVars0, Requests, NewPreds, ModuleInfo, IKT),
+		info(PredVars, Requests, NewPreds, ModuleInfo, IKT)) :-
 	(
 		map__search(PredVars0, RVar, yes(A, B, C))
 	->
@@ -925,8 +936,10 @@ fixup_preds([PredProcId | PredProcIds], NewPreds, ModuleInfo0, ModuleInfo) :-
 	proc_info_goal(ProcInfo0, Goal0),
 	map__init(PredVars0),
 	set__init(Requests0),
+	% YYY Change for local inst_key_tables
+	module_info_inst_key_table(ModuleInfo0, IKT),
 	traverse_goal(Goal0, Goal1, PredProcId, _, _,
-		info(PredVars0, Requests0, NewPreds, ModuleInfo0), _),
+		info(PredVars0, Requests0, NewPreds, ModuleInfo0, IKT), _),
 	proc_info_variables(ProcInfo0, Varset0),
 	proc_info_headvars(ProcInfo0, HeadVars),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
@@ -1003,26 +1016,33 @@ create_specialized_versions_2([NewPred | NewPreds], NewPredMap, NewProcInfo0,
 	apply_substitution_to_type_map(VarTypes0, Substitution, VarTypes1),
 	map__apply_to_list(HeadVars, VarTypes1, ArgTypes0),
 	term__vars_list(ArgTypes0, TypeVars),
-	varset__init(VarSet0),
+	varset__init(ArgTVarset0),
 	map__init(DummyVarTypes), % type vars don't have a type
 	map__init(Renaming0),
-	goal_util__create_variables(TypeVars, VarSet0, DummyVarTypes,
-		Renaming0, DummyVarTypes, VarSet0, ArgTVarset, _, Renaming),
+	varset__init(OldVarNames),
+	goal_util__create_variables(TypeVars, ArgTVarset0, DummyVarTypes,
+		Renaming0, DummyVarTypes, OldVarNames, ArgTVarset, _, Renaming),
 	term__apply_variable_renaming_to_list(ArgTypes0, Renaming, ArgTypes),
 	pred_info_set_arg_types(NewPredInfo1, ArgTVarset, ArgTypes,
 							 NewPredInfo2),
 	map__init(PredVars0),
+	% YYY Change for local inst_key_tables
+	module_info_inst_key_table(ModuleInfo0, IKT),
         traverse_goal(Goal1, Goal2, proc(NewPredId, NewProcId), _, GoalSize,
-			info(PredVars0, Requests0, NewPredMap, ModuleInfo0),
-			info(_, Requests1,_,_)),
+		info(PredVars0, Requests0, NewPredMap, ModuleInfo0, IKT),
+		info(_, Requests1,_,_,_)),
 	map__set(GoalSizes0, NewPredId, GoalSize, GoalSizes1),
 	proc_info_variables(NewProcInfo1, Varset0),
 					
 	implicitly_quantify_clause_body(HeadVars, Goal2, Varset0, VarTypes1,
 					Goal3, Varset, VarTypes, _),
 	proc_info_get_initial_instmap(NewProcInfo1, ModuleInfo0, InstMap0),
+	% YYY Change for local inst_key_tables
+	module_info_inst_key_table(ModuleInfo0, IKT0),
 	recompute_instmap_delta(no, Goal3, Goal4, InstMap0,
-		ModuleInfo0, ModuleInfo1),
+		IKT0, IKT1, ModuleInfo0, ModuleInfo1a),
+	% YYY Change for local inst_key_tables
+	module_info_set_inst_key_table(ModuleInfo1a, IKT1, ModuleInfo1),
 	proc_info_set_goal(NewProcInfo1, Goal4, NewProcInfo1a),
 	proc_info_set_variables(NewProcInfo1a, Varset, NewProcInfo2),
 	proc_info_set_vartypes(NewProcInfo2, VarTypes, NewProcInfo3),
@@ -1158,7 +1178,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 
 	set__list_to_set([LVar | NewHeadVars0], NonLocals),
 	instmap_delta_init_reachable(InstmapDelta0),
-	instmap_delta_insert(InstmapDelta0, LVar, Inst, InstmapDelta),
+	instmap_delta_set(InstmapDelta0, LVar, Inst, InstmapDelta),
 	goal_info_init(NonLocals, InstmapDelta, det, Info),
 	construct_higher_order_terms(ModuleInfo, HeadVars1, HeadVars, ArgModes1,
 		ArgModes, HOArgs, ProcInfo3, ProcInfo, PredInfo2, PredInfo,

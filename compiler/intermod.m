@@ -63,7 +63,7 @@
 :- import_module assoc_list, bool, dir, getopt, int, list, map, require, set.
 :- import_module std_util, string, term, varset.
 
-:- import_module code_util, globals, goal_util.
+:- import_module code_util, globals, goal_util, instmap.
 :- import_module hlds_data, hlds_goal, hlds_pred, hlds_out, inlining, llds.
 :- import_module mercury_to_mercury, mode_util, modules.
 :- import_module options, passes_aux, prog_data, prog_io, prog_out, prog_util.
@@ -250,19 +250,21 @@ has_ho_input(ModuleInfo, ProcInfo) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_argmodes(ProcInfo, ArgModes),
 	proc_info_vartypes(ProcInfo, VarTypes),
-	check_for_ho_input_args(ModuleInfo, HeadVars, ArgModes, VarTypes).
+	% YYY Change for local inst_key_tables
+	module_info_inst_key_table(ModuleInfo, IKT),
+	check_for_ho_input_args(IKT, ModuleInfo, HeadVars, ArgModes, VarTypes).
 
-:- pred check_for_ho_input_args(module_info::in, list(var)::in,
-		list(mode)::in, map(var, type)::in) is semidet.
+:- pred check_for_ho_input_args(inst_key_table::in, module_info::in,
+		list(var)::in, list(mode)::in, map(var, type)::in) is semidet.
 
-check_for_ho_input_args(ModuleInfo, [HeadVar | HeadVars],
+check_for_ho_input_args(IKT, ModuleInfo, [HeadVar | HeadVars],
 			[ArgMode | ArgModes], VarTypes) :-
 	(
-		mode_is_input(ModuleInfo, ArgMode),
+		mode_is_input(IKT, ModuleInfo, ArgMode),
 		map__lookup(VarTypes, HeadVar, Type),
 		classify_type(Type, ModuleInfo, pred_type)
 	;
-		check_for_ho_input_args(ModuleInfo, HeadVars,
+		check_for_ho_input_args(IKT, ModuleInfo, HeadVars,
 							ArgModes, VarTypes)
 	).
 
@@ -802,10 +804,13 @@ intermod__write_modes(ModuleInfo, ModeTable, [ModeId | Modes]) -->
 	{ map__lookup(ModeTable, ModeId, ModeDefn) },
 	{ ModeDefn = hlds_mode_defn(Varset, Args, eqv_mode(Mode),
 							_, Context, _) },
+	% YYY Change for local inst_key_tables
+	{ module_info_inst_key_table(ModuleInfo, InstKeyTable) },
 	mercury_output_mode_defn(
 			Varset,
 			eqv_mode(SymName, Args, Mode),
-			Context
+			Context,
+			InstKeyTable
 	),
 	intermod__write_modes(ModuleInfo, ModeTable, Modes).
 
@@ -818,19 +823,23 @@ intermod__write_insts(ModuleInfo, UserInstTable, [Inst | Insts]) -->
 	{ Inst = SymName - _Arity },
 	{ map__lookup(UserInstTable, Inst, InstDefn) },
 	{ InstDefn = hlds_inst_defn(Varset, Args, Body, _, Context, _) },
+	% YYY Change for local inst_key_tables
+	{ module_info_inst_key_table(ModuleInfo, InstKeyTable) },
 	(
 		{ Body = eqv_inst(Inst2) },
 		mercury_output_inst_defn(
 				Varset,
 				eqv_inst(SymName, Args, Inst2),
-				Context
+				Context,
+				InstKeyTable
 		)
 	;
 		{ Body = abstract_inst },
 		mercury_output_inst_defn(
 				Varset,
 				abstract_inst(SymName, Args),
-				Context
+				Context,
+				InstKeyTable
 		)
 	),
 	io__write_string(".\n"),
@@ -844,6 +853,8 @@ intermod__write_insts(ModuleInfo, UserInstTable, [Inst | Insts]) -->
 intermod__write_pred_decls(_, []) --> [].
 intermod__write_pred_decls(ModuleInfo, [PredId | PredIds]) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	% YYY Change for local inst_key_tables
+	{ module_info_inst_key_table(ModuleInfo, InstKeyTable) },
 	{ pred_info_module(PredInfo, Module) },
 	{ pred_info_name(PredInfo, Name) },
 	{ pred_info_arg_types(PredInfo, TVarSet, ArgTypes) },
@@ -875,15 +886,16 @@ intermod__write_pred_decls(ModuleInfo, [PredId | PredIds]) -->
 		)) },
 	{ list__sort(CompareProcId, ProcIds, SortedProcIds) },
 	intermod__write_pred_modes(Procs, qualified(Module, Name),
-					PredOrFunc, SortedProcIds),
+				PredOrFunc, SortedProcIds, InstKeyTable),
 	intermod__write_pred_decls(ModuleInfo, PredIds).
 
 :- pred intermod__write_pred_modes(map(proc_id, proc_info)::in, 
 		sym_name::in, pred_or_func::in, list(proc_id)::in,
-		io__state::di, io__state::uo) is det.
+		inst_key_table::in, io__state::di, io__state::uo) is det.
 
-intermod__write_pred_modes(_, _, _, []) --> [].
-intermod__write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds]) -->
+intermod__write_pred_modes(_, _, _, [], _) --> [].
+intermod__write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds],
+		InstKeyTable) -->
 	{ map__lookup(Procs, ProcId, ProcInfo) },
 	{ proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes) },
 	{ proc_info_declared_determinism(ProcInfo, MaybeDetism) },
@@ -900,13 +912,14 @@ intermod__write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds]) -->
 		{ pred_args_to_func_args(ArgModes, FuncArgModes, FuncRetMode) },
 		mercury_output_func_mode_decl(Varset, SymName,
 			FuncArgModes, FuncRetMode,
-			yes(Detism), Context)
+			yes(Detism), Context, InstKeyTable)
 	;
 		{ PredOrFunc = predicate },
 		mercury_output_pred_mode_decl(Varset, SymName,
-				ArgModes, yes(Detism), Context)
+				ArgModes, yes(Detism), Context, InstKeyTable)
 	),
-	intermod__write_pred_modes(Procs, SymName, PredOrFunc, ProcIds).	
+	intermod__write_pred_modes(Procs, SymName, PredOrFunc, ProcIds,
+		InstKeyTable).	
 
 :- pred intermod__write_preds(module_info::in, list(pred_id)::in,
 				io__state::di, io__state::uo) is det.
@@ -914,6 +927,8 @@ intermod__write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds]) -->
 intermod__write_preds(_, []) --> [].
 intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	% YYY Change for local inst_key_tables
+	{ module_info_inst_key_table(ModuleInfo, InstKeyTable) },
 	{ pred_info_arg_types(PredInfo, _, ArgTypes) },
 	{ list__length(ArgTypes, Arity) },
 	{ pred_info_module(PredInfo, Module) },
@@ -928,7 +943,7 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 	( { pred_info_get_goal_type(PredInfo, pragmas) } ->
 		{ pred_info_procedures(PredInfo, Procs) },
 		intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
-						Clauses, Procs)
+						Clauses, Procs, InstKeyTable)
 	;
 		% { pred_info_typevarset(PredInfo, TVarSet) },
 		hlds_out__write_clauses(1, ModuleInfo, PredId, Varset, no,
@@ -964,12 +979,12 @@ intermod__write_pragmas(SymName, Arity, [MarkerStatus | Markers]) -->
 
 	% Some pretty kludgy stuff to get c code written correctly.
 :- pred intermod__write_c_code(sym_name::in, pred_or_func::in, 
-	list(var)::in, varset::in,
-	list(clause)::in, proc_table::in, io__state::di, io__state::uo) is det.
+	list(var)::in, varset::in, list(clause)::in, proc_table::in,
+	inst_key_table::in, io__state::di, io__state::uo) is det.
 
-intermod__write_c_code(_, _, _, _, [], _) --> [].
+intermod__write_c_code(_, _, _, _, [], _, _) --> [].
 intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset, 
-		[Clause | Clauses], Procs) -->
+		[Clause | Clauses], Procs, InstKeyTable) -->
 	{ Clause = clause(ProcIds, Goal, _) },
 	(
 		(
@@ -988,30 +1003,31 @@ intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
 		)
 	->	
 		intermod__write_c_clauses(Procs, ProcIds, PredOrFunc, CCode, 
-					MayCallMercury, Vars, Varset, SymName)
+			MayCallMercury, Vars, Varset, SymName, InstKeyTable)
 	;
 		{ error("intermod__write_c_code called with non c_code goal") }
 	),
 	intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset, 
-				Clauses, Procs).
+				Clauses, Procs, InstKeyTable).
 
 :- pred intermod__write_c_clauses(proc_table::in, list(proc_id)::in, 
 		pred_or_func::in, string::in, may_call_mercury::in,
-		list(var)::in, varset::in, sym_name::in,
+		list(var)::in, varset::in, sym_name::in, inst_key_table::in,
 		io__state::di, io__state::uo) is det.
 
-intermod__write_c_clauses(_, [], _, _, _, _, _, _) --> [].
+intermod__write_c_clauses(_, [], _, _, _, _, _, _, _) --> [].
 intermod__write_c_clauses(Procs, [ProcId | ProcIds], PredOrFunc,
-			CCode, MayCallMercury, Vars, Varset, SymName) -->
+		CCode, MayCallMercury, Vars, Varset, SymName, InstKeyTable) -->
 	{ map__lookup(Procs, ProcId, ProcInfo) },
 	{ proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes) },
 	( { MaybeArgModes = yes(ArgModes) } ->
 		{ get_pragma_c_code_vars(Vars, Varset, ArgModes, PragmaVars) },
 		% XXX will need modification for nondet pragma C code
 		mercury_output_pragma_c_code(MayCallMercury, SymName,
-			PredOrFunc, PragmaVars, no, Varset, CCode),
+			PredOrFunc, PragmaVars, no, Varset, CCode,
+			InstKeyTable),
 		intermod__write_c_clauses(Procs, ProcIds, PredOrFunc, CCode,
-			MayCallMercury, Vars, Varset, SymName)
+			MayCallMercury, Vars, Varset, SymName, InstKeyTable)
 	;
 		{ error("intermod__write_c_clauses: no mode declaration") }
 	).

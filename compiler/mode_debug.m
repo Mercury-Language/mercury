@@ -34,7 +34,7 @@
 
 :- implementation.
 :- import_module globals, std_util, list, assoc_list, io, bool, map.
-:- import_module term, varset.
+:- import_module term, varset, hlds_module.
 :- import_module modes, options, mercury_to_mercury, passes_aux.
 :- import_module hlds_goal, instmap, prog_data, (inst).
 
@@ -88,8 +88,12 @@ mode_checkpoint_2(Port, Msg, OldInstList, NewInstList, ModeInfo) -->
 			{ instmap__to_assoc_list(InstMap, NewInstList) },
 			{ mode_info_get_varset(ModeInfo, VarSet) },
 			{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
+			{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
+			{ module_info_inst_key_table(ModuleInfo,
+				InstKeyTable) },
 			write_var_insts(NewInstList, OldInstList,
-				VarSet, InstVarSet)
+				VarSet, InstVarSet, InstKeyTable)
+%			inst_key_table_dump(InstKeyTable)
 		;
 			{ NewInstList = [] },
 			io__write_string("\tUnreachable\n")
@@ -101,11 +105,12 @@ mode_checkpoint_2(Port, Msg, OldInstList, NewInstList, ModeInfo) -->
 	io__flush_output.
 
 :- pred write_var_insts(assoc_list(var, inst), assoc_list(var, inst),
-	varset, varset, io__state, io__state).
-:- mode write_var_insts(in, in, in, in, di, uo) is det.
+	varset, varset, inst_key_table, io__state, io__state).
+:- mode write_var_insts(in, in, in, in, in, di, uo) is det.
 
-write_var_insts([], _, _, _) --> [].
-write_var_insts([Var - Inst | VarInsts], OldInstList, VarSet, InstVarSet) -->
+write_var_insts([], _, _, _, _) --> [].
+write_var_insts([Var - Inst | VarInsts], OldInstList, VarSet, InstVarSet,
+		InstKeyTable) -->
 	io__write_string("\t"),
 	mercury_output_var(Var, VarSet, no),
 	io__write_string(" ::"),
@@ -116,9 +121,11 @@ write_var_insts([Var - Inst | VarInsts], OldInstList, VarSet, InstVarSet) -->
 		io__write_string(" unchanged\n")
 	;
 		io__write_string("\n"),
-		mercury_output_structured_inst(Inst, 2, InstVarSet)
+		mercury_output_structured_inst(expand_noisily, Inst, 2,
+			InstVarSet, InstKeyTable)
 	),
-	write_var_insts(VarInsts, OldInstList, VarSet, InstVarSet).
+	write_var_insts(VarInsts, OldInstList, VarSet, InstVarSet,
+		InstKeyTable).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

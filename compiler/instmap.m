@@ -121,12 +121,10 @@
 :- pred instmap__lookup_vars(list(var), instmap, list(inst)).
 :- mode instmap__lookup_vars(in, in, out) is det.
 
-	% Insert an entry into an instmap_delta.  Note that you
-	% cannot call instmap_delta_insert for a variable already
-	% present.
-	%
-:- pred instmap_delta_insert(instmap_delta, var, inst, instmap_delta).
-:- mode instmap_delta_insert(in, in, in, out) is det.
+	% Given an instmap and an inst_key, find those vars which
+	% depend on that inst_key.
+:- pred instmap__lookup_dependent_vars(instmap, inst_key, list(var)).
+:- mode instmap__lookup_dependent_vars(in, in, out) is det.
 
 	% Set an entry in an instmap.
 	%
@@ -135,16 +133,6 @@
 
 :- pred instmap_delta_set(instmap_delta, var, inst, instmap_delta).
 :- mode instmap_delta_set(in, in, in, out) is det.
-
-	% Bind a variable in an instmap to a functor at the beginning
-	% of a case in a switch. Aborts on compiler generated cons_ids.
-:- pred instmap_delta_bind_var_to_functor(var, cons_id, instmap,
-		instmap_delta, instmap_delta, module_info, module_info).
-:- mode instmap_delta_bind_var_to_functor(in, in, in, in, out, in, out) is det.
-
-:- pred instmap__bind_var_to_functor(var, cons_id,
-		instmap, instmap, module_info, module_info).
-:- mode instmap__bind_var_to_functor(in, in, in, out, in, out) is det.
 
 	% Update the given instmap to include the initial insts of the
 	% lambda variables.
@@ -209,25 +197,28 @@
 	% `instmap__no_output_vars(Instmap, InstmapDelta, Vars, ModuleInfo)'
 	% is true if none of the vars in the set Vars could have become more
 	% instantiated when InstmapDelta is applied to Instmap.
-:- pred instmap__no_output_vars(instmap, instmap_delta, set(var), module_info).
-:- mode instmap__no_output_vars(in, in, in, in) is semidet.
+:- pred instmap__no_output_vars(instmap, instmap_delta, set(var),
+		inst_key_table, module_info).
+:- mode instmap__no_output_vars(in, in, in, in, in) is semidet.
 
 	% merge_instmap_delta(InitialInstMap, NonLocals,
 	%	InstMapDeltaA, InstMapDeltaB, ModuleInfo0, ModuleInfo)
 	% Merge the instmap_deltas of different branches of an ite, disj
 	% or switch.
 :- pred merge_instmap_delta(instmap, set(var), instmap_delta, instmap_delta,
-		instmap_delta, module_info, module_info).
-:- mode merge_instmap_delta(in, in, in, in, out, in, out) is det.
+		instmap_delta, inst_key_table, inst_key_table,
+		module_info, module_info).
+:- mode merge_instmap_delta(in, in, in, in, out, in, out, in, out) is det.
 
 	% merge_instmap_deltas(Vars, InstMapDeltas,
-	%	MergedInstMapDelta, ModuleInfo0, ModuleInfo)
+	%	MergedInstMapDelta, IKT0, IKT, ModuleInfo0, ModuleInfo)
 	% takes a list of instmap deltas from the branches of an if-then-else,
 	% switch, or disj and merges them. This is used in situations
 	% where the bindings are known to be compatible.
 :- pred merge_instmap_deltas(instmap, set(var), list(instmap_delta),
-		instmap_delta, module_info, module_info).
-:- mode merge_instmap_deltas(in, in, in, out, in, out) is det.
+		instmap_delta, inst_key_table, inst_key_table,
+		module_info, module_info).
+:- mode merge_instmap_deltas(in, in, in, out, in, out, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -258,53 +249,78 @@
 :- implementation.
 
 :- import_module mode_util, inst_match, prog_data, mode_errors, goal_util.
-:- import_module hlds_data, inst_util.
-:- import_module list, std_util, bool, map, set, assoc_list, require.
+:- import_module mercury_to_mercury, hlds_data, hlds_module, inst_util.
+:- import_module std_util, bool, map, set, assoc_list, require, multi_map.
+:- import_module int, list, varset.
 
 :- type instmap_delta	==	instmap.
 
-:- type instmap	--->	reachable(instmapping)
-			;	unreachable.
+:- type instmap	--->
+		reachable(instmapping, bwd_mapping)
+	;	unreachable.
 
 :- type instmapping	==	map(var, inst).
+:- type bwd_mapping	==	multi_map(inst_key, var).
 
 %-----------------------------------------------------------------------------%
 
 	% Initialize an empty instmap and instmap_delta.
 
-instmap__init_reachable(reachable(InstMapping)) :-
-	map__init(InstMapping).
+instmap__init_reachable(reachable(InstMapping, BwdMap)) :-
+	map__init(InstMapping),
+	multi_map__init(BwdMap).
 
 instmap__init_unreachable(unreachable).
 
-instmap_delta_init_reachable(reachable(InstMapping)) :-
-	map__init(InstMapping).
+instmap_delta_init_reachable(reachable(InstMapping, BwdMap)) :-
+	map__init(InstMapping),
+	multi_map__init(BwdMap).
 
 instmap_delta_init_unreachable(unreachable).
 
 %-----------------------------------------------------------------------------%
 
-instmap__is_reachable(reachable(_)).
+instmap__is_reachable(reachable(_, _)).
 
 instmap__is_unreachable(unreachable).
 
-instmap_delta_is_reachable(reachable(_)).
+instmap_delta_is_reachable(reachable(_, _)).
 
 instmap_delta_is_unreachable(unreachable).
 
 %-----------------------------------------------------------------------------%
 
-instmap__from_assoc_list(AL, reachable(Instmapping)) :-
-	map__from_assoc_list(AL, Instmapping).
+:- pred bwd_mapping_from_instmapping(instmapping :: in,
+		bwd_mapping :: in, bwd_mapping :: out) is det.
 
-instmap_delta_from_assoc_list(AL, reachable(Instmapping)) :-
-	map__from_assoc_list(AL, Instmapping).
+bwd_mapping_from_instmapping(InstMapping, Bwd0, Bwd) :-
+	map__to_assoc_list(InstMapping, AssocList),
+	bwd_mapping_from_assoc_list(AssocList, Bwd0, Bwd).
+
+:- pred bwd_mapping_from_assoc_list(assoc_list(var, inst) :: in,
+		bwd_mapping :: in, bwd_mapping :: out) is det.
+
+bwd_mapping_from_assoc_list([], Bwd, Bwd).
+bwd_mapping_from_assoc_list([Var - Inst | AL], Bwd0, Bwd) :-
+	inst_keys_in_inst(Inst, [], Keys),
+	add_backward_dependencies(Keys, Var, Bwd0, Bwd1),
+	bwd_mapping_from_assoc_list(AL, Bwd1, Bwd).
+
+instmap__from_assoc_list(AL, reachable(Instmapping, BwdMap)) :-
+	map__from_assoc_list(AL, Instmapping),
+	multi_map__init(BwdMap0),
+	bwd_mapping_from_assoc_list(AL, BwdMap0, BwdMap).
+
+instmap_delta_from_assoc_list(AL, reachable(Instmapping, BwdMap)) :-
+	map__from_assoc_list(AL, Instmapping),
+	multi_map__init(BwdMap0),
+	bwd_mapping_from_assoc_list(AL, BwdMap0, BwdMap).
 
 %-----------------------------------------------------------------------------%
 
-instmap_delta_from_mode_list(Var, Modes, ModuleInfo, InstMapDelta) :-
+instmap_delta_from_mode_list(Vars, Modes, ModuleInfo, InstMapDelta) :-
 	instmap_delta_init_reachable(InstMapDelta0),
-	instmap_delta_from_mode_list_2(Var, Modes, ModuleInfo,
+	instmap_delta_from_mode_list_2(Vars, Modes, ModuleInfo,
 		InstMapDelta0, InstMapDelta).
 	
 :- pred instmap_delta_from_mode_list_2(list(var), list(mode),
@@ -335,12 +351,12 @@ instmap__vars(Instmap, Vars) :-
 	set__list_to_set(VarsList, Vars).
 
 instmap__vars_list(unreachable, []).
-instmap__vars_list(reachable(InstMapping), VarsList) :-
+instmap__vars_list(reachable(InstMapping, _), VarsList) :-
 	map__keys(InstMapping, VarsList).
 
 instmap_delta_changed_vars(unreachable, EmptySet) :-
 	set__init(EmptySet).
-instmap_delta_changed_vars(reachable(InstMapping), ChangedVars) :-
+instmap_delta_changed_vars(reachable(InstMapping, _), ChangedVars) :-
 	map__keys(InstMapping, ChangedVarsList),
 	set__sorted_list_to_set(ChangedVarsList, ChangedVars).
 
@@ -350,7 +366,7 @@ instmap_delta_changed_vars(reachable(InstMapping), ChangedVars) :-
 	% that variable.
 
 instmap__lookup_var(unreachable, _Var, not_reached).
-instmap__lookup_var(reachable(InstMap), Var, Inst) :-
+instmap__lookup_var(reachable(InstMap, _), Var, Inst) :-
 	instmapping_lookup_var(InstMap, Var, Inst).
 
 :- pred instmapping_lookup_var(instmapping, var, inst).
@@ -363,100 +379,47 @@ instmapping_lookup_var(InstMap, Var, Inst) :-
 		Inst = free
 	).
 
-instmap_delta_search_var(reachable(InstMap), Var, Inst) :-
-	map__search(InstMap, Var, Inst).
+instmap_delta_search_var(unreachable, _Var, not_reached).
+instmap_delta_search_var(reachable(InstmapDelta, _), Var, Inst) :-
+	map__search(InstmapDelta, Var, Inst).
 
 instmap__lookup_vars([], _InstMap, []).
 instmap__lookup_vars([Arg|Args], InstMap, [Inst|Insts]) :-
 	instmap__lookup_var(InstMap, Arg, Inst),
 	instmap__lookup_vars(Args, InstMap, Insts).
 
+instmap__lookup_dependent_vars(unreachable, _InstKey, []).
+instmap__lookup_dependent_vars(reachable(_FwdMap, BwdMap), InstKey, Vars) :-
+	( map__search(BwdMap, InstKey, Vars0) ->
+		Vars = Vars0
+	;
+		Vars = []
+	).
+
 instmap__set(unreachable, _Var, _Inst, unreachable).
-instmap__set(reachable(InstMapping0), Var, Inst,
-		reachable(InstMapping)) :-
-	map__set(InstMapping0, Var, Inst, InstMapping).
+instmap__set(reachable(InstMapping0, BwdMap0), Var, Inst, Instmap) :-
+	(
+		Inst = not_reached
+	->
+		Instmap = unreachable
+	;
+		inst_keys_in_inst(Inst, [], Keys),
+		add_backward_dependencies(Keys, Var, BwdMap0, BwdMap),
+		map__set(InstMapping0, Var, Inst, InstMapping),
+		Instmap = reachable(InstMapping, BwdMap)
+	).
 
 instmap_delta_set(unreachable, _Var, _Inst, unreachable).
-instmap_delta_set(reachable(InstMapping0), Var, Inst, Instmap) :-
-	( Inst = not_reached ->
-		Instmap = unreachable
-	;
-		map__set(InstMapping0, Var, Inst, InstMapping),
-		Instmap = reachable(InstMapping)
-	).
-
-instmap_delta_insert(unreachable, _Var, _Inst, unreachable).
-instmap_delta_insert(reachable(InstMapping0), Var, Inst, Instmap) :-
-	( Inst = not_reached ->
-		Instmap = unreachable
-	;
-		map__det_insert(InstMapping0, Var, Inst, InstMapping),
-		Instmap = reachable(InstMapping)
-	).
-
-%-----------------------------------------------------------------------------%
-
-instmap_delta_bind_var_to_functor(Var, ConsId, InstMap,
-		InstmapDelta0, InstmapDelta, ModuleInfo0, ModuleInfo) :-
-	( 
-		InstmapDelta0 = unreachable,
-		InstmapDelta = unreachable,
-		ModuleInfo = ModuleInfo0
-	;
-		InstmapDelta0 = reachable(InstmappingDelta0),
-
-		%
-		% Get the initial inst from the InstMap
-		%
-		instmap__lookup_var(InstMap, Var, OldInst),
-
-		%
-		% Compute the new inst by taking the old inst,
-		% applying the instmap delta to it,
-		% and then unifying with bound(ConsId, ...)
-		%
-		( map__search(InstmappingDelta0, Var, NewInst0) ->
-			NewInst1 = NewInst0
-		;
-			NewInst1 = OldInst
-		),
-		bind_inst_to_functor(NewInst1, ConsId, NewInst,
-			ModuleInfo0, ModuleInfo),
-
-		%
-		% add `Var :: OldInst -> NewInst' to the instmap delta
-		%
-		( NewInst \= OldInst ->
-			instmap_delta_set(InstmapDelta0, Var, NewInst,
-				InstmapDelta)
-		;
-			InstmapDelta = InstmapDelta0
-		)
-	).
-
-instmap__bind_var_to_functor(Var, ConsId, InstMap0, InstMap,
-		ModuleInfo0, ModuleInfo) :-
-	instmap__lookup_var(InstMap0, Var, Inst0),
-	bind_inst_to_functor(Inst0, ConsId, Inst, ModuleInfo0, ModuleInfo),
-	instmap__set(InstMap0, Var, Inst, InstMap).
-
-:- pred bind_inst_to_functor((inst), cons_id, (inst),
-		module_info, module_info). 
-:- mode bind_inst_to_functor(in, in, out, in, out) is det.
-
-bind_inst_to_functor(Inst0, ConsId, Inst, ModuleInfo0, ModuleInfo) :-
-	cons_id_arity(ConsId, Arity),
-	list__duplicate(Arity, dead, ArgLives),
-	list__duplicate(Arity, free, ArgInsts),
+instmap_delta_set(reachable(InstMapping0, BwdMap0), Var, Inst, Instmap) :-
 	(
-		abstractly_unify_inst_functor(dead, Inst0, ConsId, ArgInsts, 
-			ArgLives, real_unify, ModuleInfo0, Inst1, _Det,
-			ModuleInfo1)
+		Inst = not_reached
 	->
-		ModuleInfo = ModuleInfo1,
-		Inst = Inst1
+		Instmap = unreachable
 	;
-		error("bind_inst_to_functor: mode error")
+        	inst_keys_in_inst(Inst, [], Keys),
+        	add_backward_dependencies(Keys, Var, BwdMap0, BwdMap),
+		map__set(InstMapping0, Var, Inst, InstMapping),
+		Instmap = reachable(InstMapping, BwdMap)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -474,35 +437,48 @@ instmap__pre_lambda_update(ModuleInfo, Vars, Modes, InstMap0, InstMap) :-
 	% instmap to produce a new instmap.
 
 instmap__apply_instmap_delta(unreachable, _, unreachable).
-instmap__apply_instmap_delta(reachable(_), unreachable, unreachable).
-instmap__apply_instmap_delta(reachable(InstMapping0),
-		reachable(InstMappingDelta), reachable(InstMapping)) :-
-	map__overlay(InstMapping0, InstMappingDelta, InstMapping).
+instmap__apply_instmap_delta(reachable(_, _), unreachable, unreachable).
+instmap__apply_instmap_delta(reachable(InstMapping0, BwdMap0),
+		reachable(InstMappingDelta, BwdMapDelta),
+		reachable(InstMapping, BwdMap)) :-
+	map__overlay(InstMapping0, InstMappingDelta, InstMapping),
+	map__overlay(BwdMap0, BwdMapDelta, BwdMap).
 
 	% Given two instmap_deltas, overlay the entries in the second
 	% instmap_delta on top of those in the first to produce a new
 	% instmap_delta.
 
 instmap_delta_apply_instmap_delta(unreachable, _, unreachable).
-instmap_delta_apply_instmap_delta(reachable(_), unreachable, unreachable).
-instmap_delta_apply_instmap_delta(reachable(InstMappingDelta0),
-		reachable(InstMappingDelta1), reachable(InstMappingDelta)) :-
-	map__overlay(InstMappingDelta0, InstMappingDelta1, InstMappingDelta).
+instmap_delta_apply_instmap_delta(reachable(_, _), unreachable, unreachable).
+instmap_delta_apply_instmap_delta(reachable(InstMappingDelta0, BwdMap0),
+		reachable(InstMappingDelta1, BwdMap1),
+		reachable(InstMappingDelta, BwdMap)) :-
+	map__overlay(InstMappingDelta0, InstMappingDelta1, InstMappingDelta),
+	map__overlay(BwdMap0, BwdMap1, BwdMap).
 
 %-----------------------------------------------------------------------------%
 
 instmap__restrict(unreachable, _, unreachable).
-instmap__restrict(reachable(InstMapping0), Vars, reachable(InstMapping)) :-
-	map__select(InstMapping0, Vars, InstMapping).
+instmap__restrict(reachable(InstMapping0, BwdMap0), Vars,
+		reachable(InstMapping, BwdMap)) :-
+	map__select(InstMapping0, Vars, InstMapping),
+%	multi_map_select_values(BwdMap0, Vars, BwdMap),
+	%%% Delete vars from the BwdMap too?
+	BwdMap0 = BwdMap.
 
 instmap_delta_restrict(unreachable, _, unreachable).
-instmap_delta_restrict(reachable(InstMapping0), Vars, reachable(InstMapping)) :-
-	map__select(InstMapping0, Vars, InstMapping).
+instmap_delta_restrict(reachable(InstMapping0, BwdMap0), Vars,
+		reachable(InstMapping, BwdMap)) :-
+	map__select(InstMapping0, Vars, InstMapping),
+	%%% Delete vars from the BwdMap too?
+	BwdMap0 = BwdMap.
 
 instmap_delta_delete_vars(unreachable, _, unreachable).
-instmap_delta_delete_vars(reachable(InstMapping0), Vars,
-		reachable(InstMapping)) :-
-	map__delete_list(InstMapping0, Vars, InstMapping).
+instmap_delta_delete_vars(reachable(InstMapping0, BwdMap0), Vars,
+		reachable(InstMapping, BwdMap)) :-
+	map__delete_list(InstMapping0, Vars, InstMapping),
+	%%% Delete vars from the BwdMap too?
+	BwdMap0 = BwdMap.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -520,10 +496,14 @@ instmap__merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 	( InstMappingList = [] ->
 		InstMap = unreachable,
 		ModeInfo2 = ModeInfo0
-	; InstMap0 = reachable(InstMapping0) ->
+	; InstMap0 = reachable(InstMapping0, _BwdMap0) ->
+		% YYY Change for local inst_key_tables
+		module_info_inst_key_table(ModuleInfo0, IKT0),
 		set__to_sorted_list(NonLocals, NonLocalsList),
-		instmap__merge_2(NonLocalsList, InstMapList, ModuleInfo0,
-			InstMapping0, ModuleInfo, InstMapping, ErrorList),
+		instmap__merge_2(NonLocalsList, InstMapList, IKT0, ModuleInfo0,
+			InstMapping0, IKT, ModuleInfo1, InstMapping, ErrorList),
+		% YYY Change for local inst_key_tables
+		module_info_set_inst_key_table(ModuleInfo1, IKT, ModuleInfo),
 		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
 		( ErrorList = [FirstError | _] ->
 			FirstError = Var - _,
@@ -535,7 +515,9 @@ instmap__merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 		;
 			ModeInfo2 = ModeInfo1
 		),
-		InstMap = reachable(InstMapping)
+		map__init(BwdMap0),
+		bwd_mapping_from_instmapping(InstMapping, BwdMap0, BwdMap),
+		InstMap = reachable(InstMapping, BwdMap)
 	;
 		InstMap = unreachable,
 		ModeInfo2 = ModeInfo0
@@ -547,7 +529,7 @@ instmap__merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 
 get_reachable_instmaps([], []).
 get_reachable_instmaps([InstMap | InstMaps], Reachables) :-
-	( InstMap = reachable(InstMapping) ->
+	( InstMap = reachable(InstMapping, _BwdMap) ->
 		Reachables = [InstMapping | Reachables1],
 		get_reachable_instmaps(InstMaps, Reachables1)
 	;
@@ -561,17 +543,18 @@ get_reachable_instmaps([InstMap | InstMaps], Reachables) :-
 	%       there are two instmaps in `InstMaps' for which the inst
 	%       the variable is incompatible.
 
-:- pred instmap__merge_2(list(var), list(instmap), module_info, map(var, inst),
-			module_info, map(var, inst), merge_errors).
-:- mode instmap__merge_2(in, in, in, in, out, out, out) is det.
+:- pred instmap__merge_2(list(var), list(instmap), inst_key_table, module_info,
+			map(var, inst), inst_key_table, module_info,
+			map(var, inst), merge_errors).
+:- mode instmap__merge_2(in, in, in, in, in, out, out, out, out) is det.
 
-instmap__merge_2([], _, ModuleInfo, InstMap, ModuleInfo, InstMap, []).
-instmap__merge_2([Var|Vars], InstMapList, ModuleInfo0, InstMap0,
-			ModuleInfo, InstMap, ErrorList) :-
-	instmap__merge_2(Vars, InstMapList, ModuleInfo0, InstMap0,
-			ModuleInfo1, InstMap1, ErrorList1),
-	instmap__merge_var(InstMapList, Var, ModuleInfo1,
-			Insts, Inst, ModuleInfo, Error),
+instmap__merge_2([], _, IKT, ModuleInfo, InstMap, IKT, ModuleInfo, InstMap, []).
+instmap__merge_2([Var|Vars], InstMapList, IKT0, ModuleInfo0, InstMap0,
+			IKT, ModuleInfo, InstMap, ErrorList) :-
+	instmap__merge_2(Vars, InstMapList, IKT0, ModuleInfo0, InstMap0,
+			IKT1, ModuleInfo1, InstMap1, ErrorList1),
+	instmap__merge_var(InstMapList, Var, IKT1, ModuleInfo1,
+			Insts, Inst, IKT, ModuleInfo, Error),
 	( Error = yes ->
 		ErrorList = [Var - Insts | ErrorList1],
 		map__set(InstMap1, Var, not_reached, InstMap)
@@ -586,52 +569,59 @@ instmap__merge_2([Var|Vars], InstMapList, ModuleInfo0, InstMap0,
 	%       there are two instmaps for which the inst of `Var'
 	%       is incompatible.
 
-:- pred instmap__merge_var(list(instmap), var, module_info,
-				list(inst), inst, module_info, bool).
-:- mode instmap__merge_var(in, in, in, out, out, out, out) is det.
+:- pred instmap__merge_var(list(instmap), var, inst_key_table, module_info,
+			list(inst), inst, inst_key_table, module_info, bool).
+:- mode instmap__merge_var(in, in, in, in, out, out, out, out, out) is det.
 
-instmap__merge_var([], _, ModuleInfo, [], not_reached, ModuleInfo, no).
-instmap__merge_var([InstMap | InstMaps], Var, ModuleInfo0,
-		InstList, Inst, ModuleInfo, Error) :-
-	instmap__merge_var(InstMaps, Var, ModuleInfo0,
-		InstList0, Inst0, ModuleInfo1, Error0),
-	instmap__lookup_var(InstMap, Var, VarInst),
+instmap__merge_var([], _, IKT, ModuleInfo, [],
+		not_reached, IKT, ModuleInfo, no).
+instmap__merge_var([InstMap | InstMaps], Var, IKT0, ModuleInfo0,
+		InstList, Inst, IKT, ModuleInfo, Error) :-
+	instmap__merge_var(InstMaps, Var, IKT0, ModuleInfo0,
+		InstList0, Inst0, IKT1, ModuleInfo1, Error0),
+	module_info_inst_key_table(ModuleInfo0, InstKeyTable),
+	instmap__lookup_var(InstMap, Var, VarInst0),
+	inst_expand_fully(VarInst0, InstKeyTable, VarInst),
 	InstList = [VarInst | InstList0],
-	( inst_merge(Inst0, VarInst, ModuleInfo1, Inst1, ModuleInfo2) ->
+	( inst_merge(Inst0, VarInst, IKT1, ModuleInfo1,
+			Inst1, IKT2, ModuleInfo2) ->
 		Inst = Inst1,
 		ModuleInfo = ModuleInfo2,
-		Error = Error0
+		Error = Error0,
+		IKT = IKT2
 	;
 		Error = yes,
 		ModuleInfo = ModuleInfo1,
-		Inst = not_reached
+		Inst = not_reached,
+		IKT = IKT1
 	).
 
 %-----------------------------------------------------------------------------%
 
 merge_instmap_deltas(InstMap, NonLocals, InstMapDeltaList, MergedDelta,
-		ModuleInfo0, ModuleInfo) :-
+		IKT0, IKT, ModuleInfo0, ModuleInfo) :-
 	(
 		InstMapDeltaList = [],
 		error("merge_instmap_deltas: empty instmap_delta list.")
 	;
 		InstMapDeltaList = [Delta|Deltas],
 		merge_instmap_deltas(InstMap, NonLocals, Delta, Deltas,
-			MergedDelta, ModuleInfo0, ModuleInfo)
+			MergedDelta, IKT0, IKT, ModuleInfo0, ModuleInfo)
 	).
 
 :- pred merge_instmap_deltas(instmap, set(var), instmap_delta,
-		list(instmap_delta), instmap_delta, module_info, module_info).
-:- mode merge_instmap_deltas(in, in, in, in, out, in, out) is det.
+		list(instmap_delta), instmap_delta, inst_key_table,
+		inst_key_table, module_info, module_info).
+:- mode merge_instmap_deltas(in, in, in, in, out, in, out, in, out) is det.
 
 merge_instmap_deltas(_InstMap, _NonLocals, MergedDelta, [], MergedDelta,
-		ModuleInfo, ModuleInfo).
+		IKT, IKT, ModuleInfo, ModuleInfo).
 merge_instmap_deltas(InstMap, NonLocals, MergedDelta0, [Delta|Deltas],
-		MergedDelta, ModuleInfo0, ModuleInfo) :-
+		MergedDelta, IKT0, IKT, ModuleInfo0, ModuleInfo) :-
 	merge_instmap_delta(InstMap, NonLocals, MergedDelta0, Delta,
-		MergedDelta1, ModuleInfo0, ModuleInfo1),
+		MergedDelta1, IKT0, IKT1, ModuleInfo0, ModuleInfo1),
 	merge_instmap_deltas(InstMap, NonLocals, MergedDelta1, Deltas,
-		MergedDelta, ModuleInfo1, ModuleInfo).
+		MergedDelta, IKT1, IKT, ModuleInfo1, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -641,12 +631,14 @@ merge_instmap_deltas(InstMap, NonLocals, MergedDelta0, [Delta|Deltas],
 	% variables.
 
 compute_instmap_delta(unreachable, _, _, unreachable).
-compute_instmap_delta(reachable(_), unreachable, _, unreachable).
-compute_instmap_delta(reachable(InstMapA), reachable(InstMapB), NonLocals,
-			reachable(DeltaInstMap)) :-
+compute_instmap_delta(reachable(_, _), unreachable, _, unreachable).
+compute_instmap_delta(reachable(InstMapA, _BwdA), reachable(InstMapB, _BwdB),
+		NonLocals, reachable(DeltaInstMap, BwdMap)) :-
 	set__to_sorted_list(NonLocals, NonLocalsList),
 	compute_instmap_delta_2(NonLocalsList, InstMapA, InstMapB, AssocList),
-	map__from_sorted_assoc_list(AssocList, DeltaInstMap).
+	map__from_sorted_assoc_list(AssocList, DeltaInstMap),
+	map__init(BwdMap0),
+	bwd_mapping_from_assoc_list(AssocList, BwdMap0, BwdMap).
 
 :- pred compute_instmap_delta_2(list(var), instmapping, instmapping,
 					assoc_list(var, inst)).
@@ -666,16 +658,20 @@ compute_instmap_delta_2([Var | Vars], InstMapA, InstMapB, AssocList) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-instmap__no_output_vars(_, unreachable, _, _).
-instmap__no_output_vars(InstMap0, reachable(InstMapDelta), Vars, M) :-
+instmap__no_output_vars(_, unreachable, _, _, _).
+instmap__no_output_vars(InstMap0, reachable(InstMapDelta, _BwdMap), Vars,
+		IKT, ModuleInfo) :-
 	set__to_sorted_list(Vars, VarList),
-	instmap__no_output_vars_2(VarList, InstMap0, InstMapDelta, M).
+	instmap__no_output_vars_2(VarList, InstMap0, InstMapDelta,
+		IKT, ModuleInfo).
 
-:- pred instmap__no_output_vars_2(list(var), instmap, instmapping, module_info).
-:- mode instmap__no_output_vars_2(in, in, in, in) is semidet.
+:- pred instmap__no_output_vars_2(list(var), instmap, instmapping,
+		inst_key_table, module_info).
+:- mode instmap__no_output_vars_2(in, in, in, in, in) is semidet.
 
-instmap__no_output_vars_2([], _, _, _).
-instmap__no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, ModuleInfo) :-
+instmap__no_output_vars_2([], _, _, _, _).
+instmap__no_output_vars_2([Var | Vars], InstMap0, InstMapDelta,
+		IKT, ModuleInfo) :-
 	% We use `inst_matches_binding' to check that the new inst
 	% has only added information or lost uniqueness,
 	% not bound anything.
@@ -690,28 +686,33 @@ instmap__no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, ModuleInfo) :-
 	;
 		Inst = Inst0
 	),
-	inst_matches_binding(Inst, Inst0, ModuleInfo),
-	instmap__no_output_vars_2(Vars, InstMap0, InstMapDelta, ModuleInfo).
+	inst_matches_binding(Inst, Inst0, IKT, ModuleInfo),
+	instmap__no_output_vars_2(Vars, InstMap0, InstMapDelta, IKT,
+		ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 	% Given two instmap deltas, merge them to produce a new instmap_delta.
 
-merge_instmap_delta(_, _, unreachable, InstMapDelta, InstMapDelta) --> [].
-merge_instmap_delta(_, _, reachable(InstMapping), unreachable,
-				reachable(InstMapping)) --> [].
-merge_instmap_delta(InstMap, NonLocals, reachable(InstMappingA),
-		reachable(InstMappingB), reachable(InstMapping)) -->
-	merge_instmapping_delta(InstMap, NonLocals, InstMappingA,
-		InstMappingB, InstMapping).
+merge_instmap_delta(_, _, unreachable, InstMap, InstMap, IKT, IKT) --> [].
+merge_instmap_delta(_, _, reachable(InstMapping, BwdMap), unreachable,
+			reachable(InstMapping, BwdMap), IKT, IKT) --> [].
+merge_instmap_delta(InstMap, NonLocals, reachable(InstMappingA, _BwdA),
+		reachable(InstMappingB, _BwdB), reachable(InstMapping, Bwd),
+		IKT0, IKT) -->
+	merge_instmapping_delta(InstMap, NonLocals, InstMappingA, InstMappingB,
+		InstMapping, IKT0, IKT),
+	{ map__init(Bwd0) },
+	{ bwd_mapping_from_instmapping(InstMapping, Bwd0, Bwd) }.
 
 :- pred merge_instmapping_delta(instmap, set(var), instmapping, instmapping,
-		instmapping, module_info, module_info).
-:- mode merge_instmapping_delta(in, in, in, in, out, in, out) is det.
+		instmapping, inst_key_table, inst_key_table,
+		module_info, module_info).
+:- mode merge_instmapping_delta(in, in, in, in, out, in, out, in, out) is det.
 
 merge_instmapping_delta(InstMap, NonLocals, InstMappingA,
-		InstMappingB, InstMapping) -->
+		InstMappingB, InstMapping, IKT, IKT0) -->
 	{ map__keys(InstMappingA, VarsInA) },
 	{ map__keys(InstMappingB, VarsInB) },
 	{ set__sorted_list_to_set(VarsInA, SetofVarsInA) },
@@ -720,16 +721,19 @@ merge_instmapping_delta(InstMap, NonLocals, InstMappingA,
 	{ map__init(InstMapping0) },
 	{ set__to_sorted_list(SetofVars, ListofVars) },
 	merge_instmapping_delta_2(ListofVars, InstMap, InstMappingA,
-		InstMappingB, InstMapping0, InstMapping).
+		InstMappingB, InstMapping0, InstMapping, IKT, IKT0).
 
 :- pred merge_instmapping_delta_2(list(var), instmap, instmapping, instmapping,
-			instmapping, instmapping, module_info, module_info).
-:- mode merge_instmapping_delta_2(in, in, in, in, in, out, in, out) is det.
+		instmapping, instmapping, inst_key_table, inst_key_table,
+		module_info, module_info).
+:- mode merge_instmapping_delta_2(in, in, in, in,
+		in, out, in, out, in, out) is det.
 
 merge_instmapping_delta_2([], _, _, _, InstMapping, InstMapping,
-		ModInfo, ModInfo).
+			IKT, IKT, ModInfo, ModInfo).
 merge_instmapping_delta_2([Var | Vars], InstMap, InstMappingA, InstMappingB,
-			InstMapping0, InstMapping, ModuleInfo0, ModuleInfo) :-
+			InstMapping0, InstMapping, IKT0, IKT,
+			ModuleInfo0, ModuleInfo) :-
 	( map__search(InstMappingA, Var, InstInA) ->
 		InstA = InstInA
 	;
@@ -741,27 +745,31 @@ merge_instmapping_delta_2([Var | Vars], InstMap, InstMappingA, InstMappingB,
 		instmap__lookup_var(InstMap, Var, InstB)
 	),
 	(
-		inst_merge(InstA, InstB, ModuleInfo0,
-			Inst, ModuleInfoPrime)
+		inst_merge(InstA, InstB, IKT0, ModuleInfo0,
+			Inst, IKTPrime, ModuleInfoPrime)
 	->
 		ModuleInfo1 = ModuleInfoPrime,
+		IKT1 = IKTPrime,
 		map__det_insert(InstMapping0, Var, Inst, InstMapping1)
 	;
 		error("merge_instmapping_delta_2: unexpected mode error")
 	),
 	merge_instmapping_delta_2(Vars, InstMap, InstMappingA, InstMappingB,
-		InstMapping1, InstMapping, ModuleInfo1, ModuleInfo).
+		InstMapping1, InstMapping, IKT1, IKT, ModuleInfo1, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 instmap_delta_apply_sub(unreachable, _Must, _Sub, unreachable).
-instmap_delta_apply_sub(reachable(OldInstMapping), Must, Sub,
-		reachable(InstMapping)) :-
+instmap_delta_apply_sub(reachable(OldInstMapping, OldBwd), Must, Sub,
+		reachable(InstMapping, Bwd)) :-
 	map__to_assoc_list(OldInstMapping, InstMappingAL),
 	map__init(InstMapping0),
 	instmap_delta_apply_sub_2(InstMappingAL, Must, Sub,
-		InstMapping0, InstMapping).
+		InstMapping0, InstMapping),
+	multi_map__to_assoc_list(OldBwd, BwdAL),
+	multi_map__init(Bwd0),
+	instmap_delta_apply_sub_bwd(BwdAL, Must, Sub, Bwd0, Bwd).
 
 instmap__apply_sub(InstMap0, Must, Sub, InstMap) :-
 	instmap_delta_apply_sub(InstMap0, Must, Sub, InstMap).
@@ -791,15 +799,34 @@ instmap_delta_apply_sub_2([V - I | AL], Must, Sub, IM0, IM) :-
 	map__set(IM0, N, I, IM1),
 	instmap_delta_apply_sub_2(AL, Must, Sub, IM1, IM).
 
+:- pred instmap_delta_apply_sub_bwd(assoc_list(inst_key, list(var)), bool,
+		map(var, var), bwd_mapping, bwd_mapping).
+:- mode instmap_delta_apply_sub_bwd(in, in, in, in, out) is det.
+
+instmap_delta_apply_sub_bwd([], _Must, _Sub, IM, IM).
+instmap_delta_apply_sub_bwd([K - Vs0 | AL0], Must, Sub, IM0, IM) :-
+	goal_util__rename_var_list(Vs0, Must, Sub, Vs),
+	map__det_insert(IM0, K, Vs, IM1),
+	instmap_delta_apply_sub_bwd(AL0, Must, Sub, IM1, IM).
+
+:- pred add_backward_dependencies(list(inst_key), var,
+		bwd_mapping, bwd_mapping).
+:- mode add_backward_dependencies(in, in, in, out) is det.
+
+add_backward_dependencies([], _V, BwdMap, BwdMap).
+add_backward_dependencies([K | Ks], V, BwdMap0, BwdMap) :-
+	multi_map__set(BwdMap0, K, V, BwdMap1),
+	add_backward_dependencies(Ks, V, BwdMap1, BwdMap).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 instmap__to_assoc_list(unreachable, []).
-instmap__to_assoc_list(reachable(InstMapping), AL) :-
+instmap__to_assoc_list(reachable(InstMapping, _Bwd), AL) :-
 	map__to_assoc_list(InstMapping, AL).
 
 instmap_delta_to_assoc_list(unreachable, []).
-instmap_delta_to_assoc_list(reachable(InstMapping), AL) :-
+instmap_delta_to_assoc_list(reachable(InstMapping, _Bwd), AL) :-
 	map__to_assoc_list(InstMapping, AL).
 
 %-----------------------------------------------------------------------------%

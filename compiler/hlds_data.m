@@ -397,6 +397,9 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 :- pred inst_table_get_mostly_uniq_insts(inst_table, mostly_uniq_inst_table).
 :- mode inst_table_get_mostly_uniq_insts(in, out) is det.
 
+:- pred inst_table_get_inst_key_table(inst_table, inst_key_table).
+:- mode inst_table_get_inst_key_table(in, out) is det.
+
 :- pred inst_table_set_user_insts(inst_table, user_inst_table, inst_table).
 :- mode inst_table_set_user_insts(in, in, out) is det.
 
@@ -415,6 +418,9 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 :- pred inst_table_set_mostly_uniq_insts(inst_table, mostly_uniq_inst_table,
 					inst_table).
 :- mode inst_table_set_mostly_uniq_insts(in, in, out) is det.
+
+:- pred inst_table_set_inst_key_table(inst_table, inst_key_table, inst_table).
+:- mode inst_table_set_inst_key_table(in, in, out) is det.
 
 :- pred user_inst_table_get_inst_defns(user_inst_table, user_inst_defns).
 :- mode user_inst_table_get_inst_defns(in, out) is det.
@@ -440,7 +446,8 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 			merge_inst_table,
 			ground_inst_table,
 			shared_inst_table,
-			mostly_uniq_inst_table
+			mostly_uniq_inst_table,
+			inst_key_table
 		).
 
 :- type user_inst_defns.
@@ -453,47 +460,57 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 		).
 
 inst_table_init(inst_table(UserInsts, UnifyInsts, MergeInsts, GroundInsts,
-				SharedInsts, NondetLiveInsts)) :-
+			SharedInsts, NondetLiveInsts, InstKeys)) :-
 	map__init(UserInstDefns),
 	UserInsts = user_inst_table(UserInstDefns, []),
 	map__init(UnifyInsts),
 	map__init(MergeInsts),
 	map__init(GroundInsts),
 	map__init(SharedInsts),
-	map__init(NondetLiveInsts).
+	map__init(NondetLiveInsts),
+	inst_key_table_init(InstKeys).
 
-inst_table_get_user_insts(inst_table(UserInsts, _, _, _, _, _), UserInsts).
+inst_table_get_user_insts(inst_table(UserInsts, _, _, _, _, _, _), UserInsts).
 
-inst_table_get_unify_insts(inst_table(_, UnifyInsts, _, _, _, _), UnifyInsts).
+inst_table_get_unify_insts(inst_table(_, UnifyInsts, _, _, _, _, _),
+			UnifyInsts).
 
-inst_table_get_merge_insts(inst_table(_, _, MergeInsts, _, _, _), MergeInsts).
+inst_table_get_merge_insts(inst_table(_, _, MergeInsts, _, _, _, _),
+			MergeInsts).
 
-inst_table_get_ground_insts(inst_table(_, _, _, GroundInsts, _, _),
+inst_table_get_ground_insts(inst_table(_, _, _, GroundInsts, _, _, _),
 			GroundInsts).
 
-inst_table_get_shared_insts(inst_table(_, _, _, _, SharedInsts, _),
+inst_table_get_shared_insts(inst_table(_, _, _, _, SharedInsts, _, _),
 			SharedInsts).
 
-inst_table_get_mostly_uniq_insts(inst_table(_, _, _, _, _, NondetLiveInsts),
+inst_table_get_mostly_uniq_insts(inst_table(_, _, _, _, _, NondetLiveInsts, _),
 			NondetLiveInsts).
 
-inst_table_set_user_insts(inst_table(_, B, C, D, E, F), UserInsts,
-			inst_table(UserInsts, B, C, D, E, F)).
+inst_table_get_inst_key_table(inst_table(_, _, _, _, _, _, InstKeyTable),
+			InstKeyTable).
 
-inst_table_set_unify_insts(inst_table(A, _, C, D, E, F), UnifyInsts,
-			inst_table(A, UnifyInsts, C, D, E, F)).
+inst_table_set_user_insts(inst_table(_, B, C, D, E, F, G), UserInsts,
+			inst_table(UserInsts, B, C, D, E, F, G)).
 
-inst_table_set_merge_insts(inst_table(A, B, _, D, E, F), MergeInsts,
-			inst_table(A, B, MergeInsts, D, E, F)).
+inst_table_set_unify_insts(inst_table(A, _, C, D, E, F, G), UnifyInsts,
+			inst_table(A, UnifyInsts, C, D, E, F, G)).
 
-inst_table_set_ground_insts(inst_table(A, B, C, _, E, F), GroundInsts,
-			inst_table(A, B, C, GroundInsts, E, F)).
+inst_table_set_merge_insts(inst_table(A, B, _, D, E, F, G), MergeInsts,
+			inst_table(A, B, MergeInsts, D, E, F, G)).
 
-inst_table_set_shared_insts(inst_table(A, B, C, D, _, F), SharedInsts,
-			inst_table(A, B, C, D, SharedInsts, F)).
+inst_table_set_ground_insts(inst_table(A, B, C, _, E, F, G), GroundInsts,
+			inst_table(A, B, C, GroundInsts, E, F, G)).
 
-inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, _), NondetLiveInsts,
-			inst_table(A, B, C, D, E, NondetLiveInsts)).
+inst_table_set_shared_insts(inst_table(A, B, C, D, _, F, G), SharedInsts,
+			inst_table(A, B, C, D, SharedInsts, F, G)).
+
+inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, _, G),
+			NondetLiveInsts,
+			inst_table(A, B, C, D, E, NondetLiveInsts, G)).
+
+inst_table_set_inst_key_table(inst_table(A, B, C, D, E, F, _), InstKeys,
+			inst_table(A, B, C, D, E, F, InstKeys)).
 
 user_inst_table_get_inst_defns(user_inst_table(InstDefns, _), InstDefns).
 

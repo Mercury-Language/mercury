@@ -17,7 +17,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, globals.
-:- import_module instmap.
+:- import_module instmap, (inst).
 :- import_module bool, set, list.
 
 :- type maybe_changed	--->	changed ; unchanged.
@@ -83,6 +83,12 @@
 
 :- pred det_info_set_module_info(det_info, module_info, det_info).
 :- mode det_info_set_module_info(in, in, out) is det.
+
+:- pred det_info_get_inst_key_table(det_info, inst_key_table).
+:- mode det_info_get_inst_key_table(in, out) is det.
+
+:- pred det_info_set_inst_key_table(det_info, inst_key_table, det_info).
+:- mode det_info_set_inst_key_table(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -150,7 +156,19 @@ det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn) :-
 
 det_no_output_vars(Vars, InstMap, InstMapDelta, DetInfo) :-
 	det_info_get_module_info(DetInfo, ModuleInfo),
-	instmap__no_output_vars(InstMap, InstMapDelta, Vars, ModuleInfo).
+	det_info_get_inst_key_table(DetInfo, IKT),
+	instmap__no_output_vars(InstMap, InstMapDelta, Vars, IKT, ModuleInfo).
+
+det_info_get_inst_key_table(DetInfo, IKT) :-
+	% YYY Change for local inst_key_tables
+	det_info_get_module_info(DetInfo, ModuleInfo),
+	module_info_inst_key_table(ModuleInfo, IKT).
+
+det_info_set_inst_key_table(DetInfo0, IKT, DetInfo) :-
+	% YYY Change for local inst_key_tables
+	det_info_get_module_info(DetInfo0, ModuleInfo0),
+	module_info_set_inst_key_table(ModuleInfo0, IKT, ModuleInfo),
+	det_info_set_module_info(DetInfo0, ModuleInfo, DetInfo).
 
 %-----------------------------------------------------------------------------%
 

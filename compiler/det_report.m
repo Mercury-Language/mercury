@@ -94,7 +94,7 @@
 
 :- implementation.
 
-:- import_module hlds_data, type_util, mode_util, inst_match.
+:- import_module hlds_data, type_util, mode_util, inst_match, instmap.
 :- import_module globals, options, prog_out, hlds_out, mercury_to_mercury.
 :- import_module passes_aux.
 
@@ -202,6 +202,8 @@ check_if_main_can_fail(_PredId, _ProcId, PredInfo, ProcInfo,
 check_for_multisoln_func(_PredId, _ProcId, PredInfo, ProcInfo,
 		ModuleInfo0, ModuleInfo) -->
 	{ proc_info_inferred_determinism(ProcInfo, InferredDetism) },
+	% YYY Change for local inst_key_tables
+	{ module_info_inst_key_table(ModuleInfo0, IKT0) },
 
 	% Functions can only have more than one solution if it is a
 	% non-standard mode.  Otherwise, they would not be referentially
@@ -220,7 +222,7 @@ check_for_multisoln_func(_PredId, _ProcId, PredInfo, ProcInfo,
 			FuncArgModes, _FuncResultMode) },
 		{ \+ (
 			list__member(FuncArgMode, FuncArgModes),
-			\+ mode_is_fully_input(ModuleInfo0, FuncArgMode)
+			\+ mode_is_fully_input(IKT0, ModuleInfo0, FuncArgMode)
 		  )
 	 	} 
 	->
@@ -231,7 +233,7 @@ check_for_multisoln_func(_PredId, _ProcId, PredInfo, ProcInfo,
 		io__write_string("Error: invalid determinism for function\n"),
 		prog_out__write_context(FuncContext),
 		io__write_string("  `"),
-		report_pred_name_mode(function, PredName, PredArgModes),
+		report_pred_name_mode(function, PredName, PredArgModes, IKT0),
 		io__write_string("':\n"),
 		prog_out__write_context(FuncContext),
 		io__write_string(
@@ -714,6 +716,7 @@ det_diagnose_write_switch_context(Context, [SwitchContext | SwitchContexts],
 det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ModeId) -->
 	{ det_info_get_module_info(DetInfo, ModuleInfo) },
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	{ module_info_inst_key_table(ModuleInfo, InstKeyTable) },
 	{ pred_info_name(PredInfo, PredName) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	%
@@ -754,7 +757,8 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ModeId) -->
 		{ proc_info_declared_argmodes(ProcInfo, ArgModes) },
 		prog_out__write_context(Context),
 		io__write_string("  call to `"),
-		report_pred_name_mode(PredOrFunc, PredName, ArgModes),
+		report_pred_name_mode(PredOrFunc, PredName, ArgModes,
+			InstKeyTable),
 		io__write_string("'")
 	).
 

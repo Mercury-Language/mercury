@@ -39,22 +39,29 @@ insert explicit calls to initialize constraint variables.
 
 %-----------------------------------------------------------------------------%
 
-:- pred inst_expand(module_info, inst, inst).
-:- mode inst_expand(in, in, out) is det.
+:- pred inst_expand(inst_key_table, module_info, inst, inst).
+:- mode inst_expand(in, in, in, out) is det.
 
-	% inst_expand(ModuleInfo, Inst0, Inst) checks if the top-level 
-	% part of the inst is a defined inst, and if so replaces it
-	% with the definition.
+	% inst_expand(IKT, ModuleInfo, Inst0, Inst) checks if the top-level 
+	% part of the inst is a defined inst or an alias, and if so
+	% replaces it with the definition.
+
+:- pred inst_expand_defined_inst(module_info, inst, inst).
+:- mode inst_expand_defined_inst(in, in, out) is det.
+
+	% inst_expand_defined_inst(ModuleInfo, Inst0, Inst) checks if the
+	% top-level part of the inst is a defined inst, and if so replaces
+	% it with the definition.
 
 %-----------------------------------------------------------------------------%
 
-:- pred inst_matches_initial(inst, inst, module_info).
-:- mode inst_matches_initial(in, in, in) is semidet.
+:- pred inst_matches_initial(inst, inst, inst_key_table, module_info).
+:- mode inst_matches_initial(in, in, in, in) is semidet.
 
-:- pred inst_matches_final(inst, inst, module_info).
-:- mode inst_matches_final(in, in, in) is semidet.
+:- pred inst_matches_final(inst, inst, inst_key_table, module_info).
+:- mode inst_matches_final(in, in, in, in) is semidet.
 
-	% inst_matches_initial(InstA, InstB, ModuleInfo):
+	% inst_matches_initial(InstA, InstB, IKT, ModuleInfo):
 	%	Succeed iff `InstA' specifies at least as much
 	%	information as `InstB', and in those parts where they
 	%	specify the same information, `InstA' is at least as
@@ -65,7 +72,7 @@ insert explicit calls to initialize constraint variables.
 	%	inst_matches_initial(bound(a), bound(a;b), _) should
 	%	succeed, but not vice versa.
 
-	% inst_matches_final(InstA, InstB, ModuleInfo):
+	% inst_matches_final(InstA, InstB, IKT, ModuleInfo):
 	%	Succeed iff InstA is compatible with InstB,
 	%	i.e. iff InstA will satisfy the final inst
 	%	requirement InstB.  This is true if the
@@ -103,10 +110,10 @@ insert explicit calls to initialize constraint variables.
 	% unique_matches_final(A, B) succeeds if A >= B in the ordering
 	% clobbered < mostly_clobbered < shared < mostly_unique < unique
 
-:- pred inst_matches_binding(inst, inst, module_info).
-:- mode inst_matches_binding(in, in, in) is semidet.
+:- pred inst_matches_binding(inst, inst, inst_key_table, module_info).
+:- mode inst_matches_binding(in, in, in, in) is semidet.
 
-	% inst_matches_binding(InstA, InstB, ModuleInfo):
+	% inst_matches_binding(InstA, InstB, IKT, ModuleInfo):
 	%	 Succeed iff the binding of InstA is definitely exactly the
 	%	 same as that of InstB.  This is the same as
 	%	 inst_matches_final except that it ignores uniqueness, and
@@ -122,8 +129,9 @@ insert explicit calls to initialize constraint variables.
 	%	and the same determinism, and if the arguments match
 	%	using pred_inst_argmodes_match.
 	%
-:- pred pred_inst_matches(pred_inst_info, pred_inst_info, module_info).
-:- mode pred_inst_matches(in, in, in) is semidet.
+:- pred pred_inst_matches(pred_inst_info, pred_inst_info, inst_key_table,
+		module_info).
+:- mode pred_inst_matches(in, in, in, in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -136,84 +144,91 @@ insert explicit calls to initialize constraint variables.
         % succeed if the inst is fully ground (i.e. contains only
         % `ground', `bound', and `not_reached' insts, with no `free'
         % or `any' insts).
-:- pred inst_is_ground(module_info, inst).
-:- mode inst_is_ground(in, in) is semidet.
+:- pred inst_is_ground(inst, inst_key_table, module_info).
+:- mode inst_is_ground(in, in, in) is semidet.
 
         % succeed if the inst is not partly free (i.e. contains only
         % `any', `ground', `bound', and `not_reached' insts, with no
         % `free' insts).
-:- pred inst_is_ground_or_any(module_info, inst).
-:- mode inst_is_ground_or_any(in, in) is semidet.
+:- pred inst_is_ground_or_any(inst, inst_key_table, module_info).
+:- mode inst_is_ground_or_any(in, in, in) is semidet.
 
         % succeed if the inst is `mostly_unique' or `unique'
-:- pred inst_is_mostly_unique(module_info, inst).
-:- mode inst_is_mostly_unique(in, in) is semidet.
+:- pred inst_is_mostly_unique(inst, inst_key_table, module_info).
+:- mode inst_is_mostly_unique(in, in, in) is semidet.
 
         % succeed if the inst is `unique'
-:- pred inst_is_unique(module_info, inst).
-:- mode inst_is_unique(in, in) is semidet.
+:- pred inst_is_unique(inst, inst_key_table, module_info).
+:- mode inst_is_unique(in, in, in) is semidet.
 
         % succeed if the inst is not `mostly_unique' or `unique'
-:- pred inst_is_not_partly_unique(module_info, inst).
-:- mode inst_is_not_partly_unique(in, in) is semidet.
+:- pred inst_is_not_partly_unique(inst, inst_key_table, module_info).
+:- mode inst_is_not_partly_unique(in, in, in) is semidet.
 
         % succeed if the inst is not `unique'
-:- pred inst_is_not_fully_unique(module_info, inst).
-:- mode inst_is_not_fully_unique(in, in) is semidet.
+:- pred inst_is_not_fully_unique(inst, inst_key_table, module_info).
+:- mode inst_is_not_fully_unique(in, in, in) is semidet.
 
-:- pred inst_is_clobbered(module_info, inst).
-:- mode inst_is_clobbered(in, in) is semidet.
+:- pred inst_is_clobbered(inst, inst_key_table, module_info).
+:- mode inst_is_clobbered(in, in, in) is semidet.
 
-:- pred inst_list_is_ground(list(inst), module_info).
-:- mode inst_list_is_ground(in, in) is semidet.
+:- pred inst_list_is_ground(list(inst), inst_key_table, module_info).
+:- mode inst_list_is_ground(in, in, in) is semidet.
 
-:- pred inst_list_is_ground_or_any(list(inst), module_info).
-:- mode inst_list_is_ground_or_any(in, in) is semidet.
+:- pred inst_list_is_ground_or_any(list(inst), inst_key_table, module_info).
+:- mode inst_list_is_ground_or_any(in, in, in) is semidet.
 
-:- pred inst_list_is_unique(list(inst), module_info).
-:- mode inst_list_is_unique(in, in) is semidet.
+:- pred inst_list_is_unique(list(inst), inst_key_table, module_info).
+:- mode inst_list_is_unique(in, in, in) is semidet.
 
-:- pred inst_list_is_mostly_unique(list(inst), module_info).
-:- mode inst_list_is_mostly_unique(in, in) is semidet.
+:- pred inst_list_is_mostly_unique(list(inst), inst_key_table, module_info).
+:- mode inst_list_is_mostly_unique(in, in, in) is semidet.
 
-:- pred inst_list_is_not_partly_unique(list(inst), module_info).
-:- mode inst_list_is_not_partly_unique(in, in) is semidet.
+:- pred inst_list_is_not_partly_unique(list(inst), inst_key_table, module_info).
+:- mode inst_list_is_not_partly_unique(in, in, in) is semidet.
 
-:- pred inst_list_is_not_fully_unique(list(inst), module_info).
-:- mode inst_list_is_not_fully_unique(in, in) is semidet.
+:- pred inst_list_is_not_fully_unique(list(inst), inst_key_table, module_info).
+:- mode inst_list_is_not_fully_unique(in, in, in) is semidet.
 
-:- pred bound_inst_list_is_ground(list(bound_inst), module_info).
-:- mode bound_inst_list_is_ground(in, in) is semidet.
+:- pred bound_inst_list_is_ground(list(bound_inst), inst_key_table,
+		module_info).
+:- mode bound_inst_list_is_ground(in, in, in) is semidet.
 
-:- pred bound_inst_list_is_ground_or_any(list(bound_inst), module_info).
-:- mode bound_inst_list_is_ground_or_any(in, in) is semidet.
+:- pred bound_inst_list_is_ground_or_any(list(bound_inst), inst_key_table,
+		module_info).
+:- mode bound_inst_list_is_ground_or_any(in, in, in) is semidet.
 
-:- pred bound_inst_list_is_unique(list(bound_inst), module_info).
-:- mode bound_inst_list_is_unique(in, in) is semidet.
+:- pred bound_inst_list_is_unique(list(bound_inst), inst_key_table,
+		module_info).
+:- mode bound_inst_list_is_unique(in, in, in) is semidet.
 
-:- pred bound_inst_list_is_mostly_unique(list(bound_inst), module_info).
-:- mode bound_inst_list_is_mostly_unique(in, in) is semidet.
+:- pred bound_inst_list_is_mostly_unique(list(bound_inst), inst_key_table,
+		module_info).
+:- mode bound_inst_list_is_mostly_unique(in, in, in) is semidet.
 
-:- pred bound_inst_list_is_not_partly_unique(list(bound_inst), module_info).
-:- mode bound_inst_list_is_not_partly_unique(in, in) is semidet.
+:- pred bound_inst_list_is_not_partly_unique(list(bound_inst), inst_key_table,
+		module_info).
+:- mode bound_inst_list_is_not_partly_unique(in, in, in) is semidet.
 
-:- pred bound_inst_list_is_not_fully_unique(list(bound_inst), module_info).
-:- mode bound_inst_list_is_not_fully_unique(in, in) is semidet.
+:- pred bound_inst_list_is_not_fully_unique(list(bound_inst), inst_key_table,
+		module_info).
+:- mode bound_inst_list_is_not_fully_unique(in, in, in) is semidet.
 
-:- pred inst_is_free(module_info, inst).
-:- mode inst_is_free(in, in) is semidet.
+:- pred inst_is_free(inst, inst_key_table, module_info).
+:- mode inst_is_free(in, in, in) is semidet.
 
-:- pred inst_list_is_free(list(inst), module_info).
-:- mode inst_list_is_free(in, in) is semidet.
+:- pred inst_list_is_free(list(inst), inst_key_table, module_info).
+:- mode inst_list_is_free(in, in, in) is semidet.
 
-:- pred bound_inst_list_is_free(list(bound_inst), module_info).
-:- mode bound_inst_list_is_free(in, in) is semidet.
+:- pred bound_inst_list_is_free(list(bound_inst), inst_key_table, module_info).
+:- mode bound_inst_list_is_free(in, in, in) is semidet.
 
-:- pred inst_is_bound(module_info, inst).
-:- mode inst_is_bound(in, in) is semidet.
+:- pred inst_is_bound(inst, inst_key_table, module_info).
+:- mode inst_is_bound(in, in, in) is semidet.
 
-:- pred inst_is_bound_to_functors(module_info, inst, list(bound_inst)).
-:- mode inst_is_bound_to_functors(in, in, out) is semidet.
+:- pred inst_is_bound_to_functors(inst, inst_key_table, module_info,
+		list(bound_inst)).
+:- mode inst_is_bound_to_functors(in, in, in, out) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -228,8 +243,9 @@ insert explicit calls to initialize constraint variables.
 	% the elemement is ground or the corresponding element in the liveness
 	% list is dead.
 
-:- pred inst_list_is_ground_or_dead(list(inst), list(is_live), module_info).
-:- mode inst_list_is_ground_or_dead(in, in, in) is semidet.
+:- pred inst_list_is_ground_or_dead(list(inst), list(is_live),
+		inst_key_table, module_info).
+:- mode inst_list_is_ground_or_dead(in, in, in, in) is semidet.
 
 	% Given a list of insts, and a corresponding list of livenesses,
 	% return true iff for every element in the list of insts, either
@@ -237,26 +253,27 @@ insert explicit calls to initialize constraint variables.
 	% in the liveness list is dead.
 
 :- pred inst_list_is_ground_or_any_or_dead(list(inst), list(is_live),
-					module_info).
-:- mode inst_list_is_ground_or_any_or_dead(in, in, in) is semidet.
+		inst_key_table, module_info).
+:- mode inst_list_is_ground_or_any_or_dead(in, in, in, in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module hlds_data, mode_util, prog_data, inst_util.
+:- import_module hlds_data, mode_util, det_analysis, prog_data, inst_util.
 :- import_module list, set, map, std_util, require.
 
-inst_matches_initial(InstA, InstB, ModuleInfo) :-
+inst_matches_initial(InstA, InstB, IKT, ModuleInfo) :-
 	set__init(Expansions),
-	inst_matches_initial_2(InstA, InstB, ModuleInfo, Expansions).
+	inst_matches_initial_2(InstA, InstB, IKT, ModuleInfo, Expansions).
 
 :- type expansions == set(pair(inst)).
 
-:- pred inst_matches_initial_2(inst, inst, module_info, expansions).
-:- mode inst_matches_initial_2(in, in, in, in) is semidet.
+:- pred inst_matches_initial_2(inst, inst, inst_key_table, module_info,
+		expansions).
+:- mode inst_matches_initial_2(in, in, in, in, in) is semidet.
 
-inst_matches_initial_2(InstA, InstB, ModuleInfo, Expansions) :-
+inst_matches_initial_2(InstA, InstB, IKT, ModuleInfo, Expansions) :-
 	ThisExpansion = InstA - InstB,
 	( set__member(ThisExpansion, Expansions) ->
 		true
@@ -266,107 +283,114 @@ inst_matches_initial_2(InstA, InstB, ModuleInfo, Expansions) :-
 		true
 **********/
 	;
-		inst_expand(ModuleInfo, InstA, InstA2),
-		inst_expand(ModuleInfo, InstB, InstB2),
+		inst_expand(IKT, ModuleInfo, InstA, InstA2),
+		inst_expand(IKT, ModuleInfo, InstB, InstB2),
 		set__insert(Expansions, ThisExpansion, Expansions2),
-		inst_matches_initial_3(InstA2, InstB2, ModuleInfo, Expansions2)
+		inst_matches_initial_3(InstA2, InstB2, IKT, ModuleInfo,
+			Expansions2)
 	).
 
-:- pred inst_matches_initial_3(inst, inst, module_info, expansions).
-:- mode inst_matches_initial_3(in, in, in, in) is semidet.
+:- pred inst_matches_initial_3(inst, inst, inst_key_table, module_info,
+		expansions).
+:- mode inst_matches_initial_3(in, in, in, in, in) is semidet.
 
 	% To avoid infinite regress, we assume that
 	% inst_matches_initial is true for any pairs of insts which
 	% occur in `Expansions'.
 
-inst_matches_initial_3(any(UniqA), any(UniqB), _, _) :-
+inst_matches_initial_3(any(UniqA), any(UniqB), _, _, _) :-
 	unique_matches_initial(UniqA, UniqB).
 /* not yet:
-inst_matches_initial_3(any(_), free, _, _).
-inst_matches_initial_3(free, any(_), _, _).
+inst_matches_initial_3(any(_), free, _, _, _).
+inst_matches_initial_3(free, any(_), _, _, _).
 */
-inst_matches_initial_3(free, free, _, _).
+inst_matches_initial_3(free, free, _, _, _).
 /* not yet:
-inst_matches_initial_3(bound(UniqA, ListA), any(UniqB), ModuleInfo, _) :-
+inst_matches_initial_3(bound(UniqA, ListA), any(UniqB), _, ModuleInfo, _) :-
 	unique_matches_initial(UniqA, UniqB),
 	bound_inst_list_matches_uniq(ListA, UniqB, ModuleInfo).
 */
-inst_matches_initial_3(bound(_Uniq, _List), free, _, _).
-inst_matches_initial_3(bound(UniqA, ListA), bound(UniqB, ListB), ModuleInfo,
-		Expansions) :-
+inst_matches_initial_3(bound(_Uniq, _List), free, _, _, _).
+inst_matches_initial_3(bound(UniqA, ListA), bound(UniqB, ListB), 
+			IKT, ModuleInfo, Expansions) :-
 	unique_matches_initial(UniqA, UniqB),
-	bound_inst_list_matches_initial(ListA, ListB, ModuleInfo, Expansions).
-inst_matches_initial_3(bound(UniqA, ListA), ground(UniqB, no), ModuleInfo, _) :-
+	bound_inst_list_matches_initial(ListA, ListB, IKT, ModuleInfo,
+			Expansions).
+inst_matches_initial_3(bound(UniqA, ListA), ground(UniqB, no), IKT, ModuleInfo,
+		_) :-
 	unique_matches_initial(UniqA, UniqB),
-	bound_inst_list_is_ground(ListA, ModuleInfo),
-	bound_inst_list_matches_uniq(ListA, UniqB, ModuleInfo).
-inst_matches_initial_3(bound(Uniq, List), abstract_inst(_,_), ModuleInfo, _) :-
+	bound_inst_list_is_ground(ListA, IKT, ModuleInfo),
+	bound_inst_list_matches_uniq(ListA, UniqB, IKT, ModuleInfo).
+inst_matches_initial_3(bound(Uniq, List), abstract_inst(_,_), IKT, ModuleInfo,
+		_) :-
 	Uniq = unique,
-	bound_inst_list_is_ground(List, ModuleInfo),
-	bound_inst_list_is_unique(List, ModuleInfo).
-inst_matches_initial_3(bound(Uniq, List), abstract_inst(_,_), ModuleInfo, _) :-
+	bound_inst_list_is_ground(List, IKT, ModuleInfo),
+	bound_inst_list_is_unique(List, IKT, ModuleInfo).
+inst_matches_initial_3(bound(Uniq, List), abstract_inst(_,_), IKT, ModuleInfo,
+		_) :-
 	Uniq = mostly_unique,
-	bound_inst_list_is_ground(List, ModuleInfo),
-	bound_inst_list_is_mostly_unique(List, ModuleInfo).
+	bound_inst_list_is_ground(List, IKT, ModuleInfo),
+	bound_inst_list_is_mostly_unique(List, IKT, ModuleInfo).
 /* not yet:
-inst_matches_initial_3(ground(UniqA, _PredInst), any(UniqB), _, _) :-
+inst_matches_initial_3(ground(UniqA, _PredInst), any(UniqB), _, _, _) :-
 	unique_matches_initial(UniqA, UniqB).
 */
-inst_matches_initial_3(ground(_Uniq, _PredInst), free, _, _).
-inst_matches_initial_3(ground(UniqA, _), bound(UniqB, List), ModuleInfo, _) :-
+inst_matches_initial_3(ground(_Uniq, _PredInst), free, _, _, _).
+inst_matches_initial_3(ground(UniqA, _), bound(UniqB, List), IKT, ModuleInfo,
+		_) :-
 	unique_matches_initial(UniqA, UniqB),
-	uniq_matches_bound_inst_list(UniqA, List, ModuleInfo),
+	uniq_matches_bound_inst_list(UniqA, List, IKT, ModuleInfo),
 	fail.	% XXX BUG! should fail only if 
 		% List does not include all the constructors for the type,
 		% or if List contains some not_reached insts.
 		% Should succeed if List contains all the constructors
 		% for the type.  Problem is we don't know what the type was :-(
 inst_matches_initial_3(ground(UniqA, PredInstA), ground(UniqB, PredInstB),
-		ModuleInfo, _) :-
-	maybe_pred_inst_matches_initial(PredInstA, PredInstB, ModuleInfo),
+		IKT, ModuleInfo, _) :-
+	maybe_pred_inst_matches_initial(PredInstA, PredInstB, IKT, ModuleInfo),
 	unique_matches_initial(UniqA, UniqB).
-inst_matches_initial_3(ground(_UniqA, no), abstract_inst(_,_), _, _) :-
+inst_matches_initial_3(ground(_UniqA, no), abstract_inst(_,_), _, _, _) :-
 		% I don't know what this should do.
 		% Abstract insts aren't really supported.
 	error("inst_matches_initial(ground, abstract_inst) == ??").
 /* not yet:
-inst_matches_initial_3(abstract_inst(_,_), any(shared), _, _).
+inst_matches_initial_3(abstract_inst(_,_), any(shared), _, _, _).
 */
-inst_matches_initial_3(abstract_inst(_,_), free, _, _).
+inst_matches_initial_3(abstract_inst(_,_), free, _, _, _).
 inst_matches_initial_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
-				ModuleInfo, Expansions) :-
-	inst_list_matches_initial(ArgsA, ArgsB, ModuleInfo, Expansions).
-inst_matches_initial_3(not_reached, _, _, _).
+				IKT, ModuleInfo, Expansions) :-
+	inst_list_matches_initial(ArgsA, ArgsB, IKT, ModuleInfo, Expansions).
+inst_matches_initial_3(not_reached, _, _, _, _).
 
 %-----------------------------------------------------------------------------%
 
 :- pred maybe_pred_inst_matches_initial(maybe(pred_inst_info),
-		maybe(pred_inst_info), module_info).
-:- mode maybe_pred_inst_matches_initial(in, in, in) is semidet.
+		maybe(pred_inst_info), inst_key_table, module_info).
+:- mode maybe_pred_inst_matches_initial(in, in, in, in) is semidet.
 
-maybe_pred_inst_matches_initial(no, no, _).
-maybe_pred_inst_matches_initial(yes(_), no, _).
-maybe_pred_inst_matches_initial(yes(PredInstA), yes(PredInstB), ModuleInfo) :-
-	pred_inst_matches(PredInstA, PredInstB, ModuleInfo).
+maybe_pred_inst_matches_initial(no, no, _, _).
+maybe_pred_inst_matches_initial(yes(PredInstA), yes(PredInstB), IKT,
+		ModuleInfo) :-
+	pred_inst_matches(PredInstA, PredInstB, IKT, ModuleInfo).
 
-pred_inst_matches(PredInstA, PredInstB, ModuleInfo) :-
+pred_inst_matches(PredInstA, PredInstB, IKT, ModuleInfo) :-
 	set__init(Expansions),
-	pred_inst_matches_2(PredInstA, PredInstB, ModuleInfo, Expansions).
+	pred_inst_matches_2(PredInstA, PredInstB, IKT, ModuleInfo, Expansions).
 
-	% pred_inst_matches_2(PredInstA, PredInstB, ModuleInfo, Expansions)
-	%	Same as pred_inst_matches/3, except that inst pairs in
+	% pred_inst_matches_2(PredInstA, PredInstB, IKT, ModuleInfo, Expansions)
+	%	Same as pred_inst_matches/4, except that inst pairs in
 	%	Expansions are assumed to match_final each other.
 	%	(This avoids infinite loops when calling inst_matches_final
 	%	on higher-order recursive insts.)
 	%
-:- pred pred_inst_matches_2(pred_inst_info, pred_inst_info, module_info,
-			expansions).
-:- mode pred_inst_matches_2(in, in, in, in) is semidet.
+:- pred pred_inst_matches_2(pred_inst_info, pred_inst_info, inst_key_table,
+			module_info, expansions).
+:- mode pred_inst_matches_2(in, in, in, in, in) is semidet.
 
 pred_inst_matches_2(pred_inst_info(PredOrFunc, ModesA, Det),
 		pred_inst_info(PredOrFunc, ModesB, Det),
-		ModuleInfo, Expansions) :-
-	pred_inst_argmodes_matches(ModesA, ModesB, ModuleInfo, Expansions).
+		IKT, ModuleInfo, Expansions) :-
+	pred_inst_argmodes_matches(ModesA, ModesB, IKT, ModuleInfo, Expansions).
 
 	% pred_inst_matches_argmodes(ModesA, ModesB, ModuleInfo, Expansions):
 	% succeeds if the initial insts of ModesB specify at least as
@@ -377,17 +401,17 @@ pred_inst_matches_2(pred_inst_info(PredOrFunc, ModesA, Det),
 	% to match_final each other.
 	%
 :- pred pred_inst_argmodes_matches(list(mode), list(mode),
-				module_info, expansions).
-:- mode pred_inst_argmodes_matches(in, in, in, in) is semidet.
+				inst_key_table, module_info, expansions).
+:- mode pred_inst_argmodes_matches(in, in, in, in, in) is semidet.
 
-pred_inst_argmodes_matches([], [], _, _).
+pred_inst_argmodes_matches([], [], _, _, _).
 pred_inst_argmodes_matches([ModeA|ModeAs], [ModeB|ModeBs],
-		ModuleInfo, Expansions) :-
+		IKT, ModuleInfo, Expansions) :-
 	mode_get_insts(ModuleInfo, ModeA, InitialA, FinalA),
 	mode_get_insts(ModuleInfo, ModeB, InitialB, FinalB),
-	inst_matches_final_2(InitialB, InitialA, ModuleInfo, Expansions),
-	inst_matches_final_2(FinalA, FinalB, ModuleInfo, Expansions),
-	pred_inst_argmodes_matches(ModeAs, ModeBs, ModuleInfo, Expansions).
+	inst_matches_final_2(InitialB, InitialA, IKT, ModuleInfo, Expansions),
+	inst_matches_final_2(FinalA, FinalB, IKT, ModuleInfo, Expansions),
+	pred_inst_argmodes_matches(ModeAs, ModeBs, IKT, ModuleInfo, Expansions).
 
 %-----------------------------------------------------------------------------%
 
@@ -409,27 +433,27 @@ unique_matches_final(A, B) :-
 %-----------------------------------------------------------------------------%
 
 :- pred bound_inst_list_matches_uniq(list(bound_inst), uniqueness,
-					module_info).
-:- mode bound_inst_list_matches_uniq(in, in, in) is semidet.
+					inst_key_table, module_info).
+:- mode bound_inst_list_matches_uniq(in, in, in, in) is semidet.
 
-bound_inst_list_matches_uniq(List, Uniq, ModuleInfo) :-
+bound_inst_list_matches_uniq(List, Uniq, IKT, ModuleInfo) :-
 	( Uniq = unique ->
-		bound_inst_list_is_unique(List, ModuleInfo)
+		bound_inst_list_is_unique(List, IKT, ModuleInfo)
 	; Uniq = mostly_unique ->
-		bound_inst_list_is_mostly_unique(List, ModuleInfo)
+		bound_inst_list_is_mostly_unique(List, IKT, ModuleInfo)
 	;
 		true
 	).
 
 :- pred uniq_matches_bound_inst_list(uniqueness, list(bound_inst),
-					module_info).
-:- mode uniq_matches_bound_inst_list(in, in, in) is semidet.
+					inst_key_table, module_info).
+:- mode uniq_matches_bound_inst_list(in, in, in, in) is semidet.
 
-uniq_matches_bound_inst_list(Uniq, List, ModuleInfo) :-
+uniq_matches_bound_inst_list(Uniq, List, IKT, ModuleInfo) :-
 	( Uniq = shared ->
-		bound_inst_list_is_not_partly_unique(List, ModuleInfo)
+		bound_inst_list_is_not_partly_unique(List, IKT, ModuleInfo)
 	; Uniq = mostly_unique ->
-		bound_inst_list_is_not_fully_unique(List, ModuleInfo)
+		bound_inst_list_is_not_fully_unique(List, IKT, ModuleInfo)
 	;
 		true
 	).
@@ -446,16 +470,18 @@ uniq_matches_bound_inst_list(Uniq, List, ModuleInfo) :-
 	% are sorted.
 
 :- pred bound_inst_list_matches_initial(list(bound_inst), list(bound_inst),
-					module_info, expansions).
-:- mode bound_inst_list_matches_initial(in, in, in, in) is semidet.
+				inst_key_table, module_info, expansions).
+:- mode bound_inst_list_matches_initial(in, in, in, in, in) is semidet.
 
-bound_inst_list_matches_initial([], _, _, _).
-bound_inst_list_matches_initial([X|Xs], [Y|Ys], ModuleInfo, Expansions) :-
+bound_inst_list_matches_initial([], _, _, _, _).
+bound_inst_list_matches_initial([X|Xs], [Y|Ys], IKT, ModuleInfo, Expansions) :-
 	X = functor(ConsIdX, ArgsX),
 	Y = functor(ConsIdY, ArgsY),
 	( ConsIdX = ConsIdY ->
-		inst_list_matches_initial(ArgsX, ArgsY, ModuleInfo, Expansions),
-		bound_inst_list_matches_initial(Xs, Ys, ModuleInfo, Expansions)
+		inst_list_matches_initial(ArgsX, ArgsY, IKT, ModuleInfo,
+			Expansions),
+		bound_inst_list_matches_initial(Xs, Ys, IKT, ModuleInfo,
+			Expansions)
 	;
 		compare(>, ConsIdX, ConsIdY),
 			% ConsIdY does not occur in [X|Xs].
@@ -463,122 +489,135 @@ bound_inst_list_matches_initial([X|Xs], [Y|Ys], ModuleInfo, Expansions) :-
 			% for the args of ConsIdY, and hence 
 			% automatically matches_initial Y.  We just need to
 			% check that [X|Xs] matches_initial Ys.
-		bound_inst_list_matches_initial([X|Xs], Ys, ModuleInfo,
-					Expansions)
+		bound_inst_list_matches_initial([X|Xs], Ys, 
+					IKT, ModuleInfo, Expansions)
 	).
 
-:- pred inst_list_matches_initial(list(inst), list(inst), module_info,
-				expansions).
-:- mode inst_list_matches_initial(in, in, in, in) is semidet.
+:- pred inst_list_matches_initial(list(inst), list(inst), 
+				inst_key_table, module_info, expansions).
+:- mode inst_list_matches_initial(in, in, in, in, in) is semidet.
 
-inst_list_matches_initial([], [], _, _).
-inst_list_matches_initial([X|Xs], [Y|Ys], ModuleInfo, Expansions) :-
-	inst_matches_initial_2(X, Y, ModuleInfo, Expansions),
-	inst_list_matches_initial(Xs, Ys, ModuleInfo, Expansions).
+inst_list_matches_initial([], [], _, _, _).
+inst_list_matches_initial([X|Xs], [Y|Ys], IKT, ModuleInfo, Expansions) :-
+	inst_matches_initial_2(X, Y, IKT, ModuleInfo, Expansions),
+	inst_list_matches_initial(Xs, Ys, IKT, ModuleInfo, Expansions).
 
 %-----------------------------------------------------------------------------%
 
-inst_expand(ModuleInfo, Inst0, Inst) :-
+inst_expand(IKT, ModuleInfo, Inst0, Inst) :-
 	( Inst0 = defined_inst(InstName) ->
 		inst_lookup(ModuleInfo, InstName, Inst1),
-		inst_expand(ModuleInfo, Inst1, Inst)
+		inst_expand(IKT, ModuleInfo, Inst1, Inst)
+	; Inst0 = alias(InstKey) ->
+		inst_key_table_lookup(IKT, InstKey, Inst1),
+		inst_expand(IKT, ModuleInfo, Inst1, Inst)
+	;
+		Inst = Inst0
+	).
+
+inst_expand_defined_inst(ModuleInfo, Inst0, Inst) :-
+	( Inst0 = defined_inst(InstName) ->
+		inst_lookup(ModuleInfo, InstName, Inst1),
+		inst_expand_defined_inst(ModuleInfo, Inst1, Inst)
 	;
 		Inst = Inst0
 	).
 
 %-----------------------------------------------------------------------------%
 
-inst_matches_final(InstA, InstB, ModuleInfo) :-
+inst_matches_final(InstA, InstB, IKT, ModuleInfo) :-
 	set__init(Expansions),
-	inst_matches_final_2(InstA, InstB, ModuleInfo, Expansions).
+	inst_matches_final_2(InstA, InstB, IKT, ModuleInfo, Expansions).
 
-:- pred inst_matches_final_2(inst, inst, module_info, expansions).
-:- mode inst_matches_final_2(in, in, in, in) is semidet.
+:- pred inst_matches_final_2(inst, inst, inst_key_table, module_info,
+		expansions).
+:- mode inst_matches_final_2(in, in, in, in, in) is semidet.
 
-inst_matches_final_2(InstA, InstB, ModuleInfo, Expansions) :-
+inst_matches_final_2(InstA, InstB, IKT, ModuleInfo, Expansions) :-
 	ThisExpansion = InstA - InstB,
 	( set__member(ThisExpansion, Expansions) ->
 		true
 	; InstA = InstB ->
 		true
 	;
-		inst_expand(ModuleInfo, InstA, InstA2),
-		inst_expand(ModuleInfo, InstB, InstB2),
+		inst_expand(IKT, ModuleInfo, InstA, InstA2),
+		inst_expand(IKT, ModuleInfo, InstB, InstB2),
 		set__insert(Expansions, ThisExpansion, Expansions2),
-		inst_matches_final_3(InstA2, InstB2, ModuleInfo,
+		inst_matches_final_3(InstA2, InstB2, IKT, ModuleInfo,
 			Expansions2)
 	).
 
-:- pred inst_matches_final_3(inst, inst, module_info, expansions).
-:- mode inst_matches_final_3(in, in, in, in) is semidet.
+:- pred inst_matches_final_3(inst, inst, inst_key_table, module_info,
+		expansions).
+:- mode inst_matches_final_3(in, in, in, in, in) is semidet.
 
-inst_matches_final_3(any(UniqA), any(UniqB), _, _) :-
+inst_matches_final_3(any(UniqA), any(UniqB), _, _, _) :-
 	unique_matches_final(UniqA, UniqB).
 /***
 	% not yet:
-inst_matches_final_3(free, any(_), _, _).
+inst_matches_final_3(free, any(_), _, _, _).
 ***/
-inst_matches_final_3(free, free, _, _).
+inst_matches_final_3(free, free, _, _, _).
 /*
 not yet:
-inst_matches_final_3(bound(UniqA, ListA), any(UniqB), ModuleInfo, Expansions) :-
+inst_matches_final_3(bound(UniqA, ListA), any(UniqB), _, _, _) :-
 	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_matches_uniq(ListA, UniqB).
 */
-inst_matches_final_3(bound(UniqA, ListA), bound(UniqB, ListB), ModuleInfo,
-		Expansions) :-
+inst_matches_final_3(bound(UniqA, ListA), bound(UniqB, ListB), 
+			IKT, ModuleInfo, Expansions) :-
 	unique_matches_final(UniqA, UniqB),
-	bound_inst_list_matches_final(ListA, ListB, ModuleInfo, Expansions).
-inst_matches_final_3(bound(UniqA, ListA), ground(UniqB, no), ModuleInfo,
-		_Exps) :-
-	unique_matches_final(UniqA, UniqB),
-	bound_inst_list_is_ground(ListA, ModuleInfo),
-	bound_inst_list_matches_uniq(ListA, UniqB, ModuleInfo).
-/* not yet:
-inst_matches_final_3(ground(UniqA, _), any(UniqB), ModuleInfo, Expansions) :-
-	unique_matches_final(UniqA, UniqB).
-*/
-inst_matches_final_3(ground(UniqA, _), bound(UniqB, ListB), ModuleInfo,
+	bound_inst_list_matches_final(ListA, ListB, IKT, ModuleInfo,
+			Expansions).
+inst_matches_final_3(bound(UniqA, ListA), ground(UniqB, no), IKT, ModuleInfo,
 			_Exps) :-
 	unique_matches_final(UniqA, UniqB),
-	bound_inst_list_is_ground(ListB, ModuleInfo),
-	uniq_matches_bound_inst_list(UniqA, ListB, ModuleInfo).
+	bound_inst_list_is_ground(ListA, IKT, ModuleInfo),
+	bound_inst_list_matches_uniq(ListA, UniqB, IKT, ModuleInfo).
+/* not yet:
+inst_matches_final_3(ground(UniqA, _), any(UniqB), _, _, _) :-
+	unique_matches_final(UniqA, UniqB).
+*/
+inst_matches_final_3(ground(UniqA, _), bound(UniqB, ListB), IKT, ModuleInfo,
+			_Exps) :-
+	unique_matches_final(UniqA, UniqB),
+	uniq_matches_bound_inst_list(UniqA, ListB, IKT, ModuleInfo).
 		% XXX BUG! Should fail if there are not_reached
 		% insts in ListB, or if ListB does not contain a complete list
 		% of all the constructors for the type in question.
 	%%% error("not implemented: `ground' matches_final `bound(...)'").
 inst_matches_final_3(ground(UniqA, PredInstA), ground(UniqB, PredInstB),
-		ModuleInfo, Expansions) :-
+		IKT, ModuleInfo, Expansions) :-
 	maybe_pred_inst_matches_final(PredInstA, PredInstB,
-		ModuleInfo, Expansions),
+		IKT, ModuleInfo, Expansions),
 	unique_matches_final(UniqA, UniqB).
 /* not yet:
-inst_matches_final_2(abstract_inst(_, _), any(shared), _, _).
+inst_matches_final_3(abstract_inst(_, _), any(shared), _, _, _).
 */
 inst_matches_final_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
-		ModuleInfo, Expansions) :-
-	inst_list_matches_final(ArgsA, ArgsB, ModuleInfo, Expansions).
-inst_matches_final_3(not_reached, _, _, _).
+			IKT, ModuleInfo, Expansions) :-
+	inst_list_matches_final(ArgsA, ArgsB, IKT, ModuleInfo, Expansions).
+inst_matches_final_3(not_reached, _, _, _, _).
 
 :- pred maybe_pred_inst_matches_final(maybe(pred_inst_info),
-		maybe(pred_inst_info), module_info, expansions).
-:- mode maybe_pred_inst_matches_final(in, in, in, in) is semidet.
+		maybe(pred_inst_info), inst_key_table, module_info, expansions).
+:- mode maybe_pred_inst_matches_final(in, in, in, in, in) is semidet.
 
-maybe_pred_inst_matches_final(no, no, _, _).
-maybe_pred_inst_matches_final(yes(_), no, _, _).
+maybe_pred_inst_matches_final(no, no, _, _, _).
+maybe_pred_inst_matches_final(yes(_), no, _, _, _).
 maybe_pred_inst_matches_final(yes(PredInstA), yes(PredInstB),
-		ModuleInfo, Expansions) :-
-	pred_inst_matches_2(PredInstA, PredInstB, ModuleInfo, Expansions).
+		IKT, ModuleInfo, Expansions) :-
+	pred_inst_matches_2(PredInstA, PredInstB, IKT, ModuleInfo, Expansions).
 
-:- pred inst_list_matches_final(list(inst), list(inst), module_info,
-				expansions).
-:- mode inst_list_matches_final(in, in, in, in) is semidet.
+:- pred inst_list_matches_final(list(inst), list(inst), 
+			inst_key_table, module_info, expansions).
+:- mode inst_list_matches_final(in, in, in, in, in) is semidet.
 
-inst_list_matches_final([], [], _ModuleInfo, _).
-inst_list_matches_final([ArgA | ArgsA], [ArgB | ArgsB], ModuleInfo,
-			Expansions) :-
-	inst_matches_final_2(ArgA, ArgB, ModuleInfo, Expansions),
-	inst_list_matches_final(ArgsA, ArgsB, ModuleInfo, Expansions).
+inst_list_matches_final([], [], _, _ModuleInfo, _).
+inst_list_matches_final([ArgA | ArgsA], [ArgB | ArgsB],
+			IKT, ModuleInfo, Expansions) :-
+	inst_matches_final_2(ArgA, ArgB, IKT, ModuleInfo, Expansions),
+	inst_list_matches_final(ArgsA, ArgsB, IKT, ModuleInfo, Expansions).
 
 	% Here we check that the functors in the first list are a
 	% subset of the functors in the second list. 
@@ -590,16 +629,18 @@ inst_list_matches_final([ArgA | ArgsA], [ArgB | ArgsB], ModuleInfo,
 	% are sorted.
 
 :- pred bound_inst_list_matches_final(list(bound_inst), list(bound_inst),
-					module_info, expansions).
-:- mode bound_inst_list_matches_final(in, in, in, in) is semidet.
+				inst_key_table, module_info, expansions).
+:- mode bound_inst_list_matches_final(in, in, in, in, in) is semidet.
 
-bound_inst_list_matches_final([], _, _, _).
-bound_inst_list_matches_final([X|Xs], [Y|Ys], ModuleInfo, Expansions) :-
+bound_inst_list_matches_final([], _, _, _, _).
+bound_inst_list_matches_final([X|Xs], [Y|Ys], IKT, ModuleInfo, Expansions) :-
 	X = functor(ConsIdX, ArgsX),
 	Y = functor(ConsIdY, ArgsY),
 	( ConsIdX = ConsIdY ->
-		inst_list_matches_final(ArgsX, ArgsY, ModuleInfo, Expansions),
-		bound_inst_list_matches_final(Xs, Ys, ModuleInfo, Expansions)
+		inst_list_matches_final(ArgsX, ArgsY, IKT, ModuleInfo,
+			Expansions),
+		bound_inst_list_matches_final(Xs, Ys, IKT, ModuleInfo,
+			Expansions)
 	;
 		compare(>, ConsIdX, ConsIdY),
 			% ConsIdY does not occur in [X|Xs].
@@ -607,73 +648,76 @@ bound_inst_list_matches_final([X|Xs], [Y|Ys], ModuleInfo, Expansions) :-
 			% for the args of ConsIdY, and hence 
 			% automatically matches_final Y.  We just need to
 			% check that [X|Xs] matches_final Ys.
-		bound_inst_list_matches_final([X|Xs], Ys, ModuleInfo,
-					Expansions)
+		bound_inst_list_matches_final([X|Xs], Ys, IKT, ModuleInfo,
+			Expansions)
 	).
 
-inst_matches_binding(InstA, InstB, ModuleInfo) :-
+inst_matches_binding(InstA, InstB, IKT, ModuleInfo) :-
 	set__init(Expansions),
-	inst_matches_binding_2(InstA, InstB, ModuleInfo, Expansions).
+	inst_matches_binding_2(InstA, InstB, IKT, ModuleInfo, Expansions).
 
-:- pred inst_matches_binding_2(inst, inst, module_info, expansions).
-:- mode inst_matches_binding_2(in, in, in, in) is semidet.
+:- pred inst_matches_binding_2(inst, inst, inst_key_table, module_info,
+		expansions).
+:- mode inst_matches_binding_2(in, in, in, in, in) is semidet.
 
-inst_matches_binding_2(InstA, InstB, ModuleInfo, Expansions) :-
+inst_matches_binding_2(InstA, InstB, IKT, ModuleInfo, Expansions) :-
 	ThisExpansion = InstA - InstB,
 	( set__member(ThisExpansion, Expansions) ->
 		true
 	;
-		inst_expand(ModuleInfo, InstA, InstA2),
-		inst_expand(ModuleInfo, InstB, InstB2),
+		inst_expand(IKT, ModuleInfo, InstA, InstA2),
+		inst_expand(IKT, ModuleInfo, InstB, InstB2),
 		set__insert(Expansions, ThisExpansion, Expansions2),
-		inst_matches_binding_3(InstA2, InstB2, ModuleInfo,
+		inst_matches_binding_3(InstA2, InstB2, IKT, ModuleInfo,
 			Expansions2)
 	).
 
-:- pred inst_matches_binding_3(inst, inst, module_info, expansions).
-:- mode inst_matches_binding_3(in, in, in, in) is semidet.
+:- pred inst_matches_binding_3(inst, inst, inst_key_table, module_info,
+		expansions).
+:- mode inst_matches_binding_3(in, in, in, in, in) is semidet.
 
 % Note that `any' is *not* considered to match `any'.
-inst_matches_binding_3(free, free, _, _).
-inst_matches_binding_3(bound(_UniqA, ListA), bound(_UniqB, ListB), ModuleInfo,
-		Expansions) :-
-	bound_inst_list_matches_binding(ListA, ListB, ModuleInfo, Expansions).
-inst_matches_binding_3(bound(_UniqA, ListA), ground(_UniqB, no), ModuleInfo,
-		_Exps) :-
-	bound_inst_list_is_ground(ListA, ModuleInfo).
-inst_matches_binding_3(ground(_UniqA, _), bound(_UniqB, ListB), ModuleInfo,
-			_Exps) :-
-	bound_inst_list_is_ground(ListB, ModuleInfo).
+inst_matches_binding_3(free, free, _, _, _).
+inst_matches_binding_3(bound(_UniqA, ListA), bound(_UniqB, ListB), IKT,
+		ModuleInfo, Expansions) :-
+	bound_inst_list_matches_binding(ListA, ListB, IKT, ModuleInfo,
+		Expansions).
+inst_matches_binding_3(bound(_UniqA, ListA), ground(_UniqB, no), IKT,
+			ModuleInfo, _Exps) :-
+	bound_inst_list_is_ground(ListA, IKT, ModuleInfo).
+inst_matches_binding_3(ground(_UniqA, _), bound(_UniqB, ListB), IKT,
+			ModuleInfo, _Exps) :-
+	bound_inst_list_is_ground(ListB, IKT, ModuleInfo).
 		% XXX BUG! Should fail if there are not_reached
 		% insts in ListB, or if ListB does not contain a complete list
 		% of all the constructors for the type in question.
 	%%% error("not implemented: `ground' matches_binding `bound(...)'").
 inst_matches_binding_3(ground(_UniqA, PredInstA), ground(_UniqB, PredInstB),
-		ModuleInfo, _) :-
-	pred_inst_matches_binding(PredInstA, PredInstB, ModuleInfo).
+		IKT, ModuleInfo, _) :-
+	pred_inst_matches_binding(PredInstA, PredInstB, IKT, ModuleInfo).
 inst_matches_binding_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
-		ModuleInfo, Expansions) :-
-	inst_list_matches_binding(ArgsA, ArgsB, ModuleInfo, Expansions).
-inst_matches_binding_3(not_reached, _, _, _).
+		IKT, ModuleInfo, Expansions) :-
+	inst_list_matches_binding(ArgsA, ArgsB, IKT, ModuleInfo, Expansions).
+inst_matches_binding_3(not_reached, _, _, _, _).
 
 :- pred pred_inst_matches_binding(maybe(pred_inst_info), maybe(pred_inst_info),
-		module_info).
-:- mode pred_inst_matches_binding(in, in, in) is semidet.
+		inst_key_table, module_info).
+:- mode pred_inst_matches_binding(in, in, in, in) is semidet.
 
-pred_inst_matches_binding(no, no, _).
-pred_inst_matches_binding(yes(_), no, _).
-pred_inst_matches_binding(yes(PredInstA), yes(PredInstB), ModuleInfo) :-
-	pred_inst_matches(PredInstA, PredInstB, ModuleInfo).
+pred_inst_matches_binding(no, no, _, _).
+pred_inst_matches_binding(yes(_), no, _, _).
+pred_inst_matches_binding(yes(PredInstA), yes(PredInstB), IKT, ModuleInfo) :-
+	pred_inst_matches(PredInstA, PredInstB, IKT, ModuleInfo).
 
-:- pred inst_list_matches_binding(list(inst), list(inst), module_info,
-				expansions).
-:- mode inst_list_matches_binding(in, in, in, in) is semidet.
+:- pred inst_list_matches_binding(list(inst), list(inst), inst_key_table,
+		module_info, expansions).
+:- mode inst_list_matches_binding(in, in, in, in, in) is semidet.
 
-inst_list_matches_binding([], [], _ModuleInfo, _).
-inst_list_matches_binding([ArgA | ArgsA], [ArgB | ArgsB], ModuleInfo,
+inst_list_matches_binding([], [], _IKT, _ModuleInfo, _).
+inst_list_matches_binding([ArgA | ArgsA], [ArgB | ArgsB], IKT, ModuleInfo,
 			Expansions) :-
-	inst_matches_binding_2(ArgA, ArgB, ModuleInfo, Expansions),
-	inst_list_matches_binding(ArgsA, ArgsB, ModuleInfo, Expansions).
+	inst_matches_binding_2(ArgA, ArgB, IKT, ModuleInfo, Expansions),
+	inst_list_matches_binding(ArgsA, ArgsB, IKT, ModuleInfo, Expansions).
 
 	% Here we check that the functors in the first list are a
 	% subset of the functors in the second list. 
@@ -685,16 +729,18 @@ inst_list_matches_binding([ArgA | ArgsA], [ArgB | ArgsB], ModuleInfo,
 	% are sorted.
 
 :- pred bound_inst_list_matches_binding(list(bound_inst), list(bound_inst),
-					module_info, expansions).
-:- mode bound_inst_list_matches_binding(in, in, in, in) is semidet.
+				inst_key_table, module_info, expansions).
+:- mode bound_inst_list_matches_binding(in, in, in, in, in) is semidet.
 
-bound_inst_list_matches_binding([], _, _, _).
-bound_inst_list_matches_binding([X|Xs], [Y|Ys], ModuleInfo, Expansions) :-
+bound_inst_list_matches_binding([], _, _, _, _).
+bound_inst_list_matches_binding([X|Xs], [Y|Ys], IKT, ModuleInfo, Expansions) :-
 	X = functor(ConsIdX, ArgsX),
 	Y = functor(ConsIdY, ArgsY),
 	( ConsIdX = ConsIdY ->
-		inst_list_matches_binding(ArgsX, ArgsY, ModuleInfo, Expansions),
-		bound_inst_list_matches_binding(Xs, Ys, ModuleInfo, Expansions)
+		inst_list_matches_binding(ArgsX, ArgsY, IKT, ModuleInfo,
+				Expansions),
+		bound_inst_list_matches_binding(Xs, Ys, IKT, ModuleInfo,
+				Expansions)
 	;
 		compare(>, ConsIdX, ConsIdY),
 			% ConsIdX does not occur in [X|Xs].
@@ -702,483 +748,429 @@ bound_inst_list_matches_binding([X|Xs], [Y|Ys], ModuleInfo, Expansions) :-
 			% for the args of ConsIdY, and hence 
 			% automatically matches_binding Y.  We just need to
 			% check that [X|Xs] matches_binding Ys.
-		bound_inst_list_matches_binding([X|Xs], Ys, ModuleInfo,
-					Expansions)
+		bound_inst_list_matches_binding([X|Xs], Ys, IKT, ModuleInfo,
+			Expansions)
 	).
 
 %-----------------------------------------------------------------------------%
+
+:- type inst_property == pred(inst, inst_key_table, module_info, set(inst)).
+:- inst inst_property = (pred(in, in, in, in) is semidet).
 
         % inst_is_clobbered succeeds iff the inst passed is `clobbered'
         % or `mostly_clobbered' or if it is a user-defined inst which
         % is defined as one of those.
 
-inst_is_clobbered(_, not_reached) :- fail.
-inst_is_clobbered(_, any(mostly_clobbered)).
-inst_is_clobbered(_, any(clobbered)).
-inst_is_clobbered(_, ground(clobbered, _)).
-inst_is_clobbered(_, ground(mostly_clobbered, _)).
-inst_is_clobbered(_, bound(clobbered, _)).
-inst_is_clobbered(_, bound(mostly_clobbered, _)).
-inst_is_clobbered(_, inst_var(_)) :-
+inst_is_clobbered(not_reached, _, _) :- fail.
+inst_is_clobbered(any(mostly_clobbered), _, _).
+inst_is_clobbered(any(clobbered), _, _).
+inst_is_clobbered(ground(clobbered, _), _, _).
+inst_is_clobbered(ground(mostly_clobbered, _), _, _).
+inst_is_clobbered(bound(clobbered, _), _, _).
+inst_is_clobbered(bound(mostly_clobbered, _), _, _).
+inst_is_clobbered(inst_var(_), _, _) :-
         error("internal error: uninstantiated inst parameter").
-inst_is_clobbered(ModuleInfo, defined_inst(InstName)) :-
+inst_is_clobbered(defined_inst(InstName), IKT, ModuleInfo) :-
         inst_lookup(ModuleInfo, InstName, Inst),
-        inst_is_clobbered(ModuleInfo, Inst).
+        inst_is_clobbered(Inst, IKT, ModuleInfo).
+inst_is_clobbered(alias(Key), IKT, ModuleInfo) :-
+	inst_key_table_lookup(IKT, Key, Inst),
+	inst_is_clobbered(Inst, IKT, ModuleInfo).
+
 
         % inst_is_free succeeds iff the inst passed is `free'
         % or is a user-defined inst which is defined as `free'.
         % Abstract insts must not be free.
 
-inst_is_free(_, free).
-inst_is_free(_, free(_Type)).
-inst_is_free(_, inst_var(_)) :-
+inst_is_free(free, _, _).
+inst_is_free(free(_Type), _, _).
+inst_is_free(inst_var(_), _, _) :-
         error("internal error: uninstantiated inst parameter").
-inst_is_free(ModuleInfo, defined_inst(InstName)) :-
+inst_is_free(defined_inst(InstName), IKT, ModuleInfo) :-
         inst_lookup(ModuleInfo, InstName, Inst),
-        inst_is_free(ModuleInfo, Inst).
+        inst_is_free(Inst, IKT, ModuleInfo).
+inst_is_free(alias(Key), IKT, ModuleInfo) :-
+	inst_key_table_lookup(IKT, Key, Inst),
+	inst_is_free(Inst, IKT, ModuleInfo).
 
         % inst_is_bound succeeds iff the inst passed is not `free'
         % or is a user-defined inst which is not defined as `free'.
         % Abstract insts must be bound.
 
-inst_is_bound(_, not_reached).
-inst_is_bound(_, any(_)).
-inst_is_bound(_, ground(_, _)).
-inst_is_bound(_, bound(_, _)).
-inst_is_bound(_, inst_var(_)) :-
+inst_is_bound(not_reached, _, _).
+inst_is_bound(any(_), _, _).
+inst_is_bound(ground(_, _), _, _).
+inst_is_bound(bound(_, _), _, _).
+inst_is_bound(inst_var(_), _, _) :-
         error("internal error: uninstantiated inst parameter").
-inst_is_bound(ModuleInfo, defined_inst(InstName)) :-
+inst_is_bound(defined_inst(InstName), IKT, ModuleInfo) :-
         inst_lookup(ModuleInfo, InstName, Inst),
-        inst_is_bound(ModuleInfo, Inst).
-inst_is_bound(_, abstract_inst(_, _)).
+        inst_is_bound(Inst, IKT, ModuleInfo).
+inst_is_bound(abstract_inst(_, _), _, _).
+inst_is_bound(alias(Key), IKT, ModuleInfo) :-
+	inst_key_table_lookup(IKT, Key, Inst),
+	inst_is_bound(Inst, IKT, ModuleInfo).
 
         % inst_is_bound_to_functors succeeds iff the inst passed is
         % `bound(_Uniq, Functors)' or is a user-defined inst which expands to
         % `bound(_Uniq, Functors)'.
 
-inst_is_bound_to_functors(_, bound(_Uniq, Functors), Functors).
-inst_is_bound_to_functors(_, inst_var(_), _) :-
+inst_is_bound_to_functors(bound(_Uniq, Functors), _, _, Functors).
+inst_is_bound_to_functors(inst_var(_), _, _, _) :-
         error("internal error: uninstantiated inst parameter").
-inst_is_bound_to_functors(ModuleInfo, defined_inst(InstName), Functors) :-
+inst_is_bound_to_functors(defined_inst(InstName), IKT, ModuleInfo, Functors) :-
         inst_lookup(ModuleInfo, InstName, Inst),
-        inst_is_bound_to_functors(ModuleInfo, Inst, Functors).
+        inst_is_bound_to_functors(Inst, IKT, ModuleInfo, Functors).
+inst_is_bound_to_functors(alias(Key), IKT, ModuleInfo, Functors) :-
+	inst_key_table_lookup(IKT, Key, Inst),
+	inst_is_bound_to_functors(Inst, IKT, ModuleInfo, Functors).
 
 %-----------------------------------------------------------------------------%
 
         % inst_is_ground succeeds iff the inst passed is `ground'
         % or the equivalent.  Abstract insts are not considered ground.
 
-inst_is_ground(ModuleInfo, Inst) :-
+inst_is_ground(Inst, IKT, ModuleInfo) :-
         set__init(Expansions),
-        inst_is_ground_2(ModuleInfo, Inst, Expansions).
+        inst_is_ground_2(Inst, IKT, ModuleInfo, Expansions).
 
-        % The third arg is the set of insts which have already
+        % The fourth arg is the set of insts which have already
         % been expanded - we use this to avoid going into an
         % infinite loop.
 
-:- pred inst_is_ground_2(module_info, inst, set(inst)).
-:- mode inst_is_ground_2(in, in, in) is semidet.
+:- pred inst_is_ground_2(inst, inst_key_table, module_info, set(inst)).
+:- mode inst_is_ground_2(in, in, in, in) is semidet.
 
-inst_is_ground_2(_, not_reached, _).
-inst_is_ground_2(ModuleInfo, bound(_, List), Expansions) :-
-        bound_inst_list_is_ground_2(List, ModuleInfo, Expansions).
-inst_is_ground_2(_, ground(_, _), _).
-inst_is_ground_2(_, inst_var(_), _) :-
+inst_is_ground_2(not_reached, _, _, _).
+inst_is_ground_2(bound(_, List), IKT, ModuleInfo, Expansions) :-
+	bound_inst_list_has_property(inst_is_ground_2, List, IKT, ModuleInfo,
+		Expansions).
+inst_is_ground_2(ground(_, _), _, _, _).
+inst_is_ground_2(inst_var(_), _, _, _) :-
         error("internal error: uninstantiated inst parameter").
-inst_is_ground_2(ModuleInfo, Inst, Expansions) :-
+inst_is_ground_2(Inst, IKT, ModuleInfo, Expansions) :-
 	Inst = defined_inst(InstName),
         ( set__member(Inst, Expansions) ->
                 true
         ;
                 set__insert(Expansions, Inst, Expansions2),
                 inst_lookup(ModuleInfo, InstName, Inst2),
-                inst_is_ground_2(ModuleInfo, Inst2, Expansions2)
+                inst_is_ground_2(Inst2, IKT, ModuleInfo, Expansions2)
         ).
+inst_is_ground_2(alias(Key), IKT, ModuleInfo, Expansions) :-
+	inst_key_table_lookup(IKT, Key, Inst),
+	inst_is_ground_2(Inst, IKT, ModuleInfo, Expansions).
 
         % inst_is_ground_or_any succeeds iff the inst passed is `ground',
         % `any', or the equivalent.  Fails for abstract insts.
 
-inst_is_ground_or_any(ModuleInfo, Inst) :-
+inst_is_ground_or_any(Inst, IKT, ModuleInfo) :-
         set__init(Expansions),
-        inst_is_ground_or_any_2(ModuleInfo, Inst, Expansions).
+        inst_is_ground_or_any_2(Inst, IKT, ModuleInfo, Expansions).
 
-        % The third arg is the set of insts which have already
+        % The fourth arg is the set of insts which have already
         % been expanded - we use this to avoid going into an
         % infinite loop.
 
-:- pred inst_is_ground_or_any_2(module_info, inst, set(inst)).
-:- mode inst_is_ground_or_any_2(in, in, in) is semidet.
+:- pred inst_is_ground_or_any_2(inst, inst_key_table, module_info, set(inst)).
+:- mode inst_is_ground_or_any_2(in, in, in, in) is semidet.
 
-inst_is_ground_or_any_2(_, not_reached, _).
-inst_is_ground_or_any_2(ModuleInfo, bound(_, List), Expansions) :-
-        bound_inst_list_is_ground_or_any_2(List, ModuleInfo, Expansions).
-inst_is_ground_or_any_2(_, ground(_, _), _).
-inst_is_ground_or_any_2(_, any(_), _).
-inst_is_ground_or_any_2(_, inst_var(_), _) :-
+inst_is_ground_or_any_2(not_reached, _, _, _).
+inst_is_ground_or_any_2(bound(_, List), IKT, ModuleInfo, Expansions) :-
+	bound_inst_list_has_property(inst_is_ground_or_any_2, List, IKT,
+		ModuleInfo, Expansions).
+inst_is_ground_or_any_2(ground(_, _), _, _, _).
+inst_is_ground_or_any_2(any(_), _, _, _).
+inst_is_ground_or_any_2(inst_var(_), _, _, _) :-
         error("internal error: uninstantiated inst parameter").
-inst_is_ground_or_any_2(ModuleInfo, Inst, Expansions) :-
+inst_is_ground_or_any_2(Inst, IKT, ModuleInfo, Expansions) :-
 	Inst = defined_inst(InstName),
         ( set__member(Inst, Expansions) ->
                 true
         ;
                 set__insert(Expansions, Inst, Expansions2),
                 inst_lookup(ModuleInfo, InstName, Inst2),
-                inst_is_ground_or_any_2(ModuleInfo, Inst2, Expansions2)
+                inst_is_ground_or_any_2(Inst2, IKT, ModuleInfo, Expansions2)
         ).
+inst_is_ground_or_any_2(alias(Key), IKT, ModuleInfo, Expansions) :-
+	inst_key_table_lookup(IKT, Key, Inst),
+	inst_is_ground_or_any_2(Inst, IKT, ModuleInfo, Expansions).
 
         % inst_is_unique succeeds iff the inst passed is unique
         % or free.  Abstract insts are not considered unique.
 
-inst_is_unique(ModuleInfo, Inst) :-
+inst_is_unique(Inst, IKT, ModuleInfo) :-
         set__init(Expansions),
-        inst_is_unique_2(ModuleInfo, Inst, Expansions).
+        inst_is_unique_2(Inst, IKT, ModuleInfo, Expansions).
 
-        % The third arg is the set of insts which have already
+        % The fourth arg is the set of insts which have already
         % been expanded - we use this to avoid going into an
         % infinite loop.
 
-:- pred inst_is_unique_2(module_info, inst, set(inst)).
-:- mode inst_is_unique_2(in, in, in) is semidet.
+:- pred inst_is_unique_2(inst, inst_key_table, module_info, set(inst)).
+:- mode inst_is_unique_2(in, in, in, in) is semidet.
 
-inst_is_unique_2(_, not_reached, _).
-inst_is_unique_2(ModuleInfo, bound(unique, List), Expansions) :-
-        bound_inst_list_is_unique_2(List, ModuleInfo, Expansions).
-inst_is_unique_2(_, any(unique), _).
-inst_is_unique_2(_, free, _).
-inst_is_unique_2(_, ground(unique, _), _).
-inst_is_unique_2(_, inst_var(_), _) :-
+inst_is_unique_2(not_reached, _, _, _).
+inst_is_unique_2(bound(unique, List), IKT, ModuleInfo, Expansions) :-
+	bound_inst_list_has_property(inst_is_unique_2, List, IKT,
+		ModuleInfo, Expansions).
+inst_is_unique_2(any(unique), _, _, _).
+inst_is_unique_2(free, _, _, _).
+inst_is_unique_2(ground(unique, _), _, _, _).
+inst_is_unique_2(inst_var(_), _, _, _) :-
         error("internal error: uninstantiated inst parameter").
-inst_is_unique_2(ModuleInfo, Inst, Expansions) :-
+inst_is_unique_2(Inst, IKT, ModuleInfo, Expansions) :-
 	Inst = defined_inst(InstName),
         ( set__member(Inst, Expansions) ->
                 true
         ;
                 set__insert(Expansions, Inst, Expansions2),
                 inst_lookup(ModuleInfo, InstName, Inst2),
-                inst_is_unique_2(ModuleInfo, Inst2, Expansions2)
+                inst_is_unique_2(Inst2, IKT, ModuleInfo, Expansions2)
         ).
+inst_is_unique_2(alias(Key), IKT, ModuleInfo, Expansions) :-
+	inst_key_table_lookup(IKT, Key, Inst),
+	inst_is_unique_2(Inst, IKT, ModuleInfo, Expansions).
 
         % inst_is_mostly_unique succeeds iff the inst passed is unique,
         % mostly_unique, or free.  Abstract insts are not considered unique.
 
-inst_is_mostly_unique(ModuleInfo, Inst) :-
+inst_is_mostly_unique(Inst, IKT, ModuleInfo) :-
         set__init(Expansions),
-        inst_is_mostly_unique_2(ModuleInfo, Inst, Expansions).
+        inst_is_mostly_unique_2(Inst, IKT, ModuleInfo, Expansions).
 
-        % The third arg is the set of insts which have already
+        % The fourth arg is the set of insts which have already
         % been expanded - we use this to avoid going into an
         % infinite loop.
 
-:- pred inst_is_mostly_unique_2(module_info, inst, set(inst)).
-:- mode inst_is_mostly_unique_2(in, in, in) is semidet.
+:- pred inst_is_mostly_unique_2(inst, inst_key_table, module_info, set(inst)).
+:- mode inst_is_mostly_unique_2(in, in, in, in) is semidet.
 
-inst_is_mostly_unique_2(_, not_reached, _).
-inst_is_mostly_unique_2(ModuleInfo, bound(mostly_unique, List), Expansions) :-
-        bound_inst_list_is_mostly_unique_2(List, ModuleInfo, Expansions).
-inst_is_mostly_unique_2(ModuleInfo, bound(mostly_unique, List), Expansions) :-
-        bound_inst_list_is_mostly_unique_2(List, ModuleInfo, Expansions).
-inst_is_mostly_unique_2(_, any(unique), _).
-inst_is_mostly_unique_2(_, any(mostly_unique), _).
-inst_is_mostly_unique_2(_, free, _).
-inst_is_mostly_unique_2(_, ground(unique, _), _).
-inst_is_mostly_unique_2(_, ground(mostly_unique, _), _).
-inst_is_mostly_unique_2(_, inst_var(_), _) :-
+inst_is_mostly_unique_2(not_reached, _, _, _).
+inst_is_mostly_unique_2(bound(mostly_unique, List), IKT, ModuleInfo,
+		Expansions) :-
+	bound_inst_list_has_property(inst_is_mostly_unique_2, List, IKT,
+		ModuleInfo, Expansions).
+inst_is_mostly_unique_2(any(unique), _, _, _).
+inst_is_mostly_unique_2(any(mostly_unique), _, _, _).
+inst_is_mostly_unique_2(free, _, _, _).
+inst_is_mostly_unique_2(ground(unique, _), _, _, _).
+inst_is_mostly_unique_2(ground(mostly_unique, _), _, _, _).
+inst_is_mostly_unique_2(inst_var(_), _, _, _) :-
         error("internal error: uninstantiated inst parameter").
-inst_is_mostly_unique_2(ModuleInfo, Inst, Expansions) :-
+inst_is_mostly_unique_2(Inst, IKT, ModuleInfo, Expansions) :-
 	Inst = defined_inst(InstName),
         ( set__member(Inst, Expansions) ->
                 true
         ;
                 set__insert(Expansions, Inst, Expansions2),
                 inst_lookup(ModuleInfo, InstName, Inst2),
-                inst_is_mostly_unique_2(ModuleInfo, Inst2, Expansions2)
+                inst_is_mostly_unique_2(Inst2, IKT, ModuleInfo, Expansions2)
         ).
+inst_is_mostly_unique_2(alias(Key), IKT, ModuleInfo, Expansions) :-
+	inst_key_table_lookup(IKT, Key, Inst),
+	inst_is_mostly_unique_2(Inst, IKT, ModuleInfo, Expansions).
 
         % inst_is_not_partly_unique succeeds iff the inst passed is
         % not unique or mostly_unique, i.e. if it is shared
         % or free.  It fails for abstract insts.
 
-inst_is_not_partly_unique(ModuleInfo, Inst) :-
+inst_is_not_partly_unique(Inst, IKT, ModuleInfo) :-
         set__init(Expansions),
-        inst_is_not_partly_unique_2(ModuleInfo, Inst, Expansions).
+        inst_is_not_partly_unique_2(Inst, IKT, ModuleInfo, Expansions).
 
-        % The third arg is the set of insts which have already
+        % The fourth arg is the set of insts which have already
         % been expanded - we use this to avoid going into an
         % infinite loop.
 
-:- pred inst_is_not_partly_unique_2(module_info, inst, set(inst)).
-:- mode inst_is_not_partly_unique_2(in, in, in) is semidet.
+:- pred inst_is_not_partly_unique_2(inst, inst_key_table, module_info,
+		set(inst)).
+:- mode inst_is_not_partly_unique_2(in, in, in, in) is semidet.
 
-inst_is_not_partly_unique_2(_, not_reached, _).
-inst_is_not_partly_unique_2(ModuleInfo, bound(shared, List), Expansions) :-
-        bound_inst_list_is_not_partly_unique_2(List, ModuleInfo, Expansions).
-inst_is_not_partly_unique_2(_, free, _).
-inst_is_not_partly_unique_2(_, any(shared), _).
-inst_is_not_partly_unique_2(_, ground(shared, _), _).
-inst_is_not_partly_unique_2(_, inst_var(_), _) :-
+inst_is_not_partly_unique_2(not_reached, _, _, _).
+inst_is_not_partly_unique_2(bound(shared, List), IKT, ModuleInfo, Expansions) :-
+	bound_inst_list_has_property(inst_is_not_partly_unique_2, List, IKT,
+		ModuleInfo, Expansions).
+inst_is_not_partly_unique_2(free, _, _, _).
+inst_is_not_partly_unique_2(any(shared), _, _, _).
+inst_is_not_partly_unique_2(ground(shared, _), _, _, _).
+inst_is_not_partly_unique_2(inst_var(_), _, _, _) :-
         error("internal error: uninstantiated inst parameter").
-inst_is_not_partly_unique_2(ModuleInfo, Inst, Expansions) :-
+inst_is_not_partly_unique_2(Inst, IKT, ModuleInfo, Expansions) :-
 	Inst = defined_inst(InstName),
         ( set__member(Inst, Expansions) ->
                 true
         ;
                 set__insert(Expansions, Inst, Expansions2),
                 inst_lookup(ModuleInfo, InstName, Inst2),
-                inst_is_not_partly_unique_2(ModuleInfo, Inst2, Expansions2)
+                inst_is_not_partly_unique_2(Inst2, IKT, ModuleInfo, Expansions2)
         ).
+inst_is_not_partly_unique_2(alias(Key), IKT, ModuleInfo, Expansions) :-
+	inst_key_table_lookup(IKT, Key, Inst),
+	inst_is_not_partly_unique_2(Inst, IKT, ModuleInfo, Expansions).
 
 	% inst_is_not_fully_unique succeeds iff the inst passed is
         % not unique, i.e. if it is mostly_unique, shared,
         % or free.  It fails for abstract insts.
 
-inst_is_not_fully_unique(ModuleInfo, Inst) :-
+inst_is_not_fully_unique(Inst, IKT, ModuleInfo) :-
         set__init(Expansions),
-        inst_is_not_fully_unique_2(ModuleInfo, Inst, Expansions).
+        inst_is_not_fully_unique_2(Inst, IKT, ModuleInfo, Expansions).
 
-        % The third arg is the set of insts which have already
+        % The fourth arg is the set of insts which have already
         % been expanded - we use this to avoid going into an
         % infinite loop.
 
-:- pred inst_is_not_fully_unique_2(module_info, inst, set(inst)).
-:- mode inst_is_not_fully_unique_2(in, in, in) is semidet.
+:- pred inst_is_not_fully_unique_2(inst, inst_key_table, module_info,
+		set(inst)).
+:- mode inst_is_not_fully_unique_2(in, in, in, in) is semidet.
 
-inst_is_not_fully_unique_2(_, not_reached, _).
-inst_is_not_fully_unique_2(ModuleInfo, bound(shared, List), Expansions) :-
-        bound_inst_list_is_not_fully_unique_2(List, ModuleInfo, Expansions).
-inst_is_not_fully_unique_2(ModuleInfo, bound(mostly_unique, List), 
-                Expansions) :-
-        bound_inst_list_is_not_fully_unique_2(List, ModuleInfo, Expansions).
-inst_is_not_fully_unique_2(_, any(shared), _).
-inst_is_not_fully_unique_2(_, any(mostly_unique), _).
-inst_is_not_fully_unique_2(_, free, _).
-inst_is_not_fully_unique_2(_, ground(shared, _), _).
-inst_is_not_fully_unique_2(_, ground(mostly_unique, _), _).
-inst_is_not_fully_unique_2(_, inst_var(_), _) :-
+inst_is_not_fully_unique_2(not_reached, _, _, _).
+inst_is_not_fully_unique_2(bound(shared, List), IKT, ModuleInfo, Expansions) :-
+	bound_inst_list_has_property(inst_is_not_fully_unique_2, List, IKT,
+		ModuleInfo, Expansions).
+inst_is_not_fully_unique_2(bound(mostly_unique, List), IKT, ModuleInfo,
+		Expansions) :-
+	bound_inst_list_has_property(inst_is_not_fully_unique_2, List, IKT,
+		ModuleInfo, Expansions).
+inst_is_not_fully_unique_2(any(shared), _, _, _).
+inst_is_not_fully_unique_2(any(mostly_unique), _, _, _).
+inst_is_not_fully_unique_2(free, _, _, _).
+inst_is_not_fully_unique_2(ground(shared, _), _, _, _).
+inst_is_not_fully_unique_2(ground(mostly_unique, _), _, _, _).
+inst_is_not_fully_unique_2(inst_var(_), _, _, _) :-
         error("internal error: uninstantiated inst parameter").
-inst_is_not_fully_unique_2(ModuleInfo, Inst, Expansions) :-
-	Inst = defined_inst(InstName),
-        ( set__member(Inst, Expansions) ->
-                true
+inst_is_not_fully_unique_2(Inst, IKT, ModuleInfo, Expansions) :-
+        Inst = defined_inst(InstName),
+	( set__member(Inst, Expansions) ->
+		true
         ;
                 set__insert(Expansions, Inst, Expansions2),
                 inst_lookup(ModuleInfo, InstName, Inst2),
-                inst_is_not_fully_unique_2(ModuleInfo, Inst2, Expansions2)
+                inst_is_not_fully_unique_2(Inst2, IKT, ModuleInfo, Expansions2)
         ).
+inst_is_not_fully_unique_2(alias(Key), IKT, ModuleInfo, Expansions) :-
+	inst_key_table_lookup(IKT, Key, Inst),
+	inst_is_not_fully_unique_2(Inst, IKT, ModuleInfo, Expansions).
 
 %-----------------------------------------------------------------------------%
 
-bound_inst_list_is_ground([], _). 
-bound_inst_list_is_ground([functor(_Name, Args)|BoundInsts], ModuleInfo) :-
-        inst_list_is_ground(Args, ModuleInfo),
-        bound_inst_list_is_ground(BoundInsts, ModuleInfo).
+:- pred bound_inst_list_has_property(inst_property, list(bound_inst),
+		inst_key_table, module_info, set(inst)).
+:- mode bound_inst_list_has_property(in(inst_property), in, in, in, in)
+		is semidet.
 
-bound_inst_list_is_ground_or_any([], _).
-bound_inst_list_is_ground_or_any([functor(_Name, Args)|BoundInsts],
-                ModuleInfo) :-
-        inst_list_is_ground_or_any(Args, ModuleInfo),
-        bound_inst_list_is_ground_or_any(BoundInsts, ModuleInfo).
+bound_inst_list_has_property(_, [], _, _, _).
+bound_inst_list_has_property(Property, [functor(_Name, Args) | BoundInsts],
+		IKT, ModuleInfo, Expansions) :-
+	inst_list_has_property(Property, Args, IKT, ModuleInfo, Expansions),
+	bound_inst_list_has_property(Property, BoundInsts, IKT, ModuleInfo,
+		Expansions).
 
-bound_inst_list_is_unique([], _). 
-bound_inst_list_is_unique([functor(_Name, Args)|BoundInsts], ModuleInfo) :-
-        inst_list_is_unique(Args, ModuleInfo),
-        bound_inst_list_is_unique(BoundInsts, ModuleInfo).
+bound_inst_list_is_ground(BoundInsts, IKT, ModuleInfo) :-
+	set__init(Expansions),
+	bound_inst_list_has_property(inst_is_ground_2, BoundInsts, IKT,
+		ModuleInfo, Expansions).
 
-bound_inst_list_is_mostly_unique([], _).
-bound_inst_list_is_mostly_unique([functor(_Name, Args)|BoundInsts],
-                ModuleInfo) :-
-        inst_list_is_mostly_unique(Args, ModuleInfo),
-        bound_inst_list_is_mostly_unique(BoundInsts, ModuleInfo).
+bound_inst_list_is_ground_or_any(BoundInsts, IKT, ModuleInfo) :-
+	set__init(Expansions),
+	bound_inst_list_has_property(inst_is_ground_or_any_2, BoundInsts, IKT,
+		ModuleInfo, Expansions).
 
-bound_inst_list_is_not_partly_unique([], _).
-bound_inst_list_is_not_partly_unique([functor(_Name, Args)|BoundInsts],
-                ModuleInfo) :-
-        inst_list_is_not_partly_unique(Args, ModuleInfo),
-        bound_inst_list_is_not_partly_unique(BoundInsts, ModuleInfo).
+bound_inst_list_is_unique(BoundInsts, IKT, ModuleInfo) :-
+	set__init(Expansions),
+	bound_inst_list_has_property(inst_is_unique_2, BoundInsts, IKT,
+		ModuleInfo, Expansions).
 
-bound_inst_list_is_not_fully_unique([], _).
-bound_inst_list_is_not_fully_unique([functor(_Name, Args)|BoundInsts],
-                ModuleInfo) :-
-        inst_list_is_not_fully_unique(Args, ModuleInfo),
-        bound_inst_list_is_not_fully_unique(BoundInsts, ModuleInfo).
+bound_inst_list_is_mostly_unique(BoundInsts, IKT, ModuleInfo) :-
+	set__init(Expansions),
+	bound_inst_list_has_property(inst_is_mostly_unique_2, BoundInsts, IKT,
+		ModuleInfo, Expansions).
 
-%-----------------------------------------------------------------------------%
+bound_inst_list_is_not_partly_unique(BoundInsts, IKT, ModuleInfo) :-
+	set__init(Expansions),
+	bound_inst_list_has_property(inst_is_not_partly_unique_2, BoundInsts,
+		IKT, ModuleInfo, Expansions).
 
-:- pred bound_inst_list_is_ground_2(list(bound_inst), module_info, set(inst)).
-:- mode bound_inst_list_is_ground_2(in, in, in) is semidet.
-
-bound_inst_list_is_ground_2([], _, _).
-bound_inst_list_is_ground_2([functor(_Name, Args)|BoundInsts], ModuleInfo,
-                Expansions) :-
-        inst_list_is_ground_2(Args, ModuleInfo, Expansions),
-        bound_inst_list_is_ground_2(BoundInsts, ModuleInfo, Expansions).
-
-:- pred bound_inst_list_is_ground_or_any_2(list(bound_inst), module_info,
-						set(inst)).
-:- mode bound_inst_list_is_ground_or_any_2(in, in, in) is semidet.
-
-bound_inst_list_is_ground_or_any_2([], _, _).
-bound_inst_list_is_ground_or_any_2([functor(_Name, Args)|BoundInsts],
-                ModuleInfo, Expansions) :-
-        inst_list_is_ground_or_any_2(Args, ModuleInfo, Expansions),
-        bound_inst_list_is_ground_or_any_2(BoundInsts, ModuleInfo, Expansions).
-
-:- pred bound_inst_list_is_unique_2(list(bound_inst), module_info, set(inst)).
-:- mode bound_inst_list_is_unique_2(in, in, in) is semidet.
-
-bound_inst_list_is_unique_2([], _, _).
-bound_inst_list_is_unique_2([functor(_Name, Args)|BoundInsts], ModuleInfo,
-                Expansions) :-
-        inst_list_is_unique_2(Args, ModuleInfo, Expansions),
-        bound_inst_list_is_unique_2(BoundInsts, ModuleInfo, Expansions).
-
-:- pred bound_inst_list_is_mostly_unique_2(list(bound_inst), module_info,
-                                                set(inst)).
-:- mode bound_inst_list_is_mostly_unique_2(in, in, in) is semidet.
-
-bound_inst_list_is_mostly_unique_2([], _, _).
-bound_inst_list_is_mostly_unique_2([functor(_Name, Args)|BoundInsts],
-                ModuleInfo, Expansions) :-
-        inst_list_is_mostly_unique_2(Args, ModuleInfo, Expansions),
-        bound_inst_list_is_mostly_unique_2(BoundInsts, ModuleInfo, Expansions).
-
-:- pred bound_inst_list_is_not_partly_unique_2(list(bound_inst), module_info,
-                                                set(inst)).
-:- mode bound_inst_list_is_not_partly_unique_2(in, in, in) is semidet.
-
-bound_inst_list_is_not_partly_unique_2([], _, _).
-bound_inst_list_is_not_partly_unique_2([functor(_Name, Args)|BoundInsts],
-                ModuleInfo, Expansions) :-
-        inst_list_is_not_partly_unique_2(Args, ModuleInfo, Expansions),
-        bound_inst_list_is_not_partly_unique_2(BoundInsts, ModuleInfo,
-                Expansions).
-
-:- pred bound_inst_list_is_not_fully_unique_2(list(bound_inst), module_info,
-                                                set(inst)).
-:- mode bound_inst_list_is_not_fully_unique_2(in, in, in) is semidet.
-
-bound_inst_list_is_not_fully_unique_2([], _, _).
-bound_inst_list_is_not_fully_unique_2([functor(_Name, Args)|BoundInsts],
-                ModuleInfo, Expansions) :-
-        inst_list_is_not_fully_unique_2(Args, ModuleInfo, Expansions),
-        bound_inst_list_is_not_fully_unique_2(BoundInsts, ModuleInfo,
-                Expansions).
+bound_inst_list_is_not_fully_unique(BoundInsts, IKT, ModuleInfo) :-
+	set__init(Expansions),
+	bound_inst_list_has_property(inst_is_not_fully_unique_2, BoundInsts,
+		IKT, ModuleInfo, Expansions).
 
 %-----------------------------------------------------------------------------%
 
-inst_list_is_ground([], _).
-inst_list_is_ground([Inst | Insts], ModuleInfo) :-
-        inst_is_ground(ModuleInfo, Inst),
-        inst_list_is_ground(Insts, ModuleInfo).
+:- pred inst_list_has_property(inst_property, list(inst), inst_key_table,
+		module_info, set(inst)).
+:- mode inst_list_has_property(in(inst_property), in, in, in, in) is semidet.
 
-inst_list_is_ground_or_any([], _).
-inst_list_is_ground_or_any([Inst | Insts], ModuleInfo) :-
-        inst_is_ground_or_any(ModuleInfo, Inst),
-        inst_list_is_ground_or_any(Insts, ModuleInfo).
+inst_list_has_property(_Property, [], _IKT, _ModuleInfo, _Expansions).
+inst_list_has_property(Property, [Inst | Insts], IKT, ModuleInfo, Expansions) :-
+	call(Property, Inst, IKT, ModuleInfo, Expansions),
+	inst_list_has_property(Property, Insts, IKT, ModuleInfo, Expansions).
 
-inst_list_is_unique([], _).
-inst_list_is_unique([Inst | Insts], ModuleInfo) :-
-        inst_is_unique(ModuleInfo, Inst),
-        inst_list_is_unique(Insts, ModuleInfo).
+inst_list_is_ground(Insts, IKT, ModuleInfo) :-
+	set__init(Expansions),
+	inst_list_has_property(inst_is_ground_2, Insts, IKT, ModuleInfo,
+			Expansions).
 
-inst_list_is_mostly_unique([], _).
-inst_list_is_mostly_unique([Inst | Insts], ModuleInfo) :-
-        inst_is_mostly_unique(ModuleInfo, Inst),
-        inst_list_is_mostly_unique(Insts, ModuleInfo).
+inst_list_is_ground_or_any(Insts, IKT, ModuleInfo) :-
+	set__init(Expansions),
+	inst_list_has_property(inst_is_ground_or_any_2, Insts, IKT, ModuleInfo,
+			Expansions).
 
-inst_list_is_not_partly_unique([], _).
-inst_list_is_not_partly_unique([Inst | Insts], ModuleInfo) :-
-        inst_is_not_partly_unique(ModuleInfo, Inst),
-        inst_list_is_not_partly_unique(Insts, ModuleInfo).
+inst_list_is_unique(Insts, IKT, ModuleInfo) :-
+	set__init(Expansions),
+	inst_list_has_property(inst_is_unique_2, Insts, IKT, ModuleInfo,
+			Expansions).
 
-inst_list_is_not_fully_unique([], _).
-inst_list_is_not_fully_unique([Inst | Insts], ModuleInfo) :-
-        inst_is_not_fully_unique(ModuleInfo, Inst),
-        inst_list_is_not_fully_unique(Insts, ModuleInfo).
+inst_list_is_mostly_unique(Insts, IKT, ModuleInfo) :-
+	set__init(Expansions),
+	inst_list_has_property(inst_is_mostly_unique_2, Insts, IKT, ModuleInfo,
+			Expansions).
 
-%-----------------------------------------------------------------------------%
+inst_list_is_not_partly_unique(Insts, IKT, ModuleInfo) :-
+	set__init(Expansions),
+	inst_list_has_property(inst_is_not_partly_unique_2, Insts, IKT,
+			ModuleInfo, Expansions).
 
-:- pred inst_list_is_ground_2(list(inst), module_info, set(inst)).
-:- mode inst_list_is_ground_2(in, in, in) is semidet.
-
-inst_list_is_ground_2([], _, _).
-inst_list_is_ground_2([Inst | Insts], ModuleInfo, Expansions) :-
-        inst_is_ground_2(ModuleInfo, Inst, Expansions),
-        inst_list_is_ground_2(Insts, ModuleInfo, Expansions).
-
-:- pred inst_list_is_ground_or_any_2(list(inst), module_info, set(inst)).
-:- mode inst_list_is_ground_or_any_2(in, in, in) is semidet.
-
-inst_list_is_ground_or_any_2([], _, _).
-inst_list_is_ground_or_any_2([Inst | Insts], ModuleInfo, Expansions) :-
-        inst_is_ground_or_any_2(ModuleInfo, Inst, Expansions),
-        inst_list_is_ground_or_any_2(Insts, ModuleInfo, Expansions).
-
-:- pred inst_list_is_unique_2(list(inst), module_info, set(inst)).
-:- mode inst_list_is_unique_2(in, in, in) is semidet.
-
-inst_list_is_unique_2([], _, _).
-inst_list_is_unique_2([Inst | Insts], ModuleInfo, Expansions) :-
-        inst_is_unique_2(ModuleInfo, Inst, Expansions),
-        inst_list_is_unique_2(Insts, ModuleInfo, Expansions).
-
-:- pred inst_list_is_mostly_unique_2(list(inst), module_info, set(inst)).
-:- mode inst_list_is_mostly_unique_2(in, in, in) is semidet.
-
-inst_list_is_mostly_unique_2([], _, _).
-inst_list_is_mostly_unique_2([Inst | Insts], ModuleInfo, Expansions) :-
-        inst_is_mostly_unique_2(ModuleInfo, Inst, Expansions),
-        inst_list_is_mostly_unique_2(Insts, ModuleInfo, Expansions).
-
-:- pred inst_list_is_not_partly_unique_2(list(inst), module_info, set(inst)).
-:- mode inst_list_is_not_partly_unique_2(in, in, in) is semidet.
-
-inst_list_is_not_partly_unique_2([], _, _).
-inst_list_is_not_partly_unique_2([Inst | Insts], ModuleInfo, Expansions) :-
-        inst_is_not_partly_unique_2(ModuleInfo, Inst, Expansions),
-        inst_list_is_not_partly_unique_2(Insts, ModuleInfo, Expansions).
-
-:- pred inst_list_is_not_fully_unique_2(list(inst), module_info, set(inst)).
-:- mode inst_list_is_not_fully_unique_2(in, in, in) is semidet.
-
-inst_list_is_not_fully_unique_2([], _, _).
-inst_list_is_not_fully_unique_2([Inst | Insts], ModuleInfo, Expansions) :-
-        inst_is_not_fully_unique_2(ModuleInfo, Inst, Expansions),
-        inst_list_is_not_fully_unique_2(Insts, ModuleInfo, Expansions).
+inst_list_is_not_fully_unique(Insts, IKT, ModuleInfo) :-
+	set__init(Expansions),
+	inst_list_has_property(inst_is_not_fully_unique_2, Insts, IKT,
+			ModuleInfo, Expansions).
 
 %-----------------------------------------------------------------------------%
 
-bound_inst_list_is_free([], _).
-bound_inst_list_is_free([functor(_Name, Args)|BoundInsts], ModuleInfo) :-
-        inst_list_is_free(Args, ModuleInfo),
-        bound_inst_list_is_free(BoundInsts, ModuleInfo).
+bound_inst_list_is_free([], _, _).
+bound_inst_list_is_free([functor(_Name, Args)|BoundInsts], IKT, ModuleInfo) :-
+        inst_list_is_free(Args, IKT, ModuleInfo),
+        bound_inst_list_is_free(BoundInsts, IKT, ModuleInfo).
 
-inst_list_is_free([], _).
-inst_list_is_free([Inst | Insts], ModuleInfo) :-
-        inst_is_free(ModuleInfo, Inst),
-        inst_list_is_free(Insts, ModuleInfo).
+inst_list_is_free([], _, _).
+inst_list_is_free([Inst | Insts], IKT, ModuleInfo) :-
+        inst_is_free(Inst, IKT, ModuleInfo),
+        inst_list_is_free(Insts, IKT, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
-inst_list_is_ground_or_dead([], [], _).
-inst_list_is_ground_or_dead([Inst | Insts], [Live | Lives], ModuleInfo) :-
+inst_list_is_ground_or_dead([], [], _IKT, _ModuleInfo).
+inst_list_is_ground_or_dead([Inst | Insts], [Live | Lives], IKT, ModuleInfo) :-
 	( Live = live ->
-		inst_is_ground(ModuleInfo, Inst)
+		inst_is_ground(Inst, IKT, ModuleInfo)
 	;
 		true
 	),
-	inst_list_is_ground_or_dead(Insts, Lives, ModuleInfo).
+	inst_list_is_ground_or_dead(Insts, Lives, IKT, ModuleInfo).
 
-inst_list_is_ground_or_any_or_dead([], [], _).
+inst_list_is_ground_or_any_or_dead([], [], _, _).
 inst_list_is_ground_or_any_or_dead([Inst | Insts], [Live | Lives],
-		ModuleInfo) :-
+		IKT, ModuleInfo) :-
 	( Live = live ->
-		inst_is_ground_or_any(ModuleInfo, Inst)
+		inst_is_ground_or_any(Inst, IKT, ModuleInfo)
 	;
 		true
 	),
-	inst_list_is_ground_or_any_or_dead(Insts, Lives, ModuleInfo).
+	inst_list_is_ground_or_any_or_dead(Insts, Lives, IKT, ModuleInfo).
 
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 inst_contains_instname(Inst, ModuleInfo, InstName) :-
@@ -1193,7 +1185,7 @@ inst_contains_instname_2(defined_inst(InstName1), ModuleInfo, Expansions0,
 	(
 		InstName = InstName1
 	;
-		\+ set__member(InstName1, Expansions0),
+		not set__member(InstName1, Expansions0),
 		inst_lookup(ModuleInfo, InstName1, Inst1),
 		set__insert(Expansions0, InstName1, Expansions),
 		inst_contains_instname_2(Inst1, ModuleInfo, Expansions,

@@ -835,7 +835,9 @@ proc_info_arglives(ProcInfo, ModuleInfo, ArgLives) :-
 		ArgLives = ArgLives0
 	;
 		proc_info_argmodes(ProcInfo, Modes),
-		get_arg_lives(Modes, ModuleInfo, ArgLives)
+		% YYY Change for local inst_key_tables
+		module_info_inst_key_table(ModuleInfo, IKT),
+		get_arg_lives(Modes, IKT, ModuleInfo, ArgLives)
 	).
 
 proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) :-

@@ -91,6 +91,14 @@ detect_cse_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) -->
 		;
 			[]
 		),
+
+		%%% YYY
+		% { module_info_pred_proc_info(ModuleInfo1, PredId, ProcId,
+		% 	_PredInfo, ProcInfo) },
+		% hlds_out__write_proc(1, yes, ModuleInfo1, PredId, ProcId,
+		% 	local, ProcInfo),
+		%%% YYY
+
 		modecheck_proc(ProcId, PredId, ModuleInfo1, ModuleInfo2, Errs),
 		{ Errs > 0 ->
 			error("mode check fails when repeated")
@@ -301,10 +309,12 @@ detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, SM, InstMap,
 	(
 		instmap__lookup_var(InstMap, Var, VarInst0),
 		CseInfo0 = cse_info(_, _, ModuleInfo),
+		% YYY Change for local inst_key_tables
+		module_info_inst_key_table(ModuleInfo, IKT),
 		% XXX we only need inst_is_bound, but leave this as it is
 		% until mode analysis can handle aliasing between free
 		% variables.
-		inst_is_ground_or_any(ModuleInfo, VarInst0),
+		inst_is_ground_or_any(VarInst0, IKT, ModuleInfo),
 		common_deconstruct(Goals0, Var, CseInfo0, CseInfo1,
 			Unify, Goals)
 	->
@@ -343,10 +353,13 @@ detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
 		Var \= SwitchVar,
 		instmap__lookup_var(InstMap, Var, VarInst0),
 		CseInfo0 = cse_info(_, _, ModuleInfo),
+		% YYY Change for local inst_key_tables
+		module_info_inst_key_table(ModuleInfo, IKT),
+
 		% XXX we only need inst_is_bound, but leave this as it is
 		% until mode analysis can handle aliasing between free
 		% variables.
-		inst_is_ground_or_any(ModuleInfo, VarInst0),
+		inst_is_ground_or_any(VarInst0, IKT, ModuleInfo),
 		common_deconstruct_cases(Cases0, Var, CseInfo0, CseInfo1,
 			Unify, Cases)
 	->
@@ -387,10 +400,13 @@ detect_cse_in_ite([Var | Vars], IfVars, Cond0, Then0, Else0, GoalInfo,
 	(
 		CseInfo0 = cse_info(_, _, ModuleInfo),
 		instmap__lookup_var(InstMap, Var, VarInst0),
+		% YYY Change for local inst_key_tables
+		module_info_inst_key_table(ModuleInfo, IKT),
+
 		% XXX we only need inst_is_bound, but leave this as it is
 		% until mode analysis can handle aliasing between free
 		% variables.
-		inst_is_ground_or_any(ModuleInfo, VarInst0),
+		inst_is_ground_or_any(VarInst0, IKT, ModuleInfo),
 		common_deconstruct([Then0, Else0], Var, CseInfo0, CseInfo1,
 			Unify, Goals),
 		Goals = [Then, Else]

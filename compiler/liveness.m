@@ -829,9 +829,11 @@ initial_liveness(ProcInfo, ModuleInfo, Liveness) :-
 	proc_info_argmodes(ProcInfo, Modes),
 	proc_info_vartypes(ProcInfo, VarTypes),
 	map__apply_to_list(Vars, VarTypes, Types),
+	% YYY Change for local inst_key_tables
+	module_info_inst_key_table(ModuleInfo, IKT),
 	set__init(Liveness0),
 	(
-		initial_liveness_2(Vars, Modes, Types, ModuleInfo,
+		initial_liveness_2(Vars, Modes, Types, IKT, ModuleInfo,
 			Liveness0, Liveness1)
 	->
 		Liveness2 = Liveness1
@@ -861,21 +863,21 @@ initial_liveness(ProcInfo, ModuleInfo, Liveness) :-
 	set__intersect(Liveness2, NonLocals, Liveness).
 
 
-:- pred initial_liveness_2(list(var), list(mode), list(type), module_info,
-	set(var), set(var)).
-:- mode initial_liveness_2(in, in, in, in, in, out) is semidet.
+:- pred initial_liveness_2(list(var), list(mode), list(type), inst_key_table,
+	module_info, set(var), set(var)).
+:- mode initial_liveness_2(in, in, in, in, in, in, out) is semidet.
 
-initial_liveness_2([], [], [], _ModuleInfo, Liveness, Liveness).
-initial_liveness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo,
+initial_liveness_2([], [], [], _IKT, _ModuleInfo, Liveness, Liveness).
+initial_liveness_2([V | Vs], [M | Ms], [T | Ts], IKT, ModuleInfo,
 		Liveness0, Liveness) :-
 	(
-		mode_to_arg_mode(ModuleInfo, M, T, top_in)
+		mode_to_arg_mode(IKT, ModuleInfo, M, T, top_in)
 	->
 		set__insert(Liveness0, V, Liveness1)
 	;
 		Liveness1 = Liveness0
 	),
-	initial_liveness_2(Vs, Ms, Ts, ModuleInfo, Liveness1, Liveness).
+	initial_liveness_2(Vs, Ms, Ts, IKT, ModuleInfo, Liveness1, Liveness).
 
 %-----------------------------------------------------------------------------%
 
@@ -888,8 +890,10 @@ initial_deadness(ProcInfo, ModuleInfo, Deadness) :-
 	proc_info_vartypes(ProcInfo, VarTypes),
 	map__apply_to_list(Vars, VarTypes, Types),
 	set__init(Deadness0),
+	% YYY Change for local inst_key_tables
+	module_info_inst_key_table(ModuleInfo, IKT),
 	(
-		initial_deadness_2(Vars, Modes, Types, ModuleInfo,
+		initial_deadness_2(Vars, Modes, Types, IKT, ModuleInfo,
 			Deadness0, Deadness1)
 	->
 		Deadness2 = Deadness1
@@ -911,20 +915,20 @@ initial_deadness(ProcInfo, ModuleInfo, Deadness) :-
 	).
 
 :- pred initial_deadness_2(list(var), list(mode), list(type),
-				module_info, set(var), set(var)).
-:- mode initial_deadness_2(in, in, in, in, in, out) is semidet.
+			inst_key_table, module_info, set(var), set(var)).
+:- mode initial_deadness_2(in, in, in, in, in, in, out) is semidet.
 
-initial_deadness_2([], [], [], _ModuleInfo, Deadness, Deadness).
-initial_deadness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo,
+initial_deadness_2([], [], [], _IKT, _ModuleInfo, Deadness, Deadness).
+initial_deadness_2([V | Vs], [M | Ms], [T | Ts], IKT, ModuleInfo,
 		Deadness0, Deadness) :-
 	(
-		mode_to_arg_mode(ModuleInfo, M, T, top_out)
+		mode_to_arg_mode(IKT, ModuleInfo, M, T, top_out)
 	->
 		set__insert(Deadness0, V, Deadness1)
 	;
 		Deadness1 = Deadness0
 	),
-	initial_deadness_2(Vs, Ms, Ts, ModuleInfo, Deadness1, Deadness).
+	initial_deadness_2(Vs, Ms, Ts, IKT, ModuleInfo, Deadness1, Deadness).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -965,10 +969,11 @@ find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
 		ValueVars0, ValueVars) :-
 	live_info_get_var_types(LiveInfo, VarTypes),
 	live_info_get_module_info(LiveInfo, ModuleInfo),
+	live_info_get_inst_key_table(LiveInfo, IKT),
 	map__lookup(VarTypes, Var, Type),
 	(
 		instmap_delta_search_var(InstMapDelta, Var, Inst),
-		mode_to_arg_mode(ModuleInfo, (free -> Inst), Type, top_out)
+		mode_to_arg_mode(IKT, ModuleInfo, (free -> Inst), Type, top_out)
 	->
 		set__insert(ValueVars0, Var, ValueVars1)
 	;
@@ -1013,6 +1018,14 @@ live_info_get_var_types(live_info(_, _, VarTypes, _), VarTypes).
 :- mode live_info_get_varset(in, out) is det.
 
 live_info_get_varset(live_info(_, _, _, Varset), Varset).
+
+:- pred live_info_get_inst_key_table(live_info, inst_key_table).
+:- mode live_info_get_inst_key_table(in, out) is det.
+
+live_info_get_inst_key_table(LiveInfo, IKT) :-
+	live_info_get_module_info(LiveInfo, ModuleInfo),
+	% YYY Change for local inst_key_tables
+	module_info_inst_key_table(ModuleInfo, IKT).
 
 %-----------------------------------------------------------------------------%
 
