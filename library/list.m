@@ -334,6 +334,7 @@
 	% (with the initial value of Start), and returns the final
 	% value in End.
 :- pred list__foldl(pred(X, Y, Y), list(X), Y, Y).
+:- mode list__foldl(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode list__foldl(pred(in, in, out) is det, in, in, out) is det.
 :- mode list__foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
 
