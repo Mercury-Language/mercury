@@ -2913,13 +2913,16 @@ builtin_state(ModuleInfo, CallerPredId, PredId, ProcId) = BuiltinState :-
 	PredName = pred_info_name(PredInfo),
 	Arity = pred_info_orig_arity(PredInfo),
 	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_bool_option(Globals, allow_inlining, AllowInlining),
 	globals__lookup_bool_option(Globals, inline_builtins, InlineBuiltins),
 	(
 		% The automatically generated "recursive" call in the
 		% goal for each builtin must be generated inline, or
 		% we would generate an infinite loop.
-		( InlineBuiltins = yes
-		; CallerPredId = PredId
+		( 
+			AllowInlining = yes, InlineBuiltins = yes
+		; 
+			CallerPredId = PredId
 		),
 		is_inline_builtin(ModuleName, PredName, ProcId, Arity)
 	->
