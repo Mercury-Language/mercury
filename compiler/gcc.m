@@ -29,6 +29,16 @@
 % gcc back-end; we only define interfaces to those parts of the gcc
 % back-end that we need for compiling Mercury.
 %
+% GARBAGE COLLECTION
+%
+% The GCC compiler uses its own garbage collector (see gcc/ggc.h).
+% This garbage collector only collects memory when ggc_collect()
+% is called, which currently only happens in rest_of_compilation(),
+% which is called from gcc__end_function//0.  But it requires
+% that all pointers to the GCC heap be either explicitly registered
+% with e.g. ggc_register_tree_root(), or protected by calling
+% gcc__push_context//0 and gcc__pop_context//0.
+%
 % REFERENCES
 %
 % For more information about the GCC compiler back-end,
@@ -467,6 +477,22 @@
 
 %-----------------------------------------------------------------------------%
 %
+% Routines to protect memory from being collected by the GCC garbage
+% collector (see gcc/ggc.h).
+%
+
+	% This starts a new GGC context.  Memory allocated in previous contexts
+	% will not be collected while the new context is active.
+:- pred push_gc_context(io__state, io__state).
+:- mode push_gc_context(di, uo) is det.
+
+	% Finish a GC context.  Any uncollected memory in the new context
+	% will be merged with the old context.
+:- pred pop_gc_context(io__state, io__state).
+:- mode pop_gc_context(di, uo) is det.
+
+%-----------------------------------------------------------------------------%
+%
 % Functions
 %
 
@@ -475,6 +501,13 @@
 :- mode start_function(in, di, uo) is det.
 
 	% finish generating code for a function
+	% WARNING: this will invoke the GCC garbage collector.
+	% So any GCC tree nodes which are referenced only from the stack(s),
+	% from Mercury data structures, or from global variables, and which
+	% were allocated since the most recent call to gcc__push_gc_context,
+	% must be registered as roots (e.g. using ggc_add_tree_root())
+	% when this is called.  Generally it is easier to call
+	% gcc__push_gc_context.
 :- pred end_function(io__state, io__state).
 :- mode end_function(di, uo) is det.
 
@@ -609,6 +642,7 @@
 #include ""gcc/tree.h""
 /* XXX we should eliminate the dependency on the C front-end */
 #include ""gcc/c-tree.h""
+#include ""gcc/ggc.h""
 
 #include ""gcc/mercury/mercury-gcc.h""
 
@@ -1200,6 +1234,18 @@ gcc__struct_field_initializer(FieldDecl, FieldDecl) --> [].
 	Expr = (MR_Word) build(CONSTRUCTOR, (tree) Type, NULL_TREE,
 		(tree) InitList);
 ").
+
+%-----------------------------------------------------------------------------%
+%
+% Routines to protect memory from being collected by the GCC garbage
+% collector (see gcc/ggc.h).
+%
+
+:- pragma import(push_gc_context(di, uo), [will_not_call_mercury],
+	"ggc_push_context").
+
+:- pragma import(pop_gc_context(di, uo), [will_not_call_mercury],
+	"ggc_pop_context").
 
 %-----------------------------------------------------------------------------%
 %

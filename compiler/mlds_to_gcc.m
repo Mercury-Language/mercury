@@ -1500,6 +1500,7 @@ gen_func(Name, Context, Flags, Signature, MaybeBody,
 		{ MaybeBody = no }
 	;
 		{ MaybeBody = yes(Body) },
+		gcc__push_gc_context,
 		make_func_decl_for_defn(Name, Signature, GlobalInfo0,
 			FuncDecl, SymbolTable),
 		add_func_decl_flags(Flags, FuncDecl),
@@ -1511,7 +1512,8 @@ gen_func(Name, Context, Flags, Signature, MaybeBody,
 		% mlds_maybe_output_time_profile_instr(Context, Name)
 		gen_statement(DefnInfo, Body),
 		set_context(Context),
-		gcc__end_function
+		gcc__end_function,
+		gcc__pop_gc_context
 	).
 
 	%
