@@ -7,6 +7,7 @@ THIS_DIR = hard_coded
 ORDINARY_PROGS=	\
 	address_of_builtins \
 	agg \
+	any_free_unify \
 	bidirectional \
 	brace \
 	builtin_inst_rename \

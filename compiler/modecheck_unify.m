@@ -93,8 +93,10 @@ modecheck_unification(X, var(Y), Unification0, UnifyContext, _GoalInfo,
 		Inst = UnifyInst,
 		Det = Det1,
 		mode_info_set_module_info(ModeInfo0, ModuleInfo1, ModeInfo1),
-		modecheck_set_var_inst(X, Inst, ModeInfo1, ModeInfo2),
-		modecheck_set_var_inst(Y, Inst, ModeInfo2, ModeInfo3),
+		modecheck_set_var_inst(X, Inst, yes(InstOfY),
+			ModeInfo1, ModeInfo2),
+		modecheck_set_var_inst(Y, Inst, yes(InstOfX),
+			ModeInfo2, ModeInfo3),
 		ModeOfX = (InstOfX -> Inst),
 		ModeOfY = (InstOfY -> Inst),
 		mode_info_get_var_types(ModeInfo3, VarTypes),
@@ -111,8 +113,8 @@ modecheck_unification(X, var(Y), Unification0, UnifyContext, _GoalInfo,
 			% that could cause an invalid call to
 			% `unify_proc__request_unify'
 		Inst = not_reached,
-		modecheck_set_var_inst(X, Inst, ModeInfo1, ModeInfo2),
-		modecheck_set_var_inst(Y, Inst, ModeInfo2, ModeInfo),
+		modecheck_set_var_inst(X, Inst, no, ModeInfo1, ModeInfo2),
+		modecheck_set_var_inst(Y, Inst, no, ModeInfo2, ModeInfo),
 			% return any old garbage
 		Unification = assign(X, Y),
 		ModeOfX = (InstOfX -> Inst),
@@ -386,7 +388,7 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes,
 				X, ArgVars, PredOrFunc,
 				RHS0, Unification0, ModeInfo1,
 				RHS, Unification, ModeInfo2),
-		modecheck_set_var_inst(X, Inst, ModeInfo2, ModeInfo)
+		modecheck_set_var_inst(X, Inst, no, ModeInfo2, ModeInfo)
 	;
 		set__list_to_set([X], WaitingVars),
 		mode_info_error(WaitingVars,
@@ -399,7 +401,7 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes,
 			% that could cause an invalid call to
 			% `unify_proc__request_unify'
 		Inst = not_reached,
-		modecheck_set_var_inst(X, Inst, ModeInfo1, ModeInfo),
+		modecheck_set_var_inst(X, Inst, no, ModeInfo1, ModeInfo),
 		ModeOfX = (InstOfX -> Inst),
 		ModeOfY = (InstOfY -> Inst),
 		Mode = ModeOfX - ModeOfY,
@@ -485,8 +487,10 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 		ModeOfX = (InstOfX -> Inst),
 		ModeOfY = (InstOfY -> Inst),
 		Mode = ModeOfX - ModeOfY,
-		modecheck_set_var_inst(X, Inst, ModeInfo2, ModeInfo3),
-		( bind_args(Inst, ArgVars0, ModeInfo3, ModeInfo4) ->
+		modecheck_set_var_inst(X, Inst, no,
+			ModeInfo2, ModeInfo3),
+		NoArgInsts = list__duplicate(length(ArgVars0), no),
+		( bind_args(Inst, ArgVars0, NoArgInsts, ModeInfo3, ModeInfo4) ->
 			ModeInfo = ModeInfo4
 		;
 			error("bind_args failed")
@@ -515,10 +519,12 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 			inst_expand_and_remove_constrained_inst_vars(
 				ModuleInfo1, InstOfX, InstOfX1),
 			list__length(ArgVars0, Arity),
-			get_arg_insts(InstOfX1, InstConsId, Arity, InstOfXArgs),
-			get_mode_of_args(Inst, InstOfXArgs, ModeOfXArgs0)
+			get_arg_insts(InstOfX1, InstConsId, Arity,
+				InstOfXArgs0),
+			get_mode_of_args(Inst, InstOfXArgs0, ModeOfXArgs0)
 		->
-			ModeOfXArgs = ModeOfXArgs0
+			ModeOfXArgs = ModeOfXArgs0,
+			InstOfXArgs = InstOfXArgs0
 		;
 			error("get_(inst/mode)_of_args failed")
 		),
@@ -530,8 +536,13 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 		split_complicated_subunifies(Unification1, ArgVars0,
 				Unification, ArgVars, ExtraGoals1,
 				ModeInfo3, ModeInfo4),
-		modecheck_set_var_inst(X, Inst, ModeInfo4, ModeInfo5),
-		( bind_args(Inst, ArgVars, ModeInfo5, ModeInfo6) ->
+		modecheck_set_var_inst(X, Inst, yes(InstOfY),
+			ModeInfo4, ModeInfo5),
+		UnifyArgInsts = list__map(func(I) = yes(I), InstOfXArgs),
+		(
+			bind_args(Inst, ArgVars, UnifyArgInsts,
+				ModeInfo5, ModeInfo6)
+		->
 			ModeInfo = ModeInfo6
 		;
 			error("bind_args failed")
@@ -553,8 +564,9 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 		ModeOfX = (InstOfX -> Inst),
 		ModeOfY = (InstOfY -> Inst),
 		Mode = ModeOfX - ModeOfY,
-		modecheck_set_var_inst(X, Inst, ModeInfo2, ModeInfo3),
-		( bind_args(Inst, ArgVars0, ModeInfo3, ModeInfo4) ->
+		modecheck_set_var_inst(X, Inst, no, ModeInfo2, ModeInfo3),
+		NoArgInsts = list__duplicate(length(ArgVars0), no),
+		( bind_args(Inst, ArgVars0, NoArgInsts, ModeInfo3, ModeInfo4) ->
 			ModeInfo = ModeInfo4
 		;
 			error("bind_args failed")
@@ -1206,41 +1218,44 @@ check_type_info_args_are_ground([ArgVar | ArgVars], VarTypes, UnifyContext)
 
 %-----------------------------------------------------------------------------%
 
-:- pred bind_args(inst, list(prog_var), mode_info, mode_info).
-:- mode bind_args(in, in, mode_info_di, mode_info_uo) is semidet.
+:- pred bind_args(inst, list(prog_var), list(maybe(inst)),
+		mode_info, mode_info).
+:- mode bind_args(in, in, in, mode_info_di, mode_info_uo) is semidet.
 
-bind_args(not_reached, _) -->
+bind_args(not_reached, _, _) -->
 	{ instmap__init_unreachable(InstMap) },
 	mode_info_set_instmap(InstMap).
-bind_args(ground(Uniq, none), Args) -->
-	ground_args(Uniq, Args).
-bind_args(bound(_Uniq, List), Args) -->
+bind_args(ground(Uniq, none), Args, UnifyArgInsts) -->
+	ground_args(Uniq, Args, UnifyArgInsts).
+bind_args(bound(_Uniq, List), Args, UnifyArgInsts) -->
 	( { List = [] } ->
 		% the code is unreachable
 		{ instmap__init_unreachable(InstMap) },
 		mode_info_set_instmap(InstMap)
 	;
 		{ List = [functor(_, InstList)] },
-		bind_args_2(Args, InstList)
+		bind_args_2(Args, InstList, UnifyArgInsts)
 	).
-bind_args(constrained_inst_vars(_, Inst), Args) -->
-	bind_args(Inst, Args).
+bind_args(constrained_inst_vars(_, Inst), Args, UnifyArgInsts) -->
+	bind_args(Inst, Args, UnifyArgInsts).
 
-:- pred bind_args_2(list(prog_var), list(inst), mode_info, mode_info).
-:- mode bind_args_2(in, in, mode_info_di, mode_info_uo) is semidet.
+:- pred bind_args_2(list(prog_var), list(inst), list(maybe(inst)),
+		mode_info, mode_info).
+:- mode bind_args_2(in, in, in, mode_info_di, mode_info_uo) is semidet.
 
-bind_args_2([], []) --> [].
-bind_args_2([Arg | Args], [Inst | Insts]) -->
-	modecheck_set_var_inst(Arg, Inst),
-	bind_args_2(Args, Insts).
+bind_args_2([], [], []) --> [].
+bind_args_2([Arg | Args], [Inst | Insts], [UnifyArgInst | UnifyArgInsts]) -->
+	modecheck_set_var_inst(Arg, Inst, UnifyArgInst),
+	bind_args_2(Args, Insts, UnifyArgInsts).
 
-:- pred ground_args(uniqueness, list(prog_var), mode_info, mode_info).
-:- mode ground_args(in, in, mode_info_di, mode_info_uo) is det.
+:- pred ground_args(uniqueness, list(prog_var), list(maybe(inst)),
+		mode_info, mode_info).
+:- mode ground_args(in, in, in, mode_info_di, mode_info_uo) is semidet.
 
-ground_args(_Uniq, []) --> [].
-ground_args(Uniq, [Arg | Args]) -->
-	modecheck_set_var_inst(Arg, ground(Uniq, none)),
-	ground_args(Uniq, Args).
+ground_args(_Uniq, [], []) --> [].
+ground_args(Uniq, [Arg | Args], [UnifyArgInst | UnifyArgInsts]) -->
+	modecheck_set_var_inst(Arg, ground(Uniq, none), UnifyArgInst),
+	ground_args(Uniq, Args, UnifyArgInsts).
 
 %-----------------------------------------------------------------------------%
 

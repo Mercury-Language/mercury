@@ -123,6 +123,16 @@ mode system to distinguish between different representations.
 	% inst_matches_final into a single predicate inst_matches(When, ...)
 	% where When is either `initial' or `final'.
 
+	% inst_is_at_least_as_instantiated(InstA, InstB, Type, ModuleInfo)
+	% 	succeeds iff InstA is at least as instantiated as InstB.  This
+	% 	defines a partial order which is the same as
+	% 	inst_matches_initial except that uniqueness comparisons are
+	% 	reversed and we don't allow
+	% 	inst_is_at_least_as_instantiated(any, any).  
+
+:- pred inst_is_at_least_as_instantiated(inst, inst, type, module_info).
+:- mode inst_is_at_least_as_instantiated(in, in, in, in) is semidet.
+
 :- pred unique_matches_initial(uniqueness, uniqueness).
 :- mode unique_matches_initial(in, in) is semidet.
 
@@ -144,6 +154,13 @@ mode system to distinguish between different representations.
 	%	 inst_matches_final except that it ignores uniqueness, and
 	%	 that `any' does not match itself.  It is used to check
 	%	 whether variables get bound in negated contexts.
+
+:- pred inst_matches_binding_allow_any_any(inst, inst, type, module_info).
+:- mode inst_matches_binding_allow_any_any(in, in, in, in) is semidet.
+
+	% inst_matches_binding_allow_any_any is the same as
+	% inst_matches_binding except that it also allows `any' to
+	% match `any'.
 
 %-----------------------------------------------------------------------------%
 
@@ -323,11 +340,26 @@ inst_matches_initial_1(InstA, InstB, Type, ModuleInfo0, ModuleInfo,
 
 :- type expansions == set(pair(inst)).
 
+	% The uniqueness_comparison type is used by the predicate
+	% compare_uniqueness to determine what order should be used for
+	% comparing two uniqueness annotations.
+
+:- type uniqueness_comparison
+	--->	match
+			% We are doing a "matches" comparison, e.g. at a
+			% predicate call or the end of a procedure body.
+	;	instantiated.
+			% We are comparing two insts for how "instantiated" they
+			% are.  The uniqueness order here should be the reverse
+			% of the order used for matching.
+
 :- type inst_match_info
 	--->	inst_match_info(
 			module_info	:: module_info,
 			expansions	:: expansions,
-			maybe_sub	:: maybe(inst_var_sub)
+			maybe_sub	:: maybe(inst_var_sub),
+			uniqueness_comparison	:: uniqueness_comparison,
+			any_matches_any	:: bool
 		).
 
 :- func sub(inst_match_info) = inst_var_sub is semidet.
@@ -342,7 +374,8 @@ sub(Info) = Sub :-
 
 :- func init_inst_match_info(module_info) = inst_match_info.
 
-init_inst_match_info(ModuleInfo) = inst_match_info(ModuleInfo, Exp, no) :-
+init_inst_match_info(ModuleInfo) =
+		inst_match_info(ModuleInfo, Exp, no, match, yes) :-
 	set__init(Exp).
 
 :- pred inst_matches_initial_2(inst, inst, maybe(type), 
@@ -400,23 +433,26 @@ inst_matches_initial_3(InstA, InstB, Type, Info0, Info) :-
 	% occur in `Expansions'.
 
 inst_matches_initial_4(any(UniqA), any(UniqB), _, I, I) :-
-	unique_matches_initial(UniqA, UniqB).
+	I ^ any_matches_any = yes,
+	compare_uniqueness(I ^ uniqueness_comparison, UniqA, UniqB).
 inst_matches_initial_4(any(_), free, _, I, I).
 inst_matches_initial_4(free, any(_), _, I, I).
 inst_matches_initial_4(free, free, _, I, I).
 inst_matches_initial_4(bound(UniqA, ListA), any(UniqB), _, Info, Info) :-
-	unique_matches_initial(UniqA, UniqB),
-	bound_inst_list_matches_uniq(ListA, UniqB, Info^module_info).
+	compare_uniqueness(Info ^ uniqueness_comparison, UniqA, UniqB),
+	compare_bound_inst_list_uniq(Info ^ uniqueness_comparison,
+		ListA, UniqB, Info^module_info).
 inst_matches_initial_4(bound(_Uniq, _List), free, _, I, I).
 inst_matches_initial_4(bound(UniqA, ListA), bound(UniqB, ListB), Type,
 		Info0, Info) :-
-	unique_matches_initial(UniqA, UniqB),
+	compare_uniqueness(Info0 ^ uniqueness_comparison, UniqA, UniqB),
 	bound_inst_list_matches_initial(ListA, ListB, Type, Info0, Info).
 inst_matches_initial_4(bound(UniqA, ListA), ground(UniqB, none), _,
 		Info, Info) :-
-	unique_matches_initial(UniqA, UniqB),
+	compare_uniqueness(Info ^ uniqueness_comparison, UniqA, UniqB),
 	bound_inst_list_is_ground(ListA, Info^module_info),
-	bound_inst_list_matches_uniq(ListA, UniqB, Info^module_info).
+	compare_bound_inst_list_uniq(Info ^ uniqueness_comparison,
+		ListA, UniqB, Info^module_info).
 inst_matches_initial_4(bound(Uniq, List), abstract_inst(_,_), _, Info, Info) :-
 	Uniq = unique,
 	bound_inst_list_is_ground(List, Info^module_info),
@@ -429,20 +465,20 @@ inst_matches_initial_4(ground(UniqA, GroundInstInfoA), any(UniqB), _,
 		Info, Info) :-
 	\+ ground_inst_info_is_nonstandard_func_mode(GroundInstInfoA,
 		Info^module_info),
-	unique_matches_initial(UniqA, UniqB).
+	compare_uniqueness(Info ^ uniqueness_comparison, UniqA, UniqB).
 inst_matches_initial_4(ground(_Uniq, _PredInst), free, _, I, I).
 inst_matches_initial_4(ground(UniqA, _GII_A), bound(UniqB, ListB), MaybeType,
 		Info0, Info) :-
 	MaybeType = yes(Type),
 		% We can only check this case properly if the type is known.
-	unique_matches_initial(UniqA, UniqB),
+	compare_uniqueness(Info0 ^ uniqueness_comparison, UniqA, UniqB),
 	bound_inst_list_is_complete_for_type(set__init, Info0^module_info,
 		ListB, Type),
 	ground_matches_initial_bound_inst_list(UniqA, ListB, yes(Type),
 		Info0, Info).
 inst_matches_initial_4(ground(UniqA, GroundInstInfoA),
 		ground(UniqB, GroundInstInfoB), Type, Info0, Info) :-
-	unique_matches_initial(UniqA, UniqB),
+	compare_uniqueness(Info0 ^ uniqueness_comparison, UniqA, UniqB),
 	ground_inst_info_matches_initial(GroundInstInfoA, GroundInstInfoB,
 		UniqB, Type, Info0, Info).
 inst_matches_initial_4(ground(_UniqA, none), abstract_inst(_,_),_,_,_) :-
@@ -701,6 +737,22 @@ pred_inst_argmodes_matches([ModeA|ModeAs], [ModeB|ModeBs],
 
 %-----------------------------------------------------------------------------%
 
+	% Determine what kind of uniqueness comparison we are doing and then do
+	% it.
+	% If we are doing a "match" then call unique_matches_initial to do the
+	% comparison.
+	% If we are comparing "instantiatedness" then the uniqueness comparison
+	% is the reverse of when we are doing a match so call
+	% unique_matches_initial with the arguments reversed.
+
+:- pred compare_uniqueness(uniqueness_comparison, uniqueness, uniqueness).
+:- mode compare_uniqueness(in, in, in) is semidet.
+
+compare_uniqueness(match, InstA, InstB) :-
+	unique_matches_initial(InstA, InstB).
+compare_uniqueness(instantiated, InstA, InstB) :-
+	unique_matches_initial(InstB, InstA).
+
 unique_matches_initial(unique, _).
 unique_matches_initial(mostly_unique, mostly_unique).
 unique_matches_initial(mostly_unique, shared).
@@ -717,6 +769,15 @@ unique_matches_final(A, B) :-
 	unique_matches_initial(A, B).
 
 %-----------------------------------------------------------------------------%
+
+:- pred compare_bound_inst_list_uniq(uniqueness_comparison, list(bound_inst),
+		uniqueness, module_info).
+:- mode compare_bound_inst_list_uniq(in, in, in, in) is semidet.
+
+compare_bound_inst_list_uniq(match, List, Uniq, ModuleInfo) :-
+	bound_inst_list_matches_uniq(List, Uniq, ModuleInfo).
+compare_bound_inst_list_uniq(instantiated, List, Uniq, ModuleInfo) :-
+	uniq_matches_bound_inst_list(Uniq, List, ModuleInfo).
 
 :- pred bound_inst_list_matches_uniq(list(bound_inst), uniqueness,
 					module_info).
@@ -971,7 +1032,18 @@ bound_inst_list_matches_final([X|Xs], [Y|Ys], MaybeType) -->
 		bound_inst_list_matches_final([X|Xs], Ys, MaybeType)
 	).
 
+inst_is_at_least_as_instantiated(InstA, InstB, Type, ModuleInfo) :-
+	Info = (init_inst_match_info(ModuleInfo)
+			^ uniqueness_comparison := instantiated)
+			^ any_matches_any := no,
+	inst_matches_initial_2(InstA, InstB, yes(Type), Info, _).
+
 inst_matches_binding(InstA, InstB, Type, ModuleInfo) :-
+	Info0 = init_inst_match_info(ModuleInfo)
+		^ any_matches_any := no,
+	inst_matches_binding_2(InstA, InstB, yes(Type), Info0, _).
+
+inst_matches_binding_allow_any_any(InstA, InstB, Type, ModuleInfo) :-
 	Info0 = init_inst_match_info(ModuleInfo),
 	inst_matches_binding_2(InstA, InstB, yes(Type), Info0, _).
 
@@ -997,8 +1069,11 @@ inst_matches_binding_2(InstA, InstB, MaybeType, Info0, Info) :-
 		inst_match_info).
 :- mode inst_matches_binding_3(in, in, in, in, out) is semidet.
 
-% Note that `any' is *not* considered to match `any'.
+% Note that `any' is *not* considered to match `any' unless 
+% Info ^ any_matches_any = yes.
 inst_matches_binding_3(free, free, _, I, I).
+inst_matches_binding_3(any(_), any(_), _, I, I) :-
+	I ^ any_matches_any = yes.
 inst_matches_binding_3(bound(_UniqA, ListA), bound(_UniqB, ListB), MaybeType,
 		Info0, Info) :-
 	bound_inst_list_matches_binding(ListA, ListB, MaybeType, Info0, Info).

@@ -33,6 +33,7 @@ SINGLEMODULE_PROGS= \
 	any_mode \
 	assert_in_interface \
 	bigtest \
+	bind_in_negated \
 	bind_var_errors \
 	builtin_int \
 	builtin_proc \

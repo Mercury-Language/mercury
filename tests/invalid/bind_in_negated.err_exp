@@ -1,0 +1,6 @@
+bind_in_negated.m:014: In clause for `p((bound(f(free, ground)) -> ground), (bound(f(ground, free)) -> ground), out)':
+bind_in_negated.m:014:   scope error: attempt to bind a non-local variable
+bind_in_negated.m:014:   inside the condition of an if-then-else.
+bind_in_negated.m:014:   Variable `A' has instantiatedness `bound(bind_in_negated.f(free, ground))',
+bind_in_negated.m:014:   expected instantiatedness was `bound(bind_in_negated.f(ground, ground))'.
+For more information, try recompiling with `-E'.

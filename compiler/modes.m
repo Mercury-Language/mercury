@@ -138,7 +138,7 @@ a variable live if its value will be used later on in the computation.
 :- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, list, io.
+:- import_module bool, list, io, std_util.
 
 	% modecheck(HLDS0, HLDS, UnsafeToContinue):
 	% Perform mode inference and checking for a whole module.
@@ -234,8 +234,20 @@ a variable live if its value will be used later on in the computation.
 :- mode modecheck_var_has_inst_list(in, in, in, in, out, mode_info_di, mode_info_uo)
 	is det.
 
-:- pred modecheck_set_var_inst(prog_var, inst, mode_info, mode_info).
-:- mode modecheck_set_var_inst(in, in, mode_info_di, mode_info_uo) is det.
+	% modecheck_set_var_inst(Var, Inst, MaybeUInst, ModeInfo0, ModeInfo).
+	% 	Assign the given Inst to the given Var, after checking that
+	% 	it is okay to do so.  If the inst to be assigned is the
+	% 	result of an abstract unification then the MaybeUInst
+	% 	argument should be the initial inst of the _other_ side of
+	% 	the unification.  This allows more precise (i.e. less
+	% 	conservative) checking in the case that Inst contains `any'
+	% 	components and Var is locked (i.e. is a nonlocal variable in
+	% 	a negated context).  Where the inst is not the result of an
+	% 	abstract unification then MaybeUInst should be `no'.
+
+:- pred modecheck_set_var_inst(prog_var, inst, maybe(inst),
+			mode_info, mode_info).
+:- mode modecheck_set_var_inst(in, in, in, mode_info_di, mode_info_uo) is det.
 
 :- pred modecheck_set_var_inst_list(list(prog_var), list(inst), list(inst),
 		int, list(prog_var), extra_goals, mode_info, mode_info).
@@ -1721,7 +1733,7 @@ modecheck_functor_test(Var, ConsId) -->
 		% record the fact that Var was bound to ConsId in the instmap
 	{ list__duplicate(AdjustedArity, free, ArgInsts) },
 	modecheck_set_var_inst(Var,
-		bound(unique, [functor(ConsId, ArgInsts)])).
+		bound(unique, [functor(ConsId, ArgInsts)]), no).
 
 %-----------------------------------------------------------------------------%
 
@@ -1945,11 +1957,12 @@ modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var,
 		instmap__lookup_var(InstMap0, Var0, VarInst0),
 		handle_implied_mode(Var0, VarInst0, InitialInst,
 		 	Var, ExtraGoals0, ExtraGoals, ModeInfo0, ModeInfo1),
-		modecheck_set_var_inst(Var0, FinalInst, ModeInfo1, ModeInfo2),
+		modecheck_set_var_inst(Var0, FinalInst, no,
+			ModeInfo1, ModeInfo2),
 		( Var = Var0 ->
 			ModeInfo = ModeInfo2
 		;
-			modecheck_set_var_inst(Var, FinalInst,
+			modecheck_set_var_inst(Var, FinalInst, no,
 				ModeInfo2, ModeInfo)
 		)
 	;
@@ -1959,11 +1972,11 @@ modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var,
 	).
 
 	% Note that there are two versions of modecheck_set_var_inst,
-	% one with arity 7 and one with arity 4.
+	% one with arity 7 and one with arity 5.
 	% The former is used for predicate calls, where we may need
 	% to introduce unifications to handle calls to implied modes.
 
-modecheck_set_var_inst(Var0, FinalInst, ModeInfo00, ModeInfo) :-
+modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, ModeInfo00, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	mode_info_get_parallel_vars(PVars0, ModeInfo00, ModeInfo0),
 	( instmap__is_reachable(InstMap0) ->
@@ -1982,6 +1995,8 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo00, ModeInfo) :-
 			error("modecheck_set_var_inst: unify_inst failed")
 		),
 		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
+		mode_info_get_var_types(ModeInfo1, VarTypes),
+		map__lookup(VarTypes, Var0, Type),
 		(
 			% if the top-level inst of the variable is not_reached,
 			% then the instmap as a whole must be unreachable
@@ -1993,8 +2008,6 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo00, ModeInfo) :-
 			% If we haven't added any information and
 			% we haven't bound any part of the var, then
 			% the only thing we can have done is lose uniqueness.
-			mode_info_get_var_types(ModeInfo1, VarTypes),
-			map__lookup(VarTypes, Var0, Type),
 			inst_matches_initial(Inst0, Inst, Type, ModuleInfo)
 		->
 			instmap__set(InstMap0, Var0, Inst, InstMap),
@@ -2004,8 +2017,6 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo00, ModeInfo) :-
 			% lost some uniqueness, or bound part of the var.
 			% The call to inst_matches_binding will succeed
 			% only if we haven't bound any part of the var.
-			mode_info_get_var_types(ModeInfo1, VarTypes),
-			map__lookup(VarTypes, Var0, Type),
 			inst_matches_binding(Inst, Inst0, Type, ModuleInfo)
 		->
 			% We've just added some information
@@ -2018,8 +2029,24 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo00, ModeInfo) :-
 				ModeInfo2, ModeInfo3)
 		;
 			% We've bound part of the var.  If the var was locked,
-			% then we need to report an error.
-			mode_info_var_is_locked(ModeInfo1, Var0, Reason0)
+			% then we need to report an error...
+			mode_info_var_is_locked(ModeInfo1, Var0, Reason0),
+			\+ (
+				% ...unless the goal is a unification and the
+				% var was unified with something no more
+				% instantiated than itself.
+				% This allows for the case of `any = free', for
+				% example. The call to
+				% inst_matches_binding, above will fail for the
+				% var with mode `any >> any' however, it should
+				% be allowed because it has only been unified
+				% with a free variable.
+				MaybeUInst = yes(UInst),
+				inst_is_at_least_as_instantiated(Inst, UInst,
+					Type, ModuleInfo),
+				inst_matches_binding_allow_any_any(Inst,
+					Inst0, Type, ModuleInfo)
+			)
 		->
 			set__singleton_set(WaitingVars, Var0),
 			mode_info_error(WaitingVars,
