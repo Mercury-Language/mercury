@@ -86,6 +86,16 @@
 :- pred type_constructors(type, module_info, list(constructor)).
 :- mode type_constructors(in, in, out) is semidet.
 
+	% Given a list of constructors for a type,
+	% check whether that type is a no_tag type
+	% (i.e. one with only one constructor, and
+	% whose one constructor has only one argument,
+	% and which is not mercury_builtin:type_info/1),
+	% and if so, return its constructor symbol and argument type.
+
+:- pred type_is_no_tag_type(list(constructor), sym_name, type).
+:- mode type_is_no_tag_type(in, out, out) is semidet.
+
 	% Unify (with occurs check) two types with respect to a type
 	% substitution and update the type bindings.
 	% The third argument is a list of type variables which cannot
@@ -250,6 +260,21 @@ type_constructors(Type, ModuleInfo, Constructors) :-
 	TypeBody = du_type(Constructors0, _, _),
 	substitute_type_args(TypeParams, TypeArgs, Constructors0,
 		Constructors).
+
+%-----------------------------------------------------------------------------%
+
+	% the checks for type_info and base_type_info
+	% are needed because those types lie about their
+	% arity; it might be cleaner to change that in
+	% mercury_builtin.m, but that would cause some
+	% bootstrapping difficulties.
+
+type_is_no_tag_type(Ctors, Ctor, Type) :-
+	Ctors = [Ctor - [_FieldName - Type]],
+	Ctor \= qualified("mercury_builtin", "type_info"),
+	Ctor \= qualified("mercury_builtin", "base_type_info"),
+	Ctor \= unqualified("type_info"),
+	Ctor \= unqualified("base_type_info").
 
 %-----------------------------------------------------------------------------%
 

@@ -351,7 +351,7 @@ bytecode_gen__unify(construct(Var, ConsId, Args, UniModes), _, _, ByteInfo,
 	bytecode_gen__map_vars(ByteInfo, Args, ByteArgs),
 	bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId),
 	(
-		bytecode_gen__map_uni_modes(UniModes, ByteInfo, Dirs),
+		bytecode_gen__map_uni_modes(UniModes, Args, ByteInfo, Dirs),
 		bytecode_gen__all_dirs_same(Dirs, to_var)
 	->
 		Code = node([construct(ByteVar, ByteConsId, ByteArgs)])
@@ -363,7 +363,7 @@ bytecode_gen__unify(deconstruct(Var, ConsId, Args, UniModes, _), _, _, ByteInfo,
 	bytecode_gen__map_var(ByteInfo, Var, ByteVar),
 	bytecode_gen__map_vars(ByteInfo, Args, ByteArgs),
 	bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId),
-	bytecode_gen__map_uni_modes(UniModes, ByteInfo, Dirs),
+	bytecode_gen__map_uni_modes(UniModes, Args, ByteInfo, Dirs),
 	(
 		bytecode_gen__all_dirs_same(Dirs, to_arg)
 	->
@@ -383,27 +383,17 @@ bytecode_gen__unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
 bytecode_gen__unify(complicated_unify(_, _), _Var, _RHS, _ByteInfo, _Code) :-
 	error("we do not handle complicated unifications yet").
 
-:- pred bytecode_gen__map_uni_modes(list(uni_mode)::in, byte_info::in,
-	list(byte_dir)::out) is det.
+:- pred bytecode_gen__map_uni_modes(list(uni_mode)::in, list(var)::in,
+	byte_info::in, list(byte_dir)::out) is det.
 
-bytecode_gen__map_uni_modes([], _, []).
-bytecode_gen__map_uni_modes([UniMode | UniModes], ByteInfo, [Dir | Dirs]) :-
+bytecode_gen__map_uni_modes([], [], _, []).
+bytecode_gen__map_uni_modes([UniMode | UniModes], [Arg | Args], ByteInfo,
+		[Dir | Dirs]) :-
 	UniMode = ((VarInitial - ArgInitial) -> (VarFinal - ArgFinal)),
 	bytecode_gen__get_module_info(ByteInfo, ModuleInfo),
-	( mode_is_input(ModuleInfo, (VarInitial -> VarFinal)) ->
-		VarMode = top_in
-	; mode_is_output(ModuleInfo, (VarInitial -> VarFinal)) ->
-		VarMode = top_out
-	;
-		VarMode = top_unused
-	),
-	( mode_is_input(ModuleInfo, (ArgInitial -> ArgFinal)) ->
-		ArgMode = top_in
-	; mode_is_output(ModuleInfo, (ArgInitial -> ArgFinal)) ->
-		ArgMode = top_out
-	;
-		ArgMode = top_unused
-	),
+	bytecode_gen__get_var_type(ByteInfo, Arg, Type),
+	mode_to_arg_mode(ModuleInfo, (VarInitial -> VarFinal), Type, VarMode),
+	mode_to_arg_mode(ModuleInfo, (ArgInitial -> ArgFinal), Type, ArgMode),
 	(
 		VarMode = top_in,
 		ArgMode = top_out
@@ -422,7 +412,11 @@ bytecode_gen__map_uni_modes([UniMode | UniModes], ByteInfo, [Dir | Dirs]) :-
 	;
 		error("invalid mode for deconstruct unification")
 	),
-	bytecode_gen__map_uni_modes(UniModes, ByteInfo, Dirs).
+	bytecode_gen__map_uni_modes(UniModes, Args, ByteInfo, Dirs).
+bytecode_gen__map_uni_modes([], [_|_], _, _) :-
+	error("bytecode_gen__map_uni_modes: length mismatch").
+bytecode_gen__map_uni_modes([_|_], [], _, _) :-
+	error("bytecode_gen__map_uni_modes: length mismatch").
 
 :- pred bytecode_gen__all_dirs_same(list(byte_dir)::in, byte_dir::in)
 	is semidet.

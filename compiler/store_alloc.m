@@ -34,7 +34,7 @@
 :- import_module hlds_goal, follow_vars, llds.
 :- import_module options, globals, goal_util, mode_util, instmap.
 :- import_module list, map, set, std_util, assoc_list.
-:- import_module bool, int.
+:- import_module bool, int, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -233,25 +233,34 @@ store_alloc_in_cases([case(Cons, Goal0) | Goals0], Liveness0,
 
 initial_liveness(ProcInfo, ModuleInfo, Liveness) :-
 	proc_info_headvars(ProcInfo, Vars),
-	proc_info_argmodes(ProcInfo, Args),
-	assoc_list__from_corresponding_lists(Vars, Args, VarArgs),
+	proc_info_argmodes(ProcInfo, Modes),
+	proc_info_vartypes(ProcInfo, VarTypes),
+	map__apply_to_list(Vars, VarTypes, Types),
 	set__init(Liveness0),
-	initial_liveness_2(VarArgs, ModuleInfo, Liveness0, Liveness).
-
-:- pred initial_liveness_2(assoc_list(var,mode), module_info,
-	set(var), set(var)).
-:- mode initial_liveness_2(in, in, in, out) is det.
-
-initial_liveness_2([], _ModuleInfo, Liveness, Liveness).
-initial_liveness_2([Var - Mode | VarModes], ModuleInfo, Liveness0, Liveness) :-
 	(
-		mode_is_input(ModuleInfo, Mode)
+		initial_liveness_2(Vars, Modes, Types, ModuleInfo,
+			Liveness0, Liveness1)
+	->
+		Liveness = Liveness1
+	;
+		error("initial_liveness: list length mis-match")
+	).
+
+:- pred initial_liveness_2(list(var), list(mode), list(type), module_info,
+	set(var), set(var)).
+:- mode initial_liveness_2(in, in, in, in, in, out) is semidet.
+
+initial_liveness_2([], [], [], _ModuleInfo, Liveness, Liveness).
+initial_liveness_2([Var | Vars], [Mode | Modes], [Type | Types],
+		ModuleInfo, Liveness0, Liveness) :-
+	(
+		mode_to_arg_mode(ModuleInfo, Mode, Type, top_in)
 	->
 		set__insert(Liveness0, Var, Liveness1)
 	;
 		Liveness1 = Liveness0
 	),
-	initial_liveness_2(VarModes, ModuleInfo, Liveness1, Liveness).
+	initial_liveness_2(Vars, Modes, Types, ModuleInfo, Liveness1, Liveness).
 
 %-----------------------------------------------------------------------------%
 

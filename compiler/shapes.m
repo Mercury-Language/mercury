@@ -379,9 +379,9 @@ shapes__create_shape_2(Type_Tab, Type, Inst, Type_Id, TypeArgs, Shape,
 			% check for a type with only one functor of arity one:
 			% such a type will have a `no_tag' functor
 			% (unless it is type_info/1)
-			(	Ctors = [SingleCtor - [_Name - SingleArgType]],
-				SingleCtor \= qualified(_, "type_info"),
-				SingleCtor \= unqualified("type_info")
+			(	
+				type_is_no_tag_type(Ctors, _SingleCtor,
+					SingleArgType)
 			->
 				% the shape is just the shape of the argument
 				% we just need to figure out its inst,

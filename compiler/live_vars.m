@@ -359,26 +359,34 @@ build_live_sets_in_cases([case(_Cons, Goal0) | Goals0], Liveness0,
 
 detect_initial_liveness(ProcInfo, ModuleInfo, Liveness) :-
 	proc_info_headvars(ProcInfo, Vars),
-	proc_info_argmodes(ProcInfo, Args),
-	assoc_list__from_corresponding_lists(Vars, Args, VarArgs),
+	proc_info_argmodes(ProcInfo, Modes),
+	proc_info_vartypes(ProcInfo, VarTypes),
+	map__apply_to_list(Vars, VarTypes, Types),
 	set__init(Liveness0),
-	detect_initial_liveness_2(VarArgs, ModuleInfo, Liveness0, Liveness).
+	(
+		detect_initial_liveness_2(Vars, Modes, Types, ModuleInfo,
+			Liveness0, Liveness1) 
+	->
+		Liveness = Liveness1
+	;
+		error("detect_initial_liveness: list length mis-match")
+	).
 
-:- pred detect_initial_liveness_2(assoc_list(var, (mode)), module_info,
-							set(var), set(var)).
-:- mode detect_initial_liveness_2(in, in, in, out) is det.
+:- pred detect_initial_liveness_2(list(var), list(mode), list(type),
+				module_info, set(var), set(var)).
+:- mode detect_initial_liveness_2(in, in, in, in, in, out) is semidet.
 
-detect_initial_liveness_2([], _ModuleInfo, Liveness, Liveness).
-detect_initial_liveness_2([V - M | VAs], ModuleInfo,
+detect_initial_liveness_2([], [], [], _ModuleInfo, Liveness, Liveness).
+detect_initial_liveness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo,
 						Liveness0, Liveness) :-
 	(
-		mode_is_input(ModuleInfo, M)
+		mode_to_arg_mode(ModuleInfo, M, T, top_in)
 	->
 		set__insert(Liveness0, V, Liveness1)
 	;
 		Liveness1 = Liveness0
 	),
-	detect_initial_liveness_2(VAs, ModuleInfo, Liveness1, Liveness).
+	detect_initial_liveness_2(Vs, Ms, Ts, ModuleInfo, Liveness1, Liveness).
 
 %-----------------------------------------------------------------------------%
 

@@ -248,10 +248,11 @@ unify_gen__generate_construction_2(float_constant(Float),
 		Var, _Args, _Modes, Code) -->
 	{ Code = empty },
 	code_info__cache_expression(Var, const(float_const(Float))).
-unify_gen__generate_construction_2(no_tag, Var, Args, _Modes, Code) -->
-	{ Code = empty },
-	( { Args = [Arg] } ->
-		code_info__cache_expression(Var, var(Arg))
+unify_gen__generate_construction_2(no_tag, Var, Args, Modes, Code) -->
+	( { Args = [Arg], Modes = [Mode] } ->
+		code_info__variable_type(Arg, Type),
+		unify_gen__generate_sub_unify(ref(Var), ref(Arg),
+			Mode, Type, Code)
 	;
 		{ error(
 		"unify_gen__generate_construction_2: no_tag: arity != 1") }
@@ -260,7 +261,9 @@ unify_gen__generate_construction_2(simple_tag(SimpleTag),
 		Var, Args, Modes, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	code_info__get_next_cell_number(CellNo),
-	{ unify_gen__generate_cons_args(Args, ModuleInfo, Modes, RVals) },
+	unify_gen__var_types(Args, ArgTypes),
+	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, ModuleInfo,
+		RVals) },
 	{ Code = empty },
 	% XXX Later we will need to worry about
 	% whether the cell must be unique or not.
@@ -269,7 +272,9 @@ unify_gen__generate_construction_2(complicated_tag(Bits0, Num0),
 		Var, Args, Modes, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	code_info__get_next_cell_number(CellNo),
-	{ unify_gen__generate_cons_args(Args, ModuleInfo, Modes, RVals0) },
+	unify_gen__var_types(Args, ArgTypes),
+	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, ModuleInfo,
+		RVals0) },
 		% the first field holds the secondary tag
 	{ RVals = [yes(const(int_const(Num0))) | RVals0] },
 	{ Code = empty },
@@ -434,12 +439,13 @@ unify_gen__generate_pred_args([Var|Vars], [ArgInfo|ArgInfos], [Rval|Rvals]) :-
 	),
 	unify_gen__generate_pred_args(Vars, ArgInfos, Rvals).
 
-:- pred unify_gen__generate_cons_args(list(var), module_info, list(uni_mode),
-					list(maybe(rval))).
-:- mode unify_gen__generate_cons_args(in, in, in, out) is det.
+:- pred unify_gen__generate_cons_args(list(var), list(type), list(uni_mode),
+					module_info, list(maybe(rval))).
+:- mode unify_gen__generate_cons_args(in, in, in, in, out) is det.
 
-unify_gen__generate_cons_args(Vars, ModuleInfo, Modes, Args) :-
-	( unify_gen__generate_cons_args_2(Vars, ModuleInfo, Modes, Args0) ->
+unify_gen__generate_cons_args(Vars, Types, Modes, ModuleInfo, Args) :-
+	( unify_gen__generate_cons_args_2(Vars, Types, Modes, ModuleInfo,
+			Args0) ->
 		Args = Args0
 	;
 		error("unify_gen__generate_cons_args: length mismatch")
@@ -451,20 +457,31 @@ unify_gen__generate_cons_args(Vars, ModuleInfo, Modes, Args) :-
 	% but if the argument is free, we just produce `no', meaning don't
 	% generate an assignment to that field.
 
-:- pred unify_gen__generate_cons_args_2(list(var), module_info, list(uni_mode),
-					list(maybe(rval))).
-:- mode unify_gen__generate_cons_args_2(in, in, in, out) is semidet.
+:- pred unify_gen__generate_cons_args_2(list(var), list(type), list(uni_mode),
+					module_info, list(maybe(rval))).
+:- mode unify_gen__generate_cons_args_2(in, in, in, in, out) is semidet.
 
-unify_gen__generate_cons_args_2([], _, [], []).
-unify_gen__generate_cons_args_2([Var|Vars], ModuleInfo, [UniMode | UniModes],
-			[Arg|RVals]) :-
+unify_gen__generate_cons_args_2([], [], [], _, []).
+unify_gen__generate_cons_args_2([Var|Vars], [Type|Types], [UniMode|UniModes],
+			ModuleInfo, [Arg|RVals]) :-
 	UniMode = ((_LI - RI) -> (_LF - RF)),
-	( mode_is_input(ModuleInfo, (RI -> RF)) ->
+	( mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, top_in) ->
 		Arg = yes(var(Var))
 	;
 		Arg = no
 	),
-	unify_gen__generate_cons_args_2(Vars, ModuleInfo, UniModes, RVals).
+	unify_gen__generate_cons_args_2(Vars, Types, UniModes, ModuleInfo,
+		RVals).
+
+%---------------------------------------------------------------------------%
+
+:- pred unify_gen__var_types(list(var), list(type), code_info, code_info).
+:- mode unify_gen__var_types(in, out, in, out) is det.
+
+unify_gen__var_types(Vars, Types) -->
+	code_info__get_proc_info(ProcInfo),
+	{ proc_info_vartypes(ProcInfo, VarTypes) },
+	{ map__apply_to_list(Vars, VarTypes, Types) }.
 
 %---------------------------------------------------------------------------%
 
@@ -518,8 +535,9 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 	;
 		{ Tag = no_tag },
 		( { Args = [Arg], Modes = [Mode] } ->
-			unify_gen__generate_det_sub_unify(ref(Var), ref(Arg),
-				Mode, Code)
+			code_info__variable_type(Arg, Type),
+			unify_gen__generate_sub_unify(ref(Var), ref(Arg),
+				Mode, Type, Code)
 		;
 			{ error("unify_gen__generate_det_deconstruction: no_tag: arity != 1") }
 		)
@@ -528,15 +546,17 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 		{ Rval = var(Var) },
 		{ unify_gen__make_fields_and_argvars(Args, Rval, 0,
 			SimpleTag, Fields, ArgVars) },
-		unify_gen__generate_det_unify_args(Fields, ArgVars,
-			Modes, Code)
+		unify_gen__var_types(Args, ArgTypes),
+		unify_gen__generate_unify_args(Fields, ArgVars,
+			Modes, ArgTypes, Code)
 	;
 		{ Tag = complicated_tag(Bits0, _Num0) },
 		{ Rval = var(Var) },
 		{ unify_gen__make_fields_and_argvars(Args, Rval, 1,
 			Bits0, Fields, ArgVars) },
-		unify_gen__generate_det_unify_args(Fields, ArgVars,
-			Modes, Code)
+		unify_gen__var_types(Args, ArgTypes),
+		unify_gen__generate_unify_args(Fields, ArgVars,
+			Modes, ArgTypes, Code)
 	;
 		{ Tag = complicated_constant_tag(_Bits1, _Num1) },
 		{ Code = empty } % if this is det, then nothing happens
@@ -564,85 +584,47 @@ unify_gen__generate_semi_deconstruction(Var, Tag, Args, Modes, Code) -->
 	% Generate code to perform a list of deterministic subunifications
 	% for the arguments of a construction.
 
-:- pred unify_gen__generate_det_unify_args(list(uni_val), list(uni_val),
-			list(uni_mode), code_tree, code_info, code_info).
-:- mode unify_gen__generate_det_unify_args(in, in, in, out, in, out) is det.
+:- pred unify_gen__generate_unify_args(list(uni_val), list(uni_val),
+			list(uni_mode), list(type), code_tree,
+			code_info, code_info).
+:- mode unify_gen__generate_unify_args(in, in, in, in, out, in, out) is det.
 
-unify_gen__generate_det_unify_args(Ls, Rs, Ms, Code) -->
-	( unify_gen__generate_det_unify_args_2(Ls, Rs, Ms, Code0) ->
+unify_gen__generate_unify_args(Ls, Rs, Ms, Ts, Code) -->
+	( unify_gen__generate_unify_args_2(Ls, Rs, Ms, Ts, Code0) ->
 		{ Code = Code0 }
 	;
-		{ error("unify_gen__generate_det_unify_args: length mismatch") }
+		{ error("unify_gen__generate_unify_args: length mismatch") }
 	).
 
-:- pred unify_gen__generate_det_unify_args_2(list(uni_val), list(uni_val),
-			list(uni_mode), code_tree, code_info, code_info).
-:- mode unify_gen__generate_det_unify_args_2(in, in, in, out, in, out)
+:- pred unify_gen__generate_unify_args_2(list(uni_val), list(uni_val),
+			list(uni_mode), list(type), code_tree,
+			code_info, code_info).
+:- mode unify_gen__generate_unify_args_2(in, in, in, in, out, in, out)
 	is semidet.
 
-unify_gen__generate_det_unify_args_2([], [], [], empty) --> [].
-unify_gen__generate_det_unify_args_2([L|Ls], [R|Rs], [M|Ms], Code) -->
-	unify_gen__generate_det_sub_unify(L, R, M, CodeA),
-	unify_gen__generate_det_unify_args_2(Ls, Rs, Ms, CodeB),
+unify_gen__generate_unify_args_2([], [], [], [], empty) --> [].
+unify_gen__generate_unify_args_2([L|Ls], [R|Rs], [M|Ms], [T|Ts], Code) -->
+	unify_gen__generate_sub_unify(L, R, M, T, CodeA),
+	unify_gen__generate_unify_args_2(Ls, Rs, Ms, Ts, CodeB),
 	{ Code = tree(CodeA, CodeB) }.
 
 %---------------------------------------------------------------------------%
 
 	% Generate a subunification between two [field|variable].
 
-:- pred unify_gen__generate_det_sub_unify(uni_val, uni_val, uni_mode, code_tree,
-							code_info, code_info).
-:- mode unify_gen__generate_det_sub_unify(in, in, in, out, in, out) is det.
-
-unify_gen__generate_det_sub_unify(L, R, M, Code) -->
-	{ M = ((LI - RI) -> (LF - RF)) },
-	code_info__get_module_info(ModuleInfo),
-	(
-			% Input - input == test unification
-			% == not allowed in det code.
-		{ mode_is_input(ModuleInfo, (LI -> LF)) },
-		{ mode_is_input(ModuleInfo, (RI -> RF)) }
-	->
-		{ error("Det unifications may not contain tests") }
-		% XXX We should perhaps just emit empty code here,
-		% since the unification must be something like `1 = 1'?
-		% { Code = node([ c_code("abort();") -
-		% 	"Error - det argument sub-unify is a test???" ]) }
-	;
-			% Input - Output== assignment ->
-		{ mode_is_input(ModuleInfo, (LI -> LF)) },
-		{ mode_is_output(ModuleInfo, (RI -> RF)) }
-	->
-		unify_gen__generate_sub_assign(R, L, Code)
-	;
-			% Output - Input== assignment <-
-		{ mode_is_output(ModuleInfo, (LI -> LF)) },
-		{ mode_is_input(ModuleInfo, (RI -> RF)) }
-	->
-		unify_gen__generate_sub_assign(L, R, Code)
-	;
-			% Bizzare!
-		{ mode_is_output(ModuleInfo, (LI -> LF)) },
-		{ mode_is_output(ModuleInfo, (RI -> RF)) }
-	->
-		{ error("Some strange unify") }
-	;
-		{ Code = empty } % free-free - ignore
-	).
-
-%---------------------------------------------------------------------------%
-
-:- pred unify_gen__generate_semi_sub_unify(uni_val, uni_val, uni_mode,
+:- pred unify_gen__generate_sub_unify(uni_val, uni_val, uni_mode, type,
 					code_tree, code_info, code_info).
-:- mode unify_gen__generate_semi_sub_unify(in, in, in, out, in, out) is det.
+:- mode unify_gen__generate_sub_unify(in, in, in, in, out, in, out) is det.
 
-unify_gen__generate_semi_sub_unify(L, R, M, Code) -->
-	{ M = ((LI - RI) -> (LF - RF)) },
+unify_gen__generate_sub_unify(L, R, Mode, Type, Code) -->
+	{ Mode = ((LI - RI) -> (LF - RF)) },
 	code_info__get_module_info(ModuleInfo),
+	{ mode_to_arg_mode(ModuleInfo, (LI -> LF), Type, LeftMode) },
+	{ mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, RightMode) },
 	(
 			% Input - input == test unification
-		{ mode_is_input(ModuleInfo, (LI -> LF)) },
-		{ mode_is_input(ModuleInfo, (RI -> RF)) }
+		{ LeftMode = top_in },
+		{ RightMode = top_in }
 	->
 		% This shouldn't happen, since mode analysis should
 		% avoid creating any tests in the arguments
@@ -650,24 +632,25 @@ unify_gen__generate_semi_sub_unify(L, R, M, Code) -->
 		{ error("test in arg of [de]construction") }
 	;
 			% Input - Output== assignment ->
-		{ mode_is_input(ModuleInfo, (LI -> LF)) },
-		{ mode_is_output(ModuleInfo, (RI -> RF)) }
+		{ LeftMode = top_in },
+		{ RightMode = top_out }
 	->
 		unify_gen__generate_sub_assign(R, L, Code)
 	;
 			% Input - Output== assignment <-
-		{ mode_is_output(ModuleInfo, (LI -> LF)) },
-		{ mode_is_input(ModuleInfo, (RI -> RF)) }
+		{ LeftMode = top_out },
+		{ RightMode = top_in }
 	->
 		unify_gen__generate_sub_assign(L, R, Code)
 	;
-			% Weird! [and you thought I was cutting and pasting]
-		{ mode_is_output(ModuleInfo, (LI -> LF)) },
-		{ mode_is_output(ModuleInfo, (RI -> RF)) }
+		{ LeftMode = top_unused },
+		{ RightMode = top_unused }
 	->
-		{ error("Some strange unify") }
-	;
 		{ Code = empty } % free-free - ignore
+			% XXX I think this will have to change
+			% if we start to support aliasing
+	;
+		{ error("unify_gen__generate_sub_unify: some strange unify") }
 	).
 
 %---------------------------------------------------------------------------%

@@ -682,9 +682,13 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 			Vars, UniModes, ExtraGoals, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	UniMode0 = (InitialInstX - InitialInstY -> FinalInstX - FinalInstY),
+	ModeX = (InitialInstX -> FinalInstX),
+	ModeY = (InitialInstY -> FinalInstY),
+	mode_info_get_var_types(ModeInfo0, VarTypes0),
+	map__lookup(VarTypes0, Var0, VarType),
 	(
-		mode_is_input(ModuleInfo, (InitialInstX -> FinalInstX)),
-		mode_is_input(ModuleInfo, (InitialInstY -> FinalInstY))
+		mode_to_arg_mode(ModuleInfo, ModeX, VarType, top_in),
+		mode_to_arg_mode(ModuleInfo, ModeY, VarType, top_in)
 	->
 		split_complicated_subunifies_2(Vars0, UniModes0,
 				Vars1, UniModes1, ExtraGoals0,
@@ -692,11 +696,10 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 		ExtraGoals0 = BeforeGoals - AfterGoals0,
 
 		% introduce a new variable `Var'
-		mode_info_get_varset(ModeInfo1, VarSet0),
-		mode_info_get_var_types(ModeInfo1, VarTypes0),
-		varset__new_var(VarSet0, Var, VarSet),
-		map__lookup(VarTypes0, Var0, VarType),
-		map__set(VarTypes0, Var, VarType, VarTypes),
+		mode_info_get_varset(ModeInfo1, VarSet1),
+		mode_info_get_var_types(ModeInfo1, VarTypes1),
+		varset__new_var(VarSet1, Var, VarSet),
+		map__set(VarTypes1, Var, VarType, VarTypes),
 		mode_info_set_varset(VarSet, ModeInfo1, ModeInfo2),
 		mode_info_set_var_types(VarTypes, ModeInfo2, ModeInfo3),
 

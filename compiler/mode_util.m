@@ -37,8 +37,17 @@
 :- pred mode_is_unused(module_info, mode).
 :- mode mode_is_unused(in, in) is semidet.
 
-:- pred mode_to_arg_mode(module_info, mode, arg_mode).
-:- mode mode_to_arg_mode(in, in, out) is det.
+	% mode_to_arg_mode converts a mode (and corresponding type) to
+	% an arg_mode.  A mode is a high-level notion, the normal
+	% Mercury language mode.  An `arg_mode' is a low-level notion
+	% used for code generation, which indicates the argument
+	% passing convention (top_in, top_out, or top_unused) that
+	% corresponds to that mode.  We need to know the type, not just
+	% the mode, because the argument passing convention can depend
+	% on the type's representation.
+	%
+:- pred mode_to_arg_mode(module_info, mode, type, arg_mode).
+:- mode mode_to_arg_mode(in, in, in, out) is det.
 
 /*
 ** Predicates to test various properties of insts.
@@ -285,7 +294,39 @@ mode_is_unused(ModuleInfo, Mode) :-
 	inst_is_free(ModuleInfo, InitialInst),
 	inst_is_free(ModuleInfo, FinalInst).
 
-mode_to_arg_mode(ModuleInfo, Mode, ArgMode) :-
+%-----------------------------------------------------------------------------%
+
+mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode) :-
+	%
+	% We need to handle no_tag types (types which have
+	% exactly one constructor, and whose one constructor
+	% has exactly one argument) specially here,
+	% since for them an inst of bound(f(free)) is not really bound
+	% as far as code generation is concerned, since the f/1
+	% will get optimized away.
+	%
+	(
+		% is this a no_tag type?
+		type_constructors(Type, ModuleInfo, Constructors),
+		type_is_no_tag_type(Constructors, FunctorName, ArgType)
+	->
+		% if so, the arg_mode will be determined by the mode and
+		% type of the functor's argument,
+		% so we figure out the mode and type of the argument,
+		% and then recurse
+		mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
+		ConsId = cons(FunctorName, 1),
+		get_arg_inst(InitialInst, ModuleInfo, ConsId, InitialArgInst),
+		get_arg_inst(FinalInst, ModuleInfo, ConsId, FinalArgInst),
+		ModeOfArg = (InitialArgInst -> FinalArgInst),
+		mode_to_arg_mode(ModuleInfo, ModeOfArg, ArgType, ArgMode)
+	;
+		mode_to_arg_mode_2(ModuleInfo, Mode, ArgMode)
+	).
+
+:- pred mode_to_arg_mode_2(module_info, mode, arg_mode).
+:- mode mode_to_arg_mode_2(in, in, out) is det.
+mode_to_arg_mode_2(ModuleInfo, Mode, ArgMode) :-
 	mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
 	( inst_is_bound(ModuleInfo, InitialInst) ->
 		ArgMode = top_in
@@ -293,6 +334,48 @@ mode_to_arg_mode(ModuleInfo, Mode, ArgMode) :-
 		ArgMode = top_out
 	;
 		ArgMode = top_unused
+	).
+
+%-----------------------------------------------------------------------------%
+
+	% get_arg_inst(Inst, ConsId, Arity, ArgInsts):
+	% Given an inst `Inst', figure out what the inst of the
+	% argument would be, assuming that the functor is
+	% the one given by the specified ConsId, whose arity is 1.
+	%
+:- pred get_arg_inst(inst, module_info, cons_id, inst).
+:- mode get_arg_inst(in, in, in, out) is det.
+
+get_arg_inst(defined_inst(InstName), ModuleInfo, ConsId, ArgInst) :-
+	inst_lookup(ModuleInfo, InstName, Inst),
+	get_arg_inst(Inst, ModuleInfo, ConsId, ArgInst).
+get_arg_inst(not_reached, _, _, not_reached).
+get_arg_inst(ground(Uniq, _PredInst), _, _, ground(Uniq, no)).
+get_arg_inst(bound(_Uniq, List), _, ConsId, ArgInst) :-
+	( get_arg_inst_2(List, ConsId, ArgInst0) ->
+		ArgInst = ArgInst0
+	;
+		% the code is unreachable
+		ArgInst = not_reached
+	).
+get_arg_inst(free, _, _, free).
+get_arg_inst(free(_Type), _, _, free).
+get_arg_inst(any(Uniq), _, _, any(Uniq)).
+get_arg_inst(abstract_inst(_, _), _, _, _) :-
+	error("get_arg_inst: abstract insts not supported").
+get_arg_inst(inst_var(_), _, _, _) :-
+	error("get_arg_inst: inst_var").
+
+:- pred get_arg_inst_2(list(bound_inst), cons_id, inst).
+:- mode get_arg_inst_2(in, in, out) is semidet.
+
+get_arg_inst_2([BoundInst | BoundInsts], ConsId, ArgInst) :-
+	(
+		BoundInst = functor(ConsId, [ArgInst0])
+	->
+		ArgInst = ArgInst0
+	;
+		get_arg_inst_2(BoundInsts, ConsId, ArgInst)
 	).
 
 %-----------------------------------------------------------------------------%

@@ -34,8 +34,9 @@
 
 :- implementation.
 
-:- import_module hlds_goal, llds, mode_util, term, quantification, instmap.
-:- import_module list, map, set, std_util, assoc_list, globals, require.
+:- import_module hlds_goal, llds, mode_util, quantification, instmap.
+:- import_module prog_data, globals.
+:- import_module list, map, set, std_util, term, assoc_list, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -45,12 +46,15 @@
 
 detect_liveness_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 	proc_info_goal(ProcInfo0, Goal0),
+	proc_info_vartypes(ProcInfo0, VarTypes),
 
 	detect_initial_liveness(ProcInfo0, ModuleInfo, Liveness0),
-	detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo, Goal1),
+	detect_liveness_in_goal(Goal0, Liveness0, VarTypes, ModuleInfo, 
+				_Liveness1, Goal1),
 
 	detect_initial_deadness(ProcInfo0, ModuleInfo, Deadness0),
-	detect_deadness_in_goal(Goal1, Deadness0, ModuleInfo, ProcInfo0, Goal2),
+	detect_deadness_in_goal(Goal1, Deadness0, ModuleInfo, ProcInfo0,
+				_Deadness1, Goal2),
 
 	set__init(Extras0),
 	add_nondet_lives_to_goal(Goal2, Liveness0, Extras0, Goal, _, _),
@@ -61,11 +65,11 @@ detect_liveness_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred detect_liveness_in_goal(hlds__goal, liveness_info, module_info,
-				liveness_info, hlds__goal).
-:- mode detect_liveness_in_goal(in, in, in, out, out) is det.
+:- pred detect_liveness_in_goal(hlds__goal, liveness_info, map(var, type),
+				module_info, liveness_info, hlds__goal).
+:- mode detect_liveness_in_goal(in, in, in, in, out, out) is det.
 
-detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, ModuleInfo,
+detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, VarTypes, ModuleInfo,
 					Liveness, Goal - GoalInfo) :-
 		% work out which variables get born in this goal
 	goal_info_get_nonlocals(GoalInfo0, NonLocals),
@@ -73,8 +77,8 @@ detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, ModuleInfo,
 	set__to_sorted_list(NewVarsSet, NewVarsList),
 	goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
 	set__init(Births0),
-	find_binding_occurrences(NewVarsList, ModuleInfo, InstMapDelta,
-		Births0, Births),
+	find_binding_occurrences(NewVarsList, VarTypes, ModuleInfo,
+		InstMapDelta, Births0, Births),
 	set__union(Liveness0, Births, Liveness),
 	(
 		goal_is_atomic(Goal0)
@@ -84,19 +88,14 @@ detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, ModuleInfo,
 		Goal = Goal0
 	;
 		set__init(PreBirths),
-		detect_liveness_in_goal_2(Goal0, Liveness0, ModuleInfo,
-						Liveness1, Goal),
+		detect_liveness_in_goal_2(Goal0, Liveness0, VarTypes,
+				ModuleInfo, Liveness1, Goal),
 		set__difference(Births, Liveness1, PostBirths)
 	),
 	goal_info_set_pre_births(GoalInfo0, PreBirths, GoalInfo1),
 	goal_info_set_post_births(GoalInfo1, PostBirths, GoalInfo).
 
-:- pred detect_liveness_in_goal(hlds__goal, liveness_info, module_info,
-				hlds__goal).
-:- mode detect_liveness_in_goal(in, in, in, out) is det.
-
-detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo, Goal) :-
-	detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo, _, Goal).
+	% Here we process each of the different sorts of goals.
 
 %-----------------------------------------------------------------------------%
 
@@ -104,58 +103,62 @@ detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo, Goal) :-
 	% which of those variables become bound (according to the instmap
 	% delta) and insert them into the accumulated set of bound vars.
 
-:- pred find_binding_occurrences(list(var), module_info, instmap_delta,
-				set(var), set(var)).
-:- mode find_binding_occurrences(in, in, in, in, out) is det.
+:- pred find_binding_occurrences(list(var), map(var, type), module_info,
+				instmap_delta, set(var), set(var)).
+:- mode find_binding_occurrences(in, in, in, in, in, out) is det.
 
-find_binding_occurrences([], _, _, BoundVars, BoundVars).
-find_binding_occurrences([Var | Vars], ModuleInfo, InstMapDelta, BoundVars0,
-		BoundVars) :-
+find_binding_occurrences([], _, _, _, BoundVars, BoundVars).
+find_binding_occurrences([Var | Vars], VarTypes, ModuleInfo, InstMapDelta,
+		BoundVars0, BoundVars) :-
+	map__lookup(VarTypes, Var, Type),
 	instmap_delta_lookup_var(InstMapDelta, Var, Inst),
-	( inst_is_bound(ModuleInfo, Inst) ->
+	( mode_to_arg_mode(ModuleInfo, (free -> Inst), Type, top_out) ->
 		set__insert(BoundVars0, Var, BoundVars1)
 	;
 		BoundVars1 = BoundVars0
 	),
-	find_binding_occurrences(Vars, ModuleInfo, InstMapDelta, BoundVars1,
-		BoundVars).
+	find_binding_occurrences(Vars, VarTypes, ModuleInfo, InstMapDelta,
+		BoundVars1, BoundVars).
 
 %-----------------------------------------------------------------------------%
 
 	% Here we process each of the different sorts of goals.
 
 :- pred detect_liveness_in_goal_2(hlds__goal_expr, liveness_info,
-				module_info, liveness_info, hlds__goal_expr).
-:- mode detect_liveness_in_goal_2(in, in, in, out, out) is det.
+		map(var, type), module_info, liveness_info, hlds__goal_expr).
+:- mode detect_liveness_in_goal_2(in, in, in, in, out, out) is det.
 
-detect_liveness_in_goal_2(conj(Goals0), Liveness0, ModuleInfo,
+detect_liveness_in_goal_2(conj(Goals0), Liveness0, VarTypes, ModuleInfo,
 		Liveness, conj(Goals)) :-
-	detect_liveness_in_conj(Goals0, Liveness0, ModuleInfo, Liveness, Goals).
+	detect_liveness_in_conj(Goals0, Liveness0, VarTypes, ModuleInfo,
+			Liveness, Goals).
 
-detect_liveness_in_goal_2(disj(Goals0, FV), Liveness0, ModuleInfo,
+detect_liveness_in_goal_2(disj(Goals0, FV), Liveness0, VarTypes, ModuleInfo,
 		Liveness, disj(Goals, FV)) :-
 	set__init(Union0),
-	detect_liveness_in_disj(Goals0, Liveness0, ModuleInfo,
+	detect_liveness_in_disj(Goals0, Liveness0, VarTypes, ModuleInfo,
 					Union0, Union, Goals),
 	set__union(Liveness0, Union, Liveness).
 
-detect_liveness_in_goal_2(not(Goal0), Liveness0, ModuleInfo,
+detect_liveness_in_goal_2(not(Goal0), Liveness0, VarTypes, ModuleInfo,
 		Liveness, not(Goal)) :-
-	detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo, Liveness, Goal).
+	detect_liveness_in_goal(Goal0, Liveness0, VarTypes, ModuleInfo,
+			Liveness, Goal).
 
 detect_liveness_in_goal_2(switch(Var, Det, Cases0, FV), Liveness0,
-		ModuleInfo, Liveness, switch(Var, Det, Cases, FV)) :-
+		VarTypes, ModuleInfo, Liveness, switch(Var, Det, Cases, FV)) :-
 	set__init(Union0),
-	detect_liveness_in_cases(Cases0, Liveness0, ModuleInfo,
+	detect_liveness_in_cases(Cases0, Liveness0, VarTypes, ModuleInfo,
 							Union0, Union, Cases),
 	set__union(Liveness0, Union, Liveness).
 
 detect_liveness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV),
-		Liveness0, M, Liveness,
+		Liveness0, VT, M, Liveness,
 		if_then_else(Vars, Cond, Then, Else, FV)) :-
-	detect_liveness_in_goal(Cond0, Liveness0, M, LivenessCond, Cond),
-	detect_liveness_in_goal(Then0, LivenessCond, M, LivenessThen, Then1),
-	detect_liveness_in_goal(Else0, Liveness0, M, LivenessElse, Else1),
+	detect_liveness_in_goal(Cond0, Liveness0, VT, M, LivenessCond, Cond),
+	detect_liveness_in_goal(Then0, LivenessCond, VT, M, LivenessThen,
+					Then1),
+	detect_liveness_in_goal(Else0, Liveness0, VT, M, LivenessElse, Else1),
 
 	set__difference(LivenessThen, LivenessCond, ProducedInThen),
 	set__difference(LivenessElse, Liveness0, ProducedInElse),
@@ -168,30 +171,32 @@ detect_liveness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV),
 
 	set__union(LivenessThen, LivenessElse, Liveness).
 
-detect_liveness_in_goal_2(some(Vars, Goal0), Liveness0, ModuleInfo,
+detect_liveness_in_goal_2(some(Vars, Goal0), Liveness0, VarTypes, ModuleInfo,
 		Liveness, some(Vars, Goal)) :-
-	detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo, Liveness, Goal).
+	detect_liveness_in_goal(Goal0, Liveness0, VarTypes, ModuleInfo,
+		Liveness, Goal).
 
-detect_liveness_in_goal_2(higher_order_call(A,B,C,D,E), L, _, L,
+detect_liveness_in_goal_2(higher_order_call(A,B,C,D,E), L, _, _, L,
 			higher_order_call(A,B,C,D,E)).
 
-detect_liveness_in_goal_2(call(A,B,C,D,E,F), L, _, L, call(A,B,C,D,E,F)).
+detect_liveness_in_goal_2(call(A,B,C,D,E,F), L, _, _, L, call(A,B,C,D,E,F)).
 
-detect_liveness_in_goal_2(unify(A,B,C,D,E), L, _, L, unify(A,B,C,D,E)).
+detect_liveness_in_goal_2(unify(A,B,C,D,E), L, _, _, L, unify(A,B,C,D,E)).
 
-detect_liveness_in_goal_2(pragma_c_code(A,B,C,D,E,F), L, _, L, 
+detect_liveness_in_goal_2(pragma_c_code(A,B,C,D,E,F), L, _, _, L, 
 		pragma_c_code(A,B,C,D,E,F)).
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_liveness_in_conj(list(hlds__goal), set(var), module_info,
-						set(var), list(hlds__goal)).
-:- mode detect_liveness_in_conj(in, in, in, out, out) is det.
+:- pred detect_liveness_in_conj(list(hlds__goal), set(var), map(var, type),
+				module_info, set(var), list(hlds__goal)).
+:- mode detect_liveness_in_conj(in, in, in, in, out, out) is det.
 
-detect_liveness_in_conj([], Liveness, _ModuleInfo, Liveness, []).
-detect_liveness_in_conj([Goal0|Goals0], Liveness0,
-					ModuleInfo, Liveness, [Goal|Goals]) :-
-	detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo, Liveness1, Goal),
+detect_liveness_in_conj([], Liveness, _VarTypes, _ModuleInfo, Liveness, []).
+detect_liveness_in_conj([Goal0|Goals0], Liveness0, VarTypes, ModuleInfo,
+			Liveness, [Goal|Goals]) :-
+	detect_liveness_in_goal(Goal0, Liveness0, VarTypes, ModuleInfo,
+			Liveness1, Goal),
 	(
 		Goal0 = _ - GoalInfo,
 		goal_info_get_instmap_delta(GoalInfo, InstmapDelta),
@@ -200,38 +205,41 @@ detect_liveness_in_conj([Goal0|Goals0], Liveness0,
 		Goals = Goals0,
 		Liveness = Liveness1
 	;
-		detect_liveness_in_conj(Goals0, Liveness1,
-						ModuleInfo, Liveness, Goals)
+		detect_liveness_in_conj(Goals0, Liveness1, VarTypes,
+				ModuleInfo, Liveness, Goals)
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_liveness_in_disj(list(hlds__goal), set(var), module_info,
-					set(var), set(var), list(hlds__goal)).
-:- mode detect_liveness_in_disj(in, in, in, in, out, out) is det.
+:- pred detect_liveness_in_disj(list(hlds__goal), set(var), map(var, type),
+			module_info, set(var), set(var), list(hlds__goal)).
+:- mode detect_liveness_in_disj(in, in, in, in, in, out, out) is det.
 
-detect_liveness_in_disj([], _Liveness, _ModuleInfo, Union, Union, []).
-detect_liveness_in_disj([Goal0|Goals0], Liveness, ModuleInfo,
+detect_liveness_in_disj([], _Liveness, _VarTypes, _ModuleInfo, Union,
+			Union, []).
+detect_liveness_in_disj([Goal0|Goals0], Liveness, VarTypes, ModuleInfo,
 						Union0, Union, [Goal|Goals]) :-
-	detect_liveness_in_goal(Goal0, Liveness, ModuleInfo, Liveness1, Goal1),
+	detect_liveness_in_goal(Goal0, Liveness, VarTypes, ModuleInfo,
+			Liveness1, Goal1),
 	set__union(Union0, Liveness1, Union1),
-	detect_liveness_in_disj(Goals0, Liveness, ModuleInfo,
+	detect_liveness_in_disj(Goals0, Liveness, VarTypes, ModuleInfo,
 							Union1, Union, Goals),
 	set__difference(Union, Liveness1, Residue),
 	stuff_liveness_residue_after_goal(Goal1, Residue, Goal).
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_liveness_in_cases(list(case), set(var), module_info,
-					set(var), set(var), list(case)).
-:- mode detect_liveness_in_cases(in, in, in, in, out, out) is det.
+:- pred detect_liveness_in_cases(list(case), set(var), map(var, type),
+			module_info, set(var), set(var), list(case)).
+:- mode detect_liveness_in_cases(in, in, in, in, in, out, out) is det.
 
-detect_liveness_in_cases([], _Liveness, _ModuleInfo, Union, Union, []).
-detect_liveness_in_cases([case(Cons, Goal0)|Goals0], Liveness, ModuleInfo,
-				Union0, Union, [case(Cons, Goal)|Goals]) :-
-	detect_liveness_in_goal(Goal0, Liveness, ModuleInfo, Liveness1, Goal1),
+detect_liveness_in_cases([], _Liveness, _VarTypes, _ModuleInfo, Union,
+			Union, []).
+detect_liveness_in_cases([case(Cons, Goal0)|Goals0], Liveness, VarTypes,
+			ModuleInfo, Union0, Union, [case(Cons, Goal)|Goals]) :-
+	detect_liveness_in_goal(Goal0, Liveness, VarTypes, ModuleInfo, Liveness1, Goal1),
 	set__union(Union0, Liveness1, Union1),
-	detect_liveness_in_cases(Goals0, Liveness, ModuleInfo,
+	detect_liveness_in_cases(Goals0, Liveness, VarTypes, ModuleInfo,
 							Union1, Union, Goals),
 	set__difference(Union, Liveness1, Residue),
 	stuff_liveness_residue_after_goal(Goal1, Residue, Goal).
@@ -283,13 +291,6 @@ detect_deadness_in_goal(Goal0 - GoalInfo0, Deadness0, ModuleInfo, ProcInfo,
 	),
 	goal_info_set_post_deaths(GoalInfo0, PostDeaths, GoalInfo1),
 	goal_info_set_pre_deaths(GoalInfo1, PreDeaths, GoalInfo).
-
-:- pred detect_deadness_in_goal(hlds__goal, liveness_info,
-				module_info, proc_info, hlds__goal).
-:- mode detect_deadness_in_goal(in, in, in, in, out) is det.
-
-detect_deadness_in_goal(Goal0, Deadness, ModuleInfo, ProcInfo, Goal) :-
-	detect_deadness_in_goal(Goal0, Deadness, ModuleInfo, ProcInfo, _, Goal).
 
 	% Here we process each of the different sorts of goals.
 
@@ -463,26 +464,34 @@ detect_deadness_in_cases(SwitchVar, [case(Cons, Goal0)|Goals0], Deadness0,
 
 detect_initial_liveness(ProcInfo, ModuleInfo, Liveness) :-
 	proc_info_headvars(ProcInfo, Vars),
-	proc_info_argmodes(ProcInfo, Args),
-	assoc_list__from_corresponding_lists(Vars, Args, VarArgs),
+	proc_info_argmodes(ProcInfo, Modes),
+	proc_info_vartypes(ProcInfo, VarTypes),
+	map__apply_to_list(Vars, VarTypes, Types),
 	set__init(Liveness0),
-	detect_initial_liveness_2(VarArgs, ModuleInfo, Liveness0, Liveness).
+	(
+		detect_initial_liveness_2(Vars, Modes, Types, ModuleInfo,
+			Liveness0, Liveness1)
+	->
+		Liveness = Liveness1
+	;
+		error("detect_initial_liveness: list length mismatch")
+	).
 
-:- pred detect_initial_liveness_2(assoc_list(var,mode), module_info,
-							set(var), set(var)).
-:- mode detect_initial_liveness_2(in, in, in, out) is det.
+:- pred detect_initial_liveness_2(list(var), list(mode), list(type),
+				module_info, set(var), set(var)).
+:- mode detect_initial_liveness_2(in, in, in, in, in, out) is semidet.
 
-detect_initial_liveness_2([], _ModuleInfo, Liveness, Liveness).
-detect_initial_liveness_2([V - M|VAs], ModuleInfo,
+detect_initial_liveness_2([], [], [], _ModuleInfo, Liveness, Liveness).
+detect_initial_liveness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo,
 						Liveness0, Liveness) :-
 	(
-		mode_is_input(ModuleInfo, M)
+		mode_to_arg_mode(ModuleInfo, M, T, top_in)
 	->
 		set__insert(Liveness0, V, Liveness1)
 	;
 		Liveness1 = Liveness0
 	),
-	detect_initial_liveness_2(VAs, ModuleInfo, Liveness1, Liveness).
+	detect_initial_liveness_2(Vs, Ms, Ts, ModuleInfo, Liveness1, Liveness).
 
 %-----------------------------------------------------------------------------%
 
@@ -491,10 +500,18 @@ detect_initial_liveness_2([V - M|VAs], ModuleInfo,
 
 detect_initial_deadness(ProcInfo, ModuleInfo, Deadness) :-
 	proc_info_headvars(ProcInfo, Vars),
-	proc_info_argmodes(ProcInfo, Args),
-	assoc_list__from_corresponding_lists(Vars, Args, VarArgs),
+	proc_info_argmodes(ProcInfo, Modes),
+	proc_info_vartypes(ProcInfo, VarTypes),
+	map__apply_to_list(Vars, VarTypes, Types),
 	set__init(Deadness0),
-	detect_initial_deadness_2(VarArgs, ModuleInfo, Deadness0, Deadness1),
+	(
+		detect_initial_deadness_2(Vars, Modes, Types, ModuleInfo,
+			Deadness0, Deadness1)
+	->
+		Deadness2 = Deadness1
+	;
+		error("detect_initial_deadness: list length mis-match")
+	),
 		% If doing accurate garbage collection, the corresponding
 		% typeinfos need to be added to these.
 	module_info_globals(ModuleInfo, Globals),
@@ -502,27 +519,28 @@ detect_initial_deadness(ProcInfo, ModuleInfo, Deadness) :-
 	(
 		GC_Method = accurate
 	->
-		proc_info_get_used_typeinfos_setwise(ProcInfo, Deadness1, 
+		proc_info_get_used_typeinfos_setwise(ProcInfo, Deadness2, 
 			TypeInfoVars),
-		set__union(Deadness1, TypeInfoVars, Deadness)
+		set__union(Deadness2, TypeInfoVars, Deadness)
 	;
-		Deadness = Deadness1
+		Deadness = Deadness2
 	).
 
-:- pred detect_initial_deadness_2(assoc_list(var,mode), module_info,
-							set(var), set(var)).
-:- mode detect_initial_deadness_2(in, in, in, out) is det.
+:- pred detect_initial_deadness_2(list(var), list(mode), list(type),
+				module_info, set(var), set(var)).
+:- mode detect_initial_deadness_2(in, in, in, in, in, out) is semidet.
 
-detect_initial_deadness_2([], _ModuleInfo, Deadness, Deadness).
-detect_initial_deadness_2([V - M|VAs], ModuleInfo, Deadness0, Deadness) :-
+detect_initial_deadness_2([], [], [], _ModuleInfo, Deadness, Deadness).
+detect_initial_deadness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo,
+		Deadness0, Deadness) :-
 	(
-		mode_is_output(ModuleInfo, M)
+		mode_to_arg_mode(ModuleInfo, M, T, top_out)
 	->
 		set__insert(Deadness0, V, Deadness1)
 	;
 		Deadness1 = Deadness0
 	),
-	detect_initial_deadness_2(VAs, ModuleInfo, Deadness1, Deadness).
+	detect_initial_deadness_2(Vs, Ms, Ts, ModuleInfo, Deadness1, Deadness).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

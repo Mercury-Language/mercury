@@ -57,12 +57,12 @@
 
 :- implementation.
 
-:- import_module prog_util, globals, options.
+:- import_module prog_util, type_util, globals, options.
 :- import_module int, map, list, std_util, require.
 
 %-----------------------------------------------------------------------------%
 
-assign_constructor_tags(TypeName, TypeArity,
+assign_constructor_tags(_TypeName, _TypeArity,
 		Ctors, Globals, CtorTags, IsEnum) :-
 
 		% work out how many tag bits there are
@@ -80,16 +80,13 @@ assign_constructor_tags(TypeName, TypeArity,
 		(
 			% assign single functor of arity one a `no_tag' tag
 			% (unless it is type_info/1)
-			Ctors = [SingleFunc - [SingleArg]],
-			create_cons_id(SingleFunc, [SingleArg], SingleConsId),
-			\+ (
-			    TypeName = qualified("mercury_builtin", Name),
-			    ( Name = "type_info" ; Name = "base_type_info" ),
-			    TypeArity = 1
-			)
+			type_is_no_tag_type(Ctors, SingleFunc, SingleArg)
 		->
+			create_cons_id(SingleFunc, [SingleArg], SingleConsId),
 			map__set(CtorTags0, SingleConsId, no_tag, CtorTags)
-		; NumTagBits = 0 ->
+		;
+			NumTagBits = 0
+		->
 			( Ctors = [_SingleCtor] ->
 				assign_simple_tags(Ctors, 0, 1,
 					CtorTags0, CtorTags)

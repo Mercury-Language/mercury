@@ -947,7 +947,8 @@ add_new_pred(Module0, TVarSet, PredName, Types, Cond, Context, Status,
 				{ code_util__predinfo_is_builtin(Module1, 
 						PredInfo0) }
 			->
-				{ add_builtin(PredId, PredInfo0, PredInfo) },
+				{ add_builtin(PredId, Types,
+					PredInfo0, PredInfo) },
 				{ predicate_table_get_preds(PredicateTable1,
 					Preds1) },
 				{ map__set(Preds1, PredId, PredInfo, Preds) },
@@ -963,8 +964,8 @@ add_new_pred(Module0, TVarSet, PredName, Types, Cond, Context, Status,
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_builtin(pred_id, pred_info, pred_info).
-:- mode add_builtin(in, in, out) is det.
+:- pred add_builtin(pred_id, list(type), pred_info, pred_info).
+:- mode add_builtin(in, in, in, out) is det.
 
 	% For a builtin predicate, say foo/2, we add a clause
 	%
@@ -976,7 +977,7 @@ add_new_pred(Module0, TVarSet, PredName, Types, Cond, Context, Status,
 	% forwarding code stub is so that things work correctly if
 	% you take the address of the predicate.
 
-add_builtin(PredId, PredInfo0, PredInfo) :-
+add_builtin(PredId, Types, PredInfo0, PredInfo) :-
 		%
 		% lookup some useful info: Module, Name, Context, HeadVars
 		%
@@ -984,7 +985,7 @@ add_builtin(PredId, PredInfo0, PredInfo) :-
 	pred_info_name(PredInfo0, Name),
 	pred_info_context(PredInfo0, Context),
 	pred_info_clauses_info(PredInfo0, ClausesInfo0),
-	ClausesInfo0 = clauses_info(VarSet, VarTypes0, VarTypes1,
+	ClausesInfo0 = clauses_info(VarSet, _VarTypes0, _VarTypes1,
 					HeadVars, _ClauseList0),
 
 		%
@@ -1006,10 +1007,12 @@ add_builtin(PredId, PredInfo0, PredInfo) :-
 	Clause = clause([], Goal, Context),
 
 		%
-		% put the clause we just built into the pred_info
+		% put the clause we just built into the pred_info,
+		% annotateed with the appropriate types
 		%
 	ClauseList = [Clause],
-	ClausesInfo = clauses_info(VarSet, VarTypes0, VarTypes1,
+	map__from_corresponding_lists(HeadVars, Types, VarTypes),
+	ClausesInfo = clauses_info(VarSet, VarTypes, VarTypes,
 					HeadVars, ClauseList),
 	pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo).
 
