@@ -18,10 +18,10 @@
   #include "gc.h"
 
   #define tag_incr_hp_n(dest, tag, count) \
-	((dest) = (Word) mkword((tag), \
+	((dest) = (Word) MR_mkword((tag), \
 			(Word) GC_MALLOC((count) * sizeof(Word))))
   #define tag_incr_hp_atomic(dest, tag, count) \
-	((dest) = (Word) mkword((tag), \
+	((dest) = (Word) MR_mkword((tag), \
 			(Word) GC_MALLOC_ATOMIC((count) * sizeof(Word))))
 
   #ifdef INLINE_ALLOC
@@ -61,7 +61,7 @@
 		/* if size > 1, round up to an even number of words */	\
 		Word num_words = ((count) == 1 ? 1 : 2 * (((count) + 1) / 2));\
 		GC_MALLOC_WORDS(temp, num_words);			\
-		(dest) = (Word)mkword((tag), temp);			\
+		(dest) = (Word) MR_mkword((tag), temp);			\
 	  })								\
 	: tag_incr_hp_n((dest), (tag), (count))				\
 	)
@@ -94,7 +94,7 @@
 
   #define tag_incr_hp(dest, tag, count) 			\
 	(							\
-		(dest) = (Word) mkword(tag, (Word) MR_hp),	\
+		(dest) = (Word) MR_mkword(tag, (Word) MR_hp),	\
 		debugincrhp(count, MR_hp),			\
 		MR_hp += (count),				\
 		heap_overflow_check(),				\
@@ -159,13 +159,14 @@
 ** which wouldn't work if it was parenthesized.
 */
 #define	incr_hp(dest, count) \
-		tag_incr_hp((dest), mktag(0), (count))
+		tag_incr_hp((dest), MR_mktag(0), (count))
 #define	incr_hp_msg(dest, count, proclabel, type) \
-		tag_incr_hp_msg((dest), mktag(0), (count), proclabel, (type))
+		tag_incr_hp_msg((dest), MR_mktag(0), (count), \
+			proclabel, (type))
 #define	incr_hp_atomic(dest, count) \
-		tag_incr_hp_atomic((dest), mktag(0), (count))
+		tag_incr_hp_atomic((dest), MR_mktag(0), (count))
 #define	incr_hp_atomic_msg(dest, count, proclabel, type) \
-		tag_incr_hp_atomic_msg((dest), mktag(0), (count), \
+		tag_incr_hp_atomic_msg((dest), MR_mktag(0), (count), \
 			proclabel, (type))
 
 /*

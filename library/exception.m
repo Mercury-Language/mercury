@@ -691,7 +691,7 @@ Define_label(mercury__exception__builtin_catch_3_2_i2);
 #ifdef MR_USE_TRAIL
 	MR_discard_ticket();
 #endif
-	succeed_discard();
+	MR_succeed_discard();
 
 /*
 ** builtin_catch(Goal, Handler, Result)
@@ -742,7 +742,7 @@ Define_label(mercury__exception__builtin_catch_3_3_i2);
 #ifdef MR_USE_TRAIL
 	MR_discard_ticket();
 #endif
-	succeed_discard();
+	MR_succeed_discard();
 
 /*
 ** builtin_catch(Goal, Handler, Result)
@@ -795,15 +795,15 @@ Define_label(mercury__exception__builtin_catch_3_5_i2);
 	**
 	** Note that we need to keep the trail ticket still,
 	** in case it is needed again on backtracking.
-	** We can only discard it when we fail() out, or
+	** We can only discard it when we MR_fail() out, or
 	** (if an exception is thrown) in the throw.
 	*/
-	succeed();
+	MR_succeed();
 
 #ifdef MR_USE_TRAIL
 Define_label(mercury__exception__builtin_catch_3_5_i3);
 	MR_discard_ticket();
-	fail();
+	MR_fail();
 #endif
 
 /*
@@ -1045,7 +1045,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 		tailcall(ENTRY(do_call_det_closure), 
 			ENTRY(mercury__exception__builtin_throw_1_0));
 	}
-	incr_sp_push_msg(1, ""builtin_throw/1"");
+	MR_incr_sp_push_msg(1, ""builtin_throw/1"");
 	MR_stackvar(1) = (Word) MR_succip;
 	call(ENTRY(do_call_det_closure), 
 		LABEL(mercury__exception__builtin_throw_1_0_i1),
@@ -1057,7 +1057,7 @@ Define_label(mercury__exception__builtin_throw_1_0_i1);
 	r2 = r1;
 	r1 = TRUE;
 	MR_succip = (Code *) MR_stackvar(1);
-	decr_sp_pop_msg(1);
+	MR_decr_sp_pop_msg(1);
 	proceed(); /* return to the caller of `builtin_catch' */
 
 END_MODULE

@@ -3697,7 +3697,7 @@ output_static_rval(unop(_, _)) -->
 output_static_rval(binop(_, _, _)) -->
 	{ error("Cannot output a binop(_, _, _) in a static initializer") }.
 output_static_rval(mkword(Tag, Exprn)) -->
-	io__write_string("(Word *) mkword("),
+	io__write_string("(Word *) MR_mkword("),
 	output_tag(Tag),
 	io__write_string(", "),
 	output_static_rval(Exprn),
@@ -3707,7 +3707,7 @@ output_static_rval(lval(_)) -->
 output_static_rval(create(Tag, _Args, _ArgTypes, _StatDyn, CellNum, _Msg)) -->
 		% emit a reference to the static constant which we
 		% declared in output_rval_decls.
-	io__write_string("mkword(mktag("),
+	io__write_string("MR_mkword(MR_mktag("),
 	io__write_int(Tag),
 	io__write_string("), "),
 	io__write_string("&mercury_const_"),

@@ -73,7 +73,9 @@
 :- mode in  + uo  = in  is det.
 
 	% commutivity of +
-:- assertion all [A,B,C] ( C = B + A <=> C = A + B ).
+% XXX zs: commented out until the version put into the .int file
+% can be parsed by the installed compiler
+% :- assertion all [A,B,C] ( C = B + A <=> C = A + B ).
 
 	% multiplication
 :- func int * int = int.
@@ -86,6 +88,8 @@
 :- mode in  * uo  = in  is semidet.
 */
 	% commutivity of *
+% XXX zs: commented out until the version put into the .int file
+% can be parsed by the installed compiler
 :- assertion all [A,B,C] ( C = B * A <=> C = A * B ).
 
 	% subtraction

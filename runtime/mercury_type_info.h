@@ -117,7 +117,7 @@ typedef	Word	MR_PseudoTypeInfo;
 	#define TYPE_LAYOUT_FIELDS \
 		TypeLayoutField f1,f2,f3,f4,f5,f6,f7,f8;
 	#define make_typelayout(Tag, Value) \
-		mkword(mktag(Tag), (Value))
+		MR_mkword(MR_mktag(Tag), (Value))
 #else
 	typedef const Word *TypeLayoutField;
 	#define TYPE_LAYOUT_FIELDS \
@@ -624,7 +624,7 @@ typedef struct {
 
 #define MR_TYPE_CTOR_LAYOUT_SHARED_REMOTE_VECTOR_GET_FUNCTOR_DESCRIPTOR( \
 		Vector, N)						 \
-	( (Word *) strip_tag((&((MR_TypeLayout_SharedRemoteVector *)	 \
+	( (Word *) MR_strip_tag((&((MR_TypeLayout_SharedRemoteVector *)	 \
 		(Vector))->functor_descriptor1) [N]) )
 		
 	/* 
@@ -634,9 +634,9 @@ typedef struct {
 	*/
 
 typedef struct {
-	int is_no_tag;
-	Word arg;
-	ConstString name;
+	int		is_no_tag;
+	Word		arg;
+	ConstString	name;
 } MR_TypeLayout_NoTagVector;
 
 #define MR_TYPE_CTOR_LAYOUT_NO_TAG_VECTOR_IS_NO_TAG(Vector)		\
@@ -656,8 +656,8 @@ typedef struct {
 	*/	
 
 typedef struct {
-	int is_no_tag;		/* might be a no_tag */
-	Word equiv_type;
+	int	is_no_tag;		/* might be a no_tag */
+	Word	equiv_type;
 } MR_TypeLayout_EquivVector;
 
 #define MR_TYPE_CTOR_LAYOUT_EQUIV_OFFSET_FOR_TYPE	((Integer) 1)
@@ -717,9 +717,10 @@ Word MR_collapse_equivalences(Word);
 
 /* for make_type_info(), we keep a list of allocated memory cells */
 struct MR_MemoryCellNode {
-	void *data;
-	struct MR_MemoryCellNode *next;
+	void				*data;
+	struct MR_MemoryCellNode	*next;
 };
+
 typedef struct MR_MemoryCellNode *MR_MemoryList;
 
 Word * MR_make_type_info(const Word *term_type_info, 
@@ -791,30 +792,31 @@ typedef	Word *	MR_TypeCtorLayout;
 	*/
 
 struct MR_TypeCtorInfo_struct {
-	int arity;
-	Code *unify_pred;
-	Code *index_pred;
-	Code *compare_pred;
+	int				arity;
+	Code				*unify_pred;
+	Code				*index_pred;
+	Code				*compare_pred;
 		/* 
 		** The representation that is used for this
 		** constructor -- e.g. an enumeration, or a builtin
 		** type, or a no-tag type, etc.
 		*/
-	MR_TypeCtorRepresentation type_ctor_rep;
+	MR_TypeCtorRepresentation	type_ctor_rep;
 		/*
 		** The names, arity and argument types of all the
 		** functors of this type if it is some sort of
 		** discriminated union.
 		*/
-	MR_TypeCtorFunctors type_ctor_functors;
+	MR_TypeCtorFunctors		type_ctor_functors;
 		/*
 		** The meanings of the primary tags of this type,
 		** if it is a discriminated union.
 		*/
-	MR_TypeCtorLayout type_ctor_layout;
-	String type_ctor_module_name;
-	String type_ctor_name;
+	MR_TypeCtorLayout		type_ctor_layout;
+	String				type_ctor_module_name;
+	String				type_ctor_name;
 };
+
 typedef struct MR_TypeCtorInfo_struct *MR_TypeCtorInfo;
 
 	/* 

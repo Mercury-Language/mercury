@@ -600,19 +600,19 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 	},
 
 	{
-	Succeed	 = "\tsucceed();\n",
-	SucceedDiscard = "\tsucceed_discard();\n",
+	Succeed	 = "\tMR_succeed();\n",
+	SucceedDiscard = "\tMR_succeed_discard();\n",
 
 	CallDef1 = "#define\tSUCCEED     \tgoto MR_call_success\n",
 	CallDef2 = "#define\tSUCCEED_LAST\tgoto MR_call_success_last\n",
-	CallDef3 = "#define\tFAIL\tfail()\n",
+	CallDef3 = "#define\tFAIL\tMR_fail()\n",
 
 	CallSuccessLabel     = "MR_call_success:\n",
 	CallLastSuccessLabel = "MR_call_success_last:\n",
 
 	RetryDef1 = "#define\tSUCCEED     \tgoto MR_retry_success\n",
 	RetryDef2 = "#define\tSUCCEED_LAST\tgoto MR_retry_success_last\n",
-	RetryDef3 = "#define\tFAIL\tfail()\n",
+	RetryDef3 = "#define\tFAIL\tMR_fail()\n",
 
 	RetrySuccessLabel     = "MR_retry_success:\n",
 	RetryLastSuccessLabel = "MR_retry_success_last:\n",
@@ -728,7 +728,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 
 		SharedDef1 = "#define\tSUCCEED     \tgoto MR_shared_success\n",
 		SharedDef2 = "#define\tSUCCEED_LAST\tgoto MR_shared_success_last\n",
-		SharedDef3 = "#define\tFAIL\tfail()\n",
+		SharedDef3 = "#define\tFAIL\tMR_fail()\n",
 
 		SharedSuccessLabel     = "MR_shared_success:\n",
 		SharedLastSuccessLabel = "MR_shared_success_last:\n",

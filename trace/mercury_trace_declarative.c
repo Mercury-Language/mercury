@@ -527,8 +527,8 @@ MR_edt_root_node(Word EDT, Word *Node)
 			MR_TRACE_USE_HP(
 				incr_hp(*Node, 2);
 			);
-			field(mktag(0), *Node, 0) = (Word) name;
-			field(mktag(0), *Node, 1) = args;
+			MR_field(MR_mktag(0), *Node, 0) = (Word) name;
+			MR_field(MR_mktag(0), *Node, 1) = args;
 			break;
 		default:
 			fatal_error("MR_edt_root_node: unknown tag");
@@ -576,15 +576,15 @@ MR_edt_root_node_args(const MR_Edt_Node *edt)
 	}
 
 	MR_TRACE_USE_HP(
-		arglist = list_empty();
+		arglist = MR_list_empty();
 		for (i = argc - 1; i >= 0; i--) {
 			tail = arglist;
 			incr_hp(head, 2);
-			field(mktag(0), head, UNIV_OFFSET_FOR_TYPEINFO) =
+			MR_field(MR_mktag(0), head, UNIV_OFFSET_FOR_TYPEINFO) =
 				edt->MR_edt_node_arg_types[i];
-			field(mktag(0), head, UNIV_OFFSET_FOR_DATA) =
+			MR_field(MR_mktag(0), head, UNIV_OFFSET_FOR_DATA) =
 				edt->MR_edt_node_arg_values[i];
-			arglist = list_cons(head, tail);
+			arglist = MR_list_cons(head, tail);
 		}
 	);
 

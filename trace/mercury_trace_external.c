@@ -859,7 +859,7 @@ MR_trace_make_var_list(void)
 	var_count = MR_trace_var_count();
 
 	MR_TRACE_USE_HP(
-		var_list = list_empty();
+		var_list = MR_list_empty();
 	);
 
 	for (i = var_count; i > 0; i--) {
@@ -873,11 +873,12 @@ MR_trace_make_var_list(void)
 			incr_hp(univ, 2);
 		);
 
-		field(mktag(0), univ, UNIV_OFFSET_FOR_TYPEINFO) = type_info;
-		field(mktag(0), univ, UNIV_OFFSET_FOR_DATA) = value;
+		MR_field(MR_mktag(0), univ, UNIV_OFFSET_FOR_TYPEINFO)
+			= type_info;
+		MR_field(MR_mktag(0), univ, UNIV_OFFSET_FOR_DATA) = value;
 
 		MR_TRACE_USE_HP(
-			var_list = list_cons(univ, var_list);
+			var_list = MR_list_cons(univ, var_list);
 		);
 	}
 
@@ -905,7 +906,7 @@ MR_trace_make_var_names_list(void)
 	var_count = MR_trace_var_count();
 
 	MR_TRACE_USE_HP(
-		var_names_list = list_empty();
+		var_names_list = MR_list_empty();
 	);
 
 	for (i = var_count; i > 0; i--) {
@@ -915,7 +916,7 @@ MR_trace_make_var_names_list(void)
 		}
 
 		MR_TRACE_USE_HP(
-			var_names_list = list_cons(name, var_names_list);
+			var_names_list = MR_list_cons(name, var_names_list);
 		);
 	}
 
@@ -943,7 +944,7 @@ MR_trace_make_type_list(void)
 	var_count = MR_trace_var_count();
 
         MR_TRACE_USE_HP(
-		type_list = list_empty();
+		type_list = MR_list_empty();
         );
 
 	for (i = var_count; i > 0; i--) {
@@ -956,7 +957,7 @@ MR_trace_make_type_list(void)
 			type_info_string = ML_type_name(type_info);
 		);
 	        MR_TRACE_USE_HP(
-			type_list = list_cons(type_info_string, type_list);
+			type_list = MR_list_cons(type_info_string, type_list);
 	        );
 	}
 
@@ -987,8 +988,9 @@ MR_trace_make_nth_var(Word debugger_request)
 	problem = MR_trace_return_var_info(var_number, NULL,
 			&type_info, &value);
 	if (problem == NULL) {
-		field(mktag(0), univ, UNIV_OFFSET_FOR_TYPEINFO) = type_info;
-		field(mktag(0), univ, UNIV_OFFSET_FOR_DATA) = value;
+		MR_field(MR_mktag(0), univ, UNIV_OFFSET_FOR_TYPEINFO)
+			= type_info;
+		MR_field(MR_mktag(0), univ, UNIV_OFFSET_FOR_DATA) = value;
 	} else {
 		/*
 		** Should never occur since we check in the external debugger

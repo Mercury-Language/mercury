@@ -251,7 +251,7 @@ const struct mercury_data___type_ctor_layout_int_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___type_ctor_layout_int_0 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_INT_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_INT_VALUE))
 };
 
 	/* type_ctor_layout for `character' */
@@ -261,7 +261,7 @@ const struct mercury_data___type_ctor_layout_character_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___type_ctor_layout_character_0 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_CHARACTER_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_CHARACTER_VALUE))
 };
 
 	/* type_ctor_layout for `string' */
@@ -271,7 +271,7 @@ const struct mercury_data___type_ctor_layout_string_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___type_ctor_layout_string_0 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_STRING_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_STRING_VALUE))
 };
 
 	/* type_ctor_layout for `float' */
@@ -281,7 +281,7 @@ const struct mercury_data___type_ctor_layout_float_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___type_ctor_layout_float_0 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_FLOAT_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_FLOAT_VALUE))
 };
 
 	/* type_ctor_layout for `void' */
@@ -291,7 +291,7 @@ const struct mercury_data___type_ctor_layout_void_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___type_ctor_layout_void_0 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_VOID_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_VOID_VALUE))
 };
 
 #ifdef	NATIVE_GC
@@ -303,7 +303,7 @@ const struct mercury_data___type_ctor_layout_succip_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___type_ctor_layout_succip_0 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_SUCCIP_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_SUCCIP_VALUE))
 };
 
 	/* type_ctor_layout for `hp' (only used by accurate gc) */
@@ -313,7 +313,7 @@ const struct mercury_data___type_ctor_layout_hp_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___type_ctor_layout_hp_0 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_HP_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_HP_VALUE))
 };
 
 	/* type_ctor_layout for `curfr' (only used by accurate gc) */
@@ -323,7 +323,7 @@ const struct mercury_data___type_ctor_layout_curfr_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___type_ctor_layout_curfr_0 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_CURFR_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_CURFR_VALUE))
 };
 
 	/* type_ctor_layout for `maxfr' (only used by accurate gc) */
@@ -333,7 +333,7 @@ const struct mercury_data___type_ctor_layout_maxfr_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___type_ctor_layout_maxfr_0 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_MAXFR_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_MAXFR_VALUE))
 };
 
 	/* type_ctor_layout for `redofr' (only used by accurate gc) */
@@ -343,7 +343,7 @@ const struct mercury_data___type_ctor_layout_redofr_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___type_ctor_layout_redofr_0 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_REDOFR_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_REDOFR_VALUE))
 };
 
 	/* type_ctor_layout for `redoip' (only used by accurate gc) */
@@ -353,7 +353,7 @@ const struct mercury_data___type_ctor_layout_redoip_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___type_ctor_layout_redoip_0 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_REDOIP_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_REDOIP_VALUE))
 };
 
 #endif /* NATIVE_GC */
@@ -786,7 +786,7 @@ const struct mercury_data_builtin__type_ctor_layout_c_pointer_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data_builtin__type_ctor_layout_c_pointer_0 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_C_POINTER_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_C_POINTER_VALUE))
 };
 
 MR_MODULE_STATIC_OR_EXTERN

@@ -66,11 +66,11 @@
 
 #define	MR_mkword(t, p)			((Word *)((char *)(p) + (t)))
 
-#define	MR_field(t, p, i)		((Word *) body((p), (t)))[i]
-#define	MR_const_field(t, p, i)		((const Word *) body((p), (t)))[i]
+#define	MR_field(t, p, i)		((Word *) MR_body((p), (t)))[i]
+#define	MR_const_field(t, p, i)		((const Word *) MR_body((p), (t)))[i]
 
-#define	MR_mask_field(p, i)		((Word *) strip_tag(p))[i]
-#define	MR_const_mask_field(p, i)	((const Word *) strip_tag(p))[i]
+#define	MR_mask_field(p, i)		((Word *) MR_strip_tag(p))[i]
+#define	MR_const_mask_field(p, i)	((const Word *) MR_strip_tag(p))[i]
 
 /*
 ** the following MR_list_* macros are used by handwritten C code

@@ -308,7 +308,7 @@ typedef struct MR_Exception_Handler_Frame_struct {
 		** builtin_throw/1), and save the stuff we will		      \
 		** need if an exception is thrown.			      \
 		*/							      \
-		mkpragmaframe((name), 0,	      		      	      \
+		MR_mkpragmaframe((name), 0,	      		      	      \
 			MR_Exception_Handler_Frame_struct,		      \
 			ENTRY(exception_handler_do_fail));		      \
 		/* record the handler's code model */			      \
@@ -345,7 +345,7 @@ typedef struct MR_Exception_Handler_Frame_struct {
 		** so we can avoid this by creating a second frame	      \
 		** above the special frame.)				      \
 		*/							      \
-		mktempframe(redoip);				      	      \
+		MR_mktempframe(redoip);				      	      \
 	} while (0)
 
 

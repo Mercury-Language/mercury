@@ -63,7 +63,7 @@
 */
 #define make_aligned_string(ptr, string) 				\
 	do { 								\
-	    if (tag((Word) (string)) != 0) { 				\
+	    if (MR_tag((Word) (string)) != 0) {				\
 		make_aligned_string_copy((ptr), (string));		\
 	    } else { 							\
 	    	(ptr) = (string);					\

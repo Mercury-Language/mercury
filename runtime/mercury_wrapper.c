@@ -1031,7 +1031,7 @@ Define_label(global_success);
 #endif
 
 	if (benchmark_all_solns)
-		redo();
+		MR_redo();
 	else
 		GOTO_LABEL(all_done);
 

@@ -401,7 +401,7 @@ Define_entry(MR_do_trace_redo_fail_shallow);
 			GOTO(MR_jumpaddr);
 		}
 	}
-	fail();
+	MR_fail();
 
 Define_entry(MR_do_trace_redo_fail_deep);
 #if 0
@@ -429,7 +429,7 @@ Define_entry(MR_do_trace_redo_fail_deep);
 			GOTO(MR_jumpaddr);
 		}
 	}
-	fail();
+	MR_fail();
 
 END_MODULE
 

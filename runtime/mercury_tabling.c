@@ -198,10 +198,10 @@ MR_int_hash_lookup_or_add(MR_TrieNode t, Integer key)
 MR_TrieNode
 MR_float_hash_lookup_or_add(MR_TrieNode t, Float key)
 {
-	TableNode * p, * q;
-	Word * table = *t;	/* Deref the table pointer */
-	Word bucket;
-	Word hash;
+	TableNode	*p, *q;
+	Word		*table = *t;	/* Deref the table pointer */
+	Word		bucket;
+	Word		hash;
 
 	/* Has the the table been built? */
 	if (table == NULL) {
@@ -461,49 +461,51 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_func_0);
 MR_TrieNode
 MR_table_type(MR_TrieNode table, Word *type_info, Word data)
 {
-    MR_TypeCtorInfo type_ctor_info;
-    MR_TypeCtorLayout type_ctor_layout;
-    MR_TypeCtorFunctors type_ctor_functors;
-
-    Word layout_for_tag, *layout_vector_for_tag, *data_value;
-    int data_tag, entry_tag;
-
+    MR_TypeCtorInfo	type_ctor_info;
+    MR_TypeCtorLayout	type_ctor_layout;
+    MR_TypeCtorFunctors	type_ctor_functors;
     MR_DiscUnionTagRepresentation tag_rep;
+    MR_MemoryList	allocated_memory_cells = NULL;
 
-    MR_MemoryList allocated_memory_cells = NULL;
+    Word		layout_for_tag;
+    Word		*layout_vector_for_tag;
+    Word		*data_value;
+    int			data_tag;
+    int			entry_tag;
 
-    data_tag = tag(data);
-    data_value = (Word *) body(data, data_tag);
+    data_tag = MR_tag(data);
+    data_value = (Word *) MR_body(data, data_tag);
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
     type_ctor_layout = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_LAYOUT(type_ctor_info);
-    type_ctor_functors = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_FUNCTORS(type_ctor_info);
+    type_ctor_functors = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_FUNCTORS(
+                    type_ctor_info);
 
     layout_for_tag = type_ctor_layout[data_tag];
-    layout_vector_for_tag = (Word *) strip_tag(layout_for_tag);
+    layout_vector_for_tag = (Word *) MR_strip_tag(layout_for_tag);
 
-#ifdef	MR_TABLE_DEBUG
+#ifdef  MR_TABLE_DEBUG
     if (MR_tabledebug) {
-	printf("ENTRY %p %x, data rep: %d\n",
-	    table, data, type_ctor_info->type_ctor_rep);
+        printf("ENTRY %p %x, data rep: %d\n",
+            table, data, type_ctor_info->type_ctor_rep);
     }
-#endif	/* MR_TABLE_DEBUG */
+#endif  /* MR_TABLE_DEBUG */
 
     switch (type_ctor_info->type_ctor_rep) {
         case MR_TYPECTOR_REP_ENUM: {
-	    int functors = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_NUM_FUNCTORS(
-				layout_vector_for_tag);
-	    MR_DEBUG_TABLE_ENUM(table, functors, data);
+            int functors = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_NUM_FUNCTORS(
+                                layout_vector_for_tag);
+            MR_DEBUG_TABLE_ENUM(table, functors, data);
             break;
         }
         case MR_TYPECTOR_REP_DU: {
-	    tag_rep = MR_get_tag_representation((Word) layout_for_tag);
+            tag_rep = MR_get_tag_representation((Word) layout_for_tag);
             switch(tag_rep) {
             case MR_DISCUNIONTAG_SHARED_LOCAL: {
-	        int functors = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_NUM_FUNCTORS(
-				layout_vector_for_tag);
-	        MR_DEBUG_TABLE_TAG(table, data_tag);
-	        MR_DEBUG_TABLE_ENUM(table, functors, unmkbody(data));
+                int functors = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_NUM_FUNCTORS(
+                                layout_vector_for_tag);
+                MR_DEBUG_TABLE_TAG(table, data_tag);
+                MR_DEBUG_TABLE_ENUM(table, functors, MR_unmkbody(data));
                 break;
             }
             case MR_DISCUNIONTAG_UNSHARED: {
@@ -513,57 +515,63 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
                 argument_vector = data_value;
     
                 arity = layout_vector_for_tag[
-		    	    TYPE_CTOR_LAYOUT_UNSHARED_ARITY_OFFSET];
+                            TYPE_CTOR_LAYOUT_UNSHARED_ARITY_OFFSET];
                 type_info_vector = &layout_vector_for_tag[
-	    		    TYPE_CTOR_LAYOUT_UNSHARED_ARGS_OFFSET];
+                            TYPE_CTOR_LAYOUT_UNSHARED_ARGS_OFFSET];
 
-	        MR_DEBUG_TABLE_TAG(table, data_tag);
+                MR_DEBUG_TABLE_TAG(table, data_tag);
 
                      /* copy arguments */
                 for (i = 0; i < arity; i++) {
                     new_type_info = MR_make_type_info(type_info,
                         (Word *) type_info_vector[i], &allocated_memory_cells);
 
-                    MR_DEBUG_TABLE_ANY(table, new_type_info, argument_vector[i]);
+                    MR_DEBUG_TABLE_ANY(table, new_type_info,
+                        argument_vector[i]);
                 }
                 break;
             }
             case MR_DISCUNIONTAG_SHARED_REMOTE: {
-                int arity, i;
-                Word *argument_vector, *type_info_vector, *new_type_info;
-                Word secondary_tag, num_sharers, *new_layout_vector;
+                int     arity, i;
+                Word    *argument_vector;
+                Word    *type_info_vector;
+                Word    *new_type_info;
+                Word    secondary_tag;
+                Word    num_sharers;
+                Word    *new_layout_vector;
 
                 secondary_tag = *data_value;
                 argument_vector = data_value + 1;
 
                 num_sharers = MR_TYPE_CTOR_LAYOUT_SHARED_REMOTE_VECTOR_NUM_SHARERS(
-            			layout_vector_for_tag);
+                                layout_vector_for_tag);
                 new_layout_vector =
                     MR_TYPE_CTOR_LAYOUT_SHARED_REMOTE_VECTOR_GET_FUNCTOR_DESCRIPTOR(
                     layout_vector_for_tag, secondary_tag);
                 arity = new_layout_vector[TYPE_CTOR_LAYOUT_UNSHARED_ARITY_OFFSET];
                 type_info_vector =
-		    &new_layout_vector[TYPE_CTOR_LAYOUT_UNSHARED_ARGS_OFFSET];
+                    &new_layout_vector[TYPE_CTOR_LAYOUT_UNSHARED_ARGS_OFFSET];
 
-	        MR_DEBUG_TABLE_TAG(table, data_tag);
-	        MR_DEBUG_TABLE_ENUM(table, num_sharers, secondary_tag);
+                MR_DEBUG_TABLE_TAG(table, data_tag);
+                MR_DEBUG_TABLE_ENUM(table, num_sharers, secondary_tag);
 
                 for (i = 0; i < arity; i++) {
                     new_type_info = MR_make_type_info(type_info,
                         (Word *) type_info_vector[i], &allocated_memory_cells);
 
-                    MR_DEBUG_TABLE_ANY(table, new_type_info, argument_vector[i]);
+                    MR_DEBUG_TABLE_ANY(table, new_type_info,
+                        argument_vector[i]);
                 }
                 break;
             }
             }
-	    break;
-	}
+            break;
+        }
         case MR_TYPECTOR_REP_NOTAG: {
             Word *new_type_info;
             new_type_info = MR_make_type_info(type_info,
                 (Word *) *MR_TYPE_CTOR_LAYOUT_NO_TAG_VECTOR_ARGS(
-		    layout_vector_for_tag),
+                    layout_vector_for_tag),
                 &allocated_memory_cells);
             MR_DEBUG_TABLE_ANY(table, new_type_info, data);
             break;
@@ -578,7 +586,7 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
         }
         case MR_TYPECTOR_REP_EQUIV_VAR:
             MR_DEBUG_TABLE_ANY(table,
-		(Word *) type_info[(Word) layout_vector_for_tag], data);
+                (Word *) type_info[(Word) layout_vector_for_tag], data);
             break;
 
         case MR_TYPECTOR_REP_INT:
@@ -647,7 +655,7 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
                 &allocated_memory_cells);
 
             for (i = 0; i < array_size; i++) {
-        	MR_DEBUG_TABLE_ANY(table, new_type_info, array->elements[i]);
+                MR_DEBUG_TABLE_ANY(table, new_type_info, array->elements[i]);
             }
             break;
         }
@@ -1167,7 +1175,7 @@ Define_entry(mercury__table_nondet_suspend_2_0);
 	** nondet stack fragment. The framevar slot is for use by
 	** table_nondet_resume.
 	*/
-	mkframe(mercury__table_nondet_suspend/2, 1, ENTRY(do_fail));
+	MR_mkframe("mercury__table_nondet_suspend", 1, ENTRY(do_fail));
 
 	table = MR_SUBGOAL(r1);
 	consumer = table_allocate_bytes(sizeof(MR_Consumer));
@@ -1286,7 +1294,7 @@ Define_entry(mercury__table_nondet_suspend_2_0);
 	listnode->item = consumer;
 	listnode->next = NULL;
 }
-	fail();
+	MR_fail();
 END_MODULE
 
 MR_Subgoal	*MR_cur_leader;
@@ -1371,7 +1379,7 @@ Define_entry(mercury__table_nondet_resume_1_0);
 #endif
 
 		(void) MR_pop_generator();
-		redo();
+		MR_redo();
 	}
 
 #ifdef	MR_TABLE_DEBUG
@@ -1553,7 +1561,7 @@ Define_label(mercury__table_nondet_resume_1_0_ReturnAnswer);
 	** computation that existed when suspend was called, the code
 	** that we return to is the code following the call to suspend.
 	*/
-	succeed();
+	MR_succeed();
 
 Define_label(mercury__table_nondet_resume_1_0_RedoPoint);
 	update_prof_current_proc(LABEL(mercury__table_nondet_resume_1_0));
@@ -1637,7 +1645,7 @@ BEGIN_MODULE(table_nondet_commit_module)
 BEGIN_CODE
 Define_entry(MR_table_nondet_commit);
 	MR_commit_cut();
-	fail();
+	MR_fail();
 END_MODULE
 
 #endif

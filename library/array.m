@@ -299,7 +299,7 @@ const struct mercury_data_array__type_ctor_layout_array_1_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data_array__type_ctor_layout_array_1 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_ARRAY_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_ARRAY_VALUE))
 };
 
 MR_MODULE_STATIC_OR_EXTERN

@@ -618,7 +618,7 @@ Define_entry(exception_handler_do_fail);
 	** check for a redoip of `exception_handler_do_fail' and
 	** handle it specially.
 	*/
-	fail();
+	MR_fail();
 
 END_MODULE
 

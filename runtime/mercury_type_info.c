@@ -26,7 +26,7 @@ const struct mercury_data___type_ctor_layout_pred_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___type_ctor_layout_pred_0 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_PREDICATE_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_PREDICATE_VALUE))
 };
 
 	/* type_ctor_functors for `pred' */
@@ -37,7 +37,6 @@ const struct mercury_data___type_ctor_functors_pred_0_struct {
 } mercury_data___type_ctor_functors_pred_0 = {
 	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
-
 
 	/* 
 	** type_ctor_info for `func' 
@@ -94,7 +93,7 @@ BEGIN_CODE
 
 /* code for predicate 'builtin_unify_pred'/2 in mode 0 */
 Define_entry(mercury__builtin_unify_pred_2_0);
-	incr_sp_push_msg(2, "private_builtin:builtin_unify_pred");
+	MR_incr_sp_push_msg(2, "private_builtin:builtin_unify_pred");
 	fatal_error("attempted unification of higher-order terms");
 END_MODULE
 
@@ -115,7 +114,7 @@ BEGIN_CODE
 
 /* code for predicate 'builtin_compare_pred'/3 in mode 0 */
 Define_entry(mercury__builtin_compare_pred_3_0);
-	incr_sp_push_msg(2, "private_builtin:builtin_compare_pred");
+	MR_incr_sp_push_msg(2, "private_builtin:builtin_compare_pred");
 	fatal_error("attempted comparison of higher-order terms");
 END_MODULE
 
@@ -243,10 +242,12 @@ MR_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 int
 MR_compare_type_info(Word t1, Word t2)
 {
-	Word	*type_info_1, *type_info_2;
-	MR_TypeCtorInfo	type_ctor_info_1, type_ctor_info_2;
-	int	num_arg_types;
-	int	i;
+	Word		*type_info_1;
+	Word		*type_info_2;
+	MR_TypeCtorInfo	type_ctor_info_1;
+	MR_TypeCtorInfo	type_ctor_info_2;
+	int		num_arg_types;
+	int		i;
 
 	/* 
 	** Try to optimize a common case:
@@ -301,13 +302,13 @@ MR_compare_type_info(Word t1, Word t2)
 		/* Check for higher order */
 	if (MR_TYPE_CTOR_INFO_IS_HO(type_ctor_info_1)) 
 	{
-		int num_arg_types_2;
+		int	num_arg_types_2;
 
 			/* Get number of arguments from type_info */
-		num_arg_types = field(mktag(0), type_info_1, 
+		num_arg_types = MR_field(MR_mktag(0), type_info_1, 
 			TYPEINFO_OFFSET_FOR_PRED_ARITY);
 
-		num_arg_types_2 = field(mktag(0), type_info_2, 
+		num_arg_types_2 = MR_field(MR_mktag(0), type_info_2, 
 			TYPEINFO_OFFSET_FOR_PRED_ARITY);
 
 			/* Check arity */
@@ -325,20 +326,22 @@ MR_compare_type_info(Word t1, Word t2)
 		type_info_1++;
 		type_info_2++;
 	} else {
-		num_arg_types = field(mktag(0), type_ctor_info_1,
+		num_arg_types = MR_field(MR_mktag(0), type_ctor_info_1,
 				OFFSET_FOR_COUNT);
 	}
+
 		/* compare the argument types */
 	for (i = 0; i < num_arg_types; i++) {
-		Word arg_type_info_1 = field(mktag(0), type_info_1,
+		Word arg_type_info_1 = MR_field(MR_mktag(0), type_info_1,
 			OFFSET_FOR_ARG_TYPE_INFOS + i);
-		Word arg_type_info_2 = field(mktag(0), type_info_2,
+		Word arg_type_info_2 = MR_field(MR_mktag(0), type_info_2,
 			OFFSET_FOR_ARG_TYPE_INFOS + i);
 		int comp = MR_compare_type_info(
 				arg_type_info_1, arg_type_info_2);
 		if (comp != COMPARE_EQUAL)
 			return comp;
 	}
+
 	return COMPARE_EQUAL;
 }
 
@@ -503,9 +506,11 @@ MR_make_type_info(const Word *term_type_info, const Word *arg_pseudo_type_info,
 				node->next = *allocated;
 				*allocated = node;
 			}
+
 			type_info[i] = (Word) arg_type_info;
 		}
 	}
+
 	if (type_info == NULL) {
 		return (Word *) (Word) arg_pseudo_type_info;
 	} else {
@@ -519,7 +524,7 @@ MR_make_type_info(const Word *term_type_info, const Word *arg_pseudo_type_info,
 enum MR_DiscUnionTagRepresentation
 MR_get_tag_representation(Word layout_entry)
 {
-	switch ((int) tag(layout_entry)) {
+	switch ((int) MR_tag(layout_entry)) {
 		case TYPE_CTOR_LAYOUT_UNSHARED_TAG:
 			return MR_DISCUNIONTAG_UNSHARED;
 		case TYPE_CTOR_LAYOUT_SHARED_REMOTE_TAG:

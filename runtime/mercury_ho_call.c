@@ -119,7 +119,7 @@ Define_entry(do_call_old_closure);
 	int	i, num_in_args, num_extra_args;
 
 	closure = r1; /* The closure */
-	num_in_args = field(0, closure, 0); /* number of input args */
+	num_in_args = MR_field(0, closure, 0); /* number of input args */
 	num_extra_args = r2; /* number of immediate input args */
 
 	save_registers();
@@ -137,12 +137,12 @@ Define_entry(do_call_old_closure);
 	} /* else do nothing because i == MR_HO_CALL_INPUTS */
 
 	for (i = 1; i <= num_in_args; i++) {
-		virtual_reg(i) = field(0, closure, i + 1); /* copy args */
+		virtual_reg(i) = MR_field(0, closure, i + 1); /* copy args */
 	}
 
 	restore_registers();
 
-	tailcall((Code *) field(0, closure, 1), LABEL(do_call_det_closure));
+	tailcall((Code *) MR_field(0, closure, 1), LABEL(do_call_det_closure));
 }
 
 Define_entry(mercury__do_call_closure);
@@ -270,16 +270,16 @@ Define_entry(mercury__unify_2_0);
 	x = r2;
 	y = r3;
 
-	type_ctor_info = field(0, type_info, 0);
+	type_ctor_info = MR_field(0, type_info, 0);
 	if (type_ctor_info == 0) {
 		type_arity = 0;
-		unify_pred = (Code *) field(0, type_info,
+		unify_pred = (Code *) MR_field(0, type_info,
 					OFFSET_FOR_UNIFY_PRED);
 		/* args_base will not be needed */
 		args_base = 0; /* just to supress a gcc warning */
 	} else {
-		type_arity = field(0, type_ctor_info, OFFSET_FOR_COUNT);
-		unify_pred = (Code *) field(0, type_ctor_info,
+		type_arity = MR_field(0, type_ctor_info, OFFSET_FOR_COUNT);
+		unify_pred = (Code *) MR_field(0, type_ctor_info,
 				OFFSET_FOR_UNIFY_PRED);
 		args_base = type_info;
 	}
@@ -288,7 +288,7 @@ Define_entry(mercury__unify_2_0);
 
 	/* we call `UnifyPred(...ArgTypeInfos..., X, Y)' */
 	for (i = 1; i <= type_arity; i++) {
-		virtual_reg(i) = field(0, args_base, i);
+		virtual_reg(i) = MR_field(0, args_base, i);
 	}
 	virtual_reg(type_arity + 1) = x;
 	virtual_reg(type_arity + 2) = y;
@@ -322,16 +322,16 @@ Define_entry(mercury__index_2_0);
 
 	type_info = r1;
 	x = r2;
-	type_ctor_info = field(0, type_info, 0);
+	type_ctor_info = MR_field(0, type_info, 0);
 	if (type_ctor_info == 0) {
 		type_arity = 0;
-		index_pred = (Code *) field(0, type_info,
+		index_pred = (Code *) MR_field(0, type_info,
 					OFFSET_FOR_INDEX_PRED);
 		/* args_base will not be needed */
 		args_base = 0; /* just to supress a gcc warning */
 	} else {
-		type_arity = field(0, type_ctor_info, OFFSET_FOR_COUNT);
-		index_pred = (Code *) field(0, type_ctor_info,
+		type_arity = MR_field(0, type_ctor_info, OFFSET_FOR_COUNT);
+		index_pred = (Code *) MR_field(0, type_ctor_info,
 				OFFSET_FOR_INDEX_PRED);
 		args_base = type_info;
 	}
@@ -340,7 +340,7 @@ Define_entry(mercury__index_2_0);
 
 	/* we call `IndexPred(...ArgTypeInfos..., X, Index)' */
 	for (i = 1; i <= type_arity; i++) {
-		virtual_reg(i) = field(0, args_base, i);
+		virtual_reg(i) = MR_field(0, args_base, i);
 	}
 	virtual_reg(type_arity + 1) = x;
 
@@ -396,16 +396,16 @@ Define_entry(mercury__compare_3_3);
 	x = r2;
 	y = r3;
 
-	type_ctor_info = field(0, type_info, 0);
+	type_ctor_info = MR_field(0, type_info, 0);
 	if (type_ctor_info == 0) {
 		type_arity = 0;
-		compare_pred = (Code *) field(0, type_info,
+		compare_pred = (Code *) MR_field(0, type_info,
 						OFFSET_FOR_COMPARE_PRED);
 		/* args_base will not be needed */
 		args_base = 0; /* just to supress a gcc warning */
 	} else {
-		type_arity = field(0, type_ctor_info, OFFSET_FOR_COUNT);
-		compare_pred = (Code *) field(0, type_ctor_info,
+		type_arity = MR_field(0, type_ctor_info, OFFSET_FOR_COUNT);
+		compare_pred = (Code *) MR_field(0, type_ctor_info,
 				OFFSET_FOR_COMPARE_PRED);
 		args_base = type_info;
 	}
@@ -414,7 +414,7 @@ Define_entry(mercury__compare_3_3);
 
 	/* we call `ComparePred(...ArgTypeInfos..., Result, X, Y)' */
 	for (i = 1; i <= type_arity; i++) {
-		virtual_reg(i) = field(0, args_base, i);
+		virtual_reg(i) = MR_field(0, args_base, i);
 	}
 	virtual_reg(type_arity + 1) = x;
 	virtual_reg(type_arity + 2) = y;

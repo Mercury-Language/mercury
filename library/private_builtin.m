@@ -341,7 +341,7 @@ const struct mercury_data_private_builtin__type_ctor_layout_type_info_1_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data_private_builtin__type_ctor_layout_type_info_1 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG,
-		mkbody(MR_TYPE_CTOR_LAYOUT_TYPEINFO_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_TYPEINFO_VALUE))
 };
 
 const struct mercury_data_private_builtin__type_ctor_functors_type_info_1_struct {
@@ -402,7 +402,7 @@ mercury_data_private_builtin__type_ctor_layout_typeclass_info_1_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data_private_builtin__type_ctor_layout_typeclass_info_1 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_TYPECLASSINFO_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_TYPECLASSINFO_VALUE))
 };
 
 const struct mercury_data_private_builtin__type_ctor_functors_typeclass_info_1_struct {
