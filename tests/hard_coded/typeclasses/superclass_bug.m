@@ -104,6 +104,7 @@ ixmldomnode_replacechild(T, A, U, B, C, InTypeVar, OutTypeVar) = HResult :-
       IntroducedIdlBug_2OutPtr = IntroducedIdlBug_2InPtr;
       OutTypeVarPtr = InTypeVarPtr;
 ").
+ixmldomnode_replacechild_c_code(A, A, B, B, A, C, C) = hresult(5).
 
 %------------------------------------------------------------------------------%
 

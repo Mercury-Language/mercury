@@ -28,7 +28,8 @@
 	% my_univ_value(Univ):
 	%	returns the value of the object stored in Univ.
 
-:- type my_univ == c_pointer.
+:- type my_univ
+	--->	some [T] f(T) => fooable(T).
 
 :- func my_univ(T) = my_univ <= fooable(T).
 
@@ -63,19 +64,5 @@ call_my_univ_value(Univ) = my_univ_value(Univ).
 
 my_exist_t = 43.
 
-:- pragma c_header_code("
-	#include ""mercury_heap.h""	/* for MR_incr_hp() */
-	#include ""mercury_tags.h""	/* for MR_field() */
-").
-:- pragma c_code(my_univ_value(Univ::in) = (Value::out), will_not_call_mercury, "
-	TypeClassInfo_for_existential_type_classes__fooable_T =
-		MR_field(MR_mktag(0), Univ, 0);
-	Value = MR_field(MR_mktag(0), Univ, 1);
-").
-:- pragma c_code(my_univ(Value::in) = (Univ::out), will_not_call_mercury, "
-	MR_incr_hp(Univ, 2);
-	MR_field(MR_mktag(0), Univ, 0) = (MR_Word)
-		TypeClassInfo_for_existential_type_classes__fooable_T;
-	MR_field(MR_mktag(0), Univ, 1) = (MR_Word) Value;
-
-").
+my_univ(T) = 'new f'(T).
+my_univ_value(f(T)) = T.
