@@ -109,13 +109,13 @@ such problems, rename your `Mmake' file to `Mmakefile'.
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
 
-Index: Mmake
+Index: Mmakefile
 ===================================================================
 RCS file: /home/staff/zs/imp/mercury/Mmakefile,v
-retrieving revision 1.62
-diff -u -r1.62 Mmake
---- Mmakefile	1996/12/05 19:25:00	1.62
-+++ Mmakefile	1996/12/20 11:40:23
+retrieving revision 1.1
+diff -u -r1.1 Mmakefile
+--- Mmakefile	1997/02/13 21:38:04	1.1
++++ Mmakefile	1997/04/10 17:46:56
 @@ -17,7 +17,9 @@
  
  SUBDIRS = scripts util boehm_gc runtime library compiler doc profiler
@@ -136,7 +136,7 @@ diff -u -r1.62 Mmake
  	# clean up
  	cd scripts && mmake realclean
  	cd util && mmake realclean
-@@ -181,10 +183,51 @@
+@@ -181,9 +183,52 @@
  #-----------------------------------------------------------------------------#
  
  .PHONY: install
@@ -146,7 +146,7 @@ diff -u -r1.62 Mmake
  		install_library install_compiler install_profiler install_doc \
 +		postinstall_hack_for_win95 \
  		install_grades
- 
++
 +# `make touch_files' is a work-around for the broken gnu-win32 `tar'
 +# that loses all the file dates.
 +.PHONY: touch_files
@@ -163,6 +163,8 @@ diff -u -r1.62 Mmake
 +	touch profiler/*.dep
 +	touch doc/*.texi
 +	sleep 1
++	touch boehm_gc/*.c
++	touch runtime/*.c
 +	touch library/*.c
 +	touch compiler/*.c
 +	touch profiler/*.c
@@ -185,7 +187,6 @@ diff -u -r1.62 Mmake
 +	cd $(INSTALL_MERC_BIN_DIR) && mv mercury_profile mercury_profile.exe
 +	cd $(INSTALL_BINDIR) && mv mkinit mkinit.exe
 +	cd $(INSTALL_BINDIR) && mv mdemangle mdemangle.exe
-+
+ 
  .PHONY: install_scripts
  install_scripts: scripts
- 	cd scripts && $(SUBDIR_MMAKE) install
