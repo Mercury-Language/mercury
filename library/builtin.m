@@ -201,7 +201,8 @@
 
 	/* base_type_layout for `int' */
 
-static const struct mercury_data___base_type_layout_int_0_struct {
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___base_type_layout_int_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___base_type_layout_int_0 = {
 	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
@@ -210,7 +211,8 @@ static const struct mercury_data___base_type_layout_int_0_struct {
 
 	/* base_type_layout for `character' */
 
-static const struct mercury_data___base_type_layout_character_0_struct {
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___base_type_layout_character_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___base_type_layout_character_0 = {
 	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
@@ -219,7 +221,8 @@ static const struct mercury_data___base_type_layout_character_0_struct {
 
 	/* base_type_layout for `string' */
 
-static const struct mercury_data___base_type_layout_string_0_struct {
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___base_type_layout_string_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___base_type_layout_string_0 = {
 	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
@@ -228,7 +231,8 @@ static const struct mercury_data___base_type_layout_string_0_struct {
 
 	/* base_type_layout for `float' */
 
-static const struct mercury_data___base_type_layout_float_0_struct {
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___base_type_layout_float_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___base_type_layout_float_0 = {
 	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
@@ -237,7 +241,8 @@ static const struct mercury_data___base_type_layout_float_0_struct {
 
 	/* base_type_layout for `void' */
 
-static const struct mercury_data___base_type_layout_void_0_struct {
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___base_type_layout_void_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___base_type_layout_void_0 = {
 	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
@@ -248,7 +253,8 @@ static const struct mercury_data___base_type_layout_void_0_struct {
 
 	/* base_type_functors for `int' */
 
-static const struct mercury_data___base_type_functors_int_0_struct {
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___base_type_functors_int_0_struct {
 	Integer f1;
 } mercury_data___base_type_functors_int_0 = {
 	MR_TYPEFUNCTORS_SPECIAL
@@ -256,7 +262,8 @@ static const struct mercury_data___base_type_functors_int_0_struct {
 
 	/* base_type_functors for `character' */
 
-static const struct mercury_data___base_type_functors_character_0_struct {
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___base_type_functors_character_0_struct {
 	Integer f1;
 } mercury_data___base_type_functors_character_0 = {
 	MR_TYPEFUNCTORS_SPECIAL
@@ -264,7 +271,8 @@ static const struct mercury_data___base_type_functors_character_0_struct {
 
 	/* base_type_functors for `string' */
 
-static const struct mercury_data___base_type_functors_string_0_struct {
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___base_type_functors_string_0_struct {
 	Integer f1;
 } mercury_data___base_type_functors_string_0 = {
 	MR_TYPEFUNCTORS_SPECIAL
@@ -272,7 +280,8 @@ static const struct mercury_data___base_type_functors_string_0_struct {
 
 	/* base_type_functors for `float' */
 
-static const struct mercury_data___base_type_functors_float_0_struct {
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___base_type_functors_float_0_struct {
 	Integer f1;
 } mercury_data___base_type_functors_float_0 = {
 	MR_TYPEFUNCTORS_SPECIAL
@@ -280,7 +289,8 @@ static const struct mercury_data___base_type_functors_float_0_struct {
 
 	/* base_type_functors for `void' */
 
-static const struct mercury_data___base_type_functors_void_0_struct {
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___base_type_functors_void_0_struct {
 	Integer f1;
 } mercury_data___base_type_functors_void_0 = {
 	MR_TYPEFUNCTORS_SPECIAL
@@ -571,14 +581,16 @@ void sys_init_copy_module(void) {
 
 #ifdef  USE_TYPE_LAYOUT
 
-static const struct mercury_data_builtin__base_type_layout_c_pointer_0_struct {
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data_builtin__base_type_layout_c_pointer_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data_builtin__base_type_layout_c_pointer_0 = {
 	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
 		mkbody(TYPELAYOUT_C_POINTER_VALUE))
 };
 
-static const struct
+MR_MODULE_STATIC_OR_EXTERN
+const struct
 mercury_data_builtin__base_type_functors_c_pointer_0_struct {
 	Integer f1;
 } mercury_data_builtin__base_type_functors_c_pointer_0 = {

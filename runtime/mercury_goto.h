@@ -70,9 +70,9 @@
 #endif
 
 #ifdef SPLIT_C_FILES
-#define MODULE_STATIC_OR_EXTERN extern
+  #define MR_MODULE_STATIC_OR_EXTERN extern
 #else
-#define MODULE_STATIC_OR_EXTERN static
+  #define MR_MODULE_STATIC_OR_EXTERN static
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -448,8 +448,8 @@
   ** macro are for.
   */
   #define BEGIN_MODULE(module_name)	\
-	MODULE_STATIC_OR_EXTERN void module_name(void); \
-	MODULE_STATIC_OR_EXTERN void module_name(void) { \
+	MR_MODULE_STATIC_OR_EXTERN void module_name(void); \
+	MR_MODULE_STATIC_OR_EXTERN void module_name(void) { \
 		PRETEND_ADDRESS_IS_USED(module_name); \
 		PRETEND_ADDRESS_IS_USED(&& paste(module_name, _dummy_label)); \
 		paste(module_name,_dummy_label): \
@@ -568,8 +568,8 @@
   typedef Code * ModuleFunc(void);
 
   #define BEGIN_MODULE(module_name)	\
-		MODULE_STATIC_OR_EXTERN Code* module_name(void); \
-		MODULE_STATIC_OR_EXTERN Code* module_name(void) {
+	MR_MODULE_STATIC_OR_EXTERN Code* module_name(void); \
+	MR_MODULE_STATIC_OR_EXTERN Code* module_name(void) {
   #define BEGIN_CODE			return 0;
   #define END_MODULE			}
 

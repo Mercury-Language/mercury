@@ -269,14 +269,16 @@ MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Compare___array__array_1_0);
 
 #ifdef  USE_TYPE_LAYOUT
 
-static const struct mercury_data_array__base_type_layout_array_1_struct {
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data_array__base_type_layout_array_1_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data_array__base_type_layout_array_1 = {
 	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
 		mkbody(TYPELAYOUT_ARRAY_VALUE))
 };
 
-static const struct mercury_data_array__base_type_functors_array_1_struct {
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data_array__base_type_functors_array_1_struct {
 	Integer f1;
 } mercury_data_array__base_type_functors_array_1 = {
 	MR_TYPEFUNCTORS_SPECIAL
