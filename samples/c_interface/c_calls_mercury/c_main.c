@@ -80,7 +80,7 @@ static void print_list(MercuryList list) {
 		printf("[]");
 	} else {
 		printf("[");
-		printf("%ld", (long) list_head(list));
+		printf("%ld", (long) MR_list_head(list));
 		list = MR_list_tail(list);
 		while (!MR_list_is_empty(list)) {
 			printf(", %ld", (long) MR_list_head(list));
