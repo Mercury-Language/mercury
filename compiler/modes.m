@@ -906,9 +906,13 @@ modecheck_var_has_inst(VarId, Inst, ModeInfo0, ModeInfo) :-
 %-----------------------------------------------------------------------------%
 
 	% inst_matches_initial(InstA, InstB, ModuleInfo) is true iff
+	% `InstA' specifies at least as much information as InstA,
+	% and in those parts where they specify the same information,
 	% `InstA' is at least as instantiated as `InstB'.
-	% (`not_reached' is considered to be more instantiated
-	% than `ground'.)
+	% Thus, inst_matches_initial(not_reached, ground, _) succeeds),
+	% since not_reached contains more information than ground - but
+	% not vice versa.  Similarly, inst_matches_initial(bound(a),
+	% bound(a;b), _) should succeed, but not vice versa.
 
 :- pred inst_matches_initial(inst, inst, module_info).
 :- mode inst_matches_initial(in, in, in) is semidet.
@@ -1043,9 +1047,24 @@ modecheck_set_var_inst(Var, Inst, ModeInfo0, ModeInfo) :-
 	( InstMap0 = reachable(InstMapping0) ->
 		mode_info_get_module_info(ModeInfo0, ModuleInfo),
 		instmap_lookup_var(InstMap0, Var, Inst0),
-		( inst_matches_initial(Inst0, Inst, ModuleInfo) ->
+		(
+			% If we haven't added any information and
+			% we haven't bound any part of the var, then
+			% we haven't done anything.
+
+			inst_matches_initial(Inst0, Inst, ModuleInfo)
+		->
 			ModeInfo = ModeInfo0
-		; mode_info_var_is_locked(ModeInfo0, Var) ->
+		;
+			% We must have either added some information,
+			% or bound part of the var.  The call to
+			% inst_matches_final will fail iff we have
+			% bound part of a var.  If the var was locked,
+			% then we need to report an error.
+
+			\+ inst_matches_final(Inst, Inst0, ModuleInfo),
+			mode_info_var_is_locked(ModeInfo0, Var)
+		->
 			mode_info_error([Var],
 					mode_error_bind_var(Var, Inst0, Inst),
 					ModeInfo0, ModeInfo
@@ -1067,6 +1086,10 @@ modecheck_set_var_inst(Var, Inst, ModeInfo0, ModeInfo) :-
 	% inst_merge(InstA, InstB, InstC):
 	%	Combine the insts found in different arms of a
 	%	disjunction (or if-then-else).
+	%	The information in InstC is the minimum of the
+	%	information in InstA and InstB.  Where InstA and
+	%	InstB specify a binding (free or bound), it must be
+	%	the same in both.
 
 :- pred inst_merge(inst, inst, module_info, inst).
 :- mode inst_merge(in, in, in, out) is semidet.
@@ -1167,12 +1190,18 @@ bound_inst_list_merge(Xs, Ys, ModuleInfo, Expansions, Zs) :-
 	% inst_matches_final(InstA, InstB):
 	%	Succeed iff InstA is compatible with InstB,
 	%	i.e. iff InstA will satisfy the final inst
-	%	requirement InstB.
+	%	requirement InstB.  This is true if the
+	%	information specified by InstA is at least as
+	%	great as that specified by InstB, and where the information
+	%	is the same and both insts specify a binding, the binding
+	%	must be identical.
+	%
 	%	The difference between inst_matches_initial and
 	%	inst_matches_final is that inst_matches_initial requires
 	%	only something which is at least as instantiated,
 	%	whereas this predicate wants something which is an
 	%	exact match (or not reachable).
+	%
 	%	Note that this predicate is not symmetric,
 	%	because of the existence of `not_reached' insts:
 	%	not_reached matches_final with anything,
@@ -2561,6 +2590,12 @@ mode_info_set_delay_info(DelayInfo, mode_info(A,B,C,D,E,F,G,H,_,J,K),
 	% by simulating coroutining at compile time.
 	% This is handled by the following data structure.
 
+	% The delay_info structure is a tangled web of substructures
+	% all of which are pointing at each other - debugging it
+	% reminds me of debugging C code - it's a nightmare!
+	% (Of course, it could just be that my brain has decided to
+	% switch off in protest - after all, it is 5:25am. ;-)
+
 :- type delay_info
 	--->	delay_info(
 			depth_num,	% CurrentDepth:
@@ -2604,7 +2639,7 @@ mode_info_set_delay_info(DelayInfo, mode_info(A,B,C,D,E,F,G,H,_,J,K),
 
 :- type pending_goals_table == map(depth_num, list(seq_num)).
 	
-:- type goal_num == pair(depth_num, seq_num).
+:- type goal_num == pair(depth_num, seq_num).	/* Eeek! Pointers! */
 :- type depth_num == int.
 :- type seq_num == int.
 
