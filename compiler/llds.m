@@ -457,7 +457,7 @@ output_instruction(restore_hp(Rval)) -->
 	output_rval_decls(Rval),
 	io__write_string("restore_hp("),
 	output_rval(Rval),
-	io__write_string(") }").
+	io__write_string("); }").
 
 output_instruction(incr_sp(N)) -->
 	io__write_string("\t"),
