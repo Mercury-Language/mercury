@@ -16,16 +16,6 @@
 
 %-----------------------------------------------------------------------------%
 
-% Inequality.  This should probably be builtin, like equality.
-
-:- pred T \= T.
-:- mode input \= input.
-
-:- pred T ~= T.
-:- mode input ~= input.
-
-%-----------------------------------------------------------------------------%
-
 % The universal type.
 % Note that the current NU-Prolog implementation of univ_to_type
 % is buggy in that it always succeeds, even if the types didn't
@@ -70,7 +60,12 @@
 :- pred gc_call(pred).
 
 :- pred solutions(pred(T), list(T)).
-:- mode solutions(complicated, output).
+:- mode solutions(complicated_mode, output).
+
+% The following is a temporary hack until we implement higher-order
+% modes.
+
+:- mode complicated_mode :: input.
 
 %-----------------------------------------------------------------------------%
 
@@ -88,8 +83,6 @@
 /*
 :- external("NU-Prolog", gc_call/1).
 :- external("NU-Prolog", report_stats/0).
-:- external("NU-Prolog", (\=)/2).
-:- external("NU-Prolog", (~=)/2).
 :- external("NU-Prolog", solutions/2).
 :- external("NU-Prolog", type_to_univ).
 */

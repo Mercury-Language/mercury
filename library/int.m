@@ -29,7 +29,7 @@
 :- mode int__max(input, input, output).
 
 :- pred int__min(int, int, int).
-:- mode int__min(intput, input, output).
+:- mode int__min(input, input, output).
 
 /*
 

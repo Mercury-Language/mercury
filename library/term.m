@@ -126,6 +126,12 @@
 %	term__create_var(VarSupply0, Variable, VarSupply) :
 %		create a fresh variable (var) and return the
 %		updated var_supply.
+
+:- pred term__var_to_int(var, int).
+:- mode term__var_to_int(input, output).
+%		Convert a variable to an int.
+%		Different variables map to different ints.
+%		Other than that, the mapping is unspecified.
 	
 %-----------------------------------------------------------------------------%
 
@@ -474,6 +480,12 @@ term__init_var_supply(0).
 	% create a fresh [unique] variable.
 term__create_var(VarSupply0, VarSupply0, VarSupply) :-
 	VarSupply is VarSupply0 + 1.
+
+%-----------------------------------------------------------------------------%
+
+	% variables are represented as ints, so there's nothing to do.
+
+term__var_to_int(Var, Var).
 
 %-----------------------------------------------------------------------------%
 

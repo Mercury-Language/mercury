@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-% global_det.nl - the determinism analysis pass.
+% det_analysis.nl - the determinism analysis pass.
 
 % Main author: conway.
 
@@ -18,8 +18,19 @@
 
 %-----------------------------------------------------------------------------%
 
+:- module det_analysis.
+:- interface.
+:- import_module hlds.
+
 :- pred determinism_pass(moduleinfo, moduleinfo).
 :- mode determinism_pass(input, output).
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+:- import_module list, map, prog_io, std_util.
+
+%-----------------------------------------------------------------------------%
 
 determinism_pass(ModuleInfo0, ModuleInfo) :-
 	determinism_declarations(ModuleInfo0, DeclaredProcs, UndeclaredProcs),
@@ -29,9 +40,9 @@ determinism_pass(ModuleInfo0, ModuleInfo) :-
 %-----------------------------------------------------------------------------%
 
 :- type predproclist	==	list(pair(pred_id, pred_mode_id)).
-:- type miscinfo	--->	miscinfo(moduleinfo, pred_id, pred_mode_id).
+:- type miscinfo	--->	miscinfo(module_info, pred_id, pred_mode_id).
 
-:- pred determinism_declarations(moduleinfo, predproclist, predproclist).
+:- pred determinism_declarations(module_info, predproclist, predproclist).
 :- mode determinism_declarations(input, output, output).
 
 determinism_declarations(ModuleInfo, DeclaredProcs, UndeclaredProcs) :-
@@ -58,10 +69,17 @@ get_all_pred_procs_2(Preds, [PredId|PredIds], PredProcs0, PredProcs) :-
 	fold_pred_modes(PredId, PredModes, PredProcs0, PredProcs1),
 	get_all_pred_procs_2(Preds, PredIds, PredProcs1, PredProcs).
 
+:- pred fold_pred_modes(pred_id, list(pred_mode), predproclist, predproclist).
+:- mode fold_pred_modes(input, input, input, output).
+
 fold_pred_modes(_PredId, [], PredProcs, PredProcs).
 fold_pred_modes(PredId, [PredMode|PredModes], PredProcs0, PredProcs) :-
 	fold_pred_modes(PredId, PredModes, [PredId - PredMode|PredProcs0],
 		PredProcs).
+
+:- pred segregate_procs(module_info, predproclist, predproclist,
+			predproclist, predproclist).
+:- mode segregate_procs(input, input, input, output, input, output).
 
 segregate_procs(_ModuleInfo, [], DeclaredProcs, DeclaredProcs,
 				UndeclaredProcs, UndeclaredProcs).
@@ -87,13 +105,22 @@ segregate_procs(ModuleInfo, [PredId - PredMode|PredProcs],
 
 %-----------------------------------------------------------------------------%
 
+:- pred global_analysis_pass(module_info, predproclist, module_info).
+:- mode global_analysis_pass(input, input, output).
+
 global_analysis_pass(ModuleInfo0, UndeclaredProcs, ModuleInfo) :-
 	global_analysis_pass_2(ModuleInfo0, UndeclaredProcs, UndeclaredProcs,
 		unchanged, ModuleInfo).
 
+:- type maybe_changed ---> changed ; unchanged.
+
+:- pred global_analysis_pass(module_info, predproclist, predproclist,
+				maybe_changed, module_info).
+:- mode global_analysis_pass(input, input, input, input, output).
+
 :- global_analysis_pass_2(_, _, L, _, _) when L.	% NU-Prolog indexing.
 
-global_analysis_pass_2(ModuleInfo, UndeclaredProcs, [], unchanged, ModuleInfo).
+global_analysis_pass_2(ModuleInfo, _UndeclaredProcs, [], unchanged, ModuleInfo).
 global_analysis_pass_2(ModuleInfo0, UndeclaredProcs, [], changed, ModuleInfo) :-
 	global_analysis_pass_2(ModuleInfo0, UndeclaredProcs, UndeclaredProcs,
 				unchanged, ModuleInfo).
@@ -109,6 +136,7 @@ global_analysis_pass_2(ModuleInfo0, UndeclaredProcs,
 	make_inst_map(Proc, InstMap0),
 	Goal0 = HldsGoal0 - GoalInfo0,
 	goalinfo_category(GoalInfo0, Detism0),
+		% XXX MiscInfo is uninitialized
 	local_det_goal(Goal0, MiscInfo, Goal, InstMap0, _InstMap,
 			deterministic(infered), Detism1),
 	infered_category(Detism1, Detism),
@@ -130,12 +158,13 @@ global_analysis_pass_2(ModuleInfo0, UndeclaredProcs,
 
 %-----------------------------------------------------------------------------%
 
+/****
 global_checking_pass(ModuleInfo, Result, Result, [], ModuleInfo).
 global_checking_pass(ModuleInfo0, Result0, Result,
 			[PredId - PredMode|DeclaredProcs], ModuleInfo) :-
+	XXX
+****/
 	
-
-
 %-----------------------------------------------------------------------------%
 
 	% the category of a conjunction is the worst case of the elements
@@ -160,9 +189,9 @@ local_det_goal(disj(Goals0) - GoalInfo0, MiscInfo, disj(Goals) - GoalInfo,
 	% the category of a switch is the worst of the category of each of
 	% the cases, and (if only a subset of the constructors are handled)
 	% semideterministic
-local_det_goal(switch(Var, Cases0, Follow)) - GoalInfo0, MiscInfo,
-		switch(Var, Cases, Follow)) - GoalInfo, InstMap0,
-		InstMap, D0, D).
+local_det_goal(switch(Var, Cases0, Follow) - GoalInfo0, MiscInfo,
+		switch(Var, Cases, Follow) - GoalInfo, InstMap0,
+		InstMap, D0, D) :-
 	local_det_switch(Cases0, MiscInfo, Cases,
 			[], Cons, InstMap0, deterministic(infered), D1),
 	test_to_see_that_all_constructors_are_tested(Cons, MiscInfo, D2),
@@ -174,8 +203,8 @@ local_det_goal(switch(Var, Cases0, Follow)) - GoalInfo0, MiscInfo,
 	% look up the category entry associated with the call.
 	% This is the point at which annotations start changing
 	% when we iterate to fixpoint for global determinism analysis.
-local_det_goal(call(PredId, ModeId, Args, BuiltIn)) - GoalInfo, MiscInfo,
-		call(PredId, ModeId, Args, BuiltIn)) - GoalInfo, InstMap0,
+local_det_goal(call(PredId, ModeId, Args, BuiltIn) - GoalInfo, MiscInfo,
+		call(PredId, ModeId, Args, BuiltIn) - GoalInfo, InstMap0,
 		InstMap, D, D) :-
 	goalinfo_instmap(GoalInfo, InstMap),
 	detism_lookup(MiscInfo, PredId, ModeId, Category),
@@ -184,8 +213,8 @@ local_det_goal(call(PredId, ModeId, Args, BuiltIn)) - GoalInfo, MiscInfo,
 
 	% unifications are either deterministic or semideterministic.
 	% (see local_det_unify).
-local_det_goal(unify(LT, RT, M, U)) - GoalInfo0, MiscInfo,
-		unify(LT, RT, M, U)) - GoalInfo, InstMap0, InstMap, D0, D) :-
+local_det_goal(unify(LT, RT, M, U) - GoalInfo0, MiscInfo,
+		unify(LT, RT, M, U) - GoalInfo, InstMap0, InstMap, D0, D) :-
 	local_det_unify(U, MiscInfo, D1),
 	goalinfo_instmap(GoalInfo0, InstMap),
 	goalinfo_set_category(GoalInfo0, D1, GoalInfo),
@@ -217,7 +246,7 @@ local_det_goal(if_then_else(Vars, Cond0, Then0, Else0) - GoalInfo0, MiscInfo,
 	else
 		D4 = nondeterministic(infered)
 	),
-	goalinfo_set_category(GoalInfo0, D4, GoalInfo)
+	goalinfo_set_category(GoalInfo0, D4, GoalInfo),
 	max_category(D0, D4, D).
 
 	% nots are always semideterministic. it is an error for
@@ -387,9 +416,9 @@ local_check_goal(disj(Goals0) - GoalInfo0, MiscInfo, disj(Goals) - GoalInfo,
 	% then the cases must all be deterministic for the switch to be
 	% deterministic, and since my brain is currently semifunctional,
 	% working out how to do all this properly will have to wait.
-local_check_goal(switch(Var, Cases0, Follow)) - GoalInfo0, MiscInfo,
-		switch(Var, Cases, Follow)) - GoalInfo, InstMap0,
-		InstMap, Category, D0, D).
+local_check_goal(switch(Var, Cases0, Follow) - GoalInfo0, MiscInfo,
+		switch(Var, Cases, Follow) - GoalInfo, InstMap0,
+		InstMap, Category, D0, D) :-
 	local_check_switch(Cases0, MiscInfo, Cases,
 			[], Cons, InstMap0, Category,
 					deterministic(infered), D1),
@@ -405,8 +434,8 @@ local_check_goal(switch(Var, Cases0, Follow)) - GoalInfo0, MiscInfo,
 	% the called function must be at most the same category as this
 	% procedure - if it is more nondeterministic than this procedure
 	% then that is an error.
-local_check_goal(call(PredId, ModeId, Args, BuiltIn)) - GoalInfo, MiscInfo,
-		call(PredId, ModeId, Args, BuiltIn)) - GoalInfo, InstMap0,
+local_check_goal(call(PredId, ModeId, Args, BuiltIn) - GoalInfo, MiscInfo,
+		call(PredId, ModeId, Args, BuiltIn) - GoalInfo, InstMap0,
 		InstMap, Category, D, D) :-
 	goalinfo_instmap(GoalInfo, InstMap),
 	detism_lookup(MiscInfo, PredId, ModeId, Category0),
@@ -425,8 +454,8 @@ local_check_goal(call(PredId, ModeId, Args, BuiltIn)) - GoalInfo, MiscInfo,
 	% (see local_check_unify).
 	% like calls, if the unification is more nondeterministic than
 	% the declared determinism of this procedure, then raise an error.
-local_check_goal(unify(LT, RT, M, U)) - GoalInfo0, MiscInfo,
-		unify(LT, RT, M, U)) - GoalInfo, InstMap0,
+local_check_goal(unify(LT, RT, M, U) - GoalInfo0, MiscInfo,
+		unify(LT, RT, M, U) - GoalInfo, InstMap0,
 					InstMap, Category, D0, D) :-
 	local_check_unify(U, MiscInfo, D1),
 	goalinfo_instmap(GoalInfo0, InstMap),
@@ -467,7 +496,7 @@ local_check_goal(if_then_else(Vars, Cond0, Then0, Else0) - GoalInfo0, MiscInfo,
 	else
 		D4 = nondeterministic(infered)
 	),
-	goalinfo_set_category(GoalInfo0, D4, GoalInfo)
+	goalinfo_set_category(GoalInfo0, D4, GoalInfo),
 	max_category(D0, D4, D).
 
 	% nots are always semideterministic. it is an error for

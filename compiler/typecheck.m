@@ -142,7 +142,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, map, varset, prog_out, string, require, std_util.
+:- import_module list, map, string, require, std_util.
+:- import_module varset, prog_util, prog_out.
 :- import_module options, getopt, globals.
 
 %-----------------------------------------------------------------------------%
@@ -1257,7 +1258,8 @@ make_type_id(term_string(_), _, unqualified("<error>") - 0) :-
 	% in the specified context.
 
 :- pred report_undef_type(type_id, error_context, io__state, io__state).
-:- mode report_undef_type(input, error_context, di, uo).
+:- mode report_undef_type(input, input, di, uo).
+
 report_undef_type(TypeId, ErrorContext - Context) -->
 	prog_out__write_context(Context),
 	io__write_string("In definition of "),
@@ -1447,8 +1449,9 @@ is_builtin_pred_type(QualifiedName - _Arity) :-
 					)
 				).
 
-:- mode typeinfo_di :: uniq_type_info -> dead.
 :- mode typeinfo_uo :: free -> uniq_type_info.
+:- mode typeinfo_ui :: uniq_type_info -> uniq_type_info.
+:- mode typeinfo_di :: uniq_type_info -> dead.
 
 	% Some fiddly modes used when we want to extract
 	% the io_state from a typeinfo struct and then put it back again.

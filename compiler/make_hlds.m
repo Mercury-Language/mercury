@@ -24,7 +24,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module prog_out, require.
+:- import_module prog_util, prog_out, require.
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ moduleinfo_init(Name, Module0) },
@@ -162,12 +162,14 @@ module_add_inst_defn(Module0, VarSet, InstDefn, Cond, Context, Module) -->
 	insts_add(Insts0, VarSet, InstDefn, Cond, Context, Insts),
 	{ moduleinfo_set_insts(Module0, Insts, Module) }.
 
+	% XXX handle abstract insts
+
 :- pred insts_add(inst_table, varset, inst_defn, condition, term__context,
 			inst_table, io__state, io__state).
 :- mode insts_add(input, input, input, input, input, output, di, uo).
-insts_add(Insts0, VarSet, inst_defn(Name, Args, Body), Cond, Context, Insts) -->
+insts_add(Insts0, VarSet, eqv_inst(Name, Args, Body), Cond, Context, Insts) -->
 	{ length(Args, Arity),
-	  I = hlds__inst_defn(VarSet, Args, Body, Cond, Context) },
+	  I = hlds__inst_defn(VarSet, Args, eqv_inst(Body), Cond, Context) },
 	(if %%% some [I2]		% NU-Prolog inconsistency
 		{ map__search(Insts0, Name - Arity, I2) }
 	then
@@ -216,9 +218,9 @@ module_add_mode_defn(Module0, VarSet, ModeDefn, Cond, Context, Module) -->
 			mode_table, io__state, io__state).
 :- mode modes_add(input, input, input, input, input, output, di, uo).
 
-modes_add(Modes0, VarSet, mode_defn(Name, Args, Body), Cond, Context, Modes) -->
+modes_add(Modes0, VarSet, eqv_mode(Name, Args, Body), Cond, Context, Modes) -->
 	{ length(Args, Arity),
-	  I = hlds__mode_defn(VarSet, Args, Body, Cond, Context) },
+	  I = hlds__mode_defn(VarSet, Args, eqv_mode(Body), Cond, Context) },
 	(if %%% some [I2]		% NU-Prolog inconsistency
 		{ map__search(Modes0, Name - Arity, I2) }
 	then
@@ -231,6 +233,11 @@ modes_add(Modes0, VarSet, mode_defn(Name, Args, Body), Cond, Context, Modes) -->
 	else
 		{ map__insert(Modes0, Name - Arity, I, Modes) }
 	).
+
+:- pred mode_name_args(mode_defn, sym_name, list(inst_param), hlds__mode_body).
+:- mode mode_name_args(input, output, output, output).
+
+mode_name_args(eqv_mode(Name, Args, Body), Name, Args, eqv_mode(Body)).
 
 :- pred mode_is_compat(hlds__mode_defn, hlds__mode_defn).
 :- mode mode_is_compat(input, input).
@@ -398,49 +405,6 @@ module_add_pred(Module0, VarSet, PredName, TypesAndModes, Det, Cond, Context,
 	else
 		{ Module = Module1 }
 	).
-
-
-% A pred declaration may contains just types, as in
-%	:- pred append(list(T), list(T), list(T)).
-% or it may contain both types and modes, as in
-%	:- pred append(list(T)::input, list(T)::input, list(T)::output).
-%
-% This predicate takes the argument list of a pred declaration, splits
-% it into two separate lists for the types and (if present) the modes.
-
-:- type maybe_modes ---> yes(list(mode)) ; no.
-:- pred split_types_and_modes(list(type_and_mode), list(type), maybe_modes).
-:- mode split_types_and_modes(input, output, output).
-
-split_types_and_modes(TypesAndModes, Types, MaybeModes) :-
-	split_types_and_modes_2(TypesAndModes, no, Types, Modes, Result),
-	(if Result = yes then
-		MaybeModes = yes(Modes)
-	else
-		MaybeModes = no
-	).
-
-:- type maybe ---> yes ; no.
-:- pred split_types_and_modes_2(list(type_and_mode), maybe,
-				list(type), list(mode), maybe).
-:- mode split_types_and_modes_2(input, input, output, output, output).
-
-	% T = type, M = mode, TM = combined type and mode
-split_types_and_modes_2([], Result, [], [], Result).
-split_types_and_modes_2([TM|TMs], Result0, [T|Ts], [M|Ms], Result) :-
-	split_type_and_mode(TM, Result0, T, M, Result1),
-	split_types_and_modes_2(TMs, Result1, Ts, Ms, Result).
-
-	% if a pred declaration specifies modes for some but
-	% not all of the arguments, then the mode for the
-	% other arguments defaults to free->free.
-	% - should this be an error instead?
-
-:- pred split_type_and_mode(type_and_mode, maybe, type, mode, maybe).
-:- mode split_type_and_mode(input, input, output, output, output).
-
-split_type_and_mode(type_only(T), _, T, (free -> free), yes).
-split_type_and_mode(type_and_mode(T,M), R, T, M, R).
 
 :- pred preds_add(module_info, varset, sym_name, list(type),
 		condition, term__context, module_info, io__state, io__state).

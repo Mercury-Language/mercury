@@ -37,7 +37,7 @@
 
 :- pred length(list(T), int).
 :- mode length(input_list_skel, output).
-:- mode length(ouput_list_skel, input).
+:- mode length(output_list_skel, input).
 
 :- pred condense(list(list(T)), list(T)).
 :- mode condense(input, output).

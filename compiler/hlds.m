@@ -305,10 +305,17 @@
 			;	abstract_type.
 
 :- type hlds__inst_defn --->	hlds__inst_defn(varset, list(inst_param),
-					inst, condition, term__context).
+					hlds__inst_body,
+					condition, term__context).
+
+:- type hlds__inst_body	--->	eqv_inst(inst)
+			;	abstract_inst.
 
 :- type hlds__mode_defn --->	hlds__mode_defn(varset, list(inst_param),
-					mode, condition, term__context).
+					hlds__mode_body,
+					condition, term__context).
+
+:- type hlds__mode_body --->	eqv_mode(mode).
 
 :- type hlds__cons_defn	--->	hlds__cons_defn(
 					%%% maybe: varset,
@@ -709,26 +716,14 @@ goalinfo_set_context(GoalInfo0, Context, GoalInfo) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- interface.
-
-	% Convert a (possibly module-qualified) sym_name into a string.
-
-:- pred unqualify_name(sym_name, string).
-:- mode unqualify_name(input, output).
-
-:- implementation.
-
-unqualify_name(unqualified(Name), Name).
-unqualify_name(qualified(_Module, Name), Name).
-
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
 	% Various predicates which are used by codegen to
 	% access the mode data structure.
 
 :- interface.
+
+	% XXX how should these predicates handle abstract insts?
+	% In that case, we don't _know_ whether the mode is input
+	% or not!
 
 :- pred mode_is_input(module_info, mode).
 :- mode mode_is_input(input, input).
@@ -773,6 +768,8 @@ inst_is_free(_, inst_var(_)) :-
 inst_is_free(ModuleInfo, user_defined_inst(Name, Args)) :-
 	inst_lookup(ModuleInfo, Name, Args, Inst),
 	inst_is_free(ModuleInfo, Inst).
+inst_is_free(_, abstract_inst(_, _)) :-
+	error("internal error: abstract insts not yet implemented").
 
 	% inst_is_bound succeeds iff the inst passed is not `free'
 	% or is a user-defined inst which is not defined as `free'.
@@ -789,6 +786,8 @@ inst_is_bound(_, inst_var(_)) :-
 inst_is_bound(ModuleInfo, user_defined_inst(Name, Args)) :-
 	inst_lookup(ModuleInfo, Name, Args, Inst),
 	inst_is_bound(ModuleInfo, Inst).
+inst_is_bound(_, abstract_inst(_, _)) :-
+	error("internal error: abstract insts not yet implemented").
 
 :- pred inst_lookup(module_info, sym_name, list(inst), inst).
 :- mode inst_lookup(input, input, input, output).
@@ -798,7 +797,16 @@ inst_lookup(ModuleInfo, Name, Args, Inst) :-
 	moduleinfo_insts(ModuleInfo, Insts),
 	map__search(Insts, Name - Arity, InstDefn),
 	InstDefn = hlds__inst_defn(_VarSet, Params, Inst0, _Cond, _Context),
+	inst_lookup_2(Inst0, Params, Name, Args, Inst).
+
+:- pred inst_lookup_2(hlds__inst_body, list(inst_param), sym_name, list(inst),
+			inst).
+:- mode inst_lookup_2(input, input, input, input, output).
+
+inst_lookup_2(eqv_inst(Inst0), Params, Name, Args, Inst) :-
 	inst_substitute_arg_list(Inst0, Params, Args, Inst).
+inst_lookup_2(abstract_inst, _Params, Name, Args,
+		abstract_inst(Name, Args)).
 
 	% mode_get_insts returns the initial instantiatedness and
 	% the final instantiatedness for a given mode.
@@ -811,7 +819,8 @@ mode_get_insts(ModuleInfo, user_defined_mode(Name, Args), Initial, Final) :-
 	length(Args, Arity),
 	moduleinfo_modes(ModuleInfo, Modes),
 	map__search(Modes, Name - Arity, HLDS_Mode),
-	HLDS_Mode = hlds__mode_defn(_VarSet, Params, Mode0, _Cond, _Context),
+	HLDS_Mode = hlds__mode_defn(_VarSet, Params, ModeDefn, _Cond, _Context),
+	ModeDefn = eqv_mode(Mode0),
 	mode_substitute_arg_list(Mode0, Params, Args, Mode),
 	mode_get_insts(ModuleInfo, Mode, Initial, Final).
 
@@ -895,6 +904,9 @@ inst_apply_substitution(inst_var(Var), Subst, Result) :-
 	).
 inst_apply_substitution(user_defined_inst(Name, Args0), Subst,
 		    user_defined_inst(Name, Args)) :-
+	inst_list_apply_substitution(Args0, Subst, Args).
+inst_apply_substitution(abstract_inst(Name, Args0), Subst,
+		    abstract_inst(Name, Args)) :-
 	inst_list_apply_substitution(Args0, Subst, Args).
 
 :- pred alt_list_apply_substitution(list(bound_inst), inst_subst,

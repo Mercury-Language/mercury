@@ -37,8 +37,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module prog_io, prog_out.
-% :- import_module hlds.	% for unqualify_name/2.
+:- import_module prog_io, prog_out, prog_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -134,8 +133,7 @@ convert_to_goedel(ProgName, Items) -->
 	io__stderr_stream(StdErr),
 	io__write_string(StdErr, "% Expanding equivalence types..."),
 	io__flush_output(StdErr),
-	{ goedel_replace_all_eqv_types(Items, [], Items2),
-	  reverse(Items2, Items3) },
+	{ goedel_expand_eqv_types(Items, Items3) },
 	{ goedel_replace_int_integer(Items3, Items4) },
 	io__write_string(StdErr, " done\n"),
 	{ convert_functor_name(ProgName, GoedelName) },
@@ -174,176 +172,6 @@ goedel_replace_int_integer(Items0, Items) :-
 	goedel_replace_eqv_type_list(Items0, VarSet, "int", [],
 		term_functor(term_atom("integer"), [], Context), Items).
 	
-%-----------------------------------------------------------------------------%
-
-	% The following poorly documented code traverses through the list
-	% of items.  Each time it finds an eqv_type definition, it replaces
-	% all occurrences of the type (both before and after it in the
-	% list of items) with type that it is equivalent to.
-	% This has the effect of eliminating all the equivalence types
-	% from the source code.  Circular equivalence types in the input 
-	% will cause references to undefined types in the output.
-
-:- pred goedel_replace_all_eqv_types(list(item_and_context),
-		list(item_and_context), list(item_and_context)).
-:- mode goedel_replace_all_eqv_types(input, input, output).
-
-goedel_replace_all_eqv_types([], Items, Items).
-goedel_replace_all_eqv_types([Item - Context | Items0], ItemList0, ItemList) :-
-	( Item = type_defn(VarSet, eqv_type(Name, Args, Body), _Cond) ->
-		unqualify_name(Name, Name2),
-		goedel_replace_eqv_type_list(ItemList0, VarSet, Name2, Args,
-				Body, ItemList1),
-		goedel_replace_eqv_type_list(Items0, VarSet, Name2, Args, Body,				Items1),
-		goedel_replace_all_eqv_types(Items1, ItemList1, ItemList)
-	;
-		goedel_replace_all_eqv_types(Items0,
-				[Item - Context | ItemList0], ItemList)
-	).
-
-:- pred goedel_replace_eqv_type_list(list(item_and_context), varset, string,
-			list(type_param), type, list(item_and_context)).
-:- mode goedel_replace_eqv_type_list(input, input, input, input, input, output).
-
-goedel_replace_eqv_type_list([], _, _, _, _, []).
-goedel_replace_eqv_type_list([Item0 - Context| Items0], VarSet, Name, Args,
-				Body, [Item - Context| Items]) :-
-	(if some [Item1]
-		goedel_replace_eqv_type(Item0, VarSet, Name, Args, Body, Item1)
-	then
-		Item = Item1
-	else
-		Item = Item0
-	),
-	goedel_replace_eqv_type_list(Items0, VarSet, Name, Args, Body, Items).
-
-:- pred goedel_replace_eqv_type(item, varset, string, list(type_param), type,
-		item).
-:- mode goedel_replace_eqv_type(input, input, input, input, input, output).
-
-goedel_replace_eqv_type(type_defn(VarSet0, TypeDefn0, Cond),
-			TVarSet, Name, Args0, Body0,
-			type_defn(VarSet, TypeDefn, Cond)) :-
-	varset__merge(VarSet0, TVarSet, [Body0 | Args0], VarSet, [Body | Args]),
-	goedel_replace_eqv_type_defn(TypeDefn0, Name, Args, Body, TypeDefn).
-
-goedel_replace_eqv_type(pred(VarSet0, PredName, TypesAndModes0, Det, Cond),
-			TVarSet, Name, Args, Body,
-			pred(VarSet, PredName, TypesAndModes, Det, Cond)) :-
-	varset__merge(VarSet0, TVarSet, [Args0 | Body0], VarSet, [Args | Body]),
-	goedel_replace_eqv_type_pred(TypesAndModes0, Name, Args, Body,
-		no, TypesAndModes, yes).
-	
-:- pred goedel_replace_eqv_type_defn(type_defn, string, list(type_param),
-					type, type_defn).
-:- mode goedel_replace_eqv_type_defn(input, input, input, input, output).
-
-goedel_replace_eqv_type_defn(eqv_type(TName, TArgs, TBody0),
-				Name, Args, Body,
-				eqv_type(TName, TArgs, TBody)) :-
-	goedel_replace_eqv_type_type(TBody0, Name, Args, Body, no, TBody, yes).
-goedel_replace_eqv_type_defn(uu_type(TName, TArgs, TBody0),
-				Name, Args, Body,
-				uu_type(TName, TArgs, TBody)) :-
-	goedel_replace_eqv_type_uu(TBody0, Name, Args, Body, no, TBody, yes).
-goedel_replace_eqv_type_defn(du_type(TName, TArgs, TBody0),
-				Name, Args, Body,
-				du_type(TName, TArgs, TBody)) :-
-	goedel_replace_eqv_type_du(TBody0, Name, Args, Body, no, TBody, yes).
-goedel_replace_eqv_type_defn(abstract_type(_TName, _TArgs),
-				_Name, _Args, _Body, _) :-
-	fail.
-
-:- pred goedel_replace_eqv_type_uu(list(type), string, list(type_param),
-					type, bool, list(type), bool).
-:- mode goedel_replace_eqv_type_uu(input, input, input, input, input,
-					output, output).
-
-goedel_replace_eqv_type_uu([], _Name, _Args, _Body, Found, [], Found).
-goedel_replace_eqv_type_uu([T0|Ts0], Name, Args, Body, Found0, [T|Ts], Found) :-
-	goedel_replace_eqv_type_type(T0, Name, Args, Body, Found0, T, Found1),
-	goedel_replace_eqv_type_uu(Ts0, Name, Args, Body, Found1, Ts, Found).
-
-:- pred goedel_replace_eqv_type_du(list(constructor), string, list(type_param),
-				type, bool, list(constructor), bool).
-:- mode goedel_replace_eqv_type_du(input, input, input, input, input,
-					output, output).
-
-goedel_replace_eqv_type_du([], _Name, _Args, _Body, Found, [], Found).
-goedel_replace_eqv_type_du([T0|Ts0], Name, Args, Body, Found0, [T|Ts], Found) :-
-	goedel_replace_eqv_type_ctor(T0, Name, Args, Body, Found0, T, Found1),
-	goedel_replace_eqv_type_du(Ts0, Name, Args, Body, Found1, Ts, Found).
-
-:- pred goedel_replace_eqv_type_ctor(constructor, string, list(type_param),
-				type, bool, constructor, bool).
-:- mode goedel_replace_eqv_type_ctor(input, input, input, input, input,
-					output, output).
-
-goedel_replace_eqv_type_ctor(TName - Targs0, Name, Args, Body, Found0,
-		TName - Targs, Found) :-
-	goedel_replace_eqv_type_uu(Targs0, Name, Args, Body, Found0,
-		Targs, Found).
-
-:- pred goedel_replace_eqv_type_type(type, string, list(type_param),
-				type, bool, type, bool).
-:- mode goedel_replace_eqv_type_type(input, input, input, input, input,
-					output, output).
-
-goedel_replace_eqv_type_type(term_variable(V), _Name, _Args, _Body, Found,
-		term_variable(V), Found).
-goedel_replace_eqv_type_type(term_functor(F, TArgs0, Context), Name, Args,
-		Body, Found0, Type, Found) :- 
-	(	
-		F = term_atom(Name),
-		same_length(TArgs0, Args)
-	->
-		type_param_to_var_list(Args, Args2),
-		term__substitute_corresponding(Args2, TArgs0, Body, Type),
-		Found = yes
-	;
-		goedel_replace_eqv_type_uu(TArgs0, Name, Args, Body, Found0,
-			TArgs, Found),
-		Type = term_functor(F, TArgs, Context)
-	).
-
-:- pred type_param_to_var_list(list(type_param), list(var)).
-:- mode type_param_to_var_list(input, output).
-
-type_param_to_var_list([], []).
-type_param_to_var_list([T | Ts], [V | Vs]) :-
-	type_param_to_var(T, V),
-	type_param_to_var_list(Ts, Vs).
-
-:- pred type_param_to_var(type_param, var).
-:- mode type_param_to_var(input, output).
-
-type_param_to_var(term_variable(V), V).
-
-:- pred goedel_replace_eqv_type_pred(list(type_and_mode), string,
-	list(type_param), type, bool, list(type_and_mode), bool).
-:- mode goedel_replace_eqv_type_pred(input, input, input, input, input,
-					output, output).
-
-goedel_replace_eqv_type_pred([], _Name, _Args, _Body, Found, [], Found).
-goedel_replace_eqv_type_pred([TM0|TMs0], Name, Args, Body, Found0,
-				[TM|TMs], Found) :-
-	goedel_replace_eqv_type_tm(TM0, Name, Args, Body, Found0, TM, Found1),
-	goedel_replace_eqv_type_pred(TMs0, Name, Args, Body, Found1,
-					TMs, Found).
-:- pred goedel_replace_eqv_type_tm(type_and_mode, string, list(type_param),
-				type, bool, type_and_mode, bool).
-:- mode goedel_replace_eqv_type_tm(input, input, input, input, input,
-					output, output).
-
-goedel_replace_eqv_type_tm(type_only(Type0), Name, Args, Body, Found0,
-				type_only(Type), Found) :-
-	goedel_replace_eqv_type_type(Type0, Name, Args, Body, Found0, Type,
-		Found).
-goedel_replace_eqv_type_tm(type_and_mode(Type0, Mode), Name, Args, Body, Found0,
-				type_and_mode(Type, Mode), Found) :-
-	goedel_replace_eqv_type_type(Type0, Name, Args, Body, Found0, Type,
-		Found).
-
 %-----------------------------------------------------------------------------%
 
 	% add the declarations one by one to the module
@@ -415,7 +243,7 @@ goedel_output_item(nothing, _) --> [].
 
 %-----------------------------------------------------------------------------%
 
-:- pred goedel_output_inst_defn(varset, mode_defn, term__context,
+:- pred goedel_output_inst_defn(varset, inst_defn, term__context,
 			io__state, io__state).
 :- mode goedel_output_inst_defn(input, input, input, di, uo).
 
@@ -466,7 +294,7 @@ goedel_output_type_defn_2(eqv_type(_Name, _Args, _Body), _VarSet, Context) -->
 	io__write_string("equivalence type unexpected.\n"),
 	io__set_output_stream(OldStream, _).
 
-goedel_output_type_defn_2(du_type(Name, Args, Body), VarSet, Context) -->
+goedel_output_type_defn_2(du_type(Name, Args, Ctors), VarSet, Context) -->
 	{ unqualify_name(Name, Name2) },
 	{ convert_functor_name(Name2, Name3) },
 	( { option_handle_functor_overloading(Name2) } ->
@@ -480,7 +308,7 @@ goedel_output_type_defn_2(du_type(Name, Args, Body), VarSet, Context) -->
 		io__write_string(".\n"),
 		io__write_string("IMPORT       MercuryCompat.\n"),
 		io__write_string("\n"),
-		goedel_output_type_defn_3(Name2, Name3, Args, Body, VarSet,
+		goedel_output_type_defn_3(Name2, Name3, Args, Ctors, VarSet,
 				Context),
 		io__told,
 		io__tell(TypeModuleLocal, _Res),	% XXX handle errors
@@ -493,16 +321,16 @@ goedel_output_type_defn_2(du_type(Name, Args, Body), VarSet, Context) -->
 		io__write_string(TypeModule),
 		io__write_string(".\n")
 	;
-		goedel_output_type_defn_3(Name2, Name3, Args, Body, VarSet,
+		goedel_output_type_defn_3(Name2, Name3, Args, Ctors, VarSet,
 				Context)
 	).
 
-:- pred goedel_output_type_defn_3(string, string, list(term), goal, varset,
-			term__context, io__state, io__state).
+:- pred goedel_output_type_defn_3(string, string, list(term), list(constructor),
+			varset, term__context, io__state, io__state).
 :- mode goedel_output_type_defn_3(input, input, input, input, input, input,
 			di, uo).
 
-goedel_output_type_defn_3(Name2, Name3, Args, Body, VarSet, Context) -->
+goedel_output_type_defn_3(Name2, Name3, Args, Ctors, VarSet, Context) -->
 	( { option_write_line_numbers } ->
 		prog_out__write_context(Context),
 		io__write_string("\n")
@@ -520,7 +348,7 @@ goedel_output_type_defn_3(Name2, Name3, Args, Body, VarSet, Context) -->
 		io__write_int(Arity)
 	),
 	io__write_string(".\n"),
-	goedel_output_ctors(Body,
+	goedel_output_ctors(Ctors,
 		term_functor(term_atom(Name2), Args, Context), VarSet).
 
 :- pred goedel_output_ctors(list(constructor), type, varset,
@@ -582,7 +410,7 @@ goedel_output_pred(VarSet, PredName, TypesAndModes, Context) -->
 		[]
 	).
 
-:- pred goedel_output_pred_type(varset, sym_name, list(type_and_mode),
+:- pred goedel_output_pred_type(varset, sym_name, list(type),
 		term__context, io__state, io__state).
 :- mode goedel_output_pred_type(input, input, input, input, di, uo).
 
@@ -654,7 +482,7 @@ goedel_output_clause(VarSet, PredName, Args, Body, Context) -->
 	),
 	io__write_string(".\n").
 
-:- pred goedel_output_goal(goal, varset, int, io__stream, io__stream).
+:- pred goedel_output_goal(goal, varset, int, io__state, io__state).
 :- mode goedel_output_goal(input, input, input, di, uo).
 
 goedel_output_goal(fail, _, _) -->
@@ -958,12 +786,12 @@ goedel_output_term(term_functor(Functor, Args, _), VarSet) -->
 		io__write_string(")")
 	else
 		goedel_output_constant(Functor),
-		(if %%% some [X,Xs]		% NU-Prolog inconsistency
-			{ Args = [X | Xs] }
+		(if %%% some [Y, Ys]		% NU-Prolog inconsistency
+			{ Args = [Y | Ys] }
 		then
 			io__write_string("("),
-			goedel_output_term(X, VarSet),
-			goedel_output_term_args(Xs, VarSet),
+			goedel_output_term(Y, VarSet),
+			goedel_output_term_args(Ys, VarSet),
 			io__write_string(")")
 		else
 			[]
@@ -1051,14 +879,15 @@ goedel_output_vars_2([Var | Vars], VarSet) -->
 :- pred goedel_output_var(var, varset, io__state, io__state).
 :- mode goedel_output_var(input, input, di, uo).
 
-goedel_output_var(Id, VarSet) -->
+goedel_output_var(Var, VarSet) -->
 	(
-		{ varset__lookup_name(VarSet, Id, Name) }
+		{ varset__lookup_name(VarSet, Var, Name) }
 	->
 		{ convert_var_name(Name, GoedelName) },
 		io__write_string(GoedelName)
 	;
-		{ string__int_to_string(Id, Num),
+		{ term__var_to_int(Var, Id),
+		  string__int_to_string(Id, Num),
 		  string__append("v_", Num, VarName)
 		},
 		io__write_string(VarName)

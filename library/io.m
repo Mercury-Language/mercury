@@ -151,7 +151,9 @@
 %	(as per NU-Prolog lineCount/1).
 
 :- pred io__gc_call(pred(io__state, io__state), io__state, io__state).
-:- mode io__gc_call(pred_call(di, uo), di, uo).
+:- mode io__gc_call(
+		pred_call(ground_unique, dead, free_unique, ground_unique),
+		di, uo).
 %	io__gc_call(Goal, IO0, IO1).
 %		Execute Goal, passing IO0, and IO1, and
 %		collect any garbage created during it's execution.

@@ -42,6 +42,7 @@
 % 2.  improve the handling of type and inst parameters 
 %     (see XXX's below)
 % 3.  improve the error reporting
+% 4.  parse abstract inst definitions 
 %
 % Question: should we allow `:- rule' declarations???
 
@@ -164,7 +165,8 @@
 
 % inst_defn/3 defined above
 
-:- type inst_defn	--->	inst_defn(sym_name, list(inst_param), inst).
+:- type inst_defn	--->	eqv_inst(sym_name, list(inst_param), inst)
+			;	abstract_inst(sym_name, list(inst_param)).
 
 	% XXX should inst parameters be variables not terms ??
 :- type inst_param	==	term.
@@ -173,6 +175,7 @@
 			;	bound(list(bound_inst))
 			;	ground
 			;	inst_var(var)
+			;	abstract_inst(sym_name, list(inst))
 			;	user_defined_inst(sym_name, list(inst)).
 
 :- type bound_inst	--->	functor(const, list(inst)).
@@ -180,7 +183,7 @@
 
 % mode_defn/3 defined above
 
-:- type mode_defn	--->	mode_defn(sym_name, list(inst_param), mode).
+:- type mode_defn	--->	eqv_mode(sym_name, list(inst_param), mode).
 
 :- type (mode)		--->	((inst) -> (inst))
 			;	user_defined_mode(sym_name, list(inst)).
@@ -237,17 +240,26 @@
 
 %-----------------------------------------------------------------------------%
 
-% This module (prog_io) exports the following predicate:
+% This module (prog_io) exports the following predicates:
+
+%-----------------------------------------------------------------------------%
+
+	% read_module(ModuleName, Error, Messages, Program)
+	% reads and parses the module 'ModuleName'.  Error is `yes'
+	% if a syntax error was detected and `no' otherwise,
+	% Messages is a list of warning/error messages,
+	% and Program is the parse tree.
 
 :- pred prog_io__read_module(string, bool, message_list, item_list,
 				io__state, io__state).
 :- mode prog_io__read_module(input, output, output, output, di, uo).
 
-% 	read_module(ModuleName, Error, Messages, Program)
-%	- reads and parses the module 'ModuleName'.  Error is `yes'
-%	  if a syntax error was detected and `no' otherwise,
-%	  Messages is a list of warning/error messages,
-%	  and Program is the parse tree.
+%-----------------------------------------------------------------------------%
+
+	% Convert a single term into a goal.
+
+:- pred parse_goal(term, goal).
+:- mode parse_goal(input, output) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -590,8 +602,6 @@ join_error(no, Error, Error).
 	% XXX we should do more parsing here - type qualification and
 	% module qualification should be parsed here.
 
-:- pred parse_goal(term, goal).
-:- mode parse_goal(input, output).
 parse_goal(Term, Goal) :-
 	( %%% some [Goal2]
 		parse_goal_2(Term, Goal2)
@@ -1519,7 +1529,7 @@ convert_inst_defn_2(ok(Name, Args), Head, Body, Result) :-
 		( %%% some [ConvertedBody]
 			convert_inst(Body, ConvertedBody)
 		->
-			Result = ok(inst_defn(Name, Args, ConvertedBody))
+			Result = ok(eqv_inst(Name, Args, ConvertedBody))
 		;
 			Result = error("syntax error in inst body", Body)
 		)
@@ -1541,7 +1551,11 @@ convert_inst(term_functor(Name, Args0, Context), Result) :-
 	; Name = term_atom("ground"), Args0 = [] ->
 		Result = ground
 	; %%% some [Disj]
-		(Name = term_atom("bound"), Args0 = [Disj])
+		(   ( Name = term_atom("bound")
+		    ; Name = term_atom("bound_unique")
+		    ),
+		    Args0 = [Disj]
+		)
 	->
 		disjunction_to_list(Disj, List),
 		convert_bound_inst_list(List, Functors),
@@ -1636,7 +1650,7 @@ convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
 		( %%% some [ConvertedBody]
 			convert_mode(Body, ConvertedBody)
 		->
-			Result = ok(mode_defn(Name, Args, ConvertedBody))
+			Result = ok(eqv_mode(Name, Args, ConvertedBody))
 		;
 			% catch-all error message - we should do
 			% better than this

@@ -83,7 +83,7 @@
 
 
 :- pred output_c_file(c_file, io__state, io__state).
-:- mode output_c_file(i, di, uo).
+:- mode output_c_file(in, di, uo).
 
 	% Given a 'c_file' structure, open the appropriate .xmod file
 	% and output the code into that file.
@@ -116,7 +116,7 @@ output_c_file(c_file(Name, Modules)) -->
 	).
 
 :- pred output_c_module_list(list(c_module), io__state, io__state).
-:- mode output_c_module_list(i, di, uo).
+:- mode output_c_module_list(in, di, uo).
 
 output_c_module_list([]) --> [].
 output_c_module_list([M|Ms]) -->
@@ -124,7 +124,7 @@ output_c_module_list([M|Ms]) -->
 	output_c_module_list(Ms).
 
 :- pred output_c_module(c_module, io__state, io__state).
-:- mode output_c_module(i, di, uo).
+:- mode output_c_module(in, di, uo).
 
 output_c_module(c_module(Name,Predicates)) -->
 	io__write_string("\n"),
@@ -140,7 +140,7 @@ output_c_module(c_module(Name,Predicates)) -->
 	io__write_string("END_MODULE\n").
 
 :- pred output_c_procedure_list(list(c_procedure), io__state, io__state).
-:- mode output_c_procedure_list(i, di, uo).
+:- mode output_c_procedure_list(in, di, uo).
 
 output_c_procedure_list([]) --> [].
 output_c_procedure_list([P|Ps]) -->
@@ -148,7 +148,7 @@ output_c_procedure_list([P|Ps]) -->
 	output_c_procedure_list(Ps).
 
 :- pred output_c_procedure(c_procedure, io__state, io__state).
-:- mode output_c_procedure(i, di, uo).
+:- mode output_c_procedure(in, di, uo).
 
 output_c_procedure(c_procedure(Name,Arity,Mode,Instructions)) -->
 	io__write_string("/* code for predicate "),
@@ -161,7 +161,7 @@ output_c_procedure(c_procedure(Name,Arity,Mode,Instructions)) -->
 	output_instruction_list(Instructions).
 
 :- pred output_instruction_list(list(instruction), io__state, io__state).
-:- mode output_instruction_list(i, di, uo).
+:- mode output_instruction_list(in, di, uo).
 
 output_instruction_list([]) --> [].
 output_instruction_list([Inst - Comment|Instructions]) -->
@@ -176,7 +176,7 @@ output_instruction_list([Inst - Comment|Instructions]) -->
 	output_instruction_list(Instructions).
 
 :- pred output_instruction(instr, io__state, io__state).
-:- mode output_instruction(i, di, uo).
+:- mode output_instruction(in, di, uo).
 
 output_instruction(assign(Lval, Rval)) -->
 	io__write_string("\t"),
@@ -263,7 +263,7 @@ output_instruction(incr_hp(N)) -->
 	io__write_string(");").
 
 :- pred output_label(label, io__state, io__state).
-:- mode output_label(i, di, uo).
+:- mode output_label(in, di, uo).
 
 output_label(entrylabel(Module, Pred, Arity, Mode)) -->
 	io__write_string(Module),
@@ -285,7 +285,7 @@ output_label(label(Module, Pred, Arity, Mode, Num)) -->
 	io__write_int(Num).
 
 :- pred output_reg(reg, io__state, io__state).
-:- mode output_reg(i, di, uo).
+:- mode output_reg(in, di, uo).
 
 output_reg(r(N)) -->
 	{ (N < 1, N > 32) ->
@@ -299,7 +299,7 @@ output_reg(f(_)) -->
 	{ error("Floating point registers not implemented") }.
 
 :- pred output_tag(tag, io__state, io__state).
-:- mode output_tag(i, di, uo).
+:- mode output_tag(in, di, uo).
 
 output_tag(Tag) -->
 	io__write_string("mktag("),
@@ -307,7 +307,7 @@ output_tag(Tag) -->
 	io__write_string(")").
 
 :- pred output_rval(rval, io__state, io__state).
-:- mode output_rval(i, di, uo).
+:- mode output_rval(in, di, uo).
 
 output_rval(binop(Op, X, Y)) -->
 	io__write_string("("),
@@ -328,7 +328,7 @@ output_rval(lval(Lval)) -->
 	output_lval(Lval).
 
 :- pred output_lval(lval, io__state, io__state).
-:- mode output_lval(i, di, uo).
+:- mode output_lval(in, di, uo).
 
 output_lval(reg(R)) -->
 	output_reg(R).
@@ -357,7 +357,7 @@ output_lval(stackvar(N)) -->
 	io__write_string(")").
 
 :- pred output_operator(operator, io__state, io__state).
-:- mode output_operator(input, di, do).
+:- mode output_operator(input, di, uo).
 
 output_operator(+) -->
 	io__write_string("+").
@@ -370,7 +370,7 @@ output_operator(/) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred clause_num_to_string(int::i, string::o).
+:- pred clause_num_to_string(int::in, string::out).
 
 clause_num_to_string(N, Str) :-
 	(if N < 26 then
@@ -384,7 +384,7 @@ clause_num_to_string(N, Str) :-
 	).
 
 :- pred int_to_letter(int, string).
-:- mode int_to_letter(i, o).
+:- mode int_to_letter(in, out).
 
 	% This code is boring, but portable - it works even for EBCDIC ;-)
 

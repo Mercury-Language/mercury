@@ -740,8 +740,8 @@ hlds_out__write_unification(Indent, complicated_unify(Mode, VarId0, VarId1)) -->
 	hlds_out__write_indent(Indent),
 	io__write_string(")\n").
 
-:- pred hlds_out__write_anything(int, _, io__state, io__state).
-:- mode hlds_out__write_anything(input, input, io__state, io__state).
+:- pred hlds_out__write_anything(int, _AnyType, io__state, io__state).
+:- mode hlds_out__write_anything(input, input, di, uo).
 
 hlds_out__write_anything(Indent, X) -->
 	hlds_out__write_indent(Indent),

@@ -69,16 +69,19 @@
 :- pred varset__merge(varset, varset, list(term), varset, list(term)).
 :- mode varset__merge(input, input, input, output, output).
 
-%-----------------------------------------------------------------------------%
-
-:- implementation.
-:- import_module map.
+	% XXX This should not be exported, but it's currently used by
+	% hlds_out.nl.  We should fix hlds_out.nl.
 
 :- type varset		--->	varset(
 					var_supply,
 					map(var, string),
 					map(var, term)
 				).
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+:- import_module map.
 
 %-----------------------------------------------------------------------------%
 
