@@ -3339,6 +3339,14 @@ is allowed:
 @end example
 
 The parameters must be distinct variables.
+Each @code{typeclass} declaration must have at least one parameter.
+
+It is OK for a @code{typeclass} declaration to declare no methods,
+e.g.
+
+@example
+:- typeclass foo(T) where [].
+@end example
 
 There must not be more than one type class declaration with the
 same name and arity in the same module.
@@ -3395,6 +3403,10 @@ the point of the call.  A method call will invoke the
 predicate or function specified for that method in the
 instance declaration that matches the types of the arguments
 to the call.
+
+Note that even if a type class has no methods, an explicit instance
+declaration is required for a type to be considered an instance
+of that type class.
 
 Here's an example of some code using an instance declaration:
 
