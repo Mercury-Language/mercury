@@ -3,7 +3,7 @@ INIT mercury_sys_init_trace
 ENDINIT
 */
 /*
-** Copyright (C) 1997-2002 The University of Melbourne.
+** Copyright (C) 1997-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -318,6 +318,8 @@ MR_standardize_call_num(MR_Unsigned call_num)
 		&MR_init_call_num_hash, &MR_next_std_call_num);
 }
 
+char	*MR_trace_report_msg = NULL;
+
 void
 MR_trace_report(FILE *fp)
 {
@@ -326,6 +328,10 @@ MR_trace_report(FILE *fp)
 		** This means that the executable was compiled with tracing,
 		** which implies that the user wants trace info on abort.
 		*/
+
+		if (MR_trace_report_msg != NULL) {
+			fprintf(fp, "%s\n", MR_trace_report_msg);
+		}
 
 		if (MR_standardize_event_details) {
 			fprintf(fp, "Last trace event was event #E%ld.\n",
@@ -375,6 +381,11 @@ MR_trace_report_raw(int fd)
 		** This means that the executable was compiled with tracing,
 		** which implies that the user wants trace info on abort.
 		*/
+
+		if (MR_trace_report_msg != NULL) {
+			write(fd, MR_trace_report_msg,
+				strlen(MR_trace_report_msg));
+		}
 
 		if (MR_standardize_event_details) {
 			sprintf(buf, "Last trace event was event #E%ld.\n",

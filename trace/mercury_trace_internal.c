@@ -478,7 +478,7 @@ static	void	MR_trace_cmd_stack_2(MR_Event_Info *event_info, int limit,
 static	void	MR_trace_cmd_nondet_stack_2(MR_Event_Info *event_info,
 			int limit, MR_bool detailed);
 
-static	MR_bool	MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
+static	MR_bool	MR_trace_options_movement_cmd(MR_Trace_Cmd_Info *cmd,
 			char ***words, int *word_count,
 			const char *cat, const char *item);
 static	MR_bool	MR_trace_options_retry(MR_Retry_Across_Io *across_io,
@@ -679,6 +679,11 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 
 	cmd->MR_trace_must_check = (! cmd->MR_trace_strict) ||
 			(cmd->MR_trace_print_level != MR_PRINT_LEVEL_NONE);
+
+#ifdef	MR_TRACE_CHECK_INTEGRITY
+	cmd->MR_trace_must_check = cmd->MR_trace_must_check
+			|| cmd->MR_trace_check_integrity;
+#endif
 
 	MR_trace_call_seqno = event_details.MR_call_seqno;
 	MR_trace_call_depth = event_details.MR_call_depth;
@@ -1323,7 +1328,8 @@ MR_trace_cmd_step(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
 	cmd->MR_trace_strict = MR_FALSE;
 	cmd->MR_trace_print_level = MR_default_print_level;
-	if (! MR_trace_options_strict_print(cmd, &words, &word_count,
+	MR_init_trace_check_integrity(cmd);
+	if (! MR_trace_options_movement_cmd(cmd, &words, &word_count,
 		"forward", "step"))
 	{
 		; /* the usage message has already been printed */
@@ -1353,12 +1359,13 @@ MR_trace_cmd_goto(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
 	cmd->MR_trace_strict = MR_TRUE;
 	cmd->MR_trace_print_level = MR_default_print_level;
-	if (! MR_trace_options_strict_print(cmd, &words, &word_count,
+	MR_init_trace_check_integrity(cmd);
+	if (! MR_trace_options_movement_cmd(cmd, &words, &word_count,
 		"forward", "goto"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n))
-			{
+	{
 		if (MR_trace_event_number < n) {
 			cmd->MR_trace_cmd = MR_CMD_GOTO;
 			cmd->MR_trace_stop_event = n;
@@ -1387,7 +1394,8 @@ MR_trace_cmd_next(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
 	cmd->MR_trace_strict = MR_TRUE;
 	cmd->MR_trace_print_level = MR_default_print_level;
-	if (! MR_trace_options_strict_print(cmd, &words, &word_count,
+	MR_init_trace_check_integrity(cmd);
+	if (! MR_trace_options_movement_cmd(cmd, &words, &word_count,
 		"forward", "next"))
 	{
 		; /* the usage message has already been printed */
@@ -1426,7 +1434,8 @@ MR_trace_cmd_finish(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
 	cmd->MR_trace_strict = MR_TRUE;
 	cmd->MR_trace_print_level = MR_default_print_level;
-	if (! MR_trace_options_strict_print(cmd, &words, &word_count,
+	MR_init_trace_check_integrity(cmd);
+	if (! MR_trace_options_movement_cmd(cmd, &words, &word_count,
 		"forward", "finish"))
 	{
 		; /* the usage message has already been printed */
@@ -1467,7 +1476,8 @@ MR_trace_cmd_fail(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
 	cmd->MR_trace_strict = MR_TRUE;
 	cmd->MR_trace_print_level = MR_default_print_level;
-	if (! MR_trace_options_strict_print(cmd, &words, &word_count,
+	MR_init_trace_check_integrity(cmd);
+	if (! MR_trace_options_movement_cmd(cmd, &words, &word_count,
 		"forward", "fail"))
 	{
 		; /* the usage message has already been printed */
@@ -1518,7 +1528,8 @@ MR_trace_cmd_exception(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 {
 	cmd->MR_trace_strict = MR_TRUE;
 	cmd->MR_trace_print_level = MR_default_print_level;
-	if (! MR_trace_options_strict_print(cmd, &words, &word_count,
+	MR_init_trace_check_integrity(cmd);
+	if (! MR_trace_options_movement_cmd(cmd, &words, &word_count,
 		"forward", "exception"))
 	{
 		; /* the usage message has already been printed */
@@ -1543,7 +1554,8 @@ MR_trace_cmd_return(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 {
 	cmd->MR_trace_strict = MR_TRUE;
 	cmd->MR_trace_print_level = MR_default_print_level;
-	if (! MR_trace_options_strict_print(cmd, &words, &word_count,
+	MR_init_trace_check_integrity(cmd);
+	if (! MR_trace_options_movement_cmd(cmd, &words, &word_count,
 		"forward", "return"))
 	{
 		; /* the usage message has already been printed */
@@ -1568,7 +1580,8 @@ MR_trace_cmd_forward(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 {
 	cmd->MR_trace_strict = MR_TRUE;
 	cmd->MR_trace_print_level = MR_default_print_level;
-	if (! MR_trace_options_strict_print(cmd, &words, &word_count,
+	MR_init_trace_check_integrity(cmd);
+	if (! MR_trace_options_movement_cmd(cmd, &words, &word_count,
 		"forward", "forward"))
 	{
 		; /* the usage message has already been printed */
@@ -1599,7 +1612,8 @@ MR_trace_cmd_mindepth(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
 	cmd->MR_trace_strict = MR_TRUE;
 	cmd->MR_trace_print_level = MR_default_print_level;
-	if (! MR_trace_options_strict_print(cmd, &words, &word_count,
+	MR_init_trace_check_integrity(cmd);
+	if (! MR_trace_options_movement_cmd(cmd, &words, &word_count,
 		"forward", "mindepth"))
 	{
 		; /* the usage message has already been printed */
@@ -1625,7 +1639,8 @@ MR_trace_cmd_maxdepth(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
 	cmd->MR_trace_strict = MR_TRUE;
 	cmd->MR_trace_print_level = MR_default_print_level;
-	if (! MR_trace_options_strict_print(cmd, &words, &word_count,
+	MR_init_trace_check_integrity(cmd);
+	if (! MR_trace_options_movement_cmd(cmd, &words, &word_count,
 		"forward", "maxdepth"))
 	{
 		; /* the usage message has already been printed */
@@ -1649,14 +1664,14 @@ MR_trace_cmd_continue(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 {
 	cmd->MR_trace_strict = MR_FALSE;
 	cmd->MR_trace_print_level = (MR_Trace_Cmd_Type) -1;
-	if (! MR_trace_options_strict_print(cmd, &words, &word_count,
+	MR_init_trace_check_integrity(cmd);
+	if (! MR_trace_options_movement_cmd(cmd, &words, &word_count,
 		"forward", "continue"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 1) {
 		cmd->MR_trace_cmd = MR_CMD_TO_END;
-		if (cmd->MR_trace_print_level ==
-				(MR_Trace_Cmd_Type) -1) {
+		if (cmd->MR_trace_print_level == (MR_Trace_Cmd_Type) -1) {
 			/*
 			** The user did not specify the print level;
 			** select the intelligent default.
@@ -4838,25 +4853,34 @@ MR_trace_maybe_close_source_window(MR_bool verbose)
 	}
 }
 
-static struct MR_option MR_trace_strict_print_opts[] =
+static struct MR_option MR_trace_movement_cmd_opts[] =
 {
 	{ "all",	MR_no_argument,	NULL,	'a' },
 	{ "none",	MR_no_argument,	NULL,	'n' },
 	{ "some",	MR_no_argument,	NULL,	's' },
 	{ "nostrict",	MR_no_argument,	NULL,	'N' },
 	{ "strict",	MR_no_argument,	NULL,	'S' },
+#ifdef	MR_TRACE_CHECK_INTEGRITY
+	{ "integrity",	MR_no_argument,	NULL,	'i' },
+#endif
 	{ NULL,		MR_no_argument,	NULL,	0 }
 };
 
 static MR_bool
-MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
+MR_trace_options_movement_cmd(MR_Trace_Cmd_Info *cmd,
 	char ***words, int *word_count, const char *cat, const char *item)
 {
 	int	c;
 
+#ifdef	MR_TRACE_CHECK_INTEGRITY
+  #define	MR_TRACE_MOVEMENT_OPTS	"NSains"
+#else
+  #define	MR_TRACE_MOVEMENT_OPTS	"NSans"
+#endif
+
 	MR_optind = 0;
-	while ((c = MR_getopt_long(*word_count, *words, "NSans",
-		MR_trace_strict_print_opts, NULL)) != EOF)
+	while ((c = MR_getopt_long(*word_count, *words, MR_TRACE_MOVEMENT_OPTS,
+		MR_trace_movement_cmd_opts, NULL)) != EOF)
 	{
 		switch (c) {
 
@@ -4879,6 +4903,12 @@ MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
 			case 's':
 				cmd->MR_trace_print_level = MR_PRINT_LEVEL_SOME;
 				break;
+
+#ifdef	MR_TRACE_CHECK_INTEGRITY
+			case 'i':
+				cmd->MR_trace_check_integrity = MR_TRUE;
+				break;
+#endif
 
 			default:
 				MR_trace_usage(cat, item);

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2002 The University of Melbourne.
+** Copyright (C) 1997-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -226,21 +226,32 @@ typedef struct {
 	MR_Unsigned		MR_trace_stop_event;
 	MR_Trace_Print_Level	MR_trace_print_level;
 	MR_bool			MR_trace_strict;
+#ifdef	MR_TRACE_CHECK_INTEGRITY
+	MR_bool			MR_trace_check_integrity;
+#endif
 
 				/*
 				** The next field is an optimization;
 				** it must be set to !MR_trace_strict ||
 				** MR_trace_print_level != MR_PRINT_LEVEL_NONE
+				** || MR_trace_check_integrity (the last only
+				** if defined, of course).
 				*/
 	MR_bool			MR_trace_must_check;
 
 				/*
-				** The MR_filter_ptr field points to the filter/4
-				** procedure during a collect request
+				** The MR_filter_ptr field points to the
+				** filter/4 procedure during a collect request
 				*/
 	MR_FilterFuncPtr	MR_filter_ptr;
 } MR_Trace_Cmd_Info;
 
+#ifdef	MR_TRACE_CHECK_INTEGRITY
+  #define MR_init_trace_check_integrity(cmd)	\
+	do { (cmd)->MR_trace_check_integrity = MR_FALSE; } while (0)
+#else
+  #define MR_init_trace_check_integrity(cmd)	((void) 0)
+#endif
 
 #define	MR_port_is_final(port)		((port) == MR_PORT_EXIT || \
 					 (port) == MR_PORT_FAIL || \

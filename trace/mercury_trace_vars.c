@@ -1255,3 +1255,76 @@ MR_trace_valid_var_number(int var_number)
 
     return NULL;
 }
+
+#ifdef  MR_TRACE_CHECK_INTEGRITY
+
+static void
+MR_trace_check_integrity_on_cur_level(void)
+{
+    int         i;
+
+    for (i = 0; i < MR_point.MR_point_var_count; i++) {
+        /*
+        ** Printing the variable will fail if any part of the variable's value
+        ** that is printed has been constructed incorrectly. The default print
+        ** command will print only the top few levels of the variable, but
+        ** since the construction of a memory cell is usually followed very
+        ** closely by a call or an exit, this should be sufficient to catch
+        ** most misconstructed terms.
+        */
+        (void) MR_trace_browse_var(stdout, &MR_point.MR_point_vars[i],
+                (MR_String) (MR_Integer) "", MR_trace_print,
+                MR_BROWSE_CALLER_PRINT, MR_BROWSE_DEFAULT_FORMAT);
+    }
+}
+
+#define MR_INTEGRITY_ERROR_BUF_SIZE    512
+
+void
+MR_trace_check_integrity(const MR_Label_Layout *layout, MR_Trace_Port port)
+{
+    int             level;
+    const char      *problem;
+    char            buf[MR_INTEGRITY_ERROR_BUF_SIZE];
+    MR_bool         saved_trace_enabled;
+    int             MR_check_max_mr_num;
+    MR_Word         MR_check_saved_regs[MR_MAX_FAKE_REG];
+    static  int     MR_check_integrity_seq_num = 0;
+
+    saved_trace_enabled = MR_trace_enabled;
+    MR_trace_enabled = MR_FALSE;
+
+    MR_compute_max_mr_num(MR_check_max_mr_num, layout);
+    MR_restore_transient_registers();
+    /* This also saves the regs in MR_fake_regs. */
+    MR_copy_regs_to_saved_regs(MR_check_max_mr_num, MR_check_saved_regs);
+	MR_trace_init_point_vars(layout, MR_check_saved_regs, port, MR_TRUE);
+
+    if (MR_point.MR_point_problem != NULL) {
+        MR_fatal_error(problem);
+    }
+
+    level = 0;
+    do {
+        MR_check_integrity_seq_num++;
+        sprintf(buf, "integrity check at event %d, level %d, seq %d\n",
+            MR_trace_event_number, level, MR_check_integrity_seq_num);
+        MR_trace_report_msg = buf;
+#if 0
+        /* enable this code if necessary for debugging */
+        fprintf(stdout, "%s", buf);
+#endif
+        fflush(stdout);
+        MR_trace_check_integrity_on_cur_level();
+        level++;
+        problem = MR_trace_set_level(level, MR_TRUE);
+    } while (problem == NULL);
+
+    MR_restore_transient_registers();
+    MR_saved_global_hp(MR_check_saved_regs) = MR_global_hp;
+    MR_copy_saved_regs_to_regs(MR_check_max_mr_num, MR_check_saved_regs);
+    MR_trace_report_msg = NULL;
+    MR_trace_enabled = saved_trace_enabled;
+}
+
+#endif  /* MR_TRACE_CHECK_INTEGRITY */

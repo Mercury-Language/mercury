@@ -51,7 +51,6 @@
   #include <dlfcn.h>
 #endif
 
-
 /*
 ** This type must match the definition of classify_request in
 ** browser/debugger_interface.m.
@@ -841,6 +840,8 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 						cmd->MR_trace_must_check =
 							MR_FALSE;
 						cmd->MR_trace_strict = MR_TRUE;
+						MR_init_trace_check_integrity(
+							cmd);
 						cmd->MR_trace_print_level = 
 						 	MR_PRINT_LEVEL_NONE;
 						goto done;
@@ -896,7 +897,12 @@ done:
 	** changed the command strictness or print-level
 	*/
 	cmd->MR_trace_must_check = (! cmd->MR_trace_strict) ||
-			(cmd->MR_trace_print_level != MR_PRINT_LEVEL_NONE);
+		(cmd->MR_trace_print_level != MR_PRINT_LEVEL_NONE);
+
+#ifdef	MR_TRACE_CHECK_INTEGRITY
+	cmd->MR_trace_must_check = cmd->MR_trace_must_check
+		|| cmd->MR_trace_check_integrity;
+#endif
 
 	/*
 	** Restore the event numbers, in case the Mercury

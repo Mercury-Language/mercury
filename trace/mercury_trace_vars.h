@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2002 The University of Melbourne.
+** Copyright (C) 1999-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -239,5 +239,17 @@ extern	MR_ConstString	MR_hlds_var_name(const MR_Proc_Layout *entry,
 
 extern	MR_Completer_List *MR_trace_var_completer(const char *word,
 				size_t word_len);
+
+#ifdef	MR_TRACE_CHECK_INTEGRITY
+
+/*
+** Checks whether any stack frame at the current program point contains
+** references to terms with corrupted representations.
+*/
+
+extern	void		MR_trace_check_integrity(const MR_Label_Layout *layout,
+				MR_Trace_Port port);
+
+#endif	/* MR_TRACE_CHECK_INTEGRITY */
 
 #endif	/* MERCURY_TRACE_VARS_H */

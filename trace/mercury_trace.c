@@ -61,6 +61,9 @@ static  MR_Trace_Cmd_Info   MR_trace_ctrl = {
     0,                      /* stop event */
     MR_PRINT_LEVEL_SOME,
     MR_FALSE,               /* not strict */
+#ifdef  MR_TRACE_CHECK_INTEGRITY
+    MR_FALSE,               /* don't check integrity */
+#endif
     MR_TRUE,                /* must check */
     NULL                    /* pointer to filter/4 for collect queries */
 };
@@ -311,16 +314,29 @@ check_stop_print:
         /*
         ** The value of MR_trace_ctrl.MR_trace_must_check was
         ** precomputed when the command was set up; it was set to
-        ** MR_TRUE iff either MR_trace_ctrl.MR_trace_strict is
-        ** MR_FALSE (allowing us to stop at breakpoints whose action
-        ** is MR_SPY_STOP) or MR_trace_ctrl.MR_trace_print_level is
-        ** something other than MR_PRINT_LEVEL_NONE (allowing us to
-        ** print at least some events). The precomputation avoids
-        ** several jumps in the very frequent case that
-        ** MR_trace_must_check is false.
+        ** MR_TRUE iff any one of the following conditions is true:
+        **
+        ** - MR_trace_ctrl.MR_trace_strict is MR_FALSE (allowing us to stop
+        **   at breakpoints whose action is MR_SPY_STOP);
+        ** - MR_trace_ctrl.MR_trace_print_level is something other than
+        **   MR_PRINT_LEVEL_NONE (allowing us to print at least some events);
+        ** - MR_trace_ctrl.MR_trace_check_vars_integrity is MR_TRUE, requiring
+        **   us to check the integrity of all the live variables (which at the
+        **   moment means that they can have their sizes computed without
+        **   internal errors).
+        **
+        ** The precomputation avoids several jumps in the very frequent case
+        ** that MR_trace_must_check is false.
         */
 
         port = (MR_Trace_Port) layout->MR_sll_port;
+
+#ifdef  MR_TRACE_CHECK_INTEGRITY
+        if (MR_trace_ctrl.MR_trace_check_integrity) {
+            MR_trace_check_integrity(layout, port);
+        }
+#endif
+
         match = MR_event_matches_spy_point(layout, port, &action);
         if (! match) {
             if (MR_trace_ctrl.MR_trace_print_level == MR_PRINT_LEVEL_ALL) {
@@ -402,7 +418,7 @@ MR_trace_interrupt_handler(void)
     ** variable MR_trace_func_ptr; the real work will be done
     ** by MR_trace_interrupt(), which will be called by MR_trace()
     ** at the next debugger event.
-    */ 
+    */
     MR_trace_func_ptr = MR_trace_interrupt;
 }
 
@@ -553,7 +569,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
     }
 
     /*
-    ** With the Boehm collector, args need not be considered a root, 
+    ** With the Boehm collector, args need not be considered a root,
     ** since its contents are just copies of values from elsewhere,
     ** With the native collector, it need not be considered a root
     ** because its lifetime spans only this function, in which
@@ -869,10 +885,10 @@ MR_in_traced_region(const MR_Proc_Layout *proc_layout,
         MR_Word from_full;
 
         if (MR_DETISM_DET_STACK(proc_layout->MR_sle_detism)) {
-            from_full = MR_based_stackvar(base_sp, 
+            from_full = MR_based_stackvar(base_sp,
                 proc_layout->MR_sle_maybe_from_full);
         } else {
-            from_full = MR_based_framevar(base_curfr, 
+            from_full = MR_based_framevar(base_curfr,
                 proc_layout->MR_sle_maybe_from_full);
         }
 
@@ -1061,7 +1077,7 @@ MR_undo_updates_of_maxfr(const MR_Proc_Layout *level_layout,
         ** The code of a procedure that lives on the det stack
         ** never updates curfr, but may update maxfr by pushing
         ** a temporary nondet frame. If it does so, and the
-        ** procedure is traced, the original value of maxfr 
+        ** procedure is traced, the original value of maxfr
         ** will be saved in a stack slot.
         */
 
@@ -1236,7 +1252,7 @@ MR_check_minimal_model_calls(MR_Event_Info *event_info, int ancestor_level,
                 "has no call table slot");
         }
 
-        trienode = (MR_TrieNode) MR_based_framevar(cur_maxfr, 
+        trienode = (MR_TrieNode) MR_based_framevar(cur_maxfr,
                     proc_layout->MR_sle_maybe_call_table);
         subgoal = trienode->MR_subgoal;
         if (subgoal->MR_sg_leader != NULL) {
@@ -1352,10 +1368,10 @@ MR_maybe_record_call_table(const MR_Proc_Layout *level_layout,
     case MR_EVAL_METHOD_MEMO:
     case MR_EVAL_METHOD_LOOP_CHECK:
         if (MR_DETISM_DET_STACK(level_layout->MR_sle_detism)) {
-            call_table = (MR_TrieNode) MR_based_stackvar(base_sp, 
+            call_table = (MR_TrieNode) MR_based_stackvar(base_sp,
                 level_layout->MR_sle_maybe_call_table);
         } else {
-            call_table = (MR_TrieNode) MR_based_framevar(base_curfr, 
+            call_table = (MR_TrieNode) MR_based_framevar(base_curfr,
                 level_layout->MR_sle_maybe_call_table);
         }
 

@@ -287,6 +287,12 @@ extern	void	MR_trace_report(FILE *fp);
 extern	void	MR_trace_report_raw(int fd);
 
 /*
+** If MR_trace_report_msg is not NULL, it will be included in messages
+** from MR_trace_report.
+*/
+extern	char	*MR_trace_report_msg;
+
+/*
 ** This function prints an error message and aborts.  It should be
 ** called in situations where tracing is required, but `--trace' was
 ** not passed to c2init.

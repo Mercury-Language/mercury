@@ -231,6 +231,11 @@
 ** MP_DEBUG_MDPROF_SIGNAL
 **	Enables low-level debugging messages from the signal handling
 **	functions in the deep profiler.
+**
+** MR_TRACE_CHECK_INTEGRITY
+**	Enables the -i and --integrity options on mdb's forward movement
+**	commands, which cause the debugger to check the integrity of the
+**	representations of all the terms reachable from the stack.
 */
 
 #ifdef	MR_HIGHLEVEL_CODE
