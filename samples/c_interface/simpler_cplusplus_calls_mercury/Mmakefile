@@ -36,15 +36,16 @@ MLFLAGS=--no-main -g
 
 # Tell the Mercury linker to link with main.o.
 MLOBJS=main.o
+MLLIBS=-lstdc++
 
 MCFLAGS-cpp_main=--no-warn-nothing-exported
 
 #-----------------------------------------------------------------------------#
 
-main.o: mercury_lib.h
+main.o: mercury_lib.mh
 
 # make sure that `mmake clean' removes main.o
 clean_local:
-	rm -f main.o mercury_lib.h
+	rm -f main.o
 
 #-----------------------------------------------------------------------------#
