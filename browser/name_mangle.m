@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 The University of Melbourne.
+% Copyright (C) 1998-2000,2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -248,7 +248,9 @@ convert_to_valid_c_identifier_2(String, Name) :-
 	).
 
 :- pred use_asm_labels is semidet.
-:- pragma c_code(use_asm_labels, [will_not_call_mercury, thread_safe], "
+:- pragma foreign_proc("C", use_asm_labels,
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 #ifdef MR_USE_ASM_LABELS
 	SUCCESS_INDICATOR = MR_TRUE;
 #else
@@ -257,7 +259,9 @@ convert_to_valid_c_identifier_2(String, Name) :-
 ").
 
 :- pred high_level_code is semidet.
-:- pragma c_code(high_level_code, [will_not_call_mercury, thread_safe], "
+:- pragma foreign_proc("C", high_level_code,
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 #ifdef MR_HIGHLEVEL_CODE
 	SUCCESS_INDICATOR = MR_TRUE;
 #else

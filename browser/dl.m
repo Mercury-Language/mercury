@@ -35,7 +35,7 @@
 
 % high-level interface to the C function dlsym().
 % This version returns a higher-order predicate or function term.
-% The user must use an inst cast (implemented using pragma c_code)
+% The user must use an inst cast (implemented using c_code or foreign_proc)
 % to cast this term to the appropriate higher-order inst before calling
 % it; see dl_test.m for an example of this.
 %
@@ -93,9 +93,10 @@
 :- type handle ---> handle(c_pointer).
 
 :- pred is_null(c_pointer::in) is semidet.
-:- pragma c_code(is_null(Pointer::in),
-		[will_not_call_mercury, thread_safe],
-		"SUCCESS_INDICATOR = ((void *)Pointer == NULL)").
+:- pragma foreign_proc("C",
+	is_null(Pointer::in),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"SUCCESS_INDICATOR = ((void *) Pointer == NULL)").
 
 open(FileName, Mode, Scope, Result) -->
 	dlopen(FileName, Mode, Scope, Pointer),
@@ -114,9 +115,11 @@ open(FileName, Mode, Scope, Result) -->
 
 :- pred dlopen(string::in, (mode)::in, scope::in, c_pointer::out,
 	io__state::di, io__state::uo) is det.
-:- pragma c_code(dlopen(FileName::in, Mode::in, Scope::in, Result::out,
-		_IO0::di, _IO::uo), [], "
-{
+:- pragma foreign_proc("C",
+	dlopen(FileName::in, Mode::in, Scope::in, Result::out,
+		_IO0::di, _IO::uo),
+	[may_call_mercury, promise_pure, tabled_for_io],
+"{
 #if defined(MR_HAVE_DLFCN_H) && defined(MR_HAVE_DLOPEN) \
  && defined(RTLD_NOW) && defined(RTLD_LAZY)
 	int mode = (Mode ? RTLD_NOW : RTLD_LAZY);
@@ -215,8 +218,9 @@ int	ML_DL_closure_counter = 0;
 
 :- func make_closure(c_pointer, c_pointer, int, c_pointer) = c_pointer.
 
-:- pragma foreign_proc("C", make_closure(ClosureLayout::in,
-	Address::in, NumArgs::in, FirstArg::in) = (Closure::out),
+:- pragma foreign_proc("C",
+	make_closure(ClosureLayout::in,
+		Address::in, NumArgs::in, FirstArg::in) = (Closure::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
 	MR_Closure	*closure;
@@ -249,7 +253,7 @@ extern MR_Box MR_CALL ML_DL_generic_closure_wrapper(void *closure,
 	MR_Box arg16, MR_Box arg17, MR_Box arg18, MR_Box arg19, MR_Box arg20);
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 
 /*
 ** For the --high-level-code grades, the closure will be passed
@@ -308,8 +312,9 @@ ML_DL_generic_closure_wrapper(void *closure,
 ").
 	 
 :- func dl__generic_closure_wrapper = c_pointer.
-:- pragma c_code(dl__generic_closure_wrapper = (WrapperFuncAddr::out),
-	[thread_safe, will_not_call_mercury],
+:- pragma foreign_proc("C",
+	dl__generic_closure_wrapper = (WrapperFuncAddr::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	WrapperFuncAddr = (MR_Word) &ML_DL_generic_closure_wrapper;
 ").
@@ -432,9 +437,10 @@ sym(handle(Handle), Name, Result) -->
 
 :- pred dlsym(c_pointer::in, string::in, c_pointer::out,
 	io__state::di, io__state::uo) is det.
-:- pragma c_code(dlsym(Handle::in, Name::in, Pointer::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury], "
-{
+:- pragma foreign_proc("C",
+	dlsym(Handle::in, Name::in, Pointer::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
+"{
 #if defined(MR_HAVE_DLFCN_H) && defined(MR_HAVE_DLSYM)
 	Pointer = (MR_Word) dlsym((void *) Handle, Name);
 #else
@@ -443,8 +449,9 @@ sym(handle(Handle), Name, Result) -->
 }").
 
 :- pred dlerror(string::out, io__state::di, io__state::uo) is det.
-:- pragma c_code(dlerror(ErrorMsg::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	dlerror(ErrorMsg::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io], "
 {
 	const char *msg;
 
@@ -470,16 +477,22 @@ close(handle(Handle), Result) -->
 ** to declare this as `will_not_call_mercury'.
 */
 :- pred dlclose(c_pointer::in, io__state::di, io__state::uo) is det.
-:- pragma c_code(dlclose(Handle::in, _IO0::di, _IO::uo), [], "
+:- pragma foreign_proc("C",
+	dlclose(Handle::in, _IO0::di, _IO::uo),
+	[may_call_mercury, promise_pure, tabled_for_io],
+"
 #if defined(MR_HAVE_DLFCN_H) && defined(MR_HAVE_DLCLOSE)
-	dlclose((void *)Handle)
+	dlclose((void *) Handle);
 #endif
 ").
 
 %-----------------------------------------------------------------------------%
 
 :- pred high_level_code is semidet.
-:- pragma c_code(high_level_code, [will_not_call_mercury, thread_safe], "
+:- pragma foreign_proc("C",
+	high_level_code,
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 #ifdef MR_HIGHLEVEL_CODE
 	SUCCESS_INDICATOR = MR_TRUE;
 #else

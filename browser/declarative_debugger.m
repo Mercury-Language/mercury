@@ -1361,7 +1361,7 @@ extern	int	MR_DD_debug_origin;
 
 :- pragma foreign_proc("C",
 	debug_origin(Flag::out, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Flag = MR_DD_debug_origin;
 	IO = IO0;

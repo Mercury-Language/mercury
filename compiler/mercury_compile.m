@@ -166,7 +166,10 @@ main(Args) -->
 
 :- pred gc_init(io__state::di, io__state::uo) is det.
 
-:- pragma c_code(gc_init(_IO0::di, _IO::uo), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	gc_init(_IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
+"
 #ifdef MR_CONSERVATIVE_GC
 	/*
 	** Explicitly force the initial heap size to be at least 4 Mb.
@@ -2614,7 +2617,7 @@ mercury_compile__tabling(HLDS0, Verbose, HLDS) -->
 	maybe_write_string(Verbose,
 		"% Transforming tabled predicates..."),
 	maybe_flush_output(Verbose),
-	{ table_gen__process_module(HLDS0, HLDS) },
+	table_gen__process_module(HLDS0, HLDS),
 	maybe_write_string(Verbose, " done.\n").
 
 %-----------------------------------------------------------------------------%

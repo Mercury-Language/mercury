@@ -1940,8 +1940,8 @@ io__file_modification_time(File, Result) -->
 :- mode io__file_modification_time_2(in, out, out, out, di, uo) is det.
 
 :- pragma foreign_proc("C", io__file_modification_time_2(FileName::in,
-		Status::out, Msg::out, Time::out, IO0::di, IO::uo),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	Status::out, Msg::out, Time::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
 #ifdef MR_HAVE_STAT
 	struct stat s;
@@ -1979,8 +1979,7 @@ io__file_modification_time_2(_, _, _, _) -->
 :- pred io__alloc_buffer(int::in, buffer::uo) is det.
 :- pragma foreign_proc("C", 
 	io__alloc_buffer(Size::in, Buffer::uo),
-		[will_not_call_mercury, promise_pure, tabled_for_io,
-			thread_safe],
+	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
 	MR_incr_hp_atomic_msg(Buffer,
 		(Size * sizeof(MR_Char) + sizeof(MR_Word) - 1)

@@ -189,7 +189,7 @@ time__clock(Result, IO0, IO) :-
 :- mode time__c_clock(out, di, uo) is det.
 
 :- pragma foreign_proc("C", time__c_clock(Ret::out, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
 	Ret = (MR_Integer) clock();
 	update_io(IO0, IO);
@@ -239,7 +239,7 @@ time__times(Tms, Result, IO0, IO) :-
 :- pragma foreign_proc("C",
 	time__c_times(Ret::out, Ut::out, St::out, CUt::out,
                                CSt::out, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
 #ifdef MR_HAVE_POSIX_TIMES
 	struct tms t;
@@ -279,7 +279,7 @@ time__time(Result, IO0, IO) :-
 
 :- pragma foreign_proc("C",
 	time__c_time(Ret::out, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
 	Ret = (MR_Integer) time(NULL);
 	update_io(IO0, IO);

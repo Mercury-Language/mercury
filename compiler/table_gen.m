@@ -232,27 +232,30 @@
 :- interface.
 
 :- import_module hlds__hlds_module.
+:- import_module io.
 
-:- pred table_gen__process_module(module_info::in, module_info::out) is det.
+:- pred table_gen__process_module(module_info::in, module_info::out,
+	io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module hlds__hlds_out, parse_tree__prog_out.
-:- import_module hlds__hlds_pred, hlds__instmap, check_hlds__polymorphism.
-:- import_module ll_backend__code_aux, check_hlds__det_analysis.
-:- import_module ll_backend__follow_code, hlds__goal_util.
+:- import_module parse_tree__prog_data, parse_tree__prog_out.
+:- import_module parse_tree__prog_util, parse_tree__inst.
+:- import_module hlds__hlds_module, hlds__hlds_pred.
+:- import_module hlds__hlds_goal, hlds__hlds_data.
+:- import_module hlds__instmap, hlds__passes_aux, hlds__error_util.
+:- import_module hlds__quantification, hlds__goal_util, hlds__hlds_out.
+:- import_module check_hlds__type_util, check_hlds__mode_util.
+:- import_module check_hlds__purity, check_hlds__modes, check_hlds__inst_match.
+:- import_module check_hlds__polymorphism, check_hlds__det_analysis.
 :- import_module transform_hlds__const_prop.
-:- import_module hlds__hlds_module, hlds__hlds_goal, hlds__hlds_data.
-:- import_module (parse_tree__inst), check_hlds__inst_match.
-:- import_module libs__globals, libs__options, hlds__passes_aux.
-:- import_module parse_tree__prog_data, check_hlds__mode_util.
-:- import_module check_hlds__type_util.
-:- import_module ll_backend__code_util, hlds__quantification.
-:- import_module check_hlds__modes, check_hlds__purity, parse_tree__prog_util.
-:- import_module backend_libs__code_model, ll_backend__continuation_info.
-:- import_module backend_libs__rtti, ll_backend__llds.
+:- import_module ll_backend__llds, ll_backend__code_aux.
+:- import_module ll_backend__follow_code.
+:- import_module ll_backend__code_util, ll_backend__continuation_info.
+:- import_module backend_libs__code_model, backend_libs__rtti.
+:- import_module libs__globals, libs__options.
 
 :- import_module term, varset.
 :- import_module bool, int, string, list, assoc_list.
@@ -264,32 +267,35 @@
 	% The reason for this duplication is that this module needs a variant
 	% of this code that is able to handle passing a module_info to
 	% polymorphism and getting an updated module_info back.
-table_gen__process_module(ModuleInfo0, ModuleInfo) :-
+table_gen__process_module(ModuleInfo0, ModuleInfo, S0, S) :-
 	module_info_preds(ModuleInfo0, Preds0),
 	map__keys(Preds0, PredIds),
-	table_gen__process_preds(PredIds, ModuleInfo0, ModuleInfo).
+	table_gen__process_preds(PredIds, ModuleInfo0, ModuleInfo, S0, S).
 
 :- pred table_gen__process_preds(list(pred_id)::in,
-	module_info::in, module_info::out) is det.
+	module_info::in, module_info::out, io__state::di, io__state::uo) is det.
 
-table_gen__process_preds([], ModuleInfo, ModuleInfo).
-table_gen__process_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
-	table_gen__process_pred(PredId, ModuleInfo0, ModuleInfo1),
-	table_gen__process_preds(PredIds, ModuleInfo1, ModuleInfo).
+table_gen__process_preds([], ModuleInfo, ModuleInfo, S, S).
+table_gen__process_preds([PredId | PredIds], ModuleInfo0, ModuleInfo, S0, S) :-
+	table_gen__process_pred(PredId, ModuleInfo0, ModuleInfo1, S0, S1),
+	table_gen__process_preds(PredIds, ModuleInfo1, ModuleInfo, S1, S).
 
-:- pred table_gen__process_pred(pred_id::in, module_info::in, module_info::out)
-	is det.
+:- pred table_gen__process_pred(pred_id::in, module_info::in, module_info::out,
+	io__state::di, io__state::uo) is det.
 
-table_gen__process_pred(PredId, ModuleInfo0, ModuleInfo) :-
+table_gen__process_pred(PredId, ModuleInfo0, ModuleInfo, S0, S) :-
 	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
 	pred_info_procids(PredInfo, ProcIds),
-	table_gen__process_procs(PredId, ProcIds, ModuleInfo0, ModuleInfo).
+	table_gen__process_procs(PredId, ProcIds, ModuleInfo0, ModuleInfo,
+		S0, S).
 
 :- pred table_gen__process_procs(pred_id::in, list(proc_id)::in,
-	module_info::in, module_info::out) is det.
+	module_info::in, module_info::out, io__state::di, io__state::uo)
+	is det.
 
-table_gen__process_procs(_PredId, [], ModuleInfo, ModuleInfo).
-table_gen__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0, ModuleInfo) :-
+table_gen__process_procs(_PredId, [], ModuleInfo, ModuleInfo, S, S).
+table_gen__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0, ModuleInfo,
+		S0, S) :-
 	module_info_preds(ModuleInfo0, PredTable),
 	map__lookup(PredTable, PredId, PredInfo),
 	pred_info_procedures(PredInfo, ProcTable),
@@ -300,20 +306,43 @@ table_gen__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0, ModuleInfo) :-
 
 	( eval_method_requires_tabling_transform(EvalMethod) = yes ->
 		table_gen__process_proc(EvalMethod, PredId, ProcId, ProcInfo0,
-			PredInfo, ModuleInfo0, ModuleInfo1)
+			PredInfo, ModuleInfo0, ModuleInfo2),
+		S1 = S0
 	;
 		globals__lookup_bool_option(Globals, trace_table_io, yes),
+		globals__lookup_bool_option(Globals, trace_table_io_require,
+			Require),
 		proc_info_has_io_state_pair(ModuleInfo0, ProcInfo0,
 			_InArgNum, _OutArgNum),
 		proc_info_interface_code_model(ProcInfo0, model_det),
 		proc_info_goal(ProcInfo0, BodyGoal),
-		some [SubGoal] (
+		some [SubGoal,Attrs] (
 			goal_contains_goal(BodyGoal, SubGoal),
 			SubGoal = foreign_proc(Attrs, _,_,_,_,_,_)
 				- _,
-			tabled_for_io(Attrs, tabled_for_io)
-		)
+			( tabled_for_io(Attrs, tabled_for_io)
+			; Require = yes
+			)
+		),
+		predicate_module(ModuleInfo0, PredId, PredModuleName),
+		\+ any_mercury_builtin_module(PredModuleName)
 	->
+		(
+			Require = yes,
+			some [SubGoal,Attrs] (
+				goal_contains_goal(BodyGoal, SubGoal),
+				SubGoal = foreign_proc(Attrs, _,_,_,_,_,_)
+					- _,
+				\+ tabled_for_io(Attrs, tabled_for_io)
+			)
+		->
+			report_missing_tabled_for_io(ModuleInfo0, PredInfo,
+				PredId, ProcId, S0, S1),
+			module_info_incr_errors(ModuleInfo0, ModuleInfo1)
+		;
+			ModuleInfo1 = ModuleInfo0,
+			S1 = S0
+		),
 		globals__lookup_bool_option(Globals, trace_table_io_decl,
 			TraceTableIoDecl),
 		(
@@ -325,11 +354,25 @@ table_gen__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0, ModuleInfo) :-
 		),
 		proc_info_set_eval_method(ProcInfo0, TableIoMethod, ProcInfo1),
 		table_gen__process_proc(TableIoMethod, PredId, ProcId,
-			ProcInfo1, PredInfo, ModuleInfo0, ModuleInfo1)
+			ProcInfo1, PredInfo, ModuleInfo1, ModuleInfo2)
 	;
-		ModuleInfo1 = ModuleInfo0
+		ModuleInfo2 = ModuleInfo0,
+		S1 = S0
 	),
-	table_gen__process_procs(PredId, ProcIds, ModuleInfo1, ModuleInfo).
+	table_gen__process_procs(PredId, ProcIds, ModuleInfo2, ModuleInfo,
+		S1, S).
+
+%-----------------------------------------------------------------------------%
+
+:- pred report_missing_tabled_for_io(module_info::in, pred_info::in,
+	pred_id::in, proc_id::in, io__state::di, io__state::uo) is det.
+
+report_missing_tabled_for_io(ModuleInfo, PredInfo, PredId, ProcId) -->
+	{ pred_info_context(PredInfo, Context) },
+	{ error_util__describe_one_proc_name(ModuleInfo, proc(PredId, ProcId),
+		Name) },
+	{ Msg = [fixed(Name), words("contains untabled I/O primitive.")] },
+	error_util__write_error_pieces(Context, 0, Msg).
 
 %-----------------------------------------------------------------------------%
 

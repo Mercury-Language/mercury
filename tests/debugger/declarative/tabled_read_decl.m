@@ -129,7 +129,7 @@ tabled_read_decl__poly_test_2(Stream, Unused, SoFar, N) -->
 
 :- pragma foreign_proc("C",
 	tabled_read_decl__write_int(N::in, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
 	printf(""%d\\n"", (int) N);
 	IO = IO0;

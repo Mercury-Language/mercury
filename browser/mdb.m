@@ -30,8 +30,9 @@
 
 % See library/library.m for why we implement this predicate this way.
 
-:- pragma c_code(mdb__version(Version::out),
-		will_not_call_mercury, "
+:- pragma foreign_proc("C", mdb__version(Version::out),
+		[will_not_call_mercury, promise_pure, thread_safe],
+"
 	MR_ConstString version_string = 
 		MR_VERSION "", configured for "" MR_FULLARCH;
 	/*

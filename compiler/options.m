@@ -126,6 +126,7 @@
 		;	trace_table_io
 		;	trace_table_io_decl
 		;	trace_table_io_states
+		;	trace_table_io_require
 		;	delay_death
 		;	suppress_trace
 		;	stack_trace_higher_order
@@ -684,6 +685,7 @@ option_defaults_2(aux_output_option, [
 	trace_table_io		-	bool(no),
 	trace_table_io_decl	-	bool(no),
 	trace_table_io_states	-	bool(no),
+	trace_table_io_require	-	bool(no),
 	suppress_trace		-	string(""),
 	delay_death		-	bool(yes),
 	stack_trace_higher_order -	bool(no),
@@ -1238,6 +1240,7 @@ long_option("trace-optimized",		trace_optimized).
 long_option("trace-table-io",		trace_table_io).
 long_option("trace-table-io-decl",	trace_table_io_decl).
 long_option("trace-table-io-states",	trace_table_io_states).
+long_option("trace-table-io-require",	trace_table_io_require).
 long_option("suppress-trace",		suppress_trace).
 long_option("delay-death",		delay_death).
 long_option("stack-trace-higher-order",	stack_trace_higher_order).
@@ -2312,6 +2315,10 @@ options_help_aux_output -->
 %		"\tWhen tabling I/O actions, table the io__state arguments",
 %		"\ttogether with the others. This should be required iff",
 %		"\tvalues of type io__state actually contain information.",
+%		"--trace-table-io-require",
+%		"\tRequire the tabling of I/O actions, i.e. generate an error",
+%		"\tif an I/O primitive does not have the tabled_for_io",
+%		"\tannotation.",
 		"--no-delay-death",
 		"\tWhen the trace level is `deep', the compiler normally",
 		"\tpreserves the values of variables as long as possible, even",

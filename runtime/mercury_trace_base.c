@@ -116,6 +116,7 @@ MR_Unsigned		MR_io_tabling_counter = 0;
 MR_Unsigned		MR_io_tabling_counter_hwm = 0;
 MR_Unsigned		MR_io_tabling_start = 0;
 MR_Unsigned		MR_io_tabling_end = 0;
+MR_bool			MR_io_tabling_debug = MR_FALSE;
 
 #ifdef	MR_TRACE_HISTOGRAM
 

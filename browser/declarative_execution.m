@@ -589,13 +589,13 @@ disj_node_from_id(Store, NodeId, Node) :-
 		trace_node(trace_node_id)).
 :- mode search_trace_node_store(in, in, out) is semidet.
 
-:- pragma c_code(
+:- pragma foreign_proc("C",
 	search_trace_node_store(_Store::in, Id::in, Node::out),
-	[will_not_call_mercury, thread_safe],
-	"
-		Node = Id;
-		SUCCESS_INDICATOR = (Id != (MR_Word) NULL);
-	"
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Node = Id;
+	SUCCESS_INDICATOR = (Id != (MR_Word) NULL);
+"
 ).
 
 	%
@@ -951,10 +951,10 @@ construct_neg_fail_node(Preceding, Neg) = neg_fail(Preceding, Neg).
 :- pred null_trace_node_id(trace_node_id).
 :- mode null_trace_node_id(out) is det.
 
-:- pragma c_code(
+:- pragma foreign_proc("C",
 	null_trace_node_id(Id::out),
-	[will_not_call_mercury, thread_safe],
-	"Id = (MR_Word) NULL;"
+	[will_not_call_mercury, promise_pure, thread_safe],
+"Id = (MR_Word) NULL;"
 ).
 
 :- func construct_trace_atom(pred_or_func, string, int) = trace_atom.
@@ -1087,16 +1087,16 @@ node_map(Store, NodeId, map(Map0), Map) :-
 :- pred node_id_to_key(trace_node_id, trace_node_key).
 :- mode node_id_to_key(in, out) is det.
 
-:- pragma c_code(node_id_to_key(Id::in, Key::out),
-		[will_not_call_mercury, thread_safe],
-		"Key = (MR_Integer) Id;").
+:- pragma foreign_proc("C", node_id_to_key(Id::in, Key::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"Key = (MR_Integer) Id;").
 
 :- pred convert_node(trace_node(trace_node_id), trace_node(trace_node_key)).
 :- mode convert_node(in, out) is det.
 
-:- pragma c_code(convert_node(N1::in, N2::out),
-		[will_not_call_mercury, thread_safe],
-		"N2 = N1;").
+:- pragma foreign_proc("C", convert_node(N1::in, N2::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"N2 = N1;").
 
 	% Given a node in an annotated trace, return a reference to
 	% the preceding node in the trace, or a NULL reference if

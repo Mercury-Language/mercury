@@ -3157,6 +3157,9 @@ MR_trace_cmd_table_io(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			MR_io_tabling_phase = MR_IO_TABLING_DURING;
 			MR_io_tabling_start = MR_io_tabling_counter;
 			MR_io_tabling_end = MR_IO_ACTION_MAX;
+#ifdef	MR_DEBUG_RETRY
+			MR_io_tabling_debug = MR_TRUE;
+#endif
 			fprintf(MR_mdb_out, "io tabling started\n");
 		} else if (MR_io_tabling_phase == MR_IO_TABLING_DURING)
 		{

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997,2000 The University of Melbourne.
+% Copyright (C) 1996-1997,2000,2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -100,5 +100,13 @@ bool__not(X) = Result :- bool__not(X, Result).
 
 bool__not(no, yes).
 bool__not(yes, no).
+
+:- func bool__return_no = bool.
+:- func bool__return_yes = bool.
+:- pragma export(bool__return_no = out, "ML_bool_return_no").
+:- pragma export(bool__return_yes = out, "ML_bool_return_yes").
+
+bool__return_no = no.
+bool__return_yes = yes.
 
 %-----------------------------------------------------------------------------%

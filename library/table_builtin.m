@@ -498,6 +498,15 @@ table_simple_mark_as_inactive(_) :-
 	if (MR_io_tabling_enabled) {
 		MR_Unsigned	old_counter;
 
+#ifdef	MR_DEBUG_RETRY
+		if (MR_io_tabling_debug) {
+			printf(""checking table_io_in_range: ""
+				""prev %d, start %d, hwm %d"",
+				MR_io_tabling_counter, MR_io_tabling_start,
+				MR_io_tabling_counter_hwm);
+		}
+#endif
+
 		old_counter = MR_io_tabling_counter;
 
 		MR_io_tabling_counter++;
@@ -514,8 +523,20 @@ table_simple_mark_as_inactive(_) :-
 					MR_io_tabling_counter;
 			}
 
+#ifdef	MR_DEBUG_RETRY
+			if (MR_io_tabling_debug) {
+				printf("" in range\n"");
+			}
+#endif
+
 			SUCCESS_INDICATOR = MR_TRUE;
 		} else {
+
+#ifdef	MR_DEBUG_RETRY
+			if (MR_io_tabling_debug) {
+				printf("" not in range\n"");
+			}
+#endif
 			SUCCESS_INDICATOR = MR_FALSE;
 		}
 	} else {

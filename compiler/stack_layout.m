@@ -160,9 +160,11 @@ stack_layout__data_addr_to_maybe_rval(DataAddr, yes(Rval)) :-
 	#include ""mercury_misc.h""	/* for MR_fatal_error() */
 ").
 
-:- pragma c_code(stack_layout__concat_string_list(StringList::in,
-		ArenaSize::in, Arena::out),
-		[will_not_call_mercury, thread_safe], "{
+:- pragma foreign_proc("C",
+	stack_layout__concat_string_list(StringList::in, ArenaSize::in,
+		Arena::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	MR_Word		cur_node;
 	MR_Integer	cur_offset;
 	MR_Word		tmp;

@@ -38,11 +38,16 @@
 */
 
 #define MR_TRACE_CALL_MERCURY(STATEMENTS) do {				\
+		MR_bool	saved_io_enabled;				\
+									\
+		saved_io_enabled = MR_io_tabling_enabled;		\
+		MR_io_tabling_enabled = MR_FALSE;			\
 		MR_restore_transient_registers();			\
 		MR_save_registers();					\
 		STATEMENTS;						\
 		MR_restore_registers();					\
 		MR_save_transient_registers();				\
+		MR_io_tabling_enabled = saved_io_enabled;		\
 	} while (0)
 
 /*

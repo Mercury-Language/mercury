@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -752,11 +752,15 @@ gcc__run_backend(CommandLine, ReturnValue, FrontEndCallBack, Output) -->
 
 	% Returns `yes' iff we've already entered the gcc back-end.
 :- pred in_gcc(bool::out, io__state::di, io__state::uo) is det.
-:- pragma import(in_gcc(out, di, uo), "MC_in_gcc").
+:- pragma import(in_gcc(out, di, uo),
+	[will_not_call_mercury, tabled_for_io],
+	"MC_in_gcc").
 
 :- pred call_gcc_backend(string::in, int::out,
 		io__state::di, io__state::uo) is det.
-:- pragma import(call_gcc_backend(in, out, di, uo), "MC_call_gcc_backend").
+:- pragma import(call_gcc_backend(in, out, di, uo),
+	[may_call_mercury, tabled_for_io],
+	"MC_call_gcc_backend").
 
 :- pragma c_header_code("
 /* We use an `MC_' prefix for C code in the mercury/compiler directory. */
@@ -774,7 +778,7 @@ void MC_continue_frontend(void);
 #include <stdlib.h>			/* for exit() */
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 
 /* We use an `MC_' prefix for C code in the mercury/compiler directory. */
 MR_Word MC_frontend_callback;
@@ -878,26 +882,31 @@ call_frontend_callback(FrontEndCallBack, Output) -->
 :- pred set_global_frontend_callback_output(T::in,
 		io__state::di, io__state::uo) is det.
 
-:- pragma c_code(get_global_frontend_callback(CallBack::out(frontend_callback),
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	get_global_frontend_callback(CallBack::out(frontend_callback),
+		_IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	CallBack = MC_frontend_callback;
 ").
-:- pragma c_code(set_global_frontend_callback(CallBack::in(frontend_callback),
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	set_global_frontend_callback(CallBack::in(frontend_callback),
+		_IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	MC_frontend_callback = CallBack;
 	MC_frontend_callback_type = TypeInfo_for_T;
 
 ").
-:- pragma c_code(get_global_frontend_callback_output(Output::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	get_global_frontend_callback_output(Output::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Output = MC_frontend_callback_output;
 ").
-:- pragma c_code(set_global_frontend_callback_output(Output::in,
-	_IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	set_global_frontend_callback_output(Output::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	MC_frontend_callback_output = Output;
 ").
@@ -916,58 +925,100 @@ call_frontend_callback(FrontEndCallBack, Output) -->
 
 :- type gcc__func_decl == gcc__type.
 
-:- pragma c_code(void_type_node = (Type::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	void_type_node = (Type::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Type = (MR_Word) void_type_node;
 ").
-:- pragma c_code(boolean_type_node = (Type::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	boolean_type_node = (Type::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Type = (MR_Word) boolean_type_node;
 ").
-:- pragma c_code(char_type_node = (Type::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	char_type_node = (Type::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Type = (MR_Word) char_type_node;
 ").
-:- pragma c_code(string_type_node = (Type::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	string_type_node = (Type::out),
+	[will_not_call_mercury, promise_pure],
+"
 	/*
 	** XXX we should consider using const when appropriate,
 	** i.e. when the string doesn't have a unique mode
 	*/
 	Type = (MR_Word) string_type_node;
 ").
-:- pragma c_code(double_type_node = (Type::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	double_type_node = (Type::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Type = (MR_Word) double_type_node;
 ").
-:- pragma c_code(ptr_type_node = (Type::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	ptr_type_node = (Type::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Type = (MR_Word) ptr_type_node;
 ").
-:- pragma c_code(integer_type_node = (Type::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	integer_type_node = (Type::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Type = (MR_Word) integer_type_node;
 ").
-:- pragma c_code(int8_type_node = (Type::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	int8_type_node = (Type::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Type = (MR_Word) merc_int8_type_node;
 ").
-:- pragma c_code(int16_type_node = (Type::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	int16_type_node = (Type::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Type = (MR_Word) merc_int16_type_node;
 ").
-:- pragma c_code(int32_type_node = (Type::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	int32_type_node = (Type::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Type = (MR_Word) merc_int32_type_node;
 ").
-:- pragma c_code(int64_type_node = (Type::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	int64_type_node = (Type::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Type = (MR_Word) merc_int64_type_node;
 ").
-:- pragma c_code(intptr_type_node = (Type::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	intptr_type_node = (Type::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Type = (MR_Word) merc_intptr_type_node;
 ").
-:- pragma c_code(jmpbuf_type_node = (Type::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	jmpbuf_type_node = (Type::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Type = (MR_Word) merc_jmpbuf_type_node;
 ").
 
-:- pragma c_code(build_pointer_type(Type::in, PtrType::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_pointer_type(Type::in, PtrType::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	PtrType = (MR_Word) build_pointer_type((tree) Type);
 ").
 
-:- pragma c_code(build_array_type(ElemType::in, NumElems::in, ArrayType::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_array_type(ElemType::in, NumElems::in, ArrayType::out,
+		_IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	/* XXX Move this code to `mercury-gcc.c'. */
 	/* XXX Do we need to check that NumElems fits in a HOST_WIDE_INT?  */
@@ -977,8 +1028,10 @@ call_frontend_callback(FrontEndCallBack, Output) -->
 	ArrayType = (MR_Word) build_array_type((tree) ElemType, index_type);
 ").
 
-:- pragma c_code(build_range_type(Type::in, Min::in, Max::in, RangeType::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_range_type(Type::in, Min::in, Max::in, RangeType::out,
+		_IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	RangeType = (MR_Word) build_range_type((tree) Type,
 			build_int_2 (Min, (Min < 0 ? -1 : 0)),
@@ -987,39 +1040,48 @@ call_frontend_callback(FrontEndCallBack, Output) -->
 
 :- type gcc__param_types == gcc__tree.
 
-:- pragma c_code(empty_param_types = (ParamTypes::out), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	empty_param_types = (ParamTypes::out),
+	[will_not_call_mercury, promise_pure],
 "
 	ParamTypes = (MR_Word) merc_empty_param_type_list();
 ").
 
-:- pragma c_code(cons_param_types(Type::in, Types0::in) = (Types::out),
-		[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	cons_param_types(Type::in, Types0::in) = (Types::out),
+	[will_not_call_mercury, promise_pure],
 "
 	Types = (MR_Word)
 		merc_cons_param_type_list((tree) Type, (tree) Types0);
 ").
 
-:- pragma c_code(build_function_type(RetType::in, ParamTypes::in,
-	FunctionType::out, _IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_function_type(RetType::in, ParamTypes::in, FunctionType::out,
+		_IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	FunctionType = (MR_Word) build_function_type((tree) RetType,
 		(tree) ParamTypes);
 ").
 
-:- pragma c_code(declared_type(TypeDecl::in) = (Type::out),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	declared_type(TypeDecl::in) = (Type::out),
+	[will_not_call_mercury, promise_pure],
 "
 	Type = (MR_Word) TREE_TYPE((tree) TypeDecl);
 ").
 
-:- pragma c_code(get_array_elem_type(ArrayType::in, ElemType::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	get_array_elem_type(ArrayType::in, ElemType::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	ElemType = (MR_Word) TREE_TYPE((tree) ArrayType);
 ").
 
-:- pragma c_code(get_struct_field_decls(StructType::in, FieldDecls::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	get_struct_field_decls(StructType::in, FieldDecls::out,
+		_IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	FieldDecls = (MR_Word) TYPE_FIELDS((tree) StructType);
 ").
@@ -1035,45 +1097,54 @@ call_frontend_callback(FrontEndCallBack, Output) -->
 
 :- type gcc__var_decl == gcc__tree.
 
-:- pragma c_code(build_extern_var_decl(Name::in, Type::in, Decl::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_extern_var_decl(Name::in, Type::in, Decl::out,
+		_IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Decl = (MR_Word) merc_build_extern_var_decl(Name, (tree) Type);
 ").
 
-:- pragma c_code(build_static_var_decl(Name::in, Type::in, Init::in, Decl::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_static_var_decl(Name::in, Type::in, Init::in, Decl::out,
+		_IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Decl = (MR_Word) merc_build_static_var_decl(Name, (tree) Type,
 		(tree) Init);
 ").
 
-:- pragma c_code(finish_static_var_decl(Decl::in, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	finish_static_var_decl(Decl::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	merc_finish_static_var_decl((tree) Decl);
 ").
 
-:- pragma c_code(build_local_var_decl(Name::in, Type::in, Decl::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_local_var_decl(Name::in, Type::in, Decl::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Decl = (MR_Word) merc_build_local_var_decl(Name, (tree) Type);
 ").
 
-:- pragma c_code(set_var_decl_public(Decl::in,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	set_var_decl_public(Decl::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	TREE_PUBLIC((tree) Decl) = 1;
 ").
 
-:- pragma c_code(set_var_decl_readonly(Decl::in,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	set_var_decl_readonly(Decl::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	TREE_READONLY((tree) Decl) = 1;
 ").
 
-:- pragma c_code(set_var_decl_asm_name(Decl::in, AsmName::in,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	set_var_decl_asm_name(Decl::in, AsmName::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	DECL_ASSEMBLER_NAME((tree) Decl) = get_identifier(AsmName);
 ").
@@ -1084,69 +1155,81 @@ call_frontend_callback(FrontEndCallBack, Output) -->
 
 :- type gcc__param_decls == gcc__tree.
 
-:- pragma c_code(build_param_decl(Name::in, Type::in, Decl::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_param_decl(Name::in, Type::in, Decl::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Decl = (MR_Word) merc_build_param_decl(Name, (tree) Type);
 ").
 
-:- pragma c_code(empty_param_decls = (Decl::out), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	empty_param_decls = (Decl::out),
+	[will_not_call_mercury, promise_pure],
 "
 	Decl = (MR_Word) merc_empty_param_list();
 ").
 
-:- pragma c_code(cons_param_decls(Decl::in, Decls0::in) = (Decls::out),
-		[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	cons_param_decls(Decl::in, Decls0::in) = (Decls::out),
+	[will_not_call_mercury, promise_pure],
 "
 	Decls = (MR_Word) merc_cons_param_list((tree) Decl, (tree) Decls0);
 ").
 
-:- pragma c_code(build_function_decl(Name::in, AsmName::in,
-	RetType::in, ParamTypes::in, Params::in, Decl::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_function_decl(Name::in, AsmName::in, RetType::in, ParamTypes::in,
+		Params::in, Decl::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Decl = (MR_Word) merc_build_function_decl(Name, AsmName,
 			(tree) RetType, (tree) ParamTypes, (tree) Params);
 ").
 
-:- pragma c_code(alloc_func_decl = (Decl::out),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	alloc_func_decl = (Decl::out),
+	[will_not_call_mercury, promise_pure],
 "
 	Decl = (MR_Word) merc_alloc_function_node;
 ").
 
-:- pragma c_code(strcmp_func_decl = (Decl::out),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	strcmp_func_decl = (Decl::out),
+	[will_not_call_mercury, promise_pure],
 "
 	Decl = (MR_Word) merc_strcmp_function_node;
 ").
 
-:- pragma c_code(hash_string_func_decl = (Decl::out),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	hash_string_func_decl = (Decl::out),
+	[will_not_call_mercury, promise_pure],
 "
 	Decl = (MR_Word) merc_hash_string_function_node;
 ").
 
-:- pragma c_code(box_float_func_decl = (Decl::out),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	box_float_func_decl = (Decl::out),
+	[will_not_call_mercury, promise_pure],
 "
 	Decl = (MR_Word) merc_box_float_function_node;
 ").
 
-:- pragma c_code(setjmp_func_decl = (Decl::out),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	setjmp_func_decl = (Decl::out),
+	[will_not_call_mercury, promise_pure],
 "
 	Decl = (MR_Word) merc_setjmp_function_node;
 ").
 
-:- pragma c_code(longjmp_func_decl = (Decl::out),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	longjmp_func_decl = (Decl::out),
+	[will_not_call_mercury, promise_pure],
 "
 	Decl = (MR_Word) merc_longjmp_function_node;
 ").
 
-:- pragma c_code(set_func_decl_public(Decl::in,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	set_func_decl_public(Decl::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	TREE_PUBLIC((tree) Decl) = 1;
 ").
@@ -1157,34 +1240,40 @@ call_frontend_callback(FrontEndCallBack, Output) -->
 
 :- type gcc__field_decl == gcc__tree.
 
-:- pragma c_code(build_field_decl(Name::in, Type::in, Decl::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_field_decl(Name::in, Type::in, Decl::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Decl = (MR_Word) merc_build_field_decl(Name, (tree) Type);
 ").
 
-:- pragma c_code(field_type(Decl::in, Type::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	field_type(Decl::in, Type::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Type = (MR_Word) TREE_TYPE((tree) Decl);
 ").
 
 :- type gcc__field_decls == gcc__tree.
 
-:- pragma c_code(empty_field_list(Decl::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	empty_field_list(Decl::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Decl = (MR_Word) merc_empty_field_list();
 ").
 
-:- pragma c_code(cons_field_list(Decl::in, Decls0::in, Decls::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	cons_field_list(Decl::in, Decls0::in, Decls::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Decls = (MR_Word) merc_cons_field_list((tree) Decl, (tree) Decls0);
 ").
 
-:- pragma c_code(next_field_decl(Decls::in, Decl::out, RemainingDecls::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	next_field_decl(Decls::in, Decl::out, RemainingDecls::out,
+		_IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	assert((tree) Decls != NULL_TREE);
 	Decl = (MR_Word) (tree) Decls;
@@ -1193,9 +1282,10 @@ call_frontend_callback(FrontEndCallBack, Output) -->
 
 :- type gcc__type_decl == gcc__tree.
 
-:- pragma c_code(build_struct_type_decl(Name::in, FieldTypes::in, Decl::out,
-	_IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_struct_type_decl(Name::in, FieldTypes::in, Decl::out,
+		_IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Decl = (MR_Word) merc_build_struct_type_decl(Name, (tree) FieldTypes);
 ").
@@ -1207,75 +1297,141 @@ call_frontend_callback(FrontEndCallBack, Output) -->
 
 :- type gcc__op == gcc__tree_code.
 
-:- pragma c_code(plus_expr = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	plus_expr = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = PLUS_EXPR;
 ").
-:- pragma c_code(minus_expr = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	minus_expr = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = MINUS_EXPR;
 ").
-:- pragma c_code(mult_expr = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	mult_expr = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = MULT_EXPR;
 ").
-:- pragma c_code(rdiv_expr = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	rdiv_expr = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = RDIV_EXPR;
 ").
-:- pragma c_code(trunc_div_expr = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	trunc_div_expr = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = TRUNC_DIV_EXPR;
 ").
-:- pragma c_code(trunc_mod_expr = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	trunc_mod_expr = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = TRUNC_MOD_EXPR;
 ").
 
-:- pragma c_code(eq_expr = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	eq_expr = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = EQ_EXPR;
 ").
-:- pragma c_code(ne_expr = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	ne_expr = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = NE_EXPR;
 ").
-:- pragma c_code(lt_expr = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	lt_expr = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = LT_EXPR;
 ").
-:- pragma c_code(gt_expr = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	gt_expr = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = GT_EXPR;
 ").
-:- pragma c_code(le_expr = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	le_expr = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = LE_EXPR;
 ").
-:- pragma c_code(ge_expr = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	ge_expr = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = GE_EXPR;
 ").
 
-:- pragma c_code(truth_andif_expr = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	truth_andif_expr = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = TRUTH_ANDIF_EXPR;
 ").
-:- pragma c_code(truth_orif_expr = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	truth_orif_expr = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = TRUTH_ORIF_EXPR;
 ").
-:- pragma c_code(truth_not_expr = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	truth_not_expr = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = TRUTH_NOT_EXPR;
 ").
 
-:- pragma c_code(bit_ior_expr = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	bit_ior_expr = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = BIT_IOR_EXPR;
 ").
-:- pragma c_code(bit_xor_expr = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	bit_xor_expr = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = BIT_XOR_EXPR;
 ").
-:- pragma c_code(bit_and_expr = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	bit_and_expr = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = BIT_AND_EXPR;
 ").
-:- pragma c_code(bit_not_expr = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	bit_not_expr = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = BIT_NOT_EXPR;
 ").
 
-:- pragma c_code(lshift_expr = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	lshift_expr = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = LSHIFT_EXPR;
 ").
-:- pragma c_code(rshift_expr = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	rshift_expr = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = RSHIFT_EXPR;
 ").
 
-:- pragma c_code(array_ref = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	array_ref = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = ARRAY_REF;
 ").
 
@@ -1286,8 +1442,9 @@ call_frontend_callback(FrontEndCallBack, Output) -->
 
 :- type gcc__expr == gcc__tree.
 
-:- pragma c_code(expr_type(Expr::in, Type::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	expr_type(Expr::in, Type::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Type = (MR_Word) TREE_TYPE((tree) Expr);
 ").
@@ -1307,8 +1464,9 @@ build_int(Val, IntExpr) -->
 :- pred build_int_2(int, int, gcc__expr, io__state, io__state).
 :- mode build_int_2(in, in, out, di, uo) is det.
 
-:- pragma c_code(build_int_2(Low::in, High::in, Expr::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_int_2(Low::in, High::in, Expr::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Expr = (MR_Word) build_int_2(Low, High);
 ").
@@ -1321,8 +1479,9 @@ build_float(Val, Expr) -->
 :- pred build_real(gcc__type, float, gcc__expr, io__state, io__state).
 :- mode build_real(in, in, out, di, uo) is det.
 
-:- pragma c_code(build_real(Type::in, Value::in, Expr::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_real(Type::in, Value::in, Expr::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Expr = (MR_Word) merc_build_real((tree) Type, Value);
 ").
@@ -1330,14 +1489,16 @@ build_float(Val, Expr) -->
 build_string(String, Expr) -->
 	build_string(string__length(String) + 1, String, Expr).
 
-:- pragma c_code(build_string(Len::in, String::in, Expr::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_string(Len::in, String::in, Expr::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Expr = (MR_Word) merc_build_string(Len, String);
 ").
 
-:- pragma c_code(build_null_pointer(NullPointerExpr::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_null_pointer(NullPointerExpr::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	NullPointerExpr = (MR_Word) null_pointer_node;
 ").
@@ -1346,20 +1507,25 @@ build_string(String, Expr) -->
 % operator expressions
 %
 
-:- pragma c_code(build_unop(Op::in, Type::in, Arg::in, Expr::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_unop(Op::in, Type::in, Arg::in, Expr::out,
+		_IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Expr = (MR_Word) fold(build1(Op, (tree) Type, (tree) Arg));
 ").
 
-:- pragma c_code(build_binop(Op::in, Type::in, Arg1::in, Arg2::in, Expr::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_binop(Op::in, Type::in, Arg1::in, Arg2::in, Expr::out,
+		_IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Expr = (MR_Word) fold(build(Op, (tree) Type, (tree) Arg1, (tree) Arg2));
 ").
 
-:- pragma c_code(build_pointer_deref(Pointer::in, DerefExpr::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_pointer_deref(Pointer::in, DerefExpr::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	/* XXX should move to mercury-gcc.c */
 	tree ptr = (tree) Pointer;
@@ -1368,8 +1534,10 @@ build_string(String, Expr) -->
 	DerefExpr = (MR_Word) build1 (INDIRECT_REF, type, ptr);
 ").
 
-:- pragma c_code(build_component_ref(ObjectExpr::in, FieldDecl::in,
-	FieldExpr::out, _IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_component_ref(ObjectExpr::in, FieldDecl::in, FieldExpr::out,
+		_IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	/* XXX should move to mercury-gcc.c */
 	tree field_type = TREE_TYPE ((tree) FieldDecl);
@@ -1377,8 +1545,9 @@ build_string(String, Expr) -->
 		(tree) ObjectExpr, (tree) FieldDecl);
 ").
 
-:- pragma c_code(convert_type(Expr::in, Type::in, ResultExpr::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	convert_type(Expr::in, Type::in, ResultExpr::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	/*
 	** XXX should we use convert() instead?
@@ -1405,13 +1574,17 @@ build_addr_expr(Expr, AddrExpr) -->
 	build_unop(addr_expr, PtrType, Expr, AddrExpr).
 
 :- func addr_expr = gcc__op.		% & (address-of)
-:- pragma c_code(addr_expr = (Code::out), [will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	addr_expr = (Code::out),
+	[will_not_call_mercury, promise_pure],
+"
 	Code = ADDR_EXPR;
 ").
 
 :- pred mark_addressable(gcc__expr::in, io__state::di, io__state::uo) is det.
-:- pragma c_code(mark_addressable(Expr::in, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	mark_addressable(Expr::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	mark_addressable((tree) Expr);
 ").
@@ -1436,21 +1609,25 @@ build_func_addr_expr(FuncDecl, Expr) -->
 
 :- type gcc__arg_list == gcc__tree.
 
-:- pragma c_code(empty_arg_list(ArgList::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	empty_arg_list(ArgList::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	ArgList = (MR_Word) merc_empty_arg_list();
 ").
 
-:- pragma c_code(cons_arg_list(Arg::in, ArgList0::in, ArgList::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	cons_arg_list(Arg::in, ArgList0::in, ArgList::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	ArgList = (MR_Word)
 		merc_cons_arg_list((tree) Arg, (tree) ArgList0);
 ").
 
-:- pragma c_code(build_call_expr(Func::in, Args::in, IsTailCall::in,
-	CallExpr::out, _IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_call_expr(Func::in, Args::in, IsTailCall::in, CallExpr::out,
+		_IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	CallExpr = (MR_Word) merc_build_call_expr((tree) Func, (tree) Args,
 		(int) IsTailCall);
@@ -1469,22 +1646,26 @@ gcc__struct_field_initializer(FieldDecl, FieldDecl) --> [].
 
 :- type gcc__init_list == gcc__tree.
 
-:- pragma c_code(empty_init_list(InitList::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	empty_init_list(InitList::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	InitList = (MR_Word) merc_empty_init_list();
 ").
 
-:- pragma c_code(cons_init_list(Elem::in, Init::in,
-	InitList0::in, InitList::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	cons_init_list(Elem::in, Init::in, InitList0::in, InitList::out,
+		_IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	InitList = (MR_Word)
 		merc_cons_init_list((tree) Elem, (tree) Init, (tree) InitList0);
 ").
 
-:- pragma c_code(build_initializer_expr(InitList::in, Type::in,
-	Expr::out, _IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_initializer_expr(InitList::in, Type::in, Expr::out,
+		_IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Expr = (MR_Word) build(CONSTRUCTOR, (tree) Type, NULL_TREE,
 		(tree) InitList);
@@ -1496,10 +1677,12 @@ gcc__struct_field_initializer(FieldDecl, FieldDecl) --> [].
 % collector (see gcc/ggc.h).
 %
 
-:- pragma import(push_gc_context(di, uo), [will_not_call_mercury],
+:- pragma import(push_gc_context(di, uo),
+	[will_not_call_mercury, tabled_for_io],
 	"ggc_push_context").
 
-:- pragma import(pop_gc_context(di, uo), [will_not_call_mercury],
+:- pragma import(pop_gc_context(di, uo),
+	[will_not_call_mercury, tabled_for_io],
 	"ggc_pop_context").
 
 %-----------------------------------------------------------------------------%
@@ -1507,23 +1690,27 @@ gcc__struct_field_initializer(FieldDecl, FieldDecl) --> [].
 % Functions
 %
 
-:- pragma c_code(start_function(FuncDecl::in, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	start_function(FuncDecl::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	merc_start_function((tree) FuncDecl);
 ").
 
-:- pragma import(end_function(di, uo), [will_not_call_mercury],
+:- pragma import(end_function(di, uo),
+	[will_not_call_mercury, tabled_for_io],
 	"merc_end_function").
 
-:- pragma c_code(set_context(FileName::in, LineNumber::in, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	set_context(FileName::in, LineNumber::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	merc_set_context(FileName, LineNumber);
 ").
 
-:- pragma c_code(gen_line_note(FileName::in, LineNumber::in, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	gen_line_note(FileName::in, LineNumber::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	emit_line_note(FileName, LineNumber);
 ").
@@ -1537,15 +1724,17 @@ gcc__struct_field_initializer(FieldDecl, FieldDecl) --> [].
 % blocks
 %
 
-:- pragma c_code(start_block(_IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	start_block(_IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	pushlevel(0);
 	expand_start_bindings(0);
 ").
 
-:- pragma c_code(end_block(_IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	end_block(_IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	tree block = poplevel(/*keep=*/1, /*reverse=*/1, /*functionbody=*/0);
 	expand_end_bindings(block, /*mark_ends=*/1, /*dont_jump_in=*/0);
@@ -1555,48 +1744,57 @@ gcc__struct_field_initializer(FieldDecl, FieldDecl) --> [].
 % if-then-else
 %
 
-:- pragma c_code(gen_start_cond(Cond::in, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	gen_start_cond(Cond::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	expand_start_cond((tree) Cond, 0);
 ").
 
-:- pragma import(gen_start_else(di, uo), [will_not_call_mercury],
+:- pragma import(gen_start_else(di, uo),
+	[will_not_call_mercury, tabled_for_io],
 	"expand_start_else").
 
-:- pragma import(gen_end_cond(di, uo), [will_not_call_mercury],
+:- pragma import(gen_end_cond(di, uo),
+	[will_not_call_mercury, tabled_for_io],
 	"expand_end_cond").
 
 %
 % switch statements
 %
 
-:- pragma c_code(gen_start_switch(Expr::in, Type::in, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	gen_start_switch(Expr::in, Type::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	expand_start_case(1, (tree) Expr, (tree) Type, ""switch"");
 ").
 
-:- pragma c_code(gen_case_label(Value::in, Label::in,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	gen_case_label(Value::in, Label::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	merc_gen_switch_case_label((tree) Value, (tree) Label);
 ").
 
-:- pragma c_code(gen_default_case_label(Label::in, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	gen_default_case_label(Label::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	merc_gen_switch_case_label(NULL_TREE, (tree) Label);
 ").
 
-:- pragma c_code(gen_break(_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C",
+	gen_break(_IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	int result = expand_exit_something();
 	assert(result != 0);
 ").
 
-:- pragma c_code(gen_end_switch(Expr::in, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	gen_end_switch(Expr::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	expand_end_case((tree) Expr);
 ").
@@ -1609,22 +1807,25 @@ gcc__struct_field_initializer(FieldDecl, FieldDecl) --> [].
 	% C type `struct nesting *'
 :- type gcc__loop ---> gcc__loop(c_pointer).
 
-:- pragma c_code(gen_start_loop(Loop::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	gen_start_loop(Loop::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Loop = (MR_Word) expand_start_loop(0);
 ").
 
-:- pragma c_code(gen_exit_loop_if_false(Loop::in, Expr::in, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	gen_exit_loop_if_false(Loop::in, Expr::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	int res = expand_exit_loop_if_false((struct nesting *) Loop,
 			(tree) Expr);
 	assert(res != 0);
 ").
 
-:- pragma c_code(gen_end_loop(_IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	gen_end_loop(_IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	expand_end_loop();
 ").
@@ -1633,14 +1834,16 @@ gcc__struct_field_initializer(FieldDecl, FieldDecl) --> [].
 % calls and return
 %
 
-:- pragma c_code(gen_expr_stmt(Expr::in, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	gen_expr_stmt(Expr::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	merc_gen_expr_stmt((tree) Expr);
 ").
 
-:- pragma c_code(gen_return(Expr::in, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	gen_return(Expr::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	merc_gen_return((tree) Expr);
 ").
@@ -1649,8 +1852,9 @@ gcc__struct_field_initializer(FieldDecl, FieldDecl) --> [].
 % assignment
 %
 
-:- pragma c_code(gen_assign(LHS::in, RHS::in, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	gen_assign(LHS::in, RHS::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	merc_gen_assign((tree) LHS, (tree) RHS);
 ").
@@ -1661,26 +1865,30 @@ gcc__struct_field_initializer(FieldDecl, FieldDecl) --> [].
 
 :- type gcc__label == gcc__tree.
 
-:- pragma c_code(build_label(Name::in, Label::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_label(Name::in, Label::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Label = (MR_Word) merc_build_label(Name);
 ").
 
-:- pragma c_code(build_unnamed_label(Label::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	build_unnamed_label(Label::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Label = (MR_Word) merc_build_label(NULL);
 ").
 
-:- pragma c_code(gen_label(Label::in, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	gen_label(Label::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	expand_label((tree) Label);
 ").
 
-:- pragma c_code(gen_goto(Label::in, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	gen_goto(Label::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	expand_goto((tree) Label);
 ").

@@ -553,8 +553,9 @@ make_command_string(String0, QuoteType, String) :-
 
 	% Are we compiling in a win32 environment?
 :- pred use_win32 is semidet.
-:- pragma c_code(use_win32,
-	[will_not_call_mercury, thread_safe],
+:- pragma foreign_proc("C",
+	use_win32,
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 #ifdef MR_WIN32
 	SUCCESS_INDICATOR = 1;

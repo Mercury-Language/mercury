@@ -185,8 +185,8 @@ setup_signal_handlers_2(_::out, _::di, _::uo) :-
 	error("setup_signal_handlers_2").
 
 :- pragma foreign_proc("C",
-		setup_signal_handlers_2(SigintHandler::out, IO0::di, IO::uo),
-		[will_not_call_mercury, promise_pure],
+	setup_signal_handlers_2(SigintHandler::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
 	IO = IO0;
 	MC_signalled = MR_FALSE;
@@ -225,8 +225,8 @@ restore_signal_handlers_2(_::in, _::di, _::uo) :-
 	error("restore_signal_handlers_2").
 
 :- pragma foreign_proc("C",
-		restore_signal_handlers_2(SigintHandler::in, IO0::di, IO::uo),
-		[will_not_call_mercury, promise_pure],
+	restore_signal_handlers_2(SigintHandler::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
 	IO = IO0;
 	MR_set_signal_action(SIGINT, (MR_signal_action *) SigintHandler,
@@ -246,8 +246,8 @@ restore_signal_handlers_2(_::in, _::di, _::uo) :-
 check_for_signal(0::out, 0::out, _::di, _::uo).
 
 :- pragma foreign_proc("C",
-		check_for_signal(Signalled::out, Signal::out, IO0::di, IO::uo),
-		[will_not_call_mercury, promise_pure],
+	check_for_signal(Signalled::out, Signal::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	IO = IO0;
 	Signalled = (MC_signalled ? 1 : 0);
@@ -264,7 +264,7 @@ raise_signal(_::in, IO::di, IO::uo).
 
 :- pragma foreign_proc("C",
 	raise_signal(Signal::in, IO0::di, IO::uo),
-		[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	IO = IO0;
 	raise(Signal);
@@ -311,9 +311,9 @@ call_in_forked_process_2(_::in(io_pred), _::out, _::out, _::di, _::uo) :-
 	error("call_in_forked_process_2").
 
 :- pragma foreign_proc("C",
-		call_in_forked_process_2(Pred::in(io_pred),
-			ForkStatus::out, Status::out, IO0::di, IO::uo),
-			[may_call_mercury, promise_pure],
+	call_in_forked_process_2(Pred::in(io_pred),
+		ForkStatus::out, Status::out, IO0::di, IO::uo),
+	[may_call_mercury, promise_pure, tabled_for_io],
 "{
 #ifdef MC_CAN_FORK
 	pid_t child_pid;

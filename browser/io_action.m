@@ -87,7 +87,7 @@ update_io_action_map(IoActionNum, ProcName, IsFunc, Args,
 :- pragma foreign_proc("C",
 	pickup_io_action(SeqNum::in, ProcName::out, IsFunc::out, Args::out,
 		S0::di, S::uo),
-	[thread_safe, promise_pure],
+	[thread_safe, promise_pure, tabled_for_io],
 "{
 	const char	*problem;
 	const char	*proc_name;

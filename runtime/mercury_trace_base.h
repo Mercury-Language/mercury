@@ -170,6 +170,9 @@ extern	MR_IoActionNum	MR_io_tabling_start;
 /* The highest I/O action number which is to be tabled. */
 extern	MR_IoActionNum	MR_io_tabling_end;
 
+/* The flag that controls whether we should generate diagnostics. */
+extern	MR_bool		MR_io_tabling_debug;
+
 /*
 ** These functions will report the number of the last event,
 ** if there have been some events, and will do nothing otherwise.

@@ -606,6 +606,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 
 	% --trace-table-io-decl is an extension of --trace-table-io
 	option_implies(trace_table_io_decl, trace_table_io, bool(yes)),
+	% --trace-table-io-require is compulsory application of --trace-table-io
+	option_implies(trace_table_io_require, trace_table_io, bool(yes)),
 
 	% Execution tracing requires
 	% 	- disabling optimizations that would change
