@@ -1238,7 +1238,7 @@ void sys_init_unify_type_desc_module(void) { return; }
 #else
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(std_util, type_desc, 0,
-	MR_TYPECTOR_REP_C_POINTER);
+	MR_TYPECTOR_REP_TYPEINFO);
 
 MR_define_extern_entry(mercury____Unify___std_util__type_desc_0_0);
 MR_define_extern_entry(mercury____Compare___std_util__type_desc_0_0);
@@ -1301,7 +1301,7 @@ void sys_init_unify_type_desc_module(void) {
 :- pragma foreign_code("MC++", "
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(std_util, type_desc, 0, 
-        MR_TYPECTOR_REP_C_POINTER)
+        MR_TYPECTOR_REP_TYPEINFO)
 
 static int MR_compare_type_info(MR_TypeInfo x, MR_TypeInfo y) {
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
