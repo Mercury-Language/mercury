@@ -4,25 +4,36 @@ taken when releasing a new version of Mercury.
 1.  Update the version number in
 	README
 	INSTALL (various places)
-	bindist/bindist.README
-	bindist/bindist.INSTALL
-	bindist/bindist.configure.in
+	Mmake
+	bindist/Mmake
 	configure.in
 	library/library.m
-    and update the NEWS and RELEASE_NOTES files.  The RELEASE_NOTES file
-    should include the contents of the NEWS file.
+    and update the NEWS, RELEASE_NOTES, and HISTORY files. 
+    The RELEASE_NOTES file should include the contents of the NEWS file.
+    The HISTORY file should include the NEWS files from previous releases.
 
 2.  Checkout a fresh copy, and do
-	autoconf
-	mercury_cv_low_tag_bits=2 sh configure
-	mmake MMAKEFLAGS='MCFLAGS="-O5 --num-tag-bits 2" -j4' tar
 
-3.  Fix the tar file so that it unpacks into the directory `mercury-<version>'
-    rather than `mercury'.
+	touch Mmake.params &&
+	autoconf &&
+	mercury_cv_low_tag_bits=2 \
+	mercury_cv_bits_per_word=32 \
+	mercury_cv_unboxed_floats=no \
+	sh configure --prefix=$INSTALL_DIR &&
+	mmake MMAKEFLAGS='EXTRA_MCFLAGS="-O5 --opt-space" -j6' tar
 
-4.  Test it on lots of architectures.
+    This step should be done automatically by tools/test_mercury every night,
+    so you should be able to just grab the mercury-latest-stable.tar.gz
+    file from /home/mercury/public/testing/test_dirs/murlibobo.
 
-5.  Copy the gzipped tar file to ~fjh/www_public/mercury, and
+3.  Test it on lots of architectures.
+
+    Make sure you test that all the programs in the `samples' directory
+    work.
+
+4.  Build binary distributions for those architectures.
+
+5.  Copy the gzipped tar files to ~fjh/www_public/mercury, and
     to the turiel ftp site ftp://turiel.cs.mu.oz.au/pub/mercury.
     Email kostis@cs.sunysb.edu (Konstantinos Sagonas) to tell him
     to make copies of it on ftp://ftp.cs.sunysb.edu/pub/XSB/mercury
