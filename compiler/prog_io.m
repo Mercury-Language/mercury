@@ -65,6 +65,7 @@
 				%      VarNames, PredName, ArgTypes, Cond
 			; 	mode(varset, sym_name, list(mode), condition)
 				%      VarNames, PredName, ArgModes, Cond
+			;	unimplemented	% XXX
 			; 	error.
 
 %-----------------------------------------------------------------------------%
@@ -108,7 +109,7 @@
 			;	eqv_type(sym_name, list(type_param), type).
 
 	% XXX constructor should be pair(sym_name, list(type)) not term.
-:- type constructor	=	term.
+:- type constructor	==	term.
 
 	% XXX type parameters should be variables not terms
 :- type type_param	=	term.
@@ -517,6 +518,11 @@ process_decl(VarSet, "interface", [], ok(module_defn(VarSet, interface))).
 process_decl(VarSet, "implementation", [],
 				ok(module_defn(VarSet, implementation))).
 
+	% XXX
+
+process_decl(VarSet, "module", [_ModuleName], ok(unimplemented)).
+process_decl(VarSet, "end_module", [_ModuleName], ok(unimplemented)).
+
 :- pred parse_type_decl(varset, term, maybe(item)).
 :- mode parse_type_decl(input, input, output).
 parse_type_decl(VarSet, TypeDecl, Result) :-
@@ -772,7 +778,7 @@ sum_to_list(Term, List) :-
 	% general predicate to convert terms separated by any specified
 	% operator into a list
 
-:- pred binop_term_to_list(const, term, list(term)).
+:- pred binop_term_to_list(string, term, list(term)).
 :- mode binop_term_to_list(input, input, output).
 binop_term_to_list(Op, Term, List) :-
 	binop_term_to_list_2(Op, Term, [], List).
@@ -791,29 +797,32 @@ binop_term_to_list_2(Op, Term, List0, List) :-
 
 %-----------------------------------------------------------------------------%
 
+	% XXX
+
 :- pred process_pred(varset, term, condition, maybe(item)).
+:- mode process_pred(input, input, input, output).
 process_pred(VarSet, PredType, Cond, Result) :-
-	(if some [F,As]
-		PredType = term_functor(term_atom(F), As)
-	then
-		Result = ok(pred(VarSet, F, As, Cond))
-	else
-		Result = error("atom expected after `:- pred' declaration",
-				PredType)
-	).
+	parse_qualified_term(PredType, "`:- pred' declaration", R),
+	process_pred_2(R, VarSet, Cond, Result).
+
+:- pred process_pred_2(maybe_functor, varset, condition, maybe(item)).
+:- mode process_pred_2(input, input, input, output).
+process_pred_2(ok(F, As), VarSet, Cond, ok(pred(VarSet, F, As, Cond))).
+process_pred_2(error(M, T), _, _, error(M, T)).
 
 	% A rule declaration is just the same as a pred declaration,
-	% except that there are two hidden arguments. 
+	% except that it is for DCG rules, so there are two hidden arguments. 
+
 :- pred process_rule(varset, term, condition, maybe(item)).
+:- mode process_rule(input, input, input, output).
 process_rule(VarSet, RuleType, Cond, Result) :-
-	(if some [F,As]
-		RuleType = term_functor(term_atom(F), As)
-	then
-		Result = ok(rule(VarSet, F, As, Cond))
-	else
-		Result = error("atom expected after `:- rule' declaration",
-				RuleType)
-	).
+	parse_qualified_term(RuleType, "`:- rule' declaration", R),
+	process_rule_2(R, VarSet, Cond, Result).
+
+:- pred process_rule_2(maybe_functor, varset, condition, maybe(item)).
+:- mode process_rule_2(input, input, input, output).
+process_rule_2(ok(F, As), VarSet, Cond, ok(rule(VarSet, F, As, Cond))).
+process_rule_2(error(M, T), _, _, error(M, T)).
 
 /** JUNK
 process_rule(VarSet, RuleType, Cond, Result) :-
@@ -823,7 +832,6 @@ process_rule(VarSet, RuleType, Cond, Result) :-
 	PredType = term_functor(F, PredArgs),
 	process_pred(VarSet1, PredType, Cond, Result).
 **/
-
 
 %-----------------------------------------------------------------------------%
 
@@ -952,8 +960,9 @@ parse_mode_decl(VarSet, ModeDefn, Result) :-
 		process_mode_defn(R, VarSet, Condition, Result)
 	else
 		% XXX
-		Result = error("`:- mode p(...)' declarations not implemented",
-				ModeDefn)
+		% Result = error("`:- mode p(...)' declarations not implemented",
+		%		ModeDefn)
+		Result = ok(unimplemented)
 	).
 
 :- pred mode_op(term, term, term).
@@ -1023,7 +1032,7 @@ convert_mode(Term, Mode) :-
 		parse_qualified_term(Term, "mode definition", R),
 		R = ok(Name, Args),	% XXX should improve error reporting
 		convert_inst_list(Args, ConvertedArgs),
-		Mode = user_defined(Name, ConvertedArgs)
+		Mode = user_defined_mode(Name, ConvertedArgs)
 	).
 
 :- pred process_mode_defn(maybe(mode_defn), varset, condition, maybe(item)).
@@ -1179,11 +1188,12 @@ parse_export_op_decl(VarSet, OpSpec, Result) :-
 	% Parse a comma-separated list (misleading described as
 	% a "conjunction") of module specifiers.
 
-:- pred parse_module_spec_list(term, maybe(list(module_specifier))).
+:- pred parse_module_spec_list(term, maybe(sym_list)).
 :- mode parse_module_spec_list(input, output).
 parse_module_spec_list(Term, Result) :-
 	conjunction_to_list(Term, List),
-	parse_module_spec_list_2(List, Result).
+	parse_module_spec_list_2(List, R),
+	process_module_spec_list(R, Result).
 
 :- pred parse_module_spec_list_2(list(term), maybe(list(module_specifier))).
 :- mode parse_module_spec_list_2(input, output).
@@ -1193,15 +1203,21 @@ parse_module_spec_list_2(X.Xs, Result) :-
 	parse_module_spec_list_2(Xs, Xs_Result),
 	combine_list_results(X_Result, Xs_Result, Result).
 
+:- pred process_module_spec_list(maybe(list(module_specifier)),
+				 maybe(sym_list)).
+:- mode process_module_spec_list(input, output).
+process_module_spec_list(ok(X), ok(module(X))).
+process_module_spec_list(error(M, T), error(M, T)).
 
 	% Parse a comma-separated list (misleading described as
 	% a "conjunction") of symbol specifiers.
 
-:- pred parse_sym_spec_list(term, maybe(list(sym_specifier))).
+:- pred parse_sym_spec_list(term, maybe(sym_list)).
 :- mode parse_sym_spec_list(input, output).
 parse_sym_spec_list(Term, Result) :-
 	conjunction_to_list(Term, List),
-	parse_sym_spec_list_2(List, Result).
+	parse_sym_spec_list_2(List, R),
+	process_sym_spec_list(R, Result).
 
 :- pred parse_sym_spec_list_2(list(term), maybe(list(sym_specifier))).
 :- mode parse_sym_spec_list_2(input, output).
@@ -1211,15 +1227,22 @@ parse_sym_spec_list_2(X.Xs, Result) :-
 	parse_sym_spec_list_2(Xs, Xs_Result),
 	combine_list_results(X_Result, Xs_Result, Result).
 
+:- pred process_sym_spec_list(maybe(list(sym_specifier)),
+				 maybe(sym_list)).
+:- mode process_sym_spec_list(input, output).
+process_sym_spec_list(ok(X), ok(sym(X))).
+process_sym_spec_list(error(M, T), error(M, T)).
+
 
 	% Parse a comma-separated list (misleading described as
 	% a "conjunction") of predicate specifiers.
 
-:- pred parse_pred_spec_list(term, maybe(list(pred_specifier))).
+:- pred parse_pred_spec_list(term, maybe(sym_list)).
 :- mode parse_pred_spec_list(input, output).
 parse_pred_spec_list(Term, Result) :-
 	conjunction_to_list(Term, List),
-	parse_pred_spec_list_2(List, Result).
+	parse_pred_spec_list_2(List, R),
+	process_pred_spec_list(R, Result).
 
 :- pred parse_pred_spec_list_2(list(term), maybe(list(pred_specifier))).
 :- mode parse_pred_spec_list_2(input, output).
@@ -1229,15 +1252,22 @@ parse_pred_spec_list_2(X.Xs, Result) :-
 	parse_pred_spec_list_2(Xs, Xs_Result),
 	combine_list_results(X_Result, Xs_Result, Result).
 
+:- pred process_pred_spec_list(maybe(list(pred_specifier)),
+				 maybe(sym_list)).
+:- mode process_pred_spec_list(input, output).
+process_pred_spec_list(ok(X), ok(pred(X))).
+process_pred_spec_list(error(M, T), error(M, T)).
+
 
 	% Parse a comma-separated list (misleading described as
 	% a "conjunction") of constructor specifiers.
 
-:- pred parse_cons_spec_list(term, maybe(list(cons_specifier))).
+:- pred parse_cons_spec_list(term, maybe(sym_list)).
 :- mode parse_cons_spec_list(input, output).
 parse_cons_spec_list(Term, Result) :-
 	conjunction_to_list(Term, List),
-	parse_cons_spec_list_2(List, Result).
+	parse_cons_spec_list_2(List, R),
+	process_cons_spec_list(R, Result).
 
 :- pred parse_cons_spec_list_2(list(term), maybe(list(cons_specifier))).
 :- mode parse_cons_spec_list_2(input, output).
@@ -1247,15 +1277,22 @@ parse_cons_spec_list_2(X.Xs, Result) :-
 	parse_cons_spec_list_2(Xs, Xs_Result),
 	combine_list_results(X_Result, Xs_Result, Result).
 
+:- pred process_cons_spec_list(maybe(list(cons_specifier)),
+				 maybe(sym_list)).
+:- mode process_cons_spec_list(input, output).
+process_cons_spec_list(ok(X), ok(cons(X))).
+process_cons_spec_list(error(M, T), error(M, T)).
+
 
 	% Parse a comma-separated list (misleading described as
 	% a "conjunction") of type specifiers.
 
-:- pred parse_type_spec_list(term, maybe(list(sym_name_specifier))).
+:- pred parse_type_spec_list(term, maybe(sym_list)).
 :- mode parse_type_spec_list(input, output).
 parse_type_spec_list(Term, Result) :-
 	conjunction_to_list(Term, List),
-	parse_type_spec_list_2(List, Result).
+	parse_type_spec_list_2(List, R),
+	process_type_spec_list(R, Result).
 
 :- pred parse_type_spec_list_2(list(term), maybe(list(sym_name_specifier))).
 :- mode parse_type_spec_list_2(input, output).
@@ -1265,15 +1302,22 @@ parse_type_spec_list_2(X.Xs, Result) :-
 	parse_type_spec_list_2(Xs, Xs_Result),
 	combine_list_results(X_Result, Xs_Result, Result).
 
+:- pred process_type_spec_list(maybe(list(sym_name_specifier)),
+				 maybe(sym_list)).
+:- mode process_type_spec_list(input, output).
+process_type_spec_list(ok(X), ok(type(X))).
+process_type_spec_list(error(M, T), error(M, T)).
+
 
 	% Parse a comma-separated list (misleading described as
 	% a "conjunction") of adt specifiers.
 
-:- pred parse_adt_spec_list(term, maybe(list(sym_name_specifier))).
+:- pred parse_adt_spec_list(term, maybe(sym_list)).
 :- mode parse_adt_spec_list(input, output).
 parse_adt_spec_list(Term, Result) :-
 	conjunction_to_list(Term, List),
-	parse_adt_spec_list_2(List, Result).
+	parse_adt_spec_list_2(List, R),
+	process_adt_spec_list(R, Result).
 
 :- pred parse_adt_spec_list_2(list(term), maybe(list(sym_name_specifier))).
 :- mode parse_adt_spec_list_2(input, output).
@@ -1283,15 +1327,22 @@ parse_adt_spec_list_2(X.Xs, Result) :-
 	parse_adt_spec_list_2(Xs, Xs_Result),
 	combine_list_results(X_Result, Xs_Result, Result).
 
+:- pred process_adt_spec_list(maybe(list(sym_name_specifier)),
+				 maybe(sym_list)).
+:- mode process_adt_spec_list(input, output).
+process_adt_spec_list(ok(X), ok(adt(X))).
+process_adt_spec_list(error(M, T), error(M, T)).
+
 
 	% Parse a comma-separated list (misleading described as
 	% a "conjunction") of operator specifiers.
 
-:- pred parse_op_spec_list(term, maybe(list(sym_name_specifier))).
+:- pred parse_op_spec_list(term, maybe(sym_list)).
 :- mode parse_op_spec_list(input, output).
 parse_op_spec_list(Term, Result) :-
 	conjunction_to_list(Term, List),
-	parse_op_spec_list_2(List, Result).
+	parse_op_spec_list_2(List, R),
+	process_op_spec_list(R, Result).
 
 :- pred parse_op_spec_list_2(list(term), maybe(list(sym_name_specifier))).
 :- mode parse_op_spec_list_2(input, output).
@@ -1300,6 +1351,12 @@ parse_op_spec_list_2(X.Xs, Result) :-
 	parse_op_specifier(X, X_Result),
 	parse_op_spec_list_2(Xs, Xs_Result),
 	combine_list_results(X_Result, Xs_Result, Result).
+
+:- pred process_op_spec_list(maybe(list(op_specifier)),
+				 maybe(sym_list)).
+:- mode process_op_spec_list(input, output).
+process_op_spec_list(ok(X), ok(op(X))).
+process_op_spec_list(error(M, T), error(M, T)).
 
 %-----------------------------------------------------------------------------%
 
@@ -1703,13 +1760,21 @@ parse_type_specifier(Term, Result) :-
 parse_adt_specifier(Term, Result) :-
 	parse_symbol_name_specifier(Term, Result).
 
+%-----------------------------------------------------------------------------%
+
 %	For the moment, an OpSpecifier is just a symbol name specifier.
 % 	XXX We should allow specifying the fixity of an operator
 
 :- pred parse_op_specifier(term, maybe(op_specifier)).
 :- mode parse_op_specifier(input, output).
-parse_op_specifier(Term, sym(Result)) :-
-	parse_symbol_name_specifier(Term, Result).
+parse_op_specifier(Term, Result) :-
+	parse_symbol_name_specifier(Term, R),
+	process_op_specifier(R, Result).
+
+:- pred process_op_specifier(maybe(sym_name_specifier), maybe(op_specifier)).
+:- mode process_op_specifier(input, output).
+process_op_specifier(ok(X), ok(sym(X))).
+process_op_specifier(error(M,T), error(M,T)).
 	
 %-----------------------------------------------------------------------------%
 
