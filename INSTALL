@@ -2,7 +2,7 @@
 #
 # INSTALL - installation instructions and installation script.
 #
-# You need GNU Make and GNU C.
+# You need GNU C (2.6.3 or later) and GNU Make.
 # Make sure that they are somewhere in your path.
 #
 # Step 0.  Extract the files from the gzipped tar archive.
@@ -30,7 +30,7 @@
 #	   If your system supports shared libraries, but `configure' says
 #	   Mercury does not support shared libraries on this system,
 #	   you can try setting the LINK_SHARED_OBJECT, SO, PIC, and PIC_O
-#	   variables in the Mmake file.
+#	   variables in the Mmake.common file.
 #
 #	   Efficiency will be much improved if Mercury can use gcc global
 #	   register variables.  Currently these are supported for mips,
