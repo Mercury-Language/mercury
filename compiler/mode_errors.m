@@ -84,12 +84,9 @@
 			% a conjunction contains one or more unscheduleable
 			% goals; schedule_culprit gives the reason why
 			% they couldn't be scheduled.
-	;	mode_error_final_inst(int, var, inst, inst, final_inst_error)
+	;	mode_error_final_inst(int, var, inst, inst, final_inst_error).
 			% one of the head variables did not have the
 			% expected final inst on exit from the proc
-	;	mode_error_undefined_mode_in_lambda.
-			% This is a dummy error - the actual message
-			% is output by module_qual.m.
 
 :- type schedule_culprit
 	--->	goal_itself_was_impure
@@ -213,7 +210,6 @@ report_mode_error(mode_error_final_inst(ArgNum, Var, VarInst, Inst, Reason),
 		ModeInfo) -->
 	report_mode_error_final_inst(ModeInfo, ArgNum, Var, VarInst, Inst,
 		Reason).
-report_mode_error(mode_error_undefined_mode_in_lambda, _ModeInfo) --> [].
 
 %-----------------------------------------------------------------------------%
 
