@@ -1532,6 +1532,11 @@ no              erroneous       det             multi
 yes             failure         semidet         nondet
 @end example
 
+(Note: the "Can fail?" column here indicates only whether the procedure
+can fail before producing at least one solution; attempts to find a
+@emph{second} solution to a particular call, e.g. for a procedure
+with determinism @samp{multi}, are always allowed to fail.)
+
 The determinism of each mode of a predicate or function
 is indicated by an annotation on the mode declaration.
 For example:
