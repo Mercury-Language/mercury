@@ -72,17 +72,6 @@ peephole__opt_instr(Instr0, Comment0, Instrs0, Instrs, Mod) :-
 :- pred peephole__match(instr, string, list(instruction), list(instruction)).
 :- mode peephole__match(in, in, in, out) is semidet.
 
-	% A `goto' can be deleted if the target of the jump is the very
-	% next instruction:
-	%
-	%	goto next;
-	%	<comments, labels>	=>	<comments, labels>
-	%     next:			      next:
-
-peephole__match(goto(label(Label)), _, Instrs0, Instrs) :-
-	opt_util__is_this_label_next(Label, Instrs0, _),
-	Instrs = Instrs0.
-
 	% A `computed_goto' with all branches pointing to the same 
 	% label can be replaced with an unconditional goto. 
 
@@ -93,42 +82,15 @@ peephole__match(computed_goto(_, Labels), Comment, Instrs0, Instrs) :-
 
 	% A conditional branch whose condition is constant
 	% can be either elimininated or replaced by an unconditional goto.
-	%
-	% A conditional branch over a branch can be replaced
-	% by an inverse conditional branch:
-	%
-	%	if (x) goto skip;		if (!x) goto somewhere
-	%	<comments>			omit <comments>
-	%	goto somewhere;		=>	<comments, labels>
-	%	<comments, labels>	      skip:
-	%     skip:
-	%
-	% A conditional branch to the very next instruction
-	% can be deleted:
-	%
-	%	if (x) goto next;	=>	<comments, labels>
-	%	<comments, labels>	      next:
-	%     next:
 
 peephole__match(if_val(Rval, label(Target)), Comment, Instrs0, Instrs) :-
-	( opt_util__is_const_condition(Rval, Taken) ->
-		(
-			Taken = yes,
-			Instrs = [goto(label(Target)) - Comment | Instrs0]
-		;
-			Taken = no,
-			Instrs = Instrs0
-		)
+	opt_util__is_const_condition(Rval, Taken),
+	(
+		Taken = yes,
+		Instrs = [goto(label(Target)) - Comment | Instrs0]
 	;
-		opt_util__skip_comments(Instrs0, Instrs1),
-		( Instrs1 = [goto(Somewhere) - C2 | Instrs2] ->
-			opt_util__is_this_label_next(Target, Instrs2, _),
-			code_util__neg_rval(Rval, NotRval),
-			Instrs = [if_val(NotRval, Somewhere) - C2 | Instrs2]
-		;
-			opt_util__is_this_label_next(Target, Instrs1, _),
-			Instrs = Instrs0
-		)
+		Taken = no,
+		Instrs = Instrs0
 	).
 
 	% If a `mkframe' is followed by a `modframe', with the instructions
