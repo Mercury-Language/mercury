@@ -68,7 +68,8 @@ TESTDIR=/home/mercury/public/test_mercury
 DIR=$TESTDIR/test_dirs/$HOST
 INSTALL_DIR=/home/mercury/public/mercury-latest/$FULLARCH
 
-BETA_FTPDIR=/home/tsa/ftp/pub/mercury/beta-releases
+BETA_FTPHOST=ftp.mercury.cs.mu.oz.au
+BETA_FTPDIR=/home/ftp/pub/mercury/beta-releases
 BETA_WEBDIR=/local/dept/w3/unsupported/docs/mercury/download/files/beta-releases
 
 STABLE=$DIR/mercury-latest-stable
@@ -466,9 +467,10 @@ cd ..
 : update the unstable release
 
 case $HOST in murlibobo)
-	rm -f $BETA_FTPDIR/mercury-*-rotd-*-unstable.tar.gz &&
-	cp mercury-latest-unstable/mercury-*-$version-unstable.tar.gz \
-		$BETA_FTPDIR 
+	rsh $BETA_FTPHOST \
+		"rm -f $BETA_FTPDIR/mercury-*-rotd-*-unstable.tar.gz" &&
+	rcp mercury-latest-unstable/mercury-*-$version-unstable.tar.gz \
+		$BETA_FTPHOST/$BETA_FTPDIR 
 	rm -f $BETA_WEBDIR/mercury-*-rotd-*-unstable.tar.gz &&
 	cp mercury-latest-unstable/mercury-*-$version-unstable.tar.gz \
 		$BETA_WEBDIR
@@ -517,13 +519,14 @@ case $status in
 	        $STABLE/mercury-tests-$version.tar.gz &&
 
 		# Only delete the stable rotds.
+	    rsh $BETA_FTPHOST "\
 	    rm -f $BETA_FTPDIR/mercury-*-rotd-*[0-9].tar.gz &&
 	    ln $BETA_FTPDIR/mercury-compiler-$version-unstable.tar.gz \
 	        $BETA_FTPDIR/mercury-compiler-$version.tar.gz &&
 	    ln $BETA_FTPDIR/mercury-extras-$version-unstable.tar.gz \
 	        $BETA_FTPDIR/mercury-extras-$version.tar.gz &&
 	    ln $BETA_FTPDIR/mercury-tests-$version-unstable.tar.gz \
-	        $BETA_FTPDIR/mercury-tests-$version.tar.gz &&
+	        $BETA_FTPDIR/mercury-tests-$version.tar.gz" &&
 
 		# Only delete the stable rotds.
 	    rm -f $BETA_WEBDIR/mercury-*-rotd-*[0-9].tar.gz &&
