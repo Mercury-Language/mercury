@@ -148,7 +148,7 @@ ALL_MS_CLFLAGS	= $(MS_CLFLAGS) $(EXTRA_MS_CLFLAGS) $(TARGET_MS_CLFLAGS) \
 		$(LIB_MS_CLFLAGS)
 MS_CLFLAGS	=
 EXTRA_MS_CLFLAGS =
-MS_VC7_INCLUDES = -I`cygpath -w $(MS_VISUALCPP_DIR)/include`
+MS_VC7_INCLUDES = -I`cygpath -w "$(MS_VISUALCPP_DIR)"`/include
 LIB_MS_CLFLAGS	= $(MS_VC7_INCLUDES) $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
 
 # MS_CL_NOASM can be used to turn off assembly generation.  Use
