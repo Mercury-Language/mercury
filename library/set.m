@@ -70,13 +70,14 @@
 :- pred set__superset(set(T), set(T)).
 :- mode set__superset(in, in) is semidet.
 
-	% `set_member(X, Set)' is true iff `X' is a member of `Set'.
+	% `set__member(X, Set)' is true iff `X' is a member of `Set'.
 
 :- pred set__member(T, set(T)).
 :- mode set__member(in, in) is semidet.
 :- mode set__member(out, in) is nondet.
 
-	% `set_member(X, Set, Res)' returns yes iff `X' is a member of `Set'.
+	% `set_is_member(X, Set, Result)' returns
+	% `Result = yes' iff `X' is a member of `Set'.
 
 :- pred set__is_member(T, set(T), bool).
 :- mode set__is_member(in, in, out) is det.

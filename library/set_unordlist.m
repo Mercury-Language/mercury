@@ -70,14 +70,14 @@
 :- pred set_unordlist__superset(set_unordlist(T), set_unordlist(T)).
 :- mode set_unordlist__superset(in, in) is semidet.
 
-	% `set_unordlist_member(X, Set)' is true iff `X' is a member of `Set'.
+	% `set_unordlist__member(X, Set)' is true iff `X' is a member of `Set'.
 
 :- pred set_unordlist__member(T, set_unordlist(T)).
 :- mode set_unordlist__member(in, in) is semidet.
 :- mode set_unordlist__member(out, in) is nondet.
 
-	% `set_unordlist_member(X, Set, Res)' returns yes iff `X' is a member of
-	% `Set'.
+	% `set_unordlist__is_member(X, Set, Result)' returns
+	% `Result = yes' iff `X' is a member of `Set'.
 
 :- pred set_unordlist__is_member(T, set_unordlist(T), bool).
 :- mode set_unordlist__is_member(in, in, out) is det.
