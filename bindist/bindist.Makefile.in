@@ -154,7 +154,7 @@ post_install: install_cgi_progs install_gac
 # they refer to the script by different paths.
 
 .PHONY: install_cgi_progs
-install_cgi_progs: $(INSTALL_CGI_PROG)
+install_cgi_progs:
 	# $(INSTALL_CGI_DIR) is likely to be writeable only by root or
 	# the www system administrator, which is why we don't consider a
 	# failure of this action to be an error. If the command fails,
