@@ -11,7 +11,7 @@
  * provided the above notices are retained, and a notice that the code was
  * modified is included with the above copyright notice.
  */
-/* Boehm, May 30, 1995 5:04 pm PDT */
+/* Boehm, December 7, 1995 10:03 am PST */
  
 #ifndef CONFIG_H
 
@@ -52,7 +52,7 @@
 #    if defined(ultrix) || defined(__ultrix)
 #	define ULTRIX
 #    else
-#	if defined(_SYSTYPE_SVR4) || defined(__SYSTYPE_SVR4)
+#	if defined(_SYSTYPE_SVR4) || defined(SYSTYPE_SVR4) || defined(__SYSTYPE_SVR4__)
 #	  define IRIX5
 #	else
 #	  define RISCOS  /* or IRIX 4.X */
@@ -181,6 +181,11 @@
 # if defined(_MSDOS) && (_M_IX86 == 300) || (_M_IX86 == 400)
 #   define I386
 #   define MSWIN32	/* or Win32s */
+#   define mach_type_known
+# endif
+# if defined(GO32)
+#   define I386
+#   define DJGPP  /* MSDOS running the DJGPP port of GCC */
 #   define mach_type_known
 # endif
 # if defined(__BORLANDC__)
@@ -353,6 +358,7 @@
 #	define OS_TYPE "AMIGA"
  	    	/* STACKBOTTOM and DATASTART handled specially	*/
  	    	/* in os_dep.c					*/
+# 	define DATAEND	/* not needed */
 #   endif
 #   ifdef MACOS
 #     ifndef __LOWMEM__
@@ -361,11 +367,13 @@
 #     define OS_TYPE "MACOS"
 			/* see os_dep.c for details of global data segments. */
 #     define STACKBOTTOM ((ptr_t) LMGetCurStackBase())
+#     define DATAEND	/* not needed */
 #   endif
 #   ifdef NEXT
 #	define OS_TYPE "NEXT"
 #	define DATASTART ((ptr_t) get_etext())
 #	define STACKBOTTOM ((ptr_t) 0x4000000)
+#	define DATAEND	/* not needed */
 #   endif
 # endif
 
@@ -379,6 +387,7 @@
 #     define OS_TYPE "MACOS"
 			/* see os_dep.c for details of global data segments. */
 #     define STACKBOTTOM ((ptr_t) LMGetCurStackBase())
+#     define DATAEND  /* not needed */
 #   endif
 # endif
 
@@ -411,9 +420,11 @@
     extern int etext;
 #   ifdef SUNOS5
 #	define OS_TYPE "SUNOS5"
-	extern int etext;
+	extern int _etext;
+	extern int _end;
 	extern char * GC_SysVGetDataStart();
-#       define DATASTART (ptr_t)GC_SysVGetDataStart(0x10000, &etext)
+#       define DATASTART (ptr_t)GC_SysVGetDataStart(0x10000, &_etext)
+#	define DATAEND (&_end)
 #	define PROC_VDB
 #	define HEURISTIC1
 #   endif
@@ -486,12 +497,20 @@
  	    	/* STACKBOTTOM and DATASTART are handled specially in 	*/
 		/* os_dep.c. OS2 actually has the right			*/
 		/* system call!						*/
+#	define DATAEND	/* not needed */
 #   endif
 #   ifdef MSWIN32
 #	define OS_TYPE "MSWIN32"
 		/* STACKBOTTOM and DATASTART are handled specially in 	*/
 		/* os_dep.c.						*/
 #	define MPROTECT_VDB
+#       define DATAEND  /* not needed */
+#   endif
+#   ifdef DJGPP
+#       define OS_TYPE "DJGPP"
+        extern int etext;
+#       define DATASTART ((ptr_t)(&etext))
+#       define STACKBOTTOM ((ptr_t)0x00080000)
 #   endif
 #   ifdef FREEBSD
 #	define OS_TYPE "FREEBSD"
@@ -516,6 +535,7 @@
 #	define OS_TYPE "NEXT"
 #	define DATASTART ((ptr_t) get_etext())
 #	define STACKBOTTOM ((ptr_t)0xc0000000)
+#	define DATAEND	/* not needed */
 #   endif
 # endif
 
@@ -561,6 +581,9 @@
 #   define ALIGNMENT 4
 #   define DATASTART ((ptr_t)0x20000000)
 #   define STACKBOTTOM ((ptr_t)0x2ff80000)
+	/* This is known to break under 4.X, under some circumstances.	*/
+	/* But there doesn't seem to be a good alternative.  Set	*/
+	/* GC_stackbottom manually.					*/
 # endif
 
 # ifdef HP_PA
@@ -568,7 +591,18 @@
 #   define ALIGNMENT 4
     extern int __data_start;
 #   define DATASTART ((ptr_t)(&__data_start))
-#   define HEURISTIC2
+#   if 0
+	/* The following appears to work for 7xx systems running HP/UX	*/
+	/* 9.xx Furthermore, it might result in much faster		*/
+	/* collections than HEURISTIC2, which may involve scanning	*/
+	/* segments that directly precede the stack.  It is not the	*/
+	/* default, since it may not work on older machine/OS		*/
+	/* combinations. (Thanks to Raymond X.T. Nijssen for uncovering	*/
+	/* this.)							*/
+#       define STACKBOTTOM ((ptr_t) 0x7b033000)  /* from /etc/conf/h/param.h */
+#   else
+#       define HEURISTIC2
+#   endif
 #   define STACK_GROWS_UP
 # endif
 
@@ -610,6 +644,11 @@
 
 # ifndef OS_TYPE
 #   define OS_TYPE ""
+# endif
+
+# ifndef DATAEND
+    extern int end;
+#   define DATAEND (&end)
 # endif
 
 # if defined(SUNOS5) || defined(DRSNX)

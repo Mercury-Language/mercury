@@ -11,7 +11,7 @@
  * provided the above notices are retained, and a notice that the code was
  * modified is included with the above copyright notice.
  */
-/* Boehm, April 18, 1995 2:51 pm PDT */
+/* Boehm, February 9, 1996 11:41 am PST */
  
 
 # ifndef GC_PRIVATE_H
@@ -49,8 +49,10 @@ typedef GC_signed_word signed_word;
 #   include "gc_hdrs.h"
 # endif
 
-# ifndef bool
+# if !defined(bool)
     typedef int bool;
+    /* This is problematic with C++ implementations that define bool. */
+    /* But those usually treat it correctly as an empty declaration.  */
 # endif
 # define TRUE 1
 # define FALSE 0
@@ -65,13 +67,11 @@ typedef char * ptr_t;	/* A generic pointer to which we can add	*/
 #   if !(defined( sony_news ) )
 #       include <stddef.h>
 #   endif
-    typedef void * extern_ptr_t;
 #   define VOLATILE volatile
 #else
 #   ifdef MSWIN32
 #   	include <stdlib.h>
 #   endif
-    typedef char * extern_ptr_t;
 #   define VOLATILE
 #endif
 
@@ -212,7 +212,7 @@ typedef char * ptr_t;	/* A generic pointer to which we can add	*/
 # define TIME_LIMIT 50	   /* We try to keep pause times from exceeding	 */
 			   /* this by much. In milliseconds.		 */
 
-# define BL_LIMIT (25*HBLKSIZE)
+# define BL_LIMIT GC_black_list_spacing
 			   /* If we need a block of N bytes, and we have */
 			   /* a block of N + BL_LIMIT bytes available, 	 */
 			   /* and N > BL_LIMIT,				 */
@@ -447,7 +447,8 @@ void GC_print_callers (/* struct callinfo info[NFRAMES] */);
 		PCR_Th_SetSigMask(&GC_old_sig_mask, NIL)
 # else
 #   if defined(SRC_M3) || defined(AMIGA) || defined(SOLARIS_THREADS) \
-	|| defined(MSWIN32) || defined(MACOS) || defined(NO_SIGNALS)
+	|| defined(MSWIN32) || defined(MACOS) || defined(DJGPP) \
+	|| defined(NO_SIGNALS)
 			/* Also useful for debugging.		*/
 	/* Should probably use thr_sigsetmask for SOLARIS_THREADS. */
 #     define DISABLE_SIGNALS()
@@ -726,6 +727,11 @@ struct hblk {
 /* single load of a base register will do.	*/
 /* Scalars that could easily appear to		*/
 /* be pointers are also put here.		*/
+/* The main fields should precede any 		*/
+/* conditionally included fields, so that	*/
+/* gc_inl.h will work even if a different set	*/
+/* of macros is defined when the client is	*/
+/* compiled.					*/
 
 struct _GC_arrays {
   word _heapsize;
@@ -735,19 +741,15 @@ struct _GC_arrays {
   word _words_allocd_before_gc;
 		/* Number of words allocated before this	*/
 		/* collection cycle.				*/
-# ifdef GATHERSTATS
-    word _composite_in_use;
-   		/* Number of words in accessible composite	*/
-		/* objects.					*/
-    word _atomic_in_use;
-   		/* Number of words in accessible atomic		*/
-		/* objects.					*/
-# endif
   word _words_allocd;
   	/* Number of words allocated during this collection cycle */
   word _words_wasted;
   	/* Number of words wasted due to internal fragmentation	 */
   	/* in large objects allocated since last gc. Approximate.*/
+  word _words_finalized;
+  	/* Approximate number of words in objects (and headers)	*/
+  	/* That became ready for finalization in the last 	*/
+  	/* collection.						*/
   word _non_gc_bytes_at_gc;
   	/* Number of explicitly managed bytes of storage 	*/
   	/* at last collection.					*/
@@ -757,16 +759,25 @@ struct _GC_arrays {
   	
   ptr_t _objfreelist[MAXOBJSZ+1];
 			  /* free list for objects */
-# ifdef MERGE_SIZES
-    unsigned _size_map[WORDS_TO_BYTES(MAXOBJSZ+1)];
-    	/* Number of words to allocate for a given allocation request in */
-    	/* bytes.							 */
-# endif 
   ptr_t _aobjfreelist[MAXOBJSZ+1];
 			  /* free list for atomic objs 	*/
 
   ptr_t _uobjfreelist[MAXOBJSZ+1];
 			  /* uncollectable but traced objs 	*/
+
+# ifdef GATHERSTATS
+    word _composite_in_use;
+   		/* Number of words in accessible composite	*/
+		/* objects.					*/
+    word _atomic_in_use;
+   		/* Number of words in accessible atomic		*/
+		/* objects.					*/
+# endif
+# ifdef MERGE_SIZES
+    unsigned _size_map[WORDS_TO_BYTES(MAXOBJSZ+1)];
+    	/* Number of words to allocate for a given allocation request in */
+    	/* bytes.							 */
+# endif 
 
 # ifdef STUBBORN_ALLOC
     ptr_t _sobjfreelist[MAXOBJSZ+1];
@@ -877,6 +888,7 @@ extern GC_FAR struct _GC_arrays GC_arrays;
 # define GC_prev_heap_addr GC_arrays._prev_heap_addr
 # define GC_words_allocd GC_arrays._words_allocd
 # define GC_words_wasted GC_arrays._words_wasted
+# define GC_words_finalized GC_arrays._words_finalized
 # define GC_non_gc_bytes_at_gc GC_arrays._non_gc_bytes_at_gc
 # define GC_mem_freed GC_arrays._mem_freed
 # define GC_heapsize GC_arrays._heapsize
@@ -936,6 +948,13 @@ extern word GC_n_heap_sects;	/* Number of separately added heap	*/
 # ifdef MSWIN32
 extern word GC_n_heap_bases;	/* See GC_heap_bases.	*/
 # endif
+
+extern word GC_total_black_listed;
+			/* Number of bytes on stack blacklist. 	*/
+
+extern word GC_black_list_spacing;
+			/* Average number of bytes between blacklisted	*/
+			/* blocks. Approximate.				*/
 
 extern char * GC_invalid_map;
 			/* Pointer to the nowhere valid hblk map */
@@ -1104,6 +1123,10 @@ void GC_unpromote_black_lists();
 			/* Approximately undo the effect of the above.	*/
 			/* This actually loses some information, but	*/
 			/* only in a reasonably safe way.		*/
+word GC_number_stack_black_listed(/*struct hblk *start, struct hblk *endp1 */);
+			/* Return the number of (stack) blacklisted	*/
+			/* blocks in the range for statistical		*/
+			/* purposes.					*/
 		 	
 ptr_t GC_scratch_alloc(/*bytes*/);
 				/* GC internal memory allocation for	*/
@@ -1279,7 +1302,7 @@ void GC_dump();
 void GC_noop();
 
 /* Logging and diagnostic output: 	*/
-void GC_printf(/* format, a, b, c, d, e, f */);
+void GC_printf GC_PROTO((char * format, long, long, long, long, long, long));
 			/* A version of printf that doesn't allocate,	*/
 			/* is restricted to long arguments, and		*/
 			/* (unfortunately) doesn't use varargs for	*/
