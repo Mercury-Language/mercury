@@ -596,6 +596,44 @@ AC_DEFINE_UNQUOTED(BITS_PER_WORD, $mercury_cv_bits_per_word)
 BITS_PER_WORD=$mercury_cv_bits_per_word
 AC_SUBST(BITS_PER_WORD)
 #-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(whether we can use unboxed floats)
+AC_CACHE_VAL(mercury_cv_unboxed_floats,
+	AC_TRY_RUN([
+	int main() {
+		if (sizeof(double) == sizeof(void *))
+			exit(0);
+		else
+			exit(1);
+	}],
+	[mercury_cv_unboxed_floats=yes],
+	[mercury_cv_unboxed_floats=no],
+	[mercury_cv_unboxed_floats=no])
+)
+AC_MSG_RESULT($mercury_cv_unboxed_floats)
+if test "$mercury_cv_unboxed_floats" = yes; then
+	if test "$BOOTSTRAP_MC" = ""; then
+		AC_MSG_WARN(Mercury compiler not yet installed -" \
+				"cannot use unboxed floats)
+		AC_MSG_WARN(bootstrapping using boxed floats)
+		AC_MSG_WARN(*** after installation is complete you" \
+				"may want to reinstall from scratch)
+		AC_MSG_WARN(*** so you can use unboxed floats," \
+				"which are more efficient.)
+		mercury_cv_unboxed_floats=no
+	else
+		MERCURY_MSG("rebuilding with unboxed floats")
+		MERCURY_MSG("installation may take longer than usual")
+		rm -f library/*.c compiler/*.c profiler/*.c
+	fi
+fi
+if test "$mercury_cv_unboxed_floats" = yes; then
+	HAVE_BOXED_FLOATS="--unboxed-float"
+else
+	AC_DEFINE(BOXED_FLOAT)
+	HAVE_BOXED_FLOATS="--no-unboxed-float"
+fi
+AC_SUBST(HAVE_BOXED_FLOATS)
+#-----------------------------------------------------------------------------#
 #
 # For Irix 5, gcc labels don't work with shared libraries,
 # so if we're using gcc labels, we need to use non-shared libraries,
