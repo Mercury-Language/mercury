@@ -161,7 +161,7 @@
 :- pragma export(call_rtti_compare_type_infos(out, in, in),
 	"ML_call_rtti_compare_type_infos").
 
-:- pred call_rtti_compare_type_infos(comparison_result::out, 
+:- pred call_rtti_compare_type_infos(comparison_result::out,
 	rtti_implementation__type_info::in, rtti_implementation__type_info::in)
 	is det.
 
@@ -258,21 +258,21 @@ special___Unify___type_desc_0_0(object[] x, object[] y)
 ").
 
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	has_type(_Arg::unused, TypeInfo::in),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
 	TypeInfo_for_T = TypeInfo;
 ").
 
-:- pragma foreign_proc("C#", 
+:- pragma foreign_proc("C#",
 	has_type(_Arg::unused, TypeInfo::in),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
 	TypeInfo_for_T = TypeInfo;
 ").
 
-:- pragma foreign_proc("Java", 
+:- pragma foreign_proc("Java",
 	has_type(_Arg::unused, TypeInfo::in),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
@@ -412,7 +412,7 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 	java.lang.Object [] result =
 			mercury.rtti_implementation.type_ctor_and_args_3_p_0(
 			((mercury.type_desc.type_desc_0) TypeDesc).struct);
-	
+
 	TypeCtorDesc = new type_ctor_desc_0((TypeCtorInfo_Struct) result[0]);
 	ArgTypes = result[1];
 
@@ -420,11 +420,11 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 	mercury.list.list_1 type_list = (mercury.list.list_1) ArgTypes;
 	while (type_list.data_tag == 1) {
 		((mercury.list.list_1.f_cons_2) type_list).F1 =
-				new mercury.type_desc.type_desc_0(
-				(TypeInfo_Struct)
-				((mercury.list.list_1.f_cons_2) type_list).F1);
+			new mercury.type_desc.type_desc_0(
+			(TypeInfo_Struct)
+			((mercury.list.list_1.f_cons_2) type_list).F1);
 		type_list = (mercury.list.list_1)
-				((mercury.list.list_1.f_cons_2) type_list).F2;
+			((mercury.list.list_1.f_cons_2) type_list).F2;
 	}
 ").
 
@@ -445,7 +445,7 @@ type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
 	*/
 
 :- pragma promise_pure(make_type/2).
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out),
 	[will_not_call_mercury, thread_safe],
 "{
@@ -488,7 +488,7 @@ type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
 	** arguments.
 	*/
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	make_type(TypeCtorDesc::out, ArgTypes::out) = (TypeDesc::in),
 	[will_not_call_mercury, thread_safe],
 "{
@@ -507,46 +507,47 @@ type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
 :- pragma foreign_proc("C",
 	type_ctor_name_and_arity(TypeCtorDesc::in, TypeCtorModuleName::out,
 		TypeCtorName::out, TypeCtorArity::out),
-        [will_not_call_mercury, thread_safe, promise_pure],
+	[will_not_call_mercury, thread_safe, promise_pure],
 "{
 	MR_TypeCtorDesc type_ctor_desc;
 
 	type_ctor_desc = (MR_TypeCtorDesc) TypeCtorDesc;
 
 	if (MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(type_ctor_desc)) {
-            TypeCtorModuleName = (MR_String) (MR_Word)
-                MR_TYPECTOR_DESC_GET_VA_MODULE_NAME(type_ctor_desc);
-            TypeCtorName = (MR_String) (MR_Word)
-                MR_TYPECTOR_DESC_GET_VA_NAME(type_ctor_desc);
-            TypeCtorArity = MR_TYPECTOR_DESC_GET_VA_ARITY(type_ctor_desc);
-        } else {
-            MR_TypeCtorInfo type_ctor_info;
+		TypeCtorModuleName = (MR_String) (MR_Word)
+			MR_TYPECTOR_DESC_GET_VA_MODULE_NAME(type_ctor_desc);
+		TypeCtorName = (MR_String) (MR_Word)
+			MR_TYPECTOR_DESC_GET_VA_NAME(type_ctor_desc);
+		TypeCtorArity = MR_TYPECTOR_DESC_GET_VA_ARITY(type_ctor_desc);
+	} else {
+		MR_TypeCtorInfo type_ctor_info;
 
-            type_ctor_info = MR_TYPECTOR_DESC_GET_FIXED_ARITY_TYPE_CTOR_INFO(
-                type_ctor_desc);
+		type_ctor_info =
+			MR_TYPECTOR_DESC_GET_FIXED_ARITY_TYPE_CTOR_INFO(
+				type_ctor_desc);
 
-            /*
-            ** We cast away the const-ness of the module and type names,
-            ** because MR_String is defined as char *, not const char *.
-            */
+		/*
+		** We cast away the const-ness of the module and type names,
+		** because MR_String is defined as char *, not const char *.
+		*/
 
-            TypeCtorModuleName = (MR_String) (MR_Integer)
-                MR_type_ctor_module_name(type_ctor_info);
-            TypeCtorName = (MR_String) (MR_Integer)
-                MR_type_ctor_name(type_ctor_info);
-            TypeCtorArity = type_ctor_info->MR_type_ctor_arity;
-        }
+		TypeCtorModuleName = (MR_String) (MR_Integer)
+			MR_type_ctor_module_name(type_ctor_info);
+		TypeCtorName = (MR_String) (MR_Integer)
+			MR_type_ctor_name(type_ctor_info);
+		TypeCtorArity = type_ctor_info->MR_type_ctor_arity;
+	}
 }").
 
 :- pragma foreign_proc("Java",
 	type_ctor_name_and_arity(TypeCtorDesc::in, TypeCtorModuleName::out,
 		TypeCtorName::out, TypeCtorArity::out),
-        [will_not_call_mercury, thread_safe, promise_pure],
+	[will_not_call_mercury, thread_safe, promise_pure],
 "
 	Object[] result = mercury.rtti_implementation.
-			type_ctor_name_and_arity_4_p_0(
-			((type_ctor_desc_0) TypeCtorDesc).struct);
-	
+		type_ctor_name_and_arity_4_p_0(
+		((type_ctor_desc_0) TypeCtorDesc).struct);
+
 	TypeCtorModuleName = (java.lang.String) result[0];
 	TypeCtorName = (java.lang.String) result[1];
 	TypeCtorArity = ((java.lang.Integer) result[2]).intValue();

@@ -1,9 +1,9 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2003 The University of Melbourne
+% vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
+%-----------------------------------------------------------------------------%
+% Copyright (C) 2001, 2003-2004 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
-% vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
 %
 % File: hash_table.m
@@ -40,8 +40,6 @@
 :- interface.
 
 :- import_module int, assoc_list, float, string, array, bitmap, char.
-
-
 
 :- type hash_table(K, V).
 
@@ -188,7 +186,7 @@
 
 :- import_module math, bool, exception, list, require, std_util.
 
-:- type hash_table(K, V) 
+:- type hash_table(K, V)
     --->    ht(
                 num_buckets             :: int,
                 num_occupants           :: int,
@@ -337,37 +335,35 @@ search(HT, K) = V :-
 
 % ---------------------------------------------------------------------------- %
 
-det_insert(HT, K, V) =
-    ( if bitmap__is_set(HT ^ bitmap, H) then
+det_insert(HT0, K, V) = HT :-
+    H = find_slot(HT0, K),
+    ( if bitmap__is_set(HT0 ^ bitmap, H) then
         throw(software_error("hash_table__det_insert: key already present"))
-      else if HT ^ num_occupants = HT ^ max_occupants then
-        set(expand(HT), K, V)
-      else if array__size(HT ^ values) = 0 then
+      else if HT0 ^ num_occupants = HT0 ^ max_occupants then
+        HT = set(expand(HT0), K, V)
+      else if array__size(HT0 ^ values) = 0 then
         % If this is the first entry in the hash table, then we use it to
         % set up the hash table (the arrays are currently empty because we
         % need values to initialise them with).
         %
-        set(HT, K, V)
+        HT = set(HT0, K, V)
       else
-        (((( HT
-                ^ num_occupants    := HT ^ num_occupants + 1 )
-                ^ bitmap           := bitmap__set(HT ^ bitmap, H) )
+        HT = (((( HT0
+                ^ num_occupants    := HT0 ^ num_occupants + 1 )
+                ^ bitmap           := bitmap__set(HT0 ^ bitmap, H) )
                 ^ keys ^ elem(H)   := K )
                 ^ values ^ elem(H) := V )
-    )
- :-
-    H = find_slot(HT, K).
+    ).
 
 % ---------------------------------------------------------------------------- %
 
-det_update(HT, K, V) =
-    ( if bitmap__is_clear(HT ^ bitmap, H) then
+det_update(HT0, K, V) = HT :-
+    H = find_slot(HT0, K),
+    ( if bitmap__is_clear(HT0 ^ bitmap, H) then
         throw(software_error("hash_table__det_update: key not found"))
       else
-        HT ^ values ^ elem(H) := V
-    )
- :-
-    H = find_slot(HT, K).
+        HT = HT0 ^ values ^ elem(H) := V
+    ).
 
 % ---------------------------------------------------------------------------- %
 
@@ -388,8 +384,6 @@ delete(HT, K) =
 
 to_assoc_list(HT) = to_assoc_list_2(0, HT, []).
 
-
-
 :- func to_assoc_list_2(int,hash_table(K,V),assoc_list(K,V)) = assoc_list(K,V).
 :- mode to_assoc_list_2(in, hash_table_ui, in) = out is det.
 %:- mode to_assoc_list_2(in, in, in) = out is det.
@@ -401,7 +395,7 @@ to_assoc_list_2(I, HT, AList) =
         to_assoc_list_2(I + 1, HT, AList)
       else
         to_assoc_list_2(I + 1, HT,
-                [(HT ^ keys ^ elem(I)) - (HT ^ values ^ elem(I)) | AList])
+            [(HT ^ keys ^ elem(I)) - (HT ^ values ^ elem(I)) | AList])
     ).
 
 % ---------------------------------------------------------------------------- %
@@ -428,9 +422,9 @@ expand(HT0) = HT :-
 % ---------------------------------------------------------------------------- %
 
 :- func reinsert_bindings(int, int, bitmap, array(K), array(V),
-            hash_table(K, V)) = hash_table(K, V).
+    hash_table(K, V)) = hash_table(K, V).
 :- mode reinsert_bindings(in, in, bitmap_ui, array_ui, array_ui,
-            hash_table_di) = hash_table_uo is det.
+    hash_table_di) = hash_table_uo is det.
 
 reinsert_bindings(I, NumBuckets, Bitmap, Keys, Values, HT) =
     ( if I >= NumBuckets then
@@ -439,7 +433,7 @@ reinsert_bindings(I, NumBuckets, Bitmap, Keys, Values, HT) =
         reinsert_bindings(I + 1, NumBuckets, Bitmap, Keys, Values, HT)
       else
         reinsert_bindings(I + 1, NumBuckets, Bitmap, Keys, Values,
-                set(HT, Keys ^ elem(I), Values ^ elem(I)))
+            set(HT, Keys ^ elem(I), Values ^ elem(I)))
     ).
 
 % ---------------------------------------------------------------------------- %
@@ -532,9 +526,11 @@ generic_double_hash(T, Ha, Hb) :-
 % ---------------------------------------------------------------------------- %
 
 :- func munge_factor_a = int.
+
 munge_factor_a = 5.
 
 :- func munge_factor_b = int.
+
 munge_factor_b = 3.
 
 :- pred double_munge(int, int, int, int, int, int).
@@ -554,8 +550,6 @@ munge(N, X, Y) =
 % ---------------------------------------------------------------------------- %
 
 fold(Fn, HT, X) = fold_0(0, Fn, HT, X).
-
-
 
 :- func fold_0(int, func(K, V, T) = T, hash_table(K,V), T) = T.
 :- mode fold_0(in, func(in,in,in) = out is det, hash_table_ui, in) = out is det.
@@ -580,8 +574,7 @@ fold_0(I, Fn, HT, X) =
     % not a ground type (that is, dynamic_cast/2 will work when the
     % target type is e.g. array(int), but not when it is array(T)).
     %
-:- some [T2] pred dynamic_cast_to_array(T1, array(T2)).
-:-           mode dynamic_cast_to_array(in, out) is semidet.
+:- some [T2] pred dynamic_cast_to_array(T1::in, array(T2)::out) is semidet.
 
 dynamic_cast_to_array(X, A) :-
 

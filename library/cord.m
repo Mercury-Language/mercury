@@ -1,11 +1,11 @@
 %---------------------------------------------------------------------------%
-% cord.m
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2002-2003 The University of Melbourne.
+% Copyright (C) 2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
+%
 % Ralph Becket <rafe@cs.mu.oz.au>
 % Mon Feb  3 12:27:53 EST 2003
 %
@@ -28,8 +28,6 @@
 
 :- import_module list, int.
 
-
-
     % Cords that contain the same members in the same order will not
     % necessarily have the same representation and will, therefore,
     % not necessarily either unify or compare as equal.
@@ -38,8 +36,6 @@
     % unique representation.
     %
 :- type cord(T).
-
-
 
     % The list of data in a cord:
     %
@@ -85,8 +81,7 @@
     % An O(n) operation, although traversing an entire cord with
     % head_tail/3 gives O(1) amortized cost for each call.
     %
-:- pred head_tail(cord(T), T,   cord(T)).
-:- mode head_tail(in,      out, out    ) is semidet.
+:- pred head_tail(cord(T)::in, T::out, cord(T)::out) is semidet.
 
     % length(C) = list.length(list(C))
     % An O(n) operation.
@@ -95,8 +90,7 @@
 
     % member(X, C) <=> list.member(X, list(C)).
     %
-:- pred member(T,   cord(T)).
-:- mode member(out, in     ) is nondet.
+:- pred member(T::out, cord(T)::in) is nondet.
 
     % list(map(F, C)) = list.map(F, list(C))
     %
@@ -115,15 +109,12 @@
     %
     % (Note: the current implementation works exactly this way.)
     %
-:- pred equal(cord(T), cord(T)).
-:- mode equal(in,      in     ) is semidet.
+:- pred equal(cord(T)::in, cord(T)::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-
-
 
     % We impose the following invariants to ensure we have a unique
     % representation for the empty cord (this makes the implementation
@@ -154,7 +145,6 @@ from_list(Xs) = ( if Xs = [] then nil else leaves(Xs) ).
 %-----------------------------------------------------------------------------%
 
 list(C) = list_2(C, []).
-
 
 :- func list_2(cord(T), list(T)) = list(T).
 

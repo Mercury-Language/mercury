@@ -19,8 +19,7 @@
 
 :- interface.
 
-:- use_module io.
-:- import_module std_util.
+:- import_module io, std_util.
 
 	% The `clock_t' type represents times measured in clock ticks.
 	% NOTE: the unit used for a value of this type depends on whether it was
@@ -31,10 +30,12 @@
 	% The `tms' type holds information about the amount of processor
 	% time that a process and its child processes have consumed.
 :- type tms --->
-        tms(clock_t,    % tms_utime: user time
-            clock_t,    % tms_stime: system time
-            clock_t,    % tms_cutime: user time of children
-            clock_t).   % tms_cstime: system time of children
+	tms(
+		clock_t,	% tms_utime: user time
+		clock_t,	% tms_stime: system time
+		clock_t,	% tms_cutime: user time of children
+		clock_t		% tms_cstime: system time of children
+	).
 
 	% The `time_t' type is an abstract type that represents
 	% calendar times.
@@ -45,18 +46,18 @@
 	% Comparison (via compare/3) of `tm' values whose `tm_dst'
 	% components are identical is equivalent to comparison of
 	% the times those `tm' values represent.
-:- type tm
-	---> tm(
-		tm_year :: int,		% Year (number since 1900)
-		tm_mon :: int,		% Month (number since January, 0-11)
-		tm_mday :: int,		% MonthDay (1-31)
-		tm_hour :: int,		% Hours (after midnight, 0-23)
-		tm_min :: int,		% Minutes (0-59)
-		tm_sec :: int,		% Seconds (0-61)
+:- type tm --->
+	tm(
+		tm_year	:: int,		% Year (number since 1900)
+		tm_mon	:: int,		% Month (number since January, 0-11)
+		tm_mday	:: int,		% MonthDay (1-31)
+		tm_hour	:: int,		% Hours (after midnight, 0-23)
+		tm_min	:: int,		% Minutes (0-59)
+		tm_sec	:: int,		% Seconds (0-61)
 					% (60 and 61 are for leap seconds)
-		tm_yday :: int,		% YearDay (number since Jan 1st, 0-365)
-		tm_wday :: int,		% WeekDay (number since Sunday, 0-6)
-		tm_dst :: maybe(dst)	% IsDST (is DST in effect?)
+		tm_yday	:: int,		% YearDay (number since Jan 1st, 0-365)
+		tm_wday	:: int,		% WeekDay (number since Sunday, 0-6)
+		tm_dst	:: maybe(dst)	% IsDST (is DST in effect?)
 	).
 
 :- type dst
@@ -78,9 +79,8 @@
 	%	will throw a time_error exception.
 	%	To obtain a time in seconds, divide Result by
 	%	`time__clocks_per_sec'.
-	% 
-:- pred time__clock(clock_t, io__state, io__state).
-:- mode time__clock(out, di, uo) is det.
+	%
+:- pred time__clock(clock_t::out, io::di, io::uo) is det.
 
 	% time__clocks_per_sec:
 	%	Returns the number of "clocks" per second as defined by
@@ -96,8 +96,7 @@
 	%	If the time cannot be obtained, this procedure
 	%	will throw a time_error exception.
 	%
-:- pred time__time(time_t, io__state, io__state).
-:- mode time__time(out, di, uo) is det.
+:- pred time__time(time_t::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -114,8 +113,7 @@
 	%	On non-POSIX systems that do not support this functionality,
 	%	this procedure may simply always throw an exception.
 	%
-:- pred time__times(tms, clock_t, io__state, io__state).
-:- mode time__times(out, out, di, uo) is det.
+:- pred time__times(tms::out, clock_t::out, io::di, io::uo) is det.
 
 	% time__clk_tck:
 	%	Returns the number of "clock ticks" per second as defined by
@@ -221,7 +219,8 @@
 	where comparison is compare_time_t_reps.
 
 :- pred compare_time_t_reps(comparison_result::uo,
-		time_t_rep::in, time_t_rep::in) is det.
+	time_t_rep::in, time_t_rep::in) is det.
+
 compare_time_t_reps(Result, X, Y) :-
 	compare(Result, difftime(time_t(X), time_t(Y)), 0.0).
 
@@ -230,25 +229,26 @@ compare_time_t_reps(Result, X, Y) :-
 %:- pred time__clock(clock_t, io__state, io__state).
 %:- mode time__clock(out, di, uo) is det.
 
-time__clock(Result, IO0, IO) :-
-	time__c_clock(Ret, IO0, IO),
+time__clock(Result, !IO) :-
+	time__c_clock(Ret, !IO),
 	( Ret = -1 ->
 		throw(time_error("can't get clock value"))
 	;
 		Result = Ret
 	).
 
-:- pred time__c_clock(int, io__state, io__state).
-:- mode time__c_clock(out, di, uo) is det.
+:- pred time__c_clock(int::out, io::di, io::uo) is det.
 
-:- pragma foreign_proc("C", time__c_clock(Ret::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C",
+	time__c_clock(Ret::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
 	Ret = (MR_Integer) clock();
 	MR_update_io(IO0, IO);
 }").
 /* XXX need to add System.dll to the references list.
-:- pragma foreign_proc("C#", time__c_clock(Ret::out, _IO0::di, _IO::uo),
+:- pragma foreign_proc("C#",
+	time__c_clock(Ret::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
 	// XXX Ticks is long in .NET!
@@ -256,16 +256,17 @@ time__clock(Result, IO0, IO) :-
 		.UserProcessorTime.Ticks;
 }").
 */
-:- pragma foreign_proc("Java", time__c_clock(Ret::out, _IO0::di, _IO::uo),
+:- pragma foreign_proc("Java",
+	time__c_clock(Ret::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	if (mercury.runtime.Native.isAvailable()) {
 		Ret = mercury.runtime.Native.clock();
 	} else {
 		throw new java.lang.RuntimeException(
-				""time__clock is not implemented "" +
-				""in pure Java.  Native dynamic link "" +
-				""library is required."");
+			""time__clock is not implemented "" +
+			""in pure Java.  Native dynamic link "" +
+			""library is required."");
 	}
 ").
 
@@ -273,37 +274,37 @@ time__clock(Result, IO0, IO) :-
 
 %:- func time__clocks_per_sec = int.
 
-:- pragma foreign_proc("C", time__clocks_per_sec = (Ret::out),
+:- pragma foreign_proc("C",
+	time__clocks_per_sec = (Ret::out),
 	[will_not_call_mercury, promise_pure],
 "{
 	Ret = (MR_Integer) CLOCKS_PER_SEC;
 }").
-:- pragma foreign_proc("C#", time__clocks_per_sec = (Ret::out),
+:- pragma foreign_proc("C#",
+	time__clocks_per_sec = (Ret::out),
 	[will_not_call_mercury, promise_pure],
 "{
 	// TicksPerSecond is guaranteed to be 10,000,000
 	Ret = (int) System.TimeSpan.TicksPerSecond;
 }").
-:- pragma foreign_proc("Java", time__clocks_per_sec = (Ret::out),
+:- pragma foreign_proc("Java",
+	time__clocks_per_sec = (Ret::out),
 	[will_not_call_mercury, promise_pure],
 "
 	if (mercury.runtime.Native.isAvailable()) {
 		Ret = mercury.runtime.Native.clocks_per_sec();
 	} else {
 		throw new java.lang.RuntimeException(
-				""time__clocks_per_sec is not implemented "" +
-				""in pure Java.  Native dynamic link "" +
-				""library is required."");
+			""time__clocks_per_sec is not implemented "" +
+			""in pure Java.  Native dynamic link "" +
+			""library is required."");
 	}
 ").
 
 %-----------------------------------------------------------------------------%
 
-%:- pred time__times(tms, clock_t, io__state, io__state).
-%:- mode time__times(out, out, di, uo) is det.
-
-time__times(Tms, Result, IO0, IO) :-
-	time__c_times(Ret, Ut, St, CUt, CSt, IO0, IO),
+time__times(Tms, Result, !IO) :-
+	time__c_times(Ret, Ut, St, CUt, CSt, !IO),
 	( Ret = -1 ->
 		throw(time_error("can't get times value"))
 	;
@@ -311,12 +312,12 @@ time__times(Tms, Result, IO0, IO) :-
 		Result = Ret
 	).
 
-:- pred time__c_times(int, int, int, int, int, io__state, io__state).
-:- mode time__c_times(out, out, out, out, out, di, uo) is det.
+:- pred time__c_times(int::out, int::out, int::out, int::out, int::out,
+	io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-	time__c_times(Ret::out, Ut::out, St::out, CUt::out,
-                               CSt::out, IO0::di, IO::uo),
+	time__c_times(Ret::out, Ut::out, St::out, CUt::out, CSt::out,
+		IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
 #ifdef MR_HAVE_POSIX_TIMES
@@ -335,8 +336,8 @@ time__times(Tms, Result, IO0, IO) :-
 }").
 
 :- pragma foreign_proc("Java",
-	time__c_times(Ret::out, Ut::out, St::out, CUt::out,
-                               CSt::out, _IO0::di, _IO::uo),
+	time__c_times(Ret::out, Ut::out, St::out, CUt::out, CSt::out,
+		_IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	if (mercury.runtime.Native.isAvailable()) {
@@ -349,14 +350,14 @@ time__times(Tms, Result, IO0, IO) :-
 			CSt	= times[4];
 		} else {
 			throw new java.lang.RuntimeException(
-					""time_times failed to construct "" +
-					""integer array"");
+				""time_times failed to construct "" +
+				""integer array"");
 		}
 	} else {
 		throw new java.lang.RuntimeException(
-				""time__times is not implemented "" +
-				""in pure Java.  Native dynamic link "" +
-				""library is required."");
+			""time__times is not implemented "" +
+			""in pure Java.  Native dynamic link "" +
+			""library is required."");
 	}
 ").
 
@@ -384,40 +385,38 @@ time__clk_tck = Ret :-
 }").
 time__c_clk_tck = -1.	% default is to throw an exception.
 
-:- pragma foreign_proc("C#", time__clk_tck = (Ret::out),
+:- pragma foreign_proc("C#",
+	time__clk_tck = (Ret::out),
 	[will_not_call_mercury, promise_pure],
 "{
 	// TicksPerSecond is guaranteed to be 10,000,000
 	Ret = (int) System.TimeSpan.TicksPerSecond;
 }").
-:- pragma foreign_proc("Java", time__c_clk_tck = (Ret::out),
+:- pragma foreign_proc("Java",
+	time__c_clk_tck = (Ret::out),
 	[will_not_call_mercury, promise_pure],
 "
 	if (mercury.runtime.Native.isAvailable()) {
 		Ret = mercury.runtime.Native.clk_tck();
 	} else {
 		throw new java.lang.RuntimeException(
-				""time__clk_tck is not implemented "" +
-				""in pure Java.  Native dynamic link "" +
-				""library is required."");
+			""time__clk_tck is not implemented "" +
+			""in pure Java.  Native dynamic link "" +
+			""library is required."");
 	}
 ").
 
 %-----------------------------------------------------------------------------%
 
-%:- pred time__time(time_t, io__state, io__state).
-%:- mode time__time(out, di, uo) is det.
-
-time__time(Result, IO0, IO) :-
-	time__c_time(Ret, IO0, IO),
+time__time(Result, !IO) :-
+	time__c_time(Ret, !IO),
 	( time__time_t_is_invalid(Ret) ->
 		throw(time_error("can't get time value"))
 	;
 		Result = time_t(Ret)
 	).
 
-:- pred time__c_time(time_t_rep, io__state, io__state).
-:- mode time__c_time(out, di, uo) is det.
+:- pred time__c_time(time_t_rep::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
 	time__c_time(Ret::out, IO0::di, IO::uo),
@@ -439,8 +438,7 @@ time__time(Result, IO0, IO) :-
 	Ret = new java.util.Date();
 ").
 
-:- pred time__time_t_is_invalid(time_t_rep).
-:- mode time__time_t_is_invalid(in) is semidet.
+:- pred time__time_t_is_invalid(time_t_rep::in) is semidet.
 
 :- pragma foreign_proc("C",
 	time__time_t_is_invalid(Val::in),
@@ -461,7 +459,6 @@ time__time(Result, IO0, IO) :-
 	succeeded = false;
 ").
 
-
 %-----------------------------------------------------------------------------%
 
 %:- func time__difftime(time_t, time_t) = float.
@@ -469,8 +466,7 @@ time__time(Result, IO0, IO) :-
 time__difftime(time_t(T1), time_t(T0)) = Diff :-
 	time__c_difftime(T1, T0, Diff).
 
-:- pred time__c_difftime(time_t_rep, time_t_rep, float).
-:- mode time__c_difftime(in, in, out) is det.
+:- pred time__c_difftime(time_t_rep::in, time_t_rep::in, float::out) is det.
 
 :- pragma foreign_proc("C",
 	time__c_difftime(T1::in, T0::in, Diff::out),
@@ -495,16 +491,12 @@ time__difftime(time_t(T1), time_t(T0)) = Diff :-
 
 %-----------------------------------------------------------------------------%
 
-%:- func time__localtime(time_t) = tm.
-
 time__localtime(time_t(Time)) = TM :-
 	time__c_localtime(Time, Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, N),
 	TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, int_to_maybe_dst(N)).
 
-:- pred time__c_localtime(time_t_rep, int, int, int, int, int, int,
-		int, int, int).
-:- mode time__c_localtime(in, out, out, out, out, out, out,
-		out, out, out) is det.
+:- pred time__c_localtime(time_t_rep::in, int::out, int::out, int::out,
+	int::out, int::out, int::out, int::out, int::out, int::out) is det.
 
 :- pragma foreign_proc("C",
 	time__c_localtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
@@ -605,8 +597,7 @@ time__localtime(time_t(Time)) = TM :-
 	} else {
 		N = 0;
 	}
-"). % time__c_local_time
-
+").
 
 %:- func time__gmtime(time_t) = tm.
 
@@ -614,10 +605,8 @@ time__gmtime(time_t(Time)) = TM :-
 	time__c_gmtime(Time, Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, N),
 	TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, int_to_maybe_dst(N)).
 
-:- pred time__c_gmtime(time_t_rep, int, int, int, int, int,
-			int, int, int, int).
-:- mode time__c_gmtime(in, out, out, out, out, out,
-			out, out, out, out) is det.
+:- pred time__c_gmtime(time_t_rep::in, int::out, int::out, int::out, int::out,
+	int::out, int::out, int::out, int::out, int::out) is det.
 
 :- pragma foreign_proc("C",
 	time__c_gmtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
@@ -668,8 +657,8 @@ time__gmtime(time_t(Time)) = TM :-
 	[will_not_call_mercury, promise_pure],
 "
 	java.util.GregorianCalendar gc =
-			new java.util.GregorianCalendar(
-			java.util.SimpleTimeZone.getTimeZone(""GMT""));
+		new java.util.GregorianCalendar(
+		java.util.SimpleTimeZone.getTimeZone(""GMT""));
 
 	gc.setTime(Time);
 	Yr = gc.get(java.util.Calendar.YEAR) - 1900;
@@ -708,7 +697,7 @@ time__gmtime(time_t(Time)) = TM :-
 	}
 
 	N = 0;
-"). % time__c_gmtime
+").
 
 :- func int_to_maybe_dst(int) = maybe(dst).
 
@@ -730,8 +719,8 @@ time__mktime(TM) = time_t(Time) :-
 	time__c_mktime(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD,
 		maybe_dst_to_int(DST), Time).
 
-:- pred time__c_mktime(int, int, int, int, int, int, int, int, int, time_t_rep).
-:- mode time__c_mktime(in, in, in, in, in, in, in, in, in, out) is det.
+:- pred time__c_mktime(int::in, int::in, int::in, int::in, int::in, int::in,
+	int::in, int::in, int::in, time_t_rep::out) is det.
 
 :- pragma foreign_proc("C",
 	time__c_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
@@ -764,7 +753,7 @@ time__mktime(TM) = time_t(Time) :-
 	// savings time (N = 1), and then again an hour later, during standard
 	// time (N = 0).  The .NET API does not seem to provide any way to
 	// get the right answer in both cases.
-	System.DateTime local_time = 
+	System.DateTime local_time =
 		new System.DateTime(Yr + 1900, Mnt + 1, MD, Hrs, Min, Sec);
 	Time = local_time.ToUniversalTime();
 }").
@@ -832,13 +821,13 @@ getDSTSavings(java.util.TimeZone tz) {
 		// using reflection.
 
 		return ((java.lang.Integer) (tz.getClass().
-				getMethod(""getDSTSavings"", null).
-				invoke(tz, null))).intValue();
+			getMethod(""getDSTSavings"", null).
+			invoke(tz, null))).intValue();
 	}
 	catch (java.lang.Exception e) {
 		throw new java.lang.RuntimeException(
-				""time__c_mktime: Failed to locate "" +
-				""getDSTSavings() method."");
+			""time__c_mktime: Failed to locate "" +
+			""getDSTSavings() method."");
 	}
 }
 ").
@@ -861,8 +850,8 @@ maybe_dst_to_int(M) = N :-
 time__asctime(TM) = Str :-
 	TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, _YD, WD, _DST),
 	Str = string__format("%.3s %.3s%3d %.2d:%.2d:%.2d %d\n",
-			[s(wday_name(WD)), s(mon_name(Mnt)), i(MD), i(Hrs),
-				i(Min), i(Sec), i(1900 + Yr)]).
+		[s(wday_name(WD)), s(mon_name(Mnt)), i(MD), i(Hrs),
+			i(Min), i(Sec), i(1900 + Yr)]).
 
 :- func wday_name(int) = string.
 
@@ -907,7 +896,6 @@ mon_name(9, "Oct").
 mon_name(10, "Nov").
 mon_name(11, "Dec").
 
-
 %-----------------------------------------------------------------------------%
 
 %:- func time__ctime(time_t) = string.
@@ -919,12 +907,15 @@ time__ctime(Time) = asctime(localtime(Time)).
 % XXX This needs to be in the interface because pragma export doesn't work yet
 % on the .NET backend and io.m needs to access this.
 :- interface.
+
 :- type time_t_rep.
+
 :- func construct_time_t(time_t_rep) = time_t.
+
 :- implementation.
+
 :- pragma export(construct_time_t(in) = out, "ML_construct_time_t").
+
 construct_time_t(T) = time_t(T).
 
-%-----------------------------------------------------------------------------%
-:- end_module time.
 %-----------------------------------------------------------------------------%

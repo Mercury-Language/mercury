@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2003 The University of Melbourne.
+% Copyright (C) 1993-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -99,15 +99,12 @@
 	% list__remove_suffix(List, Suffix, Prefix):
 	%	The same as list__append(Prefix, Suffix, List) except that
 	%	this is semidet whereas list__append(out, in, in) is nondet.
-:- pred list__remove_suffix(list(T), list(T), list(T)).
-:- mode list__remove_suffix(in, in, out) is semidet.
+:- pred list__remove_suffix(list(T)::in, list(T)::in, list(T)::out) is semidet.
 
 	% list__merge(L1, L2, L):
 	%	L is the result of merging the elements of L1 and L2,
 	%	in ascending order.  L1 and L2 must be sorted.
-:- pred list__merge(list(T), list(T), list(T)).
-:- mode list__merge(in, in, out) is det.
-
+:- pred list__merge(list(T)::in, list(T)::in, list(T)::out) is det.
 :- func list__merge(list(T), list(T)) = list(T).
 
 	% list__merge_and_remove_dups(L1, L2, L):
@@ -115,25 +112,20 @@
 	%	in ascending order, and eliminating any duplicates.
 	%	L1 and L2 must be sorted and must each not contain any
 	%	duplicates.
-:- pred list__merge_and_remove_dups(list(T), list(T), list(T)).
-:- mode list__merge_and_remove_dups(in, in, out) is det.
-
+:- pred list__merge_and_remove_dups(list(T)::in, list(T)::in, list(T)::out)
+	is det.
 :- func list__merge_and_remove_dups(list(T), list(T)) = list(T).
 
 	% list__remove_adjacent_dups(L0, L) :
 	%	L is the result of replacing every sequence of duplicate
 	%	elements in L0 with a single such element.
-:- pred list__remove_adjacent_dups(list(T), list(T)).
-:- mode list__remove_adjacent_dups(in, out) is det.
-
+:- pred list__remove_adjacent_dups(list(T)::in, list(T)::out) is det.
 :- func list__remove_adjacent_dups(list(T)) = list(T).
 
 	% list__remove_dups(L0, L) :
 	%	L is the result of deleting the second and subsequent
 	%	occurrences of every element that occurs twice in L0.
-:- pred list__remove_dups(list(T), list(T)).
-:- mode list__remove_dups(in, out) is det.
-
+:- pred list__remove_dups(list(T)::in, list(T)::out) is det.
 :- func list__remove_dups(list(T)) = list(T).
 
 	% list__member(Elem, List) :
@@ -147,8 +139,7 @@
 	%	a suffix of `List' beginning with `Elem'.
 	%	Same as `SubList = [Elem | _], list__append(_, SubList, List)'.
 	%
-:- pred list__member(T, list(T), list(T)).
-:- mode list__member(out, in, out) is nondet.
+:- pred list__member(T::out, list(T)::in, list(T)::out) is nondet.
 
 	% list__length(List, Length) :
 	%	True iff `Length' is the length of `List', i.e. if
@@ -169,7 +160,7 @@
 :- mode list__same_length(in, output_list_skel) is det.
 :- mode list__same_length(output_list_skel, in) is det.
 :- mode list__same_length(in, in) is semidet.
-	% XXX The current mode checker can't handle these modes
+% XXX The current mode checker can't handle these modes
 % :- mode list__same_length(input_list_skel, output_list_skel) is det.
 % :- mode list__same_length(output_list_skel, input_list_skel) is det.
 
@@ -178,24 +169,21 @@
 	%	and a remainder `End'.
 	%	See also: list__take, list__drop.
 	%
-:- pred list__split_list(int, list(T), list(T), list(T)).
-:- mode list__split_list(in, in, out, out) is semidet.
+:- pred list__split_list(int::in, list(T)::in, list(T)::out, list(T)::out)
+	is semidet.
 
 	% list__take(Len, List, Start):
 	%	`Start' is the first `Len' elements of `List'.
 	%	Fails if `List' has less than `Len' elements.
 	%	See also: list__split_list.
 	%
-:- pred list__take(int, list(T), list(T)).
-:- mode list__take(in, in, out) is semidet.
+:- pred list__take(int::in, list(T)::in, list(T)::out) is semidet.
 
 	% list__take_upto(Len, List, Start):
 	%	`Start' is the first `Len' elements of `List'.
 	%	If `List' has less than `Len' elements, return the entire list.
 	%
-:- pred list__take_upto(int, list(T), list(T)).
-:- mode list__take_upto(in, in, out) is det.
-
+:- pred list__take_upto(int::in, list(T)::in, list(T)::out) is det.
 :- func list__take_upto(int, list(T)) = list(T).
 
 	% list__drop(Len, List, End):
@@ -203,8 +191,7 @@
 	%	first `Len' elements.
 	%	See also: list__split_list.
 	%
-:- pred list__drop(int, list(T), list(T)).
-:- mode list__drop(in, in, out) is semidet.
+:- pred list__drop(int::in, list(T)::in, list(T)::out) is semidet.
 
 	% list__insert(Elem, List0, List):
 	%	`List' is the result of inserting `Elem' somewhere in `List0'.
@@ -232,8 +219,7 @@
 	% list__delete_first(List0, Elem, List) is true iff Elem occurs in List0
 	% and List is List0 with the first occurrence of Elem removed.
 	%
-:- pred list__delete_first(list(T), T, list(T)).
-:- mode list__delete_first(in, in, out) is semidet.
+:- pred list__delete_first(list(T)::in, T::in, list(T)::out) is semidet.
 
 	% list__delete_all(List0, Elem, List) is true iff List is List0 with
 	% all occurrences of Elem removed.
@@ -245,9 +231,7 @@
 	% list__delete_elems(List0, Elems, List) is true iff List is List0 with
 	% all occurrences of all elements of Elems removed.
 	%
-:- pred list__delete_elems(list(T), list(T), list(T)).
-:- mode list__delete_elems(in, in, out) is det.
-
+:- pred list__delete_elems(list(T)::in, list(T)::in, list(T)::out) is det.
 :- func list__delete_elems(list(T), list(T)) = list(T).
 
 	% list__replace(List0, D, R, List) is true iff List is List0
@@ -260,15 +244,13 @@
 	% list__replace_first(List0, D, R, List) is true iff List is List0
 	% with the first occurrence of D replaced with R.
 	%
-:- pred list__replace_first(list(T), T, T, list(T)).
-:- mode list__replace_first(in, in, in, out) is semidet.
+:- pred list__replace_first(list(T)::in, T::in, T::in, list(T)::out)
+	is semidet.
 
 	% list__replace_all(List0, D, R, List) is true iff List is List0
 	% with all occurrences of D replaced with R.
 	%
-:- pred list__replace_all(list(T), T, T, list(T)).
-:- mode list__replace_all(in, in, in, out) is det.
-
+:- pred list__replace_all(list(T)::in, T::in, T::in, list(T)::out) is det.
 :- func list__replace_all(list(T), T, T) = list(T).
 
 	% list__replace_nth(List0, N, R, List) is true iff List is List0
@@ -276,57 +258,48 @@
 	% Fails if N < 1 or if length of List0 < N.
 	% (Position numbers start from 1.)
 	%
-:- pred list__replace_nth(list(T), int, T, list(T)).
-:- mode list__replace_nth(in, in, in, out) is semidet.
+:- pred list__replace_nth(list(T)::in, int::in, T::in, list(T)::out)
+	is semidet.
 
 	% list__replace_nth_det(List0, N, R, List) is true iff List is List0
 	% with Nth element replaced with R.
 	% Aborts if N < 1 or if length of List0 < N.
 	% (Position numbers start from 1.)
 	%
-:- pred list__replace_nth_det(list(T), int, T, list(T)).
-:- mode list__replace_nth_det(in, in, in, out) is det.
-
+:- pred list__replace_nth_det(list(T)::in, int::in, T::in, list(T)::out)
+	is det.
 :- func list__replace_nth_det(list(T), int, T) = list(T).
 
 	% list__sort_and_remove_dups(List0, List):
 	%	List is List0 sorted with the second and subsequent
 	%	occurrence of any duplicates removed.
 	%
-:- pred list__sort_and_remove_dups(list(T), list(T)).
-:- mode list__sort_and_remove_dups(in, out) is det.
-
+:- pred list__sort_and_remove_dups(list(T)::in, list(T)::out) is det.
 :- func list__sort_and_remove_dups(list(T)) = list(T).
 
 	% list__sort(List0, List):
 	%	List is List0 sorted.
 	%
-:- pred list__sort(list(T), list(T)).
-:- mode list__sort(in, out) is det.
-
+:- pred list__sort(list(T)::in, list(T)::out) is det.
 :- func list__sort(list(T)) = list(T).
 
 	% list__reverse(List, Reverse):
 	%	`Reverse' is a list containing the same elements as `List'
 	%	but in reverse order.
 	%
-:- pred list__reverse(list(T), list(T)).
-:- mode list__reverse(in, out) is det.
-
+:- pred list__reverse(list(T)::in, list(T)::out) is det.
 :- func list__reverse(list(T)) = list(T).
 
 	% list__perm(List0, List):
 	%	True iff `List' is a permutation of `List0'.
 	%
-:- pred	list__perm(list(T), list(T)).
-:- mode list__perm(in, out) is nondet.
+:- pred	list__perm(list(T)::in, list(T)::out) is nondet.
 
 	% list__nth_member_search(List, Elem, Position):
 	%	Elem is the Position'th member of List.
 	% 	(Position numbers start from 1.)
 	%
-:- pred list__nth_member_search(list(T), T, int).
-:- mode list__nth_member_search(in, in, out) is semidet.
+:- pred list__nth_member_search(list(T)::in, T::in, int::out) is semidet.
 
 	% list__index*(List, Position, Elem):
 	%	These predicates select an element in a list from it's
@@ -354,26 +327,20 @@
 	%	elements remaining in one of the lists,
 	% 	the remainder of the nonempty list is appended.
 	%
-:- pred list__zip(list(T), list(T), list(T)).
-:- mode list__zip(in, in, out) is det.
-
+:- pred list__zip(list(T)::in, list(T)::in, list(T)::out) is det.
 :- func list__zip(list(T), list(T)) = list(T).
 
 	% list__duplicate(Count, Elem, List) is true iff List is a list
 	% containing Count duplicate copies of Elem.
 	%
-:- pred list__duplicate(int, T, list(T)).
-:- mode list__duplicate(in, in, out) is det.
-
+:- pred list__duplicate(int::in, T::in, list(T)::out) is det.
 :- func list__duplicate(int, T) = list(T).
 
 	% list__condense(ListOfLists, List):
 	%	`List' is the result of concatenating all the
 	%	elements of `ListOfLists'.
 	%
-:- pred list__condense(list(list(T)), list(T)).
-:- mode list__condense(in, out) is det.
-
+:- pred list__condense(list(list(T))::in, list(T)::out) is det.
 :- func list__condense(list(list(T))) = list(T).
 
 	% list__chunk(List, ChunkSize, Chunks):
@@ -384,42 +351,34 @@
 	%	and the length of the last list in `Chunks' is between one
 	%	and `ChunkSize'.)
 	%
-:- pred list__chunk(list(T), int, list(list(T))).
-:- mode list__chunk(in, in, out) is det.
-
+:- pred list__chunk(list(T)::in, int::in, list(list(T))::out) is det.
 :- func list__chunk(list(T), int) = list(list(T)).
 
 	% list__sublist(SubList, FullList) is true
 	%	if one can obtain SubList by starting with FullList
 	%	and deleting some of its elements.
-:- pred list__sublist(list(T), list(T)).
-:- mode list__sublist(in, in) is semidet.
+:- pred list__sublist(list(T)::in, list(T)::in) is semidet.
 
 	% list__all_same(List) is true
 	% 	if all elements of the list are the same
-:- pred list__all_same(list(T)).
-:- mode list__all_same(in) is semidet.
+:- pred list__all_same(list(T)::in) is semidet.
 
 	% list__last(List, Last) is true
 	%	if Last is the last element of List.
-:- pred list__last(list(T), T).
-:- mode list__last(in, out) is semidet.
+:- pred list__last(list(T)::in, T::out) is semidet.
 
 	% A deterministic version of list__last, which aborts instead of
 	% failing if the input list is empty.
-:- pred list__last_det(list(T), T).
-:- mode list__last_det(in, out) is det.
+:- pred list__last_det(list(T)::in, T::out) is det.
 
 	% list__split_last(List, AllButLast, Last) is true
 	%	if Last is the last element of List and AllButLast is the list
 	%	of elements before it.
-:- pred list__split_last(list(T), list(T), T).
-:- mode list__split_last(in, out, out) is semidet.
+:- pred list__split_last(list(T)::in, list(T)::out, T::out) is semidet.
 
 	% A deterministic version of list__split_last, which aborts instead of
 	% failing if the input list is empty.
-:- pred list__split_last_det(list(T), list(T), T).
-:- mode list__split_last_det(in, out, out) is det.
+:- pred list__split_last_det(list(T)::in, list(T)::out, T::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -474,20 +433,18 @@
 	%
 	% An exception is raised if the list arguments differ in length.
 	%
-:- func list__map_corresponding3(func(A, B, C) = D, list(A), list(B), list(C)) =
-		list(D).
+:- func list__map_corresponding3(func(A, B, C) = D, list(A), list(B), list(C))
+	= list(D).
 
 	% list__filter_map_corresponding/3 is like list__map_corresponding/3
 	% except the function argument is semidet and the output list
 	% consists of only those applications of the function argument that
 	% succeeded.
 	%
-:- func list__filter_map_corresponding(func(A, B) = C,
-		list(A), list(B)
-	) = list(C).
-:- mode list__filter_map_corresponding(func(in, in) = out is semidet,
-		in, in
-	) = out is det.
+:- func list__filter_map_corresponding(func(A, B) = C, list(A), list(B))
+	= list(C).
+:- mode list__filter_map_corresponding(func(in, in) = out is semidet, in, in)
+	= out is det.
 
 	% list__filter_map_corresponding3/4 is like list__map_corresponding3/4
 	% except the function argument is semidet and the output list
@@ -495,11 +452,9 @@
 	% succeeded.
 	%
 :- func list__filter_map_corresponding3(func(A, B, C) = D,
-		list(A), list(B), list(C)
-	) = list(D).
+	list(A), list(B), list(C)) = list(D).
 :- mode list__filter_map_corresponding3(func(in, in, in) = out is semidet,
-		in, in, in
-	) = out is det.
+	in, in, in) = out is det.
 
 	% list__foldl(Pred, List, Start, End) calls Pred with each
 	% element of List (working left-to-right) and an accumulator
@@ -534,47 +489,47 @@
 	% a more convenient format, and a little more efficient).
 :- pred list__foldl2(pred(X, Y, Y, Z, Z), list(X), Y, Y, Z, Z).
 :- mode list__foldl2(pred(in, in, out, in, out) is det,
-		in, in, out, in, out) is det.
+	in, in, out, in, out) is det.
 :- mode list__foldl2(pred(in, in, out, in, out) is semidet,
-		in, in, out, in, out) is semidet.
+	in, in, out, in, out) is semidet.
 :- mode list__foldl2(pred(in, in, out, in, out) is nondet,
-		in, in, out, in, out) is nondet.
+	in, in, out, in, out) is nondet.
 :- mode list__foldl2(pred(in, in, out, mdi, muo) is det,
-		in, in, out, mdi, muo) is det.
+	in, in, out, mdi, muo) is det.
 :- mode list__foldl2(pred(in, in, out, di, uo) is det,
-		in, in, out, di, uo) is det.
+	in, in, out, di, uo) is det.
 :- mode list__foldl2(pred(in, di, uo, di, uo) is det,
-		in, di, uo, di, uo) is det.
+	in, di, uo, di, uo) is det.
 
 	% list__foldl3(Pred, List, !Acc1, !Acc2, !Acc3)
 	% Does the same job as list__foldl, but with two accumulators.
 	% (Although no more expressive than list__foldl, this is often
 	% a more convenient format, and a little more efficient).
 :- pred list__foldl3(pred(L, A1, A1, A2, A2, A3, A3), list(L),
-		A1, A1, A2, A2, A3, A3).
+	A1, A1, A2, A2, A3, A3).
 :- mode list__foldl3(pred(in, in, out, in, out, in, out) is det,
-		in, in, out, in, out, in, out) is det.
+	in, in, out, in, out, in, out) is det.
 :- mode list__foldl3(pred(in, in, out, in, out, in, out) is semidet,
-		in, in, out, in, out, in, out) is semidet.
+	in, in, out, in, out, in, out) is semidet.
 :- mode list__foldl3(pred(in, in, out, in, out, in, out) is nondet,
-		in, in, out, in, out, in, out) is nondet.
+	in, in, out, in, out, in, out) is nondet.
 :- mode list__foldl3(pred(in, in, out, in, out, di, uo) is det,
-		in, in, out, in, out, di, uo) is det.
+	in, in, out, in, out, di, uo) is det.
 
 	% list__foldl4(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4)
 	% Does the same job as list__foldl, but with two accumulators.
 	% (Although no more expressive than list__foldl, this is often
 	% a more convenient format, and a little more efficient).
 :- pred list__foldl4(pred(L, A1, A1, A2, A2, A3, A3, A4, A4), list(L),
-		A1, A1, A2, A2, A3, A3, A4, A4).
+	A1, A1, A2, A2, A3, A3, A4, A4).
 :- mode list__foldl4(pred(in, in, out, in, out, in, out, in, out) is det,
-		in, in, out, in, out, in, out, in, out) is det.
+	in, in, out, in, out, in, out, in, out) is det.
 :- mode list__foldl4(pred(in, in, out, in, out, in, out, in, out) is semidet,
-		in, in, out, in, out, in, out, in, out) is semidet.
+	in, in, out, in, out, in, out, in, out) is semidet.
 :- mode list__foldl4(pred(in, in, out, in, out, in, out, in, out) is nondet,
-		in, in, out, in, out, in, out, in, out) is nondet.
+	in, in, out, in, out, in, out, in, out) is nondet.
 :- mode list__foldl4(pred(in, in, out, in, out, in, out, di, uo) is det,
-		in, in, out, in, out, in, out, di, uo) is det.
+	in, in, out, in, out, in, out, di, uo) is det.
 
 	% list__map_foldl(Pred, InList, OutList, Start, End) calls Pred
 	% with an accumulator (with the initial value of Start) on
@@ -583,71 +538,70 @@
 	% returned in End.
 :- pred list__map_foldl(pred(X, Y, Z, Z), list(X), list(Y), Z, Z).
 :- mode list__map_foldl(pred(in, out, di, uo) is det, in, out, di, uo)
-		is det.
+	is det.
 :- mode list__map_foldl(pred(in, out, in, out) is det, in, out, in, out)
-		is det.
+	is det.
 :- mode list__map_foldl(pred(in, out, in, out) is semidet, in, out, in, out)
-		is semidet.
+	is semidet.
 :- mode list__map_foldl(pred(in, out, in, out) is nondet, in, out, in, out)
-		is nondet.
+	is nondet.
 
 	% Same as list__map_foldl, but with two mapped outputs.
 :- pred list__map2_foldl(pred(X, Y1, Y2, Z, Z), list(X), list(Y1), list(Y2),
-		Z, Z).
+	Z, Z).
 :- mode list__map2_foldl(pred(in, out, out, di, uo) is det, in, out, out,
-		di, uo) is det.
+	di, uo) is det.
 :- mode list__map2_foldl(pred(in, out, out, in, out) is det, in, out, out,
-		in, out) is det.
+	in, out) is det.
 :- mode list__map2_foldl(pred(in, out, out, in, out) is semidet, in, out, out,
-		in, out) is semidet.
+	in, out) is semidet.
 :- mode list__map2_foldl(pred(in, out, out, in, out) is nondet, in, out, out,
-		in, out) is nondet.
+	in, out) is nondet.
 
 	% Same as list__map_foldl, but with two accumulators.
 :- pred list__map_foldl2(pred(X, Y, A, A, B, B), list(X), list(Y), A, A, B, B).
 :- mode list__map_foldl2(pred(in, out, in, out, di, uo) is det,
-		in, out, in, out, di, uo) is det.
+	in, out, in, out, di, uo) is det.
 :- mode list__map_foldl2(pred(in, out, in, out, in, out) is det,
-		in, out, in, out, in, out) is det.
+	in, out, in, out, in, out) is det.
 :- mode list__map_foldl2(pred(in, out, in, out, in, out) is semidet,
-		in, out, in, out, in, out) is semidet.
+	in, out, in, out, in, out) is semidet.
 :- mode list__map_foldl2(pred(in, out, in, out, in, out) is nondet,
-		in, out, in, out, in, out) is nondet.
+	in, out, in, out, in, out) is nondet.
 
 	% Same as list__map_foldl, but with three accumulators.
 :- pred list__map_foldl3(pred(X, Y, A, A, B, B, C, C), list(X), list(Y),
-		A, A, B, B, C, C).
+	A, A, B, B, C, C).
 :- mode list__map_foldl3(pred(in, out, in, out, in, out, di, uo) is det,
-		in, out, in, out, in, out, di, uo) is det.
+	in, out, in, out, in, out, di, uo) is det.
 :- mode list__map_foldl3(pred(in, out, in, out, in, out, in, out) is det,
-		in, out, in, out, in, out, in, out) is det.
+	in, out, in, out, in, out, in, out) is det.
 :- mode list__map_foldl3(pred(in, out, in, out, in, out, in, out) is semidet,
-		in, out, in, out, in, out, in, out) is semidet.
+	in, out, in, out, in, out, in, out) is semidet.
 :- mode list__map_foldl3(pred(in, out, in, out, in, out, in, out) is nondet,
-		in, out, in, out, in, out, in, out) is nondet.
+	in, out, in, out, in, out, in, out) is nondet.
 
 	% list__filter(Pred, List, TrueList) takes a closure with one
 	% input argument and for each member of List `X', calls the closure.
 	% Iff call(Pred, X) is true, then X is included in TrueList.
-:- pred list__filter(pred(X), list(X), list(X)).
-:- mode list__filter(pred(in) is semidet, in, out) is det.
-
-:- func list__filter(pred(X), list(X)) = list(X).
-:- mode list__filter(pred(in) is semidet, in) = out is det.
+:- pred list__filter(pred(X)::in(pred(in) is semidet), list(X)::in,
+	list(X)::out) is det.
+:- func list__filter(pred(X)::in(pred(in) is semidet), list(X)::in)
+	= (list(X)::out) is det.
 
 	% list__filter(Pred, List, TrueList, FalseList) takes a closure with one
 	% input argument and for each member of List `X', calls the closure.
 	% Iff call(Pred, X) is true, then X is included in TrueList.
 	% Iff call(Pred, X) is false, then X is included in FalseList.
-:- pred list__filter(pred(X), list(X), list(X), list(X)).
-:- mode list__filter(pred(in) is semidet, in, out, out) is det.
+:- pred list__filter(pred(X)::in(pred(in) is semidet), list(X)::in,
+	list(X)::out, list(X)::out) is det.
 
 	% list__filter_map(Transformer, List, TrueList) takes a predicate
 	% with one input argument and one output argument. It is called
 	% with each element of List. If a call succeeds, then the output is
 	% included in TrueList.
-:- pred list__filter_map(pred(X, Y), list(X), list(Y)).
-:- mode list__filter_map(pred(in, out) is semidet, in, out) is det.
+:- pred list__filter_map(pred(X, Y)::in(pred(in, out) is semidet),
+	list(X)::in, list(Y)::out) is det.
 
 :- func list__filter_map(func(X) = Y, list(X)) = list(Y).
 :- mode list__filter_map(func(in) = out is semidet, in) = out is det.
@@ -657,8 +611,8 @@
 	% It is called with each element of List. If a call succeeds,
 	% then the output is included in TrueList; otherwise, the failing
 	% input is included in FalseList.
-:- pred list__filter_map(pred(X, Y), list(X), list(Y), list(X)).
-:- mode list__filter_map(pred(in, out) is semidet, in, out, out) is det.
+:- pred list__filter_map(pred(X, Y)::in(pred(in, out) is semidet),
+	list(X)::in, list(Y)::out, list(X)::out) is det.
 
 	% list__takewhile(Predicate, List, UptoList, AfterList) takes a
 	% closure with one input argument, and calls it on successive members
@@ -666,8 +620,8 @@
 	% the call succeeds are placed in UptoList and the first element for
 	% which the call fails, and all the remaining elements of List are
 	% placed in AfterList.
-:- pred list__takewhile(pred(T), list(T), list(T), list(T)).
-:- mode list__takewhile(pred(in) is semidet, in, out, out) is det.
+:- pred list__takewhile(pred(T)::in(pred(in) is semidet), list(T)::in,
+	list(T)::out, list(T)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -677,9 +631,8 @@
 	% term Compare, and the elements that are equivalent in this ordering
 	% appear in the same sequence in Sorted as they do in Unsorted
 	% (that is, the sort is stable).
-:- pred list__sort(comparison_pred(X), list(X), list(X)).
-:- mode list__sort(in(comparison_pred), in, out) is det.
-
+:- pred list__sort(comparison_pred(X)::in(comparison_pred), list(X)::in,
+	list(X)::out) is det.
 :- func list__sort(comparison_func(X), list(X)) = list(X).
 
 	% list__sort_and_remove_dups(Compare, Unsorted, Sorted) is true iff
@@ -688,15 +641,15 @@
 	% predicate term Compare, except that if two elements in Unsorted
 	% are equivalent with respect to this ordering only the one which
 	% occurs first will be in Sorted.
-:- pred list__sort_and_remove_dups(comparison_pred(X), list(X), list(X)).
-:- mode list__sort_and_remove_dups(in(comparison_pred), in, out) is det.
+:- pred list__sort_and_remove_dups(comparison_pred(X)::in(comparison_pred),
+	list(X)::in, list(X)::out) is det.
 
 	% list__remove_adjacent_dups(P, L0, L) is true iff L is the result
 	% of replacing every sequence of elements in L0 which are equivalent
 	% with respect to the ordering, with the first occurrence in L0 of
 	% such an element.
-:- pred list__remove_adjacent_dups(comparison_pred(X), list(X), list(X)).
-:- mode list__remove_adjacent_dups(in(comparison_pred), in, out) is det.
+:- pred list__remove_adjacent_dups(comparison_pred(X)::in(comparison_pred),
+	list(X)::in, list(X)::out) is det.
 
 	% list__merge(Compare, As, Bs, Sorted) is true iff, assuming As and
 	% Bs are sorted with respect to the ordering defined by Compare,
@@ -705,8 +658,8 @@
 	% if they come from the same list then they appear in the same
 	% sequence in Sorted as they do in that list, otherwise the elements
 	% from As appear before the elements from Bs.
-:- pred list__merge(comparison_pred(X), list(X), list(X), list(X)).
-:- mode list__merge(in(comparison_pred), in, in, out) is det.
+:- pred list__merge(comparison_pred(X)::in(comparison_pred),
+	list(X)::in, list(X)::in, list(X)::out) is det.
 
 :- func list__merge(comparison_func(X), list(X), list(X)) = list(X).
 
@@ -717,9 +670,8 @@
 	% contains no duplicates.  If an element from As is duplicated in
 	% Bs (that is, they are equivalent in the ordering), then the element
 	% from As is the one that appears in Sorted.
-:- pred list__merge_and_remove_dups(comparison_pred(X), list(X), list(X),
-	list(X)).
-:- mode list__merge_and_remove_dups(in(comparison_pred), in, in, out) is det.
+:- pred list__merge_and_remove_dups(comparison_pred(X)::in(comparison_pred),
+	list(X)::in, list(X)::in, list(X)::out) is det.
 
 :- func list__merge_and_remove_dups(comparison_func(X), list(X), list(X))
 	= list(X).
@@ -735,7 +687,7 @@
 	%
 :- func list__series(T, pred(T), func(T) = T) = list(T).
 :- mode list__series(in, pred(in) is semidet, func(in) = out is det) = out
-		is det.
+	is det.
 
 % ---------------------------------------------------------------------------- %
 
@@ -764,7 +716,7 @@
 
 :- interface.
 
-:- import_module term.	% for var/1.
+:- import_module term.		% for var/1.
 
 :- pragma type_spec(list__merge(in, in, out), T = var(_)).
 
@@ -786,7 +738,7 @@
 
 :- implementation.
 
-:- import_module bintree_set, require, std_util.
+:- import_module string, bintree_set, require, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -915,19 +867,21 @@ list__replace_nth(Xs, P, R, L) :-
 
 list__replace_nth_det(Xs, P, R, L) :-
 	( P > 0 ->
-		(
-			list__replace_nth_2(Xs, P, R, L0)
-		->
+		( list__replace_nth_2(Xs, P, R, L0) ->
 			L = L0
 		;
-			error("list__replace_nth_det: Can't replace element whose index position is past the end of the list")
+			error("list__replace_nth_det: " ++
+				"Can't replace element whose index " ++
+				"position is past the end of the list")
 		)
 	;
-		error("list__replace_nth_det: Can't replace element whose index position is less than 1.")
+		error("list__replace_nth_det: " ++
+			"Can't replace element whose index " ++
+			"position is less than 1.")
 	).
 
-:- pred list__replace_nth_2(list(T), int, T, list(T)).
-:- mode list__replace_nth_2(in, in, in, out) is semidet.
+:- pred list__replace_nth_2(list(T)::in, int::in, T::in, list(T)::out)
+	is semidet.
 
 list__replace_nth_2([X | Xs], P, R, L) :-
 	( P = 1 ->
@@ -1015,8 +969,7 @@ list__length_2([_ | L1], N0, N) :-
 list__reverse(L0, L) :-
 	list__reverse_2(L0, [], L).
 
-:- pred list__reverse_2(list(T), list(T), list(T)).
-:- mode list__reverse_2(in, in, out) is det.
+:- pred list__reverse_2(list(T)::in, list(T)::in, list(T)::out) is det.
 
 list__reverse_2([], L, L).
 list__reverse_2([X | Xs], L0, L) :-
@@ -1033,15 +986,15 @@ list__sort_and_remove_dups(L0, L) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred list__merge_sort(list(T), list(T)).
-:- mode list__merge_sort(in, out) is det.
+:- pred list__merge_sort(list(T)::in, list(T)::out) is det.
+
 :- pragma type_spec(list__merge_sort(in, out), T = var(_)).
 
 list__merge_sort(List, SortedList) :-
 	list__merge_sort_2(list__length(List), List, SortedList).
 
-:- pred list__merge_sort_2(int, list(T), list(T)).
-:- mode list__merge_sort_2(in, in, out) is det.
+:- pred list__merge_sort_2(int::in, list(T)::in, list(T)::out) is det.
+
 :- pragma type_spec(list__merge_sort_2(in, in, out), T = var(_)).
 
 list__merge_sort_2(Length, List, SortedList) :-
@@ -1065,8 +1018,8 @@ list__remove_dups(Xs, Ys) :-
 	bintree_set__init(Zs0),
 	list__remove_dups_2(Xs, Zs0, Ys).
 
-:- pred list__remove_dups_2(list(T), bintree_set(T), list(T)).
-:- mode list__remove_dups_2(in, in, out) is det.
+:- pred list__remove_dups_2(list(T)::in, bintree_set(T)::in, list(T)::out)
+	is det.
 
 list__remove_dups_2([], _SoFar, []).
 list__remove_dups_2([X | Xs], SoFar0, Zs) :-
@@ -1086,9 +1039,9 @@ list__remove_adjacent_dups([], []).
 list__remove_adjacent_dups([X | Xs], L) :-
 	list__remove_adjacent_dups_2(Xs, X, L).
 
-:- pred list__remove_adjacent_dups_2(list(T), T, list(T)).
-:- mode list__remove_adjacent_dups_2(in, in, out) is det.
+:- pred list__remove_adjacent_dups_2(list(T)::in, T::in, list(T)::out) is det.
 :- pragma type_spec(list__remove_adjacent_dups_2/3, T = var(_)).
+
 
 list__remove_adjacent_dups_2([], X, [X]).
 list__remove_adjacent_dups_2([X1 | Xs], X0, L) :-
@@ -1111,25 +1064,6 @@ list__zip([A | As], Bs, [A | Cs]) :-
 list__zip2(As, [], As).
 list__zip2(As, [B | Bs], [B | Cs]) :-
 	list__zip(As, Bs, Cs).
-
-%-----------------------------------------------------------------------------%
-
-/**** unused
-:- pred list__split3(list(T), list(T), list(T), list(T)).
-:- mode list__split3(in, out, in, in) is semidet.
-
-list__split3(As, Bs, Cs, Ds) :-
-	list__length(As, AL),
-	list__length(Cs, CL),
-	list__length(Ds, DL),
-	N1 = AL + CL,
-	BL = DL - N1,
-	N2 = AL + BL,
-	list__take(AL, Ds, As),
-	list__drop(N2, Ds, Cs),
-	list__drop(AL, Ds, Ts),
-	list__take(BL, Ts, Bs).
-*****/
 
 %-----------------------------------------------------------------------------%
 
@@ -1187,8 +1121,8 @@ list__duplicate(N, X, L) :-
 list__chunk(List, ChunkSize, ListOfSmallLists) :-
 	list__chunk_2(List, ChunkSize, [], ChunkSize, ListOfSmallLists).
 
-:- pred list__chunk_2(list(T), int, list(T), int, list(list(T))).
-:- mode list__chunk_2(in, in, in, in, out) is det.
+:- pred list__chunk_2(list(T)::in, int::in, list(T)::in, int::in,
+	list(list(T))::out) is det.
 
 list__chunk_2([], _ChunkSize, List0, _N, Lists) :-
 	( List0 = [] ->
@@ -1230,8 +1164,7 @@ list__all_same([]).
 list__all_same([H | T]) :-
 	list__all_same_2(H, T).
 
-:- pred list__all_same_2(T, list(T)).
-:- mode list__all_same_2(in, in) is semidet.
+:- pred list__all_same_2(T::in, list(T)::in) is semidet.
 
 list__all_same_2(_, []).
 list__all_same_2(H, [H | T]) :-
@@ -1291,59 +1224,66 @@ list__map3(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3]) :-
 	call(P, H0, H1, H2, H3),
 	list__map3(P, T0, T1, T2, T3).
 
-list__map_corresponding(_, [],       []      ) = [].
-
-list__map_corresponding(_, [],       [_ | _] ) =
+list__map_corresponding(_, [], []) = [].
+list__map_corresponding(_, [], [_ | _]) =
 	func_error("list__map_corresponding/3: mismatched list arguments").
-
-list__map_corresponding(_, [_ | _],  []      ) =
+list__map_corresponding(_, [_ | _], []) =
 	func_error("list__map_corresponding/3: mismatched list arguments").
-
 list__map_corresponding(F, [A | As], [B | Bs]) =
 	[F(A, B) | list__map_corresponding(F, As, Bs)].
 
 list__map_corresponding3(F, As, Bs, Cs) =
-
-	( if      As = [A | As0], Bs = [B | Bs0], Cs = [C | Cs0]
-	  then    [F(A, B, C) | list__map_corresponding3(F, As0, Bs0, Cs0)]
-
-	  else if As = [],        Bs = [],        Cs = []
-	  then    []
-
-	  else    func_error("list__map_corresponding3: \
-mismatched list arguments")
+	(
+		As = [A | As0],
+		Bs = [B | Bs0],
+		Cs = [C | Cs0]
+	->
+		[F(A, B, C) | list__map_corresponding3(F, As0, Bs0, Cs0)]
+	;
+		As = [],
+		Bs = [],
+		Cs = []
+	->
+		[]
+	;
+		func_error("list__map_corresponding3: " ++
+			"mismatched list arguments")
 	).
 
-list__filter_map_corresponding(_, [],       []      ) = [].
-
-list__filter_map_corresponding(_, [],       [_ | _] ) =
-	func_error("list__filter_map_corresponding/3: \
-mismatched list arguments").
-
-list__filter_map_corresponding(_, [_ | _],  []      ) =
-	func_error("list__filter_map_corresponding/3: \
-mismatched list arguments").
-
+list__filter_map_corresponding(_, [], []) = [].
+list__filter_map_corresponding(_, [], [_ | _]) =
+	func_error("list__filter_map_corresponding/3: " ++
+		"mismatched list arguments").
+list__filter_map_corresponding(_, [_ | _], []) =
+	func_error("list__filter_map_corresponding/3: " ++
+		"mismatched list arguments").
 list__filter_map_corresponding(F, [A | As], [B | Bs]) =
-	( if   F(A, B) = C
-	  then [C | list__filter_map_corresponding(F, As, Bs)]
-	  else list__filter_map_corresponding(F, As, Bs)
+	( F(A, B) = C ->
+		[C | list__filter_map_corresponding(F, As, Bs)]
+	;
+		list__filter_map_corresponding(F, As, Bs)
 	).
 
 list__filter_map_corresponding3(F, As, Bs, Cs) =
-
-	( if      As = [A | As0], Bs = [B | Bs0], Cs = [C | Cs0]
-	  then
-	  	  ( if   F(A, B, C) = D
-		    then [D | list__filter_map_corresponding3(F, As0, Bs0, Cs0)]
-		    else list__filter_map_corresponding3(F, As0, Bs0, Cs0)
-		  )
-
-	  else if As = [],        Bs = [],        Cs = []
-	  then    []
-
-	  else    func_error("list__filter_map_corresponding3: \
-mismatched list arguments")
+	(
+		As = [A | As0],
+		Bs = [B | Bs0],
+		Cs = [C | Cs0]
+	->
+	  	( F(A, B, C) = D ->
+			[D | list__filter_map_corresponding3(F, As0, Bs0, Cs0)]
+		;
+			list__filter_map_corresponding3(F, As0, Bs0, Cs0)
+		)
+	;
+		As = [],
+		Bs = [],
+		Cs = []
+	->
+		[]
+	;
+		func_error("list__filter_map_corresponding3: " ++
+			"mismatched list arguments")
 	).
 
 list__foldl(_, [], !A).
@@ -1443,8 +1383,8 @@ list__remove_adjacent_dups(_, [], []).
 list__remove_adjacent_dups(P, [X | Xs], L) :-
 	list__remove_adjacent_dups_2(P, Xs, X, L).
 
-:- pred list__remove_adjacent_dups_2(comparison_pred(T), list(T), T, list(T)).
-:- mode list__remove_adjacent_dups_2(in(comparison_pred), in, in, out) is det.
+:- pred list__remove_adjacent_dups_2(comparison_pred(T)::in(comparison_pred),
+	list(T)::in, T::in, list(T)::out) is det.
 
 list__remove_adjacent_dups_2(_, [], X, [X]).
 list__remove_adjacent_dups_2(P, [X1 | Xs], X0, L) :-
@@ -1457,38 +1397,30 @@ list__remove_adjacent_dups_2(P, [X1 | Xs], X0, L) :-
 
 list__sort(P, L0, L) :-
 	list__length(L0, N),
-	(
-		N = 0
-	->
+	( N = 0 ->
 		L = []
-	;
-		list__hosort(P, N, L0, L1, [])
-	->
+	; list__hosort(P, N, L0, L1, []) ->
 		L = L1
 	;
 		error("hosort failed")
 	).
 
 % list__hosort is actually det but the compiler can't confirm it
-:- pred list__hosort(comparison_pred(X), int, list(X), list(X), list(X)).
-:- mode list__hosort(in(comparison_pred), in, in, out, out) is semidet.
+:- pred list__hosort(comparison_pred(X)::in(comparison_pred), int::in,
+	list(X)::in, list(X)::out, list(X)::out) is semidet.
 
 	% list__hosort is a Mercury implementation of the mergesort
 	% described in The Craft of Prolog.
 	% N denotes the length of the part of L0 that this call is sorting.
-	% 		(require((length(L0, M), M >= N)))
+	% (require((length(L0, M), M >= N)))
 	% Since we have redundant information about the list (N, and the
 	% length implicit in the list itself), we get a semidet unification
 	% when we deconstruct the list.
 list__hosort(P, N, L0, L, Rest) :-
-	(
-		N = 1
-	->
+	( N = 1 ->
 		L0 = [X | Rest],
 		L = [X]
-	;
-		N = 2
-	->
+	; N = 2 ->
 		L0 = [X, Y | Rest],
 		call(P, X, Y, C),
 		(
@@ -1551,10 +1483,12 @@ list__merge_and_remove_dups(P, [H1 | T1], [H2 | T2], L) :-
 %
 :- func empty_list = list(T).
 :- pragma export(empty_list = out, "ML_empty_list").
+
 empty_list = [].
 
 :- func cons(T, list(T)) = list(T).
 :- pragma export((cons(in, in) = (out)), "ML_cons").
+
 cons(H, T) = [H | T].
 
 %-----------------------------------------------------------------------------%
@@ -1562,10 +1496,12 @@ cons(H, T) = [H | T].
 % Ralph Becket <rwab1@cam.sri.com> 27/04/99
 %       Function forms added.
 
-list__det_head([]) = _ :- error("list__det_head/1: empty list as argument").
+list__det_head([]) = _ :-
+	error("list__det_head/1: empty list as argument").
 list__det_head([X | _]) = X.
 
-list__det_tail([]) = _ :- error("list__det_tail/1: empty list as argument").
+list__det_tail([]) = _ :-
+	error("list__det_tail/1: empty list as argument").
 list__det_tail([_ | Xs]) = Xs.
 
 list__append(Xs, Ys) = Zs :-
@@ -1666,9 +1602,9 @@ L1 ++ L2 = list__append(L1, L2).
 % ---------------------------------------------------------------------------- %
 
 list__series(I, OK, Succ) =
-	( if OK(I) then
+	( OK(I) ->
 		[I | list__series(Succ(I), OK, Succ)]
-	  else
+	;
 	  	[]
 	).
 

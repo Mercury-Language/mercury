@@ -75,8 +75,8 @@
     % functor, or if the types of the arguments do not match
     % the expected argument types of that functor.
     %
-:- func construct(type_desc__type_desc, int, list(univ)) = univ.
-:- mode construct(in, in, in) = out is semidet.
+:- func construct(type_desc__type_desc::in, int::in, list(univ)::in)
+    = (univ::out) is semidet.
 
     % construct_tuple(Args) = Term
     %
@@ -133,8 +133,8 @@ num_functors(TypeDesc) = rtti_implementation__num_functors(TypeDesc).
         ** succeed.
         */
     MR_save_transient_registers();
-    success = MR_get_functors_check_range(FunctorNumber,
-                type_info, &construct_info);
+    success = MR_get_functors_check_range(FunctorNumber, type_info,
+        &construct_info);
     MR_restore_transient_registers();
 
         /*
@@ -144,12 +144,12 @@ num_functors(TypeDesc) = rtti_implementation__num_functors(TypeDesc).
 
     if (success) {
         MR_make_aligned_string(FunctorName, (MR_String) (MR_Word)
-                construct_info.functor_name);
+            construct_info.functor_name);
         arity = construct_info.arity;
         Arity = arity;
 
         if (MR_TYPE_CTOR_INFO_IS_TUPLE(
-                        MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info)))
+            MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info)))
         {
             MR_save_transient_registers();
             TypeInfoList = MR_type_params_vector_to_list(Arity,
@@ -278,7 +278,7 @@ get_functor_2(TypeDesc, FunctorNumber,
     rtti_implementation__get_functor_2(TypeDesc, FunctorNumber,
         FunctorName, Arity, TypeInfoList, Names).
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
     get_functor_ordinal(TypeDesc::in, FunctorNumber::in, Ordinal::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "{
@@ -332,7 +332,7 @@ get_functor_2(TypeDesc, FunctorNumber,
     SUCCESS_INDICATOR = success;
 }").
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
     construct(TypeDesc::in, FunctorNumber::in, ArgList::in) = (Term::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "{
@@ -366,7 +366,6 @@ get_functor_2(TypeDesc, FunctorNumber,
         ** Build the new term in `new_data'.
         */
     if (success) {
-
         type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
         if (MR_type_ctor_rep(type_ctor_info) != construct_info.type_ctor_rep) {
@@ -425,7 +424,7 @@ get_functor_2(TypeDesc, FunctorNumber,
                 }
             }
         }
-            
+
         /*
         ** Otherwise, it is not one of the reserved addresses,
         ** so handle it like a normal DU type.
@@ -472,10 +471,10 @@ get_functor_2(TypeDesc, FunctorNumber,
                     MR_field(ptag, new_data, 0) =
                         functor_desc->MR_du_functor_secondary;
                     for (i = 0; i < arity; i++) {
-                        arg_data = MR_field(MR_UNIV_TAG, 
+                        arg_data = MR_field(MR_UNIV_TAG,
                             MR_list_head(arg_list),
                             MR_UNIV_OFFSET_FOR_DATA);
-                        arg_type_info = (MR_TypeInfo) MR_field(MR_UNIV_TAG, 
+                        arg_type_info = (MR_TypeInfo) MR_field(MR_UNIV_TAG,
                             MR_list_head(arg_list),
                             MR_UNIV_OFFSET_FOR_TYPEINFO);
                         MR_field(ptag, new_data, i + 1) = arg_data;
@@ -495,10 +494,10 @@ get_functor_2(TypeDesc, FunctorNumber,
 
                     size = MR_cell_size(arity);
                     for (i = 0; i < arity; i++) {
-                        arg_data = MR_field(MR_UNIV_TAG, 
+                        arg_data = MR_field(MR_UNIV_TAG,
                             MR_list_head(arg_list),
                             MR_UNIV_OFFSET_FOR_DATA);
-                        arg_type_info = (MR_TypeInfo) MR_field(MR_UNIV_TAG, 
+                        arg_type_info = (MR_TypeInfo) MR_field(MR_UNIV_TAG,
                             MR_list_head(arg_list),
                             MR_UNIV_OFFSET_FOR_TYPEINFO);
                         MR_field(ptag, new_data, i) = arg_data;
@@ -529,21 +528,21 @@ get_functor_2(TypeDesc, FunctorNumber,
                 MR_TypeInfo arg_type_info;
 
                 arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
-    
+
                 if (arity == 0) {
                     new_data = (MR_Word) NULL;
                 } else {
                     MR_offset_incr_hp_msg(new_data, MR_SIZE_SLOT_SIZE,
                         MR_SIZE_SLOT_SIZE + arity, MR_PROC_LABEL,
                         ""<created by construct:construct/3>"");
-            
+
                     size = MR_cell_size(arity);
                     arg_list = ArgList;
                     for (i = 0; i < arity; i++) {
-                        arg_data = MR_field(MR_UNIV_TAG, 
+                        arg_data = MR_field(MR_UNIV_TAG,
                             MR_list_head(arg_list),
                             MR_UNIV_OFFSET_FOR_DATA);
-                        arg_type_info = (MR_TypeInfo) MR_field(MR_UNIV_TAG, 
+                        arg_type_info = (MR_TypeInfo) MR_field(MR_UNIV_TAG,
                             MR_list_head(arg_list),
                             MR_UNIV_OFFSET_FOR_TYPEINFO);
                         MR_field(MR_mktag(0), new_data, i) = arg_data;
@@ -577,13 +576,11 @@ get_functor_2(TypeDesc, FunctorNumber,
 }").
 
 construct_tuple(Args) =
-    construct_tuple_2(Args,
-        list__map(univ_type, Args),
-        list__length(Args)).
+    construct_tuple_2(Args, list__map(univ_type, Args), list__length(Args)).
 
 :- func construct_tuple_2(list(univ), list(type_desc__type_desc), int) = univ.
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
     construct_tuple_2(Args::in, ArgTypes::in, Arity::in) = (Term::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "{
@@ -614,13 +611,11 @@ construct_tuple(Args) =
 
         size = MR_cell_size(Arity);
         for (i = 0; i < Arity; i++) {
-            arg_data = MR_field(MR_UNIV_TAG, 
-                MR_list_head(Args),
-                            MR_UNIV_OFFSET_FOR_DATA);
-            arg_type_info = (MR_TypeInfo) MR_field(MR_UNIV_TAG, 
-                MR_list_head(Args),
-                MR_UNIV_OFFSET_FOR_TYPEINFO);
-                        MR_field(MR_mktag(0), new_data, i) = arg_data;
+            arg_data = MR_field(MR_UNIV_TAG, MR_list_head(Args),
+                MR_UNIV_OFFSET_FOR_DATA);
+            arg_type_info = (MR_TypeInfo) MR_field(MR_UNIV_TAG,
+                MR_list_head(Args), MR_UNIV_OFFSET_FOR_TYPEINFO);
+            MR_field(MR_mktag(0), new_data, i) = arg_data;
             size += MR_term_size(arg_type_info, arg_data);
             Args = MR_list_tail(Args);
         }

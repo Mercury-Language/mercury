@@ -101,11 +101,9 @@
 
 	% array__make_empty_array(Array) creates an array of size zero
 	% starting at lower bound 0.
-:- pred array__make_empty_array(array(T)).
-:- mode array__make_empty_array(array_uo) is det.
+:- pred array__make_empty_array(array(T)::array_uo) is det.
 
-:- func array__make_empty_array = array(T).
-:- mode array__make_empty_array = array_uo is det.
+:- func array__make_empty_array = (array(T)::array_uo) is det.
 
 	% array__init(Size, Init, Array) creates an array
 	% with bounds from 0 to Size-1, with each element initialized to Init.
@@ -184,7 +182,7 @@
 :- mode array__semidet_lookup(in, in, out) is semidet.
 
 	% array__set sets the nth element of an array, and returns the
-	% resulting array (good opportunity for destructive update ;-).  
+	% resulting array (good opportunity for destructive update ;-).
 	% Throws an exception if the index is out of bounds.
 :- pred array__set(array(T), int, T, array(T)).
 :- mode array__set(array_di, in, in, array_uo) is det.
@@ -470,7 +468,7 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 #else
 	SUCCESS_INDICATOR = MR_TRUE;
 #endif
-").		
+").
 
 :- pragma foreign_proc("C#",
 	bounds_checks,
@@ -481,7 +479,7 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 #else
 	SUCCESS_INDICATOR = true;
 #endif
-").		
+").
 
 :- pragma foreign_proc("Java",
 	bounds_checks,
@@ -541,12 +539,12 @@ array__init(Size, Item, Array) :-
 		error("array__init: negative size")
 	;
 		array__init_2(Size, Item, Array)
-	).	
+	).
 
 :- pred array__init_2(int, T, array(T)).
 :- mode array__init_2(in, in, array_uo) is det.
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	array__init_2(Size::in, Item::in, Array::array_uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
@@ -562,7 +560,7 @@ array__init(Size, Item, Array) :-
 	ML_init_array(Array, 0, 0);
 ").
 
-:- pragma foreign_proc("C#", 
+:- pragma foreign_proc("C#",
 	array__init_2(Size::in, Item::in, Array::array_uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
@@ -571,7 +569,7 @@ array__init(Size, Item, Array) :-
 		Array.SetValue(Item, i);
 	}
 ").
-:- pragma foreign_proc("C#", 
+:- pragma foreign_proc("C#",
 	array__make_empty_array(Array::array_uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
@@ -585,7 +583,7 @@ array__init(Size, Item, Array) :-
 	Array = null;
 ").
 
-:- pragma foreign_proc("Java", 
+:- pragma foreign_proc("Java",
 	array__init_2(Size::in, Item::in, Array::array_uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
@@ -613,7 +611,7 @@ array__init(Size, Item, Array) :-
 	/* Array not used */
 	Min = 0;
 ").
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	array__min(Array::in, Min::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
@@ -628,7 +626,7 @@ array__init(Size, Item, Array) :-
 	/* Array not used */
 	Min = 0;
 ").
-:- pragma foreign_proc("C#", 
+:- pragma foreign_proc("C#",
 	array__min(Array::in, Min::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
@@ -643,7 +641,7 @@ array__init(Size, Item, Array) :-
 	/* Array not used */
 	Min = 0;
 ").
-:- pragma foreign_proc("Java", 
+:- pragma foreign_proc("Java",
 	array__min(_Array::in, Min::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
@@ -652,20 +650,20 @@ array__init(Size, Item, Array) :-
 ").
 
 :- pragma promise_pure(array__max/2).
-:- pragma foreign_proc("C", 
-	array__max(Array::array_ui, Max::out), 
+:- pragma foreign_proc("C",
+	array__max(Array::array_ui, Max::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Max = Array->size - 1;
 ").
 :- pragma foreign_proc("C",
-	array__max(Array::in, Max::out), 
+	array__max(Array::in, Max::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Max = Array->size - 1;
 ").
-:- pragma foreign_proc("C#", 
-	array__max(Array::array_ui, Max::out), 
+:- pragma foreign_proc("C#",
+	array__max(Array::array_ui, Max::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	if (Array != null) {
@@ -675,7 +673,7 @@ array__init(Size, Item, Array) :-
 	}
 ").
 :- pragma foreign_proc("C#",
-	array__max(Array::in, Max::out), 
+	array__max(Array::in, Max::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	if (Array != null) {
@@ -685,8 +683,8 @@ array__init(Size, Item, Array) :-
 	}
 ").
 
-:- pragma foreign_proc("Java", 
-	array__max(Array::array_ui, Max::out), 
+:- pragma foreign_proc("Java",
+	array__max(Array::array_ui, Max::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	if (Array != null) {
@@ -696,7 +694,7 @@ array__init(Size, Item, Array) :-
 	}
 ").
 :- pragma foreign_proc("Java",
-	array__max(Array::in, Max::out), 
+	array__max(Array::in, Max::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	if (Array != null) {
@@ -1149,7 +1147,7 @@ ML_copy_array(MR_ArrayPtr array, MR_ConstArrayPtr old_array)
 	// to deep copy the array elements
 	Array = System.Array.CreateInstance(
 			Array0.GetType().GetElementType(), Array0.Length);
-	System.Array.Copy(Array0, Array, Array0.Length); 
+	System.Array.Copy(Array0, Array, Array0.Length);
 ").
 
 :- pragma foreign_proc("C#",
@@ -1160,7 +1158,7 @@ ML_copy_array(MR_ArrayPtr array, MR_ConstArrayPtr old_array)
 	// to deep copy the array elements
 	Array = System.Array.CreateInstance(
 			Array0.GetType().GetElementType(), Array0.Length);
-	System.Array.Copy(Array0, Array, Array0.Length); 
+	System.Array.Copy(Array0, Array, Array0.Length);
 ").
 
 :- pragma foreign_proc("Java",
@@ -1601,7 +1599,7 @@ copy_subarray_reverse(A, B, Lo, Hi, I) =
 
 	% merges the two sorted consecutive subarrays Lo1 .. Hi1 and
 	% Lo2 .. Hi2 from A into the subarray starting at I in B.
-	% 
+	%
 :- func merge_subarrays(array(T), array(T), int, int, int, int, int) = array(T).
 :- mode merge_subarrays(array_ui, array_di, in, in, in, in, in) = array_uo
 	is det.

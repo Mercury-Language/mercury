@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2003 The University of Melbourne.
+% Copyright (C) 1995-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -45,11 +45,9 @@
 
 	% Pythagoras' number
 :- func math__pi = float.
-:- mode math__pi = out is det.
 
 	% Base of natural logarithms
 :- func math__e = float.
-:- mode math__e = out is det.
 
 %---------------------------------------------------------------------------%
 % "Next integer" operations
@@ -57,23 +55,19 @@
 	% math__ceiling(X) = Ceil is true if Ceil is the smallest integer
 	% not less than X.
 :- func math__ceiling(float) = float.
-:- mode math__ceiling(in) = out is det.
 
 	% math__floor(X) = Floor is true if Floor is the largest integer
 	% not greater than X.
 :- func math__floor(float) = float.
-:- mode math__floor(in) = out is det.
 
 	% math__round(X) = Round is true if Round is the integer
 	% closest to X.  If X has a fractional value of 0.5, it
 	% is rounded up.
 :- func math__round(float) = float.
-:- mode math__round(in) = out is det.
 
 	% math__truncate(X) = Trunc is true if Trunc is the integer
 	% closest to X such that |Trunc| =< |X|.
 :- func math__truncate(float) = float.
-:- mode math__truncate(in) = out is det.
 
 %---------------------------------------------------------------------------%
 % Polynomial roots
@@ -83,7 +77,6 @@
 	%
 	% Domain restriction: X >= 0
 :- func math__sqrt(float) = float.
-:- mode math__sqrt(in) = out is det.
 
 :- type math__quadratic_roots
 	--->	no_roots
@@ -95,7 +88,6 @@
 	%
 	% Domain restriction: A \= 0
 :- func math__solve_quadratic(float, float, float) = quadratic_roots.
-:- mode math__solve_quadratic(in, in, in) = out is det.
 
 %---------------------------------------------------------------------------%
 % Power/logarithm operations
@@ -105,79 +97,66 @@
 	%
 	% Domain restriction: X >= 0 and (X = 0 implies Y > 0)
 :- func math__pow(float, float) = float.
-:- mode math__pow(in, in) = out is det.
 
 	% math__exp(X) = Exp is true if Exp is e raised to the
 	% power of X.
 :- func math__exp(float) = float.
-:- mode math__exp(in) = out is det.
 
 	% math__ln(X) = Log is true if Log is the natural logarithm
 	% of X.
 	%
 	% Domain restriction: X > 0
 :- func math__ln(float) = float.
-:- mode math__ln(in) = out is det.
 
 	% math__log10(X) = Log is true if Log is the logarithm to
 	% base 10 of X.
 	%
 	% Domain restriction: X > 0
 :- func math__log10(float) = float.
-:- mode math__log10(in) = out is det.
 
 	% math__log2(X) = Log is true if Log is the logarithm to
 	% base 2 of X.
 	%
 	% Domain restriction: X > 0
 :- func math__log2(float) = float.
-:- mode math__log2(in) = out is det.
 
 	% math__log(B, X) = Log is true if Log is the logarithm to
 	% base B of X.
 	%
 	% Domain restriction: X > 0 and B > 0 and B \= 1
 :- func math__log(float, float) = float.
-:- mode math__log(in, in) = out is det.
 
 %---------------------------------------------------------------------------%
 % Trigonometric operations
 
 	% math__sin(X) = Sin is true if Sin is the sine of X.
 :- func math__sin(float) = float.
-:- mode math__sin(in) = out is det.
 
 	% math__cos(X) = Cos is true if Cos is the cosine of X.
 :- func math__cos(float) = float.
-:- mode math__cos(in) = out is det.
 
 	% math__tan(X) = Tan is true if Tan is the tangent of X.
 :- func math__tan(float) = float.
-:- mode math__tan(in) = out is det.
 
 	% math__asin(X) = ASin is true if ASin is the inverse
 	% sine of X, where ASin is in the range [-pi/2,pi/2].
 	%
 	% Domain restriction: X must be in the range [-1,1]
 :- func math__asin(float) = float.
-:- mode math__asin(in) = out is det.
 
 	% math__acos(X) = ACos is true if ACos is the inverse
 	% cosine of X, where ACos is in the range [0, pi].
 	%
 	% Domain restriction: X must be in the range [-1,1]
 :- func math__acos(float) = float.
-:- mode math__acos(in) = out is det.
 
 	% math__atan(X) = ATan is true if ATan is the inverse
 	% tangent of X, where ATan is in the range [-pi/2,pi/2].
 :- func math__atan(float) = float.
-:- mode math__atan(in) = out is det.
 
 	% math__atan2(Y, X) = ATan is true if ATan is the inverse
 	% tangent of Y/X, where ATan is in the range [-pi,pi].
 :- func math__atan2(float, float) = float.
-:- mode math__atan2(in, in) = out is det.
 
 %---------------------------------------------------------------------------%
 % Hyperbolic functions
@@ -185,17 +164,14 @@
 	% math__sinh(X) = Sinh is true if Sinh is the hyperbolic
 	% sine of X.
 :- func math__sinh(float) = float.
-:- mode math__sinh(in) = out is det.
 
 	% math__cosh(X) = Cosh is true if Cosh is the hyperbolic
 	% cosine of X.
 :- func math__cosh(float) = float.
-:- mode math__cosh(in) = out is det.
 
 	% math__tanh(X) = Tanh is true if Tanh is the hyperbolic
 	% tangent of X.
 :- func math__tanh(float) = float.
-:- mode math__tanh(in) = out is det.
 
 	% A domain error exception, indicates that the inputs to a function
 	% were outside the domain of the function.  The string indicates

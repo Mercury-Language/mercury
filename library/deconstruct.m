@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2003 The University of Melbourne.
+% Copyright (C) 2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -45,7 +45,6 @@
 :- inst canonicalize_or_do_not_allow
 	--->	do_not_allow
 	;	canonicalize.
-
 
 	% functor, argument and deconstruct and their variants take any type
 	% (including univ), and return representation information for that type.
@@ -103,7 +102,7 @@
 	%
 	% Given a data item (Data), binds Functor to a string
 	% representation of the functor and Arity to the arity of this
-	% data item. 
+	% data item.
 	%
 :- pred functor(T, noncanon_handling, string, int).
 :- mode functor(in, in(do_not_allow), out, out) is det.
@@ -246,7 +245,8 @@
 
 :- implementation.
 
-:- import_module int, require, rtti_implementation.
+:- import_module int, string, require, rtti_implementation.
+
 :- pragma foreign_import_module("C", std_util).
 
 %-----------------------------------------------------------------------------%
@@ -255,6 +255,10 @@
 
 #include ""mercury_deconstruct.h""
 #include ""mercury_deconstruct_macros.h""
+
+extern	MR_Word	MR_make_arg_list(MR_TypeInfo type_info,
+			const MR_DuFunctorDesc *functor_desc,
+			MR_Word *arg_vector);
 
 ").
 
@@ -332,6 +336,7 @@ named_arg_cc(Term, Name, MaybeArg) :-
 	% univ_named_arg_idcc doesn't return an uninitialized
 	% (or otherwise bogus) univ value.
 :- func dummy_univ = univ.
+
 dummy_univ = univ(0).
 
 det_arg(Term, NonCanon, Index, Argument) :-
@@ -372,7 +377,8 @@ det_named_arg(Term, NonCanon, Name, Argument) :-
 			( Success \= 0 ->
 				Univ = Univ0
 			;
-				error("det_named_arg: no argument with that name")
+				error("det_named_arg: " ++
+					"no argument with that name")
 			)
 		)
 	->
@@ -474,13 +480,13 @@ limited_deconstruct_cc(Term, MaxArity, MaybeResult) :-
 
 functor_dna(Term::in, Functor::out, Arity::out) :-
 	rtti_implementation__deconstruct(Term,
-			do_not_allow, Functor, Arity, _Arguments).
+		do_not_allow, Functor, Arity, _Arguments).
 functor_can(Term::in, Functor::out, Arity::out) :-
 	rtti_implementation__deconstruct(Term,
-			canonicalize, Functor, Arity, _Arguments).
+		canonicalize, Functor, Arity, _Arguments).
 functor_idcc(Term::in, Functor::out, Arity::out) :-
 	rtti_implementation__deconstruct(Term,
-			include_details_cc, Functor, Arity, _Arguments).
+		include_details_cc, Functor, Arity, _Arguments).
 
 %-----------------------------------------------------------------------------%
 
@@ -629,7 +635,7 @@ functor_idcc(Term::in, Functor::out, Arity::out) :-
 
 :- pragma foreign_proc("C",
 	univ_named_arg_idcc(Term::in, Name::in, DummyUniv::in,
-	Argument::out, Success::out),
+		Argument::out, Success::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "{
 #define	TYPEINFO_ARG		TypeInfo_for_T
@@ -647,7 +653,7 @@ functor_idcc(Term::in, Functor::out, Arity::out) :-
 #undef	SELECTED_TYPE_INFO
 #undef	NONCANON
 #undef	SELECT_BY_NAME
-	
+
 	if (success) {
 		Success = 1;
 	} else {
@@ -664,16 +670,16 @@ functor_idcc(Term::in, Functor::out, Arity::out) :-
 
 univ_arg_dna(Term::in, Index::in, Arg::out) :-
 	rtti_implementation__deconstruct(Term,
-			do_not_allow, _Functor, _Arity, Arguments),
+		do_not_allow, _Functor, _Arity, Arguments),
 	list__index0(Arguments, Index, Arg).
 univ_arg_can(Term::in, Index::in, Arg::out) :-
 	rtti_implementation__deconstruct(Term,
-			canonicalize, _Functor, _Arity, Arguments),
+		canonicalize, _Functor, _Arity, Arguments),
 	list__index0(Arguments, Index, Arg).
 univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
 		Success::out) :-
 	rtti_implementation__deconstruct(Term,
-			include_details_cc, _Functor, _Arity, Arguments),
+		include_details_cc, _Functor, _Arity, Arguments),
 	( list__index0(Arguments, Index, Arg) ->
 		Argument = Arg,
 		Success = 1
@@ -696,7 +702,7 @@ univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
 :- pred limited_deconstruct_idcc(T::in, int::in,
 	string::out, int::out, list(univ)::out) is cc_multi.
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	deconstruct_dna(Term::in, Functor::out, Arity::out, Arguments::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "{
@@ -719,7 +725,7 @@ univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
 #undef	NONCANON
 }").
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	deconstruct_can(Term::in, Functor::out, Arity::out, Arguments::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "{
@@ -742,7 +748,7 @@ univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
 #undef	NONCANON
 }").
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	deconstruct_idcc(Term::in, Functor::out, Arity::out, Arguments::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "{
@@ -765,7 +771,7 @@ univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
 #undef	NONCANON
 }").
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	limited_deconstruct_dna(Term::in, MaxArity::in,
 		Functor::out, Arity::out, Arguments::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
@@ -793,7 +799,7 @@ univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
 #undef	SAVE_SUCCESS
 }").
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	limited_deconstruct_can(Term::in, MaxArity::in,
 		Functor::out, Arity::out, Arguments::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
@@ -821,7 +827,7 @@ univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
 #undef	SAVE_SUCCESS
 }").
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	limited_deconstruct_idcc(Term::in, MaxArity::in, Functor::out,
 		Arity::out, Arguments::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
@@ -861,16 +867,15 @@ univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
 	}
 }").
 
-
 deconstruct_dna(Term::in, Functor::out, Arity::out, Arguments::out) :-
 	rtti_implementation__deconstruct(Term,
-			do_not_allow, Functor, Arity, Arguments).
+		do_not_allow, Functor, Arity, Arguments).
 deconstruct_can(Term::in, Functor::out, Arity::out, Arguments::out) :-
 	rtti_implementation__deconstruct(Term,
-			canonicalize, Functor, Arity, Arguments).
+		canonicalize, Functor, Arity, Arguments).
 deconstruct_idcc(Term::in, Functor::out, Arity::out, Arguments::out) :-
 	rtti_implementation__deconstruct(Term,
-			include_details_cc, Functor, Arity, Arguments).
+		include_details_cc, Functor, Arity, Arguments).
 
 	% XXX The Mercury implementations of all of these limited_* procedures
 	%     are inefficient -- they construct Functor and Arguments even in
@@ -878,18 +883,18 @@ deconstruct_idcc(Term::in, Functor::out, Arity::out, Arguments::out) :-
 limited_deconstruct_dna(Term::in, MaxArity::in,
 		Functor::out, Arity::out, Arguments::out) :-
 	rtti_implementation__deconstruct(Term,
-			do_not_allow, Functor, Arity, Arguments),
+		do_not_allow, Functor, Arity, Arguments),
 	Arity =< MaxArity.
 limited_deconstruct_can(Term::in, MaxArity::in,
 		Functor::out, Arity::out, Arguments::out) :-
 	rtti_implementation__deconstruct(Term,
-			canonicalize, Functor, Arity, Arguments),
+		canonicalize, Functor, Arity, Arguments),
 	Arity =< MaxArity.
 limited_deconstruct_idcc(Term::in, _MaxArity::in,
 		Functor::out, Arity::out, Arguments::out) :-
 	% For this one, the caller checks Arity =< MaxArity.
 	rtti_implementation__deconstruct(Term,
-			include_details_cc, Functor, Arity, Arguments).
+		include_details_cc, Functor, Arity, Arguments).
 
 %-----------------------------------------------------------------------------%
 
@@ -926,206 +931,235 @@ get_functor_info(Univ, FunctorInfo) :-
 	% with the type of the single function symbol of the notag type.
 :- pred get_notag_functor_info(univ::in, univ::out) is semidet.
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	get_notag_functor_info(Univ::in, ExpUniv::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "{
-    MR_TypeInfo                 type_info;
-    MR_TypeInfo                 exp_type_info;
-    MR_TypeCtorInfo             type_ctor_info;
-    const MR_NotagFunctorDesc   *functor_desc;
-    MR_Word                     value;
+	MR_TypeInfo			type_info;
+	MR_TypeInfo			exp_type_info;
+	MR_TypeCtorInfo			type_ctor_info;
+	const MR_NotagFunctorDesc	*functor_desc;
+	MR_Word				value;
 
-    MR_unravel_univ(Univ, type_info, value);
-    type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
-    switch (MR_type_ctor_rep(type_ctor_info)) {
-        case MR_TYPECTOR_REP_NOTAG:
-        case MR_TYPECTOR_REP_NOTAG_USEREQ:
-            functor_desc = MR_type_ctor_functors(type_ctor_info).
-	    	MR_functors_notag;
-            exp_type_info = MR_pseudo_type_info_is_ground(
-                functor_desc->MR_notag_functor_arg_type);
-            MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
-            SUCCESS_INDICATOR = MR_TRUE;
-            break;
+	MR_unravel_univ(Univ, type_info, value);
+	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
+	switch (MR_type_ctor_rep(type_ctor_info)) {
 
-        case MR_TYPECTOR_REP_NOTAG_GROUND:
-        case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
-            functor_desc = MR_type_ctor_functors(type_ctor_info).
-	    	MR_functors_notag;
-            exp_type_info = MR_create_type_info(
-                MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
-                functor_desc->MR_notag_functor_arg_type);
-            MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
-            SUCCESS_INDICATOR = MR_TRUE;
-            break;
+	case MR_TYPECTOR_REP_NOTAG:
+	case MR_TYPECTOR_REP_NOTAG_USEREQ:
+		functor_desc = MR_type_ctor_functors(type_ctor_info).
+			MR_functors_notag;
+		exp_type_info = MR_pseudo_type_info_is_ground(
+			functor_desc->MR_notag_functor_arg_type);
+		MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
+		SUCCESS_INDICATOR = MR_TRUE;
+		break;
 
-        default:
-            SUCCESS_INDICATOR = MR_FALSE;
-            break;
-    }
+	case MR_TYPECTOR_REP_NOTAG_GROUND:
+	case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
+		functor_desc = MR_type_ctor_functors(type_ctor_info).
+			MR_functors_notag;
+		exp_type_info = MR_create_type_info(
+			MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(
+				type_info),
+			functor_desc->MR_notag_functor_arg_type);
+		MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
+		SUCCESS_INDICATOR = MR_TRUE;
+		break;
+
+	default:
+		SUCCESS_INDICATOR = MR_FALSE;
+		break;
+
+	}
 }").
 
-    % Given a value of an arbitrary type, succeed if its type is defined
-    % as an equivalence type, and return a univ which bundles up the value
-    % with the equivalent type. (I.e. this removes one layer of equivalence
-    % from the type stored in the univ.)
+	% Given a value of an arbitrary type, succeed if its type is defined
+	% as an equivalence type, and return a univ which bundles up the value
+	% with the equivalent type. (I.e. this removes one layer of equivalence
+	% from the type stored in the univ.)
 :- pred get_equiv_functor_info(univ::in, univ::out) is semidet.
 
 :- pragma foreign_proc("C",
 	get_equiv_functor_info(Univ::in, ExpUniv::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "{
-    MR_TypeInfo     type_info;
-    MR_TypeInfo     exp_type_info;
-    MR_TypeCtorInfo type_ctor_info;
-    MR_Word         value;
+	MR_TypeInfo	type_info;
+	MR_TypeInfo	exp_type_info;
+	MR_TypeCtorInfo type_ctor_info;
+	MR_Word		value;
 
-    MR_unravel_univ(Univ, type_info, value);
-    type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
-    switch (MR_type_ctor_rep(type_ctor_info)) {
-        case MR_TYPECTOR_REP_EQUIV:
-            exp_type_info = MR_pseudo_type_info_is_ground(
-                MR_type_ctor_layout(type_ctor_info).MR_layout_equiv);
-            MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
-            SUCCESS_INDICATOR = MR_TRUE;
-            break;
+	MR_unravel_univ(Univ, type_info, value);
+	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
+	switch (MR_type_ctor_rep(type_ctor_info)) {
 
-        case MR_TYPECTOR_REP_EQUIV_GROUND:
-            exp_type_info = MR_create_type_info(
-                MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
-                MR_type_ctor_layout(type_ctor_info).MR_layout_equiv);
-            MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
-            SUCCESS_INDICATOR = MR_TRUE;
-            break;
+	case MR_TYPECTOR_REP_EQUIV:
+		exp_type_info = MR_pseudo_type_info_is_ground(
+			MR_type_ctor_layout(type_ctor_info).MR_layout_equiv);
+		MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
+		SUCCESS_INDICATOR = MR_TRUE;
+		break;
 
-        default:
-            SUCCESS_INDICATOR = MR_FALSE;
-            break;
-    }
+	case MR_TYPECTOR_REP_EQUIV_GROUND:
+		exp_type_info = MR_create_type_info(
+			MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
+			MR_type_ctor_layout(type_ctor_info).MR_layout_equiv);
+		MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
+		SUCCESS_INDICATOR = MR_TRUE;
+		break;
+
+	default:
+		SUCCESS_INDICATOR = MR_FALSE;
+		break;
+
+	}
 }").
 
-    % Given a value of an arbitrary type, succeed if it is an enum type,
-    % and return the integer value corresponding to the value.
+	% Given a value of an arbitrary type, succeed if it is an enum type,
+	% and return the integer value corresponding to the value.
 :- pred get_enum_functor_info(univ::in, int::out) is semidet.
 
 :- pragma foreign_proc("C",
 	get_enum_functor_info(Univ::in, Enum::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "{
-    MR_TypeInfo     type_info;
-    MR_TypeCtorInfo type_ctor_info;
-    MR_Word         value;
+	MR_TypeInfo	type_info;
+	MR_TypeCtorInfo	type_ctor_info;
+	MR_Word		value;
 
-    MR_unravel_univ(Univ, type_info, value);
-    type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
-    switch (MR_type_ctor_rep(type_ctor_info)) {
-        case MR_TYPECTOR_REP_ENUM:
-        case MR_TYPECTOR_REP_ENUM_USEREQ:
-            Enum = (MR_Integer) value;
-            SUCCESS_INDICATOR = MR_TRUE;
-            break;
+	MR_unravel_univ(Univ, type_info, value);
+	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
+	switch (MR_type_ctor_rep(type_ctor_info)) {
 
-        default:
-            SUCCESS_INDICATOR = MR_FALSE;
-            break;
-    }
+	case MR_TYPECTOR_REP_ENUM:
+	case MR_TYPECTOR_REP_ENUM_USEREQ:
+		Enum = (MR_Integer) value;
+		SUCCESS_INDICATOR = MR_TRUE;
+		break;
+
+	default:
+		SUCCESS_INDICATOR = MR_FALSE;
+		break;
+
+	}
 }").
 
-    % Given a value of an arbitrary type, succeed if it is a general du type
-    % (i.e. non-enum, non-notag du type), and return the top function symbol's
-    % arguments as well as its tag information: an indication of where the
-    % secondary tag is (-1 for local secondary tag, 0 for nonexistent secondary
-    % tag, and 1 for remote secondary tag), as well as the primary and
-    % secondary tags themselves (the secondary tag argument will be meaningful
-    % only if the secondary tag exists, of course).
+	% Given a value of an arbitrary type, succeed if it is a general du
+	% type (i.e. non-enum, non-notag du type), and return the top function
+	% symbol's arguments as well as its tag information: an indication of
+	% where the secondary tag is (-1 for local secondary tag, 0 for
+	% nonexistent secondary tag, and 1 for remote secondary tag),
+	% as well as the primary and secondary tags themselves (the secondary
+	% tag argument will be meaningful only if the secondary tag exists,
+	% of course).
 :- pred get_du_functor_info(univ::in, int::out, int::out, int::out,
-    list(univ)::out) is semidet.
+	list(univ)::out) is semidet.
 
 :- pragma foreign_proc("C",
 	get_du_functor_info(Univ::in, Where::out, Ptag::out, Sectag::out,
 		Args::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "{
-    MR_TypeInfo             type_info;
-    MR_TypeCtorInfo         type_ctor_info;
-    const MR_DuPtagLayout   *ptag_layout;
-    const MR_DuFunctorDesc  *functor_desc;
-    MR_Word                 value;
-    MR_Word                 *arg_vector;
-    int                     i;
+	MR_TypeInfo		type_info;
+	MR_TypeCtorInfo		type_ctor_info;
+	const MR_DuPtagLayout   *ptag_layout;
+	const MR_DuFunctorDesc  *functor_desc;
+	MR_Word			value;
+	MR_Word			*arg_vector;
+	int			i;
 
-    MR_unravel_univ(Univ, type_info, value);
-    type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
-    switch (MR_type_ctor_rep(type_ctor_info)) {
-        case MR_TYPECTOR_REP_DU:
-        case MR_TYPECTOR_REP_DU_USEREQ:
-            SUCCESS_INDICATOR = MR_TRUE;
-            Ptag = MR_tag(value);
-            ptag_layout = &MR_type_ctor_layout(type_ctor_info).
-	    	MR_layout_du[Ptag];
+	MR_unravel_univ(Univ, type_info, value);
+	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
-            switch(ptag_layout->MR_sectag_locn) {
-                case MR_SECTAG_LOCAL:
-                    Where = -1;
-                    Sectag = MR_unmkbody(value);
-                    Args = MR_list_empty();
-                    break;
+	switch (MR_type_ctor_rep(type_ctor_info)) {
 
-                case MR_SECTAG_REMOTE:
-                case MR_SECTAG_NONE:
-                    if (ptag_layout->MR_sectag_locn == MR_SECTAG_NONE) {
-                        Where = 0;
-                        arg_vector = (MR_Word *) MR_body(value, Ptag);
-                        Sectag = 0;
-                    } else {
-                        Where = 1;
-                        arg_vector = (MR_Word *) MR_body(value, Ptag);
-                        Sectag = arg_vector[0];
-                        arg_vector++;
-                    }
+	case MR_TYPECTOR_REP_DU:
+	case MR_TYPECTOR_REP_DU_USEREQ:
 
-                    functor_desc = ptag_layout->MR_sectag_alternatives[Sectag];
-                    if (functor_desc->MR_du_functor_exist_info != NULL) {
-                        SUCCESS_INDICATOR = MR_FALSE;
-                        break;
-                    }
+		SUCCESS_INDICATOR = MR_TRUE;
+		Ptag = MR_tag(value);
+		ptag_layout = &MR_type_ctor_layout(type_ctor_info).
+			MR_layout_du[Ptag];
 
-                    Args = MR_list_empty_msg(MR_PROC_LABEL);
-                    for (i = functor_desc->MR_du_functor_orig_arity - 1;
-                        i >= 0; i--)
-                    {
-                        MR_Word         arg;
-                        MR_TypeInfo     arg_type_info;
+		switch(ptag_layout->MR_sectag_locn) {
 
-                        if (MR_arg_type_may_contain_var(functor_desc, i)) {
-                            arg_type_info = MR_create_type_info_maybe_existq(
-                                MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(
-                                    type_info),
-                                functor_desc->MR_du_functor_arg_types[i],
-                                arg_vector, functor_desc);
-                        } else {
-                            arg_type_info = MR_pseudo_type_info_is_ground(
-                                functor_desc->MR_du_functor_arg_types[i]);
-                        }
+		case MR_SECTAG_LOCAL:
+			Where = -1;
+			Sectag = MR_unmkbody(value);
+			Args = MR_list_empty();
+			break;
 
-                        MR_new_univ_on_hp(arg, arg_type_info, arg_vector[i]);
-                        Args = MR_univ_list_cons_msg(arg, Args, MR_PROC_LABEL);
-                    }
-                    break;
+		case MR_SECTAG_REMOTE:
+		case MR_SECTAG_NONE:
+			if (ptag_layout->MR_sectag_locn == MR_SECTAG_NONE) {
+				Where = 0;
+				arg_vector = (MR_Word *) MR_body(value, Ptag);
+				Sectag = 0;
+			} else {
+				Where = 1;
+				arg_vector = (MR_Word *) MR_body(value, Ptag);
+				Sectag = arg_vector[0];
+				arg_vector++;
+			}
 
-                case MR_SECTAG_VARIABLE:
-		    MR_fatal_error(
-		        ""get_du_functor_info: unexpected variable"");
+			functor_desc =
+				ptag_layout->MR_sectag_alternatives[Sectag];
+			if (functor_desc->MR_du_functor_exist_info != NULL) {
+				SUCCESS_INDICATOR = MR_FALSE;
+				break;
+			}
 
-                default:
-                    MR_fatal_error(
-                        ""get_du_functor_info: unknown sectag locn"");
-            }
-            break;
+			Args = MR_make_arg_list(type_info, functor_desc,
+				arg_vector);
+			break;
 
-        default:
-            SUCCESS_INDICATOR = MR_FALSE;
-            break;
-    }
+		case MR_SECTAG_VARIABLE:
+			MR_fatal_error(
+				""get_du_functor_info: unexpected variable"");
+
+		default:
+			MR_fatal_error(
+				""get_du_functor_info: unknown sectag locn"");
+		}
+		break;
+
+	default:
+		SUCCESS_INDICATOR = MR_FALSE;
+		break;
+
+	}
 }").
+
+:- pragma foreign_code("C", "
+
+MR_Word
+MR_make_arg_list(MR_TypeInfo type_info, const MR_DuFunctorDesc *functor_desc,
+	MR_Word *arg_vector)
+{
+	int		i;
+	MR_Word		args;
+
+	args = MR_list_empty_msg(MR_PROC_LABEL);
+	for (i = functor_desc->MR_du_functor_orig_arity - 1; i >= 0; i--) {
+		MR_Word		arg;
+		MR_TypeInfo	arg_type_info;
+
+		if (MR_arg_type_may_contain_var(functor_desc, i)) {
+			arg_type_info = MR_create_type_info_maybe_existq(
+				MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(
+					type_info),
+				functor_desc->MR_du_functor_arg_types[i],
+				arg_vector, functor_desc);
+		} else {
+			arg_type_info = MR_pseudo_type_info_is_ground(
+				functor_desc->MR_du_functor_arg_types[i]);
+		}
+
+		MR_new_univ_on_hp(arg, arg_type_info, arg_vector[i]);
+		args = MR_univ_list_cons_msg(arg, args, MR_PROC_LABEL);
+	}
+
+	return args;
+}
+
+").

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997,1999-2002 The University of Melbourne.
+% Copyright (C) 1996-1997,1999-2002, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -19,35 +19,28 @@
 
 :- type set_ordlist(_T).
 
-	% `set_ordlist__list_to_set(List, Set)' is true iff `Set' is the set 
+	% `set_ordlist__list_to_set(List, Set)' is true iff `Set' is the set
 	% containing only the members of `List'.
 
-:- pred set_ordlist__list_to_set(list(T), set_ordlist(T)).
-:- mode set_ordlist__list_to_set(in, out) is det.
-
+:- pred set_ordlist__list_to_set(list(T)::in, set_ordlist(T)::out) is det.
 :- func set_ordlist__list_to_set(list(T)) = set_ordlist(T).
 
 	% `set_ordlist__sorted_list_to_set(List, Set)' is true iff `Set' is
 	% the set containing only the members of `List'.  `List' must be sorted.
 
-:- pred set_ordlist__sorted_list_to_set(list(T), set_ordlist(T)).
-:- mode set_ordlist__sorted_list_to_set(in, out) is det.
-
+:- pred set_ordlist__sorted_list_to_set(list(T)::in, set_ordlist(T)::out)
+	is det.
 :- func set_ordlist__sorted_list_to_set(list(T)) = set_ordlist(T).
 
 	% `set_ordlist__to_sorted_list(Set, List)' is true iff `List' is the
 	% list of all the members of `Set', in sorted order.
 
-:- pred set_ordlist__to_sorted_list(set_ordlist(T), list(T)).
-:- mode set_ordlist__to_sorted_list(in, out) is det.
-
+:- pred set_ordlist__to_sorted_list(set_ordlist(T)::in, list(T)::out) is det.
 :- func set_ordlist__to_sorted_list(set_ordlist(T)) = list(T).
 
 	% `set_ordlist__init(Set)' is true iff `Set' is an empty set.
 
-:- pred set_ordlist__init(set_ordlist(_T)).
-:- mode set_ordlist__init(uo) is det.
-
+:- pred set_ordlist__init(set_ordlist(_T)::uo) is det.
 :- func set_ordlist__init = set_ordlist(T).
 
 	% `set_ordlist__singleton_set(Set, Elem)' is true iff `Set' is the set
@@ -62,25 +55,22 @@
 	% `set_ordlist__equal(SetA, SetB)' is true iff
 	% `SetA' and `SetB' contain the same elements.
 
-:- pred set_ordlist__equal(set_ordlist(T), set_ordlist(T)).
-:- mode set_ordlist__equal(in, in) is semidet.
+:- pred set_ordlist__equal(set_ordlist(T)::in, set_ordlist(T)::in) is semidet.
 
 	% `set_ordlist__empty(Set)' is true iff `Set' is an empty set.
 
-:- pred set_ordlist__empty(set_ordlist(_T)).
-:- mode set_ordlist__empty(in) is semidet.
+:- pred set_ordlist__empty(set_ordlist(_T)::in) is semidet.
 
 	% `set_ordlist__subset(SetA, SetB)' is true iff `SetA' is a subset of
 	% `SetB'.
 
-:- pred set_ordlist__subset(set_ordlist(T), set_ordlist(T)).
-:- mode set_ordlist__subset(in, in) is semidet.
+:- pred set_ordlist__subset(set_ordlist(T)::in, set_ordlist(T)::in) is semidet.
 
 	% `set_ordlist__superset(SetA, SetB)' is true iff `SetA' is a
 	% superset of `SetB'.
 
-:- pred set_ordlist__superset(set_ordlist(T), set_ordlist(T)).
-:- mode set_ordlist__superset(in, in) is semidet.
+:- pred set_ordlist__superset(set_ordlist(T)::in, set_ordlist(T)::in)
+	is semidet.
 
 	% `set_ordlist__member(X, Set)' is true iff `X' is a member of `Set'.
 
@@ -91,13 +81,11 @@
 	% `set_ordlist__is_member(X, Set, Result)' returns
 	% `Result = yes' iff `X' is a member of `Set'.
 
-:- pred set_ordlist__is_member(T, set_ordlist(T), bool).
-:- mode set_ordlist__is_member(in, in, out) is det.
+:- pred set_ordlist__is_member(T::in, set_ordlist(T)::in, bool::out) is det.
 
 	% `set_ordlist__contains(Set, X)' is true iff `X' is a member of `Set'.
 
-:- pred set_ordlist__contains(set_ordlist(T), T).
-:- mode set_ordlist__contains(in, in) is semidet.
+:- pred set_ordlist__contains(set_ordlist(T)::in, T::in) is semidet.
 
 	% `set_ordlist__insert(Set0, X, Set)' is true iff `Set' is the union
 	% of `Set0' and the set containing only `X'.
@@ -111,9 +99,8 @@
 	% `set_ordlist__insert_list(Set0, Xs, Set)' is true iff `Set' is the
 	% union of `Set0' and the set containing only the members of `Xs'.
 
-:- pred set_ordlist__insert_list(set_ordlist(T), list(T), set_ordlist(T)).
-:- mode set_ordlist__insert_list(in, in, out) is det.
-
+:- pred set_ordlist__insert_list(set_ordlist(T)::in, list(T)::in,
+	set_ordlist(T)::out) is det.
 :- func set_ordlist__insert_list(set_ordlist(T), list(T)) = set_ordlist(T).
 
 	% `set_ordlist__delete(Set0, X, Set)' is true iff `Set' is the
@@ -121,19 +108,16 @@
 	% if `Set' is the set which contains all the elements of `Set0'
 	% except `X'.
 
-:- pred set_ordlist__delete(set_ordlist(T), T, set_ordlist(T)).
-% :- mode set_ordlist__delete(di, in, uo) is det.
-:- mode set_ordlist__delete(in, in, out) is det.
-
+:- pred set_ordlist__delete(set_ordlist(T)::in, T::in, set_ordlist(T)::out)
+	is det.
 :- func set_ordlist__delete(set_ordlist(T), T) = set_ordlist(T).
 
 	% `set_ordlist__delete_list(Set0, Xs, Set)' is true iff `Set' is the
 	% relative complement of `Set0' and the set containing only the members
 	% of `Xs'.
 
-:- pred set_ordlist__delete_list(set_ordlist(T), list(T), set_ordlist(T)).
-:- mode set_ordlist__delete_list(in, in, out) is det.
-
+:- pred set_ordlist__delete_list(set_ordlist(T)::in, list(T)::in,
+	set_ordlist(T)::out) is det.
 :- func set_ordlist__delete_list(set_ordlist(T), list(T)) = set_ordlist(T).
 
 	% `set_ordlist__remove(Set0, X, Set)' is true iff `Set0' contains `X',
@@ -141,32 +125,31 @@
 	% containing only `X', i.e.  if `Set' is the set which contains
 	% all the elements of `Set0' except `X'.
 
-:- pred set_ordlist__remove(set_ordlist(T), T, set_ordlist(T)).
-:- mode set_ordlist__remove(in, in, out) is semidet.
+:- pred set_ordlist__remove(set_ordlist(T)::in, T::in, set_ordlist(T)::out)
+	is semidet.
 
 	% `set_ordlist__remove_list(Set0, Xs, Set)' is true iff Xs does not
 	% contain any duplicates, `Set0' contains every member of `Xs',
 	% and `Set' is the relative complement of `Set0' and the set
 	% containing only the members of `Xs'.
 
-:- pred set_ordlist__remove_list(set_ordlist(T), list(T), set_ordlist(T)).
-:- mode set_ordlist__remove_list(in, in, out) is semidet.
+:- pred set_ordlist__remove_list(set_ordlist(T)::in, list(T)::in,
+	set_ordlist(T)::out) is semidet.
 
 	% `set_ordlist__remove_least(Set0, X, Set)' is true iff `X' is the
 	% least element in `Set0', and `Set' is the set which contains all the
 	% elements of `Set0' except `X'.
 
-:- pred set_ordlist__remove_least(set_ordlist(T), T, set_ordlist(T)).
-:- mode set_ordlist__remove_least(in, out, out) is semidet.
+:- pred set_ordlist__remove_least(set_ordlist(T)::in, T::out,
+	set_ordlist(T)::out) is semidet.
 
 	% `set_ordlist_union(SetA, SetB, Set)' is true iff `Set' is the union
 	% of `SetA' and `SetB'. The efficiency of the union operation is
 	% O(card(SetA)+card(SetB)) and is not sensitive to the argument
 	% ordering.
 
-:- pred set_ordlist__union(set_ordlist(T), set_ordlist(T),
-							set_ordlist(T)).
-:- mode set_ordlist__union(in, in, out) is det.
+:- pred set_ordlist__union(set_ordlist(T)::in, set_ordlist(T)::in,
+	set_ordlist(T)::out) is det.
 
 :- func set_ordlist__union(set_ordlist(T), set_ordlist(T)) = set_ordlist(T).
 
@@ -178,9 +161,8 @@
 	% `set_ordlist__power_union(A, B)' is true iff `B' is the union of
 	% all the sets in `A'
 
-:- pred set_ordlist__power_union(set_ordlist(set_ordlist(T)),
-							set_ordlist(T)).
-:- mode set_ordlist__power_union(in, out) is det.
+:- pred set_ordlist__power_union(set_ordlist(set_ordlist(T))::in,
+	set_ordlist(T)::out) is det.
 
 :- func set_ordlist__power_union(set_ordlist(set_ordlist(T))) = set_ordlist(T).
 
@@ -188,23 +170,20 @@
 	% intersection of `SetA' and `SetB'. The efficiency of the intersection
 	% operation is not influenced by the argument order.
 
-:- pred set_ordlist__intersect(set_ordlist(T), set_ordlist(T),
-							set_ordlist(T)).
+:- pred set_ordlist__intersect(set_ordlist(T), set_ordlist(T), set_ordlist(T)).
 :- mode set_ordlist__intersect(in, in, out) is det.
 :- mode set_ordlist__intersect(in, in, in) is semidet.
 
 :- func set_ordlist__intersect(set_ordlist(T), set_ordlist(T))
-		= set_ordlist(T).
+	= set_ordlist(T).
 
 	% `set_ordlist__power_intersect(A, B)' is true iff `B' is the
 	% intersection of all the sets in `A'.
 
-:- pred set_ordlist__power_intersect(set_ordlist(set_ordlist(T)),
-							set_ordlist(T)).
-:- mode set_ordlist__power_intersect(in, out) is det.
-
+:- pred set_ordlist__power_intersect(set_ordlist(set_ordlist(T))::in,
+	set_ordlist(T)::out) is det.
 :- func set_ordlist__power_intersect(set_ordlist(set_ordlist(T)))
-		= set_ordlist(T).
+	= set_ordlist(T).
 
 	% `set_ordlist__intersect_list(A, B)' is true iff `B' is the
 	% intersection of all the sets in `A'.
@@ -215,27 +194,21 @@
 	% set containing all the elements of `SetA' except those that
 	% occur in `SetB'.
 
-:- pred set_ordlist__difference(set_ordlist(T), set_ordlist(T),
-							set_ordlist(T)).
-:- mode set_ordlist__difference(in, in, out) is det.
-
+:- pred set_ordlist__difference(set_ordlist(T)::in, set_ordlist(T)::in,
+	set_ordlist(T)::out) is det.
 :- func set_ordlist__difference(set_ordlist(T), set_ordlist(T))
-		= set_ordlist(T).
+	= set_ordlist(T).
 
 	% `set_ordlist__count(Set, Count)' is true iff `Set' has
 	% `Count' elements.
 
-:- pred set_ordlist__count(set_ordlist(T), int).
-:- mode set_ordlist__count(in, out) is det.
-
+:- pred set_ordlist__count(set_ordlist(T)::in, int::out) is det.
 :- func set_ordlist__count(set_ordlist(T)) = int.
-
 
 :- func set_ordlist__map(func(T1) = T2, set_ordlist(T1)) = set_ordlist(T2).
 
 :- func set_ordlist__filter_map(func(T1) = T2, set_ordlist(T1))
-		= set_ordlist(T2).
-
+	= set_ordlist(T2).
 :- mode set_ordlist__filter_map(func(in) = out is semidet, in) = out is det.
 
 :- func set_ordlist__fold(func(T1, T2) = T2, set_ordlist(T1), T2) = T2.
@@ -243,9 +216,9 @@
 	% set_ordlist__divide(Pred, Set, TruePart, FalsePart):
 	% TruePart consists of those elements of Set for which Pred succeeds;
 	% FalsePart consists of those elements of Set for which Pred fails.
-:- pred set_ordlist__divide(pred(T1), set_ordlist(T1), set_ordlist(T1),
-	set_ordlist(T1)).
-:- mode set_ordlist__divide(pred(in) is semidet, in, out, out) is det.
+:- pred set_ordlist__divide(pred(T1)::in(pred(in) is semidet),
+	set_ordlist(T1)::in, set_ordlist(T1)::out, set_ordlist(T1)::out)
+	is det.
 
 %--------------------------------------------------------------------------%
 
@@ -280,7 +253,7 @@
 
 :- import_module list, std_util.
 
-:- type set_ordlist(T)		  ==	  list(T).
+:- type set_ordlist(T)	==	  list(T).
 
 set_ordlist__list_to_set(List0, List) :-
 	list__sort_and_remove_dups(List0, List).
@@ -351,8 +324,7 @@ set_ordlist__remove_list(Set0, Elems, Set) :-
 	% set_ordlist__sort_no_dups(List, Set) is true iff
 	% List is a list with the same elements as Set and
 	% List contains no duplicates.
-:- pred set_ordlist__sort_no_dups(list(T), set_ordlist(T)).
-:- mode set_ordlist__sort_no_dups(in, out) is semidet.
+:- pred set_ordlist__sort_no_dups(list(T)::in, set_ordlist(T)::out) is semidet.
 
 set_ordlist__sort_no_dups(List, Set) :-
 	list__sort(List, Set),
@@ -388,9 +360,8 @@ set_ordlist__power_union(SetofSets, Set) :-
 	set_ordlist__init(Set0),
 	set_ordlist__power_union_2(SetofSets, Set0, Set).
 
-:- pred set_ordlist__power_union_2(list(set_ordlist(T)), set_ordlist(T),
-							set_ordlist(T)).
-:- mode set_ordlist__power_union_2(in, in, out) is det.
+:- pred set_ordlist__power_union_2(list(set_ordlist(T))::in, set_ordlist(T)::in,
+	set_ordlist(T)::out) is det.
 
 set_ordlist__power_union_2([], Set, Set).
 set_ordlist__power_union_2([NextSet|SetofSets], Set0, Set) :-
@@ -519,11 +490,10 @@ set_ordlist__divide(Pred, Set, TruePart, FalsePart) :-
 	list__reverse(RevTruePart, TruePart),
 	list__reverse(RevFalsePart, FalsePart).
 
-:- pred set_ordlist__divide_2(pred(T1), set_ordlist(T1),
-	set_ordlist(T1), set_ordlist(T1),
-	set_ordlist(T1), set_ordlist(T1)).
-:- mode set_ordlist__divide_2(pred(in) is semidet, in, in, out, in, out)
-	is det.
+:- pred set_ordlist__divide_2(pred(T1)::in(pred(in) is semidet),
+	set_ordlist(T1)::in,
+	set_ordlist(T1)::in, set_ordlist(T1)::out,
+	set_ordlist(T1)::in, set_ordlist(T1)::out) is det.
 
 set_ordlist__divide_2(_Pred, [], RevTrue, RevTrue, RevFalse, RevFalse).
 set_ordlist__divide_2(Pred, [H | T], RevTrue0, RevTrue, RevFalse0, RevFalse) :-

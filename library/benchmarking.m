@@ -51,7 +51,7 @@
 
 :- pred benchmark_det_io(pred(T1, T2, T3, T3), T1, T2, T3, T3, int, int).
 :- mode benchmark_det_io(pred(in, out, di, uo) is det, in, out, di, uo,
-		in, out) is cc_multi.
+	in, out) is cc_multi.
 
 % benchmark_nondet(Pred, In, Count, Repeats, Time) is for benchmarking
 % the nondet predicate Pred. benchmark_nondet is similar to benchmark_det,
@@ -79,13 +79,15 @@ extern void ML_report_full_memory_stats(void);
 
 "). % end pragma foreign_decl
 
-:- pragma foreign_proc("C", report_stats,
+:- pragma foreign_proc("C",
+	report_stats,
 	[will_not_call_mercury],
 "
 	ML_report_stats();
 ").
 
-:- pragma foreign_proc("C", report_full_memory_stats,
+:- pragma foreign_proc("C",
+	report_full_memory_stats,
 	[will_not_call_mercury],
 "
 #ifdef	MR_MPROF_PROFILE_MEMORY
@@ -93,13 +95,15 @@ extern void ML_report_full_memory_stats(void);
 #endif
 ").
 
-:- pragma foreign_proc("Java", report_stats,
+:- pragma foreign_proc("Java",
+	report_stats,
 	[may_call_mercury, terminates],
 "
 	ML_report_stats();
 ").
 
-:- pragma foreign_proc("Java", report_full_memory_stats,
+:- pragma foreign_proc("Java",
+	report_full_memory_stats,
 	[will_not_call_mercury],
 "
 	ML_report_full_memory_stats();
@@ -143,24 +147,26 @@ extern void ML_report_full_memory_stats(void);
 
   /* local function declarations */
 
-  static void ML_update_counter(MR_memprof_counter *counter,
+  static	void	ML_update_counter(MR_memprof_counter *counter,
 				ML_memprof_float_counter *float_counter);
 
-  static int  ML_insert_into_table(const ML_memprof_report_entry *new_entry,
+  static	int	ML_insert_into_table(
+  				const ML_memprof_report_entry *new_entry,
 				ML_memprof_report_entry *table,
 				int table_size, int next_slot);
 
-  static int  ML_memory_profile_top_table(MR_memprof_record *node,
+  static	int	ML_memory_profile_top_table(MR_memprof_record *node,
 				ML_memprof_report_entry *table,
 				int size, int next_slot);
 
-  static int  ML_memory_profile_fill_table(MR_memprof_record *node,
+  static	int	ML_memory_profile_fill_table(MR_memprof_record *node,
 				ML_memprof_report_entry *table, int next_slot);
 
-  static void ML_memory_profile_report(const ML_memprof_report_entry *,
+  static	void	ML_memory_profile_report(
+  				const ML_memprof_report_entry *,
 				int num_entries, MR_bool complete);
 
-  static int  ML_memory_profile_compare_final(const void *, const void *);
+  static	int	mpare_final(const void *, const void *);
 
 #endif /* MR_MPROF_PROFILE_MEMORY */
 
@@ -175,7 +181,7 @@ ML_report_stats(void)
 	int			num_table_entries;
 	ML_memprof_report_entry	table[MEMORY_PROFILE_SIZE];
 #endif
-  
+
 	/*
 	** Print timing and stack usage information
 	*/
@@ -187,7 +193,7 @@ ML_report_stats(void)
 	eng = MR_get_engine();
 #endif
 
-	fprintf(stderr, 
+	fprintf(stderr,
 		""[Time: +%.3fs, %.3fs,"",
 		(MR_time_at_last_stat - time_at_prev_stat) / 1000.0,
 		(MR_time_at_last_stat - MR_time_at_start) / 1000.0
@@ -205,9 +211,11 @@ ML_report_stats(void)
 #endif
 
 #ifdef MR_CONSERVATIVE_GC
-	{ char local_var;
-	  fprintf(stderr, "" C Stack: %.3fk,"",
-		labs(&local_var - (char *) GC_stackbottom) / 1024.0);
+	{
+		char local_var;
+
+		fprintf(stderr, "" C Stack: %.3fk,"",
+			labs(&local_var - (char *) GC_stackbottom) / 1024.0);
 	}
 #endif
 
@@ -231,7 +239,7 @@ ML_report_stats(void)
 		committed = mps_arena_committed(mercury_mps_arena);
 		spare = mps_arena_spare_committed(mercury_mps_arena);
 
-		fprintf(stderr, 
+		fprintf(stderr,
 			""\\nHeap in use: %.3fk, spare: %.3fk, total: %.3fk"",
 			(committed - spare) / 1024.0,
 			spare / 1024.0,
@@ -239,7 +247,7 @@ ML_report_stats(void)
 	}
   #endif /* MR_MPS_GC */
   #ifdef MR_BOEHM_GC
-	fprintf(stderr, 
+	fprintf(stderr,
 		""\\n#GCs: %lu, ""
 		""Heap used since last GC: %.3fk, Total used: %.3fk"",
 		(unsigned long) GC_gc_no,
@@ -248,7 +256,7 @@ ML_report_stats(void)
 	);
   #endif
 #else /* !MR_CONSERVATIVE_GC */
-	fprintf(stderr, 
+	fprintf(stderr,
 		""\\nHeap: %.3fk"",
 		((char *) MR_hp - (char *) eng->MR_eng_heap_zone->min) / 1024.0
 	);
@@ -281,7 +289,7 @@ ML_report_stats(void)
 	/*
 	** Print out the overall memory usage.
 	*/
-	fprintf(stderr, 
+	fprintf(stderr,
 		""Overall memory usage:""
 		""+%8.8g %8.8g cells, +%8.8g %8.8g words\\n"",
 		ML_overall_counter.cells_since_period_start,
@@ -354,7 +362,7 @@ ML_report_full_memory_stats(void)
 	/*
 	** Print the overall memory usage
 	*/
-	fprintf(stderr, 
+	fprintf(stderr,
 		""\\nOverall memory usage: %8.8g cells, %8.8g words\\n"",
 		ML_overall_counter.cells_at_period_end,
 		ML_overall_counter.words_at_period_end
@@ -371,9 +379,9 @@ static void
 ML_update_counter(MR_memprof_counter *counter,
 	ML_memprof_float_counter *float_counter)
 {
-	MR_add_two_dwords(counter->cells_at_period_start, 
+	MR_add_two_dwords(counter->cells_at_period_start,
 		counter->cells_since_period_start);
-	MR_add_two_dwords(counter->words_at_period_start, 
+	MR_add_two_dwords(counter->words_at_period_start,
 		counter->words_since_period_start);
 
 	MR_convert_dword_to_double(counter->cells_since_period_start,
@@ -470,15 +478,15 @@ ML_memory_profile_top_table(MR_memprof_record *node,
 
 	if (node != NULL) {
 		next_slot = ML_memory_profile_top_table(node->left,
-					table, table_size, next_slot);
+			table, table_size, next_slot);
 
 		new_entry.name = node->name;
 		ML_update_counter(&node->counter, &new_entry.counter);
 		next_slot = ML_insert_into_table(&new_entry,
-					table, table_size, next_slot);
+			table, table_size, next_slot);
 
 		next_slot = ML_memory_profile_top_table(node->right,
-					table, table_size, next_slot);
+			table, table_size, next_slot);
 	}
 	return next_slot;
 }
@@ -496,14 +504,14 @@ ML_memory_profile_fill_table(MR_memprof_record *node,
 {
 	if (node != NULL) {
 		next_slot = ML_memory_profile_fill_table(node->left,
-					table, next_slot);
+			table, next_slot);
 
 		table[next_slot].name = node->name;
 		ML_update_counter(&node->counter, &table[next_slot].counter);
 		next_slot++;
 
 		next_slot = ML_memory_profile_fill_table(node->right,
-					table, next_slot);
+			table, next_slot);
 	}
 	return next_slot;
 }
@@ -521,13 +529,15 @@ ML_memory_profile_report(const ML_memprof_report_entry *table, int num_entries,
 
 	if (complete) {
 		if (ML_overall_counter.cells_at_period_end < 1.0
-		||  ML_overall_counter.words_at_period_end < 1.0) {
+		||  ML_overall_counter.words_at_period_end < 1.0)
+		{
 			fprintf(stderr, ""no allocations to report\\n"");
 			return;
 		}
 	} else {
 		if (ML_overall_counter.cells_since_period_start < 1.0
-		||  ML_overall_counter.words_since_period_start < 1.0) {
+		||  ML_overall_counter.words_since_period_start < 1.0)
+		{
 			fprintf(stderr, ""no allocations to report\\n"");
 			return;
 		}
@@ -570,10 +580,10 @@ ML_memory_profile_report(const ML_memprof_report_entry *table, int num_entries,
 ** Comparison routine used for qsort().
 ** Compares two ML_memprof_report_entry structures.
 */
-static int 
+static int
 ML_memory_profile_compare_final(const void *i1, const void *i2)
 {
-	const ML_memprof_report_entry *e1 = 
+	const ML_memprof_report_entry *e1 =
 		(const ML_memprof_report_entry *) i1;
 	const ML_memprof_report_entry *e2 =
 		(const ML_memprof_report_entry *) i2;
@@ -601,7 +611,7 @@ private static int time_at_last_stat	= 0;
 static {
 	if (mercury.runtime.Native.isAvailable()) {
 		time_at_start = mercury.runtime.Native.
-				get_user_cpu_miliseconds();
+			get_user_cpu_miliseconds();
 		time_at_last_stat = time_at_start;
 	}
 }
@@ -612,10 +622,10 @@ ML_report_stats() {
 	time_at_last_stat = get_user_cpu_miliseconds_1_p_0();
 
 	System.err.print(""[Time: "" +
-			((time_at_last_stat - time_at_prev_stat) / 1000.0) +
-			"", "" +
-			((time_at_last_stat - time_at_start) / 1000.0)
-			);
+		((time_at_last_stat - time_at_prev_stat) / 1000.0) +
+		"", "" +
+		((time_at_last_stat - time_at_start) / 1000.0)
+		);
 
 	/*
 	** XXX	At this point there should be a whole bunch of memory usage
@@ -635,7 +645,7 @@ ML_report_full_memory_stats() {
 	*/
 
 	System.err.println(""Sorry, report_full_memory_stats is not yet "" +
-			""implemented for the Java back-end."");
+		""implemented for the Java back-end."");
 }
 ").
 
@@ -665,6 +675,7 @@ benchmark_det_loop(Pred, In, Out, Repeats) :-
 	).
 
 :- pragma promise_pure(benchmark_func/5).
+
 benchmark_func(Func, In, Out, Repeats, Time) :-
 	impure get_user_cpu_miliseconds(StartTime),
 	impure benchmark_func_loop(Func, In, Out, Repeats),
@@ -687,6 +698,7 @@ benchmark_func_loop(Func, In, Out, Repeats) :-
 	).
 
 :- pragma promise_pure(benchmark_det_io/7).
+
 benchmark_det_io(Pred, InA, OutA, InB, OutB, Repeats, Time) :-
 	impure get_user_cpu_miliseconds(StartTime),
 	impure benchmark_det_loop_io(Pred, InA, OutA, InB, OutB, Repeats),
@@ -713,6 +725,7 @@ benchmark_det_loop_io(Pred, InA, OutA, InB, OutB, Repeats) :-
 	).
 
 :- pragma promise_pure(benchmark_nondet/5).
+
 benchmark_nondet(Pred, In, Count, Repeats, Time) :-
 	impure get_user_cpu_miliseconds(StartTime),
 	impure benchmark_nondet_loop(Pred, In, Count, Repeats),
@@ -738,20 +751,24 @@ benchmark_nondet_loop(Pred, In, Count, Repeats) :-
 	semipure ref_value(SolutionCounter, Count).
 
 :- impure pred repeat(int::in) is nondet.
+
 repeat(N) :-
 	N > 0,
 	( true ; impure repeat(N - 1) ).
 
 :- impure pred get_user_cpu_miliseconds(int::out) is det.
+
 :- pragma foreign_proc("C",
-	get_user_cpu_miliseconds(Time::out), [will_not_call_mercury],
+	get_user_cpu_miliseconds(Time::out),
+	[will_not_call_mercury],
 "
 	Time = MR_get_user_cpu_miliseconds();
 ").
 /* XXX Can't seem to get this to work -- perhaps Diagnostics isn't yet
  * available in Beta 1 of the .NET framework.
 :- pragma foreign_proc("MC++",
-	get_user_cpu_miliseconds(_Time::out), [will_not_call_mercury],
+	get_user_cpu_miliseconds(_Time::out),
+	[will_not_call_mercury],
 "
 	// This won't return the elapsed time since program start,
 	// as it begins timing after the first call.
@@ -760,15 +777,16 @@ repeat(N) :-
 ").
 */
 :- pragma foreign_proc("Java",
-	get_user_cpu_miliseconds(Time::out), [will_not_call_mercury],
+	get_user_cpu_miliseconds(Time::out),
+	[will_not_call_mercury],
 "
 	if (mercury.runtime.Native.isAvailable()) {
 		Time = mercury.runtime.Native.get_user_cpu_miliseconds();
 	} else {
 		throw new java.lang.RuntimeException(
-				""get_user_cpu_miliseconds is not "" +
-				""implemented in pure Java.  Native "" +
-				""dynamic link library is required."");
+			""get_user_cpu_miliseconds is not "" +
+			""implemented in pure Java.  Native "" +
+			""dynamic link library is required."");
 	}
 ").
 
@@ -778,15 +796,18 @@ repeat(N) :-
 */
 
 :- pragma foreign_decl("C", "
-	extern volatile MR_Word ML_benchmarking_dummy_word;
+	extern	volatile	MR_Word ML_benchmarking_dummy_word;
 ").
 :- pragma foreign_code("C", "
-	volatile MR_Word ML_benchmarking_dummy_word;
+	volatile		MR_Word	ML_benchmarking_dummy_word;
 ").
 
 :- impure pred do_nothing(T::in) is det.
-:- pragma foreign_proc("C", 
-	do_nothing(X::in), [will_not_call_mercury, thread_safe], "
+
+:- pragma foreign_proc("C",
+	do_nothing(X::in),
+	[will_not_call_mercury, thread_safe],
+"
 	ML_benchmarking_dummy_word = (MR_Word) X;
 ").
 /*
@@ -795,8 +816,9 @@ repeat(N) :-
 ** XXX at least, we should do this but it doesn't seem to work.
 */
 /*
-:- pragma foreign_proc("MC++", 
-	do_nothing(X::in), [will_not_call_mercury, thread_safe],
+:- pragma foreign_proc("MC++",
+	do_nothing(X::in),
+	[will_not_call_mercury, thread_safe],
 "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 	static volatile MR_Word ML_benchmarking_dummy_word;
@@ -809,7 +831,8 @@ repeat(N) :-
 	static volatile Object ML_benchmarking_dummy_word;
 ").
 :- pragma foreign_proc("Java",
-	do_nothing(X::in), [will_not_call_mercury, thread_safe],
+	do_nothing(X::in),
+	[will_not_call_mercury, thread_safe],
 "
 	ML_benchmarking_dummy_word = X;
 ").
@@ -837,6 +860,7 @@ repeat(N) :-
 %  Create a new int_reference given a term for it to reference.
 :- impure pred new_int_reference(int::in, int_reference::out) is det.
 :- pragma inline(new_int_reference/2).
+
 :- pragma foreign_proc("C",
 	new_int_reference(X::in, Ref::out),
 	[will_not_call_mercury],
@@ -847,8 +871,8 @@ repeat(N) :-
 	* (MR_Integer *) Ref = X;
 ").
 :- pragma foreign_proc("Java",
-        new_int_reference(X::in, Ref::out),
-	        [will_not_call_mercury],
+	new_int_reference(X::in, Ref::out),
+	[will_not_call_mercury],
 "
 	Ref = new mercury.benchmarking.IntRef(X);
 ").
@@ -861,6 +885,7 @@ incr_ref(Ref) :-
 :- semipure pred ref_value(int_reference::in, int::out) is det.
 :- pragma inline(ref_value/2).
 :- pragma promise_semipure(ref_value/2).
+
 :- pragma foreign_proc("C",
 	ref_value(Ref::in, X::out),
 	[will_not_call_mercury],
@@ -876,6 +901,7 @@ incr_ref(Ref) :-
 
 :- impure pred update_ref(int_reference::in, int::in) is det.
 :- pragma inline(update_ref/2).
+
 :- pragma foreign_proc("C",
 	update_ref(Ref::in, X::in),
 	[will_not_call_mercury],

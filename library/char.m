@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -31,11 +31,6 @@
 
 :- instance enum(character).
 
-:- func char__to_int(char) = int.
-:- pred char__to_int(char, int).
-:- mode char__to_int(in, out) is det.
-:- mode char__to_int(in, in) is semidet.	% implied
-:- mode char__to_int(out, in) is semidet.
 	% Convert a character to its corresponding numerical code
 	% (integer value).
 	% Beware that the mapping from characters to numerical codes
@@ -43,103 +38,91 @@
 	% the integer values for characters will fit in 8 bits.
 	% Furthermore, the value returned from char__to_int might be
 	% different than the byte(s) used to store the character in a file.
-	% There is also no guarantee that characters created using 
+	% There is also no guarantee that characters created using
 	% `char__to_int(out, in)' can be written to files or
 	% to the standard output or standard error streams.
 	% For example, an implementation might represent characters
 	% using Unicode, but store files in an 8-bit national character set.
+:- func char__to_int(char) = int.
+:- pred char__to_int(char, int).
+:- mode char__to_int(in, out) is det.
+:- mode char__to_int(in, in) is semidet.	% implied
+:- mode char__to_int(out, in) is semidet.
 
-:- func char__max_char_value = int.
-:- pred char__max_char_value(int).
-:- mode char__max_char_value(out) is det.
 	% Returns the maximum numerical character code.
+:- func char__max_char_value = int.
+:- pred char__max_char_value(int::out) is det.
 
-:- func char__min_char_value = int.
-:- pred char__min_char_value(int).
-:- mode char__min_char_value(out) is det.
 	% Returns the minimum numerical character code.
+:- func char__min_char_value = int.
+:- pred char__min_char_value(int::out) is det.
 
-:- func char__to_upper(char) = char.
-:- pred char__to_upper(char, char).
-:- mode char__to_upper(in, out) is det.
 	% Convert a character to uppercase.
+:- func char__to_upper(char) = char.
+:- pred char__to_upper(char::in, char::out) is det.
 
-:- func char__to_lower(char) = char.
-:- pred char__to_lower(char, char).
-:- mode char__to_lower(in, out) is det.
 	% Convert a character to lowercase.
+:- func char__to_lower(char) = char.
+:- pred char__to_lower(char::in, char::out) is det.
 
-:- pred char__lower_upper(char, char).
-:- mode char__lower_upper(in, out) is semidet.
-:- mode char__lower_upper(out, in) is semidet.
 	% char__lower_upper(Lower, Upper) is true iff
 	% Lower is a lower-case letter and Upper is the corresponding
 	% upper-case letter.
+:- pred char__lower_upper(char, char).
+:- mode char__lower_upper(in, out) is semidet.
+:- mode char__lower_upper(out, in) is semidet.
 
-:- pred char__is_whitespace(char).
-:- mode char__is_whitespace(in) is semidet.
 	% True iff the character is whitespace, i.e. a space, tab,
 	% newline, carriage return, form-feed, or vertical tab.
+:- pred char__is_whitespace(char::in) is semidet.
 
-:- pred char__is_upper(char).
-:- mode char__is_upper(in) is semidet.
 	% True iff the character is an uppercase letter.
+:- pred char__is_upper(char::in) is semidet.
 
-:- pred char__is_lower(char).
-:- mode char__is_lower(in) is semidet.
 	% True iff the character is a lowercase letter.
+:- pred char__is_lower(char::in) is semidet.
 
-:- pred char__is_alpha(char).
-:- mode char__is_alpha(in) is semidet.
 	% True iff the character is a letter.
+:- pred char__is_alpha(char::in) is semidet.
 
-:- pred char__is_alnum(char).
-:- mode char__is_alnum(in) is semidet.
 	% True iff the character is a letter or digit.
+:- pred char__is_alnum(char::in) is semidet.
 
-:- pred char__is_alpha_or_underscore(char).
-:- mode char__is_alpha_or_underscore(in) is semidet.
 	% True iff the character is a letter or an underscore.
+:- pred char__is_alpha_or_underscore(char::in) is semidet.
 
-:- pred char__is_alnum_or_underscore(char).
-:- mode char__is_alnum_or_underscore(in) is semidet.
 	% True iff the character is a letter, a digit or an underscore.
+:- pred char__is_alnum_or_underscore(char::in) is semidet.
 
-:- pred char__is_digit(char).
-:- mode char__is_digit(in) is semidet.
 	% True iff the character is a decimal digit (0-9).
+:- pred char__is_digit(char::in) is semidet.
 
-:- pred char__is_binary_digit(char).
-:- mode char__is_binary_digit(in) is semidet.
 	% True iff the character is a binary digit (0 or 1).
+:- pred char__is_binary_digit(char::in) is semidet.
 
-:- pred char__is_octal_digit(char).
-:- mode char__is_octal_digit(in) is semidet.
 	% True iff the character is a octal digit (0-7).
+:- pred char__is_octal_digit(char::in) is semidet.
 
-:- pred char__is_hex_digit(char).
-:- mode char__is_hex_digit(in) is semidet.
 	% True iff the character is a hexadecimal digit (0-9, a-f, A-F).
+:- pred char__is_hex_digit(char::in) is semidet.
 
-:- pred char__digit_to_int(char, int).
-:- mode char__digit_to_int(in, out) is semidet.
 	% Succeeds if char is a decimal digit (0-9) or letter (a-z or A-Z).
 	% Returns the character's value as a digit (0-9 or 10-35).
+:- pred char__digit_to_int(char::in, int::out) is semidet.
 
-:- pred char__int_to_digit(int, char).
-:- mode char__int_to_digit(in, out) is semidet.
-:- mode char__int_to_digit(out, in) is semidet.
 	% char__int_to_uppercase_digit(Int, DigitChar):
 	% True iff `Int' is an integer in the range 0-35 and
 	% `DigitChar' is a decimal digit or uppercase letter
 	% whose value as a digit is `Int'.
+:- pred char__int_to_digit(int, char).
+:- mode char__int_to_digit(in, out) is semidet.
+:- mode char__int_to_digit(out, in) is semidet.
 
-:- func char__det_int_to_digit(int) = char.
-:- pred char__det_int_to_digit(int, char).
-:- mode char__det_int_to_digit(in, out) is det.
 	% Returns a decimal digit or uppercase letter corresponding to the
 	% value.
 	% Calls error/1 if the integer is not in the range 0-35.
+:- func char__det_int_to_digit(int) = char.
+:- pred char__det_int_to_digit(int::in, char::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -180,7 +163,7 @@ char__is_alnum(Char) :-
 char__is_alpha_or_underscore(Char) :-
 	( Char = '_' ->
 		true
-	;	
+	;
 		char__is_alpha(Char)
 	).
 
@@ -254,7 +237,7 @@ char__is_alnum_or_underscore(Char) :-
 % A more consise implementation is:
 %	( char__is_digit(Char) ->
 %		true
-%	;	
+%	;
 %		char__is_alpha_or_underscore(Char)
 %	).
 
@@ -262,27 +245,21 @@ char__is_lower(Lower) :-
 	char__lower_upper(Lower, _).
 
 char__is_upper(Upper) :-
-	(
-		char__lower_upper(_, Upper)
-	->
+	( char__lower_upper(_, Upper) ->
 		true
 	;
 		fail
 	).
 
 char__to_lower(Char, Lower) :-
-	(
-		char__lower_upper(LowerChar, Char)
-	->
+	( char__lower_upper(LowerChar, Char) ->
 		Lower = LowerChar
 	;
 		Lower = Char
 	).
 
 char__to_upper(Char, Upper) :-
-	(
-		char__lower_upper(Char, UpperChar)
-	->
+	( char__lower_upper(Char, UpperChar) ->
 		Upper = UpperChar
 	;
 		Upper = Char
@@ -505,6 +482,7 @@ char__lower_upper('z', 'Z').
 char__min_char_value(0).
 
 :- pragma foreign_decl("C", "#include <limits.h>").
+
 :- pragma foreign_proc("C",
 	char__max_char_value(Max::out),
 	[will_not_call_mercury, promise_pure, thread_safe],

@@ -1,9 +1,9 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne
+% vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
+%-----------------------------------------------------------------------------%
+% Copyright (C) 2001-2002, 2004 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
-% vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
 %
 % File: bitmap.m
@@ -26,8 +26,6 @@
 :- interface.
 
 :- import_module array, int, bool.
-
-
 
 :- type bitmap.
 
@@ -292,8 +290,6 @@ copy(BM) = array__copy(BM).
 
 complement(BM) =
     clear_filler_bits(complement_2(BM ^ elem(0) - 1, BM)).
-
-
 
 :- func complement_2(int, bitmap) = bitmap.
 :- mode complement_2(in, bitmap_di) = bitmap_uo is det.

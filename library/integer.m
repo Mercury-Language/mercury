@@ -27,24 +27,19 @@
 
 :- type integer.
 
-:- pred '<'(integer, integer).
-:- mode '<'(in, in) is semidet.
+:- pred '<'(integer::in, integer::in) is semidet.
 
-:- pred '>'(integer, integer).
-:- mode '>'(in, in) is semidet.
+:- pred '>'(integer::in, integer::in) is semidet.
 
-:- pred '=<'(integer, integer).
-:- mode '=<'(in, in) is semidet.
+:- pred '=<'(integer::in, integer::in) is semidet.
 
-:- pred '>='(integer, integer).
-:- mode '>='(in, in) is semidet.
+:- pred '>='(integer::in, integer::in) is semidet.
 
 :- func integer__integer(int) = integer.
 
 :- func integer__to_string(integer) = string.
 
-:- func integer__from_string(string) = integer.
-:- mode integer__from_string(in) = out is semidet.
+:- func integer__from_string(string::in) = (integer::out) is semidet.
 
 :- func '+'(integer) = integer.
 
@@ -78,8 +73,7 @@
 
 :- func integer__abs(integer) = integer.
 
-:- pred integer__pow(integer, integer, integer).
-:- mode integer__pow(in, in, out) is det.
+:- pred integer__pow(integer::in, integer::in, integer::out) is det.
 :- func integer__pow(integer, integer) = integer.
 
 :- func integer__float(integer) = float.
@@ -314,18 +308,20 @@ big_rem(X, Y) = Rem :-
 
 big_div(X, Y) = Div :-
 	big_quot_rem(X, Y, Trunc, Rem),
-	( if	integer_signum(Y) * integer_signum(Rem) < 0
-	  then	Div = Trunc - integer__one
-	  else	Div = Trunc
+	( integer_signum(Y) * integer_signum(Rem) < 0 ->
+		Div = Trunc - integer__one
+	;
+		Div = Trunc
 	).
 
 :- func big_mod(integer, integer) = integer.
 
 big_mod(X, Y) = Mod :-
 	big_quot_rem(X, Y, _Trunc, Rem),
-	( if	integer_signum(Y) * integer_signum(Rem) < 0
-	  then	Mod = Rem + Y
-	  else	Mod = Rem
+	( integer_signum(Y) * integer_signum(Rem) < 0 ->
+		Mod = Rem + Y
+	;
+		Mod = Rem
 	).
 
 :- func big_right_shift(integer, int) = integer.
@@ -383,9 +379,10 @@ pos_left_shift(i(Len, Digits), I) = Integer :-
 	Mod = I mod log2base,
 	NewLen = Len + Div,
 	leftshift(Mod, log2base - Mod, NewLen, Digits, Carry, NewDigits),
-	( if	Carry = 0
-	  then	Integer = i(NewLen, NewDigits)
-	  else	Integer = i(NewLen + 1, [Carry | NewDigits])
+	( Carry = 0 ->
+		Integer = i(NewLen, NewDigits)
+	;
+		Integer = i(NewLen + 1, [Carry | NewDigits])
 	).
 
 :- pred leftshift(int::in, int::in, int::in, list(digit)::in,
@@ -611,7 +608,8 @@ pos_int_to_digits_2(D, Tail) = Result :-
 	;
 		Tail = i(Length, Digits),
 		chop(D, Div, Mod),
-		Result = pos_int_to_digits_2(Div, i(Length + 1, [Mod | Digits]))
+		Result = pos_int_to_digits_2(Div,
+			i(Length + 1, [Mod | Digits]))
 	).
 
 :- func mul_base(integer) = integer.
@@ -711,9 +709,10 @@ diff_pairs_equal(Div, [X | Xs], [Y | Ys], [Mod | TailDs]) :-
 :- func pos_mul(integer, integer) = integer.
 
 pos_mul(i(L1, Ds1), i(L2, Ds2)) =
-	( if	L1 < L2
-	  then	pos_mul_list(Ds1, integer__zero, i(L2, Ds2))
-	  else	pos_mul_list(Ds2, integer__zero, i(L1, Ds1))
+	( L1 < L2 ->
+		pos_mul_list(Ds1, integer__zero, i(L2, Ds2))
+	;
+		pos_mul_list(Ds2, integer__zero, i(L1, Ds1))
 	).
 
 :- func pos_mul_list(list(digit), integer, integer) = integer.
@@ -780,8 +779,8 @@ quot_rem_2(Ur, U, V, Quot, Rem) :-
 		( U = i(_, [Ua | _]) ->
 			quot_rem_2(integer_append(Ur, Ua), tail(U), V,
 				Quot0, Rem0),
-	Quot = integer_prepend(0, Quot0),
-	Rem = Rem0
+			Quot = integer_prepend(0, Quot0),
+			Rem = Rem0
 		;
 			Quot = i(1, [0]),
 			Rem = Ur
@@ -808,7 +807,7 @@ quot_rem_2(Ur, U, V, Quot, Rem) :-
 		),
 		NewUr = pos_minus(Ur, QByV),
 		( U = i(_, [Ua | _]) ->
-	quot_rem_2(integer_append(NewUr, Ua), tail(U), V,
+			quot_rem_2(integer_append(NewUr, Ua), tail(U), V,
 				Quot0, Rem0),
 			Quot = integer_prepend(Q, Quot0),
 			Rem = Rem0
@@ -893,9 +892,10 @@ integer__pow(A, N) = P :-
 	integer__pow(A, N, P).
 
 integer__pow(A, N, P) :-
-	( if	big_isnegative(N)
-	  then	error("integer__pow: negative exponent")
-	  else	P = big_pow(A, N)
+	( big_isnegative(N) ->
+		error("integer__pow: negative exponent")
+	;
+		P = big_pow(A, N)
 	).
 
 :- func big_pow(integer, integer) = integer.
@@ -987,13 +987,14 @@ integer__from_string(S) = Big :-
 :- func string_to_integer(list(char)::in) = (integer::out) is semidet.
 
 string_to_integer(CCs @ [C | Cs]) =
-	( if	C = ('-')
-	  then	big_sign(-1, string_to_integer(Cs))
-	  else	string_to_integer_acc(CCs, integer__zero)
+	( C = ('-') ->
+		big_sign(-1, string_to_integer(Cs))
+	;
+		string_to_integer_acc(CCs, integer__zero)
 	).
 
-:- func string_to_integer_acc(list(char), integer) = integer.
-:- mode string_to_integer_acc(in, in) = out is semidet.
+:- func string_to_integer_acc(list(char)::in, integer::in) = (integer::out)
+	is semidet.
 
 string_to_integer_acc([], Acc) = Acc.
 string_to_integer_acc([C | Cs], Acc) = Result :-
@@ -1048,8 +1049,7 @@ digits_to_strings([H | T]) -->
 	[ S ],
 	digits_to_strings(T).
 
-:- pred printbase_rep(integer::in, list(digit)::in, integer::out)
-   is det.
+:- pred printbase_rep(integer::in, list(digit)::in, integer::out) is det.
 
 printbase_rep(Base, Digits, printbase_rep_1(Digits, Base, integer__zero)).
 
@@ -1154,9 +1154,10 @@ printbase_add_pairs_equal(Div, [X | Xs], [Y | Ys], [Mod | TailDs]) :-
 :- func printbase_pos_mul(integer, integer) = integer.
 
 printbase_pos_mul(i(L1, Ds1), i(L2, Ds2)) =
-	( if	L1 < L2
-	  then	printbase_pos_mul_list(Ds1, integer__zero, i(L2, Ds2))
-	  else	printbase_pos_mul_list(Ds2, integer__zero, i(L1, Ds1))
+	( L1 < L2 ->
+		printbase_pos_mul_list(Ds1, integer__zero, i(L2, Ds2))
+	;
+		printbase_pos_mul_list(Ds2, integer__zero, i(L1, Ds1))
 	).
 
 :- func printbase_pos_mul_list(list(digit), integer, integer) = integer.
@@ -1166,6 +1167,4 @@ printbase_pos_mul_list([X|Xs], Carry, Y) =
 	printbase_pos_mul_list(Xs, printbase_pos_plus(mul_base(Carry),
 		printbase_mul_by_digit(X, Y)), Y).
 
-%-----------------------------------------------------------------------------%
-:- end_module integer.
 %-----------------------------------------------------------------------------%
