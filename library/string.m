@@ -119,13 +119,30 @@
 :- pred string__int_to_string(int, string).
 :- mode string__int_to_string(in, uo) is det.
 
+	% Convert an integer to a string with commas as thousand seperators.
+	%
+:- func string__int_to_string_thousands(int) = string.
+:- mode string__int_to_string_thousands(in) = uo is det.
+
 	% string__int_to_base_string(Int, Base, String):
-	% Convert an integer to a string in a given Base (between 2 and 36).
+	% Convert an integer to a string in a given Base.
+	% An exception is thrown if Base is not between 2 and 36.
 	%
 :- func string__int_to_base_string(int, int) = string.
 :- mode string__int_to_base_string(in, in) = uo is det.
 :- pred string__int_to_base_string(int, int, string).
 :- mode string__int_to_base_string(in, in, uo) is det.
+
+	% string__int_to_base_string_group(Int, Base, GroupLength, Seperator,
+	%	String):
+	% Convert an integer to a string in a given Base (between 2 and 36)
+	% and insert Seperator between every GroupLength digits.  
+	% If GroupLength is less than one then no seperators will appear in the
+	% output.  An exception is thrown if Base is not between 2 and 36.
+	% Useful for formatting numbers like "1,300,000".
+	%
+:- func string__int_to_base_string_group(int, int, int, string) = string.
+:- mode string__int_to_base_string_group(in, in, in, in) = uo is det.
 
 	% Convert a float to a string.
 	% In the current implementation the resulting float will be in the
@@ -923,6 +940,10 @@ string__int_to_base_string_1(N, Base, Str) :-
 :- pred string__int_to_base_string_2(int, int, string).
 :- mode string__int_to_base_string_2(in, in, uo) is det.
 
+	% string__int_to_base_string_2/3 is almost identical to
+	% string__int_to_base_string_group_2/6 below so any changes here might
+	% also need to be applied to string__int_to_base_string_group_2/3.
+	%
 string__int_to_base_string_2(NegN, Base, Str) :-
 	(
 		NegN > -Base
@@ -941,6 +962,78 @@ string__int_to_base_string_2(NegN, Base, Str) :-
 
 string__from_char_list(CharList, Str) :-
 	string__to_char_list(Str, CharList).
+
+string__int_to_string_thousands(N) = 
+	string__int_to_base_string_group(N, 10, 3, ",").
+
+	% Period is how many digits should be between each seperator.
+	%
+string__int_to_base_string_group(N, Base, Period, Sep) = Str :-
+	(
+		Base >= 2, Base =< 36
+	->
+		true
+	;
+		error("string__int_to_base_string_group: invalid base")
+	),
+	string__int_to_base_string_group_1(N, Base, Period, Sep, Str).
+
+:- pred string__int_to_base_string_group_1(int::in, int::in, int::in, 
+	string::in, string::uo) is det.
+
+	% Period is how many digits should be between each seperator.
+	%
+string__int_to_base_string_group_1(N, Base, Period, Sep, Str) :-
+	% Note that in order to handle MININT correctly,
+	% we need to do the conversion of the absolute
+	% number into digits using negative numbers
+	% (we can't use positive numbers, since -MININT overflows)
+	(
+		N < 0
+	->
+		string__int_to_base_string_group_2(N, Base, 0, Period, Sep, 
+			Str1),
+		string__append("-", Str1, Str)
+	;
+		N1 = 0 - N,
+		string__int_to_base_string_group_2(N1, Base, 0, Period, Sep, 
+			Str)
+	).
+
+:- pred string__int_to_base_string_group_2(int::in, int::in, int::in, int::in,
+	string::in, string::uo) is det.
+
+	% Period is how many digits should be between each seperator.
+	% Curr is how many digits have been processed since the last seperator
+	% was inserted.
+	% string__int_to_base_string_group_2/6 is almost identical to 
+	% string__int_to_base_string_2/3 above so any changes here might also 
+	% need to be applied to string__int_to_base_string_2/3.
+	%
+string__int_to_base_string_group_2(NegN, Base, Curr, Period, Sep, Str) :-
+	(
+		Curr = Period, Period > 0
+	->
+		string__int_to_base_string_group_2(NegN, Base, 0, Period, Sep,
+			Str1),
+		string__append(Str1, Sep, Str)
+	;
+		(
+			NegN > -Base
+		->
+			N = -NegN,
+			char__det_int_to_digit(N, DigitChar),
+			string__char_to_string(DigitChar, Str)
+		;
+			NegN1 = NegN // Base,
+			N10 = (NegN1 * Base) - NegN,
+			char__det_int_to_digit(N10, DigitChar),
+			string__char_to_string(DigitChar, DigitString),
+			string__int_to_base_string_group_2(NegN1, Base, 
+				Curr + 1, Period, Sep, Str1),
+			string__append(Str1, DigitString, Str)
+		)
+	).
 
 /*-----------------------------------------------------------------------*/
 

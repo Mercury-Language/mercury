@@ -6,6 +6,10 @@ uncapitalize_first CapX: foo
 int_to_string 1234: 1234
 octal 1234: 2322
 hexadecimal 1234: 4D2
+Grouped 1234: 1,234
+Grouped 113: 1--1--1--0--0--0--1
+Grouped 1300000: 1,300,000
+Non Grouped 45999: 45999
 string_to_int 5678: 5678
 Five f's: fffff
 Five f's and five dots: fffff.....
