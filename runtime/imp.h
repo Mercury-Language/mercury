@@ -181,23 +181,16 @@ static Word deref(Word p) {
 				GOTO(proc);			\
 			} while (0)
 
-#define	callentry(entry, succcont)				\
-			do {					\
-				debugcall(entries[entry].e_addr, succcont);\
-				succip = succcont;		\
-				GOTO(entries[entry].e_addr);	\
-			} while (0)
+#define	callentry(entry, succcont)	\
+			call(entries[entry].e_addr)
 
 #define	tailcall(proc)	do {					\
 				debugtailcall(proc);		\
 				GOTO(proc);			\
 			} while (0)
 
-#define	tailcallentry(entry, succcont)				\
-			do {					\
-				debugtailcall(entries[entry].e_addr);\
-				GOTO(entries[entry].e_addr);	\
-			} while (0)
+#define	tailcallentry(entry, succcont)	\
+			tailcall(entries[entry].e_addr)
 
 #define	proceed()	do {					\
 				debugproceed();			\
@@ -341,12 +334,10 @@ extern	Word	*cpstackmin;
 			} while (0)
 
 #define	succeed()	do {					\
-				reg Code *tmp_succip;		\
-								\
 				debugsucceed();			\
-				tmp_succip = cpsuccip;		\
+				childcp = curcp;		\
 				curcp = cpsucccp;		\
-				GOTO(tmp_succip);		\
+				GOTO(bt_succip(childcp));	\
 			} while (0)
 
 #define	fail()		do {					\
