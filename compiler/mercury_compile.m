@@ -3686,6 +3686,12 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	;
 		UseTrailOpt = ""
 	},
+	globals__io_lookup_bool_option(reserve_tag, ReserveTag),
+	{ ReserveTag = yes ->
+		ReserveTagOpt = "-DMR_RESERVE_TAG "
+	;
+		ReserveTagOpt = ""
+	},
 	globals__io_lookup_bool_option(use_minimal_model, MinimalModel),
 	{ MinimalModel = yes ->
 		MinimalModelOpt = "-DMR_USE_MINIMAL_MODEL "
@@ -3751,7 +3757,7 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 		ProfileDeepOpt, PIC_Reg_Opt, TagsOpt, NumTagBitsOpt,
 		Target_DebugOpt, LL_DebugOpt,
 		StackTraceOpt, RequireTracingOpt,
-		UseTrailOpt, MinimalModelOpt, TypeLayoutOpt,
+		UseTrailOpt, ReserveTagOpt, MinimalModelOpt, TypeLayoutOpt,
 		InlineAllocOpt, WarningOpt, CFLAGS,
 		" -c ", C_File, " ", NameObjectFile, O_File], Command) },
 	invoke_system_command(Command, Succeeded),
