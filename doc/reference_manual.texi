@@ -9,7 +9,7 @@
 @c @end direntry
 
 @c Uncomment the line below to enable documentation of the Aditi interface.
-@c @set aditi
+@set aditi
 
 @c @smallbook
 @c @cropmarks
@@ -6004,10 +6004,11 @@ function then the compiler will quit with an error message.
 @subsection Aditi overview
 
 The University of Melbourne Mercury implementation includes support for
-compiling Mercury predicates for bottom-up evaluation using the Aditi
+compiling Mercury predicates for bottom-up evaluation using the Aditi2
 deductive database system. The Aditi system is not yet publicly available,
 so this is currently not very useful to anyone other than the Mercury and
-Aditi developers.
+Aditi developers. For more information see the Aditi web site
+at <http://www.cs.mu.oz.au/aditi>.
 
 Evaluation by a deductive database system is useful for predicates which
 use large amounts of data, since the database system can use efficient join

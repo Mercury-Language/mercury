@@ -9,7 +9,7 @@
 @c @end direntry
 
 @c Uncomment the line below to enable documentation of the Aditi interface.
-@c @set aditi
+@set aditi
 
 @c @smallbook
 @c @cropmarks
@@ -2332,8 +2332,8 @@ End-of-file on the debugger's input is considered a quit command.
 @chapter Using Aditi
 
 The Mercury compiler allows compilation of predicates for execution
-using the Aditi deductive database. There are several sources of useful
-information:
+using the Aditi2 deductive database system. There are several sources
+of useful information:
 
 @itemize @bullet
 @item
@@ -2341,7 +2341,7 @@ the ``Aditi deductive database interface'' section of the
 ``Implementation-dependent extensions'' chapter in the
 Mercury Language Reference Manual
 @item
-the Aditi Reference Manual (doesn't exist yet) @c XXX
+the Aditi web site at <http://www.cs.mu.oz.au/aditi>
 @item
 the file @file{extras/aditi/aditi.m} in the @samp{mercury-extras} distribution
 @end itemize
