@@ -1021,11 +1021,11 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember) -->
 	;
 		{ MaybeStatement = external },
 
-		% XXX The external reference must currently reside in
-		% MC++ file associated with this file.  This is very hackish.
+		% XXX The external reference must currently reside in the
+		% C# file associated with this file.  This is very hackish.
 		ForeignLangs =^ file_foreign_langs,
 		^ file_foreign_langs :=
-			set__insert(ForeignLangs, managed_cplusplus),
+			set__insert(ForeignLangs, csharp),
 
 		{ mangle_dataname_module(no, ModuleName, NewModuleName) },
 		{ ClassName = mlds_module_name_to_class_name(NewModuleName) },
