@@ -6,8 +6,6 @@ TODO LIST:
 Required to bootstrap:
 ----------------------
 
-- avoid problems with complicated unifications inside
-  construction/deconstruction unification arguments
 - polymorphic unifications
 - compare/3
 - term_io__read_term etc.
@@ -15,15 +13,13 @@ Required to bootstrap:
 code generation:
 ---------------
 
-- generate code for complicated unifies
+- generate code for complicated unifies in partially instantiated modes
 
 - generate code for higher-order predicates
 	-  "predicate pointers" (needed to bootstrap)
 	-  closures.
 
 - generate code for polymorphic predicates
-
-- generate better code for switches on tagged types
 
 - The followcode transformation is buggy, in that it can make valid
   code become invalid due to determinism errors.  We need to fix
@@ -117,6 +113,8 @@ code generation:
   macro which takes an extra string parameter identifying which
   routine allocated the memory.  Then we can do heap-allocation
   profiling to identify which routines use up all the bloody memory.
+
+- We could still generate better code for switches
 
 general
 -------
