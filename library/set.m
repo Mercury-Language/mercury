@@ -161,7 +161,7 @@
 :- pred set__intersect(set(T), set(T), set(T)).
 :- mode set__intersect(in, in, out) is det.
 
-	% `set__power_union(A, B)' is true iff `B' is the union of
+	% `set__power_intersect(A, B)' is true iff `B' is the intersection of
 	% all the sets in `A'
 
 :- pred set__power_intersect(set(set(T)), set(T)).
