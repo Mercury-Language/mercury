@@ -229,7 +229,7 @@ getopt__process_arguments([Option | Args0], Args, OptionOps,
 			Result = error(ErrorMsg),
 			Args = Args0
 		)
-	; string__first_char(Option, '-', ShortOptions) ->
+	; string__first_char(Option, '-', ShortOptions), ShortOptions \= "" ->
 		string__to_char_list(ShortOptions, ShortOptionsList),
 		% Process a single negated option `-x-'.
 		( ShortOptionsList = [SingleShortOpt, '-'] ->

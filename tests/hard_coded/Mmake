@@ -26,6 +26,7 @@ PROGS=	\
 	free_free_mode \
 	func_and_pred \
 	func_test \
+	getopt_test \
 	higher_order_func_test \
 	higher_order_syntax \
 	ho_func_reg \
