@@ -1289,10 +1289,11 @@ module_add_func(Module0, VarSet, FuncName, TypesAndModes, RetTypeAndMode,
 module_add_class_defn(Module0, Constraints, Name, Vars, Interface, VarSet,
 		Context, Status, Module) -->
 	{ module_info_classes(Module0, Classes0) },
+	{ module_info_superclasses(Module0, SuperClasses0) },
 	{ list__length(Vars, ClassArity) },
-	{ Key = class_id(Name, ClassArity) },
+	{ ClassId = class_id(Name, ClassArity) },
 	(
-		{ map__search(Classes0, Key, OldValue) }
+		{ map__search(Classes0, ClassId, OldValue) }
 	->
 		{ OldValue = hlds_class_defn(_, _, _, _, OldContext) },
 		multiple_def_error(Name, ClassArity, "typeclass", 
@@ -1311,13 +1312,34 @@ module_add_class_defn(Module0, Constraints, Name, Vars, Interface, VarSet,
 		{ list__filter_map(IsYes, PredProcIds0, PredProcIds) },
 		{ Value = hlds_class_defn(Constraints, Vars, PredProcIds, 
 			VarSet, Context) },
-		{ map__det_insert(Classes0, Key, Value, Classes) },
+		{ map__det_insert(Classes0, ClassId, Value, Classes) },
 		{ module_info_set_classes(Module1, Classes, Module2) },
+
+			% insert an entry into the super class table for each
+			% super class of this class
+		{ AddSuper = lambda([Super::in, Ss0::in, Ss::out] is det,
+			(
+				Super = constraint(SuperName, SuperTypes),
+				list__length(SuperTypes, SuperClassArity),
+				term__vars_list(SuperTypes, SuperVars),
+				SuperClassId = class_id(SuperName,
+					SuperClassArity),
+				SubClassDetails = subclass_details(SuperVars,
+					ClassId, Vars, VarSet),
+				multi_map__set(Ss0, SuperClassId,
+					SubClassDetails, Ss)
+			)) },
+		{ list__foldl(AddSuper, Constraints, 
+			SuperClasses0, SuperClasses) },
+
+		{ module_info_set_superclasses(Module2, 
+			SuperClasses, Module3) },
+
 			% When we find the class declaration, make an
 			% entry for the instances.
-		{ module_info_instances(Module2, Instances0) },
-		{ map__det_insert(Instances0, Key, [], Instances) },
-		{ module_info_set_instances(Module2, Instances, Module) }
+		{ module_info_instances(Module3, Instances0) },
+		{ map__det_insert(Instances0, ClassId, [], Instances) },
+		{ module_info_set_instances(Module3, Instances, Module) }
 	).
 
 :- pred module_add_class_interface(module_info, sym_name, list(var),
@@ -4219,6 +4241,21 @@ maybe_undefined_pred_error(Name, Arity, PredOrFunc, Context, Description) -->
 		io__write_string(DeclString),
 		io__write_string("' declaration.\n")
 	).
+
+:- pred undefined_type_class_error(sym_name, int, term__context, string,
+				io__state, io__state).
+:- mode undefined_type_class_error(in, in, in, in, di, uo) is det.
+
+undefined_type_class_error(ClassName, Arity, Context, Description) -->
+	io__set_exit_status(1),
+	prog_out__write_context(Context),
+	io__write_string("Error: "),
+	io__write_string(Description),
+	io__write_string(" for\n"),
+	prog_out__write_context(Context),
+	io__write_string("  `"),
+	hlds_out__write_pred_call_id(ClassName/Arity),
+	io__write_string("' without preceding typeclass declaration.\n").
 
 :- pred unspecified_det_for_local(sym_name, arity, pred_or_func, term__context, 
 				io__state, io__state).

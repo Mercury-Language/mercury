@@ -155,6 +155,13 @@
 :- pred module_info_set_instances(module_info, instance_table, module_info).
 :- mode module_info_set_instances(in, in, out) is det.
 
+:- pred module_info_superclasses(module_info, superclass_table).
+:- mode module_info_superclasses(in, out) is det.
+
+:- pred module_info_set_superclasses(module_info, superclass_table,
+	module_info).
+:- mode module_info_set_superclasses(in, in, out) is det.
+
 	% The cell count is used as a unique label number for
 	% constants in the generated C code.
 :- pred module_info_get_cell_count(module_info, int).
@@ -449,6 +456,7 @@
 			cons_table,
 			class_table,
 			instance_table,
+			superclass_table,
 			int		% cell count, passed into code_info
 					% and used to generate unique label
 					% numbers for constant terms in the
@@ -497,11 +505,12 @@ module_info_init(Name, Globals, ModuleInfo) :-
 	map__init(UnusedArgInfo),
 	map__init(ClassTable),
 	map__init(InstanceTable),
+	map__init(SuperClassTable),
 	ModuleSubInfo = module_sub(Name, Globals, [], [], no, 0, 0, [], 
 		[], [], StratPreds, UnusedArgInfo, 0),
 	ModuleInfo = module(ModuleSubInfo, PredicateTable, Requests,
 		UnifyPredMap, ContinuationInfo, Types, Insts, Modes, Ctors,
-		ClassTable, InstanceTable, 0).
+		ClassTable, SuperClassTable, InstanceTable, 0).
 
 %-----------------------------------------------------------------------------%
 
@@ -638,7 +647,8 @@ module_sub_set_model_non_pragma_count(MI0, M, MI) :-
 % I			cons_table,
 % J			class_table,
 % K			instance_table,
-% L			int		% cell count, passed into code_info
+% L			superclass_table,
+% M			int		% cell count, passed into code_info
 %					% and used to generate unique label
 %					% numbers for constant terms in the
 %					% generated C code
@@ -649,92 +659,99 @@ module_sub_set_model_non_pragma_count(MI0, M, MI) :-
 	% Various predicates which access the module_info data structure.
 
 module_info_get_sub_info(MI0, A) :-
-	MI0 = module(A, _, _, _, _, _, _, _, _, _, _, _).
+	MI0 = module(A, _, _, _, _, _, _, _, _, _, _, _, _).
 
 module_info_get_predicate_table(MI0, B) :-
-	MI0 = module(_, B, _, _, _, _, _, _, _, _, _, _).
+	MI0 = module(_, B, _, _, _, _, _, _, _, _, _, _, _).
 
 module_info_get_proc_requests(MI0, C) :-
-	MI0 = module(_, _, C, _, _, _, _, _, _, _, _, _).
+	MI0 = module(_, _, C, _, _, _, _, _, _, _, _, _, _).
 
 module_info_get_special_pred_map(MI0, D) :-
-	MI0 = module(_, _, _, D, _, _, _, _, _, _, _, _).
+	MI0 = module(_, _, _, D, _, _, _, _, _, _, _, _, _).
 
 module_info_get_continuation_info(MI0, E) :-
-	MI0 = module(_, _, _, _, E, _, _, _, _, _, _, _).
+	MI0 = module(_, _, _, _, E, _, _, _, _, _, _, _, _).
 
 module_info_types(MI0, F) :-
-	MI0 = module(_, _, _, _, _, F, _, _, _, _, _, _).
+	MI0 = module(_, _, _, _, _, F, _, _, _, _, _, _, _).
 
 module_info_insts(MI0, G) :-
-	MI0 = module(_, _, _, _, _, _, G, _, _, _, _, _).
+	MI0 = module(_, _, _, _, _, _, G, _, _, _, _, _, _).
 
 module_info_modes(MI0, H) :-
-	MI0 = module(_, _, _, _, _, _, _, H, _, _, _, _).
+	MI0 = module(_, _, _, _, _, _, _, H, _, _, _, _, _).
 
 module_info_ctors(MI0, I) :-
-	MI0 = module(_, _, _, _, _, _, _, _, I, _, _, _).
+	MI0 = module(_, _, _, _, _, _, _, _, I, _, _, _, _).
 
 module_info_classes(MI0, J) :-
-	MI0 = module(_, _, _, _, _, _, _, _, _, J, _, _).
+	MI0 = module(_, _, _, _, _, _, _, _, _, J, _, _, _).
 
 module_info_instances(MI0, K) :-
-	MI0 = module(_, _, _, _, _, _, _, _, _, _, K, _).
+	MI0 = module(_, _, _, _, _, _, _, _, _, _, K, _, _).
 
-module_info_get_cell_count(MI0, L) :-
-	MI0 = module(_, _, _, _, _, _, _, _, _, _, _, L).
+module_info_superclasses(MI0, L) :-
+	MI0 = module(_, _, _, _, _, _, _, _, _, _, _, L, _).
+
+module_info_get_cell_count(MI0, M) :-
+	MI0 = module(_, _, _, _, _, _, _, _, _, _, _, _, M).
 
 %-----------------------------------------------------------------------------%
 
 	% Various predicates which modify the module_info data structure.
 
 module_info_set_sub_info(MI0, A, MI) :-
-	MI0 = module(_, B, C, D, E, F, G, H, I, J, K, L),
-	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L).
+	MI0 = module(_, B, C, D, E, F, G, H, I, J, K, L, M),
+	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L, M).
 
 module_info_set_predicate_table(MI0, B, MI) :-
-	MI0 = module(A, _, C, D, E, F, G, H, I, J, K, L),
-	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L).
+	MI0 = module(A, _, C, D, E, F, G, H, I, J, K, L, M),
+	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L, M).
 
 module_info_set_proc_requests(MI0, C, MI) :-
-	MI0 = module(A, B, _, D, E, F, G, H, I, J, K, L),
-	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L).
+	MI0 = module(A, B, _, D, E, F, G, H, I, J, K, L, M),
+	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L, M).
 
 module_info_set_special_pred_map(MI0, D, MI) :-
-	MI0 = module(A, B, C, _, E, F, G, H, I, J, K, L),
-	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L).
+	MI0 = module(A, B, C, _, E, F, G, H, I, J, K, L, M),
+	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L, M).
 
 module_info_set_continuation_info(MI0, E, MI) :-
-	MI0 = module(A, B, C, D, _, F, G, H, I, J, K, L),
-	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L).
+	MI0 = module(A, B, C, D, _, F, G, H, I, J, K, L, M),
+	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L, M).
 
 module_info_set_types(MI0, F, MI) :-
-	MI0 = module(A, B, C, D, E, _, G, H, I, J, K, L),
-	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L).
+	MI0 = module(A, B, C, D, E, _, G, H, I, J, K, L, M),
+	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L, M).
 
 module_info_set_insts(MI0, G, MI) :-
-	MI0 = module(A, B, C, D, E, F, _, H, I, J, K, L),
-	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L).
+	MI0 = module(A, B, C, D, E, F, _, H, I, J, K, L, M),
+	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L, M).
 
 module_info_set_modes(MI0, H, MI) :-
-	MI0 = module(A, B, C, D, E, F, G, _, I, J, K, L),
-	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L).
+	MI0 = module(A, B, C, D, E, F, G, _, I, J, K, L, M),
+	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L, M).
 
 module_info_set_ctors(MI0, I, MI) :-
-	MI0 = module(A, B, C, D, E, F, G, H, _, J, K, L),
-	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L).
+	MI0 = module(A, B, C, D, E, F, G, H, _, J, K, L, M),
+	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L, M).
 
 module_info_set_classes(MI0, J, MI) :-
-	MI0 = module(A, B, C, D, E, F, G, H, I, _, K, L),
-	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L).
+	MI0 = module(A, B, C, D, E, F, G, H, I, _, K, L, M),
+	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L, M).
 
 module_info_set_instances(MI0, K, MI) :-
-	MI0 = module(A, B, C, D, E, F, G, H, I, J, _, L),
-	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L).
+	MI0 = module(A, B, C, D, E, F, G, H, I, J, _, L, M),
+	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L, M).
 
-module_info_set_cell_count(MI0, L, MI) :-
-	MI0 = module(A, B, C, D, E, F, G, H, I, J, K, _),
-	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L).
+module_info_set_superclasses(MI0, L, MI) :-
+	MI0 = module(A, B, C, D, E, F, G, H, I, J, K, _, M),
+	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L, M).
+
+module_info_set_cell_count(MI0, M, MI) :-
+	MI0 = module(A, B, C, D, E, F, G, H, I, J, K, L, _),
+	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L, M).
 
 %-----------------------------------------------------------------------------%
 

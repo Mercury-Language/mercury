@@ -446,14 +446,14 @@ check_superclass_conformance(SuperClasses0, ClassVars0, ClassVarSet,
 	map__from_corresponding_lists(ClassVars, InstanceTypes, TypeSubst),
 
 	module_info_instances(ModuleInfo, InstanceTable),
-	module_info_classes(ModuleInfo, ClassTable),
+	module_info_superclasses(ModuleInfo, SuperClassTable),
 
 	(
 			% Try to reduce the superclass constraints,
 			% using the declared instance constraints
 			% and the usual context reduction rules.
 		typecheck__reduce_context_by_rule_application(InstanceTable, 
-			ClassTable, InstanceConstraints, TypeSubst,
+			SuperClassTable, InstanceConstraints, TypeSubst,
 			InstanceVarSet1, InstanceVarSet2,
 			Proofs0, Proofs1, SuperClasses, 
 			[])

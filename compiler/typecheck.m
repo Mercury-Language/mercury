@@ -159,7 +159,7 @@
 	% the instance rules or superclass rules, building up proofs for
 	% redundant constraints
 :- pred typecheck__reduce_context_by_rule_application(instance_table,
-	class_table, list(class_constraint), tsubst, tvarset, tvarset, 
+	superclass_table, list(class_constraint), tsubst, tvarset, tvarset, 
 	map(class_constraint, constraint_proof), 
 	map(class_constraint, constraint_proof),
 	list(class_constraint), list(class_constraint)).
@@ -176,7 +176,7 @@
 :- import_module mercury_to_mercury, mode_util, options, getopt, globals.
 :- import_module passes_aux, clause_to_proc, special_pred, inst_match.
 
-:- import_module int, set, string, require, std_util, tree234.
+:- import_module int, set, string, require, std_util, tree234, multi_map.
 :- import_module assoc_list, varset, term_io.
 
 %-----------------------------------------------------------------------------%
@@ -3043,11 +3043,11 @@ report_unsatisfied_constraints(TypeAssignSet, TypeCheckInfo0, TypeCheckInfo) :-
 perform_context_reduction(OrigTypeAssignSet, TypeCheckInfo0, TypeCheckInfo) :-
 	typecheck_info_get_module_info(TypeCheckInfo0, ModuleInfo),
 	typecheck_info_get_constraints(TypeCheckInfo0, DeclaredConstraints),
-	module_info_classes(ModuleInfo, ClassTable),
+	module_info_superclasses(ModuleInfo, SuperClassTable),
 	module_info_instances(ModuleInfo, InstanceTable),
 	typecheck_info_get_type_assign_set(TypeCheckInfo0, TypeAssignSet0),
-	list__filter_map(reduce_type_assign_context(ClassTable, InstanceTable,
-			DeclaredConstraints), 
+	list__filter_map(reduce_type_assign_context(SuperClassTable, 
+			InstanceTable, DeclaredConstraints), 
 		TypeAssignSet0, TypeAssignSet),
 	(
 			% Check that this context reduction hasn't eliminated
@@ -3069,11 +3069,11 @@ perform_context_reduction(OrigTypeAssignSet, TypeCheckInfo0, TypeCheckInfo) :-
 			TypeAssignSet, TypeCheckInfo)
 	).
 
-:- pred reduce_type_assign_context(class_table, instance_table,
+:- pred reduce_type_assign_context(superclass_table, instance_table,
 		list(class_constraint), type_assign, type_assign).
 :- mode reduce_type_assign_context(in, in, in, in, out) is semidet.
 
-reduce_type_assign_context(ClassTable, InstanceTable, DeclaredConstraints,
+reduce_type_assign_context(SuperClassTable, InstanceTable, DeclaredConstraints,
 		TypeAssign0, TypeAssign) :-
 	type_assign_get_typeclass_constraints(TypeAssign0, Constraints0),
 	type_assign_get_type_bindings(TypeAssign0, Bindings),
@@ -3081,7 +3081,7 @@ reduce_type_assign_context(ClassTable, InstanceTable, DeclaredConstraints,
 	type_assign_get_constraint_proofs(TypeAssign0, Proofs0),
 
 	typecheck__reduce_context_by_rule_application(InstanceTable, 
-		ClassTable, DeclaredConstraints,
+		SuperClassTable, DeclaredConstraints,
 		Bindings, Tvarset0, Tvarset, Proofs0, Proofs,
 		Constraints0, Constraints),
 
@@ -3091,16 +3091,16 @@ reduce_type_assign_context(ClassTable, InstanceTable, DeclaredConstraints,
 	type_assign_set_constraint_proofs(TypeAssign2, Proofs, TypeAssign).
 
 
-typecheck__reduce_context_by_rule_application(InstanceTable, ClassTable, 
+typecheck__reduce_context_by_rule_application(InstanceTable, SuperClassTable, 
 		DeclaredConstraints, Bindings, Tvarset0, Tvarset,
 		Proofs0, Proofs, Constraints0, Constraints) :-
 	apply_rec_subst_to_constraints(Bindings, Constraints0, Constraints1),
 	eliminate_declared_constraints(Constraints1, DeclaredConstraints,
 		Constraints2, Changed1),
-	apply_class_rules(Constraints2, DeclaredConstraints, ClassTable,
-		Tvarset0, Proofs0, Proofs1, Constraints3, Changed2),
-	apply_instance_rules(Constraints3, InstanceTable, 
-		Tvarset0, Tvarset1, Proofs1, Proofs2, Constraints4, Changed3),
+	apply_instance_rules(Constraints2, InstanceTable, 
+		Tvarset0, Tvarset1, Proofs0, Proofs1, Constraints3, Changed2),
+	apply_class_rules(Constraints3, DeclaredConstraints, SuperClassTable,
+		Tvarset0, Proofs1, Proofs2, Constraints4, Changed3),
 	(
 		Changed1 = no, Changed2 = no, Changed3 = no
 	->
@@ -3110,8 +3110,9 @@ typecheck__reduce_context_by_rule_application(InstanceTable, ClassTable,
 		Proofs = Proofs2
 	;
 		typecheck__reduce_context_by_rule_application(InstanceTable,
-			ClassTable, DeclaredConstraints, Bindings, Tvarset1,
-			Tvarset, Proofs2, Proofs, Constraints4, Constraints)
+			SuperClassTable, DeclaredConstraints, Bindings,
+			Tvarset1, Tvarset, Proofs2, Proofs, 
+			Constraints4, Constraints)
 	).
 
 :- pred eliminate_declared_constraints(list(class_constraint), 
@@ -3240,82 +3241,133 @@ find_matching_instance_rule_2([I|Is], N0, ClassName, Types, TVarSet,
 			Proofs, NewConstraints)
 	).
 
-	% To reduce the context using class declarations, we scan the
-	% declared contexts plus the current inferred context one
-	% constraint at a time.  For each such class constraint, we
-	% check to see if any of its superclasses is also a constraint,
-	% and if so, delete the superclass from the current constraint
-	% list as it is redundant.
+	% To reduce a constraint using class declarations, we search the
+	% superclass relation to find a path from the inferred constraint to
+	% another (declared or inferred) constraint.
 :- pred apply_class_rules(list(class_constraint), list(class_constraint),
-	class_table, tvarset, map(class_constraint, constraint_proof),
+	superclass_table, tvarset, map(class_constraint, constraint_proof),
 	map(class_constraint, constraint_proof), list(class_constraint), bool).
 :- mode apply_class_rules(in, in, in, in, in, out, out, out) is det.
 
-apply_class_rules(Constraints0, DeclaredConstraints, ClassTable, TVarSet, 
-		Proofs0, Proofs, Constraints, Changed) :-
-	list__append(DeclaredConstraints, Constraints0, AllConstraints),
-	apply_class_rules_2(AllConstraints, Constraints0, ClassTable,
-		TVarSet, Proofs0, Proofs, Constraints, Changed).
-
-:- pred apply_class_rules_2(list(class_constraint), list(class_constraint),
-	class_table, tvarset, map(class_constraint, constraint_proof),
-	map(class_constraint, constraint_proof), list(class_constraint), bool).
-:- mode apply_class_rules_2(in, in, in, in, in, out, out, out) is det.
-
-	% The first argument is the list of declared or inferred constraints
-	% left to be checked.
-	% The second argument is the list of currently inferred constraints
-	% that have not been rejected. If a redundant constraint is found,
-	% it is deleted from both (if it is still in the first list).
-apply_class_rules_2([], Constraints, _, _, Proofs, Proofs, Constraints, no).
-apply_class_rules_2([C|Cs], Constraints0, ClassTable, TVarSet,
-		Proofs0, Proofs, Constraints, Changed) :-
-	C = constraint(ClassName, Types),
-	list__length(Types, Arity),
-	ClassId = class_id(ClassName, Arity),
-	map__lookup(ClassTable, ClassId, ClassDefn),
-	ClassDefn = hlds_class_defn(ParentClassConstraints0, ClassVars,
-		_ClassInterface, ClassVarset, _TermContext),
-	term__var_list_to_term_list(ClassVars, ClassTypes),
-	varset__merge_subst(TVarSet, ClassVarset, NewTVarSet, RenameSubst),
-	term__apply_rec_substitution_to_list(ClassTypes, RenameSubst,
-		NewClassTypes),
-	apply_rec_subst_to_constraints(RenameSubst, ParentClassConstraints0,
-		ParentClassConstraints),
-	IsRedundant = lambda(
-			[ThisConstraint::in, RenamedConstraint::out] is semidet,
-		(
-			type_list_subsumes(NewClassTypes, Types, Subst),
-			apply_rec_subst_to_constraint(Subst, ThisConstraint, 
-				RenamedConstraint),
-			list__member(RenamedConstraint, Constraints0)
-		)),
-	list__filter_map(IsRedundant, ParentClassConstraints,
-		RedundantConstraints),
-
-		% Delete the redundant constraints
-	list__delete_elems(Constraints0, RedundantConstraints, Constraints1),
-	list__delete_elems(Cs, RedundantConstraints, NewCs),
-
-		% Remember why the constraints were redundant
-	RecordRedundancy = lambda([ConstraintName::in, TheProofs0::in,
-					TheProofs::out] is det,
-		(
-			map__set(TheProofs0, ConstraintName, superclass(C), 
-				TheProofs)
-		)),
-	list__foldl(RecordRedundancy, RedundantConstraints, Proofs0, Proofs1),
+apply_class_rules([], _, _, _, Proofs, Proofs, [], no).
+apply_class_rules([C|Constraints0], DeclaredConstraints, SuperClassTable,
+		TVarSet, Proofs0, Proofs, Constraints, Changed) :-
 	(
-		RedundantConstraints = [],
-		Changed1 = no
+		Parents = [],
+		eliminate_constraint_by_class_rules(C, DeclaredConstraints,
+			SuperClassTable, TVarSet, Parents, Proofs0, Proofs1)
+	->
+		apply_class_rules(Constraints0, DeclaredConstraints,
+			SuperClassTable, TVarSet, Proofs1, Proofs, 
+			Constraints, _),
+		Changed = yes
 	;
-		RedundantConstraints = [_|_],
-		Changed1 = yes
-	),
+		apply_class_rules(Constraints0, DeclaredConstraints,
+			SuperClassTable, TVarSet, Proofs0, Proofs, 
+			Constraints1, Changed),
+		Constraints = [C|Constraints1]
+	).
 
-	apply_class_rules_2(NewCs, Constraints1, ClassTable,
-		NewTVarSet, Proofs1, Proofs, Constraints, Changed2),
-	bool__or(Changed1, Changed2, Changed).
+	% eliminate_constraint_by_class_rules eliminates a class constraint
+	% by applying the superclass relation. A list of "parent" constraints
+	% is also passed in --- these are the constraints that we are
+	% (recursively) in the process of checking, and is used to ensure that
+	% we don't get into a cycle in the relation.
+:- pred eliminate_constraint_by_class_rules(class_constraint,
+	list(class_constraint), superclass_table, tvarset,
+	list(class_constraint),
+	map(class_constraint, constraint_proof),
+	map(class_constraint, constraint_proof)).
+:- mode eliminate_constraint_by_class_rules(in, in, in, in, in, in, out) 
+	is semidet.
+
+eliminate_constraint_by_class_rules(C, DeclaredConstraints, SuperClassTable,
+		TVarSet, ParentConstraints, Proofs0, Proofs) :-
+
+		% Make sure we aren't in a cycle in the
+		% superclass relation
+	\+ list__member(C, ParentConstraints),
+
+	C = constraint(SuperClassName, SuperClassTypes),
+	list__length(SuperClassTypes, SuperClassArity),
+	SuperClassId = class_id(SuperClassName, SuperClassArity),
+	multi_map__search(SuperClassTable, SuperClassId, SubClasses), 
+
+		% Convert all the subclass_details into class_constraints by
+		% doing the appropriate variable renaming and applying the
+		% type variable bindings.
+	SubDetailsToConstraint = lambda([SubClassDetails::in, SubC::out] 
+			is semidet, (
+		SubClassDetails = subclass_details(SuperVars0, SubID,
+			SubVars0, SuperVarset),
+
+			% Rename the variables from the typeclass
+			% declaration into those of the current pred
+		varset__merge_subst(TVarSet, SuperVarset, _NewTVarSet, 
+			RenameSubst),
+		term__var_list_to_term_list(SubVars0, SubVars1),
+		term__apply_substitution_to_list(SubVars1, 
+			RenameSubst, SubVars),
+		term__var_list_to_term_list(SuperVars0, SuperVars1),
+		term__apply_substitution_to_list(SuperVars1,
+			RenameSubst, SuperVars),
+
+			% Work out what the (renamed) vars from the
+			% typeclass declaration are bound to here
+		map__init(Empty),
+		type_unify_list(SuperVars, SuperClassTypes, [],
+			Empty, Bindings),
+		SubID = class_id(SubName, _SubArity),
+		term__apply_substitution_to_list(SubVars, Bindings,
+			SubClassTypes),
+		SubC = constraint(SubName, SubClassTypes)
+	)),
+	list__map(SubDetailsToConstraint, SubClasses, SubClassConstraints),
+
+	(
+			% Do the first level of search
+		FindSub = lambda([TheConstraint::in] is semidet,(
+			list__member(TheConstraint, DeclaredConstraints)
+		)),
+		list__filter(FindSub, SubClassConstraints, [Sub|_])
+	->
+		map__set(Proofs0, C, superclass(Sub), Proofs)
+	;
+		NewParentConstraints = [C|ParentConstraints],
+
+			% Recursively search the rest of the superclass
+			% relation.
+		SubClassSearch = lambda([Constraint::in, CnstrtAndProof::out] 
+				is semidet, (
+			eliminate_constraint_by_class_rules(Constraint,
+				DeclaredConstraints, SuperClassTable,
+				TVarSet, NewParentConstraints,
+				Proofs0, SubProofs),
+			CnstrtAndProof = Constraint - SubProofs
+		)),
+			% XXX this could (and should) be more efficient. 
+			% (ie. by manually doing a "cut").
+		find_first(SubClassSearch, SubClassConstraints,
+			NewSub - NewProofs),
+		map__set(NewProofs, C, superclass(NewSub), Proofs)
+	).
+
+	% XXX this should probably work its way into the library.
+	% This is just like list__filter_map except that it only returns
+	% the first match:
+	% 	first(X,Y,Z) <=> list__filter_map(X,Y,[Z|_])
+	%
+:- pred find_first(pred(X, Y), list(X), Y).
+:- mode find_first(pred(in, out) is semidet, in, out) is semidet.
+
+find_first(Pred, [X|Xs], Result) :-
+	(
+		call(Pred, X, Result0)
+	->
+		Result = Result0
+	;
+		find_first(Pred, Xs, Result)
+	).
 
 %-----------------------------------------------------------------------------%
 

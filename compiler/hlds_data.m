@@ -756,3 +756,19 @@ determinism_to_code_model(failure,     model_semi).
 	;	superclass(class_constraint).
 
 %-----------------------------------------------------------------------------%
+
+:- type subclass_details 
+	--->	subclass_details(
+			list(var),		% variables of the superclass
+			class_id,		% name of the subclass
+			list(var),		% variables of the subclass
+			tvarset			% the names of these vars
+		).
+
+:- import_module multi_map.
+
+	% I'm sure there's a very clever way of 
+	% doing this with graphs or relations...
+:- type superclass_table == multi_map(class_id, subclass_details).
+
+%-----------------------------------------------------------------------------%
