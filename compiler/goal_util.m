@@ -198,10 +198,9 @@
 	%	Detism, Args, MaybeFeature, InstMapDelta, ModuleInfo, Context,
 	%	CallGoal):
 	%
-	% Generate a call to a builtin procedure (e.g.
-	% from the private_builtin or table_builtin module).
-	% This is used by HLDS->HLDS transformation passes that introduce
-	% calls to builtin procedures.
+	% Generate a call to a builtin procedure (e.g. from the private_builtin
+	% or table_builtin module). This is used by HLDS->HLDS transformation
+	% passes that introduce calls to builtin procedures.
 	%
 	% If ModeNo = only_mode then the predicate must have exactly one
 	% procedure (an error is raised if this is not the case.)
