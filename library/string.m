@@ -6,10 +6,15 @@
 
 :- module string.
 
-% Main authors: fjh, dylan.
+% Main authors: fjh, petdr.
 % Stability: medium to high.
 
 % This modules provides basic string handling facilities.
+
+% Note that in the current implementation, strings are represented as in C,
+% using a null character as the string terminator.  Future implementations,
+% however, might allow null characters in strings.  Programmers should
+% avoid creating strings that might contain null characters.
 
 %-----------------------------------------------------------------------------%
 
