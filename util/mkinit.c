@@ -35,7 +35,7 @@
 static const char *progname = NULL;
 
 /* options and arguments, set by parse_options() */
-static const char *default_entry = "mercury__io__run_0_0";
+static const char *entry_point = "mercury__io__run_0_0";
 static int maxcalls = MAXCALLS;
 static int num_files;
 static char **files;
@@ -77,7 +77,7 @@ static	void parse_options(int argc, char *argv[]);
 static	void usage(void);
 static	void output_headers(void);
 static	void output_sub_init_functions(void);
-static	void output_default_entry_defn(void);
+static	void output_entry_point_defn(void);
 static	void output_main_init_function(void);
 static	void process_file(char *filename);
 static	void process_init_file(const char *filename);
@@ -94,7 +94,7 @@ int main(int argc, char **argv)
 
 	output_headers();
 	output_sub_init_functions();
-	output_default_entry_defn();
+	output_entry_point_defn();
 	output_main_init_function();
 
 	if (num_errors > 0)
@@ -122,7 +122,7 @@ static void parse_options(int argc, char *argv[])
 				usage();
 			break;
 
-	case 'w':	default_entry = optarg;
+	case 'w':	entry_point = optarg;
 			break;
 
 	default:	usage();
@@ -180,17 +180,17 @@ static void output_sub_init_functions(void)
 	fputs("\n#endif\n\n", stdout);
 }
 
-static void output_default_entry_defn(void)
+static void output_entry_point_defn(void)
 {
 	fputs("/*\n", stdout);
-	fputs("** Initialize default_entry statically if possible.\n", stdout);
+	fputs("** Initialize entry_point statically if possible.\n", stdout);
 	fputs("*/\n\n", stdout);
-	printf("Declare_entry(%s);\n\n", default_entry);
+	printf("Declare_entry(%s);\n\n", entry_point);
 	fputs("#if defined(USE_GCC_NONLOCAL_GOTOS) && "
 		"!defined(USE_ASM_LABELS)\n", stdout);
-	fputs("Code\t*default_entry;\n", stdout);
+	fputs("Code\t*entry_point;\n", stdout);
 	fputs("#else\n", stdout);
-	printf("Code\t*default_entry = ENTRY(%s);\n", default_entry);
+	printf("Code\t*entry_point = ENTRY(%s);\n", entry_point);
 	fputs("#endif\n\n", stdout);
 }
 
@@ -212,7 +212,7 @@ static void output_main_init_function(void)
 
 	fputs("#if (defined(USE_GCC_NONLOCAL_GOTOS) && "
 		"!defined(USE_ASM_LABELS))\n", stdout);
-	printf("\tdefault_entry = ENTRY(%s);\n", default_entry);
+	printf("\tentry_point = ENTRY(%s);\n", entry_point);
 	fputs("#endif\n", stdout);
 
 	fputs("}\n", stdout);
