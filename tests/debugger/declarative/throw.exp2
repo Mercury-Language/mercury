@@ -1,0 +1,47 @@
+       1:      1  1 CALL pred throw:main/2-0 (cc_multi) throw.m:10
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> break p
+ 0: + stop  interface pred throw:p/1-0 (cc_nondet)
+mdb> break q
+ 1: + stop  interface pred throw:q/1-0 (semidet)
+mdb> continue
+       3:      3  3 CALL pred throw:p/1-0 (cc_nondet) throw.m:20 (exception.m:NNNN)
+mdb> finish
+      34:      3  3 EXCP pred throw:p/1-0 (cc_nondet)
+mdb> dd
+Call p(_)
+Throws "Too big"
+Expected? no
+a(3)
+Valid? yes
+Call b(3, _)
+Throws "Too big"
+Expected? yes
+Found unhandled exception:
+p(_)
+"Too big"
+Is this a bug? yes
+      34:      3  3 EXCP pred throw:p/1-0 (cc_nondet)
+mdb> continue
+exception(univ_cons("Too big"))
+      41:     11  3 CALL pred throw:q/1-0 (semidet) throw.m:48 (exception.m:NNNN)
+mdb> finish
+      76:     11  3 EXCP pred throw:q/1-0 (semidet)
+mdb> dd
+Call q(_)
+Throws "Too big"
+Expected? no
+a2(3)
+Valid? yes
+Call b2(3, _)
+Throws "Too big"
+Expected? yes
+Found unhandled exception:
+q(_)
+"Too big"
+Is this a bug? yes
+      76:     11  3 EXCP pred throw:q/1-0 (semidet)
+mdb> continue
+exception(univ_cons("Too big"))

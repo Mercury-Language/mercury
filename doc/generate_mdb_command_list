@@ -1,0 +1,16 @@
+#!/bin/sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 1995-1998 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+
+# Given the automatically generated mdb_doc file, this script generates
+# a C code fragment (part of an array initializer) that lists the valid
+# commands.
+
+awk '
+$1 == "document" && $2 != "concepts" && $2 != "CATEGORY" {
+		printf "\t{ \"%s\", \"%s\" },\n", $2, $4;
+	}
+'

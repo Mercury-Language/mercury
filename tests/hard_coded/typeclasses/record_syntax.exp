@@ -1,0 +1,22 @@
+X ^ arg1 = 1
+X ^ arg2 = 2
+X ^ arg3 = foo2(3, 4)
+X ^ arg3 ^ arg4 = 3
+updated arg1 = foo(5, 2, foo2(3, 4))
+updated arg2 = foo(1, 6, foo2(3, 4))
+updated arg3 ^ arg4 = foo(1, 2, foo2(7, 4))
+List1 = cons(1, cons(2, cons(4, nil)))
+List2 ^ e_next ^ e_data = 'b'
+List3 = e_cons(1, e_cons("new value", e_nil))
+List3 ^ e_next ^ e_data = "new value"
+size(List3 ^ e_next ^ e_data) = 9
+Pair0 ^ fst = 1
+Pair = "new first elem" - 2
+size of `type_and_size("string", 6)' = 6
+'fst :=' [4,5,6] = [4 - 2, 5 - 2, 6 - 2]
+DCG ^ arg1 = 1
+DCG ^ arg3 ^ arg4 = 3
+updated DCG arg1 = foo(8, 2, foo2(3, 4))
+updated DCG arg3 ^ arg4 = foo(8, 2, foo2(9, 4))
+Map0 ^ det_elem('a') = "a"
+Map ^ det_elem('c') = "c"

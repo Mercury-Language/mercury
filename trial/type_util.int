@@ -1,0 +1,57 @@
+:- module type_util.
+:- interface.
+:- import_module hlds_module, hlds_pred, hlds_data, prog_data.
+:- pred type_util:type_is_atomic((prog_data:(type)), (hlds_module:module_info)).
+:- mode type_util:type_is_atomic(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred type_util:type_is_higher_order((prog_data:(type)), (hlds_pred:pred_or_func), (list:list((prog_data:(type))))).
+:- mode type_util:type_is_higher_order(mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is semidet.
+:- pred type_util:type_id_is_higher_order((hlds_data:type_id), (hlds_pred:pred_or_func)).
+:- mode type_util:type_id_is_higher_order(mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred type_util:classify_type((prog_data:(type)), (hlds_module:module_info), (type_util:builtin_type)).
+:- mode type_util:classify_type(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- type (type_util:builtin_type)
+	--->	type_util:int_type
+	;	type_util:char_type
+	;	type_util:str_type
+	;	type_util:float_type
+	;	type_util:pred_type
+	;	type_util:enum_type
+	;	type_util:polymorphic_type
+	;	type_util:user_type.
+:- pred type_util:type_to_type_id((prog_data:(type)), (hlds_data:type_id), (list:list((prog_data:(type))))).
+:- mode type_util:type_to_type_id(mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is semidet.
+:- pred type_util:var((prog_data:(type)), (term:var)).
+:- mode type_util:var(mercury_builtin:in, mercury_builtin:out) is semidet.
+:- mode type_util:var(mercury_builtin:out, mercury_builtin:in) is det.
+:- pred type_util:construct_type((hlds_data:type_id), (list:list((prog_data:(type)))), (prog_data:(type))).
+:- mode type_util:construct_type(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred type_util:construct_type((hlds_data:type_id), (list:list((prog_data:(type)))), (term:context), (prog_data:(type))).
+:- mode type_util:construct_type(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred type_util:make_type_id((term:const), int, (hlds_data:type_id)).
+:- mode type_util:make_type_id(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred type_util:type_id_module((hlds_module:module_info), (hlds_data:type_id), (prog_data:module_name)).
+:- mode type_util:type_id_module(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred type_util:type_id_name((hlds_module:module_info), (hlds_data:type_id), string).
+:- mode type_util:type_id_name(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred type_util:type_id_arity((hlds_module:module_info), (hlds_data:type_id), (prog_data:arity)).
+:- mode type_util:type_id_arity(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred type_util:type_constructors((prog_data:(type)), (hlds_module:module_info), (list:list((prog_data:constructor)))).
+:- mode type_util:type_constructors(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred type_util:get_cons_id_arg_types((hlds_module:module_info), (prog_data:(type)), (hlds_data:cons_id), (list:list((prog_data:(type))))).
+:- mode type_util:get_cons_id_arg_types(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred type_util:type_is_no_tag_type((list:list((prog_data:constructor))), (prog_data:sym_name), (prog_data:(type))).
+:- mode type_util:type_is_no_tag_type(mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is semidet.
+:- pred type_util:type_unify((prog_data:(type)), (prog_data:(type)), (list:list((prog_data:tvar))), (prog_data:tsubst), (prog_data:tsubst)).
+:- mode type_util:type_unify(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred type_util:type_unify_list((list:list((prog_data:(type)))), (list:list((prog_data:(type)))), (list:list((prog_data:tvar))), (prog_data:tsubst), (prog_data:tsubst)).
+:- mode type_util:type_unify_list(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred type_util:vars((prog_data:(type)), (list:list((prog_data:tvar)))).
+:- mode type_util:vars(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred type_util:type_list_subsumes((list:list((prog_data:(type)))), (list:list((prog_data:(type)))), (prog_data:tsubst)).
+:- mode type_util:type_list_subsumes(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred type_util:apply_substitution_to_type_map((map:map((term:var), (prog_data:(type)))), (prog_data:tsubst), (map:map((term:var), (prog_data:(type))))).
+:- mode type_util:apply_substitution_to_type_map(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred type_util:apply_rec_substitution_to_type_map((map:map((term:var), (prog_data:(type)))), (prog_data:tsubst), (map:map((term:var), (prog_data:(type))))).
+:- mode type_util:apply_rec_substitution_to_type_map(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred type_util:apply_substitutions_to_var_map((map:map((prog_data:tvar), (term:var))), (prog_data:tsubst), (map:map((term:var), (term:var))), (map:map((prog_data:tvar), (term:var)))).
+:- mode type_util:apply_substitutions_to_var_map(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.

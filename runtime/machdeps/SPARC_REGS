@@ -1,0 +1,145 @@
+
+This file contains the relevant part of config/sparc/sparc.h from the
+GNU C source code which describes how each register is used.
+
+#define REGISTER_NAMES \
+{"%g0", "%g1", "%g2", "%g3", "%g4", "%g5", "%g6", "%g7",		\
+ "%o0", "%o1", "%o2", "%o3", "%o4", "%o5", "%sp", "%o7",		\
+ "%l0", "%l1", "%l2", "%l3", "%l4", "%l5", "%l6", "%l7",		\
+ "%i0", "%i1", "%i2", "%i3", "%i4", "%i5", "%fp", "%i7",		\
+ "%f0", "%f1", "%f2", "%f3", "%f4", "%f5", "%f6", "%f7",		\
+ "%f8", "%f9", "%f10", "%f11", "%f12", "%f13", "%f14", "%f15",		\
+ "%f16", "%f17", "%f18", "%f19", "%f20", "%f21", "%f22", "%f23",	\
+ "%f24", "%f25", "%f26", "%f27", "%f28", "%f29", "%f30", "%f31"}
+
+/* 1 for registers that have pervasive standard uses
+   and are not available for the register allocator.
+
+   On non-v9 systems:
+   g1 is free to use as temporary.
+   g2-g4 are reserved for applications.  Gcc normally uses them as
+   temporaries, but this can be disabled via the -mno-app-regs option.
+   g5 through g7 are reserved for the operating system.
+
+   On v9 systems:
+   g1,g5 are free to use as temporaries, and are free to use between calls
+   if the call is to an external function via the PLT.
+   g4 is free to use as a temporary in the non-embedded case.
+   g4 is reserved in the embedded case.
+   g2-g3 are reserved for applications.  Gcc normally uses them as
+   temporaries, but this can be disabled via the -mno-app-regs option.
+   g6-g7 are reserved for the operating system (or application in
+   embedded case).
+   ??? Register 1 is used as a temporary by the 64 bit sethi pattern, so must
+   currently be a fixed register until this pattern is rewritten.
+   Register 1 is also used when restoring call-preserved registers in large
+   stack frames.
+
+   Registers fixed in arch32 and not arch64 (or vice-versa) are marked in
+   CONDITIONAL_REGISTER_USAGE in order to properly handle -ffixed-.
+*/
+
+#define FIXED_REGISTERS  \
+ {1, 0, 0, 0, 0, 0, 1, 1,	\
+  0, 0, 0, 0, 0, 0, 1, 0,	\
+  0, 0, 0, 0, 0, 0, 0, 0,	\
+  0, 0, 0, 0, 0, 0, 1, 1,	\
+				\
+  0, 0, 0, 0, 0, 0, 0, 0,	\
+  0, 0, 0, 0, 0, 0, 0, 0,	\
+  0, 0, 0, 0, 0, 0, 0, 0,	\
+  0, 0, 0, 0, 0, 0, 0, 0,	\
+				\
+  0, 0, 0, 0, 0, 0, 0, 0,	\
+  0, 0, 0, 0, 0, 0, 0, 0,	\
+  0, 0, 0, 0, 0, 0, 0, 0,	\
+  0, 0, 0, 0, 0, 0, 0, 0,	\
+				\
+  0, 0, 0, 0, 0}
+
+/* 1 for registers not available across function calls.
+   These must include the FIXED_REGISTERS and also any
+   registers that can be used without being saved.
+   The latter must include the registers where values are returned
+   and the register where structure-value addresses are passed.
+   Aside from that, you can include as many other registers as you like.  */
+
+#define CALL_USED_REGISTERS  \
+ {1, 1, 1, 1, 1, 1, 1, 1,	\
+  1, 1, 1, 1, 1, 1, 1, 1,	\
+  0, 0, 0, 0, 0, 0, 0, 0,	\
+  0, 0, 0, 0, 0, 0, 1, 1,	\
+				\
+  1, 1, 1, 1, 1, 1, 1, 1,	\
+  1, 1, 1, 1, 1, 1, 1, 1,	\
+  1, 1, 1, 1, 1, 1, 1, 1,	\
+  1, 1, 1, 1, 1, 1, 1, 1,	\
+				\
+  1, 1, 1, 1, 1, 1, 1, 1,	\
+  1, 1, 1, 1, 1, 1, 1, 1,	\
+  1, 1, 1, 1, 1, 1, 1, 1,	\
+  1, 1, 1, 1, 1, 1, 1, 1,	\
+				\
+  1, 1, 1, 1, 1}
+
+/* If !TARGET_FPU, then make the fp registers and fp cc regs fixed so that
+   they won't be allocated.  */
+
+#define CONDITIONAL_REGISTER_USAGE				\
+do								\
+  {								\
+    if (TARGET_ARCH32)						\
+      {								\
+	fixed_regs[5] = 1;					\
+      }								\
+    else							\
+      {								\
+	fixed_regs[1] = 1;					\
+      }								\
+    if (! TARGET_V9)						\
+      {								\
+	int regno;						\
+	for (regno = SPARC_FIRST_V9_FP_REG;			\
+	     regno <= SPARC_LAST_V9_FP_REG;			\
+	     regno++)						\
+	  fixed_regs[regno] = 1;				\
+	/* %fcc0 is used by v8 and v9.  */			\
+	for (regno = SPARC_FIRST_V9_FCC_REG + 1;		\
+	     regno <= SPARC_LAST_V9_FCC_REG;			\
+	     regno++)						\
+	  fixed_regs[regno] = 1;				\
+      }								\
+    if (! TARGET_FPU)						\
+      {								\
+	int regno;						\
+	for (regno = 32; regno < SPARC_LAST_V9_FCC_REG; regno++) \
+	  fixed_regs[regno] = 1;				\
+      }								\
+    /* Don't unfix g2-g4 if they were fixed with -ffixed-.  */	\
+    fixed_regs[2] |= ! TARGET_APP_REGS;				\
+    fixed_regs[3] |= ! TARGET_APP_REGS;				\
+    fixed_regs[4] |= ! TARGET_APP_REGS || TARGET_CM_EMBMEDANY;	\
+    if (TARGET_FLAT)						\
+      {								\
+	/* Let the compiler believe the frame pointer is still	\
+	   %fp, but output it as %i7.  */			\
+	fixed_regs[31] = 1;					\
+	reg_names[FRAME_POINTER_REGNUM] = "%i7";		\
+	/* ??? This is a hack to disable leaf functions.  */	\
+	global_regs[7] = 1;					\
+      }								\
+    if (profile_block_flag)					\
+      {								\
+	/* %g1 and %g2 must be fixed, because BLOCK_PROFILER	\
+	    uses them.  */					\
+	fixed_regs[1] = 1;					\
+	fixed_regs[2] = 1;					\
+      }								\
+    if (flag_pic != 0)						\
+      {								\
+        fixed_regs[23] = 1;					\
+        call_used_regs[23] = 1;					\
+      }								\
+  }								\
+while (0)
+

@@ -1,0 +1,183 @@
+#! /bin/sh
+# @configure_input@
+#---------------------------------------------------------------------------#
+# Copyright (C) 1995-2000 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+
+# C2INIT - Convert *.c to *_init.c
+#
+# This script outputs an appropriate init.c, given the .c files.
+# Type `c2init --help' for usage message.
+#
+
+# If you change these, you will also need to change Mmake.common.in,
+# scripts/ml.in, tools/bootcheck, tools/binary, tools/binary_step and
+# tools/linear.
+RT_LIB_NAME=mer_rt
+STD_LIB_NAME=mer_std
+TRACE_LIB_NAME=mer_trace
+BROWSER_LIB_NAME=mer_browser
+
+MERCURY_MOD_LIB_DIR=${MERCURY_MOD_LIB_DIR=@LIBDIR@/modules}
+MERCURY_TRACE_LIB_DIR=${MERCURY_TRACE_LIB_DIR=@LIBDIR@/modules}
+MKINIT=${MERCURY_MKINIT=mkinit}
+
+# maximum number of calls to put in a single function
+maxcalls=40
+defentry_opt=""
+init_opt=""
+trace_opt=""
+library_opt=""
+extra_inits_opt=""
+aditi_opt=""
+extra_init_dirs=""
+
+# include the file `init_grade_options.sh-subr'
+@INIT_GRADE_OPTIONS@
+
+# IMPORTANT: the manpage is produced automatically from this help
+# message, so if you change the help message, don't forget to check
+# that the manpage still looks OK.
+Help="\
+Name:	c2init - Create Mercury initialization file.
+Usage:	c2init [options] *.c *.init ...
+Options: 
+	-a, --aditi
+		Generate a function to upload Aditi-RL data to a database.
+	-c <n>, --max-calls <n>
+		Break up the initialization into groups of at most <n> function
+		calls.  (Default value of <n> is 40.)
+	-i, --include-initialization-code
+		Always include code that calls the initialization functions
+		of the various modules. With this option, the debugger can use
+		information from any modules that were compiled with execution
+		tracing to print (partial) stack traces, and to print the
+		values of variables in ancestors of the current call, even
+		in grades in which this not normally possible.
+	-t, --trace
+		Enable execution tracing in the generated executable.
+		Implies -i.
+	-l, --library
+		Don't generate a \`main()' function.
+		Instead, generate a function
+			mercury_main(int argc, char **argv);
+		(declared in \"init.h\") that can be called from C code.
+		(A more fine-grained interface is also available;
+		see \"init.h\" for details.)
+	-I <directory>, --init-file-directory <directory>
+		Include <directory> in the list of directories searched to
+		locate \`.init' files.
+	-w <label>, --entry-point <label>
+		Set entry point to <label>.
+		(Default value corresponds to main/2.)
+	-x, --extra-inits
+		Search \`.c' files for extra initialization functions.
+		(This may be necessary if the C files contain
+		hand-coded C code with \`INIT' comments, rather than
+		containing only C code that was automatically generated
+		by the Mercury compiler.)
+
+$grade_usage
+
+Environment variables:
+	MERCURY_MOD_LIB_DIR, MERCURY_MOD_LIB_MODS,
+	MERCURY_TRACE_LIB_DIR, MERCURY_TRACE_LIB_MODS, MERCURY_MKINIT.
+"
+
+while true; do
+	case "$1" in
+	-a|--aditi)
+		aditi_opt="-a";;	
+	-a-|--no-aditi)
+		aditi_opt="";;	
+	-c|--max-calls)
+		maxcalls="$2"; shift;;
+
+	-i|--include-initialization-code)
+		init_opt="-i";;
+
+	-t|--trace)
+		trace_opt="-t";;
+
+	-l|--library)
+		library_opt="-l";;
+
+	-l-|--no-library)
+		library_opt="";;
+
+	-I|--init-file-directory)
+		extra_init_dirs="$extra_init_dirs -I $2"; shift;;
+
+	-w|--entry-point)
+		defentry_opt="-w$2"; shift;;
+
+	-x|--extra-inits)
+		extra_inits_opt="-x";;
+
+	-x-|--no-extra-inits)
+		extra_inits_opt="";;
+
+	-h|--help|"-?")
+		echo "$Help"
+		exit 0;;
+
+	# include the file `parse_grade_options.sh-subr'
+	@PARSE_GRADE_OPTIONS@
+
+	--)
+		break;;
+
+	-*)
+		echo "`basename $0`: invalid option \`$1'" 1>&2;
+		echo "Try \`$0 --help' for help." 1>&2;
+		exit 1;;
+
+	*)
+		break;;
+	esac
+	shift
+done
+
+# include the file `final_grade_options.sh-subr'
+@FINAL_GRADE_OPTIONS@
+
+case $require_tracing in
+	true)
+		trace_opt="-t" ;;
+esac
+
+case $stack_trace in
+	true)
+		init_opt="-i" ;;
+esac
+
+MERCURY_MOD_LIB_MODS=${MERCURY_MOD_LIB_MODS="\
+		$MERCURY_MOD_LIB_DIR/$RT_LIB_NAME.init \
+		$MERCURY_MOD_LIB_DIR/$STD_LIB_NAME.init"}
+
+MERCURY_TRACE_LIB_MODS=${MERCURY_TRACE_LIB_MODS="\
+		$MERCURY_TRACE_LIB_DIR/$BROWSER_LIB_NAME.init"}
+
+case "$trace_opt" in
+	-t)
+		init_opt="-i"
+		MERCURY_ALL_LIB_MODS="$MERCURY_MOD_LIB_MODS\
+			$MERCURY_TRACE_LIB_MODS"
+		;;
+	*)
+		MERCURY_ALL_LIB_MODS="$MERCURY_MOD_LIB_MODS"
+		;;
+esac
+
+case $# in
+	0) exec $MKINIT $aditi_opt -c"$maxcalls" $init_opt $trace_opt \
+		$library_opt $defentry_opt $extra_inits_opt \
+		$extra_init_dirs $EXTRA_INIT_FILES $MERCURY_ALL_LIB_MODS
+	   ;;
+	*) exec $MKINIT $aditi_opt -c"$maxcalls" $init_opt $trace_opt \
+		$library_opt $defentry_opt $extra_inits_opt \
+		$extra_init_dirs "$@" $EXTRA_INIT_FILES $MERCURY_ALL_LIB_MODS
+	   ;;
+esac

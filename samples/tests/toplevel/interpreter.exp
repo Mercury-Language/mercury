@@ -1,0 +1,7 @@
+Pure Prolog Interpreter.
+
+Consulting file `interpreter_test.pl'...
+?- sibling(mary, george).
+Yes.
+?- No.
+?- 

@@ -1,0 +1,8 @@
+This directory contains files used to create a binary distribution of
+Mercury.  Files that will be incorporated in the binary distribution
+start with `bindist.'.  The other files (this README, and the Mmake file)
+are only used to build the distribution.
+
+To build a binary distribution, first build and install the compiler
+from the source distribution (see the instructions in ../INSTALL).
+Then just do an `mmake bindist'.

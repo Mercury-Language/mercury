@@ -1,0 +1,53 @@
+:- module set.
+:- interface.
+:- import_module bool, list.
+:- type (set:set(T)).
+:- pred set:list_to_set((list:list(T)), (set:set(T))).
+:- mode set:list_to_set(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred set:sorted_list_to_set((list:list(T)), (set:set(T))).
+:- mode set:sorted_list_to_set(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred set:to_sorted_list((set:set(T)), (list:list(T))).
+:- mode set:to_sorted_list(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred set:init((set:set(T))).
+:- mode set:init(mercury_builtin:uo) is det.
+:- pred set:singleton_set((set:set(T)), T).
+:- mode set:singleton_set(mercury_builtin:in, mercury_builtin:out) is semidet.
+:- mode set:singleton_set(mercury_builtin:out, mercury_builtin:in) is det.
+:- pred set:equal((set:set(T)), (set:set(T))).
+:- mode set:equal(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred set:empty((set:set(T))).
+:- mode set:empty(mercury_builtin:in) is semidet.
+:- pred set:subset((set:set(T)), (set:set(T))).
+:- mode set:subset(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred set:superset((set:set(T)), (set:set(T))).
+:- mode set:superset(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred set:member(T, (set:set(T))).
+:- mode set:member(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- mode set:member(mercury_builtin:out, mercury_builtin:in) is nondet.
+:- pred set:is_member(T, (set:set(T)), (bool:bool)).
+:- mode set:is_member(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred set:insert((set:set(T)), T, (set:set(T))).
+:- mode set:insert(mercury_builtin:di, mercury_builtin:di, mercury_builtin:uo) is det.
+:- mode set:insert(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred set:insert_list((set:set(T)), (list:list(T)), (set:set(T))).
+:- mode set:insert_list(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred set:delete((set:set(T)), T, (set:set(T))).
+:- mode set:delete(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred set:delete_list((set:set(T)), (list:list(T)), (set:set(T))).
+:- mode set:delete_list(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred set:remove((set:set(T)), T, (set:set(T))).
+:- mode set:remove(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred set:remove_list((set:set(T)), (list:list(T)), (set:set(T))).
+:- mode set:remove_list(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred set:remove_least((set:set(T)), T, (set:set(T))).
+:- mode set:remove_least(mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is semidet.
+:- pred set:union((set:set(T)), (set:set(T)), (set:set(T))).
+:- mode set:union(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred set:power_union((set:set((set:set(T)))), (set:set(T))).
+:- mode set:power_union(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred set:intersect((set:set(T)), (set:set(T)), (set:set(T))).
+:- mode set:intersect(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred set:power_intersect((set:set((set:set(T)))), (set:set(T))).
+:- mode set:power_intersect(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred set:difference((set:set(T)), (set:set(T)), (set:set(T))).
+:- mode set:difference(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.

@@ -1,0 +1,55 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1995-2000 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmake - Mmake file for the Mercury utilities directory
+
+MAIN_TARGET=all
+
+#-----------------------------------------------------------------------------#
+
+MERCURY_DIR=..
+include $(MERCURY_DIR)/Mmake.common
+
+#-----------------------------------------------------------------------------#
+
+MGNUC   = MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(SCRIPTS_DIR)/mgnuc
+CFLAGS	= -I$(RUNTIME_DIR) -O0
+# we need -I ../runtime for "mercury_std.h", etc.
+# the -O0 is to get around a stupid compiler bug in gcc 2.7.2.3 on cyclone
+
+PROGS=mkinit mdemangle info_to_mdb
+PROGFILENAMES=$(PROGS:%=%$(EXT_FOR_EXE))
+SRC=$(PROGS:%=%.c)
+
+GETOPT_SRC=$(RUNTIME_DIR)/GETOPT/getopt.c $(RUNTIME_DIR)/GETOPT/getopt1.c
+
+#-----------------------------------------------------------------------------#
+
+all:	$(PROGS)
+
+.c:
+	$(MGNUC) $(GRADEFLAGS) $(ALL_MGNUCFLAGS) -o $@ $< $(GETOPT_SRC)
+
+tags:
+	ctags $(SRC)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: install
+install: $(PROGS)
+	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
+	cp `vpath_find $(PROGFILENAMES)` $(INSTALL_BINDIR)
+
+.PHONY: uninstall
+uninstall:
+	-cd $(INSTALL_BINDIR) && rm $(PROGS)
+
+#-----------------------------------------------------------------------------#
+
+realclean_local:
+	-rm -f $(PROGFILENAMES)
+
+#-----------------------------------------------------------------------------#

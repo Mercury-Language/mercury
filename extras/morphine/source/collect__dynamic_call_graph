@@ -1,0 +1,69 @@
+%------------------------------------------------------------------------------%
+% Copyright (C) 1999 INRIA/INSA.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file License in the Morphine distribution.
+% 
+% Author : Erwan Jahier <jahier@irisa.fr>
+%
+% define a monitor which is used in control_flow.op
+
+:- import_module list.
+
+:- type my_proc ---> proc_name/arity.
+:- type edge ---> edge(my_proc, my_proc).
+:- type graph == list(edge).
+:- type stack == list(my_proc).
+
+:- type collected_type --->  
+	collected_type(stack, graph).
+
+initialize(collected_type(["main"/2], [])).
+
+filter(Event, AccIn, AccOut, continue) :-
+	Port = port(Event),
+	AccIn = collected_type(Stack, Graph),
+	( 
+		Port = call
+	->
+		Proc = ancestor(Stack),
+		Proc2 = proc_name(Event) / proc_arity(Event),
+		Edge = edge(Proc, Proc2),
+		( member(Edge, Graph) ->
+			AccOut = collected_type([Proc2|Stack], Graph)
+		;
+			AccOut = collected_type([Proc2|Stack], [Edge|Graph])
+		)
+	;
+		Port = redo
+	->
+		Proc2 = proc_name(Event) / proc_arity(Event),
+		AccOut = collected_type([Proc2|Stack], Graph)
+	;
+		Port = fail
+	->
+		AccOut = collected_type(pop(Stack), Graph)
+	;
+		Port = exit
+	->
+		AccOut = collected_type(pop(Stack), Graph)
+	;
+		AccOut = AccIn
+	).
+
+:- func ancestor(stack::in) = (my_proc::out) is det.
+ancestor(Stack) = Anc :-
+	(
+		Stack = [],
+		Anc = "error"/0
+	;
+		Stack = [Anc|_]
+	).
+
+:- func pop(stack::in) = (stack::out) is det.
+pop(Stack0) = Stack :-
+	(
+		Stack0 = [],
+		Stack = []
+	;
+		Stack0 = [_|Stack]
+	).

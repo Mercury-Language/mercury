@@ -1,0 +1,159 @@
+:- module hlds_goal.
+:- interface.
+:- import_module hlds_data, hlds_pred, llds, prog_data, (inst), instmap.
+:- import_module list, assoc_list, set, map, std_util.
+:- type (hlds_goal:hlds_goal) == (std_util:pair((hlds_goal:hlds_goal_expr), (hlds_goal:hlds_goal_info))).
+:- type (hlds_goal:hlds_goal_expr)
+	--->	hlds_goal:conj((hlds_goal:hlds_goals))
+	;	hlds_goal:call((hlds_pred:pred_id), (hlds_pred:proc_id), (list:list((term:var))), (hlds_goal:builtin_state), (std_util:maybe((hlds_goal:call_unify_context))), (prog_data:sym_name))
+	;	hlds_goal:higher_order_call((term:var), (list:list((term:var))), (list:list((prog_data:(type)))), (list:list((prog_data:(mode)))), (hlds_data:determinism), (hlds_pred:pred_or_func))
+	;	hlds_goal:switch((term:var), (hlds_data:can_fail), (list:list((hlds_goal:case))), (hlds_goal:store_map))
+	;	hlds_goal:unify((term:var), (hlds_goal:unify_rhs), (hlds_goal:unify_mode), (hlds_goal:unification), (hlds_goal:unify_context))
+	;	hlds_goal:disj((hlds_goal:hlds_goals), (hlds_goal:store_map))
+	;	hlds_goal:not((hlds_goal:hlds_goal))
+	;	hlds_goal:some((list:list((term:var))), (hlds_goal:hlds_goal))
+	;	hlds_goal:if_then_else((list:list((term:var))), (hlds_goal:hlds_goal), (hlds_goal:hlds_goal), (hlds_goal:hlds_goal), (hlds_goal:store_map))
+	;	hlds_goal:pragma_c_code(string, (prog_data:may_call_mercury), (hlds_pred:pred_id), (hlds_pred:proc_id), (list:list((term:var))), (list:list((std_util:maybe(string)))), (list:list((prog_data:(type)))), (hlds_goal:extra_pragma_info)).
+:- type (hlds_goal:extra_pragma_info)
+	--->	hlds_goal:none
+	;	hlds_goal:extra_pragma_info((assoc_list:assoc_list((term:var), string)), (list:list(string))).
+:- pred hlds_goal:get_pragma_c_var_names((list:list((std_util:maybe(string)))), (list:list(string))).
+:- mode hlds_goal:get_pragma_c_var_names(mercury_builtin:in, mercury_builtin:out) is det.
+:- type (hlds_goal:builtin_state)
+	--->	hlds_goal:inline_builtin
+	;	hlds_goal:out_of_line_builtin
+	;	hlds_goal:not_builtin.
+:- type (hlds_goal:case)
+	--->	hlds_goal:case((hlds_data:cons_id), (hlds_goal:hlds_goal)).
+:- type (hlds_goal:stack_slots) == (map:map((term:var), (llds:lval))).
+:- type (hlds_goal:follow_vars) == (map:map((term:var), (llds:lval))).
+:- type (hlds_goal:store_map) == (map:map((term:var), (llds:lval))).
+:- type (hlds_goal:unify_rhs)
+	--->	hlds_goal:var((term:var))
+	;	hlds_goal:functor((hlds_data:cons_id), (list:list((term:var))))
+	;	hlds_goal:lambda_goal((hlds_pred:pred_or_func), (list:list((term:var))), (list:list((prog_data:(mode)))), (hlds_data:determinism), (hlds_goal:hlds_goal)).
+:- type (hlds_goal:unification)
+	--->	hlds_goal:construct((term:var), (hlds_data:cons_id), (list:list((term:var))), (list:list((hlds_goal:uni_mode))))
+	;	hlds_goal:deconstruct((term:var), (hlds_data:cons_id), (list:list((term:var))), (list:list((hlds_goal:uni_mode))), (hlds_data:can_fail))
+	;	hlds_goal:assign((term:var), (term:var))
+	;	hlds_goal:simple_test((term:var), (term:var))
+	;	hlds_goal:complicated_unify((hlds_goal:uni_mode), (hlds_data:can_fail)).
+:- type (hlds_goal:unify_context)
+	--->	hlds_goal:unify_context((hlds_goal:unify_main_context), (hlds_goal:unify_sub_contexts)).
+:- type (hlds_goal:unify_main_context)
+	--->	hlds_goal:explicit
+	;	hlds_goal:head(int)
+	;	hlds_goal:call((hlds_pred:pred_call_id), int).
+:- type (hlds_goal:unify_sub_context) == (std_util:pair((hlds_data:cons_id), int)).
+:- type (hlds_goal:unify_sub_contexts) == (list:list((hlds_goal:unify_sub_context))).
+:- type (hlds_goal:call_unify_context)
+	--->	hlds_goal:call_unify_context((term:var), (hlds_goal:unify_rhs), (hlds_goal:unify_context)).
+:- type (hlds_goal:hlds_goals) == (list:list((hlds_goal:hlds_goal))).
+:- type (hlds_goal:hlds_goal_info).
+:- type (hlds_goal:goal_feature)
+	--->	hlds_goal:constraint.
+:- type (hlds_goal:resume_point)
+	--->	hlds_goal:resume_point((set:set((term:var))), (hlds_goal:resume_locs))
+	;	hlds_goal:no_resume_point.
+:- type (hlds_goal:resume_locs)
+	--->	hlds_goal:orig_only
+	;	hlds_goal:stack_only
+	;	hlds_goal:orig_and_stack
+	;	hlds_goal:stack_and_orig.
+:- type (hlds_goal:goal_path_step)
+	--->	hlds_goal:conj(int)
+	;	hlds_goal:disj(int)
+	;	hlds_goal:switch(int)
+	;	hlds_goal:ite_cond
+	;	hlds_goal:ite_then
+	;	hlds_goal:ite_else
+	;	hlds_goal:neg
+	;	hlds_goal:exist.
+:- type (hlds_goal:goal_path) == (list:list((hlds_goal:goal_path_step))).
+:- type (hlds_goal:unify_mode) == (std_util:pair((prog_data:(mode)), (prog_data:(mode)))).
+:- type (hlds_goal:uni_mode)
+	--->	hlds_goal:'->'((std_util:pair(((inst):(inst)))), (std_util:pair(((inst):(inst))))).
+:- pred hlds_goal:goal_info_init((hlds_goal:hlds_goal_info)).
+:- mode hlds_goal:goal_info_init(mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_init((set:set((term:var))), (instmap:instmap_delta), (hlds_data:determinism), (hlds_goal:hlds_goal_info)).
+:- mode hlds_goal:goal_info_init(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_get_pre_births((hlds_goal:hlds_goal_info), (set:set((term:var)))).
+:- mode hlds_goal:goal_info_get_pre_births(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_set_pre_births((hlds_goal:hlds_goal_info), (set:set((term:var))), (hlds_goal:hlds_goal_info)).
+:- mode hlds_goal:goal_info_set_pre_births(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_get_post_births((hlds_goal:hlds_goal_info), (set:set((term:var)))).
+:- mode hlds_goal:goal_info_get_post_births(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_set_post_births((hlds_goal:hlds_goal_info), (set:set((term:var))), (hlds_goal:hlds_goal_info)).
+:- mode hlds_goal:goal_info_set_post_births(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_get_pre_deaths((hlds_goal:hlds_goal_info), (set:set((term:var)))).
+:- mode hlds_goal:goal_info_get_pre_deaths(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_set_pre_deaths((hlds_goal:hlds_goal_info), (set:set((term:var))), (hlds_goal:hlds_goal_info)).
+:- mode hlds_goal:goal_info_set_pre_deaths(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_get_post_deaths((hlds_goal:hlds_goal_info), (set:set((term:var)))).
+:- mode hlds_goal:goal_info_get_post_deaths(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_set_post_deaths((hlds_goal:hlds_goal_info), (set:set((term:var))), (hlds_goal:hlds_goal_info)).
+:- mode hlds_goal:goal_info_set_post_deaths(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_get_code_model((hlds_goal:hlds_goal_info), (llds:code_model)).
+:- mode hlds_goal:goal_info_get_code_model(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_get_determinism((hlds_goal:hlds_goal_info), (hlds_data:determinism)).
+:- mode hlds_goal:goal_info_get_determinism(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_set_determinism((hlds_goal:hlds_goal_info), (hlds_data:determinism), (hlds_goal:hlds_goal_info)).
+:- mode hlds_goal:goal_info_set_determinism(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_get_nonlocals((hlds_goal:hlds_goal_info), (set:set((term:var)))).
+:- mode hlds_goal:goal_info_get_nonlocals(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_set_nonlocals((hlds_goal:hlds_goal_info), (set:set((term:var))), (hlds_goal:hlds_goal_info)).
+:- mode hlds_goal:goal_info_set_nonlocals(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_get_features((hlds_goal:hlds_goal_info), (set:set((hlds_goal:goal_feature)))).
+:- mode hlds_goal:goal_info_get_features(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_set_features((hlds_goal:hlds_goal_info), (set:set((hlds_goal:goal_feature))), (hlds_goal:hlds_goal_info)).
+:- mode hlds_goal:goal_info_set_features(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_add_feature((hlds_goal:hlds_goal_info), (hlds_goal:goal_feature), (hlds_goal:hlds_goal_info)).
+:- mode hlds_goal:goal_info_add_feature(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_remove_feature((hlds_goal:hlds_goal_info), (hlds_goal:goal_feature), (hlds_goal:hlds_goal_info)).
+:- mode hlds_goal:goal_info_remove_feature(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_has_feature((hlds_goal:hlds_goal_info), (hlds_goal:goal_feature)).
+:- mode hlds_goal:goal_info_has_feature(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred hlds_goal:goal_info_get_instmap_delta((hlds_goal:hlds_goal_info), (instmap:instmap_delta)).
+:- mode hlds_goal:goal_info_get_instmap_delta(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_set_instmap_delta((hlds_goal:hlds_goal_info), (instmap:instmap_delta), (hlds_goal:hlds_goal_info)).
+:- mode hlds_goal:goal_info_set_instmap_delta(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_get_context((hlds_goal:hlds_goal_info), (term:context)).
+:- mode hlds_goal:goal_info_get_context(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_set_context((hlds_goal:hlds_goal_info), (term:context), (hlds_goal:hlds_goal_info)).
+:- mode hlds_goal:goal_info_set_context(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_get_follow_vars((hlds_goal:hlds_goal_info), (std_util:maybe((hlds_goal:follow_vars)))).
+:- mode hlds_goal:goal_info_get_follow_vars(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_set_follow_vars((hlds_goal:hlds_goal_info), (std_util:maybe((hlds_goal:follow_vars))), (hlds_goal:hlds_goal_info)).
+:- mode hlds_goal:goal_info_set_follow_vars(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_get_resume_point((hlds_goal:hlds_goal_info), (hlds_goal:resume_point)).
+:- mode hlds_goal:goal_info_get_resume_point(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_set_resume_point((hlds_goal:hlds_goal_info), (hlds_goal:resume_point), (hlds_goal:hlds_goal_info)).
+:- mode hlds_goal:goal_info_set_resume_point(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_get_goal_path((hlds_goal:hlds_goal_info), (hlds_goal:goal_path)).
+:- mode hlds_goal:goal_info_get_goal_path(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_set_goal_path((hlds_goal:hlds_goal_info), (hlds_goal:goal_path), (hlds_goal:hlds_goal_info)).
+:- mode hlds_goal:goal_info_set_goal_path(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_set_follow_vars((hlds_goal:hlds_goal), (std_util:maybe((hlds_goal:follow_vars))), (hlds_goal:hlds_goal)).
+:- mode hlds_goal:goal_set_follow_vars(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_set_resume_point((hlds_goal:hlds_goal), (hlds_goal:resume_point), (hlds_goal:hlds_goal)).
+:- mode hlds_goal:goal_set_resume_point(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_info_resume_vars_and_loc((hlds_goal:resume_point), (set:set((term:var))), (hlds_goal:resume_locs)).
+:- mode hlds_goal:goal_info_resume_vars_and_loc(mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_to_conj_list((hlds_goal:hlds_goal), (list:list((hlds_goal:hlds_goal)))).
+:- mode hlds_goal:goal_to_conj_list(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_to_disj_list((hlds_goal:hlds_goal), (list:list((hlds_goal:hlds_goal)))).
+:- mode hlds_goal:goal_to_disj_list(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:conj_list_to_goal((list:list((hlds_goal:hlds_goal))), (hlds_goal:hlds_goal_info), (hlds_goal:hlds_goal)).
+:- mode hlds_goal:conj_list_to_goal(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:disj_list_to_goal((list:list((hlds_goal:hlds_goal))), (hlds_goal:hlds_goal_info), (hlds_goal:hlds_goal)).
+:- mode hlds_goal:disj_list_to_goal(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:conjoin_goal_and_goal_list((hlds_goal:hlds_goal), (list:list((hlds_goal:hlds_goal))), (hlds_goal:hlds_goal)).
+:- mode hlds_goal:conjoin_goal_and_goal_list(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:conjoin_goals((hlds_goal:hlds_goal), (hlds_goal:hlds_goal), (hlds_goal:hlds_goal)).
+:- mode hlds_goal:conjoin_goals(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_goal:goal_is_atomic((hlds_goal:hlds_goal_expr)).
+:- mode hlds_goal:goal_is_atomic(mercury_builtin:in) is semidet.
+:- pred hlds_goal:true_goal((hlds_goal:hlds_goal)).
+:- mode hlds_goal:true_goal(mercury_builtin:out) is det.
+:- pred hlds_goal:fail_goal((hlds_goal:hlds_goal)).
+:- mode hlds_goal:fail_goal(mercury_builtin:out) is det.

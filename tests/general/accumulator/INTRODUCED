@@ -1,0 +1,12 @@
+	% mode  0 `base:AccFrom__pred__p/4' (det):
+	% mode  0 `call_in_base:AccFrom__pred__l/4' (det):
+	% mode  0 `chain:AccFrom__pred__pa/4' (det):
+	% mode  0 `construct:AccFrom__pred__p2/5' (det):
+	% mode  0 `dcg:AccFrom__pred__p/7' (det):
+	% mode  0 `disj:AccFrom__pred__p/3' (multi):
+	% mode  0 `func:AccFrom__func__sumlist/2' (det):
+	% mode  0 `identity:AccFrom__pred__r/4' (det):
+	% mode  0 `inter:AccFrom__pred__rl/6' (det):
+	% mode  0 `ite:AccFrom__func__factorial/2' (det):
+	% mode  0 `ite:AccFrom__pred__sort_of_factorial/3' (det):
+	% mode  0 `swap:AccFrom__pred__rev/4' (det):

@@ -1,0 +1,67 @@
+document_category 100 concepts
+concepts   - The concepts on which the Mercury debugger is based.
+             The concepts for which documentation is available are
+             `break_points', `strict_commands', `print_level',
+             `default_print_level', `current_environment',
+             and `procedure_specification'.
+
+end
+document_category 150 queries
+queries    - Commands for invoking goals interactively.
+             The commands for queries are
+             `query', `cc_query', and `io_query'.
+
+end
+document_category 200 forward
+forward    - Commands that move execution forward.
+             The forward commands are `step', `goto', `next', `finish',
+             `exception', `forward', `mindepth', `maxdepth' and `continue'.
+
+end
+document_category 300 backward
+backward   - Commands that move execution backward.
+             The only such command is `retry'.
+
+end
+document_category 400 browsing
+browsing   - Commands that let users explore the state of the computation.
+             The browsing commands are `vars', `print', `browse',
+             `stack', `up', `down', `level', and `current'.
+
+end
+document_category 500 breakpoint
+breakpoint - Commands that let users set and control breakpoints.
+             The breakpoint commands are `break', `disable', `enable',
+             `delete', `modules', `procedures' and `register'.
+
+end
+document_category 600 parameter
+parameter  - Commands that let users access debugger parameters.
+             The parameter commands are `printlevel', `echo', `context',
+             `scroll', `mmc_options', `alias' and `unalias'.
+
+end
+document_category 700 help
+help       - Commands that let users access and control the help system.
+             The help commands are `document_category', `document' and `help'.
+             For help on the `help' command, type `help help help'.
+
+end
+document_category 800 exp
+exp        - Commands that let users collect and inspect experimental
+             data about the behavior of the program. The exp commands are
+             `histogram_all', `histogram_exp', and `clear_histogram'.
+
+end
+document_category 900 developer
+developer  - Commands that are intended to be of use only to developers
+             of the Mercury implementation. The developer commands are
+             `nondet_stack', `stack_regs', `all_regs', `table_io',
+	     `proc_stats' and `label_stats'.
+
+end
+document_category 1000 misc
+misc       - Commands that do not fit into other categories.
+             The misc commands are `source', `save' and `quit'.
+
+end

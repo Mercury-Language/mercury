@@ -1,0 +1,72 @@
+:- module mercury_to_mercury.
+:- interface.
+:- import_module hlds_goal, hlds_data, hlds_pred, prog_data, (inst).
+:- import_module list, io, varset, term.
+:- pred mercury_to_mercury:convert_to_mercury(string, string, (list:list((prog_data:item_and_context))), (io:state), (io:state)).
+:- mode mercury_to_mercury:convert_to_mercury(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_pred_type((varset:varset), (prog_data:sym_name), (list:list((prog_data:(type)))), (std_util:maybe((hlds_data:determinism))), (term:context), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_pred_type(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_func_type((varset:varset), (prog_data:sym_name), (list:list((prog_data:(type)))), (prog_data:(type)), (std_util:maybe((hlds_data:determinism))), (term:context), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_func_type(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_pred_mode_decl((varset:varset), (prog_data:sym_name), (list:list((prog_data:(mode)))), (std_util:maybe((hlds_data:determinism))), (term:context), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_pred_mode_decl(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_func_mode_decl((varset:varset), (prog_data:sym_name), (list:list((prog_data:(mode)))), (prog_data:(mode)), (std_util:maybe((hlds_data:determinism))), (term:context), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_func_mode_decl(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_mode_subdecl((hlds_pred:pred_or_func), (varset:varset), (prog_data:sym_name), (list:list((prog_data:(mode)))), (std_util:maybe((hlds_data:determinism))), (term:context), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_mode_subdecl(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_pred_mode_subdecl((varset:varset), (prog_data:sym_name), (list:list((prog_data:(mode)))), (std_util:maybe((hlds_data:determinism))), (term:context), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_pred_mode_subdecl(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_func_mode_subdecl((varset:varset), (prog_data:sym_name), (list:list((prog_data:(mode)))), (prog_data:(mode)), (std_util:maybe((hlds_data:determinism))), (term:context), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_func_mode_subdecl(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_pragma_decl((prog_data:sym_name), int, (hlds_pred:pred_or_func), string, (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_pragma_decl(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_pragma_c_code((prog_data:may_call_mercury), (prog_data:sym_name), (hlds_pred:pred_or_func), (list:list((prog_data:pragma_var))), (std_util:maybe((std_util:pair((list:list(string)))))), (varset:varset), string, (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_pragma_c_code(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_pragma_unused_args((hlds_pred:pred_or_func), (prog_data:sym_name), int, (hlds_pred:proc_id), (list:list(int)), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_pragma_unused_args(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_pragma_c_header(string, (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_pragma_c_header(mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_type_defn((varset:varset), (prog_data:type_defn), (term:context), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_type_defn(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_ctor_arg((varset:varset), (prog_data:constructor_arg), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_ctor_arg(mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_remaining_ctor_args((varset:varset), (list:list((prog_data:constructor_arg))), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_remaining_ctor_args(mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_inst_defn((varset:varset), (prog_data:inst_defn), (term:context), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_inst_defn(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_mode_defn((varset:varset), (prog_data:mode_defn), (term:context), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_mode_defn(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_structured_inst_list((list:list(((inst):(inst)))), int, (varset:varset), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_structured_inst_list(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_inst_list((list:list(((inst):(inst)))), (varset:varset), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_inst_list(mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_structured_inst(((inst):(inst)), int, (varset:varset), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_structured_inst(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_inst(((inst):(inst)), (varset:varset), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_inst(mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_cons_id((hlds_data:cons_id), (bool:bool), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_cons_id(mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_mode((prog_data:(mode)), (varset:varset), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_mode(mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_mode_list((list:list((prog_data:(mode)))), (varset:varset), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_mode_list(mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_uni_mode((hlds_goal:uni_mode), (varset:varset), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_uni_mode(mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_uni_mode_list((list:list((hlds_goal:uni_mode))), (varset:varset), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_uni_mode_list(mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_det((hlds_data:determinism), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_det(mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_vars((list:list((term:var))), (varset:varset), (bool:bool), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_vars(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_var((term:var), (varset:varset), (bool:bool), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_var(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_term((term:term), (varset:varset), (bool:bool), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_term(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_newline(int, (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_newline(mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_bracketed_constant((term:const), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_bracketed_constant(mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_output_bracketed_sym_name((prog_data:sym_name), (io:state), (io:state)).
+:- mode mercury_to_mercury:mercury_output_bracketed_sym_name(mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred mercury_to_mercury:mercury_convert_var_name(string, string).
+:- mode mercury_to_mercury:mercury_convert_var_name(mercury_builtin:in, mercury_builtin:out) is det.

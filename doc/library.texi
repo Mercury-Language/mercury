@@ -1,0 +1,107 @@
+\input texinfo
+@setfilename mercury_library.info
+@settitle The Mercury Library Reference Manual
+
+@c --- texi2html doesn't support the @dir commands yet
+@c @dircategory The Mercury Programming Language
+@c @direntry
+@c * Mercury Library: (mercury_library).  The Mercury Library Reference Manual.
+@c @end direntry
+
+@c @smallbook
+@c @cropmarks
+@finalout
+@setchapternewpage off
+@ifinfo
+This file documents the Mercury standard library.
+
+Copyright (C) 1995-1999 The University of Melbourne.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+@ignore
+Permission is granted to process this file through Tex and print the
+results, provided the printed document carries copying permission
+notice identical to this one except for the removal of this paragraph
+(this paragraph not being relevant to the printed manual).
+
+@end ignore
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided also that
+the entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions.
+@end ifinfo
+
+@titlepage
+@title The Mercury Library Reference Manual
+@c @author Fergus Henderson
+@c @author Thomas Conway
+@c @author Zoltan Somogyi
+@page
+@vskip 0pt plus 1filll
+Copyright @copyright{} 1995-1997 The University of Melbourne.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided also that
+the entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions.
+@end titlepage
+@page
+@c ---------------------------------------------------------------------------
+
+@ifinfo
+@node Top,,, (mercury)
+@top Mercury Library Reference Manual
+@end ifinfo
+
+The Mercury standard library contains a variety of modules which we
+hope may be of general usefulness.  If you write a module that would
+be useful to others, and you would like us to include it as part of
+the Mercury standard library, please let us know.
+
+The following documentation is simply the interface parts to those
+modules, automatically extracted from the source code.  Some of the
+library modules are not very well documented; we apologize.
+
+For many of the modules in the standard library, we have not
+yet had enough experience using them to be confident that the
+current interface is satisfactory; it is likely that the interfaces to
+many of the modules in the standard library will change somewhat in
+future releases of the Mercury system.  Some modules are rather
+experimental modules that may even be removed in future releases.
+Of course, we wouldn't make changes gratuitously, but at the
+current time, preserving 100% backwards compatibility would
+be disadvantageous in the long run.
+
+To help you protect yourself from depending on modules that are likely
+to change, each module has a comment ``stability: low/medium/high'' at
+the top which gives an indication of the likely stability of the
+interface to that module.  For modules whose stability is ``high'', new
+functionality may be added to the interface, but we envisage very few
+if any changes to the interface of the sort that might break existing
+code.  For modules whose stability is ``medium'', we expect that
+changes are more likely.  For modules whose stability is ``low'', such
+changes are highly likely.  If you want to minimize the possibility of
+your programs requiring modification to work with new releases of the
+Mercury system, we recommend that if possible you use only those
+modules whose stability is described as either ``medium to high'' or
+``high''.
+
+@menu
+@include library-menu.texi
+@end menu
+@include library-chapters.texi
+@contents
+@bye

@@ -1,0 +1,404 @@
+#---------------------------------------------------------------------------#
+# Copyright (C) 1997-2001 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# parse_grade_options.sh-subr:
+#	An `sh' subroutine for parsing grade-related options.
+#	Used by the `ml', `mgnuc' and `c2init' scripts.
+#
+#	The code here should be inserted in the case statement in a script's
+#	option-parsing loop.
+#
+# IMPORTANT: any changes to the handling of grades here may also require
+# changes to all the files indicated by runtime/mercury_grade.h.
+#
+# This file should handle the setting of all the shell variables defined by
+# init_grade_options.sh-subr.
+#
+#---------------------------------------------------------------------------#
+
+	--target)
+		shift
+		case "$1" in
+			asm)
+				target=asm ;;
+			c|C)
+				target=c ;;
+			il|IL)
+				target=il ;;
+			java|Java)
+				target=java ;;
+			*)
+				echo "$0: invalid target \`$1'" 1>&2
+				exit 1
+				;;
+		esac
+		;;
+
+	--il|--IL|--il-only|--IL-only)
+		target=il ;;
+
+	--high-level-code|-H)
+		highlevel_code=true ;;
+	--no-high-level-code|-H-)
+		highlevel_code=false ;;
+
+	--high-level-data)
+		highlevel_data=true ;;
+	--no-high-level-data)
+		highlevel_data=false ;;
+
+	--gcc-nested-functions)
+		gcc_nested_functions=true ;;
+	--no-gcc-nested-functions)
+		gcc_nested_functions=false ;;
+
+	--asm-labels)
+		asm_labels=true ;;
+	--no-asm-labels)
+		asm_labels=false ;;
+
+	--gcc-non-local-gotos)
+		non_local_gotos=true ;;
+	--no-gcc-non-local-gotos)
+		non_local_gotos=false ;;
+
+	--gcc-global-registers)
+		global_regs=true ;;
+	--no-gcc-global-registers)
+		global_regs=false ;;
+
+	--gc)
+		shift
+		case "$1" in
+			accurate|conservative|none)
+				gc_method=$1 ;;
+			*)
+				echo "$0: invalid gc method \`$1'" 1>&2
+				exit 1
+				;;
+		esac
+		;;
+
+	--parallel)
+		thread_safe=true ;;
+
+	-p|--profiling|--time-profiling)
+		profile_time=true
+		profile_calls=true
+		profile_memory=false
+		profile_deep=false
+		;;
+	--memory-profiling)
+		profile_time=false
+		profile_calls=true
+		profile_memory=true
+		profile_deep=false
+		;;
+	--deep-profiling)
+		profile_time=true
+		profile_calls=false
+		profile_memory=false
+		profile_deep=true
+		;;
+	-p-|--no-profiling)
+		profile_time=false
+		profile_calls=false
+		profile_memory=false
+		profile_deep=false
+		;;
+	--profile-time)
+		profile_time=true ;;
+	--no-profile-time)
+		profile_time=false ;;
+	--profile-calls)
+		profile_calls=true ;;
+	--no-profile-calls)
+		profile_calls=false ;;
+	--profile-memory)
+		profile_memory=true ;;
+	--no-profile-memory)
+		profile_memory=false ;;
+	--profile-deep)
+		profile_deep=true ;;
+	--no-profile-deep)
+		profile_deep=false ;;
+
+	--use-trail)
+		use_trail=true ;;
+	--no-use-trail)
+		use_trail=false ;;
+
+	--use-minimal-model)
+		use_minimal_model=true ;;
+	--no-use-minimal-model)
+		use_minimal_model=false ;;
+
+	--pic-reg)
+		pic_reg=true ;;
+	--no-pic-reg)
+		pic_reg=false ;;
+
+# The following more fine-grained options have been omitted
+# since they are not very useful and would probably only confuse people.
+#	--stack-trace)
+#		stack_trace=true ;;
+#	--no-stack-trace)
+#		stack_trace=false ;;
+#	--require-tracing)
+#		require_tracing=true ;;
+#	--no-require-tracing)
+#		require_tracing=false ;;
+
+	--debug)
+		stack_trace=true
+		require_tracing=true ;;
+	--no-debug)
+		stack_trace=false
+		require_tracing=false ;;
+
+	-s|--grade)
+		shift
+		grade="$1";
+
+		# Convert a grade to a set of options.
+		#
+		# IMPORTANT: any changes to the handling of grades here
+		# may also require changes to all the files indicated by
+		# runtime/mercury_grade.h.
+
+		target=c
+		highlevel_code=false
+		gcc_nested_functions=false
+		highlevel_data=false
+		asm_labels=false
+		non_local_gotos=false
+		global_regs=false
+		thread_safe=false
+		gc_method=none
+		profile_time=false
+		profile_calls=false
+		profile_memory=false
+		profile_deep=false
+		use_trail=false
+		use_minimal_model=false
+		pic_reg=false
+		stack_trace=false
+		require_tracing=false
+
+		grade_pieces=`echo $grade | tr '.' ' '`
+		for grade_piece in $grade_pieces
+		do
+			case "$grade_piece" in
+				il)
+					target=il
+					asm_labels=false
+					non_local_gotos=false
+					global_regs=false
+					highlevel_code=true
+					gcc_nested_functions=false
+					highlevel_data=true
+					;;
+				ilc)
+					target=il
+					asm_labels=false
+					non_local_gotos=false
+					global_regs=false
+					highlevel_code=true
+					gcc_nested_functions=false
+					highlevel_data=false
+					;;
+				java)
+					target=java
+					asm_labels=false
+					non_local_gotos=false
+					global_regs=false
+					highlevel_code=true
+					gcc_nested_functions=false
+					highlevel_data=true
+					;;
+				hl)
+					asm_labels=false
+					non_local_gotos=false
+					global_regs=false
+					highlevel_code=true
+					gcc_nested_functions=false
+					highlevel_data=true
+					;;
+				hlc)
+					asm_labels=false
+					non_local_gotos=false
+					global_regs=false
+					highlevel_code=true
+					gcc_nested_functions=false
+					highlevel_data=false
+					;;
+				hl_nest)
+					asm_labels=false
+					non_local_gotos=false
+					global_regs=false
+					highlevel_code=true
+					gcc_nested_functions=true
+					highlevel_data=true
+					;;
+				hlc_nest)
+					asm_labels=false
+					non_local_gotos=false
+					global_regs=false
+					highlevel_code=true
+					gcc_nested_functions=true
+					highlevel_data=false
+					;;
+				asm_fast)
+					target=c
+					asm_labels=true
+					non_local_gotos=true
+					global_regs=true
+					highlevel_code=false
+					gcc_nested_functions=false
+					highlevel_data=false
+					;;
+				asm_jump)
+					target=c
+					asm_labels=true
+					non_local_gotos=true
+					global_regs=false
+					highlevel_code=false
+					gcc_nested_functions=false
+					highlevel_data=false
+					;;
+				fast)
+					target=c
+					asm_labels=false
+					non_local_gotos=true
+					global_regs=true
+					highlevel_code=false
+					gcc_nested_functions=false
+					highlevel_data=false
+					;;
+				jump)
+					target=c
+					asm_labels=false
+					non_local_gotos=true
+					global_regs=false
+					highlevel_code=false
+					gcc_nested_functions=false
+					highlevel_data=false
+					;;
+				reg)
+					target=c
+					asm_labels=false
+					non_local_gotos=false
+					global_regs=true
+					highlevel_code=false
+					gcc_nested_functions=false
+					highlevel_data=false
+					;;
+				none)
+					target=c
+					asm_labels=false
+					non_local_gotos=false
+					global_regs=false
+					highlevel_code=false
+					gcc_nested_functions=false
+					highlevel_data=false
+					;;
+
+				par)
+					thread_safe=true
+					;;
+
+				agc)
+					gc_method=accurate
+					;;
+				gc)
+					gc_method=conservative
+					;;
+				nogc)
+					gc_method=none
+					;;
+
+				memprof)
+					profile_time=false
+					profile_calls=true
+					profile_memory=true
+					profile_deep=false
+					;;
+				prof)
+					profile_time=true
+					profile_calls=true
+					profile_memory=false
+					profile_deep=false
+					;;
+				proftime)	
+					profile_time=true
+					profile_calls=false
+					profile_memory=false
+					profile_deep=false
+					;;
+				profcalls)	
+					profile_time=false
+					profile_calls=true
+					profile_memory=false
+					profile_deep=false
+					;;
+				profall)
+					profile_time=true
+					profile_calls=true
+					profile_memory=true
+					profile_deep=false
+					;;
+				profdeep)
+					profile_time=true
+					profile_calls=false
+					profile_memory=false
+					profile_deep=true
+					;;
+
+				tr)
+					use_trail=true
+					;;
+
+				mm)
+					use_minimal_model=true
+					;;
+
+				picreg)
+					pic_reg=true
+					;;
+
+# The following more fine-grained options have been omitted
+# since they are not very useful and would probably only confuse people.
+#				trace)
+#					stack_trace=false
+#					require_tracing=true
+#
+#				strce)
+#					stack_trace=true
+#					require_tracing=false
+
+				debug)
+					stack_trace=true
+					require_tracing=true
+					;;
+				*)
+					echo "$0: unknown grade component" \
+						"\`$grade_piece'" 1>&2
+					exit 1
+					;;
+			esac
+		done
+		;;
+
+	-s*)
+		grade="` expr $1 : '-s\(.*\)' `"
+		# just insert it as `--grade $grade' and then reparse it
+		shift
+		case $# in
+			0) set - x --grade "$grade" ;;
+			*) set - x --grade "$grade" "$@" ;;
+		esac
+		;;
+

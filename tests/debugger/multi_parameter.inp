@@ -1,0 +1,17 @@
+echo on
+context nextline
+
+print *
+
+print *
+
+print *
+
+print *
+
+print *
+
+print *
+
+print *
+continue -S

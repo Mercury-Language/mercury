@@ -1,0 +1,345 @@
+%------------------------------------------------------------------------------%
+% Copyright (C) 1999 INRIA/INSA.
+--- /soft/eclipse/eclipse4.1/lib_pd/opium_light/scenario_handler.op	Sat Feb 20 16:09:16 1999
++++ scenario_handler.op	Thu Nov  4 09:02:55 1999
+@@ -26,30 +26,31 @@
+ 	).
+ 
+ 
+-/*
+- *	DEF-MODULE
+- */
+-opium_primitive(
+-	name		: def_module,
+-	arg_list	: [Pred, CallModule, DefModule],
+-	arg_type_list	: [is_pred, is_atom, is_atom_or_var],
+-	abbrev		: _,
+-	implementation	: def_module_Op,
+-	message		:
+-"Primitives which gives or checks the module where Pred visible in CallModule \n\
+-is defined. The primitive fails if Pred is not defined at all."
+-	).
+-
+-def_module_Op(P/A, CallModule, DefModule) :-
+-	def_module_ok(P/A, CallModule, DefModule).
+-
+-/*
+- *  we use a function def_module_c because Sepia's get_flag/3 does 
+- *  not work if the module is locked 
+- */
+-def_module_ok(P/A, CallMod, DefMod) :-
+-	exchange_with_prolog_asynchronously(def_module_pk(P/A, CallMod, D), 
+-					def_module_pk(P/A, CallMod, DefMod)).
++% Useless in Morphine ???
++% /*
++%  *	DEF-MODULE
++%  */
++% opium_primitive(
++% 	name		: def_module,
++% 	arg_list	: [Pred, CallModule, DefModule],
++% 	arg_type_list	: [is_pred, is_atom, is_atom_or_var],
++% 	abbrev		: _,
++% 	implementation	: def_module_Op,
++% 	message		:
++% "Primitives which gives or checks the module where Pred visible in CallModule \n\
++% is defined. The primitive fails if Pred is not defined at all."
++% 	).
++
++% def_module_Op(P/A, CallModule, DefModule) :-
++% 	def_module_ok(P/A, CallModule, DefModule).
++
++% /*
++%  *  we use a function def_module_c because Sepia's get_flag/3 does 
++%  *  not work if the module is locked 
++%  */
++% def_module_ok(P/A, CallMod, DefMod) :-
++% 	exchange_with_prolog_asynchronously(def_module_pk(P/A, CallMod, D), 
++% 					def_module_pk(P/A, CallMod, DefMod)).
+ 
+ 
+ /*
+@@ -96,27 +97,28 @@
+ 	!,
+ 	atom_string(File, PlFile).
+ get_filename(F, Suffixes, File) :-
+-	opium_printf(error, "file %w does not exist\n", [F]),
++	printf(error, "file %w does not exist\n", [F]),
+ 	fail.
+ 
+ 
+-/*
+- *	GET-PROLOG-FILENAME
+- */
+-opium_primitive(
+-	name		: get_prolog_filename,
+-	arg_list	: [File, FileName],
+-	arg_type_list	: [atom, var],
+-	abbrev		: _,
+-	implementation	: get_prolog_filename_Op,
+-	message		:
+-"Primitive which gives the full file name including suffix of a Prolog \n\
+-file. If the file does not exist it fails and gives an error message."
+-	).
+-
+-get_prolog_filename_Op(F, File) :-
+-	remote_once(get_flag(prolog_suffix, Suffixes), sepia_kernel),
+-	get_filename(F, Suffixes, File).
++% XXX R1 remote_once is not available in Morphine
++% /*
++%  *	GET-PROLOG-FILENAME
++%  */
++% opium_primitive(
++% 	name		: get_prolog_filename,
++% 	arg_list	: [File, FileName],
++% 	arg_type_list	: [atom, var],
++% 	abbrev		: _,
++% 	implementation	: get_prolog_filename_Op,
++% 	message		:
++% "Primitive which gives the full file name including suffix of a Prolog \n\
++% file. If the file does not exist it fails and gives an error message."
++% 	).
++
++% get_prolog_filename_Op(F, File) :-
++% 	remote_once(get_flag(prolog_suffix, Suffixes), sepia_kernel),
++% 	get_filename(F, Suffixes, File).
+ 
+ 
+ 
+@@ -132,16 +134,18 @@
+ "Procedure which succeeds if Scenario is declared in Module."
+ 	).
+ 
+-opium_scenario_in_module_Op((
++opium_scenario_in_module_Op(S, Module)
++:-
++	(global_op(400,xfy,:) ; global_op(600,xfy,:),fail),
++	S = (
+ 		name		: Name,
+ 		files		: Files,
+ 		scenarios	: Scenarios,
+ 		options		: Options,
+ 		updated		: UTime,
+ 		message		: M
+-		), Module)
+-:-
+-	opium_module(Module),
++		),
++        opium_module(Module),
+ 	call(opium_scenario(
+ 			name		: Name,
+ 			files		: Files,
+@@ -149,7 +153,8 @@
+ 			options		: Options,
+ 			updated		: UTime,
+ 			message		: M
+-			), Module).
++			), Module),
++	global_op(600,xfy,:).
+ 
+ /*
+  *	OPIUM-COMMAND-IN-MODULE
+@@ -163,7 +168,10 @@
+ "Procedure which succeeds if Command is declared in Module."
+ 	).
+ 
+-opium_command_in_module_Op((
++opium_command_in_module_Op(C, Module)
++:-
++	(global_op(400,xfy,:) ; global_op(600,xfy,:),fail),
++	C = (
+ 		name		: Name,
+ 		arg_list	: ArgList,
+ 		arg_type_list	: ArgTypeList,
+@@ -174,8 +182,7 @@
+ 		implementation	: Impl,
+ 		parameters	: Pars,
+ 		message		: M
+-		), Module)
+-:-
++		),
+ 	opium_module(Module),
+ 	call(opium_command(
+ 			name		: Name,
+@@ -188,7 +195,8 @@
+ 			implementation	: Impl,
+ 			parameters	: Pars,
+ 			message		: M
+-			), Module).
++			), Module),
++	global_op(600,xfy,:).
+ 
+ /*
+  *	OPIUM-PRIMITIVE-IN-MODULE
+@@ -202,7 +210,10 @@
+ "Procedure which succeeds if Primitive is declared in Module."
+ 	).
+ 
+-opium_primitive_in_module_Op((
++opium_primitive_in_module_Op(P, Module)
++:-
++	(global_op(400,xfy,:) ; global_op(600,xfy,:),fail),
++	P = (
+ 		name		: Name,
+ 		arg_list	: ArgList,
+ 		arg_type_list	: ArgTypeList,
+@@ -210,8 +221,7 @@
+ 		scenario	: Scenario,
+ 		implementation	: Impl,
+ 		message		: M
+-		), Module)
+-:-
++		),
+ 	opium_module(Module),
+ 	call(opium_primitive(
+ 			name		: Name,
+@@ -221,7 +231,8 @@
+ 			scenario	: Scenario,
+ 			implementation	: Impl,
+ 			message		: M
+-			), Module).
++			), Module),
++	global_op(600,xfy,:).
+ 
+ /*
+  *	OPIUM-PROCEDURE-IN-MODULE
+@@ -235,15 +246,17 @@
+ "Procedure which succeeds if Procedure is declared in Module."
+ 	).
+ 
+-opium_procedure_in_module_Op((
++opium_procedure_in_module_Op(Proc, Module)
++:-
++	(global_op(400,xfy,:) ; global_op(600,xfy,:),fail),
++	Proc = (
+ 		name		: Name,
+ 		arg_list	: ArgList,
+ 		scenario	: Scenario,
+ 		implementation	: Impl,
+ 		parameters	: Pars,
+ 		message		: M
+-		), Module)
+-:-
++		),
+ 	opium_module(Module),
+ 	call(opium_procedure(
+ 			name		: Name,
+@@ -252,7 +265,8 @@
+ 			implementation	: Impl,
+ 			parameters	: Pars,
+ 			message		: M
+-			), Module).
++			), Module),
++	global_op(600,xfy,:).
+ 
+ /*
+  *	OPIUM-PARAMETER-IN-MODULE
+@@ -266,7 +280,10 @@
+ "Procedure which succeeds if Parameter is declared in Module."
+ 	).
+ 
+-opium_parameter_in_module_Op((
++opium_parameter_in_module_Op(P, Module) 
++:-
++	(global_op(400,xfy,:) ; global_op(600,xfy,:),fail),
++	P = (
+ 		name		: Name,
+ 		arg_list	: ArgList,
+ 		arg_type_list	: ArgTypeList,
+@@ -275,8 +292,7 @@
+ 		default		: Default,
+ 		commands	: Commands,
+ 		message		: M
+-		), Module) 
+-:-
++		),
+ 	opium_module(Module),
+ 	call(opium_parameter(
+ 			name		: Name,
+@@ -287,7 +303,8 @@
+ 			default		: Default,
+ 			commands	: Commands,
+ 			message		: M
+-			), Module).
++			), Module),
++	global_op(600,xfy,:).
+ 
+ /*
+  *	OPIUM-TYPE-IN-MODULE
+@@ -301,20 +318,23 @@
+ "Procedure which succeeds if Type is declared in Module."
+ 	).
+ 
+-opium_type_in_module_Op((
++opium_type_in_module_Op(Type, Module)
++:-
++	(global_op(400,xfy,:) ; global_op(600,xfy,:),fail),
++	Type = (
+ 		name		: Name,
+ 		scenario	: Scenario,
+ 		implementation	: Impl,
+ 		message		: M
+-		), Module)
+-:-
++		),
+ 	opium_module(Module),
+ 	call(opium_type(
+ 			name		: Name,
+ 			scenario	: Scenario,
+ 			implementation	: Impl,
+ 			message		: M
+-			), Module).
++			), Module),
++	global_op(600,xfy,:).
+ 
+ 
+ /*
+@@ -329,14 +349,16 @@
+ "Procedure which succeeds if Demo is declared in Module."
+ 	).
+ 
+-opium_demo_in_module_Op((
++opium_demo_in_module_Op(Demo, Module)
++:-
++	(global_op(400,xfy,:) ; global_op(600,xfy,:),fail),
++	Demo = (
+ 		name		: Name,
+ 		demo_goal	: Goal,
+ 		condition	: Condition,
+ 		scenario	: Scenario,
+ 		message		: M
+-		), Module)
+-:-
++		),
+ 	opium_module(Module),
+ 	call(opium_demo(
+ 			name		: Name,
+@@ -344,7 +366,8 @@
+ 			condition	: Condition,
+ 			scenario	: Scenario,
+ 			message		: M
+-			), Module).
++			), Module),
++	global_op(600,xfy,:).
+ 
+ 
+ /*
+@@ -361,6 +384,19 @@
+ 	atom(S),
+ 	opium_scenario_in_module((name: S, _, _, _, _, _), M).
+ 
++
++/*
++ *	IS-OPIUM-SCENARIO
++ */
++opium_type(
++	name		: is_opium_scenario_or_var,
++	implementation	: is_opium_scenario_or_var_Op,
++	message		: 
++"Type which succeeds for an active opium scenario or a variable."
++	).
++
++is_opium_scenario_or_var_Op(S) :-
++	(var(S) ; is_opium_scenario_Op(S)).
+ 
+ /*
+  *	IS-OPIUM-PARAMETER

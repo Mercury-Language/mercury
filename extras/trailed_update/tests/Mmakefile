@@ -1,0 +1,72 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1997-2000 The University of Melbourne.
+# This file may only be copied under the terms of the GNU Library General
+# Public License - see the file COPYING.LIB in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+MAIN_TARGET = all
+
+# We need to use a grade with trailing
+GRADEFLAGS += --use-trail
+
+MCFLAGS = --infer-all
+
+MGNUCFLAGS=-g -I..
+RM_C=:
+MLFLAGS=-g
+
+# Link in the trailed_update library from ..
+MCFLAGS += -I.. $(EXTRA_MCFLAGS)
+MLFLAGS += -R`pwd`/.. -L.. $(EXTRA_MLFLAGS)
+MLLIBS = -ltrailed_update $(EXTRA_MLLIBS)
+VPATH = ..:$(MMAKE_VPATH)
+C2INITARGS = ../trailed_update.init
+
+# We need the following to use shared libraries on Linux
+#MGNUCFLAGS += -DPIC_REG
+#MLFLAGS += --shared
+
+MLFLAGS += --static
+
+#-----------------------------------------------------------------------------#
+
+PROGS	=	var_test func_trail_test func_trail_test_2
+
+DEPENDS =	$(PROGS:%=%.depend)
+CS	=	$(PROGS:%=%.c)
+RESS	=	$(PROGS:%=%.res)
+
+#-----------------------------------------------------------------------------#
+
+$(PROGS): ../libtrailed_update.a
+
+%.out: %
+	./$< > $@ 2>&1;
+
+%.res: %.exp %.out
+	diff -c $*.exp $*.out > $@
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: depend
+depend: $(DEPENDS)
+
+.PHONY: all
+all: $(PROGS)
+
+.PHONY: check
+check: $(RESS)
+
+.PHONY: cs
+cs: $(CS)
+
+.PHONY: clean_local
+clean_local:
+	rm -f *.out *.res
+
+#-----------------------------------------------------------------------------#
+
+# The Mmake.params file can be used to override definitions in this file
+-include ../../Mmake.params
+
+#-----------------------------------------------------------------------------#

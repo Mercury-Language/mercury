@@ -1,0 +1,25 @@
+
+# To use shared libraries under Linux you need to add these:
+MGNUCFLAGS    = --pic-reg
+EXTRA_MLFLAGS = -shared
+
+# This will need to be modified according to the versions of 
+# tk and tcl you are using.
+EXTRA_MLLIBS  = -ltk8.0 -ltcl8.0 -L/usr/X11R6/lib -lX11 -lXmu \
+			-lXext -lm -ldl
+
+# Specify the location of the `mercury_tcltk' package.
+MERCURY_TCLTK_DIR	= ../../mercury_tcltk
+
+# Tell mmake to use the `mercury_tcltk' library.
+VPATH 		= $(MERCURY_TCLTK_DIR):$(MMAKE_VPATH)
+MCFLAGS 	= -I$(MERCURY_TCLTK_DIR) $(EXTRA_MCFLAGS)
+MLFLAGS 	= -R$(MERCURY_TCLTK_DIR) $(EXTRA_MLFLAGS) \
+          	  -L$(MERCURY_TCLTK_DIR) 
+MLLIBS 		= -lmercury_tcltk $(EXTRA_MLLIBS)
+C2INITFLAGS 	= $(MERCURY_TCLTK_DIR)/mercury_tcltk.init 
+
+default_target : calc
+
+depend : calc.dep
+

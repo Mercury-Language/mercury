@@ -1,0 +1,16 @@
+#-----------------------------------------------------------------------------#
+
+main_target: check
+
+PROGS=diff 
+TESTS=
+
+EXTRA_FILES=diff_out.m difftype.m file.m filter.m globals.m \
+		match.m myers.m options.m
+
+include Mmake.thisdir
+include $(DEPTH)/Mmake.common
+include $(DEPTH)/Mmake.common.samples
+
+
+#-----------------------------------------------------------------------------#

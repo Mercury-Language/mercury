@@ -1,0 +1,4697 @@
+\input texinfo
+@setfilename mercury_user_guide.info
+@settitle The Mercury User's Guide
+
+@c --- texi2html doesn't support the @dir commands yet
+@c @dircategory The Mercury Programming Language
+@c @direntry
+@c * Mercury User's Guide: (mercury_user_guide).  The Mercury User's Guide.
+@c @end direntry
+
+@c Uncomment the line below to enable documentation of the Aditi interface.
+@set aditi
+
+@c @smallbook
+@c @cropmarks
+@finalout
+@setchapternewpage off
+@ifinfo
+This file documents the Mercury implementation.
+
+Copyright (C) 1995-2001 The University of Melbourne.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+@ignore
+Permission is granted to process this file through Tex and print the
+results, provided the printed document carries copying permission
+notice identical to this one except for the removal of this paragraph
+(this paragraph not being relevant to the printed manual).
+
+@end ignore
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided also that
+the entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions.
+@end ifinfo
+
+@titlepage
+@title The Mercury User's Guide
+@author Fergus Henderson
+@author Thomas Conway
+@author Zoltan Somogyi
+@author Peter Ross
+@page
+@vskip 0pt plus 1filll
+Copyright @copyright{} 1995-2001 The University of Melbourne.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided also that
+the entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions.
+@end titlepage
+@page
+
+@ifinfo
+@node Top,,, (mercury)
+@top The Mercury User's Guide
+
+This guide describes the compilation environment of Mercury ---
+how to build and debug Mercury programs.
+
+@menu
+* Introduction::    General overview.
+* Filenames::       File naming conventions.
+* Using mmc::       Compiling and linking programs with the Mercury compiler.
+* Running::         Execution of programs built with the Mercury compiler.
+* Using Mmake::     ``Mercury Make'', a tool for building Mercury programs.
+* Libraries::       Creating and using libraries of Mercury modules.
+* Using Aditi::     Executing Mercury predicates using the Aditi
+                    deductive database.
+* Debugging::       The Mercury debugger @samp{mdb}.
+* Profiling::       The Mercury profiler @samp{mprof}, a tool for analyzing
+                    program performance.
+* Invocation::      List of options for the Mercury compiler.
+* Environment::     Environment variables used by the compiler and utilities.
+* C compilers::     How to use a C compiler other than GNU C.
+@end menu
+@end ifinfo
+
+@node Introduction
+@chapter Introduction
+
+This document describes the compilation environment of Mercury.
+It describes how to use @samp{mmc}, the Mercury compiler;
+how to use @samp{mmake}, the ``Mercury make'' program,
+a tool built on top of ordinary or GNU make
+to simplify the handling of Mercury programs;
+how to use @samp{mdb}, the Mercury debugger;
+and how to use @samp{mprof}, the Mercury profiler.
+
+We strongly recommend that programmers use @samp{mmake} rather
+than invoking @samp{mmc} directly, because @samp{mmake} is generally
+easier to use and avoids unnecessary recompilation.
+
+@node Filenames
+@chapter File naming conventions
+
+Mercury source files must be named @file{*.m}.
+Each Mercury source file should contain a single Mercury module
+whose module name should be the same as the filename without
+the @samp{.m} extension.
+
+The Mercury implementation uses a variety of intermediate files, which
+are described below.  But all you really need to know is how to name
+source files.  For historical reasons, the default behaviour is for
+intermediate files to be created in the current directory, but if you
+use the @samp{--use-subdirs} option to @samp{mmc} or @samp{mmake}, all
+these intermediate files will be created in a @file{Mercury}
+subdirectory, where you can happily ignore them.
+Thus you may wish to skip the rest of this chapter.
+
+In cases where the source file name and module name don't match,
+the names for intermediate files are based on the name of the
+module from which they are derived, not on the source file name.
+
+Files ending in @file{.int}, @file{.int0}, @file{.int2} and @file{.int3}
+are interface files; these are generated automatically by the compiler,
+using the @samp{--make-interface} (or @samp{--make-int}),
+@samp{--make-private-interface} (or @samp{--make-priv-int}),
+@samp{--make-short-interface} (or @samp{--make-short-int}) options.
+Files ending in @file{.opt} are
+interface files used in inter-module optimization,
+and are created using the @samp{--make-optimization-interface}
+(or @samp{--make-opt-int}) option.
+Similarly, files ending in @file{.trans_opt} are interface files used in
+transitive inter-module optimization, and are created using the
+@samp{--make-transitive-optimization-interface}
+(or @samp{--make-trans-opt-int}) option.
+
+Since the interface of a module changes less often than its implementation,
+the @file{.int}, @file{.int0}, @file{.int2}, @file{.int3}, @file{.opt},
+and @file{.trans_opt} files will remain unchanged on many compilations.
+To avoid unnecessary recompilations of the clients of the module,
+the timestamps on the these files are updated only if their contents change.
+@file{.date}, @file{.date0}, @file{.date3}, @file{.optdate},
+and @file{.trans_opt_date}
+files associated with the module are used as date stamps;
+they are used when deciding whether the interface files need to be regenerated.
+
+Files ending in @file{.d} are automatically-generated Makefile fragments
+which contain the dependencies for a module.
+Files ending in @file{.dep} are automatically-generated Makefile fragments
+which contain the rules for an entire program.
+Files ending in @file{.dv} are automatically-generated Makefile fragments
+which contain variable definitions for an entire program.
+
+As usual, @file{.c} files are C source code,
+@file{.h} files are C header files,
+@file{.o} files are object code,
+In addition, @file{.pic_o} files are object code files
+that contain position-independent code (PIC).
+
+@ifset aditi
+Files ending in @file{.rlo} are Aditi-RL bytecode files, which are
+executed by the Aditi deductive database system (@pxref{Using Aditi}).
+@end ifset
+
+@node Using mmc
+@chapter Using the Mercury compiler
+
+Following a long Unix tradition,
+the Mercury compiler is called @samp{mmc}
+(for ``Melbourne Mercury Compiler'').
+Some of its options (e.g. @samp{-c}, @samp{-o}, and @samp{-I})
+have a similar meaning to that in other Unix compilers.
+
+Arguments to @samp{mmc} may be either file names (ending in @samp{.m}),
+or module names, with @samp{.} (rather than @samp{__} or @samp{:})
+as the module qualifier.  For a module name such as @samp{foo.bar.baz},
+the compiler will look for the source in files @file{foo.bar.baz.m},
+@file{bar.baz.m}, and @file{baz.m}, in that order.
+Note that if the file name does not include all the module
+qualifiers (e.g. if it is @file{bar.baz.m} or @file{baz.m}
+rather than @file{foo.bar.baz.m}), then the module name in the
+@samp{:- module} declaration for that module must be fully qualified.
+
+To compile a program which consists of just a single source file,
+use the command
+
+@example
+mmc @var{filename}.m
+@end example
+
+Unlike traditional Unix compilers, however,
+@samp{mmc} will put the executable into a file called @file{@var{filename}},
+not @file{a.out}.
+
+For programs that consist of more than one source file, we @emph{strongly}
+recommend that you use Mmake (@pxref{Using Mmake}).  Mmake will perform
+all the steps listed below, using automatic dependency analysis
+to ensure that things are done in the right order, and that
+steps are not repeated unnecessarily.
+If you use Mmake, then you don't need to understand the details
+of how the Mercury implementation goes about building programs.
+Thus you may wish to skip the rest of this chapter.
+
+To compile a source file to object code without creating an executable,
+use the command
+
+@example
+mmc -c @var{filename}.m
+@end example
+
+@samp{mmc} will put the object code into a file called @file{@var{module}.o},
+where @var{module} is the name of the Mercury module defined in
+@file{@var{filename}.m}.
+It also will leave the intermediate C code in a file called
+@file{@var{module}.c}.
+If the source file contains nested modules, then each sub-module will get
+compiled to separate C and object files.
+
+Before you can compile a module,
+you must make the interface files
+for the modules that it imports (directly or indirectly).
+You can create the interface files for one or more source files
+using the following commands:
+
+@example
+mmc --make-short-int @var{filename1}.m @var{filename2}.m ...
+mmc --make-priv-int @var{filename1}.m @var{filename2}.m ...
+mmc --make-int @var{filename1}.m @var{filename2}.m ...
+@end example
+
+If you are going to compile with @samp{--intermodule-optimization} enabled,
+then you also need to create the optimization interface files.
+
+@example
+mmc --make-opt-int @var{filename1}.m @var{filename2}.m ...
+@end example
+
+If you are going to compile with @samp{--transitive-intermodule-optimization}
+enabled, then you also need to create the transitive optimization files.
+
+@example
+mmc --make-trans-opt @var{filename1}.m @var{filename2}.m ...
+@end example
+
+Given that you have made all the interface files,
+one way to create an executable for a multi-module program
+is to compile all the modules at the same time
+using the command
+
+@example
+mmc @var{filename1}.m @var{filename2}.m ...
+@end example
+
+This will by default put the resulting executable in @file{@var{filename1}},
+but you can use the @samp{-o @var{filename}} option to specify a different
+name for the output file, if you so desire.
+
+The other way to create an executable for a multi-module program
+is to compile each module separately using @samp{mmc -c},
+and then link the resulting object files together.
+The linking is a two stage process.
+
+First, you must create and compile an @emph{initialization file},
+which is a C source file
+containing calls to automatically generated initialization functions
+contained in the C code of the modules of the program:
+
+@example
+c2init @var{module1}.c @var{module2}.c ... > @var{main-module}_init.c,
+mgnuc -c @var{main-module}_init.c
+@end example
+
+The @samp{c2init} command line must contain
+the name of the C file of every module in the program.
+The order of the arguments is not important.
+The @samp{mgnuc} command is the Mercury GNU C compiler;
+it is a shell script that invokes the GNU C compiler @samp{gcc}
+@c (or some other C compiler if GNU C is not available)
+with the options appropriate for compiling
+the C programs generated by Mercury.
+
+You then link the object code of each module
+with the object code of the initialization file to yield the executable:
+
+@example
+ml -o @var{main-module} @var{module1}.o @var{module2}.o ... @var{main_module}_init.o
+@end example
+
+@samp{ml}, the Mercury linker, is another shell script
+that invokes a C compiler with options appropriate for Mercury,
+this time for linking.  @samp{ml} also pipes any error messages
+from the linker through @samp{mdemangle}, the Mercury symbol demangler,
+so that error messages refer to predicate and function names from
+the Mercury source code rather than to the names used in the intermediate
+C code.
+
+The above command puts the executable in the file @file{@var{main-module}}.
+The same command line without the @samp{-o} option
+would put the executable into the file @file{a.out}.
+
+@samp{mmc} and @samp{ml} both accept a @samp{-v} (verbose) option.
+You can use that option to see what is actually going on.
+For the full set of options of @samp{mmc}, see @ref{Invocation}.
+
+@node Running
+@chapter Running programs
+
+Once you have created an executable for a Mercury program,
+you can go ahead and execute it.  You may however wish to specify
+certain options to the Mercury runtime system.
+The Mercury runtime accepts
+options via the @samp{MERCURY_OPTIONS} environment variable.
+The most useful of these are the options that set the size of the stacks.
+(For the full list of available options, see @ref{Environment}.)
+
+The det stack and the nondet stack
+are allocated fixed sizes at program start-up.
+The default size is 4096k for the det stack and 128k for the nondet stack,
+but these can be overridden with the
+@samp{--detstack-size} and @samp{--nondetstack-size} options,
+whose arguments are the desired sizes of the det and nondet stacks
+respectively, in units of kilobytes.
+On operating systems that provide the appropriate support,
+the Mercury runtime will ensure that stack overflow
+is trapped by the virtual memory system.
+
+With conservative garbage collection (the default),
+the heap will start out with a zero size,
+and will be dynamically expanded as needed,
+When not using conservative garbage collection,
+the heap has a fixed size like the stacks.
+The default size is 4 Mb, but this can be overridden
+with the @samp{--heap-size} option.
+
+@node Using Mmake
+@chapter Using Mmake
+
+Mmake, short for ``Mercury Make'',
+is a tool for building Mercury programs
+that is built on top of ordinary or GNU Make @footnote{
+We might eventually add support for ordinary ``Make'' programs,
+but currently only GNU Make is supported.}.
+With Mmake, building even a complicated Mercury program
+consisting of a number of modules is as simple as
+
+@example
+mmake @var{main-module}.depend
+mmake @var{main-module}
+@end example
+
+Mmake only recompiles those files that need to be recompiled,
+based on automatically generated dependency information.
+Most of the dependencies are stored in @file{.d} files that are
+automatically recomputed every time you recompile,
+so they are never out-of-date.
+A little bit of the dependency information is stored in @file{.dep}
+and @file{.dv} files which are more expensive to recompute.
+The @samp{mmake @var{main-module}.depend} command which recreates the
+@file{@var{main-module}.dep} and @file{@var{main-module}.dv} files needs
+to be repeated only when you add or remove a module from your program,
+and there is no danger of getting an inconsistent executable if you forget
+this step --- instead you will get a compile or link error.
+
+@samp{mmake} allows you to build more than one program in the same directory.
+Each program must have its own @file{.dep} and @file{.dv} files,
+and therefore you must run @samp{mmake @var{program}.depend}
+for each program.
+
+If there is a file called @samp{Mmake} or @samp{Mmakefile} in the
+current directory,
+Mmake will include that file in its automatically-generated Makefile.
+The @samp{Mmake} file can override the default values of
+various variables used by Mmake's builtin rules,
+or it can add additional rules, dependencies, and actions.
+
+Mmake's builtin rules are defined by the file
+@file{@var{prefix}/lib/mercury/mmake/Mmake.rules}
+(where @var{prefix} is @file{/usr/local/mercury-@var{version}} by default,
+and @var{version} is the version number, e.g. @samp{0.6}),
+as well as the rules and variables in the automatically-generated
+@file{.dep} and @file{.dv} files.
+These rules define the following targets:
+
+@table @file
+@item @var{main-module}.depend
+Creates the files @file{@var{main-module}.dep} and
+@file{@var{main-module}.dv} from @file{@var{main-module}.m}
+and the modules it imports.
+This step must be performed first.
+It is also required whenever you wish to change the level of
+inter-module optimization performed (@pxref{Overall optimization options}).
+
+@item @var{main-module}.ints
+Ensure that the interface files for @var{main-module}
+and its imported modules are up-to-date.
+(If the underlying @samp{make} program does not handle transitive dependencies,
+this step may be necessary before
+attempting to make @file{@var{main-module}} or @file{@var{main-module}.check};
+if the underlying @samp{make} is GNU Make, this step should not be necessary.)
+
+@item @var{main-module}.check
+Perform semantic checking on @var{main-module} and its imported modules.
+Error messages are placed in @file{.err} files.
+
+@item @var{main-module}
+Compiles and links @var{main-module} using the Mercury compiler.
+Error messages are placed in @file{.err} files.
+
+@item @var{main-module}.split
+Compiles and links @var{main-module} using the Mercury compiler,
+with the Mercury compiler's @samp{--split-c-files} option enabled.
+For more information about @samp{--split-c-files}, see
+@ref{Output-level (LLDS -> C) optimization options}.
+
+@item lib@var{main-module}
+Builds a library whose top-level module is @var{main-module}.
+This will build a static object library, a shared object library
+(for platforms that support it), and the necessary interface files.
+For more information, see @ref{Libraries}.
+
+@item lib@var{main-module}.install
+Builds and installs a library whose top-level module is @var{main-module}.
+This target will build and install a static object library and
+(for platforms that support it) a shared object library,
+for the default grade and also for the additional grades specified
+in the @code{LIBGRADES} variable.  It will also build and install the
+necessary interface files. The variable @code{INSTALL} specifies
+the name of the command to use to install each file, by default
+@samp{cp}. The variable @code{INSTALL_MKDIR} specifies the command to use
+to create directories, by default @samp{mkdir -p}.
+For more information, see @ref{Supporting multiple grades and architectures}.
+
+@item @var{main-module}.clean
+Removes the automatically generated files
+that contain the compiled code of the program
+and the error messages produced by the compiler.
+Specifically, this will remove all the @samp{.c}, @samp{.s}, @samp{.o},
+@samp{.pic_o}, @samp{.prof}, @samp{.no}, @samp{.ql},
+@ifset aditi
+@samp{.schema},
+@end ifset
+and @samp{.err} files
+belonging to the named @var{main-module} or its imported modules.
+Use this target whenever you wish to change compilation model
+(@pxref{Compilation model options}).
+This target is also recommended whenever you wish to change the level
+of inter-module optimization performed (@pxref{Overall optimization
+options}) in addition to the mandatory @var{main-module}.depend.
+
+@item @var{main-module}.realclean
+Removes all the automatically generated files.
+In addition to the files removed by @var{main-module}.clean, this
+removes the @samp{.int}, @samp{.int0}, @samp{.int2},
+@samp{.int3}, @samp{.opt}, @samp{.trans_opt},
+@samp{.date}, @samp{.date0}, @samp{.date3}, @samp{.optdate},
+@samp{.trans_opt_date},
+@ifset aditi
+@samp{.rlo},
+@end ifset
+@samp{.h} and @samp{.d} files
+belonging to one of the modules of the program,
+and also the various possible executables, libraries and dependency files
+for the program as a whole ---
+@samp{@var{main-module}},
+@samp{@var{main-module}.split},
+@samp{lib@var{main-module}.a},
+@samp{lib@var{main-module}.so},
+@samp{@var{main-module}.split.a},
+@samp{@var{main-module}.init},
+@samp{@var{main-module}.dep}
+and
+@samp{@var{main-module}.dv}.
+
+@item clean
+This makes @samp{@var{main-module}.clean} for every @var{main-module}
+for which there is a @file{@var{main-module}.dep} file in the current
+directory, as well as deleting the profiling files
+@samp{Prof.CallPair},
+@samp{Prof.Counts},
+@samp{Prof.Decl},
+@samp{Prof.MemWords}
+and
+@samp{Prof.MemCells}.
+
+@item realclean
+This makes @samp{@var{main-module}.realclean} for every @var{main-module}
+for which there is a @file{@var{main-module}.dep} file in the current
+directory, as well as deleting the profiling files as per the @samp{clean}
+target.
+
+@end table
+
+The variables used by the builtin rules (and their default values) are
+defined in the file @file{@var{prefix}/lib/mercury/mmake/Mmake.vars}, however
+these may be overridden by user @samp{Mmake} files.  Some of the more
+useful variables are:
+
+@table @code
+
+@item MAIN_TARGET
+The name of the default target to create if @samp{mmake} is invoked with
+any target explicitly named on the command line.
+
+@item MC
+The executable that invokes the Mercury compiler.
+
+@item GRADEFLAGS and EXTRA_GRADEFLAGS
+Compilation model options (@pxref{Compilation model options})
+to pass to the Mercury compiler, linker, and other tools
+(in particular @code{mmc}, @code{mgnuc}, @code{ml}, and @code{c2init}).
+
+@item MCFLAGS and EXTRA_MCFLAGS
+Options to pass to the Mercury compiler.
+(Note that compilation model options should be
+specified in @code{GRADEFLAGS}, not in @code{MCFLAGS}.)
+
+@item MGNUC
+The executable that invokes the C compiler.
+
+@item MGNUCFLAGS and EXTRA_MGNUCFLAGS
+Options to pass to the C compiler.
+
+@item MS_CLFLAGS and EXTRA_MS_CLFLAGS
+Options to pass to the Microsoft command line C++ compiler (if you are
+using it).
+
+@item MS_CL_NOASM 
+The option to control whether the Microsoft command line C++ compile
+will generate assemblies from managed C++ files.  Set to
+@samp{:noAssembly} to turn off assembly generation, leave empty to turn
+on assembly generation.  The default is to leave this variable empty.
+
+@item ML
+The executable that invokes the linker.
+
+@item MLFLAGS and EXTRA_MLFLAGS
+Options to pass to the linker.
+(Note that compilation model options should be
+specified in @code{GRADEFLAGS}, not in @code{MLFLAGS}.)
+
+@item MLLIBS and EXTRA_MLLIBS
+A list of @samp{-l} options specifying libraries used by the program
+(or library) that you are building.  @xref{Using libraries}.
+
+@item MLOBJS
+A list of extra object files to link into any programs or libraries
+that you are building.
+
+@item C2INITFLAGS and EXTRA_C2INITFLAGS
+Options to pass to the c2init program.
+(Note that compilation model options and extra files to be processed by
+c2init should not be specified in @code{C2INITFLAGS} - they should be
+specified in @code{GRADEFLAGS} and @code{C2INITARGS}, respectively.)
+
+@item C2INITARGS and EXTRA_C2INITARGS
+Extra files to be processed by c2init.  These variables should not be
+used for specifying flags to c2init (that's what @code{C2INITFLAGS} is for)
+since they are also used to derive extra dependency information.
+
+@item EXTRA_LIBRARIES
+A list of extra Mercury libraries to link into any programs or libraries
+that you are building.
+Libraries should be specified using their base name; that is, without any
+@samp{lib} prefix or extension.
+For example the library including the files @file{libfoo.a} and
+@file{foo.init} would be referred to as just @samp{foo}.
+
+@item EXTRA_LIB_DIRS
+A list of extra Mercury library directory hierarchies to search when
+looking for extra libraries.
+
+@item INSTALL_PREFIX
+The path to the root of the directory hierarchy where the libraries,
+etc. you are building should be installed.  The default is to install in
+the same location as the Mercury compiler being used to do the install.
+
+@item INSTALL
+The command used to install each file in a library. The command should
+take a list of files to install and the location to install them.
+The default command is @samp{cp}.
+
+@item INSTALL_MKDIR
+The command used to create each directory in the directory hierarchy
+where the libraries are to be installed. The default command is
+@samp{mkdir -p}.
+
+@item LIBGRADES
+A list of additional grades which should be built when installing libraries.
+The default is to install the Mercury compiler's default set of grades.
+Note that this may not be the set of grades in which the standard libraries
+were actually installed.
+Note also that any @code{GRADEFLAGS} settings will also be applied when
+the library is built in each of the listed grades, so you may not get what
+you expect if those options are not subsumed by each of the grades listed.
+@end table
+
+Other variables also exist - see
+@file{@var{prefix}/lib/mercury/mmake/Mmake.vars} for a complete list.
+
+If you wish to temporarily change the flags passed to an executable,
+rather than setting the various @samp{FLAGS} variables directly, you can
+set an @samp{EXTRA_} variable.  This is particularly intended for
+use where a shell script needs to call mmake and add an extra parameter,
+without interfering with the flag settings in the @samp{Mmakefile}.
+
+For each of the variables for which there is version with an @samp{EXTRA_}
+prefix, there is also a version with an @samp{ALL_} prefix that
+is defined to include both the ordinary and the @samp{EXTRA_} version.
+If you wish to @emph{use} the values any of these variables
+in your Mmakefile (as opposed to @emph{setting} the values),
+then you should use the @samp{ALL_} version.
+
+It is also possible to override these variables on a per-file basis.
+For example, if you have a module called say @file{bad_style.m}
+which triggers lots of compiler warnings, and you want to disable
+the warnings just for that file, but keep them for all the other modules,
+then you can override @code{MCFLAGS} just for that file.  This is done by
+setting the variable @samp{MCFLAGS-bad_style}, as shown here:
+
+@example
+MCFLAGS-bad_style = --inhibit-warnings
+@end example
+
+Mmake has a few options, including @samp{--use-subdirs},
+@samp{--save-makefile}, @samp{--verbose}, and @samp{--no-warn-undefined-vars}.
+For details about these options, see the man page or type @samp{mmake --help}.
+
+Finally, since Mmake is built on top of Make or GNU Make, you can also
+make use of the features and options supported by the underlying Make.
+In particular, GNU Make has support for running jobs in parallel, which
+is very useful if you have a machine with more than one CPU.
+
+@node Libraries
+@chapter Libraries
+
+Often you will want to use a particular set of Mercury modules
+in more than one program.  The Mercury implementation
+includes support for developing libraries, i.e. sets of Mercury modules
+intended for reuse.  It allows separate compilation of libraries
+and, on many platforms, it supports shared object libraries.
+
+@menu
+* Writing libraries::
+* Building libraries::
+* Installing libraries::
+* Using libraries::
+* Supporting multiple grades and architectures::
+@end menu
+
+@node Writing libraries
+@section Writing libraries
+
+A Mercury library is identified by a top-level module,
+which should contain all of the modules in that library as sub-modules.
+It may be as simple as this @file{mypackage.m} file:
+
+@example
+:- module mypackage.
+:- interface.
+:- include_module foo, bar, baz.
+@end example
+
+@noindent
+This defines a module @samp{mypackage} containing
+sub-modules @samp{mypackage:foo}, @samp{mypackage:bar},
+and @samp{mypackage:baz}.
+
+It is also possible to build libraries of unrelated
+modules, so long as the top-level module imports all
+the necessary modules.  For example:
+
+@example
+:- module blah.
+:- import_module fee, fie, foe, fum.
+@end example
+
+@noindent
+This example defines a module @samp{blah}, which has
+no functionality of its own, and which is just used
+for grouping the unrelated modules @samp{fee},
+@samp{fie}, @samp{foe}, and @samp{fum}.
+
+Generally it is better style for each library to consist
+of a single module which encapsulates its sub-modules,
+as in the first example, rather than just a group of
+unrelated modules, as in the second example.
+
+@node Building libraries
+@section Building libraries
+
+Generally Mmake will do most of the work of building
+libraries automatically.  Here's a sample @code{Mmakefile} for
+creating a library.
+
+@example
+MAIN_TARGET = libmypackage
+depend: mypackage.depend
+@end example
+
+The Mmake target @samp{lib@var{foo}} is a built-in target for
+creating a library whose top-level module is @samp{@var{foo}.m}.
+The automatically generated Mmake rules for the target @samp{lib@var{foo}}
+will create all the files needed to use the library.
+(You will need to run @samp{mmake @var{foo}.depend} first
+to generate the module dependency information.)
+
+Mmake will create static (non-shared) object libraries
+and, on most platforms, shared object libraries;
+however, we do not yet support the creation of dynamic link
+libraries (DLLs) on Windows.
+Static libraries are created using the standard tools @samp{ar}
+and @samp{ranlib}.
+Shared libraries are created using the @samp{--make-shared-lib}
+option to @samp{ml}.
+The automatically-generated Make rules for @samp{libmypackage}
+will look something like this:
+
+@example
+libmypackage: libmypackage.a libmypackage.so \
+		$(mypackage.ints) $(mypackage.int3s) \
+		$(mypackage.opts) $(mypackage.trans_opts) mypackage.init
+
+libmypackage.a: $(mypackage.os)
+	rm -f libmypackage.a
+	$(AR) $(ARFLAGS) libmypackage.a $(mypackage.os) $(MLOBJS)
+	$(RANLIB) $(RANLIBFLAGS) mypackage.a
+
+libmypackage.so: $(mypackage.pic_os)
+	$(ML) $(MLFLAGS) --make-shared-lib -o libmypackage.so \
+		$(mypackage.pic_os) $(MLPICOBJS) $(MLLIBS)
+
+libmypackage.init:
+	...
+
+clean:
+	rm -f libmypackage.a libmypackage.so
+@end example
+
+If necessary, you can override the default definitions of the variables
+such as @samp{ML}, @samp{MLFLAGS}, @samp{MLPICOBJS}, and @samp{MLLIBS}
+to customize the way shared libraries are built.  Similarly @samp{AR},
+@samp{ARFLAGS}, @samp{MLOBJS}, @samp{RANLIB}, and @samp{RANLIBFLAGS}
+control the way static libraries are built.  (The @samp{MLOBJS} variable
+is supposed to contain a list of additional object files to link into
+the library, while the @samp{MLLIBS} variable should contain a list of
+@samp{-l} options naming other libraries used by this library.
+@samp{MLPICOBJS} is described below.)
+
+Note that to use a library, as well as the shared or static object library,
+you also need the interface files.  That's why the
+@samp{libmypackage} target builds @samp{$(mypackage.ints)} and
+@samp{$(mypackage.int3s)}.
+If the people using the library are going to use intermodule
+optimization, you will also need the intermodule optimization interfaces.
+The @samp{libmypackage} target will build @samp{$(mypackage.opts)} if
+@samp{--intermodule-optimization} is specified in your @samp{MCFLAGS}
+variable (this is recommended).
+Similarly, if the people using the library are going to use transitive
+intermodule optimization, you will also need the transitive intermodule
+optimization interfaces (@samp{$(mypackage.trans_opt)}).
+These will be built if @samp{--trans-intermod-opt} is specified in your
+@samp{MCFLAGS} variable.
+
+In addition, with certain compilation grades, programs will need to
+execute some startup code to initialize the library; the
+@samp{mypackage.init} file contains information about initialization
+code for the library.  The @samp{libmypackage} target will build this file.
+
+On some platforms, shared objects must be created using position independent
+code (PIC), which requires passing some special options to the C compiler.
+On these platforms, @code{Mmake} will create @file{.pic_o} files,
+and @samp{$(mypackage.pic_os)} will contain a list of the @file{.pic_o} files
+for the library whose top-level module is @samp{mypackage}.
+In addition, @samp{$(MLPICOBJS)} will be set to @samp{$MLOBJS} with
+all occurrences of @samp{.o} replaced with @samp{.pic_o}.
+On other platforms, position independent code is the default,
+so @samp{$(mypackage.pic_os)} will just be the same as @samp{$(mypackage.os)},
+which contains a list of the @file{.o} files for that module,
+and @samp{$(MLPICOBJS)} will be the same as @samp{$(MLOBJS)}.
+
+@node Installing libraries
+@section Installing libraries
+
+If you want, once you have built a library, you could then install
+(i.e. copy) the shared object library, the static object library,
+the interface files (possibly including the optimization interface
+files and the transitive optimization interface files), and the
+initialization file into a different directory, or into several
+different directories, for that matter --- though it is probably
+easiest for the users of the library if you keep them in a single
+directory.
+Or alternatively, you could package them up into a @samp{tar}, @samp{shar}, or
+@samp{zip} archive and ship them to the people who will use the
+library.
+
+@node Using libraries
+@section Using libraries
+
+To use a library, you need to set the Mmake variables @samp{VPATH},
+@samp{MCFLAGS}, @samp{MLFLAGS}, @samp{MLLIBS}, and @samp{C2INITARGS}
+to specify the name and location of the library or libraries that you
+wish to use. If you are using @samp{--intermodule-optimization}, you
+may also need to set @samp{MGNUCFLAGS} if the library uses the C interface.
+For example, if you want to link in the libraries @samp{mypackage} and
+@samp{myotherlib}, which were built in the directories
+@samp{/some/directory/mypackage} and @samp{/some/directory/myotherlib}
+respectively, you could use the following settings:
+
+@example
+# Specify the location of the `mypackage' and `myotherlib' directories
+MYPACKAGE_DIR = /some/directory/mypackage
+MYOTHERLIB_DIR = /some/directory/myotherlib
+
+# The following stuff tells Mmake to use the two libraries
+VPATH = $(MYPACKAGE_DIR):$(MYOTHERLIB_DIR):$(MMAKE_VPATH)
+MCFLAGS = -I$(MYPACKAGE_DIR) -I$(MYOTHERLIB_DIR) $(EXTRA_MCFLAGS)
+MLFLAGS = -R$(MYPACKAGE_DIR) -R$(MYOTHERLIB_DIR) $(EXTRA_MLFLAGS) \
+          -L$(MYPACKAGE_DIR) -L$(MYOTHERLIB_DIR)
+MLLIBS = -lmypackage -lmyotherlib $(EXTRA_MLLIBS)
+C2INITARGS = $(MYPACKAGE_DIR)/mypackage.init \
+             $(MYOTHERLIB_DIR)/myotherlib.init
+
+# This line may be needed if @samp{--intermodule-optimization}
+# is in @samp{MCFLAGS}. @samp{-I} options should be added for any other
+# directories containing header files that the libraries require.
+MGNUCFLAGS = -I$(MYPACKAGE_DIR) -I$(MYOTHERLIB_DIR) $(EXTRA_MGNUCFLAGS)
+@end example
+
+Here @samp{VPATH} is a colon-separated list of path names specifying
+directories that Mmake will search for interface files.
+The @samp{-I} options in @samp{MCFLAGS} tell @samp{mmc} where to find
+the interface files.  The @samp{-R} options in @samp{MLFLAGS} tell
+the loader where to find shared libraries, and the @samp{-L}
+options tell the linker where to find libraries.
+(Note that the @samp{-R} options must precede the @samp{-L} options.)
+The @samp{-l} options tell the linker which libraries to link with.
+The extra arguments to @samp{c2init} specified in the @samp{C2INITARGS}
+variable tell @samp{c2init} where to find the @samp{.init} files for
+the libraries (so that it can generate appropriate initialization code)
+as well as telling Mmake that any @samp{_init.c} files generated depend
+on these files.
+The @samp{-I} options in @samp{MGNUCFLAGS} tell the C preprocessor where
+to find the header files for the libraries.
+
+The example above assumes that the static object library,
+shared object library, interface files and initialization file
+for each Mercury library being used are all put in a single directory,
+which is probably the simplest way of organizing things, but the
+Mercury implementation does not require that.
+
+@node Supporting multiple grades and architectures
+@section Supporting multiple grades and architectures
+
+In order to better support using and installing libraries in multiple
+grades, @samp{mmake} now has support for alternative library directory
+hierarchies.
+These have the same structure as the @file{@var{prefix}/lib/mercury} tree,
+including the different subdirectories for different grades and different
+machine architectures.
+
+In order to support the installation of a library into such a tree, you
+simply need to specify (e.g. in your @file{Mmakefile}) the path prefix
+and the list of grades to install:
+
+@example
+INSTALL_PREFIX = /my/install/dir
+LIBGRADES = asm_fast asm_fast.gc.tr.debug
+@end example
+
+This specifies that libraries should be installed in
+@file{/my/install/dir/lib/mercury}, in the default grade plus
+@samp{asm_fast} and @samp{asm_fast.gc.tr.debug}.
+If @samp{INSTALL_PREFIX} is not specified, @samp{mmake} will attempt to
+install the library in the same place as the standard Mercury libraries.
+If @samp{LIBGRADES} is not specified, @samp{mmake} will use the Mercury
+compiler's default set of grades, which may or may not correspond to the
+actual set of grades in which the standard Mercury libraries were installed.
+
+To actually install a library @samp{lib@var{foo}}, use the @samp{mmake}
+target @samp{lib@var{foo}.install}.
+This also installs all the needed interface files, and (if intermodule
+optimisation is enabled) the relevant intermodule optimisation files.
+
+One can override the list of grades to install for a given library
+@samp{lib@var{foo}} by setting the @samp{LIBGRADES-@var{foo}} variable,
+or add to it by setting @samp{EXTRA_LIBGRADES-@var{foo}}.
+
+The command used to install each file is specified by @samp{INSTALL}.
+If @samp{INSTALL} is not specified, @samp{cp} will be used.
+
+The command used to create directories is specified by @samp{INSTALL_MKDIR}.
+If @samp{INSTALL_MKDIR} is not specified, @samp{mkdir -p} will be used.
+
+Note that currently it is not possible to set the installation prefix
+on a library-by-library basis.
+
+Once a library is installed in such a hierarchy, using it is easy.
+Suppose the user wishes to use the library @samp{mypackage} (installed
+in the tree rooted at @samp{/some/directory/mypackage}) and the library
+@samp{myotherlib} (installed in the tree rooted at
+@samp{/some/directory/myotherlib}).
+The user need only set the following Mmake variables:
+
+@example
+EXTRA_LIB_DIRS = /some/directory/mypackage/lib/mercury \
+		/some/directory/myotherlib/lib/mercury
+EXTRA_LIBRARIES = mypackage myotherlib
+@end example
+
+Mmake will then ensure that the appropriate directories are searched for
+the relevant interface files, module initialisation files, compiled
+libraries, etc.
+
+One can specify extra libraries to be used on a program-by-program
+basis.  For instance, if the program @samp{foo} also uses the library
+@samp{mylib4foo}, but the other programs governed by the Mmakefile don't,
+then one can declare:
+
+@example
+EXTRA_LIBRARIES-foo = mylib4foo
+@end example
+
+@node Debugging
+@chapter Debugging
+
+@menu
+* Quick overview::
+* GNU Emacs interface::
+* Tracing of Mercury programs::
+* Preparing a program for debugging::
+* Tracing optimized code::
+* Mercury debugger invocation::
+* Mercury debugger concepts::
+* Debugger commands::
+@end menu
+
+@node Quick overview
+@section Quick overview
+
+This section gives a quick and simple guide to getting
+started with the debugger.  The remainder of this chapter
+contains more detailed documentation.
+
+To use the debugger, you must
+first compile your program with debugging enabled.
+You can do this by using the @samp{--debug} option to @samp{mmc},
+or by including @samp{GRADEFLAGS = --debug} in your @file{Mmakefile}.
+
+@example
+bash$ mmc --debug hello.m
+@end example
+
+Once you've compiled with debugging enabled, you can use the @samp{mdb}
+command to invoke your program under the debugger:
+
+@example
+bash$ mdb ./hello arg1 arg2 ...
+@end example
+
+Any arguments (such as @samp{arg1 arg2 ...} in this example)
+that you pass after the program name will be given as arguments
+to the program.
+
+The debugger will print a start-up message
+and will then show you the first trace event,
+namely the call to @code{main/2}:
+
+@example
+       1:      1  1 CALL pred hello:main/2-0 (det)
+                         hello.m:13
+mdb>
+@end example
+
+By hitting enter at the @samp{mdb>} prompt, you can step through
+the execution of your program to the next trace event:
+
+@example
+       2:      2  2 CALL pred io:write_string/3-0 (det)
+                         io.m:2837 (hello.m:14)
+mdb>
+Hello, world
+       3:      2  2 EXIT pred io:write_string/3-0 (det)
+                         io.m:2837 (hello.m:14)
+mdb>
+
+@end example
+
+For each trace event, the debugger prints out several pieces of
+information.  The three numbers at the start of the display are the
+event number, the call sequence number, and the call depth. 
+(You don't really need to pay too much attention to those.)
+They are followed by the event type (e.g. @samp{CALL} or @samp{EXIT}).
+After that comes the identification of the procedure
+in which the event occurred, consisting of the module-qualified name
+of the predicate or function to which the procedure belongs,
+followed by its arity, mode number and determinism.
+This may sometimes be followed by a "path"
+(@pxref{Tracing of Mercury programs}).
+At the end is the file name and line number of the
+called procedure and (if available) also the file name
+and line number of the call.
+
+The most useful @code{mdb} commands have single-letter abbreviations.
+The @samp{alias} command will show these abbreviations:
+
+@example
+mdb> alias
+?      =>    help
+EMPTY  =>    step
+NUMBER =>    step
+P      =>    print *
+b      =>    break
+c      =>    continue
+d      =>    stack
+f      =>    finish
+g      =>    goto
+h      =>    help
+p      =>    print
+r      =>    retry
+s      =>    step
+v      =>    vars
+@end example
+
+The @samp{P} or @samp{print *} command will display the values
+of any live variables in scope.
+The @samp{f} or @samp{finish} command can be used if you want
+to skip over a call.
+The @samp{b} or @samp{break} command can be used to set break-points.
+The @samp{d} or @samp{stack} command will display the call stack.
+The @samp{quit} command will exit the debugger.
+
+That should be enough to get you started.
+But if you have GNU Emacs installed, you should strongly
+consider using the Emacs interface to @samp{mdb} --- see
+the following section.
+
+For more information about the available commands,
+use the @samp{?} or @samp{help} command, or see @ref{Debugger commands}.
+
+@node GNU Emacs interface
+@section GNU Emacs interface
+
+As well as the command-line debugger, mdb, there is also an Emacs
+interface to this debugger.  Note that the Emacs interface only
+works with GNU Emacs, not with XEmacs.
+
+With the Emacs interface, the debugger will display your source code
+as you trace through it, marking the line that is currently being
+executed, and allowing you to easily set breakpoints on particular
+lines in your source code.  You can have separate windows for
+the debugger prompt, the source code being executed, and for
+the output of the program being executed.
+In addition, most of the mdb commands are accessible via menus.
+
+To start the Emacs interface, you first need to put the following
+text in the file @file{.emacs} in your home directory,
+replacing "/usr/local/mercury-1.0" with the directory
+that your Mercury implementation was installed in.
+
+@example
+(setq load-path (cons (expand-file-name
+  "/usr/local/mercury-1.0/lib/mercury/elisp")
+  load-path))
+(autoload 'mdb "gud" "Invoke the Mercury debugger" t)
+@end example
+
+Build your program with debugging enabled, as described
+in @ref{Quick overview} or @ref{Preparing a program for debugging}.
+Then start up Emacs, e.g. using the command @samp{emacs},
+and type @kbd{M-x mdb @key{RET}}. Emacs will then prompt you for
+the mdb command to invoke
+
+@example
+Run mdb (like this): mdb 
+@end example
+
+@noindent
+and you should type in the name of the program that you want to debug
+and any arguments that you want to pass to it:
+
+@example
+Run mdb (like this): mdb ./hello arg1 arg2 ...
+@end example
+
+Emacs will then create several "buffers": one for the debugger prompt,
+one for the input and output of the program being executed, and one or more
+for the source files.  By default, Emacs will split the display into two
+parts, called "windows", so that two of these buffers will be visible.
+You can use the command @kbd{C-x o} to switch between windows,
+and you can use the command @kbd{C-x 2} to split a window into two
+windows.  You can use the "Buffers" menu to select which buffer is
+displayed in each window.
+
+If you're using X-Windows, then it is a good idea
+to set the Emacs variable @samp{pop-up-frames} to @samp{t}
+before starting mdb, since this will cause each buffer to be
+displayed in a new "frame" (i.e. a new X window).
+You can set this variable interactively using the
+@samp{set-variable} command, i.e.
+@kbd{M-x set-variable @key{RET} pop-up-frames @key{RET} t @key{RET}}.
+Or you can put @samp{(setq pop-up-frames t)} in the @file{.emacs}
+file in your home directory.
+
+For more information on buffers, windows, and frames,
+see the Emacs documentation.
+
+Another useful Emacs variable is @samp{gud-mdb-directories}.
+This specifies the list of directories to search for source files.
+You can use a command such as
+
+@example
+M-x set-variable @key{RET}
+gud-mdb-directories @key{RET}
+(list "/foo/bar" "../other" "/home/guest") @key{RET}
+@end example
+
+@noindent
+to set it interactively, or you can put a command like
+
+@example
+(setq gud-mdb-directories
+  (list "/foo/bar" "../other" "/home/guest"))
+@end example
+
+@noindent
+in your @file{.emacs} file.
+
+At each trace event, the debugger will search for the
+source file corresponding to that event, first in the
+same directory as the program, and then in the directories
+specified by the @samp{gud-mdb-directories} variable.
+It will display the source file, with the line number
+corresponding to that trace event marked by
+an arrow (@samp{=>}) at the start of the line.
+
+Several of the debugger features can be accessed by moving
+the cursor to the relevant part of the source code and then
+selecting a command from the menu.
+You can set a break point on a line by moving the cursor to the
+appropriate line in your source code (e.g. with the arrow keys,
+or by clicking the mouse there), and then selecting
+the "Set breakpoint on line" command from the "Breakpoints"
+sub-menu of the "MDB" menu.  You can set a breakpoint on
+a procedure by moving the cursor over the procedure name
+and then selecting the "Set breakpoint on procedure"
+command from the same menu.  And you can display the value of
+a variable by moving the cursor over the variable name
+and then selecting the "Print variable" command from the
+"Data browsing" sub-menu of the "MDB" menu.
+Most of the menu commands also have keyboard short-cuts,
+which are displayed on the menu.
+
+Note that mdb's @samp{context} command should not be used if
+you are using the Emacs interface, otherwise the Emacs
+interface won't be able to parse the file names and
+line numbers that mdb outputs, and so it won't be able to
+highlight the correct location in the source code.
+
+@node Tracing of Mercury programs
+@section Tracing of Mercury programs
+
+The Mercury debugger is based on a modified version of the box model
+on which the four-port debuggers of most Prolog systems are based.
+Such debuggers abstract the execution of a program
+into a sequence, also called a @emph{trace},
+of execution events of various kinds.
+The four kinds of events supported by most Prolog systems (their @emph{ports})
+are
+
+@table @emph
+@item call
+A call event occurs just after a procedure has been called,
+and control has just reached the start of the body of the procedure.
+@item exit
+An exit event occurs when a procedure call has succeeded,
+and control is about to return to its caller.
+@item redo
+A redo event occurs when all computations
+to the right of a procedure call have failed,
+and control is about to return to this call
+to try to find alternative solutions.
+@item fail
+A fail event occurs when a procedure call has run out of alternatives,
+and control is about to return to the rightmost computation to its left
+that still has possibly successful alternatives left.
+@end table
+
+Mercury also supports these four kinds of events,
+but not all events can occur for every procedure call.
+Which events can occur for a procedure call, and in what order,
+depend on the determinism of the procedure.
+The possible event sequences for procedures of the various determinisms
+are as follows.
+
+@table @emph
+@item nondet procedures
+a call event, zero or more repeats of (exit event, redo event), and a fail event
+@item multi procedures
+a call event, one or more repeats of (exit event, redo event), and a fail event
+@item semidet and cc_nondet procedures
+a call event, and either an exit event or a fail event
+@item det and cc_multi procedures
+a call event and an exit event
+@item failure procedures
+a call event and a fail event
+@item erroneous procedures
+a call event
+@end table
+
+In addition to these four event types,
+Mercury supports @emph{exception} events.
+An exception event occurs
+when an exception has been thrown inside a procedure,
+and control is about to propagate this exception to the caller.
+An exception event can replace the final exit or fail event
+in the event sequences above
+or, in the case of erroneous procedures,
+can come after the call event.
+
+Besides the event types call, exit, redo, fail and exception,
+which describe the @emph{interface} of a call,
+Mercury also supports several types of events
+that report on what is happening @emph{internal} to a call.
+Each of these internal event types has an associated parameter called a path.
+The internal event types are:
+
+@table @emph
+@item then
+A then event occurs when execution reaches
+the start of the then part of an if-then-else.
+The path associated with the event specifies which if-then-else this is.
+@item else
+An else event occurs when execution reaches
+the start of the else part of an if-then-else.
+The path associated with the event specifies which if-then-else this is.
+@item disj
+A disj event occurs when execution reaches
+the start of a disjunct in a disjunction.
+The path associated with the event specifies
+which disjunct of which disjunction this is.
+@item switch
+A switch event occurs when execution reaches
+the start of one arm of a switch
+(a disjunction in which each disjunct unifies a bound variable
+with different function symbol).
+The path associated with the event specifies
+which arm of which switch this is.
+@c @item pragma_first
+@c @item pragma_later
+@end table
+
+A path is a sequence of path components separated by semicolons.
+Each path component is one of the following:
+
+@table @code
+@item c@var{num}
+The @var{num}'th conjunct of a conjunction.
+@item d@var{num}
+The @var{num}'th disjunct of a disjunction.
+@item s@var{num}
+The @var{num}'th arm of a switch.
+@item ?
+The condition of an if-then-else.
+@item t
+The then part of an if-then-else.
+@item e
+The else part of an if-then-else.
+@item ~
+The goal inside a negation.
+@item q
+The goal inside an existential quantification.
+@end table
+
+A path describes the position of a goal
+inside the body of a procedure definition.
+For example, if the procedure body is a disjunction
+in which each disjunct is a conjunction,
+then the path @samp{d2;c3;} denotes the third conjunct
+within the second disjunct.
+If the third conjunct within the second disjunct is an atomic goal
+such as a call or a unification,
+then this will be the only goal with whose path has @samp{d2;c3;} as a prefix.
+If it is a compound goal,
+then its components will all have paths that have @samp{d2;c3;} as a prefix,
+e.g. if it is an if-then-else,
+then its three components will have the paths
+@samp{d2;c3;?;}, @samp{d2;c3;t;} and @samp{d2;c3;e;}.
+
+Paths refer to the internal form of the procedure definition.
+When debugging is enabled (and the option --trace-optimized is not given),
+the compiler will try to keep this form
+as close as possible to the source form of the procedure,
+in order to make event paths as useful as possible to the programmer.
+Due to the compiler's flattening of terms,
+and its introduction of extra unifications to implement calls in implied modes,
+the number of conjuncts in a conjunction will frequently differ
+between the source and internal form of a procedure.
+This is rarely a problem, however, as long as you know about it.
+Mode reordering can be a bit more of a problem,
+but it can be avoided by writing single-mode predicates and functions
+so that producers come before consumers.
+The compiler transformation that
+potentially causes the most trouble in the interpretation of goal paths
+is the conversion of disjunctions into switches.
+In most cases, a disjunction is transformed into a single switch,
+and it is usually easy to guess, just from the events within a switch arm,
+just which disjunct the switch arm corresponds to.
+Some cases are more complex;
+for example, it is possible for a single disjunction
+can be transformed into several switches,
+possibly with other, smaller disjunctions inside them.
+In such cases, making sense of goal paths
+may require a look at the internal form of the procedure.
+You can ask the compiler to generate a file
+with the internal forms of the procedures in a given module
+by including the options @samp{-dfinal -Dpaths} on the command line
+when compiling that module.
+
+@node Preparing a program for debugging
+@section Preparing a program for debugging
+
+When you compile a Mercury program, you can specify
+whether you want to be able to run the Mercury debugger on the program or not.
+If you do, the compiler embeds calls to the Mercury debugging system
+into the executable code of the program,
+at the execution points that represent trace events.
+At each event, the debugging system decides
+whether to give control back to the executable immediately,
+or whether to first give control to you,
+allowing you to examine the state of the computation and issue commands.
+
+Mercury supports two broad ways of preparing a program for debugging.
+The simpler way is to compile a program in a debugging grade,
+which you can do directly by specifying a grade
+that includes the word ``debug'' (e.g. @samp{asm_fast.gc.debug}),
+or indirectly by specifying the @samp{--debug} grade option
+to the compiler, linker, and other tools
+(in particular @code{mmc}, @code{mgnuc}, @code{ml}, and @code{c2init}).
+If you follow this way,
+and accept the default settings of the various compiler options
+that control the selection of trace events (which are described below),
+you will be assured of being able to get control
+at every execution point that represents a potential trace event,
+which is very convenient.
+
+The two drawbacks of using a debugging grade
+are the large size of the resulting executables,
+and the fact that often you discover that you need to debug a big program
+only after having built it in a non-debugging grade.
+This is why Mercury also supports another way
+to prepare a program for debugging,
+one that does not require the use of a debugging grade.
+With this way, you can decide, individually for each module,
+which of three trace levels, @samp{none}, @samp{shallow} and @samp{deep},
+you want to compile them with:
+
+@table @samp
+@item none
+A procedure compiled with trace level @samp{none}
+will never generate any events.
+@item deep
+A procedure compiled with trace level @samp{deep}
+will always generate all the events requested by the user.
+By default, this is all possible events,
+but you can tell the compiler that
+you are not interested in some kinds of events
+via compiler options (see below).
+@item shallow
+A procedure compiled with trace level @samp{shallow}
+will generate interface events
+if it is called from a procedure compiled with trace level @samp{deep},
+but it will never generate any internal events,
+and it will not generate any interface events either
+if it is called from a procedure compiled with trace level @samp{shallow}.
+If it is called from a procedure compiled with trace level @samp{none},
+the way it will behave is dictated by whether
+its nearest ancestor whose trace level is not @samp{none}
+has trace level @samp{deep} or @samp{shallow}.
+@end table
+
+The intended uses of these trace levels are as follows.
+
+@table @samp
+@item deep
+You should compile a module with trace level @samp{deep}
+if you suspect there may be a bug in the module,
+or if you think that being able to examine what happens inside that module
+can help you locate a bug.
+@item shallow
+You should compile a module with trace level @samp{shallow}
+if you believe the code of the module is reliable and unlikely to have bugs,
+but you still want to be able to get control at calls to and returns from
+any predicates and functions defined in the module,
+and if you want to be able to see the arguments of those calls.
+@item none
+You should compile a module with trace level @samp{none}
+only if you are reasonably confident that the module is reliable,
+and if you believe that knowing what calls other modules make to this module
+would not significantly benefit you in your debugging.
+@end table
+
+In general, it is a good idea for most or all modules
+that can be called from modules compiled with trace level @samp{deep}
+to be compiled with at least trace level @samp{shallow}.
+
+You can control what trace level a module is compiled with
+by giving one of the following compiler options:
+
+@table @samp
+@item --trace shallow
+This always sets the trace level to @samp{shallow}.
+@item --trace deep
+This always sets the trace level to @samp{deep}.
+@item --trace minimum
+In debugging grades, this sets the trace level to @samp{shallow};
+in non-debugging grades, it sets the trace level to @samp{none}.
+@item --trace default
+In debugging grades, this sets the trace level to @samp{deep};
+in non-debugging grades, it sets the trace level to @samp{none}.
+@end table
+
+As the name implies, the fourth alternative is the default,
+which is why by default you get
+no debugging capability in non-debugging grades
+and full debugging capability in debugging grades.
+The table also shows that in a debugging grade,
+no module can be compiled with trace level @samp{none}.
+
+@strong{Important note}:
+If you are not using a debugging grade, but you compile
+some modules with @samp{--trace shallow} or @samp{--trace deep},
+then you must also pass the @samp{--trace} (or @samp{-t}) option
+to c2init and to the Mercury linker.
+If you're using Mmake, then you can do this by including @samp{--trace}
+in the @samp{C2INITFLAGS} and @samp{MLFLAGS} variables.
+
+If you're using Mmake, then you can also set the compilation options
+for a single module named @var{Module} by setting the Mmake variable
+@samp{MCFLAGS-@var{Module}}.  For example, to compile the file
+@file{foo.m} with deep tracing, @file{bar.m} with shallow tracing,
+and everything else with no tracing, you could use the following:
+
+@example
+C2INITFLAGS = --trace
+MLFLAGS     = --trace
+MCFLAGS-foo = --trace deep
+MCFLAGS-bar = --trace shallow
+@end example
+
+@node Tracing optimized code
+@section Tracing optimized code
+
+@c XXX we should consider where to document --suppress-trace
+@c and --stack-trace-higher-order
+
+By default, all trace levels other than @samp{none}
+turn off all compiler optimizations
+that can affect the sequence of trace events generated by the program,
+such as inlining.
+If you are specifically interested in
+how the compiler's optimizations affect the trace event sequence,
+you can specify the option @samp{--trace-optimized},
+which tells the compiler that it does not have to disable those optimizations.
+(A small number of low-level optimizations
+have not yet been enhanced to work properly in the presence of tracing,
+so compiler disables these even if @samp{--trace-optimized} is given.)
+
+@node Mercury debugger invocation
+@section Mercury debugger invocation
+
+The executables of Mercury programs
+by default do not invoke the Mercury debugger
+even if some or all of their modules were compiled with some form of tracing,
+and even if the grade of the executable is a debugging grade,
+This is similar to the behaviour of executables
+created by the implementations of other languages;
+for example the executable of a C program compiled with @samp{-g}
+does not automatically invoke gdb or dbx etc when it is executed.
+
+Unlike those other language implementations,
+when you invoke the Mercury debugger @samp{mdb},
+you invoke it not just with the name of an executable
+but with the command line you want to debug.
+If something goes wrong when you execute the command
+
+@example
+@var{prog} @var{arg1} @var{arg2} ...
+@end example
+
+and you want to find the cause of the problem,
+you must execute the command
+
+@example
+mdb @var{prog} @var{arg1} @var{arg2} ...
+@end example
+
+because you do not get a chance
+to specify the command line of the program later.
+
+When the debugger starts up, as part of its initialization
+it executes commands from the following three sources, in order:
+@enumerate
+@item
+The file named by the @samp{MERCURY_DEBUGGER_INIT} environment variable.
+Usually, @samp{mdb} sets this variable to point to a file
+that provides documentation for all the debugger commands
+and defines a small set of aliases.
+However, if @samp{MERCURY_DEBUGGER_INIT} is already defined
+when @samp{mdb} is invoked, it will leave its value unchanged.
+You can use this override ability to provide alternate documentation.
+If the file named by @samp{MERCURY_DEBUGGER_INIT} cannot be read,
+@samp{mdb} will print a warning,
+since in that case, that usual online documentation will not be available.
+@item
+The file named @samp{.mdbrc} in your home directory.
+You can put your usual aliases and settings here.
+@item
+The file named @samp{.mdbrc} in the current working directory.
+You can put program-specific aliases and settings here.
+@end enumerate
+
+@node Mercury debugger concepts
+@section Mercury debugger concepts
+
+The operation of the Mercury debugger @samp{mdb}
+is based on the following concepts.
+
+@table @emph
+@item break points
+The user may associate a break point
+with some events that occur inside a procedure;
+the invocation condition of the break point says which events these are.
+The four possible invocation conditions are:
+@sp 1
+@itemize @bullet
+@item
+the call event,
+@item
+all interface events,
+@item
+all events, and
+@item
+the event at a specific point in the procedure.
+@end itemize
+@sp 1
+The effect of a break point depends on the state of the break point.
+@sp 1
+@itemize @bullet
+@item
+If the state of the break point is @samp{stop},
+execution will stop and user interaction will start
+at any event within the procedure that matches the invocation conditions,
+unless the current debugger command has specifically disabled this behaviour
+(see the concept @samp{strict commands} below).
+@sp 1
+@item
+If the state of the break point is @samp{print},
+the debugger will print any event within the procedure
+that matches the invocation conditions,
+unless the current debugger command has specifically disabled this behaviour
+(see the concept @samp{print level} below).
+@end itemize
+@sp 1
+Neither of these will happen if the break point is disabled.
+@sp 1
+@item strict commands
+When a debugger command steps over some events
+without user interaction at those events,
+the @emph{strictness} of the command controls whether
+the debugger will stop execution and resume user interaction
+at events to which a break point with state @samp{stop} applies.
+By default, the debugger will stop at such events.
+However, if the debugger is executing a strict command,
+it will not stop at an event
+just because a break point in the stop state applies to it.
+@sp 1
+@item print level
+When a debugger command steps over some events
+without user interaction at those events,
+the @emph{print level} controls under what circumstances
+the stepped over events will be printed.
+@sp 1
+@itemize @bullet
+@item
+When the print level is @samp{none},
+none of the stepped over events will be printed.
+@sp 1
+@item
+When the print level is @samp{all},
+all the stepped over events will be printed.
+@sp 1
+@item
+When the print level is @samp{some},
+the debugger will print the event only if a break point applies to the event.
+@end itemize
+@sp 1
+Regardless of the print level, the debugger will print
+any event that causes execution to stop and user interaction to start.
+@sp 1
+@item default print level
+The debugger maintains a default print level.
+The initial value of this variable is @samp{some},
+but this value can be overridden by the user.
+@sp 1
+@item current environment
+Whenever execution stops at an event, the current environment
+is reset to refer to the stack frame of the call specified by the event.
+However, the @samp{up}, @samp{down} and @samp{level} commands can set the current environment
+to refer to one of the ancestors of the current call.
+This will then be the current environment until another of these commands
+changes the environment yet again or execution continues to another event.
+@sp 1
+@item procedure specification
+Some debugger commands, e.g. @samp{break},
+require a parameter that specifies a procedure.
+Such a procedure specification has
+the following components in the following order:
+@itemize @bullet
+@item
+An optional prefix of the form @samp{pred*} or @samp{func*}
+that specifies whether the procedure belongs to a predicate or a function.
+@item
+An optional prefix of the form @samp{@var{module}:} or @samp{@var{module}__}
+that specifies the name of the module that defines
+the predicate or function to which the procedure belongs.
+@item
+The name of the predicate or function to which the procedure belongs.
+@item
+An optional suffix of the form @samp{/@var{arity}}
+that specifies the arity of the predicate or function
+to which the procedure belongs.
+@item
+An optional suffix of the form @samp{-@var{modenum}}
+that specifies the mode number of the procedure
+within the predicate or function to which the procedure belongs.
+@end itemize
+@c @sp 1
+@c XXX interrupts:
+@c If the debugger receives an interrupt, it will stop at the next event
+@c regardless of what command it is executing at the time.
+@c (INTERRUPT HANDLING IS NOT YET IMPLEMENTED.)
+@end table
+
+@node Debugger commands
+@section Debugger commands
+
+When the debugger (as opposed to the program being debugged) is interacting
+with the user, the debugger prints a prompt and reads in a line of text,
+which it will interpret as its next command. Each command line consists
+of several words separated by white space. The first word is the name of
+the command, while any other words give options and/or parameters to the
+command.
+
+Some commands take a number as their first parameter.
+For such commands, users can type `@var{number} @var{command}'
+as well as `@var{command} @var{number}'.
+The debugger will treat the former as the latter,
+even if the number and the command are not separated by white space.
+
+@menu
+* Interactive query commands::
+* Forward movement commands::
+* Backward movement commands::
+* Browsing commands::
+* Breakpoint commands::
+* Parameter commands::
+* Help commands::
+* Experimental commands::
+* Developer commands::
+* Miscellaneous commands::
+@end menu
+
+@node Interactive query commands
+@subsection Interactive query commands
+
+@table @code
+@item query @var{module1} @var{module2} @dots{}
+@itemx cc_query @var{module1} @var{module2} @dots{}
+@itemx io_query @var{module1} @var{module2} @dots{}
+
+@c This documentation has been duplicated in 
+@c Opium-M/source/interactive_queries.op so please tell me (jahier@irisa.fr)
+@c to update my documentation on interactive queries if you update this 
+@c subsection.
+
+These commands allow you to type in queries (goals) interactively
+in the debugger.  When you use one of these commands, the debugger
+will respond with a query prompt (@samp{?-} or @samp{run <--}),
+at which you can type in a goal; the debugger will the compile
+and execute the goal and display the answer(s).
+You can return from the query prompt to the @samp{mdb>} prompt
+by typing the end-of-file indicator (typically control-D or control-Z),
+or by typing @samp{quit.}.
+@sp 1
+The module names @var{module1}, @var{module2}, @dots{} specify
+which modules will be imported.  Note that you can also
+add new modules to the list of imports directly at the query prompt,
+by using a command of the form @samp{[@var{module}]}, e.g. @samp{[int]}.
+You need to import all the modules that define symbols used in your query.
+Queries can only use symbols that are exported from a module;
+entities which are declared in a module's implementation section
+only cannot be used.
+@sp 1
+The three variants differ in what kind of goals they allow. 
+For goals which perform I/O, you need to use @samp{io_query};
+this lets you type in the goal using DCG syntax.
+For goals which don't do I/O, but which have determinism
+@samp{cc_nondet} or @samp{cc_multi}, you need to use @samp{cc_query};
+this finds only one solution to the specified goal.
+For all other goals, you can use plain @samp{query}, which
+finds all the solutions to the goal.
+@sp 1
+For @samp{query} and @samp{cc_query}, the debugger will print
+out all the variables in the goal using @samp{io__write}.
+The goal must bind all of its variables to ground terms,
+otherwise you will get a mode error.
+@sp 1
+The current implementation works by compiling the queries on-the-fly
+and then dynamically linking them into the program being debugged.
+Thus it may take a little while for your query to be executed.
+Each query will be written to a file named @file{query.m} in the current
+directory, so make sure you don't name your source file @file{query.m}.
+Note that dynamic linking may not be supported on some systems;
+if you are using a system for which dynamic linking is not supported,
+you will get an error message when you try to run these commands.
+@sp 1
+You may also need to build your program using shared libraries
+for interactive queries to work.
+With Linux on the Intel x86 architecture, the default is for
+executables to be statically linked, which means that dynamic
+linking won't work, and hence interactive queries won't work either
+(the error message is rather obscure: the dynamic linker complains
+about the symbol @samp{__data_start} being undefined).
+To build with shared libraries, you can use
+@samp{MGNUCFLAGS=--pic-reg} and @samp{MLFLAGS=--shared} in your
+Mmakefile.  See the @file{README.Linux} file in the Mercury
+distribution for more details.
+
+@end table
+
+@node Forward movement commands
+@subsection Forward movement commands
+
+@table @code
+@item step [-NSans] [@var{num}]
+Steps forward @var{num} events.
+If this command is given at event @var{cur}, continues execution until
+event @var{cur} + @var{num}. The default value of @var{num} is 1.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is not strict, and it uses the default print level.
+@sp 1
+A command line containing only a number @var{num} is interpreted as
+if it were `step @var{num}'.
+@sp 1
+An empty command line is interpreted as `step 1'.
+@sp 1
+@item goto [-NSans] @var{num}
+Continues execution until the program reaches event number @var{num}.
+If the current event number is larger than @var{num}, it reports an error.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is strict, and it uses the default print level.
+@sp 1
+@item next [-NSans] [@var{num}]
+Continues execution until it reaches the next event of
+the @var{num}'th ancestor of the call to which the current event refers.
+The default value of @var{num} is zero,
+which means skipping to the next event of the current call.
+Reports an error if execution is already at the end of the specified call.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is strict, and it uses the default print level.
+@sp 1
+@item finish [-NSans] [@var{num}]
+Continues execution until it reaches a final (EXIT, FAIL or EXCP) port
+of the @var{num}'th ancestor of the call to which the current event refers.
+The default value of @var{num} is zero,
+which means skipping to the end of the current call.
+Reports an error if execution is already at the desired port.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is strict, and it uses the default print level.
+@c The documentation of fail is commented out, because the implementation does
+@c not yet do this right thing when the procedure call we want to get to the
+@c FAIL port of is inside a commit.
+@c @sp 1
+@c @item fail [-NSans] [@var{num}]
+@c Continues execution until it reaches a FAIL or EXCP port
+@c of the @var{num}'th ancestor of the call to which the current event refers.
+@c The default value of @var{num} is zero,
+@c which means skipping to the end of the current call.
+@c Reports an error if execution is already at the desired port,
+@c or if the determinism of the selected call
+@c does not guarantee that it will eventually fail.
+@c @sp 1
+@c The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@c @samp{-a} or @samp{--all} specify the print level to use
+@c for the duration of the command,
+@c while the options @samp{-S} or @samp{--strict}
+@c and @samp{-N} or @samp{--nostrict} specify
+@c the strictness of the command.
+@c @sp 1
+@c By default, this command is strict, and it uses the default print level.
+@sp 1
+@item exception [-NSans]
+Continues the program until execution reaches an exception event.
+Reports an error if the current event is already an exception event.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is strict, and it uses the default print level.
+@sp 1
+@item return [-NSans]
+Continues the program until the program finished returning,
+i.e. until it reaches a port other than EXIT.
+Reports an error if the current event already refers to such a port.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is strict, and it uses the default print level.
+@sp 1
+@item forward [-NSans]
+Continues the program until the program resumes forward execution,
+i.e. until it reaches a port other than REDO or FAIL.
+Reports an error if the current event already refers to such a port.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is strict, and it uses the default print level.
+@sp 1
+@item mindepth [-NSans] @var{depth}
+Continues the program until the program reaches an event
+whose depth is at least @var{depth}.
+Reports an error if the current event already refers to such a port.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is strict, and it uses the default print level.
+@sp 1
+@item maxdepth [-NSans] @var{depth}
+Continues the program until the program reaches an event
+whose depth is at most @var{depth}.
+Reports an error if the current event already refers to such a port.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is strict, and it uses the default print level.
+@sp 1
+@item continue [-NSans]
+Continues execution until it reaches the end of the program.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is not strict. The print level used
+by the command by default depends on the final strictness level:
+if the command is strict, it is @samp{none}, otherwise it is @samp{some}.
+@end table
+@sp 1
+@node Backward movement commands
+@subsection Backward movement commands
+@sp 1
+@table @code
+@item retry
+Restarts execution at the call port
+of the call corresponding to the current event.
+@sp 1
+The command will report an error unless
+the values of all the input arguments are available at the current port.
+(The compiler will keep the values
+of the input arguments of traced predicates as long as possible,
+but it cannot keep them beyond the point where they are destructively updated.)
+@c XXX THE EXCEPTION IS NOT YET IMPLEMENTED.
+@c The exception is values of type `io__state';
+@c the debugger can perform a retry if the only missing value is of
+@c type `io__state' (there can be only one io__state at any given time).
+@c @sp 1
+@c A retry in which the values of all input arguments are available
+@c works fine, provided that the predicates defined in C code that are
+@c called inside the repeated computation do not pose any problems.
+@c A retry in which a value of type `io__state' is missing has the
+@c following effects:
+@c @sp 1
+@c @itemize @bullet
+@c @item
+@c Any input and/or output actions in the repeated code will be repeated.
+@c @item
+@c Any file close actions in the repeated code
+@c for which the corresponding file open action is not also in the repeated code
+@c may cause later I/O actions referring to the file to fail.
+@c @item
+@c Any file open actions in the repeated code
+@c for which the corresponding file close action
+@c is not also in the repeated code
+@c may cause later file open actions to fail due to file descriptor leak.
+@c @end itemize
+@sp 1
+The debugger can perform a retry only from an exit or fail port;
+only at these ports does the debugger have enough information
+to figure out how to reset the stacks.
+If the debugger is not at such a port when a retry command is given,
+the debugger will continue forward execution
+until it reaches an exit or fail port of the call to be retried
+before it performs the retry.
+This may require a noticeable amount of time.
+@c XXX not yet
+@c and may result in the execution of I/O and/or other side-effects.
+@sp 1
+@item retry @var{num}
+Restarts execution at the call port of the call corresponding to
+the @var{num}'th ancestor of the call to which the current event belongs.
+For example, if @var{num} is 1, it restarts the parent of the current call.
+@end table
+@sp 1
+@node Browsing commands
+@subsection Browsing commands
+@sp 1
+@table @code
+@item vars
+Prints the names of all the known variables in the current environment,
+together with an ordinal number for each variable.
+@sp 1
+@item print [-fpv] @var{name}
+@itemx print [-fpv] @var{num}
+Prints the value of the variable in the current environment
+with the given name, or with the given ordinal number.
+This is a non-interactive version of the @samp{browse}
+command (see below).  Various settings
+which affect the way that terms are printed out
+(including e.g. the maximum term depth) can be set using
+the @samp{set} command.
+@sp 1
+The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+and @samp{-v} or @samp{--verbose} specify the format to use for printing.
+@sp 1
+@item print [-fpv] *
+Prints the values of all the known variables in the current environment.
+@sp 1
+The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+and @samp{-v} or @samp{--verbose} specify the format to use for printing.
+@sp 1
+@item print [-fpv] exception
+Prints the value of the exception at an EXCP port.
+Reports an error if the current event does not refer to such a port.
+@sp 1
+The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+and @samp{-v} or @samp{--verbose} specify the format to use for printing.
+@sp 1
+@item browse [-fpv] @var{name}
+@itemx browse [-fpv] @var{num}
+Invokes an interactive term browser to browse the value of the
+variable in the current environment with the given ordinal number or
+with the given name.
+@sp 1
+The interactive term browser allows you
+to selectively examine particular subterms. 
+The depth and size of printed terms
+may be controlled. 
+The displayed terms may also be clipped to fit
+within a single screen.
+@sp 1
+The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+and @samp{-v} or @samp{--verbose} specify the format to use for browsing.
+@sp 1
+For further documentation on the interactive term browser,
+invoke the @samp{browse} command from within @samp{mdb} and then
+type @samp{help} at the @samp{browser>} prompt.
+@sp 1
+@item browse [-fpv] exception
+Invokes the interactive term browser to browse
+the value of the exception at an EXCP port.
+Reports an error if the current event does not refer to such a port.
+@sp 1
+The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+and @samp{-v} or @samp{--verbose} specify the format to use for browsing.
+@sp 1
+@item stack [-d]
+Prints the names of the ancestors of the call
+specified by the current event.
+If two or more ancestor calls are for the same procedure,
+the procedure identification will be printed once
+with the appropriate multiplicity annotation.
+@sp 1
+The option @samp{-d} or @samp{--detailed}
+specifies that for each ancestor call,
+the call's event number, sequence number and depth should also be printed
+if the call is to a procedure that is being execution traced.
+@sp 1
+This command will report an error if there is no stack trace
+information available about any ancestor.
+@sp 1
+@item up [-d] [@var{num}]
+Sets the current environment to the stack frame
+of the @var{num}'th level ancestor of the current environment
+(the immediate caller is the first-level ancestor).
+@sp 1
+If @var{num} is not specified, the default value is one.
+@sp 1
+This command will report an error
+if the current environment doesn't have the required number of ancestors,
+or if there is no execution trace information about the requested ancestor,
+or if there is no stack trace information about any of the ancestors
+between the current environment and the requested ancestor.
+@sp 1
+The option @samp{-d} or @samp{--detailed}
+specifies that for each ancestor call,
+the call's event number, sequence number and depth should also be printed
+if the call is to a procedure that is being execution traced.
+@sp 1
+@item down [-d] [@var{num}]
+Sets the current environment to the stack frame
+of the @var{num}'th level descendant of the current environment
+(the procedure called by the current environment
+is the first-level descendant).
+@sp 1
+If @var{num} is not specified, the default value is one.
+@sp 1
+This command will report an error
+if there is no execution trace information about the requested descendant.
+@sp 1
+The option @samp{-d} or @samp{--detailed}
+specifies that for each ancestor call,
+the call's event number, sequence number and depth should also be printed
+if the call is to a procedure that is being execution traced.
+@sp 1
+@item level [-d] [@var{num}]
+Sets the current environment to the stack frame of the @var{num}'th
+level ancestor of the call to which the current event belongs.
+The zero'th ancestor is the call of the event itself.
+@sp 1
+This command will report an error
+if the current environment doesn't have the required number of ancestors,
+or if there is no execution trace information about the requested ancestor,
+or if there is no stack trace information about any of the ancestors
+between the current environment and the requested ancestor.
+@sp 1
+The option @samp{-d} or @samp{--detailed}
+specifies that for each ancestor call,
+the call's event number, sequence number and depth should also be printed
+if the call is to a procedure that is being execution traced.
+@sp 1
+@item current
+Prints the current event.
+This is useful if the details of the event,
+which were printed when control arrived at the event,
+have since scrolled off the screen.
+@sp 1
+@item set [-APBfpv] @var{param} @var{value}
+Updates the configuration parameters of the browser.
+The parameters that can be configured are
+@samp{format}, @samp{depth}, @samp{size}, @samp{width} and @samp{lines}.
+@sp 1
+@itemize @bullet
+@item
+@samp{format} can be set to @samp{flat}, @samp{pretty} or @samp{verbose}
+to change the output style of the browser.
+@sp 1
+@item
+@samp{depth} is the maximum depth to which subterms will be displayed.
+@sp 1
+@item
+@samp{size} is the suggested maximum number of functors to display.
+Beyond this limit, the browser will abbreviate the output.
+@sp 1
+@item
+@samp{width} is the width of the screen in characters.
+@sp 1
+@item
+@samp{lines} is the maximum number of lines of one term to display.
+@end itemize
+@sp 1
+The browser maintains separate configuration parameters
+for the three commands @samp{print *}, @samp{print @var{var}},
+and @samp{browse @var{var}}.
+A single @samp{set} command can modify the parameters
+for more than one of these;
+the options @samp{-A} or @samp{--print-all}, @samp{-P} or @samp{--print},
+and @samp{-B} or @samp{--browse}
+select which commands will be affected by the change.
+If none of these options is given,
+the default is to affect all commands.
+@sp 1
+The browser also maintains separate configuration parameters
+for the three different output formats.
+This applies to all parameters except for the format itself.
+The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+and @samp{-v} or @samp{--verbose}
+select which formats will be affected by the change.
+If none of these options is given,
+the default is to affect all formats.
+In the case that the format itself is being set,
+these options are ignored.
+@end table
+@sp 1
+@node Breakpoint commands
+@subsection Breakpoint commands
+@sp 1
+@table @code
+@item break [-PS] @var{filename}:@var{linenumber}
+Puts a break point on the specified line of the specified source file,
+if there is an event or a call at that position.
+If the filename is omitted,
+it defaults to the filename from the context of the current event.
+@sp 1
+The options @samp{-P} or @samp{--print}, and @samp{-S} or @samp{--stop}
+specify the action to be taken at the break point.
+@sp 1
+By default, the initial state of the break point is @samp{stop}.
+@item break [-AOPSaei] @var{proc-spec}
+@c <module name> <predicate name> [<arity> [<mode> [<predfunc>]]]
+Puts a break point on the specified procedure.
+@sp 1
+The options @samp{-A} or @samp{--select-all},
+and @samp{-O} or @samp{--select-one}
+select the action to be taken
+if the specification matches more than one procedure.
+If you have specified option @samp{-A} or @samp{--select-all},
+mdb will put a breakpoint on all matched procedures,
+whereas if you have specified option @samp{-O} or @samp{--select-one},
+mdb will report an error.
+By default, mdb will ask you whether you want to put a breakpoint
+on all matched procedures or just one, and if so, which one.
+@sp 1
+The options @samp{-P} or @samp{--print}, and @samp{-S} or @samp{--stop}
+specify the action to be taken at the break point,
+while the options @samp{-a} or @samp{--all},
+@samp{-e} or @samp{--entry}, and @samp{-i} or @samp{--interface}
+specify the invocation conditions of the break point.
+@sp 1
+By default, the action of the break point is @samp{stop},
+and its invocation condition is @samp{interface}.
+@sp 1
+@item break [-PS] here
+Puts a break point on the procedure referred to by the current event,
+with the invocation condition being the event at the current location
+in the procedure body.
+@sp 1
+The options @samp{-P} or @samp{--print}, and @samp{-S} or @samp{--stop}
+specify the action to be taken at the break point.
+@sp 1
+By default, the initial state of the break point is @samp{stop}.
+@sp 1
+@item break info
+Lists the details and status of all break points.
+@sp 1
+@item disable @var{num}
+Disables the break point with the given number.
+Reports an error if there is no break point with that number.
+@sp 1
+@item disable *
+Disables all break points.
+@sp 1
+@item disable
+Disables the most recently added breakpoint.
+Reports an error if the most recently added breakpoint has since been deleted.
+@sp 1
+@item enable @var{num}
+Enables the break point with the given number.
+Reports an error if there is no break point with that number.
+@sp 1
+@item enable *
+Enables all break points.
+@sp 1
+@item enable
+Enables the most recently added breakpoint.
+Reports an error if the most recently added breakpoint has since been deleted.
+@sp 1
+@item delete @var{num}
+Deletes the break point with the given number.
+Reports an error if there is no break point with that number.
+@sp 1
+@item delete *
+Deletes all break points.
+@sp 1
+@item delete
+Deletes the most recently added breakpoint.
+Reports an error if the most recently added breakpoint
+has already been deleted.
+@sp 1
+@item modules
+Lists all the debuggable modules
+(i.e. modules that have debugging information).
+@sp 1
+@item procedures @var{module}
+Lists all the procedures in the debuggable module @var{module}.
+@sp 1
+@item register
+Registers all debuggable modules with the debugger.
+Has no effect if this registration has already been done.
+The debugger will perform this registration when creating breakpoints
+and when listing debuggable modules and/or procedures.
+@end table
+@sp 1
+@node Parameter commands
+@subsection Parameter commands
+@sp 1
+@table @code
+@item mmc_options @var{option1} @var{option2} @dots{}
+This command sets the options that will be passed to @samp{mmc}
+to compile your query when you use one of the query commands:
+@samp{query}, @samp{cc_query}, or @samp{io_query}.
+For example, if a query results in a compile error,
+it may sometimes be helpful to use @samp{mmc_options --verbose-error-messages}.
+@sp 1
+@item printlevel none
+Sets the default print level to @samp{none}.
+@sp 1
+@item printlevel some
+Sets the default print level to @samp{some}.
+@sp 1
+@item printlevel all
+Sets the default print level to @samp{all}.
+@sp 1
+@item printlevel
+Reports the current default print level.
+@sp 1
+@item echo on
+Turns on the echoing of commands.
+@sp 1
+@item echo off
+Turns off the echoing of commands.
+@sp 1
+@item echo
+Reports whether commands are being echoed or not.
+@sp 1
+@item scroll on
+Turns on user control over the scrolling of sequences of event reports.
+This means that every screenful of event reports
+will be followed by a @samp{--more--} prompt.
+You may type an empty line, which allows the debugger
+to continue to print the next screenful of event reports.
+By typing a line that starts with @samp{a}, @samp{s} or @samp{n},
+you can override the print level of the current command,
+setting it to @samp{all}, @samp{some} or @samp{none} respectively.
+By typing a line that starts with @samp{q},
+you can abort the current debugger command
+and get back control at the next event.
+@sp 1
+@item scroll off
+Turns off user control over the scrolling of sequences of event reports.
+@sp 1
+@item scroll @var{size}
+Sets the scroll window size to @var{size},
+which tells scroll control to stop and print a @samp{--more--} prompt
+after every @var{size - 1} events.
+The default value of @var{size}
+is the value of the @samp{LINES} environment variable,
+which should correspond to the number of lines available on the terminal.
+@sp 1
+@item scroll
+Reports whether user scroll control is enabled and what the window size is.
+@sp 1
+@item context none
+When reporting events or ancestor levels,
+does not print contexts (filename/line number pairs).
+@sp 1
+@item context before
+When reporting events or ancestor levels,
+prints contexts (filename/line number pairs)
+before the identification of the event or call to which they refer,
+on the same line.
+With long fully qualified predicate and function names,
+this may make the line wrap around.
+@sp 1
+@item context after
+When reporting events or ancestor levels,
+prints contexts (filename/line number pairs)
+after the identification of the event or call to which they refer,
+on the same line.
+With long fully qualified predicate and function names,
+this may make the line wrap around.
+@sp 1
+@item context prevline
+When reporting events or ancestor levels,
+prints contexts (filename/line number pairs) on a separate line
+before the identification of the event or call to which they refer.
+@sp 1
+@item context nextline
+When reporting events or ancestor levels,
+prints contexts (filename/line number pairs) on a separate line
+after the identification of the event or call to which they refer.
+@sp 1
+@item context
+Reports where contexts are being printed.
+@sp 1
+@item alias @var{name} @var{command} [@var{command-parameter} ...]
+Introduces @var{name} as an alias
+for the given command with the given parameters.
+Whenever a command line has @var{name} as its first word,
+the debugger will substitute the given command and parameters for this word
+before executing the command line.
+@sp 1
+If @var{name} is the upper-case word @samp{EMPTY},
+the debugger will substitute the given command and parameters
+whenever the user types in an empty command line.
+@sp 1
+@sp 1
+If @var{name} is the upper-case word @samp{NUMBER},
+the debugger will insert the given command and parameters
+before the command line
+whenever the user types in a command line that consists of a single number.
+@sp 1
+@item unalias @var{name}
+Removes any existing alias for @var{name}.
+@end table
+@sp 1
+@node Help commands
+@subsection Help commands
+@sp 1
+@table @code
+@item document_category @var{slot} @var{category}
+Create a new category of help items, named @var{category}.
+The summary text for the category is given by the lines following this command,
+up to but not including a line containing only the lower-case word @samp{end}.
+The list of category summaries printed in response to the command @samp{help}
+is ordered on the integer @var{slot} numbers of the categories involved.
+@sp 1
+@item document @var{category} @var{slot} @var{item}
+Create a new help item named @var{item} in the help category @var{category}.
+The text for the help item is given by the lines following this command,
+up to but not including a line containing only the lower-case word @samp{end}.
+The list of items printed in response to the command @samp{help @var{category}}
+is ordered on the integer @var{slot} numbers of the items involved.
+@sp 1
+@item help @var{category} @var{item}
+Prints help text about the item @var{item} in category @var{category}.
+@sp 1
+@item help @var{word}
+Prints help text about @var{word},
+which may be the name of a help category or a help item.
+@sp 1
+@item help
+Prints summary information about all the available help categories.
+@end table
+@sp 1
+@node Experimental commands
+@subsection Experimental commands
+@sp 1
+@table @code
+@item histogram_all @var{filename}
+Prints (to file @var{filename})
+a histogram that counts all events at various depths
+since the start of the program.
+This histogram is available
+only in some experimental versions of the Mercury runtime system.
+@sp 1
+@item histogram_exp @var{filename}
+Prints (to file @var{filename})
+a histogram that counts all events at various depths
+since the start of the program or since the histogram was last cleared.
+This histogram is available
+only in some experimental versions of the Mercury runtime system.
+@sp 1
+@item clear_histogram
+Clears the histogram printed by @samp{histogram_exp},
+i.e. sets the counts for all depths to zero.
+@end table
+@node Developer commands
+@subsection Developer commands
+@sp 1
+The following commands are intended for use by the developers
+of the Mercury implementation.
+@sp 1
+@table @code
+@item nondet_stack
+Prints the contents of the fixed slots of the frames on the nondet stack.
+@sp 1
+@item stack_regs
+Prints the contents of the virtual machine registers
+that point to the det and nondet stacks.
+@sp 1
+@item all_regs
+Prints the contents of all the virtual machine registers.
+@sp 1
+@item table_io
+Reports which phase of I/O tabling we are in at the moment.
+@sp 1
+@item table_io stats
+Reports statistics about I/O tabling.
+@sp 1
+@item table_io start
+Tells the debugger to start tabling I/O actions.
+@sp 1
+@item table_io end
+Tells the debugger to stop tabling I/O actions.
+@sp 1
+@item proc_stats
+Prints statistics about proc layout structures in the program.
+@sp 1
+@item proc_stats @var{filename}
+Prints statistics about proc layout structures in the program
+to the file @var{filename}.
+@sp 1
+@item label_stats
+Prints statistics about label layout structures in the program.
+@sp 1
+@item label_stats @var{filename}
+Prints statistics about label layout structures in the program
+to the file @var{filename}.
+@end table
+@node Miscellaneous commands
+@subsection Miscellaneous commands
+@sp 1
+@table @code
+@item source [-i] @var{filename}
+Executes the commands in the file named @var{filename}.
+@sp 1
+The option @samp{-i} or @samp{--ignore-errors} tells @samp{mdb}
+not to complain if the named file does not exist or is not readable.
+@sp 1
+@item save @var{filename}
+Saves current set of breakpoints and the current set of aliases
+in the named file as a set of @samp{break} and @samp{alias} commands.
+Sourcing the file will recreate the current breakpoints and aliases.
+@sp 1
+@item quit [-y]
+Quits the debugger and aborts the execution of the program.
+If the option @samp{-y} is not present, asks for confirmation first.
+Any answer starting with @samp{y}, or end-of-file, is considered confirmation.
+@sp 1
+End-of-file on the debugger's input is considered a quit command.
+@end table
+
+@ifset aditi
+@node Using Aditi
+@chapter Using Aditi
+
+The Mercury compiler allows compilation of predicates for execution
+using the Aditi2 deductive database system. There are several sources
+of useful information:
+
+@itemize @bullet
+@item
+the ``Aditi deductive database interface'' section of the
+``Implementation-dependent extensions'' chapter in the
+Mercury Language Reference Manual
+@item
+the Aditi web site at <http://www.cs.mu.oz.au/aditi>
+@item
+the documentation supplied with Aditi, especially the file
+@file{$ADITI_HOME/doc/aditi.m}
+@item
+the samples provided with the Aditi distribution in @file{$ADITI_HOME/demos}
+@end itemize
+
+As an alternative to compiling stand-alone programs, you can execute
+queries using the Aditi query shell.
+
+The Aditi interface library is installed as part of the Aditi
+installation process. To use the Aditi library in your programs, use
+the Mmakefile in @file{$ADITI_HOME/demos/transactions} as a template.
+
+@end ifset
+
+@node Profiling
+@chapter Profiling
+
+@menu
+* Profiling introduction::          What is profiling useful for?
+* Building profiled applications::  How to enable profiling.
+* Time profiling methods::          Choose user, user + system, or real time.
+* Creating the profile::            How to create profile data.
+* Displaying the profile::          How to display the profile data.
+* Analysis of results::             How to interpret the output.
+* Memory profiling::                Profiling memory usage rather than time.
+@end menu
+
+@node Profiling introduction
+@section Introduction
+
+The Mercury profiler @samp{mprof} is a tool which can be used to
+analyze a Mercury program's performance, so that the programmer can
+determine which predicates or functions are taking up a
+disproportionate amount of the execution time.
+
+To obtain the best trade-off between productivity and efficiency,
+programmers should not spend too much time optimizing their code
+until they know which parts of the code are really taking up most
+of the time.  Only once the code has been profiled should the
+programmer consider making optimizations that would improve
+efficiency at the expense of readability or ease of maintenance.
+
+A good profiler is a tool that should be part of every software
+engineer's toolkit.
+
+@node Building profiled applications
+@section Building profiled applications
+
+To enable profiling, your program must be built with profiling enabled.
+This can be done by passing the @samp{-p} (@samp{--profiling}) option
+to @samp{mmc} (and also to @samp{mgnuc} and @samp{ml}, if you invoke them
+separately).  If you are using Mmake, then
+you can do this by setting the @samp{GRADEFLAGS} variable in your Mmakefile,
+e.g. by adding the line @samp{GRADEFLAGS=--profiling}. 
+For more information about the different grades, see
+@ref{Compilation model options}.
+
+Enabling profiling has several effects.  Firstly, it causes the
+compiler to generate slightly modified code which counts the number
+of times each predicate or function is called, and for every call,
+records the caller and callee.  Secondly, your program will be linked
+with versions of the library and runtime that were compiled with
+profiling enabled.  (It also has the effect for each source file the compiler
+generates the static call graph for that file in @samp{@var{module}.prof}.)
+
+@node Time profiling methods
+@section Time profiling methods
+
+You can control whether profiling measures
+real (elapsed) time, user time plus system time, or user time only,
+by including the options @samp{-Tr}, @samp{-Tp}, or @samp{-Tv} respectively
+in the environment variable MERCURY_OPTIONS
+when you run the program to be profiled.
+@c (See the environment variables section below.)
+Currently, the @samp{-Tp} and @samp{-Tv} options don't work on Windows,
+so on Windows you must explicitly specify @samp{-Tr}.
+@c the above sentence is duplicated below
+
+The default is user time plus system time,
+which counts all time spent executing the process,
+including time spent by the operating system performing
+working on behalf of the process,
+but not including time that the process was suspended
+(e.g. due to time slicing, or while waiting for input).
+When measuring real time, profiling counts
+even periods during which the process was suspended.
+When measuring user time only, profiling does not count
+time inside the operating system at all.
+
+@node Creating the profile
+@section Creating the profile
+
+The next step is to run your program.  The profiling version of your
+program will collect profiling information during execution, and
+save this information in the files @file{Prof.Counts}, @file{Prof.Decls},
+and @file{Prof.CallPair}.
+(@file{Prof.Decl} contains the names of the procedures and their
+associated addresses, @file{Prof.CallPair} records the number of times
+each procedure was called by each different caller, and @file{Prof.Counts}
+records the number of times that execution was in each procedure
+when a profiling interrupt occurred.)
+
+It is also possible to combine profiling results from multiple runs of
+your program.  You can do by running your program several times, and
+typing @samp{mprof_merge_counts} after each run.
+
+Due to a known timing-related bug in our code, you may occasionally get
+segmentation violations when running your program with time profiling enabled.
+If this happens, just run it again --- the problem occurs only very rarely.
+
+@node Displaying the profile
+@section Displaying the profile
+
+To display the profile, just type @samp{mprof}.  This will read the
+@file{Prof.*} files and display the flat profile in a nice human-readable
+format.  If you also want to see the call graph profile, which takes a lot
+longer to generate, type @samp{mprof -c}.
+
+Note that @samp{mprof} can take quite a while to execute, and will
+usually produce quite a lot of output, so you will usually want to
+redirect the output into a file with a command such as
+@samp{mprof > mprof.out}.
+
+For programs built with @samp{--high-level-code}, you need to also
+pass the @samp{--no-demangle} option to @samp{mprof}.
+
+@node Analysis of results
+@section Analysis of results
+
+The profile output consists of three major sections.  These are
+named the call graph profile, the flat profile and the alphabetic listing.
+
+The call graph profile presents the local call graph of each
+procedure.  For each procedure it shows the parents (callers) and
+children (callees) of that procedure, and shows the execution time and
+call counts for each parent and child.  It is sorted on the total
+amount of time spent in the procedure and all of its descendents (i.e.
+all of the procedures that it calls, directly or indirectly.)
+
+The flat profile presents the just execution time spent in each procedure.
+It does not count the time spent in descendents of a procedure.
+
+The alphabetic listing just lists the procedures in alphabetical order,
+along with their index number in the call graph profile, so that you can
+quickly find the entry for a particular procedure in the call graph profile.
+
+The profiler works by interrupting the program at frequent intervals,
+and each time recording the currently active procedure and its caller.
+It uses these counts to determine the proportion of the total time spent in
+each procedure.  This means that the figures calculated for these times
+are only a statistical approximation to the real values, and so they
+should be treated with some caution.
+
+The time spent in a procedure and its descendents is calculated by
+propagating the times up the call graph, assuming that each call to a
+procedure from a particular caller takes the same amount of time.
+This assumption is usually reasonable, but again the results should
+be treated with caution.
+
+Note that any time spent in a C function (e.g. time spent in
+@samp{GC_malloc()}, which does memory allocation and garbage collection) is
+credited to the Mercury procedure that called that C function.
+
+Here is a small portion of the call graph profile from an example program.
+
+@example
+                                  called/total       parents
+index  %time    self descendents  called+self    name           index
+                                  called/total       children
+
+                                                     <spontaneous>
+[1]    100.0    0.00        0.75       0         call_engine_label [1]
+                0.00        0.75       1/1           do_interpreter [3]
+
+-----------------------------------------------
+
+                0.00        0.75       1/1           do_interpreter [3]
+[2]    100.0    0.00        0.75       1         io__run/0(0) [2]
+                0.00        0.00       1/1           io__init_state/2(0) [11]
+                0.00        0.74       1/1           main/2(0) [4]
+
+-----------------------------------------------
+
+                0.00        0.75       1/1           call_engine_label [1]
+[3]    100.0    0.00        0.75       1         do_interpreter [3]
+                0.00        0.75       1/1           io__run/0(0) [2]
+
+-----------------------------------------------
+
+                0.00        0.74       1/1           io__run/0(0) [2]
+[4]     99.9    0.00        0.74       1         main/2(0) [4]
+                0.00        0.74       1/1           sort/2(0) [5]
+                0.00        0.00       1/1           print_list/3(0) [16]
+                0.00        0.00       1/10          io__write_string/3(0) [18]
+
+-----------------------------------------------
+
+                0.00        0.74       1/1           main/2(0) [4]
+[5]     99.9    0.00        0.74       1         sort/2(0) [5]
+                0.05        0.65       1/1           list__perm/2(0) [6]
+                0.00        0.09   40320/40320       sorted/1(0) [10]
+
+-----------------------------------------------
+
+                                       8             list__perm/2(0) [6]
+                0.05        0.65       1/1           sort/2(0) [5]
+[6]     86.6    0.05        0.65       1+8      list__perm/2(0) [6]
+                0.00        0.60    5914/5914        list__insert/3(2) [7]
+                                       8             list__perm/2(0) [6]
+
+-----------------------------------------------
+
+                0.00        0.60    5914/5914        list__perm/2(0) [6]
+[7]     80.0    0.00        0.60    5914         list__insert/3(2) [7]
+                0.60        0.60    5914/5914        list__delete/3(3) [8]
+
+-----------------------------------------------
+
+                                   40319             list__delete/3(3) [8]
+                0.60        0.60    5914/5914        list__insert/3(2) [7]
+[8]     80.0    0.60        0.60    5914+40319  list__delete/3(3) [8]
+                                   40319             list__delete/3(3) [8]
+
+-----------------------------------------------
+
+                0.00        0.00       3/69283       tree234__set/4(0) [15]
+                0.09        0.09   69280/69283       sorted/1(0) [10]
+[9]     13.3    0.10        0.10   69283         compare/3(0) [9]
+                0.00        0.00       3/3           __Compare___io__stream/0(0) [20]
+                0.00        0.00   69280/69280       builtin_compare_int/3(0) [27]
+
+-----------------------------------------------
+
+                0.00        0.09   40320/40320       sort/2(0) [5]
+[10]    13.3    0.00        0.09   40320         sorted/1(0) [10]
+                0.09        0.09   69280/69283       compare/3(0) [9]
+
+-----------------------------------------------
+@end example
+
+The first entry is @samp{call_engine_label} and its parent is
+@samp{<spontaneous>}, meaning that it is the root of the call graph.
+(The first three entries, @samp{call_engine_label}, @samp{do_interpreter},
+and @samp{io__run/0} are all part of the Mercury runtime;
+@samp{main/2} is the entry point to the user's program.)
+
+Each entry of the call graph profile consists of three sections, the parent
+procedures, the current procedure and the children procedures.
+
+Reading across from the left, for the current procedure the fields are:
+
+@itemize @bullet
+@item
+The unique index number for the current procedure.
+(The index numbers are used only to make it easier to find
+a particular entry in the call graph.)
+
+@item
+The percentage of total execution time spent in the current procedure
+and all its descendents.
+As noted above, this is only a statistical approximation.
+
+@item
+The ``self'' time: the time spent executing code that is
+part of current procedure.
+As noted above, this is only a statistical approximation.
+
+@item
+The descendent time: the time spent in the
+current procedure and all its descendents.
+As noted above, this is only a statistical approximation.
+
+@item
+The number of times a procedure is called.
+If a procedure is (directly) recursive, this column
+will contain the number of calls from other procedures,
+a plus sign, and then the number of recursive calls.
+These numbers are exact, not approximate.
+
+@item
+The name of the procedure followed by its index number.
+@end itemize
+
+The predicate or function names are not just followed by their arity but
+also by their mode in brackets.  A mode of zero corresponds to the first mode
+declaration of that predicate in the source code.  For example,
+@samp{list__delete/3(3)} corresponds to the @samp{(out, out, in)} mode
+of @samp{list__delete/3}.
+
+Now for the parent and child procedures the self and descendent time have
+slightly different meanings.  For the parent procedures the self and descendent
+time represent the proportion of the current procedure's self and descendent
+time due to that parent.  These times are obtained using the assumption that
+each call contributes equally to the total time of the current procedure.
+
+@node Memory profiling
+@section Memory profiling
+
+It is also possible to profile memory allocation.  To enable memory
+profiling, your program must be built with memory profiling enabled,
+using the @samp{--memory-profiling} option.  Then, as with time
+profiling, you run your program to create the profiling data.
+This will be stored in the files @file{Prof.MemoryWords}
+@file{Prof.MemoryCells}, @file{Prof.Decls}, and @file{Prof.CallPair}.
+
+To create the profile, you need to invoke @samp{mprof} with the
+@samp{-m} (@samp{--profile memory-words}) option.  This will profile
+the amount of memory allocated, measured in units of words. 
+(A word is 4 bytes on a 32-bit architecture, and 8 bytes on a 64-bit
+architecture.)
+
+Alternatively, you can use @samp{mprof}'s @samp{-M}
+(@samp{--profile memory-cells}) option.  This will profile memory in
+units of ``cells''.  A cell is a group of words allocated together in a
+single allocation, to hold a single object.  Selecting this option this
+will therefore profile the number of memory allocations, while ignoring
+the size of each memory allocation.
+
+With memory profiling, just as with time profiling,
+you can use the @samp{-c} (@samp{--call-graph}) option to display
+call graph profiles in addition to flat profiles.
+
+Note that Mercury's memory profiler will only tell you about
+allocation, not about deallocation (garbage collection).
+It can tell you how much memory was allocated by each procedure,
+but it won't tell you how long the memory was live for,
+or how much of that memory was garbage-collected.
+
+@node Invocation
+@chapter Invocation
+
+This section contains a brief description of all the options
+available for @samp{mmc}, the Mercury compiler.
+Sometimes this list is a little out-of-date;
+use @samp{mmc --help} to get the most up-to-date list.
+
+@menu
+* Invocation overview::
+* Verbosity options::
+* Warning options::
+* Output options::
+* Auxiliary output options::
+* Language semantics options::
+* Termination analysis options::
+* Compilation model options::
+* Code generation options::
+* Optimization options::
+* Link options::
+* Miscellaneous options::
+@end menu
+
+@node Invocation overview
+@section Invocation overview
+
+@code{mmc} is invoked as
+@example
+mmc [@var{options}] @var{arguments}
+@end example
+
+Arguments can be either module names or file names.
+Arguments ending in @samp{.m} are assumed to be file names,
+while other arguments are assumed to be module names, with
+@samp{.} (rather than @samp{__} or @samp{:}) as module qualifier.
+If you specify a module name such as @samp{foo.bar.baz},
+the compiler will look for the source in files @file{foo.bar.baz.m},
+@file{bar.baz.m}, and @file{baz.m}, in that order.
+
+Options are either short (single-letter) options preceded by a single @samp{-},
+or long options preceded by @samp{--}.
+Options are case-sensitive.
+We call options that do not take arguments @dfn{flags}.
+Single-letter flags may be grouped with a single @samp{-}, e.g. @samp{-vVc}.
+Single-letter flags may be negated
+by appending another trailing @samp{-}, e.g. @samp{-v-}.
+Long flags may be negated by preceding them with @samp{no-},
+e.g. @samp{--no-verbose}.
+
+@node Warning options
+@section Warning options
+@table @code
+@item -w
+@itemx --inhibit-warnings
+Disable all warning messages.
+
+@sp 1
+@item --halt-at-warn
+This option causes the compiler to treat all
+warnings as if they were errors.  This means that
+if any warning is issued, the compiler will not
+generate code --- instead, it will return a
+non-zero exit status.
+
+@sp 1
+@item --halt-at-syntax-error
+This option causes the compiler to halt immediately
+after syntax checking and not do any semantic checking
+if it finds any syntax errors in the program.
+
+@sp 1
+@item --inhibit-accumulator-warnings
+Don't warn about argument order rearrangement caused by
+@samp{--introduce-accumulators}.
+
+@sp 1
+@item --no-warn-singleton-variables
+Don't warn about variables which only occur once.
+
+@sp 1
+@item --no-warn-missing-det-decls
+For predicates that are local to a module (those that
+are not exported), don't issue a warning if the @samp{pred}
+or @samp{mode} declaration does not have a determinism annotation.
+Use this option if you want the compiler to perform automatic
+determinism inference for non-exported predicates.
+
+@sp 1
+@item --no-warn-det-decls-too-lax
+Don't warn about determinism declarations
+which could have been stricter.
+
+@sp 1
+@item --no-warn-nothing-exported
+Don't warn about modules whose interface sections have no
+exported predicates, functions, insts, modes or types.
+
+@sp 1
+@item --warn-unused-args
+Warn about predicate or function arguments which are not used.
+
+@sp 1
+@item --warn-interface-imports
+Warn about modules imported in the interface which are not
+used in the interface.
+
+@sp 1
+@item --warn-missing-opt-files
+Warn about @samp{.opt} files that cannot be opened.
+
+@sp 1
+@item --warn-missing-trans-opt-files
+Warn about @samp{.trans_opt} files that cannot be opened.
+
+@sp 1
+@item --warn-non-stratification
+Warn about possible non-stratification of the predicates/functions in the
+module.
+Non-stratification occurs when a predicate/function can call itself
+negatively through some path along its call graph.
+
+@sp 1
+@item --no-warn-simple-code
+Disable warnings about constructs which are so
+simple that they are likely to be programming errors.
+
+@sp 1
+@item --warn-duplicate-calls
+Warn about multiple calls to a predicate with the same
+input arguments.
+
+@sp 1
+@item --no-warn-missing-module-name
+Disable warnings for modules that do not start with a
+@samp{:- module} declaration.
+
+@sp 1
+@item --no-warn-wrong-module-name
+Disable warnings for modules whose @samp{:- module} declaration
+does not match the module's file name.
+
+@end table
+
+@node Verbosity options
+@section Verbosity options
+@table @code
+@item -v
+@itemx --verbose
+Output progress messages at each stage in the compilation.
+
+@sp 1
+@item -V
+@itemx --very-verbose
+Output very verbose progress messages.
+
+@sp 1
+@item -E
+@itemx --verbose-error-messages
+Explain error messages.  Asks the compiler to give you a more
+detailed explanation of any errors it finds in your program.
+
+@sp 1
+@item -S
+@itemx --statistics
+Output messages about the compiler's time/space usage.
+At the moment this option implies @samp{--no-trad-passes},
+so you get information at the boundaries between phases of the compiler.
+
+@sp 1
+@item -T
+@itemx --debug-types
+Output detailed debugging traces of the type checking.
+
+@sp 1
+@item -N
+@itemx --debug-modes
+Output detailed debugging traces of the mode checking.
+
+@sp 1
+@item --debug-det, --debug-determinism
+Output detailed debugging traces of determinism analysis.
+
+@sp 1
+@item --debug-opt
+Output detailed debugging traces of the optimization process.
+
+@sp 1
+@item --debug-vn <n>
+Output detailed debugging traces of the value numbering optimization pass.
+The different bits in the number argument of this option control the
+printing of different types of tracing messages.
+
+@sp 1
+@item --debug-pd
+Output detailed debugging traces of the partial
+deduction and deforestation process.
+
+@ifset aditi
+@sp 1
+@item --debug-rl-gen
+Output detailed debugging traces of Aditi-RL code generation
+(@pxref{Using Aditi}).
+
+@sp 1
+@item --debug-rl-opt
+Output detailed debugging traces of Aditi-RL optimization
+(@pxref{Using Aditi}).
+@end ifset
+@c aditi
+@end table
+
+@node Output options
+@section Output options
+These options are mutually exclusive.
+If more than one of these options is specified, only the first in
+this list will apply.
+If none of these options are specified, the default action is to
+compile and link the modules named on the command line to produce
+an executable.
+
+@table @code
+@item -M
+@itemx --generate-dependencies
+Output ``Make''-style dependencies for the module and all of its
+dependencies to @file{@var{module}.dep}, @file{@var{module}.dv} and the
+relevant @samp{.d} files.
+
+@item --generate-module-order
+Output the strongly connected components of the module
+dependency graph in top-down order to @file{@var{module}.order}.
+Implies @samp{--generate-dependencies}.
+
+@sp 1
+@item -i
+@itemx --make-int
+@itemx --make-interface
+Write the module interface to @file{@var{module}.int}.
+Also write the short interface to @file{@var{module}.int2}.
+
+@sp 1
+@item --make-short-int
+@itemx --make-short-interface
+Write the unqualified version of the short interface to
+@file{@var{module}.int3}.
+
+@sp 1
+@item --make-priv-int
+@itemx --make-private-interface
+Write the module's private interface (used for compiling
+nested sub-modules) to @file{@var{module}.int0}.
+
+@sp 1
+@item --make-opt-int
+@itemx --make-optimization-interface
+Write information used for inter-module optimization to
+@file{@var{module}.opt}.
+
+@sp 1
+@item --make-trans-opt
+@itemx --make-transitive-optimization-interface
+Write the @file{@var{module}.trans_opt} file.  This file is used to store
+information used for inter-module optimization.  The information is read 
+in when the compiler is invoked with the
+@samp{--transitive-intermodule-optimization} option. 
+The file is called the ``transitive'' optimization interface file
+because a @samp{.trans_opt} file may depend on other 
+@samp{.trans_opt} and @samp{.opt} files.  In contrast,
+a @samp{.opt} file can only hold information derived directly
+from the corresponding @samp{.m} file.
+
+@sp 1
+@item -G
+@itemx --convert-to-goedel
+Convert the Mercury code to Goedel.  Output to file @file{@var{module}.loc}.
+The translation is not perfect; some Mercury constructs cannot be easily
+translated into Goedel.
+
+@sp 1
+@item -P
+@itemx --pretty-print
+@itemx --convert-to-mercury
+Convert to Mercury.  Output to file @file{@var{module}.ugly}.
+This option acts as a Mercury ugly-printer.
+(It would be a pretty-printer, except that comments are stripped
+and nested if-then-elses are indented too much --- so the result
+is rather ugly.)
+
+@sp 1
+@item --typecheck-only
+Just check the syntax and type-correctness of the code.
+Don't invoke the mode analysis and later passes of the compiler.
+When converting Prolog code to Mercury,
+it can sometimes be useful to get the types right first
+and worry about modes second;
+this option supports that approach.
+
+@sp 1
+@item -e
+@itemx --errorcheck-only
+Check the module for errors, but do not generate any code.
+
+@sp 1
+@item -C
+@itemx --target-code-only
+Generate target code (i.e. C in @file{@var{module}.c},
+IL in @file{@var{module}.il} or Java in @file{@var{module}.java}),
+but not object code.
+
+@sp 1
+@item -c
+@itemx --compile-only
+Generate C code in @file{@var{module}.c}
+and object code in @file{@var{module}.o}
+but do not attempt to link the named modules.
+
+@ifset aditi
+@sp 1
+@item --aditi-only
+Write Aditi-RL bytecode to @file{@var{module}.rlo} and do not compile to C
+(@pxref{Using Aditi}).
+@end ifset
+@c aditi
+
+@sp 1
+@item --output-grade-string
+Compute from the rest of the option settings the canonical grade
+string and print it on the standard output.
+@end table
+
+@node Auxiliary output options
+@section Auxiliary output options
+@table @code
+@item --no-assume-gmake
+When generating @file{.d}, @file{.dep} and @file{.dv} files,
+generate Makefile fragments that use only the features of standard make;
+do not assume the availability of GNU Make extensions.
+This can make these files significantly larger.
+
+@item --trace-level @var{level}
+Generate code that includes the specified level of execution tracing.
+The @var{level} should be one of
+@samp{none}, @samp{shallow}, @samp{deep}, and @samp{default}.
+See @ref{Debugging}.
+
+@item --trace-optimized
+Do not disable optimizations that can change the trace.
+
+@item --no-delay-death
+When the trace level is `deep', the compiler normally
+preserves the values of variables as long as possible, even
+beyond the point of their last use, in order to make them
+accessible from as many debugger events as possible.
+However, it will not do this if this option is given.
+
+@item --stack-trace-higher-order
+Enable stack traces through predicates and functions with
+higher-order arguments, even if stack tracing is not
+supported in general.
+
+@item --generate-bytecode
+@c Output a bytecode version of the module
+@c into the @file{@var{module}.bytecode} file,
+@c and a human-readable version of the bytecode
+@c into the @file{@var{module}.bytedebug} file.
+@c The bytecode is for an experimental debugger.
+Output a bytecode form of the module for use
+by an experimental debugger.
+
+@c @item --generate-prolog
+@c Convert the program to Prolog.  Output to file @file{@var{module}.pl}
+@c or @file{@var{module}.nl} (depending the the dialect).
+@c
+@c @item --prolog-dialect @var{dialect}
+@c Target the named dialect if generating Prolog code.
+@c The @var{dialect} should be one of @samp{sicstus}, @samp{nu}.
+
+@item --auto-comments
+Output comments in the @file{@var{module}.c} file.
+This is primarily useful for trying to understand
+how the generated C code relates to the source code,
+e.g. in order to debug the compiler.
+The code may be easier to understand if you also use the
+@samp{--no-llds-optimize} option.
+
+@sp 1
+@item -n-, --no-line-numbers
+Do not put source line numbers in the generated code.
+The generated code may be in C (the usual case),
+in Goedel (with @samp{--convert-to-goedel})
+or in Mercury (with @samp{--convert-to-mercury}).
+
+@sp 1
+@item --show-dependency-graph
+Write out the dependency graph to @var{module}.dependency_graph.
+
+@sp 1
+@item -d @var{stage}
+@itemx --dump-hlds @var{stage}
+Dump the HLDS (intermediate representation) after
+the specified stage number or stage name to
+@file{@var{module}.hlds_dump.@var{num}-@var{name}}.
+Stage numbers range from 1 to 99; not all stage numbers are valid.
+The special stage name @samp{all} causes the dumping of all stages.
+Multiple dump options accumulate.
+
+@sp 1
+@item --dump-hlds-options @var{options}
+With @samp{--dump-hlds}, include extra detail in the dump.
+Each type of detail is included in the dump
+if its corresponding letter occurs in the option argument.
+These details are:
+a - argument modes in unifications,
+b - builtin flags on calls,
+c - contexts of goals and types,
+d - determinism of goals,
+f - follow_vars sets of goals,
+g - goal feature lists,
+i - instmap deltas of goals,
+l - pred/mode ids and unify contexts of called predicates,
+m - mode information about clauses,
+n - nonlocal variables of goals,
+p - pre-birth, post-birth, pre-death and post-death sets of goals,
+r - resume points of goals,
+s - store maps of goals,
+t - results of termination analysis,
+u - unification categories,
+v - variable numbers in variable names,
+C - clause information,
+I - imported predicates,
+M - mode and inst information,
+P - path information,
+T - type and typeclass information,
+U - unify and compare predicates.
+
+@ifset aditi
+@sp 1
+@item --dump-rl
+Output a human readable form of the internal compiler representation
+of the generated Aditi-RL code to @file{@var{module}.rl_dump}
+(@pxref{Using Aditi}).
+
+@sp 1
+@item --dump-rl-bytecode
+Output a human readable representation of the generated Aditi-RL
+bytecodes @file{@var{module}.rla}. Aditi-RL bytecodes are directly
+executed by the Aditi system (@pxref{Using Aditi}).
+
+@sp 1
+@item --generate-schemas
+Output schema strings for Aditi base relations to
+@file{@var{module}.base_schema} and for Aditi derived
+relations to @file{@var{module}.derived_schema}. A schema
+string is a representation of the types of the attributes
+of a relation (@pxref{Using Aditi}).
+
+@end ifset
+@c aditi
+
+@end table
+
+@node Language semantics options
+@section Language semantics options
+
+See the Mercury language reference manual for detailed explanations
+of these options.
+
+@table @code
+@item --no-reorder-conj
+Execute conjunctions left-to-right except where the modes imply
+that reordering is unavoidable.
+
+@sp 1
+@item --no-reorder-disj
+Execute disjunctions strictly left-to-right.
+
+@sp 1
+@item --fully-strict
+Don't optimize away loops or calls to @code{error/1}.
+
+@sp 1
+@item --infer-all
+An abbreviation for @samp{--infer-types --infer-modes --infer-det}.
+
+@sp 1
+@item --infer-types
+If there is no type declaration for a predicate or function,
+try to infer the type, rather than just reporting an error.
+
+@sp 1
+@item --infer-modes
+If there is no mode declaration for a predicate,
+try to infer the modes, rather than just reporting an error.
+
+@sp 1
+@item --no-infer-det, --no-infer-determinism
+If there is no determinism declaration for a procedure,
+don't try to infer the determinism, just report an error.
+
+@sp 1
+@item --type-inference-iteration-limit @var{n}
+Perform at most @var{n} passes of type inference (default: 60).
+
+@sp 1
+@item --mode-inference-iteration-limit @var{n}
+Perform at most @var{n} passes of mode inference (default: 30).
+@end table
+
+@node Termination analysis options
+@section Termination analysis options
+
+For detailed explanations, see the ``Termination analysis'' section
+of the ``Implementation-dependent extensions'' chapter in the Mercury
+Language Reference Manual.
+
+@table @code
+@item --enable-term
+@itemx --enable-termination
+Enable termination analysis.  Termination analysis analyses each mode of
+each predicate to see whether it terminates.  The @samp{terminates},
+@samp{does_not_terminate} and @samp{check_termination}
+pragmas have no effect unless termination analysis is enabled.  When
+using termination, @samp{--intermodule-optimization} should be enabled,
+as it greatly improves the accuracy of the analysis.
+
+@sp 1
+@item --chk-term
+@itemx --check-term
+@itemx --check-termination
+Enable termination analysis, and emit warnings for some predicates or
+functions that cannot be proved to terminate.  In many cases in which the
+compiler is unable to prove termination, the problem is either a lack of
+information about the termination properties of other predicates, or the
+fact that the program used language constructs (such as higher order
+calls) which cannot be analysed.  In these cases the compiler does
+not emit a warning of non-termination, as it is likely to be spurious.
+
+@sp 1
+@item --verb-chk-term
+@itemx --verb-check-term
+@itemx --verbose-check-termination
+Enable termination analysis, and emit warnings for all predicates or
+functions that cannot be proved to terminate.
+
+@sp 1
+@item --term-single-arg @var{limit}
+@itemx --termination-single-argument-analysis @var{limit}
+When performing termination analysis, try analyzing
+recursion on single arguments in strongly connected
+components of the call graph that have up to @var{limit} procedures.
+Setting this limit to zero disables single argument analysis.
+
+@sp 1
+@item --termination-norm @var{norm}
+The norm defines how termination analysis measures the size
+of a memory cell.  The @samp{simple} norm says that size is always one.
+The @samp{total} norm says that it is the number of words in the cell.
+The @samp{num-data-elems} norm says that it is the number of words in
+the cell that contain something other than pointers to cells of
+the same type.
+
+@sp 1
+@item --term-err-limit @var{limit}
+@itemx --termination-error-limit @var{limit}
+Print at most @var{n} reasons for any single termination error.
+
+@sp 1
+@item --term-path-limit @var{limit}
+@itemx --termination-path-limit @var{limit}
+Perform termination analysis only on predicates with at most @var{n} paths.
+
+@end table
+
+@node Compilation model options
+@section Compilation model options
+
+The following compilation options affect the generated
+code in such a way that the entire program must be
+compiled with the same setting of these options,
+and it must be linked to a version of the Mercury
+library which has been compiled with the same setting.
+(Attempting to link object files compiled with different
+settings of these options will generally result in an error at
+link time, typically of the form @samp{undefined symbol MR_grade_@dots{}}
+or @samp{symbol MR_runtime_grade multiply defined}.)
+
+The options below must be passed to @samp{mgnuc}, @samp{c2init}
+and @samp{ml} as well as to @samp{mmc}. 
+If you are using Mmake, then you should specify
+these options in the @samp{GRADEFLAGS} variable rather than specifying
+them in @samp{MCFLAGS}, @samp{MGNUCFLAGS}, @samp{C2INITFLAGS}
+and @samp{MLFLAGS}.
+
+@table @asis
+@item @code{-s @var{grade}}
+@itemx @code{--grade @var{grade}}
+Select the compilation model.
+The @var{grade} should be a @samp{.} separated list of the
+grade options to set. The grade options may be given in any order.
+The available options each belong to a set of mutually
+exclusive alternatives governing a single aspect of the compilation model.
+The set of aspects and their alternatives are:
+
+@table @asis
+@item What target language to use, and (for C) what combination of GNU C extensions to use:
+@samp{none}, @samp{reg}, @samp{jump}, @samp{asm_jump},
+@samp{fast}, @samp{asm_fast}, @samp{hlc}, @samp{ilc} and @samp{java}
+(the default is system dependent).
+
+@item What garbage collection strategy to use:
+@samp{gc}, and @samp{agc} (the default is no garbage collection).
+
+@item What kind of profiling to use:
+@samp{prof},
+@c @samp{proftime}, @samp{profcalls},
+and @samp{memprof}
+(the default is no profiling).
+
+@item Whether to enable the trail:
+@samp{tr} (the default is no trailing).
+
+@item What debugging features to enable:
+@samp{debug} (the default is no debugging features).
+
+@item Whether to use a thread-safe version of the runtime environment:
+@samp{par} (the default is a non-thread-safe environment).
+
+@end table
+
+The default grade is system-dependent; it is chosen at installation time
+by @samp{configure}, the auto-configuration script, but can be overridden
+with the environment variable @samp{MERCURY_DEFAULT_GRADE} if desired.
+Depending on your particular installation, only a subset
+of these possible grades will have been installed.
+Attempting to use a grade which has not been installed
+will result in an error at link time.
+(The error message will typically be something like
+@samp{ld: can't find library for -lmercury}.)
+
+The tables below show the options that are selected by each base grade
+and grade modifier; they are followed by descriptions of those options.
+
+@table @asis
+@item @var{Grade}
+@var{Options implied}.
+
+@item @samp{none}
+@code{--target c --no-gcc-global-registers --no-gcc-nonlocal_gotos --no-asm-labels}.
+
+@item @samp{reg}
+@code{--target c --gcc-global-registers --no-gcc-nonlocal_gotos --no-asm-labels}.
+
+@item @samp{jump}
+@code{--target c --no-gcc-global-registers --gcc-nonlocal-gotos --no-asm-labels}.
+
+@item @samp{fast}
+@code{--target c --gcc-global-registers --gcc-nonlocal-gotos --no-asm-labels}.
+
+@item @samp{asm_jump}
+@code{--target c --no-gcc-global-registers --gcc-nonlocal-gotos --asm-labels}.
+
+@item @samp{asm_fast}
+@code{--target c --gcc-global-registers --gcc-nonlocal_gotos --asm-labels}.
+
+@item @samp{hlc}
+@code{--target c --high-level-code}.
+
+@item @samp{il}
+@code{--target il --high-level-code}.
+
+@item @samp{java}
+@code{--target java --high-level-code}.
+
+@item @samp{.gc}
+@code{--gc conservative}.
+
+@item @samp{.agc}
+@code{--gc accurate}.
+
+@item @samp{.prof}
+@code{--profiling}.
+
+@item @samp{.memprof}
+@code{--memory-profiling}.
+
+@c The following are undocumented because
+@c they are basically useless... documenting
+@c them would just confuse people.
+@c
+@c @item @samp{.profall}
+@c @code{--profile-calls --profile-time --profile-memory}.
+@c (not recommended because --profile-memory interferes with
+@c --profile-time)
+@c 
+@c @item @samp{.proftime}
+@c @code{--profile-time}.
+@c 
+@c @item @samp{.profcalls}
+@c @code{--profile-calls}.
+@c 
+@item @samp{.tr}
+@code{--use-trail}.
+
+@item @samp{.debug}
+@code{--debug}.
+
+@end table
+
+@sp 1
+@item @code{--target c} (grades: none, reg, jump, fast, asm_jump, asm_fast, hlc)
+@itemx @code{--il}, @code{--target il} (grades: ilc)
+@itemx @code{--java}, @code{--target java} (grades: java)
+Specify the target language used for compilation: C, IL or Java.
+C means ANSI/ISO C, optionally with GNU C extensions (see below).
+IL means the Microsoft .NET Intermediate Language.
+@samp{--target il} implies @samp{--high-level-code}.
+@samp{--target java} implies @samp{--high-level-code}.
+
+@sp 1
+@item @code{--il-only}
+An abbreviation for @samp{--target il --target-code-only}.
+Generate IL assembler code in @file{@var{module}.il}, but do not invoke
+ilasm to produce IL object code.
+
+@sp 1
+@item @code{--compile-to-c}
+@itemx @code{--compile-to-C}
+An abbreviation for @samp{--target c --target-code-only}.
+Generate C code in @file{@var{module}.c}, but do not invoke the
+C compiler to generate object code.
+
+@sp 1
+@item @code{--java-only}
+An abbreviation for @samp{--target java --target-code-only}.
+Generate Java code in @file{@var{module}.java}, but do not invoke 
+the Java compiler to produce Java bytecode.
+
+@sp 1
+@item @code{--gcc-global-registers} (grades: reg, fast, asm_fast)
+@itemx @code{--no-gcc-global-registers} (grades: none, jump, asm_jump)
+Specify whether or not to use GNU C's global register variables extension.
+This option is ignored if the @samp{--high-level-code} option is enabled.
+
+@sp 1
+@item @code{--gcc-non-local-gotos} (grades: jump, fast, asm_jump, asm_fast)
+@itemx @code{--no-gcc-non-local-gotos} (grades: none, reg)
+Specify whether or not to use GNU C's ``labels as values'' extension.
+This option is ignored if the @samp{--high-level-code} option is enabled.
+
+@sp 1
+@item @code{--asm-labels} (grades: asm_jump, asm_fast)
+@itemx @code{--no-asm-labels} (grades: none, reg, jump, fast)
+Specify whether or not to use GNU C's asm extensions
+for inline assembler labels.
+This option is ignored if the @samp{--high-level-code} option is enabled.
+
+@sp 1
+@item @code{-H}, @code{--high-level-code} (grades: hlc, ilc)
+Use an alternative back-end that generates high-level code
+rather than the very low-level code that is generated by our
+original back-end.
+
+@sp 1
+@item @code{--gc @{none, conservative, accurate@}}
+@itemx @code{--garbage-collection @{none, conservative, accurate@}}
+Specify which method of garbage collection to use.
+Grades containing @samp{.gc} use @samp{--gc conservative},
+other grades use @samp{--gc none}.
+@samp{accurate} is not yet implemented.
+
+@sp 1
+@item @code{--profiling}, @code{--time-profiling} (grades: any grade containing @samp{.prof})
+Enable time profiling.  Insert profiling hooks in the
+generated code, and also output some profiling
+information (the static call graph) to the file
+@samp{@var{module}.prof}.  @xref{Profiling}.
+
+@sp 1
+@item @code{--memory-profiling} (grades: any grade containing @samp{.memprof})
+Enable memory profiling.  Insert memory profiling hooks in the
+generated code, and also output some profiling
+information (the static call graph) to the file
+@samp{@var{module}.prof}.  @xref{Memory profiling}.
+
+@ignore
+	The following are basically useless, hence undocumented.
+
+@sp 1
+@item @code{--profile-calls} (grades: any grade containing @samp{.profcalls})
+Similar to @samp{--profiling}, except that this option only gathers
+call counts, not timing information.  Useful on systems where time
+profiling is not supported -- but not as useful as @samp{--memory-profiling}.
+
+@sp 1
+@item @code{--profile-time} (grades: any grade containing @samp{.proftime})
+Similar to @samp{--profiling}, except that this option only gathers
+timing information, not call counts.  For the results to be useful,
+call counts for an identical run of your program need to be gathered
+using @samp{--profiling} or @samp{--profile-calls}.
+XXX this doesn't work, because the code addresses change.
+The only advantage of using @samp{--profile-time} and @samp{--profile-calls}
+to gather timing information and call counts in separate runs,
+rather than just using @samp{--profiling} to gather them both at once,
+is that the former method can give slightly more accurate timing results.
+because with the latter method the code inserted to record call counts
+has a small effect on the execution speed.
+
+@end ignore
+
+@sp 1
+@item @code{--debug} (grades: any grade containing @samp{.debug})
+Enables the inclusion in the executable of code and data structures
+that allow the program to be debugged with @samp{mdb} (see @ref{Debugging}).
+
+@sp 1
+@item @code{--pic-reg} (grades: any grade containing `.pic_reg')
+[For Unix with intel x86 architecture only.]
+Select a register usage convention that is compatible
+with position-independent code (gcc's `-fpic' option).
+This is necessary when using shared libraries on Intel x86 systems
+running Unix.  On other systems it has no effect.
+
+@end table
+
+@menu
+* Developer compilation model options::
+@end menu
+
+@node Developer compilation model options
+@subsection Developer compilation model options
+
+Of the options listed below, the @samp{--num-tag-bits} option
+may be useful for cross-compilation, but apart from that
+these options are all experimental and are intended for
+use by developers of the Mercury implementation rather than by
+ordinary Mercury programmers.
+
+@table @asis
+@sp 1
+@item @code{--tags @{none, low, high@}}
+(This option is not intended for general use.)@*
+Specify whether to use the low bits or the high bits of
+each word as tag bits (default: low).
+
+@sp 1
+@item @code{--num-tag-bits @var{n}}
+(This option is not intended for general use.)@*
+Use @var{n} tag bits.  This option is required if you specify
+@samp{--tags high}.
+With @samp{--tags low}, the default number of tag bits to use
+is determined by the auto-configuration script.
+
+@sp 1
+@item @code{--use-foreign-language @var{foreign language}}
+Use the given foreign language to implement predicates
+written in foreign languages.  Any name that can be used
+to specify foreign languages in @samp{pragma foreign} declarations
+is valid, but not all foreign languages are implemented
+in all backends.
+Default value is `C' for the LLDS and MLDS->C backends,
+or `ManagedC++' for the .NET backend.
+
+@sp 1
+@item @code{--no-type-layout}
+(This option is not intended for general use.)@*
+Don't output base_type_layout structures or references to them.
+This option will generate smaller executables, but will not allow the
+use of code that uses the layout information (e.g. @samp{functor},
+@samp{arg}). Using such code will result in undefined behaviour at
+runtime.  The C code also needs to be compiled with
+@samp{-DNO_TYPE_LAYOUT}.
+
+@end table
+
+@node Code generation options
+@section Code generation options
+
+@table @code
+@item @code{--low-level-debug}
+Enables various low-level debugging stuff that was in the distant past
+used to debug the Mercury compiler's low-level code generation. 
+This option is not likely to be useful to anyone except the Mercury
+implementors.  It causes the generated code to become very big and very
+inefficient, and slows down compilation a lot.
+
+@sp 1
+@item @code{--target-debug}
+Enable debugging of the generated target code.
+If the target language is C, this has the same effect as
+@samp{--c-debug} (see below).
+If the target language is IL, this causes the compiler to
+pass @samp{/debug} to the IL assembler.
+
+@sp 1
+@item --no-trad-passes
+The default @samp{--trad-passes} completely processes each predicate
+before going on to the next predicate.
+This option tells the compiler
+to complete each phase of code generation on all predicates
+before going on the next phase on all predicates.
+
+@c @sp 1
+@c @item --no-polymorphism
+@c Don't handle polymorphic types.
+@c (Generates slightly more efficient code, but stops
+@c polymorphism from working except in special cases.)
+
+@sp 1
+@item --no-reclaim-heap-on-nondet-failure
+Don't reclaim heap on backtracking in nondet code.
+
+@sp 1
+@item --no-reclaim-heap-on-semidet-failure
+Don't reclaim heap on backtracking in semidet code.
+
+@sp 1
+@item --no-reclaim-heap-on-failure
+Combines the effect of the two options above.
+
+@sp 1
+@item --cc @var{compiler-name}
+Specify which C compiler to use.
+
+@sp 1
+@item --c-include-directory @var{dir}
+Append @var{dir} to the list of directories to be searched for
+C header files.  Note that if you want to override this list, rather than
+append to it, then you can set the @samp{MERCURY_MC_ALL_C_INCL_DIRS}
+environment variable to a sequence of @samp{--c-include-directory} options.
+
+@sp 1
+@item --cflags @var{options}
+Specify options to be passed to the C compiler.
+
+@sp 1
+@item @code{--c-debug}
+Pass the @samp{-g} flag to the C compiler, to enable debugging
+of the generated C code, and also pass @samp{--no-strip} to the Mercury
+linker, to tell it not to strip the C debugging information.
+Since the generated C code is very low-level, this option is not likely
+to be useful to anyone except the Mercury implementors, except perhaps
+for debugging code that uses Mercury's C interface extensively.
+
+@sp 1
+@item --javac @var{compiler-name}
+@item --java-compiler @var{compiler-name}
+Specify which Java compiler to use.  The default is @samp{javac}.
+
+@sp 1
+@item --java-flags @var{options}
+Specify options to be passed to the Java compiler.
+
+@sp 1
+@item --java-classpath @var{dir}
+Set the classpath for the Java compiler.
+
+@sp 1
+@item --java-object-file-extension @var{extension}
+Specify an extension for Java object (bytecode) files.  By default this
+is @samp{.class}. 
+
+@sp 1
+@item --fact-table-max-array-size @var{size}
+Specify the maximum number of elements in a single
+@samp{pragma fact_table} data array (default: 1024).
+The data for fact tables is placed into multiple C arrays, each with a
+maximum size given by this option.  The reason for doing this is that
+most C compilers have trouble compiling very large arrays.
+
+@sp 1
+@item --fact-table-hash-percent-full @var{percentage}
+Specify how full the @samp{pragma fact_table} hash tables should be
+allowed to get.  Given as an integer percentage (valid range: 1 to 100,
+default: 90).  A lower value means that the compiler will use
+larger tables, but there will generally be less hash collisions,
+so it may result in faster lookups.
+
+@end table
+
+@menu
+* Code generation target options::
+@end menu
+
+@node Code generation target options
+@subsection Code generation target options
+
+The following options allow the Mercury compiler to optimize the generated
+C code based on the characteristics of the expected target architecture.
+The default values of these options will be whatever is appropriate
+for the host architecture that the Mercury compiler was installed on,
+so normally there is no need to set these options manually.  They might
+come in handy if you are cross-compiling.  But even when cross-compiling,
+it's probably not worth bothering to set these unless efficiency is
+absolutely paramount.
+
+@table @asis
+@item @code{--have-delay-slot}
+(This option is not intended for general use.)@*
+Assume that branch instructions have a delay slot.
+
+@sp 1
+@item @code{--num-real-r-regs @var{n}}
+(This option is not intended for general use.)@*
+Assume r1 up to r@var{n} are real general purpose registers.
+
+@sp 1
+@item @code{--num-real-f-regs @var{n}}
+(This option is not intended for general use.)@*
+Assume f1 up to f@var{n} are real floating point registers.
+
+@sp 1
+@item @code{--num-real-r-temps @var{n}}
+(This option is not intended for general use.)@*
+Assume that @var{n} non-float temporaries will fit into real machine registers.
+
+@sp 1
+@item @code{--num-real-f-temps @var{n}}
+(This option is not intended for general use.)@*
+Assume that @var{n} float temporaries will fit into real machine registers.
+
+@end table
+
+@node Optimization options
+@section Optimization options
+
+@menu
+* Overall optimization options::
+* High-level (HLDS -> HLDS) optimization options::
+* MLDS backend (MLDS -> MLDS) optimization options::
+* Medium-level (HLDS -> LLDS) optimization options::
+* Low-level (LLDS -> LLDS) optimization options::
+* Output-level (LLDS -> C) optimization options::
+* Object-level (C -> object code) optimization options::
+@ifset aditi
+* Aditi-RL optimization options::
+@end ifset
+@end menu
+
+@node Overall optimization options
+@subsection Overall optimization options
+
+@table @code
+@item -O @var{n}
+@itemx --opt-level @var{n}
+@itemx --optimization-level @var{n}
+Set optimization level to @var{n}.
+Optimization levels range from -1 to 6.
+Optimization level -1 disables all optimizations,
+while optimization level 6 enables all optimizations
+except for the cross-module optimizations listed below.
+
+In general, there is a trade-off between compilation speed and the
+speed of the generated code.  When developing, you should normally use
+optimization level 0, which aims to minimize compilation time.  It
+enables only those optimizations that in fact usually @emph{reduce}
+compilation time.  The default optimization level is level 2, which
+delivers reasonably good optimization in reasonable time.  Optimization
+levels higher than that give better optimization, but take longer,
+and are subject to the law of diminishing returns.  The difference in
+the quality of the generated code between optimization level 5 and
+optimization level 6 is very small, but using level 6 may increase
+compilation time and memory requirements dramatically.
+
+Note that if you want the compiler to perform cross-module
+optimizations, then you must enable them separately;
+the cross-module optimizations are not enabled by any @samp{-O}
+level, because they affect the compilation process in ways
+that require special treatment by @samp{mmake}.
+
+@sp 1
+@item --opt-space
+@itemx --optimize-space
+Turn on optimizations that reduce code size
+and turn off optimizations that significantly increase code size.
+@end table
+
+@table @code
+@item --intermodule-optimization
+Perform inlining and higher-order specialization of the code for
+predicates or functions imported from other modules.
+
+@sp 1
+@item --trans-intermod-opt
+@itemx --transitive-intermodule-optimization
+Use the information stored in @file{@var{module}.trans_opt} files
+to make intermodule optimizations.  The @file{@var{module}.trans_opt} files
+are different to the @file{@var{module}.opt} files as @samp{.trans_opt}
+files may depend on other @samp{.trans_opt} files, whereas each
+@samp{.opt} file may only depend on the corresponding @samp{.m} file. 
+
+@item --use-opt-files
+Perform inter-module optimization using any @samp{.opt} files which are 
+already built, e.g. those for the standard library, but do not build any
+others.
+
+@item --use-trans-opt-files
+Perform inter-module optimization using any @samp{.trans_opt} files which are 
+already built, e.g. those for the standard library, but do not build any
+others.
+
+@sp 1
+@item --split-c-files
+Generate each C function in its own C file,
+so that the linker will optimize away unused code.
+This has the same effect as @samp{--optimize-dead-procs},
+except that it works globally at link time, rather than
+over a single module, so it does a much better job of
+eliminating unused procedures.
+This option significantly increases compilation time,
+link time, and intermediate disk space requirements,
+but in return reduces the size of the final
+executable, typically by about 10-20%.
+This option is only useful with @samp{--procs-per-c-function 1},
+so this option automatically sets @samp{--procs-per-c-function 1}.
+
+The @samp{--high-level-code} back-end does not support
+@samp{--split-c-files}.
+
+N.B.  When using @samp{mmake}, the @samp{--split-c-files} option should
+not be placed in the @samp{MCFLAGS} variable.  Instead, use the
+@samp{@var{MODULE}.split} target, i.e. type @samp{mmake foo.split}
+rather than @samp{mmake foo}.
+
+@end table
+
+@node High-level (HLDS -> HLDS) optimization options
+@subsection High-level (HLDS -> HLDS) optimization options
+
+These optimizations are high-level transformations on our HLDS (high-level
+data structure).
+
+@table @code
+@item --no-inlining
+Disable all forms of inlining.
+
+@item --no-inline-simple
+Disable the inlining of simple procedures.
+
+@item --no-inline-single-use
+Disable the inlining of procedures called only once.
+
+@item --inline-compound-threshold @var{threshold}
+Inline a procedure if its size
+(measured roughly in terms of the number of connectives in its internal form),
+multiplied by the number of times it is called,
+is below the given threshold.
+
+@item --inline-simple-threshold @var{threshold}
+Inline a procedure if its size is less than the given threshold.
+
+@item --intermod-inline-simple-threshold @var{threshold}
+Similar to --inline-simple-threshold, except used to determine which
+predicates should be included in @samp{.opt} files.  Note that changing this
+between writing the @samp{.opt} file and compiling to C may cause link errors,
+and too high a value may result in reduced performance.
+
+
+@sp 1
+@item --no-common-struct
+Disable optimization of common term structures.
+
+@sp 1
+@item --no-common-goal
+Disable optimization of common goals.
+At the moment this optimization
+detects only common deconstruction unifications.
+Disabling this optimization reduces the class of predicates
+that the compiler considers to be deterministic.
+
+@c @item --constraint-propagation
+@c Enable the constraint propagation transformation.
+
+@c @sp 1
+@c @item --prev-code
+@c Migrate into the start of branched goals.
+
+@sp 1
+@item --no-follow-code
+Don't migrate builtin goals into branched goals.
+
+@sp 1
+@item --optimize-unused-args
+Remove unused predicate arguments.  The compiler will
+generate more efficient code for polymorphic predicates.
+
+@sp 1
+@item --intermod-unused-args
+Perform unused argument removal across module boundaries.
+This option implies @samp{--optimize-unused-args} and
+@samp{--intermodule-optimization}.
+
+@sp 1
+@item --unneeded-code
+Remove goals from computation paths where their outputs are not needed,
+provided the semantics options allow the deletion or movement of the goal.
+
+@sp 1
+@item --unneeded-code-copy-limit
+Gives the maximum number of places to which a goal may be copied
+when removing it from computation paths on which its outputs are not needed.
+A value of zero forbids goal movement and allows only goal deletion;
+a value of one prevents any increase in the size of the code.
+
+@sp 1
+@item --optimize-higher-order
+Specialize calls to higher-order predicates where
+the higher-order arguments are known.
+
+@sp 1
+@item --type-specialization
+Specialize calls to polymorphic predicates where
+the polymorphic types are known.
+
+@sp 1
+@item --user-guided-type-specialization
+Enable specialization of polymorphic predicates for which
+there are `:- pragma type_spec' declarations.
+See the ``Type specialization'' section in the ``Pragmas''
+chapter of the Mercury Language Reference Manual for more details.
+
+@sp 1
+@item --higher-order-size-limit
+Set the maximum goal size of specialized versions created by
+@samp{--optimize-higher-order} and @samp{--type-specialization}.
+Goal size is measured as the number of calls, unifications
+and branched goals.
+
+@sp 1
+@item --optimize-constant-propagation
+Evaluate constant expressions at compile time.
+
+@sp 1
+@item --introduce-accumulators
+Attempt to introduce accumulating variables into
+procedures, so as to make the procedure tail recursive.
+
+@sp 1
+@item --optimize-constructor-last-call
+Enable the optimization of ``last'' calls that are followed by
+constructor application.
+
+@sp 1
+@item --optimize-dead-procs
+Enable dead predicate elimination.
+
+@sp 1
+@item --excess-assign
+Remove excess assignment unifications.
+
+@sp 1
+@item --optimize-duplicate-calls
+Optimize away multiple calls to a predicate with the same input arguments.
+
+@sp 1
+@item --optimize-saved-vars
+Reorder goals to minimize the number of variables
+that have to be saved across calls.
+
+@sp 1
+@item --deforestation
+Enable deforestation. Deforestation is a program transformation whose aim
+is to avoid the construction of intermediate data structures and to avoid
+repeated traversals over data structures within a conjunction.
+
+@end table
+
+@node MLDS backend (MLDS -> MLDS) optimization options
+@subsection MLDS backend (MLDS -> MLDS) optimization options
+
+These optimizations are applied to the medium level 
+intermediate code.
+
+@table @code
+@item --no-mlds-optimize
+Disable the MLDS -> MLDS optimization passes.
+
+@sp 1
+@item --no-optimize-tailcalls
+Treat tailcalls as ordinary calls rather than optimizing
+by turning self-tailcalls into loops.
+
+@item --no-optimize-initializations
+Leave initializations of local variables as assignment statements,
+rather than converting such assignments statements into initializers.
+
+@end table
+
+@node Medium-level (HLDS -> LLDS) optimization options
+@subsection Medium-level (HLDS -> LLDS) optimization options
+
+These optimizations are applied during the process of generating
+low-level intermediate code from our high-level data structure.
+
+@table @code
+@item --no-static-ground-terms
+Disable the optimization of constructing constant ground terms
+at compile time and storing them as static constants.
+Note that auxiliary data structures created by the compiler
+for purposes such as debugging
+will still be created as static constants.
+
+@sp 1
+@item --no-smart-indexing
+Generate switches as a simple if-then-else chains;
+disable string hashing and integer table-lookup indexing.
+
+@sp 1
+@item --dense-switch-req-density @var{percentage}
+The jump table generated for an atomic switch
+must have at least this percentage of full slots (default: 25).
+
+@sp 1
+@item --dense-switch-size @var{size}
+The jump table generated for an atomic switch
+must have at least this many entries (default: 4).
+
+@sp 1
+@item --lookup-switch-req-density @var{percentage}
+The lookup tables generated for an atomic switch
+in which all the outputs are constant terms
+must have at least this percentage of full slots (default: 25).
+
+@sp 1
+@item --lookup-switch-size @var{size}
+The lookup tables generated for an atomic switch
+in which all the outputs are constant terms
+must have at least this many entries (default: 4).
+
+@sp 1
+@item --string-switch-size @var{size}
+The hash table generated for a string switch
+must have at least this many entries (default: 8).
+
+@sp 1
+@item --tag-switch-size @var{size}
+The number of alternatives in a tag switch
+must be at least this number (default: 3).
+
+@sp 1
+@item --try-switch-size @var{size}
+The number of alternatives in a try-chain switch
+must be at least this number (default: 3).
+
+@sp 1
+@item --binary-switch-size @var{size}
+The number of alternatives in a binary search switch
+must be at least this number (default: 4).
+
+@sp 1
+@item --no-middle-rec
+Disable the middle recursion optimization.
+
+@sp 1
+@item --no-simple-neg
+Don't generate simplified code for simple negations.
+
+@sp 1
+@item --no-follow-vars
+Don't optimize the assignment of registers in branched goals.
+
+@end table
+
+@node Low-level (LLDS -> LLDS) optimization options
+@subsection Low-level (LLDS -> LLDS) optimization options
+
+These optimizations are transformations that are applied to our
+low-level intermediate code before emitting C code.
+
+@table @code
+@item --no-common-data
+Disable optimization of common data structures.
+
+@item --no-llds-optimize
+Disable the low-level optimization passes.
+
+@sp 1
+@item --no-optimize-peep
+Disable local peephole optimizations.
+
+@sp 1
+@item --no-optimize-jumps
+Disable elimination of jumps to jumps.
+
+@sp 1
+@item --no-optimize-fulljumps
+Disable elimination of jumps to ordinary code.
+
+@sp 1
+@item --checked-nondet-tailcalls
+Convert nondet calls into tail calls whenever possible, even
+when this requires a runtime check. This option tries to
+minimize stack consumption, possibly at the expense of speed.
+
+@sp 1
+@item --no-optimize-labels
+Disable elimination of dead labels and code.
+
+@sp 1
+@item --optimize-dups
+Enable elimination of duplicate code.
+
+@c @sp 1
+@c @item --optimize-copyprop
+@c Enable the copy propagation optimization.
+
+@sp 1
+@item --optimize-value-number
+Perform value numbering on extended basic blocks.
+
+@sp 1
+@item --pred-value-number
+Extend value numbering to whole procedures, rather than just basic blocks.
+
+@sp 1
+@item --no-optimize-frames
+Disable stack frame optimizations.
+
+@sp 1
+@item --no-optimize-delay-slot
+Disable branch delay slot optimizations.
+
+@sp 1
+@item --optimize-repeat @var{n}
+Iterate most optimizations at most @var{n} times (default: 3).
+
+@sp 1
+@item --optimize-vnrepeat @var{n}
+Iterate value numbering at most @var{n} times (default: 1).
+
+@end table
+
+@node Output-level (LLDS -> C) optimization options
+@subsection Output-level (LLDS -> C) optimization options
+
+These optimizations are applied during the process of generating
+C intermediate code from our low-level data structure.
+
+@table @code
+@item --no-emit-c-loops
+Use only gotos --- don't emit C loop constructs.
+
+@sp 1
+@item --use-macro-for-redo-fail
+Emit the fail or redo macro instead of a branch
+to the fail or redo code in the runtime system.
+
+@sp 1
+@item --procs-per-c-function @var{n}
+Don't put the code for more than @var{n} Mercury
+procedures in a single C function.  The default
+value of @var{n} is one.  Increasing @var{n} can produce
+slightly more efficient code, but makes compilation slower.
+Setting @var{n} to the special value zero has the effect of
+putting all the procedures in a single function,
+which produces the most efficient code
+but tends to severely stress the C compiler.
+
+@end table
+
+@node Object-level (C -> object code) optimization options
+@subsection Object-level (C -> object code) optimization options
+
+These optimizations are applied during the process of compiling
+the generated C code to machine code object files.
+
+If you are using Mmake, you need to pass these options
+to @samp{mgnuc} rather than to @samp{mmc}.
+
+@table @code
+@item --no-c-optimize
+Don't enable the C compiler's optimizations.
+
+@sp 1
+@item --inline-alloc
+Inline calls to @samp{GC_malloc()}.
+This can improve performance a fair bit,
+but may significantly increase code size.
+This option has no effect if @samp{--gc conservative}
+is not set or if the C compiler is not GNU C.
+
+@ifset aditi
+@node Aditi-RL optimization options
+@subsection Aditi-RL optimization options
+
+These optimizations are applied to the Aditi-RL code produced
+for predicates with @samp{:- pragma aditi(@dots{})} declarations
+(@pxref{Using Aditi}).
+
+@table @code
+@item --optimize-rl
+Enable the optimizations of Aditi-RL procedures described below.
+
+@sp 1
+@item --optimize-rl-cse
+Optimize common subexpressions in Aditi-RL procedures.
+
+@sp 1
+@item --optimize-rl-invariants
+Optimize loop invariants in Aditi-RL procedures.
+
+@sp 1
+@item --optimize-rl-index
+Use indexing to optimize access to relations in Aditi-RL procedures.
+
+@sp 1
+@item --detect-rl-streams
+Detect cases where intermediate results in Aditi-RL procedures
+do not need to be materialised.
+@end table
+@end ifset
+@c aditi
+
+@end table
+
+@node Miscellaneous options
+@section Miscellaneous options
+@table @code
+@item -I @var{dir}
+@itemx --search-directory @var{dir}
+Append @var{dir} to the list of directories to be searched for
+imported modules.
+
+@item --intermod-directory @var{dir}
+Append @var{dir} to the list of directories to be searched for
+@samp{.opt} files.
+
+@item --use-search-directories-for-intermod
+Append the arguments of all -I options to the list of directories
+to be searched for @samp{.opt} files.
+
+@item --use-subdirs
+Create intermediate files in a @file{Mercury} subdirectory,
+rather than in the current directory.
+
+@sp 1
+@item -?
+@itemx -h
+@itemx --help
+Print a usage message.
+
+@sp 1
+@item --filenames-from-stdin
+Read then compile a newline terminated module name or file name from the
+standard input. Repeat this until EOF is reached. (This allows a program
+or user to interactively compile several modules without the overhead of
+process creation for each one.)
+
+@ifset aditi
+@sp 1
+@item --aditi
+Enable Aditi compilation.  You need to enable this option if you
+are making use of the Aditi deductive database interface (@pxref{Using Aditi}).
+
+@sp 1
+@item --aditi-user
+Specify the Aditi login of the owner of the predicates in any Aditi RL
+files produced if no @samp{:- pragma owner(@dots{})} declaration is given.
+The owner field is used along with module, name and arity to identify
+predicates, and is also used for security checks. Defaults to the value
+of the @samp{USER} environment variable. If @samp{USER} is not set,
+@samp{--aditi-user} defaults to the string ``guest''.
+
+@end ifset
+@c aditi
+@end table
+
+@node Link options
+@section Link options
+@table @code
+@sp 1
+@item -o @var{filename}
+@itemx --output-file @var{filename}
+Specify the name of the final executable.
+(The default executable name is the same as the name of the
+first module on the command line, but without the @samp{.m} extension.)
+
+@sp 1
+@item --link-flags @var{options}
+Specify options to be passed to @samp{ml}, the Mercury linker.
+
+@sp 1
+@item -L @var{directory}
+@itemx --library-directory @var{directory}
+Append @var{dir} to the list of directories in which to search for libraries.
+
+@item -l @var{library}
+@itemx --library @var{library}
+Link with the specified library.
+
+@item --link-object @var{object}
+Link with the specified object file.
+
+@end table
+
+@node Environment
+@chapter Environment variables
+
+The shell scripts in the Mercury compilation environment
+will use the following environment variables if they are set.
+There should be little need to use these, because the default
+values will generally work fine.
+
+@table @code
+@item MERCURY_DEFAULT_GRADE
+The default grade to use if no @samp{--grade} option is specified.
+
+@sp 1
+@item MERCURY_C_INCL_DIR
+Directory for the C header files for the Mercury runtime system (@file{*.h}).
+This environment variable is used
+only to define the default values of MERCURY_ALL_C_INCL_DIRS
+and MERCURY_ALL_MC_INCL_DIRS,
+so if you define those environment variables separately,
+the value of MERCURY_C_INCL_DIR is ignored.
+
+@sp 1
+@item MERCURY_ALL_C_INCL_DIRS
+A list of options for the C compiler that specifies
+all the directories the C compiler should search for the C header files
+of the Mercury runtime system and garbage collector.
+The default value of this option is @samp{-I$MERCURY_C_INCL_DIR},
+since usually all these header files are installed in one directory.
+This environment variable is used by @samp{mgnuc};
+it should generally be kept in sync with
+@code{MERCURY_ALL_MC_C_INCL_DIRS}, which is used by @samp{mmc}.
+
+@sp 1
+@item MERCURY_ALL_MC_C_INCL_DIRS
+A list of options for mmc that specifies
+all the directories it should search for the C header files
+of the Mercury runtime system and garbage collector.
+The default value of this option is
+@samp{--c-include-directory $MERCURY_C_INCL_DIR},
+since usually all these header files are installed in one directory.
+This environment variable is used by @samp{mmc};
+it should generally be kept in sync with
+@code{MERCURY_ALL_C_INCL_DIRS}, which is used by @samp{mgnuc}.
+
+@sp 1
+@item MERCURY_INT_DIR
+Directory for the Mercury library interface
+files (@file{*.int}, @file{*.int2}, @file{*.int3} and @file{*.opt}).
+
+@sp 1
+@item MERCURY_NC_BUILTIN
+Filename of the Mercury `nc'-compatibility file (nc_builtin.nl).
+
+@sp 1
+@item MERCURY_C_LIB_DIR
+Base directory containing the Mercury libraries (@file{libmer_*.a} and
+possibly @file{libmer_*.so}) for each configuration and grade.
+The libraries for each configuration and grade should
+be in the subdirectory @var{config}/@var{grade} of @code{$MERCURY_C_LIB_DIR}.
+
+@sp 1
+@item MERCURY_NONSHARED_LIB_DIR
+For IRIX 5, this environment variable can be used to specify a
+directory containing a version of libgcc.a which has been compiled with
+@samp{-mno-abicalls}.  See the file @samp{README.IRIX-5} in the Mercury
+source distribution.
+
+@sp 1
+@item MERCURY_MOD_LIB_DIR
+The directory containing the .init files in the Mercury library.
+They are used to create the initialization file @file{*_init.c}.
+
+@sp 1
+@item MERCURY_MOD_LIB_MODS
+The names of the .init files in the Mercury library.
+
+@sp 1
+@item MERCURY_COMPILER
+Filename of the Mercury Compiler.
+
+@sp 1
+@item MERCURY_INTERPRETER
+Filename of the Mercury Interpreter.
+
+@sp 1
+@item MERCURY_MKINIT
+Filename of the program to create the @file{*_init.c} file.
+
+@sp 1
+@item MERCURY_DEBUGGER_INIT
+Name of a file that contains startup commands for the Mercury debugger.
+This file should contain documentation for the debugger command set,
+and possibly a set of default aliases.
+
+@sp 1
+@item MERCURY_OPTIONS
+A list of options for the Mercury runtime that gets
+linked into every Mercury program.
+Their meanings are as follows.
+
+@sp 1
+@table @code
+
+@c @item -a
+@c If given force a redo when the entry point procedure succeeds;
+@c this is useful for benchmarking when this procedure is model_non.
+
+@c @item -c
+@c Check how much of the space reserved for local variables
+@c by mercury_engine.c was actually used.
+
+@item -C @var{size}
+Tells the runtime system
+to optimize the locations of the starts of the various data areas
+for a primary data cache of @var{size} kilobytes.
+The optimization consists of arranging the starts of the areas
+to differ as much as possible modulo this size.
+
+@c @item -d @var{debugflag}
+@c Sets a low-level debugging flag.
+@c These flags are consulted only if
+@c the runtime was compiled with the appropriate definitions;
+@c most of them depend on MR_LOWLEVEL_DEBUG.
+@c For the meanings of the debugflag parameters,
+@c see process_options() in mercury_wrapper.c
+@c and do a grep for the corresponding variable.
+
+@sp 1
+@item -D @var{debugger}
+Enables execution tracing of the program,
+via the internal debugger if @var{debugger} is @samp{i}
+and via the external debugger if @var{debugger} is @samp{e}.
+(The mdb script works by including @samp{-Di} in MERCURY_OPTIONS.)
+The external debugger is not yet available.
+
+@sp 1
+@item -p
+Disables profiling.
+This only has an effect if the executable was built in a profiling grade.
+
+@sp 1
+@item -P @var{num}
+Tells the runtime system to use @var{num} threads
+if the program was built in a parallel grade.
+
+@c @item -r @var{num}
+@c Repeats execution of the entry point procedure @var{num} times,
+@c to enable accurate timing.
+
+@c @item -t
+@c Tells the runtime system to measure the time taken by
+@c the (required number of repetitions of) the program,
+@c and to print the result of this time measurement.
+
+@sp 1
+@item -T @var{time-method}
+If the executable was compiled in a grade that includes time profiling,
+this option specifies what time is counted in the profile.
+@var{time-method} must have one of the following values:
+
+@sp 1
+@table @code
+@item @samp{r}
+Profile real (elapsed) time (using ITIMER_REAL).
+@item @samp{p}
+Profile user time plus system time (using ITIMER_PROF).
+This is the default.
+@item @samp{v}
+Profile user time (using ITIMER_VIRTUAL).
+@end table
+
+@sp 1
+Currently, the @samp{-Tp} and @samp{-Tv} options don't work on Windows,
+so on Windows you must explicitly specify @samp{-Tr}.
+@c the above sentence is duplicated above
+
+@c @item -x
+@c Tells the Boehm collector not to perform any garbage collection.
+
+@sp 1
+@item --heap-size @var{size}
+Sets the size of the heap to @var{size} kilobytes.
+
+@sp 1
+@item --detstack-size @var{size}
+Sets the size of the det stack to @var{size} kilobytes.
+
+@sp 1
+@item --nondetstack-size @var{size}
+Sets the size of the nondet stack to @var{size} kilobytes.
+
+@sp 1
+@item --trail-size @var{size}
+Sets the size of the trail to @var{size} kilobytes.
+
+@c @sp 1
+@c @item --heap-redzone-size @var{size}
+@c Sets the size of the redzone on the heap to @var{size} kilobytes.
+
+@c @sp 1
+@c @item --detstack-redzone-size @var{size}
+@c Sets the size of the redzone on the det stack to @var{size} kilobytes.
+
+@c @sp 1
+@c @item --nondetstack-redzone-size @var{size}
+@c Sets the size of the redzone on the nondet stack to @var{size} kilobytes.
+
+@c @sp 1
+@c @item --trail-redzone-size @var{size}
+@c Sets the size of the redzone on the trail to @var{size} kilobytes.
+
+@sp 1
+@item -i @var{filename}
+@itemx --mdb-in @var{filename}
+Read debugger input from the file or device specified by @var{filename},
+rather than from standard input.
+
+@sp 1
+@item -o @var{filename}
+@itemx --mdb-out @var{filename}
+Print debugger output to the file or device specified by @var{filename},
+rather than to standard output.
+
+@sp 1
+@item -e @var{filename}
+@itemx --mdb-err @var{filename}
+Print debugger error messages to the file or device specified by @var{filename},
+rather than to standard error.
+
+@sp 1
+@item -m @var{filename}
+@itemx --mdb-tty @var{filename}
+Redirect all three debugger I/O streams -- input, output, and error messages --
+to the file or device specified by @var{filename}.
+
+@end table
+
+@end table
+
+@node C compilers
+@chapter Using a different C compiler
+
+The Mercury compiler takes special advantage of certain extensions
+provided by GNU C to generate much more efficient code.  We therefore
+recommend that you use GNU C for compiling Mercury programs.
+However, if for some reason you wish to use another compiler,
+it is possible to do so.  Here's what you need to do.
+
+@itemize @bullet
+@item You must specify the name of the new compiler.
+You can do this either by setting the @samp{MERCURY_C_COMPILER}
+environment variable, by adding
+@samp{MGNUC=MERCURY_C_COMPILER=@dots{} mgnuc} to your @samp{Mmake} file,
+or by using the @samp{--cc} option to @samp{mmc}.
+You may need to specify some option(s) to the C compiler
+to ensure that it uses an ANSI preprocessor (e.g. if you
+are using the DEC Alpha/OSF 3.2 C compiler, you would need to
+pass @samp{--cc="cc -std"} to @samp{mmc} so that it will pass the
+@samp{-std} option to @samp{cc}).
+
+@item
+You must use the grade @samp{none} or @samp{none.gc}.
+You can specify the grade in one of three ways: by setting the
+@samp{MERCURY_DEFAULT_GRADE} environment variable, by adding a line
+@samp{GRADE=@dots{}} to your @samp{Mmake} file, or by using the
+@samp{--grade} option to @samp{mmc}.  (You will also need to install
+those grades of the Mercury library, if you have not already done so.)
+
+@item
+If your compiler is particularly strict in
+enforcing ANSI compliance, you may also need to compile the Mercury
+code with @samp{--no-static-ground-terms}.
+
+@end itemize
+
+@contents
+@bye

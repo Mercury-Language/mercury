@@ -1,0 +1,27 @@
+%--------------------------------------------------------------------------%
+% Copyright (C) 1999 INRIA/INSA de Rennes.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file License in the Morphine distribution.
+%
+% Author : Erwan Jahier <jahier@irisa.fr>
+%
+
+opium_scenario(
+	name		: morphine_kernel,
+	files		: [	morphine_kernel,
+				forward_move,
+				current_slots,
+				current_arg,
+				event_attributes,
+				exec_control,
+				coprocess,
+				interactive_queries,
+				browse],
+	scenarios	: [],
+	message		:
+"Scenario morphine_kernel contains all the basic mechanisms of Morphine \
+which are needed to debug Mercury programs. \n\
+"
+	).
+
+

@@ -1,0 +1,330 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1996-2000 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmake - Mmake file for the Mercury documentation.
+
+MAIN_TARGET=all
+
+MERCURY_DIR=..
+include $(MERCURY_DIR)/Mmake.common
+
+#-----------------------------------------------------------------------------#
+
+TEXI2HTML=$(PERL) texi2html
+TEXI2HTML_SPLIT=$(PERL) texi2html -split
+
+ifeq ("$(PERL)","")
+	HTML=warn_no_html
+else
+	HTML=html
+endif
+
+ifeq ("$(TEXI2DVI)","")
+	DVI=warn_no_dvi
+	PS=warn_no_ps
+else
+	DVI=dvi
+	ifeq ("$(DVIPS)","")
+		PS=warn_no_ps
+	else
+		PS=ps
+	endif
+endif
+
+ifeq ("$(MAKEINFO)","")
+	INFOPAGES=warn_no_info
+	MDB_DOC=warn_no_mdb_doc
+else
+	ifeq ("$(INFO)","")
+		MDB_DOC=warn_no_mdb_doc
+	else
+		MDB_DOC=mdb_doc mdb_command_list mdb_command_test.inp
+	endif
+	INFOPAGES=info
+endif
+
+
+
+#-----------------------------------------------------------------------------#
+
+.SUFFIXES: .texi .dvi .ps .text
+
+%.dvi: %.texi
+	$(TEXI2DVI) $<
+
+%.ps: %.dvi
+	$(DVIPS) -f < $< > $@
+
+%.text: %.texi
+	$(MAKEINFO) --no-headers -o $@ $<
+
+%.html %_toc.html: %.texi
+	$(TEXI2HTML) $<
+
+%_1.html: %.texi
+	$(TEXI2HTML_SPLIT) $<
+
+%.1: ../scripts/% make_manpage
+	MERCURY_PROFILER=../profiler/mercury_profile \
+	MERCURY_COMPILER=../compiler/mercury_compile \
+	MERCURY_MKINIT=../util/mkinit \
+	./make_manpage $< > $@
+
+#-----------------------------------------------------------------------------#
+
+	# Currently `mmake all' does not build the PostScript or plain-text
+	# versions of the documentation.  But it might make sense to add them.
+.PHONY: all
+all: $(INFOPAGES) $(DVI) $(HTML) manpages $(MDB_DOC) 
+#all: ps text
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: dvi
+dvi: user_guide.dvi reference_manual.dvi library.dvi faq.dvi \
+	transition_guide.dvi
+
+.PHONY: warn_no_dvi
+warn_no_dvi: 
+	# Warning: Unable to build .dvi files.
+	# This is probably due to a missing `texi2dvi'
+
+.PHONY: info
+info: mercury.info mercury_ref.info mercury_user_guide.info \
+	mercury_library.info mercury_faq.info mercury_trans_guide.info
+
+.PHONY: warn_no_info
+warn_no_info: 
+	# Warning: Unable to build .info files.
+	# This is probably due to a missing `makeinfo'
+
+.PHONY: html
+html: mercury.html user_guide_toc.html reference_manual_toc.html \
+	library_toc.html faq_toc.html transition_guide_toc.html
+
+.PHONY: warn_no_html
+warn_no_html: 
+	# Warning: Unable to build .html files.
+	# This is probably due to a missing `perl'
+
+.PHONY: ps
+ps: user_guide.ps reference_manual.ps library.ps faq.ps transition_guide.ps
+
+.PHONY: warn_no_ps
+warn_no_ps: 
+	# Warning: Unable to build .ps files.
+	# This is probably due to a missing `dvips' or `text2dvi'
+
+.PHONY: text
+text: user_guide.text reference_manual.text library.text faq.text \
+	transition_guide.text
+
+.PHONY: split_html
+split_html: mercury.html user_guide_1.html reference_manual_1.html \
+	library_1.html faq_1.html transition_guide_1.html
+
+.PHONY: manpages
+manpages: c2init.1 mmc.1 mgnuc.1 ml.1 mmake.1 mdb.1 mprof.1 \
+	mprof_merge_runs.1 mtags.1
+
+#-----------------------------------------------------------------------------#
+
+mercury_user_guide.info: user_guide.texi
+	$(MAKEINFO) $<
+mercury_ref.info: reference_manual.texi
+	$(MAKEINFO) $<
+mercury_trans_guide.info: transition_guide.texi
+	$(MAKEINFO) $<
+mercury_faq.info: faq.texi
+	$(MAKEINFO) $<
+mercury_library.info: library.texi
+	$(MAKEINFO) $<
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: warn_no_mdb_doc
+warn_no_mdb_doc: 
+	# Warning: Unable to build mdb documentation.
+	# This is probably due to a missing `makeinfo' or `info'
+
+mdb_doc: generate_mdb_doc mercury_user_guide.info mdb_categories
+	./generate_mdb_doc
+
+mdb_command_list: generate_mdb_command_list mdb_doc
+	./generate_mdb_command_list < mdb_doc > mdb_command_list
+
+mdb_command_test.inp: generate_mdb_command_test mdb_doc
+	./generate_mdb_command_test < mdb_doc > mdb_command_test.inp
+
+#-----------------------------------------------------------------------------#
+
+# The following rules automatically build the library documentation
+# by extracting the module interfaces from the library source code.
+# Note that the private_builtin.m module is just an implementation
+# detail of the library, so it is not documented.
+
+library-menu.texi: $(LIBRARY_DIR)/*.m
+	{								\
+	echo "";							\
+	for filename in $(LIBRARY_DIR)/*.m; do				\
+		case $$filename in					\
+			$(LIBRARY_DIR)/private_builtin.m)		\
+				;;					\
+			$(LIBRARY_DIR)/table_builtin.m)			\
+				;;					\
+			*)						\
+				echo "* `basename $$filename .m`::"; 	\
+				;;					\
+		esac;							\
+	done;								\
+	} > library-menu.texi
+
+library-chapters.texi: $(LIBRARY_DIR)/*.m
+	for filename in $(LIBRARY_DIR)/*.m; do 				\
+		case $$filename in					\
+			$(LIBRARY_DIR)/private_builtin.m)		\
+				;;					\
+			$(LIBRARY_DIR)/table_builtin.m)			\
+				;;					\
+			*)						\
+				file="`basename $$filename .m`"; 	\
+				echo "@node $$file"; 			\
+				echo "@chapter $$file"; 		\
+				echo "@example"; 			\
+				sed -n -e '/:- implementation/q' 	\
+					-e 's/^%----*----% *$$/%--------------------------------------------------%/' 						\
+					-e 's/@/@@/g' 			\
+					-e 's/{/@{/g' 			\
+					-e 's/}/@}/g' 			\
+					-e 'p' 				\
+					"$$filename"; 			\
+				echo "@end example"; 			\
+				echo ""; 				\
+				;;					\
+		esac;							\
+	done > library-chapters.texi
+
+library.dvi library_toc.html mercury_library.info: \
+	library-menu.texi library-chapters.texi
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: dist
+dist: tar
+
+.PHONY: tar
+tar: doc.text.tar.gz doc.ps.tar.gz
+
+doc.text.tar.gz: text
+	tar -cf - *.text | gzip > doc.text.tar.gz
+
+doc.ps.tar.gz: ps
+	tar -cf - *.ps | gzip > doc.ps.tar.gz
+
+#-----------------------------------------------------------------------------#
+
+	# Currently `mmake all' does not build the PostScript or plain-text
+	# versions of the documentation.  If they are added they should
+	# be installed here.
+.PHONY: install
+install: install_info install_html install_dvi install_manpages \
+	install_mdb_doc
+	# install_text install_ps
+
+.PHONY: install_dirs
+install_dirs:
+	-[ -d $(INSTALL_INFO_DIR) ] || mkdir -p $(INSTALL_INFO_DIR)
+	-[ -d $(INSTALL_HTML_DIR) ] || mkdir -p $(INSTALL_HTML_DIR)
+	-[ -d $(INSTALL_DVI_DIR) ] || mkdir -p $(INSTALL_DVI_DIR)
+	-[ -d $(INSTALL_TEXT_DIR) ] || mkdir -p $(INSTALL_TEXT_DIR)
+	-[ -d $(INSTALL_PS_DIR) ] || mkdir -p $(INSTALL_PS_DIR)
+	-[ -d $(INSTALL_MAN_DIR)/man1 ] || \
+		mkdir -p $(INSTALL_MAN_DIR)/man1
+	-[ -d $(INSTALL_MDB_DOC_DIR) ] || mkdir -p $(INSTALL_MDB_DOC_DIR)
+	-[ -d $(INSTALL_WEBPAGE_DIR) ] || mkdir -p $(INSTALL_WEBPAGE_DIR)
+
+.PHONY: install_info
+install_info: $(INFOPAGES) install_dirs
+	-cp *.info* $(INSTALL_INFO_DIR)
+	# Update the .../info/dir file.
+	-if [ -x "$(INSTALL_INFO)" ]; then				\
+		$(INSTALL_INFO) $(INSTALL_INFO_DIR)/mercury.info;	\
+	fi
+
+.PHONY: warn_no_install_info
+warn_no_install_info:
+	# Warning: Unable to install .info files.
+	# This is probably due to a missing `install-info'
+
+.PHONY: install_html
+install_html: $(HTML) install_dirs
+	-cp *.html $(INSTALL_HTML_DIR)
+
+.PHONY: install_dvi
+install_dvi: $(DVI) install_dirs
+	-cp *.dvi $(INSTALL_DVI_DIR)
+
+.PHONY: install_text
+install_text: text install_dirs
+	cp *.txt $(INSTALL_TEXT_DIR)
+
+.PHONY: install_ps
+install_ps: $(PS) install_dirs
+	-cp *.ps $(INSTALL_PS_DIR)
+
+.PHONY: install_manpages
+install_manpages: manpages install_dirs
+	cp *.1 $(INSTALL_MAN_DIR)/man1
+
+.PHONY: install_mdb_doc
+install_mdb_doc: $(MDB_DOC) install_dirs
+	-cp mdb_doc $(INSTALL_MDB_DOC_DIR)
+
+# The uninstall rule here only removes the info files; the others
+# are removed by the top-level uninstall rule.
+.PHONY: uninstall
+uninstall:
+	-cd $(INSTALL_INFO_DIR); rm mercury*.info*
+
+#-----------------------------------------------------------------------------#
+
+# This install is for installing the Mercury webpage, which goes to
+# a different directory (supplied by the environment variable
+# INSTALL_WEBPAGE_DIR).
+
+.PHONY: install_webpage
+install_webpage: library-chapters.texi split_html ps install_dirs
+	cp *.ps $(INSTALL_WEBPAGE_DIR)
+	for file in $(INSTALL_WEBPAGE_DIR)/*.ps ; do \
+		gzip -f -9 $$file ; \
+	done
+	cp *.html $(INSTALL_WEBPAGE_DIR)
+
+#-----------------------------------------------------------------------------#
+
+clean_local: distclean clean_texi
+
+.PHONY: distclean
+distclean:
+	rm -f *.aux *.cp *.fn *.ky *.log *.pg *.toc *.tp *.vr
+
+.PHONY: clean_texi
+clean_texi:
+	rm -f library-menu.texi library-chapters.texi
+
+realclean_local: realclean_texi realclean_manpages
+
+.PHONY: realclean_texi
+realclean_texi:
+	rm -f library*.html user_guide*.html reference_manual*.html
+	rm -f faq*.html transition_guide*.html
+	rm -f mercury_*.info* *.dvi *.text *.ps
+
+.PHONY: realclean_manpages
+realclean_manpages:
+	rm -f *.1
+
+#-----------------------------------------------------------------------------#

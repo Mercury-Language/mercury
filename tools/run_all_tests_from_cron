@@ -1,0 +1,123 @@
+#!/bin/sh
+#
+# This script runs the nightly bootstrap tests.
+# It is invoked directly from cron, so it runs
+# without a proper environment (PATH, etc.) set up.
+#
+# NB. Although this file is under CVS control,
+# the copy that is used by cron does not get
+# automatically updated from the CVS repository.
+# After any modifications, the master copy
+# in /home/mercury/public/test_mercury/scripts
+# should be updated manually.
+
+#-----------------------------------------------------------------------------#
+
+tm_dir=/home/mercury/public/test_mercury
+
+#-----------------------------------------------------------------------------#
+
+ulimit -c 0
+
+C_COMPILER=gcc
+case $# in
+	1)	HOST=$1 ;;
+	2)	HOST=$1; C_COMPILER=$2 ;;
+	*)	echo "Usage: $0 host [c-compiler]" 1>&2; exit 1 ;;
+esac
+
+case $HOST in
+	munta) 		ARCH=sgi	FULLARCH=mips-sgi-irix5.2 ;;
+	muse) 		ARCH=sgi	FULLARCH=mips-sgi-irix5.3 ;;
+	kryten) 	ARCH=sparc	FULLARCH=sparc-sun-solaris2.5 ;;
+	taifun) 	ARCH=sparc	FULLARCH=sparc-sun-solaris2.7 ;;
+	murlibobo) 	ARCH=alpha	FULLARCH=alphaev5-dec-osf3.2 ;;
+	mundook) 	ARCH=alpha	FULLARCH=alpha-dec-osf3.2 ;;
+	quicksilver) 	ARCH=i586	FULLARCH=i586-pc-linux-gnu ;;
+	hg) 		ARCH=i686	FULLARCH=i686-pc-linux-gnu ;;
+	hydra)		ARCH=i686	FULLARCH=i686-pc-linux-gnu ;;
+	ender)		ARCH=i686	FULLARCH=i686-pc-linux-gnu ;;
+	roy)		ARCH=i686	FULLARCH=i686-pc-linux-gnu ;;
+	venus)		ARCH=i686	FULLARCH=i686-pc-linux-gnu ;;
+	*)		echo "$0: unknown HOST $HOST" 1>&2; exit 1 ;;
+esac
+	
+case $HOST in
+	kryten|taifun) 	mail="rsh mundook /bin/mail" ;;
+	hydra|ender|roy|venus) mail=/usr/bin/mail ;;
+	*)		mail=/bin/mail ;;
+esac
+
+#-----------------------------------------------------------------------------#
+
+PATH="$HOME/bin/$ARCH`awk '/^[^#]/{printf ":%s",$0;}' /home/pgrad/fjh/.path`"
+PATH="/home/mercury/public/mercury-0.5/$FULLARCH/bin:$PATH"
+PATH="/home/mercury/public/mercury-0.6/$FULLARCH/bin:$PATH"
+PATH="/home/mercury/public/mercury-latest/$FULLARCH/bin:$PATH"
+PATH="/home/mercury/public/nuprolog/$FULLARCH/bin:$PATH"
+PATH="/home/mercury/public/gcc-2.7.2/$FULLARCH/bin:$PATH"
+PATH="/home/mercury/public/egcs-1.1b/$FULLARCH/bin:$PATH"
+PATH="/home/mercury/public/autoconf-2.4/$FULLARCH/bin:$PATH"
+PATH="/home/mercury/public/sicstus3/$HOST:$PATH"
+PATH="/home/mercury/public/$HOST:$PATH"
+export PATH
+
+CVSROOT=/home/staff/zs/imp
+export CVSROOT
+
+tmpscript=/tmp/test_mercury$$
+cd /home/mercury/public/test_mercury/scripts;
+cvs checkout mercury/tools/test_mercury
+cp mercury/tools/test_mercury $tmpscript
+
+cvs checkout mercury/tools/generate_index_html
+
+#-----------------------------------------------------------------------------#
+
+echo run_test $HOST
+
+mv -f $tm_dir/logs/old/test_mercury_$HOST.out $tm_dir/logs/old2 2>/dev/null
+mv -f $tm_dir/logs/test_mercury_$HOST.out $tm_dir/logs/old 2>/dev/null
+
+tmpfile=/tmp/run_test$$
+trap 'rm -f $tmpfile $tmpscript; exit 1' 1 2 3 13 15
+{
+echo Subject: Mercury auto-test on $HOST
+echo
+logfile=$tm_dir/logs/test_mercury_$HOST.out
+
+if nice -5 sh $tmpscript $HOST $ARCH $FULLARCH $C_COMPILER \
+		> $logfile 2>&1
+then
+	echo test passed
+	echo
+	echo last 10 lines of log file:
+	tail -10 $logfile
+	echo
+	case $HOST in
+		hg) base=/home/hg ;;
+		*) base=/home/mercury ;;
+	esac
+	cd $base/public/mercury-latest/$FULLARCH/lib/mercury/bin/$FULLARCH
+	ls -l mercury_compile
+	size mercury_compile
+	{
+		echo $FULLARCH $HOST
+		ls -l mercury_compile
+		size mercury_compile
+		echo
+	} >> $tm_dir/logs/sizes
+else
+	echo test FAILED
+	echo log file in $tm_dir/logs/test_mercury_$HOST.out
+	echo
+	echo last 10 lines of log file:
+	tail -10 $logfile
+fi
+} > $tmpfile 2>&1
+# NB we can't just pipe into $mail, because $mail times out while
+# waiting for the message.  So we need to use a temp file.
+$mail fjh < $tmpfile
+rm -f $tmpfile $tmpscript
+
+#-----------------------------------------------------------------------------#

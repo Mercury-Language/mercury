@@ -1,0 +1,17 @@
+:- module assoc_list.
+:- interface.
+:- import_module list, std_util.
+:- type (assoc_list:assoc_list(K, V)) == (list:list((std_util:pair(K, V)))).
+:- type (assoc_list:assoc_list(T)) == (list:list((std_util:pair(T, T)))).
+:- pred assoc_list:reverse_members((assoc_list:assoc_list(K, V)), (assoc_list:assoc_list(V, K))).
+:- mode assoc_list:reverse_members(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred assoc_list:from_corresponding_lists((list:list(K)), (list:list(V)), (assoc_list:assoc_list(K, V))).
+:- mode assoc_list:from_corresponding_lists(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred assoc_list:keys((assoc_list:assoc_list(K, V)), (list:list(K))).
+:- mode assoc_list:keys(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred assoc_list:values((assoc_list:assoc_list(K, V)), (list:list(V))).
+:- mode assoc_list:values(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred assoc_list:search((assoc_list:assoc_list(K, V)), K, V).
+:- mode assoc_list:search(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred assoc_list:remove((assoc_list:assoc_list(K, V)), K, V, (assoc_list:assoc_list(K, V))).
+:- mode assoc_list:remove(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is semidet.

@@ -1,0 +1,58 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1997-1999 The University of Melbourne.
+# This file may only be copied under the terms of the GNU Library General
+# Public License - see the file COPYING.LIB in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+MAIN_TARGET = all
+
+# We need to use a grade with trailing
+GRADEFLAGS += --use-trail
+
+EXTRA_LIB_DIRS = $(INSTALL_PREFIX)/extras/lib/mercury
+
+EXTRA_LIBRARIES = global
+
+# We need the following to use shared libraries on Linux
+#MGNUCFLAGS += -DPIC_REG
+#MLFLAGS += --shared
+
+#MLFLAGS += --static
+
+#-----------------------------------------------------------------------------#
+
+PROGS	=	max_test
+
+DEPENDS =	$(PROGS:%=%.depend)
+CS	=	$(PROGS:%=%.c)
+RESS	=	$(PROGS:%=%.res)
+
+#-----------------------------------------------------------------------------#
+
+$(PROGS): 
+
+%.out: %
+	./$< > $@ 2>&1;
+
+%.res: %.exp %.out
+	diff -c $*.exp $*.out > $@
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: depend
+depend: $(DEPENDS)
+
+.PHONY: all
+all: $(PROGS)
+
+.PHONY: check
+check: $(RESS)
+
+.PHONY: cs
+cs: $(CS)
+
+.PHONY: clean_local
+clean_local:
+	rm -f *.out *.res
+
+#-----------------------------------------------------------------------------#

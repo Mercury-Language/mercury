@@ -1,0 +1,145 @@
+#---------------------------------------------------------------------------#
+# Copyright (C) 1996-2000 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+
+# This Mmake file is used to build a binary distribution.
+# You need to have already installed the Mercury compiler.
+
+MERCURY_DIR=..
+include $(MERCURY_DIR)/Mmake.common
+
+MERCURY_VERSION	= mercury-$(VERSION).$(FULLARCH)
+
+INSTALL_LIB_DIR	= $(INSTALL_PREFIX)/lib
+
+LIB_FILES	= bin doc html inc ints lib mdb/mdb_doc modules
+
+# Miscellaneous scripts and utilities not processed by configure
+UTILS		= $(INSTALL_PREFIX)/bin/mkinit$(EXT_FOR_EXE) \
+		  $(INSTALL_PREFIX)/bin/mdemangle$(EXT_FOR_EXE) \
+		  $(INSTALL_PREFIX)/bin/mtags \
+		  $(INSTALL_PREFIX)/bin/mprof_merge_runs \
+		  $(INSTALL_PREFIX)/bin/vpath_find \
+		  $(INSTALL_PREFIX)/bin/mercury_cleanup_install
+
+README_ETC	= ../COPYING ../COPYING.LIB ../HISTORY ../LIMITATIONS \
+		  ../NEWS ../RELEASE_NOTES ../BUGS ../WORK_IN_PROGRESS \
+		  ../VERSION ../README.AIX ../README.BSDI ../README.FreeBSD \
+		  ../README.HPUX ../README.IRIX-5 ../README.Linux \
+		  ../README.Linux-Alpha ../README.Linux-PPC \
+		  ../README.Linux-m68k ../README.MS-VisualC \
+		  ../README.MS-Windows ../README.OSF1 ../README.Solaris
+
+SCRIPT_FILES	= ../scripts/*.in ../scripts/*.sh-subr \
+		  ../scripts/Mmake.rules \
+		  ../scripts/canonical_grade \
+		  ../scripts/gud.el
+
+CONFIG_FILES	= ../config.sub ../config.guess ../install-sh
+
+# These files have a local version bindist.$filename which will be
+# preprocessed to create the final version.
+MISC_FILES	= INSTALL README \
+		  build_vars Makefile.in configure configure.in
+
+#-----------------------------------------------------------------------------#
+
+DEFAULT_TARGET=bindist
+
+.PHONY: bindist
+bindist: binary_distribution
+
+.PHONY: binary_distribution
+binary_distribution: bindist.configure bindist.build_vars
+	# Make a quick check that there is a mercury installation in
+	# $(INSTALL_PREFIX) by looking for mmc and mercury_compile.
+	test -f $(INSTALL_BINDIR)/mmc
+	test -f $(INSTALL_MERC_BIN_DIR)/mercury_compile
+	# create a temporary directory in which to assemble the distribution
+	test -d $(MERCURY_VERSION) || mkdir $(MERCURY_VERSION)
+	# tar it up
+	# (XXX don't use redirection or pipes, because on gnu-win32
+	# stdout defaults to text mode, which breaks tar and gzip)
+	(dir=`pwd` && cd $(INSTALL_LIB_DIR)/mercury && \
+		tar -cf $$dir/$(MERCURY_VERSION)/lib.tar $(LIB_FILES) && \
+		gzip $$dir/$(MERCURY_VERSION)/lib.tar)
+	(dir=`pwd` && cd $(INSTALL_INFO_DIR)/.. && \
+		tar -cf $$dir/$(MERCURY_VERSION)/info.tar info && \
+		gzip $$dir/$(MERCURY_VERSION)/info.tar)
+	(dir=`pwd` && cd $(INSTALL_MAN_DIR)/.. && \
+		tar -cf $$dir/$(MERCURY_VERSION)/man.tar man && \
+		gzip $$dir/$(MERCURY_VERSION)/man.tar)
+	test -d $(MERCURY_VERSION)/scripts || mkdir $(MERCURY_VERSION)/scripts
+	cp $(SCRIPT_FILES) $(MERCURY_VERSION)/scripts
+	test -d $(MERCURY_VERSION)/util || mkdir $(MERCURY_VERSION)/util
+	cp $(UTILS) $(MERCURY_VERSION)/util
+	cp $(CONFIG_FILES) $(MERCURY_VERSION)
+	cp $(README_ETC) $(MERCURY_VERSION)
+	-cd ../samples; mmake realclean
+	-cd ../samples/diff; mmake realclean
+	-cd ../samples/c_interface; mmake realclean
+	-cd ../samples/c_interface/c_calls_mercury; mmake realclean
+	-cd ../samples/c_interface/cplusplus_calls_mercury; mmake realclean
+	-cd ../samples/c_interface/mercury_calls_c; mmake realclean
+	-cd ../samples/c_interface/simpler_c_calls_mercury; mmake realclean
+	-cd ../samples/c_interface/simpler_cplusplus_calls_mercury; mmake realclean
+	-cd ../extras/cgi; mmake realclean
+	-cd ../extras/complex_numbers; mmake realclean
+	-cd ../extras/complex_numbers/tests; mmake realclean
+	-cd ../extras/complex_numbers/samples; mmake realclean
+	-cd ../extras/graphics; mmake realclean
+	-cd ../extras/graphics/samples/calc; mmake realclean
+	-cd ../extras/graphics/samples/maze; mmake realclean
+	-cd ../extras/trailed_update; mmake realclean
+	-cd ../extras/trailed_update/samples; mmake realclean
+	-if [ -d ../tests ]; then					\
+		cd ../tests; mmake realclean;				\
+	else								\
+		cd ../../tests; mmake realclean;			\
+	fi
+	(dir=`pwd` && cd .. && \
+		tar -cf $$dir/$(MERCURY_VERSION)/samples.tar samples && \
+		gzip $$dir/$(MERCURY_VERSION)/samples.tar)
+	(dir=`pwd` && cd .. && \
+		tar -cf $$dir/$(MERCURY_VERSION)/extras.tar extras && \
+		gzip $$dir/$(MERCURY_VERSION)/extras.tar)
+	# Aditi isn't ready for distribution yet.
+	rm -rf $(MERCURY_VERSION)/extras/aditi
+	if [ -d ../tests ]; then					\
+		(dir=`pwd` && cd .. && \
+			tar -cf $$dir/$(MERCURY_VERSION)/tests.tar tests && \
+			gzip $$dir/$(MERCURY_VERSION)/tests.tar)	\
+	else								\
+		(dir=`pwd` && cd ../.. && \
+			tar -cf $$dir/$(MERCURY_VERSION)/tests.tar tests && \
+			gzip $$dir/$(MERCURY_VERSION)/tests.tar)	\
+	fi
+	for file in $(MISC_FILES); do					\
+		sed	-e 's/<VERSION>/$(VERSION)/g'			\
+			-e 's/<FULLARCH>/$(FULLARCH)/g'			\
+			bindist.$$file > $(MERCURY_VERSION)/$$file || exit 1; \
+	done
+	# (XXX don't use redirection or pipes, because on gnu-win32
+	# stdout defaults to text mode, which breaks tar and gzip)
+	tar -cf ../$(MERCURY_VERSION).tar $(MERCURY_VERSION)
+	gzip ../$(MERCURY_VERSION).tar
+	rm -rf $(MERCURY_VERSION)
+
+bindist.configure: bindist.configure.in ../aclocal.m4
+	autoconf -l .. bindist.configure.in > bindist.configure
+
+bindist.build_vars: bindist.build_vars.in
+	CONFIG_FILES=bindist.build_vars CONFIG_HEADERS= \
+	$(MERCURY_DIR)/config.status
+
+#-----------------------------------------------------------------------------#
+
+clean_local:
+	rm -rf mercury-rotd* mercury-DEV*
+
+realclean_local:
+	rm -f bindist.configure bindist.build_vars
+
+#-----------------------------------------------------------------------------#

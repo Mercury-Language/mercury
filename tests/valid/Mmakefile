@@ -1,0 +1,294 @@
+#-----------------------------------------------------------------------------#
+
+main_target: all
+
+include ../Mmake.common
+-include ../Mmake.params
+
+#-----------------------------------------------------------------------------#
+
+# please keep these lists sorted
+AGC_SOURCES= \
+	agc_graph.m \
+	agc_ho_pred.m \
+	agc_ite.m \
+	agc_unbound_typevars.m \
+	agc_unbound_typevars2.m \
+	agc_unused_in.m 
+
+TRAIL_SOURCES= \
+	complex_failure.m \
+	semi_fail_in_non_ite.m
+
+TYPECLASS_SOURCES= \
+	constraint_proof_bug.m \
+	func_method.m \
+	instance_superclass.m \
+	instance_unconstrained_tvar.m \
+	typeclass_det_warning.m
+
+ADITI_SOURCES= \
+	aditi_error_bug.m \
+	aditi_update.m \
+	base_relation.m \
+	base_relation2.m \
+	context_anc.m \
+	ite_to_disj.m
+
+	# This test does not produce a `.c' file.
+RLO_SOURCES= \
+	aditi_query.m
+
+OTHER_SOURCES= \
+	common_struct_bug.m \
+	compl_unify_bug.m \
+	complicated_unify.m \
+	constructor_arg_names.m \
+	dcg_test.m \
+	deforest_bug.m \
+	deforest_loop.m \
+	deforest_rerun_det.m \
+	det_condition.m \
+	det_inference.m \
+	det_switch.m \
+	double_vn.m \
+	easy_nondet_test.m \
+	easy_nondet_test_2.m \
+	empty_bound_inst_list.m \
+	empty_switch.m \
+	error.m \
+	existential_cons.m \
+	explicit_quant.m \
+	fail_ite.m \
+	followcode_det_problem.m \
+	func_int_bug_main.m \
+	func_default_modes.m \
+	headvar_not_found.m \
+	higher_order.m \
+	higher_order2.m \
+	higher_order3.m \
+	higher_order_implied_mode.m \
+	ho_func_call.m \
+	ho_inst.m \
+	ho_unify.m \
+	implied_mode.m \
+	indexing.m \
+	inhibit_warn_test.m \
+	inlining_bug.m \
+	inst_perf_bug_1.m \
+	int64.m \
+	intermod_dcg_bug.m \
+	intermod_impure.m \
+	intermod_lambda.m \
+	intermod_nested_module.m \
+	intermod_nested_uniq.m \
+	intermod_pragma_import.m \
+	intermod_quote.m \
+	intermod_record.m \
+	intermod_test.m \
+	intermod_typeclass.m \
+	intermod_type_spec.m \
+	intermod_user_equality.m \
+	intermod_user_equality_nested.m \
+	lambda_inference.m\
+	lambda_instmap_bug.m \
+	lambda_output.m \
+	lambda_quant.m \
+	lambda_quant_bug.m \
+	lambda_recompute.m \
+	lambda_struct_bug.m \
+	lambda_switch.m \
+	lambda_type.m \
+	lazy_list.m \
+	liveness_nonlocals.m \
+	livevals_seq.m \
+	loop.m \
+	loop_in_disj.m \
+	middle_rec_labels.m \
+	modes_bug.m \
+	mode_syntax.m \
+	module_a.m \
+	module_b.m \
+	module_c.m \
+	module_d.m \
+	module_e.m \
+	mostly_uniq_bug.m \
+	mostly_uniq_neg.m \
+	mostly_uniq_mode_inf.m \
+	multidet_prune1.m \
+	multidet_test.m \
+	nasty_func_test.m \
+	nested_mod_type_bug.m \
+	nondet_live.m \
+	parsing_bug_main.m \
+	pred_with_no_modes.m \
+	qualified_cons_id.m \
+	quantifier_warning.m \
+	record_syntax_bug.m \
+	record_syntax_bug_2.m \
+	record_syntax_bug_3.m \
+	recursive_no_tag_type.m \
+	same_length_2.m \
+	semidet_disj.m \
+	shape_type.m \
+	simplify_bug.m \
+	soln_context.m \
+	some_switch.m \
+	stack_alloc.m \
+	static.m \
+	subtype_switch.m \
+	switch_detection_bug.m \
+	switch_detection_bug2.m \
+	switches.m \
+	tabled_io.m \
+	tabled_for_io.m \
+	tricky_assert2.m \
+	tricky_ite.m \
+	two_pragma_c_codes.m \
+	two_way_unif.m \
+	type_inf_ambig_test.m \
+	unbound_inst_var.m \
+	unbound_tvar_in_lambda.m \
+	undead_proc.m \
+	unify_typeinfo_bug.m \
+	uniq_unify.m \
+	uniq_mode_inf_bug.m \
+	unreachable_code.m \
+	unused_args_test2.m \
+	vn_float.m \
+	zero_arity.m
+
+# The mode system can't handle the following test cases yet:
+#	assoc_list.m
+#	determinism.m
+#	mode_merge_insts.m
+#	inst_perf_bug_2.m
+
+
+# Base grades `jump' and `fast'
+# cannot be used with accurate GC or type classes
+
+ifneq "$(findstring asm_,$(GRADE))" ""
+    SOURCES0=$(AGC_SOURCES) $(TYPECLASS_SOURCES) $(OTHER_SOURCES)
+else
+    ifneq "$(findstring jump,$(GRADE))" ""
+        SOURCES0=$(OTHER_SOURCES)
+    else
+        ifneq "$(findstring fast,$(GRADE))" ""
+            SOURCES0=$(OTHER_SOURCES)
+        else
+            SOURCES0=$(AGC_SOURCES) $(TYPECLASS_SOURCES) $(OTHER_SOURCES)
+        endif
+    endif
+endif
+
+ifneq "$(findstring .mm,$(GRADE))" ""
+    SOURCES1=$(SOURCES0)
+else
+    SOURCES1=$(SOURCES0) $(TRAIL_SOURCES)
+endif
+
+# Aditi is not yet implemented for the MLDS back-end
+# (i.e. grades hl*).
+ifneq "$(findstring hl,$(GRADE))" ""
+    SOURCES=$(SOURCES1)
+else
+    SOURCES=$(SOURCES1) $(ADITI_SOURCES)
+endif
+
+ALL_SOURCES = $(SOURCES) $(RLO_SOURCES)
+DEPS =	$(ALL_SOURCES:%.m=%.depend)
+OBJS =	$(SOURCES:%.m=$(os_subdir)%.$O) $(RLO_SOURCES:%.m=$(rlos_subdir)%.rlo)
+PROGS =	$(SOURCES:%.m=%)
+
+all:	objs
+
+# some regression tests only failed with particular options enabled
+# (please keep these lists sorted)
+
+GRADEFLAGS-agc_graph		= --gc accurate
+GRADEFLAGS-agc_ho_pred		= --gc accurate
+GRADEFLAGS-agc_ite		= --gc accurate
+GRADEFLAGS-agc_unbound_typevars	= --gc accurate
+GRADEFLAGS-agc_unbound_typevars2 = --gc accurate
+GRADEFLAGS-agc_unused_in	= --gc accurate
+GRADEFLAGS-complex_failure	= --use-trail
+GRADEFLAGS-semi_fail_in_non_ite	= --use-trail
+
+MCFLAGS-aditi_error_bug		= --aditi
+MCFLAGS-aditi_error_bug2	= --aditi
+MCFLAGS-aditi_error_bug3	= --aditi
+MCFLAGS-aditi_query		= --aditi-only
+MCFLAGS-aditi_update		= --aditi
+MCFLAGS-base_relation		= --aditi
+MCFLAGS-base_relation2		= --aditi
+MCFLAGS-compl_unify_bug		= -O3
+MCFLAGS-context_anc		= --aditi
+MCFLAGS-deforest_bug		= -O3
+MCFLAGS-deforest_loop		= -O3 --intermodule-optimization
+MCFLAGS-deforest_rerun_det	= -O3 --check-termination
+MCFLAGS-double_vn		= -O4
+MCFLAGS-explicit_quant		= --halt-at-warn
+MCFLAGS-higher_order_implied_mode = -O-1
+MCFLAGS-inhibit_warn_test       = --inhibit-warnings --halt-at-warn
+MCFLAGS-intermod_dcg_bug	= --intermodule-optimization
+MCFLAGS-intermod_dcg_bug2	= --intermodule-optimization
+MCFLAGS-intermod_impure		= --intermodule-optimization
+MCFLAGS-intermod_impure2	= --intermodule-optimization
+MCFLAGS-intermod_lambda		= --intermodule-optimization
+MCFLAGS-intermod_lambda2	= --intermodule-optimization
+MCFLAGS-intermod_nested_module	= --intermodule-optimization
+MCFLAGS-intermod_nested_module2	= --intermodule-optimization
+MCFLAGS-intermod_nested_uniq	= --intermodule-optimization
+MCFLAGS-intermod_nested_uniq2	= --intermodule-optimization
+MCFLAGS-intermod_pragma_import	= --intermodule-optimization
+MCFLAGS-intermod_pragma_import2	= --intermodule-optimization
+MCFLAGS-intermod_quote		= --intermodule-optimization
+MCFLAGS-intermod_quote2		= --intermodule-optimization
+MCFLAGS-intermod_record		= --intermodule-optimization
+MCFLAGS-intermod_record2	= --intermodule-optimization
+MCFLAGS-intermod_test		= --intermodule-optimization
+MCFLAGS-intermod_test2		= --intermodule-optimization
+MCFLAGS-intermod_typeclass	= --intermodule-optimization
+MCFLAGS-intermod_typeclass2	= --intermodule-optimization
+MCFLAGS-intermod_type_spec	= --intermodule-optimization
+MCFLAGS-intermod_type_spec2	= --intermodule-optimization
+MCFLAGS-intermod_user_equality	= --intermodule-optimization
+MCFLAGS-intermod_user_equality2	= --intermodule-optimization
+MCFLAGS-intermod_user_equality_nested	= --intermodule-optimization
+MCFLAGS-intermod_user_equality_nested2	= --intermodule-optimization
+MCFLAGS-ite_to_disj		= --aditi
+MCFLAGS-livevals_seq		= -O5 --opt-space
+MCFLAGS-middle_rec_labels	= --middle-rec --no-follow-vars 
+MCFLAGS-mostly_uniq_mode_inf	= --infer-all
+MCFLAGS-pred_with_no_modes	= --infer-all
+MCFLAGS-quantifier_warning	= --halt-at-warn
+MCFLAGS-simplify_bug		= -O-1
+MCFLAGS-two_way_unif		= -O-1
+MCFLAGS-type_inf_ambig_test	= --infer-all
+MCFLAGS-typeclass_det_warning	= --halt-at-warn
+MCFLAGS-unify_typeinfo_bug	= -O3 --no-special-preds
+MCFLAGS-uniq_mode_inf_bug	= --infer-all
+MCFLAGS-vn_float		= -O5
+MCFLAGS-zero_arity		= --infer-modes
+
+# XXX mmake should automatically handle this dependency.
+intermod_nested_module2.date: intermod_nested_module2.date0
+intermod_user_equality_nested2.date: intermod_user_equality_nested2.date0
+
+check:	objs
+
+objs:	$(OBJS)
+
+depend: $(DEPS)
+
+printtests:
+	@echo $(PROGS)
+
+printobjs:
+	@echo $(OBJS)
+
+clean_local:
+	rm -f *.err *.h
+
+#-----------------------------------------------------------------------------#

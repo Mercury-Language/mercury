@@ -1,0 +1,165 @@
+#-----------------------------------------------------------------------------#
+
+main_target: check
+
+include ../Mmake.common
+-include ../Mmake.params
+
+#-----------------------------------------------------------------------------#
+
+ifeq ($(HAVE_NUPROLOG),yes)
+%.exp: %.nu
+	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1;
+endif
+
+#-----------------------------------------------------------------------------#
+
+# Any program added here should also be added to the `.cvsignore' file.
+
+PROGS=		\
+		arithmetic \
+		array_test \
+		commit_bug \
+		commit_bug_2 \
+		complex_failure \
+		det_complicated_unify \
+		determinism_inlining \
+		disj_disj \
+		do_while \
+		double_error \
+		double_error2 \
+		duplicate_label \
+		environment \
+		fail_detism \
+		float_test \
+		frameopt_mkframe_bug \
+		hello_again \
+		higher_order \
+		intermod_type \
+		interpreter \
+		io_regression \
+		liveness \
+		liveness2 \
+		mode_inf \
+		mode_inf_bug \
+		mu \
+		nasty_nondet \
+		nondet_disj \
+		nondet_ite \
+		nondet_ite_2 \
+		nondet_ite_3 \
+		nondet_ite_4 \
+		nondetlive \
+		parse_list \
+		partition \
+		petdr1 \
+		prune_switch \
+		semi_fail_in_non_ite \
+		semidet_lambda \
+		read_line_as_string \
+		semidet_map \
+		set_test \
+		string_format_test \
+		string_format_test_2 \
+		string_format_test_3 \
+		string_test \
+		string_test_2 \
+		univ \
+		unreachable
+
+# dnf.m does not work in non-gc grades, because it uses `pragma memo'
+# (i.e. tabling) and tabling is not yet implemented for non-gc grades.
+NOT_WORKING =	dnf
+
+#-----------------------------------------------------------------------------#
+#
+# Some test cases need special handling.
+#
+
+# mode_inf and mode_inf_bug need to be compiled with `--infer-all'.
+MCFLAGS-mode_inf = --infer-all
+MCFLAGS-mode_inf_bug = --infer-all
+MCFLAGS-intermod_type = --intermodule-optimization
+MCFLAGS-intermod_type2 = --intermodule-optimization
+
+# In grade `none' with options `-O1 --opt-space' on kryten
+# (a sparc-sun-solaris2.5 system), string_test needs to be linked
+# with `--no-strip', otherwise it gets a seg fault. 
+# The test case ../hard_coded/mode_choice suffers from a similar problem.
+# This is probably a bug in one of the underlying tools (e.g. the Solaris
+# linker) rather than a bug in Mercury, and since it is goes away when you
+# compile with debugging information, it is very difficult to debug.
+# It is much easier to just work around it this way rather than
+# tracking it down.
+MLFLAGS-string_test = --no-strip
+
+# string_format_test_2 and string__format_test_3 are expected to fail
+# (string__format should call error/1 for these test cases)
+# so we need to ignore the exit status; hence the leading `-'.
+# Also we pipe the output through sed to avoid hard-coding
+# dependencies on particular line numbers in the standard library
+# source code.
+string_format_test_2.out: string_format_test_2
+	-./string_format_test_2 2>&1 | \
+		sed -e 's/io.m:[0-9]*/io.m:NNNN/g' \
+		    -e 's/string.m:[0-9]*/string.m:NNNN/g' \
+		    -e 's/require.m:[0-9]*/require.m:NNNN/g' \
+		    -e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
+		| tr -d '\r' > string_format_test_2.out
+		
+string_format_test_3.out: string_format_test_3
+	-./string_format_test_3 2>&1 | \
+		sed -e 's/io.m:[0-9]*/io.m:NNNN/g' \
+		    -e 's/string.m:[0-9]*/string.m:NNNN/g' \
+		    -e 's/require.m:[0-9]*/require.m:NNNN/g' \
+		    -e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
+		| tr -d '\r' > string_format_test_3.out
+
+#-----------------------------------------------------------------------------#
+
+DEPENDS=$(PROGS:%=%.depend)
+OUTS=	$(PROGS:%=%.out)
+EXPS=	$(PROGS:%=%.exp)
+RESS=	$(PROGS:%=%.res)
+
+exp:	$(EXPS)
+
+depend_local:	$(DEPENDS)
+check_local:	$(OUTS) $(RESS)
+all_local:	$(PROGS)
+
+#-----------------------------------------------------------------------------#
+
+SUBDIRS = accumulator
+
+check_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) check) || exit 1; \
+	done
+
+dep_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) dep) || exit 1; \
+	done
+
+depend_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) depend) || exit 1; \
+	done
+
+realclean_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) realclean) || exit 1; \
+	done
+
+clean_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) clean) || exit 1; \
+	done
+
+all_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) all) || exit 1; \
+	done
+
+#-----------------------------------------------------------------------------#

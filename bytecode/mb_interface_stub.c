@@ -1,0 +1,32 @@
+/*
+** Copyright (C) 2000-2001 The University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+**
+** Bytecode entry stubs
+**
+*/
+
+/* System includes */
+#include "mercury_imp.h"
+#include "mb_interface.h"
+
+/* Define the return to deterministic bytecode stub */
+MR_define_extern_entry(MB_native_return_det_stub);
+
+MR_BEGIN_MODULE(mb_interface_stub)
+	MR_init_entry_ai(MB_native_return_det_stub);
+MR_BEGIN_CODE
+
+MR_define_entry(MB_native_return_det_stub);
+	{
+		MR_Code *ret_addr;
+		MR_save_registers();
+		ret_addr = MB_bytecode_return_det();
+		MR_restore_registers();
+		MR_GOTO(ret_addr);
+	}
+
+MR_END_MODULE
+
+

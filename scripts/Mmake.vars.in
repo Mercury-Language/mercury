@@ -1,0 +1,548 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1996-2001 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmake.vars - variables for building Mercury programs
+
+# This file gives the default values for certain variables.
+# The values here can be overridden by individual Mmake files.
+
+# Ensure that commands use /bin/sh not the user's shell
+SHELL		= /bin/sh
+
+ALL_EXTRA_LIBRARIES	= $(TARGET_EXTRA_LIBRARIES) $(EXTRA_LIBRARIES)
+EXTRA_LIB_DIRS		=
+EXTRA_LIBRARIES		=
+
+EXTRA_INT_DIRS		= $(patsubst %,%/ints,$(EXTRA_LIB_DIRS))
+MERCURY_EXTRA_INT_DIRS	= $(EXTRA_INT_DIRS)
+EXTRA_C_LIB_DIRS	= \
+	$(patsubst %,%/lib/$(GRADESTRING)/@FULLARCH@,$(EXTRA_LIB_DIRS)) \
+	$(patsubst %,%/lib/@FULLARCH@,$(EXTRA_LIB_DIRS))
+EXTRA_C_INCL_DIRS	= $(patsubst %,%/inc,$(EXTRA_LIB_DIRS))
+EXTRA_INIT_DIRS		= $(patsubst %,%/modules,$(EXTRA_LIB_DIRS))
+MERCURY_EXTRA_INIT_DIRS = $(EXTRA_INIT_DIRS)
+
+# Set the directory search path. 
+# (See the GNU Make manual for documentation about VPATH and GPATH.)
+# We need to substitute all spaces with colons for the VPATH to work.
+# Getting a space to be recognised as the first argument of the subst
+# function is problematic; hence the `$(nullstring)' hack.
+# XXX Note that directory names with spaces in them (e.g. under Windows)
+# will cause problems for the VPATH settings below, as well as every
+# occurrence of $(patsubst ...), since GNU Make does not respect quotes.
+nullstring	=
+MMAKE_VPATH	= $(subst $(nullstring) ,:,$(strip \
+			$(MERCURY_EXTRA_INT_DIRS) $(MERCURY_INT_DIR)\
+			$(MERCURY_EXTRA_INIT_DIRS)))
+VPATH		= $(MMAKE_VPATH) # do not remove the `:' from this comment!!!
+#			 the above comment works around a misfeature of
+#			 autoconf which causes it to delete assignments to
+#			 VPATH unless they contain a `:'
+GPATH		= $(VPATH)
+
+DEFAULT_GRADE	= $(MERCURY_DEFAULT_GRADE)
+GRADE		= $(DEFAULT_GRADE)
+GRADESTRING	= $(shell $(MCOGS) $(ALL_GRADEFLAGS))
+
+# This may be overridden on the command line
+TARGET_ASM	= no
+
+ifeq ($(TARGET_ASM),yes)
+ASM_OPT  = --target asm
+else
+ASM_OPT  =
+endif
+
+ALL_GRADEFLAGS  = $(USUAL_GRADEFLAGS) $(ASM_OPT)
+USUAL_GRADEFLAGS = $(GRADEFLAGS) $(EXTRA_GRADEFLAGS) $(TARGET_GRADEFLAGS)
+GRADEFLAGS	= --grade $(GRADE)
+EXTRA_GRADEFLAGS =
+
+MC		= mmc
+ALL_MCFLAGS	= $(MCFLAGS) $(EXTRA_MCFLAGS) $(TARGET_MCFLAGS) $(LIB_MCFLAGS)
+MCFLAGS		=
+EXTRA_MCFLAGS	=
+LIB_MCFLAGS	= $(patsubst %,-I %,$(EXTRA_INT_DIRS))
+
+MCS		= $(MC) --split-c-files --compile-only
+MCG		= $(MC) --compile-to-c
+MCD		= $(MC) --generate-dependencies
+MCI		= $(MC) --make-interface
+MCPI		= $(MC) --make-private-interface
+MCSI		= $(MC) --make-short-interface
+MCOI		= $(MC) --make-optimization-interface
+MCTOI		= $(MC) --make-transitive-optimization-interface
+MCOGS		= $(MC) --output-grade-string
+
+ALL_MCIFLAGS	= $(MCIFLAGS) $(EXTRA_MCIFLAGS) $(TARGET_MCFLAGS) \
+		  $(LIB_MCFLAGS)
+ALL_MCPIFLAGS	= $(MCPIFLAGS) $(EXTRA_MCPIFLAGS) $(TARGET_MCFLAGS) \
+		  $(LIB_MCFLAGS)
+ALL_MCSIFLAGS	= $(MCSIFLAGS) $(EXTRA_MCSIFLAGS) $(TARGET_MCFLAGS) \
+		  $(LIB_MCFLAGS)
+ALL_MCOIFLAGS	= $(MCOIFLAGS) $(EXTRA_MCOIFLAGS) $(TARGET_MCFLAGS) \
+		  $(LIB_MCFLAGS)
+ALL_MCTOIFLAGS	= $(MCTOIFLAGS) $(EXTRA_MCTOIFLAGS) $(TARGET_MCFLAGS) \
+		  $(LIB_MCFLAGS)
+ALL_MCDFLAGS	= $(MCDFLAGS) $(EXTRA_MCDFLAGS) $(TARGET_MCFLAGS) \
+		  $(LIB_MCFLAGS)
+ALL_MCGFLAGS	= $(MCGFLAGS) $(EXTRA_MCGFLAGS) $(TARGET_MCFLAGS) \
+		  $(LIB_MCFLAGS)
+ALL_MCSFLAGS	= $(MCSFLAGS) $(EXTRA_MCSFLAGS) $(TARGET_MCFLAGS) \
+		  $(LIB_MCFLAGS)
+
+MCIFLAGS	= $(MCFLAGS)
+MCPIFLAGS	= $(MCFLAGS)
+MCSIFLAGS	= $(MCFLAGS)
+MCOIFLAGS	= $(MCFLAGS)
+MCTOIFLAGS	= $(MCFLAGS)
+MCDFLAGS	= $(MCFLAGS)
+MCGFLAGS	= $(MCFLAGS)
+MCSFLAGS	= $(MCFLAGS)
+
+EXTRA_MCIFLAGS	= $(EXTRA_MCFLAGS)
+EXTRA_MCPIFLAGS	= $(EXTRA_MCFLAGS)
+EXTRA_MCSIFLAGS	= $(EXTRA_MCFLAGS)
+EXTRA_MCOIFLAGS	= $(EXTRA_MCFLAGS)
+EXTRA_MCTOIFLAGS= $(EXTRA_MCFLAGS)
+EXTRA_MCDFLAGS	= $(EXTRA_MCFLAGS)
+EXTRA_MCGFLAGS	= $(EXTRA_MCFLAGS)
+EXTRA_MCSFLAGS	= $(EXTRA_MCFLAGS)
+
+#
+# The following variables hold the names of various programs and
+# the options which should be passed to them.
+#
+C2INIT		= c2init
+ALL_C2INITFLAGS	= $(C2INITFLAGS) $(EXTRA_C2INITFLAGS) $(TARGET_C2INITFLAGS) \
+		  $(LIB_C2INITFLAGS)
+C2INITFLAGS	=
+EXTRA_C2INITFLAGS =
+LIB_C2INITFLAGS	= $(patsubst %,--init-file-directory %,$(EXTRA_INIT_DIRS))
+
+ALL_C2INITARGS	= $(C2INITARGS) $(EXTRA_C2INITARGS) $(TARGET_C2INITARGS) \
+		  $(LIB_C2INITARGS)
+C2INITARGS	=
+EXTRA_C2INITARGS =
+LIB_C2INITARGS	= $(patsubst %,%.init,$(ALL_EXTRA_LIBRARIES))
+
+MGNUC		= mgnuc
+ALL_MGNUCFLAGS	= $(MGNUCFLAGS) $(EXTRA_MGNUCFLAGS) $(TARGET_MGNUCFLAGS) \
+		  $(LIB_MGNUCFLAGS) $(ALL_CFLAGS)
+MGNUCFLAGS	=
+EXTRA_MGNUCFLAGS =
+LIB_MGNUCFLAGS	= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
+
+ALL_CFLAGS	= $(CFLAGS) $(EXTRA_CFLAGS) $(TARGET_CFLAGS)
+CFLAGS		=
+EXTRA_CFLAGS	=
+
+# MS_CL is the command line version of Microsoft Visual C++, which we
+# use to compile Managed C++ code in the .NET backend.
+MS_CL		= cl
+ALL_MS_CLFLAGS	= $(MS_CLFLAGS) $(EXTRA_MS_CLFLAGS) $(TARGET_MS_CLFLAGS) \
+		$(LIB_MS_CLFLAGS) $(ALL_CFLAGS)
+MS_CLFLAGS	=
+EXTRA_MS_CLFLAGS =
+LIB_MS_CLFLAGS	= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
+
+# MS_CL_NOASM can be used to turn off assembly generation.  Use
+# MS_CL_NOASM=:noAssembly to turn it off, leave it blank to turn it on.
+MS_CL_NOASM	=
+MS_DOTNET_SDK_DIR=@MS_DOTNET_SDK_DIR@
+# The system libraries.
+MS_CL_LIBS	= "$(MS_DOTNET_SDK_DIR)/Lib/mscoree.lib" \
+		  "$(MS_DOTNET_SDK_DIR)/Lib/kernel32.lib"
+MERC_C_INCL_DIR = @LIBDIR@/inc
+MERC_DLL_DIR    = @LIBDIR@/inc
+
+# MS_ILASM is the Microsoft IL assembler, which turns IL assembly code
+# into bytecode.
+MS_ILASM		= @ILASM@
+ALL_MS_ILASMFLAGS= $(MS_ILASMFLAGS) $(EXTRA_MS_ILASMFLAGS) \
+		$(TARGET_MS_ILASMFLAGS) $(LIB_MS_ILASMFLAGS)
+MS_ILASMFLAGS	=
+EXTRA_MS_ILASMFLAGS =
+LIB_MS_ILASMFLAGS= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
+
+# MS_AL is the Microsoft assembly linker, which creates and installs
+# assemblies.
+MS_AL		= al
+
+ML		= ml
+ALL_MLFLAGS	= $(MLFLAGS) $(EXTRA_MLFLAGS) $(TARGET_MLFLAGS) $(LIB_MLFLAGS)
+MLFLAGS		= $(EXTRA_MLFLAGS)
+EXTRA_MLFLAGS	=
+LIB_MLFLAGS	= $(patsubst %,-R%,$(EXTRA_C_LIB_DIRS)) \
+		  $(patsubst %,-L%,$(EXTRA_C_LIB_DIRS))
+
+MLOBJS		=
+MLPICOBJS	= $(MLOBJS:.o=.$(EXT_FOR_PIC_OBJECTS))
+ALL_MLLIBS	= $(MLLIBS) $(EXTRA_MLLIBS) $(TARGET_MLLIBS) $(LIB_MLLIBS)
+# XXX ALL_MLLIBS_DEP should contain a list of the file names of the
+# libraries specified in ALL_MLLIBS, but I can't see how to know whether
+# they should be `.a' or `.so' libraries, so for now we leave it empty.
+#ALL_MLLIBS_DEP	= $(patsubst -l%,lib%.???,$(ALL_MLLIBS))
+ALL_MLLIBS_DEP	=
+MLLIBS		=
+EXTRA_MLLIBS	=
+LIB_MLLIBS	= $(patsubst %,-l%,$(ALL_EXTRA_LIBRARIES))
+
+MNC		= mnc
+ALL_MNCFLAGS	= $(MNCFLAGS) $(EXTRA_MNCFLAGS) $(TARGET_MNCFLAGS)
+MNCFLAGS	=
+EXTRA_MNCFLAGS	=
+
+MNL		= mnl
+ALL_MNLFLAGS	= $(MNLFLAGS) $(EXTRA_MNLFLAGS) $(TARGET_MNLFLAGS)
+MNLFLAGS	=
+EXTRA_MNLFLAGS	=
+
+MNP		= mnp
+ALL_MNPFLAGS	= $(MNPFLAGS) $(EXTRA_MNPFLAGS) $(TARGET_MNPFLAGS)
+MNPFLAGS	=
+EXTRA_MNPFLAGS	=
+
+MSC		= msc
+ALL_MSCFLAGS	= $(MSCFLAGS) $(EXTRA_MSCFLAGS) $(TARGET_MSCFLAGS)
+MSCFLAGS	=
+EXTRA_MSCFLAGS	=
+
+MSL		= msl
+ALL_MSLFLAGS	= $(MSLFLAGS) $(EXTRA_MSLFLAGS) $(TARGET_MSLFLAGS)
+MSLFLAGS	=
+EXTRA_MSLFLAGS	=
+
+MSP		= msp
+ALL_MSPFLAGS	= $(MSPFLAGS) $(EXTRA_MSPFLAGS) $(TARGET_MSPFLAGS)
+MSPFLAGS	=
+EXTRA_MSPFLAGS	=
+
+AR		= @AR@
+ALL_ARFLAGS	= $(ARFLAGS) $(EXTRA_ARFLAGS) $(TARGET_ARFLAGS)
+ARFLAGS		= @ARFLAGS@
+EXTRA_ARFLAGS	=
+AR_LIBFILE_OPT	= @AR_LIBFILE_OPT@
+
+RANLIB		= @RANLIB@
+ALL_RANLIBFLAGS	= $(RANLIBFLAGS) $(EXTRA_RANLIBFLAGS) $(TARGET_RANLIBFLAGS)
+RANLIBFLAGS	=
+EXTRA_RANLIBFLAGS =
+
+# List of grades to install for a library
+ALL_LIBGRADES	= $(TARGET_LIBGRADES) $(EXTRA_TARGET_LIBGRADES)
+LIBGRADES	=
+EXTRA_LIBGRADES	=
+
+# $(CFLAGS_FOR_PIC) is passed to the C compiler when creating `.pic_o' files
+# (We use `.pic_o' as the extension for `.o' files that must have
+# position-independent code.)
+CFLAGS_FOR_PIC		= @CFLAGS_FOR_PIC@
+
+# $(GCCFLAGS_FOR_PIC) is passed to the GCC back-end when creating
+# `.pic_s' files.
+GCCFLAGS_FOR_PIC	= -fpic
+
+# $(EXT_FOR_PIC_OBJECTS) will be either `.o', if $(CFLAGS_FOR_PIC) is empty,
+# or `.pic_o', if special flags are required for compiling files that
+# will be put in shared libraries.
+EXT_FOR_PIC_OBJECTS	= @EXT_FOR_PIC_OBJECTS@
+
+# $(EXT_FOR_SHARED_LIB) will be the extension for shared libraries,
+# if the system supports them (e.g. `.so'), or the extension used
+# for non-shared libraries (e.g. `.a') if the system doesn't support
+# shared libraries.
+EXT_FOR_SHARED_LIB	= @EXT_FOR_SHARED_LIB@
+
+# Set `RM_C' to `:' if you want to keep the intermediate `.c' files,
+# or to `rm' if you want Mmake to remove them.  Beware that RM_C=rm
+# causes some potential race conditions if you use parallel make.
+RM_C		= @DEFAULT_RM_C@
+
+# lists of targets that depend on $(MLOBJS) and $(MLPICOBJS)
+MLOBJS_DEPS = 
+MLPICOBJS_DEPS = 
+
+#-----------------------------------------------------------------------------#
+
+# `TARGET_<prog>FLAGS' is used to pass different flags to <prog> for
+# different targets.  By setting MCFLAGS-foo, for example, you can add
+# extra values to TARGET_MCFLAGS that will used only for compiling foo.m.
+#
+# For each program <prog>, `TARGET_<prog>FLAGS' expands to
+# `$(<prog>FLAGS-$@)' and/or `$(<prog>FLAGS-$*)'.
+# $@ and $* are the builtin variables that expand to the
+# current target and (for pattern rules) the base name of the current target,
+# respectively.  So $* is used for flags variables used by pattern rules,
+# whereas $@ is used for flags variables used by hard-coded rules,
+# including the ones in the generated .dep files.
+#
+# The code below uses some tricky GNU Make hacks to avoid expanding
+# <prog>FLAGS-$* and <prog>FLAGS-$@ if these vars are not defined,
+# so that we can avoid spurious warnings if the warning about
+# undefined variables is enabled.
+
+TARGET_GRADEFLAGS = \
+  $(maybe-base-GRADEFLAGS-$(findstring undefined,\
+		$(origin GRADEFLAGS-$(patsubst %_init,%,$*)))) \
+  $(maybe-target-GRADEFLAGS-$(findstring undefined,\
+  		$(origin GRADEFLAGS-$(patsubst %_init.c,%,$@))))
+maybe-base-GRADEFLAGS- = $(GRADEFLAGS-$(patsubst %_init,%,$*))
+maybe-base-GRADEFLAGS-undefined =
+maybe-target-GRADEFLAGS- = $(GRADEFLAGS-$(patsubst %_init.c,%,$@))
+maybe-target-GRADEFLAGS-undefined =
+
+TARGET_MCFLAGS = \
+  $(maybe-base-MCFLAGS-$(findstring undefined,$(origin MCFLAGS-$*)))
+maybe-base-MCFLAGS- = $(MCFLAGS-$*)
+maybe-base-MCFLAGS-undefined =
+
+TARGET_C2INITFLAGS = \
+  $(maybe-target-C2INITFLAGS-$(findstring undefined,\
+		$(origin C2INITFLAGS-$(patsubst %_init.c,%,$@))))
+maybe-target-C2INITFLAGS- = $(C2INITFLAGS-$(patsubst %_init.c,%,$@))
+maybe-target-C2INITFLAGS-undefined =
+
+TARGET_C2INITARGS = \
+  $(maybe-base-C2INITARGS-$(findstring undefined,\
+		$(origin C2INITARGS-$*))) \
+  $(maybe-target-C2INITARGS-$(findstring undefined,\
+		$(origin C2INITARGS-$(patsubst %_init.c,%,$@))))
+maybe-base-C2INITARGS- = $(C2INITARGS-$*)
+maybe-base-C2INITARGS-undefined =
+maybe-target-C2INITARGS- = $(C2INITARGS-$(patsubst %_init.c,%,$@))
+maybe-target-C2INITARGS-undefined =
+
+TARGET_MGNUCFLAGS = \
+  $(maybe-base-MGNUCFLAGS-$(findstring undefined,$(origin MGNUCFLAGS-$*)))
+maybe-base-MGNUCFLAGS- = $(MGNUCFLAGS-$*)
+maybe-base-MGNUCFLAGS-undefined =
+
+TARGET_CFLAGS = \
+  $(maybe-base-CFLAGS-$(findstring undefined,$(origin CFLAGS-$*))) \
+  $(maybe-target-CFLAGS-$(findstring undefined,$(origin CFLAGS-$@)))
+maybe-base-CFLAGS- = $(CFLAGS-$*)
+maybe-base-CFLAGS-undefined =
+maybe-target-CFLAGS- = $(CFLAGS-$@)
+maybe-target-CFLAGS-undefined =
+
+TARGET_MLFLAGS = \
+  $(maybe-target-MLFLAGS-$(findstring undefined,$(origin MLFLAGS-$@)))
+maybe-target-MLFLAGS- = $(MLFLAGS-$@)
+maybe-target-MLFLAGS-undefined =
+
+TARGET_MLLIBS = \
+  $(maybe-target-MLLIBS-$(findstring undefined,$(origin MLLIBS-$@)))
+maybe-target-MLLIBS- = $(MLLIBS-$@)
+maybe-target-MLLIBS-undefined =
+
+TARGET_ARFLAGS = \
+  $(maybe-target-ARFLAGS-$(findstring undefined,$(origin ARFLAGS-$@)))
+maybe-target-ARFLAGS- = $(ARFLAGS-$@)
+maybe-target-ARFLAGS-undefined =
+
+TARGET_RANLIBFLAGS = \
+  $(maybe-target-RANLIBFLAGS-$(findstring undefined,$(origin RANLIBFLAGS-$@)))
+maybe-target-RANLIBFLAGS- = $(RANLIBFLAGS-$@)
+maybe-target-RANLIBFLAGS-undefined =
+
+# Note we strip any trailing `_init.c' from `$@' so we get the appropriate
+# "base" name, regardless of whether this variable ends up being used as
+# an argument of a `c2init' rule or an `ml' rule.
+TARGET_EXTRA_LIBRARIES = \
+  $(maybe-target-EXTRA_LIBRARIES-$(findstring undefined,\
+		$(origin EXTRA_LIBRARIES-$(patsubst %_init.c,%,$@))))
+maybe-target-EXTRA_LIBRARIES- = $(EXTRA_LIBRARIES-$(patsubst %_init.c,%,$@))
+maybe-target-EXTRA_LIBRARIES-undefined =
+
+TARGET_LIBGRADES = \
+  $(maybe-base-LIBGRADES-$(findstring undefined,$(origin LIBGRADES-$*)))
+maybe-base-LIBGRADES- = $(LIBGRADES-$*)
+maybe-base-LIBGRADES-undefined = $(LIBGRADES) $(EXTRA_LIBGRADES)
+
+EXTRA_TARGET_LIBGRADES = \
+  $(maybe-base-EXTRA_LIBGRADES-$(findstring undefined,\
+		$(origin EXTRA_LIBGRADES-$*)))
+maybe-base-EXTRA_LIBGRADES- = $(EXTRA_LIBGRADES-$*)
+maybe-base-EXTRA_LIBGRADES-undefined =
+
+TARGET_MS_CLFLAGS = \
+  $(maybe-base-MS_CLFLAGS-$(findstring undefined,$(origin MS_CLFLAGS-$*)))
+maybe-base-MS_CLFLAGS- = $(MS_CLFLAGS-$*)
+maybe-base-MS_CLFLAGS-undefined =
+
+TARGET_MS_ILASMFLAGS = \
+   $(maybe-base-MS_ILASMFLAGS-$(findstring undefined,$(origin MS_ILASMFLAGS-$*)))
+maybe-base-MS_ILASMFLAGS- = $(MS_ILASMFLAGS-$*)
+maybe-base-MS_ILASMFLAGS-undefined =
+
+# Support for compiling Mercury programs with Prolog will probably be
+# dropped one of these days, so it's probably not worth bothering with these.
+TARGET_MNCFLAGS	=
+TARGET_MNLFLAGS	=
+TARGET_MNPFLAGS	=
+TARGET_MSCFLAGS	=
+TARGET_MSLFLAGS	=
+TARGET_MSPFLAGS	=
+
+#-----------------------------------------------------------------------------#
+#
+# The following variables specify the names of the subdirectories used,
+# so that you can write code which works both with and without the
+# `--use-subdirs' option.
+#
+
+ifeq ($(MMAKE_USE_SUBDIRS),yes)
+
+# If you change any of these, you may need to update
+# `mercury_cleanup_install'.
+
+SUBDIR=Mercury/
+
+nos_subdir=$(SUBDIR)nos/
+qls_subdir=$(SUBDIR)qls/
+deps_subdir=$(SUBDIR)deps/
+ds_subdir=$(SUBDIR)ds/
+int0s_subdir=$(SUBDIR)int0s/
+ints_subdir=$(SUBDIR)ints/
+int2s_subdir=$(SUBDIR)int2s/
+int3s_subdir=$(SUBDIR)int3s/
+opts_subdir=$(SUBDIR)opts/
+trans_opts_subdir=$(SUBDIR)trans_opts/
+date0s_subdir=$(SUBDIR)date0s/
+dates_subdir=$(SUBDIR)dates/
+date3s_subdir=$(SUBDIR)date3s/
+optdates_subdir=$(SUBDIR)optdates/
+trans_opt_dates_subdir=$(SUBDIR)trans_opt_dates/
+cs_subdir=$(SUBDIR)cs/
+ss_subdir=$(SUBDIR)cs/
+os_subdir=$(SUBDIR)os/
+rlos_subdir=$(SUBDIR)rlos/
+ils_subdir=$(SUBDIR)ils/
+dirs_subdir=$(SUBDIR)dirs/
+
+else
+
+SUBDIR=
+
+nos_subdir=
+qls_subdir=
+deps_subdir=
+ds_subdir=
+int0s_subdir=
+ints_subdir=
+int2s_subdir=
+int3s_subdir=
+opts_subdir=
+trans_opts_subdir=
+date0s_subdir=
+dates_subdir=
+date3s_subdir=
+optdates_subdir=
+trans_opt_dates_subdir=
+cs_subdir=
+ss_subdir=
+os_subdir=
+rlos_subdir=
+ils_subdir=
+dirs_subdir=
+
+endif
+
+#-----------------------------------------------------------------------------#
+
+# This needs to go here so that user Mmake files can add new suffixes.
+
+.SUFFIXES: # reset sufix list to be empty
+
+#-----------------------------------------------------------------------------#
+
+MAIN_TARGET =
+
+default_target: main_target
+
+#-----------------------------------------------------------------------------#
+
+# Specify commands for installing things.
+
+INSTALL = cp
+INSTALL_MKDIR = mkdir -p
+
+#-----------------------------------------------------------------------------#
+
+# Specify the locations for installing things.
+# These directories can all be modified independantly.
+# In particular, you might want to find a better place for the DVI and
+# HTML files.
+
+# FINAL_INSTALL_PREFIX describes the directory that the installation
+# will finally end up in.  When building the Mercury compiler, it
+# should only be set by the configure script.  Other
+# FINAL_INSTALL_* variables have a similar meaning.
+#
+# If you want to install to a different directory temporarily (e.g.
+# to build a package, or if you don't have the permissions to install
+# to a final directory), override INSTALL_PREFIX on the command-line.
+# If you have previously configured to the directory you want to
+# finally install to, you will then be able to move the files safely,
+# since any hard-coded paths will be set to their final destination
+# already (note that the installation in the temporary directory may
+# not work until moved into its final destination).
+# e.g.
+#      configure --prefix /usr
+#      make INSTALL_PREFIX=/some/temporary/directory/usr
+
+# If you don't intend to install to a temporary directory, rather than
+# overriding INSTALL_PREFIX you should reconfigure using the configure
+# script, since there are some hardcoded paths created by the configure
+# script (e.g. in the shell scripts mmc, ml, mmake, etc) that will not
+# be updated simply by overriding INSTALL_PREFIX.
+
+INSTALL_PREFIX		= @prefix@
+FINAL_INSTALL_PREFIX	= @prefix@
+INSTALL_BINDIR		= $(INSTALL_PREFIX)/bin
+INSTALL_LIBDIR		= $(INSTALL_PREFIX)/lib/mercury
+FINAL_INSTALL_LIBDIR	= $(FINAL_INSTALL_PREFIX)/lib/mercury
+INSTALL_INFO_DIR	= $(INSTALL_PREFIX)/info
+INSTALL_DVI_DIR		= $(INSTALL_PREFIX)/lib/mercury/doc
+INSTALL_TEXT_DIR	= $(INSTALL_PREFIX)/lib/mercury/doc
+INSTALL_PS_DIR		= $(INSTALL_PREFIX)/lib/mercury/doc
+INSTALL_MAN_DIR		= $(INSTALL_PREFIX)/man
+INSTALL_HTML_DIR	= $(INSTALL_PREFIX)/lib/mercury/html
+INSTALL_MDB_DOC_DIR	= $(INSTALL_PREFIX)/lib/mercury/mdb
+INSTALL_ELISP_DIR	= $(INSTALL_PREFIX)/lib/mercury/elisp
+
+# You should not need to override anything below here
+
+INSTALL_MODULE_DIR	= $(INSTALL_LIBDIR)/modules
+INSTALL_INT_DIR		= $(INSTALL_LIBDIR)/ints
+INSTALL_INC_DIR		= $(INSTALL_LIBDIR)/inc
+INSTALL_MMAKE_DIR	= $(INSTALL_LIBDIR)/mmake
+FULLARCH		= @FULLARCH@
+INSTALL_MERC_BIN_DIR	= $(INSTALL_LIBDIR)/bin/$(FULLARCH)
+INSTALL_MERC_GRADELESS_LIB_DIR = $(INSTALL_LIBDIR)/lib/$(FULLARCH)
+FINAL_INSTALL_MERC_GRADELESS_LIB_DIR = $(FINAL_INSTALL_LIBDIR)/lib/$(FULLARCH)
+INSTALL_MERC_LIB_DIR	= $(INSTALL_LIBDIR)/lib/$(GRADESTRING)/$(FULLARCH)
+FINAL_INSTALL_MERC_LIB_DIR = \
+		$(FINAL_INSTALL_LIBDIR)/lib/$(GRADESTRING)/$(FULLARCH)
+
+#-----------------------------------------------------------------------------#
+
+# Specify the additional compilation models to install by default
+LIBGRADES		= @LIBGRADES@
+
+#-----------------------------------------------------------------------------#
+
+# We need to use $(empty_string) here to prevent Make from truncating
+# any trailing spaces in @OBJFILE_OPT@
+empty_string=
+OBJFILE_OPT=@OBJFILE_OPT@$(empty_string)
+
+EXT_FOR_EXE=@EXE_SUFFIX@
+O=@OBJ_SUFFIX@
+A=@LIB_SUFFIX@
+
+#-----------------------------------------------------------------------------#

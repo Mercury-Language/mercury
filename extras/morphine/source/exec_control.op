@@ -1,0 +1,620 @@
+%--------------------------------------------------------------------------%
+% Copyright (C) 1999 INRIA/INSA de Rennes.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file License in the Morphine distribution.
+%
+% Author : Erwan Jahier <jahier@irisa.fr>
+%
+% Morphine built-ins, primitives and commands related to the control
+% of the execution (part of scenario morphine_kernel.op). All predicates
+% of this file are written to be run on an unix-like architecture.
+
+
+%--------------------------------------------------------------------------%
+opium_primitive(
+	name		: init_morphine_session,
+	arg_list	: [],
+	arg_type_list	: [],
+	abbrev		: _,
+	implementation	: init_morphine_session_Op,
+	message		:
+"Initializes Morphine."
+	).
+
+
+% :- pred init_morphine_session_Op is det.
+init_morphine_session_Op :-
+	load_morphine_rc,
+	setval(state_of_morphine, not_running),
+	setval(a_program_has_been_run, no).
+
+
+load_morphine_rc :-
+	( 
+		getenv('PWD', Cwd),
+		append_strings(Cwd, "/.morphine-rc", CurrentMorphineRc),
+		exists(CurrentMorphineRc) 
+	->
+		% If a `.morphine-rc' exists in the current directory, load it.
+		( get_file_info(CurrentMorphineRc, size, 0) ->
+		    true
+		;
+		    % Only print thet message if .morphine-rc is not empty
+		    compile(CurrentMorphineRc)
+		)
+	;
+		% If no `.morphine-rc' exists in the current directory, look
+		% in the home directory if such a file is available to load it.
+
+		getenv('HOME', Dir),
+		append_strings(Dir, "/.morphine-rc", HomeMorphineRc),
+		( 
+			exists(HomeMorphineRc) 
+		->
+			( get_file_info(HomeMorphineRc, size, 0) ->
+			    true
+			;
+			    % Only print thet message if .morphine-rc is not empty
+			    compile(HomeMorphineRc)
+			)
+		;
+			true
+		)
+	).
+
+%--------------------------------------------------------------------------%
+opium_command(
+	name		: re_init_morphine,
+	arg_list	: [],
+	arg_type_list	: [],
+	abbrev		: _,
+	interface	: menu,
+	command_type	: opium,
+	implementation	: re_init_morphine_Op,
+	parameters	: [],
+	message		:
+'Re-initializes Morphine. This command migth be useful if Morphine is broken.\
+'
+	).
+
+re_init_morphine_Op :-
+	init_morphine_session_Op.
+
+
+%--------------------------------------------------------------------------%
+morphine_abort :-
+	end_connection,
+	abort.
+
+%--------------------------------------------------------------------------%
+opium_command(
+	name		: run,
+	arg_list	: [ProgramCall],
+	arg_type_list	: [is_mercury_program_call],
+	abbrev		: _,
+	interface	: button,
+	command_type	: opium,
+	implementation	: run_Op,
+	parameters	: [],
+	message		:
+'Executes a Mercury program from Morphine. \n\
+\n\
+Example:  \
+run(hello) will run the Mercury program hello under the control of Morphine .\
+run(\"./cat filename\") will run \
+the Mercury program \"cat\" that takes \"filename\" as argument.\
+'
+	).
+
+% :- pred run_Op(atom).
+% :- mode run_Op(in) is det.
+	% run_Op(PathCallArgs) run the program ProgramName within Morphine.
+run_Op(PathCallArgs0) :-
+	( string(PathCallArgs0) ->
+		PathCallArgs = PathCallArgs0
+	;
+		% Convert the input of run/1 to a string if necessary
+		term_string(PathCallArgs0, PathCallArgs)
+	),
+	decompose_path_call_and_args(PathCallArgs, Path, Call, Args),
+	run(Path, Call, Args).
+
+% :- pred run(string, atom).
+% :- mode run(in, in) is det.
+run(ProgramPathStr, ProgramCallStr, ListArgsStr) :-
+	% We first check that the program exists before trying to run it.
+	append_strings(ProgramPathStr, ProgramCallStr, PathCallStr),
+	(
+		exists(PathCallStr),
+		!
+	;
+		printf("The program %w does not exists.\n", [PathCallStr]),
+		fail
+	),
+        (
+	% we store the argument of run/3 in order to restart easily
+	% the execution of the program with rerun/0 command.
+	setval(re_run_program, 
+		run(ProgramPathStr, ProgramCallStr, ListArgsStr)),
+
+	term_string(ProgramCall, ProgramCallStr),
+	start_connection(ProgramCall, SocketAddress),
+
+	term_string(SocketAddress, SocketAddressStr),
+	get_parameter(socket_domain, [SocketDomain]),
+
+	run_program(ProgramPathStr, ProgramCallStr, ListArgsStr,
+		SocketAddressStr, SocketDomain, " local "),
+
+	accept(sock, _, newsock),
+
+	% state_of_morphine = running | not_running | eot (| bot) 
+	setval(state_of_morphine, running),
+
+	read_message_from_socket(hello),
+	send_message_to_socket(hello_reply),
+	read_message_from_socket(start),
+	setval(a_program_has_been_run, yes),
+	print_event
+    ->
+	true
+    ;
+	write(stderr, "error in run/1"),
+	end_connection
+    ).
+
+
+
+%------------------------------------------------------------------------------%
+opium_primitive(
+	name		: decompose_path_call_and_args,
+	arg_list	: [PathCallArgs, Path, Call, Args],
+	arg_type_list	: [is_atom_or_string, string, string, string],
+	abbrev		: _,
+	implementation	: decompose_path_call_and_args_Op,
+	message		:
+"Split a Mercury program call into its path, call and arguments list."
+	).
+
+
+decompose_path_call_and_args_Op(PathCallArgs, Path, Call, Args) :-
+	(
+		% For calls of the form : `run("path/call arg1 arg2 ...")'
+		decompose_path_call_and_args1(PathCallArgs, Path, Call, Args),
+		!
+	;
+		% For calls of the form : `run("path/call(arg1, arg2, ...)")'.
+		% Note that with this syntax, it won't work if path contains 
+		% `..' because of the precedence of the `..'.
+		% I keep the possibility of calling Mercury programs that 
+		% way for backward compability reasons.
+		decompose_path_call_and_args2(PathCallArgs, Path, Call, Args)
+	).
+
+decompose_path_call_and_args1(PathCallArgs, PathStr, CallStr, ArgsStr) :-
+	% PathCallArgs is of the form : "path/call arg1 arg2 ..."	
+	% or 'path/call arg1 arg2 ...'.
+	split_string(PathCallArgs, ListString),
+	ListString = [PathCall | ListArgs],
+	pathname(PathCall, PathStr0, CallStr),
+	( PathStr0 = "" ->
+		PathStr = "./"
+	;
+		PathStr = PathStr0
+	),
+	% make sure the call is not of the form `cat(arg)'.
+	term_string(Call, CallStr),
+	Call =.. List,
+	length(List, 1),
+	string_list_to_string(ListArgs, ArgsStr).
+
+decompose_path_call_and_args2(PathCallArgs, PathStr, CallStr, ArgsStr) :-
+	% PathCallArgs is of the form : "path/foo(arg1, arg2, ...)"
+	% or 'path/foo(arg1, arg2, ...)'.
+	pathname(PathCallArgs, PathStr0, CallArgsStr),
+	( PathStr0 = "" ->
+		PathStr = "./"
+	;
+		PathStr = PathStr0
+	),
+	term_string(CallArgs, CallArgsStr),
+	CallArgs =.. [Call | ArgList],
+	term_string(Call, CallStr),
+	maplist(atom_string, ArgList, ArgListStr),
+	string_list_to_string(ArgListStr, ArgsStr).
+
+string_list_to_string([], " ").
+string_list_to_string([String1|StringList], String) :-
+	string_list_to_string(StringList, String2),
+	concat_string([ " ", String1, String2], String).
+
+
+% :- pred run_program(string, string, string, string, string).
+% :- mode run_program(in, in, in, in, in) is det.
+	% run the mercury program in an other process
+run_program(ProgramPathStr, PathCallStr, ListArgsStr, 
+	SocketAddressStr, SocketDomain, RemoteMachine) :-
+	(
+		getenv('MERCURY_MORPHINE_DIR', Dir),
+		window_command(WindowsStr),
+		concat_string([
+			Dir, "/scripts/exec_mercury_program ", 
+			SocketAddressStr, " ", SocketDomain, " ", 
+			RemoteMachine,  " ",
+			WindowsStr, " ",
+			" ", ProgramPathStr, 
+			PathCallStr, "", ListArgsStr," &"],Command),
+		morphine_write_debug("Command ="),
+		morphine_write_debug(Command ),
+		sh(Command),
+		!
+	;
+		write(stderr, "eclipse.pl: error in morphine_run_program/2")
+	).
+
+% :- pred list_args_to_string(list(atom), list(string)).
+% :- mode list_args_to_string(in, out) is det.
+list_args_to_string(ListArgs, ArgsStr) :-
+	maplist(arg_to_str, ListArgs, ListArgsStr),
+	list_string_to_string(ListArgsStr, ArgsStr).
+
+% :- pred arg_to_str(atom, string).
+% :- mode arg_to_str(in, out) is det.
+arg_to_str(Argument, String) :-
+	term_string(Argument, String1),
+	append_strings(" ", String1, String).
+
+% :- pred list_string_to_string(list(string), string).
+% :- mode list_string_to_string(in, out) is det.
+list_string_to_string([Str | ListStr], String) :-
+	list_string_to_string(ListStr, Str2),
+	append_strings(Str, Str2, String).
+
+list_string_to_string([], "").
+
+
+%------------------------------------------------------------------------------%
+opium_type(
+	name		: is_mercury_program_call,
+	implementation	: is_mercury_program_call_Op,
+	message		: 
+"Type which succeeds for terms or strings of the form: \
+`path/programcall arg1 arg2 ...' or `path/programcall(arg1, arg2, ...)'. \
+It is intended to check the argument of run/1.\n\
+\n\
+Examples:  `run(foo)', `run(\"foo\")', `run(\"./cat file\")', \
+`run(./cat(file))', `run(\"../dir/cat file1 file2\")', \
+`run(\"../dir/cat(file1,file2)\")'.\
+"
+	).
+
+is_mercury_program_call_Op(ProgramCall0) :-
+	( string(ProgramCall0) ->
+		ProgramCall = ProgramCall0,
+		!
+	;
+		term_string(ProgramCall0, ProgramCall)
+	),
+	% Checks program calls of the form "path/call arg1 arg2 ..."
+	split_string(ProgramCall, ListString),
+	ListString = [PathCall | _],
+	pathname(PathCall, _, CallStr),
+	term_string(Call, CallStr),
+	Call =.. List,
+	length(List, 1).
+
+is_mercury_program_call_Op(ProgramCall0) :-
+	( string(ProgramCall0) ->
+		ProgramCall = ProgramCall0
+	;
+		term_string(ProgramCall0, ProgramCall)
+	),
+	% Checks program calls of the form "path/call(arg1,arg2,...)"
+	pathname(ProgramCall, _, CallArgsStr),
+	term_string(CallArgs, CallArgsStr),
+	CallArgs =.. [Call | ArgList],
+	maplist(atom_string, ArgList, _).
+
+
+% split_string(String, List) :- split_string(String, " ", " ", List).
+% We redefine it here because split_string/4 is not part of Eclipse3.5.2
+split_string(String, List) :-
+	string_list(String, L),
+	split_string2(L, [], LL),
+	maplist(list_string, LL, List).
+
+split_string2([], Acc, [Acc]) :-
+	!.
+split_string2([32|Xs], Acc, LL) :-
+	!,
+	split_string2(Xs, [], LL0),
+	(
+		Acc = [], !,
+		LL = LL0
+	;
+		LL = [Acc|LL0]
+	).
+split_string2([X|Xs], Acc, LL) :-
+	!,
+	append(Acc, [X], NewAcc),
+	split_string2(Xs, NewAcc, LL).
+
+list_string(L, S) :-
+	string_list(S, L).
+
+%------------------------------------------------------------------------------%
+% opium_command(
+% 	name		: run_remote,
+% 	arg_list	: [MachineName, ProgramCall],
+% 	arg_type_list	: [string, is_atom_or_string],
+% 	abbrev		: _,
+% 	interface	: button,
+% 	command_type	: opium,
+% 	implementation	: run_remote_Op,
+% 	parameters	: [],
+% 	message		:
+% 'Executes a Mercury program from Morphine on a remote machine. \n\
+% \n\
+% Example: run_remote(\"cripure.irisa.fr\",\"~mercury/sample/hello\") will \
+% run the mercury program \"hello\" on the machine cripure.\
+% '
+% 	).
+
+% XXX Not yet working... But that is not that useful...
+run_remote_Op(MachineName, ProgramCall) :-
+	pathname(ProgramCall, Path, Name),
+	run_remote(MachineName, Path, Name).
+
+run_remote(MachineName, ProgramPathStr, ProgramCallStr) :-
+    (
+	% we store the argument of run/2 in order to restart easily
+	% the execution of the program with rerun/0 command.
+	setval(re_run_program, 
+		run_remote(MachineName, ProgramPathStr, ProgramCallStr)),
+
+	term_string(ProgramCall, ProgramCallStr),
+	
+	ProgramCall =.. [ProgramName | ListArgs],
+	start_connection(ProgramName, SocketAddress),
+
+	term_string(ProgramName, ProgramNameStr),
+	term_string(SocketAddress, SocketAddressStr),
+	list_args_to_string(ListArgs, ListArgsStr),
+	set_parameter(socket_domain, [inet]),
+
+	% Run the program "ProgramName" in an other window
+	
+	run_program(ProgramPathStr, ProgramNameStr, ListArgsStr,
+		SocketAddressStr, " inet ", MachineName),
+
+	accept(sock, _, newsock),
+
+	% state_of_morphine = running | not_running | eot (| bot) 
+	setval(state_of_morphine, running),
+
+	read_message_from_socket(hello),
+	send_message_to_socket(hello_reply),
+	read_message_from_socket(start)
+    ->
+	true
+    ;
+	write(stderr, "error in run/1"),
+	end_connection
+    ).
+
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: abort_trace,
+	arg_list	: [],
+	arg_type_list	: [],
+	abbrev		: a,
+	interface	: menu,
+	command_type	: opium,
+	implementation	: abort_trace_Op,
+	parameters	: [],
+	message		:
+'Aborts the current execution in the traced session.\
+'
+	).
+
+%:- pred abort_trace.
+%:- mode abort_trace is det.
+abort_trace_Op :-
+	send_message_to_socket(abort_prog),
+	end_connection.
+
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: no_trace,
+	arg_list	: [],
+	arg_type_list	: [],
+	abbrev		: o,
+	interface	: hidden,
+	command_type	: opium,
+	implementation	: no_trace_Op,
+	parameters	: [],
+	message		:
+'Continues execution until it reaches the end of the \
+current execution without printing any further trace information.\
+'
+	).
+
+%:- pred no_trace.
+%:- mode no_trace is det.
+no_trace_Op :-
+	send_message_to_socket(no_trace),
+	read_message_from_socket(forward_move_match_not_found),
+	ec.
+
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: rerun,
+	arg_list	: [],
+	arg_type_list	: [],
+	abbrev		: r,
+	interface	: button,
+	command_type	: opium,
+	implementation	: rerun_Op,
+	parameters	: [],
+	message		:
+'Runs again the last executed program.\
+').
+
+% XX if the connection with the debuggee process ended with a crash,
+% this command may not work properly because the global variable state_of_morphine
+% would be set to running instead of not running. I should intercept the CTRL-C
+% to fix that.
+
+%:- pred rerun.
+%:- mode rerun is det.
+rerun_Op :-
+	getval(a_program_has_been_run, yes),
+	getval(re_run_program, ReStartCommand), 
+	getval(state_of_morphine, State),
+	write(ReStartCommand),nl,
+	( 
+		State = eot
+	->
+		ec
+	;
+		State = running
+	->
+		abort_trace
+	;
+		% State = not_running
+		true
+	),
+	ReStartCommand,
+	!.
+
+rerun_Op :-
+	write("No program have ever been run ; "),
+	write("you can't use rerun/0 command.\n"),
+	write("You need to invoque the command run/1 at least once to be "),
+	write("able to use rerun/0.\n"),
+	fail.
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: goto,
+	arg_list	: [Chrono],
+	arg_type_list	: [integer],
+	abbrev		: _,
+	interface	: menu,
+	command_type	: trace,
+	implementation	: goto_Op,
+	parameters	: [],
+	message		:
+'Moves forwards the trace pointer to the event with chronological \
+event number Chrono. If the current event number is larger than Chrono, \
+it fails.\
+').
+
+%:- pred goto(integer).
+%:- mode goto(in) is semidet.
+goto_Op(Chrono) :- 
+	current(chrono = C),
+	( (C < Chrono) ->
+		fget_np(chrono = Chrono)
+	;
+		write(user, "You can not move forward to event number number "),
+		write(user, Chrono),
+		write(user, " because current_event is "),
+		write(user, C),
+		write(user, "\n"),
+		fail
+	).
+
+
+%------------------------------------------------------------------------------%
+opium_parameter(
+	name		: socket_domain,
+	arg_list	: [Domain],
+	arg_type_list	: [is_member([unix, inet])],
+	parameter_type	: single,
+	default		: [unix],
+	commands	: [run, rerun],
+	message		: 
+"Parameter which tells which domain is used by the socket communication \
+betwenn the two processes.\
+"
+	).
+
+%------------------------------------------------------------------------------%
+opium_parameter(
+	name		: window_command,
+	arg_list	: [String],
+	arg_type_list	: [string],
+	parameter_type	: single,
+	default		: [""],
+	commands	: [run, rerun],
+	message		: 
+"Parameter which specifies the command used to fork a new window to execute the \
+Mercury program in. By default, no other window is used (\"\"). \
+For example, if one want to execute a Mercury program within a xterm window, \
+one just need to use the command: \
+`set_parameter(window_command, [\"xterm -e \"])'.\
+"
+	).
+
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: no_window,
+	arg_list	: [],
+	arg_type_list	: [],
+	abbrev		: _,
+	interface	: menu,
+	command_type	: opium,
+	implementation	: no_window_Op,
+	parameters	: [window_command],
+	message		:
+"Set the `window_command' parameter to \"\" (its default value). \
+The Mercury program executes in the same window as Morphine."
+	).
+
+no_window_Op :-
+	set_parameter(window_command, [""]).
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: use_xterm,
+	arg_list	: [],
+	arg_type_list	: [],
+	abbrev		: _,
+	interface	: menu,
+	command_type	: opium,
+	implementation	: use_xterm_Op,
+	parameters	: [window_command],
+	message		:
+"Set the `window_command' parameter to \"xterm -e \", which make the Mercury \
+executes in a new xterm window; the program's Input/Output will go to that \
+window and the Morphine's Input/Output will go to the current terminal."
+	).
+
+use_xterm_Op :-
+	set_parameter(window_command, ["xterm -e "]).
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: use_gdb,
+	arg_list	: [],
+	arg_type_list	: [],
+	abbrev		: _,
+	interface	: menu,
+	command_type	: opium,
+	implementation	: use_gdb_Op,
+	parameters	: [window_command],
+	message		:
+"Set the `window_command' parameter to \"xterm -e gdb \". This is to be able \
+to use both gdb and Morphine. Note that to use gdb, you will need to compile \
+your mercury program with the option `--c-debug'."
+	).
+
+use_gdb_Op :-
+	set_parameter(window_command, ["xterm -e gdb "]).
+
+

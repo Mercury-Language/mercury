@@ -1,0 +1,292 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1995-2001 The University of Melbourne. 
+# This file may only be copied under the terms of the GNU General
+# Public Licence - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmake.common - this is the part of the makefiles
+# for building the Mercury implementation that is shared
+# between all the subdirectories.  It also contains all
+# the parameters that might need to be modified when installing
+# Mercury on a new machine.
+
+# These parameters should all be determined automatically by `configure'.
+# Any definitions in the Mmake.params file take precedence over the
+# definitions here, so if you want to change one of the values here
+# it is best to just add a definition to Mmake.params.
+
+#-----------------------------------------------------------------------------#
+
+include $(MERCURY_DIR)/VERSION
+
+#-----------------------------------------------------------------------------#
+
+# Specify the Mercury compiler to use for bootstrapping
+MC			= @BOOTSTRAP_MC@
+
+# Specify the compilation model to use for compiling the compiler
+GRADE			= @GRADE@
+
+# Specify EXT_FOR_EXE is `.exe' on MS-Windows and empty elsewhere.
+EXT_FOR_EXE	= @EXT_FOR_EXE@
+
+# Specify EXT_FOR_SHARED_LIB as `so' if the operating system
+# supports `.so' shared libraries,
+# `.dll' if it supports DLLs,
+# or as `a' if it doesn't.
+EXT_FOR_SHARED_LIB	= @EXT_FOR_SHARED_LIB@
+
+# Specify USE_DLLs as `yes' if the OS supports Windows-style DLLs
+USE_DLLS		= @USE_DLLS@
+
+# Specify any special flags to pass to the C compiler when creating objects
+# for a shared library (e.g. -fpic or -fPIC for gcc).
+# For Irix 5 and Alpha/OSF, position-independent code is the default,
+# so leave this blank.
+CFLAGS_FOR_PIC		= @CFLAGS_FOR_PIC@
+
+# Specify EXT_FOR_PIC_OBJECTS as `pic_o' if any special $(PIC) flags are
+# required (see above), and as `o' otherwise.  This is used to ensure that
+# we don't bother to build the .pic_o files if $(PIC) is null, since we can
+# just reuse the .o files.
+EXT_FOR_PIC_OBJECTS	= @EXT_FOR_PIC_OBJECTS@
+
+# Set LIBRARY_RM_C as `:' if EXT_FOR_PIC_OBJECTS is `pic_o', or `rm'
+# otherwise.  This is used to ensure that in cases when we're building
+# both `.o' and `.pic_o' files, we don't remove the intermediate `.c' files.
+# This avoids compiling things to C twice, and also avoids problems when
+# bootstrapping from the source distribution.
+LIBRARY_RM_C		= @LIBRARY_RM_C@
+
+# This specifies the path to the so_locations file (or its equivalent),
+# which is used by the linker to help it to map different shared objects
+# to different virtual memory addresses at static link time, so as to avoid 
+# the need to relocate them at dynamic link time.
+SO_LOCATIONS_DIR	= $(MERCURY_DIR)/
+
+# Specify the Mmake command to link a shared library.
+# This is only used if EXT_FOR_SHARED_LIB was defined as `so' above.
+# This command may reference $(SO_LOCATIONS_DIR).
+#
+# LINK_SHARED_OBJ  	= ld -shared	# for Irix 5
+# LINK_SHARED_OBJ  	= gcc -assert nodefinitions
+#					# for SunOS 4 (completely untested)
+# LINK_SHARED_OBJ  	= gcc -shared	# for Solaris etc.
+LINK_SHARED_OBJ  	= @LINK_SHARED_OBJ@
+
+# This is the same as LINK_SHARED_OBJ except that it
+# specifies a Bourne shell command rather than an Mmake command,
+# so if it references the SO_LOCATIONS_DIR variable it must use
+# ${SO_LOCATIONS_DIR} rather than $(SO_LOCATIONS_DIR).
+LINK_SHARED_OBJ_SH  	= @LINK_SHARED_OBJ_SH@
+
+# The following variables specify options to $LINK_SHARED_OBJ to
+# allow/disallow unresolved symbols when building shared libraries.
+ALLOW_UNDEFINED	= @ALLOW_UNDEFINED@
+ERROR_UNDEFINED	= @ERROR_UNDEFINED@
+
+# The thread-safe version of the Boehm GC library links in lots
+# of system-specific libraries that we don't want to have to
+# explicitly link in when building the Mercury shared libraries,
+# so override ERROR_UNDEFINED in that case.
+ifeq "$(findstring .par,$(GRADE))$(findstring .gc,$(GRADE))" ".par.gc"
+ERROR_UNDEFINED	= $(ALLOW_UNDEFINED)
+endif
+
+# The following variables specify how to pass options to the # $(CC) or
+# $(LINK_SHARED_OBJ) command to specify directories to be searched at
+# runtime for shared libraries.
+# Normally RPATH_OPT is either "-R" or "-rpath ", but you may need to
+# do something special to get the C compiler to pass this option on
+# to the linker (e.g. with gcc you can use "-Wl,-rpath,").
+# RPATH_SEP is a path separator; normally either ":"
+# or just RPATH_OPT with a space in front of it.
+# The SHLIB_ versions are used when linking shared libraries
+# (perhaps invoking ld directly, rather than via the C compiler).
+# The EXE_ versions are used when linking executables.
+# The empty single quote pairs below are there to ensure that `make'
+# does not throw away any important trailing or leading whitespace.
+SHLIB_RPATH_OPT	= @SHLIB_RPATH_OPT@''
+SHLIB_RPATH_SEP	= ''@SHLIB_RPATH_SEP@''
+EXE_RPATH_OPT	= @EXE_RPATH_OPT@''
+EXE_RPATH_SEP	= ''@EXE_RPATH_SEP@''
+
+# Specify any extra libraries that must be linked in when linking shared
+# objects.
+SHARED_LIBS		= @SHARED_LIBS@
+
+#-----------------------------------------------------------------------------#
+
+INSTALL_MERC_GC_LIB_DIR	= $(INSTALL_MERC_GRADELESS_LIB_DIR)
+FINAL_INSTALL_MERC_GC_LIB_DIR = $(FINAL_INSTALL_MERC_GRADELESS_LIB_DIR)
+
+SCRIPTS_DIR = $(MERCURY_DIR)/scripts
+RUNTIME_DIR = $(MERCURY_DIR)/runtime
+LIBRARY_DIR = $(MERCURY_DIR)/library
+TRACE_DIR = $(MERCURY_DIR)/trace
+BROWSER_DIR = $(MERCURY_DIR)/browser
+BOEHM_GC_DIR = $(MERCURY_DIR)/boehm_gc
+COMPILER_DIR = $(MERCURY_DIR)/compiler
+UTIL_DIR = $(MERCURY_DIR)/util
+
+# By default, GRADESTRING is defined as the result of invoking
+# `mmc --output-grade-string' with $(GRADE) and $(GRADEFLAGS).
+# But when installing the standard library, the compiler will not yet
+# have been installed.  So we need to define GRADESTRING here, in a way
+# that doesn't require invoking mmc.
+#
+# Note that the definition below does _not_ include GRADEFLAGS.
+# So any changes to the grade flags for the standard library or 
+# compiler itself should be done by setting GRADE, not GRADEFLAGS.
+GRADESTRING		= $(GRADE)
+
+# The names of the various libraries.
+# The archives and shared object objects have a "lib" prefix and a ".a" or
+# ".so" (or ".dll") suffix around these names; the initialization files
+# have just a ".init" suffix. (The trace library does not have a .init file,
+# since it contains no Mercury code.)
+#
+# If you change these, you will also need to change scripts/ml.in,
+# scripts/c2init.in, tools/bootcheck, tools/binary, tools/binary_step
+# and tools/linear.
+RT_LIB_NAME = mer_rt
+STD_LIB_NAME = mer_std
+TRACE_LIB_NAME = mer_trace
+BROWSER_LIB_NAME = mer_browser
+
+# Options to pass to the Mercury compiler
+MCFLAGS	= --no-infer-all --halt-at-warn
+
+# Do we want to deal with intermodule information when building the library?
+# By default yes, since this way we note immediately when intermodule
+# optimization breaks, and always at installation time, since we must install
+# the library's .opt and .trans_opt files as well. However, during development
+# some problems are easier to track down without intermodule optimization
+# complicating things.
+LIBRARY_INTERMODULE = yes
+
+# Do we want to include the support for compiling directly to assembler
+# using the GCC back-end in the compiler?
+# This requires that you have the source code for gcc in the
+# directory specified by GCC_SRC_DIR (below).
+# This can be set using the `--enable-gcc-back-end' or `--disable-gcc-back-end'
+# options to configure; by default, configure will try to autoconfigure
+# it based on whether the gcc source is present.
+ENABLE_GCC_BACK_END = @ENABLE_GCC_BACK_END@
+
+# Specify the directory containing the GCC sources.
+# This must be a relative path, not an absolute path.
+# The directory named should contain subdirectories `gcc', `libiberty', etc.,
+# and the `gcc' subdirectory should contain files `gcc.c',
+# `tree.c', `tree.h', etc.
+GCC_SRC_DIR = @GCC_SRC_DIR@
+
+# Do we want to include the support for Aditi compilation in the compiler?
+# This can be set using the `--enable-aditi-back-end' or
+# `--disable-aditi-back-end' options to configure.
+# It is not practical to include the code to output Aditi-RL in the alias
+# branch compiler - it currently takes more than an hour to compile
+# compiler/rl_code.m, due to performance problems compiling large disjunctions
+# with the new mode checker.
+# To disable the Aditi support, put `INCLUDE_ADITI_OUTPUT = no'
+# in Mmake.stage.params. Do not put this into Mmake.params - we still
+# want to check that the Aditi code compiles after any changes.
+# `mmake depend' must be run in any compiler directories affected by
+# the changed value (tools/bootcheck will do this automatically for
+# the stage2 and stage3 directories). 
+INCLUDE_ADITI_OUTPUT = @ENABLE_ADITI_BACK_END@
+
+#-----------------------------------------------------------------------------#
+
+INSTALL_INFO=@INSTALL_INFO@
+INFO=@INFO@
+TEXI2DVI=@TEXI2DVI@
+DVIPS=@DVIPS@
+MAKEINFO=@MAKEINFO@
+PERL=@PERL@
+
+#-----------------------------------------------------------------------------#
+
+# The linker option to use to link in the math library, if any.
+# Typically `-lm'.
+MATH_LIB=@MATH_LIB@
+
+# More libraries to link
+SOCKET_LIBRARY=@SOCKET_LIBRARY@
+NSL_LIBRARY=@NSL_LIBRARY@
+DL_LIBRARY=@DL_LIBRARY@
+READLINE_LIBRARIES=@READLINE_LIBRARIES@
+TERMCAP_LIBRARY=@TERMCAP_LIBRARY@
+
+# Extensions to use
+O=@OBJ_SUFFIX@
+A=@LIB_SUFFIX@
+
+# The option needed to name object files.
+# We need to use $(empty_string) here to prevent Make from truncating
+# any trailing spaces in -o
+empty_string=
+OBJFILE_OPT=@OBJFILE_OPT@$(empty_string)
+
+# Which makefile to use when compiling the garbage collector.
+BOEHMGC_MAKEFILE=@BOEHMGC_MAKEFILE@
+
+#-----------------------------------------------------------------------------#
+
+# The Mmake.params file can be used to override definitions in this file
+-include $(MERCURY_DIR)/Mmake.params
+
+#-----------------------------------------------------------------------------#
+
+# This rule checks that object files are properly namespace-clean, with
+# regard to the global symbols that they define.
+# For an object file foo.o, it produces a file foo.o.obj_check that
+# contains a list of all the globals defined by that object that
+# do not start with `MR_', `mercury_', or `entry_'.
+
+%.obj_check: %
+	nm -g $< | awk '$$1 != "U" { print $$3; }' | \
+		grep -v -e '^_entry' -e '^MR_' -e '^mercury_' | \
+		sort -u > $@
+	@if cmp -s /dev/null $@; then \
+		true; \
+	else \
+		echo "** Global symbols in user namespace:"; \
+		cat $@; \
+		echo "(You may need to add MR_ prefixes to these names.)"; \
+		exit 1; \
+	fi
+
+# This rule helps to check that header files is self-contained, i.e. that each
+# header file foo.h includes any other header files that define types
+# used by foo.h. It creates a foo_check.c file that contains only a single
+# `#include' statement that includes foo.h; compiling foo_check.c will fail
+# if foo.h is not self-contained.
+
+%_check.c : %.h
+	echo "#include \"$*.h\"" > $*_check.c
+
+# This rule checks whether a header file defines any macros it shouldn't.
+# It generates the list of macros defined in the header file, and filters this
+# list through a command that is intended to filter out all references to macro
+# names that are all right. Each directory that uses this rule must set
+# the HEADER_CLEAN_FILTER make variable to contain this command.
+
+AWK = awk
+%_check.macros: %.h %_check.c
+	-$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) \
+		-DMERCURY_BOOTSTRAP_H \
+		-E $*_check.c \
+		-nostdinc -dN \
+		2> /dev/null | $(AWK) '/^#define/ { print $$2; }' | \
+		$(HEADER_CLEAN_FILTER) | sort -u > $@
+	@if cmp -s /dev/null $@; then \
+		true; \
+	else \
+		echo "** Macro name(s) in user namespace:"; \
+		cat $@; \
+		echo "(You may need to add a distinguishing prefix to these names.)"; \
+		exit 1; \
+	fi
+
+#-----------------------------------------------------------------------------#

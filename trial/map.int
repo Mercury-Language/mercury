@@ -1,0 +1,71 @@
+:- module map.
+:- interface.
+:- import_module set, list, assoc_list.
+:- type (map:map(_K, _V)).
+:- pred map:init((map:map(V_1, V_2))).
+:- mode map:init(mercury_builtin:uo) is det.
+:- pred map:is_empty((map:map(V_1, V_2))).
+:- mode map:is_empty(mercury_builtin:in) is semidet.
+:- pred map:contains((map:map(K, _V)), K).
+:- mode map:contains(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred map:member((map:map(K, V)), K, V).
+:- mode map:member(mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is nondet.
+:- pred map:search((map:map(K, V)), K, V).
+:- mode map:search(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in) is semidet.
+:- mode map:search(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred map:lookup((map:map(K, V)), K, V).
+:- mode map:lookup(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in) is semidet.
+:- mode map:lookup(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred map:inverse_search((map:map(K, V)), V, K).
+:- mode map:inverse_search(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is nondet.
+:- pred map:insert((map:map(K, V)), K, V, (map:map(K, V))).
+:- mode map:insert(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred map:det_insert((map:map(K, V)), K, V, (map:map(K, V))).
+:- mode map:det_insert(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred map:det_insert_from_corresponding_lists((map:map(K, V)), (list:list(K)), (list:list(V)), (map:map(K, V))).
+:- mode map:det_insert_from_corresponding_lists(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred map:update((map:map(K, V)), K, V, (map:map(K, V))).
+:- mode map:update(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred map:det_update((map:map(K, V)), K, V, (map:map(K, V))).
+:- mode map:det_update(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred map:set((map:map(K, V)), K, V, (map:map(K, V))).
+:- mode map:set(mercury_builtin:di, mercury_builtin:di, mercury_builtin:di, mercury_builtin:uo) is det.
+:- mode map:set(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred map:keys((map:map(K, _V)), (list:list(K))).
+:- mode map:keys(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred map:values((map:map(_K, V)), (list:list(V))).
+:- mode map:values(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred map:to_assoc_list((map:map(K, V)), (assoc_list:assoc_list(K, V))).
+:- mode map:to_assoc_list(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred map:from_assoc_list((assoc_list:assoc_list(K, V)), (map:map(K, V))).
+:- mode map:from_assoc_list(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred map:from_sorted_assoc_list((assoc_list:assoc_list(K, V)), (map:map(K, V))).
+:- mode map:from_sorted_assoc_list(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred map:delete((map:map(K, V)), K, (map:map(K, V))).
+:- mode map:delete(mercury_builtin:di, mercury_builtin:in, mercury_builtin:uo) is det.
+:- mode map:delete(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred map:delete_list((map:map(K, V)), (list:list(K)), (map:map(K, V))).
+:- mode map:delete_list(mercury_builtin:di, mercury_builtin:in, mercury_builtin:uo) is det.
+:- mode map:delete_list(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred map:remove((map:map(K, V)), K, V, (map:map(K, V))).
+:- mode map:remove(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is semidet.
+:- pred map:det_remove((map:map(K, V)), K, V, (map:map(K, V))).
+:- mode map:det_remove(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred map:count((map:map(K, V)), int).
+:- mode map:count(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred map:from_corresponding_lists((list:list(K)), (list:list(V)), (map:map(K, V))).
+:- mode map:from_corresponding_lists(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred map:merge((map:map(K, V)), (map:map(K, V)), (map:map(K, V))).
+:- mode map:merge(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred map:overlay((map:map(K, V)), (map:map(K, V)), (map:map(K, V))).
+:- mode map:overlay(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred map:select((map:map(K, V)), (set:set(K)), (map:map(K, V))).
+:- mode map:select(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred map:apply_to_list((list:list(K)), (map:map(K, V)), (list:list(V))).
+:- mode map:apply_to_list(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred map:optimize((map:map(K, V)), (map:map(K, V))).
+:- mode map:optimize(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred map:remove_smallest((map:map(K, V)), K, V, (map:map(K, V))).
+:- mode map:remove_smallest(mercury_builtin:in, mercury_builtin:out, mercury_builtin:out, mercury_builtin:out) is semidet.
+:- import_module tree234.
+:- type (map:map(K, V)) == (tree234:tree234(K, V)).

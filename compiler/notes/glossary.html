@@ -1,0 +1,111 @@
+<html>
+<head>
+<title>
+	Glossary Of Terms Used In Mercury
+</title>
+</head>
+
+<body
+	bgcolor="#ffffff"
+	text="#000000"
+>
+
+<hr>
+<!-------------------------->
+
+<dl>
+
+<dt> assertion/promise
+	<dd>
+    A declaration that specifies a law that holds for the
+    predicates/functions in the declaration.
+
+<dt> class context 
+	<dd>
+	The typeclass constraints on a predicate or function.
+
+<dt> HLDS 
+	<dd>
+	The "High Level Data Structure".  See hlds.m.
+
+<dt> moduleinfo 
+	<dd>
+	Another name for the HLDS.
+
+<dt> LLDS
+	<dd>
+	The "Low Level Data Structure".  See llds.m.
+
+<dt> inst
+	<dd>
+	instantiatedness.  An inst holds three different sorts of
+      information.  It indicates whether a variable is free, partially
+      bound, or ground.  If a variable is bound, it may indicate
+      which functor(s) the variable can be bound to.  Also,
+      an inst records whether a value is unique, or whether
+      it may be aliased.
+
+<dt> liveness
+	<dd>
+	this term is used to mean two quite different things!
+	<ol>
+	<li> There's a notion of liveness used in mode analysis:
+	a variable is live if either it or an alias might be
+	used later on in the computation.
+	<li> There's a different notion of liveness used for code generation:
+	a variable becomes live (is "born") when the register or stack
+	slot holding the variable first acquires a value, and dies when
+	that value will definitely not be needed again within this procedure.
+	This notion is low-level because it could depend on the low-level
+	representation details (in particular, `no_tag' representations
+	ought to affect liveness).
+	</ol>
+
+<dt> mode 
+	<dd>
+	this has two meanings:
+	<ol>
+	<li> a mapping from one instantiatedness to another
+		(the mode of a single variable)
+	<li> a mapping from an initial instantiatedness of a predicate's
+		arguments to their final instantiatedness
+		(the mode of a predicate)
+	</ol>
+	
+<dt> proc (procedure)
+	<dd>
+	a particular mode of a predicate.
+
+<dt> procinfo 
+	<dd>
+	the structure in HLDS which contains
+	information about a procedure.
+
+<dt> predinfo
+	<dd>
+	the structure in HLDS which contains information about
+	a predicate.
+
+<dt> codeinfo
+	<dd>
+	a structure used by codegen.m
+
+<dt> switch
+	<dd>
+	a disjunction which does a case analysis on the toplevel
+	functor of some variable.
+
+<dt> super-homogenous form (SHF)
+	<dd>
+	 a simplified, flattened form of goals, where
+	each unification is split into its component pieces; in particular,
+	the arguments of each predicate call and functor must be distinct
+	variables.
+</dl>
+
+<hr>
+<!-------------------------->
+
+Last update was $Date: 1999-11-12 09:12:24 $ by $Author: petdr $@cs.mu.oz.au. <br>
+</body>
+</html>

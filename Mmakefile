@@ -1,0 +1,525 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1995-2001 The University of Melbourne. 
+# This file may only be copied under the terms of the GNU General
+# Public Licence - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmakefile - the top-level Mmake file for the Mercury implementation
+
+# We need to explicitly include scripts/Mmake.vars here, even though `mmake'
+# includes that file automatically, to make sure that we get the right
+# version of that file.  The settings in that file include values set
+# by parameters to configure (e.g. --prefix), and we need to make sure
+# that we pick up the values from the Mmake.vars that we're going to install,
+# rather than from the old version of mmake that we're installing with,
+# which may have been configured with a different --prefix.
+include scripts/Mmake.vars
+
+MAIN_TARGET=all
+
+MERCURY_DIR=.
+include Mmake.common
+
+#-----------------------------------------------------------------------------#
+
+SUBDIRS = \
+		scripts \
+		util \
+		boehm_gc \
+		runtime \
+		library \
+		trace \
+		browser \
+		compiler \
+		doc \
+		profiler
+
+MMAKEFLAGS =
+
+SUBDIR_MMAKE =	PATH=../scripts:../util:$$PATH \
+		MMAKE_VPATH=. \
+		MMAKE_DIR=../scripts \
+		../scripts/mmake $(MMAKEFLAGS)
+
+SUBSUBDIR_MMAKE = PATH=../../scripts:../../util:$$PATH \
+		MMAKE_VPATH=. \
+		MMAKE_DIR=../../scripts \
+		../../scripts/mmake $(MMAKEFLAGS)
+
+#-----------------------------------------------------------------------------#
+
+# `mmake dep' ensures that the .dep files exist;
+# `mmake depend' forces them to be remade to ensure that they are up-to-date.
+
+.PHONY: dep
+dep: dep_library dep_browser dep_compiler dep_profiler
+
+.PHONY: dep_library
+dep_library: library/$(deps_subdir)library.dep
+
+library/$(deps_subdir)library.dep:
+	cd library && $(SUBDIR_MMAKE) depend
+
+.PHONY: dep_browser
+dep_browser: browser/$(deps_subdir)mdb.dep
+
+browser/$(deps_subdir)mdb.dep:
+	cd browser && $(SUBDIR_MMAKE) depend
+
+.PHONY: dep_compiler
+dep_compiler: compiler/$(deps_subdir)mercury_compile.dep
+
+compiler/$(deps_subdir)mercury_compile.dep: library/$(deps_subdir)library.dep
+	cd compiler && $(SUBDIR_MMAKE) depend
+
+.PHONY: dep_profiler
+dep_profiler: profiler/$(deps_subdir)mercury_profile.dep
+
+profiler/$(deps_subdir)mercury_profile.dep: library/$(deps_subdir)library.dep
+	cd profiler && $(SUBDIR_MMAKE) depend
+
+# depend_library MUST be done before depend_compiler and depend_profiler
+
+.PHONY: depend
+depend:
+	cd library && $(SUBDIR_MMAKE) depend
+	cd browser && $(SUBDIR_MMAKE) depend
+	cd compiler && $(SUBDIR_MMAKE) depend
+	cd profiler && $(SUBDIR_MMAKE) depend
+
+.PHONY: depend_library
+depend_library:
+	cd library && $(SUBDIR_MMAKE) depend
+
+.PHONY: depend_browser
+depend_browser:
+	cd browser && $(SUBDIR_MMAKE) depend
+
+.PHONY: depend_compiler
+depend_compiler:
+	cd compiler && $(SUBDIR_MMAKE) depend
+
+.PHONY: depend_profiler
+depend_profiler:
+	cd profiler && $(SUBDIR_MMAKE) depend
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: all
+all: README INSTALL mercury-compiler.spec $(SUBDIRS)
+
+.PHONY: util
+util: scripts
+	cd util && $(SUBDIR_MMAKE)
+
+.PHONY: scripts
+scripts:
+	cd scripts && $(SUBDIR_MMAKE)
+
+.PHONY: boehm_gc
+boehm_gc: scripts
+	gc_grade=`scripts/ml --grade $(GRADE) --print-gc-grade`; \
+	cd boehm_gc && $(SUBDIR_MMAKE) GC_GRADE=$$gc_grade
+
+.PHONY: runtime
+runtime: scripts boehm_gc
+	cd runtime && $(SUBDIR_MMAKE)
+
+.PHONY: library
+library: dep_library scripts util boehm_gc runtime
+	cd library && $(SUBDIR_MMAKE)
+
+.PHONY: browser
+browser: dep_browser scripts util boehm_gc runtime library
+	cd browser && $(SUBDIR_MMAKE)
+
+.PHONY: runtime
+trace: scripts boehm_gc runtime library browser
+	cd trace && $(SUBDIR_MMAKE)
+
+.PHONY: compiler
+compiler: dep_compiler scripts util boehm_gc runtime library browser trace
+	cd compiler && $(SUBDIR_MMAKE)
+
+.PHONY: libmmc
+libmmc: dep_compiler scripts util boehm_gc runtime library browser trace
+	cd compiler && $(SUBDIR_MMAKE) libmmc
+
+.PHONY: doc
+doc: scripts util
+	cd doc && $(SUBDIR_MMAKE)
+
+.PHONY: profiler
+profiler: dep_profiler scripts util boehm_gc runtime library browser trace
+	cd profiler && $(SUBDIR_MMAKE)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: tags
+tags: tags_compiler tags_library tags_browser tags_profiler
+
+.PHONY: tags_compiler
+tags_compiler:
+	cd compiler && $(SUBDIR_MMAKE) tags
+
+.PHONY: tags_library
+tags_library:
+	cd library && $(SUBDIR_MMAKE) tags
+
+.PHONY: tags_browser
+tags_browser:
+	cd browser && $(SUBDIR_MMAKE) tags
+
+.PHONY: tags_profiler
+tags_profiler:
+	cd profiler && $(SUBDIR_MMAKE) tags
+
+#-----------------------------------------------------------------------------#
+
+configure: configure.in aclocal.m4
+	autoconf
+
+config.status: configure VERSION
+	if [ -f ./config.status ]; then \
+		./config.status --recheck; \
+	else \
+		echo "======> You need to run configure!"; \
+		exit 1; \
+	fi
+
+Mmake.common: Mmake.common.in config.status
+	./config.status
+
+README: .README.in VERSION
+	sed 's/@VERSION@/$(VERSION)/g' .README.in > README
+
+INSTALL: .INSTALL.in VERSION
+	sed 's/@VERSION@/$(VERSION)/g' .INSTALL.in > INSTALL
+
+mercury-compiler.spec: .mercury-compiler.spec.in VERSION
+	sed 's/@VERSION@/$(VERSION)/g' .mercury-compiler.spec.in \
+		> mercury-compiler.spec
+
+#-----------------------------------------------------------------------------#
+
+# Generally you should do a `mmake realclean' before doing `mmake tar'.
+
+.PHONY: tar
+tar: README INSTALL
+	touch Mmake.params
+	cd util && mmake
+	cd runtime && $(SUBDIR_MMAKE) cs $(RT_LIB_NAME).init
+	cd library && $(SUBDIR_MMAKE) depend
+	cd library && $(SUBDIR_MMAKE) all-ints cs $(STD_LIB_NAME).init tags
+	cd browser && $(SUBDIR_MMAKE) depend
+	cd browser && $(SUBDIR_MMAKE) all-ints cs $(BROWSER_LIB_NAME).init tags
+	cd trace && $(SUBDIR_MMAKE) cs
+	cd compiler && $(SUBDIR_MMAKE) depend
+	cd compiler && $(SUBDIR_MMAKE) cs tags
+	cd profiler && $(SUBDIR_MMAKE) depend
+	cd profiler && $(SUBDIR_MMAKE) cs tags
+	cd doc && $(SUBDIR_MMAKE) info html dvi mdb_doc
+	cd bindist && $(SUBDIR_MMAKE) bindist.configure
+	# the following command might fail on Windows?
+	-cd bindist && $(SUBDIR_MMAKE) bindist.build_vars
+	cd extras/dynamic_linking && $(SUBSUBDIR_MMAKE) sources
+	# clean up
+	cd scripts && mmake realclean
+	cd scripts && mmake canonical_grade
+	cd util && mmake realclean
+	cd doc && mmake distclean
+	-rm -f errs errs2 update.log
+	-rm -f config.status config.cache config.log configure.log a.out
+	-rm -f runtime/mercury_conf.h boehm_gc/mercury_boehm_gc_conf.h
+	-rm -f Mmake.common
+	chmod -R a+r *
+	# Package up the mercury directory with some subdirectories
+	# excluded, into a gzipped tar archive that will unpack into
+	# mercury-compiler-$(VERSION).
+	# Put the extras directory into a gzipped tar archive that
+	# will unpack into mercury-extras-$(VERSION).
+	# Put the tests directory into a gzipped tar archive that
+	# will unpack into mercury-tests-$(VERSION).
+	DIRNAME="`pwd`";						\
+	ROOTNAME="`basename $$DIRNAME`";				\
+	export ROOTNAME;						\
+	cd .. && (							\
+		mkdir stuff-to-exclude;					\
+		mv $$ROOTNAME/trial	stuff-to-exclude;		\
+		mv $$ROOTNAME/bytecode	stuff-to-exclude;		\
+		mv $$ROOTNAME/lp_solve	stuff-to-exclude;		\
+		mv $$ROOTNAME/trax	stuff-to-exclude;		\
+		mv $$ROOTNAME/extras/opium_m	stuff-to-exclude;	\
+		mv $$ROOTNAME/extras/aditi stuff-to-exclude;		\
+		mv $$ROOTNAME/extras	mercury-extras-$(VERSION);	\
+		mv $$ROOTNAME		mercury-compiler-$(VERSION);	\
+		mv tests		mercury-tests-$(VERSION);	\
+		tar -cf - mercury-compiler-$(VERSION) |			\
+			gzip -9 > mercury-compiler-$(VERSION).tar.gz;	\
+		tar -cf - mercury-extras-$(VERSION) |			\
+			gzip -9 > mercury-extras-$(VERSION).tar.gz;	\
+		tar -cf - mercury-tests-$(VERSION) |			\
+			gzip -9 > mercury-tests-$(VERSION).tar.gz;	\
+		mv mercury-compiler-$(VERSION)	$$ROOTNAME;		\
+		mv mercury-extras-$(VERSION)	$$ROOTNAME/extras;	\
+		mv mercury-tests-$(VERSION)	tests;			\
+		mv stuff-to-exclude/opium_m	$$ROOTNAME/extras/opium_m;\
+		mv stuff-to-exclude/aditi	$$ROOTNAME/extras/aditi;\
+		mv stuff-to-exclude/*		$$ROOTNAME;		\
+		rmdir stuff-to-exclude;					\
+	)
+
+.PHONY: version
+version:
+	@echo $(VERSION)
+
+.PHONY: fullarch
+fullarch:
+	@echo $(FULLARCH)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: install
+install: install_main install_grades
+	@echo
+	@echo "-- Installation complete."
+	@echo
+	@echo "-- Don't forget to add $(INSTALL_BINDIR) to your PATH,"
+	@echo "-- $(INSTALL_MAN_DIR) to your MANPATH,"
+	@echo "-- and $(INSTALL_INFO_DIR) to your INFOPATH,"
+	@echo "-- and to add the following lines to the \`.emacs' file"
+	@echo "-- in your home directory:"
+	@echo "	(setq load-path (cons (expand-file-name "
+	@echo "		\"$(INSTALL_ELISP_DIR)\") load-path))"
+	@echo "	(autoload 'mdb \"gud\" \"Invoke the Mercury debugger\" t)"
+
+.PHONY: install_main
+install_main: all \
+		install_scripts install_util install_runtime install_boehm_gc \
+  		install_library install_browser install_trace \
+		install_compiler install_profiler install_doc 
+ 
+.PHONY: install_scripts
+install_scripts: scripts
+	cd scripts && $(SUBDIR_MMAKE) install
+
+.PHONY: install_util
+install_util: util
+	cd util && $(SUBDIR_MMAKE) install
+
+.PHONY: install_runtime
+install_runtime: runtime
+	cd runtime && $(SUBDIR_MMAKE) install
+
+.PHONY: install_trace
+install_trace: trace
+	cd trace && $(SUBDIR_MMAKE) install
+
+.PHONY: install_boehm_gc
+install_boehm_gc: boehm_gc
+	gc_grade=`scripts/ml --grade $(GRADE) --print-gc-grade`; \
+	cd boehm_gc && $(SUBDIR_MMAKE) install GC_GRADE=$$gc_grade
+
+.PHONY: install_library
+install_library: dep_library library
+	cd library && $(SUBDIR_MMAKE) install
+
+.PHONY: install_browser
+install_browser: dep_browser browser
+	cd browser && $(SUBDIR_MMAKE) install
+
+.PHONY: install_compiler
+install_compiler: dep_compiler compiler
+	cd compiler && $(SUBDIR_MMAKE) install
+
+.PHONY: install_doc
+install_doc: doc
+	cd doc && $(SUBDIR_MMAKE) install
+
+.PHONY: install_profiler
+install_profiler: profiler
+	cd profiler && $(SUBDIR_MMAKE) install
+
+.PHONY: install_grades
+install_grades: scripts
+	cd boehm_gc && rm -rf tmp_dir && mkdir tmp_dir && \
+		{ mv -f *.$O *.pic_o *.$A *.so tmp_dir || true; }
+	cd runtime && rm -rf tmp_dir && mkdir tmp_dir && \
+		{ mv -f *.$O *.pic_o *.$A *.so tmp_dir || true; }
+	cd library && rm -rf tmp_dir && mkdir tmp_dir && \
+		{ mv -f *.dep *.h *.c *.$O *.pic_o *.$A *.so \
+			Mercury/deps/*.dep \
+			Mercury/cs/*.c Mercury/os/*.$O tmp_dir || true; }
+	cd browser && rm -rf tmp_dir && mkdir tmp_dir && \
+		{ mv -f *.dep *.h *.c *.$O *.pic_o *.$A *.so \
+			Mercury/deps/*.dep \
+			Mercury/cs/*.c Mercury/os/*.$O tmp_dir || true; }
+	cd trace && rm -rf tmp_dir && mkdir tmp_dir && \
+		{ mv -f *.$O *.pic_o *.$A *.so tmp_dir || true; }
+	#
+	# Use the newly installed compiler to build the libraries
+	# in various different grades.  We need to override MC=mmc
+	# so that we use the mmc from the scripts directory, which
+	# runs the newly installed compiler, rather than using the
+	# bootstrap compiler.
+	#
+	for grade in x $(LIBGRADES); do \
+	    if [ "$$grade" != "x" ]; then \
+	    	gc_grade=`scripts/ml --grade $$grade --print-gc-grade`; \
+	        ( cd boehm_gc && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade GC_GRADE=$$gc_grade \
+		  	install_lib ) && \
+		( cd runtime && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_lib ) && \
+		( cd library && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade depend && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_hdrs && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_library ) && \
+		( cd browser && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade depend && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_library ) && \
+		( cd trace && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_lib ) && \
+		( cd boehm_gc && rm -f *.$O *.pic_o *.$A *.so ) && \
+		( cd runtime && rm -f *.$O *.pic_o *.$A *.so ) && \
+		( cd library && rm -f *.dep *.h *.c *.$O *.pic_o *.$A *.so \
+				Mercury/cs/*.c Mercury/os/*.$O ) && \
+		( cd browser && rm -f *.dep *.h *.c *.$O *.pic_o *.$A *.so \
+				Mercury/cs/*.c Mercury/os/*.$O ) && \
+		( cd trace && rm -f *.$O *.pic_o *.$A *.so ) && \
+		true \
+		|| { scripts/mercury_cleanup_install; exit 1; }; \
+	    fi; \
+	done
+	cd boehm_gc && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
+	cd runtime  && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
+	cd library  && { [ -d Mercury/cs ] && mv tmp_dir/*.c Mercury/cs; \
+			 [ -d Mercury/os ] && mv tmp_dir/*.$O Mercury/os; \
+			 [ -d Mercury/deps ] && mv tmp_dir/*.dep Mercury/deps;\
+			 mv tmp_dir/* . ; rmdir tmp_dir; true; }
+	cd browser  && { [ -d Mercury/cs ] && mv tmp_dir/*.c Mercury/cs; \
+			 [ -d Mercury/os ] && mv tmp_dir/*.$O Mercury/os; \
+			 [ -d Mercury/deps ] && mv tmp_dir/*.dep Mercury/deps;\
+			 mv tmp_dir/* . ; rmdir tmp_dir; true; }
+	cd trace    && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
+
+.PHONY: install_split_library
+install_split_library: scripts dep_library
+	#
+	# Use the newly installed compiler to build the libraries
+	# in various different grades.  We need to override MC=mmc
+	# so that we use the mmc from the scripts directory, which
+	# runs the newly installed compiler, rather than using the
+	# bootstrap compiler.
+	#
+	cd library && \
+	rm -rf tmp_dir && \
+	mkdir tmp_dir && \
+	{ mv -f *.dir *.dep *.h *.c *.$O *.pic_o *.$A *.so \
+		Mercury/cs/*.c Mercury/os/*.$O tmp_dir || true; } && \
+	for grade in $(GRADE) $(LIBGRADES); do \
+	        $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade depend && \
+	        $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_split_library || \
+			{ scripts/mercury_cleanup_install; exit 1; }; \
+	        rm -rf *.dir *.dep *.h *.c *.$O *.pic_o *.$A *.so \
+			Mercury/cs/*.c Mercury/os/*.$O; \
+	done && \
+	{ [ -d Mercury/cs ] && mv tmp_dir/*.c Mercury/cs; \
+	  [ -d Mercury/os ] && mv tmp_dir/*.$O Mercury/os; \
+	  [ -d Mercury/deps ] && mv tmp_dir/*.dep Mercury/deps; \
+	  mv tmp_dir/* . ; rmdir tmp_dir; true; }
+
+#-----------------------------------------------------------------------------#
+#
+# Various horrible hacks for gnu-win32 on Windows.
+#
+
+# `make touch_files' is a work-around for the broken gnu-win32 `tar'
+# that loses all the file dates.
+.PHONY: touch_files
+touch_files:
+	-find . | xargs touch
+	sleep 1
+	touch library/*.date*
+	touch library/*.optdate
+	chmod +w library/*.dep
+	touch library/*.dep
+	touch browser/*.date*
+	touch browser/*.optdate
+	chmod +w browser/*.dep
+	touch browser/*.dep
+	touch compiler/*.date*
+	chmod +w compiler/*.dep
+	touch compiler/*.dep
+	touch profiler/*.date*
+	chmod +w profiler/*.dep
+	touch profiler/*.dep
+	touch doc/*.texi configure
+	sleep 1
+	touch boehm_gc/*.c
+	touch runtime/*.c
+	touch library/*.c
+	touch browser/*.c
+	touch trace/*.c
+	touch compiler/*.c
+	touch profiler/*.c
+	touch doc/*.info doc/*.dvi doc/*.html config.status
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: uninstall
+uninstall:
+	cd scripts; $(SUBDIR_MMAKE) uninstall
+	cd util; $(SUBDIR_MMAKE) uninstall
+	cd doc; $(SUBDIR_MMAKE) uninstall
+	-rm -r $(INSTALL_LIBDIR)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY : bindist
+bindist:
+	cd bindist; mmake binary_distribution
+
+#-----------------------------------------------------------------------------#
+
+clean: clean_subdirs clean_tests
+
+.PHONY: clean_subdirs
+clean_subdirs:
+	rm -rf runtime/tmp_dir library/tmp_dir browser/tmp_dir trace/tmp_dir
+	for dir in $(SUBDIRS); do \
+		if [ "$$dir" = scripts ]; then continue; fi; \
+		(cd $$dir; $(SUBDIR_MMAKE) clean) \
+	done
+
+.PHONY: clean_tests
+clean_tests:
+	if test -d tests; then \
+		(cd tests; $(MMAKE) clean) \
+	fi
+
+realclean: realclean_subdirs realclean_local realclean_tests
+
+.PHONY: realclean_local
+realclean_local: realclean_config
+
+.PHONY: realclean_subdirs
+realclean_subdirs: clean_subdirs
+	rm -rf stage[1-3]
+	for dir in $(SUBDIRS); do \
+		if [ "$$dir" = scripts ]; then continue; fi; \
+		(cd $$dir; $(SUBDIR_MMAKE) realclean) \
+	done
+	cd scripts; $(SUBDIR_MMAKE) realclean
+
+.PHONY: realclean_config
+realclean_config:
+	rm -f config.cache config.status config.log configure.log
+
+.PHONY: realclean_tests
+realclean_tests:
+	if test -d tests; then \
+		(cd tests; $(MMAKE) realclean) \
+	fi
+
+#-----------------------------------------------------------------------------#

@@ -1,0 +1,160 @@
+:- module grammar_impl.
+
+:- interface.
+
+
+:- type variable
+	--->	a
+	;	n
+	;	f
+	;	v
+	;	x
+	;	i
+	;	shp
+	;	arg
+	;	res
+	; 	forall
+	;	for
+	;	(all)
+	;	such
+	;	that
+	;	suchthat
+	;	(is)
+	;	subscripted(variable, variable).
+
+:- pred expression_query(list(variable)::in) is semidet.
+ 
+:- import_module list.
+
+:- implementation.
+
+:- type qualifier
+	--->	such_that(expression, expression)
+	;	for_all(term)
+	;	when(term)
+	;	where(term)
+	;	merge_qualifiers(qualifier, qualifier)
+	;	none.
+
+:- type expression == variable.
+:- type term == variable.
+
+expression_query(String) :-
+	expression(n, none, String, []).	
+
+:- pred expression(expression::in, qualifier::in, 
+		list(variable)::in, list(variable)::out) is det.
+
+:- implementation.
+
+expression( Term, Qualifiers ) -->
+    value( Term ), qualification( Qualifiers ).
+expression( Term, none ) -->
+    value( Term ).
+
+:- pred value(variable::in, list(variable)::in, list(variable)::out) is det.
+value( Term ) --> identifier( Term ).
+value( Term ) --> numeric( Term ).
+value( Term ) --> built_in( Term ).
+value( Term ) --> bracketted( Term ).
+value( subscripted( Term, Subscript ) ) -->
+    identifier( Term ), start_subscript, value( Subscript ), end_subscript.
+value( Term ) --> leftparen, value( Term ), rightparen.
+
+
+:- pred qualification(qualifier::in, list(variable)::in,
+		list(variable)::out) is det.
+qualification( merge_qualifiers( Qualifier, Qualifiers ) ) -->
+    qualifier( Qualifier ),
+    qualification( Qualifiers ).
+qualification( Qualifier ) -->
+    qualifier( Qualifier ).
+
+:- pred qualifier(qualifier::in, list(variable)::in,
+		list(variable)::out) is det.
+qualifier( such_that( Left, Right ) ) -->
+    such_that, value( Left ), equals, value( Right ).
+qualifier( for_all( Term ) ) --> for_all, subrange( Term ).
+qualifier( 'when'( Term ) )    --> when, value( Term ).
+qualifier( 'where'( Term ) )   --> where, is_a( Term ).
+
+:- pred leftparen(list(variable)::in, list(variable)::out) is semidet.
+leftparen --> ['('].
+
+:- pred rightparen(list(variable)::in, list(variable)::out) is semidet.
+rightparen --> [')'].
+
+:- pred leftbracket(list(variable)::in, list(variable)::out) is semidet.
+leftbracket --> ['['].
+
+:- pred rightbracket(list(variable)::in, list(variable)::out) is semidet.
+rightbracket --> [']'].
+
+:- pred colon(list(variable)::in, list(variable)::out) is semidet.
+colon --> [':'].
+
+:- pred semicolon(list(variable)::in, list(variable)::out) is semidet.
+semicolon --> [';'].
+
+:- pred dotdot(list(variable)::in, list(variable)::out) is semidet.
+dotdot --> ['..'].
+
+:- pred comma(list(variable)::in, list(variable)::out) is semidet.
+comma --> [','].
+
+:- pred equals(list(variable)::in, list(variable)::out) is semidet.
+equals --> ['='].
+
+:- pred where(list(variable)::in, list(variable)::out) is semidet.
+where --> [where].
+
+:- pred when(list(variable)::in, list(variable)::out) is semidet.
+when --> [when].
+
+:- pred is_a(list(variable)::in, list(variable)::out) is semidet.
+is_a --> [is].
+
+:- pred such_that(list(variable)::in, list(variable)::out) is semidet.
+such_that --> [suchthat].
+such_that --> [such], [that].
+
+:- pred for_all(list(variable)::in, list(variable)::out) is nondet.
+for_all --> [forall].
+for_all --> [for], [all].
+
+:- pred start_subscript(list(variable)::in, list(variable)::out) is nondet.
+start_subscript --> ['{'].
+
+:- pred end_subscript(list(variable)::in, list(variable)::out) is nondet.
+end_subscript --> ['}'].
+
+:- pred identifier(variable::out, list(variable)::in, list(variable)::out) is nondet.
+identifier( Identifier ) --> common_function( Identifier ).
+identifier( Identifier ) --> common_variable( Identifier ).
+
+:- pred common_variable(variable::in, 
+		list(variable)::in, list(variable)::out) is nondet.
+
+common_variable( a ) --> [a].
+common_variable( n ) --> [n].
+common_variable( f ) --> [f].
+common_variable( v ) --> [v].
+common_variable( x ) --> [x].
+common_variable( i ) --> [i].
+common_variable( shp ) --> [shp].
+common_variable( arg ) --> [arg].
+common_variable( res ) --> [res].
+
+:- pred numeric(variable::in, list(variable)::in, 
+		list(variable)::out) is failure.
+numeric( _, _, _ ) --> fail.
+:- pred built_in(variable::in, list(variable)::in, 
+		list(variable)::out) is failure.
+built_in( _, _, _ ) --> fail.
+:- pred bracketted(variable::in, list(variable)::in, 
+		list(variable)::out) is failure.
+bracketted( _, _, _ ) --> fail.
+:- pred common_function(variable::in, list(variable)::in, 
+		list(variable)::out) is failure.
+common_function( _, _, _ ) --> fail.
+

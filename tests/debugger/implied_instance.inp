@@ -1,0 +1,20 @@
+echo on
+register --quiet
+context none
+alias P print *
+goto 2
+P
+
+P
+break -e p
+continue -a
+P
+
+P
+
+P
+continue -a
+P
+
+P
+continue -S

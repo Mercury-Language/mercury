@@ -1,0 +1,10 @@
+% this file contains some test cases
+a = a.
+X = X.
+a = b.
+X = f(X).
+X = Y.
+true ; true.
+:- Declaration.
+Head :- Body.
+DCG_Head --> DCG_Body.

@@ -1,0 +1,847 @@
+#!/bin/sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 1996-2001 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+
+# This script is used to run the nightly tests.
+# It is invoked from the `run_test' script.
+
+echo "test_mercury starting at `date`" 1>&2
+
+case $# in
+	4)	HOST=$1; ARCH=$2; FULLARCH=$3; C_COMPILER=$4 ;;
+	*)	echo "Usage: $0 host arch fullarch c_compiler" 1>&2; exit 1 ;;
+esac
+
+PATH="$HOME/bin/$ARCH`awk '/^[^#]/{printf ":%s",$0;}' /home/pgrad/fjh/.path`"
+PATH="/home/mercury/public/mercury-0.8/$FULLARCH/bin:$PATH"
+PATH="/home/mercury/public/mercury-latest/$FULLARCH/bin:$PATH"
+PATH="/home/$HOST/public/mercury-latest/$FULLARCH/bin:$PATH"
+PATH="/home/mercury/public/nuprolog/$FULLARCH/bin:$PATH"
+PATH="/home/mercury/public/gcc-2.7.2/$FULLARCH/bin:$PATH"
+PATH="/home/mercury/public/egcs-1.1b/$FULLARCH/bin:$PATH"
+PATH="/home/mercury/public/autoconf-2.4/$FULLARCH/bin:$PATH"
+PATH="/home/mercury/public/sicstus3/$HOST:$PATH"
+PATH="/home/mercury/public/$FULLARCH:$PATH"
+PATH="/home/mercury/public/$HOST:$PATH"
+# generate_index_html needs to be in our PATH too
+PATH="`pwd`:$PATH"
+export PATH
+
+CVSROOT=/home/staff/zs/imp
+export CVSROOT
+
+# tell gcc to use /tmp, not /usr/tmp
+TMPDIR=/tmp
+export TMPDIR
+
+# Make the files writable by group mercury.
+umask 002
+
+#-----------------------------------------------------------------------------#
+
+DATE=`date '+%Y-%m-%d'`
+DAY=`date '+%e'`
+
+case $HOST in
+	murlibobo|taifun|hg|hydra)
+		#
+		# For these hosts:
+		# On odd-numbered days, test the release branch.
+		# On even-numbered days, test the main branch.
+		#
+		case $DAY in
+			*[13579]) INSTALL_DIR_NAME=mercury-0.10 ;;
+			*)	  INSTALL_DIR_NAME=mercury-latest ;;
+		esac
+		;;
+	*)
+		#
+		# For the remaining hosts, do the reverse:
+		# On odd-numbered days, test the main branch.
+		# On even-numbered days, test the release branch.
+		#
+		case $DAY in
+			*[13579]) INSTALL_DIR_NAME=mercury-latest ;;
+			*)	  INSTALL_DIR_NAME=mercury-0.10 ;;
+		esac
+		;;
+esac
+
+#
+# We set the following variables according to which
+# branch we're testing.
+#
+# CHECKOUT_OPTS:
+# Options to pass to cvs checkout.
+#
+# BASE_TAG_NAME:
+# The name on which to base the cvs tag names that we add.
+# We add cvs tags of the form
+# `stable-$BASE_TAG_NAME-$fullname_tag' and
+# `unstable-$BASE_TAG_NAME-$fullname_tag'
+# for the unstable (passed bootcheck, but not tests)
+# and stable (pass both bootcheck and tests) versions respectively.
+#
+# RELEASE_VERSION:
+# The name to give this version.
+#
+# RELEASE_VERSION_PATTERN:
+# A pattern used to delete earlier versions which
+# this version will replace, if it builds successfully.
+# This should usually be the same as $RELEASE_VERSION,
+# but with `*' instead of $DATE.
+#
+case $INSTALL_DIR_NAME in
+	mercury-latest)
+		CHECKOUT_OPTS=-A
+		BASE_TAG_NAME=rotd
+		RELEASE_VERSION=rotd-$DATE
+		RELEASE_VERSION_PATTERN=rotd-*
+		;;
+	mercury-0.10)
+		CHECKOUT_OPTS=-rversion-0_10_x
+		BASE_TAG_NAME=version-0_10_x
+		RELEASE_VERSION=0.10-beta-$DATE
+		RELEASE_VERSION_PATTERN=0.10-beta-*
+		;;
+esac
+
+#-----------------------------------------------------------------------------#
+
+case $HOST in
+	# test things at different optimization levels...
+	murlibobo)	OPTIMIZE=-O5 ;;
+	taifun) 	OPTIMIZE=-O1 ;;
+	quicksilver) 	OPTIMIZE=-O0 ;;
+	hg) 		OPTIMIZE=-O4 ;;
+	roy) 		OPTIMIZE=-O4 ;;	# hlc
+	hydra)		OPTIMIZE=-O2 ;;
+	ender)		OPTIMIZE=-O3 ;;
+	venus) 		case $C_COMPILER in
+				gcc)	OPTIMIZE=-O5 ;;
+				*)	OPTIMIZE=-O2 ;;
+			esac ;;
+	kryten) 	OPTIMIZE=-O1 ;;	# currently not used
+	rimmer) 	OPTIMIZE=-O1 ;; # currently not used
+esac
+
+# on some systems, the file system we're using does not support links
+#case $HOST in
+#	hg)		LN="cp -r"; LN_S="cp -r" ;;
+#	*)		LN="ln"; LN_S="ln -s" ;;
+#esac
+LN="ln"
+LN_S="ln -s"
+
+# flags for building the compiler
+INSTALL_MCFLAGS="$OPTIMIZE --opt-space"
+INSTALL_MGNUCFLAGS=""
+INSTALL_CFLAGS=""
+INSTALL_MLFLAGS=""
+
+# flags for running the tests
+TEST_MCFLAGS="$OPTIMIZE --opt-space"
+TEST_MGNUCFLAGS=""
+TEST_CFLAGS=""
+TEST_MLFLAGS=""
+
+case $FULLARCH in
+	i?86-*-linux*)
+		# On x86 Linux, we need to set the following flags to enable
+		# shared libraries (and we need to use shared libraries to
+		# avoid running out of disk space...)
+		TEST_MCFLAGS="$TEST_MCFLAGS --pic-reg"
+		TEST_MGNUCFLAGS="$TEST_MGNUCFLAGS --pic-reg"
+		TEST_MLFLAGS="$TEST_MLFLAGS --shared"
+		;;
+	*)
+		# On other platforms shared libraries is the default
+		;;
+esac
+
+# directories to use
+
+TESTDIR=/home/mercury/public/test_mercury
+DIR=$TESTDIR/test_dirs/$HOST
+
+case $HOST in
+	hg|ender|roy|venus) 	
+		INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH ;;
+	*)		
+		INSTALL_DIR=/home/mercury/public/$INSTALL_DIR_NAME/$FULLARCH ;;
+esac
+case $C_COMPILER in
+	gcc)	;;
+	*)	INSTALL_DIR="$INSTALL_DIR-$C_COMPILER" ;;
+esac
+
+BETA_FTPHOST=ftp.mercury.cs.mu.oz.au
+BETA_FTPDIR=/home/ftp/pub/mercury/beta-releases
+BETA_WEBDIR=/home/mercury5/installed_w3/download/files/beta-releases
+BETA_WEBDIR_TOP=/home/mercury5/installed_w3/download/files
+
+STABLE=$DIR/$INSTALL_DIR_NAME-stable
+UNSTABLE=$DIR/$INSTALL_DIR_NAME-unstable
+
+case $ARCH in
+	alpha)
+		# due to a bug in the DEC loader, INSTALL_DIR should be
+		# as short as possible, to avoid overflow of fixed length
+		# buffers for -rpath options. The above definition is too long.
+		case $INSTALL_DIR_NAME in
+		mercury-latest) INSTALL_DIR=/home/mercury/public/.a ;;
+		mercury-0.8)	INSTALL_DIR=/home/mercury/public/.b ;;
+		mercury-0.9)	INSTALL_DIR=/home/mercury/public/.c ;;
+		mercury-0.10)	INSTALL_DIR=/home/mercury/public/.d ;;
+		*)
+			echo "unknown INSTALL_DIR_NAME \`$INSTALL_DIR_NAME'!"
+			exit 1
+			;;
+		esac
+		;;
+esac
+
+PATH="$INSTALL_DIR/bin:$PATH"
+
+# $PARALLEL: flag to pass to GNU make for parallel make
+PARALLEL=
+case $HOST in
+	kryten) 	PARALLEL=-j2 ;; # out of three CPUs
+	rimmer) 	PARALLEL=-j2 ;; # out of two CPUs
+	mundook) 	PARALLEL=-j1 ;; # out of two CPUs
+	murlibobo)	PARALLEL=-j6 ;; # out of eight CPUs
+	hydra)		PARALLEL=-j2 ;; # out of two CPUs
+	quicksilver) 	PARALLEL= ;; 	# one CPU
+	hg) 		PARALLEL= ;; 	# one CPU
+	ender) 		PARALLEL= ;; 	# one CPU
+	roy) 		PARALLEL= ;; 	# one CPU
+	venus) 		PARALLEL= ;; 	# one CPU
+	*)		PARALLEL= ;;
+esac
+
+# version of the mercury compiler to use for bootstrapping
+case $HOST in
+	hg|ender|roy|venus)
+		BOOTSTRAP_MERCURY_COMPILER=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
+		;;
+	*)
+		BOOTSTRAP_MERCURY_COMPILER=/home/mercury/public/$INSTALL_DIR_NAME/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
+		;;
+esac
+
+# df (disk free) command
+DF=df
+case $HOST in
+	kryten|taifun|rimmer)	DF="df -k" ;;
+esac
+
+#-----------------------------------------------------------------------------#
+
+# check we've got a reasonable amount of free disk space -- no point
+# starting if we'll only run out of disk space.
+
+[ -d $DIR ] || mkdir -p $DIR
+FREE=`$DF $DIR | awk '
+	NR == 2 && NF > 4 { print $4; exit; }
+	NR == 3 { print $3; }
+'`
+if [ "$FREE" -lt 10000 ]; then
+	echo "Insufficient disk space on $DIR" 1>&2
+	$DF $DIR
+	exit 1
+fi
+
+#-----------------------------------------------------------------------------#
+
+# to make sure we don't try to run two tests in parallel,
+# we use a lock file in the test directory
+
+lockfile=$DIR/lockfile
+if [ -f $lockfile ]; then
+	echo "Directory $DIR is locked:" 1>&2
+	cat $lockfile 1>&2
+	echo "Perhaps the previous test is still running?" 1>&2
+	echo "(Remove $lockfile manually if necessary.)" 1>&2
+	exit 1
+fi
+trap 'rm -f $lockfile; exit 1' 1 2 3 13 15
+trap 'exit_status=$?; rm -f $lockfile; exit $exit_status' 0
+echo $HOST > $lockfile
+
+#-----------------------------------------------------------------------------#
+
+status=0
+
+#-----------------------------------------------------------------------------#
+
+case $HOST in
+	murlibobo)
+		CONFIG_OPTS="--enable-inefficient-grades" ;;
+	kryten)		
+		# On kryten & taifun, there is a bug in readline which causes
+		# it to go into an infinite loop when reading from a file.
+		#CONFIG_OPTS="--enable-all-grades --without-readline" ;;
+		CONFIG_OPTS="--without-readline" ;;
+	taifun)		
+		# On kryten & taifun, there is a bug in readline which causes
+		# it to go into an infinite loop when reading from a file.
+		CONFIG_OPTS="--without-readline" ;;
+	ender)
+		# Test out these options, to make sure they continue
+		# to work
+		CONFIG_OPTS="--enable-hlc-prof-grades \
+			--enable-new-mercuryfile-struct" ;;
+	roy)
+		CONFIG_OPTS=""
+		DEFAULT_GRADE="hlc.gc"
+		export DEFAULT_GRADE
+		INSTALL_GRADE="hlc.gc"
+		INSTALL_LIBGRADES="hl.gc \
+			hlc.gc.prof hlc.gc.memprof hlc.gc.tr hlc.par.gc \
+			hl.gc.prof  hl.gc.memprof  hl.gc.tr  hl.par.gc"
+		;;
+	*)	
+		CONFIG_OPTS="" ;;
+esac
+
+#-----------------------------------------------------------------------------#
+
+# Sometimes, bootstrapping problems mean that we need to install
+# even if the bootstrap check failed.
+
+install_anyway=false
+
+#-----------------------------------------------------------------------------#
+
+: checkout sources and run bootcheck
+
+echo "test_mercury starting cvs checkout at `date`" 1>&2
+
+set -x	# trace execution
+
+: checkout the sources
+cd $DIR || { false; exit 1; }
+# we need to manually remove this copy of dl.m to avoid spurious cvs
+# conflicts when switching between the release branch (where it is in cvs)
+# and the main branch (where it is generated automatically).
+rm -f mercury/extras/dynamic_linking/dl.m
+cvs checkout $CHECKOUT_OPTS mercury tests || { false; exit 1; }
+case $HOST in
+	murlibobo|kryten|taifun|quicksilver|hg|hydra|roy|venus)
+		[ -d mercury/extras/clpr/CVS ] ||
+		(cd mercury/extras && cvs checkout $CHECKOUT_OPTS clpr) ||
+			{ false; exit 1; }
+		;;
+esac
+
+: make sure the installation directory exists
+[ -d $INSTALL_DIR ] || mkdir -p $INSTALL_DIR
+
+: update the VERSION file to specify the version we are building
+sed	"s/VERSION=.*/VERSION=$RELEASE_VERSION/" \
+	mercury/VERSION > mercury/VERSION.new
+mv mercury/VERSION.new mercury/VERSION
+
+: bootstrap the compiler up to stage 3 and check that the results match
+MERCURY_COMPILER=$BOOTSTRAP_MERCURY_COMPILER
+export MERCURY_COMPILER
+cd mercury || { false; exit 1; }
+
+# if [ -s tools/list.$HOST ]; then
+# 	tools/expand_params `tools/cur_param tools $HOST` > Mmake.params
+# else
+	echo "MC = ../scripts/mmc" > Mmake.params
+	echo "EXTRA_MCFLAGS = $INSTALL_MCFLAGS" >> Mmake.params
+	echo "EXTRA_MGNUCFLAGS = $INSTALL_MGNUCFLAGS" >> Mmake.params
+	echo "EXTRA_CFLAGS = $INSTALL_CFLAGS" >> Mmake.params
+	echo "EXTRA_MLFLAGS = $INSTALL_MLFLAGS" >> Mmake.params
+	case "$INSTALL_GRADE" in
+		"")	;;
+		*)	echo "GRADE = $INSTALL_GRADE" >> Mmake.params
+			;;
+	esac
+	case "$INSTALL_LIBGRADES" in
+		"")	;;
+		*)	echo "LIBGRADES = $INSTALL_LIBGRADES" >> Mmake.params
+			;;
+	esac
+# fi
+
+autoconf || { false; exit 1; }
+rm -f config.cache
+CC=$C_COMPILER
+export CC
+./configure --prefix=$INSTALL_DIR $CONFIG_OPTS || { false; exit 1; }
+mmake depend $PARALLEL || { false; exit 1; }
+mmake realclean MMAKEFLAGS=$PARALLEL || { false; exit 1; }
+./configure --prefix=$INSTALL_DIR $CONFIG_OPTS || { false; exit 1; }
+mmake depend $PARALLEL || { false; exit 1; }
+version=`mmake version` || { false; exit 1; }
+fullarch=`mmake fullarch` || { false; exit 1; }
+tools/bootcheck -k -r -p -t $PARALLEL || $install_anyway || { false; exit 1; }
+cd .. || { false; exit 1; }
+
+#-----------------------------------------------------------------------------#
+
+# Tests can fail if linked against an old library, and compiled
+# with a new compiler, so we'll install the libraries first (so
+# long as we bootcheck), then run all the tests in all the grades.
+#
+# Eventually, when we add more support for building multiple grades,
+# we can test in all grades _before_ installing, but presently this
+# is quite difficult.
+
+: install the compiler
+
+echo "test_mercury starting installation at `date`" 1>&2
+echo "current directory `pwd`" 1>&2
+
+case $status in 0)
+    case $install_anyway in
+        false)	cd mercury/stage2 || { false; exit 1; }
+		# we need to use the stage1 compiler to do the install
+		MERCURY_COMPILER=$DIR/mercury/compiler/mercury_compile
+		export MERCURY_COMPILER
+		;;
+        true)	cd mercury || { false; exit 1; } ;;
+    esac
+
+    # Previously we had lots of special case code here for installing on
+    # IRIX systems.   We don't currently have any IRIX boxes, and this 
+    # code was a bit of a pain to maintain.  If we ever get an IRIX box
+    # again, look back in the CVS archives for version 1.114 to see
+    # the necessary code.
+
+    mmake install MMAKEFLAGS=$PARALLEL || status=1
+    case "$INSTALL_GRADE" in
+	hl*)
+	    	# --split-c-files is not supported for the hl* grades
+	    	;;
+	*)	mmake install_split_library LIBGRADES= MMAKEFLAGS=$PARALLEL ||
+	    		status=1
+		;;
+    esac
+
+	# If you want to add extra grades to install on specific hosts,
+	# do it here.  Any grade which is tested later, but which is not
+	# installed above, should be installed here.
+    case $HOST in
+    	hg)	mmake install_grades LIBGRADES="asm_fast.par.gc" || status=1
+		;;
+	*)
+		;;
+    esac
+
+    case $install_anyway in
+        false)	cd ../.. || status=1 ;;
+        true)	cd .. || status=1 ;;
+    esac
+
+    [ -d $TESTDIR/logs ] || mkdir -p $TESTDIR/logs
+    case $status in
+        0) date >> $TESTDIR/logs/install.$INSTALL_DIR_NAME.$HOST ;;
+        *) date >> $TESTDIR/logs/install-failed.$INSTALL_DIR_NAME.$HOST ;;
+    esac
+esac
+
+#-----------------------------------------------------------------------------#
+
+: test and install the CLPR interface
+case $HOST in
+	murlibobo)
+		# requires --enable-all-grades
+		GRADES="asm_fast.gc.tr asm_fast.tr"
+		;;
+	hg|quicksilver|hydra|ender|kryten|taifun|venus)
+		case $C_COMPILER in
+			gcc)	GRADES="asm_fast.gc.tr" ;;
+			*)	GRADES="" ;;
+		esac
+		;;
+	roy)
+		GRADES="hlc.gc.tr hl.gc.tr"
+		;;
+	*)
+		GRADES=""
+		;;
+esac
+for grade in $GRADES kludge_for_broken_shells
+do
+	if [ "$grade" != kludge_for_broken_shells ]; then
+		echo "test clpr stuff for grade $grade" 1>&2
+		{
+			echo "GRADE = $grade"
+			echo "EXTRA_MCFLAGS = $INSTALL_MCFLAGS"
+			echo "EXTRA_MGNUCFLAGS = $INSTALL_MGNUCFLAGS"
+			echo "EXTRA_CFLAGS = $INSTALL_CFLAGS"
+			echo "EXTRA_MLFLAGS = $INSTALL_MLFLAGS"
+		} > mercury/extras/Mmake.params &&
+		(cd mercury/extras/clpr &&
+			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake depend	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake 		 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake check	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake install LIBGRADES= \
+					$PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
+				status=1
+		echo "test trailed_update stuff for grade $grade" 1>&2
+		(cd mercury/extras/trailed_update &&
+			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake depend	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake 		 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake check	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
+				status=1
+	fi
+done
+
+#-----------------------------------------------------------------------------#
+
+: create distribution
+
+echo "test_mercury starting to create distribution at `date`" 1>&2
+
+MERCURY_COMPILER=$BOOTSTRAP_MERCURY_COMPILER
+export MERCURY_COMPILER
+case $HOST in murlibobo)
+	{ cd $DIR/mercury &&
+	mmake realclean MMAKEFLAGS=$PARALLEL &&
+	(cd $DIR/tests &&
+	mmake realclean MMAKEFLAGS=$PARALLEL) &&
+	: > Mmake.params &&
+	rm -f so_locations &&
+	autoconf &&
+	mercury_cv_low_tag_bits=2 \
+	mercury_cv_bits_per_word=32 \
+	mercury_cv_unboxed_floats=no \
+	sh configure --prefix=$INSTALL_DIR &&
+	mmake MMAKEFLAGS='EXTRA_MCFLAGS="-O5 --opt-space" -j6' tar &&
+	cd .. &&
+	rm -f $INSTALL_DIR_NAME-unstable/* &&
+	mv mercury-compiler-$version.tar.gz	\
+	    $INSTALL_DIR_NAME-unstable/mercury-compiler-$version-unstable.tar.gz &&
+	mv mercury-extras-$version.tar.gz	\
+	    $INSTALL_DIR_NAME-unstable/mercury-extras-$version-unstable.tar.gz &&
+	mv mercury-tests-$version.tar.gz	\
+	    $INSTALL_DIR_NAME-unstable/mercury-tests-$version-unstable.tar.gz
+	} || status=1
+	# later parts of this script assume that we've already run configure,
+	# so we need to redo that
+	cd $DIR/mercury && sh configure --prefix=$INSTALL_DIR
+	cd $DIR
+	;;
+esac
+
+: run the regression tests on the stage2 compiler
+
+# The stage2 compiler got installed, so we don't need to set this.
+# In fact, we should unset it, so it isn't set to something
+# inappropriate by some other part of this script.
+
+unset MERCURY_COMPILER
+
+#MERCURY_COMPILER=$DIR/mercury/stage2/compiler/mercury_compile
+#export MERCURY_COMPILER
+
+# Any grade here that is not installed by default needs to be explicitly
+# installed above, before the tests are run.
+case $HOST in
+	mundook|murlibobo)
+		GRADES="none none.gc
+			reg reg.gc
+			asm_fast asm_fast.gc
+			asm_fast.prof asm_fast.gc.prof
+			asm_fast.gc.memprof
+			asm_fast.gc.tr asm_fast.tr asm_fast.gc.prof.tr
+			asm_fast.gc.tr.debug
+			"
+		;;
+# requires --enable-all-grades
+#	kryten)
+#		GRADES="none jump fast asm_jump asm_fast none.gc
+#			jump.gc fast.gc asm_jump.gc
+#			asm_fast.gc asm_fast.gc.prof asm_fast.prof asm_fast.gc.memprof
+#			asm_fast.gc.tr asm_fast.tr asm_fast.gc.prof.tr asm_fast.gc.tr.debug"
+#		;;
+	kryten|taifun|rimmer)
+		GRADES="asm_fast.gc asm_fast asm_fast.gc.prof asm_fast.prof
+			asm_fast.gc.memprof asm_fast.gc.tr
+			asm_fast.gc.tr.debug"
+		;;
+	hydra)
+		GRADES="asm_fast.gc asm_fast
+			asm_fast.gc.prof asm_fast.prof
+			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug"
+		;;
+	hg)
+		GRADES="asm_fast.gc asm_fast
+			asm_fast.gc.prof asm_fast.prof
+			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
+			asm_fast.par.gc hlc.gc"
+		;;
+	venus)
+		case $C_COMPILER in
+			gcc)	GRADES="asm_fast.gc asm_fast
+				asm_fast.gc.prof asm_fast.prof
+				asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
+				hlc.gc" ;;
+			*)	GRADES="none.gc none none.gc.prof
+				none.prof none.gc.memprof none.gc.tr
+				none.gc.debug.tr.debug hlc.gc" ;;
+		esac
+		;;
+	roy)
+		GRADES="hlc.gc hlc.gc.prof hlc.gc.memprof hlc.gc.tr hlc.par.gc
+			hl.gc  hl.gc.prof  hl.gc.memprof  hl.gc.tr  hl.par.gc"
+		;;
+	ender)
+		GRADES="asm_fast.gc asm_fast
+			asm_fast.gc.prof asm_fast.prof
+			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
+			hlc.gc hlc.par.gc hlc.gc.prof hlc.gc.memprof"
+		;;
+	quicksilver)
+		GRADES="asm_fast.gc asm_fast asm_fast.gc.tr.debug"
+		# Don't bother with these, otherwise it would take forever...
+		#	asm_fast.gc.prof asm_fast.prof
+		#	asm_fast.gc.memprof asm_fast.gc.tr"
+		;;
+esac
+
+cd tests || { false; exit 1; }
+
+# We don't do this anymore, because we are phasing out the Prolog supprt.
+#
+# rebuild the `.exp' files on kryten only
+# case $HOST in
+# 	kryten) ./generate_exp ;;
+# 	*) ;;
+# esac
+
+for grade in $GRADES
+do
+	echo "test_mercury starting tests for grade $grade at `date`" 1>&2
+	./runtests -f "$TEST_MCFLAGS" -c "$TEST_CFLAGS" -g "$grade" \
+		-m "$TEST_MGNUCFLAGS" -l "$TEST_MLFLAGS" \
+		$PARALLEL || status=1
+	case $grade in
+		*.memprof*)
+			# we need to set LD_BIND_NOW=1 for profiling on DEC Alpha
+			(cd benchmarks &&
+			touch poly.m &&
+			mmake poly.depend &&
+			mmake poly \
+				GRADE="$grade" \
+				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
+				EXTRA_MGNUCFLAGS="$TEST_MGNUCFLAGS" \
+				EXTRA_CFLAGS="$TEST_CFLAGS" \
+				EXTRA_MLFLAGS="$TEST_MLFLAGS" &&
+			LD_BIND_NOW=1 ./poly > poly.$grade.out &&
+			case $grade in
+			*hl*)
+				# for --high-level-code, we need to
+				# pass --no-demangle to mprof
+				mprof --no-demangle -v -m -c \
+					> poly.$grade.mprof 2>&1 &&
+				{ diff -u poly.mprof-exp2 poly.$grade.mprof ||
+					true; }
+				;;
+			*)
+				mprof -v -m -c > poly.$grade.mprof 2>&1 &&
+				{ diff -u poly.mprof-exp poly.$grade.mprof ||
+					true; }
+				;;
+			esac &&
+			cp Prof.CallPair poly.$grade.CallPair &&
+			cp Prof.MemoryWords poly.$grade.MemoryWords &&
+			cp Prof.MemoryCells poly.$grade.MemoryCells &&
+			cp Prof.Decl poly.$grade.Decl) || status=1
+			;;
+	esac
+done
+cd ..
+
+#-----------------------------------------------------------------------------#
+
+: update the unstable release
+
+case $HOST in murlibobo)
+	# XXX should remove old files
+	rsh $BETA_FTPHOST \
+		"echo rm -f $BETA_FTPDIR/mercury-*-$RELEASE_VERSION_PATTERN-unstable.tar.gz" &&
+	rcp $INSTALL_DIR_NAME-unstable/mercury-*-$version-unstable.tar.gz \
+		$BETA_FTPHOST:$BETA_FTPDIR 
+	# XXX should remove old files
+	echo rm -f $BETA_WEBDIR/mercury-*-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
+	cp $INSTALL_DIR_NAME-unstable/mercury-*-$version-unstable.tar.gz \
+		$BETA_WEBDIR
+	;;
+esac
+
+#-----------------------------------------------------------------------------#
+
+: build the binary distribution
+
+# For the Linux systems, we need to distinguish them based
+# on the version of GNU libc.
+# Also we distinguish them based on what optimization level
+# they were compiled with.
+case $HOST in
+	hg)	
+		fullname=i686-pc-linux-libc2.1-gnu-O4
+		;;
+	venus)	
+		fullname=i686-pc-linux-libc2.1-gnu-O5
+		;;
+	roy)	
+		fullname=i686-pc-linux-libc2.1-gnu-O4-hlc
+		;;
+	quicksilver)	
+		fullname=i586-pc-linux-libc2.1-gnu-O0
+		;;
+	hydra)	
+		fullname=i686-pc-linux-libc2.1-gnu-O2
+		;;
+	ender)	
+		fullname=i686-pc-linux-libc2.1-gnu-O3
+		;;
+	*)
+		fullname=$fullarch
+		;;
+esac
+
+# For alphas, we don't care about the differences between
+# different processor revisions, since the generated
+# binaries work on all of them.
+case $fullname in
+	alpha*-dec-osf3.2)
+		fullname=alpha-dec-osf3.2
+		;;
+esac
+
+case $C_COMPILER in
+	gcc)	;;
+	*)	fullname="$fullname-$C_COMPILER" ;;
+esac
+
+# cvs does not allow `.' in tag names, so we use `_' instead
+fullname_tag=`echo $fullname | tr . _`
+
+{
+	cd $DIR/mercury &&
+	mmake bindist &&
+	cd .. &&
+	{ [ -d $UNSTABLE ] || mkdir $UNSTABLE; } &&
+	rm -f $UNSTABLE/mercury-*.$fullname.tar.gz &&
+	mv mercury/mercury-$version.$fullarch.tar.gz \
+		$UNSTABLE/mercury-$version.$fullname.tar.gz &&
+	:
+	echo "test_mercury tagging unstable $BASE_TAG_NAME, starting at `date`" 1>&2 &&
+	cvs rtag -d unstable-$BASE_TAG_NAME-$fullname_tag mercury clpr tests &&
+	cvs tag unstable-$BASE_TAG_NAME-$fullname_tag mercury tests &&
+	echo "test_mercury tagging unstable $BASE_TAG_NAME, finished at `date`" 1>&2
+} || status=1
+
+case $status in
+    0) {
+    	cd $DIR &&
+	{ [ -d $STABLE ] || mkdir $STABLE; } &&
+	rm -f $STABLE/mercury-$RELEASE_VERSION_PATTERN.$fullname.tar.gz &&
+	$LN $UNSTABLE/mercury-$version.$fullname.tar.gz \
+		$STABLE/mercury-$version.$fullname.tar.gz &&
+	rsh $BETA_FTPHOST "rm -f $BETA_FTPDIR/mercury-$RELEASE_VERSION_PATTERN.$fullname.tar.gz" &&
+	rcp $STABLE/mercury-$version.$fullname.tar.gz \
+		$BETA_FTPHOST:$BETA_FTPDIR &&
+	echo "test_mercury tagging stable $BASE_TAG_NAME, starting at `date`" 1>&2 &&
+	cvs rtag -d stable-$BASE_TAG_NAME-$fullname_tag mercury clpr tests &&
+	cvs tag stable-$BASE_TAG_NAME-$fullname_tag mercury tests &&
+	echo "test_mercury tagging stable $BASE_TAG_NAME, finished at `date`" 1>&2
+       } || status=1
+    ;;
+esac
+
+#-----------------------------------------------------------------------------#
+
+case $status in
+    0)
+	: if we get this far, then it worked.
+	[ -d $TESTDIR/logs ] || mkdir -p $TESTDIR/logs
+	case $C_COMPILER in
+		gcc) date >> $TESTDIR/logs/successful_tests.$INSTALL_DIR_NAME.$HOST ;;
+		*) date >> $TESTDIR/logs/successful_tests.$INSTALL_DIR_NAME.$HOST."$C_COMPILER" ;;
+	esac
+	case $HOST in murlibobo)
+	    cd $DIR &&
+		# Delete older stable versions that this one replaces
+	    rm -f $STABLE/mercury-*-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
+	    rm -f $STABLE/mercury-*-$version.tar.gz &&
+	    $LN $UNSTABLE/mercury-compiler-$version-unstable.tar.gz \
+	        $STABLE/mercury-compiler-$version.tar.gz &&
+	    $LN $UNSTABLE/mercury-extras-$version-unstable.tar.gz \
+	        $STABLE/mercury-extras-$version.tar.gz &&
+	    $LN $UNSTABLE/mercury-tests-$version-unstable.tar.gz \
+	        $STABLE/mercury-tests-$version.tar.gz &&
+
+	    rsh $BETA_FTPHOST "\
+	    rm -f $BETA_FTPDIR/mercury-*-$RELEASE_VERSION_PATTERN[0-9].tar.gz && 
+	    rm -f $BETA_FTPDIR/mercury-*-$version.tar.gz && 
+	    $LN $BETA_FTPDIR/mercury-compiler-$version-unstable.tar.gz \
+	        $BETA_FTPDIR/mercury-compiler-$version.tar.gz &&
+	    $LN $BETA_FTPDIR/mercury-extras-$version-unstable.tar.gz \
+	        $BETA_FTPDIR/mercury-extras-$version.tar.gz &&
+	    $LN $BETA_FTPDIR/mercury-tests-$version-unstable.tar.gz \
+	        $BETA_FTPDIR/mercury-tests-$version.tar.gz" &&
+
+		# XXX should remove old files
+	    echo rm -f $BETA_WEBDIR/mercury-*-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
+	    echo rm -f $BETA_WEBDIR/mercury-*-$version.tar.gz && 
+	    $LN $BETA_WEBDIR/mercury-compiler-$version-unstable.tar.gz \
+	        $BETA_WEBDIR/mercury-compiler-$version.tar.gz &&
+	    $LN $BETA_WEBDIR/mercury-extras-$version-unstable.tar.gz \
+	        $BETA_WEBDIR/mercury-extras-$version.tar.gz &&
+	    $LN $BETA_WEBDIR/mercury-tests-$version-unstable.tar.gz \
+	        $BETA_WEBDIR/mercury-tests-$version.tar.gz 
+	    ;;
+	esac
+	;;
+    *)
+	;;
+esac
+
+# Now rebuild the index files on the www site
+case $HOST in 
+    murlibobo)
+	echo "test_mercury generating www index files, starting at `date`" 1>&2
+	(
+	cd $BETA_WEBDIR_TOP
+	generate_index_html
+	)
+	echo "test_mercury generating www index files, finished at `date`" 1>&2
+	;;
+    *)
+	;;
+esac
+
+: check for success
+
+case $status in
+    0)
+
+	echo "test_mercury exiting successfully at `date`" 1>&2
+	true
+	exit 0
+	;;
+    *)
+	: one or more tests failed
+	echo "some tests failed" 1>&2
+	echo "test_mercury exiting unsuccessfully at `date`" 1>&2
+	false
+	exit 1
+	;;
+esac
+
+#-----------------------------------------------------------------------------#

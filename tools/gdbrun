@@ -1,0 +1,17 @@
+#!/bin/sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 2001 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# Usage: gdbrun <program> <arguments>
+# Invokes gdb on <program>, and runs the program with the given <arguments>.
+#
+program="$1"
+tmpfile=/tmp/gdbrun.$$
+trap "rm -f $tmpfile" 0 1 2 3 13 15
+shift
+echo run "$@" > "$tmpfile"
+echo gdb --command="$tmpfile" $program
+gdb --command="$tmpfile" $program

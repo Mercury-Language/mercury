@@ -1,0 +1,4 @@
+This directory contains a library implementing a binding for ncurses in
+Mercury.
+
+The subdirectory sample/ contains a small sample using this library.

@@ -1,0 +1,365 @@
+/*
+** Copyright (C) 1995-2000 The University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+
+/*
+** mercury_conf.h.in -
+**	Defines various configuration parameters. 
+**
+**	Configuration parameters fall into three groups.
+**	They can be set automatically by autoconf.
+**	They can be passed on the command line (e.g. the mgnuc
+**	script sets some options based on the grade).
+**	Or their values can be entirely determined by the settings
+**	of other parameters.
+**
+**	The ones defined in this file are determined by autoconf.
+**	The remainder are documented and/or defined in mercury_conf_param.h, 
+**	which is #included by this file.
+*/
+
+/*
+** IMPORTANT NOTE:
+** This file must not contain any other #include statements,
+** and may not define any global variables,
+** for reasons explained in mercury_imp.h.
+** This file should contain _only_ configuration macros.
+*/
+
+#ifndef MERCURY_CONF_H
+#define MERCURY_CONF_H
+
+/*---------------------------------------------------------------------------*/
+/*
+** Configuration parameters determined by autoconf.
+*/
+
+/*
+** MR_WORD_TYPE: the base type for the definition of Word.
+** This must be a C integral type (e.g. int, long, or long long)
+** without any explicit signedness.
+** It ought to be the same size as the machine's general-purpose registers
+** (i.e. the same size as pointers).
+*/
+#undef	MR_WORD_TYPE
+
+/* 
+** MR_INTEGER_LENGTH_MODIFIER: the printf() length modifier for a MR_Integer.
+*/
+#undef MR_INTEGER_LENGTH_MODIFIER
+
+/*
+** MR_INT_LEAST64_TYPE:
+** This must be a C integral type (e.g. int, long, long long)
+** without any explicit signedness.
+** It ought to be at least 64 bits in size.
+** It may be bigger, but any bits beyond 64 are not used.
+*/
+#undef	MR_INT_LEAST64_TYPE
+
+/*
+** MR_INT_LEAST32_TYPE:
+** This must be a C integral type (e.g. short, int, long)
+** without any explicit signedness.
+** It ought to be at least 32 bits in size.
+** It may be bigger, but any bits beyond 32 are not used.
+*/
+#undef	MR_INT_LEAST32_TYPE
+
+/*
+** MR_INT_LEAST16_TYPE:
+** This must be a C integral type (e.g. short, int)
+** without any explicit signedness.
+** It ought to be at least 16 bits in size.
+** It may be bigger, but any bits beyond 16 are not used.
+*/
+#undef	MR_INT_LEAST16_TYPE
+
+/*
+** LOW_TAG_BITS: an integer, specifying the number of low-order tag bits
+** we can use.  Normally this is the base-2 log of the word size in bytes.
+*/
+#undef	LOW_TAG_BITS
+
+/*
+** BOXED_FLOAT: defined if double precision floats might not fit
+** in a Word, and hence must be boxed.
+** Note that when bootstrapping from the source distribution,
+** we initially build things without BOXED_FLOAT even on machines
+** for which sizeof(MR_Float) <= sizeof(MR_Word).
+** Conversely if BOXED_FLOAT is undefined, it implies that
+** sizeof(MR_Float) <= sizeof(MR_Word).
+*/
+#undef	BOXED_FLOAT
+
+/*
+** The following macros are defined iff the corresponding header file
+** is available:
+**
+**	HAVE_SYS_SIGINFO	we have <sys/siginfo.h>
+**	HAVE_UCONTEXT		we have <ucontext.h>
+**	HAVE_SYS_UCONTEXT	we have <sys/ucontext.h>
+**	HAVE_ASM_SIGCONTEXT	we have <asm/sigcontext.h> (e.g. i386 Linux)
+**	HAVE_SYS_TIME		we have <sys/time.h>
+**	HAVE_UNISTD_H		we have <unistd.h>
+**	HAVE_SYS_PARAM		we have <sys/param.h>
+**	HAVE_SYS_WAIT		we have <sys/wait.h>
+**	HAVE_SYS_STAT_H		we have <sys/stat.h>
+**	HAVE_SYS_TYPES_H	we have <sys/types.h>
+**	HAVE_SYS_TIMES_H	we have <sys/times.h>
+**	HAVE_DLFCN_H		we have <dlfcn.h>
+*/
+#undef	HAVE_SYS_SIGINFO
+#undef	HAVE_UCONTEXT
+#undef	HAVE_SYS_UCONTEXT
+#undef	HAVE_ASM_SIGCONTEXT
+#undef	HAVE_SYS_TIME
+#undef	HAVE_UNISTD_H
+#undef	HAVE_SYS_PARAM
+#undef	HAVE_SYS_WAIT
+#undef	HAVE_SYS_STAT_H
+#undef	HAVE_SYS_TIMES_H
+#undef	HAVE_SYS_TYPES_H
+#undef	HAVE_DLFCN_H
+
+/*
+** MR_HAVE_POSIX_TIMES is defined if we have the POSIX
+** `struct tms' struct and times() function.
+*/
+#undef MR_HAVE_POSIX_TIMES
+
+/*
+** The following macros are defined iff the corresponding type
+** is available (in <stdint.h>, <inttypes.h>, or <sys/types.h>):
+**
+**	MR_HAVE_INTPTR_T	we have intptr_t and uintptr_t
+**	MR_HAVE_INT_LEASTN_T	we have {u,}int_least{8,16,32}_t
+*/
+#undef MR_HAVE_INTPTR_T
+#undef MR_HAVE_INT_LEASTN_T
+
+/*
+** The following macros are defined iff the corresponding function or
+** system call is available:
+**
+**	HAVE_VSNPRINTF 		we have the vsnprintf() function.
+**	HAVE__VSNPRINTF 	we have the _vsnprintf() function.
+**	HAVE_SYSCONF     	we have the sysconf() system call.
+**	HAVE_SIGACTION		we have the sigaction() system call.
+**	HAVE_GETPAGESIZE 	we have the getpagesize() system call.
+**	HAVE_MPROTECT    	we have the mprotect() system call.
+**	HAVE_MEMALIGN    	we have the memalign() function.
+**	HAVE_STRERROR    	we have the strerror() function.
+**	HAVE_SETITIMER   	we have the setitimer() function.
+**	HAVE_MEMMOVE   		we have the memmove() function.
+**	HAVE_DLOPEN   		we have the dlopen() function.
+**	HAVE_DLCLOSE   		we have the dlclose() function.
+**	HAVE_DLSYM   		we have the dlsym() function.
+**	HAVE_DLERROR   		we have the dlerror() function.
+**	HAVE_FSTAT 		we have the fstat() function.
+**	HAVE_FDOPEN 		we have the fdopen() function.
+**	HAVE_FILENO 		we have the fileno() function.
+**				Note that fileno() may be a macro
+**				rather than a function, so you should use
+**				#if defined(fileno) || defined(HAVE_FILENO)
+*/
+#undef	HAVE_VSNPRINTF
+#undef	HAVE__VSNPRINTF
+#undef	HAVE_SYSCONF
+#undef	HAVE_SIGACTION
+#undef	HAVE_GETPAGESIZE
+#undef	HAVE_MEMALIGN
+#undef	HAVE_MPROTECT
+#undef	HAVE_STRERROR
+#undef	HAVE_SETITIMER
+#undef	HAVE_MEMMOVE
+#undef	HAVE_DLOPEN
+#undef	HAVE_DLCLOSE
+#undef	HAVE_DLSYM
+#undef	HAVE_DLERROR
+#undef	HAVE_FSTAT
+#undef	HAVE_FDOPEN
+#undef	HAVE_FILENO
+
+/*
+** RETSIGTYPE: the return type of signal handlers.
+** Either `int' or `void'.
+*/
+#undef	RETSIGTYPE
+
+/*
+** We use mprotect() and signals to catch stack and heap overflows.
+** In order to detect such overflows, we need to be able to figure
+** out what address we were trying to read from or write to when we
+** get a SIGSEGV signal.  This is a fairly non-portable thing, so
+** it has to be done differently on different systems.
+** The following macros specify whether we can do it and if so, how.
+**
+**	HAVE_SIGINFO		defined iff we can _somehow_ figure out the
+**				fault address for SIGSEGVs.
+**	HAVE_SIGINFO_T		defined iff we can figure out the
+**				fault address for SIGSEGVs using sigaction
+**				and siginfo_t.
+**	HAVE_SIGCONTEXT_STRUCT	defined iff normal signal handlers are given
+**				sigcontext_struct arguments that we can use to
+**				figure out the fault address for SIGSEGVs.
+**	HAVE_SIGCONTEXT_STRUCT_3ARG
+**				defined iff signal handlers have three
+**				parameters, the third being the
+**				sigcontext struct.
+**	HAVE_SIGCONTEXT_STRUCT_2ARG
+**				defined iff signal handlers have two
+**				parameters, the second being the
+**				sigcontext struct. 
+*/
+#undef	HAVE_SIGINFO
+#undef	HAVE_SIGINFO_T
+#undef	HAVE_SIGCONTEXT_STRUCT
+#undef	HAVE_SIGCONTEXT_STRUCT_3ARG
+#undef	HAVE_SIGCONTEXT_STRUCT_2ARG
+
+/*
+** For debugging purposes, if we get a fatal signal, we print out the
+** program counter (PC) at which the signal occurred.
+**
+** PC_ACCESS, PC_ACCESS_GREG: the way to access the saved PC in ucontexts.
+**
+** If PC_ACCESS_GREG is defined, then PC_ACCESS specifies an index into
+** the `gregs' (general registers) array, which is a field of the `ucontext'
+** struct.  Otherwise, if PC_ACCESS is defined then it is a field name
+** in the `ucontext' struct.  If PC_ACCESS is not defined, then we don't
+** have any way of getting the saved PC.
+*/
+#undef	PC_ACCESS
+#undef	PC_ACCESS_GREG
+
+/*
+** SIGACTION_FIELD: the name of the field in the sigaction struct
+** (either sa_handler or sa_sigaction).  Defined only if HAVE_SIGACTION
+** is defined.
+*/
+#undef	SIGACTION_FIELD
+
+/*
+** Configuration parameters for multithreaded execution support.
+**
+** MR_DIGITAL_UNIX_PTHREADS is used to distinguish places where
+** Digital Unix doesn't conform to the letter of the Posix standard
+** for Pthreads.
+**
+*/
+#undef MR_DIGITAL_UNIX_PTHREADS
+
+/*
+** The bytecode files represent floats in 64-bit IEEE format.
+**
+** MR_FLOAT_IS_64_BITS: defined iff the C type `float' is exactly 64 bits.
+** MR_DOUBLE_IS_64_BITS: defined iff the C type `double' is exactly 64 bits.
+** MR_LONG_DOUBLE_IS_64_BITS: defined iff the C type `long double' is exactly
+** 64-bits.
+**
+** XXX why not just have a single MR_64_BIT_FLOAT_TYPE macro,
+** defined to `float', `double', or `long double' as appropriate?
+*/
+#undef	MR_FLOAT_IS_64_BIT
+#undef	MR_DOUBLE_IS_64_BIT
+#undef	MR_LONG_DOUBLE_IS_64_BIT
+
+/*
+** The following macros specify the ordering of bytes within
+** are used by the bytecode compiler and the
+** bytecode interpreter when writing/reading floats from/to bytecode files.
+**
+** MR_BIG_ENDIAN: defined iff the host system is big-endian.
+** MR_LITTLE_ENDIAN: defined iff the host system is little-endian.
+** (Wierd-endian systems should define neither of these.) 
+*/
+#undef	MR_BIG_ENDIAN
+#undef	MR_LITTLE_ENDIAN
+
+/*
+** Which version of Mercury is this?  (Taken from the file ../VERSION.)
+*/
+#define MR_VERSION "unknown"
+
+/*
+** What system is this version of Mercury configured for?
+*/
+#define MR_FULLARCH "unknown"
+
+/*
+** Should we build the Mercury libraries as Windows DLLs?
+*/
+#undef USE_DLLS
+
+/*
+** For SPARC systems, does `as' not allow `.type' in inline asm?
+** (True for SunOS 4.x.)
+*/
+#undef MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE
+
+/*
+** On some platforms, structure assignments can cause gcc to abort
+** with the message "fixed or forbidden register was spilled." in some grades.
+*/
+#undef MR_CANNOT_USE_STRUCTURE_ASSIGNMENT
+
+/*
+** To handle contexts suspended on IO operations we use the select() system
+** call and supporting data structures which while POSIX, are not ANSI.
+*/
+#undef MR_CAN_DO_PENDING_IO
+
+/*
+** MR_USE_EXTERNAL_DEBUGGER:
+**	Allow MR_trace() to use an external process debugger
+**	(with communication done via a socket interface)
+**	rather than using the debugger that is part of
+**	the Mercury runtime.
+**	This requires that the system support sockets.
+**	See trace/mercury_trace_external.c.
+*/
+#undef  MR_USE_EXTERNAL_DEBUGGER
+
+/*
+** MR_DISABLE_DECLARATIVE_DEBUGGER:
+**	Remove declarative debugging support from the internal
+**	debugger, even if it is compatible with the current grade.
+**	Whether the declarative debugger can be used or not is
+**	determined in runtime/mercury_conf_param.h.
+*/
+#undef	MR_DISABLE_DECLARATIVE_DEBUGGER
+
+/*
+** MR_NO_USE_READLINE
+**	Set this if you want to prevent the debugger from using the GNU
+**	readline library for the command-line prompt.
+**	The autoconfiguration script sets this if it can't find a termcap
+**	library.
+**
+** HAVE_READLINE_READLINE
+** HAVE_READLINE_HISTORY
+**	Defined if the header files readline/readline.h and
+**	readline/history.h are available.
+*/
+#undef  MR_NO_USE_READLINE
+#undef  HAVE_READLINE_READLINE
+#undef  HAVE_READLINE_HISTORY
+
+
+/*
+** MR_NEW_MERCURYFILE_STRUCT
+**	Set this if you want to use the new MercuryFile structure.  The
+**	new structure contains pointers to functions to do all the basic IO
+**	functions.  See extras/logged_output for an example of how to
+**	override the pointers to provide IO streams with extra functionality.
+*/
+#undef	MR_NEW_MERCURYFILE_STRUCT
+
+/*---------------------------------------------------------------------------*/
+
+#include "mercury_conf_param.h"
+
+#endif /* MERCURY_CONF_H */

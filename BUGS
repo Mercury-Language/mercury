@@ -1,0 +1,155 @@
+Bug reports should be sent to mercury-bugs@cs.mu.oz.au.
+If you're reporting more than one bug, please use separate emails
+for each bug.  Please include all the relevant information,
+including which version of Mercury you're using, what operating
+system you're using, and a complete source file that
+demonstrates the problem.  (If it's something that only shows
+up in multi-module programs, send a shar archive or uuencoded
+tar archive containing your source files.)  Please try to ensure
+that bug reports contain all the information that we need to be
+able to reproduce the problem.  Make sure that all bug reports are
+fully self-contained.
+
+Below is a list of the known outstanding bugs.
+We'll try to record any other bugs that are discovered
+on our WWW page <http://www.cs.mu.oz.au/mercury>.
+In addition to the bugs mentioned here, some bugs related
+to the implementation of particular languages features
+(existential types, nested modules, tabling)
+are also mentioned in the language reference manual, and some
+problems related to using Mercury on specific operating systems
+are described in the README.* files.
+See also the LIMITATIONS file.
+
+Note: please do not be alarmed by the fact that this software has some bugs.
+ALL useful software has bugs.  During the development of the Mercury
+implementation we have found bugs in gcc, as, ld, the dynamic loader,
+and even the OS kernel.  We hope that by listing the known outstanding bugs
+here we are doing our users a service.  It would be disappointing if
+anyone were to infer the wrong thing from it.
+
+-----------------------------------------------------------------------------
+Subject: bug report - Inf and NaN
+Date: Wed, 4 Oct 1995 02:48:19 +1000 (EST)
+
+The following module causes an "undefined variable Inf" error in the
+generated C code, because 1E400 == Infinity, which gets printed as `Inf'.
+
+:- module hello.
+:- interface.
+:- import_module io.
+
+:- pred main(io__state::di, io__state::uo) is det.
+
+:- implementation.
+
+main -->
+	io__write_float(1E400),
+	io__write_string("\n").
+
+-----------------------------------------------------------------------------
+Subject: nit in error msg
+Date: Thu, 16 May 1996 10:25:42 +1000 (EST)
+
+Here's another small error in an error message.  If you comment out
+the [] clause for the functions car/1 or cdr/1, you get this message:
+
+fntest.m:023: In `car(in) = out':
+fntest.m:023:   Error: determinism declaration not satisfied.
+fntest.m:023:   Declared `det', inferred `semidet'.
+fntest.m:023:   in argument 1 of clause head:
+fntest.m:023:   unification of `HeadVar__1' and `[X | V_4]' can fail.
+
+It says Declared `det', inferred `semidet', but I never declared it at
+all.  It's a bit misleading.  Certainly not a major problem, and the
+later part of the message makes it quite clear what the problem is,
+but I thought I'd point it out to you before I forgot it.
+
+-----------------------------------------------------------------------------
+Subject: missed mode error
+Date: Tue, 28 May 1996 02:27:34 +1000 (EST)
+
+Another one for the bug report file:
+
+The goal `some [X, Y] X \= Y' should be a mode error,
+but the current mode checker doesn't report an error.
+Instead, the compiler goes on to generate code which gives
+the wrong answer.  For example, the following program prints out `no'.
+The same problem also occurs with `some [X, Y] (X = Y -> fail ; true)'.
+
+:- module bug.
+:- interface.
+:- import_module io.
+
+:- pred main(io__state::di, io__state::uo) is det.
+
+:- implementation.
+
+main --> 
+	( { p } -> io__write_string("yes\n") ; io__write_string("no\n") ).
+
+:- pred p is semidet.
+p :-
+	some [X, Y] X \= Y.
+
+The bug occurs only when the variables being unified inside a negated
+context are not live, i.e. when it is the last occurrence of those variables.
+
+-----------------------------------------------------------------------------
+Subject: bug with PC values on Alpha
+Date: Wed, 12 Jun 1996 15:45:59 +1000
+
+On the alpha, if the Mercury runtime catches a signal, it
+sometimes prints out the wrong value for the PC.
+
+-----------------------------------------------------------------------------
+Subject: inter-module optimization and abstract exported equivalence types.
+Date: Thu, 19 February 1998
+
+In some cases the compiler reports spurious ambiguity errors when compiling
+with `--intermodule-optimization'. This is due to the definition of abstract
+exported equivalence types being made visible by inter-module optimization.
+In this example, with `--intermodule-optimization' the compiler sees the
+declaration `:- type var == int' from term.m and then cannot determine whether
+`Elem' has type `int' or `pair(int)'.
+The work-around is to add an explicit type qualification.
+
+:- module foo.
+:- interface.
+:- import_module list, term.
+:- pred test(list(var)::in) is det.
+:- implementation.
+:- import_module int, std_util.
+
+test(Args0) :-
+	MakeIndex =
+		lambda([Elem0::in, Elem::out, Index0::in, Index::out] is det, (
+			Elem = Elem0 - Index0,
+			Index is Index0 + 1
+		)),
+	list__map_foldl(MakeIndex, Args0, _, 0, _).
+
+-----------------------------------------------------------------------------
+
+Subject: `:- pragma does_not_terminate'
+Date: Wed, 9 Jun 1999 16:29:09 +1000 (EST)
+
+`:- pragma does_not_terminate' declarations do not work.
+The compiler's termination analysis seems to ignore them.
+
+-----------------------------------------------------------------------------
+
+Date: Wed, 1 Dec 1999 22:52:57 +1100
+Subject: compiler infinite loop for cyclic type classes
+
+According to the language reference manual:
+
+|  Typeclass constraints on type class declarations gives rise to a
+|  superclass relation.  This relation must be acyclic.  That is, it is an
+|  error if a type class is its own (direct or indirect) superclass.
+
+But if you try to compile modules containing cyclic typeclasses,
+the compiler goes into an infinite loop and eventually gets a
+stack overflow, rather than reporting a proper error message.
+
+-----------------------------------------------------------------------------

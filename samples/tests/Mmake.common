@@ -1,0 +1,89 @@
+#-----------------------------------------------------------------------------#
+
+#
+# Note: Mmake lets you override MCFLAGS for a particular file by setting
+# MCFLAGS-foo.  Similarly, you can override GRADEFLAGS for a particular
+# file by setting both GRADEFLAGS-foo.
+#
+
+DIFF_OPTS=-c
+
+#-----------------------------------------------------------------------------#
+
+#
+# If there is a `.inp' file, then we pipe that in as the command's input.
+# If there is a `.arg' file, then we use it as the command's argument
+# string.
+# Then we run the command, with stdout and stderr both redirected to the 
+# `.out' file.  Finally if the command fails (returns non-zero exit status),
+# we print out the contents of the `.out' file.  We use `grep . $@ /dev/null'
+# to print out the contents, because that precedes each line of output with
+# the filename, which is helpful when running a parallel make.
+#
+%.out: %
+	{ [ -f $*.inp ] && cat $*.inp; } | \
+		./$< `{ [ -f $*.arg ] && cat $*.arg; }` > $@ 2>&1 || \
+		{ grep . $@ /dev/null; exit 1; }
+
+#
+# For some test cases, there is more than one valid output.
+# We try matching the output with the `.exp' file, and if that
+# doesn't succeed, and there is a `.exp2' file, then we try matching
+# against that too.  If neither succeed, the shorter of the two diffs
+# is put into the `.res' file.
+#
+%.res: %.exp %.out
+	-rm -f $@
+	-rm -f $*.res2
+	diff $(DIFF_OPTS) $*.exp $*.out > $@ || \
+		{ test -f $*.exp2 && \
+			if diff $(DIFF_OPTS) $*.exp2 $*.out > $*.res2; then \
+				cp $*.res2 $@; \
+			else \
+				{ test `wc -l < $@` -le `wc -l < $*.res2` || \
+					cp $*.res2 $@; } && false; \
+			fi; \
+		}
+
+#-----------------------------------------------------------------------------#
+
+clean_local: clean_out clean_res
+
+clean_mc: clean_c clean_o clean_out clean_res
+
+clean_out:
+	rm -f *.out
+
+clean_exp:
+	rm -f *.exp
+
+clean_res:
+	rm -f *.res
+	rm -f *.res2
+
+#-----------------------------------------------------------------------------#
+
+#
+# The `foo' targets make `foo_local' in the current directory before
+# recursively making `foo' in all subdirectories.  The recursive part
+# is handled in individual Mmakefiles.
+# 
+
+.PHONY: check_local dep_local depend_local all_local
+
+.PHONY: check_subdirs dep_subdirs depend_subdirs realclean_subdirs \
+        clean_subdirs all_subdirs
+
+check:          check_local check_subdirs
+dep:            dep_local dep_subdirs
+depend:         depend_local depend_subdirs
+realclean:      realclean_subdirs
+clean:          clean_subdirs
+all:            all_local all_subdirs
+
+SUBDIR_MMAKE = mmake \
+                GRADE='$(GRADE)' \
+                EXTRA_CFLAGS='$(EXTRA_CFLAGS)' \
+                EXTRA_MCFLAGS='$(EXTRA_MCFLAGS)'
+
+#-----------------------------------------------------------------------------#

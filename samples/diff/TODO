@@ -1,0 +1,38 @@
+
+Things which should be straightforward:
+
+ * The `--sdiff-merge-assist' option is accepted but does nothing.  What
+   precisely does it do anyway?
+
+ * Optimise the case of the --brief output style, where a full-blown diff
+   isn't necessary but we currently do it.
+
+ * We currently aren't careful about noticing the difference between a
+   file which has a return/new line on the last line and one which
+   doesn't.  In "robust" output styles, this should result in a warning.
+   Admittedly this distinction has never made a difference to any 
+   diffing I've done, but if we're going try to be compliant...
+
+ * We do produce the minimal diff (at least if --minimal is enabled we
+   do), but we don't produce the "prettiest" diff.  We should post-
+   process our diffs to make them prettier.
+
+
+Things which need a bit more work:
+
+ * Implement --speed-large-files (or at least examine whether or not
+   it's worth it to do so).
+
+ * Support diffing of binary files.  Mostly this just requires being
+   more careful than we currently are.
+
+
+Things which would be nice but may/will require a lot of work:
+
+ * Implement a "regexp" module so we can handle more options.
+
+ * Output file dates on context/unified diffs.
+
+ * Directory diffs.
+
+

@@ -1,0 +1,106 @@
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1996-2000 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmake - Mmake file for the Mercury scripts
+
+MAIN_TARGET=all
+
+MERCURY_DIR=..
+include $(MERCURY_DIR)/Mmake.common
+
+#-----------------------------------------------------------------------------#
+
+SCRIPTS = mmake mmc mdb c2init mgnuc ml mprof mprof_merge_runs \
+	  sicstus_conv mtags vpath_find mercury_update_interface \
+	  mkfifo_using_mknod mercury_cleanup_install canonical_grade
+DEBUGGER_SCRIPTS = mdbrc
+EMACS_SCRIPTS = gud.el
+
+#-----------------------------------------------------------------------------#
+
+.SUFFIXES: .in
+
+.in:
+	CONFIG_FILES=$@ CONFIG_HEADERS= $(MERCURY_DIR)/config.status
+	# check to ensure there were no mispelt autoconf variable names
+	if grep -n '[^$$]@' $@; then false; else true; fi
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: all
+all: $(SCRIPTS) $(DEBUGGER_SCRIPTS) $(EMACS_SCRIPTS)
+all: Mmake.vars
+
+#-----------------------------------------------------------------------------#
+
+ml mgnuc canonical_grade: init_grade_options.sh-subr
+ml mgnuc canonical_grade: parse_grade_options.sh-subr 
+ml mgnuc canonical_grade: final_grade_options.sh-subr 
+ml canonical_grade: canonical_grade.sh-subr 
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: install
+install: install_mmake install_scripts \
+	install_debugger_scripts install_emacs_scripts
+
+.PHONY: install_dirs
+install_dirs:
+	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
+	[ -d $(INSTALL_LIBDIR)/mmake ] || mkdir -p $(INSTALL_LIBDIR)/mmake
+	[ -d $(INSTALL_LIBDIR)/mdb ] || mkdir -p $(INSTALL_LIBDIR)/mdb
+	[ -d $(INSTALL_ELISP_DIR) ] || mkdir -p $(INSTALL_ELISP_DIR)
+
+.PHONY: install_mmake
+install_mmake: Mmake.vars Mmake.rules install_dirs
+	rm -f $(INSTALL_LIBDIR)/mmake/Mmake.vars
+	cp `vpath_find Mmake.vars Mmake.rules` $(INSTALL_LIBDIR)/mmake
+
+.PHONY: install_scripts
+install_scripts: $(SCRIPTS) install_dirs
+	# we move the installed `mmake' script before (re)installing it
+	# to avoid overwriting the script while it is running
+	# (just removing it doesn't work very well on win32, which will
+	# deny you permission to write the file while mmake is running).
+	-mv $(INSTALL_BINDIR)/mmake $(INSTALL_BINDIR)/mmake.old
+	cp $(SCRIPTS) $(INSTALL_BINDIR) 
+	-for file in $(SCRIPTS); do \
+		chmod u+w $(INSTALL_BINDIR)/$$file ;\
+	done
+	-rm -f $(INSTALL_BINDIR)/mmake.old
+
+.PHONY: install_emacs_scripts
+install_emacs_scripts: $(EMACS_SCRIPTS) install_dirs
+	cp $(EMACS_SCRIPTS) $(INSTALL_ELISP_DIR)
+
+.PHONY: install_debugger_scripts
+install_debugger_scripts: $(DEBUGGER_SCRIPTS) install_dirs
+	# Reportedly old versions of Mercury
+	# used to install mdbrc as read-only.
+	# If that is the case, then we need to make sure
+	# that it gets made writable before we install the
+	# new version.
+	-chmod u+w $(INSTALL_LIBDIR)/mdb/*
+	cp $(DEBUGGER_SCRIPTS) $(INSTALL_LIBDIR)/mdb 
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: uninstall
+uninstall:
+	-rm -r $(INSTALL_LIBDIR)/mmake
+	-cd $(INSTALL_BINDIR) && rm $(SCRIPTS) 
+	-cd $(INSTALL_LIBDIR)/mdb && rm $(DEBUGGER_SCRIPTS)
+
+#-----------------------------------------------------------------------------#
+
+realclean_local: clean_scripts
+
+.PHONY: clean_scripts
+clean_scripts:
+	for file in *.in; do rm -f `basename $$file .in`; done
+
+#-----------------------------------------------------------------------------#

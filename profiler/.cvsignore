@@ -1,0 +1,16 @@
+*.c
+*.d
+*.h
+*.ql
+*.pl
+*.prof
+*.err
+*.int
+*.int2
+*.int3
+*.date
+*.date3
+mercury_profile
+mercury_profile.dep
+mercury_profile.dv
+Mercury

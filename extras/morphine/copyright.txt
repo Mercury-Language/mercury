@@ -1,0 +1,62 @@
+% Copyright (C) 1999-2000 INRIA/INSA de Rennes.
+
+The software Morphine in its 0.2 release of December 1999, hereinafter referred
+to as " the software " has been designed and produced by Erwan Jahier and
+Mireille Ducassé, researchers of the LANDE project, a research project of the
+National Computer and Automatics Institute - INRIA - Rennes Research Unit.
+
+	INRIA
+	Domaine de Voluceau
+	Rocquencourt
+	78153 Le Chesnay Cedex.
+
+	INSA de Rennes
+	20, Av. des buttes de Coësmes 
+	Campus de Beaulieu,
+	F-35043 Rennes Cedex.
+
+The software has been registered at the Agency for the Protection of Programmes
+(APP) under the number IDDN.FR.001.090030.OO.S.P.2000.000.10600
+
+This Software is a copyright INRIA/INSA - 1999.
+
+The files of the Software may only be copied under the terms of the GNU Library
+General Public License - see the Licence file in the Morphine distribution.
+
+The Software being currently developed, INRIA/INSA is assuming no liability, and
+should not be responsible, in any manner or any case, for any direct or
+indirect damages sustained by the user.
+ 
+
+
+%------------------------------------------------------------------------------%
+Le logiciel Morphine dans sa version 0.2 (décembre 1999), ci-après dénommé "Le
+LOGICIEL", a été conçu et réalisé par Erwan Jahier et Mireille Ducassé,
+chercheurs du projet LANDE, projet de recherche de l'Institut National de
+Recherche en Informatique et en Automatique - INRIA - Unité de Recherche de
+Rennes.
+
+	INRIA
+	Domaine de Voluceau
+	Rocquencourt
+	78153 Le Chesnay Cedex.
+
+	INSA de Rennes
+	20, Av. des buttes de Coësmes 
+	Campus de Beaulieu,
+	F-35043 Rennes Cedex.
+
+Le LOGICIEL a été déposé à l'Agence pour la Protection des Programmes (APP)
+sous le numéro IDDN.FR.001.090030.OO.S.P.2000.000.10600
+
+Ce Logiciel est couvert par le copyright  INRIA/INSA - 1999.
+
+Les fichier de ce logiciel peuvent être copiés seulement sous les termes de la
+license "GNU Library General Public License" - voir le fichier Licence dans la
+distribution de Morphine.
+
+Le LOGICIEL étant un produit en cours de développement, l'INRIA/INSA ne saurait
+assurer aucune responsabilité et notamment en aucune manière et en aucun cas,
+être tenu de répondre d'éventuels dommages directs ou indirects subis par
+l'utilisateur.
+

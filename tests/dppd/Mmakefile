@@ -1,0 +1,9 @@
+MCFLAGS=#--pd --no-inlining -d 35 -D petdr #-d 99
+#GRADE=asm_fast.gc.prof
+MLFLAGS=--static
+
+default_target:	run
+
+clean:	run.clean
+realclean:	run.realclean
+depend:	run.depend

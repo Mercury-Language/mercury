@@ -1,0 +1,105 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1995-2001 University of Melbourne. 
+# This file may only be copied under the terms of the GNU General
+# Public Licence - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmake - Mmake file for Hans Boehm's conservative garbage collector.
+
+# The invoker is expected to set GC_GRADE on the command line
+# in cases when this default is not appropriate.
+GC_GRADE=gc
+
+MAIN_TARGET=lib$(GC_GRADE)
+
+MERCURY_DIR=..
+include $(MERCURY_DIR)/Mmake.common
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: lib$(GC_GRADE)
+lib$(GC_GRADE): submake
+
+lib$(GC_GRADE).$A: submake
+
+lib$(GC_GRADE).so: submake
+
+lib$(GC_GRADE).dll: submake
+
+MMAKEFLAGS=
+
+#	We need to export MAKEFLAGS="" to avoid passing the `-r' (suppress
+#	builtin rules) supplied by Mmake to the boehm_gc Makefile, which
+#	needs the builtin rules. 
+#	We don't use `unset', since the Ultrix /bin/sh doesn't have `unset'.
+#
+#	We also need to explicitly pass `-j1' after MMAKEFLAGS,
+#	to avoid doing a parallel make, for reasons explained at the
+#	top of Makefile.
+submake: force
+	MAKEFLAGS=""; export MAKEFLAGS; \
+	$(MAKE) $(BOEHMGC_MAKEFILE) $(MMAKEFLAGS) -j1 GRADE=$(GRADE) \
+		GC_GRADE=$(GC_GRADE) \
+		lib$(GC_GRADE).$A lib$(GC_GRADE).$(EXT_FOR_SHARED_LIB) \
+		$(EXT_FOR_SHARED_LIB)
+
+.PHONY: force
+force:
+
+clean_local:
+	MAKEFLAGS=""; export MAKEFLAGS; \
+	$(MAKE) $(BOEHMGC_MAKEFILE) $(MMAKEFLAGS) clean
+	rm -rf Release
+	rm -f libgc.$A libgc.so libpar_gc.$A libpar_gc.dll
+
+#-----------------------------------------------------------------------------#
+
+# installation rules
+
+.PHONY: install
+install: install_headers install_lib install_dll
+
+# As well as installing gc.h, we also install gc_inl.h (and hence
+# private/gc_priv.h, private/gc_hdrs.h, and private/gcconfig.h),
+# for use with `-DINLINE_ALLOC'.
+# If we're using DLLs, we also want libgc_dll.h and libgc_globals.h.
+
+HEADERS=gc.h include/gc_inl.h $(LIBGC_DLL_H) $(LIBGC_GLOBALS_H)
+PRIVATE_HEADERS=gc_priv.h gc_hdrs.h gcconfig.h
+
+ifeq ($(USE_DLLS),yes)
+
+LIBGC_DLL_H = libgc_dll.h 
+LIBGC_GLOBALS_H = libgc_globals.h 
+
+else
+
+LIBGC_DLL_H =
+LIBGC_GLOBALS_H =
+
+endif
+#-----------------------------------------------------------------------------#
+
+.PHONY: install_dirs
+install_dirs:
+	#-[ -d $(INSTALL_INC_DIR) ] || mkdir -p $(INSTALL_INC_DIR)
+	-[ -d $(INSTALL_INC_DIR)/private ] || \
+		mkdir -p $(INSTALL_INC_DIR)/private
+	-[ -d $(INSTALL_MERC_GC_LIB_DIR) ] || \
+		mkdir -p $(INSTALL_MERC_GC_LIB_DIR)
+
+.PHONY: install_headers
+install_headers: install_dirs
+	cp $(HEADERS) $(INSTALL_INC_DIR)
+	cp $(PRIVATE_HEADERS) $(INSTALL_INC_DIR)/private
+
+.PHONY: install_lib
+install_lib: lib$(GC_GRADE).$A lib$(GC_GRADE).$(EXT_FOR_SHARED_LIB) install_dirs
+	cp `vpath_find lib$(GC_GRADE).$A lib$(GC_GRADE).$(EXT_FOR_SHARED_LIB)` \
+		$(INSTALL_MERC_GC_LIB_DIR)
+
+.PHONY: install_dll
+install_dll:
+	-[ -f libpar_gc.dll ] && cp `vpath_find libpar_gc.dll` $(INSTALL_BINDIR)
+
+#-----------------------------------------------------------------------------#

@@ -1,0 +1,174 @@
+#!/bin/sh
+#
+# INSTALL - installation instructions and installation script.
+#
+# You need GNU C (2.7.2 or later -- 2.6.3 might work too, but it is known
+# to have problems compiling Mercury on some architectures, e.g. SPARC)
+# and GNU Make (3.69 or later).  Make sure that they are somewhere in
+# your PATH.  It's also helpful if you have GNU Readline installed
+# in one of the standard locations (normally /usr/local or /usr),
+# but this is not essential.
+#
+# The source distributions for GNU C, GNU Make, and GNU Readline are
+# available from <ftp://ftp.gnu.org/gnu/>.  Binaries for these are
+# included in almost all Linux distributions and also in the Cygwin
+# distribution for Windows (see README.MS-Windows).
+#
+# Step 0.  Extract the files from the gzipped tar archive.
+#
+# Step 1.  Run `configure'.  (Just type `sh configure'.)
+#
+#	   By default, the files will be installed in the directory
+#	   /usr/local/mercury-@VERSION@.
+#	   If you want the files to be installed someplace else,
+#	   use the `--prefix <directory>' option to `configure'.
+#
+#      NOTE: If you use the `--prefix' option to configure,
+#      be aware that `mercury' is not automatically
+#      appended.  That is, `--prefix=/usr/local' will put
+#      files in /usr/local/bin, /usr/local/lib et cetera,
+#      *not* /usr/local/mercury/bin, /usr/local/mercury/lib.
+#
+#	   By default, the installation process will install the Mercury
+#	   standard library in a comprehensive set of grades, with each grade
+#	   supporting a given set of capabilities (debugging, profiling etc).
+#	   If you want to install a different set of grades, read the
+#	   "Finetuning" section below.
+#
+#	   The output from running configure will be automatically saved
+#	   in the file `configure.log'.  Some debugging output is also
+#	   saved to the file `config.log'.
+#
+# Step 2.  Run `make'.
+#	   This step will take a long time.
+#
+#	   The output from this stage will be automatically saved in the
+#	   file `make.log'.
+#
+#      NOTE: If you have problems installing a new version
+#      of the compiler, you may find it helpful to either
+#      completely remove any existing versions of the
+#      compiler reachable on your PATH or, less drastically,
+#      alter your PATH variable so that any existing version
+#      of the mercury compiler is not accessible for the
+#      purposes of installing the new version.
+#
+# Step 3.  Run `make install'.
+#	   This step will also take a long time.
+#
+#	   The output from this stage will be automatically saved in the
+#	   file `make_install.log'.
+#
+#	   BEWARE: if something goes wrong in this step, e.g. running
+#	   out of disk space, and the installation has already gotten
+#	   past installing the documentation, and started installing
+#	   the different grades of the libraries (in particular if
+#	   `grep install_text make_install.log' prints out something
+#	   like `# install_text install_ps') then in general it is NOT
+#	   sufficient to simply rerun `make install'.  Instead you
+#	   may need to start from scratch again.
+#
+# Step 4.  Check the permissions on the installed files.
+#	   Add /usr/local/mercury-@VERSION@/bin to your PATH, and
+#	   add /usr/local/mercury-@VERSION@/man to your MANPATH.
+#	   add /usr/local/mercury-@VERSION@/info to your INFOPATH.
+#	   You can also add a WWW link to the Mercury documentation in
+#	   /usr/local/mercury-@VERSION@/lib/mercury/html to your WWW home page,
+#	   and you may want to print out a hard-copy of the documentation
+#	   from the DVI files in /usr/local/mercury-@VERSION@/lib/mercury/doc.
+#
+#	   To use the emacs debugger interface ("M-x mdb"), you also need to
+#	   add the following lines to the `.emacs' file in your home directory:
+#
+#	   	(setq load-path (cons (expand-file-name
+#		  "/usr/local/mercury-@VERSION@/lib/mercury/elisp") load-path))
+#		(autoload 'mdb "gud" "Invoke the Mercury debugger" t)
+#
+# Step 5.  Run `make clean'.
+#
+# As a short-cut, steps 1-3 are listed below, so they can be replaced
+# by just executing this file.  I suggest you run it in the background,
+# and read the Mercury documentation in the `doc' directory while you are
+# waiting.
+
+sh configure &&
+make &&
+make install
+
+# Fine-tuning:
+# ------------
+#
+#	   If your system has multiple CPUs and lots of RAM,
+#	   you can uncomment the definition of PARALLEL in the Makefile
+#	   to perform a parallel make.
+#
+#	   By default the `make install' step will install a reasonable
+#	   set of library grades which should be appropriate for most uses.
+#
+#	   The option --enable-libgrades=<gradelist> allows you to specify
+#	   precisely the list of library grades to be installed. The argument
+#	   of this option should be a comma-separated list of grades.
+#	   An empty list of grades will cause the library to be installed
+#	   only in the default grade.
+#
+#	   The option --disable-most-grades reduces the set of installed grades
+#	   to a "minimum" level for developers (just the default grade and the
+#	   grades corresponding to the `--debug' and `--high-level-code'
+#	   options).
+#
+#	   The option --disable-nogc-grades prevents the installation
+#	   of grades without garbage collection.
+#
+#	   The option --disable-prof-grades prevents the installation
+#	   of grades that support profiling.
+#
+#	   The option --disable-trail-grades prevents the installation
+#	   of grades that support trailing.
+#
+#	   The option --disable-par-grades prevents the installation
+#	   of thread-safe grades.
+#
+#	   The option --enable-inefficient-grades causes the installation
+#	   of grades that do not exploit gcc extensions even when they are
+#	   available.
+#
+#	   The option --enable-hlc-prof-grades causes the installation
+#	   of profiling versions of the high level code grades.
+#
+#	   If you are short on RAM, you can add -DSMALL_CONFIG to the CFLAGS
+#          line in the file boehm_gc/Makefile.  (This tells the garbage
+#	   collector to tune itself for small physical memory.)
+#
+#	   If your system supports shared libraries, but `configure' says
+#	   Mercury does not support shared libraries on this system,
+#	   contact us and we'll see if we can add support for shared libraries
+#	   on that system.
+#
+#	   If Mercury does not support shared libraries on your system,
+#	   you may want to use the command `mmake install_split_library' to
+#	   build and install a version of the Mercury libraries using the
+#	   `--split-c-files' option to avoid linking in unused procedures.
+#	   This can reduce the size of a hello world executable from ~400k
+#	   to ~120k.  (The only reason this is not the default is that
+#	   installing the split libraries takes quite a long time.  As a
+#	   compromise, the command `mmake install_split_library LIBGRADES='
+#	   will install a split version of the library just for the
+#	   default grade.)
+#
+#	   Efficiency will be much improved if Mercury can use gcc global
+#	   register variables.  Currently these are supported for
+#	   mips, hppa, sparc, alpha, rs6000, and i386 architectures
+#	   (see runtime/regs.h and runtime/machdeps/*).
+#	   If you want to use Mercury on some other CPU, contact us and
+#	   we'll add support for gcc global registers for that CPU.
+#
+# De-installation:
+# ----------------
+#
+# You may eventually want to uninstall this version of Mercury
+# (to free up disk space so you can install the next version ;-).
+# If you installed in the default location, you can simply
+# use `rm -rf /usr/local/mercury-@VERSION@' to uninstall.
+# If you installed in a location such as `/usr/local' that also
+# contains other files which you do not want removed, then
+# run the command `make uninstall' in this directory.

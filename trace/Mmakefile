@@ -1,0 +1,219 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1998-2001 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmakefile for the Mercury trace library, which contains the runtime
+# system components that are needed only if some procedures are traced.
+
+MAIN_TARGET=trace
+
+MERCURY_DIR=..
+include $(MERCURY_DIR)/Mmake.common
+-include Mmake.trace.params
+
+#-----------------------------------------------------------------------------#
+
+M_ENV		= MERCURY_ALL_C_INCL_DIRS="\
+			-I$(BROWSER_DIR) \
+			-I$(LIBRARY_DIR) \
+			-I$(RUNTIME_DIR) \
+			-I$(BOEHM_GC_DIR) \
+			-I$(BOEHM_GC_DIR)/include \
+		  "
+CFLAGS		= -g $(DLL_CFLAGS)
+MGNUC		= $(M_ENV) $(SCRIPTS_DIR)/mgnuc
+MGNUCFLAGS	= --no-ansi
+
+#-----------------------------------------------------------------------------#
+
+# mercury_readline.c #includes the GNU readline headers, which
+# lack prototypes and `const', so we need to disable warnings
+# when compiling that file.
+MGNUCFLAGS-mercury_trace_readline = --no-check
+
+#-----------------------------------------------------------------------------#
+
+# keep this list in alphabetical order, please
+HDRS		=	\
+			mercury_trace.h			\
+			mercury_trace_alias.h		\
+			mercury_trace_browse.h		\
+			mercury_trace_declarative.h	\
+			mercury_trace_external.h 	\
+			mercury_trace_help.h		\
+			mercury_trace_internal.h	\
+			mercury_trace_readline.h	\
+			mercury_trace_spy.h		\
+			mercury_trace_tables.h		\
+			mercury_trace_util.h		\
+			mercury_trace_vars.h
+
+# keep this list in alphabetical order, please
+CFILES		= 	\
+			mercury_trace.c			\
+			mercury_trace_alias.c		\
+			mercury_trace_browse.c		\
+			mercury_trace_declarative.c	\
+			mercury_trace_external.c 	\
+			mercury_trace_help.c		\
+			mercury_trace_internal.c	\
+			mercury_trace_readline.c	\
+			mercury_trace_spy.c		\
+			mercury_trace_tables.c		\
+			mercury_trace_util.c		\
+			mercury_trace_vars.c
+
+# The object files in this directory depend on many of the header files
+# in the runtime. However, changes to many of these header files require
+# a global make clean. Here we list only the header files from the runtime
+# whose changes don't usually require a make clean but which nevertheless
+# require the trace library to be recompiled.
+RUNTIME_HDRS	=	\
+			../runtime/mercury_stack_layout.h
+
+OBJS		= $(CFILES:.c=.$O)
+PIC_OBJS	= $(CFILES:.c=.$(EXT_FOR_PIC_OBJECTS))
+
+HDR_CHECK_CS	= $(HDRS:.h=_check.c)
+HDR_CHECK_OBJS	= $(HDRS:.h=_check.$O)
+HDR_CHECK_MACROS = $(HDRS:.h=_check.macros)
+OBJ_CHECKS	= $(OBJS:%=%.obj_check)
+
+LDFLAGS		= -L$(BROWSER_DIR) -L$(LIBRARY_DIR) \
+			-L$(RUNTIME_DIR) -L$(BOEHM_GC_DIR)
+LDLIBS		= -l$(BROWSER_LIB_NAME) -l$(STD_LIB_NAME) -l$(RT_LIB_NAME) \
+		` case "$(GRADE)" in 					\
+		    *.par*.gc*.prof*)	echo "-lpar_gc_prof" ;;		\
+		    *.par*.gc*)		echo "-lpar_gc" ;;		\
+		    *.gc*.prof*)	echo "-lgc_prof" ;;		\
+		    *.gc*)		echo "-lgc" ;;			\
+		  esac							\
+		` 							\
+		$(SOCKET_LIBRARY) $(NSL_LIBRARY) $(DL_LIBRARY)		\
+		$(READLINE_LIBRARIES)
+THREADLIBS	= \
+		` case "$(GRADE)" in					\
+		    *.par*) echo "-lpthread" ;;				\
+		  esac							\
+		`
+
+#-----------------------------------------------------------------------------#
+
+# Stuff for Windows DLLs
+
+ifeq ($(USE_DLLS),yes)
+
+DLL_CFLAGS	= -Dlib$(TRACE_LIB_NAME)_DEFINE_DLL
+
+# the following header files are created automatically by Makefile.DLLs
+LIB_DLL_H	 = lib$(TRACE_LIB_NAME)_dll.h
+LIB_GLOBALS_H = lib$(TRACE_LIB_NAME)_globals.h
+
+include $(MERCURY_DIR)/Makefile.DLLs
+
+else
+
+DLL_CFLAGS =
+LIB_DLL_H =
+LIB_GLOBALS_H =
+DLL_DEF_LIB =
+
+endif
+
+#-----------------------------------------------------------------------------#
+
+$(OBJS) $(PIC_OBJS): $(HDRS) $(RUNTIME_HDRS)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: trace
+trace: lib$(TRACE_LIB_NAME).$A lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)
+trace: $(LIB_DLL_H) $(LIB_GLOBALS_H)
+
+lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).$A: $(OBJS)
+	rm -f lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).$A
+	$(AR) $(ALL_ARFLAGS) \
+		$(AR_LIBFILE_OPT)lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).$A $(OBJS)
+	$(RANLIB) lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).$A
+
+lib$(TRACE_LIB_NAME).so: $(PIC_OBJS)
+	$(LINK_SHARED_OBJ) $(ERROR_UNDEFINED)				\
+		-o lib$(TRACE_LIB_NAME).so $(PIC_OBJS)			\
+		$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_GC_LIB_DIR)	\
+		$(LDFLAGS) $(LDLIBS) $(THREADLIBS)			\
+		$(SHARED_LIBS)
+
+.PHONY: cs
+cs: $(CFILES)
+
+tags: $(CFILES) $(HDRS)
+	ctags $(CFILES) $(HDRS) ../runtime/*.c ../runtime/*.h
+
+#-----------------------------------------------------------------------------#
+#
+# `mmake check_namespace' performs various checks on the header files
+# and object files to make sure that they conform with our coding standards.
+#
+
+HEADER_CLEAN_FILTER = \
+	grep -v -e '^MR_' -e '^GC_' -e '^MERCURY_' | \
+	fgrep -v -x -f ../runtime/RESERVED_MACRO_NAMES
+
+.PHONY: check_headers_self_contained
+check_headers_self_contained: $(HDR_CHECK_OBJS)
+
+.PHONY: check_headers_macros
+check_headers_macros: $(HDR_CHECK_MACROS)
+
+.PHONY: check_headers
+check_headers: check_headers_self_contained check_headers_macros
+
+.PHONY: check_objs
+check_objs: $(OBJ_CHECKS)
+
+.PHONY: check_namespace
+check_namespace: check_headers check_objs
+
+#-----------------------------------------------------------------------------#
+
+# installation rules
+
+.PHONY: install
+install: install_headers install_lib
+
+.PHONY: install_headers
+install_headers: $(HDRS) $(LIB_GLOBALS_H)
+	cp `vpath_find $(HDRS) $(LIB_GLOBALS_H)` $(INSTALL_INC_DIR)
+
+.PHONY: install_lib
+install_lib: lib$(TRACE_LIB_NAME).$A lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)
+	-[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
+	cp `vpath_find lib$(TRACE_LIB_NAME).$A \
+		lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
+		$(INSTALL_MERC_LIB_DIR)
+
+#-----------------------------------------------------------------------------#
+
+# prevent Mmake from removing C files
+RM_C=:
+
+#-----------------------------------------------------------------------------#
+
+clean_local: clean_o clean_check
+
+.PHONY: clean_o
+clean_o:
+	rm -f $(OBJS) $(PIC_OBJS)
+
+.PHONY: clean_check
+clean_check:
+	rm -f $(HDR_CHECK_OBJS) $(HDR_CHECK_CS) $(HDR_CHECK_MACROS)
+	rm -f $(OBJ_CHECKS)
+
+.PHONY: realclean_local
+realclean_local:
+	rm -f lib$(TRACE_LIB_NAME).$A lib$(TRACE_LIB_NAME).so
+
+#-----------------------------------------------------------------------------#

@@ -1,0 +1,21 @@
+# COMPLEX_NUMBERS_DIR specifies the location of the complex number library,
+# e.g. `/foo/bar/mercury-<version>/extra/complex_numbers'.
+COMPLEX_NUMBERS_DIR = ..
+
+# The following stuff tells Mmake to use the complex number library
+VPATH = $(COMPLEX_NUMBERS_DIR):$(MMAKE_VPATH)
+MCFLAGS = -I$(COMPLEX_NUMBERS_DIR) $(EXTRA_MCFLAGS)
+MLFLAGS = -R$(COMPLEX_NUMBERS_DIR) -L$(COMPLEX_NUMBERS_DIR) $(EXTRA_MLFLAGS)
+MLLIBS = -lcomplex_numbers $(EXTRA_MLLIBS)
+C2INITARGS = $(COMPLEX_NUMBERS_DIR)/complex_numbers.init
+
+MAIN_TARGET = complex_test.res
+
+depend: complex_test.depend
+
+complex_test.out: complex_test
+	./complex_test > complex_test.out
+
+complex_test.res: complex_test.out complex_test.exp
+	diff -c complex_test.out complex_test.exp > complex_test.res
+

@@ -1,0 +1,16 @@
+This directory contains the following files:
+
+dl.m:
+	A module containing support for dynamic linking
+	(i.e. a binding to the C functions dlopen(), dlsym(), and dlclose()).
+
+name_mangle.m:
+	A module containing a representation for Mercury procedure
+	specifiers and a function for mangling them into symbol names
+	suitable for passing to dlsym().
+
+dl_test.m:
+hello.m:
+dl_test.exp:
+	A sample program (and test case) for the use of dynamic linking.
+

@@ -1,0 +1,165 @@
+<html>
+<head>
+<title>Release Checklist for the Mercury Project</title>
+</head>
+
+<body bgcolor="#ffffff" text="#000000">
+
+<hr>
+<!-------------------------->
+
+This file contains a checklist of the steps that must be
+taken when releasing a new version of Mercury.
+
+<hr>
+<!-------------------------->
+
+<ol>
+<li> Items for the next version (1.0) only:
+	<ol>
+	<li>
+	Make sure that the runtime headers contain no symbols (function names,
+	variable names, type names, struct/enum tags or macros) that do not
+	begin with MR_.
+	</ol>
+
+<li> Make sure configure.in is updated to check for new features.
+
+<li> Update the RELEASE_NOTES, NEWS, WORK_IN_PROGRESS, HISTORY,
+     LIMITATIONS and BUGS files, and the compiler/notes/todo.html file.
+     Don't forget to update the version number in RELEASE_NOTES for major
+     releases.
+     The HISTORY file should include the NEWS files from previous releases.
+
+<li> Update the WWW documentation in the `w3' directory.
+     Note that the sources for these HTML documents are in the files named
+     include/*.inc and *.php3.
+     <ul>
+     <li> For minor releases, update release.html with a new entry about
+	  this release (put it at the top of the page), and provide a
+	  new link to download the release. See old-release.html for
+	  examples.
+
+     <li> For major releases, you will need to create some new web pages:<br>
+          <dl>
+          <dt> release-VERSION.html
+          <dd> The release notes for this version.
+
+	  <dt> release-VERSION-bugs.html
+	  <dd> Any outstanding bugs for this release.
+	       This should be the same as the BUGS file.
+
+	  <dt> release-VERSION-contents.html
+	  <dd> The contents of this distribution.
+	       This should be the same as in the RELEASE_NOTES file.
+
+          </dl>
+	  You will need to add these new files to the list in the Makefile.
+	  You will also need to update release.html and
+	  current-release-bugs.html.
+	  Move the old information in release.html to old-release.html.
+	  Modify release.html to refer to the new html files you have
+	  created, and change the links to download the release. 
+
+     <li> Don't commit your changes to the main branch yet, because
+	  otherwise it would be installed on the WWW pages overnight.
+     </ul>
+
+<li> Use `cvs tag' to tag all the files with a `version-x_y_z' tag.
+
+<li> Edit the tools/test_mercury script in
+     /home/mercury/public/test_mercury/scripts/mercury:
+     set the RELEASE_VERSION and CHECKOUT_OPTS variables
+     as explained in the comments there.
+
+<li> Run tools/run_all_tests_from_cron on murlibobo.
+     (Or just wait 24 hours or so.) <p>
+
+     This should have the effect of checking out a fresh copy, and doing
+
+	<pre>
+	touch Mmake.params &&
+	autoconf &&
+	mercury_cv_low_tag_bits=2 \
+	mercury_cv_bits_per_word=32 \
+	mercury_cv_unboxed_floats=no \
+	sh configure --prefix=$INSTALL_DIR &&
+	mmake MMAKEFLAGS='EXTRA_MCFLAGS="-O5 --opt-space" -j6' tar
+	</pre>
+	
+	<p>
+
+    If it passes all the tests, it should put the resulting tar file in
+    /home/mercury/public/test_mercury/test_dirs/mercury-latest-stable and
+    ftp://ftp.mercury.cs.mu.oz.au/pub/mercury/beta-releases.
+
+<li>  Test it on lots of architectures. <br>
+
+	<p>
+    Make sure you test all the programs in the `samples' and `extras'
+    directories.
+
+<li>  Build binary distributions for those architectures.
+      This step is now automated as part of tools/test_mercury,
+      with the resulting binaries going in
+      /home/mercury/public/test_mercury/test_dirs/$HOST/mercury-latest-{un,}stable.
+
+<li>  Make sure to test the binary distributions!
+
+<li>  Move the gzipped tar files from the /pub/mercury/beta-releases directory
+      to the main /pub/mercury directory on the Mercury ftp site
+      ftp://ftp.mercury.cs.mu.oz.au/pub/mercury.
+      Copy the binary distributions to the same place.
+      <p>
+
+      For the Stonybrook mirror, email Konstantinos Sagonas 
+      (Kostis.Sagonas@cs.kuleuven.ac.be) to tell him to copy them to 
+      ftp://ftp.cs.sunysb.edu/pub/XSB/mercury. <p>
+      Unfortunately this mirror is not automated, so don't worry about it
+      except for major releases or important bug fixes. <p>
+
+      The mirror at ftp://ftp.csd.uu.se/pub/Mercury is also automated.
+      Sometimes the link to Sweden can cause delays.
+      The person to contact regarding this one is Thomas Lindgren 
+      (thomasl@csd.uu.se).
+
+<li> Prepare a new "mercury-VERSION.lsm" file for this Mercury release
+     (use the one already uploaded to
+     ftp://sunsite.unc.edu/pub/Linux/Incoming as a template). The
+     version number, date, file sizes, and file names need to be updated
+     for a new release.
+
+<li> Create new binary packages for Linux packaging systems.
+     The .spec file can be used to create .rpm packages.
+     The command <i>dpkg-buildpackage -rfakeroot</i> on hydra can be
+     used to create .deb packages, although you should probably
+     let (or make) the official maintainer do this so it can be
+     PGP signed and uploaded.
+
+<li> Upload "mercury-VERSION-compiler.tar.gz" and "mercury-VERSION.lsm" to
+     ftp://sunsite.unc.edu/incoming/Linux. They will be moved to
+     /pub/Linux/Incoming fairly quickly, and eventually should be moved
+     to /pub/linux/devel/lang/mercury.
+
+<li> Send "mercury-VERSION.lsm" to the lsm robot at lsm@execpc.com
+     with the subject "add".
+	
+<li> Append "mercury-VERSION.lsm" to a release notice and send it to
+     linux-announce@news.ornl.gov. This will post to comp.os.linux.announce.
+
+<li>  Email mercury-announce@cs.mu.oz.au and cross-post announcement to
+    comp.lang.misc, comp.lang.prolog, comp.lang.functional, comp.object.logic,
+    and for major releases also to comp.compilers and gnu.announce.
+
+<li>  Update the Mercury WWW home page (/local/dept/w3/unsupported/docs/mercury/*)
+      by commiting the changes you made earlier.
+
+</ol>
+
+
+<hr>
+<!-------------------------->
+
+Last update was $Date: 2000-09-26 06:35:07 $ by $Author: trd $@cs.mu.oz.au. <br>
+</body>
+</html>

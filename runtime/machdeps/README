@@ -1,0 +1,36 @@
+This directory contains architecture-dependent code
+for using gcc global register variables.
+
+Each header file in this directory should implement the same
+interface; this interface is documented in the file `no_regs.h'
+(which is the portable version that gets used for unknown
+architectures, or if you're not using gcc).
+
+To add a definition for a new architecture, you need to
+
+	- Find the config header file in the gcc source code which
+	  defines how registers are used for that machine
+	  (e.g. for mips, the file is .../config/mips/mips.h).
+	  Find the definitions of FIXED_REGISTERS and
+	  CALL_USED_REGISTERS in that header file.
+	  These are arrays of booleans indexed by register
+	  number; somewhere in the same file there should also be
+	  some indication of gcc's register numbering scheme,
+	  so that you can figure out the corresponding register names.
+
+	- Choose which registers for Mercury to use as global register
+	  variables.  Registers that are fixed or call_used cannot be used.
+	  (That's why you need to look at the FIXED_REGISTERS and
+	  CALL_USED_REGISTERS macros in the gcc source code.)
+	  It's a good idea to leave some registers for use by gcc
+	  (but that may not always be possible, e.g. see the comment
+	  at the start of alpha_regs.h).
+	  Other than that, it's up to you.
+
+	- Add a new header file for your architecure in this directory.
+	  This header file should define the same set of macros as the
+	  other header files here.  The documentation for what they
+	  should do is in `no_regs.h'.
+
+	- Add a new case to the switch on machine type in `../regs.h';
+	  this new case should #include the header file you just added.

@@ -1,0 +1,4 @@
+yes - no
+yes("foo") - no
+yes("bar") - no
+["1", "1.0", "bar", "foo"]

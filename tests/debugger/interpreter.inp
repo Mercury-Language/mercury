@@ -1,0 +1,15 @@
+echo on
+context none
+register --quiet
+10 step
+vars
+print *
+goto 30
+print *
+finish -a
+print *
+
+finish -n
+
+
+continue

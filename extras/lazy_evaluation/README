@@ -1,0 +1,71 @@
+This directory contains support for optional lazy evaluation.
+Using the modules defined here, you can write Mercury code that
+makes use of lazily evaluated data structures. 
+
+Our implementation of lazy evaluation requires you to use a different
+type, lazy(T), whenever you want things to be lazily evaluated, and
+requires you to insert explicit calls to delay/1 or force/1 whenever
+lazy evaluation requires the creation or evaluation of closures.
+
+This directory contains the following files:
+
+	lazy.m:
+		This module defines the lazy(T) type, and the force/1
+		and delay/1 functions.
+
+	lazy_list.m:
+		This module defines a type lazy_list(T) using the lazy(T) type,
+		and also defines a few functions and predicates that operate
+		on lazy lists.
+
+	lazy_list_test.m:
+		This is just a very simple example showing the use of lazy
+		lists.
+
+In comparison with lazy functional languages, the disadvantage of our
+approach is that inserting the lazy(T) types and the explicit calls to
+force/1 and delay/1 requires additional work when you are writing your
+code.  Fortunately the Mercury compiler's static type checking will
+ensure that the calls to force/1 and delay/1 are consistent with the
+use of lazy(T) types.  But even so, putting all the calls to force/1
+and delay/1 in the right place can still be rather tedious. 
+
+In return, however, we get several important advantages.
+
+The first is that there are absolutely no efficiency costs resulting
+from lazy evaluation if you don't use it.  This is in contrast to many
+implementations of lazy functional languages, where you often pay a
+significant efficiency cost simply because things *might* be lazy, even
+when in actual fact they are not.  Compilers for lazy functional
+languages often try to avoid these costs by performing strictness
+analysis, but current compilers can only infer strictness of functions,
+not data types; using lazy data types rather than strict data types can
+have a very large impact on efficiency (e.g. a factor of 5).  Also, in
+the presence of separate compilation, compilers may need to make
+conservative assumptions about strictness.
+
+The second advantage is that the creation and evaluation of closures is
+explicit in the source code, which makes it much easier to reason about
+the performance of your programs.  Programs in languages where laziness
+is the default often suffer from space leaks or unexpectedly high
+memory usage, and these problems can be _extremely_ difficult to track
+down and understand, even for very experienced programmers.
+
+The third advantage is that supporting lazy evaluation via a library
+module keeps the language and its semantics simple.  We're not really
+providing lazy evaluation per se, we just _emulating_ it by passing
+lambda expressions as arguments.  So the "Semantics" chapter of the
+language reference manual does not need to be modified at all.
+Supporting lazy evaluation via a library module also keeps the
+implementation simple -- the module lazy.m requires only a very
+small amount of implementation-dependent code, and none of the
+rest of the implementation need change.
+
+Our current implementation of lazy evaluation is not very efficient.
+There are several reasons for this.  One is that promise_only_solution/1,
+which is used in the implementation of force/1, is currently implemented
+rather inefficiently.  Another is that the lazy(T) type currently uses
+two levels of indirection, whereas it really ought to use only one.
+Finally, for maximum efficiency, we would need to inline delay/1,
+but that is not possible in the current implementation.  Solving these
+latter two issues would require a bit more compiler support.

@@ -1,0 +1,4 @@
+*.pic_o
+*.ilk
+*.pdb
+libmer_trace.lib

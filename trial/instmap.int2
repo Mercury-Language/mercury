@@ -1,0 +1,4 @@
+:- module instmap.
+:- interface.
+:- type (instmap:instmap).
+:- type (instmap:instmap_delta).

@@ -1,0 +1,4 @@
+:- module printlist.
+:- import_module list, int, io.
+:- pred print_list(list(int), io__state, io__state).
+:- mode print_list(in, di, uo) is det.

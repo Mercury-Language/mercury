@@ -1,0 +1,26 @@
+echo on
+register --quiet
+dd
+break queen
+continue
+finish
+dd
+no
+no
+yes
+yes
+no
+yes
+yes
+no
+yes
+yes
+no
+yes
+yes
+no
+yes
+yes
+yes
+continue
+continue

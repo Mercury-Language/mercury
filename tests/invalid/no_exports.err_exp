@@ -1,0 +1,2 @@
+no_exports.m:  1: Warning: interface for module `no_exports' does not export anything.
+For more information, try recompiling with `-E'.

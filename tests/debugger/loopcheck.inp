@@ -1,0 +1,3 @@
+echo on
+context nextline
+continue -a

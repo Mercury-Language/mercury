@@ -1,0 +1,25 @@
+
+#RM_C=:
+
+MAIN_TARGET	= all
+
+MLOBJS		= togl.o 
+
+# Specify the location of the `mercury_tcltk' package.
+MERCURY_TCLTK_DIR 	= ../mercury_tcltk
+
+# Tell mmake to use the `mercury_tcltk' library.
+VPATH 		= $(MERCURY_TCLTK_DIR):$(MMAKE_VPATH)
+MCFLAGS 	= -I$(MERCURY_TCLTK_DIR) $(EXTRA_MCFLAGS)
+MLFLAGS 	= -R$(MERCURY_TCLTK_DIR) $(EXTRA_MLFLAGS) \
+          	  -L$(MERCURY_TCLTK_DIR) 
+MLLIBS 		= $(EXTRA_MLLIBS)
+C2INITARGS 	= $(MERCURY_TCLTK_DIR)/mercury_tcltk.init 
+
+# We need to also access mtcltk.h
+MGNUCFLAGS	= -I$(MERCURY_TCLTK_DIR)
+
+depend: mercury_opengl.depend
+
+all: libmercury_opengl 
+

@@ -1,0 +1,10 @@
+Initial value of $Optimise: yes
+Setting $Optimise to `no'.
+New value of $Optimise: no
+Setting $Optimise to `yes' in failing branch.
+New value of $Optimise: no
+Initial value of $TargetLang: sicstus
+Setting $TargetLang to `mercury'.
+New value of $TargetLang: mercury
+Setting $TargetLang to `sicstus' in failing branch.
+New value of $TargetLang: sicstus

@@ -1,0 +1,13 @@
+       1:      1  1 CALL pred polymorphic_output:main/2-0 (det) polymorphic_output.m:20
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> context none
+Contexts will not be printed.
+mdb> b std_util__det_arg
+mdb: there is no such procedure.
+mdb> c
+Uncaught exception:
+Software Error: det_arg: argument number out of range
+Last trace event was event #7.
+Last trace event before the unhandled exception was event #4.

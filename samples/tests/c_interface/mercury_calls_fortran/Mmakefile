@@ -1,0 +1,28 @@
+#-----------------------------------------------------------------------------#
+
+main_target: check
+
+PROGS=mercury_main
+TESTS=
+
+EXTRA_FILES=fortran_main.f
+
+include Mmake.thisdir
+include $(DEPTH)/Mmake.common
+include $(DEPTH)/Mmake.common.samples
+
+#-----------------------------------------------------------------------------#
+
+include $(SOURCEDIR)/Mmakefile
+
+# Add a few dependencies so that it copies the source
+# files correctly.
+mercury_main.depend: fortran_main_int.m
+#fortran_main_int.o: fortran_main.f
+
+clean_local: clean_2
+
+clean_2:
+	rm -f *.m 
+
+#-----------------------------------------------------------------------------#

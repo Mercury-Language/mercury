@@ -1,0 +1,17 @@
+#-----------------------------------------------------------------------------#
+
+main_target: check
+
+PROGS=  rot13_concise \
+	rot13_verbose \
+	rot13_gustavo \
+	rot13_juergen 
+TESTS=
+
+MCFLAGS-rot13_concise=--infer-all
+
+include Mmake.thisdir
+include $(DEPTH)/Mmake.common
+include $(DEPTH)/Mmake.common.samples
+
+#-----------------------------------------------------------------------------#

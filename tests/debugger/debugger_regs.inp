@@ -1,0 +1,6 @@
+echo on
+
+
+print NoSuchVar
+print *
+continue

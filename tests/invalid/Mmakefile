@@ -1,0 +1,200 @@
+#-----------------------------------------------------------------------------#
+
+main_target: check
+
+include ../Mmake.common
+-include ../Mmake.params
+
+#-----------------------------------------------------------------------------#
+
+# Note: multi-module tests (including tests of nested modules)
+# need to be listed separately from single-module tests, since
+# we need to make dependencies only for multimodule tests.
+
+MULTIMODULE_SOURCES= \
+	aditi_errors.m \
+	aditi_state_errors.m \
+	aditi_update_errors.m \
+	aditi_update_mode_errors.m \
+	imported_mode.m \
+	partial_implied_mode.m \
+	test_nested.m \
+	undef_mod_qual.m
+
+SINGLEMODULE_SOURCES= \
+	any_mode.m \
+	assert_in_interface.m \
+	bigtest.m \
+	bind_var_errors.m \
+	builtin_int.m \
+	builtin_proc.m \
+	circ_type.m \
+	constructor_warning.m \
+	det_errors.m \
+	duplicate_modes.m \
+	errors.m \
+	errors1.m \
+	errors2.m \
+	external.m \
+	ext_type_bug.m \
+	exported_mode.m \
+	field_syntax_error.m \
+	func_errors.m \
+	funcs_as_preds.m \
+	ho_type_mode_bug.m \
+	ho_unique_error.m \
+	impure_method_impl.m \
+	inline_conflict.m \
+	invalid_main.m \
+	inst_list_dup.m \
+	io_in_ite_cond.m \
+	lambda_syntax_error.m \
+	method_impl.m \
+	missing_det_decls.m \
+	missing_interface_import.m \
+	modes_erroneous.m \
+	mostly_uniq1.m \
+	mostly_uniq2.m \
+	multisoln_func.m \
+	nested_impl_in_int.m \
+	no_exports.m \
+	not_a_switch.m \
+	nullary_ho_func_error.m \
+	occurs.m \
+	polymorphic_unification.m \
+	pragma_c_code_and_clauses1.m \
+	pragma_c_code_and_clauses2.m \
+	pragma_c_code_dup_var.m \
+	pragma_c_code_no_det.m \
+	predmode.m \
+	prog_io_erroneous.m \
+	qual_basic_test2.m \
+	qualified_cons_id2.m \
+	record_syntax_errors.m \
+	some.m \
+	spurious_mode_error.m \
+	tc_err1.m \
+	tc_err2.m \
+	tricky_assert1.m \
+	type_inf_loop.m \
+	type_loop.m \
+	type_mismatch.m \
+	type_vars.m \
+	typeclass_bogus_method.m \
+	typeclass_mode.m \
+	typeclass_test_1.m \
+	typeclass_test_2.m \
+	typeclass_test_3.m \
+	typeclass_test_4.m \
+	typeclass_test_5.m \
+	typeclass_test_7.m \
+	typeclass_test_9.m \
+	types.m	\
+	type_spec.m \
+	unbound_type_vars.m \
+	undef_lambda_mode.m \
+	undef_mode.m \
+	undef_mode_and_no_clauses.m \
+	undef_symbol.m \
+	undef_type.m \
+	undef_type_mod_qual.m \
+	unify_mode_error.m \
+	uniq_modes.m \
+	uniq_neg.m \
+	uu_type.m \
+	vars_in_wrong_places.m
+
+SOURCES= $(SINGLEMODULE_SOURCES) $(MULTIMODULE_SOURCES)
+
+# we do not yet pass the following tests:
+#	parent.undeclared_child.m (just not yet implemented)
+#	sub_b.m and sub_c.m (bug with dependencies & nested modules)
+#	freefree.m 	(need bromage's aliasing stuff)
+#	typeclass_test_8.m (minor formatting error in the output --
+#			the type class name should be in quotes)
+#	typeclass_mode_{2,3,4}.m (compiler calls error/1)
+#	cyclic_typeclass.m (compiler goes into an infinite loop)
+
+MCFLAGS-aditi_errors =		--aditi
+MCFLAGS-aditi_state_errors =	--aditi
+MCFLAGS-aditi_update_errors =	--aditi
+MCFLAGS-aditi_update_mode_errors = --aditi
+MCFLAGS-any_mode	=	--infer-types
+MCFLAGS-duplicate_modes	=	--verbose-error-messages
+MCFLAGS-missing_det_decls =	--no-infer-det
+MCFLAGS-missing_interface_import = --make-interface
+MCFLAGS-multisoln_func	=	--infer-types
+MCFLAGS-no_exports = 		--halt-at-warn
+MCFLAGS-sub_c = 		--verbose-error-messages
+MCFLAGS-record_syntax_errors =	--verbose-error-messages
+MCFLAGS-imported_mode =		--infer-all
+MCFLAGS-exported_mode =		--infer-all
+MCFLAGS-typeclass_mode =	--infer-all
+
+# The bug is caught when generating dependencies, so it is
+# easiest just to do that step.
+MCFLAGS-nested_impl_in_int =	--generate-dependencies
+
+MULTIMODULE_DEPENDS=	$(MULTIMODULE_SOURCES:%.m=%.depend)
+
+ERRS=		$(SOURCES:%.m=%.err)
+ERR_RESS=	$(SOURCES:%.m=%.err_res)
+
+%.err: %.m
+	if $(MC) $(ALL_MCFLAGS) --errorcheck-only $* > $*.err 2>&1; \
+	then false; else true; fi
+
+# Some tests have more than one possible valid output, so
+# we allow the test to pass if it matches *either* the .err_exp
+# or the .err_exp2 file. 
+%.err_res: %.err %.err_exp
+	-rm -f $@
+	diff -c $*.err_exp $*.err > $@ || \
+		{ [ -f $*.err_exp2 ] && diff -c $*.err_exp2 $*.err > $@; }
+
+all:	check
+
+check:	$(ERRS) $(ERR_RESS)
+
+errs:	$(ERRS)
+
+depend:	$(MULTIMODULE_DEPENDS)
+
+clean_local:
+	rm -f *.err *.err_res
+
+#-----------------------------------------------------------------------------#
+
+SUBDIRS = purity
+
+dep_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) dep) || exit 1; \
+	done
+
+depend_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) depend) || exit 1; \
+	done
+
+check_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) check) || exit 1; \
+	done
+
+all_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) all) || exit 1; \
+	done
+
+clean_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) clean) || exit 1; \
+	done
+
+realclean_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) realclean) || exit 1; \
+	done
+
+#-----------------------------------------------------------------------------#

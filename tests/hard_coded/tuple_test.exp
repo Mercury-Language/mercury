@@ -1,0 +1,20 @@
+testing io__write:
+{'a', {'b', 1, [1, 2, 3], {}, { 1 }}, "string"}
+{'a', {'b', 1, [1, 2, 3], {}, { 1 }}, "string"}
+testing type_to_term:
+{a, {b, 1, [1, 2, 3], {}, { 1 }}, "string"}
+testing term_to_type:
+term_to_type succeeded
+{'a', {'b', 1, [1, 2, 3], {}, { 1 }}, "string"}
+testing unification:
+unify test 1 succeeded
+unify test 2 succeeded
+testing comparison:
+comparison test 1 succeeded
+comparison test 2 succeeded
+testing tuple switches:
+[1, 2]
+4
+testing complicated unification
+complicated unification test 1 succeeded
+complicated unification test 2 succeeded

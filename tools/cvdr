@@ -1,0 +1,68 @@
+#!/bin/sh
+# cvdr - show the most recent changes to a file stored with CVS
+#
+# Starting from the most recent version of the currently checked out
+# branch, cvdr will display the log message and diff of each change made
+# to the file, down to the initial version.  Each file on the command
+# line is processed in turn.
+#
+# Originally written by Fergus Henderson <fjh@cs.mu.oz.au>
+# Hacked to support branches by Tyson Dowd <trd@cs.mu.oz.au>
+#
+# Known bugs: doesn't handle the case where the initial version is on a
+# branch -- in other words this script assumes the initial version is 1.1
+# Fixing this is a bit tricky.
+
+options=
+while true; do
+	case "$1" in
+		-*)	options="$options $1"
+			shift
+			;;
+		*)	break
+			;;
+	esac
+done
+
+for file in "$@"; do
+{
+topversion="`cvs status $file 2>/dev/null | awk '
+	/  Repository revision:/ 		{ print $3; exit; }	
+'`"
+
+branch=`expr match $topversion '\(\([0-9]*\.\)*[0-9]*\)\.[0-9]*'`
+N=`expr match $topversion "$branch\.\([0-9]*\)"` 
+
+echo "Revision $branch.$N"
+
+while [ "$branch" != "" ]; do
+	while [ $N -gt 1 ]; do
+		N1=`expr $N - 1`
+		echo cvs log -r$branch.$N $options "$file"
+		cvs -n log -N -r$branch.$N $options "$file" | sed '1,/^-------/d'
+		echo cvs diff -u -r$branch.$N1 -r$branch.$N $options "$file"
+		cvs -n diff -u -r$branch.$N1 -r$branch.$N $options "$file"
+		N=$N1
+		echo "Revision $branch.$N"
+	done 
+	newbranch=`expr match $branch '\(\([0-9]*\.\)*[0-9]*\)\.[0-9]*\.[0-9]*'`
+	N=`expr match $branch "$newbranch\.\([0-9]*\)"` 
+	branch=$newbranch
+done
+
+	# We only use CVSROOT to remove it as a prefix to the path in
+	# CVS/Repository.  Most recent versions of CVS/Repository
+	# don't include the repository anyway, and so if it isn't set we
+	# ignore it.
+if [ "$CVSROOT" == "" ] ; then
+	FULLFILE=`cat CVS/Repository`/$file
+else
+	FULLFILE=`sed "s^$CVSROOT/^^" CVS/Repository`/"$file"
+fi
+
+echo cvs log -N -r1.1 $options "$file"
+cvs log -N -r1.1 $options "$file" | sed '1,/^-------/d'
+echo cvs checkout -p -r1.1 "$FULLFILE"
+cvs checkout -p -r1.1 "$FULLFILE" 2>&1
+} | ${PAGER:-more}
+done

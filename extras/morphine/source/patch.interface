@@ -1,0 +1,540 @@
+%------------------------------------------------------------------------------%
+% Copyright (C) 1999 INRIA/INSA.
+--- /soft/eclipse/eclipse4.1/lib_pd/opium_light/interface.op	Sat Feb 20 16:09:16 1999
++++ interface.op	Thu Nov  4 09:01:11 1999
+@@ -16,7 +16,7 @@
+ 
+ /*
+  * 	INTERFACE scenario
+- * It has to be compiled in opium_kernel module.
++ * It has to be compiled in morphine module.
+  */
+ 
+ opium_scenario(
+@@ -32,248 +32,249 @@
+ 
+ 
+ 
+-/*
+- *	INTERFACE-STATUS/1
+- */
+-opium_procedure(
+-	name		: interface_status,
+-	arg_list	: [Status],
+-	implementation	: interface_status_Op,
+-	parameters	: [],
+-	message		:
+-"Procedure which tells what the interface status currently is (either \n\
+-tty or pce). Useful for scenario with sophisticated display."
+-	).
+-
+-:- make_local_array(interface_status).
+-:- setval(interface_status, tty).
+-
+-interface_status_Op(X) :-
+-	getval(interface_status, X).
+-
+-
+-/*
+- *	PCE-INTERFACE/1
+- */
+-opium_command(
+-	name		: pce_interface,
+-	arg_list	: [WindowSystem],
+-	arg_type_list	: [is_member([sunview, xview])],
+-	abbrev		: _,
+-	interface	: hidden,
+-	command_type	: opium,
+-	implementation	: pce_interface_Op,
+-	parameters	: [],
+-	message		:
+- "Command which sets (or resets) a window-based user interface built \n\
+-on top of PCE (see KEGI manual). This interface runs both under \n\
+-SunView and XView.  It provides a control panel, and output views \n\
+-complementing the usual tty window used by default. The control panel \n\
+-contains a menu with all the loaded scenarios; a menu with all the \n\
+-Opium module; buttons and menus giving access to the objects of the \n\
+-current scenario. The Opium commands and the trace lines are still \n\
+-displayed in the tty window, but help information and source \n\
+-information are directed to specialized output views. NOTE that to \n\
+-select items in menus you have to use the right-hand button of the \n\
+-mouse.  Note also that if you write extensions which may run either on \n\
+-tty and pce interface, to output results you should use the opium_write \n\
+-primitives."
+-	).
+-
+-pce_interface_Op(WindowSystem) :-
+-	not get_flag(extension, kegi_xview),
+-	!,
+-	error(142, pce_interface(WindowSystem)).
+-pce_interface_Op(WindowSystem) :-
+-	(  interface_status(pce)
+-	-> true
+-	;  reset_pce_interface(WindowSystem)).
+-
+-reset_pce_interface(WindowSystem) :- 
+-	call(init_running("PCE"), kegi),
+-	(  WindowSystem == sunview
+-	-> call(start_pce(pce), kegi)
+-	;  WindowSystem == xview,
+-	   call(start_pce(xpce), kegi)),
+-	pce_quiet, 				% no warning, nothing written on pce.log
+-	setval(interface_status, pce),		% has to be set before make_interface_list
+-	make_interface_list(O), 
+-	init_opium_interface, 
+-	open_interface_sepia_communication,
+-	wui_error_handlers.
+-reset_pce_interface(WindowSystem) :- 
+-	reset_tty_interface,
+-	!,
+-	fail.
+-
+-
+-/*
+- *	TTY-INTERFACE/0
+- */
+-opium_command(
+-	name		: tty_interface,
+-	arg_list	: [],
+-	arg_type_list	: [],
+-	abbrev		: _,
+-	interface	: button,
+-	command_type	: opium,
+-	implementation	: tty_interface_Op,
+-	parameters	: [],
+-	message		:
+- "Command which sets (or resets) a tty like interface for Opium. In \n\
+-the tty interface input and output related to the Opium process are \n\
+-done via a tty-like window. Input is only entered with the keyboard."
+-	).
+-
+-tty_interface_Op :-
+-	(  interface_status(tty)
+-	-> true
+-	;  reset_tty_interface).
+-
+-/*
+- * 
+- */
+-reset_tty_interface :- 
+-	setval(interface_status, tty),
+-	tty_error_handlers,
+- 	(close_pce -> true ; true),
+-	set_flag(enable_interrupts, on),	% Kegi does not always leave this in a proper state
+-	(close_interface_sepia_communication-> true; true).	
+-
+-
+-/*
+- *  -------------------------------
+- *   Hooks for the wui-interface 
+- *  -------------------------------
+- */
+-
+-/*
+- *
+- */
+-update_opium_module_menu(X):-
+-	(  interface_status(pce)
+-	-> pce_update_opium_module_menu(X)
+-	;  true).
+-
+-/* 
+- * This doesn't do anything yet in either interface XXX
+- */
+-update_tracing_command_interface(OnOff).
+-
+-
+-/* 
+- * This should open the opium tty window in any case ?? XXX
+- */
+-
+-opium_command(
+-	name		: show_interface,
+-	arg_list	: [OnOff],
+-	arg_type_list	: [is_member([on, off])],
+-	abbrev		: show_int,
+-	interface	: button,
+-	command_type	: opium,
+-	implementation	: show_interface_Op,
+-	parameters	: [],
+-	message		:
+- "Commands which hides the windowing user interface items (off) or \n\
+-makes them visible. The windowing user interface is still present."
+-	).
+-
+-show_interface_Op(on):-
+-	(  interface_status(pce)
+-	-> pce_show_interface(on)
+-	;  true).
+-show_interface_Op(off) :-
+-	(  interface_status(pce)
+-	-> pce_show_interface(off)
+-	;  true).
+-
+-/* 
+- * 
+- */
+-init_interface :-
+-	(  interface_status(pce)
+-	-> pce_init_interface
+-	;  true).
+-
+-/*
+- *
+- */
+-make_interface_list(X,Y,Z) :-
+-	(  interface_status(pce)
+-	-> wui_make_interface_list(X,Y,Z)
+-	;  true).
+-
+-
+-
+-/*
+- *   EXECUTE_DEMO_GOAL
+- */
+-opium_procedure(
+-	name		: execute_demo_goal,
+-	arg_list	: [Goal],
+-	implementation	: execute_demo_goal_Op,
+-	parameters	: [],
+-	message		:
+- "This procedure executes a goal for demos, according to the current \n\
+-interface_status."
+-	).
+-
+-/* wui_execute_demo_goal doesn't need the Module info as it is simply
+- * echoing input in the sepia session.
+- */
+-execute_demo_goal_Op(Goal) :-
+-	(  interface_status(tty)
+-	-> opium_nl(help),
+-	   get_flag(toplevel_module, Module), 
+-	   call(Goal, Module)
+-	;  wui_execute_demo_goal(Goal)
+-	).
+-
+-
+-
+-/*
+- *   INIT-DEMO-SERIES/0
+- */
+-opium_procedure(
+-	name		: init_demo_series,
+-	arg_list	: [],
+-	implementation	: init_demo_series_Op,
+-	parameters	: [],
+-	message		:
+- "Procedure which initializes the interface and aborts the currently \n\
+-traced execution if there exists one. This should be used in the \n\
+-\"condition\" of a the first demo of a series (currently those ending \n\
+-with \"_0\")."
+-	).
+-
+-init_demo_series_Op :-
+-	(traced_execution_running -> abort_trace ; true),
+-	system(clear),				% for trace and control window
+-	opium_clear(source, pce),
+-	opium_clear(help, pce).
+-
+-
+-
+-/*
+- *	READ-INPUT
+- */
+-opium_procedure(
+-	name		: read_input,
+-	arg_list	: [Input],
+-	implementation	: read_input_Op,
+-	parameters	: [],
+-	message		:
+-"Procedure which reads an input from within the current input stream \n\
+-of opium."
+-	).
+-
+-/*  read in both cases from the input stream 
+- */
+-read_input_Op(X) :-
+-	read(input, X).
++% /*
++%  *	INTERFACE-STATUS/1
++%  */
++% opium_procedure(
++% 	name		: interface_status,
++% 	arg_list	: [Status],
++% 	implementation	: interface_status_Op,
++% 	parameters	: [],
++% 	message		:
++% "Procedure which tells what the interface status currently is (either \n\
++% tty or pce). Useful for scenario with sophisticated display."
++% 	).
++
++% :- make_local_array(interface_status).
++% :- setval(interface_status, tty).
++
++% interface_status_Op(X) :-
++% 	getval(interface_status, X).
++
++
++% /*
++%  *	PCE-INTERFACE/1
++%  */
++% opium_command(
++% 	name		: pce_interface,
++% 	arg_list	: [WindowSystem],
++% 	arg_type_list	: [is_member([sunview, xview])],
++% 	abbrev		: _,
++% 	interface	: hidden,
++% 	command_type	: opium,
++% 	implementation	: pce_interface_Op,
++% 	parameters	: [],
++% 	message		:
++%  "Command which sets (or resets) a window-based user interface built \n\
++% on top of PCE (see KEGI manual). This interface runs both under \n\
++% SunView and XView.  It provides a control panel, and output views \n\
++% complementing the usual tty window used by default. The control panel \n\
++% contains a menu with all the loaded scenarios; a menu with all the \n\
++% Opium module; buttons and menus giving access to the objects of the \n\
++% current scenario. The Opium commands and the trace lines are still \n\
++% displayed in the tty window, but help information and source \n\
++% information are directed to specialized output views. NOTE that to \n\
++% select items in menus you have to use the right-hand button of the \n\
++% mouse.  Note also that if you write extensions which may run either on \n\
++% tty and pce interface, to output results you should use the opium_write \n\
++% primitives."
++% 	).
++
++% pce_interface_Op(WindowSystem) :-
++% 	not get_flag(extension, kegi_xview),
++% 	!,
++% 	error(142, pce_interface(WindowSystem)).
++% pce_interface_Op(WindowSystem) :-
++% 	(  interface_status(pce)
++% 	-> true
++% 	;  reset_pce_interface(WindowSystem)).
++
++% reset_pce_interface(WindowSystem) :- 
++% 	call(init_running("PCE"), kegi),
++% 	(  WindowSystem == sunview
++% 	-> call(start_pce(pce), kegi)
++% 	;  WindowSystem == xview,
++% 	   call(start_pce(xpce), kegi)),
++% 	pce_quiet, 				% no warning, nothing written on pce.log
++% 	setval(interface_status, pce),		% has to be set before make_interface_list
++% 	make_interface_list(O), 
++% 	init_opium_interface, 
++% 	open_interface_sepia_communication,
++% 	wui_error_handlers.
++% reset_pce_interface(WindowSystem) :- 
++% 	reset_tty_interface,
++% 	!,
++% 	fail.
++
++
++% /*
++%  *	TTY-INTERFACE/0
++%  */
++% opium_command(
++% 	name		: tty_interface,
++% 	arg_list	: [],
++% 	arg_type_list	: [],
++% 	abbrev		: _,
++% 	interface	: button,
++% 	command_type	: opium,
++% 	implementation	: tty_interface_Op,
++% 	parameters	: [],
++% 	message		:
++%  "Command which sets (or resets) a tty like interface for Opium. In \n\
++% the tty interface input and output related to the Opium process are \n\
++% done via a tty-like window. Input is only entered with the keyboard."
++% 	).
++
++% tty_interface_Op :-
++% 	(  interface_status(tty)
++% 	-> true
++% 	;  reset_tty_interface).
++
++% /*
++%  * 
++%  */
++% reset_tty_interface :- 
++% 	setval(interface_status, tty),
++% 	tty_error_handlers,
++%  	(close_pce -> true ; true),
++% 	set_flag(enable_interrupts, on),	% Kegi does not always leave this in a proper state
++% 	(close_interface_sepia_communication-> true; true).	
++
++
++% /*
++%  *  -------------------------------
++%  *   Hooks for the wui-interface 
++%  *  -------------------------------
++%  */
++
++% /*
++%  *
++%  */
++% update_opium_module_menu(X):-
++% 	(  interface_status(pce)
++% 	-> pce_update_opium_module_menu(X)
++% 	;  true).
++
++% /* 
++%  * This doesn't do anything yet in either interface XXX
++%  */
++% update_tracing_command_interface(OnOff).
++
++
++% /* 
++%  * This should open the opium tty window in any case ?? XXX
++%  */
++
++% opium_command(
++% 	name		: show_interface,
++% 	arg_list	: [OnOff],
++% 	arg_type_list	: [is_member([on, off])],
++% 	abbrev		: show_int,
++% 	interface	: button,
++% 	command_type	: opium,
++% 	implementation	: show_interface_Op,
++% 	parameters	: [],
++% 	message		:
++%  "Commands which hides the windowing user interface items (off) or \n\
++% makes them visible. The windowing user interface is still present."
++% 	).
++
++% show_interface_Op(on):-
++% 	(  interface_status(pce)
++% 	-> pce_show_interface(on)
++% 	;  true).
++% show_interface_Op(off) :-
++% 	(  interface_status(pce)
++% 	-> pce_show_interface(off)
++% 	;  true).
++
++% /* 
++%  * 
++%  */
++% init_interface :-
++% 	(  interface_status(pce)
++% 	-> pce_init_interface
++% 	;  true).
++
++% /*
++%  *
++%  */
++% make_interface_list(X,Y,Z) :-
++% 	(  interface_status(pce)
++% 	-> wui_make_interface_list(X,Y,Z)
++% 	;  true).
++
++
++
++% /*
++%  *   EXECUTE_DEMO_GOAL
++%  */
++% opium_procedure(
++% 	name		: execute_demo_goal,
++% 	arg_list	: [Goal],
++% 	implementation	: execute_demo_goal_Op,
++% 	parameters	: [],
++% 	message		:
++%  "This procedure executes a goal for demos, according to the current \n\
++% interface_status."
++% 	).
++
++% /* wui_execute_demo_goal doesn't need the Module info as it is simply
++%  * echoing input in the sepia session.
++%  */
++% execute_demo_goal_Op(Goal) :-
++% 	(  interface_status(tty)
++% 	-> opium_nl(help),
++% 	   get_flag(toplevel_module, Module), 
++% 	   call(Goal, Module)
++% 	;  wui_execute_demo_goal(Goal)
++% 	).
++
++
++
++% /*
++%  *   INIT-DEMO-SERIES/0
++%  */
++% opium_procedure(
++% 	name		: init_demo_series,
++% 	arg_list	: [],
++% 	implementation	: init_demo_series_Op,
++% 	parameters	: [],
++% 	message		:
++%  "Procedure which initializes the interface and aborts the currently \n\
++% traced execution if there exists one. This should be used in the \n\
++% \"condition\" of a the first demo of a series (currently those ending \n\
++% with \"_0\")."
++% 	).
++
++% init_demo_series_Op :-
++% 	(traced_execution_running -> abort_trace ; true),
++% 	system(clear),				% for trace and control window
++% 	opium_clear(source, pce),
++% 	opium_clear(help, pce).
++
++
++
++% /*
++%  *	READ-INPUT
++%  */
++% opium_procedure(
++% 	name		: read_input,
++% 	arg_list	: [Input],
++% 	implementation	: read_input_Op,
++% 	parameters	: [],
++% 	message		:
++% "Procedure which reads an input from within the current input stream \n\
++% of opium."
++% 	).
++
++% /*  read in both cases from the input stream 
++%  */
++% read_input_Op(X) :-
++% 	read(input, X).
+ 
+ 
++interface_status(tty).
+ 
+ /* 
+  *  -------------------------------
+@@ -340,9 +341,9 @@
+ 	!,
+ 	write(Stream, X),		%standard sepia's write
+ 	flush(Stream).
+-opium_write_do(View, X, pce) :-
+-	!,
+-	pce_opium_write(View, X).
++% opium_write_do(View, X, pce) :-
++% 	!,
++% 	pce_opium_write(View, X).
+ 
+ 
+ /*
+@@ -382,8 +383,8 @@
+ 
+ opium_clear_do(View, tty):-
+ 	!.
+-opium_clear_do(View, pce) :-
+-	pce_opium_clear(View).
++% opium_clear_do(View, pce) :-
++% 	pce_opium_clear(View).
+ 
+ 
+ 
+@@ -431,9 +432,9 @@
+ opium_nl_do(Stream, tty) :-
+ 	!,
+ 	nl(Stream).
+-opium_nl_do(View,pce) :-
+-	!,
+-	pce_opium_nl(View).
++% opium_nl_do(View,pce) :-
++% 	!,
++% 	pce_opium_nl(View).
+ 
+ 
+ /*

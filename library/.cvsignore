@@ -1,0 +1,27 @@
+*.c
+*.d
+*.ql
+*.pl
+*.prof
+*.err
+*.int
+*.int2
+*.int3
+*.date
+*.date3
+*.pic_o
+*.opt
+*.optdate
+*.trans_opt
+*.trans_opt_date
+mercury.*.h
+sicstus_compile sicstus_saved_state
+io.h std_util.h exception.h
+library.nu.nl
+mer_std.init
+library.dep
+library.dv
+Mercury
+*.ilk
+*.pdb
+libmer_std.lib

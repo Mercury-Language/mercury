@@ -1,0 +1,68 @@
+We've had a report from Marko Schuetz <marko@ki.informatik.uni-frankfurt.de>
+that on FreeBSD you need to pass the `--disable-extern-debug' to configure:
+
+	> From: Marko Schuetz <marko@ki.informatik.uni-frankfurt.de>
+	> Date: 13 Oct 1999
+	...
+	> I grabbed mercury-compiler-1999-10-12. It compiles and
+	> installs when configured with --disable-extern-debug.
+	> Without --disable-extern-debug the compile fails in
+	> trace/mercury_trace_external.c in the include files
+	> <arpa/inet.h> and <netdb.h> (??!?!?)
+
+For FreeBSD, the Boehm conservative garbage collector does not yet support
+shared libraries.  So Mercury does not yet support shared libraries on FreeBSD,
+except in the (not very useful) case where you compile with GC disabled,
+e.g. using the option `--gc none'.
+
+The rest of this file contains some hints for eager FreeBSD hackers
+about what would need to be done to make the Boehm collector support
+shared libraries on FreeBSD.
+
+--------------------
+
+The basic problem is that on FreeBSD the conservative collector does not
+scan the memory regions that contain global variables from dynamically linked
+shared object files.
+
+First, check the `recent_changes' file at
+<http://reality.sgi.com/boehm/gc_source/> to see if someone else
+has already solved the problem.
+
+In order to support dynamic linking, I think you need to implement the
+GC_register_dynamic_libraries() function in boehm_gc/dyn_load.c.
+This function needs to call
+	GC_add_root(low_address, high_plus_one_address, TRUE)
+for every memory region in dynamically loaded code that needs to be
+scanned by the collector, so that the collector can scan global
+variables defined in shared libraries.
+
+If FreeBSD uses ELF and supports ELF in exactly the same way that Linux
+does, then you could try the following patch, which just enables the Linux
+code in the FreeBSD case.  But most likely there are some differences
+between FreeBSD and Linux in this respect, so this will probably not work
+as is -- you should consider this just a starting point.
+
+Read the comments at the top of dyn_load.c for more details.
+
+--- dyn_load.c	Mon Aug 31 15:05:05 1998
++++ dyn_load.c.new	Wed Jun 16 22:58:48 1999
+@@ -260,7 +260,7 @@
+ # endif /* !USE_PROC ... */
+ # endif /* SUNOS */
+ 
+-#if defined(LINUX) && defined(__ELF__) || defined(SCO_ELF)
++#if defined(LINUX) && defined(__ELF__) || defined(SCO_ELF) || defined(FREEBSD)
+ 
+ /* Dynamic loading code for Linux running ELF. Somewhat tested on
+  * Linux/x86, untested but hopefully should work on Linux/Alpha. 
+--- config.h	Wed Oct 28 10:16:49 1998
++++ config.h.new	Wed Jun 16 23:08:56 1999
+@@ -699,6 +699,7 @@
+ #   ifdef FREEBSD
+ #	define OS_TYPE "FREEBSD"
+ #	define MPROTECT_VDB
++#	define DYNAMIC_LOADING
+ #   endif
+ #   ifdef NETBSD
+ #	define OS_TYPE "NETBSD"

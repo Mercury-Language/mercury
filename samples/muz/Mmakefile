@@ -1,0 +1,9 @@
+MAIN_TARGET=muz
+GRADE=asm_fast.gc
+
+# Static linking
+EXTRA_MLFLAGS = --static --mercury-libs static
+
+depend: muz.depend
+
+default_target: muz

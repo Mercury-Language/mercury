@@ -1,0 +1,31 @@
+echo on
+register --quiet
+break data
+*
+delete 0
+delete 1
+break data
+0
+continue
+disable 0
+break info
+break qperm
+break safe
+break -e qperm
+break -a qperm
+break info
+delete 0
+break info
+disable 3
+break nodiag
+continue
+continue
+finish -N
+finish -n
+continue
+continue
+finish
+delete *
+break info
+delete *
+continue

@@ -1,0 +1,6 @@
+*.d
+*.dep
+*.res
+.allres
+*.out
+CLEAN

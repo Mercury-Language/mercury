@@ -1,0 +1,17 @@
+#-----------------------------------------------------------------------------#
+
+main_target: check
+
+PROGS=muz 
+TESTS=
+
+EXTRA_FILES=dict.m example.tex example1.tex higher_order.m muz.m	\
+	toolkit.tex typecheck.m word.m zabstract.m zlogic.m zparser.m	\
+	ztoken.m ztoken_io.m ztype.m ztype_op.m
+
+include Mmake.thisdir
+include $(DEPTH)/Mmake.common
+include $(DEPTH)/Mmake.common.samples
+
+
+#-----------------------------------------------------------------------------#

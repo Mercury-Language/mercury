@@ -1,0 +1,41 @@
+This directory holds the trace subsystem,
+i.e. the part of the Mercury debugger that is written in C code.
+
+
+Notes on interfacing with other subsystems
+------------------------------------------
+
+If tracing is enabled, the compiler includes calls to MR_trace() in the
+generated C code.  The trace subsystem in this directory is therefore
+called directly from Mercury code, via MR_trace() in
+runtime/mercury_trace_base.c.
+
+One of the first things it does is to save the original values
+of the Mercury registers in a variable called `saved_regs'.
+The reason it needs to do this is that the code here may
+modify registers, e.g. by allocating memory using incr_hp
+or by calling Mercury code.  Once the original values of
+the registers have been saved, the trace subsystem is free
+to modify the Mercury registers.
+
+So for all code in this directory, the usual convention is that the
+original values of the Mercury registers are in `saved_regs',
+while the current (scratch) values for the normal non-transient
+Mercury registers etc. are in their normal locations, not in the
+fake_reg copies, and the transient (register window) registers,
+if any, are in the fake_reg copies.
+
+Any code which uses macros such as incr_hp(), list_cons(),
+make_aligned_string(), etc. that modify the heap pointer must call
+restore_transient_regs() beforehand and must call save_transient_regs()
+afterwards.  The simplest way to do this is to use the macro
+MR_TRACE_USE_HP() in trace/mercury_trace_util.h.
+
+The tracer may invoke Mercury code defined in the browser or library
+directories if that code is exported to C using `pragma export'.
+But any calls from functions here to code defined in Mercury
+and exported using `pragma export', i.e. functions starting with `ML_'
+prefixes, must be preceded by a call to save_registers() and
+followed by a call to restore_registers().
+The simplest way to do this is to use the macro
+MR_TRACE_CALL_MERCURY() in trace/mercury_trace_util.h.

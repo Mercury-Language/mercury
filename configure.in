@@ -1,0 +1,2870 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1995-2001 The University of Melbourne. 
+# This file may only be copied under the terms of the GNU General
+# Public Licence - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+#
+# configure.in: autoconf source code for `configure' script.
+#
+# This file is automatically processed by `autoconf' to produce the
+# `configure' script.
+#
+# IMPORTANT NOTE: any changes here will usually also require changes in
+# bindist/bindist.configure.in or bindist/bindist.build_vars.in.
+#
+#-----------------------------------------------------------------------------#
+#
+# Define a macro MERCURY_MSG, similar to AC_MSG_RESULT, for displaying output.
+#
+dnl MERCURY_MSG(MESSAGE)
+define(MERCURY_MSG,
+[echo $1 1>&AC_FD_MSG])
+#-----------------------------------------------------------------------------#
+AC_INIT(runtime/mercury_wrapper.c)
+TMPDIR=${TMPDIR=/tmp}
+#-----------------------------------------------------------------------------#
+#
+# Ensure that all messages are saved to a file `configure.log' by
+# invoking ourself recursively without output piped into `tee configure.log'.
+# The environment variable `SUPPRESS_LOG_FILE_RECURSION' is used to prevent
+# infinite recursion.
+#
+if test "$SUPPRESS_LOG_FILE_RECURSION" != "yes"; then
+	SUPPRESS_LOG_FILE_RECURSION=yes
+	export SUPPRESS_LOG_FILE_RECURSION
+	trap 0 1 2 3 13 15
+	case $# in
+		0) exec ${CONFIG_SHELL-/bin/sh} "$0"      ;;
+		*) exec ${CONFIG_SHELL-/bin/sh} "$0" "$@" ;;
+	esac | exec tee configure.log
+	exit
+fi
+#-----------------------------------------------------------------------------#
+AC_CONFIG_HEADER(runtime/mercury_conf.h)
+AC_PREFIX_DEFAULT(/usr/local/mercury-`. ./VERSION; echo $VERSION`)
+AC_CANONICAL_HOST
+FULLARCH="$host"
+AC_SUBST(FULLARCH)
+AC_DEFINE_UNQUOTED(MR_FULLARCH, "$FULLARCH")
+. ./VERSION
+AC_DEFINE_UNQUOTED(MR_VERSION, "$VERSION")
+if test "$prefix" = "NONE"; then
+	PREFIX="$ac_default_prefix"
+else
+	PREFIX="$prefix"
+fi
+LIBDIR="$PREFIX/lib/mercury"
+NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=$PREFIX/lib/nonshared}
+AC_SUBST(PREFIX)
+AC_SUBST(NONSHARED_LIB_DIR)
+AC_SUBST(LIBDIR)
+DEFAULT_MERCURY_DEBUGGER_INIT_DIR=$LIBDIR/mdb
+AC_SUBST(DEFAULT_MERCURY_DEBUGGER_INIT_DIR)
+#-----------------------------------------------------------------------------#
+case "$host" in
+	mips-sgi-irix5.*)
+		AC_MSG_WARN(*** Read README.IRIX-5 before proceeding!)
+		;;
+	*-*-bsdi*)
+		AC_MSG_WARN(*** Read README.BSDI before proceeding!)
+		;;
+esac
+#-----------------------------------------------------------------------------#
+MERCURY_MSG("looking for an already installed Mercury compiler to bootstrap with...")
+AC_PATH_PROG(BOOTSTRAP_MC,mmc)
+if test "$BOOTSTRAP_MC" != ""; then
+	AC_MSG_CHECKING(whether $BOOTSTRAP_MC works and is sufficiently recent)
+	cat > conftest.m << EOF
+		% this module contains features which didn't work in
+		% previous versions of the Mercury compiler
+		% We may also test to see if the installed compiler is
+		% recent enough by checking what flags mmc takes.
+		% Use [[ ]] for lists.
+		:- module conftest.
+		:- interface.
+		:- import_module io.
+		:- pred main(io__state::di, io__state::uo) is det.
+
+		:- implementation.
+	
+		% Check that we can declare foreign_code for C and MC++.
+		:- pred foo(int::out) is det.
+		:- pragma foreign_code("C",    foo(X::out),
+			[[will_not_call_mercury, thread_safe]],
+			" X = 42; ").
+		:- pragma foreign_code("MC++", foo(X::out),
+			[[will_not_call_mercury, thread_safe]],
+			" X = 42; ").
+
+		% Currently we test that mmc accepts the
+		% --fixed-user-guided-type-specialization flag.
+		main --> 
+			( { foo(42) } ->
+				print("Hello, world\n")
+			;
+				print("Nope.\n")
+			).
+EOF
+	if
+	 	 echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
+	 	 $BOOTSTRAP_MC --fixed-user-guided-type-specialization \
+			 --halt-at-warn --link-flags "--static" conftest \
+		 	</dev/null >&AC_FD_CC 2>&1 &&
+		 test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world"
+	then
+		AC_MSG_RESULT(yes)
+	else
+		BOOTSTRAP_MC=
+		AC_MSG_RESULT(no)
+	fi
+	rm -f conftest*
+fi
+#-----------------------------------------------------------------------------#
+# Let the user specify which C compiler to use.
+AC_ARG_WITH(cc,
+[  --with-cc=<program>     Specify which C compiler to use.],
+mercury_cv_with_cc="$withval", mercury_cv_with_cc="")
+case "$mercury_cv_with_cc" in
+	yes)	AC_MSG_ERROR(missing argument to --with-cc=... option)
+		exit 1
+		;;
+	no)	AC_MSG_ERROR(invalid option --without-cc)
+		exit 1
+		;;
+	"")
+		;;
+	*)
+		CC="$mercury_cv_with_cc"
+		;;
+esac
+#-----------------------------------------------------------------------------#
+#
+# Find the GCC source code
+# and determine whether or not to enable the GCC back-end interface.
+#
+AC_ARG_ENABLE(gcc-back-end,
+[  --enable-gcc-back-end   enable the Mercury compiler's GCC back-end interface],
+enable_gcc_back_end="$enableval",enable_gcc_back_end=default)
+AC_MSG_CHECKING(for GCC source directory)
+gcc_src_dir=not_found
+case $enable_gcc_back_end in
+	yes|no|default)
+		# Search for the gcc source code;
+		# first try in a subdirectory of this directory,
+		# then one parallel to this directory,
+		# and finally try one level up.
+		for dir in gcc ../gcc ..; do
+			if test -f $dir/gcc/tree.c; then
+				gcc_src_dir="$dir"
+				break
+			fi
+		done
+		;;
+	*)
+		# The user has specifies the gcc source directory via
+		# `--enable-gcc-back-end=<directory>'.  Check that
+		# they specified it correctly.
+		gcc_src_dir="$enable_gcc_back_end"
+		if test -f "$gcc_src_dir"/gcc/tree.c; then
+			enable_gcc_back_end=yes
+		else
+			AC_MSG_ERROR(--enable-gcc-back-end=$gcc_src_dir specified,)
+			AC_MSG_ERROR(but GCC source code not found in $gcc_src_dir)
+			exit 1
+		fi		
+		;;
+esac
+AC_MSG_RESULT($gcc_src_dir)
+AC_MSG_CHECKING(whether to enable the GCC back-end interface)
+case $enable_gcc_back_end in
+	yes|default)
+		if test "$gcc_src_dir" = not_found; then
+			case $enable_gcc_back_end in
+				yes)
+					AC_MSG_ERROR(--enable-gcc-back-end specified,)
+					AC_MSG_ERROR(but gcc source code not found)
+					exit 1
+					;;
+				default)
+					enable_gcc_back_end=no
+					;;
+			esac
+		else
+			enable_gcc_back_end=yes
+		fi
+		;;
+	no)
+		;;
+esac
+AC_MSG_RESULT($enable_gcc_back_end)
+ENABLE_GCC_BACK_END=$enable_gcc_back_end
+GCC_SRC_DIR=$gcc_src_dir
+AC_SUBST(ENABLE_GCC_BACK_END)
+AC_SUBST(GCC_SRC_DIR)
+#-----------------------------------------------------------------------------#
+#
+# Determine whether or not to enable the Aditi back-end.
+#
+AC_ARG_ENABLE(aditi-back-end,
+[  --disable-aditi-back-end
+                          disable the Mercury compiler's Aditi back-end],
+enable_aditi_back_end="$enableval",enable_aditi_back_end=yes)
+AC_MSG_CHECKING(whether to enable the Aditi back-end)
+AC_MSG_RESULT($enable_aditi_back_end)
+ENABLE_ADITI_BACK_END=$enable_aditi_back_end
+AC_SUBST(ENABLE_ADITI_BACK_END)
+#-----------------------------------------------------------------------------#
+MERCURY_MSG("looking for GNU Make...")
+AC_PROGRAMS_CHECK(GNU_MAKE,gmake make)
+if test "$GNU_MAKE" != ""; then
+	case "`$GNU_MAKE -v bogus </dev/null 2>&1`" in
+		"GNU Make"*)
+			;;
+		*)
+			GNU_MAKE=
+	esac
+fi
+if test "$GNU_MAKE" = ""; then
+	AC_MSG_ERROR(cannot find GNU Make)
+	exit 1
+else
+	MERCURY_MSG("found GNU Make: $GNU_MAKE")
+fi
+AC_SUBST(GNU_MAKE)
+#-----------------------------------------------------------------------------#
+MERCURY_MSG("looking for a way to create named pipes...")
+
+save_PATH="$PATH"
+PATH="$PATH:/etc:/usr/etc:/sbin"
+
+AC_PATH_PROG(MKFIFO,mkfifo)
+if test "$MKFIFO" != ""; then
+	# check that it really works
+	tmp=$TMPDIR/fifo$$
+	trap "rm -f $tmp" 1 2 3 13 15
+	if $MKFIFO $tmp && test -p $tmp; then
+		true
+	else
+		MKFIFO=""
+	fi
+	rm -f $tmp
+fi
+if test "$MKFIFO" = ""; then
+	AC_PATH_PROG(MKNOD,mknod)
+	if test "$MKNOD" != ""; then
+		# check that it really works
+		tmp=$TMPDIR/fifo$$
+		trap "rm -f $tmp" 1 2 3 13 15
+		if $MKNOD $tmp p && test -p $tmp; then
+			MKFIFO=mkfifo_using_mknod
+		else
+			MKNOD=
+		fi
+	fi
+fi
+if test "$MKFIFO" = ""; then
+	AC_MSG_WARN(cannot find a working \`mkfifo' or \`mknod')
+	MKFIFO=none
+fi
+AC_SUBST(MKFIFO)
+test "$MKNOD" = "" && MKNOD=mknod
+AC_SUBST(MKNOD)
+
+PATH="$save_PATH"
+#-----------------------------------------------------------------------------#
+MERCURY_MSG("looking for a way to create temporary files...")
+
+AC_PATH_PROG(MKTEMP,mktemp)
+if test "$MKTEMP" != ""; then
+	# check that it really works
+	TMPFILE="`mktemp $TMPDIR/configure.XXXXXX < /dev/null`"
+	case "$TMPFILE" in 
+		$TMPDIR/configure.*) rm -f $TMPFILE ;;
+		*) MKTEMP="" ;;
+	esac
+fi
+if test "$MKTEMP" = ""; then
+	AC_MSG_WARN(cannot find a working \`mktemp', using \`mkdir || exit'')
+	MKTEMP=""
+fi
+AC_SUBST(MKTEMP)
+#-----------------------------------------------------------------------------#
+AC_PATH_PROG(INSTALL_INFO,install-info)
+AC_SUBST(INSTALL_INFO)
+#-----------------------------------------------------------------------------#
+AC_PATH_PROG(TEXI2DVI,texi2dvi)
+AC_SUBST(TEXI2DVI)
+#-----------------------------------------------------------------------------#
+AC_PATH_PROG(DVIPS,dvips)
+AC_SUBST(DVIPS)
+#-----------------------------------------------------------------------------#
+AC_PATH_PROG(MAKEINFO,makeinfo)
+AC_SUBST(MAKEINFO)
+#-----------------------------------------------------------------------------#
+AC_PATH_PROG(INFO,info)
+AC_SUBST(INFO)
+#-----------------------------------------------------------------------------#
+AC_PATH_PROG(PERL,perl)
+AC_SUBST(PERL)
+#-----------------------------------------------------------------------------#
+AC_PROG_CC
+AC_SUBST(CC)
+
+# We need to ensure that CFLAGS does not contain `-g', because
+# on some (broken) distributions of Linux (specifically Debian 0.93R6),
+# the `-lc' and `-lg' libraries have different contents; specifically,
+# only the latter contains memalign().  We need to make sure that the
+# test for memalign() doesn't use `-g', since `ml' doesn't use `-g'.
+CFLAGS="-O"
+
+# we also need to add the appropriate `-I' options so that the test programs
+# can #include various Mercury runtime headers.
+CPPFLAGS="-Iruntime -Iruntime/machdeps $CPPFLAGS"
+
+# Make sure we search /usr/local/include and /usr/local/lib for
+# header files and libraries.  GNU C normally searches /usr/local/include
+# by default, but (inconsistently) it does _not_ search /usr/local/lib;
+# and in any case the user might be using a different C compiler that
+# doesn't search either of those by default.
+CPPFLAGS="-I/usr/local/include $CPPFLAGS"
+LIBS="-L/usr/local/lib $LIBS"
+
+AC_PROG_CPP
+AC_RETSIGTYPE
+#-----------------------------------------------------------------------------#
+# Check for `-lm': some systems, e.g. MacOS X (Darwin), don't have it.
+AC_CHECK_LIB(m, sin, [MATH_LIB=-lm], [MATH_LIB=])
+AC_SUBST(MATH_LIB)
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(for use of a Microsoft compiler)
+AC_EGREP_CPP(yes,
+[
+#ifdef _MSC_VER
+	yes
+#endif
+],
+[ac_microsoft=yes
+] AC_MSG_RESULT(yes), [ac_microsoft=no
+] AC_MSG_RESULT(no))
+
+if test "$ac_microsoft" = "yes" ; then
+	EXE_SUFFIX=".exe"
+	OBJ_SUFFIX="obj"
+	LIB_SUFFIX="lib"
+	LIB_PREFIX="lib"
+	LIB_LIBPATH="/LIBPATH:"
+	LINK_LIB=""
+	LINK_OPT_SEP="/link"
+
+	OBJFILE_OPT="/Fo"
+	AR="lib"
+	ARFLAGS=""
+	AR_LIBFILE_OPT="/OUT:"
+	BOEHMGC_MAKEFILE="-f NT_MAKEFILE"
+
+	CYGPATH="cygpath -w"
+
+		# MS doesn't use a ranlib.
+	RANLIB="echo"
+	AC_SUBST(RANLIB)
+else
+	EXE_SUFFIX=""
+	OBJ_SUFFIX="o"
+	LIB_SUFFIX="a"
+	LIB_PREFIX=""
+	LIB_LIBPATH="-L"
+	LINK_LIB="-l"
+	LINK_OPT_SEP=""
+
+	OBJFILE_OPT="-o "
+	AR="ar"
+	ARFLAGS="cr"
+	AR_LIBFILE_OPT=""
+	BOEHMGC_MAKEFILE=""
+
+	CYGPATH=echo
+
+	AC_PROG_RANLIB
+fi
+
+AC_SUBST(OBJFILE_OPT)
+AC_SUBST(AR)
+AC_SUBST(ARFLAGS)
+AC_SUBST(AR_LIBFILE_OPT)
+AC_SUBST(BOEHMGC_MAKEFILE)
+AC_SUBST(EXE_SUFFIX)
+AC_SUBST(OBJ_SUFFIX)
+AC_SUBST(LIB_SUFFIX)
+AC_SUBST(LIB_PREFIX)
+AC_SUBST(LIB_LIBPATH)
+AC_SUBST(LINK_LIB)
+AC_SUBST(LINK_OPT_SEP)
+AC_SUBST(CYGPATH)
+
+#-----------------------------------------------------------------------------#
+# Microsoft.NET configuration
+# 
+AC_PATH_PROG(ILASM, ilasm)
+
+AC_MSG_CHECKING(for Microsoft.NET Framework SDK)
+AC_CACHE_VAL(mercury_cv_microsoft_dotnet, [
+if test "$ILASM" != ""; then
+	changequote(<<,>>) 
+	MS_DOTNET_SDK_DIR=`expr "$ILASM" : '\(.*\)[/\\]*[bB]in[/\\]*ilasm'`
+	changequote([,]) 
+	mercury_cv_microsoft_dotnet="yes"
+else
+	MS_DOTNET_SDK_DIR=""
+	mercury_cv_microsoft_dotnet="no"
+fi
+])
+AC_MSG_RESULT($mercury_cv_microsoft_dotnet)
+ILASM=`basename "$ILASM"`
+
+AC_SUBST(ILASM)
+AC_SUBST(MS_DOTNET_SDK_DIR)
+
+#-----------------------------------------------------------------------------#
+# Don't try to use mprotect() on gnu-win32, since it is broken
+# (at least for version b18, anyway) and trying it can crash Win95.
+case "$host" in
+	*-cygwin*)
+		ac_cv_func_mprotect=no ;;
+esac
+AC_HAVE_FUNCS(sysconf getpagesize memalign mprotect sigaction setitimer)
+AC_HAVE_FUNCS(strerror memmove fileno fdopen fstat)
+AC_HAVE_FUNCS(vsnprintf _vsnprintf)
+#-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(unistd.h, HAVE_UNISTD_H=1)
+if test "$HAVE_UNISTD_H" = 1; then
+	AC_DEFINE(HAVE_UNISTD_H)
+fi
+#-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(sys/wait.h, HAVE_SYS_WAIT_H=1)
+if test "$HAVE_SYS_WAIT_H" = 1; then
+	AC_DEFINE(HAVE_SYS_WAIT)
+fi
+#-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(sys/siginfo.h, HAVE_SYS_SIGINFO_H=1)
+if test "$HAVE_SYS_SIGINFO_H" = 1; then
+	AC_DEFINE(HAVE_SYS_SIGINFO)
+fi
+#-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(ucontext.h, HAVE_UCONTEXT_H=1)
+if test "$HAVE_UCONTEXT_H" = 1; then
+	AC_DEFINE(HAVE_UCONTEXT)
+else
+	AC_CHECK_HEADER(sys/ucontext.h, HAVE_SYS_UCONTEXT_H=1)
+	if test "$HAVE_SYS_UCONTEXT_H" = 1; then
+		AC_DEFINE(HAVE_SYS_UCONTEXT)
+	fi
+fi
+#-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(asm/sigcontext.h, HAVE_ASM_SIGCONTEXT_H=1)
+if test "$HAVE_ASM_SIGCONTEXT_H" = 1; then
+	AC_DEFINE(HAVE_ASM_SIGCONTEXT)
+fi
+#-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(sys/param.h, HAVE_SYS_PARAM_H=1)
+if test "$HAVE_SYS_PARAM_H" = 1; then
+	AC_DEFINE(HAVE_SYS_PARAM)
+fi
+#-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(sys/time.h, HAVE_SYS_TIME_H=1)
+if test "$HAVE_SYS_TIME_H" = 1; then
+	AC_DEFINE(HAVE_SYS_TIME)
+fi
+#-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(sys/times.h, HAVE_SYS_TIMES_H=1)
+if test "$HAVE_SYS_TIMES_H" = 1; then
+	AC_DEFINE(HAVE_SYS_TIMES_H)
+fi
+#-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(sys/types.h, HAVE_SYS_TYPES_H=1)
+if test "$HAVE_SYS_TYPES_H" = 1; then
+	AC_DEFINE(HAVE_SYS_TYPES_H)
+fi
+#-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(sys/stat.h, HAVE_SYS_STAT_H=1)
+if test "$HAVE_SYS_STAT_H" = 1; then
+	AC_DEFINE(HAVE_SYS_STAT_H)
+fi
+#-----------------------------------------------------------------------------#
+#
+# check the basics of sigaction
+#
+if test "$ac_cv_func_sigaction" = yes; then
+	AC_MSG_CHECKING(for \`sigaction' field name)
+	AC_CACHE_VAL(mercury_cv_sigaction_field,
+	AC_TRY_RUN([
+
+	#include <signal.h>
+	#include <stdlib.h>
+
+	#define FAULT_ADDRESS ((int *)112)
+
+	extern void handler(int signum, siginfo_t *info, void *context);
+
+	int main() {
+		struct sigaction act;
+		act.sa_flags = SA_SIGINFO;
+		act.sa_sigaction = handler;
+		if (sigemptyset(&act.sa_mask) != 0)
+			exit(1);
+		if (sigaction(SIGSEGV, &act, NULL) != 0)
+			exit(1);
+		/* provoke a SIGSEGV */
+		(*FAULT_ADDRESS)++;
+		exit(1);
+	}
+
+	void handler(int signum, siginfo_t *info, void *context) {
+		if (signum == SIGSEGV &&
+		    info->si_signo == SIGSEGV &&
+		    info->si_code > 0 &&
+		    (int *)info->si_addr == FAULT_ADDRESS)
+		{
+			exit(0);
+		} else {
+			exit(1);
+		}
+	}],
+	[mercury_cv_sigaction_field=sa_sigaction],
+	[mercury_cv_sigaction_field=sa_handler],
+	[mercury_cv_sigaction_field=sa_handler]))
+	AC_MSG_RESULT($mercury_cv_sigaction_field)
+	AC_DEFINE_UNQUOTED(SIGACTION_FIELD,$mercury_cv_sigaction_field)
+	if test $mercury_cv_sigaction_field = sa_sigaction; then
+		AC_DEFINE(HAVE_SIGINFO)
+	fi
+fi
+#
+# check the basics of sigcontext_struct
+#
+AC_MSG_CHECKING(for working \`sigcontext_struct' in second arg)
+AC_CACHE_VAL(mercury_cv_sigcontext_struct_2arg,
+mercury_cv_sigcontext_struct_2arg=no
+AC_TRY_RUN([
+/* see runtime/memory.c for documentation of this code */
+
+#define sigcontext_struct sigcontext
+
+#define __KERNEL__
+#include <signal.h>
+#undef __KERNEL__
+
+#ifdef HAVE_ASM_SIGCONTEXT
+#include <asm/sigcontext.h>
+#endif
+
+#include "mercury_faultaddr.h"
+
+#include <stdio.h>
+
+extern void handler(int signum, struct sigcontext_struct info);
+
+#define FAULT_ADDRESS ((int *)112)
+
+int main() {
+	signal(SIGSEGV, (void (*)(int))handler);
+
+	/* provoke a SIGSEGV */
+	(*FAULT_ADDRESS)++;
+
+	exit(1);
+}
+
+void handler(int signum, struct sigcontext_struct context) {
+	int *addr;
+	addr = (int *) MR_GET_FAULT_ADDR(context);
+	if (signum == SIGSEGV && addr == FAULT_ADDRESS) {
+		exit(0);
+	} else {
+		exit(1);
+	}
+}], [mercury_cv_sigcontext_struct_2arg=yes], [true], [true]))
+AC_MSG_RESULT($mercury_cv_sigcontext_struct_2arg)
+
+if test $mercury_cv_sigcontext_struct_2arg = no; then
+	#
+	# check for a sigcontext_struct in the third argument of
+	# the signal handler (Linux-68k has this).
+	#
+	AC_MSG_CHECKING(for working \`sigcontext_struct' in third arg)
+	AC_CACHE_VAL(mercury_cv_sigcontext_struct_3arg,
+	mercury_cv_sigcontext_struct_3arg=no
+
+	AC_TRY_RUN([
+	/* see runtime/mercury_memory.c for documentation of this code */
+
+	#define sigcontext_struct sigcontext
+
+	#define __KERNEL__
+	#include <signal.h>
+	#undef __KERNEL__
+
+	#ifdef HAVE_ASM_SIGCONTEXT
+	#include <asm/sigcontext.h>
+	#endif
+
+	#include "mercury_faultaddr.h"
+
+	#include <stdio.h>
+
+	extern void handler(int signum, int code, struct
+		sigcontext_struct info);
+
+	#define FAULT_ADDRESS ((int *)112)
+
+	int main() {
+		signal(SIGSEGV, (void (*)(int))handler);
+
+		/* provoke a SIGSEGV */
+		(*FAULT_ADDRESS)++;
+
+		exit(1);
+	}
+
+	void handler(int signum, int code, struct sigcontext_struct context) {
+		int *addr;
+		addr = (int *) MR_GET_FAULT_ADDR(context);
+		if (signum == SIGSEGV && addr == FAULT_ADDRESS) {
+			exit(0);
+		} else {
+			exit(1);
+		}
+	}], [mercury_cv_sigcontext_struct_3arg=yes], [true], [true]))
+	AC_MSG_RESULT($mercury_cv_sigcontext_struct_3arg)
+else
+	mercury_cv_sigcontext_struct_3arg=no
+fi
+
+mercury_cv_sigcontext_struct=no
+
+if test $mercury_cv_sigcontext_struct_2arg = yes; then
+	mercury_cv_sigcontext_struct=yes
+	AC_DEFINE(HAVE_SIGCONTEXT_STRUCT_2ARG)
+fi
+
+if test $mercury_cv_sigcontext_struct_3arg = yes; then
+	mercury_cv_sigcontext_struct=yes
+	AC_DEFINE(HAVE_SIGCONTEXT_STRUCT_3ARG)
+fi
+
+if test $mercury_cv_sigcontext_struct = yes; then
+	AC_DEFINE(HAVE_SIGCONTEXT_STRUCT)
+	AC_DEFINE(HAVE_SIGINFO)
+
+	#
+	# check for sigcontext_struct.eip
+	#
+	AC_MSG_CHECKING(for \`sigcontext_struct' pc access at signals)
+	AC_CACHE_VAL(mercury_cv_pc_access,
+	mercury_cv_pc_access=no
+	AC_TRY_RUN([
+	/* see runtime/memory.c for documentation of this code */
+
+	#define sigcontext_struct sigcontext
+
+	#define __KERNEL__
+	#include <signal.h>
+	#undef __KERNEL__
+
+	#ifdef HAVE_ASM_SIGCONTEXT
+	#include <asm/sigcontext.h>
+	#endif
+
+	#include "mercury_faultaddr.h"
+
+	#include <stdio.h>
+
+	#if HAVE_SIGCONTEXT_STRUCT_3ARG
+	extern void handler(int signum, int code, 
+			struct sigcontext_struct context);
+	#else
+	extern void handler(int signum, struct sigcontext_struct context);
+	#endif
+
+	#define FAULT_ADDRESS ((int *)112)
+
+	int main() {
+		signal(SIGSEGV, (void (*)(int))handler);
+
+		/* provoke a SIGSEGV */
+		(*FAULT_ADDRESS)++;
+
+		exit(1);
+	}
+
+	#if HAVE_SIGCONTEXT_STRUCT_3ARG
+	void handler(int signum, int code, struct sigcontext_struct context) {
+	#else
+	void handler(int signum, struct sigcontext_struct context) {
+	#endif
+		int *addr;
+		long pc;
+		addr = (int *) MR_GET_FAULT_ADDR(context);
+		pc = (long) context.eip;
+		if (signum == SIGSEGV && addr == FAULT_ADDRESS && pc != 0) {
+			exit(0);
+		} else {
+			exit(1);
+		}
+	}], [mercury_cv_pc_access=eip], [true], [true]))
+	AC_MSG_RESULT($mercury_cv_pc_access)
+	if test $mercury_cv_pc_access != no; then
+		AC_DEFINE_UNQUOTED(PC_ACCESS,$mercury_cv_pc_access)
+	fi
+else
+	AC_MSG_CHECKING(for \`siginfo_t')
+	AC_CACHE_VAL(mercury_cv_siginfo_t,
+	mercury_cv_siginfo_t=no
+	AC_TRY_RUN([
+	#include <stdio.h>
+	#include <signal.h>
+	#ifdef HAVE_SYS_SIGINFO
+	#include <sys/siginfo.h>
+	#endif
+	#ifdef HAVE_UCONTEXT
+	#include <ucontext.h>
+	#endif
+	#ifdef HAVE_SYS_UCONTEXT
+	#include <sys/ucontext.h>
+	#endif
+	int save_signum = 0;
+	int save_cause;
+	int save_pc;
+	extern void handler(int signum, siginfo_t *info, void *context);
+	int main() {
+		struct sigaction act;
+		act.sa_flags = SA_SIGINFO;
+		act.$mercury_cv_sigaction_field = handler;
+		if (sigemptyset(&act.sa_mask) != 0)
+			exit(1);
+		if (sigaction(SIGSEGV, &act, NULL) != 0)
+			exit(1);
+		if (kill(getpid(), SIGSEGV) != 0)
+			exit(1);
+		if (save_signum == 0)
+			exit(1);
+		exit(0);
+	}
+	void handler(int signum, siginfo_t *info, void *context) {
+		save_signum = signum;
+		switch (info->si_code) {
+		case SEGV_MAPERR:	save_cause = info->si_code;
+					break;
+		case SEGV_ACCERR:	save_cause = info->si_code;
+					break;
+		}
+		switch (info->si_code) {
+		case BUS_ADRALN:	save_cause = info->si_code;
+					break;
+		case BUS_ADRERR:	save_cause = info->si_code;
+					break;
+		case BUS_OBJERR:	save_cause = info->si_code;
+					break;
+		}
+		save_cause = info->si_code;
+	}], [mercury_cv_siginfo_t=yes], [true], [true]))
+	AC_MSG_RESULT($mercury_cv_siginfo_t)
+	if test $mercury_cv_siginfo_t = yes; then
+		AC_DEFINE(HAVE_SIGINFO_T)
+		AC_DEFINE(HAVE_SIGINFO)
+
+		AC_MSG_CHECKING(for \`siginfo' pc access at signals)
+		AC_CACHE_VAL(mercury_cv_pc_access,
+		mercury_cv_pc_access=no
+		AC_TRY_RUN([
+		#include <stdio.h>
+		#include <signal.h>
+		#include <sys/siginfo.h>
+		#ifdef HAVE_UCONTEXT
+		#include <ucontext.h>
+		#else
+		#include <sys/ucontext.h>
+		#endif
+		int save_signum = 0;
+		int save_cause;
+		int save_pc;
+		extern void handler(int signum, siginfo_t *info, void *context);
+		int main() {
+			struct sigaction act;
+			act.sa_flags = SA_SIGINFO;
+			act.$mercury_cv_sigaction_field = handler;
+			if (sigemptyset(&act.sa_mask) != 0)
+				exit(1);
+			if (sigaction(SIGSEGV, &act, NULL) != 0)
+				exit(1);
+			if (kill(getpid(), SIGSEGV) != 0)
+				exit(1);
+			if (save_signum == 0)
+				exit(1);
+			exit(0);
+		}
+		void handler(int signum, siginfo_t *info, void *context) {
+			save_signum = signum;
+			save_cause = info->si_code;
+			/* Don't use array indexing - the square brackets
+			   are autoconf quote characters */
+			save_pc = *(((ucontext_t *) context)->uc_mcontext.gregs
+					+ REG_PC);
+		}], [mercury_cv_pc_access=REG_PC;mercury_cv_pc_access_greg=yes],
+			[true], [true])
+		AC_TRY_RUN([
+		#include <stdio.h>
+		#include <signal.h>
+		#include <sys/siginfo.h>
+		#ifdef HAVE_UCONTEXT
+		#include <ucontext.h>
+		#else
+		#include <sys/ucontext.h>
+		#endif
+		int save_signum = 0;
+		int save_cause;
+		int save_pc;
+		extern void handler(int signum, siginfo_t *info, void *context);
+		int main() {
+			struct sigaction act;
+			act.sa_flags = SA_SIGINFO;
+			act.$mercury_cv_sigaction_field = handler;
+			if (sigemptyset(&act.sa_mask) != 0)
+				exit(1);
+			if (sigaction(SIGSEGV, &act, NULL) != 0)
+				exit(1);
+			if (kill(getpid(), SIGSEGV) != 0)
+				exit(1);
+			if (save_signum == 0)
+				exit(1);
+			exit(0);
+		}
+		void handler(int signum, siginfo_t *info, void *context) {
+			save_signum = signum;
+			save_cause = info->si_code;
+			save_pc = *(((ucontext_t *) context)->uc_mcontext.gregs
+					+ CTX_EPC);
+		}], [mercury_cv_pc_access=CTX_EPC;mercury_cv_pc_access_greg=yes],
+			[true], [true])
+		AC_TRY_RUN([
+		#include <stdio.h>
+		#include <signal.h>
+		#include <sys/siginfo.h>
+		#ifdef HAVE_UCONTEXT
+		#include <ucontext.h>
+		#else
+		#include <sys/ucontext.h>
+		#endif
+		int save_signum = 0;
+		int save_cause;
+		int save_pc;
+		extern void handler(int signum, siginfo_t *info, void *context);
+		int main() {
+			struct sigaction act;
+			act.sa_flags = SA_SIGINFO;
+			act.$mercury_cv_sigaction_field = handler;
+			if (sigemptyset(&act.sa_mask) != 0)
+				exit(1);
+			if (sigaction(SIGSEGV, &act, NULL) != 0)
+				exit(1);
+			if (kill(getpid(), SIGSEGV) != 0)
+				exit(1);
+			if (save_signum == 0)
+				exit(1);
+			exit(0);
+		}
+		void handler(int signum, siginfo_t *info, void *context) {
+			save_signum = signum;
+			save_cause = info->si_code;
+			save_pc = ((ucontext_t *) context)->uc_mcontext.sc_pc;
+		}], [mercury_cv_pc_access=sc_pc;mercury_cv_pc_access_greg=no],
+			[true], [true])
+		)
+		AC_MSG_RESULT($mercury_cv_pc_access)
+		if test $mercury_cv_pc_access != no; then
+			AC_DEFINE_UNQUOTED(PC_ACCESS,$mercury_cv_pc_access)
+			if test $mercury_cv_pc_access_greg != no; then
+				AC_DEFINE(PC_ACCESS_GREG)
+			fi
+		fi
+	fi
+fi
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(for an integer type with the same size as a pointer)
+AC_CACHE_VAL(mercury_cv_word_type,
+	AC_TRY_RUN([
+	#include <stdio.h>
+	int main() {
+		FILE *fp;
+
+		fp = fopen("conftest.tags", "w");
+		if (fp == NULL)
+			exit(1);
+
+		if (sizeof(int) == sizeof(void *))
+		{
+			fprintf(fp, "int\n");
+			exit(0);
+		}
+
+		if (sizeof(long) == sizeof(void *))
+		{
+			fprintf(fp, "long\n");
+			exit(0);
+		}
+
+		fprintf(fp, "unknown\n");
+		exit(1);
+	}],
+	[mercury_cv_word_type=`cat conftest.tags`],
+	[mercury_cv_word_type=unknown],
+	[mercury_cv_word_type=unknown])
+)
+if test "$mercury_cv_word_type" = unknown; then
+	AC_TRY_RUN([
+	#include <stdio.h>
+	int main() {
+		FILE *fp;
+
+		fp = fopen("conftest.tags", "w");
+		if (fp == NULL)
+			exit(1);
+
+		if (sizeof(long long) == sizeof(void *))
+		{
+			fprintf(fp, "long long\n");
+			exit(0);
+		}
+
+		fprintf(fp, "unknown\n");
+		exit(1);
+	}],
+	[mercury_cv_word_type=`cat conftest.tags`],
+	[mercury_cv_word_type=unknown],
+	[mercury_cv_word_type=unknown])
+fi
+AC_MSG_RESULT($mercury_cv_word_type)
+AC_DEFINE_UNQUOTED(MR_WORD_TYPE, $mercury_cv_word_type)
+MR_WORD_TYPE=$mercury_cv_word_type
+AC_SUBST(MR_WORD_TYPE)
+
+if test "$mercury_cv_word_type" = int; then
+	AC_DEFINE_UNQUOTED(MR_INTEGER_LENGTH_MODIFIER, "")
+elif test "$mercury_cv_word_type" = long; then
+	AC_DEFINE_UNQUOTED(MR_INTEGER_LENGTH_MODIFIER, "l")
+elif test "$mercury_cv_word_type" = "long long"; then
+	AC_DEFINE_UNQUOTED(MR_INTEGER_LENGTH_MODIFIER, "ll")
+else
+	AC_MSG_ERROR("Cannot determine the length modifier for the MR_Integer type.")
+fi
+AC_SUBST(MR_INTEGER_LENGTH_MODIFIER)
+
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(for an integer type of at least 64 bits)
+AC_CACHE_VAL(mercury_cv_int_least64_type,
+	AC_TRY_RUN([
+	#include <stdio.h>
+	#include <limits.h>
+	int main() {
+		FILE *fp;
+
+		fp = fopen("conftest.tags", "w");
+		if (fp == NULL)
+			exit(1);
+
+		if (sizeof(int) * CHAR_BIT >= 64)
+		{
+			fprintf(fp, "int\n");
+			exit(0);
+		}
+
+		if (sizeof(long) * CHAR_BIT >= 64)
+		{
+			fprintf(fp, "long\n");
+			exit(0);
+		}
+
+		fprintf(fp, "unknown\n");
+		exit(1);
+	}],
+	[mercury_cv_int_least64_type=`cat conftest.tags`],
+	[mercury_cv_int_least64_type=unknown],
+	[mercury_cv_int_least64_type=unknown])
+)
+if test "$mercury_cv_int_least64_type" = unknown; then
+	AC_TRY_RUN([
+	#include <stdio.h>
+	#include <limits.h>
+	int main() {
+		FILE *fp;
+
+		fp = fopen("conftest.tags", "w");
+		if (fp == NULL)
+			exit(1);
+
+		if (sizeof(long long) * CHAR_BIT >= 64)
+		{
+			fprintf(fp, "long long\n");
+			exit(0);
+		}
+
+		fprintf(fp, "unknown\n");
+		exit(1);
+	}],
+	[mercury_cv_int_least64_type=`cat conftest.tags`],
+	[mercury_cv_int_least64_type=unknown],
+	[mercury_cv_int_least64_type=unknown])
+fi
+AC_MSG_RESULT($mercury_cv_int_least64_type)
+if test "$mercury_cv_int_least64_type" != unknown; then
+	AC_DEFINE_UNQUOTED(MR_INT_LEAST64_TYPE, $mercury_cv_int_least64_type)
+	MR_INT_LEAST64_TYPE=$mercury_cv_int_least64_type
+	AC_SUBST(MR_INT_LEAST64_TYPE)
+fi
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(for an integer type of at least 32 bits)
+AC_CACHE_VAL(mercury_cv_int_least32_type,
+	AC_TRY_RUN([
+	#include <stdio.h>
+	#include <limits.h>
+	int main() {
+		FILE *fp;
+
+		fp = fopen("conftest.tags", "w");
+		if (fp == NULL)
+			exit(1);
+
+		if (sizeof(int) * CHAR_BIT >= 32)
+		{
+			fprintf(fp, "int\n");
+			exit(0);
+		}
+
+		if (sizeof(long) * CHAR_BIT >= 32)
+		{
+			fprintf(fp, "long\n");
+			exit(0);
+		}
+
+		fprintf(fp, "unknown\n");
+		exit(1);
+	}],
+	[mercury_cv_int_least32_type=`cat conftest.tags`],
+	[mercury_cv_int_least32_type=unknown],
+	[mercury_cv_int_least32_type=unknown])
+)
+AC_MSG_RESULT($mercury_cv_int_least32_type)
+AC_DEFINE_UNQUOTED(MR_INT_LEAST32_TYPE, $mercury_cv_int_least32_type)
+MR_INT_LEAST32_TYPE=$mercury_cv_int_least32_type
+AC_SUBST(MR_INT_LEAST32_TYPE)
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(for an integer type of at least 16 bits)
+AC_CACHE_VAL(mercury_cv_int_least16_type,
+	AC_TRY_RUN([
+	#include <stdio.h>
+	#include <limits.h>
+	int main() {
+		FILE *fp;
+
+		fp = fopen("conftest.tags", "w");
+		if (fp == NULL)
+			exit(1);
+
+		if (sizeof(short) * CHAR_BIT >= 16)
+		{
+			fprintf(fp, "short\n");
+			exit(0);
+		}
+
+		if (sizeof(int) * CHAR_BIT >= 16)
+		{
+			fprintf(fp, "int\n");
+			exit(0);
+		}
+
+		fprintf(fp, "unknown\n");
+		exit(1);
+	}],
+	[mercury_cv_int_least16_type=`cat conftest.tags`],
+	[mercury_cv_int_least16_type=unknown],
+	[mercury_cv_int_least16_type=unknown])
+)
+AC_MSG_RESULT($mercury_cv_int_least16_type)
+AC_DEFINE_UNQUOTED(MR_INT_LEAST16_TYPE, $mercury_cv_int_least16_type)
+MR_INT_LEAST16_TYPE=$mercury_cv_int_least16_type
+AC_SUBST(MR_INT_LEAST16_TYPE)
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(the number of low tag bits available)
+AC_CACHE_VAL(mercury_cv_low_tag_bits,
+	AC_TRY_RUN([
+	#include <stdio.h>
+	#include <stdlib.h>
+	int main() {
+		FILE *fp;
+
+		fp = fopen("conftest.tags", "w");
+		if (fp == NULL)
+			exit(1);
+
+		if (sizeof(void *) == 4)
+		{
+			fprintf(fp, "2\n");
+			exit(0);
+		}
+		if (sizeof(void *) == 8)
+		{
+			fprintf(fp, "3\n");
+			exit(0);
+		}
+		if (sizeof(void *) == 16)
+		{
+			fprintf(fp, "4\n");
+			exit(0);
+		}
+		fprintf(fp, "0\n");
+		exit(1);
+	}],
+	[mercury_cv_low_tag_bits=`cat conftest.tags`],
+	[mercury_cv_low_tag_bits=0],
+	[mercury_cv_low_tag_bits=0])
+)
+AC_MSG_RESULT($mercury_cv_low_tag_bits)
+if test "$mercury_cv_low_tag_bits" -lt 2; then
+	if test "$BOOTSTRAP_MC" = ""; then
+		AC_MSG_ERROR("cannot bootstrap: low tag bits less than 2")
+		exit 1
+	fi
+fi
+if test "$mercury_cv_low_tag_bits" -gt 2; then
+	if test "$BOOTSTRAP_MC" = ""; then
+		AC_MSG_WARN("bootstrapping using only 2 low tag bits")
+		mercury_cv_low_tag_bits=2
+	fi
+fi
+AC_DEFINE_UNQUOTED(LOW_TAG_BITS, $mercury_cv_low_tag_bits)
+LOW_TAG_BITS=$mercury_cv_low_tag_bits
+AC_SUBST(LOW_TAG_BITS)
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(the number of bytes per word)
+AC_CACHE_VAL(mercury_cv_bytes_per_word,
+	AC_TRY_RUN([
+	#include <stdio.h>
+	#include <stdlib.h>
+	int main() {
+		FILE *fp;
+
+		fp = fopen("conftest.wordbytes", "w");
+		if (fp == NULL)
+			exit(1);
+		fprintf(fp, "%d\n", sizeof(void *));
+
+		exit(0);
+	}],
+	[mercury_cv_bytes_per_word=`cat conftest.wordbytes`],
+	[mercury_cv_bytes_per_word=0],
+	[mercury_cv_bytes_per_word=0])
+)
+AC_MSG_RESULT($mercury_cv_bytes_per_word)
+AC_DEFINE_UNQUOTED(BYTES_PER_WORD, $mercury_cv_bytes_per_word)
+BYTES_PER_WORD=$mercury_cv_bytes_per_word
+AC_SUBST(BYTES_PER_WORD)
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(the number of words in a synchronization term)
+AC_CACHE_VAL(mercury_cv_sync_term_size,
+	AC_TRY_RUN([
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <pthread.h>
+	int main() {
+		struct {
+			pthread_mutex_t lock;
+			int		count;
+			void		*parent;
+		} x;
+		FILE *fp;
+
+		fp = fopen("conftest.syncsize", "w");
+		if (fp == NULL)
+			exit(1);
+		fprintf(fp, "%d\n", (sizeof(void *) - 1 + sizeof(x))/
+				sizeof(void *));
+
+		exit(0);
+	}],
+	[mercury_cv_sync_term_size=`cat conftest.syncsize`],
+	[mercury_cv_sync_term_size=0],
+	[mercury_cv_sync_term_size=0])
+)
+AC_MSG_RESULT($mercury_cv_sync_term_size)
+AC_DEFINE_UNQUOTED(SYNC_TERM_SIZE, $mercury_cv_sync_term_size)
+SYNC_TERM_SIZE=$mercury_cv_sync_term_size
+AC_SUBST(SYNC_TERM_SIZE)
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(the number of bits per word)
+AC_CACHE_VAL(mercury_cv_bits_per_word,
+	AC_TRY_RUN([
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <limits.h>
+	int main() {
+		FILE *fp;
+
+		fp = fopen("conftest.wordbits", "w");
+		if (fp == NULL)
+			exit(1);
+		fprintf(fp, "%d\n", CHAR_BIT * sizeof(void *));
+
+		exit(0);
+	}],
+	[mercury_cv_bits_per_word=`cat conftest.wordbits`],
+	[mercury_cv_bits_per_word=0],
+	[mercury_cv_bits_per_word=0])
+)
+AC_MSG_RESULT($mercury_cv_bits_per_word)
+AC_DEFINE_UNQUOTED(BITS_PER_WORD, $mercury_cv_bits_per_word)
+BITS_PER_WORD=$mercury_cv_bits_per_word
+AC_SUBST(BITS_PER_WORD)
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(whether we can use unboxed floats)
+AC_CACHE_VAL(mercury_cv_unboxed_floats,
+	AC_TRY_RUN([
+	int main() {
+		if (sizeof(double) == sizeof(void *))
+			exit(0);
+		else
+			exit(1);
+	}],
+	[mercury_cv_unboxed_floats=yes],
+	[mercury_cv_unboxed_floats=no],
+	[mercury_cv_unboxed_floats=no])
+)
+AC_MSG_RESULT($mercury_cv_unboxed_floats)
+if test "$mercury_cv_unboxed_floats" = yes; then
+	if test "$BOOTSTRAP_MC" = ""; then
+		AC_MSG_WARN(Mercury compiler not yet installed -" \
+				"cannot use unboxed floats)
+		AC_MSG_WARN(bootstrapping using boxed floats)
+		AC_MSG_WARN(*** after installation is complete you" \
+				"may want to reinstall from scratch)
+		AC_MSG_WARN(*** so you can use unboxed floats," \
+				"which are more efficient.)
+		mercury_cv_unboxed_floats=no
+	fi
+fi
+if test "$mercury_cv_unboxed_floats" = yes; then
+	HAVE_BOXED_FLOATS="--unboxed-float"
+else
+	AC_DEFINE(BOXED_FLOAT)
+	HAVE_BOXED_FLOATS="--no-unboxed-float"
+fi
+AC_SUBST(HAVE_BOXED_FLOATS)
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(whether float is 64-bit)
+AC_CACHE_VAL(mercury_cv_float_is_64_bit,
+	AC_TRY_RUN([
+	#include <limits.h>
+	int main() {
+		if (sizeof(float) * CHAR_BIT == 64)
+			exit(0);
+		else
+			exit(1);
+	}],
+	[mercury_cv_float_is_64_bit=yes],
+	[mercury_cv_float_is_64_bit=no],
+	[mercury_cv_float_is_64_bit=no])
+)
+AC_MSG_RESULT($mercury_cv_float_is_64_bit)
+if test "$mercury_cv_float_is_64_bit" = yes; then
+	AC_DEFINE(MR_FLOAT_IS_64_BIT)
+fi
+AC_SUBST(MR_FLOAT_IS_64_BIT)
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(whether double is 64-bit)
+AC_CACHE_VAL(mercury_cv_double_is_64_bit,
+	AC_TRY_RUN([
+	#include <limits.h>
+	int main() {
+		if (sizeof(double) * CHAR_BIT == 64)
+			exit(0);
+		else
+			exit(1);
+	}],
+	[mercury_cv_double_is_64_bit=yes],
+	[mercury_cv_double_is_64_bit=no],
+	[mercury_cv_double_is_64_bit=no])
+)
+AC_MSG_RESULT($mercury_cv_double_is_64_bit)
+if test "$mercury_cv_double_is_64_bit" = yes; then
+	AC_DEFINE(MR_DOUBLE_IS_64_BIT)
+fi
+AC_SUBST(MR_DOUBLE_IS_64_BIT)
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(whether long double is 64-bit)
+AC_CACHE_VAL(mercury_cv_long_double_is_64_bit,
+	AC_TRY_RUN([
+	#include <limits.h>
+	int main() {
+		if (sizeof(long double) * CHAR_BIT == 64)
+			exit(0);
+		else
+			exit(1);
+	}],
+	[mercury_cv_long_double_is_64_bit=yes],
+	[mercury_cv_long_double_is_64_bit=no],
+	[mercury_cv_long_double_is_64_bit=no])
+)
+AC_MSG_RESULT($mercury_cv_long_double_is_64_bit)
+if test "$mercury_cv_long_double_is_64_bit" = yes; then
+	AC_DEFINE(MR_LONG_DOUBLE_IS_64_BIT)
+fi
+AC_SUBST(MR_LONG_DOUBLE_IS_64_BIT)
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(whether architecture is big-endian)
+AC_CACHE_VAL(mercury_cv_is_bigender,
+	AC_TRY_RUN([
+	int main() {
+		int		x = 1;
+		unsigned char	*x_p;
+
+		x_p = (unsigned char*) &x;
+
+		if (*x_p == 0)
+			exit(0);
+		else
+			exit(1);
+	}],
+	[mercury_cv_is_bigender=yes],
+	[mercury_cv_is_bigender=no],
+	[mercury_cv_is_bigender=no])
+)
+AC_MSG_RESULT($mercury_cv_is_bigender)
+if test "$mercury_cv_is_bigender" = yes; then
+	AC_DEFINE(MR_BIG_ENDIAN)
+fi
+AC_SUBST(MR_BIG_ENDIAN)
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(whether architecture is little-endian)
+AC_CACHE_VAL(mercury_cv_is_littleender,
+	AC_TRY_RUN([
+	int main() {
+		int		x = 1;
+		unsigned char	*x_p;
+
+		x_p = (unsigned char*) &x;
+
+		if (*x_p == 1)
+			exit(0);
+		else
+			exit(1);
+	}],
+	[mercury_cv_is_littleender=yes],
+	[mercury_cv_is_littleender=no],
+	[mercury_cv_is_littleender=no])
+)
+AC_MSG_RESULT($mercury_cv_is_littleender)
+if test "$mercury_cv_is_littleender" = yes; then
+	AC_DEFINE(MR_LITTLE_ENDIAN)
+fi
+AC_SUBST(MR_LITTLE_ENDIAN)
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(return values of system)
+AC_CACHE_VAL(mercury_cv_normal_system_retval,
+	AC_TRY_RUN([
+	#include <stdlib.h>
+	#ifdef HAVE_SYS_WAIT
+	#include <sys/wait.h>
+	#endif
+	int main() {
+		#if defined (WIFEXITED) && defined (WEXITSTATUS) && \
+			defined (WIFSIGNALED) && defined (WTERMSIG)
+		/* 
+		** All the necessary macros for handling the return values of
+		** system() are defined, so we do not need to test the return
+		** value of system()
+		*/
+		exit(0);
+	
+		#else
+		/*
+		** Normal return values from system() are considered to be
+		** when high 8 bits of the return value give the exit
+		** status, and the low 8 bits give the signal number which
+		** killed the process.
+		*/
+			if( system("exit 0") == 0 &&
+					system("exit 42") == 42 << 8 ) {
+					/* && system("kill -9 $$") == 9 */
+				exit(0);
+			} else {
+				exit(1);
+			}
+		#endif
+	}],
+	[mercury_cv_normal_system_retval=yes],
+	[mercury_cv_normal_system_retval=no],
+	AC_TRY_COMPILE([#include <sys/wait.h>], [
+	#if defined (WIFEXITED) && defined (WEXITSTATUS) && \
+		defined (WIFSIGNALED) && defined (WTERMSIG)
+
+	#else
+	/* 
+	** As these macros are not defined the compilation must fail.
+	** Unmatched brackets should do that for us.
+	*/
+		}
+	#endif
+	], 
+	[mercury_cv_normal_system_retval=yes],
+	[mercury_cv_normal_system_retval=no]))
+)
+AC_MSG_RESULT($mercury_cv_normal_system_retval)
+if test "$mercury_cv_normal_system_retval" = no; then
+		# Warn since VC++6 compiler fails this test
+	AC_MSG_WARN(Unable to interpret return values from system)
+fi
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(to see if we can handle contexts blocking on IO)
+AC_CACHE_VAL(mercury_cv_can_do_pending_io,
+	AC_TRY_RUN([
+	#include <sys/types.h>
+	#include <sys/time.h>
+	int main() {
+		fd_set f;
+		struct timeval zero;
+		int err;
+
+		FD_ZERO(&f);
+		zero.tv_sec = 0;
+		zero.tv_usec = 0;
+		err = select(1, &f, &f, &f, &zero);
+		exit(err != 0);
+	}],
+	[mercury_cv_can_do_pending_io=yes],
+	[mercury_cv_can_do_pending_io=no],
+	[mercury_cv_can_do_pending_io=no])
+)
+AC_MSG_RESULT($mercury_cv_can_do_pending_io)
+if test "$mercury_cv_can_do_pending_io" = yes; then
+	AC_DEFINE(MR_CAN_DO_PENDING_IO)
+fi
+AC_SUBST(MR_CAN_DO_PENDING_IO)
+#-----------------------------------------------------------------------------#
+#
+# On sparc, x86, and probably on other architectures,
+# if we're using non-local gotos, then for egcs 1.1, we need
+# `-fno-gcse -fno-function-cse', and for gcc 2.8 we need `-fno-function-cse'.
+# Otherwise gcc generates code which initializes registers in the function
+# prologue and expects them to be valid later on, which doesn't work with
+# non-local gotos, since we jump directly into the middle of a function.
+# (Actually I don't know if `-fno-functions-cse' is really needed.
+# Maybe you can get away without it.  But better to err on the safe side...)
+#
+# For alpha and for mips, and probably on other architectures, when using
+# non-local gotos we need -fomit-frame-pointer, otherwise when compiling
+# with --no-c-optimize we run into a problem similar to the one above:
+# Gcc generates code which initializes the frame pointer in the
+# function prologue, and then expects it to be valid later on, which
+# doesn't work with non-local gotos, since we jump directly into the
+# middle of a function.
+#
+# For Irix 5, gcc labels don't work with shared libraries,
+# so if we're using gcc labels, we need to use non-shared libraries,
+# which means passing -non_shared and -mno-abicalls and also setting
+# LIBRARY_PATH.
+#
+# For x86, gcc global registers only work with -fno-builtin
+# and -fno-omit-frame-pointer.
+#
+# NB. Any changes here may also require changes to scripts/mgnuc.in.
+#
+CFLAGS_FOR_REGS=
+CFLAGS_FOR_GOTOS=
+LIBRARY_PATH_FOR_GOTOS=
+case $ac_cv_prog_gcc in yes)
+    case "`$CC --version < /dev/null`" in
+	2.8*) CFLAGS_FOR_GOTOS="-fno-defer-pop -fno-function-cse" ;;
+	*)    CFLAGS_FOR_GOTOS="-fno-defer-pop -fno-function-cse -fno-gcse" ;;
+    esac
+    case "$host" in
+	mips-sgi-irix5.*)
+		CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -non_shared -mno-abicalls"
+		LIBRARY_PATH_FOR_GOTOS="$NONSHARED_LIB_DIR:/usr/lib/nonshared"
+		;;
+    esac
+    case "$host" in
+	mips-*)
+		CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fomit-frame-pointer"
+		;;
+	i?86-*)
+		CFLAGS_FOR_REGS="-fno-builtin -fno-omit-frame-pointer"
+		;;
+	# We need a special-case hack here, because the auto-config 
+	# gets it wrong on the Alpha: the little example program
+	# works fine in fast.gc mode, but big programs don't,
+	# due to problems with the `gp' register.  Ideally we
+	# ought to write a big enough example program to trigger
+	# the problem, but that would be too much work.
+	alpha*-dec-*)
+		MERCURY_MSG("asm labels work on the Alpha")
+		MERCURY_MSG("but plain gcc labels do not")
+		mercury_cv_asm_labels=yes
+		mercury_cv_gcc_labels=no
+		CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fomit-frame-pointer"
+		;;
+	# Similarly for rs6000
+	rs6000-*)
+		MERCURY_MSG("gcc labels do not work on the RS/6000")
+		mercury_cv_asm_labels=no
+		mercury_cv_gcc_labels=no
+		;;
+	sparc*)
+		case "`$CC --version < /dev/null`" in 2.8*)
+			AC_MSG_WARN(*** Mercury might not work with " \
+				"gcc 2.8 on sparc!)
+			AC_MSG_WARN(We advise using gcc 2.7.x or egcs.)
+			;;
+		esac
+		;;
+    esac
+    ;;
+esac
+AC_SUBST(CFLAGS_FOR_REGS)
+AC_SUBST(CFLAGS_FOR_GOTOS)
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(whether we can use gcc labels)
+
+# Set env vars for compiling with gcc non-local gotos
+save_CC="$CC"
+save_LIBRARY_PATH="$LIBRARY_PATH"
+CC="$CC $CFLAGS_FOR_GOTOS"
+if test "$LIBRARY_PATH_FOR_GOTOS" != ""; then
+	LIBRARY_PATH="$LIBRARY_PATH_FOR_GOTOS:$LIBRARY_PATH"
+	export LIBRARY_PATH
+fi
+
+AC_CACHE_VAL(mercury_cv_gcc_labels,
+	AC_TRY_RUN([
+	void *entry_foo_1;
+	void *entry_bar_1;
+	void *succip;
+	int global;
+	void *dummy_identity_function(void *);
+	foo() {
+		entry_foo_1 = && foo_1;
+		goto *dummy_identity_function(&&return_label);
+	return_label:
+		return;
+	foo_1:
+		if (global != 42) exit(1);
+		goto *entry_bar_1;
+	}
+	bar() {
+		entry_bar_1 = && bar_1;
+		goto *dummy_identity_function(&&return_label);
+	return_label:
+		return;
+	bar_1:
+		if (global != 42) exit(1);
+		goto *succip;
+	}
+	main() {
+		global = 42;
+		foo();
+		bar();
+		succip = &&last;
+		goto *dummy_identity_function(&&return_label);
+	return_label:
+		goto *entry_foo_1;
+		exit(1);
+	last:
+		if (global != 42) exit(1);
+		exit(0);
+	}
+	void *dummy_identity_function(void *p) {
+		return p;
+	}
+	], [mercury_cv_gcc_labels=yes], [mercury_cv_gcc_labels=no],
+		[mercury_cv_gcc_labels=no])
+)
+AC_MSG_RESULT($mercury_cv_gcc_labels)
+if test "$mercury_cv_gcc_labels" = yes; then
+	AC_DEFINE(HAVE_GCC_LABELS)
+fi
+
+if test $mercury_cv_gcc_labels = yes; then
+	AC_MSG_CHECKING(whether we can use asm labels)
+
+	AC_CACHE_VAL(mercury_cv_asm_labels,
+	AC_TRY_RUN([
+	void *volatile volatile_global_pointer;
+	extern void mercury__label1 (void) __asm__("entry_" "mercury__label1" );
+	main() {
+		void *addr;
+
+		volatile_global_pointer = &&mercury__label1;
+		addr = &mercury__label1;
+		goto *addr;
+		exit(1);
+
+	mercury__label1:
+		__asm__(".globl entry_" "mercury__label1" "\n" "entry_"
+			"mercury__label1" ":");
+		exit(0);
+	}], [mercury_cv_asm_labels=yes], [mercury_cv_asm_labels=no],
+		[mercury_cv_asm_labels=no])
+	)
+	AC_MSG_RESULT($mercury_cv_asm_labels)
+else
+	mercury_cv_asm_labels=${mercury_cv_asm_labels-no}
+fi
+HAVE_ASM_LABELS=$mercury_cv_asm_labels
+AC_SUBST(HAVE_ASM_LABELS)
+if test $HAVE_ASM_LABELS = 1; then
+	AC_DEFINE(HAVE_ASM_LABELS)
+fi
+
+# Restore env vars modified above
+CC="$save_CC"
+LIBRARY_PATH="$save_LIBRARY_PATH"
+
+#-----------------------------------------------------------------------------#
+# We need to ensure that runtime/mercury_conf.h exists, since some of the
+# programs we attempt to compile below indirectly include it.
+test -f runtime/mercury_conf.h || {
+	cat > runtime/mercury_conf.h <<EOF
+#define MR_WORD_TYPE $MR_WORD_TYPE
+EOF
+}
+#-----------------------------------------------------------------------------#
+if test $mercury_cv_gcc_labels = yes || test $mercury_cv_asm_labels = yes; then
+	AC_MSG_CHECKING(whether we can use gcc labels and global registers)
+
+	# Set env vars for compiling with gcc non-local gotos and registers
+	save_CC="$CC"
+	save_LIBRARY_PATH="$LIBRARY_PATH"
+	CC="$CC $CFLAGS_FOR_GOTOS $CFLAGS_FOR_REGS"
+	if test "$LIBRARY_PATH_FOR_GOTOS" != ""; then
+		LIBRARY_PATH="$LIBRARY_PATH_FOR_GOTOS:$LIBRARY_PATH"
+		export LIBRARY_PATH
+	fi
+
+	AC_CACHE_VAL(mercury_cv_gcc_model_fast,
+	AC_TRY_RUN([
+	#define USE_GCC_NONLOCAL_GOTOS
+	#define USE_GCC_GLOBAL_REGISTERS
+	#include "mercury_engine.h"
+	changequote(<<,>>) 
+	MercuryEngine MR_engine_base;
+	changequote([,]) 
+	main() {
+		MR_mr0 = 20;
+		MR_mr7 = 22;
+		if (MR_mr0 + MR_mr7 != 42)
+			exit(1);
+		exit(0);
+	}], [mercury_cv_gcc_model_fast=yes], [mercury_cv_gcc_model_fast=no],
+		[mercury_cv_gcc_model_fast=no])
+	)
+	AC_MSG_RESULT($mercury_cv_gcc_model_fast)
+
+	# Restore env vars modified above
+	CC="$save_CC"
+	LIBRARY_PATH="$save_LIBRARY_PATH"
+else
+	mercury_cv_gcc_model_fast=no
+fi
+#-----------------------------------------------------------------------------#
+
+AC_MSG_CHECKING(whether we can use global registers without gcc labels)
+
+# Set env vars for compiling with gcc registers
+save_CC="$CC"
+CC="$CC $CFLAGS_FOR_REGS"
+
+AC_CACHE_VAL(mercury_cv_gcc_model_reg,
+AC_TRY_RUN([
+#define USE_GCC_GLOBAL_REGISTERS
+#include "mercury_engine.h"
+changequote(<<,>>) 
+MercuryEngine MR_engine_base;
+changequote([,]) 
+main() {
+	MR_mr0 = 20;
+	MR_mr7 = 22;
+	if (MR_mr0 + MR_mr7 != 42)
+		exit(1);
+	exit(0);
+}], [mercury_cv_gcc_model_reg=yes], [mercury_cv_gcc_model_reg=no],
+	[mercury_cv_gcc_model_reg=no])
+)
+AC_MSG_RESULT($mercury_cv_gcc_model_reg)
+
+# Restore env vars modified above
+CC="$save_CC"
+
+#-----------------------------------------------------------------------------#
+
+AC_MSG_CHECKING(whether we can support profiling on this system)
+AC_CACHE_VAL(mercury_cv_profiling,
+AC_TRY_CPP([
+/* The following code comes from runtime/prof.c */
+#include	<unistd.h>
+#include	<errno.h>
+#include	<string.h>
+#include	<signal.h>
+
+#ifdef HAVE_SYS_PARAM
+#include	<sys/param.h>
+#endif
+
+#ifdef HAVE_SYS_TIME
+#include	<sys/time.h>
+#endif
+
+/* 
+** if HZ is not defined, we may be able to use sysconf(_SC_CLK_TCK) instead
+*/
+#if !defined(HZ) && defined(HAVE_SYSCONF) && defined(_SC_CLK_TCK)
+#define HZ ((int)sysconf(_SC_CLK_TCK))
+#endif
+
+#if !defined(HZ) || !defined(SIGPROF) || !defined(HAVE_SETITIMER)
+#error "Time profiling not supported on this system"
+#endif
+], [mercury_cv_profiling=yes], [mercury_cv_profiling=no]))
+AC_MSG_RESULT($mercury_cv_profiling)
+
+#-----------------------------------------------------------------------------#
+
+# Figure out which flavour of pthreads to use, since none of the
+# implementations seem to be exactly the same
+case $host in
+	alpha*-dec-osf*)
+		mercury_cv_use_digital_unix_threads=yes ;;
+
+	*)
+		mercury_cv_use_digital_unix_threads=no ;;
+esac
+
+if test $mercury_cv_use_digital_unix_threads = yes; then
+	AC_DEFINE(MR_DIGITAL_UNIX_PTHREADS)
+fi
+
+# Figure out what options we need to pass to the C compiler
+# for multithreading.   We may need to pass different
+# options to tell (a) the Mercury runtime & library
+# (b) the boehm collector and (c) the C library
+# that they need to be thread-safe.
+case "$host" in
+	*solaris*)
+		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DSOLARIS_THREADS \
+			-D_SOLARIS_PTHREADS -D_REENTRANT"
+		;;
+
+	*linux*)
+		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DLINUX_THREADS \
+			-D_THREAD_SAFE -D_REENTRANT"
+		# Note that for old versions of Linux / glibc,
+		# you may also need to make sure that you don't
+		# pass -ansi to gcc.
+		;;
+
+	*cygwin*)
+		case "$CC" in
+			*cl* | *CL*)	# cl is the Microsoft C compiler
+				CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DWIN32_THREADS /MD" ;;
+			*)
+				CFLAGS_FOR_THREADS="" ;;
+		esac
+		;;
+
+###	# The threads stuff on Digital Unix (OSF) is not yet enabled because
+###	# the Boehm garbage collector doesn't support threads on that platform
+###	# XXX probably we should enable it but report an error if you try to
+###	#     use an *.par.gc* grade
+###	*-osf*)
+###		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE"
+###		;;
+
+###	# The threads stuff on IRIX is not yet enabled because
+###	# we don't have an IRIX box to test it on.
+###	# (XXX perhaps we should enable it anyway, so it is easier to test?)
+###	*irix*)
+###		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DIRIX_THREADS"
+###		;;
+
+	*)	
+		# Multithreading not (yet) supported on other architectures.
+		# For multithreading, we need (1) Posix threads and
+		# (2) a port of the Boehm gc for that architecture
+		# that works with threads.
+		CFLAGS_FOR_THREADS=""
+		;;
+esac
+AC_SUBST(CFLAGS_FOR_THREADS)
+
+#-----------------------------------------------------------------------------#
+
+#
+# figure out the most efficient base grade to use.
+#
+if test $mercury_cv_asm_labels = yes; then
+	if test $mercury_cv_gcc_model_fast = yes; then
+		BEST_GRADE=asm_fast
+	else
+		BEST_GRADE=asm_jump
+	fi
+elif test $mercury_cv_gcc_labels = yes; then
+	if test $mercury_cv_gcc_model_fast = yes; then
+		BEST_GRADE=fast
+	else
+		BEST_GRADE=jump
+	fi
+else
+	if test $mercury_cv_gcc_model_reg = yes; then
+		BEST_GRADE=reg
+	else
+		BEST_GRADE=none
+	fi
+fi
+
+# We can't use grade jump.gc or fast.gc unless we have a working Mercury
+# compiler to bootstrap with, since the C code generated for the other
+# grades won't work in grade jump.gc or fast.gc.
+
+DESIRED_GRADE=$BEST_GRADE.gc
+GRADE=$DESIRED_GRADE
+if test "$GRADE" = jump.gc || test "$GRADE" = fast.gc; then
+	if test "$BOOTSTRAP_MC" = ""; then
+		if test "$DESIRED_GRADE" = jump.gc; then
+			GRADE=none.gc
+		else
+			GRADE=reg.gc
+		fi
+		AC_MSG_WARN(Mercury compiler not yet installed -" \
+				"cannot use grade \`$DESIRED_GRADE')
+		AC_MSG_WARN(using \`GRADE=$GRADE' to compile the compiler)
+		AC_MSG_WARN(*** after installation is complete you" \
+				"should reinstall from scratch)
+		AC_MSG_WARN(*** so you can use the more efficient" \
+				"grade \`$DESIRED_GRADE')
+	else
+		MERCURY_MSG("using \`GRADE=$GRADE' to compile the compiler")
+		MERCURY_MSG("compiler and library will be rebuilt with new grade")
+		MERCURY_MSG("installation may take a long time")
+		rm -f library/*.c compiler/*.c browser/*.c profiler/*.c
+	fi
+else
+	# If we are using the MS compiler we want to install all the
+	# none.* and hlc.* grades.  The easiest way to do this is to
+	# pretend we want to use the none.gc grade and then override it
+	# later.
+	if test $ac_microsoft = no; then
+		MERCURY_MSG("using \`GRADE=$GRADE' to compile the compiler")
+	fi
+fi
+
+if test "$DEFAULT_GRADE" = ""; then
+	DEFAULT_GRADE=$GRADE
+	# For Irix 5.x, shared libraries are incompatible
+	# with gcc non-local gotos.
+	# We prefer to use shared libraries by default
+	case "$host" in mips-sgi-irix5.*)
+		case $ac_cv_prog_gcc in yes)
+			DEFAULT_GRADE=reg.gc
+			;;
+		esac
+		;;
+	esac
+fi
+
+#
+# Figure out which grades to use if --enable-inefficient-grades is specified.
+#
+ALL_LIBGRADES="none"
+if test $mercury_cv_gcc_model_reg = yes; then
+	ALL_LIBGRADES="$ALL_LIBGRADES reg"
+fi
+if test $mercury_cv_gcc_labels = yes; then
+	ALL_LIBGRADES="$ALL_LIBGRADES jump"
+	if test $mercury_cv_gcc_model_fast = yes; then
+		ALL_LIBGRADES="$ALL_LIBGRADES fast"
+	fi
+fi
+if test $mercury_cv_asm_labels = yes; then
+	if test $mercury_cv_gcc_labels = yes; then
+		ALL_LIBGRADES="$ALL_LIBGRADES asm_jump"
+	fi
+	if test $mercury_cv_gcc_model_fast = yes; then
+		ALL_LIBGRADES="$ALL_LIBGRADES asm_fast"
+	fi
+fi
+
+AC_ARG_ENABLE(inefficient-grades,
+[  --enable-inefficient-grades
+                          install inefficient versions of the library],
+enable_inefficient_grades="$enableval",enable_inefficient_grades=no)
+
+AC_ARG_ENABLE(most-grades,
+[  --disable-most-grades   install only the essential versions of the library],
+enable_most_grades="$enableval",enable_most_grades=yes)
+
+AC_ARG_ENABLE(nogc-grades,
+[  --disable-nogc-grades   do not install no-gc versions of the library],
+enable_nogc_grades="$enableval",enable_nogc_grades=yes)
+
+AC_ARG_ENABLE(prof-grades,
+[  --disable-prof-grades   do not install profiling versions of the library],
+enable_prof_grades="$enableval",enable_prof_grades=yes)
+
+AC_ARG_ENABLE(trail-grades,
+[  --disable-trail-grades  do not install trailing versions of the library],
+enable_trail_grades="$enableval",enable_trail_grades=yes)
+
+AC_ARG_ENABLE(par-grades,
+[  --disable-par-grades    do not install thread-safe versions of the library],
+enable_par_grades="$enableval",enable_par_grades=yes)
+
+AC_ARG_ENABLE(hlc-prof-grades,
+[  --enable-hlc-prof-grades
+                          install profiling versions of the high level C grade],
+enable_hlc_prof_grades=yes,enable_hlc_prof_grades=no)
+
+AC_ARG_ENABLE(libgrades,
+[  --enable-libgrades=...  install exactly the given versions of the library],
+enable_libgrades_given=yes;enable_libgrades="$enableval",enable_libgrades_given=no)
+
+if test "$enable_most_grades" = no; then
+	enable_inefficient_grades=no
+	enable_nogc_grades=no
+	enable_prof_grades=no
+	enable_trail_grades=no
+	enable_hlc_prof_grades=no
+	enable_par_grades=no
+fi
+
+if test "$enable_inefficient_grades" = yes; then
+	BASE_LIBGRADES="$ALL_LIBGRADES"
+else
+	BASE_LIBGRADES="$BEST_GRADE"
+fi
+
+# find all `.gc' (--conservative-gc) grades
+GC_LIBGRADES=""
+for grade in $BASE_LIBGRADES; do
+	GC_LIBGRADES="$GC_LIBGRADES $grade.gc"
+done
+
+if test "$enable_nogc_grades" = yes; then
+	LIBGRADES="$BASE_LIBGRADES $GC_LIBGRADES"
+else
+	LIBGRADES="$GC_LIBGRADES"
+fi
+
+if test "$enable_nogc_grades" = yes; then
+	# add `.prof' (--profiling) grades, if time profiling is supported,
+	# and a `.memprof' (--memory-profiling) grade.
+	if test $mercury_cv_profiling = yes; then
+		if test "$enable_prof_grades" = yes; then
+			DEFAULT_GRADE_NOGC="`echo $DEFAULT_GRADE | sed 's/\.gc$//'`"
+			LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof $DEFAULT_GRADE_NOGC.prof"
+		else
+			LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof"
+		fi
+		if test $GRADE != $DEFAULT_GRADE; then
+			if test "$enable_nogc_grades" = yes; then
+				GRADE_NOGC="`echo $GRADE | sed 's/\.gc$//'`"
+				LIBGRADES="$LIBGRADES $GRADE.prof $GRADE_NOGC.prof"
+			else
+				LIBGRADES="$LIBGRADES $GRADE.prof"
+			fi
+		fi
+	fi
+	LIBGRADES="$LIBGRADES $DEFAULT_GRADE.memprof"
+fi
+
+if test "$enable_trail_grades" = yes; then
+	# add `.tr' (--trailing) grades
+	LIBGRADES="$LIBGRADES $DEFAULT_GRADE.tr"
+	if test "$enable_inefficient_grades" = yes; then
+		if test "$enable_nogc_grades" = yes; then
+			DEFAULT_GRADE_NOGC="`echo $DEFAULT_GRADE | sed 's/\.gc$//'`"
+			LIBGRADES="$LIBGRADES $DEFAULT_GRADE_NOGC.tr"
+		else
+			LIBGRADES="$LIBGRADES"
+		fi
+		if test $mercury_cv_profiling = yes -a "$enable_prof_grades" = yes; then
+			LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof.tr"
+		fi
+	fi
+fi
+
+# add `.debug' (--debug) grades
+LIBGRADES="$LIBGRADES $DEFAULT_GRADE.tr.debug"
+
+# add `hlc' (--high-level-code, i.e. MLDS back-end) grades
+LIBGRADES="$LIBGRADES hlc.gc"
+
+if test $enable_hlc_prof_grades = "yes" -o $ac_microsoft = "yes"; then
+	# add `.prof' (--profiling) grades, if time profiling is supported,
+	# and a `.memprof' (--memory-profiling) grade.
+	if test $mercury_cv_profiling = yes -a "$enable_prof_grades" = yes; then
+		LIBGRADES="$LIBGRADES hlc.gc.prof"
+	fi
+	LIBGRADES="$LIBGRADES hlc.gc.memprof"
+fi
+
+if test "$enable_par_grades" = yes; then
+	# Add the .par grade
+	LIBGRADES="$LIBGRADES hlc.par.gc"
+fi
+
+if test "$enable_libgrades_given" = yes; then
+	if test "$enable_libgrades" = no; then
+		MERCURY_MSG("--enable-libgrades requires a comma-separated list of grades as argument")
+		MERCURY_MSG("aborting configure")
+		exit 1
+	elif test "$enable_libgrades" = yes; then
+		MERCURY_MSG("--enable-libgrades requires a comma-separated list of grades as argument")
+		MERCURY_MSG("aborting configure")
+		exit 1
+	else
+		# Generate only the grades specified by the user.
+		raw_grades=`echo $enable_libgrades | sed 's/,/ /g'`
+		canonical_grades=""
+		grade_error=false
+		for raw_grade in $raw_grades
+		do
+			if scripts/canonical_grade --grade $raw_grade > .confgrade
+			then
+				canonical_grades="$canonical_grades `cat .confgrade`"
+			else
+				MERCURY_MSG("--enable-libgrades: $raw_grade is not a grade")
+				grade_error=true
+			fi
+		done
+
+		rm -f .confgrade > /dev/null 2>&1
+
+		if $grade_error
+		then
+			comma=","
+			MERCURY_MSG("invalid grade(s) specified for --enable-libgrades$comma aborting configure")
+			exit 1
+		fi
+
+		LIBGRADES=$canonical_grades
+	fi
+fi
+
+# If we are using the Microsoft compiler then use hlc.gc as the default
+# grade.
+if test $ac_microsoft = yes; then
+	GRADE=hlc.gc
+	DEFAULT_GRADE=hlc.gc
+	MERCURY_MSG("\`GRADE=$GRADE' to compile the compiler")
+fi
+AC_SUBST(GRADE)
+
+# Output default grade
+MERCURY_MSG("using \`DEFAULT_GRADE=$DEFAULT_GRADE' as the default grade for applications")
+AC_SUBST(DEFAULT_GRADE)
+
+# remove GRADE from LIBGRADES
+LIBGRADES=` echo " $LIBGRADES " | sed "s/ $GRADE / /" `
+MERCURY_MSG("using \`LIBGRADES=$LIBGRADES' as the set of library grades to install")
+
+AC_SUBST(LIBGRADES)
+
+#-----------------------------------------------------------------------------#
+#
+# Add an option that disables declarative debugging support in the internal
+# debugger.  It is enabled by default.
+#
+AC_ARG_ENABLE(decl-debug,
+[  --disable-decl-debug    disable the declarative debugger],
+mercury_cv_enable_decl_debug="$enableval",mercury_cv_enable_decl_debug=yes)
+if test "$mercury_cv_enable_decl_debug" = "no"; then
+	AC_DEFINE(MR_DISABLE_DECLARATIVE_DEBUGGER)
+fi
+#-----------------------------------------------------------------------------#
+
+# Determine how many of the r registers (r1, r2, ...) are real registers.
+# Determine how many temporaries may be allocated real registers.
+# Find out whether branch instructions have a delay slot.
+
+case "$host" in
+	i?86-*)
+		# NUM_REAL_REGS=3
+		# but succip and sp are real regs, so subtract 2
+		NUM_REAL_R_REGS=1
+		NUM_REAL_R_TEMPS=0
+		HAVE_DELAY_SLOT=
+		;;
+	alpha*-*)
+		# NUM_REAL_REGS=7
+		# but succip, sp, and hp are real regs, so subtract 3
+		NUM_REAL_R_REGS=4
+		NUM_REAL_R_TEMPS=6
+		HAVE_DELAY_SLOT=
+		;;
+	mips-*)
+		# NUM_REAL_REGS=8
+		# but succip, sp, and hp are real regs, so subtract 3
+		NUM_REAL_R_REGS=5
+		NUM_REAL_R_TEMPS=6
+		HAVE_DELAY_SLOT=--have-delay-slot
+		;;
+	rs6000-*)
+		# NUM_REAL_REGS=10
+		# but succip, sp, hp, maxfr, and curfr are real regs,
+		# so subtract 5
+		NUM_REAL_R_REGS=5
+		NUM_REAL_R_TEMPS=6
+		HAVE_DELAY_SLOT=
+		;;
+	sparc-*)
+		# NUM_REAL_REGS=10
+		# but succip, sp, hp, maxfr, and curfr are real regs,
+		# so subtract 5
+		NUM_REAL_R_REGS=5
+		NUM_REAL_R_TEMPS=6
+		HAVE_DELAY_SLOT=--have-delay-slot
+		;;
+	hppa-*)
+		# NUM_REAL_REGS=8
+		# but succip, sp, and hp are real regs, so subtract 3
+		NUM_REAL_R_REGS=5
+		NUM_REAL_R_TEMPS=6
+		HAVE_DELAY_SLOT=
+		;;
+	*)
+		NUM_REAL_R_REGS=0
+		NUM_REAL_R_TEMPS=6
+		HAVE_DELAY_SLOT=
+		;;
+esac
+AC_SUBST(NUM_REAL_R_REGS)
+AC_SUBST(NUM_REAL_R_TEMPS)
+AC_SUBST(HAVE_DELAY_SLOT)
+
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(whether the assembler does not handle .type)
+AC_CACHE_VAL(mercury_cv_cannot_grok_asm_type_directive, [
+	case "$host" in
+		*-sunos4.*)
+			mercury_cv_cannot_grok_asm_type_directive=yes
+			;;
+		*)
+			mercury_cv_cannot_grok_asm_type_directive=no
+			;;
+	esac
+])
+AC_MSG_RESULT($mercury_cv_cannot_grok_asm_type_directive)
+if test $mercury_cv_cannot_grok_asm_type_directive = "yes"; then
+	AC_DEFINE(MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE)
+fi
+#-----------------------------------------------------------------------------#
+AC_PATH_PROG(AS,as)
+AC_MSG_CHECKING(whether the assembler does full preprocessing)
+
+AC_CACHE_VAL(mercury_cv_asm_does_full_preprocessing, [
+if test "$AS" != ""; then
+	# check that it really works
+	cat > conftest.s << EOF
+
+# define foo(x) \
+	/* foo */
+
+	foo(x)
+EOF
+	if 
+		echo $AS conftest.s >&AC_FD_CC 2>&1 &&
+		$AS conftest.s </dev/null >&AC_FD_CC 2>&1 
+	then
+		mercury_cv_asm_does_full_preprocessing="yes"
+	else
+		AS="gcc -c -x assembler-with-cpp"
+		mercury_cv_asm_does_full_preprocessing="no"
+	fi
+	rm -f conftest*
+else
+	mercury_cv_asm_does_full_preprocessing="no"
+fi
+])
+AC_MSG_RESULT($mercury_cv_asm_does_full_preprocessing)	
+if test $mercury_cv_asm_does_full_preprocessing = "no"; then
+	AS="gcc -c -x assembler-with-cpp"
+fi
+AC_SUBST(AS)
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(whether structure assignment conflicts with global registers)
+AC_CACHE_VAL(mercury_cv_cannot_use_structure_assignment,
+AC_TRY_RUN([
+changequote(<<,>>) 
+
+/* USE_GCC_GLOBAL_REGISTERS are essential to the purpose of the test. */
+/* We define USE_GCC_NONLOCAL_GOTOS because some platforms (e.g. SPARCs) */
+/* cannot have USE_GCC_GLOBAL_REGISTERS without it. */
+#define	USE_GCC_GLOBAL_REGISTERS
+#define USE_GCC_NONLOCAL_GOTOS
+#include "mercury_imp.h"
+#include "trace/mercury_trace_spy.h"
+
+MR_Spy_Point	spied_procs[2];
+
+int main() {
+	spied_procs[1] = spied_procs[0];
+	exit(0);
+changequote([,]) 
+}],
+[mercury_cv_cannot_use_structure_assignment=no],
+[mercury_cv_cannot_use_structure_assignment=yes],
+[mercury_cv_cannot_use_structure_assignment=yes]))
+AC_MSG_RESULT($mercury_cv_cannot_use_structure_assignment)
+if test $mercury_cv_cannot_use_structure_assignment = "yes"; then
+	AC_DEFINE(MR_CANNOT_USE_STRUCTURE_ASSIGNMENT)
+fi
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
+# We ought to use $target here rather than $host - but we don't
+# support cross-compilation at the moment anyhow.
+
+# set up some default values that should work on most systems
+# see Mmake.common.in for documentation on the meaning of these variables
+LINK_SHARED_OBJ="$CC -shared"
+LINK_SHARED_OBJ_SH="$CC -shared"
+SHARED_LIBS='`gcc -print-libgcc-file-name` $(MATH_LIB) -lc'
+SHARED_LIBS_SH='`gcc -print-libgcc-file-name` $MATH_LIB -lc'
+EXE_RPATH_OPT="-Wl,-rpath,"
+EXE_RPATH_SEP=" -Wl,-rpath,"
+SHLIB_RPATH_OPT="-Wl,-rpath,"
+SHLIB_RPATH_SEP=" -Wl,-rpath,"
+CFLAGS_FOR_PIC="-fpic -DPIC"
+EXT_FOR_PIC_OBJECTS=pic_o
+EXT_FOR_SHARED_LIB=$LIB_SUFFIX
+USE_DLLS=no
+# The following variables specify options to $LINK_SHARED_OBJ to
+# allow/disallow unresolved symbols when building shared libraries.
+ALLOW_UNDEFINED=""
+ERROR_UNDEFINED=""
+
+case "$host" in
+	i?86-*-linux|i?86-*-linux-gnu)
+		case $ac_cv_prog_gcc in
+		yes)
+			AC_MSG_RESULT(yes)
+			EXT_FOR_SHARED_LIB=so
+			AC_MSG_CHECKING(if linker supports --no-undefined)
+			rm -f conftest*
+			echo "int main(void) { return 0; }" > conftest.c
+			$CC -Wl,--no-undefined -o conftest conftest.c
+			if test -f conftest; then
+				AC_MSG_RESULT(yes)
+				ERROR_UNDEFINED="-Wl,--no-undefined"
+
+				AC_MSG_CHECKING(for ld-linux.so)
+				rm -f conftest*
+				echo "int main(void) { return 0; }" > conftest.c
+				$CC -o conftest conftest.c
+				ld_linux=`ldd ./conftest | \
+					awk '/ld-linux/{print $1;}'`
+				case $ld_linux in /lib/ld-linux.so*)
+					AC_MSG_RESULT($ld_linux)
+					SHARED_LIBS="$SHARED_LIBS $ld_linux"
+					SHARED_LIBS_SH="$SHARED_LIBS_SH $ld_linux"
+					;;
+				*)
+					AC_MSG_RESULT(no)
+					;;
+				esac
+			else
+				AC_MSG_RESULT(no)
+			fi
+			rm -f conftest*
+			;;
+		*)
+			AC_MSG_RESULT(no)
+			;;
+		esac
+		;;
+	m68*-linux|m68*-linux-gnu)
+		AC_MSG_RESULT(yes)
+		EXT_FOR_SHARED_LIB=so
+		;;
+	i?86-*-freebsd*)
+		# From Cornelis van der Laan <nils@ims.uni-stuttgart.de>
+		AC_MSG_RESULT(yes)
+		LINK_SHARED_OBJ="ld -Bshareable"
+		LINK_SHARED_OBJ_SH="ld -Bshareable"
+		EXT_FOR_SHARED_LIB=so
+		# From Kevet Duncombe <dunc@acm.org> tested on FreeBSD 2.2.5
+		EXE_RPATH_OPT="-R"
+		EXE_RPATH_SEP=" -R"
+		SHLIB_RPATH_OPT="-R"
+		SHLIB_RPATH_SEP=" -R"
+		;;
+	sparc-sun-solaris2.*)
+		AC_MSG_RESULT(yes)
+		SHARED_LIBS="$(MATH_LIB) -lc"	# don't link in libgcc.a
+		SHARED_LIBS_SH="$MATH_LIB -lc"	# don't link in libgcc.a
+		LINK_SHARED_OBJ="$CC -shared -mimpure-text"
+		LINK_SHARED_OBJ_SH="$CC -shared -mimpure-text"
+		ERROR_UNDEFINED="-Wl,-z,defs"
+		EXE_RPATH_OPT="-R"
+		EXE_RPATH_SEP=" -R"
+		SHLIB_RPATH_OPT="-R"
+		SHLIB_RPATH_SEP=" -R"
+		CFLAGS_FOR_PIC="-fpic -DPIC"	# used only for libgc.{a,so}
+		EXT_FOR_PIC_OBJECTS=o
+		#
+		# Note that despite the above definition of CFLAGS_FOR_PIC,
+		# we don't use `-fpic' for shared libraries on Solaris
+		# (the definition of EXT_FOR_PIC_OBJECTS=o means that
+		# CFLAGS_FOR_PIC will be used only for building libgc.a
+		# and libgc.so.)
+		#
+		# The reason for this is that shared libraries work without
+		# it (well, at least they are shared on disk -- although the
+		# code is not shared at runtime), and using `-fpic' would
+		# reduce efficiency.
+		#
+		# It works because the Solaris dynamic linker will
+		# actually do the fixups at runtime for non-PIC code.
+		# (The code is mapped copy-on-write, and when the linker
+		# does the fixups, it gets copied.  Hence the lack of
+		# runtime sharing.)  We need to link with `gcc -G'
+		# rather than `gcc -shared', because `gcc -shared'
+		# passes `-z text' to the linker, which causes it to
+		# report an error if any runtime fixups would be needed.
+		#
+		# If you *do* use `-fpic', you must also use `-DPIC'.
+		#
+		# See runtime/mercury_goto.h for the code that handles PIC
+		# on SPARCs.
+		# Note that mixing PIC and non-PIC code is fine on SPARCs
+		# (though it doesn't work on x86s, due to the use of `ebx'
+		# in runtime/machdeps/i386_regs.h).
+
+		EXT_FOR_SHARED_LIB=so
+		;;
+	alpha*-dec-osf*)
+		AC_MSG_RESULT(yes)
+		LINK_SHARED_OBJ="gcc -shared \
+		-Wl,-O3,-update_registry,\$(SO_LOCATIONS_DIR)so_locations"
+		LINK_SHARED_OBJ_SH="gcc -shared \
+		-Wl,-O3,-update_registry,\${SO_LOCATIONS_DIR}so_locations"
+		ERROR_UNDEFINED="-Wl,-error_unresolved"
+		EXE_RPATH_OPT="-Wl,-rpath,"
+		EXE_RPATH_SEP=":"
+		SHLIB_RPATH_OPT="-Wl,-rpath,"
+		SHLIB_RPATH_SEP=":"
+		EXT_FOR_SHARED_LIB=so
+		# -fpic not needed on Alpha/OSF, since it is the default
+		CFLAGS_FOR_PIC=
+		EXT_FOR_PIC_OBJECTS=o
+		;;
+	mips-sgi-irix5.*)
+		LINK_SHARED_OBJ="ld -shared \
+			-update_registry \$(SO_LOCATIONS_DIR)so_locations \
+			-quickstart_info -rdata_shared"
+		LINK_SHARED_OBJ_SH="ld -shared \
+			-update_registry \${SO_LOCATIONS_DIR}so_locations \
+			-quickstart_info -rdata_shared"
+		ERROR_UNDEFINED="-no_unresolved"
+		EXE_RPATH_OPT="-Wl,-rpath,"
+		EXE_RPATH_SEP=":"
+		SHLIB_RPATH_OPT="-rpath "
+		SHLIB_RPATH_SEP=":"
+		# -fpic not needed on IRIX, since it is the default
+		CFLAGS_FOR_PIC=
+		EXT_FOR_PIC_OBJECTS=o
+		# shared libraries only work for reg.gc or none.gc
+		if test "$GRADE" = reg.gc || test "$GRADE" = none.gc; then
+			AC_MSG_RESULT(yes)
+			EXT_FOR_SHARED_LIB=so
+		else
+			EXT_FOR_SHARED_LIB=a
+			AC_MSG_RESULT(no)
+			AC_MSG_RESULT(Read README.IRIX-5)
+		fi
+		;;
+	*-cygwin*)
+		# disabled for now, since it hasn't been tested
+		# xxx_MSG_RESULT(yes)
+		# EXT_FOR_SHARED_LIB=dll
+		# USE_DLLS=yes
+		AC_MSG_RESULT(disabled for now because it is untested)
+
+		CFLAGS_FOR_PIC=
+		;;
+	*)
+		# CFLAGS_FOR_PIC is used by boehm_gc/Makefile when creating
+		# libgc.a.  If the system doesn't support shared libraries,
+		# then we should set it to empty, not `-fpic'.
+		CFLAGS_FOR_PIC=
+		AC_MSG_RESULT(no)
+		;;
+esac
+
+#
+# This sets the default value of RM_C, which should be either `rm' to
+# remove the intermediate C files, or `:' to keep them.
+#
+# If RM_C is set to `rm', then unfortunately Mmake needs to invoke
+# make recursively, and this causes several problems:
+#	(1) it causes performance problems, particularly on MS-Windows
+#	(2) it can break parallel makes, because there are race
+#           conditions involved when you invoke make recursively
+#	    in a parallel make
+#
+# Therefore by default we currently keep the intermediate C files.
+#
+DEFAULT_RM_C=:
+
+case $EXT_FOR_PIC_OBJECTS in
+	o)
+		LIBRARY_RM_C=$DEFAULT_RM_C
+		;;
+	*)
+		# If we're going to be building both `.pic_o' files
+		# and `.o' files, then we should not remove the generated `.c'
+		# files in the library directory after building the `.o' files.
+		LIBRARY_RM_C=:
+		;;
+esac
+
+#-----------------------------------------------------------------------------#
+
+case "$host" in
+	*-cygwin*)
+		EXT_FOR_EXE=".exe"
+		;;
+	*)
+		EXT_FOR_EXE=
+		;;
+esac
+
+#-----------------------------------------------------------------------------#
+
+AC_SUBST(LINK_SHARED_OBJ)
+AC_SUBST(LINK_SHARED_OBJ_SH)
+AC_SUBST(ERROR_UNDEFINED)
+AC_SUBST(ALLOW_UNDEFINED)
+AC_SUBST(EXE_RPATH_OPT)
+AC_SUBST(EXE_RPATH_SEP)
+AC_SUBST(SHLIB_RPATH_OPT)
+AC_SUBST(SHLIB_RPATH_SEP)
+AC_SUBST(CFLAGS_FOR_PIC)
+AC_SUBST(EXT_FOR_PIC_OBJECTS)
+AC_SUBST(EXT_FOR_SHARED_LIB)
+AC_SUBST(EXT_FOR_EXE)
+AC_SUBST(USE_DLLS)
+AC_SUBST(SHARED_LIBS)
+AC_SUBST(SHARED_LIBS_SH)
+AC_SUBST(DEFAULT_RM_C)
+AC_SUBST(LIBRARY_RM_C)
+if test $USE_DLLS = "yes"; then
+	AC_DEFINE(USE_DLLS)
+fi
+#-----------------------------------------------------------------------------#
+if test "$BOOTSTRAP_MC" = ""; then
+	BOOTSTRAP_MC=mmc
+fi
+BOOTSTRAP_MC="$BOOTSTRAP_MC $HAVE_BOXED_FLOATS --conf-low-tag-bits $LOW_TAG_BITS --bits-per-word $BITS_PER_WORD --bytes-per-word $BYTES_PER_WORD"
+AC_SUBST(BOOTSTRAP_MC)
+#-----------------------------------------------------------------------------#
+
+# The following allows us to share some subroutines between the
+# `ml' and `mgnuc' scripts.
+
+top=`pwd`
+INIT_GRADE_OPTIONS=$top/scripts/init_grade_options.sh-subr
+PARSE_GRADE_OPTIONS=$top/scripts/parse_grade_options.sh-subr
+FINAL_GRADE_OPTIONS=$top/scripts/final_grade_options.sh-subr
+CANONICAL_GRADE=$top/scripts/canonical_grade.sh-subr
+AC_SUBST_FILE(INIT_GRADE_OPTIONS)
+AC_SUBST_FILE(PARSE_GRADE_OPTIONS)
+AC_SUBST_FILE(FINAL_GRADE_OPTIONS)
+AC_SUBST_FILE(CANONICAL_GRADE)
+
+#-----------------------------------------------------------------------------#
+#
+# Check for the POSIX struct tms and times() function.
+# This is used for the time__times procedure in library/times.m.
+#
+AC_MSG_CHECKING(for struct tms and times function)
+AC_CACHE_VAL(mercury_cv_have_posix_times,
+AC_TRY_LINK([
+	#include <sys/types.h>
+	#include <sys/times.h>
+],[
+	struct tms t;
+	long Ut, St, CUt, CSt;
+	long Ret;
+
+	Ret = (long) times(&t);
+
+	Ut = (long) t.tms_utime;
+	St = (long) t.tms_stime;
+	CUt = (long) t.tms_cutime;
+	CSt = (long) t.tms_cstime;
+],[mercury_cv_have_posix_times=yes],[mercury_cv_have_posix_times=no]))
+
+#
+# figure out whether the test succeeded
+#
+if test "$mercury_cv_have_posix_times" = yes; then
+	AC_MSG_RESULT(yes)
+	AC_DEFINE(MR_HAVE_POSIX_TIMES)
+else
+	AC_MSG_RESULT(no)
+fi
+
+#-----------------------------------------------------------------------------#
+#
+# Check whether sockets work (we need them for the external debugger)
+#
+
+#
+# check whether we need -lsocket
+#
+AC_CHECK_LIB(socket, socket, SOCKET_LIBRARY=-lsocket, SOCKET_LIBRARY="")
+
+#
+# check whether we need -lnsl
+#
+AC_CHECK_LIB(nsl, inet_addr, NSL_LIBRARY=-lnsl, NSL_LIBRARY="")
+
+#
+# temporarily add -lsocket to LIBS, for use by TRY_LINK
+#
+save_LIBS="$LIBS"
+LIBS="$LIBS $SOCKET_LIBRARY $NSL_LIBRARY"
+
+#
+# use TRY_LINK to see whether we can use sockets
+#
+AC_MSG_CHECKING(whether we can use sockets (for Morphine))
+AC_CACHE_VAL(mercury_cv_sockets_work,
+AC_TRY_LINK([
+	changequote(<<,>>) 
+	/*
+	** The following code was copied from
+	** runtime/mercury_trace_external.c
+	*/
+
+	#include <stdio.h>
+	#include <string.h>
+	#include <errno.h>
+	#include <stdarg.h>
+	#include <stdlib.h>
+	#include <sys/types.h>
+	#include <unistd.h>
+	#include <sys/socket.h>
+	#include <sys/un.h>
+	#include <arpa/inet.h>
+	#include <netinet/in.h>
+	#include <netdb.h>
+
+	static int MR_debug_socket = 1;
+
+	void
+	fatal_error(const char *s)
+	{
+		fprintf(stderr, "", s);
+		exit(1);
+	}
+],[
+	/* this is the body of the test function */
+	{
+		int fd;
+		int len;
+		FILE *file_in;
+		FILE *file_out;
+		int addr_family;
+		char *unix_socket;
+		char *inet_socket;
+		struct sockaddr_un unix_address;
+		struct sockaddr_in inet_address;
+		struct sockaddr* addr;
+
+		/*
+		** We presume that the user's program has been invoked from
+		** within the debugger (e.g. Opium).
+		** The debugger (or the user) should set the
+		** MERCURY_DEBUGGER_UNIX_SOCKET or MERCURY_DEBUGGER_INET_SOCKET
+		** environment variable to tell the user's program which socket
+		** it needs to connect to.
+		*/
+		unix_socket = getenv("MERCURY_DEBUGGER_UNIX_SOCKET");
+		inet_socket = getenv("MERCURY_DEBUGGER_INET_SOCKET");
+		if (unix_socket == NULL && inet_socket == NULL) {
+			fatal_error("you must set either the "
+				"MERCURY_DEBUGGER_UNIX_SOCKET\n"
+				"or MERCURY_DEBUGGER_INET_SOCKET "
+				"environment variable");
+		}
+		if (unix_socket != NULL && inet_socket != NULL) {
+			fatal_error("you must set only one of the "
+				"MERCURY_DEBUGGER_UNIX_SOCKET "
+				"and MERCURY_DEBUGGER_INET_SOCKET\n"
+				"environment variables");
+		}
+		if (unix_socket) {
+		
+			addr_family = AF_UNIX;
+			(memset)(&unix_address, 0, sizeof(unix_address));
+			unix_address.sun_family = AF_UNIX;
+			strcpy(unix_address.sun_path, unix_socket);
+			addr = (struct sockaddr *) &unix_address;
+			len = strlen(unix_address.sun_path) + 
+				sizeof(unix_address.sun_family);
+		} else {
+			char hostname[255];
+			char port_string[255];
+			unsigned short port;
+			int host_addr;
+
+			/*
+			** Parse the MERCURY_DEBUGGER_INET_SOCKET environment variable.
+			** It should be in the format "<hostname> <port>",
+			** where <hostname> is numeric (e.g. "123.456.78.90").
+			*/
+
+			if (sscanf(inet_socket, "%254s %254s", hostname, port_string) 
+				!= 2)
+			{
+				fatal_error("MERCURY_DEBUGGER_INET_SOCKET invalid");
+			}
+			host_addr = inet_addr(hostname);
+			if (host_addr == -1) {
+				fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
+					"invalid address");
+			}
+			if (sscanf(port_string, "%hu", &port) != 1) {
+				fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
+					"invalid port");
+			}
+
+			fprintf(stderr, "Mercury runtime: host = %s, port = %d\n",
+					hostname, port);
+		
+			inet_address.sin_family = AF_INET;
+			inet_address.sin_addr.s_addr = host_addr;
+			inet_address.sin_port = htons(port);
+			addr_family = AF_INET;
+			addr = (struct sockaddr *) &inet_address;
+			len = sizeof(inet_address);
+		}
+
+		/*
+		** Open the socket.
+		*/
+
+		fd = socket(addr_family, SOCK_STREAM, 0);
+		if (fd < 0) {
+			fprintf(stderr, "Mercury runtime: socket() failed: %s\n",
+				strerror(errno));
+			fatal_error("cannot open socket for debugger");
+		} else if (MR_debug_socket) {
+			fprintf(stderr,"Mercury runtime: creation of socket ok\n");
+		}
+
+		/*
+		** Connect to the socket
+		*/
+		if (connect(fd, addr, len) < 0) {
+			fprintf(stderr, "Mercury runtime: connect() failed: %s\n",
+				strerror(errno));
+			fatal_error("can't connect to debugger socket");
+		} else if (MR_debug_socket) {
+			fprintf(stderr, "Mercury runtime: connection to socket: ok\n");
+		}
+
+		/*
+		** Convert the socket fd to a Mercury stream
+		*/
+		file_in = fdopen(fd, "r");
+		file_out = fdopen(fd, "w");
+		if ((file_in == NULL)||(file_out == NULL)) {
+			fprintf(stderr, "Mercury runtime: fdopen() failed: %s\n",
+				strerror(errno));
+			fatal_error("cannot open debugger socket");
+		} else if (MR_debug_socket) {
+			fprintf(stderr, "Mercury runtime: fdopen(): ok\n");
+		}
+	}
+	changequote([,]) 
+],[mercury_cv_sockets_work=yes],[mercury_cv_sockets_work=no]))
+
+#
+# figure out whether the test succeeded
+#
+if test "$mercury_cv_sockets_work" = yes; then
+	AC_MSG_RESULT(yes)
+else
+	AC_MSG_RESULT(no)
+fi
+
+#
+# restore the previous value of LIBS
+#
+LIBS="$save_LIBS"
+
+#-----------------------------------------------------------------------------#
+#
+# Add an option that enables the external debugger support.
+# By default, external debugger support is enabled if and only if
+# sockets work.  But it is also possible to explicitly disable this
+# by passing the `--disable-extern-debug' option.  This is needed on
+# some platforms because the test for sockets working sometimes gets
+# some false positives (e.g. if they work with dynamic linking but
+# not static linking, then the test will pass, but it will cause
+# problems later on when we try to link things statically).
+#
+AC_ARG_ENABLE(extern-debug,
+[  --disable-extern-debug  disable the external (separate process) debugger],
+mercury_cv_enable_extern_debug="$enableval",
+mercury_cv_enable_extern_debug="$mercury_cv_sockets_work")
+
+AC_MSG_CHECKING(whether to enable the external debugger)
+if test "$mercury_cv_enable_extern_debug" = "yes"; then
+	if test "$mercury_cv_sockets_work" = yes; then
+		AC_MSG_RESULT(yes)
+		AC_DEFINE(MR_USE_EXTERNAL_DEBUGGER)
+	else
+		AC_MSG_RESULT(no)
+		AC_MSG_ERROR(Cannot enable external debugger)
+		AC_MSG_ERROR(because sockets do not work)
+	fi		
+else
+	AC_MSG_RESULT(no)
+
+	# don't link with the socket library if we're not going to use it
+	SOCKET_LIBRARY=
+	NSL_LIBRARY=
+fi
+
+AC_SUBST(SOCKET_LIBRARY)
+AC_SUBST(NSL_LIBRARY)
+#-----------------------------------------------------------------------------#
+#
+# Check for dynamic linking, unless the --disable-dynamic-link option
+# was specified.
+#
+AC_ARG_ENABLE(dynamic-link,
+[  --disable-dynamic-link  disable the use of dynamic linking],
+mercury_cv_enable_dynamic_link="$enableval",mercury_cv_enable_dynamic_link=yes)
+if test "$mercury_cv_enable_dynamic_link" = "yes"; then
+	AC_CHECK_HEADER(dlfcn.h, HAVE_DLFCN_H=1)
+	if test "$HAVE_DLFCN_H" = 1; then
+		AC_DEFINE(HAVE_DLFCN_H)
+	fi
+	AC_CHECK_LIB(dl, dlopen, DL_LIBRARY="-ldl", DL_LIBRARY="")
+	AC_SUBST(DL_LIBRARY)
+
+	# temporarily add $DL_LIBRARY to LIBS while we check for dlopen etc.
+	save_LIBS="$LIBS"
+	LIBS="$LIBS $DL_LIBRARY"
+
+	AC_HAVE_FUNCS(dlopen dlclose dlsym dlerror)
+
+	# restore old value of LIBS
+	LIBS="$save_LIBS"
+fi
+#-----------------------------------------------------------------------------#
+
+AC_MSG_CHECKING(whether to enable the new MercuryFile struct)
+AC_ARG_ENABLE(new-mercuryfile-struct,
+[  --enable-new-mercuryfile-struct
+                          enable new MercuryFile struct.],
+ac_new_mercuryfile_struct=yes,ac_new_mercuryfile_struct=no)
+
+if test "$ac_new_mercuryfile_struct" = "yes"; then
+	AC_MSG_RESULT(yes)
+	AC_DEFINE(MR_NEW_MERCURYFILE_STRUCT)
+else
+	AC_MSG_RESULT(no)
+fi
+
+#-----------------------------------------------------------------------------#
+MERCURY_CHECK_READLINE
+#-----------------------------------------------------------------------------#
+to_keep=""
+to_delete=""
+if test "$BOOTSTRAP_MC" != "" ; then
+    MERCURY_MSG("checking whether any C files need to be rebuilt...")
+    for c_file in library/*.c compiler/*.c browser/*.c profiler/*.c \
+    		library/Mercury/cs/*.c compiler/Mercury/cs/*.c \
+		browser/Mercury/cs/*.c profiler/Mercury/cs/*.c 
+    do
+        case $c_file in
+        */'*.c')
+            ;;
+        */*_init.c)
+            to_keep="$to_keep $c_file"
+            ;;
+        *)
+            sed -e '/END_OF_C_GRADE_INFO/q' < $c_file > confscratch
+            if grep "TAG_BITS=$mercury_cv_low_tag_bits" \
+	    	confscratch > /dev/null 2>&1
+            then
+                if grep "UNBOXED_FLOAT=$mercury_cv_unboxed_floats" \
+			confscratch > /dev/null 2>&1
+                then
+                    to_keep="$to_keep $c_file"
+                else
+                    to_delete="$to_delete $c_file"
+                fi
+            else
+                to_delete="$to_delete $c_file"
+            fi
+            ;;
+        esac
+    done
+    if test "$to_delete" = "" ; then
+        if test "$to_keep" != "" ; then
+            MERCURY_MSG("no - they are compatible with autoconfigured settings")
+        else
+            MERCURY_MSG("there are no existing Mercury-generated C files")
+        fi
+    else
+        if test "$to_keep" != "" ; then
+            MERCURY_MSG("the following C files must be rebuilt in a grade")
+            MERCURY_MSG("that is consistent with autoconfigured settings")
+            MERCURY_MSG("$to_delete")
+        else
+            MERCURY_MSG("all Mercury generated C files must be rebuilt")
+            MERCURY_MSG("in a grade that is consistent with the")
+            MERCURY_MSG("autoconfigured settings")
+        fi
+        MERCURY_MSG("installation may take longer than usual")
+    fi
+    rm -f confscratch $to_delete
+fi
+#-----------------------------------------------------------------------------#
+AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mmc scripts/mprof
+scripts/mercury_update_interface scripts/mgnuc scripts/ml
+scripts/mmake scripts/c2init scripts/mdb scripts/mdbrc 
+scripts/sicstus_conv scripts/mkfifo_using_mknod bindist/bindist.build_vars
+,
+for header in $CONFIG_HEADERS ; do
+	if test "$header" = "runtime/mercury_conf.h"; then
+		touch runtime/mercury_conf.h.date
+	fi
+done
+# conftest.junk is used to avoid a warning if there
+# are no files in the list passed to chmod
+touch conftest.junk
+chmod +x `echo $CONFIG_FILES | sed -e 's/[^ ]*Mmake.common//' ` conftest.junk
+rm -f conftest.junk
+
+# The --prefix is hard-coded in the scripts, which are regenerated every
+# time you run configure, and also (unfortunately) in the .so files.
+# The following rm command is here to ensure that things will work correctly
+# if you rerun configure with a new --prefix and then don't do a `make clean'
+# before running `make'.
+rm -f runtime/libmer.so library/libmercury.so bytecode/libmbi.so
+)
+
+#-----------------------------------------------------------------------------#

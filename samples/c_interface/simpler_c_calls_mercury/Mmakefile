@@ -1,0 +1,44 @@
+#-----------------------------------------------------------------------------#
+# This source file is hereby placed in the public domain.  -fjh (the author).
+#-----------------------------------------------------------------------------#
+
+MAIN_TARGET=all
+
+depend: mercury_lib.depend
+all: c_main
+
+OBJECTS = c_main.o mercury_lib_init.o
+LIBS = libmercury_lib
+LIBSLINK = libmercury_lib.a
+
+c_main: $(OBJECTS) $(LIBS)
+	$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -o c_main $(OBJECTS) $(LIBSLINK)
+
+#-----------------------------------------------------------------------------#
+
+# pass `-g' to the C compiler and linker, so we can use a debugger (e.g. gdb)
+MGNUCFLAGS=-g
+
+# tell Mercury that this the Mercury stuff we're building is a library,
+# not a main program
+C2INITFLAGS=--library
+
+# keep the `.c' files around, for debugging
+RM_C=:
+
+#-----------------------------------------------------------------------------#
+
+c_main.o: mercury_lib.h c_main.c
+
+# to make mercury_lib.h, just compile mercury_lib.m;
+# the Mercury compiler will create mercury_lib.h as a side-effect.
+mercury_lib.h: mercury_lib.o
+
+# make sure that `mmake clean' removes c_main.o
+clean_local:
+	rm -f c_main.o mercury_lib.h
+
+realclean_local:
+	rm -f c_main
+
+#-----------------------------------------------------------------------------#

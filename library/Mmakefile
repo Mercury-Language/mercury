@@ -1,0 +1,408 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1997-2001 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# library/Mmake - this is the main part of the Makefile
+# for building the Mercury libraries.
+
+MERCURY_DIR=..
+include $(MERCURY_DIR)/Mmake.common
+
+MAIN_TARGET=mercury
+
+VPATH=.
+
+#-----------------------------------------------------------------------------#
+#
+# XXX The following is needed only for bootstrapping
+# the new modes of int__xor.
+#
+
+MCFLAGS-int = --no-halt-at-warn
+
+# Modules which use user-guided type specialization need to be
+# compiled with these flags to make sure all calls
+# to the builtin comparison routines are inlined.
+TYPE_SPEC_FLAGS = --inline-vars-threshold 10000
+MCFLAGS-list = $(TYPE_SPEC_FLAGS)
+MCFLAGS-map = $(TYPE_SPEC_FLAGS)
+MCFLAGS-tree234 = $(TYPE_SPEC_FLAGS)
+MCFLAGS-set = $(TYPE_SPEC_FLAGS)
+MCFLAGS-set_ordlist = $(TYPE_SPEC_FLAGS)
+
+#-----------------------------------------------------------------------------#
+
+# If we're going to generate both `.$O' files and `.pic_o' files, then
+# don't remove the intermediate `.c' files.
+RM_C	=	$(LIBRARY_RM_C)
+
+#-----------------------------------------------------------------------------#
+
+# Specify which options to use to compile the library.
+# Don't change these without good reason - if you want to
+# do a temporary change, change ../Mmake.params.
+
+ifeq ($(LIBRARY_INTERMODULE),yes)
+
+INTERMODULE_OPTS = --transitive-intermodule-optimization
+ENABLE_TERM_OPTS = --enable-termination
+CHECK_TERM_OPTS =
+# If you want to actually check termination for the library, then you need
+#	CHECK_TERM_OPTS = --check-termination
+# but that is not enabled by default because it probably just results in
+# spurious warnings.
+
+else
+
+INTERMODULE_OPTS =
+ENABLE_TERM_OPTS =
+CHECK_TERM_OPTS =
+
+endif
+
+M_ENV	=	MERCURY_INT_DIR=. \
+		MERCURY_ALL_C_INCL_DIRS="\
+			-I$(TRACE_DIR) \
+			-I$(RUNTIME_DIR) \
+			-I$(BOEHM_GC_DIR) \
+			-I$(BOEHM_GC_DIR)/include \
+		"
+MCD	=	$(M_ENV) $(MC) --generate-dependencies $(INTERMODULE_OPTS)
+MCI	=	$(M_ENV) $(MC) --make-interface $(INTERMODULE_OPTS) \
+			$(ENABLE_TERM_OPTS)
+MCPI	=	$(M_ENV) $(MC) --make-private-interface $(INTERMODULE_OPTS) \
+			$(ENABLE_TERM_OPTS)
+MCSI	=	$(M_ENV) $(MC) --make-short-interface $(INTERMODULE_OPTS) \
+			$(ENABLE_TERM_OPTS)
+MCOI	=	$(M_ENV) $(MC) --make-opt-int $(INTERMODULE_OPTS) \
+			$(ENABLE_TERM_OPTS)
+MCTOI	=	$(M_ENV) $(MC) --make-trans-opt $(INTERMODULE_OPTS) \
+			$(ENABLE_TERM_OPTS)
+MCG	=	$(M_ENV) $(MC) --compile-to-c --trace minimum \
+			$(INTERMODULE_OPTS) $(CHECK_TERM_OPTS)
+MCS	=	$(M_ENV) $(MC) --split-c-files -c --cflags "$(ALL_CFLAGS)" \
+			$(INTERMODULE_OPTS) $(CHECK_TERM_OPTS)
+MGNUC	=	$(M_ENV) $(SCRIPTS_DIR)/mgnuc
+MGNUCFLAGS =	$(DLL_CFLAGS)
+MS_CLFLAGS  =	-I$(RUNTIME_DIR) 
+MS_CL_NOASM=:noAssembly
+LDFLAGS	=	-L$(BOEHM_GC_DIR) -L$(RUNTIME_DIR)
+ALL_LDFLAGS =	$(LDFLAGS) $(EXTRA_LDFLAGS)
+LDLIBS	=	-l$(RT_LIB_NAME) \
+		` case "$(GRADE)" in 					\
+		    *.par*.gc*.prof*)	echo "-lpar_gc_prof" ;;		\
+		    *.par*.gc*)		echo "-lpar_gc" ;;		\
+		    *.gc*.prof*)	echo "-lgc_prof" ;;		\
+		    *.gc*)		echo "-lgc" ;;			\
+		  esac							\
+		`
+ALL_LDLIBS =	$(LDLIBS) $(EXTRA_LDLIBS)
+
+MTAGS	=	$(SCRIPTS_DIR)/mtags
+
+#-----------------------------------------------------------------------------#
+
+# We need to override library.hs manually here, since the default
+# definition of library.hs does not include the `mercury.' prefix.
+# (We could modify compiler/modules.m to generate it correctly,
+# but it's easier to just manually override it here.)
+# This definition is only correct for MLDS grades, but fortunately
+# it is also only used for MLDS grades.
+
+library.hs = $(library.mods:%=mercury.%.h)
+
+#-----------------------------------------------------------------------------#
+
+# Stuff for Windows DLLS using gnu-win32
+
+ifeq ($(USE_DLLS),yes)
+
+DLL_CFLAGS = -Dlib$(STD_LIB_NAME)_DEFINE_DLL
+
+include $(MERCURY_DIR)/Makefile.DLLs
+
+else
+
+DLL_CFLAGS =
+DLL_DEF_LIB =
+
+endif
+
+# io.m uses library features that are supported by POSIX but which are not
+# part of ANSI C, such as `struct stat', fileno(), and putenv().
+# We need to pass --no-ansi to mgnuc to ensure that these are declared.
+MGNUCFLAGS-io =	--no-ansi
+
+#-----------------------------------------------------------------------------#
+
+# targets
+
+.PHONY: all
+all : mercury
+
+.PHONY: mercury
+mercury : all-ints lib_std
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: depend
+depend		: library.depend
+
+.PHONY: check
+check		: library.check
+
+.PHONY: all-ints 
+
+ifeq ($(LIBRARY_INTERMODULE),yes)
+
+all-ints: ints int3s opts trans_opts
+
+else
+
+all-ints: ints int3s
+
+endif
+
+.PHONY: ints 
+ints		: library.ints
+
+.PHONY: int3s 
+int3s		: library.int3s
+
+.PHONY: opts 
+opts		: library.opts
+
+.PHONY: trans_opts 
+trans_opts		: library.trans_opts
+library.trans_opts	: $(library.trans_opts)
+
+#-----------------------------------------------------------------------------#
+
+tags		: $(MTAGS) $(library.ms)
+	$(MTAGS) $(library.ms)
+
+library.stats : $(COMPILER_DIR)/source_stats.awk $(library.ms)
+	awk -f $(COMPILER_DIR)/source_stats.awk `vpath_find $(library.ms)` > $@
+	
+#-----------------------------------------------------------------------------#
+
+.PHONY: dates
+dates		:
+	touch $(library.dates)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: os cs ss ils library.dlls dlls
+os: $(library.os)
+cs: $(library.cs)
+ss: $(library.ss)
+ils: $(library.ils)
+library.dlls = $(library.mods:%=%.dll)
+dlls: $(library.dlls)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: lib_std
+
+# The ilc and il grades target Microsoft's .NET frameworks.  
+ifneq (,$(findstring il,$(GRADE)))
+
+lib_std: dlls mercury.dll
+
+# Instead of generating UNIX style libraries, we general a bunch of
+# DLLs.  We have to hardcode the names of the C code files and the
+# runtime files.
+RUNTIME_DLLS=../runtime/mercury_mcpp.dll ../runtime/mercury_il.dll
+
+MODULES_CONTAINING_C_CODE=	\
+		array 		\
+		benchmarking	\
+		builtin		\
+		char		\
+		exception	\
+		float		\
+		gc		\
+		int		\
+		io		\
+		library		\
+		math		\
+		private_builtin	\
+		sparse_bitset	\
+		std_util	\
+		store		\
+		string		\
+		table_builtin	\
+		time
+
+CPP_DLLS=$(MODULES_CONTAINING_C_CODE:%=%__c_code.dll)
+
+ALL_DLLS=$(library.dlls) $(CPP_DLLS) $(RUNTIME_DLLS) 
+
+ALL_DLLS_BASE  = $(ALL_DLLS:%.dll=%)
+EMBED_ALL_DLLS = $(foreach dll_name,$(ALL_DLLS_BASE),$(EMBED_ONE_DLL))
+EMBED_ONE_DLL  = /embed:$(dll_name).dll,$(dll_name),Y
+
+# al is the assembly linker, it will create an assembly that references
+# all the modules (.dll files) in the library and runtime.
+mercury.dll: $(ALL_DLLS)
+	$(MS_AL) -out:mercury.dll $(ALL_DLLS)
+
+# This al command line will create a signed assembly that can be
+# installed into the assembly cache, but then you need to create a key
+# and actually start using the cache.  I haven't quite figured out how
+# this all works just yet.
+# al -v:1.0.0.0 -keyf:mercury.key -out:mercury.dll $(ALLDLLS)
+
+else
+
+# the following dependency is just there to improve compilation speed;
+# making tree234.$O first improves effective parallelism with parallel makes.
+lib_std: $(os_subdir)tree234.$O
+lib_std: lib$(STD_LIB_NAME).$A lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB)
+lib_std: $(STD_LIB_NAME).init
+
+lib$(STD_LIB_NAME)$(DLL_DEF_LIB).$A : $(library.os)
+	rm -f lib$(STD_LIB_NAME)$(DLL_DEF_LIB).$A
+	$(AR) $(ALL_ARFLAGS) \
+		$(AR_LIBFILE_OPT)lib$(STD_LIB_NAME)$(DLL_DEF_LIB).$A \
+		$(library.os)
+	$(RANLIB) lib$(STD_LIB_NAME)$(DLL_DEF_LIB).$A
+
+RPATH_1=$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_LIB_DIR)
+RPATH_2=$(SHLIB_RPATH_SEP)$(FINAL_INSTALL_MERC_GC_LIB_DIR)
+
+lib$(STD_LIB_NAME).so : $(library.pic_os)
+	$(LINK_SHARED_OBJ) $(ERROR_UNDEFINED) 				\
+		-o lib$(STD_LIB_NAME).so $(library.pic_os)		\
+		$(RPATH_1)$(RPATH_2)					\
+		$(ALL_LDFLAGS) $(ALL_LDLIBS)				\
+		$(SHARED_LIBS)
+
+endif
+
+$(STD_LIB_NAME).init: $(deps_subdir)library.dep
+	for file in $(library.ms); do \
+		grep '^INIT ' $$file; \
+		echo "INIT mercury__`basename $$file .m`__init"; \
+	done > $(STD_LIB_NAME).init
+
+#-----------------------------------------------------------------------------#
+
+# Ensure we recompile library__version if VERSION is changed.
+$(os_subdir)library.$O \
+$(os_subdir)library.pic_o \
+	: $(RUNTIME_DIR)/mercury_conf.h
+
+# The object files in this directory depend on many of the header files
+# in the runtime. However, changes to many of these header files require
+# a global make clean. Here we list only the header files from the runtime
+# whose changes don't usually require a make clean but which nevertheless
+# require some files in the library to be recompiled.
+$(os_subdir)benchmarking.$O \
+$(os_subdir)benchmarking.pic_o \
+$(os_subdir)std_util.$O \
+$(os_subdir)std_util.pic_o \
+	: ../runtime/mercury_stack_layout.h
+
+#-----------------------------------------------------------------------------#
+
+realclean_local:
+	rm -f $(library.mods:%=%.h)
+	rm -f lib$(STD_LIB_NAME).$A lib$(STD_LIB_NAME).so $(STD_LIB_NAME).init
+	rm -f tags
+
+#-----------------------------------------------------------------------------#
+
+ifeq ($(LIBRARY_INTERMODULE),yes)
+
+# Installation targets
+
+# LIBRARY_INTERMODULE should be turned off only during development.
+# A full install requires the library's .opt and .trans_opt files.
+
+# If you add a new target below, please add a parallel target for the
+# case LIBRARY_INTERMODULE != yes.
+
+.PHONY: install
+install: install_mercury
+
+.PHONY: install_all
+install_all: install_mercury
+
+.PHONY: install_mercury
+install_mercury: install_ints install_hdrs install_init install_library
+
+.PHONY: install_ints
+install_ints: liblibrary.install_ints
+
+.PHONY: install_hdrs
+install_hdrs: liblibrary.install_hdrs
+
+# The following rules are hand-coded, rather than using the
+# liblibrary.* targets automatically generated by `mmake depend',
+# because they override the name used for the standard library:
+# they use $(STD_LIB_NAME) rather than `library'.
+
+.PHONY: install_init
+install_init: $(STD_LIB_NAME).init install_lib_dirs
+	cp `vpath_find $(STD_LIB_NAME).init` $(INSTALL_MODULE_DIR)
+	# "$(STD_LIB_NAME).init" used to be called "library.init" or
+	# "libmercury.init". If there is still a version with an old name
+	# lying around, then delete it; otherwise the initialization
+	# would get done twice.
+	rm -f $(INSTALL_MODULE_DIR)/library.init \
+		$(INSTALL_MODULE_DIR)/libmercury.init
+
+.PHONY: install_library
+install_library: lib$(STD_LIB_NAME).$A \
+		lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB) install_grade_dirs
+	cp `vpath_find lib$(STD_LIB_NAME).$A \
+		lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
+		$(INSTALL_MERC_LIB_DIR)
+
+# library.split.$A is a version of lib$(STD_LIB_NAME).$A that has been compiled
+# with `--split-c-files'.
+.PHONY: install_split_library
+install_split_library: library.split.$A install_grade_dirs
+	cp `vpath_find library.split.$A` \
+		$(INSTALL_MERC_LIB_DIR)/lib$(STD_LIB_NAME).$A
+
+else
+
+.PHONY: install
+install:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_all
+install_all:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_mercury
+install_mercury:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_ints
+install_ints:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_hdrs
+install_hdrs:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_init
+install_init:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_library
+install_library:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_split_library
+install_split_library:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+endif
+
+#-----------------------------------------------------------------------------#

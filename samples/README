@@ -1,0 +1,60 @@
+
+This directory contains some example Mercury programs.
+
+hello.m			"Hello World" in Mercury.
+
+cat.m                   An implementation of a simple version of the
+			standard UNIX filter `cat', which just copies
+			its input files or the standard input stream to
+			the standard output stream.
+
+sort.m                  An implementation of a simple version of the
+			standard UNIX filter `sort', which reads lines
+			from its input files or the standard input
+			stream, sorts them, and then writes the result
+			to the standard output stream.
+
+calculator.m            A simple four-function arithmetic calculator,
+			with a parser written using the Definite Clause
+			Grammar notation.
+
+committed_choice.m	An example illustrating committed-choice
+			nondeterminism in Mercury.
+
+interpreter.m		An simple interpreter for definite logic programs.
+			A demonstration of meta-programming in Mercury.
+
+expand_terms.m		Another example meta-program, showing how to
+			emulate Prolog's `expand_term' mechanism.
+
+e.m			A small program which calculates the base of
+			natural logarithms to however many digits you
+			choose.  It illustrates one way to achieve
+			lazy evaluation in Mercury.
+
+Mmakefile		The file used by `mmake', the Mercury Make program,
+			to build the programs in this directory.
+
+The `solutions' sub-directory contains some examples of the use of
+nondeterminism, showing how a Mercury program can compute 
+	- one solution,
+	- all solutions, or
+	- some solutions (determined by a user-specified criteria)
+for a query which has more than one logically correct answer.
+
+There are also some sub-directories which contain examples of multi-module
+Mercury programs:
+
+diff                    This directory contains an implementation of a
+			simple version of the standard UNIX utility
+			`diff', which prints the differences between
+			two files.
+
+c_interface		This directory contains some examples of mixed
+			Mercury/C/C++/Fortran programs using the C interface.
+
+rot13			This directory contains a few implementations of
+			rot-13 encoding.
+
+muz			This directory contains a syntax checker / type checker
+			for the specification language Z.

@@ -1,0 +1,5 @@
+CLEAN
+*.dep
+*.d
+*.res
+.allres

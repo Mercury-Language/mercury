@@ -1,0 +1,84 @@
+#-----------------------------------------------------------------------------#
+
+-include ../Mmake.params
+
+main_target: check
+
+#-----------------------------------------------------------------------------#
+
+COMPILE_PROGS=	\
+	arg_order_rearrangment
+
+ERRORCHECK_PROGS= \
+	ambiguous_overloading \
+	det_infer_warning \
+	double_underscore \
+	duplicate_call \
+	inf_recursion_lambda \
+	infinite_recursion \
+	inference_test \
+	missing_if \
+	pragma_source_file \
+	simple_code \
+	singleton_test \
+	unused_args_test \
+	unused_import
+
+#-----------------------------------------------------------------------------#
+
+# some files need to be compiled with special options
+
+MCFLAGS-arg_order_rearrangment	= --introduce-accumulators \
+					--excess-assign --common-struct
+					# we need to explicitly enable those
+					# optimizations because otherwise the
+					# arg_order_rearrangement warning
+					# doesn't show up at lower
+					# optimization levels
+MCFLAGS-duplicate_call		= --warn-duplicate-calls
+MCFLAGS-unused_args_test	= --warn-unused-args
+MCFLAGS-unused_import		= --warn-interface-imports
+MCFLAGS-inference_test		= --infer-all
+MCFLAGS-infinite_recursion	= --excess-assign --common-struct
+					# we need to explicitly enable those
+					# optimizations because some of the
+					# infinite recursion warnings don't
+					# show up at lower optimization levels
+
+#-----------------------------------------------------------------------------#
+
+%.res_error:	%.exp %.err
+	-rm -f $@
+	diff -c $*.exp $*.err > $@
+
+%.res_compile:	%.exp $(cs_subdir)%.c
+	-rm -f $@
+	diff -c $*.exp $*.err > $@
+
+#-----------------------------------------------------------------------------#
+
+PROGS=$(COMPILE_PROGS) $(ERRORCHECK_PROGS)
+DEPENDS=$(PROGS:%=%.depend)
+
+RES_ERRORS=	$(ERRORCHECK_PROGS:%=%.res_error)
+RES_COMPILES=	$(COMPILE_PROGS:%=%.res_compile)
+
+#-----------------------------------------------------------------------------#
+
+depend:	$(DEPENDS)
+
+check:	$(RES_COMPILES) $(RES_ERRORS)
+
+all:	$(PROGS)
+
+clean_local:	clean_err clean_res
+
+clean_mc: clean_c clean_o clean_err clean_res
+
+clean_err:
+	rm -f *.err
+
+clean_res:
+	rm -f *.res_compile *.res_error
+
+#-----------------------------------------------------------------------------#

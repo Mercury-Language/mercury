@@ -1,0 +1,43 @@
+This file documents just the Linux/x86 port. 
+For the Linux/PowerPC port, see README.Linux-PPC. 
+For the Linux/Alpha port, see README.Linux-Alpha. 
+(Ports to Linux on other architectures have not yet
+been attempted, but should not be difficult.)
+
+On Linux with a.out, shared libraries are not supported.
+If you still have an old a.out system, the auto-configuration might
+wrongly assume your Linux system uses ELF; if that happens, you will you
+have to manually edit the EXT_FOR_SHARED_LIB variable in Mmake.common.
+
+On Linux with ELF, shared libraries are supported.  However, ELF shared
+libraries require position-independent code, and (partly due to
+limitations in our current compilation technology, but partly due to
+limitations in the x86 architecture) this is quite costly for Mercury --
+probably considerably more costly than it is for C.
+
+Nevertheless, since shared libraries reduces disk usage, improve link
+times, and allow run-time sharing of the Mercury libraries between
+different applications, using them is a good idea.
+
+Currently the default is that programs do *not* use the Mercury shared
+libraries.  (Probably it ought to be the other way around, but that
+happened to be a little bit harder to implement.  We may change this in
+a future release.)
+
+To use the shared libraries, you must compile your program with
+`mmc --pic-reg' and link with `ml --shared' or add 
+`MGNUCFLAGS=--pic-reg' and `MLFLAGS=--shared' to your Mmake file.
+
+Mercury code compiled with `--pic-reg' or with gcc's `-fpic' option has
+what we shall call "PIC linkage", whereas Mercury code compiled without
+these options has "non-PIC linkage".  The static version of the Mercury
+libraries has non-PIC linkage, while the shared version has PIC linkage.
+Be careful that you do not try to link Mercury code with PIC linkage and
+Mercury code with non-PIC linkage into the same executable, otherwise you
+will probably get an obscure link error about `MR_grade_...' undefined
+or `MR_runtime_grade' multiply defined.
+(The reason for this is that standard non-PIC Mercury code uses the
+`ebx' register in ways that are incompatible with its uses as the global
+offset table pointer register in PIC code.  If only the Intel
+architecture wasn't so register-starved, we wouldn't need to use `ebx',
+and then PIC and non-PIC code could be mixed without any problems.)

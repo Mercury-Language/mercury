@@ -1,0 +1,135 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1998-2001 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmake - Mmake file for the bytecode interpreter
+
+MAIN_TARGET=all
+
+MERCURY_DIR=..
+include $(MERCURY_DIR)/Mmake.common
+-include ../Mmake.params
+
+#-----------------------------------------------------------------------------#
+# NOTE: any library functions that called from bytecode must be compiled
+# with trace information. (So their entry labels can be looked up)
+#-----------------------------------------------------------------------------#
+
+MERCURY_SYSTEM	= \
+		$(RUNTIME_DIR)/*.c $(RUNTIME_DIR)/*.h \
+		$(RUNTIME_DIR)/machdeps/*.c $(RUNTIME_DIR)/machdeps/*.h\
+		$(TRACE_DIR)/*.h $(TRACE_DIR)/*.c \
+		$(BROWSER_DIR)/*.h $(BROWSER_DIR)/*.c \
+		$(BOEHM_GC_DIR)/*.h $(BOEHM_GC_DIR)/include/*.h
+
+MERCURY_INC	= \
+		-I$(LIBRARY_DIR) \
+		 -I$(RUNTIME_DIR) \
+		 -I$(BOEHM_GC_DIR) \
+		 -I$(BOEHM_GC_DIR)/include \
+		 -I$(TRACE_DIR)
+	
+#-----------------------------------------------------------------------------#
+
+CFLAGS		= $(MERCURY_INC) -DMR_BYTECODE_CALLABLE -g
+
+MGNUCFLAGS-mb_disasm = --no-ansi
+
+MCFLAGS		= --trace shallow --generate-bytecode -O 0
+
+C2INITFLAGS	= --trace
+MLFLAGS		= --trace
+
+#-----------------------------------------------------------------------------#
+# keep these lists in alphabetical order, please
+
+# bytecode headers
+MB_HDRS		= \
+		mb_basetypes.h \
+		mb_bytecode.h \
+		mb_disasm.h \
+		mb_interface.h \
+		mb_machine.h \
+		mb_machine_def.h \
+		mb_machine_show.h \
+		mb_mem.h \
+		mb_module.h \
+		mb_stack.h \
+		mb_util.h
+
+# bytecode c files
+MB_CFILES	= \
+		mb_bytecode.c \
+		mb_disasm.c \
+		mb_interface.c \
+		mb_interface_stub.c \
+		mb_machine.c \
+		mb_machine_show.c \
+		mb_mem.c \
+		mb_module.c \
+		mb_stack.c \
+		mb_util.c
+
+# bytecode mercury files
+MB_MFILES	= \
+#		mb_interface_stub.m
+
+# bytecode object files
+MB_OBJS		= $(MB_MFILES:%.m=%.o) $(MB_CFILES:%.c=%.o)
+
+$(MB_OBJS): $(MB_HDRS)
+
+
+#-----------------------------------------------------------------------------#
+# The actual program (as distinct from bytecode interpreter)
+
+HDRS		=
+
+CFILES		= 
+
+MFILES		= simple01.m
+
+OBJS		= simple01_init.o $(MFILES:%.m=%.o) $(CFILES:%.c=%.o)
+
+$(OBJS): $(HDRS) $(MB_HDRS)
+
+#-----------------------------------------------------------------------------#
+ALL_HDRS	= $(HDRS) $(MB_HDRS)
+ALL_MFILES	= $(MFILES) $(MB_MFILES)
+ALL_CFILES	= $(CFILES) $(MB_CFILES)
+ALL_OBJS	= $(OBJS) $(MB_OBJS)
+
+ALL_DEPENDS=$(ALL_MFILES:%=%.depend)
+
+#-----------------------------------------------------------------------------#
+.PHONY: all
+all: check
+
+MLOBJS		= $(MB_OBJS)
+
+.PHONY: check
+check: simple01
+
+#-----------------------------------------------------------------------------#
+# tags actually depends on $(MERCURY_SYSTEM) too but since changes to that
+# hardly ever have an effect, just ignore them
+tags: $(ALL_MFILES) $(ALL_CFILES) $(ALL_HDRS)
+	ctags $(TAGFLAGS) $(ALL_MFILES) $(ALL_CFILES) $(ALL_HDRS) $(MERCURY_SYSTEM)
+
+.PHONY: depend
+depend: $(ALL_DEPENDS)
+
+.PHONY: clean_local
+clean_local:
+	rm -f $(ALL_MFILES:%.m=%.mbc)
+	rm -f $(ALL_MFILES:%.m=%.bytedebug)
+	rm -f $(ALL_OBJS)
+
+.PHONY: realclean_local
+realclean_local:
+	rm -f tags test
+
+#-----------------------------------------------------------------------------#
+

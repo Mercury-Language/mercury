@@ -1,0 +1,95 @@
+%------------------------------------------------------------------------------%
+% Copyright (C) 1999 INRIA/INSA.
+--- /soft/eclipse/eclipse4.1/lib_pd/opium_light/parameter.op	Sat Feb 20 16:09:16 1999
++++ parameter.op	Thu Nov  4 09:02:03 1999
+@@ -50,9 +50,11 @@
+ 	opium_parameter_in_module((name:Parameter, arg_list:ArgList, _,_, parameter_type:ParType, _,_,_), Module),
+ 	get_parameter_value(ParType, Parameter, ArgList, VarList, Module).
+ 
+-get_parameter_value(c, Parameter, _, [Value], _) :-
+-	!,	
+-	remote_once(getval(Parameter, Value), sepia_kernel).
++% XXX  remote_once is not available in Morphine
++% get_parameter_value(c, Parameter, _, [Value], _) :-
++% 	!,	
++% 	remote_once(getval(Parameter, Value), sepia_kernel).
++
+ get_parameter_value(ParType, Parameter, ArgList, VarList, Module) :-
+ 	length(ArgList, L),
+ 	length(VarList, L),
+@@ -120,8 +122,9 @@
+ 	check_arg_type(ValueList, ArgList, ArgType, NewValueList, Module),	
+ 	set_parameter_value(ParType, Parameter, ArgList, NewValueList, Module).
+ 
+-set_parameter_value(c, Parameter, _, [NewVal], _) :-
+-	remote_once(setval(Parameter, NewVal), sepia_kernel).
++% XXX  remote_once is not available in Morphine
++% set_parameter_value(c, Parameter, _, [NewVal], _) :-
++% 	remote_once(setval(Parameter, NewVal), sepia_kernel).
+ set_parameter_value(single, Parameter, ArgList, NewValueList, Module) :-
+ 	length(ArgList, L),
+ 	length(VarList, L),
+@@ -223,7 +226,7 @@
+ 	implementation	: unset_parameter_in_module_Op,
+ 	parameters	: [],
+ 	message		:
+-'Command which unsets the value of a parameter which may havae multiple \n\
++'Command which unsets the value of a parameter which may have multiple \n\
+ values, in a given module. For a parameter of type "single" or "c" you \n\
+ can use set_parameter_in_module.'
+ 	).
+@@ -324,9 +327,10 @@
+ 	fail.
+ set_default_parameters_in_module_Op(Scenario, Module).
+ 
+-set_default_value(c, Parameter, _, [DefaultVal], _) :-
+-	/* there is always a default value for c parameters */
+-	remote_once(setval(Parameter, DefaultVal), sepia_kernel).
++% XXX  remote_once is not available in Morphine
++% set_default_value(c, Parameter, _, [DefaultVal], _) :-
++% 	/* there is always a default value for c parameters */
++% 	remote_once(setval(Parameter, DefaultVal), sepia_kernel).
+ set_default_value(_, Parameter, ArgList, nodefault, Module) :-
+ 	!,
+ 	length(ArgList, L),
+@@ -419,7 +423,7 @@
+ 	opium_scenario_in_module((name:Scenario,_,_,_,_,_), Module),
+ 	!,
+ 	show_parameters_in_module(Scenario, Module).
+-show_parameters_Op(Scenario, Module) :-
++show_parameters_Op(Scenario, Mod) :-
+ 	opium_scenario_in_module((name:Scenario,_,_, options:[_,_,global],_,_), Mod),
+ 	!,
+ 	show_parameters_in_module(Scenario, Mod).
+@@ -456,11 +460,12 @@
+ 	fail.
+ show_parameters_in_module_Op(Scenario, Module).
+ 
+-list_parameter(c, Parameter, _, _) :-
+-	!,
+-	remote_once(getval(Parameter, Val), sepia_kernel),
+-	G =.. [Parameter | [Val]],
+-	opium_printf(help, "    %w\n", [G]).
++% XXX  remote_once is not available in Morphine
++% list_parameter(c, Parameter, _, _) :-
++% 	!,
++% 	remote_once(getval(Parameter, Val), sepia_kernel),
++% 	G =.. [Parameter | [Val]],
++% 	printf(help, "    %w\n", [G]).
+ list_parameter(single, Parameter, ArgList, Module) :-
+ 	!,
+ 	length(ArgList, L),
+@@ -555,9 +560,10 @@
+ 			message  	: _ ), Module),
+ 	get_current_values(ParType, Name, Module, ArgList, CurrentValues).
+ 
+-get_current_values(c, Name, Module, ArgList, [Val]) :-
+-	remote_once(getval(Name, Val), sepia_kernel),
+-	!.
++% XXX  remote_once is not available in Morphine
++% get_current_values(c, Name, Module, ArgList, [Val]) :-
++% 	remote_once(getval(Name, Val), sepia_kernel),
++% 	!.
+ get_current_values(single, Name, Module, ArgList, ValList) :-
+ 	length(ArgList, L),
+ 	length(ValList, L),

@@ -1,0 +1,22 @@
+Non-meta predicate:yes
+Count = 10
+
+Non-meta predicate with call:yes
+Count = 10
+
+Meta-predicate with call:yes
+Count = 10
+
+Meta-predicate with hook:yes
+Count = 10
+Non-meta predicate:yes
+Count = 10
+
+Non-meta predicate with call:yes
+Count = 10
+
+Meta-predicate with call:yes
+Count = 10
+
+Meta-predicate with hook:yes
+Count = 10

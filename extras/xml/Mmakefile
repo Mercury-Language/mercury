@@ -1,0 +1,17 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2000 The University of Melbourne.
+# This file may only be copied under the terms of the GNU Library General
+# Public License - see the file COPYING.LIB in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+-include ../Mmake.params
+
+.PHONY: default_target
+default_target: tryit
+
+.PHONY: depend
+depend: tryit.depend
+
+.PHONY: check
+check:
+	true

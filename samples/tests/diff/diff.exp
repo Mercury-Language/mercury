@@ -1,0 +1,10 @@
+--- diff.test.1
++++ diff.test.2
+@@ -1,5 +1,7 @@
+ Hello
+ World
+ 
++How interesting an additional line
++
+ This
+ is a test

@@ -1,0 +1,223 @@
+%------------------------------------------------------------------------------%
+% Copyright (C) 1999-2000 INRIA/INSA de Rennes.
+
+:- module collect.
+
+:- interface.
+:- import_module char.
+
+:- type collected_type.
+
+:- pred initialize(collected_type).
+:- mode initialize(out) is det.
+
+
+:- pred filter(event_number, call_number, depth_number, trace_port_type,
+        pred_or_func, declared_module_name, defined_module_name, proc_name,
+        arity, mode_number, arguments, determinism, goal_path_string,
+        collected_type, collected_type, char).
+
+:- mode filter(in, in, in, in, in, in, in, in, in, in, in, in, in, acc_in, acc_out, out)
+        is det.
+
+:- pred send_collect_result(collected_type, io__output_stream, io__state,
+	io__state).  
+:- mode send_collect_result(in, in, di, uo) is det.
+
+:- pred collected_variable_type(type_info::out) is det.
+
+%------------------------------------------------------------------------------%
+:- implementation.
+
+:- pragma export(initialize(out), "ML_COLLECT_initialize").
+:- pragma export(filter(in, in, in, in, in, in, in, in, in, in, in, in, in,
+	acc_in, acc_out, out), "ML_COLLECT_filter").
+:- pragma export(send_collect_result(in, in, di, uo), 
+	"ML_COLLECT_send_collect_result").
+:- pragma export(collected_variable_type(out), 
+	"ML_COLLECT_collecting_variable_type").
+
+:- import_module list, int, io, std_util.
+
+:- type event_number == int.
+:- type call_number == int.
+:- type depth_number == int.
+
+% The stuff defined below is similar to types goal_path and trace_port
+% defined in modules compiler/hlds_goal.m and compiler/trace.m.
+% This enumeration must be EXACTLY the same as the MR_trace_port enum in
+% runtime/mercury_trace_base.h, and in the same order, since the code
+% assumes the representation is the same.
+:- type trace_port_type
+	--->	call
+	;	exit
+	;	redo
+	;	fail
+	;	exception
+	;	ite_cond
+	;	ite_then
+	;	ite_else
+	;	neg_enter
+	;	neg_success
+	;	neg_failure
+	;	disj
+	;	switch
+	;	nondet_pragma_first
+	;	nondet_pragma_later
+	.
+
+% This enumeration must be EXACTLY the same as the MR_PredFunc enum in
+% runtime/mercury_stack_layout.h, and in the same order, since the code
+% assumes the representation is the same.
+:- type pred_or_func
+	--->	predicate
+	;	function.
+
+:- type declared_module_name == string.
+:- type defined_module_name == string.
+:- type proc_name == string.
+
+:- type arity == int.
+:- type mode_number == int.
+
+% encoded as specified in ../runtime/mercury_stack_layout.h
+% and ../compiler/stack_layout.m.
+:- type determinism == int. 
+	
+:- type goal_path_string == string.
+
+:- type procedure ---> 
+	proc(pred_or_func, declared_module_name, proc_name, arity, mode_number).
+
+:- type arguments == list(univ).
+
+:- type event ---> 
+	event(
+		event_number,
+		call_number,
+		depth_number,
+		trace_port_type,
+		pred_or_func,
+		declared_module_name,
+		defined_module_name,	
+		proc_name,
+		arity,
+		mode_number,
+		arguments,
+		determinism,
+		goal_path_string).
+
+:- func chrono(event::in) = (event_number::out) is det.
+:- func call(event::in) = (call_number::out) is det.
+:- func depth(event::in) = (depth_number::out) is det.
+:- func port(event::in) = (trace_port_type::out) is det.
+:- func proc_type(event::in) = (pred_or_func::out) is det.
+:- func decl_module(event::in) = (declared_module_name::out) is det.
+:- func def_module(event::in) = (defined_module_name::out) is det.
+:- func proc_name(event::in) = (proc_name::out) is det.
+:- func proc_arity(event::in) = (arity::out) is det.
+:- func proc_mode_number(event::in) = (mode_number::out) is det.
+:- func proc(event::in) = (procedure::out) is det.
+:- func determinism(event::in) = (determinism::out) is det.
+:- func goal_path(event::in) = (goal_path_string::out) is det.
+:- func arguments(event::in) = (arguments::out) is det.
+
+:- pragma inline(chrono/1).
+:- pragma inline(call/1).
+:- pragma inline(depth/1).
+:- pragma inline(port/1).
+:- pragma inline(proc_type/1).
+:- pragma inline(decl_module/1).
+:- pragma inline(def_module/1).
+:- pragma inline(proc_name/1).
+:- pragma inline(proc_arity/1).
+:- pragma inline(proc_mode_number/1).
+:- pragma inline(determinism/1).
+:- pragma inline(goal_path/1).
+:- pragma inline(arguments/1).
+
+chrono(Event) = Chrono :-
+	Event = event(Chrono, _, _, _, _, _, _, _, _, _, _, _, _).
+
+call(Event) = Call :-
+	Event = event(_, Call, _, _, _, _, _, _, _, _, _, _, _).
+
+depth(Event) = Depth :-
+	Event = event(_, _, Depth, _, _, _, _, _, _, _, _, _, _).
+
+port(Event) = Port :-
+	Event = event(_, _, _, Port, _, _, _, _, _, _, _, _, _).
+
+proc_type(Event) = ProcType :-
+	Event = event(_, _, _, _, ProcType, _, _, _, _, _, _, _, _).
+
+decl_module(Event) = DeclModule :-
+	Event = event(_, _, _, _, _, DeclModule, _, _, _, _, _, _, _).
+
+def_module(Event) = DefModule :-
+	Event = event(_, _, _, _, _, _, DefModule, _, _, _, _, _, _).
+
+proc_name(Event) = ProcName :-
+	Event = event(_, _, _, _, _, _, _, ProcName, _, _, _, _, _).
+
+proc_arity(Event) = ProcArity :-
+	Event = event(_, _, _, _, _, _, _, _, ProcArity, _, _, _, _).
+
+proc_mode_number(Event) = ModeNumber :-
+	Event = event(_, _, _, _, _, _, _, _, _, ModeNumber, _, _, _).
+
+proc(Event) = (proc(ProcType, DeclModule, Name, Arity, ModeNum)) :-
+	Event = event(_, _, _, _, ProcType, DeclModule, _, Name, Arity,
+			ModeNum, _, _, _).
+
+arguments(Event) = ListArg :-
+	Event = event(_, _, _, _, _, _, _, _, _, _, ListArg, _, _).
+
+determinism(Event) = Determinism :-
+	Event = event(_, _, _, _, _, _, _, _, _, _, _, Determinism, _).
+
+goal_path(Event) = GoalPath :-
+	Event = event(_, _, _, _, _, _, _, _, _, _, _, _, GoalPath).
+
+
+% Type of the fourth argument of filter/4 which tells whether to stop collecting
+% or not.
+:- type stop_or_continue --->
+		stop
+	;	continue.
+
+filter(EventNumber, CallNumber, DepthNumber, Port, PredOrFunc, DeclModuleName,
+		DefModuleName, PredName, Arity, ModeNum, Arguments, Determinism, 
+		Path, AccIn, AccOut, Char) :- 
+	filter(event(EventNumber, CallNumber, DepthNumber, Port, PredOrFunc,
+		DeclModuleName, DefModuleName, PredName, Arity, ModeNum,
+		Arguments, Determinism, Path), AccIn, AccOut, StopOrContinue),
+	(
+		StopOrContinue = continue,
+		Char = 'n'
+	;
+		StopOrContinue = stop,
+		Char = 'y'
+	).
+
+% This predicate retrieves the type of the collecting variable.
+collected_variable_type(Type) :- 
+	initialize(Var),
+	Type = type_of(Var).
+
+% This predicate is called at the end of the collect execution to sent the
+% result back to the external debugger.
+send_collect_result(Result, OutputStream) -->
+	{ Collected = collected(Result) },
+	io__write(OutputStream, Collected),
+	io__print(OutputStream, ".\n"),
+	io__flush_output(OutputStream).
+
+% This is the type of the debugger response to a collect request.
+:- type collect_result --->
+	collected(collected_type).
+
+
+:- pred filter(event, collected_type, collected_type, stop_or_continue).
+:- mode filter(in, acc_in, acc_out, out) is det.
+:- pragma inline(filter/4).

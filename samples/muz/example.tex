@@ -1,0 +1,216 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage{zed-csp}
+\usepackage{a4wide}
+
+\begin{document}
+
+\begin{center}
+{\Large\bf Petri Nets}\\
+{\large A Formal Specification in Z} \\
+{by Philip Dart}
+\end{center}
+
+This document should be read together with a complete description such as
+\emph{Petri Net Theory and the Modeling of Systems},
+James L. Peterson, Prentice Hall, 1981.
+
+\subsection*{Basic definitions}
+
+\subsubsection*{Structure}
+
+\begin{zed}
+[PLACE, TRANSITION]							\\
+\end{zed}
+
+%\newcommand{\pnets}{Petri\_net\_structure}
+\newcommand{\pnets}{PNetStruct}
+\newcommand{\ipo}{\mathrel{\mbox{\sf input-place-of}}}
+\newcommand{\opo}{\mathrel{\mbox{\sf output-place-of}}}
+%%SYNTAX inrel \ipo
+%%SYNTAX inrel \opo
+
+\begin{schema}{\pnets}
+	P: \finset PLACE						\\
+	T: \finset TRANSITION						\\
+	I, O: TRANSITION \pfun \bag PLACE				\\
+\also
+	\_ \ipo \_, \_ \opo \_: PLACE \rel TRANSITION			\\
+\where
+	\dom I = \dom O = T						\\
+	\bigcup (\dom \limg \ran I \rimg) \subseteq P			\\
+	\bigcup (\dom \limg \ran O \rimg) \subseteq P			\\
+\also
+	\forall p: P; t: T @ p \ipo t \iff p \inbag I(t)		\\
+	\forall p: P; t: T @ p \opo t \iff p \inbag O(t)		\\
+\end{schema}
+
+\subsubsection*{Markings and State Space}
+
+\begin{zed}
+MARKING == \bag PLACE							\\
+\end{zed}
+
+%\newcommand{\pnet}{Petri\_Net}
+\newcommand{\pnet}{PNet}
+%\newcommand{\mpnet}{Marked\_Petri\_Net}
+\newcommand{\mpnet}{MPNet}
+%\newcommand{\enabled}{\mathrel{\mbox{\sf enabled}}}
+% %%prerel \enabled
+\newcommand{\irf}{\mathrel{\mbox{\sf immediately\_reachable\_from}}}
+%%%SYNTAX inrel \irf
+
+\begin{schema}{\pnet}
+	\pnets								\\
+	M: \power MARKING						\\
+	enabled: MARKING \rel TRANSITION				\\
+	next\_state: MARKING \cross TRANSITION \pfun MARKING		\\
+ 	immediately\_reachable: MARKING \rel MARKING			\\
+ 	reachable: MARKING \rel MARKING					\\
+	potentially\_fireable: MARKING \rel TRANSITION			\\
+	live: MARKING \rel TRANSITION					\\
+\where
+	M = \{~m: MARKING | \dom m \subseteq P~\}			\\
+	enabled = \{~m: M; t: T | I(t) \subbageq m~\}			\\
+	next\_state = (\lambda m: M; t: T | t \in enabled\limg\{~m~\}\rimg @ 
+		m \uminus I(t) \uplus O(t))				\\
+	immediately\_reachable = \{~m, m': M | 
+		(\exists t: T @ m' = next\_state(m, t))~\}		\\
+	reachable = immediately\_reachable \star			\\
+	potentially\_fireable = reachable \comp enabled			\\
+	live = \{~m: M; t: T |
+		(\forall m': reachable\limg\{~m~\}\rimg @
+			t \in potentially\_fireable\limg\{~m'~\}\rimg)~\}\\
+\end{schema}
+
+\newpage
+\subsubsection*{Execution}
+
+\begin{schema}{\mpnet}
+	C: \pnet							\\
+	m: MARKING							\\
+	enabled: \power TRANSITION					\\
+\where
+	m \in C.M							\\
+	enabled = C.enabled\limg\{~m~\}\rimg				\\
+\end{schema}
+
+\begin{schema}{\Delta \mpnet}
+	\mpnet								\\
+	\mpnet'								\\
+\where
+	C' = C								\\
+\end{schema}
+
+\begin{schema}{Firing}
+	\Delta \mpnet							\\
+	t?: TRANSITION
+\where
+	t? \in enabled							\\
+	m' = C.next\_state(m, t?)					\\
+\end{schema}
+
+\newcommand{\deadlocked}{\mathrel{\mbox{\sf deadlocked}}}
+%%SYNTAX prerel \deadlocked
+
+\begin{axdef}
+	\deadlocked \_: \power \mpnet					\\
+\where
+	\forall M: \mpnet @~\deadlocked M \iff M.enabled = \emptyset	\\
+\end{axdef}
+
+%\newcommand{\ipnet}{Initialised\_Petri\_Net}
+\newcommand{\ipnet}{IPNet}
+
+\begin{schema}{\ipnet}
+	\mpnet[i/m]							\\
+	reachability\_set: \power MARKING				\\
+	live: \power TRANSITION						\\
+	ksafe, kbounded: \nat_1 \fun \power PLACE			\\
+	safe: \power PLACE						\\
+\where
+	reachability\_set = C.reachable\limg \{~i~\} \rimg		\\
+	live = C.live\limg \{~i~\} \rimg				\\
+	\forall k: \nat_1 @ ksafe(k) = kbounded(k) =
+		\{~p: C.P | (\forall m: reachability\_set @ 
+			m \bcount p \leq k)~\}				\\
+	safe = ksafe(1)							\\
+\end{schema}
+
+\newpage
+\subsection*{Analysis}
+
+\subsubsection*{Safeness and boundedness}
+
+\newcommand{\safe}{\mathrel{\sf safe}}
+%%SYNTAX prerel \safe
+\newcommand{\ksafe}{\mathrel{\mbox{\sf safe}}}
+%%SYNTAX inrel \ksafe
+\newcommand{\kbounded}{\mathrel{\mbox{\sf bounded}}}
+%%SYNTAX inrel \kbounded
+\newcommand{\bounded}{\mathrel{\sf bounded}}
+%%SYNTAX prerel \bounded
+
+\begin{axdef}
+	\_ \ksafe \_, \_ \kbounded \_: \nat_1 \rel \ipnet		\\
+	\safe \_, \bounded \_: \power \ipnet				\\
+\where
+	\forall k: \nat_1; N: \ipnet @~k \ksafe N \iff k \kbounded N \iff
+		N.ksafe(k) = N.C.P					\\
+	\forall N: \ipnet @~\safe N \iff 1 \ksafe N			\\
+	\forall N: \ipnet @~\bounded N \iff
+		(\exists k: \nat_1 @ k \kbounded N)     		\\
+\end{axdef}
+
+\subsubsection*{Conservation}
+
+\newcommand{\ssum}{\Sigma}
+\newcommand{\vprod}{\odot}
+%%SYNTAX infun 4 \vprod
+
+\begin{gendef}[X]
+	\ssum: \bag X \fun \num						\\
+	\_ \vprod \_: \bag X \cross \bag X \fun \bag X		\\
+\where
+%	\forall m: X \fun \num @ \ssum m = (\# \circ items \inv)(m)	\\
+	\forall m: \bag X @ \ssum m = (\# \circ items \inv)(m)		\\
+	\forall w, m: \bag X @ w \vprod m = 
+		\{~p: \dom m @ p \mapsto (w \bcount p * m \bcount p)~\} \\
+\end{gendef}
+
+\newcommand{\scons}{\mathrel{\mbox{\sf strictly-conservative}}}
+%%SYNTAX prerel \scons
+\newcommand{\conswrt}{\mathrel{\mbox{\sf conservative-with-respect-to}}}
+%%SYNTAX inrel \conswrt
+\newcommand{\cons}{\mathrel{\mbox{\sf conservative}}}
+%%SYNTAX prerel \cons
+
+\begin{axdef}
+	\scons \_: \power \ipnet				\\
+	\_ \conswrt \_: \ipnet \rel (PLACE \pfun \nat)	\\
+	\cons \_: \power \ipnet				\\
+\where
+	\forall N: \ipnet @ \\
+	\t1	\scons N \iff (\forall m: N.reachability\_set @
+		\ssum m = \ssum N.i)					\\
+\also
+	\forall N: \ipnet; w: PLACE \pfun \nat | \dom w = N.C.P @ \\
+	\t1	N \conswrt w \iff \\
+	\t2		(\forall m: N.reachability\_set @
+			\ssum (w \vprod m)  = \ssum (w \vprod N.i))	\\
+\also
+	\forall N: \ipnet @ \\
+	\t1	\cons N \iff (\exists w: N.C.P \fun \nat_1 @ N \conswrt w) \\
+\end{axdef}
+
+\subsubsection*{Liveness}
+
+\newcommand{\live}{\mathrel{\mbox{\sf live}}}
+%%SYNTAX prerel \live
+
+\begin{axdef}
+	\live \_: \power \ipnet						\\
+\where
+	\forall N: \ipnet @~\live N \iff N.live = N.C.T			\\
+\end{axdef}
+
+\end{document}

@@ -1,0 +1,5 @@
+det_throw: exception(univ_cons("det_throw"))
+det_succeed: succeeded("det_succeed")
+semidet_throw: exception(univ_cons("semidet_throw"))
+semidet_succeed: succeeded("semidet_succeed")
+semidet_fail: failed

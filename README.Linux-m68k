@@ -1,0 +1,9 @@
+
+Mercury has been ported to Linux/m68k thanks to Roman Hodek
+<Roman.Hodek@informatik.uni-erlangen.de>.
+
+The port is relatively untested -- if you have an m68k machine
+running Linux and run Mercury successfully please let us know.
+
+
+

@@ -1,0 +1,497 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1995-2001 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmake.rules - rules for building Mercury programs
+
+# N.B. All the builtin rules must use $@ as the target, so that they work
+# when $(VPATH) is set.
+
+main_target: $(MAIN_TARGET)
+
+#-----------------------------------------------------------------------------#
+
+# Beware that the order of suffixes is significant.
+.SUFFIXES: .m .nl .no .err \
+		.int0 .int .int2 .int3 .opt .trans_opt \
+		.dep .depend .dv .doit .ugly \
+		.date0 .date .date3 .optdate .trans_opt_date \
+		.c .nu .$O .pic_o \
+		.i .s .pic_s \
+		.ql .pl \
+		.rlo \
+		.il .dll .exe .cpp
+
+#-----------------------------------------------------------------------------#
+#
+# Code to set variables based on the setting of MMAKE_USE_SUBDIRS
+# (i.e. --use-subdirs).
+#
+
+ifeq ($(MMAKE_USE_SUBDIRS),yes)
+
+MCFLAGS += --use-subdirs
+MSCFLAGS += --use-subdirs
+MNCFLAGS += --use-subdirs
+ALL_MGNUCFLAGS += -I.
+
+endif
+
+#-----------------------------------------------------------------------------#
+
+.PRECIOUS: $(date0s_subdir)%.date0
+.PRECIOUS: $(dates_subdir)%.date
+.PRECIOUS: $(date3s_subdir)%.date3
+.PRECIOUS: $(optdates_subdir)%.optdate
+.PRECIOUS: $(trans_opt_dates_subdir)%.trans_opt_date
+
+#-----------------------------------------------------------------------------#
+#
+# Rules for NU-Prolog and SICStus Prolog.
+#
+
+.m.pl:
+	sicstus_conv $<
+
+.nl.pl:
+	sicstus_conv $<
+
+$(nos_subdir)%.no : %.m
+	$(MNC) $(ALL_MNCFLAGS) -o $@ $<
+
+$(nos_subdir)%.no : %.nl
+	$(MNC) $(ALL_MNCFLAGS) -o $@ $<
+
+$(qls_subdir)%.ql : %.m
+	$(MSC) $(ALL_MSCFLAGS) -o $@ $<
+
+$(qls_subdir)%.ql : %.nl
+	$(MSC) $(ALL_MSCFLAGS) -o $@ $<
+
+#-----------------------------------------------------------------------------#
+#
+# Rules for building dependency files
+#
+
+# When creating the dependencies with `--use-subdirs' enabled,
+# we need to create the `Mercury/dates' directories manually
+# in order to get things started.  This should not be necessary,
+# but there is a bug in GNU Make with regard to directory caching.
+# I have sent off a bug report to the GNU Make maintainers (19 March 1998).
+#	-fjh.
+
+# beware the code for `%.depend' and `%.dep'/`%.dv' is duplicated
+$(deps_subdir)%.dep $(deps_subdir)%.dv:
+	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $*
+ifeq ($(MMAKE_USE_SUBDIRS),yes)
+	# the following mkdirs work around a bug in GNU Make
+	-[ -d Mercury/dates ] || mkdir Mercury/dates
+	-[ -d Mercury/date0s ] || mkdir Mercury/date0s
+	-[ -d Mercury/date3s ] || mkdir Mercury/date3s
+	-[ -d Mercury/optdates ] || mkdir Mercury/optdates
+endif
+
+# beware the code for `%.depend' and `%.dep'/`%.dv' is duplicated
+.PHONY: %.depend
+%.depend :
+	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $*
+ifeq ($(MMAKE_USE_SUBDIRS),yes)
+	# the following mkdirs work around a bug in GNU Make
+	-[ -d Mercury/dates ] || mkdir Mercury/dates
+	-[ -d Mercury/date0s ] || mkdir Mercury/date0s
+	-[ -d Mercury/date3s ] || mkdir Mercury/date3s
+	-[ -d Mercury/optdates ] || mkdir Mercury/optdates
+endif
+
+# The `.doit' files are helpful when using Prolog.
+
+%.doit : $(deps_subdir)%.dep $(deps_subdir)%.dv
+	sed -e ':a' -e '/\\/N' -e 's/\\\n	//' -e 't a' $< |  \
+	grep '\.ms *=' | \
+	sed	-e 's/.*=/:-[ '\''nu_library.doit'\'', /' \
+		-e 's/\.m/,/g' \
+		-e 's/$$/ portray ]./' \
+		> $@
+
+#-----------------------------------------------------------------------------#
+#
+# Rules for building interface files
+# WARNING: any changes here will probably need to be
+# duplicated in compiler/modules.m.
+#
+
+$(date0s_subdir)%.date0 : %.m
+	$(MCPI) $(ALL_MCPIFLAGS) $<
+
+$(dates_subdir)%.date : %.m
+	$(MCI) $(ALL_MCIFLAGS) $<
+
+$(date3s_subdir)%.date3 : %.m
+	$(MCSI) $(ALL_MCSIFLAGS) $<
+
+$(optdates_subdir)%.optdate : %.m
+	$(MCOI) $(ALL_MCOIFLAGS) $<
+
+$(trans_opt_dates_subdir)%.trans_opt_date : %.m
+	$(MCTOI) $(ALL_MCTOIFLAGS) $<
+
+# Be very careful about changing the following rules.
+# The `@:' is a silent do-nothing command.
+# It is used to force GNU Make to recheck the timestamp
+# on the target file.  (It is a pity that GNU Make doesn't
+# have a way of handling these sorts of rules in a nicer manner.)
+
+$(int0s_subdir)%.int0 : $(date0s_subdir)%.date0
+	@:
+
+$(ints_subdir)%.int : $(dates_subdir)%.date
+	@:
+
+$(int2s_subdir)%.int2 : $(dates_subdir)%.date
+	@:
+
+$(int3s_subdir)%.int3 : $(date3s_subdir)%.date3
+	@:
+
+$(opts_subdir)%.opt : $(optdates_subdir)%.optdate
+	@:
+
+$(trans_opts_subdir)%.trans_opt : $(trans_opt_dates_subdir)%.trans_opt_date
+	@:
+
+#-----------------------------------------------------------------------------#
+#
+# Rules for compiling Mercury source files
+# WARNING: any changes here will probably need to be
+# duplicated in compiler/modules.m.
+#
+
+ifeq ($(TARGET_ASM),yes)
+
+# `--target asm' back-end
+$(ss_subdir)%.s : %.m
+	$(MCG) $(ALL_GRADEFLAGS) --target-code-only $(ALL_MCGFLAGS) \
+		$< > $*.err 2>&1
+
+# XXX we should probably use a new `--pic' option rather than `--pic-reg'
+$(ss_subdir)%.pic_s : %.m
+	$(MCG) $(ALL_GRADEFLAGS) --target-code-only $(ALL_MCGFLAGS) \
+		--pic-reg --cflags "$(GCCFLAGS_FOR_PIC)" $< > $*.err 2>&1
+
+$(os_subdir)%.$O : $(ss_subdir)%.s
+	$(AS) $< $(OBJFILE_OPT)$@
+
+$(os_subdir)%.pic_o : $(ss_subdir)%.pic_s
+	$(AS) $< $(OBJFILE_OPT)$@
+
+$(os_subdir)%__c_code.$O : $(cs_subdir)%.c
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $< $(OBJFILE_OPT)$@
+
+$(os_subdir)%__c_code.pic_o : $(cs_subdir)%.c
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
+		-c $< $(OBJFILE_OPT)$@
+
+endif
+
+# C back-end
+$(cs_subdir)%.c : %.m
+	rm -f $(cs_subdir)$*.c
+	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) $< > $*.err 2>&1
+
+# Aditi-RL back-end
+$(rlos_subdir)%.rlo : %.m
+	rm -f $(rlos_subdir)$*.rlo
+	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --aditi-only $< > $*.err 2>&1
+
+# .NET back-end
+$(ils_subdir)%.il : %.m
+	rm -f $(ils_subdir)$*.il
+	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --il-only $< > $*.err 2>&1
+
+# These rules are only available in *il* backends, because we'd like to avoid
+# processing user code that is in a .cpp file, and we'd like to avoid going via
+# IL to generate a DLL if we are in a non-IL grade.
+ifneq (,$(findstring il,$(GRADE)))
+$(os_subdir)%.dll : %.cpp
+	rm -f $(os_subdir)$*.dll
+	$(MS_CL) -com+$(MS_CL_NOASM) -I$(MERC_C_INCL_DIR) \
+		-I$(MERC_DLL_DIR) $(ALL_MS_CLFLAGS) $< -link -noentry \
+		-dll $(MS_CL_LIBS) -out:$@
+
+$(os_subdir)%.dll : %.il
+	rm -f $(os_subdir)$*.dll
+	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /dll /quiet /OUT=$@ $<
+endif
+
+# If we are removing the .c files, we need to tell Make that we're
+# generating the .$O files directly from the .m files, but
+# in order to avoid remaking the .c files if they're already there,
+# we need to invoke mmake recursively for each .c file.
+# This can be pretty inefficient.
+
+ifneq ($(RM_C),:)
+
+$(os_subdir)%.$O : %.m
+	$(MMAKE_MAKE_CMD) $(MFLAGS) MC="$(MC)" ALL_MCFLAGS="$(ALL_MCFLAGS)" \
+		ALL_GRADEFLAGS="$(ALL_GRADEFLAGS)" $(cs_subdir)$*.c
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $(cs_subdir)$*.c \
+		$(OBJFILE_OPT)$@
+	$(RM_C) $(cs_subdir)$*.c
+
+$(os_subdir)%.pic_o : %.m
+	$(MMAKE_MAKE_CMD) $(MFLAGS) MC="$(MC)" ALL_MCFLAGS="$(ALL_MCFLAGS)" \
+		ALL_GRADEFLAGS="$(ALL_GRADEFLAGS)" $(cs_subdir)$*.c
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
+		-c $(cs_subdir)$*.c $(OBJFILE_OPT)$@
+
+endif # RM_C != :
+
+# For --split-c-files, we generate the .$O files directly from the .m files.
+# (One reason for this is that there's no easy of telling Make how many
+# `.$O' files it should make, since the number of them depends on what's
+# in the source files.)
+
+$(dirs_subdir)%.dir/*.$O: %.m
+	rm -f $@
+	$(MCS) $(ALL_GRADEFLAGS) $(ALL_MCSFLAGS) $<
+
+# The `touch' is necessary, since otherwise if
+# the old .err file was of size zero and
+# the new .err file is also of size zero,
+# the time-stamp doesn't get updated!
+# (Is that a bug in unix? In bash?)
+
+.m.err:
+	$(MC) $(ALL_MCFLAGS) --errorcheck-only $< > $@ 2>&1
+	@touch $@
+
+.m.ugly:
+	$(MC) --convert-to-mercury $(ALL_MCFLAGS) $<
+
+#-----------------------------------------------------------------------------#
+#
+# Rules for compiling C files in the user's source directory.
+#
+
+.c.$O:
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $< $(OBJFILE_OPT)$@
+
+.c.pic_o:
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
+		-c $< $(OBJFILE_OPT)$@
+
+.c.s:
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -S $< -o $@
+
+.c.pic_s:
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
+		-S $< -o $@
+
+.c.i:
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -E $< > $@
+
+
+#-----------------------------------------------------------------------------#
+#
+# Rules for compiling C files in a subdirectory.
+# Note that we need both these rules and the ones above,
+# since even if the compiler generates all of its files in subdirectories,
+# the user may have some C files of their own which need to be compiled.
+#
+
+ifneq ("$(cs_subdir)","")
+
+$(os_subdir)%.$O : $(cs_subdir)%.c
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $< $(OBJFILE_OPT)$@
+
+$(os_subdir)%.pic_o : $(cs_subdir)%.c
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
+		-c $< -o $@
+
+%.s: $(cs_subdir)%.c
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -S $< -o $@
+
+%.pic_s: $(cs_subdir)%.c
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
+		-S $< -o $@
+
+%.i: $(cs_subdir)%.c
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -E $< > $@
+
+endif # $(cs_subdir) != ""
+
+#-----------------------------------------------------------------------------#
+#
+# Rules for compiling IL files in the user's source directory.
+# Note that we need both these rules and the ones above,
+# since even if the compiler generates all of its files in subdirectories,
+# the user may have some il or cpp files of their own which need to be
+# compiled.
+#
+# To avoid possible problems with invoking these commands unintentionally,
+# we only activate these rules when in an IL grade.
+#
+
+ifneq (,$(findstring il,$(GRADE)))
+ifneq ("$(ils_subdir)","")
+
+.il.dll:
+	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /dll /quiet /OUT=$@ $<
+
+.il.exe:
+	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /quiet /OUT=$@ $< 
+	cp default.cfg $*.cfg
+
+.cpp.dll:
+	$(MS_CL) -com+($MS_CL_NOASM) -I$(MERCURY_LIBRARY_PATH) $< -link -noentry -dll $(MS_CL_LIBS) -out:$@
+
+.cpp.exe:
+	$(MS_CL) -com+($MS_CL_NOASM) -I$(MERCURY_LIBRARY_PATH) $< -link -entry:main $(MS_CL_LIBS) -out:$@
+
+endif # $(ils_subdir) != ""
+endif # $(findstring il,$(GRADE)) != ""
+
+#-----------------------------------------------------------------------------#
+#
+# Code to handle dependencies on $(MLOBJS) and $(MLPICOBJS).
+#
+
+# The generated `.dep' files include rules for targets which may depend
+# on $(MLOBJS) or $(MLPICOBJS).  However, the definition of $(MLOBJS)
+# or $(MLPICOBJS) is in the user's Mmakefile, and the `.dep' files get
+# included *before* the Mmakefile.  The `.dep' files cannot contain
+# those dependency directly, because $(MLOBJS) and $(MLPICOBJS) variables
+# have not yet been defined.
+#
+# Instead, the generated `.dep' files just add the appropriate targets to
+# the $(MLOBJS_DEPS) or $(MLPICOBJS_DEPS) variables, and then we record the
+# dependency of those files on $(MLOBJS) or $(MLPICOBJS) here in Mmake.rules,
+# which gets included after the user's Mmakefile.
+
+$(MLOBJS_DEPS) : $(MLOBJS)
+$(MLPICOBJS_DEPS) : $(MLPICOBJS)
+
+#-----------------------------------------------------------------------------#
+#
+# Targets for cleaning up.
+#
+# Note that the actions for most of these targets are in the
+# automatically generated `.d' files.
+#
+
+.PHONY: clean realclean clean_nu clean_sicstus clean_prof_files
+
+clean_prof_files:
+	-rm -f Prof.CallPair Prof.Counts Prof.Decl Prof.MemWords Prof.MemCells
+
+#
+# The `clean' and `realclean' targets are implemented via `clean_local'
+# and `realclean_local'.  This allows a user to add rules in their
+# Mmakefile to do a recursive mmake clean, for example, while still being
+# able to use the local versions in their original form.
+#
+
+.PHONY: clean_local realclean_local
+
+realclean: realclean_local
+
+clean: clean_local
+
+realclean_local: clean_local
+
+clean_local: clean_prof_files
+
+#-----------------------------------------------------------------------------#
+#
+# Targets for building and installing libraries.
+#
+
+# Note: the `lib%.install_ints' rule is generated in each module's `.dep'
+# file so it can be more easily customised based on the desired level of
+# intermodule optimisation.  Likewise the `lib%.install_hdrs' is also
+# generated in the `.dep' file, since it depends on the setting of
+# the `--high-level-code' option.
+
+.PHONY: lib%.install
+lib%.install: lib%.install_ints lib%.install_hdrs lib%.install_init \
+		lib%.install_library
+	$(MMAKE) lib$*.install_grades || { mercury_cleanup_install && exit 1; }
+
+.PHONY: lib%.install_split
+lib%.install_split: lib%.install_ints lib%.install_init \
+		lib%.install_split_library
+	$(MMAKE) lib$*.install_split_grades || \
+			{ mercury_cleanup_install && exit 1; }
+
+.PHONY: lib%.install_init
+lib%.install_init: %.init install_lib_dirs
+	$(INSTALL) `vpath_find $*.init` $(INSTALL_MODULE_DIR)
+
+.PHONY: lib%.install_library
+lib%.install_library: lib%.a lib%.$(EXT_FOR_SHARED_LIB) install_grade_dirs
+	$(INSTALL) `vpath_find lib$*.a lib$*.$(EXT_FOR_SHARED_LIB)` \
+			$(INSTALL_MERC_LIB_DIR)
+
+lib%.install_split_library: %.split.a install_grade_dirs
+	$(INSTALL) `vpath_find $*.split.a` $(INSTALL_MERC_LIB_DIR)/lib$*.a
+
+lib%.install_grades:
+	rm -rf tmp_dir && \
+	mkdir tmp_dir && \
+	{ mv -f $(deps_subdir)$*.dep $($*.hs) $($*.cs) $($*.os) $($*.pic_os) \
+		*.a *.so tmp_dir || true; } && \
+	for grade in x $(ALL_LIBGRADES); do \
+		if [ "$$grade" != "x" ]; then \
+			$(MMAKE) GRADE=$$grade $*.depend || \
+				exit 1; \
+			$(MMAKE) GRADE=$$grade lib$*.install_hdrs || \
+				exit 1; \
+			$(MMAKE) GRADE=$$grade lib$*.install_library || \
+				exit 1; \
+			rm -f $(deps_subdir)$*.dep $($*.hs) $($*.cs) $($*.os) \
+				$($*.pic_os) *.a *.so; \
+		fi; \
+	done && \
+	{ mv tmp_dir/*.c $(cs_subdir). ; \
+	  mv tmp_dir/*.$O $(os_subdir). ; \
+	  mv tmp_dir/*.pic_o $(os_subdir). ; \
+	  mv tmp_dir/*.dep $(deps_subdir). ; \
+	  mv tmp_dir/* . ; rmdir tmp_dir ; true; }
+
+lib%.install_split_grades:
+	rm -rf tmp_dir && \
+	mkdir tmp_dir && \
+	{ mv -f $(deps_subdir)$*.dep $($*.hs) $($*.dirs) *.a *.so \
+		tmp_dir || true; } && \
+	for grade in x $(ALL_LIBGRADES); do \
+		if [ "$$grade" != "x" ]; then \
+			$(MMAKE) GRADE=$$grade $*.depend || \
+				exit 1; \
+			$(MMAKE) GRADE=$$grade lib$*.install_split_library || \
+				exit 1; \
+			rm -rf $(deps_subdir)$*.dep $($*.hs) $($*.dirs) \
+				*.a *.so; \
+		fi; \
+	done && \
+	{ mv tmp_dir/*.dir $(dirs_subdir). ; \
+	  mv tmp_dir/*.dep $(deps_subdir). ; \
+	  mv tmp_dir/* . ; rmdir tmp_dir ; true; }
+
+
+.PHONY: install_lib_dirs
+install_lib_dirs:
+	-[ -d $(INSTALL_INT_DIR) ] || $(INSTALL_MKDIR) $(INSTALL_INT_DIR)
+	-[ -d $(INSTALL_INC_DIR) ] || $(INSTALL_MKDIR) $(INSTALL_INC_DIR)
+	-[ -d $(INSTALL_MODULE_DIR) ] || $(INSTALL_MKDIR) $(INSTALL_MODULE_DIR)
+	# The following is needed to support the `--use-subdirs' option
+	-[ -d $(INSTALL_INT_DIR)/Mercury ] || \
+		$(INSTALL_MKDIR) $(INSTALL_INT_DIR)/Mercury
+
+.PHONY: install_grade_dirs
+install_grade_dirs: #install_lib_dirs
+	-[ -d $(INSTALL_MERC_LIB_DIR) ] || \
+		$(INSTALL_MKDIR) $(INSTALL_MERC_LIB_DIR)
+
+#-----------------------------------------------------------------------------#

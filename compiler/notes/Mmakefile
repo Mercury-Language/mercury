@@ -1,0 +1,57 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1996-1997, 1999, 2001 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmake - Mmake file for the Mercury documentation.
+
+MAIN_TARGET=all
+
+MERCURY_DIR=../..
+include $(MERCURY_DIR)/Mmake.common
+
+INSTALL_WEB_SUBDIR=$(INSTALL_WEBDIR)/developer
+
+# Note that we need to explicitly set TERM=vt100,
+# because otherwise lynx complains if TERM is not set properly
+# (as is the case when this Makefile is run from a cron job).
+# This is a bug in lynx -- it should ignore TERM when given
+# the `-dump' option.
+HTML_TO_TEXT=TERM=vt100 lynx -dump
+
+#-----------------------------------------------------------------------------#
+
+.SUFFIXES: .html .text
+
+.html.text:
+	$(HTML_TO_TEXT) $< > $@
+
+#-----------------------------------------------------------------------------#
+
+DOCS_TEXT=allocation.text authors.text coding_standards.text \
+	compiler_design.text gc_and_c_code.text glossary.text \
+	module_system.text release_checklist.text reviews.text todo.text
+DOCS_HTML=allocation.html authors.html coding_standards.html \
+	compiler_design.html gc_and_c_code.html glossary.html \
+	module_system.html release_checklist.html reviews.html todo.html
+DOCS_ALL=$(DOCS_TEXT) $(DOCS_HTML)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: all
+all: $(DOCS_ALL)
+
+# This install is for installing the Mercury webpage, which goes to
+# a different directory (supplied by the environment variable
+# INSTALL_WEBDIR).
+
+.PHONY: install
+install: $(DOCS_ALL)
+	[ -d $(INSTALL_WEB_SUBDIR) ] || mkdir -p $(INSTALL_WEB_SUBDIR)
+	cp $(DOCS_ALL) $(INSTALL_WEB_SUBDIR)
+
+clean_local:
+	rm -f $(DOCS_TEXT)
+
+#-----------------------------------------------------------------------------#

@@ -1,0 +1,735 @@
+#! /bin/sh
+# @configure_input@
+#---------------------------------------------------------------------------#
+# Copyright (C) 1995-2001 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# ML - Mercury Linker.
+#
+# Invokes GCC with the appropriate options to link in the Mercury library.
+#
+# Usage: see below.
+#
+# Environment variables: MERCURY_C_LIB_DIR, MERCURY_DEFAULT_GRADE, ...
+
+FULLARCH=@FULLARCH@
+NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=@NONSHARED_LIB_DIR@}
+DEFAULT_LIBDIR=@LIBDIR@/lib
+LIBDIR=${MERCURY_C_LIB_DIR=$DEFAULT_LIBDIR}
+DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
+# DEMANGLER=${MERCURY_DEMANGLER=@LIBDIR@/bin/@FULLARCH@/mdemangle}
+DEMANGLER=${MERCURY_DEMANGLER=mdemangle}
+CC=${MERCURY_C_COMPILER="@CC@"}
+MKFIFO=${MERCURY_MKFIFO="@MKFIFO@"}
+ERROR_UNDEFINED="@ERROR_UNDEFINED@"
+ALLOW_UNDEFINED="@ALLOW_UNDEFINED@"
+EXE_RPATH_OPT=${MERCURY_EXE_RPATH_OPT="@EXE_RPATH_OPT@"}
+EXE_RPATH_SEP=${MERCURY_EXE_RPATH_SEP="@EXE_RPATH_SEP@"}
+EXT_FOR_SHARED_LIB=${MERCURY_EXT_FOR_SHARED_LIB="@EXT_FOR_SHARED_LIB@"}
+LINK_SHARED_OBJ=${MERCURY_LINK_SHARED_OBJ="@LINK_SHARED_OBJ_SH@"}
+SHLIB_RPATH_OPT=${MERCURY_SHLIB_RPATH_OPT="@SHLIB_RPATH_OPT@"}
+SHLIB_RPATH_SEP=${MERCURY_SHLIB_RPATH_SEP="@SHLIB_RPATH_SEP@"}
+TMPDIR=${TMPDIR=/tmp}
+MATH_LIB=${MERCURY_MATH_LIB="@MATH_LIB@"}
+# Note: the setting of SHARED_LIBS needs to come after the setting of MATH_LIB,
+# since @SHARED_LIBS_SH@ may refer to $MATH_LIB.
+SHARED_LIBS=${MERCURY_SHARED_LIBS="@SHARED_LIBS_SH@"}
+
+# When compiling in the hlc.gc grade using the Microsoft Visual C
+# compiler, the default maximum stack size of 4Mb is too low for a
+# recursive language.
+# XXX at some stage this should become an option to ml
+LINK=${LINK=/stack:10485760}   # 10 Mb
+export LINK
+
+case "$CC" in
+    *gcc*)
+	COMPILER=gcc
+	;;
+    *lcc*)
+	COMPILER=lcc
+	;;
+    *cl* | *CL*)
+	COMPILER=cl
+	;;
+    cc* | */cc*)
+	COMPILER=cc
+	;;
+    *)
+	COMPILER=unknown
+	;;
+esac
+
+# On some systems (Solaris for exemple), we need libraries to be able to 
+# use sockets. The name of the needed libraries is determined by autoconf
+# and passed through this variable.
+SOCKET_LIBRARY="@SOCKET_LIBRARY@"
+NSL_LIBRARY="@NSL_LIBRARY@"
+
+# Likewise for -ldl (libdl.so), which is often needed for dlopen() etc.
+DL_LIBRARY="@DL_LIBRARY@"
+
+# Likewise for -lreadline -l{termcap,curses,ncurses}
+READLINE_LIBRARIES="@READLINE_LIBRARIES@"
+
+# If you change these, you will also need to change Mmake.common.in,
+# scripts/c2init.in, tools/bootcheck, tools/binary, tools/binary_step
+# and tools/linear.
+RT_LIB_NAME=mer_rt
+STD_LIB_NAME=mer_std
+TRACE_LIB_NAME=mer_trace
+BROWSER_LIB_NAME=mer_browser
+
+verbose=false
+allow_undef=false
+trace=false
+readline=true
+case $FULLARCH in
+	*-win95|*-winnt|*-win32|*-cygwin32|*-cygwin)
+		# `gcc -s' is broken in gnu-win32
+		strip=false
+		;;
+	*)
+		strip=true
+		;;
+esac
+mercury_libs=default
+all_libs=default
+demangle=true
+MAYBE_STATIC_OPT=""
+make_shared_lib=false
+leave_shlib_dirs_relative=false
+user_shlib_dirs=""
+use_thread_libs=false
+print_grade=false
+print_gc_grade=false
+
+# include the file `init_grade_options.sh-subr'
+@INIT_GRADE_OPTIONS@
+
+Help="\
+Name: ml - Mercury Linker
+Usage: ml [<ml options>] [-- <gcc options>] files...
+Options:
+	-h, --help
+		Print this help message.
+
+Diagnostics options:
+	-v, --verbose
+		Echo the gcc command line before executing it.
+	--no-demangle
+		Don't pipe the output of the linker through the Mercury
+		demangler.
+	--allow-undef
+	--allow-undefined
+		Don't report an error if there are unresolved symbols.
+		This option is only used if you are building a shared
+		library (with \`--make-shared-lib); when building
+		executables, unresolved symbols are always errors.
+		This option is useful when building shared libraries
+		that are not intended to be self-contained.
+	--print-grade
+		Compute the grade of the Mercury libraries to link with based
+		on the command line options, print it to the standard output,
+		and then exit (don't actually link anything).
+	--print-gc-grade
+		Compute the base name of the garbage collection library to
+		link with based on the command line options, print it to the
+		standard output, and then exit (don't actually link anything).
+
+Dynamic/static linking options:
+	--mercury-libs {shared, static, none}
+		Specify which version of the standard Mercury libraries to
+		link with:
+			--mercury-libs shared
+				Link with the shared libraries (*.so),
+				if possible, otherwise with the static ones.
+			--mercury-libs static
+				Link with the static libraries (*.@LIB_SUFFIX@).
+			--mercury-libs none
+				Don't link in the Mercury standard libraries.
+	-shared, --shared
+		Similar to \`--mercury-libs shared', but applies to all
+		libraries, not just the standard Mercury libraries.
+	-static, --static
+		Similar to \`--mercury-libs static', but applies to all
+		libraries, not just the standard Mercury libraries.
+	--make-shared-lib
+		Produce a shared library, rather than an executable.
+
+Directory options:
+	-L <directory>, --lib-dir <directory>
+		Include <directory> in the list of directories that the
+		linker will use to search for libraries.
+	-R <directory>, --shared-lib-dir <directory>
+		Include <directory> in the list of directories that the
+		dynamic linker will use to search for shared libraries.
+	--leave-shared-lib-dirs-relative
+		Don't convert relative shared library directory names
+		into absolute paths.
+	--no-leave-shared-lib-dirs-relative
+		Convert relative shared library directory names into
+		absolute paths.  This is the default.
+
+Debugging options:
+	-t, --trace
+		Link in the Mercury debugging libraries.
+		This option is needed if any of the modules being linked
+		were compiled with tracing enabled.  However, \`--debug'
+		implies \`--trace', so if you're using \`--debug',
+		then you don't need to explicitly specify \`--trace'.
+		Note that \`--trace' is incompatible with \`--static'
+		on some platforms (e.g. sparc-sun-solaris2.6).
+	-r-, --no-readline
+		Don't link in the GPL'd GNU Readline Library.
+	-g, --c-debug, --no-strip
+		Do not strip C debugging information.
+
+Threads options:
+	--use-thread-libs
+		Link with the POSIX thread libraries. This option is useful
+		if a C library being linked with uses threads, but the
+		Mercury code being linked doesn't.
+
+$grade_usage"
+
+while : ; do
+    case "$1" in
+	-h|--help|"-?")
+		echo "$Help"
+		exit 0
+		;;
+	-v|--verbose)
+		verbose=true
+		;;
+	--demangle)
+		demangle=true
+		;;
+	--no-demangle)
+		demangle=false
+		;;
+	--allow-undef|--allow-undefined)
+		allow_undef=true
+		;;
+	--no-allow-undef|--no-allow-undefined)
+		allow_undef=false
+		;;
+	-t|--trace)
+		trace=true
+		;;
+	-t-|--no-trace)
+		trace=false
+		;;
+	-r|--readline)
+		readline=true
+		;;
+	-r-|--no-readline)
+		readline=false
+		;;
+	-g-|--no-c-debug|--strip)
+		strip=true
+		;;
+	-g|--c-debug|--no-strip)
+		strip=false
+		;;
+	--make-shared-lib)
+		make_shared_lib=true
+		# on some targets, stripping shared libraries will
+		# make them unusable, I think, so don't strip
+		strip=false
+		;;
+	--no-libs)
+		progname=`basename $0`
+		cat 1>&2 << EOF
+$progname: Warning: option \`--no-libs' is deprecated --
+$progname:   please use the new option \`--mercury-libs none' instead.
+$progname:   Support for \`--no-libs' may be removed in a future release.
+EOF
+		mercury_libs=none
+		;;
+	--mercury-libs)
+		case "$2" in
+			shared|static|none|default)
+				mercury_libs="$2"
+				shift ;;
+			*)
+				progname=`basename $0`
+				cat 1>&2 << EOF
+$progname: Error: parameter to \`--mercury-libs' option should be either
+$progname:   \`shared', \`static', \`none', or \`default', not \`$2'.
+$progname: Try \`$0 --help' for help.
+EOF
+				exit 1
+				;;
+		esac
+		;;
+	-shared|--shared)
+		all_libs=shared
+		case $mercury_libs in static|default)
+			mercury_libs=shared ;;
+		esac
+		;;
+	-static|--static)
+		all_libs=static
+		case $mercury_libs in shared|default)
+			mercury_libs=static ;;
+		esac
+		;;
+	-L|--lib-dir)
+		dir="$2"
+		user_libdir_opts="$user_libdir_opts @LIB_LIBPATH@$dir"
+		shift
+		;;
+	-L*)
+		user_libdir_opts="$user_libdir_opts $1"
+		;;
+	--leave-shared-lib-dirs-relative)
+		leave_shlib_dirs_relative=true
+		;;
+	--no-leave-shared-lib-dirs-relative)
+		leave_shlib_dirs_relative=false
+		;;
+	-R|--shared-lib-dir)
+		dir="$2"
+		case $leave_shlib_dirs_relative in false)
+			case "$dir" in
+				/*) ;;
+				*)  dir="`pwd`/$dir" ;;
+			esac
+			;;
+		esac
+		user_shlib_dirs="$user_shlib_dirs $dir"
+		shift
+		;;
+	-R*)
+		dir="` expr $1 : '-R\(.*\)' `"
+		case $leave_shlib_dirs_relative in false)
+			case "$dir" in
+				/*) ;;
+				*)  dir="`pwd`/$dir" ;;
+			esac
+			;;
+		esac
+		user_shlib_dirs="$user_shlib_dirs $dir"
+		;;
+
+	--use-thread-libs)
+		use_thread_libs=true
+		;;
+	--no-use-thread-libs)
+		use_thread_libs=false
+		;;
+
+	--print-grade)
+		print_grade=true
+		;;
+	--no-print-grade)
+		print_grade=false
+		;;
+	--print-gc-grade)
+		print_gc_grade=true
+		;;
+	--no-print-gc-grade)
+		print_gc_grade=false
+		;;
+
+	# include the file `parse_grade_options.sh-subr'
+	@PARSE_GRADE_OPTIONS@
+
+	--)
+		shift
+		break ;;
+	*)
+		break ;;
+    esac
+    shift
+done
+
+# include the file `final_grade_options.sh-subr'
+@FINAL_GRADE_OPTIONS@
+
+# --require-tracing (which is implied by --debug) implies --trace
+case $require_tracing in
+	true)	trace=true ;;
+	false)	;;
+esac
+
+# If you haven't set mercury_libs, set it to the default value
+# (shared on most systems). Note that if you have set all_libs,
+# it will also have set mercury_libs.
+case $mercury_libs in default)
+	mercury_libs=shared
+	case $FULLARCH in i?86-*-linux*|i?86-*-freebsd*|i?86-*-cygwin*)
+		# shared libraries are not the default on Linux
+		# -- see README.Linux
+		# Likewise for FreeBSD
+		case $make_shared_lib in false)
+			mercury_libs=static
+			;;
+		esac
+		;;
+	esac
+	;;
+esac
+
+# If you haven't set all_libs, set it to the default value
+# (shared on most systems).
+case $all_libs in default)
+	all_libs=shared
+	case $FULLARCH in i?86-*-linux*|i?86-*-freebsd*|i?86-*-cygwin*)
+		# shared libraries are not the default on Linux
+		# -- see README.Linux
+		# Likewise for FreeBSD
+		case $make_shared_lib in false)
+			all_libs=static
+			;;
+		esac
+		;;
+	esac
+	;;
+esac
+
+# Defaults have been set, now set options.
+
+case $all_libs in static)
+	case $COMPILER in gcc|lcc)
+		MAYBE_STATIC_OPT=-static
+		;;
+	esac
+	case $FULLARCH in
+		*-linux*)
+			# On Linux, if we're linking statically, we need to
+			# pass `-defsym _DYNAMIC=0' to the linker, to avoid
+			# undefined references to _DYNAMIC in
+			# boehm_gc/dyn_load.c.
+			# (We might eventually need similar treatment
+			# for other OSs too)
+			case $COMPILER in
+	 		gcc)
+				MAYBE_STATIC_OPT="-static \
+					-Wl-defsym -Wl_DYNAMIC=0"
+				;;
+			lcc)
+				MAYBE_STATIC_OPT="-static \
+					-Wl,-defsym -Wl,_DYNAMIC=0"
+				;;
+			esac
+			;;
+		alpha*-dec-osf*)
+			case $COMPILER in cc)
+				MAYBE_STATIC_OPT=-non_shared
+				;;
+			esac
+			;;
+		*-sun-solaris*)
+			case $COMPILER in cc)
+				MAYBE_STATIC_OPT="-B static"
+				;;
+			esac
+			;;
+	esac
+	case "$MAYBE_STATIC_OPT" in "")
+		echo "ml: warning: \`--static' ignored, since I don't" 1>&2
+		echo "	know how to enable static linking with this" 1>&2
+		echo "	C compiler (\`$CC')." 1>&2
+		echo "	Using \`--mercury-libs static' instead." 1>&2
+		;;
+	esac
+esac
+
+#
+# compute the canonical grade name from the options settings
+#
+
+# include the file `canonical_grade.sh-subr'
+@CANONICAL_GRADE@
+
+# if the --print-grade option is specified,
+# then all we do is print the grade and then exit
+case "$print_grade" in true)
+	echo $GRADE
+	exit 0
+esac
+
+# Compute the gc grade from the grade
+case "$GRADE" in
+	*.par*.gc*.prof*)
+		gc_grade=par_gc_prof ;;
+	*.par*.gc*)
+		gc_grade=par_gc ;;
+	*.gc*.prof*)
+		gc_grade=gc_prof ;;
+	*.gc*)
+		gc_grade=gc ;;
+	*)
+		gc_grade=nogc ;;
+esac
+
+# if the --print-gc-grade option is specified,
+# then all we do is print the gc grade and then exit
+case "$print_gc_grade" in true)
+	echo $gc_grade
+	exit 0
+esac
+
+case "$gc_grade" in
+	nogc)	
+		LIBGC=
+		LIBGC_STATIC=
+		;;
+	*)
+		LIBGC="-l$gc_grade"
+		LIBGC_STATIC=`@CYGPATH@ $LIBDIR/$FULLARCH/lib$gc_grade.@LIB_SUFFIX@`
+		;;
+esac
+
+
+case $readline in
+	true)	;;
+	false)	READLINE_LIBRARIES=
+		;;
+esac
+
+case $trace in
+	true)	TRACE_LIBS="-l$TRACE_LIB_NAME -l$BROWSER_LIB_NAME"
+		TRACE_LIBS_SYSTEM="$SOCKET_LIBRARY $NSL_LIBRARY $DL_LIBRARY \
+			$READLINE_LIBRARIES"
+		TRACE_STATIC_LIBS="\
+		  `@CYGPATH@ $LIBDIR/$GRADE/$FULLARCH/lib$TRACE_LIB_NAME.@LIB_SUFFIX@` \
+		  `@CYGPATH@ $LIBDIR/$GRADE/$FULLARCH/lib$BROWSER_LIB_NAME.@LIB_SUFFIX@`"
+		;;
+	false)	TRACE_LIBS=
+		TRACE_LIBS_SYSTEM=
+		TRACE_STATIC_LIBS=
+		;;
+esac
+		
+case $strip in
+	true)	STRIP_OPTS="-s" ;;
+	false)  STRIP_OPTS="" ;;
+esac
+
+case $thread_safe in true)
+	use_thread_libs=true ;;
+esac
+
+case $use_thread_libs in
+	true)
+		# For Linux, Irix, Solaris, and HPUX,
+		# the thread-enabled version of the Boehm
+		# collector contains a reference to dlopen(), so 
+		# if threads are enabled, we need to link with the
+		# appropriate extra library for that (-ldl on Linux
+		# and Solaris, -lrt on HPUX, and nothing on Irix).
+		# XXX That should only be done if conservative GC
+		#     is enabled.
+
+		case "$FULLARCH" in
+ 		*-osf*)		THREAD_LIBS="-lpthreads -lmach -lc_r" ;;
+		*-linux*)	THREAD_LIBS="-lpthread -ldl" ;;
+		*-solaris*)	THREAD_LIBS="-lpthread -ldl" ;;
+		### We don't yet support threads on HPUX and IRIX
+		### *-hpux*)	THREAD_LIBS="-lpthread -lrt" ;;
+		### *-irix*)	THREAD_LIBS="-lpthread" ;;
+		*cygwin*)
+			case $COMPILER in
+				cl)	ARCH_OPTS="/MD"
+					;;
+
+			esac
+			;;
+		*)		echo "$0: warning: don't know which" \
+					"library to use for pthreads" 1>&2
+				THREAD_LIBS=""
+				;;
+		esac ;;
+	false)	THREAD_LIBS="" ;;
+esac
+
+case $make_shared_lib in
+    true)
+	LINKER="$LINK_SHARED_OBJ"
+	case $allow_undef in
+	    true)  UNDEF_OPT="$ALLOW_UNDEFINED" ;;
+	    false) UNDEF_OPT="$ERROR_UNDEFINED" ;;
+	esac
+	RPATH_OPT="$SHLIB_RPATH_OPT"
+	RPATH_SEP="$SHLIB_RPATH_SEP"
+	STDLIBS="$SHARED_LIBS $THREAD_LIBS"
+	;;
+    false)
+	LINKER="$CC"
+	UNDEF_OPT=""
+	RPATH_OPT="$EXE_RPATH_OPT"
+	RPATH_SEP="$EXE_RPATH_SEP"
+	STDLIBS="$MATH_LIB $THREAD_LIBS"
+	;;
+esac
+
+merc_libdir_opts="\
+	@LIB_LIBPATH@$LIBDIR/$GRADE/$FULLARCH
+	@LIB_LIBPATH@$LIBDIR/$FULLARCH
+	@LIB_LIBPATH@/usr/local/lib
+"
+LIBDIR_OPTS="$user_libdir_opts $merc_libdir_opts"
+
+case $mercury_libs in
+	shared)
+		MERCURY_LIBS=${MERCURY_LIBS="$TRACE_LIBS -l$STD_LIB_NAME -l$RT_LIB_NAME $LIBGC"}
+		LIBS=${LIBS="$MERCURY_LIBS $TRACE_LIBS_SYSTEM $STDLIBS"}
+		merc_shlib_dirs="$merc_shlib_dirs $LIBDIR/$GRADE/$FULLARCH"
+		merc_shlib_dirs="$merc_shlib_dirs $LIBDIR/$FULLARCH"
+		;;
+	static)
+		MERCURY_LIBS=${MERCURY_LIBS="$TRACE_STATIC_LIBS
+			`@CYGPATH@ $LIBDIR/$GRADE/$FULLARCH/lib$STD_LIB_NAME.@LIB_SUFFIX@` \
+			`@CYGPATH@ $LIBDIR/$GRADE/$FULLARCH/lib$RT_LIB_NAME.@LIB_SUFFIX@` \
+			$LIBGC_STATIC"}
+		LIBS=${LIBS="$MERCURY_LIBS $TRACE_LIBS_SYSTEM $STDLIBS"}
+		merc_shlib_dirs=""
+		;;
+	none)	LIBS="$TRACE_LIBS_SYSTEM $STDLIBS"
+		LIBDIR_OPTS="$user_libdir_opts"
+		merc_shlib_dirs=""
+		;;
+esac
+
+
+RPATH_OPT_LIST=
+# only set RPATH_OPT_LIST if the system supports shared libraries
+case $EXT_FOR_SHARED_LIB in so)
+	prev=""
+	for dir in $user_shlib_dirs $merc_shlib_dirs 'kludge for broken shells'
+	do
+	    case "$dir" in
+		'kludge for broken shells')
+		    ;;
+		*)
+		    case "$prev" in
+			"") RPATH_OPT_LIST="$RPATH_OPT$dir" ;;
+			*)  RPATH_OPT_LIST="$RPATH_OPT_LIST$RPATH_SEP$dir" ;;
+		    esac
+		    ;;
+	    esac
+	    prev=$dir
+	done
+	;;
+esac
+
+case $FULLARCH in
+    #
+    # On Irix 5, grades `fast' and `jump' only work in non_shared mode.
+    #
+    *-sgi-irix5*)
+	case $non_local_gotos in
+	    true)
+		ARCH_OPTS=-non_shared
+		NONSHARED_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared"
+		LIBRARY_PATH="$NONSHARED_PATH:$LIBRARY_PATH"
+		export LIBRARY_PATH
+		;;
+	esac
+	;;
+    #
+    # On Linux ELF, `-rdynamic' is needed to make symbols
+    # exported for use in code linked in with dlopen(),
+    # which is used for interactive queries in the
+    # Mercury debugger.
+    #
+    *-linux*aout*)
+	# Linux a.out -- no special options needed
+	;;
+    *-linux*)
+	# Linux ELF -- need to add `-rdynamic' if using the debugger
+	case $trace in true)
+		ARCH_OPTS=-rdynamic
+	esac
+	;;
+esac
+
+case "$MKFIFO" in
+    none) demangle=false ;;
+esac
+
+#
+# The MLDS (--high-level-code) back-end uses a different
+# name mangling scheme which the current demangler doesn't
+# know how to demangle.
+#
+case "$highlevel_code" in
+    true) demangle=false ;;
+esac
+
+LINKER_PRE_FLAGS="$UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS"
+LINKER_POST_FLAGS="@LINK_OPT_SEP@ $LIBDIR_OPTS $RPATH_OPT_LIST $LIBS"
+
+case $verbose in
+    true)
+	echo "ml: using grade \`$GRADE'"
+	case $demangle in
+	    false)
+		echo $LINKER $LINKER_PRE_FLAGS "$@" $LINKER_POST_FLAGS
+		;;
+	    true)
+		echo $LINKER $LINKER_PRE_FLAGS "$@" $LINKER_POST_FLAGS "|"
+		echo "$DEMANGLER"
+		;;
+	esac
+	;;
+esac
+
+case $demangle in
+    true)
+	# we would like to just run $CC and pipe the result into $DEMANGLER,
+	# but `$CC | $DEMANGLER' would return the wrong exit status, so
+	# we need to use a named pipe; if the system doesn't have named
+	# pipes, then we don't use the demangler
+
+		# create the pipe, making sure we remove it if interrupted
+	old_umask=`umask`
+	umask 022
+	try=0
+	until 
+		ML_TMPDIR=$TMPDIR/ml$$
+		PIPE=$ML_TMPDIR/pipe
+		trap 'rmdir $ML_TMPDIR >/dev/null 2>&1; exit 1' 1 2 3 13 15 
+		mkdir $ML_TMPDIR
+	do
+		try="`expr $try + 1`"
+		# give up after 20 tries
+		case "$try" in 20)
+			echo "ml: unable to create temporary directory" \
+				"for pipe" 1>&2
+			exit 1
+		esac
+	done
+	trap 'rm -rf $ML_TMPDIR; exit 1' 1 2 3 13 15 
+	umask $old_umask
+	$MKFIFO $PIPE
+		# execute the demangler in the background, with stdin 
+		# coming from the pipe and with stdout redirected to stderr
+	exec $DEMANGLER --explain-link-errors 1>&2 < $PIPE &
+		# execute $CC with stdout & stderr redirected to
+		# go via the pipe to $DEMANGLER and then to stderr
+	case $# in
+    		0) $LINKER $LINKER_PRE_FLAGS $LINKER_POST_FLAGS >$PIPE 2>&1 ;;
+    		*) $LINKER $LINKER_PRE_FLAGS "$@" $LINKER_POST_FLAGS \
+			>$PIPE 2>&1 ;;
+	esac
+	linker_status=$?
+		# now we can remove the pipe; since is an open file, it will
+		# stay around until $DEMANGLER exits
+	rm -rf $ML_TMPDIR
+		# wait for the demangler to exit before exiting ourselves
+	wait
+	exit $linker_status
+	;;
+false)
+	case $# in
+    		0) exec $LINKER $LINKER_PRE_FLAGS $LINKER_POST_FLAGS ;;
+    		*) exec $LINKER $LINKER_PRE_FLAGS "$@" $LINKER_POST_FLAGS ;;
+	esac
+	;;
+esac

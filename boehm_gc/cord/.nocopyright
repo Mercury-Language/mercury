@@ -1,0 +1,16 @@
+cord.h
+de_cmds.h
+de_win.h
+ec.h
+gc.h
+cordbscs.c
+cordprnt.c
+cordtest.c
+cordxtra.c
+de.c
+de_win.c
+README
+SCOPTIONS.amiga
+SMakefile.amiga
+de_win.ICO
+de_win.RC

@@ -1,0 +1,50 @@
+:- module varset.
+:- interface.
+:- import_module term.
+:- type (varset:varset).
+:- pred varset:init((varset:varset)).
+:- mode varset:init(mercury_builtin:out) is det.
+:- pred varset:is_empty((varset:varset)).
+:- mode varset:is_empty(mercury_builtin:in) is semidet.
+:- pred varset:new_var((varset:varset), (term:var), (varset:varset)).
+:- mode varset:new_var(mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred varset:new_named_var((varset:varset), string, (term:var), (varset:varset)).
+:- mode varset:new_named_var(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred varset:new_vars((varset:varset), int, (list:list((term:var))), (varset:varset)).
+:- mode varset:new_vars(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred varset:delete_var((varset:varset), (term:var), (varset:varset)).
+:- mode varset:delete_var(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred varset:delete_vars((varset:varset), (list:list((term:var))), (varset:varset)).
+:- mode varset:delete_vars(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred varset:vars((varset:varset), (list:list((term:var)))).
+:- mode varset:vars(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred varset:name_var((varset:varset), (term:var), string, (varset:varset)).
+:- mode varset:name_var(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred varset:lookup_name((varset:varset), (term:var), string).
+:- mode varset:lookup_name(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred varset:lookup_name((varset:varset), (term:var), string, string).
+:- mode varset:lookup_name(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred varset:search_name((varset:varset), (term:var), string).
+:- mode varset:search_name(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred varset:bind_var((varset:varset), (term:var), (term:term), (varset:varset)).
+:- mode varset:bind_var(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred varset:bind_vars((varset:varset), (term:substitution), (varset:varset)).
+:- mode varset:bind_vars(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred varset:search_var((varset:varset), (term:var), (term:term)).
+:- mode varset:search_var(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred varset:lookup_vars((varset:varset), (term:substitution)).
+:- mode varset:lookup_vars(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred varset:merge((varset:varset), (varset:varset), (list:list((term:term))), (varset:varset), (list:list((term:term)))).
+:- mode varset:merge(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred varset:merge_subst((varset:varset), (varset:varset), (varset:varset), (term:substitution)).
+:- mode varset:merge_subst(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred varset:get_bindings((varset:varset), (term:substitution)).
+:- mode varset:get_bindings(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred varset:set_bindings((varset:varset), (term:substitution), (varset:varset)).
+:- mode varset:set_bindings(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred varset:create_name_var_map((varset:varset), (map:map(string, (term:var)))).
+:- mode varset:create_name_var_map(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred varset:var_name_list((varset:varset), (assoc_list:assoc_list((term:var), string))).
+:- mode varset:var_name_list(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred varset:ensure_unique_names((list:list((term:var))), string, (varset:varset), (varset:varset)).
+:- mode varset:ensure_unique_names(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.

@@ -1,0 +1,36 @@
+
+On Irix 5, it is not possible to use both gcc's non-local gotos and
+position-independent code (which is required for shared libraries)
+The Mercury auto-configuration script will usually resolve this problem
+by disabling the use of gcc's non-local gotos.  That works fine, but
+the resulting `reg.gc' grade compiler is considerably less efficient
+that the `asm_fast.gc' grade compiler that uses non-local gotos. 
+It's about 30% larger (3.3M vs 2.5M stripped), and probably about
+20-100% slower (at a very rough guess).
+
+To use non-local gotos, your Irix machine needs to have the nonshared
+versions of the C standard library installed in /usr/lib/nonshared,
+and you need also need a version of `libgcc.a' that has been compiled
+with `-mno-abicalls' in /usr/lib/nonshared.  To create that, you need
+to obtain a copy of the gcc source distribution, replace the `-g1' with
+`-mno-abicalls' in the definition of LIBGCC2_CFLAGS in the Makefile in
+the gcc source directory, type `make libgcc.a', and then copy libgcc.a
+to /usr/lib/nonshared.  (To use a directory other than
+/usr/lib/nonshared for libgcc.a, you must set the environment
+variable MERCURY_NONSHARED_LIB_DIR to the appropriate directory before
+running `configure'.)
+
+Once you have done that, you can reinstall Mercury;
+`configure' should detect that using gcc labels now works. 
+(If it doesn't, examine config.log to work out what went wrong.) 
+`configure' will also disable shared libraries, so that
+the installation process doesn't attempt to build shared
+versions of the `asm_fast.gc' grade libraries (and others).
+However, the linker will still pick up the shared libraries
+for `reg.gc' and the other grades installed initially
+(before creating a nonshared libgcc.a).
+The default grade will be set to `reg.gc', since shared libraries
+give you small executables and short link times.  But for
+large programs, you should set GRADE=asm_fast.gc in your Mmake file
+for considerably improved performance.
+

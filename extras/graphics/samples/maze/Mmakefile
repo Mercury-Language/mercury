@@ -1,0 +1,27 @@
+
+# To use static libraries under Linux you need this.
+MGNUCFLAGS    = --pic-reg
+EXTRA_MLFLAGS = -shared
+
+EXTRA_MLLIBS	= -ltk8.0 -ltcl8.0 -lMesaGLU -lMesaGL -L/usr/X11R6/lib -lX11 \
+			-lXmu -lXext -ldl
+
+# Specify the location of the `mercury_tcltk' and `mercury_opengl' packages.
+MERCURY_TCLTK_DIR   = ../../mercury_tcltk
+MERCURY_OPENGL_DIR  = ../../mercury_opengl
+
+# Tell mmake to use the `mercury_tcltk' and `mercury_opengl' libraries.
+VPATH           = $(MERCURY_OPENGL_DIR):$(MERCURY_TCLTK_DIR):$(MMAKE_VPATH)
+MCFLAGS         = -I$(MERCURY_TCLTK_DIR) -I$(MERCURY_OPENGL_DIR) \
+			$(EXTRA_MCFLAGS)
+MLFLAGS         = -R$(MERCURY_TCLTK_DIR) -R$(MERCURY_OPENGL_DIR) \
+			$(EXTRA_MLFLAGS) -L$(MERCURY_TCLTK_DIR)  \
+			-L$(MERCURY_OPENGL_DIR)
+MLLIBS          = -lmercury_opengl -lmercury_tcltk $(EXTRA_MLLIBS)
+C2INITFLAGS     = $(MERCURY_TCLTK_DIR)/mercury_tcltk.init \
+		  $(MERCURY_OPENGL_DIR)/mercury_opengl.init
+
+default_target : maze
+
+depend : maze.depend
+

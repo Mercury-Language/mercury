@@ -1,0 +1,101 @@
+#-----------------------------------------------------------------------------#
+
+main_target: check
+
+include ../Mmake.common
+-include ../Mmake.params
+
+#-----------------------------------------------------------------------------#
+
+PROGS=	\
+	ack \
+	append \
+	arit_exp \
+	associative \
+	dds1_2 \
+	dds3_13 \
+	dds3_14 \
+	dds3_15 \
+	dds3_17 \
+	dds3_8 \
+	fold \
+	my_list \
+	lte \
+	my_map \
+	member \
+	mergesort \
+	mergesort_ap \
+	mergesort_t \
+	mmatrix \
+	money \
+	naive_rev \
+	occur \
+	ordered \
+	overlap \
+	permutation \
+	pl1_1 \
+	pl1_2 \
+	pl2_3_1 \
+	pl3_1_1 \
+	pl3_5_6 \
+	pl3_5_6a \
+	pl4_01 \
+	pl4_4_3 \
+	pl4_4_6a \
+	pl4_5_2 \
+	pl4_5_3a \
+	pl5_2_2 \
+	pl6_1_1 \
+	pl7_2_9 \
+	pl7_6_2a \
+	pl7_6_2b \
+	pl7_6_2c \
+	pl8_2_1 \
+	pl8_2_1a \
+	pl8_3_1 \
+	pl8_3_1a \
+	pl8_4_1 \
+	pl8_4_2 \
+	queens \
+	quicksort \
+	select \
+	subset \
+	sum \
+	vangelder
+
+DEPENDS = $(PROGS:%=%.depend)
+TRANS_OPTS = $(PROGS:%=$(trans_opts_subdir)%.trans_opt)
+TRANS_OPT_RESS = $(PROGS:%=%.trans_opt_res)
+
+#-----------------------------------------------------------------------------#
+
+MCTERMFLAGS = --enable-termination --term-single-arg 5 --term-norm simple
+MCOPTFLAGS  = --no-inlining --no-optimize-unused-args --no-deforestation \
+	      --no-optimize-higher-order
+MCTRANSOPTFLAGS = $(MCTERMFLAGS) $(MCOPTFLAGS)
+
+	# if EXTRA_MCFLAGS=-O5 then --no-inlining must occur after the
+	# -O5 to turn inlining off.
+	# The following ensures that MCTRANSOPTFLAGS overrides any
+	# thing set by EXTRA_MCFLAGS, by placing them later in the
+	# argument list.
+ALL_MCTOIFLAGS+=$(MCTRANSOPTFLAGS)
+
+%.trans_opt_res: %.trans_opt_exp $(trans_opts_subdir)%.trans_opt
+	diff -c $*.trans_opt_exp $(trans_opts_subdir)$*.trans_opt > $@
+
+#-----------------------------------------------------------------------------#
+
+depend: $(DEPENDS)
+
+trans_opts: $(TRANS_OPTS)
+
+check: $(TRANS_OPT_RESS)
+
+clean_local:
+	rm -f *.trans_opt_err
+
+realclean_local:
+	rm -f *.trans_opt_res
+
+#-----------------------------------------------------------------------------#

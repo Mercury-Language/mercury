@@ -1,0 +1,42 @@
+#!/usr/bin/awk -f
+/^mercury_compile/	{
+				if ($1 != cur_version && cur_version != "")
+				{
+					printf "%s %9.2f\n",
+						cur_version,
+						cur_total / cur_counter;
+					cur_version = "";
+					cur_counter = 0.0;
+					cur_total = 0.0;
+				}
+
+				time = substr($2, 1, length($2) - 1);
+				# printf "%9.2f\n", time;
+
+				cur_version = $1;
+				cur_counter++;
+				cur_total += time;
+
+				next;
+			}
+			{
+				if ($1 != cur_version && cur_version != "")
+				{
+					printf "%s %9.2f\n",
+						cur_version,
+						cur_total / cur_counter;
+					cur_version = "";
+					cur_counter = 0.0;
+					cur_total = 0.0;
+				}
+
+				print;
+			}
+END			{
+				if (cur_version != "")
+				{
+					printf "%s %9.2f\n",
+						cur_version,
+						cur_total / cur_counter;
+				}
+			}

@@ -1,0 +1,50 @@
+#!/bin/sh
+#
+# INSTALL_CVS - installation instructions and installation script.
+#	This version is for use by Mercury developers after you have
+#       just checked the files out from the CVS archive. 
+#        Note: you need a previous version of Mercury
+#	already installed (the CVS archive doesn't have all the necessary
+#	files for bootstrapping).
+#	You also need autoconf (and hence GNU m4) installed.
+#
+# Step 0.  autoconf
+#
+# Step 1.  ./configure
+#
+# Step 2.  mmake depend
+#
+# Step 3.  mmake
+#
+# Step 4.  tools/bootcheck
+#
+# Step 5.  cd stage2 && mmake install
+#
+#	   If you just want to do a `make' rather than a `make install',
+#	   then comment out the `mmake install' line below.
+#
+#	   If you want to install without doing a boot check, then comment
+#	   out the `tools/bootcheck' and `cd stage2' lines below.  If the
+#	   version of the compiler you checked out is buggy and you don't
+#	   perform a boot check first, you risk installing a version of the
+#	   compiler incapable of compiling itself.  Make sure you have a
+#	   fall-back plan if you do this.
+#	   Note also that occasionally changes made to the compiler mean
+#	   that installing from a stage 1 build will fail, even when the
+#	   compiler is fine.  In such cases the only way to install the
+#	   compiler is from the stage 2 directory.
+#
+#	   If you don't want to do a parallel make, comment out the
+#	   `parallel=-j3' line below.
+
+parallel=-j3
+
+autoconf &&
+./configure &&
+touch Mmake.params &&
+mmake depend $parallel &&
+mmake MMAKEFLAGS=$parallel &&
+tools/bootcheck $parallel &&
+cd stage2 &&
+mmake install MMAKEFLAGS=$parallel &&
+true
