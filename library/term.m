@@ -21,6 +21,10 @@
 			;	term_integer(int)
 			;	term_string(string)
 			;	term_float(float).
+:- type comparison	--->	(>)
+			;	(<)
+			;	(=).
+
 :- type var.
 :- type var_supply.
 :- type term__context.
@@ -121,6 +125,19 @@
 :- mode term__relabel_variables(input, input, input, output) is det.
 %	term__relabel_variables(Terms0, OldVar, NewVar, Terms) :
 %		same as term__relabel_variable but for a list of terms.
+
+
+:- pred term__is_ground(term, substitution).
+:- mode term__is_ground(in, in).
+%	term__is_ground(Term, Bindings) is true iff no variables contained
+%		in Term are non-ground in Bindings.
+
+:- pred term__compare(comparison, term, term, substitution).
+:- mode term__compare(out, in, in, in).
+%	term__compare(Comparison, Term1, Term2, Bindings) is true iff
+%		there is a binding of Comparison to <, =, or > such
+%		that the binding holds for the two ground terms Term1
+%		and Term2 with respect to the bindings in Bindings.
 
 %-----------------------------------------------------------------------------%
 
@@ -536,6 +553,42 @@ term__relabel_variables([Term0|Terms0], OldVar, NewVar, [Term|Terms]):-
 term_list_to_var_list([], []).
 term_list_to_var_list([term_variable(Var) | Terms], [Var | Vars]) :-
 	term_list_to_var_list(Terms, Vars).
+
+%-----------------------------------------------------------------------------%
+
+term__is_ground(term_variable(V), Bindings) :-
+	map__search(Bindings, V, Binding),
+	term__is_ground(Binding, Bindings).
+term__is_ground(term_functor(_, Args, _), Bindings) :-
+	term__is_ground_2(Args, Bindings).
+
+:- pred term__is_ground_2(list(term), substitution).
+:- mode term__is_ground_2(in, in).
+
+term__is_ground_2([], _Bindings).
+term__is_ground_2([Term|Terms], Bindings) :-
+	term__is_ground(Term, Bindings),
+	term__is_ground_2(Terms, Bindings).
+	
+%-----------------------------------------------------------------------------%
+
+term__compare(Cmp, Term1, Term2, Bindings) :-
+	term__apply_rec_substitution(Term1, Bindings, TermA),
+	term__is_ground(TermA, Bindings),
+	term__apply_rec_substitution(Term2, Bindings, TermB),
+	term__is_ground(TermB, Bindings),
+	compare(Cmp0, TermA, TermB),
+	(
+		Cmp0 = (=)
+	->
+		Cmp = (=)
+	;
+		Cmp0 = (<)
+	->
+		Cmp = (<)
+	;
+		Cmp = (>)
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
