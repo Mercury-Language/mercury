@@ -61,7 +61,7 @@
 %-----------------------------------------------------------------------------%
 
 	% Return the type_info for the type help__system, for use by C code.
-:- pred help__help_system_type(type_info::out) is det.
+:- pred help__help_system_type(type_desc::out) is det.
 
 	% Help interpret a help__res for C code.
 :- pred help__result_is_error(help__res::in, string::out) is semidet.

@@ -55,6 +55,7 @@ HDRS		=	\
 			mercury_label.h		\
 			mercury_layout_util.h	\
 			mercury_library_types.h	\
+			mercury_make_type_info_body.h	\
 			mercury_memory.h	\
 			mercury_memory_zones.h	\
 			mercury_memory_handlers.h	\
@@ -80,6 +81,7 @@ HDRS		=	\
 			mercury_trail.h		\
 			mercury_types.h		\
 			mercury_type_info.h	\
+			mercury_unify_compare_body.h	\
 			mercury_wrapper.h	\
 			$(LIB_DLL_H)
 

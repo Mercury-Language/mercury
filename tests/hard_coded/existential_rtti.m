@@ -127,7 +127,27 @@ main -->
 	io__write(KCopy), io__nl,
 	io__write(LCopy), io__nl,
 
-	io__write_string("Writing a deconstructed term:\n"),
-	{ deconstruct(I, _Functor, _Arity, IArgs) },
-	io__write_list(IArgs, ", ", io__write),
+	io__write_string("Writing deconstructed terms:\n"),
+	deconstruct_test(A),
+	deconstruct_test(B),
+	deconstruct_test(C),
+	deconstruct_test(D),
+	deconstruct_test(E),
+	deconstruct_test(F),
+	deconstruct_test(G),
+	deconstruct_test(H),
+	deconstruct_test(I),
+	deconstruct_test(J),
+	deconstruct_test(K),
+	deconstruct_test(L).
+
+:- pred deconstruct_test(T::in, io__state::di, io__state::uo) is det.
+
+deconstruct_test(Term) -->
+	{ deconstruct(Term, Functor, Arity, Args) },
+	io__write_string(Functor),
+	io__write_string("/"),
+	io__write_int(Arity),
+	io__nl,
+	io__write_list(Args, ", ", io__write),
 	io__nl.

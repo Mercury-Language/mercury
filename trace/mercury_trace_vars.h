@@ -83,7 +83,7 @@ extern	const char	*MR_trace_list_vars(FILE *out);
 */
 
 extern	const char	*MR_trace_return_var_info(int n, const char **name_ptr,
-				Word *type_info_ptr, Word *value_ptr);
+				MR_TypeInfo *type_info_ptr, Word *value_ptr);
 
 /*
 ** If the variable specified by n is a head variable, then store

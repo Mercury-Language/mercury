@@ -39,5 +39,28 @@ f(8, u("hello"), 42)
 f2(9, "hello", u("hello"), 432.100000000000, u("world"), 42)
 multi(10, "multiparameter")
 multi2(11, "multiparameter", 42.0000000000000)
-Writing a deconstructed term:
+Writing deconstructed terms:
+myf/1
+univ(1 : int)
+f/3
+univ(1 : int), univ("hello" : string), univ(42 : int)
+f/3
+univ(2 : int), univ('w' : character), univ(42 : int)
+f/3
+univ(3 : int), univ(goo : existential_rtti:goo), univ(42 : int)
+f/3
+univ(4 : int), univ(g("hello") : existential_rtti:g), univ(42 : int)
+f/3
+univ(5 : int), univ(g2(12) : existential_rtti:g2), univ(42 : int)
+f/3
+univ(6 : int), univ(foo("hello", "world") : existential_rtti:foo), univ(42 : int)
+g/3
+univ(7.00000000000000 : float), univ(g("hello") : existential_rtti:g), univ(42.0000000000000 : float)
+f/3
 univ(8 : int), univ(u("hello") : existential_rtti:u(string)), univ(42 : int)
+f2/6
+univ(9 : int), univ("hello" : string), univ(u("hello") : existential_rtti:u(string)), univ(432.100000000000 : float), univ(u("world") : existential_rtti:u(string)), univ(42 : int)
+multi/2
+univ(10 : int), univ("multiparameter" : string)
+multi2/3
+univ(11 : int), univ("multiparameter" : string), univ(42.0000000000000 : float)

@@ -420,7 +420,7 @@
 	% unification/comparison/index predicate.
 :- pred polymorphism__get_special_proc(type, special_pred_id,
 		module_info, sym_name, pred_id, proc_id).
-:- mode polymorphism__get_special_proc(in, in, in, out, out, out) is det.
+:- mode polymorphism__get_special_proc(in, in, in, out, out, out) is semidet.
 
 	% convert a higher-order pred term to a lambda goal
 :- pred convert_pred_to_lambda_goal(pred_or_func, lambda_eval_method,
@@ -2650,7 +2650,7 @@ polymorphism__get_special_proc(Type, SpecialPredId, ModuleInfo,
 	( TypeCategory = user_type ->
 		module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),
 		( type_to_type_id(Type, TypeId, _TypeArgs) ->
-			map__lookup(SpecialPredMap, SpecialPredId - TypeId,
+			map__search(SpecialPredMap, SpecialPredId - TypeId,
 				PredId)
 		;
 			error(

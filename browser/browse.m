@@ -94,7 +94,7 @@ browse__init_state(State) -->
 	{ default_state(State) }.
 
 % return the type_info for a browser_state type
-:- pred browse__browser_state_type(type_info).
+:- pred browse__browser_state_type(type_desc).
 :- mode browse__browser_state_type(out) is det.
 
 browse__browser_state_type(Type) :-

@@ -323,7 +323,7 @@ Define_entry(mercury____Unify___private_builtin__type_info_1_0);
 	int	comp;
 
 	save_transient_registers();
-	comp = MR_compare_type_info(r1, r2);
+	comp = MR_compare_type_info((MR_TypeInfo) r1, (MR_TypeInfo) r2);
 	restore_transient_registers();
 	r1 = (comp == MR_COMPARE_EQUAL);
 	proceed();
@@ -344,7 +344,7 @@ Define_entry(mercury____Compare___private_builtin__type_info_1_0);
 	int	comp;
 
 	save_transient_registers();
-	comp = MR_compare_type_info(r1, r2);
+	comp = MR_compare_type_info((MR_TypeInfo) r1, (MR_TypeInfo) r2);
 	restore_transient_registers();
 	r1 = comp;
 	proceed();
@@ -1174,7 +1174,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 	MR_TrieNode	table0, table;
 
 	table0 = (MR_TrieNode) T0;
-	MR_DEBUG_NEW_TABLE_ANY(table, table0, (Word *) TypeInfo_for_T, V);
+	MR_DEBUG_NEW_TABLE_ANY(table, table0, (MR_TypeInfo) TypeInfo_for_T, V);
 	T = (Word) table;
 ").
 
@@ -1183,7 +1183,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 	MR_TrieNode	table0, table;
 
 	table0 = (MR_TrieNode) T0;
-	MR_DEBUG_NEW_TABLE_ANY(table, table0, (Word *) TypeInfo_for_T, V);
+	MR_DEBUG_NEW_TABLE_ANY(table, table0, (MR_TypeInfo) TypeInfo_for_T, V);
 	T = (Word) table;
 ").
 

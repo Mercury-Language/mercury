@@ -20,8 +20,8 @@
 
 :- pred newline(io__state::di, io__state::uo) is det.
 
-:- pred test_num_functors(type_info::in, io__state::di, io__state::uo) is det.
-:- pred test_nth_functor(type_info::in, io__state::di, io__state::uo) is det.
+:- pred test_num_functors(type_desc::in, io__state::di, io__state::uo) is det.
+:- pred test_nth_functor(type_desc::in, io__state::di, io__state::uo) is det.
 :- pred test_all(T::in, io__state::di, io__state::uo) is det.
 
 
@@ -96,7 +96,7 @@ test_construct -->
 		[One, Bye]).
 
 	
-:- pred test_construct_2(type_info::in, string::in, int::in, list(univ)::in,
+:- pred test_construct_2(type_desc::in, string::in, int::in, list(univ)::in,
 	io__state::di, io__state::uo) is det.
 test_construct_2(TypeInfo, FunctorName, Arity, Args) -->
 	{ find_functor(TypeInfo, FunctorName, Arity, FunctorNumber) },
@@ -115,12 +115,12 @@ test_construct_2(TypeInfo, FunctorName, Arity, Args) -->
 		io__write_string("Construction failed.\n")
 	).
 
-:- pred find_functor(type_info::in, string::in, int::in, int::out) is det.
+:- pred find_functor(type_desc::in, string::in, int::in, int::out) is det.
 find_functor(TypeInfo, Functor, Arity, FunctorNumber) :-
 	N = num_functors(TypeInfo),
 	find_functor2(TypeInfo, Functor, Arity, N, FunctorNumber).
 	
-:- pred find_functor2(type_info::in, string::in, int::in, int::in, 
+:- pred find_functor2(type_desc::in, string::in, int::in, int::in, 
 	int::out) is det.
 find_functor2(TypeInfo, Functor, Arity, Num, FunctorNumber) :-
 	(
@@ -158,7 +158,7 @@ test_nth_functor(TypeInfo) -->
 	test_all_functors(TypeInfo, N - 1).
 
 
-:- pred test_all_functors(type_info::in, int::in, 
+:- pred test_all_functors(type_desc::in, int::in, 
 		io__state::di, io__state::uo) is det.
 
 test_all_functors(TypeInfo, N) -->

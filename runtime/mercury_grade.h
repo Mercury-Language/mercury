@@ -52,7 +52,7 @@
 ** RTTI version number.
 */
 
-#define MR_GRADE_PART_0		v2_
+#define MR_GRADE_PART_0	v3_
 
 #ifdef MR_HIGHLEVEL_CODE
 

@@ -1788,8 +1788,8 @@ adjust_type_status_2(TypeId - TypeDefn0, TypeId - TypeDefn,
 fixup_special_preds(TypeId, ModuleInfo0, ModuleInfo) :-
 	special_pred_list(SpecialPredList),
 	module_info_get_special_pred_map(ModuleInfo0, SpecPredMap),
-	list__map((pred(SpecPredId::in, PredId::out) is det :-
-			map__lookup(SpecPredMap, SpecPredId - TypeId, PredId)
+	list__filter_map((pred(SpecPredId::in, PredId::out) is semidet :-
+			map__search(SpecPredMap, SpecPredId - TypeId, PredId)
 		), SpecialPredList, PredIds),
 	set_list_of_preds_exported(PredIds, ModuleInfo0, ModuleInfo).
 

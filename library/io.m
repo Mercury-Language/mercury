@@ -1883,8 +1883,8 @@ io__write_univ(Univ, Priority) -->
 		io__write_int(Int)
 	; { univ_to_type(Univ, Float) } ->
 		io__write_float(Float)
-	; { univ_to_type(Univ, TypeInfo) } ->
-		io__write_type_info(TypeInfo)
+	; { univ_to_type(Univ, TypeDesc) } ->
+		io__write_type_desc(TypeDesc)
 	; { univ_to_type(Univ, OrigUniv) } ->
 		io__write_univ_as_univ(OrigUniv)
 	; { univ_to_type(Univ, C_Pointer) } ->
@@ -2124,11 +2124,11 @@ arg_priority(1000) --> [].
 
 %-----------------------------------------------------------------------------%
 
-:- pred io__write_type_info(type_info, io__state, io__state).
-:- mode io__write_type_info(in, di, uo) is det.
+:- pred io__write_type_desc(type_desc, io__state, io__state).
+:- mode io__write_type_desc(in, di, uo) is det.
 
-io__write_type_info(TypeInfo) -->
-	io__write_string(type_name(TypeInfo)).
+io__write_type_desc(TypeDesc) -->
+	io__write_string(type_name(TypeDesc)).
 
 :- pred io__write_univ_as_univ(univ, io__state, io__state).
 :- mode io__write_univ_as_univ(in, di, uo) is det.
@@ -2161,7 +2161,7 @@ io__write_array(Array) -->
 		io__state::di, io__state::uo) is det.
 io__write_private_builtin_type_info(PrivateBuiltinTypeInfo) -->
 	{ TypeInfo = unsafe_cast(PrivateBuiltinTypeInfo) },
-	io__write_type_info(TypeInfo).
+	io__write_type_desc(TypeInfo).
 
 :- func unsafe_cast(T1::in) = (T2::out) is det.
 :- pragma c_code(unsafe_cast(VarIn::in) = (VarOut::out),
@@ -2551,7 +2551,7 @@ io__finalize_state -->
 	% we don't bother.)
 	[].
 
-:- pred io__gc_init(type_info, type_info, io__state, io__state).
+:- pred io__gc_init(type_desc, type_desc, io__state, io__state).
 :- mode io__gc_init(in, in, di, uo) is det.
 
 :- pragma c_code(io__gc_init(StreamNamesType::in, UserGlobalsType::in,
@@ -2560,8 +2560,8 @@ io__finalize_state -->
 #ifdef CONSERVATIVE_GC
 	GC_INIT();
 #endif
-	MR_add_root(&ML_io_stream_names, (Word *) StreamNamesType);
-	MR_add_root(&ML_io_user_globals, (Word *) UserGlobalsType);
+	MR_add_root(&ML_io_stream_names, (MR_TypeInfo) StreamNamesType);
+	MR_add_root(&ML_io_user_globals, (MR_TypeInfo) UserGlobalsType);
 	update_io(IO0, IO);
 ").
 
@@ -2614,7 +2614,7 @@ io__set_op_table(_OpTable) --> [].
 
 % For use by the debugger:
 
-:- pred io__get_io_input_stream_type(type_info, io__state, io__state).
+:- pred io__get_io_input_stream_type(type_desc, io__state, io__state).
 :- mode io__get_io_input_stream_type(out, di, uo) is det.
 
 :- pragma export(io__get_io_input_stream_type(out, di, uo),
@@ -2624,7 +2624,7 @@ io__get_io_input_stream_type(Type) -->
 	io__stdin_stream(Stream),
 	{ Type = type_of(Stream) }.
 
-:- pred io__get_io_output_stream_type(type_info, io__state, io__state).
+:- pred io__get_io_output_stream_type(type_desc, io__state, io__state).
 :- mode io__get_io_output_stream_type(out, di, uo) is det.
 
 :- pragma export(io__get_io_output_stream_type(out, di, uo),

@@ -305,7 +305,7 @@ extern	MR_TrieNode	MR_int_start_index_lookup_or_add(MR_TrieNode table,
 */
 
 extern	MR_TrieNode	MR_type_info_lookup_or_add(MR_TrieNode table,
-				Word *type_info);
+				MR_TypeInfo type_info);
 
 /*
 ** This function tables typeclass_infos in a hash table.
@@ -320,7 +320,7 @@ extern	MR_TrieNode	MR_type_class_info_lookup_or_add(MR_TrieNode table,
 */
 
 extern	MR_TrieNode	MR_table_type(MR_TrieNode table,
-				Word *type_info, Word data_value);
+				MR_TypeInfo type_info, Word data_value);
 
 /*
 ** This function prints statistics about the operation of tabling, if the

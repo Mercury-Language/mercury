@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-1999 The University of Melbourne.
+** Copyright (C) 1998-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -47,11 +47,13 @@ extern	void	MR_copy_saved_regs_to_regs(int max_mr_num, Word *saved_regs);
 ** is non-null.
 */ 
 
-extern	Word	*MR_materialize_typeinfos(
-			const MR_Stack_Layout_Vars *vars, Word *saved_regs);
-extern	Word	*MR_materialize_typeinfos_base(
-			const MR_Stack_Layout_Vars *vars, Word *saved_regs,
-			Word *base_sp, Word *base_curfr);
+extern	MR_TypeInfoParams	MR_materialize_typeinfos(
+					const MR_Stack_Layout_Vars *vars,
+					Word *saved_regs);
+extern	MR_TypeInfoParams	MR_materialize_typeinfos_base(
+					const MR_Stack_Layout_Vars *vars,
+					Word *saved_regs,
+					Word *base_sp, Word *base_curfr);
 
 /*
 ** If the given encoded location refers to a register, return its number.
@@ -111,17 +113,19 @@ extern	Word	MR_lookup_short_lval_base(MR_Short_Lval locn,
 */
 
 extern	bool	MR_get_type_and_value(const MR_Stack_Layout_Vars *vars,
-			int var, Word *saved_regs,
-			Word *type_params, Word *type_info, Word *value);
+			int var, Word *saved_regs, MR_TypeInfo *type_params,
+			MR_TypeInfo *type_info, Word *value);
 extern	bool	MR_get_type_and_value_base(const MR_Stack_Layout_Vars *vars,
 			int var, Word *saved_regs,
 			Word *base_sp, Word *base_curfr,
-			Word *type_params, Word *type_info, Word *value);
+			MR_TypeInfo *type_params, MR_TypeInfo *type_info,
+			Word *value);
 extern	bool	MR_get_type(const MR_Stack_Layout_Vars *vars, int var,
-			Word *saved_regs, Word *type_params, Word *type_info);
+			Word *saved_regs, MR_TypeInfo *type_params,
+			MR_TypeInfo *type_info);
 extern	bool	MR_get_type_base(const MR_Stack_Layout_Vars *vars, int var,
 			Word *saved_regs, Word *base_sp, Word *base_curfr,
-			Word *type_params, Word *type_info);
+			MR_TypeInfo *type_params, MR_TypeInfo *type_info);
 
 /*
 ** MR_write_variable:

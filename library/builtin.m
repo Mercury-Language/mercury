@@ -441,7 +441,7 @@ Define_entry(mercury__copy_2_1);
 	value = r2;
 
 	save_transient_registers();
-	copy = deep_copy(&value, (Word *) type_info, NULL, NULL);
+	copy = deep_copy(&value, (MR_TypeInfo) type_info, NULL, NULL);
 	restore_transient_registers();
 
 	r1 = copy;

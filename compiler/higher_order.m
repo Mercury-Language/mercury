@@ -1599,7 +1599,7 @@ interpret_typeclass_info_manipulator(Manipulator, Args,
 		maybe(call_unify_context)::in, hlds_goal_expr::out,
 		higher_order_info::in, higher_order_info::out) is semidet.
 		
-specialize_special_pred(CalledPred, _CalledProc, Args,
+specialize_special_pred(CalledPred, CalledProc, Args,
 		MaybeContext, Goal, Info0, Info) :-
 	Info0 = info(PredVars, B, C, D, E, ProcInfo0, ModuleInfo, H, I),
 	proc_info_vartypes(ProcInfo0, VarTypes),
@@ -1624,7 +1624,9 @@ specialize_special_pred(CalledPred, _CalledProc, Args,
 
 	(
 		SpecialId = unify,
-		type_is_atomic(SpecialPredType, ModuleInfo)
+		type_is_atomic(SpecialPredType, ModuleInfo),
+		proc_id_to_int(CalledProc, CalledProcInt),
+		CalledProcInt = 0
 	->
 		% Unifications of atomic types can be specialized
 		% to simple_tests.
@@ -1653,7 +1655,9 @@ specialize_special_pred(CalledPred, _CalledProc, Args,
 		% This could be done for non-atomic types, but it would
 		% be a bit more complicated because the type-info for
 		% the wrapped type would need to be extracted first.
-		type_is_atomic(WrappedType, ModuleInfo)
+		type_is_atomic(WrappedType, ModuleInfo),
+		proc_id_to_int(CalledProc, CalledProcInt),
+		CalledProcInt = 0
 	->
 		(
 			SpecialId = unify,

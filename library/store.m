@@ -123,7 +123,7 @@
 :- mode store__ref_functor(in, out, out, di, uo) is det.
 
 	% arg_ref(Ref, ArgNum, ArgRef):	     
-	%	/* Psuedo-C code: ArgRef = &Ref[ArgNum]; */
+	%	/* Pseudo-C code: ArgRef = &Ref[ArgNum]; */
 	% Given a reference to a term, return a reference to
 	% the specified argument (field) of that term
 	% (argument numbers start from zero).
@@ -133,7 +133,7 @@
 :- mode store__arg_ref(in, in, out, di, uo) is det.
 
 	% new_arg_ref(Val, ArgNum, ArgRef):
-	%	/* Psuedo-C code: ArgRef = &Val[ArgNum]; */
+	%	/* Pseudo-C code: ArgRef = &Val[ArgNum]; */
 	% Equivalent to `new_ref(Val, Ref), arg_ref(Ref, ArgNum, ArgRef)',
 	% except that it is more efficient.
 	% It is an error if the argument number is out of range,
@@ -308,26 +308,31 @@ ref_functor(Ref, Functor, Arity) -->
 	#include ""mercury_misc.h""	/* for fatal_error() */
 
 	/* ML_arg() is defined in std_util.m */
-	bool ML_arg(Word term_type_info, Word *term, Word argument_index,
-			Word *arg_type_info, Word **argument_ptr);
+	bool ML_arg(MR_TypeInfo term_type_info, Word *term, int arg_index,
+			MR_TypeInfo *arg_type_info_ptr, Word **arg_ptr);
 
 ").
 
 :- pragma c_code(arg_ref(Ref::in, ArgNum::in, ArgRef::out, S0::di, S::uo),
 		will_not_call_mercury,
 "{
-	Word arg_type_info;
-	Word* arg_ref;
+	MR_TypeInfo	type_info;
+	MR_TypeInfo	arg_type_info;
+	MR_TypeInfo	exp_arg_type_info;
+	Word		*arg_ref;
+
+	type_info = (MR_TypeInfo) TypeInfo_for_T;
+	exp_arg_type_info = (MR_TypeInfo) TypeInfo_for_ArgT;
 
 	save_transient_registers();
 
-	if (!ML_arg(TypeInfo_for_T, (Word *) Ref, ArgNum,
+	if (!ML_arg(type_info, (Word *) Ref, ArgNum,
 			&arg_type_info, &arg_ref))
 	{
 		fatal_error(""store__arg_ref: argument number out of range"");
 	}
 
-	if (MR_compare_type_info(arg_type_info, TypeInfo_for_ArgT) !=
+	if (MR_compare_type_info(arg_type_info, exp_arg_type_info) !=
 		MR_COMPARE_EQUAL)
 	{
 		fatal_error(""store__arg_ref: argument has wrong type"");
@@ -342,18 +347,23 @@ ref_functor(Ref, Functor, Arity) -->
 :- pragma c_code(new_arg_ref(Val::di, ArgNum::in, ArgRef::out, S0::di, S::uo),
 		will_not_call_mercury,
 "{
-	Word arg_type_info;
-	Word* arg_ref;
+	MR_TypeInfo	type_info;
+	MR_TypeInfo	arg_type_info;
+	MR_TypeInfo	exp_arg_type_info;
+	Word		*arg_ref;
+
+	type_info = (MR_TypeInfo) TypeInfo_for_T;
+	exp_arg_type_info = (MR_TypeInfo) TypeInfo_for_ArgT;
 
 	save_transient_registers();
 
-	if (!ML_arg(TypeInfo_for_T, (Word *) &Val, ArgNum,
+	if (!ML_arg(type_info, (Word *) &Val, ArgNum,
 			&arg_type_info, &arg_ref))
 	{
 	      fatal_error(""store__new_arg_ref: argument number out of range"");
 	}
 
-	if (MR_compare_type_info(arg_type_info, TypeInfo_for_ArgT) !=
+	if (MR_compare_type_info(arg_type_info, exp_arg_type_info) !=
 		MR_COMPARE_EQUAL)
 	{
 	      fatal_error(""store__new_arg_ref: argument has wrong type"");
@@ -367,9 +377,10 @@ ref_functor(Ref, Functor, Arity) -->
 	** return a pointer to it; so if that is the case, then we need
 	** to copy it to the heap before returning.
 	*/
+
 	if (arg_ref == &Val) {
 		incr_hp_msg(ArgRef, 1, MR_PROC_LABEL, ""store:ref/2"");
-		*(Word *)ArgRef = Val;
+		* (Word *) ArgRef = Val;
 	} else {
 		ArgRef = (Word) arg_ref;
 	}
@@ -379,21 +390,21 @@ ref_functor(Ref, Functor, Arity) -->
 :- pragma c_code(set_ref(Ref::in, ValRef::in, S0::di, S::uo),
 		will_not_call_mercury,
 "
-	*(Word *)Ref = *(Word *)ValRef;
+	* (Word *) Ref = * (Word *) ValRef;
 	S = S0;
 ").
 
 :- pragma c_code(set_ref_value(Ref::in, Val::di, S0::di, S::uo),
 		will_not_call_mercury,
 "
-	*(Word *)Ref = Val;
+	* (Word *) Ref = Val;
 	S = S0;
 ").
 
 :- pragma c_code(extract_ref_value(_S::di, Ref::in, Val::out),
 		will_not_call_mercury,
 "
-	Val = *(Word *)Ref;
+	Val = * (Word *) Ref;
 ").
 
 %-----------------------------------------------------------------------------%

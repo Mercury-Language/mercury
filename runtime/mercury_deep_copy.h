@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1999 The University of Melbourne.
+** Copyright (C) 1997-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -63,7 +63,7 @@
 **	deep_copy to do both.
 */
 
-Word deep_copy(const Word *data_ptr, const Word *type_info, 
+Word deep_copy(const Word *data_ptr, MR_TypeInfo type_info, 
 	const Word *lower_limit, const Word *upper_limit);
 
 /*
@@ -90,7 +90,7 @@ Word deep_copy(const Word *data_ptr, const Word *type_info,
 **	Note: You cannot pass NULL as the lower_limit to agc_deep_copy
 **	(which is possible with normal deep_copy).
 */
-Word agc_deep_copy(Word *data_ptr, const Word *type_info, 
+Word agc_deep_copy(Word *data_ptr, MR_TypeInfo type_info, 
 	const Word *lower_limit, const Word *upper_limit);
 
 /*

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-1999 The University of Melbourne.
+** Copyright (C) 1998-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -63,7 +63,7 @@ MR_copy_saved_regs_to_regs(int max_mr_num, Word *saved_regs)
 	save_transient_registers();
 }
 
-Word *
+MR_TypeInfoParams
 MR_materialize_typeinfos(const MR_Stack_Layout_Vars *vars,
 	Word *saved_regs)
 {
@@ -71,30 +71,29 @@ MR_materialize_typeinfos(const MR_Stack_Layout_Vars *vars,
 		MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs));
 }
 
-Word *
+MR_TypeInfoParams
 MR_materialize_typeinfos_base(const MR_Stack_Layout_Vars *vars,
 	Word *saved_regs, Word *base_sp, Word *base_curfr)
 {
-	Word	*type_params;
-	bool	succeeded;
-	Integer	count;
-	int	i;
+	MR_TypeInfoParams	type_params;
+	bool			succeeded;
+	Integer			count;
+	int			i;
 
 	if (vars->MR_slvs_tvars != NULL) {
 		count = vars->MR_slvs_tvars->MR_tp_param_count;
-		type_params = MR_NEW_ARRAY(Word, count + 1);
+		type_params = (MR_TypeInfoParams)
+			MR_NEW_ARRAY(Word, count + 1);
 
-		/*
-		** type_params should look like a typeinfo;
-		** type_params[0] is empty and will not be referred to
-		*/
 		for (i = 0; i < count; i++) {
 			if (vars->MR_slvs_tvars->MR_tp_param_locns[i] != 0) {
-				type_params[i + 1] = MR_lookup_long_lval_base(
-					vars->MR_slvs_tvars->
-						MR_tp_param_locns[i],
-					saved_regs, base_sp, base_curfr,
-					&succeeded);
+				type_params[i + 1] = (MR_TypeInfo)
+					MR_lookup_long_lval_base(
+						vars->MR_slvs_tvars->
+							MR_tp_param_locns[i],
+						saved_regs,
+						base_sp, base_curfr,
+						&succeeded);
 				if (! succeeded) {
 					fatal_error("missing type param in "
 					    "MR_materialize_typeinfos_base");
@@ -345,7 +344,8 @@ MR_lookup_short_lval_base(MR_Short_Lval locn, Word *saved_regs,
 
 bool
 MR_get_type_and_value(const MR_Stack_Layout_Vars *vars, int i,
-	Word *saved_regs, Word *type_params, Word *type_info, Word *value)
+	Word *saved_regs, MR_TypeInfo *type_params, MR_TypeInfo *type_info,
+	Word *value)
 {
 	return MR_get_type_and_value_base(vars, i, saved_regs,
 		MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs),
@@ -355,13 +355,13 @@ MR_get_type_and_value(const MR_Stack_Layout_Vars *vars, int i,
 bool
 MR_get_type_and_value_base(const MR_Stack_Layout_Vars *vars, int i,
 	Word *saved_regs, Word *base_sp, Word *base_curfr,
-	Word *type_params, Word *type_info, Word *value)
+	MR_TypeInfo *type_params, MR_TypeInfo *type_info, Word *value)
 {
-	bool	succeeded;
-	Word	*pseudo_type_info;
+	MR_PseudoTypeInfo	pseudo_type_info;
+	bool			succeeded;
 
 	pseudo_type_info = MR_var_pti(vars, i);
-	*type_info = (Word) MR_create_type_info(type_params, pseudo_type_info);
+	*type_info = MR_create_type_info(type_params, pseudo_type_info);
 
 	if (i < MR_long_desc_var_count(vars)) {
 		*value = MR_lookup_long_lval_base(
@@ -378,7 +378,7 @@ MR_get_type_and_value_base(const MR_Stack_Layout_Vars *vars, int i,
 
 bool
 MR_get_type(const MR_Stack_Layout_Vars *vars, int i, Word *saved_regs,
-	Word *type_params, Word *type_info)
+	MR_TypeInfo *type_params, MR_TypeInfo *type_info)
 {
 	return MR_get_type_base(vars, i, saved_regs,
 		MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs),
@@ -388,12 +388,12 @@ MR_get_type(const MR_Stack_Layout_Vars *vars, int i, Word *saved_regs,
 bool
 MR_get_type_base(const MR_Stack_Layout_Vars *vars, int i,
 	Word *saved_regs, Word *base_sp, Word *base_curfr,
-	Word *type_params, Word *type_info)
+	MR_TypeInfo *type_params, MR_TypeInfo *type_info)
 {
-	Word	*pseudo_type_info;
+	MR_PseudoTypeInfo	pseudo_type_info;
 
 	pseudo_type_info = MR_var_pti(vars, i);
-	*type_info = (Word) MR_create_type_info(type_params, pseudo_type_info);
+	*type_info = MR_create_type_info(type_params, pseudo_type_info);
 	
 	return TRUE;
 }

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1999 The University of Melbourne.
+% Copyright (C) 1993-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -72,7 +72,7 @@
 	% to the offending subterm.
 
 :- type term_to_type_error(T)
-	--->	type_error(term(T), type_info, term__context,
+	--->	type_error(term(T), type_desc, term__context,
 			term_to_type_context)
 	;	mode_error(var(T), term_to_type_context).
 
@@ -371,13 +371,13 @@ term__try_term_to_type(Term, Result) :-
 		Result = error(Error)
 	).
 
-:- pred term__try_term_to_univ(term(T)::in, type_info::in,
+:- pred term__try_term_to_univ(term(T)::in, type_desc::in,
 		term_to_type_result(univ, T)::out) is det.
 
 term__try_term_to_univ(Term, Type, Result) :-
 	term__try_term_to_univ_2(Term, Type, [], Result).
 	
-:- pred term__try_term_to_univ_2(term(T)::in, type_info::in,
+:- pred term__try_term_to_univ_2(term(T)::in, type_desc::in,
 		term_to_type_context::in,
 		term_to_type_result(univ, T)::out) is det.
 
@@ -419,9 +419,9 @@ term__try_term_to_univ_2(Term, Type, Context, Result) :-
 	).
 
 :- pred term__term_to_univ_special_case(string::in, string::in, 
-		list(type_info)::in, 
+		list(type_desc)::in, 
 		term(T)::in(bound(term__functor(ground, ground, ground))),
-		type_info::in, term_to_type_context::in,
+		type_desc::in, term_to_type_context::in,
 		term_to_type_result(univ, T)::out) is semidet.
 
 term__term_to_univ_special_case("builtin", "character", [],
@@ -500,7 +500,7 @@ term__term_to_univ_special_case("std_util", "type_info", _, _, _, _, _) :-
 	% ditto
 	fail.
 
-:- pred term__term_list_to_univ_list(list(term(T))::in, list(type_info)::in,
+:- pred term__term_list_to_univ_list(list(term(T))::in, list(type_desc)::in,
 		term__const::in, int::in, term_to_type_context::in,
 		term__context::in, term_to_type_result(list(univ), T)::out)
 		is semidet.
@@ -526,14 +526,14 @@ term__term_list_to_univ_list([ArgTerm|ArgTerms], [Type|Types],
 		Result = error(Error)
 	).
 
-:- pred term__find_functor(type_info::in, string::in, int::in, int::out,
-		list(type_info)::out) is semidet.
+:- pred term__find_functor(type_desc::in, string::in, int::in, int::out,
+		list(type_desc)::out) is semidet.
 term__find_functor(Type, Functor, Arity, FunctorNumber, ArgTypes) :-
 	N = num_functors(Type),
 	term__find_functor_2(Type, Functor, Arity, N, FunctorNumber, ArgTypes).
         
-:- pred term__find_functor_2(type_info::in, string::in, int::in, int::in, 
-	int::out, list(type_info)::out) is semidet.
+:- pred term__find_functor_2(type_desc::in, string::in, int::in, int::in, 
+	int::out, list(type_desc)::out) is semidet.
 term__find_functor_2(TypeInfo, Functor, Arity, Num, FunctorNumber, ArgTypes) :-
 	Num >= 0,
 	Num1 = Num - 1,
@@ -595,7 +595,7 @@ term__univ_to_term(Univ, Term) :-
 	).
 
 :- pred term__univ_to_term_special_case(string::in, string::in, 
-		list(type_info)::in, univ::in, term__context::in,
+		list(type_desc)::in, univ::in, term__context::in,
 		term(T)::out) is semidet.
 
 term__univ_to_term_special_case("builtin", "int", [], Univ, Context,
@@ -647,7 +647,7 @@ term__univ_list_to_term_list([Value|Values], [Term|Terms]) :-
 	term__univ_list_to_term_list(Values, Terms).
 
 % given a type_info, return a term that represents the name of that type.
-:- pred type_info_to_term(term__context::in, type_info::in,
+:- pred type_info_to_term(term__context::in, type_desc::in,
 		term(T)::out) is det.
 type_info_to_term(Context, TypeInfo, Term) :-
 	type_ctor_and_args(TypeInfo, TypeCtor, ArgTypes),

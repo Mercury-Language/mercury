@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-1999 The University of Melbourne.
+** Copyright (C) 1998-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -279,7 +279,7 @@ typedef	struct MR_Stack_Layout_Vars_Struct {
 		(MR_long_desc_var_count(slvs) + MR_short_desc_var_count(slvs))
 
 #define	MR_var_pti(slvs, i)						    \
-		(((MR_PseudoTypeInfo **) ((slvs)->MR_slvs_locns_types))[(i)])
+		(((MR_PseudoTypeInfo *) ((slvs)->MR_slvs_locns_types))[(i)])
 #define	MR_end_of_var_ptis(slvs)					    \
 		(&MR_var_pti((slvs), MR_all_desc_var_count(slvs)))
 #define	MR_long_desc_var_locn(slvs, i)					    \

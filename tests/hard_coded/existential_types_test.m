@@ -14,7 +14,7 @@
 
 :- some [T] func my_exist_t = T.
 
-:- some [T] pred has_type(T::unused, type_info::in) is det.
+:- some [T] pred has_type(T::unused, type_desc::in) is det.
 
 :- import_module io.
 

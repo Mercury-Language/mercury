@@ -1083,7 +1083,7 @@ MR_trace_make_var_list(void)
 	const char	*problem;
 	int		var_count;
 	int		i;
-	Word		type_info;
+	MR_TypeInfo	type_info;
 	Word		value;
 	Word		univ;
 	Word		var_list;
@@ -1106,7 +1106,7 @@ MR_trace_make_var_list(void)
 		);
 
 		MR_field(MR_mktag(0), univ, UNIV_OFFSET_FOR_TYPEINFO)
-			= type_info;
+			= (Word) type_info;
 		MR_field(MR_mktag(0), univ, UNIV_OFFSET_FOR_DATA) = value;
 
 		MR_TRACE_USE_HP(
@@ -1169,7 +1169,7 @@ MR_trace_make_type_list(void)
 	const char	*problem;
 	int		var_count;
 	int		i;
-	Word		type_info;
+	MR_TypeInfo	type_info;
 	String		type_info_string;
 	Word		type_list;
 
@@ -1186,7 +1186,7 @@ MR_trace_make_type_list(void)
 		}
 
 		MR_TRACE_CALL_MERCURY(
-			type_info_string = ML_type_name(type_info);
+			type_info_string = ML_type_name((Word) type_info);
 		);
 	        MR_TRACE_USE_HP(
 			type_list = MR_list_cons(type_info_string, type_list);
@@ -1206,7 +1206,7 @@ MR_trace_make_nth_var(Word debugger_request)
 {
 	const char	*problem;
 	int		var_number;
-	Word		type_info;
+	MR_TypeInfo	type_info;
 	Word		value;
 	Word		univ;
 
@@ -1221,7 +1221,7 @@ MR_trace_make_nth_var(Word debugger_request)
 			&type_info, &value);
 	if (problem == NULL) {
 		MR_field(MR_mktag(0), univ, UNIV_OFFSET_FOR_TYPEINFO)
-			= type_info;
+			= (Word) type_info;
 		MR_field(MR_mktag(0), univ, UNIV_OFFSET_FOR_DATA) = value;
 	} else {
 		/*

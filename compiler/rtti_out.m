@@ -361,7 +361,7 @@ output_ptag_layout_defns([DuPtagLayout | DuPtagLayouts], RttiTypeId) -->
 	io__write_string(", "),
 	{ rtti__sectag_locn_to_string(Locn, LocnStr) },
 	io__write_string(LocnStr),
-	io__write_string(", (MR_DuFunctorDesc **)\n\t"),
+	io__write_string(",\n\t"),
 	output_rtti_addr(RttiTypeId, Descriptors),
 	( { DuPtagLayouts = [] } ->
 		io__write_string(" }\n")

@@ -915,25 +915,25 @@ MR_decl_make_atom(const MR_Stack_Layout_Label *layout, Word *saved_regs,
 	int				i;
 	const MR_Stack_Layout_Vars	*vars;
 	int				arg_count;
-	Word				*type_params;
+	MR_TypeInfoParams		type_params;
 	const MR_Stack_Layout_Entry	*entry = layout->MR_sll_entry;
 
 	MR_trace_init_point_vars(layout, saved_regs, port);
 
 	name = MR_decl_atom_name(entry);
 	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(layout->MR_sll_entry)) {
-		arity = (Word) entry->MR_sle_comp.MR_comp_arity;
+		arity = entry->MR_sle_comp.MR_comp_arity;
 	} else {
-		arity = (Word) entry->MR_sle_user.MR_user_arity;
+		arity = entry->MR_sle_user.MR_user_arity;
 	}
 	MR_TRACE_CALL_MERCURY(
-		atom = MR_DD_construct_trace_atom((String) name, arity);
+		atom = MR_DD_construct_trace_atom((String) name, (Word) arity);
 	);
 
 	arg_count = MR_trace_var_count();
 	for (i = 1; i <= arg_count; i++) {
 		Word		arg;
-		Word		arg_type;
+		MR_TypeInfo	arg_type;
 		Word		arg_value;
 		int		arg_pos;
 		const char	*problem;
@@ -953,7 +953,7 @@ MR_decl_make_atom(const MR_Stack_Layout_Label *layout, Word *saved_regs,
 			tag_incr_hp(arg, MR_mktag(0), 2);
 		);
 		MR_field(MR_mktag(0), arg, UNIV_OFFSET_FOR_TYPEINFO) =
-				arg_type;
+				(Word) arg_type;
 		MR_field(MR_mktag(0), arg, UNIV_OFFSET_FOR_DATA) =
 				arg_value;
 
@@ -974,14 +974,14 @@ MR_decl_atom_name(const MR_Stack_Layout_Entry *entry)
 	if (MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)) {
 		if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)) {
 			MR_TRACE_USE_HP(
-				make_aligned_string(name, "<<internal>>");
+				MR_make_aligned_string(name, "<<internal>>");
 			);
 		} else {
 			name = entry->MR_sle_proc_id.MR_proc_user.MR_user_name;
 		}
 	} else {
 		MR_TRACE_USE_HP(
-			make_aligned_string(name, "<<unknown>>");
+			MR_make_aligned_string(name, "<<unknown>>");
 		);
 	}
 

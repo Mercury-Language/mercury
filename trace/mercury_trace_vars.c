@@ -55,7 +55,7 @@ typedef struct {
 	bool				MR_var_is_headvar;
 	bool				MR_var_is_ambiguous;
 	int				MR_var_hlds_number;
-	Word				MR_var_type;
+	MR_TypeInfo			MR_var_type;
 	Word				MR_var_value;
 } MR_Var_Details;
 
@@ -105,7 +105,7 @@ typedef struct {
 	MR_Var_Details			*MR_point_vars;
 } MR_Point;
 
-static	bool	MR_trace_type_is_ignored(Word type_info);
+static	bool	MR_trace_type_is_ignored(MR_TypeInfo type_info);
 static	int	MR_trace_compare_var_details(const void *arg1,
 			const void *arg2);
 static	void	MR_trace_browse_var(FILE *out, MR_Var_Details *var,
@@ -125,68 +125,70 @@ static	MR_Point			MR_point;
 ** do not export them. The types are a lie, but a safe lie.
 */
 
-extern	Word	mercury_data_private_builtin__type_ctor_info_type_info_1;
-extern	Word	mercury_data_private_builtin__type_ctor_info_type_ctor_info_1;
-extern	Word	mercury_data_private_builtin__type_ctor_info_typeclass_info_1;
-extern	Word	mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1;
-extern	Word	mercury_data___type_ctor_info_func_0;
-extern	Word	mercury_data___type_ctor_info_pred_0;
-extern	Word	mercury_data___type_ctor_info_void_0;
+extern	struct MR_TypeCtorInfo_Struct
+	mercury_data_private_builtin__type_ctor_info_type_info_1;
+extern	struct MR_TypeCtorInfo_Struct
+	mercury_data_private_builtin__type_ctor_info_type_ctor_info_1;
+extern	struct MR_TypeCtorInfo_Struct
+	mercury_data_private_builtin__type_ctor_info_typeclass_info_1;
+extern	struct MR_TypeCtorInfo_Struct
+	mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1;
+extern	struct MR_TypeCtorInfo_Struct
+	mercury_data_std_util__type_ctor_info_type_desc_0;
+extern	struct MR_TypeCtorInfo_Struct
+	mercury_data_std_util__type_ctor_info_type_ctor_desc_0;
+extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_func_0;
+extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_pred_0;
+extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_void_0;
 
 #ifdef	NATIVE_GC
-extern	Word	mercury_data___type_ctor_info_succip_0;
-extern	Word	mercury_data___type_ctor_info_hp_0;
-extern	Word	mercury_data___type_ctor_info_curfr_0;
-extern	Word	mercury_data___type_ctor_info_maxfr_0;
-extern	Word	mercury_data___type_ctor_info_redoip_0;
-extern	Word	mercury_data___type_ctor_info_redofr_0;
+extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_succip_0;
+extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_hp_0;
+extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_curfr_0;
+extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_maxfr_0;
+extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_redoip_0;
+extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_redofr_0;
 #endif
 
-static	Word *
+static	MR_TypeCtorInfo
 MR_trace_ignored_type_ctors[] =
 {
 	/* we ignore these until the debugger can handle their varying arity */
-	(Word *) &mercury_data_private_builtin__type_ctor_info_type_info_1,
-	(Word *) &mercury_data_private_builtin__type_ctor_info_type_ctor_info_1,
-	(Word *) &mercury_data_private_builtin__type_ctor_info_typeclass_info_1,
-	(Word *) &mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1,
+	&mercury_data_private_builtin__type_ctor_info_type_info_1,
+	&mercury_data_private_builtin__type_ctor_info_type_ctor_info_1,
+	&mercury_data_private_builtin__type_ctor_info_typeclass_info_1,
+	&mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1,
+	&mercury_data_std_util__type_ctor_info_type_desc_0,
+	&mercury_data_std_util__type_ctor_info_type_ctor_desc_0,
 
 	/* we ignore these until the debugger can print higher-order terms */
-	(Word *) &mercury_data___type_ctor_info_func_0,
-	(Word *) &mercury_data___type_ctor_info_pred_0,
+	&mercury_data___type_ctor_info_func_0,
+	&mercury_data___type_ctor_info_pred_0,
 
 	/* we ignore these because they should never be needed */
-	(Word *) &mercury_data___type_ctor_info_void_0,
+	&mercury_data___type_ctor_info_void_0,
 
 #ifdef	NATIVE_GC
 	/* we ignore these because they are not interesting */
-	(Word *) &mercury_data___type_ctor_info_succip_0,
-	(Word *) &mercury_data___type_ctor_info_hp_0,
-	(Word *) &mercury_data___type_ctor_info_curfr_0,
-	(Word *) &mercury_data___type_ctor_info_maxfr_0,
-	(Word *) &mercury_data___type_ctor_info_redoip_0,
-	(Word *) &mercury_data___type_ctor_info_redofr_0,
+	&mercury_data___type_ctor_info_succip_0,
+	&mercury_data___type_ctor_info_hp_0,
+	&mercury_data___type_ctor_info_curfr_0,
+	&mercury_data___type_ctor_info_maxfr_0,
+	&mercury_data___type_ctor_info_redoip_0,
+	&mercury_data___type_ctor_info_redofr_0,
 #endif
 };
 
 static bool
-MR_trace_type_is_ignored(Word type_info_as_word)
+MR_trace_type_is_ignored(MR_TypeInfo type_info)
 {
-	Word	*type_info;
-	Word	*type_ctor_info;
-	int	ignore_type_ctor_count;
-	int	i;
+	MR_TypeCtorInfo	type_ctor_info;
+	int		ignore_type_ctor_count;
+	int		i;
 
-	type_info = (Word *) type_info_as_word;
-
-	if (type_info[OFFSET_FOR_COUNT] == 0) {
-		type_ctor_info = type_info;
-	} else {
-		type_ctor_info = (Word *) type_info[0];
-	}
-
-	ignore_type_ctor_count = sizeof(MR_trace_ignored_type_ctors)
-					/ sizeof(Word *);
+	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
+	ignore_type_ctor_count =
+		sizeof(MR_trace_ignored_type_ctors) / sizeof(Word *);
 
 	for (i = 0; i < ignore_type_ctor_count; i++) {
 		if (type_ctor_info == MR_trace_ignored_type_ctors[i]) {
@@ -221,9 +223,9 @@ MR_trace_set_level(int ancestor_level)
 	const MR_Var_Name		*var_info;
 	Word				*valid_saved_regs;
 	int				var_count;
-	Word				*type_params;
+	MR_TypeInfo			*type_params;
 	Word				value;
-	Word				type_info;
+	MR_TypeInfo			type_info;
 	int				i;
 	int				slot;
 	int				slot_max;
@@ -559,7 +561,7 @@ MR_trace_list_vars(FILE *out)
 
 const char *
 MR_trace_return_var_info(int var_number, const char **name_ptr,
-	Word *type_info_ptr, Word *value_ptr)
+	MR_TypeInfo *type_info_ptr, Word *value_ptr)
 {
 	const MR_Var_Details	*details;
 	const char		*problem;
@@ -717,7 +719,7 @@ MR_trace_browse_var(FILE *out, MR_Var_Details *var, MR_Browser browser)
 		fflush(out);
 	}
 
-	(*browser)(var->MR_var_type, var->MR_var_value);
+	(*browser)((Word) var->MR_var_type, var->MR_var_value);
 }
 
 static int
