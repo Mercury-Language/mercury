@@ -1113,7 +1113,7 @@ mercury_compile__maybe_bytecodes(HLDS0, ModuleName, Verbose, Stats) -->
 		maybe_flush_output(Verbose),
 		debug_bytecode_file(BytedebugFile, Bytecode),
 		maybe_write_string(Verbose, " done.\n"),
-		{ string__append(ModuleName, ".bytecode", BytecodeFile) },
+		{ string__append(ModuleName, ".mbc", BytecodeFile) },
 		maybe_write_string(Verbose,
 			"% Writing bytecodes to `"),
 		maybe_write_string(Verbose, BytecodeFile),
