@@ -1675,11 +1675,11 @@ transform_goal_2(if_then(Vars0, A0, B0), Context, Subst, VarSet0,
 			Context, Subst, VarSet0, Goal, VarSet).
 
 transform_goal_2(not(A0), _, VarSet0, Subst, Goal, VarSet) :-
+	transform_goal(A0, VarSet0, Subst, A, VarSet),
 	% eliminate double negations
-	( A0 = not(Goal0) - _ ->
-		transform_goal(Goal0, VarSet0, Subst, Goal, VarSet)
+	( A = not(Goal1) - _ ->
+		Goal = Goal1
 	;
-		transform_goal(A0, VarSet0, Subst, A, VarSet),
 		goal_info_init(GoalInfo),
 		Goal = not(A) - GoalInfo
 	).
