@@ -666,7 +666,7 @@ mercury_output_bracketed_sym_name(Name) -->
 
 mercury_output_sym_name(Name) -->
 	(	{ Name = qualified(ModuleName, PredName) },
-		term_io__write_constant(term__atom(ModuleName)),
+		mercury_output_bracketed_constant(term__atom(ModuleName)),
 		io__write_char(':')
 	;
 		{ Name = unqualified(PredName) }
@@ -1068,7 +1068,7 @@ mercury_output_var(Var, VarSet) -->
 :- mode mercury_output_bracketed_constant(in, di, uo) is det.
 
 mercury_output_bracketed_constant(Const) -->
-	( { Const= term__atom(Op), mercury_op(Op) } ->
+	( { Const = term__atom(Op), mercury_op(Op) } ->
 		io__write_string("("),
 		term_io__write_constant(Const),
 		io__write_string(")")
