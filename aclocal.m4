@@ -41,6 +41,36 @@ fi
 ])
 #-----------------------------------------------------------------------------#
 #
+# Check whether we need to add any extra directories to the search path for
+# header files, and set ALL_LOCAL_C_INCL_DIRS to the -I option(s) needed
+# for this, if any.
+#
+# GNU C normally searches /usr/local/include by default;
+# to keep things consistent, we do the same for other C compilers.
+#
+AC_DEFUN(MERCURY_CHECK_LOCAL_C_INCL_DIRS,
+[
+AC_REQUIRE([AC_PROG_CC])
+AC_MSG_CHECKING(whether to pass -I/usr/local/include to C compiler)
+ALL_LOCAL_C_INCL_DIRS=""
+if test $GCC = yes; then
+	# Don't add -I/usr/local/include, since it causes a warning
+	# with gcc 3.1, and gcc already searches /usr/local/include
+	AC_MSG_RESULT(no)
+else
+	# It's some other compiler.  We don't know if it searches
+	# /usr/local/include by default, so add it.
+	if test -d /usr/local/include; then
+		AC_MSG_RESULT(yes)
+		ALL_LOCAL_C_INCL_DIRS="-I/usr/local/include "
+	else
+		AC_MSG_RESULT(nos)
+	fi
+fi
+AC_SUBST(ALL_LOCAL_C_INCL_DIRS)
+])
+#-----------------------------------------------------------------------------#
+#
 # Check for readline and related header files and libraries
 #
 AC_DEFUN(MERCURY_CHECK_READLINE,

@@ -365,11 +365,15 @@ CPPFLAGS="-Iruntime -Iruntime/machdeps $CPPFLAGS"
 
 # Make sure we search /usr/local/include and /usr/local/lib for
 # header files and libraries.  GNU C normally searches /usr/local/include
-# by default, but (inconsistently) it does _not_ search /usr/local/lib;
-# and in any case the user might be using a different C compiler that
+# by default, but (inconsistently) on some systems, such as Solaris,
+# it does _not_ search /usr/local/lib.
+# The user might also be using a different C compiler that
 # doesn't search either of those by default.
-CPPFLAGS="-I/usr/local/include $CPPFLAGS"
-LIBS="-L/usr/local/lib $LIBS"
+MERCURY_CHECK_LOCAL_C_INCL_DIRS
+CPPFLAGS="$ALL_LOCAL_C_INCL_DIRS $CPPFLAGS"
+if test -d /usr/local/lib/.; then
+	LIBS="-L/usr/local/lib $LIBS"
+fi
 
 AC_PROG_CPP
 #-----------------------------------------------------------------------------#

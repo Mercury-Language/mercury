@@ -232,8 +232,8 @@ case "$mercury_stdlib_dir" in
 	;;
 esac
 
-LOCAL_C_INCL_DIR=${MERCURY_LOCAL_C_INCL_DIR=/usr/local/include}
-ALL_LOCAL_C_INCL_DIRS=${MERCURY_ALL_LOCAL_C_INCL_DIRS=-I$LOCAL_C_INCL_DIR}
+# add /usr/local/include to the default search path, if needed
+ALL_LOCAL_C_INCL_DIRS=${MERCURY_ALL_LOCAL_C_INCL_DIRS=@ALL_LOCAL_C_INCL_DIRS@}
 
 #
 # convert non-grade mgnuc options into gcc options
