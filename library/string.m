@@ -363,6 +363,12 @@
 :- mode string__append_list(in, out) is det.
 %	Append a list of strings together.
 
+:- func string__join_list(string, list(string)) = string.
+%	string__join_list(Separator, Strings) = JoinedString:
+%	Appends together the strings in Strings, putting Separator between
+%	adjacent strings. If Strings is the empty list, returns the empty
+%	string.
+
 :- func string__hash(string) = int.
 :- pred string__hash(string, int).
 :- mode string__hash(in, out) is det.
@@ -934,15 +940,16 @@ string__duplicate_char(Char, Count, String) :-
 
 string__append_list(Lists, string__append_list(Lists)).
 
-	% Implementation of append_list that uses C as this minimises the
-	% amount of garbage created.
+	% Implementation of string__append_list that uses C as this
+	% minimises the amount of garbage created.
 :- pragma foreign_proc("C", string__append_list(Strs::in) = (Str::out),
 		[will_not_call_mercury, thread_safe], "{
 	MR_Word	list = Strs;
 	MR_Word	tmp;
-	size_t	len = 0;
+	size_t	len;
 
 		/* Determine the total len of all strings */
+	len = 0;
 	while (!MR_list_is_empty(list)) {
 		len += strlen((MR_String) MR_list_head(list));
 		list = MR_list_tail(list);
@@ -964,11 +971,62 @@ string__append_list(Lists, string__append_list(Lists)).
 	Str[len] = '\\0';
 }").
 
-:- pragma foreign_proc("MC++", string__append_list(_Strs::in) = (_Str::out),
+	% Implementation of string__join_list that uses C as this
+	% minimises the amount of garbage created.
+:- pragma foreign_proc("C", string__join_list(Sep::in, Strs::in) = (Str::out),
+		[will_not_call_mercury, thread_safe], "{
+	MR_Word	list = Strs;
+	MR_Word	tmp;
+	size_t	len = 0;
+	size_t	sep_len;
+	bool	add_sep;
+
+	sep_len = strlen(Sep);
+
+		/* Determine the total len of all strings */
+	len = -sep_len; /* compensate for no separator before first string */
+	while (!MR_list_is_empty(list)) {
+		len += sep_len + strlen((MR_String) MR_list_head(list));
+		list = MR_list_tail(list);
+	}
+
+		/* Allocate enough word aligned memory for the string */
+	if (len <= 0) {
+		len = 0;
+	}
+	MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
+
+		/* Copy the strings into the new memory */
+	len = 0;
+	list = Strs;
+	add_sep = FALSE;
+	while (!MR_list_is_empty(list)) {
+		if (add_sep) {
+			strcpy((MR_String) Str + len, Sep);
+			len += sep_len;
+		}
+
+		strcpy((MR_String) Str + len, (MR_String) MR_list_head(list));
+		len += strlen((MR_String) MR_list_head(list));
+		list = MR_list_tail(list);
+		add_sep = TRUE;
+	}
+
+		/* Set the last character to the null char */
+	Str[len] = '\\0';
+}").
+
+:- pragma foreign_proc("MC++",
+		string__append_list(_Strs::in) = (_Str::out),
 		[will_not_call_mercury, thread_safe], "{
 	mercury::runtime::Errors::SORRY(""c code for this function"");
 }").
 
+:- pragma foreign_proc("MC++",
+		string__join_list(_Sep::in, _Strs::in) = (_Str::out),
+		[will_not_call_mercury, thread_safe], "{
+	mercury::runtime::Errors::SORRY(""c code for this function"");
+}").
 
 %-----------------------------------------------------------------------------%
 
