@@ -1046,20 +1046,20 @@ det_univ_to_type(Univ, X) :-
 
 #ifdef  USE_TYPE_LAYOUT
 
-const struct mercury_data_std_util__base_type_layout_univ_0_struct {
+static const struct mercury_data_std_util__base_type_layout_univ_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data_std_util__base_type_layout_univ_0 = {
 	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
 		mkbody(TYPELAYOUT_UNIV_VALUE))
 };
 
-const struct mercury_data_std_util__base_type_functors_univ_0_struct {
+static const struct mercury_data_std_util__base_type_functors_univ_0_struct {
 	Integer f1;
 } mercury_data_std_util__base_type_functors_univ_0 = {
 	MR_TYPEFUNCTORS_UNIV
 };
 
-const struct mercury_data_std_util__base_type_layout_type_info_0_struct
+static const struct mercury_data_std_util__base_type_layout_type_info_0_struct
 {
 	TYPE_LAYOUT_FIELDS
 } mercury_data_std_util__base_type_layout_type_info_0 = {
@@ -1067,7 +1067,7 @@ const struct mercury_data_std_util__base_type_layout_type_info_0_struct
 		mkbody(TYPELAYOUT_TYPEINFO_VALUE))
 };
 
-const struct
+static const struct
 mercury_data_std_util__base_type_functors_type_info_0_struct {
 	Integer f1;
 } mercury_data_std_util__base_type_functors_type_info_0 = {

@@ -346,7 +346,7 @@ base_type_layout__construct_base_type_data([], LayoutInfo, LayoutInfo).
 base_type_layout__construct_base_type_data([BaseGenInfo | BaseGenInfos],
 		LayoutInfo0, LayoutInfo) :-
 	BaseGenInfo = base_gen_layout(TypeId, ModuleName, TypeName, TypeArity,
-		Status, HldsType),
+		_Status, HldsType),
 	base_type_layout__set_type_id(LayoutInfo0, TypeId, LayoutInfo1),
 	hlds_data__get_type_defn_body(HldsType, TypeBody),
 	(
@@ -401,13 +401,16 @@ base_type_layout__construct_base_type_data([BaseGenInfo | BaseGenInfos],
 			)
 		)
 	),	
-	(
-		( Status = exported ; Status = abstract_exported )
-	->
-		Exported = yes
-	;
-		Exported = no
-	),
+
+	%
+	% Note: base_type_layouts and base_type_functors are never exported,
+	% because they should only be accessed via the base_type_info in
+	% the same module.
+	% Accesses to the base_type_layout for a type exported from a
+	% different module should be done via that type's base_type_info,
+	% which will be exported if the type was exported/abstract_exported.
+	%
+	Exported = no,
 
 		% pure abstract types have no layout definition.
 	( 

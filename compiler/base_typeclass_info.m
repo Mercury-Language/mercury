@@ -106,6 +106,8 @@ base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
 		Rvals = Rvals0,
 
 			% XXX Need we always export it from the module?
+			% (Note that linkage/2 in llds_out.m assumes
+			% that we do.)
 		Status = yes,
 
 		CModule = c_data(ModuleName, DataName, Status, Rvals, Procs),

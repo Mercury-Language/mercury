@@ -84,6 +84,9 @@
 						% qualified with the basename.
 			bool,			% Should this item be exported
 						% from this Mercury module?
+						% XXX Actually this field is
+						% redundant; see linkage/2
+						% in llds_out.m.
 			list(maybe(rval)),	% The arguments of the create.
 			list(pred_proc_id)	% The procedures referenced.
 						% Used by dead_proc_elim.
