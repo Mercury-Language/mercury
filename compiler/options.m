@@ -287,8 +287,9 @@ option_defaults_2(warning_option, [
 	inhibit_warnings	-	bool_special,
 	halt_at_warn		-	bool(no),
 	halt_at_syntax_errors	-	bool(no),
-	% if you add any new warning options, you will need
-	% to modify the handling of inhibit_warnings
+	% if you add any new warning options, or if you change
+	% the default for an existing warning option to `yes',
+	% then you will need to modify the handling of inhibit_warnings
 	warn_singleton_vars	-	bool(yes),
 	warn_overlapping_scopes	-	bool(yes),
 	warn_det_decls_too_lax	-	bool(yes),
@@ -900,12 +901,15 @@ special_handler(strict_sequential, none, OptionTable0, ok(OptionTable)) :-
 		], OptionTable0, OptionTable).
 special_handler(inhibit_warnings, bool(Inhibit), OptionTable0, ok(OptionTable))
 		:-
+	bool__not(Inhibit, Enable),
 	override_options([
-			warn_singleton_vars	-	bool(Inhibit),
-			warn_overlapping_scopes	-	bool(Inhibit),
-			warn_det_decls_too_lax	-	bool(Inhibit),
-			warn_nothing_exported	-	bool(Inhibit),
-			warn_simple_code	-	bool(Inhibit)
+			warn_singleton_vars	-	bool(Enable),
+			warn_overlapping_scopes	-	bool(Enable),
+			warn_det_decls_too_lax	-	bool(Enable),
+			warn_nothing_exported	-	bool(Enable),
+			warn_interface_imports	-	bool(Enable),
+			warn_missing_opt_files	-	bool(Enable),
+			warn_simple_code	-	bool(Enable)
 		], OptionTable0, OptionTable).
 special_handler(infer_all, bool(Infer), OptionTable0, ok(OptionTable)) :-
 	override_options([
