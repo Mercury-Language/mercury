@@ -12,7 +12,7 @@ include Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-SUBDIRS = scripts util runtime boehm_gc library compiler doc
+SUBDIRS = scripts util runtime boehm_gc library compiler doc prof
 
 SUBDIR_MMAKE =	PATH=../scripts:../util:$$PATH \
 		MMAKE_VPATH=. \
@@ -55,6 +55,10 @@ depend_library:
 depend_compiler:
 	cd compiler && $(SUBDIR_MMAKE) depend
 
+.PHONY: depend_profiler
+depend_profiler:
+	cd prof && $(SUBDIR_MMAKE) depend
+
 #-----------------------------------------------------------------------------#
 
 .PHONY: all
@@ -88,6 +92,27 @@ doc: scripts
 util: scripts
 	cd util && $(SUBDIR_MMAKE)
 
+.PHONY: profiler
+profiler: scripts
+	cd prof && $(SUBDIR_MMAKE)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: tags
+tags: tags_compiler tags_library tags_profiler
+
+.PHONY: tags_compiler
+tags_compiler:
+	cd compiler && $(SUBDIR_MMAKE) tags
+
+.PHONY: tags_library
+tags_library:
+	cd library && $(SUBDIR_MMAKE) tags
+
+.PHONY: tags_profiler
+tags_profiler:
+	cd prof && $(SUBDIR_MMAKE) tags
+
 #-----------------------------------------------------------------------------#
 
 configure: configure.in
@@ -115,7 +140,9 @@ tar:
 	cd library && $(SUBDIR_MMAKE) depend
 	cd library && $(SUBDIR_MMAKE) ints cs
 	cd compiler && $(SUBDIR_MMAKE) depend
-	cd compiler && $(SUBDIR_MMAKE) ints cs
+	cd compiler && $(SUBDIR_MMAKE) ints cs tags
+	cd profiler && $(SUBDIR_MMAKE) ints cs tags
+	cd library && $(SUBDIR_MMAKE) tags
 	cd doc && $(SUBDIR_MMAKE) info html dvi
 	# clean up
 	cd scripts && mmake -s realclean
@@ -127,70 +154,11 @@ tar:
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: bootstrap_check
-bootstrap_check: stage_1 stage_2 stage_3
-	diff stage2 stage3
-
-.PHONY: stage_1
-stage_1: all
-	[ -d stage1 ] || mkdir stage1
-	mv compiler/mercury_compile stage1
-	mv compiler/*.c library/*.c stage1
-	mv compiler/*.o library/*.o stage1
-	cd compiler && rm -f *.c *.o *.pic_o mercury_compile
-	cd library && rm -f *.c *.o *.pic_o *.a *.so
-
-.PHONY: stage_2
-stage_2:
-	cd library && \
-	MERCURY_COMPILER="`pwd`/../stage1/mercury_compile" \
-	$(SUBDIR_MMAKE)
-	cd compiler && \
-	MERCURY_COMPILER="`pwd`/../stage1/mercury_compile" \
-	$(SUBDIR_MMAKE)
-	[ -d stage2 ] || mkdir stage2
-	mv compiler/mercury_compile stage2
-	mv compiler/*.c library/*.c stage2
-	mv compiler/*.o library/*.o stage2
-	cd compiler && rm -f *.c *.o *.pic_o mercury_compile
-	cd library && rm -f *.c *.o *.pic_o *.a *.so
-
-.PHONY: stage_3
-stage_3:
-	cd library && \
-	MERCURY_COMPILER="`pwd`/../stage2/mercury_compile" \
-	$(SUBDIR_MMAKE)
-	cd compiler && \
-	MERCURY_COMPILER="`pwd`/../stage2/mercury_compile" \
-	$(SUBDIR_MMAKE)
-	[ -d stage3 ] || mkdir stage3
-	mv compiler/mercury_compile stage3
-	mv compiler/*.c library/*.c stage3
-	mv compiler/*.o library/*.o stage3
-	cd compiler && rm -f *.c *.o *.pic_o mercury_compile
-	cd library && rm -f *.c *.o *.pic_o *.a *.so
-
-.PHONY: stage_4
-stage_4:
-	cd library && \
-	MERCURY_COMPILER="`pwd`/../stage3/mercury_compile" \
-	$(SUBDIR_MMAKE)
-	cd compiler && \
-	MERCURY_COMPILER="`pwd`/../stage3/mercury_compile" \
-	$(SUBDIR_MMAKE)
-	[ -d stage4 ] || mkdir stage4
-	mv compiler/mercury_compile stage4
-	mv compiler/*.c library/*.c stage4
-	mv compiler/*.o library/*.o stage4
-	cd compiler && rm -f *.c *.o *.pic_o mercury_compile
-	cd library && rm -f *.c *.o *.pic_o *.a *.so
-
-#-----------------------------------------------------------------------------#
-
 .PHONY: install
 install: all install_scripts install_util install_runtime install_boehm_gc \
 		install_library install_compiler install_doc \
-		install_runtime_grades install_library_grades
+		install_runtime_grades install_library_grades \
+		install_profiler
 
 .PHONY: install_scripts
 install_scripts: scripts
@@ -219,6 +187,10 @@ install_compiler: dep_compiler compiler
 .PHONY: install_doc
 install_doc: doc
 	cd doc && $(SUBDIR_MMAKE) install
+
+.PHONY: install_profiler
+install_profiler: profiler
+	cd prof && $(SUBDIR_MMAKE) install
 
 .PHONY: install_runtime_grades
 install_runtime_grades:
