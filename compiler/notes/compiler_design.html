@@ -769,6 +769,8 @@ miscellaneous predicates for LLDS-to-LLDS optimization.
 <ul>
 <li> rl_gen.m converts HLDS to RL.
 
+<li> rl_relops.m generates RL for relational operations such as joins.
+
 <li> rl_info.m defines a state type.
 
 <li> rl.m defines the the representation of Aditi-RL used within the
@@ -781,6 +783,8 @@ and Aditi-RL to make optimization easier.
 <h3> 8. Aditi-RL optimization </h3>
 
 <ul>
+<li> rl_opt.m invokes the RL optimization passes.
+
 <li> rl_block.m converts an RL procedure into basic blocks, and performs
   other tasks such as detecting the loops in those basic blocks.
 
@@ -844,6 +848,9 @@ completed.
   form is emitted into &lt;filename&gt;.bytedebug for visual inspection.
 
 <li> bytecode_gen.m contains the predicates that translate HLDS into bytecode.
+
+<li> bytecode_data.m contains the predicates that translate ints, strings
+  and floats into bytecode. This is also used by rl_code.m.
 </ul>
 
 <hr>
@@ -946,6 +953,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1999-07-10 07:20:09 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 1999-07-13 02:16:31 $ by $Author: stayl $@cs.mu.oz.au. <br>
 </body>
 </html>
