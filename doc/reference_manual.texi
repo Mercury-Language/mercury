@@ -2466,7 +2466,7 @@ since they allow the higher-order mode information to be retained
 
 Because the compiler automatically reorders conjunctions to
 satisfy the modes, it is often possible for a single clause
-to satisfy different modes.  However, occaisionally reordering
+to satisfy different modes.  However, occasionally reordering
 of conjunctions is not sufficient; you may want to write different
 code for different modes.
 
@@ -5422,7 +5422,7 @@ a declaration of the form
 
 This defines @var{MercuryTypeName} as a synonym for type
 @var{ForeignTypeDescriptor} defined in the foreign language @var{Lang}.
-You must declare @var{MercuryTypeName} using a (posssibly abstract)
+You must declare @var{MercuryTypeName} using a (possibly abstract)
 @samp{:- type} declaration as usual. The @samp{pragma foreign_type} must
 not have wider visibility than the type declaration (if the
 @samp{pragma foreign_type} declaration is in the interface,

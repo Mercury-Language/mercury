@@ -1919,7 +1919,7 @@ enclosed in single quotes (').
 This is useful for commands that have other commands as parameters,
 for example @samp{view -w 'xterm -e'}.
 Characters that have special meaning to @samp{mdb} will be treated like
-ordinary charaters if they are escaped with a backslash (\).
+ordinary characters if they are escaped with a backslash (\).
 It is possible to escape single quotes, whitespace, semicolons, newlines
 and the escape character itself.
 
@@ -5527,7 +5527,7 @@ minimize stack consumption, possibly at the expense of speed.
 @item --use-local-vars
 @findex --use-local-vars
 Disable the transformation to use local variables in C code
-blocks whereever possible.
+blocks wherever possible.
 
 @sp 1
 @item --no-optimize-labels
