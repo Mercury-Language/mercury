@@ -4,7 +4,7 @@
 
 usage="Usage: speedtest [-c cmd] [-dns] batchname"
 limit=8
-cmd="mmc -C -O2 -I../compiler --no-lazy-code make_hlds.m"
+cmd="mmc -C -O2 --no-lazy-code llds_out.m typecheck.m make_hlds.m"
 debug=false
 size=false
 framesizefile=""
