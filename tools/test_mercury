@@ -47,6 +47,12 @@ ulimit -S -t 300
 # the libraries needs more, at least for dec-alpha-osf*.)
 ulimit -S -d 250000
 
+# directories to use
+
+TESTDIR=/home/mercury/public/test_mercury
+HOSTDIR=$TESTDIR/test_dirs/$HOST
+DIR=$HOSTDIR/build.$BRANCH.$C_COMPILER
+
 # Host to use to build the release of the day.
 ROTD_HOST=earth
 
@@ -204,12 +210,6 @@ case $HOST in hg)
 	INSTALL_MLFLAGS="$INSTALL_MLFLAGS --c-debug"
 	;;   
 esac
-
-# directories to use
-
-TESTDIR=/home/mercury/public/test_mercury
-HOSTDIR=$TESTDIR/test_dirs/$HOST
-DIR=$HOSTDIR/build.$BRANCH.$C_COMPILER
 
 case $HOST in
 	hg|ender|roy|venus|earth|mars|ceres) 	
