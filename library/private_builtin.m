@@ -337,6 +337,8 @@ mercury_data_private_builtin__type_ctor_info_type_info_1_struct {
 		mercury_data_private_builtin__type_ctor_layout_type_info_1,
 	(const Word *) &
 		mercury_data_private_builtin__type_ctor_functors_type_info_1,
+	(const Word *) &
+		mercury_data_private_builtin__type_ctor_layout_type_info_1,
 	(const Word *) string_const(""private_builtin"", 15),
 	(const Word *) string_const(""type_info"", 9)
 };
