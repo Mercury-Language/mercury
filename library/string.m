@@ -452,33 +452,30 @@ find_rest_of_sub_charlist(CharList, SubCharList, After) :-
 string__to_int(String, Int) :-
 	string__base_string_to_int(10, String, Int).
 
+
+
 string__base_string_to_int(Base, String, Int) :-
-	( string__first_char(String, Char, String1) ->
-		( Char = ('-') ->
-			string__base_string_to_int_2(Base, String1, 0, Int1),
-			Int is 0 - Int1
-		; Char = ('+') ->
-			string__base_string_to_int_2(Base, String1, 0, Int)
-		;
-			string__base_string_to_int_2(Base, String, 0, Int)
-		)
-	;
-		Int = 0
+	string__index(String, 0, Char),
+	Len = string__length(String),
+	(      if Char = ('-') then
+		string__foldl2(accumulate_int(Base), String, 1, Len, 0, N),
+		Int = -N
+	  else if Char = ('+') then
+		string__foldl2(accumulate_int(Base), String, 1, Len, 0, N),
+		Int = N
+	  else
+		string__foldl2(accumulate_int(Base), String, 0, Len, 0, N),
+		Int = N
 	).
 
-:- pred string__base_string_to_int_2(int, string, int, int).
-:- mode string__base_string_to_int_2(in, in, in, out) is semidet.
+:- pred accumulate_int(int, char, int, int).
+:- mode accumulate_int(in, in, in, out) is semidet.
 
-string__base_string_to_int_2(Base, String, Int0, Int) :-
-	( string__first_char(String, DigitChar, String1) ->
-		char__digit_to_int(DigitChar, DigitValue),
-		DigitValue < Base,
-		Int1 is Base * Int0,
-		Int2 is Int1 + DigitValue,
-		string__base_string_to_int_2(Base, String1, Int2, Int) 
-	;
-		Int = Int0
-	).
+accumulate_int(Base, Char, N, (Base * N) + M) :-
+	char__digit_to_int(Char, M),
+	M < Base.
+
+
 
 string__index_det(String, Int, Char) :-
 	( string__index(String, Int, Char0) ->
@@ -749,29 +746,37 @@ string__uncapitalize_first(S0, S) :-
 		S = S0
 	).
 
-string__is_alpha(S) :-
-	( string__first_char(S, C, S1) ->
-		char__is_alpha(C),
-		string__is_alpha(S1)
-	;
-		true
+
+
+:- pred string__all_match(pred(char), string).
+:- mode string__all_match(pred(in) is semidet, in) is semidet.
+
+string__all_match(P, String) :-
+	all_match_2(string__length(String) - 1, P, String).
+
+:- pred all_match_2(int, pred(char), string).
+:- mode all_match_2(in, pred(in) is semidet, in) is semidet.
+
+string__all_match_2(I, P, String) :-
+	( if I >= 0 then
+		P(string__unsafe_index(String, I)),
+		string__all_match_2(I - 1, P, String)
+	  else
+	  	true
 	).
+
+
+
+string__is_alpha(S) :-
+	string__all_match(char__is_alpha, S).
 
 string__is_alpha_or_underscore(S) :-
-	( string__first_char(S, C, S1) ->
-		char__is_alpha_or_underscore(C),
-		string__is_alpha_or_underscore(S1)
-	;
-		true
-	).
+	string__all_match(char__is_alpha_or_underscore, S).
 
 string__is_alnum_or_underscore(S) :-
-	( string__first_char(S, C, S1) ->
-		char__is_alnum_or_underscore(C),
-		string__is_alnum_or_underscore(S1)
-	;
-		true
-	).
+	string__all_match(char__is_alnum_or_underscore, S).
+
+
 
 string__pad_left(String0, PadChar, Width, String) :-
 	string__length(String0, Length),
@@ -794,13 +799,7 @@ string__pad_right(String0, PadChar, Width, String) :-
 	).
 
 string__duplicate_char(Char, Count, String) :-
-	( Count =< 0 ->
-		String = ""
-	;
-		Count1 is Count - 1,
-		string__first_char(String, Char, String1),
-		string__duplicate_char(Char, Count1, String1)
-	).
+	String = string__from_char_list(list__duplicate(Count, Char)).
 
 %-----------------------------------------------------------------------------%
 
@@ -1422,6 +1421,17 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 */
 :- pragma c_code(string__index(Str::in, Index::in, Ch::out),
 		[will_not_call_mercury, thread_safe], "
+
+                /*
+		** We do not test for negative values of Index
+                ** because (a) MR_Word is unsigned and hence a
+                ** negative argument will appear as a very large
+                ** positive one after the cast and (b) anybody
+                ** dealing with the case where strlen(Str) > MAXINT
+                ** is clearly barking mad (and one may well
+                ** get an integer overflow error in this case).
+                */
+
 	if ((MR_Word) Index >= strlen(Str)) {
 		SUCCESS_INDICATOR = FALSE;
 	} else {
@@ -1765,6 +1775,19 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 
 :- func string__format(string, list(string__poly_type)) = string.
 
+	% Converts a signed base 10 string to an int;
+	% throws an exception if the string argument
+	% does not match the regexp [+-]?[0-9]+
+	%
+:- func string__det_to_int(string) = int.
+
+	% Converts a signed base N string to an int;
+	% throws an exception if the string argument
+	% is not precisely an optional sign followed
+	% by a non-empty string of base N digits.
+	%
+:- func string__det_base_string_to_int(int, string) = int.
+
 % ---------------------------------------------------------------------------- %
 % ---------------------------------------------------------------------------- %
 
@@ -1896,6 +1919,18 @@ preceding_boundary(SepP, String, I) =
 S1 ++ S2 = string__append(S1, S2).
 
 % ---------------------------------------------------------------------------- %
+
+string__det_to_int(S) = string__det_base_string_to_int(10, S).
+
+% ---------------------------------------------------------------------------- %
+
+string__det_base_string_to_int(Base, S) = N :-
+	( if string__base_string_to_int(Base, S, N0) then
+		N = N0
+	  else
+	  	error("string__det_base_string_to_int/2: conversion failed")
+	).
+
 % ---------------------------------------------------------------------------- %
 
 :- end_module string.
