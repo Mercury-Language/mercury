@@ -634,9 +634,6 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 		    % only write out the `.opt' file if there are no type errors
 		    % or undefined modes
 		    ( { FoundTypeError = no, FoundUndefModeError = no } ->
-			mercury_compile__maybe_write_optfile(MakeOptInt,
-		    		HLDS3, HLDS4), !
-		    ;
 			    mercury_compile__maybe_write_optfile(MakeOptInt,
 		    		    HLDS4, HLDS5), !
 		    ;
