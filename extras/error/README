@@ -1,0 +1,5 @@
+Copyright (C) 2003 The University of Melbourne
+
+Error is a Mercury implementation of the most useful subset of the old Unix
+utility "error". It handles error messages of the format produced by the
+Mercury compiler and gcc.

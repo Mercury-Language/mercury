@@ -1,0 +1,24 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2000, 2003 The University of Melbourne.
+# This file may only be copied under the terms of the GNU Library General
+# Public License - see the file COPYING.LIB in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
+
+-include ../Mmake.params
+
+.PHONY: default_target
+default_target:	error
+
+.PHONY: install
+install:
+	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
+	cp error $(INSTALL_BINDIR)
+
+.PHONY: depend
+depend:	error.depend
+
+.PHONY: check
+check:
+	true
