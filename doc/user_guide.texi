@@ -14,7 +14,7 @@ END-INFO-DIR-ENTRY
 
 @c @smallbook
 @c @cropmarks
-@c @finalout
+@finalout
 @setchapternewpage odd
 @ifinfo
 This file documents the Mercury implementation.
@@ -147,9 +147,8 @@ As usual, @file{.c} files are C source code, @file{.o} files are object code,
 
 Following a long Unix tradition,
 the Mercury compiler is called @samp{mc}.
-To reduce learning time,
-its options are deliberately modelled
-on the option sets of other Unix compilers.
+Some of its options (e.g. @samp{-c}, @samp{-o}, and @samp{-I})
+have a similar meaning to that in other Unix compilers.
 
 Arguments to @samp{mc} that name Mercury source files
 may omit the @samp{.m} suffix.
@@ -161,8 +160,9 @@ use the command
 mc @var{module}.m
 @end example
 
-@samp{mc} will put the executable into a file called `@var{module}',
-since this is more useful than putting it into @file{a.out}.
+Unlike traditional Unix compilers, however,
+@samp{mc} will put the executable into a file called @file{@var{module}},
+not @file{a.out}.
 
 To compile a module to object code without creating an executable,
 use the command
@@ -172,9 +172,8 @@ mc -c @var{module}.m
 @end example
 
 @samp{mc} will put the object code into a file called `@file{@var{module}.o}'.
-It will leave the intermediate C code in a file called `@file{@var{module}.c}',
-since at this point in time it is likely that
-many Mercury users will be interested to see the C code.
+It also will leave the intermediate C code in a file called
+`@file{@var{module}.c}'.
 
 Before you can compile a module,
 you must make the interface files
@@ -233,8 +232,8 @@ ml -o @var{main_module} @var{module1}.o @var{module2}.o ... @var{main_module2}_i
 that invokes a C compiler with options appropriate for Mercury,
 this time for linking.
 
-This command puts the executable in the file @var{main_module}.
-The same command line without the -o option
+The above command puts the executable in the file @file{@var{main_module}}.
+The same command line without the @samp{-o} option
 would put the executable into the file @file{a.out}.
 
 @samp{mc} and @samp{ml} both accept a @samp{-v} (verbose) option.
@@ -309,23 +308,16 @@ You can compile a Mercury source module using NU-Prolog via the command
 mnc @var{module1}.m ...
 @end example
 
-@samp{mnc} is the Mercury variant of nc, the NU-Prolog compiler.
-It adapts nc to compile Mercury programs,
+@samp{mnc} is the Mercury variant of @samp{nc}, the NU-Prolog compiler.
+It adapts @code{nc} to compile Mercury programs,
 e.g. by defining do-nothing predicates for the various Mercury declarations
-(which are executed by nc).
+(which are executed by @code{nc}).
 
 Some invocations of @samp{mnc} will result in warnings such as
 
 @example
 Warning: main is a system predicate.
 It shouldn't be used as a non-terminal.
-@end example
-
-and/or warnings such as
-
-@example
-%       Miscellaneous error. Try running NIT.
-%       Unification with unique variable.
 @end example
 
 Such warnings should be ignored.
@@ -342,15 +334,17 @@ Ignore any warnings such as
 
 @example
 Warning: main/2 redefined
+Warning: solutions/2 redefined
+Warning: !/0 redefined
 @end example
 
 @samp{mnl}, the Mercury NU-Prolog linker,
 will put the executable (actually a shell script invoking a save file)
-into the file @var{main_module}.
+into the file @file{@var{main_module}.nu}.
 This can be executed normally using
 
 @example
-./@var{main_module} @var{arguments}
+./@var{main_module}.nu @var{arguments}
 @end example
 
 Alternatively, one can execute such programs using @samp{mnp},
@@ -366,17 +360,17 @@ Inside the interpreter, you can load your source files
 with a normal consulting command such as
 
 @example
-[@var{module}].
+['@var{module}.m'].
 @end example
 
-Alternately, you can use the @file{--debug} option to @samp{mnl} when linking.
+You can also use the @file{--debug} option to @samp{mnl} when linking.
 This will produce an executable whose entry point is the NU-Prolog interpreter,
 rather than main/2 in your program.
 
 In both cases, you can start executing your program by typing
 
 @example
-r("@var{main_module} @var{arguments}").
+r("@var{program-name} @var{arguments}").
 @end example
 
 at the prompt of the NU-Prolog interpreter.
@@ -391,10 +385,13 @@ For more information, see the NU-Prolog documentation.
 
 By default the debugger only displays the top levels of terms;
 you can use the @code{|} command to enter an interactive term browser.
+@c XXX the following is not yet implemented
+@ignore
 Also note that in the debugger, we use a version of @code{error/1}
 which fails rather than aborting after printing the "Software Error:" message.
 This makes debugging easier,
 but will of course change the behaviour after an error occurs.
+@end ignore
 
 @node Using SICStus, Prolog hazards, Using NU-Prolog, Using Prolog
 @section Using SICStus Prolog
@@ -424,7 +421,7 @@ to ensure that they are mode-correct
 but Prolog systems will not always do so,
 and will sometimes just silently give the wrong result.
 For example, in Mercury the following predicate will usually succeed,
-whereas in NU-Prolog it will always fail.
+whereas in Prolog it will always fail.
 
 @example
 :- pred p(list(int)::in, list(int)::out) is semidet.
@@ -437,7 +434,7 @@ p(L0, L) :-
 
 The reason is that in Mercury,
 the test @samp{L \= []} is reordered to after the call to @code{q/2},
-but in NU-Prolog, it executes even though @code{L} is not bound,
+but in Prolog, it executes even though @code{L} is not bound,
 and consequently the test always fails.
 
 (NU-Prolog has logical alternatives
@@ -484,7 +481,7 @@ for each program.
 If there is a file called @samp{Mmake} in the current directory,
 Mmake will include that file in its automatically-generated Makefile.
 The @samp{Mmake} file can override the default values of
-various variables used by Mmake's builtin rules, listed below,
+various variables used by Mmake's builtin rules,
 or it can add additional rules, dependencies, and actions.
 
 Mmake's builtin rules are defined by the file
@@ -583,7 +580,7 @@ by appending another trailing @samp{-}, e.g. @samp{-v-}.
 Long flags may be negated by preceding them with @samp{no-},
 e.g. @samp{--no-verbose}.
 
-@section Warning Options:
+@section Warning options
 @table @code
 @item -w
 @itemx --inhibit-warnings
@@ -601,7 +598,7 @@ Don't warn about determinism declarations
 which could have been stricter.
 @end table
 
-@section Verbosity Options:
+@section Verbosity options
 @table @code
 @item -v
 @itemx --verbose
@@ -636,54 +633,47 @@ The different bits in the number argument of this option control the
 printing of different types of tracing messages.
 @end table
 
-@section Output Options:
+@section Output options
+These options are mutually exclusive.
+If more than one of these options is specified, only the first in
+this list will apply.
+If none of these options are specified, the default action is to
+compile and link the modules named on the command line to produce
+an executable.
+
 @table @code
 @item -M
 @itemx --generate-dependencies
 Output `Make'-style dependencies for the module
 and all of its dependencies to @file{@var{module}.dep}.
-Only syntax analysis will be performed - this option
-disables all the later phases of compilation.
 
 @item -i
 @itemx --make-interface
 Write the module interface to @file{@var{module}.int}.
 Also write the short interface to @file{@var{module}.int2}.
-As with -M, this disables type-checking, etc.
-
-@item --show-dependency-graph
-Write out the dependency graph to @var{module}.dependency_graph.
 
 @item -G
 @itemx --convert-to-goedel
-Convert to Goedel. Output to file @file{@var{module}.loc}
-As with -M, this disables type-checking, etc.
+Convert the Mercury code to Goedel. Output to file @file{@var{module}.loc}.
+The translation is not perfect; some Mercury constructs cannot be easily
+translated into Goedel.
 
 @item -P
+@itemx --pretty-print
 @itemx --convert-to-mercury
 Convert to Mercury. Output to file @file{@var{module}.ugly}
-This option acts as a Mercury ugly-printer.
-As with -M, it disables type-checking, etc.
+This option acts as a Mercury ugly-printer. 
+(It would be a pretty-printer, except that comments are stripped
+and nested if-then-elses are indented too much --- so the result
+is rather ugly.)
 
-@item --no-modecheck
-Don't invoke the mode analysis and later passes of the compiler.
+@item --typecheck-only
 Just check the syntax and type-correctness of the code.
+Don't invoke the mode analysis and later passes of the compiler.
 When converting Prolog code to Mercury,
-it can be useful to get the types right first
+it can sometimes be useful to get the types right first
 and worry about modes second;
 this option supports that approach.
-
-@item -d @var{stage}
-@itemx --dump-hlds @var{stage}
-Dump the HLDS (intermediate representation) after
-the specified stage number or stage name to
-@file{@var{module}.hlds_dump.@var{num}-@var{name}}.
-Stage numbers range from 0 to 17.
-Multiple dump options accumulate.
-
-@item -D
-@itemx --verbose-dump-hlds
-With @samp{--dump-hlds}, dumps some additional info.
 
 @item -e
 @itemx --errorcheck-only
@@ -699,7 +689,10 @@ Generate C code in @file{@var{module}.c}, but not object code.
 Generate C code in @file{@var{module}.c}
 and object code in @file{@var{module}.o}
 but do not attempt to link the named modules.
+@end table
 
+@section Auxiliary output options
+@table @code
 @item --auto-comments
 Output comments in the @file{@var{module}.c} file.
 This is primarily useful for trying to understand
@@ -710,6 +703,21 @@ e.g. in order to debug the compiler.
 @itemx --line-numbers
 Output source line numbers in the generated code.
 Only works with the -G and -M options.
+
+@item --show-dependency-graph
+Write out the dependency graph to @var{module}.dependency_graph.
+
+@item -d @var{stage}
+@itemx --dump-hlds @var{stage}
+Dump the HLDS (intermediate representation) after
+the specified stage number or stage name to
+@file{@var{module}.hlds_dump.@var{num}-@var{name}}.
+Stage numbers range from 0 to 17.
+Multiple dump options accumulate.
+
+@item -D
+@itemx --verbose-dump-hlds
+With @samp{--dump-hlds}, dumps some additional info.
 
 @c @item -p
 @c @itemx --profiling
@@ -738,7 +746,8 @@ or one of those with @file{.gc} appended.
 
 @item --gc @{none, conservative, accurate@}
 @itemx --garbage-collection @{none, conservative, accurate@}
-Specify which method of garbage collection to use (default: @samp{none}).
+Specify which method of garbage collection to use
+(default: @samp{conservative}).
 @samp{accurate} is not yet implemented.
 
 @item --no-follow-code
@@ -771,7 +780,9 @@ Specify whether to use the low bits or the high bits of
 each word as tag bits (default: low).
 
 @item --num-tag-bits @var{n}
-Use @var{n} tag bits (only used with @samp{--tags high}).
+Use @var{n} tag bits.  This is only used with @samp{--tags high}.
+With @samp{--tags low}, the number of tag bits to use is determined
+by the auto-configuration script.
 
 @item --cc @var{compiler-name}
 Specify which C compiler to use.
@@ -783,11 +794,13 @@ Specify the directory containing the Mercury C header files.
 Specify options to be passed to the C compiler.
 
 @item --debug
-Pass the -g flag to the C compiler to enable debugging of the generated C code.
+Pass the @samp{-g} flag to the C compiler, instead of @samp{-DSPEED},
+to enable debugging of the generated C code. 
+This option also implies @samp{--no-c-optimize}.
 This option is probably not useful to anyone except the Mercury implementors.
 @end table
 
-@section Optimization Options
+@section Optimization options
 @table @code
 @item --no-optimize
 Disable the optimisation passes.
@@ -878,7 +891,7 @@ but tends to severely stress the C compiler.
 Don't enable the C compiler's optimizations.
 @end table
 
-@section Miscellaneous Options:
+@section Miscellaneous options
 @table @code
 @item -b @var{builtin}
 @itemx --builtin-module @var{builtin}
@@ -906,7 +919,9 @@ Print a usage message.
 @chapter Environment Variables
 
 The shell scripts in the Mercury compilation environment
-use the following environment variables.
+will use the following environment variables if they are set.
+There should be little need to use these, because the default
+values will generally work fine.
 
 @table @code
 @item MERCURY_C_INCL_DIR
