@@ -180,11 +180,7 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 		label(ReturnLabel) - "Continuation label"
 	]) },
 	{ Code = tree(CodeA, tree(CodeB, tree(CodeC0, CodeC1))) },
-	call_gen__rebuild_registers(Args),
-		% the nondet procedure may have created choice points,
-		% so we must set the current failure continuation to `unknown'
-		% which means `on failure, just do a redo()'.
-	code_info__unset_failure_cont.
+	call_gen__rebuild_registers(Args).
 
 %---------------------------------------------------------------------------%
 

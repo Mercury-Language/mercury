@@ -174,16 +174,15 @@ ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	;
 		ReclaimHeap = no
 	},
-	{ CondGoal = _ - GoalInfo },
-	{ goal_info_get_code_model(GoalInfo, CodeModel) },
+	{ CondGoal = _ - CondGoalInfo },
+	{ goal_info_get_code_model(CondGoalInfo, CondCodeModel) },
 	(
-		{ CodeModel = model_non }
+		{ CondCodeModel = model_non }
 	->
 		{ NondetCond = yes }
 	;
 		{ NondetCond = no }
 	),
-	{ CondGoal = _Goal - CondGoalInfo },
 	{ goal_info_cont_lives(CondGoalInfo, MaybeLives) },
 	{
 		MaybeLives = yes(Vars0)
@@ -225,7 +224,8 @@ ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	(
 		{ MaybeMaxfrLval = yes(MaxfrLval) }
 	->
-		code_info__do_soft_cut(MaxfrLval, HackStackCode)
+		code_info__do_soft_cut(MaxfrLval, HackStackCode),
+		code_info__unset_failure_cont
 	;
 		{ HackStackCode = empty }
 	),
@@ -237,6 +237,7 @@ ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	code_info__maybe_restore_hp(ReclaimHeap, HPRestoreCode),
 	code_gen__generate_forced_goal(model_non, ElseGoal, ElseGoalCode),
 	code_info__get_next_label(EndLab),
+	code_info__remake_with_store_map,
 	{ TestCode = tree(
 		tree(
 			tree(ModContCode, SaveMaxfrCode),
@@ -266,7 +267,6 @@ ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 		node([label(EndLab) - "end of if-then-else"])
 	) },
 		% generate the then condition
-	{ Instr = tree(TestCode, tree(ThenCode, ElseCode)) },
-	code_info__remake_with_store_map.
+	{ Instr = tree(TestCode, tree(ThenCode, ElseCode)) }.
 
 %---------------------------------------------------------------------------%

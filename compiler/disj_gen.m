@@ -132,11 +132,7 @@ disj_gen__generate_non_disj(Goals1, Code) -->
 
 	code_info__get_next_label(EndLab),
 	disj_gen__generate_non_disj_2(Goals1, EndLab, GoalsCode),
-	{ Code = tree(HijackCode, tree(SaveHeapCode, GoalsCode)) },
-
-		% since we don't know which disjunct we have come from
-		% we must set the current failure continuation to unkown.
-	code_info__unset_failure_cont.
+	{ Code = tree(HijackCode, tree(SaveHeapCode, GoalsCode)) }.
 
 :- pred disj_gen__generate_non_disj_2(list(hlds__goal), label, 
 					code_tree, code_info, code_info).

@@ -611,14 +611,21 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 		;
 			{ CodeModel = model_semi },
 			( { ContextModel \= model_det } ->
-				code_gen__generate_semi_goal_2(Goal, GoalInfo, Code0)
+				code_gen__generate_semi_goal_2(Goal, GoalInfo,
+					Code0)
 			;
 				{ error("semidet model in det context") }
 			)
 		;
 			{ CodeModel = model_non },
 			( { ContextModel = model_non } ->
-				code_gen__generate_non_goal_2(Goal, GoalInfo, Code0)
+				code_gen__generate_non_goal_2(Goal, GoalInfo,
+					Code0),
+				% the nondet goal may have created choice
+				% points, so we must set the current failure
+				% continuation to `unknown', which means
+				% "on failure, just do a redo()".
+				code_info__unset_failure_cont
 			;
 				{ error("nondet model in det/semidet context") }
 			)
