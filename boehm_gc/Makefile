@@ -98,6 +98,9 @@ gc.a: $(OBJS)
 	$(RANLIB) gc.a || cat /dev/null
 #	ignore ranlib failure; that usually means it doesn't exist, and isn't needed
 
+gc.so: $(OBJS)
+	gcc -shared -o gc.so $(OBJS)
+
 cords: $(CORD_OBJS) cord/cordtest
 	$(AR) ru gc.a $(CORD_OBJS)
 	$(RANLIB) gc.a || cat /dev/null
