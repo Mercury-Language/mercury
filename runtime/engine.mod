@@ -8,6 +8,7 @@
 #include	"dummy.h"
 
 #include 	<string.h>
+#include	<setjmp.h>
 
 #ifdef USE_GCC_NONLOCAL_GOTOS
 
@@ -18,6 +19,7 @@
 #endif
 
 static	void	init_registers(void);
+static	void	call_engine_inner(Code *entry_point);
 
 #ifndef USE_GCC_NONLOCAL_GOTOS
 static	Code	*engine_done(void);
@@ -25,6 +27,8 @@ static	Code	*engine_init_registers(void);
 #endif
 
 bool	debugflag[MAXFLAG];
+
+static jmp_buf *engine_jmp_buf;
 
 void init_engine(void)
 {
@@ -71,15 +75,49 @@ static void init_registers(void)
 **	invoke call_engine() to invoke invoke Mercury routines (which
 **	in turn invoke C functions which ... etc. ad infinitum.)
 **
-**	There are two different implementations of this, one for gcc,
+**	call_engine() calls setjmp() and then invokes call_engine_inner()
+**	which does the real work.  call_engine_inner() exits by calling
+**	longjmp() to return to call_engine().  There are two 
+**	different implementations of call_engine_inner(), one for gcc,
 **	and another portable version that works on standard ANSI C compilers.
 */
+
+void call_engine(Code *entry_point)
+{
+
+	jmp_buf		curr_jmp_buf;
+	jmp_buf		* volatile prev_jmp_buf;
+
+	/*
+	** Preserve the value of engine_jmp_buf on the C stack.
+	** This is so "C calls Mercury which calls C which calls Mercury" etc.
+	** will work.
+	*/
+
+	prev_jmp_buf = engine_jmp_buf;
+	engine_jmp_buf = &curr_jmp_buf;
+
+	/*
+	** Mark this as the spot to return to.
+	** On return, restore the saved value of engine_jmp_buf and then
+	** exit.
+	*/
+
+	if (setjmp(curr_jmp_buf))
+	{
+		debugmsg0("...caught longjmp\n");
+		engine_jmp_buf = prev_jmp_buf;
+		return;
+	}
+
+	call_engine_inner(entry_point);
+}
 
 #ifdef USE_GCC_NONLOCAL_GOTOS
 
 /* The gcc-specific version */
 
-void call_engine(Code *entry_point)
+void call_engine_inner(Code *entry_point)
 {
 	/*
 	** Allocate some space for local variables in other
@@ -87,7 +125,7 @@ void call_engine(Code *entry_point)
 	** alloca(1024), but on the mips that just decrements the
 	** stack pointer, whereas local variables are referenced
 	** via the frame pointer, so it didn't work.
-	** This technique should work and should also be relatively portable,
+	** This technique should work and should be vaguely portable,
 	** just so long as local variables and temporaries are allocated in
 	** the same way in every function.
 	*/
@@ -107,7 +145,6 @@ void call_engine(Code *entry_point)
 	}
 }
 #endif
-
 
 	/*
 	** restore any registers that get clobbered by the C function
@@ -151,10 +188,12 @@ Define_label(engine_done);
 	** a leaf routine which doesn't call anything else,
 	** and so it thinks that they won't have been clobbered.
 	**
-	** It might perhaps be cleaner or more robust to just longjmp() out.
+	** This probably isn't necessary now that we exit from this function
+	** using longjmp(), but it doesn't do much harm, so I'm leaving it in.
 	*/
 
 	dummy_function_call();
+
 	debugmsg1("in label `engine_done', locals at %p\n", locals);
 
 #ifndef SPEED
@@ -180,6 +219,14 @@ Define_label(engine_done);
 	}
 #endif
 
+	/*
+	** Despite the above precautions with allocating a large chunk
+	** of unused stack space, the return address may still have been
+	** stored on the top of the stack, past our dummy locals,
+	** where it may have been clobbered.
+	** Hence the only safe way to exit is with longjmp().
+	*/
+	longjmp(*engine_jmp_buf, 1);
 }}
 
 /* with nonlocal gotos, we don't save the previous locations */
@@ -197,13 +244,9 @@ void dump_prev_locations(void) {}
 ** With register windows, we need to restore the registers to
 ** their initialized values from their saved copies.
 ** This must be done in a function engine_init_registers() rather
-** than directly from call_engine() because otherwise their value
-** would get mucked up because of the function call from call_engine().
+** than directly from call_engine_inner() because otherwise their value
+** would get mucked up because of the function call from call_engine_inner().
 */
-
-#include <setjmp.h>
-
-static jmp_buf *engine_jmp_buf;
 
 static Code *engine_done(void)
 {
@@ -251,34 +294,9 @@ void dump_prev_locations(void)
 	}
 }
 
-void call_engine(Code *entry_point)
+static void call_engine_inner(Code *entry_point)
 {
-
 	reg	Func	*fp;
-	jmp_buf		curr_jmp_buf;
-	jmp_buf		* volatile prev_jmp_buf;
-
-	/*
-	** Preserve the value of engine_jmp_buf on the C stack.
-	** This is so "C calls Mercury which calls C which calls Mercury" etc.
-	** will work.
-	*/
-
-	prev_jmp_buf = engine_jmp_buf;
-	engine_jmp_buf = &curr_jmp_buf;
-
-	/*
-	** Mark this as the spot to return to.
-	** On return, restore the saved value of engine_jmp_buf and then
-	** exit.
-	*/
-
-	if (setjmp(curr_jmp_buf))
-	{
-		debugmsg0("...caught longjmp\n");
-		engine_jmp_buf = prev_jmp_buf;
-		return;
-	}
 
 	/*
 	** Start up the actual engine.
