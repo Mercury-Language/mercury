@@ -13,7 +13,7 @@ include Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-SUBDIRS = scripts util boehm_gc runtime library compiler doc profiler lp_solve
+SUBDIRS = scripts util boehm_gc runtime library compiler doc profiler
 
 SUBDIR_MMAKE =	PATH=../scripts:../util:$$PATH \
 		MMAKE_VPATH=. \
@@ -111,10 +111,6 @@ util: scripts
 profiler: dep_profiler scripts util runtime boehm_gc library
 	cd profiler && $(SUBDIR_MMAKE)
 
-.PHONY: lp_solve
-lp_solve:
-	-cd lp_solve && $(SUBDIR_MMAKE)
-
 #-----------------------------------------------------------------------------#
 
 .PHONY: tags
@@ -190,6 +186,7 @@ tar: README INSTALL
 		mkdir stuff-to-exclude;					\
 		mv mercury-$(VERSION)/trial	stuff-to-exclude;	\
 		mv mercury-$(VERSION)/bytecode	stuff-to-exclude;	\
+		mv mercury-$(VERSION)/lp_solve	stuff-to-exclude;	\
 		mv mercury-$(VERSION)/extras mercury-$(VERSION)-extras; \
 		tar -cf - mercury-$(VERSION) |				\
 			gzip -9 > mercury-$(VERSION).tar.gz;		\
@@ -211,7 +208,7 @@ version:
 .PHONY: install
 install: all install_scripts install_util install_runtime install_boehm_gc \
 		install_library install_compiler install_profiler install_doc \
-		install_grades install_lp_solve
+		install_grades
 
 .PHONY: install_scripts
 install_scripts: scripts
@@ -299,10 +296,6 @@ install_split_library: scripts dep_library
 	        rm -rf *.dir *.c *.o *.pic_o *.a *.so; \
 	done && \
 	{ mv tmp_dir/* . ; rmdir tmp_dir; true; }
-
-.PHONY: install_lp_solve
-install_lp_solve: lp_solve
-	-cd lp_solve && $(SUBDIR_MMAKE) install
 
 #-----------------------------------------------------------------------------#
 
