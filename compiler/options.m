@@ -110,7 +110,7 @@
 		;	dump_hlds
 		;	dump_hlds_alias
 		;	dump_hlds_options
-		;	verbose_dump_hlds
+		;	dump_mlds
 		;	generate_schemas
 		;	dump_rl
 		;	dump_rl_bytecode
@@ -481,7 +481,7 @@ option_defaults_2(aux_output_option, [
 	dump_hlds		-	accumulating([]),
 	dump_hlds_alias		-	string(""),
 	dump_hlds_options	-	string(""),
-	verbose_dump_hlds	-	string(""),
+	dump_mlds		-	accumulating([]),
 	dump_rl			-	bool(no),
 	dump_rl_bytecode	-	bool(no),
 	generate_schemas	-	bool(no)
@@ -744,6 +744,7 @@ short_option('e', 			errorcheck_only).
 short_option('E', 			verbose_errors).
 short_option('G', 			convert_to_goedel).
 short_option('h', 			help).
+short_option('H', 			highlevel_code).
 short_option('i', 			make_interface).
 short_option('I', 			search_directories).
 short_option('l', 			link_libraries).
@@ -850,7 +851,7 @@ long_option("show-dependency-graph",	show_dependency_graph).
 long_option("dump-hlds",		dump_hlds).
 long_option("dump-hlds-alias",		dump_hlds_alias).
 long_option("dump-hlds-options",	dump_hlds_options).
-long_option("verbose-dump-hlds",	verbose_dump_hlds).
+long_option("dump-mlds",		dump_mlds).
 long_option("dump-rl",			dump_rl).
 long_option("dump-rl-bytecode",		dump_rl_bytecode).
 long_option("generate-schemas",		generate_schemas).
@@ -1626,7 +1627,7 @@ options_help_aux_output -->
 		"--show-dependency-graph",
 		"\tWrite out the dependency graph to `<module>.dependency_graph'.",
 		"-d <n>, --dump-hlds <stage number or name>",
-		"\tDump the HLDS (intermediate representation) after",
+		"\tDump the HLDS (high level intermediate representation) after",
 		"\tthe specified stage to `<module>.hlds_dump.<num>-<name>'.",
 		"\tStage numbers range from 1-99.",
 		"\tMultiple dump options accumulate.",
@@ -1640,6 +1641,11 @@ options_help_aux_output -->
 		"\tEach type of detail is included in the dump if its",
 		"\tcorresponding letter occurs in the option argument",
 		"\t(see the Mercury User's Guide for details).",
+		"--dump-mlds <stage number or name>",
+		"\tDump the MLDS (medium level intermediate representation) after",
+		"\tthe specified stage to `<module>.mlds_dump.<num>-<name>'.",
+		"\tStage numbers range from 1-99.",
+		"\tMultiple dump options accumulate.",
 		"--dump-rl",
 		"\tOutput a human readable form of the compiler's internal",
 		"\trepresentation of the generated Aditi-RL code to",

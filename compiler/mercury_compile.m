@@ -2244,6 +2244,7 @@ mercury_compile__mlds_backend(HLDS50, MLDS) -->
 	ml_code_gen(HLDS, MLDS0),
 	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats),
+	mercury_compile__maybe_dump_mlds(MLDS0, "0", "initial"),
 
 	% XXX this pass should be conditional on a compilation option
 
@@ -2251,6 +2252,7 @@ mercury_compile__mlds_backend(HLDS50, MLDS) -->
 	ml_mark_tailcalls(MLDS0, MLDS1),
 	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats),
+	mercury_compile__maybe_dump_mlds(MLDS1, "1", "tailcalls"),
 
 	globals__io_lookup_bool_option(gcc_nested_functions, NestedFuncs),
 	( { NestedFuncs = no } ->
@@ -2262,11 +2264,13 @@ mercury_compile__mlds_backend(HLDS50, MLDS) -->
 	),
 	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats),
+	mercury_compile__maybe_dump_mlds(MLDS2, "2", "nested_funcs"),
 
 	maybe_write_string(Verbose, "% Generating RTTI data...\n"),
 	{ mercury_compile__mlds_gen_rtti_data(HLDS, MLDS2, MLDS) },
 	maybe_write_string(Verbose, "% done.\n"),
-	maybe_report_stats(Stats).
+	maybe_report_stats(Stats),
+	mercury_compile__maybe_dump_mlds(MLDS, "3", "rtti").
 
 :- pred mercury_compile__mlds_gen_rtti_data(module_info, mlds, mlds).
 :- mode mercury_compile__mlds_gen_rtti_data(in, in, out) is det.
@@ -2762,6 +2766,60 @@ mercury_compile__dump_hlds(DumpFile, HLDS) -->
 		report_error(ErrorMessage)
 	).
 
+:- pred mercury_compile__maybe_dump_mlds(mlds, string, string,
+	io__state, io__state).
+:- mode mercury_compile__maybe_dump_mlds(in, in, in, di, uo) is det.
+
+mercury_compile__maybe_dump_mlds(MLDS, StageNum, StageName) -->
+	globals__io_lookup_accumulating_option(dump_mlds, DumpStages),
+	(
+		{
+			list__member(StageNum, DumpStages)
+		;
+			list__member(StageName, DumpStages)
+		;
+			list__member("all", DumpStages)
+		;
+			string__append("0", StrippedStageNum, StageNum),
+			list__member(StrippedStageNum, DumpStages)
+		}
+	->
+		{ ModuleName = mlds__get_module_name(MLDS) },
+		module_name_to_file_name(ModuleName, ".mlds_dump", yes,
+			BaseFileName),
+		{ string__append_list(
+			[BaseFileName, ".", StageNum, "-", StageName],
+			DumpFile) },
+		mercury_compile__dump_mlds(DumpFile, MLDS)
+	;
+		[]
+	).
+
+:- pred mercury_compile__dump_mlds(string, mlds, io__state, io__state).
+:- mode mercury_compile__dump_mlds(in, in, di, uo) is det.
+
+mercury_compile__dump_mlds(DumpFile, MLDS) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	globals__io_lookup_bool_option(statistics, Stats),
+	maybe_write_string(Verbose, "% Dumping out MLDS to `"),
+	maybe_write_string(Verbose, DumpFile),
+	maybe_write_string(Verbose, "'..."),
+	maybe_flush_output(Verbose),
+	io__tell(DumpFile, Res),
+	( { Res = ok } ->
+		% XXX the following doesn't work, due to performance bugs
+		% in pprint:
+		%	pprint__write(80, pprint__to_doc(MLDS)),
+		io__print(MLDS), io__nl,
+		io__told,
+		maybe_write_string(Verbose, " done.\n"),
+		maybe_report_stats(Stats)
+	;
+		maybe_write_string(Verbose, "\n"),
+		{ string__append_list(["can't open file `",
+			DumpFile, "' for output."], ErrorMessage) },
+		report_error(ErrorMessage)
+	).
 
 :- pred mercury_compile__maybe_dump_rl(list(rl_proc), module_info,
 		string, string, io__state, io__state).
