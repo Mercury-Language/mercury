@@ -165,9 +165,9 @@ can_optimize_tailcall(Name, Call) :-
 		CodeAddr = internal(QualifiedProcLabel, SeqNum, _Sig),
 		MaybeSeqNum = yes(SeqNum)
 	),
-	QualifiedProcLabel = qual(PackageName, ModuleName, PredLabel - ProcId),
+	QualifiedProcLabel = qual(ModuleName, PredLabel - ProcId),
 	% check that the module name matches
-	Name = qual(PackageName, ModuleName, FuncName),
+	Name = qual(ModuleName, FuncName),
 	% check that the PredLabel, ProcId, and MaybeSeqNum match
 	FuncName = function(PredLabel, ProcId, MaybeSeqNum, _),
 

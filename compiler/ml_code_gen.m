@@ -852,8 +852,7 @@ ml_gen_pragma_export_proc(ModuleInfo,
 		MLDS_Name, MLDS_ModuleName),
 	MLDS_FuncParams = ml_gen_proc_params(ModuleInfo, PredId, ProcId),
 	MLDS_Context = mlds__make_context(ProgContext),
-	ML_Defn = ml_pragma_export(C_Name,
-			qual(MLDS_ModuleName, MLDS_ModuleName, MLDS_Name),
+	ML_Defn = ml_pragma_export(C_Name, qual(MLDS_ModuleName, MLDS_Name),
 			MLDS_FuncParams, MLDS_Context).
 
 
@@ -2495,7 +2494,7 @@ ml_gen_hash_define_mr_proc_label(HashDefine) -->
 	{ ml_gen_proc_label(ModuleInfo, PredId, ProcId, MLDS_Name,
 			MLDS_Module) },
 	{ HashDefine = [raw_target_code("#define MR_PROC_LABEL "),
-			name(qual(MLDS_Module, MLDS_Module, MLDS_Name)),
+			name(qual(MLDS_Module, MLDS_Name)),
 			raw_target_code("\n")] }.
 
 

@@ -192,8 +192,7 @@ optimize_in_call_stmt(OptInfo, Stmt0) = Stmt :-
 	(
 		Stmt0 = call(_Signature, _FuncRval, _MaybeObject, CallArgs,
 			_Results, _IsTailCall),
-		ModuleName = OptInfo ^ module_name,
-		can_optimize_tailcall(qual(ModuleName, ModuleName,
+		can_optimize_tailcall(qual(OptInfo ^ module_name, 
 			OptInfo ^ entity_name), Stmt0)
 	->
 		CommentStatement = statement(
@@ -239,8 +238,7 @@ generate_assign_args(OptInfo,
 		%
 		Name = data(var(VarName))
 	->
-		QualVarName = qual(OptInfo ^ module_name,
-				OptInfo ^ module_name, VarName),
+		QualVarName = qual(OptInfo ^ module_name, VarName),
 		(
 			% 
 			% don't bother assigning a variable to itself
@@ -270,7 +268,7 @@ generate_assign_args(OptInfo,
 			TempName = mlds__var_name(VarNameStr ++ "__tmp_copy",
 				MaybeNum),
 			QualTempName = qual(OptInfo ^ module_name, 
-				OptInfo ^ module_name, TempName),
+				TempName),
 			Initializer = init_obj(Arg),
 			TempDefn = ml_gen_mlds_var_decl(var(TempName),
 				Type, Initializer, OptInfo ^ context),
@@ -309,9 +307,8 @@ optimize_func_stmt(OptInfo, mlds__statement(Stmt0, Context)) =
 	(
 		stmt_contains_statement(Stmt0, Call),
 		Call = mlds__statement(CallStmt, _),
-		ModuleName = OptInfo ^ module_name,
 		can_optimize_tailcall(
-			qual(ModuleName, ModuleName, OptInfo ^ entity_name), 
+			qual(OptInfo ^ module_name, OptInfo ^ entity_name), 
 			CallStmt)
 	->
 		Comment = atomic(comment("tailcall optimized into a loop")),
@@ -426,9 +423,8 @@ convert_assignments_into_initializers(Defns0, Statements0, OptInfo,
 		Statements0 = [AssignStatement | Statements1],
 		AssignStatement = statement(atomic(assign(LHS, RHS)), _),
 		LHS = var(ThisVar, _ThisType),
-		ThisVar = qual(PackageName, Qualifier, VarName),
+		ThisVar = qual(Qualifier, VarName),
 		Qualifier = OptInfo ^ module_name,
-		PackageName = OptInfo ^ module_name,
 		list__takewhile(isnt(var_defn(VarName)), Defns0, 
 			_PrecedingDefns, [_VarDefn | FollowingDefns]),
 
@@ -443,8 +439,7 @@ convert_assignments_into_initializers(Defns0, Statements0, OptInfo,
 			list__member(OtherDefn, FollowingDefns),
 			OtherDefn = mlds__defn(data(var(OtherVarName)),
 				_, _, data(_Type, OtherInitializer)),
-			( rval_contains_var(RHS,
-				qual(PackageName, Qualifier, OtherVarName))
+			( rval_contains_var(RHS, qual(Qualifier, OtherVarName))
 			; initializer_contains_var(OtherInitializer, ThisVar)
 			)
 		)

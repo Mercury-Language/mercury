@@ -94,7 +94,6 @@ generate_mcplusplus_code(MLDS) -->
 	{ MLDS = mlds(ModuleName, ForeignCode, _Imports, Defns) },
 	{ prog_out__sym_name_to_string(ModuleName, ModuleNameStr) },
 	{ ClassName = mlds_module_name_to_class_name(
-		mercury_module_name_to_mlds(ModuleName),
 		mercury_module_name_to_mlds(ModuleName), yes) },
 
 	io__nl,
@@ -375,8 +374,7 @@ write_managed_cpp_code_component(user_target_code(Code, _MaybeContext)) -->
 write_managed_cpp_code_component(raw_target_code(Code)) -->
 	io__write_string(Code).
 		% XXX we don't handle name yet.
-write_managed_cpp_code_component(
-	name(_ `with_type` qualified_entity_name)) --> [].
+write_managed_cpp_code_component(name(_)) --> [].
 write_managed_cpp_code_component(target_code_input(Rval)) -->
 	write_managed_cpp_rval(Rval).
 write_managed_cpp_code_component(target_code_output(Lval)) -->
@@ -476,7 +474,7 @@ write_managed_cpp_lval(field(_, Rval, named_field(FieldId, _Type), _, _)) -->
 	write_managed_cpp_rval(Rval),
 	io__write_string(")"),
 	io__write_string("->"),
-	{ FieldId = qual(_, _, FieldName) },
+	{ FieldId = qual(_, FieldName) },
 	io__write_string(FieldName).
 
 write_managed_cpp_lval(field(_, Rval, offset(OffSet), _, _)) -->

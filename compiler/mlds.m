@@ -326,12 +326,17 @@
 :- type mlds__package_name == mlds_module_name.
 
 % Given the name of a Mercury module, return the name of the corresponding
-% MLDS package.
-:- func mercury_module_name_to_mlds(mercury_module_name) = mlds__package_name.
+% MLDS package in which this module is defined.
+:- func mercury_module_name_to_mlds(mercury_module_name) = mlds_module_name.
 
-% Given the name of a Mercury module, return the name of the corresponding
-% MLDS package.
+% Given the name of a Mercury module return the fully qualified module
+% name.  ie For the name System.Object which is defined in the source
+% package mscorlib it will return System.Object.
 :- func mlds_module_name_to_sym_name(mlds__package_name) = sym_name.
+
+% Give the name of a Mercury module, return the name of the corresponding 
+% MLDS package.
+:- func mlds_module_name_to_package_name(mlds_module_name) = sym_name.
 
 % Given an MLDS module name (e.g. `foo.bar'), append another class qualifier
 % (e.g. for a class `baz'), and return the result (e.g. `foo.bar.baz').
@@ -360,18 +365,7 @@
 % in identifiers, then it is the responsibility of the target language
 % generator to mangle these names accordingly.
 :- type mlds__fully_qualified_name(T)
-	---> 	qual(
-				% Package which contains this name.
-				% ie mscorlib
-			package		:: mlds__package_name,
-
-				% Qualifers for this name.
-				% ie 'System'
-			qualifiers	:: mlds_module_name,
-
-				% The name ie 'Object'
-			name		:: T
-		).
+	---> 	qual(mlds_module_name, T).
 :- type mlds__qualified_entity_name
 	==	mlds__fully_qualified_name(mlds__entity_name).
 
@@ -1450,14 +1444,23 @@ mlds__get_func_signature(func_params(Parameters, RetTypes)) =
 
 %-----------------------------------------------------------------------------%
 
-% Mercury module names are the same as MLDS package names, except that
-% modules in the Mercury standard library map get a `mercury' prefix
-% e.g. `mercury.builtin', `mercury.io', `mercury.std_util', etc.,
+% A mercury module name consists of two parts.  One part is the package
+% which the module name is defined in, and the other part is the actual
+% module name.  For example the module name System.XML could be defined
+% in the package XML.
+%
+% Note that modules in the Mercury standard library map get a `mercury'
+% prefix e.g. `mercury.builtin', `mercury.io', `mercury.std_util', etc.,
 % when mapped to MLDS package names.
 
-:- type mlds_module_name == prog_data__module_name.
+% :- type mlds_module_name == prog_data__module_name.
+:- type mlds_module_name
+	---> name(
+		package_name	:: prog_data__module_name,
+		module_name	:: prog_data__module_name
+	).
 
-mercury_module_name_to_mlds(MercuryModule) = MLDS_Package :-
+mercury_module_name_to_mlds(MercuryModule) = name(MLDS_Package, MLDS_Package) :-
 	(
 		MercuryModule = unqualified(ModuleName),
 		mercury_std_library_module(ModuleName)
@@ -1467,10 +1470,12 @@ mercury_module_name_to_mlds(MercuryModule) = MLDS_Package :-
 		MLDS_Package = MercuryModule
 	).
 
-mlds_module_name_to_sym_name(MLDS_Package) = MLDS_Package.
+mlds_module_name_to_sym_name(Module) = Module ^ module_name.
 
-mlds__append_class_qualifier(Package, ClassName, ClassArity) =
-		qualified(Package, ClassQualifier) :-
+mlds_module_name_to_package_name(Module) = Module ^ package_name.
+
+mlds__append_class_qualifier(name(Package, Module), ClassName, ClassArity) =
+		name(Package, qualified(Module, ClassQualifier)) :-
 	string__format("%s_%d", [s(ClassName), i(ClassArity)],
 		ClassQualifier).
 

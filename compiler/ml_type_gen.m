@@ -137,7 +137,7 @@ ml_gen_enum_type(TypeId, TypeDefn, Ctors, TagValues,
 	MLDS_Context = mlds__make_context(Context),
 
 	% generate the class name
-	ml_gen_type_name(TypeId, qual(_, _, MLDS_ClassName), MLDS_ClassArity),
+	ml_gen_type_name(TypeId, qual(_, MLDS_ClassName), MLDS_ClassArity),
 
 	% generate the class members
 	ValueMember = ml_gen_enum_value_member(Context),
@@ -270,8 +270,7 @@ ml_gen_du_parent_type(ModuleInfo, TypeId, TypeDefn, Ctors, TagValues,
 	ml_gen_type_name(TypeId, QualBaseClassName, BaseClassArity),
 	BaseClassId = mlds__class_type(QualBaseClassName, BaseClassArity,
 		mlds__class),
-	QualBaseClassName = qual(_BaseClassPackageName,
-			BaseClassModuleName, BaseClassName),
+	QualBaseClassName = qual(BaseClassModuleName, BaseClassName),
 	BaseClassQualifier = mlds__append_class_qualifier(
 		BaseClassModuleName, BaseClassName, BaseClassArity),
 
@@ -412,8 +411,7 @@ ml_gen_secondary_tag_class(MLDS_Context, BaseClassQualifier, BaseClassId, Member
 	% Note: the secondary tag class is nested inside the
 	% base class for this type.
 	UnqualClassName = "tag_type",
-	ClassName = qual(BaseClassQualifier,
-			BaseClassQualifier, UnqualClassName),
+	ClassName = qual(BaseClassQualifier, UnqualClassName),
 	ClassArity = 0,
 	SecondaryTagClassId = mlds__class_type(ClassName, ClassArity,
 		mlds__class),
@@ -566,8 +564,7 @@ ml_gen_mlds_field_decl(DataName, MLDS_Type, Context) = MLDS_Defn :-
 % Miscellaneous helper routines.
 %
 
-ml_gen_type_name(Name - Arity,
-		qual(MLDS_Module, MLDS_Module, TypeName), Arity) :-
+ml_gen_type_name(Name - Arity, qual(MLDS_Module, TypeName), Arity) :-
 	(
 		Name = qualified(ModuleName, TypeName)
 	;
