@@ -5,6 +5,12 @@ codegen.nl
 
 - types with constants only (enumerations) should be handled as ints.
 
+- The generated code should include some profiling hooks.
+  In particular, we should add a version of the heap allocation
+  macro which takes an extra string parameter identifying which
+  routine allocated the memory.  Then we can do heap-allocation
+  profiling to identify which routines use up all the bloody memory.
+
 mercury_to_goedel.nl
 --------------------
 
@@ -12,6 +18,13 @@ mercury_to_goedel.nl
 
 other
 -----
+
+- warn about predicates with no clauses.
+
+- warn about predicates with no modes.
+
+- report an error if there are clauses in the interface section
+  of a module
 
 - replace all instances of term_functor, term_atom, term_string, term_float,
   term_int, term_variable with term__functor, term__atom, term__string,
@@ -34,7 +47,9 @@ other
 
 - optimization of various sorts
 
-- module system & seperate compilation
+- handle module qualifiers properly
+
+- more work on module system & seperate compilation
 
 - better error handling
 
