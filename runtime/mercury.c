@@ -442,7 +442,7 @@ bool
 mercury__array____Unify____array_1_0(MR_Mercury_Type_Info type_info,
 	MR_Array x, MR_Array y)
 {
-	SORRY("unify for array");
+	mercury__array__array_equal_2_p_0(type_info, x, y);
 }
 
 bool
@@ -609,7 +609,7 @@ mercury__array____Compare____array_1_0(
 	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
 	MR_Array x, MR_Array y)
 {
-	SORRY("compare for array");
+	mercury__array__array_compare_3_p_0(type_info, result, x, y);
 }
 
 void
