@@ -5,7 +5,8 @@ main_target: check
 #-----------------------------------------------------------------------------#
 
 PROGS=	pragma_c_code_unused_var unused_args_test singleton_test \
-	unused_import pragma_source_file missing_if double_underscore
+	unused_import pragma_source_file missing_if double_underscore \
+	duplicate_call
 
 #-----------------------------------------------------------------------------#
 
@@ -20,6 +21,10 @@ ERRS=	$(PROGS:%=%.err)
 RESS=	$(PROGS:%=%.res)
 
 #-----------------------------------------------------------------------------#
+
+duplicate_call.err:
+	$(MC) --grade $(GRADE) -C --misc-warnings --errorcheck-only \
+		duplicate_call > duplicate_call.err 2>&1
 
 unused_args_test.err:
 	$(MC) --grade $(GRADE) -C --warn-unused-args --errorcheck-only \
