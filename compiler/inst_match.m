@@ -990,11 +990,11 @@ abstractly_unify_inst_3(live, ground(UniqX, yes(_)), bound(UniqY, BoundInsts0),
 			BoundInsts, M).
 
 abstractly_unify_inst_3(live, ground(UniqA, yes(PredInstA)),
-				ground(UniqB, yes(PredInstB)), Real, M,
+				ground(UniqB, MaybePredInstB), Real, M,
 				ground(Uniq, PredInst), semidet, M) :-
 	% this might be too restrictive
-	( PredInstA = PredInstB ->
-		PredInst = yes(PredInstA)
+	( MaybePredInstB = yes(PredInstB), PredInstA = PredInstB ->
+		PredInst = MaybePredInstB
 	;
 		PredInst = no
 	),
@@ -1081,11 +1081,11 @@ abstractly_unify_inst_3(dead, ground(UniqA, yes(_)), bound(UniqB, BoundInsts0),
 					BoundInsts, M).
 
 abstractly_unify_inst_3(dead, ground(UniqA, yes(PredInstA)),
-				ground(UniqB, yes(PredInstB)), Real, M,
+				ground(UniqB, MaybePredInstB), Real, M,
 				ground(Uniq, PredInst), det, M) :-
 	% this might be too restrictive
-	( PredInstA = PredInstB ->
-		PredInst = yes(PredInstA)
+	( MaybePredInstB = yes(PredInstB), PredInstA = PredInstB ->
+		PredInst = MaybePredInstB
 	;
 		PredInst = no
 	),
