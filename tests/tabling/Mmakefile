@@ -15,7 +15,8 @@ SIMPLE_PROGS = \
 	fib_float \
 	fib_list \
 	fib_string \
-	loopcheck
+	loopcheck \
+	unused_args
 
 NONDET_PROGS = \
 	coup \
