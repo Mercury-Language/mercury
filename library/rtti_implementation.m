@@ -2208,12 +2208,12 @@ unsafe_make_enum(_) = _ :-
 :- pragma foreign_proc("C", null(S::in),
 		[will_not_call_mercury, thread_safe, promise_pure],
 "
-	SUCCESS_INDICATOR = (S == NULL);
+	SUCCESS_INDICATOR = ((void *)S == NULL);
 ").
 :- pragma foreign_proc("MC++", null(S::in),
 		[will_not_call_mercury, thread_safe, promise_pure],
 "
-	SUCCESS_INDICATOR = (S == NULL);
+	SUCCESS_INDICATOR = (S == 0);
 ").
 null(_) :-
 	% This version is only used for back-ends for which there is no
@@ -2226,12 +2226,12 @@ null(_) :-
 :- pragma foreign_proc("C", null = (T::out),
 		[will_not_call_mercury, thread_safe, promise_pure],
 "
-	T = NULL;
+	T = (MR_Word) NULL;
 ").
 :- pragma foreign_proc("MC++", null = (T::out),
 		[will_not_call_mercury, thread_safe, promise_pure],
 "
-	T = NULL;
+	T = 0;
 ").
 null = _ :-
 	% This version is only used for back-ends for which there is no
