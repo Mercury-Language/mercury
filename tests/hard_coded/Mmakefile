@@ -113,6 +113,7 @@ ORDINARY_PROGS=	\
 	tim_qual1 \
 	tuple_test \
 	tuple_test \
+	type_ctor_desc \
 	type_qual \
 	type_spec_modes \
 	type_to_term_bug \
