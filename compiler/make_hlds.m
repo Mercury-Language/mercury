@@ -1089,6 +1089,7 @@ combine_status_2(imported, Status2, Status) :-
 combine_status_2(local, Status2, Status) :-
 	combine_status_local(Status2, Status).
 combine_status_2(exported, _Status2, exported).
+combine_status_2(exported_to_submodules, _Status2, exported_to_submodules).
 combine_status_2(opt_imported, _Status2, opt_imported).
 combine_status_2(abstract_imported, Status2, Status) :-
 	combine_status_abstract_imported(Status2, Status).

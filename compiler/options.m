@@ -1405,7 +1405,8 @@ options_help_aux_output -->
 		"--trace {minimum, shallow, deep, default}",
 		"\tGenerate code that includes the specified level", 
 		"\tof execution tracing.",
-		"\tSee the Debugging chapter of the Mercury User's Guide for details.",
+		"\tSee the Debugging chapter of the Mercury User's Guide",
+		"\tfor details.",
 		"--no-trace-internal",
 		"\tDo not generate code for internal events even if the trace",
 		"\tlevel is deep.",
@@ -1744,7 +1745,8 @@ options_help_code_generation -->
 
 		"--c-debug",
 		"\tEnable debugging of the generated C code.",
-		"\t(This has the same effect as `--cflags -g'.)",
+		"\t(This has the same effect as",
+		"\t`--cflags ""-g"" --link-flags ""--no-strip""'.)",
 
 		"--fact-table-max-array-size <n>",
 		"\tSpecify the maximum number of elements in a single",

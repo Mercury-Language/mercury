@@ -2355,6 +2355,12 @@ mercury_compile__link_module_list(Modules) -->
 		    maybe_write_string(Verbose, "% Linking...\n"),
 		    globals__io_get_globals(Globals),
 		    { compute_grade(Globals, Grade) },
+		    globals__io_lookup_bool_option(c_debug, C_Debug),
+		    { C_Debug = yes ->
+		    	C_Debug_Opt = "--no-strip "
+		    ;
+		    	C_Debug_Opt = ""
+		    },
 		    globals__io_lookup_accumulating_option(link_flags,
 				LinkFlagsList),
 		    { join_string_list(LinkFlagsList, "", "", " ", LinkFlags) },
@@ -2372,7 +2378,7 @@ mercury_compile__link_module_list(Modules) -->
 		    { join_string_list(LinkObjectsList, "", "", " ",
 				LinkObjects) },
 		    { string__append_list(
-			["ml --grade ", Grade, " ", LinkFlags,
+			["ml --grade ", Grade, " ", C_Debug_Opt, LinkFlags,
 			" -o ", OutputFileName, " ",
 			InitObjFileName, " ", Objects, " ",
 			LinkObjects, " ",

@@ -349,12 +349,11 @@ check_pred_modes(WhatToCheck, ModuleInfo0, ModuleInfo, UnsafeToContinue) -->
 
 modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, ModuleInfo0,
 		ModuleInfo, UnsafeToContinue) -->
-	( { WhatToCheck = check_modes } ->
-		{ copy_module_clauses_to_procs(PredIds, ModuleInfo0,
-			ModuleInfo1) }
-	;
-		{ ModuleInfo1 = ModuleInfo0 }
-	),
+	{ ModuleInfo1 = ModuleInfo0 },
+
+	% save the old procedure bodies so that we can restore them for the
+	% next pass
+	{ module_info_preds(ModuleInfo0, OldPredTable0) },
 
 	% analyze everything which has the "can-process" flag set to `yes'
 	modecheck_pred_modes_2(PredIds, WhatToCheck, ModuleInfo1, ModuleInfo2,
@@ -362,7 +361,8 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, ModuleInfo0,
 
 	% analyze the procedures whose "can-process" flag was no;
 	% those procedures were inserted into the unify requests queue.
-	modecheck_queued_procs(WhatToCheck, ModuleInfo2, ModuleInfo3, Changed2),
+	modecheck_queued_procs(WhatToCheck, OldPredTable0, ModuleInfo2,
+					OldPredTable, ModuleInfo3, Changed2),
 	io__get_exit_status(ExitStatus),
 
 	{ bool__or(Changed1, Changed2, Changed) },
@@ -385,9 +385,30 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, ModuleInfo0,
 			;
 				[]
 			),
+			%
+			% Mode analysis may have modified the procedure
+			% bodies, since it does some optimizations such
+			% as deleting unreachable code.  But since we didn't
+			% reach a fixpoint yet, the mode information is not
+			% correct yet, and so those optimizations will have
+			% been done based on incomplete information, and so
+			% they may therefore produce incorrect results.
+			% Thus we need to restore the old procedure bodies.
+			%
+			( { WhatToCheck = check_modes } ->
+				% restore the proc_info goals from the
+				% clauses in the pred_info
+				{ copy_module_clauses_to_procs(PredIds,
+					ModuleInfo3, ModuleInfo4) }
+			;
+				% restore the proc_info goals from the
+				% proc_infos in the old module_info
+				{ copy_pred_bodies(OldPredTable, PredIds,
+					ModuleInfo3, ModuleInfo4) }
+			),
 			{ MaxIterations1 is MaxIterations - 1 },
 			modecheck_to_fixpoint(PredIds, MaxIterations1,
-				WhatToCheck, ModuleInfo3,
+				WhatToCheck, ModuleInfo4,
 				ModuleInfo, UnsafeToContinue)
 		)
 	).
@@ -406,6 +427,45 @@ report_max_iterations_exceeded -->
 		MaxIterations),
 	io__format("(The current limit is %d iterations.)\n",
 		[i(MaxIterations)]).
+
+% copy_pred_bodies(OldPredTable, ProcId, ModuleInfo0, ModuleInfo):
+%	copy the procedure bodies for all procedures of the specified
+%	PredIds from OldPredTable into ModuleInfo0, giving ModuleInfo.
+:- pred copy_pred_bodies(pred_table, list(pred_id), module_info, module_info).
+:- mode copy_pred_bodies(in, in, in, out) is det.
+copy_pred_bodies(OldPredTable, PredIds, ModuleInfo0, ModuleInfo) :-
+	module_info_preds(ModuleInfo0, PredTable0),
+	list__foldl(copy_pred_body(OldPredTable), PredIds,
+		PredTable0, PredTable),
+	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo).
+
+% copy_pred_body(OldPredTable, ProcId, PredTable0, PredTable):
+%	copy the procedure bodies for all procedures of the specified
+%	PredId from OldPredTable into PredTable0, giving PredTable.
+:- pred copy_pred_body(pred_table, pred_id, pred_table, pred_table).
+:- mode copy_pred_body(in, in, in, out) is det.
+copy_pred_body(OldPredTable, PredId, PredTable0, PredTable) :-
+	map__lookup(PredTable0, PredId, PredInfo0),
+	pred_info_procedures(PredInfo0, ProcTable0),
+	map__lookup(OldPredTable, PredId, OldPredInfo),
+	pred_info_procedures(OldPredInfo, OldProcTable),
+	map__keys(OldProcTable, OldProcIds),
+	list__foldl(copy_proc_body(OldProcTable), OldProcIds,
+		ProcTable0, ProcTable),
+	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
+	map__set(PredTable0, PredId, PredInfo, PredTable).
+
+% copy_proc_body(OldProcTable, ProcId, ProcTable0, ProcTable):
+%	copy the body of the specified ProcId from OldProcTable
+%	into ProcTable0, giving ProcTable.
+:- pred copy_proc_body(proc_table, proc_id, proc_table, proc_table).
+:- mode copy_proc_body(in, in, in, out) is det.
+copy_proc_body(OldProcTable, ProcId, ProcTable0, ProcTable) :-
+	map__lookup(OldProcTable, ProcId, OldProcInfo),
+	proc_info_goal(OldProcInfo, OldProcBody),
+	map__lookup(ProcTable0, ProcId, ProcInfo0),
+	proc_info_set_goal(ProcInfo0, OldProcBody, ProcInfo),
+	map__set(ProcTable0, ProcId, ProcInfo, ProcTable).
 
 :- pred modecheck_pred_modes_2(list(pred_id), how_to_check_goal,
 			module_info, module_info, bool, bool, int, int,

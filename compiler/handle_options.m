@@ -391,6 +391,11 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	% hence not set up a stack frame.
 	option_implies(typeinfo_liveness, middle_rec, bool(no)),
 
+	% XXX value numbering implements the wrong semantics for LLDS
+	% operations involving tickets, which are generated only with
+	% --use-trail.
+	option_implies(use_trail, optimize_value_number, bool(no)),
+
 	% --dump-hlds and --statistics require compilation by phases
 	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
 	globals__io_lookup_bool_option(statistics, Statistics),
@@ -496,8 +501,8 @@ long_usage -->
  	io__write_string("Copyright (C) 1993-1998 The University of Melbourne\n"),
 	io__write_string("Usage: mmc [<options>] <arguments>\n"),
 	io__write_string("Arguments:\n"),
-	io__write_string("\t\tArguments ending in `.m' are assumed to be source file names.\n"),
-	io__write_string("\t\tArguments that do not end in `.m' are assumed to be module names.\n"),
+	io__write_string("\tArguments ending in `.m' are assumed to be source file names.\n"),
+	io__write_string("\tArguments that do not end in `.m' are assumed to be module names.\n"),
 	io__write_string("Options:\n"),
 	options_help.
 
@@ -736,3 +741,4 @@ convert_dump_alias("ALL", "abcdfgilmnprstuvCIMPTU").
 convert_dump_alias("all", "abcdfgilmnprstuvCMPT").
 convert_dump_alias("codegen", "dfnprsu").
 convert_dump_alias("vanessa", "ltuCIU").
+convert_dump_alias("paths", "cP").

@@ -978,10 +978,18 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 			;
 				error("polymorphism.m: can't find `builtin:unify/2'")
 			},
-			% XXX Bug! - we should check that the mode is (in, in),
-			%     and report an error (e.g. "unification of
-			%     polymorphically typed variables in partially
-			%     instantiated mode") if it isn't
+%		YYY we don't have an instmap here.  
+%		Polymorphic unification should be caught earlier 
+%		(e.g. in mode analysis).
+%		`tests/invalid/polymorphic_unification' will fail until this
+%		error is caught properly.
+%			{ Mode = XMode - YMode },
+%			{ require(mode_is_fully_input(InstMap, InstTable,
+%				ModuleInfo, XMode),
+%				"Sorry, not implemented: polymorphic unification in mode other than (in, in)") },
+%			{ require(mode_is_fully_input(InstMap, InstTable,
+%				ModuleInfo, YMode),
+%				"Sorry, not implemented: polymorphic unification in mode other than (in, in)") },
 			{ hlds_pred__in_in_unification_proc_id(ProcId) },
 			{ map__lookup(TypeInfoMap, TypeVar, TypeInfoLocn) },
 			{ SymName = unqualified("unify") },

@@ -174,8 +174,10 @@ simplify__proc_2(Simplifications, PredId, ProcId, ModuleInfo0, ModuleInfo,
 	proc_info_set_inst_table(ProcInfo3, InstTable, ProcInfo),
 
 	simplify_info_get_module_info(Info, ModuleInfo1),
+	module_info_preds(ModuleInfo1, OldPredTable0),
 	modecheck_queued_procs(check_unique_modes(may_change_called_proc),
-		ModuleInfo1, ModuleInfo, _Changed, State1, State),
+		OldPredTable0, ModuleInfo1, _OldPredTable, ModuleInfo,
+		_Changed, State1, State),
 
 	simplify_info_get_msgs(Info, Msgs).
 
