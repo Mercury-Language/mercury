@@ -73,6 +73,10 @@
 :- $setOpField((is), []).
 :- op(701, xfx, (is)).
 
+% We don't want `in' to be an operator, since this causes syntax
+% errors in mode declarations for operators such as int:'-'/2.
+:- $setOpField((in), []).
+
 % Prevent warnings about undefined predicates
 % when the interpreter tries to execute the new declarations.
 % We replace all Mercury declarations with `:- fail',
