@@ -19,7 +19,7 @@ export CVSROOT
 
 # directories to use
 DIR=/home/mercury/public/test_mercury/www_dir
-INSTALL_DIR=/local/dept/www/mercury
+INSTALL_DIR=/local/dept/w3/unsupported/docs/mercury
 
 INSTALL_WEBDIR=$INSTALL_DIR
 export INSTALL_WEBDIR
