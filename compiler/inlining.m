@@ -60,7 +60,6 @@ inlining_in_procs([ProcId | ProcIds], PredId, ModuleInfo0,
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_variables(ProcInfo0, Varset0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
-	proc_info_headvars(ProcInfo0, HeadVars),
 
 	inlining__inlining_in_goal(Goal0, Varset0, VarTypes0, ModuleInfo0,
 		Goal, Varset, VarTypes),
