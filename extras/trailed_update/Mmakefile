@@ -8,12 +8,13 @@ GRADE = asm_fast.gc.tr
 
 # enable C debugging
 RM_C = :
-MGNUCFLAGS = -g
+MGNUCFLAGS = -g -Werror
 MLFLAGS = -g
 
 MAIN_TARGET = libtrailed_update
 
 depend : trailed_update.depend
+	cd samples && mmake $(MMAKEFLAGS) depend
 
 check : libtrailed_update
 	cd samples && mmake $(MMAKEFLAGS) check

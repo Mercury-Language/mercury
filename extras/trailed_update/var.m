@@ -458,7 +458,7 @@ ML_var_untrail_func(ML_var_delayed_conj *old_goal, MR_untrail_reason reason)
 			** can't commit, so the goal flounders.
 			*/
 			if (old_goal != ML_var_last_goal.prev) {
-				report_goal_floundered(old_goal);
+				ML_var_report_goal_floundered(old_goal);
 			}
 			break;
 
