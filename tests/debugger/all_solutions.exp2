@@ -19,7 +19,7 @@ that call is not in a deep traced region
 mdb> retry 2
 that call is not in a deep traced region
 mdb> retry 3
-       2:      2  2 CALL pred all_solutions:hello/1-0 (multi)
+       2:      2  2 CALL pred std_util:solutions/2-0 (det)
 mdb> continue -n -S
 Hello again, world
 Hello, world
