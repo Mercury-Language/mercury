@@ -49,6 +49,10 @@
 :- pred build_pointer_type(gcc__type::in, gcc__type::out,
 		io__state::di, io__state::uo) is det.
 
+	% Given a type `T', and a size N, produce an array type `T[N]'.
+:- pred build_array_type(gcc__type::in, int::in, gcc__type::out,
+		io__state::di, io__state::uo) is det.
+
 % A GCC `tree' representing a list of parameter types.
 :- type gcc__param_types.
 :- func empty_param_types = gcc__param_types.
@@ -103,6 +107,12 @@
 
 	% the declaration for GC_malloc()
 :- func alloc_func_decl = gcc__func_decl.
+	
+	% the declaration for strcmp()
+:- func strcmp_func_decl = gcc__func_decl.
+
+	% the declaration for MR_hash_string()
+:- func hash_string_func_decl = gcc__func_decl.
 
 %-----------------------------------------------------------------------------%
 %
@@ -137,6 +147,10 @@
 
 :- func lshift_expr = gcc__op.		% << (left shift)
 :- func rshift_expr = gcc__op.		% >> (left shift)
+
+:- func array_ref = gcc__op.		% [] (array indexing)
+					% first operand is the array,
+					% second operand is the index
 
 %-----------------------------------------------------------------------------%
 %
@@ -215,18 +229,46 @@
 :- mode build_func_addr_expr(in, out, di, uo) is det.
 
 	% A GCC `tree' representing a list of arguments.
-:- type gcc__expr_list.
+:- type gcc__arg_list.
 
-:- pred empty_expr_list(gcc__expr_list, io__state, io__state).
-:- mode empty_expr_list(out, di, uo) is det.
+:- pred empty_arg_list(gcc__arg_list, io__state, io__state).
+:- mode empty_arg_list(out, di, uo) is det.
 
-:- pred cons_expr_list(gcc__expr, gcc__expr_list, gcc__expr_list, io__state, io__state).
-:- mode cons_expr_list(in, in, out, di, uo) is det.
+:- pred cons_arg_list(gcc__expr, gcc__arg_list, gcc__arg_list, io__state, io__state).
+:- mode cons_arg_list(in, in, out, di, uo) is det.
 
 	% build an expression for a function call
-:- pred build_call_expr(gcc__expr, gcc__expr_list, bool, gcc__expr,
+:- pred build_call_expr(gcc__expr, gcc__arg_list, bool, gcc__expr,
 		io__state, io__state).
 :- mode build_call_expr(in, in, in, out, di, uo) is det.
+
+%
+% Initializers
+%
+
+	% A GCC `tree' representing an array index or field to initialize.
+:- type gcc__init_elem.
+
+	% Create a gcc__init_elem that represents an initializer
+	% for an array element at the given array index.
+	% XXX any ideas for a better name for this one?
+:- pred init_array_elem(int, gcc__init_elem, io__state, io__state).
+:- mode init_array_elem(in, out, di, uo) is det.
+
+	% A GCC `tree' representing a list of initializers
+	% for an array or structure.
+:- type gcc__init_list.
+
+:- pred empty_init_list(gcc__init_list, io__state, io__state).
+:- mode empty_init_list(out, di, uo) is det.
+
+:- pred cons_init_list(gcc__init_elem, gcc__expr, gcc__init_list, gcc__init_list,
+		io__state, io__state).
+:- mode cons_init_list(in, in, in, out, di, uo) is det.
+
+	% build an expression for an array or structure initializer
+:- pred build_initializer_expr(gcc__init_list, gcc__type, gcc__expr, io__state, io__state).
+:- mode build_initializer_expr(in, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -260,7 +302,7 @@
 %
 
 %
-% routines to generate code for an if-then-else
+% routines to generate code for if-then-elses
 %
 
 	% start generating code for an if-then-else
@@ -294,6 +336,21 @@
 
 :- pred gen_end_switch(gcc__expr, io__state, io__state).
 :- mode gen_end_switch(in, di, uo) is det.
+
+%
+% routines to generate code for loops
+%
+
+:- type gcc__loop.
+
+:- pred gen_start_loop(gcc__loop, io__state, io__state).
+:- mode gen_start_loop(out, di, uo) is det.
+
+:- pred gen_exit_loop_if_false(gcc__loop, gcc__expr, io__state, io__state).
+:- mode gen_exit_loop_if_false(in, in, di, uo) is det.
+
+:- pred gen_end_loop(io__state, io__state).
+:- mode gen_end_loop(di, uo) is det.
 
 %
 % routines to generate code for calls/returns
@@ -367,7 +424,7 @@
 ").
 
 
-:- type gcc__tree == c_pointer.
+:- type gcc__tree ---> gcc__tree(c_pointer).
 :- type gcc__tree_code == int.
 
 %-----------------------------------------------------------------------------%
@@ -409,6 +466,15 @@
 	_IO0::di, _IO::uo), [will_not_call_mercury],
 "
 	PtrType = (MR_Word) build_pointer_type((tree) Type);
+").
+
+:- pragma c_code(build_array_type(ElemType::in, NumElems::in, ArrayType::out,
+	_IO0::di, _IO::uo), [will_not_call_mercury],
+"
+	/* XXX Move this code to `mercury-gcc.c'. */
+	/* XXX Do we need to check that NumElems fits in a HOST_WIDE_INT?  */
+	tree index_type = build_index_type (build_int_2 (NumElems, 0));
+	ArrayType = (MR_Word) build_array_type((tree) ElemType, index_type);
 ").
 
 :- type gcc__param_types == gcc__tree.
@@ -474,7 +540,19 @@
 :- pragma c_code(alloc_func_decl = (Decl::out),
 	[will_not_call_mercury],
 "
-	Decl = (MR_Word) merc_alloc_function_node
+	Decl = (MR_Word) merc_alloc_function_node;
+").
+
+:- pragma c_code(strcmp_func_decl = (Decl::out),
+	[will_not_call_mercury],
+"
+	Decl = (MR_Word) merc_strcmp_function_node;
+").
+
+:- pragma c_code(hash_string_func_decl = (Decl::out),
+	[will_not_call_mercury],
+"
+	Decl = (MR_Word) merc_hash_string_function_node;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -547,6 +625,10 @@
 ").
 :- pragma c_code(rshift_expr = (Code::out), [will_not_call_mercury], "
 	Code = RSHIFT_EXPR;
+").
+
+:- pragma c_code(array_ref = (Code::out), [will_not_call_mercury], "
+	Code = ARRAY_REF;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -681,19 +763,19 @@ var_expr(Decl) = Decl.
 build_func_addr_expr(FuncDecl, Expr) -->
 	build_addr_expr(FuncDecl, Expr).
 
-:- type gcc__expr_list == gcc__tree.
+:- type gcc__arg_list == gcc__tree.
 
-:- pragma c_code(empty_expr_list(ExprList::out,
+:- pragma c_code(empty_arg_list(ArgList::out,
 	_IO0::di, _IO::uo), [will_not_call_mercury],
 "
-	ExprList = (MR_Word) merc_empty_expr_list();
+	ArgList = (MR_Word) merc_empty_arg_list();
 ").
 
-:- pragma c_code(cons_expr_list(Expr::in, ExprList0::in, ExprList::out,
+:- pragma c_code(cons_arg_list(Arg::in, ArgList0::in, ArgList::out,
 	_IO0::di, _IO::uo), [will_not_call_mercury],
 "
-	ExprList = (MR_Word)
-		merc_cons_expr_list((tree) Expr, (tree) ExprList0);
+	ArgList = (MR_Word)
+		merc_cons_arg_list((tree) Arg, (tree) ArgList0);
 ").
 
 :- pragma c_code(build_call_expr(Func::in, Args::in, IsTailCall::in,
@@ -701,6 +783,37 @@ build_func_addr_expr(FuncDecl, Expr) -->
 "
 	CallExpr = (MR_Word) merc_build_call_expr((tree) Func, (tree) Args,
 		(int) IsTailCall);
+").
+
+%
+% Initializers
+%
+
+:- type gcc__init_elem == gcc__tree.
+
+gcc__init_array_elem(Int, GCC_Int) -->
+	build_int(Int, GCC_Int).
+
+:- type gcc__init_list == gcc__tree.
+
+:- pragma c_code(empty_init_list(InitList::out,
+	_IO0::di, _IO::uo), [will_not_call_mercury],
+"
+	InitList = (MR_Word) merc_empty_init_list();
+").
+
+:- pragma c_code(cons_init_list(Elem::in, Init::in, InitList0::in, InitList::out,
+	_IO0::di, _IO::uo), [will_not_call_mercury],
+"
+	InitList = (MR_Word)
+		merc_cons_init_list((tree) Elem, (tree) Init, (tree) InitList0);
+").
+
+:- pragma c_code(build_initializer_expr(InitList::in, Type::in,
+	Expr::out, _IO0::di, _IO::uo), [will_not_call_mercury],
+"
+	Expr = (MR_Word) build(CONSTRUCTOR, (tree) Type, NULL_TREE,
+		(tree) InitList);
 ").
 
 %-----------------------------------------------------------------------------%
@@ -782,6 +895,34 @@ build_func_addr_expr(FuncDecl, Expr) -->
 	[will_not_call_mercury],
 "
 	expand_end_case((tree) Expr);
+").
+
+%
+% loops
+%
+
+	% the type `gcc__loop' corresponds to the
+	% C type `struct nesting *'
+:- type gcc__loop ---> gcc__loop(c_pointer).
+
+:- pragma c_code(gen_start_loop(Loop::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury],
+"
+	Loop = (MR_Word) expand_start_loop(0);
+").
+
+:- pragma c_code(gen_exit_loop_if_false(Loop::in, Expr::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury],
+"
+	int res = expand_exit_loop_if_false((struct nesting *) Loop,
+			(tree) Expr);
+	assert(res != 0);
+").
+
+:- pragma c_code(gen_end_loop(_IO0::di, _IO::uo),
+	[will_not_call_mercury],
+"
+	expand_end_loop();
 ").
 
 %

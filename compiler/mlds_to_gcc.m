@@ -8,7 +8,7 @@
 % Main author: fjh.
 
 % Note that this does not compile to GNU C -- instead it
-% actually outputs GCC's internal "Tree" representation.
+% actually generates GCC's internal "Tree" representation.
 
 % DONE:
 %	- parameter declarations
@@ -21,13 +21,13 @@
 %	- switches
 %	- tag operations
 %	- output mode arguments
+%	- contexts (line numbers)
 
 % TODO:
 % 	Lots. Currently this is mostly just a stub, copied from mlds_to_c.m.
 %	- complicated types
 %	- rest of the builtin operators
 %	- while and do/while loops
-%	- fix contexts (line numbers)
 %	- support --high-level-data
 %	- higher-order
 %	- tuples
@@ -741,26 +741,62 @@ build_defn_body(Name, FuncInfo, Context, DefnBody, GCC_Defn) -->
 :- mode build_data_defn(in, in, in, in, out, di, uo) is det.
 
 build_data_defn(Name, Type, Initializer, FuncInfo, GCC_Defn) -->
-	build_type(Type, GCC_Type),
+	build_type(Type, initializer_array_size(Initializer), GCC_Type),
 	{ Name = qual(_ModuleName, UnqualName) },
 	( { UnqualName = data(var(VarName)) } ->
 		gcc__build_local_var_decl(VarName, GCC_Type, GCC_Defn)
 	;
 		{ sorry(this_file, "build_data_defn: non-var") }
 	),
+	( { Initializer = no_initializer } ->
+		[]
+	;
+		build_initializer(Initializer, Type, FuncInfo, GCC_Expr),
+		gcc__gen_assign(gcc__var_expr(GCC_Defn), GCC_Expr)
+	).
+
+:- pred build_initializer(mlds__initializer, mlds__type, func_info,
+		gcc__expr, io__state, io__state) is det.
+:- mode build_initializer(in, in, in, out, di, uo) is det.
+
+build_initializer(Initializer, Type, FuncInfo, GCC_Expr) -->
 	(
-		{ Initializer = no_initializer }
+		{ Initializer = no_initializer },
+		{ unexpected(this_file, "no_initializer (build_initializer)") }
 	;
 		{ Initializer = init_obj(Rval) },
-		build_rval(Rval, FuncInfo, GCC_Expr),
-		gcc__gen_assign(gcc__var_expr(GCC_Defn), GCC_Expr)
+		build_rval(Rval, FuncInfo, GCC_Expr)
 	;
 		{ Initializer = init_struct(_) },
 		{ sorry(this_file, "init_struct") }
 	;
-		{ Initializer = init_array(_) },
-		{ sorry(this_file, "init_array") }
+		{ Initializer = init_array(InitList) },
+		{ Type = mlds__array_type(ElemType0) ->
+			ElemType = ElemType0
+		;
+			% XXX we assume that for everything else,
+			% the argument type must be MR_Box
+			ElemType = mlds__generic_type
+		},
+		build_array_initializer(InitList, ElemType, 0, FuncInfo,
+			GCC_InitList),
+		build_type(Type, initializer_array_size(Initializer), GCC_Type),
+		gcc__build_initializer_expr(GCC_InitList, GCC_Type, GCC_Expr)
 	).
+
+:- pred build_array_initializer(list(mlds__initializer), mlds__type, int,
+		func_info, gcc__init_list, io__state, io__state) is det.
+:- mode build_array_initializer(in, in, in, in, out, di, uo) is det.
+
+build_array_initializer([], _, _, _, GCC_InitList) -->
+	gcc__empty_init_list(GCC_InitList).
+build_array_initializer([Init | Inits], ElemType, Index, FuncInfo,
+		GCC_InitList) -->
+	build_array_initializer(Inits, ElemType, Index + 1, FuncInfo,
+		GCC_InitList0),
+	gcc__init_array_elem(Index, GCC_Index),
+	build_initializer(Init, ElemType, FuncInfo, GCC_Init),
+	gcc__cons_init_list(GCC_Index, GCC_Init, GCC_InitList0, GCC_InitList).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1243,13 +1279,19 @@ build_param_types_and_decls([Arg|Args], ModuleName, ParamTypes, ParamDecls,
 :- pred build_type(mlds__type, gcc__type, io__state, io__state).
 :- mode build_type(in, out, di, uo) is det.
 
-build_type(mercury_type(Type, TypeCategory), GCC_Type) -->
+build_type(Type, GCC_Type) -->
+	build_type(Type, no_size, GCC_Type).
+
+:- pred build_type(mlds__type, initializer_array_size, gcc__type, io__state, io__state).
+:- mode build_type(in, in, out, di, uo) is det.
+
+build_type(mercury_type(Type, TypeCategory), _, GCC_Type) -->
 	build_mercury_type(Type, TypeCategory, GCC_Type).
-build_type(mlds__native_int_type, gcc__integer_type_node) --> [].
-build_type(mlds__native_float_type, gcc__double_type_node) --> [].
-build_type(mlds__native_bool_type, gcc__boolean_type_node) --> [].
-build_type(mlds__native_char_type, gcc__char_type_node)  --> [].
-build_type(mlds__class_type(Name, Arity, ClassKind), _) -->
+build_type(mlds__native_int_type, _, gcc__integer_type_node) --> [].
+build_type(mlds__native_float_type, _, gcc__double_type_node) --> [].
+build_type(mlds__native_bool_type, _, gcc__boolean_type_node) --> [].
+build_type(mlds__native_char_type, _, gcc__char_type_node)  --> [].
+build_type(mlds__class_type(Name, Arity, ClassKind), _, _) -->
 	{ sorry(this_file, "class_type") },
 	( { ClassKind = mlds__enum } ->
 		%
@@ -1275,19 +1317,23 @@ build_type(mlds__class_type(Name, Arity, ClassKind), _) -->
 		mlds_output_fully_qualified(Name, mlds_output_mangled_name),
 		io__format("_%d_s", [i(Arity)])
 	).
-build_type(mlds__ptr_type(Type), GCC_PtrType) -->
+build_type(mlds__ptr_type(Type), _, GCC_PtrType) -->
 	build_type(Type, GCC_Type),
 	gcc__build_pointer_type(GCC_Type, GCC_PtrType).
-build_type(mlds__array_type(_Type), _) -->
-	{ sorry(this_file, "array_type") }.
-build_type(mlds__func_type(_FuncParams), _) -->
+build_type(mlds__array_type(Type), ArraySize, GCC_ArrayType) -->
+	build_type(Type, GCC_Type),
+	{ ArraySize = no_size, Size = 0
+	; ArraySize = array_size(Size) 
+	},
+	gcc__build_array_type(GCC_Type, Size, GCC_ArrayType).
+build_type(mlds__func_type(_FuncParams), _, _) -->
 	{ sorry(this_file, "func_type") }.
-build_type(mlds__generic_type, 'MR_Box') --> [].
-build_type(mlds__generic_env_ptr_type, gcc__ptr_type_node) --> [].
-build_type(mlds__pseudo_type_info_type, _) -->
+build_type(mlds__generic_type, _, 'MR_Box') --> [].
+build_type(mlds__generic_env_ptr_type, _, gcc__ptr_type_node) --> [].
+build_type(mlds__pseudo_type_info_type, _, _) -->
 	{ sorry(this_file, "pseudo_type_info") }.
 	% io__write_string("MR_PseudoTypeInfo").
-build_type(mlds__cont_type(ArgTypes), _) -->
+build_type(mlds__cont_type(ArgTypes), _, _) -->
 	{ sorry(this_file, "cont_type") },
 	( { ArgTypes = [] } ->
 		globals__io_lookup_bool_option(gcc_nested_functions,
@@ -1301,7 +1347,7 @@ build_type(mlds__cont_type(ArgTypes), _) -->
 		% This case only happens for --nondet-copy-out
 		io__write_string("void MR_CALL (*")
 	).
-build_type(mlds__commit_type, _) -->
+build_type(mlds__commit_type, _, _) -->
 	{ sorry(this_file, "commit_type") },
 	globals__io_lookup_bool_option(gcc_local_labels, GCC_LocalLabels),
 	( { GCC_LocalLabels = yes } ->
@@ -1309,7 +1355,7 @@ build_type(mlds__commit_type, _) -->
 	;
 		io__write_string("jmp_buf")
 	).
-build_type(mlds__rtti_type(RttiName), _) -->
+build_type(mlds__rtti_type(RttiName), _, _) -->
 	{ sorry(this_file, "rtti_type") },
 	io__write_string("MR_"),
 	io__write_string(mlds_rtti_type_name(RttiName)).
@@ -2154,8 +2200,21 @@ gen_stmt(FuncInfo0, block(Defns, Statements), _Context) -->
 	%
 	% iteration
 	%
-gen_stmt(_FuncInfo, while(_Cond, _Statement, _Bool), _) -->
-	{ sorry(this_file, "while loop") }.
+gen_stmt(FuncInfo, while(Cond, Statement, AtLeastOneIteration), _Context) -->
+	gcc__gen_start_loop(Loop),
+	build_rval(Cond, FuncInfo, GCC_Cond),
+	(
+		{ AtLeastOneIteration = yes },
+		% generate the test at the end of the loop
+		gen_statement(FuncInfo, Statement),
+		gcc__gen_exit_loop_if_false(Loop, GCC_Cond)
+	;
+		{ AtLeastOneIteration = no },
+		% generate the test at the start of the loop
+		gcc__gen_exit_loop_if_false(Loop, GCC_Cond),
+		gen_statement(FuncInfo, Statement)
+	),
+	gcc__gen_end_loop.
 
 mlds_output_stmt(Indent, FuncInfo, while(Cond, Statement, no), _) -->
 	mlds_indent(Indent),
@@ -2763,10 +2822,9 @@ build_atomic_stmt(FuncInfo, NewObject, Context) -->
 		;
 			{ sorry(this_file, "unexpected size in new_object") },
 			{ SizeInBytes0 = SizeInBytes }
-		),
-		io__print("SizeInBytes0 = "), io__print(SizeInBytes0), io__nl,
-		io__print("SizeInBytes = "), io__print(SizeInBytes), io__nl,
-	 	build_rval(SizeInBytes, FuncInfo, GCC_SizeInBytes)
+		)
+		% io__print("SizeInBytes0 = "), io__print(SizeInBytes0), io__nl,
+		% io__print("SizeInBytes = "), io__print(SizeInBytes), io__nl,
 	;
 		{ sorry(this_file, "new_object with unknown size") }
 	),
@@ -2777,8 +2835,7 @@ build_atomic_stmt(FuncInfo, NewObject, Context) -->
 
 	% generate `GC_malloc(SizeInBytes)'
 	gcc__build_func_addr_expr(gcc__alloc_func_decl, AllocFuncExpr),
-	gcc__empty_expr_list(EmptyArgList),
-	gcc__cons_expr_list(GCC_SizeInBytes, EmptyArgList, GCC_ArgList),
+	build_args([SizeInBytes], FuncInfo, GCC_ArgList),
 	{ IsTailCall = no },
 	gcc__build_call_expr(AllocFuncExpr, GCC_ArgList, IsTailCall, GCC_Call),
 
@@ -3239,16 +3296,16 @@ mlds_output_bracketed_rval(Rval) -->
 		io__write_char(')')
 	).
 
-:- pred build_args(list(mlds__rval), func_info, gcc__expr_list,
+:- pred build_args(list(mlds__rval), func_info, gcc__arg_list,
 		io__state, io__state).
 :- mode build_args(in, in, out, di, uo) is det.
 
 build_args([], _FuncInfo, EmptyArgList) -->
-	gcc__empty_expr_list(EmptyArgList).
+	gcc__empty_arg_list(EmptyArgList).
 build_args([Arg|Args], FuncInfo, GCC_ArgList) -->
 	build_rval(Arg, FuncInfo, GCC_Expr),
-	build_args(Args, FuncInfo, GCC_ExprList),
-	gcc__cons_expr_list(GCC_Expr, GCC_ExprList, GCC_ArgList).
+	build_args(Args, FuncInfo, GCC_ArgList0),
+	gcc__cons_arg_list(GCC_Expr, GCC_ArgList0, GCC_ArgList).
 
 :- pred build_rval(mlds__rval, func_info, gcc__expr, io__state, io__state).
 :- mode build_rval(in, in, out, di, uo) is det.
@@ -3408,6 +3465,7 @@ build_std_unop(UnaryOp, Arg, FuncInfo, Expr) -->
 
 % We assume that the tag bits are kept on the low bits
 % (`--tags low'), not on the high bits (`--tags high').
+% XXX we should enforce this in handle_options.m.
 
 build_unop_expr(mktag, Tag, Tag) --> [].
 build_unop_expr(tag, Arg, Expr) -->
@@ -3428,8 +3486,14 @@ build_unop_expr(unmkbody, Arg, Expr) -->
 		Arg, TagBitsExpr, Expr).
 build_unop_expr(cast_to_unsigned, _, _) -->
 	{ sorry(this_file, "cast_to_unsigned") }.
-build_unop_expr(hash_string, _, _) -->
-	{ sorry(this_file, "hash_string") }.
+build_unop_expr(hash_string, Arg, Expr) -->
+	gcc__build_func_addr_expr(gcc__hash_string_func_decl,
+		HashStringFuncExpr),
+	gcc__empty_arg_list(GCC_ArgList0),
+	gcc__cons_arg_list(Arg, GCC_ArgList0, GCC_ArgList),
+	{ IsTailCall = no },
+	gcc__build_call_expr(HashStringFuncExpr, GCC_ArgList,
+		IsTailCall, Expr).
 build_unop_expr(bitwise_complement, Arg, Expr) -->
 	gcc__build_unop(gcc__bit_not_expr, gcc__integer_type_node, Arg, Expr).
 build_unop_expr((not), Arg, Expr) -->
@@ -3440,10 +3504,39 @@ build_unop_expr((not), Arg, Expr) -->
 :- mode build_std_binop(in, in, in, in, out, di, uo) is det.
 	
 build_std_binop(BinaryOp, Arg1, Arg2, FuncInfo, Expr) -->
-	build_rval(Arg1, FuncInfo, GCC_Arg1),
-	build_rval(Arg2, FuncInfo, GCC_Arg2),
-	{ convert_binary_op(BinaryOp, GCC_BinaryOp, GCC_ResultType) },
-	gcc__build_binop(GCC_BinaryOp, GCC_ResultType, GCC_Arg1, GCC_Arg2, Expr).
+	( { string_compare_op(BinaryOp, CorrespondingIntOp) } ->
+		%
+		% treat string comparison operators specially:
+		% convert "X `str_OP` Y" into "strcmp(X, Y) `OP` 0"
+		%
+		gcc__build_func_addr_expr(gcc__strcmp_func_decl,
+			StrcmpFuncExpr),
+		build_args([Arg1, Arg2], FuncInfo, GCC_ArgList),
+		{ IsTailCall = no },
+		gcc__build_call_expr(StrcmpFuncExpr, GCC_ArgList, IsTailCall,
+			GCC_Call),
+		gcc__build_int(0, Zero),
+		gcc__build_binop(CorrespondingIntOp, gcc__boolean_type_node,
+			GCC_Call, Zero, Expr)
+	;
+		%
+		% the usual case: just build a gcc tree node for the expr.
+		%
+		build_rval(Arg1, FuncInfo, GCC_Arg1),
+		build_rval(Arg2, FuncInfo, GCC_Arg2),
+		{ convert_binary_op(BinaryOp, GCC_BinaryOp, GCC_ResultType) },
+		gcc__build_binop(GCC_BinaryOp, GCC_ResultType,
+			GCC_Arg1, GCC_Arg2, Expr)
+	).
+
+:- pred string_compare_op(builtin_ops__binary_op, gcc__op).
+:- mode string_compare_op(in, out) is semidet.
+string_compare_op(str_eq, gcc__eq_expr).
+string_compare_op(str_ne, gcc__ne_expr).
+string_compare_op(str_lt, gcc__lt_expr).
+string_compare_op(str_gt, gcc__gt_expr).
+string_compare_op(str_le, gcc__le_expr).
+string_compare_op(str_ge, gcc__ge_expr).
 
 	% Convert one of our operators to the corresponding
 	% gcc operator.  Also compute the gcc return type.
@@ -3466,13 +3559,17 @@ convert_binary_op((or),		gcc__truth_orif_expr, gcc__boolean_type_node).
 convert_binary_op(eq,		gcc__eq_expr,	     gcc__boolean_type_node).
 convert_binary_op(ne,		gcc__ne_expr,	     gcc__boolean_type_node).
 convert_binary_op(body,		gcc__minus_expr,     gcc__integer_type_node).
-convert_binary_op(array_index, _, _) :- sorry(37).
-convert_binary_op(str_eq	, _, _) :- sorry(37).
-convert_binary_op(str_ne, _, _) :- sorry(37).
-convert_binary_op(str_lt, _, _) :- sorry(37).
-convert_binary_op(str_gt, _, _) :- sorry(37).
-convert_binary_op(str_le, _, _) :- sorry(37).
-convert_binary_op(str_ge, _, _) :- sorry(37).
+convert_binary_op(array_index,  gcc__array_ref,	     Type) :-
+	% XXX temp hack -- this is wrong.
+	% We should change builtin_ops:array_index
+	% so that it takes the type as an argument.
+	Type = gcc__integer_type_node.
+convert_binary_op(str_eq, _, _) :- unexpected(this_file, "str_eq").
+convert_binary_op(str_ne, _, _) :- unexpected(this_file, "str_ne").
+convert_binary_op(str_lt, _, _) :- unexpected(this_file, "str_lt").
+convert_binary_op(str_gt, _, _) :- unexpected(this_file, "str_gt").
+convert_binary_op(str_le, _, _) :- unexpected(this_file, "str_le").
+convert_binary_op(str_ge, _, _) :- unexpected(this_file, "str_ge").
 convert_binary_op((<),		gcc__le_expr,	     gcc__boolean_type_node).
 convert_binary_op((>),		gcc__gt_expr,	     gcc__boolean_type_node).
 convert_binary_op((<=),		gcc__le_expr,	     gcc__boolean_type_node).
