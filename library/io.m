@@ -276,8 +276,8 @@
 :- pred io__get_line_number(io__input_stream, int, io__state, io__state).
 :- mode io__get_line_number(in, out, di, uo) is det.
 
-%	Return the line number of the current input stream
-%	(as per NU-Prolog lineCount/1).
+%	Return the line number of the current input stream.
+%	Lines are numbered starting at 1.
 
 %-----------------------------------------------------------------------------%
 
