@@ -944,7 +944,13 @@ relation__rtc(Rel, Rtc) :-
 	list__length(DomList, DomLen),
 	map__init(Map0),
 	relation__rtc_init_map(Map0, DomList, Map),
-	relation__init(RtcIn),
+
+	% Make a new relation using the same domain as the old one.
+	Rel   = relation(NextElement, ElMap, _, _),
+	map__init(FwdMap),
+	map__init(BwdMap),
+	RtcIn = relation(NextElement, ElMap, FwdMap, BwdMap),
+
 	Inf is (DomLen + 2) * 2,	% This is close enough to infinity.
 	relation__rtc_2(Inf, Rel, DomList, Map, RtcIn, Rtc).
 
