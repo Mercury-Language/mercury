@@ -31,7 +31,8 @@ HDRS		=	\
 			mercury_trace_help.h		\
 			mercury_trace_internal.h	\
 			mercury_trace_spy.h		\
-			mercury_trace_tables.h
+			mercury_trace_tables.h		\
+			mercury_trace_util.h
 
 # keep this list in alphabetical order, please
 CFILES		= 	\
