@@ -859,13 +859,29 @@ goal_util__case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct, VarSet0,
 
 %-----------------------------------------------------------------------------%
 
-goal_util__if_then_else_to_disjunction(Cond, Then, Else, GoalInfo, Goal) :-
-	goal_util__compute_disjunct_goal_info(Cond, Then, 
+goal_util__if_then_else_to_disjunction(Cond0, Then, Else, GoalInfo, Goal) :-
+	goal_util__compute_disjunct_goal_info(Cond0, Then, 
 		GoalInfo, CondThenInfo),
-	conj_list_to_goal([Cond, Then], CondThenInfo, CondThen),
+	conj_list_to_goal([Cond0, Then], CondThenInfo, CondThen),
 
-	Cond = _ - CondInfo,
-	goal_info_get_determinism(CondInfo, CondDetism),
+	Cond0 = _ - CondInfo0,
+	goal_info_get_determinism(CondInfo0, CondDetism0),
+
+	determinism_components(CondDetism0, CondCanFail0, CondMaxSoln0),
+
+	% Add a commit inside the negation of the condition in the else branch
+	% if the condition can succeed more than once.
+	( CondMaxSoln0 = at_most_many ->
+		CondMaxSoln = at_most_one,
+		determinism_components(CondDetism, CondCanFail0, CondMaxSoln),
+		goal_info_set_determinism(CondInfo0, CondDetism, CondInfo),
+		Cond = some([], can_remove, Cond0) - CondInfo
+	;
+		CondDetism = CondDetism0,
+		CondInfo = CondInfo0,
+		Cond = Cond0
+	),
+
 	det_negation_det(CondDetism, MaybeNegCondDet),
 	( MaybeNegCondDet = yes(NegCondDet1) ->
 		NegCondDet = NegCondDet1

@@ -60,6 +60,7 @@ OTHER_SOURCES= \
 	intermod_lambda.m \
 	intermod_quote.m \
 	intermod_test.m \
+	ite_to_disj.m \
 	lambda_inference.m\
 	lambda_instmap_bug.m \
 	lambda_output.m \
@@ -178,6 +179,7 @@ MCFLAGS-intermod_quote		= --intermodule-optimization
 MCFLAGS-intermod_quote2		= --intermodule-optimization
 MCFLAGS-intermod_test		= --intermodule-optimization
 MCFLAGS-intermod_test2		= --intermodule-optimization
+MCFLAGS-ite_to_disj		= --aditi
 MCFLAGS-livevals_seq		= -O5 --opt-space
 MCFLAGS-middle_rec_labels	= --middle-rec --no-follow-vars 
 MCFLAGS-mostly_uniq_mode_inf	= --infer-all
