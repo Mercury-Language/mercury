@@ -4,7 +4,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 % File: compile_target_code.m
-% Main authors: stayl
+% Main authors: fjh, stayl
 %
 % Code to compile the generated `.c', `.s', `.o', etc, files.
 %
@@ -69,6 +69,13 @@
 		bool, io__state, io__state).
 :- mode compile_csharp_file(in, in, in, out, di, uo) is det.
 
+	% make_init_file(ErrorStream, MainModuleName, ModuleNames, Succeeded).
+	%
+	% Make the `.init' file for a library containing the given modules.
+:- pred make_init_file(io__output_stream, module_name,
+		list(module_name), bool, io__state, io__state).
+:- mode make_init_file(in, in, in, out, di, uo) is det.
+
 	% make_init_obj_file(ErrorStream, MainModuleName,
 	%		AllModuleNames, MaybeInitObjFileName).
 :- pred make_init_obj_file(io__output_stream, module_name, list(module_name),
@@ -122,12 +129,28 @@
 :- mode remove_split_c_output_files(in, in, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
+
+	% substitute_user_command(Command0, ModuleName,
+	%		AllModuleNames) = Command
+	%
+	% Replace all occurrences of `@' in Command with ModuleName,
+	% and replace occurrences of `%' in Command with AllModuleNames.
+	% This is used to implement the `--pre-link-command' and
+	% `--make-init-file-command' options.
+:- func substitute_user_command(string, module_name,
+		list(module_name)) = string.
+
+%-----------------------------------------------------------------------------%
 :- implementation.
 
 :- import_module libs__globals, libs__options, libs__handle_options.
 :- import_module hlds__passes_aux, libs__trace_params.
+:- import_module parse_tree__prog_out.
 
-:- import_module dir, int, require, string.
+:- import_module ll_backend__llds_out.	% for llds_out__make_init_name and
+					% llds_out__make_rl_data_name
+
+:- import_module char, dir, int, require, string.
 
 il_assemble(ErrorStream, ModuleName,
 			HasMain, Succeeded) -->
@@ -615,6 +638,63 @@ assemble(ErrorStream, PIC, ModuleName, Succeeded) -->
 
 %-----------------------------------------------------------------------------%
 
+make_init_file(ErrorStream, MainModuleName, AllModules, Succeeded) -->
+    globals__io_lookup_maybe_string_option(make_init_file_command,
+		MaybeInitFileCommand),
+    (
+	{ MaybeInitFileCommand = yes(InitFileCommand0) },
+	{ InitFileCommand = substitute_user_command(InitFileCommand0,
+		MainModuleName, AllModules) },
+	invoke_shell_command(ErrorStream, verbose_commands,
+		InitFileCommand, Succeeded)
+    ;
+	{ MaybeInitFileCommand = no },
+	module_name_to_file_name(MainModuleName, ".init.tmp",
+		yes, TmpInitFileName),
+	io__open_output(TmpInitFileName, InitFileRes),
+	(
+		{ InitFileRes = ok(InitFileStream) },
+		globals__io_lookup_bool_option(aditi, Aditi),
+		list__foldl(
+		    (pred(ModuleName::in, di, uo) is det -->
+			{ llds_out__make_init_name(ModuleName,
+				InitFuncName0) },
+			{ InitFuncName = InitFuncName0 ++ "init" },
+			io__write_string(InitFileStream, "INIT "),
+			io__write_string(InitFileStream, InitFuncName),
+			io__nl(InitFileStream),
+			( { Aditi = yes } ->
+				{ llds_out__make_rl_data_name(ModuleName,
+					RLName) },
+				io__write_string(InitFileStream,
+					"ADITI_DATA "),
+				io__write_string(InitFileStream, RLName),
+				io__nl(InitFileStream)
+			;
+				[]
+			)
+		    ), AllModules),
+		io__close_output(InitFileStream),
+		module_name_to_file_name(MainModuleName, ".init",
+			yes, InitFileName),
+		update_interface(InitFileName, Succeeded)
+	;
+		{ InitFileRes = error(Error) },
+		io__progname_base("mercury_compile", ProgName),
+		io__write_string(ErrorStream, ProgName),
+		io__write_string(ErrorStream, ": can't open `"),
+		io__write_string(ErrorStream, TmpInitFileName),
+		io__write_string(ErrorStream, "' for output:\n"),
+		io__nl(ErrorStream),
+		io__write_string(ErrorStream, io__error_message(Error)),
+		io__nl(ErrorStream),
+		io__set_exit_status(1),
+		{ Succeeded = no }
+	)
+    ).
+
+%-----------------------------------------------------------------------------%
+
 link_module_list(Modules, Succeeded) -->
 	globals__io_lookup_string_option(output_file_name, OutputFileName0),
 	( { OutputFileName0 = "" } ->
@@ -959,7 +1039,6 @@ write_num_split_c_files(ModuleName, NumChunks, Succeeded) -->
 	;
 		{ Succeeded = no },
 		io__progname_base("mercury_compile", ProgName),
-		io__write_string("\n"),
 		io__write_string(ProgName),
 		io__write_string(": can't open `"),
 		io__write_string(NumChunksFileName),
@@ -1026,6 +1105,49 @@ remove_split_c_output_files(ModuleName, ThisChunk, NumChunks) -->
 		remove_split_c_output_files(ModuleName, ThisChunk, NumChunks)
 	;
 		[]	
+	).
+
+%-----------------------------------------------------------------------------%
+
+substitute_user_command(Command0, MainModule, AllModules) = Command :-
+	( string__contains_char(Command0, Char), (Char = ('@') ; Char = '%') ->
+		prog_out__sym_name_to_string(MainModule, ".", MainModuleStr),
+		AllModulesStrings = list__map(
+		    (func(Module) = ModuleStr :-
+			prog_out__sym_name_to_string(Module, ".", ModuleStr)
+		    ), AllModules),
+		join_string_list(AllModulesStrings,
+			"", "", " ", AllModulesStr),
+		Command = string__from_rev_char_list(substitute_user_command_2(
+			string__to_char_list(Command0),
+			reverse(string__to_char_list(MainModuleStr)),
+			reverse(string__to_char_list(AllModulesStr)),
+			[]))
+	;
+		Command = Command0
+	).
+
+:- func substitute_user_command_2(list(char), list(char),
+		list(char), list(char)) = list(char).
+
+substitute_user_command_2([], _, _, RevChars) = RevChars.
+substitute_user_command_2([Char | Chars], RevMainModule,
+		RevAllModules, RevChars0) =
+	(
+		( Char = ('@'), Subst = RevMainModule
+		; Char = '%', Subst = RevAllModules
+		)
+	->
+		( Chars = [Char | Chars2] ->
+			substitute_user_command_2(Chars2, RevMainModule,
+				RevAllModules, [Char | RevChars0])
+		;
+			substitute_user_command_2(Chars, RevMainModule,
+				RevAllModules, Subst ++ RevChars0)
+		)
+	;
+		substitute_user_command_2(Chars, RevMainModule,
+			RevAllModules, [Char | RevChars0])
 	).
 
 %-----------------------------------------------------------------------------%

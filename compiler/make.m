@@ -155,6 +155,7 @@
 	--->	clean
 	;	realclean
 	;	check
+	;	build_library
 	;	install_library
 	.
 
@@ -365,9 +366,17 @@ target_file(Globals, FileName, ModuleName, TargetType) :-
     ->
 	TargetFile = ModuleName - TargetType
     ;
-	globals__lookup_string_option(Globals, executable_file_extension, ""),
+	string__append("lib", ModuleNameStr, FileName)
+    ->
+	TargetType = misc_target(build_library),
+	file_name_to_module_name(ModuleNameStr, ModuleName)
+    ;
+	globals__lookup_string_option(Globals, executable_file_extension, "")
+    ->
 	TargetType = linked_target(executable),
 	file_name_to_module_name(FileName, ModuleName)
+    ;
+    	fail
     ).
 
 :- pred search_backwards_for_dot(string::in, int::in, int::out) is semidet.

@@ -18,6 +18,8 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
+:- import_module hlds__passes_aux.
+
 make_linked_target(MainModuleName - FileType, Succeeded, Info0, Info) -->
     find_reachable_local_modules(MainModuleName, DepsSuccess,
 		AllModules, Info0, Info1),
@@ -54,7 +56,7 @@ make_linked_target(MainModuleName - FileType, Succeeded, Info0, Info) -->
 	linked_target_file_name(MainModuleName, FileType, OutputFileName),
 	get_file_timestamp([dir__this_directory], OutputFileName,
 		MaybeTimestamp, Info4, Info5),
-	
+
 	globals__io_lookup_string_option(pic_object_file_extension, PicObjExt),
 	globals__io_lookup_string_option(object_file_extension, ObjExt),
 	{ FileType = shared_library, PicObjExt \= ObjExt ->
@@ -129,7 +131,38 @@ build_linked_target(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 		AllModules, ObjModules, CompilationTarget, ObjExtToUse,
 		DepsSuccess, BuildDepsResult, _, ErrorStream, Succeeded,
 		Info0, Info) -->
+	globals__io_lookup_maybe_string_option(pre_link_command,
+		MaybePreLinkCommand),
+	( { MaybePreLinkCommand = yes(PreLinkCommand0) } ->
+		{ PreLinkCommand = substitute_user_command(PreLinkCommand0,
+			MainModuleName, set__to_sorted_list(AllModules)) },
+		invoke_shell_command(ErrorStream, verbose, PreLinkCommand,
+			PreLinkSucceeded)
+	;
+		{ PreLinkSucceeded = yes }
+	),	
 
+	( { PreLinkSucceeded = yes } ->
+		build_linked_target_2(MainModuleName, FileType, OutputFileName,
+			MaybeTimestamp, AllModules, ObjModules,
+			CompilationTarget, ObjExtToUse, DepsSuccess,
+			BuildDepsResult, ErrorStream, Succeeded,
+			Info0, Info)
+	;
+		{ Succeeded = no },
+		{ Info = Info0 }
+	).
+
+:- pred build_linked_target_2(module_name::in, linked_target_type::in,
+	file_name::in, maybe_error(timestamp)::in, set(module_name)::in,
+	list(module_name)::in, compilation_target::in, string::in, bool::in,
+	dependencies_result::in, io__output_stream::in, bool::out,
+	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+
+build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
+		AllModules, ObjModules, CompilationTarget, ObjExtToUse,
+		DepsSuccess, BuildDepsResult, ErrorStream, Succeeded,
+		Info0, Info) -->
 	globals__io_lookup_accumulating_option(link_objects, ExtraObjects0),
 
 	% Clear the option -- we'll pass the list of files directly.
@@ -264,7 +297,8 @@ build_linked_target(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 			file_error(OutputFileName),
 			{ Info = Info3 }
 		)
-	).
+	),
+	globals__io_set_option(link_objects, accumulating(ExtraObjects0)).
 
 :- pred linked_target_cleanup(module_name::in, linked_target_type::in,
 	file_name::in, compilation_target::in, make_info::in, make_info::out,
@@ -331,6 +365,50 @@ make_misc_target(MainModuleName - TargetType, Succeeded, Info0, Info) -->
 				make_dependency_list(AllModules, errors),
 				Succeeded1, Info3, Info),
 			{ Succeeded = Succeeded0 `and` Succeeded1 }
+		)
+	;
+		{ TargetType = build_library },
+		{ ShortInts = make_dependency_list(AllModules,
+				unqualified_short_interface) },
+		{ LongInts = make_dependency_list(AllModules,
+				long_interface) },
+		globals__io_lookup_bool_option(intermodule_optimization,
+			Intermod),
+		{ Intermod = yes ->
+			OptFiles = make_dependency_list(AllModules,
+					long_interface)
+		;
+			OptFiles = []
+		},
+		globals__io_lookup_bool_option(keep_going, KeepGoing),
+		foldl2_maybe_stop_at_error(KeepGoing,
+			foldl2_maybe_stop_at_error(KeepGoing,
+				make_module_target),
+			[ShortInts, LongInts, OptFiles],
+			IntSucceeded, Info3, Info4),
+		( { IntSucceeded = yes } ->
+		    % Errors while making the `.init' file should be very rare.
+		    io__output_stream(ErrorStream),
+		    compile_target_code__make_init_file(ErrorStream,
+				MainModuleName, AllModules, InitSucceeded),
+		    ( { InitSucceeded = yes } ->
+			make_linked_target(MainModuleName - static_library,
+				StaticSucceeded, Info4, Info5),
+			( { StaticSucceeded = yes } ->
+				make_linked_target(
+					MainModuleName - shared_library,
+					Succeeded, Info5, Info)
+			;
+				{ Succeeded = no },
+				{ Info = Info5 }
+			)
+		    ;
+			{ Succeeded = no },
+		    	{ Info = Info4 }
+		    )
+		;
+			{ Succeeded = no },
+			{ Info = Info4 }
 		)
 	;
 		{ TargetType = install_library },

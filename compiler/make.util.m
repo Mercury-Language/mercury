@@ -106,6 +106,11 @@
 	maybe_error(timestamp)::out, make_info::in, make_info::out,
 	io__state::di, io__state::uo) is det.
 
+	% Return the oldest of the timestamps if both are of the form
+	% `ok(Timestamp)', returning `error(Error)' otherwise.
+:- func find_oldest_timestamp(maybe_error(timestamp),
+		maybe_error(timestamp)) = maybe_error(timestamp).
+
 %-----------------------------------------------------------------------------%
 	% Remove file a file, deleting the cached timestamp.
 
@@ -515,6 +520,11 @@ get_search_directories(FileType, SearchDirs) -->
 	;
 		{ SearchDirs = [dir__this_directory] }
 	).
+
+find_oldest_timestamp(error(_) @ Timestamp, _) = Timestamp.
+find_oldest_timestamp(ok(_), error(_) @ Timestamp) = Timestamp.
+find_oldest_timestamp(ok(Timestamp1), ok(Timestamp2)) =
+    ok( ( compare((<), Timestamp1, Timestamp2) -> Timestamp1 ; Timestamp2 ) ).
 
 %-----------------------------------------------------------------------------%
 

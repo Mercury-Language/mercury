@@ -173,14 +173,6 @@ make_module_target(target(TargetFile) @ Dep, Succeeded, Info0, Info) -->
 	{ Info = Info1 }
     ).
 
-:- func find_oldest_timestamp(maybe_error(timestamp),
-		maybe_error(timestamp)) = maybe_error(timestamp).
-
-find_oldest_timestamp(error(_) @ Timestamp, _) = Timestamp.
-find_oldest_timestamp(ok(_), error(_) @ Timestamp) = Timestamp.
-find_oldest_timestamp(ok(Timestamp1), ok(Timestamp2)) =
-    ok( ( compare((<), Timestamp1, Timestamp2) -> Timestamp1 ; Timestamp2 ) ).
-
 %-----------------------------------------------------------------------------%
 
 :- pred build_target(compilation_task_result::in, target_file::in,
