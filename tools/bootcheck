@@ -193,7 +193,7 @@ MMAKE_USE_SUBDIRS=$use_subdirs
 export MMAKE_USE_SUBDIRS
 
 # Turn off the debugger, since accidentally leaving it on will result
-# in user interaction every time we any any version of the compiler
+# in user interaction every time we invoke any version of the compiler
 # that was compiled with tracing. This has happened to me accidentally 
 # one too many times - zs.
 if echo $MERCURY_OPTIONS | grep '\-Di' > /dev/null
