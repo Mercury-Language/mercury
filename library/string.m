@@ -22,8 +22,10 @@
 :- import_module list, char.
 
 :- func string__length(string) = int.
+:- mode string__length(in) = uo is det.
 :- pred string__length(string, int).
 :- mode string__length(in, uo) is det.
+:- mode string__length(ui, uo) is det.
 	% Determine the length of a string.
 	% An empty string has length zero.
 
@@ -242,6 +244,40 @@
 %	WARNING: behavior is UNDEFINED if `Index' is out of range
 %	(negative, or greater than or equal to the length of `String').
 %	This version is constant time, whereas string__index_det
+%	may be linear in the length of the string.
+%	Use with care!
+
+:- pred string__set_char(char, int, string, string).
+:- mode string__set_char(in, in, in, out) is semidet.
+:- mode string__set_char(in, in, di, uo) is semidet.
+%	string__set_char(Char, Index, String0, String):
+%	`String' is `String0' with the (`Index' + 1)-th character
+%	set to `Char'.
+%	Fails if `Index' is out of range (negative, or greater than or
+%	equal to the length of `String0').
+
+:- func string__set_char_det(char, int, string) = string.
+:- pred string__set_char_det(char, int, string, string).
+:- mode string__set_char_det(in, in, in, out) is det.
+:- mode string__set_char_det(in, in, di, uo) is det.
+%	string__set_char_det(Char, Index, String0, String):
+%	`String' is `String0' with the (`Index' + 1)-th character
+%	set to `Char'.
+%	Calls error/1 if `Index' is out of range (negative, or greater than or
+%	equal to the length of `String0').
+
+:- func string__unsafe_set_char(char, int, string) = string.
+:- mode string__unsafe_set_char(in, in, in) = out is det.
+:- mode string__unsafe_set_char(in, in, di) = uo is det.
+:- pred string__unsafe_set_char(char, int, string, string).
+:- mode string__unsafe_set_char(in, in, in, out) is det.
+:- mode string__unsafe_set_char(in, in, di, uo) is det.
+%	string__unsafe_set_char(Char, Index, String0, String):
+%	`String' is `String0' with the (`Index' + 1)-th character
+%	set to `Char'.
+%	WARNING: behavior is UNDEFINED if `Index' is out of range
+%	(negative, or greater than or equal to the length of `String0').
+%	This version is constant time, whereas string__set_char_det
 %	may be linear in the length of the string.
 %	Use with care!
 
@@ -525,6 +561,13 @@ string__index_det(String, Int, Char) :-
 		Char = Char0
 	;
 		error("string__index_det: index out of range")
+	).
+
+string__set_char_det(Char, Int, String0, String) :-
+	( string__set_char(Char, Int, String0, String1) ->
+		String = String1
+	;
+		error("string__set_char_det: index out of range")
 	).
 
 string__foldl(Closure, String, Acc0, Acc) :-
@@ -1465,7 +1508,7 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
                 ** get an integer overflow error in this case).
                 */
 
-	if ((MR_Word) Index >= strlen(Str)) {
+	if ((MR_Unsigned) Index >= strlen(Str)) {
 		SUCCESS_INDICATOR = FALSE;
 	} else {
 		SUCCESS_INDICATOR = TRUE;
@@ -1483,10 +1526,77 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 /*-----------------------------------------------------------------------*/
 
 /*
+:- pred string__set_char(char, int, string, string).
+:- mode string__set_char(in, in, in, out) is semidet.
+*/
+:- pragma c_code(string__set_char(Ch::in, Index::in, Str0::in, Str::out),
+		[will_not_call_mercury, thread_safe], "
+	size_t len = strlen(Str0);
+	if ((MR_Unsigned) Index >= len) {
+		SUCCESS_INDICATOR = FALSE;
+	} else {
+		SUCCESS_INDICATOR = TRUE;
+		MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
+		strcpy(Str, Str0);
+		Str[Index] = Ch;
+	}
+").
+
+/*
+:- pred string__set_char(char, int, string, string).
+:- mode string__set_char(in, in, di, uo) is semidet.
+*/
+:- pragma c_code(string__set_char(Ch::in, Index::in, Str0::di, Str::uo),
+		[will_not_call_mercury, thread_safe], "
+	if ((MR_Unsigned) Index >= strlen(Str0)) {
+		SUCCESS_INDICATOR = FALSE;
+	} else {
+		SUCCESS_INDICATOR = TRUE;
+		Str = Str0;
+		Str[Index] = Ch;
+	}
+").
+
+/*-----------------------------------------------------------------------*/
+
+/*
+:- pred string__unsafe_set_char(char, int, string, string).
+:- mode string__unsafe_set_char(in, in, in, out) is det.
+*/
+:- pragma c_code(string__unsafe_set_char(Ch::in, Index::in, Str0::in, Str::out),
+		[will_not_call_mercury, thread_safe], "
+	size_t len = strlen(Str0);
+	MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
+	strcpy(Str, Str0);
+	Str[Index] = Ch;
+").
+
+/*
+:- pred string__unsafe_set_char(char, int, string, string).
+:- mode string__unsafe_set_char(in, in, di, uo) is det.
+*/
+:- pragma c_code(string__unsafe_set_char(Ch::in, Index::in, Str0::di, Str::uo),
+		[will_not_call_mercury, thread_safe], "
+	Str = Str0;
+	Str[Index] = Ch;
+").
+
+/*-----------------------------------------------------------------------*/
+
+/*
 :- pred string__length(string, int).
-:- mode string__length(in, out) is det.
+:- mode string__length(in, uo) is det.
 */
 :- pragma c_code(string__length(Str::in, Length::uo),
+		[will_not_call_mercury, thread_safe], "
+	Length = strlen(Str);
+").
+
+/*
+:- pred string__length(string, int).
+:- mode string__length(ui, uo) is det.
+*/
+:- pragma c_code(string__length(Str::ui, Length::uo),
 		[will_not_call_mercury, thread_safe], "
 	Length = strlen(Str);
 ").
@@ -1809,6 +1919,12 @@ string__index_det(S, N) = C :-
 
 string__unsafe_index(S, N) = C :-
 	string__unsafe_index(S, N, C).
+
+string__set_char_det(C, N, S0) = S :-
+	string__set_char_det(C, N, S0, S).
+
+string__unsafe_set_char(C, N, S0) = S :-
+	string__unsafe_set_char(C, N, S0, S).
 
 string__foldl(F, S, A) = B :-
 	P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
