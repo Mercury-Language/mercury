@@ -365,7 +365,7 @@ install_grades: scripts
 		  $(SUBDIR_MMAKE) GRADE=$$grade install_lib ) && \
 		( cd library && \
 		  $(SUBDIR_MMAKE) GRADE=$$grade depend && \
-		  $(SUBDIR_MMAKE) GRADE=$$grade install_hdrs ) && \
+		  $(SUBDIR_MMAKE) GRADE=$$grade install_hdrs && \
 		  $(SUBDIR_MMAKE) GRADE=$$grade install_library ) && \
 		( cd browser && \
 		  $(SUBDIR_MMAKE) GRADE=$$grade depend && \
