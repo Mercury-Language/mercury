@@ -76,7 +76,7 @@ export CLASSPATH
 
 # Host to use to build the release of the day source distribution
 # for the mercury-compiler, mercury-tests, and mercury-extras distributions.
-ROTD_HOST=earth
+ROTD_HOST=jupiter
 
 # Host to use to build the release of the day mercury-gcc source distribution.
 GCC_ROTD_HOST=hg
@@ -197,21 +197,8 @@ rm -f $TEST_ERROR_FILE $FAILED_TESTS_FILE
 
 case $HOST in
 	# test things at different optimization levels...
-	murlibobo)	OPTIMIZE=-O5 ;;
-	taifun) 	OPTIMIZE=-O1 ;;
-	mundroo) 	OPTIMIZE=-O2 ;;
-	quicksilver) 	OPTIMIZE=-O0 ;;
-	hg) 		OPTIMIZE=-O4 ;;
-	roy) 		OPTIMIZE=-O4 ;;	# hlc
-	hydra)		OPTIMIZE=-O2 ;;
-	ender)		OPTIMIZE=-O3 ;;
-	aral)		OPTIMIZE=-O5 ;;
-	venus) 		case "$C_COMPILER" in
-				gcc)	OPTIMIZE=-O5 ;;
-				*)	OPTIMIZE=-O2 ;;
-			esac ;;
 
-	earth)	
+	$ROTD_HOST|earth|jupiter)	
 			case $BRANCH in
 			    latest)
 				OPTIMIZE="-O5 --intermodule-optimization --constraint-propagation"
@@ -231,6 +218,19 @@ case $HOST in
 			esac
 			;;
 
+	murlibobo)	OPTIMIZE=-O5 ;;
+	taifun) 	OPTIMIZE=-O1 ;;
+	mundroo) 	OPTIMIZE=-O2 ;;
+	quicksilver) 	OPTIMIZE=-O0 ;;
+	hg) 		OPTIMIZE=-O4 ;;
+	roy) 		OPTIMIZE=-O4 ;;	# hlc
+	hydra)		OPTIMIZE=-O2 ;;
+	ender)		OPTIMIZE=-O3 ;;
+	aral)		OPTIMIZE=-O5 ;;
+	venus) 		case "$C_COMPILER" in
+				gcc)	OPTIMIZE=-O5 ;;
+				*)	OPTIMIZE=-O2 ;;
+			esac ;;
 	mars)		case "$C_COMPILER" in
 				gcc)	OPTIMIZE=-O5 ;;
 				*)	OPTIMIZE=-O2 ;;
@@ -292,7 +292,7 @@ esac
 # So if you modify this list of hosts, you need to also modify
 # run_all_tests_from_cron.
 case $HOST in
-	hg|ender|roy|venus|earth|mars|ceres|aral) 	
+	hg|ender|roy|venus|earth|mars|ceres|aral|jupiter)
 		INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH ;;
 	*)		
 		INSTALL_DIR=$TOPDIR/$INSTALL_DIR_NAME/$FULLARCH ;;
@@ -495,7 +495,7 @@ case $HOST in
 			;;
 		esac
 		;;
-	earth)
+	earth|jupiter)
 		# ensure that the nogc grades get installed and tested
 		# on at least one host
 		CONFIG_OPTS="--enable-nogc-grades"
@@ -834,7 +834,7 @@ esac
 echo "test_mercury starting to create distribution at `date`" 1>&2
 
 case $HOST in $ROTD_HOST)
-	# The tests on earth are run with `--intermodule-optimization',
+	# The tests on $ROTD_HOST are run with `--intermodule-optimization',
 	# so we need to do a `mmake realclean' before building the C files
 	# for the source distribution. The extra compilation time for
 	# `--intermodule-optimization' is probably not acceptable for the
@@ -1058,7 +1058,7 @@ case $HOST in
 	venus)	
 		fullname=i686-pc-linux-libc2.2-gnu-O5
 		;;
-	earth)	
+	earth|jupiter)	
 		fullname=i686-pc-linux-libc2.3-gnu-O5-intermod
 		;;
 	mars)	
