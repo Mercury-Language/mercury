@@ -38,6 +38,8 @@ SCRIPT_FILES	= ../scripts/*.in ../scripts/*.sh-subr \
 		  ../scripts/canonical_grade \
 		  ../scripts/gud.el
 
+VIM_FILES	= ../vim/*
+
 CONFIG_FILES	= ../config.sub ../config.guess ../install-sh
 
 # These files have a local version bindist.$filename which will be
@@ -76,6 +78,8 @@ binary_distribution: bindist.configure bindist.build_vars
 	cp $(SCRIPT_FILES) $(MERCURY_VERSION)/scripts
 	test -d $(MERCURY_VERSION)/util || mkdir $(MERCURY_VERSION)/util
 	cp $(UTILS) $(MERCURY_VERSION)/util
+	test -d $(MERCURY_VERSION)/vim || mkdir $(MERCURY_VERSION)/vim
+	cp -R $(VIM_FILES) $(MERCURY_VERSION)/vim
 	cp $(CONFIG_FILES) $(MERCURY_VERSION)
 	cp $(README_ETC) $(MERCURY_VERSION)
 	-cd ../samples && mmake realclean

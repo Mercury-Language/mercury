@@ -1,0 +1,35 @@
+Mercury Syntax Highlighting Under Vim 6.0
+
+1. Create a diretory `~/.vim':
+
+	$ mkdir ~/.vim
+
+2. Copy everything recursively from this directory into `~/.vim':
+
+	$ cp -r . ~/.vim
+
+IMPORTANT: If you already have a file `~/.vim/after/filetype.vim' then you
+should copy the files from this directory one by one, except for
+`after/filetype.vim' which you should append to your own
+`~/.vim/after/filetype.vim'.
+
+3. Ensure you have the following lines in your `~/.vimrc' file:
+
+	filetype on
+	filetype plugin on
+	syntax enable
+
+4. If you wish to change the colour scheme used by Vim's syntax highlighting,
+we suggest you put the necessary commands in `~/.vim/colors/mycolours.vim'
+and append the following to the above list of commands in your `~/.vimrc':
+
+	colors mycolours
+
+4. Vim will load `~/.vim/syntax/mercury.vim' and `~/.vim/ftplugin/mercury.vim'
+automatically when opening a .m or .moo file.
+
+The syntax file describes two options you may wish to alter from your
+`~/.vimrc' file.
+
+The ftplugin file defines a number of useful keyboard mappings you may wish to
+consider.
