@@ -8,7 +8,7 @@
 # To build these programs, first install the Mercury compiler,
 # type `mmake depend', and then type `mmake'.
 
-PROGS= rot13_gustavo rot13_juergen rot13_verbose rot13_concise
+PROGS= rot13_gustavo rot13_juergen rot13_verbose rot13_concise rot13_ralph
 
 DEPENDS=$(PROGS:%=%.depend)
 
