@@ -1633,8 +1633,12 @@ struct hblk *h;
 #   else
       typedef struct sigcontext_struct s_c;
 #   endif
+#   if defined(ALPHA) || defined(M68K)
+      typedef void (* REAL_SIG_PF)(int, int, s_c *);
+#   else
+      typedef void (* REAL_SIG_PF)(int, s_c);
+#   endif
 #   ifdef ALPHA
-    typedef void (* REAL_SIG_PF)(int, int, s_c *);
     /* Retrieve fault address from sigcontext structure by decoding	*/
     /* instruction.							*/
     char * get_fault_addr(s_c *sc) {
@@ -1646,8 +1650,6 @@ struct hblk *h;
 	faultaddr += (word) (((int)instr << 16) >> 16);
 	return (char *)faultaddr;
     }
-#   else /* !ALPHA */
-    typedef void (* REAL_SIG_PF)(int, s_c);
 #   endif /* !ALPHA */
 # endif
 
@@ -1683,7 +1685,7 @@ SIG_PF GC_old_segv_handler;	/* Also old MSWIN32 ACCESS_VIOLATION filter */
 #   endif
 # endif
 # if defined(LINUX)
-#   ifdef ALPHA
+#   if defined(ALPHA) || defined(M68K)
       void GC_write_fault_handler(int sig, int code, s_c * sc)
 #   else
       void GC_write_fault_handler(int sig, s_c sc)
@@ -1802,7 +1804,7 @@ SIG_PF GC_old_segv_handler;	/* Also old MSWIN32 ACCESS_VIOLATION filter */
 		    return;
 #		endif
 #		if defined (LINUX)
-#		    ifdef ALPHA
+#		    if defined(ALPHA) || defined(M68K)
 		        (*(REAL_SIG_PF)old_handler) (sig, code, sc);
 #		    else 
 		        (*(REAL_SIG_PF)old_handler) (sig, sc);
