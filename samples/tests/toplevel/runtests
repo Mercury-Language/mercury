@@ -3,7 +3,7 @@
 # is producing the expected output.
 # Return a status of 0 (true) if everything is all right, and 1 otherwise.
 
-. Mmake.thisdir
+. ./Mmake.thisdir
 
 . $DEPTH/handle_options
 
