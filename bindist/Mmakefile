@@ -121,6 +121,9 @@ bindist.build_vars: bindist.build_vars.in
 
 #-----------------------------------------------------------------------------#
 
+clean_local:
+	rm -rf mercury-rotd* mercury-DEV*
+
 realclean_local:
 	rm -f bindist.configure bindist.build_vars
 
