@@ -1075,11 +1075,13 @@ X @@ Y
 @noindent
 where @var{X} and @var{Y} are data-terms.
 
-The semantics of a unification expression is that @var{X} and @var{Y}
-are unified, and the expression is equivalent to the unified value.
+The meaning of a unification expression is that the arguments are unified,
+and the expression is equivalent to the unified value.
 
-Unification expressions are most useful when writing switches
-@pxref{Determinism checking and inference}.
+The strict sequential operational semantics (@pxref{Semantics}) of an
+expression @w{@code{X @@ Y}} is that the expression is replaced by a
+fresh variable @var{Z}, and immediately after @var{Z} is evaluated,
+the conjunction @w{@code{Z = X, Z = Y}} is evaluated.
 
 For example
 
@@ -1091,9 +1093,17 @@ p(X @@ f(_, _), X).
 is equivalent to 
 
 @example
-p(X, X) :-
-        X = f(_, _).
+p(H1, H2) :-
+        H1 = X,
+        H1 = f(_, _),
+        H2 = X.
 @end example
+
+Unification expressions are most useful when writing switches
+(@pxref{Determinism checking and inference}).  The arguments
+of a unification expression are examined when checking for
+switches.  The arguments of an equivalent user-defined function
+would not be.
 
 @node Conditional expressions
 @subsection Conditional expressions
