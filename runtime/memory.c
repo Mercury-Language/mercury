@@ -350,8 +350,9 @@ static void setup_mprotect(void)
 	if (heap_zone_size > 0
 	&& mprotect(heap_zone, heap_zone_size, MY_PROT) < 0)
 	{
-		perror("Mercury runtime: cannot protect heap redzone");
-		exit(1);
+		if (memdebug)
+			perror("Mercury runtime: warning: "
+				"cannot protect heap redzone");
 	}
 
 	detstack_zone_left = detstack_zone_size;
@@ -359,8 +360,9 @@ static void setup_mprotect(void)
 	if (detstack_zone_size > 0
 	&& mprotect(detstack_zone, detstack_zone_size, MY_PROT) < 0)
 	{
-		perror("Mercury runtime: cannot protect detstack redzone");
-		exit(1);
+		if (memdebug)
+			perror("Mercury runtime: warning: "
+				"cannot protect detstack redzone");
 	}
 
 	nondstack_zone_left = nondstack_zone_size;
@@ -368,8 +370,9 @@ static void setup_mprotect(void)
 	if (nondstack_zone_size > 0
 	&& mprotect(nondstack_zone, nondstack_zone_size, MY_PROT) < 0)
 	{
-		perror("Mercury runtime: cannot protect nondstack redzone");
-		exit(1);
+		if (memdebug)
+			perror("Mercury runtime: warning: "
+				"cannot protect nondstack redzone");
 	}
 }
 
