@@ -6188,7 +6188,7 @@ expand_set_field_function_call_2(Context, MainContext, SubContext0,
 	{ ArgContext = functor(Functor, MainContext, SubContext0) },
 	{ goal_info_init(Context, GoalInfo) },
 	{ conj_list_to_goal(Goals1, GoalInfo, Conj0) },
-	append_arg_unifications(FieldArgVars, FieldArgs, Context, ArgContext,
+	insert_arg_unifications(FieldArgVars, FieldArgs, Context, ArgContext,
 		Conj0, VarSet4, Conj, VarSet, Info3, Info),
 	{ goal_to_conj_list(Conj, Goals) }.
 
@@ -6300,7 +6300,7 @@ expand_get_field_function_call_2(Context, MainContext, SubContext0,
 	{ ArgContext = functor(Functor, MainContext, SubContext0) },
 	{ goal_info_init(Context, GoalInfo) },
 	{ conj_list_to_goal(Goals2, GoalInfo, Conj0) },
-	append_arg_unifications(FieldArgVars, FieldArgs, Context, ArgContext,
+	insert_arg_unifications(FieldArgVars, FieldArgs, Context, ArgContext,
 		Conj0, VarSet3, Conj, VarSet, Info2, Info),
 	{ goal_to_conj_list(Conj, Goals) }.
 
@@ -7372,7 +7372,7 @@ unravel_unification(term__variable(X), RHS,
 			VarSet1, VarSet2, Functor, _, Goal0, Info1, Info2),
 
 		{ ArgContext = functor(Functor, MainContext, SubContext) },
-		append_arg_unifications([InputTermVar], [InputTerm],
+		insert_arg_unifications([InputTermVar], [InputTerm],
 			FunctorContext, ArgContext, Goal0,
 			VarSet2, Goal, VarSet, Info2, Info)
 	;
@@ -7397,22 +7397,15 @@ unravel_unification(term__variable(X), RHS,
 
 		{ TermArgContext = functor(Functor, MainContext, SubContext) },
 		{ TermArgNumber = 1 },
-		append_arg_unification(InputTermVar, InputTerm,
-			FunctorContext, TermArgContext, TermArgNumber,
-			TermUnifyConj, VarSet3, VarSet4, Info2, Info3),
-
 		{ FieldArgContext = functor(InnerFunctor,
 			MainContext, FieldSubContext) },
 		{ FieldArgNumber = 2 },
-		append_arg_unification(FieldValueVar, FieldValueTerm,
-			FunctorContext, FieldArgContext, FieldArgNumber,
-			FieldUnifyConj, VarSet4, VarSet, Info3, Info),
-
-		{ Goal0 = _ - GoalInfo0 },
-		{ goal_to_conj_list(Goal0, GoalList0) },
-		{ list__condense([GoalList0, TermUnifyConj, FieldUnifyConj],
-			GoalList) },
-		{ conj_list_to_goal(GoalList, GoalInfo0, Goal) }
+		{ ArgContexts = [TermArgNumber - TermArgContext,
+				FieldArgNumber - FieldArgContext] },
+		insert_arg_unifications_with_supplied_contexts(
+			[InputTermVar, FieldValueVar],
+			[InputTerm, FieldValueTerm], ArgContexts,
+			Context, Goal0, VarSet3, Goal, VarSet, Info2, Info)
 	;
 		{ parse_qualified_term(RHS, RHS, "", MaybeFunctor) },
 		(
