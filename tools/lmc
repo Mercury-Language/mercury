@@ -16,7 +16,7 @@
 # #!/bin/sh
 # WORKSPACE=$HOME/mer/ws1
 # export WORKSPACE
-# $WORKSPACE/tools/lmc "$@"
+# exec $WORKSPACE/tools/lmc "$@"
 #
 # If you want to track down some C level bug, you can ask this script to
 # pass -g to the C compiler and to the linker by setting the environment
@@ -67,4 +67,4 @@ fi
 
 PATH="$WORKSPACE/scripts:$WORKSPACE/util:$PATH"
 export PATH
-mmc --no-mercury-stdlib-dir -I $WORKSPACE/library $CDEBUG_FLAGS $C_FLAGS $INIT_FLAGS $LIB_FLAGS "$@"
+exec mmc --no-mercury-stdlib-dir -I $WORKSPACE/library $CDEBUG_FLAGS $C_FLAGS $INIT_FLAGS $LIB_FLAGS "$@"
