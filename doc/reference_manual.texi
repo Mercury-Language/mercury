@@ -1213,7 +1213,7 @@ the (type and) mode declarations of the function length and predicate append
 are as follows:
 
 @example
-:- func length(list(T) = int.
+:- func length(list(T)) = int.
 :- mode length(in_listskel) = out.
 :- mode length(out_listskel) = in.
 
@@ -1803,7 +1803,7 @@ p(A, B) :-
 @end example
 
 @noindent
-@samp{p/0} can have more than one solution
+@samp{p/2} can have more than one solution
 only if @samp{something_complicated} can succeed.)
 Sometimes, the rules specified by the Mercury language
 for determinism inference will infer a determinism
@@ -2930,7 +2930,7 @@ distance(A, B, Distance) :-
 
 In the above example, the @code{distance} predicate is able to calculate the
 distance between any two points, regardless of their representation, as long
-as the @code{x_coord} and @code{y_coord} operations have been defined.  These
+as the @code{coords} operation has been defined.  These
 constraints are checked at compile time.
 
 @node Type class constraints on typeclass declarations
@@ -2953,7 +2953,7 @@ types with a particular set of numerical operations defined:
         func mult(T::in, T::in) = (T::out) is det,      % '*'/2 (forward mode)
         func negative(T::in) = (T::out) is det,         % '-'/1 (forward mode)
         func inverse(T::in) = (T::out) is semidet       % multiplicative 
-							% inverse
+                                                        % inverse
 ].
 @end example
 
@@ -4469,7 +4469,7 @@ of Melbourne, Melbourne, Australia, 1997.  Available from
 @unnumberedsec [4]
 K. Sagonas, @cite{The SLG-WAM: A Search-Efficient Engine
 for Well-Founded Evaluation of Normal Logic Programs},
-PhD thesis, SUNY at Stony Brook, 1996.  Available from
+PhD thesis, SUNY at Stony Brook, 1996.  Available from @* 
 <http://www.cs.kuleuven.ac.be/~kostis/Thesis/thesis.ps.gz>.
 
 @node [5]
