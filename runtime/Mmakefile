@@ -251,6 +251,7 @@ mercury_type_info.$(EXT_FOR_PIC_OBJECTS):	mercury_make_type_info_body.h
 
 # ../tools/make_port_code makes both the .c and the .h file of the
 # mercury_profiling_builtin module.
+mercury_profiling_builtin.c:	mercury_profiling_builtin.h
 mercury_profiling_builtin.h:	mercury_deep_call_port_body.h \
 				mercury_deep_redo_port_body.h \
 				mercury_deep_leave_port_body.h \
@@ -410,5 +411,6 @@ clean_check:
 realclean_local:
 	rm -f lib$(RT_LIB_NAME).$A lib$(RT_LIB_NAME).so $(RT_LIB_NAME).init
 	rm -f mercury_conf.h mercury_conf.h.date
+	rm -f mercury_profiling_builtin.c mercury_profiling_builtin.h
 
 #-----------------------------------------------------------------------------#
