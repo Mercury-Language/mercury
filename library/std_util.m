@@ -172,7 +172,7 @@
 	% get_functor/5 and construct/3 will fail if used upon a value
 	% of this type.)
 
-	% type_info(Data) returns a representation of the type of Data.
+	% type_of(Data) returns a representation of the type of Data.
 	%
 :- func type_of(T) = type_info.
 :- mode type_of(unused) = out is det.
