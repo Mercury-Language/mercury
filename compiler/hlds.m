@@ -81,10 +81,14 @@
 				).
 
 :- export_type category.
-:- type category	--->	deterministic		% functional & total
-			;	semideterministic	% just functional
-			;	nondeterministic	% neither
+:- type category	--->	deterministic(det_source) % functional & total
+			;	semideterministic(det_source) % just functional
+			;	nondeterministic(det_source) % neither
 			;	unspecified.
+
+:- export_type det_source.
+:- type det_source	--->	declared
+			;	infered.
 
 :- type pred_id 	--->	pred(module_name, string, int).
 			%	module, predname, arity
@@ -240,9 +244,9 @@
 :- type vars		==	list(variable).
 
 :- type goal_info	--->	goalinfo(
-					map(var_id, is_live)
-		%%% maybe later:	map(var_id, inst)
-		%%% maybe later:	category	% nondeterm?
+					map(var_id, is_live), 
+					category
+					map(var_id, inst)
 				).
 
 :- export_type is_live.
@@ -562,11 +566,30 @@ procinfo_callinfo(ProcInfo, CallInfo) :-
 
 :- implementation.
 
-goalinfo_init(goalinfo(Liveness)) :-
-	map__init(Liveness).
+goalinfo_init(goalinfo(Liveness, unspecified, InstMap)) :-
+	map__init(Liveness),
+	map__init(InstMap).
 
 goalinfo_liveness(GoalInfo, Liveness) :-
-	GoalInfo = goalinfo(Liveness).
+	GoalInfo = goalinfo(Liveness, _Detism, _InstMap).
+
+goalinfo_set_liveness(GoalInfo0, Liveness, GoalInfo) :-
+	GoalInfo0 = goalinfo(_, Detism, InstMap),
+	GoalInfo = goalinfo(Liveness, Detism, InstMap).
+
+goalinfo_category(GoalInfo, Detism) :-
+	GoalInfo = goalinfo(_Liveness, Detism, _InstMap).
+
+goalinfo_set_category(GoalInfo0, Detism, GoalInfo) :-
+	GoalInfo0 = goalinfo(Liveness, _, InstMap),
+	GoalInfo = goalinfo(Liveness, Detism, InstMap).
+
+goalinfo_instmap(GoalInfo, InstMap) :-
+	GoalInfo = goalinfo(_Liveness, _Detism, InstMap).
+
+goalinfo_set_instmap(GoalInfo0, InstMap, GoalInfo) :-
+	GoalInfo0 = goalinfo(Liveness, Detism, _),
+	GoalInfo = goalinfo(Liveness, Detism, InstMap).
 
 liveness_livevars(Liveness, LiveVars) :-
 	findall([X], map__search(Liveness, X, live), LiveVars).
