@@ -24,5 +24,8 @@
 # with -DSPEED and not using any -d* flags.
 # -DMEASURE_REGISTER_USAGE -DSPEED
 
-# Use this option if you want to include profiling information.
-#-DUSE_PROFILING
+# Use this option if you want to include call profiling information.
+# -DPROFILE_CALLS
+
+# Use this option if you want to include time profiling information.
+# -DPROFILE_TIME

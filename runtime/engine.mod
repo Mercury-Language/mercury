@@ -101,7 +101,7 @@ void call_engine(Code *entry_point)
 }
 #endif
 
-#ifdef USE_PROFILING
+#ifdef PROFILE_CALLS
 call_engine_label:
 {
 	/* ensure that we only make the label once */
@@ -184,7 +184,11 @@ engine_done:
 	}
 #endif
 
-#ifdef 	USE_PROFILING
+#ifdef 	PROFILE_TIME
+	prof_turn_off_time_profiling();
+	prof_output_addr_table();
+#endif
+#ifdef 	PROFILE_CALLS
 	prof_output_addr_pair_table();
 #endif
 }
@@ -213,7 +217,11 @@ static Code *engine_done(void)
 {
 	save_transient_registers();
 
-#ifdef	USE_PROFILING
+#ifdef 	PROFILE_TIME
+	prof_turn_off_time_profiling();
+	prof_output_addr_table();
+#endif
+#ifdef	PROFILE_CALLS
 	prof_output_addr_pair_table();
 #endif
 	debugmsg0("longjmping out...\n");

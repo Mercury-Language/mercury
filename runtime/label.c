@@ -31,7 +31,7 @@ Label *makeentry(const char *name, Code *addr)
 	entry->e_name  = name;
 	entry->e_addr  = addr;
 
-#ifdef	USE_PROFILING
+#ifdef	PROFILE_CALLS
 	prof_output_addr_decls(name, addr);
 #endif
 

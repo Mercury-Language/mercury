@@ -4,18 +4,56 @@
 **	Main Author : petdr
 */
 
-#include 	"debug.h"
-
 #include        "prof.h"
 #include        "std.h"
 #include	"imp.h"
 
-static	FILE	  *declfptr = NULL;
-static	prof_node *addr_pair_table[PROF_TABLE_SIZE] = {NULL};
-DEBUG(
-	/* To show the distribution of the hash function */
-	static	int 	indice_count[PROF_TABLE_SIZE] = {0};
-)
+#include	<signal.h>
+#include	<sys/param.h>
+#include	<sys/time.h>
+#include	<unistd.h>
+
+	Code		*prof_current_proc;
+static	FILE	 	*declfptr = NULL;
+static	prof_call_node	*addr_pair_table[CALL_TABLE_SIZE] = {NULL};
+static	prof_time_node	*addr_table[TIME_TABLE_SIZE] = {NULL};
+
+/* ======================================================================== */
+
+/*
+**	prof_init_time_profile:
+**		Writes the value of HZ (no. of ticks per second.) at the start
+**		of the file 'addr.out'.
+**		Then sets up the profiling timer and start's it up. 
+**		At the moment it is after every X ticks of the clock.
+**		SYSTEM SPECIFIC CODE
+*/
+
+void prof_init_time_profile()
+{
+	FILE 	*fptr = NULL;
+	struct itimerval *itime = NULL;
+
+	/* output the value of HZ */
+	if ( !(fptr = fopen("addr.out", "w")) ) {
+		fprintf(stderr, "%s %s", "prof_init_time_profile: Couldn't ",
+			"open the file 'addr.out'!\n");
+		exit(1);
+	}
+	fprintf(fptr, "%d\n", HZ);
+	fclose(fptr);
+
+	itime = make(struct itimerval);
+	itime->it_value.tv_sec = 0;
+	itime->it_value.tv_usec = (long) (USEC / HZ) * CLOCK_TICKS; 
+	itime->it_interval.tv_sec = 0;
+	itime->it_interval.tv_usec = (long) (USEC / HZ) * CLOCK_TICKS;
+
+	signal(SIGPROF, prof_time_profile);
+	setitimer(ITIMER_PROF, itime, NULL);
+}
+
+/* ======================================================================== */
 
 /*
 **	prof_call_profile:
@@ -24,19 +62,16 @@ DEBUG(
 */
 void prof_call_profile(Code *Callee, Code *Caller)
 {
-        prof_node *temp, *prev, *new_node;
+        prof_call_node *temp, *prev, *new_node;
 	int indice;
 
 	indice = hash_addr_pair(Callee, Caller);
 
         temp = prev = addr_pair_table[indice];
-	DEBUG(
-		indice_count[indice]++; 
-	)
 
 	/* Special case of when pointer in array is NULL */
 	if (!temp) {
-		new_node = make(prof_node);
+		new_node = make(prof_call_node);
 		new_node->Callee = Callee;
 		new_node->Caller = Caller;
 		new_node->count = 1;
@@ -54,7 +89,7 @@ void prof_call_profile(Code *Callee, Code *Caller)
                 temp = temp->next;
         }
 
-        new_node = make(prof_node);
+        new_node = make(prof_call_node);
         new_node->Callee = Callee;
         new_node->Caller = Caller;
         new_node->count = 1;
@@ -63,6 +98,80 @@ void prof_call_profile(Code *Callee, Code *Caller)
 
         return;
 }
+
+
+/* ======================================================================== */
+
+
+/*
+**	prof_time_profile:
+**		Signal handler to be called when ever a SIGPROF is received.
+**		Saves the current code address into a hash table.  If the
+**		address already exists, it increments it's count.
+*/
+void prof_time_profile(int signum)
+{
+        prof_time_node *temp, *prev, *new_node;
+        int indice;
+
+        indice = hash_prof_addr(prof_current_proc);
+
+        temp = prev = addr_table[indice];
+
+        /* Special case of when pointer in array is NULL */
+        if (!temp) {
+                new_node = make(prof_time_node);
+                new_node->Addr = prof_current_proc;
+                new_node->count = 1;
+                new_node->next = NULL;
+                addr_table[indice] = new_node;
+		signal(SIGPROF, prof_time_profile);
+                return;
+        }
+
+        while (temp) {
+                if ( (temp->Addr == prof_current_proc) ) {
+                        temp->count++;
+			signal(SIGPROF, prof_time_profile);
+                        return;
+                }
+                prev = temp;
+                temp = temp->next;
+        }
+
+        new_node = make(prof_time_node);
+        new_node->Addr = prof_current_proc;
+        new_node->count = 1;
+        new_node->next = NULL;
+        prev->next = new_node;
+
+	signal(SIGPROF, prof_time_profile);
+        return;
+}
+
+
+/* ======================================================================== */
+
+/*
+**	prof_turn_off_time_profiling:
+**		Turns off the time profiling.
+*/
+
+void prof_turn_off_time_profiling()
+{
+	struct itimerval *itime = NULL;
+
+	itime = make(struct itimerval);
+        itime->it_value.tv_sec = 0;
+        itime->it_value.tv_usec = 0;
+        itime->it_interval.tv_sec = 0;
+        itime->it_interval.tv_usec = 0;
+
+        setitimer(ITIMER_PROF, itime, NULL);
+}
+	
+/* ======================================================================== */
+
 
 /*
 **	prof_output_addr_pair_table :
@@ -73,10 +182,10 @@ void prof_output_addr_pair_table(void)
 {
 	FILE *fptr;
 	int  i;
-	prof_node *current;
+	prof_call_node *current;
 
 	if ( (fptr = fopen("addrpair.out", "w")) ) {
-		for (i = 0; i < PROF_TABLE_SIZE ; i++) {
+		for (i = 0; i < CALL_TABLE_SIZE ; i++) {
 			current = addr_pair_table[i];
 			while (current) {
 				fprintf(fptr, "%p %p %lu\n", current->Callee,
@@ -90,11 +199,11 @@ void prof_output_addr_pair_table(void)
 		exit(1);
 	}
 
-DEBUG(
-	for (i = 0; i < PROF_TABLE_SIZE ; i++) 
-		printf("%d :\t%d\n", i, indice_count[i]);
-)
 }
+
+
+/* ======================================================================== */
+
 
 /*
 **	prof_output_addr_decls:
@@ -118,4 +227,36 @@ void prof_output_addr_decls(const char *name, const Code *address)
 		}
 	}
 	return;
+}
+
+
+/* ======================================================================== */
+
+
+/*
+**	prof_output_addr_table:
+**		Outputs the addresses saved whenever SIGPROF is received to
+**		the file "addr.out"
+*/
+void prof_output_addr_table()
+{
+	FILE *fptr;
+	int  i;
+	prof_time_node *current;
+
+	if ( (fptr = fopen("addr.out", "a")) ) {
+		for (i = 0; i < TIME_TABLE_SIZE ; i++) {
+			current = addr_table[i];
+			while (current) {
+				fprintf(fptr, "%p %lu\n", current->Addr,
+					current->count);
+				current = current->next;
+			}
+		}
+	}
+	else {
+		fprintf(stderr, "%p\nCouldn't create addrpair.out\n", fptr);
+		exit(1);
+	}
+
 }

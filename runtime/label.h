@@ -22,7 +22,7 @@ typedef struct s_label
 #define	make_label(n, a)	make_entry((n),(a))
 #endif
 
-#if defined(SPEED) && !defined(DEBUG_GOTOS) && !defined(USE_PROFILING)
+#if defined(SPEED) && !defined(DEBUG_GOTOS) && !defined(PROFILE_CALLS)
 #define make_local(n, a)	/* nothing */
 #else 
 #define make_local(n, a)	make_entry((n),(a))

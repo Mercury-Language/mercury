@@ -187,14 +187,15 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 
 #ifdef PROFILE_TIME
 #include "prof.h"
-#define set_prof_current_proc(target)	(prof_current_proc = (target))
-#define push_prof_current_proc(target)	\
-	(push(prof_current_proc), prof_current_proc = (target))
-#define pop_prof_current_proc()		(prof_current_proc = pop())
+
+#define set_prof_current_proc(target)		(prof_current_proc = (target))
+#define update_prof_current_proc(target)	(prof_current_proc = (target))	
+
 #else
-#define push_prof_current_proc(target)	((void)0)
-#define set_prof_current_proc(target)	((void)0)
-#define pop_prof_current_proc()		((void)0)
+
+#define set_prof_current_proc(target)		((void)0)
+#define update_prof_current_proc(target)	((void)0)
+
 #endif
 
 /* DEFINITIONS FOR CALLS AND RETURNS */
@@ -203,8 +204,8 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 			do {					\
 				debugcall(LABEL(label), (succ_cont)); \
 				succip = (succ_cont);		\
-				push_prof_current_proc(LABEL(label));	\
 				PROFILE(LABEL(label), (current_label));	\
+				set_prof_current_proc(LABEL(label)); \
 				GOTO_LABEL(label);		\
 			} while (0)
 
@@ -212,8 +213,8 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 			do {					\
 				debugcall((proc), (succ_cont));	\
 				succip = (succ_cont);		\
-				push_prof_current_proc(proc);	\
 				PROFILE((proc), (current_label));	\
+				set_prof_current_proc(proc); \
 				GOTO(proc);			\
 			} while (0)
 
@@ -238,19 +239,18 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 #define	localtailcall(label, current_label)			\
 			do {					\
 				debugtailcall(LABEL(label));	\
-				set_prof_current_proc(LABEL(label)); \
 				PROFILE(LABEL(label), (current_label)); \
+				set_prof_current_proc(LABEL(label)); \
 				GOTO_LABEL(label);		\
 			} while (0)
 #define	tailcall(proc, current_label)	do {			\
 				debugtailcall(proc);		\
-				set_prof_current_proc(proc); \
 				PROFILE((proc), (current_label)); \
+				set_prof_current_proc(proc); \
 				GOTO(proc);			\
 			} while (0)
 #define	proceed()	do {					\
 				debugproceed();			\
-				pop_prof_current_proc();	\
 				GOTO(succip);			\
 			} while (0)
 
@@ -396,15 +396,7 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 #define	NONDET_FIXED_SIZE_0	5	/* units: words */
 #endif
 
-#ifdef PROFILE_TIME
-#define NONDET_FIXED_SIZE	(NONDET_FIXED_SIZE_0 + 2)
-#define PROF_CALLER_PROC	(-NONDET_FIXED_SIZE_0)
-#define PROF_CURRENT_PROC	(-NONDET_FIXED_SIZE_0 - 1)
-#define bt_caller_proc(fr)	(LVALUE_CAST(Code *, fr[PROF_CALLER_PROC])
-#define bt_current_proc(fr)	(LVALUE_CAST(Code *, fr[PROF_CURRENT_PROC])
-#else
 #define NONDET_FIXED_SIZE	NONDET_FIXED_SIZE_0
-#endif
 
 #define	SAVEVAL		(-NONDET_FIXED_SIZE)
 			/* saved values start at this offset	*/
@@ -430,15 +422,6 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 #define mkframe_save_prednm(prednm) /* nothing */
 #endif
 
-#ifdef	PROFILE_TIME
-#define mkframe_save_prof_stuff() (				\
-		bt_call_proc(curfr) = detstackvar[1],		\
-		bt_current_proc(curfr) = prof_current_proc	\
-	)
-#else
-#define mkframe_save_prof_stuff() /* nothing */
-#endif
-
 
 #define	mkframe(prednm, n, redoip)				\
 			do {					\
@@ -454,7 +437,6 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 				cursuccip = succip;		\
 				cursuccfr = succfr;		\
 				mkframe_save_prednm(prednm);	\
-				mkframe_save_prof_stuff();	\
 				debugmkframe();			\
 				nondstack_overflow_check();	\
 			} while (0)
@@ -467,17 +449,11 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 				debugmodframe();		\
 			} while (0)
 
-#ifdef PROFILE_TIME
-#define succeed_prof_stuff()	(prof_current_proc = pop())
-#else
-#define succeed_prof_stuff()	/* nothing */
-#endif
 
 #define	succeed()	do {					\
 				reg	Word	*childfr;	\
 								\
 				debugsucceed();			\
-				succeed_prof_stuff();		\
 				childfr = curfr;		\
 				curfr = cursuccfr;		\
 				GOTO(bt_succip(childfr));	\
@@ -488,39 +464,23 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 				reg	Word	*childfr;	\
 								\
 				debugsucceeddiscard();		\
-				succeed_prof_stuff();		\
 				childfr = curfr;		\
 				maxfr = curprevfr;		\
 				curfr = cursuccfr;		\
 				GOTO(bt_succip(childfr));	\
 			} while (0)
 
-#ifdef PROFILE_TIME
-#define fail_prof_stuff() (prof_current_proc = pop())
-#else
-#define fail_prof_stuff()	/* nothing */
-#endif
 
 #define	fail()		do {					\
 				debugfail();			\
-				fail_prof_stuff();		\
 				maxfr = curprevfr;		\
 				curfr = maxfr;			\
 				nondstack_underflow_check();	\
 				GOTO(curredoip);		\
 			} while (0)
 
-#ifdef PROFILE_TIME
-#define redo_prof_stuff() ( \
-		push(bt_caller_proc(curfr)),			\
-		prof_current_proc = bt_current_proc(curfr)	\
-	)
-#else
-#define redo_prof_stuff()	/* nothing */
-#endif
 
 #define	redo()		do {					\
-				redo_prof_stuff();		\
 				debugredo();			\
 				curfr = maxfr;			\
 				GOTO(curredoip);		\
