@@ -532,6 +532,13 @@ io__write_int(I) -->
 
 %-----------------------------------------------------------------------------%
 
+:- io__write_anything(I, IO0, _) when I and IO0.
+io__write_anything(I) -->
+	{ write(I) },
+	io__update_state.
+
+%-----------------------------------------------------------------------------%
+
 :- io__write_float(F, IO0, _) when F and IO0.
 io__write_float(F) -->
 	{ write(F) },
