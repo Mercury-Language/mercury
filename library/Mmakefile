@@ -32,6 +32,9 @@ VPATH=.
 #     (in particular it relies on --no-reorder-disj).
 MCFLAGS += --strict-sequential
 
+# Generate dependencies for use by `mmc --make'.
+MCFLAGS += --generate-mmc-deps
+
 # Modules which use user-guided type specialization need to be
 # compiled with these flags to make sure all calls
 # to the builtin comparison routines are inlined.
