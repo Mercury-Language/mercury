@@ -2111,7 +2111,11 @@ unaryop_to_il(cast(DestType), SrcRval, Instrs) -->
 				])
 			)
 		;
-			sorry(this_file, "cast operations between value types")
+			DestILType = ilds__type(_, DestSimpleType),
+			Instrs = tree__list([
+				comment_node("cast between value types"),
+				instr_node(conv(DestSimpleType))
+			])
 		)
 	}.
 
