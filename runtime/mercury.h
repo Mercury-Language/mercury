@@ -173,21 +173,6 @@ extern const MR_TypeCtorInfo_Struct
 	mercury__private_builtin__private_builtin__type_ctor_info_base_typeclass_info_1;
 
 /*
-** XXX this is a hack
-** Currently we don't get the #includes quite right;
-** this is a work-around to make the standard library compile.
-*/
-extern const MR_TypeCtorInfo_Struct
-	mercury__tree234__tree234__type_ctor_info_tree234_2;
-extern const MR_TypeCtorInfo_Struct
-	mdb__declarative_execution__mdb__declarative_execution__type_ctor_info_trace_atom_0;
-bool mercury__tree234____Unify____tree234_2_0(
-	MR_Word key_type, MR_Word val_type, MR_Word x, MR_Word y); 
-void mercury__tree234____Compare____tree234_2_0(
-	MR_Word key_type, MR_Word val_type,
-	MR_Word *result, MR_Word x, MR_Word y); 
-
-/*
 ** XXX this is a bit of a hack: really we should change it so that
 ** the generated MLDS code always qualifies things with `builtin:',
 ** but currently it doesn't, so we use the following #defines as
