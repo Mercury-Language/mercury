@@ -451,7 +451,7 @@ vn__opt_non_block([Instr0 | Instrs0], Livemap, Instrs) :-
 		Uinstr0 = comment(_)
 	->
 		vn__opt_non_block(Instrs0, Livemap, Instrs1),
-		Instrs = [Instr0 | Instrs1]
+		Instrs = Instrs1
 	;
 		% we get here only if label elim is switched off
 		vn__opt_non_block(Instrs0, Livemap, Instrs1),
@@ -634,13 +634,14 @@ vn__flush_all_nodes(Livevals, Templocs0, Vn_tables0, Incrsp, Decrsp,
 		Ctrlmap, Flushmap, Ctrl, RevInstrs, Instrs) :-
 	bintree_set__to_sorted_list(Livevals, Live),
 	vn__build_counts(Livevals, Ctrlmap, Vn_tables0, Vn_tables1),
-	opt_debug__write("\n\n"),
-	opt_debug__dump_ctrlmap(Ctrlmap, Ctrl_str),
-	opt_debug__write(Ctrl_str),
-	opt_debug__dump_flushmap(Flushmap, Flush_str),
-	opt_debug__write(Flush_str),
-	opt_debug__dump_tables(Vn_tables1, Tables_str),
-	opt_debug__write(Tables_str),
+
+	% opt_debug__write("\n\n"),
+	% opt_debug__dump_ctrlmap(Ctrlmap, Ctrl_str),
+	% opt_debug__write(Ctrl_str),
+	% opt_debug__dump_flushmap(Flushmap, Flush_str),
+	% opt_debug__write(Flush_str),
+	% opt_debug__dump_tables(Vn_tables1, Tables_str),
+	% opt_debug__write(Tables_str),
 
 	(
 		vn__req_order(Ctrlmap, Flushmap, Vn_tables1,
@@ -657,28 +658,28 @@ vn__flush_all_nodes(Livevals, Templocs0, Vn_tables0, Incrsp, Decrsp,
 			Succmap3, Succmap4, Predmap3, Predmap4),
 		vn__pref_order(Succmap4, PrefOrder),
 
-		opt_debug__write("\nSuccmap:\n"),
-		opt_debug__dump_node_relmap(Succmap4, S_str),
-		opt_debug__write(S_str),
-		opt_debug__write("\nPredmap:\n"),
-		opt_debug__dump_node_relmap(Predmap4, P_str),
-		opt_debug__write(P_str),
-		opt_debug__write("\nMustSuccmap:\n"),
-		opt_debug__dump_node_relmap(MustSuccmap, MS_str),
-		opt_debug__write(MS_str),
-		opt_debug__write("\nMustPredmap:\n"),
-		opt_debug__dump_node_relmap(MustPredmap, MP_str),
-		opt_debug__write(MP_str),
+		% opt_debug__write("\nSuccmap:\n"),
+		% opt_debug__dump_node_relmap(Succmap4, S_str),
+		% opt_debug__write(S_str),
+		% opt_debug__write("\nPredmap:\n"),
+		% opt_debug__dump_node_relmap(Predmap4, P_str),
+		% opt_debug__write(P_str),
+		% opt_debug__write("\nMustSuccmap:\n"),
+		% opt_debug__dump_node_relmap(MustSuccmap, MS_str),
+		% opt_debug__write(MS_str),
+		% opt_debug__write("\nMustPredmap:\n"),
+		% opt_debug__dump_node_relmap(MustPredmap, MP_str),
+		% opt_debug__write(MP_str),
 
 		atsort(Succmap4, Predmap4, MustSuccmap, MustPredmap,
 			PrefOrder, BlockOrder),
 		LastCtrl is Ctrl - 1,
 		vn__blockorder_to_order(BlockOrder, LastCtrl, Order),
 
-		opt_debug__dump_longnodelist(Order, O_str),
-		opt_debug__write("\nOrder:\n"),
-		opt_debug__write(O_str),
-		opt_debug__write("\n"),
+		% opt_debug__dump_longnodelist(Order, O_str),
+		% opt_debug__write("\nOrder:\n"),
+		% opt_debug__write(O_str),
+		% opt_debug__write("\n"),
 
 		vn__flush_nodelist(Order, Ctrlmap, Vn_tables3, _Vn_tables,
 			Templocs0, Templocs, Instrs0),
@@ -1166,13 +1167,13 @@ vn__flush_node(Node, Ctrlmap, Vn_tables0, Vn_tables, Templocs0, Templocs,
 			Instr = if_val(Rval, TargetAddr) - "",
 			list__append(FlushInstrs, [Instr], Instrs)
 		)
-	),
-	opt_debug__write("for node "),
-	opt_debug__dump_node(Node, N_str),
-	opt_debug__write(N_str),
-	opt_debug__write(" generated instrs:\n"),
-	opt_debug__dump_fullinstrs(Instrs, I_str),
-	opt_debug__write(I_str).
+	).
+	% opt_debug__write("for node "),
+	% opt_debug__dump_node(Node, N_str),
+	% opt_debug__write(N_str),
+	% opt_debug__write(" generated instrs:\n"),
+	% opt_debug__dump_fullinstrs(Instrs, I_str),
+	% opt_debug__write(I_str).
 
 %-----------------------------------------------------------------------------%
 
