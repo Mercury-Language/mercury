@@ -45,9 +45,9 @@
 :- pred prog_out__sym_name_to_string(sym_name, string).
 :- mode prog_out__sym_name_to_string(in, out) is det.
 
-	% sym_name_to_string(SymName, Seperator, String):
+	% sym_name_to_string(SymName, Separator, String):
 	%	convert a symbol name to a string,
-	%	with module qualifiers separated by Seperator.
+	%	with module qualifiers separated by Separator.
 :- pred prog_out__sym_name_to_string(sym_name, string, string).
 :- mode prog_out__sym_name_to_string(in, in, out) is det.
 
