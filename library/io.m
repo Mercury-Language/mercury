@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1998 The University of Melbourne.
+% Copyright (C) 1993-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1896,7 +1896,7 @@ io__write_ordinary_term(Term, Priority) -->
 		{ Args = [ListHead, ListTail] }
 	->
 		io__write_char('['),
-		io__write_univ(ListHead),
+		io__write_arg(ListHead),
 		io__write_list_tail(ListTail),
 		io__write_char(']')
 	;
@@ -1983,7 +1983,7 @@ io__write_ordinary_term(Term, Priority) -->
 			{ Args = [X|Xs] }
 		->
 			io__write_char('('),
-			io__write_univ(X),
+			io__write_arg(X),
 			io__write_term_args(Xs),
 			io__write_char(')')
 		;
@@ -2016,7 +2016,7 @@ io__write_list_tail(Term) -->
 		{ deconstruct(Term, ".", _Arity, [ListHead, ListTail]) }
 	->
 		io__write_string(", "),
-		io__write_univ(ListHead),
+		io__write_arg(ListHead),
 		io__write_list_tail(ListTail)
 	;
 		{ deconstruct(Term, "[]", _Arity, []) }
@@ -2034,8 +2034,30 @@ io__write_list_tail(Term) -->
 io__write_term_args([]) --> [].
 io__write_term_args([X|Xs]) -->
 	io__write_string(", "),
-	io__write_univ(X),
+	io__write_arg(X),
 	io__write_term_args(Xs).
+
+:- pred io__write_arg(univ, io__state, io__state).
+:- mode io__write_arg(in, di, uo) is det.
+
+io__write_arg(X) -->
+	arg_priority(ArgPriority),
+	io__write_univ(X, ArgPriority).
+
+:- pred arg_priority(int, io__state, io__state).
+:- mode arg_priority(out, di, uo) is det.
+/*
+arg_priority(ArgPriority) -->
+	io__get_op_table(OpTable),
+	{ ops__lookup_infix_op(OpTable, ",", Priority, _, _) ->
+		ArgPriority = Priority }
+	;
+		error("arg_priority: can't find the priority of `,'")
+	}.
+*/
+% We could implement this as above, but it's more efficient to just
+% hard-code it.
+arg_priority(1000) --> [].
 
 %-----------------------------------------------------------------------------%
 
