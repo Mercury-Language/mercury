@@ -1207,7 +1207,7 @@ output_float(Val) -->
 		float64 = (Float64) FloatVal;
 		raw_mem_p = (unsigned char*) &float64;
 
-		#if defined(BIG_ENDIAN)
+		#if defined(MR_BIG_ENDIAN)
 			B0 = raw_mem_p[0];
 			B1 = raw_mem_p[1];
 			B2 = raw_mem_p[2];
@@ -1216,7 +1216,7 @@ output_float(Val) -->
 			B5 = raw_mem_p[5];
 			B6 = raw_mem_p[6];
 			B7 = raw_mem_p[7];
-		#elif defined(LITTLE_ENDIAN)
+		#elif defined(MR_LITTLE_ENDIAN)
 			B7 = raw_mem_p[0];
 			B6 = raw_mem_p[1];
 			B5 = raw_mem_p[2];
