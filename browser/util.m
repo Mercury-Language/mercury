@@ -82,6 +82,7 @@
 :- implementation.
 
 :- import_module bool, int, require.
+:- pragma foreign_import_module(c, bool).
 
 util__trace_getline(Prompt, Result) -->
 	io__input_stream(MdbIn),
@@ -107,7 +108,6 @@ util__trace_getline(Prompt, Result, MdbIn, MdbOut) -->
 	#include ""mercury_trace_base.h""
 	#include ""mercury_trace_internal.h""
 	#include ""mercury_library_types.h""
-	#include ""bool.h""
 ").
 
 :- pragma foreign_proc("C",
