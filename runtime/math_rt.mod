@@ -15,9 +15,10 @@
 **      been written, this should be rewritten to use that.
 */
 
+#include "imp.h"	/* must come first */
+
 #include <math.h>
 #include <float.h>
-#include "imp.h"
 
 /*
 ** System constants.  These are defined in float.h.
