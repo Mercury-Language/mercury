@@ -2343,14 +2343,19 @@ code_info__maybe_pop_stack(Maybe, Code) -->
 		{ Code = empty }
 	).
 
+%---------------------------------------------------------------------------%
+
 code_info__save_hp(Code) -->
-	code_info__push_rval(lval(hp), Code).
+	code_info__push_temp(HpSlot),
+	{ Code = node([ mark_hp(HpSlot) - "save heap pointer" ]) }.
 
 code_info__restore_hp(Code) -->
-	code_info__pop_lval(hp, Code).
+	code_info__pop_temp(Lval),
+	{ Code = node([ restore_hp(lval(Lval)) - "restore heap pointer" ]) }.
 
 code_info__get_old_hp(Code) -->
-	code_info__get_stack_top(hp, Code).
+	code_info__get_stack_top(Lval),
+	{ Code = node([ restore_hp(lval(Lval)) - "reset heap pointer" ]) }.
 
 %---------------------------------------------------------------------------%
 
@@ -2406,14 +2411,14 @@ code_info__get_total_stackslot_count(NumSlots) -->
 
 %---------------------------------------------------------------------------%
 
-	% `push_rval' doesn't actually increment the stack pointer, it just
+	% `push_temp' doesn't actually increment the stack pointer, it just
 	% increments the push count.  The space will be allocated in the
 	% procedure prologue.
 
-:- pred code_info__push_rval(rval, code_tree, code_info, code_info).
-:- mode code_info__push_rval(in, out, in, out) is det.
+:- pred code_info__push_temp(lval, code_info, code_info).
+:- mode code_info__push_temp(out, in, out) is det.
 
-code_info__push_rval(Rval, Code) -->
+code_info__push_temp(StackVar) -->
 	code_info__get_push_count(Count0),
 	{ Count is Count0 + 1 },
 	code_info__set_push_count(Count),
@@ -2422,14 +2427,11 @@ code_info__push_rval(Rval, Code) -->
 	code_info__stack_variable(Slot, StackVar),
 	code_info__get_pushed_values(VStack0),
 	{ stack__push(VStack0, StackVar, VStack) },
-	code_info__set_pushed_values(VStack),
-	{ Code = node([
-		assign(StackVar, Rval) - "Save value on the stack"
-	]) }.
+	code_info__set_pushed_values(VStack).
 
 %---------------------------------------------------------------------------%
 
-	% `pop_stack' and `pop_lval' don't actually decrement the stack
+	% `pop_stack' and `pop_temp' don't actually decrement the stack
 	% pointer, they just decrement the push count.  The space will
 	% be deallocated in the procedure epilogue.
 
@@ -2441,10 +2443,10 @@ code_info__pop_stack(empty) -->
 	{ stack__pop_det(VStack0, _, VStack) },
 	code_info__set_pushed_values(VStack).
 
-:- pred code_info__pop_lval(lval, code_tree, code_info, code_info).
-:- mode code_info__pop_lval(in, out, in, out) is det.
+:- pred code_info__pop_temp(lval, code_info, code_info).
+:- mode code_info__pop_temp(out, in, out) is det.
 
-code_info__pop_lval(Lval, Code) -->
+code_info__pop_temp(StackVar) -->
 	code_info__get_push_count(Count0),
 	{ Count is Count0 - 1 },
 	code_info__set_push_count(Count),
@@ -2453,22 +2455,16 @@ code_info__pop_lval(Lval, Code) -->
 	code_info__set_pushed_values(VStack),
 	code_info__get_stackslot_count(NumSlots),
 	{ Slot is Count0 + NumSlots },
-	code_info__stack_variable(Slot, StackVar),
-	{ Code = node([
-		assign(Lval, lval(StackVar)) - "Restore value from stack"
-	]) }.
+	code_info__stack_variable(Slot, StackVar).
 
-:- pred code_info__get_stack_top(lval, code_tree, code_info, code_info).
-:- mode code_info__get_stack_top(in, out, in, out) is det.
+:- pred code_info__get_stack_top(lval, code_info, code_info).
+:- mode code_info__get_stack_top(out, in, out) is det.
 
-code_info__get_stack_top(Lval, Code) -->
+code_info__get_stack_top(StackVar) -->
 	code_info__get_push_count(Count),
 	code_info__get_stackslot_count(NumSlots),
 	{ Slot is Count + NumSlots },
-	code_info__stack_variable(Slot, StackVar),
-	{ Code = node([
-		assign(Lval, lval(StackVar)) - "Get value saved on stack"
-	]) }.
+	code_info__stack_variable(Slot, StackVar).
 
 %---------------------------------------------------------------------------%
 
@@ -2500,13 +2496,17 @@ code_info__failure_cont_address(unknown, do_redo).
 
 code_info__generate_pre_commit(PreCommit, FailLabel) -->
 	code_info__get_next_label(FailLabel),
-	code_info__push_rval(lval(maxfr), SaveMaxfr),
-	code_info__push_rval(lval(curredoip), SaveRedoip),
+	code_info__push_temp(MaxfrSlot),
+	code_info__push_temp(RedoipSlot),
+	{ SaveCode = node([
+		assign(MaxfrSlot, lval(maxfr)) - "Save nondet stack pointer",
+		assign(RedoipSlot, lval(curredoip)) - "Save current redoip"
+	]) },
 	code_info__push_failure_cont(known(FailLabel)),
 	{ SetRedoIp = node([
 		modframe(label(FailLabel)) - "hijack the failure continuation"
 	]) },
-	{ PreCommit = tree(SaveMaxfr, tree(SaveRedoip, SetRedoIp)) }.
+	{ PreCommit = tree(SaveCode, SetRedoIp) }.
 
 code_info__generate_commit(FailLabel, Commit) -->
 	code_info__get_next_label(SuccLabel),
@@ -2518,8 +2518,14 @@ code_info__generate_commit(FailLabel, Commit) -->
 		label(SuccLabel) - "success continuation"
 	]) },
 	code_info__pop_failure_cont,
-	code_info__pop_lval(curredoip, RestoreRedoIp),
-	code_info__pop_lval(maxfr, RestoreMaxfr),
+	code_info__pop_temp(RedoIpSlot),
+	code_info__pop_temp(MaxfrSlot),
+	{ RestoreRedoIp = node([
+		assign(curredoip, lval(RedoIpSlot)) - "Restore current redoip"
+	]) },
+	{ RestoreMaxfr = node([
+		assign(maxfr, lval(MaxfrSlot)) - "Restore nondet stack pointer"
+	]) },
 	code_info__generate_failure(Fail),
 	{ RestoreRegs = tree(RestoreRedoIp, RestoreMaxfr) },
 	{ FailCode = tree(RestoreRedoIp, Fail) },

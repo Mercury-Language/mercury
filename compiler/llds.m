@@ -85,9 +85,15 @@
 			% get a memory block of a given size
 			% and put its address in the given lval.
 
+	;	mark_hp(lval)
+			% Tell the heap sub-system to store a marker
+			% (for later use in restore_hp/1 instructions)
+			% in the specified lval
+
 	;	restore_hp(rval)
-			% put the memory system back to the time just before
-			% it got allocated rval
+			% The rval must be a marker as returned by mark_hp/1.
+			% The effect is to deallocate all the memory which
+			% was allocated since that call to mark_hp.
 
 	;	incr_sp(int)
 			% increment the det stack pointer
@@ -368,14 +374,14 @@ output_instruction(call(Target, Continuation, LiveVals)) -->
 	output_code_addr_decls(Target),
 	output_code_addr_decls(Continuation),
 	output_call(Target, Continuation),
-	io__write_string(" }\n/*\n"),
+	io__write_string(" }\n"),
 	output_gc_livevals(LiveVals).
 
 output_instruction(call_closure(IsSemidet, Continuation, LiveVals)) -->
 	io__write_string("\t{ "),
 	output_code_addr_decls(Continuation),
 	output_call_closure(IsSemidet, Continuation),
-	io__write_string(" }\n/*\n"),
+	io__write_string(" }\n"),
 	output_gc_livevals(LiveVals).
 
 output_instruction(c_code(C_Code_String)) -->
@@ -437,16 +443,21 @@ output_instruction(incr_hp(Lval, Rval)) -->
 	output_lval(Lval),
 	io__write_string(", "),
 	output_rval(Rval),
-	io__write_string("); "),
-	io__write_string(" }").
+	io__write_string("); }").
+
+output_instruction(mark_hp(Lval)) -->
+	io__write_string("\t{ "),
+	output_lval_decls(Lval),
+	io__write_string("mark_hp("),
+	output_lval(Lval),
+	io__write_string("); }").
 
 output_instruction(restore_hp(Rval)) -->
 	io__write_string("\t{ "),
 	output_rval_decls(Rval),
 	io__write_string("restore_hp("),
 	output_rval(Rval),
-	io__write_string(") "),
-	io__write_string(" }").
+	io__write_string(") }").
 
 output_instruction(incr_sp(N)) -->
 	io__write_string("\t"),
@@ -473,15 +484,23 @@ output_livevals([Lval|Lvals]) -->
 :- pred output_gc_livevals(list(liveinfo), io__state, io__state).
 :- mode output_gc_livevals(in, di, uo) is det.
 
-output_gc_livevals([]) -->
-	io__write_string(" */").
-output_gc_livevals([live_lvalue(Lval, Shape)|Lvals]) -->
+output_gc_livevals(LiveVals) -->
+	io__write_string("/*\n"),
+	io__write_string(" * Garbage collection livevals info\n"),
+	output_gc_livevals_2(LiveVals),
+	io__write_string(" */\n").
+
+:- pred output_gc_livevals_2(list(liveinfo), io__state, io__state).
+:- mode output_gc_livevals_2(in, di, uo) is det.
+
+output_gc_livevals_2([]) --> [].
+output_gc_livevals_2([live_lvalue(Lval, Shape)|Lvals]) -->
 	io__write_string(" *\t"),
 	output_lval(Lval),
 	io__write_string("\t"),
 	io__write_int(Shape),
 	io__write_string("\n"),
-	output_gc_livevals(Lvals).
+	output_gc_livevals_2(Lvals).
 
 :- pred output_temp_decls(int, io__state, io__state).
 :- mode output_temp_decls(in, di, uo) is det.

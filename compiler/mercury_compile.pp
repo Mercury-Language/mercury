@@ -873,6 +873,8 @@ mercury_compile(module(Module, ShortDeps, LongDeps, Items0,
 	{ putprop(mc, mc, HLDS0 - FoundSemanticError), fail }.
 mercury_compile(module(_, _, _, _, FoundSyntaxError)) -->
 	{ getprop(mc, mc, HLDS0 - FoundSemanticError, Ref), erase(Ref) },
+	globals__io_lookup_bool_option(statistics, Statistics),
+	maybe_report_stats(Statistics),
 #endif
 
 	( { FoundSyntaxError = yes } ->
@@ -889,6 +891,8 @@ mercury_compile(module(_, _, _, _, FoundSyntaxError)) -->
 mercury_compile(module(_, _, _, _, FoundSyntaxError)) -->
 	{ getprop(mc, mc, HLDS1 - FoundSemanticError - FoundTypeError, Ref),
 	erase(Ref) },
+	globals__io_lookup_bool_option(statistics, Statistics),
+	maybe_report_stats(Statistics),
 #endif
 
 	globals__io_lookup_bool_option(modecheck, DoModeCheck),
@@ -933,6 +937,8 @@ mercury_compile(module(Module, _, _, _, FoundSyntaxError)) -->
 	{ getprop(mc, mc, HLDS7 - [FoundSemanticError, 
 		FoundTypeError, FoundModeError, FoundDeterminismError], Ref),
 	erase(Ref) },
+	globals__io_lookup_bool_option(statistics, Statistics),
+	maybe_report_stats(Statistics),
 #endif
 
 	globals__io_lookup_bool_option(generate_code, GenerateCode),
@@ -972,6 +978,8 @@ mercury_compile(module(Module, _, _, _, FoundSyntaxError)) -->
 mercury_compile(module(Module, _, _, _, FoundSyntaxError)) -->
 	{ getprop(mc, mc, HLDS10 - [DoCodeGen, CompileToC, Compile], Ref),
 	erase(Ref) },
+	globals__io_lookup_bool_option(statistics, Statistics),
+	maybe_report_stats(Statistics),
 #endif
 
 	( { DoCodeGen = yes } ->
@@ -993,6 +1001,8 @@ mercury_compile(module(Module, _, _, _, FoundSyntaxError)) -->
 mercury_compile(module(Module, _, _, _, _)) -->
 	{ getprop(mc, mc, HLDS12 - [DoCodeGen, CompileToC, Compile], Ref),
 	erase(Ref) },
+	globals__io_lookup_bool_option(statistics, Statistics),
+	maybe_report_stats(Statistics),
 #endif
 
 	( { DoCodeGen = yes } ->
@@ -1007,6 +1017,8 @@ mercury_compile(module(Module, _, _, _, _)) -->
 mercury_compile(module(Module, _, _, _, _)) -->
 	{ getprop(mc, mc, LLDS1 - [DoCodeGen, CompileToC, Compile], Ref),
 	erase(Ref) },
+	globals__io_lookup_bool_option(statistics, Statistics),
+	maybe_report_stats(Statistics),
 
 	( { DoCodeGen = yes } ->
 #endif

@@ -625,6 +625,9 @@ opt_debug__dump_instr(incr_hp(Lval, Rval), Str) :-
 	opt_debug__dump_lval(Lval, L_str),
 	opt_debug__dump_rval(Rval, R_str),
 	string__append_list(["incr_hp(", L_str, ", ", R_str, ")"], Str).
+opt_debug__dump_instr(mark_hp(Lval), Str) :-
+	opt_debug__dump_lval(Lval, L_str),
+	string__append_list(["mark_hp(", L_str, ")"], Str).
 opt_debug__dump_instr(restore_hp(Rval), Str) :-
 	opt_debug__dump_rval(Rval, R_str),
 	string__append_list(["restore_hp(", R_str, ")"], Str).
