@@ -1058,7 +1058,7 @@ restore_hp(_::in) :-
 	SavedHeapPointer = 0;
 ").
 
-:- pragma foreign_proc("MC++", restore_hp(SavedHeapPointer::in),
+:- pragma foreign_proc("MC++", restore_hp(_SavedHeapPointer::in),
 	[will_not_call_mercury, thread_safe],
 "
 	/* We can't do heap reclamation on failure in the .NET back-end. */
