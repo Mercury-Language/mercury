@@ -1455,7 +1455,6 @@ proc_info_set_vartypes(ProcInfo0, Vars, ProcInfo) :-
 
 :- pred goal_info_get_instmap_delta(hlds__goal_info, instmap_delta).
 :- mode goal_info_get_instmap_delta(in, out) is det.
-:- mode goal_info_get_instmap_delta(in, in) is semidet. % implied
 
 :- pred goal_info_set_instmap_delta(hlds__goal_info, instmap_delta,
 				hlds__goal_info).

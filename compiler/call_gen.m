@@ -401,7 +401,7 @@ call_gen__input_args([arg_info(Loc, Mode)|Args], Vs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__output_args(list(arg_info), list(arg_loc)).
+:- pred call_gen__output_args(list(arg_info), list(pair(arg_loc, arg_mode))).
 :- mode call_gen__output_args(in, out) is det.
 
 call_gen__output_args([], []).
@@ -409,7 +409,7 @@ call_gen__output_args([arg_info(Loc, Mode)|Args], Vs) :-
 	(
 		Mode = top_out
 	->
-		Vs = [Loc|Vs0]
+		Vs = [Loc - Mode|Vs0]
 	;
 		Vs = Vs0
 	),
@@ -418,7 +418,7 @@ call_gen__output_args([arg_info(Loc, Mode)|Args], Vs) :-
 %---------------------------------------------------------------------------%
 
 :- pred call_gen__generate_call_livevals(list(arg_loc), code_tree,
-						code_info, code_info).
+							code_info, code_info).
 :- mode call_gen__generate_call_livevals(in, out, in, out) is det.
 
 call_gen__generate_call_livevals(InputArgs, Code) -->
@@ -442,8 +442,8 @@ call_gen__insert_arg_livevals([L|As], LiveVals0, LiveVals) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__generate_return_livevals(list(arg_loc), list(liveinfo),
-						code_info, code_info).
+:- pred call_gen__generate_return_livevals(list(pair(arg_loc, arg_mode)),
+					list(liveinfo), code_info, code_info).
 :- mode call_gen__generate_return_livevals(in, out, in, out) is det.
 
 call_gen__generate_return_livevals(OutputArgs, LiveVals) -->
@@ -452,12 +452,12 @@ call_gen__generate_return_livevals(OutputArgs, LiveVals) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__insert_arg_livelvals(list(arg_loc),
+:- pred call_gen__insert_arg_livelvals(list(pair(arg_loc, arg_mode)),
 					list(liveinfo), list(liveinfo)).
 :- mode call_gen__insert_arg_livelvals(in, in, out) is det.
 
 call_gen__insert_arg_livelvals([], LiveVals, LiveVals).
-call_gen__insert_arg_livelvals([L|As], LiveVals0, LiveVals) :-
+call_gen__insert_arg_livelvals([L - _M|As], LiveVals0, LiveVals) :-
 	code_util__arg_loc_to_register(L, R),
 	LiveVal = live_lvalue(reg(R), -1), % XXX get shape number
 	call_gen__insert_arg_livelvals(As, [LiveVal|LiveVals0], LiveVals).
@@ -471,6 +471,8 @@ call_gen__insert_arg_livelvals([L|As], LiveVals0, LiveVals) :-
 call_gen__generate_higher_call(ContextDet, PredDet, Var, Code) -->
 	call_gen__save_variables(SaveCode),
 	code_info__clear_reserved_registers,
+	code_info__generate_stack_livevals(LiveVals0),
+	{ bintree_set__insert(LiveVals0, reg(r(1)), LiveVals) },
 	call_gen__generate_return_livevals([], OutLiveVals),
 	code_info__produce_variable(Var, VarCode, RVal),
 	(
@@ -486,6 +488,7 @@ call_gen__generate_higher_call(ContextDet, PredDet, Var, Code) -->
 	(
 		{ PredDet = deterministic },
 		{ CallCode = node([
+			livevals(yes, LiveVals) - "",
 			call_closure(no, label(ReturnLabel), OutLiveVals) -
 				"setup and call higher order pred",
 			label(ReturnLabel) - "Continuation label"
@@ -493,6 +496,7 @@ call_gen__generate_higher_call(ContextDet, PredDet, Var, Code) -->
 	;
 		{ PredDet = semideterministic },
 		{ TryCallCode = node([
+			livevals(yes, LiveVals) - "",
 			call_closure(yes, label(ReturnLabel), OutLiveVals) -
 				"setup and call higher order pred",
 			label(ReturnLabel) - "Continuation label"
@@ -511,6 +515,7 @@ call_gen__generate_higher_call(ContextDet, PredDet, Var, Code) -->
 		->
 			code_info__generate_pre_commit(PreCommit, FailLabel),
 			{ DoCall = node([
+				livevals(yes, LiveVals) - "",
 				call_closure(no, label(ReturnLabel),
 							OutLiveVals)
 					- "setup and call higher order pred",
@@ -520,6 +525,7 @@ call_gen__generate_higher_call(ContextDet, PredDet, Var, Code) -->
 			{ CallCode = tree(PreCommit, tree(DoCall, Commit)) }
 		;
 			{ CallCode = node([
+				livevals(yes, LiveVals) - "",
 				call_closure(no, label(ReturnLabel),
 							OutLiveVals)
 					- "setup and call higher order pred",
