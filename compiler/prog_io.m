@@ -95,7 +95,8 @@
 			;	all(vars,goal)
 			;	if_then(vars,goal,goal)
 			;	if_then_else(vars,goal,goal,goal)
-			;	call(term).
+			;	call(term)
+			;	unify(term, term).
 
 :- type goals		==	list(goal).
 :- type vars		==	list(variable).
@@ -447,6 +448,7 @@ parse_goal(Term, Goal) :-
 :- mode parse_goal_2(input, output).
 parse_goal_2(term_functor(term_atom("true"),[]), true).
 parse_goal_2(term_functor(term_atom("fail"),[]), fail).
+parse_goal_2(term_functor(term_atom("="),[A,B]), unify(A,B)).
 parse_goal_2(term_functor(term_atom(","),[A0,B0]), (A,B)) :-
 	parse_goal(A0, A),
 	parse_goal(B0, B).
