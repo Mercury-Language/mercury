@@ -859,6 +859,11 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
 	pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial),
 	MaybeSpecial = yes(_SpecialId - TypeCtor),
 	%
+	% check that the special pred isn't one of the builtin
+	% types
+	%
+	\+ list__member(TypeCtor, builtin_type_ctors),
+	%
 	% check whether that type is a type for which there is
 	% a user-defined equality predicate, or which is existentially typed.
 	%

@@ -69,6 +69,9 @@
 :- pred type_ctor_is_tuple(type_ctor).
 :- mode type_ctor_is_tuple(in) is semidet.
 
+	% The list of type_ctors which are builtins.
+:- func builtin_type_ctors = list(type_ctor).
+
 	% Succeed iff there was either a `where equality is <predname>' or a
 	% `where comparison is <predname>' declaration for the principal type
 	% constructor of the specified type, and return the ids of the declared
@@ -2054,5 +2057,18 @@ cell_inst_cons_id(Which, Arity) = InstConsId :-
 
 cell_type_name(type_info_cell) = "type_info".
 cell_type_name(typeclass_info_cell) = "typeclass_info".
+
+%-----------------------------------------------------------------------------%
+
+builtin_type_ctors =
+	[ qualified(mercury_public_builtin_module, "int") - 0,
+	  qualified(mercury_public_builtin_module, "string") - 0,
+	  qualified(mercury_public_builtin_module, "character") - 0,
+	  qualified(mercury_public_builtin_module, "float") - 0,
+	  qualified(mercury_public_builtin_module, "pred") - 0,
+	  qualified(mercury_public_builtin_module, "func") - 0,
+	  qualified(mercury_public_builtin_module, "void") - 0,
+	  qualified(mercury_public_builtin_module, "tuple") - 0
+	].
 
 %-----------------------------------------------------------------------------%

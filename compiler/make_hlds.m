@@ -161,11 +161,30 @@ parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
 		InvalidTypes1 = no,
 		module_info_types(Module2, Types),
 		map__foldl3(process_type_defn, Types,
-			no, InvalidTypes2, Module2, Module3, !IO)
+			no, InvalidTypes2, Module2, Module3a, !IO)
 	;
 		InvalidTypes1 = yes,
 		InvalidTypes2 = yes,
-		Module3 = Module2
+		Module3a = Module2
+	),
+
+	% Add the special preds for the builtins
+	(
+		Name = mercury_public_builtin_module,
+		compiler_generated_rtti_for_the_builtins(Module3a)
+	->
+		varset__init(TVarSet),
+		Body = abstract_type(non_solver_type),
+		term__context_init(Context),
+		Status = local,
+		list__foldl(
+			(pred(TypeCtor::in, M0::in, M::out) is det :-
+				construct_type(TypeCtor, [], Type),
+				add_special_preds(TVarSet, Type, TypeCtor,
+						Body, Context, Status, M0, M)
+			), builtin_type_ctors, Module3a, Module3)
+	;
+		Module3 = Module3a
 	),
 
 	maybe_report_stats(Statistics, !IO),

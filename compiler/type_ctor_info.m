@@ -79,14 +79,22 @@
 :- import_module parse_tree__prog_util.
 
 :- import_module bool, string, int, map, std_util, assoc_list, require.
-:- import_module set, term.
+:- import_module set, term, varset.
 
 %---------------------------------------------------------------------------%
 
 type_ctor_info__generate_hlds(!ModuleInfo) :-
 	module_info_name(!.ModuleInfo, ModuleName),
 	module_info_types(!.ModuleInfo, TypeTable),
-	map__keys(TypeTable, TypeCtors),
+	map__keys(TypeTable, TypeCtors0),
+	(
+		ModuleName = mercury_public_builtin_module,
+		compiler_generated_rtti_for_the_builtins(!.ModuleInfo)
+	->
+		TypeCtors = builtin_type_ctors ++ TypeCtors0
+	;
+		TypeCtors = TypeCtors0
+	),
 	type_ctor_info__gen_type_ctor_gen_infos(TypeCtors, TypeTable,
 		ModuleName, !.ModuleInfo, TypeCtorGenInfos),
 	module_info_set_type_ctor_gen_infos(TypeCtorGenInfos, !ModuleInfo).
@@ -106,45 +114,62 @@ type_ctor_info__gen_type_ctor_gen_infos([TypeCtor | TypeCtors], TypeTable,
 		ModuleName, ModuleInfo, TypeCtorGenInfos1),
 	TypeCtor = SymName - TypeArity,
 	(
-		SymName = qualified(TypeModuleName, TypeName),
-		( 
-			TypeModuleName = ModuleName,
-			map__lookup(TypeTable, TypeCtor, TypeDefn),
-			hlds_data__get_type_defn_body(TypeDefn, TypeBody),
-			(
-				TypeBody \= abstract_type(_)
-			->
-				\+ type_ctor_has_hand_defined_rtti(TypeCtor,
-					TypeBody),
-				( are_equivalence_types_expanded(ModuleInfo)
-					=> TypeBody \= eqv_type(_) )
-			;
-				% type_ctor_infos need be generated for the
-				% builtin types (which are declared as abstract
-				% types)
-				compiler_generated_rtti_for_the_builtins(
-					ModuleInfo),
-				TypeModuleName = unqualified(ModuleNameString),
-				( builtin_type_ctor(ModuleNameString,
-					TypeName, TypeArity, _)
-				; impl_type_ctor(ModuleNameString,
-					TypeName, TypeArity, _)
-				)
-			)
-		->
-			type_ctor_info__gen_type_ctor_gen_info(TypeCtor,
-				TypeName, TypeArity, TypeDefn,
-				ModuleName, ModuleInfo, TypeCtorGenInfo),
-			TypeCtorGenInfos = [TypeCtorGenInfo | TypeCtorGenInfos1]
+	    SymName = qualified(TypeModuleName, TypeName),
+	    ( 
+		TypeModuleName = ModuleName,
+		( list__member(TypeCtor, builtin_type_ctors) ->
+		    compiler_generated_rtti_for_the_builtins(ModuleInfo),
+		    TypeModuleName = unqualified(ModuleNameString),
+		    TypeDefn = builtin_type_defn,
+		    builtin_type_ctor(ModuleNameString, TypeName, TypeArity, _)
 		;
-			TypeCtorGenInfos = TypeCtorGenInfos1
+		    map__lookup(TypeTable, TypeCtor, TypeDefn),
+		    hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+		    (
+			TypeBody \= abstract_type(_)
+		    ->
+			\+ type_ctor_has_hand_defined_rtti(TypeCtor, TypeBody),
+			( are_equivalence_types_expanded(ModuleInfo)
+				=> TypeBody \= eqv_type(_) )
+		    ;
+			% type_ctor_infos need be generated for the builtin
+			% types (which are declared as abstract types)
+			compiler_generated_rtti_for_the_builtins(ModuleInfo),
+			TypeModuleName = unqualified(ModuleNameString),
+			( builtin_type_ctor(ModuleNameString,
+					TypeName, TypeArity, _)
+			; impl_type_ctor(ModuleNameString,
+					TypeName, TypeArity, _)
+			)
+		    )
 		)
+	    ->
+		type_ctor_info__gen_type_ctor_gen_info(TypeCtor,
+			    TypeName, TypeArity, TypeDefn,
+			    ModuleName, ModuleInfo, TypeCtorGenInfo),
+		TypeCtorGenInfos = [TypeCtorGenInfo | TypeCtorGenInfos1]
+	    ;
+		TypeCtorGenInfos = TypeCtorGenInfos1
+	    )
 	;
-		SymName = unqualified(TypeName),
-		string__append_list(["unqualified type ", TypeName,
+	    SymName = unqualified(TypeName),
+	    string__append_list(["unqualified type ", TypeName,
 			"found in type_ctor_info"], Msg),
-		error(Msg)
+	    error(Msg)
 	).
+
+:- func builtin_type_defn = hlds_type_defn.
+
+builtin_type_defn = TypeDefn :-
+	varset__init(TVarSet),
+	Params = [],
+	Body = abstract_type(non_solver_type),
+	ImportStatus = local,
+	NeedQualifier = may_be_unqualified,
+	term__context_init(Context),
+	hlds_data__set_type_defn(TVarSet, Params, Body,
+			ImportStatus, NeedQualifier, Context, TypeDefn).
+
 
 :- pred type_ctor_info__gen_type_ctor_gen_info(type_ctor::in, string::in,
 	int::in, hlds_type_defn::in, module_name::in, module_info::in,
