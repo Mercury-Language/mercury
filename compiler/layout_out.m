@@ -100,10 +100,10 @@ output_layout_data_defn(module_layout_data(ModuleName, StringTableSize,
 	output_module_layout_data_defn(ModuleName, StringTableSize,
 		StringTable, ProcLayoutNames, FileLayouts, TraceLevel,
 		DeclSet0, DeclSet).
-output_layout_data_defn(proc_static_data(RttiProcLabel, FileName, CallSites),
-		DeclSet0, DeclSet) -->
-	output_proc_static_data_defn(RttiProcLabel, FileName, CallSites,
-		DeclSet0, DeclSet).
+output_layout_data_defn(proc_static_data(RttiProcLabel, FileName, LineNumber,
+		IsInInterface, CallSites), DeclSet0, DeclSet) -->
+	output_proc_static_data_defn(RttiProcLabel, FileName, LineNumber,
+		IsInInterface, CallSites, DeclSet0, DeclSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -141,7 +141,7 @@ extract_layout_name(closure_proc_id_data(CallerProcLabel, SeqNo,
 		closure_proc_id(CallerProcLabel, SeqNo, ClosureProcLabel)).
 extract_layout_name(module_layout_data(ModuleName, _,_,_,_,_), LayoutName) :-
 	LayoutName = module_layout(ModuleName).
-extract_layout_name(proc_static_data(RttiProcLabel, _, _), LayoutName) :-
+extract_layout_name(proc_static_data(RttiProcLabel, _, _, _, _), LayoutName) :-
 	LayoutName = proc_static(RttiProcLabel).
 
 :- pred output_layout_decls(list(layout_name)::in, decl_set::in, decl_set::out,
@@ -1053,11 +1053,11 @@ output_data_addr_in_vector(Prefix, DataAddr) -->
 %-----------------------------------------------------------------------------%
 
 :- pred output_proc_static_data_defn(rtti_proc_label::in, string::in,
-	list(call_site_static_data)::in, decl_set::in, decl_set::out,
-	io__state::di, io__state::uo) is det.
+	int::in, bool::in, list(call_site_static_data)::in,
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
 
-output_proc_static_data_defn(RttiProcLabel, FileName, CallSites,
-		DeclSet0, DeclSet) -->
+output_proc_static_data_defn(RttiProcLabel, FileName, LineNumber,
+		IsInInterface, CallSites, DeclSet0, DeclSet) -->
 	list__foldl2(output_call_site_static_decl, CallSites,
 		DeclSet0, DeclSet1),
 	output_call_site_static_array(RttiProcLabel, CallSites,
@@ -1070,6 +1070,16 @@ output_proc_static_data_defn(RttiProcLabel, FileName, CallSites,
 	output_layout_proc_id_group(ProcLabel),
 	io__write_string("\t"),
 	quote_and_write_string(FileName),
+	io__write_string(",\n\t"),
+	io__write_int(LineNumber),
+	io__write_string(",\n\t"),
+	(
+		{ IsInInterface = yes },
+		io__write_string("TRUE")
+	;
+		{ IsInInterface = no },
+		io__write_string("FALSE")
+	),
 	io__write_string(",\n\t"),
 	io__write_int(list__length(CallSites)),
 	io__write_string(",\n\t"),

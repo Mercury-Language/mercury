@@ -25,7 +25,7 @@
 
 :- implementation.
 
-:- import_module profile, read_profile, callgraph.
+:- import_module profile, read_profile, callgraph, canonical.
 :- import_module measurements, array_util.
 :- import_module std_util, int, string, array, assoc_list, set, map, require.
 
@@ -59,26 +59,28 @@ read_and_startup(Machine, DataFileNames, CanonicalClique, Res) -->
 :- pred startup(string::in, string::in, bool::in, initial_deep::in, deep::out,
 	io__state::di, io__state::uo) is det.
 
-startup(Machine, DataFileName, _CanonicalClique, InitDeep0, Deep) -->
+startup(Machine, DataFileName, CanonicalClique, InitDeep0, Deep) -->
 	stderr_stream(StdErr),
 
 	{ InitDeep0 = initial_deep(InitStats, Root,
 		CallSiteDynamics0, ProcDynamics,
-		CallSiteStatics0, ProcStatics) },
+		CallSiteStatics0, ProcStatics0) },
 
 	io__format(StdErr,
 		"  Mapping static call sites to containing procedures...\n",
 		[]),
-	{ array_foldl_from_1(record_css_containers, ProcStatics,
-		u(CallSiteStatics0), CallSiteStatics) },
+	{ array_foldl2_from_1(record_css_containers_module_procs, ProcStatics0,
+		u(CallSiteStatics0), CallSiteStatics,
+		map__init, ModuleProcs) },
 	io__format(StdErr, "  Done.\n", []),
 	io__report_stats,
 
 	io__format(StdErr,
 		"  Mapping dynamic call sites to containing procedures...\n",
 		[]),
-	{ array_foldl_from_1(record_csd_containers, ProcDynamics,
-		u(CallSiteDynamics0), CallSiteDynamics) },
+	{ array_foldl2_from_1(record_csd_containers_zeroed_pss, ProcDynamics,
+		u(CallSiteDynamics0), CallSiteDynamics,
+		u(ProcStatics0), ProcStatics) },
 	io__format(StdErr, "  Done.\n", []),
 	io__report_stats,
 
@@ -86,17 +88,16 @@ startup(Machine, DataFileName, _CanonicalClique, InitDeep0, Deep) -->
 		CallSiteDynamics, ProcDynamics,
 		CallSiteStatics, ProcStatics) },
 
-	{ InitDeep = InitDeep1 },
-%	(
-%		{ CanonicalClique = no },
-%		{ InitDeep = InitDeep1 }
-%	;
-%		{ CanonicalClique = yes },
-%		io__format(StdErr, "  Canonicalizing cliques...\n", []),
-%		{ canonicalize_cliques(InitDeep1, InitDeep) },
-%		io__format(StdErr, "  Done.\n", []),
-%		io__report_stats
-%	),
+	(
+		{ CanonicalClique = no },
+		{ InitDeep = InitDeep1 }
+	;
+		{ CanonicalClique = yes },
+		io__format(StdErr, "  Canonicalizing cliques...\n", []),
+		{ canonicalize_cliques(InitDeep1, InitDeep) },
+		io__format(StdErr, "  Done.\n", []),
+		io__report_stats
+	),
 
 	{ array__max(InitDeep ^ init_proc_dynamics, PDMax) },
 	{ NPDs = PDMax + 1 },
@@ -172,13 +173,17 @@ startup(Machine, DataFileName, _CanonicalClique, InitDeep0, Deep) -->
 	{ array__init(NPSs, zero_inherit_prof_info, PSDesc0) },
 	{ array__init(NCSSs, zero_own_prof_info, CSSOwn0) },
 	{ array__init(NCSSs, zero_inherit_prof_info, CSSDesc0) },
+	{ array__init(NPDs, map__init, PDZeroMap0) },
+	{ array__init(NCSDs, map__init, CSDZeroMap0) },
 
+	{ ModuleData = map__map_values(initialize_module_data, ModuleProcs) },
 	{ Deep0 = deep(InitStats, Machine, DataFileName, Root,
 		CallSiteDynamics, ProcDynamics, CallSiteStatics, ProcStatics,
 		CliqueIndex, Cliques, CliqueParents, CliqueMaybeChildren,
 		ProcCallers, CallSiteStaticMap, CallSiteCalls,
 		PDOwn, PDDesc0, CSDDesc0,
-		PSOwn0, PSDesc0, CSSOwn0, CSSDesc0) },
+		PSOwn0, PSDesc0, CSSOwn0, CSSDesc0,
+		PDZeroMap0, CSDZeroMap0, ModuleData) },
 
 	{ array_foldl_from_1(propagate_to_clique, Cliques, Deep0, Deep1) },
 	io__format(StdErr, "  Done.\n", []),
@@ -186,7 +191,8 @@ startup(Machine, DataFileName, _CanonicalClique, InitDeep0, Deep) -->
 
 	io__format(StdErr, "  Summarizing information...\n", []),
 	{ summarize_proc_dynamics(Deep1, Deep2) },
-	{ summarize_call_site_dynamics(Deep2, Deep) },
+	{ summarize_call_site_dynamics(Deep2, Deep3) },
+	{ summarize_modules(Deep3, Deep) },
 	io__format(StdErr, "  Done.\n", []),
 	io__report_stats.
 
@@ -195,18 +201,34 @@ startup(Machine, DataFileName, _CanonicalClique, InitDeep0, Deep) -->
 count_quanta(_N, CSD, Quanta0, Quanta) :-
 	Quanta = Quanta0 + quanta(CSD ^ csd_own_prof).
 
+:- func initialize_module_data(string, list(proc_static_ptr)) = module_data.
+
+initialize_module_data(_ModuleName, PSPtrs) =
+	module_data(zero_own_prof_info, zero_inherit_prof_info, PSPtrs).
+
 %-----------------------------------------------------------------------------%
 
-:- pred record_css_containers(int::in, proc_static::in,
+:- pred record_css_containers_module_procs(int::in, proc_static::in,
 	array(call_site_static)::array_di,
-	array(call_site_static)::array_uo) is det.
+	array(call_site_static)::array_uo,
+	map(string, list(proc_static_ptr))::in,
+	map(string, list(proc_static_ptr))::out) is det.
 
-record_css_containers(PSI, PS, CallSiteStatics0, CallSiteStatics) :-
+record_css_containers_module_procs(PSI, PS, CallSiteStatics0, CallSiteStatics,
+		ModuleProcs0, ModuleProcs) :-
 	CSSPtrs = PS ^ ps_sites,
 	PSPtr = proc_static_ptr(PSI),
 	array__max(CSSPtrs, MaxCS),
 	record_css_containers_2(MaxCS, PSPtr, CSSPtrs,
-		CallSiteStatics0, CallSiteStatics).
+		CallSiteStatics0, CallSiteStatics),
+	DeclModule = PS ^ ps_decl_module,
+	( map__search(ModuleProcs0, DeclModule, PSPtrs0) ->
+		map__det_update(ModuleProcs0, DeclModule, [PSPtr | PSPtrs0],
+			ModuleProcs)
+	;
+		map__det_insert(ModuleProcs0, DeclModule, [PSPtr],
+			ModuleProcs)
+	).
 
 :- pred record_css_containers_2(int::in, proc_static_ptr::in,
 	array(call_site_static_ptr)::in,
@@ -236,16 +258,28 @@ record_css_containers_2(SlotNum, PSPtr, CSSPtrs,
 
 %-----------------------------------------------------------------------------%
 
-:- pred record_csd_containers(int::in, proc_dynamic::in,
+:- pred record_csd_containers_zeroed_pss(int::in, proc_dynamic::in,
 	array(call_site_dynamic)::array_di,
-	array(call_site_dynamic)::array_uo) is det.
+	array(call_site_dynamic)::array_uo,
+	array(proc_static)::array_di, array(proc_static)::array_uo) is det.
 
-record_csd_containers(PDI, PD, CallSiteDynamics0, CallSiteDynamics) :-
+record_csd_containers_zeroed_pss(PDI, PD, CallSiteDynamics0, CallSiteDynamics,
+		ProcStatics0, ProcStatics) :-
 	CSDArray = PD ^ pd_sites,
 	PDPtr = proc_dynamic_ptr(PDI),
-	flatten_call_sites(CSDArray, CSDPtrs),
+	flatten_call_sites(CSDArray, CSDPtrs, IsZeroed),
 	record_csd_containers_2(PDPtr, CSDPtrs,
-		CallSiteDynamics0, CallSiteDynamics).
+		CallSiteDynamics0, CallSiteDynamics),
+	(
+		IsZeroed = zeroed,
+		PSPtr = PD ^ pd_proc_static,
+		lookup_proc_statics(ProcStatics0, PSPtr, PS0),
+		PS = PS0 ^ ps_is_zeroed := zeroed,
+		update_proc_statics(ProcStatics0, PSPtr, PS, ProcStatics)
+	;
+		IsZeroed = not_zeroed,
+		ProcStatics = ProcStatics0
+	).
 
 :- pred record_csd_containers_2(proc_dynamic_ptr::in,
 	list(call_site_dynamic_ptr)::in,
@@ -326,44 +360,7 @@ construct_clique_parents_2(InitDeep, CliqueIndex, ParentCliquePtr, CSDPtr,
 		CliqueMaybeChildren = CliqueMaybeChildren0
 	).
 
-:- pred flat_call_sites(proc_dynamics::in, proc_dynamic_ptr::in,
-	list(call_site_dynamic_ptr)::out) is det.
-
-flat_call_sites(ProcDynamics, PDPtr, CSDPtrs) :-
-	( PDPtr = proc_dynamic_ptr(PDI), PDI > 0 ->
-		array__lookup(ProcDynamics, PDI, PD),
-		CallSiteArray = PD ^ pd_sites,
-		flatten_call_sites(CallSiteArray, CSDPtrs)
-	;
-		CSDPtrs = []
-	).
-
-:- pred flatten_call_sites(array(call_site_array_slot)::in,
-	list(call_site_dynamic_ptr)::out) is det.
-
-flatten_call_sites(CallSiteArray, CSDPtrs) :-
-	array__to_list(CallSiteArray, CallSites),
-	list__foldl((pred(Slot::in, CSDPtrs0::in, CSDPtrs1::out) is det :-
-		(
-			Slot = normal(CSDPtr),
-			CSDPtr = call_site_dynamic_ptr(CSDI),
-			( CSDI > 0 ->
-				CSDPtrs1 = [[CSDPtr] | CSDPtrs0]
-			;
-				CSDPtrs1 = CSDPtrs0
-			)
-		;
-			Slot = multi(PtrArray),
-			array__to_list(PtrArray, PtrList0),
-			filter((pred(CSDPtr::in) is semidet :-
-				CSDPtr = call_site_dynamic_ptr(CSDI),
-				CSDI > 0
-			), PtrList0, PtrList1),
-			CSDPtrs1 = [PtrList1 | CSDPtrs0]
-		)
-	), CallSites, [], CSDPtrsList0),
-	list__reverse(CSDPtrsList0, CSDPtrsList),
-	list__condense(CSDPtrsList, CSDPtrs).
+%-----------------------------------------------------------------------------%
 
 :- pred construct_proc_callers(initial_deep::in, int::in,
 	call_site_dynamic::in,
@@ -372,14 +369,12 @@ flatten_call_sites(CallSiteArray, CSDPtrs) :-
 
 construct_proc_callers(InitDeep, CSDI, CSD, ProcCallers0, ProcCallers) :-
 	PDPtr = CSD ^ csd_callee,
-	PDPtr = proc_dynamic_ptr(PDI),
-	( PDI > 0, array__in_bounds(InitDeep ^ init_proc_dynamics, PDI) ->
-		array__lookup(InitDeep ^ init_proc_dynamics, PDI, PD),
+	( valid_proc_dynamic_ptr_raw(InitDeep ^ init_proc_dynamics, PDPtr) ->
+		lookup_proc_dynamics(InitDeep ^ init_proc_dynamics, PDPtr, PD),
 		PSPtr = PD ^ pd_proc_static,
-		PSPtr = proc_static_ptr(PSI),
-		array__lookup(ProcCallers0, PSI, Callers0),
+		lookup_proc_callers(ProcCallers0, PSPtr, Callers0),
 		Callers = [call_site_dynamic_ptr(CSDI) | Callers0],
-		array__set(ProcCallers0, PSI, Callers, ProcCallers)
+		update_proc_callers(ProcCallers0, PSPtr, Callers, ProcCallers)
 	;
 		ProcCallers = ProcCallers0
 	).
@@ -392,9 +387,8 @@ construct_call_site_caller(InitDeep, _PDI, PD,
 		CallSiteStaticMap0, CallSiteStaticMap) :-
 	PSPtr = PD ^ pd_proc_static,
 	CSDArraySlots = PD ^ pd_sites,
-	PSPtr = proc_static_ptr(PSI),
-	array__lookup(InitDeep ^ init_proc_statics, PSI, PS),
-	PS = proc_static(_, _, _, _, CSSPtrs),
+	lookup_proc_statics(InitDeep ^ init_proc_statics, PSPtr, PS),
+	CSSPtrs = PS ^ ps_sites,
 	array__max(CSDArraySlots, MaxCS),
 	construct_call_site_caller_2(MaxCS,
 		InitDeep ^ init_call_site_dynamics, CSSPtrs, CSDArraySlots,
@@ -417,7 +411,7 @@ construct_call_site_caller_2(SlotNum, Deep, CSSPtrs, CSDArraySlots,
 				CallSiteStaticMap0, CallSiteStaticMap1)
 
 		;
-			CSDArraySlot = multi(CSDPtrs),
+			CSDArraySlot = multi(_, CSDPtrs),
 			array_foldl_from_0(
 				construct_call_site_caller_3(Deep, CSSPtr),
 				CSDPtrs,
@@ -442,6 +436,8 @@ construct_call_site_caller_3(CallSiteDynamics, CSSPtr, _Dummy, CSDPtr,
 	;
 		CallSiteStaticMap = CallSiteStaticMap0
 	).
+
+%-----------------------------------------------------------------------------%
 
 :- pred construct_call_site_calls(initial_deep::in, int::in, proc_dynamic::in,
 	array(map(proc_static_ptr, list(call_site_dynamic_ptr)))::array_di,
@@ -478,7 +474,7 @@ construct_call_site_calls_2(CallSiteDynamics, ProcDynamics, SlotNum,
 				ProcDynamics, CSSPtr, -1,
 				CSDPtr, CallSiteCalls0, CallSiteCalls1)
 		;
-			CSDArraySlot = multi(CSDPtrs),
+			CSDArraySlot = multi(_, CSDPtrs),
 			array_foldl_from_0(
 				construct_call_site_calls_3(CallSiteDynamics,
 					ProcDynamics, CSSPtr),
@@ -521,176 +517,300 @@ construct_call_site_calls_3(CallSiteDynamics, ProcDynamics, CSSPtr,
 		CallSiteCalls = CallSiteCalls0
 	).
 
+%-----------------------------------------------------------------------------%
+
 :- pred sum_call_sites_in_proc_dynamic(int::in, call_site_dynamic::in,
 	array(own_prof_info)::array_di, array(own_prof_info)::array_uo) is det.
 
-sum_call_sites_in_proc_dynamic(_, CSD, PDO0, PDO) :-
+sum_call_sites_in_proc_dynamic(_, CSD, PDOwnArray0, PDOwnArray) :-
+	CalleeOwn = CSD ^ csd_own_prof,
 	PDPtr = CSD ^ csd_callee,
-	PI = CSD ^ csd_own_prof,
 	PDPtr = proc_dynamic_ptr(PDI),
 	( PDI > 0 ->
-		array__lookup(PDO0, PDI, OwnPI0),
-		OwnPI = add_own_to_own(PI, OwnPI0),
-		array__set(PDO0, PDI, OwnPI, PDO)
+		array__lookup(PDOwnArray0, PDI, ProcOwn0),
+		ProcOwn = add_own_to_own(CalleeOwn, ProcOwn0),
+		array__set(PDOwnArray0, PDI, ProcOwn, PDOwnArray)
 	;
-		PDO = PDO0
+		error("sum_call_sites_in_proc_dynamic: invalid pdptr")
 	).
+
+%-----------------------------------------------------------------------------%
 
 :- pred summarize_proc_dynamics(deep::in, deep::out) is det.
 
 summarize_proc_dynamics(Deep0, Deep) :-
-	PSOwn0 = Deep0 ^ ps_own,
-	PSDesc0 = Deep0 ^ ps_desc,
+	PSOwnArray0 = Deep0 ^ ps_own,
+	PSDescArray0 = Deep0 ^ ps_desc,
 	array_foldl2_from_1(
-		summarize_proc_dynamic(Deep0 ^ pd_own, Deep0 ^ pd_desc),
+		summarize_proc_dynamic(Deep0 ^ pd_own, Deep0 ^ pd_desc,
+			Deep0 ^ pd_zero_total_map),
 		Deep0 ^ proc_dynamics,
-		copy(PSOwn0), PSOwn, copy(PSDesc0), PSDesc),
+		copy(PSOwnArray0), PSOwnArray,
+		copy(PSDescArray0), PSDescArray),
 	Deep = ((Deep0
-		^ ps_own := PSOwn)
-		^ ps_desc := PSDesc).
+		^ ps_own := PSOwnArray)
+		^ ps_desc := PSDescArray).
 
 :- pred summarize_proc_dynamic(array(own_prof_info)::in,
-	array(inherit_prof_info)::in, int::in, proc_dynamic::in,
+	array(inherit_prof_info)::in, array(zero_total_map)::in,
+	int::in, proc_dynamic::in,
 	array(own_prof_info)::array_di, array(own_prof_info)::array_uo,
 	array(inherit_prof_info)::array_di, array(inherit_prof_info)::array_uo)
 	is det.
 
-summarize_proc_dynamic(PDOwn, PDDesc, PDI, PD,
-		PSOwn0, PSOwn, PSDesc0, PSDesc) :-
+summarize_proc_dynamic(PDOwnArray, PDDescArray, PDZeroMapArray, PDI, PD,
+		PSOwnArray0, PSOwnArray, PSDescArray0, PSDescArray) :-
 	PSPtr = PD ^ pd_proc_static,
-	PSPtr = proc_static_ptr(PSI),
-	( PSI > 0 ->
-		array__lookup(PDOwn, PDI, PDOwnPI),
-		array__lookup(PDDesc, PDI, PDDescPI),
-
-		array__lookup(PSOwn0, PSI, PSOwnPI0),
-		array__lookup(PSDesc0, PSI, PSDescPI0),
-
-		add_own_to_own(PDOwnPI, PSOwnPI0) = PSOwnPI,
-		add_inherit_to_inherit(PDDescPI, PSDescPI0) = PSDescPI,
-		array__set(u(PSOwn0), PSI, PSOwnPI, PSOwn),
-		array__set(u(PSDesc0), PSI, PSDescPI, PSDesc)
+	PDPtr = proc_dynamic_ptr(PDI),
+	lookup_pd_own(PDOwnArray, PDPtr, PDOwn),
+	lookup_pd_desc(PDDescArray, PDPtr, PDDesc0),
+	lookup_pd_zero_map(PDZeroMapArray, PDPtr, PDZeroMap),
+	( map__search(PDZeroMap, PSPtr, InnerTotal) ->
+		PDDesc = subtract_inherit_from_inherit(InnerTotal, PDDesc0)
 	;
-		error("emit nasal devils")
-	).
+		PDDesc = PDDesc0
+	),
+	lookup_ps_own(PSOwnArray0, PSPtr, PSOwn0),
+	lookup_ps_desc(PSDescArray0, PSPtr, PSDesc0),
+	add_own_to_own(PDOwn, PSOwn0) = PSOwn,
+	add_inherit_to_inherit(PDDesc, PSDesc0) = PSDesc,
+	update_ps_own(u(PSOwnArray0), PSPtr, PSOwn, PSOwnArray),
+	update_ps_desc(u(PSDescArray0), PSPtr, PSDesc, PSDescArray).
+
+%-----------------------------------------------------------------------------%
 
 :- pred summarize_call_site_dynamics(deep::in, deep::out) is det.
 
 summarize_call_site_dynamics(Deep0, Deep) :-
-	CSSOwn0 = Deep0 ^ css_own,
-	CSSDesc0 = Deep0 ^ css_desc,
+	CSSOwnArray0 = Deep0 ^ css_own,
+	CSSDescArray0 = Deep0 ^ css_desc,
 	array_foldl2_from_1(
-		summarize_call_site_dynamic(Deep0 ^ call_site_static_map,
-		Deep0 ^ csd_desc),
+		summarize_call_site_dynamic(
+			Deep0 ^ call_site_static_map,
+			Deep0 ^ call_site_statics, Deep0 ^ csd_desc,
+			Deep0 ^ csd_zero_total_map),
 		Deep0 ^ call_site_dynamics,
-		copy(CSSOwn0), CSSOwn, copy(CSSDesc0), CSSDesc),
+		copy(CSSOwnArray0), CSSOwnArray,
+		copy(CSSDescArray0), CSSDescArray),
 	Deep = ((Deep0
-		^ css_own := CSSOwn)
-		^ css_desc := CSSDesc).
+		^ css_own := CSSOwnArray)
+		^ css_desc := CSSDescArray).
 
 :- pred summarize_call_site_dynamic(call_site_static_map::in,
-	array(inherit_prof_info)::in, int::in, call_site_dynamic::in,
+	call_site_statics::in, array(inherit_prof_info)::in,
+	array(zero_total_map)::in, int::in, call_site_dynamic::in,
 	array(own_prof_info)::array_di, array(own_prof_info)::array_uo,
 	array(inherit_prof_info)::array_di, array(inherit_prof_info)::array_uo)
 	is det.
 
-summarize_call_site_dynamic(CallSiteStaticMap, CSDDescs, CSDI, CSD,
-		CSSOwn0, CSSOwn, CSSDesc0, CSSDesc) :-
+summarize_call_site_dynamic(CallSiteStaticMap, CallSiteStatics,
+		CSDDescs, CSDZeroMapArray, CSDI, CSD,
+		CSSOwnArray0, CSSOwnArray, CSSDescArray0, CSSDescArray) :-
 	CSDPtr = call_site_dynamic_ptr(CSDI),
 	lookup_call_site_static_map(CallSiteStaticMap, CSDPtr, CSSPtr),
 	CSSPtr = call_site_static_ptr(CSSI),
 	( CSSI > 0 ->
-		CSDOwnPI = CSD ^ csd_own_prof,
-		array__lookup(CSDDescs, CSDI, CSDDescPI),
-
-		array__lookup(CSSOwn0, CSSI, CSSOwnPI0),
-		array__lookup(CSSDesc0, CSSI, CSSDescPI0),
-
-		add_own_to_own(CSDOwnPI, CSSOwnPI0)
-			= CSSOwnPI,
-		add_inherit_to_inherit(CSDDescPI, CSSDescPI0)
-			= CSSDescPI,
-		array__set(u(CSSOwn0), CSSI, CSSOwnPI, CSSOwn),
-		array__set(u(CSSDesc0), CSSI, CSSDescPI, CSSDesc)
+		CSDOwn = CSD ^ csd_own_prof,
+		lookup_csd_desc(CSDDescs, CSDPtr, CSDDesc0),
+		lookup_csd_zero_map(CSDZeroMapArray, CSDPtr, CSDZeroMap),
+		lookup_call_site_statics(CallSiteStatics, CSSPtr, CSS),
+		( map__search(CSDZeroMap, CSS ^ css_container, InnerTotal) ->
+			CSDDesc = subtract_inherit_from_inherit(InnerTotal,
+				CSDDesc0)
+		;
+			CSDDesc = CSDDesc0
+		),
+		lookup_css_own(CSSOwnArray0, CSSPtr, CSSOwn0),
+		lookup_css_desc(CSSDescArray0, CSSPtr, CSSDesc0),
+		add_own_to_own(CSDOwn, CSSOwn0) = CSSOwn,
+		add_inherit_to_inherit(CSDDesc, CSSDesc0) = CSSDesc,
+		update_css_own(u(CSSOwnArray0), CSSPtr, CSSOwn,
+			CSSOwnArray),
+		update_css_desc(u(CSSDescArray0), CSSPtr, CSSDesc,
+			CSSDescArray)
 	;
-		error("emit nasal gorgons")
+		error("summarize_call_site_dynamic: invalid css ptr")
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred summarize_modules(deep::in, deep::out) is det.
+
+summarize_modules(Deep0, Deep) :-
+	ModuleData0 = Deep0 ^ module_data,
+	ModuleData = map__map_values(summarize_module_costs(Deep0),
+		ModuleData0),
+	Deep = Deep0 ^ module_data := ModuleData.
+
+:- func summarize_module_costs(deep, string, module_data) = module_data.
+
+summarize_module_costs(Deep, _ModuleName, ModuleData0) = ModuleData :-
+	ModuleData0 = module_data(Own0, Desc0, PSPtrs),
+	list__foldl2(accumulate_ps_costs(Deep), PSPtrs,
+		Own0, Own, Desc0, Desc),
+	ModuleData = module_data(Own, Desc, PSPtrs).
+
+:- pred accumulate_ps_costs(deep::in, proc_static_ptr::in,
+	own_prof_info::in, own_prof_info::out,
+	inherit_prof_info::in, inherit_prof_info::out) is det.
+
+accumulate_ps_costs(Deep, PSPtr, Own0, Own, Desc0, Desc) :-
+	deep_lookup_ps_own(Deep, PSPtr, PSOwn),
+	deep_lookup_ps_desc(Deep, PSPtr, PSDesc),
+	Own = add_own_to_own(Own0, PSOwn),
+	Desc = add_inherit_to_inherit(Desc0, PSDesc).
+
+%-----------------------------------------------------------------------------%
 
 :- pred propagate_to_clique(int::in, list(proc_dynamic_ptr)::in,
 	deep::in, deep::out) is det.
 
 propagate_to_clique(CliqueNumber, Members, Deep0, Deep) :-
 	array__lookup(Deep0 ^ clique_parents, CliqueNumber, ParentCSDPtr),
-	list__foldl(propagate_to_proc_dynamic(CliqueNumber, ParentCSDPtr),
-		Members, Deep0, Deep1),
-	(
-		valid_call_site_dynamic_ptr_raw(Deep1 ^ call_site_dynamics,
-			ParentCSDPtr)
-	->
-		lookup_call_site_dynamics(Deep1 ^ call_site_dynamics,
-			ParentCSDPtr, ParentCSD),
-		ParentOwnPI = ParentCSD ^ csd_own_prof,
+	list__foldl2(propagate_to_proc_dynamic(CliqueNumber, ParentCSDPtr),
+		Members, Deep0, Deep1, map__init, CSDZeroMap),
+	( valid_call_site_dynamic_ptr(Deep1, ParentCSDPtr) ->
+		deep_lookup_call_site_dynamics(Deep1, ParentCSDPtr, ParentCSD),
+		ParentOwn = ParentCSD ^ csd_own_prof,
 		deep_lookup_csd_desc(Deep1, ParentCSDPtr, ParentDesc0),
-		subtract_own_from_inherit(ParentOwnPI, ParentDesc0) =
+		subtract_own_from_inherit(ParentOwn, ParentDesc0) =
 			ParentDesc,
-		deep_update_csd_desc(Deep1, ParentCSDPtr, ParentDesc, Deep)
+		deep_update_csd_desc(Deep1, ParentCSDPtr, ParentDesc, Deep2),
+		deep_update_csd_zero_map(Deep2, ParentCSDPtr, CSDZeroMap, Deep)
 	;
 		Deep = Deep1
 	).
 
 :- pred propagate_to_proc_dynamic(int::in, call_site_dynamic_ptr::in,
-	proc_dynamic_ptr::in, deep::in, deep::out) is det.
+	proc_dynamic_ptr::in, deep::in, deep::out,
+	zero_total_map::in, zero_total_map::out) is det.
 
-propagate_to_proc_dynamic(CliqueNumber, ParentCSDPtr, PDPtr,
-		Deep0, Deep) :-
+propagate_to_proc_dynamic(CliqueNumber, ParentCSDPtr, PDPtr, Deep0, Deep,
+		CSDZeroMap0, CSDZeroMap) :-
 	flat_call_sites(Deep0 ^ proc_dynamics, PDPtr, CSDPtrs),
-	list__foldl(propagate_to_call_site(CliqueNumber, PDPtr),
-		CSDPtrs, Deep0, Deep1),
-	(
-		valid_call_site_dynamic_ptr_raw(Deep1 ^ call_site_dynamics,
-			ParentCSDPtr)
-	->
-		deep_lookup_csd_desc(Deep1, ParentCSDPtr, ParentDesc0),
-		deep_lookup_pd_desc(Deep1, PDPtr, DescPI),
-		deep_lookup_pd_own(Deep1, PDPtr, OwnPI),
-		add_own_to_inherit(OwnPI, ParentDesc0) = ParentDesc1,
-		add_inherit_to_inherit(DescPI, ParentDesc1) = ParentDesc,
-		deep_update_csd_desc(Deep1, ParentCSDPtr, ParentDesc, Deep)
+	list__foldl2(propagate_to_call_site(CliqueNumber, PDPtr),
+		CSDPtrs, Deep0, Deep1, map__init, PDZeroMap),
+	deep_update_pd_zero_map(Deep1, PDPtr, PDZeroMap, Deep2),
+
+	deep_lookup_pd_desc(Deep2, PDPtr, ProcDesc),
+	deep_lookup_pd_own(Deep2, PDPtr, ProcOwn),
+	ProcTotal = add_own_to_inherit(ProcOwn, ProcDesc),
+
+	CSDZeroMap1 = add_zero_maps(CSDZeroMap0, PDZeroMap),
+	deep_lookup_proc_dynamics(Deep2, PDPtr, PD),
+	PSPtr = PD ^ pd_proc_static,
+	deep_lookup_proc_statics(Deep2, PSPtr, PS),
+	( PS ^ ps_is_zeroed = zeroed ->
+		CSDZeroMap = add_to_zero_map(CSDZeroMap1, PSPtr, ProcTotal)
 	;
-		Deep = Deep1
+		CSDZeroMap = CSDZeroMap1
+	),
+
+	( valid_call_site_dynamic_ptr(Deep1, ParentCSDPtr) ->
+		deep_lookup_csd_desc(Deep2, ParentCSDPtr, ParentDesc0),
+		ParentDesc = add_inherit_to_inherit(ParentDesc0, ProcTotal),
+		deep_update_csd_desc(Deep2, ParentCSDPtr, ParentDesc, Deep)
+	;
+		Deep = Deep2
 	).
 
 :- pred propagate_to_call_site(int::in, proc_dynamic_ptr::in,
-	call_site_dynamic_ptr::in, deep::in, deep::out) is det.
+	call_site_dynamic_ptr::in, deep::in, deep::out,
+	zero_total_map::in, zero_total_map::out) is det.
 
-propagate_to_call_site(CliqueNumber, PDPtr, CSDPtr, Deep0, Deep) :-
-	CSDPtr = call_site_dynamic_ptr(CSDI),
-	( CSDI > 0 ->
-		array__lookup(Deep0 ^ call_site_dynamics, CSDI, CSD),
-		CPDPtr = CSD ^ csd_callee,
-		CPI = CSD ^ csd_own_prof,
-		CPDPtr = proc_dynamic_ptr(CPDI),
-		( CPDI > 0 ->
-			array__lookup(Deep0 ^ clique_index, CPDI,
-				clique_ptr(ChildCliqueNumber)),
-			( ChildCliqueNumber \= CliqueNumber ->
-				PDPtr = proc_dynamic_ptr(PDI),
-				array__lookup(Deep0 ^ pd_desc, PDI, PDTotal0),
-				array__lookup(Deep0 ^ csd_desc, CSDI, CDesc),
-				add_own_to_inherit(CPI, PDTotal0) = PDTotal1,
-				add_inherit_to_inherit(CDesc, PDTotal1)
-					= PDTotal,
-				array__set(u(Deep0 ^ pd_desc), PDI, PDTotal,
-					PDDesc),
-				Deep = Deep0 ^ pd_desc := PDDesc
-			;
-				Deep = Deep0
-			)
-		;
-			Deep = Deep0
-		)
+propagate_to_call_site(CliqueNumber, PDPtr, CSDPtr, Deep0, Deep,
+		PDZeroMap0, PDZeroMap) :-
+	deep_lookup_call_site_dynamics(Deep0, CSDPtr, CSD),
+	CalleeOwn = CSD ^ csd_own_prof,
+	CalleePDPtr = CSD ^ csd_callee,
+	deep_lookup_clique_index(Deep0, CalleePDPtr, ChildCliquePtr),
+	ChildCliquePtr = clique_ptr(ChildCliqueNumber),
+	( ChildCliqueNumber \= CliqueNumber ->
+		deep_lookup_pd_desc(Deep0, PDPtr, ProcDesc0),
+		deep_lookup_csd_desc(Deep0, CSDPtr, CalleeDesc),
+		CalleeTotal = add_own_to_inherit(CalleeOwn, CalleeDesc),
+		ProcDesc = add_inherit_to_inherit(ProcDesc0, CalleeTotal),
+		deep_update_pd_desc(Deep0, PDPtr, ProcDesc, Deep),
+		deep_lookup_csd_zero_map(Deep, CSDPtr, CSDZeroMap),
+		PDZeroMap = add_zero_maps(PDZeroMap0, CSDZeroMap)
 	;
-		Deep = Deep0
+		% We don't propagate profiling measurements
+		% along intra-clique calls.
+		Deep = Deep0,
+		PDZeroMap = PDZeroMap0
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- func add_zero_maps(zero_total_map, zero_total_map) = zero_total_map.
+
+add_zero_maps(ZeroMap1, ZeroMap2) = ZeroMap :-
+	( map__is_empty(ZeroMap1) ->
+		ZeroMap = ZeroMap2
+	; map__is_empty(ZeroMap2) ->
+		ZeroMap = ZeroMap1
+	;
+		ZeroMap = map__union(add_inherit_to_inherit,
+			ZeroMap1, ZeroMap2)
+	).
+
+:- func add_to_zero_map(zero_total_map, proc_static_ptr, inherit_prof_info) =
+	zero_total_map.
+
+add_to_zero_map(ZeroMap0, PSPtr, PDTotal) = ZeroMap :-
+	% Even if the map already contained an entry for PSPtr, the costs
+	% incurred by the calls represented by that entry have already been
+	% propagated to PDTotal.
+	map__set(ZeroMap0, PSPtr, PDTotal, ZeroMap).
+
+%-----------------------------------------------------------------------------%
+
+:- pred flat_call_sites(proc_dynamics::in, proc_dynamic_ptr::in,
+	list(call_site_dynamic_ptr)::out) is det.
+
+flat_call_sites(ProcDynamics, PDPtr, CSDPtrs) :-
+	lookup_proc_dynamics(ProcDynamics, PDPtr, PD),
+	CallSiteArray = PD ^ pd_sites,
+	flatten_call_sites(CallSiteArray, CSDPtrs, _).
+
+:- pred flatten_call_sites(array(call_site_array_slot)::in,
+	list(call_site_dynamic_ptr)::out, is_zeroed::out) is det.
+
+flatten_call_sites(CallSiteArray, CSDPtrs, IsZeroed) :-
+	array__to_list(CallSiteArray, CallSites),
+	list__foldl2(gather_call_site_csdptrs, CallSites, [], CSDPtrsList0,
+		not_zeroed, IsZeroed),
+	list__reverse(CSDPtrsList0, CSDPtrsList),
+	list__condense(CSDPtrsList, CSDPtrs).
+
+:- pred gather_call_site_csdptrs(call_site_array_slot::in, 
+	list(list(call_site_dynamic_ptr))::in,
+	list(list(call_site_dynamic_ptr))::out,
+	is_zeroed::in, is_zeroed::out) is det.
+
+gather_call_site_csdptrs(Slot, CSDPtrs0, CSDPtrs1, IsZeroed0, IsZeroed) :-
+	(
+		Slot = normal(CSDPtr),
+		CSDPtr = call_site_dynamic_ptr(CSDI),
+		( CSDI > 0 ->
+			CSDPtrs1 = [[CSDPtr] | CSDPtrs0]
+		;
+			CSDPtrs1 = CSDPtrs0
+		),
+		IsZeroed = IsZeroed0
+	;
+		Slot = multi(IsZeroed1, PtrArray),
+		array__to_list(PtrArray, PtrList0),
+		list__filter((pred(CSDPtr::in) is semidet :-
+			CSDPtr = call_site_dynamic_ptr(CSDI),
+			CSDI > 0
+		), PtrList0, PtrList1),
+		CSDPtrs1 = [PtrList1 | CSDPtrs0],
+		( IsZeroed1 = zeroed ->
+			IsZeroed = zeroed
+		;
+			IsZeroed = IsZeroed0
+		)
 	).
 
 %-----------------------------------------------------------------------------%

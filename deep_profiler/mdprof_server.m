@@ -19,7 +19,8 @@
 
 :- implementation.
 
-:- import_module conf, interface, profile, read_profile, startup, server.
+:- import_module conf, interface.
+:- import_module profile, read_profile, startup, timeout, server.
 :- import_module array, bool, char, getopt, int, list, assoc_list.
 :- import_module map, require, set, std_util, string, require.
 
@@ -28,7 +29,6 @@
 	;	debug
 	;	test
 	;	test_dir
-	;	test_fields
 	;	timeout.
 
 :- type options ---> options.
@@ -70,14 +70,12 @@ main2(FileNames, Options) -->
 		(
 			{ Res = ok(Deep) },
 			{ lookup_string_option(Options, test_dir, TestDir) },
-			{ lookup_string_option(Options, test_fields,
-				TestFields) },
-			test_server(TestDir, Deep, TestFields)
+			{ Pref = default_preferences },
+			test_server(TestDir, Pref, Deep)
 		;
 			{ Res = error(Error) },
 			io__set_exit_status(1),
-			io__format(StdErr,
-				"error reading data file: %s\n",
+			io__format(StdErr, "error reading data file: %s\n",
 				[s(Error)])
 		)
 	;
@@ -92,7 +90,7 @@ main2(FileNames, Options) -->
 				{ lookup_int_option(Options, timeout,
 					TimeOut) },
 				{ lookup_bool_option(Options, debug, Debug) },
-				server(TimeOut, Debug, Deep)
+				server(TimeOut, Debug, CanonicalClique, Deep)
 			;
 				{ Res = error(Error) },
 				io__set_exit_status(1),
@@ -119,14 +117,16 @@ make_pipes(FileNames, OK) -->
 		{ MakeOutputPipeCmd = make_pipe_cmd(OutputPipe) },
 		io__call_system(MakeInputPipeCmd, InputRes),
 		io__call_system(MakeOutputPipeCmd, OutputRes),
-		{
-			InputRes = ok(0),
-			OutputRes = ok(0)
+		(
+			{ InputRes = ok(0) },
+			{ OutputRes = ok(0) }
 		->
-			OK = yes
+			{ OK = yes },
+			{ StartupFile = server_startup_name(FileName) },
+			setup_exit(InputPipe, OutputPipe, StartupFile)
 		;
-			OK = no
-		}
+			{ OK = no }
+		)
 	;
 		{ error("make_pipes: multiple filenames not yet implemented") }
 	).
@@ -137,7 +137,6 @@ make_pipes(FileNames, OK) -->
 
 short('c',	canonical_clique).
 short('D',	test_dir).
-short('F',	test_fields).
 short('t',	timeout).
 short('T',	test).
 
@@ -147,7 +146,6 @@ long("canonical-clique",canonical_clique).
 long("debug",		debug).
 long("test",		test).
 long("test-dir",	test_dir).
-long("test-fields",	test_fields).
 long("timeout",		timeout).
 
 :- pred defaults(option::out, option_data::out) is nondet.
@@ -159,8 +157,7 @@ defaults(Option, Data) :-
 :- pred defaults0(option::out, option_data::out) is multi.
 
 defaults0(canonical_clique,	bool(no)).
-defaults0(debug,		bool(no)).
+defaults0(debug,		bool(yes)).
 defaults0(test,			bool(no)).
 defaults0(test_dir,		string("deep_test")).
-defaults0(test_fields,		string("pqw")).
 defaults0(timeout,		int(30)).

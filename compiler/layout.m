@@ -33,7 +33,7 @@
 :- interface.
 
 :- import_module prog_data, trace_params, llds, rtti, hlds_goal.
-:- import_module std_util, list, assoc_list.
+:- import_module bool, std_util, list, assoc_list.
 
 :- type layout_data
 	--->	label_layout_data(		% defines MR_Label_Layout
@@ -68,6 +68,8 @@
 	;	proc_static_data(		% defines MR_ProcStatic
 			proc_static_id		:: rtti_proc_label,
 			proc_static_file_name	:: string,
+			proc_static_line_number :: int,
+			proc_is_in_interface	:: bool,
 			call_site_statics	:: list(call_site_static_data)
 		).
 
@@ -75,27 +77,27 @@
 	--->	normal_call(
 			normal_callee		:: rtti_proc_label,
 			normal_type_subst	:: string,
-			normal_filename		:: string,
+			normal_file_name	:: string,
 			normal_line_number	:: int,
 			normal_goal_path	:: goal_path
 		)
 	;	special_call(
-			special_filename	:: string,
+			special_file_name	:: string,
 			special_line_number	:: int,
 			special_goal_path	:: goal_path
 		)
 	;	higher_order_call(
-			higher_order_filename	:: string,
+			higher_order_file_name	:: string,
 			ho_line_number		:: int,
 			ho_goal_path		:: goal_path
 		)
 	;	method_call(
-			method_filename		:: string,
+			method_file_name	:: string,
 			method_line_number	:: int,
 			method_goal_path	:: goal_path
 		)
 	;	callback(
-			callback_filename	:: string,
+			callback_file_name	:: string,
 			callback_line_number	:: int,
 			callback_goal_path	:: goal_path
 		).

@@ -15,45 +15,52 @@
 
 :- import_module char, list.
 
-% split(Str, Char, Pieces): splits Str into pieces at every occurrence of Char,
-% and returns the pieces in order. No piece will contain Char.
-
+	% split(Str, Char, Pieces): splits Str into pieces at every occurrence
+	% of Char, and returns the pieces in order. No piece will contain Char.
+	% If two Chars occur in a row, split will return the empty string as
+	% the piece between them.
 :- pred split(string::in, char::in, list(string)::out) is det.
 
 :- implementation.
 
 :- import_module string, require.
 
-split(Str0, SChar, Strs) :-
+split(Str0, SplitChar, Strs) :-
 	string__to_char_list(Str0, Chars0),
-	split(Chars0, SChar, [], [], Strs0),
-	list__reverse(Strs0, Strs).
+	split_2(Chars0, SplitChar, Strs).
 
-:- pred split(list(char)::in, char::in, list(char)::in,
-	list(string)::in, list(string)::out) is det.
+:- pred split_2(list(char)::in, char::in, list(string)::out) is det.
 
-split([], _SChar, Chars0, Strs0, Strs) :-
-	(
-		Chars0 = [],
-		Strs = Strs0
+split_2(Chars, SplitChar, PieceStrs) :-
+	( find_split_char(Chars, SplitChar, Before, After) ->
+		string__from_char_list(Before, BeforeStr),
+		split_2(After, SplitChar, TailStrs),
+		PieceStrs = [BeforeStr | TailStrs]
 	;
-		Chars0 = [_ | _],
-		list__reverse(Chars0, Chars),
-		string__from_char_list(Chars, Str),
-		Strs = [Str | Strs0]
+		string__from_char_list(Chars, PieceStr),
+		PieceStrs = [PieceStr]
 	).
-split([C | Cs], SChar, Chars0, Strs0, Strs) :-
-	( C = SChar ->
-		(
-			Chars0 = [],
-			Strs1 = Strs0
-		;
-			Chars0 = [_ | _],
-			list__reverse(Chars0, Chars),
-			string__from_char_list(Chars, Str),
-			Strs1 = [Str | Strs0]
-		),
-		split(Cs, SChar, [], Strs1, Strs)
+
+	% find_split_char(Chars, SplitChar, Before, After):
+	% If SplitChar occurs in Chars, it returns all the characters in Chars
+	% before the first occurrence of SplitChar in Chars in Before, and all
+	% the characters after the first occurrence of SplitChar in Chars in
+	% After. The first occurrence of SplitChar itself is not returned.
+:- pred find_split_char(list(char)::in, char::in,
+	list(char)::out, list(char)::out) is semidet.
+
+find_split_char(Chars, SplitChar, Before, After) :-
+	find_split_char_2(Chars, SplitChar, [], BeforeRev, After),
+	list__reverse(BeforeRev, Before).
+
+:- pred find_split_char_2(list(char)::in, char::in, list(char)::in,
+	list(char)::out, list(char)::out) is semidet.
+
+find_split_char_2([Char | Chars], SplitChar, BeforeRev0, BeforeRev, After) :-
+	( Char = SplitChar ->
+		BeforeRev = BeforeRev0,
+		After = Chars
 	;
-		split(Cs, SChar, [C | Chars0], Strs0, Strs)
+		find_split_char_2(Chars, SplitChar, [Char | BeforeRev0],
+			BeforeRev, After)
 	).

@@ -21,7 +21,7 @@
 :- interface.
 
 :- import_module measurements.
-:- import_module std_util, array, list, map.
+:- import_module bool, std_util, array, list, map.
 
 :- type profile_stats --->
 	profile_stats(
@@ -31,7 +31,9 @@
 		max_ps			:: int,
 		ticks_per_sec		:: int,
 		instrument_quanta	:: int,
-		user_quanta		:: int
+		user_quanta		:: int,
+		word_size		:: int,
+		canonical		:: bool
 	).
 
 :- type initial_deep --->
@@ -81,8 +83,26 @@
 		ps_own			:: array(own_prof_info),
 		ps_desc			:: array(inherit_prof_info),
 		css_own			:: array(own_prof_info),
-		css_desc		:: array(inherit_prof_info)
+		css_desc		:: array(inherit_prof_info),
+			% Additional propagated timing info to solve the
+			% problem of undetected recursion through higher order
+			% calls, which is caused by our use of zeroing.
+		pd_zero_total_map	:: array(zero_total_map),
+		csd_zero_total_map	:: array(zero_total_map),
+			% Information about modules.
+		module_data		:: map(string, module_data)
 	).
+
+:- type zero_total_map == map(proc_static_ptr, inherit_prof_info).
+
+:- type module_data
+	--->	module_data(
+					% The total cost of the module.
+			module_own	:: own_prof_info,
+			module_desc	:: inherit_prof_info,
+					% The procedures defined in the module.
+			module_procs	:: list(proc_static_ptr)
+		).
 
 %-----------------------------------------------------------------------------%
 
@@ -118,10 +138,14 @@
 :- type proc_static
 	--->	proc_static(
 			ps_id		:: proc_id,	% procedure ID
+			ps_decl_module	:: string,	% declaring module
 			ps_refined_id	:: string, 	% refined procedure id
 			ps_raw_id	:: string, 	% raw procedure id
-			ps_filename	:: string, 	% file name
-			ps_sites	:: array(call_site_static_ptr)
+			ps_file_name	:: string, 	% file name of proc
+			ps_line_number	:: int, 	% line number of proc
+			ps_in_interface	:: bool,	% is in interface?
+			ps_sites	:: array(call_site_static_ptr),
+			ps_is_zeroed	:: is_zeroed
 		).
 
 :- type call_site_dynamic
@@ -169,7 +193,11 @@
 
 :- type call_site_array_slot
 	--->	normal(call_site_dynamic_ptr)
-	;	multi(array(call_site_dynamic_ptr)).
+	;	multi(is_zeroed, array(call_site_dynamic_ptr)).
+
+:- type is_zeroed
+	--->	zeroed
+	;	not_zeroed.
 
 :- type call_site_kind
 	--->	normal_call
@@ -197,8 +225,16 @@
 
 %-----------------------------------------------------------------------------%
 
+:- func decl_module(proc_id) = string.
+
 :- func dummy_proc_id = proc_id.
 :- func main_parent_proc_id = proc_id.
+
+:- func dummy_proc_dynamic_ptr = proc_dynamic_ptr.
+:- func dummy_proc_static_ptr = proc_static_ptr.
+:- func dummy_call_site_dynamic_ptr = call_site_dynamic_ptr.
+:- func dummy_call_site_static_ptr = call_site_static_ptr.
+:- func dummy_clique_ptr = clique_ptr.
 
 :- pred valid_clique_ptr(deep::in, clique_ptr::in) is semidet.
 :- pred valid_proc_dynamic_ptr(deep::in, proc_dynamic_ptr::in) is semidet.
@@ -233,11 +269,33 @@
 	clique_ptr::in, call_site_dynamic_ptr::out) is det.
 :- pred lookup_clique_maybe_child(array(maybe(clique_ptr))::in,
 	call_site_dynamic_ptr::in, maybe(clique_ptr)::out) is det.
+:- pred lookup_proc_callers(array(list(call_site_dynamic_ptr))::in,
+	proc_static_ptr::in, list(call_site_dynamic_ptr)::out) is det.
 :- pred lookup_call_site_static_map(call_site_static_map::in,
 	call_site_dynamic_ptr::in, call_site_static_ptr::out) is det.
 :- pred lookup_call_site_calls(array(map(proc_static_ptr,
 	list(call_site_dynamic_ptr)))::in, call_site_static_ptr::in,
 	map(proc_static_ptr, list(call_site_dynamic_ptr))::out) is det.
+:- pred lookup_pd_own(array(own_prof_info)::in,
+	proc_dynamic_ptr::in, own_prof_info::out) is det.
+:- pred lookup_pd_desc(array(inherit_prof_info)::in,
+	proc_dynamic_ptr::in, inherit_prof_info::out) is det.
+:- pred lookup_csd_own(array(own_prof_info)::in,
+	call_site_dynamic_ptr::in, own_prof_info::out) is det.
+:- pred lookup_csd_desc(array(inherit_prof_info)::in,
+	call_site_dynamic_ptr::in, inherit_prof_info::out) is det.
+:- pred lookup_ps_own(array(own_prof_info)::in,
+	proc_static_ptr::in, own_prof_info::out) is det.
+:- pred lookup_ps_desc(array(inherit_prof_info)::in,
+	proc_static_ptr::in, inherit_prof_info::out) is det.
+:- pred lookup_css_own(array(own_prof_info)::in,
+	call_site_static_ptr::in, own_prof_info::out) is det.
+:- pred lookup_css_desc(array(inherit_prof_info)::in,
+	call_site_static_ptr::in, inherit_prof_info::out) is det.
+:- pred lookup_pd_zero_map(array(zero_total_map)::in,
+	proc_dynamic_ptr::in, zero_total_map::out) is det.
+:- pred lookup_csd_zero_map(array(zero_total_map)::in,
+	call_site_dynamic_ptr::in, zero_total_map::out) is det.
 
 :- pred deep_lookup_call_site_dynamics(deep::in, call_site_dynamic_ptr::in,
 	call_site_dynamic::out) is det.
@@ -255,12 +313,18 @@
 	call_site_dynamic_ptr::out) is det.
 :- pred deep_lookup_clique_maybe_child(deep::in, call_site_dynamic_ptr::in,
 	maybe(clique_ptr)::out) is det.
+:- pred deep_lookup_proc_callers(deep::in, proc_static_ptr::in,
+	list(call_site_dynamic_ptr)::out) is det.
 :- pred deep_lookup_call_site_static_map(deep::in, call_site_dynamic_ptr::in,
 	call_site_static_ptr::out) is det.
 :- pred deep_lookup_call_site_calls(deep::in, call_site_static_ptr::in,
 	map(proc_static_ptr, list(call_site_dynamic_ptr))::out) is det.
 :- pred deep_lookup_proc_dynamic_sites(deep::in, proc_dynamic_ptr::in,
 	array(call_site_array_slot)::out) is det.
+:- pred deep_lookup_pd_zero_map(deep::in, proc_dynamic_ptr::in,
+	zero_total_map::out) is det.
+:- pred deep_lookup_csd_zero_map(deep::in, call_site_dynamic_ptr::in,
+	zero_total_map::out) is det.
 
 :- pred deep_lookup_pd_own(deep::in, proc_dynamic_ptr::in,
 	own_prof_info::out) is det.
@@ -290,9 +354,24 @@
 	proc_dynamics::array_uo) is det.
 :- pred update_proc_statics(proc_statics::array_di,
 	proc_static_ptr::in, proc_static::in, proc_statics::array_uo) is det.
+:- pred update_proc_callers(array(list(call_site_dynamic_ptr))::array_di,
+	proc_static_ptr::in, list(call_site_dynamic_ptr)::in,
+	array(list(call_site_dynamic_ptr))::array_uo) is det.
 :- pred update_call_site_static_map(call_site_static_map::array_di,
 	call_site_dynamic_ptr::in, call_site_static_ptr::in,
 	call_site_static_map::array_uo) is det.
+:- pred update_ps_own(array(own_prof_info)::array_di,
+	proc_static_ptr::in, own_prof_info::in,
+	array(own_prof_info)::array_uo) is det.
+:- pred update_ps_desc(array(inherit_prof_info)::array_di,
+	proc_static_ptr::in, inherit_prof_info::in,
+	array(inherit_prof_info)::array_uo) is det.
+:- pred update_css_own(array(own_prof_info)::array_di,
+	call_site_static_ptr::in, own_prof_info::in,
+	array(own_prof_info)::array_uo) is det.
+:- pred update_css_desc(array(inherit_prof_info)::array_di,
+	call_site_static_ptr::in, inherit_prof_info::in,
+	array(inherit_prof_info)::array_uo) is det.
 
 :- pred deep_update_csd_desc(deep::in, call_site_dynamic_ptr::in,
 	inherit_prof_info::in, deep::out) is det.
@@ -300,6 +379,49 @@
 	inherit_prof_info::in, deep::out) is det.
 :- pred deep_update_pd_own(deep::in, proc_dynamic_ptr::in,
 	own_prof_info::in, deep::out) is det.
+:- pred deep_update_pd_zero_map(deep::in, proc_dynamic_ptr::in,
+	zero_total_map::in, deep::out) is det.
+:- pred deep_update_csd_zero_map(deep::in, call_site_dynamic_ptr::in,
+	zero_total_map::in, deep::out) is det.
+
+:- pred extract_pd_sites(proc_dynamic::in, array(call_site_array_slot)::out)
+	is det.
+:- pred extract_csd_caller(call_site_dynamic::in, proc_dynamic_ptr::out)
+	is det.
+:- pred extract_csd_callee(call_site_dynamic::in, proc_dynamic_ptr::out)
+	is det.
+:- pred extract_csdptr_caller(initial_deep::in, call_site_dynamic_ptr::in,
+	proc_dynamic_ptr::out) is det.
+:- pred extract_csdptr_callee(initial_deep::in, call_site_dynamic_ptr::in,
+	proc_dynamic_ptr::out) is det.
+:- pred extract_ticks_per_sec(initial_deep::in, int::out) is det.
+:- pred extract_instrument_quanta(initial_deep::in, int::out) is det.
+:- pred extract_user_quanta(initial_deep::in, int::out) is det.
+:- pred extract_max_css(initial_deep::in, int::out) is det.
+:- pred extract_max_ps(initial_deep::in, int::out) is det.
+:- pred extract_max_csd(initial_deep::in, int::out) is det.
+:- pred extract_max_pd(initial_deep::in, int::out) is det.
+:- pred extract_init_call_site_dynamics(initial_deep::in,
+	call_site_dynamics::out) is det.
+:- pred extract_init_call_site_statics(initial_deep::in,
+	call_site_statics::out) is det.
+:- pred extract_init_proc_dynamics(initial_deep::in,
+	proc_dynamics::out) is det.
+:- pred extract_init_proc_statics(initial_deep::in,
+	proc_statics::out) is det.
+:- pred extract_init_root(initial_deep::in,
+	proc_dynamic_ptr::out) is det.
+
+:- pred deep_extract_csdptr_caller(deep::in, call_site_dynamic_ptr::in,
+	proc_dynamic_ptr::out) is det.
+:- pred deep_extract_csdptr_callee(deep::in, call_site_dynamic_ptr::in,
+	proc_dynamic_ptr::out) is det.
+
+:- func wrap_proc_static_ptr(int) = proc_static_ptr.
+
+:- func root_total_info(deep) = inherit_prof_info.
+:- func root_desc_info(deep) = inherit_prof_info.
+:- func root_own_info(deep) = own_prof_info.
 
 %-----------------------------------------------------------------------------%
 
@@ -308,11 +430,26 @@
 :- import_module array_util.
 :- import_module int, require.
 
+decl_module(ProcId) = DeclModule :-
+	(
+		ProcId = user_defined(_, DeclModule, _, _, _, _)
+	;
+		ProcId = compiler_generated(_, DeclModule, _, _, _, _)
+	).
+
 dummy_proc_id = user_defined(predicate, "unknown", "unknown", "unknown",
 	-1, -1).
 
 main_parent_proc_id = user_defined(predicate, "mercury_runtime",
 	"mercury_runtime", "main_parent", 0, 0).
+
+%-----------------------------------------------------------------------------%
+
+dummy_proc_static_ptr = proc_static_ptr(-1).
+dummy_proc_dynamic_ptr = proc_dynamic_ptr(-1).
+dummy_call_site_static_ptr = call_site_static_ptr(-1).
+dummy_call_site_dynamic_ptr = call_site_dynamic_ptr(-1).
+dummy_clique_ptr = clique_ptr(-1).
 
 %-----------------------------------------------------------------------------%
 
@@ -421,6 +558,14 @@ lookup_clique_maybe_child(CliqueMaybeChild, CSDPtr, MaybeCliquePtr) :-
 		error("lookup_clique_maybe_child: bounds error")
 	).
 
+lookup_proc_callers(ProcCallers, PSPtr, Callers) :-
+	PSPtr = proc_static_ptr(PSI),
+	( PSI > 0, array__in_bounds(ProcCallers, PSI) ->
+		array__lookup(ProcCallers, PSI, Callers)
+	;
+		error("lookup_proc_callers: bounds error")
+	).
+
 lookup_call_site_static_map(CallSiteStaticMap, CSDPtr, CSSPtr) :-
 	CSDPtr = call_site_dynamic_ptr(CSDI),
 	( CSDI > 0, array__in_bounds(CallSiteStaticMap, CSDI) ->
@@ -435,6 +580,86 @@ lookup_call_site_calls(CallSiteCalls, CSSPtr, Calls) :-
 		array__lookup(CallSiteCalls, CSSI, Calls)
 	;
 		error("lookup_call_site_static_map: bounds error")
+	).
+
+lookup_pd_own(PDOwns, PDPtr, PDOwn) :-
+	PDPtr = proc_dynamic_ptr(PDI),
+	( PDI > 0, array__in_bounds(PDOwns, PDI) ->
+		array__lookup(PDOwns, PDI, PDOwn)
+	;
+		error("lookup_pd_own: bounds error")
+	).
+
+lookup_pd_desc(PDDescs, PDPtr, PDDesc) :-
+	PDPtr = proc_dynamic_ptr(PDI),
+	( PDI > 0, array__in_bounds(PDDescs, PDI) ->
+		array__lookup(PDDescs, PDI, PDDesc)
+	;
+		error("lookup_pd_desc: bounds error")
+	).
+
+lookup_csd_own(CSDOwns, CSDPtr, CSDOwn) :-
+	CSDPtr = call_site_dynamic_ptr(CSDI),
+	( CSDI > 0, array__in_bounds(CSDOwns, CSDI) ->
+		array__lookup(CSDOwns, CSDI, CSDOwn)
+	;
+		error("lookup_csd_own: bounds error")
+	).
+
+lookup_csd_desc(CSDDescs, CSDPtr, CSDDesc) :-
+	CSDPtr = call_site_dynamic_ptr(CSDI),
+	( CSDI > 0, array__in_bounds(CSDDescs, CSDI) ->
+		array__lookup(CSDDescs, CSDI, CSDDesc)
+	;
+		error("lookup_csd_desc: bounds error")
+	).
+
+lookup_ps_own(PSOwns, PSPtr, PSOwn) :-
+	PSPtr = proc_static_ptr(PSI),
+	( PSI > 0, array__in_bounds(PSOwns, PSI) ->
+		array__lookup(PSOwns, PSI, PSOwn)
+	;
+		error("lookup_ps_own: bounds error")
+	).
+
+lookup_ps_desc(PSDescs, PSPtr, PSDesc) :-
+	PSPtr = proc_static_ptr(PSI),
+	( PSI > 0, array__in_bounds(PSDescs, PSI) ->
+		array__lookup(PSDescs, PSI, PSDesc)
+	;
+		error("lookup_ps_desc: bounds error")
+	).
+
+lookup_css_own(CSSOwns, CSSPtr, CSSOwn) :-
+	CSSPtr = call_site_static_ptr(CSSI),
+	( CSSI > 0, array__in_bounds(CSSOwns, CSSI) ->
+		array__lookup(CSSOwns, CSSI, CSSOwn)
+	;
+		error("lookup_css_own: bounds error")
+	).
+
+lookup_css_desc(CSSDescs, CSSPtr, CSSDesc) :-
+	CSSPtr = call_site_static_ptr(CSSI),
+	( CSSI > 0, array__in_bounds(CSSDescs, CSSI) ->
+		array__lookup(CSSDescs, CSSI, CSSDesc)
+	;
+		error("lookup_css_desc: bounds error")
+	).
+
+lookup_pd_zero_map(PDZeroMaps, PDPtr, ZeroMap) :-
+	PDPtr = proc_dynamic_ptr(PDI),
+	( PDI > 0, array__in_bounds(PDZeroMaps, PDI) ->
+		array__lookup(PDZeroMaps, PDI, ZeroMap)
+	;
+		error("lookup_pd_zero_map: bounds error")
+	).
+
+lookup_csd_zero_map(CSDZeroMaps, CSDPtr, ZeroMap) :-
+	CSDPtr = call_site_dynamic_ptr(CSDI),
+	( CSDI > 0, array__in_bounds(CSDZeroMaps, CSDI) ->
+		array__lookup(CSDZeroMaps, CSDI, ZeroMap)
+	;
+		error("lookup_csd_zero_map: bounds error")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -464,6 +689,9 @@ deep_lookup_clique_maybe_child(Deep, CSDPtr, MaybeCliquePtr) :-
 	lookup_clique_maybe_child(Deep ^ clique_maybe_child, CSDPtr,
 		MaybeCliquePtr).
 
+deep_lookup_proc_callers(Deep, PSPtr, CallerCSDPtrs) :-
+	lookup_proc_callers(Deep ^ proc_callers, PSPtr, CallerCSDPtrs).
+
 deep_lookup_call_site_static_map(Deep, CSDPtr, CSSPtr) :-
 	lookup_call_site_static_map(Deep ^ call_site_static_map, CSDPtr,
 		CSSPtr).
@@ -474,6 +702,12 @@ deep_lookup_call_site_calls(Deep, CSSPtr, Calls) :-
 deep_lookup_proc_dynamic_sites(Deep, PDPtr, PDSites) :-
 	deep_lookup_proc_dynamics(Deep, PDPtr, PD),
 	PDSites = PD ^ pd_sites.
+
+deep_lookup_pd_zero_map(Deep, PDPtr, ZeroMap) :-
+	lookup_pd_zero_map(Deep ^ pd_zero_total_map, PDPtr, ZeroMap).
+
+deep_lookup_csd_zero_map(Deep, CSDPtr, ZeroMap) :-
+	lookup_csd_zero_map(Deep ^ csd_zero_total_map, CSDPtr, ZeroMap).
 
 %-----------------------------------------------------------------------------%
 
@@ -533,6 +767,26 @@ update_call_site_static_map(CallSiteStaticMap0, CSDPtr, CSSPtr,
 	CSDPtr = call_site_dynamic_ptr(CSDI),
 	array__set(CallSiteStaticMap0, CSDI, CSSPtr, CallSiteStaticMap).
 
+update_proc_callers(ProcCallers0, PSPtr, CSDPtrs, ProcCallers) :-
+	PSPtr = proc_static_ptr(PSI),
+	array__set(ProcCallers0, PSI, CSDPtrs, ProcCallers).
+
+update_ps_own(PSOwns0, PSPtr, Own, PSOwns) :-
+	PSPtr = proc_static_ptr(PSI),
+	array__set(PSOwns0, PSI, Own, PSOwns).
+
+update_ps_desc(PSDescs0, PSPtr, Desc, PSDescs) :-
+	PSPtr = proc_static_ptr(PSI),
+	array__set(PSDescs0, PSI, Desc, PSDescs).
+
+update_css_own(CSSOwns0, CSSPtr, Own, CSSOwns) :-
+	CSSPtr = call_site_static_ptr(CSSI),
+	array__set(CSSOwns0, CSSI, Own, CSSOwns).
+
+update_css_desc(CSSDescs0, CSSPtr, Desc, CSSDescs) :-
+	CSSPtr = call_site_static_ptr(CSSI),
+	array__set(CSSDescs0, CSSI, Desc, CSSDescs).
+
 %-----------------------------------------------------------------------------%
 
 deep_update_csd_desc(Deep0, CSDPtr, CSDDesc, Deep) :-
@@ -549,5 +803,91 @@ deep_update_pd_own(Deep0, PDPtr, PDOwn, Deep) :-
 	PDPtr = proc_dynamic_ptr(PDI),
 	array__set(u(Deep0 ^ pd_own), PDI, PDOwn, PDOwns),
 	Deep = Deep0 ^ pd_own := PDOwns.
+
+deep_update_pd_zero_map(Deep0, PDPtr, ZeroMap, Deep) :-
+	PDPtr = proc_dynamic_ptr(PDI),
+	array__set(u(Deep0 ^ pd_zero_total_map), PDI, ZeroMap, PDZeroMaps),
+	Deep = Deep0 ^ pd_zero_total_map := PDZeroMaps.
+
+deep_update_csd_zero_map(Deep0, CSDPtr, ZeroMap, Deep) :-
+	CSDPtr = call_site_dynamic_ptr(CSDI),
+	array__set(u(Deep0 ^ csd_zero_total_map), CSDI, ZeroMap, CSDZeroMaps),
+	Deep = Deep0 ^ csd_zero_total_map := CSDZeroMaps.
+
+%-----------------------------------------------------------------------------%
+
+extract_pd_sites(PD, PD ^ pd_sites).
+
+extract_csd_caller(CSD, CSD ^ csd_caller).
+
+extract_csd_callee(CSD, CSD ^ csd_callee).
+
+extract_csdptr_caller(InitDeep, CSDPtr, CallerPDPtr) :-
+	lookup_call_site_dynamics(InitDeep ^ init_call_site_dynamics,
+		CSDPtr, CSD),
+	CallerPDPtr = CSD ^ csd_caller.
+
+extract_csdptr_callee(InitDeep, CSDPtr, CalleePDPtr) :-
+	lookup_call_site_dynamics(InitDeep ^ init_call_site_dynamics,
+		CSDPtr, CSD),
+	CalleePDPtr = CSD ^ csd_callee.
+
+extract_ticks_per_sec(InitDeep,
+	InitDeep ^ init_profile_stats ^ ticks_per_sec).
+
+extract_instrument_quanta(InitDeep,
+	InitDeep ^ init_profile_stats ^ instrument_quanta).
+
+extract_user_quanta(InitDeep,
+	InitDeep ^ init_profile_stats ^ user_quanta).
+
+extract_max_css(InitDeep, MaxCSS) :-
+	array__max(InitDeep ^ init_call_site_statics, MaxCSS).
+
+extract_max_ps(InitDeep, MaxPS) :-
+	array__max(InitDeep ^ init_proc_statics, MaxPS).
+
+extract_max_csd(InitDeep, MaxCSD) :-
+	array__max(InitDeep ^ init_call_site_dynamics, MaxCSD).
+
+extract_max_pd(InitDeep, MaxPD) :-
+	array__max(InitDeep ^ init_proc_dynamics, MaxPD).
+
+extract_init_call_site_dynamics(InitDeep, InitDeep ^ init_call_site_dynamics).
+
+extract_init_call_site_statics(InitDeep, InitDeep ^ init_call_site_statics).
+
+extract_init_proc_dynamics(InitDeep, InitDeep ^ init_proc_dynamics).
+
+extract_init_proc_statics(InitDeep, InitDeep ^ init_proc_statics).
+
+extract_init_root(InitDeep, InitDeep ^ init_root).
+
+%-----------------------------------------------------------------------------%
+
+deep_extract_csdptr_caller(Deep, CSDPtr, CallerPDPtr) :-
+	lookup_call_site_dynamics(Deep ^ call_site_dynamics, CSDPtr, CSD),
+	CallerPDPtr = CSD ^ csd_caller.
+
+deep_extract_csdptr_callee(Deep, CSDPtr, CalleePDPtr) :-
+	lookup_call_site_dynamics(Deep ^ call_site_dynamics, CSDPtr, CSD),
+	CalleePDPtr = CSD ^ csd_callee.
+
+%-----------------------------------------------------------------------------%
+
+wrap_proc_static_ptr(PSI) = proc_static_ptr(PSI).
+
+%-----------------------------------------------------------------------------%
+
+root_total_info(Deep) = RootTotal :-
+	deep_lookup_pd_own(Deep, Deep ^ root, RootOwn),
+	deep_lookup_pd_desc(Deep, Deep ^ root, RootDesc),
+	add_own_to_inherit(RootOwn, RootDesc) = RootTotal.
+
+root_desc_info(Deep) = RootDesc :-
+	deep_lookup_pd_desc(Deep, Deep ^ root, RootDesc).
+
+root_own_info(Deep) = RootOwn :-
+	deep_lookup_pd_own(Deep, Deep ^ root, RootOwn).
 
 %-----------------------------------------------------------------------------%

@@ -21,7 +21,7 @@
 :- implementation.
 
 :- import_module measurements, array_util.
-:- import_module array, char, string, int, float, list, require.
+:- import_module bool, char, string, int, array, list, require.
 :- import_module io_combinator.
 
 :- type maybe_error2(T1, T2)
@@ -41,7 +41,7 @@ read_call_graph(FileName, Res) -->
 		read_id_string(Res1),
 		(
 			{ Res1 = ok(_) },
-			io_combinator__maybe_error_sequence_7(
+			io_combinator__maybe_error_sequence_10(
 				read_fixed_size_int,
 				read_fixed_size_int,
 				read_fixed_size_int,
@@ -49,16 +49,24 @@ read_call_graph(FileName, Res) -->
 				read_num,
 				read_num,
 				read_num,
+				read_deep_byte,
+				read_deep_byte,
+				read_ptr(pd),
 				(pred(MaxCSD::in, MaxCSS::in,
 						MaxPD::in, MaxPS::in,
 						TicksPerSec::in,
 						InstrumentQuanta::in,
 						UserQuanta::in,
+						WordSize::in,
+						CanonicalFlag::in,
+						RootPDI::in,
 						ResInitDeep::out) is det :-
-					init_deep(MaxCSD, MaxCSS, MaxPD, MaxPS,
+					InitDeep0 = init_deep(MaxCSD, MaxCSS,
+						MaxPD, MaxPS,
 						TicksPerSec,
 						InstrumentQuanta, UserQuanta,
-						InitDeep0),
+						WordSize, CanonicalFlag,
+						RootPDI),
 					ResInitDeep = ok(InitDeep0)
 				),
 				Res2),
@@ -101,32 +109,37 @@ read_id_string(Res) -->
 
 id_string = "Mercury deep profiler data".
 
-:- pred init_deep(int::in, int::in, int::in, int::in, int::in, int::in,
-	int::in, initial_deep::out) is det.
+:- func init_deep(int, int, int, int, int, int, int, int, int, int)
+	= initial_deep.
 
-init_deep(MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec,
-		InstrumentQuanta, UserQuanta, InitDeep) :-
-	InitStats = profile_stats(MaxCSD, MaxCSS, MaxPD, MaxPS,
-		TicksPerSec, InstrumentQuanta, UserQuanta),
-
+init_deep(MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec, InstrumentQuanta,
+		UserQuanta, WordSize, CanonicalByte, RootPDI) = InitDeep :-
+	( CanonicalByte = 0 ->
+		CanonicalFlag = no
+	;
+		CanonicalFlag = yes
+	),
+	InitStats = profile_stats(MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec,
+		InstrumentQuanta, UserQuanta, WordSize, CanonicalFlag),
 	InitDeep = initial_deep(
 		InitStats,
-		proc_dynamic_ptr(-1),
+		make_pdptr(RootPDI),
 		array__init(MaxCSD + 1,
 			call_site_dynamic(
-				proc_dynamic_ptr(-1),
-				proc_dynamic_ptr(-1),
+				make_dummy_pdptr,
+				make_dummy_pdptr,
 				zero_own_prof_info
 			)),
 		array__init(MaxPD + 1,
-			proc_dynamic(proc_static_ptr(-1), array([]))),
+			proc_dynamic(make_dummy_psptr, array([]))),
 		array__init(MaxCSS + 1,
 			call_site_static(
-				proc_static_ptr(-1), -1,
-				normal_call(proc_static_ptr(-1), ""), -1, ""
+				make_dummy_psptr, -1,
+				normal_call(make_dummy_psptr, ""), -1, ""
 			)),
 		array__init(MaxPS + 1,
-			proc_static(dummy_proc_id, "", "", "", array([])))
+			proc_static(dummy_proc_id, "", "", "", "", -1, no,
+				array([]), not_zeroed))
 	).
 
 :- pred read_nodes(initial_deep::in, maybe_error(initial_deep)::out,
@@ -192,16 +205,6 @@ read_nodes(InitDeep0, Res) -->
 				{ Res1 = error2(Err) },
 				{ Res = error(Err) }
 			)
-		; { Byte = token_root } ->
-			read_root(Res1),
-			(
-				{ Res1 = ok(PDPtr) },
-				{ InitDeep1 = InitDeep0 ^ init_root := PDPtr },
-				read_nodes(InitDeep1, Res)
-			;
-				{ Res1 = error(Err) },
-				{ Res = error(Err) }
-			)
 		;
 			{ format("unexpected token %d", [i(Byte)], Msg) },
 			{ Res = error(Msg) }
@@ -215,26 +218,12 @@ read_nodes(InitDeep0, Res) -->
 		{ Res = error(Msg) }
 	).
 
-:- pred read_root(maybe_error(proc_dynamic_ptr)::out,
-	io__state::di, io__state::uo) is det.
-
-read_root(Res) -->
-	% format("reading root.\n", []),
-	read_ptr(pd, Res0),
-	(
-		{ Res0 = ok(PDI) },
-		{ PDPtr = proc_dynamic_ptr(PDI) },
-		{ Res = ok(PDPtr) }
-	;
-		{ Res0 = error(Err) },
-		{ Res = error(Err) }
-	).
-
 :- pred read_call_site_static(maybe_error2(call_site_static, int)::out,
 	io__state::di, io__state::uo) is det.
 
 read_call_site_static(Res) -->
-	% format("reading call_site_static.\n", []),
+	% DEBUGSITE
+	% io__format("reading call_site_static.\n", []),
 	io_combinator__maybe_error_sequence_4(
 		read_ptr(css),
 		read_call_site_kind_and_callee,
@@ -242,7 +231,7 @@ read_call_site_static(Res) -->
 		read_string,
 		(pred(CSSI0::in, Kind::in, LineNumber::in, Str::in, Res0::out)
 				is det :-
-			DummyPSPtr = proc_static_ptr(-1),
+			DummyPSPtr = make_dummy_psptr,
 			DummySlotNum = -1,
 			CallSiteStatic0 = call_site_static(DummyPSPtr,
 				DummySlotNum, Kind, LineNumber, Str),
@@ -262,29 +251,41 @@ read_call_site_static(Res) -->
 	io__state::di, io__state::uo) is det.
 
 read_proc_static(Res) -->
-	% format("reading proc_static.\n", []),
-	io_combinator__maybe_error_sequence_4(
+	% DEBUGSITE
+	% io__format("reading proc_static.\n", []),
+	io_combinator__maybe_error_sequence_6(
 		read_ptr(ps),
 		read_proc_id,
 		read_string,
 		read_num,
-		(pred(PSI0::in, Id0::in, F0::in, N0::in, Stuff0::out) is det :-
-			Stuff0 = ok({PSI0, Id0, F0, N0})
+		read_deep_byte,
+		read_num,
+		(pred(PSI0::in, Id0::in, F0::in, L0::in, I0::in,
+				N0::in, Stuff0::out) is det :-
+			Stuff0 = ok({PSI0, Id0, F0, L0, I0, N0})
 		),
 		Res1),
 	(
-		{ Res1 = ok({PSI, Id, FileName, N}) },
+		{ Res1 = ok({PSI, Id, FileName, LineNumber, Interface, N}) },
 		read_n_things(N, read_ptr(css), Res2),
 		(
-			{ Res2 = ok(Ptrs0) },
-			{ map((pred(Ptr1::in, Ptr2::out) is det :-
-				Ptr2 = call_site_static_ptr(Ptr1)
-			), Ptrs0, Ptrs) },
+			{ Res2 = ok(CSSIs) },
+			{ CSSPtrs = list__map(make_cssptr, CSSIs) },
+			{ DeclModule = decl_module(Id) },
 			{ RefinedStr = refined_proc_id_to_string(Id) },
 			{ RawStr = raw_proc_id_to_string(Id) },
-			{ ProcStatic =
-				proc_static(Id, RefinedStr, RawStr,
-					FileName, array(Ptrs)) },
+			% The `not_zeroed' for whether the procedure's
+			% proc_static is ever zeroed is the default. The
+			% startup phase will set it to `zeroed' in the
+			% proc_statics which are ever zeroed.
+			{ Interface = 0 ->
+				IsInInterface = no
+			;
+				IsInInterface = yes
+			},
+			{ ProcStatic = proc_static(Id, DeclModule,
+				RefinedStr, RawStr, FileName, LineNumber,
+				IsInInterface, array(CSSPtrs), not_zeroed) },
 			{ Res = ok2(ProcStatic, PSI) }
 		;
 			{ Res2 = error(Err) },
@@ -503,7 +504,8 @@ glue_lambda_name(Segments, PredName, LineNumber) :-
 	io__state::di, io__state::uo) is det.
 
 read_proc_dynamic(Res) -->
-	% format("reading proc_dynamic.\n", []),
+	% DEBUGSITE
+	% io__format("reading proc_dynamic.\n", []),
 	io_combinator__maybe_error_sequence_3(
 		read_ptr(pd),
 		read_ptr(ps),
@@ -517,7 +519,7 @@ read_proc_dynamic(Res) -->
 		read_n_things(N, read_call_site_ref, Res2),
 		(
 			{ Res2 = ok(Refs) },
-			{ PSPtr = proc_static_ptr(PSI) },
+			{ PSPtr = make_psptr(PSI) },
 			{ ProcDynamic = proc_dynamic(PSPtr, array(Refs)) },
 			{ Res = ok2(ProcDynamic, PDI) }
 		;
@@ -533,7 +535,8 @@ read_proc_dynamic(Res) -->
 	io__state::di, io__state::uo) is det.
 
 read_call_site_dynamic(Res) -->
-	% format("reading call_site_dynamic.\n", []),
+	% DEBUGSITE
+	% io__format("reading call_site_dynamic.\n", []),
 	read_ptr(csd, Res1),
 	(
 		{ Res1 = ok(CSDI) },
@@ -543,10 +546,10 @@ read_call_site_dynamic(Res) -->
 			read_profile(Res3),
 			(
 				{ Res3 = ok(Profile) },
-				{ PDPtr = proc_dynamic_ptr(PDI) },
-				{ DummyPDPtr = proc_dynamic_ptr(-1) },
+				{ PDPtr = make_pdptr(PDI) },
+				{ CallerPDPtr = make_dummy_pdptr },
 				{ CallSiteDynamic = call_site_dynamic(
-					DummyPDPtr, PDPtr, Profile) },
+					CallerPDPtr, PDPtr, Profile) },
 				{ Res = ok2(CallSiteDynamic, CSDI) }
 			;
 				{ Res3 = error(Err) },
@@ -570,7 +573,7 @@ read_profile(Res) -->
 		{ Res0 = ok(Mask) },
 		{ MaybeError1 = no },
 		% { MaybeError0 = no },
-		% Calls are computed from the other counts below
+		% Calls are computed from the other counts in measurements.m
 		% ( { Mask /\ 0x0001 \= 0 } ->
 		% 	maybe_read_num_handle_error(Calls,
 		% 		MaybeError0, MaybeError1)
@@ -652,28 +655,32 @@ maybe_read_num_handle_error(Value, MaybeError0, MaybeError) -->
 	io__state::di, io__state::uo) is det.
 
 read_call_site_ref(Res) -->
-	% format("reading call_site_ref.\n", []),
+	% DEBUGSITE
+	% io__format("reading call_site_ref.\n", []),
 	read_call_site_kind(Res1),
 	(
 		{ Res1 = ok(Kind) },
 		( { Kind = normal_call } ->
 			read_ptr(csd, Res2),
 			(
-				{ Res2 = ok(Ptr) },
-				{ CDPtr = call_site_dynamic_ptr(Ptr) },
-				{ Res = ok(normal(CDPtr)) }
+				{ Res2 = ok(CSDI) },
+				{ CSDPtr = make_csdptr(CSDI) },
+				{ Res = ok(normal(CSDPtr)) }
 			;
 				{ Res2 = error(Err) },
 				{ Res = error(Err) }
 			)
 		;
+			{ ( Kind = higher_order_call ; Kind = method_call ) ->
+				Zeroed = zeroed
+			;
+				Zeroed = not_zeroed
+			},
 			read_things(read_ptr(csd), Res2),
 			(
-				{ Res2 = ok(Ptrs0) },
-				{ map((pred(PtrX::in, PtrY::out) is det :-
-					PtrY = call_site_dynamic_ptr(PtrX)
-				), Ptrs0, Ptrs) },
-				{ Res = ok(multi(array(Ptrs))) }
+				{ Res2 = ok(CSDIs) },
+				{ CSDPtrs = list__map(make_csdptr, CSDIs) },
+				{ Res = ok(multi(Zeroed, array(CSDPtrs))) }
 			;
 				{ Res2 = error(Err) },
 				{ Res = error(Err) }
@@ -706,8 +713,11 @@ read_call_site_kind(Res) -->
 				[i(Byte)], Msg) },
 			{ Res = error(Msg) }
 		)
+		% DEBUGSITE
 		% io__write_string("call_site_kind "),
+		% DEBUGSITE
 		% io__write(Res),
+		% DEBUGSITE
 		% io__write_string("\n")
 	;
 		{ Res0 = error(Err) },
@@ -754,8 +764,11 @@ read_call_site_kind_and_callee(Res) -->
 				[i(Byte)], Msg) },
 			{ Res = error(Msg) }
 		)
+		% DEBUGSITE
 		% io__write_string("call_site_kind_and_callee "),
+		% DEBUGSITE
 		% io__write(Res),
+		% DEBUGSITE
 		% io__write_string("\n")
 	;
 		{ Res0 = error(Err) },
@@ -870,25 +883,34 @@ read_n_byte_string(Length, Res) -->
 		{ Res1 = error(Err) },
 		{ Res = error(Err) }
 	).
+	% DEBUGSITE
 	% io__write_string("string "),
+	% DEBUGSITE
 	% io__write(Res),
-	% io__write_string("\n")
+	% DEBUGSITE
+	% io__write_string("\n").
 
 :- pred read_ptr(ptr_kind::in, maybe_error(int)::out,
 	io__state::di, io__state::uo) is det.
 
 read_ptr(_Kind, Res) -->
 	read_num1(0, Res).
+	% DEBUGSITE
 	% io__write_string("ptr "),
+	% DEBUGSITE
 	% io__write(Res),
+	% DEBUGSITE
 	% io__write_string("\n").
 
 :- pred read_num(maybe_error(int)::out, io__state::di, io__state::uo) is det.
 
 read_num(Res) -->
 	read_num1(0, Res).
+	% DEBUGSITE
 	% io__write_string("num "),
+	% DEBUGSITE
 	% io__write(Res),
+	% DEBUGSITE
 	% io__write_string("\n").
 
 :- pred read_num1(int::in, maybe_error(int)::out,
@@ -981,8 +1003,11 @@ read_n_bytes(N, Bytes0, Res) -->
 
 read_deep_byte(Res) -->
 	read_byte(Res0),
+	% DEBUGSITE
 	% io__write_string("byte "),
+	% DEBUGSITE
 	% io__write(Res),
+	% DEBUGSITE
 	% io__write_string("\n"),
 	(
 		{ Res0 = ok(Byte) },
@@ -1003,23 +1028,41 @@ read_deep_byte(Res) -->
 deep_insert(A0, Ind, Thing, A) :-
 	array__max(A0, Max),
 	( Ind > Max ->
-		array__lookup(A0, 0, X),
-		array__resize(u(A0), 2 * (Max + 1), X, A1),
-		deep_insert(A1, Ind, Thing, A)
+		error("deep_insert: array bounds violation")
+		% array__lookup(A0, 0, X),
+		% array__resize(u(A0), 2 * (Max + 1), X, A1),
+		% deep_insert(A1, Ind, Thing, A)
 	;
 		set(u(A0), Ind, Thing, A)
 	).
 
 %------------------------------------------------------------------------------%
 
+:- func make_csdptr(int) = call_site_dynamic_ptr.
+:- func make_cssptr(int) = call_site_static_ptr.
+:- func make_pdptr(int) = proc_dynamic_ptr.
+:- func make_psptr(int) = proc_static_ptr.
+
+make_csdptr(CSDI) = call_site_dynamic_ptr(CSDI).
+make_cssptr(CSSI) = call_site_static_ptr(CSSI).
+make_pdptr(PDI) = proc_dynamic_ptr(PDI).
+make_psptr(PSI) = proc_static_ptr(PSI).
+
+:- func make_dummy_csdptr = call_site_dynamic_ptr.
+:- func make_dummy_cssptr = call_site_static_ptr.
+:- func make_dummy_pdptr = proc_dynamic_ptr.
+:- func make_dummy_psptr = proc_static_ptr.
+
+make_dummy_csdptr = call_site_dynamic_ptr(-1).
+make_dummy_cssptr = call_site_static_ptr(-1).
+make_dummy_pdptr = proc_dynamic_ptr(-1).
+make_dummy_psptr = proc_static_ptr(-1).
+
+%------------------------------------------------------------------------------%
+
 :- pragma c_header_code("
 #include ""mercury_deep_profiling.h""
 ").
-
-:- func token_root = int.
-:- pragma c_code(token_root = (X::out),
-	[will_not_call_mercury, thread_safe],
-	"X = MR_deep_token_root;").
 
 :- func token_call_site_static = int.
 :- pragma c_code(token_call_site_static = (X::out),

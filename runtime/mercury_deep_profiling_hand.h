@@ -42,7 +42,7 @@
   #define	MR_maybe_activation_count_field
 #endif
 
-#define	MR_proc_static_user_builtin_empty(name, arity, mode, file)	\
+#define	MR_proc_static_user_builtin_empty(name, arity, mode, file, line, interface)\
 	MR_User_ProcStatic						\
 	MR_proc_static_user_builtin_name(name, arity, mode) = {		\
 		{							\
@@ -54,13 +54,15 @@
 			mode, 						\
 		},							\
 		file,							\
+		line,							\
+		interface,						\
 		0,							\
 		NULL,							\
 		MR_maybe_activation_count_field				\
 		NULL							\
 	}
 
-#define	MR_proc_static_compiler_empty(module, name, type, arity, mode, file) \
+#define	MR_proc_static_compiler_empty(module, name, type, arity, mode, file, line, interface) \
 	MR_Compiler_ProcStatic						\
 	MR_proc_static_compiler_name(module, name, type, arity, mode) = { \
 		{							\
@@ -72,13 +74,15 @@
 			mode, 						\
 		},							\
 		file,							\
+		line,							\
+		interface,						\
 		0,							\
 		NULL,							\
 		MR_maybe_activation_count_field				\
 		NULL							\
 	}
 
-#define	MR_proc_static_user_empty(module, name, arity, mode, file)	\
+#define	MR_proc_static_user_empty(module, name, arity, mode, file, line, interface)\
 	MR_User_ProcStatic						\
 	MR_proc_static_user_name(module, name, arity, mode) = {		\
 		{							\
@@ -90,13 +94,15 @@
 			mode, 						\
 		},							\
 		file,							\
+		line,							\
+		interface,						\
 		0,							\
 		NULL,							\
 		MR_maybe_activation_count_field				\
 		NULL							\
 	}
 
-#define	MR_proc_static_user_plain(module, name, arity, mode, cmodule, cname, carity, cmode, file, line)\
+#define	MR_proc_static_user_plain(module, name, arity, mode, cmodule, cname, carity, cmode, file, line, interface)\
 	static const MR_CallSiteStatic					\
 	MR_call_sites_user_name(module, name, arity, mode)[] = {	\
 		{ MR_normal_call, (MR_ProcStatic *)			\
@@ -115,13 +121,15 @@
 			mode, 						\
 		},							\
 		file,							\
+		line,							\
+		interface,						\
 		1,							\
 		MR_call_sites_user_name(module, name, arity, mode),	\
 		MR_maybe_activation_count_field				\
 		NULL							\
 	}
 
-#define	MR_proc_static_compiler_plain(module, name, type, arity, mode, cmodule, cname, carity, cmode, file, line)\
+#define	MR_proc_static_compiler_plain(module, name, type, arity, mode, cmodule, cname, carity, cmode, file, line, interface)\
 	static const MR_CallSiteStatic					\
 	MR_call_sites_compiler_name(module, name, type, arity, mode)[] = {\
 		{ MR_normal_call, (MR_ProcStatic *)			\
@@ -140,13 +148,15 @@
 			mode, 						\
 		},							\
 		file,							\
+		line,							\
+		interface,						\
 		1,							\
 		MR_call_sites_compiler_name(module, name, type, arity, mode),\
 		MR_maybe_activation_count_field				\
 		NULL							\
 	}
 
-#define	MR_proc_static_user_ho(module, name, arity, mode, file, line)	\
+#define	MR_proc_static_user_ho(module, name, arity, mode, file, line, interface)	\
 	static const MR_CallSiteStatic					\
 	MR_call_sites_user_name(module, name, arity, mode)[] = {	\
 		{ MR_higher_order_call, NULL,				\
@@ -164,6 +174,8 @@
 			mode, 						\
 		},							\
 		file,							\
+		line,							\
+		interface,						\
 		1,							\
 		MR_call_sites_user_name(module, name, arity, mode),	\
 		MR_maybe_activation_count_field				\

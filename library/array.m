@@ -464,9 +464,9 @@ mercury__array____Compare____array_1_0(
 
 #ifdef	MR_DEEP_PROFILING
 MR_proc_static_compiler_plain(array, __Unify__,   array, 1, 0,
-	array, array_equal,   2, 0, ""array.m"", 99);
+	array, array_equal,   2, 0, ""array.m"", 99, TRUE);
 MR_proc_static_compiler_plain(array, __Compare__, array, 1, 0,
-	array, array_compare, 3, 0, ""array.m"", 99);
+	array, array_compare, 3, 0, ""array.m"", 99, TRUE);
 #endif
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(array, array, 1, MR_TYPECTOR_REP_ARRAY);

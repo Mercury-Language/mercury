@@ -9,7 +9,7 @@
 % This module contains code for recursively merging sets of ProcDynamic and
 % CallSiteDynamic nodes.
 
-:- module merge.
+:- module canonical.
 
 :- interface.
 
@@ -72,19 +72,156 @@ merge_cliques([Clique | Cliques], MergeInfo, InitDeep0, Redirect0,
 	merge_info::in, initial_deep::in, redirect::in,
 	initial_deep::out, redirect::out) is det.
 
-merge_clique(CliquePDs, MergeInfo, InitDeep0, Redirect0, InitDeep, Redirect) :-
+merge_clique(CliquePDs0, MergeInfo, InitDeep0, Redirect0,
+		InitDeep, Redirect) :-
+	( CliquePDs0 = [_, _ | _] ->
+		map__init(ProcMap0),
+		list__foldl(cluster_pds_by_ps(InitDeep0), CliquePDs0,
+			ProcMap0, ProcMap1),
+		map__values(ProcMap1, PDsList1),
+		list__filter(two_or_more, PDsList1, ToMergePDsList1),
+		( ToMergePDsList1 = [_ | _] ->
+			complete_clique(InitDeep0, Redirect0,
+				ProcMap1, ProcMap, Clique),
+			map__values(ProcMap, PDsList),
+			list__filter(two_or_more, PDsList, ToMergePDsList),
+			list__foldl2(merge_proc_dynamics_ignore_chosen(
+				MergeInfo, Clique),
+				ToMergePDsList, InitDeep0, InitDeep,
+				Redirect0, Redirect)
+		;
+			InitDeep = InitDeep0,
+			Redirect = Redirect0
+		)
+	;
+		InitDeep = InitDeep0,
+		Redirect = Redirect0
+	).
+
+:- pred insert_pds(list(T)::in, set(T)::in, set(T)::out) is det.
+
+insert_pds(List, Set0, Set) :-
+	set__insert_list(Set0, List, Set).
+
 	% find set of proc_statics in the CliquePDs
 	% for all (first order) calls in CliquePDs, if call is to a procedure
 	%	that CliquePDs contains a call to, add its PD to the set
 
-	map__init(ProcMap0),
-	set__list_to_set(CliquePDs, Clique),
-	list__foldl(cluster_pds_by_ps(InitDeep0), CliquePDs,
-		ProcMap0, ProcMap),
-	map__values(ProcMap, PDsList),
-	list__filter(two_or_more, PDsList, ToMergePDsList),
-	list__foldl2(merge_proc_dynamics(MergeInfo, Clique),
-		ToMergePDsList, InitDeep0, InitDeep, Redirect0, Redirect).
+:- pred complete_clique(initial_deep::in, redirect::in,
+	map(proc_static_ptr, list(proc_dynamic_ptr))::in,
+	map(proc_static_ptr, list(proc_dynamic_ptr))::out,
+	set(proc_dynamic_ptr)::out) is det.
+
+complete_clique(InitDeep, Redirect, ProcMap0, ProcMap, Clique) :-
+	map__values(ProcMap0, PDsList0),
+	list__foldl(insert_pds, PDsList0, set__init, Clique0),
+	complete_clique_pass(InitDeep, Redirect, Clique0, ProcMap0, ProcMap1,
+		no, AddedPD),
+	(
+		AddedPD = yes,
+		complete_clique(InitDeep, Redirect, ProcMap1, ProcMap, Clique)
+	;
+		AddedPD = no,
+		ProcMap = ProcMap1,
+		Clique = Clique0
+	).
+
+:- pred complete_clique_pass(initial_deep::in, redirect::in,
+	set(proc_dynamic_ptr)::in,
+	map(proc_static_ptr, list(proc_dynamic_ptr))::in,
+	map(proc_static_ptr, list(proc_dynamic_ptr))::out,
+	bool::in, bool::out) is det.
+
+complete_clique_pass(InitDeep, _Redirect, Clique, ProcMap0, ProcMap,
+		AddedPD0, AddedPD) :-
+	map__to_assoc_list(ProcMap0, PSPDs0),
+	list__foldl2(complete_clique_ps(InitDeep, Clique),
+		PSPDs0, ProcMap0, ProcMap, AddedPD0, AddedPD).
+
+:- pred complete_clique_ps(initial_deep::in,
+	set(proc_dynamic_ptr)::in,
+	pair(proc_static_ptr, list(proc_dynamic_ptr))::in,
+	map(proc_static_ptr, list(proc_dynamic_ptr))::in,
+	map(proc_static_ptr, list(proc_dynamic_ptr))::out,
+	bool::in, bool::out) is det.
+
+complete_clique_ps(InitDeep, Clique, PSPtr - PDPtrs, ProcMap0, ProcMap,
+		AddedPD0, AddedPD) :-
+	( PDPtrs = [_, _ | _] ->
+		lookup_proc_statics(InitDeep ^ init_proc_statics, PSPtr, PS),
+		list__map(lookup_pd_site(InitDeep), PDPtrs, PDSites),
+		complete_clique_slots(array__max(PS ^ ps_sites), InitDeep,
+			Clique, PS ^ ps_sites, PDSites, ProcMap0, ProcMap,
+			AddedPD0, AddedPD)
+	;
+		ProcMap = ProcMap0,
+		AddedPD = AddedPD0
+	).
+
+:- pred lookup_pd_site(initial_deep::in, proc_dynamic_ptr::in,
+	array(call_site_array_slot)::out) is det.
+
+lookup_pd_site(InitDeep, PDPtr, Sites) :-
+	lookup_proc_dynamics(InitDeep ^ init_proc_dynamics, PDPtr, PD),
+	Sites = PD ^ pd_sites.
+
+:- pred complete_clique_slots(int::in, initial_deep::in,
+	set(proc_dynamic_ptr)::in, array(call_site_static_ptr)::in,
+	list(array(call_site_array_slot))::in,
+	map(proc_static_ptr, list(proc_dynamic_ptr))::in,
+	map(proc_static_ptr, list(proc_dynamic_ptr))::out,
+	bool::in, bool::out) is det.
+
+complete_clique_slots(SlotNum, InitDeep, Clique, PSSites, PDSites,
+		ProcMap0, ProcMap, AddedPD0, AddedPD) :-
+	( SlotNum >= 0 ->
+		array__lookup(PSSites, SlotNum, CSSPtr),
+		lookup_call_site_statics(InitDeep ^ init_call_site_statics,
+			CSSPtr, CSS),
+		( CSS ^ css_kind = normal_call(_, _) ->
+			lookup_normal_sites(PDSites, SlotNum, CSDPtrs)
+		;
+			lookup_multi_sites(PDSites, SlotNum, CSDPtrLists),
+			list__condense(CSDPtrLists, CSDPtrs)
+		),
+		list__filter(valid_call_site_dynamic_ptr_raw(
+			InitDeep ^ init_call_site_dynamics), CSDPtrs,
+			ValidCSDPtrs),
+		list__map(extract_csdptr_callee(InitDeep), ValidCSDPtrs,
+			CalleePDPtrs),
+		CalleePDPtrSet = set__list_to_set(CalleePDPtrs),
+		set__intersect(CalleePDPtrSet, Clique, Common),
+		( set__empty(Common) ->
+			ProcMap1 = ProcMap0,
+			AddedPD1 = AddedPD0
+		;
+			set__difference(CalleePDPtrSet, Clique, NewMembers),
+			( set__empty(NewMembers) ->
+				ProcMap1 = ProcMap0,
+				AddedPD1 = no
+			;
+				set__to_sorted_list(NewMembers, NewMemberList),
+				list__foldl(cluster_pds_by_ps(InitDeep),
+					NewMemberList, ProcMap0, ProcMap1),
+				AddedPD1 = yes
+			)
+		),
+		complete_clique_slots(SlotNum - 1, InitDeep, Clique,
+			PSSites, PDSites, ProcMap1, ProcMap, AddedPD1, AddedPD)
+	;
+		ProcMap = ProcMap0,
+		AddedPD = AddedPD0
+	).
+
+:- pred merge_proc_dynamics_ignore_chosen(merge_info::in,
+	set(proc_dynamic_ptr)::in, list(proc_dynamic_ptr)::in,
+	initial_deep::in, initial_deep::out, redirect::in, redirect::out)
+	is det.
+
+merge_proc_dynamics_ignore_chosen(MergeInfo, Clique, CandidatePDPtrs,
+		InitDeep0, InitDeep, Redirect0, Redirect) :-
+	merge_proc_dynamics(MergeInfo, Clique, CandidatePDPtrs, _ChosenPDPtr,
+		InitDeep0, InitDeep, Redirect0, Redirect).
 
 :- pred merge_proc_dynamics(merge_info::in, set(proc_dynamic_ptr)::in,
 	list(proc_dynamic_ptr)::in, proc_dynamic_ptr::out,
@@ -95,7 +232,9 @@ merge_proc_dynamics(MergeInfo, Clique, CandidatePDPtrs, ChosenPDPtr,
 		InitDeep0, InitDeep, Redirect0, Redirect) :-
 	ProcDynamics0 = InitDeep0 ^ init_proc_dynamics,
 	list__filter(valid_proc_dynamic_ptr_raw(ProcDynamics0),
-		CandidatePDPtrs, ValidPDPtrs),
+		CandidatePDPtrs, ValidPDPtrs, InvalidPDPtrs),
+	require(unify(InvalidPDPtrs, []),
+		"merge_proc_dynamics: invalid pdptrs"),
 	( ValidPDPtrs = [PrimePDPtr | RestPDPtrs] ->
 		record_pd_redirect(RestPDPtrs, PrimePDPtr,
 			Redirect0, Redirect1),
@@ -115,11 +254,13 @@ merge_proc_dynamics(MergeInfo, Clique, CandidatePDPtrs, ChosenPDPtr,
 		InitDeep = InitDeep1 ^ init_proc_dynamics := ProcDynamics,
 		ChosenPDPtr = PrimePDPtr
 	;
-		% This can happen when merging the callees of CSDs
-		% representing special calls.
-		ChosenPDPtr = proc_dynamic_ptr(0),
-		InitDeep = InitDeep0,
-		Redirect = Redirect0
+		% This could happen when merging the callees of CSDs
+		% representing special calls, but only before we added callcode
+		% to the unify/compare routines of builtin types.
+		% ChosenPDPtr = proc_dynamic_ptr(0),
+		% InitDeep = InitDeep0,
+		% Redirect = Redirect0
+		error("merge_proc_dynamics: no valid pdptrs")
 	).
 
 :- pred merge_proc_dynamic_slots(merge_info::in, int::in,
@@ -144,7 +285,7 @@ merge_proc_dynamic_slots(MergeInfo, SlotNum, Clique, PrimePDPtr,
 			array__set(PrimeSiteArray0, SlotNum,
 				normal(PrimeCSDPtr), PrimeSiteArray1)
 		;
-			PrimeSite0 = multi(PrimeCSDPtrArray0),
+			PrimeSite0 = multi(IsZeroed, PrimeCSDPtrArray0),
 			array__to_list(PrimeCSDPtrArray0, PrimeCSDPtrList0),
 			merge_proc_dynamic_multi_slot(MergeInfo, SlotNum,
 				Clique, PrimePDPtr, PrimeCSDPtrList0,
@@ -152,7 +293,8 @@ merge_proc_dynamic_slots(MergeInfo, SlotNum, Clique, PrimePDPtr,
 				InitDeep0, InitDeep1, Redirect0, Redirect1),
 			PrimeCSDPtrArray = array(PrimeCSDPtrList),
 			array__set(PrimeSiteArray0, SlotNum,
-				multi(PrimeCSDPtrArray), PrimeSiteArray1)
+				multi(IsZeroed, PrimeCSDPtrArray),
+				PrimeSiteArray1)
 		),
 		merge_proc_dynamic_slots(MergeInfo, SlotNum - 1, Clique,
 			PrimePDPtr, PrimeSiteArray1, RestSiteArrays,
@@ -363,7 +505,7 @@ lookup_normal_sites([RestArray | RestArrays], SlotNum, [CSDPtr | CSDPtrs]) :-
 	(
 		Slot = normal(CSDPtr)
 	;
-		Slot = multi(_),
+		Slot = multi(_, _),
 		error("lookup_normal_sites: found multi")
 	),
 	lookup_normal_sites(RestArrays, SlotNum, CSDPtrs).
@@ -378,7 +520,7 @@ lookup_multi_sites([RestArray | RestArrays], SlotNum, [CSDList | CSDLists]) :-
 		Slot = normal(_),
 		error("lookup_multi_sites: found normal")
 	;
-		Slot = multi(CSDArray),
+		Slot = multi(_, CSDArray),
 		array__to_list(CSDArray, CSDList)
 	),
 	lookup_multi_sites(RestArrays, SlotNum, CSDLists).
@@ -452,16 +594,6 @@ record_csd_redirect_2([RestCSDPtr | RestCSDPtrs], PrimeCSDPtr,
 	),
 	Redirect1 = Redirect0 ^ csd_redirect := CallSiteRedirect,
 	record_csd_redirect_2(RestCSDPtrs, PrimeCSDPtr, Redirect1, Redirect).
-
-:- pred extract_pd_sites(proc_dynamic::in, array(call_site_array_slot)::out)
-	is det.
-
-extract_pd_sites(PD, PD ^ pd_sites).
-
-:- pred extract_csd_callee(call_site_dynamic::in, proc_dynamic_ptr::out)
-	is det.
-
-extract_csd_callee(CSD, CSD ^ csd_callee).
 
 :- pred two_or_more(list(proc_dynamic_ptr)::in) is semidet.
 
@@ -660,7 +792,7 @@ subst_in_proc_dynamic(Redirect, PD0, PD) :-
 
 subst_in_slot(Redirect, normal(CSDPtr0), normal(CSDPtr)) :-
 	lookup_csd_redirect(Redirect ^ csd_redirect, CSDPtr0, CSDPtr).
-subst_in_slot(Redirect, multi(CSDPtrs0), multi(CSDPtrs)) :-
+subst_in_slot(Redirect, multi(IsZeroed, CSDPtrs0), multi(IsZeroed, CSDPtrs)) :-
 	array__map(lookup_csd_redirect(Redirect ^ csd_redirect),
 		u(CSDPtrs0), CSDPtrs).
 
@@ -735,9 +867,10 @@ do_merge_profiles(BaseInitDeep, OtherInitDeeps, MergedInitDeep) :-
 	list__map(extract_user_quanta, AllInitDeeps, UserQuantas),
 	list__foldl(int_add, InstrumentQuantas, 0, InstrumentQuanta),
 	list__foldl(int_add, UserQuantas, 0, UserQuanta),
+	WordSize = BaseInitDeep ^ init_profile_stats ^ word_size,
 	ConcatProfileStats = profile_stats(
 		ConcatMaxCSD, BaseMaxCSS, ConcatMaxPD, BaseMaxPS,
-		BaseTicksPerSec, InstrumentQuanta, UserQuanta),
+		BaseTicksPerSec, InstrumentQuanta, UserQuanta, WordSize, yes),
 	% The root part is a temporary lie.
 	MergedInitDeep = initial_deep(ConcatProfileStats,
 		BaseInitDeep ^ init_root,
@@ -760,11 +893,11 @@ concatenate_profiles([InitDeep | InitDeeps], PrevMaxCSD, PrevMaxPD,
 		ConcatProcDynamics0, ConcatProcDynamics) :-
 	concatenate_profile(InitDeep,
 		PrevMaxCSD, PrevMaxPD, NextMaxCSD, NextMaxPD,
-		ConcatCallSiteDynamics0, ConcatCallSiteDynamics,
-		ConcatProcDynamics0, ConcatProcDynamics),
+		ConcatCallSiteDynamics0, ConcatCallSiteDynamics1,
+		ConcatProcDynamics0, ConcatProcDynamics1),
 	concatenate_profiles(InitDeeps, NextMaxCSD, NextMaxPD,
-		ConcatCallSiteDynamics0, ConcatCallSiteDynamics,
-		ConcatProcDynamics0, ConcatProcDynamics).
+		ConcatCallSiteDynamics1, ConcatCallSiteDynamics,
+		ConcatProcDynamics1, ConcatProcDynamics).
 
 :- pred concatenate_profile(initial_deep::in,
 	int::in, int::in, int::out, int::out,
@@ -841,11 +974,11 @@ concatenate_profile_slots(Cur, Max, PrevMaxCSD, PrevMaxPD, Sites0, Sites) :-
 				CSDPtr0, CSDPtr),
 			Slot = normal(CSDPtr)
 		;
-			Slot0 = multi(CSDPtrs0),
+			Slot0 = multi(IsZeroed, CSDPtrs0),
 			array_map_from_0(
 				concat_call_site_dynamic_ptr(PrevMaxCSD),
-				CSDPtrs0, CSDPtrs),
-			Slot = multi(CSDPtrs)
+				u(CSDPtrs0), CSDPtrs),
+			Slot = multi(IsZeroed, CSDPtrs)
 		),
 		array__set(Sites0, Cur, Slot, Sites1),
 		concatenate_profile_slots(Cur + 1, Max, PrevMaxCSD, PrevMaxPD,
@@ -877,66 +1010,6 @@ concat_proc_dynamic_ptr(PrevMaxPD, PDPtr0, PDPtr) :-
 	).
 
 %-----------------------------------------------------------------------------%
-
-:- pred extract_ticks_per_sec(initial_deep::in, int::out) is det.
-
-extract_ticks_per_sec(InitDeep,
-	InitDeep ^ init_profile_stats ^ ticks_per_sec).
-
-:- pred extract_instrument_quanta(initial_deep::in, int::out) is det.
-
-extract_instrument_quanta(InitDeep,
-	InitDeep ^ init_profile_stats ^ instrument_quanta).
-
-:- pred extract_user_quanta(initial_deep::in, int::out) is det.
-
-extract_user_quanta(InitDeep,
-	InitDeep ^ init_profile_stats ^ user_quanta).
-
-:- pred extract_max_css(initial_deep::in, int::out) is det.
-
-extract_max_css(InitDeep, MaxCSS) :-
-	array__max(InitDeep ^ init_call_site_statics, MaxCSS).
-
-:- pred extract_max_ps(initial_deep::in, int::out) is det.
-
-extract_max_ps(InitDeep, MaxPS) :-
-	array__max(InitDeep ^ init_proc_statics, MaxPS).
-
-:- pred extract_max_csd(initial_deep::in, int::out) is det.
-
-extract_max_csd(InitDeep, MaxCSD) :-
-	array__max(InitDeep ^ init_call_site_dynamics, MaxCSD).
-
-:- pred extract_max_pd(initial_deep::in, int::out) is det.
-
-extract_max_pd(InitDeep, MaxPD) :-
-	array__max(InitDeep ^ init_proc_dynamics, MaxPD).
-
-:- pred extract_init_call_site_dynamics(initial_deep::in,
-	call_site_dynamics::out) is det.
-
-extract_init_call_site_dynamics(InitDeep, InitDeep ^ init_call_site_dynamics).
-
-:- pred extract_init_call_site_statics(initial_deep::in,
-	call_site_statics::out) is det.
-
-extract_init_call_site_statics(InitDeep, InitDeep ^ init_call_site_statics).
-
-:- pred extract_init_proc_dynamics(initial_deep::in,
-	proc_dynamics::out) is det.
-
-extract_init_proc_dynamics(InitDeep, InitDeep ^ init_proc_dynamics).
-
-:- pred extract_init_proc_statics(initial_deep::in,
-	proc_statics::out) is det.
-
-extract_init_proc_statics(InitDeep, InitDeep ^ init_proc_statics).
-
-:- pred extract_init_root(initial_deep::in,
-	proc_dynamic_ptr::out) is det.
-
-extract_init_root(InitDeep, InitDeep ^ init_root).
 
 	% list__all_true(P, L) succeeds iff P is true for all elements of the
 	% list L.

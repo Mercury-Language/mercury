@@ -1305,9 +1305,9 @@ void sys_init_type_desc_module_write_out_proc_statics(FILE *);
 
 #ifdef	MR_DEEP_PROFILING
 MR_proc_static_compiler_empty(std_util, __Unify__,   type_desc, 0, 0,
-	""std_util.m"");
+	""std_util.m"", 0, TRUE);
 MR_proc_static_compiler_empty(std_util, __Compare__, type_desc, 0, 0,
-	""std_util.m"");
+	""std_util.m"", 0, TRUE);
 #endif
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(std_util, type_desc, 0,

@@ -86,7 +86,7 @@ add_call_site_arcs(InitDeep, FromPDI, CallSiteSlot, Graph0, Graph) :-
 		CallSiteSlot = normal(CSDPtr),
 		add_csd_arcs(InitDeep, FromPDI, CSDPtr, Graph0, Graph)
 	;
-		CallSiteSlot = multi(CSDPtrArray),
+		CallSiteSlot = multi(_, CSDPtrArray),
 		array__to_list(CSDPtrArray, CSDPtrs),
 		list__foldl(add_csd_arcs(InitDeep, FromPDI), CSDPtrs,
 			Graph0, Graph)

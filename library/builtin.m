@@ -311,7 +311,7 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_NOCM(builtin, float, 0,
 
 	/* 
 	** One of the following two is used for all higher-order types.
-	** Note that they use the same three predicates.
+	** Note that they use the same unify and compare predicates.
 	*/
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_NOCM(builtin, func, 0,
@@ -993,8 +993,8 @@ void sys_init_copy_module(void);
 #else /* ! MR_HIGHLEVEL_CODE */
 
 #ifdef	MR_DEEP_PROFILING
-MR_proc_static_user_builtin_empty(copy, 2, 0, ""builtin.m"");
-MR_proc_static_user_builtin_empty(copy, 2, 1, ""builtin.m"");
+MR_proc_static_user_builtin_empty(copy, 2, 0, ""builtin.m"", 0, TRUE);
+MR_proc_static_user_builtin_empty(copy, 2, 1, ""builtin.m"", 0, TRUE);
 #endif
 
 MR_define_extern_entry(mercury__copy_2_0);
@@ -1145,9 +1145,9 @@ void sys_init_c_pointer_module_write_out_proc_statics(FILE *fp);
 
 #ifdef	MR_DEEP_PROFILING
 MR_proc_static_compiler_empty(builtin, __Unify__,   c_pointer,
-	0, 0, ""builtin.m"");
+	0, 0, ""builtin.m"", 0, TRUE);
 MR_proc_static_compiler_empty(builtin, __Compare__, c_pointer,
-	0, 0, ""builtin.m"");
+	0, 0, ""builtin.m"", 0, TRUE);
 #endif
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(builtin, c_pointer, 0,

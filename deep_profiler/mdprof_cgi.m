@@ -34,10 +34,12 @@ main -->
 		(
 			{ MaybeQueryString = yes(QueryString0) },
 			{ split(QueryString0, ('$'), Pieces) },
-			( { Pieces = [ActualQuery, FileName] } ->
-				process_query(ActualQuery, FileName)
+			( { Pieces = [CmdStr, PrefStr, FileName] } ->
+				process_query(CmdStr, yes(PrefStr), FileName)
+			; { Pieces = [CmdStr, FileName] } ->
+				process_query(CmdStr, no, FileName)
 			; { Pieces = [FileName] } ->
-				process_query("menu", FileName)
+				process_query("menu", no, FileName)
 			;
 				io__write_string(
 					"Bad URL; expected query$/full/path/name\n")
@@ -49,10 +51,10 @@ main -->
 		io__write_string("Usage: mdprof_cgi\n")
 	).
 
-:- pred process_query(string::in, string::in,
+:- pred process_query(string::in, maybe(string)::in, string::in,
 	io__state::di, io__state::uo) is det.
 
-process_query(ActualQuery, DataFileName) -->
+process_query(CmdStr, MaybePrefStr, DataFileName) -->
 	{ ToServer = to_server_pipe_name(DataFileName) },
 	{ FromServer = from_server_pipe_name(DataFileName) },
 	{ TestCmd = string__format("test -p %s -a -p %s",
@@ -68,7 +70,8 @@ process_query(ActualQuery, DataFileName) -->
 		),
 		(
 			{ MaybeError = no },
-			handle_query(ActualQuery, ToServer, FromServer)
+			handle_query(CmdStr, MaybePrefStr,
+				ToServer, FromServer)
 		;
 			{ MaybeError = yes(Error) },
 			io__write_string(Error)
@@ -119,16 +122,22 @@ create_server(DataFileName, MaybeError) -->
 
 server_path_name = "mdprof_server".
 
-:- pred handle_query(string::in, string::in, string::in,
+:- pred handle_query(string::in, maybe(string)::in, string::in, string::in,
 	io__state::di, io__state::uo) is det.
 
-handle_query(QueryString, ToServer, FromServer) -->
-	{ query_to_cmd(QueryString, MaybeCmd) },
-	(
-		{ MaybeCmd = yes(Cmd) },
-		to(ToServer, Cmd),
-		from(FromServer, html(Str)),
-		io__write_string(Str)
+handle_query(CmdStr, MaybePrefStr, ToServer, FromServer) -->
+	{ MaybeCmd = url_component_to_cmd(CmdStr) },
+	{
+		MaybePrefStr = yes(PrefStr),
+		MaybePref = url_component_to_preferences(PrefStr)
 	;
-		{ MaybeCmd = no }
+		MaybePrefStr = no,
+		MaybePref = yes(default_preferences)
+	},
+	( { MaybeCmd = yes(Cmd), MaybePref = yes(Pref) } ->
+		to(ToServer, cmd_pref(Cmd, Pref)),
+		from(FromServer, html(Page)),
+		io__write_string(Page)
+	;
+		io__write_string("mdprof: unknown URL format")
 	).

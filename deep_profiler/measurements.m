@@ -40,6 +40,8 @@
 	= inherit_prof_info.
 :- func subtract_own_from_inherit(own_prof_info, inherit_prof_info)
 	= inherit_prof_info.
+:- func subtract_inherit_from_inherit(inherit_prof_info, inherit_prof_info)
+	= inherit_prof_info.
 :- func add_inherit_to_own(inherit_prof_info, own_prof_info) = own_prof_info.
 :- func add_own_to_own(own_prof_info, own_prof_info) = own_prof_info.
 
@@ -141,6 +143,12 @@ subtract_own_from_inherit(PI1, PI2) = SumPI :-
 	Quanta = inherit_quanta(PI2) - quanta(PI1),
 	Allocs = inherit_allocs(PI2) - allocs(PI1),
 	Words = inherit_words(PI2) - words(PI1),
+	SumPI = inherit_prof_info(Quanta, Allocs, Words).
+
+subtract_inherit_from_inherit(PI1, PI2) = SumPI :-
+	Quanta = inherit_quanta(PI2) - inherit_quanta(PI1),
+	Allocs = inherit_allocs(PI2) - inherit_allocs(PI1),
+	Words = inherit_words(PI2) - inherit_words(PI1),
 	SumPI = inherit_prof_info(Quanta, Allocs, Words).
 
 add_inherit_to_own(PI1, PI2) = SumPI :-

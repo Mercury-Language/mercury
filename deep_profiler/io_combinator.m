@@ -183,6 +183,33 @@
     pred(in, in, in, in, in, in, in, in, in, out) is det,
     out, di, uo) is det.
 
+:- pred io_combinator__sequence_10(
+    pred(io__result(T1), io__state, io__state),
+    pred(io__result(T2), io__state, io__state),
+    pred(io__result(T3), io__state, io__state),
+    pred(io__result(T4), io__state, io__state),
+    pred(io__result(T5), io__state, io__state),
+    pred(io__result(T6), io__state, io__state),
+    pred(io__result(T7), io__state, io__state),
+    pred(io__result(T8), io__state, io__state),
+    pred(io__result(T9), io__state, io__state),
+    pred(io__result(T10), io__state, io__state),
+    pred(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, io__result(T)),
+    io__result(T), io__state, io__state).
+:- mode io_combinator__sequence_10(
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(in, in, in, in, in, in, in, in, in, in, out) is det,
+    out, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- pred io_combinator__res_sequence_2(
@@ -329,6 +356,33 @@
     pred(in, in, in, in, in, in, in, in, in, out) is det,
     out, di, uo) is det.
 
+:- pred io_combinator__res_sequence_10(
+    pred(io__res(T1), io__state, io__state),
+    pred(io__res(T2), io__state, io__state),
+    pred(io__res(T3), io__state, io__state),
+    pred(io__res(T4), io__state, io__state),
+    pred(io__res(T5), io__state, io__state),
+    pred(io__res(T6), io__state, io__state),
+    pred(io__res(T7), io__state, io__state),
+    pred(io__res(T8), io__state, io__state),
+    pred(io__res(T9), io__state, io__state),
+    pred(io__res(T10), io__state, io__state),
+    pred(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, io__res(T)),
+    io__res(T), io__state, io__state).
+:- mode io_combinator__res_sequence_10(
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(in, in, in, in, in, in, in, in, in, in, out) is det,
+    out, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- pred io_combinator__maybe_error_sequence_2(
@@ -473,6 +527,33 @@
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
     pred(in, in, in, in, in, in, in, in, in, out) is det,
+    out, di, uo) is det.
+
+:- pred io_combinator__maybe_error_sequence_10(
+    pred(maybe_error(T1), io__state, io__state),
+    pred(maybe_error(T2), io__state, io__state),
+    pred(maybe_error(T3), io__state, io__state),
+    pred(maybe_error(T4), io__state, io__state),
+    pred(maybe_error(T5), io__state, io__state),
+    pred(maybe_error(T6), io__state, io__state),
+    pred(maybe_error(T7), io__state, io__state),
+    pred(maybe_error(T8), io__state, io__state),
+    pred(maybe_error(T9), io__state, io__state),
+    pred(maybe_error(T10), io__state, io__state),
+    pred(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, maybe_error(T)),
+    maybe_error(T), io__state, io__state).
+:- mode io_combinator__maybe_error_sequence_10(
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(in, in, in, in, in, in, in, in, in, in, out) is det,
     out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -949,6 +1030,111 @@ io_combinator__sequence_9(P1, P2, P3, P4, P5, P6, P7, P8, P9, Combine, Res) -->
         { Res = error(Err) }
     ).
 
+io_combinator__sequence_10(P1, P2, P3, P4, P5, P6, P7, P8, P9, P10,
+		Combine, Res) -->
+    call(P1, Res1),
+    (
+        { Res1 = ok(T1) },
+        call(P2, Res2),
+        (
+            { Res2 = ok(T2) },
+            call(P3, Res3),
+            (
+                { Res3 = ok(T3) },
+                call(P4, Res4),
+                (
+                    { Res4 = ok(T4) },
+                    call(P5, Res5),
+                    (
+                        { Res5 = ok(T5) },
+                        call(P6, Res6),
+                        (
+                            { Res6 = ok(T6) },
+                            call(P7, Res7),
+                            (
+                                { Res7 = ok(T7) },
+                                call(P8, Res8),
+                                (
+                                    { Res8 = ok(T8) },
+                                    call(P9, Res9),
+                                    (
+                                        { Res9 = ok(T9) },
+                                        call(P10, Res10),
+                                        (
+                                            { Res10 = ok(T10) },
+                                            { call(Combine, T1, T2, T3, T4, T5,
+                                                T6, T7, T8, T9, T10, Res) }
+                                        ;
+                                            { Res10 = eof },
+                                            { Res = eof }
+                                        ;
+                                            { Res10 = error(Err) },
+                                            { Res = error(Err) }
+                                        )
+                                    ;
+                                        { Res9 = eof },
+                                        { Res = eof }
+                                    ;
+                                        { Res9 = error(Err) },
+                                        { Res = error(Err) }
+                                    )
+                                ;
+                                    { Res8 = eof },
+                                    { Res = eof }
+                                ;
+                                    { Res8 = error(Err) },
+                                    { Res = error(Err) }
+                                )
+                            ;
+                                { Res7 = eof },
+                                { Res = eof }
+                            ;
+                                { Res7 = error(Err) },
+                                { Res = error(Err) }
+                            )
+                        ;
+                            { Res6 = eof },
+                            { Res = eof }
+                        ;
+                            { Res6 = error(Err) },
+                            { Res = error(Err) }
+                        )
+                    ;
+                        { Res5 = eof },
+                        { Res = eof }
+                    ;
+                        { Res5 = error(Err) },
+                        { Res = error(Err) }
+                    )
+                ;
+                    { Res4 = eof },
+                    { Res = eof }
+                ;
+                    { Res4 = error(Err) },
+                    { Res = error(Err) }
+                )
+            ;
+                { Res3 = eof },
+                { Res = eof }
+            ;
+                { Res3 = error(Err) },
+                { Res = error(Err) }
+            )
+        ;
+            { Res2 = eof },
+            { Res = eof }
+        ;
+            { Res2 = error(Err) },
+            { Res = error(Err) }
+        )
+    ;
+        { Res1 = eof },
+        { Res = eof }
+    ;
+        { Res1 = error(Err) },
+        { Res = error(Err) }
+    ).
+
 %-----------------------------------------------------------------------------%
 
 io_combinator__res_sequence_2(P1, P2, Combine, Res) -->
@@ -1253,6 +1439,81 @@ io_combinator__res_sequence_9(P1, P2, P3, P4, P5, P6, P7, P8, P9,
                                         { Res9 = ok(T9) },
                                         { call(Combine, T1, T2, T3, T4, T5,
                                             T6, T7, T8, T9, Res) }
+                                    ;
+                                        { Res9 = error(Err) },
+                                        { Res = error(Err) }
+                                    )
+                                ;
+                                    { Res8 = error(Err) },
+                                    { Res = error(Err) }
+                                )
+                            ;
+                                { Res7 = error(Err) },
+                                { Res = error(Err) }
+                            )
+                        ;
+                            { Res6 = error(Err) },
+                            { Res = error(Err) }
+                        )
+                    ;
+                        { Res5 = error(Err) },
+                        { Res = error(Err) }
+                    )
+                ;
+                    { Res4 = error(Err) },
+                    { Res = error(Err) }
+                )
+            ;
+                { Res3 = error(Err) },
+                { Res = error(Err) }
+            )
+        ;
+            { Res2 = error(Err) },
+            { Res = error(Err) }
+        )
+    ;
+        { Res1 = error(Err) },
+        { Res = error(Err) }
+    ).
+
+io_combinator__res_sequence_10(P1, P2, P3, P4, P5, P6, P7, P8, P9, P10,
+        Combine, Res) -->
+    call(P1, Res1),
+    (
+        { Res1 = ok(T1) },
+        call(P2, Res2),
+        (
+            { Res2 = ok(T2) },
+            call(P3, Res3),
+            (
+                { Res3 = ok(T3) },
+                call(P4, Res4),
+                (
+                    { Res4 = ok(T4) },
+                    call(P5, Res5),
+                    (
+                        { Res5 = ok(T5) },
+                        call(P6, Res6),
+                        (
+                            { Res6 = ok(T6) },
+                            call(P7, Res7),
+                            (
+                                { Res7 = ok(T7) },
+                                call(P8, Res8),
+                                (
+                                    { Res8 = ok(T8) },
+                                    call(P9, Res9),
+                                    (
+                                        { Res9 = ok(T9) },
+                                        call(P10, Res10),
+                                        (
+                                            { Res10 = ok(T10) },
+                                            { call(Combine, T1, T2, T3, T4, T5,
+                                                T6, T7, T8, T9, T10, Res) }
+                                        ;
+                                            { Res10 = error(Err) },
+                                            { Res = error(Err) }
+                                        )
                                     ;
                                         { Res9 = error(Err) },
                                         { Res = error(Err) }
@@ -1596,6 +1857,81 @@ io_combinator__maybe_error_sequence_9(P1, P2, P3, P4, P5, P6, P7, P8, P9,
                                         { Res9 = ok(T9) },
                                         { call(Combine, T1, T2, T3, T4, T5,
                                             T6, T7, T8, T9, Res) }
+                                    ;
+                                        { Res9 = error(Err) },
+                                        { Res = error(Err) }
+                                    )
+                                ;
+                                    { Res8 = error(Err) },
+                                    { Res = error(Err) }
+                                )
+                            ;
+                                { Res7 = error(Err) },
+                                { Res = error(Err) }
+                            )
+                        ;
+                            { Res6 = error(Err) },
+                            { Res = error(Err) }
+                        )
+                    ;
+                        { Res5 = error(Err) },
+                        { Res = error(Err) }
+                    )
+                ;
+                    { Res4 = error(Err) },
+                    { Res = error(Err) }
+                )
+            ;
+                { Res3 = error(Err) },
+                { Res = error(Err) }
+            )
+        ;
+            { Res2 = error(Err) },
+            { Res = error(Err) }
+        )
+    ;
+        { Res1 = error(Err) },
+        { Res = error(Err) }
+    ).
+
+io_combinator__maybe_error_sequence_10(P1, P2, P3, P4, P5, P6, P7, P8, P9, P10,
+        Combine, Res) -->
+    call(P1, Res1),
+    (
+        { Res1 = ok(T1) },
+        call(P2, Res2),
+        (
+            { Res2 = ok(T2) },
+            call(P3, Res3),
+            (
+                { Res3 = ok(T3) },
+                call(P4, Res4),
+                (
+                    { Res4 = ok(T4) },
+                    call(P5, Res5),
+                    (
+                        { Res5 = ok(T5) },
+                        call(P6, Res6),
+                        (
+                            { Res6 = ok(T6) },
+                            call(P7, Res7),
+                            (
+                                { Res7 = ok(T7) },
+                                call(P8, Res8),
+                                (
+                                    { Res8 = ok(T8) },
+                                    call(P9, Res9),
+                                    (
+                                        { Res9 = ok(T9) },
+                                        call(P10, Res10),
+                                        (
+                                            { Res10 = ok(T10) },
+                                            { call(Combine, T1, T2, T3, T4, T5,
+                                                T6, T7, T8, T9, T10, Res) }
+                                        ;
+                                            { Res10 = error(Err) },
+                                            { Res = error(Err) }
+                                        )
                                     ;
                                         { Res9 = error(Err) },
                                         { Res = error(Err) }

@@ -1437,18 +1437,25 @@ MR_MAKE_PROC_LAYOUT(mercury__exception__builtin_throw_1_0,
 MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_throw_1_0, 1);
 
 #ifdef	MR_DEEP_PROFILING
-/* XXX the final 0s are fake line numbers */
-MR_proc_static_user_ho(exception, builtin_catch, 3, 0, ""exception.m"", 0);
-MR_proc_static_user_ho(exception, builtin_catch, 3, 1, ""exception.m"", 0);
-MR_proc_static_user_ho(exception, builtin_catch, 3, 2, ""exception.m"", 0);
-MR_proc_static_user_ho(exception, builtin_catch, 3, 3, ""exception.m"", 0);
-MR_proc_static_user_ho(exception, builtin_catch, 3, 4, ""exception.m"", 0);
-MR_proc_static_user_ho(exception, builtin_catch, 3, 5, ""exception.m"", 0);
+/* XXX the 0s are fake line numbers */
+MR_proc_static_user_ho(exception, builtin_catch, 3, 0,
+	""exception.m"", 0, TRUE);
+MR_proc_static_user_ho(exception, builtin_catch, 3, 1,
+	""exception.m"", 0, TRUE);
+MR_proc_static_user_ho(exception, builtin_catch, 3, 2,
+	""exception.m"", 0, TRUE);
+MR_proc_static_user_ho(exception, builtin_catch, 3, 3,
+	""exception.m"", 0, TRUE);
+MR_proc_static_user_ho(exception, builtin_catch, 3, 4,
+	""exception.m"", 0, TRUE);
+MR_proc_static_user_ho(exception, builtin_catch, 3, 5,
+	""exception.m"", 0, TRUE);
 /*
 ** XXX Builtin_throw will eventually be able to make calls in deep profiling
 ** grades. In the meantime, we need its proc_static structure for its callers.
 */
-MR_proc_static_user_empty(exception, builtin_throw, 1, 0, ""exception.m"");
+MR_proc_static_user_empty(exception, builtin_throw, 1, 0,
+	""exception.m"", 0, FALSE);
 #endif
 
 MR_BEGIN_MODULE(exceptions_module)

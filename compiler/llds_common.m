@@ -189,7 +189,7 @@ llds_common__process_layout_data(LayoutData0, LayoutData, Info, Info) :-
 	LayoutData0 = module_layout_data(_, _, _, _, _, _),
 	LayoutData = LayoutData0.
 llds_common__process_layout_data(LayoutData0, LayoutData, Info, Info) :-
-	LayoutData0 = proc_static_data(_, _, _),
+	LayoutData0 = proc_static_data(_, _, _, _, _),
 	LayoutData = LayoutData0.
 
 :- pred llds_common__process_exec_trace(proc_layout_exec_trace::in,

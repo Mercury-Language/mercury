@@ -31,7 +31,7 @@
 :- import_module quantification, dependency_graph, rtti, trace.
 :- import_module options, globals.
 :- import_module bool, int, list, assoc_list, map, require, set.
-:- import_module exception, std_util, string, term, varset, counter.
+:- import_module std_util, string, term, varset, counter.
 
 apply_deep_profiling_transformation(ModuleInfo0, ModuleInfo, ProcStatics) -->
 	{ module_info_globals(ModuleInfo0, Globals) },
@@ -567,8 +567,9 @@ transform_det_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 		VarTypes5 = VarTypes3,
 		MaybeActivationPtr = no
 	),
-	goal_info_get_context(GoalInfo0, Context),
+	proc_info_context(Proc0, Context),
 	FileName = term__context_file(Context),
+	LineNumber = term__context_line(Context),
 
 	proc_info_get_maybe_deep_profile_info(Proc0, MaybeRecInfo),
 	DeepInfo0 = deep_info(ModuleInfo, PredProcId, MiddleCSD,
@@ -591,7 +592,9 @@ transform_det_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 	),
 
 	RttiProcLabel = rtti__make_proc_label(ModuleInfo, PredId, ProcId),
-	ProcStatic = proc_static_data(RttiProcLabel, FileName, CallSites),
+	IsInInterface = is_proc_in_interface(ModuleInfo, PredId, ProcId),
+	ProcStatic = proc_static_data(RttiProcLabel, FileName, LineNumber,
+		IsInInterface, CallSites),
 	ProcStaticConsId = deep_profiling_proc_static(RttiProcLabel),
 	generate_unify(ProcStaticConsId, ProcStaticVar, BindProcStaticVarGoal),
 
@@ -651,8 +654,9 @@ transform_semi_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 		VarTypes5 = VarTypes3,
 		MaybeActivationPtr = no
 	),
-	goal_info_get_context(GoalInfo0, Context),
+	proc_info_context(Proc0, Context),
 	FileName = term__context_file(Context),
+	LineNumber = term__context_line(Context),
 
 	proc_info_get_maybe_deep_profile_info(Proc0, MaybeRecInfo),
 	DeepInfo0 = deep_info(ModuleInfo, PredProcId, MiddleCSD,
@@ -675,7 +679,9 @@ transform_semi_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 	),
 
 	RttiProcLabel = rtti__make_proc_label(ModuleInfo, PredId, ProcId),
-	ProcStatic = proc_static_data(RttiProcLabel, FileName, CallSites),
+	IsInInterface = is_proc_in_interface(ModuleInfo, PredId, ProcId),
+	ProcStatic = proc_static_data(RttiProcLabel, FileName, LineNumber,
+		IsInInterface, CallSites),
 	ProcStaticConsId = deep_profiling_proc_static(RttiProcLabel),
 	generate_unify(ProcStaticConsId, ProcStaticVar, BindProcStaticVarGoal),
 
@@ -757,8 +763,9 @@ transform_non_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 			VarTypes5),
 		MaybeOldActivationPtr = no
 	),
-	goal_info_get_context(GoalInfo0, Context),
+	proc_info_context(Proc0, Context),
 	FileName = term__context_file(Context),
+	LineNumber = term__context_line(Context),
 
 	proc_info_get_maybe_deep_profile_info(Proc0, MaybeRecInfo),
 	DeepInfo0 = deep_info(ModuleInfo, PredProcId, MiddleCSD,
@@ -773,7 +780,9 @@ transform_non_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 
 	PredProcId = proc(PredId, ProcId),
 	RttiProcLabel = rtti__make_proc_label(ModuleInfo, PredId, ProcId),
-	ProcStatic = proc_static_data(RttiProcLabel, FileName, CallSites),
+	IsInInterface = is_proc_in_interface(ModuleInfo, PredId, ProcId),
+	ProcStatic = proc_static_data(RttiProcLabel, FileName, LineNumber,
+		IsInInterface, CallSites),
 	ProcStaticConsId = deep_profiling_proc_static(RttiProcLabel),
 	generate_unify(ProcStaticConsId, ProcStaticVar, BindProcStaticVarGoal),
 
@@ -878,6 +887,22 @@ transform_inner_proc(ModuleInfo, PredProcId, Proc0, Proc, no) :-
 	proc_info_set_varset(Proc0, Vars, Proc1),
 	proc_info_set_vartypes(Proc1, VarTypes, Proc2),
 	proc_info_set_goal(Proc2, TransformedGoal, Proc).
+
+%-----------------------------------------------------------------------------%
+
+:- func is_proc_in_interface(module_info, pred_id, proc_id) = bool.
+
+is_proc_in_interface(ModuleInfo, PredId, _ProcId) = IsInInterface :-
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	(
+		( pred_info_is_exported(PredInfo)
+		; pred_info_is_pseudo_exported(PredInfo)
+		)
+	->
+		IsInInterface = yes
+	;
+		IsInInterface = no
+	).
 
 %-----------------------------------------------------------------------------%
 

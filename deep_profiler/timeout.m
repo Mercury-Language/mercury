@@ -20,9 +20,18 @@
 % there is no simple, portable way to eliminate the race condition, and the
 % window of vulnerability is quite small.
 %
-% This module also provides a predicate for executing the timeout action
-% explicitly, for use when the user explicitly shuts down the server.
-% This avoids double maintenance of the shutdown actions.
+% This module also sets up the automatic execution of the timeout action
+% when the process exits, for use both when the user explicitly requests
+% the shutdown of the server (which will of course happen after startup)
+% and in case of program aborts (which may happen both before and after
+% startup). However, immediately after startup is complete, the server
+% process forks, with the parent exiting to let mdprof_cgi's wait finish,
+% and the child entering a loop waiting for requests.
+%
+% We establish the exit action to clean up the files as soon as they are
+% created, but we don't want the parent process after the fork to delete them
+% while they are still in use by the child process. This is prevented by the
+% boolean flag process_is_detached_server.
 
 :- module timeout.
 
@@ -30,10 +39,10 @@
 
 :- import_module io.
 
-:- pred setup_timeout(string::in, string::in, string::in, int::in,
+:- pred setup_exit(string::in, string::in, string::in,
 	io__state::di, io__state::uo) is det.
 
-:- pred execute_timeout_action(io__state::di, io__state::uo) is det.
+:- pred setup_timeout(int::in, io__state::di, io__state::uo) is det.
 
 :- implementation.
 
@@ -43,62 +52,130 @@
 :- pragma foreign_decl("C",
 "
 #include <stdio.h>
-#include <signal.h>
+#include <signal.h>	/* for signal numbers */
+#include <unistd.h>	/* for alarm() */
+#include <stdlib.h>	/* for atexit() */
 #include ""mercury_signal.h""
 
-extern	char	*MP_timeout_file1;
-extern	char	*MP_timeout_file2;
-extern	char	*MP_timeout_file3;
+extern	char		*MP_timeout_file1;
+extern	char		*MP_timeout_file2;
+extern	char		*MP_timeout_file3;
 
-extern	void	delete_timeout_files_and_exit(void);
+#define	MDPROF_NUM_SIGNAL_NUMBERS	12
+
+extern	const int	signal_numbers[MDPROF_NUM_SIGNAL_NUMBERS];
+
+extern	void		delete_timeout_files(void);
+extern	void		delete_timeout_files_and_exit_success(void);
+extern	void		delete_timeout_files_and_exit_failure(void);
 ").
 
 :- pragma foreign_code("C",
 "
+bool	process_is_detached_server = FALSE;
 char	*MP_timeout_file1;
 char	*MP_timeout_file2;
 char	*MP_timeout_file3;
 
-void
-delete_timeout_files_and_exit(void)
+/*
+** SIGALRM alarm signal indicates a timeout. SIGTERM usually indicates the
+** machine is being shut down. The others are there to catch forceful shutdowns
+** during development, both intentional ones where the programmer sends the
+** signal and those caused by bugs in the server code. We would like to include
+** all catchable, fatal signals in this list, but that set is somewhat OS
+** dependent. The set here is the widely portable subset.
+**
+** We could avoid this problem if we had a version of atexit that executed
+** its actions even when the program exits after a signal.
+*/
+
+const int	signal_numbers[MDPROF_NUM_SIGNAL_NUMBERS] =
 {
-	if (remove(MP_timeout_file1) != 0) {
-		perror(MP_timeout_file1);
-	}
+	SIGALRM,
+	SIGTERM,
+	SIGHUP,
+	SIGINT,
+	SIGQUIT,
 
-	if (remove(MP_timeout_file2) != 0) {
-		perror(MP_timeout_file2);
-	}
+	SIGILL,
+	SIGABRT,
+	SIGIOT,
+	SIGBUS,
+	SIGFPE,
 
-	if (remove(MP_timeout_file3) != 0) {
-		perror(MP_timeout_file3);
-	}
+	SIGSEGV,
+	SIGPIPE
+};
 
-	exit(0);
+void
+delete_timeout_files(void)
+{
+	if (! process_is_detached_server) {
+		if (remove(MP_timeout_file1) != 0) {
+			perror(MP_timeout_file1);
+		}
+
+		if (remove(MP_timeout_file2) != 0) {
+			perror(MP_timeout_file2);
+		}
+
+		if (remove(MP_timeout_file3) != 0) {
+			perror(MP_timeout_file3);
+		}
+	}
+}
+
+void
+delete_timeout_files_and_exit_success(void)
+{
+	delete_timeout_files();
+	exit(EXIT_SUCCESS);
+}
+
+void
+delete_timeout_files_and_exit_failure(void)
+{
+	delete_timeout_files();
+	exit(EXIT_FAILURE);
 }
 ").
 
 :- pragma foreign_proc("C",
-	setup_timeout(File1::in, File2::in, File3::in, Minutes::in,
-		IO0::di, IO::uo),
+	setup_exit(File1::in, File2::in, File3::in, IO0::di, IO::uo),
+	[will_not_call_mercury],
+"
+	int	i;
+	void	(*handler)(void);
+
+	MP_timeout_file1 = File1;
+	MP_timeout_file2 = File2;
+	MP_timeout_file3 = File3;
+
+	for (i = 0; i < MDPROF_NUM_SIGNAL_NUMBERS; i++) {
+		if (signal_numbers[i] == SIGALRM) {
+			handler = delete_timeout_files_and_exit_success;
+		} else {
+			handler = delete_timeout_files_and_exit_failure;
+		}
+
+		MR_setup_signal(signal_numbers[i], handler, FALSE,
+			""Mercury deep profiler: cannot setup signal exit"");
+	}
+
+	if (atexit(delete_timeout_files) != 0) {
+		MR_fatal_error(""Mercury deep profiler: cannot setup exit"");
+	}
+
+	IO = IO0;
+").
+
+:- pragma foreign_proc("C",
+	setup_timeout(Minutes::in, IO0::di, IO::uo),
 	[will_not_call_mercury],
 "
 	int	seconds;
 
 	seconds = Minutes * 60;
-	MP_timeout_file1 = File1;
-	MP_timeout_file2 = File2;
-	MP_timeout_file3 = File3;
-	MR_setup_signal(SIGALRM, delete_timeout_files_and_exit, FALSE,
-		""Mercury deep profiler: cannot setup timeout"");
 	(void) alarm(seconds);
-	IO = IO0;
-").
-
-:- pragma foreign_proc("C",
-	execute_timeout_action(IO0::di, IO::uo),
-	[will_not_call_mercury],
-"
-	delete_timeout_files_and_exit();
 	IO = IO0;
 ").

@@ -70,6 +70,8 @@ struct MR_CallSiteStatic_Struct {
 struct MR_ProcStatic_Struct {
 	MR_Proc_Id				MR_ps_proc_id;
 	MR_ConstString				MR_ps_file_name;
+	int					MR_ps_line_number;
+	int					MR_ps_is_in_interface;
 	int					MR_ps_num_call_sites;
 	const MR_CallSiteStatic			*MR_ps_call_sites;
 #ifdef MR_USE_ACTIVATION_COUNTS
@@ -81,6 +83,8 @@ struct MR_ProcStatic_Struct {
 struct MR_User_ProcStatic_Struct {
 	MR_User_Proc_Id				MR_ps_proc_id;
 	MR_ConstString				MR_ps_file_name;
+	int					MR_ps_line_number;
+	int					MR_ps_is_in_interface;
 	int					MR_ps_num_call_sites;
 	const MR_CallSiteStatic			*MR_ps_call_sites;
 #ifdef MR_USE_ACTIVATION_COUNTS
@@ -92,6 +96,8 @@ struct MR_User_ProcStatic_Struct {
 struct MR_Compiler_ProcStatic_Struct {
 	MR_Compiler_Proc_Id			MR_ps_proc_id;
 	MR_ConstString				MR_ps_file_name;
+	int					MR_ps_line_number;
+	int					MR_ps_is_in_interface;
 	int					MR_ps_num_call_sites;
 	const MR_CallSiteStatic			*MR_ps_call_sites;
 #ifdef MR_USE_ACTIVATION_COUNTS
@@ -119,7 +125,6 @@ struct MR_CallSiteDynList_Struct {
 
 typedef enum {
 	MR_deep_token_end = 0,
-	MR_deep_token_root,
 	MR_deep_token_call_site_static,
 	MR_deep_token_call_site_dynamic,
 	MR_deep_token_proc_static,

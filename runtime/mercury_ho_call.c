@@ -78,16 +78,26 @@ ENDINIT
 		MR_proc_static_user_builtin_name(predname, 3, 0),	\
 		MR_own_exits)
 
-MR_proc_static_user_builtin_empty(integer_unify, 2, 0,    "mercury_ho_call.c");
-MR_proc_static_user_builtin_empty(integer_compare, 3, 0,  "mercury_ho_call.c");
-MR_proc_static_user_builtin_empty(float_unify, 2, 0,      "mercury_ho_call.c");
-MR_proc_static_user_builtin_empty(float_compare, 3, 0,    "mercury_ho_call.c");
-MR_proc_static_user_builtin_empty(string_unify, 2, 0,     "mercury_ho_call.c");
-MR_proc_static_user_builtin_empty(string_compare, 3, 0,   "mercury_ho_call.c");
-MR_proc_static_user_builtin_empty(c_pointer_unify, 2, 0 , "mercury_ho_call.c");
-MR_proc_static_user_builtin_empty(c_pointer_compare, 3, 0,"mercury_ho_call.c");
-MR_proc_static_user_builtin_empty(typeinfo_unify, 2, 0,   "mercury_ho_call.c");
-MR_proc_static_user_builtin_empty(typeinfo_compare, 3, 0, "mercury_ho_call.c");
+MR_proc_static_user_builtin_empty(integer_unify, 2, 0,
+	"mercury_ho_call.c", 0, TRUE);
+MR_proc_static_user_builtin_empty(integer_compare, 3, 0,
+	"mercury_ho_call.c", 0, TRUE);
+MR_proc_static_user_builtin_empty(float_unify, 2, 0,
+	"mercury_ho_call.c", 0, TRUE);
+MR_proc_static_user_builtin_empty(float_compare, 3, 0,
+	"mercury_ho_call.c", 0, TRUE);
+MR_proc_static_user_builtin_empty(string_unify, 2, 0,
+	"mercury_ho_call.c", 0, TRUE);
+MR_proc_static_user_builtin_empty(string_compare, 3, 0,
+	"mercury_ho_call.c", 0, TRUE);
+MR_proc_static_user_builtin_empty(c_pointer_unify, 2, 0,
+	"mercury_ho_call.c", 0, TRUE);
+MR_proc_static_user_builtin_empty(c_pointer_compare, 3, 0,
+	"mercury_ho_call.c", 0, TRUE);
+MR_proc_static_user_builtin_empty(typeinfo_unify, 2, 0,
+	"mercury_ho_call.c", 0, TRUE);
+MR_proc_static_user_builtin_empty(typeinfo_compare, 3, 0,
+	"mercury_ho_call.c", 0, TRUE);
 
 #endif
 

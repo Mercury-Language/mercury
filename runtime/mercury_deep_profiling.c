@@ -32,6 +32,8 @@ MR_User_ProcStatic	MR_main_parent_proc_static =
 	{ MR_PREDICATE, "Mercury runtime", "Mercury runtime",
 	  "Mercury runtime", 0, 0 },
 	"Mercury runtime",
+	0,
+	TRUE,
 	1,
 	&MR_main_parent_call_site_statics[0],
 #ifdef	MR_USE_ACTIVATION_COUNTS
@@ -61,7 +63,7 @@ MR_CallSiteDynamic	MR_main_grandparent_call_site_dynamic =
   #else
 	/* the call count is computed from the other counts */
   #endif
-	0, 0, 0,
+	1, 0, 0,
 #endif
 #ifdef MR_DEEP_PROFILING_TIMING
 	0,
@@ -80,8 +82,8 @@ MR_CallSiteDynList	**MR_current_callback_site =
 				(MR_CallSiteDynList **)
 				&MR_main_parent_call_site_dynamics[0];
 volatile bool	 	MR_inside_deep_profiling_code = FALSE;
-volatile unsigned	MR_quanta_inside_deep_profiling_code = 0L;
-volatile unsigned	MR_quanta_outside_deep_profiling_code = 0L;
+volatile unsigned	MR_quanta_inside_deep_profiling_code = 0;
+volatile unsigned	MR_quanta_outside_deep_profiling_code = 0;
 
 #ifdef	MR_DEEP_PROFILING_STATISTICS
 
@@ -325,6 +327,8 @@ MR_write_out_profiling_tree(void)
 	MR_write_num(fp, ticks_per_sec);
 	MR_write_num(fp, MR_quanta_inside_deep_profiling_code);
 	MR_write_num(fp, MR_quanta_outside_deep_profiling_code);
+	MR_write_byte(fp, sizeof(MR_Word));
+	MR_write_byte(fp, 0); /* the canonical flag is FALSE = 0 */
 
 	MR_call_site_dynamic_table = MR_create_hash_table(MR_hash_table_size);
 	MR_call_site_static_table  = MR_create_hash_table(MR_hash_table_size);
@@ -343,7 +347,6 @@ MR_write_out_profiling_tree(void)
 		&MR_main_parent_proc_dynamic, root_pd_id);
 #endif
 
-	MR_write_byte(fp, MR_deep_token_root);
 	MR_write_ptr(fp, kind_pd, root_pd_id);
 
 	MR_write_out_proc_dynamic(fp, &MR_main_parent_proc_dynamic);
@@ -576,8 +579,10 @@ MR_write_out_proc_static(FILE *fp, const MR_ProcStatic *ptr)
 
 #ifdef MR_DEEP_PROFILING_DEBUG
 	fprintf(debug_fp, "proc_static %p/%d\n", ptr, ps_id);
-	fprintf(debug_fp, "  filename \"%s\", %d call sites\n",
-		ptr->MR_ps_file_name, ptr->MR_ps_num_call_sites);
+	fprintf(debug_fp, "  filename \"%s\", linenumber %d, "
+			"interface %d, %d call sites\n",
+		ptr->MR_ps_file_name, ptr->MR_ps_line_number,
+		ptr->MR_ps_is_in_interface, ptr->MR_ps_num_call_sites);
 #endif
 
 	if (already_written) {
@@ -645,6 +650,8 @@ MR_write_out_proc_static(FILE *fp, const MR_ProcStatic *ptr)
 	}
 
 	MR_write_string(fp, ptr->MR_ps_file_name);
+	MR_write_num(fp, ptr->MR_ps_line_number);
+	MR_write_byte(fp, ptr->MR_ps_is_in_interface);
 	MR_write_num(fp, ptr->MR_ps_num_call_sites);
 
 	for (i = 0; i < ptr->MR_ps_num_call_sites; i++) {

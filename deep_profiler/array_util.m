@@ -55,6 +55,8 @@
 :- mode array_foldl2_from_1(pred(in, in, array_di, array_uo,
 	array_di, array_uo) is det,
 	in, array_di, array_uo, array_di, array_uo) is det.
+:- mode array_foldl2_from_1(pred(in, in, array_di, array_uo, in, out) is det,
+	in, array_di, array_uo, in, out) is det.
 :- mode array_foldl2_from_1(pred(in, in, in, out, di, uo) is det,
 	in, in, out, di, uo) is det.
 
@@ -67,6 +69,9 @@
 :- mode array_foldl2(in, in, pred(in, in,
 	array_di, array_uo, array_di, array_uo) is det, in,
 	array_di, array_uo, array_di, array_uo) is det.
+:- mode array_foldl2(in, in, pred(in, in,
+	array_di, array_uo, in, out) is det, in,
+	array_di, array_uo, in, out) is det.
 :- mode array_foldl2(in, in, pred(in, in, in, out, di, uo) is det, in,
 	in, out, di, uo) is det.
 
