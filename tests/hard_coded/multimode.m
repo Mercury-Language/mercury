@@ -45,12 +45,12 @@ func1(0::out) = ("func1(out) = out"::out).
 
 :- pragma promise_pure(func2/2). % XXX technically this is a lie
 :- func func2(int, int) = string.
-%:- mode func2(in, in) = out is det.
+:- mode func2(in, in) = out is det.
 :- mode func2(in, out) = out is det.
 :- mode func2(out, in) = out is det.
 :- mode func2(out, out) = out is det.
-%func2(_::in, _::in) = (R::out) :-
-%	R = "func2(in, in) = out".
+func2(_::in, _::in) = (R::out) :-
+	R = "func2(in, in) = out".
 func2(_::in, 0::out) = (R::out) :-
 	R = "func2(in, out) = out".
 func2(0::out, _::in) = (R::out) :-
