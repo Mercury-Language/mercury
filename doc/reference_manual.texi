@@ -2699,13 +2699,25 @@ A declaration of the form
 @end example
 
 @noindent
-results in any calls to @var{Pred} with variables in modes (@var{Mode1}, 
-@var{Mode2}, ...) being replaced by the C code given in @var{C_Code}.
+or
 
-If there is a @code{pragma c_code} declaration for a mode of a predicate,
-then that mode of the predicate may not be @samp{multi} or @samp{nondet},
-there must not be any clauses for that predicate,
-and there must be a @code{pragma c_code} goal for every mode of the predicate.
+@example
+:- pragma c_code(@var{Func}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, ...) = (@var{Var}::@var{Mode}),
+        may_call_mercury, @var{C_Code}).
+@end example
+
+@noindent
+means that any calls to the specified mode of @var{Pred} or @var{Func}
+will be replaced by the C code given in @var{C_Code}.
+The C code fragment may refer to the specified variables
+(@var{Var1}, @var{Var2}, @dots{}, and @var{Var})
+directly by name.
+
+If there is a @code{pragma c_code} declaration for a mode of a predicate
+or function, then that mode of the predicate may not have determinism
+@samp{multi} or @samp{nondet}, there must not be any clauses for that
+predicate or function, and there must be a @code{pragma c_code} goal
+for every mode of the predicate or function.
 
 For example, the following piece of code gives a predicate, 
 @samp{c_write_string/3}, which has a similar effect to the Mercury library 
@@ -2721,20 +2733,15 @@ predicate @samp{io__write_string/3}:
 @end example
 
 If the C code does not recursively invoke Mercury code,
-as in the above example, then you can use a declaration of the form
-
-@example
-:- pragma c_code(@var{Pred}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, ...),
-        will_not_call_mercury, @var{C_Code}).
-@end example
-
-This allows the compiler to use a more efficient calling convention.
+as in the above example, then you can use @samp{will_not_call_mercury}
+in place of @samp{may_call_mercury} in the declarations above.
+This allows the compiler to use a slightly more efficient calling convention.
 (If you use this form, and the C code @emph{does} invoke Mercury code,
 then the behaviour is undefined --- your program may misbehave or crash.)
 
 The C code in a @code{pragma c_code} declaration
 for any procedure whose determinism indicates that it could fail
-must assign a truth value to the macro @var{SUCCESS_INDICATOR}.
+must assign a truth value to the macro @samp{SUCCESS_INDICATOR}.
 For example:
 
 @example
@@ -2746,17 +2753,18 @@ For example:
         "SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL);").
 @end example
 
-SUCCESS_INDICATOR should not be used other than as the target of an assignment.
+@code{SUCCESS_INDICATOR} should not be used other than as the target of
+an assignment.
 (For example, it may be @code{#define}d to a register, so you should not
 try to take its address.) 
 Procedures whose determinism indicates that that they cannot fail
-should not access SUCCESS_INDICATOR.
+should not access @code{SUCCESS_INDICATOR}.
 
 Arguments whose mode is input will have their values set by the
 Mercury implementation on entry to the C code.  If the procedure
 succeeds, the C code must set the values of all output arguments
 before returning.  If the procedure fails, the C code need only
-set SUCCESS_INDICATOR to false (zero).
+set @code{SUCCESS_INDICATOR} to false (zero).
 
 @node Including C headers
 @subsection Including C headers
@@ -2798,7 +2806,7 @@ or it may contain any C declarations, for example
 ").
 @end example
 
-Mercury automatically includes certain headers such as @code{<stdio.h>},
+Mercury automatically includes certain headers such as @code{<stdlib.h>},
 but you should not rely on this, as the set of headers which Mercury
 automatically includes is subject to change.
 
