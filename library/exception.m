@@ -1546,6 +1546,7 @@ report_uncaught_exception(Exception) -->
 :- mode report_uncaught_exception_2(in, out, di, uo) is det.
 
 report_uncaught_exception_2(Exception, unit) -->
+	io__flush_output,
 	io__stderr_stream(StdErr),
 	io__write_string(StdErr, "Uncaught exception:\n"),
 	( { univ_to_type(Exception, software_error(Message)) } ->
@@ -1553,6 +1554,7 @@ report_uncaught_exception_2(Exception, unit) -->
 	;
 		io__write(StdErr, univ_value(Exception)),
 		io__nl(StdErr)
-	).
+	),
+	io__flush_output(StdErr).
 
 %-----------------------------------------------------------------------------%
