@@ -325,12 +325,14 @@ mercury_compare_type_info(Word type_info_1, Word type_info_2)
 :- pragma(c_header_code, "
 /*
 **	`univ' is represented as a two word structure.
-**	The first word contains the address of a type_info for the type.
-**	The second word contains the data.
+**	One word contains the address of a type_info for the type.
+**	The other word contains the data.
+**	The offsets UNIV_OFFSET_FOR_TYPEINFO and UNIV_OFFSET_FOR_DATA 
+**	are defined in runtime/type_info.h.
 */
 
-#define UNIV_OFFSET_FOR_TYPEINFO 0
-#define UNIV_OFFSET_FOR_DATA 1
+#include ""type_info.h""
+
 
 ").
 
@@ -954,6 +956,10 @@ mercury_expand_builtin(Word data_value, Word entry_value, expand_info *info)
 	 * base_type_info. Otherwise, it is an allocated copy of a
 	 * type_info.
 	 *
+	 * NOTE: If you are changing this code, you might also need
+	 * to change the code in create_type_info in runtime/deep_copy.c,
+	 * which does much the same thing, only allocating using malloc
+	 * instead of on the heap.
 	 */
 
 Word * create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)

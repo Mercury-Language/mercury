@@ -238,6 +238,19 @@
 #define TYPELAYOUT_CONST_FUNCTOR_OFFSET		2
 #define TYPELAYOUT_ENUM_FUNCTOR_OFFSET		2
 #define TYPELAYOUT_SIMPLE_FUNCTOR_OFFSET	1
+
 #define TYPELAYOUT_SIMPLE_ARITY_OFFSET  	0
+#define TYPELAYOUT_SIMPLE_ARGS_OFFSET       1
+
+/* 
+** Offsets for dealing with `univ' types.
+**
+** `univ' is represented as a two word structure.
+** The first word contains the address of a type_info for the type.
+** The second word contains the data.
+*/
+
+#define UNIV_OFFSET_FOR_TYPEINFO 0
+#define UNIV_OFFSET_FOR_DATA 1
 
 #endif

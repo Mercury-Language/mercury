@@ -23,6 +23,24 @@
 % Author: trd.
 %
 %---------------------------------------------------------------------------%
+%
+% NOTE: If the representation of base_type_layouts changes, the
+% following modules must also be examined to see whether they need to
+% be updated. 
+%
+% library:	std_util.m		- functor, arg, expand
+% 		uniq_array.m		- uniq_array type
+% 		io.m			- io__stream type
+% 		mercury_builtin.m	- builtin types
+%
+% runtime:	type_info.h		- defines layout macros
+% 		solutions.mod		- defines a list layout
+% 		deep_copy.{c,h}		- deep_copy
+% 		
+% Any module that uses base_type_layouts should register itself here.
+% Changes can by minimized by using the macros in type_info.h.
+%
+%---------------------------------------------------------------------------%
 % Data representation: Layout Tables
 %
 % Arrays are created, designed to allow indexing from actual data words.
@@ -757,21 +775,22 @@ base_type_layout__generate_pseudo_type_info(Type, LayoutInfo0, LayoutInfo,
 		( 
 			% XXX higher order types are tricky. For the moment,
 			% we'll just make them refer to the defined pred_0
-			% base_type_info, and add the arity as the first
-			% argument in the pseudo-typeinfo.
+			% base_type_info, with argument according to
+			% their types. The arity will need to be
+			% obtained from elsewhere - for most
+			% applications the closure contains the number
+			% of arguments present in the closure, which
+			% is enough to copy them.
 
 			type_is_higher_order(Type, _PredFunc, _TypeArgs)
 		->
 			TypeModule = "",
 			TypeName = "pred",
-			Arity = 0,
-			TypeId = _QualTypeName - RealArity,
-			RealArityArg = [yes(const(int_const(RealArity)))]
+			Arity = 0
 		;
 			TypeId = QualTypeName - Arity,
 			unqualify_name(QualTypeName, TypeName),
-			sym_name_get_module_name(QualTypeName, "", TypeModule),
-			RealArityArg = []
+			sym_name_get_module_name(QualTypeName, "", TypeModule)
 		),
 		base_type_layout__get_next_label(LayoutInfo0, NextLabel),
 		base_type_layout__incr_next_label(LayoutInfo0, LayoutInfo1),
@@ -781,10 +800,8 @@ base_type_layout__generate_pseudo_type_info(Type, LayoutInfo0, LayoutInfo,
 			% generate args, but remove one level of create()s.
 		base_type_layout__generate_pseudo_type_infos(TypeArgs,
 			LayoutInfo1, LayoutInfo, PseudoArgs0),
-		base_type_layout__remove_creates(PseudoArgs0, PseudoArgs1),
+		base_type_layout__remove_creates(PseudoArgs0, PseudoArgs),
 
-		list__append(RealArityArg, PseudoArgs1, PseudoArgs),
-			
 		Pseudo = yes(create(0, [Pseudo0 | PseudoArgs], no, 
 			NextLabel))
 	;

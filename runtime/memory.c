@@ -150,6 +150,8 @@ int	dumpindex;
 MemoryZone *nondetstack_zone;
 #ifndef CONSERVATIVE_GC
 MemoryZone *heap_zone;
+MemoryZone *solutions_heap_zone;
+Word       *solutions_heap_pointer;
 #endif
 
 static	unsigned	unit;
@@ -227,6 +229,7 @@ void init_memory(void)
 	Word		*nondetstack_base;
 #ifndef	CONSERVATIVE_GC
 	Word		*heap_base;
+	Word		*solutions_heap_base;
 #endif
 
 	/*
@@ -267,9 +270,14 @@ void init_memory(void)
 #ifdef CONSERVATIVE_GC
 	heap_zone_size      = 0;
 	heap_size	    = 0;
+	solutions_heap_zone_size = 0;
+	solutions_heap_size = 0;
 #else
 	heap_zone_size      = round_up(heap_zone_size * 1024, unit);
 	heap_size           = round_up(heap_size * 1024, unit);
+	solutions_heap_zone_size = round_up(solutions_heap_zone_size * 1024, 
+		unit);
+	solutions_heap_size = round_up(solutions_heap_size * 1024, unit);
 #endif
 
 	detstack_size       = round_up(detstack_size * 1024, unit);
@@ -285,6 +293,8 @@ void init_memory(void)
 #ifndef CONSERVATIVE_GC
 	if (heap_zone_size >= heap_size)
 		heap_zone_size = unit;
+	if (solutions_heap_zone_size >= solutions_heap_size)
+		solutions_heap_zone_size = unit;
 #endif
 
 	if (detstack_zone_size >= detstack_size)
@@ -321,7 +331,8 @@ void init_memory(void)
 
 #ifndef CONSERVATIVE_GC
 	heap_base	 = (Word *) arena;
-	detstack_base	 = round_up((Unsigned)heap_base+heap_size+unit, unit);
+	detstack_base	 = (Word *) round_up((Unsigned)heap_base+heap_size+unit,
+				unit);
 #else
 	detstack_base	 = (Word *) arena;
 #endif
@@ -348,6 +359,14 @@ void init_memory(void)
 #ifndef CONSERVATIVE_GC
 	heap_zone = construct_zone("heap", 1, heap_base, heap_size, heap_offset,
 			heap_zone_size, default_handler);
+
+		/* We won't worry about offsets for the solutions
+		 * heap, and it's not part of the arena.
+		 */
+	solutions_heap_zone = create_zone("solutions_heap", 1,
+		solutions_heap_size, 0, solutions_heap_zone_size, 
+		default_handler);
+	solutions_heap_pointer = solutions_heap_zone->bottom;
 #endif
 #else	/* !HAVE_SIGINFO */
 	detstack_zone = construct_zone("det stack", 1, detstack_base,

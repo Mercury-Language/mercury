@@ -17,10 +17,12 @@ extern	int		mercury_exit_status;
 extern	unsigned	heap_size;
 extern	unsigned	detstack_size;
 extern	unsigned	nondstack_size;
+extern	unsigned	solutions_heap_size;
 
 extern	unsigned	heap_zone_size;
 extern	unsigned	detstack_zone_size;
 extern	unsigned	nondstack_zone_size;
+extern	unsigned	solutions_heap_zone_size;
 
 extern	unsigned	pcache_size;
 

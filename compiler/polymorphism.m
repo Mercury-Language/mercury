@@ -704,20 +704,19 @@ polymorphism__make_vars([Type | Types], ModuleInfo, TypeInfoMap,
 polymorphism__make_var(Type, ModuleInfo, TypeInfoMap,
 		VarSet0, VarTypes0, Var, ExtraGoals, VarSet, VarTypes) :-
 	(
-		type_is_higher_order(Type, _PredOrFunc, _TypeArgs)
+		type_is_higher_order(Type, _PredOrFunc, TypeArgs)
 	->
 		% This occurs for code where a predicate calls a polymorphic
 		% predicate with a known higher-order value of the type
 		% variable.
 		% The transformation we perform is basically the same
 		% as in the first-order case below, except that
-		% we ignore the PredOrFunc and TypeArgs,
-		% and map all pred/func types to builtin pred/0
-		% for the purposes of creating type_infos.
+		% we ignore the PredOrFunc and map all pred/func types to 
+		% builtin pred/0 for the purposes of creating type_infos.
 		% XXX that probably causes univ_to_type to give
 		% the wrong results
 		TypeId = unqualified("pred") - 0,
-		polymorphism__construct_type_info(Type, TypeId, [],
+		polymorphism__construct_type_info(Type, TypeId, TypeArgs,
 			ModuleInfo, TypeInfoMap, VarSet0, VarTypes0,
 			Var, ExtraGoals, VarSet, VarTypes)
 	;
@@ -863,9 +862,8 @@ polymorphism__construct_type_info(Type, TypeId, TypeArgs,
 		TypeInfoMethod = shared_one_or_two_cell,
 
 		polymorphism__init_const_base_type_info_var(Type,
-			TypeId, TypeArgs, ModuleInfo,
-			VarSet1, VarTypes1, BaseVar, BaseGoal,
-			VarSet2, VarTypes2),
+			TypeId, ModuleInfo, VarSet1, VarTypes1, 
+			BaseVar, BaseGoal, VarSet2, VarTypes2),
 		polymorphism__maybe_init_second_cell(ArgTypeInfoVars,
 			ArgTypeInfoGoals, Type,
 			BaseVar, VarSet2, VarTypes2, [BaseGoal],
@@ -1161,19 +1159,19 @@ polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 	% statically allocated base_type_info cell for the type, allocated
 	% in the module that defines the type.
 
-:- pred polymorphism__init_const_base_type_info_var(type, type_id, list(term),
+:- pred polymorphism__init_const_base_type_info_var(type, type_id,
 	module_info, varset, map(var, type), var, hlds__goal,
 	varset, map(var, type)).
-:- mode polymorphism__init_const_base_type_info_var(in, in, in, in, in, in,
+:- mode polymorphism__init_const_base_type_info_var(in, in, in, in, in,
 	out, out, out, out) is det.
 
-polymorphism__init_const_base_type_info_var(Type, TypeId, ArgVars,
+polymorphism__init_const_base_type_info_var(Type, TypeId,
 		ModuleInfo, VarSet0, VarTypes0, BaseTypeInfoVar,
 		BaseTypeInfoGoal, VarSet, VarTypes) :-
 
 	type_util__type_id_module(ModuleInfo, TypeId, ModuleName),
 	type_util__type_id_name(ModuleInfo, TypeId, TypeName),
-	list__length(ArgVars, Arity),
+	TypeId = _ - Arity,
 	ConsId = base_type_info_const(ModuleName, TypeName, Arity),
 	TypeInfoTerm = functor(ConsId, []),
 

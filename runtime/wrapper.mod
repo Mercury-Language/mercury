@@ -30,11 +30,13 @@
 unsigned	heap_size =      4096;
 unsigned	detstack_size =  2048;
 unsigned	nondstack_size =  128;
+unsigned	solutions_heap_size =      1024;
 
 /* size of the redzones at the end of data areas, in kilobytes */
 unsigned	heap_zone_size =       16;
 unsigned	detstack_zone_size =   16;
 unsigned	nondstack_zone_size =  16;
+unsigned	solutions_heap_zone_size = 16;
 
 /* primary cache size to optimize for */
 unsigned	pcache_size =    8192;

@@ -21,12 +21,12 @@ MOD2C		= $(SCRIPTS_DIR)/mod2c
 
 #-----------------------------------------------------------------------------#
 
-HDRS		= access.h misc.h conf.h dlist.h debug.h dummy.h engine.h \
-		  getopt.h goto.h heap.h imp.h init.h label.h \
+HDRS		= access.h misc.h conf.h deep_copy.h dlist.h debug.h dummy.h \
+		  engine.h getopt.h goto.h heap.h imp.h init.h label.h \
 		  overflow.h prof.h memory.h mercury_solver_backtrack.h \
 		  regorder.h regs.h std.h stacks.h \
 		  table.h tags.h timing.h wrapper.h \
-		  prof.h prof_mem.h type_info.h
+		  prof.h prof_mem.h type_info.h 
 
 MACHHDRS	= machdeps/no_regs.h machdeps/i386_regs.h \
 		  machdeps/mips_regs.h machdeps/sparc_regs.h \
@@ -35,7 +35,7 @@ MACHHDRS	= machdeps/no_regs.h machdeps/i386_regs.h \
 MODS		= engine.mod wrapper.mod call.mod solutions.mod
 MOD_CS		= engine.c wrapper.c call.c solutions.c
 MOD_OS		= $(MOD_CS:.c=.o)
-ORIG_CS		= access.c dlist.c dummy.c label.c \
+ORIG_CS		= access.c deep_copy.c dlist.c dummy.c label.c \
 		  memory.c misc.c table.c timing.c prof.c prof_mem.c
 ORIG_OS		= $(ORIG_CS:.c=.o)
 OBJS		= $(MOD_OS) $(ORIG_OS)
