@@ -28,12 +28,16 @@
 :- import_module cse_detection, polymorphism, garbage_out, shapes.
 :- import_module liveness, det_analysis, follow_code, follow_vars, live_vars.
 :- import_module arg_info, store_alloc, code_gen, optimize, llds, inlining.
+:- import_module negation, call_graph.
+:- import_module common.
+
 :- import_module prog_out, prog_util, hlds_out.
 :- import_module mercury_to_mercury, mercury_to_goedel.
 :- import_module getopt, options, globals.
 :- import_module int, map, set, std_util, dir, tree234, term, varset, hlds.
-:- import_module negation, call_graph.
-:- import_module common, require.
+:- import_module require.
+
+:- import_module debugger.
 
 %-----------------------------------------------------------------------------%
 
@@ -106,6 +110,21 @@ postprocess_options(ok(OptionTable0), Error) -->
 					globals__io_set_option(verbose,
 						bool(yes))
 				;	
+					[]
+				),
+				% --debugger implies --nocompile
+				globals__io_lookup_bool_option(debugger,
+					Debugger),
+				( { Debugger = yes } ->
+					globals__io_set_option(link,
+						bool(no)),
+					globals__io_set_option(compile,
+						bool(no)),
+					globals__io_set_option(generate_code,
+						bool(no)),
+					globals__io_set_option(inlining,
+						bool(no))
+				;
 					[]
 				),
 				% dump and flags statistics
@@ -267,11 +286,24 @@ main_2(yes(ErrorMessage), _) -->
 	usage_error(ErrorMessage).
 main_2(no, Args) -->
 	globals__io_lookup_bool_option(help, Help),
+	globals__io_lookup_bool_option(debugger,Debugger),
 	( { Help = yes } ->
 		long_usage
 	; { Args = [] } ->
 		usage
-        ;
+        ; { Debugger = yes } ->
+% Now display message to user that he/she have selected the debugger
+io__write_string("\nYou have selected the Debugger for Mercury.\n"),
+io__write_string("Unfortunately the debugger is still under construction,\n"),
+io__write_string("in other words, it doesn't work!\n"),
+io__write_string("Even if it works, it's a figment of your\n"),
+io__write_string("imagination because officially it doesn't work.\n"),
+		{ strip_module_suffixes(Args,ModuleNames) },
+		dprocess_module_list(ModuleNames,HLDS_OUT),
+		mercury_compile__dump_hlds("debugger.hlds.output",
+			HLDS_OUT),
+		the_debugger(HLDS_OUT)
+	;
 		{ strip_module_suffixes(Args, ModuleNames) },
 		process_module_list(ModuleNames),
 		globals__io_lookup_bool_option(link, Link),
@@ -282,6 +314,70 @@ main_2(no, Args) -->
 			[]
 		)
 	).
+
+%----------------------------------------------------------------------------%
+% Here lies, old ye implementation of zee Debugger
+
+:- pred dprocess_module_list(list(string),module_info,io__state,io__state).
+:- mode dprocess_module_list(in,out,di,uo) is det.
+
+dprocess_module_list(ModuleNames,HLDS_OUT) -->
+	% obtain the list of items from all the modules
+	% (including imported modules)
+	globals__io_lookup_string_option(builtin_module,BuiltinModule),
+	dprocess_module_list2([BuiltinModule|ModuleNames], [], [], ListItems) ,
+	{ varset__init(VarSet) }, % start with an empty varset
+	{ term__context_init(Context) }, % dummy context
+	{ list__append(ListItems,[module_defn(VarSet,imported) - Context],
+	  ListItems1) },
+	{ Module = module("debugger123",[],[],ListItems1,no) },
+	mercury_compile__pre_hlds_pass(Module,HLDS1,Proceed1),
+	mercury_compile__semantic_pass(HLDS1,HLDS9,Proceed1,Proceed2),
+	( { Proceed2 = no },
+	    { module_info_init("Nothing",HLDS_OUT) },
+	    io__write_string("Errors detected by semantic_pass\n")
+	;
+	    { Proceed2 = yes },
+	    mercury_compile__check_determinism(HLDS9,HLDS_OUT,FoundError),
+            % Test for error
+	    ( { FoundError = yes },
+	      io__write_string("Errors detected by check_determinism\n")
+	    ;
+	      { FoundError = no }
+	    )
+	).
+
+% Takes a list of module names and obtain items from each module
+% XXX should return an error indicator!
+
+:- pred dprocess_module_list2(list(string), list(string), item_list, item_list,
+	io__state, io__state).
+:- mode dprocess_module_list2(in, in, in, out, di, uo) is det.
+
+dprocess_module_list2([], _Modules, Items, Items) --> [].
+
+dprocess_module_list2([M|Ms], ModulesRead, Items0, Items) -->
+	% check whether we've already read this module in
+	( { list__member(M, ModulesRead) } ->
+		dprocess_module_list2(Ms, ModulesRead, Items0, Items)
+	;
+		io__gc_call(read_mod(M, ".m", "Reading module",
+				ModuleItems, Error)),
+		{ get_dependencies(ModuleItems, ImportedModules) },
+		( { Error = yes } ->
+			io__write_string("read_mod detects errors\n")
+		;
+		  { Error = fatal } ->
+			io__write_string("read_mod detects fatal errors\n")
+		;
+			[]
+		),
+		{ list__append(ModuleItems, Items0, Items1) },
+		{ list__append(ImportedModules, Ms, Ms1) },
+		dprocess_module_list2(Ms1, [M | ModulesRead], Items1, Items)
+	).
+
+%----------------------------------------------------------------------------%
 
 	% Process a list of module names.
 	% Remove any `.m' extension extension before processing

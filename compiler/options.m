@@ -121,6 +121,8 @@
 		;	debug
 		;	grade
 		;	procs_per_c_function
+        % Debugger Options
+                ;       debugger
 	% Miscellaneous Options
 		;	builtin_module
 		;	heap_space
@@ -138,6 +140,7 @@
 	;	output_option
 	;	code_gen_option
 	;	optimization_option
+        ;       debugger_option
 	;	miscellaneous_option.
 
 option_defaults(OptionDefaults) :-
@@ -146,10 +149,11 @@ option_defaults(OptionDefaults) :-
 	option_defaults_2(output_option, OutputOptions),
 	option_defaults_2(code_gen_option, CodeGenOptions),
 	option_defaults_2(optimization_option, OptimizationOptions),
+        option_defaults_2(debugger_option, DebuggerOptions),
 	option_defaults_2(miscellaneous_option, MiscellaneousOptions),
 	list__condense([WarningOptions, VerbosityOptions, OutputOptions,
-		CodeGenOptions, MiscellaneousOptions, OptimizationOptions],
-		OptionDefaults).
+		CodeGenOptions, OptimizationOptions, DebuggerOptions,
+                MiscellaneousOptions], OptionDefaults).
 
 :- pred option_defaults_2(option_category::in,
 	list(pair(option, option_data))::out) is det.
@@ -230,6 +234,10 @@ option_defaults_2(optimization_option, [
 	common_struct		-	bool(no),
 	common_goal		-	bool(yes),
 	procs_per_c_function	-	int(5)
+]).
+option_defaults_2(debugger_option, [
+		% Debugger Options
+	debugger		-	bool(no)
 ]).
 option_defaults_2(miscellaneous_option, [
 		% Miscellaneous Options
@@ -351,7 +359,7 @@ long_option("common-struct",		common_struct).
 long_option("common-goal",		common_goal).
 long_option("procs-per-c-function",	procs_per_c_function).
 long_option("procs-per-C-function",	procs_per_c_function).
-
+long_option("debugger",			debugger).
 options_help -->
 	io__write_string("\t-h, --help\n"),
 	io__write_string("\t\tPrint this usage message.\n"),
@@ -535,6 +543,10 @@ options_help -->
 	io__write_string("\t\tseverely stress the C compiler.\n"),
 	io__write_string("\t--no-c-optimize\n"),
 	io__write_string("\t\tDon't enable the C compiler's optimizations.\n"),
+
+	io__write_string("\nDebugger Options:\n"),
+	io__write_string("\t--debugger\n"),
+	io__write_string("\t\tDeclarative Debugger(not installed)\n"),
 
 	io__write_string("\nMiscellaneous Options:\n"),
 	io__write_string("\t-H <n>, --heap-space <n>\n"),

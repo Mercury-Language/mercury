@@ -1009,6 +1009,7 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 :- pred invalid_pred_id(pred_id).
 :- mode invalid_pred_id(out) is det.
 :- mode invalid_pred_id(in) is semidet.
+:- type pred_id == int.
 
 %-----------------------------------------------------------------------------%
 
@@ -1030,7 +1031,7 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 					% to pred_id
 	).
 
-:- type pred_id == int.
+% :- type pred_id == int.
 
 :- type pred_name_index	== map(string, list(pred_id)).
 :- type pred_name_arity_index == map(name_arity, list(pred_id)).
