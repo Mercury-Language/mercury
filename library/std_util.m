@@ -84,9 +84,11 @@
 % The "maybe" type.
 
 :- type maybe(T) ---> no ; yes(T).
+:- inst maybe(I) ---> no ; yes(I).
 
 :- type maybe_error ---> ok ; error(string).
 :- type maybe_error(T) ---> ok(T) ; error(string).
+:- inst maybe_error(I) ---> ok(I) ; error(ground).
 
 %-----------------------------------------------------------------------------%
 
@@ -100,6 +102,8 @@
 
 :- type pair(T1, T2)	--->	(T1 - T2).
 :- type pair(T)		==	pair(T,T).
+:- inst pair(I1, I2)	--->	(I1 - I2).
+:- inst pair(I)		==	pair(I,I).
 
 	% Return the first element of the pair.
 :- pred fst(pair(X,Y)::in, X::out) is det.

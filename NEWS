@@ -34,6 +34,11 @@ Changes to the standard library:
 * There's a new predicate `random__permutation', for
   computing a random permutation of a list.
 
+* Four new parametric instantiations `maybe/1', `maybe_error/1',
+  `pair/2' and `pair/1' have been added to the `std_util' library
+  module.  These make it more convenient to work with non-ground
+  terms of the corresponding type.
+
 
 NEWS for Mercury release 0.9.1:
 -------------------------------
