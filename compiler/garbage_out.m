@@ -514,17 +514,18 @@ garbage_out__write_abs_exports(AE_List) -->
 :- mode garbage_out__write_abs_list(in, di, uo) is det.
 garbage_out__write_abs_list([]) --> [].
 garbage_out__write_abs_list([T_Id - M_SN | As]) -->
+	io__write_string("abs_info("),
 	garbage_out__write_type_id(T_Id),
 	(
 		{ M_SN = no(Type) },
-		io__write_string(" - no("),
+		io__write_string(", no("),
 		garbage_out__write_type(Type)
 	;
 		{ M_SN = yes(S_Num) },
-		io__write_string(" - yes("),
+		io__write_string(", yes("),
 		shapes__write_shape_num(S_Num)
 	),
-	io__write_string(")"),
+	io__write_string("))"),
 	garbage_out__maybe_write_comma_newline(As),
 	garbage_out__write_abs_list(As).
 
