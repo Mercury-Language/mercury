@@ -40,7 +40,5 @@ warnings
 	comparing the warnings emitted by the compiler with those given
 	in the hand-written `.exp' file. 
 
-The file NUPROLOG contains the name(s) of the host(s) that generate
-the expected output files for the benchmark and general directories.
-To regenerate these files, execute the "generate_exp" script in this
-directory.
+To regenerate the expected output files for the benchmark and general
+directories, execute the "generate_exp" script in this directory.
