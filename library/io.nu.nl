@@ -9,30 +9,7 @@
 %
 %-----------------------------------------------------------------------------%
 
-io__gc_call(Goal) -->
-	io__update_state,
-	(
-		io__call(Goal),
-		io__update_state,
-		{ 
-		  getprop(io__saved_state, depth, Depth),
-		  Depth1 is Depth + 1,
-		  putprop(io__saved_state, depth, Depth1),
-		  putprop(io__saved_state, Depth, Goal),
-		  fail
-		}
-	;
-		{ 
-		  getprop(io__saved_state, depth, Depth1),
-		  Depth is Depth1 - 1,
-		  putprop(io__saved_state, depth, Depth),
-		  getprop(io__saved_state, Depth, Goal),
-		  remprop(io__saved_state, Depth)
-		}
-	).
-
-%-----------------------------------------------------------------------------%
-
+% program startup code
 	
 	% `io__exit_on_abort' is used as a global flag to control the
 	% behaviour of main/1 when it is re-entered after a call to abort.
@@ -100,6 +77,14 @@ io__init(Args, ArgStrings) :-
 	;
 		true
 	).
+
+:- pred atoms_to_strings(list(atom), list(string)).
+:- mode atoms_to_strings(in, out) is det.
+
+atoms_to_strings([],[]).
+atoms_to_strings([A|As],[S|Ss]) :-
+	name(A,S),
+	atoms_to_strings(As,Ss).
 
 	% The following definition of main_predicate/3 is a default
 	% and will normally be overridden by the users main_predicate/3.
@@ -170,28 +155,105 @@ io__call(Goal, IOState0, IOState) :-
 		abort
 	).
 
-:- pred atoms_to_strings(list(atom), list(string)).
-atoms_to_strings([],[]).
-atoms_to_strings([A|As],[S|Ss]) :-
-	name(A,S),
-	atoms_to_strings(As,Ss).
+% io__gc_call - call a goal, and do a manual garbage collection
 
-io__progname(DefaultName, Name) --> 
-	{ io__save_progname(N) ->
-		Name0 = N
+io__gc_call(Goal) -->
+	io__update_state,
+	(
+		io__call(Goal),
+		io__update_state,
+		{ 
+		  getprop(io__saved_state, depth, Depth),
+		  Depth1 is Depth + 1,
+		  putprop(io__saved_state, depth, Depth1),
+		  putprop(io__saved_state, Depth, Goal),
+		  fail
+		}
 	;
-		Name0 = DefaultName
-	},
-	{ dir__basename(Name0, Name) }.
+		{ 
+		  getprop(io__saved_state, depth, Depth1),
+		  Depth is Depth1 - 1,
+		  putprop(io__saved_state, depth, Depth),
+		  getprop(io__saved_state, Depth, Goal),
+		  remprop(io__saved_state, Depth)
+		}
+	).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+% input predicates
+
+io__read_char_code(S, C) -->
+	{ get0(S, C) },
+	io__update_state.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+% output predicates - to the specified stream
+
+io__write_int(S, I) -->
+	{ write(S, I) },
+	io__update_state.
+
+io__write_char(S, C) -->
+	{ write(S, C) },
+	io__update_state.
+
+io__write_float(S, F) -->
+	{ write(S, F) },
+	io__update_state.
+
+io__write_string(Stream, String) -->
+	{ (format(Stream, "~s", [String]), fail ; true) },
+	io__update_state.
 	
+io__write_anything(S, I) -->
+	{ write(S, I) },
+	io__update_state.
+
+io__flush_output(Stream) -->
+	{ flushOutput(Stream) },
+	io__update_state.
+
+%-----------------------------------------------------------------------------%
+
+% output predicates - to the current output stream
+
+io__write_char(Char) -->
+	io__output_stream(Stream),
+	io__write_char(Stream, Char).
+
+io__write_int(Int) -->
+	io__output_stream(Stream),
+	io__write_int(Stream, Int).
+
+io__write_string(String) -->
+	io__output_stream(Stream),
+	io__write_string(Stream, String).
+
+io__write_float(Float) -->
+	io__output_stream(Stream),
+	io__write_float(Stream, Float).
+
+io__write_anything(Term) -->
+	io__output_stream(Stream),
+	io__write_anything(Stream, Term).
+
+io__flush_output -->
+	io__output_stream(Stream),
+	io__flush_output(Stream).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-io__get_line_number(LineNumber) -->
-	{ currentInput(Stream) },
-	{ lineCount(Stream, LineNumber) }.
+io__stdin_stream(user_input) --> [].
 
-%-----------------------------------------------------------------------------%
+io__stdout_stream(user_output) --> [].
+
+io__stderr_stream(user_error) --> [].
+
 %-----------------------------------------------------------------------------%
 
 io__input_stream(Stream) -->
@@ -211,136 +273,45 @@ io__set_output_stream(NewStream, OldStream) -->
 	io__update_state.
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
-	% Declarative versions of Prolog's see/1 and seen/0.
+io__do_open_input(FileName, Result, Stream) -->
+	io__do_open(FileName, read, Result, Stream).
 
-io__see(File, Result) -->
+io__do_open_output(FileName, Result, Stream) -->
+	io__do_open(FileName, write, Result, Stream).
+
+io__do_open_append(FileName, Result, Stream) -->
+	io__do_open(FileName, append, Result, Stream).
+
+io__do_open(File, Mode, Result, Stream) -->
 	{ name(FileName, File) },
-	( { see(FileName) } ->
-		{ Result = ok },
-		io__input_stream(Stream),
+	( { open(FileName, Mode, Stream0) } ->
+		{ Result = 0 },
+		{ Stream = Stream0 },
 		io__insert_stream_name(Stream, File)
 	;
-		{ Result = error }
+		{ Result = -1 },
+		{ Stream = garbage }
 	),
 	io__update_state.
 
-io__seen -->
-	io__input_stream(Stream),
+io__close_input(Stream) -->
+	io__do_close(Stream).
+
+io__close_output(Stream) -->
+	io__do_close(Stream).
+
+io__do_close(Stream) -->
+	{ close(Stream) -> true ; true },
 	io__delete_stream_name(Stream),
-	{ seen },
 	io__update_state.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-	% Declarative versions of Prolog's tell/1 and told/0.
-
-io__tell(File, Result) -->
-	{ name(FileName, File) },
-	( { tell(FileName) } ->
-		{ Result = ok },
-		io__output_stream(Stream),
-		io__insert_stream_name(Stream, File)
-	;
-		{ Result = error }
-	),
-	io__update_state.
-
-io__told -->
-	io__output_stream(Stream),
-	io__delete_stream_name(Stream),
-	{ told },
-	io__update_state.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- pred io__delete_stream_name(io__stream, io__state, io__state).
-:- mode io__delete_stream_name(in, di, uo).
-
-io__delete_stream_name(Stream, io__state(StreamNames0, Globals, S),
-		io__state(StreamNames, Globals, S)) :-
-	map__delete(StreamNames0, Stream, StreamNames).
-
-:- pred io__insert_stream_name(io__stream, string, io__state, io__state).
-:- mode io__insert_stream_name(in, string, di, uo).
-
-io__insert_stream_name(Stream, Name, io__state(StreamNames0, Globals, S),
-		io__state(StreamNames, Globals, S)) :-
-	map__insert(StreamNames0, Stream, Name, StreamNames).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-io__write_int(S, I) -->
-	{ write(S, I) },
-	io__update_state.
-
-%-----------------------------------------------------------------------------%
-
-io__read_char(S, C, R) -->
-	{ get0(S, C0) },
-	(
-		{ C0 = -1 }
-	->
-		{ R = eof, C = 1 }
-	;
-		{ R = ok, char_to_int(C, C0) }
-	),
-	io__update_state.
-
-%-----------------------------------------------------------------------------%
-
-io__read_line(S, Str, R) -->
-	io__read_char(S, C, R0),
-	(
-		{ R0 = ok }
-	->
-		(
-			{ C = '\n' }
-		->
-			{ Str = ['\n'] },
-			{ R = R0 }
-		;
-			{ Str = [C|Str0] },
-			io__read_line(S, Str0, R)
-		)
-	;
-		{ Str = [] },
-		{ R = R0 }
-	).
-
-%-----------------------------------------------------------------------------%
-
-io__write_char(S, C) -->
-	{ write(S, C) },
-	io__update_state.
-
-%-----------------------------------------------------------------------------%
-
-io__write_float(S, F) -->
-	{ write(S, F) },
-	io__update_state.
-
-%-----------------------------------------------------------------------------%
-
-io__write_string(Stream, String) -->
-	{ (format(Stream, "~s", [String]), fail ; true) },
-	io__update_state.
-	
-%-----------------------------------------------------------------------------%
-
-io__write_anything(S, I) -->
-	{ write(S, I) },
-	io__update_state.
-
-%-----------------------------------------------------------------------------%
-
-io__flush_output(Stream) -->
-	{ flushOutput(Stream) },
-	io__update_state.
+io__get_line_number(LineNumber) -->
+	{ currentInput(Stream) },
+	{ lineCount(Stream, LineNumber) }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -384,6 +355,21 @@ io__final_state(IOState) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+% global state predicates
+
+io__progname(DefaultName, Name) --> 
+	{ io__save_progname(N) ->
+		Name0 = N
+	;
+		Name0 = DefaultName
+	},
+	{ dir__basename(Name0, Name) }.
+	
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+% memory management predicates
+
 io__preallocate_heap_space(N) -->
 	{ preallocate_heap(N) },
 	io__update_state.
@@ -415,11 +401,13 @@ preallocate_heap_2(N) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-io__call_system(Command, Result) -->
-	{ system(Command, Status) ->
-		Result = ok(Status)
+% miscellaneous predicates
+
+io__call_system_code(Command, Status) -->
+	{ system(Command, Status0) ->
+		Status = Status0
 	;
-		Result = error
+		Status = -1
 	},
 	io__update_state.
 

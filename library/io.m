@@ -156,8 +156,8 @@
 
 :- pred io__open_input(string, io__res(io__input_stream), io__state, io__state).
 :- mode io__open_input(in, out, di, uo) is det.
-%	io__open_output(File, Result, IO0, IO1).
-%		Attempts to open a file for output.
+%	io__open_input(File, Result, IO0, IO1).
+%		Attempts to open a file for input.
 %		Result is either 'ok(Stream)' or 'error'.
 
 :- pred io__close_input(io__input_stream, io__state, io__state).
@@ -219,6 +219,13 @@
 %		Attempts to open a file for output.
 %		Result is either 'ok(Stream)' or 'error'.
 
+:- pred io__open_append(string, io__res(io__output_stream),
+				io__state, io__state).
+:- mode io__open_append(in, out, di, uo) is det.
+%	io__open_append(File, Result, IO0, IO1).
+%		Attempts to open a file for appending.
+%		Result is either 'ok(Stream)' or 'error'.
+
 :- pred io__close_output(io__output_stream, io__state, io__state).
 :- mode io__close_output(in, di, uo) is det.
 %	io__close_output(File, IO0, IO1).
@@ -265,6 +272,15 @@
 %		available.
 %		
 %		Does not modify the IO state.
+
+:- pred io__command_line_arguments(list(string), io__state, io__state).
+:- mode io__command_line_arguments(out, di, uo) is det.
+% 	io__command_line_arguments(Args)
+%		Returns the arguments that the program was invoked with,
+%		if available, otherwise an empty list.
+%		
+%		Does not modify the IO state.
+
 
 % The io__state includes a `globals' field which is not used by the I/O
 % library, but can be used by the application.  The globals field is
@@ -317,8 +333,9 @@
 :- implementation.
 :- import_module map.
 
-/* Most of these predicates are implemented using non-logical NU-Prolog code
-   in io.nu.nl. */
+/* Many of these predicates are implemented using either non-logical
+   NU-Prolog code in io.nu.nl, or C code in code/io.mod.
+*/
 
 :- type io__state	---> 	io__state(io__stream_names, univ, io__state_2).
 
@@ -330,37 +347,101 @@
 :- type io__input_stream ==	io__stream.
 :- type io__output_stream ==	io__stream.
 
-:- type io__stream	--->	stream(int, int)
-			;	user_input
-			;	user_output
-			;	user_error.
+:- type io__stream.
+/*
+ * In NU-Prolog: 
+ *	io__stream	--->	stream(int, int)
+ *			;	user_input
+ *			;	user_output
+ *			;	user_error.
+ *	In C:
+ *	io__stream	==	
+ */
+
+:- pred io__read_char_code(io__input_stream, int, io__state, io__state).
+:- mode io__read_char_code(in, out, di, uo) is det.
+%		Reads a character code from specified stream.
+%		Returns -1 if at EOF or error.
+
+:- pred io__call_system_code(string, int, io__state, io__state).
+:- mode io__call_system_code(in, out, di, uo) is det.
+%	io__call_system(Command, Status, IO0, IO1).
+%		Invokes the operating system shell with the specified
+%		Command.  Returns Status = -1 on failure.
 
 /*
 :- external("NU-Prolog", io__progname/4).
-:- external("NU-Prolog", io__write_string/3).
-:- external("NU-Prolog", io__read_char/4).
-:- external("NU-Prolog", io__read_line/4).
+:- external("NU-Prolog", io__read_char_code/4).
 :- external("NU-Prolog", io__write_char/3).
+:- external("NU-Prolog", io__write_char/4).
 :- external("NU-Prolog", io__write_int/3).
+:- external("NU-Prolog", io__write_int/4).
+:- external("NU-Prolog", io__write_string/3).
+:- external("NU-Prolog", io__write_string/4).
 :- external("NU-Prolog", io__write_float/3).
+:- external("NU-Prolog", io__write_float/4).
 :- external("NU-Prolog", io__write_anything/3).
-:- external("NU-Prolog", io__see/4).
-:- external("NU-Prolog", io__seen/2).
-:- external("NU-Prolog", io__tell/4).
-:- external("NU-Prolog", io__told/2).
+:- external("NU-Prolog", io__write_anything/4).
+:- external("NU-Prolog", io__flush_output/2).
+:- external("NU-Prolog", io__flush_output/3).
+:- external("NU-Prolog", io__do_open_input/5).
+:- external("NU-Prolog", io__do_open_output/5).
+:- external("NU-Prolog", io__do_open_append/5).
+:- external("NU-Prolog", io__close_input/3).
+:- external("NU-Prolog", io__close_output/3).
 :- external("NU-Prolog", io__get_line_number/3).
 :- external("NU-Prolog", io__gc_call/3).
-:- external("NU-Prolog", io__flush_output/2).
 :- external("NU-Prolog", io__preallocate_heap_space/3).
 */
 
-io__write_int(Int) -->
-	io__output_stream(Stream),
-	io__write_int(Stream, Int).
+%-----------------------------------------------------------------------------%
 
-io__write_string(String) -->
-	io__output_stream(Stream),
-	io__write_string(Stream, String).
+% input predicates
+
+io__read_char(Char, Result) -->
+	io__input_stream(Stream),
+	io__read_char(Stream, Char, Result).
+
+io__read_char(Stream, Char, Result) -->
+	io__read_char_code(Stream, Code),
+	{
+		Code = -1
+	->
+		Result = eof, Char = '\001'	/* any old junk char */
+	;
+		char_to_int(Char0, Code)
+	->
+		Result = ok, Char = Char0
+	;
+		Result = error, Char = '\001'	/* any old junk char */
+	}.
+
+io__read_line(String, Result) -->
+	io__input_stream(Stream),
+	io__read_line(Stream, String, Result).
+
+io__read_line(Stream, Str, Result) -->
+	io__read_char(Stream, Char, Result0),
+	(
+		{ Result0 = ok }
+	->
+		(
+			{ Char = '\n' }
+		->
+			{ Str = ['\n'] },
+			{ Result = Result0 }
+		;
+			{ Str = [Char | Str0] },
+			io__read_line(Stream, Str0, Result)
+		)
+	;
+		{ Str = [] },
+		{ Result = Result0 }
+	).
+
+%-----------------------------------------------------------------------------%
+
+% output predicates
 
 io__write_strings(Strings) -->
 	io__output_stream(Stream),
@@ -371,70 +452,99 @@ io__write_strings(Stream, [S|Ss]) -->
 	io__write_string(Stream, S),
 	io__write_strings(Stream, Ss).
 
-io__read_char(Char, Result) -->
-	io__input_stream(Stream),
-	io__read_char(Stream, Char, Result).
-
-io__read_line(String, Result) -->
-	io__input_stream(Stream),
-	io__read_line(Stream, String, Result).
-
-io__write_char(Char) -->
-	io__output_stream(Stream),
-	io__write_char(Stream, Char).
-
-io__write_float(Float) -->
-	io__output_stream(Stream),
-	io__write_float(Stream, Float).
-
-io__write_anything(Term) -->
-	io__output_stream(Stream),
-	io__write_anything(Stream, Term).
-
-io__flush_output -->
-	io__output_stream(Stream),
-	io__flush_output(Stream).
-
 %-----------------------------------------------------------------------------%
 
-	% This is backwards.  `see' and `seen' should be implemented
-	% in terms of `open' and `close', not vice versa.  Oh well.
-	% I guess it doesn't matter much.
+% stream predicates
+
+	% This inter-language stuff is tricky.
+	% We communicate via ints rather than via io__result_codes because
+	% we don't want the C code to depend on how Mercury stores it's
+	% discriminated union data types.
+
+:- pred io__do_open_input(string, int, io__input_stream, io__state, io__state).
+:- mode io__do_open_input(in, out, out, di, uo) is det.
+%	io__do_open_input(File, ResultCode, Stream, IO0, IO1).
+%		Attempts to open a file for input.
+%		Result is 0 for success, -1 for failure.
+
+:- pred io__do_open_output(string, int, io__output_stream, io__state,
+							io__state).
+:- mode io__do_open_output(in, out, out, di, uo) is det.
+%	io__do_open_output(File, ResultCode, Stream, IO0, IO1).
+%		Attempts to open a file for output.
+%		Result is 0 for success, -1 for failure.
+
+:- pred io__do_open_append(string, int, io__output_stream, io__state,
+							io__state).
+:- mode io__do_open_append(in, out, out, di, uo) is det.
+%	io__do_open_append(File, ResultCode, Stream, IO0, IO1).
+%		Attempts to open a file for appending.
+%		Result is 0 for success, -1 for failure.
 
 io__open_input(FileName, Result) -->
-	io__input_stream(OldStream),
-	io__see(FileName, Result0),
-	( { Result0 = ok } ->
-		io__input_stream(NewStream),
+	io__do_open_input(FileName, Result0, NewStream),
+	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) }
 	;
 		{ Result = error }
-	),
-	io__set_input_stream(OldStream, _).
-
-io__close_input(Stream) -->
-	io__set_input_stream(Stream, OldStream),
-	io__seen,
-	io__set_input_stream(OldStream, _).
+	).
 
 io__open_output(FileName, Result) -->
-	io__output_stream(OldStream),
-	io__tell(FileName, Result0),
-	( { Result0 = ok } ->
-		io__output_stream(NewStream),
+	io__do_open_output(FileName, Result0, NewStream),
+	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) }
 	;
 		{ Result = error }
-	),
-	io__set_output_stream(OldStream, _).
+	).
 
-io__close_output(Stream) -->
-	io__set_output_stream(Stream, OldStream),
-	io__told,
-	io__set_output_stream(OldStream, _).
+io__open_append(FileName, Result) -->
+	io__do_open_append(FileName, Result0, NewStream),
+	( { Result0 \= -1 } ->
+		{ Result = ok(NewStream) }
+	;
+		{ Result = error }
+	).
 
 %-----------------------------------------------------------------------------%
 
+	% Declarative versions of Prolog's see/1 and seen/0.
+
+io__see(File, Result) -->
+	io__open_input(File, Result0),
+	( { Result0 = ok(Stream) } ->
+		io__set_input_stream(Stream, _),
+		{ Result = ok }
+	; 
+		{ Result = error }
+	).
+
+io__seen -->
+	io__stdin_stream(Stdin),
+	io__set_input_stream(Stdin, OldStream),
+	io__close_input(OldStream).
+
+%-----------------------------------------------------------------------------%
+
+	% Declarative versions of Prolog's tell/1 and told/0.
+
+io__told -->
+	io__stdout_stream(Stdout),
+	io__set_output_stream(Stdout, OldStream),
+	io__close_output(OldStream).
+
+io__tell(File, Result) -->
+	io__open_output(File, Result0),
+	( { Result0 = ok(Stream) } ->
+		io__set_output_stream(Stream, _),
+		{ Result = ok }
+	;
+		{ Result = error }
+	).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+% stream name predicates
 
 io__input_stream_name(Stream, Name) -->
 	io__stream_name(Stream, Name).
@@ -453,26 +563,51 @@ io__stream_name(Stream, Name, IOState, IOState) :-
 		Name = "<stream name unavailable>"
 	).
 
+:- pred io__delete_stream_name(io__stream, io__state, io__state).
+:- mode io__delete_stream_name(in, di, uo) is det.
+
+io__delete_stream_name(Stream, io__state(StreamNames0, Globals, S),
+		io__state(StreamNames, Globals, S)) :-
+	map__delete(StreamNames0, Stream, StreamNames).
+
+:- pred io__insert_stream_name(io__stream, string, io__state, io__state).
+:- mode io__insert_stream_name(in, in, di, uo) is det.
+
+io__insert_stream_name(Stream, Name, io__state(StreamNames0, Globals, S),
+		io__state(StreamNames, Globals, S)) :-
+	map__set(StreamNames0, Stream, Name, StreamNames).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-io__stdin_stream(user_input) --> [].
-
-io__stdout_stream(user_output) --> [].
-
-io__stderr_stream(user_error) --> [].
-
-%-----------------------------------------------------------------------------%
-
-io__report_stats -->
-	{ report_stats }.
-
-%-----------------------------------------------------------------------------%
+% global state predicates
 
 io__get_globals(Globals, IOState, IOState) :-
 	IOState = io__state(_StreamNames, Globals, _S).
 
 io__set_globals(Globals, io__state(StreamNames, _, S),
 		io__state(StreamNames, Globals, S)).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+% memory management predicates
+
+io__report_stats -->
+	{ report_stats }.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+% miscellaneous predicates
+
+io__call_system(Command, Result) -->
+	io__call_system_code(Command, Status),
+	{ Status = -1 ->
+		Result = error
+	;
+		Result = ok(Status)
+	}.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

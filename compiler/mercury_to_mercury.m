@@ -246,7 +246,7 @@ mercury_output_inst_name(user_inst(Name, Args), VarSet) -->
 		io__write_string(")")
 	).
 mercury_output_inst_name(merge_inst(InstA, InstB), VarSet) -->
-	io__write_string("$list__merge("),
+	io__write_string("$merge_inst("),
 	mercury_output_inst_list([InstA, InstB], VarSet),
 	io__write_string(")").
 mercury_output_inst_name(unify_inst(Liveness, InstA, InstB), VarSet) -->

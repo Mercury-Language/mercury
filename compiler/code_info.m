@@ -1429,11 +1429,11 @@ code_info__cons_id_to_tag(Var, cons(Name, Arity), Tag) -->
 			% cons_id ought to include the module prefix, so
 			% that we could use predicate_table__search_m_n_a to 
 			% prevent this from happening
-			error("cons_info__cons_id_to_tag: ambiguous pred")
+			error("code_info__cons_id_to_tag: ambiguous pred")
 		    )
 		;
 		    % the type-checker should ensure that this never happens
-		    error("cons_info__cons_id_to_tag: invalid pred")
+		    error("code_info__cons_id_to_tag: invalid pred")
 		}
 	;
 			%
@@ -1443,7 +1443,7 @@ code_info__cons_id_to_tag(Var, cons(Name, Arity), Tag) -->
 			TypeId = TypeId0
 		;
 			% the type-checker should ensure that this never happens
-			error("cons_info__cons_id_to_tag: invalid type")
+			error("code_info__cons_id_to_tag: invalid type")
 		},
 
 			%

@@ -41,6 +41,22 @@
 
 :- pred list__merge(list(T), list(T), list(T)).
 :- mode list__merge(in, in, out) is det.
+%	list__merge(L1, L2, L):
+%		L is the result of merging L1 and L2.
+%		L1 and L2 must be sorted.
+
+:- pred list__merge_and_remove_dups(list(T), list(T), list(T)).
+:- mode list__merge_and_remove_dups(in, in, out) is det.
+%	list__merge_and_remove_dups(L1, L2, L):
+%		L is the result of merging L1 and L2 and eliminating
+%		any duplicates.
+%		L1 and L2 must be sorted.
+
+:- pred list__remove_dups(list(T), list(T)).
+:- mode list__remove_dups(in, out) is det.
+%	list__remove_dups(L0, L) :
+%		L is the result of replacing every sequence of duplicate
+%		elements in L0 with a single such element.
 
 :- pred list__member(T, list(T)).
 :- mode list__member(in, in) is semidet.
@@ -82,7 +98,8 @@
 :- mode list__reverse(in, out) is det.
 
 :- pred list__delete(list(T), T, list(T)).
-:- mode list__delete(in, in, out) is semidet.
+:- mode list__delete(in, in, in) is semidet.
+:- mode list__delete(in, in, out) is nondet.
 :- mode list__delete(in, out, out) is nondet.
 
 	% list__delete_first(List0, Elem, List) is true iff Elem occurs in List0
@@ -132,7 +149,7 @@
 
 :- implementation.
 
-:- import_module require.
+:- import_module require, std_util.
 
 list__nth_member_search([X | Xs], Y, N) :-
 	( X = Y ->
@@ -220,49 +237,135 @@ list__member(X, [X | _]).
 list__member(X, [_ | Xs]) :-
 	list__member(X, Xs).
 
-%-----------------------------------------------------------------------------%
+list__merge(A, B, C) :-
+	( A = [X|Xs] ->
+		( B = [Y|Ys] ->
+			C = [Z|Zs],
+			( compare(<, X, Y) ->
+				Z = X,
+				list__merge(Xs, B, Zs)
+			;
+				Z = Y,
+				list__merge(A, Ys, Zs)
+			)
+		;
+			C = A
+		)
+	;
+		C = B
+	).
 
-	% Declarations for NU-Prolog builtins.
+list__merge_and_remove_dups(A, B, C) :-
+	( A = [X|Xs] ->
+		( B = [Y|Ys] ->
+			compare(Res, X, Y),
+			( Res = (<) ->
+				C = [X|Zs],
+				list__merge_and_remove_dups(Xs, B, Zs)
+			; Res = (>) ->
+				C = [Y|Zs],
+				list__merge_and_remove_dups(A, Ys, Zs)
+			; 
+				list__merge_and_remove_dups(Xs, B, C)
+			)
+		;
+			C = A
+		)
+	;
+		C = B
+	).
 
-:- pred merge(list(T), list(T), list(T)).
-:- mode merge(in, in, out) is det.
+list__member(Element, List, SubList) :-
+	SubList = [Element | _],
+	list__append(_, SubList, List).
 
-:- pred member(T, list(T), list(T)).
-:- mode member(out, in, out) is nondet.
+list__member(X, [X|_]).
+list__member(X, [_|Xs]) :- list__member(X, Xs).
 
 :- pred length(list(_T), int).
-:- mode length(in, in) is semidet.	% implied
-:- mode length(in, out) is det.		% implied
+:- mode length(in, in) is semidet.     % implied
+:- mode length(in, out) is det.                % implied
 :- mode length(input_list_skel, out) is det.
 :- mode length(output_list_skel, in) is det.
 
-:- pred reverse(list(T), list(T)).
-:- mode reverse(in, out) is det.
+list__length(L, N) :-
+	length(L, N).
 
-:- pred delete(list(T), T, list(T)).
-:- mode delete(in, in, out) is semidet.
-:- mode delete(in, out, out) is nondet.
+/******
 
-:- pred sort(list(T), list(T)).
-:- mode sort(in, out) is det.
+Note - it is not possible to write a version of
+length/1 in pure Mercury that works in both directions
+unless you make it semidet rather than det.
 
-/*
-:- external("NU-Prolog", merge/3).
-:- external("NU-Prolog", member/3).
-:- external("NU-Prolog", length/2).
-:- external("NU-Prolog", reverse/2).
-:- external("NU-Prolog", delete/3).
-:- external("NU-Prolog", sort/2).
-*/
+list__length(L, N) :-
+	list__length_2(L, 0, N).
 
-	% Just forward to the NU-Prolog builtins.
+:- pred list__length_2(list(T), int, int).
+:- mode list__length_2(in, in, out) is det.
+:- mode list__length_2(in, in, in) is semidet.
 
-list__merge(L0, L1, L) :- merge(L0, L1, L).
-list__member(Elem, List, SubList) :- member(Elem, List, SubList).
-list__length(L, N) :- length(L, N).
-list__reverse(L0, L) :- reverse(L0, L).
-list__delete(X, L0, L) :- delete(X, L0, L).
-list__sort(L0, L) :- sort(L0, L).
+list__length_2([], N, N).
+list__length_2([_ | L1], N0, N) :-
+	N1 is N0 + 1,
+	list__length_2(L1, N1, N).
+
+*****/
+
+list__reverse(L0, L) :-
+	list__reverse_2(L0, [], L).
+
+:- pred list__reverse_2(list(T), list(T), list(T)).
+:- mode list__reverse_2(in, in, out) is det.
+
+list__reverse_2([], L, L).
+list__reverse_2([X|Xs], L0, L) :-
+	list__reverse_2(Xs, [X | L0], L).
+
+list__delete([X | L], X, L).
+list__delete([X | Xs], Y, [X | L]) :-
+	list__delete(Xs, Y, L).
+
+list__sort(L0, L) :-
+	list__qsort(L0, [], L1),
+	list__remove_dups(L1, L).
+
+:- pred list__qsort(list(T), list(T), list(T)).
+:- mode list__qsort(in, in, out) is det.
+
+list__qsort([], R, R).
+list__qsort([X|L], R0, R) :-
+        list__partition(L, X, L1, L2),
+        list__qsort(L2, R0, R1),
+        list__qsort(L1, [X|R1], R).
+
+:- pred list__partition(list(T), T, list(T), list(T)).
+:- mode list__partition(in, in, out, out) is det.
+
+list__partition([], _, [], []).
+list__partition([Head|Tail], Partition, Low, High) :-
+        ( compare(<, Head, Partition) ->
+                list__partition(Tail, Partition, Low1, High),
+                Low = [Head|Low1]
+        ;
+                list__partition(Tail, Partition, Low, High1),
+		High = [Head|High1]
+	).
+
+list__remove_dups([], []).
+list__remove_dups([X|Xs], L) :-
+	list__remove_dups_2(Xs, X, L).
+
+:- pred list__remove_dups_2(list(T), T, list(T)).
+:- mode list__remove_dups_2(in, in, out) is det.
+
+list__remove_dups_2([], X, [X]).
+list__remove_dups_2([X1|Xs], X0, L) :-
+	(X0 = X1 ->
+		list__remove_dups_2(Xs, X1, L)
+	;
+		L = [X0 | L0],
+		list__remove_dups_2(Xs, X1, L0)
+	).
 
 list__zip([], Bs, Bs).
 list__zip([A|As], Bs, [A|Cs]) :-

@@ -245,7 +245,7 @@ modecheck_procs(PredId, ModuleInfo, PredInfo0, PredInfo, NumErrors) -->
 	{ pred_info_procedures(PredInfo0, Procs0) },
 	{ map__keys(Procs0, ProcIds) },
 	( { ProcIds = [] } ->
-		report_warning_no_modes(PredId, PredInfo, ModuleInfo),
+		report_warning_no_modes(PredId, PredInfo0, ModuleInfo),
 		{ PredInfo = PredInfo0 },
 		{ NumErrors = 0 }
 	;
