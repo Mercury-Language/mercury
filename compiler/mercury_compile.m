@@ -69,6 +69,7 @@
 :- import_module transform_hlds__exception_analysis.
 :- import_module transform_hlds__higher_order.
 :- import_module transform_hlds__accumulator.
+:- import_module transform_hlds__untupling.
 :- import_module transform_hlds__inlining.
 :- import_module transform_hlds__loop_inv.
 :- import_module transform_hlds__deforest.
@@ -2328,6 +2329,9 @@ mercury_compile__middle_pass(ModuleName, !HLDS, !IO) :-
 		!IO),
 	% stage number 31 is used by mercury_compile__maybe_bytecodes
 
+	mercury_compile__maybe_untuple_arguments(Verbose, Stats, !HLDS, !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 133, "untupling", !IO),
+
 	mercury_compile__maybe_higher_order(Verbose, Stats, !HLDS, !IO),
 	mercury_compile__maybe_dump_hlds(!.HLDS, 135, "higher_order", !IO),
 
@@ -3250,6 +3254,21 @@ mercury_compile__maybe_bytecodes(HLDS0, ModuleName, Verbose, Stats, !IO) :-
 		maybe_flush_output(Verbose, !IO),
 		output_bytecode_file(BytecodeFile, Bytecode, !IO),
 		maybe_write_string(Verbose, " done.\n", !IO),
+		maybe_report_stats(Stats, !IO)
+	;
+		true
+	).
+
+:- pred mercury_compile__maybe_untuple_arguments(bool::in, bool::in,
+	module_info::in, module_info::out, io::di, io::uo) is det.
+
+mercury_compile__maybe_untuple_arguments(Verbose, Stats, !HLDS, !IO) :-
+	globals.io_lookup_bool_option(untuple, Untuple, !IO),
+	( Untuple = yes ->
+		maybe_write_string(Verbose, "% Untupling...\n", !IO),
+		maybe_flush_output(Verbose, !IO),
+		untuple_arguments(!HLDS, !IO),
+		maybe_write_string(Verbose, "% done.\n", !IO),
 		maybe_report_stats(Stats, !IO)
 	;
 		true

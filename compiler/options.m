@@ -491,6 +491,7 @@
 		;	termination_error_limit
 		;	termination_path_limit
 		;	analyse_exceptions
+		;	untuple
 	%	- HLDS->LLDS
 		;	smart_indexing
 		;	  dense_switch_req_density
@@ -1099,6 +1100,7 @@ option_defaults_2(optimization_option, [
 	deforestation_cost_factor	-	int(1000),
 	deforestation_vars_threshold 	-	int(200),
 	deforestation_size_threshold 	-	int(15),
+	untuple			- 	bool(no),
 
 % HLDS -> LLDS
 	smart_indexing		-	bool(no),
@@ -1767,6 +1769,7 @@ long_option("term-err-limit",		termination_error_limit).
 long_option("termination-path-limit",	termination_path_limit).
 long_option("term-path-limit",		termination_path_limit).
 long_option("analyse-exceptions", 	analyse_exceptions).
+long_option("untuple",			untuple).
 
 % HLDS->LLDS optimizations
 long_option("smart-indexing",		smart_indexing).
@@ -3701,6 +3704,11 @@ options_help_hlds_hlds_optimization -->
 		"\tEnable exception analysis.  Identify those",
 		"\tprocedures that will not throw an exception.",
 		"\tSome optimizations can make use of this information."
+		% ,
+		% "--untuple",
+		% "\tExpand out procedure arguments when the argument type",
+		% "\tis a tuple or a type with exactly one functor.",
+		% "\tNote: this is almost always a pessimization."
 	]).
 
 :- pred options_help_hlds_llds_optimization(io::di, io::uo) is det.

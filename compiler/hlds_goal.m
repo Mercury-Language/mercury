@@ -1063,6 +1063,17 @@
 
 	%
 	% Produce a goal to construct or deconstruct a
+	% unification with a functor.  It fills in the
+	% non-locals, instmap_delta and determinism fields
+	% of the goal_info.
+	%
+:- pred construct_functor(prog_var::in, cons_id::in, list(prog_var)::in,
+	hlds_goal::out) is det.
+:- pred deconstruct_functor(prog_var::in, cons_id::in, list(prog_var)::in,
+	hlds_goal::out) is det.
+
+	%
+	% Produce a goal to construct or deconstruct a
 	% tuple containing the given list of arguments,
 	% filling in the non-locals, instmap_delta and
 	% determinism fields of the goal_info.
@@ -2036,40 +2047,48 @@ make_const_construction(Var, ConsId, Goal - GoalInfo) :-
 	instmap_delta_insert(InstMapDelta0, Var, Inst, InstMapDelta),
 	goal_info_init(NonLocals, InstMapDelta, det, pure, GoalInfo).
 
-construct_tuple(Tuple, Args, Goal) :-
+construct_functor(Var, ConsId, Args, Goal) :-
 	list__length(Args, Arity),
-	ConsId = cons(unqualified("{}"), Arity),
 	Rhs = functor(ConsId, no, Args),
 	UnifyMode = (free_inst -> ground_inst) - (ground_inst -> ground_inst),
 	UniMode = ((free_inst - ground_inst) -> (ground_inst - ground_inst)),
 	list__duplicate(Arity, UniMode, UniModes),
-	Unification = construct(Tuple, ConsId, Args, UniModes,
+	Unification = construct(Var, ConsId, Args, UniModes,
 		construct_dynamically, cell_is_unique, no),
 	UnifyContext = unify_context(explicit, []),
-	Unify = unify(Tuple, Rhs, UnifyMode, Unification, UnifyContext),
-	set__list_to_set([Tuple | Args], NonLocals),
-	instmap_delta_from_assoc_list([Tuple - ground_inst], InstMapDelta),
+	Unify = unify(Var, Rhs, UnifyMode, Unification, UnifyContext),
+	set__list_to_set([Var | Args], NonLocals),
+	instmap_delta_from_assoc_list([Var - ground_inst], InstMapDelta),
 	goal_info_init(NonLocals, InstMapDelta, det, pure, GoalInfo),
 	Goal = Unify - GoalInfo.
 
-deconstruct_tuple(Tuple, Args, Goal) :-
+deconstruct_functor(Var, ConsId, Args, Goal) :-
 	list__length(Args, Arity),
-	ConsId = cons(unqualified("{}"), Arity),
 	Rhs = functor(ConsId, no, Args),
 	UnifyMode = (ground_inst -> free_inst) - (ground_inst -> ground_inst),
 	UniMode = ((ground_inst - free_inst) -> (ground_inst - ground_inst)),
 	list__duplicate(Arity, UniMode, UniModes),
 	UnifyContext = unify_context(explicit, []),
 	CanGC = no,
-	Unification = deconstruct(Tuple, ConsId, Args,
+	Unification = deconstruct(Var, ConsId, Args,
 		UniModes, cannot_fail, CanGC),
-	Unify = unify(Tuple, Rhs, UnifyMode, Unification, UnifyContext),
-	set__list_to_set([Tuple | Args], NonLocals),
+	Unify = unify(Var, Rhs, UnifyMode, Unification, UnifyContext),
+	set__list_to_set([Var | Args], NonLocals),
 	list__duplicate(Arity, ground_inst, DeltaValues),
 	assoc_list__from_corresponding_lists(Args, DeltaValues, DeltaAL),
 	instmap_delta_from_assoc_list(DeltaAL, InstMapDelta),
 	goal_info_init(NonLocals, InstMapDelta, det, pure, GoalInfo),
 	Goal = Unify - GoalInfo.
+
+construct_tuple(Tuple, Args, Goal) :-
+	list__length(Args, Arity),
+	ConsId = cons(unqualified("{}"), Arity),
+	construct_functor(Tuple, ConsId, Args, Goal).
+
+deconstruct_tuple(Tuple, Args, Goal) :-
+	list__length(Args, Arity),
+	ConsId = cons(unqualified("{}"), Arity),
+	deconstruct_functor(Tuple, ConsId, Args, Goal).
 
 %-----------------------------------------------------------------------------%
 

@@ -3099,6 +3099,28 @@ hlds_out__write_var_to_abs_locns([Var - Loc | VarLocs], VarSet, AppendVarNums,
 	hlds_out__write_var_to_abs_locns(VarLocs, VarSet, AppendVarNums, Indent,
 		!IO).
 
+:- pred hlds_out__write_untuple_info(untuple_proc_info::in, prog_varset::in,
+	bool::in, int::in, io::di, io::uo) is det.
+
+hlds_out__write_untuple_info(untuple_proc_info(UntupleMap), VarSet,
+		AppendVarNums, Indent, !IO) :-
+	hlds_out__write_indent(Indent, !IO),
+	io__write_string("% untuple:\n", !IO),
+	map__foldl(hlds_out__write_untuple_info_2(VarSet, AppendVarNums, 
+		Indent), UntupleMap, !IO).
+
+:- pred hlds_out__write_untuple_info_2(prog_varset::in, bool::in, int::in,
+	prog_var::in, prog_vars::in, io::di, io::uo) is det.
+
+hlds_out__write_untuple_info_2(VarSet, AppendVarNums, Indent,
+		OldVar, NewVars, !IO) :-
+	hlds_out__write_indent(Indent, !IO),
+	io__write_string("%\t", !IO),
+	mercury_output_var(OldVar, VarSet, AppendVarNums, !IO),
+	io__write_string("\t-> ", !IO),
+	mercury_output_vars(NewVars, VarSet, AppendVarNums, !IO),
+	io__nl(!IO).
+
 %-----------------------------------------------------------------------------%
 
 :- pred hlds_out__write_types(int::in, type_table::in, io::di, io::uo) is det.
@@ -3583,6 +3605,7 @@ hlds_out__write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
 	proc_info_is_address_taken(Proc, IsAddressTaken),
 	proc_info_get_call_table_tip(Proc, MaybeCallTableTip),
 	proc_info_get_maybe_deep_profile_info(Proc, MaybeDeepProfileInfo),
+	proc_info_get_maybe_untuple_info(Proc, MaybeUntupleInfo),
 	Indent1 = Indent + 1,
 
 	hlds_out__write_indent(Indent1, !IO),
@@ -3697,6 +3720,14 @@ hlds_out__write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
 		)
 	;
 		MaybeDeepProfileInfo = no
+	),
+
+	(
+		MaybeUntupleInfo = yes(UntupleInfo),
+		hlds_out__write_untuple_info(UntupleInfo, VarSet,
+			AppendVarNums, Indent, !IO)
+	;
+		MaybeUntupleInfo = no
 	),
 
 	hlds_out__write_indent(Indent, !IO),

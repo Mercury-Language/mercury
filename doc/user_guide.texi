@@ -6764,6 +6764,13 @@ Try to identify those procedures that cannot throw an
 exception.  This information can be used by some 
 optimization passes.
 
+@c @sp 1
+@c @item --untuple
+@c @findex --untuple
+@c Expand out procedure arguments when the argument type
+@c is a tuple or a type with exactly one functor.
+@c Note: this is almost always a pessimization.
+
 @end table
 
 @node MLDS backend (MLDS -> MLDS) optimization options

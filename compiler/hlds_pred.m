@@ -655,6 +655,10 @@
 			int	% The procedure number of the original
 				% procedure.
 		)
+	;	untuple(
+			int	% The procedure number of the original
+				% procedure.
+		)
 	;	table_generator
 	;	dnf(
 			int	% This predicate was originally part of a
@@ -1839,6 +1843,11 @@ clauses_info_set_typeclass_info_varmap(X, CI,
 			gen_arg_infos ::	table_arg_infos
 		).
 
+:- type untuple_proc_info
+	--->	untuple_proc_info(
+			map(prog_var, prog_vars)
+		).
+
 :- pred proc_info_init(prog_context::in, arity::in, list(type)::in,
 	maybe(list(mode))::in, list(mode)::in, maybe(list(is_live))::in,
 	maybe(determinism)::in, is_address_taken::in, proc_info::out) is det.
@@ -1906,6 +1915,8 @@ clauses_info_set_typeclass_info_varmap(X, CI,
 	maybe(proc_table_info)::out) is det.
 :- pred proc_info_get_maybe_deep_profile_info(proc_info::in,
 	maybe(deep_profile_proc_info)::out) is det.
+:- pred proc_info_get_maybe_untuple_info(proc_info::in,
+	maybe(untuple_proc_info)::out) is det.
 
 	% Predicates to set fields of proc_infos.
 
@@ -1955,6 +1966,9 @@ clauses_info_set_typeclass_info_varmap(X, CI,
 	proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_maybe_deep_profile_info(
 	maybe(deep_profile_proc_info)::in,
+	proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_maybe_untuple_info(
+	maybe(untuple_proc_info)::in,
 	proc_info::in, proc_info::out) is det.
 
 :- pred proc_info_head_modes_constraint(proc_info::in, mode_constraint::out)
@@ -2235,7 +2249,14 @@ clauses_info_set_typeclass_info_varmap(X, CI,
 					% sufficient for debugging most
 					% problems in the tabling system.
 		maybe_deep_profile_proc_info
-					:: maybe(deep_profile_proc_info)
+					:: maybe(deep_profile_proc_info),
+		maybe_untuple_info	:: maybe(untuple_proc_info)
+					% If set, it means this procedure was
+					% created from another procedure by the
+					% untupling transformation. This slot
+					% records which of the procedure's
+					% arguments were derived from which
+					% arguments in the original procedure.
 	).
 
 	% Some parts of the procedure aren't known yet. We initialize
@@ -2266,7 +2287,7 @@ proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
 		MaybeDet, InferredDet, ClauseBody, CanProcess, ModeErrors,
 		TVarsMap, TCVarsMap, eval_normal,
 		proc_sub_info(no, no, IsAddressTaken, StackSlots,
-		ArgInfo, InitialLiveness, no, no, no, no)).
+		ArgInfo, InitialLiveness, no, no, no, no, no)).
 
 proc_info_set(Context, BodyVarSet, BodyTypes, HeadVars, InstVarSet, HeadModes,
 		HeadLives, DeclaredDetism, InferredDetism, Goal, CanProcess,
@@ -2278,7 +2299,7 @@ proc_info_set(Context, BodyVarSet, BodyTypes, HeadVars, InstVarSet, HeadModes,
 		DeclaredDetism, InferredDetism, Goal, CanProcess, ModeErrors,
 		TVarMap, TCVarsMap, eval_normal,
 		proc_sub_info(ArgSizes, Termination, IsAddressTaken,
-		StackSlots, ArgInfo, Liveness, no, no, no, no)).
+		StackSlots, ArgInfo, Liveness, no, no, no, no, no)).
 
 proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet,
 		HeadModes, Detism, Goal, TVarMap, TCVarsMap,
@@ -2299,7 +2320,7 @@ proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet, HeadModes,
 		MaybeDeclaredDetism, Detism, Goal, yes, ModeErrors,
 		TVarMap, TCVarsMap, eval_normal,
 		proc_sub_info(no, no, IsAddressTaken,
-		StackSlots, no, Liveness, no, no, no, no)).
+		StackSlots, no, Liveness, no, no, no, no, no)).
 
 proc_info_set_body(VarSet, VarTypes, HeadVars, Goal, TI_VarMap, TCI_VarMap,
 		ProcInfo0, ProcInfo) :-
@@ -2337,6 +2358,8 @@ proc_info_get_call_table_tip(PI, PI ^ proc_sub_info ^ call_table_tip).
 proc_info_get_maybe_proc_table_info(PI, PI ^ proc_sub_info ^ maybe_table_info).
 proc_info_get_maybe_deep_profile_info(PI,
 	PI ^ proc_sub_info ^ maybe_deep_profile_proc_info).
+proc_info_get_maybe_untuple_info(PI,
+	PI ^ proc_sub_info ^ maybe_untuple_info).
 
 proc_info_set_varset(VS, PI, PI ^ prog_varset := VS).
 proc_info_set_vartypes(VT, PI, PI ^ var_types := VT).
@@ -2371,6 +2394,8 @@ proc_info_set_maybe_proc_table_info(MTI, PI,
 	PI ^ proc_sub_info ^ maybe_table_info := MTI).
 proc_info_set_maybe_deep_profile_info(DPI, PI,
 	PI ^ proc_sub_info ^ maybe_deep_profile_proc_info := DPI).
+proc_info_set_maybe_untuple_info(MUI, PI,
+	PI ^ proc_sub_info ^ maybe_untuple_info := MUI).
 
 proc_info_head_modes_constraint(ProcInfo, HeadModesConstraint) :-
 	MaybeHeadModesConstraint = ProcInfo ^ maybe_head_modes_constraint,

@@ -1146,6 +1146,7 @@ pred_transform_name(unused_argument_elimination(Posns)) = "ua_" ++
 pred_transform_name(accumulator(Posns)) = "acc_" ++
 	string__join_list("_", list__map(int_to_string, Posns)).
 pred_transform_name(loop_invariant(Proc)) = "inv_" ++ int_to_string(Proc).
+pred_transform_name(untuple(Proc)) = "untup_" ++ int_to_string(Proc).
 pred_transform_name(table_generator) = "table_gen".
 pred_transform_name(dnf(N)) = "dnf_" ++ int_to_string(N).
 

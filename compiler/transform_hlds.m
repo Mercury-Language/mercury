@@ -61,6 +61,7 @@
 :- include_module const_prop.
 :- include_module loop_inv.
 :- include_module size_prof.
+:- include_module untupling.
 
 :- include_module mmc_analysis.
 
