@@ -187,8 +187,9 @@ OTHER_PROGS= \
 # XXX The mode system can't handle the following test cases yet:
 #	assoc_list_bug
 #	determinism
-#	mode_merge_insts
 #	inst_perf_bug_2
+#	mode_merge_insts
+#	unify_inst_bug
 #
 # XXX We also don't pass this one (see the comments in it for details):
 #	mode_selection
