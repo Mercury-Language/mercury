@@ -530,6 +530,7 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_int_0_struct {
 #endif
 #ifdef USE_TYPE_LAYOUT
 	const Word *f7;
+	const Word *f8;
 #endif
 } mercury_data___base_type_info_int_0 = {
 	((Integer) 0),
@@ -541,7 +542,8 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_int_0_struct {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_type_to_term_int_2_0)),
 #endif
 #ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___base_type_layout_int_0
+	(const Word *) & mercury_data___base_type_layout_int_0,
+	(const Word *) string_const(""int"", 5)
 #endif
 };
 
@@ -563,6 +565,7 @@ mercury_data___base_type_info_character_0_struct {
 #endif
 #ifdef USE_TYPE_LAYOUT
 	const Word *f7;
+	const Word *f8;
 #endif
 } mercury_data___base_type_info_character_0 = {
 	((Integer) 0),
@@ -576,7 +579,8 @@ mercury_data___base_type_info_character_0_struct {
 		ENTRY(mercury__builtin_type_to_term_character_2_0)),
 #endif
 #ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___base_type_layout_character_0
+	(const Word *) & mercury_data___base_type_layout_character_0,
+	(const Word *) string_const(""char"", 6)
 #endif
 };
 
@@ -597,6 +601,7 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_string_0_struct {
 #endif
 #ifdef USE_TYPE_LAYOUT
 	const Word *f7;
+	const Word *f8;
 #endif
 } mercury_data___base_type_info_string_0 = {
 	((Integer) 0),
@@ -608,7 +613,8 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_string_0_struct {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_type_to_term_string_2_0))
 #endif
 #ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___base_type_layout_string_0
+	(const Word *) & mercury_data___base_type_layout_string_0,
+	(const Word *) string_const(""string"", 8)
 #endif
 };
 
@@ -629,6 +635,7 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_float_0_struct {
 #endif
 #ifdef USE_TYPE_LAYOUT
 	const Word *f7;
+	const Word *f8;
 #endif
 } mercury_data___base_type_info_float_0 = {
 	((Integer) 0),
@@ -640,7 +647,8 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_float_0_struct {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_type_to_term_float_2_0))
 #endif
 #ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___base_type_layout_float_0
+	(const Word *) & mercury_data___base_type_layout_float_0,
+	(const Word *) string_const(""float"", 7)
 #endif
 };
 
@@ -661,6 +669,7 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_pred_0_struct {
 #endif
 #ifdef USE_TYPE_LAYOUT
 	const Word *f7;
+	const Word *f8;
 #endif
 } mercury_data___base_type_info_pred_0 = {
 	((Integer) 0),
@@ -672,7 +681,8 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_pred_0_struct {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_type_to_term_pred_2_0))
 #endif
 #ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___base_type_layout_pred_0
+	(const Word *) & mercury_data___base_type_layout_pred_0,
+	(const Word *) string_const(""pred"", 6)
 #endif
 };
 
