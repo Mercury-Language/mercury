@@ -175,7 +175,7 @@ fi
 # We can't just set a variable containing the mail subject string
 # because sh (but not bash) executes compound commands with redirection
 # in a sub-shell.
-echo -n "test_mercury $test_status: $BRANCH $HOST $C_COMPILER" > $mail_subject
+echo "test_mercury $test_status: $BRANCH $HOST $C_COMPILER" > $mail_subject
 } > $tmpfile 2>&1
 
 # NB we can't just pipe into `mutt' because the $mail_subject file
