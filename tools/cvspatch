@@ -1,0 +1,37 @@
+#!/bin/sh
+
+case $# in
+	1)	;;
+	*)	echo 1>&2 "Usage: cvspatch cvs_diff_file"; exit 1 ;;
+esac
+
+inputfile=$1
+
+awk '
+BEGIN	{
+		startline = 1;
+		dirname = ".";
+	}
+$1 = "cvs" && $2 == "diff:" && $3 == "Diffing" {
+		if (startline != NR) {
+			printf "%s %d %d\n", dirname, startline, NR - 1;
+		}
+
+		dirname = $4;
+		startline = NR + 1;
+	}
+END	{
+		NR++;
+		if (startline != NR) {
+			printf "%s %d %d\n", dirname, startline, NR - 1;
+		}
+	}
+' < $inputfile | \
+while read dirname start end
+do
+	echo patching files in $dirname
+	awk "{ if ($start <= NR && NR <= $end) print}" < $inputfile > $dirname/.cvspatch
+	( cd $dirname ; patch < .cvspatch ; /bin/rm .cvspatch )
+done
+
+exit 0
