@@ -14,13 +14,18 @@ include ../Mmake.common
 #      	 and runs some tests of collector and cords.  Does not add cords or
 #	 c++ interface to gc.a
 # cord/de - builds dumb editor based on cords.
-CC= gcc
+
+CC= ../scripts/mgnuc --grade $(GRADE) -w
+
 CXX=g++ -ansi
 # Needed only for "make c++", which adds the c++ interface
+
 AS=as
+# For Irix 5 with non-shared libraries, you'll need the following instead:
+# AS=as -non_shared
 
 # CFLAGS= -O -DALL_INTERIOR_POINTERS -DNO_SIGNALS -DSILENT
-CFLAGS= -O2 -fomit-frame-pointer -g -DNO_SIGNALS -DSILENT
+CFLAGS= -DNO_SIGNALS -DSILENT
 # Setjmp_test may yield overly optimistic results when compiled
 # without optimization.
 # -DSILENT disables statistics printing, and improves performance.
