@@ -452,6 +452,7 @@ then
 	then
 		echo "GRADE = $grade" >> Mmake.params
 	fi
+	echo 'GCC_SRC_DIR := ../$(GCC_SRC_DIR)' >> Mmake.params
 	cd $root
 
 	set -x
