@@ -203,6 +203,11 @@
 					% higher-order pred modes
 			;	not_reached
 			;	inst_var(var)
+				% A defined_inst is possibly recursive
+				% inst whose value is stored in the
+				% inst_table.  This is used both for
+				% user-defined insts and for
+				% compiler-generated insts.
 			;	defined_inst(inst_name)
 				% An abstract inst is a defined inst which
 				% has been declared but not actually been
@@ -248,6 +253,15 @@
 
 :- type bound_inst	--->	functor(cons_id, list(inst)).
 
+	% An `inst_name' is used as a key for the inst_table.
+	% It is either a user-defined inst `user_inst(Name, Args)',
+	% or some sort of compiler-generated inst, whose name
+	% is a representation of it's meaning.  For example
+	% `merge_inst(InstA, InstB)' is the name used for the inst
+	% that results from merging InstA and InstB using `merge_inst'.
+	% Similarly `unify_inst(IsLive, InstA, InstB, IsReal)' is
+	% the name for the inst that results from a call to
+	% `abstractly_unify_inst(IsLive, InstA, InstB, IsReal)', etc.
 :- type inst_name	--->	user_inst(sym_name, list(inst))
 			;	merge_inst(inst, inst)
 			;	unify_inst(is_live, inst, inst, unify_is_real)

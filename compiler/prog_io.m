@@ -162,11 +162,17 @@
 
 %-----------------------------------------------------------------------------%
 
-	% When actually reading in type declarations, we need to
-	% check for errors.
+	% When parsing declarations, we need to check for errors.
+	% Most of the parsing predicates return a `maybe1(T)'
+	% or a `maybe2(T1, T2)', which will either be the
+	% `ok(ParseTree)' (or `ok(ParseTree1, ParseTree2)'),
+	% if the parse is successful, or `error(Message, Term)'
+	% if it is not.  The `Term' there should be the term which
+	% is syntactically incorrect.
 
 :- type maybe1(T)	--->	error(string, term)
 			;	ok(T).
+
 :- type maybe_item_and_context
 			==	maybe2(item, term__context).
 
@@ -2193,8 +2199,8 @@ process_func_mode(error(M, T), _, _, _, _, _, error(M, T)).
 
 %-----------------------------------------------------------------------------%
 
-	% parse a `:- inst foo = ...' definition
-
+	% Parse a `:- inst <InstDefn>.' declaration.
+	%
 :- pred parse_inst_decl(string, varset, term, maybe1(item)).
 :- mode parse_inst_decl(in, in, in, out) is det.
 parse_inst_decl(ModuleName, VarSet, InstDefn, Result) :-
@@ -2230,6 +2236,8 @@ parse_inst_decl(ModuleName, VarSet, InstDefn, Result) :-
 		% (don't bother at the moment, since we ignore
 		% conditions anyhow :-)
 
+	% Parse a `:- inst <Head> ---> <Body>.' definition.
+	%
 :- pred convert_inst_defn(string, term, term, maybe1(inst_defn)).
 :- mode convert_inst_defn(in, in, in, out) is det.
 convert_inst_defn(ModuleName, Head, Body, Result) :-
@@ -2330,6 +2338,9 @@ convert_inst_list([H0|T0], [H|T]) :-
 	convert_inst(H0, H),
 	convert_inst_list(T0, T).
 
+	% Parse an inst.
+	% Fails on syntax errors.
+	%
 :- pred convert_inst(term, inst).
 :- mode convert_inst(in, out) is semidet.
 convert_inst(term__variable(V), inst_var(V)).
