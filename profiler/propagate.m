@@ -85,10 +85,9 @@ propagate__identify_cycles(Rel, ATSort, CycleInfo) :-
 						CycleInfo0, ATSort, CycleInfo).
 
 
-:- pred propagate__identify_cycles_2(list(string), int, relation(string), 
-					set_bbbtree(string), list(string),
-					cycle_info, list(string),
-					cycle_info).
+:- pred propagate__identify_cycles_2(list(relation_key), int, relation(string), 
+			set_bbbtree(relation_key), list(string),
+			cycle_info, list(string), cycle_info).
 :- mode propagate__identify_cycles_2(in, in, in, in, in, in, out, out) is det.
 
 propagate__identify_cycles_2([], _, _, _, ATSort, CycleInfo, ATSort, CycleInfo).
@@ -97,7 +96,8 @@ propagate__identify_cycles_2([X | Xs0], CycleNum0, RelInv, Visit0, ATSort0,
 
 		% Do a DFS on R'.  The nodes we can get to and have not 
 		% already visited before are one cycle in the call graph.
-	relation__dfsrev(RelInv, X, Visit0, Visit, DfsRev),
+	relation__dfsrev(RelInv, X, Visit0, Visit, DfsRev0),
+	list__map(relation__lookup_key(RelInv), DfsRev0, DfsRev),
 
 	% writeln("*******************"),
 	% writeln_list(DfsRev),
@@ -124,7 +124,7 @@ propagate__identify_cycles_2([X | Xs0], CycleNum0, RelInv, Visit0, ATSort0,
 
 		% Delete all visited elements from Xs0 as they have already
 		% been identified as part of a cycle.
-	list__delete_elems(Xs0, DfsRev, Xs),
+	list__delete_elems(Xs0, DfsRev0, Xs),
 	propagate__identify_cycles_2(Xs, CycleNum, RelInv, Visit, ATSort1, 
 						CycleInfo1, ATSort, CycleInfo).
 
@@ -143,7 +143,8 @@ cycle_info__init(M - MM) :-
 % propagate__add_to_cycle_map:
 %	Add all the predicates in a cycle into the cycle map
 %
-:- pred propagate__add_to_cycle_map(cycle_info, list(string), int, cycle_info).
+:- pred propagate__add_to_cycle_map(cycle_info, list(string), int,
+		cycle_info).
 :- mode propagate__add_to_cycle_map(in, in, in, out) is det.
 
 propagate__add_to_cycle_map(CycleInfo, [], _, CycleInfo).
@@ -304,7 +305,8 @@ propagate__process_cycle(Preds, Cycle, AddrMap, ProfNodeMap0, ProfNodeMap) :-
 % propagate__sum_self_counts:
 %	Sums the self counts fields for all the predicates.
 %
-:- pred propagate__sum_self_counts(list(string), addrdecl, prof_node_map, int).
+:- pred propagate__sum_self_counts(list(string), addrdecl,
+			prof_node_map, int).
 :- mode propagate__sum_self_counts(in, in, in, out) is det.
 
 propagate__sum_self_counts([], _, _, 0).

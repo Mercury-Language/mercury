@@ -107,7 +107,11 @@ process_prof_file_2(StaticCallGraph0, StaticCallGraph) -->
 	(
 		{ MaybeLabelName = yes(CallerLabel) },
 		read_label_name(CalleeLabel),
-		{ relation__add(StaticCallGraph0, CallerLabel, CalleeLabel,
+		{ relation__lookup_element(StaticCallGraph0, CallerLabel,
+					CallerKey) },
+		{ relation__lookup_element(StaticCallGraph0, CalleeLabel,
+					CalleeKey) },
+		{ relation__add(StaticCallGraph0, CallerKey, CalleeKey,
 							StaticCallGraph1) },
 		process_prof_file_2(StaticCallGraph1, StaticCallGraph)
 	;

@@ -304,8 +304,12 @@ process_addr_pair_2(DynamicCallGraph0, ProfNodeMap0, Dynamic, DynamicCallGraph,
 		({
 			Dynamic = yes
 		->
-			relation__add(DynamicCallGraph0, CallerName, 
-						CalleeName, DynamicCallGraph1)
+			relation__lookup_element(DynamicCallGraph0,
+				CallerName, CallerKey),
+			relation__lookup_element(DynamicCallGraph0,
+				CalleeName, CalleeKey),
+			relation__add(DynamicCallGraph0, CallerKey, 
+						CalleeKey, DynamicCallGraph1)
 		;
 			DynamicCallGraph1 = DynamicCallGraph0
 		}),
