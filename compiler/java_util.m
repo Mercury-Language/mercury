@@ -1,11 +1,11 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
 % File: java_util.m
-% Main author: juliensf.
+% Main authors: juliensf, mjwybrow.
 
 % This module defines utility routines that are used by the
 % Java backend.  Much of the code below is similar to that in c_util.m;
@@ -76,22 +76,20 @@
 
 %-----------------------------------------------------------------------------%
 
-java_util__unary_prefix_op(mktag, _) :-
-	unexpected(this_file, "Java backend does not support tags").
-java_util__unary_prefix_op(tag,	_) :-
-	unexpected(this_file, "Java backend does not support tags").
-java_util__unary_prefix_op(unmktag, _) :-
-	unexpected(this_file, "Java backend does not support tags").
-java_util__unary_prefix_op(strip_tag, _) :-
-	unexpected(this_file, "Java backend does not support tags").
-java_util__unary_prefix_op(mkbody, _) :-
-	unexpected(this_file, "Java backend does not support tags").
-java_util__unary_prefix_op(unmkbody, _) :-
-	unexpected(this_file, "Java backend does not support tags").
-java_util__unary_prefix_op(hash_string, _) :-
-	sorry(this_file, "hash_string operators not supported yet").
+
+	% Tags are not used in the Java back-end, as such, all of the tagging
+	% operators except for `tag' return no-ops. The `tag' case is handled
+	% seperately in mlds_to_java__output_std_unop.
+	% 
+java_util__unary_prefix_op(mktag, 		"/* mktag */ ").
+java_util__unary_prefix_op(unmktag, 		"/* unmktag */ ").
+java_util__unary_prefix_op(strip_tag,           "/* strip_tag */ ").
+java_util__unary_prefix_op(mkbody, 		"/* mkbody */ ").
+java_util__unary_prefix_op(unmkbody,		"/* unmkbody */ ").
+java_util__unary_prefix_op(hash_string, 	"mercury.String.hash_1_f_0").
 java_util__unary_prefix_op(bitwise_complement,	"~").
-java_util__unary_prefix_op(not,			"!").
+java_util__unary_prefix_op((not),		"!").
+java_util__unary_prefix_op(tag,	"").	% This case is never used.
 
 java_util__string_compare_op(str_eq, "==").
 java_util__string_compare_op(str_ne, "!=").
