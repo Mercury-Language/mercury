@@ -1,5 +1,5 @@
 /*
- *	$Id: util.c,v 1.2 1997-01-28 02:01:31 aet Exp $
+ *	$Id: util.c,v 1.3 1997-02-11 08:05:22 aet Exp $
  *
  *	Copyright: The University of Melbourne, 1996
  */
@@ -13,6 +13,9 @@
 
 
 /* Local declarations */
+
+static char
+rcs_id[]	= "$Id: util.c,v 1.3 1997-02-11 08:05:22 aet Exp $";
 
 /* Implementation */
 

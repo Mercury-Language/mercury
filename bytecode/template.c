@@ -1,5 +1,5 @@
 /*
- *	$Id: template.c,v 1.1 1997-01-24 07:12:41 aet Exp $
+ *	$Id: template.c,v 1.2 1997-02-11 08:06:37 aet Exp $
  *
  *	Copyright: The University of Melbourne, 1996
  */
@@ -13,6 +13,9 @@
 /* Exported definitions */
 
 /* Local declarations */
+
+static char
+rcs_id[]	= "$Id: template.c,v 1.2 1997-02-11 08:06:37 aet Exp $";
 
 /* Implementation */
 
