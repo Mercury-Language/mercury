@@ -97,5 +97,12 @@ END_MODULE
 
 /* Ensure that the initialization code for the above module gets run. */
 /*
-INIT sys_init_unify_c_pointer_module
+INIT sys_init_unify_c_pointer_module_bootstrap
 */
+
+extern ModuleFunc unify_c_pointer_module_bootstrap;
+void sys_init_unify_c_pointer_module_bootstrap(void);
+	/* duplicate declaration to suppress gcc -Wmissing-decl warning */
+void sys_init_unify_c_pointer_module_bootstrap(void) {
+	unify_c_pointer_module_bootstrap();
+}
