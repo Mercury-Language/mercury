@@ -2093,6 +2093,10 @@ LIBGRADES="$LIBGRADES $DEFAULT_GRADE.tr.debug"
 # add `hlc' (--high-level-code, i.e. MLDS back-end) grades
 LIBGRADES="$LIBGRADES hlc.gc"
 
+if test $mercury_cv_microsoft_dotnet = "yes"; then
+    LIBGRADES="$LIBGRADES ilc"
+fi
+
 if test $enable_hlc_prof_grades = "yes" -o $ac_microsoft = "yes"; then
 	# add `.prof' (--profiling) grades, if time profiling is supported,
 	# and a `.memprof' (--memory-profiling) grade.
