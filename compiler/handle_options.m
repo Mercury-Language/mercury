@@ -385,6 +385,12 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	% predicates correctly with --typeinfo-liveness.
 	option_implies(typeinfo_liveness, deforestation, bool(no)),
 
+	% XXX middle_rec doesn't work with --typeinfo-liveness,
+	% because --typeinfo-liveness causes the stack to be used
+	% in places where middle_rec is not expecting it and has
+	% hence not set up a stack frame.
+	option_implies(typeinfo_liveness, middle_rec, bool(no)),
+
 	% --dump-hlds and --statistics require compilation by phases
 	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
 	globals__io_lookup_bool_option(statistics, Statistics),
