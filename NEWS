@@ -91,6 +91,7 @@ Changes to the Mercury standard library:
 
 * We have fixed a bug in relation__rtc/4.
 
+* We have added the predicate queue__delete_all/3.
 
 New library packages in the `extras' distribution:
 **************************************************
