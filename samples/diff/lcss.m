@@ -55,13 +55,23 @@ lcss__find_lcss(File1, File2, Lcss) :-
 	file__get_numlines(File1, L1),
 	file__get_numlines(File2, L2),
 	( L1 >= L2 ->
-	    F1 = File1, F2 = File2, N = L1
+	    N = L1, F1 = File1, F2 = File2
 	;
-	    F1 = File2, F2 = File1, N = L2
+	    N = L2, F2 = File1, F1 = File2
 	),
 	lcss__build_matchlist(F1, F2, MatchList),
 	lcss__build_thresh(N, MatchList, Thresh, Link),
-	lcss__build_lcss(N, Thresh, Link, Lcss).
+	lcss__build_lcss(N, Thresh, Link, Lcss1),
+	( L1 >= L2 ->
+	    Lcss = Lcss1
+	;
+	    lcss__swap(Lcss1, Lcss)
+	).
+
+:- pred lcss__swap(lcss :: in, lcss :: out) is det.
+lcss__swap([], []).
+lcss__swap([I-J | RestIn], [J-I | RestOut]) :-
+	lcss__swap(RestIn, RestOut).
 
 %-----------------------------------------------------------------------------%
 
@@ -82,7 +92,7 @@ lcss__build_match_map(N, [S | Ss], MapOut) :-
 	N1 is N+1,
 	lcss__build_match_map(N1, Ss, MapIn),
 	( map__search(MapIn, S, Ns0) ->
-	    Ns1 = [ N | Ns0 ]
+	    list__append(Ns0, [N], Ns1)
 	;
 	    Ns1 = [ N ]
 	),
@@ -112,7 +122,7 @@ lcss__build_thresh(N, MatchList, Thresh, Link) :-
 	N1 is N+1,
 	array__init(0, N, N1, Thresh0),
 	array__set(Thresh0, 0, 0, Thresh1),
-	array__init(1, N, [], Link1),
+	array__init(0, N, [], Link1),
 	lcss__build_thresh2(1, N, MatchList, Thresh1, Link1, Thresh, Link).
 
 :- pred lcss__build_thresh2(int, int, list(list(int)),
@@ -138,10 +148,14 @@ lcss__build_thresh2(I, N, MatchList, Thresh0, Link0, Thresh1, Link1) :-
 lcss__build_thresh3(_, _, [], Thresh, Link, Thresh, Link).
 lcss__build_thresh3(N, I, [ J | Js ], Thresh0, Link0, Thresh1, Link1) :-
 	lcss__build_thresh4(0, N, J, K, Thresh0),
-	array__lookup(Thresh0, K, ThreshK),
+	( array__semidet_lookup(Thresh0, K, ThreshK1) ->
+	    ThreshK = ThreshK1
+	;
+	    error("lcss__build_thresh3: Bad K")
+	),
 	( J < ThreshK ->
-	    array__set(Thresh0, K, J, Thresh2),
 	    K1 is K-1,
+	    array__set(Thresh0, K, J, Thresh2),
 	    array__lookup(Link0, K1, LinkK1),
 	    array__set(Link0, K, [ I-J | LinkK1 ], Link2)
 	;
@@ -159,7 +173,12 @@ lcss__build_thresh4(Lo, Hi, J, K, Thresh) :-
 	    K = Hi
 	;
 	    Mid is (Lo + Hi)//2,
-	    ( J < Mid ->
+	    ( array__semidet_lookup(Thresh, Mid, ThreshMid1) ->
+		ThreshMid = ThreshMid1
+	    ;
+		error("lcss__build_thresh4")
+	    ),
+	    ( ThreshMid < J ->
 		lcss__build_thresh4(Mid, Hi, J, K, Thresh)
 	    ;
 		lcss__build_thresh4(Lo, Mid, J, K, Thresh)
@@ -173,13 +192,17 @@ lcss__build_thresh4(Lo, Hi, J, K, Thresh) :-
 lcss__build_lcss(N, Thresh, Link, Lcss) :-
 	N1 is N+1,
 	lcss__build_lcss2(N, N1, Thresh, K),
-	array__lookup(Link, K, Lcss).
+	( array__semidet_lookup(Link, K, Lcss1) ->
+	    list__reverse(Lcss1, Lcss)
+	;
+	    Lcss = []
+	).
 
 :- pred lcss__build_lcss2(int, int, array(int), int).
 :- mode lcss__build_lcss2(in, in, in, out) is det.
 lcss__build_lcss2(N, Max, Thresh, K) :-
 	( array__lookup(Thresh, N, Max) ->
-	    N1 is N+1,
+	    N1 is N-1,
 	    lcss__build_lcss2(N1, Max, Thresh, K)
 	;
 	    K = N

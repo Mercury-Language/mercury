@@ -59,11 +59,7 @@ file__read_stream(Stream, File) -->
 file__read_stream2(Stream, LinesIn, LinesOut, File) -->
 	io__read_line(Stream, Res),
 	( { Res = eof },
-	    ( { LinesIn < 1 } ->
-		{ LinesOut = 1 }
-	    ;
-	    	{ LinesOut = LinesIn }
-	    ),
+	    { LinesOut = LinesIn },
 	    { array__init(1, LinesOut, "", File) }
 	; { Res = ok(Line) },
 	    { LinesIn1 is LinesIn+1 },
@@ -78,8 +74,8 @@ file__read_stream2(Stream, LinesIn, LinesOut, File) -->
 %-----------------------------------------------------------------------------%
 
 file__get_line(File, LineNo, Line) :-
-	array__get_bounds(File, Low, High),
-	Low <= LineNo, LineNo <= High,
+	array__bounds(File, Low, High),
+	Low =< LineNo, LineNo =< High,
 	array__lookup(File, LineNo, Line).
 
 file__get_numlines(File, NumLines) :-
