@@ -1,32 +1,65 @@
-This directory contains an ALPHA-TEST version of the University of Melbourne
-Mercury compiler.
 
-The Mercury implementation is free software, but it is Copyright (C)
-1994, 1995 University of Melbourne.  It is distributed under the terms
-of the GNU General Public License.  See the file COPYING for copying
-permission.  The Mercury library and runtime (the files in the library
-and runtime subdirectories) are distributed under the terms of the GNU
-Library General Public License.  See the file COPYING.LIB for copying
-permissions for those files.  The subdirectory `boehm_gc' contains a
-conservative garbage collector distributed by Hans Boehm - see the file
-README in that directory for copyright information about those files.
-A couple of files (scripts/fullarch, runtime/timing.c) are derived from
-code that is copyright by the Free Software Foundation, Inc.
+This directory contains some example Mercury programs.
 
-THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY
-EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.
+hello.m			"Hello World" in Mercury.
 
-See the file INSTALL for installation instructions.
+cat.m                   An implementation of a simple version of the
+			standard UNIX filter `cat', which just copies
+			its input files or the standard input stream to
+			the standard output stream.
 
-The documentation sources are in the `doc' subdirectory.  The installation
-process will install INFO, HTML, and DVI versions in the locations specified
-in the file Mmake.common - by default these locations are /usr/local/info,
-/usr/local/lib/mercury/html, and /usr/local/lib/mercury/doc respectively.
+sort.m                  An implementation of a simple version of the
+			standard UNIX filter `sort', which reads lines
+			from its input files or the standard input
+			stream, sorts them, and then writes the result
+			to the standard output stream.
 
-For more information about Mercury, see http://www.cs.mu.oz.au/~zs/mercury,
-or send mail to fjh@cs.mu.oz.au, zs@cs.mu.oz.au and/or conway@cs.mu.oz.au.
-To subscribe to the Mercury mailing list, send mail to fjh@cs.mu.oz.au.
+calculator.m            A simple four-function arithmetic calculator,
+			with a parser written using the Definite Clause
+			Grammar notation.
 
-Please send bug reports, enhancement requests, suggestions for improvements
-and any other feedback to mercury-bugs@cs.mu.oz.au.
+committed_choice.m	An example illustrating committed-choice
+			nondeterminism in Mercury.
+
+interpreter.m		An simple interpreter for definite logic programs.
+			A demonstration of meta-programming in Mercury.
+
+Mmake			The file used by `mmake', the Mercury Make program,
+			to build the programs in this directory.
+
+There are also some sub-directories which contain examples of multi-module
+Mercury programs.
+
+diff                    This directory contains an implementation of a
+			simple version of the standard UNIX utility
+			`diff', which prints the differences between
+			two files.
+
+diff/file.m		A module which defines a `file' abstract data type
+			to hold the lines of text in a file.
+
+diff/lcss.m		A module which defines a `diff' abstract data type;
+			it exports a routine for computing the difference
+			between two `file's, represented as a `diff',
+			using the "least common subsequence" algorithm,
+			and routines for printing `diff's in a couple
+			of different formats.
+
+diff/diff.m		The top-level driver for the `diff' program;
+			it contains some "glue" code which handles
+			the processing of command-line arguments
+			and calls the routines in file.m and lcss.m.
+
+diff/Mmake		An example of a very short Mmake file.
+
+c_interface		This directory contains some examples of mixed
+			Mercury/C programs using the C interface.
+
+c_interface/c_calls_mercury	This directory contains a detailed
+				example of C code calling Mercury code.
+
+c_interface/mercury_calls_c	This directory contains a detailed
+				example of Mercury code calling C code.
+
+c_interface/short_example.m	A short example of Mercury code calling C.
 
