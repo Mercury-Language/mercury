@@ -285,15 +285,6 @@ mercury.sn:
 	cp $(MERC_DLL_DIR)/mercury.sn .
 endif
 
-# For --split-c-files, we generate the .$O files directly from the .m files.
-# (One reason for this is that there's no easy of telling Make how many
-# `.$O' files it should make, since the number of them depends on what's
-# in the source files.)
-
-$(dirs_subdir)%.dir/*.$O: %.m
-	rm -f $@
-	$(MCS) $(ALL_GRADEFLAGS) $(ALL_MCSFLAGS) $(*F)
-
 # The `touch' is necessary, since otherwise if
 # the old .err file was of size zero and
 # the new .err file is also of size zero,

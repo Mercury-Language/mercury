@@ -2236,16 +2236,46 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		write_dependencies_list(LongDeps, ".int3", DepStream),
 		write_dependencies_list(ShortDeps, ".int3", DepStream),
 
+		%
+		% If we can pass the module name rather than the
+		% file name then do so. `--smart-recompilation'
+		% doesn't work if the file name is passed and the
+		% module name doesn't match the file name.
+		%
+		have_source_file_map(HaveMap),
+		{ HaveMap = yes,
+			prog_out__sym_name_to_string(
+				SourceFileModuleName, ".", ModuleArg)
+		; HaveMap = no,
+			ModuleArg = SourceFileName
+		},
+
+		%
+		% XXX The rule below will cause an undefined make
+		% variable warning for $(MCFLAGS-module) when run,
+		% but there's no easy way to avoid that without using
+		% features only available in recent versions of make.
+		% The special case handling of $(MCFLAGS-module) in
+		% this rule is necessary because it's difficult to extract
+		% the module name from $@ (e.g. module.dir/module_000.o) in
+		% the code for TARGET_MCFLAGS in Mmake.vars.in using make's
+		% text handling functions ($(patsubst ...) only works for a
+		% single occurrence of the pattern).
+		%
+		% With recent versions of make (3.78 or later) it would be
+		% possible to avoid the warning using 
+		%    $(if $(findstring undefined,$(origin MCFLAGS-module)),,\
+		%	$(MCFLAGS-module))
+		%
 		module_name_to_file_name(ModuleName, ".dir", no, DirFileName),
-		module_name_to_split_c_file_name(ModuleName, 0, ".$O",
-			SplitCObj0FileName),
 		io__write_strings(DepStream, [
 			"\n\n",
-			SplitCObj0FileName, " : ",
+			SplitObjPattern, " : ",
 				SourceFileName, "\n",
 			"\trm -rf ", DirFileName, "\n",
 			"\t$(MCS) $(ALL_GRADEFLAGS) $(ALL_MCSFLAGS) ",
-				SourceFileName, "\n\n"
+				"$(MCFLAGS-", MakeVarName, ") ",
+				ModuleArg, "\n\n"
 		]),
 
 		globals__io_get_target(Target),
@@ -2410,20 +2440,6 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			% changes to scripts/Mmake.rules.  See that
 			% file for documentation on these rules.
 			%
-
-			%
-			% If we can pass the module name rather than the
-			% file name then do so. `--smart-recompilation'
-			% doesn't work if the file name is passed and the
-			% module name doesn't match the file name.
-			%
-			have_source_file_map(HaveMap),
-			{ HaveMap = yes,
-				prog_out__sym_name_to_string(
-					SourceFileModuleName, ".", ModuleArg)
-			; HaveMap = no,
-				ModuleArg = SourceFileName
-			},
 
 			io__write_strings(DepStream, [
 				"\n",
@@ -3614,7 +3630,7 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".num_splits = "),
 	write_compact_dependencies_list(Modules, "$(num_splits_subdir)",
-					".num_splits", Basis, DepStream),
+					".num_split", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
