@@ -54,7 +54,7 @@
 %
 %	:- pred p(int::in) is det.
 %	p(X) :-
-%		V__1 = lambda [Y::out] q(Y, X),
+%		V__1 = lambda([Y::out] is nondet, q(Y, X))),
 %		solutions(V__1, List),
 %		...
 %	:- pred q(int::out, int::in) is nondet.
@@ -66,7 +66,7 @@
 %		solutions(V__1, List),
 %		...
 %
-%	:- pred '__LambdaGoal__1'(int::in, int::out).
+%	:- pred '__LambdaGoal__1'(int::in, int::out) is nondet.
 %	'__LambdaGoal__1'(X, Y) :- q(Y, X).
 %
 
@@ -534,13 +534,9 @@ polymorphism__transform_lambda(Vars, Modes, Det, LambdaGoal, Unification0,
 		% the TVarSet is a superset of what it really ought be,
 		% but that shouldn't matter
 		(
-			Unification0 = deconstruct(_, _, _, UniModes1, _)
+			Unification0 = construct(_, _, _, UniModes0)
 		->
-			UniModes = UniModes1
-		;
-			Unification0 = construct(_, _, _, UniModes2)
-		->
-			UniModes = UniModes2
+			UniModes = UniModes0
 		;
 			error("polymorphism__transform_lambda: wierd unification")
 		),
@@ -582,15 +578,9 @@ polymorphism__transform_lambda(Vars, Modes, Det, LambdaGoal, Unification0,
 	Functor = functor(term__atom(PName), ArgVars),
 	ConsId = pred_const(PredId, ModeId),
 	(
-		Unification0 = deconstruct(Var, _ConsId1, ArgVars1,
-					ArgModes, CanFail)
+		Unification0 = construct(Var, _, _, ArgModes)
 	->
-		Unification = deconstruct(Var, ConsId, ArgVars1,
-					ArgModes, CanFail)
-	;
-		Unification0 = construct(Var, _ConsId2, ArgVars2, ArgModes)
-	->
-		Unification = construct(Var, ConsId, ArgVars2, ArgModes)
+		Unification = construct(Var, ConsId, ArgVars, ArgModes)
 	;
 		error("polymorphism__transform_lambda: wierd unification")
 	).

@@ -64,6 +64,9 @@
 							inst, list(inst))
 			% attempt to unify a free var with a functor containing
 			% free arguments
+	;	mode_error_unify_var_lambda(var, inst, inst)
+			% some sort of error in
+			% attempt to unify a variable with lambda expression
 	;	mode_error_conj(list(delayed_goal))
 			% a conjunction contains one or more unscheduleable
 			% goals
@@ -129,6 +132,9 @@ report_mode_error(mode_error_bind_var(Var, InstA, InstB), ModeInfo) -->
 report_mode_error(mode_error_unify_var_var(VarA, VarB, InstA, InstB),
 		ModeInfo) -->
 	report_mode_error_unify_var_var(ModeInfo, VarA, VarB, InstA, InstB).
+report_mode_error(mode_error_unify_var_lambda(VarA, InstA, InstB),
+		ModeInfo) -->
+	report_mode_error_unify_var_lambda(ModeInfo, VarA, InstA, InstB).
 report_mode_error(mode_error_unify_var_functor(Var, Name, Args, Inst,
 			ArgInsts), ModeInfo) -->
 	report_mode_error_unify_var_functor(ModeInfo, Var, Name, Args, Inst,
@@ -440,6 +446,33 @@ report_mode_error_unify_var_var(ModeInfo, X, Y, InstX, InstY) -->
 
 %-----------------------------------------------------------------------------%
 
+:- pred report_mode_error_unify_var_lambda(mode_info, var, inst, inst,
+					io__state, io__state).
+:- mode report_mode_error_unify_var_lambda(mode_info_ui, in, in, in, di, uo)
+	is det.
+
+report_mode_error_unify_var_lambda(ModeInfo, X, InstX, InstY) -->
+	{ mode_info_get_context(ModeInfo, Context) },
+	{ mode_info_get_varset(ModeInfo, VarSet) },
+	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
+	mode_info_write_context(ModeInfo),
+	prog_out__write_context(Context),
+	io__write_string("  mode error in unification of `"),
+	mercury_output_var(X, VarSet),
+	io__write_string("' and lambda expression.\n"),
+	prog_out__write_context(Context),
+	io__write_string("  Variable `"),
+	mercury_output_var(X, VarSet),
+	io__write_string("' has instantiatedness `"),
+	mercury_output_inst(InstX, InstVarSet),
+	io__write_string("',\n"),
+	prog_out__write_context(Context),
+	io__write_string("  lambda expression has instantiatedness `"),
+	mercury_output_inst(InstY, InstVarSet),
+	io__write_string("'.\n").
+
+%-----------------------------------------------------------------------------%
+
 :- pred report_mode_error_unify_var_functor(mode_info, var, const, list(var),
 					inst, list(inst), io__state, io__state).
 :- mode report_mode_error_unify_var_functor(mode_info_ui, in, in, in, in, in,
@@ -565,9 +598,17 @@ mode_context_init(uninitialized).
 write_mode_context(uninitialized, _Context) -->
 	[].
 
-write_mode_context(call(PredId, _ArgNum), Context) -->
+write_mode_context(call(PredId, ArgNum), Context) -->
 	prog_out__write_context(Context),
-	io__write_string("  in call to predicate `"),
+	io__write_string("  in "),
+	( { ArgNum = 0 } ->
+		[]
+	;
+		io__write_string("argument "),
+		io__write_int(ArgNum),
+		io__write_string(" of ")
+	),
+	io__write_string("call to predicate `"),
 	hlds_out__write_pred_call_id(PredId),
 	io__write_string("':\n").
 

@@ -165,7 +165,7 @@ inst_matches_initial_3(bound(Uniq, List), abstract_inst(_,_), ModuleInfo, _) :-
 	bound_inst_list_is_ground(List, ModuleInfo),
 	bound_inst_list_is_unique(List, ModuleInfo).
 inst_matches_initial_3(ground(_Uniq, _PredInst), free, _, _).
-inst_matches_initial_3(ground(UniqA, no), bound(UniqB, List), ModuleInfo, _) :-
+inst_matches_initial_3(ground(UniqA, _), bound(UniqB, List), ModuleInfo, _) :-
 	unique_matches_initial(UniqA, UniqB),
 	( UniqA = shared ->
 		bound_inst_list_is_shared(List, ModuleInfo)
@@ -179,9 +179,7 @@ inst_matches_initial_3(ground(UniqA, no), bound(UniqB, List), ModuleInfo, _) :-
 		% for the type.  Problem is we don't know what the type was :-(
 inst_matches_initial_3(ground(UniqA, PredInstA), ground(UniqB, PredInstB),
 		_, _) :-
-	% We require that higher order pred insts match exactly.
-	% This requirement is probably too strict, and may need to be loosened.
-	PredInstA = PredInstB,
+	pred_inst_matches_initial(PredInstA, PredInstB),
 	unique_matches_initial(UniqA, UniqB).
 inst_matches_initial_3(ground(_UniqA, no), abstract_inst(_,_), _, _) :-
 		% I don't know what this should do.
@@ -192,6 +190,16 @@ inst_matches_initial_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 				ModuleInfo, Expansions) :-
 	inst_list_matches_initial(ArgsA, ArgsB, ModuleInfo, Expansions).
 inst_matches_initial_3(not_reached, _, _, _).
+
+:- pred pred_inst_matches_initial(maybe(pred_inst_info), maybe(pred_inst_info)).
+:- mode pred_inst_matches_initial(in, in) is semidet.
+
+pred_inst_matches_initial(no, no).
+pred_inst_matches_initial(yes(_), no).
+pred_inst_matches_initial(yes(PredInstA), yes(PredInstB)) :-
+	PredInstA = PredInstB.
+	% We require higher-order pred insts to match exactly;
+	% this requirement may be too strict and hence may need to be relaxed.
 
 :- pred unique_matches_initial(uniqueness, uniqueness).
 :- mode unique_matches_initial(in, in) is semidet.
@@ -295,7 +303,7 @@ inst_matches_final_3(bound(UniqA, ListA), ground(UniqB, no), ModuleInfo,
 	;
 		true
 	).
-inst_matches_final_3(ground(UniqA, no), bound(UniqB, ListB), ModuleInfo,
+inst_matches_final_3(ground(UniqA, _), bound(UniqB, ListB), ModuleInfo,
 			_Exps) :-
 	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_is_ground(ListB, ModuleInfo),
@@ -310,14 +318,22 @@ inst_matches_final_3(ground(UniqA, no), bound(UniqB, ListB), ModuleInfo,
 	%%% error("not implemented: `ground' matches_final `bound(...)'").
 inst_matches_final_3(ground(UniqA, PredInstA), ground(UniqB, PredInstB),
 		_, _) :-
-	% We require higher-order pred insts to match exactly;
-	% this requirement may be too strict and hence may need to be relaxed.
-	PredInstA = PredInstB,
+	pred_inst_matches_final(PredInstA, PredInstB),
 	unique_matches_final(UniqA, UniqB).
 inst_matches_final_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 		ModuleInfo, Expansions) :-
 	inst_list_matches_final(ArgsA, ArgsB, ModuleInfo, Expansions).
 inst_matches_final_3(not_reached, _, _, _).
+
+:- pred pred_inst_matches_final(maybe(pred_inst_info), maybe(pred_inst_info)).
+:- mode pred_inst_matches_final(in, in) is semidet.
+
+pred_inst_matches_final(no, no).
+pred_inst_matches_final(yes(_), no).
+pred_inst_matches_final(yes(PredInstA), yes(PredInstB)) :-
+	PredInstA = PredInstB.
+	% We require higher-order pred insts to match exactly;
+	% this requirement may be too strict and hence may need to be relaxed.
 
 :- pred unique_matches_final(uniqueness, uniqueness).
 :- mode unique_matches_final(in, in) is semidet.
@@ -445,11 +461,11 @@ inst_merge_3(bound(UniqA, ListA), bound(UniqB, ListB), ModuleInfo0,
 		bound(Uniq, List), ModuleInfo) :-
 	merge_uniq(UniqA, UniqB, Uniq),
 	bound_inst_list_merge(ListA, ListB, ModuleInfo0, List, ModuleInfo).
-inst_merge_3(bound(UniqA, ListA), ground(UniqB, no), ModuleInfo,
+inst_merge_3(bound(UniqA, ListA), ground(UniqB, _), ModuleInfo,
 		ground(Uniq, no), ModuleInfo) :-
 	merge_uniq(UniqA, UniqB, Uniq),
 	bound_inst_list_is_ground(ListA, ModuleInfo).
-inst_merge_3(ground(UniqA, no), bound(UniqB, ListB), ModuleInfo,
+inst_merge_3(ground(UniqA, _), bound(UniqB, ListB), ModuleInfo,
 		ground(Uniq, no), ModuleInfo) :-
 	merge_uniq(UniqA, UniqB, Uniq),
 	bound_inst_list_is_ground(ListB, ModuleInfo).
@@ -457,14 +473,14 @@ inst_merge_3(ground(UniqA, PredA), ground(UniqB, PredB), M,
 		ground(Uniq, Pred), M) :-
 	% for higher order pred insts,
 	% we require the pred_inst_info in each branch to
-	% be identical - this requirement is probably more
+	% be identical - this requirement may perhaps be more
 	% restrictive than it needs to be
 	(
 		PredA = PredB
 	->
 		Pred = PredA
 	;	
-		fail
+		Pred = no
 	),
 	merge_uniq(UniqA, UniqB, Uniq).
 inst_merge_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
@@ -643,7 +659,7 @@ abstractly_unify_inst_3(live, bound(UniqX, ListX), bound(UniqY, ListY), M0,
 	unify_uniq(live, UniqX, UniqY, Uniq),
 	abstractly_unify_bound_inst_list(live, ListX, ListY, M0, List, Det, M).
 
-abstractly_unify_inst_3(live, bound(UniqX, BoundInsts0), ground(UniqY, no),
+abstractly_unify_inst_3(live, bound(UniqX, BoundInsts0), ground(UniqY, _),
 		M0, bound(Uniq, BoundInsts), semidet, M) :-
 	unify_uniq(live, UniqX, UniqY, Uniq),
 	make_ground_bound_inst_list(BoundInsts0, live, UniqY, M0,
@@ -660,14 +676,20 @@ abstractly_unify_inst_3(live, ground(Uniq0, yes(PredInst)), free, M,
 				ground(Uniq, yes(PredInst)), det, M) :-
 	unify_uniq(live, unique, Uniq0, Uniq).
 
+abstractly_unify_inst_3(live, ground(UniqX, yes(_)), bound(UniqY, BoundInsts0),
+		M0, bound(Uniq, BoundInsts), semidet, M) :-
+	unify_uniq(live, UniqX, UniqY, Uniq),
+	make_ground_bound_inst_list(BoundInsts0, live, UniqX, M0,
+			BoundInsts, M).
+
 abstractly_unify_inst_3(live, ground(UniqA, yes(PredInstA)),
 				ground(UniqB, yes(PredInstB)), M,
-				ground(Uniq, yes(PredInst)), det, M) :-
+				ground(Uniq, PredInst), semidet, M) :-
 	% this might be too restrictive
 	( PredInstA = PredInstB ->
-		PredInst = PredInstA
+		PredInst = yes(PredInstA)
 	;
-		fail
+		PredInst = no
 	),
 	unify_uniq(live, UniqA, UniqB, Uniq).
 
@@ -713,7 +735,7 @@ abstractly_unify_inst_3(dead, bound(UniqX, ListX), bound(UniqY, ListY), M0,
 	unify_uniq(dead, UniqX, UniqY, Uniq),
 	abstractly_unify_bound_inst_list(dead, ListX, ListY, M0, List, Det, M).
 
-abstractly_unify_inst_3(dead, bound(UniqX, BoundInsts0), ground(UniqY, no), M0,
+abstractly_unify_inst_3(dead, bound(UniqX, BoundInsts0), ground(UniqY, _), M0,
 			bound(Uniq, BoundInsts), semidet, M) :-
 	unify_uniq(dead, UniqX, UniqY, Uniq),
 	make_ground_bound_inst_list(BoundInsts0, dead, UniqY, M0,
@@ -736,14 +758,20 @@ abstractly_unify_inst_3(dead, bound(Uniq, List), abstract_inst(N,As),
 abstractly_unify_inst_3(dead, ground(Uniq, yes(PredInst)), free, M,
 				ground(Uniq, yes(PredInst)), det, M).
 
+abstractly_unify_inst_3(dead, ground(UniqA, yes(_)), bound(UniqB, BoundInsts0),
+				M0, bound(Uniq, BoundInsts), semidet, M) :-
+	unify_uniq(dead, UniqA, UniqB, Uniq),
+	make_ground_bound_inst_list(BoundInsts0, dead, UniqA, M0,
+					BoundInsts, M).
+
 abstractly_unify_inst_3(dead, ground(UniqA, yes(PredInstA)),
 				ground(UniqB, yes(PredInstB)), M,
-				ground(Uniq, yes(PredInst)), det, M) :-
+				ground(Uniq, PredInst), det, M) :-
 	% this might be too restrictive
 	( PredInstA = PredInstB ->
-		PredInst = PredInstA
+		PredInst = yes(PredInstA)
 	;
-		fail
+		PredInst = no
 	),
 	unify_uniq(dead, UniqA, UniqB, Uniq).
 
@@ -857,7 +885,7 @@ abstractly_unify_inst_functor_2(live, bound(Uniq, ListX), Name, Args,
 	abstractly_unify_bound_inst_list_lives(ListX, Name, Args, ArgLives,
 						M0, List, M).
 
-abstractly_unify_inst_functor_2(live, ground(Uniq, no), Name, ArgInsts,
+abstractly_unify_inst_functor_2(live, ground(Uniq, _), Name, ArgInsts,
 		_ArgLives, M0, Inst, M) :-
 	make_ground_inst_list(ArgInsts, live, Uniq, M0, GroundArgInsts, M), 
 	Inst = bound(Uniq, [functor(Name, GroundArgInsts)]).
@@ -875,7 +903,7 @@ abstractly_unify_inst_functor_2(dead, bound(Uniq, ListX), Name, Args,
 	ListY = [functor(Name, Args)],
 	abstractly_unify_bound_inst_list(dead, ListX, ListY, M0, List, _, M). 
 
-abstractly_unify_inst_functor_2(dead, ground(Uniq, no), Name, ArgInsts,
+abstractly_unify_inst_functor_2(dead, ground(Uniq, _), Name, ArgInsts,
 		_ArgLives, M0, Inst, M) :-
 	make_ground_inst_list(ArgInsts, dead, Uniq, M0, GroundArgInsts, M),
 	Inst = bound(Uniq, [functor(Name, GroundArgInsts)]).
@@ -914,8 +942,8 @@ make_ground_inst(bound(Uniq0, BoundInsts0), IsLive, Uniq1, M0,
 	unify_uniq(IsLive, Uniq0, Uniq1, Uniq),
 	make_ground_bound_inst_list(BoundInsts0, IsLive, Uniq1, M0,
 					BoundInsts, M).
-make_ground_inst(ground(Uniq0, PredInst), IsLive, Uniq1, M,
-		ground(Uniq, PredInst), M) :-
+make_ground_inst(ground(Uniq0, _PredInst), IsLive, Uniq1, M,
+		ground(Uniq, no), M) :-
 	unify_uniq(IsLive, Uniq0, Uniq1, Uniq).
 make_ground_inst(inst_var(_), _, _, _, _, _) :-
 	error("free inst var").

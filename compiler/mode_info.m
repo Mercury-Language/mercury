@@ -96,6 +96,9 @@
 :- pred mode_info_set_call_context(call_context, mode_info, mode_info).
 :- mode mode_info_set_call_context(in, mode_info_di, mode_info_uo) is det.
 
+:- pred mode_info_set_call_arg_context(int, mode_info, mode_info).
+:- mode mode_info_set_call_arg_context(in, mode_info_di, mode_info_uo) is det.
+
 :- pred mode_info_unset_call_context(mode_info, mode_info).
 :- mode mode_info_unset_call_context(mode_info_di, mode_info_uo) is det.
 
@@ -365,6 +368,15 @@ mode_info_set_call_context(unify(UnifyContext)) -->
 	mode_info_set_mode_context(unify(UnifyContext, left)).
 mode_info_set_call_context(call(PredId)) -->
 	mode_info_set_mode_context(call(PredId, 0)).
+
+mode_info_set_call_arg_context(ArgNum, ModeInfo0, ModeInfo) :-
+	mode_info_get_mode_context(ModeInfo0, ModeContext0),
+	( ModeContext0 = call(PredId, _) ->
+		mode_info_set_mode_context(call(PredId, ArgNum),
+			ModeInfo0, ModeInfo)
+	;
+		error("mode_info_set_call_arg_context")
+	).
 
 mode_info_unset_call_context -->
 	mode_info_set_mode_context(uninitialized).

@@ -16,13 +16,9 @@
 
 	% mode_get_insts returns the initial instantiatedness and
 	% the final instantiatedness for a given mode.
-
+	%
 :- pred mode_get_insts(module_info, mode, inst, inst).
 :- mode mode_get_insts(in, in, out, out) is det.
-
-	% XXX how should these predicates handle abstract insts?
-	% In that case, we don't _know_ whether the mode is input
-	% or not!
 
 :- pred mode_is_input(module_info, mode).
 :- mode mode_is_input(in, in) is semidet.
@@ -32,10 +28,6 @@
 
 :- pred mode_is_unused(module_info, mode).
 :- mode mode_is_unused(in, in) is semidet.
-
-:- pred mode_util__modes_to_uni_modes(mode, list(mode), module_info,
-							list(uni_mode)).
-:- mode mode_util__modes_to_uni_modes(in, in, in, out) is det.
 
 :- pred inst_is_ground(module_info, inst).
 :- mode inst_is_ground(in, in) is semidet.
@@ -85,26 +77,33 @@
 :- pred mode_id_to_int(mode_id, int).
 :- mode mode_id_to_int(in, out) is det.
 
-:- pred mode_list_get_final_insts(list(mode), module_info, list(inst)).
-:- mode mode_list_get_final_insts(in, in, out) is det.
-
 :- pred mode_list_get_initial_insts(list(mode), module_info, list(inst)).
 :- mode mode_list_get_initial_insts(in, in, out) is det.
 
+:- pred mode_list_get_final_insts(list(mode), module_info, list(inst)).
+:- mode mode_list_get_final_insts(in, in, out) is det.
+
+:- pred mode_util__modes_to_uni_modes(mode, list(mode), module_info,
+							list(uni_mode)).
+:- mode mode_util__modes_to_uni_modes(in, in, in, out) is det.
+
+:- pred mode_list_from_inst_list(list(inst), list(mode)).
+:- mode mode_list_from_inst_list(in, out) is det.
+
 	% Given a user-defined or compiler-defined inst name,
 	% lookup the corresponding inst in the inst table.
-
+	%
 :- pred inst_lookup(module_info, inst_name, inst).
 :- mode inst_lookup(in, in, out) is det.
 
 	% Initialize an empty instmap.
-
+	%
 :- pred instmap_init(instmap).
 :- mode instmap_init(out) is det.
 
 	% Given an instmap and an instmap_delta, apply the instmap_delta
 	% to the instmap to produce a new instmap.
-
+	%
 :- pred apply_instmap_delta(instmap, instmap_delta, instmap).
 :- mode apply_instmap_delta(in, in, out) is det.
 
@@ -114,14 +113,14 @@
 	% code has been re-arranged, e.g. by followcode.
 	% This also takes the module_info as input and output since it
 	% may need to insert new merge_insts into the merge_inst table.
-
+	%
 :- pred recompute_instmap_delta(hlds__goal, hlds__goal,
 				module_info, module_info).
 :- mode recompute_instmap_delta(in, out, in, out) is det.
 
 	% Given an instmap and a variable, determine the inst of
 	% that variable.
-
+	%
 :- pred instmap_lookup_var(instmap, var, inst).
 :- mode instmap_lookup_var(in, in, out) is det.
 
@@ -131,7 +130,7 @@
 	% Given corresponding lists of types and modes, produce a new
 	% list of modes which includes the information provided by the
 	% corresponding types.
-
+	%
 :- pred propagate_type_info_mode_list(list(type), module_info, list(mode),
 				list(mode)).
 :- mode propagate_type_info_mode_list(in, in, in, out) is det.
@@ -139,14 +138,14 @@
 	% Given corresponding lists of types and insts, produce a new
 	% list of insts which includes the information provided by the
 	% corresponding types.
-
+	%
 :- pred propagate_type_info_inst_list(list(type), module_info, list(inst),
 				list(inst)).
 :- mode propagate_type_info_inst_list(in, in, in, out) is det.
 
 	% Given a type and an inst, produce a new inst which includes
 	% the information provided by the type.
-
+	%
 :- pred propagate_type_info_inst(type, module_info, inst, inst).
 :- mode propagate_type_info_inst(in, in, in, out) is det.
 
@@ -158,6 +157,8 @@
 :- import_module prog_util, type_util.
 :- import_module inst_match.
 
+%-----------------------------------------------------------------------------%
+
 mode_list_get_final_insts([], _ModuleInfo, []).
 mode_list_get_final_insts([Mode | Modes], ModuleInfo, [Inst | Insts]) :-
 	mode_get_insts(ModuleInfo, Mode, _, Inst),
@@ -167,6 +168,10 @@ mode_list_get_initial_insts([], _ModuleInfo, []).
 mode_list_get_initial_insts([Mode | Modes], ModuleInfo, [Inst | Insts]) :-
 	mode_get_insts(ModuleInfo, Mode, Inst, _),
 	mode_list_get_initial_insts(Modes, ModuleInfo, Insts).
+
+mode_list_from_inst_list([], []).
+mode_list_from_inst_list([Inst|Insts], [(Inst -> Inst) | Modes]) :-
+	mode_list_from_inst_list(Insts, Modes).
 
 %-----------------------------------------------------------------------------%
 
