@@ -1,5 +1,5 @@
-DRAFT NEWS for Mercury release 0.7
-----------------------------------
+NEWS for Mercury release 0.7
+----------------------------
 
 * The Mercury language now supports higher-order syntax.
 
@@ -207,33 +207,33 @@ DRAFT NEWS for Mercury release 0.7
     The following predicates have been added to array.m (formerly
     uniq_array.m):
 
-	+ array__shrink/3   This is similar to array__resize/4 except
+	+ array__shrink/3: this is similar to array__resize/4 except
 	  that it's designed for cases when you only want to make an
 	  array smaller, so you don't have to supply a filler element.
 
-	+ array__min/2, array__bounds/3  Find the lower bound or both
+	+ array__min/2, array__bounds/3: find the lower bound or both
 	  bounds (respectively) of an array.  (In this implementation,
 	  the lower bound is always 0.)
 
     The following predicates have been added to bt_array.m (formerly
     array.m):
 
-	+ bt_array__min/2, bt_array__max/2, bt_array__size/2  Finds
+	+ bt_array__min/2, bt_array__max/2, bt_array__size/2: find
 	  the lower bound, upper bound and size of a bt_array
 	  respectively.
 	
-	+ bt_array__in_bounds/2  Checks if an index is within the
+	+ bt_array__in_bounds/2: check if an index is within the
 	  bounds of a bt_array.
 	
-	+ bt_array__semidet_set/4  The semidet version of bt_array__set/4.
+	+ bt_array__semidet_set/4: the semidet version of bt_array__set/4.
 
-        + bt_array__from_list/3  A replacement for bt_array__from_list/2,
+        + bt_array__from_list/3: a replacement for bt_array__from_list/2,
 	  which has been removed.  The extra argument is the lower bound
 	  for the new bt_array.
 
-	+ bt_array__shrink/4  Analogous to array__shrink/3.
+	+ bt_array__shrink/4: analogous to array__shrink/3.
 
-	+ bt_array__resize/5  A replacement for bt_array__resize/4.  There
+	+ bt_array__resize/5: a replacement for bt_array__resize/4.  There
 	  was a design flaw in the previous interface, in that if the
 	  array increased in bounds, the extra slots were filled with one
 	  particular element from the old bt_array.  The extra argument is
