@@ -46,7 +46,7 @@ dir__split_name_2(FileName, N, DirName, BaseName) :-
 		dir__this_directory(DirName),
 		BaseName = FileName
 	;
-		string__index_det(FileName, N, Seperator),
+		string__index_det(FileName, N1, Seperator),
 		dir__directory_seperator(Seperator)
 	->
 		string__split(FileName, N1, DirName, Rest),
