@@ -2116,7 +2116,7 @@ If the predicate or function has more than one mode, you must use an explicit
 lambda expression to specify which mode you want.
 
 You can also create higher-order function terms of non-zero arity
-and higher-order predicate terms by "currying",
+and higher-order predicate terms by ``currying'',
 i.e. specifying the first few arguments to a predicate or function, but
 leaving the remaining arguments unspecified.  For example, the
 unification
@@ -2588,9 +2588,9 @@ possible executions under the strict commutative semantics
 
 Thus, to summarize, there are in fact a variety of different operational
 semantics for Mercury.  In one of them, the strict sequential semantics, there
-is no nondeterminism -- the behaviour is always specified exactly.
+is no nondeterminism --- the behaviour is always specified exactly.
 Programs are executed top-down using SLDNF (or something equivalent),
-mode analysis does "minimal" reordering (in a precisely defined sense),
+mode analysis does ``minimal'' reordering (in a precisely defined sense),
 function calls, conjunctions and disjunctions are executed depth-first
 left-to-right, and function evaluation is strict.  All implementations
 are required to support the strict sequential semantics, so that a
@@ -2725,7 +2725,7 @@ directly by name.
 If there is a @code{pragma c_code} declaration for a mode of a predicate
 or function, then that mode of the predicate may not have determinism
 @samp{multi} or @samp{nondet}, there must not be any clauses for that
-predicate or function, and there must be a @code{pragma c_code} goal
+predicate or function, and there must be a @code{pragma c_code} declaration
 for every mode of the predicate or function.
 
 For example, the following piece of code gives a predicate, 
@@ -3036,12 +3036,12 @@ needed before we can formulate such an interface.
 In certain compilation grades (see the ``Compilation model options''
 section of the Mercury User's Guide), the University of Melbourne
 Mercury implementation supports trailing.  Trailing is a means
-of having side-effects such as destructive updates to data structures
+of having side-effects, such as destructive updates to data structures,
 undone on backtracking.  The basic idea is that during forward
 execution, whenever you perform a destructive modification to
-a data structure that may still be live on backtracking
-you should record whatever information is necessary on
-a stack-like data structure called the ``trail''.  Then, if
+a data structure that may still be live on backtracking,
+you should record whatever information is necessary to restore it
+on a stack-like data structure called the ``trail''.  Then, if
 a computation fails, and execution backtracks to before those
 those updates were performed, the Mercury runtime engine will
 traverse the trail back to the most recent choice point,
@@ -3067,8 +3067,8 @@ For examples of the use of this interface, see the modules
 @node Choice points
 @subsubsection Choice points
 
-A "choice point" is a point in the computation to
-which execution might backtrack.  The "current"
+A ``choice point'' is a point in the computation to
+which execution might backtrack.  The ``current''
 choice point is the one that was most recently
 encountered; that is also the one to which execution
 will branch if the current computation fails.
@@ -3077,30 +3077,43 @@ When you trail an update, the Mercury engine will ensure that if
 execution ever backtracks to the choice point that was current
 at the time of trailing, then the update will be undone.
 
-Note that if the Mercury compiler determines that it will never
+If the Mercury compiler determines that it will never
 need to backtrack to a particular choice point, then it will
-"prune" away that choice point.  If a choice point is pruned,
+``prune'' away that choice point.  If a choice point is pruned,
 the trail entries for those updates will be discarded;
 any updates occurring after that choice point will not be undone.
-Execution may subsequently backtrack to a @emph{prior} choice point,
+
+Note that execution may subsequently backtrack to a @emph{prior} choice point,
 but if so, the values updated will not be live at that point, so
-there is no need to undo the updates.
+there is no need to undo the updates.  The reason that the updated values
+are guaranteed to not be live is that the Mercury compiler will only
+prune choice points when it is guaranteed to be safe to do so.
+The compiler may commit to a goal in two circumstances: if it is guaranteed
+that execution will never attempt to backtrack over that goal, or
+if the goal has no outputs.  In the former case, execution
+cannot backtrack to a prior choice point, and in the latter case,
+the values updated within the goal cannot be live after the goal
+has succeeded, since the goal has no outputs.
 
 For example:
 
 @example
-:- mode q(out) is nondet.
-:- mode r(in) is det.
 
-p :-
-	q(X), r(X), fail.
+:- mode q(mdi, muo) is nondet.
+:- mode p(mdi) is semidet.
+p(X) :- q(X, _Y), fail.
+
 @end example
 
-Here any choice points created in @code{q/1} will be pruned away
-before the call to @code{r/1}.  At the call to @code{fail},
-execution will backtrack; any updates performed inside @code{q/1}
-will not be undone, but that should be OK, since the variable
-@samp{X} will no longer be live.
+Here any choice points created in @code{q/2} will be pruned away
+before the call to @code{fail/1}.  At the call to @code{fail},
+execution will backtrack; any updates performed inside @code{q/2}
+will not be undone, but that should be OK, because the variable
+@samp{_Y} will no longer be live.
+
+Oh, but @samp{X} @emph{will} be live.  Oh-oh...
+
+XXX we really should fix that bug.
 
 @node Value trailing
 @subsubsection Value trailing
@@ -3172,7 +3185,7 @@ void MR_trail_function(
 A call to @samp{MR_trail_function(@var{untrail_func}, @var{value})}
 ensures that
 if future execution ever backtracks to current choicepoint,
-then @code{(*@var{untrail_func})(@var{value}, MR_undo)} will called.
+then @code{(*@var{untrail_func})(@var{value}, MR_undo)} will be called.
 It also ensures that if the current choice point is pruned because
 execution commits to never backtracking to it,
 then @code{(*@var{untrail_func})(@var{value}, MR_commit)} will be called.
@@ -3186,9 +3199,11 @@ Typically if the @var{untrail_func} is called with @var{reason} being
 @samp{MR_undo} or @samp{MR_exception}, then it should undo the effects
 of the update(s) specified by @var{value}, and the free any resources
 associated with that trail entry.  If it is called with @var{reason}
-being @samp{MR_commit} or @samp{MR_gc}, then it should not undo the
+being @samp{MR_commit} then it should not undo the
 effects, instead it should merely free any resources associated with
-the trail entry.
+the trail entry.  If it is called with anything else
+(such as @samp{MR_gc}), then it should probably abort execution
+with an error message.
 
 @node Delayed goals and floundering
 @subsubsection Delayed goals and floundering
@@ -3205,9 +3220,10 @@ constraint solver with these properties, then at certain points in
 the computation --- for example, after executing a negated goal --- it
 is important for the system to check that their are no outstanding
 delayed goals which might cause failure, before execution commits
-to this execution path.  If this check was omitted, then it could
-lead to unsound behavior,  such as a negation failing even though
-logically speaking it ought to have succeeded.
+to this execution path.  If there are any such delayed goals, the
+computation is said to ``flounder''.  If the check for floundering was
+omitted, then it could lead to unsound behavior,  such as a negation
+failing even though logically speaking it ought to have succeeded.
 
 The check for floundering can be implemented using the function trail,
 by simply calling @samp{MR_trail_function()} to add a function trail
@@ -3216,6 +3232,8 @@ check for floundering in the @samp{MR_commit} case of your function.
 (For an example of this, see the @samp{ML_cfloat_untrail_func()}
 function in the file @samp{extras/clpr/cfloat.m} in the Mercury
 distribution.)
+If your function does detect floundering, then it should print
+an error message and then abort execution.
 
 @node Avoiding redundant trailing
 @subsubsection Avoiding redundant trailing
@@ -3226,7 +3244,8 @@ some of this trailing may be redundant.  It is generally not necessary
 to record enough information to recover the original state of the
 data structure for @emph{every} update on the trail; instead, it is
 enough to record the original state of each updated data structure
-just once for each choice point, rather than once for each update.
+just once for each choice point occurring after the data structure
+is allocated, rather than once for each update.
 
 The functions described below provide a means to avoid
 redundant trailing.
@@ -3251,7 +3270,7 @@ the identity of the most recent choice point; that is, the
 point to which execution would backtrack if the current computation
 failed.
 
-@code{MR_null_choicepoint_id()} returns a "null" value that is
+@code{MR_null_choicepoint_id()} returns a ``null'' value that is
 distinct from any value ever returned by @code{MR_current_choicepoint_id}.
 (Note that @code{MR_null_choicepoint_id()}
 is a macro that is guaranteed to be suitable for use as a
@@ -3272,17 +3291,22 @@ you can then call @code{MR_current_choicepoint_id()} again and
 compare the result from that call with the value saved in
 the @samp{prev_choicepoint} field in the data structure. 
 If they are different, then you must trail the update,
-and update the prev_choicepoint field with the new value.
-But if they are equal, then you can avoid trailing the
-update.
+and update the prev_choicepoint field with the new value;
+furthermore, you must also take care that on backtracking the
+previous value of the @samp{prev_choicepoint} field in your data
+structure is restored to its previous value, by trailing that update too.
+But if @code{MR_current_choice_id()} and the @code{prev_choicepoint} field
+are equal, then you can safely perform the update to your data
+structure without trailing it.
 
 Note that there is a cost to this -- you have to include
 an extra field in your data structure for each part of
-the data structure which you might update, and you
+the data structure which you might update, you
 need to perform a test for each update to decide whether
-or not to trail it.  Whether or not the benefits from
-avoiding redundant trailing outweigh these costs
-will depend on your application.
+or not to trail it, and if you do need to trail the update,
+then you have an extra field that you need to trail.
+Whether or not the benefits from avoiding redundant trailing
+outweigh these costs will depend on your application.
 
 @c @item @code{void MR_untrail_to(MR_TrailEntry *@var{old_trail_ptr}, MR_untrail_reason @var{reason});}
 @c 
