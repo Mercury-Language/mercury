@@ -6,9 +6,11 @@
 *.prof
 *.err
 *.int
+*.int0
 *.int2
 *.int3
 *.date
+*.date0
 *.date3
 *.used
 aditi_backend.m rl_file.m rl_out.m
