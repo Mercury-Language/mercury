@@ -5,7 +5,7 @@
 %-----------------------------------------------------------------------------%
 
 % This module defines predicates to produce the functions which are
-% exported to C via a pragma(export, ...) declaration.
+% exported to C via a `pragma export' declaration.
 
 % Main authors: dgj.
 
@@ -193,7 +193,8 @@ get_export_info(Preds, PredId, ProcId, C_RetType,
 			PredOrFunc = function,
 			pred_args_to_func_args(ArgInfoTypes0, ArgInfoTypes1,
 				arg_info(RetArgLoc, RetArgMode) - RetType),
-			RetArgMode = top_out
+			RetArgMode = top_out,
+			\+ export__exclude_argument_type(RetType)
 		->
 			export__term_to_type_string(RetType, C_RetType),
 			argloc_to_string(RetArgLoc, RetArgString0),
@@ -206,13 +207,13 @@ get_export_info(Preds, PredId, ProcId, C_RetType,
 						";\n"], MaybeFail),
 			string__append_list(["\treturn return_value;\n"],
 				MaybeSucceed),
-			ArgInfoTypes = ArgInfoTypes1
+			ArgInfoTypes2 = ArgInfoTypes1
 		;
 			C_RetType = "void",
 			MaybeDeclareRetval = "",
 			MaybeFail = "",
 			MaybeSucceed = "",
-			ArgInfoTypes = ArgInfoTypes0
+			ArgInfoTypes2 = ArgInfoTypes0
 		)
 	; CodeModel = model_semi,
 		% we treat semidet functions the same as semidet predicates,
@@ -228,7 +229,7 @@ get_export_info(Preds, PredId, ProcId, C_RetType,
 			"\t}\n"
 				], MaybeFail),
 		MaybeSucceed = "\treturn TRUE;\n",
-		ArgInfoTypes = ArgInfoTypes0
+		ArgInfoTypes2 = ArgInfoTypes0
 	; CodeModel = model_non,
 		% we should probably check this earlier, e.g. in make_hlds.m,
 		% but better we catch this error late than never...
@@ -236,8 +237,18 @@ get_export_info(Preds, PredId, ProcId, C_RetType,
 		MaybeDeclareRetval = "",
 		MaybeFail = "",
 		MaybeSucceed = "",
-		ArgInfoTypes = ArgInfoTypes0
-	).
+		ArgInfoTypes2 = ArgInfoTypes0
+	),
+	list__filter(export__include_arg, ArgInfoTypes2, ArgInfoTypes).
+
+	% export__include_arg(ArgInfoType):
+	%	Succeeds iff the specified argument should be included in
+	%	the arguments of the exported C function.
+	%
+:- pred export__include_arg(pair(arg_info, type)::in) is semidet.
+export__include_arg(arg_info(_Loc, Mode) - Type) :-
+	Mode \= top_unused,
+	\+ export__exclude_argument_type(Type).
 
 	% get_argument_declarations(Args, NameThem, DeclString):
 	% build a string to declare the argument types (and if
@@ -257,8 +268,24 @@ get_argument_declarations([X|Xs], NameThem, Result) :-
 get_argument_declarations_2([], _, _, "").
 get_argument_declarations_2([AT|ATs], Num0, NameThem, Result) :-
 	AT = ArgInfo - Type,
-	ArgInfo = arg_info(_Loc, Mode),
 	Num is Num0 + 1,
+	get_argument_declaration(ArgInfo, Type, Num, NameThem,
+			TypeString, ArgName),
+	(
+		ATs = []
+	->
+		string__append(TypeString, ArgName, Result)
+	;
+		get_argument_declarations_2(ATs, Num, NameThem, TheRest),
+		string__append_list([TypeString, ArgName, ", ", TheRest],
+			Result)
+	).
+	
+:- pred get_argument_declaration(arg_info, type, int, bool, string, string).
+:- mode get_argument_declaration(in, in, in, in, out, out) is det.
+
+get_argument_declaration(ArgInfo, Type, Num, NameThem, TypeString, ArgName) :-
+	ArgInfo = arg_info(_Loc, Mode),
 	( NameThem = yes ->
 		string__int_to_string(Num, NumString),
 		string__append(" Mercury__argument", NumString, ArgName)
@@ -273,15 +300,6 @@ get_argument_declarations_2([AT|ATs], Num0, NameThem, Result) :-
 		string__append(TypeString0, " *", TypeString)
 	;
 		TypeString = TypeString0
-	),
-	(
-		ATs = []
-	->
-		string__append(TypeString, ArgName, Result)
-	;
-		get_argument_declarations_2(ATs, Num, NameThem, TheRest),
-		string__append_list([TypeString, ArgName, ", ", TheRest], 
-			Result)
 	).
 
 :- pred get_input_args(assoc_list(arg_info, type), int, string).
@@ -392,6 +410,25 @@ convert_type_from_mercury(Rval, Type, ConvertedRval) :-
 		ConvertedRval = Rval
 	).
 
+% Certain types, namely io__state and store__store(S),
+% are just dummy types used to ensure logical semantics;
+% there is no need to actually pass them, and so when
+% exporting procedures to C, we don't include arguments with
+% these types.
+
+:- pred export__exclude_argument_type((type)::in) is semidet.
+export__exclude_argument_type(Type) :-
+	Type = term__functor(term__atom(":"), [
+			term__functor(term__atom(ModuleName), [], _),
+			term__functor(term__atom(TypeName), TypeArgs, _)
+		], _),
+	list__length(TypeArgs, TypeArity),
+	export__exclude_argument_type_2(ModuleName, TypeName, TypeArity).
+
+:- pred export__exclude_argument_type_2(string::in, string::in, arity::in)
+	is semidet.
+export__exclude_argument_type_2("io", "state", 0).	% io:state/0
+export__exclude_argument_type_2("store", "store", 1).	% store:store/1.
 
 export__produce_header_file(Module, ModuleName) -->
 	{ module_info_get_pragma_exported_procs(Module, ExportedProcs) },

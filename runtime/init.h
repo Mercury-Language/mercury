@@ -93,8 +93,17 @@ extern	int	mercury_terminate(void);
 */
 Declare_entry(mercury__main_2_0);		    /* in the user's program */
 extern	void	mercury_init_io(void);		    /* in the Mercury library */
+/*
+** XXX the following #ifndef suppresses the declarations of
+** ML_io_init_state() and ML_io_finalize_state() if
+** they have already been declared in library/io.h;
+** this is a temporary hack to avoid errors about
+** conflicting declarations when boostrapping.
+*/
+#ifndef IO_H
 extern	void	ML_io_init_state(Word, Word *);	    /* in the Mercury library */
 extern	void	ML_io_finalize_state(Word, Word *); /* in the Mercury library */
+#endif
 
 #endif /* not INIT_H */
 

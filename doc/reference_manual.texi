@@ -2879,6 +2879,10 @@ If the Mercury procedure is a Mercury function that cannot fail, and
 the function result has an output mode, then the C interface
 function will return the Mercury function result value.
 Otherwise the function result is appended as an extra argument.
+Arguments of type @samp{io__state} or @samp{store__store(_)}
+are not passed at all; that's because these types represent mutable state,
+and in C modifications to mutable state are done via side effects,
+rather than argument passing.
 
 Calling polymorphically typed Mercury procedures from C is a little bit
 more difficult than calling ordinary (monomorphically typed) Mercury procedures.
