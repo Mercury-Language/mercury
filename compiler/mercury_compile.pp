@@ -217,8 +217,11 @@ mercury_compile(Module) -->
 	    globals__io_lookup_bool_option(statistics, Stats),
 	    mercury_compile__maybe_write_dependency_graph(HLDS20,
 		Verbose, Stats, HLDS21),
+	    globals__io_lookup_bool_option(typecheck_only, TypeCheckOnly),
 	    globals__io_lookup_bool_option(errorcheck_only, ErrorCheckOnly),
-	    ( { ErrorCheckOnly = yes } ->
+	    ( { TypeCheckOnly = yes } ->
+		[]
+	    ; { ErrorCheckOnly = yes } ->
 		% we may still want to run `unused_args' so that we get
 		% the appropriate warnings
 		globals__io_set_option(optimize_unused_args, bool(no)),
