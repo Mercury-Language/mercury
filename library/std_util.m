@@ -2043,12 +2043,12 @@ create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 	restore_transient_registers();
 
 		/* Check range */
-	success = (ArgumentIndex > 0 && ArgumentIndex <= info.arity);
+	success = (ArgumentIndex >= 0 && ArgumentIndex < info.arity);
 	if (success) {
 
 			/* Allocate enough room for a univ */
 		incr_hp(Argument, 2);
-		arg_pseudo_type_info = info.type_info_vector[ArgumentIndex - 1];
+		arg_pseudo_type_info = info.type_info_vector[ArgumentIndex];
 		if (arg_pseudo_type_info < TYPELAYOUT_MAX_VARINT) {
 			field(0, Argument, UNIV_OFFSET_FOR_TYPEINFO) = 
 				((Word *) TypeInfo_for_T)[arg_pseudo_type_info];
@@ -2058,7 +2058,7 @@ create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 				arg_pseudo_type_info;
 		}
 		field(0, Argument, UNIV_OFFSET_FOR_DATA) = 
-			info.argument_vector[ArgumentIndex - 1];
+			info.argument_vector[ArgumentIndex];
 	}
 
 	/* Free the allocated type_info_vector, since we just copied
