@@ -19,9 +19,11 @@
 % See compiler/notes/trailing.html for more information about trailing
 % in the Mercury implementation.
 %
+% This pass is very similar to add_heap_ops.m.
+%
 %-----------------------------------------------------------------------------%
 
-% XXX FIXME check goal_infos for correctness
+% XXX check goal_infos for correctness
 
 %-----------------------------------------------------------------------------%
 
@@ -36,7 +38,8 @@
 :- implementation.
 
 :- import_module prog_data, prog_util, (inst).
-:- import_module hlds_goal, hlds_data, quantification, modules, type_util.
+:- import_module hlds_goal, hlds_data.
+:- import_module goal_util, quantification, modules, type_util.
 :- import_module code_model, instmap.
 
 :- import_module bool, string.
@@ -128,15 +131,20 @@ goal_expr_add_trail_ops(not(InnerGoal), OuterGoalInfo, Goal) -->
 	{ true_goal(Context, True) },
 	{ fail_goal(Context, Fail) },
 	{ map__init(SM) },
+	ModuleInfo =^ module_info,
 	{ NumSolns = at_most_zero ->
 		% The "then" part of the if-then-else will be unreachable,
 		% but to preserve the invariants that the MLDS back-end
 		% relies on, we need to make sure that it can't fail.
-		% So we use `true' rather than `fail' for the "then" part.
-		NewOuterGoal = if_then_else([], InnerGoal, True, True, SM)
+		% So we use a call to `private_builtin__unused' (which
+		% will call error/1) rather than `fail' for the "then" part.
+		mercury_private_builtin_module(PrivateBuiltin),
+		generate_simple_call(PrivateBuiltin, "unused",
+			[], det, no, [], ModuleInfo, Context, ThenGoal)
 	;
-		NewOuterGoal = if_then_else([], InnerGoal, Fail, True, SM)
+		ThenGoal = Fail
 	},
+	{ NewOuterGoal = if_then_else([], InnerGoal, ThenGoal, True, SM) },
 	goal_expr_add_trail_ops(NewOuterGoal, OuterGoalInfo, Goal).
 
 goal_expr_add_trail_ops(some(A, B, Goal0), OuterGoalInfo,
@@ -264,7 +272,7 @@ goal_expr_add_trail_ops(PragmaForeign, GoalInfo, Goal) -->
 		ModuleInfo =^ module_info,
 		{ goal_info_get_context(GoalInfo, Context) },
 		{ generate_call("trailed_nondet_pragma_foreign_code",
-			[], det, no, [], ModuleInfo, Context,
+			[], erroneous, no, [], ModuleInfo, Context,
 			SorryNotImplementedCode) },
 		{ Goal = SorryNotImplementedCode }
 	;
@@ -455,62 +463,14 @@ ticket_counter_type = c_pointer_type.
 
 %-----------------------------------------------------------------------------%
 
-% XXX copied from table_gen.m
-
 :- pred generate_call(string::in, list(prog_var)::in, determinism::in,
 	maybe(goal_feature)::in, assoc_list(prog_var, inst)::in,
 	module_info::in, term__context::in, hlds_goal::out) is det.
 
 generate_call(PredName, Args, Detism, MaybeFeature, InstMap, Module, Context,
 		CallGoal) :-
-	list__length(Args, Arity),
 	mercury_private_builtin_module(BuiltinModule),
-	module_info_get_predicate_table(Module, PredTable),
-	(
-		predicate_table_search_pred_m_n_a(PredTable,
-			BuiltinModule, PredName, Arity,
-			[PredId0])
-	->
-		PredId = PredId0
-	;
-		string__int_to_string(Arity, ArityS),
-		string__append_list(["can't locate ", PredName,
-			"/", ArityS], ErrorMessage),
-		error(ErrorMessage)
-	),
-	module_info_pred_info(Module, PredId, PredInfo),
-	(
-		pred_info_procids(PredInfo, [ProcId0])
-	->
-		ProcId = ProcId0
-	;
-		string__int_to_string(Arity, ArityS),
-		string__append_list(["too many modes for pred ",
-			PredName, "/", ArityS], ErrorMessage),
-		error(ErrorMessage)
-
-	),
-	Call = call(PredId, ProcId, Args, not_builtin, no,
-		qualified(BuiltinModule, PredName)),
-	set__init(NonLocals0),
-	set__insert_list(NonLocals0, Args, NonLocals),
-	determinism_components(Detism, _CanFail, NumSolns),
-	(
-		NumSolns = at_most_zero
-	->
-		instmap_delta_init_unreachable(InstMapDelta)
-	;
-		instmap_delta_from_assoc_list(InstMap, InstMapDelta)
-	),
-	goal_info_init(NonLocals, InstMapDelta, Detism, CallGoalInfo0),
-	goal_info_set_context(CallGoalInfo0, Context, CallGoalInfo1),
-	(
-		MaybeFeature = yes(Feature),
-		goal_info_add_feature(CallGoalInfo1, Feature, CallGoalInfo)
-	;
-		MaybeFeature = no,
-		CallGoalInfo = CallGoalInfo1
-	),
-	CallGoal = Call - CallGoalInfo.
+	goal_util__generate_simple_call(BuiltinModule, PredName, Args, Detism,
+		MaybeFeature, InstMap, Module, Context, CallGoal).
 
 %-----------------------------------------------------------------------------%

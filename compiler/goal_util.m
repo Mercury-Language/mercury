@@ -6,29 +6,21 @@
 
 % Main author: conway.
 %
-% This module provides some functionality for renaming variables in goals.
-% The predicates rename_var* take a structure and a mapping from var -> var
-% and apply that translation. If a var in the input structure does not
-% occur as a key in the mapping, then the variable is left unsubstituted.
-
-% goal_util__create_variables takes a list of variables, a varset an
-% initial translation mapping and an initial mapping from variable to
-% type, and creates new instances of each of the source variables in the
-% translation mapping, adding the new variable to the type mapping and
-% updating the varset. The type for each new variable is found by looking
-% in the type map given in the 5th argument - the last input.
-% (This interface will not easily admit uniqueness in the type map for this
-% reason - such is the sacrifice for generality.)
-
-:- module goal_util.
+% This module provides various utility procedures for manipulating HLDS goals,
+% e.g. some functionality for renaming variables in goals.
 
 %-----------------------------------------------------------------------------%
 
+:- module goal_util.
 :- interface.
 
 :- import_module hlds_data, hlds_goal, hlds_module, hlds_pred.
-:- import_module instmap, prog_data.
-:- import_module bool, list, set, map, term.
+:- import_module (inst), instmap, prog_data.
+:- import_module assoc_list, bool, list, set, map, term, std_util.
+
+% The predicates rename_var* take a structure and a mapping from var -> var
+% and apply that translation. If a var in the input structure does not
+% occur as a key in the mapping, then the variable is left unsubstituted.
 
 	% goal_util__rename_vars_in_goals(GoalList, MustRename, Substitution,
 	%	NewGoalList).
@@ -47,6 +39,15 @@
 :- pred goal_util__rename_var_list(list(var(T)), bool,
 		map(var(T), var(T)), list(var(T))).
 :- mode goal_util__rename_var_list(in, in, in, out) is det.
+
+% goal_util__create_variables takes a list of variables, a varset an
+% initial translation mapping and an initial mapping from variable to
+% type, and creates new instances of each of the source variables in the
+% translation mapping, adding the new variable to the type mapping and
+% updating the varset. The type for each new variable is found by looking
+% in the type map given in the 5th argument - the last input.
+% (This interface will not easily admit uniqueness in the type map for this
+% reason - such is the sacrifice for generality.)
 
 	% goal_util__create_variables(OldVariables, OldVarset, InitialVarTypes,
 	%	InitialSubstitution, OldVarTypes, OldVarNames,  NewVarset,
@@ -198,6 +199,22 @@
 :- pred goal_util__reordering_maintains_termination(module_info::in, bool::in, 
 		hlds_goal::in, hlds_goal::in) is semidet.
 
+	% generate_simple_call(ModuleName, PredName, Args,
+	%		Detism, MaybeFeature, InstMapDelta,
+	%		ModuleInfo, Context, CallGoal):
+	% Generate a call to a builtin procedure (e.g.
+	% from the private_builtin or table_builtin module).
+	% This is used by HLDS->HLDS transformation passes that introduce
+	% calls to builtin procedures.  This is restricted in various ways,
+	% e.g. the called procedure must have exactly one mode,
+	% and at most one type parameter.  So it should only be used
+	% for generating calls to known builtin procedures.
+	%
+:- pred goal_util__generate_simple_call(module_name::in, string::in,
+		list(prog_var)::in, determinism::in, maybe(goal_feature)::in,
+		assoc_list(prog_var, inst)::in, module_info::in,
+		term__context::in, hlds_goal::out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -205,7 +222,8 @@
 
 :- import_module hlds_data, mode_util, code_aux, prog_data, purity.
 :- import_module code_aux, det_analysis, inst_match, type_util, (inst).
-:- import_module int, std_util, string, assoc_list, require, varset.
+
+:- import_module int, string, require, varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -1202,5 +1220,68 @@ goal_depends_on_earlier_goal(_ - LaterGoalInfo, _ - EarlierGoalInfo,
 	goal_info_get_nonlocals(LaterGoalInfo, LaterGoalNonLocals),
 	set__intersect(EarlierChangedVars, LaterGoalNonLocals, Intersection),
 	not set__empty(Intersection).
+
+%-----------------------------------------------------------------------------%
+
+goal_util__generate_simple_call(ModuleName, PredName, Args, Detism,
+		MaybeFeature, InstMap, Module, Context, CallGoal) :-
+	list__length(Args, Arity),
+	module_info_get_predicate_table(Module, PredTable),
+	(
+		predicate_table_search_pred_m_n_a(PredTable,
+			ModuleName, PredName, Arity,
+			[PredId0])
+	->
+		PredId = PredId0
+	;
+		% Some of the table builtins are polymorphic,
+		% and for them we need to subtract one from the arity
+		% to take into account the type_info argument.
+		predicate_table_search_pred_m_n_a(PredTable,
+			ModuleName, PredName, Arity - 1,
+			[PredId0])
+	->
+		PredId = PredId0
+	;
+		string__int_to_string(Arity, ArityS),
+		string__append_list(["can't locate ", PredName,
+			"/", ArityS], ErrorMessage),
+		error(ErrorMessage)
+	),
+	module_info_pred_info(Module, PredId, PredInfo),
+	(
+		pred_info_procids(PredInfo, [ProcId0])
+	->
+		ProcId = ProcId0
+	;
+		string__int_to_string(Arity, ArityS),
+		string__append_list(["too many modes for pred ",
+			PredName, "/", ArityS], ErrorMessage),
+		error(ErrorMessage)
+
+	),
+	Call = call(PredId, ProcId, Args, not_builtin, no,
+		qualified(ModuleName, PredName)),
+	set__init(NonLocals0),
+	set__insert_list(NonLocals0, Args, NonLocals),
+	determinism_components(Detism, _CanFail, NumSolns),
+	(
+		NumSolns = at_most_zero
+	->
+		instmap_delta_init_unreachable(InstMapDelta)
+	;
+		instmap_delta_from_assoc_list(InstMap, InstMapDelta)
+	),
+	goal_info_init(NonLocals, InstMapDelta, Detism,
+		CallGoalInfo0),
+	goal_info_set_context(CallGoalInfo0, Context, CallGoalInfo1),
+	(
+		MaybeFeature = yes(Feature),
+		goal_info_add_feature(CallGoalInfo1, Feature, CallGoalInfo)
+	;
+		MaybeFeature = no,
+		CallGoalInfo = CallGoalInfo1
+	),
+	CallGoal = Call - CallGoalInfo.
 
 %-----------------------------------------------------------------------------%

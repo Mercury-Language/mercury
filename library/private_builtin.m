@@ -1006,7 +1006,77 @@ trailed_nondet_pragma_foreign_code :-
 		"Sorry, not implemented:\n",
 		"for the MLDS back-end (`--high-level-code')\n",
 		"nondet `pragma c_code' or `pragma foreign_code'\n",
-		"is not supported when trailing (`--use_trail') is enabled."
+		"is not supported when trailing (`--use-trail') is enabled."
+	]),
+	error(Msg).
+
+%-----------------------------------------------------------------------------%
+
+	% This section of the module contains predicates that are used
+	% by the MLDS back-end, to implement heap reclamation on failure.
+	% (The LLDS back-end does not use these; instead it inserts
+	% the corresponding LLDS instructions directly during code
+	% generation.)
+	% These predicates should not be used by user programs directly.
+
+:- interface.
+
+:- type heap_pointer == c_pointer.
+
+	% For documentation, see the corresponding LLDS instructions
+	% in compiler/llds.m.  See also compiler/notes/trailing.html.
+
+:- impure pred mark_hp(heap_pointer::out) is det.
+:- impure pred restore_hp(heap_pointer::in) is det.
+
+	% XXX currently we don't support nondet pragma
+	% foreign_code when trailing is enabled.
+	% Instead we generate code which calls this procedure,
+	% which will call error/1 with an appropriate message.
+:- pred reclaim_heap_nondet_pragma_foreign_code is erroneous.
+
+	% N.B. interface continued below.
+
+:- implementation.
+
+:- pragma foreign_proc("C", mark_hp(SavedHeapPointer::out),
+	[will_not_call_mercury, thread_safe],
+"
+#ifndef MR_CONSERVATIVE_GC
+	MR_mark_hp(SavedHeapPointer);
+#else
+	/* We can't do heap reclamation with conservative GC. */
+	SavedHeapPointer = 0;
+#endif
+").
+
+:- pragma foreign_proc("C", restore_hp(SavedHeapPointer::in),
+	[will_not_call_mercury, thread_safe],
+"
+#ifndef MR_CONSERVATIVE_GC
+	MR_restore_hp(SavedHeapPointer);
+#endif
+").
+
+:- pragma foreign_proc("MC++", mark_hp(SavedHeapPointer::out),
+	[will_not_call_mercury, thread_safe],
+"
+	/* We can't do heap reclamation on failure in the .NET back-end. */
+	SavedHeapPointer = 0;
+").
+
+:- pragma foreign_proc("MC++", restore_hp(SavedHeapPointer::in),
+	[will_not_call_mercury, thread_safe],
+"
+	/* We can't do heap reclamation on failure in the .NET back-end. */
+").
+
+reclaim_heap_nondet_pragma_foreign_code :-
+	Msg = string__append_list([
+		"Sorry, not implemented:\n",
+		"for the MLDS back-end (`--high-level-code')\n",
+		"nondet `pragma c_code' or `pragma foreign_code'\n",
+		"is not supported when `--reclaim-heap-on-failure' is enabled."
 	]),
 	error(Msg).
 

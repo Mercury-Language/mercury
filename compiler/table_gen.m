@@ -1465,64 +1465,9 @@ generate_new_table_var(Name, VarTypes0, VarTypes, VarSet0, VarSet, Var) :-
 
 generate_call(PredName, Args, Detism, MaybeFeature, InstMap, Module, Context,
 		CallGoal) :-
-	list__length(Args, Arity),
 	mercury_table_builtin_module(BuiltinModule),
-	module_info_get_predicate_table(Module, PredTable),
-	(
-		predicate_table_search_pred_m_n_a(PredTable,
-			BuiltinModule, PredName, Arity,
-			[PredId0])
-	->
-		PredId = PredId0
-	;
-		% Some of the table builtins are polymorphic,
-		% and for them we need to subtract one from the arity
-		% to take into account the type_info argument.
-		predicate_table_search_pred_m_n_a(PredTable,
-			BuiltinModule, PredName, Arity - 1,
-			[PredId0])
-	->
-		PredId = PredId0
-	;
-		string__int_to_string(Arity, ArityS),
-		string__append_list(["can't locate ", PredName,
-			"/", ArityS], ErrorMessage),
-		error(ErrorMessage)
-	),
-	module_info_pred_info(Module, PredId, PredInfo),
-	(
-		pred_info_procids(PredInfo, [ProcId0])
-	->
-		ProcId = ProcId0
-	;
-		string__int_to_string(Arity, ArityS),
-		string__append_list(["too many modes for pred ",
-			PredName, "/", ArityS], ErrorMessage),
-		error(ErrorMessage)
-
-	),
-	Call = call(PredId, ProcId, Args, not_builtin, no,
-		qualified(BuiltinModule, PredName)),
-	set__init(NonLocals0),
-	set__insert_list(NonLocals0, Args, NonLocals),
-	determinism_components(Detism, _CanFail, NumSolns),
-	(
-		NumSolns = at_most_zero
-	->
-		instmap_delta_init_unreachable(InstMapDelta)
-	;
-		instmap_delta_from_assoc_list(InstMap, InstMapDelta)
-	),
-	init_goal_info(NonLocals, InstMapDelta, Detism, Context,
-		CallGoalInfo0),
-	(
-		MaybeFeature = yes(Feature),
-		goal_info_add_feature(CallGoalInfo0, Feature, CallGoalInfo)
-	;
-		MaybeFeature = no,
-		CallGoalInfo = CallGoalInfo0
-	),
-	CallGoal = Call - CallGoalInfo.
+	goal_util__generate_simple_call(BuiltinModule, PredName, Args, Detism,
+		MaybeFeature, InstMap, Module, Context, CallGoal).
 
 :- pred append_fail(hlds_goal::in, hlds_goal::out) is det.
 

@@ -57,7 +57,7 @@
 :- import_module bytecode_gen, bytecode.
 
 	% the MLDS back-end
-:- import_module add_trail_ops.			% HLDS -> HLDS
+:- import_module add_trail_ops, add_heap_ops.	% HLDS -> HLDS
 :- import_module mark_static_terms.		% HLDS -> HLDS
 :- import_module mlds.				% MLDS data structure
 :- import_module ml_code_gen, rtti_to_mlds.	% HLDS/RTTI -> MLDS
@@ -2330,6 +2330,40 @@ mercury_compile__maybe_add_trail_ops(HLDS0, Verbose, Stats, HLDS) -->
 		{ HLDS = HLDS0 }
 	).
 
+:- pred mercury_compile__maybe_add_heap_ops(module_info, bool, bool,
+		module_info, io__state, io__state).
+:- mode mercury_compile__maybe_add_heap_ops(in, in, in, out, di, uo)
+		is det.
+
+mercury_compile__maybe_add_heap_ops(HLDS0, Verbose, Stats, HLDS) -->
+	globals__io_get_gc_method(GC),
+	globals__io_lookup_bool_option(reclaim_heap_on_semidet_failure,
+		SemidetReclaim),
+	globals__io_lookup_bool_option(reclaim_heap_on_nondet_failure,
+		NondetReclaim),
+	( { GC = conservative } ->
+		% we can't do heap reclamation with conservative GC
+		{ HLDS = HLDS0 }
+	; { SemidetReclaim = no, NondetReclaim = no } ->
+		{ HLDS = HLDS0 }
+	; { SemidetReclaim = yes, NondetReclaim = yes } ->
+		maybe_write_string(Verbose,
+			"% Adding heap reclamation operations...\n"),
+		maybe_flush_output(Verbose),
+		process_all_nonimported_procs(update_proc(add_heap_ops),
+			HLDS0, HLDS),
+		maybe_write_string(Verbose, "% done.\n"),
+		maybe_report_stats(Stats)
+	;
+		io__write_strings([
+			"Sorry, not implemented: `--high-level-code' and\n",
+			"`--(no-)reclaim-heap-on-{semidet/nondet}-failure'.\n",
+			"Use `--(no-)reclaim-heap-on-failure' instead.\n"
+		]),
+		io__set_exit_status(1),
+		{ HLDS = HLDS0 }
+	).
+
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__maybe_write_dependency_graph(module_info, bool, bool,
@@ -3190,7 +3224,11 @@ mercury_compile__mlds_backend(HLDS51, MLDS) -->
 		HLDS55),
 	mercury_compile__maybe_dump_hlds(HLDS55, "55", "add_trail_ops"),
 
-	mercury_compile__maybe_mark_static_terms(HLDS55, Verbose, Stats,
+	mercury_compile__maybe_add_heap_ops(HLDS55, Verbose, Stats,
+		HLDS57),
+	mercury_compile__maybe_dump_hlds(HLDS57, "57", "add_heap_ops"),
+
+	mercury_compile__maybe_mark_static_terms(HLDS57, Verbose, Stats,
 		HLDS60),
 	mercury_compile__maybe_dump_hlds(HLDS60, "60", "mark_static"),
 
@@ -3221,11 +3259,20 @@ mercury_compile__mlds_backend(HLDS51, MLDS) -->
 	maybe_report_stats(Stats),
 	mercury_compile__maybe_dump_mlds(MLDS20, "20", "tailcalls"),
 
+	%
+	% Note that we call ml_elim_nested twice --
+	% the first time to flatten nested functions,
+	% and the second time to chain the stack frames
+	% together, for accurate GC.
+	% These two passes are quite similar,
+	% but must be done separately.
+	%
+
 	globals__io_lookup_bool_option(gcc_nested_functions, NestedFuncs),
 	( { NestedFuncs = no } ->
 		maybe_write_string(Verbose,
 			"% Flattening nested functions...\n"),
-		ml_elim_nested(MLDS20, MLDS30),
+		ml_elim_nested(hoist_nested_funcs, MLDS20, MLDS30),
 		maybe_write_string(Verbose, "% done.\n")
 	;
 		{ MLDS30 = MLDS20 }
@@ -3233,13 +3280,25 @@ mercury_compile__mlds_backend(HLDS51, MLDS) -->
 	maybe_report_stats(Stats),
 	mercury_compile__maybe_dump_mlds(MLDS30, "30", "nested_funcs"),
 
+	globals__io_get_gc_method(GC),
+	( { GC = accurate } ->
+		maybe_write_string(Verbose,
+			"% Threading GC stack frames...\n"),
+		ml_elim_nested(chain_gc_stack_frames, MLDS30, MLDS35),
+		maybe_write_string(Verbose, "% done.\n")
+	;
+		{ MLDS35 = MLDS30 }
+	),
+	maybe_report_stats(Stats),
+	mercury_compile__maybe_dump_mlds(MLDS35, "35", "gc_frames"),
+
 	globals__io_lookup_bool_option(optimize, Optimize),
 	( { Optimize = yes } ->
 		maybe_write_string(Verbose, "% Optimizing MLDS...\n"),
-		ml_optimize__optimize(MLDS30, MLDS40),
+		ml_optimize__optimize(MLDS35, MLDS40),
 		maybe_write_string(Verbose, "% done.\n")
 	;
-		{ MLDS40 = MLDS30 }
+		{ MLDS40 = MLDS35 }
 	),
 	maybe_report_stats(Stats),
 	mercury_compile__maybe_dump_mlds(MLDS40, "40", "optimize"),

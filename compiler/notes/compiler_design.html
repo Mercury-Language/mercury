@@ -897,6 +897,8 @@ So we have a pass which transforms the HLDS to handle trailing:
      resumes after backtracking, and whenever we do a commit.
      The trail operations are represented as (and implemented as)
      calls to impure procedures defined in library/private_builtin.m. 
+<li> add_heap_ops.m is very similar to add_trail_ops.m;
+     it inserts code to do heap reclamation on backtracking.
 </ul>
 
 <h4> 4b. MLDS code generation </h4>
@@ -1157,6 +1159,6 @@ compiled code.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2001-08-11 14:09:51 $ by $Author: stayl $@cs.mu.oz.au. <br>
+Last update was $Date: 2001-11-26 09:31:02 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
