@@ -118,6 +118,11 @@ about unbound type variables.
 	io__state, io__state).
 :- mode process_all_nonimported_nonaditi_procs(task, in, out, di, uo) is det.
 
+:- pred process_all_nonimported_nonaditi_procs(task, task,
+	module_info, module_info, io__state, io__state).
+:- mode process_all_nonimported_nonaditi_procs(task, out(task),
+	in, out, di, uo) is det.
+
 :- pred process_all_nonimported_procs(task, task,
 	module_info, module_info, io__state, io__state).
 :- mode process_all_nonimported_procs(task, out(task), in, out, di, uo) is det.
@@ -169,6 +174,14 @@ process_all_nonimported_nonaditi_procs(Task, ModuleInfo0, ModuleInfo) -->
 			\+ hlds_pred__pred_info_is_aditi_relation(PredInfo)
 		)) }, 
 	process_matching_nonimported_procs(Task, NotAditi, 
+		ModuleInfo0, ModuleInfo).
+
+process_all_nonimported_nonaditi_procs(Task0, Task,
+		ModuleInfo0, ModuleInfo) -->
+	{ NotAditi = lambda([PredInfo::in] is semidet, (
+			\+ hlds_pred__pred_info_is_aditi_relation(PredInfo)
+		)) }, 
+	process_matching_nonimported_procs(Task0, Task, NotAditi, 
 		ModuleInfo0, ModuleInfo).
 
 process_all_nonimported_procs(Task0, Task, ModuleInfo0, ModuleInfo) -->
