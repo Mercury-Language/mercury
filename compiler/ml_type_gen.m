@@ -9,7 +9,7 @@
 
 % MLDS type generation -- convert HLDS types to MLDS.
 
-% For enumerations, we use a Java-style emulation: we conver them
+% For enumerations, we use a Java-style emulation: we convert them
 % to classes with a single int member, plus a bunch of static const
 % members for the different enumerations consts.
 % 
