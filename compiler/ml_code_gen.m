@@ -25,6 +25,13 @@
 % doesn't support them _efficiently_) then a later MLDS->MLDS simplification
 % pass will convert it to a form that does not use nested functions.
 
+% Note that when we take the address of a nested function, we only ever
+% do two things with it: pass it as a continuation argument, or call it.
+% The continuations are never returned and never stored inside heap objects
+% or global variables.  These conditions are sufficient to ensure that
+% we never keep the address of a nested function after the containing
+% functions has returned, so we won't get any dangling continuations.
+
 %-----------------------------------------------------------------------------%
 % CODE GENERATION SUMMARY
 %-----------------------------------------------------------------------------%
@@ -127,7 +134,7 @@
 %		bool succeeded;
 %		jmp_buf buf;
 %		void success() {
-%			longjmp(buf, TRUE);
+%			longjmp(buf, 1);
 %		}
 %		if (setjmp(buf)) {
 %			succeeded = TRUE;
@@ -159,17 +166,37 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Code for conjunctions
+% Code for empty conjunctions (`true')
 %
 
 %	model_det goal:
+%		<do true>
+%	===>
+%		/* fall through */
+
+%	model_semi goal:
+%		<succeeded = true>
+%	===>
+%		succceeded = TRUE;
+
+%	model_non goal
+%		<true && CONT()>
+%	===>
+%		CONT();
+
+%-----------------------------------------------------------------------------%
+%
+% Code for non-empty conjunctions
+%
+
+%	model_det Goal:
 %		<Goal, Goals>
 % 	===>
 %		<do Goal>
 %		<Goals>
 %	
 
-%	model_semi goal:
+%	model_semi Goal:
 %		<Goal, Goals>
 % 	===>
 %	{
@@ -181,7 +208,7 @@
 %		}
 %	}
 
-%	model_non goal (unoptimized)
+%	model_non Goal (optimized for readability)
 %		<Goal, Goals>
 % 	===>
 %	{
@@ -195,7 +222,7 @@
 %		entry_func();
 %	}
 %
-%	model_non goal (optimized):
+%	model_non Goal (optimized for efficiency):
 %		<Goal, Goals>
 % 	===>
 %	{
@@ -206,7 +233,7 @@
 %		<Goal && succ_func()>;
 %	}
 
-%	model_non goals (unoptimized):
+%	model_non goals (optimized for readability):
 %		<Goal1, Goal2, Goal3, Goals>
 % 	===>
 %	{
@@ -226,7 +253,7 @@
 %		label0_func();
 %	}
 
-%	model_non goals (optimized):
+%	model_non goals (optimized for efficiency):
 %		<Goal1, Goal2, Goal3, Goals>
 % 	===>
 %	{
@@ -245,18 +272,33 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Code for disjunctions
+% Code for empty disjunctions (`fail')
+%
+
+%	model_semi goal:
+%		<succeeded = fail>
+%	===>
+%		succeeded = FALSE;
+
+%	model_non goal:
+%		<fail && CONT()>
+%	===>
+%		/* fall through */
+
+%-----------------------------------------------------------------------------%
+%
+% Code for non-empty disjunctions
 %
 
 % model_det disj:
 
-%	model_det goal:
+%	model_det Goal:
 %		<do (Goal ; Goals)>
 %	===>
 %		<do Goal>
 %		/* <Goals> will never be reached */
 
-%	model_semi goal:
+%	model_semi Goal:
 %		<do (Goal ; Goals)>
 %	===>
 %	{
@@ -270,7 +312,7 @@
 
 % model_semi disj:
 
-%	model_det goal:
+%	model_det Goal:
 %		<succeeded = (Goal ; Goals)>
 %	===>
 %	{
@@ -281,7 +323,7 @@
 %		/* <Goals> will never be reached */
 %	}
 
-%	model_semi goal:
+%	model_semi Goal:
 %		<succeeded = (Goal ; Goals)>
 %	===>
 %	{
@@ -294,14 +336,14 @@
 
 % model_non disj:
 %
-%	model_det goal:
+%	model_det Goal:
 %		<(Goal ; Goals) && SUCCEED()>
 %	===>
 %		<Goal>
 %		SUCCEED();
 %		<Goals && SUCCEED()>
 %
-%	model_semi goal:
+%	model_semi Goal:
 %		<(Goal ; Goals) && SUCCEED()>
 %	===>
 %	{
@@ -312,7 +354,7 @@
 %		<Goals && SUCCEED()>
 %	}
 %
-%	model_non goal:
+%	model_non Goal:
 %		<(Goal ; Goals) && SUCCEED()>
 %	===>
 %		<Goal && SUCCEED()>
@@ -323,7 +365,7 @@
 % Code for if-then-else
 %
 
-%	model_semi cond:
+%	model_semi Cond:
 %		<(Cond -> Then ; Else)>
 %	===>
 %	{
@@ -344,7 +386,7 @@
 %	**     the `Then' part.  But that is a bit tricky to achieve.
 %	*/
 %
-%	model_non cond:
+%	model_non Cond:
 %		<(Cond -> Then ; Else)>
 %	===>
 %	{
@@ -377,7 +419,7 @@
 %		   which we know will be FALSE */
 %	}
 
-% model_semi negation, model_det goal:
+% model_semi negation, model_det Goal:
 %		<succeeded = not(Goal)>
 %	===>
 %	{
@@ -386,7 +428,7 @@
 %		succeeded = FALSE;
 %	}
 
-% model_semi negation, model_semi goal:
+% model_semi negation, model_semi Goal:
 %		<succeeded = not(Goal)>
 %	===>
 %	{
