@@ -3263,7 +3263,7 @@ For example, the following piece of code defines a Mercury function
 
 @example
 :- func sin(float) = float.
-:- pragma c_code(sin(X::in) = Sin::out),
+:- pragma c_code(sin(X::in) = (Sin::out),
 	may_call_mercury,
 	"Sin = sin(X);").
 @end example
