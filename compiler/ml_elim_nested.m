@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -134,7 +134,7 @@
 :- implementation.
 :- import_module bool, int, list, std_util, string, require.
 
-:- import_module ml_code_util.
+:- import_module ml_code_util, ml_util.
 
 % the following imports are needed for mangling pred names
 :- import_module hlds_pred, prog_data, prog_out.
@@ -1247,13 +1247,8 @@ default_contains_defn(default_case(Statement), Defn) :-
 % maybe_statement_contains_var:
 % statements_contains_var:
 % statement_contains_var:
-% atomic_stmt_contains_var:
-% rvals_contains_var:
-% maybe_rval_contains_var:
-% rval_contains_var:
 % trail_op_contains_var:
-% lvals_contains_var:
-% lval_contains_var:
+% atomic_stmt_contains_var:
 %	Succeeds iff the specified construct contains a reference to
 %	the specified variable.
 %
@@ -1283,19 +1278,6 @@ defn_body_contains_var(mlds__class(ClassDefn), Name) :-
 	ClassDefn = mlds__class_defn(_Kind, _Imports, _Inherits, _Implements,
 		FieldDefns),
 	defns_contains_var(FieldDefns, Name).
-
-:- pred initializer_contains_var(mlds__initializer, mlds__var).
-:- mode initializer_contains_var(in, in) is semidet.
-
-% initializer_contains_var(no_initializer, _) :- fail.
-initializer_contains_var(init_obj(Rval), Name) :-
-	rval_contains_var(Rval, Name).
-initializer_contains_var(init_struct(Inits), Name) :-
-	list__member(Init, Inits),
-	initializer_contains_var(Init, Name).
-initializer_contains_var(init_array(Inits), Name) :-
-	list__member(Init, Inits),
-	initializer_contains_var(Init, Name).
 
 :- pred maybe_statement_contains_var(maybe(mlds__statement), mlds__var).
 :- mode maybe_statement_contains_var(in, in) is semidet.
@@ -1444,53 +1426,6 @@ target_code_component_contains_var(target_code_output(Lval), Name) :-
 target_code_component_contains_var(name(EntityName), VarName) :-
 	EntityName = qual(ModuleName, data(var(UnqualVarName))),
 	VarName = qual(ModuleName, UnqualVarName).
-
-:- pred rvals_contains_var(list(mlds__rval), mlds__var).
-:- mode rvals_contains_var(in, in) is semidet.
-
-rvals_contains_var(Rvals, Name) :-
-	list__member(Rval, Rvals),
-	rval_contains_var(Rval, Name).
-
-:- pred maybe_rval_contains_var(maybe(mlds__rval), mlds__var).
-:- mode maybe_rval_contains_var(in, in) is semidet.
-
-% maybe_rval_contains_var(no, _Name) :- fail.
-maybe_rval_contains_var(yes(Rval), Name) :-
-	rval_contains_var(Rval, Name).
-
-:- pred rval_contains_var(mlds__rval, mlds__var).
-:- mode rval_contains_var(in, in) is semidet.
-
-rval_contains_var(lval(Lval), Name) :-
-	lval_contains_var(Lval, Name).
-rval_contains_var(mkword(_Tag, Rval), Name) :-
-	rval_contains_var(Rval, Name).
-% rval_contains_var(const(_Const), _Name) :- fail.
-rval_contains_var(unop(_Op, Rval), Name) :-
-	rval_contains_var(Rval, Name).
-rval_contains_var(binop(_Op, X, Y), Name) :-
-	( rval_contains_var(X, Name)
-	; rval_contains_var(Y, Name)
-	).
-rval_contains_var(mem_addr(Lval), Name) :-
-	lval_contains_var(Lval, Name).
-
-:- pred lvals_contains_var(list(mlds__lval), mlds__var).
-:- mode lvals_contains_var(in, in) is semidet.
-
-lvals_contains_var(Lvals, Name) :-
-	list__member(Lval, Lvals),
-	lval_contains_var(Lval, Name).
-
-:- pred lval_contains_var(mlds__lval, mlds__var).
-:- mode lval_contains_var(in, in) is semidet.
-
-lval_contains_var(field(_MaybeTag, Rval, _FieldId, _, _), Name) :-
-	rval_contains_var(Rval, Name).
-lval_contains_var(mem_ref(Rval, _Type), Name) :-
-	rval_contains_var(Rval, Name).
-lval_contains_var(var(Name), Name).  /* this is where we can succeed! */
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -9,7 +9,9 @@
 
 % This module runs various optimizations on the MLDS.
 %
-% Currently the only optimization is turning tailcalls into loops.
+% Currently the optimization we do here are
+%	- turning tailcalls into loops.
+%	- converting assignments to local variables into variable initializers
 %
 % Note that tailcall detection is done in ml_tailcall.m.
 % It might be nice to move the detection here, and do both the
@@ -37,9 +39,10 @@
 
 :- implementation.
 
-:- import_module bool, list, require, std_util, string.
-:- import_module builtin_ops, globals.
 :- import_module ml_util, ml_code_util.
+:- import_module builtin_ops, globals, options, error_util.
+
+:- import_module bool, list, require, std_util, string.
 
 :- type opt_info --->
 	opt_info(
@@ -121,9 +124,11 @@ optimize_in_stmt(OptInfo, Stmt0) = Stmt :-
 		Stmt0 = call(_, _, _, _, _, _),
 		Stmt = optimize_in_call_stmt(OptInfo, Stmt0)
 	;
-		Stmt0 = block(Defns, Statements0),
-		Stmt = block(Defns, optimize_in_statements(OptInfo, 
-			Statements0))
+		Stmt0 = block(Defns0, Statements0),
+		convert_assignments_into_initializers(Defns0, Statements0,
+			OptInfo, Defns, Statements1),
+		Statements = optimize_in_statements(OptInfo, Statements1),
+		Stmt = block(Defns, Statements)
 	;
 		Stmt0 = while(Rval, Statement0, Once),
 		Stmt = while(Rval, optimize_in_statement(OptInfo, 
@@ -315,10 +320,182 @@ optimize_func_stmt(OptInfo, mlds__statement(Stmt0, Context)) =
 
 %-----------------------------------------------------------------------------%
 
+%
+% This code implements the --optimize-initializations option.
+% It converts MLDS code using assignments, e.g.
+%
+%	{
+%		int v1;	 // or any other type -- it doesn't have to be int
+%		int v2;
+%		int v3;
+%		int v4;
+%		int v5;
+%
+%		v1 = 1;
+%		v2 = 2;
+%		v3 = 3;
+%		foo();
+%		v4 = 4;
+%		...
+%	}
+%
+% into code that instead uses initializers, e.g.
+%
+%	{
+%		int v1 = 1;
+%		int v2 = 2;
+%		int v3 = 3;
+%		int v4;
+%	
+%		foo();
+%		v4 = 4;
+%		...
+%	}
+%
+% Note that if there are multiple initializations of the same
+% variable, then we'll apply the optimization successively,
+% replacing the existing initializers as we go, and keeping
+% only the last, e.g.
+%
+%		int v = 1;
+%		v = 2;
+%		v = 3;
+%		...
+%
+% will get replaced with
+%
+%		int v = 3;
+%		...
+%
+% We need to watch out for some tricky cases that can't be safely optimized.
+% If the RHS of the assignment refers to a variable which was declared after
+% the variable whose initialization we're optimizing, e.g.
+%
+%		int v1 = 1;
+%		int v2 = 0;
+%		v1 = v2 + 1;	// RHS refers to variable declared after v1
+%
+% then we can't do the optimization because it would cause a forward reference
+%
+%		int v1 = v2 + 1;	// error -- v2 not declared yet!
+%		int v2 = 0;
+%
+% Likewise if the RHS refers to the variable itself
+%
+%		int v1 = 1;
+%		v1 = v1 + 1;
+%
+% then we can't optimize it, because that would be bogus:
+%
+%		int v1 = v1 + 1;	// error -- v1 not initialized yet!
+%
+% Similarly, if the initializers of the variables that follow
+% the one we're trying to optimize refer to it, e.g.
+%
+%		int v1 = 1;
+%		int v2 = v1 + 1;	// here v2 == 2
+%		v1 = 0;
+%		...
+%
+% then we can't eliminate the assignment, because that would produce
+% different results:
+%
+%		int v1 = 0;
+%		int v2 = v1 + 1;	// wrong -- v2 == 1
+%		...
+
+:- pred convert_assignments_into_initializers(mlds__defns, mlds__statements,
+		opt_info, mlds__defns, mlds__statements).
+:- mode convert_assignments_into_initializers(in, in, in, out, out) is det.
+
+convert_assignments_into_initializers(Defns0, Statements0, OptInfo,
+		Defns, Statements) :-
+	(
+		% Check if --optimize-initializations is enabled
+		globals__lookup_bool_option(OptInfo ^ globals,
+			optimize_initializations, yes),
+
+		% Check if the first statement in the block is
+		% an assignment to one of the variables declared in
+		% the block.
+		Statements0 = [AssignStatement | Statements1],
+		AssignStatement = statement(atomic(assign(LHS, RHS)), _),
+		LHS = var(ThisVar),
+		ThisVar = qual(Qualifier, VarName),
+		Qualifier = OptInfo ^ module_name,
+		list__takewhile(isnt(var_defn(VarName)), Defns0, 
+			_PrecedingDefns, [_VarDefn | FollowingDefns]),
+
+		% We must check that the value being assigned
+		% doesn't refer to the variable itself, or to any
+		% of the variables which are declared after this one.
+		% We must also check that the initializers (if any)
+		% of the variables that follow this one don't
+		% refer to this variable.
+		\+ rval_contains_var(RHS, ThisVar),
+		\+ (
+			list__member(OtherDefn, FollowingDefns),
+			OtherDefn = mlds__defn(data(var(OtherVarName)),
+				_, _, data(_Type, OtherInitializer)),
+			( rval_contains_var(RHS, qual(Qualifier, OtherVarName))
+			; initializer_contains_var(OtherInitializer, ThisVar)
+			)
+		)
+	->
+		% Replace the assignment statement with an initializer
+		% on the variable declaration.
+		set_initializer(Defns0, VarName, RHS, Defns1),
+
+		% Now try to apply the same optimization again
+		convert_assignments_into_initializers(Defns1, Statements1,
+			OptInfo, Defns, Statements)
+	;
+		% No optimization possible -- leave the block unchanged.
+		Defns = Defns0,
+		Statements = Statements0
+	).
+
+:- pred var_defn(var_name::in, mlds__defn::in) is semidet.
+var_defn(VarName, Defn) :-
+	Defn = mlds__defn(data(var(VarName)), _, _, _).
+
+	% set_initializer(Defns0, VarName, Rval, Defns):
+	%	Finds the first definition of the specified variable
+	%	in Defns0, and replaces the initializer of that
+	%	definition with init_obj(Rval).
+	%
+:- pred set_initializer(mlds__defns, mlds__var_name, mlds__rval, mlds__defns).
+:- mode set_initializer(in, in, in, out) is det.
+
+set_initializer([], _, _, _) :-
+	unexpected(this_file, "set_initializer: var not found!").
+set_initializer([Defn0 | Defns0], VarName, Rval, [Defn | Defns]) :-
+	Defn0 = mlds__defn(Name, Context, Flags, DefnBody0),
+	(
+		Name = data(var(VarName)), 
+		DefnBody0 = mlds__data(Type, _OldInitializer)
+	->
+		DefnBody = mlds__data(Type, init_obj(Rval)),
+		Defn = mlds__defn(Name, Context, Flags, DefnBody),
+		Defns = Defns0
+	;
+		Defn = Defn0,
+		set_initializer(Defns0, VarName, Rval, Defns)
+	).
+
+%-----------------------------------------------------------------------------%
+
         % Maps T into V, inside a maybe .  
 :- func maybe_apply(func(T) = V, maybe(T)) = maybe(V).
 
 maybe_apply(_, no) = no.
 maybe_apply(F, yes(T)) = yes(F(T)).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+this_file = "ml_optimize.m".
+
+:- end_module ml_optimize.
 
 %-----------------------------------------------------------------------------%

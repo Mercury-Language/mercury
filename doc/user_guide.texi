@@ -4105,6 +4105,10 @@ Disable the MLDS -> MLDS optimization passes.
 Treat tailcalls as ordinary calls rather than optimizing
 by turning self-tailcalls into loops.
 
+@item --no-optimize-initializations
+Leave initializations of local variables as assignment statements,
+rather converting such assignments statements into initializers.
+
 @end table
 
 @node Medium-level (HLDS -> LLDS) optimization options
