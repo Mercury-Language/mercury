@@ -466,7 +466,7 @@ static const char *
 MR_trace_browse_exception(MR_Event_Info *event_info, MR_Browser browser,
 		MR_Browse_Caller_Type caller, MR_Browse_Format format)
 {
-	MR_Word		type_info;
+	MR_TypeInfo	type_info;
 	MR_Word		value;
 	MR_Word		exception;
 
@@ -481,7 +481,7 @@ MR_trace_browse_exception(MR_Event_Info *event_info, MR_Browser browser,
 
 	MR_unravel_univ(exception, type_info, value);
 
-	(*browser)(type_info, value, caller, format);
+	(*browser)((MR_Word)type_info, value, caller, format);
 
 	return (const char *) NULL;
 }
