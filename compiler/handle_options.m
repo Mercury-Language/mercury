@@ -936,6 +936,12 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	% (in the type_info_varmap) occurs to the right of X in the
 	% procedure's parameter list.
 	%
+	% XXX we also disable type specialization.
+	% This is needed because type specialization may create
+	% type class constraints of the form `c(t(T))'
+	% (e.g. `enum(var(T)'' in library/sparse_bitset.m),
+	% which the current RTTI system can't handle.
+	%
 	( { GC_Method = accurate } ->
 		globals__io_set_option(agc_stack_layout, bool(yes)),
 		globals__io_set_option(body_typeinfo_liveness, bool(yes)),
@@ -947,7 +953,13 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 			reclaim_heap_on_semidet_failure, bool(no)),
 		globals__io_set_option(
 			reclaim_heap_on_nondet_failure, bool(no)),
-		option_implies(highlevel_code, optimize_higher_order, bool(no))
+
+		option_implies(highlevel_code, optimize_higher_order,
+			bool(no)),
+
+		globals__io_set_option(type_specialization, bool(no)),
+		globals__io_set_option(user_guided_type_specialization,
+			bool(no))
 	;
 		[]
 	),
