@@ -82,7 +82,7 @@ No (more) solutions.
 :- type db_pred ---> db_pred(list(clause), multi_map(string / int, clause)).
 :- type database ---> database(list(clause), map(string / int, db_pred)).
 :- type my_term(_2) ---> var(my_var(_2)) ; free ; functor(const, list(my_term(_2))).
-:- type my_var(_2) == mutvar(my_term(_2), _2).
+:- type my_var(_2) == generic_mutvar(my_term(_2), _2).
 No (more) solutions.
 ?- No (more) solutions.
 ?- print_solutions(_3, _4, _5, _6, _7) --> unsorted_aggregate((pred (_8 :: muo)) is nondet :- solve(_7, _5, unsafe_promise_unique(_6), _8), write_solution(_3, _4, _5)), io__write_string("No (more) solutions.\n").

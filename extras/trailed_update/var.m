@@ -12,7 +12,7 @@
 % in other words, it provides Prolog-style variables.
 %
 % It also provides some features for delaying (a.k.a dynamic scheduling,
-% or corouting), specifically freeze/2 and freeze/3.  However, this
+% or coroutining), specifically freeze/2 and freeze/3.  However, this
 % interface is not yet stable; it may undergo significant changes,
 % or even be removed, in future releases.  (The reason for this is
 % that there are some problems with mode checking higher-order terms
@@ -24,44 +24,45 @@
 % for cyclic terms; if you attempt to do anything much with cyclic terms,
 % your program will probably not terminate.
 %
-% NOTE: The current implementation of this module makes some assumptions
-% about the representation of Mercury terms which mean that it does not work
-% in ".rt" (--reserve-tag) grades.
-%
 %-----------------------------------------------------------------------------%
+
 :- module var.
 :- interface.
 :- import_module io, std_util.
 
 	% A `var(T)' is a Prolog-style variable that holds a value of type T.
+	%
 :- solver type var(T).
 
 	% `init(Var)' can be used to initialize
 	% the inst of a variable to `any'.
-:- pred init(var(T)::out(any)) is det.
+	%
+:- pred init(var(T)::oa) is det.
 
 	% `Var = var(Value)' unifies a variable with its value.
 	% This can be used in several ways:
 	% to bind a variable to a particular value, `X = var(42)';
 	% to extract the value of that variable, `X = var(Y)';
 	% or (NYI) to initialize the inst of a variable to any, `X = var(_)'.
+	%
 :- func var(T) = var(T).
 :- mode var(in) = out is det.
-:- mode var(in) = in(any) is semidet.
+:- mode var(in) = ia is semidet.
 :- mode var(in) = in is semidet.
 :- mode var(out) = in is det.
 
 	% `Var1 == Var2' can be used to unify two variables.
 	% Alternatively, you can just use `=' rather than `==', 
-	% but `=' doesn't support the `out(any) = out(any)' mode yet.
+	% but `=' doesn't support the `oa = oa' mode yet.
+	%
 :- pred var(T) == var(T).
-:- mode in == in is semidet.
-:- mode in == out is det.
+:- mode in  == in is semidet.
+:- mode in  == out is det.
 :- mode out == in is det.
-:- mode in(any) == in(any) is semidet.
-:- mode in(any) == out(any) is det.
-:- mode out(any) == in(any) is det.
-:- mode out(any) == out(any) is det.
+:- mode ia  == ia is semidet.
+:- mode ia  == oa is det.
+:- mode oa  == ia is det.
+:- mode oa  == oa is det.
 
 	% `freeze(Var, Pred)' can be used to delay execution of a goal
 	% until a variable is ground.
@@ -73,9 +74,10 @@
 	% and then calls Pred(Var).
 	% Warning: the interface to this predicate may be modified in
 	% future releases.
+	%
 :- pred freeze(var(T), pred(T)).
-:- mode freeze(in(any), pred(in) is semidet) is semidet.
-:- mode freeze(out(any), pred(in) is semidet) is semidet.
+:- mode freeze(ia, pred(in) is semidet) is semidet.
+:- mode freeze(oa, pred(in) is semidet) is semidet.
 
 	% `freeze(Var1, Pred, Var2)' can be used to delay
 	% execution of a goal until a variable is ground.
@@ -86,35 +88,38 @@
 	% and then calls Pred(X, Y).
 	% Warning: the interface to this predicate may be modified in
 	% future releases.
+	%
 :- pred freeze(var(T1),  pred(T1, T2), var(T2)).
 :- mode freeze(in,	 pred(in, out) is det, out) is semidet. % really det
 :- mode freeze(in,	 pred(in, out) is semidet, out) is semidet.
-:- mode freeze(out(any), pred(in, out) is det, out(any)) is semidet.
-:- mode freeze(out(any), pred(in, out) is semidet, out(any)) is semidet.
+:- mode freeze(oa, pred(in, out) is det, oa) is semidet.
+:- mode freeze(oa, pred(in, out) is semidet, oa) is semidet.
 
 :- pred freeze_var(var(T1),  pred(T1, var(T2)), var(T2)).
-:- mode freeze_var(out(any), pred(in, in(any)) is semidet, out(any)) is semidet.
+:- mode freeze_var(oa, pred(in, ia) is semidet, oa) is semidet.
 
 	% `debug_freeze(Message, Var, Pred)'
 	% is the same as `freeze(Var, Pred)' except
 	% that it also prints out some debugging information.
 	% WARNING: this is a non-logical hack, use only for debugging!
+	%
 :- impure pred debug_freeze(string, var(T), pred(T)).
-:- mode debug_freeze(in, in(any), pred(in) is semidet) is semidet.
-:- mode debug_freeze(in, out(any), pred(in) is semidet) is semidet.
+:- mode debug_freeze(in, ia, pred(in) is semidet) is semidet.
+:- mode debug_freeze(in, oa, pred(in) is semidet) is semidet.
 
 :- impure pred debug_freeze(string, var(T1), pred(T1, T2), var(T2)).
-:- mode debug_freeze(in, in,	   pred(in, out) is semidet, out) is semidet.
-:- mode debug_freeze(in, out(any), pred(in, out) is semidet, out(any))
-	is semidet.
+:- mode debug_freeze(in, in, pred(in, out) is semidet, out) is semidet.
+:- mode debug_freeze(in, oa, pred(in, out) is semidet, oa) is semidet.
 
 	% dump_var prints out a representation of a variable.
-:- pred dump_var(var(T)::in(any), io__state::di, io__state::uo) is cc_multi.
+	%
+:- pred dump_var(var(T)::ia, io::di, io::uo) is cc_multi.
 
 	% unsafe_dump_var/1: an impure version of dump_var/3.
-:- impure pred unsafe_dump_var(var(T)::in(any)) is det.
+	%
+:- impure pred unsafe_dump_var(var(T)::ia) is det.
 
-	% var__is_ground/2 can be used to test if a variable is ground.
+	% var.is_ground/2 can be used to test if a variable is ground.
 	%
 	% Declaratively, is_ground(Var, Result) is true iff
 	% either Result = no or Var = var(Value) and Result = yes(Value);
@@ -130,18 +135,19 @@
 	%
 	% Beware that is_ground is, and must be, `cc_multi';
 	% making it `det' would not be safe.
-
-:- pred is_ground(var(T)::in(any), maybe(T)::out) is cc_multi.
+	%
+:- pred is_ground(var(T)::ia, maybe(T)::out) is cc_multi.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
 :- implementation.
-%-----------------------------------------------------------------------------%
+
 :- import_module bool.
 :- import_module unsafe, io.
 :- import_module require.
 
-:- pragma c_header_code("#include <stdio.h>").
+:- pragma foreign_decl("C", "#include <stdio.h>").
 
 %-----------------------------------------------------------------------------%
 %
@@ -163,7 +169,8 @@
 %---------------------------------------------------------------------------%
 
 	% (Note that the representation can be printed out, if you call
-	% io__write(Var), so this is not entirely hidden from the user.)
+	% io.write(Var), so this is not entirely hidden from the user.)
+	%
 :- solver type var(T)
 	where	representation	is var_rep(T),
 		initialisation	is init,
@@ -177,22 +184,19 @@
 	;	alias(var_rep(T))
 	;	ground(T).
 
-:- inst var_rep_any =
-	bound(	free
+:- inst var_rep_any
+	--->	free
 	;	free(delayed_conj)
 	;	alias(var_rep_any)
-	;	ground(ground)
-	).
-:- inst var_rep_ground =
-	bound(	alias(var_rep_ground)
-	;	ground(ground)
-	).
-:- inst var_rep_deref_ground =
-	bound(	ground(ground)
-	).
-:- inst var_rep_deref_delayed =
-	bound(	free(delayed_conj)
-	).
+	;	ground(ground).
+
+:- inst var_rep_ground
+	--->	alias(var_rep_ground)
+	;	ground(ground). 
+
+:- inst var_rep_deref_ground ---> ground(ground).
+
+:- inst var_rep_deref_delayed ---> free(delayed_conj).
 
 % We use an extra level of indirection so that we can do
 % (backtrackable) destructive update on variable representations
@@ -202,8 +206,8 @@
 % ought to be unique, because the lack of support for aliasing
 % makes `unique-input' modes impossible.
 
-:- inst ptr(I) = bound(alias(I)).
-:- inst uniq_ptr(I) = unique(alias(I)).
+:- inst ptr(I) == bound(alias(I)).
+:- inst uniq_ptr(I) == unique(alias(I)).
 
 % The type `delayed_conj(T)' represents a conjunction of delayed goals
 % that are delayed on a variable of type T.
@@ -214,11 +218,11 @@
 			% the goal, `yes' if the goal has been woken,
 			% and a pointer to the previous and next delayed goals
 	;	(delayed_conj(T), delayed_conj(T)).
-:- inst delayed_conj =
+:- inst delayed_conj ==
 	bound(	goal(delayed_goal, ground, delayed_goal_list, delayed_goal_list)
 	;	(delayed_conj, delayed_conj)
 	).
-:- inst delayed_goal_list =
+:- inst delayed_goal_list ==
 	bound(	goal(delayed_goal, ground, delayed_goal_list, delayed_goal_list)
 	).
 
@@ -254,19 +258,16 @@
 
 :- inst delayed_goal
 	--->	unary_pred(pred(in) is semidet)
-	;	binary_det_pred(
-			pred(in, out) is det,
-			ground, any)
-	;	binary_semidet_pred(
-			pred(in, out) is semidet,
-			ground, any)
-	;	binary_semidet_pred_any(
-			pred(in, in(any)) is semidet,
-			ground, any).
+	;	binary_det_pred(pred(in, out) is det, ground, any)
+	;	binary_semidet_pred(pred(in, out) is semidet, ground, any)
+	;	binary_semidet_pred_any(pred(in, ia) is semidet, ground, any).
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_code(init(Var::out(any)), may_call_mercury, "
+:- pragma foreign_proc("C",
+	var.init(Var::oa),
+	[promise_pure, may_call_mercury],
+"
 	Var = ML_var_alias(TypeInfo_for_T, ML_var_free(TypeInfo_for_T));
 ").
 
@@ -275,25 +276,25 @@
 % the output is not unique, even thought we declared it to be unique.
 % It puts the `alias(free)' term in read-only memory.  Hence, to avoid this,
 % we use separate calls to functions for alias/1 and free/0.
-:- pred var__rep_init(var_rep(T)::out(uniq_ptr(var_rep_any))) is det.
-:- pragma export(var__rep_init(out(uniq_ptr(var_rep_any))), "ML_var_init").
-var__rep_init(alias(free)).
+:- pred var.rep_init(var_rep(T)::out(uniq_ptr(var_rep_any))) is det.
+:- pragma export(var.rep_init(out(uniq_ptr(var_rep_any))), "ML_var_init").
+var.rep_init(alias(free)).
 */
 
-:- func var__rep_free = (var_rep(T)::out(var_rep_any)) is det.
-:- pragma export(var__rep_free = out(var_rep_any), "ML_var_free").
-var__rep_free = free.
+:- func var.rep_free = (var_rep(T)::out(var_rep_any)) is det.
+:- pragma export(var.rep_free = out(var_rep_any), "ML_var_free").
+var.rep_free = free.
 
-:- func var__rep_alias(var_rep(T)::in(var_rep_any)) =
+:- func var.rep_alias(var_rep(T)::in(var_rep_any)) =
 		(var_rep(T)::out(var_rep_any)) is det.
-:- pragma export(var__rep_alias(in(var_rep_any)) = out(var_rep_any),
+:- pragma export(var.rep_alias(in(var_rep_any)) = out(var_rep_any),
 		"ML_var_alias").
-var__rep_alias(T) = alias(T).
+var.rep_alias(T) = alias(T).
 
 %-----------------------------------------------------------------------------%
 
 /****
-:- pragma c_code( var(Value::(free -> clobbered_any)) = (Var::out(any)), % det
+:- pragma c_code( var(Value::(free -> clobbered_any)) = (Var::oa), % det
 	may_call_mercury,
 "
 	* Value unused *
@@ -301,58 +302,63 @@ var__rep_alias(T) = alias(T).
 ").
 ****/
 
-:- pragma c_code( var(Value::in) = (Var::out) /* det */,
-	may_call_mercury,
+:- pragma foreign_proc("C",
+	var(Value::in) = (Var::out) /* det */,
+	[promise_pure, may_call_mercury],
 "
 	ML_var_init_with_value(TypeInfo_for_T, Value, &Var);
 ").
 
-:- pred var__rep_init_with_value(T::in, var_rep(T)::out(ptr(var_rep_ground)))
-	is det.
-:- pragma export(var__rep_init_with_value(in, out(ptr(var_rep_ground))),
+:- pragma export(var.rep_init_with_value(in, out(ptr(var_rep_ground))),
 	"ML_var_init_with_value").
-var__rep_init_with_value(Value, alias(ground(Value))).
+:- pred var.rep_init_with_value(T::in, var_rep(T)::out(ptr(var_rep_ground)))
+	is det.
+var.rep_init_with_value(Value, alias(ground(Value))).
 
-:- pragma c_code( var(Value::out) = (Var::in) /* det */, may_call_mercury,
+:- pragma foreign_proc("C",
+	var(Value::out) = (Var::in) /* det */,
+	[promise_pure,  may_call_mercury],
 "
 	ML_var_get_value(TypeInfo_for_T, Var, &Value);
 ").
 
-:- pred var__rep_get_value(var_rep(T)::in(var_rep_ground), T::out) is det.
-:- pragma export(var__rep_get_value(in(var_rep_ground), out),
+:- pragma export(var.rep_get_value(in(var_rep_ground), out),
 	"ML_var_get_value").
-var__rep_get_value(ground(Value), Value).
-var__rep_get_value(alias(Var), Value) :-
-	var__rep_get_value(Var, Value).
+:- pred var.rep_get_value(var_rep(T)::in(var_rep_ground), T::out) is det.
+var.rep_get_value(ground(Value), Value).
+var.rep_get_value(alias(Var), Value) :-
+	var.rep_get_value(Var, Value).
 
-:- pragma c_code( var(Value::in) = (Var::in) /* semidet */,
-	may_call_mercury,
+:- pragma foreign_proc("C",
+	var(Value::in) = (Var::in) /* semidet */,
+	[promise_pure, may_call_mercury],
 "
 	SUCCESS_INDICATOR = ML_var_test_value(TypeInfo_for_T, Var, Value);
 ").
 
-:- pred var__rep_test_value(var_rep(T)::in(var_rep_ground), T::in) is semidet.
-:- pragma export(var__rep_test_value(in(var_rep_ground), in),
+:- pred var.rep_test_value(var_rep(T)::in(var_rep_ground), T::in) is semidet.
+:- pragma export(var.rep_test_value(in(var_rep_ground), in),
 	"ML_var_test_value").
-var__rep_test_value(Var, Value) :-
-	var__rep_get_value(Var, VarValue),
+var.rep_test_value(Var, Value) :-
+	var.rep_get_value(Var, VarValue),
 	Value = VarValue.
 
-:- pragma c_code( var(Value::in) = (Var::in(any)) /* semidet */,
-	may_call_mercury,
+:- pragma foreign_proc("C",
+	 var(Value::in) = (Var::ia) /* semidet */,
+	[promise_pure, may_call_mercury],
 "
 	SUCCESS_INDICATOR = ML_var_unify_with_val(TypeInfo_for_T, Value, Var);
 ").
 
-:- impure pred var__rep_unify_with_val(T, var_rep(T)).
-:-        mode var__rep_unify_with_val(in, in(ptr(var_rep_any))) is semidet.
-:- pragma export(var__rep_unify_with_val(in, in(ptr(var_rep_any))),
+:- pragma export(var.rep_unify_with_val(in, in(ptr(var_rep_any))),
 	"ML_var_unify_with_val").
-var__rep_unify_with_val(Value, VarPtr) :-
+:- impure pred var.rep_unify_with_val(T, var_rep(T)).
+:-        mode var.rep_unify_with_val(in, in(ptr(var_rep_any))) is semidet.
+var.rep_unify_with_val(Value, VarPtr) :-
 	VarPtr = alias(Var),
 	( 
 		Var = alias(_),
-		impure var__rep_unify_with_val(Value, Var)
+		impure var.rep_unify_with_val(Value, Var)
 	;
 		Var = ground(OldValue),
 		Value = OldValue
@@ -365,21 +371,23 @@ var__rep_unify_with_val(Value, VarPtr) :-
 		impure wakeup_delayed_goals(DelayedGoals, Value)
 	).
 
-:- pragma c_code( is_ground(Var::in(any), Result::out) /* cc_multi */,
-	may_call_mercury,
+:- pragma foreign_proc("C",
+	is_ground(Var::ia, Result::out) /* cc_multi */,
+	[promise_pure, may_call_mercury],
 "
 	ML_var_is_ground(TypeInfo_for_T, Var, &Result);
 ").
 
-:- pred var__rep_is_ground(var_rep(T), maybe(T)).
-:- mode var__rep_is_ground(in(ptr(var_rep_any)), out) is det.
-:- pragma export(var__rep_is_ground(in(ptr(var_rep_any)), out),
+:- pragma export(var.rep_is_ground(in(ptr(var_rep_any)), out),
 	"ML_var_is_ground").
-var__rep_is_ground(VarPtr, Result) :-
+:- pred var.rep_is_ground(var_rep(T)::in(ptr(var_rep_any)), maybe(T)::out)
+	is det.
+
+var.rep_is_ground(VarPtr, Result) :-
 	VarPtr = alias(Var),
 	( 
 		Var = alias(_),
-		var__rep_is_ground(Var, Result)
+		var.rep_is_ground(Var, Result)
 	;
 		Var = ground(Value),
 		Result = yes(Value)
@@ -401,7 +409,7 @@ var__rep_is_ground(VarPtr, Result) :-
 % we keep two dummy nodes, one for the start and one for the end of the list.
 %
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 	/* Warning: the layout of this type must match its layout in Mercury */
 	typedef struct ML_var_delayed_conj_struct {
 		MR_Word goal;
@@ -412,7 +420,7 @@ var__rep_is_ground(VarPtr, Result) :-
 	extern ML_var_delayed_conj ML_var_first_goal, ML_var_last_goal;
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 	ML_var_delayed_conj ML_var_first_goal = {
 		0,
 		MR_FALSE,
@@ -427,20 +435,20 @@ var__rep_is_ground(VarPtr, Result) :-
 	};
 ").
 
-:- semipure
-   pred get_last_delayed_goal(delayed_conj(_)::out(delayed_goal_list))
+:- semipure pred get_last_delayed_goal(delayed_conj(_)::out(delayed_goal_list))
 	is det.
-:- pragma c_code(get_last_delayed_goal(Ptr::out(delayed_goal_list)),
-	will_not_call_mercury,
+:- pragma foreign_proc("C",
+	get_last_delayed_goal(Ptr::out(delayed_goal_list)),
+	[promise_semipure, will_not_call_mercury],
 "
 	Ptr = (MR_Word) &ML_var_last_goal;
 ").
 
-:- impure
-   pred set_last_delayed_goal_prev(delayed_conj(_)::in(delayed_goal_list))
+:- impure pred set_last_delayed_goal_prev(delayed_conj(_)::in(delayed_goal_list))
 	is det.
-:- pragma c_code(set_last_delayed_goal_prev(Ptr::in(delayed_goal_list)),
-	will_not_call_mercury,
+:- pragma foreign_proc("C",
+	set_last_delayed_goal_prev(Ptr::in(delayed_goal_list)),
+	[will_not_call_mercury],
 "
 	MR_trail_function(ML_var_untrail_func, ML_var_last_goal.prev);
 	ML_var_last_goal.prev = (void *) Ptr;
@@ -484,7 +492,7 @@ wakeup_delayed_goals((GoalsX, GoalsY), Value) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 	#include ""mercury_trail.h""
 
 	void ML_var_untrail_func(
@@ -492,7 +500,7 @@ wakeup_delayed_goals((GoalsX, GoalsY), Value) :-
 		MR_untrail_reason reason);
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 
 static void
 ML_var_report_goal_floundered(ML_var_delayed_conj *old_goal);
@@ -566,14 +574,13 @@ ML_var_report_goal_floundered(ML_var_delayed_conj *old_goal)
 :- pred call_delayed_goal(delayed_goal(T), T).
 :- mode call_delayed_goal(in(delayed_goal), in) is semidet.
 
-call_delayed_goal(unary_pred(Pred), Value) :-
-	call(Pred, Value).
+call_delayed_goal(unary_pred(Pred), Value) :- Pred(Value).
 call_delayed_goal(binary_det_pred(Pred, _TypeInfo2, var(Arg2)), Value) :-
-	call(Pred, Value, Arg2).
+	Pred(Value, Arg2).
 call_delayed_goal(binary_semidet_pred(Pred, _TypeInfo2, var(Arg2)), Value) :-
-	call(Pred, Value, Arg2).
+	Pred(Value, Arg2).
 call_delayed_goal(binary_semidet_pred_any(Pred, _TypeInfo2, Arg2), Value) :-
-	call(Pred, Value, Arg2).
+	Pred(Value, Arg2).
 
 %-----------------------------------------------------------------------------%
 
@@ -581,48 +588,48 @@ freeze(Var, Pred) :-
 	do_freeze(Var, unary_pred(Pred)).
 
 :- pred do_freeze(var(T), delayed_goal(T)).
-:- mode do_freeze(in(any), in(delayed_goal)) is semidet.
-:- mode do_freeze(out(any), in(delayed_goal)) is semidet.
+:- mode do_freeze(ia, in(delayed_goal)) is semidet.
+:- mode do_freeze(oa, in(delayed_goal)) is semidet.
 
-:- pragma c_code(
-	do_freeze(Var::in(any), Pred::in(delayed_goal)) /* semidet */,
-	may_call_mercury,
+:- pragma foreign_proc("C",
+	do_freeze(Var::ia, Pred::in(delayed_goal)) /* semidet */,
+	[promise_pure, may_call_mercury],
 "
 	ML_var_freeze_in(TypeInfo_for_T, Var, Pred);
 	SUCCESS_INDICATOR = MR_TRUE;
 ").
-:- pragma c_code(
-	do_freeze(Var::out(any), Pred::in(delayed_goal)) /* semidet */,
-	may_call_mercury,
+
+:- pragma foreign_proc("C",
+	do_freeze(Var::oa, Pred::in(delayed_goal)) /* semidet */,
+	[promise_pure, may_call_mercury],
 "
 	ML_var_freeze_out(TypeInfo_for_T, &Var, Pred);
 	SUCCESS_INDICATOR = MR_TRUE;
 ").
 
-
-:- impure pred var__rep_freeze_out(var_rep(T), delayed_goal(T)).
-:-        mode var__rep_freeze_out(out(ptr(var_rep_any)), in(delayed_goal))
+:- impure pred var.rep_freeze_out(var_rep(T), delayed_goal(T)).
+:-        mode var.rep_freeze_out(out(ptr(var_rep_any)), in(delayed_goal))
 	       is det.
 :- pragma export(
-	var__rep_freeze_out(out(ptr(var_rep_any)), in(delayed_goal)),
+	var.rep_freeze_out(out(ptr(var_rep_any)), in(delayed_goal)),
 	"ML_var_freeze_out").
 
-var__rep_freeze_out(Var, Pred) :-
+var.rep_freeze_out(Var, Pred) :-
 	impure new_delayed_goal(Pred, Goal),
 	Var = alias(free(Goal)).
 
 :- impure
-   pred var__rep_freeze_in(var_rep(T), delayed_goal(T)).
-:- mode var__rep_freeze_in(in(ptr(var_rep_any)), in(delayed_goal)) is semidet.
+   pred var.rep_freeze_in(var_rep(T), delayed_goal(T)).
+:- mode var.rep_freeze_in(in(ptr(var_rep_any)), in(delayed_goal)) is semidet.
 :- pragma export(
-	var__rep_freeze_in(in(ptr(var_rep_any)), in(delayed_goal)),
+	var.rep_freeze_in(in(ptr(var_rep_any)), in(delayed_goal)),
 	"ML_var_freeze_in").
 
-var__rep_freeze_in(VarPtr, Pred) :-
+var.rep_freeze_in(VarPtr, Pred) :-
 	VarPtr = alias(Var),
 	(
 		Var = alias(_),
-		impure var__rep_freeze_in(Var, Pred)
+		impure var.rep_freeze_in(Var, Pred)
 	;
 		Var = ground(Value),
 		call_delayed_goal(Pred, Value)
@@ -642,13 +649,13 @@ var__rep_freeze_in(VarPtr, Pred) :-
 :- pred freeze(var(T1),  pred(T1, T2), var(T2)).
 :- mode freeze(in,	 pred(in, out) is det, out) is semidet. % no delay
 :- mode freeze(in,	 pred(in, out) is semidet, out) is semidet. % no delay
-:- mode freeze(out(any), pred(in, out) is det, out(any)) is semidet.
-:- mode freeze(out(any), pred(in, out) is semidet, out(any)) is semidet.
-:- mode freeze_var(out(any), pred(in, in(any)) is semidet, out(any)) is semidet.
+:- mode freeze(oa, pred(in, out) is det, oa) is semidet.
+:- mode freeze(oa, pred(in, out) is semidet, oa) is semidet.
+:- mode freeze_var(oa, pred(in, ia) is semidet, oa) is semidet.
 */
-:- pragma c_code(
+:- pragma foreign_proc("C",
 	freeze(X::in, Pred::(pred(in, out) is det), Y::out), % det
-	may_call_mercury,
+	[promise_pure, may_call_mercury],
 "{
 	MR_Word XVal, YVal;
 
@@ -658,9 +665,10 @@ var__rep_freeze_in(VarPtr, Pred) :-
 		Pred, XVal, &YVal);
 	ML_var_init_with_value(TypeInfo_for_T2, YVal, &Y);
 }").
-:- pragma c_code(
+
+:- pragma foreign_proc("C", 
 	freeze(X::in, Pred::(pred(in, out) is semidet), Y::out), % semidet
-	may_call_mercury,
+	[promise_pure, may_call_mercury],
 "{
 	MR_Word XVal, YVal;
 
@@ -675,10 +683,10 @@ var__rep_freeze_in(VarPtr, Pred) :-
 		SUCCESS_INDICATOR = MR_FALSE;
 	}
 }").
-:- pragma c_code(
-	freeze(X::out(any), Pred::(pred(in, out) is det), Y::out(any)),
-		% semidet
-	may_call_mercury,
+
+:- pragma foreign_proc("C",
+	freeze(X::oa, Pred::(pred(in, out) is det), Y::oa), % semidet
+	[promise_pure, may_call_mercury],
 "{
 	MR_Word p;
 
@@ -687,10 +695,10 @@ var__rep_freeze_in(VarPtr, Pred) :-
 	ML_var_freeze_out(TypeInfo_for_T1, &X, p);
 	SUCCESS_INDICATOR = MR_TRUE;
 }").
-:- pragma c_code(
-	freeze(X::out(any), Pred::(pred(in, out) is semidet), Y::out(any)),
-		% semidet
-	may_call_mercury,
+
+:- pragma foreign_proc("C",
+	freeze(X::oa, Pred::(pred(in, out) is semidet), Y::oa), % semidet
+	[promise_pure, may_call_mercury],
 "{
 	MR_Word p;
 
@@ -701,10 +709,9 @@ var__rep_freeze_in(VarPtr, Pred) :-
 	SUCCESS_INDICATOR = MR_TRUE;
 }").
 
-:- pragma c_code(
-	freeze_var(X::out(any), Pred::(pred(in, in(any)) is semidet),
-		Y::out(any)), % semidet
-	may_call_mercury,
+:- pragma foreign_proc("C",
+	freeze_var(X::oa, Pred::(pred(in, ia) is semidet), Y::oa), % semidet
+	[promise_pure, may_call_mercury],
 "{
 	MR_Word p;
 
@@ -722,33 +729,30 @@ var__rep_freeze_in(VarPtr, Pred) :-
 
 :- func var_binary_det_pred(pred(T, t2), type_info_for_t2, var(t2))
 	= delayed_goal(T).
-:- mode var_binary_det_pred(pred(in, out) is det, in, in(any)) =
+:- mode var_binary_det_pred(pred(in, out) is det, in, ia) =
 		out(delayed_goal) is det.
 :- pragma export(
-	var_binary_det_pred(pred(in, out) is det, in, in(any)) =
+	var_binary_det_pred(pred(in, out) is det, in, ia) =
 		out(delayed_goal), "ML_var_binary_det_pred").
 var_binary_det_pred(Pred, TypeInfo, SecondArg) =
 	binary_det_pred(Pred, TypeInfo, SecondArg).
 
 :- func var_binary_semidet_pred(pred(T, t2), type_info_for_t2, var(t2))
 	= delayed_goal(T).
-:- mode var_binary_semidet_pred(pred(in, out) is semidet, in, in(any)) =
+:- mode var_binary_semidet_pred(pred(in, out) is semidet, in, ia) =
 		out(delayed_goal) is det.
 :- pragma export(
-	var_binary_semidet_pred(pred(in, out) is semidet, in, in(any)) =
+	var_binary_semidet_pred(pred(in, out) is semidet, in, ia) =
 		out(delayed_goal), "ML_var_binary_semidet_pred").
 var_binary_semidet_pred(Pred, TypeInfo, SecondArg) =
 	binary_semidet_pred(Pred, TypeInfo, SecondArg).
 
 :- func var_binary_semidet_pred_any(
-		pred(T, var(t2)),
-		type_info_for_t2, var(t2)) = delayed_goal(T).
+	pred(T, var(t2)), type_info_for_t2, var(t2)) = delayed_goal(T).
 :- mode var_binary_semidet_pred_any(
-		pred(in, in(any)) is semidet, in, in(any)) =
-		out(delayed_goal) is det.
+	pred(in, ia) is semidet, in, ia) = out(delayed_goal) is det.
 :- pragma export(
-	var_binary_semidet_pred_any(
-		pred(in, in(any)) is semidet, in, in(any)) =
+	var_binary_semidet_pred_any(pred(in, ia) is semidet, in, ia) =
 		out(delayed_goal), "ML_var_binary_semidet_pred_any").
 var_binary_semidet_pred_any(Pred, TypeInfo, SecondArg) =
 	binary_semidet_pred_any(Pred, TypeInfo, SecondArg).
@@ -757,19 +761,15 @@ var_binary_semidet_pred_any(Pred, TypeInfo, SecondArg) =
 
 :- pred call_det_pred(pred(T1, T2), T1, T2).
 :- mode call_det_pred(pred(in, out) is det, in, out) is det.
-:- pragma export(
-	call_det_pred(pred(in, out) is det, in, out),
+:- pragma export(call_det_pred(pred(in, out) is det, in, out),
 	"ML_var_call_det_pred").
-call_det_pred(Pred, X, Y) :-
-	call(Pred, X, Y).
+call_det_pred(Pred, X, Y) :- Pred(X, Y).
 
+:- pragma export(call_semidet_pred(pred(in, out) is semidet, in, out),
+	"ML_var_call_semidet_pred").
 :- pred call_semidet_pred(pred(T1, T2), T1, T2).
 :- mode call_semidet_pred(pred(in, out) is semidet, in, out) is semidet.
-:- pragma export(
-	call_semidet_pred(pred(in, out) is semidet, in, out),
-	"ML_var_call_semidet_pred").
-call_semidet_pred(Pred, X, Y) :-
-	call(Pred, X, Y).
+call_semidet_pred(Pred, X, Y) :- Pred(X, Y).
 
 %-----------------------------------------------------------------------------%
 
@@ -779,37 +779,65 @@ call_semidet_pred(Pred, X, Y) :-
 :- mode in == in is semidet.
 :- mode in == out is det.
 :- mode out == in is det.
-:- mode in(any) == in(any) is semidet.
-:- mode in(any) == out(any) is det.
-:- mode out(any) == out(any) is det.
-:- mode out(any) == in(any) is det.
+:- mode ia == ia is semidet.
+:- mode ia == oa is det.
+:- mode oa == oa is det.
+:- mode oa == ia is det.
 */
 
-:- pragma c_code((X::in) == (Y::out) /* det */, may_call_mercury,
-	"Y = X;").
-:- pragma c_code((X::out) == (Y::in) /* det */, may_call_mercury,
-	"X = Y;").
-:- pragma c_code((X::in(any)) == (Y::out(any)) /* det */, may_call_mercury,
-	"Y = X;").
-:- pragma c_code((X::out(any)) == (Y::in(any)) /* det */, may_call_mercury,
-	"X = Y;").
-:- pragma c_code((X::in) == (Y::in) /* semidet */, may_call_mercury,
-	"SUCCESS_INDICATOR = ML_var_unify(TypeInfo_for_T, X, Y);").
-:- pragma c_code((X::in(any)) == (Y::in(any)) /* semidet */, may_call_mercury,
-	"SUCCESS_INDICATOR = ML_var_unify(TypeInfo_for_T, X, Y);").
-:- pragma c_code((X::out(any)) == (Y::out(any)) /* semidet */, may_call_mercury,
-	"X = Y = ML_var_alias(TypeInfo_for_T, ML_var_free(TypeInfo_for_T));").
+:- pragma foreign_proc("C",
+	(X::in) == (Y::out) /* det */,
+	[promise_pure, may_call_mercury],
+"
+	Y = X;
+").
+:- pragma foreign_proc("C",
+	(X::out) == (Y::in) /* det */,
+	[promise_pure, may_call_mercury],
+"
+	X = Y;
+").
+:- pragma foreign_proc("C",
+	(X::ia) == (Y::oa) /* det */,
+	[promise_pure, may_call_mercury],
+"
+	Y = X;
+").
+:- pragma foreign_proc("C",
+	(X::oa) == (Y::ia) /* det */,
+	[promise_pure, may_call_mercury],
+"
+	X = Y;
+").
+:- pragma foreign_proc("C",
+	(X::in) == (Y::in) /* semidet */,
+	[promise_pure, may_call_mercury],
+"
+	SUCCESS_INDICATOR = ML_var_unify(TypeInfo_for_T, X, Y);
+").
+:- pragma foreign_proc("C",
+	(X::ia) == (Y::ia) /* semidet */,
+	[promise_pure, may_call_mercury],
+"
+	SUCCESS_INDICATOR = ML_var_unify(TypeInfo_for_T, X, Y);
+").
+:- pragma foreign_proc("C",
+	(X::oa) == (Y::oa) /* semidet */,
+	[promise_pure, may_call_mercury],
+"
+	X = Y = ML_var_alias(TypeInfo_for_T, ML_var_free(TypeInfo_for_T));
+").
 
-:- impure
-   pred var__rep_unify(var_rep(T), var_rep(T)).
-:- mode var__rep_unify(in(ptr(var_rep_any)), in(ptr(var_rep_any))) is semidet.
-:- pragma export(var__rep_unify(in(ptr(var_rep_any)), in(ptr(var_rep_any))),
+:- pragma export(var.rep_unify(in(ptr(var_rep_any)), in(ptr(var_rep_any))),
 	"ML_var_unify").
-var__rep_unify(XPtr, YPtr) :-
+:- impure pred var.rep_unify(var_rep(T), var_rep(T)).
+:- mode var.rep_unify(in(ptr(var_rep_any)), in(ptr(var_rep_any))) is semidet.
+
+var.rep_unify(XPtr, YPtr) :-
 	XPtr = alias(X),
 	(
 		X = alias(_),
-		impure var__rep_unify(X, YPtr)
+		impure var.rep_unify(X, YPtr)
 	;
 		X = free,
 		( impure identical(XPtr, YPtr) ->
@@ -819,22 +847,23 @@ var__rep_unify(XPtr, YPtr) :-
 		)
 	;
 		X = ground(_),
-		impure var__rep_unify_gr(X, YPtr)
+		impure var.rep_unify_gr(X, YPtr)
 	;
 		X = free(_),
-		impure var__rep_unify_fr(XPtr, YPtr, X)
+		impure var.rep_unify_fr(XPtr, YPtr, X)
 	).
 
-	% This is the case when the first var is ground
-:- impure
-   pred var__rep_unify_gr(var_rep(T), var_rep(T)).
-:- mode var__rep_unify_gr(in(var_rep_deref_ground), in(ptr(var_rep_any)))
+	% This is the case when the first var is ground.
+	%
+:- impure pred var.rep_unify_gr(var_rep(T), var_rep(T)).
+:- mode var.rep_unify_gr(in(var_rep_deref_ground), in(ptr(var_rep_any)))
 	is semidet.
-var__rep_unify_gr(X, YPtr) :-
+
+var.rep_unify_gr(X, YPtr) :-
 	YPtr = alias(Y),
 	(
 		Y = alias(_),
-		impure var__rep_unify_gr(X, Y)
+		impure var.rep_unify_gr(X, Y)
 	;
 		Y = ground(Value),
 		X = ground(Value)
@@ -849,16 +878,17 @@ var__rep_unify_gr(X, YPtr) :-
 	).
 
 	% This is the case when the first var is free(DelayedGoals).
-:- impure
-   pred var__rep_unify_fr(var_rep(T), var_rep(T), var_rep(T)).
-:- mode var__rep_unify_fr(in(ptr(var_rep_any)), % really deref_delayed
+	%
+:- impure pred var.rep_unify_fr(var_rep(T), var_rep(T), var_rep(T)).
+:- mode var.rep_unify_fr(in(ptr(var_rep_any)), % really deref_delayed
 			in(ptr(var_rep_any)),
 			in(var_rep_deref_delayed)) is semidet.
-var__rep_unify_fr(XPtr, YPtr, X) :-
+
+var.rep_unify_fr(XPtr, YPtr, X) :-
 	YPtr = alias(Y),
 	(
 		Y = alias(_),
-		impure var__rep_unify_fr(XPtr, Y, X)
+		impure var.rep_unify_fr(XPtr, Y, X)
 	;
 		Y = free,
 		impure destructively_update_binding(YPtr, X)
@@ -884,8 +914,9 @@ var__rep_unify_fr(XPtr, YPtr, X) :-
 :- impure pred identical(var_rep(T), var_rep(T)).
 :- mode identical(in(ptr(var_rep_any)), in(ptr(var_rep_any))) is semidet.
 
-:- pragma c_code(identical(X::in(ptr(var_rep_any)), Y::in(ptr(var_rep_any))),
-		will_not_call_mercury,
+:- pragma foreign_proc("C",
+	identical(X::in(ptr(var_rep_any)), Y::in(ptr(var_rep_any))),
+	[will_not_call_mercury],
 "{
 	SUCCESS_INDICATOR = (X == Y);
 }").
@@ -918,12 +949,10 @@ destructively_update_binding(VarPtr, NewBinding) :-
 **	    or with other Mercury implementations.
 **          Use only with great care!
 */
-:- impure pred setarg(T1, int, T2).
-:-        mode setarg(in(any), in, in(any)) is det.
-
-:- pragma c_code(
-	setarg(MercuryTerm::in(any), ArgNum::in, NewValue::in(any)),
-	will_not_call_mercury,
+:- impure pred setarg(T1::ia, int::in, T2::ia) is det.
+:- pragma foreign_proc("C",
+	setarg(MercuryTerm::ia, ArgNum::in, NewValue::ia),
+	[will_not_call_mercury],
 "{
 	/* strip off tag bits */
 	MR_Word *ptr = (MR_Word *) MR_strip_tag(MercuryTerm);
@@ -931,14 +960,13 @@ destructively_update_binding(VarPtr, NewBinding) :-
 	ptr[ArgNum - 1] = NewValue;
 }").
 
-% untrailed_setarg/3 is similar to setarg/3 except the update is not
-% trailed, so it will not be undone on backtracking.
-:- pred untrailed_setarg(T1, int, T2).
-:- mode untrailed_setarg(in(any), in, in(any)) is det.
-
-:- pragma c_code(
-	untrailed_setarg(MercuryTerm::in(any), ArgNum::in, NewValue::in(any)),
-	will_not_call_mercury,
+	% untrailed_setarg/3 is similar to setarg/3 except the update is
+	% not trailed, so it will not be undone on backtracking.
+	%
+:- pred untrailed_setarg(T1::ia, int::in, T2::ia) is det.
+:- pragma foreign_proc("C",
+	untrailed_setarg(MercuryTerm::ia, ArgNum::in, NewValue::ia),
+	[promise_pure, will_not_call_mercury],
 "{
 	/* strip off tag bits */
 	MR_Word *ptr = (MR_Word *) MR_strip_tag(MercuryTerm);
@@ -952,25 +980,25 @@ destructively_update_binding(VarPtr, NewBinding) :-
 debug_freeze(Msg, Var, Pred) :-
 	init(Var),
 	(
-		impure unsafe_perform_io(print("freezing: ")),
-		impure unsafe_perform_io(print(Msg)),
-		impure unsafe_perform_io(print(": ")),
+		impure unsafe_perform_io(io.print("freezing: ")),
+		impure unsafe_perform_io(io.print(Msg)),
+		impure unsafe_perform_io(io.print(": ")),
 		impure unsafe_dump_var(Var),
-		impure unsafe_perform_io(nl),
+		impure unsafe_perform_io(io.nl),
 
 		freeze(Var, debug_pred(Msg, Pred)),
 
-		impure unsafe_perform_io(print("frozen: ")),
-		impure unsafe_perform_io(print(Msg)),
-		impure unsafe_perform_io(print(": ")),
+		impure unsafe_perform_io(io.print("frozen: ")),
+		impure unsafe_perform_io(io.print(Msg)),
+		impure unsafe_perform_io(io.print(": ")),
 		impure unsafe_dump_var(Var),
-		impure unsafe_perform_io(nl)
+		impure unsafe_perform_io(io.nl)
 	;
-		impure unsafe_perform_io(print("freeze failed: ")),
-		impure unsafe_perform_io(print(Msg)),
-		impure unsafe_perform_io(print(": ")),
+		impure unsafe_perform_io(io.print("freeze failed: ")),
+		impure unsafe_perform_io(io.print(Msg)),
+		impure unsafe_perform_io(io.print(": ")),
 		impure unsafe_dump_var(Var),
-		impure unsafe_perform_io(nl),
+		impure unsafe_perform_io(io.nl),
 		fail
 	).
 
@@ -1020,7 +1048,7 @@ debug_pred(Msg, Pred, Var) :-
 	impure unsafe_perform_io(print(": ")),
 	impure unsafe_perform_io(print(Var)),
 	impure unsafe_perform_io(nl),
-	( call(Pred, Var) ->
+	( Pred(Var) ->
 		impure unsafe_perform_io(print("succeeded: ")),
 		impure unsafe_perform_io(print(Msg)),
 		impure unsafe_perform_io(print(": ")),
@@ -1071,37 +1099,56 @@ debug_pred2(Msg, Pred, X, Y) :-
 		fail
 	).
 
-:- pragma c_code(dump_var(Var::in(any), IO0::di, IO::uo), may_call_mercury, "
+:- pragma foreign_proc("C",
+	dump_var(Var::ia, IO0::di, IO::uo),
+	[promise_pure, may_call_mercury],
+"
 	ML_var_print(TypeInfo_for_T, Var);
 	IO = IO0;
 ").
 
-:- pragma c_code(unsafe_dump_var(Var::in(any)), may_call_mercury, "
+:- pragma foreign_proc("C",
+	unsafe_dump_var(Var::ia),
+	[promise_pure,  may_call_mercury],
+"
 	ML_var_print(TypeInfo_for_T, Var);
 ").
 
-:- pred dump_var_rep(var_rep(T)::in(var_rep_any),
-		io__state::di, io__state::uo) is det.
 :- pragma export(dump_var_rep(in(var_rep_any), di, uo), "ML_var_print").
+:- pred dump_var_rep(var_rep(T)::in(var_rep_any), io::di, io::uo) is det.
 
-dump_var_rep(alias(Var)) -->
-	print("alias("), dump_var_rep(Var), print(")").
-dump_var_rep(ground(Val)) -->
-	print("ground("), print(Val), print(")").
-dump_var_rep(free) -->
-	print("free").
-dump_var_rep(free(Goals)) -->
-	print("free("), dump_goals(Goals), print(")").
+dump_var_rep(alias(Var), !IO) :-
+	io.print("alias(", !IO),
+	dump_var_rep(Var, !IO),
+	io.print(")", !IO).
+dump_var_rep(ground(Val), !IO) :-
+	io.print("ground(", !IO), 
+	io.print(Val, !IO),
+	io.print(")", !IO).
+dump_var_rep(free, !IO) :-
+	io.print("free", !IO).
+dump_var_rep(free(Goals), !IO) :-
+	io.print("free(", !IO),
+	dump_goals(Goals, !IO),
+	io.print(")", !IO).
 
-:- pred dump_goals(delayed_conj(T)::in(delayed_conj),
-		io__state::di, io__state::uo) is det.
-dump_goals((A,B)) -->
-	print("("), dump_goals(A), print(", "), dump_goals(B), print(")").
-dump_goals(goal(_, Woken, _, _)) -->
-	( { Woken = yes } ->
-		print("<woken goal>")
+:- pred dump_goals(delayed_conj(T)::in(delayed_conj), io::di, io::uo) is det.
+
+dump_goals((A, B), !IO) :-
+	io.print("(",  !IO),
+	dump_goals(A,  !IO),
+	io.print(", ", !IO),
+	dump_goals(B,  !IO),
+	io.print(")",  !IO).
+dump_goals(goal(_, Woken, _, _), !IO) :-
+	( 
+		Woken = yes,
+		io.print("<woken goal>", !IO)
 	;
-		print("<delayed goal>")
+		Woken = no,
+		print("<delayed goal>", !IO)
 	).
 
+%-----------------------------------------------------------------------------%
+:- end_module var.
 %-----------------------------------------------------------------------------%

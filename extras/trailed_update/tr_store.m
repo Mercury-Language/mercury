@@ -10,7 +10,7 @@
 %
 % This file provides facilities for manipulating mutable backtrackable stores.
 % This is a backtrackable version of the standard library module `store.m';
-% the interface and implementation are almost identifical to store.m,
+% the interface and implementation are almost identical to store.m,
 % the only difference is that destructive updates are recorded on a trail
 % so that updates can be undone on backtracking.
 %
@@ -31,24 +31,27 @@
 
 	% create a new mutable variable,
 	% initialized with the specified value
-:- pred tr_store__new_mutvar(T, generic_mutvar(T, S), store(S), store(S)).
-:- mode tr_store__new_mutvar(in, out, mdi, muo) is det.
+	%
+:- pred tr_store.new_mutvar(T::in, generic_mutvar(T, S)::out,
+	store(S)::mdi, store(S)::muo) is det.
 
 	% copy_mutvar(Mutvar, Copy, S0, S)
 	% is equivalent to
 	% 	get_mutvar(Mutvar, Value, S0, S1),
 	% 	new_mutvar(Value, Copy,   S1, S )
-:- pred tr_store__copy_mutvar(generic_mutvar(T, S), generic_mutvar(T, S),
-	store(S), store(S)).
-:- mode tr_store__copy_mutvar(in, out, mdi, muo) is det.
+	%
+:- pred tr_store.copy_mutvar(generic_mutvar(T, S)::in,
+	generic_mutvar(T, S)::out, store(S)::mdi, store(S)::muo) is det.
 
 	% lookup the value stored in a given mutable variable
-:- pred tr_store__get_mutvar(generic_mutvar(T, S), T, store(S), store(S)).
-:- mode tr_store__get_mutvar(in, out, mdi, muo) is det.
+	%
+:- pred tr_store.get_mutvar(generic_mutvar(T, S)::in, T::out,
+	store(S)::mdi, store(S)::muo) is det.
 
 	% replace the value stored in a given mutable variable
-:- pred tr_store__set_mutvar(generic_mutvar(T, S), T, store(S), store(S)).
-:- mode tr_store__set_mutvar(in, in, mdi, muo) is det.
+	%
+:- pred tr_store.set_mutvar(generic_mutvar(T, S)::in, T::in,
+	store(S)::mdi, store(S)::muo) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -63,15 +66,16 @@
 	% of the representation of that value.
 	% It does however allocate one cell to hold the reference;
 	% you can use new_arg_ref to avoid that.)
-:- pred tr_store__new_ref(T, generic_ref(T, S), store(S), store(S)).
-:- mode tr_store__new_ref(mdi, out, mdi, muo) is det.
+	%
+:- pred tr_store.new_ref(T::mdi, generic_ref(T, S)::out,
+	store(S)::mdi, store(S)::muo) is det.
 
-	% ref_functor(Ref, Functor, Arity):
+	% tr_store.ref_functor(Ref, Functor, Arity):
 	% Given a reference to a term, return the functor and arity
 	% of that term.
-:- pred tr_store__ref_functor(generic_ref(T, S), string, int,
-	store(S), store(S)).
-:- mode tr_store__ref_functor(in, out, out, mdi, muo) is det.
+	%
+:- pred tr_store.ref_functor(generic_ref(T, S)::in, string::out, int::out,
+	store(S)::mdi, store(S)::muo) is det.
 
 	% arg_ref(Ref, ArgNum, ArgRef):	     
 	%	/* Psuedo-C code: ArgRef = &Ref[ArgNum]; */
@@ -80,9 +84,9 @@
 	% (argument numbers start from zero).
 	% It is an error if the argument number is out of range,
 	% or if the argument reference has the wrong type.
-:- pred tr_store__arg_ref(generic_ref(T, S), int, generic_ref(ArgT, S),
-	store(S), store(S)).
-:- mode tr_store__arg_ref(in, in, out, mdi, muo) is det.
+	%
+:- pred tr_store.arg_ref(generic_ref(T, S)::in, int::in,
+	generic_ref(ArgT, S)::out, store(S)::mdi, store(S)::muo) is det.
 
 	% new_arg_ref(Val, ArgNum, ArgRef):
 	%	/* Psuedo-C code: ArgRef = &Val[ArgNum]; */
@@ -90,9 +94,9 @@
 	% except that it is more efficient.
 	% It is an error if the argument number is out of range,
 	% or if the argument reference has the wrong type.
-:- pred tr_store__new_arg_ref(T, int, generic_ref(ArgT, S),
-	store(S), store(S)).
-:- mode tr_store__new_arg_ref(mdi, in, out, mdi, muo) is det.
+	%
+:- pred tr_store.new_arg_ref(T::mdi, int::in, generic_ref(ArgT, S)::out,
+	store(S)::mdi, store(S)::muo) is det.
 
 	% set_ref(Ref, ValueRef):
 	%	/* Pseudo-C code: *Ref = *ValueRef; */
@@ -100,29 +104,32 @@
 	% a reference to another term (ValueRef),
 	% update the store so that the term referred to by Ref
 	% is replaced with the term referenced by ValueRef.
-:- pred tr_store__set_ref(generic_ref(T, S), generic_ref(T, S),
-	store(S), store(S)).
-:- mode tr_store__set_ref(in, in, mdi, muo) is det.
+	%
+:- pred tr_store.set_ref(generic_ref(T, S)::in, generic_ref(T, S)::in,
+	store(S)::mdi, store(S)::muo) is det.
 
 	% set_ref_value(Ref, Value):
 	%	/* Pseudo-C code: *Ref = Value; */
 	% Given a reference to a term (Ref), and a value (Value),
 	% update the store so that the term referred to by Ref
 	% is replaced with Value.
-:- pred tr_store__set_ref_value(generic_ref(T, S), T, store(S), store(S)).
-:- mode tr_store__set_ref_value(in, mdi, mdi, muo) is det.
+	%
+:- pred tr_store.set_ref_value(generic_ref(T, S)::in, T::mdi,
+	store(S)::mdi, store(S)::muo) is det.
 
 	% Given a reference to a term, return that term.
-	% Note that this requires making a copy, so this pred may
+	% NOTE: this requires making a copy, so this pred may
 	% be inefficient if used to return large terms; it
 	% is most efficient with atomic terms.
-:- pred tr_store__copy_ref_value(generic_ref(T, S), T, store(S), store(S)).
-:- mode tr_store__copy_ref_value(in, uo, mdi, muo) is det.
+	%
+:- pred tr_store.copy_ref_value(generic_ref(T, S)::in, T::uo,
+	store(S)::mdi, store(S)::muo) is det.
 
 	% Same as above, but without making a copy.
 	% Destroys the store.
-:- pred tr_store__extract_ref_value(store(S), generic_ref(T, S), T).
-:- mode tr_store__extract_ref_value(mdi, in, out) is det.
+	%
+:- pred tr_store.extract_ref_value(store(S)::mdi, generic_ref(T, S)::in,
+	T::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -145,14 +152,12 @@
 	% or if the argument reference has the wrong type,
 	% or if the argument is a `no_tag' type,
 	% then the behaviour is undefined, and probably harmful.
+	%
+:- pred tr_store.unsafe_arg_ref(generic_ref(T, S)::in, int::in,
+	generic_ref(ArgT, S)::out, store(S)::mdi, store(S)::muo) is det.
 
-:- pred tr_store__unsafe_arg_ref(generic_ref(T, S), int, generic_ref(ArgT, S),
-				store(S), store(S)).
-:- mode tr_store__unsafe_arg_ref(in, in, out, mdi, muo) is det.
-
-:- pred tr_store__unsafe_new_arg_ref(T, int, generic_ref(ArgT, S),
-	store(S), store(S)).
-:- mode tr_store__unsafe_new_arg_ref(mdi, in, out, mdi, muo) is det.
+:- pred tr_store.unsafe_new_arg_ref(T::mdi, int::in,
+	generic_ref(ArgT, S)::out, store(S)::mdi, store(S)::muo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -160,27 +165,30 @@
 :- implementation.
 :- import_module std_util.
 
-:- pragma c_code(new_mutvar(Val::in, Mutvar::out, S0::mdi, S::muo),
-		will_not_call_mercury,
+:- pragma foreign_proc("C",
+	new_mutvar(Val::in, Mutvar::out, S0::mdi, S::muo),
+	[promise_pure, will_not_call_mercury],
 "
 	MR_incr_hp(Mutvar, 1);
 	*(MR_Word *)Mutvar = Val;
 	S = S0;
 ").
 
-copy_mutvar(Mutvar, Copy) -->
-	tr_store__get_mutvar(Mutvar, Val),
-	tr_store__new_mutvar(Val, Copy).
+copy_mutvar(Mutvar, Copy, !S) :-
+	tr_store.get_mutvar(Mutvar, Val, !S),
+	tr_store.new_mutvar(Val, Copy, !S).
 
-:- pragma c_code(get_mutvar(Mutvar::in, Val::out, S0::mdi, S::muo),
-		will_not_call_mercury,
+:- pragma foreign_proc("C",
+	get_mutvar(Mutvar::in, Val::out, S0::mdi, S::muo),
+	[promise_pure, will_not_call_mercury],
 "
 	Val = *(MR_Word *)Mutvar;
 	S = S0;
 ").
 
-:- pragma c_code(set_mutvar(Mutvar::in, Val::in, S0::mdi, S::muo),
-		will_not_call_mercury,
+:- pragma foreign_proc("C",
+	set_mutvar(Mutvar::in, Val::in, S0::mdi, S::muo),
+	[promise_pure, 	will_not_call_mercury],
 "
 	MR_trail_current_value((MR_Word *) Mutvar);
 	*(MR_Word *)Mutvar = Val;
@@ -189,8 +197,9 @@ copy_mutvar(Mutvar, Copy) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_code(new_ref(Val::mdi, Ref::out, S0::mdi, S::muo),
-		will_not_call_mercury,
+:- pragma foreign_proc("C",
+	new_ref(Val::mdi, Ref::out, S0::mdi, S::muo),
+	[promise_pure, will_not_call_mercury],
 "
 	MR_incr_hp(Ref, 1);
 	*(MR_Word *)Ref = Val;
@@ -201,29 +210,29 @@ copy_ref_value(Ref, Val) -->
 	/* XXX need to deep-copy non-atomic types */
 	unsafe_ref_value(Ref, Val).
 
-	% unsafe_ref_value extracts the value that a reference
-	% refers to, without making a copy; it is unsafe because
-	% the store could later be modified, changing the returned
-	% value.
-:- pred tr_store__unsafe_ref_value(generic_ref(T, S), T, store(S), store(S)).
-:- mode tr_store__unsafe_ref_value(in, uo, mdi, muo) is det.
-:- pragma c_code(unsafe_ref_value(Ref::in, Val::uo, S0::mdi, S::muo),
-		will_not_call_mercury,
+	% unsafe_ref_value extracts the value that a reference refers
+	% to, without making a copy; it is unsafe because the store
+	% could later be modified, changing the returned value.
+	%
+:- pred tr_store.unsafe_ref_value(generic_ref(T, S)::in, T::uo,
+	store(S)::mdi, store(S)::muo) is det.
+:- pragma foreign_proc("C",
+	unsafe_ref_value(Ref::in, Val::uo, S0::mdi, S::muo),
+	[promise_pure, will_not_call_mercury],
 "
 	Val = *(MR_Word *)Ref;
 	S = S0;
 ").
 
-ref_functor(Ref, Functor, Arity) -->
-	unsafe_ref_value(Ref, Val),
-	{ functor(Val, Functor, Arity) }.
+ref_functor(Ref, Functor, Arity, !S) :-
+	unsafe_ref_value(Ref, Val, !S),
+	functor(Val, Functor, Arity).
 
-:- pragma c_header_code("
-#include ""mercury_deconstruct.h""
-").
+:- pragma foreign_decl("C", "#include ""mercury_deconstruct.h""").
 
-:- pragma c_code(arg_ref(Ref::in, ArgNum::in, ArgRef::out, S0::mdi, S::muo),
-		will_not_call_mercury,
+:- pragma foreign_proc("C",
+	arg_ref(Ref::in, ArgNum::in, ArgRef::out, S0::mdi, S::muo),
+	[promise_pure, will_not_call_mercury],
 "{
 	MR_TypeInfo arg_type_info;
 	MR_Word* arg_ref;
@@ -233,14 +242,14 @@ ref_functor(Ref, Functor, Arity) -->
 	if (!MR_arg((MR_TypeInfo) TypeInfo_for_T, (MR_Word *) Ref, ArgNum,
 		&arg_type_info, &arg_ref, MR_NONCANON_ALLOW))
 	{
-		MR_fatal_error(""tr_store__arg_ref: ""
-			""argument number out of range"");
+		MR_fatal_error(
+		""tr_store.arg_ref: argument number out of range"");
 	}
 
 	if (MR_compare_type_info(arg_type_info,
 		(MR_TypeInfo) TypeInfo_for_ArgT) != MR_COMPARE_EQUAL)
 	{
-		MR_fatal_error(""tr_store__arg_ref: argument has wrong type"");
+		MR_fatal_error(""tr_store.arg_ref: argument has wrong type"");
 	}
 
 	MR_restore_transient_registers();
@@ -249,9 +258,9 @@ ref_functor(Ref, Functor, Arity) -->
 	S = S0;
 }").
 
-:- pragma c_code(new_arg_ref(Val::mdi, ArgNum::in, ArgRef::out,
-		S0::mdi, S::muo),
-		will_not_call_mercury,
+:- pragma foreign_proc("C",
+	new_arg_ref(Val::mdi, ArgNum::in, ArgRef::out, S0::mdi, S::muo),
+	[promise_pure, will_not_call_mercury],
 "{
 	MR_TypeInfo arg_type_info;
 	MR_Word* arg_ref;
@@ -261,15 +270,15 @@ ref_functor(Ref, Functor, Arity) -->
 	if (!MR_arg((MR_TypeInfo) TypeInfo_for_T, (MR_Word *) &Val, ArgNum,
 		&arg_type_info, &arg_ref, MR_NONCANON_ALLOW))
 	{
-		MR_fatal_error(""tr_store__new_arg_ref: ""
-			""argument number out of range"");
+		MR_fatal_error(
+		""tr_store.new_arg_ref: argument number out of range"");
 	}
 
 	if (MR_compare_type_info(arg_type_info,
 		(MR_TypeInfo) TypeInfo_for_ArgT) != MR_COMPARE_EQUAL)
 	{
-		MR_fatal_error(""tr_store__new_arg_ref: ""
-			""argument has wrong type"");
+		MR_fatal_error(
+		""tr_store.new_arg_ref: argument has wrong type"");
 	}
 
 	MR_restore_transient_registers();
@@ -289,33 +298,36 @@ ref_functor(Ref, Functor, Arity) -->
 	S = S0;
 }").
 
-:- pragma c_code(set_ref(Ref::in, ValRef::in, S0::mdi, S::muo),
-		will_not_call_mercury,
+:- pragma foreign_proc("C",
+	set_ref(Ref::in, ValRef::in, S0::mdi, S::muo),
+	[promise_pure, will_not_call_mercury],
 "
 	MR_trail_current_value((MR_Word *) Ref);
 	*(MR_Word *)Ref = *(MR_Word *)ValRef;
 	S = S0;
 ").
 
-:- pragma c_code(set_ref_value(Ref::in, Val::mdi, S0::mdi, S::muo),
-		will_not_call_mercury,
+:- pragma foreign_proc("C",
+	set_ref_value(Ref::in, Val::mdi, S0::mdi, S::muo),
+	[promise_pure, 	will_not_call_mercury],
 "
 	MR_trail_current_value((MR_Word *) Ref);
 	*(MR_Word *)Ref = Val;
 	S = S0;
 ").
 
-:- pragma c_code(extract_ref_value(_S::mdi, Ref::in, Val::out),
-		will_not_call_mercury,
+:- pragma foreign_proc("C",
+	extract_ref_value(_S::mdi, Ref::in, Val::out),
+	[promise_pure, will_not_call_mercury],
 "
 	Val = *(MR_Word *)Ref;
 ").
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_code(unsafe_arg_ref(Ref::in, Arg::in, ArgRef::out,
-		S0::mdi, S::muo),
-		will_not_call_mercury,
+:- pragma foreign_proc("C",
+	unsafe_arg_ref(Ref::in, Arg::in, ArgRef::out, S0::mdi, S::muo),
+	[promise_pure, will_not_call_mercury],
 "{
 	/* unsafe - does not check type & arity, won't handle no_tag types */
 	MR_Word *Ptr = (MR_Word *) MR_strip_tag(Ref);
@@ -323,8 +335,9 @@ ref_functor(Ref, Functor, Arity) -->
 	S = S0;
 }").
 
-:- pragma c_code(unsafe_new_arg_ref(Val::mdi, Arg::in, ArgRef::out,
-				S0::mdi, S::muo), will_not_call_mercury,
+:- pragma foreign_proc("C",
+	unsafe_new_arg_ref(Val::mdi, Arg::in, ArgRef::out, S0::mdi, S::muo),
+	[promise_pure, will_not_call_mercury],
 "{
 	/* unsafe - does not check type & arity, won't handle no_tag types */
 	MR_Word *Ptr = (MR_Word *) MR_strip_tag(Val);
@@ -332,4 +345,6 @@ ref_functor(Ref, Functor, Arity) -->
 	S = S0;
 }").
 
+%-----------------------------------------------------------------------------%
+:- end_module tr_store.
 %-----------------------------------------------------------------------------%
