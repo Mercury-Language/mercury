@@ -30,9 +30,9 @@
 			;	true	
 					% could use disj(goals) instead
 			;	not(vars,goal)
-					% could use if_then_else instead
 			;	some(vars,goal)
 			;	all(vars,goal)
+			;	if_then(vars,goal,goal)
 			;	if_then_else(vars,goal,goal,goal)
 			;	call(term)
 			;	error.
@@ -153,7 +153,9 @@ prog_io__read_program(FileName, Result) -->
 	read_program_2(R, FileName, Result).
 
 	% check that the file was opened succesfully
-	% (can't use if-then-else in DCGs)
+	% (this is a separate prediacte, because
+	% you can't use if-then-else directly in DCGs
+	% due to a NU-Prolog bug)
 
 :- pred read_program_2(res, string, maybe_program, io__state, io__state).
 read_program_2(ok, _, Program) -->
@@ -315,9 +317,9 @@ parse_decl(VarSet, F, ParsedDecl, Msgs, Msgs1, Error) :-
 	).
 
 add_warning(Warning, Msg.Msgs, Msgs) :-
-	append("warning: ", Warning, Msg).
+	string__append("warning: ", Warning, Msg).
 add_error(Error, Msg.Msgs, Msgs) :-
-	append("error: ", Error, Msg).
+	string__append("error: ", Error, Msg).
 
 :- pred parse_decl_2(maybe_decl, item, message_list, message_list, yes_or_no).
 parse_decl_2(error(ErrorMsg,_), error, ErrorMsg.Msgs1, Msgs1, yes).
@@ -501,7 +503,7 @@ check_for_errors(term_variable(V), _,
 check_for_errors(term_functor(Functor,Args), Body, Result) :-
 	check_for_errors_2(Functor, Args, Body, Term, Result).
 
-:- pred check_for_errors_2(const, list(term), term, maybe_functor).
+:- pred check_for_errors_2(const, list(term), term, term, maybe_functor).
 check_for_errors_2(term_float(_), _, _, Term, 
 		error("type name can't be a floating point number", Term)).
 check_for_errors_2(term_integer(_), _, _, Term,
@@ -510,7 +512,6 @@ check_for_errors_2(term_string(_), _, _, Term,
 		error("type name can't be a string", Term)).
 check_for_errors_2(term_atom(Name), Args, Body, Term, Result) :-
 	check_for_errors_3(Name, Args, Body, Term, Result).
-	%%	require(ground(Result), 'Mode error 1').
 
 :- pred check_for_errors_3(string, list(term), term, term, maybe_functor).
 check_for_errors_3(Name, Args, Body, Term, Result) :-
@@ -690,14 +691,31 @@ parse_export_type_decl(VarSet, ModuleSpec, Result) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred parse_type_spec_list(term, maybe_module_defn).
+	% Parse a comma-separated list (misleading described as
+	% a "conjunction") of type specifiers.
+
+:- pred parse_type_spec_list(term, maybe(list(sym_name_specifier))).
+:- mode parse_type_spec_list(input, output).
 parse_type_spec_list(Term, Result) :-
 	conjunction_to_list(Term, List),
 	parse_type_spec_list_2(List, Result).
 
-% parse_type_spec_list_2([], hj).
-% parse_type_spec_list_2(X.Xs, []).
-% !!! unfinished
+:- pred parse_type_spec_list_2(list(term), maybe(list(sym_name_specifier))).
+:- mode parse_type_spec_list_2(input, output).
+parse_type_spec_list_2([], ok([])).
+parse_type_spec_list_2(X.Xs, Result) :-
+	parse_type_specifier(X, X_Result),
+	parse_type_spec_list_2(Xs, Xs_Result),
+	combine_list_results(X_Result, Xs_Result, Result).
+
+	% If a list of things contains multiple errors, then we only
+	% report the first one.
+
+:- pred combine_list_results(maybe(T), maybe(list(T)), maybe(list(T))).
+:- mode combine_list_results(input, input, output).
+combine_list_results(error(Msg, Term), _, error(Msg, Term)).
+combine_list_results(ok(_), error(Msg, Term), error(Msg, Term)).
+combine_list_results(ok(X), ok(Xs), ok([X|Xs])).
 
 %-----------------------------------------------------------------------------%
 %	A symbol specifier is one of
@@ -850,8 +868,7 @@ parse_symbol_name_specifier(Term, Result) :-
 process_name_arity_specifier(ok(Name), Arity, ok(name_arity(Name, Arity))).
 process_name_arity_specifier(error(Error, Term), _, error(Error, Term)).
 
-:- pred process_name_specifier(maybe(sym_name), int,
-		maybe(sym_name_specifier)).
+:- pred process_name_specifier(maybe(sym_name), maybe(sym_name_specifier)).
 process_name_specifier(ok(Name), ok(name(Name))).
 process_name_specifier(error(Error, Term), error(Error, Term)).
 
