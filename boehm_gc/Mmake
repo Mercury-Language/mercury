@@ -17,7 +17,7 @@ libgc.a: submake
 libgc.so: submake
 
 submake: force
-	unset MAKEFLAGS; $(MAKE) $(MMAKEFLAGS) libgc.a libgc.$(SO)
+	MAKEFLAGS=""; $(MAKE) $(MMAKEFLAGS) libgc.a libgc.$(SO)
 
 .PHONY: force
 force:
