@@ -1636,7 +1636,7 @@ clauses_info_add_pragma_c_code(ClausesInfo0, PredId, ModeId, PVarSet, PVars,
 		GoalInfo, 
 
 		% Insert unifications with the head args.
-	append_arg_unifications(HeadVars, TermArgs, Context, head, HldsGoal0,
+	insert_arg_unifications(HeadVars, TermArgs, Context, head, HldsGoal0,
 		VarSet1, HldsGoal1, VarSet2),
 	map__init(Empty),
 	implicitly_quantify_clause_body(HeadVars, HldsGoal1, VarSet2, Empty,
@@ -1878,6 +1878,10 @@ insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, ArgContext, N0,
 		insert_arg_unifications_2(Vars, Args, Context, ArgContext, N1,
 				List0, VarSet1, List1, VarSet)
 	).
+
+	% append_arg_unifications is the same as insert_arg_unifications,
+	% except that the unifications are added after the goal rather
+	% than before the goal.
 
 :- pred append_arg_unifications(list(var), list(term),
 				term__context, arg_context,
