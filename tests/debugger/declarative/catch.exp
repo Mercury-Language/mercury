@@ -1,0 +1,40 @@
+       1:      1  1 CALL pred catch:main/2-0 (cc_multi) catch.m:8
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> break p
+ 0: + stop  interface pred catch:p/2-0 (cc_multi)
+mdb> continue
+       2:      2  2 CALL pred catch:p/2-0 (cc_multi) catch.m:18 (catch.m:9)
+mdb> finish
+mdb: warning: reached unknown label
+This may result in some exception events
+being omitted from the trace.
+       7:      2  2 EXIT pred catch:p/2-0 (cc_multi) catch.m:18 (catch.m:9)
+mdb> dd
+mdb: warning: reached unknown label
+This may result in some exception events
+being omitted from the trace.
+p(1, exception(univ_cons("q: bad input")))
+Valid? no
+Sorry, the diagnosis cannot continue because it requires support for
+the following: code that catches exceptions.
+The debugger is a work in progress, and this is not supported in the
+current version.
+       7:      2  2 EXIT pred catch:p/2-0 (cc_multi) catch.m:18 (catch.m:9)
+mdb> continue
+exception(univ_cons("q: bad input"))
+       8:      4  2 CALL pred catch:p/2-0 (cc_multi) catch.m:18 (catch.m:12)
+mdb> finish
+      13:      4  2 EXIT pred catch:p/2-0 (cc_multi) catch.m:18 (catch.m:12)
+mdb> dd
+p(2, succeeded(2))
+Valid? no
+q(2, 2)
+Valid? yes
+Found incorrect contour:
+p(2, succeeded(2))
+Is this a bug? yes
+      13:      4  2 EXIT pred catch:p/2-0 (cc_multi) catch.m:18 (catch.m:12)
+mdb> continue
+succeeded(2)

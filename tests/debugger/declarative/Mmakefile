@@ -39,7 +39,15 @@ DECLARATIVE_PROGS=		\
 	throw
 
 # The following should not be run in `debug' grades.
+#
+# XXX 'catch' test case does not work properly in debug grades, due to some
+# unknown bug.  The result of this bug is that the declarative debugger
+# gives a warning about missed events and refuses to start.  Since the
+# previous behaviour was to throw a software error, this is not really
+# a regression, but we would still like to find the bug and fix it.
+#
 NONDEBUG_DECLARATIVE_PROGS=	\
+	catch			\
 	untraced_subgoal
 
 NONWORKING_DECLARATIVE_PROGS=	\
@@ -117,6 +125,9 @@ big.out: big big.inp
 
 browse_arg.out: browse_arg browse_arg.inp
 	$(MDB) ./browse_arg < browse_arg.inp > browse_arg.out 2>&1
+
+catch.out: catch catch.inp
+	$(MDB) ./catch < catch.inp > catch.out 2>&1
 
 comp_gen.out: comp_gen comp_gen.inp
 	$(MDB) ./comp_gen < comp_gen.inp > comp_gen.out 2>&1

@@ -345,7 +345,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, map, require, store.
+:- import_module mdb__declarative_debugger.
+:- import_module int, map, exception, store.
 
 %-----------------------------------------------------------------------------%
 
@@ -363,7 +364,8 @@ step_left_in_contour(_, cond(Prec, _, Status)) = Node :-
 	(
 		Status = failed
 	->
-		error("step_left_in_contour: failed COND node")
+		throw(internal_error("step_left_in_contour",
+			"failed COND node"))
 	;
 		Node = Prec
 	).
@@ -377,7 +379,7 @@ step_left_in_contour(Store, neg_succ(_, Neg)) = Prec :-
 	% where we cannot step any further.
 	%
 step_left_in_contour(_, call(_, _, _, _, _, _, _, _, _)) = _ :-
-	error("step_left_in_contour: unexpected CALL node").
+	throw(internal_error("step_left_in_contour", "unexpected CALL node")).
 step_left_in_contour(_, neg(Prec, _, Status)) = Next :-
 	(
 		Status = undecided
@@ -389,7 +391,8 @@ step_left_in_contour(_, neg(Prec, _, Status)) = Next :-
 			%
 		Next = Prec
 	;
-		error("step_left_in_contour: unexpected NEGE node")
+		throw(internal_error("step_left_in_contour",
+			"unexpected NEGE node"))
 	).
 	%
 	% In the remaining cases we have reached a dead end, so we
@@ -430,11 +433,11 @@ find_prev_contour(Store, neg_fail(_, Neg), OnContour) :-
 	% so there are no previous contours in the same stratum.
 	%
 find_prev_contour(_, call(_, _, _, _, _, _, _, _, _), _) :-
-	error("find_prev_contour: reached CALL node").
+	throw(internal_error("find_prev_contour", "reached CALL node")).
 find_prev_contour(_, cond(_, _, _), _) :-
-	error("find_prev_contour: reached COND node").
+	throw(internal_error("find_prev_contour", "reached COND node")).
 find_prev_contour(_, neg(_, _, _), _) :-
-	error("find_prev_contour: reached NEGE node").
+	throw(internal_error("find_prev_contour", "reached NEGE node")).
 
 step_in_stratum(Store, exit(_, Call, MaybeRedo, _, _, _)) =
 	step_over_redo_or_call(Store, Call, MaybeRedo).
@@ -452,7 +455,7 @@ step_in_stratum(_, cond(Prec, _, Status)) = Next :-
 	(
 		Status = failed
 	->
-		error("step_in_stratum: failed COND node")
+		throw(internal_error("step_in_stratum", "failed COND node"))
 	;
 		Next = Prec
 	).
@@ -468,9 +471,9 @@ step_in_stratum(Store, neg_fail(_, Neg)) = Next :-
 	% so we cannot step any further.
 	%
 step_in_stratum(_, call(_, _, _, _, _, _, _, _, _)) = _ :-
-	error("step_in_stratum: unexpected CALL node").
+	throw(internal_error("step_in_stratum", "unexpected CALL node")).
 step_in_stratum(_, neg(_, _, _)) = _ :-
-	error("step_in_stratum: unexpected NEGE node").
+	throw(internal_error("step_in_stratum", "unexpected NEGE node")).
 
 :- func step_over_redo_or_call(S, R, R) = R <= annotated_trace(S, R).
 
@@ -490,7 +493,7 @@ det_trace_node_from_id(Store, NodeId, Node) :-
 	->
 		Node = Node0
 	;
-		error("det_trace_node_from_id: NULL node id")
+		throw(internal_error("det_trace_node_from_id", "NULL node id"))
 	).
 
 call_node_from_id(Store, NodeId, Node) :-
@@ -500,7 +503,7 @@ call_node_from_id(Store, NodeId, Node) :-
 	->
 		Node = Node0
 	;
-		error("call_node_from_id: not a CALL node")
+		throw(internal_error("call_node_from_id", "not a CALL node"))
 	).
 
 maybe_redo_node_from_id(Store, NodeId, Node) :-
@@ -510,7 +513,8 @@ maybe_redo_node_from_id(Store, NodeId, Node) :-
 	->
 		Node = Node0
 	;
-		error("maybe_redo_node_from_id: not a REDO node or NULL")
+		throw(internal_error("maybe_redo_node_from_id",
+			"not a REDO node or NULL"))
 	).
 
 exit_node_from_id(Store, NodeId, Node) :-
@@ -520,7 +524,7 @@ exit_node_from_id(Store, NodeId, Node) :-
 	->
 		Node = Node0
 	;
-		error("exit_node_from_id: not an EXIT node")
+		throw(internal_error("exit_node_from_id", "not an EXIT node"))
 	).
 
 cond_node_from_id(Store, NodeId, Node) :-
@@ -530,7 +534,7 @@ cond_node_from_id(Store, NodeId, Node) :-
 	->
 		Node = Node0
 	;
-		error("cond_node_from_id: not a COND node")
+		throw(internal_error("cond_node_from_id", "not a COND node"))
 	).
 
 neg_node_from_id(Store, NodeId, Node) :-
@@ -540,7 +544,7 @@ neg_node_from_id(Store, NodeId, Node) :-
 	->
 		Node = Node0
 	;
-		error("neg_node_from_id: not a NEG node")
+		throw(internal_error("neg_node_from_id", "not a NEG node"))
 	).
 
 first_disj_node_from_id(Store, NodeId, Node) :-
@@ -550,7 +554,8 @@ first_disj_node_from_id(Store, NodeId, Node) :-
 	->
 		Node = Node0
 	;
-		error("first_disj_node_from_id: not a first DISJ node")
+		throw(internal_error("first_disj_node_from_id",
+			"not a first DISJ node"))
 	).
 
 disj_node_from_id(Store, NodeId, Node) :-
@@ -562,7 +567,8 @@ disj_node_from_id(Store, NodeId, Node) :-
 	->
 		Node = Node0
 	;
-		error("disj_node_from_id: not a DISJ node")
+		throw(internal_error("disj_node_from_id",
+			"not a DISJ node"))
 	).
 
 %-----------------------------------------------------------------------------%
@@ -614,7 +620,8 @@ call_node_get_last_interface(Call) = Last :-
 	->
 		Last = Last0
 	;
-		error("call_node_get_last_interface: not a CALL node")
+		throw(internal_error("call_node_get_last_interface",
+			"not a CALL node"))
 	).
 
 :- func call_node_set_last_interface(trace_node(trace_node_id), trace_node_id)
@@ -629,7 +636,8 @@ call_node_set_last_interface(Call0, Last) = Call :-
 	->
 		Call1 = Call0
 	;
-		error("call_node_set_last_interface: not a CALL node")
+		throw(internal_error("call_node_set_last_interface",
+			"not a CALL node"))
 	),
 		% The last interface is the second field, so we pass 1
 		% (since argument numbers start from 0).
@@ -648,7 +656,7 @@ cond_node_set_status(Cond0, Status) = Cond :-
 	->
 		Cond1 = Cond0
 	;
-		error("cond_node_set_status: not a COND node")
+		throw(internal_error("cond_node_set_status", "not a COND node"))
 	),
 		% The goal status is the third field, so we pass 2
 		% (since argument numbers start from 0).
@@ -667,7 +675,7 @@ neg_node_set_status(Neg0, Status) = Neg :-
 	->
 		Neg1 = Neg0
 	;
-		error("neg_node_set_status: not a NEGE node")
+		throw(internal_error("neg_node_set_status", "not a NEGE node"))
 	),
 		% The goal status is the third field, so we pass 2
 		% (since argument numbers start from 0).
@@ -1039,20 +1047,20 @@ load_trace_node_map(Stream, Map, Key) -->
 		ResKey = ok(Key)
 	;
 		ResKey = eof,
-		error("load_trace_node_map: unexpected EOF")
+		throw(io_error("load_trace_node_map", "unexpected EOF"))
 	;
 		ResKey = error(Msg, _),
-		error(Msg)
+		throw(io_error("load_trace_node_map", Msg))
 	},
 	io__read(Stream, ResMap),
 	{
 		ResMap = ok(Map)
 	;
 		ResMap = eof,
-		error("load_trace_node_map: unexpected EOF")
+		throw(io_error("load_trace_node_map", "unexpected EOF"))
 	;
 		ResMap = error(Msg, _),
-		error(Msg)
+		throw(io_error("load_trace_node_map", Msg))
 	}.
 
 :- pragma export(save_trace_node_store(in, in, in, di, uo),
@@ -1153,7 +1161,8 @@ absolute_arg_num(user_head_var(N), atom(_, _, Args), ArgNum) :-
 	int::out) is det.
 
 head_var_num_to_arg_num([], _, _, _) :-
-	error("head_var_num_to_arg_num: nonexistent head_var_num").
+	throw(internal_error("head_var_num_to_arg_num",
+		"nonexistent head_var_num")).
 head_var_num_to_arg_num([Arg | Args], SearchUserHeadVarNum, CurArgNum,
 		ArgNum) :-
 	Arg = arg_info(UserVis, _, _),

@@ -145,7 +145,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module std_util, bool, require.
+:- import_module std_util, bool, exception.
 
 	% The analyser state records all of the information that needs
 	% to be remembered across multiple invocations of the analyser.
@@ -449,5 +449,5 @@ prime_suspect_add_evidence(Prime0, Suspect, yes, Prime) :-
 	Prime = prime_suspect(S, Evidence, M).
 
 prime_suspect_add_evidence(_, _, no, _) :-
-	error("prime_suspect_add_evidence: not evidence").
+	throw(internal_error("prime_suspect_add_evidence", "not evidence")).
 

@@ -21,7 +21,8 @@
 :- implementation.
 
 :- include_module frame, parse, util, sized_pretty.
-:- include_module declarative_analyser, declarative_oracle, declarative_user.
+:- include_module declarative_analyser, declarative_oracle, declarative_tree.
+:- include_module declarative_user.
 :- include_module tree234_cc.
 
 	% XXX these modules are more generally useful, but the

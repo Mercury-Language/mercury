@@ -65,7 +65,7 @@
 
 :- implementation.
 :- import_module mdb__declarative_user, mdb__tree234_cc, mdb__util.
-:- import_module bool, std_util, set, require.
+:- import_module bool, std_util, set.
 
 query_oracle(Questions, Response, Oracle0, Oracle) -->
 	{ get_oracle_kb(Oracle0, KB0) },
