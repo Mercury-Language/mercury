@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001-2002 The University of Melbourne.
+** Copyright (C) 2001-2002, 2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -66,7 +66,7 @@ MR_init_time_profile_method(void)
 			MR_time_method = "user-time";
 			break;
 #endif
-#if defined(ITIMER_VIRTUAL) && defined(SIGVTALRM)
+#if defined(ITIMER_PROF) && defined(SIGPROF)
 		case MR_profile_user_plus_system_time:
 			MR_itimer_type = ITIMER_PROF;
 			MR_itimer_sig  = SIGPROF;
