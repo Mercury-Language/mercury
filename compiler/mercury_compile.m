@@ -990,6 +990,10 @@ mercury_compile__maybe_base_type_infos(HLDS0, Verbose, Stats, HLDS) -->
 		{ HLDS = HLDS0 }
 	).
 
+	% We only add base_type_layouts if shared-one-or-two-cell
+	% type_infos are being used (the layouts refer to the
+	% base_type_infos, so will fail to link without them).
+
 :- pred mercury_compile__maybe_base_type_layouts(module_info, bool, bool,
 	module_info, io__state, io__state).
 :- mode mercury_compile__maybe_base_type_layouts(in, in, in, out, di, uo) is det.

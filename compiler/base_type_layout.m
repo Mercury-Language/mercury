@@ -8,6 +8,10 @@
 % to hold the base_type_layout structures of the types defined by the
 % current module.
 %
+% It requires that type_infos are generated using the
+% shared-one-of-two-cells option. This layout structures will
+% not be generated if this option is not specified.
+%
 % These global constants are needed only with when we are using accurate
 % garbage collection. It is up to the caller to check this. 
 % (When using other garbage collectors, defining these global constants 
@@ -31,7 +35,7 @@
 %        to find what sort of constant is here. The data word contains
 %        a representation of this sort of constant.
 %
-% Tag 0 - 	CONST   Word = 0	- constant (optimised common case)
+% Tag 0 - 	CONST   Word = 0	- unassigned
 % Tag 0 - 	CONST   Word = 1	- unused tag
 % Tag 0 - 	CONST   Word = 2	- string
 % Tag 0 - 	CONST   Word = 3	- float
@@ -39,14 +43,22 @@
 % Tag 0 - 	CONST   Word = 5	- character
 % Tag 0 - 	CONST   Word = 6	- univ
 % Tag 0 - 	CONST   Word = 7	- pred
-% 			Words 8 - 19 reserved for future use
-% Tag 0 - 	CONST   Word = 20+	- constant(s) 
-% 					  (number of constants sharing + 19)
+% 			Words 8 - 1024 reserved for future use
+% Tag 0 - 	CONST   Word = 1024+	- constant(s) 
+% 					  word is pointer to 
+% 					      - 1 or 0 (enumeration or not)
+% 					      - S, the number of constants
+%	 					sharing this tag
+%					      - S strings - functor names
 %
+% Note that tag 0 value 0 is presently unassigned. This may be used
+% in future for some common purpose.
 %
 % Tag 1 - 	SIMPLE  Word = pointer to argument vector
 %
-% SIMPLE: Argument vector contains N, then N pointers to pseudo-typeinfos.
+% SIMPLE: Argument vector contains N, then N pointers to pseudo-typeinfos,
+% 	  finally, a pointer to a string containing the name of this
+% 	  functor.
 %         No further indexing is required. The data word points to a
 %         vector of its argument data.
 %
@@ -262,7 +274,7 @@ base_type_layout__construct_base_type_layouts([BaseGenInfo | BaseGenInfos],
 	% Constants - these should be kept in check with the runtime
 	% definition.
 
-:- type const_sort 	--->	constant	% user defined
+:- type const_sort 	--->	unassigned
 			;	unused
 			;	string
 			;	float
@@ -272,7 +284,7 @@ base_type_layout__construct_base_type_layouts([BaseGenInfo | BaseGenInfos],
 			;	predicate.
 
 :- pred base_type_layout__const_value(const_sort::in, int::out) is det.
-base_type_layout__const_value(constant, 0).
+base_type_layout__const_value(unassigned, 0).
 base_type_layout__const_value(unused, 1).
 base_type_layout__const_value(string, 2).
 base_type_layout__const_value(float, 3).
@@ -281,13 +293,12 @@ base_type_layout__const_value(character, 5).
 base_type_layout__const_value(univ, 6).
 base_type_layout__const_value(predicate, 7).
 
-	% Number of builtin types (some in reserve) we want
-	% to have special treatment for.
-	%
-	% (float, int, string, univ, etc).
-
-:- pred base_type_layout__num_builtins(int::out) is det.
-base_type_layout__num_builtins(19).
+	% What value do we use to indicate an enum, and not an
+	% enum.
+	
+:- pred base_type_layout__enum_indicator(bool::in, int::out) is det.
+base_type_layout__enum_indicator(no, 0).
+base_type_layout__enum_indicator(yes, 1).
 
 	% Maximum value of a integer representation of a variable.
 	
@@ -335,16 +346,16 @@ base_type_layout__encode_mkword(LayoutInfo, Tag, Rval, Rvals) :-
 :- pred base_type_layout__encode_create(layout_info, int, list(maybe(rval)),
 		bool, int, list(maybe(rval))).
 :- mode base_type_layout__encode_create(in, in, in, in, in, out) is det.
-base_type_layout__encode_create(LayoutInfo, Tag, Rvals0, HasPtr, Label, 
+base_type_layout__encode_create(LayoutInfo, Tag, Rvals0, Unique, Label, 
 		Rvals) :-
 	base_type_layout__get_max_tags(LayoutInfo, MaxTags),
 	(
 		MaxTags < 4
 	->
 		Rvals = [yes(const(int_const(Tag))), 
-			yes(create(0, Rvals0, HasPtr, Label))]
+			yes(create(0, Rvals0, Unique, Label))]
 	;
-		Rvals = [yes(create(Tag, Rvals0, HasPtr, Label))]
+		Rvals = [yes(create(Tag, Rvals0, Unique, Label))]
 	).
 
 %---------------------------------------------------------------------------%
@@ -389,22 +400,37 @@ base_type_layout__construct_special_tagged(_ConsId - ConsTag, LayoutInfo,
 
 	% For enumerations:
 	%
-	% Tag is 0, rest of word is (number of builtins) + (number of
-	% 	ctors in enumeration)
+	% tag is 0, rest of word is pointer to 
+	% 	- enum indicator
+	% 	- S, the number of constants in this enum
+	% 	- S strings of constant names
 	
 :- pred base_type_layout__construct_enum(list(constructor),
 	layout_info, layout_info, list(maybe(rval))).
 :- mode base_type_layout__construct_enum(in, in, out, out) is det.
-base_type_layout__construct_enum(Ctors, LayoutInfo, LayoutInfo, Rvals) :-
-	list__length(Ctors, NumCtors0),
+base_type_layout__construct_enum(Ctors, LayoutInfo0, LayoutInfo, Rvals) :-
+	list__length(Ctors, NumCtors),
 	( 
-		NumCtors0 > 0
+		NumCtors > 0
 	->
-		base_type_layout__num_builtins(Builtins),
-		NumCtors is NumCtors0 + Builtins,
-		Rval0 = const(int_const(NumCtors)),
+		list__map(
+			lambda([Ctor::in, CtorRval::out] is det, (
+				Ctor = (SymName - _Args),
+				unqualify_name(SymName, CtorName),
+				CtorRval = yes(const(string_const(CtorName)))
+				)),
+			Ctors, CtorNameRvals),
+
+		base_type_layout__enum_indicator(yes, EnumIndicator),
+		Rval0 = yes(const(int_const(EnumIndicator))),
+
+		Rval1 = yes(const(int_const(NumCtors))),
+
+		base_type_layout__get_next_label(LayoutInfo0, NextLabel),
+		base_type_layout__incr_next_label(LayoutInfo0, LayoutInfo),
 		base_type_layout__tag_value_const(Tag),
-		base_type_layout__encode_mkword(LayoutInfo, Tag, Rval0, Rval),
+		base_type_layout__encode_create(LayoutInfo, Tag, 
+			[Rval0, Rval1 | CtorNameRvals], no, NextLabel, Rval),
 		base_type_layout__get_max_tags(LayoutInfo, MaxTags),
 		list__duplicate(MaxTags, Rval, RvalList),
 		list__condense(RvalList, Rvals)
@@ -439,10 +465,10 @@ base_type_layout__construct_eqv_type(Type, LayoutInfo0, LayoutInfo, Rvals) :-
 		% If it was a create cell (a type), then change its
 		% tag.
 
-		Rval0 = yes(create(_, TypeInfos, HasPtr, Label))
+		Rval0 = yes(create(_, TypeInfos, Unique, Label))
 	->
 		base_type_layout__encode_create(LayoutInfo, Tag, 
-			TypeInfos, HasPtr, Label, Rval)
+			TypeInfos, Unique, Label, Rval)
 	;
 		error("base_type_layout: unexpected rval generated")
 	),
@@ -522,8 +548,11 @@ base_type_layout__generate_rvals([Tag - ConsList | Rest], LayoutInfo0,
 
 	% For complicated constants:
 	%
-	% Tag 0, with number of builtins + number of functors sharing this
-	% tag as rest of word.
+	% tag is 0, rest of word is pointer to 
+	% 	- enum indicator
+	% 	- S, the number of constants sharing this tag 
+	% 	- S strings of constant names
+	
 
 :- pred base_type_layout__handle_comp_const(list(pair(cons_id, cons_tag)), 
 	layout_info, layout_info, list(maybe(rval))).
@@ -531,19 +560,36 @@ base_type_layout__generate_rvals([Tag - ConsList | Rest], LayoutInfo0,
 
 base_type_layout__handle_comp_const([], _, _, _) :-
 	error("base_type_layout: no constructors for complicated constant tag").
-base_type_layout__handle_comp_const([C | Cs], LayoutInfo, LayoutInfo, Rval) :-
-	list__length([C | Cs], NumCtors0), 		% Number of sharers
-	base_type_layout__num_builtins(Builtins),
-	NumCtors is NumCtors0 + Builtins,
+base_type_layout__handle_comp_const([C | Cs], LayoutInfo0, LayoutInfo, Rval) :-
+	list__length([C | Cs], NumCtors), 		% Number of sharers
+	Rval1 = yes(const(int_const(NumCtors))),
+
+	base_type_layout__enum_indicator(yes, EnumIndicator),
+	Rval0 = yes(const(int_const(EnumIndicator))),
+
+	list__map(
+	    lambda([ConsId::in, CtorRval::out] is det, (
+		( ConsId = cons(SymName, _Arity) - _ConsTag ->
+			unqualify_name(SymName, CtorName),
+			CtorRval = yes(const(string_const(CtorName)))
+		;
+			error("base_type_layout: constant has no constructor")
+		))),
+	    [C | Cs], CtorNameRvals),
+
+	base_type_layout__get_next_label(LayoutInfo0, NextLabel),
+	base_type_layout__incr_next_label(LayoutInfo0, LayoutInfo),
 	base_type_layout__tag_value(comp_const, Tag),
-	base_type_layout__encode_mkword(LayoutInfo, Tag, 
-		const(int_const(NumCtors)), Rval).
+	base_type_layout__encode_create(LayoutInfo, Tag, 
+		[Rval0, Rval1 | CtorNameRvals], no, NextLabel, Rval).
+
 
 	% For simple tags:
 	%
 	% Tag 1, with a pointer to an array containing:
-	%	N - the arity of this functor
-	%	N argument pseudo-typeinfos
+	%	N - the arity of this functor 
+	%	N argument pseudo-typeinfos 
+	%	- a string constant (the name of the functor)
 
 :- pred base_type_layout__handle_simple(list(pair(cons_id, cons_tag)), 
 	layout_info, layout_info, list(maybe(rval))).
@@ -553,28 +599,25 @@ base_type_layout__handle_simple([], _, _, _) :-
 	error("base_type_layout: no constructors for simple tag").
 base_type_layout__handle_simple([ConsId - _ConsTag | _], LayoutInfo0, 
 		LayoutInfo, Rval) :-
-	base_type_layout__get_cons_args(LayoutInfo0, ConsId, ConsArgs),
-	(
-		% if the constructor has no arguments
-		
-		ConsArgs = []
+	( 
+		ConsId = cons(SymName, _Arity)
 	->
-		LayoutInfo = LayoutInfo0,
-		base_type_layout__const_value(constant, Value),
-		base_type_layout__tag_value_const(Tag),
-		base_type_layout__encode_mkword(LayoutInfo, Tag, 
-			const(int_const(Value)), Rval)
+		unqualify_name(SymName, ConsString)
 	;
-		list__length(ConsArgs, NumArgs),
-		base_type_layout__get_next_label(LayoutInfo0, NextLabel),
-		base_type_layout__incr_next_label(LayoutInfo0, LayoutInfo1),
-		base_type_layout__generate_pseudo_type_infos(ConsArgs, 
-			LayoutInfo1, LayoutInfo, PseudoTypeInfos),
-		base_type_layout__tag_value(simple, Tag),
-		base_type_layout__encode_create(LayoutInfo, Tag, 
-			[yes(const(int_const(NumArgs))) | PseudoTypeInfos], 
-				no, NextLabel, Rval)
-	).
+		error("base_type_layout: simple tag with no constructor")
+	),
+	base_type_layout__get_cons_args(LayoutInfo0, ConsId, ConsArgs),
+	base_type_layout__get_next_label(LayoutInfo0, NextLabel),
+	base_type_layout__incr_next_label(LayoutInfo0, LayoutInfo1),
+	list__length(ConsArgs, NumArgs),
+	base_type_layout__generate_pseudo_type_infos(ConsArgs, 
+		LayoutInfo1, LayoutInfo, PseudoTypeInfos),
+	list__append(PseudoTypeInfos, 
+		[yes(const(string_const(ConsString)))], EndRvals),
+	base_type_layout__tag_value(simple, Tag),
+	base_type_layout__encode_create(LayoutInfo, Tag, 
+		[yes(const(int_const(NumArgs))) | EndRvals], no, NextLabel, 
+		Rval).
 
 	% For complicated tags:
 	%
@@ -684,7 +727,7 @@ base_type_layout__generate_pseudo_type_info(Type, LayoutInfo0, LayoutInfo,
 		type_util__var(Type, Var)
 	->
 		term__var_to_int(Var, VarInt),
-		base_type_layout__num_builtins(MaxVarInt),
+		base_type_layout__max_varint(MaxVarInt),
 		require(VarInt < MaxVarInt, 
 			"base_type_layout: type variable representation exceeds limit"),
 		Pseudo = yes(const(int_const(VarInt))),
