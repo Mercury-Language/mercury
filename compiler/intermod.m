@@ -812,19 +812,10 @@ intermod__write_pred_decls(ModuleInfo, [PredId | PredIds]) -->
 					ArgTypes, no, Context)
 	;
 		{ PredOrFunc = function },
-		{ list__length(ArgTypes, NumArgTypes) },
-		{ NumArgs is NumArgTypes - 1 },
-		(
-			{ list__split_list(NumArgs, ArgTypes, FuncArgTypes,
-						FuncRetTypeList) },
-			{ FuncRetTypeList = [FuncRetType] }
-		->
-			mercury_output_func_type(TVarSet,
-				qualified(Module, Name), FuncArgTypes,
-				FuncRetType, no, Context)
-		;
-			{ error("intermod__write_pred_decls") }
-		)
+		{ pred_args_to_func_args(ArgTypes, FuncArgTypes, FuncRetType) },
+		mercury_output_func_type(TVarSet,
+			qualified(Module, Name), FuncArgTypes,
+			FuncRetType, no, Context)
 	),
 	{ pred_info_procedures(PredInfo, Procs) },
 	{ pred_info_procids(PredInfo, ProcIds) },
@@ -860,19 +851,10 @@ intermod__write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds]) -->
 	{ varset__init(Varset) },
 	(
 		{ PredOrFunc = function },
-		{ list__length(ArgModes, NumArgModes) },
-		{ NumFuncArgs is NumArgModes - 1 },
-		(
-			{ list__split_list(NumFuncArgs, ArgModes,
-				FuncArgModes, FuncRetModeList) },
-			{ FuncRetModeList = [FuncRetMode] }
-		->
-			mercury_output_func_mode_decl(Varset, SymName,
-				FuncArgModes, FuncRetMode,
-				yes(Detism), Context)
-		;
-			{ error("intermod__write_pred_modes") }
-		)
+		{ pred_args_to_func_args(ArgModes, FuncArgModes, FuncRetMode) },
+		mercury_output_func_mode_decl(Varset, SymName,
+			FuncArgModes, FuncRetMode,
+			yes(Detism), Context)
 	;
 		{ PredOrFunc = predicate },
 		mercury_output_pred_mode_decl(Varset, SymName,
