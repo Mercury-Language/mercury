@@ -241,10 +241,10 @@ sub output_name {
 	$match_line = $_;
 	$match_line =~ s|\\|\\\\|g;   # replace `\' with `\\'
 	$match_line =~ s|/|\\/|g;     # replace `/' with `\/'
-	$match_line =~ s|\.|__|g;     # replace `.' module qualifiers with `__'
 
 	# $src_name holds the name as it was in the original source
 	$src_name = $name;
+	$name =~ s|\.|__|g;     # replace `.' module qualifiers with `__'
 
 	# output a tag for the fully-qualified name
 	if (substr($name, 0, length($module)) ne $module) {
