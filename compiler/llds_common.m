@@ -74,7 +74,18 @@ llds_common__cell_pairs_to_modules([], _, []).
 llds_common__cell_pairs_to_modules([CellContent - CellInfo | CellPairs],
 		BaseName, [Common | Commons]) :-
 	CellInfo = cell_info(VarNum),
-	CellContent = Args - ArgTypes,
+	CellContent = Args0 - ArgTypes0,
+		
+		% If we have an empty data structure place a dummy field
+		% in it, so that the generated C structure isn't empty.
+	( Args0 = [] ->
+		Args = [yes(const(int_const(-1)))],
+		ArgTypes = uniform(yes(integer))
+	;
+		Args = Args0,
+		ArgTypes = ArgTypes0
+	),
+
 	Common = comp_gen_c_data(BaseName, common(VarNum), no,
 		Args, ArgTypes, []),
 	llds_common__cell_pairs_to_modules(CellPairs, BaseName, Commons).
