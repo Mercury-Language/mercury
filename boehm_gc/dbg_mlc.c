@@ -60,7 +60,7 @@ ptr_t p;
 # include <stdlib.h>
 
 # if defined(LINUX) || defined(SUNOS4) || defined(SUNOS5) \
-     || defined(HPUX) || defined(IRIX) || defined(OSF1)
+     || defined(HPUX) || defined(IRIX5) || defined(OSF1)
 #   define RANDOM() random()
 # else
 #   define RANDOM() (long)rand()
@@ -228,6 +228,8 @@ ptr_t p;
     
 #endif /* KEEP_BACK_PTRS */
 
+# define CROSSES_HBLK(p, sz) \
+	(((word)(p + sizeof(oh) + sz - 1) ^ (word)p) >= HBLKSIZE)
 /* Store debugging info into p.  Return displaced pointer. */
 /* Assumes we don't hold allocation lock.		   */
 ptr_t GC_store_debug_info(p, sz, string, integer)
@@ -243,6 +245,8 @@ word integer;
     /* But that's expensive.  And this way things should only appear	*/
     /* inconsistent while we're in the handler.				*/
     LOCK();
+    GC_ASSERT(GC_size(p) >= sizeof(oh) + sz);
+    GC_ASSERT(!(SMALL_OBJ(sz) && CROSSES_HBLK(p, sz)));
 #   ifdef KEEP_BACK_PTRS
       ((oh *)p) -> oh_back_ptr = HIDE_BACK_PTR(NOT_MARKED);
 #   endif
@@ -275,6 +279,8 @@ word integer;
     /* There is some argument that we should disable signals here.	*/
     /* But that's expensive.  And this way things should only appear	*/
     /* inconsistent while we're in the handler.				*/
+    GC_ASSERT(GC_size(p) >= sizeof(oh) + sz);
+    GC_ASSERT(!(SMALL_OBJ(sz) && CROSSES_HBLK(p, sz)));
 #   ifdef KEEP_BACK_PTRS
       ((oh *)p) -> oh_back_ptr = HIDE_BACK_PTR(NOT_MARKED);
 #   endif
@@ -436,6 +442,62 @@ void GC_start_debugging()
     return (GC_store_debug_info(result, (word)lb, s, (word)i));
 }
 
+# ifdef __STDC__
+    GC_PTR GC_debug_malloc_ignore_off_page(size_t lb, GC_EXTRA_PARAMS)
+# else
+    GC_PTR GC_debug_malloc_ignore_off_page(lb, s, i)
+    size_t lb;
+    char * s;
+    int i;
+#   ifdef GC_ADD_CALLER
+	--> GC_ADD_CALLER not implemented for K&R C
+#   endif
+# endif
+{
+    GC_PTR result = GC_malloc_ignore_off_page(lb + DEBUG_BYTES);
+    
+    if (result == 0) {
+        GC_err_printf1("GC_debug_malloc_ignore_off_page(%ld) returning NIL (",
+        	       (unsigned long) lb);
+        GC_err_puts(s);
+        GC_err_printf1(":%ld)\n", (unsigned long)i);
+        return(0);
+    }
+    if (!GC_debugging_started) {
+    	GC_start_debugging();
+    }
+    ADD_CALL_CHAIN(result, ra);
+    return (GC_store_debug_info(result, (word)lb, s, (word)i));
+}
+
+# ifdef __STDC__
+    GC_PTR GC_debug_malloc_atomic_ignore_off_page(size_t lb, GC_EXTRA_PARAMS)
+# else
+    GC_PTR GC_debug_malloc_atomic_ignore_off_page(lb, s, i)
+    size_t lb;
+    char * s;
+    int i;
+#   ifdef GC_ADD_CALLER
+	--> GC_ADD_CALLER not implemented for K&R C
+#   endif
+# endif
+{
+    GC_PTR result = GC_malloc_atomic_ignore_off_page(lb + DEBUG_BYTES);
+    
+    if (result == 0) {
+        GC_err_printf1("GC_debug_malloc_atomic_ignore_off_page(%ld)"
+		       " returning NIL (", (unsigned long) lb);
+        GC_err_puts(s);
+        GC_err_printf1(":%ld)\n", (unsigned long)i);
+        return(0);
+    }
+    if (!GC_debugging_started) {
+    	GC_start_debugging();
+    }
+    ADD_CALL_CHAIN(result, ra);
+    return (GC_store_debug_info(result, (word)lb, s, (word)i));
+}
+
 # ifdef DBG_HDRS_ALL
 /* 
  * An allocation function for internal use.
@@ -454,7 +516,7 @@ void GC_start_debugging()
         	       (unsigned long) lb);
         return(0);
     }
-    ADD_CALL_CHAIN(result, ra);
+    ADD_CALL_CHAIN(result, GC_RETURN_ADDR);
     return (GC_store_debug_info_inner(result, (word)lb, "INTERNAL", (word)0));
   }
 
@@ -468,7 +530,7 @@ void GC_start_debugging()
         	       (unsigned long) lb);
         return(0);
     }
-    ADD_CALL_CHAIN(result, ra);
+    ADD_CALL_CHAIN(result, GC_RETURN_ADDR);
     return (GC_store_debug_info_inner(result, (word)lb, "INTERNAL", (word)0));
   }
 # endif
@@ -798,14 +860,18 @@ unsigned GC_n_smashed = 0;
     ptr_t smashed;
 #endif
 {
+    GC_ASSERT(GC_is_marked(GC_base(smashed)));
     GC_smashed[GC_n_smashed] = smashed;
     if (GC_n_smashed < MAX_SMASHED - 1) ++GC_n_smashed;
+      /* In case of overflow, we keep the first MAX_SMASHED-1	*/
+      /* entries plus the last one.				*/
+    GC_have_errors = TRUE;
 }
 
 /* Print all objects on the list.  Clear the list.	*/
 void GC_print_all_smashed_proc ()
 {
-    int i;
+    unsigned i;
 
     GC_ASSERT(!I_HOLD_LOCK());
     if (GC_n_smashed == 0) return;
@@ -881,12 +947,12 @@ struct closure {
 # endif
 {
     struct closure * result =
-#		ifdef DBG_HDRS_ALL
-    		  (struct closure *) GC_debug_malloc(sizeof (struct closure),
-						     GC_EXTRAS);
-#		else
-    		  (struct closure *) GC_malloc(sizeof (struct closure));
-#		endif
+#   ifdef DBG_HDRS_ALL
+      (struct closure *) GC_debug_malloc(sizeof (struct closure),
+				         GC_EXTRAS);
+#   else
+      (struct closure *) GC_malloc(sizeof (struct closure));
+#   endif
     
     result -> cl_fn = fn;
     result -> cl_data = data;
@@ -947,7 +1013,7 @@ GC_PTR *ocd;
     ptr_t base = GC_base(obj);
     if (0 == base || (ptr_t)obj - base != sizeof(oh)) {
         GC_err_printf1(
-	    "GC_register_finalizer called with non-base-pointer 0x%lx\n",
+	    "GC_debug_register_finalizer called with non-base-pointer 0x%lx\n",
 	    obj);
     }
     if (0 == fn) {
@@ -979,7 +1045,7 @@ GC_PTR *ocd;
     ptr_t base = GC_base(obj);
     if (0 == base || (ptr_t)obj - base != sizeof(oh)) {
         GC_err_printf1(
-	  "GC_register_finalizer_no_order called with non-base-pointer 0x%lx\n",
+	  "GC_debug_register_finalizer_no_order called with non-base-pointer 0x%lx\n",
 	  obj);
     }
     if (0 == fn) {
@@ -1012,7 +1078,7 @@ GC_PTR *ocd;
     ptr_t base = GC_base(obj);
     if (0 == base || (ptr_t)obj - base != sizeof(oh)) {
         GC_err_printf1(
-	    "GC_register_finalizer_ignore_self called with non-base-pointer 0x%lx\n",
+	    "GC_debug_register_finalizer_ignore_self called with non-base-pointer 0x%lx\n",
 	    obj);
     }
     if (0 == fn) {

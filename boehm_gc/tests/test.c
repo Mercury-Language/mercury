@@ -70,6 +70,7 @@
 
 # ifdef GC_WIN32_THREADS
 #   ifndef MSWINCE
+      /* FIXME - Why is this here? */
 #     include <process.h>
 #     define GC_CreateThread(a,b,c,d,e,f) ((HANDLE) _beginthreadex(a,b,c,d,e,f))
 #   endif
@@ -376,6 +377,9 @@ sexpr x, y;
 sexpr reverse(x)
 sexpr x;
 {
+#   ifdef TEST_WITH_SYSTEM_MALLOC
+      malloc(100000);
+#   endif
     return( reverse1(x, nil) );
 }
 
@@ -1245,6 +1249,19 @@ void run_one_test()
     		"GC_is_valid_displacement produced incorrect result\n");
 	FAIL;
       }
+#     if defined(__STDC__) && !defined(MSWIN32) && !defined(MSWINCE)
+        /* Harder to test under Windows without a gc.h declaration.  */
+        {
+	  size_t i;
+	  extern void *GC_memalign();
+
+	  GC_malloc(17);
+	  for (i = sizeof(GC_word); i < 512; i *= 2) {
+	    GC_word result = (GC_word) GC_memalign(i, 17);
+	    if (result % i != 0 || result == 0 || *(int *)result != 0) FAIL;
+	  } 
+	}
+#     endif
 #     ifndef ALL_INTERIOR_POINTERS
 #      if defined(RS6000) || defined(POWERPC)
         if (!TEST_FAIL_COUNT(1)) {
@@ -1732,7 +1749,8 @@ main()
 	}
 #   endif	/* GC_HPUX_THREADS */
     pthread_attr_init(&attr);
-#   if defined(GC_IRIX_THREADS) || defined(GC_FREEBSD_THREADS)
+#   if defined(GC_IRIX_THREADS) || defined(GC_FREEBSD_THREADS) \
+    	|| defined(GC_MACOSX_THREADS)
     	pthread_attr_setstacksize(&attr, 1000000);
 #   endif
     n_tests = 0;

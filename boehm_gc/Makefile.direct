@@ -74,8 +74,11 @@ VPATH= $(srcdir)
 
 # To build the parallel collector on Linux, add to the above:
 # -DGC_LINUX_THREADS -DPARALLEL_MARK -DTHREAD_LOCAL_ALLOC
-# To build the parallel collector n a static library on HP/UX, add to the above:
+# To build the parallel collector in a static library on HP/UX,
+# add to the above:
 # -DGC_HPUX_THREADS -DPARALLEL_MARK -DTHREAD_LOCAL_ALLOC -DUSE_HPUX_TLS -D_POSIX_C_SOURCE=199506L
+# To build the thread-safe collector on Tru64, add to the above:
+# -pthread -DGC_OSF1_THREADS
 
 # Mercury-specific CFLAGS:
 CFLAGS= -I$(srcdir)/include \
@@ -118,8 +121,11 @@ HOSTCFLAGS=$(CFLAGS)
 # -DGC_OSF1_THREADS enables support for Tru64 pthreads.  Untested.
 # -DGC_FREEBSD_THREADS enables support for FreeBSD pthreads.  Untested.
 #   Appeared to run into some underlying thread problems.
+# -DGC_MACOSX_THREADS enables support for Mac OS X pthreads.  Untested.
 # -DGC_DGUX386_THREADS enables support for DB/UX on I386 threads.
 #   See README.DGUX386.
+# -DGC_THREADS should set the appropriate one of the above macros.
+#   It assumes pthreads for Solaris.
 # -DALL_INTERIOR_POINTERS allows all pointers to the interior
 #   of objects to be recognized.  (See gc_priv.h for consequences.)
 #   Alternatively, GC_all_interior_pointers can be set at process
@@ -153,13 +159,15 @@ HOSTCFLAGS=$(CFLAGS)
 #   See gc_cpp.h for details.  No effect on the C part of the collector.
 #   This is defined implicitly in a few environments.  Must also be defined
 #   by clients that use gc_cpp.h.
-# -DREDIRECT_MALLOC=X causes malloc, realloc, and free to be
-#   defined as aliases for X, GC_realloc, and GC_free, respectively.
+# -DREDIRECT_MALLOC=X causes malloc to be defined as alias for X.
+#   Unless the following macros are defined, realloc is also redirected
+#   to GC_realloc, and free is redirected to GC_free.
 #   Calloc and strdup are redefined in terms of the new malloc.  X should
 #   be either GC_malloc or GC_malloc_uncollectable, or
 #   GC_debug_malloc_replacement.  (The latter invokes GC_debug_malloc
 #   with dummy source location information, but still results in
-#   properly remembered call stacks on Linux/X86 and Solaris/SPARC.)
+#   properly remembered call stacks on Linux/X86 and Solaris/SPARC.
+#   It requires that the following two macros also be used.)
 #   The former is occasionally useful for working around leaks in code
 #   you don't want to (or can't) look at.  It may not work for
 #   existing code, but it often does.  Neither works on all platforms,
@@ -171,6 +179,9 @@ HOSTCFLAGS=$(CFLAGS)
 #   The canonical use is -DREDIRECT_REALLOC=GC_debug_realloc_replacement,
 #   together with -DREDIRECT_MALLOC=GC_debug_malloc_replacement to
 #   generate leak reports with call stacks for both malloc and realloc.
+#   This also requires the following:
+# -DREDIRECT_FREE=X causes free to be redirected to X.  The
+#   canonical use is -DREDIRECT_FREE=GC_debug_free.
 # -DIGNORE_FREE turns calls to free into a noop.  Only useful with
 #   -DREDIRECT_MALLOC.
 # -DNO_DEBUGGING removes GC_dump and the debugging routines it calls.
@@ -258,6 +269,9 @@ HOSTCFLAGS=$(CFLAGS)
 # -DUSE_3DNOW_PREFETCH causes the collector to issue AMD 3DNow style
 #   prefetch instructions.  Same restrictions as USE_I686_PREFETCH.
 #   Minimally tested.  Didn't appear to be an obvious win on a K6-2/500.
+# -DUSE_PPC_PREFETCH causes the collector to issue PowerPC style
+#   prefetch instructions.  No effect except on PowerPC OS X platforms.
+#   Performance impact untested.
 # -DGC_USE_LD_WRAP in combination with the old flags listed in README.linux
 #   causes the collector some system and pthread calls in a more transparent
 #   fashion than the usual macro-based approach.  Requires GNU ld, and
@@ -289,6 +303,21 @@ HOSTCFLAGS=$(CFLAGS)
 # -DHANDLE_FORK attempts to make GC_malloc() work in a child process fork()ed
 #   from a multithreaded parent.  Currently only supported by linux_threads.c.
 #   (Similar code should work on Solaris or Irix, but it hasn't been tried.)
+# -DTEST_WITH_SYSTEM_MALLOC causes gctest to allocate (and leak) large chunks
+#   of memory with the standard system malloc.  This will cause the root
+#   set and collected heap to grow significantly if malloced memory is
+#   somehow getting traced by the collector.  This has no impact on the
+#   generated library; it only affects the test.
+# -DPOINTER_MASK=0x... causes candidate pointers to be ANDed with the
+#   given mask before being considered.  If either this or the following
+#   macro is defined, it will be assumed that all pointers stored in
+#   the heap need to be processed this way.  Stack and register pointers
+#   will be considered both with and without processing.
+#   These macros are normally needed only to support systems that use
+#   high-order pointer tags. EXPERIMENTAL.
+# -DPOINTER_SHIFT=n causes the collector to left shift candidate pointers
+#   by the indicated amount before trying to interpret them.  Applied
+#   after POINTER_MASK. EXPERIMENTAL.  See also the preceding macro.
 #
 
 CXXFLAGS= $(CFLAGS) 
@@ -320,7 +349,7 @@ SRCS= $(CSRCS) mips_sgi_mach_dep.S rs6000_mach_dep.s alpha_mach_dep.S \
     include/private/specific.h powerpc_macosx_mach_dep.s \
     include/leak_detector.h include/gc_amiga_redirects.h \
     include/gc_pthread_redirects.h ia64_save_regs_in_stack.s \
-    $(CORD_SRCS)
+    include/gc_config_macros.h $(CORD_SRCS)
 
 DOC_FILES= README.QUICK doc/README.Mac doc/README.MacOSX doc/README.OS2 \
 	doc/README.amiga doc/README.cords doc/debugging.html \
@@ -330,7 +359,8 @@ DOC_FILES= README.QUICK doc/README.Mac doc/README.MacOSX doc/README.OS2 \
         doc/README.contributors doc/README.changes doc/gc.man \
 	doc/README.environment doc/tree.html doc/gcdescr.html \
 	doc/README.autoconf doc/README.macros doc/README.ews4800 \
-	doc/README.DGUX386 doc/README.arm.cross
+	doc/README.DGUX386 doc/README.arm.cross doc/leak.html \
+	doc/scale.html doc/gcinterface.html
 
 TESTS= tests/test.c tests/test_cpp.cc tests/trace_test.c \
 	tests/leak_test.c tests/thread_leak_test.c
@@ -338,6 +368,8 @@ TESTS= tests/test.c tests/test_cpp.cc tests/trace_test.c \
 GNU_BUILD_FILES= configure.in Makefile.am configure acinclude.m4 \
 		 libtool.m4 install-sh configure.host Makefile.in \
 		 ltconfig aclocal.m4 config.sub config.guess \
+		 include/Makefile.am include/Makefile.in \
+		 doc/Makefile.am doc/Makefile.in \
 		 ltmain.sh mkinstalldirs depcomp missing
 
 OTHER_MAKEFILES= OS2_MAKEFILE NT_MAKEFILE NT_THREADS_MAKEFILE gc.mak \
@@ -395,9 +427,9 @@ mach_dep.o $(SRCS)
 $(OBJS) tests/test.o dyn_load.o dyn_load_sunos53.o: \
     $(srcdir)/include/private/gc_priv.h \
     $(srcdir)/include/private/gc_hdrs.h $(srcdir)/include/private/gc_locks.h \
-    $(srcdir)/include/gc.h \
+    $(srcdir)/include/gc.h $(srcdir)/include/gc_pthread_redirects.h \
     $(srcdir)/include/private/gcconfig.h $(srcdir)/include/gc_typed.h \
-    $(LIBGC_DLL_H) Makefile
+    $(srcdir)/include/gc_config_macros.h $(LIBGC_DLL_H) Makefile
 # The dependency on Makefile is needed.  Changing
 # options such as -DSILENT affects the size of GC_arrays,
 # invalidating all .o files that rely on gc_priv.h
@@ -526,7 +558,8 @@ mach_dep.o: $(srcdir)/mach_dep.c $(srcdir)/mips_sgi_mach_dep.S \
 	    $(srcdir)/ia64_save_regs_in_stack.s \
 	    $(srcdir)/sparc_netbsd_mach_dep.s $(UTILS)
 	rm -f mach_dep.o
-	./if_mach MIPS IRIX5 $(AS) -o mach_dep.o $(srcdir)/mips_sgi_mach_dep.S
+	./if_mach MIPS IRIX5 $(CC) -E $(srcdir)/mips_sgi_mach_dep.S \
+	 | ./if_mach MIPS IRIX5 grep -v "^\#" > $(srcdir)/mips_sgi_mach_dep.s
 	./if_mach MIPS RISCOS $(AS) -o mach_dep.o $(srcdir)/mips_ultrix_mach_dep.s
 	./if_mach MIPS ULTRIX $(AS) -o mach_dep.o $(srcdir)/mips_ultrix_mach_dep.s
 	./if_mach POWERPC MACOSX $(AS) -o mach_dep.o $(srcdir)/powerpc_macosx_mach_dep.s
@@ -598,7 +631,7 @@ if_not_there: $(srcdir)/if_not_there.c
 clean: 
 	rm -f gc.a *.o *.exe tests/*.o gctest gctest_dyn_link test_cpp \
 	      setjmp_test  mon.out gmon.out a.out core if_not_there if_mach \
-	      threadlibs $(CORD_OBJS) cord/cordtest cord/de
+	      threadlibs $(CORD_OBJS) cord/cordtest cord/de mips_sgi_mach_dep.s
 	-rm -f *~
 
 gctest: tests/test.o gc.a $(UTILS)
