@@ -1,12 +1,16 @@
-The Mercury test suite is (dis)organized into the following subdirectories.
-To run the tests in a particular subdirectory, cd to that directory
-and then do `mmake depend; mmake check'.
+The Mercury test suite is (dis)organized into several subdirectories.
+Each subdirectory has a script named "runtests" that runs the tests
+in that subdirectory; these indicate the presence of any errors by
+returning a nonzero exit status. The runtests script in this directory
+invokes the runtests scripts in all the subdirectories.
+
+Both the bootcheck script and the nightly script use the main runtests
+script to run all the tests.
 
 benchmarks
 	This directory contains Mercury versions of the benchmarks.
 	These tests work by comparing the output of the Mercury and
 	the NU-Prolog versions.
-	These tests are run automatically on a regular basis.
 
 general
 	This directory is for general test cases.
@@ -16,26 +20,27 @@ general
 	goes in here.)
 	These tests work by comparing the output of the Mercury and
 	the NU-Prolog versions.
-	These tests are run automatically on a regular basis.
 
 hard_coded
 	This directory is for tests of features that don't work in
 	NU-Prolog.  The expected output of the program has to be
 	hard-coded in a hand-written `.exp' file, rather having the
 	`.exp' file be generated automatically using NU-Prolog.
-	These tests are run automatically on a regular basis.
 
 valid
 	This directory is for test cases that are not complete
-	programs.  `mmake check' just checks that the files compile.
-	***These tests are not yet run automatically.***
+	programs. We just check that the files compile.
 
 invalid
 	This directory is for test cases that are invalid
-	programs.  `mmake check' should check that the files do
-	not compile - but automation of this is not yet implemented.
-	***These tests are not yet run automatically.***
+	programs. We check that the files do *not* compile.
 
 warnings
 	This directory is for tests of compiler warnings. These work by
-	comparing the warnings given in the hand-written '.exp' file. 
+	comparing the warnings emitted by the compiler with those given
+	in the hand-written `.exp' file. 
+
+The file NUPROLOG contains the name(s) of the host(s) that generate
+the expected output files for the benchmark and general directories.
+To regenerate these files, execute the "generate_exp" script in this
+directory.

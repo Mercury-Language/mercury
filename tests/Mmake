@@ -2,6 +2,8 @@
 
 MGNUCFLAGS=-g
 
+HAVE_NUPROLOG=$(shell if grep `uname -n` ../NUPROLOG > /dev/null 2>&1 ; then echo yes ; else echo no ; fi)
+
 #-----------------------------------------------------------------------------#
 
 # .PRECIOUS: %.mod %.c %.o %_init.c %.no %.nu %_init.nl %_init.no
@@ -11,8 +13,10 @@ MGNUCFLAGS=-g
 %.out: %
 	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1;
 
+ifeq ($(HAVE_NUPROLOG),yes)
 %.exp: %.nu
 	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1;
+endif
 
 %.res: %.exp %.out
 	-rm -f $@
@@ -20,7 +24,7 @@ MGNUCFLAGS=-g
 
 #-----------------------------------------------------------------------------#
 
-clean: clean_out clean_exp clean_res
+clean: clean_out clean_res
 
 clean_mc: clean_c clean_o clean_out clean_res
 
@@ -34,3 +38,6 @@ clean_res:
 	rm -f *.res
 
 #-----------------------------------------------------------------------------#
+
+test:
+	@echo $(HAVE_NUPROLOG)
