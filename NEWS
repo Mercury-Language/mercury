@@ -74,6 +74,11 @@ NEWS for Mercury release 0.6
   that would add considerable complexity to the syntax, and would be
   of arguable utility, so we do not anticipate lifting that restriction.)
 
+* We now support defining types with the same name in different modules.
+
+  Previously this resulted in multiply defined symbol errors in certain
+  circumstances, e.g. when profiling.
+
 * We have removed the limitations on the number and order of arguments in
   higher-order predicate calls.
 
@@ -93,7 +98,7 @@ NEWS for Mercury release 0.6
 
 * We now support reverse mode arithmetic.
 
-  This means that a goal such as A is B + C can be used not only to compute
+  This means that a goal such as `A is B + C' can be used not only to compute
   A from B and C, but also to compute B from A and C, or to compute C from
   A and B.
 
@@ -153,7 +158,7 @@ NEWS for Mercury release 0.6
   - The code generator generates special code for dense switches in
     which all the output variables are constant terms.  Instead of
     generating dense jump tables, it puts the answers in static constant
-    arrays, and uses retrieve them using array indexing, avoiding
+    arrays, and retrieves them using array indexing, avoiding
     an expensive jump and reducing code size.
 
   - The code generator now emits better code for constructing deeply nested
@@ -202,6 +207,10 @@ NEWS for Mercury release 0.6
   - We have added some additional predicates for handling association lists:
     assoc_list__search/3 and assoc_list__remove/4.
 
+  - There are a few new predicates for converting floats to ints:
+    float__ceiling_to_int/2, float__floor_to_int/2
+    float__round_to_int/2, and float__truncate_to_int/2.
+
   - There are quite a few changes to the graph module.  The interface has been
     made more consistent with the rest of the library.  The predicate
     graph__lookup_node/3 has been replaced by two predicates:
@@ -213,3 +222,9 @@ NEWS for Mercury release 0.6
     conform to our general naming convention.
 
   - We have removed the (undocumented) library predicate list__map_maybe/3.
+
+  - The set module is now implemented using sorted lists rather than
+    unsorted lists.  (The interface is still the same.)  The old
+    unsorted lists representation is still available, in the
+    set_unordlist module.
+
