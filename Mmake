@@ -170,7 +170,9 @@ tar:
 	-rm -f config.status config.cache config.log configure.log
 	-rm -f runtime/conf.h
 	-rm -f Mmake.common
-	cd .. && (tar -cf - mercury-0.5 | gzip -9 > mercury-0.5.tar.gz)
+	cd .. && (mv mercury mercury-0.6; \
+		tar -cf - mercury-0.6 | gzip -9 > mercury-0.6.tar.gz; \
+		mv mercury-0.6 mercury)
 
 #-----------------------------------------------------------------------------#
 
