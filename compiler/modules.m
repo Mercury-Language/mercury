@@ -1892,10 +1892,10 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		io__write_strings(DepStream, ["\n\n",
 			OptDateFileName, " ",
 			TransOptDateFileName, " ",
+			ErrFileName, " ",
 			CDateFileName, " ",
 			AsmDateFileName, " ",
 			PicAsmDateFileName, " ",
-			ErrFileName, " ",
 			SplitObjPattern, " ",
 			RLOFileName, " ",
 			ILDateFileName, " : ",
@@ -1923,17 +1923,21 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			Intermod),
 		globals__io_lookup_accumulating_option(intermod_directories,
 			IntermodDirs),
-		( { Intermod = yes; UseOptFiles = yes } ->
+		( { Intermod = yes ; UseOptFiles = yes } ->
 			io__write_strings(DepStream, [
 				"\n\n", 
-				CDateFileName, " ",
 				TransOptDateFileName, " ",
-				ErrFileName, " ", 
-				SplitObjPattern, " :"
+				ErrFileName, " ",
+				CDateFileName, " ",
+				AsmDateFileName, " ",
+				PicAsmDateFileName, " ",
+				SplitObjPattern, " ",
+				RLOFileName, " ",
+				ILDateFileName, " : "
 			]),
 
-			% The .c file only depends on the .opt files from 
-			% the current directory, so that inter-module
+			% The target (e.g. C) file only depends on the .opt files
+			% from  the current directory, so that inter-module
 			% optimization works when the .opt files for the 
 			% library are unavailable. This is only necessary 
 			% because make doesn't allow conditional dependencies.
@@ -1955,9 +1959,13 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 					".opt", DepStream),
 				io__write_strings(DepStream, [
 					"\n\n", 
+					ErrFileName, " ",
 					CDateFileName, " ",
-					ErrFileName, " ", 
-					SplitObjPattern, " :"
+					AsmDateFileName, " ",
+					PicAsmDateFileName, " ",
+					SplitObjPattern, " ",
+					RLOFileName, " ",
+					ILDateFileName, " : "
 				]),
 				write_dependencies_list(TransOptDeps,
 					".trans_opt", DepStream)
