@@ -1,15 +1,17 @@
 
 We are pleased to announce the release of version 0.6 of the Mercury system.
 
-Mercury is a new, purely declarative logic/functional programming language.
-Like Prolog and other existing logic programming languages, it is a
-very high-level language that allows programmers to concentrate on the
-problem rather than the low-level details such as memory management. 
-Unlike Prolog, which is oriented towards exploratory programming,
-Mercury is designed for the construction of large, reliable, efficient
-software systems by teams of programmers.  As a consequence,
-programming in Mercury has a different flavour than programming in
-Prolog.
+Mercury is a new general-purpose programming language, designed
+and implemented by a small group of researchers at the University
+of Melbourne, Australia.  Mercury is based on the paradigm of
+pure declarative equational programming, and was designed to be
+useful for the development of large and robust ``real-world'' applications.
+It improves on existing logic programming languages by providing
+increased productivity, reliability and efficiency, and by avoiding the
+need for non-logical program constructs.  Mercury provides the
+traditional logic programming syntax, but also allows the
+syntactic convenience of user-defined functions, smoothly integrating
+logic and functional programming into a single paradigm.
 
 For a list of what's new in release 0.6, see the NEWS file.
 
