@@ -240,7 +240,7 @@ call_gen__generate_semidet_builtin(PredId, _ProcId, Args, Code) -->
 		code_info__get_variable_register(Y, YLval),
 		code_info__get_failure_cont(FallThrough),
 		{ CodeT = node([
-			if_not_val(binop(Op, lval(XLval), lval(YLval)),
+			if_val(not(binop(Op, lval(XLval), lval(YLval))),
 								FallThrough) -
 				"Perform test and fall though on failure"
 		]) },

@@ -2130,7 +2130,7 @@ code_info__generate_test_and_fail(Rval, Code) -->
 	;
 		code_info__failure_cont(Cont)
 	->
-		{ Code = node([ if_not_val(Rval, Cont) - "" ]) }
+		{ Code = node([ if_val(not(Rval), Cont) - "" ]) }
 	;
 		{ error("code_info__generate_test_and_fail: missing failure continuation") }
 	).
@@ -2147,7 +2147,7 @@ code_info__generate_cond_branch(Rval, YesLab, NoLab, Code) -->
 
 code_info__generate_icond_branch(Rval, YesLab, NoLab, Code) -->
 	{ Code = node([
-		if_not_val(Rval, NoLab) - "",
+		if_val(not(Rval), NoLab) - "",
 		goto(YesLab) - ""
 	]) }.
 

@@ -42,17 +42,8 @@
 			;	label(label)
 			;	goto(label)
 			;	c_code(string)	% insert arbitrary C code
-			;	test(rval, rval, label)
-					% branch to label if
-					% equality test fails
-			;	if_tag(lval, tag, label)
-					% branch to label if tag doesn't
-					% match reg's tag.
 			;	if_val(rval, label)
 					% if rval evaluates to TRUE
-					% then branch to label
-			;	if_not_val(rval, label)
-					% if rval evaluates to FALSE
 					% then branch to label
 			;	incr_sp(int)
 			;	decr_sp(int)
@@ -81,6 +72,7 @@
 			;	sconst(string)		% string constants
 			;       field(tag, rval, int)
 			;	binop(operator, rval, rval)
+			;	not(rval)
 			;	true
 			;	false
 			;	unused.
@@ -118,8 +110,6 @@
 
 	% Given a 'c_file' structure, open the appropriate .mod file
 	% and output the code into that file.
-	% (We use .mod instead of .mod to distinguish the compiler-generated
-	% files from the hand-written ones.)
 
 :- pred output_c_file(c_file, io__state, io__state).
 :- mode output_c_file(in, di, uo) is det.
@@ -329,37 +319,9 @@ output_instruction(goto(Label)) -->
 	output_label(Label),
 	io__write_string(");").
 
-output_instruction(test(Rval1, Rval2, Label)) -->
-	io__write_string("\t"),
-	io__write_string("if(("),
-	output_rval(Rval1),
-	io__write_string(") != ("),
-	output_rval(Rval2),
-	io__write_string("))\n\t\tGOTO_LABEL("),
-	output_label(Label),
-	io__write_string(");").
-
-output_instruction(if_tag(Reg, Tag, Label)) -->
-	io__write_string("\t"),
-	io__write_string("if(tag("),
-	output_lval(Reg),
-	io__write_string(") != "),
-	output_tag(Tag),
-	io__write_string(") GOTO_LABEL("),
-	output_label(Label),
-	io__write_string(");").
-
 output_instruction(if_val(Rval, Label)) -->
 	io__write_string("\t"),
 	io__write_string("if( "),
-	output_rval(Rval),
-	io__write_string(" ) \n\t\tGOTO_LABEL("),
-	output_label(Label),
-	io__write_string(");").
-
-output_instruction(if_not_val(Rval, Label)) -->
-	io__write_string("\t"),
-	io__write_string("if(! "),
 	output_rval(Rval),
 	io__write_string(" ) \n\t\tGOTO_LABEL("),
 	output_label(Label),
@@ -522,6 +484,10 @@ output_rval(field(Tag, Rval, Field)) -->
 	io__write_string(")").
 output_rval(lval(Lval)) -->
 	output_lval(Lval).
+output_rval(not(Rval)) -->
+	io__write_string("(! "),
+	output_rval(Rval),
+	io__write_string(")").
 output_rval(true) -->
 	io__write_string("TRUE").
 output_rval(false) -->
