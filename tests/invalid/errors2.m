@@ -11,6 +11,8 @@ bind_type_param(Argument) :-
 
 %-----------------------------------------------------------------------------%
 
+% currently the compiler just gives a warning for this test case
+
 :- pred unresolved_polymorphism.
 
 unresolved_polymorphism :-
