@@ -56,8 +56,8 @@ default_source_file(ModuleName) = BaseFileName ++ ".m" :-
 
 get_source_file_map(SourceFileMap) -->
 	globals__io_get_globals(Globals0),
-	{ globals__get_source_file_map(Globals0, MaybeSourceFileMap) },
-	( { MaybeSourceFileMap = yes(SourceFileMap0) } ->
+	{ globals__get_source_file_map(Globals0, MaybeSourceFileMap0) },
+	( { MaybeSourceFileMap0 = yes(SourceFileMap0) } ->
 		{ SourceFileMap = SourceFileMap0 }
 	;
 		globals__io_lookup_bool_option(use_subdirs, UseSubdirs),
@@ -75,7 +75,7 @@ get_source_file_map(SourceFileMap) -->
 		),
 		globals__io_get_globals(Globals1),
 		{ globals__set_source_file_map(Globals1,
-			MaybeSourceFileMap, Globals2) },
+			yes(SourceFileMap), Globals2) },
 		{ unsafe_promise_unique(Globals2, Globals) },
 		globals__io_set_globals(Globals)
 	).
