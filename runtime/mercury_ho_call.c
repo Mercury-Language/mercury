@@ -8,9 +8,6 @@ ENDINIT
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#define	MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_1
-#define	MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_2
-
 /*
 ** This module provides much of the functionality for doing higher order
 ** calls (with the rest provided by code generation of the generic_call

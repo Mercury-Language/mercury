@@ -357,18 +357,15 @@ start_label:
             ** input, and are passed in MR_rN+1 and MR_rN+2.
             ** The Result argument is output in MR_r1.
             **
-            ** We specialize the case where the type_ctor arity
-            ** is zero, since in this case we don't need the loop.
-            ** We could also specialize other arities; 1 and 2
-            ** may be worthwhile.
+            ** We specialize the case where the type_ctor arity is 0, 1 or 2,
+            ** in order to avoid the loop. If type_ctors with higher arities
+            ** were commonly used, we could specialize them too.
             */
 
             if (type_ctor_info->MR_type_ctor_arity == 0) {
                 MR_r1 = x;
                 MR_r2 = y;
-            }
-#ifdef  MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_1
-            else if (type_ctor_info->MR_type_ctor_arity == 1) {
+            } else if (type_ctor_info->MR_type_ctor_arity == 1) {
                 MR_Word    *args_base;
 
                 args_base = (MR_Word *)
@@ -376,10 +373,7 @@ start_label:
                 MR_r1 = args_base[1];
                 MR_r2 = x;
                 MR_r3 = y;
-            }
-#endif
-#ifdef  MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_2
-            else if (type_ctor_info->MR_type_ctor_arity == 2) {
+            } else if (type_ctor_info->MR_type_ctor_arity == 2) {
                 MR_Word    *args_base;
 
                 args_base = (MR_Word *)
@@ -388,9 +382,7 @@ start_label:
                 MR_r2 = args_base[2];
                 MR_r3 = x;
                 MR_r4 = y;
-            }
-#endif
-            else {
+            } else {
                 int     i;
                 int     type_arity;
                 MR_Word *args_base;
