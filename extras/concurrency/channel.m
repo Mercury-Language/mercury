@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB
 %---------------------------------------------------------------------------%
@@ -7,7 +7,7 @@
 % Main author:	petdr
 % Stability:	low.
 %
-% A mutvar can only contain a single value, a channel on the otherhand
+% A mvar can only contain a single value, a channel on the otherhand
 % provides unbounded buffering.
 %
 % For example a program could consist of 2 worker threads and one
@@ -51,15 +51,15 @@
 
 :- implementation.
 
-:- import_module mutvar.
+:- import_module mvar.
 
 :- type channel(T)
 	--->	channel(
-			mutvar(stream(T)),	% read end
-			mutvar(stream(T))	% write end
+			mvar(stream(T)),	% read end
+			mvar(stream(T))	% write end
 		).
 
-:- type stream(T)  == mutvar(item(T)).
+:- type stream(T)  == mvar(item(T)).
 
 :- type item(T)
 	--->	item(
@@ -68,34 +68,34 @@
 		).
 
 channel__init(channel(Read, Write)) -->
-	mutvar__init(Read),
-	mutvar__init(Write),
-	mutvar__init(Hole),
-	mutvar__put(Read, Hole),
-	mutvar__put(Write, Hole).
+	mvar__init(Read),
+	mvar__init(Write),
+	mvar__init(Hole),
+	mvar__put(Read, Hole),
+	mvar__put(Write, Hole).
 
 channel__put(channel(_Read, Write), Val) -->
-	mutvar__init(NewHole),
-	mutvar__take(Write, OldHole),
-	mutvar__put(Write, NewHole),
-	mutvar__put(OldHole, item(Val, NewHole)).
+	mvar__init(NewHole),
+	mvar__take(Write, OldHole),
+	mvar__put(Write, NewHole),
+	mvar__put(OldHole, item(Val, NewHole)).
 
 channel__take(channel(Read, _Write), Val) -->
-	mutvar__take(Read, Head),
-	mutvar__take(Head, item(Val, NewHead)),
-	mutvar__put(Read, NewHead).
+	mvar__take(Read, Head),
+	mvar__take(Head, item(Val, NewHead)),
+	mvar__put(Read, NewHead).
 
 channel__duplicate(channel(_Read, Write), channel(NewRead, Write)) -->
-	mutvar__init(NewRead),
-	mutvar__take(Write, Hole),
-	mutvar__put(Write, Hole),
-	mutvar__put(NewRead, Hole).
+	mvar__init(NewRead),
+	mvar__take(Write, Hole),
+	mvar__put(Write, Hole),
+	mvar__put(NewRead, Hole).
 
 channel__untake(channel(Read, _Write), Val) -->
-	mutvar__init(NewHead),
-	mutvar__take(Read, Head),
-	mutvar__put(NewHead, item(Val, Head)),
-	mutvar__put(Read, NewHead).
+	mvar__init(NewHead),
+	mvar__take(Read, Head),
+	mvar__put(NewHead, item(Val, Head)),
+	mvar__put(Read, NewHead).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

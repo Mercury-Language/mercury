@@ -1,12 +1,12 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
 % Main author: petdr (based on code by conway)
 %
-% The classic "Dining Philosophers" problem, to show how to use mutvars
+% The classic "Dining Philosophers" problem, to show how to use mvars
 % to do coroutining.
 %
 %---------------------------------------------------------------------------%
@@ -20,7 +20,7 @@
 
 :- implementation.
 
-:- import_module mutvar, spawn.
+:- import_module mvar, spawn.
 :- import_module bool, list, require, string.
 
 :- type forks
@@ -35,15 +35,15 @@
 	.
 
 main -->
-	mutvar__init(ForkGlob),
-	mutvar__put(ForkGlob, forks(yes, yes, yes, yes, yes)),
+	mvar__init(ForkGlob),
+	mvar__put(ForkGlob, forks(yes, yes, yes, yes, yes)),
 	spawn(philosopher(plato, ForkGlob)),
 	spawn(philosopher(aristotle, ForkGlob)),
 	spawn(philosopher(descartes, ForkGlob)),
 	spawn(philosopher(russell, ForkGlob)),
 	philosopher(sartre, ForkGlob).
 
-:- pred philosopher(philosopher, mutvar(forks),
+:- pred philosopher(philosopher, mvar(forks),
 		io__state, io__state).
 :- mode philosopher(in, in, di, uo) is cc_multi.
 
@@ -52,21 +52,21 @@ philosopher(Who, ForkGlob) -->
 	{ name(Who, Name) },
 	io__format("%s is thinking.\n", [s(Name)]),
 	rand_sleep(5),
-	mutvar__take(ForkGlob, Forks0),
+	mvar__take(ForkGlob, Forks0),
 	io__format("%s is attempting to eat.\n", [s(Name)]),
 	( { forks(Who, Forks0, Forks1) } ->
-		mutvar__put(ForkGlob, Forks1),
+		mvar__put(ForkGlob, Forks1),
 		io__format("%s is eating.\n", [s(Name)]),
 		rand_sleep(10),
-		mutvar__take(ForkGlob, Forks2),
+		mvar__take(ForkGlob, Forks2),
 		( { forks(Who, Forks3, Forks2) } ->
-			mutvar__put(ForkGlob, Forks3)
+			mvar__put(ForkGlob, Forks3)
 		;
 			{ error("all forked up") }
 		)
 	;
 		% Our 2 forks were not available
-		mutvar__put(ForkGlob, Forks0)
+		mvar__put(ForkGlob, Forks0)
 	),
 	philosopher(Who, ForkGlob).
 

@@ -8,45 +8,35 @@
 % Stability:	low.
 %
 % This module provides a Mercury version of Haskell mutable variables.
-% A mutable variable (mutvar) is a refencence to a mutable location which
+% A mutable variable (mvar) is a refencence to a mutable location which
 % can either contain a value of type T or be empty.
 %
-% Access to a mutvar is thread-safe and can be used to synchronize
+% Access to a mvar is thread-safe and can be used to synchronize
 % between different threads.
-%
-% XXX This module is now obsolete in the sense that programmers are
-% encouraged to migrate to using mvar.m which is identical in all
-% respects other than its name and corresponding change of name of
-% the exported type.  This was done to avoid confusion with
-% store__mutvar and to better reflect the Haskell origins of the mvar
-% data type.
 %
 %---------------------------------------------------------------------------%
 
-:- module mutvar.
+:- module mvar.
 
 :- interface.
 
 :- import_module io.
 
-:- type mutvar(T).
+:- type mvar(T).
 
-	% Create an empty mutvar.
-:- pred mutvar__init(mutvar(T)::out, io__state::di, io__state::uo) is det.
-:- pragma obsolete(mutvar__init/3).
+	% Create an empty mvar.
+:- pred mvar__init(mvar(T)::out, io__state::di, io__state::uo) is det.
 
-	% Take the contents of the mutvar out leaving the mutvar empty.
-	% If the mutvar is empty, block until some thread fills the
-	% mutvar.
-:- pred mutvar__take(mutvar(T)::in, T::out,
+	% Take the contents of the mvar out leaving the mvar empty.
+	% If the mvar is empty, block until some thread fills the
+	% mvar.
+:- pred mvar__take(mvar(T)::in, T::out,
 		io__state::di, io__state::uo) is det.
-:- pragma obsolete(mutvar__take/4).
 
-	% Place the value of type T into an empty mutvar.  If the
-	% mutvar is full block until it becomes empty.
-:- pred mutvar__put(mutvar(T)::in, T::in,
+	% Place the value of type T into an empty mvar.  If the
+	% mvar is full block until it becomes empty.
+:- pred mvar__put(mvar(T)::in, T::in,
 		io__state::di, io__state::uo) is det.
-:- pragma obsolete(mutvar__put/4).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -55,31 +45,31 @@
 
 :- import_module semaphore.
 
-:- type mutvar(T)
-	--->	mutvar(
+:- type mvar(T)
+	--->	mvar(
 			semaphore,	% full
 			semaphore,	% empty
 			ref(T)		% data
 		).
 
-:- pragma promise_pure(mutvar__init/3).
-mutvar__init(mutvar(Full, Empty, Ref)) -->
+:- pragma promise_pure(mvar__init/3).
+mvar__init(mvar(Full, Empty, Ref)) -->
 	semaphore__new(Full),
 	semaphore__new(Empty),
 
 	{ impure new_ref(Ref) },
 		
-		% Initially a mutvar starts empty.
+		% Initially a mvar starts empty.
 	semaphore__signal(Empty).
 
-:- pragma promise_pure(mutvar__take/4).
-mutvar__take(mutvar(Full, Empty, Ref), Data) -->
+:- pragma promise_pure(mvar__take/4).
+mvar__take(mvar(Full, Empty, Ref), Data) -->
 	semaphore__wait(Full),
 	{ impure get_ref(Ref, Data) },
 	semaphore__signal(Empty).
 
-:- pragma promise_pure(mutvar__put/4).
-mutvar__put(mutvar(Full, Empty, Ref), Data) -->
+:- pragma promise_pure(mvar__put/4).
+mvar__put(mvar(Full, Empty, Ref), Data) -->
 	semaphore__wait(Empty),
 	{ impure set_ref(Ref, Data) },
 	semaphore__signal(Full).
@@ -114,7 +104,7 @@ mutvar__put(mutvar(Full, Empty, Ref), Data) -->
 :- pragma c_code(new_ref(Ref::out),
 		[will_not_call_mercury, thread_safe],
 "
-	incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""mutvar:ref/1"");
+	incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""mvar:ref/1"");
 	*(MR_Word *) Ref = NULL;
 ").
 
