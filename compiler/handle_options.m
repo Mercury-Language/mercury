@@ -156,7 +156,7 @@ postprocess_options(ok(OptionTable), Error) -->
                                     PrologDialect, TermNorm, TraceLevel),
                                 { Error = no }
                             ;
-                                { Error = yes("Invalid argument to option `--trace'\n\t(must be `minimal', `interface' or  `full').") }
+                                { Error = yes("Invalid argument to option `--trace'\n\t(must be `minimum', `interfaces' or  `all').") }
                             )
                         ;
                             { Error = yes("Invalid argument to option `--termination-norm'\n\t(must be `simple', `total' or  `num-data-elems').") }
