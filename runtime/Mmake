@@ -45,7 +45,7 @@ PIC_OBJS	= $(OBJS:.o=.$(EXT_FOR_PIC_OBJECTS))
 
 #-----------------------------------------------------------------------------#
 
-$(OBJS): $(HDRS) $(MACHHDRS)
+$(OBJS) $(PIC_OBJS): $(HDRS) $(MACHHDRS)
 
 #-----------------------------------------------------------------------------#
 
@@ -118,7 +118,7 @@ clean: clean_o clean_mod_c
 
 .PHONY: clean_o
 clean_o:
-	rm -f *.o
+	rm -f *.o *.pic_o
 
 .PHONY: clean_mod_c
 clean_mod_c:
