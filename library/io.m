@@ -56,40 +56,40 @@
 
 % Input predicates.
 
-:- pred io__read_char(io__result(character), io__state, io__state).
+:- pred io__read_char(io__result(char), io__state, io__state).
 :- mode io__read_char(out, di, uo) is det.
 %		Reads a character from the current input stream.
 
-:- pred io__read_word(io__result(list(character)), io__state, io__state).
+:- pred io__read_word(io__result(list(char)), io__state, io__state).
 :- mode io__read_word(out, di, uo) is det.
 %		Reads a whitespace delimited word from the current input stream.
 
-:- pred io__read_line(io__result(list(character)), io__state, io__state).
+:- pred io__read_line(io__result(list(char)), io__state, io__state).
 :- mode io__read_line(out, di, uo) is det.
 %		Reads a line from the current input stream.
 
-:- pred io__putback_char(character, io__state, io__state).
+:- pred io__putback_char(char, io__state, io__state).
 :- mode io__putback_char(in, di, uo) is det.
 %		Un-reads a character from the current input stream.
 %		You can put back as many characters as you like.
 %		You can even put back something that you didn't actually read.
 
-:- pred io__read_char(io__input_stream, io__result(character),
+:- pred io__read_char(io__input_stream, io__result(char),
 				io__state, io__state).
 :- mode io__read_char(in, out, di, uo) is det.
 %		Reads a character from specified stream.
 
-:- pred io__read_word(io__input_stream, io__result(list(character)),
+:- pred io__read_word(io__input_stream, io__result(list(char)),
 							io__state, io__state).
 :- mode io__read_word(in, out, di, uo) is det.
 %		Reads a whitespace delimited word from specified stream.
 
-:- pred io__read_line(io__input_stream, io__result(list(character)),
+:- pred io__read_line(io__input_stream, io__result(list(char)),
 							io__state, io__state).
 :- mode io__read_line(in, out, di, uo) is det.
 %		Reads a line from specified stream.
 
-:- pred io__putback_char(io__input_stream, character, io__state, io__state).
+:- pred io__putback_char(io__input_stream, char, io__state, io__state).
 :- mode io__putback_char(in, in, di, uo) is det.
 %		Un-reads a character from specified stream.
 %		You can put back as many characters as you like.
@@ -109,12 +109,11 @@
 %		The term read had better be of the right type!
 %		This is a hack!
 
-:- pred io__ignore_whitespace(io__result(list(character)), io__state,
-				io__state).
+:- pred io__ignore_whitespace(io__result(list(char)), io__state, io__state).
 :- mode io__ignore_whitespace(out, di, uo) is det.
 %		Discards all the whitespace from the current stream.
 
-:- pred io__ignore_whitespace(io__input_stream, io__result(list(character)),
+:- pred io__ignore_whitespace(io__input_stream, io__result(list(char)),
 				io__state, io__state).
 :- mode io__ignore_whitespace(in, out, di, uo) is det.
 %		Discards all the whitespace from the specified stream.
@@ -142,11 +141,11 @@
 :- mode io__write_strings(in, in, di, uo) is det.
 %		Writes a string to the specified stream.
 
-:- pred io__write_char(character, io__state, io__state).
+:- pred io__write_char(char, io__state, io__state).
 :- mode io__write_char(in, di, uo) is det.
 %		Writes a character to the current output stream.
 
-:- pred io__write_char(io__output_stream, character, io__state, io__state).
+:- pred io__write_char(io__output_stream, char, io__state, io__state).
 :- mode io__write_char(in, in, di, uo) is det.
 %		Writes a character to the specified stream.
 
@@ -438,15 +437,16 @@
 	---> 	io__state(
 			io__stream_names,	% map from stream to stream name
 			io__stream_putback,	% map from input stream to
-						% list of pushback characters
+						% list of putback characters
+						% Note: only used for the Prolog
+						% implementation.
 			ops__table, 		% current operators
 			univ,			% for use by the application
 			io__external_state
 		).
 
 :- type io__stream_names ==	map(io__stream, string).
-
-:- type io__stream_putback ==	map(io__stream, list(character)).
+:- type io__stream_putback ==	map(io__stream, list(char)).
 
 :- type io__input_stream ==	io__stream.
 :- type io__output_stream ==	io__stream.
@@ -506,6 +506,7 @@
 :- external(io__read_anything/3).
 :- external(io__read_anything/4).
 :- external(io__read_char_code/4).
+:- external(io__putback_char/4).
 :- external(io__write_char/3).
 :- external(io__write_char/4).
 :- external(io__write_int/3).
@@ -548,33 +549,18 @@ io__read_char(Result) -->
 	io__read_char(Stream, Result).
 
 io__read_char(Stream, Result, IO_0, IO) :-
-	IO_0 = io__state(A, PutBack0, C, D, E),
-		% XXX inefficient
+	io__read_char_code(Stream, Code, IO_0, IO),
 	(
-		map__search(PutBack0, Stream, PutBackChars),
-		PutBackChars = [Char | Chars]
+		Code = -1
 	->
-		( Chars = [] ->
-			map__det_remove(PutBack0, Stream, _, PutBack)
-		;
-			map__det_update(PutBack0, Stream, Chars, PutBack)
-		),
-		IO = io__state(A, PutBack, C, D, E),
+		Result = eof
+	;
+		char_to_int(Char, Code)
+	->
 		Result = ok(Char)
 	;
-		io__read_char_code(Stream, Code, IO_0, IO),
-		(
-			Code = -1
-		->
-			Result = eof
-		;
-			char_to_int(Char, Code)
-		->
-			Result = ok(Char)
-		;
-			% XXX improve error message
-			Result = error("read error")
-		)
+		% XXX improve error message
+		Result = error("read error")
 	).
 
 io__read_word(Result) -->
@@ -646,15 +632,6 @@ io__putback_char(Char) -->
 	io__input_stream(Stream),
 	io__putback_char(Stream, Char).
 
-io__putback_char(Stream, Char, IO_0, IO) :-
-	IO_0 = io__state(A, PutBack0, C, D, E),
-	( map__search(PutBack0, Stream, Chars) ->
-		map__det_update(PutBack0, Stream, [Char | Chars], PutBack)
-	;
-		map__det_insert(PutBack0, Stream, [Char], PutBack)
-	),
-	IO = io__state(A, PutBack, C, D, E).
-
 io__ignore_whitespace(Result) -->
 	io__input_stream(Stream),
 	io__ignore_whitespace(Stream, Result).
@@ -670,14 +647,7 @@ io__ignore_whitespace(Stream, Result) -->
 	;
 		{ CharResult = ok(Char) },
 		(
-			(
-				% XXX Need to add the rest of the ws chars
-				{ Char = '\n' } 
-			;
-				{ Char = '\t' }
-			;	
-				{ Char = ' ' }
-			)
+			{ char__is_whitespace(Char) }
 		->
 			io__ignore_whitespace(Stream, Result0),
 			(
@@ -695,8 +665,6 @@ io__ignore_whitespace(Stream, Result) -->
 			{ Result = ok([]) }
 		)	
 	).
-			
-			
 
 %-----------------------------------------------------------------------------%
 

@@ -242,9 +242,33 @@ io__gc_call(Goal) -->
 
 % input predicates
 
-io__read_char_code(S, C) -->
-	{ get0(S, C) }.
+io__read_char_code(Stream, Code, IO_0, IO) :-
+	IO_0 = io__state(A, PutBack0, C, D, E),
+ 	(
+		map__search(PutBack0, Stream, PutBackChars),
+		PutBackChars = [Char | Chars]
+ 	->
+		( Chars = [] ->
+			map__det_remove(PutBack0, Stream, _, PutBack)
+		;
+			map__det_update(PutBack0, Stream, Chars, PutBack)
+		),
+		IO = io__state(A, PutBack, C, D, E),
+ 		Code = Char
+ 	;
+		get0(Stream, Char),
+		IO = IO_0
+ 	).
 	%%% io__update_state.
+
+io__putback_char(Stream, Char, IO_0, IO) :-
+	IO_0 = io__state(A, PutBack0, C, D, E),
+	( map__search(PutBack0, Stream, Chars) ->
+		map__det_update(PutBack0, Stream, [Char | Chars], PutBack)
+	;
+		map__det_insert(PutBack0, Stream, [Char], PutBack)
+	),
+	IO = io__state(A, PutBack, C, D, E).
 
 io__read_anything(S, Result) -->
 	{ read(S, Term) },
@@ -385,10 +409,27 @@ io__do_close(Stream) -->
 
 io__get_line_number(LineNumber) -->
 	{ currentInput(Stream) },
-	{ lineCount(Stream, LineNumber) }.
+	io__get_line_number(Stream, LineNumber).
 
-io__get_line_number(Stream, LineNumber) -->
-	{ lineCount(Stream, LineNumber) }.
+io__get_line_number(Stream, LineNumber, IO, IO) -->
+	{ lineCount(Stream, LineNumber0) },
+	{ IO = io__state(_, PutBack, _, _, _) },
+	{ map__search(PutBack, Stream, Chars) ->
+		io__adjust_line_num(Chars, LineNumber0, LineNumber)
+	;
+		LineNumber = LineNumber0
+	}.
+
+:- pred io__adjust_line_num(list(char)::in, int::in, int::out) is det.
+
+io__adjust_line_num([], N, N).
+io__adjust_line_num([C | Cs], N0, N) :-
+	( C = '\n' ->
+		N1 is N0 - 1
+	;
+		N1 = N0
+	),
+	io__adjust_line_num(Cs, N1, N).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
