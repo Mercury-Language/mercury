@@ -28,7 +28,22 @@
 % 		(some[BC] (assoc(B, C, BC), assoc(A, BC, ABC)))
 % 	).	
 %
-% The algorithm implemented is a combintation of the algorithms from
+% XXX What about exceptions and non-termination?
+%     The promise declarations above only provide promises
+%     about the declarative semantics, but in order to
+%     apply this optimization, we ought to check that
+%     it will preserve the operational semantics
+%     (modulo whatever changes are allowed by the
+%     language semantics options).
+%     Currently we check and respect the --fully-strict option,
+%     but not the --no-reorder-conj option.
+%     XXX we should check --no-reorder-conj!
+%     If --no-reorder-conj was set, it would still be OK to
+%     apply this transformation, but ONLY in cases where
+%     the goals which get reordered are guaranteed not to
+%     throw any exceptions.
+%
+% The algorithm implemented is a combination of the algorithms from
 % "Making Mercury Programs Tail Recursive" and
 % "State Update Transformation", which can be found at
 % <http://www.cs.mu.oz.au/research/mercury/information/papers.html>.
