@@ -273,21 +273,8 @@ static void
 process_args( int argc, char ** argv)
 {
 	progname = argv[0];
-
 	mercury_argc = argc - 1;
 	mercury_argv = argv + 1;
-
-	/* 
-	 * XXXX
-	 *
-	 * Special case dodgy feature, as a work-around to the fact that mc
-	 * has to work with both command-line options, and environmental 
-	 * options, for the time being.
-	 */
-	if (mercury_argc > 0 && !strcmp(mercury_argv[0], "--")) {
-		mercury_argc--;
-		mercury_argv++;
-	}
 }
 
 
