@@ -119,6 +119,13 @@
 **	Add extra backwards compatibility with C code using obsolete low-level
 **	constructs, e.g. referring to variables and macros without their MR_
 **	prefixes.
+**
+** MR_CHECK_DU_EQ
+**	When unifying or comparing two values of discriminated union types,
+**	check first whether the values (which are usually pointers) are equal.
+**
+** MR_DISABLE_CHECK_DU_EQ
+**	MR_CHECK_DU_EQ is turned on by default; this macro prevents this.
 */
 
 /*
@@ -514,6 +521,10 @@
   #undef  MR_DEEP_PROFILING_PORT_COUNTS
   #undef  MR_DEEP_PROFILING_TIMING
   #undef  MR_DEEP_PROFILING_MEMORY
+#endif
+
+#ifndef	MR_DISABLE_CHECK_DU_EQ
+  #define MR_CHECK_DU_EQ
 #endif
 
 /*---------------------------------------------------------------------------*/

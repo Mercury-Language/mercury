@@ -1,0 +1,80 @@
+       1:      1  1 CALL pred uci.main/2-0 (det) uci.m:17
+mdb> echo on
+Command echo enabled.
+mdb> context none
+Contexts will not be printed.
+mdb> register --quiet
+mdb> break -A unif*uci.
+ 0: + stop  interface __Unify__ for uci.t4/4-0 (semidet)
+ 1: + stop  interface __Unify__ for uci.t3/3-0 (semidet)
+ 2: + stop  interface __Unify__ for uci.t2/2-0 (semidet)
+ 3: + stop  interface __Unify__ for uci.t1/1-0 (semidet)
+ 4: + stop  interface __Unify__ for uci.t0/0-0 (semidet)
+ 5: + stop  interface __Unify__ for uci.i/3-0 (semidet)
+mdb> break -A comp*uci.
+ 6: + stop  interface __Compare__ for uci.t4/4-0 (det)
+ 7: + stop  interface __Compare__ for uci.t3/3-0 (det)
+ 8: + stop  interface __Compare__ for uci.t2/2-0 (det)
+ 9: + stop  interface __Compare__ for uci.t1/1-0 (det)
+10: + stop  interface __Compare__ for uci.t0/0-0 (det)
+11: + stop  interface __Compare__ for uci.i/3-0 (det)
+mdb> c
+      16:      8  3 CALL __Compare__ for uci.t1/1-0 (det)
+mdb> print goal
+__Compare__(_, b1(11), a1(1))
+mdb> c
+      17:      8  3 EXIT __Compare__ for uci.t1/1-0 (det)
+mdb> print goal
+__Compare__('>', b1(11), a1(1))
+mdb> c
+      34:     15  3 CALL __Compare__ for uci.t3/3-0 (det)
+mdb> print goal
+__Compare__(_, b3(11, 12, 13), a3(1, 2, 3))
+mdb> c
+      35:     15  3 EXIT __Compare__ for uci.t3/3-0 (det)
+mdb> print goal
+__Compare__('>', b3(11, 12, 13), a3(1, 2, 3))
+mdb> c
+      44:     19  3 CALL __Compare__ for uci.t4/4-0 (det)
+mdb> print goal
+__Compare__(_, a4(1, 2, 3, 4), b4(11, 12, 13, 14))
+mdb> c
+      45:     19  3 EXIT __Compare__ for uci.t4/4-0 (det)
+mdb> print goal
+__Compare__('<', a4(1, 2, 3, 4), b4(11, 12, 13, 14))
+mdb> c
+      70:     29  3 CALL __Unify__ for uci.t2/2-0 (semidet)
+mdb> print goal
+__Unify__(a2(1, 2), b2(11, 12))
+mdb> c
+      71:     29  3 FAIL __Unify__ for uci.t2/2-0 (semidet)
+mdb> print goal
+__Unify__(a2(1, 2), b2(11, 12))
+mdb> c
+      88:     36  3 CALL __Unify__ for uci.t4/4-0 (semidet)
+mdb> print goal
+__Unify__(a4(1, 2, 3, 4), b4(11, 12, 13, 14))
+mdb> c
+      89:     36  3 FAIL __Unify__ for uci.t4/4-0 (semidet)
+mdb> print goal
+__Unify__(a4(1, 2, 3, 4), b4(11, 12, 13, 14))
+mdb> c
+      98:     40  3 CALL __Compare__ for uci.i/3-0 (det)
+mdb> print goal
+__Compare__(_, ai(1), bi(11))
+mdb> c
+      99:     40  3 EXIT __Compare__ for uci.i/3-0 (det)
+mdb> print goal
+__Compare__('<', ai(1), bi(11))
+mdb> c
+0 lt
+1 ge
+2 ge
+3 ge
+4 lt
+0 ne
+1 eq
+2 ne
+3 eq
+4 ne
+i lt
