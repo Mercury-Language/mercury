@@ -8,7 +8,7 @@
 
 :- implementation.
 
-:- import_module int.
+:- import_module library_forwarding.
 
 main(S0, S) :-
 	p(1, X),

@@ -136,8 +136,13 @@
 :- pred code_util__predinfo_is_builtin(pred_info).
 :- mode code_util__predinfo_is_builtin(in) is semidet.
 
-:- pred code_util__builtin_state(module_info, pred_id, proc_id, builtin_state).
-:- mode code_util__builtin_state(in, in, in, out) is det.
+	% code_util__builtin_state(ModuleInfo, CallerPredId,
+	%	PredId, ProcId, BuiltinState)
+	%
+	% Is the given procedure a builtin that should be generated inline?
+:- pred code_util__builtin_state(module_info,
+		pred_id, pred_id, proc_id, builtin_state).
+:- mode code_util__builtin_state(in, in, in, in, out) is det.
 
 	% Find out how a function symbol (constructor) is represented
 	% in the given type.
@@ -199,6 +204,7 @@
 :- import_module parse_tree__prog_util, check_hlds__type_util.
 :- import_module hlds__special_pred, backend_libs__builtin_ops.
 :- import_module backend_libs__code_model.
+:- import_module libs__options, libs__globals.
 
 :- import_module char, int, string, set, map, term, varset.
 :- import_module require, std_util, assoc_list.
@@ -424,12 +430,24 @@ code_util__predinfo_is_builtin(PredInfo) :-
 	hlds_pred__initial_proc_id(ProcId),
 	code_util__is_inline_builtin(ModuleName, PredName, ProcId, Arity).
 
-code_util__builtin_state(ModuleInfo, PredId, ProcId, BuiltinState) :-
+code_util__builtin_state(ModuleInfo, CallerPredId,
+		PredId, ProcId, BuiltinState) :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_module(PredInfo, ModuleName),
 	pred_info_name(PredInfo, PredName),
 	pred_info_arity(PredInfo, Arity),
-	( code_util__is_inline_builtin(ModuleName, PredName, ProcId, Arity) ->
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_bool_option(Globals, inline_builtins, InlineBuiltins),
+	(
+		% The automatically generated "recursive" call in the 
+		% goal for each builtin must be generated inline, or
+		% we would generate an infinite loop.
+		( InlineBuiltins = yes
+		; CallerPredId = PredId
+		),
+		code_util__is_inline_builtin(ModuleName, PredName,
+			ProcId, Arity)
+	->
 		BuiltinState = inline_builtin
 	;
 		BuiltinState = not_builtin

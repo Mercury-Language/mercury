@@ -4,7 +4,8 @@
 :- pred main(io__state, io__state).
 :- mode main(di, uo) is det.
 :- implementation.
-:- import_module bool, int, std_util.
+:- import_module bool.
+:- import_module library_forwarding.
 
 main -->
 	{

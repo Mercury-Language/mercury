@@ -99,6 +99,7 @@ ORDINARY_PROGS=	\
 	name_mangling \
 	no_fully_strict \
 	no_inline \
+	no_inline_builtins \
 	no_warn_singleton \
 	nondet_ctrl_vn \
 	nondet_copy_out \

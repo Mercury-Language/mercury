@@ -97,6 +97,10 @@ Changes to the Mercury compiler:
   to use a different C compiler.  See the "C compilers" chapter
   of the Mercury User's Guide for details.
 
+* Inlining of builtins can now be disabled using the `--no-inline-builtins'
+  option.  This is done by default when debugging, as without this option the
+  execution of builtins is not traced.
+
 * The Mercury compiler now uses `.' and not `:' as the module separator
   in all output.
 

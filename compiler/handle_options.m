@@ -680,6 +680,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 			% relate the trace to the source code (although
 			% it can be easily related to the transformed HLDS).
 			globals__io_set_option(inline_simple, bool(no)),
+			globals__io_set_option(inline_builtins, bool(no)),
 			globals__io_set_option(inline_single_use, bool(no)),
 			globals__io_set_option(inline_compound_threshold,
 				int(0)),

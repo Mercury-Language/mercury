@@ -3,6 +3,7 @@
 # the input is not a terminal.
 MLFLAGS-completion = --runtime-flags --force-readline
 
+MCFLAGS-no_inline_builtins = --no-inline-builtins
 MCFLAGS-queens_rep = --trace rep
 MCFLAGS-shallow = --trace shallow
 MCFLAGS-tabled_read = --trace-table-io-all

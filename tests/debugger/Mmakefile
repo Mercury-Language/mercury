@@ -101,8 +101,20 @@ ifneq "$(findstring mm,$(GRADE))" ""
     SENSITIVE_PROGS :=
 endif
 
+# The no_inline_builtins test only works if the library is
+# built with execution tracing enabled. Adding a `.exp2' file
+# to allow it to be run in other grades would mean that we
+# wouldn't detect a regression which caused builtins not to
+# be traced with `--no-inline-builtins'.
+ifeq "$(findstring debug,$(GRADE))" "debug"
+	DEBUG_GRADE_PROGS = no_inline_builtins
+else 
+	DEBUG_GRADE_PROGS =
+endif
+
 ALL_RETRY_PROGS = $(RETRY_PROGS) $(INTERACTIVE_PROGS)
-ALL_NONRETRY_PROGS = $(NONRETRY_PROGS) $(SENSITIVE_PROGS) $(SHALLOW_PROGS)
+ALL_NONRETRY_PROGS = $(NONRETRY_PROGS) $(SENSITIVE_PROGS) \
+			$(SHALLOW_PROGS) $(DEBUG_GRADE_PROGS)
 
 # Debugging doesn't yet don't work in MLDS grades (hl*, il*, and java),
 # and the retry command doesn't and will not work in deep profiling
@@ -238,7 +250,8 @@ exception_vars.out: exception_vars exception_vars.inp
 existential_type_classes.out: existential_type_classes \
 			existential_type_classes.inp
 	$(MDB_STD) ./existential_type_classes < existential_type_classes.inp \
-		2>&1 | sed 's/string.m:[0-9]*/string.m:NNNN/g' \
+		2>&1 | sed 's/string.m:[0-9]*/string.m:NNNN/g' | \
+		sed 's/int.m:[0-9]*/int.m:NNNN/g' \
 		> existential_type_classes.out
 
 field_names.out: field_names field_names.inp
@@ -282,6 +295,10 @@ multi_parameter.out: multi_parameter multi_parameter.inp
 	$(MDB) ./multi_parameter < multi_parameter.inp 2>&1 | \
 		sed 's/char.m:[0-9]*/char.m:NNNN/g' > multi_parameter.out
 
+no_inline_builtins.out: no_inline_builtins no_inline_builtins.inp
+	$(MDB) ./no_inline_builtins < no_inline_builtins.inp \
+		> no_inline_builtins.out 2>&1
+
 # We need to pipe the output through sed to avoid hard-coding dependencies on
 # particular line numbers in the standard library source code.
 output_term_dep.out: output_term_dep output_term_dep.inp
@@ -310,7 +327,8 @@ print_table.out: print_table print_table.inp
 	$(MDB_STD) ./print_table < print_table.inp > print_table.out 2>&1
 
 queens.out: queens queens.inp
-	$(MDB_STD) ./queens < queens.inp > queens.out 2>&1
+	$(MDB_STD) ./queens < queens.inp 2>&1 | \
+		sed 's/int.m:[0-9]*/int.m:NNNN/g' > queens.out 2>&1
 
 queens_rep.out: queens_rep queens_rep.inp
 	$(MDB) ./queens_rep < queens_rep.inp > queens_rep.out 2>&1

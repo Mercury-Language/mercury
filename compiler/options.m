@@ -402,6 +402,7 @@
 	%	- HLDS
 		;	inlining
 		;	inline_simple
+		;	inline_builtins
 		;	inline_single_use
 		;	inline_compound_threshold
 		;	inline_simple_threshold
@@ -983,6 +984,7 @@ option_defaults_2(optimization_option, [
 % HLDS
 	inlining		-	bool_special,
 	inline_simple		-	bool(no),
+	inline_builtins		-	bool(yes),
 	inline_single_use	-	bool(no),
 	inline_compound_threshold -	int(0),
 	inline_simple_threshold	-	int(5),	% has no effect until
@@ -1588,6 +1590,7 @@ long_option("trans-intermod-opt", 	transitive_optimization).
 % HLDS->HLDS optimizations
 long_option("inlining", 		inlining).
 long_option("inline-simple",		inline_simple).
+long_option("inline-builtins",		inline_builtins).
 long_option("inline-single-use",	inline_single_use).
 long_option("inline-compound-threshold",	inline_compound_threshold).
 long_option("inline-simple-threshold",		inline_simple_threshold).
@@ -1954,14 +1957,15 @@ special_handler(debug, bool(Value), OptionTable0, ok(OptionTable)) :-
 	map__set(OptionTable1, require_tracing, bool(Value), OptionTable).
 special_handler(inlining, bool(Value), OptionTable0, ok(OptionTable)) :-
 	map__set(OptionTable0, inline_simple, bool(Value), OptionTable1),
-	map__set(OptionTable1, inline_single_use, bool(Value), OptionTable2),
+	map__set(OptionTable1, inline_builtins, bool(Value), OptionTable2),
+	map__set(OptionTable2, inline_single_use, bool(Value), OptionTable3),
 	(
 		Value = yes,
-		map__set(OptionTable2, inline_compound_threshold,
+		map__set(OptionTable3, inline_compound_threshold,
 			int(10), OptionTable)
 	;
 		Value = no,
-		map__set(OptionTable2, inline_compound_threshold,
+		map__set(OptionTable3, inline_compound_threshold,
 			int(0), OptionTable)
 	).
 special_handler(everything_in_one_c_function, none, OptionTable0,
@@ -3365,6 +3369,11 @@ options_help_hlds_hlds_optimization -->
 		"\tDisable all forms of inlining.",
 		"--no-inline-simple",
 		"\tDisable the inlining of simple procedures.",
+		"--no-inline-builtins",
+		"\tGenerate builtins (e.g. arithmetic operators) as calls to",
+		"\tout of line procedures.  This is done by default when,",
+		"\tdebugging, as without this option the execution of", 
+		"\tbuiltins is not traced.",
 		"--no-inline-single-use",
 		"\tDisable the inlining of procedures called only once.",
 		"--inline-compound-threshold <threshold>",

@@ -4,13 +4,16 @@ Command echo enabled.
 mdb> context none
 Contexts will not be printed.
 mdb> register --quiet
-mdb> goto 218
-     218:    110  3 EXIT pred lval_desc_array.increment/2-0 (det)
-mdb> up 1
+mdb> break -E 107 -e lval_desc_array__increment
+ 0: + stop      entry pred lval_desc_array.increment/2-0 (det)
+            (ignore next 107 call events)
+mdb> continue
+     431:    217  3 CALL pred lval_desc_array.increment/2-0 (det)
+mdb> up
 Ancestor level set to 1:
    1  pred lval_desc_array.perform_increments/2-0 (det)
 mdb> print *
-       HeadVar__1             	0
+       DCG_0 (arg 1)          	0
        DCG_1                  	1
        DCG_2                  	2
        DCG_3                  	3

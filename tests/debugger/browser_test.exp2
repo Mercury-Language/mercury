@@ -98,11 +98,5 @@ mdb> print 1^1^2^3
 mdb: the path 3 does not exist.
 mdb> retry
       E3:     C2  2 CALL pred browser_test.big_data/1-0 (det) browser_test.m:18 (browser_test.m:12)
-mdb> continue -a
-      E2:     C2  2 EXIT pred browser_test.big_data/1-0 (det) browser_test.m:18 (browser_test.m:12)
-      E4:     C3  2 CALL pred io.print/3-0 (det) io.m:NNNN (browser_test.m:13)
+mdb> continue
 big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big(small, 5, small)), 6, small))      E5:     C3  2 EXIT pred io.print/3-0 (det) io.m:NNNN (browser_test.m:13)
-      E6:     C4  2 CALL pred io.write_string/3-0 (det) io.m:NNNN (browser_test.m:14)
-.
-      E7:     C4  2 EXIT pred io.write_string/3-0 (det) io.m:NNNN (browser_test.m:14)
-      E8:     C1  1 EXIT pred browser_test.main/2-0 (det) browser_test.m:11

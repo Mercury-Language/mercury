@@ -1,0 +1,34 @@
+       1:      1  1 CALL pred neg_conj.main/2-0 (det) neg_conj.m:11
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> break p
+ 0: + stop  interface pred neg_conj.p/1-0 (semidet)
+mdb> continue
+       3:      2  2 CALL pred neg_conj.p/1-0 (semidet) neg_conj.m:19 (neg_conj.m:9)
+mdb> finish
+      22:      2  2 EXIT pred neg_conj.p/1-0 (semidet) neg_conj.m:19 (neg_conj.m:9)
+mdb> dd
+p(0)
+Valid? no
+q(0, 0)
+Valid? yes
+Call r(0)
+No solutions.
+Complete? yes
+q(0, 1)
+Valid? yes
+Call r(1)
+No solutions.
+Complete? yes
+Call q(0, _)
+Solutions:
+	q(0, 0)
+	q(0, 1)
+Complete? yes
+Found incorrect contour:
+p(0)
+Is this a bug? yes
+      22:      2  2 EXIT pred neg_conj.p/1-0 (semidet) neg_conj.m:19 (neg_conj.m:9)
+mdb> continue
+yes.

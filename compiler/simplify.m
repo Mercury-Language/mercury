@@ -1360,8 +1360,9 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
 		% are being unified.
 		%
 		simplify__type_info_locn(TypeVar, TypeInfoVar, ExtraGoals),
+		=(Info),
 		{ simplify__call_generic_unify(TypeInfoVar, XVar, YVar,
-			ModuleInfo, Context, GoalInfo0, Call) }
+			ModuleInfo, Info, Context, GoalInfo0, Call) }
 
 	; { type_is_higher_order(Type, _, _, _, _) } ->
 		%
@@ -1429,8 +1430,9 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
 			;
 				error("simplify__process_compl_unify: more than one typeinfo for one type var")
 			},
+			=(Info),
 			{ simplify__call_generic_unify(TypeInfoVar, XVar, YVar,
-				ModuleInfo, Context, GoalInfo0, Call) }
+				ModuleInfo, Info, Context, GoalInfo0, Call) }
 		;
 			%
 			% Convert other complicated unifications into
@@ -1452,11 +1454,11 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
 	{ conj_list_to_goal(ConjList, GoalInfo0, Goal) }.
 
 :- pred simplify__call_generic_unify(prog_var::in, prog_var::in,  prog_var::in, 
-	module_info::in, unify_context::in, hlds_goal_info::in, hlds_goal::out)
-	is det.
+	module_info::in, simplify_info::in, unify_context::in,
+	hlds_goal_info::in, hlds_goal::out) is det.
 
-simplify__call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, Context,
-		GoalInfo0, Call) :-
+simplify__call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, Info,
+		Context, GoalInfo0, Call) :-
 	ArgVars = [TypeInfoVar, XVar, YVar],
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	mercury_public_builtin_module(MercuryBuiltin),
@@ -1472,8 +1474,12 @@ simplify__call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, Context,
 	% (This should have been checked by mode analysis.)
 	hlds_pred__in_in_unification_proc_id(ProcId),
 
-	SymName = unqualified("unify"),
-	code_util__builtin_state(ModuleInfo, PredId, ProcId, BuiltinState),
+	SymName = qualified(MercuryBuiltin, "unify"),
+
+	simplify_info_get_det_info(Info, DetInfo),
+	det_info_get_pred_id(DetInfo, CallerPredId),
+	code_util__builtin_state(ModuleInfo, CallerPredId,
+		PredId, ProcId, BuiltinState),
 	CallContext = call_unify_context(XVar, var(YVar), Context),
 	goal_info_get_nonlocals(GoalInfo0, NonLocals0),
 	set__insert(NonLocals0, TypeInfoVar, NonLocals),

@@ -3,7 +3,7 @@
 :- import_module io.
 :- pred main(io__state::di, io__state::uo) is det.
 :- implementation.
-:- import_module int.
+:- import_module library_forwarding.
 
 main -->
 	io__write_int(fib(6)),

@@ -3,7 +3,8 @@
 :- import_module io.
 :- pred main(io__state::di, io__state::uo) is det.
 :- implementation.
-:- import_module std_util, int, bool.
+:- import_module bool.
+:- import_module library_forwarding.
 
 main -->
 	{ p(1, R) },

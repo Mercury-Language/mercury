@@ -7,7 +7,7 @@ mdb> break p
 mdb> continue
        2:      2  2 CALL pred solutions.p/2-0 (det) solutions.m:15 (solutions.m:9)
 mdb> finish
-      17:      2  2 EXIT pred solutions.p/2-0 (det) solutions.m:15 (solutions.m:9)
+      61:      2  2 EXIT pred solutions.p/2-0 (det) solutions.m:15 (solutions.m:9)
 mdb> dd
 p(1, [1, 2, 3])
 Valid? no
@@ -25,8 +25,33 @@ Solutions:
 	q(1, 2)
 	q(1, 3)
 Complete? yes
++(0, 1) = 1
+Valid? yes
++(1, 1) = 2
+Valid? yes
++(2, 1) = 3
+Valid? yes
+>(3, 1)
+Valid? yes
+//(3, 2) = 1
+Valid? yes
+>(1, 0)
+Valid? yes
+-(1, 1) = 0
+Valid? yes
+Call >(1, 1)
+No solutions.
+Complete? yes
+-(3, 1) = 2
+Valid? yes
+>(2, 1)
+Valid? yes
+//(2, 2) = 1
+Valid? yes
+-(2, 1) = 1
+Valid? yes
 Found incorrect contour:
 solutions(q(1), [1, 2, 3])
 Is this a bug? yes
-      16:      3  3 EXIT pred std_util.solutions/2-1 (det) std_util.m:NNNN (solutions.m:16)
+      60:      3  3 EXIT pred std_util.solutions/2-1 (det) std_util.m:NNNN (solutions.m:16)
 mdb> quit -y

@@ -3,7 +3,7 @@
 :- import_module io.
 :- pred main(io__state::di, io__state::uo) is cc_multi.
 :- implementation.
-:- import_module int.
+:- import_module library_forwarding.
 
 main -->
 	{ ite(a, 1, M) },

@@ -24,9 +24,9 @@ Is this a bug? yes
       12:      3  3 EXCP pred ho5.p/2-0 (det) c2; ho5.m:18 (exception.m:NNNN)
 mdb> continue
 exception(univ_cons('<<function>>'))
-      19:     10  3 CALL pred ho5.p/2-0 (det) ho5.m:18 (exception.m:NNNN)
+     401:    175  3 CALL pred ho5.p/2-0 (det) ho5.m:18 (exception.m:NNNN)
 mdb> finish
-      28:     10  3 EXCP pred ho5.p/2-0 (det) c2; ho5.m:18 (exception.m:NNNN)
+     410:    175  3 EXCP pred ho5.p/2-0 (det) c2; ho5.m:18 (exception.m:NNNN)
 mdb> dd
 Call p(2, _)
 Throws zero
@@ -37,6 +37,6 @@ Found unhandled exception:
 p(2, _)
 zero
 Is this a bug? yes
-      28:     10  3 EXCP pred ho5.p/2-0 (det) c2; ho5.m:18 (exception.m:NNNN)
+     410:    175  3 EXCP pred ho5.p/2-0 (det) c2; ho5.m:18 (exception.m:NNNN)
 mdb> continue
 exception(univ_cons('<<function>>'))

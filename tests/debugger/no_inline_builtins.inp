@@ -1,8 +1,9 @@
 echo on
 context none
 register --quiet
-break -E 107 -e lval_desc_array__increment
+break int.+/2-0
 continue
-up
-print *
+print 1
+print 2
 continue
+continue -n

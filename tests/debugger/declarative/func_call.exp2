@@ -7,7 +7,7 @@ mdb> break fib
 mdb> continue
        2:      2  2 CALL func func_call.fib/1-0 (det) func_call.m:14 (func_call.m:9)
 mdb> finish -n
-     151:      2  2 EXIT func func_call.fib/1-0 (det) func_call.m:14 (func_call.m:9)
+     233:      2  2 EXIT func func_call.fib/1-0 (det) func_call.m:14 (func_call.m:9)
 mdb> dd
 fib(6) = 9
 Valid? no
@@ -41,5 +41,5 @@ Valid? yes
 Found incorrect contour:
 fib(4) = 4
 Is this a bug? yes
-      75:      8  4 EXIT func func_call.fib/1-0 (det) func_call.m:14 (func_call.m:20)
+     115:     12  4 EXIT func func_call.fib/1-0 (det) func_call.m:14 (func_call.m:20)
 mdb> quit -y

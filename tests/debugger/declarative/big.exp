@@ -1,13 +1,13 @@
-      E1:     C1  1 CALL pred big.main/2-0 (det) big.m:9
+      E1:     C1  1 CALL pred big.main/2-0 (det) big.m:10
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break p
  0: + stop  interface pred big.p/1-0 (nondet)
 mdb> continue
-      E2:     C2  2 CALL pred big.p/1-0 (nondet) big.m:23 (big.m:11)
+      E2:     C2  2 CALL pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> finish
-      E3:     C2  2 EXIT pred big.p/1-0 (nondet) big.m:23 (big.m:11)
+      E3:     C2  2 EXIT pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> dd
 p(-12)
 Valid? no
@@ -27,11 +27,11 @@ Valid? yes
 Found incorrect contour:
 p(-12)
 Is this a bug? yes
-      E3:     C2  2 EXIT pred big.p/1-0 (nondet) big.m:23 (big.m:11)
+      E3:     C2  2 EXIT pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> continue
-      E4:     C2  2 REDO pred big.p/1-0 (nondet) big.m:23 (big.m:11)
+      E4:     C2  2 REDO pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> finish
-      E5:     C2  2 EXIT pred big.p/1-0 (nondet) big.m:23 (big.m:11)
+      E5:     C2  2 EXIT pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> dd
 p(-14)
 Valid? no
@@ -42,11 +42,11 @@ Valid? yes
 Found incorrect contour:
 p(-14)
 Is this a bug? yes
-      E5:     C2  2 EXIT pred big.p/1-0 (nondet) big.m:23 (big.m:11)
+      E5:     C2  2 EXIT pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> continue
-      E6:     C2  2 REDO pred big.p/1-0 (nondet) big.m:23 (big.m:11)
+      E6:     C2  2 REDO pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> finish
-      E7:     C2  2 EXIT pred big.p/1-0 (nondet) big.m:23 (big.m:11)
+      E7:     C2  2 EXIT pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> dd
 p(-20)
 Valid? no
@@ -55,6 +55,8 @@ Valid? yes
 c(1, 15)
 Valid? yes
 d(15, 45)
+Valid? yes
+>(45, 5)
 Valid? yes
 Call c(1, _)
 Solutions:
@@ -67,11 +69,11 @@ Valid? yes
 Found incorrect contour:
 p(-20)
 Is this a bug? yes
-      E7:     C2  2 EXIT pred big.p/1-0 (nondet) big.m:23 (big.m:11)
+      E7:     C2  2 EXIT pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> continue
-      E8:     C2  2 REDO pred big.p/1-0 (nondet) big.m:23 (big.m:11)
+      E8:     C2  2 REDO pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> finish
-      E9:     C2  2 EXIT pred big.p/1-0 (nondet) big.m:23 (big.m:11)
+      E9:     C2  2 EXIT pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> dd
 p(-22)
 Valid? no
@@ -82,11 +84,11 @@ Valid? yes
 Found incorrect contour:
 p(-22)
 Is this a bug? yes
-      E9:     C2  2 EXIT pred big.p/1-0 (nondet) big.m:23 (big.m:11)
+      E9:     C2  2 EXIT pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> continue
-     E10:     C2  2 REDO pred big.p/1-0 (nondet) big.m:23 (big.m:11)
+     E10:     C2  2 REDO pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> finish
-     E11:     C2  2 EXIT pred big.p/1-0 (nondet) big.m:23 (big.m:11)
+     E11:     C2  2 EXIT pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> dd
 p(2)
 Valid? no
@@ -98,8 +100,14 @@ f(-1, 2)
 Valid? yes
 g(6, -10)
 Valid? yes
+Call >(-10, 0)
+No solutions.
+Complete? yes
 g(7, -11)
 Valid? yes
+Call >(-11, 0)
+No solutions.
+Complete? yes
 Call c(2, _)
 Solutions:
 	c(2, 6)
@@ -108,11 +116,11 @@ Complete? yes
 Found incorrect contour:
 p(2)
 Is this a bug? yes
-     E11:     C2  2 EXIT pred big.p/1-0 (nondet) big.m:23 (big.m:11)
+     E11:     C2  2 EXIT pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> continue
-     E12:     C2  2 REDO pred big.p/1-0 (nondet) big.m:23 (big.m:11)
+     E12:     C2  2 REDO pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> finish
-     E13:     C2  2 FAIL pred big.p/1-0 (nondet) big.m:23 (big.m:11)
+     E13:     C2  2 FAIL pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> dd
 Call p(_)
 Solutions:
@@ -125,6 +133,8 @@ Complete? no
 c(0, 3)
 Valid? yes
 d(3, 9)
+Valid? yes
+>(9, 5)
 Valid? yes
 Call c(0, _)
 Solutions:
@@ -149,9 +159,11 @@ c(4, 9)
 Valid? yes
 g(9, 99)
 Valid? yes
+>(99, 0)
+Valid? yes
 Found partially uncovered atom:
 p(_)
 Is this a bug? yes
-     E13:     C2  2 FAIL pred big.p/1-0 (nondet) big.m:23 (big.m:11)
+     E13:     C2  2 FAIL pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> continue
 no.

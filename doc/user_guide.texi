@@ -5659,6 +5659,13 @@ Disable all forms of inlining.
 @findex --inline-simple
 Disable the inlining of simple procedures.
 
+@sp 1
+@item --no-inline-builtins
+@findex --no-inline-builtins
+Generate builtins (e.g.@: arithmetic operators) as calls to
+out of line procedures.  This is done by default when debugging,
+as without this option the execution of builtins is not traced.
+
 @item --no-inline-single-use
 @findex --no-inline-single-use
 @findex --inline-single-use
