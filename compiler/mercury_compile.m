@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -661,11 +661,17 @@ mercury_compile__maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps,
 				[]
 			)
 		)
+	; { MakeOptInt = yes } ->
+		% If we're making the `.opt' file, then we can't
+		% read any `.trans_opt' files, since `.opt' files 
+		% aren't allowed to depend on `.trans_opt' files.
+		{ Imports = Imports1 },
+		{ Error2 = no }
 	;
 		( { TransOpt = yes } ->
 			% If transitive optimization is enabled, but we are
-			% not creating the trans opt file, then import the
-			% trans_opt files for all the modules that are
+			% not creating the .opt or .trans opt file, then import
+			% the trans_opt files for all the modules that are
 			% imported (or used), and for all ancestor modules.
 			{ Imports0 = module_imports(_File, _Module, Ancestors,
 				InterfaceImports, ImplementationImports,
