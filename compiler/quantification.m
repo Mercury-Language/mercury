@@ -368,8 +368,13 @@ implicitly_quantify_goal_2(not(Goal0), _, not(Goal)) -->
 	quantification__set_outside(OutsideVars),
 	quantification__set_quant_vars(QuantVars).
 
+	% After this pass, explicit quantifiers are redundant,
+	% since all variables which were explicitly quantified
+	% have been renamed apart.  So we don't keep them.
+	% Thus we replace `if_then_else(Vars, ....)' with
+	% `if_then_else([], ...)'.
 implicitly_quantify_goal_2(if_then_else(Vars0, Cond0, Then0, Else0, SM),
-			Context, if_then_else(Vars, Cond, Then, Else, SM)) -->
+			Context, if_then_else([], Cond, Then, Else, SM)) -->
 	quantification__get_quant_vars(QuantVars),
 	quantification__get_outside(OutsideVars),
 	quantification__get_lambda_outside(LambdaOutsideVars),
