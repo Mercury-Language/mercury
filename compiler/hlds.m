@@ -15,6 +15,10 @@
 
 % :- adt pred_id.
 
+% :- adt pred_mode_id.
+
+% :- adt inst_id.
+
 % :- adt mode_id.
 
 :- type category	--->	deterministic		% functional & total
@@ -27,11 +31,11 @@
 
 				% Initially only the pred_id and arguments
 				% are filled in.  Mode analysis fills in the
-				% mode_id.  Just before code generation,
+				% pred_mode_id.  Just before code generation,
 				% we do a pass over the hlds which recognizes
 				% the builtins and fills in the is_builtin
 				% field.
-			;	call(pred_id, mode_id, list(term), is_builtin)
+			;	call(pred_id, pred_mode_id, list(term), is_builtin)
 
 				% Deterministic disjunctions are converted
 				% into case statements by the determinism
@@ -68,7 +72,7 @@
 			%	goal to execute if match succeeds.
 
 	% Initially all unifications are represented as
-	% unify(term = term), but mode analysis replaces
+	% unify(term, term, _, _), but mode analysis replaces
 	% these with various special cases.
 
 :- type unification	--->	
@@ -95,30 +99,32 @@
 				% using out-of-line call to  a compiler
 				% generated unification predicate for that
 				% type & mode.
-			;	complicated_unify(mode_id, var, var).
+			;	complicated_unify(unify_mode, var, var).
 
 :- type goals		==	list(goal).
 :- type vars		==	list(variable).
 
 %-----------------------------------------------------------------------------%
 
-	% This is how types are represented.  XXX
+	% This is how type and modes are represented.
+	% The parts that are not defined here (eg. type_param, constructor,
+	% type) are represented in the same way as in prog_io.nl,
+	% and are defined there.
 
-:- type type_defn	--->	du_type(string, list(term), list(constructor))
-%			;	 uu_type(string, list(term), list(type_body))
-			;	eqv_type(string, list(term), type_body).
-:- type constructor	==	term.
-:- type type_head	==	term.
-:- type type_body	==	term.
-:- type (type)		==	term.
+:- type hlds__type_defn	--->	hlds__type_defn(varset, list(type_param),
+					hlds__type_body, condition)
+:- type hlds__type_body	-->	du_type(string, list(term), list(constructor))
+%			;	uu_type(string, list(term), list(type))
+			;	eqv_type(string, list(term), (type)).
 
-:- type condition	--->	true
-			;	where(term).
+
+:- type hlds__inst_defn --->	hlds__inst_defn(varset, list(inst_param),
+					inst, condition).
+
+:- type hlds__mode_defn --->	hlds__inst_defn(varset, list(inst_param),
+					inst, condition).
 
 %-----------------------------------------------------------------------------%
-
-:- type int		==	integer.
-
 %-----------------------------------------------------------------------------%
 :- pred module_name(module_info, string).
 :- mode module_name(input,output).
@@ -135,13 +141,13 @@
 :- pred predicate_arity(module_info, pred_id, int).
 :- mode predicate_arity(input, input, output).
 
-:- pred predicate_modes(module_info, pred_id, list(mode_id)).
+:- pred predicate_modes(module_info, pred_id, list(pred_mode_id)).
 :- mode predicate_modes(input, input, output).
 
-:- pred predicate_clauses(module_info, pred_id, mode_id, list(clause)).
+:- pred predicate_clauses(module_info, pred_id, pred_mode_id, list(clause)).
 :- mode predicate_clauses(input, input, output).
 
-:- pred predicate_category(module_info, pred_id, mode_id, category).
+:- pred predicate_category(module_info, pred_id, pred_mode_id, category).
 :- mode predicate_category(input, input, input, output).
 
 :- pred var_is_live(module_info, goal_info, var_id, liveness).
@@ -163,10 +169,17 @@
 					mode_table
 				).
 
+%-----------------------------------------------------------------------------%
+
 :- type pred_info	--->	predicate(
+					varset,		% names of type vars
+					list(type),	% argument types
+					condition	% formal specification
+							% (not used)
 					proc_table
 				).
-:- type proc_table	=	map(mode_id, proc_info).
+
+:- type proc_table	=	map(pred_mode_id, proc_info).
 
 :- type proc_info	--->	procedure(
 					category,
@@ -181,19 +194,35 @@
 
 :- type pred_table	=	map(pred_id, pred_info).
 
-:- type proc_id		=	proc(pred_id, mode_id).
+:- type proc_id		=	proc(pred_id, pred_mode_id).
 
-:- type type_id		= 	.
+	% a pred_mode_id is a mode number within a particular predicate -
+	% not to be confused with a mode_id, which is the name of a
+	% user-defined mode.
+:- type pred_mode_id	=	int.
 
-:- type type_table	=	map(type_id, type_body).
+%-----------------------------------------------------------------------------%
 
-:- type mode_id		=	XXX.
+:- type type_id		= 	pair(sym_name, int).
+				% name, arity
 
-:- type mode_table	=	map(mode_id, mode_body).
+:- type type_table	=	map(type_id, type_defn).
 
-:- type inst_id		=	XXX.
+%-----------------------------------------------------------------------------%
+
+:- type mode_id		=	pair(sym_name, int).
+				% name, arity
+
+:- type mode_table	=	map(mode_id, mode).
+
+%-----------------------------------------------------------------------------%
+
+:- type inst_id		=	pair(sym_name, int).
+				% name, arity.
 
 :- type inst_table	=	map(inst_id, inst_body).
+
+%-----------------------------------------------------------------------------%
 
 :- type var_info	--->	var_info(
 					string, % name
@@ -208,11 +237,6 @@
 :- type is_live		--->	live ; dead.
 
 :- type mode_info	=	map(var_id, mode_id). % initial-final
-
-:- type mode_body	--->	inst_id - inst_id.
-
-:- type inst_body	--->	free
-			;	ground.
 
 %-----------------------------------------------------------------------------%
 
@@ -255,10 +279,11 @@ predicate_name(pred(_Module,Name,_Arity), Name).
 predicate_arity(pred(_Module,_Name,Arity), Arity).
 
 predinfo_modes(PredInfo, Modes) :-
-	PredInfo = pred_info(Modes, _Procs).
+	PredInfo = predicate(_ArgTypes, _Cond, Procs),
+	map__keys(Procs, Modes).
 
 predinfo_procedures(PredInfo, Procs) :-
-	PredInfo = pred_info(_Modes, Procs).
+	PredInfo = pred_info(_ArgTypes, _Cond, Procs).
 
 %-----------------------------------------------------------------------------%
 
