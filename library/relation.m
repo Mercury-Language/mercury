@@ -849,12 +849,34 @@ relation__c_dfs_2(Rel, X, VisIn, VisOut, DfsIn, DfsOut) :-
 
 	% relation__atsort returns a topological sorting
 	% of the cliques in a relation.
+	%
+	% The algorithm used is described in:
+	%
+	%	R. E. Tarjan, "Depth-first search and
+	%	linear graph algorithms,"  SIAM Journal
+	%	on Computing, 1, 2 (1972).
 relation__atsort(Rel, ATsort) :-
-	relation__reduced(Rel, Red),
-	( relation__tsort(Red, ATsort0) ->
-		ATsort0 = ATsort
+	relation__dfsrev(Rel, DfsRev),
+	relation__inverse(Rel, RelInv),
+	set_bbbtree__init(Visit),
+	relation__atsort_2(DfsRev, RelInv, Visit, [], ATsort0),
+	list__reverse(ATsort0, ATsort).
+
+:- pred relation__atsort_2(list(relation_key), relation(T),
+	set_bbbtree(relation_key), list(set(T)),
+	list(set(T))).
+:- mode relation__atsort_2(in, in, in, in, out) is det.
+
+relation__atsort_2([], _, _, ATsort, ATsort).
+relation__atsort_2([H | T], RelInv, Visit0, ATsort0, ATsort) :-
+	( set_bbbtree__member(H, Visit0) ->
+		relation__atsort_2(T, RelInv, Visit0, ATsort0, ATsort)
 	;
-		error("relation__atsort")
+		relation__dfs_3([H], RelInv, Visit0, [], Visit, CliqueL),
+		list__map(relation__lookup_key(RelInv), CliqueL, Clique),
+		set__list_to_set(Clique, CliqueSet),
+		relation__atsort_2(T, RelInv, Visit, [CliqueSet | ATsort0],
+				ATsort)
 	).
 
 %------------------------------------------------------------------------------%
