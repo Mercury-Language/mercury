@@ -64,16 +64,10 @@ assoc_list__from_corresponding_2([A | As], [B | Bs], [A - B | ABs]) :-
 
 assoc_list__keys([], []).
 assoc_list__keys([K - _ | KVs], [K | Ks]) :-
-/*###67 [cc] Sorry, not implemented: predicate overloading.%%%*/
-/*###67 [cc] Call to assoc_list__keys/2 matches to more than one predicate.%%%*/
-/*###67 [cc] An explicit module qualifier may help.assoc_list.m:71: In clause for predicate `assoc_list__values/2':%%%*/
 	assoc_list__keys(KVs, Ks).
 
 assoc_list__values([], []).
 assoc_list__values([_ - V | KVs], [V | Vs]) :-
-/*###71 [cc] Sorry, not implemented: predicate overloading.%%%*/
-/*###71 [cc] Call to assoc_list__values/2 matches to more than one predicate.%%%*/
-/*###71 [cc] An explicit module qualifier may help.For more information, try recompiling with `-E'.%%%*/
 	assoc_list__values(KVs, Vs).
 
 %-----------------------------------------------------------------------------%
