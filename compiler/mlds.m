@@ -1258,6 +1258,13 @@ XXX Full exception handling support is not yet implemented.
 
 :- type target_code_attribute
 	--->	max_stack_size(int).
+		% max_stack_size(Size):
+		% This attribute declares the maximum stack usage of a
+		% particular piece of code.  The unit that `Size' is measured
+		% in depends upon foreign language being used.  Currently this
+		% attribute is only used (and is in fact required) by the
+		% `IL' foreign language interface, and is measured in units
+		% of stack items.
 
 	%
 	% constructor id
