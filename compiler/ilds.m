@@ -439,6 +439,14 @@ calculate_max_stack_2([I | Instrs], Current, Max) =
 	;
 		NewCurrent = Current + get_stack_difference(I),
 		NewMax = max(NewCurrent, Max)
+	),
+		% This is a sanity check, the stack should never have a
+		% negative size.
+	( NewCurrent < 0 ->
+		unexpected(this_file,
+			"stack underflow while calculating max stack")
+	;
+		true
 	).
 
 	% Return the difference in stack height after an instruction is
