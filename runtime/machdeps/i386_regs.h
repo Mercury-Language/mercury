@@ -12,24 +12,40 @@
 ** The first NUM_REAL_REGS of these are real machine registers.
 ** The others are just slots in a global array.
 **
-** At the moment we're only using the callee-save registers.
-** We should modify this to optionally use the caller-save registers.
+** At the moment we're only using the callee-save registers
+** (ebx, esi, edi).
+**
+** For the 386, if `ebp' is not used as a global register variable,
+** then the code *must not* be compiled with `-fomit-frame-pointer'.
+** If it is, gcc may generate code which saves `ebp' in the function
+** prologue, uses `ebp' to hold a local variable in the middle of the
+** function, and restores `ebp' in the function epilogue.  This causes
+** problems if we jump into and out of the middle of functions, because
+** `ebp' will get clobbered.
+**
+** Conversely, if `ebp' were to be used as a global register variable,
+** then the code would *have* be compiled with `-fomit-frame-pointer'.
+** Otherwise, gcc will try to use it to point to local variables,
+** and gcc's use of `ebp' will conflict with our use of it.
+** Unfortunately, even `-fomit-frame-pointer' is not enough, since
+** there are some functions for which gcc cannot avoid the use of
+** the frame pointer.  (E.g. the one containing io__init_state/2.)
 */
 
 #define NUM_REAL_REGS 3
 
-reg 	Word	mr0 __asm__("bx");
-reg	Word	mr1 __asm__("si");
-reg	Word	mr2 __asm__("di");
+reg	Word	mr0 __asm__("esi");	/* sp */
+reg	Word	mr1 __asm__("ebx");	/* succip */
+reg	Word	mr2 __asm__("edi");	/* r1 */
 
-#define save_registers()	(	\
+#define save_registers()	(		\
 	fake_reg[0] = mr0,			\
 	fake_reg[1] = mr1,			\
 	fake_reg[2] = mr2,			\
 	(void)0					\
 )
 
-#define restore_registers()	(	\
+#define restore_registers()	(		\
 	mr0 = fake_reg[0],			\
 	mr1 = fake_reg[1],			\
 	mr2 = fake_reg[2],			\
