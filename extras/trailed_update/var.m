@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -96,6 +96,9 @@
 
 	% dump_var prints out a representation of a variable.
 :- pred dump_var(var(T)::in(any), io__state::di, io__state::uo) is cc_multi.
+
+	% unsafe_dump_var/1: an impure version of dump_var/3.
+:- impure pred unsafe_dump_var(var(T)::in(any)) is det.
 
 	% var__is_ground/2 can be used to test if a variable is ground.
 	%
@@ -922,7 +925,7 @@ debug_freeze(Msg, Var, Pred) :-
 		impure unsafe_perform_io(print("freezing: ")),
 		impure unsafe_perform_io(print(Msg)),
 		impure unsafe_perform_io(print(": ")),
-		impure unsafe_perform_io(dump_var(Var)),
+		impure unsafe_dump_var(Var),
 		impure unsafe_perform_io(nl),
 
 		freeze(Var, debug_pred(Msg, Pred)),
@@ -930,13 +933,13 @@ debug_freeze(Msg, Var, Pred) :-
 		impure unsafe_perform_io(print("frozen: ")),
 		impure unsafe_perform_io(print(Msg)),
 		impure unsafe_perform_io(print(": ")),
-		impure unsafe_perform_io(dump_var(Var)),
+		impure unsafe_dump_var(Var),
 		impure unsafe_perform_io(nl)
 	;
 		impure unsafe_perform_io(print("freeze failed: ")),
 		impure unsafe_perform_io(print(Msg)),
 		impure unsafe_perform_io(print(": ")),
-		impure unsafe_perform_io(dump_var(Var)),
+		impure unsafe_dump_var(Var),
 		impure unsafe_perform_io(nl),
 		fail
 	).
@@ -949,7 +952,7 @@ debug_freeze(Msg, X, Pred, Y) :-
 		impure unsafe_perform_io(print("freezing: ")),
 		impure unsafe_perform_io(print(Msg)),
 		impure unsafe_perform_io(print(": ")),
-		impure unsafe_perform_io(dump_var(X)),
+		impure unsafe_dump_var(X),
 		impure unsafe_perform_io(nl),
 
 		freeze(X, debug_pred2(Msg, Pred), Y),
@@ -957,13 +960,13 @@ debug_freeze(Msg, X, Pred, Y) :-
 		impure unsafe_perform_io(print("frozen: ")),
 		impure unsafe_perform_io(print(Msg)),
 		impure unsafe_perform_io(print(": ")),
-		impure unsafe_perform_io(dump_var(X)),
+		impure unsafe_dump_var(X),
 		impure unsafe_perform_io(nl)
 	;
 		impure unsafe_perform_io(print("freeze failed: ")),
 		impure unsafe_perform_io(print(Msg)),
 		impure unsafe_perform_io(print(": ")),
-		impure unsafe_perform_io(dump_var(X)),
+		impure unsafe_dump_var(X),
 		impure unsafe_perform_io(nl),
 		fail
 	).
@@ -1021,6 +1024,10 @@ debug_pred2(Msg, Pred, X, Y) :-
 :- pragma c_code(dump_var(Var::in(any), IO0::di, IO::uo), may_call_mercury, "
 	ML_var_print(TypeInfo_for_T, Var);
 	IO = IO0;
+").
+
+:- pragma c_code(unsafe_dump_var(Var::in(any)), may_call_mercury, "
+	ML_var_print(TypeInfo_for_T, Var);
 ").
 
 :- pred dump_var_rep(var_rep(T)::in(var_rep_any),
