@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2001 The University of Melbourne.
+** Copyright (C) 1995-2001, 2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -396,6 +396,15 @@
 #endif
 
 /*
+** MR_INLINE_ASM_COMMENT is an assembler string to
+** define an assembler comment.
+*/
+#ifndef MR_INLINE_ASM_COMMENT
+#define MR_INLINE_ASM_COMMENT(label)	\
+	"/* " MR_STRINGIFY(label) "*/\n"
+#endif
+
+/*
 ** MR_ASM_JUMP is used to jump to an entry point defined with
 ** MR_ASM_ENTRY, MR_ASM_STATIC_ENTRY, or MR_ASM_LOCAL_ENTRY.
 */
@@ -450,11 +459,20 @@
 ** although there won't be any direct calls to them from another
 ** C file, their address may be taken and so there may be indirect
 ** calls.
+**
+** We need to use MR_ASM_COMMENT here to ensure that
+** the code following each label is distinct; this is needed
+** to ensure GCC doesn't try to merge two labels which point
+** to identical code, but for which we have different information
+** stored in the stack layout structs, etc.
 */
 #define MR_ASM_LOCAL_ENTRY(label) 			\
 	MR_ASM_FALLTHROUGH(label)			\
   	MR_entry(label):				\
-  	MR_ASM_FIXUP_REGS				\
+	__asm__ __volatile__(				\
+		MR_INLINE_ASM_COMMENT(label)		\
+		MR_INLINE_ASM_FIXUP_REGS		\
+	);						\
 	MR_skip(label): ;
 
 /*---------------------------------------------------------------------------*/

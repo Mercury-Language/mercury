@@ -1806,7 +1806,8 @@ if test $mercury_cv_gcc_labels = yes; then
 
 	mercury__label1:
 		__asm__(".globl entry_" "mercury__label1" "\n" "entry_"
-			"mercury__label1" ":");
+			"mercury__label1" ":\n"
+			"/* this is a comment */");
 		exit(0);
 	}], [mercury_cv_asm_labels=yes], [mercury_cv_asm_labels=no],
 		[mercury_cv_asm_labels=no])
