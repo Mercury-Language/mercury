@@ -168,8 +168,9 @@
 	%	i.e. iff they both contain the same number of elements.
 	%
 :- pred list__same_length(list(T1), list(T2)).
-:- mode list__same_length(in, output_list_skel) is det.
-:- mode list__same_length(output_list_skel, in) is det.
+	% XXX The current mode checker can't handle these modes.
+% :- mode list__same_length(in, output_list_skel) is det.
+% :- mode list__same_length(output_list_skel, in) is det.
 :- mode list__same_length(in, in) is semidet.
 % XXX The current mode checker can't handle these modes
 % :- mode list__same_length(input_list_skel, output_list_skel) is det.
@@ -314,6 +315,11 @@
 	%
 :- pred list__nth_member_search(list(T)::in, T::in, int::out) is semidet.
 
+	% A deterministic version of list__nth_member_search, which aborts
+	% instead of failing if the element is not found in the list.
+	%
+:- pred list__nth_member_lookup(list(T)::in, T::in, int::out) is det.
+
 	% list__index*(List, Position, Elem):
 	%	These predicates select an element in a list from it's
 	%	position.  The `index0' preds consider the first element
@@ -448,6 +454,60 @@
 	is nondet.
 :- mode list__map3(pred(in, in, in, in) is semidet, in, in, in, in) is semidet.
 
+	% list__map4(T, L, M1, M2, M3, M4) uses the closure T
+	% to transform the elements of L into the elements of M1, M2, M3 and 
+	% M4.
+:- pred list__map4(pred(A, B, C, D, E), list(A), list(B), list(C), list(D),
+	list(E)).
+:- mode list__map4(pred(in, out, out, out, out) is det, in, out, out, out, out) 
+	is det.
+:- mode list__map4(pred(in, out, out, out, out) is cc_multi, in, out, out, out,
+	out) is cc_multi.
+:- mode list__map4(pred(in, out, out, out, out) is semidet, in, out, out, out,
+	out) is semidet.
+:- mode list__map4(pred(in, out, out, out, out) is multi, in, out, out, out,
+	out) is multi.
+:- mode list__map4(pred(in, out, out, out, out) is nondet, in, out, out, out,
+	out) is nondet.
+:- mode list__map4(pred(in, in, in, in, in) is semidet, in, in, in, in, in) 
+	is semidet.
+
+	% list__map5(T, L, M1, M2, M3, M4, M5) uses the closure T
+	% to transform the elements of L into the elements of M1, M2, M3, M4 
+	% and M5.
+:- pred list__map5(pred(A, B, C, D, E, F), list(A), list(B), list(C), list(D),
+	list(E), list(F)).
+:- mode list__map5(pred(in, out, out, out, out, out) is det, in, out, out, out,
+	out, out) is det.
+:- mode list__map5(pred(in, out, out, out, out, out) is cc_multi, in, out, out,
+	out, out, out) is cc_multi.
+:- mode list__map5(pred(in, out, out, out, out, out) is semidet, in, out, out, 
+	out, out, out) is semidet.
+:- mode list__map5(pred(in, out, out, out, out, out) is multi, in, out, out, 
+	out, out, out) is multi.
+:- mode list__map5(pred(in, out, out, out, out, out) is nondet, in, out, out, 
+	out, out, out) is nondet.
+:- mode list__map5(pred(in, in, in, in, in, in) is semidet, in, in, in, in, in,
+	in) is semidet.
+
+	% list__map6(T, L, M1, M2, M3, M4, M5, M6) uses the closure T
+	% to transform the elements of L into the elements of M1, M2, M3, M4, 
+	% M5 and M6.
+:- pred list__map6(pred(A, B, C, D, E, F, G), list(A), list(B), list(C), 
+	list(D), list(E), list(F), list(G)).
+:- mode list__map6(pred(in, out, out, out, out, out, out) is det, in, out, out, 
+	out, out, out, out) is det.
+:- mode list__map6(pred(in, out, out, out, out, out, out) is cc_multi, in, out,
+	out, out, out, out, out) is cc_multi.
+:- mode list__map6(pred(in, out, out, out, out, out, out) is semidet, in, out, 
+	out, out, out, out, out) is semidet.
+:- mode list__map6(pred(in, out, out, out, out, out, out) is multi, in, out, 
+	out, out, out, out, out) is multi.
+:- mode list__map6(pred(in, out, out, out, out, out, out) is nondet, in, out, 
+	out, out, out, out, out) is nondet.
+:- mode list__map6(pred(in, in, in, in, in, in, in) is semidet, in, in, in, in,
+	in, in, in) is semidet.
+
 	% list__map_corresponding(F, [A1, .. An], [B1, .. Bn]) =
 	% 	[F(A1, B1), .., F(An, Bn)].
 	%
@@ -517,7 +577,7 @@
 	% Does the same job as list__foldl, but with two accumulators.
 	% (Although no more expressive than list__foldl, this is often
 	% a more convenient format, and a little more efficient).
-	%
+	% 
 :- pred list__foldl2(pred(L, A, A, Z, Z), list(L), A, A, Z, Z).
 :- mode list__foldl2(pred(in, in, out, in, out) is det,
 	in, in, out, in, out) is det.
@@ -544,7 +604,7 @@
 	% Does the same job as list__foldl, but with three accumulators.
 	% (Although no more expressive than list__foldl, this is often
 	% a more convenient format, and a little more efficient).
-	%
+	% 
 :- pred list__foldl3(pred(L, A, A, B, B, C, C), list(L),
 	A, A, B, B, C, C).
 :- mode list__foldl3(pred(in, in, out, in, out, in, out) is det,
@@ -584,7 +644,7 @@
 	% Does the same job as list__foldl, but with five accumulators.
 	% (Although no more expressive than list__foldl, this is often
 	% a more convenient format, and a little more efficient).
-	%
+	% 
 :- pred list__foldl5(pred(L, A, A, B, B, C, C, D, D, E, E), list(L),
 	A, A, B, B, C, C, D, D, E, E).
 :- mode list__foldl5(pred(in, in, out, in, out, in, out, in, out, in, out)
@@ -637,7 +697,7 @@
 	% each element of InList (working left-to-right) to transform
 	% InList into OutList.  The final value of the accumulator is
 	% returned in End.
-	%
+	% 
 :- pred list__map_foldl(pred(L, M, A, A), list(L), list(M), A, A).
 :- mode list__map_foldl(pred(in, out, di, uo) is det, in, out, di, uo)
 	is det.
@@ -653,7 +713,7 @@
 	is nondet.
 
 	% Same as list__map_foldl, but with two mapped outputs.
-	%
+	% 
 :- pred list__map2_foldl(pred(L, M, N, A, A), list(L), list(M), list(N),
 	A, A).
 :- mode list__map2_foldl(pred(in, out, out, di, uo) is det, in, out, out,
@@ -997,6 +1057,13 @@ list__nth_member_search_2([X | Xs], Y, P, N) :-
 		N = P
 	;
 		list__nth_member_search_2(Xs, Y, P + 1, N)
+	).
+
+nth_member_lookup(List, Elem, Position) :-
+	( list__nth_member_search(List, Elem, PositionPrime) ->
+		Position = PositionPrime
+	;
+		error("list__nth_member_lookup/3: element not found in list")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1444,6 +1511,23 @@ list__map3(_, [],  [],  [],  []).
 list__map3(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3]) :-
 	call(P, H0, H1, H2, H3),
 	list__map3(P, T0, T1, T2, T3).
+
+list__map4(_, [], [], [], [], []).
+list__map4(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4]) :-
+	call(P, H0, H1, H2, H3, H4),
+	list__map4(P, T0, T1, T2, T3, T4).
+
+list__map5(_, [], [], [], [], [], []).
+list__map5(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5])
+		:-
+	call(P, H0, H1, H2, H3, H4, H5),
+	list__map5(P, T0, T1, T2, T3, T4, T5).
+
+list__map6(_, [], [], [], [], [], [], []).
+list__map6(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5],
+		[H6 | T6]) :-
+	call(P, H0, H1, H2, H3, H4, H5, H6),
+	list__map6(P, T0, T1, T2, T3, T4, T5, T6).
 
 list__map_corresponding(_, [], []) = [].
 list__map_corresponding(_, [], [_ | _]) =

@@ -329,6 +329,11 @@
 	prog_context::in, maybe(call_unify_context)::in,
 	hlds_goal::out, mode_info::in, mode_info::out) is det.
 
+	% Construct a list of initialisation calls.
+	%
+:- pred construct_initialisation_calls(list(prog_var)::in,
+	list(hlds_goal)::out, mode_info::in, mode_info::out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1189,7 +1194,7 @@ modecheck_goal_expr(some(Vs, CanRemove, SubGoal0), _,
 
 modecheck_goal_expr(call(PredId, ProcId0, Args0, _, Context, PredName),
 		GoalInfo0, Goal, !ModeInfo, !IO) :-
-	prog_out__sym_name_to_string(PredName, PredNameString),
+	mdbcomp__prim_data__sym_name_to_string(PredName, PredNameString),
 	string__append("call ", PredNameString, CallString),
 	mode_checkpoint(enter, CallString, !ModeInfo, !IO),
 
@@ -1498,20 +1503,13 @@ modecheck_conj_list(Goals0, Goals, !ModeInfo, !IO) :-
 	delay_info__leave_conj(DelayInfo2, DelayedGoals0, DelayInfo3),
 	mode_info_set_delay_info(DelayInfo3, !ModeInfo),
 
-		% Try to handle any unscheduled goals by inserting solver
-		% initialisation calls, aiming for a deterministic
-		% schedule.
+		% Otherwise try scheduling by inserting solver
+		% initialisation calls where necessary.
 		%
-	modecheck_conj_list_3(DelayedGoals0, DelayedGoals1, Goals2,
-		RevImpurityErrors0, RevImpurityErrors1, !ModeInfo, !IO),
+	modecheck_delayed_solver_goals(Goals2, DelayedGoals0, DelayedGoals,
+		RevImpurityErrors0, RevImpurityErrors, !ModeInfo, !IO),
 
-		% Try to handle any unscheduled goals by inserting solver
-		% initialisation calls, aiming for *any* workable schedule.
-		%
-	modecheck_conj_list_4(DelayedGoals1, DelayedGoals, Goals3,
-		RevImpurityErrors1, RevImpurityErrors, !ModeInfo, !IO),
-
-	Goals = Goals1 ++ Goals2 ++ Goals3,
+	Goals = Goals1 ++ Goals2,
 
 	mode_info_get_errors(!.ModeInfo, NewErrors),
 	list__append(OldErrors, NewErrors, Errors),
@@ -1585,9 +1583,11 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals, !ImpurityErrors, !ModeInfo,
 	Goal0 = _GoalExpr - GoalInfo0,
 	( goal_info_is_impure(GoalInfo0) ->
 		Impure = yes,
-		check_for_impurity_error(Goal0, !ImpurityErrors, !ModeInfo)
+		check_for_impurity_error(Goal0, ScheduledSolverGoals,
+			!ImpurityErrors, !ModeInfo, !IO)
 	;
-		Impure = no
+		Impure = no,
+		ScheduledSolverGoals = []
 	),
 
 		% Hang onto the original instmap, delay_info, and live_vars
@@ -1659,11 +1659,40 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals, !ImpurityErrors, !ModeInfo,
 	( Errors = [] ->
 		% we successfully scheduled this goal, so insert
 		% it in the list of successfully scheduled goals
-		Goals = [Goal | Goals2]
+		Goals = ScheduledSolverGoals ++ [Goal | Goals2]
 	;
 		% we delayed this goal -- it will be stored in the delay_info
-		Goals = Goals2
+		Goals = ScheduledSolverGoals ++ Goals2
 	).
+
+	% We may still have some unscheduled goals.  This may be because some
+	% initialisation calls are needed to turn some solver type vars
+	% from inst free to inst any.  This predicate attempts to schedule
+	% such goals.
+	%
+:- pred modecheck_delayed_solver_goals(list(hlds_goal)::out,
+	list(delayed_goal)::in, list(delayed_goal)::out,
+	impurity_errors::in, impurity_errors::out,
+	mode_info::in, mode_info::out, io::di, io::uo) is det.
+
+modecheck_delayed_solver_goals(Goals, DelayedGoals0, DelayedGoals,
+		!ImpurityErrors, !ModeInfo, !IO) :-
+
+		% Try to handle any unscheduled goals by inserting solver
+		% initialisation calls, aiming for a deterministic
+		% schedule.
+		%
+	modecheck_conj_list_3(DelayedGoals0, DelayedGoals1, Goals0,
+		!ImpurityErrors, !ModeInfo, !IO),
+
+		% Try to handle any unscheduled goals by inserting solver
+		% initialisation calls, aiming for *any* workable schedule.
+		%
+	modecheck_conj_list_4(DelayedGoals1, DelayedGoals, Goals1,
+		!ImpurityErrors, !ModeInfo, !IO),
+
+	Goals = Goals0 ++ Goals1.
+
 
 	% We may still have some unscheduled goals.  This may be because some
 	% initialisation calls are needed to turn some solver type vars
@@ -1780,9 +1809,6 @@ modecheck_conj_list_3(DelayedGoals0, DelayedGoals, Goals,
 			Goals        = []
 		)
 	).
-
-:- pred construct_initialisation_calls(list(prog_var)::in,
-	list(hlds_goal)::out, mode_info::in, mode_info::out) is det.
 
 construct_initialisation_calls([], [], !ModeInfo).
 construct_initialisation_calls([Var | Vars], [Goal | Goals], !ModeInfo) :-
@@ -2067,26 +2093,37 @@ hlds_goal_from_delayed_goal(delayed_goal(_WaitingVars, _ModeError, Goal)) =
 %  case of output arguments, they cannot be scheduled until the variable value
 %  is known.  If headvar unifications couldn't be delayed past impure goals,
 %  impure predicates wouldn't be able to have outputs!
+%
+%  (Note that we first try to schedule any delayed solver goals waiting for
+%  initialisation.)
 
-:- pred check_for_impurity_error(hlds_goal::in,
+:- pred check_for_impurity_error(hlds_goal::in, list(hlds_goal)::out,
 	impurity_errors::in, impurity_errors::out,
-	mode_info::in, mode_info::out) is det.
+	mode_info::in, mode_info::out, io::di, io::uo) is det.
 
-check_for_impurity_error(Goal, !ImpurityErrors, !ModeInfo) :-
+check_for_impurity_error(Goal, Goals, !ImpurityErrors, !ModeInfo, !IO) :-
 	mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
-	delay_info__leave_conj(DelayInfo0, DelayedGoals, DelayInfo1),
-	delay_info__enter_conj(DelayInfo1, DelayInfo),
+	delay_info__leave_conj(DelayInfo0, DelayedGoals0, DelayInfo1),
+	mode_info_set_delay_info(DelayInfo1, !ModeInfo),
 	mode_info_get_module_info(!.ModeInfo, ModuleInfo),
 	mode_info_get_predid(!.ModeInfo, PredId),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_clauses_info(PredInfo, ClausesInfo),
 	clauses_info_headvars(ClausesInfo, HeadVars),
-	( no_non_headvar_unification_goals(DelayedGoals, HeadVars) ->
+	filter_headvar_unification_goals(HeadVars, DelayedGoals0,
+		HeadVarUnificationGoals, NonHeadVarUnificationGoals0),
+	modecheck_delayed_solver_goals(Goals,
+		NonHeadVarUnificationGoals0, NonHeadVarUnificationGoals,
+		!ImpurityErrors, !ModeInfo, !IO),
+	mode_info_get_delay_info(!.ModeInfo, DelayInfo2),
+	delay_info__enter_conj(DelayInfo2, DelayInfo3),
+	redelay_goals(HeadVarUnificationGoals, DelayInfo3, DelayInfo),
+	mode_info_set_delay_info(DelayInfo, !ModeInfo),
+	( NonHeadVarUnificationGoals = [] ->
 		true
 	;
-		mode_info_set_delay_info(DelayInfo, !ModeInfo),
-		get_all_waiting_vars(DelayedGoals, Vars),
-		ModeError = mode_error_conj(DelayedGoals,
+		get_all_waiting_vars(NonHeadVarUnificationGoals, Vars),
+		ModeError = mode_error_conj(NonHeadVarUnificationGoals,
 			goals_followed_by_impure_goal(Goal)),
 		mode_info_get_context(!.ModeInfo, Context),
 		mode_info_get_mode_context(!.ModeInfo, ModeContext),
@@ -2095,20 +2132,28 @@ check_for_impurity_error(Goal, !ImpurityErrors, !ModeInfo) :-
 		!:ImpurityErrors = [ImpurityError | !.ImpurityErrors]
 	).
 
-:- pred no_non_headvar_unification_goals(list(delayed_goal)::in,
-	list(prog_var)::in) is semidet.
 
-no_non_headvar_unification_goals([], _).
-no_non_headvar_unification_goals([delayed_goal(_, _, Goal - _) | Goals],
-		HeadVars) :-
+:- pred filter_headvar_unification_goals(list(prog_var)::in,
+	list(delayed_goal)::in, list(delayed_goal)::out,
+	list(delayed_goal)::out) is det.
+
+filter_headvar_unification_goals(HeadVars, DelayedGoals,
+		HeadVarUnificationGoals, NonHeadVarUnificationGoals) :-
+	list__filter(is_headvar_unification_goal(HeadVars), DelayedGoals,
+		HeadVarUnificationGoals, NonHeadVarUnificationGoals).
+
+
+:- pred is_headvar_unification_goal(list(prog_var)::in, delayed_goal::in)
+	is semidet.
+
+is_headvar_unification_goal(HeadVars, delayed_goal(_, _, Goal - _)) :-
 	Goal = unify(Var, RHS, _, _, _),
 	(
 		list__member(Var, HeadVars)
 	;
 		RHS = var(OtherVar),
 		list__member(OtherVar, HeadVars)
-	),
-	no_non_headvar_unification_goals(Goals, HeadVars).
+	).
 
 	% Given an association list of Vars - Goals,
 	% combine all the Vars together into a single set.
@@ -2126,6 +2171,17 @@ get_all_waiting_vars_2([], Vars, Vars).
 get_all_waiting_vars_2([delayed_goal(Vars1, _, _) | Rest], Vars0, Vars) :-
 	set__union(Vars0, Vars1, Vars2),
 	get_all_waiting_vars_2(Rest, Vars2, Vars).
+
+
+:- pred redelay_goals(list(delayed_goal)::in, delay_info::in, delay_info::out)
+	is det.
+
+redelay_goals([], DelayInfo, DelayInfo).
+
+redelay_goals([DelayedGoal | DelayedGoals], DelayInfo0, DelayInfo) :-
+	DelayedGoal = delayed_goal(_WaitingVars, ModeErrorInfo, Goal),
+	delay_info__delay_goal(DelayInfo0, ModeErrorInfo, Goal, DelayInfo1),
+	redelay_goals(DelayedGoals, DelayInfo1, DelayInfo).
 
 %-----------------------------------------------------------------------------%
 
