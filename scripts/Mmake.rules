@@ -331,13 +331,13 @@ clean_local: clean_prof_files
 
 .PHONY: lib%.install
 lib%.install: lib%.install_ints lib%.install_init lib%.install_library
-	$(MMAKE) lib$*.install_grades || ( mercury_cleanup_install && exit 1 )
+	$(MMAKE) lib$*.install_grades || { mercury_cleanup_install && exit 1; }
 
 .PHONY: lib%.install_split
 lib%.install_split: lib%.install_ints lib%.install_init \
 		lib%.install_split_library
 	$(MMAKE) lib$*.install_split_grades || \
-			( mercury_cleanup_install && exit 1 )
+			{ mercury_cleanup_install && exit 1; }
 
 .PHONY: lib%.install_init
 lib%.install_init: %.init install_lib_dirs
