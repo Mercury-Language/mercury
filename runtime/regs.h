@@ -1,14 +1,16 @@
-/* The virtual machine registers are built up using two levels
-   of abstraction.  This file defines the virtual machine registers
-	hp, sp, curcp, maxcp, r1 - r32
-   using the registers mr0 - mr31 defined in machregs.h.
+/*
+** The virtual machine registers are built up using two levels
+** of abstraction.  This file defines the virtual machine registers
+** hp, sp, curcp, maxcp, r1 - r32
+** using the registers mr0 - mr31 defined in machregs.h.
 */
 
 #include "machregs.h"
 
-/* These are defined in order of priority.
-   We should experiment to determine how often each is used in
-   real code. */
+/*
+** These are defined in order of priority.
+** We should experiment to determine how often each is used in real code.
+*/
 
 #define succip		((Code *) mr0)
 #define r1		mr1

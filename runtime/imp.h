@@ -44,12 +44,20 @@ enum {
 	D_1,
 	E_1,
 	F_1,
+	COLOR_1,
+	NEXT_1,
+	NEXT_2,
+	NEXT_3,
+	OK_1,
+	OK_2,
+	OK_3,
+	OK_4,
 
 	MAXENTRIES
 };
 
-#define	STARTLABELS	40
-#define	MAXLABELS	400
+#define	STARTLABELS	100
+#define	MAXLABELS	800
 
 #define	makeentry(e, n, a, i)					\
 			do {					\
@@ -409,6 +417,8 @@ extern	Word	*cpstackmin;
 			do { } while (0)
 #define	debugregs(msg)						\
 			do { } while (0)
+#define	debugframe(msg)						\
+			do { } while (0)
 #define	debugmkcp()						\
 			do { } while (0)
 #define	debugmkreclaim()					\
@@ -463,6 +473,8 @@ extern	Word	*cpstackmin;
 			} while (0)
 
 #define	debugregs(msg)	printregs(msg)
+
+#define	debugframe(msg)	printframe(msg)
 
 #define	debugmkcp()	do {					\
 				if (cpstackdebug)		\
@@ -551,6 +563,7 @@ extern	void	ab_module(void);
 extern	void	back_module(void);
 extern	void	neg_module(void);
 extern	void	heap_module(void);
+extern	void	color_module(void);
 
 extern	Word	mklist(int start, int len);
 
@@ -592,11 +605,13 @@ extern	void	pop_msg(Word val, const Word *addr);
 extern	void	printregs(const char *msg);
 extern	void	printtmps(void);
 extern	void	printint(Word n);
+extern	void	printstring(char *s);
 extern	void	printheap(const Word *h);
 extern	void	printstack(const Word *s);
 extern	void	printcpstack(const Word *s);
 extern	void	printlist(Word p);
 extern	void	printlabel(const Code *w);
 extern	void	printregs(const char *);
+extern	void	printframe(const char *);
+extern	void	dumpframe(Word *);
 extern	void	dumpcpstack(void);
-

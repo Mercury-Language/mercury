@@ -97,11 +97,16 @@ void pop_msg(Word val, const Word *addr)
 	printstack(addr);
 }
 
-/*---------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------*/
 
 void printint(Word n)
 {
 	printf("int %d\n", n);
+}
+
+void printstring(char *s)
+{
+	printf("string %p %s\n", s, s);
 }
 
 void printheap(const Word *h)
@@ -121,37 +126,41 @@ void printcpstack(const Word *s)
 		s, s - cpstackmin, (const char *) s[PREDNM]);
 }
 
+void dumpframe(Word *cp)
+{
+	reg	int	i;
+
+	if ((cp - (Word *) cp[PREVCP]) == RECLAIM_SIZE)
+	{
+		printf("reclaim frame at ptr %p, offset %3d words\n",
+			cp, cp - cpstackmin);
+		printf("\t predname  %s\n", (const char *)cp[PREDNM]);
+		printf("\t redoip    "); printlabel((Code *)cp[REDOIP]);
+		printf("\t prevcp    "); printcpstack((Word *)cp[PREVCP]);
+		printf("\t savehp    "); printheap((Word *)cp[SAVEHP]);
+	}
+	else
+	{
+		printf("cp frame at ptr %p, offset %3d words\n",
+			cp, cp - cpstackmin);
+		printf("\t predname  %s\n", (const char *)cp[PREDNM]);
+		printf("\t succip    "); printlabel((Code *)cp[SUCCIP]);
+		printf("\t redoip    "); printlabel((Word *)cp[REDOIP]);
+		printf("\t succcp    "); printcpstack((Word *)cp[SUCCCP]);
+		printf("\t prevcp    "); printcpstack((Word *)cp[PREVCP]);
+
+		for (i = 0; &cp[SAVEVAL-i] > (Word *) cp[PREVCP]; i++)
+			printf("\t cpvar(%d)  %d %x\n", i, cp[SAVEVAL-i], cp[SAVEVAL-i]);
+	}
+}
+
 void dumpcpstack(void)
 {
 	reg	Word	*cp;
-	reg	int	i;
 
 	printf("\ncpstack dump\n");
 	for (cp = maxcp; cp > cpstackmin; cp = (Word *) cp[PREVCP])
-	{
-		if ((cp - (Word *) cp[PREVCP]) == RECLAIM_SIZE)
-		{
-			printf("reclaim frame at ptr %p, offset %3d words\n",
-				cp, cp - cpstackmin);
-			printf("\tpredname  %s\n", (const char *)cp[PREDNM]);
-			printf("\tredoip    "); printlabel((Code *)cp[REDOIP]);
-			printf("\tprevcp    "); printcpstack((Word *)cp[PREVCP]);
-			printf("\tsavehp    "); printheap((Word *)cp[SAVEHP]);
-		}
-		else
-		{
-			printf("cp frame at ptr %p, offset %3d words\n",
-				cp, cp - cpstackmin);
-			printf("\tpredname  %s\n", (const char *)cp[PREDNM]);
-			printf("\tsuccip    "); printlabel((Code *)cp[SUCCIP]);
-			printf("\tredoip    "); printlabel((Word *)cp[REDOIP]);
-			printf("\tsucccp    "); printcpstack((Word *)cp[SUCCCP]);
-			printf("\tprevcp    "); printcpstack((Word *)cp[PREVCP]);
-
-			for (i = 0; &cp[SAVEVAL-i] > (Word *) cp[PREVCP]; i++)
-				printf("\tcpvar(%d)  %x\n", i, cp[SAVEVAL-i]);
-		}
-	}
+		dumpframe(cp);
 }
 
 #define	LIST_WRAP	4
@@ -218,9 +227,10 @@ void printlabel(const Code *w)
 }
 
 #define	FNULL	((PrintRegFunc *) 0)
-#define P_LABEL ((PrintRegFunc *) printlabel)
 #define P_INT 	((PrintRegFunc *) printint)
+#define P_STR	((PrintRegFunc *) printstring)
 #define P_LIST 	((PrintRegFunc *) printlist)
+#define P_LABEL ((PrintRegFunc *) printlabel)
 #define P_STACK	((PrintRegFunc *) printstack)
 #define P_HEAP	((PrintRegFunc *) printheap)
 
@@ -277,11 +287,44 @@ PrintRegFunc	*regtable[MAXENTRIES][32] =
 	{ P_INT, P_INT, FNULL },
 /* F_1 */
 	{ P_INT, P_INT, FNULL },
+/* COLOR_1 */
+	{ P_INT, P_INT, FNULL },
+/* NEXT_1 */
+	{ P_INT, P_INT, FNULL },
+/* NEXT_2 */
+	{ P_INT, P_INT, FNULL },
+/* NEXT_3 */
+	{ P_INT, P_INT, FNULL },
+/* OK_1 */
+	{ P_INT, P_INT, FNULL },
+/* OK_2 */
+	{ P_INT, P_INT, FNULL },
+/* OK_3 */
+	{ P_INT, P_INT, FNULL },
+/* OK_4 */
+	{ P_INT, P_INT, P_INT, P_INT, P_INT, FNULL },
 };
+
+void printframe(const char *msg)
+{
+	reg	int	i;
+
+	printf("\n%s\n", msg);
+	dumpframe(curcp);
+	for (i = 0; i < 31 && regtable[which][i] != FNULL; i++)
+	{
+		if (i < 10)
+			printf("r%d:      ", i + 1);
+		else
+			printf("r%2d:     ", i + 1);
+
+		(*regtable[which][i])(get_reg(i + 1));
+	}
+}
 
 void printregs(const char *msg)
 {
-	int i;
+	reg	int	i;
 
 	printf("\n%s\n", msg);
 
@@ -294,11 +337,11 @@ void printregs(const char *msg)
 
 	for (i = 0; i < 31 && regtable[which][i] != FNULL; i++)
 	{
-		if (i < 10) {
+		if (i < 10)
 			printf("r%d:      ", i + 1);
-		} else {
+		else
 			printf("r%2d:     ", i + 1);
-		}
+
 		(*regtable[which][i])(get_reg(i + 1));
 	}
 }
@@ -356,4 +399,3 @@ Word mklist(int start, int len)
 
 	return curr;
 }
-
