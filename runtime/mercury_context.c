@@ -197,8 +197,8 @@ MR_init_context(MR_Context *c, const char *id, MR_Generator *gen)
 #endif
 
 #ifndef	MR_CONSERVATIVE_GC
-	if (is_generator) {
-		MR_fatal_error("MR_init_context_maybe_generator: "
+	if (gen != NULL) {
+		MR_fatal_error("MR_init_context: "
 			"generator and no conservative gc");
 	}
 
