@@ -142,7 +142,8 @@
 
 :- import_module (assertion), error_util, goal_store, goal_util, globals.
 :- import_module hlds_data, hlds_goal, hlds_out, (inst).
-:- import_module inst_match, instmap, mode_util, options, prog_data, prog_util.
+:- import_module inst_match, instmap, mode_util, options.
+:- import_module prog_data, prog_util, quantification.
 
 :- import_module assoc_list, bool, int, list, map, multi_map.
 :- import_module require, set, std_util, string, term, varset.
@@ -1883,11 +1884,22 @@ top_level(ite_rec_base, Goal, OrigBaseGoal,
 :- pred update_accumulator_pred(pred_id::in, proc_id::in,
 		hlds_goal::in, module_info::in, module_info::out) is det.
 
-update_accumulator_pred(NewPredId, NewProcId, AccGoal,
+update_accumulator_pred(NewPredId, NewProcId, AccGoal0,
 		ModuleInfo0, ModuleInfo) :-
 	module_info_pred_proc_info(ModuleInfo0, NewPredId, NewProcId,
 			PredInfo, ProcInfo0),
-	proc_info_set_goal(ProcInfo0, AccGoal, ProcInfo),
+
+	proc_info_headvars(ProcInfo0, HeadVars),
+	proc_info_vartypes(ProcInfo0, VarTypes0),
+	proc_info_varset(ProcInfo0, Varset0),
+
+	implicitly_quantify_clause_body(HeadVars, AccGoal0, Varset0,
+		VarTypes0, AccGoal, Varset, VarTypes, _Warnings),
+
+	proc_info_set_goal(ProcInfo0, AccGoal, ProcInfo1),
+	proc_info_set_varset(ProcInfo1, Varset, ProcInfo2),
+	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo),
+
 	module_info_set_pred_proc_info(ModuleInfo0, NewPredId, NewProcId,
 			PredInfo, ProcInfo, ModuleInfo).
 
