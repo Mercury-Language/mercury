@@ -23,6 +23,7 @@
 #include "mercury_float.h"	/* for the `Float' type */
 #include "mercury_tags.h"
 #include "mercury_grade.h"
+#include "mercury_thread.h"	/* for the MR_*_GLOBAL_LOCK() macros */
 #include "mercury_std.h"
 
 #include "gc.h"
