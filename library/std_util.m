@@ -559,8 +559,8 @@ Define_entry(mercury__std_util__builtin_aggregate_4_0);
 
 #ifndef USE_TYPE_LAYOUT
 	fatal_error(""builtin_aggregate/4 not supported with this grade ""
-		    ""on this system.\n""
-		""Try using a `.gc' (conservative gc) grade.\n"");
+		    ""on this system.\\n""
+		""Try using a `.gc' (conservative gc) grade.\\n"");
 #endif
 
 /*
@@ -956,9 +956,9 @@ det_univ_to_type(Univ, X) :-
 	;
 		UnivTypeName = type_name(univ_type(Univ)),
 		ObjectTypeName = type_name(type_of(X)),
-		string__append_list(["det_univ_to_type: conversion failed\n",
+		string__append_list(["det_univ_to_type: conversion failed\\n",
 			"\tUniv Type: ", UnivTypeName,
-			"\n\tObject Type: ", ObjectTypeName], ErrorString),
+			"\\n\tObject Type: ", ObjectTypeName], ErrorString),
 		error(ErrorString)
 	).
 

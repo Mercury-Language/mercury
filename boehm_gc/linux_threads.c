@@ -28,9 +28,11 @@
  * there too.
  */
 
+    /* ANSI C requires that a compilation unit contains something */
+# include "gc_priv.h"
+
 # if defined(LINUX_THREADS)
 
-# include "gc_priv.h"
 # include <pthread.h>
 # include <time.h>
 # include <errno.h>

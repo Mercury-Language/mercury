@@ -81,7 +81,7 @@ case "$CC" in
 # -Wcast-align 		causes redundant warnings in memory.c
 # -pedantic		causes unsuppressable warnings about LVALUE_CAST()
 # -Wnested-externs	causes unsuppressable warnings about callentry()
-# -Wid-clash-31 		causes warnings about entry_mercury__xxx ...
+# -Wid-clash-31 	causes warnings about entry_mercury__xxx ...
 # -Wenum-clash 		is for C++ only
 # -Wunused		causes various spurious warnings
 
@@ -90,7 +90,7 @@ case "$CC" in
 	;;
     *lcc*)
 	ANSI_OPTS=
-	CHECK_OPTS=
+	CHECK_OPTS="-w"     # turn off all warnings due to spurious warnings.
 	OPT_OPTS=""
 	COMPILER=lcc
 	;;
@@ -134,6 +134,7 @@ while : ; do
 
 	--no-ansi)
 		ANSI_OPTS=
+		DEFINE_OPTS="$DEFINE_OPTS -D__EXTENSIONS__"
 		;;
 
 	--no-check)
@@ -427,7 +428,7 @@ esac
 
 
 ALL_CC_OPTS="$ALL_C_INCL_DIRS $ANSI_OPTS $CHECK_OPTS $OPT_OPTS \
-		$GRADE_OPTS $GC_OPTS \
+		$GRADE_OPTS $GC_OPTS $DEFINE_OPTS \
 		$TRACE_OPTS $STACK_TRACE_OPTS $LLDEBUG_OPTS $C_DEBUG_OPTS \
 		$PROF_TIME_OPTS $PROF_CALLS_OPTS $PROF_MEMORY_OPTS \
 		$INLINE_ALLOC_OPTS $TRAIL_OPTS $SPLIT_OPTS $THREAD_OPTS \

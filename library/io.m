@@ -3209,7 +3209,7 @@ io__make_temp(Name) -->
 
 	len = strlen(Dir) + 1 + 5 + 3 + 1 + 3 + 1;
 		/* Dir + / + Prefix + counter_high + . + counter_low + \\0 */
-	incr_hp_atomic(LVALUE_CAST(Word *, FileName),
+	incr_hp_atomic(LVALUE_CAST(Word, FileName),
 		(len + sizeof(Word)) / sizeof(Word));
 	if (ML_io_tempnam_counter == 0) {
 		ML_io_tempnam_counter = getpid();

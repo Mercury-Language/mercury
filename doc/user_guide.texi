@@ -2209,6 +2209,13 @@ runtime.  The C code also needs to be compiled with
 @samp{-DNO_TYPE_LAYOUT}.
 
 @sp 1
+@item @code{--max-jump-table-size}
+The maximum number of entries a jump table can have. The special value 0
+indicates that there is no limit on the jump table size.
+This option can be useful to avoid exceeding fixed limits
+imposed by some C compilers.
+
+@sp 1
 @item @code{--pic-reg} (grades: any grade containing `.pic_reg')
 [For Unix with intel x86 architecture only.]
 Select a register usage convention that is compatible

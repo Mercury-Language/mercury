@@ -895,14 +895,15 @@ Define_entry(mercury__table_suspend_2_0);
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf(""suspension saves consumer stack: %d non, %d det\n"",
+		printf(""suspension saves consumer stack: %d non, %d det\\n"",
 			non_stack_delta, det_stack_delta);
-		printf(""non region from %p to %p, det region from %p to %p\n"",
+		printf(""non region from %p to %p, det region from ""
+			""%p to %p\\n"",
 			(void *) non_stack_bottom,
 			(void *) MR_maxfr,
 			(void *) det_stack_bottom,
 			(void *) MR_sp);
-		printf(""succip = %p, sp = %p, maxfr = %p, curfr = %p\n"",
+		printf(""succip = %p, sp = %p, maxfr = %p, curfr = %p\\n"",
 			(void *) MR_succip, (void *) MR_sp,
 			(void *) MR_maxfr, (void *) MR_curfr);
 	}
@@ -1098,15 +1099,16 @@ Define_entry(mercury__table_resume_1_0);
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf(""resumption saves generator stack: %d non, %d det\n"",
+		printf(""resumption saves generator stack: %d non, %d det\\n"",
 			ML_RESUME_VAR->non_stack_block_size,
 			ML_RESUME_VAR->det_stack_block_size);
-		printf(""non region from %p to %p, det region from %p to %p\n"",
+		printf(""non region from %p to %p, det region ""
+			""from %p to %p\\n"",
 			(void *) ML_RESUME_VAR->table->non_stack_bottom,
 			(void *) MR_maxfr,
 			(void *) ML_RESUME_VAR->table->det_stack_bottom,
 			(void *) MR_sp);
-		printf(""succip = %p, sp = %p, maxfr = %p, curfr = %p\n"",
+		printf(""succip = %p, sp = %p, maxfr = %p, curfr = %p\\n"",
 			(void *) MR_succip, (void *) MR_sp,
 			(void *) MR_maxfr, (void *) MR_curfr);
 	}
@@ -1163,10 +1165,12 @@ Define_label(mercury__table_resume_1_0_SolutionsListLoop);
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf(""resumption restores consumer stack: %d non, %d det\n"",
+		printf(""resumption restores consumer stack: ""
+			""%d non, %d det\\n"",
 			ML_RESUME_VAR->suspend_node->non_stack_block_size,
 			ML_RESUME_VAR->suspend_node->det_stack_block_size);
-		printf(""non region from %p to %p, det region from %p to %p\n"",
+		printf(""non region from %p to %p, det region ""
+			""from %p to %p\\n"",
 			(void *) ML_RESUME_VAR->table->non_stack_bottom,
 			(void *) (ML_RESUME_VAR->table->non_stack_bottom
 				+ ML_RESUME_VAR->suspend_node->
@@ -1175,7 +1179,7 @@ Define_label(mercury__table_resume_1_0_SolutionsListLoop);
 			(void *) (ML_RESUME_VAR->table->det_stack_bottom
 				+ ML_RESUME_VAR->suspend_node->
 				det_stack_block_size));
-		printf(""succip = %p, sp = %p, maxfr = %p, curfr = %p\n"",
+		printf(""succip = %p, sp = %p, maxfr = %p, curfr = %p\\n"",
 			(void *) MR_succip, (void *) MR_sp,
 			(void *) MR_maxfr, (void *) MR_curfr);
 	}
@@ -1257,17 +1261,18 @@ Define_label(mercury__table_resume_1_0_ChangeLoopDone);
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
 		printf(""resumption restores generator stack:""
-				"" %d non, %d det\n"",
+				"" %d non, %d det\\n"",
 			ML_RESUME_VAR->non_stack_block_size,
 			ML_RESUME_VAR->det_stack_block_size);
-		printf(""non region from %p to %p, det region from %p to %p\n"",
+		printf(""non region from %p to %p, det region ""
+			""from %p to %p\\n"",
 			(void *) ML_RESUME_VAR->table->non_stack_bottom,
 			(void *) (ML_RESUME_VAR->table->non_stack_bottom +
 				ML_RESUME_VAR->non_stack_block_size),
 			(void *) ML_RESUME_VAR->table->det_stack_bottom,
 			(void *) (ML_RESUME_VAR->table->det_stack_bottom +
 				ML_RESUME_VAR->det_stack_block_size));
-		printf(""succip = %p, sp = %p, maxfr = %p, curfr = %p\n"",
+		printf(""succip = %p, sp = %p, maxfr = %p, curfr = %p\\n"",
 			(void *) MR_succip, (void *) MR_sp,
 			(void *) MR_maxfr, (void *) MR_curfr);
 	}

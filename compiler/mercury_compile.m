@@ -40,7 +40,8 @@
 :- import_module lco, saved_vars, liveness.
 :- import_module follow_code, live_vars, arg_info, store_alloc, goal_path.
 :- import_module code_gen, optimize, export, base_type_info, base_type_layout.
-:- import_module llds_common, llds_out, continuation_info, stack_layout.
+:- import_module llds_common, transform_llds, llds_out.
+:- import_module continuation_info, stack_layout.
 
 	% miscellaneous compiler modules
 :- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds.
@@ -2021,7 +2022,7 @@ mercury_compile__combine_chunks_2([Chunk|Chunks], ModName, Num,
 	bool, bool, io__state, io__state).
 :- mode mercury_compile__output_llds(in, in, in, in, in, di, uo) is det.
 
-mercury_compile__output_llds(ModuleName, LLDS, StackLayoutLabels,
+mercury_compile__output_llds(ModuleName, LLDS0, StackLayoutLabels,
 		Verbose, Stats) -->
 	maybe_write_string(Verbose,
 		"% Writing output to `"),
@@ -2029,6 +2030,7 @@ mercury_compile__output_llds(ModuleName, LLDS, StackLayoutLabels,
 	maybe_write_string(Verbose, FileName),
 	maybe_write_string(Verbose, "'..."),
 	maybe_flush_output(Verbose),
+	transform_llds(LLDS0, LLDS),
 	output_c_file(LLDS, StackLayoutLabels),
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_flush_output(Verbose),

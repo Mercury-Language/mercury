@@ -451,13 +451,13 @@ ML_memory_profile_report(const ML_memprof_report_entry *table, int num_entries,
 	if (complete) {
 		if (ML_overall_counter.cells_at_period_end < 1.0
 		||  ML_overall_counter.words_at_period_end < 1.0) {
-			fprintf(stderr, ""no allocations to report\n"");
+			fprintf(stderr, ""no allocations to report\\n"");
 			return;
 		}
 	} else {
 		if (ML_overall_counter.cells_since_period_start < 1.0
 		||  ML_overall_counter.words_since_period_start < 1.0) {
-			fprintf(stderr, ""no allocations to report\n"");
+			fprintf(stderr, ""no allocations to report\\n"");
 			return;
 		}
 	}

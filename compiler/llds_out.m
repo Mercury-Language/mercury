@@ -2934,7 +2934,7 @@ types_match(bool, unsigned).
 types_match(bool, word).
 types_match(integer, bool).
 
-	% output a float rval, converted to type `const Word *'
+	% output a float rval, converted to type `Word *'
 	%
 :- pred output_float_rval_as_data_ptr(rval, io__state, io__state).
 :- mode output_float_rval_as_data_ptr(in, di, uo) is det.
@@ -2952,10 +2952,10 @@ output_float_rval_as_data_ptr(Rval) -->
 		{ UnboxFloat = no, StaticGroundTerms = yes },
 		{ llds_out__float_const_expr_name(Rval, FloatName) }
 	->
-		io__write_string("(const Word *) &mercury_float_const_"),
+		io__write_string("(Word *) &mercury_float_const_"),
 		io__write_string(FloatName)
 	;
-		io__write_string("(const Word *) float_to_word("),
+		io__write_string("(Word *) float_to_word("),
 		output_rval(Rval),
 		io__write_string(")")
 	).
@@ -3123,17 +3123,17 @@ output_rval(var(_)) -->
 output_rval(mem_addr(MemRef)) -->
 	(
 		{ MemRef = stackvar_ref(N) },
-		io__write_string("(const Word *) &MR_stackvar("),
+		io__write_string("(Word *) &MR_stackvar("),
 		io__write_int(N),
 		io__write_string(")")
 	;
 		{ MemRef = framevar_ref(N) },
-		io__write_string("(const Word *) &MR_framevar("),
+		io__write_string("(Word *) &MR_framevar("),
 		io__write_int(N),
 		io__write_string(")")
 	;
 		{ MemRef = heap_ref(Rval, Tag, FieldNum) },
-		io__write_string("(const Word *) &field("),
+		io__write_string("(Word *) &field("),
 		output_tag(Tag),
 		io__write_string(", "),
 		output_rval(Rval),

@@ -227,7 +227,7 @@
 	{
 		fflush(stdout);
 		fprintf(stderr,
-			""Software error: Domain error in call to `%s'\n"",
+			""Software error: Domain error in call to `%s'\\n"",
 			where);
 		MR_trace_report(stderr);
 		MR_dump_stack(MR_succip, MR_sp, MR_curfr);

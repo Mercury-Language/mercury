@@ -1393,8 +1393,9 @@ MR_trace_retry(const MR_Stack_Layout_Label *this_label, Word *saved_regs,
 		}
 
 		this_frame = MR_saved_sp(saved_regs);
-		MR_saved_succip(saved_regs) = MR_based_stackvar(this_frame,
-						MR_LIVE_LVAL_NUMBER(location));
+		MR_saved_succip(saved_regs) = (Word *)
+				MR_based_stackvar(this_frame,
+				MR_LIVE_LVAL_NUMBER(location));
 		MR_saved_sp(saved_regs) -= entry->MR_sle_stack_slots;
 		MR_trace_event_number = MR_event_num_stackvar(this_frame);
 	} else {
