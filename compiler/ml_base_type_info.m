@@ -204,11 +204,8 @@ ml_base_type_info__construct_pred_addrs_2([proc(PredId, ProcId) | Procs],
 	% construct an rval for the address of this procedure
 	% (this is similar to ml_gen_proc_addr_rval)
 	%
-        PredLabel = ml_gen_pred_label(ModuleInfo, PredId, ProcId),
-        module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        pred_info_module(PredInfo, PredModule),
-        MLDS_Module = mercury_module_name_to_mlds(PredModule),
-        QualifiedProcLabel = qual(MLDS_Module, PredLabel - ProcId),
+        ml_gen_pred_label(ModuleInfo, PredId, ProcId, PredLabel, PredModule),
+        QualifiedProcLabel = qual(PredModule, PredLabel - ProcId),
         ProcAddrRval = const(code_addr_const(proc(QualifiedProcLabel))),
 	%
 	% Convert the procedure address to a generic type.
