@@ -35,31 +35,6 @@ main -->
 	io__write_string("\n").
 
 -----------------------------------------------------------------------------
-Subject: bug with no_tag tags and partially instantiated data structures
-Date: Fri, 19 Apr 1996 19:47:18 +1000 (EST)
-
-> :- module bug.
-> :- interface.
-> :- type foo ---> foo(int).
-> :- pred bug(foo::out) is det.
-> :- implementation.
-> bug(Y) :-
-> 	Y = foo(_),
-> 	Z = 42,
-> 	Y = foo(Z).
-
-This gives the error "code_exprn__cache_exprn: existing definition of var".
-
------------------------------------------------------------------------------
-Subject: problem with lookup_switch
-Date: Sun, 5 May 1996 16:00:17 +1000 (EST)
-
-I think there's a bug in lookup_switch.  What happens if you try to
-cross-compile for a 64 bit architecture on a 32 bit machine?  I think
-it tries to compute the 64-bit bitmap table entries using 32-bit ints,
-which overflow.
-
------------------------------------------------------------------------------
 Subject: map__lookup failed in profiler
 Date: Tue, 7 May 1996 11:58:08 +1000 (EST)
 
@@ -67,6 +42,10 @@ When profiling programs that have been compiled on the Alpha using
 shared libraries, the profiler will abort with a "Software Error:
 map__lookup failed" message.  The work-around is to link with
 `--static'.
+
+This is actually due to a bug in the Alpha shared library mechanism,
+which does not conform to the ANSI C standard.  So we do not plan to
+fix this one.
 
 -----------------------------------------------------------------------------
 Subject: nit in error msg
@@ -85,24 +64,6 @@ It says Declared `det', inferred `semidet', but I never declared it at
 all.  It's a bit misleading.  Certainly not a major problem, and the
 later part of the message makes it quite clear what the problem is,
 but I thought I'd point it out to you before I forgot it.
-
------------------------------------------------------------------------------
-Subject: obscure bug with identical function and constructor
-Date: Sat, 25 May 1996 19:24:12 +1000 (EST)
-
-% This test case shows up an obscure bug in the compiler.
-% The compiler reports spurious mode errors in the compiler-generated
-% unification/compare/index predicates.
-% It's not quite clear whether or not this should be legal,
-% but the compiler ought to at least report a better error message.
-% If you write obfuscated code like this, you really deserve
-% what you get, but I guess we should fix the bug someday anyway...
-
-:- module nasty_func_test.
-:- type foo ---> f(int) ; g.
-
-:- func f(int) = foo.
-f(_) = g.
 
 -----------------------------------------------------------------------------
 Subject: missed mode error
@@ -140,34 +101,5 @@ Date: Wed, 12 Jun 1996 15:45:59 +1000
 
 On the alpha, if the Mercury runtime catches a signal, it
 sometimes prints out the wrong value for the PC.
-
------------------------------------------------------------------------------
-Subject: inference bug
-Date: Mon, 24 Jun 1996 15:48:12 +1000 (EST)
-
-The compiler sometimes aborts with a map_lookup failed
-after mode inference finds some mode errors.
-
------------------------------------------------------------------------------
-Subject: relation.m
-Date: Mon, 29 Jul 1996 16:34:46 +1000 (EST)
-
-relation__atsort does not correctly compute the topological sort for
-disconnected cliques.  These cliques do not appear in the output list.
-
------------------------------------------------------------------------------
-Subject: cc_nondet and cc_multi disjunctions
-
-The code generator aborts with "Software Error: map__lookup failed"
-when compiling certain code involving disjunctions with output
-variables that occur in single-solution contexts, e.g.
-
-:- pred main(io__state::di, io__state::uo) is cc_multi.
-
-main --> io__read_line(Res),
-	( { Res = ok(['y']) }, io__write_string("Yes\n")
-	; { Res = ok(['n']) }, io__write_string("No\n")
-	; io__write_string("Huh?\n")
-	).
 
 -----------------------------------------------------------------------------

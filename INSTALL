@@ -81,13 +81,14 @@ make install
 #	   This can reduce the size of a hello world executable from ~400k
 #	   to ~120k.  (The only reason this is not the default is that
 #	   installing the split libraries takes quite a long time.  As a
-#	   compromise, the command `mmake install_opt_library LIBGRADES='
+#	   compromise, the command `mmake install_split_library LIBGRADES='
 #	   will install a split version of the library just for the
 #	   default grade.)
 #
 #	   Efficiency will be much improved if Mercury can use gcc global
-#	   register variables.  Currently these are supported for mips, hppa,
-#	   sparc, alpha, and i386 (see runtime/regs.h and runtime/machdeps/*).
+#	   register variables.  Currently these are supported for
+#	   mips, hppa, sparc, alpha, rs6000, and i386 architectures
+#	   (see runtime/regs.h and runtime/machdeps/*).
 #	   If you want to use Mercury on some other CPU, contact us and
 #	   we'll add support for gcc global registers for that CPU.
 #
