@@ -142,22 +142,28 @@ install_doc: doc
 	cd doc && $(SUBDIR_MMAKE) install
 
 .PHONY: install_runtime_grades
-install_runtime_grades
+install_runtime_grades:
 	cd runtime && \
+	rm -rf tmp_dir && \
+	mkdir tmp_dir && \
+	mv -f *.o *.a *.so tmp_dir && \
 	for grade in $(LIBGRADES); do \
-		rm -f *.o *.a *.so; \
 		$(SUBDIR_MMAKE) GRADE=$$grade install_lib || exit 1; \
-	done; \
-	rm -f *.o *.a *.so
+		rm -f *.o *.a *.so; \
+	done && \
+	mv tmp_dir/* .
 
 .PHONY: install_library_grades
 install_library_grades:
 	cd library && \
+	rm -rf tmp_dir && \
+	mkdir tmp_dir && \
+	mv -f *.o *.a *.so tmp_dir && \
 	for grade in $(LIBGRADES); do \
-		rm -f *.mod *.c *.o *.a *.so; \
 		$(SUBDIR_MMAKE) GRADE=$$grade install_library || exit 1; \
-	done; \
-	rm -f *.mod *.c *.o *.a *.so
+		rm -f *.mod *.c *.o *.a *.so; \
+	done && \
+	mv tmp_dir/* .
 
 #-----------------------------------------------------------------------------#
 
