@@ -5,13 +5,6 @@ TODO LIST:
 code generation:
 ---------------
 
-- nondeterministic code generation - fix various problems:
-  1 - heap reclamation still not being done in some places;
-  2 - failure continuation handling is up the creek.
-
-- generate code for complicated_unify's (there are some comments about
-  this in the paper.)
-
 - generate code for complicated unifies
 
 - generate code for polymorphic predicates
