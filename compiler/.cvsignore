@@ -10,6 +10,7 @@
 *.int3
 *.date
 *.date3
+*.used
 rl_file.m rl_out.m
 maybe_mlds_to_gcc.m
 *.pp_date
