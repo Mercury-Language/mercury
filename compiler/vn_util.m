@@ -790,6 +790,36 @@ vn__simplify_vnrval(Vnrval0, Vnrval, Vn_tables0, Vn_tables) :-
 			Vnrval = Vnrval0,
 			Vn_tables = Vn_tables0
 		)
+	; Vnrval0 = vn_binop((*), Vn1, Vn2) ->
+		vn__lookup_defn(Vn1, Vnrval1, Vn_tables0),
+		vn__lookup_defn(Vn2, Vnrval2, Vn_tables0),
+		(
+							% c1*c2 => c
+			Vnrval1 = vn_const(int_const(I1)),
+			Vnrval2 = vn_const(int_const(I2))
+		->
+			I is I1 * I2,
+			Vnrval = vn_const(int_const(I)),
+			Vn_tables = Vn_tables0
+		;
+			Vnrval = Vnrval0,
+			Vn_tables = Vn_tables0
+		)
+	; Vnrval0 = vn_binop((/), Vn1, Vn2) ->
+		vn__lookup_defn(Vn1, Vnrval1, Vn_tables0),
+		vn__lookup_defn(Vn2, Vnrval2, Vn_tables0),
+		(
+							% c1/c2 => c
+			Vnrval1 = vn_const(int_const(I1)),
+			Vnrval2 = vn_const(int_const(I2))
+		->
+			I is I1 // I2,
+			Vnrval = vn_const(int_const(I)),
+			Vn_tables = Vn_tables0
+		;
+			Vnrval = Vnrval0,
+			Vn_tables = Vn_tables0
+		)
 	;
 		Vnrval = Vnrval0,
 		Vn_tables = Vn_tables0

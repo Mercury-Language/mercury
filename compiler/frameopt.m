@@ -307,7 +307,7 @@ frameopt__setup_if(Rval, Target, Instrs0, FrameSize,
 			SetupFrame0 = no,
 			Use = no,
 			set__is_member(Label, FrameSet0, yes),
-			frameopt__block_needs_detstack(Instrs0)
+			frameopt__block_needs_detstack(Instrs0, yes)
 		->
 			% If we get here, then we will need a stack frame
 			% soon after the if in both continuations, so it is
@@ -713,9 +713,9 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 		SetupFrame0 = no,
 		Use = no,
 		CodeAddr = label(Label),
-		not frameopt__label_without_frame(Label,
+		\+ frameopt__label_without_frame(Label,
 			FrameSet, TeardownMap, _),
-		frameopt__block_needs_detstack(Instrs0)
+		frameopt__block_needs_detstack(Instrs0, yes)
 	->
 		frameopt__generate_setup(SetupFrame0, yes,
 			SetupSuccip0, yes, FrameSize, SetupCode),
@@ -752,10 +752,10 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 			CodeAddr = label(Label)
 		->
 			% set up a frame if needed for the target label
-			set__is_member(Label, FrameSet, SetupFrame2),
-			set__is_member(Label, SuccipSet, SetupSuccip2),
-			frameopt__generate_setup(SetupFrame1, SetupFrame2,
-				SetupSuccip1, SetupSuccip2, FrameSize, ExtraCode),
+			set__is_member(Label, FrameSet, SetupFrameSide),
+			set__is_member(Label, SuccipSet, SetupSuccipSide),
+			frameopt__generate_setup(SetupFrame1, SetupFrameSide,
+				SetupSuccip1, SetupSuccipSide, FrameSize, ExtraCode),
 			( ExtraCode = [] ->
 				N1 = N0,
 				IfCode = [Instr0]
@@ -781,11 +781,26 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 			N1 = N0,
 			IfCode = [Instr0]
 		),
+		% Peek ahead to see if the following block requires a frame.
+		% If it does, put the setup code immediately after the if.
+		% This will be faster because the sp won't be assigned to
+		% just before it is referenced by a detstackvar.
+		( frameopt__block_needs_detstack(Instrs0, yes) ->
+			SetupFrame2 = yes,
+			SetupSuccip2 = yes,
+			frameopt__generate_setup(SetupFrame1, SetupFrame2,
+				SetupSuccip1, SetupSuccip2, FrameSize, PostSetupCode)
+		;
+			SetupFrame2 = SetupFrame1,
+			SetupSuccip2 = SetupSuccip1,
+			PostSetupCode = []
+		),
 		frameopt__doit(Instrs0, FrameSize,
-			no, SetupFrame1, SetupSuccip1,
+			no, SetupFrame2, SetupSuccip2,
 			FrameSet, SuccipSet, TeardownMap,
 			ProcLabel, N1, N, Instrs1),
-		list__condense([SetupCode, IfCode, Instrs1], Instrs)
+		list__condense([SetupCode, IfCode, PostSetupCode, Instrs1],
+			Instrs)
 	).
 
 	% For a given label, return a label (the same or another) that
@@ -983,45 +998,101 @@ frameopt__detstack_teardown_2(Instrs0, FrameSize,
 		Remain = Instrs2
 	).
 
-:- pred frameopt__block_needs_detstack(list(instruction)).
-:- mode frameopt__block_needs_detstack(in) is semidet.
+:- pred frameopt__block_needs_detstack(list(instruction), bool).
+:- mode frameopt__block_needs_detstack(in, out) is det.
 
-frameopt__block_needs_detstack([Uinstr0 - _ | Instrs0]) :-
+frameopt__block_needs_detstack([], no).
+frameopt__block_needs_detstack([Uinstr0 - _ | Instrs0], Need) :-
 	(
 		Uinstr0 = comment(_),
-		frameopt__block_needs_detstack(Instrs0)
+		frameopt__block_needs_detstack(Instrs0, Need)
 	;
 		Uinstr0 = livevals(_),
-		frameopt__block_needs_detstack(Instrs0)
+		frameopt__block_needs_detstack(Instrs0, Need)
 	;
 		Uinstr0 = block(_, BlockInstrs),
-		frameopt__block_needs_detstack(BlockInstrs)
+		frameopt__block_needs_detstack(BlockInstrs, Need)
 	;
 		Uinstr0 = assign(Lval, Rval),
 		opt_util__lval_refers_stackvars(Lval, Use1),
 		opt_util__rval_refers_stackvars(Rval, Use2),
 		bool__or(Use1, Use2, Use),
 		( Use = yes ->
-			true
+			Need = yes
 		;
-			frameopt__block_needs_detstack(Instrs0)
+			frameopt__block_needs_detstack(Instrs0, Need)
 		)
+	;
+		Uinstr0 = call(_, _, _),
+		Need = no
+	;
+		Uinstr0 = call_closure(_, _, _),
+		Need = no
+	;
+		Uinstr0 = mkframe(_, _, _),
+		Need = no
+	;
+		Uinstr0 = modframe(_),
+		Need = no
+	;
+		Uinstr0 = label(_),
+		Need = no
+	;
+		Uinstr0 = goto(_),
+		Need = no
+	;
+		Uinstr0 = computed_goto(Rval, _),
+		opt_util__rval_refers_stackvars(Rval, Use),
+		( Use = yes ->
+			Need = yes
+		;
+			Need = no
+		)
+	;
+		Uinstr0 = c_code(_),
+		Need = no
 	;
 		Uinstr0 = if_val(Rval, _),
 		opt_util__rval_refers_stackvars(Rval, Use),
 		( Use = yes ->
-			true
+			Need = yes
 		;
-			frameopt__block_needs_detstack(Instrs0)
+			Need = no
+		)
+	;
+		Uinstr0 = incr_hp(Lval, _, Rval),
+		opt_util__lval_refers_stackvars(Lval, Use1),
+		opt_util__rval_refers_stackvars(Rval, Use2),
+		bool__or(Use1, Use2, Use),
+		( Use = yes ->
+			Need = yes
+		;
+			frameopt__block_needs_detstack(Instrs0, Need)
 		)
 	;
 		Uinstr0 = mark_hp(Lval),
 		opt_util__lval_refers_stackvars(Lval, Use),
 		( Use = yes ->
-			true
+			Need = yes
 		;
-			frameopt__block_needs_detstack(Instrs0)
+			frameopt__block_needs_detstack(Instrs0, Need)
 		)
+	;
+		Uinstr0 = restore_hp(Rval),
+		opt_util__rval_refers_stackvars(Rval, Use),
+		( Use = yes ->
+			Need = yes
+		;
+			frameopt__block_needs_detstack(Instrs0, Need)
+		)
+	;
+		% handled specially
+		Uinstr0 = incr_sp(_),
+		Need = no
+	;
+		% handled specially
+		Uinstr0 = decr_sp(_),
+		Need = no
 	).
 
 %-----------------------------------------------------------------------------%
