@@ -335,6 +335,13 @@ if [ $diff_status -ne 0 ]; then
 	echo "error - stage 2 and stage 3 differ!"
 else
 	echo "stage 2 and stage 3 compare ok"
+	echo "removing stage 3..."
+	# We try to do the removal of the stage 3 directory in parallel
+	# since recursive rm's across NFS can be quite slow ...
+	/bin/rm -fr stage3/compiler &
+	/bin/rm -fr stage3/library &
+	wait
+	/bin/rm -fr stage3/*
 fi
 
 if $runtests
