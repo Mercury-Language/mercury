@@ -82,8 +82,9 @@ into another language, under the above conditions for modified versions.
 @node Filenames, Hello,, Top
 @section File naming conventions
 
-Mercury source files should be named @file{*.nl}.
-(This will change to @file{*.m} sometime in the near future.)
+Mercury source files should be named @file{*.m}.
+(Note that for historical reasons, we also allow @file{*.nl},
+but the support for that will eventually be removed.)
 
 Files ending in @file{.d} are automatically-generated Makefile
 fragments which contain the dependencies for each module.
@@ -126,35 +127,66 @@ Mercury compiler.  Note that the scripts used all accept a @samp{-v}
 (verbose) option.  You can use that option to see what is actually
 going on.
 
-@subsection Making the interface files
+@subsection Compiling single-module programs
+To compile a program which consists of just a single module,
+use the command
+
+@example
+mc --link @var{module}
+@end example
+
+@subsection Compiling multi-module programs
+
+For multi-module programs, you need to make the interface files before
+compiling the modules.  After that, if you don't want separate
+compilation you can use the @samp{--link} option:
+
+@example
+mc --link @var{modules}
+@end example
+
+If you want separate compilation, you should compile the modules,
+create the init file, and then link them together as described in
+the following sections.
+
+@subsubsection Making the interface files
 Before you can compile a module, you need to make the interface files
 for the modules that it imports (directly or indirectly).
 Use the command
 
-	mc -i @var{modules}
+@example
+mc -i @var{modules}
+@end example
 
+@noindent
 to create these interface files.
 
-@subsection Compiling modules
+@subsubsection Compiling modules
 Use the command 
+
 @example
-mc -s asm_fast.gc -c @var{module}
+mc -c @var{module}
 @end example
+
+@noindent
 to compile each module.
 Many additional options are available (@pxref{Invocation}).
 
-@subsection Creating the init file
+@subsubsection Creating the init file
 Before linking, you need create a small C file which calls the
 initialization function for each module in your program.
 Use the commands 
+
 @example
 mod2init *.c > @var{module}_init.c,
-mgnuc -s asm_fast.gc -c @var{module}_init.c
+mgnuc -c @var{module}_init.c
 @end example
-@subsection Linking
+
+@subsubsection Linking
 Use the command 
+
 @example
-ml -s asm_fast.gc -o @var{module} *.o
+ml -o @var{module} *.o
 @end example
 
 @subsection Executing the program.
@@ -168,7 +200,8 @@ Don't.  Prove your programs correct ;-)
 
 It is possible to debug the generated C code using gdb,
 but we don't really recommend this unless there is no alternative.
-Also, if you compiled with @samp{-s debug.gc} rather than @samp{-s asm_fast.gc},
+Also, if you compiled with @samp{-s debug.gc} rather than the
+default @samp{-s asm_fast.gc},
 you can use the various debugging options to the Mercury runtime;
 for example @samp{-dg} dumps an execution trace.
 
@@ -176,7 +209,7 @@ for example @samp{-dg} dumps an execution trace.
 @section Using NU-Prolog
 
 @subsection Compiling modules
-Use the command @samp{mnc @var{module}.nl}.
+Use the command @samp{mnc @var{module}.m} or @samp{mnc @var{module}.nl}.
 (Ignore any warnings about "XXX is a system predicate.
 It shouldn't be used as a non-terminal.")
 	
@@ -242,12 +275,12 @@ appending another trailing @samp{-}, e.g. @samp{-v-}.
 Long flags may be negated by preceding them with @samp{no-},
 e.g. @samp{--no-verbose}.
 
-For module names, a trailing @file{.nl} is optional.
+For module names, the trailing @file{.m} or @file{.nl} is optional.
 
-@subsection Warning Options:
+@section Warning Options:
 @table @code
 @item -w-
-@item --no-warn-singleton-variables
+@itemx --no-warn-singleton-variables
 Don't warn about variables which only occur once.
 
 @item --no-warn-missing-det-decls
@@ -259,45 +292,45 @@ Don't warn about determinism declarations
 which could have been stricter.
 @end table
 
-@subsection Verbosity Options:
+@section Verbosity Options:
 @table @code
 @item -v
-@item --verbose
+@itemx --verbose
 Output progress messages at each stage in the compilation.
 
 @item -V
-@item --very_verbose
+@itemx --very_verbose
 Output very verbose progress messages.
 
 @item -e
-@item --verbose-error-messages
+@itemx --verbose-error-messages
 Explain error messages.  Asks the compiler to give you a more
 detailed explanation of any errors in your program.
 
 @item -S
-@item --statistics
+@itemx --statistics
 Output messages about the compiler's time/space usage
 
 @item -T
-@item --debug-types
+@itemx --debug-types
 Output detailed debugging traces of the type checking.
 
 @item -N
-@item --debug-modes
+@itemx --debug-modes
 Output detailed debugging traces of the mode checking.
 @end table
 
-@subsection Output Options:
+@section Output Options:
 @table @code
 @item -M
-@item --generate-dependencies
+@itemx --generate-dependencies
 Output `Make'-style dependencies for the module
 and all of its dependencies to @file{@var{module}.dep}.
 Only syntax analysis will be performed - this option
 disables all the later phases of compilation.
 
 @item -i
-@item --make-interface
+@itemx --make-interface
 Write the module interface to @file{@var{module}.int}.
 Also write the short interface to @file{@var{module}.int2}
 As with -M, this disables type-checking, etc.
@@ -306,22 +339,22 @@ As with -M, this disables type-checking, etc.
 Write out the call graph to @var{module}.call_graph.
 
 @item -G
-@item --convert-to-goedel
+@itemx --convert-to-goedel
 Convert to Goedel. Output to file @file{@var{module}.loc}
 As with -M, this disables type-checking, etc.
 
 @item -P
-@item --convert-to-mercury
+@itemx --convert-to-mercury
 Convert to Mercury. Output to file @file{@var{module}.ugly}
 This option acts as a Mercury ugly-printer.
 As with -M, it disables type-checking, etc.
 
 @item -m-
-@item --no-modecheck
+@itemx --no-modecheck
 Don't invoke the mode analysis pass of the compiler.
 
 @item -d @var{stage}
-@item --dump-hlds @var{stage}
+@itemx --dump-hlds @var{stage}
 Dump the HLDS (intermediate representation) after
 the specified stage number or stage nameto
 @file{@var{module}.hlds_dump.@var{num}-@var{name}}.
@@ -329,42 +362,47 @@ Stage numbers range from 0-12.
 Multiple dump options accumulate.
 
 @item -D
-@item --verbose-dump-hlds
-With --dump-hlds, dumps some additional info.
+@itemx --verbose-dump-hlds
+With @samp{--dump-hlds}, dumps some additional info.
 
 @item -g
-@item --generate-code
+@itemx --generate-code
 Generate .mod code in @file{@var{module}.mod}.
 
 @item --compile-to-C
 Convert the generated .mod file to a .c file.
+This option implies @samp{--generate-code}.
 
 @item -c
-@item --compile
+@itemx --compile
 Invoke the C compiler on the generated .c file.
+This option implies @samp{--compile-to-C}.
 
-@item --link (*** NOT YET IMPLEMENTED ***)
-Link the named modules to produce an executable.
+@item --link
+After compilation, produce an initialization file from
+the named modules, compile it, and then link all the
+object files to produce an executable.
+This option implies @samp{--compile}.
 
 @item --no-mod-comments
-Don't output comments in the .mod file
+Don't output comments in the @file{.mod} file.
 
 @item -l
-@item --line-numbers
+@itemx --line-numbers
 Output line numbers in the generated code.
 Currently only works with the -G and -M options.
 @end table
 
-@subsection Code generation options
+@section Code generation options
 @table @code
 @item -p-
-@item --no-polymorphism
+@itemx --no-polymorphism
 Don't handle polymorphic types.
 (Generates slightly more efficient code, but stops
 polymorphism from working except in special cases.)
 
 @item -s @var{grade}
-@item --grade @var{grade}
+@itemx --grade @var{grade}
 Select the compilation model.  This is a convenient way of
 selecting a setting for the --c-optimize, --gc,
 --gcc-global-registers, --gcc-non-local-gotos,
@@ -375,16 +413,16 @@ or one of those with @file{.gc} appended.
 (See the mgnuc shell script source code for details).
 
 @item --gc @{none, conservative, accurate@}
-@item --garbage-collection @{none, conservative, accurate@}
+@itemx --garbage-collection @{none, conservative, accurate@}
 Specify which method of garbage collection to use.
 @samp{conservative} garbage collection also implies @samp{--tags none}.
 @samp{accurate} is not yet implemented.
 
 @item --no-follow-code
-Don't migrate builtin goals into branched goals
+Don't migrate builtin goals into branched goals.
 
 @item --no-follow-vars
-Don't optimise the assignment of registers in branched goals
+Don't optimise the assignment of registers in branched goals.
 
 @item --no-reclaim-heap-on-nondet-failure
 Don't reclaim heap on backtracking in nondet code.
@@ -421,7 +459,7 @@ Specify options to be passed to the C compiler
 Enable debugging.
 @end table
 
-@subsection Optimization Options
+@section Optimization Options
 @table @code
 @item --no-optimize
 Disable the optimisation pass.
@@ -433,16 +471,16 @@ Disable local peephole optimisations.
 Disable elimination of jumps to jumps.
 
 @item --no-optimize-labels
-Disable elimination of dead labels and code
+Disable elimination of dead labels and code.
 
 @item --optimize-value-number
-Perform value numbering
+Perform value numbering.
 
 @item --no-optimize-frames
-Disable stack frame optimizations
+Disable stack frame optimizations.
 
 @item --optimize-repeat @var{n}
-Iterate optimizations at most @var{n} times
+Iterate optimizations at most @var{n} times.
 
 @item --no-static-ground-terms
 Construct all terms at runtime; disable the optimization
@@ -455,19 +493,19 @@ disable string hashing and integer table-lookup indexing.
 
 @item --req-density
 The jump table generated for an atomic switch
-must have at least this percentage of full slots
+must have at least this percentage of full slots.
 
 @item --dense-switch-size
 The jump table generated for an atomic switch
-must have at least this many entries
+must have at least this many entries.
 
 @item --string-switch-size
 The hash table generated for a string switch
-must have at least this many entries
+must have at least this many entries.
 
 @item --tag-switch-size
 The number of alternatives in a tag switch
-must be at least this number
+must be at least this number.
 
 @item --no-middle-rec
 Disable the middle recursion optimization.
@@ -482,27 +520,27 @@ Disable common subexpression optimisation.
 Don't enable the C compiler's optimizations.
 @end table
 
-@subsection Miscellaneous Options:
+@section Miscellaneous Options:
 @table @code
 @item -H @var{n}
-@item --heap-space @var{n}
+@itemx --heap-space @var{n}
 Pre-allocate @var{n} kilobytes of heap space.
-Use this option to avoid NU-Prolog's
-	"Panic: growing stacks has required shifting the heap"
+This option is now obsolete.  In the past it was used to avoid
+NU-Prolog's "Panic: growing stacks has required shifting the heap"
 message.
 
 @item -b @var{builtin}
-@item --builtin-module @var{builtin}
+@itemx --builtin-module @var{builtin}
 Use @var{builtin} instead of @samp{mercury_builtin} as the 
 module which always gets automatically imported.
 
 @item -I @var{dir}
-@item --search-directory @var{dir}
+@itemx --search-directory @var{dir}
 Append @var{dir} to the list of directories to be searched for 
 imported modules.
 
 @item -h
-@item --help
+@itemx --help
 Print a usage message.
 @end table
 
