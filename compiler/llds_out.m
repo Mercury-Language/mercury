@@ -2792,10 +2792,10 @@ output_data_addr_decls_2(data_addr(ModuleName, VarName),
 
 	globals__io_get_globals(Globals),
 
-		% Don't make decls of type_ctor_infos `const' if we
-		% don't have static code addresses.
+		% Don't make decls of type_ctor_infos etc.
+		% `const' if we don't have static code addresses.
 	(
-		{ VarName = type_ctor(info, _, _) },
+		{ data_name_would_include_code_address(VarName, yes) },
 		{ globals__have_static_code_addresses(Globals, no) }
 	->
 		[]
