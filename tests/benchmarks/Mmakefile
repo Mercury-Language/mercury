@@ -2,9 +2,12 @@
 
 THIS_DIR = benchmarks
 
-# uncomment the following line to test the performance
-# of the benchmarks (with I/O suppressed)
-# MLFLAGS=-w "`extract $(*:_init=) '' BenchEntry`"
+# To test the performance of the benchmarks (with I/O suppressed),
+# uncomment one the following two lines.  The `.hlc' version should be
+# used for --high-level-code grades, the other version for LLDS grades.
+#
+# MLFLAGS += -w "`extract $(*:_init=) '' BenchEntry.hlc`"
+# MLFLAGS += -w "`extract $(*:_init=) '' BenchEntry`"
 
 #-----------------------------------------------------------------------------#
 
