@@ -2358,8 +2358,8 @@ fi
 # add `.debug' (--debug) grades
 LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.tr.debug"
 
-# Add the .par (thread-safe) grade
-if test "$enable_par_grades" = yes; then
+# Add the .par (thread-safe) grade, if it is supported for this system
+if test "$enable_par_grades" = yes -a "$CFLAGS_FOR_THREADS" != ""; then
 	LIBGRADES="$LIBGRADES hlc.par.gc"
 fi
 
