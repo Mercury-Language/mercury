@@ -1240,8 +1240,8 @@ pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo) :-
 
 :- interface.
 
-:- pred proc_info_init(list(mode), determinism, term__context, proc_info).
-:- mode proc_info_init(in, in, in, out) is det.
+:- pred proc_info_init(int, list(mode), determinism, term__context, proc_info).
+:- mode proc_info_init(in, in, in, in, out) is det.
 
 :- pred determinism_to_category(determinism, category).
 :- mode determinism_to_category(in, out) is det.
@@ -1330,11 +1330,11 @@ pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo) :-
 	% Some parts of the procedure aren't known yet.  We initialize
 	% them to any old garbage which we will later throw away
 
-proc_info_init(Modes, Det, MContext, NewProc) :-
+proc_info_init(Arity, Modes, Det, MContext, NewProc) :-
 	map__init(BodyTypes),
 	goal_info_init(GoalInfo),
-	varset__init(BodyVarSet),
-	HeadVars = [],
+	varset__init(BodyVarSet0),
+	make_n_fresh_vars(Arity, BodyVarSet0, HeadVars, BodyVarSet),
 	determinism_to_category(Det, Category),
 	map__init(CallInfo),
 	set__init(Liveness),
@@ -1676,6 +1676,40 @@ goal_is_atomic(conj([])).
 goal_is_atomic(disj([])).
 goal_is_atomic(call(_,_,_,_,_,_)).
 goal_is_atomic(unify(_,_,_,_,_)).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- interface.
+
+	% make_n_fresh_vars(N, VarSet0, Vars, VarSet):
+	%	`Vars' is a list of `N' fresh variables allocated from
+	%	`VarSet0'.  `VarSet' is the resulting varset.
+
+:- pred make_n_fresh_vars(int, varset, list(var), varset).
+:- mode make_n_fresh_vars(in, in, out, out) is det.
+
+:- implementation.
+
+make_n_fresh_vars(N, VarSet0, Vars, VarSet) :-
+	make_n_fresh_vars_2(0, N, VarSet0, Vars, VarSet).
+
+:- pred make_n_fresh_vars_2(int, int, varset, list(var), varset).
+:- mode make_n_fresh_vars_2(in, in, in, out, out) is det.
+
+make_n_fresh_vars_2(N, Max, VarSet0, Vars, VarSet) :-
+	(N = Max ->
+		VarSet = VarSet0,
+		Vars = []
+	;
+		N1 is N + 1,
+		varset__new_var(VarSet0, Var, VarSet1),
+		string__int_to_string(N1, Num),
+		string__append("HeadVar__", Num, VarName),
+		varset__name_var(VarSet1, Var, VarName, VarSet2),
+		Vars = [Var | Vars1],
+		make_n_fresh_vars_2(N1, Max, VarSet2, Vars1, VarSet)
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

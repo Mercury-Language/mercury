@@ -106,9 +106,13 @@ polymorphism__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 polymorphism__fixup_preds([], ModuleInfo, ModuleInfo).
 polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 	%
-	% recompute the arg types by finding the headvars and the var->type
+	% Recompute the arg types by finding the headvars and the var->type
 	% mapping (from the first procedure for the predicate) and
-	% applying the type mapping to the headvars to get the new arg types
+	% applying the type mapping to the extra headvars to get the new
+	% arg types.  Note that we are careful to only apply the mapping
+	% to the extra head vars, not to the originals, because otherwise
+	% we would stuff up the arg types for unification predicates for
+	% equivalence types.
 	%
 	module_info_preds(ModuleInfo0, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
@@ -119,10 +123,23 @@ polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 	;
 		error("polymorphism__fixup_preds: empty procid list")
 	),
+
 	proc_info_vartypes(ProcInfo, VarTypes),
 	proc_info_headvars(ProcInfo, HeadVars),
-	map__apply_to_list(HeadVars, VarTypes, ArgTypes),
-	pred_info_arg_types(PredInfo0, TypeVarSet, _ArgTypes0),
+	pred_info_arg_types(PredInfo0, TypeVarSet, ArgTypes0),
+	list__length(ArgTypes0, NumOldArgs),
+	list__length(HeadVars, NumNewArgs),
+	NumExtraArgs is NumNewArgs - NumOldArgs,
+	(
+		list__split_list(NumExtraArgs, HeadVars, ExtraHeadVars,
+				_OldHeadVars)
+	->
+		map__apply_to_list(ExtraHeadVars, VarTypes, ExtraArgTypes),
+		list__append(ExtraArgTypes, ArgTypes0, ArgTypes)
+	;
+		error("polymorphism.nl: list__split_list failed")
+	),
+
 	pred_info_set_arg_types(PredInfo0, TypeVarSet, ArgTypes, PredInfo),
 	map__set(PredTable0, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),

@@ -74,8 +74,9 @@ prog_util__expand_eqv_types(Items0, Items) :-
 :- mode prog_util__replace_all_eqv_types(in, in, out) is det.
 
 prog_util__replace_all_eqv_types([], Items, Items).
-prog_util__replace_all_eqv_types([Item - Context | Items0], ItemList0,
+prog_util__replace_all_eqv_types([ItemContext | Items0], ItemList0,
 		ItemList) :-
+	ItemContext = Item - _Context,
 	( Item = type_defn(VarSet, eqv_type(Name, Args, Body), _Cond) ->
 		unqualify_name(Name, Name2),
 		prog_util__replace_eqv_type_list(ItemList0, VarSet, Name2,
@@ -84,9 +85,10 @@ prog_util__replace_all_eqv_types([Item - Context | Items0], ItemList0,
 				Body, Items1)
 	;
 		Items1 = Items0,
-		ItemList1 = [Item - Context | ItemList0]
+		ItemList1 = ItemList0
 	),
-	prog_util__replace_all_eqv_types(Items1, ItemList1, ItemList).
+	ItemList2 = [ItemContext | ItemList1],
+	prog_util__replace_all_eqv_types(Items1, ItemList2, ItemList).
 
 prog_util__replace_eqv_type_list([], _, _, _, _, []).
 prog_util__replace_eqv_type_list([Item0 - Context| Items0], VarSet, Name, Args,

@@ -934,7 +934,6 @@ mercury_infix_op("@<").		/* Prolog */
 mercury_infix_op("@=<").	/* Prolog */
 mercury_infix_op("@>").		/* Prolog */
 mercury_infix_op("@>=").	/* Prolog */
-mercury_infix_op("=").
 mercury_infix_op("~=").		/* NU-Prolog */
 mercury_infix_op("is").		
 mercury_infix_op(".").		

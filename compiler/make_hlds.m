@@ -267,18 +267,18 @@ mode_name_args(eqv_mode(Name, Args, Body), Name, Args, eqv_mode(Body)).
 	% e.g. `:- type t.', which is parsed as an type definition for
 	% t which defines t as an abstract_type.
 
-:- pred module_add_type_defn(module_info, varset, type_defn, condition,
+:- pred module_add_type_defn(module_info, tvarset, type_defn, condition,
 				term__context, import_status, module_info,
 				io__state, io__state).
 :- mode module_add_type_defn(in, in, in, in, in, in, out, di, uo) is det.
 
-module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Status,
+module_add_type_defn(Module0, TVarSet, TypeDefn, Cond, Context, Status,
 		Module) -->
 	{ module_info_types(Module0, Types0) },
 	globals__io_get_globals(Globals),
 	{ convert_type_defn(TypeDefn, Globals, Name, Args, Body) },
 	{ list__length(Args, Arity) },
-	{ T = hlds__type_defn(VarSet, Args, Body, Cond, Context) },
+	{ T = hlds__type_defn(TVarSet, Args, Body, Cond, Context) },
 	(
 		% if there was an existing non-abstract definition for the type
 		{ map__search(Types0, Name - Arity, T2) },
@@ -309,11 +309,22 @@ module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Status,
 				{ TypeFunctor = term__atom(UnqualifiedName) },
 				{ Type = term__functor(TypeFunctor, Args,
 					Context) },
-				{ add_unify_pred(Module1, VarSet, Type, TypeId,
-					ConsList, Context, Status, Module2) }
+				{ add_unify_pred(Module1, TVarSet, Type, TypeId,
+					unify_du_type(ConsList), Context,
+					Status, Module2) }
 			;
 				{ Module2 = Module1 }
 			)
+		;
+			{ Body = eqv_type(EqvType) }
+		->
+			{ unqualify_name(Name, UnqualifiedName) },
+			{ TypeFunctor = term__atom(UnqualifiedName) },
+			{ Type = term__functor(TypeFunctor, Args,
+				Context) },
+			{ add_unify_pred(Module0, TVarSet, Type, TypeId,
+				unify_eqv_type(EqvType), Context,
+				Status, Module2) }
 		;
 			{ Body = abstract_type }
 		->
@@ -321,7 +332,7 @@ module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Status,
 			{ TypeFunctor = term__atom(UnqualifiedName) },
 			{ Type = term__functor(TypeFunctor, Args,
 				Context) },
-			{ add_unify_pred_decl(Module0, VarSet, Type, TypeId,
+			{ add_unify_pred_decl(Module0, TVarSet, Type, TypeId,
 					Context, Status, Module2) }
 			
 		;
@@ -410,17 +421,17 @@ module_add_pred(Module0, VarSet, PredName, TypesAndModes, Det, Cond, Context,
 		{ Module = Module1 }
 	).
 
-:- pred preds_add(module_info, varset, sym_name, list(type),
+:- pred preds_add(module_info, tvarset, sym_name, list(type),
 		condition, term__context, import_status,
 		module_info, io__state, io__state).
 :- mode preds_add(in, in, in, in, in, in, in, out, di, uo) is det.
 
-preds_add(Module0, VarSet, PredName, Types, Cond, Context, Status, Module) -->
+preds_add(Module0, TVarSet, PredName, Types, Cond, Context, Status, Module) -->
 	{ module_info_name(Module0, ModuleName) },
 	{ module_info_get_predicate_table(Module0, PredicateTable0) },
 	{ list__length(Types, Arity) },
 	{ clauses_info_init(Arity, ClausesInfo) },
-	{ pred_info_init(ModuleName, PredName, Arity, VarSet, Types, Cond,
+	{ pred_info_init(ModuleName, PredName, Arity, TVarSet, Types, Cond,
 		Context, ClausesInfo, Status, PredInfo0) },
 	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
 	(
@@ -441,34 +452,35 @@ preds_add(Module0, VarSet, PredName, Types, Cond, Context, Status, Module) -->
 		multiple_def_error(PredName, Arity, "pred", Context)
 	).
 
-:- pred add_unify_pred(module_info, varset, type, type_id, list(constructor),
+:- pred add_unify_pred(module_info, tvarset, type, type_id, unify_type,
 			term__context, import_status,
 			module_info).
 :- mode add_unify_pred(in, in, in, in, in, in, in, out) is det.
 
-add_unify_pred(Module0, VarSet, Type, TypeId, Ctors, Context, Status, Module) :-
+add_unify_pred(Module0, TVarSet, Type, TypeId, UnifyType, Context, Status,
+		Module) :-
 	module_info_get_unify_pred_map(Module0, UnifyPredMap0),
 	( map__contains(UnifyPredMap0, TypeId) ->
 		Module1 = Module0
 	;
-		add_unify_pred_decl(Module0, VarSet, Type, TypeId, Context,
+		add_unify_pred_decl(Module0, TVarSet, Type, TypeId, Context,
 			Status, Module1)
 	),
 	module_info_get_unify_pred_map(Module1, UnifyPredMap1),
 	map__lookup(UnifyPredMap1, TypeId, PredId),
 	module_info_preds(Module1, Preds0),
 	map__lookup(Preds0, PredId, PredInfo0),
-	unify_proc__generate_clause_info(Type, Ctors, ClausesInfo),
+	unify_proc__generate_clause_info(Type, UnifyType, ClausesInfo),
 	pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo),
 	map__set(Preds0, PredId, PredInfo, Preds),
 	module_info_set_preds(Module1, Preds, Module).
 
-:- pred add_unify_pred_decl(module_info, varset, type, type_id,
+:- pred add_unify_pred_decl(module_info, tvarset, type, type_id,
 				term__context, import_status,
 				module_info).
 :- mode add_unify_pred_decl(in, in, in, in, in, in, out) is det.
 
-add_unify_pred_decl(Module0, VarSet, Type, TypeId, Context, Status,
+add_unify_pred_decl(Module0, TVarSet, Type, TypeId, Context, Status,
 			Module) :-
 	module_info_name(Module0, ModuleName),
 	PredName = unqualified("="),
@@ -476,14 +488,14 @@ add_unify_pred_decl(Module0, VarSet, Type, TypeId, Context, Status,
 	Cond = true,
 	ArgTypes = [Type, Type],
 	clauses_info_init(Arity, ClausesInfo0),
-	pred_info_init(ModuleName, PredName, Arity, VarSet, ArgTypes, Cond,
+	pred_info_init(ModuleName, PredName, Arity, TVarSet, ArgTypes, Cond,
 		Context, ClausesInfo0, Status, PredInfo0),
 
 	ArgModes = [ground -> ground, ground -> ground],
 	Det = semidet,
 	pred_info_procedures(PredInfo0, Procs0),
 	next_mode_id(Procs0, Det, ModeId),
-	proc_info_init(ArgModes, Det, Context, NewProc),
+	proc_info_init(Arity, ArgModes, Det, Context, NewProc),
 	map__set(Procs0, ModeId, NewProc, Procs),
 	pred_info_set_procedures(PredInfo0, Procs, PredInfo),
 
@@ -567,7 +579,7 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, Det, _Cond, MContext,
 		% XXX we should check that this mode declaration
 		% isn't the same as an existing one
 	{ next_mode_id(Procs0, Det, ModeId) },
-	{ proc_info_init(Modes, Det, MContext, NewProc) },
+	{ proc_info_init(Arity, Modes, Det, MContext, NewProc) },
 	{ map__set(Procs0, ModeId, NewProc, Procs) },
 	{ pred_info_set_procedures(PredInfo0, Procs, PredInfo) },
 	{ map__set(Preds0, PredId, PredInfo, Preds) },
@@ -1126,35 +1138,6 @@ arg_context_to_unify_context(head, N, head(N), []).
 arg_context_to_unify_context(call(PredId), N, call(PredId, N), []).
 arg_context_to_unify_context(functor(ConsId, MainContext, SubContexts), N,
 			MainContext, [ConsId - N | SubContexts]).
-
-%-----------------------------------------------------------------------------%
-
-	% make_n_fresh_vars(N, VarSet0, Vars, VarSet):
-	%	`Vars' is a list of `N' fresh variables allocated from
-	%	`VarSet0'.  `VarSet' is the resulting varset.
-
-:- pred make_n_fresh_vars(int, varset, list(var), varset).
-:- mode make_n_fresh_vars(in, in, out, out) is det.
-
-make_n_fresh_vars(N, VarSet0, Vars, VarSet) :-
-	make_n_fresh_vars_2(0, N, VarSet0, Vars, VarSet).
-
-:- pred make_n_fresh_vars_2(int, int, varset, list(var), varset).
-:- mode make_n_fresh_vars_2(in, in, in, out, out) is det.
-
-make_n_fresh_vars_2(N, Max, VarSet0, Vars, VarSet) :-
-	(N = Max ->
-		VarSet = VarSet0,
-		Vars = []
-	;
-		N1 is N + 1,
-		varset__new_var(VarSet0, Var, VarSet1),
-		string__int_to_string(N1, Num),
-		string__append("HeadVar__", Num, VarName),
-		varset__name_var(VarSet1, Var, VarName, VarSet2),
-		Vars = [Var | Vars1],
-		make_n_fresh_vars_2(N1, Max, VarSet2, Vars1, VarSet)
-	).
 
 %-----------------------------------------------------------------------------%
 

@@ -187,8 +187,29 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 				ModuleInfo, Error, IOState0, IOState) :-
 	module_info_preds(ModuleInfo0, Preds0),
 	map__lookup(Preds0, PredId, PredInfo0),
-	( pred_info_is_imported(PredInfo0) ->
+	(
+	    pred_info_is_imported(PredInfo0)
+	->
 	    ModuleInfo2 = ModuleInfo0,
+	    IOState2 = IOState0,
+	    Error2 = Error0
+	;
+	    % Unification predicates are created already type-correct,
+	    % there's no need to typecheck them.
+	    pred_info_name(PredInfo0, "="),
+	    pred_info_arity(PredInfo0, 2)
+	->
+	    pred_info_clauses_info(PredInfo0, ClausesInfo0),
+	    ClausesInfo0 = clauses_info(VarSet, VarTypes0, HeadVars,
+					Clauses0),
+	    ( Clauses0 = [] ->
+		% XXX we should probably report an error "undefined type"
+		pred_info_mark_as_external(PredInfo0, PredInfo),
+		map__set(Preds0, PredId, PredInfo, Preds),
+		module_info_set_preds(ModuleInfo0, Preds, ModuleInfo2)
+	    ;
+	        ModuleInfo2 = ModuleInfo0
+	    ),
 	    IOState2 = IOState0,
 	    Error2 = Error0
 	;

@@ -65,7 +65,11 @@
 				unify_proc_num).
 :- mode unify_proc__lookup_num(in, in, in, out) is det.
 
-:- pred unify_proc__generate_clause_info(type, list(constructor), clauses_info).
+:- type unify_type
+	--->    unify_du_type(list(constructor))
+	;       unify_eqv_type(type).
+
+:- pred unify_proc__generate_clause_info(type, unify_type, clauses_info).
 :- mode unify_proc__generate_clause_info(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -230,27 +234,6 @@ unify_proc__write_unify_proc_id(TypeId - UniMode) -->
 %-----------------------------------------------------------------------------%
 
 /*
-:- pred unify_proc__generate_goal(module_info, hlds__goal).
-:- mode unify_proc__generate_goal(in, out) is det.
-
-unify_proc__generate_goal(ModuleInfo, TypeId, Goal) :-
-	module_info__types(ModuleInfo, TypeTable),
-	map__lookup(TypeId, TypeTable, TypeDefn),
-	(
-		TypeDefn = hlds__type_defn(TypeVars0, _, TypeBody0, _, _),
-		TypeBody0 = du_type(Ctors, _TagVals, no)
-	->
-		TypeVars = TypeVars0,
-		Ctors = Ctors0
-	;
-		error("invalid type in generate_goal")
-	),
-	unify_proc__generate_clauses(Ctors, ModuleInfo, ClausesList),
-	goal_info_init(GoalInfo),
-	disj_list_to_goal(ClausesList, GoalInfo, Body).
-*/
-
-/*
 	For a type such as
 
 		type t(X) ---> a ; b(int) ; c(X); d(int, X, t)
@@ -279,7 +262,21 @@ unify_proc__generate_goal(ModuleInfo, TypeId, Goal) :-
 */
 
 
-unify_proc__generate_clause_info(Type, Ctors, ClauseInfo) :-
+:- unify_proc__generate_clause_info(_, X, _) when X. % NU-Prolog indexing.
+
+unify_proc__generate_clause_info(_Type, unify_eqv_type(EqvType), ClauseInfo) :-
+	var_type_info__init(VarTypeInfo0),
+	unify_proc__generate_head_vars(EqvType, H1, H2,
+					VarTypeInfo0, VarTypeInfo),
+	create_atomic_unification(term__variable(H1), term__variable(H2),
+					explicit, [], Goal),
+	implicitly_quantify_clause_body([H1, H2], Goal, Body),
+	term__context_init(0, Context),
+	Clause = clause([], Body, Context),
+	var_type_info__extract(VarTypeInfo, VarSet, Types),
+	ClauseInfo = clauses_info(VarSet, Types, [H1, H2], [Clause]).
+
+unify_proc__generate_clause_info(Type, unify_du_type(Ctors), ClauseInfo) :-
 	var_type_info__init(VarTypeInfo0),
 	unify_proc__generate_head_vars(Type, H1, H2,
 					VarTypeInfo0, VarTypeInfo1),
