@@ -12,9 +12,9 @@ include Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-SUBDIRS = scripts runtime boehm_gc library compiler doc
+SUBDIRS = scripts util runtime boehm_gc library compiler doc
 
-SUBDIR_MMAKE =	PATH=../scripts:$$PATH \
+SUBDIR_MMAKE =	PATH=../scripts:../util:$$PATH \
 		MMAKE_VPATH=. \
 		MMAKE_VARS=../scripts/Mmake.vars \
 		MMAKE_RULES=../scripts/Mmake.rules \
@@ -77,12 +77,16 @@ library: dep_library scripts
 	cd library && $(SUBDIR_MMAKE)
 
 .PHONY: compiler
-compiler: dep_compiler scripts runtime boehm_gc library
+compiler: dep_compiler scripts util runtime boehm_gc library
 	cd compiler && $(SUBDIR_MMAKE)
 
 .PHONY: doc
 doc: scripts
 	cd doc && $(SUBDIR_MMAKE)
+
+.PHONY: util
+util: scripts
+	cd util && $(SUBDIR_MMAKE)
 
 #-----------------------------------------------------------------------------#
 
@@ -96,6 +100,7 @@ tar:
 	cd compiler && $(SUBDIR_MMAKE) depend
 	cd compiler && $(SUBDIR_MMAKE) ints cs
 	cd scripts && mmake -s realclean
+	cd util && mmake realclean
 	cd .. && (tar -cf - mercury | gzip > mercury.tar.gz)
 
 #-----------------------------------------------------------------------------#
@@ -165,13 +170,17 @@ stage_4:
 #-----------------------------------------------------------------------------#
 
 .PHONY: install
-install: all install_scripts install_runtime install_boehm_gc \
+install: all install_scripts install_util install_runtime install_boehm_gc \
 		install_library install_compiler install_doc \
 		install_runtime_grades install_library_grades
 
 .PHONY: install_scripts
 install_scripts: scripts
 	cd scripts && $(SUBDIR_MMAKE) install
+
+.PHONY: install_util
+install_util: util
+	cd util && $(SUBDIR_MMAKE) install
 
 .PHONY: install_runtime
 install_runtime: runtime
