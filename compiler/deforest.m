@@ -842,12 +842,12 @@ deforest__create_deforest_goal(EarlierGoal, BetweenGoals, LaterGoal,
 		pd_debug__message("unfolding first call\n", []),
 
 		deforest__unfold_call(no, no, PredId1, ProcId1, Args1, 
-			EarlierGoal, UnfoldedCall, _),
+			EarlierGoal, UnfoldedCall, DidUnfold),
 		{ deforest__create_conj(UnfoldedCall, BetweenGoals,
 			LaterGoal, NonLocals, DeforestGoal0) },
 		{ set__to_sorted_list(NonLocals, NonLocalsList) },
 
-		( { RunModes = yes } ->
+		( { DidUnfold = yes, RunModes = yes } ->
 
 			%
 			% If we did a generalisation step when creating this
@@ -870,7 +870,11 @@ deforest__create_deforest_goal(EarlierGoal, BetweenGoals, LaterGoal,
 			{ FoldGoal = FoldGoal0 },
 			{ Errors = [] }
 		),
-		( { Errors = [] } -> 
+
+		% We must have been able to unfold the first call to proceed
+		% with the optimization, otherwise we will introduce an
+		% infinite loop in the generated code.
+		( { DidUnfold = yes, Errors = [] } -> 
 
 			%
 			% Create the new version.
