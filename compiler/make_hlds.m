@@ -4531,25 +4531,82 @@ unravel_unification(term__functor(LeftF, LeftAs, LeftC),
 :- mode build_lambda_expression(in, in, in, in, in, in, in,
 		in, in, in, out, out, in, out, di, uo) is det.
 
-build_lambda_expression(X, PredOrFunc, Vars1, Modes, Det, ParsedGoal, VarSet1,
+build_lambda_expression(X, PredOrFunc, Args, Modes, Det, ParsedGoal, VarSet0,
 		Context, MainContext, SubContext, Goal, VarSet,
 		Info1, Info) -->
-	{ make_fresh_arg_vars(Vars1, VarSet1, Vars, VarSet2) },
+	%
+	% In the parse tree, the lambda arguments can be any terms.
+	% But in the HLDS, they must be distinct variables.  So we introduce
+	% fresh variables for the lambda arguments, and add appropriate
+	% unifications.
+	%
+	% For example, we convert from 
+	%	X = (func(f(A, B), c) = D :- G)
+	% to 
+	%	X = (func(H1, H2) = H3 :-
+	%		some [A, B] (H1 = f(A, B), H2 = c, H3 = D).
+	%
+	% Note that the quantification is important here.
+	% That's why we need to introduce the explicit `some [...]'.
+	% Variables in the argument positions are lambda-quantified,
+	% so when we move them to the body, we need to make them
+	% explicitly existentially quantified, to avoid capturing
+	% any variables of the same name that occur outside this scope.
+	%
+	% For predicates, all variables occuring in the lambda arguments
+	% are locally quantified to the lambda goal. 
+	% For functions, we need to be careful because variables in
+	% arguments should similarly be quantified, but variables in
+	% the function return value term (and not in the arguments)
+	% should *not* be locally quantified.
+	%
+
+	%
+	% Create fresh variables, transform the goal to HLDS,
+	% and add unifications with the fresh variables.
+	% We use varset__new_vars rather than make_fresh_arg_vars,
+	% since for functions we need to ensure that the variable 
+	% corresponding to the function result term is a new variable,
+	% to avoid the function result term becoming lambda-quantified.
+	%
+	{ list__length(Args, NumArgs) },
+	{ varset__new_vars(VarSet0, NumArgs, LambdaVars, VarSet1) },
 	{ map__init(Substitution) },
-	transform_goal(ParsedGoal, VarSet2, Substitution,
-			HLDS_Goal0, VarSet3, Info1, Info2),
-	insert_arg_unifications(Vars, Vars1, Context, head, no,
-		HLDS_Goal0, VarSet3, HLDS_Goal, VarSet, Info2, Info),
+	transform_goal(ParsedGoal, VarSet1, Substitution,
+			HLDS_Goal0, VarSet2, Info1, Info2),
+	insert_arg_unifications(LambdaVars, Args, Context, head, no,
+		HLDS_Goal0, VarSet2, HLDS_Goal1, VarSet, Info2, Info),
 
-		 % quantification will reduce this down to
-		 % the proper set of nonlocal arguments.
+	%
+	% Now figure out which variables we need to explicitly existentially
+	% quantify.
+	%
+	{
+		PredOrFunc = predicate,
+		QuantifiedArgs = Args
+	;
+		PredOrFunc = function,
+		pred_args_to_func_args(Args, QuantifiedArgs, _ReturnValTerm),
+	},
+	{ term__vars_list(QuantifiedArgs, QuantifiedVars0) },
+	{ list__sort_and_remove_dups(QuantifiedVars0, QuantifiedVars) },
+
+	{ goal_info_init(GoalInfo0) }
+	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
+	{ HLDS_Goal = some(QuantifiedVars, HLDS_Goal1) - GoalInfo },
+
+	%
+	% We set the lambda nonlocals here to anything that could possibly
+	% be nonlocal.  Quantification will reduce this down to
+	% the proper set of nonlocal arguments.
+	%
 	{ goal_util__goal_vars(HLDS_Goal, LambdaGoalVars0) }, 
-	{ set__delete_list(LambdaGoalVars0, Vars, LambdaGoalVars1) },
-
-	{ set__to_sorted_list(LambdaGoalVars1, LambdaNonLocals) },
+	{ set__delete_list(LambdaGoalVars0, LambdaVars, LambdaGoalVars1) },
+	{ set__delete_list(LambdaGoalVars1, QuantifiedVars, LambdaGoalVars2) },
+	{ set__to_sorted_list(LambdaGoalVars2, LambdaNonLocals) },
 
 	{ create_atomic_unification(X,
-		lambda_goal(PredOrFunc, LambdaNonLocals, Vars, 
+		lambda_goal(PredOrFunc, LambdaNonLocals, LambdaVars, 
 			Modes, Det, HLDS_Goal),
 		Context, MainContext, SubContext, Goal) }.
 

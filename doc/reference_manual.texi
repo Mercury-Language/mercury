@@ -721,15 +721,16 @@ if @var{Goal} is true, then the expression has the meaning of
 A lambda expression is a compound term of one of the following forms
 
 @example
-lambda([Var1::Mode1, Var2::Mode2, @dots{}] is Det, Goal)
-pred(Var1::Mode1, Var2::Mode2, @dots{}) is Det :- Goal
-pred(Var1::Mode1, Var2::Mode2, @dots{}, DCGMode0, DCGMode1) is Det --> DCGGoal
-func(Var1::Mode1, Var2::Mode2, @dots{}) = (Var::Mode) is Det :- Goal
-func(Var1, Var2, @dots{}) = Var :- Goal
+lambda([Arg1::Mode1, Arg2::Mode2, @dots{}] is Det, Goal)
+pred(Arg1::Mode1, Arg2::Mode2, @dots{}) is Det :- Goal
+pred(Arg1::Mode1, Arg2::Mode2, @dots{}, DCGMode0, DCGMode1) is Det --> DCGGoal
+func(Arg1::Mode1, Arg2::Mode2, @dots{}) = (Result::Mode) is Det :- Goal
+func(Arg1, Arg2, @dots{}) = Result :- Goal
 @end example
 
 @noindent
-where Var1, Var2, @dots{} are zero or more variables,
+where Arg1, Arg2, @dots{} are zero or more data-terms,
+Result is a data-term,
 Mode1, Mode2, @dots{} are zero or more modes (@pxref{Modes}),
 DCGMode0 and DCGMode1 are modes (@pxref{Modes}),
 Det is a determinism (@pxref{Determinism}),
@@ -739,7 +740,16 @@ The @samp{:- Goal} part is optional;
 if it is not specified, then @samp{:- true} is assumed.
 A lambda expression denotes a higher-order predicate or function term
 whose value is the predicate or function of the specified arguments
-determined by the specified goal.
+determined by the specified goal.  
+A lambda expression introduces a new scope: any variables occuring in
+the arguments Arg1, Arg2, ... are locally quantified, i.e.
+any occurrences of variables with that name in the lambda
+expression are considered to name a different variable than any
+variables with the same name that occur outside of the
+lambda expression.  For variables which occur in Result or Goal,
+but not in the arguments, the usual Mercury rules for implicit
+quantification apply (@pxref{Implicit Quantification}).
+
 The form of lambda expression using @samp{-->} as its top level functor
 is a syntactic abbreviation: an expression of the form
 
