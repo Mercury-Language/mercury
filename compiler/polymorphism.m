@@ -29,7 +29,7 @@
 % argument for every type variable in the predicate's type declaration.
 % The argument gives information about the type, including higher-order
 % predicate variables for each of the builtin polymorphic operations
-% (currently unify/2, compare/3, index/2).
+% (currently unify/2, compare/3).
 %
 %-----------------------------------------------------------------------------%
 %
@@ -40,27 +40,14 @@
 % TO THE TYPE SPECIALIZATION CODE IN "compiler/higher_order.m".
 %
 % Type information is represented using one or two cells. The cell which
-% is always present is the type_ctor_info structure, laid out like this:
-%
-%	word 0		<arity of type constructor>
-%			e.g. 0 for `int', 1 for `list(T)', 2 for `map(K, V)'.
-%	word 1		<=/2 predicate for type>
-%	word 2		<index/2 predicate for type>
-%	word 3		<compare/3 predicate for type>
-%	word 4		<MR_TypeCtorRepresentation for type constructor>
-%	word 5		<type_ctor_functors for type>
-%	word 6		<type_ctor_layout for type>
-%	word 7		<string name of type constructor>
-%			e.g. "int" for `int', "list" for `list(T)',
-%			"map" for `map(K,V)'
-%	word 8		<string name of module>
-%
-% The other cell is the type_info structure, laid out like this:
+% is always present is the type_ctor_info structure, whose structure is
+% defined in runtime/mercury_type_info.h. The other cell is the type_info
+% structure, laid out like this:
 %
 %	word 0		<pointer to the type_ctor_info structure>
 %	word 1+		<the type_infos for the type params, at least one>
 %
-%	(but see note below for how higher order types differ)
+%	(but see note below for how variable arity types differ)
 %
 %-----------------------------------------------------------------------------%
 %
@@ -77,12 +64,12 @@
 %
 %-----------------------------------------------------------------------------%
 %
-% Higher order types:
+% Variable arity types:
 %
-% There is a slight variation on this for higher-order types. Higher
-% order type_infos always have a pointer to the pred/0 type_ctor_info,
-% regardless of their true arity, so we store the real arity in the
-% type-info as well.
+% There is a slight variation on this for variable-arity type constructors, of
+% there are exactly three: pred, func and tuple. Typeinfos of these types
+% always have a pointer to the pred/0 type_ctor_info, regardless of their true
+% arity, so we store the real arity in the type-info as well.
 %
 %	word 0		<pointer to the type_ctor_info structure (pred/0)>
 %	word 1		<arity of predicate>
@@ -103,7 +90,7 @@
 %	   addresses during startup (that is, during the module
 %	   initialization code).
 %
-% Currently we use option 2.
+% We use option 2.
 %
 %-----------------------------------------------------------------------------%
 %
@@ -127,28 +114,12 @@
 % We transform the body of p to this:
 %
 %	p(TypeInfoT1, X) :-
-%		TypeCtorInfoT2 = type_ctor_info(
-%			1,
-%			'__Unify__'<list/1>,
-%			'__Index__'<list/1>,
-%			'__Compare__'<list/1>,
-%			<type_ctor_layout for list/1>,
-%			<type_ctor_functors for list/1>,
-%			"list",
-%			"list"),
+%		TypeCtorInfoT2 = type_ctor_info(list/1),
 %		TypeInfoT2 = type_info(
 %			TypeCtorInfoT2,
 %			TypeInfoT1),
 %		q(TypeInfoT2, [X]),
-%		TypeInfoT3 = type_ctor_info(
-%			0,
-%			builtin_unify_int,
-%			builtin_index_int,
-%			builtin_compare_int,
-%			<type_ctor_layout for int/0>,
-%			<type_ctor_functors for int/0>,
-%			"int",
-%			"builtin"),
+%		TypeInfoT3 = type_ctor_info(int/0),
 %		r(TypeInfoT3, 0).
 %
 % Note that type_ctor_infos are actually generated as references to a
