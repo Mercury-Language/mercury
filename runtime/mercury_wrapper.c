@@ -38,6 +38,7 @@ ENDINIT
 #include	"mercury_dummy.h"
 #include	"mercury_stack_layout.h"
 #include	"mercury_trace_base.h"
+#include	"mercury_memory.h"	/* for MR_copy_string() */
 
 /* global variables concerned with testing (i.e. not with the engine) */
 
@@ -608,24 +609,24 @@ process_options(int argc, char **argv)
 
 		case 'i':
 		case MR_MDB_IN:
-			MR_mdb_in_filename = MR_optarg;
+			MR_mdb_in_filename = MR_copy_string(MR_optarg);
 			break;
 
 		case 'o':
 		case MR_MDB_OUT:
-			MR_mdb_out_filename = MR_optarg;
+			MR_mdb_out_filename = MR_copy_string(MR_optarg);
 			break;
 
 		case 'e':
 		case MR_MDB_ERR:
-			MR_mdb_err_filename = MR_optarg;
+			MR_mdb_err_filename = MR_copy_string(MR_optarg);
 			break;
 
 		case 'm':
 		case MR_MDB_TTY:
-			MR_mdb_in_filename = MR_optarg;
-			MR_mdb_out_filename = MR_optarg;
-			MR_mdb_err_filename = MR_optarg;
+			MR_mdb_in_filename = MR_copy_string(MR_optarg);
+			MR_mdb_out_filename = MR_copy_string(MR_optarg);
+			MR_mdb_err_filename = MR_copy_string(MR_optarg);
 			break;
 
 		case 'a':
