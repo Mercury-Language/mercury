@@ -14,9 +14,10 @@ include $(MERCURY_DIR)/Mmake.common
 #-----------------------------------------------------------------------------#
 
 CFLAGS		= -I$(MERCURY_DIR)/runtime -I $(MERCURY_DIR)/boehm_gc -g \
-		  $(PROFFLAGS)
+		  $(EXTRA_CFLAGS)
 MGNUC		= MERCURY_C_INCL_DIR=. $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS	= --no-ansi $(CFLAGS)
+MOD2C		= $(SCRIPTS_DIR)/mod2c
 
 #-----------------------------------------------------------------------------#
 
@@ -70,7 +71,7 @@ conf.h: conf.h.date
 .PHONY: cs
 cs: $(MOD_CS)
 
-tags:
+tags: $(MODS) $(ORIG_CS)
 	ctags $(MODS) $(ORIG_CS)
 
 #-----------------------------------------------------------------------------#
