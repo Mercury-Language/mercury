@@ -1748,7 +1748,8 @@ modecheck_unification(X, lambda_goal(Vars, Modes, Det, Goal0),
 	% modecheck the goal,
 	% check that the final insts are correct,
 	% unmark the live vars,
-	% unlock the non-local vars.
+	% unlock the non-local vars,
+	% restore the initial instmap.
 	%
 
 	% initialize the initial insts of the lambda variables
@@ -1784,6 +1785,8 @@ modecheck_unification(X, lambda_goal(Vars, Modes, Det, Goal0),
 
 	mode_info_unlock_vars(NonLocals, ModeInfo6, ModeInfo7),
 
+	mode_info_set_instmap(InstMap0, ModeInfo7, ModeInfo8),
+
 	%
 	% Now modecheck the unification of X with the lambda-expression.
 	%
@@ -1791,7 +1794,7 @@ modecheck_unification(X, lambda_goal(Vars, Modes, Det, Goal0),
 	set__to_sorted_list(NonLocals, ArgVars),
 	modecheck_unify_lambda(X, ArgVars, Modes, Det, Unification0,
 				Mode, Unification,
-				ModeInfo7, ModeInfo),
+				ModeInfo8, ModeInfo),
 	ExtraGoals = [] - [].
 
 :- pred modecheck_unify_lambda(var, list(var),
