@@ -45,32 +45,32 @@
 :- import_module bool, int, string, list, map, std_util, assoc_list, require.
 
 string_switch__generate(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
-		EndLabel, MaybeEnd0, MaybeEnd, Code) -->
-	code_info__produce_variable(Var, VarCode, VarRval),
-	code_info__acquire_reg(r, SlotReg),
-	code_info__acquire_reg(r, StringReg),
-	code_info__get_next_label(LoopLabel),
-	code_info__get_next_label(FailLabel),
-	code_info__get_next_label(JumpLabel),
-	{
-		% Determine how big to make the hash table.
-		% Currently we round the number of cases up to the nearest
-		% power of two, and then double it.  This should hopefully
-		% ensure that we don't get too many hash collisions.
-		%
-		list__length(Cases, NumCases),
-		int__log2(NumCases, LogNumCases),
-		int__pow(2, LogNumCases, RoundedNumCases),
-		TableSize is 2 * RoundedNumCases,
-		HashMask is TableSize - 1,
+		EndLabel, MaybeEnd0, MaybeEnd, Code, !CodeInfo) :-
+	code_info__produce_variable(Var, VarCode, VarRval, !CodeInfo),
+	code_info__acquire_reg(r, SlotReg, !CodeInfo),
+	code_info__acquire_reg(r, StringReg, !CodeInfo),
+	code_info__get_next_label(LoopLabel, !CodeInfo),
+	code_info__get_next_label(FailLabel, !CodeInfo),
+	code_info__get_next_label(JumpLabel, !CodeInfo),
 
-		% Compute the hash table
-		%
-		switch_util__string_hash_cases(Cases, HashMask, HashValsMap),
-		map__to_assoc_list(HashValsMap, HashValsList),
-		switch_util__calc_hash_slots(HashValsList, HashValsMap,
-			HashSlotsMap)
-	},
+	% Determine how big to make the hash table.
+	% Currently we round the number of cases up to the nearest
+	% power of two, and then double it.  This should hopefully
+	% ensure that we don't get too many hash collisions.
+	%
+	list__length(Cases, NumCases),
+	int__log2(NumCases, LogNumCases),
+	int__pow(2, LogNumCases, RoundedNumCases),
+	TableSize = 2 * RoundedNumCases,
+	HashMask = TableSize - 1,
+
+	% Compute the hash table
+	%
+	switch_util__string_hash_cases(Cases, HashMask, HashValsMap),
+	map__to_assoc_list(HashValsMap, HashValsList),
+	switch_util__calc_hash_slots(HashValsList, HashValsMap,
+		HashSlotsMap),
+
 		% Note that it is safe to release the registers now,
 		% even though we haven't yet generated all the code
 		% which uses them, because that code will be executed
@@ -78,30 +78,29 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
 		% registers), and because that code is generated manually
 		% (below) so we don't need the reg info to be valid when
 		% we generate it.
-	code_info__release_reg(SlotReg),
-	code_info__release_reg(StringReg),
+	code_info__release_reg(SlotReg, !CodeInfo),
+	code_info__release_reg(StringReg, !CodeInfo),
 
 		% Generate the code for when the hash lookup fails.
 		% This must be done before gen_hash_slots, since
 		% we want to use the exprn_info corresponding to
 		% the start of the switch, not to the end of the last case.
-	code_info__generate_failure(FailCode),
+	code_info__generate_failure(FailCode, !CodeInfo),
 
 		% Generate the code etc. for the hash table
 		%
 	string_switch__gen_hash_slots(0, TableSize, HashSlotsMap, CodeModel,
 		SwitchGoalInfo, FailLabel, EndLabel, MaybeEnd0, MaybeEnd,
-		Strings, Labels, NextSlots, SlotsCode),
+		Strings, Labels, NextSlots, SlotsCode, !CodeInfo),
 
 		% Generate code which does the hash table lookup
-	{
-		Reuse = no,
-		NextSlotsTable = create(0, NextSlots, uniform(no),
-			must_be_static,
-			"string_switch_next_slots_table", Reuse),
-		StringTable = create(0, Strings, uniform(no),
-			must_be_static,
-			"string_switch_string_table", Reuse),
+	(
+		add_static_cell_natural_types(NextSlots, NextSlotsTableAddr,
+			!CodeInfo),
+		NextSlotsTable = const(data_addr_const(NextSlotsTableAddr)),
+		add_static_cell_natural_types(Strings, StringTableAddr,
+			!CodeInfo),
+		StringTable = const(data_addr_const(StringTableAddr)),
 		HashLookupCode = node([
 			comment("hashed string switch") -
 			  "",
@@ -126,28 +125,24 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
 			label(FailLabel) -
 			  "no match, so fail"
 		])
-	},
-	{
-		JumpCode = node([
-			label(JumpLabel) -
-				"we found a match",
-			computed_goto(lval(SlotReg), Labels) -
-				"jump to the corresponding code"
-		])
-	},
+	),
+	JumpCode = node([
+		label(JumpLabel) -
+			"we found a match",
+		computed_goto(lval(SlotReg), Labels) -
+			"jump to the corresponding code"
+	]),
 		% Collect all the generated code fragments together
-	{ Code =
+	Code =
 		tree(VarCode,
 		tree(HashLookupCode,
 		tree(FailCode,
 		tree(JumpCode,
-		     SlotsCode))))
-	}.
+		     SlotsCode)))).
 
 :- pred string_switch__gen_hash_slots(int, int, map(int, hash_slot),
 	code_model, hlds_goal_info, label, label, branch_end, branch_end,
-	list(maybe(rval)), list(label), list(maybe(rval)), code_tree,
-	code_info, code_info).
+	list(rval), list(label), list(rval), code_tree, code_info, code_info).
 :- mode string_switch__gen_hash_slots(in, in, in, in, in, in, in,
 	in, out, out, out, out, out, in, out) is det.
 
@@ -169,7 +164,7 @@ string_switch__gen_hash_slots(Slot, TableSize, HashSlotMap, CodeModel,
 			CodeModel, SwitchGoalInfo, FailLabel, EndLabel,
 			MaybeEnd0, MaybeEnd1,
 			String, Label, NextSlot, SlotCode),
-		{ Slot1 is Slot + 1 },
+		{ Slot1 = Slot + 1 },
 		{ 
 			Strings = [String | Strings0],
 			Labels = [Label | Labels0],
@@ -184,14 +179,14 @@ string_switch__gen_hash_slots(Slot, TableSize, HashSlotMap, CodeModel,
 
 :- pred string_switch__gen_hash_slot(int, int, map(int, hash_slot),
 	code_model, hlds_goal_info, label, label, branch_end, branch_end,
-	maybe(rval), label, maybe(rval), code_tree,
+	rval, label, rval, code_tree,
 	code_info, code_info).
 :- mode string_switch__gen_hash_slot(in, in, in, in, in, in, in,
 	in, out, out, out, out, out, in, out) is det.
 
 string_switch__gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel,
 		SwitchGoalInfo, FailLabel, EndLabel, MaybeEnd0, MaybeEnd,
-		yes(StringRval), Label, yes(NextSlotRval), Code) -->
+		StringRval, Label, NextSlotRval, Code) -->
 	( { map__search(HashSlotMap, Slot, hash_slot(Case, Next)) } ->
 		{ NextSlotRval = const(int_const(Next)) },
 		{ Case = case(_, ConsTag, _, Goal) },
@@ -243,7 +238,7 @@ string_switch__gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel,
 :- mode string_switch__this_is_last_case(in, in, in) is semidet.
 
 string_switch__this_is_last_case(Slot, TableSize, Table) :-
-	Slot1 is Slot + 1,
+	Slot1 = Slot + 1,
 	( Slot1 >= TableSize ->
 		true
 	;

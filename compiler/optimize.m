@@ -14,6 +14,7 @@
 
 :- interface.
 
+:- import_module ll_backend__global_data.
 :- import_module ll_backend__llds.
 
 :- import_module io, list.

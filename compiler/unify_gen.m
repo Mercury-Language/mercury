@@ -621,7 +621,7 @@ unify_gen__generate_construction_2(
 			ProcLabel) },
 		(
 			{ EvalMethod = normal },
-			{ AddrConst = const(code_addr_const(CodeAddr)) }
+			{ CallArgsRval = const(code_addr_const(CodeAddr)) }
 		;
 			{ EvalMethod = (aditi_bottom_up) },
 			{ rl__get_c_interface_rl_proc_name(ModuleInfo,
@@ -632,12 +632,13 @@ unify_gen__generate_construction_2(
 			{ rl__schema_to_string(ModuleInfo,
 				InputTypes, InputSchemaStr) },
 			{ AditiCallArgs = [
-				yes(const(string_const(RLProcNameStr))),
-				yes(const(string_const(InputSchemaStr)))
+				const(string_const(RLProcNameStr)),
+				const(string_const(InputSchemaStr))
 			] },
-			{ Reuse = no },
-			{ AddrConst = create(0, AditiCallArgs, uniform(no),
-				must_be_static, "aditi_call_info", Reuse) }
+			code_info__add_static_cell_natural_types(AditiCallArgs,
+				CallArgsDataAddr),
+			{ CallArgsRval =
+				const(data_addr_const(CallArgsDataAddr)) }
 		;
 			{ EvalMethod = (aditi_top_down) },
 			% XXX Need to work out how to encode the procedure
@@ -656,22 +657,24 @@ unify_gen__generate_construction_2(
 		{ goal_path_to_string(GoalPath, GoalPathStr) },
 		code_info__get_cur_proc_label(CallerProcLabel),
 		code_info__get_next_closure_seq_no(SeqNo),
+		code_info__get_static_cell_info(StaticCellInfo0),
 		{ stack_layout__construct_closure_layout(CallerProcLabel,
 			SeqNo, ClosureInfo, ProcLabel, ModuleName,
 			FileName, LineNumber, GoalPathStr,
-			ClosureLayoutMaybeRvals, ClosureLayoutArgTypes,
-			Data) },
+			StaticCellInfo0, StaticCellInfo,
+			ClosureLayoutRvalsTypes, Data) },
+		code_info__set_static_cell_info(StaticCellInfo),
 		code_info__add_closure_layout(Data),
-		{ Reuse = no },
-		{ ClosureLayout = create(0, ClosureLayoutMaybeRvals,
-			ClosureLayoutArgTypes, must_be_static,
-			"closure_layout", Reuse) },
+		code_info__add_static_cell(ClosureLayoutRvalsTypes,
+			ClosureDataAddr),
+		{ ClosureLayoutRval =
+			const(data_addr_const(ClosureDataAddr)) },
 		{ list__length(Args, NumArgs) },
 		{ proc_info_arg_info(ProcInfo, ArgInfo) },
 		{ unify_gen__generate_pred_args(Args, ArgInfo, PredArgs) },
 		{ Vector = [
-			yes(ClosureLayout),
-			yes(AddrConst),
+			yes(ClosureLayoutRval),
+			yes(CallArgsRval),
 			yes(const(int_const(NumArgs)))
 			| PredArgs
 		] },
@@ -718,8 +721,10 @@ unify_gen__generate_pred_args([Var | Vars], [ArgInfo | ArgInfos],
 	list(uni_mode)::in, module_info::in, list(maybe(rval))::out) is det.
 
 unify_gen__generate_cons_args(Vars, Types, Modes, ModuleInfo, Args) :-
-	( unify_gen__generate_cons_args_2(Vars, Types, Modes, ModuleInfo,
-			Args0) ->
+	(
+		unify_gen__generate_cons_args_2(Vars, Types, Modes,
+			ModuleInfo, Args0)
+	->
 		Args = Args0
 	;
 		error("unify_gen__generate_cons_args: length mismatch")
@@ -737,12 +742,12 @@ unify_gen__generate_cons_args(Vars, Types, Modes, ModuleInfo, Args) :-
 
 unify_gen__generate_cons_args_2([], [], [], _, []).
 unify_gen__generate_cons_args_2([Var | Vars], [Type | Types],
-		[UniMode | UniModes], ModuleInfo, [Arg | RVals]) :-
+		[UniMode | UniModes], ModuleInfo, [Rval | RVals]) :-
 	UniMode = ((_LI - RI) -> (_LF - RF)),
 	( mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, top_in) ->
-		Arg = yes(var(Var))
+		Rval = yes(var(Var))
 	;
-		Arg = no
+		Rval = no
 	),
 	unify_gen__generate_cons_args_2(Vars, Types, UniModes, ModuleInfo,
 		RVals).

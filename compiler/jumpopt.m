@@ -792,12 +792,6 @@ jumpopt__short_labels_rval(lval(Lval0), Instrmap, lval(Lval)) :-
 	jumpopt__short_labels_lval(Lval0, Instrmap, Lval).
 jumpopt__short_labels_rval(var(_), _, _) :-
 	error("var rval in jumpopt__short_labels_rval").
-jumpopt__short_labels_rval(
-		create(Tag, Rvals0, ArgTypes, StatDyn, Type, Reuse0),
-		Instrmap,
-		create(Tag, Rvals, ArgTypes, StatDyn, Type, Reuse)) :-
-	jumpopt__short_labels_maybe_rvals(Rvals0, Instrmap, Rvals),
-	jumpopt__short_labels_maybe_rval(Reuse0, Instrmap, Reuse).
 jumpopt__short_labels_rval(mkword(Tag, Rval0), Instrmap,
 		mkword(Tag, Rval)) :-
 	jumpopt__short_labels_rval(Rval0, Instrmap, Rval).

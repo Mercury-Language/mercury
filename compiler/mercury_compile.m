@@ -92,11 +92,11 @@
 :- import_module ll_backend__store_alloc.
 :- import_module ll_backend__code_gen.
 :- import_module ll_backend__optimize.
-:- import_module ll_backend__llds_common.
 :- import_module ll_backend__transform_llds.
 :- import_module ll_backend__llds_out.
 :- import_module ll_backend__continuation_info.
 :- import_module ll_backend__stack_layout.
+:- import_module ll_backend__global_data.
 :- import_module backend_libs__foreign.
 :- import_module backend_libs__export.
 :- import_module backend_libs__base_typeclass_info.
@@ -2234,7 +2234,13 @@ mercury_compile__maybe_generate_rl_bytecode(ModuleInfo,
 
 mercury_compile__backend_pass(HLDS50, HLDS, DeepProfilingStructures,
 		GlobalData, LLDS) -->
-	{ global_data_init(DeepProfilingStructures, GlobalData0) },
+	{ module_info_name(HLDS50, ModuleName) },
+	globals__io_lookup_bool_option(unboxed_float, UnboxFloat),
+	globals__io_lookup_bool_option(common_data, DoCommonData),
+	{ StaticCellInfo0 = init_static_cell_info(ModuleName, UnboxFloat,
+		DoCommonData) },
+	{ global_data_init(DeepProfilingStructures, StaticCellInfo0,
+		GlobalData0) },
 
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
@@ -3500,7 +3506,7 @@ get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
 	io__state, io__state).
 :- mode mercury_compile__output_pass(in, in, in, in, in, out, di, uo) is det.
 
-mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
+mercury_compile__output_pass(HLDS, GlobalData0, Procs, MaybeRLFile,
 		ModuleName, CompileErrors) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
@@ -3511,12 +3517,12 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	% XXX this should perhaps be part of backend_pass
 	% rather than output_pass.
 	%
-	{ type_ctor_info__generate_rtti(HLDS0, TypeCtorRttiData) },
-	{ base_typeclass_info__generate_rtti(HLDS0, TypeClassInfoRttiData) },
+	{ type_ctor_info__generate_rtti(HLDS, TypeCtorRttiData) },
+	{ base_typeclass_info__generate_rtti(HLDS, TypeClassInfoRttiData) },
 	{ list__map(llds__wrap_rtti_data, TypeCtorRttiData, TypeCtorTables) },
 	{ list__map(llds__wrap_rtti_data, TypeClassInfoRttiData,
 		TypeClassInfos) },
-	{ stack_layout__generate_llds(HLDS0, HLDS, GlobalData,
+	{ stack_layout__generate_llds(HLDS, GlobalData0, GlobalData,
 		StackLayouts, LayoutLabels) },
 	%
 	% Here we perform some optimizations on the LLDS data.
@@ -3526,22 +3532,18 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	% XXX We assume that the foreign language we use is C
 	{ get_c_interface_info(HLDS, c, C_InterfaceInfo) },
 	{ global_data_get_all_proc_vars(GlobalData, GlobalVars) },
-	{ global_data_get_all_non_common_static_data(GlobalData,
-		NonCommonStaticData) },
+	{ global_data_get_all_deep_prof_data(GlobalData, DeepProfData) },
 	{ global_data_get_all_closure_layouts(GlobalData, ClosureLayouts) },
-	{ CommonableData0 = list__append(ClosureLayouts, StackLayouts) },
-	globals__io_lookup_bool_option(unboxed_float, UnboxFloat),
-	globals__io_lookup_bool_option(common_data, DoCommonData),
-	{ llds_common(ModuleName, UnboxFloat, DoCommonData, Procs0, Procs1,
-		CommonableData0, CommonableData) },
+	{ global_data_get_static_cell_info(GlobalData, StaticCellInfo) },
+	{ StaticCells = get_static_cells(StaticCellInfo) },
 
 	%
 	% Next we put it all together and output it to one or more C files.
 	%
-	{ list__condense([CommonableData, NonCommonStaticData,
-		TypeCtorTables, TypeClassInfos], AllData) },
+	{ list__condense([StaticCells, ClosureLayouts, StackLayouts,
+		DeepProfData, TypeCtorTables, TypeClassInfos], AllData) },
 	mercury_compile__construct_c_file(HLDS, C_InterfaceInfo,
-		Procs1, GlobalVars, AllData, CFile, NumChunks),
+		Procs, GlobalVars, AllData, CFile, NumChunks),
 	mercury_compile__output_llds(ModuleName, CFile, LayoutLabels,
 		MaybeRLFile, Verbose, Stats),
 

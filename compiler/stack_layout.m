@@ -16,9 +16,7 @@
 %
 % The tables we generate are mostly of (Mercury) types defined in layout.m,
 % which are turned into C code (global variable declarations and
-% initializations) by layout_out.m. However, these data structures also have
-% a number of `create' rvals within them; llds_common.m converts these into
-% static data structures.
+% initializations) by layout_out.m.
 % 
 % The C types of the structures we generate are defined and documented in
 % runtime/mercury_stack_layout.h. 
@@ -32,19 +30,21 @@
 :- import_module backend_libs__proc_label.
 :- import_module hlds__hlds_module.
 :- import_module ll_backend__continuation_info.
+:- import_module ll_backend__global_data.
 :- import_module ll_backend__llds.
 :- import_module parse_tree__prog_data.
 
-:- import_module std_util, list, map.
+:- import_module list, assoc_list, map.
 
-:- pred stack_layout__generate_llds(module_info::in, module_info::out,
-	global_data::in, list(comp_gen_c_data)::out,
-	map(label, data_addr)::out) is det.
+:- pred stack_layout__generate_llds(module_info::in,
+	global_data::in, global_data::out,
+	list(comp_gen_c_data)::out, map(label, data_addr)::out) is det.
 
 :- pred stack_layout__construct_closure_layout(proc_label::in, int::in,
 	closure_layout_info::in, proc_label::in, module_name::in,
-	string::in, int::in, string::in, list(maybe(rval))::out,
-	create_arg_types::out, comp_gen_c_data::out) is det.
+	string::in, int::in, string::in,
+	static_cell_info::in, static_cell_info::out,
+	assoc_list(rval, llds_type)::out, comp_gen_c_data::out) is det.
 
 	% Construct a representation of a variable location as a 32-bit
 	% integer.
@@ -72,7 +72,7 @@
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
-:- import_module assoc_list, bool, char, string, int, require.
+:- import_module std_util, bool, char, string, int, require.
 :- import_module map, term, set, varset.
 
 %---------------------------------------------------------------------------%
@@ -80,9 +80,8 @@
 	% Process all the continuation information stored in the HLDS,
 	% converting it into LLDS data structures.
 
-stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData, Layouts,
-		LayoutLabels) :-
-	global_data_get_all_proc_layouts(GlobalData, ProcLayoutList0),
+stack_layout__generate_llds(ModuleInfo0, !GlobalData, Layouts, LayoutLabels) :-
+	global_data_get_all_proc_layouts(!.GlobalData, ProcLayoutList0),
 	list__filter(stack_layout__valid_proc_layout, ProcLayoutList0,
 		ProcLayoutList),
 
@@ -99,16 +98,16 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData, Layouts,
 	map__init(StringMap0),
 	map__init(LabelTables0),
 	StringTable0 = string_table(StringMap0, [], 0),
+	global_data_get_static_cell_info(!.GlobalData, StaticCellInfo0),
 	LayoutInfo0 = stack_layout_info(ModuleInfo0,
 		AgcLayout, TraceLayout, ProcIdLayout,
 		StaticCodeAddr, [], [], [], LayoutLabels0, [],
-		StringTable0, LabelTables0, map__init),
+		StringTable0, LabelTables0, map__init, StaticCellInfo0),
 	stack_layout__lookup_string_in_table("", _, LayoutInfo0, LayoutInfo1),
 	stack_layout__lookup_string_in_table("<too many variables>", _,
 		LayoutInfo1, LayoutInfo2),
 	list__foldl(stack_layout__construct_layouts, ProcLayoutList,
 		LayoutInfo2, LayoutInfo),
-	ModuleInfo = LayoutInfo ^ module_info,
 	TableIoDecls = LayoutInfo ^ table_infos,
 	ProcLayouts = LayoutInfo ^ proc_layouts,
 	InternalLayouts = LayoutInfo ^ internal_layouts,
@@ -116,6 +115,8 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData, Layouts,
 	ProcLayoutNames = LayoutInfo ^ proc_layout_name_list,
 	StringTable = LayoutInfo ^ string_table,
 	LabelTables = LayoutInfo ^ label_tables,
+	global_data_set_static_cell_info(LayoutInfo ^ static_cell_info,
+		!GlobalData),
 	StringTable = string_table(_, RevStringList, StringOffset),
 	list__reverse(RevStringList, StringList),
 	stack_layout__concat_string_list(StringList, StringOffset,
@@ -521,8 +522,11 @@ stack_layout__construct_proc_layout(RttiProcLabel, EntryLabel, ProcLabel,
 		{ MaybeTableInfo = no }
 	;
 		{ MaybeTableInfo = yes(TableInfo) },
-		stack_layout__make_table_data(RttiProcLabel, Kind,
-			TableInfo, TableData),
+		stack_layout__get_static_cell_info(StaticCellInfo0),
+		{ stack_layout__make_table_data(RttiProcLabel, Kind,
+			TableInfo, TableData,
+			StaticCellInfo0, StaticCellInfo) },
+		stack_layout__set_static_cell_info(StaticCellInfo),
 		stack_layout__add_table_data(TableData)
 	).
 
@@ -536,34 +540,38 @@ stack_layout__construct_proc_layout(RttiProcLabel, EntryLabel, ProcLabel,
 stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, MaybeCallLabel,
 		MaxTraceReg, HeadVars, MaybeGoal, InstMap, TraceSlotInfo,
 		VarSet, VarTypes, UsedVarNameMap, MaybeTableInfo,
-		NeedsAllNames, ExecTrace) -->
+		NeedsAllNames, ExecTrace, !Info) :-
 	stack_layout__construct_var_name_vector(VarSet, UsedVarNameMap,
-		NeedsAllNames, MaxVarNum, VarNameVector),
-	{ list__map(term__var_to_int, HeadVars, HeadVarNumVector) },
+		NeedsAllNames, MaxVarNum, VarNameVector, !Info),
+	list__map(term__var_to_int, HeadVars, HeadVarNumVector),
 	(
-		{ MaybeGoal = no },
-		{ MaybeProcRepRval = no }
+		MaybeGoal = no,
+		MaybeProcRepRval = no
 	;
-		{ MaybeGoal = yes(Goal) },
-		stack_layout__get_module_info(ModuleInfo),
-		{ prog_rep__represent_proc(HeadVars, Goal, InstMap, VarTypes,
-			ModuleInfo, ProcRep) },
-		{ type_to_univ(ProcRep, ProcRepUniv) },
-		{ static_term__term_to_rval(ProcRepUniv, MaybeProcRepRval) }
+		MaybeGoal = yes(Goal),
+		ModuleInfo = !.Info ^ module_info,
+		prog_rep__represent_proc(HeadVars, Goal, InstMap, VarTypes,
+			ModuleInfo, ProcRep),
+		type_to_univ(ProcRep, ProcRepUniv),
+		StaticCellInfo0 = !.Info ^ static_cell_info,
+		static_term__term_to_rval(ProcRepUniv, ProcRepRval,
+			StaticCellInfo0, StaticCellInfo),
+		MaybeProcRepRval = yes(ProcRepRval),
+		!:Info = !.Info ^ static_cell_info := StaticCellInfo
 	),
-	{
+	(
 		MaybeCallLabel = yes(CallLabelPrime),
 		CallLabel = CallLabelPrime
 	;
 		MaybeCallLabel = no,
 		error("stack_layout__construct_trace_layout: call label not present")
-	},
-	{ TraceSlotInfo = trace_slot_info(MaybeFromFullSlot,
+	),
+	TraceSlotInfo = trace_slot_info(MaybeFromFullSlot,
 		MaybeIoSeqSlot, MaybeTrailSlots, MaybeMaxfrSlot,
-		MaybeCallTableSlot) },
+		MaybeCallTableSlot),
 		% The label associated with an event must have variable info.
-	{ CallLabelLayout = label_layout(CallLabel, label_has_var_info) },
-	{
+	CallLabelLayout = label_layout(CallLabel, label_has_var_info),
+	(
 		MaybeTableInfo = no,
 		MaybeTableName = no
 	;
@@ -575,12 +583,12 @@ stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, MaybeCallLabel,
 			TableInfo = table_gen_info(_, _, _, _),
 			MaybeTableName = yes(table_gen_info(RttiProcLabel))
 		)
-	},
-	{ ExecTrace = proc_layout_exec_trace(CallLabelLayout, MaybeProcRepRval,
+	),
+	ExecTrace = proc_layout_exec_trace(CallLabelLayout, MaybeProcRepRval,
 		MaybeTableName, HeadVarNumVector, VarNameVector,
 		MaxVarNum, MaxTraceReg, MaybeFromFullSlot, MaybeIoSeqSlot,
 		MaybeTrailSlots, MaybeMaxfrSlot, EvalMethod,
-		MaybeCallTableSlot) }.
+		MaybeCallTableSlot).
 
 :- pred stack_layout__construct_var_name_vector(prog_varset::in,
 	map(int, string)::in, bool::in, int::out, list(int)::out,
@@ -771,39 +779,39 @@ stack_layout__construct_internal_layout(ProcLayoutName, Label - Internal,
 	rval::out, stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_livelval_rvals(LiveLvalSet, TVarLocnMap, EncodedLength,
-		LiveValRval, NamesRval, TypeParamRval) -->
-	{ set__to_sorted_list(LiveLvalSet, LiveLvals) },
-	{ stack_layout__sort_livevals(LiveLvals, SortedLiveLvals) },
+		LiveValRval, NamesRval, TypeParamRval, !Info) :-
+	set__to_sorted_list(LiveLvalSet, LiveLvals),
+	stack_layout__sort_livevals(LiveLvals, SortedLiveLvals),
 	stack_layout__construct_liveval_arrays(SortedLiveLvals,
-		EncodedLength, LiveValRval, NamesRval),
-	{ stack_layout__construct_tvar_vector(TVarLocnMap,
-		TypeParamRval) }.
+		EncodedLength, LiveValRval, NamesRval, !Info),
+	StaticCellInfo0 = !.Info ^ static_cell_info,
+	stack_layout__construct_tvar_vector(TVarLocnMap,
+		TypeParamRval, StaticCellInfo0, StaticCellInfo),
+	!:Info = !.Info ^ static_cell_info := StaticCellInfo.
 
 :- pred stack_layout__construct_tvar_vector(map(tvar, set(layout_locn))::in,
-	rval::out) is det.
+	rval::out, static_cell_info::in, static_cell_info::out) is det.
 
-stack_layout__construct_tvar_vector(TVarLocnMap, TypeParamRval) :-
+stack_layout__construct_tvar_vector(TVarLocnMap, TypeParamRval,
+		!StaticCellInfo) :-
 	( map__is_empty(TVarLocnMap) ->
 		TypeParamRval = const(int_const(0))
 	;
-		stack_layout__construct_tvar_rvals(TVarLocnMap,
-			Vector, VectorTypes),
-		Reuse = no,
-		TypeParamRval = create(0, Vector, VectorTypes, must_be_static,
-			"stack_layout_type_param_locn_vector", Reuse)
+		stack_layout__construct_tvar_rvals(TVarLocnMap, Vector),
+		add_static_cell(Vector, DataAddr, !StaticCellInfo),
+		TypeParamRval = const(data_addr_const(DataAddr))
 	).
 
 :- pred stack_layout__construct_tvar_rvals(map(tvar, set(layout_locn))::in,
-	list(maybe(rval))::out, create_arg_types::out) is det.
+	assoc_list(rval, llds_type)::out) is det.
 
-stack_layout__construct_tvar_rvals(TVarLocnMap, Vector, VectorTypes) :-
+stack_layout__construct_tvar_rvals(TVarLocnMap, Vector) :-
 	map__to_assoc_list(TVarLocnMap, TVarLocns),
 	stack_layout__construct_type_param_locn_vector(TVarLocns, 1,
 		TypeParamLocs),
 	list__length(TypeParamLocs, TypeParamsLength),
 	LengthRval = const(int_const(TypeParamsLength)),
-	Vector = [yes(LengthRval) | TypeParamLocs],
-	VectorTypes = uniform(yes(uint_least32)).
+	Vector = [LengthRval - uint_least32 | TypeParamLocs].
 
 %---------------------------------------------------------------------------%
 
@@ -835,8 +843,7 @@ stack_layout__select_trace_return(Infos, TVars, TraceReturnInfos, TVars) :-
 	% debugger somewhat easier, the sorting of the named var block makes
 	% the output of the debugger look nicer, and the sorting of the both
 	% blocks makes it more likely that different labels' layout structures
-	% will have common parts (e.g. name vectors) that can be optimized
-	% by llds_common.m.
+	% will have common parts (e.g. name vectors).
 
 :- pred stack_layout__sort_livevals(list(var_info)::in, list(var_info)::out)
 	is det.
@@ -883,13 +890,13 @@ stack_layout__get_name_from_live_value_type(LiveType, Name) :-
 
 :- pred stack_layout__construct_type_param_locn_vector(
 	assoc_list(tvar, set(layout_locn))::in,
-	int::in, list(maybe(rval))::out) is det.
+	int::in, assoc_list(rval, llds_type)::out) is det.
 
 stack_layout__construct_type_param_locn_vector([], _, []).
 stack_layout__construct_type_param_locn_vector([TVar - Locns | TVarLocns],
 		CurSlot, Vector) :-
 	term__var_to_int(TVar, TVarNum),
-	NextSlot is CurSlot + 1,
+	NextSlot = CurSlot + 1,
 	( TVarNum = CurSlot ->
 		( set__remove_least(Locns, LeastLocn, _) ->
 			Locn = LeastLocn
@@ -899,12 +906,12 @@ stack_layout__construct_type_param_locn_vector([TVar - Locns | TVarLocns],
 		stack_layout__represent_locn_as_int_rval(Locn, Rval),
 		stack_layout__construct_type_param_locn_vector(TVarLocns,
 			NextSlot, VectorTail),
-		Vector = [yes(Rval) | VectorTail]
+		Vector = [Rval - uint_least32 | VectorTail]
 	; TVarNum > CurSlot ->
 		stack_layout__construct_type_param_locn_vector(
 			[TVar - Locns | TVarLocns], NextSlot, VectorTail),
 			% This slot will never be referred to.
-		Vector = [yes(const(int_const(0))) | VectorTail]
+		Vector = [const(int_const(0)) - uint_least32 | VectorTail]
 	;
 		error("unsorted tvars in construct_type_param_locn_vector")
 	).
@@ -948,49 +955,52 @@ stack_layout__construct_liveval_arrays(VarInfos, EncodedLength,
 	{ EncodedLength = IntArrayLength << stack_layout__short_count_bits
 		+ ByteArrayLength },
 
-	{ SelectLocns = (pred(ArrayInfo::in, MaybeLocnRval::out) is det :-
-		ArrayInfo = live_array_info(LocnRval, _, _, _),
-		MaybeLocnRval = yes(LocnRval)
+	{ SelectLocns = (pred(ArrayInfo::in, LocnRval::out) is det :-
+		ArrayInfo = live_array_info(LocnRval, _, _, _)
 	) },
-	{ SelectTypes = (pred(ArrayInfo::in, MaybeTypeRval::out) is det :-
-		ArrayInfo = live_array_info(_, TypeRval, _, _),
-		MaybeTypeRval = yes(TypeRval)
-	) },
-	{ SelectTypeTypes = (pred(ArrayInfo::in, CountTypeType::out) is det :-
-		ArrayInfo = live_array_info(_, _, TypeType, _),
-		CountTypeType = 1 - yes(TypeType)
+	{ SelectTypes = (pred(ArrayInfo::in, TypeRval - TypeType::out) is det :-
+		ArrayInfo = live_array_info(_, TypeRval, TypeType, _)
 	) },
 	{ AddRevNums = (pred(ArrayInfo::in, NumRvals0::in, NumRvals::out)
 			is det :-
 		ArrayInfo = live_array_info(_, _, _, NumRval),
-		NumRvals = [yes(NumRval) | NumRvals0]
+		NumRvals = [NumRval | NumRvals0]
 	) },
 
-	{ list__map(SelectTypes, AllArrayInfo, AllTypes) },
-	{ list__map(SelectTypeTypes, AllArrayInfo, AllTypeTypes) },
+	{ list__map(SelectTypes, AllArrayInfo, AllTypeRvalsTypes) },
 	{ list__map(SelectLocns, IntArrayInfo, IntLocns) },
+	{ list__map(associate_type(uint_least32), IntLocns, IntLocnsTypes) },
 	{ list__map(SelectLocns, ByteArrayInfo, ByteLocns) },
-	{ list__append(IntLocns, ByteLocns, AllLocns) },
-	{ list__append(AllTypes, AllLocns, TypeLocnVectorRvals) },
-	{ LocnArgTypes = [IntArrayLength - yes(uint_least32),
-			ByteArrayLength - yes(uint_least8)] },
-	{ list__append(AllTypeTypes, LocnArgTypes, ArgTypes) },
-	{ Reuse = no },
-	{ TypeLocnVector = create(0, TypeLocnVectorRvals,
-		initial(ArgTypes, none), must_be_static,
-		"stack_layout_locn_vector", Reuse) },
+	{ list__map(associate_type(uint_least8), ByteLocns, ByteLocnsTypes) },
+	{ list__append(IntLocnsTypes, ByteLocnsTypes, AllLocnsTypes) },
+	{ list__append(AllTypeRvalsTypes, AllLocnsTypes,
+		TypeLocnVectorRvalsTypes) },
+	stack_layout__get_static_cell_info(StaticCellInfo0),
+	{ add_static_cell(TypeLocnVectorRvalsTypes, TypeLocnVectorAddr,
+		StaticCellInfo0, StaticCellInfo1) },
+	{ TypeLocnVector = const(data_addr_const(TypeLocnVectorAddr)) },
+	stack_layout__set_static_cell_info(StaticCellInfo1),
 
 	stack_layout__get_trace_stack_layout(TraceStackLayout),
 	( { TraceStackLayout = yes } ->
 		{ list__foldl(AddRevNums, AllArrayInfo,
 			[], RevVarNumRvals) },
 		{ list__reverse(RevVarNumRvals, VarNumRvals) },
-		{ NumVector = create(0, VarNumRvals,
-			uniform(yes(uint_least16)), must_be_static,
-			"stack_layout_var_num_vector", Reuse) }
+		{ list__map(associate_type(uint_least16), VarNumRvals,
+			VarNumRvalsTypes) },
+		stack_layout__get_static_cell_info(StaticCellInfo2),
+		{ add_static_cell(VarNumRvalsTypes, NumVectorAddr,
+			StaticCellInfo2, StaticCellInfo) },
+		stack_layout__set_static_cell_info(StaticCellInfo),
+		{ NumVector = const(data_addr_const(NumVectorAddr)) }
 	;
 		{ NumVector = const(int_const(0)) }
 	).
+
+:- pred associate_type(llds_type::in, rval::in, pair(rval, llds_type)::out)
+	is det.
+
+associate_type(LldsType, Rval, Rval - LldsType).
 
 :- pred stack_layout__construct_liveval_array_infos(list(var_info)::in,
 	int::in, int::in,
@@ -1071,43 +1081,40 @@ stack_layout__convert_var_to_int(Var, VarNum) :-
 
 stack_layout__construct_closure_layout(CallerProcLabel, SeqNo,
 		ClosureLayoutInfo, ClosureProcLabel, ModuleName,
-		FileName, LineNumber, GoalPath, Rvals, ArgTypes, Data) :-
+		FileName, LineNumber, GoalPath, !StaticCellInfo,
+		RvalsTypes, Data) :-
 	DataAddr = layout_addr(
 		closure_proc_id(CallerProcLabel, SeqNo, ClosureProcLabel)),
 	Data = layout_data(closure_proc_id_data(CallerProcLabel, SeqNo,
 		ClosureProcLabel, ModuleName, FileName, LineNumber, GoalPath)),
-	MaybeProcIdRval = yes(const(data_addr_const(DataAddr))),
-	ProcIdType = 1 - yes(data_ptr),
+	ProcIdRvalType = const(data_addr_const(DataAddr)) - data_ptr,
 	ClosureLayoutInfo = closure_layout_info(ClosureArgs, TVarLocnMap),
 	stack_layout__construct_closure_arg_rvals(ClosureArgs,
-		MaybeClosureArgRvals, ClosureArgTypes),
-	stack_layout__construct_tvar_vector(TVarLocnMap, TVarVectorRval),
-	MaybeTVarVectorRval = yes(TVarVectorRval),
-	TVarVectorType = 1 - yes(data_ptr),
-	Rvals = [MaybeProcIdRval, MaybeTVarVectorRval | MaybeClosureArgRvals],
-	ArgTypes = initial([ProcIdType, TVarVectorType | ClosureArgTypes],
-		none).
+		ClosureArgRvalsTypes, !StaticCellInfo),
+	stack_layout__construct_tvar_vector(TVarLocnMap, TVarVectorRval,
+		!StaticCellInfo),
+	RvalsTypes = [ProcIdRvalType, TVarVectorRval - data_ptr |
+		ClosureArgRvalsTypes].
 
 :- pred stack_layout__construct_closure_arg_rvals(list(closure_arg_info)::in,
-	list(maybe(rval))::out, initial_arg_types::out) is det.
+	assoc_list(rval, llds_type)::out,
+	static_cell_info::in, static_cell_info::out) is det.
 
-stack_layout__construct_closure_arg_rvals(ClosureArgs, ClosureArgRvals,
-		ClosureArgTypes) :-
-	list__map(stack_layout__construct_closure_arg_rval,
-		ClosureArgs, MaybeArgRvalsTypes),
-	assoc_list__keys(MaybeArgRvalsTypes, MaybeArgRvals),
-	list__map(stack_layout__add_one, MaybeArgRvalsTypes, ArgRvalTypes),
-	list__length(MaybeArgRvals, Length),
-	ClosureArgRvals = [yes(const(int_const(Length))) | MaybeArgRvals],
-	ClosureArgTypes = [1 - yes(integer) | ArgRvalTypes].
+stack_layout__construct_closure_arg_rvals(ClosureArgs, ClosureArgRvalsTypes,
+		!StaticCellInfo) :-
+	list__map_foldl(stack_layout__construct_closure_arg_rval,
+		ClosureArgs, ArgRvalsTypes, !StaticCellInfo),
+	list__length(ArgRvalsTypes, Length),
+	ClosureArgRvalsTypes =
+		[const(int_const(Length)) - integer | ArgRvalsTypes].
 
 :- pred stack_layout__construct_closure_arg_rval(closure_arg_info::in,
-	pair(maybe(rval), llds_type)::out) is det.
+	pair(rval, llds_type)::out,
+	static_cell_info::in, static_cell_info::out) is det.
 
-stack_layout__construct_closure_arg_rval(ClosureArg,
-		yes(ArgRval) - ArgRvalType) :-
+stack_layout__construct_closure_arg_rval(ClosureArg, ArgRval - ArgRvalType,
+		!StaticCellInfo) :-
 	ClosureArg = closure_arg_info(Type, _Inst),
-
 		% For a stack layout, we can treat all type variables as
 		% universally quantified. This is not the argument of a
 		% constructor, so we do not need to distinguish between type
@@ -1115,61 +1122,55 @@ stack_layout__construct_closure_arg_rval(ClosureArg,
 		% variable number directly from the procedure's tvar set.
 	ExistQTvars = [],
 	NumUnivQTvars = -1,
-
 	ll_pseudo_type_info__construct_typed_llds_pseudo_type_info(Type,
-		NumUnivQTvars, ExistQTvars, ArgRval, ArgRvalType).
-
-:- pred stack_layout__add_one(pair(maybe(rval), llds_type)::in,
-	pair(int, maybe(llds_type))::out) is det.
-
-stack_layout__add_one(_MaybeRval - LldsType, 1 - yes(LldsType)).
+		NumUnivQTvars, ExistQTvars, !StaticCellInfo,
+		ArgRval, ArgRvalType).
 
 %---------------------------------------------------------------------------%
 
 :- pred stack_layout__make_table_data(rtti_proc_label::in,
 	proc_layout_kind::in, proc_table_info::in, layout_data::out,
-	stack_layout_info::in, stack_layout_info::out) is det.
+	static_cell_info::in, static_cell_info::out) is det.
 
-stack_layout__make_table_data(RttiProcLabel, Kind, TableInfo,
-		TableData) -->
+stack_layout__make_table_data(RttiProcLabel, Kind, TableInfo, TableData,
+		!StaticCellInfo) :-
 	(
-		{ TableInfo = table_io_decl_info(TableArgInfo) },
+		TableInfo = table_io_decl_info(TableArgInfo),
 		stack_layout__convert_table_arg_info(TableArgInfo,
-			NumPTIs, PTIVectorRval, TVarVectorRval),
-		{ TableData = table_io_decl_data(RttiProcLabel, Kind,
-			NumPTIs, PTIVectorRval, TVarVectorRval) }
+			NumPTIs, PTIVectorRval, TVarVectorRval,
+			!StaticCellInfo),
+		TableData = table_io_decl_data(RttiProcLabel, Kind,
+			NumPTIs, PTIVectorRval, TVarVectorRval)
 	;
-		{ TableInfo = table_gen_info(NumInputs, NumOutputs, Steps,
-			TableArgInfo) },
+		TableInfo = table_gen_info(NumInputs, NumOutputs, Steps,
+			TableArgInfo),
 		stack_layout__convert_table_arg_info(TableArgInfo,
-			NumPTIs, PTIVectorRval, TVarVectorRval),
-		{ NumArgs = NumInputs + NumOutputs },
-		{ require(unify(NumArgs, NumPTIs),
-			"stack_layout__make_table_data: args mismatch") },
-		{ TableData = table_gen_data(RttiProcLabel,
+			NumPTIs, PTIVectorRval, TVarVectorRval,
+			!StaticCellInfo),
+		NumArgs = NumInputs + NumOutputs,
+		require(unify(NumArgs, NumPTIs),
+			"stack_layout__make_table_data: args mismatch"),
+		TableData = table_gen_data(RttiProcLabel,
 			NumInputs, NumOutputs, Steps,
-			PTIVectorRval, TVarVectorRval) }
+			PTIVectorRval, TVarVectorRval)
 	).
 
 :- pred stack_layout__convert_table_arg_info(table_arg_infos::in,
 	int::out, rval::out, rval::out,
-	stack_layout_info::in, stack_layout_info::out) is det.
+	static_cell_info::in, static_cell_info::out) is det.
 
 stack_layout__convert_table_arg_info(TableArgInfos, NumPTIs,
-		PTIVectorRval, TVarVectorRval) -->
-	{ TableArgInfos = table_arg_infos(Args, TVarSlotMap) },
-	{ list__length(Args, NumPTIs) },
-	{ list__map(stack_layout__construct_table_arg_pti_rval,
-		Args, MaybePTIRvalTypes) },
-	{ list__map(stack_layout__add_one, MaybePTIRvalTypes, PTITypes) },
-	{ assoc_list__keys(MaybePTIRvalTypes, MaybePTIRvals) },
-	{ PTIVectorTypes = initial(PTITypes, none) },
-	{ Reuse = no },
-	{ PTIVectorRval = create(0, MaybePTIRvals, PTIVectorTypes,
-		must_be_static, "stack_layout_table_ptis", Reuse) },
-	{ map__map_values(stack_layout__convert_slot_to_locn_map,
-		TVarSlotMap, TVarLocnMap) },
-	{ stack_layout__construct_tvar_vector(TVarLocnMap, TVarVectorRval) }.
+		PTIVectorRval, TVarVectorRval, !StaticCellInfo) :-
+	TableArgInfos = table_arg_infos(Args, TVarSlotMap),
+	list__length(Args, NumPTIs),
+	list__map_foldl(stack_layout__construct_table_arg_pti_rval,
+		Args, PTIRvalsTypes, !StaticCellInfo),
+	add_static_cell(PTIRvalsTypes, PTIVectorAddr, !StaticCellInfo),
+	PTIVectorRval = const(data_addr_const(PTIVectorAddr)),
+	map__map_values(stack_layout__convert_slot_to_locn_map,
+		TVarSlotMap, TVarLocnMap),
+	stack_layout__construct_tvar_vector(TVarLocnMap, TVarVectorRval,
+		!StaticCellInfo).
 
 :- pred stack_layout__convert_slot_to_locn_map(tvar::in, table_locn::in,
 	set(layout_locn)::out) is det.
@@ -1185,15 +1186,17 @@ stack_layout__convert_slot_to_locn_map(_TVar, SlotLocn, LvalLocns) :-
 	LvalLocns = set__make_singleton_set(LvalLocn).
 
 :- pred stack_layout__construct_table_arg_pti_rval(
-	table_arg_info::in, pair(maybe(rval), llds_type)::out) is det.
+	table_arg_info::in, pair(rval, llds_type)::out,
+	static_cell_info::in, static_cell_info::out) is det.
 
 stack_layout__construct_table_arg_pti_rval(ClosureArg,
-		yes(ArgRval) - ArgRvalType) :-
+		ArgRval - ArgRvalType, !StaticCellInfo) :-
 	ClosureArg = table_arg_info(_, _, Type),
 	ExistQTvars = [],
 	NumUnivQTvars = -1,
 	ll_pseudo_type_info__construct_typed_llds_pseudo_type_info(Type,
-		NumUnivQTvars, ExistQTvars, ArgRval, ArgRvalType).
+		NumUnivQTvars, ExistQTvars, !StaticCellInfo,
+		ArgRval, ArgRvalType).
 
 %---------------------------------------------------------------------------%
 
@@ -1238,8 +1241,11 @@ stack_layout__represent_live_value_type(var(_, _, Type, _), Rval, LldsType,
 		% variable number directly from the procedure's tvar set.
 	ExistQTvars = [],
 	NumUnivQTvars = -1,
+	stack_layout__get_static_cell_info(StaticCellInfo0, !Info),
 	ll_pseudo_type_info__construct_typed_llds_pseudo_type_info(Type,
-		NumUnivQTvars, ExistQTvars, Rval, LldsType).
+		NumUnivQTvars, ExistQTvars, StaticCellInfo0, StaticCellInfo,
+		Rval, LldsType),
+	stack_layout__set_static_cell_info(StaticCellInfo, !Info).
 
 :- pred stack_layout__represent_special_live_value_type(string::in, rval::out)
 	is det.
@@ -1529,12 +1535,13 @@ stack_layout__represent_determinism(Detism, Code) :-
 					   % contributes labels to this module
 					   % to a table describing those
 					   % labels.
-		cur_proc_named_vars	:: map(int, string)
+		cur_proc_named_vars	:: map(int, string),
 					   % Maps the number of each variable
 					   % in the current procedure whose
 					   % name is of interest in an internal
 					   % label's layout structure to the
 					   % name of that variable.
+		static_cell_info	:: static_cell_info
 	).
 
 :- pred stack_layout__get_module_info(module_info::out,
@@ -1573,6 +1580,9 @@ stack_layout__represent_determinism(Detism, Code) :-
 :- pred stack_layout__get_cur_proc_named_vars(map(int, string)::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
+:- pred stack_layout__get_static_cell_info(static_cell_info::out,
+	stack_layout_info::in, stack_layout_info::out) is det.
+
 stack_layout__get_module_info(LI ^ module_info, LI, LI).
 stack_layout__get_agc_stack_layout(LI ^ agc_stack_layout, LI, LI).
 stack_layout__get_trace_stack_layout(LI ^ trace_stack_layout, LI, LI).
@@ -1585,6 +1595,7 @@ stack_layout__get_label_set(LI ^ label_set, LI, LI).
 stack_layout__get_string_table(LI ^ string_table, LI, LI).
 stack_layout__get_label_tables(LI ^ label_tables, LI, LI).
 stack_layout__get_cur_proc_named_vars(LI ^ cur_proc_named_vars, LI, LI).
+stack_layout__get_static_cell_info(LI ^ static_cell_info, LI, LI).
 
 :- pred stack_layout__get_module_name(module_name::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
@@ -1631,9 +1642,6 @@ stack_layout__add_internal_layout_data(InternalLayout, Label, LayoutName,
 	LI = ((LI0 ^ internal_layouts := InternalLayouts)
 		^ label_set := LabelSet).
 
-:- pred stack_layout__set_module_info(module_info::in,
-	stack_layout_info::in, stack_layout_info::out) is det.
-
 :- pred stack_layout__set_string_table(string_table::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
@@ -1643,11 +1651,15 @@ stack_layout__add_internal_layout_data(InternalLayout, Label, LayoutName,
 :- pred stack_layout__set_cur_proc_named_vars(map(int, string)::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__set_module_info(MI, LI0, LI0 ^ module_info := MI).
+:- pred stack_layout__set_static_cell_info(static_cell_info::in,
+	stack_layout_info::in, stack_layout_info::out) is det.
+
 stack_layout__set_string_table(ST, LI0, LI0 ^ string_table := ST).
 stack_layout__set_label_tables(LT, LI0, LI0 ^ label_tables := LT).
 stack_layout__set_cur_proc_named_vars(NV, LI0,
 	LI0 ^ cur_proc_named_vars := NV).
+stack_layout__set_static_cell_info(SCI, LI0,
+	LI0 ^ static_cell_info := SCI).
 
 %---------------------------------------------------------------------------%
 

@@ -63,13 +63,14 @@
 % An alternative HLDS->LLDS code generator for fact tables.
 :- include_module fact_table.
 
-%:- module llds_rtti.
+%:- module llds_data.
    :- include_module ll_pseudo_type_info.
    :- include_module layout.
    :- include_module stack_layout.
    :- include_module prog_rep.
    :- include_module static_term.
-%:- end_module llds_rtti.
+   :- include_module global_data.
+%:- end_module llds_data.
 
 % LLDS->LLDS optimization passes.
 :- include_module optimize.
@@ -82,20 +83,10 @@
    :- include_module reassign.
    :- include_module wrap_blocks.
    :- include_module use_local_vars.
-%   :- include_module value_number.
-%      :- include_module vn_block.
-%      :- include_module vn_cost.
-%      :- include_module vn_debug.
-%      :- include_module vn_filter.
-%      :- include_module vn_flush.
-%      :- include_module vn_order.
-%      :- include_module vn_temploc.
-%      :- include_module vn_util.
-%      :- include_module vn_verify.
-%      :- include_module vn_type.
-%      :- include_module vn_table.
-   :- include_module llds_common.
-   :- include_module livemap, basic_block, opt_util, opt_debug.
+   :- include_module livemap.
+   :- include_module basic_block.
+   :- include_module opt_util.
+   :- include_module opt_debug.
                 
 % The LLDS->C output phase.
 :- include_module transform_llds.

@@ -83,6 +83,7 @@
 :- import_module ll_backend__code_gen.
 :- import_module ll_backend__dense_switch.
 :- import_module ll_backend__exprn_aux.
+:- import_module ll_backend__global_data.
 :- import_module parse_tree__prog_data.
 
 :- import_module int, require, bool, assoc_list.
@@ -266,15 +267,6 @@ lookup_switch__rval_is_constant(binop(_, Exprn0, Exprn1), ExprnOpts) :-
 	lookup_switch__rval_is_constant(Exprn1, ExprnOpts).
 lookup_switch__rval_is_constant(mkword(_, Exprn0), ExprnOpts) :-
 	lookup_switch__rval_is_constant(Exprn0, ExprnOpts).
-lookup_switch__rval_is_constant(create(_, Args, _, StatDyn, _, _),
-		ExprnOpts) :-
-	(
-		StatDyn = must_be_static
-	;
-		ExprnOpts = nlg_asm_sgt_ubf(_, _, StaticGroundTerms, _),
-		StaticGroundTerms = yes,
-		lookup_switch__rvals_are_constant(Args, ExprnOpts)
-	).
 
 :- pred lookup_switch__rvals_are_constant(list(maybe(rval))::in,
 	exprn_opts::in) is semidet.
@@ -359,7 +351,7 @@ lookup_switch__generate(Var, OutVars, CaseValues,
 lookup_switch__generate_bitvec_test(Index, CaseVals, Start, _End,
 		CheckCode) -->
 	lookup_switch__get_word_bits(WordBits, Log2WordBits),
-	{ generate_bit_vec(CaseVals, Start, WordBits, BitVec) },
+	generate_bit_vec(CaseVals, Start, WordBits, BitVecArgs, BitVecRval),
 
 		%
 		% Optimize the single-word case:
@@ -369,9 +361,7 @@ lookup_switch__generate_bitvec_test(Index, CaseVals, Start, _End,
 		% of the index specify which word to use and the
 		% low bits specify which bit.
 		%
-	{
-		BitVec = create(_, [yes(SingleWord)], _, _, _, _)
-	->
+	{ BitVecArgs = [SingleWord] ->
 		Word = SingleWord,
 		BitNum = Index
 	;
@@ -380,7 +370,7 @@ lookup_switch__generate_bitvec_test(Index, CaseVals, Start, _End,
 		% except that it can generate more efficient code.
 		WordNum = binop(>>, Index, const(int_const(Log2WordBits))),
 
-		Word = lval(field(yes(0), BitVec, WordNum)),
+		Word = lval(field(yes(0), BitVecRval, WordNum)),
 
 		% This is the same as
 		% BitNum = binop(mod, Index, const(int_const(WordBits)))
@@ -416,47 +406,43 @@ lookup_switch__get_word_bits(WordBits, Log2WordBits) -->
 log2_rounded_down(X) = Log :-
 	int__log2(X + 1, Log + 1).  % int__log2 rounds up
 
-:- pred generate_bit_vec(case_consts::in, int::in, int::in, rval::out) is det.
+:- pred generate_bit_vec(case_consts::in, int::in, int::in,
+	list(rval)::out, rval::out, code_info::in, code_info::out) is det.
 
 	% we generate the bitvector by iterating through the cases
 	% marking the bit for each case. (We represent the bitvector
 	% here as a map from the word number in the vector to the bits
 	% for that word.
-generate_bit_vec(CaseVals, Start, WordBits, BitVec) :-
+generate_bit_vec(CaseVals, Start, WordBits, Args, BitVec, !CodeInfo) :-
 	map__init(Empty),
 	generate_bit_vec_2(CaseVals, Start, WordBits, Empty, BitMap),
 	map__to_assoc_list(BitMap, WordVals),
 	generate_bit_vec_args(WordVals, 0, Args),
-	Reuse = no,
-	BitVec = create(0, Args, uniform(no), must_be_static,
-		"lookup_switch_bit_vector", Reuse).
+	add_static_cell_natural_types(Args, DataAddr, !CodeInfo),
+	BitVec = const(data_addr_const(DataAddr)).
 
 :- pred generate_bit_vec_2(case_consts::in, int::in, int::in,
 	map(int, int)::in, map(int, int)::out) is det.
 
 generate_bit_vec_2([], _, _, Bits, Bits).
 generate_bit_vec_2([Tag - _ | Rest], Start, WordBits, Bits0, Bits) :-
-	Val is Tag - Start,
-	Word is Val // WordBits,
-	Offset is Val mod WordBits,
-	(
-		map__search(Bits0, Word, X0)
-	->
-		X1 is X0 \/ (1 << Offset)
+	Val = Tag - Start,
+	Word = Val // WordBits,
+	Offset = Val mod WordBits,
+	( map__search(Bits0, Word, X0) ->
+		X1 = X0 \/ (1 << Offset)
 	;
-		X1 is (1 << Offset)
+		X1 = (1 << Offset)
 	),
 	map__set(Bits0, Word, X1, Bits1),
 	generate_bit_vec_2(Rest, Start, WordBits, Bits1, Bits).
 
 :- pred generate_bit_vec_args(list(pair(int))::in, int::in,
-	list(maybe(rval))::out) is det.
+	list(rval)::out) is det.
 
 generate_bit_vec_args([], _, []).
-generate_bit_vec_args([Word - Bits | Rest], Count, [yes(Rval) | Rvals]) :-
-	(
-		Count < Word
-	->
+generate_bit_vec_args([Word - Bits | Rest], Count, [Rval | Rvals]) :-
+	( Count < Word ->
 		WordVal = 0,
 		Remainder = [Word - Bits | Rest]
 	;
@@ -464,7 +450,7 @@ generate_bit_vec_args([Word - Bits | Rest], Count, [yes(Rval) | Rvals]) :-
 		Remainder = Rest
 	),
 	Rval = const(int_const(WordVal)),
-	Count1 is Count + 1,
+	Count1 = Count + 1,
 	generate_bit_vec_args(Remainder, Count1, Rvals).
 
 %------------------------------------------------------------------------------%
@@ -491,23 +477,20 @@ lookup_switch__generate_terms_2(Index, [Var | Vars], Map) -->
 	{ map__lookup(Map, Var, Vals0) },
 	{ list__sort(Vals0, Vals) },
 	{ construct_args(Vals, 0, Args) },
-	{ Reuse = no },
-	{ ArrayTerm = create(0, Args, uniform(no), must_be_static,
-		"lookup_switch_data", Reuse) },
+	code_info__add_static_cell_natural_types(Args, DataAddr),
+	{ ArrayTerm = const(data_addr_const(DataAddr)) },
 	{ LookupLval = field(yes(0), ArrayTerm, Index) },
 	code_info__assign_lval_to_var(Var, LookupLval, Code),
 	{ require(tree__is_empty(Code),
 		"lookup_switch__generate_terms_2: nonempty code") },
 	lookup_switch__generate_terms_2(Index, Vars, Map).
 
-:- pred construct_args(list(pair(int, rval))::in, int::in,
-	list(maybe(rval))::out) is det.
+:- pred construct_args(list(pair(int, rval))::in, int::in, list(rval)::out)
+	is det.
 
 construct_args([], _, []).
-construct_args([Index - Rval | Rest], Count0, [yes(Arg) | Args]) :-
-	(
-		Count0 < Index
-	->
+construct_args([Index - Rval | Rest], Count0, [Arg | Args]) :-
+	( Count0 < Index ->
 		% If this argument (array element) is a place-holder and
 		% will never be referenced, just fill it in with a `0'
 		Arg = const(int_const(0)),
@@ -516,7 +499,7 @@ construct_args([Index - Rval | Rest], Count0, [yes(Arg) | Args]) :-
 		Arg = Rval,
 		Remainder = Rest
 	),
-	Count1 is Count0 + 1,
+	Count1 = Count0 + 1,
 	construct_args(Remainder, Count1, Args).
 
 %------------------------------------------------------------------------------%
@@ -531,7 +514,7 @@ construct_args([Index - Rval | Rest], Count0, [yes(Arg) | Args]) :-
 rearrange_vals(_Vars, [], _Start, Map, Map).
 rearrange_vals(Vars, [Tag - Rvals | Rest], Start, Map0, Map) :-
 	assoc_list__from_corresponding_lists(Vars, Rvals, Pairs),
-	Index is Tag - Start,
+	Index = Tag - Start,
 	rearrange_vals_2(Pairs, Index, Map0, Map1),
 	rearrange_vals(Vars, Rest, Start, Map1, Map).
 
@@ -540,9 +523,7 @@ rearrange_vals(Vars, [Tag - Rvals | Rest], Start, Map0, Map) :-
 
 rearrange_vals_2([], _, Map, Map).
 rearrange_vals_2([Var - Rval | Rest], Tag, Map0, Map) :-
-	(
-		map__search(Map0, Var, Vals0)
-	->
+	( map__search(Map0, Var, Vals0) ->
 		Vals = [Tag - Rval | Vals0]
 	;
 		Vals = [Tag - Rval]

@@ -48,44 +48,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- import_module ll_backend__continuation_info.
-
-:- type global_data.
-
-:- pred global_data_init(list(layout_data)::in, global_data::out) is det.
-
-:- pred global_data_add_new_proc_var(global_data::in,
-	pred_proc_id::in, comp_gen_c_var::in, global_data::out) is det.
-
-:- pred global_data_add_new_proc_layout(global_data::in,
-	pred_proc_id::in, proc_layout_info::in, global_data::out) is det.
-
-:- pred global_data_update_proc_layout(global_data::in,
-	pred_proc_id::in, proc_layout_info::in, global_data::out) is det.
-
-:- pred global_data_add_new_closure_layouts(global_data::in,
-	list(comp_gen_c_data)::in, global_data::out) is det.
-
-:- pred global_data_maybe_get_proc_layout(global_data::in, pred_proc_id::in,
-	proc_layout_info::out) is semidet.
-
-:- pred global_data_get_proc_layout(global_data::in, pred_proc_id::in,
-	proc_layout_info::out) is det.
-
-:- pred global_data_get_all_proc_vars(global_data::in,
-	list(comp_gen_c_var)::out) is det.
-
-:- pred global_data_get_all_proc_layouts(global_data::in,
-	list(proc_layout_info)::out) is det.
-
-:- pred global_data_get_all_closure_layouts(global_data::in,
-	list(comp_gen_c_data)::out) is det.
-
-:- pred global_data_get_all_non_common_static_data(global_data::in,
-	list(comp_gen_c_data)::out) is det.
-
-%-----------------------------------------------------------------------------%
-
 %
 % The type `c_file' is the actual LLDS.
 %
@@ -763,46 +725,6 @@
 		% but should not be present in the LLDS at any
 		% stage after code generation.
 
-	;	create(tag, list(maybe(rval)), create_arg_types,
-			static_or_dynamic, string, maybe(rval))
-		% create(Tag, Arguments, MaybeArgTypes, StaticOrDynamic,
-		%	CellKind, CellToReuse):
-		% A `create' instruction is used during code generation
-		% for creating a term, either on the heap or
-		% (if the term is constant) as a static constant.
-		% After code generation, only constant term create() rvals
-		% should be present in the LLDS, others will get transformed
-		% to incr_hp(..., Tag, Size) plus assignments to the fields.
-		%
-		% MaybeArgTypes may explicitly give the C level types of
-		% the arguments, although usually these types will be implicit.
-		%
-		% StaticOrDynamic may say that the cell must be allocated
-		% dynamically on the heap, because the resulting data structure
-		% must be unique (e.g. if we're doing to do destructive update
-		% on it). It may say that the cell must be allocated
-		% statically, e.g. because the MaybeArgTypes includes
-		% explicitly specified types that differ in size from Word
-		% (the code generator cannot fill in such cells).
-		% Or it may say that this cell can be allocated either way,
-		% subject to other constraints (e.g. a cell cannot be allocated
-		% statically unless all of its components are statically
-		% allocated as well).
-		%
-		% The string argument gives the name of the type constructor
-		% of the function symbol of which this is a cell, for use
-		% in memory profiling.
-		%
-		% The maybe(rval) contains the location of a cell to reuse.
-		% This will always be `no' after code generation.
-		%
-		% For the time being, you must leave the argument types
-		% implicit if the cell is to be unique. This is because
-		% (a) the code generator assumes that each argument of a cell
-		% it creates on the heap is the same size as a Word; (b)
-		% this assumption may be incorrect with explicitly defined
-		% argument types.
-
 	;	mkword(tag, rval)
 		% Given a pointer and a tag, mkword returns a tagged pointer.
 
@@ -815,34 +737,6 @@
 	;	mem_addr(mem_ref).
 		% The address of a word in the heap, the det stack or
 		% the nondet stack.
-
-:- type static_or_dynamic
-	--->	must_be_static
-	;	can_be_either
-	;	must_be_dynamic.
-
-	% Values of this type specify the C types and therefore the sizes
-	% of the arguments of a create rval.
-	%
-	% If the type is given as yes(LldsType), then the type is the C type
-	% corresponding to LldsType. If the type is given as no, then the
-	% type is implicit; it is what llds_out__rval_type_as_arg says
-	% when given the actual argument.
-:- type create_arg_types
-	--->	uniform(maybe(llds_type))	% All the arguments have
-						% the given C type.
-	;	initial(initial_arg_types, create_arg_types)
-						% Each element of the assoc
-						% list N - T specifies that
-						% the next N arguments have
-						% type T. The types of the
-						% remainder of the arguments
-						% are given by the recursive
-						% create_arg_types.
-	;	none.				% There ought to be no more
-						% arguments.
-
-:- type initial_arg_types == assoc_list(int, maybe(llds_type)).
 
 :- type mem_ref
 	--->	stackvar_ref(int)		% stack slot number
@@ -1003,13 +897,6 @@
 	% given a register, figure out its type
 :- pred llds__register_type(reg_type::in, llds_type::out) is det.
 
-	% check whether the types of all argument are the same size as word
-:- pred llds__all_args_are_word_size(create_arg_types::in, bool::out) is det.
-
-	% check whether an arg of the given type is the same size as word
-	% (floats may be bigger than a word, but if so, they are boxed)
-:- pred llds__type_is_word_size_as_arg(llds_type::in, bool::out) is det.
-
 :- func get_proc_label(label) = proc_label.
 
 :- func get_defining_module_name(proc_label) = module_name.
@@ -1052,9 +939,8 @@ llds__rval_type(lval(Lval), Type) :-
 	llds__lval_type(Lval, Type).
 llds__rval_type(var(_), _) :-
 	error("var unexpected in llds__rval_type").
-llds__rval_type(create(_, _, _, _, _, _), data_ptr).
 	%
-	% Note that create and mkword must both be of type data_ptr,
+	% Note that mkword and data_addr consts must be of type data_ptr,
 	% not of type word, to ensure that static consts containing
 	% them get type `const Word *', not type `Word'; this is
 	% necessary because casts from pointer to int must not be used
@@ -1145,36 +1031,6 @@ llds__binop_return_type(body, word).
 llds__register_type(r, word).
 llds__register_type(f, float).
 
-llds__all_args_are_word_size(uniform(MaybeType), AllWordSize) :-
-	llds__maybe_type_is_word_size(MaybeType, AllWordSize).
-llds__all_args_are_word_size(initial(Init, Rest), AllWordSize) :-
-	assoc_list__values(Init, MaybeTypes),
-	list__map(llds__maybe_type_is_word_size, MaybeTypes, InitWordSizes),
-	llds__all_args_are_word_size(Rest, RestWordSize),
-	bool__and_list([RestWordSize | InitWordSizes], AllWordSize).
-llds__all_args_are_word_size(none, yes).
-
-:- pred llds__maybe_type_is_word_size(maybe(llds_type)::in, bool::out) is det.
-
-llds__maybe_type_is_word_size(no, yes).
-llds__maybe_type_is_word_size(yes(Type), IsWordSize) :-
-	llds__type_is_word_size_as_arg(Type, IsWordSize).
-
-llds__type_is_word_size_as_arg(int_least8,   no).
-llds__type_is_word_size_as_arg(uint_least8,  no).
-llds__type_is_word_size_as_arg(int_least16,  no).
-llds__type_is_word_size_as_arg(uint_least16, no).
-llds__type_is_word_size_as_arg(int_least32,  no).
-llds__type_is_word_size_as_arg(uint_least32, no).
-llds__type_is_word_size_as_arg(bool,         yes).
-llds__type_is_word_size_as_arg(integer,      yes).
-llds__type_is_word_size_as_arg(unsigned,     yes).
-llds__type_is_word_size_as_arg(float,        yes).
-llds__type_is_word_size_as_arg(string,       yes).
-llds__type_is_word_size_as_arg(data_ptr,     yes).
-llds__type_is_word_size_as_arg(code_ptr,     yes).
-llds__type_is_word_size_as_arg(word,         yes).
-
 get_proc_label(exported(ProcLabel)) = ProcLabel.
 get_proc_label(local(ProcLabel)) = ProcLabel.
 get_proc_label(c_local(ProcLabel)) = ProcLabel.
@@ -1182,94 +1038,6 @@ get_proc_label(local(_, ProcLabel)) = ProcLabel.
 
 get_defining_module_name(proc(ModuleName, _, _, _, _, _)) = ModuleName.
 get_defining_module_name(special_proc(ModuleName, _, _, _, _, _)) = ModuleName.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- type proc_var_map	==	map(pred_proc_id, comp_gen_c_var).
-:- type proc_layout_map	==	map(pred_proc_id, proc_layout_info).
-
-:- type global_data
-	--->	global_data(
-			proc_var_map		:: proc_var_map,
-						% Information about the global
-						% variables defined by each
-						% procedure.
-			proc_layout_map		:: proc_layout_map,
-						% Information about the
-						% layout structures defined
-						% by each procedure.
-			closure_layouts		:: list(comp_gen_c_data),
-						% The list of all closure
-						% layouts generated in this
-						% module. While all closure
-						% layouts are different from
-						% all other comp_gen_c_datas,
-						% it is possible, although
-						% unlikely, for two closures
-						% to have the same layout.
-			non_common_data		:: list(comp_gen_c_data)
-						% The list of global data
-						% structures that do not need
-						% to be checked by llds_common,
-						% because their construction
-						% ensures no overlaps.
-		).
-
-:- func wrap_layout_data(layout_data) = comp_gen_c_data.
-
-wrap_layout_data(LayoutData) = layout_data(LayoutData).
-
-global_data_init(LayoutData, GlobalData) :-
-	map__init(EmptyDataMap),
-	map__init(EmptyLayoutMap),
-	NonCommon = list__map(wrap_layout_data, LayoutData),
-	GlobalData = global_data(EmptyDataMap, EmptyLayoutMap, [], NonCommon).
-
-global_data_add_new_proc_var(GlobalData0, PredProcId, ProcVar, GlobalData) :-
-	ProcVarMap0 = GlobalData0 ^ proc_var_map,
-	map__det_insert(ProcVarMap0, PredProcId, ProcVar, ProcVarMap),
-	GlobalData = GlobalData0 ^ proc_var_map := ProcVarMap.
-
-global_data_add_new_proc_layout(GlobalData0, PredProcId, ProcLayout,
-		GlobalData) :-
-	ProcLayoutMap0 = GlobalData0 ^ proc_layout_map,
-	map__det_insert(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
-	GlobalData = GlobalData0 ^ proc_layout_map := ProcLayoutMap.
-
-global_data_update_proc_layout(GlobalData0, PredProcId, ProcLayout,
-		GlobalData) :-
-	ProcLayoutMap0 = GlobalData0 ^ proc_layout_map,
-	map__det_update(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
-	GlobalData = GlobalData0 ^ proc_layout_map := ProcLayoutMap.
-
-global_data_add_new_closure_layouts(GlobalData0, NewClosureLayouts,
-		GlobalData) :-
-	ClosureLayouts0 = GlobalData0 ^ closure_layouts,
-	list__append(NewClosureLayouts, ClosureLayouts0, ClosureLayouts),
-	GlobalData = GlobalData0 ^ closure_layouts := ClosureLayouts.
-
-global_data_maybe_get_proc_layout(GlobalData, PredProcId, ProcLayout) :-
-	ProcLayoutMap = GlobalData ^ proc_layout_map,
-	map__search(ProcLayoutMap, PredProcId, ProcLayout).
-
-global_data_get_proc_layout(GlobalData, PredProcId, ProcLayout) :-
-	ProcLayoutMap = GlobalData ^ proc_layout_map,
-	map__lookup(ProcLayoutMap, PredProcId, ProcLayout).
-
-global_data_get_all_proc_vars(GlobalData, ProcVars) :-
-	ProcVarMap = GlobalData ^ proc_var_map,
-	map__values(ProcVarMap, ProcVars).
-
-global_data_get_all_proc_layouts(GlobalData, ProcLayouts) :-
-	ProcLayoutMap = GlobalData ^ proc_layout_map,
-	map__values(ProcLayoutMap, ProcLayouts).
-
-global_data_get_all_closure_layouts(GlobalData, ClosureLayouts) :-
-	ClosureLayouts = GlobalData ^ closure_layouts.
-
-global_data_get_all_non_common_static_data(GlobalData, NonCommonStatics) :-
-	NonCommonStatics = GlobalData ^ non_common_data.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

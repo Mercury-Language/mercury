@@ -17,11 +17,13 @@
 
 :- interface.
 
+:- import_module ll_backend__global_data.
 :- import_module ll_backend__llds.
 
 :- import_module std_util.
 
-:- pred static_term__term_to_rval(univ::in, maybe(rval)::out) is det.
+:- pred static_term__term_to_rval(univ::in, rval::out,
+	static_cell_info::in, static_cell_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -31,50 +33,53 @@
 
 :- import_module deconstruct, list, require.
 
-static_term__term_to_rval(Univ, Rval) :-
+static_term__term_to_rval(Univ, Rval, !StaticCellInfo) :-
 	( deconstruct__get_functor_info(Univ, FunctorInfo) ->
-		static_term__functor_info_to_rval(FunctorInfo, Rval)
+		static_term__functor_info_to_rval(FunctorInfo, Rval,
+			!StaticCellInfo)
 	;
 		error("static_term__term_to_rval: unexpected kind of term")
 	).
 
 :- pred static_term__functor_info_to_rval(functor_tag_info::in,
-	maybe(rval)::out) is det.
+	rval::out, static_cell_info::in, static_cell_info::out) is det.
 
-static_term__functor_info_to_rval(FunctorInfo, MaybeRval) :-
+static_term__functor_info_to_rval(FunctorInfo, Rval, !StaticCellInfo) :-
 	(
 		FunctorInfo = functor_integer(Int),
-		MaybeRval = yes(const(int_const(Int)))
+		Rval = const(int_const(Int))
 	;
 		FunctorInfo = functor_float(Float),
-		MaybeRval = yes(const(float_const(Float)))
+		Rval = const(float_const(Float))
 	;
 		FunctorInfo = functor_string(String),
-		MaybeRval = yes(const(string_const(String)))
+		Rval = const(string_const(String))
 	;
 		FunctorInfo = functor_enum(Enum),
-		MaybeRval = yes(const(int_const(Enum)))
+		Rval = const(int_const(Enum))
 	;
 		FunctorInfo = functor_local(Ptag, Sectag),
-		MaybeRval = yes(mkword(Ptag,
-			unop(mkbody, const(int_const(Sectag)))))
+		Rval = mkword(Ptag,
+			unop(mkbody, const(int_const(Sectag))))
 	;
 		FunctorInfo = functor_remote(Ptag, Sectag, Args),
-		MaybeSectagRval = yes(const(int_const(Sectag))),
-		list__map(static_term__term_to_rval, Args, MaybeArgRvals),
-		Reuse = no,
-		MaybeRval = yes(create(Ptag, [MaybeSectagRval | MaybeArgRvals],
-			uniform(no), must_be_static, "static_term", Reuse))
+		SectagRval = const(int_const(Sectag)),
+		list__map_foldl(static_term__term_to_rval, Args, ArgRvals,
+			!StaticCellInfo),
+		add_static_cell_natural_types([SectagRval | ArgRvals],
+			DataAddr, !StaticCellInfo),
+		Rval = mkword(Ptag, const(data_addr_const(DataAddr)))
 	;
 		FunctorInfo = functor_unshared(Ptag, Args),
-		list__map(static_term__term_to_rval, Args, MaybeArgRvals),
-		Reuse = no,
-		MaybeRval = yes(create(Ptag, MaybeArgRvals,
-			uniform(no), must_be_static, "static_term", Reuse))
+		list__map_foldl(static_term__term_to_rval, Args, ArgRvals,
+			!StaticCellInfo),
+		add_static_cell_natural_types(ArgRvals, DataAddr,
+			!StaticCellInfo),
+		Rval = mkword(Ptag, const(data_addr_const(DataAddr)))
 	;
 		FunctorInfo = functor_notag(Univ),
-		static_term__term_to_rval(Univ, MaybeRval)
+		static_term__term_to_rval(Univ, Rval, !StaticCellInfo)
 	;
 		FunctorInfo = functor_equiv(Univ),
-		static_term__term_to_rval(Univ, MaybeRval)
+		static_term__term_to_rval(Univ, Rval, !StaticCellInfo)
 	).

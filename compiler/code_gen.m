@@ -35,6 +35,7 @@
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
 :- import_module ll_backend__code_info.
+:- import_module ll_backend__global_data.
 :- import_module ll_backend__llds.
 
 :- import_module list, io.
@@ -245,7 +246,7 @@ generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
 %---------------------------------------------------------------------------%
 
 generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
-		GlobalData0, GlobalData, Proc) :-
+		!GlobalData, Proc) :-
 	proc_info_interface_determinism(ProcInfo, Detism),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	proc_info_goal(ProcInfo, Goal),
@@ -274,15 +275,18 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 		% procedures, always needed for model_semi procedures, and
 		% needed for model_non procedures only if we are doing
 		% execution tracing.
+	global_data_get_static_cell_info(!.GlobalData, StaticCellInfo0),
 	code_info__init(SaveSuccip, Globals, PredId, ProcId, PredInfo,
-		ProcInfo, FollowVars, ModuleInfo, OutsideResumePoint,
-		TraceSlotInfo, CodeInfo0),
+		ProcInfo, FollowVars, ModuleInfo, StaticCellInfo0,
+		OutsideResumePoint, TraceSlotInfo, CodeInfo0),
 
 		% Generate code for the procedure.
 	generate_category_code(CodeModel, Goal, OutsideResumePoint,
 		TraceSlotInfo, CodeTree, MaybeTraceCallLabel, FrameInfo,
 		CodeInfo0, CodeInfo),
 	code_info__get_max_reg_in_use_at_trace(MaxTraceReg, CodeInfo, _),
+	code_info__get_static_cell_info(StaticCellInfo, CodeInfo, _),
+	global_data_set_static_cell_info(StaticCellInfo, !GlobalData),
 
 	globals__get_trace_level(Globals, TraceLevel),
 	code_info__get_created_temp_frame(CreatedTempFrame, CodeInfo, _),
@@ -362,18 +366,17 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 			InstMap0, TraceSlotInfo, ForceProcId, VarSet, VarTypes,
 			InternalMap, MaybeTableInfo, IsBeingTraced,
 			NeedsAllNames),
-		global_data_add_new_proc_layout(GlobalData0,
-			proc(PredId, ProcId), ProcLayout, GlobalData1)
+		global_data_add_new_proc_layout(proc(PredId, ProcId),
+			ProcLayout, !GlobalData)
 	;
-		GlobalData1 = GlobalData0
+		true
 	),
 
 	code_info__get_closure_layouts(ClosureLayouts, CodeInfo, _),
-	global_data_add_new_closure_layouts(GlobalData1, ClosureLayouts,
-		GlobalData2),
+	global_data_add_new_closure_layouts(ClosureLayouts, !GlobalData),
 	ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
 	maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo,
-		ProcLabel, GlobalData2, GlobalData),
+		ProcLabel, !GlobalData),
 
 	pred_info_name(PredInfo, Name),
 	pred_info_arity(PredInfo, Arity),
@@ -416,15 +419,15 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 	global_data::in, global_data::out) is det.
 
 maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo, ProcLabel,
-		GlobalData0, GlobalData) :-
+		!GlobalData) :-
 	proc_info_eval_method(ProcInfo, EvalMethod),
 	( eval_method_has_per_proc_tabling_pointer(EvalMethod) = yes ->
 		module_info_name(ModuleInfo, ModuleName),
 		Var = tabling_pointer_var(ModuleName, ProcLabel),
-		global_data_add_new_proc_var(GlobalData0,
-			proc(PredId, ProcId), Var, GlobalData)
+		global_data_add_new_proc_var(proc(PredId, ProcId), Var,
+			!GlobalData)
 	;
-		GlobalData = GlobalData0
+		true
 	).
 
 %---------------------------------------------------------------------------%

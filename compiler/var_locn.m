@@ -1,4 +1,4 @@
-
+%---------------------------------------------------------------------------%
 % Copyright (C) 2000-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
@@ -21,6 +21,7 @@
 
 :- import_module parse_tree__prog_data.
 :- import_module hlds__hlds_llds.
+:- import_module ll_backend__global_data.
 :- import_module ll_backend__llds.
 :- import_module libs__options.
 
@@ -120,12 +121,14 @@
 :- pred var_locn__assign_var_to_var(prog_var::in, prog_var::in,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	var_locn__assign_lval_to_var(Var, Lval, Code, VarLocnInfo0, VarLocnInfo)
+%	var_locn__assign_lval_to_var(Var, Lval, StaticCellInfo, Code,
+%			VarLocnInfo0, VarLocnInfo)
 %		Reflects the effect of the assignment Var := lval(Lval) in the
 %		state of VarLocnInfo0 to yield VarLocnInfo; any code required
 %		to effect the assignment will be returned in Code.
 
-:- pred var_locn__assign_lval_to_var(prog_var::in, lval::in, code_tree::out,
+:- pred var_locn__assign_lval_to_var(prog_var::in, lval::in,
+	static_cell_info::in, code_tree::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
 %	var_locn__assign_const_to_var(Var, ConstRval,
@@ -149,6 +152,7 @@
 	var_locn_info::in, var_locn_info::out) is det.
 
 %	var_locn__assign_cell_to_var(Var, Ptag, Vector, TypeMsg, Code,
+%			StaticCellInfo0, StaticCellInfo,
 %			VarLocnInfo0, VarLocnInfo)
 %		Generates code to assign to Var a pointer, tagged by Ptag, to
 %		the cell whose contents are given by the other arguments,
@@ -156,6 +160,7 @@
 
 :- pred var_locn__assign_cell_to_var(prog_var::in, tag::in,
 	list(maybe(rval))::in, string::in, code_tree::out,
+	static_cell_info::in, static_cell_info::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
 %	var_locn__place_var(Var, Lval, Code, VarLocnInfo0, VarLocnInfo)
@@ -660,9 +665,8 @@ var_locn__assign_var_to_var(Var, OldVar) -->
 
 %----------------------------------------------------------------------------%
 
-var_locn__assign_lval_to_var(Var, Lval0, Code) -->
+var_locn__assign_lval_to_var(Var, Lval0, StaticCellInfo, Code) -->
 	var_locn__check_var_is_unknown(Var),
-
 	(
 		{ Lval0 = field(yes(Ptag), var(BaseVar),
 			const(int_const(Offset))) }
@@ -673,11 +677,14 @@ var_locn__assign_lval_to_var(Var, Lval0, Code) -->
 			_MaybeExprRval, _UsingVars, _DeadOrAlive) },
 		(
 			{ MaybeConstBaseVarRval = yes(BaseVarRval) },
-			{ BaseVarRval = create(Ptag, BaseVarArgs, _,_,_,_) }
+			{ BaseVarRval = mkword(Ptag, BaseConst) },
+			{ BaseConst = const(data_addr_const(DataAddr)) },
+			{ search_static_cell(StaticCellInfo, DataAddr,
+				StaticCellArgsTypes) }
 		->
-			{ list__index0_det(BaseVarArgs, Offset,
-				SelectedArg) },
-			{ MaybeConstRval = SelectedArg },
+			{ list__index0_det(StaticCellArgsTypes, Offset,
+				SelectedArgRval - _SelectedArgType) },
+			{ MaybeConstRval = yes(SelectedArgRval) },
 			{ Lvals = set__map(var_locn__add_field_offset(
 				yes(Ptag), const(int_const(Offset))),
 				BaseVarLvals) },
@@ -732,8 +739,8 @@ var_locn__assign_const_to_var(Var, ConstRval0) -->
 	var_locn__get_var_state_map(VarStateMap0),
 	var_locn__get_exprn_opts(ExprnOpts),
 	(
-		{ var_locn__expr_is_constant(ConstRval0, VarStateMap0,
-			ExprnOpts, ConstRval) }
+		{ var_locn__expr_is_constant(VarStateMap0, ExprnOpts,
+			ConstRval0, ConstRval) }
 	->
 		{ State = state(set__init, yes(ConstRval), no,
 			set__init, alive) },
@@ -783,21 +790,21 @@ var_locn__add_use_ref(ContainedVar, UsingVar, VarStateMap0, VarStateMap) :-
 
 %----------------------------------------------------------------------------%
 
-var_locn__assign_cell_to_var(Var, Ptag, Vector, TypeMsg, Code) -->
-	{ Reuse = no },
-	{ CellRval0 = create(Ptag, Vector, uniform(no), can_be_either,
-		TypeMsg, Reuse) },
+var_locn__assign_cell_to_var(Var, Ptag, MaybeRvals, TypeMsg, Code,
+		!StaticCellInfo, !VarLocn) :-
+	var_locn__get_var_state_map(VarStateMap, !VarLocn),
+	var_locn__get_exprn_opts(ExprnOpts, !VarLocn),
 	(
-		var_locn__get_var_state_map(VarStateMap),
-		var_locn__get_exprn_opts(ExprnOpts),
-		{ var_locn__expr_is_constant(CellRval0, VarStateMap, ExprnOpts,
-			CellRval) }
+		var_locn__cell_is_constant(VarStateMap, ExprnOpts,
+			MaybeRvals, RvalsTypes)
 	->
-		var_locn__assign_const_to_var(Var, CellRval),
-		{ Code = empty }
+		add_static_cell(RvalsTypes, DataAddr, !StaticCellInfo),
+		CellRval = mkword(Ptag, const(data_addr_const(DataAddr))),
+		var_locn__assign_const_to_var(Var, CellRval, !VarLocn),
+		Code = empty
 	;
-		var_locn__assign_dynamic_cell_to_var(Var, Ptag, Vector,
-			TypeMsg, Code)
+		var_locn__assign_dynamic_cell_to_var(Var, Ptag, MaybeRvals,
+			TypeMsg, Code, !VarLocn)
 	).
 
 :- pred var_locn__assign_dynamic_cell_to_var(prog_var::in, tag::in,
@@ -845,10 +852,6 @@ var_locn__assign_cell_args([MaybeRval0 | MaybeRvals0], Ptag, Base, Offset,
 			{ Rval = Rval0 },
 			{ EvalCode = empty },
 			{ Comment = "assigning field from const" }
-		; { Rval0 = create(_, _, _, _, _, _) } ->
-			{ Rval = Rval0 },
-			{ EvalCode = empty },
-			{ Comment = "assigning field from const struct" }
 		;
 			{ error("var_locn__assign_cell_args: unknown rval") }
 		),
@@ -1820,62 +1823,47 @@ var_locn__max_reg_in_use(VarLocnInfo, Max) :-
 
 %----------------------------------------------------------------------------%
 
-% var_locn__expr_is_constant(Rval0, VarStateMap, ExprnOpts, Rval)
+:- pred var_locn__cell_is_constant(var_state_map::in, exprn_opts::in,
+	list(maybe(rval))::in, assoc_list(rval, llds_type)::out) is semidet.
+
+var_locn__cell_is_constant(_VarStateMap, _ExprnOpts, [], []).
+var_locn__cell_is_constant(VarStateMap, ExprnOpts, [yes(Rval0) | MaybeRvals],
+		[Rval - LldsType | RvalsTypes]) :-
+	var_locn__expr_is_constant(VarStateMap, ExprnOpts, Rval0, Rval),
+	rval_type_as_arg(Rval, ExprnOpts, LldsType),
+	var_locn__cell_is_constant(VarStateMap, ExprnOpts, MaybeRvals,
+		RvalsTypes).
+
+% var_locn__expr_is_constant(VarStateMap, ExprnOpts, Rval0, Rval)
 % Check if Rval0 is a constant rval, after substituting the values of the
 % variables inside it. Returns the substituted, ground rval in Rval.
 % Note that this predicate is similar to code_exprn__expr_is_constant,
 % but of courses its own version of the variable state data structure.
 
-:- pred var_locn__expr_is_constant(rval::in, var_state_map::in, exprn_opts::in,
-	rval::out) is semidet.
+:- pred var_locn__expr_is_constant(var_state_map::in, exprn_opts::in,
+	rval::in, rval::out) is semidet.
 
-var_locn__expr_is_constant(const(Const), _, ExprnOpts, const(Const)) :-
+var_locn__expr_is_constant(_, ExprnOpts, const(Const), const(Const)) :-
 	exprn_aux__const_is_constant(Const, ExprnOpts, yes).
 
-var_locn__expr_is_constant(unop(Op, Expr0), VarStateMap, ExprnOpts,
-		unop(Op, Expr)) :-
-	var_locn__expr_is_constant(Expr0, VarStateMap, ExprnOpts, Expr).
+var_locn__expr_is_constant(VarStateMap, ExprnOpts,
+		unop(Op, Expr0), unop(Op, Expr)) :-
+	var_locn__expr_is_constant(VarStateMap, ExprnOpts, Expr0, Expr).
 
-var_locn__expr_is_constant(binop(Op, Expr1, Expr2), VarStateMap, ExprnOpts,
-		binop(Op, Expr3, Expr4)) :-
-	var_locn__expr_is_constant(Expr1, VarStateMap, ExprnOpts, Expr3),
-	var_locn__expr_is_constant(Expr2, VarStateMap, ExprnOpts, Expr4).
+var_locn__expr_is_constant(VarStateMap, ExprnOpts,
+		binop(Op, Expr1, Expr2), binop(Op, Expr3, Expr4)) :-
+	var_locn__expr_is_constant(VarStateMap, ExprnOpts, Expr1, Expr3),
+	var_locn__expr_is_constant(VarStateMap, ExprnOpts, Expr2, Expr4).
 
-var_locn__expr_is_constant(mkword(Tag, Expr0), VarStateMap, ExprnOpts,
-		mkword(Tag, Expr)) :-
-	var_locn__expr_is_constant(Expr0, VarStateMap, ExprnOpts, Expr).
+var_locn__expr_is_constant(VarStateMap, ExprnOpts,
+		mkword(Tag, Expr0), mkword(Tag, Expr)) :-
+	var_locn__expr_is_constant(VarStateMap, ExprnOpts, Expr0, Expr).
 
-var_locn__expr_is_constant(create(Tag, Args0, ArgTypes, StatDyn, Msg, Reuse),
-		VarStateMap, ExprnOpts, NewRval) :-
-	Reuse = no,
-	( StatDyn = must_be_static ->
-		Args = Args0
-	;
-		ExprnOpts = nlg_asm_sgt_ubf(_, _, StaticGroundTerms, _),
-		StaticGroundTerms = yes,
-		var_locn__args_are_constant(Args0, VarStateMap, ExprnOpts,
-			Args)
-	),
-	NewRval = create(Tag, Args, ArgTypes, StatDyn, Msg, Reuse).
-
-var_locn__expr_is_constant(var(Var), VarStateMap, ExprnOpts, Rval) :-
+var_locn__expr_is_constant(VarStateMap, ExprnOpts, var(Var), Rval) :-
 	map__search(VarStateMap, Var, State),
 	State = state(_, yes(Rval), _, _, _),
-	require(var_locn__expr_is_constant(Rval, VarStateMap, ExprnOpts, _),
+	require(var_locn__expr_is_constant(VarStateMap, ExprnOpts, Rval, _),
 		"non-constant rval in variable state").
-
-:- pred var_locn__args_are_constant(list(maybe(rval))::in, var_state_map::in,
-	exprn_opts::in, list(maybe(rval))::out) is semidet.
-
-var_locn__args_are_constant([], _VarStateMap, _ExprnOpts, []).
-var_locn__args_are_constant([Arg0 | Args0], VarStateMap, ExprnOpts,
-		[Arg | Args]) :-
-	% if any of the fields are 'no' then we cannot treat the
-	% term as a constant.
-	Arg0 = yes(Rval0),
-	var_locn__expr_is_constant(Rval0, VarStateMap, ExprnOpts, Rval),
-	Arg = yes(Rval),
-	var_locn__args_are_constant(Args0, VarStateMap, ExprnOpts, Args).
 
 %----------------------------------------------------------------------------%
 
@@ -2002,11 +1990,6 @@ var_locn__materialize_vars_in_rval(Rval0, MaybePrefer, Avoid, Rval, Code) -->
 		{ Code = empty }
 	;
 		{ Rval0 = mem_addr(_) },
-		{ Rval = Rval0 },
-		{ Code = empty }
-	;
-			% If we get here, the cell must be a constant.
-		{ Rval0 = create(_, _, _, _, _, _) },
 		{ Rval = Rval0 },
 		{ Code = empty }
 	;
@@ -2161,9 +2144,6 @@ var_locn__rval_depends_on_search_lval(lval(Lval), SearchLval) :-
 	var_locn__lval_depends_on_search_lval(Lval, SearchLval).
 var_locn__rval_depends_on_search_lval(var(_Var), _SearchLval) :-
 	error("var_locn__rval_depends_on_search_lval: var").
-var_locn__rval_depends_on_search_lval(create(_, Rvals, _, _, _, Reuse),
-		SearchLval) :-
-	var_locn__args_depend_on_search_lval([Reuse | Rvals], SearchLval).
 var_locn__rval_depends_on_search_lval(mkword(_Tag, Rval), SearchLval) :-
 	var_locn__rval_depends_on_search_lval(Rval, SearchLval).
 var_locn__rval_depends_on_search_lval(const(_Const), _SearchLval) :-

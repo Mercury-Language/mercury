@@ -58,6 +58,7 @@
 :- import_module hlds__instmap.
 :- import_module libs__globals.
 :- import_module libs__trace_params.
+:- import_module ll_backend__global_data.
 :- import_module ll_backend__llds.
 :- import_module ll_backend__trace.
 :- import_module parse_tree__inst.
@@ -394,10 +395,10 @@ continuation_info__maybe_process_proc_llds(Instructions, PredProcId,
 	global_data::in, global_data::out) is det.
 
 continuation_info__process_proc_llds(PredProcId, Instructions,
-		WantReturnInfo, GlobalData0, GlobalData) :-
+		WantReturnInfo, !GlobalData) :-
 
 		% Get all the continuation info from the call instructions.
-	global_data_get_proc_layout(GlobalData0, PredProcId, ProcLayoutInfo0),
+	global_data_get_proc_layout(!.GlobalData, PredProcId, ProcLayoutInfo0),
 	Internals0 = ProcLayoutInfo0^internal_map,
 	GetCallInfo = lambda([Instr::in, Call::out] is semidet, (
 		Instr = call(Target, label(ReturnLabel), LiveInfo, Context,
@@ -412,8 +413,8 @@ continuation_info__process_proc_llds(PredProcId, Instructions,
 		Calls, Internals0, Internals),
 
 	ProcLayoutInfo = ProcLayoutInfo0^internal_map := Internals,
-	global_data_update_proc_layout(GlobalData0, PredProcId, ProcLayoutInfo,
-		GlobalData).
+	global_data_update_proc_layout(PredProcId, ProcLayoutInfo,
+		!GlobalData).
 
 %-----------------------------------------------------------------------------%
 

@@ -504,10 +504,6 @@ middle_rec__find_used_registers_rval(Rval, Used0, Used) :-
 		Rval = var(_),
 		error("var found in middle_rec__find_used_registers_rval")
 	;
-		Rval = create(_, MaybeRvals, _, _, _, Reuse),
-		middle_rec__find_used_registers_maybe_rvals(
-			[Reuse | MaybeRvals], Used0, Used)
-	;
 		Rval = mkword(_, Rval1),
 		middle_rec__find_used_registers_rval(Rval1, Used0, Used)
 	;

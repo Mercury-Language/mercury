@@ -393,7 +393,6 @@ code_util__lvals_in_lvals([First | Rest], Lvals) :-
 code_util__lvals_in_rval(lval(Lval), [Lval | Lvals]) :-
 	code_util__lvals_in_lval(Lval, Lvals).
 code_util__lvals_in_rval(var(_), []).
-code_util__lvals_in_rval(create(_, _, _, _, _, _), []).
 code_util__lvals_in_rval(mkword(_, Rval), Lvals) :-
 	code_util__lvals_in_rval(Rval, Lvals).
 code_util__lvals_in_rval(const(_), []).

@@ -270,21 +270,6 @@ opt_debug__dump_rval(mkword(T, N), Str) :-
 opt_debug__dump_rval(const(C), Str) :-
 	opt_debug__dump_const(C, C_str),
 	string__append_list(["const(", C_str, ")"], Str).
-opt_debug__dump_rval(create(T, MA, _, U, _, _), Str) :-
-	string__int_to_string(T, T_str),
-	opt_debug__dump_maybe_rvals(MA, 3, MA_str),
-	(
-		U = must_be_static,
-		U_str = "static"
-	;
-		U = can_be_either,
-		U_str = "either"
-	;
-		U = must_be_dynamic,
-		U_str = "dynamic"
-	),
-	string__append_list(["create(", T_str, ", ", MA_str, ", ",
-		U_str, ")"], Str).
 opt_debug__dump_rval(unop(O, N), Str) :-
 	opt_debug__dump_unop(O, O_str),
 	opt_debug__dump_rval(N, N_str),
