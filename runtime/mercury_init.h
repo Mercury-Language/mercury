@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1999 The University of Melbourne.
+** Copyright (C) 1993-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -155,16 +155,6 @@ extern	void	MR_register_module_layout_real(const MR_Module_Layout *);
 
 /* in library/std_util.h  */
 extern	String	ML_type_name(Word);
-
-/*---------------------------------------------------------------------------*/
-
-/*
-** mercury__load_aditi_rl_code() is defined in the <module>_init.c file.
-** It uploads all the Aditi-RL code for the program to a database to
-** which the program currently has a connection, returning a status value
-** as described in aditi2/src/api/aditi_err.h in the Aditi sources.
-*/
-extern	int	mercury__load_aditi_rl_code(void);
 
 /*---------------------------------------------------------------------------*/
 

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -158,7 +158,7 @@
 
 :- pragma c_header_code("
 
-#include ""mercury_init.h""
+#include ""mercury_wrapper.h""
 #include ""aditi_clnt.h""
 
 #define MADITI_throw MR_longjmp(&MADITI_jmp_buf);
@@ -215,7 +215,7 @@ aditi__connect(Host, User, Passwd, Result) -->
 			DEBUG(ADITI_NAME(disable_ping)());
 
 			DEBUG(printf(""logged in\\n""));
-			if ((Stat = mercury__load_aditi_rl_code())
+			if ((Stat = MR_load_aditi_rl_code())
 					== ADITI_OK) {
 				DEBUG(printf(""code loaded\\n""));
 			} else {

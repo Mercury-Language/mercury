@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1999 The University of Melbourne.
+** Copyright (C) 1994-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -38,6 +38,15 @@ extern	void	mercury_runtime_main(void);
 extern	int	mercury_runtime_terminate(void);
 
 /*
+** MR_load_aditi_rl_code() uploads all the Aditi-RL code for
+** the program to a database to which the program currently has a
+** connection, returning a status value as described in
+** aditi2/src/api/aditi_err.h in the Aditi sources.
+** It aborts if the executable was not compiled for Aditi execution. 
+*/
+extern	int	MR_load_aditi_rl_code(void);
+
+/*
 ** The following global variables are set by mercury_init() on startup.
 ** The entry points are set based on the options to mkinit.c.
 ** The address_of_foo pointers are set to the address of
@@ -60,6 +69,8 @@ extern	void		(*address_of_init_modules)(void);
 #ifdef CONSERVATIVE_GC
 extern	void		(*address_of_init_gc)(void);
 #endif
+
+extern	int		(*MR_address_of_do_load_aditi_rl_code)(void);
 
 /*
 ** MR_trace_getline(const char *, FILE *, FILE *) is defined in

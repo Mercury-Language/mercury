@@ -130,6 +130,9 @@ long		MR_ctor_rep_compare[MR_TYPECTOR_REP_UNKNOWN + 1];
 **   calls main/2 in the user's program.
 ** - The Mercury runtime finalization, namely mercury_runtime_terminate(),
 **   calls io__finalize_state/2 in the Mercury library.
+** - `aditi__connect/6' in extras/aditi/aditi.m calls
+**   MR_do_load_aditi_rl_code() in the automatically
+**   generated C init file.
 **
 ** But, to enable Quickstart of shared libraries on Irix 5,
 ** and in general to avoid various other complications
@@ -145,6 +148,8 @@ long		MR_ctor_rep_compare[MR_TYPECTOR_REP_UNKNOWN + 1];
 
 void	(*address_of_mercury_init_io)(void);
 void	(*address_of_init_modules)(void);
+
+int	(*MR_address_of_do_load_aditi_rl_code)(void);
 
 char *	(*MR_address_of_trace_getline)(const char *, FILE *, FILE *);
 
@@ -1298,6 +1303,22 @@ mercury_runtime_terminate(void)
 	restore_regs_from_mem(c_regs);
 
 	return mercury_exit_status;
+}
+
+/*---------------------------------------------------------------------------*/
+
+int
+MR_load_aditi_rl_code(void)
+{
+	if (MR_address_of_do_load_aditi_rl_code != NULL) {
+		return (*MR_address_of_do_load_aditi_rl_code)();	
+	} else {
+		fatal_error(
+			"attempt to load Aditi-RL code from an executable\n"
+			"not compiled for Aditi execution.\n"
+			"Add `--aditi' to C2INITFLAGS.\n"
+		);
+	}
 }
 
 /*---------------------------------------------------------------------------*/
