@@ -189,9 +189,17 @@ process_nonimported_procs([ProcId | ProcIds], PredId, Task0, Task,
 		State9 = State0
 	),
 
-	map__det_update(Procs0, ProcId, Proc, Procs),
-	pred_info_set_procedures(Pred0, Procs, Pred),
-	map__det_update(Preds0, PredId, Pred, Preds),
+	% If the pass changed the module_info, it may have changed
+	% the pred table or the proc table for this pred_id.  Don't
+	% take any chances.
+
+	module_info_preds(ModuleInfo8, Preds8),
+	map__lookup(Preds8, PredId, Pred8),
+	pred_info_procedures(Pred8, Procs8),
+
+	map__det_update(Procs8, ProcId, Proc, Procs),
+	pred_info_set_procedures(Pred8, Procs, Pred),
+	map__det_update(Preds8, PredId, Pred, Preds),
 	module_info_set_preds(ModuleInfo8, Preds, ModuleInfo9),
 
 	process_nonimported_procs(ProcIds, PredId, Task1, Task,
