@@ -2191,7 +2191,7 @@ MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
 void
 MR_trace_event_print_internal_report(MR_Event_Info *event_info)
 {
-	fprintf(MR_mdb_out, "%8ld: %6ld %2ld %s",
+	fprintf(MR_mdb_out, "%8ld: %6ld %2ld %s ",
 		(long) event_info->MR_event_number,
 		(long) event_info->MR_call_seqno,
 		(long) event_info->MR_call_depth,
