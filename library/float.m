@@ -6,7 +6,7 @@
 %
 % File: float.m.
 % Main author: fjh.
-% Stability: low.
+% Stability: medium.
 %
 % Floating point support.
 %
@@ -18,10 +18,6 @@
 :- interface.
 
 :- type float.
-
-/*****
-The following operators will not be supported until we implement
-predicate overloading.  Use the builtin_float_lt etc. versions instead.
 
 	% less than
 :- pred <(float, float).
@@ -38,8 +34,6 @@ predicate overloading.  Use the builtin_float_lt etc. versions instead.
 	% greater than or equal
 :- pred >=(float, float).
 :- mode >=(in, in) is semidet.
-
-****/
 
 	% absolute value
 :- pred float__abs(float, float).
@@ -78,6 +72,11 @@ predicate overloading.  Use the builtin_float_lt etc. versions instead.
 :- mode - in    = uo  is det.
 
 %---------------------------------------------------------------------------%
+
+/* The following are predicates which do the same thing as the
+   above functions.  They are obsolete.  Don't use them.
+   They will eventually disappear in some future release.
+*/
 
 :- pred builtin_float_plus(float, float, float).
 :- mode builtin_float_plus(in, in, uo) is det.
@@ -132,34 +131,19 @@ predicate overloading.  Use the builtin_float_lt etc. versions instead.
 :- implementation.
 :- import_module int, require.
 
-/*
-these are builtins
-X + Y = Z :- builtin_float_plus(X, Y, Z).
-X - Y = Z :- builtin_float_minus(X, Y, Z).
-X * Y = Z :- builtin_float_times(X, Y, Z).
-X / Y = Z :- builtin_float_divide(X, Y, Z).
-*/
+% The arithmetic and comparison operators are builtins,
+% which the compiler expands inline.  We don't need to define them here.
 
-/* these ought to be builtins */
+% Unary plus and minus are not builtins, but ought to be.
+
 + X = 0.0 + X.
 - X = 0.0 - X.
-
-/*
-these are builtins
-float:(X < Y) :- builtin_float_lt(X, Y).
-float:(X > Y) :- builtin_float_gt(X, Y).
-float:(X =< Y) :- builtin_float_le(X, Y).
-float:(X >= Y) :- builtin_float_ge(X, Y).
-*/
-
-/* All the builtin_float_* are builtins, which the compiler expands inline. */
 
 %---------------------------------------------------------------------------%
 
 float__abs(Num, Abs) :-
 	(
-		% (Num =< 0.0)
-		builtin_float_le(Num, 0.0)
+		Num =< 0.0
 	->
 		Abs = - Num
 	;
@@ -168,8 +152,7 @@ float__abs(Num, Abs) :-
 
 float__max(X, Y, Max) :-
 	(
-		% X >= Y
-		builtin_float_ge(X, Y)
+		X >= Y
 	->
 		Max = X
 	;
@@ -178,8 +161,7 @@ float__max(X, Y, Max) :-
 
 float__min(X, Y, Min) :-
 	(
-		% X =< Y
-		builtin_float_le(X, Y)
+		X =< Y
 	->
 		Min = X
 	;
