@@ -973,6 +973,10 @@ Output detailed debugging traces of the type checking.
 Output detailed debugging traces of the mode checking.
 
 @sp 1
+@item --debug-detism
+Output detailed debugging traces of deterministic analysis.
+
+@sp 1
 @item --vndebug <n>
 Output detailed debugging traces of the value numbering optimization pass.
 The different bits in the number argument of this option control the
@@ -1317,6 +1321,9 @@ These optimizations are high-level transformations on our HLDS (high-level
 data structure).
 
 @table @code
+@item --no-inlining
+Disable all forms of inlining.
+
 @item --no-inline-simple
 Disable the inlining of simple procedures.
 
