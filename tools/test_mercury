@@ -214,6 +214,9 @@ echo "current directory `pwd`" 1>&2
 case $status in 0)
     case $install_anyway in
         false)	cd mercury/stage2 || { false; exit 1; } ;;
+		# we need to use the stage1 compiler to do the install
+		MERCURY_COMPILER=$DIR/mercury/compiler/mercury_compile
+		export MERCURY_COMPILER
         true)	cd mercury || { false; exit 1; } ;;
     esac
 
