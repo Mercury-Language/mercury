@@ -1,0 +1,2 @@
+#!/bin/sh
+sed '1,/^register usage counts/d' | sort +1n -r | Arrangeregs
