@@ -36,12 +36,24 @@ Changes to the Mercury language:
   instead.  The compiler still supports the old-style syntax, but
   we plan to eventually drop this support in some future release.
 
-* Terms in the form of x `fun` y are transformed into fun(x, y).  `fun`
+* We now support a simple form of user-defined infix operators.
+  
+  Terms in the form of x `fun` y are transformed into fun(x, y).  `fun`
   is parsed as an infix operator with the highest possible precedence
   and left associativity.
 
 Changes to the Mercury standard library:
 ****************************************
+
+* Exception handling support is now part of the standard library.
+
+  The module `exception', which was previously part of the "extras"
+  distribution, has been moved into the standard library.
+  The predicate error/1 now throws an exception rather than just
+  terminating execution.
+
+  However, many of the operations in the standard library still handle
+  errors by aborting execution rather than by throwing exceptions.
 
 * We've added some new predicates to the Mercury standard library:
 	array__map/3,
