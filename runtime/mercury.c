@@ -442,7 +442,21 @@ mercury__array____Unify____array_1_0(MR_Type_Info type_info,
 bool
 mercury__std_util____Unify____univ_0_0(MR_Univ x, MR_Univ y)
 {
-	SORRY("unify for univ");
+	MR_TypeInfo     typeinfo_x, typeinfo_y;
+	MR_Word         value_x, value_y;
+	int             comp;
+
+	MR_unravel_univ(x, typeinfo_x, value_x);
+	MR_unravel_univ(y, typeinfo_y, value_y);
+
+	comp = MR_compare_type_info(typeinfo_x, typeinfo_y);
+
+	if (comp != MR_COMPARE_EQUAL) {
+		return FALSE;
+	}
+
+	return mercury__builtin__unify_2_p_0((MR_Type_Info) typeinfo_x,
+			(MR_Box) value_x, (MR_Box) value_y);
 }
 
 bool
@@ -593,7 +607,22 @@ void
 mercury__std_util____Compare____univ_0_0(MR_Comparison_Result *result,
 	MR_Univ x, MR_Univ y)
 {
-	SORRY("compare for univ");
+	MR_TypeInfo     typeinfo_x, typeinfo_y;
+	MR_Word         value_x, value_y;
+	int             comp;
+
+	MR_unravel_univ(x, typeinfo_x, value_x);
+	MR_unravel_univ(y, typeinfo_y, value_y);
+
+	comp = MR_compare_type_info(typeinfo_x, typeinfo_y);
+
+	if (comp != MR_COMPARE_EQUAL) {
+		*result = comp;
+		return;
+	}
+
+	return mercury__builtin__compare_3_p_0((MR_Type_Info) typeinfo_x,
+			result, (MR_Box) value_x, (MR_Box) value_y);
 }
 
 void
