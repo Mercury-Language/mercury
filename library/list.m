@@ -1675,35 +1675,35 @@ list__filter(P, Xs, Ys) :-
 	list__filter(P, Xs, Ys, _).
 
 list__filter(_, [],  [], []).
-list__filter(P, [H | T], L, M) :-
+list__filter(P, [H | T], True, False) :-
+	list__filter(P, T, TrueTail, FalseTail),
 	( call(P, H) ->
-		L = [H | L1],
-		M = M1
+		True = [H | TrueTail],
+		False = FalseTail
 	;
-		L = L1,
-		M = [H | M1]
-	),
-	list__filter(P, T, L1, M1).
+		True = TrueTail,
+		False = [H | FalseTail]
+	).
 
 list__filter_map(_, [],  []).
-list__filter_map(P, [H0 | T0], L) :-
+list__filter_map(P, [H0 | T0], True) :-
+	list__filter_map(P, T0, TrueTail),
 	( call(P, H0, H) ->
-		L = [H | L1]
+		True = [H | TrueTail]
 	;
-		L = L1
-	),
-	list__filter_map(P, T0, L1).
+		True = TrueTail
+	).
 
 list__filter_map(_, [], [], []).
-list__filter_map(P, [H0 | T0], L, M) :-
+list__filter_map(P, [H0 | T0], True, False) :-
+	list__filter_map(P, T0, TrueTail, FalseTail),
 	( call(P, H0, H) ->
-		L = [H | L1],
-		M = M1
+		True = [H | TrueTail],
+		False = FalseTail
 	;
-		L = L1,
-		M = [H0 | M1]
-	),
-	list__filter_map(P, T0, L1, M1).
+		True = TrueTail,
+		False = [H0 | FalseTail]
+	).
 
 list__takewhile(_, [], [], []).
 list__takewhile(P, [X | Xs], Ins, Outs) :-
