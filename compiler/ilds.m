@@ -379,7 +379,7 @@
 
 	% Add an extra identifier to the end of an IL class name, e.g.
 	% append Bar to [mercury]mercury.runtime.Foo to make
-	% [mercury]mercury.runtime.Foo.Bar
+	% [mercury]mercury.runtime.Foo/Bar
 
 :- func append_nested_class_name(ilds__class_name, ilds__nested_class_name) =
 	ilds__class_name.
@@ -417,7 +417,8 @@ append_toplevel_class_name(structured_name(Assembly, Namespace, NestedClass),
 		"append_toplevel_class_name: namespace name has nested class?"),
 	list__append(Namespace, [Class], ClassName).
 
-append_nested_class_name(StructuredName0, ExtraNestedClasses) = StructuredName :-
+append_nested_class_name(StructuredName0, ExtraNestedClasses)
+		= StructuredName :-
 	StructuredName0 = structured_name(Assembly, Class, NestedClasses),
 	StructuredName = structured_name(Assembly, Class,
 				NestedClasses ++ ExtraNestedClasses).
