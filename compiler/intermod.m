@@ -1010,10 +1010,12 @@ intermod__write_pragmas(SymName, Arity, [Marker | Markers], PredOrFunc) -->
 		% Since the inferred declarations are output, these
 		% don't need to be done in the importing module.
 		% Also purity is output as part of the pred/func decl.
+		% There is no pragma required for generated class methods.
 		( { Marker = infer_type }
 		; { Marker = infer_modes }
 		; { Marker = (impure) }
 		; { Marker = (semipure) }
+		; { Marker = class_method }
 		)
 	->
 		[]
