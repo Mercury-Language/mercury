@@ -43,6 +43,7 @@ SOURCES= \
 	multidet_test.m \
 	nasty_func_test.m \
 	nondet_live.m \
+	pred_with_no_modes.m \
 	qualified_cons_id.m \
 	same_length_2.m \
 	semidet_disj.m \
@@ -79,6 +80,7 @@ GRADE-agc_unbound_typevars	= asm_fast.agc
 GRADE-agc_unused_in		= asm_fast.agc
 MCFLAGS-compl_unify_bug		= -O3
 MCFLAGS-middle_rec_labels	= --middle-rec --no-follow-vars 
+MCFLAGS-pred_with_no_modes	= --infer-all
 MCFLAGS-simplify_bug		= -O-1
 MCFLAGS-two_way_unif		= -O-1
 MCFLAGS-type_inf_ambig_test	= --infer-all
