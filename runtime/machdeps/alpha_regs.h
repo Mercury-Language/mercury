@@ -23,7 +23,7 @@ reg 	Word	mr0 __asm__("$9");
 reg	Word	mr1 __asm__("$10");
 reg	Word	mr2 __asm__("$11");
 reg	Word	mr3 __asm__("$12");
-reg	Word	mr4 __asm__("$13);
+reg	Word	mr4 __asm__("$13");
 reg	Word	mr5 __asm__("$14");
 
 #define save_registers()	(	\
