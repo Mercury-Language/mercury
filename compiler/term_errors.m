@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -92,7 +92,7 @@
 			% Valid error only in pass 1.
 
 	;	too_many_paths
-			% There were too many distinct paths to be analyzed.
+			% There are too many distinct paths to be analyzed.
 			% Valid in both passes (which analyze different sets
 			% of paths).
 
@@ -263,7 +263,7 @@ term_errors__description(horder_call, _, _, Pieces, no) :-
 term_errors__description(pragma_c_code, _, _, Pieces, no) :-
 	Pieces = [words("It depends on the properties of"),
 		words("foreign language code included via a"),
-		fixed("`pragma c_code'"),
+		fixed("`:- pragma c_code'"),
 		words("declaration.")].
 
 term_errors__description(inf_call(CallerPPId, CalleePPId),
@@ -370,7 +370,7 @@ term_errors__description(not_subset(ProcPPId, OutputSuppliers, HeadVars),
 		OutputSuppliersNames),
 	list__map(lambda([OS::in, FOS::out] is det, (FOS = fixed(OS))),
 		OutputSuppliersNames, OutputSuppliersPieces),
-	Pieces3 = [words("was not a subset of the head variables")],
+	Pieces3 = [words("is not a subset of the head variables")],
 	term_errors_var_bag_description(HeadVars, Varset, HeadVarsNames),
 	list__map(lambda([HV::in, FHV::out] is det, (FHV = fixed(HV))),
 		HeadVarsNames, HeadVarsPieces),
@@ -395,7 +395,7 @@ term_errors__description(cycle(_StartPPId, CallSites), _, Module, Pieces, no) :-
 	).
 
 term_errors__description(too_many_paths, _, _, Pieces, no) :-
-	Pieces = [words("There were too many execution paths"),
+	Pieces = [words("There are too many execution paths"),
 		words("for the analysis to process.")].
 
 term_errors__description(no_eqns, _, _, Pieces, no) :-
@@ -412,12 +412,13 @@ term_errors__description(is_builtin(_PredId), _Single, _, Pieces, no) :-
 
 term_errors__description(does_not_term_pragma(PredId), Single, Module,
 		Pieces, no) :-
-	Pieces1 = [words("There was a `does_not_terminate' pragma defined on")],
+	Pieces1 = [words(
+		"There is a `:- pragma does_not_terminate' declaration for")],
 	(
 		Single = yes(PPId),
 		PPId = proc(SCCPredId, _),
 		require(unify(PredId, SCCPredId), "does not terminate pragma outside this SCC"),
-		Piece2 = words("It")
+		Piece2 = words("it.")
 	;
 		Single = no,
 		error_util__describe_one_pred_name(Module, PredId,

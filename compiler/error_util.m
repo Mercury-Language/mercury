@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -316,22 +316,23 @@ error_util__describe_one_pred_name(Module, PredId, Piece) :-
 	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
 	(
 		PredOrFunc = predicate,
-		PredOrFuncPart = "predicate ",
+		PredOrFuncPart = "predicate",
 		OrigArity = Arity
 	;
 		PredOrFunc = function,
-		PredOrFuncPart = "function ",
+		PredOrFuncPart = "function",
 		OrigArity is Arity - 1
 	),
 	string__int_to_string(OrigArity, ArityPart),
 	string__append_list([
 		PredOrFuncPart,
+		" `",
 		ModuleNameString,
 		":",
 		PredName,
 		"/",
-		ArityPart
-		], Piece).
+		ArityPart,
+		"'"], Piece).
 
 error_util__describe_one_proc_name(Module, proc(PredId, ProcId), Piece) :-
 	error_util__describe_one_pred_name(Module, PredId, PredPiece),
