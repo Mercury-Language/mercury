@@ -59,10 +59,12 @@ MR_bool		MR_trace_have_unhid_events = MR_FALSE;
 MR_IoTablingPhase	MR_io_tabling_phase = MR_IO_TABLING_UNINIT;
 MR_bool			MR_io_tabling_enabled = MR_FALSE;
 MR_TableNode		MR_io_tabling_pointer = { 0 };
-MR_Unsigned		MR_io_tabling_counter = 0;
-MR_Unsigned		MR_io_tabling_counter_hwm = 0;
-MR_Unsigned		MR_io_tabling_start = 0;
-MR_Unsigned		MR_io_tabling_end = 0;
+MR_IoActionNum		MR_io_tabling_counter = 0;
+MR_IoActionNum		MR_io_tabling_counter_hwm = 0;
+MR_IoActionNum		MR_io_tabling_start = 0;
+MR_IoActionNum		MR_io_tabling_end = 0;
+MR_Unsigned		MR_io_tabling_start_event_num = 0;
+MR_Unsigned		MR_io_tabling_stop_event_num = 0;
 MR_bool			MR_io_tabling_debug = MR_FALSE;
 
 #ifdef	MR_REQUIRE_TRACING

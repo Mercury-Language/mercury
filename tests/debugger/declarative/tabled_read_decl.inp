@@ -7,7 +7,7 @@ break tabled_read_decl__test
 continue
 finish -n
 print
-dd
+dd -a
 print 1-2
 p io 1-2
 print io 2-1

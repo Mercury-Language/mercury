@@ -15,7 +15,7 @@ mdb> finish -n
       E3:     C2  3 EXIT pred tabled_read_decl:test/4-0 (det)
 mdb> print
 test('<<c_pointer>>', 1123, _, state('<<c_pointer>>'))
-mdb> dd
+mdb> dd -a
 test('<<c_pointer>>', 1123, _, state('<<c_pointer>>'))
 4 io actions:
 read_char_code('<<c_pointer>>', 49)

@@ -272,6 +272,12 @@ extern	MR_IoActionNum	MR_io_tabling_start;
 /* The highest I/O action number which is to be tabled. */
 extern	MR_IoActionNum	MR_io_tabling_end;
 
+/* The event number at which I/O tabling was started; zero before start. */
+extern	MR_Unsigned	MR_io_tabling_start_event_num;
+
+/* The event number at which I/O tabling was stopped; zero before stop. */
+extern	MR_Unsigned	MR_io_tabling_stop_event_num;
+
 /* The flag that controls whether we should generate diagnostics. */
 extern	MR_bool		MR_io_tabling_debug;
 

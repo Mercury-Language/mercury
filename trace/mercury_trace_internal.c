@@ -475,7 +475,8 @@ static	void	MR_trace_maybe_close_source_window(MR_bool verbose);
 static	MR_bool	MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
 			char ***words, int *word_count,
 			const char *cat, const char *item);
-static	MR_bool	MR_trace_options_retry(MR_bool *allow_io,
+static	MR_bool	MR_trace_options_retry(MR_Retry_Across_Io *across_io,
+			MR_bool *assume_all_io_is_tabled,
 			char ***words, int *word_count,
 			const char *cat, const char *item);
 static	MR_bool	MR_trace_options_when_action_multi_ignore(MR_Spy_When *when,
@@ -508,6 +509,9 @@ static	MR_bool	MR_trace_options_view(const char **window_cmd,
 			int *timeout, MR_bool *force, MR_bool *verbose,
 			MR_bool *split, MR_bool *close_window, char ***words,
 			int *word_count, const char *cat, const char*item);
+static	MR_bool	MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
+			char ***words, int *word_count,
+			const char *cat, const char *item);
 static	void	MR_trace_usage(const char *cat, const char *item);
 static	void	MR_trace_do_noop(void);
 
@@ -1597,14 +1601,16 @@ MR_trace_cmd_retry(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
 {
-	int		n;
-	int		ancestor_level;
-	MR_bool		force_retry;
-	const char	*problem;
-	MR_Retry_Result	result;
+	int			n;
+	int			ancestor_level;
+	MR_Retry_Across_Io	across_io;
+	const char		*problem;
+	MR_Retry_Result		result;
+	MR_bool			assume_all_io_is_tabled;
 
-	force_retry = MR_FALSE;
-	if (! MR_trace_options_retry(&force_retry,
+	across_io = MR_RETRY_IO_INTERACTIVE;
+	assume_all_io_is_tabled = MR_FALSE;
+	if (! MR_trace_options_retry(&across_io, &assume_all_io_is_tabled,
 			&words, &word_count, "backward", "retry"))
 	{
 		; /* the usage message has already been printed */
@@ -1617,16 +1623,15 @@ MR_trace_cmd_retry(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		return KEEP_INTERACTING;
 	}
 
-	if (ancestor_level == 0 &&
-			MR_port_is_entry(event_info->MR_trace_port))
+	if (ancestor_level == 0 && MR_port_is_entry(event_info->MR_trace_port))
 	{
 		MR_trace_do_noop();
 		return KEEP_INTERACTING;
 	}
 
 	result = MR_trace_retry(event_info, event_details,
-			ancestor_level, force_retry, &problem,
-			MR_mdb_in, MR_mdb_out, jumpaddr);
+			ancestor_level, across_io, assume_all_io_is_tabled,
+			&problem, MR_mdb_in, MR_mdb_out, jumpaddr);
 	switch (result) {
 
 	case MR_RETRY_OK_DIRECT:
@@ -1644,7 +1649,8 @@ MR_trace_cmd_retry(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		cmd->MR_trace_print_level = MR_PRINT_LEVEL_NONE;
 
 		/* Arrange to retry the call once it is finished. */
-		MR_insert_line_at_head("retry -f");
+		/* XXX we should use the same options as the original retry */
+		MR_insert_line_at_head("retry -o");
 		return STOP_INTERACTING;
 
 	case MR_RETRY_OK_FAIL_FIRST:
@@ -1655,7 +1661,8 @@ MR_trace_cmd_retry(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		cmd->MR_trace_print_level = MR_PRINT_LEVEL_NONE;
 
 		/* Arrange to retry the call once it is finished. */
-		MR_insert_line_at_head("retry -f");
+		/* XXX we should use the same options as the original retry */
+		MR_insert_line_at_head("retry -o");
 		return STOP_INTERACTING;
 
 	case MR_RETRY_ERROR:
@@ -3202,6 +3209,8 @@ MR_trace_cmd_table_io(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			MR_io_tabling_phase = MR_IO_TABLING_DURING;
 			MR_io_tabling_start = MR_io_tabling_counter;
 			MR_io_tabling_end = MR_IO_ACTION_MAX;
+			MR_io_tabling_start_event_num =
+				event_info->MR_event_number;
 #ifdef	MR_DEBUG_RETRY
 			MR_io_tabling_debug = MR_TRUE;
 #endif
@@ -3236,6 +3245,8 @@ MR_trace_cmd_table_io(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		{
 			MR_io_tabling_phase = MR_IO_TABLING_AFTER;
 			MR_io_tabling_end = MR_io_tabling_counter_hwm;
+			MR_io_tabling_stop_event_num =
+				event_info->MR_event_number;
 			fprintf(MR_mdb_out, "io tabling stopped\n");
 		} else if (MR_io_tabling_phase == MR_IO_TABLING_AFTER)
 		{
@@ -3549,15 +3560,17 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
 {
-	if (word_count != 1) {
-		fflush(MR_mdb_out);
-		fprintf(MR_mdb_err,
-			"mdb: dd requires no arguments.\n");
-	} else {
+	MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
+	if (! MR_trace_options_dd(&MR_trace_decl_assume_all_io_is_tabled,
+		&words, &word_count, "dd", "dd"))
+	{
+		; /* the usage message has already been printed */
+	} else if (word_count == 1) {
 		if (MR_trace_have_unhid_events) {
 			fflush(MR_mdb_out);
 			fprintf(MR_mdb_err,
-				"mdb: dd doesn't work after `unhide_events on'.\n");
+				"mdb: dd doesn't work "
+				"after `unhide_events on'.\n");
 			return KEEP_INTERACTING;
 		}
 
@@ -3566,6 +3579,8 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		{
 			return STOP_INTERACTING;
 		}
+	} else {
+		MR_trace_usage("dd", "dd");
 	}
 
 	return KEEP_INTERACTING;
@@ -3579,11 +3594,12 @@ MR_trace_cmd_dd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Trace_Mode	trace_mode;
 	const char	*filename;
 
-	if (word_count > 2) {
-		fflush(MR_mdb_out);
-		fprintf(MR_mdb_err,
-			"mdb: dd_dd takes at most one argument.\n");
-	} else {
+	MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
+	if (! MR_trace_options_dd(&MR_trace_decl_assume_all_io_is_tabled,
+		&words, &word_count, "dd", "dd_dd"))
+	{
+		; /* the usage message has already been printed */
+	} else if (word_count <= 2) {
 		if (word_count == 2) {
 			trace_mode = MR_TRACE_DECL_DEBUG_DUMP;
 			filename = (const char *) words[1];
@@ -3597,6 +3613,8 @@ MR_trace_cmd_dd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		{
 			return STOP_INTERACTING;
 		}
+	} else {
+		MR_trace_usage("dd", "dd_dd");
 	}
 
 	return KEEP_INTERACTING;
@@ -3830,24 +3848,40 @@ MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
 
 static struct MR_option MR_trace_retry_opts[] =
 {
-	{ "allow-io",	MR_no_argument,	NULL,	'a' },
-	{ NULL,		MR_no_argument,	NULL,	0 }
+	{ "assume-all-io-is-tabled",	MR_no_argument,	NULL,	'a' },
+	{ "force",			MR_no_argument,	NULL,	'f' },
+	{ "interactive",		MR_no_argument,	NULL,	'i' },
+	{ "only-if-safe",		MR_no_argument,	NULL,	'o' },
+	{ NULL,				MR_no_argument,	NULL,	0 }
 };
 
 static MR_bool
-MR_trace_options_retry(MR_bool *force_retry,
+MR_trace_options_retry(MR_Retry_Across_Io *across_io,
+	MR_bool *assume_all_io_is_tabled,
 	char ***words, int *word_count, const char *cat, const char *item)
 {
 	int	c;
 
 	MR_optind = 0;
-	while ((c = MR_getopt_long(*word_count, *words, "f",
+	while ((c = MR_getopt_long(*word_count, *words, "afio",
 			MR_trace_retry_opts, NULL)) != EOF)
 	{
 		switch (c) {
 
+			case 'a':
+				*assume_all_io_is_tabled = MR_TRUE;
+				break;
+
 			case 'f':
-				*force_retry = MR_TRUE;
+				*across_io = MR_RETRY_IO_FORCE;
+				break;
+
+			case 'i':
+				*across_io = MR_RETRY_IO_INTERACTIVE;
+				break;
+
+			case 'o':
+				*across_io = MR_RETRY_IO_ONLY_IF_SAFE;
 				break;
 
 			default:
@@ -4358,6 +4392,39 @@ MR_trace_options_view(const char **window_cmd, const char **server_cmd,
 				}
 				*split = MR_TRUE;
 				no_close = MR_TRUE;
+				break;
+
+			default:
+				MR_trace_usage(cat, item);
+				return MR_FALSE;
+		}
+	}
+
+	*words = *words + MR_optind - 1;
+	*word_count = *word_count - MR_optind + 1;
+	return MR_TRUE;
+}
+
+static struct MR_option MR_trace_dd_opts[] =
+{
+	{ "assume-all-io-is-tabled",	MR_no_argument,	NULL,	'a' },
+	{ NULL,			MR_no_argument,		NULL,	0 }
+};
+
+static MR_bool
+MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
+	char ***words, int *word_count, const char *cat, const char *item)
+{
+	int	c;
+
+	MR_optind = 0;
+	while ((c = MR_getopt_long(*word_count, *words, "a", MR_trace_dd_opts,
+		NULL)) != EOF)
+	{
+		switch (c) {
+
+			case 'a':
+				*assume_all_io_is_tabled = MR_TRUE;
 				break;
 
 			default:
@@ -5003,6 +5070,13 @@ static const char *const	MR_trace_movement_cmd_args[] =
 		{"-N", "-S", "-a", "-n", "-s",
 		"--none", "--some", "--all", "--strict", "--no-strict", NULL};
 
+/*
+** "retry --assume-all-io-is-tabled" is deliberately not documented as
+** it is for developers only.
+*/
+static const char *const	MR_trace_retry_cmd_args[] =
+		{"--force", "--interactive", "--only-if-safe", NULL};
+
 static const char *const	MR_trace_print_cmd_args[] =
 		{"-f", "-p", "-v", "--flat", "--pretty", "--verbose",
 		"exception", "goal", "*", NULL};
@@ -5095,7 +5169,7 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 		MR_trace_movement_cmd_args, MR_trace_null_completer },
 
 	{ "backward", "retry", MR_trace_cmd_retry,
-		NULL, MR_trace_null_completer },
+		MR_trace_retry_cmd_args, MR_trace_null_completer },
 
 	{ "browsing", "level", MR_trace_cmd_level,
 		MR_trace_stack_cmd_args, MR_trace_null_completer },
@@ -5173,6 +5247,15 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 	{ "help", "help", MR_trace_cmd_help,
 		NULL, MR_trace_help_completer },
 
+	{ "misc", "source", MR_trace_cmd_source,
+		MR_trace_source_cmd_args, MR_trace_filename_completer },
+	{ "misc", "save", MR_trace_cmd_save,
+		NULL, MR_trace_filename_completer },
+	{ "misc", "dd", MR_trace_cmd_dd,
+		NULL, MR_trace_null_completer},
+	{ "misc", "quit", MR_trace_cmd_quit,
+		MR_trace_quit_cmd_args, NULL},
+
 #ifdef	MR_TRACE_HISTOGRAM
 	{ "exp", "histogram_all", MR_trace_cmd_histogram_all,
 		NULL, MR_trace_filename_completer },
@@ -5202,17 +5285,7 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 		MR_trace_on_off_args, MR_trace_null_completer },
 	{ "developer", "unhide_events", MR_trace_cmd_unhide_events,
 		MR_trace_on_off_args, MR_trace_null_completer },
-
-	{ "misc", "source", MR_trace_cmd_source,
-		MR_trace_source_cmd_args, MR_trace_filename_completer },
-	{ "misc", "save", MR_trace_cmd_save,
-		NULL, MR_trace_filename_completer },
-	{ "misc", "quit", MR_trace_cmd_quit,
-		MR_trace_quit_cmd_args, NULL},
-
-	{ "dd", "dd", MR_trace_cmd_dd,
-		NULL, MR_trace_null_completer},
-	{ "dd", "dd_dd", MR_trace_cmd_dd_dd,
+	{ "developer", "dd_dd", MR_trace_cmd_dd_dd,
 		NULL, MR_trace_filename_completer},
 
 	/* End of doc/mdb_command_list. */

@@ -107,13 +107,23 @@ typedef struct MR_Event_Details_Struct {
 ** when it finds that some of the stack frames it looks at lack debugging
 ** information.
 **
-** Retry across I/O is unsafe in general, at least for now. It is therefore
-** allowed only
+** Retry across I/O is unsafe in general. It is therefore allowed only if one
+** of the following is true.
 **
-** - if unconditional_allow_io is TRUE, or
-** - if in_fp and out_fp are both non-NULL, and the user, when asked whether
-**   he/she wants to perform the retry anyway, says yes.
+** - If the retry is in a tabled region, and we believe that all I/O actions
+**   are tabled, either because we are in a grade in which all I/O actions
+**   really are tabled or because the caller tells us to assume so.
+** - If across_io is MR_RETRY_IO_FORCE.
+** - If across_io is MR_RETRY_IO_INTERACTIVE (in which case in_fp and out_fp
+**   must both be non-NULL), and the user, when asked whether he/she wants
+**   to perform the retry anyway, says yes.
 */
+
+typedef	enum {
+	MR_RETRY_IO_FORCE,
+	MR_RETRY_IO_INTERACTIVE,
+	MR_RETRY_IO_ONLY_IF_SAFE
+} MR_Retry_Across_Io;
 
 typedef	enum {
 	MR_RETRY_OK_DIRECT,
@@ -125,7 +135,8 @@ typedef	enum {
 extern	MR_Retry_Result	MR_trace_retry(MR_Event_Info *event_info,
 				MR_Event_Details *event_details,
 				int ancestor_level,
-				MR_bool unconditional_allow_io,
+				MR_Retry_Across_Io across_io,
+				MR_bool assume_all_io_is_tabled,
 				const char **problem,
 				FILE *in_fp, FILE *out_fp,
 				MR_Code **jumpaddr);

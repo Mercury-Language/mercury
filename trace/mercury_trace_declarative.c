@@ -230,6 +230,8 @@ static	void		MR_decl_checkpoint_event_imp(const char *str,
 static	void		MR_decl_checkpoint_loc(const char *str,
 				MR_Trace_Node node);
 
+MR_bool MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
+
 MR_Code *
 MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 {
@@ -380,7 +382,7 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 		** Call the front end.
 		*/
 		return MR_decl_diagnosis(MR_trace_current_node, cmd,
-					event_info, &event_details);
+				event_info, &event_details);
 	}
 
 	MR_trace_enabled = MR_TRUE;
@@ -1050,8 +1052,8 @@ MR_trace_decl_ensure_init(void)
 
 MR_bool
 MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
-		MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-		MR_Event_Details *event_details, MR_Code **jumpaddr)
+	MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+	MR_Event_Details *event_details, MR_Code **jumpaddr)
 {
 	MR_Retry_Result		result;
 	const MR_Proc_Layout 	*entry;
@@ -1111,9 +1113,9 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 		out = fopen(outfile, "w");
 		if (out == NULL) {
 			fflush(MR_mdb_out);
-			fprintf(MR_mdb_err, "mdb: cannot open file `%s' "
-					"for output: %s.\n",
-					outfile, strerror(errno));
+			fprintf(MR_mdb_err,
+				"mdb: cannot open file `%s' for output: %s.\n",
+				outfile, strerror(errno));
 			return MR_FALSE;
 		} else {
 			MR_trace_store_file = out;
@@ -1125,8 +1127,8 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 	MR_trace_decl_ensure_init();
 	depth_limit = event_info->MR_call_depth + MR_EDT_DEPTH_STEP_SIZE;
 	message = MR_trace_start_collecting(event_info->MR_event_number,
-			event_info->MR_call_seqno, depth_limit, cmd,
-			event_info, event_details, jumpaddr);
+			event_info->MR_call_seqno, depth_limit, cmd, event_info,
+			event_details, jumpaddr);
 
 	if (message == NULL) {
 		return MR_TRUE;
@@ -1142,8 +1144,8 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 
 static	MR_Code *
 MR_trace_restart_decl_debug(MR_Unsigned event, MR_Unsigned seqno,
-		MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-		MR_Event_Details *event_details)
+	MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+	MR_Event_Details *event_details)
 {
 	MR_Unsigned		depth_limit;
 	const char		*message;
@@ -1166,9 +1168,8 @@ MR_trace_restart_decl_debug(MR_Unsigned event, MR_Unsigned seqno,
 
 static	const char *
 MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
-		MR_Unsigned maxdepth,
-		MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-		MR_Event_Details *event_details, MR_Code **jumpaddr)
+	MR_Unsigned maxdepth, MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+	MR_Event_Details *event_details, MR_Code **jumpaddr)
 {
 	const char		*problem;
 	MR_Retry_Result		retry_result;
@@ -1176,8 +1177,10 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
 	/*
 	** Go back to an event before the topmost call.
 	*/
-	retry_result = MR_trace_retry(event_info, event_details, 0, MR_TRUE,
-		&problem, NULL, NULL, jumpaddr);
+	retry_result = MR_trace_retry(event_info, event_details, 0,
+		MR_RETRY_IO_ONLY_IF_SAFE,
+		MR_trace_decl_assume_all_io_is_tabled, &problem, NULL, NULL,
+		jumpaddr);
 	if (retry_result != MR_RETRY_OK_DIRECT) {
 		if (retry_result == MR_RETRY_ERROR) {
 			return problem;
@@ -1369,7 +1372,9 @@ MR_decl_go_to_selected_event(MR_Unsigned event, MR_Trace_Cmd_Info *cmd,
 	MR_print_stack_regs(stdout, event_info->MR_saved_regs);
 	MR_print_succip_reg(stdout, event_info->MR_saved_regs);
 #endif
-	retry_result = MR_trace_retry(event_info, event_details, 0, MR_TRUE,
+	retry_result = MR_trace_retry(event_info, event_details, 0,
+		MR_RETRY_IO_ONLY_IF_SAFE,
+		MR_trace_decl_assume_all_io_is_tabled,
 		&problem, NULL, NULL, &jumpaddr);
 #ifdef	MR_DEBUG_RETRY
 	MR_print_stack_regs(stdout, event_info->MR_saved_regs);

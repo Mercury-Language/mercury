@@ -8,8 +8,7 @@ table_io start
 continue
 finish -n
 print *
-retry
-y
+retry -o -a
 print *
 finish -n
 print *
@@ -17,8 +16,7 @@ table_io end
 continue
 finish -n
 print *
-retry
-y
+retry -f
 finish -n
 print *
 continue -S

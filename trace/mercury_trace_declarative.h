@@ -32,6 +32,24 @@ extern	MR_bool	MR_trace_start_decl_debug(MR_Trace_Mode trace_mode,
 			MR_Event_Details *event_details, MR_Code **jumpaddr);
 
 /*
+** The declarative debugger may need to perform many retries during one
+** diagnosis session. If the goal being debugged can do I/O, these retries
+** are safe only if all I/O primitives in the program are tabled. Normally,
+** this is guaranteed by the grade being a debugging grade. However, we also
+** want to check the functioning of the declarative debugger in non-debug
+** grades. In these grades, we only call tabled I/O primitives in the test
+** cases themselves, so the existence of non-tabled primitives in the standard
+** library doesn't matter. An option of the dd (or dd_dd) command can assert
+** that all the I/O primitives being backtracked over are tabled. This global
+** variable records the presence or absence of this option on the last dd or
+** dd_dd command. It must be stored in a global instead of being passed around
+** as a parameter because the front end can cause retries even after the
+** initial retry that starts collecting the annotated trace.
+*/
+
+extern	MR_bool	MR_trace_decl_assume_all_io_is_tabled;
+
+/*
 ** The following macros are provided to help C code manipulate the
 ** Mercury data structure.  The values here must match the corresponding
 ** values in the definitions in browser/declarative_execution.m.

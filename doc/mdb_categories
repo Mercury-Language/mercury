@@ -52,21 +52,22 @@ help       - Commands that let users access and control the help system.
              For help on the `help' command, type `help help help'.
 
 end
-document_category 900 exp
+document_category 900 misc
+misc       - Commands that are of interest to most users but do not fit into
+             other categories. The misc commands are `source', `save', `dd'
+	     and `quit'.
+
+end
+document_category 1000 exp
 exp        - Commands that let users collect and inspect experimental
              data about the behavior of the program. The exp commands are
              `histogram_all', `histogram_exp', and `clear_histogram'.
 
 end
-document_category 1000 developer
+document_category 1100 developer
 developer  - Commands that are intended to be of use only to developers
              of the Mercury implementation. The developer commands are
              `nondet_stack', `stack_regs', `all_regs', `proc_stats',
-	     `label_stats', `print_optionals' and `unhide_events'.
-
-end
-document_category 1100 misc
-misc       - Commands that do not fit into other categories.
-             The misc commands are `source', `save' and `quit'.
+	     `label_stats', `print_optionals', `unhide_events' and `dd_dd'.
 
 end

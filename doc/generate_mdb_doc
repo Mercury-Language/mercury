@@ -16,7 +16,7 @@ info -f ./mercury_user_guide.info -o $tmp -n "Mercury debugger concepts"
 
 debug_cmd_path="debug debugger"
 for section in interactive forward backward browsing breakpoint \
-	i/o parameter help exp developer misc 
+	i/o parameter help misc exp developer
 do
 	case $section in
 		interactive)	category=queries ;;

@@ -1992,7 +1992,7 @@ The purpose of I/O tabling is to enable transparent retries across I/O actions.
 (The mdb @samp{retry} command
 restores the computation to a state it had earlier,
 allowing the programmer to explore code that the program has already executed;
-see its documentation in the Debugger commands section below.)
+see its documentation in the @ref{Debugger commands} section below.)
 In the absence of I/O tabling,
 retries across I/O actions can have bad consequences.
 Retry of a goal that reads some input requires that input to be provided twice;
@@ -2065,9 +2065,9 @@ even if the number and the command are not separated by white space.
 * I/O tabling commands::
 * Parameter commands::
 * Help commands::
+* Miscellaneous commands::
 * Experimental commands::
 * Developer commands::
-* Miscellaneous commands::
 @end menu
 
 @node Interactive query commands
@@ -2331,13 +2331,20 @@ if the command is strict, it is @samp{none}, otherwise it is @samp{some}.
 
 @sp 1
 @table @code
-@item retry [-f]
+@item retry [-fio] [@var{num}]
+@c @item retry [-afio] [@var{num}]
 @kindex retry (mdb command)
-Restarts execution at the call port
+If the optional number is not given,
+restarts execution at the call port
 of the call corresponding to the current event.
+If the optional number is given,
+restarts execution at the call port of the call corresponding to
+the @var{num}'th ancestor of the call to which the current event belongs.
+For example, if @var{num} is 1, it restarts the parent of the current call.
 @sp 1
 The command will report an error unless
-the values of all the input arguments are available at the current port.
+the values of all the input arguments of the selected call are available
+at the return site at which control would reenter the selected call.
 (The compiler will keep the values
 of the input arguments of traced predicates as long as possible,
 but it cannot keep them beyond the point where they are destructively updated.)
@@ -2345,10 +2352,22 @@ The exception is values of type `io__state';
 the debugger can perform a retry if the only missing value is of
 type `io__state' (there can be only one io__state at any given time).
 @sp 1
-Since retries over I/O actions are not always safe,
+Retries over I/O actions are guaranteed to be safe
+only if the events at which the retry starts and ends
+are both within the I/O tabled region of the program's execution.
+If the retry is not guaranteed to be safe,
 the debugger will normally ask the user if they really want to do this.
 The option @samp{-f} or @samp{--force} suppresses the question,
-and tells the debugger that retrying over I/O is OK.
+telling the debugger that retrying over I/O is OK;
+the option @samp{-o} or @samp{--only-if-safe} suppresses the question,
+telling the debugger that retrying over I/O is not OK;
+the option @samp{-i} or @samp{--interactive} restores the question
+if a previous option suppressed it.
+@c The --assume-all-io-is-tabled option is for developers only. Specifying it
+@c makes an assertion, and if the assertion is incorrect, the resulting
+@c behavior would be hard for non-developers to understand. The option is
+@c therefore deliberately not documented.
+@c
 @c @sp 1
 @c A retry in which the values of all input arguments are available
 @c works fine, provided that the predicates defined in C code that are
@@ -2379,29 +2398,9 @@ and tells the debugger that retrying over I/O is OK.
 @c the debugger will continue forward execution
 @c until it reaches an exit or fail port of the call to be retried
 @c before it performs the retry.
-@c This may require a noticeable amount of time.
-@c XXX not yet
+@c This may require a noticeable amount of time,
 @c and may result in the execution of I/O and/or other side-effects.
-@sp 1
-@item retry [-f] @var{num}
-Restarts execution at the call port of the call corresponding to
-the @var{num}'th ancestor of the call to which the current event belongs.
-For example, if @var{num} is 1, it restarts the parent of the current call.
-@sp 1
-The command will report an error unless
-the values of all the input arguments of the selected call are available
-at the return site at which control would reenter the selected call.
-(The compiler will keep the values
-of the input arguments of traced predicates as long as possible,
-but it cannot keep them beyond the point where they are destructively updated.)
-The exception is values of type `io__state';
-the debugger can perform a retry if the only missing value is of
-type `io__state' (there can be only one io__state at any given time).
-@sp 1
-Since retries over I/O actions are not always safe,
-the debugger will normally ask the user if they really want to do this.
-The option @samp{-f} or @samp{--force} suppresses the question,
-and tells the debugger that retrying over I/O is OK.
+@c If the predicate being retried does I/O, the indirect retry will fail.
 @end table
 
 @sp 1
@@ -3117,6 +3116,44 @@ i.e.@: sets the counts for all depths to zero.
 @end table
 
 @sp 1
+@node Miscellaneous commands
+@subsection Miscellaneous commands
+
+@sp 1
+@table @code
+@item source [-i] @var{filename}
+@kindex source (mdb command)
+Executes the commands in the file named @var{filename}.
+@sp 1
+The option @samp{-i} or @samp{--ignore-errors} tells @samp{mdb}
+not to complain if the named file does not exist or is not readable.
+@sp 1
+@item save @var{filename}
+@kindex save (mdb command)
+Saves current set of breakpoints and the current set of aliases
+in the named file as a set of @samp{break} and @samp{alias} commands.
+Sourcing the file will recreate the current breakpoints and aliases.
+@sp 1
+@item dd
+@c @item dd [--assume-all-io-is-tabled]
+@c The --assume-all-io-is-tabled option is for developers only. Specifying it
+@c makes an assertion, and if the assertion is incorrect, the resulting
+@c behavior would be hard for non-developers to understand. The option is
+@c therefore deliberately not documented.
+Starts declarative debugging
+using the current event as the initial symptom.
+For details, see @ref{Declarative debugging}.
+@sp 1
+@item quit [-y]
+@kindex quit (mdb command)
+Quits the debugger and aborts the execution of the program.
+If the option @samp{-y} is not present, asks for confirmation first.
+Any answer starting with @samp{y}, or end-of-file, is considered confirmation.
+@sp 1
+End-of-file on the debugger's input is considered a quit command.
+@end table
+
+@sp 1
 @node Developer commands
 @subsection Developer commands
 
@@ -3179,39 +3216,20 @@ Tells the debugger to expose events that are normally hidden.
 @sp 1
 @item unhide_events off
 Tells the debugger to hide events that are normally hidden.
-@end table
-
 @sp 1
-@node Miscellaneous commands
-@subsection Miscellaneous commands
-
-@sp 1
-@table @code
-@item source [-i] @var{filename}
-@kindex source (mdb command)
-Executes the commands in the file named @var{filename}.
-@sp 1
-The option @samp{-i} or @samp{--ignore-errors} tells @samp{mdb}
-not to complain if the named file does not exist or is not readable.
-@sp 1
-@item save @var{filename}
-@kindex save (mdb command)
-Saves current set of breakpoints and the current set of aliases
-in the named file as a set of @samp{break} and @samp{alias} commands.
-Sourcing the file will recreate the current breakpoints and aliases.
-@sp 1
-@item quit [-y]
-@kindex quit (mdb command)
-Quits the debugger and aborts the execution of the program.
-If the option @samp{-y} is not present, asks for confirmation first.
-Any answer starting with @samp{y}, or end-of-file, is considered confirmation.
-@sp 1
-End-of-file on the debugger's input is considered a quit command.
-@sp 1
-@item dd
-Starts declarative debugging,
-using the current event as the initial symptom.
-For details, see @ref{Declarative debugging}.
+@item dd_dd
+@c @item dd_dd [filename]
+@c XXX Mark, please document the optional argument of dd_dd
+@c @item dd_dd [--assume-all-io-is-tabled] [filename]
+@c The --assume-all-io-is-tabled option is for developers only. Specifying it
+@c makes an assertion, and if the assertion is incorrect, the resulting
+@c behavior would be hard for non-developers to understand. The option is
+@c therefore deliberately not documented.
+Starts declarative debugging
+using the current event as the initial symptom,
+but unlike the standard @samp{dd} command,
+does not turn off the events generated by the declarative debugger itself.
+This makes it possible to debug the declarative debugger itself.
 @end table
 
 @node Declarative debugging
