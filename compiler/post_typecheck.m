@@ -291,7 +291,9 @@ report_unsatisfied_constraints(Constraints, PredId, PredInfo, ModuleInfo) -->
 
 	prog_out__write_context(Context),
 	io__write_string("  "),
-	io__write_list(Constraints, ", ", mercury_output_constraint(TVarSet)),
+	{ AppendVarnums = no },
+	io__write_list(Constraints, ", ",
+		mercury_output_constraint(TVarSet, AppendVarnums)),
 	io__write_string(".\n").
 
 %

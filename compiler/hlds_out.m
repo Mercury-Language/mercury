@@ -714,6 +714,11 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	{ pred_info_get_head_type_params(PredInfo, HeadTypeParams) },
 	{ pred_info_get_indexes(PredInfo, Indexes) },
 	globals__io_lookup_string_option(dump_hlds_options, Verbose),
+	( { string__contains_char(Verbose, 'v') } ->
+		{ AppendVarnums = yes }
+	;
+		{ AppendVarnums = no }
+	),
 	( { string__contains_char(Verbose, 'C') } ->
 		% Information about predicates is dumped if 'C'
 		% suboption is on.
@@ -721,25 +726,22 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 			{ PredOrFunc = predicate },
 			mercury_output_pred_type(TVarSet, ExistQVars,
 				qualified(Module, PredName),
-				ArgTypes, no, Purity, ClassContext, Context)
+				ArgTypes, no, Purity, ClassContext, Context,
+				AppendVarnums)
 		;
 			{ PredOrFunc = function },
 			{ pred_args_to_func_args(ArgTypes, FuncArgTypes,
 				FuncRetType) },
 			mercury_output_func_type(TVarSet, ExistQVars,
 				qualified(Module, PredName), FuncArgTypes,
-				FuncRetType, no, Purity, ClassContext, Context)
+				FuncRetType, no, Purity, ClassContext,
+				Context, AppendVarnums)
 		)
 	;
 		[]
 	),
 	{ ClausesInfo = clauses_info(VarSet, _, VarTypes, HeadVars, Clauses,
 		TypeInfoMap, TypeClassInfoMap) },
-	( { string__contains_char(Verbose, 'v') } ->
-		{ AppendVarnums = yes }
-	;
-		{ AppendVarnums = no }
-	),
 	( { string__contains_char(Verbose, 'C') } ->
 		hlds_out__write_indent(Indent),
 		io__write_string("% pred id: "),
@@ -766,7 +768,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 			[]
 		;
 			hlds_out__write_constraint_proofs(Indent, TVarSet,
-				Proofs),
+				Proofs, AppendVarnums),
 			io__write_string("\n")
 		),
 
@@ -2340,7 +2342,7 @@ hlds_out__write_typeclass_info_varmap_2(Indent, AppendVarnums, VarSet, TVarSet,
 		Constraint, Var) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("% "),
-	mercury_output_constraint(TVarSet, Constraint),
+	mercury_output_constraint(TVarSet, AppendVarnums, Constraint),
 	io__write_string(" -> "),
 	mercury_output_var(Var, VarSet, AppendVarnums),
 	io__nl.
@@ -2567,18 +2569,22 @@ hlds_out__write_class_defn(Indent, ClassId - ClassDefn) -->
 		[]
 	),
 
-		% curry the varset for term_io__write_variable/4
-	{ PrintVar = lambda([VarName::in, IO0::di, IO::uo] is det,
-			term_io__write_variable(VarName, VarSet, IO0, IO)
-		) },
+	globals__io_lookup_string_option(dump_hlds_options, Verbose),
+	( { string__contains_char(Verbose, 'v') } ->
+		{ AppendVarnums = yes }
+	;
+		{ AppendVarnums = no }
+	),
+
 	hlds_out__write_indent(Indent),
 	io__write_string("% Vars: "),
-	io__write_list(Vars, ", ", PrintVar),
+	mercury_output_vars(Vars, VarSet, AppendVarnums),
 	io__nl,
 
 	hlds_out__write_indent(Indent),
 	io__write_string("% Constraints: "),
-	io__write_list(Constraints, ", ",  mercury_output_constraint(VarSet)),
+	io__write_list(Constraints, ", ",
+		mercury_output_constraint(VarSet, AppendVarnums)),
 	io__nl,
 
 	hlds_out__write_indent(Indent),
@@ -2703,18 +2709,27 @@ hlds_out__write_instance_defn(Indent, InstanceDefn) -->
 		[]
 	),
 
+	globals__io_lookup_string_option(dump_hlds_options, Verbose),
+	( { string__contains_char(Verbose, 'v') } ->
+		{ AppendVarnums = yes }
+	;
+		{ AppendVarnums = no }
+	),
+
 		% curry the varset for term_io__write_variable/4
 	{ PrintTerm = lambda([TypeName::in, IO0::di, IO::uo] is det,
-			term_io__write_term(VarSet, TypeName, IO0, IO)
+			mercury_output_term(TypeName, VarSet,
+				AppendVarnums, IO0, IO)
 		) },
 	hlds_out__write_indent(Indent),
 	io__write_string("% Types: "),
 	io__write_list(Types, ", ", PrintTerm),
 	io__nl,
-
+		
 	hlds_out__write_indent(Indent),
 	io__write_string("% Constraints: "),
-	io__write_list(Constraints, ", ",  mercury_output_constraint(VarSet)),
+	io__write_list(Constraints, ", ", 
+		mercury_output_constraint(VarSet, AppendVarnums)),
 	io__nl,
 
 	hlds_out__write_indent(Indent),
@@ -2735,7 +2750,8 @@ hlds_out__write_instance_defn(Indent, InstanceDefn) -->
 		[]
 	),
 
-	hlds_out__write_constraint_proofs(Indent, VarSet, Proofs),
+	hlds_out__write_constraint_proofs(Indent,
+		VarSet, Proofs, AppendVarnums),
 	io__nl.
 
 %-----------------------------------------------------------------------------%
@@ -3004,24 +3020,26 @@ hlds_out__write_indent(Indent) -->
 
 %-----------------------------------------------------------------------------%
 :- pred hlds_out__write_constraint_proofs(int, tvarset,
-	map(class_constraint, constraint_proof), io__state, io__state).
-:- mode hlds_out__write_constraint_proofs(in, in, in, di, uo) is det.
+	map(class_constraint, constraint_proof), bool, io__state, io__state).
+:- mode hlds_out__write_constraint_proofs(in, in, in, in, di, uo) is det.
 
-hlds_out__write_constraint_proofs(Indent, VarSet, Proofs) -->
+hlds_out__write_constraint_proofs(Indent, VarSet, Proofs, AppendVarnums) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("% Proofs: \n"),
 	{ map__to_assoc_list(Proofs, ProofsList) },
 	io__write_list(ProofsList, "\n",
-		hlds_out__write_constraint_proof(Indent, VarSet)).
+		hlds_out__write_constraint_proof(Indent,
+			VarSet, AppendVarnums)).
 
-:- pred hlds_out__write_constraint_proof(int, tvarset,
+:- pred hlds_out__write_constraint_proof(int, tvarset, bool,
 	pair(class_constraint, constraint_proof), io__state, io__state).
-:- mode hlds_out__write_constraint_proof(in, in, in, di, uo) is det.
+:- mode hlds_out__write_constraint_proof(in, in, in, in, di, uo) is det.
 
-hlds_out__write_constraint_proof(Indent, VarSet, Constraint - Proof) -->
+hlds_out__write_constraint_proof(Indent, VarSet, AppendVarnums,
+		Constraint - Proof) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("% "),
-	mercury_output_constraint(VarSet, Constraint),
+	mercury_output_constraint(VarSet, AppendVarnums, Constraint),
 	io__write_string(": "),
 	(
 		{ Proof = apply_instance(Num) },
@@ -3030,7 +3048,7 @@ hlds_out__write_constraint_proof(Indent, VarSet, Constraint - Proof) -->
 	;
 		{ Proof = superclass(Super) },
 		io__write_string("super class of "),
-		mercury_output_constraint(VarSet, Super)
+		mercury_output_constraint(VarSet, AppendVarnums, Super)
 	).
 
 %-----------------------------------------------------------------------------%

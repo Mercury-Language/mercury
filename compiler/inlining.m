@@ -585,7 +585,7 @@ inlining__inlining_in_goal(bi_implication(_, _) - _, _) -->
 
 %-----------------------------------------------------------------------------%
 
-inlining__do_inline_call(_, ArgVars, PredInfo, ProcInfo, 
+inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo, 
 		VarSet0, VarSet, VarTypes0, VarTypes, TypeVarSet0, TypeVarSet, 
 		TypeInfoVarMap0, TypeInfoVarMap, Goal) :-
 
@@ -637,12 +637,6 @@ inlining__do_inline_call(_, ArgVars, PredInfo, ProcInfo,
 	map__apply_to_list(ArgVars, VarTypes0, ArgTypes),
 
 	pred_info_get_exist_quant_tvars(PredInfo, CalleeExistQVars),
-
-	% Typechecking has already succeeded, so we don't need
-	% to check for binding of head type parameters.
-	% Also, existentially-typed head type parameters
-	% may be bound by inlining.
-	HeadTypeParams = [],
 	inlining__get_type_substitution(HeadTypes, ArgTypes, HeadTypeParams,
 		CalleeExistQVars, TypeSubn),
 

@@ -3809,8 +3809,10 @@ report_unsatisfiable_constraints(TypeAssignSet, TypeCheckInfo0, TypeCheckInfo) :
 				UnprovenConstraints),
 			prog_out__write_context(Context, IO0, IO1),
 			io__write_string("  `", IO1, IO2),
+			AppendVarnums = no,
 			io__write_list(UnprovenConstraints, "', `",
-				mercury_output_constraint(VarSet), IO2, IO3),
+			    mercury_output_constraint(VarSet, AppendVarnums),
+			    IO2, IO3),
 			io__write_string("'.\n", IO3, IO)
 		)),
 
@@ -4443,13 +4445,15 @@ write_inference_message(PredInfo) -->
 	{ MaybeDet = no },
 	prog_out__write_context(Context),
 	io__write_string("Inferred "),
+	{ AppendVarNums = no },
 	(	{ PredOrFunc = predicate },
 		mercury_output_pred_type(VarSet, ExistQVars, Name, Types,
-			MaybeDet, Purity, ClassContext, Context)
+			MaybeDet, Purity, ClassContext, Context, AppendVarNums)
 	;	{ PredOrFunc = function },
 		{ pred_args_to_func_args(Types, ArgTypes, RetType) },
 		mercury_output_func_type(VarSet, ExistQVars, Name, ArgTypes,
-			RetType, MaybeDet, Purity, ClassContext, Context)
+			RetType, MaybeDet, Purity, ClassContext, Context,
+			AppendVarNums)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -5085,7 +5089,8 @@ write_type_assign_constraints(Operator, [Constraint | Constraints],
 	),
 	{ apply_rec_subst_to_constraint(TypeBindings, Constraint,
 		BoundConstraint) },
-	mercury_output_constraint(TypeVarSet, BoundConstraint),
+	{ AppendVarNums = no },
+	mercury_output_constraint(TypeVarSet, AppendVarNums, BoundConstraint),
 	write_type_assign_constraints(Operator, Constraints,
 		TypeBindings, TypeVarSet, yes).
 

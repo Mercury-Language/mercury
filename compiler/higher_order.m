@@ -2340,11 +2340,12 @@ create_new_proc(ModuleInfo, NewPred, NewProcInfo0, NewPredInfo0, NewPredInfo,
 	proc_info_argmodes(NewProcInfo0, ArgModes0),
 	pred_info_get_exist_quant_tvars(NewPredInfo0, ExistQVars0),
 	pred_info_typevarset(NewPredInfo0, TypeVarSet0),
+	pred_info_arg_types(NewPredInfo0, OriginalArgTypes0),
 
 	Caller = proc(CallerPredId, CallerProcId),
 	module_info_pred_proc_info(ModuleInfo, CallerPredId, CallerProcId,
 		CallerPredInfo, CallerProcInfo),
-	pred_info_arg_types(CallerPredInfo, CallerTypeVarSet, _, _),
+	pred_info_typevarset(CallerPredInfo, CallerTypeVarSet),
 	pred_info_get_univ_quant_tvars(CallerPredInfo, CallerHeadParams),
 	proc_info_typeinfo_varmap(CallerProcInfo, CallerTypeInfoVarMap0),
 
@@ -2354,23 +2355,34 @@ create_new_proc(ModuleInfo, NewPred, NewProcInfo0, NewPredInfo0, NewPredInfo,
 	proc_info_vartypes(NewProcInfo0, VarTypes0),
 	varset__merge_subst(CallerTypeVarSet, TypeVarSet0,
 		TypeVarSet, TypeRenaming),
-        apply_substitution_to_type_map(VarTypes0, TypeRenaming, VarTypes1),
+	apply_substitution_to_type_map(VarTypes0, TypeRenaming, VarTypes1),
+	term__apply_substitution_to_list(OriginalArgTypes0,
+		TypeRenaming, OriginalArgTypes1),
 
 	% the real set of existentially quantified variables may be
 	% smaller, but this is OK
-	map__apply_to_list(ExistQVars0, TypeRenaming, ExistQTerms),
-	term__term_list_to_var_list(ExistQTerms, ExistQVars),
+	term__var_list_to_term_list(ExistQVars0, ExistQTypes0),
+	term__apply_substitution_to_list(ExistQTypes0, TypeRenaming,
+		ExistQTypes1),
+	term__term_list_to_var_list(ExistQTypes1, ExistQVars1),
 
-        map__apply_to_list(HeadVars0, VarTypes1, HeadTypes0),
-	inlining__get_type_substitution(HeadTypes0, CallerArgTypes0,
-		CallerHeadParams, ExistQVars, TypeSubn),
+	inlining__get_type_substitution(OriginalArgTypes1, CallerArgTypes0,
+		CallerHeadParams, ExistQVars1, TypeSubn),
+
+	term__apply_rec_substitution_to_list(ExistQTypes1, TypeSubn,
+		ExistQTypes),
+	ExistQVars = list__filter_map(
+			(func(ExistQType) = ExistQVar is semidet :-
+				ExistQType = term__variable(ExistQVar)
+			), ExistQTypes),
+
+	apply_rec_substitution_to_type_map(VarTypes1, TypeSubn, VarTypes2),
+	term__apply_rec_substitution_to_list(OriginalArgTypes1, TypeSubn,
+		OriginalArgTypes),
+	proc_info_set_vartypes(NewProcInfo0, VarTypes2, NewProcInfo1),
 
 	term__var_list_to_term_list(ExtraTypeInfoTVars0,
 		ExtraTypeInfoTVarTypes0),
-
-	apply_rec_substitution_to_type_map(VarTypes1, TypeSubn, VarTypes2),
-	proc_info_set_vartypes(NewProcInfo0, VarTypes2, NewProcInfo1),
-
 	( (map__is_empty(TypeSubn) ; ExistQVars = []) ->
 		HOArgs = HOArgs0,
 		ExtraTypeInfoTVarTypes = ExtraTypeInfoTVarTypes0,
@@ -2461,21 +2473,74 @@ create_new_proc(ModuleInfo, NewPred, NewProcInfo0, NewPredInfo0, NewPredInfo,
 	proc_info_set_headvars(NewProcInfo4, HeadVars, NewProcInfo5),
 	proc_info_set_argmodes(NewProcInfo5, ArgModes, NewProcInfo6),
 
+	list__length(OriginalArgTypes, NumOriginalArgTypes),
+	( list__drop(NumOriginalArgTypes, HeadVars1, NewHeadVars0) ->
+		NewHeadVars = NewHeadVars0
+	;
+		error("higher_order__create_new_proc: list__take failed")
+	),
+
 	proc_info_vartypes(NewProcInfo6, VarTypes6),
-	map__apply_to_list(HeadVars, VarTypes6, ArgTypes),
+	map__apply_to_list(NewHeadVars, VarTypes6, NewHeadVarTypes0),
+	list__condense(
+		[ExtraTypeInfoTypes, OriginalArgTypes, NewHeadVarTypes0],
+		ArgTypes),	
 	pred_info_set_arg_types(NewPredInfo0, TypeVarSet,
 		ExistQVars, ArgTypes, NewPredInfo1),
 	pred_info_set_typevarset(NewPredInfo1, TypeVarSet, NewPredInfo2),
 
 	%
+	% The types of the headvars in the vartypes map in the
+	% proc_info may be more specific than the argument types
+	% returned by pred_info_argtypes if the procedure body
+	% binds some existentially quantified type variables.
+	% The types of the extra arguments added by
+	% construct_higher_order_terms use the substitution
+	% computed based on the result pred_info_arg_types.
+	% We may need to apply a substitution to the types of the
+	% new variables in the vartypes in the proc_info.
+	%
+	% XXX We should apply this substitution to the variable
+	% types in any callers of this predicate, which may
+	% introduce other opportunities for specialization.
+	%
+	(
+		ExistQVars = []
+	->
+		NewProcInfo7 = NewProcInfo6
+	;
+		map__apply_to_list(HeadVars0, VarTypes6, OriginalHeadTypes),
+		(
+			type_list_subsumes(OriginalArgTypes,
+				OriginalHeadTypes, ExistentialSubn)
+		->
+			term__apply_rec_substitution_to_list(NewHeadVarTypes0,
+				ExistentialSubn, NewHeadVarTypes),
+			assoc_list__from_corresponding_lists(NewHeadVars,
+				NewHeadVarTypes, NewHeadVarsAndTypes),
+			list__foldl(
+			    (pred(VarAndType::in, Map0::in, Map::out) is det :-
+				VarAndType = Var - Type,
+				map__det_update(Map0, Var, Type, Map)
+			    ),
+			    NewHeadVarsAndTypes, VarTypes6, VarTypes7),
+			proc_info_set_vartypes(NewProcInfo6,
+				VarTypes7, NewProcInfo7)
+		;
+			error(
+		"higher_order__create_new_proc: type_list_subsumes failed")
+		)
+	),
+
+	%
 	% Apply the substitutions to the types in the original
 	% typeclass_info_varmap.
 	%
-	proc_info_typeclass_info_varmap(NewProcInfo6, TCVarMap0),
+	proc_info_typeclass_info_varmap(NewProcInfo7, TCVarMap0),
 	apply_substitutions_to_typeclass_var_map(TCVarMap0, TypeRenaming,
 		TypeSubn, EmptyVarRenaming, TCVarMap),
-	proc_info_set_typeclass_info_varmap(NewProcInfo6,
-		TCVarMap, NewProcInfo7),
+	proc_info_set_typeclass_info_varmap(NewProcInfo7,
+		TCVarMap, NewProcInfo8),
 
 	%
 	% Find the new class context by searching the argument types
@@ -2488,7 +2553,7 @@ create_new_proc(ModuleInfo, NewPred, NewProcInfo0, NewPredInfo0, NewPredInfo,
 
 	map__init(NewProcs0),
 	NewPredProcId = proc(_, NewProcId),
-	map__det_insert(NewProcs0, NewProcId, NewProcInfo7, NewProcs),
+	map__det_insert(NewProcs0, NewProcId, NewProcInfo8, NewProcs),
 	pred_info_set_procedures(NewPredInfo3, NewProcs, NewPredInfo).
 
 		% Take an original list of headvars and arg_modes and
