@@ -23,6 +23,12 @@
 #	   If you want the files to be installed someplace else,
 #	   use the `--prefix <directory>' option to `configure'.
 #
+#      NOTE: If you use the `--prefix' option to configure,
+#      be aware that `mercury' is not automatically
+#      appended.  That is, `--prefix=/usr/local' will put
+#      files in /usr/local/bin, /usr/local/lib et cetera,
+#      *not* /usr/local/mercury/bin, /usr/local/mercury/lib.
+#
 #	   The output from this stage will be automatically saved in the
 #	   file `configure.log'.  Some debugging output is also saved to
 #	   the file `config.log'.
@@ -32,6 +38,14 @@
 #
 #	   The output from this stage will be automatically saved in the
 #	   file `make.log'.
+#
+#      NOTE: If you have problems installing a new version
+#      of the compiler, you may find it helpful to either
+#      completely remove any existing versions of the
+#      compiler reachable on your PATH or, less drastically,
+#      alter your PATH variable so that any existing version
+#      of the mercury compiler is not accessible for the
+#      purposes of installing the new version.
 #
 # Step 3.  Run `make install'.
 #	   This step will also take a long time.
