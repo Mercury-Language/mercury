@@ -3496,7 +3496,7 @@ make_mode_defn(VarSet0, Cond, processed_mode_body(Name, Params, ModeDefn),
 %-----------------------------------------------------------------------------%
 
 :- type maker(T1, T2) == pred(T1, T2).
-:- mode maker         :: pred(in, out) is det.
+:- mode maker == (pred(in, out) is det).
 
 :- pred parse_symlist_decl(parser(T)::parser, maker(list(T), sym_list)::maker,
 	maker(sym_list, module_defn)::maker,

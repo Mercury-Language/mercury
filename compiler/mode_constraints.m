@@ -758,7 +758,7 @@ call_out(Path, Var, C0, C, !MCI) :-
 
 :- type constrain_var == pred(prog_var, mode_constraint, mode_constraint,
 	mode_constraint_info, mode_constraint_info).
-:- inst constrain_var = (pred(in, in, out, in, out) is det).
+:- inst constrain_var == (pred(in, in, out, in, out) is det).
 
 :- pred mode_constraints__process_inst(module_info::in, inst_graph::in,
 	constrain_var::in(constrain_var), constrain_var::in(constrain_var),
