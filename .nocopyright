@@ -3,3 +3,4 @@ README.MS-Windows
 config.sub
 config.guess
 NEWS
+.mode-constraints-sync-tag
