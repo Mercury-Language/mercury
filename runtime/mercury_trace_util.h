@@ -11,6 +11,9 @@ extern	Word    MR_saved_regs[MAX_FAKE_REG];
 extern	void	MR_copy_regs_to_saved_regs(int max_mr_num);
 extern	void	MR_copy_saved_regs_to_regs(int max_mr_num);
 
+extern	Word	*MR_trace_materialize_typeinfos(const MR_Stack_Layout_Vars
+			*vars);
+
 extern	Word	MR_trace_make_var_list(const MR_Stack_Layout_Label *layout);
 extern	Word	MR_trace_lookup_live_lval(MR_Live_Lval locn, bool *succeeded);
 extern	bool	MR_trace_get_type_and_value(const MR_Stack_Layout_Var *var,

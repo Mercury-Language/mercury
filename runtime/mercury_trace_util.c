@@ -70,6 +70,38 @@ MR_copy_saved_regs_to_regs(int max_mr_num)
 	save_transient_registers();
 }
 
+Word *
+MR_trace_materialize_typeinfos(const MR_Stack_Layout_Vars *vars)
+{
+	Word	*type_params;
+	bool	succeeded;
+	int	count;
+	int	i;
+
+	if (vars->MR_slvs_tvars != NULL) {
+		count = (int) (Integer) vars->MR_slvs_tvars[0];
+		type_params = checked_malloc((count + 1) * sizeof(Word));
+
+		/*
+		** type_params should look like a typeinfo;
+		** type_params[0] is empty and will not be referred to
+		*/
+		for (i = 1; i <= count; i++) {
+			if (vars->MR_slvs_tvars[i] != 0) {
+				type_params[i] = MR_trace_lookup_live_lval(
+					vars->MR_slvs_tvars[i], &succeeded);
+				if (!succeeded) {
+					fatal_error("missing type param in MR_trace_browse");
+				}
+			}
+		}
+
+		return type_params;
+	} else {
+		return NULL;
+	}
+}
+
 Word
 MR_trace_make_var_list(const MR_Stack_Layout_Label *layout)
 {
