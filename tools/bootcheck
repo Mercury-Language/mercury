@@ -530,8 +530,9 @@ then
 			# links (hard links are OK, Cygwin's ln just makes
 			# copies).
 			$LN $root/runtime/*.cpp .
-			rm -f mercury_mcpp.h
+			rm -f mercury_mcpp.h mercury_conf*.h
 			$LN $root/runtime/mercury_mcpp.h .
+			$LN $root/runtime/mercury_conf*.h .
 			$LN $root/runtime/mercury_il.il .
 			$LN_S $root/runtime/*.in .
 			cp $root/runtime/Mmake* .
