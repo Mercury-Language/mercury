@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001 The University of Melbourne.
+% Copyright (C) 1997-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -73,7 +73,9 @@ demangle_from_asm -->
 :- pred demangle_from_c(string, string).
 :- mode demangle_from_c(in, out) is semidet.
 demangle_from_c -->
-	( demangle_proc ->
+	( demangle_proc_hl ->
+		{ true }
+	; demangle_proc_ll ->
 		{ true }
 	; demangle_data ->
 		{ true }
@@ -85,9 +87,9 @@ demangle_from_c -->
 
 /*---------------------------------------------------------------------------*/
 
-:- pred demangle_proc(string, string).
-:- mode demangle_proc(in, out) is semidet.
-demangle_proc -->
+:- pred demangle_proc_ll(string, string).
+:- mode demangle_proc_ll(in, out) is semidet.
+demangle_proc_ll -->
 	remove_prefix("mercury__"),
 
 	%
@@ -134,19 +136,7 @@ demangle_proc -->
 	% set the `category' to the appropriate value and then
 	% skip past the prefix.
 	%
-	( remove_prefix("__Unify__") ->
-		{ Category0 = unify }
-	; remove_prefix("__Compare__") ->
-		{ Category0 = compare },
-		% there should only be one mode for compare/3 preds
-		{ ModeNum0 = 0 }
-	; remove_prefix("__Index__") ->
-		{ Category0 = index },
-		% there should only be one mode for index/2 preds
-		{ ModeNum0 = 0 }
-	;	
-		{ Category0 = ordinary }
-	),
+	handle_compiler_generated_pred(ModeNum0, Category0),
 
 	%
 	% Fix any ascii codes mangled in the predicate name
@@ -154,47 +144,19 @@ demangle_proc -->
 	fix_mangled_ascii,
 
 	%
-	% Process the mangling introduced by unused_args.m.
-	% This involves stripping off the `__ua<m>' or `__uab<m>' added to 
-	% the end of the predicate/function name, where m is the mode number.
+	% Process the mangling introduced by unused_args.m
+	% and higher_order.m.
+	% This involves stripping off the `__ua<m>', `__uab<m>',
+	% and/or `__ho<n>' added to the end of the
+	% predicate/function name, where m is the mode number.
 	% 
-	(
-		remove_trailing_int(UA_ModeNum),
-		m_remove_suffix("__ua")
-	->
-		{ UnusedArgs = yes(ModeNum0 - no) },
-		{ ModeNum1 is UA_ModeNum mod 10000 }
-	;
-		remove_trailing_int(UA_ModeNum),
-		m_remove_suffix("__uab")
-	->
-		{ UnusedArgs = yes(ModeNum0 - yes) },
-		{ ModeNum1 is UA_ModeNum mod 10000 }
-	;
-		{ UnusedArgs = no },
-		{ ModeNum1 = ModeNum0 }
-	),
-		
-	%
-	% Process the mangling introduced by higher_order.m.
-	% This involves stripping off the `__ho<n>' where
-	% n is a unique identifier for this specialized version
-	%
-	(
-		remove_trailing_int(HO_Num),
-		m_remove_suffix("__ho")
-	->
-		{ HigherOrder = yes(HO_Num) }
-	;
-		{ HigherOrder = no }
-	),
-	{ ModeNum = ModeNum1 },
+	demangle_unused_args(UnusedArgs, ModeNum0, ModeNum1),
+	demangle_higher_order(HigherOrder, ModeNum1, ModeNum),
 
 	%
 	% Make sure special predicates with unused_args 
 	% are reported correctly.
 	%
-
 	( { UnusedArgs = yes(_), Category0 \= ordinary } ->
 		remove_trailing_int(Arity)
 	;
@@ -217,9 +179,251 @@ demangle_proc -->
 			"AccFrom__", "TypeSpecOf__"])
 	),
 
+	% Remove any prefixes added for introduced predicates,
+	% and get the predicate name.
+	handle_category_etc(PredName, Category0, Category),
+
 	%
-	% Now we need to look at the pred name and see if it is an
-	% introduced lambda predicate.
+	% Now, finally, we can construct the demangled symbol name
+	%
+	{ format_proc(Category, MaybeModule, PredOrFunc, PredName,
+		Arity, ModeNum, HigherOrder, UnusedArgs, MaybeInternalLabelNum,
+		Parts, []) },
+	{ string__append_list(Parts, DemangledName) },
+	dcg_set(DemangledName).
+
+:- pred demangle_proc_hl(string, string).
+:- mode demangle_proc_hl(in, out) is semidet.
+demangle_proc_hl -->
+	% Symbols in the Mercury standard library get an additional
+	% "mercury__" prefix in their mangled name.
+	maybe_remove_prefix("mercury__"),
+
+	%
+	% Get integer from end of string (it might be the mode number,
+	% it might be the internal label number).
+	%
+	remove_trailing_int(Int),
+	(
+		%
+		% if we got to another int, that means it is an internal
+		% label of the form `append_3_p_0_1'
+		% in that case, save the internal label number and then
+		% get the mode number
+		%
+		m_remove_suffix("_"),
+		remove_trailing_int(ModeNum0)
+	->
+		{ ModeNum1 = ModeNum0 },
+		{ MaybeInternalLabelNum0 = yes(Int) }
+	;
+		{ ModeNum1 = Int },
+		{ MaybeInternalLabelNum0 = no }
+	),
+
+	%
+	% Handle the "f_" or "p_" suffix which indicates whether
+	% the procedure is a function or a predicate
+	%
+	( m_remove_suffix("f_") ->
+		{ PredOrFunc = "function" },
+		{ Normal = yes }
+	; m_remove_suffix("p_") ->
+		{ PredOrFunc = "predicate" },
+		{ Normal = yes }
+	;
+		% it could be a compiler-generated unify or compare predicate
+		{ PredOrFunc = "predicate" },
+		{ Normal = no }
+	),
+
+	( 
+		%
+		% Scan back past the arity number and then parse it.
+		%
+		m_remove_suffix("_"),
+		remove_trailing_int(Arity0)
+	->
+		{ Arity = Arity0 },
+		{ ModeNum2 = ModeNum1 },
+		{ MaybeInternalLabelNum = MaybeInternalLabelNum0 }
+	;
+		% It must be a compiler-generated unify or compare.
+		% What we thought were the mode number and label number
+		% were actually the arity and mode number
+		{ Normal = no },
+		{ Arity = ModeNum1 },
+		{ yes(ModeNum2) = MaybeInternalLabelNum0 },
+		{ MaybeInternalLabelNum = no }
+	),
+	m_remove_suffix("_"),
+
+	%
+	% Process the mangling introduced by unused_args.m
+	% and higher_order.m.
+	% This involves stripping off the `__ua<m>', `__uab<m>',
+	% and/or `__ho<n>' added to the end of the
+	% predicate/function name, where m is the mode number.
+	% 
+	demangle_unused_args(UnusedArgs, ModeNum2, ModeNum3),
+	demangle_higher_order(HigherOrder, ModeNum3, ModeNum),
+
+	%
+	% Make sure special predicates with unused_args 
+	% are reported correctly.
+	%
+
+	( { UnusedArgs = yes(_), Normal = no } ->
+		remove_trailing_int(Arity)
+	;
+		{ true }
+	),
+
+	%
+	% Separate the module name from the predicate name
+	%
+	remove_maybe_module_prefix(MaybeModule0,
+		["IntroducedFrom__", "DeforestationIn__",
+		"AccFrom__", "TypeSpecOf__", "__"]),
+
+	%
+	% Check whether the start of the string matches the name of
+	% one of the special compiler-generated predicates; if so,
+	% set the `category' to the appropriate value and then
+	% skip past the prefix.  Also check that the mode number
+	% is not invalid for the specified category.
+	%
+	handle_compiler_generated_pred(ModeNum, Category0),
+	( { Category0 \= ordinary } ->
+		remove_prefix("__")
+	;
+		[]
+	),
+
+	%
+	% Check that the setting of the category matches the setting
+	% of `Normal' determined above.
+	%
+	{ Normal = yes, Category0 = ordinary
+	; Normal = no, Category0 \= ordinary
+	},
+
+	%
+	% Fix any mangled ascii codes in the predicate name.
+	%
+	% XXX This should be done *before* stripping off
+	% the mangling added by HLDS->HLDS passes such as
+	% unused_args.m and higher_order.m.
+	% (Doing it here means that we won't properly demangle
+	% names that involve both special characters and
+	% unused_args/higher_order specializations.)
+	% But for the MLDS back-end, it needs to be done *after*
+	% removing the module prefix, and currently that can't be
+	% done until after stripping off the `__ua*' and `__ho*' suffixes.
+	%
+	fix_mangled_ascii,
+
+	% 
+	% Fix any mangled ascii codes in the module name, if any.
+	% 
+	{
+		MaybeModule0 = no,
+		MaybeModule = no
+	;
+		MaybeModule0 = yes(ModuleName0),
+		fix_mangled_ascii(ModuleName0, ModuleName),
+		MaybeModule = yes(ModuleName)
+	},
+
+	% Remove any prefixes added for introduced predicates,
+	% and get the predicate name.
+	handle_category_etc(PredName, Category0, Category),
+
+	%
+	% Now, finally, we can construct the demangled symbol name
+	%
+	{ format_proc(Category, MaybeModule, PredOrFunc, PredName,
+		Arity, ModeNum, HigherOrder, UnusedArgs, MaybeInternalLabelNum,
+		Parts, []) },
+	{ string__append_list(Parts, DemangledName) },
+	dcg_set(DemangledName).
+
+
+:- pred demangle_unused_args(maybe(pair(int, bool)), int, int, string, string).
+:- mode demangle_unused_args(out, in, out, in, out) is det.
+demangle_unused_args(UnusedArgs, ModeNum0, ModeNum) -->
+	%
+	% Process the mangling introduced by unused_args.m.
+	% This involves stripping off the `__ua<m>' or `__uab<m>' added to 
+	% the end of the predicate/function name, where m is the mode number.
+	% 
+	(
+		remove_trailing_int(UA_ModeNum),
+		m_remove_suffix("__ua")
+	->
+		{ UnusedArgs = yes(ModeNum0 - no) },
+		{ ModeNum is UA_ModeNum mod 10000 }
+	;
+		remove_trailing_int(UA_ModeNum),
+		m_remove_suffix("__uab")
+	->
+		{ UnusedArgs = yes(ModeNum0 - yes) },
+		{ ModeNum is UA_ModeNum mod 10000 }
+	;
+		{ UnusedArgs = no },
+		{ ModeNum = ModeNum0 }
+	).
+
+:- pred demangle_higher_order(maybe(int), int, int, string, string).
+:- mode demangle_higher_order(out, in, out, in, out) is det.
+demangle_higher_order(HigherOrder, ModeNum0, ModeNum) -->
+	%
+	% Process the mangling introduced by higher_order.m.
+	% This involves stripping off the `__ho<n>' where
+	% n is a unique identifier for this specialized version
+	%
+	(
+		remove_trailing_int(HO_Num),
+		m_remove_suffix("__ho")
+	->
+		{ HigherOrder = yes(HO_Num) }
+	;
+		{ HigherOrder = no }
+	),
+	{ ModeNum = ModeNum0 }.
+
+	%
+	% Check whether the start of the string matches the name of
+	% one of the special compiler-generated predicates; if so,
+	% set the category to the appropriate value and then
+	% skip past the prefix.  Fails if the mode number
+	% is invalid for the specified category.
+	%
+:- pred handle_compiler_generated_pred(int, pred_category, string, string).
+:- mode handle_compiler_generated_pred(in, out, in, out) is semidet.
+handle_compiler_generated_pred(ModeNum0, Category0) -->
+	( remove_prefix("__Unify__") ->
+		{ Category0 = unify }
+	; remove_prefix("__Compare__") ->
+		{ Category0 = compare },
+		% there should only be one mode for compare/3 preds
+		{ ModeNum0 = 0 }
+	; remove_prefix("__Index__") ->
+		{ Category0 = index },
+		% there should only be one mode for index/2 preds
+		{ ModeNum0 = 0 }
+	;	
+		{ Category0 = ordinary }
+	).
+
+	% Remove any prefixes added for introduced predicates,
+	% and get the predicate name.
+:- pred handle_category_etc(string, pred_category, pred_category, string, string).
+:- mode handle_category_etc(out, in, out, in, out) is semidet.
+handle_category_etc(PredName, Category0, Category) -->
+	%
+	% we need to look at the pred name and see if it is an
+	% introduced predicate (lambda, deforestation, accumulator, etc.).
 	% XXX handle multiple prefixes
 	%
 
@@ -297,17 +501,7 @@ demangle_proc -->
 	;
 		{ Category = Category0 },
 		{ PredName = PredName0 }
-	),
-
-
-	%
-	% Now, finally, we can construct the demangled symbol name
-	%
-	{ format_proc(Category, MaybeModule, PredOrFunc, PredName,
-		Arity, ModeNum, HigherOrder, UnusedArgs, MaybeInternalLabelNum,
-		Parts, []) },
-	{ string__append_list(Parts, DemangledName) },
-	dcg_set(DemangledName).
+	).
 
 :- pred format_proc(pred_category, maybe(string), string, string, int, int,
 		maybe(int), maybe(pair(int, bool)), maybe(int), list(string),
@@ -400,12 +594,28 @@ format_proc(Category, MaybeModule, PredOrFunc, PredName, Arity, ModeNum,
 :- pred demangle_data(string, string).
 :- mode demangle_data(in, out) is semidet.
 demangle_data -->
-	remove_prefix("mercury_data_"),
+	( remove_prefix("mercury_data_") ->
+		% LLDS mangled data
+		{ HighLevel = no }
+	;
+		% MLDS mangled data
+		{ HighLevel = yes },
+		maybe_remove_prefix("mercury__")
+	),
 	remove_maybe_module_prefix(MaybeModule0,
 		["type_ctor_info_", "type_ctor_layout_",
 		"type_ctor_functors_", "common_"]),
 	{ MaybeModule0 = yes("") ->
 		MaybeModule = no
+	;
+		% for the MLDS back-end,
+		% the module qualifiers get include twice (XXX why?)
+		HighLevel = yes,
+		MaybeModule0 = yes(Twice)
+	->
+		Once = string__left(Twice, string__length(Twice) // 2),
+		Once = string__right(Twice, string__length(Twice) // 2),
+		MaybeModule = yes(Once)
 	;
 		MaybeModule = MaybeModule0
 	},
@@ -471,8 +681,8 @@ format_data(common, MaybeModule, _Name, Arity, Result) :-
 :- pred demangle_typeclass_info(string, string).
 :- mode demangle_typeclass_info(in, out) is semidet.
 demangle_typeclass_info -->
-	remove_prefix("mercury_data_"),
-	remove_prefix("__base_typeclass_info_"),
+	maybe_remove_prefix("mercury_data___"),
+	remove_prefix("base_typeclass_info_"),
 	remove_maybe_module_prefix(yes(ClassName), ["arity"]),
 	{ ClassName \= "" },
 	remove_prefix("arity"),

@@ -5,6 +5,9 @@ THIS_DIR = misc_tests
 SUBDIRS = 
 PROGS =
 TESTS = mdemangle_test-nodepend pretty_print_test-nodepend
+# XXX we do not yet pass mdemangle_test_hl
+# (util/mdemangle.c doesn't correctly demangle internal labels)
+# TESTS += mdemangle_test_hl-nodepend
 TESTS_DIR=..
 include $(TESTS_DIR)/Mmake.common
 
@@ -19,6 +22,9 @@ include Mercury.options
 mdemangle_test.out: mdemangle_test.inp
 	mdemangle < mdemangle_test.inp > mdemangle_test.out 2>&1
 
+mdemangle_test_hl.out: mdemangle_test_hl.inp
+	mdemangle < mdemangle_test_hl.inp > mdemangle_test_hl.out 2>&1
+
 pretty_print_test.out: pretty_print_test.ugly
 	cp pretty_print_test.ugly pretty_print_test.out
 
@@ -26,6 +32,9 @@ pretty_print_test.out: pretty_print_test.ugly
 
 mdemangle_test.realclean:
 	rm -f mdemangle_test.out mdemangle_test.res
+
+mdemangle_test_hl.realclean:
+	rm -f mdemangle_test_hl.out mdemangle_test_hl.res
 
 pretty_print_test.realclean:
 	rm -f pretty_print_test.ugly pretty_print_test.out

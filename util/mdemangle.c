@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** Copyright (C) 1995-2001 The University of Melbourne.
+** Copyright (C) 1995-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -32,7 +32,7 @@
 
 static void demangle(const char *name);
 static const char *strip_module_name(char **start_ptr, char *end,
-		const char *trailing_context[]);
+		const char *special_prefixes[], const char *special_suffixes[]);
 static MR_bool check_for_suffix(char *start, char *position,
 		const char *suffix, int sizeof_suffix, int *mode_num2);
 static char *fix_mangled_ascii(char *str, char **end);
@@ -43,6 +43,7 @@ static MR_bool cut_trailing_integer(char *str, char **end, int *num);
 static MR_bool cut_trailing_underscore_integer(char *str,
 		char **end, int *num);
 static MR_bool strip_prefix(char **str, const char *prefix);
+static MR_bool strip_suffix(const char *str, char **end, const char *suffix);
 static MR_bool strip_leading_integer(char **start_ptr, int *num);
 
 /*
@@ -142,17 +143,18 @@ main(int argc, char **argv)
 ** human-readable form and then print it to stdout
 */
 
-static void 
+static void
 demangle(const char *orig_name)
 {
 	static const char entry[]   = "_entry_";
 	static const char mercury[] = "mercury__";
 	static const char func_prefix[] = "fn__"; /* added for functions */
-	static const char unify[]   = "__Unify___";
-	static const char compare[] = "__Compare___";
-	static const char mindex[]  = "__Index___";
-	/* we call it `mindex' rather than `index' to
-	   avoid a naming conflict with strchr's alter ego index() */
+	static const char unify1[]   = "__Unify___";
+	static const char unify2[]   = "__Unify____";
+	static const char compare1[] = "__Compare___";
+	static const char compare2[] = "__Compare____";
+	static const char index1[]  = "__Index___";
+	static const char index2[]  = "__Index____";
 
 	static const char introduced[]  = "IntroducedFrom__";
 	static const char deforestation[]  = "DeforestationIn__";
@@ -170,7 +172,9 @@ demangle(const char *orig_name)
 	static const char type_ctor_layout[] = "type_ctor_layout_";
 	static const char type_ctor_info[] = "type_ctor_info_";
 	static const char type_ctor_functors[] = "type_ctor_functors_";
-	static const char base_typeclass_info[] = "__base_typeclass_info_";
+	static const char base_typeclass_info[] = "base_typeclass_info_";
+	static const char underscores_base_typeclass_info[] =
+						"__base_typeclass_info_";
 	static const char common[] = "common";
 	static const char arity_string[] = "arity";
 	static const char underscores_arity_string[] = "__arity";
@@ -183,8 +187,16 @@ demangle(const char *orig_name)
 		deforestation,
 		accumulator,
 		type_spec,
+		unify1, compare1, index1,
 		NULL
 	};
+	static const char * trailing_context_1_hl_suffixes[] = {
+		ua_suffix,
+		ua_suffix2,
+		ho_suffix,
+		NULL
+	};
+
 
 	static const char * trailing_context_2[] = {
 		type_ctor_layout,
@@ -207,6 +219,8 @@ demangle(const char *orig_name)
 	int mode_num;
 	int mode_num2;
 	int arity;
+	MR_bool high_level = MR_TRUE;
+	MR_bool matched = MR_FALSE;
 	const char *pred_or_func; /* either "predicate" or "function" */
 		/* does this proc have any unused arguments */
 	MR_bool unused_args = MR_FALSE;
@@ -271,25 +285,15 @@ demangle(const char *orig_name)
 	strip_prefix(&start, entry);
 
 	/*
-	** strip off the `mercury__' prefix
+	** strip off the `mercury__' prefix, if any
 	*/
-
-	if (!strip_prefix(&start, mercury)) {
-		goto not_plain_mercury;
+	if (strip_prefix(&start, mercury)) {
+		matched = MR_TRUE;
 	}
 
 /*
 ** Code for dealing with predicate symbols.
 */
-
-	/*
-	** strip off the `fn__' prefix, if any
-	*/
-	if (strip_prefix(&start, func_prefix)) {
-		pred_or_func = "function";
-	} else {
-		pred_or_func = "predicate";
-	}
 
 	/*
 	** Get integer from end of string (it might be the mode number,
@@ -298,10 +302,10 @@ demangle(const char *orig_name)
 	*/
 
 	if (!cut_trailing_integer(start, &end, &mode_num)) {
-		goto wrong_format;
+		goto not_plain_mercury;
 	}
 
-	if (end == start) goto wrong_format;
+	if (end == start) goto not_plain_mercury;
 
 	/*
 	** if we got to an `i', that means it is an internal
@@ -311,21 +315,54 @@ demangle(const char *orig_name)
 	*/
 	if (*--end == 'i') {
 		internal = mode_num;
-		if (end == start || *--end != '_') goto wrong_format;
+		if (end == start || *--end != '_') goto not_plain_mercury;
 
 		if (!cut_trailing_underscore_integer(start, &end, &mode_num)) {
-			goto wrong_format;
+			goto not_plain_mercury;
 		}
 	}
+	if (end == start) goto not_plain_mercury;
+
+	/*
+	** strip off the `fn__' prefix, if any
+	*/
+	if (strip_prefix(&start, func_prefix)) {
+		high_level = MR_FALSE;
+		pred_or_func = "function";
+	} else if (strip_suffix(start, &end, "_f")) {
+		high_level = MR_TRUE;
+		matched = MR_TRUE;
+		pred_or_func = "function";
+	} else if (strip_suffix(start, &end, "_p")) {
+		high_level = MR_TRUE;
+		matched = MR_TRUE;
+		pred_or_func = "predicate";
+	} else {
+		/*
+		** It's not a function.
+		** But it could be either an LLDS predicate,
+		** or an MLDS compiler-generated predicate.
+		*/
+		high_level = (strstr(start, unify2) ||
+		    strstr(start, compare2) ||
+		    strstr(start, index2));
+		pred_or_func = "predicate";
+	}
+
+	if (end == start) goto not_plain_mercury;
 
 	/*
 	** scan back past the arity number and then parse it
 	*/
 
 	if (!cut_trailing_underscore_integer(start, &end, &arity)) {
-		goto wrong_format;
+		goto not_plain_mercury;
 	}
 
+	if (high_level) {
+		module = strip_module_name(&start, end,
+				trailing_context_1, trailing_context_1_hl_suffixes);
+	}
 	/*
 	** Now start processing from the start of the string again.
 	** Check whether the start of the string matches the name of
@@ -334,16 +371,27 @@ demangle(const char *orig_name)
 	** skip past the prefix.
 	*/
 
-	if (strip_prefix(&start, unify)) {
+	if (strip_prefix(&start, unify1)) {
 		category = UNIFY;
-	} else if (strip_prefix(&start, compare)) {
+	} else if (strip_prefix(&start, compare1)) {
 		category = COMPARE;
-		if (mode_num != 0) goto wrong_format;
-	} else if (strip_prefix(&start, mindex)) {
+		if (mode_num != 0) goto not_plain_mercury;
+	} else if (strip_prefix(&start, index1)) {
 		category = INDEX;
-		if (mode_num != 0) goto wrong_format;
+		if (mode_num != 0) goto not_plain_mercury;
 	} else {
 		category = ORDINARY;
+		/*
+		** For ordinary predicates, we should have matched
+		** against something by now --
+		** either the "mercury__" prefix, for LLDS mangling,
+		** or the "_f" or "_p" suffix, for MLDS mangling.
+		*/
+		if (!matched) goto not_plain_mercury;
+	}
+
+	if (category != ORDINARY && start[0] == '_') {
+		start++;
 	}
 
 	/*
@@ -417,7 +465,9 @@ demangle(const char *orig_name)
 		}
 	}
 
-	module = strip_module_name(&start, end, trailing_context_1);
+	if (!high_level) {
+		module = strip_module_name(&start, end, trailing_context_1, NULL);
+	}
 
 	/*
 	** look for "IntroducedFrom" or "DeforestationIn" or "AccFrom"
@@ -607,16 +657,48 @@ demangle(const char *orig_name)
 */
 
 not_plain_mercury:
+	/*
+	** Undo any in-place modifications done while trying to demangle
+	** predicate names.
+	*/
+	strcpy(name, orig_name);
+	start = name;
+	end = name + strlen(name);
 
-	if (!strip_prefix(&start, mercury_data)) {
-		goto wrong_format;
+	/*
+	** skip any leading underscore inserted by the C compiler
+	*/
+	if (*start == '_') {
+		start++;
 	}
 
-	if (strip_prefix(&start, base_typeclass_info)) {
-		goto typeclass_info;
+	if (strip_prefix(&start, mercury_data)) {
+		/* LLDS */
+		high_level = MR_FALSE;
+		if (strip_prefix(&start, underscores_base_typeclass_info)) {
+			goto typeclass_info;
+		}
+	} else {
+		/* MLDS */
+		high_level = MR_TRUE;
+		if (strip_prefix(&start, base_typeclass_info)) {
+			goto typeclass_info;
+		}
+		strip_prefix(&start, mercury);
 	}
 
-	module = strip_module_name(&start, end, trailing_context_2);
+	module = strip_module_name(&start, end, trailing_context_2, NULL);
+	if (high_level) {
+		/*
+		** For MLDS, the module name gets duplicated (XXX why?)
+		** So here we must replace `foo:foo' with just `foo'.
+		*/
+		size_t half_len = strlen(module) / 2;
+		if (strncmp(module, module + half_len + 1, half_len) != 0) {
+			goto wrong_format;
+		}
+		module += half_len + 1;
+	}
 
 	if (strip_prefix(&start, type_ctor_info)) {
 		data_category = INFO;
@@ -690,7 +772,7 @@ typeclass_info:
 	** layout:
 	**	<module-qualified class name>__arity<arity>__
 	*/
-	class_name = strip_module_name(&start, end, trailing_context_3);
+	class_name = strip_module_name(&start, end, trailing_context_3, NULL);
 	/* XXX fix_mangled_ascii() */
 	if (!(strip_prefix(&start, arity_string)
 		&& strip_leading_integer(&start, &class_arity)
@@ -713,7 +795,7 @@ typeclass_info:
 		if (class_arg_num != 0) {
 			strcat(class_arg_buf, ", ");
 		}
-		class_arg = strip_module_name(&start, end, trailing_context_3);
+		class_arg = strip_module_name(&start, end, trailing_context_3, NULL);
 		if (!(strip_prefix(&start, arity_string)
 		      && strip_leading_integer(&start, &arity)
 		      && strip_prefix(&start, "__")))
@@ -744,7 +826,8 @@ wrong_format:
 	** left.
 	*/
 static const char *
-strip_module_name(char **start_ptr, char *end, const char *trailing_context[])
+strip_module_name(char **start_ptr, char *end,
+		const char *special_prefixes[], const char *special_suffixes[])
 {
 	const char *module;		/* module name */
 	char *module_end;		/* end of the module name */
@@ -765,10 +848,18 @@ strip_module_name(char **start_ptr, char *end, const char *trailing_context[])
 		** Check for special cases
 		*/
 		MR_bool stop = MR_FALSE;
-		for (i = 0; trailing_context[i] != NULL; i++) {
+		for (i = 0; special_prefixes[i] != NULL; i++) {
 			if (strncmp(start,
-				trailing_context[i],
-				strlen(trailing_context[i])) == 0)
+				special_prefixes[i],
+				strlen(special_prefixes[i])) == 0)
+			{
+				stop = MR_TRUE;
+			}
+		}
+		for (i = 0; special_suffixes != NULL && special_suffixes[i] != NULL; i++) {
+			if (strncmp(next_double_underscore,
+				special_suffixes[i],
+				strlen(special_suffixes[i])) == 0)
 			{
 				stop = MR_TRUE;
 			}
@@ -800,11 +891,10 @@ strip_module_name(char **start_ptr, char *end, const char *trailing_context[])
 }
 
 	/*
-	** Remove the prefix from a string, if it has 
-	** it. 
-	** Returns MR_TRUE if it has that prefix, and newstr will
-	** then point to the rest of that string.
-	** If the string doesn't have that prefix, newstr will
+	** Remove the prefix from a string, if it has it. 
+	** Returns MR_TRUE if the string has that prefix, and
+	** *str will then point to the rest of that string.
+	** If the string doesn't have that prefix, *str will
 	** be unchanged, and the function will return MR_FALSE.
 	*/
 static MR_bool 
@@ -816,6 +906,26 @@ strip_prefix(char **str, const char *prefix)
 
 	if (strncmp(*str, prefix, len) == 0) {
 		*str += len;
+		return MR_TRUE;
+	}
+	return MR_FALSE;
+}
+
+	/*
+	** Remove the suffix from a string, if it has it. 
+	** Returns MR_TRUE if the string between start and *end
+	** has the specified suffix, and sets *end to point to
+	** the beginning of the suffix.
+	*/
+static MR_bool 
+strip_suffix(const char *start, char **end, const char *suffix) 
+{
+	int len;
+
+	len = strlen(suffix);
+
+	if (*end - start >= len && strncmp(*end - len, suffix, len) == 0) {
+		*end -= len;
 		return MR_TRUE;
 	}
 	return MR_FALSE;
