@@ -3,21 +3,22 @@ mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> 
-?                    excp                 r
-P                    f                    register
-alias                finish               retry
-all_class_decls      flag                 return
-all_procedures       forward              s
-all_regs             g                    save
-all_type_ctors       gen_stack            save_to_file
-b                    goal_paths           scope
-break                goto                 scroll
-break_print          h                    set
-browse               help                 source
-c                    histogram_all        stack
-cc_query             histogram_exp        stack_default_limit
-class_decl           ignore               stack_regs
-clear_histogram      io_query             step
+?                    exception            quit
+P                    excp                 r
+alias                f                    register
+all_class_decls      finish               retry
+all_procedures       flag                 return
+all_regs             forward              s
+all_type_ctors       g                    save
+b                    gen_stack            save_to_file
+break                goal_paths           scope
+break_print          goto                 scroll
+browse               h                    set
+c                    help                 source
+cc_query             histogram_all        stack
+class_decl           histogram_exp        stack_default_limit
+clear_histogram      ignore               stack_regs
+condition            io_query             step
 consumer             label_stats          subgoal
 context              level                table
 continue             maxdepth             table_io
@@ -35,7 +36,6 @@ down                 printlevel           var_name_stats
 e                    proc_stats           vars
 echo                 procedures           view
 enable               query                
-exception            quit                 
 h              help           histogram_all  histogram_exp  
 var_details     var_name_stats  vars            view
 var_details     var_name_stats  vars            

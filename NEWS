@@ -54,10 +54,12 @@ Portability improvements:
 * Shared libraries now work on Mac OS X.
 
 Changes to the Mercury debugger:
-* Users can now limit the output from stack traces.
-* Users can now put breakpoints on unify and compare predicates.
 * Users can now arrange to have the goal and/or some variables printed
   every time execution arrives at a breakpoint.
+* Users can now arrange to associate a condition with a breakpoint.
+  Execution won't stop at the breakpoint if the condition is false.
+* Users can now limit the output from stack traces.
+* Users can now put breakpoints on unify and compare predicates.
 * Users can now save runtime values to files.
 * Users can now tell the declarative debugger to trust entire modules or 
   individual predicates or functions.

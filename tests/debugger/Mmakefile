@@ -20,6 +20,7 @@ NONRETRY_PROGS = \
 	browse_pretty			\
 	class_decl			\
 	cmd_quote			\
+	cond				\
 	debugger_regs			\
 	exception_cmd			\
 	exception_value			\
@@ -245,6 +246,9 @@ class_decl.out: class_decl class_decl.inp
 cmd_quote.out: cmd_quote cmd_quote.inp
 	$(MDB) ./cmd_quote < cmd_quote.inp 2>&1 | \
 		sed 's/io.m:[0-9]*/io.m:NNNN/g' > cmd_quote.out 2>&1
+
+cond.out: cond cond.inp
+	$(MDB) ./cond < cond.inp 2>&1 > cond.out 2>&1
 
 # Set up readline to make it easier to use completion non-interactively.
 completion.out: completion completion.inp

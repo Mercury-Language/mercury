@@ -3022,8 +3022,47 @@ the ignore count is zero, and the print list is empty.
 @item break info
 Lists the details, status and print lists of all break points.
 @sp 1
-@item ignore [-E@var{ignore-count}] [-I@var{ignore-count}] @var{num}
+@item condition [-n@var{break-num}] [-p] [-v] @var{varname}[@var{pathspec}] @var{op} @var{term}
+@kindex condition (mdb command)
+Attaches a condition to the most recent breakpoint,
+or, if the @samp{-n} or @samp{--break-num} is given,
+to the breakpoint whose number is given as the argument.
+Execution won't stop at the breakpoint if the condition is false.
 @sp 1
+The condition is a match between a variable live at the breakpoint,
+or a part thereof, and @var{term}.
+It is ok for @var{term} to contain spaces.
+The term from the program to be matched
+is specified by @var{varname};
+if it is followed by @var{pathspec} (without a space),
+it specifies that the match is to be
+against the specified part of @var{varname}.
+@sp 1
+There are two kinds of values allowed for @var{op}.
+If @var{op} is @samp{=} or @samp{==}, the condition is true
+if the term specified by @var{varname} (and @var{pathspec}, if present)
+matches @var{term}.
+If @var{op} is @samp{!=} or @samp{\\=}, the condition is true
+if the term specified by @var{varname} (and @var{pathspec}, if present)
+doesn't match @var{term}.
+@var{term} may contain integers and strings
+(as long as the strings don't contain double quotes),
+but floats and characters aren't supported (yet),
+and neither is any special syntax for lists, operators, etc.
+@var{term} also may not contain variables, with one exception:
+any occurrence of @samp{_} in @var{term} matches any term.
+@sp 1
+If execution reaches a breakpoint and the condition cannot be evaluated,
+execution will normally stop at that breakpoint with a message to that effect.
+If the @samp{-p} or @samp{--dont-require-path} option is given,
+execution won't stop at breakpoints at which
+the specified part of the specified variable doesn't exist.
+If the @samp{-v} or @samp{--dont-require-var} option is given,
+execution won't stop at breakpoints at which
+the specified variable itself doesn't exist.
+@sp 1
+@item ignore [-E@var{ignore-count}] [-I@var{ignore-count}] @var{num}
+@kindex ignore (mdb command)
 The options @samp{-E@var{ignore-count}}
 and @samp{--ignore-entry @var{ignore-count}}
 tell the debugger to ignore the breakpoint
@@ -3040,7 +3079,6 @@ that matches the breakpoint with the specified number.
 Reports an error if there is no break point with the specified number.
 @sp 1
 @item ignore [-E@var{ignore-count}] [-I@var{ignore-count}]
-@sp 1
 The options @samp{-E@var{ignore-count}}
 and @samp{--ignore-entry @var{ignore-count}}
 tell the debugger to ignore the breakpoint
@@ -3057,7 +3095,7 @@ that matches the most recently added breakpoint.
 Reports an error if the most recently added breakpoint has since been deleted.
 @sp 1
 @item break_print [-fpv] [-e] [-n] @var{num} @var{print-spec}*
-@sp 1
+@kindex break_print (mdb command)
 Adds the specified print list elements (there may be more than one)
 to the print list of the breakpoint numbered @var{num}.
 @sp 1

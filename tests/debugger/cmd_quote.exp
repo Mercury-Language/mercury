@@ -39,5 +39,5 @@ Unknown command `   .'. Give the command `help' for help.
 mdb> '\ \\\''
 Unknown command ` \''. Give the command `help' for help.
 mdb> '
-> unmatched quote.
+> unmatched single quote.
 mdb> mdb: are you sure you want to quit? 

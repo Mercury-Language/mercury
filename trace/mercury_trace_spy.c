@@ -16,11 +16,16 @@
 
 #include "mercury_imp.h"
 #include "mercury_array_macros.h"
+#include "mercury_layout_util.h"
 #include "mercury_trace_base.h"
 
 #include "mercury_trace.h"
 #include "mercury_trace_spy.h"
 #include "mercury_trace_tables.h"
+#include "mercury_trace_util.h"
+#include "mercury_trace_vars.h"
+
+#include "mdb.cterm.mh"
 
 #include <stdlib.h>
 
@@ -101,6 +106,8 @@ static  int         MR_compare_addr(const void *address1,
                         const void *address2);
 static  int         MR_search_spy_table_for_proc(const MR_Proc_Layout *entry);
 static  int         MR_search_spy_table_for_label(
+                        const MR_Label_Layout *label);
+static  MR_bool     MR_spy_cond_is_true(MR_Spy_Point *point,
                         const MR_Label_Layout *label);
 static  void        MR_add_line_spy_point_callback(
                         const MR_Label_Layout *label, int spy_point_num);
@@ -202,9 +209,11 @@ MR_event_matches_spy_point(const MR_Label_Layout *layout,
                 MR_fatal_error("non-lineno spy point in spied labels array");
             }
 
-            MR_update_enabled_action(point, port, &action, &enabled);
-            if (*print_list == NULL) {
-                *print_list = point->spy_print_list;
+            if (MR_spy_cond_is_true(point, layout)) {
+                MR_update_enabled_action(point, port, &action, &enabled);
+                if (*print_list == NULL) {
+                    *print_list = point->spy_print_list;
+                }
             }
         }
 
@@ -223,9 +232,11 @@ MR_event_matches_spy_point(const MR_Label_Layout *layout,
                         "spied labels array");
                 }
 
-                MR_update_enabled_action(point, port, &action, &enabled);
-                if (*print_list == NULL) {
-                    *print_list = point->spy_print_list;
+                if (MR_spy_cond_is_true(point, layout)) {
+                    MR_update_enabled_action(point, port, &action, &enabled);
+                    if (*print_list == NULL) {
+                        *print_list = point->spy_print_list;
+                    }
                 }
             }
         }
@@ -239,18 +250,23 @@ MR_event_matches_spy_point(const MR_Label_Layout *layout,
             switch (point->spy_when) {
 
                 case MR_SPY_ALL:
-                    MR_update_enabled_action(point, port, &action, &enabled);
-                    if (*print_list == NULL) {
-                        *print_list = point->spy_print_list;
-                    }
-                break;
-
-                case MR_SPY_ENTRY:
-                    if (MR_port_is_entry(port)) {
+                    if (MR_spy_cond_is_true(point, layout)) {
                         MR_update_enabled_action(point, port, &action,
                             &enabled);
                         if (*print_list == NULL) {
                             *print_list = point->spy_print_list;
+                        }
+                    }
+                    break;
+
+                case MR_SPY_ENTRY:
+                    if (MR_port_is_entry(port)) {
+                        if (MR_spy_cond_is_true(point, layout)) {
+                            MR_update_enabled_action(point, port, &action,
+                                &enabled);
+                            if (*print_list == NULL) {
+                                *print_list = point->spy_print_list;
+                            }
                         }
                     } else {
                         continue;
@@ -260,10 +276,12 @@ MR_event_matches_spy_point(const MR_Label_Layout *layout,
 
                 case MR_SPY_INTERFACE:
                     if (MR_port_is_interface(port)) {
-                        MR_update_enabled_action(point, port, &action,
-                            &enabled);
-                        if (*print_list == NULL) {
-                            *print_list = point->spy_print_list;
+                        if (MR_spy_cond_is_true(point, layout)) {
+                            MR_update_enabled_action(point, port, &action,
+                                &enabled);
+                            if (*print_list == NULL) {
+                                *print_list = point->spy_print_list;
+                            }
                         }
                     } else {
                         continue;
@@ -273,10 +291,12 @@ MR_event_matches_spy_point(const MR_Label_Layout *layout,
 
                 case MR_SPY_SPECIFIC:
                     if (layout == point->spy_label) {
-                        MR_update_enabled_action(point, port, &action,
-                            &enabled);
-                        if (*print_list == NULL) {
-                            *print_list = point->spy_print_list;
+                        if (MR_spy_cond_is_true(point, layout)) {
+                            MR_update_enabled_action(point, port, &action,
+                                &enabled);
+                            if (*print_list == NULL) {
+                                *print_list = point->spy_print_list;
+                            }
                         }
                     } else {
                         continue;
@@ -338,6 +358,131 @@ MR_update_enabled_action(MR_Spy_Point *point, MR_Trace_Port port,
     }
 }
 
+const char  *MR_spy_point_cond_problem = NULL;
+MR_Spy_Cond *MR_spy_point_cond_bad = NULL;
+
+static MR_bool
+MR_spy_cond_is_true(MR_Spy_Point *point, const MR_Label_Layout *label_layout)
+{
+    int             max_mr_num;
+    MR_Word         saved_regs[MR_MAX_FAKE_REG];
+    MR_Var_Spec     var_spec;
+    char            *path;
+    const char      *problem;
+    char            *bad_path;
+    MR_TypeInfo     type_info;
+    MR_Word         value;
+    MR_Word         *value_ptr;
+    MR_TypeInfo     sub_type_info;
+    MR_Word         *sub_value_ptr;
+    MR_Word         match;
+    MR_bool         saved_trace_func_enabled;
+    MR_bool         retval;
+    MR_Spy_Cond     *cond;
+
+    if (point->spy_cond == NULL) {
+        return MR_TRUE;
+    }
+
+    MR_restore_transient_registers();
+
+    cond = point->spy_cond;
+
+    /*
+    ** From this point, returning should be done by setting both
+    ** MR_spy_point_cond_problem and retval, and goto end.
+    */
+
+    MR_spy_point_cond_bad = cond;
+    MR_spy_point_cond_problem = "internal error in MR_spy_cond_is_true";
+    retval = MR_TRUE;
+
+    MR_compute_max_mr_num(max_mr_num, label_layout);
+    /* This also saves the regs in MR_fake_regs. */
+    MR_copy_regs_to_saved_regs(max_mr_num, saved_regs);
+    MR_trace_init_point_vars(label_layout, saved_regs,
+        (MR_Trace_Port) label_layout->MR_sll_port, MR_FALSE);
+
+    problem = MR_lookup_unambiguous_var_spec(cond->cond_var_spec,
+        &type_info, &value);
+    if (problem != NULL) {
+        if (cond->cond_require_var) {
+            MR_spy_point_cond_problem = problem;
+            retval = MR_TRUE;
+        } else {
+            MR_spy_point_cond_problem = NULL;
+            retval = MR_FALSE;
+        }
+
+        goto end;
+    }
+
+    value_ptr = &value;
+    bad_path = MR_select_specified_subterm(cond->cond_path,
+        type_info, value_ptr, &sub_type_info, &sub_value_ptr);
+
+    if (bad_path != NULL) {
+        if (cond->cond_require_var) {
+            MR_spy_point_cond_problem = MR_trace_bad_path(bad_path);
+            retval = MR_TRUE;
+        } else {
+            MR_spy_point_cond_problem = NULL;
+            retval = MR_FALSE;
+        }
+        goto end;
+    }
+
+#ifdef MR_DEBUG_SPY_COND
+    MR_print_cterm(stdout, cond->cond_term);
+    fprintf(stdout, ": ");
+#endif
+
+    saved_trace_func_enabled = MR_trace_func_enabled;
+    MR_trace_func_enabled = MR_FALSE;
+    MR_TRACE_CALL_MERCURY(
+        ML_BROWSE_match_with_cterm((MR_Word) sub_type_info, *sub_value_ptr,
+            cond->cond_term, &match);
+    );
+    MR_trace_func_enabled = saved_trace_func_enabled;
+
+#ifdef MR_DEBUG_SPY_COND
+    fprintf(stdout, "%d\n", match);
+#endif
+
+    switch (cond->cond_test) {
+        case MR_SPY_TEST_EQUAL:
+            MR_spy_point_cond_problem = NULL;
+            if (match != 0) {
+                retval = MR_TRUE;
+                goto end;
+            } else {
+                retval = MR_FALSE;
+                goto end;
+            }
+            break;
+
+        case MR_SPY_TEST_NOT_EQUAL:
+            MR_spy_point_cond_problem = NULL;
+            if (match != 0) {
+                retval = MR_FALSE;
+                goto end;
+            } else {
+                retval = MR_TRUE;
+                goto end;
+            }
+            break;
+
+        default:
+            MR_fatal_error("MR_spy_cond_is_true: invalid spy_cond_test");
+            break;
+    }
+
+end:
+    MR_copy_saved_regs_to_regs(max_mr_num, saved_regs);
+    MR_save_transient_registers();
+    return retval;
+}
+
 static const char *incompatible =
     "Ignore count is not compatible with break point specification";
 
@@ -373,6 +518,7 @@ MR_add_proc_spy_point(MR_Spy_When when, MR_Spy_Action action,
     point->spy_action  = action;
     point->spy_ignore_when  = ignore_when;
     point->spy_ignore_count = ignore_count;
+    point->spy_cond    = NULL;
     point->spy_print_list   = print_list;
     point->spy_proc    = entry;
     point->spy_label   = label;
@@ -381,6 +527,7 @@ MR_add_proc_spy_point(MR_Spy_When when, MR_Spy_Action action,
 
     for (i = 0; i < MR_spy_point_next; i++) {
         if (! MR_spy_points[i]->spy_exists) {
+            MR_most_recent_spy_point = i;
             MR_spy_points[i] = point;
             return i;
         }
@@ -452,7 +599,7 @@ MR_add_line_spy_point(MR_Spy_Action action, MR_Spy_Ignore_When ignore_when,
     ** We must make the table sorted again.
     */
 
-    qsort(MR_spied_labels, MR_spied_label_next, sizeof(MR_Spied_Label), 
+    qsort(MR_spied_labels, MR_spied_label_next, sizeof(MR_Spied_Label),
         MR_compare_spied_labels);
 
     point = MR_NEW(MR_Spy_Point);
@@ -462,6 +609,7 @@ MR_add_line_spy_point(MR_Spy_Action action, MR_Spy_Ignore_When ignore_when,
     point->spy_action     = action;
     point->spy_ignore_when  = ignore_when;
     point->spy_ignore_count = ignore_count;
+    point->spy_cond       = NULL;
     point->spy_print_list = print_list;
     point->spy_filename   = filename;
     point->spy_linenumber = linenumber;
@@ -604,7 +752,25 @@ MR_delete_spy_point(int point_table_slot)
         MR_most_recent_spy_point = -1;
     }
 
+    if (! MR_spy_points[point_table_slot]->spy_exists) {
+        return;
+    }
+
+    MR_spy_points[point_table_slot]->spy_exists = MR_FALSE;
+
     MR_delete_spy_print_list(point->spy_print_list);
+    /* in case it gets deleted again */
+    point->spy_print_list = NULL;
+
+    if (point->spy_cond != NULL) {
+        MR_delete_cterm(point->spy_cond->cond_term);
+        MR_free(point->spy_cond->cond_what_string);
+        MR_free(point->spy_cond->cond_term_string);
+        MR_free(point->spy_cond);
+
+        /* in case it gets deleted again */
+        point->spy_cond = NULL;
+    }
 
     if (point->spy_when == MR_SPY_LINENO) {
         /* Release the storage acquired by MR_copy_string. */
@@ -656,6 +822,7 @@ void
 MR_print_spy_point(FILE *fp, int spy_point_num, MR_bool verbose)
 {
     MR_Spy_Point    *point;
+    MR_Spy_Cond     *cond;
 
     point = MR_spy_points[spy_point_num];
     fprintf(fp, "%2d: %1s %-5s %9s ",
@@ -679,6 +846,23 @@ MR_print_spy_point(FILE *fp, int spy_point_num, MR_bool verbose)
         fprintf(fp, "\n%12s(ignore next %s event)\n",
             "", MR_ignore_when_to_string(point->spy_ignore_when));
     } else {
+        fprintf(fp, "\n");
+    }
+
+    if (point->spy_cond != NULL) {
+        cond = point->spy_cond;
+
+        fprintf(fp, "%12s", "");
+
+        if (! cond->cond_require_var) {
+            fprintf(fp, "-v ");
+        }
+
+        if (! cond->cond_require_path) {
+            fprintf(fp, "-p ");
+        }
+
+        MR_print_spy_cond(fp, cond);
         fprintf(fp, "\n");
     }
 
@@ -748,6 +932,44 @@ MR_print_spy_point(FILE *fp, int spy_point_num, MR_bool verbose)
             }
         }
     }
+}
+
+void
+MR_print_spy_cond(FILE *fp, MR_Spy_Cond *cond)
+{
+    switch (cond->cond_var_spec.MR_var_spec_kind) {
+        case MR_VAR_SPEC_NUMBER:
+            fprintf(fp, "%d", cond->cond_var_spec.MR_var_spec_number);
+            break;
+
+        case MR_VAR_SPEC_NAME:
+            fprintf(fp, "%s", cond->cond_var_spec.MR_var_spec_name);
+            break;
+
+        default:
+            MR_fatal_error("MR_print_spy_point: invalid cond_what");
+            break;
+    }
+
+    if (cond->cond_path != NULL) {
+        fprintf(fp, " ^%s", cond->cond_path);
+    }
+
+    switch (cond->cond_test) {
+        case MR_SPY_TEST_EQUAL:
+            fprintf(fp, " = ");
+            break;
+
+        case MR_SPY_TEST_NOT_EQUAL:
+            fprintf(fp, " != ");
+            break;
+
+        default:
+            MR_fatal_error("MR_print_spy_point: invalid cond_test");
+            break;
+    }
+
+    MR_print_cterm(fp, cond->cond_term);
 }
 
 static const char *

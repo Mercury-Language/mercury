@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2004 The University of Melbourne.
+** Copyright (C) 1999-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -30,9 +30,10 @@
 ** in the third set.
 **
 ** The functions MR_trace_var_count, MR_trace_list_vars,
-** MR_trace_return_var_info, MR_trace_headvar_num, MR_trace_parse_browse_one,
-** MR_trace_browse_one and MR_trace_browse_all all work in the context
-** established by MR_trace_init_point_vars and possibly MR_trace_set_level.
+** MR_trace_return_var_info, MR_trace_headvar_num, MR_trace_parse_var_path,
+** MR_trace_parse_browse_one, MR_trace_browse_one and MR_trace_browse_all
+** all work in the context established by MR_trace_init_point_vars and
+** possibly MR_trace_set_level.
 **
 ** This context may say that there is no information available about
 ** the variables live at the current location (this is possible if the
@@ -181,8 +182,19 @@ extern	const char	*MR_trace_browse_action(FILE *out, int action_number,
 				MR_Browse_Format format);
 
 /*
+** Parse the given word into a variable specification and the specification
+** of a path within that variable. The variable is specified by either its name
+** or its sequence number in the set of live variables at the current point;
+** the desired part is specified by zero or more suffixes of the form
+** ^argnum or /argnum.
+*/
+
+extern	const char	*MR_trace_parse_var_path(char *word_spec,
+				MR_Var_Spec *var_spec, char **path);
+
+/*
 ** Print the (names and) values of (the specified parts of) the specified
-** variables. (The variable is specified by either its name or its sequence
+** variable. (The variable is specified by either its name or its sequence
 ** number in the set of live variables at the current point; the desired part
 ** is specified by zero or more suffixes of the form ^argnum or /argnum.
 **
@@ -230,6 +242,7 @@ extern	const char	*MR_trace_browse_one(FILE *out, MR_bool print_var_name,
 extern	const char 	*MR_trace_browse_all(FILE *out, MR_Browser browser,
 				MR_Browse_Format format);
 
+
 /*
 ** Sets the current set of variables to be ones live at the program point
 ** referred to by level_layout, base_sp and base_curfr arguments, and then
@@ -242,6 +255,33 @@ extern	const char	*MR_trace_browse_all_on_level(FILE *out,
 				const MR_Label_Layout *level_layout,
 				MR_Word *base_sp, MR_Word *base_curfr,
 				int ancestor_level, MR_bool print_optionals);
+
+/*
+** If the given variable specification is unambiguous, then set *value to
+** the value of the specified variable, and set *type_info to its type.
+*/
+
+extern	const char	*MR_lookup_unambiguous_var_spec(MR_Var_Spec var_spec,
+				MR_TypeInfo *type_info, MR_Word *value);
+
+/*
+** *value and type_info describe a term, and path specifies a subterm of that
+** term. If the path is valid, return NULL and put the specified subterm in
+** *sub_value and **sub_type_info. If it is not valid, return the invalid part
+** of the path specification. This can be turned into an error message with
+** MR_trace_bad_path.
+*/
+
+extern	char		*MR_select_specified_subterm(char *path,
+				MR_TypeInfo type_info, MR_Word *value,
+				MR_TypeInfo *sub_type_info,
+				MR_Word **sub_value);
+
+/*
+** Given an invalid path specification, return an error message for that error.
+*/
+
+extern	const char	*MR_trace_bad_path(const char *path); 
 
 /*
 ** Print the size of the specified variable(s) to the specified file.
