@@ -43,6 +43,7 @@
 %	word 6		<string name of type>
 %			e.g. "int" for `int', "list" for `list(T)',
 %			"map" for `map(K,V)'
+%	word 7		<string name of module>
 %
 % The other cell is the new type_info structure, laid out like this:
 %
@@ -128,6 +129,7 @@
 %			'__Compare__'<list/1>,
 %			<base_type_layout for list/1>,
 %			<base_type_functors for list/1>,
+%			"list",
 %			"list"),
 %		TypeInfoT2 = type_info(
 %			BaseTypeInfoT2,
@@ -140,7 +142,8 @@
 %			builtin_compare_int,
 %			<base_type_layout for int/0>,
 %			<base_type_functors for int/0>,
-%			"int"),
+%			"int",
+%			"mercury_builtin"),
 %		r(TypeInfoT3, 0).
 %
 % Note that base_type_infos are actually generated as references to a
