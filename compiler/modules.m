@@ -5961,6 +5961,7 @@ include_in_short_interface(type_defn(_, _, _, _, _)).
 include_in_short_interface(inst_defn(_, _, _, _, _)).
 include_in_short_interface(mode_defn(_, _, _, _, _)).
 include_in_short_interface(module_defn(_, _)).
+include_in_short_interface(instance(_, _, _, _, _, _)).
 
 :- pred make_abstract_defn(item, short_interface_kind, item).
 :- mode make_abstract_defn(in, in, out) is semidet.
@@ -5984,6 +5985,8 @@ make_abstract_defn(type_defn(VarSet, Name, Args, TypeDefn, Cond),
 		% types only for the `.int3' files.
 		ShortInterfaceKind = int3
 	).
+make_abstract_defn(instance(_, _, _, _, _, _) @ Item0, int2, Item) :-
+	make_abstract_instance(Item0, Item).
 make_abstract_defn(typeclass(A, B, C, _, E), _,
 		typeclass(A, B, C, abstract, E)).
 

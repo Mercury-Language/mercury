@@ -162,6 +162,7 @@ OTHER_SOURCES= \
 	switches.m \
 	tabled_io.m \
 	tabled_for_io.m \
+	transitive_instance.m \
 	tricky_assert2.m \
 	tricky_ite.m \
 	two_pragma_c_codes.m \
