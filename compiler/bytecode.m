@@ -19,7 +19,8 @@
 
 :- type byte_tree	==	tree(list(byte_code)).
 
-:- type byte_code	--->	enter_pred(byte_pred_id, int)
+:- type byte_code	--->	enter_pred(byte_pred_id, int, 
+					byte_pred_or_func, int)
 			;	endof_pred
 			;	enter_proc(byte_proc_id, determinism,
 					int, int, list(byte_var_info))
@@ -109,6 +110,7 @@
 :- type byte_label_id	==	int.
 :- type byte_var	==	int.
 :- type byte_temp	==	int.
+:- type byte_pred_or_func ==	int.
 
 :- pred output_bytecode_file(string::in, list(byte_code)::in,
 	io__state::di, io__state::uo) is det.
@@ -191,8 +193,10 @@ debug_bytecode_list([ByteCode | ByteCodes]) -->
 :- pred output_args(byte_code, io__state, io__state).
 :- mode output_args(in, di, uo) is det.
 
-output_args(enter_pred(PredId, ProcCount)) -->
+output_args(enter_pred(PredId, PredArity, IsFunc, ProcCount)) -->
 	output_pred_id(PredId),
+	output_length(PredArity),
+	output_byte(IsFunc),
 	output_length(ProcCount).
 output_args(endof_pred) --> [].
 output_args(enter_proc(ProcId, Detism, LabelCount, TempCount, Vars)) -->
@@ -310,8 +314,15 @@ output_args(not_supported) --> [].
 :- pred debug_args(byte_code, io__state, io__state).
 :- mode debug_args(in, di, uo) is det.
 
-debug_args(enter_pred(PredId, ProcsCount)) -->
+debug_args(enter_pred(PredId, PredArity, IsFunc, ProcsCount)) -->
 	debug_pred_id(PredId),
+	debug_length(PredArity),
+	(
+		{ IsFunc = 0 } ->
+			debug_string("pred")
+		;
+			debug_string("func")
+	),
 	debug_length(ProcsCount).
 debug_args(endof_pred) --> [].
 debug_args(enter_proc(ProcId, Detism, LabelCount, TempCount, Vars)) -->
@@ -835,7 +846,7 @@ debug_unop(Unop) -->
 :- pred byte_code(byte_code, int).
 :- mode byte_code(in, out) is det.
 
-byte_code(enter_pred(_, _),			 0).
+byte_code(enter_pred(_, _, _, _),		 0).
 byte_code(endof_pred,				 1).
 byte_code(enter_proc(_, _, _, _, _),		 2).
 byte_code(endof_proc,				 3).
@@ -879,7 +890,7 @@ byte_code(not_supported,			39).
 :- pred byte_debug(byte_code, string).
 :- mode byte_debug(in, out) is det.
 
-byte_debug(enter_pred(_, _),			"enter_pred").
+byte_debug(enter_pred(_, _, _, _),		"enter_pred").
 byte_debug(endof_pred,				"endof_pred").
 byte_debug(enter_proc(_, _, _, _, _),		"enter_proc").
 byte_debug(endof_proc,				"endof_proc").

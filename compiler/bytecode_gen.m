@@ -52,7 +52,17 @@ bytecode_gen__preds([PredId | PredIds], ModuleInfo, Code) -->
 			ProcsCode),
 		{ predicate_name(ModuleInfo, PredId, PredName) },
 		{ list__length(ProcIds, ProcsCount) },
-		{ EnterCode = node([enter_pred(PredName, ProcsCount)]) },
+		{ pred_info_arity(PredInfo, Arity) },
+		{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+		{ 
+			(PredOrFunc = predicate ->
+				IsFunc = 0
+			;
+				IsFunc = 1
+			)
+		},
+		{ EnterCode = node([enter_pred(PredName, Arity, IsFunc,
+			ProcsCount)]) },
 		{ EndofCode = node([endof_pred]) },
 		{ PredCode = tree(EnterCode, tree(ProcsCode, EndofCode)) }
 	),
