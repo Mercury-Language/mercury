@@ -229,6 +229,22 @@
 :- pred list__replace_all(list(T), T, T, list(T)).
 :- mode list__replace_all(in, in, in, out) is det.
 
+	% list__replace_nth(List0, N, R, List) is true iff List is List0 
+	% with Nth element replaced with R.
+	% Fails if N < 1 or if length of List0 < N.
+	% (Position numbers start from 1.)
+	%
+:- pred list__replace_nth(list(T), int, T, list(T)).
+:- mode list__replace_nth(in, in, in, out) is semidet.
+
+	% list__replace_nth_det(List0, N, R, List) is true iff List is List0 
+	% with Nth element replaced with R.
+	% Aborts if N < 1 or if length of List0 < N.
+	% (Position numbers start from 1.)
+	%
+:- pred list__replace_nth_det(list(T), int, T, list(T)).
+:- mode list__replace_nth_det(in, in, in, out) is det.
+
 	% list__sort_and_remove_dups(List0, List):
 	%	List is List0 sorted with duplicates removed.
 	%
@@ -256,6 +272,7 @@
 
 	% list__nth_member_search(List, Elem, Position):
 	%	Elem is the Position'th member of List.
+	% 	(Position numbers start from 1.)
 	%
 :- pred list__nth_member_search(list(T), T, int).
 :- mode list__nth_member_search(in, in, out) is semidet.
@@ -583,6 +600,40 @@ list__replace_all([X | Xs], Y, Z, L) :-
 	;
 		L = [X | L0],
 		list__replace_all(Xs, Y, Z, L0)
+	).
+
+list__replace_nth(Xs, P, R, L) :-
+	P > 0,
+	list__replace_nth_2(Xs, P, R, L).
+
+list__replace_nth_det(Xs, P, R, L) :-
+	(
+		P > 0
+	->
+		(
+			list__replace_nth_2(Xs, P, R, L0)
+		->
+			L = L0
+		;
+			error("list__replace_nth_det: Can't replace element whose index position is past the end of the list")
+		)
+	;
+		error("list__replace_nth_det: Can't replace element whose index position is less than 1.")
+	).
+
+
+:- pred list__replace_nth_2(list(T), int, T, list(T)).
+:- mode list__replace_nth_2(in, in, in, out) is semidet.
+
+list__replace_nth_2([X | Xs], P, R, L) :-
+	(
+		P = 1 
+	->
+		L = [R | Xs]
+	;
+		P1 is P - 1,
+		list__replace_nth(Xs, P1, R, L0),
+		L = [X | L0]
 	).
 
 %-----------------------------------------------------------------------------%
