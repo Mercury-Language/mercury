@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2002 The University of Melbourne.
+% Copyright (C) 1993-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1677,7 +1677,7 @@ io__read_line_as_string(Stream, Result, IO0, IO) :-
 			}
 			break;
 		}
-		if (char_code != (MR_Char) char_code) {
+		if (char_code != (MR_UnsignedChar) char_code) {
 			Res = -2;
 			break;
 		}
