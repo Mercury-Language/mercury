@@ -298,9 +298,6 @@ io__putback_char(Stream, Char, IO_0, IO) :-
 io__putback_byte(_Stream, _Char, IO, IO) :-
 	error("io__putback_byte: binary IO is not implemented for Prolog.").
 
-io__read_anything(S, R) -->
-	io__read(S, R).
-
 io__read(S, Result) -->
 	{ read(S, Term) },
 	{ eof(Term) ->
@@ -308,9 +305,6 @@ io__read(S, Result) -->
 	;
 		Result = ok(Term)
 	}.
-
-io__read_anything(R) -->
-	io__read(R).
 
 io__read(Result) -->
 	{ read(Term) },
@@ -344,9 +338,6 @@ io__write_string(Stream, String) -->
 	{ (format(Stream, "~s", [String]), fail ; true) },
 	io__update_state.
 	
-io__write_anything(S, I) -->
-	io__write(S, I).
-
 io__write(S, I) -->
 	{ write(S, I) },
 	io__update_state.
@@ -377,9 +368,6 @@ io__write_string(String) -->
 io__write_float(Float) -->
 	io__output_stream(Stream),
 	io__write_float(Stream, Float).
-
-io__write_anything(Term) -->
-	io__write(Term).
 
 io__write(Term) -->
 	io__output_stream(Stream),
