@@ -342,7 +342,19 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 					NewCond = Cond
 				)
 			->
-				NewAssign = assign(reg(r(1)), NewCond)
+				%
+				% To avoid a bug in gcc 2.7 on sparcs,
+				% we convert `r1 = !r1' into `r1 = (!r1)<<1'.
+				% (gcc -O2 gets an internal error for
+				% the former.)
+				%
+				( NewCond = unop(not, lval(reg(r(1)))) ->
+					FinalCond = binop(<<, NewCond,
+							const(int_const(1)))
+				;
+					FinalCond = NewCond
+				),
+				NewAssign = assign(reg(r(1)), FinalCond)
 					- "shortcircuited bool computation",
 				Proceed = goto(succip) - "shortcircuit",
 				list__append([NewAssign | Between], [Proceed],
