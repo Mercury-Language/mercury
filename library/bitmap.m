@@ -140,7 +140,7 @@
 
 :- implementation.
 
-:- import_module exception.
+:- import_module exception, require.
 
     % A bitmap is represented as an array of ints where each int stores
     % int__bits_per_int bits.  The first element of the array (index 0)
@@ -157,7 +157,7 @@
 
 new(N, B) = BM :-
     ( if N < 0 then
-        throw("bitmap__new: negative size")
+        throw(software_error("bitmap__new: negative size"))
       else
         X    = initializer(B),
         BM0  = (array__init(num_ints_required(N), X) ^ elem(0) := N),
@@ -226,19 +226,19 @@ in_range(BM, I) :- 0 =< I, I < num_bits(BM).
 set(BM, I) =
     ( if in_range(BM, I)
       then BM ^ elem(int_offset(I)) := BM ^ elem(int_offset(I)) \/ bitmask(I)
-      else throw("bitmap__set: out of range")
+      else throw(software_error("bitmap__set: out of range"))
     ).
 
 clear(BM, I) =
     ( if in_range(BM, I)
       then BM ^ elem(int_offset(I)) := BM ^ elem(int_offset(I)) /\ \bitmask(I)
-      else throw("bitmap__clear: out of range")
+      else throw(software_error("bitmap__clear: out of range"))
     ).
 
 flip(BM, I) =
     ( if in_range(BM, I)
       then BM ^ elem(int_offset(I)) := BM ^ elem(int_offset(I)) `xor` bitmask(I)
-      else throw("bitmap__flip: out of range")
+      else throw(software_error("bitmap__flip: out of range"))
     ).
 
 % ---------------------------------------------------------------------------- %
@@ -257,13 +257,13 @@ unsafe_flip(BM, I) =
 is_set(BM, I) :-
     ( if in_range(BM, I)
       then BM ^ elem(int_offset(I)) /\ bitmask(I) \= 0
-      else throw("bitmap__is_set: out of range")
+      else throw(software_error("bitmap__is_set: out of range"))
     ).
 
 is_clear(BM, I) :-
     ( if in_range(BM, I)
       then BM ^ elem(int_offset(I)) /\ bitmask(I) = 0
-      else throw("bitmap__is_clear: out of range")
+      else throw(software_error("bitmap__is_clear: out of range"))
     ).
 
 % ---------------------------------------------------------------------------- %
