@@ -59,7 +59,7 @@ register	Word	mr9 __asm__("r22");
 )
 
 #define save_transient_regs_to_mem(save_area)		((void)0)
-#define restore_transient_reg_from_mem(save_area)	((void)0)
+#define restore_transient_regs_from_mem(save_area)	((void)0)
 
 #define	mr10	fake_reg[10]
 #define	mr11	fake_reg[11]
