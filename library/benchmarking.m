@@ -15,7 +15,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module benchmarking.
-
 :- interface.
 
 % `report_stats' is a non-logical procedure intended for use in profiling
@@ -53,7 +52,10 @@
 :- mode benchmark_nondet(pred(in, out) is nondet, in, out, in, out)
 	is cc_multi.
 
+%-----------------------------------------------------------------------------%
+
 :- implementation.
+:- import_module int, std_util.
 
 :- pragma c_header_code("
 
@@ -139,7 +141,9 @@ void
 ML_report_stats(void)
 {
 	int			time_at_prev_stat;
+#ifndef MR_HIGHLEVEL_CODE
 	MercuryEngine		*eng;
+#endif
 #ifdef PROFILE_MEMORY
 	int			num_table_entries;
 	ML_memprof_report_entry	table[MEMORY_PROFILE_SIZE];
@@ -152,17 +156,24 @@ ML_report_stats(void)
 	time_at_prev_stat = time_at_last_stat;
 	time_at_last_stat = MR_get_user_cpu_miliseconds();
 
+#ifdef MR_HIGHLEVEL_CODE
 	eng = MR_get_engine();
+#endif
 
 	fprintf(stderr, 
-		""[Time: +%.3fs, %.3fs, D Stack: %.3fk, ND Stack: %.3fk,"",
+		""[Time: +%.3fs, %.3fs,"",
 		(time_at_last_stat - time_at_prev_stat) / 1000.0,
-		(time_at_last_stat - time_at_start) / 1000.0,
+		(time_at_last_stat - time_at_start) / 1000.0
+	);
+
+#ifndef MR_HIGHLEVEL_CODE
+	fprintf(stderr, "" D Stack: %.3fk, ND Stack: %.3fk,"",
 		((char *) MR_sp - (char *)
 			eng->context.detstack_zone->min) / 1024.0,
 		((char *) MR_maxfr - (char *)
 			eng->context.nondetstack_zone->min) / 1024.0
 	);
+#endif
 
 #ifdef CONSERVATIVE_GC
 	{ char local_var;
@@ -539,255 +550,107 @@ ML_memory_profile_compare_final(const void *i1, const void *i2)
 
 %-----------------------------------------------------------------------------%
 
-:- external(benchmark_det/5).
-:- external(benchmark_nondet/5).
+:- pragma promise_pure(benchmark_det/5).
+benchmark_det(Pred, In, Out, Repeats, Time) :-
+	impure get_user_cpu_miliseconds(StartTime),
+	impure benchmark_det_loop(Pred, In, Out, Repeats),
+	impure get_user_cpu_miliseconds(EndTime),
+	Time0 = StartTime - EndTime,
+	cc_multi_equal(Time0, Time).
 
-:- pragma c_code("
+:- impure pred benchmark_det_loop(pred(T1, T2), T1, T2, int).
+:- mode benchmark_det_loop(pred(in, out) is det, in, out, in) is det.
+
+benchmark_det_loop(Pred, In, Out, Repeats) :-
+	% The call to do_nothing/1 here is to make sure the compiler
+	% doesn't optimize away the call to `Pred'.
+	Pred(In, Out0),
+	impure do_nothing(Out0),
+	( Repeats > 1 ->
+		impure benchmark_det_loop(Pred, In, Out, Repeats - 1)
+	;
+		Out = Out0
+	).
+
+:- pragma promise_pure(benchmark_nondet/5).
+benchmark_nondet(Pred, In, Count, Repeats, Time) :-
+	impure get_user_cpu_miliseconds(StartTime),
+	impure benchmark_nondet_loop(Pred, In, Count, Repeats),
+	impure get_user_cpu_miliseconds(EndTime),
+	Time0 = StartTime - EndTime,
+	cc_multi_equal(Time0, Time).
+
+:- impure pred benchmark_nondet_loop(pred(T1, T2), T1, int, int).
+:- mode benchmark_nondet_loop(pred(in, out) is nondet, in, out, in) is det.
+
+benchmark_nondet_loop(Pred, In, Count, Repeats) :-
+	impure new_int_reference(0, SolutionCounter),
+	(
+		impure repeat(Repeats),
+		impure update_ref(SolutionCounter, 0),
+		Pred(In, Out0),
+		impure do_nothing(Out0),
+		impure incr_ref(SolutionCounter),
+		fail
+	;
+		true
+	),
+	semipure ref_value(SolutionCounter, Count).
+
+:- impure pred repeat(int::in) is nondet.
+repeat(N) :-
+	N > 0,
+	( true ; impure repeat(N - 1) ).
+
+:- impure pred get_user_cpu_miliseconds(int::out) is det.
+:- pragma c_code(get_user_cpu_miliseconds(Time::out), [will_not_call_mercury],
+"
+	Time = MR_get_user_cpu_miliseconds();
+").
 
 /*
-INIT mercury_benchmarking_init_benchmark
-ENDINIT
+** To prevent the C compiler from optimizing the benchmark code
+** away, we assign the benchmark output to a volatile global variable.
 */
 
-/*
-** :- pred benchmark_nondet(pred(T1, T2), T1, int, int, int).
-** :- mode benchmark_nondet(pred(in, out) is nondet, in, out, in, out) is det.
-**
-** :- pred benchmark_det(pred(T1, T2), T1, int, int, int).
-** :- mode benchmark_det(pred(in, out) is det, in, out, in, out) is det.
-**
-** Polymorphism will add two extra input parameters, type_infos for T1 and T2,
-** which we don't use. These will be in r1 and r2, while the closure will be
-** in r3, and the input data in r4. The repetition count will be in r5.
-**
-** The first output is a count of solutions for benchmark_nondet and the
-** actual solution for benchmark_det; the second output for both is the
-** time taken in milliseconds.
-*/
+:- pragma c_header_code("
+	volatile Word ML_benchmarking_dummy_word;
+").
 
-#ifdef MR_USE_TRAIL
-  #define BENCHMARK_NONDET_STACK_SLOTS 7
-#else
-  #define BENCHMARK_NONDET_STACK_SLOTS 6
-#endif
+:- impure pred do_nothing(T::in) is det.
+:- pragma c_code(do_nothing(X::in), [will_not_call_mercury, thread_safe], "
+	ML_benchmarking_dummy_word = (Word) X;
+").
 
-Define_extern_entry(mercury__benchmarking__benchmark_nondet_5_0);
-Declare_label(mercury__benchmarking__benchmark_nondet_5_0_i1);
-Declare_label(mercury__benchmarking__benchmark_nondet_5_0_i2);
+%-----------------------------------------------------------------------------%
 
-MR_MAKE_PROC_LAYOUT(mercury__benchmarking__benchmark_nondet_5_0,
-	MR_DETISM_NON, BENCHMARK_NONDET_STACK_SLOTS, MR_LONG_LVAL_TYPE_UNKNOWN,
-	MR_PREDICATE, ""benchmarking"", ""benchmark_nondet"", 5, 0);
-MR_MAKE_INTERNAL_LAYOUT(mercury__benchmarking__benchmark_nondet_5_0, 1);
-MR_MAKE_INTERNAL_LAYOUT(mercury__benchmarking__benchmark_nondet_5_0, 2);
+%  Impure integer references.
+%  This type is implemented in C.
+:- type int_reference ---> int_reference(c_pointer).
 
-Declare_entry(mercury__do_call_closure);
+%  Create a new int_reference given a term for it to reference.
+:- impure pred new_int_reference(int::in, int_reference::out) is det.
+:- pragma inline(new_int_reference/2).
+:- pragma c_code(new_int_reference(X::in, Ref::out), will_not_call_mercury, "
+	incr_hp(Ref, 1);
+	*(Integer *)Ref = X;
+").
 
-BEGIN_MODULE(benchmark_nondet_module)
-	init_entry_sl(mercury__benchmarking__benchmark_nondet_5_0);
-	MR_INIT_PROC_LAYOUT_ADDR(mercury__benchmarking__benchmark_nondet_5_0);
-	init_label_sl(mercury__benchmarking__benchmark_nondet_5_0_i1);
-	init_label_sl(mercury__benchmarking__benchmark_nondet_5_0_i2);
-BEGIN_CODE
+:- impure pred incr_ref(int_reference::in) is det.
+incr_ref(Ref) :-
+	semipure ref_value(Ref, X),
+	impure update_ref(Ref, X + 1).
 
-Define_entry(mercury__benchmarking__benchmark_nondet_5_0);
+:- semipure pred ref_value(int_reference::in, int::out) is det.
+:- pragma inline(ref_value/2).
+:- pragma c_code(ref_value(Ref::in, X::out), will_not_call_mercury, "
+	X = *(Integer *) Ref;
+").
 
-	/*
-	** Create a nondet stack frame. The contents of the slots:
-	**
-	** MR_framevar(1): the closure to be called.
-	** MR_framevar(2): the input for the closure.
-	** MR_framevar(3): the number of iterations left to be done.
-	** MR_framevar(4): the number of solutions found so far.
-	** MR_framevar(5): the time at entry to the first iteration.
-	** MR_framevar(6): the saved heap pointer
-	** MR_framevar(7): the saved trail pointer (if trailing enabled)
-	**
-	** We must make that the closure is called at least once,
-	** otherwise the count we return isn't valid.
-	*/
-
-	MR_mkframe(""benchmark_nondet"", BENCHMARK_NONDET_STACK_SLOTS,
-		LABEL(mercury__benchmarking__benchmark_nondet_5_0_i2));
-
-	MR_framevar(1) = r3;
-	MR_framevar(2) = r4;
-
-	/* r5 is the repetition count */
-	if ((Integer) r5 <= 0) {
-		MR_framevar(3) = 1;
-	} else {
-		MR_framevar(3) = r5;
-	}
-
-	MR_framevar(4) = 0;
-	mark_hp(MR_framevar(6));
-#ifdef MR_USE_TRAIL
-	MR_framevar(7) = (Word) MR_trail_ptr;
-#endif
-	MR_framevar(5) = MR_get_user_cpu_miliseconds();
-
-	/* call the higher-order pred closure that we were passed in r3 */
-	r1 = r3;
-	r2 = (Word) 1;	/* the higher-order call has 1 extra input argument  */
-	r3 = (Word) 1;	/* the higher-order call has 1 extra output argument */
-	/* r4 already has the extra input argument */
-	call(ENTRY(mercury__do_call_closure),
-		LABEL(mercury__benchmarking__benchmark_nondet_5_0_i1),
-		LABEL(mercury__benchmarking__benchmark_nondet_5_0));
-
-Define_label(mercury__benchmarking__benchmark_nondet_5_0_i1);
-	update_prof_current_proc(
-		LABEL(mercury__benchmarking__benchmark_nondet_5_0));
-
-	/* we found a solution */
-	MR_framevar(4) = MR_framevar(4) + 1;
-	MR_redo();
-
-Define_label(mercury__benchmarking__benchmark_nondet_5_0_i2);
-	update_prof_current_proc(
-		LABEL(mercury__benchmarking__benchmark_nondet_5_0));
-
-	/* no more solutions for this iteration, so mark it completed */
-	MR_framevar(3) = MR_framevar(3) - 1;
-
-	/* we can now reclaim memory by resetting the heap pointer */
-	restore_hp(MR_framevar(6));
-#ifdef MR_USE_TRAIL
-	/* ... and the trail pointer */
-	MR_trail_ptr = (MR_TrailEntry *) MR_framevar(7);
-#endif
-
-	/* are there any other iterations? */
-	if (MR_framevar(3) > 0) {
-		/* yes, so reset the solution counter */
-		/* and then set up the call just like last time */
-		MR_framevar(4) = 0;
-		r1 = MR_framevar(1);
-		r2 = (Word) 1;
-		r3 = (Word) 1;
-		r4 = MR_framevar(2);
-		call(ENTRY(mercury__do_call_closure),
-			LABEL(mercury__benchmarking__benchmark_nondet_5_0_i1),
-			LABEL(mercury__benchmarking__benchmark_nondet_5_0));
-	}
-
-	/* no more iterations */
-	r1 = MR_framevar(4);
-	r2 = MR_get_user_cpu_miliseconds() - MR_framevar(5);
-	MR_succeed_discard();
-
-END_MODULE
-
-#undef BENCHMARK_NONDET_STACK_SLOTS
-
-#ifdef MR_USE_TRAIL
-  #define BENCHMARK_DET_STACK_SLOTS	7
-#else
-  #define BENCHMARK_DET_STACK_SLOTS	6
-#endif
-
-Define_extern_entry(mercury__benchmarking__benchmark_det_5_0);
-Declare_label(mercury__benchmarking__benchmark_det_5_0_i1);
-MR_MAKE_PROC_LAYOUT(mercury__benchmarking__benchmark_det_5_0,
-	MR_DETISM_NON, BENCHMARK_DET_STACK_SLOTS, MR_LONG_LVAL_STACKVAR(6),
-	MR_PREDICATE, ""benchmarking"", ""benchmark_nondet"", 5, 0);
-MR_MAKE_INTERNAL_LAYOUT(mercury__benchmarking__benchmark_det_5_0, 1);
-
-BEGIN_MODULE(benchmark_det_module)
-	init_entry_sl(mercury__benchmarking__benchmark_det_5_0);
-	MR_INIT_PROC_LAYOUT_ADDR(mercury__benchmarking__benchmark_det_5_0);
-	init_label_sl(mercury__benchmarking__benchmark_det_5_0_i1);
-BEGIN_CODE
-
-Define_entry(mercury__benchmarking__benchmark_det_5_0);
-
-	/*
-	** Create a det stack frame. The contents of the slots:
-	**
-	** MR_stackvar(1): the closure to be called.
-	** MR_stackvar(2): the input for the closure.
-	** MR_stackvar(3): the number of iterations left to be done.
-	** MR_stackvar(4): the time at entry to the first iteration.
-	** MR_stackvar(5): the saved heap pointer
-	** MR_stackvar(6): the return address.
-	** MR_stackvar(7): the saved trail pointer (if trailing enabled)
-	**
-	** We must make that the closure is called at least once,
-	** otherwise the count we return isn't valid.
-	*/
-
-	MR_incr_sp(BENCHMARK_DET_STACK_SLOTS);
-#ifdef MR_USE_TRAIL
-	MR_stackvar(7) = (Word) MR_trail_ptr;
-#endif
-	MR_stackvar(6) = (Word) MR_succip;
-	mark_hp(MR_stackvar(5));
-
-	MR_stackvar(1) = r3;
-	MR_stackvar(2) = r4;
-
-	/* r5 is the repetition count */
-	if ((Integer) r5 <= 0) {
-		MR_stackvar(3) = 1;
-	} else {
-		MR_stackvar(3) = r5;
-	}
-
-	MR_stackvar(4) = MR_get_user_cpu_miliseconds();
-
-	/* call the higher-order pred closure that we were passed in r3 */
-	r1 = r3;
-	r2 = (Word) 1;	/* the higher-order call has 1 extra input argument  */
-	r3 = (Word) 1;	/* the higher-order call has 1 extra output argument */
-	/* r4 already has the extra input argument */
-	call(ENTRY(mercury__do_call_closure),
-		LABEL(mercury__benchmarking__benchmark_det_5_0_i1),
-		LABEL(mercury__benchmarking__benchmark_det_5_0));
-
-Define_label(mercury__benchmarking__benchmark_det_5_0_i1);
-	update_prof_current_proc(
-		LABEL(mercury__benchmarking__benchmark_det_5_0));
-
-	/* mark current iteration completed */
-	MR_stackvar(3) = MR_stackvar(3) - 1;
-
-	/* are there any other iterations? */
-	if (MR_stackvar(3) > 0) {
-		/* yes, so set up the call just like last time */
-#ifdef MR_USE_TRAIL
-		/* Restore the trail... */
-		MR_TrailEntry *old_trail_ptr = (MR_TrailEntry *) MR_stackvar(7);
-		MR_untrail_to(old_trail_ptr, MR_undo);
-		MR_trail_ptr = old_trail_ptr;
-#endif
-		restore_hp(MR_stackvar(5));
-		r1 = MR_stackvar(1);
-		r2 = (Word) 1;
-		r3 = (Word) 1;
-		r4 = MR_stackvar(2);
-		call(ENTRY(mercury__do_call_closure),
-			LABEL(mercury__benchmarking__benchmark_det_5_0_i1),
-			LABEL(mercury__benchmarking__benchmark_det_5_0));
-	}
-
-	/* no more iterations */
-	/* r1 already contains the right value */
-	r2 = MR_get_user_cpu_miliseconds() - MR_stackvar(4);
-	MR_succip = (Word *) MR_stackvar(6);
-	MR_decr_sp(BENCHMARK_DET_STACK_SLOTS);
-	proceed();
-
-END_MODULE
-
-#undef BENCHMARK_DET_STACK_SLOTS
-
-void mercury_benchmarking_init_benchmark(void); /* suppress gcc warning */
-void mercury_benchmarking_init_benchmark(void) {
-	benchmark_nondet_module();
-	benchmark_det_module();
-}
-
+:- impure pred update_ref(int_reference::in, T::in) is det.
+:- pragma inline(update_ref/2).
+:- pragma c_code(update_ref(Ref::in, X::in), will_not_call_mercury, "
+	*(Integer *) Ref = X;
 ").
 
 %-----------------------------------------------------------------------------%
