@@ -24,7 +24,8 @@ TYPECLASS_SOURCES= \
 	constraint_proof_bug.m \
 	func_method.m \
 	instance_superclass.m \
-	instance_unconstrained_tvar.m
+	instance_unconstrained_tvar.m \
+	typeclass_det_warning
 
 ADITI_SOURCES= \
 	aditi_error_bug.m \
@@ -257,6 +258,7 @@ MCFLAGS-quantifier_warning	= --halt-at-warn
 MCFLAGS-simplify_bug		= -O-1
 MCFLAGS-two_way_unif		= -O-1
 MCFLAGS-type_inf_ambig_test	= --infer-all
+MCFLAGS-typeclass_det_warning	= --halt-at-warn
 MCFLAGS-unify_typeinfo_bug	= -O3 --no-special-preds
 MCFLAGS-uniq_mode_inf_bug	= --infer-all
 MCFLAGS-vn_float		= -O5

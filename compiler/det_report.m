@@ -162,7 +162,19 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0,
 			globals__io_lookup_bool_option(
 				warn_det_decls_too_lax,
 				ShouldIssueWarning),
-			( { ShouldIssueWarning = yes } ->
+			{ pred_info_get_markers(PredInfo0, Markers) },
+			(
+				{ ShouldIssueWarning = yes },
+
+				% Don't report warnings for class method
+				% implementations -- the determinism in the
+				% `:- typeclass' declaration will be
+				% the loosest of all possible instances.
+				% This is similar to the reason we don't
+				% report warnings for lambda expressions.
+				{ \+ check_marker(Markers,
+					class_instance_method) }
+			->
 				{ Message = "  warning: determinism declaration could be tighter.\n" },
 				report_determinism_problem(PredId,
 					ProcId, ModuleInfo0, Message,
