@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-1998 The University of Melbourne. 
+# Copyright (C) 1996-1999 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -233,6 +233,42 @@ AC_SUBST_FILE(FINAL_GRADE_OPTIONS)
 
 #-----------------------------------------------------------------------------#
 
+AC_MSG_CHECKING(whether we can use sockets (for Opium-M))
+# test if sockets are available to be able to use Opium-M
+# XXX It would be better to use AC_TRY_RUN() to do that
+
+SOCKET_LIBRARY=
+
+case "$host" in
+	i?86-*-linux|i?86-*-linux-gnu)
+		AC_MSG_RESULT(yes)
+		AC_DEFINE(MR_USE_EXTERNAL_DEBUGGER)
+		;;
+	m68*-linux|m68*-linux-gnu)
+		AC_MSG_RESULT(disabled for now because it is untested)
+		;;
+	i?86-*-freebsd*)
+		AC_MSG_RESULT(disabled for now because it is untested)
+		;;
+	sparc-sun-solaris2.*)
+		AC_MSG_RESULT(yes)        
+		AC_DEFINE(MR_USE_EXTERNAL_DEBUGGER)
+		SOCKET_LIBRARY=" -lsocket"
+		;;
+	alpha-dec-osf*)
+		AC_MSG_RESULT(disabled for now because it is untested)
+		;;
+	*-cygwin*)
+		AC_MSG_RESULT(disabled for now because it is untested)
+		;;
+	*)
+		AC_MSG_RESULT(unknown system, assuming no)
+		;;
+esac
+
+AC_SUBST(SOCKET_LIBRARY)
+
+#-----------------------------------------------------------------------------#
 AC_OUTPUT(Makefile scripts/mmc scripts/mprof
 scripts/mercury_update_interface scripts/mgnuc scripts/ml
 scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init

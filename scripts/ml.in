@@ -85,6 +85,11 @@ SHLIB_RPATH_OPT=${MERCURY_SHLIB_RPATH_OPT="@SHLIB_RPATH_OPT@"}
 SHLIB_RPATH_SEP=${MERCURY_SHLIB_RPATH_SEP="@SHLIB_RPATH_SEP@"}
 SHARED_LIBS=${MERCURY_SHARED_LIBS="@SHARED_LIBS@"}
 
+# On some systems (Solaris for exemple), we need libraries to be able to 
+# use sockets. The name of the needed libraries is determined by autoconf
+# and passed through this variable.
+SOCKET_LIBRARY=" @SOCKET_LIBRARY@"
+
 # If you change these, you will also need to change Mmake.common.in,
 # scripts/c2init.in, tools/bootcheck, tools/binary, tools/binary_step
 # and tools/linear.
@@ -387,6 +392,8 @@ case $mercury_libs in
 		merc_shlib_dirs=""
 		;;
 esac
+LIBS=${LIBS}${SOCKET_LIBRARY}
+
 
 RPATH_OPT_LIST=
 # only set RPATH_OPT_LIST if the system supports shared libraries

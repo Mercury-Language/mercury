@@ -103,13 +103,6 @@
 **	Note that MR_REQUIRE_TRACING is talking about execution tracing,
 **	not stack tracing; these are two independently configurable features.
 **
-** MR_USE_EXTERNAL_DEBUGGER:
-**	Allow MR_trace() to use an external process debugger
-**	(with communication done via a socket interface)
-**	rather than using the debugger that is part of
-**	the Mercury runtime.
-**	[The external debugger has not yet been written.]
-**
 ** MR_LOWLEVEL_DEBUG
 **	Enables various low-level debugging stuff,
 **	that was in the distant past used to debug
