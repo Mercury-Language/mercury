@@ -489,6 +489,17 @@ char__min_char_value(0).
 		[will_not_call_mercury, promise_pure, thread_safe], "
 	Max = UCHAR_MAX;
 ").
+:- pragma foreign_proc("C#",
+		char__max_char_value(Max::out),
+		[will_not_call_mercury, promise_pure, thread_safe], "
+	// .NET uses 16-bit 'Unicode'.  This might be either UCS-2,
+	// where Unicode characters that don't fit in 16 bits are encoded
+	// in two 16 bit characters, or it might be just the 16-bit subset,
+	// i.e. only the Unicode characters that fit in 16 bits.
+	// For our purposes, it doesn't matter.
+	Max = 0xffff;
+").
+
 
 char__max_char_value(_) :-
 	% This version is only used for back-ends for which there is no
