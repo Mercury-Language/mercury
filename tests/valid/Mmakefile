@@ -96,6 +96,7 @@ OTHER_PROGS= \
 	intermod_dcg_bug \
 	intermod_impure \
 	intermod_lambda \
+	intermod_nested \
 	intermod_nested_module \
 	intermod_nested_module_bug \
 	intermod_nested_uniq \
