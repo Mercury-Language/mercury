@@ -152,6 +152,12 @@ endif
 	rm -f $@
 	$(MCS) $(GRADEFLAGS) $(MCSFLAGS) $<
 
+MLOBJS-%: $(MLOBJS)
+	@:
+
+MLPICOBJS-%: $(MLPICOBJS)
+	@:
+
 #-----------------------------------------------------------------------------#
 
 # The actions for `mmake clean' etc. are in the `.d' files.

@@ -1714,7 +1714,7 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 
 	io__write_strings(DepStream, [
 		BaseFileName, " : $(", BaseFileName, ".os) ",
-		BaseFileName, "_init.o $(MLOBJS)\n",
+		BaseFileName, "_init.o MLOBJS-", BaseFileName, "\n",
 		"\t$(ML) $(GRADEFLAGS) $(MLFLAGS) -o ", BaseFileName, " ",
 		BaseFileName, "_init.o \\\n",
 		"\t	$(", BaseFileName, ".os) $(MLOBJS) $(MLLIBS)\n\n"
@@ -1730,7 +1730,7 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 
 	io__write_strings(DepStream, [
 		BaseFileName, ".split.a : $(", BaseFileName, ".dir_os) ",
-				"$(MLOBJS)\n",
+				"MLOBJS-", BaseFileName, "\n",
 		"\trm -f ", BaseFileName, ".split.a\n",
 		"\t$(AR) $(ARFLAGS) ", BaseFileName, ".split.a $(MLOBJS)\n",
 		"\tfor dir in $(", BaseFileName, ".dirs); do \\\n",
@@ -1751,7 +1751,7 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 
 	io__write_strings(DepStream, [
 		"lib", BaseFileName, ".so : $(", BaseFileName, ".pic_os) ",
-				"$(MLPICOBJS)\n",
+				"MLPICOBJS-", BaseFileName, "\n",
 		"\t$(ML) --make-shared-lib $(GRADEFLAGS) $(MLFLAGS) -o ",
 			"lib", BaseFileName, ".so \\\n",
 		"\t\t$(", BaseFileName, ".pic_os) $(MLPICOBJS) $(MLLIBS)\n\n"
@@ -1759,7 +1759,7 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 
 	io__write_strings(DepStream, [
 		"lib", BaseFileName, ".a : $(", BaseFileName,
-				".os) $(MLOBJS)\n",
+				".os) MLOBJS-", BaseFileName, "\n",
 		"\trm -f ", BaseFileName, ".a\n",
 		"\t$(AR) $(ARFLAGS) lib", BaseFileName, ".a ",
 			"$(", BaseFileName, ".os) $(MLOBJS)\n",
