@@ -41,6 +41,11 @@ SUBDIR_MMAKE =	PATH=../scripts:../util:$$PATH \
 		MMAKE_DIR=../scripts \
 		../scripts/mmake $(MMAKEFLAGS)
 
+SUBSUBDIR_MMAKE = PATH=../../scripts:../../util:$$PATH \
+		MMAKE_VPATH=. \
+		MMAKE_DIR=../../scripts \
+		../../scripts/mmake $(MMAKEFLAGS)
+
 #-----------------------------------------------------------------------------#
 
 # `mmake dep' ensures that the .dep files exist;
@@ -217,7 +222,7 @@ tar: README INSTALL
 	cd bindist && $(SUBDIR_MMAKE) bindist.configure
 	# the following command might fail on Windows?
 	-cd bindist && $(SUBDIR_MMAKE) bindist.build_vars
-	cd extras/dynamic_linking && $(SUBDIR_MMAKE) sources
+	cd extras/dynamic_linking && $(SUBSUBDIR_MMAKE) sources
 	# clean up
 	cd scripts && mmake realclean
 	cd scripts && mmake canonical_grade
