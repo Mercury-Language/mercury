@@ -246,15 +246,15 @@
 % Currently an import just gives the name of the package to be imported.
 % This might perhaps need to be expanded to cater to different kinds of
 % imports, e.g. imports with wild-cards ("import java.lang.*").
-:- type mlds__import == mlds__module_name.
+:- type mlds__import == mlds_module_name.
 					% Specifies the name of a package or
 					% class to import.
 
-% An mlds__module_name specifies the name of an mlds package or class.
-:- type mlds__module_name.
+% An mlds_module_name specifies the name of an mlds package or class.
+:- type mlds_module_name.
 
 % An mlds__package_name specifies the name of an mlds package.
-:- type mlds__package_name == mlds__module_name.
+:- type mlds__package_name == mlds_module_name.
 
 % Given the name of a Mercury module, return the name of the corresponding
 % MLDS package.
@@ -281,7 +281,7 @@
 % in identifiers, then it is the responsibility of the target language
 % generator to mangle these names accordingly.
 :- type mlds__fully_qualified_name(T)
-	---> 	qual(mlds__module_name, T).
+	---> 	qual(mlds_module_name, T).
 :- type mlds__qualified_entity_name
 	==	mlds__fully_qualified_name(mlds__entity_name).
 
@@ -811,7 +811,7 @@
 	;	internal(mlds__qualified_proc_label, mlds__func_sequence_num).
 
 :- type mlds__data_addr
-	--->	data_addr(mlds__module_name, mlds__data_name).
+	--->	data_addr(mlds_module_name, mlds__data_name).
 			% module name; which var
 
 :- type mlds__data_name
@@ -910,7 +910,7 @@ mercury_type_to_mlds_type(Type) = Type.
 % e.g. `mercury.builtin', `mercury.io', `mercury.std_util', etc.,
 % when mapped to MLDS package names.
 
-:- type mlds__module_name == prog_data__module_name.
+:- type mlds_module_name == prog_data__module_name.
 
 mercury_module_name_to_mlds(MercuryModule) = MLDS_Package :-
 	(

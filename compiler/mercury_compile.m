@@ -2168,8 +2168,9 @@ mercury_compile__combine_chunks_2([Chunk | Chunks], ModuleName, Num,
 	Num1 is Num + 1,
 	mercury_compile__combine_chunks_2(Chunks, ModuleName, Num1, Modules).
 
-:- pred mercury_compile__output_llds(module_name, c_file, set_bbbtree(label),
-	maybe(rl_file), bool, bool, io__state, io__state).
+:- pred mercury_compile__output_llds(module_name, c_file,
+	set_bbbtree(llds__label), maybe(rl_file), bool, bool,
+	io__state, io__state).
 :- mode mercury_compile__output_llds(in, in, in, in, in, in, di, uo) is det.
 
 mercury_compile__output_llds(ModuleName, LLDS0, StackLayoutLabels, MaybeRLFile,
