@@ -638,6 +638,12 @@
 :- pred delete_lists(int, int, io, io).
 :- mode delete_lists(in, in, di, uo) is det.
 
+:- pred is_list(int, bool, io, io).
+:- mode is_list(in, out, di, uo) is det.
+
+:- pred list_base(int, io, io).
+:- mode list_base(in, di, uo) is det.
+
 %------------------------------------------------------------------------------%
 %
 % Flush and Finish.
@@ -2779,6 +2785,26 @@ new_list(Num, Mode, !IO) :-
 	[will_not_call_mercury, promise_pure],
 "
 	glDeleteLists((GLuint) N, (GLsizei) M);
+	IO = IO0;
+").
+
+:- pragma foreign_proc("C",
+	is_list(L::in, R::out, IO0::di, IO::uo),
+	[may_call_mercury, promise_pure],
+"
+	if (glIsList((GLuint) L)) {
+		R = ML_bool_return_yes();
+	} else {
+		R = ML_bool_return_no();
+	}
+	IO = IO0;
+").
+
+:- pragma foreign_proc("C",
+	list_base(Base::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glListBase((GLuint) Base);
 	IO = IO0;
 ").
 
