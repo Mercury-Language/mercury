@@ -93,7 +93,7 @@
 %		The term read had better be of the right type!
 %		This is a hack!
 
-:- pred io__read_anything(io__output_stream, _T, io__state, io__state).
+:- pred io__read_anything(io__input_stream, _T, io__state, io__state).
 :- mode io__read_anything(in, in, di, uo) is det.
 %		Reads its argument to the specified stream.
 %		The argument may be of any type.
