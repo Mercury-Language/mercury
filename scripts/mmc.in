@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1994-1998, 2000-2001 The University of Melbourne.
+# Copyright (C) 1994-1998, 2000-2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -34,11 +34,15 @@ NUM_REAL_R_REGS=@NUM_REAL_R_REGS@
 NUM_REAL_R_TEMPS=@NUM_REAL_R_TEMPS@
 HAVE_DELAY_SLOT=@HAVE_DELAY_SLOT@
 HAVE_BOXED_FLOATS=@HAVE_BOXED_FLOATS@
+MS_DOTNET_LIBRARY_VERSION=@MS_DOTNET_LIBRARY_VERSION@
 DEFAULT_OPT_LEVEL=${MERCURY_DEFAULT_OPT_LEVEL="-O2"}
 
 # The default optimization level should be after
 # all the options that describe the machine configuration.
 
+# XXX when the compiler has bootstrapped we need to add the following to
+# the mmc command line
+# --dotnet-library-version "$MS_DOTNET_LIBRARY_VERSION"
 case $# in
 	0) exec $MC \
 		$MERC_ALL_MC_C_INCL_DIRS \

@@ -5628,6 +5628,12 @@ Set the classpath for the Java compiler.
 Specify an extension for Java object (bytecode) files.  By default this
 is @samp{.class}. 
 
+@sp 1
+@item --dotnet-library-version @var{version-number}
+@findex --dotnet-library-version
+The version number for the mscorlib assembly distributed with the
+Microsoft .NET SDK.
+
 @end table
 
 @node Link options

@@ -73,7 +73,7 @@
 	%
 	% This is where all the action is for the IL backend.
 	%
-:- pred generate_il(mlds, list(ilasm:decl), set(foreign_language),
+:- pred generate_il(mlds, list(ilasm__decl), set(foreign_language),
 		io__state, io__state).
 :- mode generate_il(in, out, out, di, uo) is det.
 
@@ -192,7 +192,48 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
+generate_il(MLDS, ILAsm, ForeignLangs) -->
+	maybe_get_dotnet_library_version(MaybeVersion),
+	( { MaybeVersion = yes(Version) },
+		generate_il(MLDS, Version, ILAsm, ForeignLangs)
+	; { MaybeVersion = no },
+		{ ILAsm = [] },
+		{ ForeignLangs = set__init }
+	).
+
+:- pred maybe_get_dotnet_library_version(maybe(assembly_decl)::out,
+		io::di, io::uo) is det.
+
+maybe_get_dotnet_library_version(MaybeVersion) -->
+	io_lookup_string_option(dotnet_library_version, VersionStr),
+	{ IsSep = (pred(('.')::in) is semidet) },
+	( 
+		{ string__words(IsSep, VersionStr) = [Mj, Mn, Bu, Rv] },
+		{ string__to_int(Mj, Major) },
+		{ string__to_int(Mn, Minor) },
+		{ string__to_int(Bu, Build) },
+		{ string__to_int(Rv, Revision) }
+	->
+		{ Version = version(Major, Minor, Build, Revision) },
+		{ MaybeVersion = yes(Version) }
+	;
+		{ MaybeVersion = no },
+		write_error_pieces_maybe_with_context(no, 0, [
+				words("Error: invalid version string"),
+				words("`" ++ VersionStr ++ "'"),
+				words("passed to `--dotnet-library-version'.")
+				]),
+		io__set_exit_status(1)
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred generate_il(mlds, assembly_decl,
+		list(ilasm__decl), set(foreign_language),
+		io__state, io__state).
+:- mode generate_il(in, in, out, out, di, uo) is det.
+
+generate_il(MLDS, Version, ILAsm, ForeignLangs, IO0, IO) :-
 
 	mlds(MercuryModuleName, _ForeignCode, Imports, Defns) =
 		transform_mlds(MLDS),
@@ -261,8 +302,8 @@ generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
 			ForeignCodeAssemblerRefs),
 		AssemblerRefs = list__append(ForeignCodeAssemblerRefs, Imports)
 	),
-	generate_extern_assembly(AssemblyName, SignAssembly, SeparateAssemblies,
-			AssemblerRefs, ExternAssemblies),
+	generate_extern_assembly(AssemblyName, Version, SignAssembly,
+			SeparateAssemblies, AssemblerRefs, ExternAssemblies),
 	Namespace = [namespace(NamespaceName, ILDecls)],
 	ILAsm = list__condense([ThisAssembly, ExternAssemblies, Namespace]).
 
@@ -3914,10 +3955,10 @@ il_system_namespace_name = "System".
 %-----------------------------------------------------------------------------
 
 	% Generate extern decls for any assembly we reference.
-:- pred mlds_to_il__generate_extern_assembly(string::in, bool::in, bool::in,
-		mlds__imports::in, list(decl)::out) is det.
+:- pred mlds_to_il__generate_extern_assembly(string::in, assembly_decl::in,
+		bool::in, bool::in, mlds__imports::in, list(decl)::out) is det.
 
-mlds_to_il__generate_extern_assembly(CurrentAssembly, SignAssembly,
+mlds_to_il__generate_extern_assembly(CurrentAssembly, Version, SignAssembly,
 		SeparateAssemblies, Imports, AllDecls) :-
 	Gen = (pred(Import::in, Decl::out) is semidet :-
 		( Import = mercury_import(ImportName),
@@ -3933,7 +3974,7 @@ mlds_to_il__generate_extern_assembly(CurrentAssembly, SignAssembly,
 			prog_out__sym_name_to_string(PackageName,
 					ForeignPackageStr),
 			( string__prefix(ForeignPackageStr, "System") ->
-				AsmDecls = dotnet_system_assembly_decls
+				AsmDecls = dotnet_system_assembly_decls(Version)
 			;
 				AsmDecls = []
 			)
@@ -3954,8 +3995,7 @@ mlds_to_il__generate_extern_assembly(CurrentAssembly, SignAssembly,
 							AsmDecls)]
 				)
 			; SeparateAssemblies = yes,
-				Decl = [extern_assembly(ModuleName,
-						AsmDecls)]
+				Decl = [extern_assembly(ModuleName, AsmDecls)]
 			)
 		)
 	),
@@ -3970,21 +4010,13 @@ mlds_to_il__generate_extern_assembly(CurrentAssembly, SignAssembly,
 			])
 		]),
 		extern_assembly("mscorlib",
-			dotnet_system_assembly_decls ++ 
-			[hash([
-				int8(0xb0), int8(0x73), int8(0xf2), int8(0x4c),
-				int8(0x14), int8(0x39), int8(0x0a), int8(0x35),
-				int8(0x25), int8(0xea), int8(0x45), int8(0x0f),
-				int8(0x60), int8(0x58), int8(0xc3), int8(0x84),
-				int8(0xe0), int8(0x3b), int8(0xe0), int8(0x95)
-			])
-		]) | Decls].
+			dotnet_system_assembly_decls(Version)) | Decls].
 
-:- func dotnet_system_assembly_decls = list(assembly_decl).
+:- func dotnet_system_assembly_decls(assembly_decl) = list(assembly_decl).
 
-dotnet_system_assembly_decls
+dotnet_system_assembly_decls(Version)
 	= [
-		version(1, 0, 2411, 0),
+		Version,
 		public_key_token([
 			int8(0xb7), int8(0x7a), int8(0x5c), int8(0x56),
 			int8(0x19), int8(0x34), int8(0xE0), int8(0x89)
