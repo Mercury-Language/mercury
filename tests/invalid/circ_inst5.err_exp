@@ -1,3 +1,3 @@
-circ_inst5.m:005: Error: circular equivalence insts `circ_inst5:i/1' and
-circ_inst5.m:005:   `circ_inst5:c/1'.
+circ_inst5.m:005: Error: circular equivalence insts `circ_inst5.i/1' and
+circ_inst5.m:005:   `circ_inst5.c/1'.
 For more information, try recompiling with `-E'.
