@@ -19,6 +19,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "std.h"
 
 static void demangle(char *name);
 
@@ -78,10 +79,18 @@ static void demangle(char *name) {
 	static const char mindex[]  = "__Index___";
 	/* we call it `mindex' rather than `index' to
 	   avoid a naming conflict with strchr's alter ego index() */
+
+	static const char ua_suffix[] = "__ua"; /* added by unused_args.m */
+	static const char ho_suffix[] = "__ho"; /* added by higher_order.m */
+
 	char *start = name;
 	char *end = name + strlen(name);
+	char *position;		/* current position in string */
 	int mode_num;
+	int mode_num2;
 	int arity;
+	bool unused_args = FALSE; /* does this pred have any unused arguments */
+	bool higher_order = FALSE; /* has this pred been specialized */
 	int internal = -1;
 	enum { ORDINARY, UNIFY, COMPARE, INDEX } category;
 
@@ -146,17 +155,62 @@ static void demangle(char *name) {
 	if (sscanf(end + 1, "%d", &arity) != 1) goto wrong_format;
 
 	/*
-	** cut off the string before the start of the arity number,
-	** i.e. at the end of the predicate name or type name
+	** Process the mangling introduced by unused_args.m.
+	** This involves stripping off the `__ua<m>' added to the
+	** end of the predicate name, where m is the mode number.
+	*/ 
+
+	position = end;	/* save end of name */		
+
+	do {
+		if (position == start) goto wrong_format;
+		position--;
+	} while (isdigit(*position));
+		/* get the mode number */
+	if (position + 1 - sizeof(ua_suffix) > start 
+		&& sscanf(position + 1, "%d", &mode_num2) == 1
+		&& strncmp(position + 2 - sizeof(ua_suffix),
+			ua_suffix, sizeof(ua_suffix) - 1) == 0) { 
+
+		end = position + 2 - sizeof(ua_suffix);
+		mode_num = mode_num2 % 10000;
+		unused_args = TRUE;
+	}
+
+	/*
+	** Process the mangling introduced by higher_order.m.
+	** This involves stripping off the `__ho<n>_<a>' where
+	** n is a unique identifier for this specialized version
+	** and a is the original arity of the predicate.
+	** 
+	*/
+
+	position = end;
+
+	do {
+		if (position == start) goto wrong_format;
+		position--;
+	} while (isdigit(*position));
+	if (strncmp(position + 2 - sizeof(ho_suffix),
+		ho_suffix, sizeof(ho_suffix) - 1) == 0) {
+		
+		end = position + 2 - sizeof(ho_suffix);
+		higher_order = TRUE;
+	}
+
+	/*
+	** Cut off the string before the start of the arity number,
+	** and the unused_args and specialization information,
+	** i.e. at the end of the predicate name or type name.
 	*/
 	*end = '\0';
 
 	/*
-	** now start processing from the start of the string again
-	** check whether the start of the string matches the name of
+	** Now start processing from the start of the string again.
+	** Check whether the start of the string matches the name of
 	** one of the special compiler-generated predicates; if so,
 	** set the `category' to the appropriate value and then
-	** skip past the prefix
+	** skip past the prefix.
 	*/
 	if (strncmp(start, unify, sizeof(unify) - 1) == 0) {
 		start += sizeof(unify) - 1;
@@ -173,6 +227,22 @@ static void demangle(char *name) {
 		category = ORDINARY;
 	}
 
+	/*
+	** Make sure special predicates with unused_args 
+	** are reported correctly.
+	*/
+
+	if (unused_args && category != ORDINARY) {
+		do { 
+			if (end == start) goto wrong_format;
+			end--;
+		} while (isdigit(*end));
+		if (sscanf(end + 1, "%d", &arity) != 1) {
+			goto wrong_format;
+		}
+		*end = '\0';
+	}
+		
 	/*
 	** The compiler changes all names starting with `f_' so that
 	** they start with `f__' instead, and uses names starting with
@@ -222,6 +292,12 @@ static void demangle(char *name) {
 		break;
 	default:
 		printf("predicate '%s'/%d mode %d", start, arity, mode_num);
+	}
+	if (higher_order) {
+		printf(" (specialized)");
+	}
+	if (unused_args) {
+		printf(" (minus unused args)");
 	}
 	if (internal != -1) {
 		printf(" label %d", internal);
