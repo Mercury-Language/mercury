@@ -9,14 +9,18 @@ case "$1" in
 		shift ;;
 esac
 
-LIBDIR_OPTS="-L$LIBDIR/$GRADE/@FULLARCH@ -lmer"
+# The following will pick up both the .a and the .so
+# if they both exist (i.e. on systems which support shared libraries).
+# Otherwise it will just pick up the .a file.
+
+LIBDIR_OPTS="$LIBDIR/$GRADE/@FULLARCH@/libmer.*"
 
 case "`hostname`" in
 	cadillac.dd.citri.edu.au)
 		GCC=/usr/local/bin/gcc ;;
-	kryten.cs.mu.oz.au)
+	kryten.cs.mu.OZ.AU)
 		GCC=/usr/local/bin/gcc ;;
-	munta.cs.mu.oz.au)
+	kryten.cs.mu.OZ.AU)
 		GCC=/usr/local/gcc/bin/gcc ;;
 	*)
 		GCC=${GCC:-gcc}
