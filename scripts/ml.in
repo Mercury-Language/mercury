@@ -90,7 +90,8 @@ BROWSER_LIB_NAME=mer_browser
 
 MAYBE_STATIC_OPT=""
 
-# --require-tracing (which is implied by --debug) implies --trace
+# --require-tracing (which is implied by --debug and by --decl-debug)
+# implies --trace
 case $require_tracing in
 	true)	trace=true ;;
 	false)	;;

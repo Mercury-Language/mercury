@@ -37,13 +37,24 @@
 
 :- import_module hlds__hlds_pred.
 :- import_module ll_backend__llds. % XXX for trace_port
-:- import_module bool.
+:- import_module bool, std_util.
 
 :- type trace_level.
 :- type trace_suppress_items.
 
-	% The bool should be the setting of the `require_tracing' option.
-:- pred convert_trace_level(string::in, bool::in, trace_level::out) is semidet.
+	% The string should be the value of the --trace-level option;
+	% two bools should be the values of the `--require-tracing' and
+	% `--decl-debug' grade options.
+	%
+	% If the string is an acceptable trace level in the specified kinds of
+	% grades, return yes wrapper around the trace level.
+	%
+	% If the string is an known trace level that happens not to be
+	% acceptable in the specified kinds of grades, return no.
+	%
+	% If the string is not known trace level, fail.
+:- pred convert_trace_level(string::in, bool::in, bool::in,
+	maybe(trace_level)::out) is semidet.
 
 :- pred convert_trace_suppress(string::in, trace_suppress_items::out)
 	is semidet.
@@ -102,14 +113,18 @@
 
 trace_level_none = none.
 
-convert_trace_level("minimum", no, none).
-convert_trace_level("minimum", yes, shallow).
-convert_trace_level("shallow", _, shallow).
-convert_trace_level("deep", _, deep).
-convert_trace_level("decl", _, decl).
-convert_trace_level("rep", _, decl_rep).
-convert_trace_level("default", no, none).
-convert_trace_level("default", yes, deep).
+convert_trace_level("minimum", no,  no,  yes(none)).
+convert_trace_level("minimum", yes, no,  yes(shallow)).
+convert_trace_level("minimum", _,   yes, yes(decl)).
+convert_trace_level("shallow", _,   no,  yes(shallow)).
+convert_trace_level("shallow", _,   yes, no).
+convert_trace_level("deep",    _,   no,  yes(deep)).
+convert_trace_level("deep",    _,   yes, no).
+convert_trace_level("decl",    _,   _,   yes(decl)).
+convert_trace_level("rep",     _,   _,   yes(decl_rep)).
+convert_trace_level("default", no,  no,  yes(none)).
+convert_trace_level("default", yes, no,  yes(deep)).
+convert_trace_level("default", _,   yes, yes(decl)).
 
 eff_trace_level(PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
 	(

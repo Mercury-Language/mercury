@@ -256,17 +256,27 @@
 ** Hence we consider it effectively binary incompatible.
 ** Similar considerations apply to procedure call tracing.
 */
-#if defined(MR_STACK_TRACE)
-  #if defined(MR_REQUIRE_TRACING)
-    #define MR_GRADE_PART_12	MR_PASTE2(MR_GRADE_PART_11, _debug)
-  #else
-    #define MR_GRADE_PART_12	MR_PASTE2(MR_GRADE_PART_11, _strce)
+#if defined(MR_DECL_DEBUG)
+  #define MR_GRADE_PART_12	MR_PASTE2(MR_GRADE_PART_11, _decldebug)
+  #if ! defined(MR_STACK_TRACE)
+    #error "declarative debugging require stack traces"
+  #endif
+  #if ! defined(MR_REQUIRE_TRACING)
+    #error "declarative debugging require execution tracing"
   #endif
 #else
-  #if defined(MR_REQUIRE_TRACING)
-    #define MR_GRADE_PART_12	MR_PASTE2(MR_GRADE_PART_11, _trace)
+  #if defined(MR_STACK_TRACE)
+    #if defined(MR_REQUIRE_TRACING)
+      #define MR_GRADE_PART_12	MR_PASTE2(MR_GRADE_PART_11, _debug)
+    #else
+      #define MR_GRADE_PART_12	MR_PASTE2(MR_GRADE_PART_11, _strce)
+    #endif
   #else
-    #define MR_GRADE_PART_12	MR_GRADE_PART_11
+    #if defined(MR_REQUIRE_TRACING)
+      #define MR_GRADE_PART_12	MR_PASTE2(MR_GRADE_PART_11, _trace)
+    #else
+      #define MR_GRADE_PART_12	MR_GRADE_PART_11
+    #endif
   #endif
 #endif
 
@@ -420,17 +430,21 @@ extern const char MR_GRADE_VAR;
 ** Hence we consider it effectively binary incompatible.
 ** Similar considerations apply to procedure call tracing.
 */
-#if defined(MR_STACK_TRACE)
-  #if defined(MR_REQUIRE_TRACING)
-    #define MR_GRADE_OPT_PART_12	MR_GRADE_OPT_PART_11 ".debug"
-  #else
-    #define MR_GRADE_OPT_PART_12	MR_GRADE_OPT_PART_11 ".strce"
-  #endif
+#if defined(MR_DECL_DEBUG)
+  #define MR_GRADE_OPT_PART_12		MR_GRADE_OPT_PART_11 ".decldebug"
 #else
-  #if defined(MR_REQUIRE_TRACING)
-    #define MR_GRADE_OPT_PART_12	MR_GRADE_OPT_PART_11 ".trace"
+  #if defined(MR_STACK_TRACE)
+    #if defined(MR_REQUIRE_TRACING)
+      #define MR_GRADE_OPT_PART_12	MR_GRADE_OPT_PART_11 ".debug"
+    #else
+      #define MR_GRADE_OPT_PART_12	MR_GRADE_OPT_PART_11 ".strce"
+    #endif
   #else
-    #define MR_GRADE_OPT_PART_12	MR_GRADE_OPT_PART_11
+    #if defined(MR_REQUIRE_TRACING)
+      #define MR_GRADE_OPT_PART_12	MR_GRADE_OPT_PART_11 ".trace"
+    #else
+      #define MR_GRADE_OPT_PART_12	MR_GRADE_OPT_PART_11
+    #endif
   #endif
 #endif
 

@@ -42,6 +42,7 @@ Grade options:
 	--pic-reg
 	--no-stack-trace
 	--debug
+	--decl-debug
 		See the documentation in the \"Invocation\" section
 		of the Mercury User's Guide."
 
@@ -69,6 +70,7 @@ use_minimal_model=false
 pic_reg=false
 stack_trace=false
 require_tracing=false
+decl_debug=false
 
 case $# in
 	0) set - --grade "$DEFAULT_GRADE" ;;

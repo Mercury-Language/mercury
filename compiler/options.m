@@ -175,6 +175,7 @@
 		;	debug
 		;	stack_trace
 		;	require_tracing
+		;	decl_debug
 
 		%   (b) Profiling
 		;	profiling		% profile_time + profile_calls
@@ -750,8 +751,9 @@ option_defaults_2(compilation_model_option, [
 		% Optional feature compilation model options:
 		% (a) Debuggging
 	debug			-	bool_special,
-	require_tracing		-	bool(no),
 	stack_trace		-	bool(no),
+	require_tracing		-	bool(no),
+	decl_debug		-	bool(no),
 		% (b) Profiling
 	profiling		-	bool_special,
 	time_profiling		-	special,
@@ -1317,8 +1319,9 @@ long_option("Java-only",                java_only).
 long_option("debug",			debug).
 % The following options are not allowed, because they're
 % not very useful and would probably only confuse people.
-% long_option("stack-trace",           stack_trace).
-% long_option("require-tracing",       require_tracing).
+% long_option("stack-trace",		stack_trace).
+% long_option("require-tracing",	require_tracing).
+long_option("decl-debug",       	decl_debug).
 	% (b) profiling
 long_option("profiling",		profiling).
 long_option("time-profiling",		time_profiling).
@@ -2652,6 +2655,12 @@ options_help_compilation_model -->
 	write_tabbed_lines([
 		"--debug\t\t\t\t(grade modifier: `.debug')",
 		"\tEnable Mercury-level debugging.",
+		"\tSee the Debugging chapter of the Mercury User's Guide",
+		"\tfor details.",
+		"\tThis option is not yet supported for the `--high-level-code'",
+		"\tback-ends.",
+		"--decl-debug\t\t\t\t(grade modifier: `.decldebug')",
+		"\tEnable declarative debugging.",
 		"\tSee the Debugging chapter of the Mercury User's Guide",
 		"\tfor details.",
 		"\tThis option is not yet supported for the `--high-level-code'",

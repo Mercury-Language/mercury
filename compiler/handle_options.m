@@ -122,7 +122,7 @@ handle_options(Args0, MaybeError, OptionArgs, Args, Link) -->
 			% and up-to-date, so disable it.
 			disable_smart_recompilation("linking")
 		;
-			[]	
+			[]
 		)
 	).
 
@@ -166,31 +166,36 @@ postprocess_options(ok(OptionTable), Error) -->
         ->
             { map__lookup(OptionTable, tags, TagsMethod0) },
             (
-                    { TagsMethod0 = string(TagsMethodStr) },
-                    { convert_tags_method(TagsMethodStr, TagsMethod) }
+                { TagsMethod0 = string(TagsMethodStr) },
+                { convert_tags_method(TagsMethodStr, TagsMethod) }
             ->
-                    { map__lookup(OptionTable,
-                        fact_table_hash_percent_full, PercentFull) },
+                { map__lookup(OptionTable, fact_table_hash_percent_full,
+                    PercentFull) },
+                (
+                    { PercentFull = int(Percent) },
+                    { Percent >= 1 },
+                    { Percent =< 100 }
+                ->
+                    { map__lookup(OptionTable, termination_norm,
+                        TermNorm0) },
                     (
-                        { PercentFull = int(Percent) },
-                        { Percent >= 1 },
-                        { Percent =< 100 }
+                        { TermNorm0 = string(TermNormStr) },
+                        { convert_termination_norm(TermNormStr, TermNorm) }
                     ->
-                        { map__lookup(OptionTable, termination_norm,
-                            TermNorm0) },
+                        { map__lookup(OptionTable, trace, Trace) },
+                        { map__lookup(OptionTable, require_tracing,
+                            RequireTracingOpt) },
+                        { map__lookup(OptionTable, decl_debug,
+                            DeclDebugOpt) },
                         (
-                            { TermNorm0 = string(TermNormStr) },
-                            { convert_termination_norm(TermNormStr, TermNorm) }
+                            { Trace = string(TraceStr) },
+                            { RequireTracingOpt = bool(RequireTracing) },
+                            { DeclDebugOpt = bool(DeclDebug) },
+                            { convert_trace_level(TraceStr, RequireTracing,
+                                DeclDebug, MaybeTraceLevel) }
                         ->
-                            { map__lookup(OptionTable, trace, Trace) },
-                            { map__lookup(OptionTable, require_tracing,
-                                RequireTracingOpt) },
                             (
-                                { Trace = string(TraceStr) },
-                                { RequireTracingOpt = bool(RequireTracing) },
-                                { convert_trace_level(TraceStr, RequireTracing,
-                                    TraceLevel) }
-                            ->
+                                { MaybeTraceLevel = yes(TraceLevel) },
                                 { map__lookup(OptionTable, suppress_trace,
                                     Suppress) },
                                 (
@@ -220,24 +225,28 @@ postprocess_options(ok(OptionTable), Error) -->
                                         postprocess_options_2(NewOptionTable,
                                             Target, GC_Method, TagsMethod,
                                             TermNorm, TraceLevel,
-					    TraceSuppress, Error)
+                                            TraceSuppress, Error)
                                     ;
                                         { Error = yes("Invalid argument to option `--hlds-dump-alias'.") }
                                     )
                                 ;
                                     { Error = yes("Invalid argument to option `--suppress-trace'.") }
-				)
+                                )
                             ;
-                                { Error = yes("Invalid argument to option `--trace'\n\t(must be `minimum', `shallow', `deep', or `default').") }
+                                { MaybeTraceLevel = no },
+                                { Error = yes("Specified trace level is not compatible with grade") }
                             )
                         ;
-                            { Error = yes("Invalid argument to option `--termination-norm'\n\t(must be `simple', `total' or  `num-data-elems').") }
+                            { Error = yes("Invalid argument to option `--trace'\n\t(must be `minimum', `shallow', `deep', `decl', `rep' or `default').") }
                         )
                     ;
-                        { Error = yes("Invalid argument to option `--fact-table-hash-percent-full'\n\t(must be an integer between 1 and 100)") }
+                        { Error = yes("Invalid argument to option `--termination-norm'\n\t(must be `simple', `total' or  `num-data-elems').") }
                     )
+                ;
+                    { Error = yes("Invalid argument to option `--fact-table-hash-percent-full'\n\t(must be an integer between 1 and 100)") }
+                )
             ;
-                    { Error = yes("Invalid tags option (must be `none', `low' or `high')") }
+                { Error = yes("Invalid tags option (must be `none', `low' or `high')") }
             )
         ;
             { Error = yes("Invalid GC option (must be `none', `conservative', `boehm', `mps' or `accurate')") }
@@ -245,7 +254,6 @@ postprocess_options(ok(OptionTable), Error) -->
     ;
         { Error = yes("Invalid target option (must be `c', `asm', `il', or `java')") }
     ).
-    
 
 :- pred postprocess_options_2(option_table::in, compilation_target::in,
     gc_method::in, tags_method::in, termination_norm::in,
@@ -404,7 +412,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		globals__io_set_option(reclaim_heap_on_semidet_failure,
 			bool(no)),
 		globals__io_set_option(highlevel_code, bool(yes)),
-		globals__io_set_option(highlevel_data, bool(yes)),	
+		globals__io_set_option(highlevel_data, bool(yes)),
 		globals__io_set_option(gcc_nested_functions, bool(no)),
 		globals__io_set_option(nondet_copy_out, bool(yes)),
 		globals__io_set_option(det_copy_out, bool(yes)),
@@ -431,7 +439,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	;
 		[]
 	),
-	
+
 	% --high-level-code disables the use of low-level gcc extensions
 	option_implies(highlevel_code, gcc_non_local_gotos, bool(no)),
 	option_implies(highlevel_code, gcc_global_registers, bool(no)),
@@ -485,7 +493,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 			bool(yes)),
 	option_implies(find_all_recompilation_reasons, verbose_recompilation,
 			bool(yes)),
-	
+
 	%
 	% Disable `--smart-recompilation' for compilation options
 	% which either do not produce a compiled output file or
@@ -595,6 +603,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	;
 		Error = no
 	},
+
+	% --decl-debug is an extension of --debug
+	option_implies(decl_debug, require_tracing, bool(yes)),
+	option_implies(decl_debug, stack_trace, bool(yes)),
 
 	% The `.debug' grade (i.e. --stack-trace plus --require-tracing)
 	% implies --use-trail, except with --use-minimal-model, which is
@@ -806,7 +818,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		bool(no)),
 
 	% XXX if trailing is enabled, middle recursion optimization
-	% can generate code which does not allocate a stack frame 
+	% can generate code which does not allocate a stack frame
 	% even though stack slots are used to save and restore the
 	% trail, if the code being optimized contains a construct which
 	% might save/restore the trail state, i.e. an if-then-else,
@@ -863,7 +875,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		bool(yes)),
 
 	% We only generate the source file mapping if the module name
-	% doesn't match the file name. 
+	% doesn't match the file name.
 	option_implies(generate_source_file_mapping, warn_wrong_module_name,
 		bool(no)),
 
@@ -947,7 +959,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	;
 		{ MercuryLibDirs = [] }
 	),
-	
+
 	% If --use-search-directories-for-intermod is true, append the
 	% search directories to the list of directories to search for
 	% .opt files.
@@ -997,22 +1009,22 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	globals__io_lookup_bool_option(use_subdirs, UseSubdirs),
 	(
 		{ UseGradeSubdirs = yes ->
-			MihsSubdir = 
+			MihsSubdir =
 				"Mercury"/GradeString/FullArch/"Mercury"/"mihs"
 		; UseSubdirs = yes ->
 			MihsSubdir = "Mercury"/"mihs"
 		;
 			fail
 		}
-	->	
+	->
 		globals__io_lookup_accumulating_option(c_include_directory,
 			CIncludeDirs1),
 		{ SubdirCIncludeDirs =
 			[dir__this_directory, MihsSubdir | CIncludeDirs1] },
 		globals__io_set_option(c_include_directory,
 			accumulating(SubdirCIncludeDirs))
-	;	
-		[]	
+	;
+		[]
 	),
 
 	% --use-opt-files implies --no-warn-missing-opt-files since
@@ -1030,7 +1042,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		"--warn-non-tail-recursion is incompatible with --errorcheck-only"),
 
 	% The backend foreign languages depend on the target.
-	( 	
+	(
 		{ Target = c },
 		{ BackendForeignLanguages = ["c"] }
 	;
@@ -1050,7 +1062,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		% only set the backend foreign languages if they are unset
 	globals__io_lookup_accumulating_option(backend_foreign_languages,
 		CurrentBackendForeignLanguage),
-	( 
+	(
 		{ CurrentBackendForeignLanguage = [] }
 	->
 		globals__io_set_option(backend_foreign_languages,
@@ -1199,7 +1211,7 @@ disable_smart_recompilation(OptionDescr) -->
 	).
 
 usage_error(ErrorDescr, ErrorMessage) -->
-	write_program_name,	
+	write_program_name,
 	io__write_string(ErrorDescr),
 	io__nl,
 	usage_error(ErrorMessage).
@@ -1356,7 +1368,7 @@ compute_grade_components(Options, GradeComponents) :-
 			% the option setting that it implies are true.
 			% ie
 			%	all [Opt, Value] (
-			%	    member(Opt - Value, CompOpts) => 
+			%	    member(Opt - Value, CompOpts) =>
 			%		map__search(Options, Opt, Value)
 			%	)
 		\+ (
@@ -1525,12 +1537,18 @@ grade_component_table("mm", minimal_model, [use_minimal_model - bool(yes)]).
 grade_component_table("picreg", pic, [pic_reg - bool(yes)]).
 
 	% Debugging/Tracing components
+grade_component_table("decldebug", trace,
+	[stack_trace - bool(yes), require_tracing - bool(yes),
+	decl_debug - bool(yes)]).
 grade_component_table("debug", trace,
-	[stack_trace - bool(yes), require_tracing - bool(yes)]).
+	[stack_trace - bool(yes), require_tracing - bool(yes),
+	decl_debug - bool(no)]).
 grade_component_table("trace", trace,
-	[stack_trace - bool(no), require_tracing - bool(yes)]).
+	[stack_trace - bool(no), require_tracing - bool(yes),
+	decl_debug - bool(no)]).
 grade_component_table("strce", trace,
-	[stack_trace - bool(yes), require_tracing - bool(no)]).
+	[stack_trace - bool(yes), require_tracing - bool(no),
+	decl_debug - bool(no)]).
 
 :- pred reset_grade_options(option_table, option_table).
 :- mode reset_grade_options(in, out) is det.
@@ -1563,6 +1581,7 @@ grade_start_values(use_minimal_model - bool(no)).
 grade_start_values(pic_reg - bool(no)).
 grade_start_values(stack_trace - bool(no)).
 grade_start_values(require_tracing - bool(no)).
+grade_start_values(decl_debug - bool(no)).
 
 :- pred split_grade_string(string, list(string)).
 :- mode split_grade_string(in, out) is semidet.

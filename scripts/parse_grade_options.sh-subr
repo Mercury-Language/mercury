@@ -164,6 +164,11 @@
 		stack_trace=false
 		require_tracing=false ;;
 
+	--decl-debug)
+		decl_debug=true ;;
+	--no-decl-debug)
+		decl_debug=false ;;
+
 	-s|--grade)
 		shift
 		grade="$1";
@@ -193,6 +198,7 @@
 		pic_reg=false
 		stack_trace=false
 		require_tracing=false
+		decl_debug=false
 
 		grade_pieces=`echo $grade | tr '.' ' '`
 		for grade_piece in $grade_pieces
@@ -396,6 +402,12 @@
 					stack_trace=true
 					require_tracing=true
 					;;
+				decldebug)
+					stack_trace=true
+					require_tracing=true
+					decl_debug=true
+					;;
+
 				*)
 					echo "$0: unknown grade component" \
 						"\`$grade_piece'" 1>&2

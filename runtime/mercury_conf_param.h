@@ -149,6 +149,15 @@
 **	Note that MR_REQUIRE_TRACING is talking about execution tracing,
 **	not stack tracing; these are two independently configurable features.
 **
+** MR_DECL_DEBUG
+**	Require that all Mercury procedures linked in should be compiled
+**	with a trace level that supports declarative debugging. This effect
+**	is achieved by including MR_DECL_DEBUG in the mangled grade
+**	(see mercury_grade.h).
+**
+**	Setting MR_DECL_DEBUG requires MR_REQUIRE_TRACING and MR_STACK_TRACE
+**	to be set also.
+**
 ** MR_LOWLEVEL_DEBUG
 **	Enables various low-level debugging stuff,
 **	that was in the distant past used to debug

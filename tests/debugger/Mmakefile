@@ -45,9 +45,10 @@ NONRETRY_PROGS = \
 	print_goal			\
 	queens_rep			\
 	resume_typeinfos		\
-	shallow				\
 	type_desc_test
 
+SHALLOW_PROGS = \
+	shallow
 
 # Since the `interactive' test case requires the use of shared libraries,
 # this means it won't work properly if the static libraries are linked
@@ -92,12 +93,24 @@ else
     endif
 endif
 
+# Declarative debugging grades don't support trace level shallow,
+# so we execute the tests exercising shallow tracing only in grades
+# other than .decldebug grades.
+ifeq "$(findstring decldebug,$(GRADE))" ""
+    PROGS := $(PROGS) $(SHALLOW_PROGS)
+endif
+
 SUBDIRS=declarative
 TESTS=$(PROGS)
 TESTS_DIR=..
 include $(TESTS_DIR)/Mmake.common
 
-MCFLAGS += --trace deep
+# The minimum trace level in .decldebug grades is --trace decl.
+ifneq "$(findstring decldebug,$(GRADE))" ""
+    MCFLAGS += --trace decl
+else
+    MCFLAGS += --trace deep
+endif
 MLFLAGS += --trace
 
 # Module-specific options should go in Mercury.options so they
