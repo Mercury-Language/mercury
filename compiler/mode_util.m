@@ -803,9 +803,13 @@ recompute_instmap_delta_conj([Goal0 | Goals0], [Goal | Goals], InstMapDelta) -->
 
 recompute_instmap_delta_disj([], [], InstMapDelta) -->
 	{ instmap_init(InstMapDelta) }.
-recompute_instmap_delta_disj([Goal0 | Goals0], [Goal | Goals], InstMapDelta) -->
+recompute_instmap_delta_disj([Goal0], [Goal], InstMapDelta) -->
+	recompute_instmap_delta(Goal0, Goal, InstMapDelta).
+recompute_instmap_delta_disj([Goal0 | Goals0], [Goal | Goals], InstMapDelta)
+		-->
+	{ Goals0 = [_|_] },
 	recompute_instmap_delta(Goal0, Goal, InstMapDelta0),
-	recompute_instmap_delta_conj(Goals0, Goals, InstMapDelta1),
+	recompute_instmap_delta_disj(Goals0, Goals, InstMapDelta1),
 	merge_instmap_delta(InstMapDelta0, InstMapDelta1, InstMapDelta).
 
 %-----------------------------------------------------------------------------%
@@ -816,8 +820,13 @@ recompute_instmap_delta_disj([Goal0 | Goals0], [Goal | Goals], InstMapDelta) -->
 
 recompute_instmap_delta_cases([], [], InstMapDelta) -->
 	{ instmap_init(InstMapDelta) }.
+recompute_instmap_delta_cases([Case0], [Case], InstMapDelta) -->
+	{ Case0 = case(Functor, Goal0) },
+	recompute_instmap_delta(Goal0, Goal, InstMapDelta),
+	{ Case = case(Functor, Goal) }.
 recompute_instmap_delta_cases([Case0 | Cases0], [Case | Cases], InstMapDelta) 
 		-->
+	{ Cases0 = [_|_] },
 	{ Case0 = case(Functor, Goal0) },
 	recompute_instmap_delta(Goal0, Goal, InstMapDelta0),
 	{ Case = case(Functor, Goal) },
