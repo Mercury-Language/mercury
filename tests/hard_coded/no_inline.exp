@@ -1,4 +1,1 @@
-I'm going to see whether `bar'/2 is inlined.
-(Remember kids, don't try this one at home.)
-
-It wasn't.
+[0, 1, 2, 3]

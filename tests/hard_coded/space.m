@@ -23,7 +23,7 @@
 
 :- implementation.
 
-:- import_module char, string, int, list, std_util, random, require.
+:- import_module char, string, int, list, std_util, require.
 :- import_module getopt, bool.
 
 :- type option
@@ -118,7 +118,7 @@ main -->
 		->
 			{ getopt__lookup_int_option(Opts, length, Len) },
 			{ getopt__lookup_int_option(Opts, seed, Seed) },
-			{ random__init(Seed, Rnd) },
+			{ random_init(Seed, Rnd) },
 			{ Chord0 = chord(i, Kind, up(ii)) },
 			doit(Len, Note, Qual, Chord0, Rnd)
 		;
@@ -158,7 +158,7 @@ figure_key("a#M", note(a, sharp, 2), min, min).
 figure_key("b", note(b, natural, 2), maj, maj).
 figure_key("bM", note(b, natural, 2), min, min).
 
-:- pred doit(int, note, qualifier, chord, random__supply, io__state, io__state).
+:- pred doit(int, note, qualifier, chord, random_supply, io__state, io__state).
 :- mode doit(in, in, in, in, mdi, di, uo) is det.
 
 doit(N, Trans, Qual, Chord0, Rnd0) -->
@@ -171,7 +171,7 @@ doit(N, Trans, Qual, Chord0, Rnd0) -->
 		{ list__map(trans(Trans), Notes0, Notes) },
 		write_chord(Notes),
 		(
-			{ random__random(I, Rnd0, Rnd) },
+			{ random_random(I, Rnd0, Rnd) },
 			{ next_chord(Chord0, Qual, I, Chord1) }
 		->
 			{ N1 is N - 1 },
@@ -402,7 +402,7 @@ next_topnote(Note0, Qual, Note) :-
 	note_to_interval(Note, Qual, Int, Oct).
 
 :- pred note_to_interval(note, qualifier, interval, octave).
-:- mode note_to_interval(in, in, out, out) is nondet. % xxx
+:- mode note_to_interval(in, in, out, out) is semidet.
 :- mode note_to_interval(out, in, in, in) is multi.
 
 note_to_interval(note(c, natural, Oct), _, i, Oct).
@@ -748,5 +748,27 @@ help -->
 	io__write_string(StdErr,
 "usage: space [-h|--help] [-k|--key key[M]] [-l|--length n] [-s|--seed n]\n"
 ).
+
+%------------------------------------------------------------------------------%
+
+% This is a very bad number generator. Its only virtue is that
+% unlike random.m, its behavior does not depend on word size.
+
+:- type random_supply == int.
+
+:- pred random_init(int::in, random_supply::muo) is det.
+
+random_init(Seed, Supply) :-
+	copy(Seed, Supply).
+
+:- pred random_random(int::out, random_supply::mdi, random_supply::muo) is det.
+
+random_random(Value, Supply0, Supply) :-
+	Value = Supply0,
+	( Supply0 < 100 ->
+		Supply is Supply0 + 1
+	;
+		Supply is 0
+	).
 
 %------------------------------------------------------------------------------%
