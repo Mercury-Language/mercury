@@ -184,6 +184,16 @@ Define_entry(mercury____TermToType___uniq_array_1_0);
 
 END_MODULE
 
+/* Ensure that the initialization code for the above module gets run. */
+/*
+INIT sys_init_uniq_array_module
+*/
+void sys_init_uniq_array_module(void); /* suppress gcc -Wmissing-decl warning */
+void sys_init_uniq_array_module(void) {
+	extern ModuleFunc uniq_array_module;
+	uniq_array_module();
+}
+
 ").
 
 %-----------------------------------------------------------------------------%

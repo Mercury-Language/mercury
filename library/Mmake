@@ -122,8 +122,9 @@ libmercury.so : $(library.pic_os)
 		esac \
 		` $(SHARED_LIBS)
 
-library.init:
+library.init: library.dep
 	for file in $(library.ms); do \
+		grep '^INIT ' $$file; \
 		echo "INIT mercury__`basename $$file .m`__init"; \
 	done > library.init
 

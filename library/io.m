@@ -1476,6 +1476,17 @@ Define_label(mercury__io__run_0_0_i2);
 	final_io_state(r2);
 	succeed();
 END_MODULE
+
+/* Ensure that the initialization code for the above module gets run. */
+/*
+INIT sys_init_io_run_module
+*/
+void sys_init_io_run_module(void); /* suppress gcc -Wmissing-decl warning */
+void sys_init_io_run_module(void) {
+	extern ModuleFunc io_run_module;
+	io_run_module();
+}
+
 ").
 
 /* input predicates */
@@ -1633,7 +1644,6 @@ END_MODULE
 
 Define_extern_entry(mercury____Unify___io__stream_0_0);
 Define_extern_entry(mercury____Compare___io__stream_0_0);
-Declare_label(mercury____Compare___io__stream_0_0_i1);
 Define_extern_entry(mercury____Index___io__stream_0_0);
 Define_extern_entry(mercury____Type_To_Term___io__stream_0_0);
 Define_extern_entry(mercury____Term_To_Type___io__stream_0_0);
@@ -1641,7 +1651,6 @@ Define_extern_entry(mercury____Term_To_Type___io__stream_0_0);
 BEGIN_MODULE(io_stream_module)
 	init_entry(mercury____Unify___io__stream_0_0);
 	init_entry(mercury____Compare___io__stream_0_0);
-	init_label(mercury____Compare___io__stream_0_0_i1);
 	init_entry(mercury____Index___io__stream_0_0);
 	init_entry(mercury____Type_To_Term___io__stream_0_0);
 	init_entry(mercury____Term_To_Type___io__stream_0_0);
@@ -1670,6 +1679,17 @@ Define_entry(mercury____Type_To_Term___io__stream_0_0);
 	fatal_error(""cannot covert type io__stream to term"");
 
 END_MODULE
+
+/* Ensure that the initialization code for the above module gets run. */
+/*
+INIT sys_init_io_stream_module
+*/
+void sys_init_io_stream_module(void); /* suppress gcc -Wmissing-decl warning */
+void sys_init_io_stream_module(void) {
+	extern ModuleFunc io_stream_module;
+	io_stream_module();
+}
+
 ").
 
 :- pragma(c_code, io__stdin_stream(Stream::out, IO0::di, IO::uo), "
@@ -1835,9 +1855,9 @@ END_MODULE
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__preallocate_heap_space(_HeapSpace::in, IO0::di, IO::uo),
+:- pragma(c_code, io__preallocate_heap_space(HeapSpace::in, IO0::di, IO::uo),
 "
-	/* _HeapSpace not used */
+	/* HeapSpace not used */
 	/* don't do anything - preallocate_heap_space was just a
 	   hack for NU-Prolog */
 	update_io(IO0, IO);
@@ -1891,5 +1911,16 @@ Define_entry(mercury____Type_To_Term___io__external_state_0_0);
 	fatal_error(""cannot unify/compare/index/term_to_type/type_to_term io__external_state"");
 
 END_MODULE
+
+/* Ensure that the initialization code for the above module gets run. */
+/*
+INIT sys_init_unify_external_state_module
+*/
+	/* suppress gcc -Wmissing-decl warning */
+void sys_init_unify_external_state_module(void);
+void sys_init_unify_external_state_module(void) {
+	extern ModuleFunc unify_external_state_module;
+	unify_external_state_module();
+}
 
 ").

@@ -1713,6 +1713,18 @@ Define_label(mercury__string__append_3_3_xx_i1);
 	}
 END_MODULE
 
+/* Ensure that the initialization code for the above module gets run. */
+/*
+INIT sys_init_string_append_module
+*/
+	/* suppress gcc -Wmissing-decl warning */
+void sys_init_string_append_module(void);
+
+void sys_init_string_append_module(void) {
+	extern ModuleFunc string_append_module;
+	string_append_module();
+}
+
 ").
 
 /*

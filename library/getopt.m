@@ -35,7 +35,7 @@
 % Long boolean options can be negated by preceding them with `--no-',
 % e.g. `--no-foo' will negate the `--foo' option.
 
-:- module getopt3.
+:- module getopt.
 :- interface.
 :- import_module int, string, bool, list, map, std_util.
 

@@ -345,6 +345,16 @@ Define_entry(mercury____Type_To_Term___univ_0_0);
 
 END_MODULE
 
+/* Ensure that the initialization code for the above module gets run. */
+/*
+INIT sys_init_unify_univ_module
+*/
+void sys_init_unify_univ_module(void); /* suppress gcc -Wmissing-decl warning */
+void sys_init_unify_univ_module(void) {
+	extern ModuleFunc unify_univ_module;
+	unify_univ_module();
+}
+
 ").
 
 %-----------------------------------------------------------------------------%

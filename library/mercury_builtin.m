@@ -480,6 +480,17 @@ Define_entry(mercury__copy_2_1);
 	proceed();
 
 END_MODULE
+
+/* Ensure that the initialization code for the above module gets run. */
+/*
+INIT sys_init_copy_module
+*/
+void sys_init_copy_module(void); /* suppress gcc -Wmissing-decl warning */
+void sys_init_copy_module(void) {
+	extern ModuleFunc copy_module;
+	copy_module();
+}
+
 ").
 
 %-----------------------------------------------------------------------------%
