@@ -46,7 +46,7 @@
 			;	enter_commit(byte_temp)
 			;	endof_commit(byte_temp)
 			;	assign(byte_var, byte_var)
-			;	test(byte_var, byte_var)
+			;	test(byte_var, byte_var, byte_test_id)
 			;	construct(byte_var, byte_cons_id,
 					list(byte_var))
 			;	deconstruct(byte_var, byte_cons_id,
@@ -112,6 +112,12 @@
 			;	to_var
 			;	to_none
 			.
+
+:- type byte_test_id	--->	int_test
+			;	char_test
+			;	string_test
+			;	float_test
+			;	enum_test.
 
 :- type byte_module_id	==	module_name.
 :- type byte_pred_id	==	string.
@@ -260,9 +266,10 @@ output_args(endof_commit(Temp)) -->
 output_args(assign(Var1, Var2)) -->
 	output_var(Var1),
 	output_var(Var2).
-output_args(test(Var1, Var2)) -->
+output_args(test(Var1, Var2, TestId)) -->
 	output_var(Var1),
-	output_var(Var2).
+	output_var(Var2),
+	output_test_id(TestId).
 output_args(construct(Var, ConsId, Vars)) -->
 	output_var(Var),
 	output_cons_id(ConsId),
@@ -388,9 +395,10 @@ debug_args(endof_commit(Temp)) -->
 debug_args(assign(Var1, Var2)) -->
 	debug_var(Var1),
 	debug_var(Var2).
-debug_args(test(Var1, Var2)) -->
+debug_args(test(Var1, Var2, TestId)) -->
 	debug_var(Var1),
-	debug_var(Var2).
+	debug_var(Var2),
+	debug_test_id(TestId).
 debug_args(construct(Var, ConsId, Vars)) -->
 	debug_var(Var),
 	debug_cons_id(ConsId),
@@ -664,6 +672,24 @@ debug_var_dirs([Var - Dir | VarDirs]) -->
 
 %---------------------------------------------------------------------------%
 
+:- pred output_test_id(byte_test_id, io__state, io__state).
+:- mode output_test_id(in, di, uo) is det.
+output_test_id(int_test)	--> output_byte(0).
+output_test_id(char_test)	--> output_byte(1).
+output_test_id(string_test)	--> output_byte(2).
+output_test_id(float_test) 	--> output_byte(3).
+output_test_id(enum_test) 	--> output_byte(4).
+
+:- pred debug_test_id(byte_test_id, io__state, io__state).
+:- mode debug_test_id(in, di, uo) is det.
+debug_test_id(int_test)		--> debug_string("int").
+debug_test_id(char_test)	--> debug_string("char").
+debug_test_id(string_test)	--> debug_string("string").
+debug_test_id(float_test) 	--> debug_string("float").
+debug_test_id(enum_test) 	--> debug_string("enum").
+
+
+%---------------------------------------------------------------------------%
 :- pred output_module_id(byte_module_id, io__state, io__state).
 :- mode output_module_id(in, di, uo) is det.
 
@@ -918,7 +944,7 @@ byte_code(endof_negation,			18).
 byte_code(enter_commit(_),			19).
 byte_code(endof_commit(_),			20).
 byte_code(assign(_, _),				21).
-byte_code(test(_, _),				22).
+byte_code(test(_, _, _),			22).
 byte_code(construct(_, _, _),			23).
 byte_code(deconstruct(_, _, _),			24).
 byte_code(complex_construct(_, _, _),		25).
@@ -966,7 +992,7 @@ byte_debug(endof_negation,			"endof_negation").
 byte_debug(enter_commit(_),			"enter_commit").
 byte_debug(endof_commit(_),			"endof_commit").
 byte_debug(assign(_, _),			"assign").
-byte_debug(test(_, _),				"test").
+byte_debug(test(_, _, _),			"test").
 byte_debug(construct(_, _, _),			"construct").
 byte_debug(deconstruct(_, _, _),		"deconstruct").
 byte_debug(complex_construct(_, _, _),		"complex_construct").

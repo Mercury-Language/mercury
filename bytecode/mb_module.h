@@ -33,6 +33,7 @@ typedef struct MB_Module_Struct	MB_Module;
 /* Ensure a module is loaded */
 MB_Module	*MB_module_load_name(MB_CString_Const module_name);
 MB_Module	*MB_module_load(MB_CString_Const module_name, FILE *fp);
+
 /* Unload a module */
 void		MB_module_unload(MB_Module *module);
 
@@ -82,19 +83,22 @@ MB_Bool		MB_ip_native(MB_Bytecode_Addr ip);
 	
 /* Allocate memory in the code argument data array */
 #define MB_CODE_DATA_ALLOC(type, number) \
-	((type *) (MB_code_data_alloc_words(MB_NUMBLOCKS(sizeof(type)*(number), sizeof(MB_Word)))))
+	((type *) (MB_code_data_alloc_words( \
+			MB_NUMBLOCKS(sizeof(type)*(number), sizeof(MB_Word))) \
+		   ) \
+	)
 
 MB_Word		*MB_code_data_alloc_words(MB_Word num_words);
 
 /*
-** This is only here so pointer arithmetic will work; you shold never need
-** to use any of these fields: the MB_BCID_xxx wrappers in mb_module.c are
-** the only things that should use them
+** This is only defined here so instruction pointers can be incremented; you should
+** never need to use any of these fields: the MB_BCID_xxx wrappers in mb_module.c
+** are the only things that should use them
 */
 struct MB_BCId_Struct {
 	MB_Unsigned	id	: 7;
 	MB_Unsigned	is_det	: 1;
-	MB_Unsigned	arg	: MB_WORD_BITS - (7 + 1);
+	MB_Unsigned	arg	: MR_WORDBITS - (7 + 1);
 };
 
 #endif	/* MB_MODULE_H */

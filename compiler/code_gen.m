@@ -1239,8 +1239,7 @@ code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
 	list(instruction)::out) is det.
 
 code_gen__bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
-	
-%	module_info_name(ModuleInfo, ModuleSymName),
+
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_module(PredInfo, ModuleSymName),
 
@@ -1256,10 +1255,7 @@ code_gen__bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
 	int_to_string(Arity, ArityStr),
 	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
 
-	CallStructName = "bytecode_call__" ++
-		(PredOrFunc = function -> "fn__" ; "") ++
-		ModuleName ++ "__" ++ PredName ++ "_" ++ ArityStr ++ "_" ++
-		ProcStr,
+	CallStructName = "bytecode_call_info",
 
 	append_list([
 		"\t\tstatic MB_Call ", CallStructName, " = {\n",

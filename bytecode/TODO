@@ -1,28 +1,29 @@
 
- -> Get compiler to generate entry stubs for nondet code
- -> Nondet code called from native code
- -> Closely related: calling native code from bytecode
- 
+ Todo:
+
+ -> floats
+    
+ -> Closure layout structures
+
  -> 'complex' constructors (I think 'partially instantiated' was the term
     that everybody else was familiar with)
     
- -> Closures
-
  -> Make the bytecode debugger interface nicer (add breakpoints, step,
     more user friendly machine state dump etc.)
  -> Add variable type information to bytecode debugger
 
+ -> Rest of the Unary ops (Zoltan said to ignore them for now - I haven't
+    actually even been able to generate mercury code that actually uses 
+    the tag ops)
+
+ Efficiency:
  -> Hash module & predicate names on load rather than linear search
 
- -> Handle nested modules
+ -> Remove do_fail & do_redo switches between native/bytecode when
+    not necessary. (Currently reverts to native code to execute
+    all do_redos & do_fails)
 
- -> Handle foreign code in mercury gracefully
-
- -> Entry stub generation still generates C code internally; fix this
-    (in code_gen.m/generate_proc_code)
-    
  -> Remove fixed size code limit
-
  -> Remove best case 64MB code size limit (worst case is 16MB)
     [can easily be upped to 256MB (64MB worst) but beyond that will
     suffer a performance penalty -- should check how much this is
@@ -31,14 +32,3 @@
     a hash then can store bytecode id/arguments in one contiguous
     aray which would be best for performance
  
- -> Unary ops (Zoltan said to ignore them for now - I haven't actually
-    even been able to generate mercury code that actually uses them)
-
-
-Outstanding Issues
- -> Jumps out of C blocks { } with local variables won't leave leaks
-    onto the stack?
- 
- [ Probably; other mercury code relies on this so it should be ok ]
-
-MR_INTEGER_LENGTH_MODIFIER

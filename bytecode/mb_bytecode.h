@@ -13,12 +13,9 @@
 
 #include <stdio.h>
 
-#include "mercury_conf.h"
-#include "mercury_types.h"
-#include "mercury_float.h"
+#include "mercury_type_info.h"
 
 #include "mb_basetypes.h"
-#include "mb_stack.h"
 #include "mb_util.h"
 
 typedef struct MB_Tag_Struct {
@@ -34,8 +31,8 @@ typedef struct MB_Tag_Struct {
 } MB_Tag;
 
 /* 
- *	Possible values for Tag.id ...
- */
+**	Possible values for Tag.id ...
+*/
 #define	MB_TAG_SIMPLE			0
 #define	MB_TAG_COMPLICATED		1
 #define	MB_TAG_COMPLICATED_CONSTANT	2
@@ -45,8 +42,8 @@ typedef struct MB_Tag_Struct {
 typedef MB_Byte
 	MB_Determinism;
 /*
- *	Possible values for Determinism ...
- */
+**	Possible values for Determinism ...
+*/
 #define	MB_DET_DET			0
 #define	MB_DET_SEMIDET			1
 #define	MB_DET_MULTIDET			2
@@ -88,8 +85,8 @@ typedef struct MB_Op_arg_struct {
 } MB_Op_arg;
 
 /*
- *	Possible values for Op_arg.id
- */
+**	Possible values for Op_arg.id
+*/
 #define	MB_ARG_VAR			0
 #define	MB_ARG_INT_CONST		1
 #define	MB_ARG_FLOAT_CONST		2
@@ -104,8 +101,8 @@ typedef struct MB_Var_dir_struct {
 } MB_Var_dir;
 
 /*
- *	Possible values for Direction ...
- */
+**	Possible values for Direction ...
+*/
 #define	MB_DIR_TO_ARG		0
 #define	MB_DIR_TO_VAR		1
 #define	MB_DIR_TO_NONE		2
@@ -129,7 +126,7 @@ typedef struct MB_Cons_id_struct {
 			MB_Short	arity;
 			MB_Tag		tag;
 		} cons;
-		MB_Integer	int_const;	
+		MB_Integer	int_const;
 		MB_CString	string_const;
 		MB_Float	float_const;
 		struct {
@@ -138,8 +135,8 @@ typedef struct MB_Cons_id_struct {
 			MB_Short	arity;
 			MB_Bool		is_func;
 			MB_Byte		mode_num;
-			/* Actual call address */
-			MB_Code_Addr	addr;
+			/* Cached call address (may be NULL) */
+			MB_Native_Addr	native_addr;
 		} pred_const;
 		struct {
 			MB_CString	module_name;
@@ -151,6 +148,8 @@ typedef struct MB_Cons_id_struct {
 			MB_CString	module_name;
 			MB_CString	type_name;
 			MB_Byte		type_arity;
+			/* Cached type info address (may be NULL) */
+			MR_TypeCtorInfo	type_info;
 		} base_type_info_const;
 		struct {
 			MB_Byte		ch;
@@ -159,8 +158,8 @@ typedef struct MB_Cons_id_struct {
 } MB_Cons_id;
 
 /*
- *	Possible values for Cons_id.id ...
- */
+**	Possible values for Cons_id.id ...
+*/
 #define	MB_CONSID_CONS			0
 #define	MB_CONSID_INT_CONST		1
 #define	MB_CONSID_STRING_CONST		2
@@ -169,6 +168,17 @@ typedef struct MB_Cons_id_struct {
 #define	MB_CONSID_CODE_ADDR_CONST	5
 #define	MB_CONSID_BASE_TYPE_INFO_CONST	6
 #define	MB_CONSID_CHAR_CONST		7
+
+/*
+**	Possible values for Test_id
+*/
+typedef MB_Byte	MB_Test_id;
+
+#define MB_TESTID_INT		0
+#define MB_TESTID_CHAR		1
+#define MB_TESTID_STRING	2
+#define MB_TESTID_FLOAT		3
+#define MB_TESTID_ENUM		4
 
 /*
 ** Internal label structure. At load time the index is read from the file
@@ -312,6 +322,7 @@ typedef union MB_Bytecode_Arg_tag {
 	struct {
 		MB_Short	var1;
 		MB_Short	var2;
+		MB_Test_id	id;
 	} test;
 
 	struct {

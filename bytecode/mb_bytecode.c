@@ -7,52 +7,30 @@
 */
 
 /* Imports */
-#include	<assert.h>
-#include	<limits.h>
-#include	<string.h>
-
 #include	"mb_bytecode.h"
+
+#include	<string.h>
 #include	"mb_mem.h"
 #include	"mb_module.h"
 #include	"mb_util.h"
 
 /* Exported definitions */
-
+MB_Bool		MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p);
+MB_Bool		MB_read_bytecode_version_number(FILE *fp,
+						MB_Short *version_number_p);
 /* Local declarations */
 
-/* 
-** All read functions return true if successful
-*/
-static MB_Bool
-MB_read_byte(FILE *fp, MB_Byte *byte_p);
-
-static MB_Bool
-MB_read_short(FILE *fp, MB_Short *short_p);
-
-static MB_Bool
-MB_read_int(FILE *fp, MB_Integer *int_p);
-
-static MB_Bool
-MB_read_word(FILE *fp, MB_Word *word_p);
-
-static MB_Bool
-MB_read_float(FILE *fp, MB_Float *float_p);
-
-static MB_Bool
-MB_read_cstring(FILE *fp, MB_CString *str_p);
-
-static MB_Bool
-MB_read_cons_id(FILE *fp, MB_Cons_id *cons_id_p);
-
-static MB_Bool
-MB_read_tag(FILE *fp, MB_Tag *tag_p);
-
-static MB_Bool
-MB_read_var_dir(FILE *fp, MB_Var_dir *var_dir_p);
-
-static MB_Bool
-MB_read_op_arg(FILE *fp, MB_Op_arg *op_arg_p);
-
+/* All read functions return true if successful */
+static MB_Bool	MB_read_byte(FILE *fp, MB_Byte *byte_p);
+static MB_Bool	MB_read_short(FILE *fp, MB_Short *short_p);
+static MB_Bool	MB_read_int(FILE *fp, MB_Integer *int_p);
+static MB_Bool	MB_read_word(FILE *fp, MB_Word *word_p);
+static MB_Bool	MB_read_float(FILE *fp, MB_Float *float_p);
+static MB_Bool	MB_read_cstring(FILE *fp, MB_CString *str_p);
+static MB_Bool	MB_read_cons_id(FILE *fp, MB_Cons_id *cons_id_p);
+static MB_Bool	MB_read_tag(FILE *fp, MB_Tag *tag_p);
+static MB_Bool	MB_read_var_dir(FILE *fp, MB_Var_dir *var_dir_p);
+static MB_Bool	MB_read_op_arg(FILE *fp, MB_Op_arg *op_arg_p);
 
 /* Implementation */
 
@@ -383,12 +361,15 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 		}
 		case MB_BC_test: {
 			MB_Short	var1, var2;
+			MB_Byte		test_id;
 
 			if (MB_read_short(fp, &var1) && 
-				MB_read_short(fp, &var2))
+				MB_read_short(fp, &var2) &&
+				MB_read_byte(fp, &test_id))
 			{
 				bc_p->opt.test.var1 = var1;
 				bc_p->opt.test.var2 = var2;
+				bc_p->opt.test.id = test_id;
 				return TRUE;
 			} else {
 				MB_fatal("test read error");
@@ -605,7 +586,8 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 				** it somehow gets executed
 				*/
 				bc_p->opt.call.addr.is_native = FALSE;
-				bc_p->opt.call.addr.addr.bc = MB_CODE_INVALID_ADR;
+				bc_p->opt.call.addr.addr.bc =
+							MB_CODE_INVALID_ADR;
 				return TRUE;
 			} else {
 				MB_fatal("call read error");
@@ -784,9 +766,7 @@ MB_read_short(FILE *fp, MB_Short *short_p)
 static MB_Bool
 MB_read_int(FILE *fp, MB_Integer *int_p)
 {
-	/*
-	** c0 is the big end.
-	*/
+	/* c0 is the big end */
 	MB_Byte		c0, c1, c2, c3, c4, c5, c6, c7;
 
 	if (MB_read_byte(fp, &c0) && MB_read_byte(fp, &c1) && 
@@ -1113,12 +1093,21 @@ MB_read_cons_id(FILE *fp, MB_Cons_id *cons_id_p)
 				MB_read_cstring(fp, &type_name) && 
 				MB_read_byte(fp, &type_arity)) 
 			{
+				/* XXX: Should we really do this? */
+				/* If no module, replace with 'builtin' */
+				if (MB_str_cmp(module_id, "") == 0) {
+					MB_str_delete(module_id);
+					module_id = MB_str_dup("builtin");
+				}
+
 				cons_id_p->opt.base_type_info_const.module_name
 					= module_id;
 				cons_id_p->opt.base_type_info_const.type_name = 
 					type_name;
 				cons_id_p->opt.base_type_info_const.type_arity =
 					type_arity;
+				cons_id_p->opt.base_type_info_const.type_info =
+					NULL;
 				return TRUE;
 			} else {
 				MB_util_error("Unable to read constructor"
@@ -1158,7 +1147,7 @@ MB_read_tag(FILE *fp, MB_Tag *tag_p)
 
 	if (!MB_read_byte(fp, &c)) {
 		MB_util_error("Unable to read tag\n");
-		return FALSE; /* not reached */
+		return FALSE;
 	}
 
 	tag_p->id = c;
@@ -1176,9 +1165,7 @@ MB_read_tag(FILE *fp, MB_Tag *tag_p)
 			}
 			break;
 		}
-		/* 
-		** The following two cases behave identically. 
-		*/
+		/* The following two cases behave identically */
 		case MB_TAG_COMPLICATED:
 		case MB_TAG_COMPLICATED_CONSTANT:
 		{
@@ -1212,7 +1199,8 @@ MB_read_tag(FILE *fp, MB_Tag *tag_p)
 		}
 		case MB_TAG_NONE:
 			/* XXX: Hmm... What's MB_TAG_NONE for?? */
-			return TRUE; 
+			/*MB_fatal("Tag TAG_NONE not implemented");*/
+			return TRUE;
 			break;
 		default:
 			MB_util_error("Unknown tag type\n");

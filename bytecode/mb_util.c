@@ -1,10 +1,11 @@
-#define NOSAY	1	/* To disable SAYings */
 /*
 ** Copyright (C) 1997,2000-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
 */
+
+#define NOSAY	0	/* To disable SAYings */
 
 /* Imports */
 #include	<stdio.h>
@@ -43,11 +44,13 @@ MB_util_error(const char *fmt, ...)
 	fprintf(stderr, "\n");
 }
 
+#ifndef NOSAY
+#define NOSAY	1
+#endif
+
 void MB_SAY(const char *fmt, ...)
 {
-#if NOSAY
-
-#else
+#if !NOSAY
 	va_list arg_p;
 	va_start(arg_p, fmt);
 	vfprintf(stderr, fmt, arg_p);
@@ -74,6 +77,10 @@ int MB_str_cmp(MB_CString_Const a, MB_CString_Const b) {
 	return strcmp(a, b);
 }
 
+/*
+** Allocate space for a new string
+** Allocates in atomic garbage collected memory
+*/
 MB_CString
 MB_str_new(MB_Word len)
 {
@@ -83,6 +90,9 @@ MB_str_new(MB_Word len)
 	return c;
 }
 
+/*
+** Create a new string that is the concatenation of two existing strings
+*/
 MB_CString
 MB_str_new_cat(MB_CString_Const a, MB_CString_Const b)
 {
@@ -98,6 +108,7 @@ MB_str_new_cat(MB_CString_Const a, MB_CString_Const b)
 	return new_str;
 }
 
+/* Duplicate a string */
 MB_CString
 MB_str_dup(MB_CString_Const str)
 {
@@ -106,6 +117,7 @@ MB_str_dup(MB_CString_Const str)
 	return c;
 }
 
+/* Free storage associated with a given string */
 void
 MB_str_delete(MB_CString str)
 {

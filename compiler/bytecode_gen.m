@@ -44,6 +44,7 @@
 :- import_module type_util, mode_util, goal_util.
 :- import_module builtin_ops, code_model, passes_aux.
 :- import_module globals, tree.
+:- import_module prog_out.
 
 :- import_module bool, int, string, list, assoc_list, set, map, varset.
 :- import_module std_util, require, term.
@@ -508,7 +509,51 @@ bytecode_gen__unify(assign(Target, Source), _, _, ByteInfo, Code) :-
 bytecode_gen__unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
 	bytecode_gen__map_var(ByteInfo, Var1, ByteVar1),
 	bytecode_gen__map_var(ByteInfo, Var2, ByteVar2),
-	Code = node([test(ByteVar1, ByteVar2)]).
+	bytecode_gen__get_var_type(ByteInfo, Var1, Var1Type),
+	bytecode_gen__get_var_type(ByteInfo, Var2, Var2Type),
+
+	(	type_to_type_id(Var1Type, TypeId1, _),
+		type_to_type_id(Var2Type, TypeId2, _)
+	->	(	TypeId2 = TypeId1
+		->	TypeId = TypeId1
+		;	error("unexpected simple_test between different types")
+		)
+	;	error("failed lookup of type id")
+	),
+
+	ByteInfo = byte_info(_, _, ModuleInfo, _, _),
+
+	classify_type_id(ModuleInfo, TypeId, BuiltinType),
+
+	(	BuiltinType = int_type,
+		TestId = int_test
+	
+	;	BuiltinType = char_type,
+		TestId = char_test
+	
+	;	BuiltinType = str_type,
+		TestId = string_test
+	
+	;	BuiltinType = float_type,
+		TestId = float_test 
+	
+	;	BuiltinType = enum_type,
+		TestId = enum_test 
+
+	;	BuiltinType = pred_type,
+		error("unexpected pred_type in simple_test")
+	
+	;	BuiltinType = tuple_type,
+		error("unexpected tuple_type in simple_test")
+
+	;	BuiltinType = user_type,
+		error("unexpected user_type in simple_test")
+
+	;	BuiltinType = polymorphic_type,
+		error("unexpected polymorphic_type in simple_test")
+
+	),
+	Code = node([test(ByteVar1, ByteVar2, TestId)]).
 bytecode_gen__unify(complicated_unify(_,_,_), _Var, _RHS, _ByteInfo, _Code) :-
 	error("complicated unifications should have been handled by polymorphism.m").
 

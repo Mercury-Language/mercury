@@ -15,104 +15,196 @@
 #include	"mb_util.h"
 
 /* Exported definitions */
+void	*MB_malloc(size_t size);
+void	*MB_realloc(void* mem, size_t size);
+void	 MB_free(void *mem);
+void	*MB_GC_malloc(size_t size);
+void	*MB_GC_malloc_atomic(size_t size);
+void	*MB_GC_realloc(void* mem, size_t size);
+void	 MB_GC_free(void *mem);
 
 /* Local declarations */
 
-/* Implementation */
-
-/* 
- * Make sure the size of guard_bytes is a multiple of 8 to ensure we 
- * don't get unaligned accesses, even on 64-bit architectures.
- */
-static const unsigned char
-guard_bytes[] = {0xa5,0xa5,0xa5,0xa5,0xa5,0xa5,0xa5,0xa5};
-
-/* Implementation */
-
-#ifndef MB_NO_GC
-
-#include "gc.h"
-
+#ifdef MB_MALLOC_CHECK
+void	*block_get(void *mem);
+void	 block_check(void *block);
 #endif
+
+/* Implementation */
+
+#ifdef MB_MALLOC_CHECK
+/*
+** Memory block layout:
+** char guardbytes[]
+** size_t size
+** memory passed to client
+** char guardbytes[]
+**
+** Make sure the size of guard_bytes is a multiple of 8 to ensure we 
+** don't get unaligned accesses, even on 64-bit architectures.
+*/
+#define GRANULARITY	8	/* Alignment for block elements expect */
+#define GUARD_VAL	0xa5
+#define GUARD_SIZE	sizeof(guard_bytes)
+static const unsigned char
+guard_bytes[] = {	GUARD_VAL+0, GUARD_VAL+1, GUARD_VAL+2, GUARD_VAL+3,
+			GUARD_VAL+4, GUARD_VAL+5, GUARD_VAL+6, GUARD_VAL+7 };
+
+/* Offset of prologue guard bytes */
+#define MEMBLOCK_PREGUARD(block, i)	\
+	(((unsigned char *) block)[i])
+
+/* Offset of size field */
+#define MEMBLOCK_SIZE(block)				\
+	(* (size_t *)					\
+	 ((unsigned char *) block			\
+	  + MB_MULTIPLEOF(GUARD_SIZE, GRANULARITY)	\
+	 )						\
+	)
+
+/* Offset of memory block */
+/* Offset of size field */
+#define MEMBLOCK_MEM(block)				\
+	(						\
+	 ((unsigned char *) block			\
+	  + MB_MULTIPLEOF(GUARD_SIZE, GRANULARITY)	\
+	  + MB_MULTIPLEOF(sizeof(size_t), GRANULARITY )	\
+	 )						\
+	)
+
+/* Offset of epilogue guard bytes */
+#define MEMBLOCK_POSTGUARD(block, i)				\
+	(							\
+	 (MEMBLOCK_MEM(block)					\
+	  + MB_MULTIPLEOF(MEMBLOCK_SIZE(block), GRANULARITY)	\
+	 )[i]							\
+	)
+
+/* Total size of memory block */
+#define MEMBLOCK_TOTALSIZE(memsize)				\
+	( MB_MULTIPLEOF(GUARD_SIZE, GRANULARITY)		\
+	+ MB_MULTIPLEOF(sizeof(size_t), GRANULARITY)		\
+	+ MB_MULTIPLEOF(memsize, GRANULARITY)			\
+	+ MB_MULTIPLEOF(GUARD_SIZE, GRANULARITY)		\
+	)
+
+/* Get the actual memory block start */
+void *
+block_get(void *mem)
+{
+	return (unsigned char *) mem 
+			- MB_MULTIPLEOF(GUARD_SIZE, GRANULARITY)
+			- MB_MULTIPLEOF(sizeof(size_t), GRANULARITY);
+}
+
+/* Checks a memory block for corruption and if not corrupt returns its size */
+void
+block_check(void *block)
+{
+	int		i;
+
+	/* Check prologue guard bytes */
+	for (i = 0; i < GUARD_SIZE; i++) {
+		if (MEMBLOCK_PREGUARD(block, i) != guard_bytes[i]) {
+			MB_fatal("mb_mem: block_check:"
+				" memory corruption detected");
+		}
+	}
+
+	/* Check epilogue guard bytes */
+	for (i = 0; i < GUARD_SIZE; i++) {
+		if (MEMBLOCK_POSTGUARD(block, i) != guard_bytes[i]) {
+			MB_fatal("mb_mem: block_check:"
+				" memory corruption detected");
+		}
+	}
+}
 
 void *
 MB_malloc(size_t size)
 {
-	size_t		real_size;
-	size_t		guard_size;
-	unsigned char	*real_mem, *mem;
+	unsigned char	*block= malloc(MEMBLOCK_TOTALSIZE(size));
 
-	guard_size = sizeof(guard_bytes) / sizeof(*guard_bytes);
-	real_size = size + 2 * guard_size;
-	
-	real_mem = malloc(real_size);
-	if (real_mem == NULL) {
-		MB_fatal("mem.MB_alloc: malloc failed");
+
+	if (block== NULL) {
+		MB_fatal("MB_malloc failed");
 	}
 
-	/* 
-	 * Now check all allocated memory for corruption.
-	 * XXX: Fill this in later...
-	 */
-	
-	mem = real_mem + guard_size;
-	return mem;
+	MEMBLOCK_SIZE(block) = size;
+	memcpy(&(MEMBLOCK_PREGUARD(block, 0)), guard_bytes, GUARD_SIZE);
+	memcpy(&(MEMBLOCK_POSTGUARD(block, 0)), guard_bytes, GUARD_SIZE);
+
+	return MEMBLOCK_MEM(block);
 }
 
 void
 MB_free(void *mem)
 {
-	size_t		guard_size;
-	unsigned char	*real_mem;
+	void* block = block_get(mem);
 
-	/*
-	 * Check that the memory to be freed was actually allocated.
-	 * We can't check for still-remaining references to the
-	 * memory without some sort of memory-marking as done in
-	 * Hans Boehm's conservative garbage collector.
-	 */
+	block_check(block);
 
-	/*
-	 * Check all allocated memory for corruption.
-	 * XXX: Do this later...
-	 */
-
-	guard_size = sizeof(guard_bytes) / sizeof(*guard_bytes);
-	real_mem = (unsigned char *) mem - guard_size;
-	free(real_mem);
-
-	return;
+	/* Free the memory */
+	free(block);
 }
 
 void *
-MB_realloc(void *mem, size_t size)
+MB_realloc(void *mem, size_t new_size)
 {
+	void* block = block_get(mem);
 
-	return realloc(mem, size);
-#if 0
-	void	*new_mem;
+	if (new_size == 0) {
+		MB_free(mem);
+		return NULL;
 
-	/*
-	 * Check all allocated memory for corruption.
-	 * XXX: Do this later...
-	 */
+	} else if (mem == NULL) {
+		return MB_malloc(new_size);
+		
+	} else if (MEMBLOCK_SIZE(block) != new_size) {
+		block_check(block);
 
-	new_mem = MB_malloc(size);
-	memcpy(new_mem, mem, size);
+		block = realloc(block, MEMBLOCK_TOTALSIZE(new_size)); 
 
-	/*
-	 * Check mem was actually allocated.
-	 * XXX: Do later...
-	 */
-	MB_free(mem);
+		/* Update the size */
+		MEMBLOCK_SIZE(block) = new_size;
 
-	return new_mem;
-#endif
+		/* Redo the guard bytes at the end */
+		memcpy(&MEMBLOCK_POSTGUARD(block, 0), guard_bytes, GUARD_SIZE);
+
+	}
+
+	block_check(block);
+
+	return MEMBLOCK_MEM(block);
 }
+
+#else	/* MB_MALLOC_CHECK */
+
+void *
+MB_malloc(size_t size)
+{
+	return malloc(size);
+}
+
+void
+MB_free(void *mem)
+{
+	return free(mem);
+}
+
+void *
+MB_realloc(void *mem, size_t new_size)
+{
+	return realloc(mem, new_size);
+}
+
+#endif	/* MB_MALLOC_CHECK */
 
 /* ------------------------------------------------------------------------- */
 
 #ifndef MB_NO_GC
+
+#include "gc.h"
 
 void *
 MB_GC_malloc(size_t size)

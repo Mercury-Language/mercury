@@ -15,6 +15,12 @@
 
 #include "mb_basetypes.h"
 
+/* Define to convert garbage collection allocations to normal mallocs */
+/* #define MB_NO_GC */
+
+/* Define to add memory corruption checking when allocating/deallocating mem */
+#define MB_MALLOC_CHECK
+
 /*
 ** Do not use MB_malloc() or MB_realloc() directly, unless you want
 ** to allocate raw memory.  Normally you should use the macros
