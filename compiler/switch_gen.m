@@ -202,7 +202,8 @@ switch_gen__priority(float_constant(_), 3).
 switch_gen__priority(complicated_tag(_, _), 4).
 switch_gen__priority(string_constant(_), 5).
 switch_gen__priority(pred_closure_tag(_, _), 6).	% should never occur
-switch_gen__priority(address_constant(_, _), 6).	% should never occur
+switch_gen__priority(code_addr_constant(_, _), 6).	% should never occur
+switch_gen__priority(base_type_info_constant(_, _, _), 6).% should never occur
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

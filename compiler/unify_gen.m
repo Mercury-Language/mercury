@@ -118,9 +118,9 @@ unify_gen__generate_tag_test(Var, ConsId, ElseLab, Code) -->
 	->
 		code_info__variable_type(Var, Type),
 		code_aux__lookup_type_defn(Type, TypeDefn),
+		{ hlds_data__get_type_defn_body(TypeDefn, TypeBody) },
 		{
-			TypeDefn = hlds__type_defn(_, _,
-					du_type(_, ConsTable, _), _, _)
+			TypeBody = du_type(_, ConsTable, _)
 		->  
 			map__to_assoc_list(ConsTable, ConsList),
 			(
@@ -188,9 +188,12 @@ unify_gen__generate_tag_rval_2(pred_closure_tag(_, _), _Rval, _TestRval) :-
 	% This should never happen, since the error will be detected
 	% during mode checking.
 	error("Attempted higher-order unification").
-unify_gen__generate_tag_rval_2(address_constant(_, _), _Rval, _TestRval) :-
+unify_gen__generate_tag_rval_2(code_addr_constant(_, _), _Rval, _TestRval) :-
 	% This should never happen
-	error("Attempted address unification").
+	error("Attempted code_addr unification").
+unify_gen__generate_tag_rval_2(base_type_info_constant(_, _, _), _, _) :-
+	% This should never happen
+	error("Attempted base_type_info unification").
 unify_gen__generate_tag_rval_2(no_tag, _Rval, TestRval) :-
 	TestRval = const(true).
 unify_gen__generate_tag_rval_2(simple_tag(SimpleTag), Rval, TestRval) :-
@@ -247,26 +250,39 @@ unify_gen__generate_construction_2(no_tag, Var, Args, _Modes, Code) -->
 unify_gen__generate_construction_2(simple_tag(SimpleTag),
 		Var, Args, Modes, Code) -->
 	code_info__get_module_info(ModuleInfo),
-	code_info__get_next_label_number(LabelCount),
+	code_info__get_next_cell_number(CellNo),
 	{ unify_gen__generate_cons_args(Args, ModuleInfo, Modes, RVals) },
 	{ Code = empty },
-	code_info__cache_expression(Var,
-		create(SimpleTag, RVals, no, LabelCount)).
+	% XXX Later we will need to worry about
+	% whether the cell must be unique or not.
+	code_info__cache_expression(Var, create(SimpleTag, RVals, no, CellNo)).
 unify_gen__generate_construction_2(complicated_tag(Bits0, Num0),
 		Var, Args, Modes, Code) -->
 	code_info__get_module_info(ModuleInfo),
-	code_info__get_next_label_number(LabelCount),
+	code_info__get_next_cell_number(CellNo),
 	{ unify_gen__generate_cons_args(Args, ModuleInfo, Modes, RVals0) },
 		% the first field holds the secondary tag
 	{ RVals = [yes(const(int_const(Num0))) | RVals0] },
 	{ Code = empty },
-	code_info__cache_expression(Var, create(Bits0, RVals, no, LabelCount)).
+	% XXX Later we will need to worry about
+	% whether the cell must be unique or not.
+	code_info__cache_expression(Var, create(Bits0, RVals, no, CellNo)).
 unify_gen__generate_construction_2(complicated_constant_tag(Bits1, Num1),
 		Var, _Args, _Modes, Code) -->
 	{ Code = empty },
 	code_info__cache_expression(Var,
 		mkword(Bits1, unop(mkbody, const(int_const(Num1))))).
-unify_gen__generate_construction_2(address_constant(PredId, ProcId),
+unify_gen__generate_construction_2(base_type_info_constant(ModuleName,
+		TypeName, TypeArity), Var, Args, _Modes, Code) -->
+	( { Args = [] } ->
+		[]
+	;
+		{ error("unify_gen: address constant has args") }
+	),
+	{ Code = empty },
+	code_info__cache_expression(Var, const(data_addr_const(data_addr(
+		ModuleName, base_type_info(TypeName, TypeArity), yes)))).
+unify_gen__generate_construction_2(code_addr_constant(PredId, ProcId),
 		Var, Args, _Modes, Code) -->
 	( { Args = [] } ->
 		[]
@@ -275,8 +291,8 @@ unify_gen__generate_construction_2(address_constant(PredId, ProcId),
 	),
 	{ Code = empty },
 	code_info__get_module_info(ModuleInfo),
-	code_info__make_entry_label(ModuleInfo, PredId, ProcId, CodeAddress),
-	code_info__cache_expression(Var, const(address_const(CodeAddress))).
+	code_info__make_entry_label(ModuleInfo, PredId, ProcId, no, CodeAddr),
+	code_info__cache_expression(Var, const(code_addr_const(CodeAddr))).
 unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 		Var, Args, _Modes, Code) -->
 	code_info__get_module_info(ModuleInfo),
@@ -359,13 +375,13 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 		{ pred_info_procedures(PredInfo, Procs) },
 		{ map__lookup(Procs, ProcId, ProcInfo) },
 		{ proc_info_arg_info(ProcInfo, ArgInfo) },
-		code_info__make_entry_label(ModuleInfo, PredId, ProcId,
+		code_info__make_entry_label(ModuleInfo, PredId, ProcId, no,
 				CodeAddress),
-		code_info__get_next_label_number(LabelCount),
+		code_info__get_next_cell_number(CellNo),
 		{ unify_gen__generate_pred_args(Args, ArgInfo, PredArgs) },
 		{ Vector = [yes(const(int_const(NumArgs))),
-			yes(const(address_const(CodeAddress))) | PredArgs] },
-		{ Value = create(0, Vector, no, LabelCount) },
+			yes(const(code_addr_const(CodeAddress))) | PredArgs] },
+		{ Value = create(0, Vector, no, CellNo) },
 /******
 	),
 ******/
@@ -482,10 +498,13 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 		{ Tag = float_constant(_Float) },
 		{ Code = empty }
 	;
-		{ Tag = address_constant(_, _) },
+		{ Tag = pred_closure_tag(_, _) },
 		{ Code = empty }
 	;
-		{ Tag = pred_closure_tag(_, _) },
+		{ Tag = code_addr_constant(_, _) },
+		{ Code = empty }
+	;
+		{ Tag = base_type_info_constant(_, _, _) },
 		{ Code = empty }
 	;
 		{ Tag = no_tag },

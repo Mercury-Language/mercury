@@ -2237,8 +2237,8 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		% but in case we are redoing mode analysis, make sure
 		% we don't mess with the address constants for type_info
 		% fields created by polymorphism.m
-		Unification0 \= construct(_, address_const(_, _), _, _),
-		Unification0 \= deconstruct(_, address_const(_, _), _, _, _)
+		Unification0 \= construct(_, code_addr_const(_, _), _, _),
+		Unification0 \= deconstruct(_, code_addr_const(_, _), _, _, _)
 	->
 		%
 		% Create the new lambda-quantified variables

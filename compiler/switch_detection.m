@@ -497,7 +497,8 @@ switch_covers_all_cases(CasesList, Type, ModuleInfo) :-
 	type_to_type_id(Type, TypeId, _),
 	module_info_types(ModuleInfo, TypeTable),
 	map__search(TypeTable, TypeId, TypeDefn),
-	TypeDefn = hlds__type_defn(_, _, du_type(_, ConsTable, _), _, _),
+	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+	TypeBody = du_type(_, ConsTable, _),
 	map__keys(ConsTable, Constructors),
 	list__same_length(CasesList, Constructors).
 

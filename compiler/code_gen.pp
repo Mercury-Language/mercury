@@ -313,7 +313,7 @@ code_gen__generate_det_prolog(EntryCode, SUsed) -->
 	code_info__get_proc_id(ProcId),
 	code_info__get_succip_used(Used),
 	code_info__get_module_info(ModuleInfo),
-	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId,
+	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, no,
 		Entry) },
 	{ CodeA = node([
 		comment(CallInfoComment) - "",
@@ -413,7 +413,7 @@ code_gen__generate_semi_prolog(EntryCode, SUsed) -->
 	code_info__get_succip_used(Used),
 	code_info__get_total_stackslot_count(NS0),
 	code_info__get_module_info(ModuleInfo),
-	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId,
+	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, no,
 		Entry) },
 	{ CodeA = node([
 		comment(CallInfoComment) - "",
@@ -540,7 +540,7 @@ code_gen__generate_non_prolog(EntryCode, no) -->
 	code_info__get_proc_id(ProcId),
 	code_info__get_total_stackslot_count(NS),
 	code_info__get_module_info(ModuleInfo),
-	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId,
+	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, no,
 		Entry) },
 	{ CodeA = node([
 		comment(CallInfoComment) - "",

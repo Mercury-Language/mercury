@@ -400,7 +400,7 @@ opt_util__next_modframe([Instr | Instrs], RevSkip, Redoip, Skip, Rest) :-
 		Rest = Instrs
 	;
 		Uinstr = assign(redoip(lval(Fr)),
-			const(address_const(Redoip0))),
+			const(code_addr_const(Redoip0))),
 		( Fr = maxfr ; Fr = curfr )
 	->
 		Redoip = Redoip0,
@@ -1038,8 +1038,8 @@ opt_util__can_use_livevals(pragma_c(_, _, _, _), no).
 opt_util__instr_labels(Instr, Labels, CodeAddrs) :-
 	opt_util__instr_labels_2(Instr, Labels, CodeAddrs1),
 	opt_util__instr_rvals_and_lvals(Instr, Rvals, Lvals),
-	exprn_aux__rval_list_code_addrs(Rvals, CodeAddrs2),
-	exprn_aux__lval_list_code_addrs(Lvals, CodeAddrs3),
+	exprn_aux__rval_list_addrs(Rvals, CodeAddrs2, _),
+	exprn_aux__lval_list_addrs(Lvals, CodeAddrs3, _),
 	list__append(CodeAddrs1, CodeAddrs2, CodeAddrs12),
 	list__append(CodeAddrs12, CodeAddrs3, CodeAddrs).
 
@@ -1222,9 +1222,11 @@ opt_util__count_temps_lval(Lval, R0, R, F0, F) :-
 % that uses a temp var without defining it.
 opt_util__count_temps_rval(_, R, R, F, F).
 
-opt_util__format_label(local(ProcLabel), Str) :-
-	opt_util__format_proclabel(ProcLabel, Str).
 opt_util__format_label(local(ProcLabel, _), Str) :-
+	opt_util__format_proclabel(ProcLabel, Str).
+opt_util__format_label(c_local(ProcLabel), Str) :-
+	opt_util__format_proclabel(ProcLabel, Str).
+opt_util__format_label(local(ProcLabel), Str) :-
 	opt_util__format_proclabel(ProcLabel, Str).
 opt_util__format_label(exported(ProcLabel), Str) :-
 	opt_util__format_proclabel(ProcLabel, Str).

@@ -22,10 +22,17 @@
 :- pred exprn_aux__init_exprn_opts(option_table, exprn_opts).
 :- mode exprn_aux__init_exprn_opts(in, out) is det.
 
-	% determine whether an rval_const can be used as the initializer
-	% of a C static constant
+	% Determine whether an rval_const can be used as the initializer
+	% of a C static constant.
 :- pred exprn_aux__const_is_constant(rval_const, exprn_opts, bool).
 :- mode exprn_aux__const_is_constant(in, in, out) is det.
+
+	% exprn_aux__imported_is_constant(NonLocalGotos, AsmLabels, IsConst)
+	% figures out whether an imported label address is a constant.
+	% This depends on how we treat labels.
+
+:- pred exprn_aux__imported_is_constant(bool, bool, bool).
+:- mode exprn_aux__imported_is_constant(in, in, out) is det.
 
 :- pred exprn_aux__rval_contains_lval(rval, lval).
 :- mode exprn_aux__rval_contains_lval(in, in) is semidet.
@@ -57,23 +64,25 @@
 :- mode exprn_aux__simplify_rval(in, out) is det.
 
 	% the following predicates take an lval/rval (list)
-	% and return a list of the code_addrs that it references.
+	% and return a list of the code and data addresses that it references.
 
-:- pred exprn_aux__rval_list_code_addrs(list(rval), list(code_addr)).
-:- mode exprn_aux__rval_list_code_addrs(in, out) is det.
+:- pred exprn_aux__rval_list_addrs(list(rval),
+	list(code_addr), list(data_addr)).
+:- mode exprn_aux__rval_list_addrs(in, out, out) is det.
 
-:- pred exprn_aux__lval_list_code_addrs(list(lval), list(code_addr)).
-:- mode exprn_aux__lval_list_code_addrs(in, out) is det.
+:- pred exprn_aux__lval_list_addrs(list(lval),
+	list(code_addr), list(data_addr)).
+:- mode exprn_aux__lval_list_addrs(in, out, out) is det.
 
-:- pred exprn_aux__rval_code_addrs(rval, list(code_addr)).
-:- mode exprn_aux__rval_code_addrs(in, out) is det.
+:- pred exprn_aux__rval_addrs(rval, list(code_addr), list(data_addr)).
+:- mode exprn_aux__rval_addrs(in, out, out) is det.
 
-:- pred exprn_aux__lval_code_addrs(lval, list(code_addr)).
-:- mode exprn_aux__lval_code_addrs(in, out) is det.
+:- pred exprn_aux__lval_addrs(lval, list(code_addr), list(data_addr)).
+:- mode exprn_aux__lval_addrs(in, out, out) is det.
 
-:- pred exprn_aux__maybe_rval_list_code_addrs(list(maybe(rval)),
-						list(code_addr)).
-:- mode exprn_aux__maybe_rval_list_code_addrs(in, out) is det.
+:- pred exprn_aux__maybe_rval_list_addrs(list(maybe(rval)),
+	list(code_addr), list(data_addr)).
+:- mode exprn_aux__maybe_rval_list_addrs(in, out, out) is det.
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
@@ -118,15 +127,42 @@ exprn_aux__const_is_constant(float_const(_), ExprnOpts, IsConst) :-
 		IsConst = StaticGroundTerms
 	).
 exprn_aux__const_is_constant(string_const(_), _, yes).
-exprn_aux__const_is_constant(address_const(CodeAddress), ExprnOpts, IsConst) :-
-	exprn_aux__addr_is_constant(CodeAddress, ExprnOpts, IsConst).
+exprn_aux__const_is_constant(code_addr_const(CodeAddr), ExprnOpts, IsConst) :-
+	exprn_aux__addr_is_constant(CodeAddr, ExprnOpts, IsConst).
+exprn_aux__const_is_constant(data_addr_const(_), _, yes).
 
 :- pred exprn_aux__addr_is_constant(code_addr, exprn_opts, bool).
 :- mode exprn_aux__addr_is_constant(in, in, out) is det.
 
-exprn_aux__addr_is_constant(label(_), _, yes).
+exprn_aux__addr_is_constant(label(Label), ExprnOpts, IsConst) :-
+	ExprnOpts = nlg_asm_sgt_ubf(NonLocalGotos, AsmLabels, _SGT, _UBF),
+	exprn_aux__label_is_constant(Label, NonLocalGotos, AsmLabels, IsConst).
 exprn_aux__addr_is_constant(imported(_), ExprnOpts, IsConst) :-
 	ExprnOpts = nlg_asm_sgt_ubf(NonLocalGotos, AsmLabels, _SGT, _UBF),
+	exprn_aux__imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
+exprn_aux__addr_is_constant(succip, _, no).
+exprn_aux__addr_is_constant(do_succeed(_), _, no).
+exprn_aux__addr_is_constant(do_redo, _, no).
+exprn_aux__addr_is_constant(do_fail, _, no).
+exprn_aux__addr_is_constant(do_det_closure, _, no).
+exprn_aux__addr_is_constant(do_semidet_closure, _, no).
+exprn_aux__addr_is_constant(do_nondet_closure, _, no).
+
+:- pred exprn_aux__label_is_constant(label, bool, bool, bool).
+:- mode exprn_aux__label_is_constant(in, in, in, out) is det.
+
+exprn_aux__label_is_constant(exported(_), NonLocalGotos, AsmLabels, IsConst) :-
+	exprn_aux__imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
+exprn_aux__label_is_constant(local(_), NonLocalGotos, AsmLabels, IsConst) :-
+	exprn_aux__imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
+exprn_aux__label_is_constant(c_local(_), _NonLocalGotos, _AsmLabels, yes).
+exprn_aux__label_is_constant(local(_, _), _NonLocalGotos, _AsmLabels, yes).
+
+	% The logic of this function and how it is used in globals.m to
+	% select the default type_info method must agree with the code in
+	% runtime/typeinfo.h.
+
+exprn_aux__imported_is_constant(NonLocalGotos, AsmLabels, IsConst) :-
 	(
 		NonLocalGotos = yes,
 		AsmLabels = no
@@ -142,13 +178,6 @@ exprn_aux__addr_is_constant(imported(_), ExprnOpts, IsConst) :-
 	;
 		IsConst = yes
 	).
-exprn_aux__addr_is_constant(succip, _, no).
-exprn_aux__addr_is_constant(do_succeed(_), _, no).
-exprn_aux__addr_is_constant(do_redo, _, no).
-exprn_aux__addr_is_constant(do_fail, _, no).
-exprn_aux__addr_is_constant(do_det_closure, _, no).
-exprn_aux__addr_is_constant(do_semidet_closure, _, no).
-exprn_aux__addr_is_constant(do_nondet_closure, _, no).
 
 %------------------------------------------------------------------------------%
 
@@ -558,81 +587,97 @@ exprn_aux__simplify_args([MR0 | Ms0], [MR | Ms]) :-
 
 %-----------------------------------------------------------------------------%
 
-	% give an lval, return a list of the code_addrs
-	% that are reference by that lval
+	% give an rval, return a list of the code and data addresses
+	% that are referenced by that rval
 
-exprn_aux__rval_code_addrs(lval(Lval), CodeAddrs) :-
-	exprn_aux__lval_code_addrs(Lval, CodeAddrs).
-exprn_aux__rval_code_addrs(var(_), []).
-exprn_aux__rval_code_addrs(create(_, MaybeRvals, _, _), CodeAddrs) :-
-	exprn_aux__maybe_rval_list_code_addrs(MaybeRvals, CodeAddrs).
-exprn_aux__rval_code_addrs(mkword(_Tag, Rval), CodeAddrs) :-
-	exprn_aux__rval_code_addrs(Rval, CodeAddrs).
-exprn_aux__rval_code_addrs(const(Const), CodeAddrs) :-
-	( Const = address_const(CodeAddress) ->
-		CodeAddrs = [CodeAddress]
+exprn_aux__rval_addrs(lval(Lval), CodeAddrs, DataAddrs) :-
+	exprn_aux__lval_addrs(Lval, CodeAddrs, DataAddrs).
+exprn_aux__rval_addrs(var(_), [], []).
+exprn_aux__rval_addrs(create(_, MaybeRvals, _, _), CodeAddrs, DataAddrs) :-
+	exprn_aux__maybe_rval_list_addrs(MaybeRvals, CodeAddrs, DataAddrs).
+exprn_aux__rval_addrs(mkword(_Tag, Rval), CodeAddrs, DataAddrs) :-
+	exprn_aux__rval_addrs(Rval, CodeAddrs, DataAddrs).
+exprn_aux__rval_addrs(const(Const), CodeAddrs, DataAddrs) :-
+	( Const = code_addr_const(CodeAddress) ->
+		CodeAddrs = [CodeAddress],
+		DataAddrs = []
+	; Const = data_addr_const(DataAddress) ->
+		CodeAddrs = [],
+		DataAddrs = [DataAddress]
 	;
-		CodeAddrs = []
+		CodeAddrs = [],
+		DataAddrs = []
 	).
-exprn_aux__rval_code_addrs(unop(_Op, Rval), CodeAddrs) :-
-	exprn_aux__rval_code_addrs(Rval, CodeAddrs).
-exprn_aux__rval_code_addrs(binop(_BinOp, Rval1, Rval2), CodeAddrs) :-
-	exprn_aux__rval_code_addrs(Rval1, CodeAddrs1),
-	exprn_aux__rval_code_addrs(Rval2, CodeAddrs2),
-	list__append(CodeAddrs1, CodeAddrs2, CodeAddrs).
+exprn_aux__rval_addrs(unop(_Op, Rval), CodeAddrs, DataAddrs) :-
+	exprn_aux__rval_addrs(Rval, CodeAddrs, DataAddrs).
+exprn_aux__rval_addrs(binop(_BinOp, Rval1, Rval2), CodeAddrs, DataAddrs) :-
+	exprn_aux__rval_addrs(Rval1, CodeAddrs1, DataAddrs1),
+	exprn_aux__rval_addrs(Rval2, CodeAddrs2, DataAddrs2),
+	list__append(CodeAddrs1, CodeAddrs2, CodeAddrs),
+	list__append(DataAddrs1, DataAddrs2, DataAddrs).
 
-	% give an lval, return a list of the code_addrs
-	% that are reference by that lval
+	% give an lval, return a list of the code and data addresses
+	% that are referenced by that lval
 
-exprn_aux__lval_code_addrs(reg(_Int), []).
-exprn_aux__lval_code_addrs(stackvar(_Int), []).
-exprn_aux__lval_code_addrs(framevar(_Int), []).
-exprn_aux__lval_code_addrs(succip, []).
-exprn_aux__lval_code_addrs(maxfr, []).
-exprn_aux__lval_code_addrs(curfr, []).
-exprn_aux__lval_code_addrs(prevfr(Rval), CodeAddrs) :-
-	exprn_aux__rval_code_addrs(Rval, CodeAddrs).
-exprn_aux__lval_code_addrs(succfr(Rval), CodeAddrs) :-
-	exprn_aux__rval_code_addrs(Rval, CodeAddrs).
-exprn_aux__lval_code_addrs(redoip(Rval), CodeAddrs) :-
-	exprn_aux__rval_code_addrs(Rval, CodeAddrs).
-exprn_aux__lval_code_addrs(succip(Rval), CodeAddrs) :-
-	exprn_aux__rval_code_addrs(Rval, CodeAddrs).
-exprn_aux__lval_code_addrs(hp, []).
-exprn_aux__lval_code_addrs(sp, []).
-exprn_aux__lval_code_addrs(field(_Tag, Rval1, Rval2), CodeAddrs) :-
-	exprn_aux__rval_code_addrs(Rval1, CodeAddrs1),
-	exprn_aux__rval_code_addrs(Rval2, CodeAddrs2),
-	list__append(CodeAddrs1, CodeAddrs2, CodeAddrs).
-exprn_aux__lval_code_addrs(lvar(_Var), []).
-exprn_aux__lval_code_addrs(temp(_Int), []).
+exprn_aux__lval_addrs(reg(_Int), [], []).
+exprn_aux__lval_addrs(stackvar(_Int), [], []).
+exprn_aux__lval_addrs(framevar(_Int), [], []).
+exprn_aux__lval_addrs(succip, [], []).
+exprn_aux__lval_addrs(maxfr, [], []).
+exprn_aux__lval_addrs(curfr, [], []).
+exprn_aux__lval_addrs(prevfr(Rval), CodeAddrs, DataAddrs) :-
+	exprn_aux__rval_addrs(Rval, CodeAddrs, DataAddrs).
+exprn_aux__lval_addrs(succfr(Rval), CodeAddrs, DataAddrs) :-
+	exprn_aux__rval_addrs(Rval, CodeAddrs, DataAddrs).
+exprn_aux__lval_addrs(redoip(Rval), CodeAddrs, DataAddrs) :-
+	exprn_aux__rval_addrs(Rval, CodeAddrs, DataAddrs).
+exprn_aux__lval_addrs(succip(Rval), CodeAddrs, DataAddrs) :-
+	exprn_aux__rval_addrs(Rval, CodeAddrs, DataAddrs).
+exprn_aux__lval_addrs(hp, [], []).
+exprn_aux__lval_addrs(sp, [], []).
+exprn_aux__lval_addrs(field(_Tag, Rval1, Rval2), CodeAddrs, DataAddrs) :-
+	exprn_aux__rval_addrs(Rval1, CodeAddrs1, DataAddrs1),
+	exprn_aux__rval_addrs(Rval2, CodeAddrs2, DataAddrs2),
+	list__append(CodeAddrs1, CodeAddrs2, CodeAddrs),
+	list__append(DataAddrs1, DataAddrs2, DataAddrs).
+exprn_aux__lval_addrs(lvar(_Var), [], []).
+exprn_aux__lval_addrs(temp(_Int), [], []).
 
-	% give a list of rval, return a list of the code_addrs
-	% that are reference by that list
+	% give a list of rvals, return a list of the code and data addresses
+	% that are referenced by those rvals
 
-exprn_aux__rval_list_code_addrs([], []).
-exprn_aux__rval_list_code_addrs([Rval | Rvals], CodeAddrs) :-
-	exprn_aux__rval_code_addrs(Rval, CodeAddrs0),
+exprn_aux__rval_list_addrs([], [], []).
+exprn_aux__rval_list_addrs([Rval | Rvals], CodeAddrs, DataAddrs) :-
+	exprn_aux__rval_addrs(Rval, CodeAddrs0, DataAddrs0),
+	exprn_aux__rval_list_addrs(Rvals, CodeAddrs1, DataAddrs1),
 	list__append(CodeAddrs0, CodeAddrs1, CodeAddrs),
-	exprn_aux__rval_list_code_addrs(Rvals, CodeAddrs1).
+	list__append(DataAddrs0, DataAddrs1, DataAddrs).
 
-exprn_aux__lval_list_code_addrs([], []).
-exprn_aux__lval_list_code_addrs([Lval | Lvals], CodeAddrs) :-
-	exprn_aux__lval_code_addrs(Lval, CodeAddrs0),
+	% give a list of lvals, return a list of the code and data addresses
+	% that are referenced by those lvals
+
+exprn_aux__lval_list_addrs([], [], []).
+exprn_aux__lval_list_addrs([Lval | Lvals], CodeAddrs, DataAddrs) :-
+	exprn_aux__lval_addrs(Lval, CodeAddrs0, DataAddrs0),
+	exprn_aux__lval_list_addrs(Lvals, CodeAddrs1, DataAddrs1),
 	list__append(CodeAddrs0, CodeAddrs1, CodeAddrs),
-	exprn_aux__lval_list_code_addrs(Lvals, CodeAddrs1).
+	list__append(DataAddrs0, DataAddrs1, DataAddrs).
 
-	% give a list of maybe(rval), return a list of the code_addrs
-	% that are reference by that list
+	% give a list of maybe(rval), return a list of the code and data
+	% addresses that are reference by that list
 
-exprn_aux__maybe_rval_list_code_addrs([], []).
-exprn_aux__maybe_rval_list_code_addrs([MaybeRval | MaybeRvals], CodeAddrs) :-
+exprn_aux__maybe_rval_list_addrs([], [], []).
+exprn_aux__maybe_rval_list_addrs([MaybeRval | MaybeRvals],
+		CodeAddrs, DataAddrs) :-
 	( MaybeRval = yes(Rval) ->
-		exprn_aux__rval_code_addrs(Rval, CodeAddrs0),
+		exprn_aux__rval_addrs(Rval, CodeAddrs0, DataAddrs0),
+		exprn_aux__maybe_rval_list_addrs(MaybeRvals,
+			CodeAddrs1, DataAddrs1),
 		list__append(CodeAddrs0, CodeAddrs1, CodeAddrs),
-		exprn_aux__maybe_rval_list_code_addrs(MaybeRvals, CodeAddrs1)
+		list__append(DataAddrs0, DataAddrs1, DataAddrs)
 	;
-		exprn_aux__maybe_rval_list_code_addrs(MaybeRvals, CodeAddrs)
+		exprn_aux__maybe_rval_list_addrs(MaybeRvals,
+			CodeAddrs, DataAddrs)
 	).
 
 %------------------------------------------------------------------------------%

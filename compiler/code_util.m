@@ -20,11 +20,36 @@
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, llds.
 :- import_module list.
 
-:- pred code_util__make_local_entry_label(module_info, pred_id, proc_id, label).
-:- mode code_util__make_local_entry_label(in, in, in, out) is det.
+	% Create a code address which holds the address of the specified
+	% procedure.
+	% The fourth argument should be `no' if the the caller wants the
+	% returned address to be valid from everywhere in the program.
+	% If being valid from within the current procedure is enough,
+	% this argument should be `yes' wrapped around the value of the
+	% --procs-per-c-function option and the current procedure id.
+	% Using an address that is only valid from within the current
+	% procedure may make jumps more efficient.
 
-:- pred code_util__make_local_label(module_info, pred_id, proc_id, int, label).
-:- mode code_util__make_local_label(in, in, in, in, out) is det.
+:- pred code_util__make_entry_label(module_info, pred_id, proc_id, 
+	maybe(pair(int, pred_proc_id)), code_addr).
+:- mode code_util__make_entry_label(in, in, in, in, out) is det.
+
+	% Create a label which holds the address of the specified procedure,
+	% which must be defined in the current module (procedures that are
+	% imported from other modules have representations only as code_addrs,
+	% not as labels, since their address is not known at C compilation
+	% time).
+	% The fourth argument has the same meaning as for
+	% code_util__make_entry_label.
+
+:- pred code_util__make_local_entry_label(module_info, pred_id, proc_id,
+	maybe(pair(int, pred_proc_id)), label).
+:- mode code_util__make_local_entry_label(in, in, in, in, out) is det.
+
+	% Create a label internal to a Mercury procedure.
+:- pred code_util__make_internal_label(module_info, pred_id, proc_id, int,
+	label).
+:- mode code_util__make_internal_label(in, in, in, in, out) is det.
 
 :- pred code_util__make_proc_label(module_info, pred_id, proc_id, proc_label).
 :- mode code_util__make_proc_label(in, in, in, out) is det.
@@ -100,27 +125,74 @@
 
 %---------------------------------------------------------------------------%
 
-code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, Label) :-
+code_util__make_entry_label(ModuleInfo, PredId, ProcId, Immed, PredAddress) :-
+	module_info_preds(ModuleInfo, Preds),
+	map__lookup(Preds, PredId, PredInfo),
+	(
+		(
+			pred_info_is_imported(PredInfo)
+		;
+			pred_info_is_pseudo_imported(PredInfo),
+			% only the (in, in) mode of unification is imported
+			ProcId = 0
+		)
+	->
+		code_util__make_proc_label(ModuleInfo, PredId, ProcId,
+			ProcLabel),
+		PredAddress = imported(ProcLabel)
+	;
+		code_util__make_local_entry_label(ModuleInfo, PredId, ProcId,
+			Immed, Label),
+		PredAddress = label(Label)
+	).
+
+code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, Immed, Label) :-
 	code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel),
 	module_info_preds(ModuleInfo, Preds),
 	map__lookup(Preds, PredId, PredInfo),
 	(
-		( pred_info_is_exported(PredInfo)
-		; pred_info_is_pseudo_exported(PredInfo),
-		  % only the (in, in) mode of a unification is exported
-		  ProcId = 0
+		(
+			pred_info_is_exported(PredInfo)
+		;
+			pred_info_is_pseudo_exported(PredInfo),
+			% only the (in, in) mode of a unification is exported
+			ProcId = 0
 		)
 	->
 		Label = exported(ProcLabel)
 	;
-		Label = local(ProcLabel)
+		(
+			% If we want to define the label or use it to put it
+			% into a data structure, a label that is usable only
+			% within the current C module won't do.
+			Immed = no,
+			Label = local(ProcLabel)
+		;
+			Immed = yes(ProcsPerFunc - proc(CurPredId, CurProcId)),
+			(
+				% If we want to branch to the label now,
+				% we prefer a form that are usable only within
+				% the current C module, since it is likely
+				% to be faster.
+				(
+					ProcsPerFunc = 0
+				;
+					PredId = CurPredId,
+					ProcId = CurProcId
+				)
+			->
+				Label = c_local(ProcLabel)
+			;
+				Label = local(ProcLabel)
+			)
+		)
 	).
 
-code_util__make_local_label(ModuleInfo, PredId, ProcId, LabelNum, Label) :-
+%-----------------------------------------------------------------------------%
+
+code_util__make_internal_label(ModuleInfo, PredId, ProcId, LabelNum, Label) :-
 	code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel),
 	Label = local(ProcLabel, LabelNum).
-
-%-----------------------------------------------------------------------------%
 
 code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
 	predicate_module(ModuleInfo, PredId, ModuleName),
@@ -484,8 +556,10 @@ code_util__negate_the_test([Instr0 | Instrs0], Instrs) :-
 code_util__cons_id_to_tag(int_const(X), _, _, int_constant(X)).
 code_util__cons_id_to_tag(float_const(X), _, _, float_constant(X)).
 code_util__cons_id_to_tag(string_const(X), _, _, string_constant(X)).
-code_util__cons_id_to_tag(address_const(P,M), _, _, address_constant(P,M)).
+code_util__cons_id_to_tag(code_addr_const(P,M), _, _, code_addr_constant(P,M)).
 code_util__cons_id_to_tag(pred_const(P,M), _, _, pred_closure_tag(P,M)).
+code_util__cons_id_to_tag(base_type_info_const(M,T,A), _, _,
+		base_type_info_constant(M,T,A)).
 code_util__cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo, Tag) :-
 	(
 			% handle the `character' type specially
@@ -541,9 +615,9 @@ code_util__cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo, Tag) :-
 			% table for that type
 		module_info_types(ModuleInfo, TypeTable),
 		map__lookup(TypeTable, TypeId, TypeDefn),
+		hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 		(
-			TypeDefn = hlds__type_defn(_, _,
-				du_type(_, ConsTable0, _), _, _)
+			TypeBody = du_type(_, ConsTable0, _)
 		->
 			ConsTable = ConsTable0
 		;

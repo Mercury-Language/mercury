@@ -133,6 +133,9 @@
 :- pred opt_debug__dump_const(rval_const, string).
 :- mode opt_debug__dump_const(in, out) is det.
 
+:- pred opt_debug__dump_data_name(data_name, string).
+:- mode opt_debug__dump_data_name(in, out) is det.
+
 :- pred opt_debug__dump_unop(unary_op, string).
 :- mode opt_debug__dump_unop(in, out) is det.
 
@@ -626,9 +629,20 @@ opt_debug__dump_const(float_const(F), Str) :-
 	string__float_to_string(F, Str).
 opt_debug__dump_const(string_const(I), Str) :-
 	string__append_list(["""", I, """"], Str).
-opt_debug__dump_const(address_const(CodeAddr), Str) :-
+opt_debug__dump_const(code_addr_const(CodeAddr), Str) :-
 	opt_debug__dump_code_addr(CodeAddr, C_str),
-	string__append_list(["address_const(", C_str, ")"], Str).
+	string__append_list(["code_addr_const(", C_str, ")"], Str).
+opt_debug__dump_const(data_addr_const(data_addr(BaseName, VarName, _)), Str) :-
+	opt_debug__dump_data_name(VarName, N_str),
+	string__append_list(["data_addr_const(", BaseName, ", ", N_str, ")"],
+		Str).
+
+opt_debug__dump_data_name(common(N), Str) :-
+	string__int_to_string(N, N_str),
+	string__append("common", N_str, Str).
+opt_debug__dump_data_name(base_type_info(TypeName, TypeArity), Str) :-
+	string__int_to_string(TypeArity, A_str),
+	string__append_list(["base_type_info_", TypeName, "_", A_str], Str).
 
 opt_debug__dump_unop(mktag, "mktag").
 opt_debug__dump_unop(tag, "tag").
@@ -684,16 +698,16 @@ opt_debug__dump_code_addrs([Addr | Addrs], Str) :-
 	opt_debug__dump_code_addrs(Addrs, A2_str),
 	string__append_list([" ", A_str, A2_str], Str).
 
-opt_debug__dump_label(local(ProcLabel), Str) :-
-	opt_debug__dump_proclabel(ProcLabel, P_str),
-	string__append_list([P_str], Str).
 opt_debug__dump_label(local(ProcLabel, N), Str) :-
 	opt_debug__dump_proclabel(ProcLabel, P_str),
 	string__int_to_string(N, N_str),
 	string__append_list([P_str, "_", N_str], Str).
+opt_debug__dump_label(c_local(ProcLabel), Str) :-
+	opt_debug__dump_proclabel(ProcLabel, Str).
+opt_debug__dump_label(local(ProcLabel), Str) :-
+	opt_debug__dump_proclabel(ProcLabel, Str).
 opt_debug__dump_label(exported(ProcLabel), Str) :-
-	opt_debug__dump_proclabel(ProcLabel, P_str),
-	string__append_list([P_str], Str).
+	opt_debug__dump_proclabel(ProcLabel, Str).
 
 opt_debug__dump_labels([], "").
 opt_debug__dump_labels([Label | Labels], Str) :-

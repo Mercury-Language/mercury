@@ -2219,7 +2219,8 @@ convert_cons_defn(TypeInfo, HLDS_ConsDefn, ConsTypeInfo) :-
 	HLDS_ConsDefn = hlds__cons_defn(ArgTypes, TypeId, Context),
 	type_info_get_types(TypeInfo, Types),
 	map__lookup(Types, TypeId, TypeDefn),
-	TypeDefn = hlds__type_defn(ConsTypeVarSet, ConsTypeParams, _, _, _),
+	hlds_data__get_type_defn_tvarset(TypeDefn, ConsTypeVarSet),
+	hlds_data__get_type_defn_tparams(TypeDefn, ConsTypeParams),
 	construct_type(TypeId, ConsTypeParams, Context, ConsType),
 	ConsTypeInfo = cons_type_info(ConsTypeVarSet, ConsType, ArgTypes).
 

@@ -357,8 +357,8 @@ generate_bit_vec(CaseVals, Start, BitVec) -->
 	{ generate_bit_vec_2(CaseVals, Start, WordBits, Empty, BitMap) },
 	{ map__to_assoc_list(BitMap, WordVals) },
 	{ generate_bit_vec_args(WordVals, 0, Args) },
-	code_info__get_next_label_number(Label),
-	{ BitVec = create(0, Args, no, Label) }.
+	code_info__get_next_cell_number(CellNo),
+	{ BitVec = create(0, Args, no, CellNo) }.
 
 :- pred generate_bit_vec_2(case_consts, int, int,
 		map(int, int), map(int, int)).
@@ -423,8 +423,8 @@ lookup_switch__generate_terms_2(Index, [Var|Vars], Map) -->
 	{ map__lookup(Map, Var, Vals0) },
 	{ list__sort(Vals0, Vals) },
 	{ construct_args(Vals, 0, Args) },
-	code_info__get_next_label_number(Label),
-	{ ArrayTerm = create(0, Args, no, Label) },
+	code_info__get_next_cell_number(CellNo),
+	{ ArrayTerm = create(0, Args, no, CellNo) },
 	{ LookupTerm = lval(field(0, ArrayTerm, Index)) },
 	code_info__cache_expression(Var, LookupTerm),
 	lookup_switch__generate_terms_2(Index, Vars, Map).

@@ -191,7 +191,7 @@ vn_flush__ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 		Instrs = [call(ProcAddr, RetAddr, LiveInfo, CodeModel) - ""]
 	;
 		Vn_instr = vn_mkframe(Name, Size, Redoip),
-		vn_util__rval_to_vn(const(address_const(Redoip)), AddrVn,
+		vn_util__rval_to_vn(const(code_addr_const(Redoip)), AddrVn,
 			VnTables0, VnTables1),
 		vn_util__lval_to_vnlval(redoip(lval(maxfr)), SlotVnlval,
 			VnTables1, VnTables2),

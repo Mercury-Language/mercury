@@ -204,7 +204,7 @@ type_is_enumeration(Type, ModuleInfo) :-
 	type_to_type_id(Type, TypeId, _),
 	module_info_types(ModuleInfo, TypeDefnTable),
 	map__search(TypeDefnTable, TypeId, TypeDefn),
-	TypeDefn = hlds__type_defn(_, _, TypeBody, _, _),
+	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 	TypeBody = du_type(_, _, IsEnum),
 	IsEnum = yes.
 
@@ -247,7 +247,8 @@ type_constructors(Type, ModuleInfo, Constructors) :-
 	type_to_type_id(Type, TypeId, TypeArgs),
 	module_info_types(ModuleInfo, TypeTable),
 	map__search(TypeTable, TypeId, TypeDefn),
-	TypeDefn = hlds__type_defn(_, TypeParams, TypeBody, _, _),
+	hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
+	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 	TypeBody = du_type(Constructors0, _, _),
 	substitute_type_args(TypeParams, TypeArgs, Constructors0,
 		Constructors).

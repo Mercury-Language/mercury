@@ -40,8 +40,8 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, EndLabel, Code) -->
 	code_info__get_next_label(LoopLabel),
 	code_info__get_next_label(FailLabel),
 	code_info__get_next_label(JumpLabel),
-	code_info__get_next_label_number(NextSlotsTableLabel),
-	code_info__get_next_label_number(StringTableLabel),
+	code_info__get_next_cell_number(NextSlotsTableNo),
+	code_info__get_next_cell_number(StringTableNo),
 	{
 		% Determine how big to make the hash table.
 		% Currently we round the number of cases up to the nearest power
@@ -84,8 +84,8 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, EndLabel, Code) -->
 
 		% Generate code which does the hash table lookup
 	{
-		NextSlotsTable = create(0, NextSlots, no, NextSlotsTableLabel),
-		StringTable = create(0, Strings, no, StringTableLabel),
+		NextSlotsTable = create(0, NextSlots, no, NextSlotsTableNo),
+		StringTable = create(0, Strings, no, StringTableNo),
 		HashLookupCode = node([
 			comment("hashed string switch") -
 			  "",

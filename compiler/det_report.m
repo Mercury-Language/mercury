@@ -323,7 +323,7 @@ det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases, _), GoalInfo,
 		(
 			{ det_lookup_var_type(ModuleInfo, ProcInfo, Var,
 				TypeDefn) },
-			{ TypeDefn = hlds__type_defn(_, _, TypeBody, _, _) },
+			{ hlds_data__get_type_defn_body(TypeDefn, TypeBody) },
 			{ TypeBody = du_type(_, ConsTable, _) }
 		->
 			{ map__keys(ConsTable, ConsIds) },

@@ -371,7 +371,8 @@ tag_switch__get_tag_counts(Var, TagCountMap) -->
 	code_info__get_module_info(ModuleInfo),
 	{ module_info_types(ModuleInfo, TypeTable) },
 	{ map__lookup(TypeTable, TypeId, TypeDefn) },
-	{ TypeDefn = hlds__type_defn(_, _, du_type(_, ConsTable, _), _, _) ->
+	{ hlds_data__get_type_defn_body(TypeDefn, Body) },
+	{ Body = du_type(_, ConsTable, _) ->
 		map__to_assoc_list(ConsTable, ConsList),
 		tag_switch__cons_list_to_tag_list(ConsList, TagList)
 	;

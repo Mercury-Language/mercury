@@ -44,10 +44,18 @@
 			list(c_procedure) 	% code
 		)
 
-		% readonly data containing a typeinfo structure
-	;	c_typeinfo(
-			string,			% the name of the C variable
-			list(proc_label)	% type-specific procedures
+		% readonly data, usually containing a typeinfo structure
+	;	c_data(
+			string,			% The basename of this C file.
+			data_name,		% A representation of the name
+						% of the variable; it will be
+						% qualified with the basename.
+			bool,			% Does it have to use Word *
+						% instead of Word?
+			bool,			% Should this item be exported?
+			list(maybe(rval)),	% The arguments of the create.
+			list(pred_proc_id)	% The procedures referenced.
+						% Used by dead_proc_elim.
 		)
 
 		% some C code from a pragma(c_code) declaration
@@ -242,7 +250,16 @@
 			;	int_const(int)
 			;	float_const(float)
 			;	string_const(string)
-			;	address_const(code_addr).
+			;	code_addr_const(code_addr)
+			;	data_addr_const(data_addr).
+
+:- type data_addr	--->	data_addr(string, data_name, bool).
+				% module name; which var; does it have any
+				% addresses inside it (i.e. Word or Word *)?
+
+:- type data_name	--->	common(int)
+			;	base_type_info(string, arity).
+				% type name, type arity
 
 :- type unary_op	--->	mktag
 			;	tag
@@ -303,15 +320,16 @@
 	%	Entry label, which can be accessed from any where.
 
 :- type label
-	--->		local(proc_label)
-	;		local(proc_label, int)
-	;		exported(proc_label).
+	--->		local(proc_label, int)	% internal to procedure
+	;		c_local(proc_label)	% internal to C module
+	;		local(proc_label)	% internal to Mercury module
+	;		exported(proc_label).	% exported from Mercury module
 
 :- type code_addr
-	--->		label(label)
-	;		imported(proc_label)
+	--->		label(label)		% defined this Mercury module
+	;		imported(proc_label)	% from another Mercury module
 	;		succip
-	;		do_succeed(bool)
+	;		do_succeed(bool)	% any alternatives left?
 	;		do_redo
 	;		do_fail
 	;		do_det_closure

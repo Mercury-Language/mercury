@@ -97,7 +97,7 @@ call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
 	{ call_gen__output_arg_locs(Args, OutputArguments) },
 	call_gen__generate_return_livevals(OutArgs, OutputArguments,
 		OutLiveVals),
-	code_info__make_entry_label(ModuleInfo, PredId, ModeId, Address),
+	code_info__make_entry_label(ModuleInfo, PredId, ModeId, yes, Address),
 	{ CodeC1 = node([
 		call(Address, label(ReturnLabel), OutLiveVals, det)
 			- "branch to det procedure",
@@ -156,7 +156,7 @@ call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 	{ call_gen__output_arg_locs(Args, OutputArguments) },
 	call_gen__generate_return_livevals(OutArgs, OutputArguments,	
 		OutLiveVals),
-	code_info__make_entry_label(ModuleInfo, PredId, ModeId, Address),
+	code_info__make_entry_label(ModuleInfo, PredId, ModeId, yes, Address),
         { CodeC1 = node([
                 call(Address, label(ReturnLabel), OutLiveVals, semidet)
 			- "branch to semidet procedure",
@@ -187,7 +187,7 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 	{ call_gen__output_arg_locs(Args, OutputArguments) },
 	call_gen__generate_return_livevals(OutArgs, OutputArguments,
 		OutLiveVals),
-	code_info__make_entry_label(ModuleInfo, PredId, ModeId, Address),
+	code_info__make_entry_label(ModuleInfo, PredId, ModeId, yes, Address),
 	code_info__failure_cont(failure_cont(IsKnown, _, FailureMap)),
 	(
 		{ IsKnown = known(_) },

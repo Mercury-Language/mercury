@@ -808,7 +808,7 @@ polymorphism__get_special_proc_list([Id | Ids],
 	classify_type(Type, ModuleInfo, TypeCategory),
 	polymorphism__get_special_proc(TypeCategory, Id, ModuleInfo,
 					PredName2, PredId, ProcId),
-	ConsId = address_const(PredId, ProcId),
+	ConsId = code_addr_const(PredId, ProcId),
 
 	% create a construction unification which unifies the fresh
 	% variable with the address constant obtained above

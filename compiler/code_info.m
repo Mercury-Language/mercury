@@ -14,6 +14,7 @@
 %
 % The following assumptions are made about the state of the high-level
 % data structure:
+%
 %	o  Variables can be stored in any number of distinct places.
 %	o  Registers may contain a value corresponding to more than
 %		one variable.
@@ -52,20 +53,22 @@
 :- pred code_info__get_next_label(label, code_info, code_info).
 :- mode code_info__get_next_label(out, in, out) is det.
 
-		% Generate the next local label number in sequence.
-:- pred code_info__get_next_label_number(int, code_info, code_info).
-:- mode code_info__get_next_label_number(out, in, out) is det.
+		% Generate the next local cell number in sequence.
+:- pred code_info__get_next_cell_number(int, code_info, code_info).
+:- mode code_info__get_next_cell_number(out, in, out) is det.
 
-		% Sets up call to code_info__make_entry_label_2.
-:- pred code_info__make_entry_label(module_info, pred_id, proc_id, code_addr,
-					code_info, code_info).
-:- mode code_info__make_entry_label(in, in, in, out, in, out) is det.
-
-		% Create a code address for which holds the address
-		% of the specified predicate.
-:- pred code_info__make_entry_label_2(module_info, int, pred_id, proc_id, 
-		pred_id, proc_id, code_addr).
-:- mode code_info__make_entry_label_2(in, in, in, in, in, in, out) is det.
+		% Create a code address which holds the address of the specified
+		% procedure.
+		% The fourth argument should be `no' if the the caller wants the
+		% returned address to be valid from everywhere in the program.
+		% If being valid from within the current procedure is enough,
+		% this argument should be `yes' wrapped around the value of the
+		% --procs-per-c-function option and the current procedure id.
+		% Using an address that is only valid from within the current
+		% procedure may make jumps more efficient.
+:- pred code_info__make_entry_label(module_info, pred_id, proc_id, bool,
+		code_addr, code_info, code_info).
+:- mode code_info__make_entry_label(in, in, in, in, out, in, out) is det.
 
 		% Get the variables for the current procedure.
 :- pred code_info__get_varset(varset, code_info, code_info).
@@ -450,7 +453,11 @@
 :- pred code_info__set_label_count(int, code_info, code_info).
 :- mode code_info__set_label_count(in, in, out) is det.
 
-:- type junk		---> junk.
+:- pred code_info__get_cell_count(int, code_info, code_info).
+:- mode code_info__get_cell_count(out, in, out) is det.
+
+:- pred code_info__set_cell_count(int, code_info, code_info).
+:- mode code_info__set_cell_count(in, in, out) is det.
 
 :- type code_info	--->
 		code_info(
@@ -466,8 +473,7 @@
 					% current switch.
 			pred_id,	% The label of the current predicate.
 			proc_id,	% The label of the current procedure.
-			junk,		% JUNK
-					% what is stored in each register.
+			int,		% Counter for cells in this proc.
 			exprn_info,	% A map storing the information about
 					% the status of each variable.
 			proc_info,	% The proc_info for the this procedure.
@@ -536,7 +542,7 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 		CallInfo, 
 		PredId,
 		ProcId,
-		junk,
+		0,
 		ExprnInfo,
 		ProcInfo,
 		SaveSuccip,
@@ -602,50 +608,37 @@ code_info__max_slot_2([L|Ls], Max0, Max) :-
 %---------------------------------------------------------------------------%
 
 code_info__get_next_label(Label) -->
+	code_info__get_module_info(ModuleInfo),
 	code_info__get_pred_id(PredId),
 	code_info__get_proc_id(ProcId),
-	code_info__get_next_label_number(N),
-	code_info__get_module_info(ModuleInfo),
-	{ code_util__make_local_label(ModuleInfo, PredId, ProcId, N, Label) }.
-
-code_info__get_next_label_number(N) -->
 	code_info__get_label_count(N0),
 	{ N is N0 + 1 },
-	code_info__set_label_count(N).
+	code_info__set_label_count(N),
+	{ code_util__make_internal_label(ModuleInfo, PredId, ProcId, N,
+		Label) }.
+
+code_info__get_next_cell_number(N) -->
+	code_info__get_cell_count(N0),
+	{ N is N0 + 1 },
+	code_info__set_cell_count(N).
 
 %---------------------------------------------------------------------------%
 
-code_info__make_entry_label(ModuleInfo, PredId, ProcId, PredAddress) -->
-	code_info__get_globals(Globals),
-	code_info__get_pred_id(CurPredId),
-	code_info__get_proc_id(CurProcId),
-	{ 
-	globals__lookup_int_option(Globals, procs_per_c_function, ProcsPerFunc),
-	code_info__make_entry_label_2(ModuleInfo, ProcsPerFunc, PredId, 
-			ProcId, CurPredId, CurProcId, PredAddress) 
-	}.
-
-code_info__make_entry_label_2(ModuleInfo, ProcsPerFunc, PredId, ProcId, 
-					CurPredId, CurProcId, PredAddress) :-
-	module_info_preds(ModuleInfo, Preds),
-	map__lookup(Preds, PredId, PredInfo),
+code_info__make_entry_label(ModuleInfo, PredId, ProcId, Immed0, PredAddress) -->
 	(
-		(	pred_info_is_imported(PredInfo)
-		;	pred_info_is_pseudo_imported(PredInfo),
-			% only the (in, in) mode of unification is imported
-			ProcId = 0
-		;	ProcsPerFunc \= 0,
-			\+ (PredId = CurPredId, ProcId = CurProcId)
-		)
-	->
-		code_util__make_proc_label(ModuleInfo,
-						PredId, ProcId, ProcLabel),
-		PredAddress = imported(ProcLabel)
+		{ Immed0 = no },
+		{ Immed = no }
 	;
-		code_util__make_local_entry_label(ModuleInfo,
-							PredId, ProcId, Label),
-		PredAddress = label(Label)
-	).
+		{ Immed0 = yes },
+		code_info__get_globals(Globals),
+		{ globals__lookup_int_option(Globals, procs_per_c_function,
+			ProcsPerFunc) },
+		code_info__get_pred_id(CurPredId),
+		code_info__get_proc_id(CurProcId),
+		{ Immed = yes(ProcsPerFunc - proc(CurPredId, CurProcId)) }
+	),
+	{ code_util__make_entry_label(ModuleInfo, PredId, ProcId, Immed,
+		PredAddress) }.
 
 %---------------------------------------------------------------------------%
 
@@ -1488,7 +1481,7 @@ code_info__generate_semi_pre_commit(RedoLab, PreCommit) -->
 	code_info__get_next_label(RedoLab),
 	{ HijackCode = node([
 		assign(redoip(lval(maxfr)),
-			const(address_const(label(RedoLab)))) -
+			const(code_addr_const(label(RedoLab)))) -
 			"Hijack the failure cont"
 	]) },
 	{ PreCommit = tree(tree(PushCode, SaveCode), HijackCode) }.
@@ -1703,7 +1696,7 @@ code_info__make_known_failure_cont(Vars, IsNondet, ModContCode) -->
 		{ MaybeRedoLab = no },
 		{ HijackCode = node([
 			assign(redoip(lval(maxfr)),
-				const(address_const(label(StackLab)))) -
+				const(code_addr_const(label(StackLab)))) -
 				"Set failure continuation"
 		]) }
 	),
@@ -1787,7 +1780,7 @@ code_info__modify_failure_cont(ModifyCode) -->
 		),
 		{ ResetCode = node([
 			assign(redoip(lval(maxfr)),
-				const(address_const(label(NewRedoCont)))) -
+				const(code_addr_const(label(NewRedoCont)))) -
 				"modify failure cont"
 		]) }
 	;
@@ -1827,7 +1820,7 @@ code_info__restore_failure_cont(Code) -->
 			{ NewCont = unknown },
 			{ ResetCode = node([
 				assign(redoip(lval(maxfr)),
-					const(address_const(do_fail))) -
+					const(code_addr_const(do_fail))) -
 					"restore failure cont"
 			]) }
 		;
@@ -1850,8 +1843,8 @@ code_info__restore_failure_cont(Code) -->
 				),
 				{ ResetCode = node([
 					assign(redoip(lval(maxfr)),
-					const(address_const(NewRedoAddress))) -
-					"restore failure cont"
+					const(code_addr_const(NewRedoAddress)))
+						- "restore failure cont"
 				]) }
 			)
 		)
@@ -1884,8 +1877,8 @@ code_info__do_soft_cut(TheFrame, Code) -->
 		{ Address = do_fail }
 	),
 	{ Code = node([
-		assign(redoip(lval(TheFrame)), const(address_const(Address))) -
-			"prune away the `else' case of the if-then-else"
+		assign(redoip(lval(TheFrame)), const(code_addr_const(Address)))
+			- "prune away the `else' case of the if-then-else"
 	]) }.
 
 %---------------------------------------------------------------------------%
@@ -2390,15 +2383,15 @@ code_info__set_proc_id(F, CI0, CI) :-
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
 		T, U, V).
 
-% code_info__get_registers(G, CI, CI) :-
-% 	CI = code_info(_, _, _, _, _, _, G, _, _, _, _, _, _, _, _, _, _, _, _,
-%		_, _, _).
+code_info__get_cell_count(G, CI, CI) :-
+	CI = code_info(_, _, _, _, _, _, G, _, _, _, _, _, _, _, _, _, _, _, _,
+		_, _, _).
 
-% code_info__set_registers(G, CI0, CI) :-
-% 	CI0 = code_info(A, B, C, D, E, F, _, H, I, J, K, L, M, N, O, P, Q, R, S,
-%		T, U, V),
-% 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-%		T, U, V).
+code_info__set_cell_count(G, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, _, H, I, J, K, L, M, N, O, P, Q, R, S,
+		T, U, V),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
+		T, U, V).
 
 code_info__get_exprn_info(H, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, H, _, _, _, _, _, _, _, _, _, _, _,

@@ -161,7 +161,8 @@ hlds_out__cons_id_to_string(string_const(String), S) :-
 	string__append_list(["""", String, """"], S).
 hlds_out__cons_id_to_string(float_const(_), "<float>").
 hlds_out__cons_id_to_string(pred_const(_, _), "<pred>").
-hlds_out__cons_id_to_string(address_const(_, _), "<address>").
+hlds_out__cons_id_to_string(code_addr_const(_, _), "<code_addr>").
+hlds_out__cons_id_to_string(base_type_info_const(_, _, _), "<base_type_info>").
 
 hlds_out__write_cons_id(cons(Name, Arity)) -->
 	io__write_string(Name),
@@ -177,8 +178,10 @@ hlds_out__write_cons_id(float_const(Float)) -->
 	io__write_float(Float).
 hlds_out__write_cons_id(pred_const(_PredId, _ProcId)) -->
 	io__write_string("<pred>").
-hlds_out__write_cons_id(address_const(_PredId, _ProcId)) -->
-	io__write_string("<address>").
+hlds_out__write_cons_id(code_addr_const(_PredId, _ProcId)) -->
+	io__write_string("<code_addr>").
+hlds_out__write_cons_id(base_type_info_const(_, _, _)) -->
+	io__write_string("<base_type_info>").
 
 hlds_out__write_pred_id(ModuleInfo, PredId) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
@@ -1153,8 +1156,11 @@ hlds_out__write_types(Indent, TypeTable) -->
 
 hlds_out__write_types_2(_Indent, []) --> [].
 hlds_out__write_types_2(Indent, [TypeId - TypeDefn | Types]) -->
-	{ TypeDefn = hlds__type_defn(TVarSet, TypeParams, TypeBody,
-					_Condition, Context) },
+	{ hlds_data__get_type_defn_tvarset(TypeDefn, TVarSet) },
+	{ hlds_data__get_type_defn_tparams(TypeDefn, TypeParams) },
+	{ hlds_data__get_type_defn_body(TypeDefn, TypeBody) },
+	{ hlds_data__get_type_defn_context(TypeDefn, Context) },
+
 	io__write_char('\n'),
         hlds_out__write_indent(Indent),
 

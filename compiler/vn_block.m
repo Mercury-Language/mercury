@@ -222,14 +222,14 @@ vn_block__handle_instr(mkframe(Name, Size, Redoip), Livemap, Params,
 		Livemap, Params, LabelsSoFar0, VnTables0, VnTables1,
 		Liveset0, Liveset1, Tuple0, Tuple1),
 	vn_block__handle_instr(assign(redoip(lval(maxfr)),
-		const(address_const(Redoip))),
+		const(code_addr_const(Redoip))),
 		Livemap, Params, VnTables1, VnTables, Liveset1, Liveset,
 		LabelsSoFar0, LabelsSoFar, SeenIncr0, SeenIncr, Tuple1, Tuple).
 vn_block__handle_instr(modframe(Redoip), Livemap, Params,
 		VnTables0, VnTables, Liveset0, Liveset, LabelsSoFar0,
 		LabelsSoFar, SeenIncr0, SeenIncr, Tuple0, Tuple) :-
 	vn_block__handle_instr(assign(redoip(lval(curfr)),
-		const(address_const(Redoip))),
+		const(code_addr_const(Redoip))),
 		Livemap, Params, VnTables0, VnTables, Liveset0, Liveset,
 		LabelsSoFar0, LabelsSoFar, SeenIncr0, SeenIncr, Tuple0, Tuple).
 vn_block__handle_instr(label(Label),

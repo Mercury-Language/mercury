@@ -38,9 +38,9 @@
 
 :- implementation.
 :- import_module hlds_pred, hlds_goal, hlds_data, prog_data.
-:- import_module mode_util, globals, options, code_info.
+:- import_module mode_util, globals, options, code_util.
 :- import_module llds, llds_out, mercury_to_mercury.
-:- import_module int, term, require, string.
+:- import_module int, bool, term, require, string.
 :- import_module list, map, set, std_util.
 :- import_module varset, relation.
 
@@ -275,10 +275,12 @@ dependency_graph__add_arcs_in_cons(pred_const(Pred, Proc), Caller,
 				DepGraph0, DepGraph) :-
 	Callee = proc(Pred, Proc),
 	relation__add(DepGraph0, Caller, Callee, DepGraph).
-dependency_graph__add_arcs_in_cons(address_const(Pred, Proc), Caller,
+dependency_graph__add_arcs_in_cons(code_addr_const(Pred, Proc), Caller,
 				DepGraph0, DepGraph) :-
 	Callee = proc(Pred, Proc),
 	relation__add(DepGraph0, Caller, Callee, DepGraph).
+dependency_graph__add_arcs_in_cons(base_type_info_const(_, _, _), _Caller,
+				DepGraph, DepGraph).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -433,32 +435,25 @@ dependency_graph__write_prof_dependency_graph_3([S|Ss], Node, DepGraph,
 				ModuleInfo) -->
 	{ Node = proc(PPredId, PProcId) }, % Caller
 	{ S    = proc(CPredId, CProcId) }, % Callee
-	dependency_graph__output_label(ModuleInfo, PPredId, PProcId, 
-			CPredId, CProcId),
+	dependency_graph__output_label(ModuleInfo, PPredId, PProcId),
 	io__write_string("\t"),
-	dependency_graph__output_label(ModuleInfo, CPredId, CProcId,
-			CPredId, CProcId),
+	dependency_graph__output_label(ModuleInfo, CPredId, CProcId),
 	io__write_string("\n"),
 	dependency_graph__write_prof_dependency_graph_3(Ss, Node, DepGraph, 
 					ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
-
 % dependency_graph__output_label:
 %	Prints out the label corresponding to PredId and ProcId.  
-%	CurPredId and CurProcId refer to the parent caller of the current 
-%	predicate(Hack needed so that we can call code_util to build the 
-%	correct type of label).
 %
-:- pred dependency_graph__output_label(module_info, pred_id, proc_id, pred_id,
-                        proc_id, io__state, io__state).
-:- mode dependency_graph__output_label(in, in, in, in, in, di, uo) is det.
+:- pred dependency_graph__output_label(module_info, pred_id, proc_id,
+				io__state, io__state).
+:- mode dependency_graph__output_label(in, in, in, di, uo) is det.
 
-dependency_graph__output_label(ModuleInfo, PredId, ProcId, CurPredId, 
-								CurProcId) -->
-	dependency_graph__make_entry_label(ModuleInfo, PredId, ProcId,
-                        CurPredId, CurProcId, Address),
+dependency_graph__output_label(ModuleInfo, PredId, ProcId) -->
+	{ code_util__make_entry_label(ModuleInfo, PredId, ProcId, no,
+		Address) },
         (
                 { Address = label(local(ProcLabela)) }
         ->
@@ -472,25 +467,8 @@ dependency_graph__output_label(ModuleInfo, PredId, ProcId, CurPredId,
         ->
                 output_label(exported(ProcLabelc))
         ;
-                { error("dependency_graph__output_label: Label not of type local or imported or exported\n") }
+                { error("dependency_graph__output_label: label not of type local or imported or exported\n") }
         ).
-
-
-%-----------------------------------------------------------------------------%
-
-% dependency_graph__make_entry_label:
-%	Just shunts off it's duties to code_info__make_entry_label_2
-%
-:- pred dependency_graph__make_entry_label(module_info, pred_id, proc_id, 
-			pred_id, proc_id, code_addr, io__state, io__state).
-:- mode dependency_graph__make_entry_label(in, in, in, in, in, out, di, uo)
-			is det.
-
-dependency_graph__make_entry_label(ModuleInfo, PredId, ProcId, 
-					CurPredId, CurProcId, PredAddress) -->
-        globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
-	{ code_info__make_entry_label_2(ModuleInfo, ProcsPerFunc, PredId,
-				ProcId, CurPredId, CurProcId, PredAddress) }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

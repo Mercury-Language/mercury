@@ -242,9 +242,11 @@ dupelim__replace_labels_rval_const(false, _, false).
 dupelim__replace_labels_rval_const(int_const(N), _, int_const(N)).
 dupelim__replace_labels_rval_const(float_const(N), _, float_const(N)).
 dupelim__replace_labels_rval_const(string_const(S), _, string_const(S)).
-dupelim__replace_labels_rval_const(address_const(Addr0), Replmap,
-		address_const(Addr)) :-
+dupelim__replace_labels_rval_const(code_addr_const(Addr0), Replmap,
+		code_addr_const(Addr)) :-
 	dupelim__replace_labels_code_addr(Addr0, Replmap, Addr).
+dupelim__replace_labels_rval_const(data_addr_const(DataAddr), _,
+		data_addr_const(DataAddr)).
 
 :- pred dupelim__replace_labels_code_addr(code_addr, map(label, label),
 	code_addr).

@@ -513,9 +513,14 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 		predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity),
 		ByteConsId = pred_const(ModuleName, PredName, Arity, ProcId)
 	;
-		ConsId = address_const(PredId, ProcId),
+		ConsId = code_addr_const(PredId, ProcId),
 		predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity),
-		ByteConsId = address_const(ModuleName, PredName, Arity, ProcId)
+		ByteConsId = code_addr_const(ModuleName, PredName, Arity,
+			ProcId)
+	;
+		ConsId = base_type_info_const(ModuleName, TypeName, TypeArity),
+		ByteConsId = base_type_info_const(ModuleName, TypeName,
+			TypeArity)
 	).
 
 :- pred bytecode_gen__map_cons_tag(cons_tag::in, byte_cons_tag::out) is det.
@@ -534,8 +539,10 @@ bytecode_gen__map_cons_tag(float_constant(_), _) :-
 	error("float_constant cons tag for non-float_constant cons id").
 bytecode_gen__map_cons_tag(pred_closure_tag(_, _), _) :-
 	error("pred_closure_tag cons tag for non-pred_const cons id").
-bytecode_gen__map_cons_tag(address_constant(_, _), _) :-
-	error("address_constant cons tag for non-address_const cons id").
+bytecode_gen__map_cons_tag(code_addr_constant(_, _), _) :-
+	error("code_addr_constant cons tag for non-address_const cons id").
+bytecode_gen__map_cons_tag(base_type_info_constant(_, _, _), _) :-
+	error("base_type_info_constant cons tag for non-base_type_info_constant cons id").
 
 %---------------------------------------------------------------------------%
 

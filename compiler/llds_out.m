@@ -54,6 +54,13 @@
 :- pred get_proc_label(proc_label, string).
 :- mode get_proc_label(in, out) is det.
 
+	% Find out if the argument list of a create contains any pointers.
+	% This governs whether the declaration of the constant to hold these
+	% arguments should be Word * or just Word.
+
+:- pred args_contain_pointers(list(maybe(rval)), int).
+:- mode args_contain_pointers(in, in) is semidet.
+
 	% Mangle an arbitrary name into a C identifier
 
 :- pred llds_out__name_mangle(string, string).
@@ -77,6 +84,17 @@
 :- import_module library.	% for the version number.
 
 %-----------------------------------------------------------------------------%
+
+% Every time we emit a declaration for a symbol, we insert it into the
+% set of symbols we've already declared.  That way, we avoid generating
+% the same symbol twice, which would cause an error in the C code.
+
+:- type decl_set ==	set(decl_id).
+
+:- type decl_id --->	create_label(int)
+		;	float_label(string)
+		;	code_addr(code_addr)
+		;	data_addr(data_addr).
 
 output_c_file(C_File) -->
 	globals__io_lookup_bool_option(split_c_files, SplitFiles),
@@ -176,7 +194,8 @@ output_single_c_file(c_file(BaseName, C_HeaderLines, Modules), SplitFiles)
 		),
 		io__write_string("#include ""imp.h""\n"),
 		output_c_header_include_lines(C_HeaderLines),
-		output_c_module_list(Modules, BaseName),
+		{ set__init(DeclSet0) },
+		output_c_module_list(Modules, DeclSet0, BaseName),
 		io__write_string("\n"),
 		( { SplitFiles = yes(_) } ->
 			[]
@@ -229,7 +248,7 @@ output_c_module_init_list(BaseName, Modules) -->
 :- mode output_c_module_init_list_2(in, in, in, in, in, out, di, uo) is det.
 
 output_c_module_init_list_2([], _, _, _, InitFunc, InitFunc) --> [].
-output_c_module_init_list_2([c_typeinfo(_, _) | Ms], A, B, C, D, E) -->
+output_c_module_init_list_2([c_data(_, _, _, _, _, _) | Ms], A, B, C, D, E) -->
 	output_c_module_init_list_2(Ms, A, B, C, D, E).
 output_c_module_init_list_2([c_export(_) | Ms], A, B, C, D, E) -->
 	output_c_module_init_list_2(Ms, A, B, C, D, E).
@@ -306,21 +325,23 @@ output_module_name(ModuleName0) -->
 	{ llds_out__name_mangle(ModuleName0, ModuleName) },
 	io__write_string(ModuleName).
 
-:- pred output_c_module_list(list(c_module), string, io__state, io__state).
-:- mode output_c_module_list(in, in, di, uo) is det.
+:- pred output_c_module_list(list(c_module), decl_set, string,
+	io__state, io__state).
+:- mode output_c_module_list(in, in, in, di, uo) is det.
 
-output_c_module_list([], _) --> [].
-output_c_module_list([M|Ms], BaseName) -->
-	output_c_module(M, BaseName),
-	output_c_module_list(Ms, BaseName).
+output_c_module_list([], _, _) --> [].
+output_c_module_list([M | Ms], DeclSet0, BaseName) -->
+	output_c_module(M, DeclSet0, DeclSet, BaseName),
+	output_c_module_list(Ms, DeclSet, BaseName).
 
-:- pred output_c_module(c_module, string, io__state, io__state).
-:- mode output_c_module(in, in, di, uo) is det.
+:- pred output_c_module(c_module, decl_set, decl_set, string,
+	io__state, io__state).
+:- mode output_c_module(in, in, out, in, di, uo) is det.
 
-output_c_module(c_module(ModuleName, Procedures), _) -->
+output_c_module(c_module(ModuleName, Procedures), DeclSet0, DeclSet, _) -->
 	{ gather_labels(Procedures, Labels) },
 	io__write_string("\n"),
-	output_c_label_decl_list(Labels),
+	output_c_label_decl_list(Labels, DeclSet0, DeclSet),
 	io__write_string("\n"),
 	io__write_string("BEGIN_MODULE("),
 	output_module_name(ModuleName),
@@ -330,12 +351,27 @@ output_c_module(c_module(ModuleName, Procedures), _) -->
 	io__write_string("\n"),
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
 	globals__io_lookup_bool_option(emit_c_loops, EmitCLoops),
-	output_c_procedure_list(Procedures, PrintComments, EmitCLoops),
+	output_c_procedure_list(Procedures, DeclSet, PrintComments, EmitCLoops),
 	io__write_string("END_MODULE\n").
 
-output_c_module(c_typeinfo(_VarName, _Procs), _) --> [].
+output_c_module(c_data(BaseName, VarName, NeedPtr, _Exported, ArgVals, _Refs),
+		DeclSet0, DeclSet, _) -->
+	io__write_string("\n"),
+	output_cons_arg_decls(ArgVals, "", "", 0, _, DeclSet0, DeclSet1),
+	io__write_string("Word "),
+	( { NeedPtr = yes } ->
+		io__write_string("* ")
+	;
+		[]
+	),
+	output_data_addr(BaseName, VarName),
+	io__write_string("[] = {\n"),
+	output_cons_args(ArgVals, "\t", NeedPtr),
+	io__write_string("};\n"),
+	{ set__insert(DeclSet1,
+		data_addr(data_addr(BaseName, VarName, NeedPtr)), DeclSet) }.
 
-output_c_module(c_code(C_Code, Context), _) -->
+output_c_module(c_code(C_Code, Context), DeclSet, DeclSet, _) -->
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
 	( { PrintComments = yes } ->
 		io__write_string("/* "),
@@ -347,7 +383,7 @@ output_c_module(c_code(C_Code, Context), _) -->
 	io__write_string(C_Code),
 	io__write_string("\n").
 
-output_c_module(c_export(PragmaExports), BaseName) -->
+output_c_module(c_export(PragmaExports), DeclSet, DeclSet, BaseName) -->
 	(
 		{ PragmaExports = [_|_] }
 	->
@@ -397,75 +433,63 @@ output_c_header_include_lines_2([Code - Context|Hs]) -->
 :- pred output_exported_c_functions(list(string), io__state, io__state).
 :- mode output_exported_c_functions(in, di, uo) is det.
 output_exported_c_functions([]) --> [].
-output_exported_c_functions([F|Fs]) -->
+output_exported_c_functions([F | Fs]) -->
 	io__write_string(F),
 	output_exported_c_functions(Fs).
 
-:- pred output_c_label_decl_list(list(label), io__state, io__state).
-:- mode output_c_label_decl_list(in, di, uo) is det.
+:- pred output_c_label_decl_list(list(label), decl_set, decl_set,
+	io__state, io__state).
+:- mode output_c_label_decl_list(in, in, out, di, uo) is det.
 
-output_c_label_decl_list(Labels) -->
-	globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
-	output_c_label_decl_list_2(Labels, ProcsPerFunc).
+output_c_label_decl_list([], DeclSet, DeclSet) --> [].
+output_c_label_decl_list([Label | Labels], DeclSet0, DeclSet) -->
+	output_c_label_decl(Label, DeclSet0, DeclSet1),
+	output_c_label_decl_list(Labels, DeclSet1, DeclSet).
 
-:- pred output_c_label_decl_list_2(list(label), int, io__state, io__state).
-:- mode output_c_label_decl_list_2(in, in, di, uo) is det.
+:- pred output_c_label_decl(label, decl_set, decl_set, io__state, io__state).
+:- mode output_c_label_decl(in, in, out, di, uo) is det.
 
-output_c_label_decl_list_2([], _) --> [].
-output_c_label_decl_list_2([Label | Labels], ProcsPerFunc) -->
-	output_c_label_decl(Label, ProcsPerFunc),
-	output_c_label_decl_list_2(Labels, ProcsPerFunc).
-
-:- pred output_c_label_decl(label, int, io__state, io__state).
-:- mode output_c_label_decl(in, in, di, uo) is det.
-
-output_c_label_decl(Label, ProcsPerFunc) -->
+output_c_label_decl(Label, DeclSet0, DeclSet) -->
 	(
 		{ Label = exported(_) },
 		io__write_string("Define_extern_entry(")
 	;
 		{ Label = local(_) },
-		% if we are splitting procs between functions, then
-		% every procedure could be referred to by a procedure
-		% in a different function, so make them static, not local
-		% similarly if we're splitting between files make them extern
-		( { ProcsPerFunc = 0 } ->
-			io__write_string("Declare_local(")
+		% The code for procedures local to a Mercury module
+		% should normally be visible only within the C file
+		% generated for that module. However, if we generate
+		% multiple C files, the code in each C file must be
+		% visible to the other C files for that Mercury module.
+		globals__io_lookup_bool_option(split_c_files,
+			SplitFiles),
+		( { SplitFiles = no } ->
+			io__write_string("Declare_static(")
 		;
-			globals__io_lookup_bool_option(split_c_files,
-				SplitFiles),
-			( { SplitFiles = no } ->
-				io__write_string("Declare_static(")
-			;
-				io__write_string("Define_extern_entry(")
-			)
+			io__write_string("Define_extern_entry(")
 		)
+	;
+		{ Label = c_local(_) },
+		io__write_string("Declare_local(")
 	;
 		{ Label = local(_, _) },
 		io__write_string("Declare_label(")
 	),
+	{ set__insert(DeclSet0, code_addr(label(Label)), DeclSet) },
 	output_label(Label),
 	io__write_string(");\n").
 
 :- pred output_c_label_init_list(list(label), io__state, io__state).
 :- mode output_c_label_init_list(in, di, uo) is det.
 
-output_c_label_init_list(Labels) -->
-	globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
-	output_c_label_init_list_2(Labels, ProcsPerFunc).
+output_c_label_init_list([]) --> [].
+output_c_label_init_list([Label | Labels]) -->
+	output_c_label_init(Label),
+	output_c_label_init_list(Labels).
 
-:- pred output_c_label_init_list_2(list(label), int, io__state, io__state).
-:- mode output_c_label_init_list_2(in, in, di, uo) is det.
+:- pred output_c_label_init(label, io__state, io__state).
+:- mode output_c_label_init(in, di, uo) is det.
 
-output_c_label_init_list_2([], _) --> [].
-output_c_label_init_list_2([Label | Labels], ProcsPerFunc) -->
-	output_c_label_init(Label, ProcsPerFunc),
-	output_c_label_init_list_2(Labels, ProcsPerFunc).
-
-:- pred output_c_label_init(label, int, io__state, io__state).
-:- mode output_c_label_init(in, in, di, uo) is det.
-
-output_c_label_init(Label, ProcPerFunc) -->
+output_c_label_init(Label) -->
 	(
 		{ Label = exported(_) },
 		io__write_string("\tinit_entry("),
@@ -473,15 +497,14 @@ output_c_label_init(Label, ProcPerFunc) -->
 		io__write_string(");\n")
 	;
 		{ Label = local(_) },
-		( { ProcPerFunc = 0 } ->
-			io__write_string("\tinit_local("),
-			output_label(Label),
-			io__write_string(");\n")
-		;
-			io__write_string("\tinit_entry("),
-			output_label(Label),
-			io__write_string(");\n")
-		)
+		io__write_string("\tinit_entry("),
+		output_label(Label),
+		io__write_string(");\n")
+	;
+		{ Label = c_local(_) },
+		io__write_string("\tinit_local("),
+		output_label(Label),
+		io__write_string(");\n")
 	;
 		{ Label = local(_, _) },
 		io__write_string("\tinit_label("),
@@ -489,25 +512,22 @@ output_c_label_init(Label, ProcPerFunc) -->
 		io__write_string(");\n")
 	).
 
-	% The following code is very straightforward and
-	% unremarkable.  The only thing of note is that is
-	% uses the logical io library, and that it uses DCGs
-	% to avoid having to explicitly shuffle the state-of-the-world
-	% arguments around all the time, as discussed in my hons thesis. -fjh.
+	% The following code is mostly very straightforward and unremarkable.
 
-:- pred output_c_procedure_list(list(c_procedure), bool, bool,
+:- pred output_c_procedure_list(list(c_procedure), decl_set, bool, bool,
 	io__state, io__state).
-:- mode output_c_procedure_list(in, in, in, di, uo) is det.
+:- mode output_c_procedure_list(in, in, in, in, di, uo) is det.
 
-output_c_procedure_list([], _, _) --> [].
-output_c_procedure_list([Proc | Procs], PrintComments, EmitCLoops) -->
-	output_c_procedure(Proc, PrintComments, EmitCLoops),
-	output_c_procedure_list(Procs, PrintComments, EmitCLoops).
+output_c_procedure_list([], _, _, _) --> [].
+output_c_procedure_list([Proc | Procs], DeclSet, PrintComments, EmitCLoops) -->
+	output_c_procedure(Proc, DeclSet, PrintComments, EmitCLoops),
+	output_c_procedure_list(Procs, DeclSet, PrintComments, EmitCLoops).
 
-:- pred output_c_procedure(c_procedure, bool, bool, io__state, io__state).
-:- mode output_c_procedure(in, in, in, di, uo) is det.
+:- pred output_c_procedure(c_procedure, decl_set, bool, bool,
+	io__state, io__state).
+:- mode output_c_procedure(in, in, in, in, di, uo) is det.
 
-output_c_procedure(Proc, PrintComments, EmitCLoops) -->
+output_c_procedure(Proc, DeclSet, PrintComments, EmitCLoops) -->
 	{ Proc = c_procedure(Name, Arity, ModeNum0, Instrs) },
 	( { PrintComments = yes } ->
 		io__write_string("\n/*-------------------------------------"),
@@ -534,7 +554,7 @@ output_c_procedure(Proc, PrintComments, EmitCLoops) -->
 	;
 		{ WhileSet = WhileSet0 }
 	),
-	output_instruction_list(Instrs, PrintComments,
+	output_instruction_list(Instrs, DeclSet, PrintComments,
 		CallerLabel - ContLabelSet, WhileSet).
 
 :- pred llds_out__find_caller_label(list(instruction), label).
@@ -544,10 +564,10 @@ llds_out__find_caller_label([], _) :-
 	error("cannot find caller label").
 llds_out__find_caller_label([Instr0 - _ | Instrs], CallerLabel) :-
 	( Instr0 = label(Label) ->
-		( ( Label = local(_) ; Label = exported(_) ) ->
-			CallerLabel = Label
-		;
+		( Label = local(_, _) ->
 			error("caller label is internal label")
+		;
+			CallerLabel = Label
 		)
 	;
 		llds_out__find_caller_label(Instrs, CallerLabel)
@@ -571,7 +591,7 @@ llds_out__find_cont_labels([Instr - _ | Instrs], ContLabelSet0, ContLabelSet)
 			Instr = modframe(label(ContLabel))
 		;
 			Instr = assign(redoip(lval(maxfr)), 
-				const(address_const(label(ContLabel))))
+				const(code_addr_const(label(ContLabel))))
 		)
 	->
 		set__insert(ContLabelSet0, ContLabel, ContLabelSet1)
@@ -638,48 +658,53 @@ llds_out__is_while_label(Label, [Instr0 - Comment0 | Instrs0], Instrs,
 		llds_out__is_while_label(Label, Instrs0, Instrs, Count0, Count)
 	).
 
-:- pred output_instruction_list(list(instruction), bool,
+:- pred output_instruction_list(list(instruction), decl_set, bool,
 	pair(label, set(label)), set(label), io__state, io__state).
-:- mode output_instruction_list(in, in, in, in, di, uo) is det.
+:- mode output_instruction_list(in, in, in, in, in, di, uo) is det.
 
-output_instruction_list([], _, _, _) --> [].
-output_instruction_list([Instr0 - Comment0 | Instrs], PrintComments,
-		ProfInfo, WhileSet) -->
-	output_instruction_and_comment(Instr0, Comment0, PrintComments,
-		ProfInfo),
+output_instruction_list([], _, _, _, _) --> [].
+output_instruction_list([Instr0 - Comment0 | Instrs], DeclSet,
+		PrintComments, ProfInfo, WhileSet) -->
+	output_instruction_and_comment(Instr0, Comment0, DeclSet,
+		PrintComments, ProfInfo),
 	( { Instr0 = label(Label), set__member(Label, WhileSet) } ->
 		io__write_string("\twhile (1) {\n"),
-		output_instruction_list_while(Instrs, Label, PrintComments,
-			ProfInfo, WhileSet)
+		output_instruction_list_while(Instrs, Label, DeclSet,
+			PrintComments, ProfInfo, WhileSet)
 	;
-		output_instruction_list(Instrs, PrintComments,
-			ProfInfo, WhileSet)
+		output_instruction_list(Instrs, DeclSet,
+			PrintComments, ProfInfo, WhileSet)
 	).
 
-:- pred output_instruction_list_while(list(instruction), label,
+:- pred output_instruction_list_while(list(instruction), label, decl_set,
 	bool, pair(label, set(label)), set(label), io__state, io__state).
-:- mode output_instruction_list_while(in, in, in, in, in, di, uo) is det.
+:- mode output_instruction_list_while(in, in, in, in, in, in, di, uo) is det.
 
-output_instruction_list_while([], _, _, _, _) -->
+output_instruction_list_while([], _, _, _, _, _) -->
 	io__write_string("\tbreak; } /* end while */\n").
-output_instruction_list_while([Instr0 - Comment0 | Instrs], Label,
+output_instruction_list_while([Instr0 - Comment0 | Instrs], Label, DeclSet0,
 		PrintComments, ProfInfo, WhileSet) -->
 	( { Instr0 = label(_) } ->
 		io__write_string("\tbreak; } /* end while */\n"),
-		output_instruction_list([Instr0 - Comment0 | Instrs],
+		output_instruction_list([Instr0 - Comment0 | Instrs], DeclSet0,
 			PrintComments, ProfInfo, WhileSet)
 	; { Instr0 = goto(label(Label)) } ->
 		io__write_string("\t/* continue */ } /* end while */\n"),
-		output_instruction_list(Instrs,
+		output_instruction_list(Instrs, DeclSet0,
 			PrintComments, ProfInfo, WhileSet)
 	; { Instr0 = if_val(Rval, label(Label)) } ->
-		io__write_string("\t{ "),
-		{ set__init(DeclSet0) },
-		output_rval_decls(Rval, DeclSet0, DeclSet1),
-		output_code_addr_decls(label(Label), DeclSet1, _),
-		io__write_string("if ("),
+		output_rval_decls(Rval, "\t{\n\t\t", "\t\t", 0, M,
+			DeclSet0, DeclSet1),
+		output_code_addr_decls(label(Label), "\t{\n\t\t", "\t\t", M, N,
+			DeclSet1, _),
+		io__write_string("\tif ("),
 		output_rval(Rval),
-		io__write_string(")\n\t\tcontinue; }\n"),
+		io__write_string(")\n\t\tcontinue;\n"),
+		( { N > 0 } ->
+			io__write_string("\t}\n")
+		;
+			[]
+		),
 		( { PrintComments = yes, Comment0 \= "" } ->
 			io__write_string("\t\t/* "),
 			io__write_string(Comment0),
@@ -687,32 +712,31 @@ output_instruction_list_while([Instr0 - Comment0 | Instrs], Label,
 		;
 			[]
 		),
-		output_instruction_list_while(Instrs, Label, PrintComments,
-			ProfInfo, WhileSet)
+		output_instruction_list_while(Instrs, Label, DeclSet0,
+			PrintComments, ProfInfo, WhileSet)
 	;
-		output_instruction_and_comment(Instr0, Comment0, PrintComments,
-			ProfInfo),
-		output_instruction_list_while(Instrs, Label, PrintComments,
-			ProfInfo, WhileSet)
+		output_instruction_and_comment(Instr0, Comment0, DeclSet0,
+			PrintComments, ProfInfo),
+		output_instruction_list_while(Instrs, Label, DeclSet0,
+			PrintComments, ProfInfo, WhileSet)
 	).
 
-:- pred output_instruction_and_comment(instr, string, bool,
+:- pred output_instruction_and_comment(instr, string, decl_set, bool,
 	pair(label, set(label)), io__state, io__state).
-:- mode output_instruction_and_comment(in, in, in, in, di, uo) is det.
+:- mode output_instruction_and_comment(in, in, in, in, in, di, uo) is det.
 
-output_instruction_and_comment(Instr, Comment, PrintComments, ProfInfo) -->
+output_instruction_and_comment(Instr, Comment, DeclSet, PrintComments,
+		ProfInfo) -->
 	(
 		{ PrintComments = no },
 		( { Instr = comment(_) ; Instr = livevals(_) } ->
 			[]
 		;
-			output_instruction(Instr, ProfInfo),
-			io__write_string("\n")
+			output_instruction(Instr, DeclSet, ProfInfo)
 		)
 	;
 		{ PrintComments = yes },
-		output_instruction(Instr, ProfInfo),
-		io__write_string("\n"),
+		output_instruction(Instr, DeclSet, ProfInfo),
 		( { Comment = "" } ->
 			[]
 		;
@@ -725,24 +749,25 @@ output_instruction_and_comment(Instr, Comment, PrintComments, ProfInfo) -->
 	% The three-argument output_instruction is only for debugging.
 
 output_instruction(Instr) -->
+	{ set__init(DeclSet) },
 	{ set__init(ContLabelSet) },
 	{ ProfInfo = local(proc("DEBUG", "DEBUG", 0, 0)) - ContLabelSet },
-	output_instruction(Instr, ProfInfo).
+	output_instruction(Instr, DeclSet, ProfInfo).
 
-:- pred output_instruction(instr, pair(label, set(label)),
+:- pred output_instruction(instr, decl_set, pair(label, set(label)),
 	io__state, io__state).
-:- mode output_instruction(in, in, di, uo) is det.
+:- mode output_instruction(in, in, in, di, uo) is det.
 
-output_instruction(comment(Comment), _) -->
+output_instruction(comment(Comment), _, _) -->
 	io__write_strings(["/* ", Comment, " */"]).
 
-output_instruction(livevals(LiveVals), _) -->
+output_instruction(livevals(LiveVals), _, _) -->
 	io__write_string("/*\n * Live lvalues:\n"),
 	{ set__to_sorted_list(LiveVals, LiveValsList) },
 	output_livevals(LiveValsList),
 	io__write_string(" */").
 
-output_instruction(block(TempR, TempF, Instrs), ProfInfo) -->
+output_instruction(block(TempR, TempF, Instrs), DeclSet, ProfInfo) -->
 	io__write_string("\t{\n"),
 	( { TempR > 0 } ->
 		io__write_string("\tWord "),
@@ -752,7 +777,7 @@ output_instruction(block(TempR, TempF, Instrs), ProfInfo) -->
 		[]
 	),
 	( { TempF > 0 } ->
-		io__write_string("\tWord "),
+		io__write_string("\tFloat "),
 		output_temp_decls(TempF, "f"),
 		io__write_string(";\n")
 	;
@@ -760,161 +785,195 @@ output_instruction(block(TempR, TempF, Instrs), ProfInfo) -->
 	),
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
 	{ set__init(WhileSet0) },
-	output_instruction_list(Instrs, PrintComments, ProfInfo, WhileSet0),
+	output_instruction_list(Instrs, DeclSet, PrintComments, ProfInfo,
+		WhileSet0),
 	io__write_string("\t}\n").
 
-output_instruction(assign(Lval, Rval), _) -->
-	io__write_string("\t{ "),
-	{ set__init(DeclSet0) },
-	output_lval_decls(Lval, DeclSet0, DeclSet1),
-	output_rval_decls(Rval, DeclSet1, _),
+output_instruction(assign(Lval, Rval), DeclSet0, _) -->
+	output_lval_decls(Lval, "\t{\n\t", "\t", 0, M,
+		DeclSet0, DeclSet1),
+	output_rval_decls(Rval, "\t{\n\t", "\t", M, N,
+		DeclSet1, _),
+	io__write_string("\t"),
 	output_lval(Lval),
 	io__write_string(" = "),
 	output_rval(Rval),
-	io__write_string("; }").
+	io__write_string(";\n"),
+	( { N > 0 } ->
+		io__write_string("\t}\n")
+	;
+		[]
+	).
 
-output_instruction(call(Target, ContLabel, LiveVals, _), ProfInfo) -->
+output_instruction(call(Target, ContLabel, LiveVals, _), DeclSet0, ProfInfo) -->
 	{ ProfInfo = CallerLabel - _ },
-	io__write_string("\t{ "),
-	{ set__init(DeclSet0) },
-	output_code_addr_decls(Target, DeclSet0, DeclSet1),
-	output_code_addr_decls(ContLabel, DeclSet1, _),
+	output_code_addr_decls(Target, "\t{\n\t", "\t", 0, M,
+		DeclSet0, DeclSet1),
+	output_code_addr_decls(ContLabel, "\t{\n\t", "\t", M, N,
+		DeclSet1, _),
 	output_call(Target, ContLabel, CallerLabel),
-	io__write_string(" }\n"),
+	( { N > 0 } ->
+		io__write_string("\t}\n")
+	;
+		[]
+	),
 	output_gc_livevals(LiveVals).
 
-output_instruction(c_code(C_Code_String), _) -->
+output_instruction(c_code(C_Code_String), _, _) -->
 	io__write_string("\t"),
 	io__write_string(C_Code_String).
 
-output_instruction(mkframe(Str, Num, FailureContinuation), _) -->
-	io__write_string("\t{ "),
-	{ set__init(DeclSet0) },
-	output_code_addr_decls(FailureContinuation, DeclSet0, _),
-	io__write_string("mkframe("""),
+output_instruction(mkframe(Str, Num, FailureContinuation), DeclSet0, _) -->
+	output_code_addr_decls(FailureContinuation, "\t{\n\t", "\t", 0, N,
+		DeclSet0, _),
+	io__write_string("\tmkframe("""),
 	io__write_string(Str),
 	io__write_string(""", "),
 	io__write_int(Num),
 	io__write_string(", "),
 	output_code_addr(FailureContinuation),
-	io__write_string("); }").
+	io__write_string(");\n"),
+	( { N > 0 } ->
+		io__write_string("\t}\n")
+	;
+		[]
+	).
 
-output_instruction(modframe(FailureContinuation), _) -->
-	io__write_string("\t{ "),
-	{ set__init(DeclSet0) },
-	output_code_addr_decls(FailureContinuation, DeclSet0, _),
-	io__write_string("modframe("),
+output_instruction(modframe(FailureContinuation), DeclSet0, _) -->
+	output_code_addr_decls(FailureContinuation, "\t{\n\t", "\t", 0, N,
+		DeclSet0, _),
+	io__write_string("\tmodframe("),
 	output_code_addr(FailureContinuation),
-	io__write_string("); }").
+	io__write_string(");\n"),
+	( { N > 0 } ->
+		io__write_string("\t}\n")
+	;
+		[]
+	).
 
-output_instruction(label(Label), ProfInfo) -->
+output_instruction(label(Label), _, ProfInfo) -->
 	output_label_defn(Label),
 	maybe_output_update_prof_counter(Label, ProfInfo).
 
-output_instruction(goto(CodeAddr), ProfInfo) -->
+output_instruction(goto(CodeAddr), DeclSet0, ProfInfo) -->
 	{ ProfInfo = CallerLabel - _ },
-	io__write_string("\t{ "),
-	{ set__init(DeclSet0) },
-	output_code_addr_decls(CodeAddr, DeclSet0, _),
+	output_code_addr_decls(CodeAddr, "\t{\n\t", "\t", 0, N, DeclSet0, _),
+	io__write_string("\t"),
 	output_goto(CodeAddr, CallerLabel),
-	io__write_string(" }").
+	( { N > 0 } ->
+		io__write_string("\t}\n")
+	;
+		[]
+	).
 
-output_instruction(computed_goto(Rval, Labels), _) -->
-	io__write_string("\t{ "),
-	{ set__init(DeclSet0) },
-	output_rval_decls(Rval, DeclSet0, _),
-	io__write_string("COMPUTED_GOTO("),
+output_instruction(computed_goto(Rval, Labels), DeclSet0, _) -->
+	output_rval_decls(Rval, "\t{\n\t", "\t", 0, N, DeclSet0, _),
+	io__write_string("\tCOMPUTED_GOTO("),
 	output_rval(Rval),
 	io__write_string(",\n\t\t"),
 	output_label_list(Labels),
-	io__write_string("); }").
+	io__write_string(");\n"),
+	( { N > 0 } ->
+		io__write_string("\t}\n")
+	;
+		[]
+	).
 
-output_instruction(if_val(Rval, Target), ProfInfo) -->
+output_instruction(if_val(Rval, Target), DeclSet0, ProfInfo) -->
 	{ ProfInfo = CallerLabel - _ },
-	io__write_string("\t{ "),
-	{ set__init(DeclSet0) },
-	output_rval_decls(Rval, DeclSet0, DeclSet1),
-	output_code_addr_decls(Target, DeclSet1, _),
-	io__write_string("if ("),
+	output_rval_decls(Rval, "\t{\n\t", "\t", 0, M, DeclSet0, DeclSet1),
+	output_code_addr_decls(Target, "\t{\n\t", "\t", M, N, DeclSet1, _),
+	io__write_string("\tif ("),
 	output_rval(Rval),
 	io__write_string(")\n\t\t"),
 	output_goto(Target, CallerLabel),
-	io__write_string(" }").
-
-output_instruction(incr_hp(Lval, MaybeTag, Rval), _) -->
-	(
-		{ MaybeTag = no },
-		io__write_string("\t{ "),
-		{ set__init(DeclSet0) },
-		output_lval_decls(Lval, DeclSet0, DeclSet1),
-		output_rval_decls(Rval, DeclSet1, _),
-		io__write_string("incr_hp("),
-		output_lval(Lval),
-		io__write_string(", "),
-		output_rval(Rval),
-		io__write_string("); }")
+	( { N > 0 } ->
+		io__write_string("\t}\n")
 	;
-		{ MaybeTag = yes(Tag) },
-		io__write_string("\t{ "),
-		{ set__init(DeclSet0) },
-		output_lval_decls(Lval, DeclSet0, DeclSet1),
-		output_rval_decls(Rval, DeclSet1, _),
-		io__write_string("tag_incr_hp("),
-		output_lval(Lval),
-		io__write_string(", "),
-		output_tag(Tag),
-		io__write_string(", "),
-		output_rval(Rval),
-		io__write_string("); }")
+		[]
 	).
 
-output_instruction(mark_hp(Lval), _) -->
-	io__write_string("\t{ "),
-	{ set__init(DeclSet0) },
-	output_lval_decls(Lval, DeclSet0, _),
-	io__write_string("mark_hp("),
-	output_lval(Lval),
-	io__write_string("); }").
-
-output_instruction(restore_hp(Rval), _) -->
-	io__write_string("\t{ "),
-	{ set__init(DeclSet0) },
-	output_rval_decls(Rval, DeclSet0, _),
-	io__write_string("restore_hp("),
+output_instruction(incr_hp(Lval, MaybeTag, Rval), DeclSet0, _) -->
+	output_lval_decls(Lval, "\t{\n\t", "\t", 0, M, DeclSet0, DeclSet1),
+	output_rval_decls(Rval, "\t{\n\t", "\t", M, N, DeclSet1, _),
+	(
+		{ MaybeTag = no },
+		io__write_string("\tincr_hp("),
+		output_lval(Lval)
+	;
+		{ MaybeTag = yes(Tag) },
+		io__write_string("\ttag_incr_hp("),
+		output_lval(Lval),
+		io__write_string(", "),
+		output_tag(Tag)
+	),
+	io__write_string(", "),
 	output_rval(Rval),
-	io__write_string("); }").
+	io__write_string(");\n"),
+	( { N > 0 } ->
+		io__write_string("\t}\n")
+	;
+		[]
+	).
 
-output_instruction(store_ticket(Lval), _) -->
-	io__write_string("\t{ "),
-	{ set__init(DeclSet0) },
-	output_lval_decls(Lval, DeclSet0, _),
-	io__write_string("store_ticket("),
+output_instruction(mark_hp(Lval), DeclSet0, _) -->
+	output_lval_decls(Lval, "\t{\n\t", "\t", 0, N, DeclSet0, _),
+	io__write_string("\tmark_hp("),
 	output_lval(Lval),
-	io__write_string("); }").
+	io__write_string(");\n"),
+	( { N > 0 } ->
+		io__write_string("\t}\n")
+	;
+		[]
+	).
 
-output_instruction(restore_ticket(Rval), _) -->
-	io__write_string("\t{ "),
-	{ set__init(DeclSet0) },
-	output_rval_decls(Rval, DeclSet0, _),
-	io__write_string("restore_ticket("),
+output_instruction(restore_hp(Rval), DeclSet0, _) -->
+	output_rval_decls(Rval, "\t{\n\t", "\t", 0, N, DeclSet0, _),
+	io__write_string("\trestore_hp("),
 	output_rval(Rval),
-	io__write_string("); }").
+	io__write_string(");\n"),
+	( { N > 0 } ->
+		io__write_string("\t}\n")
+	;
+		[]
+	).
 
-output_instruction(discard_ticket, _) -->
-	io__write_string("\t"),
-	io__write_string("discard_ticket();").
+output_instruction(store_ticket(Lval), DeclSet0, _) -->
+	output_lval_decls(Lval, "\t{\n\t", "\t", 0, N, DeclSet0, _),
+	io__write_string("\tstore_ticket("),
+	output_lval(Lval),
+	io__write_string(");\n"),
+	( { N > 0 } ->
+		io__write_string("\t}\n")
+	;
+		[]
+	).
 
-output_instruction(incr_sp(N, Msg), _) -->
+output_instruction(restore_ticket(Rval), DeclSet0, _) -->
+	output_rval_decls(Rval, "\t{\n\t", "\t", 0, N, DeclSet0, _),
+	io__write_string("\trestore_ticket("),
+	output_rval(Rval),
+	io__write_string(");\n"),
+	( { N > 0 } ->
+		io__write_string("\t}\n")
+	;
+		[]
+	).
+
+output_instruction(discard_ticket, _, _) -->
+	io__write_string("\tdiscard_ticket();").
+
+output_instruction(incr_sp(N, Msg), _, _) -->
 	io__write_string("\tincr_sp_push_msg("),
 	io__write_int(N),
 	io__write_string(", """),
 	io__write_string(Msg),
-	io__write_string(""");").
+	io__write_string(""");\n").
 
-output_instruction(decr_sp(N), _) -->
+output_instruction(decr_sp(N), _, _) -->
 	io__write_string("\tdecr_sp_pop_msg("),
 	io__write_int(N),
-	io__write_string(");").
+	io__write_string(");\n").
 
 	% The code we produce for pragma(c_code, ...) is in the form
 	% {
@@ -925,7 +984,7 @@ output_instruction(decr_sp(N), _) -->
 	%	<assignment to the output regs of the corresponding locals>
 	% }
 	%
-output_instruction(pragma_c(Decls, Inputs, C_Code, Outputs), _) -->
+output_instruction(pragma_c(Decls, Inputs, C_Code, Outputs), _, _) -->
 	io__write_string("\t{\n"),
 	output_pragma_decls(Decls),
 	{ set__init(DeclSet0) },
@@ -961,9 +1020,9 @@ output_pragma_decls([D|Decls]) -->
 :- mode output_pragma_input_rval_decls(in, in, out, di, uo) is det.
 
 output_pragma_input_rval_decls([], DeclSet, DeclSet) --> [].
-output_pragma_input_rval_decls([I|Inputs], DeclSet0, DeclSet) -->
+output_pragma_input_rval_decls([I | Inputs], DeclSet0, DeclSet) -->
 	{ I = pragma_c_input(_VarName, _Type, Rval) },
-	output_rval_decls(Rval, DeclSet0, DeclSet1),
+	output_rval_decls(Rval, "\t", "\t", 0, _N, DeclSet0, DeclSet1),
 	output_pragma_input_rval_decls(Inputs, DeclSet1, DeclSet).
 
 	% Output the input variable assignments at the top of the 
@@ -1000,9 +1059,9 @@ output_pragma_inputs([I|Inputs]) -->
 :- mode output_pragma_output_lval_decls(in, in, out, di, uo) is det.
 
 output_pragma_output_lval_decls([], DeclSet, DeclSet) --> [].
-output_pragma_output_lval_decls([O|Outputs], DeclSet0, DeclSet) -->
+output_pragma_output_lval_decls([O | Outputs], DeclSet0, DeclSet) -->
 	{ O = pragma_c_output(Lval, _Type, _VarName) },
-	output_lval_decls(Lval, DeclSet0, DeclSet1),
+	output_lval_decls(Lval, "\t", "\t", 0, _N, DeclSet0, DeclSet1),
 	output_pragma_output_lval_decls(Outputs, DeclSet1, DeclSet).
 
 	% Output the output variable assignments at the bottom of the
@@ -1114,25 +1173,37 @@ output_temp_decls_2(Next, Max, Type) -->
 % output_rval(Rval) is called.
 
 % Every time we emit a declaration for a symbol, we insert it into the
-% set of symbols we've already declared.  That way, we avoid generating
+% set of symbols we've already declared. That way, we avoid generating
 % the same symbol twice, which would cause an error in the C code.
 
-:- type decl_set == set(decl_id).
+:- pred output_rval_decls(rval, string, string, int, int, decl_set, decl_set,
+	io__state, io__state).
+:- mode output_rval_decls(in, in, in, in, out, in, out, di, uo) is det.
 
-:- type decl_id ---> create_label(int) ; float_label(string).
-
-:- pred output_rval_decls(rval, decl_set, decl_set, io__state, io__state).
-:- mode output_rval_decls(in, in, out, di, uo) is det.
-
-output_rval_decls(lval(Lval), DeclSet0, DeclSet) --> 
-	output_lval_decls(Lval, DeclSet0, DeclSet).
-output_rval_decls(var(_), _, _) --> 
+output_rval_decls(lval(Lval), FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet) -->
+	output_lval_decls(Lval, FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet).
+output_rval_decls(var(_), _, _, _, _, _, _) --> 
 	{ error("output_rval_decls: unexpected var") }.
-output_rval_decls(mkword(_, Rval), DeclSet0, DeclSet) --> 
-	output_rval_decls(Rval, DeclSet0, DeclSet).
-output_rval_decls(const(Const), DeclSet0, DeclSet) -->
-	( { Const = address_const(CodeAddress) } ->
-		output_code_addr_decls(CodeAddress, DeclSet0, DeclSet)
+output_rval_decls(mkword(_, Rval), FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet) --> 
+	output_rval_decls(Rval, FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet).
+output_rval_decls(const(Const), FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet) -->
+	( { Const = code_addr_const(CodeAddress) } ->
+		output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent,
+			N0, N, DeclSet0, DeclSet)
+	; { Const = data_addr_const(DataAddr) } ->
+		( { set__member(data_addr(DataAddr), DeclSet0) } ->
+			{ N = N0 },
+			{ DeclSet = DeclSet0 }
+		;
+			{ set__insert(DeclSet0, data_addr(DataAddr), DeclSet) },
+			output_data_addr_decls(DataAddr,
+				FirstIndent, LaterIndent, N0, N)
+		)
 	; { Const = float_const(FloatVal) } ->
 		%
 		% If floats are boxed, and the static ground terms
@@ -1147,28 +1218,38 @@ output_rval_decls(const(Const), DeclSet0, DeclSet) -->
 			{ llds_out__float_literal_name(FloatVal, FloatName) },
 			{ FloatLabel = float_label(FloatName) },
 			( { set__member(FloatLabel, DeclSet0) } ->
+				{ N = N0 },
 				{ DeclSet = DeclSet0 }
 			;
 				{ set__insert(DeclSet0, FloatLabel, DeclSet) },
 				{ string__float_to_string(FloatVal,
 					FloatString) },
+				output_indent(FirstIndent, LaterIndent, N0),
+				{ N is N0 + 1 },
 				io__write_strings([
 					"static const Float ",
 					"mercury_float_const_", FloatName,
-					" = ", FloatString, ";\n\t  "
+					" = ", FloatString, ";\n"
 				])
 			)
 		;
+			{ N = N0 },
 			{ DeclSet = DeclSet0 }
 		)
 	;
+		{ N = N0 },
 		{ DeclSet = DeclSet0 }
 	).
-output_rval_decls(unop(_, Rval), DeclSet0, DeclSet) -->
-	output_rval_decls(Rval, DeclSet0, DeclSet).
-output_rval_decls(binop(Op, Rval1, Rval2), DeclSet0, DeclSet) -->
-	output_rval_decls(Rval1, DeclSet0, DeclSet1),
-	output_rval_decls(Rval2, DeclSet1, DeclSet2),
+output_rval_decls(unop(_, Rval), FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet) -->
+	output_rval_decls(Rval, FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet).
+output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet) -->
+	output_rval_decls(Rval1, FirstIndent, LaterIndent, N0, N1,
+		DeclSet0, DeclSet1),
+	output_rval_decls(Rval2, FirstIndent, LaterIndent, N1, N2,
+		DeclSet1, DeclSet2),
 		%
 		% If floats are boxed, and the static ground terms
 		% option is enabled, then for each float constant
@@ -1186,9 +1267,12 @@ output_rval_decls(binop(Op, Rval1, Rval2), DeclSet0, DeclSet) -->
 	    ->
 		{ FloatLabel = float_label(FloatName) },
 		( { set__member(FloatLabel, DeclSet2) } ->
+			{ N = N2 },
 			{ DeclSet = DeclSet2 }
 		;
 			{ set__insert(DeclSet2, FloatLabel, DeclSet) },
+			output_indent(FirstIndent, LaterIndent, N2),
+			{ N is N2 + 1 },
 			io__write_string(
 				"static const Float mercury_float_const_"),
 			io__write_string(FloatName),
@@ -1204,12 +1288,14 @@ output_rval_decls(binop(Op, Rval1, Rval2), DeclSet0, DeclSet) -->
 			io__write_string(OpStr),
 			io__write_string(" "),
 			output_rval_as_float(Rval2),
-			io__write_string(";\n\t  ")
+			io__write_string(";\n")
 		)
 	    ;
+		{ N = N2 },
 		{ DeclSet = DeclSet2 }
 	    )
 	;
+	    { N = N2 },
 	    { DeclSet = DeclSet2 }
 	).
 
@@ -1245,46 +1331,56 @@ output_rval_decls(binop(Op, Rval1, Rval2), DeclSet0, DeclSet) -->
 	% We output the original format if possible, since we want it
 	% to go in rdata if it can, because rdata is shared.
 	%
-output_rval_decls(create(_Tag, ArgVals, _Unique, Label), DeclSet0, DeclSet) -->
+output_rval_decls(create(_Tag, ArgVals, _, Label), FirstIndent, LaterIndent,
+		N0, N, DeclSet0, DeclSet) -->
 	{ CreateLabel = create_label(Label) },
 	( { set__member(CreateLabel, DeclSet0) } ->
+		{ N = N0 },
 		{ DeclSet = DeclSet0 }
 	;
 		{ set__insert(DeclSet0, CreateLabel, DeclSet1) },
-		output_cons_arg_decls(ArgVals, DeclSet1, DeclSet),
+		output_cons_arg_decls(ArgVals, FirstIndent, LaterIndent, N0, N1,
+			DeclSet1, DeclSet),
+		output_indent(FirstIndent, LaterIndent, N1),
+		{ N is N1 + 1 },
 		(
 			% must we use use `Word *'?
-			{   
-			    % yes if the constant refers to any code addresses
-			    exprn_aux__maybe_rval_list_code_addrs(ArgVals,
-					CodeAddrs),
-			    CodeAddrs \= []
-			;   
-			    % yes if the constant contains any string constants
-			    % or any float constants
-			    % or any sub-creates
-			    exprn_aux__args_contain_rval(ArgVals, Rval),
-			    (   Rval = const(string_const(_))
-			    ;   Rval = const(float_const(_))
-			    ;   Rval = create(_, _, _, Label1),
-				% every create contains a create - itself.
-				% We don't want to count that one,
-				% so we check that the labels are different:
-				Label1 \= Label 
-			    )
-			}
+			{ args_contain_pointers(ArgVals, Label) }
 		->
 			io__write_string("static const Word * mercury_const_"),
 			io__write_int(Label),
-			io__write_string("[] = {\n\t\t"),
-			output_cons_args(ArgVals, yes),
-			io__write_string("};\n\t  ")
+			io__write_string("[] = {\n"),
+			output_cons_args(ArgVals, "\t\t", yes)
 		;
 			io__write_string("static const Word mercury_const_"),
 			io__write_int(Label),
-			io__write_string("[] = {\n\t\t"),
-			output_cons_args(ArgVals, no),
-			io__write_string("};\n\t  ")
+			io__write_string("[] = {\n"),
+			output_cons_args(ArgVals, "\t\t", no)
+		),
+		io__write_string(LaterIndent),
+		io__write_string("};\n")
+	).
+
+args_contain_pointers(ArgVals, Label) :-
+	(   
+		% yes if the constant refers to any addresses
+		exprn_aux__maybe_rval_list_addrs(ArgVals, CodeAddrs, DataAddrs),
+		( CodeAddrs \= [] ; DataAddrs \= [] )
+	;   
+		% yes if the constant contains any string constants
+		% or any float constants
+		% or any sub-creates
+		exprn_aux__args_contain_rval(ArgVals, Rval),
+		(
+			Rval = const(string_const(_))
+		;
+			Rval = const(float_const(_))
+		;
+			Rval = create(_, _, _, Label1),
+			% every create contains a create - itself.
+			% We don't want to count that one,
+			% so we check that the labels are different:
+			Label1 \= Label 
 		)
 	).
 
@@ -1307,7 +1403,6 @@ llds_out__float_const_expr_name(Expr, Name) :-
 	;
 		fail
 	).
-
 
 :- pred llds_out__float_const_binop_expr_name(binary_op::in, rval::in, rval::in,
 				string::out) is semidet.
@@ -1342,7 +1437,6 @@ llds_out__float_literal_name(Float, FloatName) :-
 	string__replace_all(FloatName0, ".", "pt", FloatName1),
 	string__replace_all(FloatName1, "-", "neg", FloatName).
 
-
 :- pred llds_out__float_op_name(binary_op, string).
 :- mode llds_out__float_op_name(in, out) is semidet.
 	
@@ -1357,28 +1451,33 @@ llds_out__float_op_name(float_divide, "divide").
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_cons_arg_decls(list(maybe(rval)), decl_set, decl_set,
-				io__state, io__state).
-:- mode output_cons_arg_decls(in, in, out, di, uo) is det.
+:- pred output_cons_arg_decls(list(maybe(rval)), string, string, int, int,
+	decl_set, decl_set, io__state, io__state).
+:- mode output_cons_arg_decls(in, in, in, in, out, in, out, di, uo) is det.
 
-output_cons_arg_decls([], DeclSet, DeclSet) --> [].
-output_cons_arg_decls([Arg | Args], DeclSet0, DeclSet) -->
+output_cons_arg_decls([], _, _, N, N, DeclSet, DeclSet) --> [].
+output_cons_arg_decls([Arg | Args], FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet) -->
 	( { Arg = yes(Rval) } ->
-		output_rval_decls(Rval, DeclSet0, DeclSet1)
+		output_rval_decls(Rval, FirstIndent, LaterIndent, N0, N1,
+			DeclSet0, DeclSet1)
 	;
+		{ N1 = N0 },
 		{ DeclSet1 = DeclSet0 }
 	),
-	output_cons_arg_decls(Args, DeclSet1, DeclSet).
+	output_cons_arg_decls(Args, FirstIndent, LaterIndent, N1, N,
+		DeclSet1, DeclSet).
 
-:- pred output_cons_args(list(maybe(rval)), bool, io__state, io__state).
-:- mode output_cons_args(in, in, di, uo) is det.
-% 	output_cons_args(Args, CastToPointer):
-%		output the arguments;
-%		if CastToPointer is yes, then cast them all to `(Word *)'.
+:- pred output_cons_args(list(maybe(rval)), string, bool, io__state, io__state).
+:- mode output_cons_args(in, in, in, di, uo) is det.
+% 	output_cons_args(Args, Indent, CastToPointer):
+%	output the arguments, each on its own line prefixing with Indent;
+%	if CastToPointer is yes, then cast them all to `(Word *)'.
 
-output_cons_args([], _) --> [].
-output_cons_args([Arg | Args], CastToPointer) -->
+output_cons_args([], _, _) --> [].
+output_cons_args([Arg | Args], Indent, CastToPointer) -->
 	( { Arg = yes(Rval) } ->
+		io__write_string(Indent),
 		( { CastToPointer = yes } ->
 			io__write_string("(Word *) ")
 		;
@@ -1391,57 +1490,132 @@ output_cons_args([Arg | Args], CastToPointer) -->
 		{ error("output_cons_args: missing argument") }
 	),
 	( { Args \= [] } ->
-		io__write_string(",\n\t\t"),
-		output_cons_args(Args, CastToPointer)
+		io__write_string(",\n"),
+		output_cons_args(Args, Indent, CastToPointer)
 	;
-		io__write_string("\n\t  ")
+		io__write_string("\n")
 	).
 
 % output_lval_decls(Lval, ...) outputs the declarations of any
 % static constants, etc. that need to be declared before
 % output_lval(Lval) is called.
 
-:- pred output_lval_decls(lval, decl_set, decl_set, io__state, io__state).
-:- mode output_lval_decls(in, in, out, di, uo) is det.
+:- pred output_lval_decls(lval, string, string, int, int, decl_set, decl_set,
+	io__state, io__state).
+:- mode output_lval_decls(in, in, in, in, out, in, out, di, uo) is det.
 
-output_lval_decls(field(_, Rval, FieldNum), DeclSet0, DeclSet) -->
-	output_rval_decls(Rval, DeclSet0, DeclSet1),
-	output_rval_decls(FieldNum, DeclSet1, DeclSet).
-output_lval_decls(reg(_), DeclSet, DeclSet) --> [].
-output_lval_decls(stackvar(_), DeclSet, DeclSet) --> [].
-output_lval_decls(framevar(_), DeclSet, DeclSet) --> [].
-output_lval_decls(succip, DeclSet, DeclSet) --> [].
-output_lval_decls(maxfr, DeclSet, DeclSet) --> [].
-output_lval_decls(curfr, DeclSet, DeclSet) --> [].
-output_lval_decls(succfr(Rval), DeclSet0, DeclSet) -->
-	output_rval_decls(Rval, DeclSet0, DeclSet).
-output_lval_decls(prevfr(Rval), DeclSet0, DeclSet) -->
-	output_rval_decls(Rval, DeclSet0, DeclSet).
-output_lval_decls(redoip(Rval), DeclSet0, DeclSet) -->
-	output_rval_decls(Rval, DeclSet0, DeclSet).
-output_lval_decls(succip(Rval), DeclSet0, DeclSet) -->
-	output_rval_decls(Rval, DeclSet0, DeclSet).
-output_lval_decls(hp, DeclSet, DeclSet) --> [].
-output_lval_decls(sp, DeclSet, DeclSet) --> [].
-output_lval_decls(lvar(_), DeclSet, DeclSet) --> [].
-output_lval_decls(temp(_), DeclSet, DeclSet) --> [].
+output_lval_decls(field(_, Rval, FieldNum), FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet) -->
+	output_rval_decls(Rval, FirstIndent, LaterIndent, N0, N1,
+		DeclSet0, DeclSet1),
+	output_rval_decls(FieldNum, FirstIndent, LaterIndent, N1, N,
+		DeclSet1, DeclSet).
+output_lval_decls(reg(_), _, _, N, N, DeclSet, DeclSet) --> [].
+output_lval_decls(stackvar(_), _, _, N, N, DeclSet, DeclSet) --> [].
+output_lval_decls(framevar(_), _, _, N, N, DeclSet, DeclSet) --> [].
+output_lval_decls(succip, _, _, N, N, DeclSet, DeclSet) --> [].
+output_lval_decls(maxfr, _, _, N, N, DeclSet, DeclSet) --> [].
+output_lval_decls(curfr, _, _, N, N, DeclSet, DeclSet) --> [].
+output_lval_decls(succfr(Rval), FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet) -->
+	output_rval_decls(Rval, FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet).
+output_lval_decls(prevfr(Rval), FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet) -->
+	output_rval_decls(Rval, FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet).
+output_lval_decls(redoip(Rval), FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet) -->
+	output_rval_decls(Rval, FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet).
+output_lval_decls(succip(Rval), FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet) -->
+	output_rval_decls(Rval, FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet).
+output_lval_decls(hp, _, _, N, N, DeclSet, DeclSet) --> [].
+output_lval_decls(sp, _, _, N, N, DeclSet, DeclSet) --> [].
+output_lval_decls(lvar(_), _, _, N, N, DeclSet, DeclSet) --> [].
+output_lval_decls(temp(_), _, _, N, N, DeclSet, DeclSet) --> [].
 
 % output_code_addr_decls(CodeAddr, ...) outputs the declarations of any
 % extern symbols, etc. that need to be declared before
 % output_code_addr(CodeAddr) is called.
 
-:- pred output_code_addr_decls(code_addr, decl_set, decl_set,
-				io__state, io__state).
-:- mode output_code_addr_decls(in, in, out, di, uo) is det.
+:- pred output_code_addr_decls(code_addr, string, string, int, int,
+	decl_set, decl_set, io__state, io__state).
+:- mode output_code_addr_decls(in, in, in, in, out, in, out, di, uo) is det.
 
-output_code_addr_decls(label(_), DeclSet, DeclSet) --> [].
-output_code_addr_decls(imported(ProcLabel), DeclSet, DeclSet) -->
+output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet) -->
+	( { set__member(code_addr(CodeAddress), DeclSet0) } ->
+		{ N = N0 },
+		{ DeclSet = DeclSet0 }
+	;
+		{ set__insert(DeclSet0, code_addr(CodeAddress), DeclSet) },
+		need_code_addr_decls(CodeAddress, NeedDecl),
+		( { NeedDecl = yes } ->
+			output_indent(FirstIndent, LaterIndent, N0),
+			{ N is N0 + 1 },
+			output_code_addr_decls(CodeAddress)
+		;
+			{ N = N0 }
+		)
+	).
+
+:- pred need_code_addr_decls(code_addr, bool, io__state, io__state).
+:- mode need_code_addr_decls(in, out, di, uo) is det.
+
+need_code_addr_decls(label(Label), Need) -->
+	{ 
+		Label = exported(_),
+		Need = yes
+	;
+		Label = local(_),
+		Need = yes
+	;
+		Label = c_local(_),
+		Need = no
+	;
+		Label = local(_, _),
+		Need = no
+	}.
+need_code_addr_decls(imported(_), yes) --> [].
+need_code_addr_decls(succip, no) --> [].
+need_code_addr_decls(do_succeed(_), no) --> [].
+need_code_addr_decls(do_redo, NeedDecl) -->
+	globals__io_lookup_bool_option(use_macro_for_redo_fail, UseMacro),
+	(
+		{ UseMacro = yes },
+		{ NeedDecl = no }
+	;
+		{ UseMacro = no },
+		{ NeedDecl = yes }
+	).
+need_code_addr_decls(do_fail, NeedDecl) -->
+	globals__io_lookup_bool_option(use_macro_for_redo_fail, UseMacro),
+	(
+		{ UseMacro = yes },
+		{ NeedDecl = no }
+	;
+		{ UseMacro = no },
+		{ NeedDecl = yes }
+	).
+need_code_addr_decls(do_det_closure, yes) --> [].
+need_code_addr_decls(do_semidet_closure, yes) --> [].
+need_code_addr_decls(do_nondet_closure, yes) --> [].
+
+:- pred output_code_addr_decls(code_addr, io__state, io__state).
+:- mode output_code_addr_decls(in, di, uo) is det.
+
+output_code_addr_decls(label(Label)) -->
+	output_label_as_code_addr_decls(Label).
+output_code_addr_decls(imported(ProcLabel)) -->
 	io__write_string("Declare_entry("),
 	output_proc_label(ProcLabel),
-	io__write_string(");\n\t  ").
-output_code_addr_decls(succip, DeclSet, DeclSet) --> [].
-output_code_addr_decls(do_succeed(_), DeclSet, DeclSet) --> [].
-output_code_addr_decls(do_redo, DeclSet, DeclSet) -->
+	io__write_string(");\n").
+output_code_addr_decls(succip) --> [].
+output_code_addr_decls(do_succeed(_)) --> [].
+output_code_addr_decls(do_redo) -->
 	globals__io_lookup_bool_option(use_macro_for_redo_fail, UseMacro),
 	(
 		{ UseMacro = yes }
@@ -1449,9 +1623,9 @@ output_code_addr_decls(do_redo, DeclSet, DeclSet) -->
 		{ UseMacro = no },
 		io__write_string("Declare_entry("),
 		io__write_string("do_redo"),
-		io__write_string(");\n\t  ")
+		io__write_string(");\n")
 	).
-output_code_addr_decls(do_fail, DeclSet, DeclSet) -->
+output_code_addr_decls(do_fail) -->
 	globals__io_lookup_bool_option(use_macro_for_redo_fail, UseMacro),
 	(
 		{ UseMacro = yes }
@@ -1459,14 +1633,62 @@ output_code_addr_decls(do_fail, DeclSet, DeclSet) -->
 		{ UseMacro = no },
 		io__write_string("Declare_entry("),
 		io__write_string("do_fail"),
-		io__write_string(");\n\t  ")
+		io__write_string(");\n")
 	).
-output_code_addr_decls(do_det_closure, DeclSet, DeclSet) -->
-	io__write_string("Declare_entry(do_call_det_closure);\n\t  ").
-output_code_addr_decls(do_semidet_closure, DeclSet, DeclSet) -->
-	io__write_string("Declare_entry(do_call_semidet_closure);\n\t  ").
-output_code_addr_decls(do_nondet_closure, DeclSet, DeclSet) -->
-	io__write_string("Declare_entry(do_call_nondet_closure);\n\t  ").
+output_code_addr_decls(do_det_closure) -->
+	io__write_string("Declare_entry(do_call_det_closure);\n").
+output_code_addr_decls(do_semidet_closure) -->
+	io__write_string("Declare_entry(do_call_semidet_closure);\n").
+output_code_addr_decls(do_nondet_closure) -->
+	io__write_string("Declare_entry(do_call_nondet_closure);\n").
+
+:- pred output_label_as_code_addr_decls(label, io__state, io__state).
+:- mode output_label_as_code_addr_decls(in, di, uo) is det.
+
+output_label_as_code_addr_decls(exported(ProcLabel)) -->
+	io__write_string("Declare_entry("),
+	output_label(exported(ProcLabel)),
+	io__write_string(");\n").
+output_label_as_code_addr_decls(local(ProcLabel)) -->
+	globals__io_lookup_bool_option(split_c_files, SplitFiles),
+	( { SplitFiles = no } ->
+		io__write_string("Declare_static("),
+		output_label(local(ProcLabel)),
+		io__write_string(");\n")
+	;
+		io__write_string("Declare_entry("),
+		output_label(local(ProcLabel)),
+		io__write_string(");\n")
+	).
+output_label_as_code_addr_decls(c_local(_)) --> [].
+output_label_as_code_addr_decls(local(_, _)) --> [].
+
+:- pred output_data_addr_decls(data_addr, string, string, int, int,
+	io__state, io__state).
+:- mode output_data_addr_decls(in, in, in, in, out, di, uo) is det.
+
+output_data_addr_decls(data_addr(BaseName, VarName, NeedPtr),
+		FirstIndent, LaterIndent, N0, N) -->
+	output_indent(FirstIndent, LaterIndent, N0),
+	{ N is N0 + 1 },
+	io__write_string("extern Word "),
+	( { NeedPtr = yes } ->
+		io__write_string("* ")
+	;
+		[]
+	),
+	output_data_addr(BaseName, VarName), 
+	io__write_string("[];\n").
+
+:- pred output_indent(string, string, int, io__state, io__state).
+:- mode output_indent(in, in, in, di, uo) is det.
+
+output_indent(FirstIndent, LaterIndent, N0) -->
+	( { N0 > 0 } ->
+		io__write_string(LaterIndent)
+	;
+		io__write_string(FirstIndent)
+	).
 
 :- pred maybe_output_update_prof_counter(label, pair(label, set(label)),
 	io__state, io__state).
@@ -1476,9 +1698,9 @@ maybe_output_update_prof_counter(Label, CallerLabel - ContLabelSet) -->
 	(
 		{ set__member(Label, ContLabelSet) }
 	->
-		io__write_string("\n\tupdate_prof_current_proc(LABEL("),
+		io__write_string("\tupdate_prof_current_proc(LABEL("),
 		output_label(CallerLabel),
-		io__write_string("));")
+		io__write_string("));\n")
 	;
 		[]
 	).
@@ -1492,72 +1714,78 @@ maybe_output_update_prof_counter(Label, CallerLabel - ContLabelSet) -->
 
 output_goto(label(Label), CallerLabel) -->
 	(
-		{ Label = local(_) ; Label = exported(_) }
-	->
+		{ Label = exported(_) },
+		io__write_string("tailcall("),
+		output_label_as_code_addr(Label),
+		io__write_string(",\n\t\t"),
+		output_label_as_code_addr(CallerLabel),
+		io__write_string(");\n")
+	;
+		{ Label = local(_) },
+		io__write_string("tailcall("),
+		output_label_as_code_addr(Label),
+		io__write_string(",\n\t\t"),
+		output_label_as_code_addr(CallerLabel),
+		io__write_string(");\n")
+	;
+		{ Label = c_local(_) },
 		io__write_string("localtailcall("),
 		output_label(Label),
 		io__write_string(",\n\t\t"),
 		output_label_as_code_addr(CallerLabel),
-		io__write_string(");")
+		io__write_string(");\n")
 	;
-		{ Label = local(_, _) }
-	->
+		{ Label = local(_, _) },
 		io__write_string("GOTO_LABEL("),
 		output_label(Label),
-		io__write_string(");")
-	;
-		% just in case - this will always work,
-		% but shouldn't be needed
-		io__write_string("GOTO(LABEL("),
-		output_label(Label),
-		io__write_string("));")
+		io__write_string(");\n")
 	).
 output_goto(imported(ProcLabel), CallerLabel) -->
 	io__write_string("tailcall(ENTRY("),
 	output_proc_label(ProcLabel),
 	io__write_string("),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
-	io__write_string(");").
+	io__write_string(");\n").
 output_goto(succip, _) -->
-	io__write_string("proceed();").
+	io__write_string("proceed();\n").
 output_goto(do_succeed(Last), _) -->
 	(
 		{ Last = no },
-		io__write_string("succeed();")
+		io__write_string("succeed();\n")
 	;
 		{ Last = yes },
-		io__write_string("succeed_discard();")
+		io__write_string("succeed_discard();\n")
 	).
 output_goto(do_redo, _) -->
 	globals__io_lookup_bool_option(use_macro_for_redo_fail, UseMacro),
 	(
 		{ UseMacro = yes },
-		io__write_string("redo();")
+		io__write_string("redo();\n")
 	;
 		{ UseMacro = no },
-		io__write_string("GOTO(ENTRY(do_redo));")
+		io__write_string("GOTO(ENTRY(do_redo));\n")
 	).
 output_goto(do_fail, _) -->
 	globals__io_lookup_bool_option(use_macro_for_redo_fail, UseMacro),
 	(
 		{ UseMacro = yes },
-		io__write_string("fail();")
+		io__write_string("fail();\n")
 	;
 		{ UseMacro = no },
-		io__write_string("GOTO(ENTRY(do_fail));")
+		io__write_string("GOTO(ENTRY(do_fail));\n")
 	).
 output_goto(do_det_closure, CallerLabel) -->
 	io__write_string("tailcall(ENTRY(do_call_det_closure),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
-	io__write_string(");").
+	io__write_string(");\n").
 output_goto(do_semidet_closure, CallerLabel) -->
 	io__write_string("tailcall(ENTRY(do_call_semidet_closure),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
-	io__write_string(");").
+	io__write_string(");\n").
 output_goto(do_nondet_closure, CallerLabel) -->
 	io__write_string("tailcall(ENTRY(do_call_nondet_closure),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
-	io__write_string(");").
+	io__write_string(");\n").
 
 	% Note that we also do some optimization here by
 	% outputting `localcall' rather than `call' for
@@ -1568,44 +1796,32 @@ output_goto(do_nondet_closure, CallerLabel) -->
 :- mode output_call(in, in, in, di, uo) is det.
 
 output_call(Target, Continuation, CallerLabel) -->
-	( { Target = label(Label) } ->
-		io__write_string("localcall("),
+	(
+		{ Target = label(Label) },
+		% We really shouldn't be calling internal labels ...
+		{ Label = c_local(_) ; Label = local(_, _) }
+	->
+		io__write_string("\tlocalcall("),
 		output_label(Label),
 		io__write_string(",\n\t\t"),
 		output_code_addr(Continuation)
-	; { Continuation = label(ContLabel) } ->
-		io__write_string("call_localret("),
+	;
+		{ Continuation = label(ContLabel) },
+		{ ContLabel = c_local(_) ; ContLabel = local(_, _) }
+	->
+		io__write_string("\tcall_localret("),
 		output_code_addr(Target),
 		io__write_string(",\n\t\t"),
 		output_label(ContLabel)
 	;
-		io__write_string("call("),
+		io__write_string("\tcall("),
 		output_code_addr(Target),
 		io__write_string(",\n\t\t"),
 		output_code_addr(Continuation)
 	),
 	io__write_string(",\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
-	io__write_string(");").
-
-% :- pred output_call_closure(code_model, code_addr, label, io__state, io__state).
-% :- mode output_call_closure(in, in, in, di, uo) is det.
-% 
-% output_call_closure(CodeModel, Continuation, CallerLabel) -->
-% 	(
-% 		{ CodeModel = model_det },
-% 		io__write_string("call_det_closure(")
-% 	;
-% 		{ CodeModel = model_semi },
-% 		io__write_string("call_semidet_closure(")
-% 	;
-% 		{ CodeModel = model_non },
-% 		io__write_string("call_nondet_closure(")
-% 	),
-% 	output_code_addr(Continuation),
-% 	io__write_string(","),
-% 	output_label_as_code_addr(CallerLabel),
-% 	io__write_string(");").
+	io__write_string(");\n").
 
 :- pred output_code_addr(code_addr, io__state, io__state).
 :- mode output_code_addr(in, di, uo) is det.
@@ -1637,12 +1853,52 @@ output_code_addr(do_semidet_closure) -->
 output_code_addr(do_nondet_closure) -->
 	io__write_string("ENTRY(do_call_nondet_closure)").
 
+:- pred output_data_addr(string, data_name, io__state, io__state).
+:- mode output_data_addr(in, in, di, uo) is det.
+
+output_data_addr(BaseName0, VarName) -->
+	{ llds_out__name_mangle(BaseName0, BaseName) },
+	io__write_string("mercury_data_"),
+	io__write_string(BaseName),
+	(
+		{ VarName = common(N) },
+		io__write_string("__common_"),
+		{ string__int_to_string(N, NStr) },
+		io__write_string(NStr)
+	;
+		{ VarName = base_type_info(TypeName0, TypeArity) },
+		io__write_string("__base_type_info_"),
+		{ llds_out__name_mangle(TypeName0, TypeName) },
+		io__write_string(TypeName),
+		io__write_string("_"),
+		io__write_int(TypeArity)
+	).
+
 :- pred output_label_as_code_addr(label, io__state, io__state).
 :- mode output_label_as_code_addr(in, di, uo) is det.
 
-output_label_as_code_addr(Label) -->
+output_label_as_code_addr(exported(ProcLabel)) -->
+	io__write_string("ENTRY("),
+	output_label(exported(ProcLabel)),
+	io__write_string(")").
+output_label_as_code_addr(local(ProcLabel)) -->
+	globals__io_lookup_bool_option(split_c_files, SplitFiles),
+	( { SplitFiles = no } ->
+		io__write_string("STATIC("),
+		output_label(local(ProcLabel)),
+		io__write_string(")")
+	;
+		io__write_string("ENTRY("),
+		output_label(local(ProcLabel)),
+		io__write_string(")")
+	).
+output_label_as_code_addr(c_local(ProcLabel)) -->
 	io__write_string("LABEL("),
-	output_label(Label),
+	output_label(c_local(ProcLabel)),
+	io__write_string(")").
+output_label_as_code_addr(local(ProcLabel, N)) -->
+	io__write_string("LABEL("),
+	output_label(local(ProcLabel, N)),
 	io__write_string(")").
 
 :- pred output_label_list(list(label), io__state, io__state).
@@ -1671,53 +1927,47 @@ output_label_list_2([Label | Labels]) -->
 
 output_label_defn(exported(ProcLabel)) -->
 	io__write_string("Define_entry("),
-	output_proc_label(ProcLabel),
-	io__write_string(");").
+	output_label(exported(ProcLabel)),
+	io__write_string(");\n").
 output_label_defn(local(ProcLabel)) -->
-	globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
-	% if we are splitting procs between functions, then
-	% every procedure could be referred to by a procedure
-	% in a different function, so make them static, not local
-	% similarly if we're splitting between files make them extern
-	( { ProcsPerFunc = 0 } ->
-		io__write_string("Define_local("),
-		output_proc_label(ProcLabel),
-		io__write_string("_l);")	% l for "local".
+	% The code for procedures local to a Mercury module
+	% should normally be visible only within the C file
+	% generated for that module. However, if we generate
+	% multiple C files, the code in each C file must be
+	% visible to the other C files for that Mercury module.
+	globals__io_lookup_bool_option(split_c_files, SplitFiles),
+	( { SplitFiles = no } ->
+		io__write_string("Define_static("),
+		output_label(local(ProcLabel)),
+		io__write_string(");\n")
 	;
-		globals__io_lookup_bool_option(split_c_files, SplitFiles),
-		( { SplitFiles = no } ->
-			io__write_string("Define_static("),
-			output_proc_label(ProcLabel),
-			io__write_string(");")
-		;
-			io__write_string("Define_entry("),
-			output_proc_label(ProcLabel),
-			io__write_string(");")
-		)
+		io__write_string("Define_entry("),
+		output_label(local(ProcLabel)),
+		io__write_string(");\n")
 	).
+output_label_defn(c_local(ProcLabel)) -->
+	io__write_string("Define_local("),
+	output_label(c_local(ProcLabel)),
+	io__write_string(");\n").
 output_label_defn(local(ProcLabel, Num)) -->
 	io__write_string("Define_label("),
-	output_proc_label(ProcLabel),
-	io__write_string("_i"),		% i for "internal" (not Intel ;-)
-	io__write_int(Num),
-	io__write_string(");").
+	output_label(local(ProcLabel, Num)),
+	io__write_string(");\n").
 
-% Note that the suffixes _l etc. used to be interpreted by mod2c,
+% Note that the suffixes _l and _iN used to be interpreted by mod2c,
 % which generated different code depending on the suffix.
+% We don't generate the _l suffix anymore, since it interferes
+% with referring to a label both as local(_) and c_local(_).
+% For example, the entry label of a recursive unification predicate
+% is referred to as local(_) in type_info structures and as c_local(_)
+% in the recursive call.
 
 output_label(exported(ProcLabel)) -->
 	output_proc_label(ProcLabel).
 output_label(local(ProcLabel)) -->
-	output_proc_label(ProcLabel),
-	globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
-	( { ProcsPerFunc = 0 } ->
-		io__write_string("_l")		% l for "local".
-	;
-		% if we are splitting procs between functions, then
-		% every procedure could be referred to by a procedure
-		% in a different function, so don't make them local
-		[]
-	).
+	output_proc_label(ProcLabel).
+output_label(c_local(ProcLabel)) -->
+	output_proc_label(ProcLabel).
 output_label(local(ProcLabel, Num)) -->
 	output_proc_label(ProcLabel),
 	io__write_string("_i"),		% i for "internal" (not Intel ;-)
@@ -2043,9 +2293,12 @@ output_rval_const(true) -->
 	io__write_string("TRUE").
 output_rval_const(false) -->
 	io__write_string("FALSE").
-output_rval_const(address_const(CodeAddress)) -->
+output_rval_const(code_addr_const(CodeAddress)) -->
 	io__write_string("(Integer) "),
 	output_code_addr(CodeAddress).
+output_rval_const(data_addr_const(data_addr(BaseName, VarName, _))) -->
+	io__write_string("(Integer) "),
+	output_data_addr(BaseName, VarName).
 
 :- pred output_lval(lval, io__state, io__state).
 :- mode output_lval(in, di, uo) is det.

@@ -271,7 +271,7 @@ dead_proc_elim__traverse_expr(unify(_,_,_, Uni, _), _CurrProc, Queue0, Queue,
 	(
 		Uni = construct(_, ConsId, _, _),
 		( ConsId = pred_const(PredId, ProcId)
-		; ConsId = address_const(PredId, ProcId)
+		; ConsId = code_addr_const(PredId, ProcId)
 		)
 	->
 		queue__put(Queue0, proc(PredId, ProcId), Queue),

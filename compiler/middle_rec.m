@@ -115,9 +115,9 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, FollowVars,
 	code_info__get_module_info(ModuleInfo),
 	code_info__get_pred_id(PredId),
 	code_info__get_proc_id(ProcId),
-	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId,
-		EntryLabel) },
 	{ predicate_name(ModuleInfo, PredId, PredName) },
+	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, no,
+		EntryLabel) },
 
 	code_aux__pre_goal_update(SwitchGoalInfo),
 

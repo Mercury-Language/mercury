@@ -523,17 +523,18 @@ mode_name_args(eqv_mode(Name, Args, Body), Name, Args, eqv_mode(Body)).
 				io__state, io__state).
 :- mode module_add_type_defn(in, in, in, in, in, in, out, di, uo) is det.
 
-module_add_type_defn(Module0, TVarSet, TypeDefn, Cond, Context, Status,
+module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context, Status,
 		Module) -->
 	{ module_info_types(Module0, Types0) },
 	globals__io_get_globals(Globals),
 	{ convert_type_defn(TypeDefn, Globals, Name, Args, Body) },
 	{ list__length(Args, Arity) },
-	{ T = hlds__type_defn(TVarSet, Args, Body, Cond, Context) },
+	{ hlds_data__set_type_defn(TVarSet, Args, Body, Context, T) },
 	(
 		% if there was an existing non-abstract definition for the type
 		{ map__search(Types0, Name - Arity, T2) },
-		{ T2 = hlds__type_defn(_, _, Body_2, _, OrigContext) },
+		{ hlds_data__get_type_defn_body(T2, Body_2) },
+		{ hlds_data__get_type_defn_context(T2, OrigContext) },
 		{ Body_2 \= abstract_type }
 	->
 	  	(

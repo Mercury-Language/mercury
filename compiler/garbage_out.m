@@ -103,7 +103,7 @@ garbage_out__create_cont_list([M |Ms], C_List) :-
 	( M = c_module(_ModName, C_Procs),
           garbage_out__create_cont_list_2(C_Procs, C),
 	  list__append(C, Cs, C_List)
-	; M = c_typeinfo(_, _),
+	; M = c_data(_, _, _, _, _, _),
 	  C_List = Cs
 	; M = c_code(_, _),
 	  C_List = Cs

@@ -68,8 +68,10 @@
 			;	float_const(float)
 			;	pred_const(byte_module_id, byte_pred_id,
 					arity, byte_proc_id)
-			;	address_const(byte_module_id, byte_pred_id,
+			;	code_addr_const(byte_module_id, byte_pred_id,
 					arity, byte_proc_id)
+			;	base_type_info_const(byte_module_id, string,
+					int)
 			.
 
 :- type byte_var_info	--->	var_info(string, type).
@@ -111,7 +113,7 @@
 
 :- pred bytecode__version(int::out) is det.
 
-bytecode__version(3).
+bytecode__version(4).
 
 output_bytecode_file(FileName, ByteCodes) -->
 	io__tell_binary(FileName, Result),
@@ -639,12 +641,17 @@ output_cons_id(pred_const(ModuleId, PredId, Arity, ProcId)) -->
 	output_pred_id(PredId),
 	output_length(Arity),
 	output_proc_id(ProcId).
-output_cons_id(address_const(ModuleId, PredId, Arity, ProcId)) -->
+output_cons_id(code_addr_const(ModuleId, PredId, Arity, ProcId)) -->
 	output_byte(5),
 	output_module_id(ModuleId),
 	output_pred_id(PredId),
 	output_length(Arity),
 	output_proc_id(ProcId).
+output_cons_id(base_type_info_const(ModuleId, TypeName, TypeArity)) -->
+	output_byte(6),
+	output_module_id(ModuleId),
+	output_string(TypeName),
+	output_byte(TypeArity).
 
 :- pred debug_cons_id(byte_cons_id,
 	io__state, io__state).
@@ -670,12 +677,17 @@ debug_cons_id(pred_const(ModuleId, PredId, Arity, ProcId)) -->
 	debug_pred_id(PredId),
 	debug_length(Arity),
 	debug_proc_id(ProcId).
-debug_cons_id(address_const(ModuleId, PredId, Arity, ProcId)) -->
-	debug_string("address_const"),
+debug_cons_id(code_addr_const(ModuleId, PredId, Arity, ProcId)) -->
+	debug_string("code_addr_const"),
 	debug_module_id(ModuleId),
 	debug_pred_id(PredId),
 	debug_length(Arity),
 	debug_proc_id(ProcId).
+debug_cons_id(base_type_info_const(ModuleId, TypeName, TypeArity)) -->
+	debug_string("base_type_info_const"),
+	debug_module_id(ModuleId),
+	debug_string(TypeName),
+	debug_int(TypeArity).
 
 %---------------------------------------------------------------------------%
 

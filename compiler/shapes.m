@@ -348,9 +348,10 @@ shapes__create_shape_2(Type_Tab, Type, Inst, Type_Id, TypeArgs, Shape,
 	(
 		map__search(Type_Tab, Type_Id, Hlds_Type)
 	->
+		hlds_data__get_type_defn_tparams(Hlds_Type, TypeParams),
+		hlds_data__get_type_defn_body(Hlds_Type, Body),
 		(
-			Hlds_Type = hlds__type_defn(_TypeVarSet, TypeParams,
-				du_type(Ctors0, TagVals, _), _, _)
+			Body = du_type(Ctors0, TagVals, _)
 		->
 			term__term_list_to_var_list(TypeParams,
 				TypeParamVars),
@@ -397,8 +398,7 @@ shapes__create_shape_2(Type_Tab, Type, Inst, Type_Id, TypeArgs, Shape,
 					bit_three, D, Type_Tab, S_Tab3, S_Tab)
 			)
 		;
-			Hlds_Type = hlds__type_defn(_, _TypeParams,
-				abstract_type, _, _)
+			Body = abstract_type
 
 				% An abstract type that is imported from
 				% elsewhere. We find the constructors of
@@ -418,7 +418,7 @@ shapes__create_shape_2(Type_Tab, Type, Inst, Type_Id, TypeArgs, Shape,
 				S_Tab = S_Tab0
 			)
 		;
-			Hlds_Type = hlds__type_defn(_, _, eqv_type(ET), _, _)
+			Body = eqv_type(ET)
 
 			% The case where a type is equivalent to
 			% another type - we just find the type it is
@@ -492,7 +492,7 @@ shapes__create_shapeA(Type_Id, [ Ctor | Rest ] , TagVals, Bits, A,
 		A = constant,
 		S_Tab = S_Tab0
 	;
-		C_Tag = address_constant(_, _)
+		C_Tag = code_addr_constant(_, _)
 	->
 		A = constant,
 		S_Tab = S_Tab0

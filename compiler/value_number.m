@@ -847,7 +847,7 @@ value_number__convert_back_modframe([Instr0 | Instrs0], [Instr | Instrs]) :-
 	value_number__convert_back_modframe(Instrs0, Instrs),
 	(
 		Instr0 = assign(redoip(lval(curfr)),
-			const(address_const(Redoip))) - _
+			const(code_addr_const(Redoip))) - _
 	->
 		Instr = modframe(Redoip) - "recovered modframe"
 	;

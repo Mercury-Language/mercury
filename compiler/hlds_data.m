@@ -30,10 +30,12 @@
 			;	string_const(string)
 			;	float_const(float)
 			;	pred_const(pred_id, proc_id)
-			;	address_const(pred_id, proc_id).
+			;	code_addr_const(pred_id, proc_id)
 				% Used for constructing type_infos.
 				% Note that a pred_const is for a closure
-				% whereas an address_const is just an address.
+				% whereas a code_addr_const is just an address.
+			;	base_type_info_const(string, string, int).
+				% module name, type name, type arity
 
 	% A cons_defn is the definition of a constructor (i.e. a constant
 	% or a functor) for a particular type.
@@ -114,25 +116,23 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 
 	% An hlds__type_defn holds the information about a type definition.
 
-:- type hlds__type_defn
-	--->	hlds__type_defn(
-			tvarset,		% Names of type vars (empty
-						% except for polymorphic types)
-			list(type_param),	% Formal type parameters
-			hlds__type_body,	% the definition of the type
+:- type hlds__type_defn.
 
-			condition,		% UNUSED
-				% Reserved for holding a user-defined invariant
-				% for the type, as in the NU-Prolog's type
-				% checker, which allows `where' conditions on
-				% type definitions.  For example:
-				% :- type sorted_list(T) == list(T)
-				%	where sorted.
+:- pred hlds_data__set_type_defn(tvarset, list(type_param),
+	hlds__type_body, term__context, hlds__type_defn).
+:- mode hlds_data__set_type_defn(in, in, in, in, out) is det.
 
-			term__context		% the location of this type
-						% definition in the original
-						% source code
-		).
+:- pred hlds_data__get_type_defn_tvarset(hlds__type_defn, tvarset).
+:- mode hlds_data__get_type_defn_tvarset(in, out) is det.
+
+:- pred hlds_data__get_type_defn_tparams(hlds__type_defn, list(type_param)).
+:- mode hlds_data__get_type_defn_tparams(in, out) is det.
+
+:- pred hlds_data__get_type_defn_body(hlds__type_defn, hlds__type_body).
+:- mode hlds_data__get_type_defn_body(in, out) is det.
+
+:- pred hlds_data__get_type_defn_context(hlds__type_defn, term__context).
+:- mode hlds_data__get_type_defn_context(in, out) is det.
 
 	% An `hlds__type_body' holds the body of a type definition:
 	% du = discriminated union, uu = undiscriminated union,
@@ -185,11 +185,17 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 			% hold the number of args and the address of
 			% the procedure respectively.
 			% The remaining words hold the arguments.
-	;	address_constant(pred_id, proc_id)
+	;	code_addr_constant(pred_id, proc_id)
 			% Procedure address constants
 			% (used for constructing type_infos).
 			% The word just contains the address of the
 			% specified procedure.
+	;	base_type_info_constant(string, string, int)
+			% This is how we refer to base_type_info structures
+			% represented as global data. The two strings are
+			% the name of the module the type is defined in
+			% and the name of the type, while the integer is
+			% the arity.
 	;	simple_tag(tag_bits)
 			% This is for constants or functors which only
 			% require a simple tag.  (A "simple" tag is one
@@ -221,8 +227,40 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 
 :- type tag_bits	==	int.	% actually only 2 (or maybe 3) bits
 
+:- implementation.
+
+:- type hlds__type_defn
+	--->	hlds__type_defn(
+			tvarset,		% Names of type vars (empty
+						% except for polymorphic types)
+			list(type_param),	% Formal type parameters
+			hlds__type_body,	% the definition of the type
+
+%			condition,		% UNUSED
+%				% Reserved for holding a user-defined invariant
+%				% for the type, as in the NU-Prolog's type
+%				% checker, which allows `where' conditions on
+%				% type definitions.  For example:
+%				% :- type sorted_list(T) == list(T)
+%				%	where sorted.
+
+			term__context		% the location of this type
+						% definition in the original
+						% source code
+		).
+
+hlds_data__set_type_defn(Tvarset, Params, Body, Context, Defn) :-
+	Defn = hlds__type_defn(Tvarset, Params, Body, Context).
+
+hlds_data__get_type_defn_tvarset(hlds__type_defn(Tvarset, _, _, _), Tvarset).
+hlds_data__get_type_defn_tparams(hlds__type_defn(_, Params, _, _), Params).
+hlds_data__get_type_defn_body(hlds__type_defn(_, _, Body, _), Body).
+hlds_data__get_type_defn_context(hlds__type_defn(_, _, _, Context), Context).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+:- interface.
 
 	% The symbol table for insts.
 
