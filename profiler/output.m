@@ -35,10 +35,10 @@ output__main(Output, IndexMap) -->
 	{ Output = output(InfoMap, CallList, FlatList) },
 	output__call_graph_headers,
 	output_call_graph(CallList, InfoMap, IndexMap),
-	output_alphabet_headers,
-	output_alphabet_listing(IndexMap),
 	output__flat_headers,
-	output__flat_profile(FlatList, 0.0, InfoMap, IndexMap).
+	output__flat_profile(FlatList, 0.0, InfoMap, IndexMap),
+	output_alphabet_headers,
+	output_alphabet_listing(IndexMap).
 
 
 :- pred output__call_graph_headers(io__state, io__state).
@@ -50,7 +50,7 @@ output__call_graph_headers -->
 
 	io__write_string("\tpredicate entries:\n\n"),
 
-	io__write_string("index\tthe index of the predicate in the call graph\n"),
+	io__write_string("index\tthe index number of the predicate in the call graph\n"),
 	io__write_string("\tlisting.\n\n"),
 
 	io__write_string("%time\tthe percentage of the total running time of\n"),
@@ -77,6 +77,41 @@ output__call_graph_headers -->
 
 	io__write_string("self*\tthe number of seconds of the current predicates self\n"),
 	io__write_string("\ttime due to calls from this parent.\n\n"),
+
+	io__write_string("descendents*\n"),
+	io__write_string("\tthe number of second's of the current predicate's descendent\n"),
+	io__write_string("\ttime which is due to call's from this parent.\n\n"),
+
+	io__write_string("called*\tthe number of times the current predicate is called\n"),
+	io__write_string("\tby this parent.\n\n"),
+
+	io__write_string("total\tthe number of times this predicate is called by it's parents.\n\n"),
+
+	io__write_string("parents\tthe name of this parent.\n\n"),
+
+	io__write_string("index\tthe index number of the parent predicate\n\n\n\n"),
+
+
+
+	io__write_string("children listings:\n\n"),
+
+	io__write_string("self*\tthe number of second's of this child's self time which is due\n"),
+	io__write_string("\tto being called by the current predicate.\n\n"),
+
+	io__write_string("descendent*\n"),
+	io__write_string("\tthe number of second's of this child's desdendent time which is due\n"),
+	io__write_string("\tto the current predicate.\n\n"),
+
+	io__write_string("called*\tthe nubmer of times this child is called by the current\n"),
+	io__write_string("\tpredicate.\n\n"),
+
+	io__write_string("total*\tthe number of time's this child is called by all predicates.\n\n"),
+
+	io__write_string("children\tthe name of this child.\n\n"),
+
+	io__write_string("index\tthe index number of the child.\n\n"),
+
+
 
 	io__write_string("                                  called/total"),
 	io__write_string("       parents\n"),
@@ -212,12 +247,31 @@ output_formatted_child_list([Child | Children], IndexMap) -->
 	io__write_string(Output),
 	output_formatted_child_list(Children, IndexMap).	
 
-
 :- pred output__flat_headers(io__state, io__state).
 :- mode output__flat_headers(di, uo) is det.
 
 output__flat_headers -->
 	io__write_string("\nflat profile:\n\n"),
+
+	io__write_string(" %\tthe percentage of total running time of the program\n"),
+	io__write_string("time\tused by this function.\n\n"),
+
+	io__write_string(" cum\tthe total time of the current predicate and the one's\n"),
+	io__write_string("time\tlisted above it.\n\n"),
+
+	io__write_string(" self\tthe number of seconds accounted for by this predicate alone.\n"),
+	io__write_string("seconds\tThe listing is sorted on this row.\n\n"),
+
+	io__write_string("calls\tthe number of times this predicate was called.\n\n"),
+
+	io__write_string(" self\tthe average number of milliseconds spent in\n"),
+	io__write_string("ms/call\tthis predicate per call.\n\n"),
+
+	io__write_string(" total\tthe average number of milliseconds spent in this predicate and it's\n"),
+	io__write_string("ms/call\tdescendents per call.\n\n"),
+
+	io__write_string("name\tthe name of the predicate followed by it's index number.\n\n"),
+
 	io__write_string("   %  cumulative    self              self"),
 	io__write_string("    total\n"),
 	io__write_string(" time   seconds   seconds    calls  ms/call"),
@@ -282,8 +336,19 @@ output_alphabet_listing(IndexMap) -->
 :- pred output_alphabet_listing_2(assoc_list(string, int), io__state, io__state).
 :- mode output_alphabet_listing_2(in, di, uo) is det.
 
-output_alphabet_listing_2([]) --> [].
+output_alphabet_listing_2([]) --> 
+	io__write_string("\n").
 output_alphabet_listing_2([Name - Index | T]) -->
-	{ string__format("[%d]\t%s\n", [i(Index), s(Name)], String) },
+	{ string__format("[%d]\t%-30s", [i(Index), s(Name)], String) },
+	io__write_string(String),
+	output_alphabet_listing_3(T).
+
+:- pred output_alphabet_listing_3(assoc_list(string, int), io__state, io__state).
+:- mode output_alphabet_listing_3(in, di, uo) is det.
+
+output_alphabet_listing_3([]) --> [].
+output_alphabet_listing_3([Name - Index | T]) -->
+	{ string__format("[%d]\t%-30s\n", [i(Index), s(Name)], String) },
 	io__write_string(String),
 	output_alphabet_listing_2(T).
+

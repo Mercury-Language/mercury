@@ -41,11 +41,11 @@
 
 process_file__main(Prof, DynamicCallGraph) -->
         globals__io_lookup_bool_option(very_verbose, VVerbose),
-        maybe_write_string(VVerbose, "\n\t% Processing addrdecl.out..."),
+        maybe_write_string(VVerbose, "\n\t% Processing Prof.Decl..."),
         process_addr_decl(AddrDeclMap, ProfNodeMap0),
-        maybe_write_string(VVerbose, " done.\n\t% Processing addr.out..."),
+        maybe_write_string(VVerbose, " done.\n\t% Processing Prof.Counts..."),
         process_addr(ProfNodeMap0, ProfNodeMap1, Hertz, ClockTicks,TotalCounts),
-        maybe_write_string(VVerbose, " done.\n\t% Processing addrpair.out..."),
+        maybe_write_string(VVerbose, " done.\n\t% Processing Prof.CallPair..."),
         process_addr_pair(ProfNodeMap1, DynamicCallGraph, ProfNodeMap),
         maybe_write_string(VVerbose, " done.\n"),
 
