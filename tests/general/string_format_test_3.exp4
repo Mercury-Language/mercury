@@ -1,0 +1,9 @@
+Uncaught exception:
+Software Error: string__format: invalid conversion specifier.
+Stack dump follows:
+   0       pred exception:throw/1-0 (erroneous) (exception.m:NNNN)
+   1       pred require:error/1-0 (erroneous) (require.m:NNNN)
+   2       pred string:format_string/5-0 (det) (string.m:NNNN)
+   3       pred string:format/3-0 (det) (string.m:NNNN)
+   4       pred io:format/4-0 (det) (io.m:NNNN)
+   5       pred string_format_test_3:main/2-0 (det) (string_format_test_3.m:13)
