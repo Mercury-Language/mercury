@@ -83,7 +83,6 @@
 :- import_module code_util, hlds_pred, hlds_data, inst_match.
 :- import_module instmap, mode_util, tree, type_util, prog_out.
 :- import_module rl_out, inlining, hlds_goal, prog_util, error_util.
-:- import_module inst_table.
 
 % Note: the reason that we need to import llds and builtin_ops here is that
 % we generate code for builtins by first converting the builtin to LLDS
@@ -365,10 +364,9 @@ rl_exprn__set_term_arg_cons_id_code_2(term(_), _, _, _, _) :-
 %-----------------------------------------------------------------------------%
 
 rl_exprn__generate(ModuleInfo, RLGoal, Code, NumParams, Mode, Decls) :-
-	RLGoal = rl_goal(_, VarSet, VarTypes, InstMap, InstTable,
+	RLGoal = rl_goal(_, VarSet, VarTypes, InstMap,
 		Inputs, MaybeOutputs, Goals, _), 
-	rl_exprn_info_init(ModuleInfo, InstMap, InstTable,
-		VarTypes, VarSet, Info0),
+	rl_exprn_info_init(ModuleInfo, InstMap, VarTypes, VarSet, Info0),
 	rl_exprn__generate_2(Inputs, MaybeOutputs, Goals,
 		Code, NumParams, Mode, Decls, Info0, _).
 
@@ -600,12 +598,7 @@ rl_exprn__construct_output_tuple_2(FieldNo, [Var | Vars], Code) -->
 
 rl_exprn__goals([], _, empty) --> [].
 rl_exprn__goals([Goal | Goals], Fail, Code) --> 
-	rl_exprn_info_get_instmap(InstMap0),
 	rl_exprn__goal(Goal, Fail, Code0),
-	{ Goal = _ - GoalInfo },
-	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) }, 
-	{ instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap) },
-	rl_exprn_info_set_instmap(InstMap),
 	rl_exprn__goals(Goals, Fail, Code1),
 	{ Code = tree(Code0, Code1) }.
 
@@ -629,16 +622,9 @@ rl_exprn__goal(if_then_else(_, Cond, Then, Else, _) - _, Fail, Code) -->
 	rl_exprn_info_get_next_label_id(StartElse),
 	rl_exprn_info_get_next_label_id(EndIte),
 	{ CondFail = node([rl_EXP_jmp(StartElse)]) },
-	rl_exprn_info_get_instmap(InstMap0),
 	rl_exprn__goal(Cond, CondFail, CondCode),
-	{ Cond = _ - CondInfo },
-	{ goal_info_get_instmap_delta(CondInfo, CondDelta) },
-	{ instmap__apply_instmap_delta(InstMap0, CondDelta, InstMap) },
-	rl_exprn_info_set_instmap(InstMap),
 	rl_exprn__goal(Then, Fail, ThenCode),
-	rl_exprn_info_set_instmap(InstMap0),
 	rl_exprn__goal(Else, Fail, ElseCode),
-	rl_exprn_info_set_instmap(InstMap0),
 	{ Code =
 		tree(CondCode, 
 		tree(ThenCode, 
@@ -674,16 +660,11 @@ rl_exprn__goal(some(_, _, Goal) - _, Fail, Code) -->
 		rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__cases(_, [], _, Fail, Fail) --> [].
-rl_exprn__cases(Var, [case(ConsId, InstMapDelta, Goal) | Cases],
-		Succeed, Fail, Code) -->
-	rl_exprn_info_get_instmap(InstMap0),
-	{ instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap) },
-	rl_exprn_info_set_instmap(InstMap),
+rl_exprn__cases(Var, [case(ConsId, Goal) | Cases], Succeed, Fail, Code) -->
 	rl_exprn_info_get_next_label_id(NextCase),
 	{ Jmp = rl_EXP_jmp(NextCase) },
 	rl_exprn__functor_test(Var, ConsId, node([Jmp]), TestCode),
 	rl_exprn__goal(Goal, Fail, GoalCode),
-	rl_exprn_info_set_instmap(InstMap0),
 	rl_exprn__cases(Var, Cases, Succeed, Fail, Code1),
 	{ Code = 
 		tree(TestCode,
@@ -699,12 +680,10 @@ rl_exprn__cases(Var, [case(ConsId, InstMapDelta, Goal) | Cases],
 
 rl_exprn__disj([], _, Fail, Fail) --> [].
 rl_exprn__disj([Goal | Goals], Succeed, Fail, Code) -->
-	rl_exprn_info_get_instmap(InstMap0),
 	rl_exprn_info_get_next_label_id(NextDisj),
 	{ TryNext = node([rl_EXP_jmp(NextDisj)]) },
 	{ NextLabel = node([rl_PROC_label(NextDisj)]) },
 	rl_exprn__goal(Goal, TryNext, GoalCode),
-	rl_exprn_info_set_instmap(InstMap0),
 	rl_exprn__disj(Goals, Succeed, Fail, Code1),
 	{ Code = 
 		tree(GoalCode,
@@ -1104,14 +1083,10 @@ rl_exprn__handle_functor_args([Arg | Args], [Mode | Modes], NonLocals,
 	( { set__member(Arg, NonLocals) } ->
 		rl_exprn_info_lookup_var_type(Arg, Type),
 		rl_exprn_info_get_module_info(ModuleInfo),
-		rl_exprn_info_get_instmap(InstMap),
-		rl_exprn_info_get_inst_table(InstTable),
 
 		{ Mode = ((LI - RI) -> (LF - RF)) },
-		{ mode_to_arg_mode(InstMap, InstTable, ModuleInfo,
-			(LI -> LF), Type, LeftMode) },
-		{ mode_to_arg_mode(InstMap, InstTable, ModuleInfo,
-			(RI -> RF), Type, RightMode) },
+		{ mode_to_arg_mode(ModuleInfo, (LI -> LF), Type, LeftMode) },
+		{ mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, RightMode) },
 		(
 			{ LeftMode = top_in },
 			{ RightMode = top_in }
@@ -1580,7 +1555,10 @@ rl_exprn__simple_extra_builtin(predicate, "string", "length", 2, 0,
 rl_exprn__aggregate(ModuleInfo, ComputeInitial, UpdateAcc, GrpByType, 
 		NonGrpByType, AccType, AggCode, Decls) :-
 
-	rl_exprn_info_init(ModuleInfo, Info0),
+	map__init(VarTypes),
+	varset__init(VarSet),
+	instmap__init_reachable(InstMap),
+	rl_exprn_info_init(ModuleInfo, InstMap, VarTypes, VarSet, Info0),
 	rl_exprn__aggregate_2(ComputeInitial, UpdateAcc, GrpByType,
 		NonGrpByType, AccType, AggCode, Decls, Info0, _).
 
@@ -1742,11 +1720,8 @@ rl_exprn__closure(proc(PredId, ProcId), ArgLocs, ArgTypes, IsConst, Code) -->
 	{ Goal = _ - GoalInfo },
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ proc_info_headvars(ProcInfo, HeadVars) },
-	{ proc_info_argmodes(ProcInfo, argument_modes(_, ArgModes)) },
-	{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) },
-	{ proc_info_inst_table(ProcInfo, InstTable) },
-	{ partition_args(InstMap, InstTable, ModuleInfo,
-		ArgModes, HeadVars, InputArgs, _) },
+	{ proc_info_argmodes(ProcInfo, ArgModes) },
+	{ partition_args(ModuleInfo, ArgModes, HeadVars, InputArgs, _) },
 	{ set__list_to_set(InputArgs, InputArgSet) },
 	{ set__intersect(InputArgSet, NonLocals, UsedInputArgs) },
 	( { set__empty(UsedInputArgs) } ->
@@ -1991,9 +1966,9 @@ rl_exprn__get_exprn_labels_list(PC0, PC, Labels0, Labels,
 
 :- type rl_exprn_info.
 
-:- pred rl_exprn_info_init(module_info, instmap, inst_table,
-		map(prog_var, type), prog_varset, rl_exprn_info).
-:- mode rl_exprn_info_init(in, in, in, in, in, out) is det.
+:- pred rl_exprn_info_init(module_info, instmap, map(prog_var, type),
+		prog_varset, rl_exprn_info).
+:- mode rl_exprn_info_init(in, in, in, in, out) is det.
 
 :- pred rl_exprn_info_init(module_info, rl_exprn_info).
 :- mode rl_exprn_info_init(in, out) is det.
@@ -2078,13 +2053,10 @@ rl_exprn__get_exprn_labels_list(PC0, PC, Labels0, Labels,
 :- pred rl_exprn_info_get_decls(list(type), rl_exprn_info, rl_exprn_info).
 :- mode rl_exprn_info_get_decls(out, in, out) is det.
 
-:- pred rl_exprn_info_get_inst_table(inst_table, rl_exprn_info, rl_exprn_info).
-:- mode rl_exprn_info_get_inst_table(out, in, out) is det.
-
 :- type rl_exprn_info
 	---> rl_exprn_info(
 		module_info,
-		instmap,
+		instmap,		% not yet used.
 		map(prog_var, type),
 		prog_varset,
 		id_map(prog_var),
@@ -2093,9 +2065,7 @@ rl_exprn__get_exprn_labels_list(PC0, PC, Labels0, Labels,
 		id_map(pair(rl_rule, exprn_tuple)),
 		set(pred_proc_id),	% parent pred_proc_ids, used
 					% to abort on recursion.
-		list(type),		% variable declarations in reverse.
-		inst_table,
-		unit
+		list(type)		% variable declarations in reverse.
 	).
 
 :- type rl_rule
@@ -2147,65 +2117,61 @@ rl_exprn_info_init(ModuleInfo, Info0) :-
 	map__init(VarTypes),
 	varset__init(VarSet),
 	instmap__init_reachable(InstMap),
-	inst_table_init(InstTable),
-	rl_exprn_info_init(ModuleInfo, InstMap, InstTable,
-		VarTypes, VarSet, Info0).
+	rl_exprn_info_init(ModuleInfo, InstMap, VarTypes, VarSet, Info0).
 
-rl_exprn_info_init(ModuleInfo, InstMap, InstTable, VarTypes, VarSet, Info) :-
+rl_exprn_info_init(ModuleInfo, InstMap, VarTypes, VarSet, Info) :-
 	id_map_init(VarMap),
 	id_map_init(ConstMap),
 	id_map_init(RuleMap),
 	set__init(Parents),
 	Label = 0,
-	Info = rl_exprn_info(ModuleInfo, InstMap, VarTypes, VarSet, VarMap,
-		Label, ConstMap, RuleMap, Parents, [], InstTable, unit).
+	Info = rl_exprn_info(ModuleInfo, InstMap, VarTypes, VarSet,
+		VarMap, Label, ConstMap, RuleMap, Parents, []).
 
 rl_exprn_info_get_module_info(A, Info, Info) :-
-	Info = rl_exprn_info(A,_,_,_,_,_,_,_,_,_,_,_).
+	Info = rl_exprn_info(A,_,_,_,_,_,_,_,_,_).
 rl_exprn_info_get_instmap(B, Info, Info) :-
-	Info = rl_exprn_info(_,B,_,_,_,_,_,_,_,_,_,_).
+	Info = rl_exprn_info(_,B,_,_,_,_,_,_,_,_).
 rl_exprn_info_get_vartypes(C, Info, Info) :-
-	Info = rl_exprn_info(_,_,C,_,_,_,_,_,_,_,_,_).
+	Info = rl_exprn_info(_,_,C,_,_,_,_,_,_,_).
 rl_exprn_info_get_varset(D, Info, Info) :-
-	Info = rl_exprn_info(_,_,_,D,_,_,_,_,_,_,_,_).
+	Info = rl_exprn_info(_,_,_,D,_,_,_,_,_,_).
 rl_exprn_info_get_vars(E, Info, Info) :-
-	Info = rl_exprn_info(_,_,_,_,E,_,_,_,_,_,_,_).
+	Info = rl_exprn_info(_,_,_,_,E,_,_,_,_,_).
 rl_exprn_info_get_consts(G, Info, Info) :-
-	Info = rl_exprn_info(_,_,_,_,_,_,G,_,_,_,_,_).
+	Info = rl_exprn_info(_,_,_,_,_,_,G,_,_,_).
 rl_exprn_info_get_rules(H, Info, Info) :-
-	Info = rl_exprn_info(_,_,_,_,_,_,_,H,_,_,_,_).
+	Info = rl_exprn_info(_,_,_,_,_,_,_,H,_,_).
 rl_exprn_info_get_parent_pred_proc_ids(I, Info, Info) :-
-	Info = rl_exprn_info(_,_,_,_,_,_,_,_,I,_,_,_).
+	Info = rl_exprn_info(_,_,_,_,_,_,_,_,I,_).
 rl_exprn_info_get_decls(J, Info, Info) :-
-	Info = rl_exprn_info(_,_,_,_,_,_,_,_,_,J0,_,_),
+	Info = rl_exprn_info(_,_,_,_,_,_,_,_,_,J0),
 	list__reverse(J0, J).
-rl_exprn_info_get_inst_table(K, Info, Info) :-
-	Info = rl_exprn_info(_,_,_,_,_,_,_,_,_,_,K,_).
 
 rl_exprn_info_set_instmap(B, Info0, Info) :-
-	Info0 = rl_exprn_info(A,_,C,D,E,F,G,H,I,J,K,L),
-	Info = rl_exprn_info(A,B,C,D,E,F,G,H,I,J,K,L).
+	Info0 = rl_exprn_info(A,_,C,D,E,F,G,H,I,J),
+	Info = rl_exprn_info(A,B,C,D,E,F,G,H,I,J).
 rl_exprn_info_set_vartypes(C, Info0, Info) :-
-	Info0 = rl_exprn_info(A,B,_,D,E,F,G,H,I,J,K,L),
-	Info = rl_exprn_info(A,B,C,D,E,F,G,H,I,J,K,L).
+	Info0 = rl_exprn_info(A,B,_,D,E,F,G,H,I,J),
+	Info = rl_exprn_info(A,B,C,D,E,F,G,H,I,J).
 rl_exprn_info_set_varset(D, Info0, Info) :-
-	Info0 = rl_exprn_info(A,B,C,_,E,F,G,H,I,J,K,L),
-	Info = rl_exprn_info(A,B,C,D,E,F,G,H,I,J,K,L).
+	Info0 = rl_exprn_info(A,B,C,_,E,F,G,H,I,J),
+	Info = rl_exprn_info(A,B,C,D,E,F,G,H,I,J).
 rl_exprn_info_set_vars(E, Info0, Info) :-
-	Info0 = rl_exprn_info(A,B,C,D,_,F,G,H,I,J,K,L),
-	Info = rl_exprn_info(A,B,C,D,E,F,G,H,I,J,K,L).
+	Info0 = rl_exprn_info(A,B,C,D,_,F,G,H,I,J),
+	Info = rl_exprn_info(A,B,C,D,E,F,G,H,I,J).
 rl_exprn_info_set_parent_pred_proc_ids(I, Info0, Info) :-
-	Info0 = rl_exprn_info(A,B,C,D,E,F,G,H,_,J,K,L),
-	Info = rl_exprn_info(A,B,C,D,E,F,G,H,I,J,K,L).
+	Info0 = rl_exprn_info(A,B,C,D,E,F,G,H,_,J),
+	Info = rl_exprn_info(A,B,C,D,E,F,G,H,I,J).
 rl_exprn_info_get_free_reg(Type, Loc, Info0, Info) :-
-	Info0 = rl_exprn_info(A,B,C,D,VarMap0,F,G,H,I,RegTypes0,K,L),
+	Info0 = rl_exprn_info(A,B,C,D,VarMap0,F,G,H,I,RegTypes0),
 	VarMap0 = Map - Loc,
 	Loc1 is Loc + 1,
 	VarMap = Map - Loc1,
 	RegTypes = [Type | RegTypes0],
-	Info = rl_exprn_info(A,B,C,D,VarMap,F,G,H,I,RegTypes,K,L).
+	Info = rl_exprn_info(A,B,C,D,VarMap,F,G,H,I,RegTypes).
 rl_exprn_info_lookup_var(Var, Loc, Info0, Info) :-
-	Info0 = rl_exprn_info(A,B,VarTypes,D,VarMap0,F,G,H,I,RegTypes0,K,L),
+	Info0 = rl_exprn_info(A,B,VarTypes,D,VarMap0,F,G,H,I,RegTypes0),
 	id_map_lookup(Var, Loc, Added, VarMap0, VarMap),
 	( Added = yes ->
 		map__lookup(VarTypes, Var, Type),
@@ -2213,19 +2179,19 @@ rl_exprn_info_lookup_var(Var, Loc, Info0, Info) :-
 	;
 		RegTypes = RegTypes0
 	),
-	Info = rl_exprn_info(A,B,VarTypes,D,VarMap,F,G,H,I,RegTypes,K,L).
+	Info = rl_exprn_info(A,B,VarTypes,D,VarMap,F,G,H,I,RegTypes).
 rl_exprn_info_get_next_label_id(Label0, Info0, Info) :-
-	Info0 = rl_exprn_info(A,B,C,D,E,Label0,G,H,I,J,K,L),
+	Info0 = rl_exprn_info(A,B,C,D,E,Label0,G,H,I,J),
 	Label is Label0 + 1,
-	Info = rl_exprn_info(A,B,C,D,E,Label,G,H,I,J,K,L).
+	Info = rl_exprn_info(A,B,C,D,E,Label,G,H,I,J).
 rl_exprn_info_lookup_const(Const, Loc, Info0, Info) :-
-	Info0 = rl_exprn_info(A,B,C,D,E,F,Consts0,H,I,J,K,L),
+	Info0 = rl_exprn_info(A,B,C,D,E,F,Consts0,H,I,J),
 	id_map_lookup(Const, Loc, Consts0, Consts), 
-	Info = rl_exprn_info(A,B,C,D,E,F,Consts,H,I,J,K,L).
+	Info = rl_exprn_info(A,B,C,D,E,F,Consts,H,I,J).
 rl_exprn_info_lookup_rule(Rule, Loc, Info0, Info) :-
-	Info0 = rl_exprn_info(A,B,C,D,E,F,G,Rules0,I,J,K,L),
+	Info0 = rl_exprn_info(A,B,C,D,E,F,G,Rules0,I,J),
 	id_map_lookup(Rule, Loc, Rules0, Rules),
-	Info = rl_exprn_info(A,B,C,D,E,F,G,Rules,I,J,K,L).
+	Info = rl_exprn_info(A,B,C,D,E,F,G,Rules,I,J).
 
 rl_exprn_info_lookup_var_type(Var, Type) -->
 	rl_exprn_info_get_vartypes(VarTypes),

@@ -41,7 +41,7 @@
 			unify_main_context, unify_sub_contexts, hlds_goal).
 :- mode create_atomic_unification(in, in, in, in, in, out) is det.
 
-:- pred add_new_proc(pred_info, arity, argument_modes, maybe(argument_modes),
+:- pred add_new_proc(pred_info, arity, list(mode), maybe(list(mode)),
 		maybe(list(is_live)), maybe(determinism),
 		prog_context, is_address_taken, pred_info, proc_id).
 :- mode add_new_proc(in, in, in, in, in, in, in, in, out, out) is det.
@@ -59,11 +59,11 @@
 :- import_module hlds_data.
 :- import_module prog_io, prog_io_goal, prog_io_dcg, prog_io_util, prog_out.
 :- import_module modules, module_qual, prog_util, options, hlds_out.
-:- import_module make_tags, quantification, (inst), instmap, globals.
+:- import_module make_tags, quantification, (inst), globals.
 :- import_module code_util, unify_proc, special_pred, type_util, mode_util.
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc, inst_match.
 :- import_module fact_table, purity, goal_util, term_util, export, llds.
-:- import_module error_util, inst_table.
+:- import_module error_util.
 
 :- import_module string, char, int, set, bintree, map, multi_map, require.
 :- import_module term, varset, getopt, assoc_list, term_io.
@@ -215,12 +215,10 @@ add_item_decl_pass_1(pred_mode(VarSet, PredName, Modes, MaybeDet, Cond),
 
 add_item_decl_pass_1(func_mode(VarSet, FuncName, Modes, RetMode, MaybeDet,
 		Cond), Context, Status, Module0, Status, Module) -->
-	{ Modes = argument_modes(InstTable, ArgModes) },
-	{ list__append(ArgModes, [RetMode], ArgModes1) },
+	{ list__append(Modes, [RetMode], Modes1) },
 	{ Status = item_status(ImportStatus, _) },
-	module_add_mode(Module0, VarSet, FuncName,
-		argument_modes(InstTable, ArgModes1), MaybeDet, Cond,
-		ImportStatus, Context, function, _, Module).
+	module_add_mode(Module0, VarSet, FuncName, Modes1,
+		MaybeDet, Cond, ImportStatus, Context, function, _, Module).
 
 add_item_decl_pass_1(pragma(_), _, Status, Module, Status, Module) --> [].
 
@@ -477,9 +475,9 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		add_pred_marker(Module0, "promise_pure", Name, Arity,
 			ImportStatus, Context, promised_pure, [], Module)
 	;
-		{ Pragma = termination_info(PredOrFunc, SymName, Modes, 
+		{ Pragma = termination_info(PredOrFunc, SymName, ModeList, 
 			MaybeArgSizeInfo, MaybeTerminationInfo) },
-		add_pragma_termination_info(PredOrFunc, SymName, Modes,
+		add_pragma_termination_info(PredOrFunc, SymName, ModeList,
 			MaybeArgSizeInfo, MaybeTerminationInfo, Context,
 			Module0, Module)
 	;
@@ -506,8 +504,7 @@ add_item_decl_pass_2(func(_TypeVarSet, _InstVarSet, _ExistQVars, FuncName,
 	%
 	% add default modes for function declarations, if necessary
 	%
-	{ TypesAndModes = types_and_modes(_InstTable, TMs) },
-	{ list__length(TMs, Arity) },
+	{ list__length(TypesAndModes, Arity) },
 	{ module_info_get_predicate_table(Module0, PredTable0) },
 	(
 		{ predicate_table_search_func_sym_arity(PredTable0,
@@ -767,15 +764,14 @@ check_not_exported(Status, Context, Message) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_pragma_export(sym_name, pred_or_func, argument_modes, string,
+:- pred add_pragma_export(sym_name, pred_or_func, list(mode), string,
 	prog_context, module_info, module_info, io__state, io__state).
 :- mode add_pragma_export(in, in, in, in, in, in, out, di, uo) is det.
 
 add_pragma_export(Name, PredOrFunc, Modes, C_Function, Context,
 			Module0, Module) -->
 	{ module_info_get_predicate_table(Module0, PredTable) },
-	{ Modes = argument_modes(_ArgInstTable, ArgModes) },
-	{ list__length(ArgModes, Arity) },
+	{ list__length(Modes, Arity) },
 	(
 		{ predicate_table_search_pf_sym_arity(PredTable,
 			PredOrFunc, Name, Arity, [PredId]) }
@@ -785,9 +781,8 @@ add_pragma_export(Name, PredOrFunc, Modes, C_Function, Context,
 		{ pred_info_procedures(PredInfo, Procs) },
 		{ map__to_assoc_list(Procs, ExistingProcs) },
 		(
-			% YYY What if ArgInstTable is non-empty?
 			{ get_procedure_matching_declmodes(
-				ExistingProcs, ArgModes, Module0, ProcId)}
+				ExistingProcs, Modes, Module0, ProcId)}
 		->
 			{ module_info_get_pragma_exported_procs(Module0,
 				PragmaExportedProcs0) },
@@ -839,9 +834,9 @@ add_pragma_unused_args(PredOrFunc, SymName, Arity, ModeNum, UnusedArgs,
 %-----------------------------------------------------------------------------%
 
 :- pred add_pragma_type_spec(pragma_type, sym_name, sym_name, arity,
-		maybe(pred_or_func), maybe(argument_modes),
-		assoc_list(tvar, type), tvarset, term__context,
-		module_info, module_info, io__state, io__state).
+		maybe(pred_or_func), maybe(list(mode)), assoc_list(tvar, type),
+		tvarset, term__context, module_info, module_info,
+		io__state, io__state).
 :- mode add_pragma_type_spec(in, in, in, in, in, in, in,
 		in, in, in, out, di, uo) is det.
 
@@ -868,7 +863,7 @@ add_pragma_type_spec(Pragma, SymName, SpecName, Arity, MaybePredOrFunc,
 	).
 
 :- pred add_pragma_type_spec_2(pragma_type, sym_name, sym_name, arity,
-	assoc_list(tvar, type), maybe(argument_modes), tvarset,
+	assoc_list(tvar, type), maybe(list(mode)), tvarset,
 	prog_context, pred_id, module_info, module_info, io__state, io__state).
 :- mode add_pragma_type_spec_2(in, in, in, in, in, in, in, in,
 	in, in, out, di, uo) is det.
@@ -1176,7 +1171,7 @@ report_variables(SubExistQVars, VarSet) -->
 	% Check that the mode list for a `:- pragma type_spec' declaration
 	% specifies a known procedure.
 :- pred handle_pragma_type_spec_modes(sym_name, arity,
-		prog_context, maybe(argument_modes), list(proc_id),
+		prog_context, maybe(list(mode)), list(proc_id),
 		proc_table, proc_table, bool, module_info, module_info,
 		io__state, io__state).
 :- mode handle_pragma_type_spec_modes(in, in, in, in, out, in, out,
@@ -1187,9 +1182,8 @@ handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes, ProcIds,
 	( { MaybeModes = yes(Modes) } ->
 		{ map__to_assoc_list(Procs0, ExistingProcs) },
 		(
-			{ Modes = argument_modes(_XXX, ArgModes) },
 			{ get_procedure_matching_argmodes(ExistingProcs,
-				ArgModes, ModuleInfo0, ProcId) }
+				Modes, ModuleInfo0, ProcId) }
 		->
 			{ map__lookup(Procs0, ProcId, ProcInfo) },
 			{ map__init(Procs1) },
@@ -1216,18 +1210,17 @@ handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes, ProcIds,
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_pragma_termination_info(pred_or_func, sym_name, argument_modes,
+:- pred add_pragma_termination_info(pred_or_func, sym_name, list(mode),
 		maybe(pragma_arg_size_info), maybe(pragma_termination_info),
 		prog_context, module_info, module_info, io__state, io__state).
 :- mode add_pragma_termination_info(in, in, in, in, in, in, in, out, di, uo)
 		is det.
 
-add_pragma_termination_info(PredOrFunc, SymName, Modes,
+add_pragma_termination_info(PredOrFunc, SymName, ModeList,
 		MaybePragmaArgSizeInfo, MaybePragmaTerminationInfo,
 		Context, Module0, Module) -->
 	{ module_info_get_predicate_table(Module0, Preds) },
-	{ Modes = argument_modes(_ArgInstTable, ArgModes) },
-	{ list__length(ArgModes, Arity) },
+	{ list__length(ModeList, Arity) },
 	(
 	    { predicate_table_search_pf_sym_arity(Preds,
 		PredOrFunc, SymName, Arity, PredIds) },
@@ -1240,7 +1233,7 @@ add_pragma_termination_info(PredOrFunc, SymName, Modes,
 		{ map__to_assoc_list(ProcTable0, ProcList) },
 		( 
 			{ get_procedure_matching_declmodes(ProcList, 
-				ArgModes, Module0, ProcId) }
+				ModeList, Module0, ProcId) }
 		->
 			{ add_context_to_arg_size_info(MaybePragmaArgSizeInfo,
 				Context, MaybeArgSizeInfo) },
@@ -1556,9 +1549,11 @@ module_mark_preds_as_external([PredId | PredIds], Module0, Module) :-
 
 module_add_inst_defn(Module0, VarSet, InstDefn, Cond,
 		Context, item_status(Status, _NeedQual), Module) -->
-	{ module_info_user_insts(Module0, Insts0) },
+	{ module_info_insts(Module0, InstTable0) },
+	{ inst_table_get_user_insts(InstTable0, Insts0) },
 	insts_add(Insts0, VarSet, InstDefn, Cond, Context, Status, Insts),
-	{ module_info_set_user_insts(Module0, Insts, Module) }.
+	{ inst_table_set_user_insts(InstTable0, Insts, InstTable) },
+	{ module_info_set_insts(Module0, InstTable, Module) }.
 
 :- pred insts_add(user_inst_table, inst_varset, inst_defn, condition,
 		prog_context, import_status, user_inst_table,
@@ -1572,7 +1567,6 @@ insts_add(Insts0, VarSet, eqv_inst(Name, Args, Body),
 			Cond, Context, Status, Insts) -->
 	{ list__length(Args, Arity) },
 	(
-		% XXX For now, Body has no aliasing declarations.
 		{ I = hlds_inst_defn(VarSet, Args, eqv_inst(Body), Cond,
 					Context, Status) },
 		{ user_inst_table_insert(Insts0, Name - Arity, I, Insts1) }
@@ -1981,7 +1975,7 @@ add_ctor(ConsName, Arity, ConsDefn, ModuleQual, ConsId, CtorsIn, CtorsOut) :-
 %-----------------------------------------------------------------------------%
 
 :- pred module_add_pred(module_info, tvarset, inst_varset, existq_tvars,
-		sym_name, types_and_modes, maybe(determinism), condition,
+		sym_name, list(type_and_mode), maybe(determinism), condition,
 		purity, class_constraints, pred_markers, prog_context,
 		item_status, maybe(pair(pred_id, proc_id)), module_info, 
 		io__state, io__state).
@@ -2000,16 +1994,14 @@ module_add_pred(Module0, TypeVarSet, InstVarSet, ExistQVars, PredName,
 	;
 		DeclStatus = Status
 	},
-	{ TypesAndModes = types_and_modes(ArgInstTable, TMs) },
-	{ split_types_and_modes(TMs, Types, MaybeModes) },
+	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
 	add_new_pred(Module0, TypeVarSet, ExistQVars, PredName, Types, Cond,
 		Purity, ClassContext, Markers, Context, DeclStatus, NeedQual, 
 		predicate, Module1),
 	(
 		{ MaybeModes = yes(Modes) }
 	->
-		module_add_mode(Module1, InstVarSet, PredName,
-			argument_modes(ArgInstTable, Modes), MaybeDet,
+		module_add_mode(Module1, InstVarSet, PredName, Modes, MaybeDet,
 			Cond, Status, Context, predicate, PredProcId, Module),
 		{ MaybePredProcId = yes(PredProcId) }
 	;
@@ -2018,9 +2010,10 @@ module_add_pred(Module0, TypeVarSet, InstVarSet, ExistQVars, PredName,
 	).
 
 :- pred module_add_func(module_info, tvarset, inst_varset, existq_tvars,
-		sym_name, types_and_modes, type_and_mode, maybe(determinism),
-		condition, purity, class_constraints, pred_markers,
-		prog_context, item_status, maybe(pair(pred_id, proc_id)),
+		sym_name, list(type_and_mode),
+		type_and_mode, maybe(determinism), condition, purity,
+		class_constraints, pred_markers, prog_context,
+		item_status, maybe(pair(pred_id, proc_id)),
 		module_info, io__state, io__state).
 :- mode module_add_func(in, in, in, in, in, in, in, in, in, in, in, in, in, in,
 		out, out, di, uo) is det.
@@ -2036,8 +2029,7 @@ module_add_func(Module0, TypeVarSet, InstVarSet, ExistQVars, FuncName,
 	;
 		DeclStatus = Status
 	},
-	{ TypesAndModes = types_and_modes(ArgInstTable, TMs) },
-	{ split_types_and_modes(TMs, Types, MaybeModes) },
+	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
 	{ split_type_and_mode(RetTypeAndMode, RetType, MaybeRetMode) },
 	{ list__append(Types, [RetType], Types1) },
 	add_new_pred(Module0, TypeVarSet, ExistQVars, FuncName, Types1, Cond,
@@ -2048,9 +2040,9 @@ module_add_func(Module0, TypeVarSet, InstVarSet, ExistQVars, FuncName,
 		{ MaybeRetMode = yes(RetMode) }
 	->
 		{ list__append(Modes, [RetMode], Modes1) },
-		module_add_mode(Module1, InstVarSet, FuncName,
-			argument_modes(ArgInstTable, Modes1), MaybeDet, Cond,
-			Status, Context, function, PredProcId, Module),
+		module_add_mode(Module1, InstVarSet, FuncName, Modes1,
+			MaybeDet, Cond, Status, Context, function,
+			PredProcId, Module),
 		{ MaybePredProcId = yes(PredProcId) }
 	;
 		{ Module = Module1 },
@@ -2198,12 +2190,10 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
 	;
 		{ Method = func_mode(VarSet, FuncName, Modes, RetMode, MaybeDet,
 			Cond, Context) },
-		{ Modes = argument_modes(ArgInstTable, ArgModes) },
-		{ list__append(ArgModes, [RetMode], ArgModes1) },
+		{ list__append(Modes, [RetMode], Modes1) },
 		{ Status = item_status(ImportStatus, _) },
-		module_add_mode(Module0, VarSet, FuncName,
-			argument_modes(ArgInstTable, ArgModes1), MaybeDet,
-			Cond, ImportStatus, Context, function,
+		module_add_mode(Module0, VarSet, FuncName, Modes1,
+			MaybeDet, Cond, ImportStatus, Context, function,
 			PredIdProcId, Module),
 		{ MaybePredIdProcId = yes(PredIdProcId) }
 	).
@@ -2232,8 +2222,7 @@ add_default_class_method_func_modes([M|Ms], PredProcIds0, PredProcIds,
 		       "add_default_class_method_func_modes: unqualified func")
 		),
 
-		TypesAndModes = types_and_modes(_, TMs),
-		list__length(TMs, FuncArity),
+		list__length(TypesAndModes, FuncArity),
 		module_info_get_predicate_table(Module0, PredTable),
 		(
 			predicate_table_search_func_m_n_a(PredTable,
@@ -2619,7 +2608,7 @@ add_new_proc(PredInfo0, Arity, ArgModes, MaybeDeclaredArgModes, MaybeArgLives,
 
 	% Add a mode declaration for a predicate.
 
-:- pred module_add_mode(module_info, inst_varset, sym_name, argument_modes,
+:- pred module_add_mode(module_info, inst_varset, sym_name, list(mode),
 		maybe(determinism), condition, import_status, prog_context,
 		pred_or_func, pair(pred_id, proc_id), module_info, 
 		io__state, io__state).
@@ -2640,8 +2629,7 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 
 	{ module_info_name(ModuleInfo0, ModuleName0) },
 	{ sym_name_get_module_name(PredName, ModuleName0, ModuleName) },
-	{ Modes = argument_modes(_InstTable, ModesList) },
-	{ list__length(ModesList, Arity) },
+	{ list__length(Modes, Arity) },
 	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) },
 	(
 		{ predicate_table_search_pf_sym_arity(PredicateTable0,
@@ -2976,7 +2964,7 @@ module_add_c_body_code(C_Body_Code, Context, Module0, Module) :-
 %	NB. Any changes here might also require similar changes to the
 %	handling of `pragma export' declarations, in export.m.
 
-:- pred module_add_pragma_import(sym_name, pred_or_func, argument_modes,
+:- pred module_add_pragma_import(sym_name, pred_or_func, list(mode),
 		pragma_c_code_attributes, string, import_status, prog_context,
 		module_info, module_info, qual_info, qual_info,
 		io__state, io__state).
@@ -2987,8 +2975,7 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes,
 		C_Function, Status, Context, ModuleInfo0, ModuleInfo,
 		Info0, Info) -->
 	{ module_info_name(ModuleInfo0, ModuleName) },
-	{ Modes = argument_modes(_ArgInstTable, ArgModes) },
-	{ list__length(ArgModes, Arity) },
+	{ list__length(Modes, Arity) },
 
 		%
 		% print out a progress message
@@ -3067,9 +3054,8 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes,
 		{ pred_info_procedures(PredInfo2, Procs) },
 		{ map__to_assoc_list(Procs, ExistingProcs) },
 		(
-			% YYY What if ArgInstTable is non-empty?
-			{ get_procedure_matching_argmodes(ExistingProcs,
-					ArgModes, ModuleInfo0, ProcId) }
+			{ get_procedure_matching_argmodes(ExistingProcs, Modes,
+						ModuleInfo0, ProcId) }
 		->
 			pred_add_pragma_import(PredInfo2, PredId, ProcId,
 				Attributes, C_Function, Context,
@@ -3117,17 +3103,15 @@ pred_add_pragma_import(PredInfo0, PredId, ProcId, Attributes, C_Function,
 	{ map__lookup(Procs, ProcId, ProcInfo) },
 	{ proc_info_argmodes(ProcInfo, Modes) },
 	{ proc_info_interface_code_model(ProcInfo, CodeModel) },
-	{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) },
 
 	%
 	% Build a list of argument variables, together with their
 	% names, modes, and types.
 	%
 	{ varset__init(VarSet0) },
-	{ Modes = argument_modes(ArgInstTable, ArgModes) },
-	{ list__length(ArgModes, Arity) },
+	{ list__length(Modes, Arity) },
 	{ varset__new_vars(VarSet0, Arity, Vars, VarSet) },
-	{ create_pragma_vars(Vars, ArgModes, 0, PragmaVars) },
+	{ create_pragma_vars(Vars, Modes, 0, PragmaVars) },
 	{ assoc_list__from_corresponding_lists(PragmaVars, ArgTypes,
 			PragmaVarsAndTypes) },
 
@@ -3140,12 +3124,11 @@ pred_add_pragma_import(PredInfo0, PredId, ProcId, Attributes, C_Function,
 	% assigns the return value (if any) to the appropriate place.
 	%
 	{ handle_return_value(CodeModel, PredOrFunc, PragmaVarsAndTypes,
-		InstMap, ArgInstTable, ModuleInfo, ArgPragmaVarsAndTypes,
-		C_Code0) },
+			ModuleInfo, ArgPragmaVarsAndTypes, C_Code0) },
 	{ string__append_list([C_Code0, C_Function, "("], C_Code1) },
 	{ assoc_list__keys(ArgPragmaVarsAndTypes, ArgPragmaVars) },
-	{ create_pragma_import_c_code(ArgPragmaVars, InstMap, ArgInstTable,
-			ModuleInfo, C_Code1, C_Code2) },
+	{ create_pragma_import_c_code(ArgPragmaVars, ModuleInfo,
+			C_Code1, C_Code2) },
 	{ string__append(C_Code2, ");", C_Code) },
 
 	%
@@ -3174,19 +3157,18 @@ pred_add_pragma_import(PredInfo0, PredId, ProcId, Attributes, C_Function,
 %	(i.e. all of them, or all of them except the return value).
 %
 :- pred handle_return_value(code_model, pred_or_func,
-		assoc_list(pragma_var, type), instmap, inst_table,
-		module_info, assoc_list(pragma_var, type), string).
-:- mode handle_return_value(in, in, in, in, in, in, out, out) is det.
+		assoc_list(pragma_var, type), module_info,
+		assoc_list(pragma_var, type), string).
+:- mode handle_return_value(in, in, in, in, out, out) is det.
 
-handle_return_value(CodeModel, PredOrFunc, Args0, InstMap, InstTable,
-			ModuleInfo, Args, C_Code0) :-
+handle_return_value(CodeModel, PredOrFunc, Args0, ModuleInfo, Args, C_Code0) :-
 	( CodeModel = model_det,
 		(
 			PredOrFunc = function,
 			pred_args_to_func_args(Args0, Args1, RetArg),
 			RetArg = pragma_var(_, RetArgName, RetMode) - RetType,
-			mode_to_arg_mode(InstMap, InstTable, ModuleInfo,
-				RetMode, RetType, RetArgMode),
+			mode_to_arg_mode(ModuleInfo, RetMode, RetType,
+				RetArgMode),
 			RetArgMode = top_out,
 			\+ export__exclude_argument_type(RetType)
 		->
@@ -3209,8 +3191,7 @@ handle_return_value(CodeModel, PredOrFunc, Args0, InstMap, InstTable,
 		C_Code0 = "\n#error ""cannot import nondet procedure""\n",
 		Args2 = Args0
 	),
-	list__filter(include_import_arg(InstMap, InstTable, ModuleInfo),
-			Args2, Args).
+	list__filter(include_import_arg(ModuleInfo), Args2, Args).
 
 %
 % include_import_arg(M, Arg):
@@ -3218,13 +3199,11 @@ handle_return_value(CodeModel, PredOrFunc, Args0, InstMap, InstTable,
 %	function.  Fails if `Arg' has a type such as `io__state' that
 %	is just a dummy argument that should not be passed to C.
 %
-:- pred include_import_arg(instmap, inst_table, module_info,
-			pair(pragma_var, type)).
-:- mode include_import_arg(in, in, in, in) is semidet.
+:- pred include_import_arg(module_info, pair(pragma_var, type)).
+:- mode include_import_arg(in, in) is semidet.
 
-include_import_arg(InstMap, InstTable, ModuleInfo,
-			pragma_var(_Var, _Name, Mode) - Type) :-
-	mode_to_arg_mode(InstMap, InstTable, ModuleInfo, Mode, Type, ArgMode),
+include_import_arg(ModuleInfo, pragma_var(_Var, _Name, Mode) - Type) :-
+	mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
 	ArgMode \= top_unused,
 	\+ export__exclude_argument_type(Type).
 
@@ -3262,15 +3241,14 @@ create_pragma_vars([], [_|_], _, _) :-
 %	This predicate creates the C code fragments for each argument
 %	in PragmaVars, and appends them to C_Code0, returning C_Code.
 %
-:- pred create_pragma_import_c_code(list(pragma_var), instmap, inst_table,
-				module_info, string, string).
-:- mode create_pragma_import_c_code(in, in, in, in, in, out) is det.
+:- pred create_pragma_import_c_code(list(pragma_var), module_info,
+				string, string).
+:- mode create_pragma_import_c_code(in, in, in, out) is det.
 
-create_pragma_import_c_code([], _InstMap, _InstTable, _ModuleInfo,
-		C_Code, C_Code).
+create_pragma_import_c_code([], _ModuleInfo, C_Code, C_Code).
 
-create_pragma_import_c_code([PragmaVar | PragmaVars], InstMap, InstTable,
-		ModuleInfo, C_Code0, C_Code) :-
+create_pragma_import_c_code([PragmaVar | PragmaVars], ModuleInfo,
+		C_Code0, C_Code) :-
 	PragmaVar = pragma_var(_Var, ArgName, Mode),
 
 	%
@@ -3280,7 +3258,7 @@ create_pragma_import_c_code([PragmaVar | PragmaVars], InstMap, InstTable,
 	% address, so if the mode is output, we need to put an `&' before
 	% the variable name.
 	%
-	( mode_is_output(InstMap, InstTable, ModuleInfo, Mode) ->
+	( mode_is_output(ModuleInfo, Mode) ->
 		string__append(C_Code0, "&", C_Code1)
 	;
 		C_Code1 = C_Code0
@@ -3292,8 +3270,7 @@ create_pragma_import_c_code([PragmaVar | PragmaVars], InstMap, InstTable,
 		C_Code3 = C_Code2
 	),
 
-	create_pragma_import_c_code(PragmaVars, InstMap, InstTable, ModuleInfo,
-			C_Code3, C_Code).
+	create_pragma_import_c_code(PragmaVars, ModuleInfo, C_Code3, C_Code).
 
 %-----------------------------------------------------------------------------%
 
@@ -3399,11 +3376,9 @@ module_add_pragma_c_code(Attributes, PredName, PredOrFunc, PVars, VarSet,
 			{ module_info_set_predicate_table(ModuleInfo0, 
 				PredicateTable, ModuleInfo) },
 			{ pragma_get_var_infos(PVars, ArgInfo) },
-			{ inst_table_init(InstTable) },		% YYY
-			{ instmap__init_reachable(InstMap) },	% YYY
-			maybe_warn_pragma_singletons(PragmaImpl, InstMap,
-				InstTable, ArgInfo, Context,
-				PredOrFunc - PredName/Arity, ModuleInfo)
+			maybe_warn_pragma_singletons(PragmaImpl, ArgInfo,
+				Context, PredOrFunc - PredName/Arity,
+				ModuleInfo)
 		;
 			{ module_info_incr_errors(ModuleInfo0, ModuleInfo) }, 
 			io__stderr_stream(StdErr),
@@ -3423,7 +3398,7 @@ module_add_pragma_c_code(Attributes, PredName, PredOrFunc, PVars, VarSet,
 %-----------------------------------------------------------------------------%
 
 :- pred module_add_pragma_tabled(eval_method, sym_name, int, 
-		maybe(pred_or_func), maybe(argument_modes), 
+		maybe(pred_or_func), maybe(list(mode)), 
 		import_status, prog_context, module_info, module_info, 
 		io__state, io__state).
 :- mode module_add_pragma_tabled(in, in, in, in, in, in, in, in, out, 
@@ -3489,7 +3464,7 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
 
 
 :- pred module_add_pragma_tabled_2(eval_method, sym_name, int, 
-		maybe(pred_or_func), maybe(argument_modes), prog_context,
+		maybe(pred_or_func), maybe(list(mode)), prog_context,
 		pred_id, module_info, module_info, io__state, io__state).
 :- mode module_add_pragma_tabled_2(in, in, in, in, in, in, in, in, out,
 		di, uo) is det.
@@ -3555,8 +3530,7 @@ module_add_pragma_tabled_2(EvalMethod, PredName, Arity0, MaybePredOrFunc,
 		{ pred_info_procedures(PredInfo0, Procs0) },
 		{ map__to_assoc_list(Procs0, ExistingProcs) },
 		(
-			{ MaybeModes = yes(argument_modes(_ArgIKT, Modes)) } 
-				% YYY Assumes ArgIKT is empty
+			{ MaybeModes = yes(Modes) }
 		->
 			(
 				{ get_procedure_matching_argmodes(
@@ -3716,9 +3690,7 @@ marker_must_be_exported(base_relation).
 :- mode get_procedure_matching_argmodes(in, in, in, out) is semidet.
 get_procedure_matching_argmodes([P|Procs], Modes, ModuleInfo, OurProcId) :-
 	P = ProcId - ProcInfo,
-	proc_info_argmodes(ProcInfo, argument_modes(_ArgIKT, ArgModes0)),
-	% YYY Assume ArgIKT is empty
-	ArgModes = ArgModes0,
+	proc_info_argmodes(ProcInfo, ArgModes),
 	( mode_list_matches(Modes, ArgModes, ModuleInfo) ->
 		OurProcId = ProcId
 	;
@@ -3734,10 +3706,7 @@ get_procedure_matching_argmodes([P|Procs], Modes, ModuleInfo, OurProcId) :-
 :- mode get_procedure_matching_declmodes(in, in, in, out) is semidet.
 get_procedure_matching_declmodes([P|Procs], Modes, ModuleInfo, OurProcId) :-
 	P = ProcId - ProcInfo,
-	proc_info_declared_argmodes(ProcInfo,
-		argument_modes(_ArgIKT, ArgModes0)),
-	% YYY Assume ArgIKT is empty
-	ArgModes = ArgModes0,
+	proc_info_declared_argmodes(ProcInfo, ArgModes),
 	( mode_list_matches(Modes, ArgModes, ModuleInfo) ->
 		OurProcId = ProcId
 	;
@@ -3918,13 +3887,11 @@ warn_singletons_in_goal_2(unify(Var, RHS, _, _, _),
 	warn_singletons_in_unify(Var, RHS, GoalInfo, QuantVars, VarSet,
 		PredCallId, MI).
 
-warn_singletons_in_goal_2(pragma_c_code(_, _, _, _, ArgInfo0, _, PragmaImpl), 
+warn_singletons_in_goal_2(pragma_c_code(_, _, _, _, ArgInfo, _, PragmaImpl), 
 		GoalInfo, _QuantVars, _VarSet, PredCallId, MI) --> 
 	{ goal_info_get_context(GoalInfo, Context) },
-	{ ArgInfo0 = pragma_c_code_arg_info(InstTable, ArgInfo) },
-	{ instmap__init_reachable(InstMap) },	% YYY
-	warn_singletons_in_pragma_c_code(PragmaImpl, InstMap, InstTable,
-		ArgInfo, Context, PredCallId, MI).
+	warn_singletons_in_pragma_c_code(PragmaImpl, ArgInfo, Context, 
+		PredCallId, MI).
 
 :- pred warn_singletons_in_goal_list(list(hlds_goal), set(prog_var),
 		prog_varset, simple_call_id, module_info,
@@ -3943,7 +3910,7 @@ warn_singletons_in_goal_list([Goal|Goals], QuantVars, VarSet, CallPredId, MI)
 
 warn_singletons_in_cases([], _, _, _, _) --> [].
 warn_singletons_in_cases([Case|Cases], QuantVars, VarSet, CallPredId, MI) -->
-	{ Case = case(_ConsId, _IMDelta, Goal) },
+	{ Case = case(_ConsId, Goal) },
 	warn_singletons_in_goal(Goal, QuantVars, VarSet, CallPredId, MI),
 	warn_singletons_in_cases(Cases, QuantVars, VarSet, CallPredId, MI).
 
@@ -3966,10 +3933,9 @@ warn_singletons_in_unify(X, functor(_ConsId, Vars), GoalInfo, QuantVars, VarSet,
 	warn_singletons([X | Vars], NonLocals, QuantVars, VarSet,
 			Context, CallPredId).
 
-warn_singletons_in_unify(X,
-		lambda_goal(_PredOrFunc, _Eval, _Fix, _NonLocals,
-			LambdaVars, _Modes, _Det, _IMDelta, LambdaGoal),
-		GoalInfo, QuantVars, VarSet, CallPredId, MI) -->
+warn_singletons_in_unify(X, lambda_goal(_PredOrFunc, _Eval, _Fix, _NonLocals,
+				LambdaVars, _Modes, _Det, LambdaGoal),
+			GoalInfo, QuantVars, VarSet, CallPredId, MI) -->
 	%
 	% warn if any lambda-quantified variables occur only in the quantifier
 	%
@@ -3993,19 +3959,16 @@ warn_singletons_in_unify(X,
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_warn_pragma_singletons(pragma_c_code_impl, instmap, inst_table,
+:- pred maybe_warn_pragma_singletons(pragma_c_code_impl,
 	list(maybe(pair(string, mode))), prog_context, simple_call_id,
 	module_info, io__state, io__state).
-:- mode maybe_warn_pragma_singletons(in, in, in, in, in, in, in,
-	di, uo) is det.
+:- mode maybe_warn_pragma_singletons(in, in, in, in, in, di, uo) is det.
 
-maybe_warn_pragma_singletons(PragmaImpl, InstMap, InstTable, ArgInfo, Context,
-			CallId, MI) -->
+maybe_warn_pragma_singletons(PragmaImpl, ArgInfo, Context, CallId, MI) -->
 	globals__io_lookup_bool_option(warn_singleton_vars, WarnSingletonVars),
 	( { WarnSingletonVars = yes } ->
-		% YYY { ArgInfo0 = pragma_c_code_arg_info(InstTable, ArgInfo) },
-		warn_singletons_in_pragma_c_code(PragmaImpl, InstMap, InstTable,
-			ArgInfo, Context, CallId, MI)
+		warn_singletons_in_pragma_c_code(PragmaImpl, ArgInfo,
+			Context, CallId, MI)
 	;	
 		[]
 	).
@@ -4013,13 +3976,12 @@ maybe_warn_pragma_singletons(PragmaImpl, InstMap, InstTable, ArgInfo, Context,
 	% warn_singletons_in_pragma_c_code checks to see if each variable is
 	% mentioned at least once in the c code fragments that ought to
 	% mention it. If not, it gives a warning.
-:- pred warn_singletons_in_pragma_c_code(pragma_c_code_impl, instmap,
-		inst_table, list(maybe(pair(string, mode))), prog_context,
-		simple_call_id, module_info, io__state, io__state).
-:- mode warn_singletons_in_pragma_c_code(in, in, in, in, in, in, in,
-		di, uo) is det.
+:- pred warn_singletons_in_pragma_c_code(pragma_c_code_impl,
+	list(maybe(pair(string, mode))), prog_context, simple_call_id,
+	module_info, io__state, io__state).
+:- mode warn_singletons_in_pragma_c_code(in, in, in, in, in, di, uo) is det.
 
-warn_singletons_in_pragma_c_code(PragmaImpl, InstMap, InstTable, ArgInfo,
+warn_singletons_in_pragma_c_code(PragmaImpl, ArgInfo, 
 		Context, PredOrFuncCallId, ModuleInfo) -->
 	(
 		{ PragmaImpl = ordinary(C_Code, _) },
@@ -4058,8 +4020,7 @@ warn_singletons_in_pragma_c_code(PragmaImpl, InstMap, InstTable, ArgInfo,
 		{ c_code_to_name_list(SharedCode, SharedCodeList) },
 		{ solutions(lambda([Name::out] is nondet, (
 				list__member(yes(Name - Mode), ArgInfo),
-				mode_is_input(InstMap, InstTable, ModuleInfo,
-						Mode),
+				mode_is_input(ModuleInfo, Mode),
 				\+ string__prefix(Name, "_"),
 				\+ list__member(Name, FirstCodeList)
 			)), UnmentionedInputVars) },
@@ -4086,8 +4047,7 @@ warn_singletons_in_pragma_c_code(PragmaImpl, InstMap, InstTable, ArgInfo,
 		),
 		{ solutions(lambda([Name::out] is nondet, (
 				list__member(yes(Name - Mode), ArgInfo),
-				mode_is_output(InstMap, InstTable, ModuleInfo,
-						Mode),
+				mode_is_output(ModuleInfo, Mode),
 				\+ string__prefix(Name, "_"),
 				\+ list__member(Name, FirstCodeList),
 				\+ list__member(Name, SharedCodeList)
@@ -4115,8 +4075,7 @@ warn_singletons_in_pragma_c_code(PragmaImpl, InstMap, InstTable, ArgInfo,
 		),
 		{ solutions(lambda([Name::out] is nondet, (
 				list__member(yes(Name - Mode), ArgInfo),
-				mode_is_output(InstMap, InstTable, ModuleInfo,
-						Mode),
+				mode_is_output(ModuleInfo, Mode),
 				\+ string__prefix(Name, "_"),
 				\+ list__member(Name, LaterCodeList),
 				\+ list__member(Name, SharedCodeList)
@@ -4377,9 +4336,7 @@ clauses_info_add_pragma_c_code(ClausesInfo0, Purity, Attributes, PredId,
 	ClausesInfo0 = clauses_info(VarSet0, VarTypes, VarTypes1,
 				 HeadVars, ClauseList, TI_VarMap, TCI_VarMap),
 	pragma_get_vars(PVars, Args0),
-	pragma_get_var_infos(PVars, ArgInfo0),
-	inst_table_init(InstTable),
-	ArgInfo = pragma_c_code_arg_info(InstTable, ArgInfo0),
+	pragma_get_var_infos(PVars, ArgInfo),
 
 		% merge the varsets of the proc and the new pragma_c_code
 	varset__merge_subst(VarSet0, PVarSet, VarSet1, Subst),
@@ -4656,13 +4613,13 @@ transform_goal_2(call(Name, Args0, Purity), Context, VarSet0, Subst, Goal,
 		->
 			{
 			  % initialize some fields to junk
+			  Modes = [],
 			  Det = erroneous,
-			  inst_table_init(InstTable),
-			  ArgModes = argument_modes(InstTable, []),
+
 			  GenericCall = higher_order(PredVar,
 			  	predicate, Arity),
 			  Call = generic_call(GenericCall,
-			  	RealHeadVars, ArgModes, Det),
+			  	RealHeadVars, Modes, Det),
 
 			  hlds_goal__generic_call_id(GenericCall, CallId),
 			  Purity1 = pure
@@ -4776,10 +4733,9 @@ transform_aditi_builtin("aditi_insert", Args0, Context, VarSet0,
 			invalid_pred_id(PredId),
 			Builtin = aditi_insert(PredId),
 			InsertCallId = PredOrFunc - SymName/InsertArity,
-			inst_table_init(ArgInstTable),
 			Call = generic_call(
-				aditi_builtin(Builtin, InsertCallId), AllArgs,
-				argument_modes(ArgInstTable, []), det),
+				aditi_builtin(Builtin, InsertCallId),
+				AllArgs, [], det),
 			Goal0 = Call - GoalInfo,
 			CallId = generic_call(aditi_builtin(Builtin,
 				InsertCallId)),
@@ -4956,13 +4912,10 @@ transform_delete_or_modify(DelOrMod, Args0, Context, VarSet0,
 		{ FixModes = modes_need_fixing },
 
 		% Build the lambda expression for the modification condition.
-		{ instmap_delta_init_reachable(IMDelta) },
-		{ inst_table_init(ArgInstTable) },
 		{ create_atomic_unification(LambdaVar,
 			lambda_goal(LambdaPredOrFunc, (aditi_top_down),
-				FixModes, LambdaNonLocals, HeadArgs,
-				argument_modes(ArgInstTable, Modes),
-				semidet, IMDelta, PredGoal),
+				FixModes, LambdaNonLocals,
+				HeadArgs, Modes, semidet, PredGoal),
 			Context, MainContext, [], LambdaConstruct) },
 
 		{ make_fresh_arg_var(AditiState0Term, AditiState0Var, [],
@@ -4972,7 +4925,7 @@ transform_delete_or_modify(DelOrMod, Args0, Context, VarSet0,
 		{ AllArgs = [LambdaVar, AditiState0Var, AditiStateVar] },
 		
 		% post_typecheck.m will fill this in.
-		{ GenericCallModes = argument_modes(ArgInstTable, []) },
+		{ GenericCallModes = [] },
 
 		{ Call = generic_call(aditi_builtin(Builtin, ModifiedCallId),
 			AllArgs, GenericCallModes, det) - GoalInfo },
@@ -5026,8 +4979,7 @@ transform_delete_or_modify(DelOrMod, Args0, Context, VarSet0,
 		{ ModifiedCallId = PredOrFunc - SymName/Arity },
 		
 		% post_typecheck.m will fill this in.
-		{ inst_table_init(ArgInstTable) },
-		{ GenericCallModes = argument_modes(ArgInstTable, []) },
+		{ GenericCallModes = [] },
 
 		{ Call = generic_call(aditi_builtin(Builtin, ModifiedCallId),
 			OtherArgs, GenericCallModes, det) - GoalInfo },
@@ -5102,9 +5054,7 @@ transform_bulk_update(UpdateStr, BulkOp, Args0, Context, VarSet0, Goal, VarSet,
 			{ ModifiedCallId = PredOrFunc - SymName/Arity },
 
 			% post_typecheck.m will fill this in.
-			{ inst_table_init(ArgInstTable) },
-			{ GenericCallModes =
-				argument_modes(ArgInstTable, []) },
+			{ GenericCallModes = [] },
 
 			{ Call = generic_call(
 				aditi_builtin(Builtin, ModifiedCallId),
@@ -5698,13 +5648,9 @@ build_lambda_expression(X, PredOrFunc, EvalMethod, Args, Modes, Det,
 	{ set__delete_list(LambdaGoalVars1, QuantifiedVars, LambdaGoalVars2) },
 	{ set__to_sorted_list(LambdaGoalVars2, LambdaNonLocals) },
 
-	{ instmap_delta_init_reachable(InstMapDelta) },
-	{ inst_table_init(ArgInstTable) },
 	{ create_atomic_unification(X,
 		lambda_goal(PredOrFunc, EvalMethod, modes_are_ok,
-			LambdaNonLocals, LambdaVars,
-			argument_modes(ArgInstTable, Modes), Det,
-			InstMapDelta, HLDS_Goal),
+			LambdaNonLocals, LambdaVars, Modes, Det, HLDS_Goal),
 		Context, MainContext, SubContext, Goal) }.
 
 	% create the hlds_goal for a unification which cannot be
@@ -5713,10 +5659,8 @@ build_lambda_expression(X, PredOrFunc, EvalMethod, Args, Modes, Det,
 
 create_atomic_unification(A, B, Context, UnifyMainContext, UnifySubContext,
 		Goal) :-
-	UMode = ((free(unique) - free(unique)) -> 
-		(free(unique) - free(unique))),
-	Mode = ((free(unique) - free(unique)) - 
-		(free(unique) - free(unique))),
+	UMode = ((free - free) -> (free - free)),
+	Mode = ((free -> free) - (free -> free)),
 	UnifyInfo = complicated_unify(UMode, can_fail, []),
 	UnifyC = unify_context(UnifyMainContext, UnifySubContext),
 	goal_info_init(GoalInfo0),
@@ -6294,8 +6238,7 @@ module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
 	{ map__lookup(ProcTable, ProcID, ProcInfo) },
 	{ varset__init(VarSet0) },
 	{ varset__new_vars(VarSet0, Arity, Vars, VarSet) },
-	% XXX This code may break if the proc has aliased argument modes.
-	{ proc_info_argmodes(ProcInfo, argument_modes(_, Modes)) },
+	{ proc_info_argmodes(ProcInfo, Modes) },
 	{ fact_table_pragma_vars(Vars, Modes, VarSet, PragmaVars) },
 	fact_table_generate_c_code(SymName, PragmaVars, ProcID, PrimaryProcID,
 		ProcInfo, ArgTypes, Module0, C_ProcCode, C_ExtraCode),

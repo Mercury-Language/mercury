@@ -35,9 +35,8 @@
 
 :- import_module hlds_goal, hlds_data, options, globals, goal_util, hlds_out.
 :- import_module modes, mode_util, make_hlds, quantification, instmap.
-:- import_module prog_data, switch_detection, det_util, inst_match, (inst).
-:- import_module inst_table.
-:- import_module term, varset.
+:- import_module prog_data, switch_detection, det_util, inst_match.
+:- import_module switch_detection, term, varset.
 
 :- import_module int, bool, list, map, set, std_util, require.
 
@@ -121,12 +120,7 @@ detect_cse_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) -->
 	).
 
 :- type cse_info
-	--->	cse_info(
-			prog_varset,
-			map(prog_var, type),
-			inst_table,
-			module_info
-		).
+	--->	cse_info(prog_varset, map(prog_var, type), module_info).
 
 :- pred detect_cse_in_proc_2(proc_id, pred_id, bool, module_info, module_info).
 % :- mode detect_cse_in_proc_2(in, in, out, di, uo) is det.
@@ -146,8 +140,7 @@ detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
 	proc_info_varset(ProcInfo0, Varset0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
-	proc_info_inst_table(ProcInfo0, InstTable0),
-	CseInfo0 = cse_info(Varset0, VarTypes0, InstTable0, ModuleInfo0),
+	CseInfo0 = cse_info(Varset0, VarTypes0, ModuleInfo0),
 	detect_cse_in_goal(Goal0, InstMap0, CseInfo0, CseInfo, Redo, Goal1),
 
 	(
@@ -157,7 +150,7 @@ detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
 		Redo = yes,
 
 		% ModuleInfo should not be changed by detect_cse_in_goal
-		CseInfo = cse_info(Varset1, VarTypes1, _, _),
+		CseInfo = cse_info(Varset1, VarTypes1, _),
 		proc_info_headvars(ProcInfo0, HeadVars),
 
 		implicitly_quantify_clause_body(HeadVars, Goal1, Varset1,
@@ -223,13 +216,15 @@ detect_cse_in_goal_2(unify(A,B0,C,D,E), _, InstMap0, CseInfo0, CseInfo, Redo,
 		unify(A,B,C,D,E)) :-
 	( 
 		B0 = lambda_goal(PredOrFunc, EvalMethod, FixModes,
-			NonLocalVars, Vars, Modes, Det, IMDelta, Goal0)
+			NonLocalVars, Vars, Modes, Det, Goal0)
 	->
-		instmap__apply_instmap_delta(InstMap0, IMDelta, InstMap),
+		CseInfo0 = cse_info(_, _, ModuleInfo),
+		instmap__pre_lambda_update(ModuleInfo, 
+			Vars, Modes, InstMap0, InstMap),
 		detect_cse_in_goal(Goal0, InstMap, CseInfo0, CseInfo, Redo,
 			Goal),
 		B = lambda_goal(PredOrFunc, EvalMethod, FixModes,
-			NonLocalVars, Vars, Modes, Det, IMDelta, Goal)
+			NonLocalVars, Vars, Modes, Det, Goal)
 	;
 		B = B0,
 		CseInfo = CseInfo0,
@@ -330,11 +325,11 @@ detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, SM, InstMap,
 		CseInfo0, CseInfo, Redo, Goal) :-
 	(
 		instmap__lookup_var(InstMap, Var, VarInst0),
-		CseInfo0 = cse_info(_, _, InstTable, ModuleInfo),
+		CseInfo0 = cse_info(_, _, ModuleInfo),
 		% XXX we only need inst_is_bound, but leave this as it is
 		% until mode analysis can handle aliasing between free
 		% variables.
-		inst_is_ground_or_any(VarInst0, InstMap, InstTable, ModuleInfo),
+		inst_is_ground_or_any(ModuleInfo, VarInst0),
 		common_deconstruct(Goals0, Var, CseInfo0, CseInfo1,
 			Unify, Goals)
 	->
@@ -372,12 +367,11 @@ detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
 	(
 		Var \= SwitchVar,
 		instmap__lookup_var(InstMap, Var, VarInst0),
-		CseInfo0 = cse_info(_, _, InstTable, ModuleInfo),
-
+		CseInfo0 = cse_info(_, _, ModuleInfo),
 		% XXX we only need inst_is_bound, but leave this as it is
 		% until mode analysis can handle aliasing between free
 		% variables.
-		inst_is_ground_or_any(VarInst0, InstMap, InstTable, ModuleInfo),
+		inst_is_ground_or_any(ModuleInfo, VarInst0),
 		common_deconstruct_cases(Cases0, Var, CseInfo0, CseInfo1,
 			Unify, Cases)
 	->
@@ -397,9 +391,9 @@ detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
 detect_cse_in_cases_2([], _, CseInfo, CseInfo, no, []).
 detect_cse_in_cases_2([Case0 | Cases0], InstMap, CseInfo0, CseInfo, Redo,
 		[Case | Cases]) :-
-	Case0 = case(Functor, IMDelta, Goal0),
+	Case0 = case(Functor, Goal0),
 	detect_cse_in_goal(Goal0, InstMap, CseInfo0, CseInfo1, Redo1, Goal),
-	Case = case(Functor, IMDelta, Goal),
+	Case = case(Functor, Goal),
 	detect_cse_in_cases_2(Cases0, InstMap, CseInfo1, CseInfo, Redo2, Cases),
 	bool__or(Redo1, Redo2, Redo).
 
@@ -416,13 +410,12 @@ detect_cse_in_ite([], IfVars, Cond0, Then0, Else0, _, SM, InstMap, CseInfo0,
 detect_cse_in_ite([Var | Vars], IfVars, Cond0, Then0, Else0, GoalInfo,
 		SM, InstMap, CseInfo0, CseInfo, Redo, Goal) :-
 	(
-		CseInfo0 = cse_info(_, _, InstTable, ModuleInfo),
+		CseInfo0 = cse_info(_, _, ModuleInfo),
 		instmap__lookup_var(InstMap, Var, VarInst0),
-
 		% XXX we only need inst_is_bound, but leave this as it is
 		% until mode analysis can handle aliasing between free
 		% variables.
-		inst_is_ground_or_any(VarInst0, InstMap, InstTable, ModuleInfo),
+		inst_is_ground_or_any(ModuleInfo, VarInst0),
 		common_deconstruct([Then0, Else0], Var, CseInfo0, CseInfo1,
 			Unify, Goals),
 		Goals = [Then, Else]
@@ -504,9 +497,8 @@ common_deconstruct_cases(Cases0, Var, CseInfo0, CseInfo,
 
 common_deconstruct_cases_2([], _Var, MaybeUnify, CseInfo, CseInfo,
 	[], MaybeUnify).
-common_deconstruct_cases_2([case(ConsId, IMDelta, Goal0) | Cases0], Var,
-		MaybeUnify0, CseInfo0, CseInfo,
-		[case(ConsId, IMDelta, Goal) | Cases], MaybeUnify) :-
+common_deconstruct_cases_2([case(ConsId, Goal0) | Cases0], Var, MaybeUnify0,
+		CseInfo0, CseInfo, [case(ConsId, Goal) | Cases], MaybeUnify) :-
 	find_bind_var(Var, find_bind_var_for_cse_in_deconstruct, Goal0, Goal,
 		MaybeUnify0 - no, MaybeUnify1 - yes, CseInfo0, CseInfo1),
 	MaybeUnify1 = yes(_),
@@ -530,10 +522,10 @@ find_bind_var_for_cse_in_deconstruct(Var, Goal0, Goals,
 	CseResult0 = MaybeUnify0 - _,
 	(
 		MaybeUnify0 = no,
-		CseInfo0 = cse_info(Varset0, Typemap0, InstTable, ModuleInfo),
+		CseInfo0 = cse_info(Varset0, Typemap0, ModuleInfo),
 		construct_common_unify(Var, Goal0, Goal,
 			Varset0, Varset, Typemap0, Typemap, Goals),
-		CseInfo = cse_info(Varset, Typemap, InstTable, ModuleInfo),
+		CseInfo = cse_info(Varset, Typemap, ModuleInfo),
 		MaybeUnify = yes(Goal),
 		Seen = yes
 	;

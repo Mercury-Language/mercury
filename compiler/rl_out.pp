@@ -57,7 +57,7 @@
 :- implementation.
 
 :- import_module code_util, hlds_data, hlds_pred, prog_data, prog_out.
-:- import_module llds, globals, options, tree, type_util, passes_aux.
+:- import_module llds, globals, options, rl_code, tree, type_util, passes_aux.
 :- import_module rl_file, getopt, modules, prog_util, magic_util.
 
 #if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in.

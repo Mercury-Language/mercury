@@ -22,7 +22,7 @@
 :- import_module list, set, assoc_list.
 
 :- pred call_gen__generate_generic_call(code_model, generic_call,
-			list(prog_var), argument_modes, determinism,
+			list(prog_var), list(mode), determinism,
 			hlds_goal_info, code_tree, code_info, code_info).
 :- mode call_gen__generate_generic_call(in, in, in, in, in, in,
 			out, in, out) is det.
@@ -144,13 +144,10 @@ call_gen__generate_call(CodeModel, PredId, ModeId, Arguments, GoalInfo, Code)
 
 call_gen__generate_generic_call(_OuterCodeModel, GenericCall, Args,
 		Modes, Det, GoalInfo, Code) -->
-	{ Modes = argument_modes(ArgIKT, ArgModes) },
 	list__map_foldl(code_info__variable_type, Args, Types),
 	{ determinism_to_code_model(Det, CodeModel) },
 	code_info__get_module_info(ModuleInfo),
-	{ instmap__init_reachable(BogusInstMap) },	% YYY
-	{ make_arg_infos(Types, ArgModes, CodeModel, BogusInstMap,
-		ArgIKT, ModuleInfo, ArgInfos) },
+	{ make_arg_infos(Types, Modes, CodeModel, ModuleInfo, ArgInfos) },
 	{ assoc_list__from_corresponding_lists(Args, ArgInfos, ArgsInfos) },
 	{ call_gen__partition_args(ArgsInfos, InVars, OutVars) },
 	{ set__list_to_set(OutVars, OutArgs) },
@@ -461,11 +458,7 @@ call_gen__save_variables(Args, Code) -->
 
 call_gen__save_variables_2([], empty) --> [].
 call_gen__save_variables_2([Var | Vars], Code) -->
-	( code_info__var_is_free_alias(Var) ->
-		code_info__save_reference_on_stack(Var, CodeA)
-	;
-		code_info__save_variable_on_stack(Var, CodeA)
-	),
+	code_info__save_variable_on_stack(Var, CodeA),
 	call_gen__save_variables_2(Vars, CodeB),
 	{ Code = tree(CodeA, CodeB) }.
 
@@ -490,11 +483,6 @@ call_gen__rebuild_registers_2([Var - arg_info(ArgLoc, Mode) | Args]) -->
 	->
 		{ code_util__arg_loc_to_register(ArgLoc, Register) },
 		code_info__set_var_location(Var, Register)
-	;
-		{ Mode = ref_out }
-	->
-		{ code_util__arg_loc_to_register(ArgLoc, Register) },
-		code_info__set_var_reference_location(Var, Register)
 	;
 		{ true }
 	),
@@ -577,7 +565,7 @@ call_gen__generate_builtin_arg(Rval0, Rval, Code) -->
 call_gen__partition_args([], [], []).
 call_gen__partition_args([V - arg_info(_Loc,Mode) | Rest], Ins, Outs) :-
 	(
-		arg_mode_is_input(Mode)
+		Mode = top_in
 	->
 		call_gen__partition_args(Rest, Ins0, Outs),
 		Ins = [V | Ins0]
@@ -597,7 +585,7 @@ call_gen__select_out_args([], Out) :-
 call_gen__select_out_args([V - arg_info(_Loc, Mode) | Rest], Out) :-
 	call_gen__select_out_args(Rest, Out0),
 	(
-		arg_mode_is_output(Mode)
+		Mode = top_out
 	->
 		set__insert(Out0, V, Out)
 	;
@@ -612,7 +600,7 @@ call_gen__select_out_args([V - arg_info(_Loc, Mode) | Rest], Out) :-
 call_gen__input_args([], []).
 call_gen__input_args([arg_info(Loc, Mode) | Args], Vs) :-
 	(
-		arg_mode_is_input(Mode)
+		Mode = top_in
 	->
 		Vs = [Loc |Vs0]
 	;
@@ -625,7 +613,7 @@ call_gen__input_args([arg_info(Loc, Mode) | Args], Vs) :-
 call_gen__input_arg_locs([], []).
 call_gen__input_arg_locs([Var - arg_info(Loc, Mode) | Args], Vs) :-
 	(
-		arg_mode_is_input(Mode)
+		Mode = top_in
 	->
 		Vs = [Var - Loc | Vs0]
 	;
@@ -636,7 +624,7 @@ call_gen__input_arg_locs([Var - arg_info(Loc, Mode) | Args], Vs) :-
 call_gen__output_arg_locs([], []).
 call_gen__output_arg_locs([Var - arg_info(Loc, Mode) | Args], Vs) :-
 	(
-		arg_mode_is_output(Mode)
+		Mode = top_out
 	->
 		Vs = [Var - Loc | Vs0]
 	;

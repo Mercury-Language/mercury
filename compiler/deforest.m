@@ -28,7 +28,7 @@
 
 :- import_module pd_cost, pd_debug, pd_info, pd_term, pd_util.
 :- import_module hlds_pred, hlds_goal, inlining, passes_aux.
-:- import_module (inst), instmap, inst_table, inst_match, simplify.
+:- import_module (inst), instmap, inst_match, simplify.
 :- import_module dependency_graph, hlds_data, det_analysis, globals.
 :- import_module mode_util, goal_util, prog_data, prog_util, purity.
 :- import_module modes, mode_info, unique_modes, options, hlds_out.
@@ -112,27 +112,21 @@ deforest__proc(proc(PredId, ProcId), CostDelta, SizeDelta) -->
 	{ proc_info_goal(ProcInfo0, Goal0) },
 	deforest__goal(Goal0, Goal1),
 	pd_info_get_proc_info(ProcInfo1),
-	{ proc_info_set_goal(ProcInfo1, Goal1, ProcInfo3) },
+	{ proc_info_set_goal(ProcInfo1, Goal1, ProcInfo2) },
 	pd_info_get_changed(Changed),
 
 	( { Changed = yes } ->
 		pd_info_get_module_info(ModuleInfo2),
-		{ requantify_proc(ProcInfo3, ProcInfo4) },
-		{ proc_info_goal(ProcInfo4, Goal4) },
-		{ proc_info_get_initial_instmap(ProcInfo4,
+		{ requantify_proc(ProcInfo2, ProcInfo3) },
+		{ proc_info_goal(ProcInfo3, Goal3) },
+		{ proc_info_get_initial_instmap(ProcInfo3,
 			ModuleInfo2, InstMap0) },
-		{ proc_info_headvars(ProcInfo4, ArgVars) },
-		{ proc_info_arglives(ProcInfo4, ModuleInfo2, ArgLives) },
-		{ proc_info_vartypes(ProcInfo4, VarTypes) },
-		{ proc_info_inst_table(ProcInfo4, InstTable4) },
-		{ recompute_instmap_delta(ArgVars, ArgLives, VarTypes,
-			Goal4, Goal, InstMap0, InstTable4, InstTable,
-			_, ModuleInfo2, ModuleInfo3) },
+		{ recompute_instmap_delta(yes, Goal3, Goal, 
+			InstMap0, ModuleInfo2, ModuleInfo3) },
 		pd_info_set_module_info(ModuleInfo3),
 
 		pd_info_get_pred_info(PredInfo),
-		{ proc_info_set_goal(ProcInfo4, Goal, ProcInfo5) },
-		{ proc_info_set_inst_table(ProcInfo5, InstTable, ProcInfo) },
+		{ proc_info_set_goal(ProcInfo3, Goal, ProcInfo) },
 		{ module_info_set_pred_proc_info(ModuleInfo3, PredId, ProcId,
 			PredInfo, ProcInfo, ModuleInfo4) },
 
@@ -242,11 +236,11 @@ deforest__disj([Goal0 | Goals0], [Goal | Goals]) -->
 		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 
 deforest__cases(_, [], []) --> [].
-deforest__cases(Var, [case(ConsId, IMDelta, Goal0) | Cases0],
-		[case(ConsId, IMDelta, Goal) | Cases]) -->
+deforest__cases(Var, [case(ConsId, Goal0) | Cases0],
+		[case(ConsId, Goal) | Cases]) -->
 	% Bind Var to ConsId in the instmap before processing this case.
 	pd_info_get_instmap(InstMap0),
-	pd_info_apply_instmap_delta(IMDelta),
+	pd_info_bind_var_to_functor(Var, ConsId),
 	deforest__goal(Goal0, Goal),
 	pd_info_set_instmap(InstMap0),
 	deforest__cases(Var, Cases0, Cases).
@@ -962,10 +956,9 @@ deforest__create_call_goal(proc(PredId, ProcId), VersionInfo,
 	{ VersionInfo = version_info(_, _, OldArgs, _, _, _, _, _, _) },
 	pd_info_get_module_info(ModuleInfo),
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-		CalledPredInfo, _CalledProcInfo) },
+		CalledPredInfo, CalledProcInfo) },
 	{ pred_info_arg_types(CalledPredInfo, CalledTVarSet, _CalledExistQVars,
-			ArgTypes0) },
-
+		ArgTypes0) },
 
 		% Rename the arguments in the version.
 	pd_info_get_proc_info(ProcInfo0),
@@ -990,17 +983,17 @@ deforest__create_call_goal(proc(PredId, ProcId), VersionInfo,
 	pd_info_set_proc_info(ProcInfo),
 
 		% Compute a goal_info.
-	% { proc_info_argmodes(CalledProcInfo, argument_modes(_, ArgModes)) },
-	{ instmap_delta_init_reachable(InstMapDelta) },
+	{ proc_info_argmodes(CalledProcInfo, ArgModes) },
+	{ instmap_delta_from_mode_list(Args, ArgModes,
+		ModuleInfo, InstMapDelta) },
 	{ proc_info_interface_determinism(ProcInfo, Detism) },
 	{ set__list_to_set(Args, NonLocals) },
 	{ goal_info_init(NonLocals, InstMapDelta, Detism, GoalInfo) },
 
 	{ pred_info_module(CalledPredInfo, PredModule) },
 	{ pred_info_name(CalledPredInfo, PredName) },
-	{ Goal0 = call(PredId, ProcId, Args, not_builtin, no, 
-			qualified(PredModule, PredName)) - GoalInfo },
-	pd_util__recompute_instmap_delta(Goal0, Goal).
+	{ Goal = call(PredId, ProcId, Args, not_builtin, no, 
+			qualified(PredModule, PredName)) - GoalInfo }.
 	
 :- pred deforest__create_deforest_call_args(list(prog_var)::in, list(type)::in,
 	map(prog_var, prog_var)::in, tsubst::in,
@@ -1118,21 +1111,19 @@ deforest__do_generalisation(VersionArgs, Renaming, VersionInstMap, EarlierGoal,
 	pd_debug__message("goals match, trying MSG\n", []),
 	pd_info_get_module_info(ModuleInfo),
 	pd_info_get_instmap(InstMap0),
-	pd_info_get_proc_info(ProcInfo),
-	{ proc_info_inst_table(ProcInfo, InstTable) },
 	{ instmap__lookup_vars(VersionArgs, VersionInstMap, 
 		VersionInsts) },
-	{ pd_util__inst_list_size(InstTable, ModuleInfo, VersionInsts, 
+	{ pd_util__inst_list_size(ModuleInfo, VersionInsts, 
 		VersionInstSizes) },
 	{ set__to_sorted_list(ConjNonLocals, ConjNonLocalsList) },
 	(
 		% Check whether we can do a most specific 
 		% generalisation of insts of the non-locals.
-		{ deforest__try_MSG(InstTable, ModuleInfo, VersionInstMap, 
+		{ deforest__try_MSG(ModuleInfo, VersionInstMap, 
 			VersionArgs, Renaming, InstMap0, InstMap) },
 		{ instmap__lookup_vars(ConjNonLocalsList, InstMap,
 			ArgInsts) },
-		{ pd_util__inst_list_size(InstTable, ModuleInfo, ArgInsts,
+		{ pd_util__inst_list_size(ModuleInfo, ArgInsts,
 			NewInstSizes) },
 		{ NewInstSizes < VersionInstSizes }
 	->	
@@ -1149,25 +1140,24 @@ deforest__do_generalisation(VersionArgs, Renaming, VersionInstMap, EarlierGoal,
 	),
 	pd_info_set_instmap(InstMap0).
 
-:- pred deforest__try_MSG(inst_table::in, module_info::in, instmap::in,
-	list(prog_var)::in, map(prog_var, prog_var)::in, instmap::in,
-	instmap::out) is semidet.
+:- pred deforest__try_MSG(module_info::in, instmap::in, list(prog_var)::in, 
+		map(prog_var, prog_var)::in,
+		instmap::in, instmap::out) is semidet.
 
-deforest__try_MSG(_, _, _, [], _, InstMap, InstMap).
-deforest__try_MSG(InstTable, ModuleInfo, VersionInstMap,
-		[VersionArg | VersionArgs], Renaming, InstMap0, InstMap) :-
+deforest__try_MSG(_, _, [], _, InstMap, InstMap).
+deforest__try_MSG(ModuleInfo, VersionInstMap, [VersionArg | VersionArgs], 
+		Renaming, InstMap0, InstMap) :-
 	instmap__lookup_var(VersionInstMap, VersionArg, VersionInst),
 	(
 		map__search(Renaming, VersionArg, Arg),
 		instmap__lookup_var(InstMap0, Arg, VarInst),
-		inst_MSG(VersionInst, VersionInstMap, VarInst, InstMap0,
-			InstTable, ModuleInfo, Inst) 
+		inst_MSG(VersionInst, VarInst, ModuleInfo, Inst) 
 	->
 		instmap__set(InstMap0, Arg, Inst, InstMap1)
 	;
 		InstMap1 = InstMap0
 	),
-	deforest__try_MSG(InstTable, ModuleInfo, VersionInstMap, VersionArgs,
+	deforest__try_MSG(ModuleInfo, VersionInstMap, VersionArgs,
 		Renaming, InstMap1, InstMap).
 
 %-----------------------------------------------------------------------------%
@@ -1246,7 +1236,6 @@ deforest__match_generalised_version(ModuleInfo, VersionGoal, VersionArgs,
 	module_info_pred_info(ModuleInfo, NonGeneralisedPredId, 
 		NonGeneralisedPredInfo),
 	pred_info_arg_types(NonGeneralisedPredInfo, NonGeneralisedArgTypes),
-
 	deforest__create_deforest_call_args(NonGeneralisedArgs, 
 		NonGeneralisedArgTypes, GeneralRenaming, TypeRenaming,
 		NewArgs, VarSet, _, VarTypes, _),
@@ -1432,7 +1421,8 @@ deforest__push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
 	{ goal_list_instmap_delta([EarlierGoal | BetweenGoals], Delta0) },
 	{ LaterGoal = _ - LaterInfo },
 	{ goal_info_get_instmap_delta(LaterInfo, Delta1) },
-	{ instmap_delta_apply_instmap_delta(Delta0, Delta1, Delta) },
+	{ instmap_delta_apply_instmap_delta(Delta0, Delta1, Delta2) },
+	{ instmap_delta_restrict(Delta2, NonLocals, Delta) },
 	{ goal_list_determinism([EarlierGoal | BetweenGoals], Detism0) },
 	{ goal_info_get_determinism(LaterInfo, Detism1) },
 	{ det_conjunction_detism(Detism0, Detism1, Detism) },
@@ -1475,11 +1465,11 @@ deforest__append_goal_to_disjuncts([Goal0 | Goals0], BetweenGoals,
 		pd_info::pd_info_uo) is det.
 
 deforest__append_goal_to_cases(_, [], _, _, _, _, _, []) --> [].
-deforest__append_goal_to_cases(Var, [case(ConsId, IMDelta, Goal0) | Cases0], 
+deforest__append_goal_to_cases(Var, [case(ConsId, Goal0) | Cases0], 
 		BetweenGoals, GoalToAppend, NonLocals, CurrCase, Branches, 
-		[case(ConsId, IMDelta, Goal) | Cases]) -->
+		[case(ConsId, Goal) | Cases]) -->
 	pd_info_get_instmap(InstMap0),
-	pd_info_apply_instmap_delta(IMDelta),
+	pd_info_bind_var_to_functor(Var, ConsId),
 	deforest__append_goal(Goal0, BetweenGoals, 
 		GoalToAppend, NonLocals, CurrCase, Branches, Goal),
 	{ NextCase is CurrCase + 1 },
@@ -1508,7 +1498,8 @@ deforest__append_goal(Goal0, BetweenGoals, GoalToAppend0,
 
 	{ goal_list_nonlocals(Goals, SubNonLocals) },
 	{ set__intersect(NonLocals0, SubNonLocals, NonLocals) },
-	{ goal_list_instmap_delta(Goals, Delta) },
+	{ goal_list_instmap_delta(Goals, Delta0) },
+	{ instmap_delta_restrict(Delta0, NonLocals, Delta) },
 	{ goal_list_determinism(Goals, Detism) },
 	{ goal_info_init(NonLocals, Delta, Detism, GoalInfo) }, 
 	{ Goal = conj(Goals) - GoalInfo }.
@@ -1532,8 +1523,6 @@ deforest__call(PredId, ProcId, Args, SymName, Goal0, Goal) -->
 	pd_info_get_local_term_info(LocalTermInfo0),
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_get_markers(PredInfo, Markers) },
-	pd_info_get_proc_info(ProcInfo),
-	{ proc_info_inst_table(ProcInfo, InstTable) },
 	( 
 		{ \+ check_marker(Markers, no_inline) },
 		{ map__search(ProcArgInfos, proc(PredId, ProcId), 
@@ -1542,15 +1531,14 @@ deforest__call(PredId, ProcId, Args, SymName, Goal0, Goal) -->
 		{ set__member(LeftArg, LeftArgs) },
 		{ list__index1_det(Args, LeftArg, Arg) },
 		{ instmap__lookup_var(InstMap, Arg, ArgInst) },
-		{ inst_is_bound_to_functors(ArgInst, InstMap, InstTable,
-			ModuleInfo, [_]) }
+		{ inst_is_bound_to_functors(ModuleInfo, ArgInst, [_]) }
 	->
 		pd_debug__message(Context, 
 			"Found extra information for call to %s/%i\n", 
 			[s(Name), i(Arity)]), 
 		(
-			{ pd_term__local_check(InstTable, ModuleInfo, Goal0,
-				InstMap, LocalTermInfo0, LocalTermInfo) }
+			{ pd_term__local_check(ModuleInfo, Goal0, InstMap, 
+				LocalTermInfo0, LocalTermInfo) }
 		->
 			pd_debug__message("Local termination check succeeded\n",
 				[]),

@@ -189,7 +189,7 @@ switch_gen__type_cat_to_switch_cat(polymorphic_type, other_switch).
 
 switch_gen__lookup_tags([], _, []) --> [].
 switch_gen__lookup_tags([Case | Cases], Var, [TaggedCase | TaggedCases]) -->
-	{ Case = case(ConsId, _IMDelta, Goal) },
+	{ Case = case(ConsId, Goal) },
 	code_info__cons_id_to_tag(Var, ConsId, Tag),
 	{ switch_gen__priority(Tag, Priority) },
 	{ TaggedCase = case(Priority, Tag, ConsId, Goal) },
@@ -319,8 +319,8 @@ switch_gen__generate_cases([case(_, _, Cons, Goal) | Cases], Var, CodeModel,
 			NextLabel, TestCode),
 		trace__maybe_generate_internal_event_code(Goal, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
-		code_info__generate_branch_end(StoreMap, no,
-			MaybeEnd0, MaybeEnd1, SaveCode),
+		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd1,
+			SaveCode),
 		{ ElseCode = node([
 			goto(label(EndLabel)) -
 				"skip to the end of the switch",
@@ -337,8 +337,8 @@ switch_gen__generate_cases([case(_, _, Cons, Goal) | Cases], Var, CodeModel,
 	;
 		trace__maybe_generate_internal_event_code(Goal, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
-		code_info__generate_branch_end(StoreMap, no,
-			MaybeEnd0, MaybeEnd1, SaveCode),
+		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd1,
+			SaveCode),
 		{ ThisCaseCode =
 			tree(TraceCode,
 			tree(GoalCode,

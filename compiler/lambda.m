@@ -70,7 +70,6 @@
 :- interface. 
 
 :- import_module hlds_module, hlds_pred, hlds_goal, prog_data.
-:- import_module inst_table.
 :- import_module list, map, set.
 
 :- pred lambda__process_module(module_info, module_info).
@@ -84,10 +83,10 @@
 		set(prog_var), hlds_goal, unification, prog_varset,
 		map(prog_var, type), class_constraints, tvarset,
 		map(tvar, type_info_locn), map(class_constraint, prog_var),
-		pred_markers, aditi_owner, inst_table, module_info, unify_rhs,
+		pred_markers, aditi_owner, module_info, unify_rhs,
 		unification, module_info).
 :- mode lambda__transform_lambda(in, in, in, in, in, in, in, in, in, in,
-		in, in, in, in, in, in, in, in, in, in, out, out, out) is det.
+		in, in, in, in, in, in, in, in, in, out, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -97,7 +96,7 @@
 :- import_module hlds_data, make_hlds, globals, options, type_util.
 :- import_module goal_util, prog_util, mode_util, inst_match, llds, arg_info.
 
-:- import_module term, varset, bool, set, string, std_util, require.
+:- import_module term, varset, bool, string, std_util, require.
 
 :- type lambda_info --->
 		lambda_info(
@@ -115,8 +114,7 @@
 			pred_or_func,
 			string,			% pred/func name
 			aditi_owner,
-			module_info,
-			inst_table
+			module_info
 		).
 
 %-----------------------------------------------------------------------------%
@@ -186,16 +184,15 @@ lambda__process_proc_2(ProcInfo0, PredInfo0, ModuleInfo0,
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_typeinfo_varmap(ProcInfo0, TVarMap0),
-	proc_info_inst_table(ProcInfo0, InstTable),
 	proc_info_typeclass_info_varmap(ProcInfo0, TCVarMap0),
 
 	% process the goal
 	Info0 = lambda_info(VarSet0, VarTypes0, Constraints0, TypeVarSet0,
-		TVarMap0, TCVarMap0, Markers, PredOrFunc, PredName,
-		Owner, ModuleInfo0, InstTable),
+		TVarMap0, TCVarMap0, Markers, PredOrFunc, 
+		PredName, Owner, ModuleInfo0),
 	lambda__process_goal(Goal0, Goal, Info0, Info),
 	Info = lambda_info(VarSet, VarTypes, Constraints, TypeVarSet, 
-		TVarMap, TCVarMap, _, _, _, _, ModuleInfo, _),
+		TVarMap, TCVarMap, _, _, _, _, ModuleInfo),
 
 	% set the new values of the fields in proc_info and pred_info
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
@@ -220,7 +217,7 @@ lambda__process_goal(Goal0 - GoalInfo0, Goal) -->
 lambda__process_goal_2(unify(XVar, Y, Mode, Unification, Context), GoalInfo,
 			Unify - GoalInfo) -->
 	( { Y = lambda_goal(PredOrFunc, EvalMethod, _, NonLocalVars, Vars, 
-			Modes, Det, _IMDelta, LambdaGoal0) } ->
+			Modes, Det, LambdaGoal0) } ->
 		% first, process the lambda goal recursively, in case it
 		% contains some nested lambda expressions.
 		lambda__process_goal(LambdaGoal0, LambdaGoal1),
@@ -282,13 +279,13 @@ lambda__process_goal_list([Goal0 | Goals0], [Goal | Goals]) -->
 :- mode lambda__process_cases(in, out, in, out) is det.
 
 lambda__process_cases([], []) --> [].
-lambda__process_cases([case(ConsId, IMDelta, Goal0) | Cases0],
-		[case(ConsId, IMDelta, Goal) | Cases]) -->
+lambda__process_cases([case(ConsId, Goal0) | Cases0],
+		[case(ConsId, Goal) | Cases]) -->
 	lambda__process_goal(Goal0, Goal),
 	lambda__process_cases(Cases0, Cases).
 
 :- pred lambda__process_lambda(pred_or_func, lambda_eval_method,
-		list(prog_var), argument_modes, determinism, list(prog_var),
+		list(prog_var), list(mode), determinism, list(prog_var),
 		hlds_goal, unification, unify_rhs, unification,
 		lambda_info, lambda_info).
 :- mode lambda__process_lambda(in, in, in, in, in, in, in, in, out, out,
@@ -298,8 +295,7 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Det,
 		OrigNonLocals0, LambdaGoal, Unification0, Functor,
 		Unification, LambdaInfo0, LambdaInfo) :-
 	LambdaInfo0 = lambda_info(VarSet, VarTypes, _PredConstraints, TVarSet,
-		TVarMap, TCVarMap, Markers, POF, PredName, Owner, ModuleInfo0,
-		InstTable),
+		TVarMap, TCVarMap, Markers, POF, PredName, Owner, ModuleInfo0),
 
 		% Calculate the constraints which apply to this lambda
 		% expression. 
@@ -316,20 +312,16 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Det,
 	% existentially typed lambda expressions are not yet supported
 	% (see the documentation at top of this file)
 	ExistQVars = [],
-	Modes = argument_modes(_ArgInstTable, ArgModes),
 	LambdaGoal = _ - LambdaGoalInfo,
 	goal_info_get_nonlocals(LambdaGoalInfo, LambdaNonLocals),
 	goal_util__extra_nonlocal_typeinfos(TVarMap, TCVarMap, VarTypes,
 		ExistQVars, LambdaNonLocals, ExtraTypeInfos),
-	% YYY Bogus if ArgInstTable is non-empty.
-	lambda__transform_lambda(PredOrFunc, EvalMethod, PredName, Vars,
-		ArgModes, Det, OrigNonLocals0, ExtraTypeInfos, LambdaGoal,
-		Unification0, VarSet, VarTypes, Constraints, TVarSet,
-		TVarMap, TCVarMap, Markers, Owner, InstTable,
-		ModuleInfo0, Functor, Unification, ModuleInfo),
+	lambda__transform_lambda(PredOrFunc, EvalMethod, PredName, Vars, Modes,
+		Det, OrigNonLocals0, ExtraTypeInfos, LambdaGoal, Unification0,
+		VarSet, VarTypes, Constraints, TVarSet, TVarMap, TCVarMap,
+		Markers, Owner, ModuleInfo0, Functor, Unification, ModuleInfo),
 	LambdaInfo = lambda_info(VarSet, VarTypes, Constraints, TVarSet,
-		TVarMap, TCVarMap, Markers, POF, PredName, Owner, ModuleInfo,
-		InstTable).
+		TVarMap, TCVarMap, Markers, POF, PredName, Owner, ModuleInfo).
 
 :- pred lambda__constraint_contains_vars(list(tvar), class_constraint).
 :- mode lambda__constraint_contains_vars(in, in) is semidet.
@@ -347,7 +339,7 @@ lambda__constraint_contains_vars(LambdaVars, ClassConstraint) :-
 lambda__transform_lambda(PredOrFunc, EvalMethod, OrigPredName, Vars, Modes,
 		Detism, OrigVars, ExtraTypeInfos, LambdaGoal, Unification0,
 		VarSet, VarTypes, Constraints, TVarSet, TVarMap, TCVarMap,
-		Markers, Owner, InstTable, ModuleInfo0, Functor,
+		Markers, Owner, ModuleInfo0, Functor,
 		Unification, ModuleInfo) :-
 	(
 		Unification0 = construct(Var0, _, _, UniModes0, _, _, _)
@@ -414,15 +406,11 @@ lambda__transform_lambda(PredOrFunc, EvalMethod, OrigPredName, Vars, Modes,
 		; CodeModel = model_non, Call_CodeModel = model_det
 		),
 			% check that the curried arguments are all input
-		proc_info_argmodes(Call_ProcInfo,
-			argument_modes(Call_ArgInstTable, Call_ArgModes)),
-		proc_info_get_initial_instmap(Call_ProcInfo, ModuleInfo0,
-			Call_InstMap),
+		proc_info_argmodes(Call_ProcInfo, Call_ArgModes),
 		list__length(InitialVars, NumInitialVars),
 		list__take(NumInitialVars, Call_ArgModes, CurriedArgModes),
 		\+ (	list__member(Mode, CurriedArgModes), 
-			\+ mode_is_input(Call_InstMap, Call_ArgInstTable,
-				ModuleInfo0, Mode)
+			\+ mode_is_input(ModuleInfo0, Mode)
 		)
 	->
 		ArgVars = InitialVars,
@@ -431,8 +419,8 @@ lambda__transform_lambda(PredOrFunc, EvalMethod, OrigPredName, Vars, Modes,
 		PredName = PredName0,
 		ModuleInfo = ModuleInfo0,
 		NumArgVars = NumInitialVars,
-		mode_util__modes_to_uni_modes(CurriedArgModes, CurriedArgModes, 
-			ModuleInfo, UniModes)
+		mode_util__modes_to_uni_modes(CurriedArgModes, CurriedArgModes,
+			ModuleInfo0, UniModes)
 	;
 		% Prepare to create a new predicate for the lambda
 		% expression: work out the arguments, module name, predicate
@@ -529,12 +517,9 @@ lambda__transform_lambda(PredOrFunc, EvalMethod, OrigPredName, Vars, Modes,
 		% Now construct the proc_info and pred_info for the new
 		% single-mode predicate, using the information computed above
 
-		ArgInstTable = InstTable,  % YYY Should optimise ArgInstTable
-		NewArgModes = argument_modes(ArgInstTable, AllArgModes),
 		proc_info_create(VarSet, VarTypes, AllArgVars,
-			NewArgModes, Detism, LambdaGoal, LambdaContext,
-			TVarMap, TCVarMap, address_is_taken, ArgInstTable,
-			ProcInfo),
+			AllArgModes, Detism, LambdaGoal, LambdaContext,
+			TVarMap, TCVarMap, address_is_taken, ProcInfo),
 
 		set__init(Assertions),
 

@@ -293,7 +293,7 @@ dependency_graph__add_arcs_in_list([Goal|Goals], Caller, DepGraph0, DepGraph) :-
 :- mode dependency_graph__add_arcs_in_cases(in, in, in, out) is det.
 
 dependency_graph__add_arcs_in_cases([], _Caller, DepGraph, DepGraph).
-dependency_graph__add_arcs_in_cases([case(Cons, _, Goal) | Goals], Caller,
+dependency_graph__add_arcs_in_cases([case(Cons, Goal) | Goals], Caller,
 						DepGraph0, DepGraph) :-
 	dependency_graph__add_arcs_in_cons(Cons, Caller, DepGraph0, DepGraph1),
 	dependency_graph__add_arcs_in_goal(Goal, Caller, DepGraph1, DepGraph2),
@@ -394,21 +394,21 @@ dependency_graph__write_dependency_graph_3([S | Ss], Node, DepGraph,
 						CPredInfo, CProcInfo) },
 	{ pred_info_name(PPredInfo, PName) },
 	{ proc_info_declared_determinism(PProcInfo, PDet) },
-	{ proc_info_argmodes(PProcInfo, argument_modes(PIKT, PModes)) },
+	{ proc_info_argmodes(PProcInfo, PModes) },
 	{ proc_info_context(PProcInfo, PContext) },
 
 	{ pred_info_name(CPredInfo, CName) },
 	{ proc_info_declared_determinism(CProcInfo, CDet) },
-	{ proc_info_argmodes(CProcInfo, argument_modes(CIKT, CModes)) },
+	{ proc_info_argmodes(CProcInfo, CModes) },
 	{ proc_info_context(CProcInfo, CContext) },
 
 	{ varset__init(ModeVarSet) },
 
 	mercury_output_pred_mode_subdecl(ModeVarSet, unqualified(PName),
-				PModes, PDet, PContext, PIKT),
+						PModes, PDet, PContext),
 	io__write_string(" -> "),
 	mercury_output_pred_mode_subdecl(ModeVarSet, unqualified(CName),
-				CModes, CDet, CContext, CIKT),
+						CModes, CDet, CContext),
 	io__write_string(".\n"),
 
 	dependency_graph__write_dependency_graph_3(Ss, Node, DepGraph, 
@@ -438,13 +438,13 @@ dependency_graph__write_clique([proc(PredId, ProcId) | Rest], ModuleInfo) -->
 						PredInfo, ProcInfo) },
 	{ pred_info_name(PredInfo, Name) },
 	{ proc_info_declared_determinism(ProcInfo, Det) },
-	{ proc_info_argmodes(ProcInfo, argument_modes(IKT, Modes)) },
+	{ proc_info_argmodes(ProcInfo, Modes) },
 	{ proc_info_context(ProcInfo, Context) },	
 	{ varset__init(ModeVarSet) },
 
 	io__write_string("% "),
 	mercury_output_pred_mode_subdecl(ModeVarSet, unqualified(Name),
-			Modes, Det, Context, IKT),
+						Modes, Det, Context),
 	io__write_string("\n"),
 	dependency_graph__write_clique(Rest, ModuleInfo).
 
@@ -656,7 +656,7 @@ process_aditi_goal(IsNeg, disj(Goals, _) - _, Map0, Map) -->
 process_aditi_goal(IsNeg, switch(_, _, Cases, _) - _, Map0, Map) -->
 	{ NegCallsInCases = 
 	    lambda([Case::in, M0::in, M::out, AInfo0::in, AInfo::out] is det, (
-		Case = case(_ConsId, _, Goal),
+		Case = case(_ConsId, Goal),
 		process_aditi_goal(IsNeg, Goal, M0, M, AInfo0, AInfo)
 	    )) },
 	list__foldl2(NegCallsInCases, Cases, Map0, Map).

@@ -818,10 +818,8 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 :- pred code_gen__generate_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
 	code_model::in, code_tree::out, code_info::in, code_info::out) is det.
 
-code_gen__generate_goal_2(unify(_, _, _, Uni, _), GoalInfo, CodeModel, Code)
-		-->
-	{ goal_info_get_instmap_delta(GoalInfo, IMD) },
-	unify_gen__generate_unification(CodeModel, Uni, IMD, Code).
+code_gen__generate_goal_2(unify(_, _, _, Uni, _), _, CodeModel, Code) -->
+	unify_gen__generate_unification(CodeModel, Uni, Code).
 code_gen__generate_goal_2(conj(Goals), _GoalInfo, CodeModel, Code) -->
 	code_gen__generate_goals(Goals, CodeModel, Code).
 code_gen__generate_goal_2(par_conj(Goals, _SM), GoalInfo, CodeModel, Code) -->
@@ -858,9 +856,8 @@ code_gen__generate_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
 code_gen__generate_goal_2(pragma_c_code(Attributes,
 		PredId, ModeId, Args, ArgNames, OrigArgTypes, PragmaCode),
 		GoalInfo, CodeModel, Instr) -->
-	{ ArgNames = pragma_c_code_arg_info(_InstTable, Names) },
 	pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
-		PredId, ModeId, Args, Names, OrigArgTypes, GoalInfo,
+		PredId, ModeId, Args, ArgNames, OrigArgTypes, GoalInfo,
 		PragmaCode, Instr).
 
 %---------------------------------------------------------------------------%

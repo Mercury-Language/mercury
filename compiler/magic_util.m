@@ -15,14 +15,14 @@
 :- interface.
 
 :- import_module hlds_data, hlds_goal, hlds_module, hlds_pred, prog_data.
-:- import_module (inst), instmap, inst_table.
+:- import_module (inst).
 :- import_module bool, io, list, map, set, std_util.
 
 	% Check that the argument types and modes are legal for
 	% an Aditi relation.
-:- pred magic_util__check_args(list(prog_var)::in, instmap::in, inst_table::in,
-		list(mode)::in, list(type)::in, prog_context::in,
-		magic_arg_id_type::in, magic_info::in, magic_info::out) is det.
+:- pred magic_util__check_args(list(prog_var)::in, list(mode)::in,
+		list(type)::in, prog_context::in, magic_arg_id_type::in,
+		magic_info::in, magic_info::out) is det.
 
 :- pred magic_util__report_errors(list(magic_error)::in, module_info::in,
 		bool::in, io__state::di, io__state::uo) is det.
@@ -89,7 +89,7 @@
 	% where the original mode was input. This will result in
 	% a join on the input attributes.
 :- pred magic_util__create_input_test_unifications(list(prog_var)::in,
-		list(prog_var)::in, list(prog_var)::out,
+		list(prog_var)::in, list(mode)::in, list(prog_var)::out,
 		list(hlds_goal)::in, list(hlds_goal)::out,
 		hlds_goal_info::in, hlds_goal_info::out,
 		magic_info::in, magic_info::out) is det.
@@ -265,12 +265,10 @@ magic_util__construct_db_call(ModuleInfo, PredId, ProcId,
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo),
 	pred_info_arg_types(PredInfo, ArgTypes),
-	proc_info_argmodes(ProcInfo, argument_modes(InstTable, ArgModes0)),
-	proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
+	proc_info_argmodes(ProcInfo, ArgModes0),
 	type_util__remove_aditi_state(ArgTypes, ArgModes0, ArgModes),
 	type_util__remove_aditi_state(ArgTypes, Args0, Args),
-	partition_args(InstMap, InstTable, ModuleInfo,
-		ArgModes, Args, InputArgs, OutputArgs),
+	partition_args(ModuleInfo, ArgModes, Args, InputArgs, OutputArgs),
 	Call = db_call(no, Goal0, proc(PredId, ProcId), Args,
 		InputArgs, OutputArgs, no).
 
@@ -373,13 +371,14 @@ magic_util__setup_call(PrevGoals, DBCall1, NonLocals, Goals) -->
 			% Convert input args to outputs, and test that
 			% the input matches the output.
 			magic_info_get_module_info(ModuleInfo),
-			{ module_info_pred_info(ModuleInfo, PredId,
-				PredInfo) },
+			{ module_info_pred_proc_info(ModuleInfo, PredProcId,
+				PredInfo, ProcInfo) },
 			{ pred_info_module(PredInfo, PredModule) },
 			{ pred_info_name(PredInfo, PredName) },
 			{ Name = qualified(PredModule, PredName) },
+			{ proc_info_argmodes(ProcInfo, ArgModes) },
 			magic_util__create_input_test_unifications(Args,
-				InputArgs, NewArgs, [], Tests,
+				InputArgs, ArgModes, NewArgs, [], Tests,
 				CallGoalInfo0, CallGoalInfo),
 			{ CallGoal = call(PredId, ProcId, NewArgs,
 				not_builtin, no, Name)
@@ -405,7 +404,9 @@ magic_util__setup_call(PrevGoals, DBCall1, NonLocals, Goals) -->
 			InnerNonLocals1) },
 		magic_util__restrict_nonlocals(InnerNonLocals1,
 			InnerNonLocals),
-		{ goal_list_instmap_delta(NegGoals, InnerDelta) },
+		{ goal_list_instmap_delta(NegGoals, InnerDelta0) },
+		{ instmap_delta_restrict(InnerDelta0,
+			InnerNonLocals, InnerDelta) },
 		{ goal_list_determinism(NegGoals, InnerDet) },
 		{ goal_info_init(InnerNonLocals, InnerDelta,
 			InnerDet, InnerInfo) },
@@ -454,7 +455,7 @@ magic_util__setup_aggregate_input(Closure, InputAndClosure) -->
 		magic_info_get_magic_proc_info(MagicProcInfo),
 		{ map__lookup(MagicProcInfo, proc(PredId, ProcId),
 			CallProcInfo) },
-		{ CallProcInfo = magic_proc_info(_, _, MagicInputs, _, _, _) },
+		{ CallProcInfo = magic_proc_info(_, MagicInputs, _, _, _) },
 
 		{ true_goal(InputGoal) },
 		magic_util__create_input_closures(MagicInputs, [], [],
@@ -498,12 +499,10 @@ magic_util__handle_input_args(PredProcId0, PredProcId, PrevGoals, NonLocals,
 				
 	magic_info_get_magic_proc_info(MagicProcInfo),
 	{ map__lookup(MagicProcInfo, PredProcId, CallProcInfo) },
-	{ CallProcInfo = magic_proc_info(OldInstMap,
-		argument_modes(OldInstTable, OldArgModes),
-		MagicInputs, _, _, _) },
+	{ CallProcInfo = magic_proc_info(OldArgModes, MagicInputs, _, _, _) },
 
 	magic_info_get_module_info(ModuleInfo0),
-	{ partition_args(OldInstMap, OldInstTable, ModuleInfo0, OldArgModes,
+	{ partition_args(ModuleInfo0, OldArgModes,
 		OldArgModes, InputArgModes, _) },
 
 	{ goal_info_get_context(GoalInfo0, Context) },
@@ -513,7 +512,7 @@ magic_util__handle_input_args(PredProcId0, PredProcId, PrevGoals, NonLocals,
 	% Convert input args to outputs, and test that
 	% the input matches the output.
 	magic_util__create_input_test_unifications(Args, InputArgs,
-		NewOutputArgs, [], Tests, GoalInfo0, GoalInfo1),
+		OldArgModes, NewOutputArgs, [], Tests, GoalInfo0, GoalInfo1),
 
 	% All database predicates are considered nondet after this.
 	{ goal_info_set_determinism(GoalInfo1, 
@@ -545,13 +544,17 @@ magic_util__handle_input_args(PredProcId0, PredProcId, PrevGoals, NonLocals,
 	{ CallGoal = call(PredId, ProcId, AllArgs, not_builtin, no,
 			qualified(PredModule, PredName)) - GoalInfo }.
 
-magic_util__create_input_test_unifications([], _, [], Tests, Tests,
+magic_util__create_input_test_unifications([], _, [_|_], _, _, _, _, _) --> 
+	{ error("magic_util__create_input_test_unifications") }.
+magic_util__create_input_test_unifications([_|_], _, [], _, _, _, _, _) -->
+	{ error("magic_util__create_input_test_unifications") }.
+magic_util__create_input_test_unifications([], _, [], [], Tests, Tests,
 		CallInfo, CallInfo) --> [].
 magic_util__create_input_test_unifications([Var | Vars], InputArgs,
-		[OutputVar | OutputVars], Tests0, Tests,
+		[Mode | Modes], [OutputVar | OutputVars], Tests0, Tests,
 		CallInfo0, CallInfo) -->
 	( { list__member(Var, InputArgs) } ->
-		magic_util__create_input_test_unification(Var,
+		magic_util__create_input_test_unification(Var, Mode,
 			OutputVar, Test, CallInfo0, CallInfo1),
 		{ Tests1 = [Test | Tests0] }
 	;
@@ -559,16 +562,17 @@ magic_util__create_input_test_unifications([Var | Vars], InputArgs,
 		{ CallInfo1 = CallInfo0 },
 		{ Tests1 = Tests0 }
 	),	
-	magic_util__create_input_test_unifications(Vars, InputArgs,
+	magic_util__create_input_test_unifications(Vars, InputArgs, Modes, 
 		OutputVars, Tests1, Tests, CallInfo1, CallInfo).
 
-:- pred magic_util__create_input_test_unification(prog_var::in,
+:- pred magic_util__create_input_test_unification(prog_var::in, (mode)::in,
 		prog_var::out, hlds_goal::out, hlds_goal_info::in,
 		hlds_goal_info::out, magic_info::in, magic_info::out) is det.
 
-magic_util__create_input_test_unification(Var, OutputVar, Test,
+magic_util__create_input_test_unification(Var, Mode, OutputVar, Test,
 		CallInfo0, CallInfo) -->
 	magic_info_get_module_info(ModuleInfo0),
+	{ mode_get_insts(ModuleInfo0, Mode, _, FinalInst) }, 
 	magic_info_get_proc_info(ProcInfo0),
 	{ proc_info_varset(ProcInfo0, VarSet0) },
 	{ varset__new_var(VarSet0, OutputVar, VarSet) },
@@ -582,17 +586,13 @@ magic_util__create_input_test_unification(Var, OutputVar, Test,
 	{ set__list_to_set([Var, OutputVar], NonLocals) },
 	{ instmap_delta_init_reachable(InstMapDelta) },
 	{ goal_info_init(NonLocals, InstMapDelta, semidet, GoalInfo) },
-
-	% This is a safe approximation - recompute_instmap_delta
-	% should fix it up.
-	{ FinalInst = ground(shared, no) },
 	( { type_is_atomic(VarType, ModuleInfo0) } ->
 		%
 		% The type is a builtin, so create a simple_test unification.
 		%
 		{ Unification = simple_test(Var, OutputVar) },
-		{ UnifyMode = ((FinalInst - FinalInst) 
-			- (FinalInst - FinalInst)) },
+		{ UnifyMode = ((FinalInst -> FinalInst) 
+			- (FinalInst -> FinalInst)) },
 		{ Test = unify(Var, var(OutputVar), UnifyMode,
 			Unification, unify_context(explicit, [])) - GoalInfo }
 	; { type_to_type_id(VarType, _TypeId, _ArgTypes) } ->
@@ -601,8 +601,8 @@ magic_util__create_input_test_unification(Var, OutputVar, Test,
 		% go through the rigmarole of creating type_info variables
 		% (and then ignoring them in code generation).
 		{ Unification = simple_test(Var, OutputVar) },
-		{ UnifyMode = ((FinalInst - FinalInst) 
-			- (FinalInst - FinalInst)) },
+		{ UnifyMode = ((FinalInst -> FinalInst) 
+			- (FinalInst -> FinalInst)) },
 		{ Test = unify(Var, var(OutputVar), UnifyMode,
 			Unification, unify_context(explicit, [])) - GoalInfo }
 
@@ -634,7 +634,10 @@ magic_util__create_input_test_unification(Var, OutputVar, Test,
 	{ goal_info_get_nonlocals(CallInfo0, CallNonLocals0) },
 	{ set__delete(CallNonLocals0, Var, CallNonLocals1) },
 	{ set__insert(CallNonLocals1, OutputVar, CallNonLocals) },
-	{ goal_info_set_nonlocals(CallInfo0, CallNonLocals, CallInfo) }.
+	{ goal_info_get_instmap_delta(CallInfo0, CallDelta0) },
+	{ instmap_delta_insert(CallDelta0, OutputVar, FinalInst, CallDelta) },
+	{ goal_info_set_nonlocals(CallInfo0, CallNonLocals, CallInfo1) },
+	{ goal_info_set_instmap_delta(CallInfo1, CallDelta, CallInfo) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -648,7 +651,7 @@ magic_util__create_input_closures([], _, _, _, _, _, [], []) --> [].
 magic_util__create_input_closures([_ | MagicVars], InputArgs, 
 		InputArgModes, SuppCall, ThisProcInfo, CurrVar,
 		[InputGoal | InputGoals], [ClosureVar | ClosureVars]) -->
-	{ ThisProcInfo = magic_proc_info(_, _OldArgModes, _MagicInputs,
+	{ ThisProcInfo = magic_proc_info(_OldArgModes, _MagicInputs,
 		MagicTypes, MagicModes, MaybeIndex) },
 	magic_info_get_proc_info(ProcInfo0),
 
@@ -785,11 +788,11 @@ magic_util__create_closure(_CurrVar, InputVar, InputMode, LambdaGoal,
 		{ Inst = ground(_, yes(PredInstInfo)) }
 	->
 		% Find the mode of the unification.
-		{ PredInstInfo = pred_inst_info(_,
-			argument_modes(_, LambdaModes), _) },
-		{ LambdaInst = Inst },
-		{ UnifyMode = (free(unique) - LambdaInst) -
-				(LambdaInst - LambdaInst) },
+		{ PredInstInfo = pred_inst_info(_, LambdaModes, _) },
+		{ LambdaInst = ground(shared, 
+			yes(pred_inst_info(predicate, LambdaModes, nondet))) },
+		{ UnifyMode = (free -> LambdaInst) -
+				(LambdaInst -> LambdaInst) },
 		{ mode_util__modes_to_uni_modes(LambdaModes, LambdaModes,
 			ModuleInfo, UniModes) },
 
@@ -811,8 +814,9 @@ magic_util__create_closure(_CurrVar, InputVar, InputMode, LambdaGoal,
 
 		% Construct a goal_info.
 		{ set__list_to_set([InputVar | LambdaInputs], NonLocals) },
-		% This will be fixed up by recompute_instmap_delta.
-		{ instmap_delta_init_reachable(InstMapDelta) },
+		{ instmap_delta_init_reachable(InstMapDelta0) },
+		{ instmap_delta_insert(InstMapDelta0, InputVar, LambdaInst, 
+			InstMapDelta) },
 		{ goal_info_init(NonLocals, InstMapDelta, det, GoalInfo) },
 
 		{ InputGoal = unify(InputVar, Rhs, UnifyMode, 
@@ -840,13 +844,9 @@ magic_util__project_supp_call(SuppCall, UnrenamedInputVars,
 		magic_info_get_module_info(ModuleInfo),
 		{ module_info_pred_proc_info(ModuleInfo, SuppPredId1,
 			SuppProcId1, _, SuppProcInfo) },
-		{ proc_info_argmodes(SuppProcInfo,
-			argument_modes(SuppInstTable, SuppArgModes)) },
-		{ proc_info_get_initial_instmap(SuppProcInfo,
-			ModuleInfo, SuppInstMap) },
-		{ partition_args(SuppInstMap, SuppInstTable, ModuleInfo,
-			SuppArgModes, SuppArgs, SuppInputArgs,
-			SuppOutputArgs) }
+		{ proc_info_argmodes(SuppProcInfo, SuppArgModes) },
+		{ partition_args(ModuleInfo, SuppArgModes, 
+			SuppArgs, SuppInputArgs, SuppOutputArgs) }
 	;
 		{ error("magic_util__project_supp_call: not a call") }
 	),
@@ -893,18 +893,13 @@ magic_util__add_to_magic_predicate(PredProcId, Rule, RuleArgs) -->
 	%
 	{ map__from_corresponding_lists(RuleArgs, MagicProcHeadVars, Subn0) },
 	{ goal_util__goal_vars(Rule, RuleVars0) },
-
 	{ set__to_sorted_list(RuleVars0, RuleVars) },
 	{ goal_util__create_variables(RuleVars, MagicVarSet0, MagicVarTypes0,
 		Subn0, VarTypes, VarSet, MagicVarSet, MagicVarTypes, Subn) },
 	{ Rule = RuleExpr - RuleInfo0 },
 	{ set__list_to_set(RuleArgs, RuleArgSet) },
 	{ goal_info_set_nonlocals(RuleInfo0, RuleArgSet, RuleInfo) },
-
-	% There may be variables in the instmap which don't occur
-	% in the goal due to aliasing, so we don't use
-	% goal_util__must_rename_vars_in_goal.
-	{ goal_util__rename_vars_in_goal(RuleExpr - RuleInfo,
+	{ goal_util__must_rename_vars_in_goal(RuleExpr - RuleInfo,
 		Subn, ExtraDisjunct) },
 
 	%
@@ -935,8 +930,7 @@ magic_util__magic_call_info(MagicPredId, MagicProcId,
 	magic_info_get_curr_pred_proc_id(PredProcId),
 	magic_info_get_magic_proc_info(MagicProcInfo),
 	{ map__lookup(MagicProcInfo, PredProcId, ThisProcInfo) },
-	{ ThisProcInfo = magic_proc_info(OldInstMap,
-		argument_modes(OldArgInstTable, OldArgModes), _, _, _, _) },
+	{ ThisProcInfo = magic_proc_info(OldArgModes, _, _, _, _) },
 	magic_info_get_module_info(ModuleInfo),
 
 	%
@@ -944,14 +938,10 @@ magic_util__magic_call_info(MagicPredId, MagicProcId,
 	%
 	magic_info_get_proc_info(ProcInfo0),
 	{ proc_info_headvars(ProcInfo0, HeadVars) },
-	{ proc_info_argmodes(ProcInfo0,
-		argument_modes(ArgInstTable, ArgModes)) },
-	{ proc_info_get_initial_instmap(ProcInfo0, ModuleInfo, InstMap) },
-	{ partition_args(InstMap, ArgInstTable, ModuleInfo, ArgModes,
-		HeadVars, _, OldHeadVars) },
-	{ partition_args(OldInstMap, OldArgInstTable,
-		ModuleInfo, OldArgModes, OldHeadVars, InputArgs, _) },
-	{ partition_args(OldInstMap, OldArgInstTable, ModuleInfo, OldArgModes, 
+	{ proc_info_argmodes(ProcInfo0, ArgModes) },
+	{ partition_args(ModuleInfo, ArgModes, HeadVars, _, OldHeadVars) },
+	{ partition_args(ModuleInfo, OldArgModes, OldHeadVars, InputArgs, _) },
+	{ partition_args(ModuleInfo, OldArgModes, 
 		OldArgModes, InputArgModes, _) },
 	{ list__map(magic_util__mode_to_output_mode(ModuleInfo),
 		InputArgModes, MagicOutputModes) },
@@ -1025,40 +1015,35 @@ magic_util__create_supp_call(Goals, MagicVars, SuppOutputArgs, Context,
 	%
 	% Compute a goal_info for the call.
 	%
+	{ goal_list_instmap_delta(Goals, Delta0) },
 	{ set__list_to_set(SuppArgs, SuppArgSet) },
-	{ instmap_delta_init_reachable(Delta) },
+	{ instmap_delta_restrict(Delta0, SuppArgSet, Delta) },
 	{ goal_info_init(SuppArgSet, Delta, nondet, GoalInfo) },
-	{ conj_list_to_goal(Goals, GoalInfo, ConjGoal) },
-	{ list__length(SuppArgs, NumArgs) },
-	{ list__duplicate(NumArgs, live, IsLives) },
-	magic_info_get_module_info(ModuleInfo0),
-	magic_info_get_proc_info(ProcInfo0),
-	{ proc_info_vartypes(ProcInfo0, VarTypes) },
-	{ proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap) },
-	{ proc_info_inst_table(ProcInfo0, InstTable0) },
-	{ recompute_instmap_delta(SuppArgs, IsLives, VarTypes, ConjGoal,
-		SuppGoal, InstMap, InstTable0, InstTable, _,
-		ModuleInfo0, ModuleInfo1) },
-	{ proc_info_set_inst_table(ProcInfo0, InstTable, ProcInfo) },
-	magic_info_set_proc_info(ProcInfo),
 
 	%
 	% Verify that the supplementary predicate does not have any partially
 	% instantiated or higher-order arguments other than the input closures.
 	%
+	magic_info_get_proc_info(ProcInfo),
+	{ proc_info_vartypes(ProcInfo, VarTypes) },
 	{ map__apply_to_list(SuppOutputArgs, VarTypes, SuppOutputTypes) },  
 
-	{ SuppGoal = _ - SuppGoalInfo },
-	{ goal_info_get_instmap_delta(SuppGoalInfo, SuppDelta) },
-	{ instmap__apply_instmap_delta(InstMap, SuppDelta, FinalInstMap) },
 	{ GetSuppMode = 
-		lambda([Var::in, Mode::out] is det, (
-			instmap__lookup_var(FinalInstMap, Var, NewInst), 
-			Mode = (free(unique) -> NewInst)
-		)) },
+	    lambda([Var::in, Mode::out] is det, (
+		( instmap_delta_search_var(Delta, Var, NewInst) ->
+			Mode = (free -> NewInst)
+		;
+			% This is a lie, but we're only using this to check
+			% that the output arguments aren't partially
+			% instantiated. Any arguments that are partially
+			% instantiated in the initial instmap for the
+			% procedure will be reported there.
+			Mode = (ground(shared, no) -> ground(shared, no))
+		)
+	    )) },
 	{ list__map(GetSuppMode, SuppOutputArgs, SuppOutputModes) },
-	magic_util__check_args(SuppOutputArgs, InstMap, InstTable,
-		SuppOutputModes, SuppOutputTypes, Context, var_name),
+	magic_util__check_args(SuppOutputArgs, SuppOutputModes,
+		SuppOutputTypes, Context, var_name),
 
 	%
 	% Fill in the fields of the new predicate.
@@ -1068,6 +1053,8 @@ magic_util__create_supp_call(Goals, MagicVars, SuppOutputArgs, Context,
 	magic_util__make_pred_name(PredInfo, ProcId, "Supp_Proc_For",
 		yes, NewName),
 
+	magic_info_get_module_info(ModuleInfo0),
+	{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo0, InstMap) },
 	{ pred_info_get_aditi_owner(PredInfo, Owner) },
 	{ pred_info_get_markers(PredInfo, Markers0) },
 	{ AddMarkers = lambda([Marker::in, Ms0::in, Ms::out] is det,
@@ -1076,6 +1063,7 @@ magic_util__create_supp_call(Goals, MagicVars, SuppOutputArgs, Context,
 	{ list__foldl(AddMarkers, ExtraMarkers, Markers0, Markers) },
 
 	% Add the predicate to the predicate table.
+	{ conj_list_to_goal(Goals, GoalInfo, SuppGoal) },
 	{ varset__init(TVarSet) },
 	{ ClassConstraints = constraints([], []) },
 	{ map__init(TVarMap) },
@@ -1085,11 +1073,11 @@ magic_util__create_supp_call(Goals, MagicVars, SuppOutputArgs, Context,
 	{ hlds_pred__define_new_pred(SuppGoal, SuppCall, SuppArgs, ExtraArgs,
 		InstMap, NewPredName, TVarSet, VarTypes, ClassConstraints,
 		TVarMap, TCVarMap, VarSet, Markers, Owner,
-		address_is_not_taken, InstTable, ModuleInfo1, ModuleInfo, _) },
+		address_is_not_taken, ModuleInfo0, ModuleInfo, _) },
 	{ ExtraArgs = [] ->
 		true
 	;
-		error("magic_util__create_supp_call: extra typeinfo arguments")
+		error("magic_util__create_supp_call: typeinfo arguments")
 	},
 	magic_info_set_module_info(ModuleInfo).
 
@@ -1097,31 +1085,25 @@ magic_util__create_supp_call(Goals, MagicVars, SuppOutputArgs, Context,
 
 magic_util__mode_to_output_mode(ModuleInfo, Mode, OutputMode) :-
 	mode_get_insts(ModuleInfo, Mode, _, FinalInst),
-	OutputMode = (free(unique) -> FinalInst).
+	OutputMode = (free -> FinalInst).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-magic_util__check_args(Vars, InstMap, InstTable, Modes,
-		Types, Context, IdType) -->
-	(
-		magic_util__check_args_2(Vars, InstMap, InstTable,
-			Modes, Types, Context, 1, IdType)
-	->
+magic_util__check_args(Vars, Modes, Types, Context, IdType) -->
+	( magic_util__check_args_2(Vars, Modes, Types, Context, 1, IdType) ->
 		[]
 	;
 		{ error("magic_util__check_args") }
 	).
 
-:- pred magic_util__check_args_2(list(prog_var)::in, instmap::in,
-	inst_table::in, list(mode)::in, list(type)::in, prog_context::in,
-	int::in, magic_arg_id_type::in,
+:- pred magic_util__check_args_2(list(prog_var)::in, list(mode)::in,
+	list(type)::in, term__context::in, int::in, magic_arg_id_type::in,
 	magic_info::in, magic_info::out) is semidet.
 
-magic_util__check_args_2([], _, _, [], [], _, _, _) --> [].
-magic_util__check_args_2([Var | Vars], InstMap, InstTable,
-		[ArgMode | ArgModes], [ArgType | ArgTypes],
-		Context, ArgNo, ArgIdType) -->
+magic_util__check_args_2([], [], [], _, _, _) --> [].
+magic_util__check_args_2([Var | Vars], [ArgMode | ArgModes],
+		[ArgType | ArgTypes], Context, ArgNo, ArgIdType) -->
 	magic_info_get_error_vars(ErrorVars0),
 	( { set__member(Var, ErrorVars0) } ->
 		[]
@@ -1140,10 +1122,7 @@ magic_util__check_args_2([Var | Vars], InstMap, InstTable,
 		magic_info_get_curr_pred_proc_id(PredProcId),
 		magic_info_get_module_info(ModuleInfo),
 		( { type_is_aditi_state(ArgType) } ->
-			(
-				{ \+  mode_is_input(InstMap, InstTable,
-					ModuleInfo, ArgMode) }
-			->
+			( { \+  mode_is_input(ModuleInfo, ArgMode) } ->
 				% aditi__states must be input
 				{ StateError =
 					[argument_error(output_aditi_state,
@@ -1162,11 +1141,11 @@ magic_util__check_args_2([Var | Vars], InstMap, InstTable,
 			% Check that partially instantiated modes are not used.
 		{ mode_get_insts(ModuleInfo, ArgMode, Inst1, Inst2) },
 		(
-			{ inst_is_free(Inst1, InstMap, InstTable, ModuleInfo)
-			; inst_is_ground(Inst1, InstMap, InstTable, ModuleInfo)
+			{ inst_is_free(ModuleInfo, Inst1)
+			; inst_is_ground(ModuleInfo, Inst1)
 			},
-			{ inst_is_free(Inst2, InstMap, InstTable, ModuleInfo)
-			; inst_is_ground(Inst2, InstMap, InstTable, ModuleInfo)
+			{ inst_is_free(ModuleInfo, Inst2)
+			; inst_is_ground(ModuleInfo, Inst2)
 			}
 		->
 			{ ErrorTypeList = ErrorTypeList0 }
@@ -1194,8 +1173,8 @@ magic_util__check_args_2([Var | Vars], InstMap, InstTable,
 		magic_info_set_errors(Errors),
 
 		{ NextArgNo is ArgNo + 1 },
-		magic_util__check_args_2(Vars, InstMap, InstTable,
-			ArgModes, ArgTypes, Context, NextArgNo, ArgIdType)
+		magic_util__check_args_2(Vars, ArgModes, ArgTypes,
+			Context, NextArgNo, ArgIdType)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1316,16 +1295,15 @@ magic_util__check_ctor(Parents, ctor(_, _, _, CtorArgs), Errors0, Errors) -->
 	% variables for a procedure.
 :- type magic_proc_info
 	--->	magic_proc_info(
-			instmap,	% pre-transformation initial instmap.
-			argument_modes,	% pre-transformation arg modes
+			list(mode),	% pre-transformation arg modes
 					% (minus aditi__states).
 			list(prog_var),	% magic input vars.
 			list(type),	% types of magic input vars.
 			list(mode),	% modes of magic input vars.
 			maybe(int)	% index of this proc's magic 
 					% input var in the above lists,
-					% `no' if the procedure is not
-					% an entry point of the SCC.
+					% no if the procedure is not
+					% an entry point of the sub-module.
 		).
 
 	% Map from post-transformation pred_proc_id to the 

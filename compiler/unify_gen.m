@@ -18,16 +18,16 @@
 
 :- interface.
 
-:- import_module hlds_goal, hlds_data, llds, code_info, instmap.
+:- import_module hlds_goal, hlds_data, llds, code_info.
 :- import_module prog_data.
 
 :- type test_sense
 	--->	branch_on_success
 	;	branch_on_failure.
 
-:- pred unify_gen__generate_unification(code_model, unification, instmap_delta,
-	code_tree, code_info, code_info).
-:- mode unify_gen__generate_unification(in, in, in, out, in, out) is det.
+:- pred unify_gen__generate_unification(code_model, unification, code_tree,
+	code_info, code_info).
+:- mode unify_gen__generate_unification(in, in, out, in, out) is det.
 
 :- pred unify_gen__generate_tag_test(prog_var, cons_id, test_sense, label,
 	code_tree, code_info, code_info).
@@ -37,10 +37,10 @@
 
 :- implementation.
 
-:- import_module builtin_ops, inst_table.
+:- import_module builtin_ops.
 :- import_module hlds_module, hlds_pred, prog_data, prog_out, code_util.
 :- import_module mode_util, type_util, code_aux, hlds_out, tree, arg_info.
-:- import_module globals, options, continuation_info, stack_layout, inst_match.
+:- import_module globals, options, continuation_info, stack_layout.
 
 :- import_module term, bool, string, int, list, map, require, std_util.
 
@@ -49,7 +49,7 @@
 
 %---------------------------------------------------------------------------%
 
-unify_gen__generate_unification(CodeModel, Uni, IMD, Code) -->
+unify_gen__generate_unification(CodeModel, Uni, Code) -->
 	{ CodeModel = model_non ->
 		error("nondet unification in unify_gen__generate_unification")
 	;
@@ -61,15 +61,15 @@ unify_gen__generate_unification(CodeModel, Uni, IMD, Code) -->
 	;
 		{ Uni = construct(Var, ConsId, Args, Modes, _, _, AditiInfo) },
 		unify_gen__generate_construction(Var, ConsId,
-			Args, Modes, IMD, AditiInfo, Code)
+			Args, Modes, AditiInfo, Code)
 	;
 		{ Uni = deconstruct(Var, ConsId, Args, Modes, _Det) },
 		( { CodeModel = model_det } ->
 			unify_gen__generate_det_deconstruction(Var, ConsId,
-				Args, Modes, IMD, Code)
+				Args, Modes, Code)
 		;
 			unify_gen__generate_semi_deconstruction(Var, ConsId,
-				Args, Modes, IMD, Code)
+				Args, Modes, Code)
 		)
 	;
 		{ Uni = simple_test(Var1, Var2) },
@@ -95,22 +95,16 @@ unify_gen__generate_unification(CodeModel, Uni, IMD, Code) -->
 	code_info, code_info).
 :- mode unify_gen__generate_assignment(in, in, out, in, out) is det.
 
-unify_gen__generate_assignment(VarA, VarB, Code) -->
-	( code_info__var_is_free_alias(VarA) ->
-		code_info__cache_expression(VarA, var(VarB)),
-		code_info__produce_variable_in_references(VarA, Code)
+unify_gen__generate_assignment(VarA, VarB, empty) -->
+	(
+		code_info__variable_is_forward_live(VarA)
+	->
+		code_info__cache_expression(VarA, var(VarB))
 	;
-		(
-			code_info__variable_is_forward_live(VarA)
-		->
-			code_info__cache_expression(VarA, var(VarB))
-		;
-			% For free-free unifications, the mode analysis reports
-			% them as assignment to the dead variable.  For such
-			% unifications we of course don't generate any code
-			{ true }
-		),
-		{ Code = empty }
+		% For free-free unifications, the mode analysis reports
+		% them as assignment to the dead variable.  For such
+		% unifications we of course don't generate any code
+		{ true }
 	).
 
 %---------------------------------------------------------------------------%
@@ -266,138 +260,127 @@ unify_gen__generate_tag_rval_2(shared_local_tag(Bits, Num), Rval,
 	% instantiate the arguments of that term.
 
 :- pred unify_gen__generate_construction(prog_var, cons_id,
-	list(prog_var), list(uni_mode), instmap_delta, maybe(rl_exprn_id),
-	code_tree, code_info, code_info).
-:- mode unify_gen__generate_construction(in, in, in, in, in, in, out, in, out)
-	is det.
+		list(prog_var), list(uni_mode), maybe(rl_exprn_id),
+		code_tree, code_info, code_info).
+:- mode unify_gen__generate_construction(in, in, in, in,
+		in, out, in, out) is det.
 
-unify_gen__generate_construction(Var, Cons, Args, Modes,
-		InstMapDelta, AditiInfo, Code) -->
+unify_gen__generate_construction(Var, Cons, Args, Modes, AditiInfo, Code) -->
 	code_info__cons_id_to_tag(Var, Cons, Tag),
 	unify_gen__generate_construction_2(Tag, Var, Args,
-		Modes, InstMapDelta, AditiInfo, Code).
+		Modes, AditiInfo, Code).
 
-:- pred unify_gen__generate_construction_2(cons_tag, prog_var, list(prog_var),
-	list(uni_mode), instmap_delta, maybe(rl_exprn_id),
-	code_tree, code_info, code_info).
-:- mode unify_gen__generate_construction_2(in, in, in, in, in, in, out,
-	in, out) is det.
+:- pred unify_gen__generate_construction_2(cons_tag, prog_var, 
+		list(prog_var), list(uni_mode), maybe(rl_exprn_id),
+		code_tree, code_info, code_info).
+:- mode unify_gen__generate_construction_2(in, in, in, in, in, out,
+					in, out) is det.
 
 unify_gen__generate_construction_2(string_constant(String),
-		Var, _Args, _Modes, _IMDelta, _, Code) -->
-	unify_gen__cache_unification(Var, const(string_const(String)), Code).
+		Var, _Args, _Modes, _, Code) -->
+	{ Code = empty },
+	code_info__cache_expression(Var, const(string_const(String))).
 unify_gen__generate_construction_2(int_constant(Int),
-		Var, _Args, _Modes, _IMDelta, _, Code) -->
-	unify_gen__cache_unification(Var, const(int_const(Int)), Code).
+		Var, _Args, _Modes, _, Code) -->
+	{ Code = empty },
+	code_info__cache_expression(Var, const(int_const(Int))).
 unify_gen__generate_construction_2(float_constant(Float),
-		Var, _Args, _Modes, _IMDelta, _, Code) -->
-	unify_gen__cache_unification(Var, const(float_const(Float)), Code).
-unify_gen__generate_construction_2(no_tag, Var, Args, Modes,
-		IMDelta, _, Code) -->
+		Var, _Args, _Modes, _, Code) -->
+	{ Code = empty },
+	code_info__cache_expression(Var, const(float_const(Float))).
+unify_gen__generate_construction_2(no_tag, Var, Args, Modes, _, Code) -->
 	( { Args = [Arg], Modes = [Mode] } ->
 		code_info__variable_type(Arg, Type),
 		unify_gen__generate_sub_unify(ref(Var), ref(Arg),
-			Mode, Type, IMDelta, Code)
+			Mode, Type, Code)
 	;
 		{ error(
 		"unify_gen__generate_construction_2: no_tag: arity != 1") }
 	).
 unify_gen__generate_construction_2(unshared_tag(UnsharedTag),
-		Var, Args, Modes, IMDelta, _, Code) -->
+		Var, Args, Modes, _, Code) -->
 	code_info__get_module_info(ModuleInfo),
-	code_info__get_inst_table(InstTable),
-	code_info__get_instmap(InstMap0),
-	{ instmap__apply_instmap_delta(InstMap0, IMDelta, InstMap) },
 	code_info__get_next_cell_number(CellNo),
 	unify_gen__var_types(Args, ArgTypes),
-	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, InstMap0,
-		InstMap, InstTable, ModuleInfo, RVals) },
+	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, ModuleInfo,
+		RVals) },
+	{ Code = empty },
 	code_info__variable_type(Var, VarType),
 	{ unify_gen__var_type_msg(VarType, VarTypeMsg) },
 	% XXX Later we will need to worry about
 	% whether the cell must be unique or not.
 	{ Expr = create(UnsharedTag, RVals, uniform(no), can_be_either,
 		CellNo, VarTypeMsg) },
-	code_info__cache_expression(Var, Expr),
-	unify_gen__aliased_vars_set_location(Args, ArgTypes, Modes,
-		InstMap0, InstMap, InstTable, ModuleInfo, Var, UnsharedTag,
-		0, Code0),
-	unify_gen__maybe_place_refs(Var, Code1),
-	{ Code = tree(Code0, Code1) }.
+	code_info__cache_expression(Var, Expr).
 unify_gen__generate_construction_2(shared_remote_tag(Bits0, Num0),
-		Var, Args, Modes, IMDelta, _, Code) -->
+		Var, Args, Modes, _, Code) -->
 	code_info__get_module_info(ModuleInfo),
-	code_info__get_inst_table(InstTable),
-	code_info__get_instmap(InstMap0),
-	{ instmap__apply_instmap_delta(InstMap0, IMDelta, InstMap) },
 	code_info__get_next_cell_number(CellNo),
 	unify_gen__var_types(Args, ArgTypes),
-	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, InstMap0,
-		InstMap, InstTable, ModuleInfo, RVals0) },
+	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, ModuleInfo,
+		RVals0) },
 		% the first field holds the secondary tag
 	{ RVals = [yes(const(int_const(Num0))) | RVals0] },
+	{ Code = empty },
 	code_info__variable_type(Var, VarType),
 	{ unify_gen__var_type_msg(VarType, VarTypeMsg) },
 	% XXX Later we will need to worry about
 	% whether the cell must be unique or not.
 	{ Expr = create(Bits0, RVals, uniform(no), can_be_either,
 		CellNo, VarTypeMsg) },
-	code_info__cache_expression(Var, Expr),
-	unify_gen__aliased_vars_set_location(Args, ArgTypes, Modes, InstMap0,
-		InstMap, InstTable, ModuleInfo, Var, Bits0, 1, Code0),
-	unify_gen__maybe_place_refs(Var, Code1),
-	{ Code = tree(Code0, Code1) }.
+	code_info__cache_expression(Var, Expr).
 unify_gen__generate_construction_2(shared_local_tag(Bits1, Num1),
-		Var, _Args, _Modes, _IMDelta, _, Code) -->
-	unify_gen__cache_unification(Var, 
-		mkword(Bits1, unop(mkbody, const(int_const(Num1)))),
-		Code).
+		Var, _Args, _Modes, _, Code) -->
+	{ Code = empty },
+	code_info__cache_expression(Var,
+		mkword(Bits1, unop(mkbody, const(int_const(Num1))))).
 unify_gen__generate_construction_2(type_ctor_info_constant(ModuleName,
-		TypeName, TypeArity), Var, Args, _Modes, _IMDelta, _, Code) -->
+		TypeName, TypeArity), Var, Args, _Modes, _, Code) -->
 	( { Args = [] } ->
 		[]
 	;
 		{ error("unify_gen: type-info constant has args") }
 	),
-	unify_gen__cache_unification(Var, const(data_addr_const(data_addr(
-		ModuleName, type_ctor(info, TypeName, TypeArity)))), Code).
+	{ Code = empty },
+	code_info__cache_expression(Var, const(data_addr_const(data_addr(
+		ModuleName, type_ctor(info, TypeName, TypeArity))))).
 unify_gen__generate_construction_2(base_typeclass_info_constant(ModuleName,
-		ClassId, Instance), Var, Args, _Modes, _IMDelta, _, Code) -->
+		ClassId, Instance), Var, Args, _Modes, _, Code) -->
 	( { Args = [] } ->
 		[]
 	;
 		{ error("unify_gen: typeclass-info constant has args") }
 	),
-	unify_gen__cache_unification(Var, const(data_addr_const(data_addr(
-		ModuleName, base_typeclass_info(ClassId, Instance)))),
-		Code).
+	{ Code = empty },
+	code_info__cache_expression(Var, const(data_addr_const(data_addr(
+		ModuleName, base_typeclass_info(ClassId, Instance))))).
 unify_gen__generate_construction_2(tabling_pointer_constant(PredId, ProcId),
-		Var, Args, _Modes, _IMDelta, _, Code) -->
+		Var, Args, _Modes, _, Code) -->
 	( { Args = [] } ->
 		[]
 	;
 		{ error("unify_gen: tabling pointer constant has args") }
 	),
+	{ Code = empty },
 	code_info__get_module_info(ModuleInfo),
 	{ code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) },
 	{ module_info_name(ModuleInfo, ModuleName) },
 	{ DataAddr = data_addr(ModuleName, tabling_pointer(ProcLabel)) },
-	unify_gen__cache_unification(Var, const(data_addr_const(DataAddr)),
-		Code).
+	code_info__cache_expression(Var, const(data_addr_const(DataAddr))).
 unify_gen__generate_construction_2(code_addr_constant(PredId, ProcId),
-		Var, Args, _Modes, _IMDelta, _, Code) -->
+		Var, Args, _Modes, _, Code) -->
 	( { Args = [] } ->
 		[]
 	;
 		{ error("unify_gen: address constant has args") }
 	),
+	{ Code = empty },
 	code_info__get_module_info(ModuleInfo),
 	code_info__make_entry_label(ModuleInfo, PredId, ProcId, no, CodeAddr),
-	unify_gen__cache_unification(Var, const(code_addr_const(CodeAddr)),
-		Code).
+	code_info__cache_expression(Var, const(code_addr_const(CodeAddr))).
 unify_gen__generate_construction_2(
 		pred_closure_tag(PredId, ProcId, EvalMethod),
-		Var, Args, Modes, IMDelta, _AditiInfo, Code) -->
+		Var, Args, _Modes, _AditiInfo, Code) -->
 	% This code constructs or extends a closure.
 	% The structure of closures is defined in runtime/mercury_ho_call.h.
 
@@ -453,7 +436,7 @@ unify_gen__generate_construction_2(
 	    ( { CallArgs = [] } ->
 		% if there are no new arguments, we can just use the old
 		% closure
-		code_info__produce_variable(CallPred, Code98, Value)
+		code_info__produce_variable(CallPred, Code, Value)
 	    ;
 		code_info__get_next_label(LoopStart),
 		code_info__get_next_label(LoopTest),
@@ -518,13 +501,11 @@ unify_gen__generate_construction_2(
 		code_info__release_reg(LoopCounter),
 		code_info__release_reg(NumOldArgs),
 		code_info__release_reg(NewClosure),
-		{ Code98 = tree(Code1, tree(Code2, Code3)) },
+		{ Code = tree(Code1, tree(Code2, Code3)) },
 		{ Value = lval(NewClosure) }
-	    ),
-	    { list__length(ProcArgs, NumExtraProcArgs) },
-	    { SkipFirstArg = yes }
+	    )
 	;
-		{ Code98 = empty },
+		{ Code = empty },
 		(
 			{ EvalMethod = normal }
 		;
@@ -566,58 +547,9 @@ unify_gen__generate_construction_2(
 		] },
 		code_info__get_next_cell_number(ClosureCellNo),
 		{ Value = create(0, Vector, uniform(no), can_be_either,
-			ClosureCellNo, "closure") },
-		{ NumExtraProcArgs = 0 },
-		{ SkipFirstArg = no }
+			ClosureCellNo, "closure") }
 	),
-	unify_gen__cache_unification(Var, Value, Code99),
-	code_info__get_inst_table(InstTable),
-	code_info__get_instmap(InstMap0),
-	{ instmap__apply_instmap_delta(InstMap0, IMDelta, InstMap) },
-	{ FirstField is NumExtraProcArgs + 2 },
-	( 
-		{ SkipFirstArg = yes },
-		(
-			{ Args = [_ | ArgsPrime] },
-			{ Modes = [_ | ModesPrime] }
-		->
-			unify_gen__var_types(ArgsPrime, ArgTypes),
-			unify_gen__aliased_vars_set_location(ArgsPrime,
-				ArgTypes, ModesPrime, InstMap0, InstMap,
-				InstTable, ModuleInfo, Var, 0, FirstField,
-				Code100)
-		;
-			{ Code100 = empty }
-		)
-	;
-		{ SkipFirstArg = no },
-		unify_gen__var_types(Args, ArgTypes),
-		unify_gen__aliased_vars_set_location(Args,
-			ArgTypes, Modes, InstMap0, InstMap, InstTable,
-			ModuleInfo, Var, 0, FirstField, Code100)
-	),
-	{ Code = tree(Code98, tree(Code99, Code100)) }.
-
-% Cache a unification.  If the mode of the LHS variable is ref_in then
-% produce code to place it's value in the required locations.
-
-:- pred unify_gen__cache_unification(prog_var, rval, code_tree,
-	code_info, code_info).
-:- mode unify_gen__cache_unification(in, in, out, in, out) is det.
-
-unify_gen__cache_unification(Var, Rval, Code) -->
-	code_info__cache_expression(Var, Rval),
-	unify_gen__maybe_place_refs(Var, Code).
-
-:- pred unify_gen__maybe_place_refs(prog_var, code_tree, code_info, code_info).
-:- mode unify_gen__maybe_place_refs(in, out, in, out) is det.
-
-unify_gen__maybe_place_refs(Var, Code) -->
-	( code_info__var_is_free_alias(Var) ->
-		code_info__produce_variable_in_references(Var, Code)
-	;
-		{ Code = empty }
-	).
+	code_info__cache_expression(Var, Value).
 
 :- pred unify_gen__generate_extra_closure_args(list(prog_var), lval, lval,
 		code_tree, code_info, code_info).
@@ -658,17 +590,12 @@ unify_gen__generate_pred_args([Var | Vars], [ArgInfo | ArgInfos],
 	unify_gen__generate_pred_args(Vars, ArgInfos, Rvals).
 
 :- pred unify_gen__generate_cons_args(list(prog_var), list(type),
-	list(uni_mode), instmap, instmap, inst_table, module_info,
-	list(maybe(rval))).
-:- mode unify_gen__generate_cons_args(in, in, in, in, in, in, in, out) is det.
+		list(uni_mode), module_info, list(maybe(rval))).
+:- mode unify_gen__generate_cons_args(in, in, in, in, out) is det.
 
-unify_gen__generate_cons_args(Vars, Types, Modes, InstMapBefore, InstMapAfter,
-		InstTable, ModuleInfo, Args) :-
-	(
-		unify_gen__generate_cons_args_2(Vars, Types, Modes,
-				InstMapBefore, InstMapAfter, InstTable,
-				ModuleInfo, Args0)
-	->
+unify_gen__generate_cons_args(Vars, Types, Modes, ModuleInfo, Args) :-
+	( unify_gen__generate_cons_args_2(Vars, Types, Modes, ModuleInfo,
+			Args0) ->
 		Args = Args0
 	;
 		error("unify_gen__generate_cons_args: length mismatch")
@@ -681,92 +608,20 @@ unify_gen__generate_cons_args(Vars, Types, Modes, InstMapBefore, InstMapAfter,
 	% generate an assignment to that field.
 
 :- pred unify_gen__generate_cons_args_2(list(prog_var), list(type),
-	list(uni_mode), instmap, instmap, inst_table, module_info,
-	list(maybe(rval))).
-:- mode unify_gen__generate_cons_args_2(in, in, in, in, in, in, in, out)
-		is semidet.
+		list(uni_mode), module_info, list(maybe(rval))).
+:- mode unify_gen__generate_cons_args_2(in, in, in, in, out) is semidet.
 
-unify_gen__generate_cons_args_2([], [], [], _, _, _, _, []).
+unify_gen__generate_cons_args_2([], [], [], _, []).
 unify_gen__generate_cons_args_2([Var|Vars], [Type|Types], [UniMode|UniModes],
-		InstMapBefore, InstMapAfter, InstTable, ModuleInfo,
-		[Arg|RVals]) :-
+			ModuleInfo, [Arg|RVals]) :-
 	UniMode = ((_LI - RI) -> (_LF - RF)),
-	(
-		insts_to_arg_mode(InstTable, ModuleInfo, RI, InstMapBefore,
-				RF, InstMapAfter, Type, top_in)
-	->
+	( mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, top_in) ->
 		Arg = yes(var(Var))
 	;
 		Arg = no
 	),
-	unify_gen__generate_cons_args_2(Vars, Types, UniModes, InstMapBefore,
-		InstMapAfter, InstTable, ModuleInfo, RVals).
-
-:- pred unify_gen__aliased_vars_set_location(list(prog_var), list(type),
-		list(uni_mode), instmap, instmap, inst_table, module_info,
-		prog_var, tag, int, code_tree, code_info, code_info).
-:- mode unify_gen__aliased_vars_set_location(in, in, in, in, in, in, in,
-		in, in, in, out, in, out) is det.
-
-unify_gen__aliased_vars_set_location(Args, Types, Modes, InstMap0, InstMap,
-		InstTable, ModuleInfo, Var, Tag, FieldNum, Code) -->
-	( 
-		unify_gen__aliased_vars_set_location_2(Args, Types, Modes,
-			InstMap0, InstMap, InstTable, ModuleInfo, Var, Tag,
-			FieldNum, Code0)
-	->
-		{ Code = Code0 }
-	;
-		{ error("unify_gen__aliased_vars_set_location: length mismatch") }
-	).
-
-:- pred unify_gen__aliased_vars_set_location_2(list(prog_var), list(type),
-		list(uni_mode), instmap, instmap, inst_table, module_info,
-		prog_var, tag, int, code_tree, code_info, code_info).
-:- mode unify_gen__aliased_vars_set_location_2(in, in, in, in, in, in, in,
-		in, in, in, out, in, out) is semidet.
-
-unify_gen__aliased_vars_set_location_2([], [], [], _, _, _, _, _, _, _,
-		empty) --> [].
-unify_gen__aliased_vars_set_location_2([Var | Vars], [Type | Types],
-		[Mode | Modes], InstMap0, InstMap, InstTable, ModuleInfo,
-		LHSVar, Tag, FieldNum, Code) -->
-	{ Mode = ((_LI - RI) -> (_LF - RF)) },
-	( 
-		{ insts_to_arg_mode(InstTable, ModuleInfo, RI, InstMap0,
-			RF, InstMap, Type, ref_out) }
-	->
-		code_info__acquire_reg_for_var(Var, Reg),
-		code_info__set_var_reference_location(Var, Reg),
-		code_info__produce_variable(LHSVar, Code0, RVal),
-		code_info__get_globals(Globals),
-		{ globals__get_gc_method(Globals, GCMethod) },
-		{ GCMethod = conservative ->
-			% For the conservative GC, we need to zero
-			% uninstantiated fields so the GC doesn't think they
-			% are pointers.
-			ZeroCode = node([
-				assign(field(yes(Tag), RVal, 
-					const(int_const(FieldNum))),
-					const(int_const(0)))
-					- "zero uninstantiated field"
-				])
-		;
-			ZeroCode = empty
-		},
-		{ Code1 = tree(ZeroCode, node([
-			assign(Reg, mem_addr(heap_ref(RVal, Tag, FieldNum)))
-				- "place reference in reg"
-			])) },
-		{ Code2 = tree(Code0, Code1) }
-	;
-		{ Code2 = empty }
-	),
-	{ NextFieldNum is FieldNum + 1 },
-	unify_gen__aliased_vars_set_location_2(Vars, Types, Modes, InstMap0,
-		InstMap, InstTable, ModuleInfo, LHSVar, Tag, NextFieldNum,
-		Code3),
-	{ Code = tree(Code2, Code3) }.
+	unify_gen__generate_cons_args_2(Vars, Types, UniModes, ModuleInfo,
+		RVals).
 
 %---------------------------------------------------------------------------%
 
@@ -806,13 +661,12 @@ unify_gen__make_fields_and_argvars([Var | Vars], Rval, Field0, TagNum,
 	% assignment unifications are cached.
 
 :- pred unify_gen__generate_det_deconstruction(prog_var, cons_id,
-	list(prog_var), list(uni_mode), instmap_delta, code_tree,
-	code_info, code_info).
-:- mode unify_gen__generate_det_deconstruction(in, in, in, in, in, out,
+		list(prog_var), list(uni_mode), code_tree,
+		code_info, code_info).
+:- mode unify_gen__generate_det_deconstruction(in, in, in, in, out,
 	in, out) is det.
 
-unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, IMDelta,
-		Code) -->
+unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 	code_info__cons_id_to_tag(Var, Cons, Tag),
 	% For constants, if the deconstruction is det, then we already know
 	% the value of the constant, so Code = empty.
@@ -845,7 +699,7 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, IMDelta,
 		( { Args = [Arg], Modes = [Mode] } ->
 			code_info__variable_type(Arg, Type),
 			unify_gen__generate_sub_unify(ref(Var), ref(Arg),
-				Mode, Type, IMDelta, Code)
+				Mode, Type, Code)
 		;
 			{ error("unify_gen__generate_det_deconstruction: no_tag: arity != 1") }
 		)
@@ -856,7 +710,7 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, IMDelta,
 			UnsharedTag, Fields, ArgVars) },
 		unify_gen__var_types(Args, ArgTypes),
 		unify_gen__generate_unify_args(Fields, ArgVars,
-			Modes, ArgTypes, IMDelta, Code)
+			Modes, ArgTypes, Code)
 	;
 		{ Tag = shared_remote_tag(Bits0, _Num0) },
 		{ Rval = var(Var) },
@@ -864,7 +718,7 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, IMDelta,
 			Bits0, Fields, ArgVars) },
 		unify_gen__var_types(Args, ArgTypes),
 		unify_gen__generate_unify_args(Fields, ArgVars,
-			Modes, ArgTypes, IMDelta, Code)
+			Modes, ArgTypes, Code)
 	;
 		{ Tag = shared_local_tag(_Bits1, _Num1) },
 		{ Code = empty } % if this is det, then nothing happens
@@ -877,20 +731,19 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, IMDelta,
 	% followed by a deterministic deconstruction.
 
 :- pred unify_gen__generate_semi_deconstruction(prog_var, cons_id,
-	list(prog_var), list(uni_mode), instmap_delta, code_tree,
-	code_info, code_info).
-:- mode unify_gen__generate_semi_deconstruction(in, in, in, in, in, out,
-	in, out) is det.
+		list(prog_var), list(uni_mode), code_tree,
+		code_info, code_info).
+:- mode unify_gen__generate_semi_deconstruction(in, in, in, in, out, in, out)
+	is det.
 
-unify_gen__generate_semi_deconstruction(Var, Tag, Args, Modes, IMDelta,
-			Code) -->
+unify_gen__generate_semi_deconstruction(Var, Tag, Args, Modes, Code) -->
 	unify_gen__generate_tag_test(Var, Tag, branch_on_success,
 		SuccLab, TagTestCode),
 	code_info__remember_position(AfterUnify),
 	code_info__generate_failure(FailCode),
 	code_info__reset_to_position(AfterUnify),
 	unify_gen__generate_det_deconstruction(Var, Tag, Args, Modes,
-		IMDelta, DeconsCode),
+		DeconsCode),
 	{ SuccessLabelCode = node([
 		label(SuccLab) - ""
 	]) },
@@ -907,29 +760,27 @@ unify_gen__generate_semi_deconstruction(Var, Tag, Args, Modes, IMDelta,
 	% for the arguments of a construction.
 
 :- pred unify_gen__generate_unify_args(list(uni_val), list(uni_val),
-			list(uni_mode), list(type), instmap_delta, code_tree,
+			list(uni_mode), list(type), code_tree,
 			code_info, code_info).
-:- mode unify_gen__generate_unify_args(in, in, in, in, in, out,
-			in, out) is det.
+:- mode unify_gen__generate_unify_args(in, in, in, in, out, in, out) is det.
 
-unify_gen__generate_unify_args(Ls, Rs, Ms, Ts, IMDelta, Code) -->
-	( unify_gen__generate_unify_args_2(Ls, Rs, Ms, Ts, IMDelta, Code0) ->
+unify_gen__generate_unify_args(Ls, Rs, Ms, Ts, Code) -->
+	( unify_gen__generate_unify_args_2(Ls, Rs, Ms, Ts, Code0) ->
 		{ Code = Code0 }
 	;
 		{ error("unify_gen__generate_unify_args: length mismatch") }
 	).
 
 :- pred unify_gen__generate_unify_args_2(list(uni_val), list(uni_val),
-			list(uni_mode), list(type), instmap_delta, code_tree,
+			list(uni_mode), list(type), code_tree,
 			code_info, code_info).
-:- mode unify_gen__generate_unify_args_2(in, in, in, in, in, out, in, out)
+:- mode unify_gen__generate_unify_args_2(in, in, in, in, out, in, out)
 	is semidet.
 
-unify_gen__generate_unify_args_2([], [], [], [], _, empty) --> [].
-unify_gen__generate_unify_args_2([L|Ls], [R|Rs], [M|Ms], [T|Ts], IMDelta,
-			Code) -->
-	unify_gen__generate_sub_unify(L, R, M, T, IMDelta, CodeA),
-	unify_gen__generate_unify_args_2(Ls, Rs, Ms, Ts, IMDelta, CodeB),
+unify_gen__generate_unify_args_2([], [], [], [], empty) --> [].
+unify_gen__generate_unify_args_2([L|Ls], [R|Rs], [M|Ms], [T|Ts], Code) -->
+	unify_gen__generate_sub_unify(L, R, M, T, CodeA),
+	unify_gen__generate_unify_args_2(Ls, Rs, Ms, Ts, CodeB),
 	{ Code = tree(CodeA, CodeB) }.
 
 %---------------------------------------------------------------------------%
@@ -937,19 +788,14 @@ unify_gen__generate_unify_args_2([L|Ls], [R|Rs], [M|Ms], [T|Ts], IMDelta,
 	% Generate a subunification between two [field|variable].
 
 :- pred unify_gen__generate_sub_unify(uni_val, uni_val, uni_mode, type,
-			instmap_delta, code_tree, code_info, code_info).
-:- mode unify_gen__generate_sub_unify(in, in, in, in, in, out, in, out) is det.
+					code_tree, code_info, code_info).
+:- mode unify_gen__generate_sub_unify(in, in, in, in, out, in, out) is det.
 
-unify_gen__generate_sub_unify(L, R, Mode, Type, IMDelta, Code) -->
+unify_gen__generate_sub_unify(L, R, Mode, Type, Code) -->
 	{ Mode = ((LI - RI) -> (LF - RF)) },
 	code_info__get_module_info(ModuleInfo),
-	code_info__get_inst_table(IT),
-	code_info__get_instmap(InstMap0),
-	{ instmap__apply_instmap_delta(InstMap0, IMDelta, InstMap) },
-	{ insts_to_arg_mode(IT, ModuleInfo, LI, InstMap0, LF, InstMap,
-			Type, LeftMode) },
-	{ insts_to_arg_mode(IT, ModuleInfo, RI, InstMap0, RF, InstMap,
-			Type, RightMode) },
+	{ mode_to_arg_mode(ModuleInfo, (LI -> LF), Type, LeftMode) },
+	{ mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, RightMode) },
 	(
 			% Input - input == test unification
 		{ LeftMode = top_in },
@@ -962,12 +808,12 @@ unify_gen__generate_sub_unify(L, R, Mode, Type, IMDelta, Code) -->
 	;
 			% Input - Output== assignment ->
 		{ LeftMode = top_in },
-		{ RightMode = top_out ; RightMode = ref_in }
+		{ RightMode = top_out }
 	->
 		unify_gen__generate_sub_assign(R, L, Code)
 	;
 			% Input - Output== assignment <-
-		{ LeftMode = top_out ; LeftMode = ref_in },
+		{ LeftMode = top_out },
 		{ RightMode = top_in }
 	->
 		unify_gen__generate_sub_assign(L, R, Code)
@@ -976,11 +822,8 @@ unify_gen__generate_sub_unify(L, R, Mode, Type, IMDelta, Code) -->
 		{ RightMode = top_unused }
 	->
 		{ Code = empty } % free-free - ignore
-	;
-		{ LeftMode = ref_out },
-		{ RightMode = ref_out }
-	->
-		{ Code = empty }
+			% XXX I think this will have to change
+			% if we start to support aliasing
 	;
 		{ error("unify_gen__generate_sub_unify: some strange unify") }
 	).
@@ -1026,24 +869,22 @@ unify_gen__generate_sub_assign(lval(Lval0), ref(Var), Code) -->
 		{ error("unify_gen__generate_sub_assign: lval vanished with ref") }
 	).
 	% assignment to a variable, so cache it.
-unify_gen__generate_sub_assign(ref(Var), lval(Rval), Code) -->
+unify_gen__generate_sub_assign(ref(Var), lval(Rval), empty) -->
 	(
 		code_info__variable_is_forward_live(Var)
 	->
-		code_info__cache_expression(Var, lval(Rval)),
-		code_info__produce_variable_in_references(Var, Code)
+		code_info__cache_expression(Var, lval(Rval))
 	;
-		{ Code = empty }
+		{ true }
 	).
 	% assignment to a variable, so cache it.
-unify_gen__generate_sub_assign(ref(Lvar), ref(Rvar), Code) -->
+unify_gen__generate_sub_assign(ref(Lvar), ref(Rvar), empty) -->
 	(
 		code_info__variable_is_forward_live(Lvar)
 	->
-		code_info__cache_expression(Lvar, var(Rvar)),
-		code_info__produce_variable_in_references(Lvar, Code)
+		code_info__cache_expression(Lvar, var(Rvar))
 	;
-		{ Code = empty }
+		{ true }
 	).
 
 %---------------------------------------------------------------------------%

@@ -22,7 +22,7 @@
 
 :- implementation.
 
-:- import_module prog_io, prog_io_goal, prog_util, hlds_data, inst_table.
+:- import_module prog_io, prog_io_goal, prog_util.
 :- import_module term_util, term_errors.
 :- import_module int, map, string, std_util, bool, require.
 
@@ -885,7 +885,7 @@ parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
 
 :- type arity_or_modes
 	--->	arity_or_modes(sym_name, arity,
-			maybe(pred_or_func), maybe(argument_modes)).
+			maybe(pred_or_func), maybe(list(mode))).
 
 :- pred parse_arity_or_modes(module_name, term, term,
 		string, maybe1(arity_or_modes)).
@@ -914,8 +914,7 @@ parse_arity_or_modes(ModuleName, PredAndModesTerm0,
 		PredAndModesResult),
 	    (
 	    	PredAndModesResult = ok(PredName - PredOrFunc, Modes),
-		Modes = argument_modes(_, ArgModes),
-                list__length(ArgModes, Arity0),
+                list__length(Modes, Arity0),
                 ( PredOrFunc = function ->
                     Arity is Arity0 - 1
                 ;
@@ -930,9 +929,7 @@ parse_arity_or_modes(ModuleName, PredAndModesTerm0,
 	).
 
 :- type maybe_pred_or_func_modes ==
-		maybe2(pair(sym_name, pred_or_func), argument_modes).
-
-:- type maybe_pred_or_func(T) == maybe2(sym_name, pair(list(T), maybe(T))).
+		maybe2(pair(sym_name, pred_or_func), list(mode)).
 
 :- pred parse_pred_or_func_and_arg_modes(maybe(module_name), term, term,
 		string, maybe_pred_or_func_modes).
@@ -950,9 +947,7 @@ parse_pred_or_func_and_arg_modes(MaybeModuleName, PredAndModesTerm,
 		    MaybeRetModeTerm = yes(RetModeTerm),
 		    ( convert_mode(RetModeTerm, RetMode) ->
 			list__append(ArgModes0, [RetMode], ArgModes),
-			inst_table_init(InstTable),
-			Result = ok(PredName - function,
-				argument_modes(InstTable, ArgModes))
+			Result = ok(PredName - function, ArgModes)
 		    ;
 			string__append("error in return mode in ",
 				Msg, ErrorMsg),
@@ -960,9 +955,7 @@ parse_pred_or_func_and_arg_modes(MaybeModuleName, PredAndModesTerm,
 		    )
 		;
 		    MaybeRetModeTerm = no,
-		    inst_table_init(InstTable),
-		    Result = ok(PredName - predicate,
-		    	argument_modes(InstTable, ArgModes0))
+		    Result = ok(PredName - predicate, ArgModes0)
 		)
 	    ;
 		string__append("error in argument modes in ", Msg,

@@ -13,7 +13,6 @@
 :- interface.
 
 :- import_module hlds_data, hlds_pred, llds, prog_data, (inst), instmap.
-:- import_module inst_table.
 :- import_module bool, char, list, set, map, std_util.
 
 	% Here is how goals are represented
@@ -59,7 +58,7 @@
 	;	generic_call(
 			generic_call,
 			list(prog_var),	% the list of argument variables
-			argument_modes,	% The modes of the argument variables.
+			list(mode),	% The modes of the argument variables.
 					% For higher_order calls, this field
 					% is junk until after mode analysis.
 					% For aditi_builtins, this field
@@ -163,7 +162,7 @@
 			pred_id,	% The called predicate
 			proc_id, 	% The mode of the predicate
 			list(prog_var),	% The (Mercury) argument variables
-			pragma_c_code_arg_info,
+			list(maybe(pair(string, mode))),
 					% C variable names and the original
 					% mode declaration for each of the
 					% arguments. A no for a particular 
@@ -178,23 +177,15 @@
 			pragma_c_code_impl
 					% Extra information for model_non
 					% pragma_c_codes; none for others.
-              )
-  
-	;       par_conj(hlds_goals, store_map)
+		)
+
+	;	par_conj(hlds_goals, store_map)
 					% parallel conjunction
 					% The store_map specifies the locations
 					% in which live variables should be
 					% stored at the start of the parallel
 					% conjunction.
 	.
-
-
-
-:- type pragma_c_code_arg_info
-	--->	pragma_c_code_arg_info(
-			inst_table,
-			list(maybe(pair(string, mode)))
-		).
 
 :- type generic_call
 	--->	higher_order(
@@ -308,26 +299,22 @@
 			;	out_of_line_builtin
 			;	not_builtin.
 
-:- type case
-	--->	case(
-			cons_id,	% functor to match with,
-			instmap_delta,	% instmap delta across the tag test
-					% unification
-			hlds_goal	% goal to execute if match succeeds.
-		).
+:- type case		--->	case(cons_id, hlds_goal).
+			%	functor to match with,
+			%	goal to execute if match succeeds.
 
 :- type stack_slots	==	map(prog_var, lval).
 				% Maps variables to their stack slots.
 				% The only legal lvals in the range are
 				% stackvars and framevars.
 
-:- type follow_vars	==	map(prog_var, store_info).
+:- type follow_vars	==	map(prog_var, lval).
 				% Advisory information about where variables
 				% ought to be put next. The legal range
 				% includes the nonexistent register r(-1),
 				% which indicates any available register.
 
-:- type store_map	==	map(prog_var, store_info).
+:- type store_map	==	map(prog_var, lval).
 				% Authoritative information about where
 				% variables must be put at the ends of
 				% branches of branched control structures.
@@ -336,13 +323,6 @@
 				% temporarily hold follow_vars information.
 				% Apart from this, the legal range is
 				% the set of legal lvals.
-
-:- type store_info
-	--->	store_info(store_type, lval).
-
-:- type store_type
-	--->	val	% Lval contains value of variable.
-	;	ref.	% Lval contains pointer to variable location.
 
 	% Initially all unifications are represented as
 	% unify(prog_var, unify_rhs, _, _, _), but mode analysis replaces
@@ -353,12 +333,9 @@
 	% the unify_rhs field is used.
 :- type unify_rhs
 	--->	var(prog_var)
-	;	functor(
-			cons_id, 
-			list(prog_var)
-		)
+	;	functor(cons_id, list(prog_var))
 	;	lambda_goal(
-			pred_or_func, 	% Is this a predicate or a function
+			pred_or_func, 
 			lambda_eval_method,
 					% should be `normal' except for
 					% closures executed by Aditi.
@@ -366,12 +343,9 @@
 			list(prog_var),	% non-locals of the goal excluding
 					% the lambda quantified variables
 			list(prog_var),	% lambda quantified variables
-			argument_modes,	% modes of the lambda
+			list(mode),	% modes of the lambda 
 					% quantified variables
 			determinism,
-			instmap_delta,	% The instmap_delta between the
-					% preceding goal and the lambda
-					% body.
 			hlds_goal
 		).
 
@@ -610,7 +584,7 @@
 
 	% Given the variable info field from a pragma c_code, get all the
 	% variable names.
-:- pred get_pragma_c_var_names(pragma_c_code_arg_info, list(string)).
+:- pred get_pragma_c_var_names(list(maybe(pair(string, mode))), list(string)).
 :- mode get_pragma_c_var_names(in, out) is det.
 
 	% Get a description of a generic_call goal.
@@ -629,12 +603,9 @@
 		set(prog_var),	% the post-birth set
 		set(prog_var),	% the pre-death set
 		set(prog_var),	% the post-death set
+				% (all four are computed by liveness.m)
 				% NB for atomic goals, the post-deadness
 				% should be applied _before_ the goal
-		set(prog_var),	% the ref-vars set -- i.e. vars that are
-				% live but have not value yet, only a reference
-				% to where the value should be placed.
-				% (all five are computed by liveness.m)
 
 		determinism, 	% the overall determinism of the goal
 				% (computed during determinism analysis)
@@ -693,8 +664,7 @@
 				% reverse order.
 	).
 
-get_pragma_c_var_names(MaybeVarNames0, VarNames) :-
-	MaybeVarNames0 = pragma_c_code_arg_info(_, MaybeVarNames),
+get_pragma_c_var_names(MaybeVarNames, VarNames) :-
 	get_pragma_c_var_names_2(MaybeVarNames, [], VarNames0),
 	list__reverse(VarNames0, VarNames).
 
@@ -724,7 +694,7 @@ hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
 
 :- interface.
 
-:- type unify_mode	==	pair(pair(inst)).
+:- type unify_mode	==	pair(mode, mode).
 
 :- type uni_mode	--->	pair(inst) -> pair(inst).
 					% Each uni_mode maps a pair
@@ -776,12 +746,6 @@ hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
 
 :- pred goal_info_set_post_deaths(hlds_goal_info, set(prog_var), hlds_goal_info).
 :- mode goal_info_set_post_deaths(in, in, out) is det.
-
-:- pred goal_info_get_refs(hlds_goal_info, set(prog_var)).
-:- mode goal_info_get_refs(in, out) is det.
-
-:- pred goal_info_set_refs(hlds_goal_info, set(prog_var), hlds_goal_info).
-:- mode goal_info_set_refs(in, in, out) is det.
 
 :- pred goal_info_get_code_model(hlds_goal_info, code_model).
 :- mode goal_info_get_code_model(in, out) is det.
@@ -1038,13 +1002,12 @@ goal_info_init(GoalInfo) :-
 	set__init(PostBirths),
 	set__init(PreDeaths),
 	set__init(PostDeaths),
-	set__init(Refs),
 	instmap_delta_init_unreachable(InstMapDelta),
 	set__init(NonLocals),
 	term__context_init(Context),
 	set__init(Features),
 	GoalInfo = goal_info(PreBirths, PostBirths, PreDeaths, PostDeaths,
-		Refs, Detism, InstMapDelta, Context, NonLocals, no, Features,
+		Detism, InstMapDelta, Context, NonLocals, no, Features,
 		no_resume_point, []).
 
 goal_info_init(NonLocals, InstMapDelta, Detism, GoalInfo) :-
@@ -1054,44 +1017,40 @@ goal_info_init(NonLocals, InstMapDelta, Detism, GoalInfo) :-
 	goal_info_set_determinism(GoalInfo2, Detism, GoalInfo).
 
 goal_info_get_pre_births(GoalInfo, PreBirths) :-
-	GoalInfo = goal_info(PreBirths, _, _, _, _, _, _, _, _, _, _, _, _).
+	GoalInfo = goal_info(PreBirths, _, _, _, _, _, _, _, _, _, _, _).
 
 goal_info_get_post_births(GoalInfo, PostBirths) :-
-	GoalInfo = goal_info(_, PostBirths, _, _, _, _, _, _, _, _, _, _, _).
+	GoalInfo = goal_info(_, PostBirths, _, _, _, _, _, _, _, _, _, _).
 
 goal_info_get_pre_deaths(GoalInfo, PreDeaths) :-
-	GoalInfo = goal_info(_, _, PreDeaths, _, _, _, _, _, _, _, _, _, _).
+	GoalInfo = goal_info(_, _, PreDeaths, _, _, _, _, _, _, _, _, _).
 
 goal_info_get_post_deaths(GoalInfo, PostDeaths) :-
-	GoalInfo = goal_info(_, _, _, PostDeaths, _, _, _, _, _, _, _, _, _).
-
-goal_info_get_refs(GoalInfo, Refs) :-
-	GoalInfo = goal_info(_, _, _, _, Refs, _, _, _, _, _, _, _, _).
+	GoalInfo = goal_info(_, _, _, PostDeaths, _, _, _, _, _, _, _, _).
 
 goal_info_get_determinism(GoalInfo, Determinism) :-
-	GoalInfo = goal_info(_, _, _, _, _, Determinism, _, _, _, _, _, _, _).
+	GoalInfo = goal_info(_, _, _, _, Determinism, _, _, _, _, _, _, _).
 
 goal_info_get_instmap_delta(GoalInfo, InstMapDelta) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, InstMapDelta, _, _, _, _, _, _).
+	GoalInfo = goal_info(_, _, _, _, _, InstMapDelta, _, _, _, _, _, _).
 
 goal_info_get_context(GoalInfo, Context) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, Context, _, _, _, _, _).
+	GoalInfo = goal_info(_, _, _, _, _, _, Context, _, _, _, _, _).
 
 goal_info_get_nonlocals(GoalInfo, NonLocals) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, _, NonLocals, _, _, _, _).
+	GoalInfo = goal_info(_, _, _, _, _, _, _, NonLocals, _, _, _, _).
 
 goal_info_get_follow_vars(GoalInfo, MaybeFollowVars) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, MaybeFollowVars,
-		_, _, _).
+	GoalInfo = goal_info(_, _, _, _, _, _, _, _, MaybeFollowVars, _, _, _).
 
 goal_info_get_features(GoalInfo, Features) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, _, Features, _, _).
+	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, Features, _, _).
 
 goal_info_get_resume_point(GoalInfo, ResumePoint) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, _, _, ResumePoint, _).
+	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, _, ResumePoint, _).
 
 goal_info_get_goal_path(GoalInfo, GoalPath) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, _, _, _, GoalPath).
+	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, _, _, GoalPath).
 
 % :- type hlds_goal_info
 % 	--->	goal_info(
@@ -1099,68 +1058,63 @@ goal_info_get_goal_path(GoalInfo, GoalPath) :-
 % 		B	set(prog_var),	% the post-birth set
 % 		C	set(prog_var),	% the pre-death set
 % 		D	set(prog_var),	% the post-death set
-%		E	set(prog_var),	% the references set
-% 		F	determinism, 	% the overall determinism of the goal
-% 		G	instmap_delta,	% the change in insts over this goal
-% 		H	prog_context,
-% 		I	set(prog_var),	% the non-local vars in the goal
-% 		J	maybe(follow_vars),
-% 		K	set(goal_feature),
-%		L	resume_point,
-%		M	goal_path
+% 		E	determinism, 	% the overall determinism of the goal
+% 		F	instmap_delta,	% the change in insts over this goal
+% 		G	prog_context,
+% 		H	set(prog_var),	% the non-local vars in the goal
+% 		I	maybe(follow_vars),
+% 		J	set(goal_feature),
+%		K	resume_point,
+%		L	goal_path
 % 	).
 
 goal_info_set_pre_births(GoalInfo0, PreBirths, GoalInfo) :-
-	GoalInfo0 = goal_info(_, B, C, D, E, F, G, H, I, J, K, L, M),
-	GoalInfo = goal_info(PreBirths, B, C, D, E, F, G, H, I, J, K, L, M).
+	GoalInfo0 = goal_info(_, B, C, D, E, F, G, H, I, J, K, L),
+	GoalInfo = goal_info(PreBirths, B, C, D, E, F, G, H, I, J, K, L).
 
 goal_info_set_post_births(GoalInfo0, PostBirths, GoalInfo) :-
-	GoalInfo0 = goal_info(A, _, C, D, E, F, G, H, I, J, K, L, M),
-	GoalInfo = goal_info(A, PostBirths, C, D, E, F, G, H, I, J, K, L, M).
+	GoalInfo0 = goal_info(A, _, C, D, E, F, G, H, I, J, K, L),
+	GoalInfo = goal_info(A, PostBirths, C, D, E, F, G, H, I, J, K, L).
 
 goal_info_set_pre_deaths(GoalInfo0, PreDeaths, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, _, D, E, F, G, H, I, J, K, L, M),
-	GoalInfo = goal_info(A, B, PreDeaths, D, E, F, G, H, I, J, K, L, M).
+	GoalInfo0 = goal_info(A, B, _, D, E, F, G, H, I, J, K, L),
+	GoalInfo = goal_info(A, B, PreDeaths, D, E, F, G, H, I, J, K, L).
 
 goal_info_set_post_deaths(GoalInfo0, PostDeaths, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, _, E, F, G, H, I, J, K, L, M),
-	GoalInfo = goal_info(A, B, C, PostDeaths, E, F, G, H, I, J, K, L, M).
-
-goal_info_set_refs(GoalInfo0, Refs, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, _, F, G, H, I, J, K, L, M),
-	GoalInfo = goal_info(A, B, C, D, Refs, F, G, H, I, J, K, L, M).
+	GoalInfo0 = goal_info(A, B, C, _, E, F, G, H, I, J, K, L),
+	GoalInfo = goal_info(A, B, C, PostDeaths, E, F, G, H, I, J, K, L).
 
 goal_info_set_determinism(GoalInfo0, Determinism, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, _, G, H, I, J, K, L, M),
-	GoalInfo = goal_info(A, B, C, D, E, Determinism, G, H, I, J, K, L, M).
+	GoalInfo0 = goal_info(A, B, C, D, _, F, G, H, I, J, K, L),
+	GoalInfo = goal_info(A, B, C, D, Determinism, F, G, H, I, J, K, L).
 
 goal_info_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, _, H, I, J, K, L, M),
-	GoalInfo = goal_info(A, B, C, D, E, F, InstMapDelta, H, I, J, K, L, M).
+	GoalInfo0 = goal_info(A, B, C, D, E, _, G, H, I, J, K, L),
+	GoalInfo = goal_info(A, B, C, D, E, InstMapDelta, G, H, I, J, K, L).
 
 goal_info_set_context(GoalInfo0, Context, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, _, I, J, K, L, M),
-	GoalInfo = goal_info(A, B, C, D, E, F, G, Context, I, J, K, L, M).
+	GoalInfo0 = goal_info(A, B, C, D, E, F, _, H, I, J, K, L),
+	GoalInfo = goal_info(A, B, C, D, E, F, Context, H, I, J, K, L).
 
 goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, _, J, K, L, M),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, NonLocals, J, K, L, M).
+	GoalInfo0 = goal_info(A, B, C, D, E, F, G, _, I, J, K, L),
+	GoalInfo  = goal_info(A, B, C, D, E, F, G, NonLocals, I, J, K, L).
 
 goal_info_set_follow_vars(GoalInfo0, FollowVars, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, I, _, K, L, M),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, FollowVars, K, L, M).
+	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, _, J, K, L),
+	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, FollowVars, J, K, L).
 
 goal_info_set_features(GoalInfo0, Features, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, I, J, _, L, M),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, J, Features, L, M).
+	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, I, _, K, L),
+	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, Features, K, L).
 
 goal_info_set_resume_point(GoalInfo0, ResumePoint, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, I, J, K, _, M),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, J, K, ResumePoint, M).
+	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, I, J, _, L),
+	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, J, ResumePoint, L).
 
 goal_info_set_goal_path(GoalInfo0, GoalPath, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, I, J, K, L, _),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, J, K, L, GoalPath).
+	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, I, J, K, _),
+	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, J, K, GoalPath).
 
 goal_info_get_code_model(GoalInfo, CodeModel) :-
 	goal_info_get_determinism(GoalInfo, Determinism),
@@ -1374,8 +1328,7 @@ set_goal_contexts_2(Context, if_then_else(Vars, Cond0, Then0, Else0, SM),
 set_goal_contexts_2(Context, switch(Var, CanFail, Cases0, SM),
 		switch(Var, CanFail, Cases, SM)) :-
 	list__map(
-	    (pred(case(ConsId, IMD, Goal0)::in, case(ConsId, IMD, Goal)::out)
-	    		is det :-
+	    (pred(case(ConsId, Goal0)::in, case(ConsId, Goal)::out) is det :-
 		set_goal_contexts(Context, Goal0, Goal)
 	    ), Cases0, Cases).
 set_goal_contexts_2(Context, some(Vars, CanRemove, Goal0),
@@ -1460,7 +1413,7 @@ make_char_const_construction(Var, Char, Goal) :-
 make_const_construction(Var, ConsId, Goal - GoalInfo) :-
 	RHS = functor(ConsId, []),
 	Inst = bound(unique, [functor(ConsId, [])]),
-	Mode = (free(unique) - Inst) - (Inst - Inst),
+	Mode = (free -> Inst) - (Inst -> Inst),
 	VarToReuse = no,
 	RLExprnId = no,
 	Unification = construct(Var, ConsId, [], [],
@@ -1468,7 +1421,8 @@ make_const_construction(Var, ConsId, Goal - GoalInfo) :-
 	Context = unify_context(explicit, []),
 	Goal = unify(Var, RHS, Mode, Unification, Context),
 	set__singleton_set(NonLocals, Var),
-	instmap_delta_from_assoc_list([Var - Inst], InstMapDelta),
+	instmap_delta_init_reachable(InstMapDelta0),
+	instmap_delta_insert(InstMapDelta0, Var, Inst, InstMapDelta),
 	goal_info_init(NonLocals, InstMapDelta, det, GoalInfo).
 
 %-----------------------------------------------------------------------------%

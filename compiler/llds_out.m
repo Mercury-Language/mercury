@@ -988,7 +988,7 @@ output_c_procedure_list_decls([Proc | Procs], DeclSet0, DeclSet) -->
 	output_c_procedure_list_decls(Procs, DeclSet1, DeclSet).
 
 :- pred output_c_procedure_list(list(c_procedure), bool, bool,
-			io__state, io__state).
+				io__state, io__state).
 :- mode output_c_procedure_list(in, in, in, di, uo) is det.
 
 output_c_procedure_list([], _, _) --> [].
@@ -1336,7 +1336,8 @@ output_instruction_list_while([Instr0 - Comment0 | Instrs], Label,
 	pair(label, bintree_set(label)), io__state, io__state).
 :- mode output_instruction_and_comment(in, in, in, in, di, uo) is det.
 
-output_instruction_and_comment(Instr, Comment, PrintComments, ProfInfo) -->
+output_instruction_and_comment(Instr, Comment, PrintComments,
+		ProfInfo) -->
 	(
 		{ PrintComments = no },
 		( { Instr = comment(_) ; Instr = livevals(_) } ->
@@ -1854,11 +1855,10 @@ output_live_value_type(var(Var, Name, Type, LldsInst)) -->
 		{ LldsInst = ground },
 		io__write_string("ground")
 	;
-		{ LldsInst = partial(InstTable, Inst) },
+		{ LldsInst = partial(Inst) },
 			% XXX Fake inst varset
 		{ varset__init(NewIVarset) },
-		mercury_output_inst(expand_silently, Inst, NewIVarset,
-			InstTable)
+		mercury_output_inst(Inst, NewIVarset)
 	),
 	io__write_string(")").
 
@@ -3800,9 +3800,9 @@ output_lval(temp(Type, Num)) -->
 		io__write_int(Num)
 	).
 output_lval(mem_ref(Rval)) -->
-	io__write_string("(*(Word *)("),
+	io__write_string("XXX("),
 	output_rval(Rval),
-	io__write_string("))").
+	io__write_string(")").
 
 %-----------------------------------------------------------------------------%
 

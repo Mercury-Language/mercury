@@ -103,7 +103,7 @@
 
 :- import_module hlds_data, code_gen, code_util, options, globals, prog_data.
 :- import_module hlds_module, (inst), instmap, mode_util, code_info.
-:- import_module continuation_info, inst_match, inst_table.
+:- import_module continuation_info.
 :- import_module set, tree, list, map, std_util, require, int.
 
 %---------------------------------------------------------------------------%
@@ -128,9 +128,8 @@ par_conj_gen__generate_par_conj(Goals, GoalInfo, CodeModel, Code) -->
 	{ goal_info_get_instmap_delta(GoalInfo, Delta) },
 	{ instmap__apply_instmap_delta(Initial, Delta, Final) },
 	code_info__get_module_info(ModuleInfo),
-	code_info__get_inst_table(InstTable),
-	{ par_conj_gen__find_outputs(Variables, Initial, Final, InstTable,
-			ModuleInfo, [], Outputs) },
+	{ par_conj_gen__find_outputs(Variables, Initial, Final, ModuleInfo,
+			[], Outputs) },
 	{ list__length(Goals, NumGoals) },
 	code_info__acquire_reg(r, RegLval),
 	code_info__acquire_temp_slot(sync_term, SyncSlot),
@@ -171,17 +170,15 @@ par_conj_gen__generate_det_par_conj_2([Goal|Goals], N, SyncTerm, SpSlot,
 	code_info__get_stack_slots(AllSlots),
 	code_info__get_known_variables(Variables),
 	{ set__list_to_set(Variables, LiveVars) },
-	{ map__select(AllSlots, LiveVars, LiveSlots) },
-	code_info__stack_slots_to_store_map(LiveSlots, StoreMap),
-	code_info__generate_branch_end(StoreMap, no, MaybeEnd0, MaybeEnd,
+	{ map__select(AllSlots, LiveVars, StoreMap) },
+	code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
 		SaveCode),
 	{ Goal = _GoalExpr - GoalInfo },
 	{ goal_info_get_instmap_delta(GoalInfo, Delta) },
 	{ instmap__apply_instmap_delta(Initial, Delta, Final) },
 	code_info__get_module_info(ModuleInfo),
-	code_info__get_inst_table(InstTable),
-	{ par_conj_gen__find_outputs(Variables, Initial, Final, InstTable,
-			ModuleInfo, [], TheseOutputs) },
+	{ par_conj_gen__find_outputs(Variables, Initial, Final, ModuleInfo,
+			[], TheseOutputs) },
 	par_conj_gen__copy_outputs(TheseOutputs, SpSlot, CopyCode),
 	(
 		{ Goals = [_|_] }
@@ -219,25 +216,24 @@ par_conj_gen__generate_det_par_conj_2([Goal|Goals], N, SyncTerm, SpSlot,
 			Initial, MaybeEnd, RestCode),
 	{ Code = tree(ThisCode, RestCode) }.
 
-:- pred par_conj_gen__find_outputs(list(prog_var), instmap, instmap, inst_table,
+:- pred par_conj_gen__find_outputs(list(prog_var), instmap, instmap,
 		module_info, list(prog_var), list(prog_var)).
-:- mode par_conj_gen__find_outputs(in, in, in, in, in, in, out) is det.
+:- mode par_conj_gen__find_outputs(in, in, in, in, in, out) is det.
 
-par_conj_gen__find_outputs([], _Initial, _Final, _InstTable, _ModuleInfo,
+par_conj_gen__find_outputs([], _Initial, _Final, _ModuleInfo,
 		Outputs, Outputs).
-par_conj_gen__find_outputs([Var|Vars],  Initial, Final, InstTable, ModuleInfo,
+par_conj_gen__find_outputs([Var|Vars],  Initial, Final, ModuleInfo,
 		Outputs0, Outputs) :-
 	instmap__lookup_var(Initial, Var, InitialInst),
 	instmap__lookup_var(Final, Var, FinalInst),
 	(
-		inst_is_free(InitialInst, Initial, InstTable, ModuleInfo),
-		inst_is_bound(FinalInst, Final, InstTable, ModuleInfo)
+		mode_is_output(ModuleInfo, (InitialInst -> FinalInst))
 	->
 		Outputs1 = [Var|Outputs0]
 	;
 		Outputs1 = Outputs0
 	),
-	par_conj_gen__find_outputs(Vars, Initial, Final, InstTable, ModuleInfo,
+	par_conj_gen__find_outputs(Vars, Initial, Final, ModuleInfo,
 			Outputs1, Outputs).
 
 :- pred par_conj_gen__copy_outputs(list(prog_var), lval, code_tree,

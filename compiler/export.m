@@ -377,15 +377,6 @@ get_input_args([AT|ATs], Num0, Result) :-
 	;
 		Mode = top_unused,
 		InputArg = ""
-	;
-		Mode = ref_in,
-		InputArg = "",
-		error("Sorry, not yet implemented: exporting pass-by-reference procedures")
-		% XXX will need to change to support exporting pass-by-reference
-		% procedures.
-	;
-		Mode = ref_out,
-		InputArg = ""
 	),
 	get_input_args(ATs, Num, TheRest),
 	string__append(InputArg, TheRest, Result).
@@ -414,15 +405,6 @@ copy_output_args([AT|ATs], Num0, Result) :-
 	;
 		Mode = top_unused,
 		OutputArg = ""
-	;
-		Mode = ref_in,
-		OutputArg = ""
-	;
-		Mode = ref_out,
-		OutputArg = "",
-		error("Sorry, not yet implemented: exporting pass-by-reference procedures")
-		% XXX will need to change to support exporting pass-by-reference
-		% procedures.
 	),
 	copy_output_args(ATs, Num, TheRest),
 	string__append(OutputArg, TheRest, Result).

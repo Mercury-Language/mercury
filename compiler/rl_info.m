@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 University of Melbourne.
+% Copyright (C) 1998 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,8 +13,6 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, prog_data, rl, tree.
-:- import_module inst_table.
-
 :- import_module bool, io, list, map, set, std_util, string.
 
 :- type rl_info.
@@ -215,9 +213,6 @@
 
 :- pred rl_info_get_var_type(prog_var, (type), rl_info, rl_info).
 :- mode rl_info_get_var_type(in, out, rl_info_di, rl_info_uo) is det.
-
-:- pred rl_info_get_inst_table(inst_table, rl_info, rl_info).
-:- mode rl_info_get_inst_table(out, rl_info_di, rl_info_uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -546,10 +541,6 @@ rl_info_get_var_type(Var, Type) -->
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
 	{ map__lookup(VarTypes, Var, Type) }.
 
-rl_info_get_inst_table(InstTable) -->
-	rl_info_get_proc_info(ProcInfo),
-	{ proc_info_inst_table(ProcInfo, InstTable) }.	
-
 %-----------------------------------------------------------------------------%
 
 rl_info_lookup_var_relation(Var, RelationId) -->
@@ -582,10 +573,8 @@ rl_info_partition_call_args(proc(PredId, ProcId), AllArgs,
 	rl_info_get_module_info(ModuleInfo),
 	{ module_info_pred_proc_info(ModuleInfo, PredId, 
 		ProcId, _, ProcInfo) },
-	{ proc_info_argmodes(ProcInfo, argument_modes(_, ArgModes)) },
-	{ proc_info_inst_table(ProcInfo, InstTable) },
-	{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) },
-	{ partition_args(InstMap, InstTable, ModuleInfo, ArgModes,
+	{ proc_info_argmodes(ProcInfo, ArgModes) },
+	{ partition_args(ModuleInfo, ArgModes,
 		AllArgs, InputArgs, OutputArgs) }.
 
 %-----------------------------------------------------------------------------%
@@ -593,23 +582,17 @@ rl_info_partition_call_args(proc(PredId, ProcId), AllArgs,
 rl_info_get_current_proc_output_schema(schema(OutputArgTypes)) -->
 	rl_info_get_pred_info(PredInfo),
 	rl_info_get_proc_info(ProcInfo),
-	rl_info_get_module_info(ModuleInfo),
-	{ proc_info_argmodes(ProcInfo, argument_modes(_, ArgModes)) },
-	{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) },
-	{ proc_info_inst_table(ProcInfo, InstTable) },
+	{ proc_info_argmodes(ProcInfo, ArgModes) },
 	{ pred_info_arg_types(PredInfo, ArgTypes) },
-	{ partition_args(InstMap, InstTable, ModuleInfo,
-		ArgModes, ArgTypes, _, OutputArgTypes) }.
+	rl_info_get_module_info(ModuleInfo),
+	{ partition_args(ModuleInfo, ArgModes, ArgTypes, _, OutputArgTypes) }.
 
 rl_info_get_current_proc_output_vars(Vars) -->
 	rl_info_get_proc_info(ProcInfo),
 	{ proc_info_headvars(ProcInfo, HeadVars) },
-	{ proc_info_argmodes(ProcInfo,
-		argument_modes(ArgInstTable, ArgModes)) },
+	{ proc_info_argmodes(ProcInfo, ArgModes) },
 	rl_info_get_module_info(ModuleInfo),
-	{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) },
-	{ partition_args(InstMap, ArgInstTable,
-		ModuleInfo, ArgModes, HeadVars, _, Vars) }.
+	{ partition_args(ModuleInfo, ArgModes, HeadVars, _, Vars) }.
 
 rl_info_get_proc_schema(proc(PredId, ProcId), schema(Schema)) -->
 	rl_info_get_module_info(ModuleInfo),
@@ -620,12 +603,8 @@ rl_info_get_proc_schema(proc(PredId, ProcId), schema(Schema)) -->
 	( { check_marker(Markers, base_relation) } ->
 		{ Schema = ArgTypes }
 	;
-		{ proc_info_argmodes(ProcInfo, argument_modes(_, ArgModes)) },
-		{ proc_info_inst_table(ProcInfo, InstTable) },
-		{ proc_info_get_initial_instmap(ProcInfo,
-			ModuleInfo, InstMap) },
-		{ partition_args(InstMap, InstTable, ModuleInfo,
-			ArgModes, ArgTypes, _, Schema) }
+		{ proc_info_argmodes(ProcInfo, ArgModes) },
+		{ partition_args(ModuleInfo, ArgModes, ArgTypes, _, Schema) }
 	).
 
 rl_info_write_message(FormatStr, Items) -->

@@ -120,7 +120,7 @@
 
 :- implementation.
 
-:- import_module hlds_data, type_util, mode_util, inst_match, instmap.
+:- import_module hlds_data, type_util, mode_util, inst_match.
 :- import_module globals, options, prog_out, hlds_out, mercury_to_mercury.
 :- import_module passes_aux, term, varset.
 
@@ -148,7 +148,6 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0,
 		ModuleInfo0, ModuleInfo) -->
 	{ proc_info_declared_determinism(ProcInfo0, MaybeDetism) },
 	{ proc_info_inferred_determinism(ProcInfo0, InferredDetism) },
-	{ proc_info_inst_table(ProcInfo0, InstTable) },
 	(
 		{ MaybeDetism = no },
 		{ ModuleInfo1 = ModuleInfo0 }
@@ -181,8 +180,8 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0,
 				DeclaredDetism, InferredDetism),
 			{ proc_info_goal(ProcInfo0, Goal) },
 			globals__io_get_globals(Globals),
-			{ det_info_init(ModuleInfo1, PredId, ProcId, InstTable,
-				Globals, DetInfo) },
+			{ det_info_init(ModuleInfo1, PredId, ProcId, Globals,
+				DetInfo) },
 			det_diagnose_goal(Goal, DeclaredDetism, [], DetInfo, _)
 			% XXX with the right verbosity options, we want to
 			% call report_determinism_problem only if diagnose
@@ -296,16 +295,12 @@ check_for_multisoln_func(_PredId, _ProcId, PredInfo, ProcInfo,
 		{ NumSolns \= at_most_zero },
 		{ NumSolns \= at_most_one },
 		% ... but for which all the arguments are input ...
-		{ proc_info_argmodes(ProcInfo,
-			argument_modes(ArgInstTable, PredArgModes)) },
+		{ proc_info_argmodes(ProcInfo, PredArgModes) },
 		{ pred_args_to_func_args(PredArgModes,
 			FuncArgModes, _FuncResultMode) },
-		{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo0,
-			InstMap) },
 		{ \+ (
 			list__member(FuncArgMode, FuncArgModes),
-			\+ mode_is_fully_input(InstMap, ArgInstTable,
-				ModuleInfo0, FuncArgMode)
+			\+ mode_is_fully_input(ModuleInfo0, FuncArgMode)
 		  )
 	 	} 
 	->
@@ -317,8 +312,7 @@ check_for_multisoln_func(_PredId, _ProcId, PredInfo, ProcInfo,
 		io__write_string("Error: invalid determinism for function\n"),
 		prog_out__write_context(FuncContext),
 		io__write_string("  `"),
-		report_pred_name_mode(function, PredName, PredArgModes,
-			ArgInstTable),
+		report_pred_name_mode(function, PredName, PredArgModes),
 		io__write_string("':\n"),
 		prog_out__write_context(FuncContext),
 		io__write_string(
@@ -742,7 +736,7 @@ det_diagnose_disj([Goal | Goals], Desired, Actual, SwitchContext, DetInfo,
 :- mode det_diagnose_switch(in, in, in, in, in, out, di, uo) is det.
 
 det_diagnose_switch(_Var, [], _Desired, _SwitchContext, _DetInfo, no) --> [].
-det_diagnose_switch(Var, [case(ConsId, _, Goal) | Cases], Desired,
+det_diagnose_switch(Var, [case(ConsId, Goal) | Cases], Desired,
 		SwitchContext0, DetInfo, Diagnosed) -->
 	{ SwitchContext1 = [switch_context(Var, ConsId) | SwitchContext0] },
 	det_diagnose_goal(Goal, Desired, SwitchContext1, DetInfo, Diagnosed1),
@@ -760,7 +754,7 @@ det_diagnose_missing_consids([ConsId | ConsIds], Cases, Missing) :-
 	det_diagnose_missing_consids(ConsIds, Cases, Missing0),
 	(
 		list__member(Case, Cases),
-		Case = case(ConsId, _, _)
+		Case = case(ConsId, _)
 	->
 		Missing = Missing0
 	;
@@ -850,12 +844,10 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ModeId) -->
 		),
 		{ pred_info_procedures(PredInfo, ProcTable) },
 		{ map__lookup(ProcTable, ModeId, ProcInfo) },
-		{ proc_info_declared_argmodes(ProcInfo,
-			argument_modes(ArgInstTable, ArgModes)) },
+		{ proc_info_declared_argmodes(ProcInfo, ArgModes) },
 		prog_out__write_context(Context),
 		io__write_string("  call to `"),
-		report_pred_name_mode(PredOrFunc, PredName, ArgModes,
-			ArgInstTable),
+		report_pred_name_mode(PredOrFunc, PredName, ArgModes),
 		io__write_string("'")
 	).
 
@@ -878,7 +870,6 @@ det_report_unify_context(First0, Last, Context, UnifyContext, DetInfo, LT, RT)
 	prog_out__write_context(Context),
 	{ det_get_proc_info(DetInfo, ProcInfo) },
 	{ proc_info_varset(ProcInfo, Varset) },
-	{ proc_info_inst_table(ProcInfo, InstTable) },
 	{ det_info_get_module_info(DetInfo, ModuleInfo) },
 		% We don't have the inst varset - it's not in the
 		% proc_info, so we'll just make one up....
@@ -909,13 +900,13 @@ det_report_unify_context(First0, Last, Context, UnifyContext, DetInfo, LT, RT)
 			io__write_string("of `"),
 			mercury_output_var(LT, Varset, no),
 			io__write_string("' and `"),
-			hlds_out__write_unify_rhs(RT, InstTable, ModuleInfo,
-				Varset, InstVarSet, no, 3)
+			hlds_out__write_unify_rhs(RT, ModuleInfo, Varset,
+				InstVarSet, no, 3)
 		)
 	;
 		io__write_string("with `"),
-		hlds_out__write_unify_rhs(RT, InstTable, ModuleInfo, Varset,
-			InstVarSet, no, 3)
+		hlds_out__write_unify_rhs(RT, ModuleInfo, Varset, InstVarSet,
+			no, 3)
 	),
 	io__write_string("'").
 
@@ -1267,10 +1258,7 @@ det_report_msg(error_in_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo,
 	hlds_out__write_determinism(InferredDetism),
 	io__write_string("'.\n"),
 	globals__io_get_globals(Globals),
-	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _,
-		ProcInfo) },
-	{ proc_info_inst_table(ProcInfo, InstTable) },
-	{ det_info_init(ModuleInfo, PredId, ProcId, InstTable, Globals, DetInfo) },
+	{ det_info_init(ModuleInfo, PredId, ProcId, Globals, DetInfo) },
 	det_diagnose_goal(Goal, DeclaredDetism, [], DetInfo, _),
 	io__set_exit_status(1).
 det_report_msg(par_conj_not_det(InferredDetism, PredId,
@@ -1297,11 +1285,7 @@ det_report_msg(par_conj_not_det(InferredDetism, PredId,
 	prog_out__write_context(Context),
 	io__write_string("  non-failing parallel conjunctions.\n"),
 	globals__io_get_globals(Globals),
-	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _,
-		ProcInfo) },
-	{ proc_info_inst_table(ProcInfo, InstTable) },
-	{ det_info_init(ModuleInfo, PredId, ProcId, InstTable, Globals,
-		DetInfo) },
+	{ det_info_init(ModuleInfo, PredId, ProcId, Globals, DetInfo) },
 	det_diagnose_conj(Goals, det, [], DetInfo, _),
 	io__set_exit_status(1).
 det_report_msg(pragma_c_code_without_det_decl(PredId, ProcId),

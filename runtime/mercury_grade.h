@@ -190,19 +190,19 @@
 */
 #if defined(MR_STACK_TRACE)
   #if defined(MR_REQUIRE_TRACING)
-    #define MR_GRADE_PART_14	MR_PASTE2(MR_GRADE_PART_13, _debug)
+    #define MR_GRADE_PART_12	MR_PASTE2(MR_GRADE_PART_11, _debug)
   #else
-    #define MR_GRADE_PART_14	MR_PASTE2(MR_GRADE_PART_13, _strce)
+    #define MR_GRADE_PART_12	MR_PASTE2(MR_GRADE_PART_11, _strce)
   #endif
 #else
   #if defined(MR_REQUIRE_TRACING)
-    #define MR_GRADE_PART_14	MR_PASTE2(MR_GRADE_PART_13, _trace)
+    #define MR_GRADE_PART_12	MR_PASTE2(MR_GRADE_PART_11, _trace)
   #else
-    #define MR_GRADE_PART_14	MR_GRADE_PART_13
+    #define MR_GRADE_PART_12	MR_GRADE_PART_11
   #endif
 #endif
 
-#define MR_GRADE		MR_GRADE_PART_14
+#define MR_GRADE		MR_GRADE_PART_12
 
 #define MR_GRADE_VAR		MR_PASTE2(MR_grade_,MR_GRADE)
 #define MR_GRADE_STRING 	MR_STRINGIFY(MR_GRADE)

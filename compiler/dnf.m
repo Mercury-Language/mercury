@@ -60,9 +60,9 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, prog_data, instmap, (inst), inst_table.
-:- import_module excess, make_hlds, mode_util.
-:- import_module require, map, string, int, term, varset.
+:- import_module code_aux, code_util, hlds_goal, hlds_data, prog_data, instmap.
+:- import_module dependency_graph, det_analysis, excess, make_hlds, mode_util.
+:- import_module require, map, list, string, int, bool, std_util, term, varset.
 
 	% Traverse the module structure.
 
@@ -148,11 +148,10 @@ dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_varset(ProcInfo0, VarSet),
 	proc_info_vartypes(ProcInfo0, VarTypes),
-	proc_info_inst_table(ProcInfo0, InstTable),
 	proc_info_typeinfo_varmap(ProcInfo0, TVarMap),
 	proc_info_typeclass_info_varmap(ProcInfo0, TCVarMap),
 	DnfInfo = dnf_info(TVarSet, VarTypes, ClassContext, 
-			VarSet, Markers, InstTable, TVarMap, TCVarMap, Owner),
+			VarSet, Markers, TVarMap, TCVarMap, Owner),
 
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap),
 	dnf__transform_goal(Goal0, InstMap, MaybeNonAtomic,
@@ -168,7 +167,6 @@ dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
 				class_constraints,
 				prog_varset,
 				pred_markers,
-				inst_table,
 				map(tvar, type_info_locn),
 				map(class_constraint, prog_var),
 				aditi_owner
@@ -276,7 +274,7 @@ dnf__transform_switch([], _, _, ModuleInfo, ModuleInfo, _, _, _, [],
 dnf__transform_switch([Case0 | Cases0], InstMap0, MaybeNonAtomic,
 		ModuleInfo0, ModuleInfo, Base, Counter0, DnfInfo,
 		[Case | Cases], NewPredIds0, NewPredIds) :-
-	Case0 = case(ConsId, IMDelta, Goal0),
+	Case0 = case(ConsId, Goal0),
 	goal_to_conj_list(Goal0, ConjList0),
 	% XXX should adjust instmap to account for binding of switch variable
 	dnf__transform_conj(ConjList0, InstMap0, MaybeNonAtomic,
@@ -284,7 +282,7 @@ dnf__transform_switch([Case0 | Cases0], InstMap0, MaybeNonAtomic,
 		ConjList, NewPredIds0, NewPredIds1),
 	Goal0 = _ - GoalInfo,
 	conj_list_to_goal(ConjList, GoalInfo, Goal),
-	Case = case(ConsId, IMDelta, Goal),
+	Case = case(ConsId, Goal),
 	dnf__transform_switch(Cases0, InstMap0, MaybeNonAtomic,
 		ModuleInfo1, ModuleInfo, Base, Counter1, DnfInfo,
 		Cases, NewPredIds1, NewPredIds).
@@ -380,14 +378,14 @@ dnf__get_new_pred_name(PredTable, Base, Name, N0, N) :-
 		N = N1
 	).
 
-:- pred dnf__define_new_pred(hlds_goal::in, hlds_goal::out,
-	instmap::in, string::in, dnf_info::in,
-	module_info::in, module_info::out, pred_id::out) is det.
+:- pred dnf__define_new_pred(hlds_goal::in, hlds_goal::out, instmap::in,
+	string::in, dnf_info::in, module_info::in, module_info::out,
+	pred_id::out) is det.
 
 dnf__define_new_pred(Goal0, Goal, InstMap0, PredName, DnfInfo,
 		ModuleInfo0, ModuleInfo, PredId) :-
 	DnfInfo = dnf_info(TVarSet, VarTypes, ClassContext, 
-			VarSet, Markers, InstTable, TVarMap, TCVarMap, Owner),
+			VarSet, Markers, TVarMap, TCVarMap, Owner),
 	Goal0 = _GoalExpr - GoalInfo,
 	goal_info_get_nonlocals(GoalInfo, NonLocals),
 	set__to_sorted_list(NonLocals, ArgVars),
@@ -395,9 +393,9 @@ dnf__define_new_pred(Goal0, Goal, InstMap0, PredName, DnfInfo,
 		% We could get rid of some constraints on variables
 		% that are not part of the goal.
 	hlds_pred__define_new_pred(Goal0, Goal, ArgVars, _, InstMap0, PredName,
-		TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap, VarSet,
-		Markers, Owner, address_is_not_taken, InstTable, ModuleInfo0,
-		ModuleInfo, PredProcId),
+		TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap,
+		VarSet, Markers, Owner, address_is_not_taken,
+		ModuleInfo0, ModuleInfo, PredProcId),
 	PredProcId = proc(PredId, _).
 
 %-----------------------------------------------------------------------------%
@@ -521,7 +519,7 @@ dnf__goals_free_of_nonatomic([Goal | Goals], NonAtomic) :-
 	set(pred_proc_id)::in) is semidet.
 
 dnf__cases_free_of_nonatomic([], _NonAtomic).
-dnf__cases_free_of_nonatomic([case(_, _, Goal) | Cases], NonAtomic) :-
+dnf__cases_free_of_nonatomic([case(_, Goal) | Cases], NonAtomic) :-
 	dnf__free_of_nonatomic(Goal, NonAtomic),
 	dnf__cases_free_of_nonatomic(Cases, NonAtomic).
 

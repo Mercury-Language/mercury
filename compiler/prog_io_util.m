@@ -132,7 +132,7 @@
 
 :- implementation.
 
-:- import_module prog_io, prog_io_goal, options, globals, inst_table.
+:- import_module prog_io, prog_io_goal, options, globals.
 
 % XXX we should not need to import hlds*.m here.
 % But currently we need to import hlds_data.m for the `cons_id' type
@@ -243,9 +243,7 @@ convert_mode(Term, Mode) :-
 		DetTerm = term__functor(term__atom(DetString), [], _),
 		standard_det(DetString, Detism),
 		convert_mode_list(ArgModesTerms, ArgModes),
-		inst_table_init(ArgInstTable),
-		PredInstInfo = pred_inst_info(predicate,
-			argument_modes(ArgInstTable, ArgModes), Detism),
+		PredInstInfo = pred_inst_info(predicate, ArgModes, Detism),
 		Inst = ground(shared, yes(PredInstInfo)),
 		Mode = (Inst -> Inst)
 	;
@@ -267,9 +265,7 @@ convert_mode(Term, Mode) :-
 		convert_mode_list(ArgModesTerms, ArgModes0),
 		convert_mode(RetModeTerm, RetMode),
 		list__append(ArgModes0, [RetMode], ArgModes),
-		inst_table_init(ArgInstTable),
-		FuncInstInfo = pred_inst_info(function,
-			argument_modes(ArgInstTable, ArgModes), Detism),
+		FuncInstInfo = pred_inst_info(function, ArgModes, Detism),
 		Inst = ground(shared, yes(FuncInstInfo)),
 		Mode = (Inst -> Inst)
 	;
@@ -290,7 +286,7 @@ convert_inst(Term, Result) :-
 	Term = term__functor(Name, Args0, _Context),
 	% `free' insts
 	( Name = term__atom("free"), Args0 = [] ->
-		Result = free(unique)
+		Result = free
 
 	% `any' insts
 	; Name = term__atom("any"), Args0 = [] ->
@@ -329,9 +325,7 @@ convert_inst(Term, Result) :-
 		DetTerm = term__functor(term__atom(DetString), [], _),
 		standard_det(DetString, Detism),
 		convert_mode_list(ArgModesTerm, ArgModes),
-		inst_table_init(ArgInstTable),
-		PredInst = pred_inst_info(predicate,
-			argument_modes(ArgInstTable, ArgModes), Detism),
+		PredInst = pred_inst_info(predicate, ArgModes, Detism),
 		Result = ground(shared, yes(PredInst))
 	;
 
@@ -352,9 +346,7 @@ convert_inst(Term, Result) :-
 		convert_mode_list(ArgModesTerm, ArgModes0),
 		convert_mode(RetModeTerm, RetMode),
 		list__append(ArgModes0, [RetMode], ArgModes),
-		inst_table_init(ArgInstTable),
-		FuncInst = pred_inst_info(function,
-			argument_modes(ArgInstTable, ArgModes), Detism),
+		FuncInst = pred_inst_info(function, ArgModes, Detism),
 		Result = ground(shared, yes(FuncInst))
 
 	% `not_reached' inst

@@ -36,9 +36,8 @@
 
 :- implementation.
 
-:- import_module follow_vars, liveness, hlds_goal, hlds_data, llds, trace.
-:- import_module options, globals, goal_util, mode_util, instmap, inst_match.
-:- import_module prog_data.
+:- import_module follow_vars, liveness, hlds_goal, llds, prog_data.
+:- import_module options, globals, goal_util, mode_util, instmap, trace.
 :- import_module list, map, set, std_util, assoc_list.
 :- import_module bool, int, require.
 
@@ -55,13 +54,12 @@
 store_alloc_in_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	module_info_globals(ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals, follow_vars, ApplyFollowVars),
-	proc_info_inst_table(ProcInfo0, InstTable),
 	( ApplyFollowVars = yes ->
 		proc_info_goal(ProcInfo0, Goal0),
 
 		find_final_follow_vars(ProcInfo0, FollowVars0),
 		proc_info_vartypes(ProcInfo0, VarTypes),
-		find_follow_vars_in_goal(Goal0, VarTypes, InstTable, ModuleInfo,
+		find_follow_vars_in_goal(Goal0, VarTypes, ModuleInfo,
 			FollowVars0, Goal1, FollowVars),
 		Goal1 = GoalExpr1 - GoalInfo1,
 		goal_info_set_follow_vars(GoalInfo1, yes(FollowVars),
@@ -70,7 +68,7 @@ store_alloc_in_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	;
 		proc_info_goal(ProcInfo0, Goal2)
 	),
-	initial_liveness(ProcInfo0, PredId, ModuleInfo, Liveness0, _Refs),
+	initial_liveness(ProcInfo0, PredId, ModuleInfo, Liveness0),
 	globals__get_trace_level(Globals, TraceLevel),
 	( TraceLevel \= none ->
 		trace__fail_vars(ModuleInfo, ProcInfo0, ResumeVars0)
@@ -111,14 +109,13 @@ store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, ResumeVars0, ModuleInfo,
 	% Any variables that become magically live at the end of the goal
 	% should not be included in the store map.
 	set__union(Liveness4, PostBirths, Liveness),
-	goal_info_get_refs(GoalInfo0, Refs),
 	(
 		Goal1 = switch(Var, CanFail, Cases, FollowVars)
 	->
 		set__union(Liveness4, ResumeVars0, MappedSet),
 		set__to_sorted_list(MappedSet, MappedVars),
-		store_alloc_allocate_storage(MappedVars, FollowVars, 
-			StackSlotInfo, Refs, StoreMap),
+		store_alloc_allocate_storage(MappedVars, FollowVars,
+			StackSlotInfo, StoreMap),
 		Goal = switch(Var, CanFail, Cases, StoreMap)
 	;
 		Goal1 = if_then_else(Vars, Cond, Then, Else, FollowVars)
@@ -126,7 +123,7 @@ store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, ResumeVars0, ModuleInfo,
 		set__union(Liveness4, ResumeVars0, MappedSet),
 		set__to_sorted_list(MappedSet, MappedVars),
 		store_alloc_allocate_storage(MappedVars, FollowVars,
-			StackSlotInfo, Refs, StoreMap),
+			StackSlotInfo, StoreMap),
 		Goal = if_then_else(Vars, Cond, Then, Else, StoreMap)
 	;
 		Goal1 = disj(Disjuncts, FollowVars)
@@ -134,7 +131,7 @@ store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, ResumeVars0, ModuleInfo,
 		set__union(Liveness4, ResumeVars0, MappedSet),
 		set__to_sorted_list(MappedSet, MappedVars),
 		store_alloc_allocate_storage(MappedVars, FollowVars,
-			StackSlotInfo, Refs, StoreMap),
+			StackSlotInfo, StoreMap),
 		Goal = disj(Disjuncts, StoreMap)
 	;
 		Goal = Goal1
@@ -276,11 +273,10 @@ store_alloc_in_disj([Goal0 | Goals0], Liveness0, ResumeVars0, ModuleInfo,
 	module_info, stack_slot_info, list(case), liveness_info).
 :- mode store_alloc_in_cases(in, in, in, in, in, out, out) is det.
 
-store_alloc_in_cases([], Liveness, _ResumeVars0, _ModuleInfo, _StackSlotInfo,
-		[], Liveness).
-store_alloc_in_cases([case(Cons, IMDelta, Goal0) | Goals0], Liveness0,
-		ResumeVars0, ModuleInfo, StackSlotInfo,
-		[case(Cons, IMDelta, Goal) | Goals], Liveness) :-
+store_alloc_in_cases([], Liveness, _, _, _, [], Liveness).
+store_alloc_in_cases([case(Cons, Goal0) | Goals0], Liveness0, ResumeVars0,
+		ModuleInfo, StackSlotInfo,
+		[case(Cons, Goal) | Goals], Liveness) :-
 	store_alloc_in_goal(Goal0, Liveness0, ResumeVars0, ModuleInfo,
 		StackSlotInfo, Goal, Liveness),
 	store_alloc_in_cases(Goals0, Liveness0, ResumeVars0, ModuleInfo,
@@ -303,11 +299,10 @@ store_alloc_in_cases([case(Cons, IMDelta, Goal0) | Goals0], Liveness0,
 	% real location.
 
 :- pred store_alloc_allocate_storage(list(prog_var), follow_vars,
-		stack_slot_info, set(prog_var), store_map).
-:- mode store_alloc_allocate_storage(in, in, in, in, out) is det.
+		stack_slot_info, store_map).
+:- mode store_alloc_allocate_storage(in, in, in, out) is det.
 
-store_alloc_allocate_storage(LiveVars, FollowVars, StackSlotInfo, Refs,
-		StoreMap) :-
+store_alloc_allocate_storage(LiveVars, FollowVars, StackSlotInfo, StoreMap) :-
 
 	% This addresses point 1
 	map__keys(FollowVars, FollowKeys),
@@ -320,8 +315,8 @@ store_alloc_allocate_storage(LiveVars, FollowVars, StackSlotInfo, Refs,
 		SeenLvals0, SeenLvals, StoreMap0, StoreMap1),
 
 	% This addresses point 2
-	store_alloc_allocate_extras(LiveVars, N, SeenLvals, Refs, 
-		StackSlotInfo, StoreMap1, StoreMap).
+	store_alloc_allocate_extras(LiveVars, N, SeenLvals, StackSlotInfo,
+		StoreMap1, StoreMap).
 
 :- pred store_alloc_remove_nonlive(list(prog_var), list(prog_var),
 		store_map, store_map).
@@ -345,7 +340,7 @@ store_alloc_handle_conflicts_and_nonreal([], N, N, SeenLvals, SeenLvals,
 		StoreMap, StoreMap).
 store_alloc_handle_conflicts_and_nonreal([Var | Vars], N0, N,
 		SeenLvals0, SeenLvals, StoreMap0, StoreMap) :-
-	map__lookup(StoreMap0, Var, store_info(ValOrRef, Lval)),
+	map__lookup(StoreMap0, Var, Lval),
 	(
 		( artificial_lval(Lval)
 		; set__member(Lval, SeenLvals0)
@@ -353,8 +348,7 @@ store_alloc_handle_conflicts_and_nonreal([Var | Vars], N0, N,
 	->
 		next_free_reg(N0, SeenLvals0, N1),
 		FinalLval = reg(r, N1),
-		map__det_update(StoreMap0, Var, 
-			store_info(ValOrRef, FinalLval), StoreMap1)
+		map__det_update(StoreMap0, Var, FinalLval, StoreMap1)
 	;
 		N1 = N0,
 		FinalLval = Lval,
@@ -365,12 +359,11 @@ store_alloc_handle_conflicts_and_nonreal([Var | Vars], N0, N,
 		SeenLvals1, SeenLvals, StoreMap1, StoreMap).
 
 :- pred store_alloc_allocate_extras(list(prog_var), int, set(lval),
-	set(prog_var), stack_slot_info, store_map, store_map).
-:- mode store_alloc_allocate_extras(in, in, in, in, in, in, out) is det.
+		stack_slot_info, store_map, store_map).
+:- mode store_alloc_allocate_extras(in, in, in, in, in, out) is det.
 
-store_alloc_allocate_extras([], _N, _SeenLvals, _Refs, _StackSlotInfo,
-		StoreMap, StoreMap).
-store_alloc_allocate_extras([Var | Vars], N0, SeenLvals0, Refs, StackSlotInfo,
+store_alloc_allocate_extras([], _, _, _, StoreMap, StoreMap).
+store_alloc_allocate_extras([Var | Vars], N0, SeenLvals0, StackSlotInfo,
 		StoreMap0, StoreMap) :-
 	(
 		map__contains(StoreMap0, Var)
@@ -408,18 +401,10 @@ store_alloc_allocate_extras([Var | Vars], N0, SeenLvals0, Refs, StackSlotInfo,
 			next_free_reg(N0, SeenLvals0, N1),
 			Locn = reg(r, N1)
 		),
-		(
-			set__member(Var, Refs)
-		->
-			ValOrRef = ref
-		;
-			ValOrRef = val
-		),
-		map__det_insert(StoreMap0, Var, store_info(ValOrRef, Locn),
-			StoreMap1),
+		map__det_insert(StoreMap0, Var, Locn, StoreMap1),
 		set__insert(SeenLvals0, Locn, SeenLvals1)
 	),
-	store_alloc_allocate_extras(Vars, N1, SeenLvals1, Refs, StackSlotInfo,
+	store_alloc_allocate_extras(Vars, N1, SeenLvals1, StackSlotInfo,
 		StoreMap1, StoreMap).
 
 %-----------------------------------------------------------------------------%

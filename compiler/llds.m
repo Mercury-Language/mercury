@@ -17,7 +17,7 @@
 :- interface.
 
 :- import_module hlds_pred, hlds_data, tree, prog_data, (inst).
-:- import_module builtin_ops, inst_table.
+:- import_module builtin_ops.
 
 :- import_module bool, assoc_list, list, map, set, std_util.
 
@@ -575,7 +575,7 @@
 	% the argument type of partial will have to be changed.
 :- type llds_inst
 	--->	ground
-	;	partial(inst_table, (inst)).
+	;	partial((inst)).
 
 	% An lval represents a data location or register that can be used
 	% as the target of an assignment.
@@ -777,7 +777,7 @@
 :- type mem_ref
 	--->	stackvar_ref(int)		% stack slot number
 	;	framevar_ref(int)		% stack slot number
-	;	heap_ref(rval, tag, int).	% the cell pointer,
+	;	heap_ref(rval, int, int).	% the cell pointer,
 						% the tag to subtract,
 						% and the field number
 
@@ -945,12 +945,6 @@
 				% size is a word but which may be either
 				% signed or unsigned
 				% (used for registers, stack slots, etc).
-
-	% Arguments to procedures may be either pass-by-value or
-	% pass-by-reference.
-:- type val_or_ref
-	--->	value(rval)	 % rval is the value of the variable.
-	;	reference(lval). % lval points to the location of the variable.
 
 	% given a non-var rval, figure out its type
 :- pred llds__rval_type(rval::in, llds_type::out) is det.

@@ -42,7 +42,7 @@
 :- implementation.
 :- import_module bool, int, char, std_util, require, string.
 :- import_module prog_io, prog_out, prog_util, equiv_type, purity.
-:- import_module globals, options, hlds_data, inst_table, term, varset.
+:- import_module globals, options, term, varset.
 %-----------------------------------------------------------------------------%
 
 	% The following is a hard-coded hack.
@@ -177,14 +177,10 @@ goedel_output_item(func(TypeVarSet, InstVarSet, _ExistQVars, PredName,
 		RetTypeAndMode, Context).
 
 goedel_output_item(pred_mode(VarSet, PredName, Modes, _Det, _Cond), Context) -->
-	{ Modes = argument_modes(ArgInstTable, ArgModes) },
-	goedel_output_pred_mode(VarSet, PredName, ArgModes, Context,
-			ArgInstTable).
-goedel_output_item(func_mode(VarSet, PredName, Modes, RetMode, _Det, _Cond),
+	goedel_output_pred_mode(VarSet, PredName, Modes, Context).
+goedel_output_item(func_mode(VarSet, PredName, ArgModes, RetMode, _Det, _Cond),
 		Context) -->
-	{ Modes = argument_modes(ArgInstTable, ArgModes) },
-	goedel_output_func_mode(VarSet, PredName, ArgModes, RetMode, Context,
-		ArgInstTable).
+	goedel_output_func_mode(VarSet, PredName, ArgModes, RetMode, Context).
 
 goedel_output_item(module_defn(_VarSet, _ModuleDefn), _Context) -->
 	% io__write_string("warning: module declarations not yet supported.\n").
@@ -393,19 +389,17 @@ goedel_output_remaining_ctor_args([_Name - Type | Args], VarSet) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred goedel_output_pred(tvarset, inst_varset, sym_name, types_and_modes,
+:- pred goedel_output_pred(tvarset, inst_varset, sym_name, list(type_and_mode),
 		prog_context, io__state, io__state).
 :- mode goedel_output_pred(in, in, in, in, in, di, uo) is det.
 
 goedel_output_pred(TypeVarSet, InstVarSet, PredName, TypesAndModes, Context) -->
-	{ TypesAndModes = types_and_modes(InstTable, TMs) },
-	{ split_types_and_modes(TMs, Types, MaybeModes) },
+	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
 	goedel_output_pred_type(TypeVarSet, PredName, Types, Context),
 	(
 		{ MaybeModes = yes(Modes) }
 	->
-		goedel_output_pred_mode(InstVarSet, PredName, Modes, Context,
-				InstTable)
+		goedel_output_pred_mode(InstVarSet, PredName, Modes, Context)
 	;
 		[]
 	).
@@ -451,14 +445,13 @@ goedel_output_remaining_types([Type | Types], VarSet) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred goedel_output_func(tvarset, inst_varset, sym_name, types_and_modes,
+:- pred goedel_output_func(tvarset, inst_varset, sym_name, list(type_and_mode),
 		type_and_mode, prog_context, io__state, io__state).
 :- mode goedel_output_func(in, in, in, in, in, in, di, uo) is det.
 
 goedel_output_func(TypeVarSet, InstVarSet, PredName, TypesAndModes,
 		RetTypeAndMode, Context) -->
-	{ TypesAndModes = types_and_modes(InstTable, TMs) },
-	{ split_types_and_modes(TMs, Types, MaybeModes) },
+	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
 	{ split_type_and_mode(RetTypeAndMode, RetType, MaybeRetMode) },
 	goedel_output_func_type(TypeVarSet, PredName, Types, RetType, Context),
 	(
@@ -466,7 +459,7 @@ goedel_output_func(TypeVarSet, InstVarSet, PredName, TypesAndModes,
 		{ MaybeRetMode = yes(RetMode) }
 	->
 		goedel_output_func_mode(InstVarSet, PredName, Modes, RetMode,
-			Context, InstTable)
+			Context)
 	;
 		[]
 	).
@@ -485,10 +478,10 @@ goedel_output_func_type(VarSet, FuncName, Types, RetType, _Context) -->
 	% Output a mode declaration for a predicate.
 
 :- pred goedel_output_pred_mode(inst_varset, sym_name, list(mode),
-		prog_context, inst_table, io__state, io__state).
-:- mode goedel_output_pred_mode(in, in, in, in, in, di, uo) is det.
+		prog_context, io__state, io__state).
+:- mode goedel_output_pred_mode(in, in, in, in, di, uo) is det.
 
-goedel_output_pred_mode(_VarSet, _PredName, _Modes, _Context, _InstTable) -->
+goedel_output_pred_mode(_VarSet, _PredName, _Modes, _Context) -->
 	% io__write_string("% warning: mode declarations not supported.\n"),
 	[].
 
@@ -497,11 +490,10 @@ goedel_output_pred_mode(_VarSet, _PredName, _Modes, _Context, _InstTable) -->
 	% Output a mode declaration for a function.
 
 :- pred goedel_output_func_mode(inst_varset, sym_name, list(mode), mode,
-			prog_context, inst_table, io__state, io__state).
-:- mode goedel_output_func_mode(in, in, in, in, in, in, di, uo) is det.
+			prog_context, io__state, io__state).
+:- mode goedel_output_func_mode(in, in, in, in, in, di, uo) is det.
 
-goedel_output_func_mode(_VarSet, _PredName, _Modes, _RetMode, _InstTable,
-			_Context) -->
+goedel_output_func_mode(_VarSet, _PredName, _Modes, _RetMode, _Context) -->
 	% io__write_string("% warning: mode declarations not supported.\n"),
 	[].
 

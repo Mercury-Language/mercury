@@ -143,9 +143,8 @@
 
 :- implementation.
 
-:- import_module continuation_info, type_util, llds_out, tree, hlds_data.
-:- import_module varset.
-:- import_module (inst), instmap, inst_table, inst_match, mode_util, options.
+:- import_module continuation_info, type_util, llds_out, tree, varset.
+:- import_module (inst), instmap, inst_match, mode_util, options.
 :- import_module list, bool, int, string, map, std_util, require.
 
 	% Information specific to a trace port.
@@ -186,13 +185,12 @@
 
 trace__fail_vars(ModuleInfo, ProcInfo, FailVars) :-
 	proc_info_headvars(ProcInfo, HeadVars),
-	proc_info_argmodes(ProcInfo, argument_modes(ArgInstTable, Modes)),
+	proc_info_argmodes(ProcInfo, Modes),
 	proc_info_arg_info(ProcInfo, ArgInfos),
-	proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
 	mode_list_get_final_insts(Modes, ModuleInfo, Insts),
 	(
 		trace__build_fail_vars(HeadVars, Insts, ArgInfos,
-			InstMap, ArgInstTable, ModuleInfo, FailVarsList)
+			ModuleInfo, FailVarsList)
 	->
 		set__list_to_set(FailVarsList, FailVars)
 	;
@@ -590,7 +588,6 @@ trace__produce_vars([Var | Vars], VarSet, InstMap, Tvars0, Tvars,
 		[VarInfo | VarInfos], tree(VarCode, VarsCode)) -->
 	code_info__produce_variable_in_reg_or_stack(Var, VarCode, Rval),
 	code_info__variable_type(Var, Type),
-	code_info__get_inst_table(InstTable),
 	code_info__get_module_info(ModuleInfo),
 	{
 	( Rval = lval(LvalPrime) ->
@@ -608,10 +605,10 @@ trace__produce_vars([Var | Vars], VarSet, InstMap, Tvars0, Tvars,
 		Name = ""
 	),
 	instmap__lookup_var(InstMap, Var, Inst),
-	( inst_match__inst_is_ground(Inst, InstMap, InstTable, ModuleInfo) ->
+	( inst_match__inst_is_ground(ModuleInfo, Inst) ->
 		LldsInst = ground
 	;
-		LldsInst = partial(InstTable, Inst)
+		LldsInst = partial(Inst)
 	),
 	LiveType = var(Var, Name, Type, LldsInst),
 	VarInfo = var_info(direct(Lval), LiveType),
@@ -624,18 +621,16 @@ trace__produce_vars([Var | Vars], VarSet, InstMap, Tvars0, Tvars,
 %-----------------------------------------------------------------------------%
 
 :- pred trace__build_fail_vars(list(prog_var)::in, list(inst)::in,
-	list(arg_info)::in, instmap::in, inst_table::in, module_info::in,
-	list(prog_var)::out) is semidet.
+	list(arg_info)::in, module_info::in, list(prog_var)::out) is semidet.
 
-trace__build_fail_vars([], [], [], _, _, _, []).
+trace__build_fail_vars([], [], [], _, []).
 trace__build_fail_vars([Var | Vars], [Inst | Insts], [Info | Infos],
-		InstMap, InstTable, ModuleInfo, FailVars) :-
-	trace__build_fail_vars(Vars, Insts, Infos, InstMap, InstTable,
-		ModuleInfo, FailVars0),
+		ModuleInfo, FailVars) :-
+	trace__build_fail_vars(Vars, Insts, Infos, ModuleInfo, FailVars0),
 	Info = arg_info(_Loc, ArgMode),
 	(
 		ArgMode = top_in,
-		\+ inst_is_clobbered(Inst, InstMap, InstTable, ModuleInfo)
+		\+ inst_is_clobbered(ModuleInfo, Inst)
 	->
 		FailVars = [Var | FailVars0]
 	;

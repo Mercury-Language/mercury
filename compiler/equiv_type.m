@@ -435,22 +435,14 @@ equiv_type__replace_in_type_2(Type0, VarSet0, EqvMap,
 
 %-----------------------------------------------------------------------------%
 
-:- pred equiv_type__replace_in_tms(types_and_modes, tvarset, eqv_map,
-			types_and_modes, tvarset).
+:- pred equiv_type__replace_in_tms(list(type_and_mode), tvarset, eqv_map,
+			list(type_and_mode), tvarset).
 :- mode equiv_type__replace_in_tms(in, in, in, out, out) is det.
 
-equiv_type__replace_in_tms(types_and_modes(InstTable, TMs0), VarSet0, EqvMap,
-			types_and_modes(InstTable, TMs), VarSet) :-
-	equiv_type__replace_in_tms_2(TMs0, VarSet0, EqvMap, TMs, VarSet).
-
-:- pred equiv_type__replace_in_tms_2(list(type_and_mode), tvarset, eqv_map,
-			list(type_and_mode), tvarset).
-:- mode equiv_type__replace_in_tms_2(in, in, in, out, out) is det.
-
-equiv_type__replace_in_tms_2([], VarSet, _EqvMap, [], VarSet).
-equiv_type__replace_in_tms_2([TM0|TMs0], VarSet0, EqvMap, [TM|TMs], VarSet) :-
+equiv_type__replace_in_tms([], VarSet, _EqvMap, [], VarSet).
+equiv_type__replace_in_tms([TM0|TMs0], VarSet0, EqvMap, [TM|TMs], VarSet) :-
 	equiv_type__replace_in_tm(TM0, VarSet0, EqvMap, TM, VarSet1),
-	equiv_type__replace_in_tms_2(TMs0, VarSet1, EqvMap, TMs, VarSet).
+	equiv_type__replace_in_tms(TMs0, VarSet1, EqvMap, TMs, VarSet).
 
 :- pred equiv_type__replace_in_tm(type_and_mode, tvarset, eqv_map,
 				type_and_mode, tvarset).

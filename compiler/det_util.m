@@ -17,7 +17,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, globals.
-:- import_module instmap, prog_data, inst_table.
+:- import_module instmap, prog_data.
 :- import_module bool, set, list.
 
 :- type maybe_changed	--->	changed ; unchanged.
@@ -61,9 +61,8 @@
 :- pred det_no_output_vars(set(prog_var), instmap, instmap_delta, det_info).
 :- mode det_no_output_vars(in, in, in, in) is semidet.
 
-:- pred det_info_init(module_info, pred_id, proc_id, inst_table,
-		globals, det_info).
-:- mode det_info_init(in, in, in, in, in, out) is det.
+:- pred det_info_init(module_info, pred_id, proc_id, globals, det_info).
+:- mode det_info_init(in, in, in, in, out) is det.
 
 :- pred det_info_get_module_info(det_info, module_info).
 :- mode det_info_get_module_info(in, out) is det.
@@ -73,9 +72,6 @@
 
 :- pred det_info_get_proc_id(det_info, proc_id).
 :- mode det_info_get_proc_id(in, out) is det.
-
-:- pred det_info_get_inst_table(det_info, inst_table).
-:- mode det_info_get_inst_table(in, out) is det.
 
 :- pred det_info_get_reorder_conj(det_info, bool).
 :- mode det_info_get_reorder_conj(in, out) is det.
@@ -88,9 +84,6 @@
 
 :- pred det_info_set_module_info(det_info, module_info, det_info).
 :- mode det_info_set_module_info(in, in, out) is det.
-
-:- pred det_info_set_inst_table(det_info, inst_table, det_info).
-:- mode det_info_set_inst_table(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -106,7 +99,7 @@ update_instmap(_Goal0 - GoalInfo0, InstMap0, InstMap) :-
 delete_unreachable_cases([], _, []).
 delete_unreachable_cases([_ | _], [], []).
 delete_unreachable_cases([Case | Cases0], [ConsId | ConsIds], Cases) :-
-	Case = case(CaseConsId, _IMDelta, _DisjList),
+	Case = case(CaseConsId, _DisjList),
 	( CaseConsId = ConsId ->
 		Cases = [Case | Cases1],
 		delete_unreachable_cases(Cases0, ConsIds, Cases1)
@@ -123,8 +116,8 @@ interpret_unify(X, functor(ConsId, ArgVars), Subst0, Subst) :-
 	term__var_list_to_term_list(ArgVars, ArgTerms),
 	cons_id_and_args_to_term(ConsId, ArgTerms, RhsTerm),
 	term__unify(term__variable(X), RhsTerm, Subst0, Subst).
-interpret_unify(_X, lambda_goal(_POrF, _Method, _Fix, _NonLocals, _Vars,
-			_Modes, _Det, _IMDelta, _Goal), Subst0, Subst) :-
+interpret_unify(_X, lambda_goal(_POrF, _Method, _Fix, _NonLocals,
+			_Vars, _Modes, _Det, _Goal), Subst0, Subst) :-
 		% For ease of implementation we just ignore unifications with
 		% lambda terms.  This is a safe approximation, it just
 		% prevents us from optimizing them as well as we would like.
@@ -159,9 +152,7 @@ det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn) :-
 
 det_no_output_vars(Vars, InstMap, InstMapDelta, DetInfo) :-
 	det_info_get_module_info(DetInfo, ModuleInfo),
-	det_info_get_inst_table(DetInfo, InstTable),
-	instmap__no_output_vars(InstMap, InstMapDelta, Vars, InstTable,
-		ModuleInfo).
+	instmap__no_output_vars(InstMap, InstMapDelta, Vars, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -169,30 +160,24 @@ det_no_output_vars(Vars, InstMap, InstMapDelta, DetInfo) :-
 					module_info,
 					pred_id,	% the id of the proc
 					proc_id, 	% currently processed
-					inst_table,	% the inst_table of the
-							% current proc
 					bool,		% --reorder-conj
 					bool,		% --reorder-disj
 					bool		% --fully-strict
 				).
 
-det_info_init(ModuleInfo, PredId, ProcId, InstTable, Globals, DetInfo) :-
+det_info_init(ModuleInfo, PredId, ProcId, Globals, DetInfo) :-
 	globals__lookup_bool_option(Globals, reorder_conj, ReorderConj),
 	globals__lookup_bool_option(Globals, reorder_disj, ReorderDisj),
 	globals__lookup_bool_option(Globals, fully_strict, FullyStrict),
-	DetInfo = det_info(ModuleInfo, PredId, ProcId, InstTable,
+	DetInfo = det_info(ModuleInfo, PredId, ProcId,
 		ReorderConj, ReorderDisj, FullyStrict).
 
-det_info_get_module_info(det_info(ModuleInfo, _, _, _, _, _, _), ModuleInfo).
-det_info_get_pred_id(det_info(_, PredId, _, _, _, _, _), PredId).
-det_info_get_proc_id(det_info(_, _, ProcId, _, _, _, _), ProcId).
-det_info_get_inst_table(det_info(_, _, _, InstTable, _, _, _), InstTable).
-det_info_get_reorder_conj(det_info(_, _, _, _, ReorderConj, _, _), ReorderConj).
-det_info_get_reorder_disj(det_info(_, _, _, _, _, ReorderDisj, _), ReorderDisj).
-det_info_get_fully_strict(det_info(_, _, _, _, _, _, FullyStrict), FullyStrict).
+det_info_get_module_info(det_info(ModuleInfo, _, _, _, _, _), ModuleInfo).
+det_info_get_pred_id(det_info(_, PredId, _, _, _, _), PredId).
+det_info_get_proc_id(det_info(_, _, ProcId, _, _, _), ProcId).
+det_info_get_reorder_conj(det_info(_, _, _, ReorderConj, _, _), ReorderConj).
+det_info_get_reorder_disj(det_info(_, _, _, _, ReorderDisj, _), ReorderDisj).
+det_info_get_fully_strict(det_info(_, _, _, _, _, FullyStrict), FullyStrict).
 
-det_info_set_module_info(det_info(_, B, C, D, E, F, G), ModuleInfo,
-		det_info(ModuleInfo, B, C, D, E, F, G)).
-
-det_info_set_inst_table(det_info(A, B, C, _, E, F, G), InstTable,
-		det_info(A, B, C, InstTable, E, F, G)).
+det_info_set_module_info(det_info(_, B, C, D, E, F), ModuleInfo,
+		det_info(ModuleInfo, B, C, D, E, F)).

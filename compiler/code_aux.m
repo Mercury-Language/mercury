@@ -94,7 +94,7 @@ code_aux__contains_only_builtins_2(unify(_, _, _, Uni, _)) :-
 :- mode code_aux__contains_only_builtins_cases(in) is semidet.
 
 code_aux__contains_only_builtins_cases([]).
-code_aux__contains_only_builtins_cases([case(_ConsId, _IMDelta, Goal)|Cases]) :-
+code_aux__contains_only_builtins_cases([case(_ConsId, Goal)|Cases]) :-
 	code_aux__contains_only_builtins(Goal),
 	code_aux__contains_only_builtins_cases(Cases).
 
@@ -128,7 +128,7 @@ code_aux__goal_cannot_loop_2(ModuleInfo, disj(Goals, _)) :-
 code_aux__goal_cannot_loop_2(ModuleInfo, switch(_Var, _Category, Cases, _)) :-
 	\+  (
 		list__member(Case, Cases),
-		Case = case(_, _, Goal),
+		Case = case(_, Goal),
 		\+ code_aux__goal_cannot_loop(ModuleInfo, Goal)
 	).
 code_aux__goal_cannot_loop_2(ModuleInfo, not(Goal)) :-

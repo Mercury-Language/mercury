@@ -366,13 +366,11 @@ module_qualify_item(
 		pred(A, IVs, B, SymName, TypesAndModes,  C, D, E,
 			Constraints) - Context,
 		Info0, Info, yes) -->
-	{ TypesAndModes0 = types_and_modes(InstTable, TMs0) },
-	{ list__length(TMs0, Arity) },
+	{ list__length(TypesAndModes0, Arity) },
 	{ mq_info_set_error_context(Info0, pred(SymName - Arity) - Context,
 								Info1) },
-	qualify_types_and_modes(TMs0, TMs, Info1, Info2),
-	qualify_class_constraints(Constraints0, Constraints, Info2, Info),
-	{ TypesAndModes = types_and_modes(InstTable, TMs) }.
+	qualify_types_and_modes(TypesAndModes0, TypesAndModes, Info1, Info2),
+	qualify_class_constraints(Constraints0, Constraints, Info2, Info).
 
 module_qualify_item(
 		func(A, IVs, B, SymName, TypesAndModes0, TypeAndMode0, F, G, H,
@@ -380,34 +378,28 @@ module_qualify_item(
 		func(A, IVs, B, SymName, TypesAndModes, TypeAndMode, F, G, H,
 			Constraints) - Context,
 		Info0, Info, yes) -->
-	{ TypesAndModes0 = types_and_modes(InstTable, TMs0) },
-	{ list__length(TMs0, Arity) },
+	{ list__length(TypesAndModes0, Arity) },
 	{ mq_info_set_error_context(Info0, func(SymName - Arity) - Context,
 								Info1) },
-	qualify_types_and_modes(TMs0, TMs, Info1, Info2),
+	qualify_types_and_modes(TypesAndModes0, TypesAndModes, Info1, Info2),
 	qualify_type_and_mode(TypeAndMode0, TypeAndMode, Info2, Info3),
-	{ TypesAndModes = types_and_modes(InstTable, TMs) },
 	qualify_class_constraints(Constraints0, Constraints, Info3, Info).
 
 module_qualify_item(pred_mode(A, SymName, Modes0, C, D) - Context,
 		 	pred_mode(A, SymName, Modes, C, D) - Context,
 			Info0, Info, yes) -->
-	{ Modes0 = argument_modes(InstTable, ArgModes0) },
-	{ list__length(ArgModes0, Arity) },
+	{ list__length(Modes0, Arity) },
 	{ mq_info_set_error_context(Info0, pred_mode(SymName - Arity) - Context,
 								 Info1) },
-	qualify_mode_list(ArgModes0, ArgModes, Info1, Info),
-	{ Modes = argument_modes(InstTable, ArgModes) }.
+	qualify_mode_list(Modes0, Modes, Info1, Info).
 
 module_qualify_item(func_mode(A, SymName, Modes0, Mode0, C, D) - Context, 
 		func_mode(A, SymName, Modes, Mode, C, D) - Context,
 		Info0, Info, yes) -->
-	{ Modes0 = argument_modes(InstTable, ArgModes0) },
-	{ list__length(ArgModes0, Arity) },
+	{ list__length(Modes0, Arity) },
 	{ mq_info_set_error_context(Info0, func_mode(SymName - Arity) - Context,
 								 Info1) },
-	qualify_mode_list(ArgModes0, ArgModes, Info1, Info2),
-	{ Modes = argument_modes(InstTable, ArgModes) },
+	qualify_mode_list(Modes0, Modes, Info1, Info2),
 	qualify_mode(Mode0, Mode, Info2, Info).
 
 module_qualify_item(pragma(Pragma0) - Context, pragma(Pragma) - Context,
@@ -600,13 +592,9 @@ qualify_inst_list([Inst0 | Insts0], [Inst | Insts], Info0, Info) -->
 			io__state::di, io__state::uo) is det.
 
 qualify_inst(any(A), any(A), Info, Info) --> [].
-qualify_inst(alias(V), alias(V), Info, Info) -->
-	{ error("qualify_inst: alias") }.
-qualify_inst(free(unique), free(unique), Info, Info) --> [].
-qualify_inst(free(alias), _, _, _) -->
-	{ error("compiler generated inst not expected") }.
+qualify_inst(free, free, Info, Info) --> [].
 qualify_inst(not_reached, not_reached, Info, Info) --> [].
-qualify_inst(free(_, _), _, _, _) -->
+qualify_inst(free(_), _, _, _) -->
 	{ error("compiler generated inst not expected") }.
 qualify_inst(bound(Uniq, BoundInsts0), bound(Uniq, BoundInsts),
 				Info0, Info) -->
@@ -615,11 +603,7 @@ qualify_inst(ground(Uniq, MaybePredInstInfo0), ground(Uniq, MaybePredInstInfo),
 				Info0, Info) -->
 	(
 		{ MaybePredInstInfo0 = yes(pred_inst_info(A, Modes0, Det)) },
-		% XXX This code is not correct if the pred inst has
-		%     aliasing in the argument_modes.
-		{ Modes0 = argument_modes(ArgIKT, ArgModes0) },
-		qualify_mode_list(ArgModes0, ArgModes, Info0, Info),
-		{ Modes = argument_modes(ArgIKT, ArgModes) },
+		qualify_mode_list(Modes0, Modes, Info0, Info),
 		{ MaybePredInstInfo = yes(pred_inst_info(A, Modes, Det)) }
 	;
 		{ MaybePredInstInfo0 = no },
@@ -645,7 +629,7 @@ qualify_inst_name(user_inst(SymName0, Insts0), user_inst(SymName, Insts),
 	{ list__length(Insts0, Arity) },
 	find_unique_match(SymName0 - Arity, SymName - _,
 				InstIds, inst_id, Info1, Info).
-qualify_inst_name(merge_inst(_, _, _), _, _, _) -->
+qualify_inst_name(merge_inst(_, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
 qualify_inst_name(unify_inst(_, _, _, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
@@ -660,8 +644,6 @@ qualify_inst_name(mostly_uniq_inst(_), _, _, _) -->
 qualify_inst_name(typed_ground(_, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
 qualify_inst_name(typed_inst(_, _), _, _, _) -->
-	{ error("compiler generated inst unexpected") }.
-qualify_inst_name(other_inst(_, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
 
 	% Qualify an inst of the form bound(functor(...)).
@@ -755,10 +737,10 @@ qualify_pragma(c_code(Rec, SymName, PredOrFunc, PragmaVars0, Varset, CCode),
 qualify_pragma(tabled(A, B, C, D, MModes0), tabled(A, B, C, D, MModes), 
 	Info0, Info) --> 
 	(
-		{ MModes0 = yes(argument_modes(ArgInstTable, Modes0)) }
+		{ MModes0 = yes(Modes0) }
 	->
 		qualify_mode_list(Modes0, Modes, Info0, Info),
-		{ MModes = yes(argument_modes(ArgInstTable, Modes)) }
+		{ MModes = yes(Modes) }
 	;
 		{ Info = Info0 },
 		{ MModes = no }
@@ -769,23 +751,19 @@ qualify_pragma(obsolete(A, B), obsolete(A, B), Info, Info) --> [].
 qualify_pragma(import(Name, PredOrFunc, Modes0, Attributes, CFunc),
 		import(Name, PredOrFunc, Modes, Attributes, CFunc),
 		Info0, Info) -->
-	{ Modes0 = argument_modes(InstTable, ArgModes0) },
-	qualify_mode_list(ArgModes0, ArgModes, Info0, Info),
-	{ Modes = argument_modes(InstTable, ArgModes) }.
+	qualify_mode_list(Modes0, Modes, Info0, Info).
 qualify_pragma(export(Name, PredOrFunc, Modes0, CFunc),
 		export(Name, PredOrFunc, Modes, CFunc), Info0, Info) -->
-	{ Modes0 = argument_modes(InstTable, ArgModes0) },
-	qualify_mode_list(ArgModes0, ArgModes, Info0, Info),
-	{ Modes = argument_modes(InstTable, ArgModes) }.
+	qualify_mode_list(Modes0, Modes, Info0, Info).
 qualify_pragma(unused_args(A, B, C, D, E), unused_args(A, B, C, D, E),
 				Info, Info) --> [].
 qualify_pragma(type_spec(A, B, C, D, MaybeModes0, Subst0, G),
 		type_spec(A, B, C, D, MaybeModes, Subst, G), Info0, Info) -->
 	(
-		{ MaybeModes0 = yes(argument_modes(InstTable, Modes0)) }
+		{ MaybeModes0 = yes(Modes0) }
 	->
 		qualify_mode_list(Modes0, Modes, Info0, Info1),
-		{ MaybeModes = yes(argument_modes(InstTable, Modes)) }
+		{ MaybeModes = yes(Modes) }
 	;
 		{ Info1 = Info0 },
 		{ MaybeModes = no }
@@ -814,12 +792,10 @@ qualify_pragma(owner(SymName, Arity, Owner), owner(SymName, Arity, Owner),
 		Info, Info) --> [].
 qualify_pragma(promise_pure(SymName, Arity), promise_pure(SymName, Arity),
 		Info, Info) --> [].
-qualify_pragma(termination_info(PredOrFunc, SymName, Modes0, Args, Term), 
-		termination_info(PredOrFunc, SymName, Modes, Args, Term), 
+qualify_pragma(termination_info(PredOrFunc, SymName, ModeList0, Args, Term), 
+		termination_info(PredOrFunc, SymName, ModeList, Args, Term), 
 		Info0, Info) --> 
-	{ Modes0 = argument_modes(InstTable, ArgModes0) },
-	qualify_mode_list(ArgModes0, ArgModes, Info0, Info),
-	{ Modes = argument_modes(InstTable, ArgModes) }.
+	qualify_mode_list(ModeList0, ModeList, Info0, Info).
 qualify_pragma(terminates(A, B), terminates(A, B), Info, Info) --> [].
 qualify_pragma(does_not_terminate(A, B), does_not_terminate(A, B), 
 		Info, Info) --> [].
@@ -901,9 +877,8 @@ qualify_class_method(
 			MaybeDet, Cond, ClassContext, Context), 
 		MQInfo0, MQInfo
 		) -->
-	{ TypesAndModes0 = types_and_modes(InstTable, TMs0) },
-	qualify_types_and_modes(TMs0, TMs, MQInfo0, MQInfo1),
-	{ TypesAndModes = types_and_modes(InstTable, TMs) },
+	qualify_types_and_modes(TypesAndModes0, TypesAndModes, 
+		MQInfo0, MQInfo1),
 	qualify_class_constraints(ClassContext0, ClassContext, 
 		MQInfo1, MQInfo).
 qualify_class_method(
@@ -913,9 +888,8 @@ qualify_class_method(
 			ReturnMode, MaybeDet, Cond, ClassContext, Context), 
 		MQInfo0, MQInfo
 		) -->
-	{ TypesAndModes0 = types_and_modes(InstTable, TMs0) },
-	qualify_types_and_modes(TMs0, TMs, MQInfo0, MQInfo1),
-	{ TypesAndModes = types_and_modes(InstTable, TMs) },
+	qualify_types_and_modes(TypesAndModes0, TypesAndModes, 
+		MQInfo0, MQInfo1),
 	qualify_type_and_mode(ReturnMode0, ReturnMode, MQInfo1, MQInfo2),
 	qualify_class_constraints(ClassContext0, ClassContext, 
 		MQInfo2, MQInfo).
@@ -924,9 +898,7 @@ qualify_class_method(
 		pred_mode(Varset, Name, Modes, MaybeDet, Cond, Context), 
 		MQInfo0, MQInfo
 		) -->
-	{ Modes0 = argument_modes(InstTable, ArgModes0) },
-	qualify_mode_list(ArgModes0, ArgModes, MQInfo0, MQInfo),
-	{ Modes = argument_modes(InstTable, ArgModes) }.
+	qualify_mode_list(Modes0, Modes, MQInfo0, MQInfo).
 qualify_class_method(
 		func_mode(Varset, Name, Modes0, ReturnMode0, MaybeDet, Cond,
 			Context), 
@@ -934,9 +906,7 @@ qualify_class_method(
 			Context), 
 		MQInfo0, MQInfo
 		) -->
-	{ Modes0 = argument_modes(InstTable, ArgModes0) },
-	qualify_mode_list(ArgModes0, ArgModes, MQInfo0, MQInfo1),
-	{ Modes = argument_modes(InstTable, ArgModes) },
+	qualify_mode_list(Modes0, Modes, MQInfo0, MQInfo1),
 	qualify_mode(ReturnMode0, ReturnMode, MQInfo1, MQInfo).
 
 :- pred qualify_instance_body(sym_name::in, instance_body::in, 

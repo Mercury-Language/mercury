@@ -171,8 +171,6 @@ implicitly_quantify_goal(Goal0 - GoalInfo0, Goal - GoalInfo) -->
 		{ Goal = Goal1 },
 		{ GoalInfo1 = GoalInfo0 }
 	),
-	{ goal_info_set_nonlocals(GoalInfo1, NonLocalVars, GoalInfo) }.
-	/* XXX instmap_delta_restrict no longer exists
 	{ goal_info_set_nonlocals(GoalInfo1, NonLocalVars, GoalInfo2) },
 	%
 	% If the non-locals set has shrunk (e.g. because some optimization
@@ -183,7 +181,6 @@ implicitly_quantify_goal(Goal0 - GoalInfo0, Goal - GoalInfo) -->
 	{ goal_info_get_instmap_delta(GoalInfo2, InstMapDelta0) },
 	{ instmap_delta_restrict(InstMapDelta0, NonLocalVars, InstMapDelta) },
 	{ goal_info_set_instmap_delta(GoalInfo2, InstMapDelta, GoalInfo) }.
-	*/
 
 :- pred implicitly_quantify_goal_2(hlds_goal_expr, prog_context,
 				hlds_goal_expr, quant_info, quant_info).
@@ -383,11 +380,11 @@ implicitly_quantify_unify_rhs(functor(Functor, ArgVars), Unification, _,
 	quantification__set_nonlocals(Vars).
 implicitly_quantify_unify_rhs(
 		lambda_goal(PredOrFunc, EvalMethod, FixModes, LambdaNonLocals0,
-			LambdaVars0, Modes, Det, IMD, Goal0),
+			LambdaVars0, Modes, Det, Goal0),
 		Unification0,
 		Context,
 		lambda_goal(PredOrFunc, EvalMethod, FixModes, LambdaNonLocals,
-			LambdaVars, Modes, Det, IMD, Goal),
+			LambdaVars, Modes, Det, Goal),
 		Unification
 		) -->
 	%
@@ -549,8 +546,8 @@ implicitly_quantify_disj([Goal0 | Goals0], [Goal | Goals]) -->
 implicitly_quantify_cases([], []) -->
 	{ set__init(NonLocalVars) },
 	quantification__set_nonlocals(NonLocalVars).
-implicitly_quantify_cases([case(Cons, IMDelta, Goal0) | Cases0],
-				[case(Cons, IMDelta, Goal) | Cases]) -->
+implicitly_quantify_cases([case(Cons, Goal0) | Cases0],
+				[case(Cons, Goal) | Cases]) -->
 	implicitly_quantify_goal(Goal0, Goal),
 	quantification__get_nonlocals(NonLocalVars0),
 	implicitly_quantify_cases(Cases0, Cases),
@@ -616,8 +613,8 @@ goal_list_vars_2([Goal - _GoalInfo| Goals], Set0, LambdaSet0, Set, LambdaSet) :-
 :- mode case_list_vars_2(in, in, in, out, out) is det.
 
 case_list_vars_2([], Set, LambdaSet, Set, LambdaSet).
-case_list_vars_2([case(_Cons, _IMDelta, Goal - _GoalInfo)| Cases], Set0,
-			LambdaSet0, Set, LambdaSet) :-
+case_list_vars_2([case(_Cons, Goal - _GoalInfo)| Cases], Set0, LambdaSet0,
+			Set, LambdaSet) :-
 	quantification__goal_vars_2(Goal, Set0, LambdaSet0, Set1, LambdaSet1),
 	case_list_vars_2(Cases, Set1, LambdaSet1, Set, LambdaSet).
 
@@ -729,7 +726,7 @@ quantification__unify_rhs_vars(functor(_Functor, ArgVars), Set0, LambdaSet,
 		Set, LambdaSet) :-
 	set__insert_list(Set0, ArgVars, Set).
 quantification__unify_rhs_vars(
-		lambda_goal(_POrF, _E, _F, _N, LambdaVars, _M, _D, _IMD, Goal), 
+		lambda_goal(_POrF, _E, _F, _N, LambdaVars, _M, _D, Goal), 
 		Set, LambdaSet0, Set, LambdaSet) :-
 	% Note that the NonLocals list is not counted, since all the 
 	% variables in that list must occur in the goal.

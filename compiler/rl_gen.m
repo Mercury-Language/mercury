@@ -28,7 +28,7 @@
 :- import_module code_aux, code_util, det_analysis, hlds_data, hlds_goal.
 :- import_module hlds_pred, instmap, mode_util, prog_data, prog_out.
 :- import_module rl_relops, rl_info.
-:- import_module tree, type_util, dependency_graph, inst_table.
+:- import_module tree, type_util, dependency_graph.
 :- import_module inst_match, (inst), goal_util, inlining, globals, options.
 
 :- import_module assoc_list, bool, char, int, list, map, queue.
@@ -170,16 +170,13 @@ rl_gen__scc_list_args([EntryPoint | EntryPoints],
 	{ EntryPoint = proc(PredId, ProcId) },
 	{ module_info_pred_proc_info(ModuleInfo, PredId, 
 		ProcId, PredInfo, ProcInfo) },
-	{ proc_info_argmodes(ProcInfo, argument_modes(_, ArgModes)) },
-	{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) },
-	{ proc_info_inst_table(ProcInfo, InstTable) },
+	{ proc_info_argmodes(ProcInfo, ArgModes) },
 	{ pred_info_arg_types(PredInfo, ArgTypes) },
 	{ map__init(InputMap0) },
 
 		% The input arguments are the same for each 
 		% procedure in the SCC.
-	rl_gen__scc_list_input_args(EntryPoint, 1,
-		InstMap, InstTable, ArgModes, 
+	rl_gen__scc_list_input_args(EntryPoint, 1, ArgModes, 
 		ArgTypes, [], InputRels, InputMap0, InputMap),
 	rl_gen__scc_list_output_args([EntryPoint | EntryPoints], OutputRels),
 	{ list__append(InputRels, OutputRels, AllArgs) },
@@ -191,19 +188,19 @@ rl_gen__scc_list_args([EntryPoint | EntryPoints],
 	% corresponding input arguments for each entry point have the
 	% same value. 
 :- pred rl_gen__scc_list_input_args(pred_proc_id::in, int::in,
-	instmap::in, inst_table::in, list(mode)::in, list(type)::in,
-	list(relation_id)::in, list(relation_id)::out,
-	map(int, relation_id)::in, map(int, relation_id)::out,
-	rl_info::rl_info_di, rl_info::rl_info_uo) is det.
+	list(mode)::in, list(type)::in, list(relation_id)::in, 
+	list(relation_id)::out, map(int, relation_id)::in,
+	map(int, relation_id)::out, rl_info::rl_info_di, 
+	rl_info::rl_info_uo) is det.
 
-rl_gen__scc_list_input_args(EntryPoint, ArgNo, InstMap, InstTable, ArgModes,
-		ArgTypes, RevInputRels0, InputRels, InputMap0, InputMap) -->
+rl_gen__scc_list_input_args(EntryPoint, ArgNo, ArgModes, ArgTypes,
+		RevInputRels0, InputRels, InputMap0, InputMap) -->
 	(
 		{ ArgModes = [Mode | Modes] },
 		{ ArgTypes = [Type | Types] }
 	->
 		rl_info_get_module_info(ModuleInfo),
-		( { mode_is_input(InstMap, InstTable, ModuleInfo, Mode) } ->
+		( { mode_is_input(ModuleInfo, Mode) } ->
 			(
 				{ type_is_higher_order(Type, predicate,
 					(aditi_bottom_up), PredArgTypes) } 
@@ -233,9 +230,8 @@ rl_gen__scc_list_input_args(EntryPoint, ArgNo, InstMap, InstTable, ArgModes,
 			{ InputMap1 = InputMap0 }
 		),
 		{ NextArgNo is ArgNo + 1 },
-		rl_gen__scc_list_input_args(EntryPoint, NextArgNo, InstMap,
-			InstTable, Modes, Types, RevInputRels1, InputRels,
-			InputMap1, InputMap)
+		rl_gen__scc_list_input_args(EntryPoint, NextArgNo, Modes, 
+			Types, RevInputRels1, InputRels, InputMap1, InputMap)
 	;
 		{ ArgModes = [] },
 		{ ArgTypes = [] }
@@ -968,16 +964,12 @@ rl_gen__collect_call_info(CallGoal, MaybeNegGoals, DBCall) -->
 				InputArgs, OutputArgs, GoalInfo) }
 	;
 		{ CallGoal = generic_call(higher_order(Var, predicate, _),
-			Args, argument_modes(_, ArgModes), _) - GoalInfo }
+			Args, ArgModes, _) - GoalInfo }
 	->
 		{ CallId = ho_called_var(Var) },
 		rl_info_get_module_info(ModuleInfo),
-		rl_info_get_proc_info(ProcInfo),
-		{ proc_info_inst_table(ProcInfo, InstTable) },
-		{ proc_info_get_initial_instmap(ProcInfo,
-			ModuleInfo, InstMap) },
-		{ partition_args(InstMap, InstTable, ModuleInfo, ArgModes,
-			Args, InputArgs, OutputArgs) },
+		{ partition_args(ModuleInfo, ArgModes, Args,
+			InputArgs, OutputArgs) },
 		{ DBCall = db_call(CallId, MaybeNegGoals, InputArgs,
 			OutputArgs, GoalInfo) }
 	;

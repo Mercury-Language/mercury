@@ -37,8 +37,8 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 	Goal = GoalExpr - GoalInfo,
 	(
 		GoalExpr = switch(Var, cannot_fail, [Case1, Case2], SM),
-		Case1 = case(ConsId1, _, Goal1),
-		Case2 = case(ConsId2, _, Goal2),
+		Case1 = case(ConsId1, Goal1),
+		Case2 = case(ConsId2, Goal2),
 		(
 			code_aux__contains_only_builtins(Goal1),
 			code_aux__contains_simple_recursive_call(Goal2,
@@ -127,11 +127,11 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, StoreMap,
 
 	code_info__remember_position(BranchStart),
 	code_gen__generate_goal(model_det, Base, BaseGoalCode),
-	code_info__generate_branch_end(StoreMap, no, no, MaybeEnd1,
+	code_info__generate_branch_end(StoreMap, no, MaybeEnd1,
 		BaseSaveCode),
 	code_info__reset_to_position(BranchStart),
 	code_gen__generate_goal(model_det, Recursive, RecGoalCode),
-	code_info__generate_branch_end(StoreMap, no, MaybeEnd1, MaybeEnd,
+	code_info__generate_branch_end(StoreMap, MaybeEnd1, MaybeEnd,
 		RecSaveCode),
 
 	code_info__post_goal_update(SwitchGoalInfo),

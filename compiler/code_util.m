@@ -621,7 +621,7 @@ code_util__goal_may_allocate_heap_2(if_then_else(_Vars, A, B, C, _)) :-
 :- pred code_util__cases_may_allocate_heap(list(case)).
 :- mode code_util__cases_may_allocate_heap(in) is semidet.
 
-code_util__cases_may_allocate_heap([case(_, _, Goal) | _]) :-
+code_util__cases_may_allocate_heap([case(_, Goal) | _]) :-
 	code_util__goal_may_allocate_heap(Goal).
 code_util__cases_may_allocate_heap([_ | Cases]) :-
 	code_util__cases_may_allocate_heap(Cases).
@@ -768,7 +768,7 @@ code_util__cannot_stack_flush_goals([Goal | Goals]) :-
 :- mode code_util__cannot_stack_flush_cases(in) is semidet.
 
 code_util__cannot_stack_flush_cases([]).
-code_util__cannot_stack_flush_cases([case(_, _, Goal) | Cases]) :-
+code_util__cannot_stack_flush_cases([case(_, Goal) | Cases]) :-
 	code_util__cannot_stack_flush(Goal),
 	code_util__cannot_stack_flush_cases(Cases).
 
@@ -901,8 +901,8 @@ code_util__count_recursive_calls_disj([Goal | Goals], PredId, ProcId,
 
 code_util__count_recursive_calls_cases([], _, _, _, _) :-
 	error("empty cases in code_util__count_recursive_calls_cases").
-code_util__count_recursive_calls_cases([case(_, _, Goal) | Cases],
-		PredId, ProcId, Min, Max) :-
+code_util__count_recursive_calls_cases([case(_, Goal) | Cases], PredId, ProcId,
+		Min, Max) :-
 	( Cases = [] ->
 		code_util__count_recursive_calls(Goal, PredId, ProcId,
 			Min, Max)

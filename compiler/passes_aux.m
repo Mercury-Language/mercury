@@ -13,7 +13,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, prog_data, inst_table.
+:- import_module hlds_module, hlds_pred, prog_data.
 :- import_module io, std_util, list, bool.
 
 %-----------------------------------------------------------------------------%
@@ -35,9 +35,6 @@
 		;	update_pred_error(pred_error_task)
 		;	update_module(pred(
 				proc_info, proc_info,
-				module_info, module_info))
-		;	update_module_predid(pred(
-				pred_id, proc_info, proc_info,
 				module_info, module_info))
 		;	update_module_io(pred(
 				pred_id, proc_id, proc_info, proc_info,
@@ -97,8 +94,6 @@ about unbound type variables.
 		;	update_pred_error(pred(in, in, out, in, out,
 				out, out, di, uo) is det)
 		;	update_module(pred(in, out, in, out) is det)
-		;	update_module_predid(pred(in,
-				in, out, in, out) is det)
 		;	update_module_io(pred(in, in, in, out,
 				in, out, di, uo) is det)
 		;	update_module_cookie(pred(in, in, in, out, in, out,
@@ -163,8 +158,8 @@ about unbound type variables.
 :- mode report_pred_proc_id(in, in, in, in, out, di, uo) is det.
 
 :- pred report_pred_name_mode(pred_or_func, string, list((mode)),
-			inst_table, io__state, io__state).
-:- mode report_pred_name_mode(in, in, in, in, di, uo) is det.
+				io__state, io__state).
+:- mode report_pred_name_mode(in, in, in, di, uo) is det.
 	
 %-----------------------------------------------------------------------------%
 
@@ -280,11 +275,6 @@ process_nonimported_procs([ProcId | ProcIds], PredId, Task0, Task,
 	(
 		Task0 = update_module(Closure),
 		call(Closure, Proc0, Proc, ModuleInfo0, ModuleInfo8),
-		Task1 = Task0,
-		State9 = State0
-	;
-		Task0 = update_module_predid(Closure),
-		call(Closure, PredId, Proc0, Proc, ModuleInfo0, ModuleInfo8),
 		Task1 = Task0,
 		State9 = State0
 	;
@@ -468,8 +458,7 @@ report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context) -->
 	{ pred_info_arity(PredInfo, Arity) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ proc_info_context(ProcInfo, Context) },
-	{ proc_info_argmodes(ProcInfo,
-		argument_modes(ArgInstTable, ArgModes0)) },
+	{ proc_info_argmodes(ProcInfo, ArgModes0) },
 
 	% We need to strip off the extra type_info arguments inserted at the
 	% front by polymorphism.m - we only want the last `PredArity' of them.
@@ -489,35 +478,36 @@ report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context) -->
 	),
 	prog_out__write_context(OutContext),
 	io__write_string("In `"),
-	report_pred_name_mode(PredOrFunc, PredName, ArgModes, ArgInstTable),
+	report_pred_name_mode(PredOrFunc, PredName, ArgModes),
 	io__write_string("':\n").
 
 
-report_pred_name_mode(predicate, PredName, ArgModes, InstTable) -->
+report_pred_name_mode(predicate, PredName, ArgModes) -->
 	io__write_string(PredName),
 	( { ArgModes \= [] } ->
 		{ varset__init(InstVarSet) },	% XXX inst var names
 		io__write_string("("),
 		{ strip_builtin_qualifiers_from_mode_list(ArgModes,
 								ArgModes1) },
-		mercury_output_mode_list(ArgModes1, InstVarSet, InstTable),
+		mercury_output_mode_list(ArgModes1, InstVarSet),
 		io__write_string(")")
 	;
 		[]
 	).
 
-report_pred_name_mode(function, FuncName, ArgModes, InstTable) -->
+report_pred_name_mode(function, FuncName, ArgModes) -->
 	{ varset__init(InstVarSet) },	% XXX inst var names
 	{ strip_builtin_qualifiers_from_mode_list(ArgModes, ArgModes1) },
 	{ pred_args_to_func_args(ArgModes1, FuncArgModes, FuncRetMode) },
 	io__write_string(FuncName),
 	( { FuncArgModes \= [] } ->
 		io__write_string("("),
-		mercury_output_mode_list(FuncArgModes, InstVarSet, InstTable),
+		mercury_output_mode_list(FuncArgModes, InstVarSet),
 		io__write_string(")")
 	;
 		[]
 	),
 	io__write_string(" = "),
-	mercury_output_mode(FuncRetMode, InstVarSet, InstTable).
+	mercury_output_mode(FuncRetMode, InstVarSet).
+
 %-----------------------------------------------------------------------------%

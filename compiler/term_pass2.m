@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------
-% Copyright (C) 1997-1999 The University of Melbourne.
+% Copyright (C) 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------
@@ -25,8 +25,8 @@
 
 :- implementation.
 
-:- import_module term_traversal, term_errors, instmap, inst_table.
-:- import_module hlds_data, hlds_goal, prog_data, type_util, mode_util.
+:- import_module term_traversal, term_errors.
+:- import_module hlds_goal, prog_data, type_util, mode_util.
 
 :- import_module std_util, bool, int, assoc_list.
 :- import_module set, bag, map, term, require.
@@ -102,10 +102,8 @@ init_rec_input_suppliers([PPId | PPIds], Module, RecSupplierMap) :-
 	PPId = proc(PredId, ProcId),
 	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
 	proc_info_headvars(ProcInfo, HeadVars),
-	proc_info_argmodes(ProcInfo, argument_modes(ArgInstTable, ArgModes)),
-	proc_info_get_initial_instmap(ProcInfo, Module, ProcInstMap),
-	partition_call_args(Module, ProcInstMap, ArgInstTable, ArgModes,
-			HeadVars, InArgs, _OutVars),
+	proc_info_argmodes(ProcInfo, ArgModes),
+	partition_call_args(Module, ArgModes, HeadVars, InArgs, _OutVars),
 	MapIsInput = lambda([HeadVar::in, Bool::out] is det,
 	(
 		( bag__contains(InArgs, HeadVar) ->
@@ -197,10 +195,9 @@ init_rec_input_suppliers_single_arg(TrialPPId, RestSCC, ArgNum, Module,
 		RecSupplierMap) :-
 	TrialPPId = proc(PredId, ProcId),
 	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
-	proc_info_argmodes(ProcInfo, argument_modes(ArgInstTable, ArgModes)),
-	proc_info_get_initial_instmap(ProcInfo, Module, ProcInstMap),
+	proc_info_argmodes(ProcInfo, ArgModes),
 	init_rec_input_suppliers_add_single_arg(ArgModes, ArgNum,
-		ProcInstMap, ArgInstTable, Module, TrialPPIdRecSuppliers),
+		Module, TrialPPIdRecSuppliers),
 	map__init(RecSupplierMap0),
 	map__det_insert(RecSupplierMap0, TrialPPId, TrialPPIdRecSuppliers,
 		RecSupplierMap1),
@@ -208,14 +205,12 @@ init_rec_input_suppliers_single_arg(TrialPPId, RestSCC, ArgNum, Module,
 		RecSupplierMap1, RecSupplierMap).
 
 :- pred init_rec_input_suppliers_add_single_arg(list(mode)::in, int::in,
-	instmap::in, inst_table::in, module_info::in, list(bool)::out)
-	is semidet.
+	module_info::in, list(bool)::out) is semidet.
 
-init_rec_input_suppliers_add_single_arg([Mode | Modes], ArgNum, InstMap,
-		ArgInstTable,
-		Module, BoolList) :-
+init_rec_input_suppliers_add_single_arg([Mode | Modes], ArgNum, Module,
+		BoolList) :-
 	(
-		mode_is_input(InstMap, ArgInstTable, Module, Mode),
+		mode_is_input(Module, Mode),
 		ArgNum = 1
 	->
 		MapToNo = lambda([_Mode::in, Bool::out] is det,
@@ -226,11 +221,11 @@ init_rec_input_suppliers_add_single_arg([Mode | Modes], ArgNum, InstMap,
 		BoolList = [yes | BoolList1]
 	;
 		(
-			mode_is_output(InstMap, ArgInstTable, Module, Mode)
+			mode_is_output(Module, Mode)
 		->
 			NextArgNum = ArgNum
 		;
-			mode_is_input(InstMap, ArgInstTable, Module, Mode),
+			mode_is_input(Module, Mode),
 			ArgNum > 1
 		->
 			NextArgNum is ArgNum - 1
@@ -239,7 +234,7 @@ init_rec_input_suppliers_add_single_arg([Mode | Modes], ArgNum, InstMap,
 		)
 	->
 		init_rec_input_suppliers_add_single_arg(Modes, NextArgNum,
-			InstMap, ArgInstTable, Module, BoolList1),
+			Module, BoolList1),
 		BoolList = [no | BoolList1]
 	;
 		fail
@@ -355,18 +350,15 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, Module, PassInfo,
 	PPId = proc(PredId, ProcId),
 	module_info_pred_proc_info(Module, PredId, ProcId, PredInfo, ProcInfo),
 	pred_info_context(PredInfo, Context),
-	proc_info_inst_table(ProcInfo, InstTable),
 	proc_info_goal(ProcInfo, Goal),
 	proc_info_vartypes(ProcInfo, VarTypes),
-	proc_info_get_initial_instmap(ProcInfo, Module, ProcInstMap),
 	map__init(EmptyMap),
 	PassInfo = pass_info(FunctorInfo, MaxErrors, MaxPaths),
-	init_traversal_params(Module, InstTable, FunctorInfo, PPId, Context,
-		VarTypes, EmptyMap, RecSupplierMap, MaxErrors, MaxPaths,
-		Params),
+	init_traversal_params(Module, FunctorInfo, PPId, Context, VarTypes,
+		EmptyMap, RecSupplierMap, MaxErrors, MaxPaths, Params),
 	set__init(PathSet0),
 	Info0 = ok(PathSet0, []),
-	traverse_goal(Goal, ProcInstMap, _, Params, Info0, Info),
+	traverse_goal(Goal, Params, Info0, Info),
 	(
 		Info = ok(Paths, CanLoop),
 		require(unify(CanLoop, []),

@@ -68,7 +68,6 @@
 		;	statistics
 		;	debug_types
 		;	debug_modes
-		;	debug_inst_keys
 		;	debug_det
 		;	debug_opt
 		;	debug_vn	% vn = value numbering
@@ -422,7 +421,6 @@ option_defaults_2(verbosity_option, [
 	statistics		-	bool(no),
 	debug_types		- 	bool(no),
 	debug_modes		- 	bool(no),
-	debug_inst_keys		- 	bool(no),
 	debug_det		- 	bool(no),
 	debug_opt		- 	bool(no),
 	debug_vn		- 	int(0),
@@ -770,7 +768,6 @@ long_option("verbose-error-messages",	verbose_errors).
 long_option("statistics",		statistics).
 long_option("debug-types",		debug_types).
 long_option("debug-modes",		debug_modes).
-long_option("debug-inst-keys",		debug_inst_keys).
 long_option("debug-determinism",	debug_det).
 long_option("debug-det",		debug_det).
 long_option("debug-opt",		debug_opt).
@@ -1280,9 +1277,9 @@ opt_level(2, _, [
 	inline_simple		-	bool(yes),
 	inline_single_use	-	bool(yes),
 	inline_compound_threshold -	int(10),
-	%common_struct		-	bool(yes),	% YYY
-	%user_guided_type_specialization		% YYY 
-	%			-	bool(yes),
+	common_struct		-	bool(yes),
+	user_guided_type_specialization
+				-	bool(yes),
 /****
 % XXX optimize_duplicate_calls is broken --
 % it doesn't take type information into account.
@@ -1301,8 +1298,8 @@ opt_level(3, _, [
 %%%	optimize_copyprop	-	bool(yes),
 	optimize_saved_vars	-	bool(yes),
 	optimize_unused_args	-	bool(yes),	
-	%optimize_higher_order	-	bool(yes), % YYY
-	%deforestation		-	bool(yes), % YYY
+	optimize_higher_order	-	bool(yes),
+	deforestation		-	bool(yes),
 	constant_propagation	-	bool(yes),
 	optimize_repeat		-	int(4)
 ]).

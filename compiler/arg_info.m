@@ -18,7 +18,6 @@
 :- module arg_info.
 :- interface. 
 :- import_module hlds_module, hlds_pred, llds, prog_data.
-:- import_module instmap, inst_table.
 :- import_module list, assoc_list.
 
 :- pred generate_arg_info(module_info, module_info).
@@ -27,15 +26,14 @@
 :- pred arg_info__unify_arg_info(code_model, list(arg_info)).
 :- mode arg_info__unify_arg_info(in, out) is det.
 
-:- pred make_arg_infos(list(type), list(mode), code_model,
-			instmap, inst_table, module_info, list(arg_info)).
-:- mode make_arg_infos(in, in, in, in, in, in, out) is det.
-
+:- pred make_arg_infos(list(type), list(mode), code_model, module_info,
+	list(arg_info)).
+:- mode make_arg_infos(in, in, in, in, out) is det.
 
 	% Given a list of the head variables and their argument information,
 	% return a list giving the input variables and their initial locations.
 :- pred arg_info__build_input_arg_list(assoc_list(prog_var, arg_info),
-	assoc_list(prog_var, val_or_ref)).
+	assoc_list(prog_var, rval)).
 :- mode arg_info__build_input_arg_list(in, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -43,7 +41,7 @@
 
 :- implementation.
 
-:- import_module code_util, mode_util, instmap.
+:- import_module code_util, mode_util.
 :- import_module std_util, map, int, require.
 
 %-----------------------------------------------------------------------------%
@@ -96,13 +94,9 @@ generate_proc_list_arg_info(PredId, [ProcId | ProcIds],
 :- mode generate_proc_arg_info(in, in, in, out) is det.
 
 generate_proc_arg_info(ProcInfo0, ArgTypes, ModuleInfo, ProcInfo) :-
-	proc_info_argmodes(ProcInfo0, argument_modes(InstTable, ArgModes)),
+	proc_info_argmodes(ProcInfo0, ArgModes),
 	proc_info_interface_code_model(ProcInfo0, CodeModel),
-	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo, InstMap),
-
-	make_arg_infos(ArgTypes, ArgModes, CodeModel, InstMap,
-		InstTable, ModuleInfo, ArgInfo),
-
+	make_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo),
 	proc_info_set_arg_info(ProcInfo0, ArgInfo, ProcInfo).
 
 %---------------------------------------------------------------------------%
@@ -122,24 +116,23 @@ generate_proc_arg_info(ProcInfo0, ArgTypes, ModuleInfo, ProcInfo) :-
 	% where the first register is reserved for the result and hence
 	% the output arguments start at register number 2.
 
-make_arg_infos(ArgTypes, ArgModes, CodeModel, InstMap, InstTable,
-		ModuleInfo, ArgInfo) :-
+make_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo) :-
 	( CodeModel = model_semi ->
 		StartReg = 2
 	;
 		StartReg = 1
 	),
-	make_arg_infos_list(ArgModes, ArgTypes, 1, StartReg, InstMap,
-		InstTable, ModuleInfo, ArgInfo).
+	make_arg_infos_list(ArgModes, ArgTypes, 1, StartReg,
+		ModuleInfo, ArgInfo).
 
-:- pred make_arg_infos_list(list(mode), list(type), int, int, instmap,
-	inst_table, module_info, list(arg_info)).
-:- mode make_arg_infos_list(in, in, in, in, in, in, in, out) is det.
+:- pred make_arg_infos_list(list(mode), list(type), int, int,
+	module_info, list(arg_info)).
+:- mode make_arg_infos_list(in, in, in, in, in, out) is det.
 
-make_arg_infos_list([], [], _, _, _, _, _, []).
+make_arg_infos_list([], [], _, _, _, []).
 make_arg_infos_list([Mode | Modes], [Type | Types], InReg0, OutReg0,
-		InstMap, InstTable, ModuleInfo, [ArgInfo | ArgInfos]) :-
-	mode_to_arg_mode(InstMap, InstTable, ModuleInfo, Mode, Type, ArgMode),
+		ModuleInfo, [ArgInfo | ArgInfos]) :-
+	mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
 	(
 		ArgMode = top_in,
 		ArgReg = InReg0,
@@ -158,27 +151,13 @@ make_arg_infos_list([Mode | Modes], [Type | Types], InReg0, OutReg0,
 		ArgReg = OutReg0,
 		InReg1 = InReg0,
 		OutReg1 is OutReg0 + 1
-	;
-		% Treat aliased args as input because we need to pass in 
-		% a pointer to the memory location.
-		ArgMode = ref_in,
-		ArgReg = InReg0,
-		InReg1 is InReg0 + 1,
-		OutReg1 = OutReg0
-	;
-		% Treat ref_out the same as output because we will need to
-		% return a reference.
-		ArgMode = ref_out,
-		ArgReg = OutReg0,
-		InReg1 = InReg0,
-		OutReg1 is OutReg0 + 1
 	),
 	ArgInfo = arg_info(ArgReg, ArgMode),
 	make_arg_infos_list(Modes, Types, InReg1, OutReg1,
-		InstMap, InstTable, ModuleInfo, ArgInfos).
-make_arg_infos_list([], [_|_], _, _, _, _, _, _) :-
+		ModuleInfo, ArgInfos).
+make_arg_infos_list([], [_|_], _, _, _, _) :-
 	error("make_arg_infos_list: length mis-match").
-make_arg_infos_list([_|_], [], _, _, _, _, _, _) :-
+make_arg_infos_list([_|_], [], _, _, _, _) :-
 	error("make_arg_infos_list: length mis-match").
 
 %---------------------------------------------------------------------------%
@@ -195,12 +174,11 @@ arg_info__unify_arg_info(model_non, _) :-
 arg_info__build_input_arg_list([], []).
 arg_info__build_input_arg_list([V - Arg | Rest0], VarArgs) :-
 	Arg = arg_info(Loc, Mode),
-	( Mode = top_in  ->
+	(
+		Mode = top_in
+	->
 		code_util__arg_loc_to_register(Loc, Reg),
-		VarArgs = [V - value(lval(Reg)) | VarArgs0]
-	; Mode = ref_in ->
-		code_util__arg_loc_to_register(Loc, Reg),
-		VarArgs = [V - reference(Reg) | VarArgs0]
+		VarArgs = [V - lval(Reg) | VarArgs0]
 	;
 		VarArgs = VarArgs0
 	),

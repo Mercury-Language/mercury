@@ -60,7 +60,7 @@
 :- import_module hlds_data, mode_debug, modecheck_unify, modecheck_call.
 :- import_module mode_util, prog_out, hlds_out, mercury_to_mercury, passes_aux.
 :- import_module modes, prog_data, mode_errors, llds, unify_proc.
-:- import_module (inst), instmap, inst_match, inst_util, inst_table.
+:- import_module (inst), instmap, inst_match, inst_util.
 :- import_module term, varset.
 :- import_module int, list, map, set, std_util, require, assoc_list, string.
 
@@ -134,7 +134,8 @@ unique_modes__check_goal(Goal0, Goal, ModeInfo0, ModeInfo) :-
 	% over this goal, and save that instmap_delta in the goal_info.
 	%
 	mode_info_get_instmap(ModeInfo, InstMap),
-	compute_instmap_delta(InstMap0, InstMap, DeltaInstMap),
+	goal_info_get_nonlocals(GoalInfo0, NonLocals),
+	compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap),
 	goal_info_set_instmap_delta(GoalInfo0, DeltaInstMap, GoalInfo),
 
 	Goal = GoalExpr - GoalInfo.
@@ -185,27 +186,26 @@ select_nondet_live_vars([Var|Vars], ModeInfo, NondetLiveVars) :-
 	% (other than changes which just add information,
 	% e.g. `ground -> bound(42)'.)
 	%
-:- pred select_changed_inst_vars(list(prog_var), instmap, instmap, mode_info,
-				list(prog_var)).
-:- mode select_changed_inst_vars(in, in, in, mode_info_ui, out) is det.
+:- pred select_changed_inst_vars(list(prog_var), instmap_delta, mode_info,
+		list(prog_var)).
+:- mode select_changed_inst_vars(in, in, mode_info_ui, out) is det.
 
-select_changed_inst_vars([], _InstMapBefore, _InstMapAfter, _ModeInfo, []).
-select_changed_inst_vars([Var | Vars], InstMapBefore, InstMapAfter,
-		ModeInfo, ChangedVars) :-
+select_changed_inst_vars([], _DeltaInstMap, _ModeInfo, []).
+select_changed_inst_vars([Var | Vars], DeltaInstMap, ModeInfo, ChangedVars) :-
 	mode_info_get_module_info(ModeInfo, ModuleInfo),
-	mode_info_get_inst_table(ModeInfo, InstTable),
-	instmap__lookup_var(InstMapBefore, Var, Inst0),
-	instmap__lookup_var(InstMapAfter, Var, Inst),
+	mode_info_get_instmap(ModeInfo, InstMap0),
+	instmap__lookup_var(InstMap0, Var, Inst0),
 	(
-		\+ inst_matches_final_ignore_aliasing(Inst, InstMapAfter,
-			Inst0, InstMapBefore, InstTable, ModuleInfo)
+		instmap_delta_is_reachable(DeltaInstMap),
+		instmap_delta_search_var(DeltaInstMap, Var, Inst),
+		\+ inst_matches_final(Inst, Inst0, ModuleInfo)
 	->
 		ChangedVars = [Var | ChangedVars1],
-		select_changed_inst_vars(Vars, InstMapBefore, InstMapAfter,
-			ModeInfo, ChangedVars1)
+		select_changed_inst_vars(Vars, DeltaInstMap, ModeInfo,
+			ChangedVars1)
 	;
-		select_changed_inst_vars(Vars, InstMapBefore, InstMapAfter,
-			ModeInfo, ChangedVars)
+		select_changed_inst_vars(Vars, DeltaInstMap, ModeInfo,
+			ChangedVars)
 	).
 
 :- pred make_var_list_mostly_uniq(list(prog_var), mode_info, mode_info).
@@ -222,7 +222,6 @@ make_var_list_mostly_uniq([Var | Vars], ModeInfo0, ModeInfo) :-
 make_var_mostly_uniq(Var, ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
-	mode_info_get_inst_table(ModeInfo0, InstTable0),
 	(
 		%
 		% only variables which are `unique' need to be changed
@@ -231,18 +230,16 @@ make_var_mostly_uniq(Var, ModeInfo0, ModeInfo) :-
 		instmap__vars_list(InstMap0, Vars),
 		list__member(Var, Vars),
 		instmap__lookup_var(InstMap0, Var, Inst0),
-		inst_expand(InstMap0, InstTable0, ModuleInfo0, Inst0, Inst1),
+		inst_expand(ModuleInfo0, Inst0, Inst1),
 		( Inst1 = ground(unique, _)
 		; Inst1 = bound(unique, _)
 		; Inst1 = any(unique)
 		)
 	->
-		make_mostly_uniq_inst(Inst0, InstTable0, ModuleInfo0, InstMap0,
-			Inst, InstTable, ModuleInfo, InstMap1),
+		make_mostly_uniq_inst(Inst0, ModuleInfo0, Inst, ModuleInfo),
 		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
-		mode_info_set_inst_table(InstTable, ModeInfo1, ModeInfo2),
-		instmap__set(InstMap1, Var, Inst, InstMap),
-		mode_info_set_instmap(InstMap, ModeInfo2, ModeInfo)
+		instmap__set(InstMap0, Var, Inst, InstMap),
+		mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo)
 	;
 		ModeInfo = ModeInfo0
 	).
@@ -252,29 +249,28 @@ make_var_mostly_uniq(Var, ModeInfo0, ModeInfo) :-
 :- mode unique_modes__check_goal_2(in, in, out, mode_info_di, mode_info_uo)
 		is det.
 
-unique_modes__check_goal_2(conj(List0), GoalInfo0, conj(List)) -->
-	mode_checkpoint(enter, "conj", GoalInfo0),
+unique_modes__check_goal_2(conj(List0), _GoalInfo0, conj(List)) -->
+	mode_checkpoint(enter, "conj"),
 	( { List0 = [] } ->	% for efficiency, optimize common case
 		{ List = [] }
 	;
 		mode_info_add_goals_live_vars(List0),
 		unique_modes__check_conj(List0, List)
 	),
-	mode_checkpoint(exit, "conj", GoalInfo0).
+	mode_checkpoint(exit, "conj").
 
 unique_modes__check_goal_2(par_conj(List0, SM), GoalInfo0,
 		par_conj(List, SM)) -->
-	mode_checkpoint(enter, "par_conj", GoalInfo0),
+	mode_checkpoint(enter, "par_conj"),
 	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
-	mode_info_dcg_get_instmap(InstMapBefore),
 	mode_info_add_live_vars(NonLocals),
 	unique_modes__check_par_conj(List0, List, InstMapList),
-	instmap__unify(NonLocals, InstMapBefore, InstMapList),
+	instmap__unify(NonLocals, InstMapList),
 	mode_info_remove_live_vars(NonLocals),
-	mode_checkpoint(exit, "par_conj", GoalInfo0).
+	mode_checkpoint(exit, "par_conj").
 
 unique_modes__check_goal_2(disj(List0, SM), GoalInfo0, disj(List, SM)) -->
-	mode_checkpoint(enter, "disj", GoalInfo0),
+	mode_checkpoint(enter, "disj"),
 	( { List0 = [] } ->
 		{ List = [] },
 		{ instmap__init_unreachable(InstMap) },
@@ -297,21 +293,17 @@ unique_modes__check_goal_2(disj(List0, SM), GoalInfo0, disj(List, SM)) -->
 		unique_modes__check_disj(List0, List, InstMapList),
 		instmap__merge(NonLocals, InstMapList, disj)
 	),
-	mode_checkpoint(exit, "disj", GoalInfo0).
+	mode_checkpoint(exit, "disj").
 
 unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal)
 		-->
-	mode_checkpoint(enter, "if-then-else", GoalInfo0),
-
-	mode_info_dcg_get_instmap(InstMap0),
-	{ instmap__vars(InstMap0, OuterNonLocals) },
-	{ goal_info_get_nonlocals(GoalInfo0, InnerNonLocals) },
-	{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
-
+	mode_checkpoint(enter, "if-then-else"),
+	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	{ unique_modes__goal_get_nonlocals(A0, A_Vars) },
 	{ unique_modes__goal_get_nonlocals(B0, B_Vars) },
 	{ unique_modes__goal_get_nonlocals(C0, C_Vars) },
-	mode_info_lock_vars(if_then_else, InnerNonLocals),
+	mode_info_dcg_get_instmap(InstMap0),
+	mode_info_lock_vars(if_then_else, NonLocals),
 
 	%
 	% At this point, we should set the inst of any `unique'
@@ -346,18 +338,15 @@ unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal)
 	{ select_live_vars(A_Vars_List, ModeInfo, A_Live_Vars) },
 	{ A0 = _ - A0_GoalInfo },
 	{ goal_info_get_instmap_delta(A0_GoalInfo, A0_DeltaInstMap) },
-	{ mode_info_get_instmap(ModeInfo, InstMapBefore) },
-	{ instmap__apply_instmap_delta(InstMapBefore, A0_DeltaInstMap,
-				InstMapAfter) },
-	{ select_changed_inst_vars(A_Live_Vars, InstMapBefore, InstMapAfter,
-				ModeInfo, ChangedVars) },
+	{ select_changed_inst_vars(A_Live_Vars, A0_DeltaInstMap, ModeInfo,
+				ChangedVars) },
 	make_var_list_mostly_uniq(ChangedVars),
 	mode_info_remove_live_vars(C_Vars),
 
 	mode_info_add_live_vars(B_Vars),
 	unique_modes__check_goal(A0, A),
 	mode_info_remove_live_vars(B_Vars),
-	mode_info_unlock_vars(if_then_else, InnerNonLocals),
+	mode_info_unlock_vars(if_then_else, NonLocals),
 	mode_info_dcg_get_instmap(InstMapA),
 	( { instmap__is_reachable(InstMapA) } ->
 		unique_modes__check_goal(B0, B),
@@ -375,10 +364,10 @@ unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal)
 	mode_info_set_instmap(InstMap0),
 	instmap__merge(NonLocals, [InstMapB, InstMapC], if_then_else),
 	{ Goal = if_then_else(Vs, A, B, C, SM) },
-	mode_checkpoint(exit, "if-then-else", GoalInfo0).
+	mode_checkpoint(exit, "if-then-else").
 
 unique_modes__check_goal_2(not(A0), GoalInfo0, not(A)) -->
-	mode_checkpoint(enter, "not", GoalInfo0),
+	mode_checkpoint(enter, "not"),
 	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	mode_info_dcg_get_instmap(InstMap0),
 	{ set__to_sorted_list(NonLocals, NonLocalsList) },
@@ -389,18 +378,17 @@ unique_modes__check_goal_2(not(A0), GoalInfo0, not(A)) -->
 	unique_modes__check_goal(A0, A),
 	mode_info_unlock_vars(negation, NonLocals),
 	mode_info_set_instmap(InstMap0),
-	mode_checkpoint(exit, "not", GoalInfo0).
+	mode_checkpoint(exit, "not").
 
-unique_modes__check_goal_2(some(Vs, CanRemove, G0), GoalInfo0,
+unique_modes__check_goal_2(some(Vs, CanRemove, G0), _,
 		some(Vs, CanRemove, G)) -->
-	mode_checkpoint(enter, "some", GoalInfo0),
+	mode_checkpoint(enter, "some"),
 	unique_modes__check_goal(G0, G),
-	mode_checkpoint(exit, "some", GoalInfo0).
+	mode_checkpoint(exit, "some").
 
-unique_modes__check_goal_2(Goal,
-		GoalInfo0, Goal) -->
-	{ Goal = generic_call(GenericCall, Args, Modes, Det) },
-	mode_checkpoint(enter, "generic_call", GoalInfo0),
+unique_modes__check_goal_2(generic_call(GenericCall, Args, Modes, Det),
+		_GoalInfo0, Goal) -->
+	mode_checkpoint(enter, "generic_call"),
 	{ hlds_goal__generic_call_id(GenericCall, CallId) },
 	mode_info_set_call_context(call(CallId)),
 	{ determinism_components(Det, _, at_most_zero) ->
@@ -409,11 +397,6 @@ unique_modes__check_goal_2(Goal,
 		NeverSucceeds = no
 	},
 	{ determinism_to_code_model(Det, CodeModel) },
-	{ Modes = argument_modes(ArgInstTable, ArgModes0) },
-	mode_info_dcg_get_inst_table(InstTable0),
-	{ inst_table_create_sub(InstTable0, ArgInstTable, Sub, InstTable) },
-	mode_info_set_inst_table(InstTable),
-	{ list__map(apply_inst_table_sub_mode(Sub), ArgModes0, ArgModes) },
 
 	{
 		GenericCall = higher_order(_, _, _),
@@ -435,16 +418,17 @@ unique_modes__check_goal_2(Goal,
 		)
 	},
 
-	unique_modes__check_call_modes(Args, ArgModes, ArgOffset, CodeModel,
-		NeverSucceeds),
+	unique_modes__check_call_modes(Args, Modes, ArgOffset,
+		CodeModel, NeverSucceeds),
+	{ Goal = generic_call(GenericCall, Args, Modes, Det) },
 	mode_info_unset_call_context,
-	mode_checkpoint(exit, "generic_call", GoalInfo0).
+	mode_checkpoint(exit, "generic_call").
 
 unique_modes__check_goal_2(call(PredId, ProcId0, Args, Builtin, CallContext,
-		PredName), GoalInfo0, Goal) -->
+		PredName), _GoalInfo0, Goal) -->
 	{ prog_out__sym_name_to_string(PredName, PredNameString) },
 	{ string__append("call ", PredNameString, CallString) },
-	mode_checkpoint(enter, CallString, GoalInfo0),
+	mode_checkpoint(enter, CallString),
 
 	=(ModeInfo),
 	{ mode_info_get_call_id(ModeInfo, PredId, CallId) },
@@ -453,42 +437,39 @@ unique_modes__check_goal_2(call(PredId, ProcId0, Args, Builtin, CallContext,
 	unique_modes__check_call(PredId, ProcId0, Args, ProcId),
 	{ Goal = call(PredId, ProcId, Args, Builtin, CallContext, PredName) },
 	mode_info_unset_call_context,
-	mode_checkpoint(exit, "call", GoalInfo0).
+	mode_checkpoint(exit, "call").
 
 unique_modes__check_goal_2(unify(A0, B0, _, UnifyInfo0, UnifyContext),
 		GoalInfo0, Goal) -->
-	mode_checkpoint(enter, "unify", GoalInfo0),
+	mode_checkpoint(enter, "unify"),
 	mode_info_set_call_context(unify(UnifyContext)),
 
 	modecheck_unification(A0, B0, UnifyInfo0, UnifyContext, GoalInfo0,
 		Goal),
 
 	mode_info_unset_call_context,
-	mode_checkpoint(exit, "unify", GoalInfo0).
+	mode_checkpoint(exit, "unify").
 
 unique_modes__check_goal_2(switch(Var, CanFail, Cases0, SM), GoalInfo0,
 		switch(Var, CanFail, Cases, SM)) -->
-	mode_checkpoint(enter, "switch", GoalInfo0),
+	mode_checkpoint(enter, "switch"),
 	( { Cases0 = [] } ->
 		{ Cases = [] },
 		{ instmap__init_unreachable(InstMap) },
 		mode_info_set_instmap(InstMap)
 	;
-		mode_info_dcg_get_instmap(InstMap0),
-		{ instmap__vars(InstMap0, OuterNonLocals) },
-		{ goal_info_get_nonlocals(GoalInfo0, InnerNonLocals) },
-		{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
+		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 		unique_modes__check_case_list(Cases0, Var, Cases, InstMapList),
 		instmap__merge(NonLocals, InstMapList, disj)
 	),
-	mode_checkpoint(exit, "switch", GoalInfo0).
+	mode_checkpoint(exit, "switch").
 
 	% to modecheck a pragma_c_code, we just modecheck the proc for 
 	% which it is the goal.
 unique_modes__check_goal_2(pragma_c_code(IsRecursive, PredId, ProcId0,
 		Args, ArgNameMap, OrigArgTypes, PragmaCode),
-		GoalInfo, Goal) -->
-	mode_checkpoint(enter, "pragma_c_code", GoalInfo),
+		_GoalInfo, Goal) -->
+	mode_checkpoint(enter, "pragma_c_code"),
 	=(ModeInfo),
 	{ mode_info_get_call_id(ModeInfo, PredId, CallId) },
 	mode_info_set_call_context(call(call(CallId))),
@@ -496,7 +477,7 @@ unique_modes__check_goal_2(pragma_c_code(IsRecursive, PredId, ProcId0,
 	{ Goal = pragma_c_code(IsRecursive, PredId, ProcId, Args,
 			ArgNameMap, OrigArgTypes, PragmaCode) },
 	mode_info_unset_call_context,
-	mode_checkpoint(exit, "pragma_c_code", GoalInfo).
+	mode_checkpoint(exit, "pragma_c_code").
 
 :- pred unique_modes__check_call(pred_id, proc_id, list(prog_var), proc_id, 
 			mode_info, mode_info).
@@ -516,39 +497,32 @@ unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId,
 	%
 	% first off, try using the existing mode
 	%
-	mode_info_get_module_info(ModeInfo1, ModuleInfo),
+	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId0,
 		PredInfo, ProcInfo),
 	compute_arg_offset(PredInfo, ArgOffset),
 	proc_info_argmodes(ProcInfo, ProcArgModes0),
-
-	ProcArgModes0 = argument_modes(ArgInstTable, ArgModes0),
-	mode_info_get_inst_table(ModeInfo1, InstTable1),
-	inst_table_create_sub(InstTable1, ArgInstTable, Sub, InstTable),
-	mode_info_set_inst_table(InstTable, ModeInfo1, ModeInfo2),
-	list__map(apply_inst_table_sub_mode(Sub), ArgModes0, ArgModes),
-
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	proc_info_never_succeeds(ProcInfo, NeverSucceeds),
-	unique_modes__check_call_modes(ArgVars, ArgModes, ArgOffset, CodeModel,
-				NeverSucceeds, ModeInfo2, ModeInfo3),
+	unique_modes__check_call_modes(ArgVars, ProcArgModes0, ArgOffset,
+			CodeModel, NeverSucceeds, ModeInfo1, ModeInfo2),
 
 	%
 	% see whether or not that worked
 	% (and restore the old error list)
 	%
-	mode_info_get_errors(ModeInfo3, Errors),
-	mode_info_set_errors(OldErrors, ModeInfo3, ModeInfo4),
-	mode_info_get_may_change_called_proc(ModeInfo4, MayChangeCalledProc),
+	mode_info_get_errors(ModeInfo2, Errors),
+	mode_info_set_errors(OldErrors, ModeInfo2, ModeInfo3),
+	mode_info_get_may_change_called_proc(ModeInfo3, MayChangeCalledProc),
 	( Errors = [] ->
 		ProcId = ProcId0,
-		ModeInfo = ModeInfo4
+		ModeInfo = ModeInfo3
 	; MayChangeCalledProc = may_not_change_called_proc ->
 		% We're not allowed to try a different procedure
 		% here, so just return all the errors.
 		ProcId = ProcId0,
 		list__append(OldErrors, Errors, AllErrors),
-		mode_info_set_errors(AllErrors, ModeInfo4, ModeInfo)
+		mode_info_set_errors(AllErrors, ModeInfo3, ModeInfo)
 	;
 		%
 		% If it didn't work, restore the original instmap,
@@ -564,10 +538,10 @@ unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId,
 		% as a result of unique mode analysis.  That is OK,
 		% because uniqueness should not affect determinism.
 		%
-		mode_info_set_instmap(InstMap0, ModeInfo4, ModeInfo5),
+		mode_info_set_instmap(InstMap0, ModeInfo3, ModeInfo4),
 		proc_info_inferred_determinism(ProcInfo, Determinism),
 		modecheck_call_pred(PredId, ProcId0, ArgVars, yes(Determinism),
-			ProcId, NewArgVars, ExtraGoals, ModeInfo5, ModeInfo),
+			ProcId, NewArgVars, ExtraGoals, ModeInfo4, ModeInfo),
 		
 		( NewArgVars = ArgVars, ExtraGoals = no_extra_goals ->
 			true
@@ -703,19 +677,19 @@ unique_modes__check_disj([Goal0 | Goals0], [Goal | Goals],
 unique_modes__check_case_list([], _Var, [], []) --> [].
 unique_modes__check_case_list([Case0 | Cases0], Var,
 			[Case | Cases], [InstMap | InstMaps]) -->
-	{ Case0 = case(ConsId, _, Goal0) },
-	{ Case = case(ConsId, IMDelta, Goal) },
+	{ Case0 = case(ConsId, Goal0) },
+	{ Case = case(ConsId, Goal) },
 	mode_info_dcg_get_instmap(InstMap0),
 
 		% record the fact that Var was bound to ConsId in the
 		% instmap before processing this case
-	mode_info_bind_var_to_functor(Var, ConsId),
-	mode_info_dcg_get_instmap(InstMap1),
-	% { instmap__vars(InstMap0, InstMapVars) },
-	{ compute_instmap_delta(InstMap0, InstMap1, IMDelta) },
+	{ cons_id_arity(ConsId, Arity) },
+	{ list__duplicate(Arity, free, ArgInsts) },
+	modecheck_set_var_inst(Var,
+		bound(unique, [functor(ConsId, ArgInsts)])),
 
-	mode_info_dcg_get_instmap(InstMap2),
-	( { instmap__is_reachable(InstMap2) } ->
+	mode_info_dcg_get_instmap(InstMap1),
+	( { instmap__is_reachable(InstMap1) } ->
 		unique_modes__check_goal(Goal0, Goal1)
 	;
 		% We should not mode-analyse the goal, since it is unreachable.
@@ -725,8 +699,8 @@ unique_modes__check_case_list([Case0 | Cases0], Var,
 	),
 
 	mode_info_dcg_get_instmap(InstMap),
-	% { fixup_switch_var(Var, InstMap0, InstMap, Goal1, Goal) },
-	{ Goal = Goal1 },
+	{ fixup_switch_var(Var, InstMap0, InstMap, Goal1, Goal) },
+
 	mode_info_set_instmap(InstMap0),
 	unique_modes__check_case_list(Cases0, Var, Cases, InstMaps).
 

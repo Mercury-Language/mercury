@@ -61,11 +61,11 @@
 
 :- implementation.
 
+:- import_module map, list, std_util, hlds_pred, hlds_data, prog_data, require.
 :- import_module type_util, assoc_list, mode_util, inst_match, hlds_module.
-:- import_module base_typeclass_info, hlds_goal, prog_out, hlds_pred.
-:- import_module inst_util, instmap, error_util, mercury_to_mercury.
-:- import_module typecheck, globals, options, make_hlds, hlds_data, prog_data. 
-:- import_module term, varset, int, std_util, list, string, set, map, require.
+:- import_module typecheck, int, globals, options, make_hlds, error_util. 
+:- import_module base_typeclass_info, string, hlds_goal, set, prog_out.
+:- import_module mercury_to_mercury, varset, term.
 
 :- type error_message == pair(prog_context, list(format_component)).
 :- type error_messages == list(error_message).
@@ -217,7 +217,7 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 							% arguments.
 		class_constraints,			% Constraints from
 							% class method.
-		list(pair(argument_modes, determinism)),% Modes and 
+		list(pair(list(mode), determinism)),	% Modes and 
 							% determinisms of the
 							% required procs.
 		error_messages,				% Error messages

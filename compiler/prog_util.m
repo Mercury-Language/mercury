@@ -196,7 +196,7 @@ split_types_and_modes_2([TM|TMs], Result0, [T|Ts], [M|Ms], Result) :-
 :- pred split_type_and_mode(type_and_mode, bool, type, mode, bool).
 :- mode split_type_and_mode(in, in, out, out, out) is det.
 
-split_type_and_mode(type_only(T), _, T, (free(unique) -> free(unique)), no).
+split_type_and_mode(type_only(T), _, T, (free -> free), no).
 split_type_and_mode(type_and_mode(T,M), R, T, M, R).
 
 split_type_and_mode(type_only(T), T, no).

@@ -185,7 +185,7 @@
 :- import_module prog_io_goal, prog_io_dcg, prog_io_pragma, prog_io_util.
 :- import_module prog_io_typeclass.
 :- import_module hlds_data, hlds_pred, prog_util, prog_out.
-:- import_module globals, options, (inst), inst_table.
+:- import_module globals, options, (inst).
 
 :- import_module int, string, std_util, parser, term_io, dir, require.
 :- import_module assoc_list.
@@ -1649,13 +1649,10 @@ process_pred_2(ok(F, As0), PredType, VarSet0, MaybeDet, Cond, ExistQVars,
 	( convert_type_and_mode_list(As0, As) ->
 		( verify_type_and_mode_list(As) ->
 	        	get_purity(Attributes0, Purity, Attributes),
-			inst_table_init(InstTable),
-			TypesAndModes = types_and_modes(InstTable, As),
 			varset__coerce(VarSet0, TVarSet),
 			varset__coerce(VarSet0, IVarSet),
 			Result0 = ok(pred(TVarSet, IVarSet, ExistQVars, F,
-				TypesAndModes, MaybeDet, Cond, Purity,
-				ClassContext)),
+				As, MaybeDet, Cond, Purity, ClassContext)),
 			check_no_attributes(Result0, Attributes, Result)
 		;
 			Result = error("some but not all arguments have modes",
@@ -1927,13 +1924,11 @@ process_func_3(ok(F, As0), FuncTerm, ReturnTypeTerm, VarSet0, MaybeDet, Cond,
 				% note: impure or semipure functions are not
 				% allowed
 				Purity = (pure),
-				inst_table_init(InstTable),
-				TypesAndModes = types_and_modes(InstTable, As),
 				varset__coerce(VarSet0, TVarSet),
 				varset__coerce(VarSet0, IVarSet),
 				Result0 = ok(func(TVarSet, IVarSet, ExistQVars,
-					F, TypesAndModes, ReturnType, MaybeDet,
-					Cond, Purity, ClassContext)),
+					F, As, ReturnType, MaybeDet, Cond,
+					Purity, ClassContext)),
 				check_no_attributes(Result0, Attributes,
 					Result)
 			)
@@ -1980,10 +1975,8 @@ process_pred_mode(ok(F, As0), PredMode, VarSet0, MaybeDet, Cond, Result) :-
 	(
 		convert_mode_list(As0, As)
 	->
-		inst_table_init(InstTable),
-		ArgModes = argument_modes(InstTable, As),
 		varset__coerce(VarSet0, VarSet),
-		Result = ok(pred_mode(VarSet, F, ArgModes, MaybeDet, Cond))
+		Result = ok(pred_mode(VarSet, F, As, MaybeDet, Cond))
 	;
 		Result = error("syntax error in predicate mode declaration",
 				PredMode)
@@ -2000,11 +1993,9 @@ process_func_mode(ok(F, As0), FuncMode, RetMode0, VarSet0, MaybeDet, Cond,
 		convert_mode_list(As0, As)
 	->
 		( convert_mode(RetMode0, RetMode) ->
-			inst_table_init(InstTable),
-			ArgModes = argument_modes(InstTable, As),
 			varset__coerce(VarSet0, VarSet),
-			Result = ok(func_mode(VarSet, F, ArgModes, RetMode,
-					MaybeDet, Cond))
+			Result = ok(func_mode(VarSet, F, As, RetMode, MaybeDet,
+					Cond))
 		;
 			Result = error(
 		"syntax error in return mode of function mode declaration",

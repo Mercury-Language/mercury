@@ -27,7 +27,7 @@
 :- interface.
 
 :- import_module hlds_data, hlds_goal, hlds_module, hlds_pred.
-:- import_module instmap, prog_data, inst_table.
+:- import_module instmap, prog_data.
 :- import_module bool, list, set, map, term.
 
 	% goal_util__rename_vars_in_goals(GoalList, MustRename, Substitution,
@@ -127,17 +127,17 @@
 
 	% Convert a switch back into a disjunction. This is needed 
 	% for the magic set transformation.
-:- pred goal_util__switch_to_disjunction(prog_var, list(case), instmap,
-		inst_table, list(hlds_goal), prog_varset, prog_varset,
-		map(prog_var, type), map(prog_var, type), module_info).
-:- mode goal_util__switch_to_disjunction(in, in, in, in, out,
-		in, out, in, out, in) is det.
+:- pred goal_util__switch_to_disjunction(prog_var, list(case), instmap, 
+		list(hlds_goal), prog_varset, prog_varset, map(prog_var, type),
+		map(prog_var, type), module_info, module_info).
+:- mode goal_util__switch_to_disjunction(in, in, in, out,
+		in, out, in, out, in, out) is det.
 
 :- pred goal_util__case_to_disjunct(prog_var, cons_id, hlds_goal, instmap,
-		inst_table, instmap_delta, hlds_goal, prog_varset, prog_varset,
-		map(prog_var, type), map(prog_var, type), module_info).
-:- mode goal_util__case_to_disjunct(in, in, in, in, in, in, out, in, out,
-		in, out, in) is det.
+		hlds_goal, prog_varset, prog_varset, map(prog_var, type),
+		map(prog_var, type), module_info, module_info).
+:- mode goal_util__case_to_disjunct(in, in, in, in, out, in, out,
+		in, out, in, out) is det.
 
 	% Transform an if-then-else into ( Cond, Then ; \+ Cond, Else ),
 	% since magic.m and rl_gen.m don't handle if-then-elses.
@@ -155,9 +155,8 @@
 	% - any possible change in termination behaviour is allowed
 	% 	according to the semantics options.
 	%
-:- pred goal_util__can_reorder_goals(module_info::in, bool::in, 
-		inst_table::in, instmap::in, hlds_goal::in,
-		instmap::in, hlds_goal::in) is semidet.
+:- pred goal_util__can_reorder_goals(module_info::in, bool::in, instmap::in,
+		hlds_goal::in, instmap::in, hlds_goal::in) is semidet.
 
 	% goal_util__reordering_maintains_termination(ModuleInfo,
 	%		 FullyStrict, Goal1, Goal2)
@@ -367,9 +366,8 @@ goal_util__name_apart_list([G0 | Gs0], Must, Subn, [G | Gs]) :-
 :- mode goal_util__name_apart_cases(in, in, in, out) is det.
 
 goal_util__name_apart_cases([], _Must, _Subn, []).
-goal_util__name_apart_cases([case(Cons, IMDelta0, G0) | Gs0], Must, Subn,
-		[case(Cons, IMDelta, G) | Gs]) :-
-	instmap_delta_apply_sub(IMDelta0, Must, Subn, IMDelta),
+goal_util__name_apart_cases([case(Cons, G0) | Gs0], Must, Subn,
+		[case(Cons, G) | Gs]) :-
 	goal_util__rename_vars_in_goal(G0, Must, Subn, G),
 	goal_util__name_apart_cases(Gs0, Must, Subn, Gs).
 
@@ -386,11 +384,10 @@ goal_util__rename_unify_rhs(functor(Functor, ArgVars0), Must, Subn,
 	goal_util__rename_var_list(ArgVars0, Must, Subn, ArgVars).
 goal_util__rename_unify_rhs(
 	    lambda_goal(PredOrFunc, EvalMethod, FixModes, NonLocals0,
-	    		Vars0, Modes, Det, IMDelta0, Goal0),
+	    		Vars0, Modes, Det, Goal0),
 	    Must, Subn, 
 	    lambda_goal(PredOrFunc, EvalMethod, FixModes, NonLocals,
-	    		Vars, Modes, Det, IMDelta, Goal)) :-
-	instmap_delta_apply_sub(IMDelta0, Must, Subn, IMDelta),
+	    		Vars, Modes, Det, Goal)) :-
 	goal_util__rename_var_list(NonLocals0, Must, Subn, NonLocals),
 	goal_util__rename_var_list(Vars0, Must, Subn, Vars),
 	goal_util__rename_vars_in_goal(Goal0, Must, Subn, Goal).
@@ -583,7 +580,7 @@ goal_util__goals_goal_vars([Goal - _ | Goals], Set0, Set) :-
 :- mode goal_util__cases_goal_vars(in, in, out) is det.
 
 goal_util__cases_goal_vars([], Set, Set).
-goal_util__cases_goal_vars([case(_, _, Goal - _) | Cases], Set0, Set) :-
+goal_util__cases_goal_vars([case(_, Goal - _) | Cases], Set0, Set) :-
 	goal_util__goal_vars_2(Goal, Set0, Set1),
 	goal_util__cases_goal_vars(Cases, Set1, Set).
 
@@ -595,8 +592,7 @@ goal_util__rhs_goal_vars(var(X), Set0, Set) :-
 goal_util__rhs_goal_vars(functor(_Functor, ArgVars), Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
 goal_util__rhs_goal_vars(
-		lambda_goal(_, _, _, NonLocals, LambdaVars, _M, _D, _IMDelta,
-				Goal - _), 
+		lambda_goal(_, _, _, NonLocals, LambdaVars, _M, _D, Goal - _), 
 		Set0, Set) :-
 	set__insert_list(Set0, NonLocals, Set1),
 	set__insert_list(Set1, LambdaVars, Set2),
@@ -663,7 +659,7 @@ goals_size([Goal | Goals], Size) :-
 :- mode cases_size(in, out) is det.
 
 cases_size([], 0).
-cases_size([case(_, _, Goal) | Cases], Size) :-
+cases_size([case(_, Goal) | Cases], Size) :-
 	goal_size(Goal, Size1),
 	cases_size(Cases, Size2),
 	Size is Size1 + Size2.
@@ -718,7 +714,7 @@ goals_calls([Goal | Goals], PredProcId) :-
 :- mode cases_calls(in, in) is semidet.
 :- mode cases_calls(in, out) is nondet.
 
-cases_calls([case(_, _, Goal) | Cases], PredProcId) :-
+cases_calls([case(_, Goal) | Cases], PredProcId) :-
 	(
 		goal_calls(Goal, PredProcId)
 	;
@@ -767,7 +763,7 @@ goals_calls_pred_id([Goal | Goals], PredId) :-
 :- pred cases_calls_pred_id(list(case), pred_id).
 :- mode cases_calls_pred_id(in, in) is semidet.
 
-cases_calls_pred_id([case(_, _, Goal) | Cases], PredId) :-
+cases_calls_pred_id([case(_, Goal) | Cases], PredId) :-
 	(
 		goal_calls_pred_id(Goal, PredId)
 	;
@@ -799,30 +795,28 @@ goal_expr_calls_pred_id(call(PredId, _, _, _, _, _), PredId).
 
 %-----------------------------------------------------------------------------%
 
-goal_util__switch_to_disjunction(_, [], _, _, [], VarSet, VarSet, 
-		VarTypes, VarTypes, _).
-goal_util__switch_to_disjunction(Var, [case(ConsId, IMDelta, Goal0) | Cases],
-		InstMap, InstTable, [Goal | Goals], VarSet0, VarSet,
-		VarTypes0, VarTypes, ModuleInfo) :-
-	goal_util__case_to_disjunct(Var, ConsId, Goal0, InstMap, InstTable,
-		IMDelta, Goal, VarSet0, VarSet1, VarTypes0, VarTypes1,
-		ModuleInfo),
-	goal_util__switch_to_disjunction(Var, Cases, InstMap, InstTable, Goals,
-		VarSet1, VarSet, VarTypes1, VarTypes, ModuleInfo).
+goal_util__switch_to_disjunction(_, [], _, [], VarSet, VarSet, 
+		VarTypes, VarTypes, ModuleInfo, ModuleInfo).
+goal_util__switch_to_disjunction(Var, [case(ConsId, Goal0) | Cases], InstMap, 
+		[Goal | Goals], VarSet0, VarSet, VarTypes0, VarTypes, 
+		ModuleInfo0, ModuleInfo) :-
+	goal_util__case_to_disjunct(Var, ConsId, Goal0, InstMap, Goal, VarSet0,
+		VarSet1, VarTypes0, VarTypes1, ModuleInfo0, ModuleInfo1),
+	goal_util__switch_to_disjunction(Var, Cases, InstMap, Goals,
+		VarSet1, VarSet, VarTypes1, VarTypes, ModuleInfo1, ModuleInfo).
 
-goal_util__case_to_disjunct(Var, ConsId, CaseGoal, InstMap, InstTable,
-		InstMapDelta, Disjunct, VarSet0, VarSet, VarTypes0, VarTypes,
-		ModuleInfo) :-
+goal_util__case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct, VarSet0, 
+		VarSet, VarTypes0, VarTypes, ModuleInfo0, ModuleInfo) :-
 	cons_id_arity(ConsId, ConsArity),
 	varset__new_vars(VarSet0, ConsArity, ArgVars, VarSet),
 	map__lookup(VarTypes0, Var, VarType),
-	type_util__get_cons_id_arg_types(ModuleInfo,
+	type_util__get_cons_id_arg_types(ModuleInfo0,
 		VarType, ConsId, ArgTypes),
 	map__det_insert_from_corresponding_lists(VarTypes0, ArgVars,
 		ArgTypes, VarTypes),
 	instmap__lookup_var(InstMap, Var, Inst0),
 	(
-		inst_expand(InstMap, InstTable, ModuleInfo, Inst0, Inst1),
+		inst_expand(ModuleInfo, Inst0, Inst1),
 		get_arg_insts(Inst1, ConsId, ConsArity, ArgInsts1)
 	->
 		ArgInsts = ArgInsts1
@@ -831,17 +825,20 @@ goal_util__case_to_disjunct(Var, ConsId, CaseGoal, InstMap, InstTable,
 	),
 	InstToUniMode =
 		lambda([ArgInst::in, ArgUniMode::out] is det, (
-			ArgUniMode = ((ArgInst - free(unique))
-					-> (ArgInst - ArgInst))
+			ArgUniMode = ((ArgInst - free) -> (ArgInst - ArgInst))
 		)),
 	list__map(InstToUniMode, ArgInsts, UniModes),
-	UniMode = (Inst0 - Inst0) - (Inst0 - Inst0),
+	UniMode = (Inst0 -> Inst0) - (Inst0 -> Inst0),
 	UnifyContext = unify_context(explicit, []),
 	Unification = deconstruct(Var, ConsId, ArgVars, UniModes, can_fail),
 	ExtraGoal = unify(Var, functor(ConsId, ArgVars),
 		UniMode, Unification, UnifyContext),
 	set__singleton_set(NonLocals, Var),
-	goal_info_init(NonLocals, InstMapDelta, semidet, ExtraGoalInfo),
+	instmap_delta_init_reachable(ExtraInstMapDelta0),
+	instmap_delta_bind_var_to_functor(Var, ConsId, InstMap,
+		ExtraInstMapDelta0, ExtraInstMapDelta, 
+		ModuleInfo0, ModuleInfo),
+	goal_info_init(NonLocals, ExtraInstMapDelta, semidet, ExtraGoalInfo),
 
 	% Conjoin the test and the rest of the case.
 	goal_to_conj_list(CaseGoal, CaseGoalConj),
@@ -853,12 +850,11 @@ goal_util__case_to_disjunct(Var, ConsId, CaseGoal, InstMap, InstTable,
 	goal_info_get_nonlocals(CaseGoalInfo, CaseNonLocals0),
 	set__insert(CaseNonLocals0, Var, CaseNonLocals),
 	goal_info_get_instmap_delta(CaseGoalInfo, CaseInstMapDelta),
-	instmap_delta_apply_instmap_delta(InstMapDelta, 
-		CaseInstMapDelta, GoalInstMapDelta),
+	instmap_delta_apply_instmap_delta(ExtraInstMapDelta, 
+		CaseInstMapDelta, InstMapDelta),
 	goal_info_get_determinism(CaseGoalInfo, CaseDetism0),
 	det_conjunction_detism(semidet, CaseDetism0, Detism),
-	goal_info_init(CaseNonLocals, GoalInstMapDelta,
-		Detism, CombinedGoalInfo),
+	goal_info_init(CaseNonLocals, InstMapDelta, Detism, CombinedGoalInfo),
 	Disjunct = conj(GoalList) - CombinedGoalInfo.
 
 %-----------------------------------------------------------------------------%
@@ -926,7 +922,8 @@ goal_util__compute_disjunct_goal_info(Goal1, Goal2, GoalInfo, CombinedInfo) :-
 
 	goal_info_get_instmap_delta(GoalInfo1, Delta1),
 	goal_info_get_instmap_delta(GoalInfo2, Delta2),
-	instmap_delta_apply_instmap_delta(Delta1, Delta2, CombinedDelta),
+	instmap_delta_apply_instmap_delta(Delta1, Delta2, CombinedDelta0),
+	instmap_delta_restrict(CombinedDelta0, OuterNonLocals, CombinedDelta),
 
 	goal_info_get_determinism(GoalInfo1, Detism1),
 	goal_info_get_determinism(GoalInfo2, Detism2),
@@ -939,9 +936,8 @@ goal_util__compute_disjunct_goal_info(Goal1, Goal2, GoalInfo, CombinedInfo) :-
 %-----------------------------------------------------------------------------%
 
 
-goal_util__can_reorder_goals(ModuleInfo, FullyStrict, InstTable,
-		InstmapBeforeEarlierGoal, EarlierGoal,
-		InstmapBeforeLaterGoal, LaterGoal) :-
+goal_util__can_reorder_goals(ModuleInfo, FullyStrict, InstmapBeforeEarlierGoal,
+		EarlierGoal, InstmapBeforeLaterGoal, LaterGoal) :-
 
 	EarlierGoal = _ - EarlierGoalInfo,
 	LaterGoal = _ - LaterGoalInfo,
@@ -958,7 +954,7 @@ goal_util__can_reorder_goals(ModuleInfo, FullyStrict, InstTable,
 	% on the outputs of the current goal.
 	%
 	\+ goal_depends_on_earlier_goal(LaterGoal, EarlierGoal,
-			InstmapBeforeEarlierGoal, InstTable, ModuleInfo),
+			InstmapBeforeEarlierGoal, ModuleInfo),
 
 	%
 	% Don't reorder the goals if the later goal changes the 
@@ -968,7 +964,7 @@ goal_util__can_reorder_goals(ModuleInfo, FullyStrict, InstTable,
 	% full mode analysis in other cases.
 	%
 	\+ goal_depends_on_earlier_goal(EarlierGoal, LaterGoal, 
-			InstmapBeforeLaterGoal, InstTable, ModuleInfo).
+			InstmapBeforeLaterGoal, ModuleInfo).
 
 
 goal_util__reordering_maintains_termination(ModuleInfo, FullyStrict, 
@@ -1007,17 +1003,17 @@ goal_util__reordering_maintains_termination(ModuleInfo, FullyStrict,
 	%
 	% This code does work on the alias branch.
 	%
-:- pred goal_depends_on_earlier_goal(hlds_goal::in, hlds_goal::in,
-		instmap::in, inst_table::in, module_info::in) is semidet.
+:- pred goal_depends_on_earlier_goal(hlds_goal::in,
+		hlds_goal::in, instmap::in, module_info::in) is semidet.
 
 goal_depends_on_earlier_goal(_ - LaterGoalInfo, _ - EarlierGoalInfo,
-		InstMapBeforeEarlierGoal, InstTable, ModuleInfo) :-
+		InstMapBeforeEarlierGoal, ModuleInfo) :-
 	goal_info_get_instmap_delta(EarlierGoalInfo, EarlierInstMapDelta),
 	instmap__apply_instmap_delta(InstMapBeforeEarlierGoal,
 			EarlierInstMapDelta, InstMapAfterEarlierGoal),
 
 	instmap_changed_vars(InstMapBeforeEarlierGoal, InstMapAfterEarlierGoal,
-			InstTable, ModuleInfo, EarlierChangedVars),
+			ModuleInfo, EarlierChangedVars),
 
 	goal_info_get_nonlocals(LaterGoalInfo, LaterGoalNonLocals),
 	set__intersect(EarlierChangedVars, LaterGoalNonLocals, Intersection),

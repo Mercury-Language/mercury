@@ -49,7 +49,7 @@
 :- implementation.
 
 :- import_module hlds_goal, hlds_data, prog_data, mode_util, make_hlds, purity.
-:- import_module globals, inst_table.
+:- import_module globals.
 :- import_module bool, int, set, map.
 
 maybe_add_default_modes([], Preds, Preds).
@@ -87,10 +87,8 @@ maybe_add_default_mode(PredInfo0, PredInfo, MaybeProcId) :-
 		Determinism = det,
 		pred_info_context(PredInfo0, Context),
 		MaybePredArgLives = no,
-		inst_table_init(InstTable),
-		ArgumentModes = argument_modes(InstTable, PredArgModes),
-		add_new_proc(PredInfo0, PredArity, ArgumentModes, 
-			yes(ArgumentModes), MaybePredArgLives, yes(Determinism),
+		add_new_proc(PredInfo0, PredArity, PredArgModes, 
+			yes(PredArgModes), MaybePredArgLives, yes(Determinism),
 			Context, address_is_not_taken, PredInfo, ProcId),
 		MaybeProcId = yes(ProcId)
 	;

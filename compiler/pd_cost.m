@@ -149,7 +149,7 @@ pd_cost__goals([Goal | Goals], Cost0, Cost) :-
 :- pred pd_cost__cases(list(case)::in, int::in, int::out) is det.
 
 pd_cost__cases([], Cost, Cost).
-pd_cost__cases([case(_, _, Goal) | Cases], Cost0, Cost) :-
+pd_cost__cases([case(_, Goal) | Cases], Cost0, Cost) :-
 	pd_cost__goal(Goal, Cost1),
 	Cost2 is Cost0 + Cost1,
 	pd_cost__cases(Cases, Cost2, Cost).

@@ -46,7 +46,7 @@ allocate_stack_slots_in_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_interface_code_model(ProcInfo0, CodeModel),
 
-	initial_liveness(ProcInfo0, PredId, ModuleInfo, Liveness0, _Refs),
+	initial_liveness(ProcInfo0, PredId, ModuleInfo, Liveness0),
 	set__init(LiveSets0),
 	module_info_globals(ModuleInfo, Globals),
 	globals__get_trace_level(Globals, TraceLevel),
@@ -278,10 +278,7 @@ build_live_sets_in_goal_2(
 	determinism_to_code_model(Det, CallModel),
 	proc_info_vartypes(ProcInfo, VarTypes),
 	map__apply_to_list(ArgVars, VarTypes, Types),
-	Modes = argument_modes(ArgInstTable, ArgModes),
-	instmap__init_reachable(BogusInstMap),
-	make_arg_infos(Types, ArgModes, CallModel, BogusInstMap,
-			ArgInstTable, ModuleInfo, ArgInfos),
+	make_arg_infos(Types, Modes, CallModel, ModuleInfo, ArgInfos),
 	find_output_vars_from_arg_info(ArgVars, ArgInfos, OutVars),
 	set__difference(Liveness, OutVars, InputLiveness),
 	set__union(InputLiveness, ResumeVars0, StackVars0),
@@ -480,7 +477,7 @@ build_live_sets_in_disj([Goal0 | Goals0], Liveness0, ResumeVars0, LiveSets0,
 
 build_live_sets_in_cases([], Liveness, ResumeVars, LiveSets, _, _, _,
 		Liveness, ResumeVars, LiveSets).
-build_live_sets_in_cases([case(_Cons, _IMDelta, Goal0) | Goals0],
+build_live_sets_in_cases([case(_Cons, Goal0) | Goals0],
 		Liveness0, ResumeVars0, LiveSets0,
 		ModuleInfo, ProcInfo, TypeInfoLiveness,
 		Liveness, ResumeVars, LiveSets) :-

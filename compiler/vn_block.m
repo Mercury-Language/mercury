@@ -227,16 +227,10 @@ vn_block__handle_instr(assign(Lval, Rval),
 		% redo() or fail() operation. We compensate here by ensuring
 		% that assignments to stack variables are not removed by
 		% value numbering.
-		% 
-		% We also ensure that assignments to mem_refs are not
-		% removed.
 		%
 		% The condition of this test subsumes the condition that used
 		% to be here, which is therefore commented out above.
-		( Lval = stackvar(_) 
-		; Lval = framevar(_)
-		; Lval = mem_ref(_)
-		)
+		( Lval = stackvar(_) ; Lval = framevar(_) )
 	->
 		Specials = [Vnlval | LeftSpecials]
 	;
@@ -818,7 +812,6 @@ vn_block__record_compulsory_lval_list([Vnlval - Vn | Lval_vn_list],
 		; Vnlval = vn_curfr
 		; Vnlval = vn_maxfr
 		; Vnlval = vn_succip
-		; Vnlval = vn_mem_ref(_)
 		)
 	->
 		map__set(FlushEntry0, Vnlval, Vn, FlushEntry1),

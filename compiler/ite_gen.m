@@ -130,14 +130,14 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, StoreMap, Code)
 		{ ThenTraceCode = empty },
 		{ ThenCode = empty },
 		{ map__init(EmptyStoreMap) },
-		code_info__generate_branch_end(EmptyStoreMap, no, no,
+		code_info__generate_branch_end(EmptyStoreMap, no,
 			MaybeEnd0, ThenSaveCode)
 	;	
 			% Generate the then branch
 		trace__maybe_generate_internal_event_code(ThenGoal,
 			ThenTraceCode),
 		code_gen__generate_goal(CodeModel, ThenGoal, ThenCode),
-		code_info__generate_branch_end(StoreMap, no, no,
+		code_info__generate_branch_end(StoreMap, no,
 			MaybeEnd0, ThenSaveCode)
 	),
 
@@ -153,7 +153,7 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, StoreMap, Code)
 		% Generate the else branch
 	trace__maybe_generate_internal_event_code(ElseGoal, ElseTraceCode),
 	code_gen__generate_goal(CodeModel, ElseGoal, ElseCode),
-	code_info__generate_branch_end(StoreMap, no, MaybeEnd0, MaybeEnd,
+	code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
 		ElseSaveCode),
 
 	code_info__get_next_label(EndLabel),

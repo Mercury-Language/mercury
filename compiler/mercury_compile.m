@@ -1235,30 +1235,29 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 	),
 	write_proc_progress_message("% Computing liveness in ", PredId, ProcId,
 		ModuleInfo3),
-	{ detect_liveness_proc(PredId, ProcInfo3, ProcInfo4,
-				ModuleInfo3, ModuleInfo4) },
+	{ detect_liveness_proc(ProcInfo3, PredId, ModuleInfo3, ProcInfo4) },
 	write_proc_progress_message("% Allocating stack slots in ", PredId,
-		                ProcId, ModuleInfo4),
-	{ allocate_stack_slots_in_proc(ProcInfo4, PredId, ModuleInfo4,
+		                ProcId, ModuleInfo3),
+	{ allocate_stack_slots_in_proc(ProcInfo4, PredId, ModuleInfo3,
 		ProcInfo5) },
 	write_proc_progress_message(
 		"% Allocating storage locations for live vars in ",
-				PredId, ProcId, ModuleInfo4),
-	{ store_alloc_in_proc(ProcInfo5, PredId, ModuleInfo4, ProcInfo6) },
+				PredId, ProcId, ModuleInfo3),
+	{ store_alloc_in_proc(ProcInfo5, PredId, ModuleInfo3, ProcInfo6) },
 	globals__io_get_trace_level(TraceLevel),
 	( { TraceLevel \= none } ->
 		write_proc_progress_message(
 			"% Calculating goal paths in ",
-					PredId, ProcId, ModuleInfo4),
-		{ goal_path__fill_slots(ProcInfo6, ModuleInfo4, ProcInfo) }
+					PredId, ProcId, ModuleInfo3),
+		{ goal_path__fill_slots(ProcInfo6, ModuleInfo3, ProcInfo) }
 	;
 		{ ProcInfo = ProcInfo6 }
 	),
 	write_proc_progress_message(
 		"% Generating low-level (LLDS) code for ",
-				PredId, ProcId, ModuleInfo4),
-	{ module_info_get_cell_count(ModuleInfo4, CellCount0) },
-	{ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo4,
+				PredId, ProcId, ModuleInfo3),
+	{ module_info_get_cell_count(ModuleInfo3, CellCount0) },
+	{ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo3,
 		Globals, GlobalData0, GlobalData1, CellCount0, CellCount,
 		Proc0) },
 	{ globals__lookup_bool_option(Globals, optimize, Optimize) },
@@ -1270,10 +1269,10 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 	{ Proc = c_procedure(_, _, PredProcId, Instructions) },
 	write_proc_progress_message(
 		"% Generating call continuation information for ",
-			PredId, ProcId, ModuleInfo4),
+			PredId, ProcId, ModuleInfo3),
 	{ continuation_info__maybe_process_proc_llds(Instructions, PredProcId,
-		ModuleInfo4, GlobalData1, GlobalData) },
-	{ module_info_set_cell_count(ModuleInfo4, CellCount, ModuleInfo) }.
+		ModuleInfo3, GlobalData1, GlobalData) },
+	{ module_info_set_cell_count(ModuleInfo3, CellCount, ModuleInfo) }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1855,7 +1854,7 @@ mercury_compile__maybe_lco(HLDS0, Verbose, Stats, HLDS) -->
 		maybe_write_string(Verbose, "% Looking for LCO modulo constructor application ...\n"),
 		maybe_flush_output(Verbose),
 		process_all_nonimported_nonaditi_procs(
-			update_module_io(lco_modulo_constructors), HLDS0, HLDS),
+			update_proc_io(lco_modulo_constructors), HLDS0, HLDS),
 		maybe_write_string(Verbose, "% done.\n"),
 		maybe_report_stats(Stats)
 	;
@@ -1922,7 +1921,7 @@ mercury_compile__compute_liveness(HLDS0, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose, "% Computing liveness...\n"),
 	maybe_flush_output(Verbose),
 	process_all_nonimported_nonaditi_procs(
-		update_module_predid(detect_liveness_proc),
+		update_proc_predid(detect_liveness_proc),
 		HLDS0, HLDS),
 	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats).

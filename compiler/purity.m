@@ -461,10 +461,10 @@ compute_expr_purity(Unif0, Unif, GoalInfo, PredInfo, ModuleInfo, _,
 	{ Unif  = unify(A,RHS,C,D,E) },
 	(
 		{ RHS0 = lambda_goal(F, EvalMethod, FixModes, H, Vars,
-			Modes0, K, L, Goal0 - Info0) }
+			Modes0, K, Goal0 - Info0) }
 	->
 		{ RHS = lambda_goal(F, EvalMethod, modes_are_ok, H, Vars,
-			Modes, K, L, Goal - Info0) },
+			Modes, K, Goal - Info0) },
 		compute_expr_purity(Goal0, Goal, Info0, PredInfo, ModuleInfo,
 				    yes, Purity, NumErrors0, NumErrors1),
 		error_if_closure_impure(GoalInfo, Purity,
@@ -497,10 +497,8 @@ compute_expr_purity(Unif0, Unif, GoalInfo, PredInfo, ModuleInfo, _,
 			pred_info_clauses_info(PredInfo, ClausesInfo),
 			clauses_info_vartypes(ClausesInfo, VarTypes),
 			map__apply_to_list(Vars, VarTypes, LambdaVarTypes),
-			Modes0 = argument_modes(ArgInstTable, ArgModes0),
 			fix_aditi_state_modes(StateMode, LambdaVarTypes,
-				ArgModes0, ArgModes),
-			Modes = argument_modes(ArgInstTable, ArgModes)
+				Modes0, Modes)
 		}
 	;
 		{ RHS = RHS0 },
@@ -536,7 +534,6 @@ compute_expr_purity(Ccode, Ccode, _, _, ModuleInfo, _, Purity,
 	{ module_info_preds(ModuleInfo, Preds) },
 	{ map__lookup(Preds, PredId, PredInfo) },
 	{ pred_info_get_purity(PredInfo, Purity) }.
-
 
 :- pred compute_goal_purity(hlds_goal, hlds_goal, pred_info,
 	module_info, bool, purity, int, int, io__state, io__state).
@@ -577,9 +574,9 @@ compute_goals_purity([Goal0|Goals0], [Goal|Goals], PredInfo, ModuleInfo,
 
 compute_cases_purity([], [], _, _, _, Purity, Purity, NumErrors, NumErrors) -->
 	[].
-compute_cases_purity([case(Ctor,IMDelta,Goal0)|Goals0],
-		[case(Ctor,IMDelta,Goal)|Goals], PredInfo, ModuleInfo,
-		InClosure, Purity0, Purity, NumErrors0, NumErrors) -->
+compute_cases_purity([case(Ctor,Goal0)|Goals0], [case(Ctor,Goal)|Goals],
+		PredInfo, ModuleInfo, InClosure, Purity0, Purity,
+		NumErrors0, NumErrors) -->
 	compute_goal_purity(Goal0, Goal, PredInfo, ModuleInfo, 
 			    InClosure, Purity1, NumErrors0, NumErrors1),
 	{ worst_purity(Purity0, Purity1, Purity2) },

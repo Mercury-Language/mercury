@@ -115,7 +115,7 @@ assertion__record_preds_used_in_goal_list([Goal | Goals], AssertId,
 assertion__record_preds_used_in_cases([], _, Module, Module).
 assertion__record_preds_used_in_cases([Case | Cases], AssertId,
 		Module0, Module) :-
-	Case = case(_, _, Goal),
+	Case = case(_, Goal),
 	assertion__record_preds_used_in(Goal, AssertId, Module0, Module1),
 	assertion__record_preds_used_in_cases(Cases, AssertId, Module1, Module).
 

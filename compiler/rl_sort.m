@@ -867,7 +867,7 @@ rl_sort__handle_project_sortedness(Input, output_rel(Output, _) - Goal) -->
 
 rl_sort__interpret_project(RLGoal, sort(SortSpec0) - Reqs,
 		sort(SortSpec) - Reqs) :-
-	RLGoal = rl_goal(_, _, _, _, _, Inputs, Outputs, _, _),	
+	RLGoal = rl_goal(_, _, _, _, Inputs, Outputs, _, _),	
 	Inputs = one_input(InputArgs),
 	(
 		% A select. 
@@ -1077,7 +1077,7 @@ rl_sort__specialize_join(Instr0, Output, Input1, Input2, Exprn,
 
 rl_sort__find_useful_join_indexes(ModuleInfo, Indexes,
 		Goal, TupleNum, IndexRanges) :-
-	Goal = rl_goal(_, _, VarTypes, _, _, Inputs, _, _, VarBounds),
+	Goal = rl_goal(_, _, VarTypes, _, Inputs, _, _, VarBounds),
 	( VarBounds = [] ->
 		IndexRanges = []
 	;
@@ -1179,7 +1179,7 @@ rl_sort__specialize_project(Instr0, OutputRel, Input, Exprn, ProjOutputs0,
 
 rl_sort__find_useful_project_indexes(ModuleInfo, Indexes, OutputRel - Goal,
 		proj_output(OutputRel, Goal, IndexRanges)) :-
-	Goal = rl_goal(_, _, VarTypes, _, _, Inputs, _, _, VarBounds),
+	Goal = rl_goal(_, _, VarTypes, _, Inputs, _, _, VarBounds),
 	( VarBounds = [] ->
 		IndexRanges = []
 	;

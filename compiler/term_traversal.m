@@ -20,7 +20,7 @@
 
 :- interface.
 
-:- import_module term_util, term_errors, instmap, inst_table.
+:- import_module term_util, term_errors.
 :- import_module hlds_module, hlds_pred, hlds_goal, prog_data.
 :- import_module list, bag, map, std_util, set.
 
@@ -84,13 +84,13 @@
 
 :- type traversal_params.
 
-:- pred init_traversal_params(module_info::in, inst_table::in,
-	functor_info::in, pred_proc_id::in, prog_context::in,
-	map(prog_var, type)::in, used_args::in, used_args::in, int::in, int::in,
+:- pred init_traversal_params(module_info::in, functor_info::in,
+	pred_proc_id::in, prog_context::in, map(prog_var, type)::in,
+	used_args::in, used_args::in, int::in, int::in,
 	traversal_params::out) is det.
 
-:- pred traverse_goal(hlds_goal::in, instmap::in, instmap::out,
-	traversal_params::in, traversal_info::in, traversal_info::out) is det.
+:- pred traverse_goal(hlds_goal::in, traversal_params::in,
+	traversal_info::in, traversal_info::out) is det.
 
 :- pred upper_bound_active_vars(list(path_info)::in, bag(prog_var)::out) is det.
 
@@ -99,7 +99,7 @@
 :- import_module hlds_data, type_util.
 :- import_module bool, int, require.
 
-traverse_goal(Goal, InstMap0, InstMap, Params, Info0, Info) :-
+traverse_goal(Goal, Params, Info0, Info) :-
 	Goal = GoalExpr - GoalInfo,
 	(
 		goal_info_get_determinism(GoalInfo, Detism),
@@ -109,23 +109,18 @@ traverse_goal(Goal, InstMap0, InstMap, Params, Info0, Info) :-
 	;
 		Info1 = Info0
 	),
-	traverse_goal_2(GoalExpr, GoalInfo, InstMap0, Params, Info1, Info),
-	goal_info_get_instmap_delta(GoalInfo, IMDelta),
-	instmap__apply_instmap_delta(InstMap0, IMDelta, InstMap).
+	traverse_goal_2(GoalExpr, GoalInfo, Params, Info1, Info).
 
-:- pred traverse_goal_2(hlds_goal_expr::in, hlds_goal_info::in, instmap::in,
+:- pred traverse_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
 	traversal_params::in, traversal_info::in, traversal_info::out) is det.
 
 traverse_goal_2(unify(_Var, _RHS, _UniMode, Unification, _Context),
-		GoalInfo, InstMapBefore, Params, Info0, Info) :-
-	goal_info_get_instmap_delta(GoalInfo, IMDelta),
-	instmap__apply_instmap_delta(InstMapBefore, IMDelta, InstMapAfter),
+		_GoalInfo, Params, Info0, Info) :-
 	(
 		Unification = construct(OutVar, ConsId, Args, Modes, _, _, _),
 		(
 			unify_change(OutVar, ConsId, Args, Modes, Params,
-				Gamma, InstMapBefore, InstMapAfter,
-				InVars, OutVars0)
+				Gamma, InVars, OutVars0)
 		->
 			bag__insert(OutVars0, OutVar, OutVars),
 			record_change(InVars, OutVars, Gamma, [], Info0, Info)
@@ -138,8 +133,7 @@ traverse_goal_2(unify(_Var, _RHS, _UniMode, Unification, _Context),
 		Unification = deconstruct(InVar, ConsId, Args, Modes, _),
 		(
 			unify_change(InVar, ConsId, Args, Modes, Params,
-				Gamma0, InstMapBefore, InstMapAfter,
-				InVars0, OutVars)
+				Gamma0, InVars0, OutVars)
 		->
 			bag__insert(InVars0, InVar, InVars),
 			Gamma is 0 - Gamma0,
@@ -161,51 +155,45 @@ traverse_goal_2(unify(_Var, _RHS, _UniMode, Unification, _Context),
 		error("Unexpected complicated_unify in termination analysis")
 	).
 
-traverse_goal_2(conj(Goals), _, InstMap0, Params, Info0, Info) :-
+traverse_goal_2(conj(Goals), _, Params, Info0, Info) :-
 	list__reverse(Goals, RevGoals),
-	traverse_conj(RevGoals, InstMap0, Params, Info0, Info).
+	traverse_conj(RevGoals, Params, Info0, Info).
 
-traverse_goal_2(par_conj(Goals, _SM), _, InstMap0, Params, Info0, Info) :-
+traverse_goal_2(par_conj(Goals, _SM), _, Params, Info0, Info) :-
 	list__reverse(Goals, RevGoals),
-	traverse_conj(RevGoals, InstMap0, Params, Info0, Info).
+	traverse_conj(RevGoals, Params, Info0, Info).
 
-traverse_goal_2(switch(_, _, Cases, _), _, InstMap0, Params, Info0, Info) :-
-	traverse_switch(Cases, InstMap0, Params, Info0, Info).
+traverse_goal_2(switch(_, _, Cases, _), _, Params, Info0, Info) :-
+	traverse_switch(Cases, Params, Info0, Info).
 
-traverse_goal_2(disj(Goals, _StoreMap), _, InstMap0, Params, Info0, Info) :-
-	traverse_disj(Goals, InstMap0, Params, Info0, Info).
+traverse_goal_2(disj(Goals, _StoreMap), _, Params, Info0, Info) :-
+	traverse_disj(Goals, Params, Info0, Info).
 
-traverse_goal_2(not(Goal), _, InstMap0, Params, Info0, Info) :-
+traverse_goal_2(not(Goal), _, Params, Info0, Info) :-
 		% Since goal cannot bind any active variables,
 		% we don't need to traverse Goal for pass1,
 		% but it shouldn't hurt either.
-	traverse_goal(Goal, InstMap0, _, Params, Info0, Info).
+	traverse_goal(Goal, Params, Info0, Info).
 
-traverse_goal_2(some(_Vars, _, Goal), _GoalInfo,
-		InstMap0, Params, Info0, Info) :-
-	traverse_goal(Goal, InstMap0, _, Params, Info0, Info).
+traverse_goal_2(some(_Vars, _, Goal), _GoalInfo, Params, Info0, Info) :-
+	traverse_goal(Goal, Params, Info0, Info).
 
-traverse_goal_2(if_then_else(_, Cond, Then, Else, _), _, InstMap0,
-		Params, Info0, Info) :-
-	traverse_conj([Then, Cond], InstMap0, Params, Info0, Info1),
-	traverse_goal(Else, InstMap0, _, Params, Info0, Info2),
+traverse_goal_2(if_then_else(_, Cond, Then, Else, _), _, Params, Info0, Info) :-
+	traverse_conj([Then, Cond], Params, Info0, Info1),
+	traverse_goal(Else, Params, Info0, Info2),
 	combine_paths(Info1, Info2, Params, Info).
 
 traverse_goal_2(pragma_c_code(_, CallPredId, CallProcId, Args, _, _, _),
-		GoalInfo, _InstMap0, Params, Info0, Info) :-
+		GoalInfo, Params, Info0, Info) :-
 	params_get_module_info(Params, Module),
 	module_info_pred_proc_info(Module, CallPredId, CallProcId, _,
 		CallProcInfo),
-	proc_info_argmodes(CallProcInfo,
-			argument_modes(CallArgInstTable, CallArgModes)),
-	proc_info_get_initial_instmap(CallProcInfo, Module, CallInstMap),
-	partition_call_args(Module, CallInstMap, CallArgInstTable,
-			CallArgModes, Args, _InVars, OutVars),
+	proc_info_argmodes(CallProcInfo, CallArgModes),
+	partition_call_args(Module, CallArgModes, Args, _InVars, OutVars),
 	goal_info_get_context(GoalInfo, Context),
 	error_if_intersect(OutVars, Context, pragma_c_code, Info0, Info).
 
-traverse_goal_2(generic_call(_, _, _, _), GoalInfo, _InstMap0, Params,
-		Info0, Info) :-
+traverse_goal_2(generic_call(_, _, _, _), GoalInfo, Params, Info0, Info) :-
 	%
 	% For class method calls, we could probably analyse further
 	% than this, since we know that the method being called must come
@@ -226,7 +214,7 @@ traverse_goal_2(generic_call(_, _, _, _), GoalInfo, _InstMap0, Params,
 	add_error(Context, horder_call, Params, Info0, Info).
 
 traverse_goal_2(call(CallPredId, CallProcId, Args, _, _, _),
-		GoalInfo, _InstMap0, Params, Info0, Info) :-
+		GoalInfo, Params, Info0, Info) :-
 	goal_info_get_context(GoalInfo, Context),
 	params_get_module_info(Params, Module),
 	params_get_ppid(Params, PPId),
@@ -234,14 +222,11 @@ traverse_goal_2(call(CallPredId, CallProcId, Args, _, _, _),
 
 	module_info_pred_proc_info(Module, CallPredId, CallProcId, _,
 		CallProcInfo),
-	proc_info_argmodes(CallProcInfo,
-			argument_modes(CallArgInstTable, CallArgModes)),
+	proc_info_argmodes(CallProcInfo, CallArgModes),
 	proc_info_get_maybe_arg_size_info(CallProcInfo, CallArgSizeInfo),
 	proc_info_get_maybe_termination_info(CallProcInfo, CallTerminationInfo),
-	proc_info_get_initial_instmap(CallProcInfo, Module, CallInstMap),
 
-	partition_call_args(Module, CallInstMap, CallArgInstTable,
-			CallArgModes, Args, InVars, OutVars),
+	partition_call_args(Module, CallArgModes, Args, InVars, OutVars),
 
 	% Handle existing paths
 	(
@@ -308,34 +293,32 @@ traverse_goal_2(call(CallPredId, CallProcId, Args, _, _, _),
 	% Traverse_conj should be invoked with a reversed list of goals.
 	% This is to keep stack consumption down.
 
-:- pred traverse_conj(list(hlds_goal)::in, instmap::in,
-	traversal_params::in, traversal_info::in, traversal_info::out) is det.
-
-traverse_conj([], _, _, Info, Info).
-traverse_conj([Goal | Goals], InstMap0, Params, Info0, Info) :-
-	traverse_goal(Goal, InstMap0, InstMap1, Params, Info0, Info1),
-	traverse_conj(Goals, InstMap1, Params, Info1, Info).
-
-:- pred traverse_disj(list(hlds_goal)::in, instmap::in, traversal_params::in,
+:- pred traverse_conj(list(hlds_goal)::in, traversal_params::in,
 	traversal_info::in, traversal_info::out) is det.
 
-traverse_disj([], _, _, _, ok(Empty, [])) :-
+traverse_conj([], _, Info, Info).
+traverse_conj([Goal | Goals], Params, Info0, Info) :-
+	traverse_goal(Goal, Params, Info0, Info1),
+	traverse_conj(Goals, Params, Info1, Info).
+
+:- pred traverse_disj(list(hlds_goal)::in, traversal_params::in,
+	traversal_info::in, traversal_info::out) is det.
+
+traverse_disj([], _, _, ok(Empty, [])) :-
 	set__init(Empty).
-traverse_disj([Goal | Goals], InstMap0, Params, Info0, Info) :-
-	traverse_goal(Goal, InstMap0, _, Params, Info0, Info1),
-	traverse_disj(Goals, InstMap0, Params, Info0, Info2),
+traverse_disj([Goal | Goals], Params, Info0, Info) :-
+	traverse_goal(Goal, Params, Info0, Info1),
+	traverse_disj(Goals, Params, Info0, Info2),
 	combine_paths(Info1, Info2, Params, Info).
 
-:- pred traverse_switch(list(case)::in, instmap::in, traversal_params::in,
+:- pred traverse_switch(list(case)::in, traversal_params::in,
 	traversal_info::in, traversal_info::out) is det.
 
-traverse_switch([], _, _, _, ok(Empty, [])) :-
+traverse_switch([], _, _, ok(Empty, [])) :-
 	set__init(Empty).
-traverse_switch([case(_, IMDelta, Goal) | Cases], InstMap0, Params,
-		Info0, Info) :-
-	instmap__apply_instmap_delta(InstMap0, IMDelta, InstMap1),
-	traverse_goal(Goal, InstMap1, _, Params, Info0, Info1),
-	traverse_switch(Cases, InstMap0, Params, Info0, Info2),
+traverse_switch([case(_, Goal) | Cases], Params, Info0, Info) :-
+	traverse_goal(Goal, Params, Info0, Info1),
+	traverse_switch(Cases, Params, Info0, Info2),
 	combine_paths(Info1, Info2, Params, Info).
 
 %-----------------------------------------------------------------------------%
@@ -448,22 +431,19 @@ compute_rec_start_vars([Var | Vars], [RecInputSupplier | RecInputSuppliers],
 	% order unification.
 
 :- pred unify_change(prog_var::in, cons_id::in, list(prog_var)::in,
-	list(uni_mode)::in, traversal_params::in, int::out, instmap::in,
-	instmap::in, bag(prog_var)::out, bag(prog_var)::out) is semidet.
+	list(uni_mode)::in, traversal_params::in, int::out, bag(prog_var)::out,
+	bag(prog_var)::out) is semidet.
 
-unify_change(OutVar, ConsId, Args0, Modes0, Params, Gamma,
-		InstMapBefore, InstMapAfter, InVars, OutVars) :-
+unify_change(OutVar, ConsId, Args0, Modes0, Params, Gamma, InVars, OutVars) :-
 	params_get_functor_info(Params, FunctorInfo),
 	params_get_var_types(Params, VarTypes),
 	map__lookup(VarTypes, OutVar, Type),
 	\+ type_is_higher_order(Type, _, _, _),
 	( type_to_type_id(Type, TypeId, _) ->
 		params_get_module_info(Params, Module),
-		params_get_inst_table(Params, InstTable),
 		functor_norm(FunctorInfo, TypeId, ConsId, Module,
 			Gamma, Args0, Args, Modes0, Modes),
-		split_unification_vars(Args, Modes, InstMapBefore,
-			InstMapAfter, InstTable, Module, InVars, OutVars)
+		split_unification_vars(Args, Modes, Module, InVars, OutVars)
 	;
 		error("variable type in traverse_goal_2")
 	).
@@ -546,7 +526,6 @@ upper_bound_active_vars([Path | Paths], ActiveVars) :-
 :- type traversal_params
 	--->	traversal_params(
 			module_info,
-			inst_table,
 			functor_info,
 			pred_proc_id,	% The procedure we are tracing through.
 			prog_context,	% The context of the procedure.
@@ -561,16 +540,14 @@ upper_bound_active_vars([Path | Paths], ActiveVars) :-
 			int		% Max number of paths to analyze.
 		).
 
-init_traversal_params(ModuleInfo, InstTable, FunctorInfo, PredProcId, Context,
-		VarTypes, OutputSuppliers, RecInputSuppliers, MaxErrors,
-		MaxPaths, Params) :-
-	Params = traversal_params(ModuleInfo, InstTable, FunctorInfo,
-		PredProcId, Context, VarTypes, OutputSuppliers,
-		RecInputSuppliers, MaxErrors, MaxPaths).
+init_traversal_params(ModuleInfo, FunctorInfo, PredProcId, Context, VarTypes,
+		OutputSuppliers, RecInputSuppliers, MaxErrors, MaxPaths,
+		Params) :-
+	Params = traversal_params(ModuleInfo, FunctorInfo, PredProcId, Context,
+		VarTypes, OutputSuppliers, RecInputSuppliers,
+		MaxErrors, MaxPaths).
 
 :- pred params_get_module_info(traversal_params::in, module_info::out)
-	is det.
-:- pred params_get_inst_table(traversal_params::in, inst_table::out)
 	is det.
 :- pred params_get_functor_info(traversal_params::in, functor_info::out)
 	is det.
@@ -588,33 +565,30 @@ init_traversal_params(ModuleInfo, InstTable, FunctorInfo, PredProcId, Context,
 :- pred params_get_max_paths(traversal_params::in, int::out) is det.
 
 params_get_module_info(Params, A) :-
-	Params = traversal_params(A, _, _, _, _, _, _, _, _, _).
+	Params = traversal_params(A, _, _, _, _, _, _, _, _).
 
-params_get_inst_table(Params, B) :-
-	Params = traversal_params(_, B, _, _, _, _, _, _, _, _).
+params_get_functor_info(Params, B) :-
+	Params = traversal_params(_, B, _, _, _, _, _, _, _).
 
-params_get_functor_info(Params, C) :-
-	Params = traversal_params(_, _, C, _, _, _, _, _, _, _).
+params_get_ppid(Params, C) :-
+	Params = traversal_params(_, _, C, _, _, _, _, _, _).
 
-params_get_ppid(Params, D) :-
-	Params = traversal_params(_, _, _, D, _, _, _, _, _, _).
+params_get_context(Params, D) :-
+	Params = traversal_params(_, _, _, D, _, _, _, _, _).
 
-params_get_context(Params, E) :-
-	Params = traversal_params(_, _, _, _, E, _, _, _, _, _).
+params_get_var_types(Params, E) :-
+	Params = traversal_params(_, _, _, _, E, _, _, _, _).
 
-params_get_var_types(Params, F) :-
-	Params = traversal_params(_, _, _, _, _, F, _, _, _, _).
+params_get_output_suppliers(Params, F) :-
+	Params = traversal_params(_, _, _, _, _, F, _, _, _).
 
-params_get_output_suppliers(Params, G) :-
-	Params = traversal_params(_, _, _, _, _, _, G, _, _, _).
+params_get_rec_input_suppliers(Params, G) :-
+	Params = traversal_params(_, _, _, _, _, _, G, _, _).
 
-params_get_rec_input_suppliers(Params, H) :-
-	Params = traversal_params(_, _, _, _, _, _, _, H, _, _).
+params_get_max_errors(Params, H) :-
+	Params = traversal_params(_, _, _, _, _, _, _, H, _).
 
-params_get_max_errors(Params, I) :-
-	Params = traversal_params(_, _, _, _, _, _, _, _, I, _).
-
-params_get_max_paths(Params, J) :-
-	Params = traversal_params(_, _, _, _, _, _, _, _, _, J).
+params_get_max_paths(Params, I) :-
+	Params = traversal_params(_, _, _, _, _, _, _, _, I).
 
 %-----------------------------------------------------------------------------%

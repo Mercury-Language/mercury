@@ -2058,9 +2058,9 @@ typecheck_unification(X, functor(F, As), functor(F, As)) -->
 	perform_context_reduction(OrigTypeAssignSet).
 typecheck_unification(X, 
 		lambda_goal(PredOrFunc, EvalMethod, FixModes, NonLocals, Vars,
-			Modes, Det, IMD, Goal0),
+			Modes, Det, Goal0),
 		lambda_goal(PredOrFunc, EvalMethod, FixModes, NonLocals, Vars,
-			Modes, Det, IMD, Goal)) -->
+			Modes, Det, Goal)) -->
  	typecheck_lambda_var_has_type(PredOrFunc, EvalMethod, X, Vars),
 	typecheck_goal(Goal0, Goal).
 

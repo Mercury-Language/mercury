@@ -440,9 +440,9 @@
 
 :- import_module typecheck, llds, prog_io.
 :- import_module type_util, mode_util, quantification, instmap, prog_out.
-:- import_module code_util, unify_proc, prog_util, make_hlds, inst_util.
+:- import_module code_util, unify_proc, prog_util, make_hlds.
 :- import_module (inst), hlds_out, base_typeclass_info, goal_util, passes_aux.
-:- import_module clause_to_proc, inst_table.
+:- import_module clause_to_proc.
 :- import_module globals, options.
 
 :- import_module bool, int, string, set, map.
@@ -752,10 +752,9 @@ polymorphism__process_proc(ProcId, ProcInfo0, PredInfo, ClausesInfo,
 	%
 	% add the ExtraArgModes to the proc_info argmodes
 	%
-	proc_info_argmodes(ProcInfo4, argument_modes(IT, ArgModes1)),
+	proc_info_argmodes(ProcInfo4, ArgModes1),
 	list__append(ExtraArgModes, ArgModes1, ArgModes),
-	proc_info_set_argmodes(ProcInfo4, argument_modes(IT, ArgModes),
-		ProcInfo).
+	proc_info_set_argmodes(ProcInfo4, ArgModes, ProcInfo).
 
 % XXX the following code ought to be rewritten to handle
 % existential/universal type_infos and type_class_infos
@@ -1034,9 +1033,7 @@ polymorphism__process_goal_expr(GoalExpr0, GoalInfo0, Goal, _Globals) -->
 		{ in_mode(InMode) },
 		{ list__length(TypeInfoVars, NumTypeInfos) },
 		{ list__duplicate(NumTypeInfos, InMode, TypeInfoModes) },
-		{ Modes0 = argument_modes(ArgInstTable, ArgModes0) },
-		{ list__append(TypeInfoModes, ArgModes0, ArgModes) },
-		{ Modes = argument_modes(ArgInstTable, ArgModes) },
+		{ list__append(TypeInfoModes, Modes0, Modes) },
 
 		{ goal_info_get_nonlocals(GoalInfo0, NonLocals0) },
 		{ set__insert_list(NonLocals0, TypeInfoVars, NonLocals) },
@@ -1203,7 +1200,7 @@ polymorphism__process_unify(XVar, Y, Mode, Unification0, UnifyContext,
 			Unification0, UnifyContext, GoalInfo0, Goal, Globals)
 	;
 		{ Y = lambda_goal(PredOrFunc, EvalMethod, FixModes,
-			ArgVars0, LambdaVars, Modes, Det, IMD, LambdaGoal0) },
+			ArgVars0, LambdaVars, Modes, Det, LambdaGoal0) },
 		%
 		% for lambda expressions, we must recursively traverse the
 		% lambda goal
@@ -1219,7 +1216,7 @@ polymorphism__process_unify(XVar, Y, Mode, Unification0, UnifyContext,
 				NonLocalTypeInfosList) },
 		{ list__append(NonLocalTypeInfosList, ArgVars0, ArgVars) },
 		{ Y1 = lambda_goal(PredOrFunc, EvalMethod, FixModes,
-			ArgVars, LambdaVars, Modes, Det, IMD, LambdaGoal) },
+			ArgVars, LambdaVars, Modes, Det, LambdaGoal) },
                 { goal_info_get_nonlocals(GoalInfo0, NonLocals0) },
 		{ set__union(NonLocals0, NonLocalTypeInfos, NonLocals) },
 		{ goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo) },
@@ -1289,12 +1286,11 @@ polymorphism__process_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		%
 		list__append(FuncArgVars, [X0], ArgVars),
 		Modes = [],
-		inst_table_init(IT),
 		Det = erroneous,
 		adjust_func_arity(function, Arity, FullArity),
 		HOCall = generic_call(
 			higher_order(FuncVar, function, FullArity),
-			ArgVars, argument_modes(IT, Modes), Det),
+			ArgVars, Modes, Det),
 
 		/*******
 		%
@@ -1537,7 +1533,7 @@ convert_pred_to_lambda_goal(PredOrFunc, EvalMethod, X0, ConsId0, PName,
 	% work out the modes of the introduced lambda variables
 	% and the determinism of the lambda goal
 	%
-	proc_info_argmodes(ProcInfo, argument_modes(ArgIT, ArgModes)),
+	proc_info_argmodes(ProcInfo, ArgModes),
 	list__length(ArgModes, NumArgModes),
 	list__length(LambdaVars, NumLambdaVars),
 	( list__drop(NumArgModes - NumLambdaVars, ArgModes, LambdaModes0) ->
@@ -1552,14 +1548,11 @@ convert_pred_to_lambda_goal(PredOrFunc, EvalMethod, X0, ConsId0, PName,
 		error("Sorry, not implemented: determinism inference for higher-order predicate terms")
 	),
 
-	instmap_delta_init_reachable(InstMapDelta),
-
 	%
 	% construct the lambda expression
 	%
 	Functor = lambda_goal(PredOrFunc, EvalMethod, modes_are_ok,
-		ArgVars0, LambdaVars, argument_modes(ArgIT, LambdaModes),
-		LambdaDet, InstMapDelta, LambdaGoal).
+		ArgVars0, LambdaVars, LambdaModes, LambdaDet, LambdaGoal).
 
 :- pred make_fresh_vars(list(type), prog_varset, map(prog_var, type),
 			list(prog_var), prog_varset, map(prog_var, type)).
@@ -1681,7 +1674,7 @@ polymorphism__process_existq_unify_functor(CtorDefn, IsConstruction,
 %-----------------------------------------------------------------------------%
 
 :- pred polymorphism__process_c_code(pred_info, int, list(type), list(type),
-	pragma_c_code_arg_info, pragma_c_code_arg_info).
+	list(maybe(pair(string, mode))), list(maybe(pair(string, mode)))).
 :- mode polymorphism__process_c_code(in, in, in, out, in, out) is det.
 
 polymorphism__process_c_code(PredInfo, NumExtraVars, OrigArgTypes0,
@@ -1719,13 +1712,11 @@ polymorphism__process_c_code(PredInfo, NumExtraVars, OrigArgTypes0,
 	require(unify(NEVs, NumExtraVars), 
 		"list length mismatch in polymorphism processing pragma_c"),
 
-	ArgInfo0 = pragma_c_code_arg_info(ArgInstTable, ArgModes0),
 	polymorphism__c_code_add_typeinfos(
 			PredTypeVars, PredTypeVarSet, ExistQVars, 
-			ArgModes0, ArgModes1),
+			ArgInfo0, ArgInfo1),
 	polymorphism__c_code_add_typeclass_infos(
-			UnivCs, ExistCs, PredTypeVarSet, ArgModes1, ArgModes),
-	ArgInfo = pragma_c_code_arg_info(ArgInstTable, ArgModes),
+			UnivCs, ExistCs, PredTypeVarSet, ArgInfo1, ArgInfo),
 
 	%
 	% insert type_info/typeclass_info types for all the inserted 
@@ -1832,9 +1823,9 @@ polymorphism__process_goal_list([Goal0 | Goals0], [Goal | Goals], Globals) -->
 
 polymorphism__process_case_list([], [], _Globals) --> [].
 polymorphism__process_case_list([Case0 | Cases0], [Case | Cases], Globals) -->
-	{ Case0 = case(ConsId, IMDelta, Goal0) },
+	{ Case0 = case(ConsId, Goal0) },
 	polymorphism__process_goal(Goal0, Goal, Globals),
-	{ Case = case(ConsId, IMDelta, Goal) },
+	{ Case = case(ConsId, Goal) },
 	polymorphism__process_case_list(Cases0, Cases, Globals).
 
 %-----------------------------------------------------------------------------%
@@ -2451,8 +2442,8 @@ polymorphism__construct_typeclass_info(ArgTypeInfoVars, ArgTypeClassInfoVars,
 	RLExprnId = no,
 	BaseUnification = construct(BaseVar, ConsId, [], [],
 			ReuseVar, cell_is_shared, RLExprnId),
-	BaseUnifyMode = (free(unique) - ground(shared, no)) -
-			(ground(shared, no) - ground(shared, no)),
+	BaseUnifyMode = (free -> ground(shared, no)) -
+			(ground(shared, no) -> ground(shared, no)),
 	BaseUnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
 	BaseUnify = unify(BaseVar, BaseTypeClassInfoTerm, BaseUnifyMode,
@@ -2479,14 +2470,14 @@ polymorphism__construct_typeclass_info(ArgTypeInfoVars, ArgTypeClassInfoVars,
 
 		% create the construction unification to initialize the
 		% variable
-	UniMode = (free(unique) - ground(shared, no) ->
+	UniMode = (free - ground(shared, no) ->
 		   ground(shared, no) - ground(shared, no)),
 	list__length(NewArgVars, NumArgVars),
 	list__duplicate(NumArgVars, UniMode, UniModes),
 	Unification = construct(NewVar, NewConsId, NewArgVars,
 		UniModes, ReuseVar, cell_is_unique, RLExprnId),
-	UnifyMode = (free(unique) - ground(shared, no)) -
-			(ground(shared, no) - ground(shared, no)),
+	UnifyMode = (free -> ground(shared, no)) -
+			(ground(shared, no) -> ground(shared, no)),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
 	Unify = unify(NewVar, TypeClassInfoTerm, UnifyMode,
@@ -2628,41 +2619,6 @@ polymorphism__make_type_info_var(Type, ExistQVars, Context, Var, ExtraGoals,
 
 		polymorphism__construct_type_info(Type, TypeId, TypeArgs,
 			no, ExistQVars, Context, Var, ExtraGoals, Info0, Info)
-	;
-		Type = term__variable(TypeVar),
-		poly_info_get_type_info_map(Info0, TypeInfoMap0),
-		map__search(TypeInfoMap0, TypeVar, TypeInfoLocn)
-	->
-		% This occurs for code where a predicate calls a polymorphic
-		% predicate with a bound but unknown value of the type variable.
-		% For example, in
-		%
-		%	:- pred p(T1).
-		%	:- pred q(T2).
-		%
-		%	p(X) :- q(X).
-		%
-		% we know that `T2' is bound to `T1', and we translate it into
-		%
-		%	:- pred p(TypeInfo(T1), T1).
-		%	:- pred q(TypeInfo(T2), T2).
-		%
-		%	p(TypeInfo, X) :- q(TypeInfo, X).
-
-		(
-				% If the typeinfo is available in a variable,
-				% just use it
-			TypeInfoLocn = type_info(TypeInfoVar),
-			Var = TypeInfoVar,
-			ExtraGoals = [],
-			Info = Info0
-		;
-				% If the typeinfo is in a typeclass_info, first
-				% extract it, then use it
-			TypeInfoLocn = typeclass_info(TypeClassInfoVar, Index),
-			extract_type_info(TypeVar, TypeClassInfoVar,
-				Index, ExtraGoals, Var, Info0, Info)
-		)
 	;
 	%
 	% Now handle the cases of types which are not known statically
@@ -2817,8 +2773,7 @@ polymorphism__init_with_int_constant(CountVar, Num, CountUnifyGoal) :-
 
 	CountTerm = functor(CountConsId, []),
 	CountInst = bound(unique, [functor(int_const(Num), [])]),
-	CountUnifyMode = (free(unique) - CountInst) -
-			(CountInst - CountInst),
+	CountUnifyMode = (free -> CountInst) - (CountInst -> CountInst),
 	CountUnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
 	CountUnify = unify(CountVar, CountTerm, CountUnifyMode,
@@ -2923,7 +2878,7 @@ polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 		TypeInfoVar, VarSet, VarTypes),
 
 	% create the construction unification to initialize the variable
-	UniMode = (free(unique) - ground(shared, no) ->
+	UniMode = (free - ground(shared, no) ->
 		   ground(shared, no) - ground(shared, no)),
 	list__length(ArgVars, NumArgVars),
 	list__duplicate(NumArgVars, UniMode, UniModes),
@@ -2931,8 +2886,8 @@ polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 	RLExprnId = no,
 	Unification = construct(TypeInfoVar, ConsId, ArgVars, UniModes,
 			ReuseVar, cell_is_unique, RLExprnId),
-	UnifyMode = (free(unique) - ground(shared, no)) -
-			(ground(shared, no) - ground(shared, no)),
+	UnifyMode = (free -> ground(shared, no)) -
+			(ground(shared, no) -> ground(shared, no)),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
 	Unify = unify(TypeInfoVar, TypeInfoTerm, UnifyMode,
@@ -2987,8 +2942,8 @@ polymorphism__init_const_type_ctor_info_var(Type, TypeId,
 	RLExprnId = no,
 	Unification = construct(TypeCtorInfoVar, ConsId, [], [],
 			ReuseVar, cell_is_shared, RLExprnId),
-	UnifyMode = (free(unique) - ground(shared, no)) -
-			(ground(shared, no) - ground(shared, no)),
+	UnifyMode = (free -> ground(shared, no)) -
+			(ground(shared, no) -> ground(shared, no)),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
 	Unify = unify(TypeCtorInfoVar, TypeInfoTerm, UnifyMode,
@@ -3145,7 +3100,7 @@ polymorphism__gen_extract_type_info(TypeVar, TypeClassInfoVar, Index,
 
 	Goals = [IndexGoal, Call].
 
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% Create a head var for each class constraint, and make an entry in
 	% the typeinfo locations map for each constrained type var.
@@ -3371,7 +3326,7 @@ expand_one_body(hlds_class_proc(PredId, ProcId), ProcNum0, ProcNum,
 	map__lookup(VarMap, InstanceConstraint, TypeClassInfoVar),
 
 	proc_info_headvars(ProcInfo0, HeadVars0),
-	proc_info_argmodes(ProcInfo0, argument_modes(ArgInstTable, Modes0)),
+	proc_info_argmodes(ProcInfo0, Modes0),
 	proc_info_declared_determinism(ProcInfo0, Detism0),
 	(
 		Detism0 = yes(Detism1)
@@ -3403,35 +3358,20 @@ expand_one_body(hlds_class_proc(PredId, ProcId), ProcNum0, ProcNum,
 	BodyGoalExpr = generic_call(
 		class_method(TypeClassInfoVar, ProcNum0,
 			class_id(ClassName, InstanceArity), CallId),
-		HeadVars, argument_modes(ArgInstTable, Modes), Detism),
+		HeadVars, Modes, Detism),
 
 		% Make the goal info for the call. 
 	set__list_to_set(HeadVars0, NonLocals),
-
-	% YYY Is this valid if ArgIKT is non-empty?
-	% instmap_delta_from_mode_list(HeadVars0, ArgModes0, ModuleInfo0,
-	%		InstmapDelta),
-
-	% YYY No, but I think this is...
-	instmap_delta_init_reachable(InstmapDelta),
+	instmap_delta_from_mode_list(HeadVars0, Modes0, ModuleInfo0,
+			InstmapDelta),
 	goal_info_init(NonLocals, InstmapDelta, Detism, GoalInfo),
-	BodyGoal0 = BodyGoalExpr - GoalInfo,
+	BodyGoal = BodyGoalExpr - GoalInfo,
 
-	proc_info_arglives(ProcInfo0, ModuleInfo0, HeadLives),
-	proc_info_vartypes(ProcInfo0, VarTypes),
-	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
-	proc_info_inst_table(ProcInfo0, InstTable0),
-
-	recompute_instmap_delta(HeadVars0, HeadLives, VarTypes, BodyGoal0,
-		BodyGoal, InstMap0, InstTable0, InstTable, _, ModuleInfo0,
-		ModuleInfo1),
-
-	proc_info_set_goal(ProcInfo0, BodyGoal, ProcInfo1),
-	proc_info_set_inst_table(ProcInfo1, InstTable, ProcInfo),
+	proc_info_set_goal(ProcInfo0, BodyGoal, ProcInfo),
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 	map__det_update(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo),
+	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo),
 
 	ProcNum is ProcNum0 + 1.
 	
@@ -3623,6 +3563,7 @@ poly_info_set_type_info_map(TypeInfoMap, PolyInfo0, PolyInfo) :-
 poly_info_set_typeclass_info_map(TypeClassInfoMap, PolyInfo0, PolyInfo) :-
 	PolyInfo0 = poly_info(A, B, C, D, _, F, G, H, I, J),
 	PolyInfo = poly_info(A, B, C, D, TypeClassInfoMap, F, G, H, I, J).
+
 
 :- pred poly_info_set_proofs(map(class_constraint, constraint_proof),
 				poly_info, poly_info).

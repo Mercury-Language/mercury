@@ -47,7 +47,7 @@
 
 :- interface.
 
-:- import_module io, bool, std_util.
+:- import_module io, bool, std_util, list.
 :- import_module prog_data, hlds_module, term_util.
 
 	% Perform termination analysis on the module.
@@ -69,7 +69,7 @@
 	% such annotations can be part of .opt and .trans_opt files.
 
 :- pred termination__write_pragma_termination_info(pred_or_func::in,
-	sym_name::in, argument_modes::in, prog_context::in,
+	sym_name::in, list(mode)::in, prog_context::in,
 	maybe(arg_size_info)::in, maybe(termination_info)::in,
 	io__state::di, io__state::uo) is det.
 
@@ -78,14 +78,14 @@
 :- implementation.
 
 :- import_module term_pass1, term_pass2, term_errors.
-:- import_module instmap, inst_match, passes_aux, options, globals.
-:- import_module hlds_data, hlds_goal, hlds_pred, dependency_graph.
+:- import_module inst_match, passes_aux, options, globals.
+:- import_module hlds_data, hlds_goal, hlds_pred, dependency_graph, varset.
 :- import_module mode_util, hlds_out, code_util, prog_out, prog_util.
 :- import_module mercury_to_mercury, type_util, special_pred.
-:- import_module modules, inst_table.
+:- import_module modules.
 
-:- import_module map, int, char, string, relation, list.
-:- import_module require, bag, set, term, varset.
+:- import_module map, int, char, string, relation.
+:- import_module require, bag, set, term.
 
 %----------------------------------------------------------------------------%
 
@@ -565,31 +565,25 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, Module,
 
 all_args_input_or_zero_size(Module, PredInfo, ProcInfo) :-
 	pred_info_arg_types(PredInfo, TypeList),
-	proc_info_argmodes(ProcInfo, argument_modes(ModeInstTable, ModeList)),
-	proc_info_get_initial_instmap(ProcInfo, Module, ProcInstMap),
-	all_args_input_or_zero_size_2(TypeList, ModeList, ProcInstMap,
-		ModeInstTable, Module). 
+	proc_info_argmodes(ProcInfo, ModeList),
+	all_args_input_or_zero_size_2(TypeList, ModeList, Module). 
 
-:- pred all_args_input_or_zero_size_2(list(type), list(mode), instmap,
-		inst_table, module_info).
-:- mode all_args_input_or_zero_size_2(in, in, in, in, in) is semidet.
+:- pred all_args_input_or_zero_size_2(list(type), list(mode), module_info).
+:- mode all_args_input_or_zero_size_2(in, in, in) is semidet.
 
-all_args_input_or_zero_size_2([], [], _, _, _).
-all_args_input_or_zero_size_2([], [_|_], _, _, _) :- 
+all_args_input_or_zero_size_2([], [], _).
+all_args_input_or_zero_size_2([], [_|_], _) :- 
 	error("all_args_input_or_zero_size_2: Unmatched variables.").
-all_args_input_or_zero_size_2([_|_], [], _, _, _) :- 
+all_args_input_or_zero_size_2([_|_], [], _) :- 
 	error("all_args_input_or_zero_size_2: Unmatched variables").
-all_args_input_or_zero_size_2([Type | Types], [Mode | Modes], InstMap, InstTable,
-		Module) :-
-	( mode_is_input(InstMap, InstTable, Module, Mode) ->
+all_args_input_or_zero_size_2([Type | Types], [Mode | Modes], Module) :-
+	( mode_is_input(Module, Mode) ->
 		% The variable is an input variables, so its size is
 		% irrelevant.
-		all_args_input_or_zero_size_2(Types, Modes, InstMap,
-				InstTable, Module)
+		all_args_input_or_zero_size_2(Types, Modes, Module)
 	;
 		zero_size_type(Type, Module),
-		all_args_input_or_zero_size_2(Types, Modes, InstMap,
-				InstTable, Module)
+		all_args_input_or_zero_size_2(Types, Modes, Module)
 	).
 
 %----------------------------------------------------------------------------%
@@ -737,9 +731,9 @@ termination__make_opt_int_procs(PredId, [ ProcId | ProcIds ], ProcTable,
 	{ map__lookup(ProcTable, ProcId, ProcInfo) },
 	{ proc_info_get_maybe_arg_size_info(ProcInfo, ArgSize) },
 	{ proc_info_get_maybe_termination_info(ProcInfo, Termination) },
-	{ proc_info_declared_argmodes(ProcInfo, Modes) },
+	{ proc_info_declared_argmodes(ProcInfo, ModeList) },
 	termination__write_pragma_termination_info(PredOrFunc, SymName,
-		Modes, Context, ArgSize, Termination),
+		ModeList, Context, ArgSize, Termination),
 	termination__make_opt_int_procs(PredId, ProcIds, ProcTable, 
 		PredOrFunc, SymName, Context).
 
@@ -750,19 +744,18 @@ termination__make_opt_int_procs(PredId, [ ProcId | ProcIds ], ProcTable,
 % it can parse the resulting pragma termination_info declarations.
 
 termination__write_pragma_termination_info(PredOrFunc, SymName,
-		Modes, Context, MaybeArgSize, MaybeTermination) -->
-	{ Modes = argument_modes(InstTable, ModeList) },
+		ModeList, Context, MaybeArgSize, MaybeTermination) -->
 	io__write_string(":- pragma termination_info("),
 	{ varset__init(InitVarSet) },
 	( 
 		{ PredOrFunc = predicate },
 		mercury_output_pred_mode_subdecl(InitVarSet, SymName, 
-			ModeList, no, Context, InstTable)
+			ModeList, no, Context)
 	;
 		{ PredOrFunc = function },
 		{ pred_args_to_func_args(ModeList, FuncModeList, RetMode) },
 		mercury_output_func_mode_subdecl(InitVarSet, SymName, 
-			FuncModeList, RetMode, no, Context, InstTable)
+			FuncModeList, RetMode, no, Context)
 	),
 	io__write_string(", "),
 	termination__write_maybe_arg_size_info(MaybeArgSize, no),

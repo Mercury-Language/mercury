@@ -360,11 +360,36 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 
 :- interface.
 
+	% The symbol table for insts.
+
 :- type inst_id		==	pair(sym_name, arity).
 				% name, arity.
 
+:- type inst_table.
+
 :- type user_inst_table.
 :- type user_inst_defns ==	map(inst_id, hlds_inst_defn).
+
+:- type unify_inst_table ==	map(inst_name, maybe_inst_det).
+
+:- type unify_inst_pair	--->	unify_inst_pair(is_live, inst, inst,
+					unify_is_real).
+
+:- type merge_inst_table ==	map(pair(inst), maybe_inst).
+
+:- type ground_inst_table == 	map(inst_name, maybe_inst_det).
+
+:- type any_inst_table == 	map(inst_name, maybe_inst_det).
+
+:- type shared_inst_table == 	map(inst_name, maybe_inst).
+
+:- type mostly_uniq_inst_table == map(inst_name, maybe_inst).
+
+:- type maybe_inst	--->	unknown
+			;	known(inst).
+
+:- type maybe_inst_det	--->	unknown
+			;	known(inst, determinism).
 
 	% An `hlds_inst_defn' holds the information we need to store
 	% about inst definitions such as
@@ -376,7 +401,7 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 						% parameters (if any).
 			list(inst_param),	% The inst parameters (if any).
 						% ([I] in the above example.)
-			hlds_inst_body,		% The definition of this inst.
+			hlds_inst_body,	% The definition of this inst.
 			condition,		% Unused (reserved for
 						% holding a user-defined 
 						% invariant).
@@ -396,8 +421,53 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 						% later.  (XXX Abstract insts
 						% are not really supported.)
 
-:- pred user_inst_table_init(user_inst_table).
-:- mode user_inst_table_init(out) is det.
+%-----------------------------------------------------------------------------%
+
+:- pred inst_table_init(inst_table).
+:- mode inst_table_init(out) is det.
+
+:- pred inst_table_get_user_insts(inst_table, user_inst_table).
+:- mode inst_table_get_user_insts(in, out) is det.
+
+:- pred inst_table_get_unify_insts(inst_table, unify_inst_table).
+:- mode inst_table_get_unify_insts(in, out) is det.
+
+:- pred inst_table_get_merge_insts(inst_table, merge_inst_table).
+:- mode inst_table_get_merge_insts(in, out) is det.
+
+:- pred inst_table_get_ground_insts(inst_table, ground_inst_table).
+:- mode inst_table_get_ground_insts(in, out) is det.
+
+:- pred inst_table_get_any_insts(inst_table, any_inst_table).
+:- mode inst_table_get_any_insts(in, out) is det.
+
+:- pred inst_table_get_shared_insts(inst_table, shared_inst_table).
+:- mode inst_table_get_shared_insts(in, out) is det.
+
+:- pred inst_table_get_mostly_uniq_insts(inst_table, mostly_uniq_inst_table).
+:- mode inst_table_get_mostly_uniq_insts(in, out) is det.
+
+:- pred inst_table_set_user_insts(inst_table, user_inst_table, inst_table).
+:- mode inst_table_set_user_insts(in, in, out) is det.
+
+:- pred inst_table_set_unify_insts(inst_table, unify_inst_table, inst_table).
+:- mode inst_table_set_unify_insts(in, in, out) is det.
+
+:- pred inst_table_set_merge_insts(inst_table, merge_inst_table, inst_table).
+:- mode inst_table_set_merge_insts(in, in, out) is det.
+
+:- pred inst_table_set_ground_insts(inst_table, ground_inst_table, inst_table).
+:- mode inst_table_set_ground_insts(in, in, out) is det.
+
+:- pred inst_table_set_any_insts(inst_table, any_inst_table, inst_table).
+:- mode inst_table_set_any_insts(in, in, out) is det.
+
+:- pred inst_table_set_shared_insts(inst_table, shared_inst_table, inst_table).
+:- mode inst_table_set_shared_insts(in, in, out) is det.
+
+:- pred inst_table_set_mostly_uniq_insts(inst_table, mostly_uniq_inst_table,
+					inst_table).
+:- mode inst_table_set_mostly_uniq_insts(in, in, out) is det.
 
 :- pred user_inst_table_get_inst_defns(user_inst_table, user_inst_defns).
 :- mode user_inst_table_get_inst_defns(in, out) is det.
@@ -416,6 +486,17 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 
 :- implementation.
 
+:- type inst_table
+	--->	inst_table(
+			user_inst_table,
+			unify_inst_table,
+			merge_inst_table,
+			ground_inst_table,
+			any_inst_table,
+			shared_inst_table,
+			mostly_uniq_inst_table
+		).
+
 :- type user_inst_defns.
 
 :- type user_inst_table
@@ -425,9 +506,57 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 				% qualifying the modes of lambda expressions.
 		).
 
-user_inst_table_init(user_inst_table(InstDefns, InstIds)) :-
-	map__init(InstDefns),
-	InstIds = [].
+inst_table_init(inst_table(UserInsts, UnifyInsts, MergeInsts, GroundInsts,
+			AnyInsts, SharedInsts, NondetLiveInsts)) :-
+	map__init(UserInstDefns),
+	UserInsts = user_inst_table(UserInstDefns, []),
+	map__init(UnifyInsts),
+	map__init(MergeInsts),
+	map__init(GroundInsts),
+	map__init(SharedInsts),
+	map__init(AnyInsts),
+	map__init(NondetLiveInsts).
+
+inst_table_get_user_insts(inst_table(UserInsts, _, _, _, _, _, _), UserInsts).
+
+inst_table_get_unify_insts(inst_table(_, UnifyInsts, _, _, _, _, _),
+			UnifyInsts).
+
+inst_table_get_merge_insts(inst_table(_, _, MergeInsts, _, _, _, _),
+			MergeInsts).
+
+inst_table_get_ground_insts(inst_table(_, _, _, GroundInsts, _, _, _),
+			GroundInsts).
+
+inst_table_get_any_insts(inst_table(_, _, _, _, AnyInsts, _, _), AnyInsts).
+
+inst_table_get_shared_insts(inst_table(_, _, _, _, _, SharedInsts, _),
+			SharedInsts).
+
+inst_table_get_mostly_uniq_insts(inst_table(_, _, _, _, _, _, NondetLiveInsts),
+			NondetLiveInsts).
+
+inst_table_set_user_insts(inst_table(_, B, C, D, E, F, G), UserInsts,
+			inst_table(UserInsts, B, C, D, E, F, G)).
+
+inst_table_set_unify_insts(inst_table(A, _, C, D, E, F, G), UnifyInsts,
+			inst_table(A, UnifyInsts, C, D, E, F, G)).
+
+inst_table_set_merge_insts(inst_table(A, B, _, D, E, F, G), MergeInsts,
+			inst_table(A, B, MergeInsts, D, E, F, G)).
+
+inst_table_set_ground_insts(inst_table(A, B, C, _, E, F, G), GroundInsts,
+			inst_table(A, B, C, GroundInsts, E, F, G)).
+
+inst_table_set_any_insts(inst_table(A, B, C, D, _, F, G), AnyInsts,
+			inst_table(A, B, C, D, AnyInsts, F, G)).
+
+inst_table_set_shared_insts(inst_table(A, B, C, D, E, _, G), SharedInsts,
+			inst_table(A, B, C, D, E, SharedInsts, G)).
+
+inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, F, _),
+			NondetLiveInsts,
+			inst_table(A, B, C, D, E, F, NondetLiveInsts)).
 
 user_inst_table_get_inst_defns(user_inst_table(InstDefns, _), InstDefns).
 
@@ -442,6 +571,8 @@ user_inst_table_optimize(user_inst_table(InstDefns0, InstIds0),
 			user_inst_table(InstDefns, InstIds)) :-
 	map__optimize(InstDefns0, InstDefns),
 	list__sort(InstIds0, InstIds).
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- interface.
 

@@ -73,7 +73,7 @@
 	%
 :- pred post_typecheck__finish_aditi_builtin(module_info, pred_info,
 		list(prog_var), term__context, aditi_builtin, aditi_builtin,
-		simple_call_id, simple_call_id, argument_modes,
+		simple_call_id, simple_call_id, list(mode),
 		io__state, io__state).
 :- mode post_typecheck__finish_aditi_builtin(in, in, in, in,
 		in, out, in, out, out, di, uo) is det.
@@ -108,7 +108,7 @@
 :- implementation.
 
 :- import_module (assertion), typecheck, clause_to_proc.
-:- import_module mode_util, inst_match, (inst), inst_table.
+:- import_module mode_util, inst_match, (inst).
 :- import_module mercury_to_mercury, prog_out, hlds_data, hlds_out, type_util.
 :- import_module globals, options.
 
@@ -390,9 +390,7 @@ post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo,
 	in_mode(InMode),
 	aditi_builtin_modes(InMode, (aditi_top_down),
 		ArgTypes, InsertArgModes),
-	inst_table_init(ArgInstTable),
-	list__append(InsertArgModes, [aditi_di_mode, aditi_uo_mode], ModeList),
-	Modes = argument_modes(ArgInstTable, ModeList).
+	list__append(InsertArgModes, [aditi_di_mode, aditi_uo_mode], Modes).
 
 post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
 		aditi_delete(PredId0, Syntax), aditi_delete(PredId, Syntax),
@@ -413,11 +411,9 @@ post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
 	in_mode(InMode),
 	aditi_builtin_modes(InMode, (aditi_top_down),
 		ArgTypes, DeleteArgModes),
-	inst_table_init(ArgInstTable),
 	Inst = ground(shared, yes(pred_inst_info(PredOrFunc,
-		argument_modes(ArgInstTable, DeleteArgModes), semidet))),
-	ModeList = [(Inst -> Inst), aditi_di_mode, aditi_uo_mode],
-	Modes = argument_modes(ArgInstTable, ModeList).
+		DeleteArgModes, semidet))),
+	Modes = [(Inst -> Inst), aditi_di_mode, aditi_uo_mode].
 
 post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
 		aditi_bulk_operation(Op, PredId0), Builtin,
@@ -436,11 +432,9 @@ post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
 	pred_info_arg_types(RelationPredInfo, ArgTypes),
 	out_mode(OutMode),
 	aditi_builtin_modes(OutMode, (aditi_bottom_up), ArgTypes, OpArgModes),
-	inst_table_init(ArgInstTable),
 	Inst = ground(shared, yes(pred_inst_info(PredOrFunc,
-		argument_modes(ArgInstTable, OpArgModes), nondet))),
-	ModeList = [(Inst -> Inst), aditi_di_mode, aditi_uo_mode],
-	Modes = argument_modes(ArgInstTable, ModeList).
+		OpArgModes, nondet))),
+	Modes = [(Inst -> Inst), aditi_di_mode, aditi_uo_mode].
 
 post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
 		aditi_modify(PredId0, Syntax), Builtin,
@@ -478,11 +472,9 @@ post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
 	aditi_builtin_modes(OutMode, (aditi_top_down),
 		ArgTypes, OutputArgModes),
 	list__append(InputArgModes, OutputArgModes, ModifyArgModes),
-	inst_table_init(ArgInstTable),
-	Inst = ground(shared, yes(pred_inst_info(predicate,
-		argument_modes(ArgInstTable, ModifyArgModes), semidet))),
-	ModeList = [(Inst -> Inst), aditi_di_mode, aditi_uo_mode],
-	Modes = argument_modes(ArgInstTable, ModeList).
+	Inst = ground(shared,
+		yes(pred_inst_info(predicate, ModifyArgModes, semidet))),
+	Modes = [(Inst -> Inst), aditi_di_mode, aditi_uo_mode].
 
 	% Use the type of the closure passed to an `aditi_delete',
 	% `aditi_bulk_insert', `aditi_bulk_delete' or `aditi_modify'
@@ -654,9 +646,8 @@ propagate_types_into_proc_modes(_, _, [], _, Procs, Procs) --> [].
 propagate_types_into_proc_modes(ModuleInfo, PredId,
 		[ProcId | ProcIds], ArgTypes, Procs0, Procs) -->
 	{ map__lookup(Procs0, ProcId, ProcInfo0) },
-	{ proc_info_argmodes(ProcInfo0, argument_modes(IT, ArgModes0)) },
-	{ proc_info_get_initial_instmap(ProcInfo0, ModuleInfo, ProcInstMap) },
-	{ propagate_types_into_mode_list(ArgTypes, IT, ModuleInfo,
+	{ proc_info_argmodes(ProcInfo0, ArgModes0) },
+	{ propagate_types_into_mode_list(ArgTypes, ModuleInfo,
 		ArgModes0, ArgModes) },
 	%
 	% check for unbound inst vars
@@ -664,16 +655,12 @@ propagate_types_into_proc_modes(ModuleInfo, PredId,
 	% because we need the insts to be module-qualified; and it
 	% needs to be done before mode analysis, to avoid internal errors)
 	%
-	(
-		{ mode_list_contains_inst_var(ArgModes, ProcInstMap, IT,
-			ModuleInfo, _InstVar) }
-	->
+	( { mode_list_contains_inst_var(ArgModes, ModuleInfo, _InstVar) } ->
 		unbound_inst_var_error(PredId, ProcInfo0, ModuleInfo),
 		% delete this mode, to avoid internal errors
 		{ map__det_remove(Procs0, ProcId, _, Procs1) }
 	;
-		{ proc_info_set_argmodes(ProcInfo0,
-			argument_modes(IT, ArgModes), ProcInfo) },
+		{ proc_info_set_argmodes(ProcInfo0, ArgModes, ProcInfo) },
 		{ map__det_update(Procs0, ProcId, ProcInfo, Procs1) }
 	),
 	propagate_types_into_proc_modes(ModuleInfo, PredId, ProcIds,

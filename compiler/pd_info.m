@@ -13,7 +13,7 @@
 
 :- interface.
 
-:- import_module pd_term, hlds_module, hlds_pred, options, instmap.
+:- import_module pd_term, hlds_module, hlds_pred, options, hlds_data, instmap.
 :- import_module hlds_goal, prog_data.
 :- import_module bool, map, list, io, set, std_util, getopt.
 
@@ -141,8 +141,8 @@
 :- pred pd_info_lookup_bool_option(option, bool, pd_info, pd_info).
 :- mode pd_info_lookup_bool_option(in, out, pd_info_di, pd_info_uo) is det.
 
-:- pred pd_info_apply_instmap_delta(instmap_delta, pd_info, pd_info).
-:- mode pd_info_apply_instmap_delta(in, pd_info_di, pd_info_uo) is det.
+:- pred pd_info_bind_var_to_functor(prog_var, cons_id, pd_info, pd_info).
+:- mode pd_info_bind_var_to_functor(in, in, pd_info_di, pd_info_uo) is det.
 
 :- pred pd_info_unset_unfold_info(pd_info, pd_info).
 :- mode pd_info_unset_unfold_info(pd_info_di, pd_info_uo) is det.
@@ -161,8 +161,8 @@
 :- implementation.
 
 :- import_module hlds_pred, prog_data, pd_debug, pd_util, det_util, globals.
-:- import_module inst_match, hlds_goal, prog_util, hlds_data, inst_table.
-:- import_module assoc_list, bool, int, require, string, term.
+:- import_module inst_match, hlds_goal, prog_util, term.
+:- import_module assoc_list, bool, int, require, string.
 
 pd_info_init(ModuleInfo, ProcArgInfos, IO, PdInfo) :-
 	map__init(GoalVersionIndex),
@@ -218,6 +218,7 @@ pd_info_get_created_versions(Versions, PdInfo, PdInfo) :-
 	PdInfo = pd_info(_,_,_,_,_,_,_,_,_,_,Versions,_,_,_).
 pd_info_get_useless_versions(Versions, PdInfo, PdInfo) :-
 	PdInfo = pd_info(_,_,_,_,_,_,_,_,_,_,_,Versions,_,_).
+
 pd_info_set_io_state(IO0, pd_info(_, B,C,D,E,F,G,H,I,J,K,L,M,N), 
 		pd_info(IO, B,C,D,E,F,G,H,I,J,K,L,M,N)) :-
 	unsafe_promise_unique(IO0, IO).
@@ -247,8 +248,10 @@ pd_info_set_useless_versions(Versions, pd_info(A,B,C,D,E,F,G,H,I,J,K,_,M,N),
 		pd_info(A,B,C,D,E,F,G,H,I,J,K,Versions,M,N)).
 
 pd_info_update_goal(_ - GoalInfo) -->
+	pd_info_get_instmap(InstMap0),
 	{ goal_info_get_instmap_delta(GoalInfo, Delta) },
-	pd_info_apply_instmap_delta(Delta).
+	{ instmap__apply_instmap_delta(InstMap0, Delta, InstMap) },
+	pd_info_set_instmap(InstMap).
 
 pd_info_lookup_option(Option, OptionData) -->
 	pd_info_get_io_state(IO0),
@@ -263,10 +266,13 @@ pd_info_lookup_bool_option(Option, Value) -->
 		error("pd_info_lookup_bool_option")
 	}.
 
-pd_info_apply_instmap_delta(InstMapDelta) -->
+pd_info_bind_var_to_functor(Var, ConsId) -->
 	pd_info_get_instmap(InstMap0),
-	{ instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap) },
-	pd_info_set_instmap(InstMap).
+	pd_info_get_module_info(ModuleInfo0),
+	{ instmap__bind_var_to_functor(Var, ConsId, InstMap0, InstMap,
+		ModuleInfo0, ModuleInfo) },
+	pd_info_set_instmap(InstMap),
+	pd_info_set_module_info(ModuleInfo).
 
 pd_info_foldl(_, []) --> [].
 pd_info_foldl(Pred, [H | T]) -->
@@ -558,13 +564,11 @@ pd_info__search_version(Goal, MaybeVersion) -->
 	pd_info_get_module_info(ModuleInfo),
 	pd_info_get_proc_info(ProcInfo),
 	pd_info_get_instmap(InstMap),
-	{ proc_info_inst_table(ProcInfo, InstTable) },
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
 	(
 		{ map__search(GoalVersionIndex, CalledPreds, VersionIds) },
-		{ pd_info__get_matching_version(InstTable, ModuleInfo, Goal,
-			InstMap, VarTypes, VersionIds, Versions,
-			MaybeVersion0) }
+		{ pd_info__get_matching_version(ModuleInfo, Goal, InstMap,
+			VarTypes, VersionIds, Versions, MaybeVersion0) }
 	->
 		{ MaybeVersion = MaybeVersion0 }
 	;
@@ -574,26 +578,25 @@ pd_info__search_version(Goal, MaybeVersion) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred pd_info__get_matching_version(inst_table::in, module_info::in,
-		hlds_goal::in, instmap::in, map(prog_var, type)::in,
-		list(pred_proc_id)::in, version_index::in, maybe_version::out)
-		is semidet.
+:- pred pd_info__get_matching_version(module_info::in, hlds_goal::in,
+		instmap::in, map(prog_var, type)::in, list(pred_proc_id)::in, 
+		version_index::in, maybe_version::out) is semidet.
 
-pd_info__get_matching_version(_, _, _, _, _, [], _, no_version).
-pd_info__get_matching_version(InstTable, ModuleInfo, ThisGoal, ThisInstMap,
-		VarTypes, [VersionId | VersionIds], Versions, MaybeVersion) :-
+pd_info__get_matching_version(_, _, _, _, [], _, no_version).
+pd_info__get_matching_version(ModuleInfo, ThisGoal, ThisInstMap, VarTypes, 
+		[VersionId | VersionIds], Versions, MaybeVersion) :-
 	map__lookup(Versions, VersionId, Version),
 	Version = version_info(OldGoal, _, OldArgs, OldArgTypes,
 			OldInstMap, _, _, _, _),
 	(
-		pd_info__goal_is_more_general(InstTable, ModuleInfo,
+		pd_info__goal_is_more_general(ModuleInfo,
 			OldGoal, OldInstMap, OldArgs, OldArgTypes, 
 			ThisGoal, ThisInstMap, VarTypes, VersionId, Version, 
 			MaybeVersion1)
 	->
 		(
 			MaybeVersion1 = no_version,
-			pd_info__get_matching_version(InstTable, ModuleInfo,
+			pd_info__get_matching_version(ModuleInfo,
 				ThisGoal, ThisInstMap, VarTypes, VersionIds,
 				Versions, MaybeVersion)
 		;
@@ -603,15 +606,15 @@ pd_info__get_matching_version(InstTable, ModuleInfo, ThisGoal, ThisInstMap,
 			MaybeVersion1 =
 				version(more_general, PredProcId,
 					MoreGeneralVersion, Renaming, TypeSubn),
-			pd_info__get_matching_version(InstTable, ModuleInfo,
-				ThisGoal, ThisInstMap, VarTypes, VersionIds, 
+			pd_info__get_matching_version(ModuleInfo, ThisGoal, 
+				ThisInstMap, VarTypes, VersionIds, 
 				Versions, MaybeVersion2),
 			pd_info__pick_version(ModuleInfo, PredProcId, Renaming,
 				TypeSubn, MoreGeneralVersion, MaybeVersion2,
 				MaybeVersion)
 		)
 	;
-		pd_info__get_matching_version(InstTable, ModuleInfo, ThisGoal,
+		pd_info__get_matching_version(ModuleInfo, ThisGoal,
 			ThisInstMap, VarTypes, VersionIds,
 			Versions, MaybeVersion)
 	).
@@ -660,21 +663,21 @@ pd_info__pick_version(_ModuleInfo, PredProcId1, Renaming1, TSubn1, Version1,
 	%	the old inst must be at least as general as the
 	% 	new one, i.e inst_matches_initial(FirstInst, SecondInst) (?)
 	% 
-:- pred pd_info__goal_is_more_general(inst_table::in, module_info::in,
-	hlds_goal::in, instmap::in, list(prog_var)::in, list(type)::in,
-	hlds_goal::in, instmap::in, map(prog_var, type)::in, pred_proc_id::in, 
+:- pred pd_info__goal_is_more_general(module_info::in, hlds_goal::in, 
+	instmap::in, list(prog_var)::in, list(type)::in, hlds_goal::in,
+	instmap::in, map(prog_var, type)::in, pred_proc_id::in, 
 	version_info::in, maybe_version::out) is semidet.
 
-pd_info__goal_is_more_general(InstTable, ModuleInfo, OldGoal, OldInstMap,
-		OldArgs, OldArgTypes, NewGoal, NewInstMap, NewVarTypes,
-		PredProcId, Version, MaybeVersion) :-
+pd_info__goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs, 
+		OldArgTypes, NewGoal, NewInstMap, NewVarTypes, PredProcId, 
+		Version, MaybeVersion) :-
 	pd_util__goals_match(ModuleInfo, OldGoal, OldArgs, OldArgTypes, 
 		NewGoal, NewVarTypes, OldNewRenaming, TypeRenaming), 
 	OldGoal = _ - OldGoalInfo,
 	goal_info_get_nonlocals(OldGoalInfo, OldNonLocals0),
 	set__to_sorted_list(OldNonLocals0, OldNonLocalsList),
-	pd_info__check_insts(InstTable, ModuleInfo, OldNonLocalsList,
-		OldNewRenaming, OldInstMap, NewInstMap, exact, Exact),
+	pd_info__check_insts(ModuleInfo, OldNonLocalsList, OldNewRenaming, 
+		OldInstMap, NewInstMap, exact, Exact),
 		
 	MaybeVersion = version(Exact, PredProcId, Version, 
 		OldNewRenaming, TypeRenaming).
@@ -683,54 +686,31 @@ pd_info__goal_is_more_general(InstTable, ModuleInfo, OldGoal, OldInstMap,
 
 	% Check that all the insts in the old version are at least as
 	% general as the insts in the new version.
-:- pred pd_info__check_insts(inst_table::in, module_info::in,
-		list(prog_var)::in, map(prog_var, prog_var)::in, instmap::in,
-		instmap::in, version_is_exact::in, version_is_exact::out)
-		is semidet.
-
-pd_info__check_insts(InstTable, ModuleInfo, Vars, VarRenaming, OldInstMap,
-		NewInstMap, ExactSoFar0, ExactSoFar) :-
-	map__init(AliasMap0),
-	pd_info__check_insts(InstTable, ModuleInfo, Vars, VarRenaming,
-		OldInstMap, NewInstMap, AliasMap0, AliasMap0,
-		ExactSoFar0, ExactSoFar).
-
-:- pred pd_info__check_insts(inst_table::in, module_info::in,
-		list(prog_var)::in, map(prog_var, prog_var)::in, instmap::in,
-		instmap::in, alias_map::in, alias_map::in,
+:- pred pd_info__check_insts(module_info::in, list(prog_var)::in,
+		map(prog_var, prog_var)::in, instmap::in, instmap::in,
 		version_is_exact::in, version_is_exact::out) is semidet.
 
-pd_info__check_insts(_, _, [], _, _, _, _, _, Exact, Exact).
-pd_info__check_insts(InstTable, ModuleInfo, [OldVar | Vars], VarRenaming,
-		OldInstMap, NewInstMap, AliasMapOld0, AliasMapNew0,
-		ExactSoFar0, ExactSoFar) :-
+pd_info__check_insts(_, [], _, _, _, Exact, Exact).
+pd_info__check_insts(ModuleInfo, [OldVar | Vars], VarRenaming, OldInstMap,
+		NewInstMap, ExactSoFar0, ExactSoFar) :-
 	instmap__lookup_var(OldInstMap, OldVar, OldVarInst),
 	map__lookup(VarRenaming, OldVar, NewVar),
 	instmap__lookup_var(NewInstMap, NewVar, NewVarInst),
-	inst_matches_initial(NewVarInst, NewInstMap, OldVarInst, OldInstMap,
-			InstTable, ModuleInfo, AliasMapOld0, AliasMapOld1),
+	inst_matches_initial(NewVarInst, OldVarInst, ModuleInfo),
 	( ExactSoFar0 = exact ->
 		% Does inst_matches_initial(Inst1, Inst2, M) and
 		% inst_matches_initial(Inst2, Inst1, M) imply that Inst1
 		% and Inst2 are interchangable? 
-		( 
-			inst_matches_initial(OldVarInst, OldInstMap,
-				NewVarInst, NewInstMap, InstTable,
-				ModuleInfo, AliasMapNew0, AliasMapNew1)
-		->
-			ExactSoFar1 = exact,
-			AliasMapNew2 = AliasMapNew1
+		( inst_matches_initial(OldVarInst, NewVarInst, ModuleInfo) ->
+			ExactSoFar1 = exact
 		;
-			ExactSoFar1 = more_general,
-			AliasMapNew2 = AliasMapNew0
+			ExactSoFar1 = more_general
 		)
 	;
-		ExactSoFar1 = more_general,
-		AliasMapNew2 = AliasMapNew0
+		ExactSoFar1 = more_general
 	),
-	pd_info__check_insts(InstTable, ModuleInfo, Vars, VarRenaming,
-		OldInstMap, NewInstMap, AliasMapOld1, AliasMapNew2,
-		ExactSoFar1, ExactSoFar).
+	pd_info__check_insts(ModuleInfo, Vars, VarRenaming, OldInstMap,
+		NewInstMap, ExactSoFar1, ExactSoFar).
 
 %-----------------------------------------------------------------------------%
 
@@ -761,12 +741,11 @@ pd_info__define_new_pred(Goal, PredProcId, CallGoal) -->
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
 	{ proc_info_typeinfo_varmap(ProcInfo, TVarMap) },
 	{ proc_info_typeclass_info_varmap(ProcInfo, TCVarMap) },
-	{ proc_info_inst_table(ProcInfo, InstTable) },
 	% XXX handle the extra typeinfo arguments for
 	% --typeinfo-liveness properly.
 	{ hlds_pred__define_new_pred(Goal, CallGoal, Args, _ExtraArgs, InstMap, 
 		Name, TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap,
-		VarSet, Markers, Owner, address_is_not_taken, InstTable,
+		VarSet, Markers, Owner, address_is_not_taken,
 		ModuleInfo0, ModuleInfo, PredProcId) },
 	pd_info_set_module_info(ModuleInfo).
 

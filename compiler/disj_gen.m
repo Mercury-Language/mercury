@@ -231,28 +231,23 @@ disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 			% We can backtrack to the next disjunct from outside,
 			% so we make sure every variable in the resume set
 			% is in its stack slot.
-			code_info__flush_resume_vars_to_stack(ResumeVarsCode),
+			code_info__flush_resume_vars_to_stack(ResumeVarsCode)
 
 			% We hang onto any temporary slots holding saved
 			% heap pointers and/or tickets, thus ensuring that
 			% they will still be reserved after the disjunction.
-
-			{ MaybeResetResumePointKnown = no }
 		;
 			{ ResumeVarsCode = empty },
 
 			code_info__maybe_release_hp(MaybeHpSlot),
-			code_info__maybe_release_ticket(MaybeTicketSlot),
-
-			{ MaybeResetResumePointKnown = yes(BranchStart) }
+			code_info__maybe_release_ticket(MaybeTicketSlot)
 		),
 
 			% Put every variable whose value is needed after
 			% the disjunction to the place indicated by StoreMap,
 			% and accumulate information about the code_info state
 			% at the ends of the branches so far.
-		code_info__generate_branch_end(StoreMap,
-			MaybeResetResumePointKnown, MaybeEnd0, MaybeEnd1,
+		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd1,
 			SaveCode),
 
 		{ BranchCode = node([
@@ -292,8 +287,8 @@ disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 
 		trace__maybe_generate_internal_event_code(Goal0, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal0, GoalCode),
-		code_info__generate_branch_end(StoreMap, no,
-			MaybeEnd0, MaybeEnd, SaveCode),
+		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
+			SaveCode),
 
 		{ EndCode = node([
 			label(EndLabel) - "End of nondet disj"

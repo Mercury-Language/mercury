@@ -277,7 +277,32 @@ builtin_init_non_solver_type(X) :-
 	%     unnecessary memory allocatation.
 typed_unify(X, Y) :- univ(X) = univ(Y).
 typed_compare(R, X, Y) :- compare(R, univ(X), univ(Y)).
-typed_solve_equal(X, Y) :- solve_equal(univ(X), univ(Y)).
+
+	% typed_solve_equal/2 should not exist unless the `se' grade
+	% component has been specified.  However, having a predicate exist
+	% only in some grades is not possible.  Unfortunately, if we
+	% implement it in Mercury as:
+	% 	typed_solve_equal(X, Y) :- solve_equal(univ(X), univ(Y)).
+	% then the compiler aborts with an error in non-`se' grades.  So we
+	% have to implement it partially in C.
+typed_solve_equal(X, Y) :- solve_equal_univ(univ(X), univ(Y)).
+
+:- pred solve_equal_univ(univ, univ).
+:- mode solve_equal_univ((any->any), (any->any)) is semidet.
+
+:- pragma c_code(solve_equal_univ(X::(any->any), Y::(any->any)), "
+#ifdef MR_USE_SOLVE_EQUAL
+
+Declare_entry(mercury____SolveEqual___std_util__univ_0_0);
+
+	r1 = X;
+	r2 = Y;
+	tailcall(ENTRY(mercury____SolveEqual___std_util__univ_0_0),
+		LABEL(mercury__private_builtin__solve_equal_univ_2_0));
+#else
+	fatal_error(""Call to solve_equal/2 not supported in this grade"");
+#endif
+").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
