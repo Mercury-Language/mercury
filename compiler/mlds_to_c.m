@@ -2837,6 +2837,14 @@ mlds_output_binop(Op, X, Y) -->
 		mlds_output_rval(Y),
 		io__write_string("]")
 	;
+		{ Op = body }
+	->
+		io__write_string("MR_body("),
+		mlds_output_rval(X),
+		io__write_string(", "),
+		mlds_output_rval(Y),
+		io__write_string(")")
+	;
 		{ c_util__string_compare_op(Op, OpStr) }
 	->
 		io__write_string("(strcmp("),

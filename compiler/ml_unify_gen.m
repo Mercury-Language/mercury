@@ -1065,8 +1065,8 @@ ml_gen_new_object(MaybeConsId, Tag, CtorName, Var, ExtraRvals, ExtraTypes,
 			Var2Rval = lval(Var2Lval)
 		;
 			Var2Rval = mkword(PrimaryTag,
-					unop(std_unop(unmkbody),
-					lval(Var2Lval)))
+					binop(body, lval(Var2Lval),
+					ml_gen_mktag(ReusePrimaryTag)))
 		},
 
 		{ MLDS_Statement = ml_gen_assign(Var1Lval, Var2Rval, Context) },
