@@ -235,11 +235,11 @@
 %		String = "Square-root of 2 = 1.41\n".
 %
 %	All the normal options available in C are supported, ie Flags [0+-# ],
-%	a field width (or *) '.' precision (could be a '*'), and a length
+%	a field width (or *), '.', precision (could be a '*'), and a length
 %	modifier (currently ignored).
 %
-%	Valid conversion character types are {dioxXucsfeEgGp%}.  %n will not
-%	work.  string__format will not return the length of the string.
+%	Valid conversion character types are {dioxXucsfeEgGp%}.  %n is not
+%	supported.  string__format will not return the length of the string.
 %
 %	conv	var	output form.		effect of '#'.
 %	char.	type.
@@ -268,10 +268,19 @@
 %	Note:	
 %		%x will print with uppercase hex numbers.
 %
-%		%g, %G don't convert to %f correctly.  (They effectively go
-%		to %f through %#g %#G, IE have trailing zeros.)
-%
 %		%#.0e, %#.0E won't print a '.' before the 'e' ('#' ignored).
+%
+%		string__float_to_string returns large values in `%e' format,
+%		rather than `%f' format.  This means that a conversion to `%f'
+%		might not be properly formatted, and the width information may 
+%		be wrong.  It is better to use `%g' or `%e' if large floats 
+%		need to be printed.
+%
+%		Extra precision (as `0's) may be added to floats if the 
+%		precision value asks for this - IE numbers may come out more
+%		accurate than when they were typed.  A precision value of more
+%		than 6 will not find more accuracy, as string__float_to_string
+%		only generates 6 significant figures.
 %
 %		If a width or precision is specified, without a `.', a number
 %		is assumed to be a width and a `*' is assumed to be a precision.
@@ -301,6 +310,8 @@
 :- mode string__to_int_list(in, in) is semidet. % implied
 
 :- external(string__float_to_string/2).
+	% Changing the implementation of string__float_to_string/2 _may_
+	% break string__format.
 :- external(string__to_float/2).
 :- external(string__to_int_list/2).
 :- external(string__index/3).
@@ -679,7 +690,7 @@ string__pad_right(String0, PadChar, Width, String) :-
 	).
 
 string__duplicate_char(Char, Count, String) :-
-	( Count = 0 ->
+	( Count =< 0 ->
 		String = ""
 	;
 		Count1 is Count - 1,
@@ -784,22 +795,22 @@ string__format_top_convert_variable( F_chars_in, F_chars_out,
 			Int_precis, Conv_modify),
 			     %	Parse formatting info.
 			     %	in, out, out, out, out.
-	string__format_mod_conv_char( Precision, Var_in, Conv_char_1, 
-			Conv_char_0),
+	string__format_read_star( Vars_out, Vars_l_in, Width, Int_width, 
+			Precision0, Int_precis),
+			     %	Do something if a precision or width was '*'
+			     %  out, in, out, in, out, in
+	string__format_mod_conv_char( Precision0, Var_in, Conv_char_0, 
+			Conv_char_1, Precision),
 			     %	Modify(?) conversion character.
-			     %	in, in, out, in
+			     %  in, in, in, out, out
 	string__format_do_mod_char( Conv_modify, Conv_char_2, Conv_char_1),
 			     %	Interperate input conversion modifiers.
 			     %	in, out, in
-	string__format_read_star( Vars_out, Vars_l_in, Width, Int_width, 
-			Precision, Int_precis),
-			     %	Do something if a precision or width was '*'
-			     %  out, in, out, in, out, in
-	string__format_do_conversion(Conv_char_2, Var_in, Ostring, Precision,
+	string__format_do_conversion(Conv_char_2, Var_in, Ostring0, Precision,
 			Flags, Move_i0),
 			     %	Actually convert a Variable to a string
-			     %	in, out, in, in, out, in, in, out
-	string__format_add_sign( Ostring2, Ostring, Flags, Var_in, Move_i0, 
+			     %	in, in, out, in, in, out
+	string__format_add_sign( Ostring2, Ostring0, Flags, Var_in, Move_i0, 
 			Move_i1),
 			     %	Adds an optional '+' or ' ' to string.
 			     %	out, in, in, in, in, out
@@ -813,48 +824,61 @@ string__format_top_convert_variable( F_chars_in, F_chars_out,
 %	Ideally the outer "->" symbols could be removed, the last case given
 %	a guard, and the compiler accept this as det, rather than non-det.
 %
-:- pred string__format_mod_conv_char( int, string__poly_type, char, char).
-:- mode string__format_mod_conv_char( in, in, out, in) is det.
-string__format_mod_conv_char( Precision, Poly_var, Conv_c_out, Conv_c_in) :- 
+:- pred string__format_mod_conv_char(maybe(int), string__poly_type, char, 
+				char, maybe(int)).
+:- mode string__format_mod_conv_char(in, in, in, out, out) is det.
+string__format_mod_conv_char( Precision0, Poly_var, Conv_c_in,
+				Conv_c_out, Precision) :- 
+	( Precision0 = yes(Prec0) ->
+		Prec = Prec0
+	;
+		Prec = 0
+	),
 	( Conv_c_in = 'i' ->
-		Conv_c_out = 'd'		% %d = %i
+		Conv_c_out = 'd',		% %d = %i
+		Precision = Precision0
 	; 
-	(Conv_c_in = 'g' ->			%g is either %e of %f
+	Conv_c_in = 'g' ->			%g is either %e of %f
 		(Poly_var = f(F) ->
 			string__float_abs(F, Ft),
-			int__pow(10, Precision, P),
+			int__pow(10, Prec, P),
 			int__to_float(P, Pe),
 			( 
 				builtin_float_gt(Ft, 0.0001),
 				builtin_float_gt(Pe, Ft)
 			->
-				Conv_c_out = 'f'
+				Conv_c_out = 'f',
+				Precision = yes(0)
 			;
-				Conv_c_out = 'e'
+				Conv_c_out = 'e',
+				Precision = Precision0
 			)
 		;
 			error("string__format:  %g without a f(Float).")
 		)
-	 ;
-	(Conv_c_in = 'G' ->		%G is either %E of %f
+	;
+	Conv_c_in = 'G' ->		%G is either %E of %f
 		(Poly_var = f(F) ->
 			string__float_abs(F, Ft),
-			int__pow(10, Precision, P),
+			int__pow(10, Prec, P),
 			int__to_float(P, Pe),
 			(
 				builtin_float_gt(Ft, 0.0001),
 				builtin_float_gt(Pe, Ft)
 			->
-				Conv_c_out = 'f'
+				Conv_c_out = 'f',
+				Precision = yes(0)
 			;
-				Conv_c_out = 'E'
+				Conv_c_out = 'E',
+				Precision = Precision0
 			)
 		;
-			error("string__format:  %G without a f(float).")
+			error("string__format:  %G without a f(Float).")
 		)
 	;
-		Conv_c_out = Conv_c_in
-	))).
+		Conv_c_out = Conv_c_in,
+		Precision = Precision0
+	).
 
 %	This function glances at the input-modification flags, only applicable
 %	with a more complicated type system
@@ -883,26 +907,35 @@ string__format_do_mod_char( Char_mods, C_out, C_in) :-
 %
 %	Change Width or Precision value, if '*' was spcified
 %
-:- pred string__format_read_star( list(string__poly_type), list(string__poly_type), int, int, int, int).
+:- pred string__format_read_star( list(string__poly_type), list(string__poly_type), maybe(int), int, maybe(int), int).
 :- mode string__format_read_star( out, in, out, in, out, in) is semidet.
 string__format_read_star( Polys_out, Polys_in, Width, Int_width, Precision, Int_precis) :-
 	(
 		string__special_precision_and_width(Int_width)
 	->
-		Polys_in = [ i(Width) |  Poly_temp]
+		Polys_in = [ i(Width0) |  Poly_temp],
+		Width = yes(Width0)
 	;
-		Polys_in = Poly_temp,
-		Int_width = Width
+		( string__default_precision_and_width(Int_width) ->
+			Width = no
+		;
+			Width = yes(Int_width)
+		),
+		Polys_in = Poly_temp
 	),
 	(
 		string__special_precision_and_width(Int_precis)
 	->
-		Poly_temp = [ i(Precision) | Polys_out]
+		Poly_temp = [ i(Precision0) | Polys_out],
+		Precision = yes(Precision0)
 	;
-		Polys_out = Poly_temp,
-		Int_precis = Precision
+		( string__default_precision_and_width(Int_precis) ->
+			Precision = no
+		;
+			Precision = yes(Int_precis)
+		),
+		Polys_out = Poly_temp
 	).
-
 
 
 %
@@ -914,8 +947,8 @@ string__format_read_star( Polys_out, Polys_in, Width, Int_width, Precision, Int_
 %	so that it is more easy to insert width and precision padding and 
 %	optional signs, in the correct place.
 %
-:- pred string__format_do_conversion( char, string__poly_type, string, int, 
-		list(char), int).
+:- pred string__format_do_conversion( char, string__poly_type, string, 
+		maybe(int), list(char), int).
 :- mode string__format_do_conversion( in, in, out, in, in, out)
 		is det.
 string__format_do_conversion( Conv_c, Poly_t, Ostring, Precision, Flags,
@@ -930,7 +963,7 @@ string__format_do_conversion( Conv_c, Poly_t, Ostring, Precision, Flags,
 		string__do_conversion_fail(Conv_c)
 	).
 
-:- pred string__do_conversion_0(char, string__poly_type, string, int, 
+:- pred string__do_conversion_0(char, string__poly_type, string, maybe(int), 
 		list(char), int).
 :- mode string__do_conversion_0(in, in, out, in, in, out) is semidet.
 string__do_conversion_0(Conv_c, Poly_t, Ostring, Precision, Flags, 
@@ -1023,10 +1056,10 @@ string__do_conversion_0(Conv_c, Poly_t, Ostring, Precision, Flags,
 	;
 	Conv_c = 's' ,
 		Poly_t = s(S),
-		( string__default_precision_and_width(Precision) ->
-			S = Ostring
+		( Precision = yes(Prec) ->
+			string__split(S, Prec, Ostring, _)
 		;
-			string__split(S, Precision, Ostring, _)
+			S = Ostring
 		),
 		Mv_width = 0
 	;
@@ -1064,13 +1097,13 @@ string__do_conversion_fail(Conv_c) :-
 %
 %	Use precision information to modify string.  - for integers
 %
-:- pred string__format_int_precision(string, string, int, int).
+:- pred string__format_int_precision(string, string, maybe(int), int).
 :- mode string__format_int_precision( in, out, in, out) is semidet.
 string__format_int_precision(S, Ostring, Precision, Added_width) :-
-	( string__default_precision_and_width(Precision) ->
-		Prec = 0
+	( Precision = yes(Prec0) ->
+		Prec = Prec0
 	;
-		Prec = Precision
+		Prec = 0
 	),
 	string__length(S, L),
 	( string__first_char(S, '-', _) ->
@@ -1097,7 +1130,7 @@ string__format_int_precision(S, Ostring, Precision, Added_width) :-
 
 %	Function  to calculate exponent for a %e conversion of a float
 %
-:- pred string__format_calc_exp(float, string, int, int).
+:- pred string__format_calc_exp(float, string, maybe(int), int).
 :- mode string__format_calc_exp(in, out, in, in) is det.
 string__format_calc_exp(F, Fstring, Precision, Exp) :-
 	( builtin_float_lt(F, 0.0) -> 	
@@ -1133,51 +1166,55 @@ string__format_calc_exp(F, Fstring, Precision, Exp) :-
 %
 %	This precision output-modification predicate handles floats.
 %
-:- pred string__format_calc_prec(string, string, int).
+:- pred string__format_calc_prec(string, string, maybe(int)).
 :- mode string__format_calc_prec(in, out, in) is det.
-string__format_calc_prec(Istring, Ostring, Precision) :-
+string__format_calc_prec(Istring0, Ostring, Precision) :-
 	(
-		string__default_precision_and_width(Precision)
+		Precision = yes(Prec0)
 	->
-		Prec = 6
+		Prec = Prec0
 	;
-		Prec = Precision
+		Prec = 6
 	),
 	(
-		string__find_index( Istring, '.', Index)
+		string__find_index( Istring0, '.', Index)
 	->
-		Spa is Prec + Index
+		TargetLenght1 is Prec + Index,
+		Istring1 = Istring0
 	;
-		string__length(Istring, Spa_0),
-		Spa is Spa_0 + 1
+		string__length(Istring0, TargetLenght0),
+		TargetLenght1 is TargetLenght0 + 1 + Prec,
+		string__append(Istring0, ".", Istring1)
+
 		%  This branch should never be called if mercury is implemented
 		%  in ansi-C, according to Kernighan and Ritchie p244, as a 
 		%  float converted to a string using sprintf should always have
 		%  a decimal point.  (where specified precision != 0.  
 		%  string__float_to_string doesn't specify a precision to be
-		%  used.)  If a future implementation changes the 
-		%  way string__float_to_string is implemented, and a float can
-		%  be converted to a string without a decimal point, then this
-		%  rule would be useful.  It is not expected that
-		%  string__float_to_string will ever produce %e style output.
+		%  used.)  
+		%
+		%  Unfortunately, this branch is called.
+		%  Often.
 	),
 	(
-		string__length(Istring, L1),
-		L1 < Spa
+		Prec = 0
 	->
-		string__duplicate_char('0', Precision, P0s),
-		string__append( Istring, P0s, Mstring)
+			%  Forget the '.'.
+		TargetLength is TargetLenght1 - 1
 	;
-		Mstring = Istring
+		TargetLength = TargetLenght1
 	),
 	(
-		Precision = 0
+		string__length(Istring1, Length),
+		Length < TargetLength
 	->
-		Space is Spa - 1
+			%  Ensure that there are "enough" chars in Istring.
+		string__duplicate_char( '0', Prec, Suffix),
+		string__append(Istring1, Suffix, Istring)
 	;
-		Space = Spa
+		Istring = Istring1
 	),
-	string__split(Mstring, Space, Ostring, _).
+	string__split(Istring, TargetLength, Ostring, _).
 
 %	string__find_index is a funky little predicate to find the first
 %	occurrence of a particular character in a string.
@@ -1256,12 +1293,15 @@ string__format_add_sign( Ostring, Istring, Flags, _V, Mvw1, Mvw2) :-
 % This function pads some characters to the left or right of a string that is
 % shorter than it's width.
 %
-:- pred string__format_pad_width( string, int, list(char), string, int).
+:- pred string__format_pad_width( string, maybe(int), list(char), string, int).
 :- mode string__format_pad_width( in, in, in, out, in) is det.
 %		( String in, width, flags, Output string, #Moveables).
-string__format_pad_width( Istring, Width, Flags, Out_string, Mv_cs) :-
+string__format_pad_width( Istring, Width0, Flags, Out_string, Mv_cs) :-
 	string__length(Istring, Len),
-	(Len < Width ->
+	(
+		Width0 = yes(Width),
+		Len < Width
+	->
 		% time for some FLAG tests
 		Xspace is Width - Len,
 		(
