@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 The University of Melbourne.
+% Copyright (C) 1998-2000, 2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,6 +23,10 @@
 % Values of type var/1 may be cyclic.  However, the solver not complete
 % for cyclic terms; if you attempt to do anything much with cyclic terms,
 % your program will probably not terminate.
+%
+% NOTE: The current implementation of this module makes some assumptions
+% about the representation of Mercury terms which mean that it does not work
+% in ".rt" (--reserve-tag) grades.
 %
 %-----------------------------------------------------------------------------%
 :- module var.
@@ -150,6 +154,11 @@
 % representation and back.
 %
 % PLEASE DO NOT IMITATE THIS CODING STYLE!
+%
+% Note that the way we use setarg assumes that the alias/1 functor of the
+% var_rep/1 type is represented using only a primary tag, not a secondary tag.
+% This assumption is false for .rt (--reserve-tag) grades, so this module
+% doesn't work in .rt grades.
 %
 %---------------------------------------------------------------------------%
 
@@ -899,6 +908,10 @@ destructively_update_binding(VarPtr, NewBinding) :-
 ** WARNING: setarg/3 uses side-effects and is not type-safe!
 **          Also it does not work for types with exactly one
 **	    functor that has exactly one arg.
+**          Also for types which are represented with a secondary tag
+**	    (e.g. types with more than four functors, or more than three
+**	    functors with --reserve-tag) it modifies the (N-1)th argument
+**	    rather than the Nth argument.
 **	    It may not work with future release of the Mercury compiler,
 **	    or with other Mercury implementations.
 **          Use only with great care!
