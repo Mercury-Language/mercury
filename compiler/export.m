@@ -335,7 +335,7 @@ get_export_info(Preds, PredId, ProcId, Globals, Module,
 			RetArgMode = top_out,
 			\+ type_util__is_dummy_argument_type(RetType)
 		->
-			C_RetType = to_type_string(c, Module, RetType),
+			C_RetType = llds_exported_type_string(Module, RetType),
 			argloc_to_string(RetArgLoc, RetArgString0),
 			convert_type_from_mercury(RetArgString0, RetType,
 				RetArgString),
@@ -435,7 +435,7 @@ get_argument_declaration(ArgInfo, Type, Num, NameThem, Module,
 	;
 		ArgName = ""
 	),
-	TypeString0 = to_type_string(c, Module, Type),
+	TypeString0 = llds_exported_type_string(Module, Type),
 	(
 		Mode = top_out
 	->

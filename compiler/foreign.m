@@ -79,6 +79,11 @@
 :- func foreign__to_type_string(foreign_language, exported_type) = string.
 :- func foreign__to_type_string(foreign_language, module_info, (type)) = string.
 
+	% Give a representation of a type determine the string which
+	% corresponds to that type when the type is mentioned via a
+	% pragma export on the llds backend.
+:- func llds_exported_type_string(module_info, (type)) = string.
+
 	% Filter the decls for the given foreign language. 
 	% The first return value is the list of matches, the second is
 	% the list of mis-matches.
@@ -668,6 +673,14 @@ to_type_string(managed_cplusplus, mercury(Type)) = TypeString :-
 	).
 to_type_string(il, mercury(_Type)) = _ :-
 	sorry(this_file, "to_type_string for il").
+
+llds_exported_type_string(ModuleInfo, Type) = TypeString :-
+	ExportedType = to_exported_type(ModuleInfo, Type),
+	( ExportedType = foreign(_),
+		TypeString = "MR_Word"
+	; ExportedType = mercury(_),
+		TypeString = to_type_string(c, ExportedType)
+	).
 	
 %-----------------------------------------------------------------------------%
 
