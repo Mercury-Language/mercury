@@ -1358,11 +1358,11 @@ case "$host" in
 		;;
 	alpha-dec-osf*)
 		AC_MSG_RESULT(yes)
-		LINK_SHARED_OBJ="ld -O3 -shared \
-			-update_registry ../so_locations"
+		LINK_SHARED_OBJ="gcc -shared \
+			-Wl,-O3,-update_registry,../so_locations"
 		EXE_RPATH_OPT="-Wl,-rpath,"
 		EXE_RPATH_SEP=":"
-		SHLIB_RPATH_OPT="-rpath "
+		SHLIB_RPATH_OPT="-Wl,-rpath,"
 		SHLIB_RPATH_SEP=":"
 		EXT_FOR_SHARED_LIB=so
 		# -fpic not needed on Alpha/OSF, since it is the default
