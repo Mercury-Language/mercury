@@ -541,7 +541,7 @@ The two different syntaxes have identical semantics.
 Semantics:
 @example
 transform(V_in, V_out, not DCG_goal) =
-(not transform(V_in, V_new, DCG_goal), V_out = Vin)
+(not transform(V_in, V_new, DCG_goal), V_out = V_in)
 @end example
 where V_new is a fresh variable.
 
@@ -565,7 +565,7 @@ A DCG unification.  Unifies @var{Term} with the implicit DCG argument.
 
 Semantics:
 @example
-transform(V_in, V_out, =(Term)) = (Term = V_in, V_out = Vin)
+transform(V_in, V_out, =(Term)) = (Term = V_in, V_out = V_in)
 @end example
 
 @item @var{DCG-call}
@@ -578,7 +578,7 @@ Then, the two implicit DCG arguments are appended to the specified arguments.
 Semantics:
 @example
 transform(V_in, V_out, p(A1, ..., AN)) =
-p(A1, ..., AN, V_in, V_Out)
+p(A1, ..., AN, V_in, V_out)
 @end example
 
 @end table
@@ -809,7 +809,7 @@ The type assigned to each constructor
 must match one of the type declarations for that constructor,
 and the types assigned to the arguments of that constructor
 must match the argument types specified in that type declaration.
-The type assigned to each predicate argument much match
+The type assigned to each predicate argument must match
 the type specified in the @samp{:- pred} declaration for that predicate.
 The type assigned to each head argument in a clause must exactly match
 the type specified in the corresponding @samp{:- pred} declaration.
@@ -987,6 +987,16 @@ These assertions are checked by the compiler,
 which rejects programs if it cannot prove
 that their mode declaration constraints are satisfied.
 
+Note that with the usual definition of append, the mode
+
+@example
+:- mode append(in_listskel, in_listskel, out_listskel).
+@end example
+
+would not be allowed, since it would create aliasing between the
+different arguments --- on success of the predicate, the list elements
+would be free variables but they would not be distinct.
+
 @ignore
 Note that for every mode of a predicate
 in which a node is @dfn{produced} (mapped from free to bound)
@@ -1139,7 +1149,7 @@ The higher up this lattice a determinism category is,
 the more the compiler knows about the number of solutions
 of predicates of that determinism.
 
-@section Determinism checking and inference.
+@section Determinism checking and inference
 
 The determinism of goals
 is inferred from the determinism of their component parts,
@@ -1170,7 +1180,7 @@ it is not an error, but the implementation may issue a warning.
 The determinism category of each goal
 is inferred according to the following rules.
 These rules work with the two components of determinism category:
-whether the goal can fail without producing a solution.
+whether the goal can fail without producing a solution,
 and the maximum number of solutions of the goal (0, 1, or more).
 If the inference process below reports that a goal can succeed more than once,
 but the goal generates no outputs that are visible from outside the goal,
@@ -1259,15 +1269,16 @@ only if all arms of the switch can succeed at most zero times.
 @item Disjunctions
 The determinism of the empty disjunction (the goal @samp{fail})
 is @code{failure}.
-A disjunction @samp{(@var{A}, @var{B})} that is not a switch
-can fail if both @var{A} or @var{B} can fail.
+A disjunction @samp{(@var{A} ; @var{B})} that is not a switch
+can fail if both @var{A} and @var{B} can fail.
 It can succeed at most zero times
-if both @var{A} or @var{B} can succeed at most zero times.
-It can succeed more than once
-if either @var{A} or @var{B} can succeed more than once.
-Otherwise, i.e. if one of @var{A} and @var{B} can succeed at most once
-and the other can succeed at most zero times,
-then the disjunction can succeed at most once.
+if both @var{A} and @var{B} can succeed at most zero times.
+It can succeed at most once
+if one of @var{A} and @var{B} can succeed at most once
+and the other can succeed at most zero times.
+Otherwise, i.e. if either @var{A} or @var{B} can succeed more than once,
+or if both @var{A} and @var{B} can succeed at least once,
+it can succeed more than once.
 
 @c The local determinism of a disjunction is @code{nondet} unless the
 @c compiler can detect that the disjunction is actually a switch and
@@ -1283,13 +1294,18 @@ then the disjunction can succeed at most once.
 
 @item If-then-else
 
-An if-then-else can fail if either the then part or the else part can fail.
+If the condition of an if-then-else cannot fail, the if-then-else
+is equivalent to the conjunction of the condition and the ``then'' part,
+and its determinism is computed accordingly.
+Otherwise, 
+an if-then-else can fail if either the ``then'' part or the ``else'' part
+can fail.
 It can succeed at most zero times
-if the else part can succeed at most zero times
-and if at least one of the condition and the then part
+if the ``else'' part can succeed at most zero times
+and if at least one of the condition and the ``then'' part
 can succeed at most zero times.
 It can succeed more than once
-if any one of the condition, the else part and the then part
+if any one of the condition, the ``then'' part and the ``else'' part
 can succeed more than once.
 
 @item Negations
@@ -1457,24 +1473,30 @@ say that Mercury supports higher-order procedures: in Mercury, when you
 construct a higher-order predicate term, you only get one mode of
 a predicate.)
 
-To create a higher-order predicate term, you can either use
-a lambda expression, or just use the name of a predicate.
-For example, the following two unifications have the same
-effect:
+To create a higher-order predicate term, you can use
+a lambda expression. Alternately, if the predicate has only one mode,
+you can just use the name of a predicate.
+For example, if you have declared a predicate
+
+@example
+:- pred sum(list(int), int).
+:- mode sum(in, out) is det.
+@end example
+
+the following two unifications have the same effect:
 
 @example
 ...
-X = lambda([List::in, Length::out] is det, list__length(List, Length)),
-Y = list__length,
+X = lambda([List::in, Length::out] is det, sum(List, Length)),
+Y = sum,
 ...
 @end example
 
 In the above example, the type of both @samp{X} and @samp{Y} is
-@samp{pred(list(T), int)}, because @samp{list__length} is declared as
+@samp{pred(list(int), int)}.
 
-@example
-:- pred list__length(list(T), int).
-@end example
+If the predicate has more than one mode, you must use an explicit
+lambda expression to specify which mode you want.
 
 Once you have created a higher-order predicate term (sometimes known
 as a closure), the next thing you want to do is to call it.  
@@ -1490,8 +1512,8 @@ A higher-order predicate call.  @samp{call(Closure)} just calls
 the specified closure.  The other forms append the specified
 arguments onto the argument list of the closure before calling it.
 [Note: the current implementation has the extremely unfortunate
-limitation that there can be at most two additional arguments; thus
-@samp{call(Pred, Arg1, Arg2, Arg3)} and beyond are not yet supported.]
+limitation that there can be at most three additional arguments; thus
+@samp{call(Pred, Arg1, Arg2, Arg3, Arg4)} and beyond are not yet supported.]
 @end table
 
 One extremely useful higher-order predicate in the Mercury standard
@@ -1581,7 +1603,7 @@ also be in the interface section.  If the imported entities are only
 used in the implementation section, the @code{import_module}
 declaration should be in the implementation section.
 
-One module most export a predicate @samp{main}, which
+One module must export a predicate @samp{main}, which
 must be declared as either
 
 @example
