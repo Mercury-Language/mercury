@@ -1264,7 +1264,7 @@ typecheck__find_matching_pred_id([PredId | PredIds], ModuleInfo,
 		% from the pred_info via pred_info_arg_types) not the types
 		% inferred from the callee's clauses (and stored in the
 		% clauses_info and proc_info) -- the latter
-		% might not subsume the actual argument types.
+		% might not subsume the actual argument types.]
 		%
 		type_list_subsumes(PredArgTypes, ArgTypes, TypeSubst),
 
