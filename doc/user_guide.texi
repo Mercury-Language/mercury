@@ -72,6 +72,7 @@ into another language, under the above conditions for modified versions.
 @menu
 * Filenames::       File naming conventions
 * Hello::           Your first Mercury Program
+* Using Mmake::     ``Mercury Make'', a tool for building Mercury programs
 * Using Mercury::   Compiling and linking programs with the Mercury compiler
 * Using NU-Prolog:: Building and debugging Mercury programs with NU-Prolog
 * Using SICStus::   Building and debugging Mercury programs with SICStus Prolog
@@ -82,9 +83,12 @@ into another language, under the above conditions for modified versions.
 @node Filenames, Hello,, Top
 @section File naming conventions
 
-Mercury source files should be named @file{*.m}.
-(Note that for historical reasons, we also allow @file{*.nl},
-but the support for that will eventually be removed.)
+@c Mercury source files should be named @file{*.m}.
+@c (Note that for historical reasons, we also allow @file{*.nl},
+@c but the support for that will eventually be removed.)
+For the moment, Mercury source files should be named @file{*.nl}.
+In the near future, that will change to @file{*.m}.
+(The @file{.nl} extension is used for historical reasons.)
 
 Files ending in @file{.d} are automatically-generated Makefile
 fragments which contain the dependencies for each module.
@@ -104,7 +108,7 @@ implementation, and they will go away in the near future.)
 As usual, @file{.c} files are C source code, @file{.o} files are
 object code, and @file{.no} files are NU-Prolog object code.
 
-@node Hello, Using Mercury, Filenames, Top
+@node Hello, Using Mmake, Filenames, Top
 @section Your first Mercury program
 
 @example
@@ -119,7 +123,74 @@ object code, and @file{.no} files are NU-Prolog object code.
 main --> io__write_string("Hello, world\n").
 @end example
 
-@node Using Mercury, Using NU-Prolog, Hello, Top
+@node Using Mmake, Using Mercury, Hello, Top
+@section Using Mmake
+
+Mmake, short for ``Mercury Make'', is a tool for building Mercury programs
+that is built on top of ordinary or GNU Make.  With Mmake, building
+even a complicated Mercury program consisting of a number of modules
+is as simple as
+
+@example
+mmake @var{main-module}.depend
+mmake @var{main-module}
+@end example
+
+To compile the program with NU-Prolog, use
+
+@example
+mmake @var{main-module}.nu
+@end example
+
+Mmake only recompiles those files that need to be recompiled,
+based on automatically generated dependency information.
+Most of the dependencies are stored in @samp{.d} files that are
+automatically recomputed every time you recompile, so they are
+never out-of-date.  A little bit of the dependency information is
+stored in @samp{.dep} files which are more expensive to recompute. 
+The @samp{mmake @var{main-module}.depend} command to recreate the
+@code{@var{main-module}.dep} file needs to be repeated only when you
+add or remove a module from your program, and there is no danger of
+getting an inconsistent executable if you forget this step --- instead
+you will get a link error.
+
+If there is a file called @samp{Mmake} in the current directory,
+@code{mmake} will include that file in its automatically-generated
+Makefile.  The @samp{Mmake} file can override the default values of
+various variables used by @code{mmake}'s builtin-rules, listed below,
+or it can add additional rules, dependencies, and actions.
+@{mmake allows you to build more than one program in the same directory.
+
+@example
+GRADE   	= asm_fast.gc
+MC		= mc
+MCG		= $(MC) -g
+MCFLAGS		=
+MCINTFLAGS	=
+MOD2C		= mod2c
+MOD2CFLAGS	= 
+MOD2INIT	= mod2init
+MOD2INITFLAGS	=
+MGNUC		= mgnuc
+MGNUCFLAGS	=
+ML		= ml
+MLFLAGS		=
+MNC		= mnc
+MNCFLAGS	=
+MNL		= mnl
+MNLFLAGS	=
+MNP		= mnp
+MNPFLAGS	=
+@end example
+
+@code{mmake} predefines the targets @samp{clean} and @samp{realclean}.
+@code{clean} removes all the automatically generated files except
+the executables and the dependency files; @code{realclean} removes those too.
+(Note that the rule for @code{mmake clean} includes @samp{rm -f *.c},
+so be careful not to mix C source code and Mercury code in the same
+directory!  We might eventually do something to avoid that potential hazard.)
+
+@node Using Mercury, Using NU-Prolog, Using Mmake, Top
 @section Using the Mercury compiler
 
 This section describes how to build executable programs using the
@@ -160,6 +231,21 @@ mc -i @var{modules}
 
 @noindent
 to create these interface files.
+
+@subsubsection Checking for errors
+The default action of @samp{mc} without any options
+
+@example
+mc @var{modules}
+@end example
+
+@noindent
+is to perform syntactic and semantic checking on the named modules, but
+not to generate any code.  This is particularly useful if you intend to
+use NU-Prolog (@pxref{Using NU-Prolog}) or SICStus Prolog (@pxref{Using
+SICStus}) for interpreting/compiling Mercury programs, since of course
+they do not do any of the semantic checking that is done by the Mercury
+compiler.
 
 @subsubsection Compiling modules
 Use the command 
@@ -208,6 +294,12 @@ for example @samp{-dg} dumps an execution trace.
 @node Using NU-Prolog, Using SICStus, Using Mercury, Top
 @section Using NU-Prolog
 
+Before you attempt to execute a Mercury program with NU-Prolog, you
+should run it past the Mercury compiler, to check that it does not have
+any errors.  In our experience, omitting that step is not wise, since
+you often waste a lot of time debugging problems that the compiler
+could have detected for you.
+
 @subsection Compiling modules
 Use the command @samp{mnc @var{module}.m} or @samp{mnc @var{module}.nl}.
 (Ignore any warnings about "XXX is a system predicate.
@@ -234,10 +326,38 @@ For more information, see the NU-Prolog documentation.
 
 By default the debugger only displays the top-level of terms;
 you can use the @code{|} command to enter an interactive term
-browser.  Note that in the debugger, we use a version of
+browser.  (Note that in the debugger, we use a version of
 @code{error/1} which fails rather than aborting after printing the
-error message; this makes debugging easier, but will of course
-change the behaviour after an error occurs.
+"Software Error:" message; this makes debugging easier, but will of course
+change the behaviour after an error occurs.)
+
+@subsection Hazards of using NU-Prolog
+There are some Mercury programs which are not valid NU-Prolog programs.
+In particular, Mercury will always reorder goals to ensure that they are
+mode-correct (or report a mode error), but NU-Prolog will not always do so,
+and will sometimes just silently give the wrong result.  For example,
+in Mercury the following predicate will usually succeed, whereas in
+NU-Prolog it will always fail.
+
+@example
+	:- pred p(list(int)::in, list(int)::out) is semidet.
+	p(L0, L) :-
+		L \= [],
+		q(L0, L).
+
+	:- pred q(list(int)::in, list(int)::out) is det.
+@end example
+
+@noindent
+The reason is that in Mercury, the test @samp{L \= []} is reordered to
+after the call to @code{q/2}, but in NU-Prolog, it executes even though
+@code{L} is not bound, and consequently the test always fails.
+
+(NU-Prolog has logical alternatives to the non-logical Prolog operations
+like @samp{\=}, but during the development of the Mercury compiler
+we had to abandon their use for efficiency reasons.)
+
+Another hazard is that NU-Prolog does not have a garbage collector :-(
 
 @node Using SICStus, FAQs, Using NU-Prolog, Top
 @section Using SICStus Prolog
@@ -245,14 +365,19 @@ change the behaviour after an error occurs.
 TBD.  (To Be Documented!)
     
 @node FAQs, Invocation, Using SICStus, Top
-@chapter Mercury FAQs:
-@itemize @bullet
-@item
-``I followed the instructions above, but it still didn't work.
-What do I do next?''
+@chapter Mercury FAQs
+@table @emph
+@item I get an error "initializer element is not constant" from the C compiler.
 
-Tell Fergus.
-@end itemize
+This is probably because you compiled the module to @samp{.c} file with 
+one grade (@code{-s} option), and then invoked @samp{mgnuc} with a
+different grade.
+
+@item I followed the instructions in the user's guide, but it still didn't work.  What do I do next?
+
+Send mail to mercury-bugs@@cs.mu.oz.au, and we'll try to solve your problem.
+
+@end table
 
 @node Invocation,, FAQs, Top
 @chapter Invocation
