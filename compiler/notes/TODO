@@ -12,6 +12,11 @@ type system
   with the same name and arity occur in different modules
 	  [will be done by fjh]
 
+- allow a module exporting an abstract type to specify that other modules
+  should not be allowed to test two values of that type for equality (similar
+  to Ada's limited private types). This would be useful for e.g. sets
+  represented as unordered lists with possible duplicates.
+
 mode analysis
 -------------
 
@@ -140,10 +145,6 @@ code generation:
 source-level transformations
 ----------------------------
 
-- specialization of calls to list__map and similar higher-order predicates
-  that take predicates as arguments in the case where the predicate arguments
-  are known
-
 - more work on module system, separate compilation, and the multiple
   specialization problem, in particular
 	- cross-module inlining
@@ -167,6 +168,7 @@ low-level optimizations
   f(X,Y), then just pass X and Y in registers
 
 - trim stack frames before making recursive calls, to minimize stack usage
+  [this would probably be a pessimization much of the time - zs]
 
 compilation speed
 -----------------
