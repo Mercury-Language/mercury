@@ -140,6 +140,26 @@ Changes to the Mercury standard library:
 	input_stream_foldl2_io_maybe_stop/{6,7},
 	binary_input_stream_foldl2_io_maybe_stop/{6,7}.
 
+* We've added several new predicates and functions to the bimap module:
+	det_insert,
+	forward_search,
+	reverse_search,
+	from_corresponding_lists,
+	map_keys,
+	map_values,
+	det_insert_from_assoc_list,
+	det_insert_from_corresponding_lists,
+	set_from_assoc_list,
+	set_from_corresponding_lists,
+	delete_key,
+	delete_value,
+	delete_keys,
+	delete_values,
+	overlay,
+	apply_forward_map_to_list,
+	apply_reverse_map_to_list,
+	foldl
+
 * We've added predicates relation__lookup_key_set_from/3 and
   relation__lookup_key_set_to/3.
 
