@@ -11,10 +11,10 @@
 
 :- module peephole.		
 :- interface.
-:- import_module llds.
+:- import_module llds, options.
 
-:- pred peephole__optimize(c_file, c_file).
-:- mode peephole__optimize(in, out) is det.
+:- pred peephole__optimize(option_table, c_file, c_file).
+:- mode peephole__optimize(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -25,41 +25,50 @@
 
 	% Boring LLDS traversal code.
 
-peephole__optimize(c_file(Name, Modules0), c_file(Name, Modules)) :-
-	peephole__opt_module_list(Modules0, Modules).
+peephole__optimize(Options, c_file(Name, Modules0), c_file(Name, Modules)) :-
+	peephole__opt_module_list(Options, Modules0, Modules).
 
-:- pred peephole__opt_module_list(list(c_module), list(c_module)).
-:- mode peephole__opt_module_list(in, out) is det.
+:- pred peephole__opt_module_list(option_table, list(c_module), list(c_module)).
+:- mode peephole__opt_module_list(in, in, out) is det.
 
-peephole__opt_module_list([], []).
-peephole__opt_module_list([M0|Ms0], [M|Ms]) :-
-	peephole__opt_module(M0, M),
-	peephole__opt_module_list(Ms0, Ms).
+peephole__opt_module_list(_Options, [], []).
+peephole__opt_module_list(Options, [M0|Ms0], [M|Ms]) :-
+	peephole__opt_module(Options, M0, M),
+	peephole__opt_module_list(Options, Ms0, Ms).
 
-:- pred peephole__opt_module(c_module, c_module).
-:- mode peephole__opt_module(in, out) is det.
+:- pred peephole__opt_module(option_table, c_module, c_module).
+:- mode peephole__opt_module(in, in, out) is det.
 
-peephole__opt_module(c_module(Name,Procs0), c_module(Name,Procs)) :-
-	peephole__opt_proc_list(Procs0, Procs).
+peephole__opt_module(Options, c_module(Name,Procs0), c_module(Name,Procs)) :-
+	peephole__opt_proc_list(Options, Procs0, Procs).
 
-:- pred peephole__opt_proc_list(list(c_procedure), list(c_procedure)).
-:- mode peephole__opt_proc_list(in, out) is det.
+:- pred peephole__opt_proc_list(option_table,
+				list(c_procedure), list(c_procedure)).
+:- mode peephole__opt_proc_list(in, in, out) is det.
 
-peephole__opt_proc_list([], []).
-peephole__opt_proc_list([P0|Ps0], [P|Ps]) :-
-	peephole__opt_proc(P0, P),
-	peephole__opt_proc_list(Ps0, Ps).
+peephole__opt_proc_list(_Options, [], []).
+peephole__opt_proc_list(Options, [P0|Ps0], [P|Ps]) :-
+	peephole__opt_proc(Options, P0, P),
+	peephole__opt_proc_list(Options, Ps0, Ps).
 
 	% We short-circuit jump sequences before normal peepholing
 	% to create more opportunities for use of the tailcall macro.
 
-:- pred peephole__opt_proc(c_procedure, c_procedure).
-:- mode peephole__opt_proc(in, out) is det.
+:- pred peephole__opt_proc(option_table, c_procedure, c_procedure).
+:- mode peephole__opt_proc(in, in, out) is det.
 
-peephole__opt_proc(c_procedure(Name,Arity,Mode,Instructions0),
+peephole__opt_proc(Options, c_procedure(Name,Arity,Mode,Instructions0),
 		   c_procedure(Name,Arity,Mode,Instructions)) :-
-	peephole__jumpopt_instr_list(Instructions0, Instructions1),
-	peephole__opt_instr_list(Instructions1, Instructions).
+	( options__lookup_bool_option(Options, peephole_jump_opt, Jumpopt) ->
+		peephole__jumpopt_instr_list(Instructions0, Instructions1)
+	;
+		Instructions1 = Instructions0
+	),
+	( options__lookup_bool_option(Options, peephole_local, Local) ->
+		peephole__opt_instr_list(Instructions1, Instructions)
+	;
+		Instructions = Instructions1
+	).
 
 %-----------------------------------------------------------------------------%
 
