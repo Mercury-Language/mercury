@@ -190,6 +190,12 @@ AC_SUBST(MKNOD)
 
 PATH="$save_PATH"
 #-----------------------------------------------------------------------------#
+case "$host" in
+	# on rs6000, it doesn't work if you use gcc, so default to using cc
+	rs6000-*)
+		CC=${CC-cc}
+		;;
+esac
 AC_PROG_CC
 AC_SUBST(CC)
 
@@ -782,6 +788,14 @@ case "$host" in
 		# but succip, sp, and hp are real regs, so subtract 3
 		NUM_REAL_R_REGS=5
 		;;
+# global registers don't work yet on rs6000, due to problems using gcc -
+# but when they do, there will be 10 of them
+#	rs6000-*)
+#		# NUM_REAL_REGS=10
+#		# but succip, sp, hp, maxfr, and curfr are real regs,
+#		# so subtract 5
+#		NUM_REAL_R_REGS=5
+#		;;
 	sparc-*)
 		# NUM_REAL_REGS=10
 		# but succip, sp, hp, maxfr, and curfr are real regs,
