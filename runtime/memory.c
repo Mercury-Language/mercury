@@ -74,7 +74,12 @@ extern	int	getpagesize(void);
 
 #include "conf.h"
 
-static	int	roundup(int, int);
+/*
+** round_up(amount, align) returns `amount' rounded up to the nearest
+** alignment boundary.  `align' must be a power of 2.
+*/
+#define round_up(amount, align) ((((amount) - 1) | ((align) - 1)) + 1)
+
 static	void	setup_mprotect(void);
 #ifdef	HAVE_SIGINFO
 static	bool	try_munprotect(void *);
@@ -133,14 +138,14 @@ void init_memory(void)
 	heap_zone_size      = 0;
 	heap_size	    = 0;
 #else
-	heap_zone_size      = roundup(heap_zone_size * 1024, unit);
-	heap_size           = roundup(heap_size * 1024, unit);
+	heap_zone_size      = round_up(heap_zone_size * 1024, unit);
+	heap_size           = round_up(heap_size * 1024, unit);
 #endif
 
-	detstack_size       = roundup(detstack_size * 1024, unit);
-	detstack_zone_size  = roundup(detstack_zone_size * 1024, unit);
-	nondstack_size      = roundup(nondstack_size * 1024, unit);
-	nondstack_zone_size = roundup(nondstack_zone_size * 1024, unit);
+	detstack_size       = round_up(detstack_size * 1024, unit);
+	detstack_zone_size  = round_up(detstack_zone_size * 1024, unit);
+	nondstack_size      = round_up(nondstack_size * 1024, unit);
+	nondstack_zone_size = round_up(nondstack_zone_size * 1024, unit);
 
 	/*
 	** If the zone sizes where set to something too big, then
@@ -178,7 +183,7 @@ void init_memory(void)
 		fprintf(stderr, "cannot allocate arena: memalign() failed\n");
 		exit(1);
 	}
-	arena = (char *) roundup((int) arena, unit);
+	arena = (char *) round_up((int) arena, unit);
 	
 	fake_reg_offset = (uint) fake_reg % pcache_size;
 	heap_offset = (fake_reg_offset + pcache_size / 4) % pcache_size;
@@ -285,14 +290,6 @@ void init_memory(void)
 	}
 }
 
-static int roundup(int value, int align)
-{
-	if ((value & (align - 1)) != 0)
-		value += align - (value & (align - 1));
-
-	return value;
-}
-
 #ifdef	HAVE_MPROTECT
 
 /*
@@ -379,7 +376,7 @@ static bool try_munprotect(void *addr)
 	&& fault_addr <= heap_zone + heap_zone_size)
 	{
 		if (memdebug) printf("address is in heap red zone\n");
-		new_zone = (caddr_t) roundup((int) fault_addr+4, unit);
+		new_zone = (caddr_t) round_up((int) fault_addr+4, unit);
 		if (new_zone <= heap_zone + heap_zone_left)
 		{
 			if (new_zone >= (caddr_t) heapend)
@@ -421,7 +418,7 @@ static bool try_munprotect(void *addr)
 	&& fault_addr <= detstack_zone + detstack_zone_size)
 	{
 		if (memdebug) printf("address is in detstack red zone\n");
-		new_zone = (caddr_t) roundup((int) fault_addr+4, unit);
+		new_zone = (caddr_t) round_up((int) fault_addr+4, unit);
 		if (new_zone <= detstack_zone + detstack_zone_left)
 		{
 			if (memdebug)
@@ -462,7 +459,7 @@ static bool try_munprotect(void *addr)
 	&& fault_addr <= nondstack_zone + nondstack_zone_size)
 	{
 		if (memdebug) printf("address is in nondstack red zone\n");
-		new_zone = (caddr_t) roundup((int) fault_addr+4, unit);
+		new_zone = (caddr_t) round_up((int) fault_addr+4, unit);
 		if (new_zone <= nondstack_zone + nondstack_zone_left)
 		{
 			if (memdebug)
