@@ -29,7 +29,7 @@ MULTIMODULE_PROGS= \
 	transitive_import_class \
 	undef_mod_qual
 
-SINGLEMODULE_PROGS= \
+SINGLEMODULE= \
 	any_mode \
 	any_should_not_match_bound \
 	assert_in_interface \
@@ -109,7 +109,6 @@ SINGLEMODULE_PROGS= \
 	qual_basic_test2 \
 	qualified_cons_id2 \
 	record_syntax_errors \
-	reserve_tag \
 	some \
 	spurious_mode_error \
 	state_vars_test1 \
@@ -169,6 +168,11 @@ SINGLEMODULE_PROGS= \
 USE_SUBDIR_MODULES = \
 	nonexistent_import
 
+# The following require that num_tag_bits > 1
+RESERVE_TAG_MODULES = \
+	reserve_tag
+
+
 # XXX we do not yet pass the following tests:
 #	foreign_decl_line_number (due to some errors being reported in .c
 #		files and .mh files rather than in .m files)
@@ -186,6 +190,13 @@ USE_SUBDIR_MODULES = \
 #	inst_matches_final_bug (due to same bug as ho_default_func_4)
 
 #-----------------------------------------------------------------------------#
+
+# The java and il grades compile with num_tag_bits = 0.
+ifneq "$(filter java% il%,$(GRADE))" ""
+SINGLEMODULE_PROGS=$(SINGLEMODULE) 
+else
+SINGLEMODULE_PROGS=$(SINGLEMODULE) $(RESERVE_TAG_MODULES)
+endif
 
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
 PROGS= $(SINGLEMODULE_PROGS) $(MULTIMODULE_PROGS) $(USE_SUBDIR_MODULES)

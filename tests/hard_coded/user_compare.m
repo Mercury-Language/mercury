@@ -53,9 +53,15 @@ compare_foo(Res, Foo1, Foo2) :-
 :- type foreign.
 :- pragma foreign_type(c, foreign, "int") where
 		 equality is foreign_equals, comparison is foreign_compare.
+:- pragma foreign_type(il, foreign, "int32") where
+		 equality is foreign_equals, comparison is foreign_compare.
 
 :- pred foreign_equals(foreign::in, foreign::in) is semidet.
 :- pragma foreign_proc(c, foreign_equals(Foreign1::in, Foreign2::in),
+                [will_not_call_mercury, promise_pure],
+"SUCCESS_INDICATOR = (Foreign1 == Foreign2);"
+).
+:- pragma foreign_proc("c#", foreign_equals(Foreign1::in, Foreign2::in),
                 [will_not_call_mercury, promise_pure],
 "SUCCESS_INDICATOR = (Foreign1 == Foreign2);"
 ).
@@ -73,9 +79,18 @@ foreign_compare(Result, Foreign1, Foreign2) :-
                 [will_not_call_mercury, promise_pure],
 "Result = (Foreign1 < Foreign2 ? 1 : (Foreign1 == Foreign2 ? 0 : -1));"
 ).
+:- pragma foreign_proc("C#", foreign_compare_2(Result::out, Foreign1::in,
+			Foreign2::in),
+                [will_not_call_mercury, promise_pure],
+"Result = (Foreign1 < Foreign2 ? 1 : (Foreign1 == Foreign2 ? 0 : -1));"
+).
 
 :- func foreign(int) = foreign.
 :- pragma foreign_proc(c, foreign(Int::in) = (Foreign::out),
+                [will_not_call_mercury, promise_pure],
+"Foreign = Int;"
+).
+:- pragma foreign_proc("C#", foreign(Int::in) = (Foreign::out),
                 [will_not_call_mercury, promise_pure],
 "Foreign = Int;"
 ).

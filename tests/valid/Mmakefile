@@ -157,7 +157,6 @@ OTHER_PROGS= \
 	record_syntax_bug_5 \
 	recursive_no_tag_type \
 	reg_bug \
-	reserve_tag \
 	same_length_2 \
 	semidet_disj \
 	shape_type \
@@ -192,6 +191,14 @@ OTHER_PROGS= \
 	unused_args_test2 \
 	vn_float \
 	zero_arity
+
+# The following require that num_tag_bits > 1
+ifeq "$(filter java% il%,$(GRADE))" ""
+RESERVE_TAG= \
+	reserve_tag
+else
+RESERVE_TAG=
+endif
 
 # XXX The mode system can't handle the following test cases yet:
 #	assoc_list_bug
@@ -263,9 +270,9 @@ else
 endif
 
 ifneq "$(findstring tsw,$(GRADE))$(findstring tsc,$(GRADE))" ""
-	PROGS = $(OBJ_PROGS) $(ALL_RLO_PROGS)
+	PROGS = $(OBJ_PROGS) $(ALL_RLO_PROGS) $(RESERVE_TAG)
 else
-	PROGS = $(OBJ_PROGS) $(ALL_RLO_PROGS) $(IL_PROGS)
+	PROGS = $(OBJ_PROGS) $(ALL_RLO_PROGS) $(IL_PROGS) $(RESERVE_TAG)
 endif
 
 # `mmc --make' doesn't expect subdirectories to appear in targets.

@@ -91,7 +91,9 @@ main(!IO) :-
             )
         ),
 
-    io.write_list(Results, "\n", io.write_string, !IO).
+    io.write_list(Results, "\n", io.write_string, !IO),
+
+    io.nl(!IO).
 
 %-----------------------------------------------------------------------------%
 

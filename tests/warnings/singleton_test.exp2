@@ -1,0 +1,19 @@
+singleton_test.m:022: In clause for predicate `singleton_test.my_append/3':
+singleton_test.m:022:   warning: variable `L2' occurs only once in this scope.
+singleton_test.m:026: In clause for function `singleton_test.my_append_func/2':
+singleton_test.m:026:   warning: variables `L1, L2' occur only once in this scope.
+singleton_test.m:027: In clause for function `singleton_test.my_append_func/2':
+singleton_test.m:027:   warning: variable `T' occurs only once in this scope.
+singleton_test.m:032: In the C# code for predicate `singleton_test.my_c_pred/3':
+singleton_test.m:032:   warning: variable `Y' does not occur in the C# code.
+singleton_test.m:040: In the C# code for function `singleton_test.my_c_func/2':
+singleton_test.m:040:   warning: variable `X' does not occur in the C# code.
+singleton_test.m:052: In the C# code for predicate `singleton_test.c_hello_world/3':
+singleton_test.m:052:   warning: variable `Msg' does not occur in the C# code.
+singleton_test.m:008: In function `singleton_test.my_append_func/2':
+singleton_test.m:008:   warning: unresolved polymorphism.
+singleton_test.m:008:   The variables with unbound types were:
+singleton_test.m:008:       L2: V_1
+singleton_test.m:008:       L1: V_1
+singleton_test.m:008:   The unbound type variable(s) will be implicitly
+singleton_test.m:008:   bound to the builtin type `void'.

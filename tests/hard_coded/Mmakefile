@@ -54,8 +54,6 @@ ORDINARY_PROGS=	\
 	existential_types_test \
 	expand \
 	export_test \
-	factt \
-	factt_sort_test \
 	failure_unify \
 	field_syntax \
 	float_field \
@@ -174,6 +172,15 @@ ORDINARY_PROGS=	\
 	write \
 	write_reg1 \
 	write_reg2
+
+# Fact tables current only work in the C grades.
+ifeq "$(filter il% java%,$(GRADE))" ""
+FACTT_PROGS= \
+	factt \
+	factt_sort_test
+else
+FACTT_PROGS=
+endif
 
 # XXX test_array2d does not work in at least asm_fast.gc.profdeep; the
 # problem does not lie in test_array2d or array2d and has not yet been
@@ -327,7 +334,8 @@ else
 		$(CLOSURE_LAYOUT_PROGS) $(EXCEPTION_PROGS) \
 		$(BACKEND_PROGS) $(NONDET_C_PROGS) \
 		$(C_AND_GC_ONLY_PROGS) $(STATIC_LINK_PROGS) \
-		$(CHAR_REP_PROGS) $(BROKEN_FOR_PROFDEEP)
+		$(CHAR_REP_PROGS) $(BROKEN_FOR_PROFDEEP)  \
+		$(FACTT_PROGS)
 endif
 
 # --split-c-files does not work in the hl* grades (e.g. hlc.gc),
