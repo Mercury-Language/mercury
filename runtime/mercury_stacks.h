@@ -96,7 +96,7 @@
 #define	MR_NONDET_TEMP_SIZE	3	/* prevfr, redoip, redofr */
 #define	MR_DET_TEMP_SIZE	4	/* prevfr, redoip, redofr, detfr */
 
-#define	MR_SAVEVAL			(-MR_NONDET_FIXED_SIZE)
+#define	MR_SAVEVAL		(-MR_NONDET_FIXED_SIZE)
 				/* saved values start at this offset	*/
 
 #define	MR_prevfr_slot(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[MR_PREVFR])
@@ -105,7 +105,7 @@
 #define	MR_succip_slot(fr)	LVALUE_CAST(Code *, ((Word *) (fr))[MR_SUCCIP])
 #define	MR_succfr_slot(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[MR_SUCCFR])
 #define	MR_detfr_slot(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[MR_DETFR])
-#define	MR_based_framevar(fr,n)	(((Word *) (fr))[MR_SAVEVAL+1-(n)])
+#define	MR_based_framevar(fr, n) (((Word *) (fr))[MR_SAVEVAL + 1 - (n)])
 
 #define	bt_prevfr(fr)		MR_prevfr_slot(fr)
 #define	bt_redoip(fr)		MR_redoip_slot(fr)
@@ -113,7 +113,7 @@
 #define	bt_succip(fr)		MR_succip_slot(fr)
 #define	bt_succfr(fr)		MR_succfr_slot(fr)
 #define	bt_prednm(fr)		MR_prednm_slot(fr)
-#define	bt_var(fr,n)		MR_based_framevar(fr,n+1)
+#define	bt_var(fr, n)		MR_based_framevar(fr, (n) + 1)
 
 #define	curprevfr		bt_prevfr(MR_curfr)
 #define	curredoip		bt_redoip(MR_curfr)
@@ -122,8 +122,8 @@
 #define	cursuccfr		bt_succfr(MR_curfr)
 #define	curprednm		bt_prednm(MR_curfr)
 
-#define	MR_framevar(n)		MR_based_framevar(MR_curfr,n)
-#define	framevar(n)		MR_framevar(n+1)
+#define	MR_framevar(n)		MR_based_framevar(MR_curfr, n)
+#define	framevar(n)		MR_framevar((n) + 1)
 
 /* DEFINITIONS FOR MANIPULATING THE NONDET STACK */
 
