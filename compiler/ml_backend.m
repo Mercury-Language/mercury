@@ -64,8 +64,7 @@
 % MLDS->.NET CLR back-end
 :- include_module mlds_to_il.
 :- include_module mlds_to_ilasm.
-:- include_module mlds_to_csharp.
-:- include_module mlds_to_mcpp.
+:- include_module mlds_to_managed.
 :- include_module ilds.
 :- include_module ilasm.
 :- include_module il_peephole.

@@ -1247,6 +1247,7 @@ XXX Full exception handling support is not yet implemented.
 				foreign_language,
 					% the foreign language this code is
 					% written in.
+				list(outline_arg),
 				list(mlds__lval),
 					% where to store return value(s)
 				string
@@ -1267,6 +1268,28 @@ XXX Full exception handling support is not yet implemented.
 			% where the input values come from, and use
 	.
 
+	% Stores information about each argument to an outline_foreign_proc.
+:- type outline_arg
+	--->	in(
+			mlds__type,
+				% The type of the argument.
+			string,
+				% The name of the argument in the foreign code.
+			mlds__rval
+				% The rval which holds the value of this
+				% argument.
+		)
+	;	out(
+			mlds__type,
+				% The type of the argument.
+			string,
+				% The name of the argument in the foreign code.
+			mlds__lval
+				% The lval where we are to place the result
+				% calculated by the foreign code into.
+		)
+	;	unused.
+		
 	%
 	% This is just a random selection of possible languages
 	% that we might want to target...

@@ -2829,7 +2829,7 @@ mlds_output_atomic_stmt(_Indent, _FuncInfo,
 	).
 
 mlds_output_atomic_stmt(_Indent, _FuncInfo,
-	outline_foreign_proc(_ForeignLang, _Lvals, _Code), _Context) -->
+	outline_foreign_proc(_Lang, _Vs, _Lvals, _Code), _Context) -->
 		{ error("mlds_to_c.m: outline_foreign_proc is not used in C backend") }.
 
 :- pred mlds_output_target_code_component(mlds__context, target_code_component,

@@ -2540,7 +2540,8 @@ output_atomic_stmt(_Indent, _FuncInfo,
 	{ error("mlds_to_java.m: sorry, foreign language interfacing not implemented") }.
 
 output_atomic_stmt(_Indent, _FuncInfo, 
-		outline_foreign_proc(_TargetLang, _Lvals, _Code), _Context) -->
+		outline_foreign_proc(_TargetLang, _Vs, _Lvals, _Code),
+		_Context) -->
 	{ error("mlds_to_java.m: sorry, foreign language interfacing not implemented") }.
 
 %------------------------------------------------------------------------------%

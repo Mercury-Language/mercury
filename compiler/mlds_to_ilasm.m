@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 The University of Melbourne.
+% Copyright (C) 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -33,14 +33,11 @@
 :- import_module parse_tree__modules, libs__tree.
 :- import_module hlds__hlds_pred. % for `pred_proc_id'.
 :- import_module parse_tree__prog_data, parse_tree__prog_out.
-:- import_module ll_backend__llds_out.
 :- import_module backend_libs__rtti, check_hlds__type_util, hlds__error_util.
 
 :- import_module ml_backend__ilds, ml_backend__ilasm, ml_backend__il_peephole.
 :- import_module ml_backend__ml_util, ml_backend__ml_code_util.
-:- import_module ml_backend__mlds_to_csharp. /* to output C sharp code */
-:- import_module ml_backend__mlds_to_mcpp. /* to output MC++ code */
-:- use_module ll_backend__llds. /* for user_c_code */
+:- import_module ml_backend__mlds_to_managed.
 
 :- import_module bool, int, map, string, set, list, assoc_list, term, std_util.
 :- import_module library, require, counter.
@@ -81,8 +78,9 @@ output_foreign_file(MLDS, ForeignLang) -->
 		pred(mlds, io__state, io__state)::out(pred(in, di, uo) is det))
 		is det.
 
-handle_foreign_lang(managed_cplusplus, "__cpp_code.cpp", output_mcpp_code).
-handle_foreign_lang(csharp, "__csharp_code.cs", output_csharp_code).
+handle_foreign_lang(managed_cplusplus, "__cpp_code.cpp",
+		output_managed_code(managed_cplusplus)).
+handle_foreign_lang(csharp, "__csharp_code.cs", output_managed_code(csharp)).
 handle_foreign_lang(c, _, _) :-
 	sorry(this_file, "language C foreign code not supported").
 handle_foreign_lang(il, _, _) :-

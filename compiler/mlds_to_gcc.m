@@ -2870,7 +2870,7 @@ gen_atomic_stmt(_DefnInfo, inline_target_code(_TargetLang, _Components),
 		_Context) -->
 	% XXX we should support inserting inline asm code fragments
 	{ sorry(this_file, "target_code (for `--target asm')") }.
-gen_atomic_stmt(_DefnInfo, outline_foreign_proc(_, _, _), _Context) -->
+gen_atomic_stmt(_DefnInfo, outline_foreign_proc(_, _, _, _), _Context) -->
 	% XXX I'm not sure if we need to handle this case
 	{ sorry(this_file, "outline_foreign_proc (for `--target asm')") }.
 

@@ -445,7 +445,7 @@ has_foreign_languages(Statement, Langs) :-
 	GetTargetCode = (pred(Lang::out) is nondet :-
 		statement_contains_statement(Statement, SubStatement),
 		SubStatement = statement(atomic(
-		  	outline_foreign_proc(Lang, _, _)), _) 
+		  	outline_foreign_proc(Lang, _, _, _)), _) 
 		),
 	solutions(GetTargetCode, Langs).
 
@@ -463,7 +463,7 @@ defn_contains_foreign_code(NativeTargetLang, Defn) :-
 		Stmt = atomic(inline_target_code(TargetLang, _)),
 		TargetLang \= NativeTargetLang
 	; 
-		Stmt = atomic(outline_foreign_proc(_, _, _))
+		Stmt = atomic(outline_foreign_proc(_, _, _, _))
 	).
 
 defn_contains_outline_foreign_proc(ForeignLang, Defn) :-
@@ -471,7 +471,7 @@ defn_contains_outline_foreign_proc(ForeignLang, Defn) :-
 	Body = function(_, _, defined_here(FunctionBody), _),
 	statement_contains_statement(FunctionBody, Statement),
 	Statement = mlds__statement(Stmt, _),
-	Stmt = atomic(outline_foreign_proc(ForeignLang, _, _)).
+	Stmt = atomic(outline_foreign_proc(ForeignLang, _, _, _)).
 
 defn_is_type(Defn) :-
 	Defn = mlds__defn(Name, _Context, _Flags, _Body),

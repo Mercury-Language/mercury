@@ -241,7 +241,7 @@ maybe_get_dotnet_library_version(MaybeVersion) -->
 
 generate_il(MLDS, Version, ILAsm, ForeignLangs, IO0, IO) :-
 
-	mlds(MercuryModuleName, _ForeignCode, Imports, Defns) =
+	mlds(MercuryModuleName, ForeignCode, Imports, Defns) =
 		transform_mlds(MLDS),
 
 	ModuleName = mercury_module_name_to_mlds(MercuryModuleName),
@@ -268,7 +268,11 @@ generate_il(MLDS, Version, ILAsm, ForeignLangs, IO0, IO) :-
 	list__map_foldl(mlds_defn_to_ilasm_decl, Defns, ILDecls,
 			IlInfo0, IlInfo),
 
-	ForeignLangs = IlInfo ^ file_foreign_langs,
+	list__filter(has_foreign_code_defined(ForeignCode),
+			[managed_cplusplus, csharp], ForeignCodeLangs),
+
+	ForeignLangs = IlInfo ^ file_foreign_langs `union`
+			set__list_to_set(ForeignCodeLangs),
 
 	ClassName = mlds_module_name_to_class_name(ModuleName),
 	ClassName = structured_name(_, NamespaceName, _),
@@ -322,6 +326,20 @@ get_il_data_rep(ILDataRep, IO0, IO) :-
 	globals__lookup_bool_option(Globals, highlevel_data, HighLevelData),
 	ILEnvPtrType = choose_il_envptr_type(Globals),
 	ILDataRep = il_data_rep(HighLevelData, ILEnvPtrType).
+
+
+:- pred has_foreign_code_defined(
+		map(foreign_language, mlds__foreign_code)::in,
+		foreign_language::in) is semidet.
+
+has_foreign_code_defined(ForeignCodeMap, Lang) :-
+	ForeignCode = map__search(ForeignCodeMap, Lang),
+	ForeignCode = mlds__foreign_code(Decls, Imports, Codes, Exports),
+	( Decls \= []
+	; Imports \= []
+	; Codes \= []
+	; Exports \= []
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -471,7 +489,8 @@ rename_atomic(mark_hp(L)) = mark_hp(rename_lval(L)).
 rename_atomic(restore_hp(R)) = restore_hp(rename_rval(R)).
 rename_atomic(trail_op(T)) = trail_op(T).
 rename_atomic(inline_target_code(L, Cs)) = inline_target_code(L, Cs).
-rename_atomic(outline_foreign_proc(F, Ls, S)) = outline_foreign_proc(F, Ls, S).
+rename_atomic(outline_foreign_proc(F, Vs, Ls, S))
+	= outline_foreign_proc(F, Vs, Ls, S).
 
 :- func rename_rval(mlds__rval) = mlds__rval.
 
@@ -994,28 +1013,23 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember) -->
 		statement_to_il(Statement, InstrsTree1)
 	; 
 		{ MaybeStatement = external },
-			% If there is no function body, generate
-			% forwarding code instead.  This can happen with
-			% :- external
-		atomic_statement_to_il(inline_target_code(lang_C, []),
-				InstrsTree0),
 
-			% The code might reference locals...
-		il_info_add_locals(["succeeded" - mlds__native_bool_type]),
-		( { Returns = [_] } ->
-			% XXX Bug!
-			% We assume that if there is a return value,
-			% then it must be a semidet procedure, so
-			% we return `succeeded'.
-			% This is wrong for functions!
-			{ InstrsTree1 = tree__list([
-				InstrsTree0,
-				instr_node(ldloc(name("succeeded"))),
-				instr_node(ret)
+		{ mangle_dataname_module(no, ModuleName, NewModuleName) },
+		{ ClassName = mlds_module_name_to_class_name(NewModuleName) },
+
+		{ ILSignature = signature(_, ILRetType, ILParams) },
+
+		{ assoc_list__keys(ILParams, TypeParams) },
+		{ list__map_foldl(
+			(pred(_::in, Instr::out, Num::in, Num+1::out) is det :-
+				Instr = ldarg(index(Num))
+			), TypeParams, LoadInstrs, 0, _) },
+		{ InstrsTree1 = tree__list([
+			comment_node("external -- call handwritten version"),
+			node(LoadInstrs),
+			instr_node(call(get_static_methodref(ClassName,
+				MemberName, ILRetType, TypeParams)))
 			]) }
-		;
-			{ InstrsTree1 = InstrsTree0 }
-		)
 	),
 
 		% Need to insert a ret for functions returning
@@ -1839,7 +1853,7 @@ atomic_statement_to_il(restore_hp(_), node(Instrs)) -->
 	{ Instrs = [comment(
 		"restore hp -- not relevant for this backend")] }.
 
-atomic_statement_to_il(outline_foreign_proc(Lang, ReturnLvals, _Code),
+atomic_statement_to_il(outline_foreign_proc(Lang, _, ReturnLvals, _Code),
 		Instrs) --> 
 	il_info_get_module_name(ModuleName),
 	( no =^ method_foreign_lang  ->
@@ -1892,47 +1906,10 @@ atomic_statement_to_il(outline_foreign_proc(Lang, ReturnLvals, _Code),
 			"outline foreign proc -- already called") }
 	).
 
-	% XXX we assume lang_C is MC++
-atomic_statement_to_il(inline_target_code(lang_C, _Code), Instrs) --> 
-	il_info_get_module_name(ModuleName),
-	( no =^ method_foreign_lang  ->
-			% XXX we hardcode managed C++ here
-		=(Info),
-		^ method_foreign_lang := yes(managed_cplusplus),
-		^ file_foreign_langs := 
-			set__insert(Info ^ file_foreign_langs,
-			managed_cplusplus),
-		{ mangle_dataname_module(no, ModuleName, NewModuleName) },
-		{ ClassName = mlds_module_name_to_class_name(NewModuleName) },
-		signature(_, RetType, Params) =^ signature, 
-			% If there is a return value, put it in succeeded.
-			% XXX this is incorrect for functions, which might
-			% return a useful value.
-		{ RetType = void ->
-			StoreReturnInstr = empty
-		; RetType = simple_type(bool) ->
-			StoreReturnInstr = instr_node(stloc(name("succeeded")))
-		;
-			sorry(this_file, "functions in MC++")
-		},
-		MethodName =^ method_name,
-		{ assoc_list__keys(Params, TypeParams) },
-		{ list__map_foldl((pred(_::in, Instr::out,
-			Num::in, Num + 1::out) is det :-
-				Instr = ldarg(index(Num))),
-			TypeParams, LoadInstrs, 0, _) },
-		{ Instrs = tree__list([
-			comment_node("inline target code -- call handwritten version"),
-			node(LoadInstrs),
-			instr_node(call(get_static_methodref(ClassName,
-				MethodName, RetType, TypeParams))),
-			StoreReturnInstr
-			]) }
-	;
-		{ Instrs = comment_node("inline target code -- already called") }
-	).
 atomic_statement_to_il(inline_target_code(lang_il, Code), Instrs) --> 
 	{ Instrs = inline_code_to_il_asm(Code) }.
+atomic_statement_to_il(inline_target_code(lang_C, _Code), _Instrs) --> 
+	{ unexpected(this_file, "lang_C") }.
 atomic_statement_to_il(inline_target_code(lang_java_bytecode, _), _) --> 
 	{ unexpected(this_file, "lang_java_bytecode") }.
 atomic_statement_to_il(inline_target_code(lang_java_asm, _), _) --> 

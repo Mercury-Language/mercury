@@ -783,7 +783,6 @@
 :- import_module ml_backend__ml_type_gen, ml_backend__ml_call_gen.
 :- import_module ml_backend__ml_unify_gen, ml_backend__ml_switch_gen.
 :- import_module ml_backend__ml_code_util.
-:- import_module ll_backend__llds. % XXX needed for pragma backend_libs__foreign code
 :- import_module backend_libs__export.
 :- import_module backend_libs__foreign. % XXX needed for pragma foreign code
 :- import_module hlds__hlds_pred, hlds__hlds_data.
@@ -2095,10 +2094,14 @@ ml_gen_goal_expr(foreign_proc(Attributes,
                 PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes, PragmaImpl),
 		CodeModel, OuterContext, MLDS_Decls, MLDS_Statements) -->
         (
-                { PragmaImpl = ordinary(Foreign_Code, _MaybeContext) },
+                { PragmaImpl = ordinary(Foreign_Code, MaybeContext) },
+		{ MaybeContext = yes(Context)
+		; MaybeContext = no,
+			Context = OuterContext
+		},
                 ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
                         PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
-                        Foreign_Code, OuterContext, MLDS_Decls,
+                        Foreign_Code, Context, MLDS_Decls,
 			MLDS_Statements)
         ;
                 { PragmaImpl = nondet(
@@ -2354,11 +2357,11 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
 			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
 			Foreign_Code, Context, MLDS_Decls, MLDS_Statements)
 	; { Lang = managed_cplusplus },
-		ml_gen_ordinary_pragma_c_proc(CodeModel, Attributes,
+		ml_gen_ordinary_pragma_managed_proc(CodeModel, Attributes,
 			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
 			Foreign_Code, Context, MLDS_Decls, MLDS_Statements)
 	; { Lang = csharp },
-		ml_gen_ordinary_pragma_csharp_proc(CodeModel, Attributes,
+		ml_gen_ordinary_pragma_managed_proc(CodeModel, Attributes,
 			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
 			Foreign_Code, Context, MLDS_Decls, MLDS_Statements)
 	; { Lang = il },
@@ -2367,29 +2370,33 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
 			Foreign_Code, Context, MLDS_Decls, MLDS_Statements)
 	).
 
-:- pred ml_gen_ordinary_pragma_csharp_proc(code_model, 
+:- pred ml_gen_ordinary_pragma_managed_proc(code_model, 
 		pragma_foreign_proc_attributes,
 		pred_id, proc_id, list(prog_var),
 		list(maybe(pair(string, mode))), list(prog_type),
 		string, prog_context,
 		mlds__defns, mlds__statements, ml_gen_info, ml_gen_info).
-:- mode ml_gen_ordinary_pragma_csharp_proc(in, in, in, in, in, in, 
+:- mode ml_gen_ordinary_pragma_managed_proc(in, in, in, in, in, in, 
 		in, in, in, out, out, in, out) is det.
 
-	% For ordinary (not model_non) pragma foreign_code in C#,
+	% For ordinary (not model_non) pragma foreign_code in C# or MC++,
 	% we generate a call to an out-of-line procedure that contains
 	% the user's code.
 
-ml_gen_ordinary_pragma_csharp_proc(CodeModel, Attributes,
-		_PredId, _ProcId, _ArgVars, _ArgDatas, _OrigArgTypes,
+ml_gen_ordinary_pragma_managed_proc(CodeModel, Attributes,
+		_PredId, _ProcId, ArgVars, ArgDatas, OrigArgTypes,
 		ForeignCode, Context, MLDS_Decls, MLDS_Statements) -->
+
+	{ ml_make_c_arg_list(ArgVars, ArgDatas, OrigArgTypes, ArgList) },
+	ml_gen_outline_args(ArgList, OutlineArgs),
+
 	{ foreign_language(Attributes, ForeignLang) },
 	{ MLDSContext = mlds__make_context(Context) },
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_value_output_vars(MLDSGenInfo, OutputVars) },
 	ml_gen_var_list(OutputVars, OutputVarLvals),
-	{ OutlineStmt = outline_foreign_proc(ForeignLang, OutputVarLvals,
-		ForeignCode) },
+	{ OutlineStmt = outline_foreign_proc(ForeignLang, OutlineArgs,
+			OutputVarLvals, ForeignCode) },
 
 	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
 	{ module_info_name(ModuleInfo, ModuleName) },
@@ -2422,6 +2429,35 @@ ml_gen_ordinary_pragma_csharp_proc(CodeModel, Attributes,
 		SuccessIndicatorStatements
 		] },
 	{ MLDS_Decls = SuccessVarLocals }.
+
+:- pred ml_gen_outline_args(list(ml_c_arg)::in,
+		list(outline_arg)::out,
+		ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_outline_args([], []) --> [].
+ml_gen_outline_args([ml_c_arg(Var, MaybeVarMode, OrigType) | Args],
+		[OutlineArg | OutlineArgs]) -->
+	ml_gen_outline_args(Args, OutlineArgs),
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
+	ml_gen_var(Var, VarLval),
+	ml_gen_type(OrigType, MldsType),
+	{
+		MaybeVarMode = yes(ArgName - Mode),
+		\+ type_util__is_dummy_argument_type(OrigType),
+		\+ var_is_singleton(ArgName)
+	->
+		mode_to_arg_mode(ModuleInfo, Mode, OrigType, ArgMode),
+		( ArgMode = top_in,
+			OutlineArg = in(MldsType, ArgName, lval(VarLval))
+		; ArgMode = top_out,
+			OutlineArg = out(MldsType, ArgName, VarLval)
+		; ArgMode = top_unused,
+			OutlineArg = unused
+		)
+	;
+		OutlineArg = unused
+	}.
 
 :- pred ml_gen_ordinary_pragma_il_proc(code_model, 
 	pragma_foreign_proc_attributes, pred_id, proc_id, list(prog_var),

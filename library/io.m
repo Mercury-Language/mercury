@@ -3395,7 +3395,7 @@ typedef __gc struct MR_MercuryFileStruct *MR_MercuryFile;
 #define ML_UpCast(Cast, Expr) ((Cast) (Expr))
 
 #define initial_io_state()	0	/* some random number */
-#define update_io(r_src, r_dest)	((r_dest) = (r_src))
+#define update_io(r_src, r_dest)	(0)
 #define final_io_state(r)
 
 

@@ -1174,8 +1174,8 @@ eliminate_var_in_atomic_stmt(inline_target_code(Lang, Components0),
 		inline_target_code(Lang, Components)) -->
 	list__map_foldl(eliminate_var_in_target_code_component,
 		Components0, Components).
-eliminate_var_in_atomic_stmt(outline_foreign_proc(Lang, Lvals0, Code),
-		outline_foreign_proc(Lang, Lvals, Code)) -->
+eliminate_var_in_atomic_stmt(outline_foreign_proc(Lang, Vs, Lvals0, Code),
+		outline_foreign_proc(Lang, Vs, Lvals, Code)) -->
 	eliminate_var_in_lvals(Lvals0, Lvals).
 
 :- pred eliminate_var_in_case_cond(

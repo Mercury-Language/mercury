@@ -1059,9 +1059,8 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 	/* XXX trailing not yet implemented for the MLDS back-end */
 	mercury::runtime::Errors::SORRY(""foreign code for get_registers"");
 #else
-	TrailPtr = 0
+	TrailPtr = 0;
 #endif
-
 ").
 
 get_registers(_, _, _) :-

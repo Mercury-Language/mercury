@@ -1810,8 +1810,8 @@ fixup_atomic_stmt(inline_target_code(Lang, Components0),
 		inline_target_code(Lang, Components)) -->
 	list__map_foldl(fixup_target_code_component,
 		Components0, Components).
-fixup_atomic_stmt(outline_foreign_proc(Lang, Lvals0, Code),
-		outline_foreign_proc(Lang, Lvals, Code)) -->
+fixup_atomic_stmt(outline_foreign_proc(Lang, Vs, Lvals0, Code),
+		outline_foreign_proc(Lang, Vs, Lvals, Code)) -->
 	list__map_foldl(fixup_lval, Lvals0, Lvals).
 
 :- pred fixup_case_cond(mlds__case_match_cond, mlds__case_match_cond,
