@@ -44,29 +44,30 @@ MCFLAGS = --trace deep --trace-decl
 MLFLAGS = --trace
 C2INITFLAGS = --trace
 
+# Debugging does not work in MLDS (hl*) grades.
 # Base grades `jump' and `fast' cannot be used with
 # stack layouts (which are required for tracing).
 # Also, declarative debugging only works in `.gc' grades.
 
-ifneq "$(findstring asm_,$(GRADE))" ""
-    ifneq "$(findstring .gc,$(GRADE))" ""
-        PROGS=$(DECLARATIVE_PROGS)
-    else
-        PROGS=
-    endif
+ifneq "$(findstring hl,$(GRADE))" ""
+    PROGS=
 else
-    ifneq "$(findstring jump,$(GRADE))" ""
-        PROGS=
-    else
-        ifneq "$(findstring fast,$(GRADE))" ""
-            PROGS=
+    ifneq "$(findstring .gc,$(GRADE))" ""
+        ifneq "$(findstring asm_,$(GRADE))" ""
+            PROGS=$(DECLARATIVE_PROGS)
         else
-            ifneq "$(findstring .gc,$(GRADE))" ""
-                PROGS=$(DECLARATIVE_PROGS)
-            else
+            ifneq "$(findstring jump,$(GRADE))" ""
                 PROGS=
+            else
+                ifneq "$(findstring fast,$(GRADE))" ""
+                    PROGS=
+                else
+                    PROGS=$(DECLARATIVE_PROGS)
+                endif
             endif
         endif
+    else
+        PROGS=
     endif
 endif
 

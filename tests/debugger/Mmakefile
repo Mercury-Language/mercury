@@ -47,20 +47,25 @@ C2INITFLAGS = --trace
 GRADEFLAGS-interactive = --pic-reg
 MLFLAGS-interactive = --shared
 
-# Base grades `jump' and `fast' cannot be used with
+# The debugging tests don't work in MLDS grades (hl*).
+# Also base grades `jump' and `fast' cannot be used with
 # stack layouts (which are required for tracing).
 
-ifneq "$(findstring asm_,$(GRADE))" ""
-    PROGS=$(DEBUGGER_PROGS)
+ifneq "$(findstring hl,$(GRADE))" ""
+    PROGS=
 else
-    ifneq "$(findstring jump,$(GRADE))" ""
-	PROGS=
+    ifneq "$(findstring asm_,$(GRADE))" ""
+        PROGS=$(DEBUGGER_PROGS)
     else
-	ifneq "$(findstring fast,$(GRADE))" ""
-	    PROGS=
-	else
-	    PROGS=$(DEBUGGER_PROGS)
-	endif
+        ifneq "$(findstring jump,$(GRADE))" ""
+            PROGS=
+        else
+            ifneq "$(findstring fast,$(GRADE))" ""
+                PROGS=
+            else
+                PROGS=$(DEBUGGER_PROGS)
+            endif
+        endif
     endif
 endif
 
