@@ -1340,12 +1340,10 @@ mercury_compile__maybe_do_optimize(LLDS0, LLDS) -->
 	->
 		globals__io_lookup_bool_option(verbose, Verbose),
 		maybe_write_string(Verbose,
-			"% Doing optimizations..."),
+			"% Doing optimizations...\n"),
 		maybe_flush_output(Verbose),
-		globals__io_get_globals(Globals),
-		{ globals__get_options(Globals, Options) },
-		{ optimize__main(Options, LLDS0, LLDS) },
-		maybe_write_string(Verbose, " done.\n"),
+		optimize__main(LLDS0, LLDS),
+		maybe_write_string(Verbose, "% done.\n"),
 		globals__io_lookup_bool_option(statistics, Statistics),
 		maybe_report_stats(Statistics)
 	;

@@ -421,7 +421,7 @@ call_gen__generate_call_livevals(InputArgs, Code) -->
 	code_info__generate_stack_livevals(LiveVals0),
 	{ call_gen__insert_arg_livevals(InputArgs, LiveVals0, LiveVals) },
 	{ Code = node([
-		livevals(yes, LiveVals) - ""
+		livevals(LiveVals) - ""
 	]) }.
 
 %---------------------------------------------------------------------------%
@@ -484,7 +484,7 @@ call_gen__generate_higher_call(PredDet, Var, Code) -->
 	(
 		{ PredDet = deterministic },
 		{ CallCode = node([
-			livevals(yes, LiveVals) - "",
+			livevals(LiveVals) - "",
 			call_closure(no, label(ReturnLabel), OutLiveVals) -
 				"setup and call det higher order pred",
 			label(ReturnLabel) - "Continuation label"
@@ -492,7 +492,7 @@ call_gen__generate_higher_call(PredDet, Var, Code) -->
 	;
 		{ PredDet = semideterministic },
 		{ TryCallCode = node([
-			livevals(yes, LiveVals) - "",
+			livevals(LiveVals) - "",
 			call_closure(yes, label(ReturnLabel), OutLiveVals) -
 				"setup and call semidet higher order pred",
 			label(ReturnLabel) - "Continuation label"
@@ -507,7 +507,7 @@ call_gen__generate_higher_call(PredDet, Var, Code) -->
 	;
 		{ PredDet = nondeterministic },
 		{ CallCode = node([
-			livevals(yes, LiveVals) - "",
+			livevals(LiveVals) - "",
 			call_closure(no, label(ReturnLabel),
 						OutLiveVals)
 				- "setup and call nondet higher order pred",

@@ -21,28 +21,13 @@
 
 :- interface.
 
-	% Reflect the action of an assignment in the vn tables.
-
-:- pred vn__handle_assign(lval, rval, vnlvalset, vnlvalset,
-	vn_tables, vn_tables).
-:- mode vn__handle_assign(in, in, di, uo, di, uo) is det.
-
-	% Reflect the effect of a livevals instr on the set of live vnlvals.
-
-:- pred vn__handle_livevals(bool, lvalset, vnlvalset, vnlvalset).
-:- mode vn__handle_livevals(in, in, di, uo) is det.
-
-:- implementation.
-
-vn__handle_assign(Lval, Rval, Livevals0, Livevals, Vn_tables0, Vn_tables) :-
-	vn__rval_to_vn(Rval, Vn, Vn_tables0, Vn_tables1),
-	vn__lval_to_vnlval(Lval, Vnlval, Vn_tables1, Vn_tables2),
-	vn__set_desired_value(Vnlval, Vn, Vn_tables2, Vn_tables),
-	vn__find_specials(Vnlval, Specials),
-	bintree_set__insert_list(Livevals0, Specials, Livevals).
-
 :- pred vn__find_specials(vnlval, list(vnlval)).
 :- mode vn__find_specials(in, out) is det.
+
+:- pred vn__convert_to_vnlval_and_insert(list(lval), vnlvalset, vnlvalset).
+:- mode vn__convert_to_vnlval_and_insert(in, di, uo) is det.
+
+:- implementation.
 
 vn__find_specials(vn_reg(_), []).
 vn__find_specials(vn_stackvar(_), []).
@@ -54,21 +39,6 @@ vn__find_specials(vn_hp, [vn_hp]).
 vn__find_specials(vn_sp, [vn_sp]).
 vn__find_specials(vn_field(_, _, _), []).
 vn__find_specials(vn_temp(_), []).
-
-vn__handle_livevals(Terminate, Livevals, Liveset0, Liveset) :-
-	( Terminate = yes ->
-		true
-	;
-		error("non-terminating livevals in vn__handle_instr")
-	),
-	bintree_set__to_sorted_list(Livevals, Livelist),
-	vn__convert_to_vnlval_and_insert(Livelist, Liveset0, Liveset).
-
-	% Given a list of live lvals, convert the non-field ones to vnlvals
-	% and insert them into the given vnlvalset.
-
-:- pred vn__convert_to_vnlval_and_insert(list(lval), vnlvalset, vnlvalset).
-:- mode vn__convert_to_vnlval_and_insert(in, di, uo) is det.
 
 vn__convert_to_vnlval_and_insert([], Liveset, Liveset).
 vn__convert_to_vnlval_and_insert([Lval | Lvals], Liveset0, Liveset) :-
@@ -262,14 +232,12 @@ vn__new_ctrl_node(Vn_instr, Livemap, Vn_tables0, Vn_tables, Livevals0, Livevals,
 	map__init(FlushEntry0),
 	(
 		Vn_instr = vn_call(_, _, _),
-		bintree_set__to_sorted_list(Livevals0, Livelist),
-		vn__record_livevnlvals(Livelist, Vn_tables0, Vn_tables,
-			Livevals0, Livevals, FlushEntry0, FlushEntry)
+		vn__record_at_call(Vn_tables0, Vn_tables, Livevals0, Livevals,
+			FlushEntry0, FlushEntry)
 	;
 		Vn_instr = vn_call_closure(_, _, _),
-		bintree_set__to_sorted_list(Livevals0, Livelist),
-		vn__record_livevnlvals(Livelist, Vn_tables0, Vn_tables,
-			Livevals0, Livevals, FlushEntry0, FlushEntry)
+		vn__record_at_call(Vn_tables0, Vn_tables, Livevals0, Livevals,
+			FlushEntry0, FlushEntry)
 	;
 		Vn_instr = vn_mkframe(_, _, _),
 		Vn_tables = Vn_tables0,
@@ -291,8 +259,7 @@ vn__new_ctrl_node(Vn_instr, Livemap, Vn_tables0, Vn_tables, Livevals0, Livevals,
 				Vn_tables0, Vn_tables, Livevals0, Livevals,
 				FlushEntry0, FlushEntry)
 		;
-			bintree_set__to_sorted_list(Livevals0, Livelist),
-			vn__record_livevnlvals(Livelist, Vn_tables0, Vn_tables,
+			vn__record_at_call(Vn_tables0, Vn_tables,
 				Livevals0, Livevals, FlushEntry0, FlushEntry)
 		)
 	;
@@ -311,10 +278,36 @@ vn__new_ctrl_node(Vn_instr, Livemap, Vn_tables0, Vn_tables, Livevals0, Livevals,
 			vn__record_livevnlvals(Livelist, Vn_tables0, Vn_tables,
 				Livevals0, Livevals, FlushEntry0, FlushEntry)
 		)
+	;
+		Vn_instr = vn_mark_hp(Vnlval),
+		vn__rval_to_vn(lval(hp), Vn, Vn_tables0, Vn_tables1),
+		vn__set_desired_value(Vnlval, Vn, Vn_tables1, Vn_tables),
+		bintree_set__insert(Livevals0, Vnlval, Livevals),
+		FlushEntry = FlushEntry0
+	;
+		Vn_instr = vn_restore_hp(_Vn),
+		Vn_tables = Vn_tables0,
+		Livevals = Livevals0,
+		FlushEntry = FlushEntry0
 	),
 	map__set(Flushmap0, Ctrl0, FlushEntry, Flushmap).
 
 %-----------------------------------------------------------------------------%
+
+	% Compute the flushmap entry for a call or for a possible branch to
+	% a label or a set of labels.
+
+:- pred vn__record_at_call(vn_tables, vn_tables, vnlvalset, vnlvalset,
+	flushmapentry, flushmapentry).
+:- mode vn__record_at_call(di, uo, di, uo, di, uo) is det.
+
+vn__record_at_call(Vn_tables0, Vn_tables, Livevals0, Livevals,
+		FlushEntry0, FlushEntry) :-
+	bintree_set__to_sorted_list(Livevals0, Livelist),
+	vn__record_livevnlvals(Livelist, Vn_tables0, Vn_tables,
+		Livevals0, Livevals1, FlushEntry0, FlushEntry1),
+	vn__record_compulsory_lvals(Vn_tables, Livevals1, Livevals,
+		FlushEntry1, FlushEntry).
 
 :- pred vn__record_several_labels(list(label), livemap, vn_tables, vn_tables,
 	vnlvalset, vnlvalset, flushmapentry, flushmapentry).
@@ -535,8 +528,23 @@ vn__order_equal_lists([Block | Blocks], [GoodBlock | GoodBlocks]) :-
 :- mode vn__order_equals(di, uo) is det.
 
 vn__order_equals(Order0, Order) :-
-	vn__find_regs(Order0, Regs, Order1),
-	list__append(Regs, Order1, Order).
+	vn__find_ctrls(Order0, Ctrls, Order1),
+	vn__find_regs(Order1, Regs, Order2),
+	list__condense([Ctrls, Regs, Order2], Order).
+
+:- pred vn__find_ctrls(list(vn_node), list(vn_node), list(vn_node)).
+:- mode vn__find_ctrls(di, out, uo) is det.
+
+vn__find_ctrls([], [], []).
+vn__find_ctrls([Node0 | Nodes0], Ctrls, Nodes) :-
+	vn__find_ctrls(Nodes0, Ctrls1, Nodes1),
+	( Node0 = node_ctrl(_) ->
+		Ctrls = [Node0 | Ctrls1],
+		Nodes = Nodes1
+	;
+		Ctrls = Ctrls1,
+		Nodes = [Node0 | Nodes1]
+	).
 
 :- pred vn__find_regs(list(vn_node), list(vn_node), list(vn_node)).
 :- mode vn__find_regs(di, out, uo) is det.
@@ -596,8 +604,6 @@ vn__find_sub_vns_vnlval(vn_temp(_), []).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-
-% XXX
 
 :- interface.
 
@@ -1243,20 +1249,22 @@ vn__set_current_value(Vnlval, Vn, Vn_tables0, Vn_tables) :-
 
 :- interface.
 
-:- pred vn__build_counts(vnlvalset, ctrlmap, vn_tables, vn_tables).
-:- mode vn__build_counts(in, in, di, uo) is det.
+	% Build up a list of the uses of each vn.
+
+:- pred vn__build_uses(vnlvalset, ctrlmap, vn_tables, vn_tables).
+:- mode vn__build_uses(in, in, di, uo) is det.
 
 :- implementation.
 
-vn__build_counts(Livevals, Ctrlmap, Vn_tables0, Vn_tables) :-
-	vn__build_counts_from_ctrl(0, Ctrlmap, Vn_tables0, Vn_tables1),
+vn__build_uses(Livevals, Ctrlmap, Vn_tables0, Vn_tables) :-
+	vn__build_uses_from_ctrl(0, Ctrlmap, Vn_tables0, Vn_tables1),
 	bintree_set__to_sorted_list(Livevals, Livelist),
-	vn__build_counts_from_livevals(Livelist, Vn_tables1, Vn_tables).
+	vn__build_uses_from_livevals(Livelist, Vn_tables1, Vn_tables).
 
-:- pred vn__build_counts_from_ctrl(int, ctrlmap, vn_tables, vn_tables).
-:- mode vn__build_counts_from_ctrl(in, in, di, uo) is det.
+:- pred vn__build_uses_from_ctrl(int, ctrlmap, vn_tables, vn_tables).
+:- mode vn__build_uses_from_ctrl(in, in, di, uo) is det.
 
-vn__build_counts_from_ctrl(Ctrl, Ctrlmap, Vn_tables0, Vn_tables) :-
+vn__build_uses_from_ctrl(Ctrl, Ctrlmap, Vn_tables0, Vn_tables) :-
 	( map__search(Ctrlmap, Ctrl, VnInstr) ->
 		(
 			VnInstr = vn_call(_, _, _),
@@ -1284,9 +1292,18 @@ vn__build_counts_from_ctrl(Ctrl, Ctrlmap, Vn_tables0, Vn_tables) :-
 			VnInstr = vn_if_val(Vn, _),
 			vn__record_use(Vn, src_ctrl(Ctrl),
 				Vn_tables0, Vn_tables1)
+		;
+			VnInstr = vn_mark_hp(Vnlval),
+			vn__vnlval_access_vn(Vnlval, Vns),
+			vn__record_use_list(Vns, src_ctrl(Ctrl),
+				Vn_tables0, Vn_tables1)
+		;
+			VnInstr = vn_restore_hp(Vn),
+			vn__record_use(Vn, src_ctrl(Ctrl),
+				Vn_tables0, Vn_tables1)
 		),
 		NextCtrl is Ctrl + 1,
-		vn__build_counts_from_ctrl(NextCtrl, Ctrlmap,
+		vn__build_uses_from_ctrl(NextCtrl, Ctrlmap,
 			Vn_tables1, Vn_tables)
 	;
 		Vn_tables = Vn_tables0
@@ -1296,17 +1313,17 @@ vn__build_counts_from_ctrl(Ctrl, Ctrlmap, Vn_tables0, Vn_tables) :-
 	% value number we want to assign to the vnlval. The second is the
 	% value numbers needed to access the vnlval at all.
 
-:- pred vn__build_counts_from_livevals(list(vnlval), vn_tables, vn_tables).
-:- mode vn__build_counts_from_livevals(in, di, uo) is det.
+:- pred vn__build_uses_from_livevals(list(vnlval), vn_tables, vn_tables).
+:- mode vn__build_uses_from_livevals(in, di, uo) is det.
 
-vn__build_counts_from_livevals([], Vn_tables, Vn_tables).
-vn__build_counts_from_livevals([Live | Liveslist], Vn_tables0, Vn_tables) :-
+vn__build_uses_from_livevals([], Vn_tables, Vn_tables).
+vn__build_uses_from_livevals([Live | Liveslist], Vn_tables0, Vn_tables) :-
 	vn__lookup_desired_value(Live, Vn, Vn_tables0),
 	vn__record_use(Vn, src_liveval(Live), Vn_tables0, Vn_tables1),
 	vn__vnlval_access_vn(Live, SubVns),
 	vn__record_use_list(SubVns, src_liveval(Live),
 		Vn_tables1, Vn_tables2),
-	vn__build_counts_from_livevals(Liveslist, Vn_tables2, Vn_tables).
+	vn__build_uses_from_livevals(Liveslist, Vn_tables2, Vn_tables).
 
 :- pred vn__record_use(vn, vn_src, vn_tables, vn_tables).
 :- mode vn__record_use(in, in, di, uo) is det.

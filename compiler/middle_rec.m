@@ -275,7 +275,7 @@ middle_rec__find_used_registers([Instr - _ | Instrs], Used0, Used) :-
 :- mode middle_rec__find_used_registers_instr(in, di, uo) is det.
 
 middle_rec__find_used_registers_instr(comment(_), Used, Used).
-middle_rec__find_used_registers_instr(livevals(_, LvalSet), Used0, Used) :-
+middle_rec__find_used_registers_instr(livevals(LvalSet), Used0, Used) :-
 	bintree_set__to_sorted_list(LvalSet, LvalList),
 	middle_rec__find_used_registers_lvals(LvalList, Used0, Used).
 middle_rec__find_used_registers_instr(block(_, Instrs), Used0, Used) :-

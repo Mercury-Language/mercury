@@ -135,8 +135,8 @@
 :- pred opt_debug__print_tailmap(tailmap).
 :- mode opt_debug__print_tailmap(in) is det.
 
-:- pred opt_debug__print_instmap(tailmap).
-:- mode opt_debug__print_instmap(in) is det.
+:- pred opt_debug__print_instrmap(tailmap).
+:- mode opt_debug__print_instrmap(in) is det.
 
 :- pred opt_debug__print_proclist(list(pair(label, list(instruction)))).
 :- mode opt_debug__print_proclist(in) is det.
@@ -166,7 +166,7 @@
 
 :- external(opt_debug__write/1).
 :- external(opt_debug__print_tailmap/1).
-:- external(opt_debug__print_instmap/1).
+:- external(opt_debug__print_instrmap/1).
 :- external(opt_debug__print_proclist/1).
 
 opt_debug__dump_node_relmap(Relmap, Str) :-
@@ -266,6 +266,12 @@ opt_debug__dump_vninstr(vn_if_val(Vn, CodeAddr), Str) :-
 	opt_debug__dump_vn(Vn, Vn_str),
 	opt_debug__dump_code_addr(CodeAddr, L_str),
 	string__append_list(["if_val(", Vn_str, ", ", L_str, ")"], Str).
+opt_debug__dump_vninstr(vn_mark_hp(Vnlval), Str) :-
+	opt_debug__dump_vnlval(Vnlval, V_str),
+	string__append_list(["mark_hp(", V_str, ")"], Str).
+opt_debug__dump_vninstr(vn_restore_hp(Vn), Str) :-
+	opt_debug__dump_vn(Vn, Vn_str),
+	string__append_list(["restore_hp(", Vn_str, ")"], Str).
 
 opt_debug__dump_flushmap(Flushmap, Str) :-
 	map__to_assoc_list(Flushmap, Flushlist),
@@ -593,10 +599,9 @@ opt_debug__dump_bool(no, "no").
 
 opt_debug__dump_instr(comment(Comment), Str) :-
 	string__append_list(["comment(", Comment, ")"], Str).
-opt_debug__dump_instr(livevals(Flag, Livevals), Str) :-
-	opt_debug__dump_bool(Flag, F_str),
+opt_debug__dump_instr(livevals(Livevals), Str) :-
 	opt_debug__dump_livevals(Livevals, L_str),
-	string__append_list(["livevals(", F_str, ",", L_str, ")"], Str).
+	string__append_list(["livevals(", L_str, ")"], Str).
 opt_debug__dump_instr(block(N, _), Str) :-
 	string__int_to_string(N, N_str),
 	string__append_list(["block(", N_str, ", ...)"], Str).

@@ -61,7 +61,9 @@
 			;	vn_label(label)
 			;	vn_goto(code_addr)
 			;	vn_computed_goto(vn, list(label))
-			;	vn_if_val(vn, code_addr).
+			;	vn_if_val(vn, code_addr)
+			;	vn_mark_hp(vnlval)
+			;	vn_restore_hp(vn).
 
 :- type livemap == map(label, lvalset).
 :- type lvalset == bintree_set(lval).
@@ -119,9 +121,9 @@ vn__repeat_build_livemap_2(Backinstrs, Livemap0, Ccode, Livemap) :-
 	bintree_set__init(Livevals0),
 	vn__build_livemap(Backinstrs, Livevals0, no, Ccode1,
 		Livemap0, Livemap1),
-	% opt_debug__dump_livemap(Livemap1, L_str),
-	% opt_debug__write("\n\nLivemap:\n\n"),
-	% opt_debug__write(L_str),
+	opt_debug__dump_livemap(Livemap1, L_str),
+	opt_debug__write("\n\nLivemap:\n\n"),
+	opt_debug__write(L_str),
 	( Ccode1 = yes ->
 		Ccode = yes,
 		Livemap = Livemap1
@@ -169,7 +171,7 @@ vn__build_livemap([Instr|Moreinstrs], Livevals0, Ccode0, Ccode,
 		Moreinstrs2 = Moreinstrs,
 		Ccode1 = Ccode0
 	;
-		Uinstr = livevals(_, _),
+		Uinstr = livevals(_),
 		error("livevals found in backward scan in vn__build_livemap")
 	;
 		Uinstr = block(_, _),
@@ -196,7 +198,7 @@ vn__build_livemap([Instr|Moreinstrs], Livevals0, Ccode0, Ccode,
 		(
 			Moreinstrs1 = [Nextinstr | Evenmoreinstrs],
 			Nextinstr = Nextuinstr - Nextcomment,
-			Nextuinstr = livevals(yes, Livevals1)
+			Nextuinstr = livevals(Livevals1)
 		->
 			vn__filter_livevals(Livevals1, Livevals2),
 			Livemap1 = Livemap0,
@@ -211,7 +213,7 @@ vn__build_livemap([Instr|Moreinstrs], Livevals0, Ccode0, Ccode,
 		(
 			Moreinstrs1 = [Nextinstr | Evenmoreinstrs],
 			Nextinstr = Nextuinstr - Nextcomment,
-			Nextuinstr = livevals(yes, Livevals1)
+			Nextuinstr = livevals(Livevals1)
 		->
 			vn__filter_livevals(Livevals1, Livevals2),
 			Livemap1 = Livemap0,
@@ -234,11 +236,7 @@ vn__build_livemap([Instr|Moreinstrs], Livevals0, Ccode0, Ccode,
 		Ccode1 = Ccode0
 	;
 		Uinstr = label(Label),
-		( Ccode0 = no ->
-			map__set(Livemap0, Label, Livevals0, Livemap1)
-		;
-			Livemap1 = Livemap0
-		),
+		map__set(Livemap0, Label, Livevals0, Livemap1),
 		Livevals2 = Livevals0,
 		Moreinstrs2 = Moreinstrs,
 		Ccode1 = Ccode0
@@ -250,7 +248,7 @@ vn__build_livemap([Instr|Moreinstrs], Livevals0, Ccode0, Ccode,
 			(
 				Moreinstrs1 = [Nextinstr | Evenmoreinstrs],
 				Nextinstr = Nextuinstr - Nextcomment,
-				Nextuinstr = livevals(yes, Livevals1)
+				Nextuinstr = livevals(Livevals1)
 			->
 				vn__filter_livevals(Livevals1, Livevals2),
 				Livemap1 = Livemap0,
@@ -267,10 +265,11 @@ vn__build_livemap([Instr|Moreinstrs], Livevals0, Ccode0, Ccode,
 			Moreinstrs2 = Moreinstrs,
 			Ccode1 = Ccode0
 		;
-			Livevals2 = Livevals0,
-			Livemap1 = Livemap0,
-			Moreinstrs2 = Moreinstrs,
-			Ccode1 = Ccode0
+			error("unknown label type in vn__build_livemap")
+			% Livevals2 = Livevals0,
+			% Livemap1 = Livemap0,
+			% Moreinstrs2 = Moreinstrs,
+			% Ccode1 = Ccode0
 		)
 	;
 		Uinstr = computed_goto(_, Labels),
@@ -456,7 +455,7 @@ vn__opt_non_block([Instr0 | Instrs0], Livemap, Instrs) :-
 		map__init(Ctrlmap0),
 		map__init(Flushmap0),
 		vn__opt_block(Instrs0, Vn_tables0, Livemap, Templocs, Liveset0,
-			0, 0, Ctrlmap0, Flushmap0, 0, [], NewInstrs),
+			0, 0, no, Ctrlmap0, Flushmap0, 0, [], NewInstrs),
 		Instrs = [Instr0 | NewInstrs]
 	;
 		Uinstr0 = comment(_)
@@ -471,28 +470,31 @@ vn__opt_non_block([Instr0 | Instrs0], Livemap, Instrs) :-
 
 	% Optimize instructions, assuming we are inside of a block.
 
-:- pred vn__opt_block(list(instruction), vn_tables, livemap, templocs, vnlvalset,
-	int, int, ctrlmap, flushmap, int, list(instruction), list(instruction)).
-:- mode vn__opt_block(in, in, in, in, in, in, in, in, in, in, in, out) is det.
+:- pred vn__opt_block(list(instruction), vn_tables, livemap, templocs,
+	vnlvalset, int, int, bool, ctrlmap, flushmap, int,
+	list(instruction), list(instruction)).
+:- mode vn__opt_block(in, in, in, in, in, in, in, in, in, in, in, in, out)
+	is det.
 
-vn__opt_block([], _, _, _, _, _, _, _, _, _, _, []) :-
+vn__opt_block([], _, _, _, _, _, _, _, _, _, _, _, []) :-
 	error("block has no terminator").
 vn__opt_block([Instr0 | Instrs0], Vn_tables, Livemap, Templocs, Livevals,
-		Incrsp, Decrsp, Ctrlmap0, Flushmap0, Ctrl0, Prev, Instrs) :-
+		Incrsp, Decrsp, Incrhp, Ctrlmap0, Flushmap0, Ctrl0,
+		Prev, Instrs) :-
 	vn__handle_instr(Instr0, Vn_tables, Livemap, Templocs, Livevals,
-		Incrsp, Decrsp, Ctrlmap0, Flushmap0, Ctrl0, Prev, Instrs0,
-		Instrs).
+		Incrsp, Decrsp, Incrhp, Ctrlmap0, Flushmap0, Ctrl0,
+		Prev, Instrs0, Instrs).
 
 %-----------------------------------------------------------------------------%
 
 :- pred vn__handle_instr(instruction, vn_tables, livemap, templocs, vnlvalset,
-	int, int, ctrlmap, flushmap, int, list(instruction),
+	int, int, bool, ctrlmap, flushmap, int, list(instruction),
 	list(instruction), list(instruction)).
-:- mode vn__handle_instr(in, in, in, in, in, in, in, in, in, in, in, in, out)
-	is det.
+:- mode vn__handle_instr(in, in, in, in, in, in, in, in, in, in, in, in, in,
+	out) is det.
 
 vn__handle_instr(Instr0, Vn_tables0, Livemap, Templocs0, Livevals0,
-		Incrsp, Decrsp, Ctrlmap0, Flushmap0, Ctrl0, Prev,
+		Incrsp, Decrsp, Incrhp, Ctrlmap0, Flushmap0, Ctrl0, Prev,
 		Instrs0, Instrs) :-
 	Instr0 = Uinstr0 - _Comment,
 	% opt_debug__dump_instr(Uinstr0, I_str),
@@ -505,23 +507,27 @@ vn__handle_instr(Instr0, Vn_tables0, Livemap, Templocs0, Livevals0,
 	(
 		Uinstr0 = comment(_),
 		vn__opt_block(Instrs0, Vn_tables0, Livemap,
-			Templocs0, Livevals0, Incrsp, Decrsp,
+			Templocs0, Livevals0, Incrsp, Decrsp, Incrhp,
 			Ctrlmap0, Flushmap0, Ctrl0, [Instr0 | Prev], Instrs)
 	;
-		Uinstr0 = livevals(Terminate, Livevals),
-		vn__handle_livevals(Terminate, Livevals, Livevals0, Livevals1),
+		Uinstr0 = livevals(Livevals),
+		bintree_set__to_sorted_list(Livevals, List),
+		vn__convert_to_vnlval_and_insert(List, Livevals0, Livevals1),
 		vn__opt_block(Instrs0, Vn_tables0, Livemap,
-			Templocs0, Livevals1, Incrsp, Decrsp,
+			Templocs0, Livevals1, Incrsp, Decrsp, Incrhp,
 			Ctrlmap0, Flushmap0, Ctrl0, [Instr0 | Prev], Instrs)
 	;
 		Uinstr0 = block(_, _),
 		error("block should not be found in handle_instr")
 	;
 		Uinstr0 = assign(Lval, Rval),
-		vn__handle_assign(Lval, Rval, Livevals0, Livevals1,
-			Vn_tables0, Vn_tables1),
-		vn__opt_block(Instrs0, Vn_tables1, Livemap,
-			Templocs0, Livevals1, Incrsp, Decrsp,
+		vn__rval_to_vn(Rval, Vn, Vn_tables0, Vn_tables1),
+		vn__lval_to_vnlval(Lval, Vnlval, Vn_tables1, Vn_tables2),
+		vn__set_desired_value(Vnlval, Vn, Vn_tables2, Vn_tables3),
+		vn__find_specials(Vnlval, Specials),
+		bintree_set__insert_list(Livevals0, Specials, Livevals1),
+		vn__opt_block(Instrs0, Vn_tables3, Livemap,
+			Templocs0, Livevals1, Incrsp, Decrsp, Incrhp,
 			Ctrlmap0, Flushmap0, Ctrl0, [Instr0 | Prev], Instrs)
 	;
 		Uinstr0 = call(ProcAddr, ReturnAddr, LiveInfo),
@@ -529,7 +535,7 @@ vn__handle_instr(Instr0, Vn_tables0, Livemap, Templocs0, Livevals0,
 			Livemap, Vn_tables0, Vn_tables1, Livevals0, Livevals1,
 			Ctrlmap0, Ctrlmap1, Flushmap0, Flushmap1, Ctrl0, Ctrl1),
 		vn__flush_all_nodes(Livevals1, Templocs0, Vn_tables1,
-			Incrsp, Decrsp, Ctrlmap1, Flushmap1, Ctrl1,
+			Incrsp, Decrsp, Incrhp, Ctrlmap1, Flushmap1, Ctrl1,
 			[Instr0 | Prev], FlushInstrs),
 		vn__opt_non_block(Instrs0, Livemap, Instrs1),
 		list__append(FlushInstrs, Instrs1, Instrs)
@@ -539,7 +545,7 @@ vn__handle_instr(Instr0, Vn_tables0, Livemap, Templocs0, Livevals0,
 			Livemap, Vn_tables0, Vn_tables1, Livevals0, Livevals1,
 			Ctrlmap0, Ctrlmap1, Flushmap0, Flushmap1, Ctrl0, Ctrl1),
 		vn__flush_all_nodes(Livevals1, Templocs0, Vn_tables1,
-			Incrsp, Decrsp, Ctrlmap1, Flushmap1, Ctrl1,
+			Incrsp, Decrsp, Incrhp, Ctrlmap1, Flushmap1, Ctrl1,
 			[Instr0 | Prev], FlushInstrs),
 		vn__opt_non_block(Instrs0, Livemap, Instrs1),
 		list__append(FlushInstrs, Instrs1, Instrs)
@@ -549,7 +555,7 @@ vn__handle_instr(Instr0, Vn_tables0, Livemap, Templocs0, Livevals0,
 			Vn_tables0, Vn_tables1, Livevals0, Livevals1,
 			Ctrlmap0, Ctrlmap1, Flushmap0, Flushmap1, Ctrl0, Ctrl1),
 		vn__opt_block(Instrs0, Vn_tables1, Livemap,
-			Templocs0, Livevals1, Incrsp, Decrsp,
+			Templocs0, Livevals1, Incrsp, Decrsp, Incrhp,
 			Ctrlmap1, Flushmap1, Ctrl1, [Instr0 | Prev], Instrs)
 	;
 		Uinstr0 = modframe(Redoip),
@@ -557,7 +563,7 @@ vn__handle_instr(Instr0, Vn_tables0, Livemap, Templocs0, Livevals0,
 			Vn_tables0, Vn_tables1, Livevals0, Livevals1,
 			Ctrlmap0, Ctrlmap1, Flushmap0, Flushmap1, Ctrl0, Ctrl1),
 		vn__opt_block(Instrs0, Vn_tables1, Livemap,
-			Templocs0, Livevals1, Incrsp, Decrsp,
+			Templocs0, Livevals1, Incrsp, Decrsp, Incrhp,
 			Ctrlmap1, Flushmap1, Ctrl1, [Instr0 | Prev], Instrs)
 	;
 		Uinstr0 = label(Label),
@@ -565,7 +571,7 @@ vn__handle_instr(Instr0, Vn_tables0, Livemap, Templocs0, Livevals0,
 			Vn_tables0, Vn_tables1, Livevals0, Livevals1,
 			Ctrlmap0, Ctrlmap1, Flushmap0, Flushmap1, Ctrl0, Ctrl1),
 		vn__flush_all_nodes(Livevals1, Templocs0, Vn_tables1,
-			Incrsp, Decrsp, Ctrlmap1, Flushmap1, Ctrl1,
+			Incrsp, Decrsp, Incrhp, Ctrlmap1, Flushmap1, Ctrl1,
 			[Instr0 | Prev], FlushInstrs),
 		vn__opt_non_block([Instr0 | Instrs0], Livemap, Instrs1),
 		list__append(FlushInstrs, Instrs1, Instrs)
@@ -575,7 +581,7 @@ vn__handle_instr(Instr0, Vn_tables0, Livemap, Templocs0, Livevals0,
 			Vn_tables0, Vn_tables1, Livevals0, Livevals1,
 			Ctrlmap0, Ctrlmap1, Flushmap0, Flushmap1, Ctrl0, Ctrl1),
 		vn__flush_all_nodes(Livevals1, Templocs0, Vn_tables1,
-			Incrsp, Decrsp, Ctrlmap1, Flushmap1, Ctrl1,
+			Incrsp, Decrsp, Incrhp, Ctrlmap1, Flushmap1, Ctrl1,
 			[Instr0 | Prev], FlushInstrs),
 		vn__opt_non_block(Instrs0, Livemap, Instrs1),
 		list__append(FlushInstrs, Instrs1, Instrs)
@@ -586,7 +592,7 @@ vn__handle_instr(Instr0, Vn_tables0, Livemap, Templocs0, Livevals0,
 			Vn_tables1, Vn_tables2, Livevals0, Livevals1,
 			Ctrlmap0, Ctrlmap1, Flushmap0, Flushmap1, Ctrl0, Ctrl1),
 		vn__flush_all_nodes(Livevals1, Templocs0, Vn_tables2,
-			Incrsp, Decrsp, Ctrlmap1, Flushmap1, Ctrl1,
+			Incrsp, Decrsp, Incrhp, Ctrlmap1, Flushmap1, Ctrl1,
 			[Instr0 | Prev], FlushInstrs),
 		vn__opt_non_block(Instrs0, Livemap, Instrs1),
 		list__append(FlushInstrs, Instrs1, Instrs)
@@ -600,26 +606,49 @@ vn__handle_instr(Instr0, Vn_tables0, Livemap, Templocs0, Livevals0,
 			Vn_tables1, Vn_tables2, Livevals0, Livevals1,
 			Ctrlmap0, Ctrlmap1, Flushmap0, Flushmap1, Ctrl0, Ctrl1),
 		vn__opt_block(Instrs0, Vn_tables2, Livemap,
-			Templocs0, Livevals1, Incrsp, Decrsp,
+			Templocs0, Livevals1, Incrsp, Decrsp, Incrhp,
 			Ctrlmap1, Flushmap1, Ctrl1, [Instr0 | Prev], Instrs)
 	;
-		Uinstr0 = incr_hp(_Where, _MaybeTag, _Incr),
-		error("we do not handle incr_hp in value_number yet")
+		Uinstr0 = incr_hp(Lval, MaybeTag, Rval),
+		(
+			MaybeTag = no,
+			StoreInstr = assign(Lval, lval(hp)) - ""
+		;
+			MaybeTag = yes(Tag),
+			StoreInstr = assign(Lval, mkword(Tag, lval(hp))) - ""
+		),
+		IncrInstr = assign(hp, binop((+), lval(hp), Rval)) - "",
+		Instrs1 = [StoreInstr, IncrInstr | Instrs0],
+		vn__opt_block(Instrs1, Vn_tables0, Livemap,
+			Templocs0, Livevals0, Incrsp, Decrsp, yes,
+			Ctrlmap0, Flushmap0, Ctrl0, [Instr0 | Prev], Instrs)
 	;
-		Uinstr0 = mark_hp(_Dest),
-		error("we do not handle mark_hp in value_number yet")
+		Uinstr0 = mark_hp(Lval),
+		vn__lval_to_vnlval(Lval, Vnlval, Vn_tables0, Vn_tables1),
+		vn__new_ctrl_node(vn_mark_hp(Vnlval), Livemap,
+			Vn_tables1, Vn_tables2, Livevals0, Livevals1,
+			Ctrlmap0, Ctrlmap1, Flushmap0, Flushmap1, Ctrl0, Ctrl1),
+		vn__opt_block(Instrs0, Vn_tables2, Livemap,
+			Templocs0, Livevals1, Incrsp, Decrsp, Incrhp,
+			Ctrlmap1, Flushmap1, Ctrl1, [Instr0 | Prev], Instrs)
 	;
-		Uinstr0 = restore_hp(_Value),
-		error("we do not handle restore_hp in value_number yet")
+		Uinstr0 = restore_hp(Rval),
+		vn__rval_to_vn(Rval, Vn, Vn_tables0, Vn_tables1),
+		vn__new_ctrl_node(vn_restore_hp(Vn), Livemap,
+			Vn_tables1, Vn_tables2, Livevals0, Livevals1,
+			Ctrlmap0, Ctrlmap1, Flushmap0, Flushmap1, Ctrl0, Ctrl1),
+		vn__opt_block(Instrs0, Vn_tables2, Livemap,
+			Templocs0, Livevals1, Incrsp, Decrsp, Incrhp,
+			Ctrlmap1, Flushmap1, Ctrl1, [Instr0 | Prev], Instrs)
 	;
 		Uinstr0 = incr_sp(N),
 		vn__opt_block(Instrs0, Vn_tables0, Livemap,
-			Templocs0, Livevals0, N, Decrsp,
+			Templocs0, Livevals0, N, Decrsp, Incrhp,
 			Ctrlmap0, Flushmap0, Ctrl0, [Instr0 | Prev], Instrs)
 	;
 		Uinstr0 = decr_sp(N),
 		vn__opt_block(Instrs0, Vn_tables0, Livemap,
-			Templocs0, Livevals0, Incrsp, N,
+			Templocs0, Livevals0, Incrsp, N, Incrhp,
 			Ctrlmap0, Flushmap0, Ctrl0, [Instr0 | Prev], Instrs)
 	).
 
@@ -638,25 +667,25 @@ vn__handle_instr(Instr0, Vn_tables0, Livemap, Templocs0, Livevals0,
 
 %-----------------------------------------------------------------------------%
 
-:- pred vn__flush_all_nodes(vnlvalset, templocs, vn_tables,
-	int, int, ctrlmap, flushmap, int, list(instruction), list(instruction)).
-:- mode vn__flush_all_nodes(in, in, in, in, in, in, in, in, in, out) is det.
+:- pred vn__flush_all_nodes(vnlvalset, templocs, vn_tables, int, int, bool,
+	ctrlmap, flushmap, int, list(instruction), list(instruction)).
+:- mode vn__flush_all_nodes(in, in, in, in, in, in, in, in, in, in, out) is det.
 
-vn__flush_all_nodes(Livevals, Templocs0, Vn_tables0, Incrsp, Decrsp,
+vn__flush_all_nodes(Livevals, Templocs0, Vn_tables0, Incrsp, Decrsp, Incrhp,
 		Ctrlmap, Flushmap, Ctrl, RevInstrs, Instrs) :-
 	bintree_set__to_sorted_list(Livevals, Live),
-	vn__build_counts(Livevals, Ctrlmap, Vn_tables0, Vn_tables1),
+	vn__build_uses(Livevals, Ctrlmap, Vn_tables0, Vn_tables1),
 
-	% opt_debug__write("\n\n"),
-	% opt_debug__dump_ctrlmap(Ctrlmap, Ctrl_str),
-	% opt_debug__write(Ctrl_str),
-	% opt_debug__dump_flushmap(Flushmap, Flush_str),
-	% opt_debug__write(Flush_str),
-	% opt_debug__dump_tables(Vn_tables1, Tables_str),
-	% opt_debug__write(Tables_str),
+	opt_debug__write("\n\n"),
+	opt_debug__dump_ctrlmap(Ctrlmap, Ctrl_str),
+	opt_debug__write(Ctrl_str),
+	opt_debug__dump_flushmap(Flushmap, Flush_str),
+	opt_debug__write(Flush_str),
+	opt_debug__dump_tables(Vn_tables1, Tables_str),
+	opt_debug__write(Tables_str),
 
 	(
-		vn__req_order(Ctrlmap, Flushmap, Vn_tables1,
+		vn__req_order(Ctrlmap, Flushmap, Incrhp, Vn_tables1,
 			MustSuccmap, MustPredmap)
 	->
 		Succmap0 = MustSuccmap,
@@ -688,10 +717,10 @@ vn__flush_all_nodes(Livevals, Templocs0, Vn_tables0, Incrsp, Decrsp,
 		LastCtrl is Ctrl - 1,
 		vn__blockorder_to_order(BlockOrder, LastCtrl, Order),
 
-		% opt_debug__dump_longnodelist(Order, O_str),
-		% opt_debug__write("\nOrder:\n"),
-		% opt_debug__write(O_str),
-		% opt_debug__write("\n"),
+		opt_debug__dump_longnodelist(Order, O_str),
+		opt_debug__write("\nOrder:\n"),
+		opt_debug__write(O_str),
+		opt_debug__write("\n"),
 
 		vn__flush_nodelist(Order, Ctrlmap, Vn_tables3, _Vn_tables,
 			Templocs0, Templocs, Instrs0),
@@ -706,14 +735,11 @@ vn__flush_all_nodes(Livevals, Templocs0, Vn_tables0, Incrsp, Decrsp,
 		;
 			Instrs2 = Instrs1
 		),
-%%%		XXX error("Zoltan please fixme (#3)"),
-%%%		vn__find_incr_hp(Instrs2, Instrs3),
-		Instrs3 = Instrs2,
 		vn__max_temploc(Templocs, Max),
 		( Max > 0 ->
-			Instrs = [block(Max, Instrs3) - ""]
+			Instrs = [block(Max, Instrs2) - ""]
 		;
-			Instrs = Instrs3
+			Instrs = Instrs2
 		)
 	;
 		list__reverse(RevInstrs, Instrs)
@@ -728,23 +754,33 @@ vn__flush_all_nodes(Livevals, Templocs0, Vn_tables0, Incrsp, Decrsp,
 	% part of the order of nodes, which is that a vnlval that is live
 	% at a side branch must be produced before that side branch.
 
-:- pred vn__req_order(ctrlmap, flushmap, vn_tables,
+:- pred vn__req_order(ctrlmap, flushmap, bool, vn_tables,
 	relmap(vn_node), relmap(vn_node)).
-:- mode vn__req_order(in, in, in, out, out) is semidet.
+:- mode vn__req_order(in, in, in, in, out, out) is semidet.
 
-vn__req_order(Ctrlmap, Flushmap, Vn_tables, MustSuccmap, MustPredmap) :-
+vn__req_order(Ctrlmap, Flushmap, Incrhp, Vn_tables, MustSuccmap, MustPredmap) :-
 	map__init(MustSuccmap0),
 	map__init(MustPredmap0),
-	vn__req_order_2(0, Ctrlmap, Flushmap, Vn_tables,
+	vn__req_order_2(0, Ctrlmap, Flushmap, Incrhp, Vn_tables,
 		MustSuccmap0, MustSuccmap, MustPredmap0, MustPredmap).
 
-:- pred vn__req_order_2(int, ctrlmap, flushmap, vn_tables,
+:- pred vn__req_order_2(int, ctrlmap, flushmap, bool, vn_tables,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
-:- mode vn__req_order_2(in, in, in, in, di, uo, di, uo) is semidet.
+:- mode vn__req_order_2(in, in, in, in, in, di, uo, di, uo) is semidet.
 
-vn__req_order_2(Ctrl, Ctrlmap, Flushmap, Vn_tables,
+vn__req_order_2(Ctrl, Ctrlmap, Flushmap, Heapop0, Vn_tables,
 		MustSuccmap0, MustSuccmap, MustPredmap0, MustPredmap) :-
-	( map__search(Flushmap, Ctrl, FlushEntry) ->
+	( map__search(Ctrlmap, Ctrl, VnInstr) ->
+		( VnInstr = vn_mark_hp(_) ->
+			Heapop0 = no,
+			Heapop1 = yes
+		; VnInstr = vn_restore_hp(_) ->
+			Heapop0 = no,
+			Heapop1 = yes
+		;
+			Heapop1 = Heapop0
+		),
+		map__lookup(Flushmap, Ctrl, FlushEntry),
 		( Ctrl > 0 ->
 			PrevCtrl is Ctrl - 1,
 			vn__add_link(node_ctrl(PrevCtrl), node_ctrl(Ctrl),
@@ -759,7 +795,7 @@ vn__req_order_2(Ctrl, Ctrlmap, Flushmap, Vn_tables,
 		vn__record_ctrl_deps(FlushList, node_ctrl(Ctrl), Vn_tables,
 			MustSuccmap1, MustSuccmap2, MustPredmap1, MustPredmap2),
 		NextCtrl is Ctrl + 1,
-		vn__req_order_2(NextCtrl, Ctrlmap, Flushmap, Vn_tables,
+		vn__req_order_2(NextCtrl, Ctrlmap, Flushmap, Heapop1, Vn_tables,
 			MustSuccmap2, MustSuccmap, MustPredmap2, MustPredmap)
 	;
 		MustSuccmap = MustSuccmap0,
@@ -832,6 +868,17 @@ vn__vn_ctrl_order(Ctrl, Ctrlmap, Vn_tables0, Vn_tables,
 				Succmap0, Succmap1, Predmap0, Predmap1)
 		;
 			Vn_instr = vn_if_val(Vn, _),
+			vn__find_links(Vn, node_ctrl(Ctrl),
+				Vn_tables0, Vn_tables1,
+				Succmap0, Succmap1, Predmap0, Predmap1)
+		;
+			Vn_instr = vn_mark_hp(Vnlval),
+			vn__vnlval_access_vn(Vnlval, Vns),
+			vn__find_all_links(Vns, node_ctrl(Ctrl),
+				Vn_tables0, Vn_tables1,
+				Succmap0, Succmap1, Predmap0, Predmap1)
+		;
+			Vn_instr = vn_restore_hp(Vn),
 			vn__find_links(Vn, node_ctrl(Ctrl),
 				Vn_tables0, Vn_tables1,
 				Succmap0, Succmap1, Predmap0, Predmap1)
@@ -1117,22 +1164,26 @@ vn__flush_node(Node, Ctrlmap, Vn_tables0, Vn_tables, Templocs0, Templocs,
 		Instrs) :-
 	(
 		Node = node_shared(Vn),
+		Debug = yes,
 		vn__choose_best_loc(Vn, Vnlval, Vn_tables0,
 			Templocs0, Templocs1),
 		vn__ensure_assignment(Vnlval, Vn,
 			Vn_tables0, Vn_tables, Templocs1, Templocs, Instrs)
 	;
 		Node = node_lval(Vnlval),
+		Debug = yes,
 		vn__lookup_desired_value(Vnlval, Vn, Vn_tables0),
 		vn__ensure_assignment(Vnlval, Vn,
 			Vn_tables0, Vn_tables, Templocs0, Templocs, Instrs)
 	;
 		Node = node_origlval(Vnlval),
+		Debug = no,
 		Vn_tables = Vn_tables0,
 		Templocs = Templocs0,
 		Instrs = []
 	;
 		Node = node_ctrl(N),
+		Debug = yes,
 		map__lookup(Ctrlmap, N, Vn_instr),
 		(
 			Vn_instr = vn_call(ProcAddr, RetAddr, LiveInfo),
@@ -1178,17 +1229,38 @@ vn__flush_node(Node, Ctrlmap, Vn_tables0, Vn_tables, Templocs0, Templocs,
 				Templocs0, Templocs, FlushInstrs),
 			Instr = if_val(Rval, TargetAddr) - "",
 			list__append(FlushInstrs, [Instr], Instrs)
+		;
+			Vn_instr = vn_mark_hp(Vnlval),
+			vn__flush_access_path(Vnlval, src_ctrl(N), Lval,
+				Vn_tables0, Vn_tables,
+				Templocs0, Templocs, FlushInstrs),
+			Instr = mark_hp(Lval) - "",
+			list__append(FlushInstrs, [Instr], Instrs)
+		;
+			Vn_instr = vn_restore_hp(Vn),
+			vn__flush_vn(Vn, src_ctrl(N), Rval,
+				Vn_tables0, Vn_tables,
+				Templocs0, Templocs, FlushInstrs),
+			Instr = restore_hp(Rval) - "",
+			list__append(FlushInstrs, [Instr], Instrs)
 		)
+	),
+	(
+		Debug = yes,
+		opt_debug__write("for node "),
+		opt_debug__dump_node(Node, N_str),
+		opt_debug__write(N_str),
+		opt_debug__write(" generated instrs:\n"),
+		opt_debug__dump_fullinstrs(Instrs, I_str),
+		opt_debug__write(I_str),
+		opt_debug__write("new use info\n"),
+		opt_debug__dump_useful_vns(Vn_tables, U_str),
+		opt_debug__write(U_str),
+		true
+	;
+		Debug = no,
+		true
 	).
-	% opt_debug__write("for node "),
-	% opt_debug__dump_node(Node, N_str),
-	% opt_debug__write(N_str),
-	% opt_debug__write(" generated instrs:\n"),
-	% opt_debug__dump_fullinstrs(Instrs, I_str),
-	% opt_debug__write(I_str).
-	% opt_debug__write("new use info\n"),
-	% opt_debug__dump_useful_vns(Vn_tables, U_str),
-	% opt_debug__write(U_str).
 
 %-----------------------------------------------------------------------------%
 
@@ -1211,7 +1283,7 @@ vn__choose_best_loc(Vn, Chosen, Vn_tables, Templocs0, Templocs) :-
 		Templocs = Templocs0
 	;
 		vn__search_uses(Vn, Uses, Vn_tables),
-		vn__find_unused_vnlvals(Uses, Locs, Vn_tables),
+		vn__find_unused_user(Uses, Locs, Vn_tables),
 		Locs = [_|_]
 	->
 		vn__choose_cheapest_loc(Locs, no, no, Chosen),
@@ -1220,19 +1292,21 @@ vn__choose_best_loc(Vn, Chosen, Vn_tables, Templocs0, Templocs) :-
 		vn__next_temploc(Templocs0, Templocs, Chosen)
 	).
 
-:- pred vn__find_unused_vnlvals(list(vn_src), list(vnlval), vn_tables).
-:- mode vn__find_unused_vnlvals(in, out, in) is det.
+:- pred vn__find_unused_user(list(vn_src), list(vnlval), vn_tables).
+:- mode vn__find_unused_user(in, out, in) is det.
 
-vn__find_unused_vnlvals([], [], _Vn_tables).
-vn__find_unused_vnlvals([Src | Srcs], Vnlvals, Vn_tables) :-
-	vn__find_unused_vnlvals(Srcs, Vnlvals0, Vn_tables),
+vn__find_unused_user([], [], _Vn_tables).
+vn__find_unused_user([Src | Srcs], Vnlvals, Vn_tables) :-
+	vn__find_unused_user(Srcs, Vnlvals0, Vn_tables),
 	(
 		Src = src_liveval(Live),
-		\+ vn__search_current_value(Live, Vn, Vn_tables)
+		\+ Live = vn_field(_, _, _),
+		\+ vn__search_current_value(Live, _, Vn_tables)
 	->
 		Vnlvals = [Live | Vnlvals0]
 	;
 		Src = src_liveval(Live),
+		\+ Live = vn_field(_, _, _),
 		vn__search_current_value(Live, Vn, Vn_tables),
 		vn__lookup_uses(Vn, [], Vn_tables)
 	->
@@ -1304,7 +1378,7 @@ vn__ensure_assignment(Vnlval, Vn, Vn_tables0, Vn_tables,
 		vn__search_current_value(Vnlval, Cur_vn, Vn_tables0),
 		Vn = Cur_vn
 	->
-		Vn_tables = Vn_tables0,
+		vn__del_old_use(Vn, src_liveval(Vnlval), Vn_tables0, Vn_tables),
 		Templocs = Templocs0,
 		Instrs = []
 	;
@@ -1344,7 +1418,7 @@ vn__flush_vn(Vn, Src, Rval, Vn_tables0, Vn_tables,
 	vn__is_const_expr(Vn, IsConst, Vn_tables0),
 	(
 		IsConst = yes,
-		vn__flush_vn_value(Vn, Rval, Vn_tables0, Vn_tables,
+		vn__flush_vn_value(Vn, Rval, Vn_tables0, Vn_tables1,
 			Templocs0, Templocs, Instrs)
 	;
 		IsConst = no,
@@ -1371,17 +1445,17 @@ vn__flush_vn(Vn, Src, Rval, Vn_tables0, Vn_tables,
 				Vn_tables0, Vn_tables1,
 				Templocs0, Templocs, Instrs),
 			Rval = lval(Lval)
-		),
-		vn__del_old_use(Vn, Src, Vn_tables1, Vn_tables),
-		true
-		% vn__lookup_uses(Vn, NewUses, Vn_tables0),
-		% ( NewUses = [_|_] ->
-		% 	NewlyFree = NewlyFree0
-		% ;
-		% 	vn__lookup_current_locs(Vn, NewlyFree1, Vn_tables0)
-		% 	list__append(NewlyFree0, NewlyFree1, NewlyFree)
-		% )
-	).
+		)
+	),
+	vn__del_old_use(Vn, Src, Vn_tables1, Vn_tables),
+	true.
+	% vn__lookup_uses(Vn, NewUses, Vn_tables),
+	% ( NewUses = [_|_] ->
+	% 	NewlyFree = NewlyFree0
+	% ;
+	% 	vn__lookup_current_locs(Vn, NewlyFree1, Vn_tables0)
+	% 	list__append(NewlyFree0, NewlyFree1, NewlyFree)
+	% ).
 
 :- pred vn__flush_vn_value(vn, rval, vn_tables, vn_tables,
 	templocs, templocs, list(instruction)).
@@ -1548,7 +1622,7 @@ vn__maybe_save_prev_value(Vnlval, Vn_tables0, Vn_tables,
 		Locs = []
 	->
 		(
-			vn__find_unused_vnlvals(Uses, ReqLocs, Vn_tables0),
+			vn__find_unused_user(Uses, ReqLocs, Vn_tables0),
 			ReqLocs = [_|_]
 		->
 			vn__choose_cheapest_loc(ReqLocs, no, no, Chosen),

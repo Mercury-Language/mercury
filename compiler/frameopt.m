@@ -147,7 +147,7 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, First, SetupFrame0,
 				First, SetupFrame0, SetupSuccip0,
 				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
 		;
-			Uinstr0 = livevals(_, _),
+			Uinstr0 = livevals(_),
 			frameopt__build_sets(Instrs0, FrameSize,
 				First, SetupFrame0, SetupSuccip0,
 				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
@@ -278,6 +278,9 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, First, SetupFrame0,
 
 %-----------------------------------------------------------------------------%
 
+	% The decisions taken here must be paralleled in the actions
+	% taken in generate_if.
+
 :- pred frameopt__setup_if(rval, code_addr, list(instruction), int,
 	bool, bool, bool, set(label), set(label), set(label), set(label)).
 :- mode frameopt__setup_if(in, in, in, in, in, in, in, in, out, in, out) is det.
@@ -291,8 +294,7 @@ frameopt__setup_if(Rval, Target, Instrs0, FrameSize,
 		(
 			SetupFrame0 = yes,
 			Use = no,
-			set__is_member(Label, FrameSet0, IsMember),
-			IsMember = no,
+			set__is_member(Label, FrameSet0, no),
 			frameopt__detstack_teardown(Instrs0,
 				FrameSize, _Teardown, _Tail, After)
 		->
@@ -300,6 +302,17 @@ frameopt__setup_if(Rval, Target, Instrs0, FrameSize,
 			% stack teardown code before the if, since the stack
 			% frame is not needed in either continuation.
 			frameopt__build_sets(After, FrameSize, yes, no, no,
+				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
+		;
+			SetupFrame0 = no,
+			Use = no,
+			set__is_member(Label, FrameSet0, yes),
+			frameopt__block_needs_detstack(Instrs0)
+		->
+			% If we get here, then we will need a stack frame
+			% soon after the if in both continuations, so it is
+			% better to set up the frame before the if.
+			frameopt__build_sets(Instrs0, FrameSize, no, yes, yes,
 				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
 		;
 			frameopt__setup_use(Use,
@@ -499,7 +512,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, First, SetupFrame0, SetupSuccip0,
 				ProcLabel, N0, N, Instrs1),
 			Instrs = [Instr0 | Instrs1]
 		;
-			Uinstr0 = livevals(_, _),
+			Uinstr0 = livevals(_),
 			frameopt__doit(Instrs0, FrameSize,
 				First, SetupFrame0, SetupSuccip0,
 				FrameSet, SuccipSet, TeardownMap,
@@ -603,10 +616,11 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, First, SetupFrame0, SetupSuccip0,
 				ProcLabel, N0, N, Instrs1),
 			Instrs = [Instr0 | Instrs1]
 		;
-			Uinstr0 = if_val(_, _),
-			frameopt__generate_if(Instr0, Instrs0, FrameSize, First,
-				SetupFrame0, SetupSuccip0, FrameSet, SuccipSet,
-				TeardownMap, ProcLabel, N0, N, Instrs)
+			Uinstr0 = if_val(Rval, CodeAddr),
+			frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0,
+				FrameSize, First, SetupFrame0, SetupSuccip0,
+				FrameSet, SuccipSet, TeardownMap, ProcLabel,
+				N0, N, Instrs)
 		;
 			Uinstr0 = incr_hp(Lval, _, Size),
 			opt_util__lval_refers_stackvars(Lval, Use1),
@@ -659,38 +673,20 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, First, SetupFrame0, SetupSuccip0,
 
 %-----------------------------------------------------------------------------%
 
-:- pred frameopt__label_without_frame(label, set(label),
-	map(label, label), label).
-:- mode frameopt__label_without_frame(in, in, in, out) is semidet.
-
-frameopt__label_without_frame(Label0, FrameSet, TeardownMap, Label) :-
-	( set__member(Label0, FrameSet) ->
-		map__search(TeardownMap, Label0, Label)
-	;
-		Label = Label0
-	).
-
-:- pred frameopt__generate_if(instruction, list(instruction), int,
+:- pred frameopt__generate_if(rval, code_addr, string, list(instruction), int,
 	bool, bool, bool, set(label), set(label), map(label, label),
 	proc_label, int, int, list(instruction)).
-:- mode frameopt__generate_if(in, in, in, in, in, in, in, in, in, in,
+:- mode frameopt__generate_if(in, in, in, in, in, in, in, in, in, in, in, in,
 	in, out, out) is det.
 
-frameopt__generate_if(Instr0, Instrs0, FrameSize, First, SetupFrame0,
-		SetupSuccip0, FrameSet, SuccipSet, TeardownMap,
-		ProcLabel, N0, N, Instrs) :-
-	( Instr0 = if_val(RvalPrime, CodeAddrPrime) - CommentPrime ->
-		Rval = RvalPrime,
-		CodeAddr = CodeAddrPrime,
-		Comment = CommentPrime
-	;
-		error("instruction other than if_val in frameopt__setup_if")
-	),
+frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
+		First, SetupFrame0, SetupSuccip0, FrameSet, SuccipSet,
+		TeardownMap, ProcLabel, N0, N, Instrs) :-
+	Instr0 = if_val(Rval, CodeAddr) - Comment,
 	opt_util__rval_refers_stackvars(Rval, Use),
 	(
-		% if we have a frame that is not required
-		% in either continuation, remove it before
-		% the if_val instruction.
+		% If we have a frame that is not required in either of the two
+		% continuations, remove it before the if_val instruction.
 		SetupFrame0 = yes,
 		Use = no,
 		CodeAddr = label(Label),
@@ -699,9 +695,6 @@ frameopt__generate_if(Instr0, Instrs0, FrameSize, First, SetupFrame0,
 		frameopt__detstack_teardown(Instrs0,
 			FrameSize, Teardown, Tail, After)
 	->
-		frameopt__doit(After, FrameSize, yes, no, no,
-			FrameSet, SuccipSet, TeardownMap,
-			ProcLabel, N0, N, Instrs1),
 		( Label1 = Label ->
 			Instr1 = Instr0
 		;
@@ -709,8 +702,27 @@ frameopt__generate_if(Instr0, Instrs0, FrameSize, First, SetupFrame0,
 				Comment1),
 			Instr1 = if_val(Rval, label(Label1)) - Comment1
 		),
+		frameopt__doit(After, FrameSize, yes, no, no,
+			FrameSet, SuccipSet, TeardownMap,
+			ProcLabel, N0, N, Instrs1),
 		list__condense([Teardown, [Instr1], Tail, Instrs1],
 			Instrs)
+	;
+		% If both continuations require a stack frame, set it up
+		% before the if_val instruction.
+		SetupFrame0 = no,
+		Use = no,
+		CodeAddr = label(Label),
+		not frameopt__label_without_frame(Label,
+			FrameSet, TeardownMap, _),
+		frameopt__block_needs_detstack(Instrs0)
+	->
+		frameopt__generate_setup(SetupFrame0, yes,
+			SetupSuccip0, yes, FrameSize, SetupCode),
+		frameopt__doit(Instrs0, FrameSize, no, yes, yes,
+			FrameSet, SuccipSet, TeardownMap,
+			ProcLabel, N0, N, Instrs1),
+		list__condense([SetupCode, [Instr0], Instrs1], Instrs)
 	;
 		% set up a frame if needed for the condition
 		frameopt__setup_use(Use,
@@ -724,7 +736,7 @@ frameopt__generate_if(Instr0, Instrs0, FrameSize, First, SetupFrame0,
 		frameopt__generate_setup(SetupFrame0, SetupFrame1,
 			SetupSuccip0, SetupSuccip1, FrameSize, SetupCode),
 		(
-			% see if can avoid setting up a frame
+			% see if we can avoid setting up a frame
 			% for the target label
 			CodeAddr = label(Label),
 			SetupFrame1 = no,
@@ -774,6 +786,20 @@ frameopt__generate_if(Instr0, Instrs0, FrameSize, First, SetupFrame0,
 			FrameSet, SuccipSet, TeardownMap,
 			ProcLabel, N1, N, Instrs1),
 		list__condense([SetupCode, IfCode, Instrs1], Instrs)
+	).
+
+	% For a given label, return a label (the same or another) that
+	% does the same things and does not need or want a frame on arrival.
+
+:- pred frameopt__label_without_frame(label, set(label),
+	map(label, label), label).
+:- mode frameopt__label_without_frame(in, in, in, out) is semidet.
+
+frameopt__label_without_frame(Label0, FrameSet, TeardownMap, Label) :-
+	( set__member(Label0, FrameSet) ->
+		map__search(TeardownMap, Label0, Label)
+	;
+		Label = Label0
 	).
 
 	% This predicate is given the current state of the stack frame
@@ -917,7 +943,7 @@ frameopt__detstack_teardown(Instrs0, FrameSize, Teardown, Tail, Remain) :-
 	is semidet.
 
 frameopt__detstack_teardown_2(Instrs0, FrameSize,
-		SeenSuccip0, SeenDecrsp0, SeenSemidet0,
+		SeenSuccip0, SeenDecrsp0, SeenExtra0,
 		Teardown, Tail, Remain) :-
 	opt_util__skip_comments_livevals(Instrs0, Instrs1),
 	Instrs1 = [Instr1 | Instrs2],
@@ -926,22 +952,20 @@ frameopt__detstack_teardown_2(Instrs0, FrameSize,
 		Uinstr1 = assign(Lval, Rval),
 		(
 			Lval = succip,
-			Rval = lval(stackvar(FrameSize)),
+			Rval = lval(stackvar(FrameSize))
+		->
 			SeenSuccip0 = [],
 			SeenDecrsp0 = [],
 			SeenSuccip1 = [Instr1],
 			frameopt__detstack_teardown_2(Instrs2, FrameSize,
-				SeenSuccip1, SeenDecrsp0, SeenSemidet0,
+				SeenSuccip1, SeenDecrsp0, SeenExtra0,
 				Teardown, Tail, Remain)
 		;
-			% XXX think about allowing any assignment
-			% that does not use stackvars
-			Lval = reg(r(1)),
-			Rval = const(_),
-			SeenSemidet0 = [],
-			SeenSemidet1 = [Instr1],
+			opt_util__lval_refers_stackvars(Lval, no),
+			opt_util__rval_refers_stackvars(Rval, no),
+			list__append(SeenExtra0, [Instr1], SeenExtra1),
 			frameopt__detstack_teardown_2(Instrs2, FrameSize,
-				SeenSuccip0, SeenDecrsp0, SeenSemidet1,
+				SeenSuccip0, SeenDecrsp0, SeenExtra1,
 				Teardown, Tail, Remain)
 		)
 	;
@@ -949,14 +973,55 @@ frameopt__detstack_teardown_2(Instrs0, FrameSize,
 		SeenDecrsp0 = [],
 		SeenDecrsp1 = [Instr1],
 		frameopt__detstack_teardown_2(Instrs2, FrameSize,
-			SeenSuccip0, SeenDecrsp1, SeenSemidet0,
+			SeenSuccip0, SeenDecrsp1, SeenExtra0,
 			Teardown, Tail, Remain)
 	;
 		Uinstr1 = goto(_),
 		SeenDecrsp0 = [_],
 		list__append(SeenSuccip0, SeenDecrsp0, Teardown),
-		list__append(SeenSemidet0, [Instr1], Tail),
+		list__append(SeenExtra0, [Instr1], Tail),
 		Remain = Instrs2
+	).
+
+:- pred frameopt__block_needs_detstack(list(instruction)).
+:- mode frameopt__block_needs_detstack(in) is semidet.
+
+frameopt__block_needs_detstack([Uinstr0 - _ | Instrs0]) :-
+	(
+		Uinstr0 = comment(_),
+		frameopt__block_needs_detstack(Instrs0)
+	;
+		Uinstr0 = livevals(_),
+		frameopt__block_needs_detstack(Instrs0)
+	;
+		Uinstr0 = block(_, BlockInstrs),
+		frameopt__block_needs_detstack(BlockInstrs)
+	;
+		Uinstr0 = assign(Lval, Rval),
+		opt_util__lval_refers_stackvars(Lval, Use1),
+		opt_util__rval_refers_stackvars(Rval, Use2),
+		bool__or(Use1, Use2, Use),
+		( Use = yes ->
+			true
+		;
+			frameopt__block_needs_detstack(Instrs0)
+		)
+	;
+		Uinstr0 = if_val(Rval, _),
+		opt_util__rval_refers_stackvars(Rval, Use),
+		( Use = yes ->
+			true
+		;
+			frameopt__block_needs_detstack(Instrs0)
+		)
+	;
+		Uinstr0 = mark_hp(Lval),
+		opt_util__lval_refers_stackvars(Lval, Use),
+		( Use = yes ->
+			true
+		;
+			frameopt__block_needs_detstack(Instrs0)
+		)
 	).
 
 %-----------------------------------------------------------------------------%

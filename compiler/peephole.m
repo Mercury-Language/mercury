@@ -190,7 +190,7 @@ peephole__opt_instr(Instr0, Comment0, Procmap, Forkmap,
 	%       <comments, labels>		<comments, labels>
 	%	proceed				proceed
 
-peephole__match(livevals(yes, Livevals), Comment, Procmap, Forkmap,
+peephole__match(livevals(Livevals), Comment, Procmap, Forkmap,
 		Instrs0, Instrs) :-
 	opt_util__skip_comments(Instrs0, Instrs1),
 	Instrs1 = [call(CodeAddress, label(ContLabel), _LiveVals)
@@ -199,14 +199,14 @@ peephole__match(livevals(yes, Livevals), Comment, Procmap, Forkmap,
 		opt_util__filter_out_livevals(Between0, Between1),
 		string__append(Comment2, " (redirected return)", Redirect),
 		list__append(Between1,
-			[livevals(yes, Livevals) - Comment,
+			[livevals(Livevals) - Comment,
 			goto(CodeAddress) - Redirect | Instrs0], Instrs)
 	; map__search(Forkmap, ContLabel, Between0) ->
 		opt_util__filter_out_livevals(Between0, Between1),
 		opt_util__filter_out_r1(Between1, Between2),
 		string__append(Comment2, " (redirected return)", Redirect),
 		list__append(Between2,
-			[livevals(yes, Livevals) - Comment,
+			[livevals(Livevals) - Comment,
 			goto(CodeAddress) - Redirect | Instrs0], Instrs)
 	;
 		fail

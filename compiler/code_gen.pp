@@ -549,7 +549,7 @@ code_gen__generate_det_epilog(ExitCode) -->
 	),
 	{ code_gen__output_args(Args, LiveArgs) },
 	{ LiveValCode = node([
-		livevals(yes, LiveArgs) - ""
+		livevals(LiveArgs) - ""
 	]) },
 	{ CodeB = tree(CodeB0, tree(LiveValCode, CodeB1)) },
 	{ EStart = node([comment("Start of procedure epilogue") - ""]) },
@@ -621,7 +621,7 @@ code_gen__generate_semi_epilog(Instr) -->
 	{ code_gen__output_args(Args, LiveArgs0) },
 	{ bintree_set__insert(LiveArgs0, reg(r(1)), LiveArgs) },
 	{ LiveValCode = node([
-		livevals(yes, LiveArgs) - ""
+		livevals(LiveArgs) - ""
 	]) },
 	{ FailCont = known(FallThrough0) ->
 		FallThrough = FallThrough0
@@ -724,7 +724,7 @@ code_gen__generate_non_epilog(Instr) -->
 	code_info__setup_call(Args, HeadVars, callee, CodeA),
 	{ code_gen__output_args(Args, LiveArgs) },
 	{ LiveValCode = node([
-		livevals(yes, LiveArgs) - ""
+		livevals(LiveArgs) - ""
 	]) },
 	{ ExitCode = tree(LiveValCode, node([
 		goto(do_succeed) - "Succeed"
@@ -1063,13 +1063,13 @@ code_gen__output_args([_V - arg_info(Loc, Mode)|Args], Vs) :-
 code_gen__add_saved_succip([], _N, []).
 code_gen__add_saved_succip([I0-S|Is0], N, [I-S|Is]) :-
 	(
-		I0 = livevals(yes, L0),
+		I0 = livevals(L0),
 		Is0 \= [goto(succip) - _|_]
 		% XXX we should also test for tailcalls
 		% once we start generating them directly
 	->
 		bintree_set__insert(L0, stackvar(N), L1),
-		I = livevals(yes, L1)
+		I = livevals(L1)
         ;
 		I0 = call(T,R, LV0)
 	->

@@ -9,9 +9,9 @@
 :- module opt_util.
 
 :- interface.
-:- import_module llds, list, int, std_util.
+:- import_module llds, list, int, string, std_util.
 
-:- type instmap == map(label, instruction).
+:- type instrmap == map(label, instruction).
 :- type tailmap == map(label, list(instruction)).
 :- type succmap == map(label, bool).
 
@@ -41,6 +41,14 @@
 :- pred opt_util__next_modframe(list(instruction), list(instruction),
 	code_addr, list(instruction), list(instruction)).
 :- mode opt_util__next_modframe(in, in, out, out, out) is semidet.
+
+	% Find the first label in the instruction stream.
+
+:- pred opt_util__find_first_label(list(instruction), label).
+:- mode opt_util__find_first_label(in, out) is det.
+
+	% Check whether the named label follows without any intervening code.
+	% If yes, return the instructions after the label.
 
 	% Skip to the next label, returning the code before the label,
 	% and the label together with the code after the label.
@@ -167,6 +175,11 @@
 :- pred opt_util__rval_refers_stackvars(rval, bool).
 :- mode opt_util__rval_refers_stackvars(in, out) is det.
 
+	% Format a label for verbose messages during compilation
+
+:- pred opt_util__format_label(label, string).
+:- mode opt_util__format_label(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -187,7 +200,7 @@ opt_util__gather_comments(Instrs0, Comments, Instrs) :-
 opt_util__gather_comments_livevals(Instrs0, Comments, Instrs) :-
 	(
 		Instrs0 = [Instr0 | Instrs1],
-		( Instr0 = comment(_) - _ ; Instr0 = livevals(_, _) - _ )
+		( Instr0 = comment(_) - _ ; Instr0 = livevals(_) - _ )
 	->
 		opt_util__gather_comments_livevals(Instrs1, Comments0, Instrs),
 		Comments = [Instr0 | Comments0]
@@ -211,7 +224,7 @@ opt_util__skip_comments(Instrs0, Instrs) :-
 opt_util__skip_comments_livevals(Instrs0, Instrs) :-
 	( Instrs0 = [comment(_) - _ | Instrs1] ->
 		opt_util__skip_comments(Instrs1, Instrs)
-	; Instrs0 = [livevals(_, _) - _ | Instrs1] ->
+	; Instrs0 = [livevals(_) - _ | Instrs1] ->
 		opt_util__skip_comments_livevals(Instrs1, Instrs)
 	;
 		Instrs = Instrs0
@@ -229,7 +242,7 @@ opt_util__skip_comments_labels(Instrs0, Instrs) :-
 opt_util__skip_comments_livevals_labels(Instrs0, Instrs) :-
 	( Instrs0 = [comment(_) - _ | Instrs1] ->
 		opt_util__skip_comments_livevals_labels(Instrs1, Instrs)
-	; Instrs0 = [livevals(_, _) - _ | Instrs1] ->
+	; Instrs0 = [livevals(_) - _ | Instrs1] ->
 		opt_util__skip_comments_livevals_labels(Instrs1, Instrs)
 	; Instrs0 = [label(_) - _ | Instrs1] ->
 		opt_util__skip_comments_livevals_labels(Instrs1, Instrs)
@@ -255,6 +268,15 @@ opt_util__next_modframe([Instr | Instrs], RevSkip, Redoip, Skip, Rest) :-
 		)
 	).
 
+opt_util__find_first_label([], _) :-
+	error("cannot find first label").
+opt_util__find_first_label([Instr0 | Instrs0], Label) :-
+	( Instr0 = label(LabelPrime) - _ ->
+		Label = LabelPrime
+	;
+		opt_util__find_first_label(Instrs0, Label)
+	).
+
 opt_util__skip_to_next_label([], [], []).
 opt_util__skip_to_next_label([Instr0 | Instrs0], Before, Remain) :-
 	( Instr0 = label(_) - _ ->
@@ -267,14 +289,9 @@ opt_util__skip_to_next_label([Instr0 | Instrs0], Before, Remain) :-
 
 opt_util__is_this_label_next(Label, [Instr | Moreinstr], Remainder) :-
 	Instr = Uinstr - _Comment,
-	% write('looking for label '),
-	% write(Label),
-	% write(' in instr '),
-	% write(Uinstr),
-	% nl,
 	( Uinstr = comment(_) ->
 		opt_util__is_this_label_next(Label, Moreinstr, Remainder)
-	; Uinstr = livevals(_, _) ->
+	; Uinstr = livevals(_) ->
 		% this is questionable
 		opt_util__is_this_label_next(Label, Moreinstr, Remainder)
 	; Uinstr = label(NextLabel) ->
@@ -307,7 +324,7 @@ opt_util__is_proceed_next(Instrs0, Instrs_between) :-
 		Instrs5 = Instrs3
 	),
 	Instrs5 = [Instr5 | Instrs6],
-	( Instr5 = livevals(_, _) - _ ->
+	( Instr5 = livevals(_) - _ ->
 		Instr5use = Instr5,
 		opt_util__skip_comments_labels(Instrs6, Instrs7)
 	;
@@ -350,7 +367,7 @@ opt_util__is_sdproceed_next_sf(Instrs0, Instrs_between, Success) :-
 	),
 	opt_util__skip_comments_labels(Instrs6, Instrs7),
 	Instrs7 = [Instr7 | Instrs8],
-	( Instr7 = livevals(_, _) - _ ->
+	( Instr7 = livevals(_) - _ ->
 		Instr7use = Instr7,
 		opt_util__skip_comments_labels(Instrs8, Instrs9)
 	;
@@ -364,7 +381,7 @@ opt_util__is_sdproceed_next_sf(Instrs0, Instrs_between, Success) :-
 opt_util__is_succeed_next(Instrs0, Instrs_between) :-
 	opt_util__skip_comments_labels(Instrs0, Instrs1),
 	Instrs1 = [Instr1 | Instrs2],
-	( Instr1 = livevals(_, _) - _ ->
+	( Instr1 = livevals(_) - _ ->
 		Instr1use = Instr1,
 		opt_util__skip_comments_labels(Instrs2, Instrs3)
 	;
@@ -416,7 +433,7 @@ opt_util__no_stack_straight_line_2([Instr0 | Instrs0], After0, After, Instrs) :-
 		(
 			Uinstr = comment(_)
 		;
-			Uinstr = livevals(_, _)
+			Uinstr = livevals(_)
 		;
 			Uinstr = assign(Lval, Rval),
 			opt_util__lval_refers_stackvars(Lval, no),
@@ -494,7 +511,7 @@ opt_util__filter_out_r1([Instr0 | Instrs0], Instrs) :-
 opt_util__filter_out_livevals([], []).
 opt_util__filter_out_livevals([Instr0 | Instrs0], Instrs) :-
 	opt_util__filter_out_livevals(Instrs0, Instrs1),
-	( Instr0 = livevals(_, _) - _Comment ->
+	( Instr0 = livevals(_) - _Comment ->
 		Instrs = Instrs1
 	;
 		Instrs = [Instr0 | Instrs1]
@@ -503,7 +520,7 @@ opt_util__filter_out_livevals([Instr0 | Instrs0], Instrs) :-
 opt_util__filter_in_livevals([], []).
 opt_util__filter_in_livevals([Instr0 | Instrs0], Instrs) :-
 	opt_util__filter_in_livevals(Instrs0, Instrs1),
-	( Instr0 = livevals(_, _) - _Comment ->
+	( Instr0 = livevals(_) - _Comment ->
 		Instrs = [Instr0 | Instrs1]
 	;
 		Instrs = Instrs1
@@ -537,7 +554,7 @@ opt_util__new_label_no([Instr0 | Instrs0], N0, N) :-
 	opt_util__new_label_no(Instrs0, N1, N).
 
 opt_util__can_instr_branch_away(comment(_), no).
-opt_util__can_instr_branch_away(livevals(_, _), no).
+opt_util__can_instr_branch_away(livevals(_), no).
 opt_util__can_instr_branch_away(block(_, _), yes).
 opt_util__can_instr_branch_away(assign(_, _), no).
 opt_util__can_instr_branch_away(call(_, _, _), yes).
@@ -556,7 +573,7 @@ opt_util__can_instr_branch_away(incr_sp(_), no).
 opt_util__can_instr_branch_away(decr_sp(_), no).
 
 opt_util__can_instr_fall_through(comment(_), yes).
-opt_util__can_instr_fall_through(livevals(_, _), yes).
+opt_util__can_instr_fall_through(livevals(_), yes).
 opt_util__can_instr_fall_through(block(_, _), yes).
 opt_util__can_instr_fall_through(assign(_, _), yes).
 opt_util__can_instr_fall_through(call(_, _, _), no).
@@ -575,7 +592,7 @@ opt_util__can_instr_fall_through(incr_sp(_), yes).
 opt_util__can_instr_fall_through(decr_sp(_), yes).
 
 opt_util__instr_labels(comment(_), [], []).
-opt_util__instr_labels(livevals(_, _), [], []).
+opt_util__instr_labels(livevals(_), [], []).
 opt_util__instr_labels(block(_, _), [], []).
 opt_util__instr_labels(assign(_,_), [], []).
 opt_util__instr_labels(call(Target, Ret, _), [], [Target, Ret]).
@@ -614,7 +631,7 @@ opt_util__count_temps_instr_list([Uinstr - _Comment | Instrs], N0, N) :-
 :- mode opt_util__count_temps_instr(in, in, out) is det.
 
 opt_util__count_temps_instr(comment(_), N, N).
-opt_util__count_temps_instr(livevals(_, _), N, N).
+opt_util__count_temps_instr(livevals(_), N, N).
 opt_util__count_temps_instr(block(_, _), N, N).
 opt_util__count_temps_instr(assign(Lval, Rval), N0, N) :-
 	opt_util__count_temps_lval(Lval, N0, N1),
@@ -660,6 +677,23 @@ opt_util__count_temps_lval(Lval, N0, N) :-
 % that uses a temp var without defining it.
 opt_util__count_temps_rval(_, N, N).
 
-:- end_module opt_util.
+opt_util__format_label(local(ProcLabel), Str) :-
+	opt_util__format_proclabel(ProcLabel, Str).
+opt_util__format_label(local(ProcLabel, _), Str) :-
+	opt_util__format_proclabel(ProcLabel, Str).
+opt_util__format_label(exported(ProcLabel), Str) :-
+	opt_util__format_proclabel(ProcLabel, Str).
+
+:- pred opt_util__format_proclabel(proc_label, string).
+:- mode opt_util__format_proclabel(in, out) is det.
+
+opt_util__format_proclabel(proc(_Module, Pred, Arity, Mode), Str) :-
+	string__int_to_string(Arity, ArityStr),
+	string__int_to_string(Mode, ModeStr),
+	string__append_list([Pred, "/", ArityStr, " mode ", ModeStr], Str).
+opt_util__format_proclabel(unify_proc(_Module, Type, Arity, Mode), Str) :-
+	string__int_to_string(Arity, ArityStr),
+	string__int_to_string(Mode, ModeStr),
+	string__append_list(["unify_", Type, "/", ArityStr, " mode ", ModeStr], Str).
 
 %-----------------------------------------------------------------------------%

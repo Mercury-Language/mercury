@@ -2759,7 +2759,7 @@ code_info__generate_livevals(Code) -->
 	code_info__generate_livevals_2(LiveVars, LiveVals0),
 	code_info__get_pushed_values(Pushed),
 	{ code_info__generate_livevals_3(Pushed, LiveVals0, LiveVals) },
-	{ Code = node([livevals(yes, LiveVals) - ""]) }.
+	{ Code = node([livevals(LiveVals) - ""]) }.
 
 :- pred code_info__generate_livevals_2(list(var), bintree_set(lval),
 						code_info, code_info).

@@ -31,10 +31,9 @@
 	--->	comment(string)
 			% Insert a comment into the output code.
 
-	;	livevals(bool, bintree_set(lval))
+	;	livevals(bintree_set(lval))
 			% A list of which registers and stack locations
-			% are currently live; the bool is true if this is
-			% at the end of an extended basic block.
+			% are currently live.
 
 	;	block(int, list(instruction))
 			% A list of instructions that make use of
@@ -335,17 +334,12 @@ output_instruction(comment(Comment)) -->
 		[]
 	).
 
-output_instruction(livevals(Terminate, LiveVals)) -->
+output_instruction(livevals(LiveVals)) -->
 	globals__io_lookup_bool_option(mod_comments, PrintModComments),
 	(
 		{ PrintModComments = yes }
 	->
-		io__write_string("/*\n * Live lvalues "),
-		( { Terminate = yes } ->
-			io__write_string("at end of block:\n")
-		;
-			io__write_string("at start or middle of block:\n")
-		),
+		io__write_string("/*\n * Live lvalues:\n"),
 		{ bintree_set__to_sorted_list(LiveVals, LiveValsList) },
 		output_livevals(LiveValsList),
 		io__write_string(" */")
