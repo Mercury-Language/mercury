@@ -117,32 +117,4 @@ typedef Word ** AnswerBlock;
 #define table_copy_mem(Dest, Source, Size)				\
 	memcpy(Dest, Source, Size)
 
-#ifdef MR_TABLE_DEBUG
-
-#include <stdio.h>
-#include <stdarg.h>
-
-/* XXX should move this to mercury_tabling.c */
-
-static void
-table_printf(const char *format, ...)
-{
-	va_list list;
-	
-	va_start(list);
-	vprintf(format, list);
-	va_end(list);
-}
-
-#else /* not MR_TABLE_DEBUG */
-
-/* XXX should move this to mercury_tabling.c */
-
-static void
-table_printf(const char *format, ...)
-{
-}
-
-#endif /* not MR_TABLE_DEBUG */
-
 #endif /* not MERCURY_TABLING_H */
