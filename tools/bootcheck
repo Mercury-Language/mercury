@@ -344,13 +344,13 @@ then
 	if test -d ../tests
 	then
 		cd ../tests
-		runtests $jfactor
+		./runtests $jfactor
 		test_status=$?
 		cd $root
 	elif test -d tests
 	then
 		cd tests
-		runtests $jfactor
+		./runtests $jfactor
 		test_status=$?
 		cd $root
 	else

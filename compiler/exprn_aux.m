@@ -57,6 +57,9 @@
 :- pred exprn_aux__substitute_rvals_in_rval(assoc_list(rval, rval), rval, rval).
 :- mode exprn_aux__substitute_rvals_in_rval(in, in, out) is det.
 
+:- pred exprn_aux__vars_in_lval(lval, list(var)).
+:- mode exprn_aux__vars_in_lval(in, out) is det.
+
 :- pred exprn_aux__vars_in_rval(rval, list(var)).
 :- mode exprn_aux__vars_in_rval(in, out) is det.
 
@@ -296,9 +299,6 @@ exprn_aux__vars_in_rval(binop(_, Rval0, Rval1), Vars) :-
 	exprn_aux__vars_in_rval(Rval0, Vars0),
 	exprn_aux__vars_in_rval(Rval1, Vars1),
 	list__append(Vars0, Vars1, Vars).
-
-:- pred exprn_aux__vars_in_lval(lval, list(var)).
-:- mode exprn_aux__vars_in_lval(in, out) is det.
 
 exprn_aux__vars_in_lval(Lval, Vars) :-
 	(

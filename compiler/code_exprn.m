@@ -96,6 +96,15 @@
 						exprn_info, exprn_info).
 :- mode code_exprn__produce_var_in_reg(in, out, out, in, out) is det.
 
+%	code_exprn__materialize_vars_in_rval(Rval0, Rval, Code, ExprnInfo0,
+%		ExprnInfo)
+%		Produces code to materialize any vars that occur in `Rval0'
+%		and substitutes their value to produce `Rval'.
+
+:- pred code_exprn__materialize_vars_in_rval(rval, rval, code_tree,
+		exprn_info, exprn_info).
+:- mode code_exprn__materialize_vars_in_rval(in, out, out, in, out) is det.
+
 %	code_exprn__acquire_reg(Reg, ExprnInfo0, ExprnInfo)
 %		Finds an unused register and marks it as 'in use'.
 %
@@ -1054,12 +1063,8 @@ code_exprn__place_exprn(MaybeLval, MaybeVar, Rval0, StandAlone, IsConst,
 			{ VarCode = empty },
 			{ Rval = Rval2 }
 		;
-			{ exprn_aux__vars_in_rval(Rval2, VarList) },
-			code_exprn__produce_vars(VarList, VarLocList, VarCode),
-			code_exprn__rem_rval_reg_dependencies(Rval2),
-			{ exprn_aux__substitute_vars_in_rval(VarLocList,
-				Rval2, Rval) },
-			code_exprn__add_rval_reg_dependencies(Rval),
+			code_exprn__materialize_vars_in_rval(Rval2, Rval,
+				VarCode),
 			code_exprn__maybe_set_evaled(MaybeVar, [Rval])
 		),
 		code_exprn__construct_code(Lval, VarName, Rval, RealCode),
@@ -1089,6 +1094,14 @@ code_exprn__maybe_fix_clearcode(ClearCode, ExprnCode, Code) -->
 	;
 		{ Code = tree(ClearCode, ExprnCode) }
 	).
+
+code_exprn__materialize_vars_in_rval(Rval0, Rval, Code) -->
+	{ exprn_aux__vars_in_rval(Rval0, VarList) },
+	code_exprn__produce_vars(VarList, VarLocList, Code),
+	code_exprn__rem_rval_reg_dependencies(Rval0),
+	{ exprn_aux__substitute_vars_in_rval(VarLocList,
+		Rval0, Rval) },
+	code_exprn__add_rval_reg_dependencies(Rval).
 
 %------------------------------------------------------------------------------%
 

@@ -192,6 +192,10 @@
 :- pred code_info__place_var(var, lval, code_tree, code_info, code_info).
 :- mode code_info__place_var(in, in, out, in, out) is det.
 
+:- pred code_info__materialize_vars_in_rval(rval, rval, code_tree, code_info,
+		code_info).
+:- mode code_info__materialize_vars_in_rval(in, out, out, in, out) is det.
+
 :- pred code_info__make_vars_dead(set(var), code_info, code_info).
 :- mode code_info__make_vars_dead(in, in, out) is det.
 
@@ -715,6 +719,14 @@ code_info__produce_variable(Var, Code, Rval) -->
 code_info__produce_variable_in_reg(Var, Code, Rval) -->
 	code_info__get_exprn_info(Exprn0),
 	{ code_exprn__produce_var_in_reg(Var, Rval, Code, Exprn0, Exprn) },
+	code_info__set_exprn_info(Exprn).
+
+%---------------------------------------------------------------------------%
+
+code_info__materialize_vars_in_rval(Rval0, Rval, Code) -->
+	code_info__get_exprn_info(Exprn0),
+	{ code_exprn__materialize_vars_in_rval(Rval0, Rval, Code,
+		Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn).
 
 %---------------------------------------------------------------------------%

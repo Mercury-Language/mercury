@@ -672,20 +672,38 @@ unify_gen__generate_semi_sub_unify(L, R, M, Code) -->
 
 	% Assignment between two lvalues - cannot cache [yet]
 	% so generate immediate code
-unify_gen__generate_sub_assign(lval(Lval), lval(Rval), Code) -->
-	{ Code = node([
-		assign(Lval, lval(Rval)) - "Copy field"
-	]) }.
+	% If the destination of the assignment contains any vars,
+	% we need to materialize those before we can do the assignment.
+unify_gen__generate_sub_assign(lval(Lval0), lval(Rval), Code) -->
+	code_info__materialize_vars_in_rval(lval(Lval0), NewLval,
+		MaterializeCode),
+	(
+		{ NewLval = lval(Lval) }
+	->
+		{ Code = tree(MaterializeCode, node([
+			assign(Lval, lval(Rval)) - "Copy field"
+		])) }
+	;
+		{ error("unify_gen__generate_sub_assign: lval vanished with lval") }
+	).
 	% assignment from a variable to an lvalue - cannot cache
 	% so generate immediately
-unify_gen__generate_sub_assign(lval(Lval), ref(Var), Code) -->
-	code_info__produce_variable(Var, Code0, Source),
-	{ Code = tree(
-		Code0,
-		node([
-			assign(Lval, Source) - "Copy value"
-		])
-	) }.
+unify_gen__generate_sub_assign(lval(Lval0), ref(Var), Code) -->
+	code_info__produce_variable(Var, SourceCode, Source),
+	code_info__materialize_vars_in_rval(lval(Lval0), NewLval,
+		MaterializeCode),
+	(
+		{ NewLval = lval(Lval) }
+	->
+		{ Code = tree(
+			tree(SourceCode, MaterializeCode),
+			node([
+				assign(Lval, Source) - "Copy value"
+			])
+		) }
+	;
+		{ error("unify_gen__generate_sub_assign: lval vanished with ref") }
+	).
 	% assignment to a variable, so cache it.
 unify_gen__generate_sub_assign(ref(Var), lval(Rval), empty) -->
 	(

@@ -42,6 +42,7 @@ SOURCES= \
 	same_length_2.m \
 	soln_context.m \
 	two_pragma_c_codes.m \
+	two_way_unif.m \
 	undead_proc.m \
 	uniq_unify.m \
 	unreachable_code.m
@@ -62,6 +63,9 @@ all:	objs
 # we need to pass some options to really test middle_rec_labels.m
 middle_rec_labels.c: middle_rec_labels.m
 	$(MCG) $(MCGFLAGS) --middle-rec --no-follow-vars middle_rec_labels.m
+
+two_way_unif.c: two_way_unif.m
+	$(MCG) $(MCGFLAGS) -O-1 two_way_unif.m
 
 check:	objs
 

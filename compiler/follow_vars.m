@@ -150,7 +150,7 @@ find_follow_vars_in_goal_2(unify(A,B,C,D,E), ArgsMethod, _ModuleInfo,
 		FollowVars0, unify(A,B,C,D,E), FollowVars) :-
 	(
 		B = var(BVar),
-		D = complicated_unify(Mode, CanFail)
+		D = complicated_unify(_Mode, CanFail)
 	->
 		determinism_components(Det, CanFail, at_most_one),
 		determinism_to_code_model(Det, CodeModel),

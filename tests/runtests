@@ -9,7 +9,7 @@ do
 	if test -d $dir -a -x $dir/runtests
 	then
 		cd $dir
-		if runtests $jfactor $fflag $gflag
+		if ./runtests $jfactor $fflag $gflag
 		then
 			true
 		else
