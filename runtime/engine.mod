@@ -246,7 +246,7 @@ static Code *engine_init_registers(void)
    since it runs a lot faster than -dg.
 */
 #define NUM_PREV_FPS 40
-typedef void (*FuncPtr)();
+typedef void (*FuncPtr)(void);
 FuncPtr prev_fps[NUM_PREV_FPS];
 int prev_fp_index = 0;
 
@@ -300,7 +300,7 @@ void call_engine(Code *entry_point)
 	}
 #else
 	for(;;) {
-		prev_fps[prev_fp_index++] = fp;
+		prev_fps[prev_fp_index++] = (FuncPtr) fp;
 		if (prev_fp_index >= NUM_PREV_FPS) {
 			prev_fp_index = 0;
 		}
