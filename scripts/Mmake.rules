@@ -114,6 +114,16 @@ main_target: $(MAIN_TARGET)
 .c.i:
 	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) -E $< > $@
 
+.m.o:
+	$(MCG) -s $(GRADE) $(MCGFLAGS) $< > $*.err2 2>&1
+	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) -c $*.c -o $@
+	$(RM_C) $*.c
+
+.m.pic_o:
+	$(MCG) -s $(GRADE) $(MCGFLAGS) $< > $*.err2 2>&1
+	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) $(PIC) -c $< -o $@
+	$(RM_C) $*.c
+
 #-----------------------------------------------------------------------------#
 
 # The actions for `mmake clean' etc. are in the `.d' files.
