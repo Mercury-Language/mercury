@@ -10,6 +10,7 @@ include ../Mmake
 
 SOURCES= \
 	bigtest.m \
+	circ_type.m \
 	det_errors.m \
 	funcs_as_preds.m \
 	errors.m \
