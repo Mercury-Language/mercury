@@ -925,6 +925,7 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName) -->
 			; Ext = ".realclean"
 			; Ext = ".depend"
 			; Ext = ".install_ints"
+			; Ext = ".install_opts"
 			; Ext = ".install_hdrs"
 			; Ext = ".install_grade_hdrs"
 			; Ext = ".check"
@@ -3964,13 +3965,16 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 					Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
-	% The .int0s list should really only include modules that
-	% contain sub-modules.  But currently it's only used for
-	% the `mmake clean' rule, so it doesn't matter.
+	% `.int0' files are only generated for modules with sub-modules.
+	{ ModulesWithSubModules = list__filter(
+			(pred(Module::in) is semidet :-
+			    map__lookup(DepsMap, Module,
+			    		deps(_, ModuleImports)),
+			    ModuleImports ^ children \= []
+			), Modules) },
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".int0s = "),
-	write_compact_dependencies_list(Modules, "$(int0s_subdir)", ".int0",
-					Basis, DepStream),
+	write_dependencies_list(ModulesWithSubModules, ".int0", DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
@@ -4246,9 +4250,31 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	module_name_to_lib_file_name("lib", ModuleName, ".install_ints", no,
 				LibInstallIntsTargetName),
 	{ Intermod = yes -> OptStr = " opt" ; OptStr = "" },
+	{
+		Intermod = yes,
+		map__member(DepsMap, _, deps(_, Imports)),
+		Imports ^ children \= []
+	->
+		% The `.int0' files only need to be installed with
+		% `--intermodule-optimization'.
+		Int0Str = " int0",
+		MaybeInt0sVar = "$(" ++ MakeVarName ++ ".int0s) "
+	;
+		Int0Str = "",
+		MaybeInt0sVar = ""
+	},
 	{ TransOpt = yes -> TransOptStr = " trans_opt" ; TransOptStr = "" },
 	{ MmcMakeDeps = yes -> DepStr = " module_dep" ; DepStr = "" },
-	{ InstallIntsRuleBody = string__append_list([
+
+	io__write_strings(DepStream, [
+		".PHONY : ", LibInstallIntsTargetName, "\n",
+		LibInstallIntsTargetName, " : $(", MakeVarName, ".ints) $(",
+			MakeVarName, ".int3s) ", MaybeInt0sVar, MaybeOptsVar,
+			MaybeTransOptsVar, MaybeModuleDepsVar,
+			" install_lib_dirs\n",
+		"\tfiles=""$(", MakeVarName, ".ints) $(", MakeVarName,
+			".int3s) ", MaybeInt0sVar, MaybeOptsVar,
+			MaybeTransOptsVar, MaybeModuleDepsVar, """; \\\n",
 "		for file in $$files; do \\
 			target=""$(INSTALL_INT_DIR)/`basename $$file`""; \\
 			if cmp -s ""$$file"" ""$$target""; then \\
@@ -4261,7 +4287,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		# The following is needed to support the `--use-subdirs' option
 		# We try using `ln -s', but if that fails, then we just use
 		# `$(INSTALL)'.
-		for ext in int int2 int3", OptStr, TransOptStr, DepStr, "; do \\
+		for ext in int int2 int3", Int0Str, OptStr,
+				TransOptStr, DepStr, "; do \\
 			dir=""$(INSTALL_INT_DIR)/Mercury/$${ext}s""; \\
 			rm -f ""$$dir""; \\
 			ln -s .. ""$$dir"" || { \\
@@ -4270,20 +4297,51 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 				$(INSTALL) ""$(INSTALL_INT_DIR)""/*.$$ext \\
 					""$$dir""; \\
 			} || exit 1; \\
-		done\n\n"]) },
-
-	io__write_strings(DepStream, [
-		".PHONY : ", LibInstallIntsTargetName, "\n",
-		LibInstallIntsTargetName, " : $(", MakeVarName, ".ints) $(",
-			MakeVarName, ".int3s) ", MaybeOptsVar,
-			MaybeTransOptsVar, MaybeModuleDepsVar,
-			"install_lib_dirs\n",
-		"\tfiles=""$(", MakeVarName, ".ints) $(", MakeVarName,
-			".int3s) ", MaybeOptsVar, MaybeTransOptsVar,
-			MaybeModuleDepsVar, """; \\\n",
-		InstallIntsRuleBody
+		done\n\n"
 	]),
 
+	%
+	% XXX  Note that we install the `.opt' and `.trans_opt' files
+	% in two places: in the `lib/$(GRADE)/opts' directory, so
+	% that mmc will find them, and also in the `ints' directory,
+	% so that Mmake will find them.  That's not ideal, but it works.
+	%
+	module_name_to_lib_file_name("lib", ModuleName,
+		".install_opts", no, LibInstallOptsTargetName),
+	io__write_strings(DepStream,
+		[".PHONY : ", LibInstallOptsTargetName, "\n",
+		LibInstallOptsTargetName, " : "]),
+	( { Intermod \= yes, TransOpt \= yes } ->
+	    io__write_string(DepStream, "\n\t@:\n\n")
+	;
+	    io__write_strings(DepStream, [
+		MaybeOptsVar, MaybeTransOptsVar, "install_grade_dirs\n",
+		"\tfiles=""", MaybeOptsVar, MaybeTransOptsVar, """; \\\n",
+"		for file in $$files; do \\
+			target=""$(INSTALL_GRADE_INT_DIR)/`basename $$file`"";\\
+			if cmp -s ""$$file"" ""$$target""; then \\
+				echo \"$$target unchanged\"; \\
+			else \\
+				echo \"installing $$target\"; \\
+				$(INSTALL) ""$$file"" ""$$target""; \\
+			fi; \\
+		done
+		# The following is needed to support the `--use-subdirs' option
+		# We try using `ln -s', but if that fails, then we just use
+		# `$(INSTALL)'.
+		for ext in ", OptStr, TransOptStr, "; do \\
+			dir=""$(INSTALL_GRADE_INT_DIR)/Mercury/$${ext}s""; \\
+			rm -f ""$$dir""; \\
+			ln -s .. ""$$dir"" || { \\
+				{ [ -d ""$$dir"" ] || \\
+					$(INSTALL_MKDIR) ""$$dir""; } && \\
+				$(INSTALL) ""$(INSTALL_GRADE_INT_DIR)""/*.$$ext \\
+					""$$dir""; \\
+			} || exit 1; \\
+		done\n\n"
+	    ])
+	),
+	
 	%
 	% XXX  Note that we install the header files in two places:
 	% in the `lib/inc' or `lib/$(GRADE)/$(FULLARCH)/inc' directory,

@@ -105,7 +105,8 @@ MC		= mmc
 ALL_MCFLAGS	= $(MCFLAGS) $(EXTRA_MCFLAGS) $(TARGET_MCFLAGS) $(LIB_MCFLAGS)
 MCFLAGS		=
 EXTRA_MCFLAGS	=
-LIB_MCFLAGS	= $(patsubst %,-I %,$(EXTRA_INT_DIRS))
+LIB_MCFLAGS	= $(patsubst %,--mld %,$(EXTRA_LIB_DIRS)) \
+			$(patsubst %,--ml %,$(EXTRA_LIBRARIES))
 
 # Flags for use with `mmc --make'.
 # Pass the options as a Mercury.options file on stdin rather
@@ -531,6 +532,14 @@ maybe-base-JAVACFLAGS-undefined =
 # `--use-subdirs' option.
 #
 
+# Extensions for which the subdirectory contains grade-dependent files
+# which need to be moved away or deleted before building a library
+# in another grade. There must be a $(main_module.$(ext)s) variable
+# for each of these extensions.
+GRADE_SUBDIR_EXTS = \
+	mih optdate trans_opt trans_opt_date c c_date java java_date \
+	class il il_date dll s s_date pic_s pic_s_date o pic_o
+
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
 
 # If you change any of these, you may need to update
@@ -682,6 +691,7 @@ INSTALL_CGI_DIR		= @CGIDIR@
 
 INSTALL_MODULE_DIR	= $(INSTALL_LIBDIR)/modules
 INSTALL_INT_DIR		= $(INSTALL_LIBDIR)/ints
+INSTALL_GRADE_INT_DIR	= $(INSTALL_LIBDIR)/ints/$(GRADESTRING)
 INSTALL_INC_DIR		= $(INSTALL_LIBDIR)/inc
 INSTALL_MMAKE_DIR	= $(INSTALL_LIBDIR)/mmake
 FULLARCH		= @FULLARCH@

@@ -904,8 +904,9 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	),
 
 	%
-	% Handle C header and library search directories. These couldn't
-	% be handled by options.m because they are grade dependent.
+	% Handle the `.opt', C header and library search directories.
+	% These couldn't be handled by options.m because they are grade
+	% dependent.
 	%
 	globals__io_lookup_accumulating_option(mercury_library_directories,
 		MercuryLibDirs),
@@ -930,7 +931,19 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		globals__io_lookup_accumulating_option(c_include_directory,
 			CIncludeDirs),
 		globals__io_set_option(c_include_directory,
-			accumulating(ExtraCIncludeDirs ++ CIncludeDirs))
+			accumulating(ExtraCIncludeDirs ++ CIncludeDirs)),
+
+		{ ExtraIntermodDirs = list__map(
+				(func(MercuryLibDir) =
+					dir__make_path_name(MercuryLibDir,
+					dir__make_path_name("ints",
+					GradeString
+					))
+				), MercuryLibDirs) },
+		globals__io_lookup_accumulating_option(intermod_directories,
+			IntermodDirs0),
+		globals__io_set_option(intermod_directories,
+			accumulating(ExtraIntermodDirs ++ IntermodDirs0))
 	;
 		{ MercuryLibDirs = [] }
 	),
@@ -942,12 +955,11 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		UseSearchDirs),
 	( { UseSearchDirs = yes } ->
 		globals__io_lookup_accumulating_option(intermod_directories,
-			IntermodDirs0),
+			IntermodDirs1),
 		globals__io_lookup_accumulating_option(search_directories,
 			SearchDirs),
-		{ list__append(IntermodDirs0, SearchDirs, IntermodDirs) },
 		globals__io_set_option(intermod_directories,
-			accumulating(IntermodDirs))
+			accumulating(IntermodDirs1 ++ SearchDirs))
 	;
 		[]
 	),
@@ -965,11 +977,11 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		% to find the `.opt' files in the current directory.
 		%
 		globals__io_lookup_accumulating_option(intermod_directories,
-			IntermodDirs1),
+			IntermodDirs2),
 		{ GradeSubdirIntermodDirs =
 			["Mercury"/GradeString/FullArch |
 			list__filter(isnt(unify(dir__this_directory)),
-				IntermodDirs1)] },
+				IntermodDirs2)] },
 		globals__io_set_option(intermod_directories,
 			accumulating(GradeSubdirIntermodDirs))
 	;

@@ -402,22 +402,18 @@ install_deep_profiler: deep_profiler
 
 .PHONY: install_grades
 install_grades: scripts
-	cd boehm_gc && rm -rf tmp_dir && mkdir tmp_dir && \
-		{ mv -f *.$O *.pic_o *.$A *.so tmp_dir || true; }
-	cd runtime && rm -rf tmp_dir && mkdir tmp_dir && \
-		{ mv -f *.$O *.pic_o *.$A *.so tmp_dir || true; }
-	cd library && rm -rf tmp_dir && mkdir tmp_dir && \
-		{ mv -f *.dep *.mih *.c *.c_date *.$O *.pic_o *.$A *.so \
-			*.used Mercury/useds/*.used Mercury/deps/*.dep \
-			Mercury/cs/*.c Mercury/c_dates/*.c_date \
-			Mercury/mihs/*.mih Mercury/os/*.$O tmp_dir || true; }
-	cd browser && rm -rf tmp_dir && mkdir tmp_dir && \
-		{ mv -f *.dep *.mih *.c *.c_date *.$O *.pic_o *.$A *.so \
-			*.used Mercury/useds/*.used Mercury/deps/*.dep \
-			Mercury/cs/*.c Mercury/c_dates/*.c_date \
-			Mercury/mihs/*.mih Mercury/os/*.$O tmp_dir || true; }
-	cd trace && rm -rf tmp_dir && mkdir tmp_dir && \
-		{ mv -f *.$O *.pic_o *.$A *.so tmp_dir || true; }
+	for dir in boehm_gc runtime trace; do \
+	    ( cd $$dir; rm -rf tmp_dir; mkdir tmp_dir; \
+		mv -f *.$O *.pic_o *.$A *.so tmp_dir; true ); \
+	done
+	for dir in library browser; do \
+	    ( cd $$dir && rm -rf tmp_dir && mkdir tmp_dir && \
+		for ext in $(GRADE_SUBDIR_EXTS); do \
+		    mv -f *.$$ext Mercury/$${ext}s/*.$$ext tmp_dir; \
+		done; \
+		mv -f $(deps_subdir)*.dep $(deps_subdir)*.dv *.$O \
+			Mercury/os/*.$O *.$A *.so tmp_dir; true ); \
+	done
 	#
 	# Use the newly installed compiler to build the libraries
 	# in various different grades.  We need to override MC=mmc
@@ -441,42 +437,32 @@ install_grades: scripts
 		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_library ) && \
 		( cd trace && \
 		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_lib ) && \
-		( cd boehm_gc && rm -f *.$O *.pic_o *.$A *.so ) && \
-		( cd runtime && rm -f *.$O *.pic_o *.$A *.so ) && \
-		( cd library && rm -f *.dep *.mih *.c *.c_date \
-			*.$O *.pic_o *.$A *.so Mercury/cs/*.c \
-			Mercury/c_dates/*.c_date Mercury/mihs/*.mih \
-			Mercury/os/*.$O ) && \
-		( cd browser && rm -f *.dep *.mih *.c *.c_date \
-			*.$O *.pic_o *.$A *.so Mercury/cs/*.c \
-			Mercury/c_dates/*.c_date Mercury/mihs/*.mih \
-			Mercury/os/*.$O ) && \
-		( cd trace && rm -f *.$O *.pic_o *.$A *.so ) && \
-		true \
+		for dir in boehm_gc runtime trace; do \
+			( cd $$dir && rm -f *.$O *.pic_o *.$A *.so ); \
+		done && \
+		for dir in library browser; do \
+		   ( cd $$dir && \
+		   	for ext in $(GRADE_SUBDIR_EXTS); do \
+				rm -f *.$$ext Mercury/$${ext}s/*.$$ext; \
+			done && \
+			rm -f $(deps_subdir)*.dep $(deps_subdir)*.dv *.$O \
+				Mercury/os/*.$O *.$A *.so ); \
+		done \
 		|| { scripts/mercury_cleanup_install; exit 1; }; \
 	    fi; \
 	done
-	cd boehm_gc && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
-	cd runtime  && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
-	cd library  && { [ -d Mercury/cs ] && mv tmp_dir/*.c Mercury/cs; \
-			 [ -d Mercury/mihs ] && mv tmp_dir/*.mih Mercury/mihs; \
-			 [ -d Mercury/os ] && mv tmp_dir/*.$O Mercury/os; \
-			 [ -d Mercury/deps ] && mv tmp_dir/*.dep Mercury/deps;\
-			 [ -d Mercury/c_dates ] && \
-			 	mv tmp_dir/*.c_date Mercury/c_dates;\
-			 [ -d Mercury/useds ] && \
-			 	mv tmp_dir/*.used Mercury/useds;\
-			 mv tmp_dir/* . ; rmdir tmp_dir; true; }
-	cd browser  && { [ -d Mercury/cs ] && mv tmp_dir/*.c Mercury/cs; \
-			 [ -d Mercury/mihs ] && mv tmp_dir/*.mih Mercury/mihs; \
-			 [ -d Mercury/os ] && mv tmp_dir/*.$O Mercury/os; \
-			 [ -d Mercury/deps ] && mv tmp_dir/*.dep Mercury/deps;\
-			 [ -d Mercury/c_dates ] && \
-			 	mv tmp_dir/*.c_date Mercury/c_dates;\
-			 [ -d Mercury/useds ] && \
-			 	mv tmp_dir/*.used Mercury/useds;\
-			 mv tmp_dir/* . ; rmdir tmp_dir; true; }
-	cd trace    && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
+	for dir in boehm_gc runtime trace; do \
+	    ( cd $$dir && { mv tmp_dir/* . ; rmdir tmp_dir; true; } ); \
+	done
+	for dir in library browser; do \
+	    ( cd $$dir && { \
+		for ext in $(GRADE_SUBDIR_EXTS); do \
+		    [ -d Mercury/$${ext}s ] && \
+		    	mv tmp_dir/*.$$ext Mercury/$${ext}s; \
+		done; \
+		mv tmp_dir/*.dep tmp_dir/*.dv $(deps_subdir).; \
+	    	mv tmp_dir/* . ; rmdir tmp_dir; true; } ); \
+	done
 
 .PHONY: install_split_library
 install_split_library: scripts dep_library
@@ -490,23 +476,25 @@ install_split_library: scripts dep_library
 	+cd library && \
 	rm -rf tmp_dir && \
 	mkdir tmp_dir && \
-	{ mv -f *.dir *.dep *.mih *.c *.c_date *.$O *.pic_o *.$A *.so \
-		Mercury/cs/*.c Mercury/c_dates/*.c Mercury/mihs/*.mih \
-		Mercury/c_dates Mercury/os/*.$O tmp_dir || true; } && \
+	for ext in $(GRADE_SUBDIR_EXTS); do \
+		mv -f *.$$ext Mercury/$${ext}s/*.$$ext $tmp_dir; \
+	done || true && \
+	{ mv -f $(deps_subdir)*.dep $(deps_subdir)*.dv *.$O Mercury/os/*.$O \
+		*.$A *.so tmp_dir || true; }) && \
 	for grade in $(GRADE) $(LIBGRADES); do \
 	        $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade depend && \
 	        $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_split_library || \
 			{ scripts/mercury_cleanup_install; exit 1; }; \
-	        rm -rf *.dir *.dep *.mih *.c *.$O *.pic_o *.$A *.so \
-			Mercury/cs/*.c Mercury/c_dates/*.c Mercury/mihs/*.mih \
-			Mercury/c_dates Mercury/os/*.$O; \
+		for ext in $(GRADE_SUBDIR_EXTS); do \
+			rm -f *.$$ext Mercury/$${ext}s/*.$$ext; \
+		done; \
+		rm -f *.$O Mercury/os/*.$O *.$A *.so; \
 	done && \
-	{ [ -d Mercury/cs ] && mv tmp_dir/*.c Mercury/cs; \
-	  [ -d Mercury/c_dates ] && mv tmp_dir/*.c_date Mercury/c_dates; \
-	  [ -d Mercury/mihs ] && mv tmp_dir/*.mih Mercury/mihs; \
-	  [ -d Mercury/os ] && mv tmp_dir/*.$O Mercury/os; \
-	  [ -d Mercury/deps ] && mv tmp_dir/*.dep Mercury/deps; \
-	  mv tmp_dir/* . ; rmdir tmp_dir; true; }
+	{ for $$ext in $(GRADE_SUBDIR_EXTS); do \
+	    [ -d Mercury/$${ext}s ] && mv tmp_dir/*.$$ext Mercury/$${ext}s; \
+	done; \
+	mv tmp_dir/*.dep tmp_dir/*.dv $(deps_subdir).; \
+	mv tmp_dir/* . ; rmdir tmp_dir; true; }
 
 #-----------------------------------------------------------------------------#
 #

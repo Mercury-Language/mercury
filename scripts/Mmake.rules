@@ -472,52 +472,68 @@ lib%.install_init: %.init install_lib_dirs
 
 .PHONY: lib%.install_library
 lib%.install_library: lib%.a lib%.$(EXT_FOR_SHARED_LIB) \
-			install_grade_dirs lib%.install_grade_hdrs
+			install_grade_dirs lib%.install_grade_hdrs \
+			lib%.install_opts
 	$(INSTALL) `vpath_find lib$*.a lib$*.$(EXT_FOR_SHARED_LIB)` \
 			$(INSTALL_MERC_LIB_DIR)
 
 lib%.install_split_library: %.split.a install_grade_dirs
 	$(INSTALL) `vpath_find $*.split.a` $(INSTALL_MERC_LIB_DIR)/lib$*.a
 
+# XXX grade_files only contains the files for the default grade, not the
+# current grade in each iteration of the loop over ALL_LIBGRADES below.
 lib%.install_grades:
 	rm -rf tmp_dir && \
 	mkdir tmp_dir && \
-	{ mv -f $(deps_subdir)$*.dep $($*.mihs) $($*.cs) $($*.c_dates) \
-		$($*.os) $($*.pic_os) *.a *.so tmp_dir || true; } && \
+	grade_files="$(foreach ext,$(GRADE_SUBDIR_EXTS),$($*.$(ext)s))" && \
+	for file in x $$grade_files; do \
+		if [ "$$file" != "x" ]; then \
+			mv -f $$file tmp_dir > /dev/null 2>&1; \
+		fi; \
+	done && \
+	{ mv -f $(deps_subdir)$*.dep $(deps_subdir)$*.dv \
+		*.a *.so tmp_dir || true; } && \
 	for grade in x $(ALL_LIBGRADES); do \
 		if [ "$$grade" != "x" ]; then \
 			$(MMAKE) GRADE=$$grade $*.depend || \
 				exit 1; \
 			$(MMAKE) GRADE=$$grade lib$*.install_library || \
 				exit 1; \
-			rm -f $(deps_subdir)$*.dep $($*.mihs) $($*.cs) \
-				$($*.c_dates) $($*.os) $($*.pic_os) *.a *.so; \
+			for file in x $$grade_files; do \
+				if [ "$$file" != "x" ]; then \
+					rm -f $$file; \
+				fi; \
+			done; \
+			rm -f $(deps_subdir)$*.dep $(deps_subdir)$*.dv \
+				*.a *.so; \
 		fi; \
 	done && \
-	{ mv tmp_dir/*.c $(cs_subdir). ; \
-	  mv tmp_dir/*.$O $(os_subdir). ; \
-	  mv tmp_dir/*.c_date $(c_dates_subdir). ; \
-	  mv tmp_dir/*.pic_o $(os_subdir). ; \
-	  mv tmp_dir/*.dep $(deps_subdir). ; \
-	  mv tmp_dir/* . ; rmdir tmp_dir ; true; }
+	for file in x $$grade_files; do \
+		if [ "$$file" != "x" ]; then \
+		    mv -f tmp_dir/`basename $$file` $$file > /dev/null 2>&1; \
+		fi; \
+	done && \
+	{ mv -f tmp_dir/*.dep tmp_dir/*.dv $(deps_subdir).; \
+		mv -f tmp_dir/* .; rmdir tmp_dir; true; }
 
 lib%.install_split_grades:
 	rm -rf tmp_dir && \
 	mkdir tmp_dir && \
-	{ mv -f $(deps_subdir)$*.dep $($*.mihs) $($*.dirs) *.a *.so \
-		tmp_dir || true; } && \
+	{ mv -f $(deps_subdir)$*.dep $(deps_subdir)$*.dv $($*.mihs) \
+		$($*.dirs) *.a *.so tmp_dir || true; } && \
 	for grade in x $(ALL_LIBGRADES); do \
 		if [ "$$grade" != "x" ]; then \
 			$(MMAKE) GRADE=$$grade $*.depend || \
 				exit 1; \
 			$(MMAKE) GRADE=$$grade lib$*.install_split_library || \
 				exit 1; \
-			rm -rf $(deps_subdir)$*.dep $($*.mihs) $($*.dirs) \
-				*.a *.so; \
+			rm -rf $(deps_subdir)$*.dep $(deps_subdir)$*.dv \
+				$($*.mihs) $($*.dirs) *.a *.so; \
 		fi; \
 	done && \
 	{ mv tmp_dir/*.dir $(dirs_subdir). ; \
 	  mv tmp_dir/*.dep $(deps_subdir). ; \
+	  mv tmp_dir/*.dv $(deps_subdir). ; \
 	  mv tmp_dir/* . ; rmdir tmp_dir ; true; }
 
 
@@ -536,8 +552,12 @@ install_grade_dirs: #install_lib_dirs
 		$(INSTALL_MKDIR) $(INSTALL_MERC_LIB_DIR)
 	-[ -d $(INSTALL_GRADE_INC_DIR) ] || \
 		$(INSTALL_MKDIR) $(INSTALL_GRADE_INC_DIR)
+	-[ -d $(INSTALL_GRADE_INT_DIR) ] || \
+		$(INSTALL_MKDIR) $(INSTALL_GRADE_INT_DIR)
 	# The following is needed to support the `--use-subdirs' option
 	-[ -d $(INSTALL_GRADE_INC_DIR)/Mercury ] || \
 		$(INSTALL_MKDIR) $(INSTALL_GRADE_INC_DIR)/Mercury
+	-[ -d $(INSTALL_GRADE_INT_DIR)/Mercury ] || \
+		$(INSTALL_MKDIR) $(INSTALL_GRADE_INT_DIR)/Mercury
 
 #-----------------------------------------------------------------------------#
