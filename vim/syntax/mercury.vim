@@ -50,6 +50,7 @@ syn keyword mercuryCInterface   foreign_type foreign_import_module
 syn keyword mercuryCInterface   may_call_mercury will_not_call_mercury
 syn keyword mercuryCInterface   thread_safe not_thread_safe
 syn keyword mercuryCInterface   promise_pure promise_semipure
+syn keyword mercuryCInterface   tabled_for_io
 syn keyword mercuryCInterface   export import
 syn keyword mercuryImpure       impure semipure
 syn keyword mercuryToDo         XXX TODO NOTE         
@@ -57,7 +58,7 @@ syn keyword mercuryLogical      some all not if then else true fail
 syn match   mercuryImplication  +<=>\|<=\|=>\|/\\\|\\/+
 syn match   mercuryNumCode      +0'.\|0[box][0-9a-fA-F]*+
 syn region  mercuryAtom         start=+'+ skip=+\\.+ end=+'+
-syn region  mercuryString       start=+"+ skip=+\\.+ end=+"+                              contains=mercuryStringFmt,mercuryCComment
+syn region  mercuryString       start=+"+ skip=+\\.+ end=+"+                              contains=mercuryStringFmt
 syn match   mercuryStringFmt    +\\[abfnrtv]\|\\x[0-9a-fA-F]*\\\|%[-+# *.0-9]*[dioxXucsfeEgGp]+                                                                           contained
 syn region  mercuryClauseHead   start=+^[a-zA-Z]+ end=+=\|:-\|\.\s*$\|-->+                    contains=mercuryComment,mercuryCComment,mercuryAtom,mercuryString
 syn region  mercuryCComment     start=+/\*+ end=+\*/+                                         contains=mercuryToDo
