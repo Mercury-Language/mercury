@@ -100,7 +100,8 @@ build_with_check_for_interrupt(Build, Cleanup, Succeeded, Info0, Info) -->
 		{ Info = Info1 }
 	).	
 
-:- type signal_action ---> signal_action(c_pointer).
+:- type signal_action ---> signal_action.
+:- pragma foreign_type("C", signal_action, "MR_signal_action").
 
 :- pragma foreign_decl("C",
 "
@@ -156,50 +157,23 @@ MC_mercury_compile_signal_handler(int sig)
 }
 ").
 
-:- pred setup_signal_handlers(maybe(signal_action)::out,
+:- pred setup_signal_handlers(signal_action::out,
 		io__state::di, io__state::uo) is det.
 
-setup_signal_handlers(MaybeSigIntHandler) -->
-	( { have_signal_handlers(1) } ->
-		setup_signal_handlers_2(SigintHandler),
-		{ MaybeSigIntHandler = yes(SigintHandler) }
-	;
-		{ MaybeSigIntHandler = no }
-	).
-
-	% Dummy argument to work around bug mixing Mercury and foreign clauses.
-:- pred have_signal_handlers(T::unused) is semidet.
-
-have_signal_handlers(_::unused) :- semidet_fail.
-
-:- pragma foreign_proc("C", have_signal_handlers(_T::unused),
-		[will_not_call_mercury, promise_pure],
-"{
-	SUCCESS_INDICATOR = MR_TRUE;
-}").
-
-:- pred setup_signal_handlers_2(signal_action::out,
-		io__state::di, io__state::uo) is det.
-
-setup_signal_handlers_2(_::out, _::di, _::uo) :-
-	error("setup_signal_handlers_2").
+setup_signal_handlers(signal_action::out, IO::di, IO::uo).
 
 :- pragma foreign_proc("C",
-	setup_signal_handlers_2(SigintHandler::out, IO0::di, IO::uo),
+	setup_signal_handlers(SigintHandler::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
 	IO = IO0;
 	MC_signalled = MR_FALSE;
 
-	MR_incr_hp_msg(SigintHandler,
-		MR_bytes_to_words(sizeof(MR_signal_action)),
-		MR_PROC_LABEL, ""libs.process_util.signal_action/0"");
-
 	/*
 	** mdb sets up a SIGINT handler, so we should restore
 	** it after we're done.
 	*/
-	MR_get_signal_action(SIGINT, (MR_signal_action *) SigintHandler,
+	MR_get_signal_action(SIGINT, &SigintHandler,
 		""error getting SIGINT handler"");
 	MC_SETUP_SIGNAL_HANDLER(SIGINT, MC_mercury_compile_signal_handler);
 	MC_SETUP_SIGNAL_HANDLER(SIGTERM, MC_mercury_compile_signal_handler);
@@ -211,25 +185,17 @@ setup_signal_handlers_2(_::out, _::di, _::uo) :-
 #endif
 }").
 
-:- pred restore_signal_handlers(maybe(signal_action)::in,
+:- pred restore_signal_handlers(signal_action::in,
 		io__state::di, io__state::uo) is det.
 
-restore_signal_handlers(no) --> [].
-restore_signal_handlers(yes(SigintHandler)) -->
-	restore_signal_handlers_2(SigintHandler).
-
-:- pred restore_signal_handlers_2(signal_action::in,
-		io__state::di, io__state::uo) is det.
-
-restore_signal_handlers_2(_::in, _::di, _::uo) :-
-	error("restore_signal_handlers_2").
+restore_signal_handlers(_::in, IO::di, IO::uo).
 
 :- pragma foreign_proc("C",
-	restore_signal_handlers_2(SigintHandler::in, IO0::di, IO::uo),
+	restore_signal_handlers(SigintHandler::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
 	IO = IO0;
-	MR_set_signal_action(SIGINT, (MR_signal_action *) SigintHandler,
+	MR_set_signal_action(SIGINT, &SigintHandler,
 		""error resetting SIGINT handler"");
 	MC_SETUP_SIGNAL_HANDLER(SIGTERM, SIG_DFL);
 #ifdef SIGHUP
@@ -246,34 +212,15 @@ restore_signal_handlers_2(_::in, _::di, _::uo) :-
 :- pred setup_child_signal_handlers(io__state::di, io__state::uo) is det.
 
 setup_child_signal_handlers -->
-	( { SIG_DFL = sig_dfl } ->
-		restore_signal_handlers(yes(SIG_DFL))
-	;
-		[]
-	).
+	restore_signal_handlers(sig_dfl).
 
-:- func sig_dfl = signal_action is semidet.
+:- func sig_dfl = signal_action.
 
-sig_dfl = SIG_DFL :-
-	( have_signal_handlers(1) ->
-		SIG_DFL = sig_dfl_2
-	;
-		fail
-	).
+sig_dfl = (signal_action::out).
 
-:- func sig_dfl_2 = signal_action.
-
-sig_dfl_2 = (_::out) :- error("process_util__sig_dfl_2 called").
-
-:- pragma foreign_proc("C", sig_dfl_2 = (Result::out),
+:- pragma foreign_proc("C", sig_dfl = (Result::out),
 		[will_not_call_mercury, promise_pure],
-"
-	MR_incr_hp_msg(Result,
-		MR_bytes_to_words(sizeof(MR_signal_action)),
-		MR_PROC_LABEL, ""libs.process_util.signal_action/0"");
-	MR_init_signal_action((MR_signal_action *) Result,
-		SIG_DFL, MR_FALSE, MR_TRUE);
-").
+	"MR_init_signal_action(&Result, SIG_DFL, MR_FALSE, MR_TRUE);").
 
 :- pred check_for_signal(int::out, int::out,
 		io__state::di, io__state::uo) is det.
