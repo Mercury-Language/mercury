@@ -12,6 +12,8 @@
 **
 ** Any condition compilation macros that affect link compatibility
 ** should be included here.
+** For documentation on the meaning of these macros, see
+** runtime/mercury_conf_param.h.
 **
 ** IMPORTANT: any changes here may also require changes to
 ** 	scripts/parse_grade_options.sh-subr
