@@ -102,6 +102,9 @@ termExpansion((:- pred(_)), (:- fail)).
 termExpansion((:- mode(_)), (:- fail)).
 termExpansion((:- inst(_)), (:- fail)).
 
+termExpansion((:- impure(_)), (:- fail)).
+termExpansion((:- semipure(_)), (:- fail)).
+
 termExpansion((:- module(_)), (:- fail)).
 termExpansion((:- end_module(_)), (:- fail)).
 termExpansion((:- interface), (:- fail)).
