@@ -36,36 +36,68 @@ main -->
 
 %-----------------------------------------------------------------------------%
 
+:- pred usage_error(string :: in, io__state :: di, io__state :: uo) is det.
+usage_error(Msg) -->
+	io__progname_base("diff", ProgName),
+	io__stderr_stream(StdErr),
+	io__write_strings(StdErr, [ProgName, ": ", Msg, "\n"]),
+	io__set_exit_status(1),
+	usage.
+
+:- pred usage_io_error(io__error, io__state, io__state).
+:- mode usage_io_error(in, di, uo) is det.
+usage_io_error(Error) -->
+	{ io__error_message(Error, Msg) },
+	usage_error(Msg).
+
+:- pred usage(io__state :: di, io__state :: uo) is det.
+usage -->
+	io__write_string("Usage: diff [options] from-file to-file\n"),
+	io__write_string("Options:\n"),
+	io__write_string("\tnone yet :-)\n").
+
+%-----------------------------------------------------------------------------%
+
 	% main_2 
 :- pred main_2(maybe(string), list(string), io__state, io__state).
 :- mode main_2(in, in, di, uo) is det.
-main_2(yes(_), _) --> [].
-main_2(no, []) --> []. % Should display usage
-main_2(no, [File1 | Rest]) -->
-	( { Rest = [ File2 | _ ] },
-	    ( { File1 = File2 } ->
+main_2(yes(Msg), _) -->
+	usage_error(Msg).
+main_2(no, []) -->
+	usage_error("missing operand").
+main_2(no, [Fname1 | Rest]) -->
+	( { Rest = [ Fname2 | _ ] },
+	    ( { Fname1 = Fname2 } ->
 		% There are no differences between identical files.
 	    	[]
 	    ;
 		% If either file is "-", simply use standard input.
 		% (Note: Both can't be "-" since that was dealt with
 		% in the previous case.)
-	        ( { File1 = "-" } ->
+	        ( { Fname1 = "-" } ->
 	    	    file__read_input(Contents1),
-	    	    file__read_file(File2, Contents2)
-	    	; { File2 = "-" } ->
-	    	    file__read_file(File1, Contents1),
+	    	    file__read_file(Fname2, Contents2)
+	    	; { Fname2 = "-" } ->
+	    	    file__read_file(Fname1, Contents1),
 	    	    file__read_input(Contents2)
 	    	;
 		% Otherwise read the files normally.
-	    	    file__read_file(File1, Contents1),
-	    	    file__read_file(File2, Contents2)
+	    	    file__read_file(Fname1, Contents1),
+	    	    file__read_file(Fname2, Contents2)
 	    	),
 		% Now do the diff.
-	        lcss__show_diff(Contents1, Contents2)
+		( { Contents1 = ok(File1), Contents2 = ok(File2) } ->
+		    lcss__show_diff(File1, File2)
+		; { Contents1 = error(Msg) } ->
+		    usage_io_error(Msg)
+		; { Contents2 = error(Msg) } ->
+		    usage_io_error(Msg)
+		;
+		    { error("main2") }
+		)
 	    )
 	; { Rest = [] },
-	    [] % Should display usage
+	    usage_error("missing operand")
 	).
 
 %-----------------------------------------------------------------------------%

@@ -20,7 +20,7 @@
 :- implementation.
 :- import_module map, require, std_util, int, list, char, array.
 
-	% The longest common substring of two files can be
+	% The longest common subsequence of two files can be
 	% represented as an ordered list of "matches".  A
 	% match is a pair of the form I-J where I is the
 	% number of a line in file 1 and J is the number of
@@ -71,7 +71,12 @@ lcss__show_lcss([ X-Y | Lcss ]) -->
 
 %-----------------------------------------------------------------------------%
 
-	% Find the longest common substring
+	% Find the longest common subsequence.  The algorithm
+	% used is very similar to that in:
+	%
+	%     Hunt & Szymanski, "A fast algorithm for computing
+	%     longest common subsequences", CACM 20:5, pp 350--353,
+	%     1977.
 :- pred lcss__find_lcss(file :: in, file :: in, lcss :: out) is det.
 lcss__find_lcss(File1, File2, Lcss) :-
 	file__get_numlines(File1, L1),
@@ -161,12 +166,12 @@ lcss__match_map_to_matchlist([S | Ss], Map, [M | Ms]) :-
 	% This is the heart of the lcss procedure.  The
 	% algorithm maintains two arrays, Thresh and Link.
 	% Thresh[I] is defined as the length of the longest
-	% common substring found so far which terminates at 
+	% common subsequence found so far which terminates at 
 	% position I in File1.  Link[I] is this actual
-	% substring stored in reverse.
+	% subsequence stored in reverse.
 	%
 	% The special value N+1 is used to denote that no
-	% substring has been found that terminates at that
+	% subsequence has been found that terminates at that
 	% position.
 :- pred lcss__build_thresh(int, list(list(int)), array(int), 
 		array(lcss)).
@@ -279,7 +284,7 @@ lcss__build_lcss2(N, Max, Thresh, K) :-
 
 %-----------------------------------------------------------------------------%
 
-	% lcss__to_diff turns the longest common substring
+	% lcss__to_diff turns the longest common subsequence
 	% of two files into a list of single_diffs.
 :- pred lcss__to_diff(file :: in, file :: in, lcss :: in, diff :: out) is det.
 lcss__to_diff(File1, File2, Lcss, Diff) :-

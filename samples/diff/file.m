@@ -13,12 +13,12 @@
 :- type file.
 
 	% file__read_file reads a file from a filename.
-:- pred file__read_file(string, file, io__state, io__state).
+:- pred file__read_file(string, io__res(file), io__state, io__state).
 :- mode file__read_file(in, out, di, uo) is det.
 
 	% file__read_input reads a file from the input
 	% stream.
-:- pred file__read_input(file, io__state, io__state).
+:- pred file__read_input(io__res(file), io__state, io__state).
 :- mode file__read_input(out, di, uo) is det.
 
 	% file__get_line retrieves a line from a file.
@@ -50,15 +50,15 @@
 file__read_file(FileName, Contents) -->
 	io__open_input(FileName, Res),
 	( { Res = ok(InputStream) },
-	    file__read_stream(InputStream, Contents),
-	    io__close_input(InputStream)
+	    file__read_stream(InputStream, Contents0),
+	    io__close_input(InputStream),
+	    { Contents = ok(Contents0) }
 	; { Res = error(Error) },
-	    { io__error_message(Error, Msg) },
-	    { error(Msg) }
+	    { Contents = error(Error) }
 	).
 
 	% Get the input stream, then read from it.
-file__read_input(Contents) -->
+file__read_input(ok(Contents)) -->
 	io__input_stream(InputStream),
 	file__read_stream(InputStream, Contents).
 
