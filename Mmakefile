@@ -212,7 +212,7 @@ tar: README INSTALL
 	cd compiler && $(SUBDIR_MMAKE) cs tags
 	cd profiler && $(SUBDIR_MMAKE) depend
 	cd profiler && $(SUBDIR_MMAKE) cs tags
-	cd doc && $(SUBDIR_MMAKE) info html dvi
+	cd doc && $(SUBDIR_MMAKE) info html dvi mdb_doc
 	cd bindist && $(SUBDIR_MMAKE) bindist.configure
 	# the following command might fail on Windows?
 	-cd bindist && $(SUBDIR_MMAKE) bindist.build_vars
