@@ -65,8 +65,7 @@ deforestation(ModuleInfo0, ModuleInfo, IO0, IO) :-
 	hlds_dependency_info_get_dependency_ordering(DepInfo, DepOrdering),
 	list__condense(DepOrdering, DepList),
 
-	inst_table_init(InstTable),
-	pd_info_init(ModuleInfo2, ProcArgInfo, InstTable, IO1, PdInfo0),
+	pd_info_init(ModuleInfo2, ProcArgInfo, IO1, PdInfo0),
 	pd_info_foldl(deforest__proc, DepList, PdInfo0, PdInfo1),
 	pd_info_get_module_info(ModuleInfo3, PdInfo1, PdInfo),
 	module_info_clobber_dependency_info(ModuleInfo3, ModuleInfo),
@@ -111,13 +110,9 @@ deforest__proc(proc(PredId, ProcId), CostDelta, SizeDelta) -->
 		PredInfo0, ProcInfo0) },
 	pd_info_init_unfold_info(proc(PredId, ProcId), PredInfo0, ProcInfo0),
 	{ proc_info_goal(ProcInfo0, Goal0) },
-	{ proc_info_inst_table(ProcInfo0, InstTable0) },
-	pd_info_set_inst_table(InstTable0),
 	deforest__goal(Goal0, Goal1),
 	pd_info_get_proc_info(ProcInfo1),
-	{ proc_info_set_goal(ProcInfo1, Goal1, ProcInfo2) },
-	pd_info_get_inst_table(InstTable1),
-	{ proc_info_set_inst_table(ProcInfo2, InstTable1, ProcInfo3) },
+	{ proc_info_set_goal(ProcInfo1, Goal1, ProcInfo3) },
 	pd_info_get_changed(Changed),
 
 	( { Changed = yes } ->
@@ -975,15 +970,16 @@ deforest__create_call_goal(proc(PredId, ProcId), VersionInfo,
 
 		% Compute a goal_info.
 	% { proc_info_argmodes(CalledProcInfo, argument_modes(_, ArgModes)) },
-	{ instmap_delta_init_reachable(InstMapDelta) },	% YYY
+	{ instmap_delta_init_reachable(InstMapDelta) },
 	{ proc_info_interface_determinism(ProcInfo, Detism) },
 	{ set__list_to_set(Args, NonLocals) },
 	{ goal_info_init(NonLocals, InstMapDelta, Detism, GoalInfo) },
 
 	{ pred_info_module(CalledPredInfo, PredModule) },
 	{ pred_info_name(CalledPredInfo, PredName) },
-	{ Goal = call(PredId, ProcId, Args, not_builtin, no, 
-			qualified(PredModule, PredName)) - GoalInfo }.
+	{ Goal0 = call(PredId, ProcId, Args, not_builtin, no, 
+			qualified(PredModule, PredName)) - GoalInfo },
+	pd_util__recompute_instmap_delta(Goal0, Goal).
 	
 :- pred deforest__create_deforest_call_args(list(var)::in, list(type)::in,
 	map(var, var)::in, substitution::in, list(var)::out, varset::in,

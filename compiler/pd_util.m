@@ -188,6 +188,11 @@ pd_util__unique_modecheck_goal(Goal0, Goal, Errors) -->
 
 pd_util__unique_modecheck_goal(LiveVars, Goal0, Goal, Errors) -->
 
+	% First make sure the inst_subs in the instmap deltas are correct.
+	% (They may have the wrong inst keys if the goal has been inlined
+	% from another predicate.)
+	pd_util__recompute_instmap_delta(Goal0, Goal1),
+
 	% 
 	% Construct a mode_info.
 	%
@@ -210,7 +215,7 @@ pd_util__unique_modecheck_goal(LiveVars, Goal0, Goal, Errors) -->
 	{ mode_info_init(IO0, ModuleInfo1, InstTable0, PredId, ProcId, Context,
 		LiveVars, InstMap0, HowToCheck, ModeInfo0) },
 
-	{ unique_modes__check_goal(Goal0, Goal, ModeInfo0, ModeInfo1) },
+	{ unique_modes__check_goal(Goal1, Goal, ModeInfo0, ModeInfo1) },
 	pd_info_lookup_bool_option(debug_pd, Debug),
 	{ Debug = yes ->
 		report_mode_errors(ModeInfo1, ModeInfo)
@@ -246,7 +251,8 @@ pd_util__get_goal_live_vars(_ - GoalInfo, Vars) -->
 	pd_info_get_module_info(ModuleInfo),
 	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
 	pd_info_get_instmap(InstMapBefore),
-	pd_info_get_inst_table(InstTable),
+	pd_info_get_proc_info(ProcInfo),
+	{ proc_info_inst_table(ProcInfo, InstTable) },
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ set__to_sorted_list(NonLocals, NonLocalsList) },
 	{ set__init(Vars0) },
@@ -734,7 +740,7 @@ inst_MSG_2(free(Aliasing), _, free(Aliasing), _, _IT, _M, free(Aliasing)).
 inst_MSG_2(bound(_, ListA), InstMapA, bound(UniqB, ListB), InstMapB,
 		InstTable, ModuleInfo, Inst) :-
 	bound_inst_list_MSG(ListA, InstMapA, ListB, InstMapB, InstTable,
-		ModuleInfo, UniqB, ListB, Inst).
+		ModuleInfo, UniqB, ListB, InstMapB, Inst).
 inst_MSG_2(bound(_, _), _, ground(UniqB, InfoB), _, _, _,
 		ground(UniqB, InfoB)).
 
@@ -772,11 +778,11 @@ inst_list_MSG([ArgA | ArgsA], InstMapA, [ArgB | ArgsB], InstMapB,
 
 :- pred bound_inst_list_MSG(list(bound_inst), instmap, list(bound_inst),
 		instmap, inst_table, module_info, uniqueness,
-		list(bound_inst), inst).
-:- mode bound_inst_list_MSG(in, in, in, in, in, in, in, in, out) is semidet.
+		list(bound_inst), instmap, inst).
+:- mode bound_inst_list_MSG(in, in, in, in, in, in, in, in, in, out) is semidet.
 
 bound_inst_list_MSG(Xs, InstMapX, Ys, InstMapY, InstTable, ModuleInfo,
-		Uniq, List, Inst) :-
+		Uniq, List, InstMap, Inst) :-
 	(
 		Xs = [],
 		Ys = []
@@ -792,7 +798,7 @@ bound_inst_list_MSG(Xs, InstMapX, Ys, InstMapY, InstTable, ModuleInfo,
 				ModuleInfo, Args),
 		Z = functor(ConsId, Args),
 		bound_inst_list_MSG(Xs1, InstMapX, Ys1, InstMapY,
-			InstTable, ModuleInfo, Uniq, List, Inst1),
+			InstTable, ModuleInfo, Uniq, List, InstMap, Inst1),
 		( Inst1 = bound(Uniq, Zs) ->
 			Inst = bound(Uniq, [Z | Zs])
 		;
@@ -800,17 +806,16 @@ bound_inst_list_MSG(Xs, InstMapX, Ys, InstMapY, InstTable, ModuleInfo,
 		)
 	;
 		% Check that it's OK to round off the uniqueness information.
-		instmap__init_reachable(EmptyInstMap),	% YYY
 		( 
 			Uniq = shared,
 			inst_is_ground(bound(shared, List),
-				EmptyInstMap, InstTable, ModuleInfo),
+				InstMap, InstTable, ModuleInfo),
 			inst_is_not_partly_unique(bound(shared, List),
-				EmptyInstMap, InstTable, ModuleInfo)
+				InstMap, InstTable, ModuleInfo)
 		;
 			Uniq = unique,
 			inst_is_unique(bound(unique, List),
-				EmptyInstMap, InstTable, ModuleInfo)
+				InstMap, InstTable, ModuleInfo)
 		),		
 		Inst = ground(Uniq, no)
 	).
