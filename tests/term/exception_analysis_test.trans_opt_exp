@@ -1,0 +1,15 @@
+:- module exception_analysis_test.
+:- pragma termination_info(exception_analysis_test.test1((builtin.in)), finite(0, [no, no]), can_loop).
+:- pragma termination_info(exception_analysis_test.test2((builtin.in), (builtin.in)), finite(0, [no, no, no]), can_loop).
+:- pragma termination_info(exception_analysis_test.test3((builtin.in), (builtin.in)), finite(0, [no, no, no]), can_loop).
+:- pragma termination_info(exception_analysis_test.test4((builtin.in), (builtin.in)), finite(0, [no, no, no]), can_loop).
+:- pragma termination_info(exception_analysis_test.mutual_test1((builtin.in), (builtin.in)), finite(0, [no, no, no]), can_loop).
+:- pragma termination_info(exception_analysis_test.mutual_test2((builtin.in), (builtin.in)), finite(0, [no, no]), can_loop).
+:- pragma termination_info(exception_analysis_test.wrap_equals((builtin.in), (builtin.in)), infinite, cannot_loop).
+:- pragma exceptions(predicate, (exception_analysis_test.test1), 1, 0, will_not_throw).
+:- pragma exceptions(predicate, (exception_analysis_test.test2), 2, 0, may_throw(type_exception)).
+:- pragma exceptions(predicate, (exception_analysis_test.test3), 2, 0, conditional).
+:- pragma exceptions(predicate, (exception_analysis_test.test4), 2, 0, may_throw(user_exception)).
+:- pragma exceptions(predicate, (exception_analysis_test.mutual_test1), 2, 0, conditional).
+:- pragma exceptions(predicate, (exception_analysis_test.mutual_test2), 2, 0, conditional).
+:- pragma exceptions(predicate, (exception_analysis_test.wrap_equals), 2, 0, may_throw(user_exception)).

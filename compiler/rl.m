@@ -948,7 +948,7 @@ rl__goal_can_be_removed(ModuleInfo, Goals) :-
 		all [Goal] (
 			list__member(Goal, Goals)
 		=>
-			goal_cannot_loop_or_throw(Goal)
+			goal_cannot_loop_or_throw(ModuleInfo, Goal)
 		)
 	).
 

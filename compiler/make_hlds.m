@@ -757,6 +757,18 @@ add_item_decl_pass_2(pragma(Pragma), Context, !Status, !Module, !IO) :-
 				ModeNum, UnusedArgs, Context, !Module, !IO)
 		)
 	;
+		Pragma = exceptions(PredOrFunc, SymName, Arity, ModeNum,
+			ThrowStatus),
+		( ImportStatus \= opt_imported ->
+			prog_out.write_context(Context, !IO),
+			io.write_string("Error: illegal use of pragma " ++
+				"`exceptions'.\n", !IO),
+			module_info_incr_errors(!Module)
+		;
+			add_pragma_exceptions(PredOrFunc, SymName, Arity,
+				ModeNum, ThrowStatus, Context, !Module, !IO)
+		)
+	;
 		% Handle pragma type_spec decls later on (when we process
 		% clauses).
 		Pragma = type_spec(_, _, _, _, _, _, _, _)
@@ -1486,6 +1498,36 @@ add_pragma_unused_args(PredOrFunc, SymName, Arity, ModeNum, UnusedArgs,
 		io__write_string("Internal compiler error: " ++
 			"unknown predicate in `pragma unused_args'.\n", !IO),
 		module_info_incr_errors(!Module)
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_pragma_exceptions(pred_or_func::in, sym_name::in, arity::in,
+	mode_num::in, exception_status::in, prog_context::in,
+	module_info::in, module_info::out, io::di, io::uo) is det.
+
+add_pragma_exceptions(PredOrFunc, SymName, Arity, ModeNum, ThrowStatus,
+		_Context, !Module, !IO) :-
+	module_info_get_predicate_table(!.Module, Preds),
+	(
+		predicate_table_search_pf_sym_arity(Preds,
+			is_fully_qualified, PredOrFunc, SymName,
+			Arity, [PredId])
+	->
+		module_info_exception_info(!.Module, ExceptionsInfo0),
+		% convert the mode number to a proc_id
+		proc_id_to_int(ProcId, ModeNum),
+		map__set(ExceptionsInfo0, proc(PredId, ProcId), ThrowStatus,
+			ExceptionsInfo),
+		module_info_set_exception_info(ExceptionsInfo, !Module)
+	;
+		% XXX We'll just ignore this for the time being - 
+		% it causes errors with transitive-intermodule optimization. 
+		%prog_out__write_context(Context, !IO),
+		%io__write_string("Internal compiler error: " ++
+		%	"unknown predicate in `pragma exceptions'.\n", !IO),
+		%module_info_incr_errors(!Module)
+		true	
 	).
 
 %-----------------------------------------------------------------------------%

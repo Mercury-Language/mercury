@@ -67,3 +67,8 @@ warnings
 	comparing the warnings emitted by the compiler with those given
 	in the hand-written `.exp' file. 
 
+term
+	This directory tests the compiler's termination analyser.  These
+	tests work by comparing the contents of the .trans_opt file emitted
+	by the compiler with the hand-written `.trans_opt_exp' file.
+	This directory is also used for testing the compiler's exception analysis.

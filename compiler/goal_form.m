@@ -21,16 +21,38 @@
 
 :- import_module list.
 
+%
+% The first three versions may be more accurate because they can use
+% results of the termination and exception analyses.
+%
+
 	% Succeeds if the goal cannot loop forever.
 :- pred goal_cannot_loop(module_info::in, hlds_goal::in) is semidet.
+	
+	% Succeeds if the goal can loop forever.
+:- pred goal_can_loop(module_info::in, hlds_goal::in) is semidet.
+
+	% Succeeds if the goal cannot throw an exception.
+:- pred goal_cannot_throw(module_info::in, hlds_goal::in) is semidet.
+
+	% Succeeds if the goal can throw an exception.
+:- pred goal_can_throw(module_info::in, hlds_goal::in) is semidet.
+
+	% Succeeds if the goal cannot loop forever or throw an exception.
+:- pred goal_cannot_loop_or_throw(module_info::in, hlds_goal::in) is semidet.
+
+	% Succeeds if the goal can loop forever or throw an exception.
+:- pred goal_can_loop_or_throw(module_info::in, hlds_goal::in) is semidet.
+
+%
+% These versions do not use the results of the termination or exception 
+% analyses.
+%
 
 	% Succeeds if the goal cannot loop forever or throw an exception.
 :- pred goal_cannot_loop_or_throw(hlds_goal::in) is semidet.
 
-	% Succeeds if the goal can loop forever.
-:- pred goal_can_loop(module_info::in, hlds_goal::in) is semidet.
-
-	% Succeeds if the goal can loop forever or throw an exception.
+	% Succeed if the goal can loop forever or throw an exception.
 :- pred goal_can_loop_or_throw(hlds_goal::in) is semidet.
 
 	% contains_only_builtins(G) is true if G is a leaf procedure,
@@ -98,21 +120,34 @@
 :- import_module parse_tree__prog_data.
 :- import_module transform_hlds__term_util.
 
-:- import_module bool, int, std_util, require.
+:- import_module bool, int, map, std_util, require.
 
 %-----------------------------------------------------------------------------%
-
-goal_can_loop(ModuleInfo, Goal) :-
-	\+ goal_cannot_loop(ModuleInfo, Goal).
-
-goal_can_loop_or_throw(Goal) :-
-	\+ goal_cannot_loop_or_throw(Goal).
 
 goal_cannot_loop(ModuleInfo, Goal) :-
 	goal_cannot_loop_aux(yes(ModuleInfo), Goal).
 
+goal_can_loop(ModuleInfo, Goal) :-
+	\+ goal_cannot_loop(ModuleInfo, Goal).
+
+goal_cannot_throw(ModuleInfo, Goal) :-
+	goal_cannot_throw_aux(yes(ModuleInfo), Goal).
+
+goal_can_throw(ModuleInfo, Goal) :-
+	not goal_cannot_throw(ModuleInfo, Goal).
+
+goal_cannot_loop_or_throw(ModuleInfo, Goal) :-
+	goal_cannot_loop_aux(yes(ModuleInfo), Goal),
+	goal_cannot_throw_aux(yes(ModuleInfo), Goal).
+
+goal_can_loop_or_throw(ModuleInfo, Goal) :-
+	not goal_cannot_loop_or_throw(ModuleInfo, Goal).
+
 goal_cannot_loop_or_throw(Goal) :-
 	goal_cannot_loop_aux(no, Goal).
+
+goal_can_loop_or_throw(Goal) :-
+	\+ goal_cannot_loop_or_throw(Goal).
 
 :- pred goal_cannot_loop_aux(maybe(module_info)::in, hlds_goal::in) is semidet.
 
@@ -151,6 +186,54 @@ goal_cannot_loop_expr(MaybeModuleInfo,
 	proc_info_get_maybe_termination_info(ProcInfo, MaybeTermInfo),
 	MaybeTermInfo = yes(cannot_loop).
 goal_cannot_loop_expr(_, unify(_, _, _, Uni, _)) :-
+	(
+		Uni = assign(_, _)
+	;
+		Uni = simple_test(_, _)
+	;
+		Uni = construct(_, _, _, _, _, _, _)
+	;
+		Uni = deconstruct(_, _, _, _, _, _)
+	).
+		% Complicated unifies are _non_builtin_
+
+%-----------------------------------------------------------------------------%
+
+goal_cannot_throw(ModuleInfo, Goal) :-
+	goal_cannot_throw_aux(yes(ModuleInfo), Goal).
+
+:- pred goal_cannot_throw_aux(maybe(module_info)::in,
+		hlds_goal::in) is semidet.	
+
+goal_cannot_throw_aux(MaybeModuleInfo, GoalExpr - _) :-
+	goal_cannot_throw_expr(MaybeModuleInfo, GoalExpr).
+
+:- pred goal_cannot_throw_expr(maybe(module_info)::in,
+		hlds_goal_expr::in) is semidet.
+
+goal_cannot_throw_expr(MaybeModuleInfo, conj(Goals)) :-
+	list.member(Goal, Goals) =>
+		goal_cannot_throw_aux(MaybeModuleInfo, Goal).
+goal_cannot_throw_expr(MaybeModuleInfo, disj(Goals)) :-
+	list.member(Goal, Goals) =>
+		goal_cannot_throw_aux(MaybeModuleInfo, Goal).
+goal_cannot_throw_expr(MaybeModuleInfo, switch(_Var, _Category, Cases)) :-
+	list.member(case(_, Goal), Cases) =>
+		goal_cannot_throw_aux(MaybeModuleInfo, Goal).
+goal_cannot_throw_expr(MaybeModuleInfo, not(Goal)) :-
+	goal_cannot_throw_aux(MaybeModuleInfo, Goal).
+goal_cannot_throw_expr(MaybeModuleInfo, some(_Vars, _, Goal)) :-
+	goal_cannot_throw_aux(MaybeModuleInfo, Goal).
+goal_cannot_throw_expr(MaybeModuleInfo, if_then_else(_, Cond, Then, Else)) :-
+	goal_cannot_throw_aux(MaybeModuleInfo, Cond),
+	goal_cannot_throw_aux(MaybeModuleInfo, Then),
+	goal_cannot_throw_aux(MaybeModuleInfo, Else).
+goal_cannot_loop_expr(MaybeModuleInfo,
+		call(PredId, ProcId, _, _, _, _)) :-
+	MaybeModuleInfo = yes(ModuleInfo),
+	module_info_exception_info(ModuleInfo, ExceptionInfo),
+	map.search(ExceptionInfo, proc(PredId, ProcId), will_not_throw).
+goal_cannot_throw_expr(_, unify(_, _, _, Uni, _)) :-
 	(
 		Uni = assign(_, _)
 	;

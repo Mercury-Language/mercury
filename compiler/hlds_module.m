@@ -85,6 +85,10 @@
 	% map from proc to a list of unused argument numbers.
 :- type unused_arg_info == map(pred_proc_id, list(int)).
 
+	% Map from proc to an indication of whether or not it
+	% might throw an exception.
+:- type exception_info == map(pred_proc_id, exception_status).
+
 	% List of procedures for which there are user-requested type
 	% specializations, and a list of predicates which should be
 	% processed by higher_order.m to ensure the production of those
@@ -297,10 +301,16 @@
 :- pred module_info_unused_arg_info(module_info::in, unused_arg_info::out)
 	is det.
 
+:- pred module_info_exception_info(module_info::in, exception_info::out)
+	is det.
+
 :- pred module_info_set_proc_requests(proc_requests::in,
 	module_info::in, module_info::out) is det.
 
 :- pred module_info_set_unused_arg_info(unused_arg_info::in,
+	module_info::in, module_info::out) is det.
+
+:- pred module_info_set_exception_info(exception_info::in,
 	module_info::in, module_info::out) is det.
 
 :- pred module_info_set_num_errors(int::in, module_info::in, module_info::out)
@@ -523,6 +533,12 @@
 						% module which has been
 						% exported in .opt files.
 
+		exception_info			:: exception_info,
+						% exception information about
+						% procedures in the current
+						% module (this includes
+						% opt_imported procedures).
+
 		lambda_number_counter		:: counter,
 
 		model_non_pragma_counter	:: counter,
@@ -578,6 +594,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
 	map__init(Ctors),
 	set__init(StratPreds),
 	map__init(UnusedArgInfo),
+	map__init(ExceptionInfo),
 
 	set__init(TypeSpecPreds),
 	set__init(TypeSpecForcePreds),
@@ -600,10 +617,10 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
 	map__init(FieldNameTable),
 
 	map__init(NoTagTypes),
-	ModuleSubInfo = module_sub(Name, Globals, no, [], [], [], [], no, 0,
-		[], [], StratPreds, UnusedArgInfo, counter__init(1),
-		counter__init(1), ImportedModules, IndirectlyImportedModules,
-		no_aditi_compilation, TypeSpecInfo,
+	ModuleSubInfo = module_sub(Name, Globals, no, [], [], [], [], no, 0, 
+		[], [], StratPreds, UnusedArgInfo, ExceptionInfo,
+		counter__init(1), counter__init(1), ImportedModules,
+		IndirectlyImportedModules, no_aditi_compilation, TypeSpecInfo,
 		NoTagTypes, init_analysis_info(mmc)),
 	ModuleInfo = module(ModuleSubInfo, PredicateTable, Requests,
 		UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
@@ -673,6 +690,7 @@ module_info_get_pragma_exported_procs(MI,
 module_info_type_ctor_gen_infos(MI, MI ^ sub_info ^ type_ctor_gen_infos).
 module_info_stratified_preds(MI, MI ^ sub_info ^ must_be_stratified_preds).
 module_info_unused_arg_info(MI, MI ^ sub_info ^ unused_arg_info).
+module_info_exception_info(MI, MI ^ sub_info ^ exception_info).
 module_info_get_lambda_counter(MI, MI ^ sub_info ^ lambda_number_counter).
 module_info_get_model_non_pragma_counter(MI,
 	MI ^ sub_info ^ model_non_pragma_counter).
@@ -713,6 +731,8 @@ module_info_set_stratified_preds(NewVal, MI,
 	MI ^ sub_info ^ must_be_stratified_preds := NewVal).
 module_info_set_unused_arg_info(NewVal, MI,
 	MI ^ sub_info ^ unused_arg_info := NewVal).
+module_info_set_exception_info(NewVal, MI,
+	MI ^ sub_info ^ exception_info := NewVal).
 module_info_set_lambda_counter(NewVal, MI,
 	MI ^ sub_info ^ lambda_number_counter := NewVal).
 module_info_set_model_non_pragma_counter(NewVal, MI,

@@ -6266,6 +6266,13 @@ Specify a rough limit on the size of a goal
 to be optimized by deforestation.
 A value of -1 specifies no limit. The default is 15.
 
+@sp 1
+@item --analyse-exceptions
+@findex --analyse-exceptions
+Try to identify those procedures that cannot throw an
+exception.  This information can be used by some 
+optimization passes.
+
 @end table
 
 @node MLDS backend (MLDS -> MLDS) optimization options

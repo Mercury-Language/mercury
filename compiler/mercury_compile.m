@@ -65,6 +65,7 @@
 :- import_module transform_hlds__lambda.
 :- import_module backend_libs__type_ctor_info.
 :- import_module transform_hlds__termination.
+:- import_module transform_hlds__exception_analysis.
 :- import_module transform_hlds__higher_order.
 :- import_module transform_hlds__accumulator.
 :- import_module transform_hlds__inlining.
@@ -2099,6 +2100,8 @@ mercury_compile__maybe_write_optfile(MakeOptInt, !HLDS, !IO) :-
 	globals__lookup_bool_option(Globals, verbose, Verbose),
 	globals__lookup_bool_option(Globals, statistics, Stats),
 	globals__lookup_bool_option(Globals, termination, Termination),
+	globals__lookup_bool_option(Globals, analyse_exceptions,
+		ExceptionAnalysis),
 
 	( MakeOptInt = yes ->
 		intermod__write_optfile(!HLDS, !IO),
@@ -2110,11 +2113,18 @@ mercury_compile__maybe_write_optfile(MakeOptInt, !HLDS, !IO) :-
 		(
 			( IntermodArgs = yes
 			; Termination = yes
+			; ExceptionAnalysis = yes
 			)
 		->
 			mercury_compile__frontend_pass_by_phases(!HLDS,
 				FoundModeError, !IO),
 			( FoundModeError = no ->
+				( ExceptionAnalysis = yes ->
+				    mercury_compile__maybe_exception_analysis(
+				        Verbose, Stats, !HLDS, !IO)
+				;
+				    true
+				),
 				( IntermodArgs = yes ->
 					mercury_compile__maybe_unused_args(
 						Verbose, Stats, !HLDS, !IO)
@@ -2174,7 +2184,11 @@ is_bool(_).
 mercury_compile__output_trans_opt_file(HLDS0, !IO) :-
 	globals__io_lookup_bool_option(verbose, Verbose, !IO),
 	globals__io_lookup_bool_option(statistics, Stats, !IO),
-	mercury_compile__maybe_termination(Verbose, Stats, HLDS0, HLDS, !IO),
+	mercury_compile__maybe_exception_analysis(Verbose, Stats, HLDS0,
+		HLDS1, !IO),
+	mercury_compile__maybe_dump_hlds(HLDS1, 118, "exception_analysis",
+		!IO),
+	mercury_compile__maybe_termination(Verbose, Stats, HLDS1, HLDS, !IO),
 	mercury_compile__maybe_dump_hlds(HLDS, 120, "termination", !IO),
 	trans_opt__write_optfile(HLDS, !IO).
 
@@ -2278,6 +2292,14 @@ mercury_compile__middle_pass(ModuleName, !HLDS, !IO) :-
 	% ;
 	%	true
 	% ),
+	
+	% Exception analysis and termination analysis need to come before any
+	% optimization passes that could benefit from the information that
+	% they provide.
+	%	
+	mercury_compile__maybe_exception_analysis(Verbose, Stats, !HLDS, !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 118, "exception_analysis",
+		!IO),
 
 	mercury_compile__maybe_termination(Verbose, Stats, !HLDS, !IO),
 	mercury_compile__maybe_dump_hlds(!.HLDS, 120, "termination", !IO),
@@ -2750,6 +2772,22 @@ mercury_compile__check_determinism(Verbose, Stats, !HLDS, FoundError, !IO) :-
 			"% Program is determinism-correct.\n", !IO)
 	),
 	maybe_report_stats(Stats, !IO).
+
+:- pred mercury_compile.maybe_exception_analysis(bool::in, bool::in,
+	module_info::in, module_info::out, io::di, io::uo) is det.
+
+mercury_compile.maybe_exception_analysis(Verbose, Stats, !HLDS, !IO) :-
+	globals.io_lookup_bool_option(analyse_exceptions, ExceptionAnalysis,
+		!IO),
+	(
+		ExceptionAnalysis = yes,
+		maybe_write_string(Verbose, "% Analysing exceptions...\n", !IO),
+		exception_analysis.process_module(!HLDS, !IO),
+		maybe_write_string(Verbose, "% done.\n", !IO),
+		maybe_report_stats(Stats, !IO)
+	;
+		ExceptionAnalysis = no
+	).
 
 :- pred mercury_compile__maybe_termination(bool::in, bool::in,
 	module_info::in, module_info::out, io::di, io::uo) is det.

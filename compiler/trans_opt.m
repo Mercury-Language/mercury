@@ -30,14 +30,16 @@
 %
 % This module writes out the interface for transitive intermodule optimization.
 % The .trans_opt file includes:
-%	- pragma termination_info declarations for all exported preds
+%	:- pragma termination_info declarations for all exported preds
+%	:- pragma exceptions declartions for all exported preds 
 % All these items should be module qualified.
 % Constructors should be explicitly type qualified.
 %
 % Note that the .trans_opt file does not (yet) include clauses,
 % `pragma c_code' declarations, or any of the other information
 % that would be needed for inlining or other optimizations;
-% currently it is used *only* for termination analysis.
+% currently it is only used for termination analysis and
+% exception analysis.
 %
 % This module also contains predicates to read in the .trans_opt files.
 %
@@ -46,8 +48,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__trans_opt.
-
-%-----------------------------------------------------------------------------%
 
 :- interface.
 
@@ -80,6 +80,7 @@
 :- import_module parse_tree__prog_out.
 :- import_module transform_hlds__intermod.
 :- import_module transform_hlds__termination.
+:- import_module transform_hlds__exception_analysis.
 
 :- import_module set, string, list, map, varset, term, std_util.
 
@@ -121,7 +122,13 @@ trans_opt__write_optfile(Module, !IO) :-
 		module_info_predids(Module, PredIds),
 		list__foldl(termination__write_pred_termination_info(Module),
 			PredIds, !IO),
-
+		
+		module_info_exception_info(Module, ExceptionInfo),
+		list__foldl(
+			exception_analysis__write_pragma_exceptions(Module,
+				ExceptionInfo),
+			PredIds, !IO),
+		
 		io__set_output_stream(OldStream, _, !IO),
 		io__close_output(Stream, !IO),
 
@@ -132,8 +139,9 @@ trans_opt__write_optfile(Module, !IO) :-
 	).
 
 %-----------------------------------------------------------------------------%
-
-	% Read in and process the transitive optimization interfaces.
+%
+% Read and process the transitive optimization interfaces.
+%
 
 trans_opt__grab_optfiles(TransOptDeps, !Module, FoundError, !IO) :-
 	globals__io_lookup_bool_option(verbose, Verbose, !IO),
@@ -172,6 +180,9 @@ read_trans_opt_files([Import | Imports], !Items, !Error, !IO) :-
 
 	intermod__update_error_status(trans_opt, FileName, ModuleError,
 		Messages, !Error, !IO),
-
 	list__append(!.Items, NewItems, !:Items),
 	read_trans_opt_files(Imports, !Items, !Error, !IO).
+
+%-----------------------------------------------------------------------------%
+:- end_module trans_opt.
+%-----------------------------------------------------------------------------%

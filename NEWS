@@ -37,6 +37,9 @@ Changes to the Mercury compiler:
   code.
 * It's now easier to use shared libraries on Linux/x86 systems
   with `mmc --make'.
+* A new analysis: `--analyse-exceptions'.
+  The compiler can use the results of this analysis to try and improve
+  some optimizations.
 
 Portability improvements:
 * We have made the implementation compatible with gcc 3.4.
@@ -319,6 +322,10 @@ Changes to the Mercury compiler:
   location of the standard library (MERCURY_ALL_C_INCL_DIRS,
   MERCURY_ALL_MC_C_INCL_DIRS, MERCURY_INT_DIR, MERCURY_C_LIB_DIR,
   MERCURY_MOD_LIB_MODS, MERCURY_TRACE_LIB_MODS) have been removed.
+
+* There is a new analysis: `--analyse-exceptions'.  This identifies
+  predicates that will not throw an exception.  This information is
+  made available to the optimizing passes of the compiler. 
 
 Portability improvements:
 

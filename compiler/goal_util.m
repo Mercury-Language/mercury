@@ -1158,7 +1158,7 @@ goal_util__can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
 		InstmapBeforeLaterGoal, VarTypes, ModuleInfo).
 
 
-goal_util__reordering_maintains_termination(_ModuleInfo, FullyStrict,
+goal_util__reordering_maintains_termination(ModuleInfo, FullyStrict, 
 		EarlierGoal, LaterGoal) :-
 	EarlierGoal = _ - EarlierGoalInfo,
 	LaterGoal = _ - LaterGoalInfo,
@@ -1182,7 +1182,7 @@ goal_util__reordering_maintains_termination(_ModuleInfo, FullyStrict,
 		% (can_loop, can_fail), since this could worsen
 		% the termination properties of the program.
 	( EarlierCanFail = can_fail ->
-		goal_cannot_loop_or_throw(LaterGoal)
+		goal_cannot_loop_or_throw(ModuleInfo, LaterGoal)
 	;
 		true
 	).

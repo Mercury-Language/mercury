@@ -328,7 +328,16 @@
 			% Used for inter-module unused argument
 			% removal, should only appear in .opt files.
 		)
-
+	;
+		exceptions(
+			exceptions_p_or_f :: pred_or_func,
+			exceptions_name	  :: sym_name,
+			exceptions_arity  :: arity,
+			exceptions_mode	  :: mode_num,
+			exceptions_status :: exception_status
+			% PredName, Arity, Mode number, Exception status.
+			% Should only appear in `.opt' or `.trans_opt' files.
+		)
 	%
 	% Diagnostics pragmas (pragmas related to compiler warnings/errors)
 	%
@@ -636,6 +645,38 @@
 	% We don't want to use the `proc_id' type here since the parse tree
 	% (prog_data.m) should not depend on the HLDS.
 :- type mode_num == int.
+
+%
+% Stuff for the `exceptions' pragma.
+%
+
+:- type exception_status 
+		---> 	will_not_throw 
+				% This procedure will not throw an
+				% exception.
+		
+		;	may_throw(exception_type)
+				% This procedure may throw an exception
+				% The exception is classified by the 
+				% `exception_type' type.
+		;	conditional.
+				% Whether the procedure will not throw an
+				% exception depends upon the value of one
+				% or more polymorpyhic arguments.
+				% XXX This needs to be extended for ho
+				% preds.  (See exception_analysis.m for
+				% more details).
+:- type exception_type	
+		--->	user_exception
+				% The exception that might be thrown is of
+				% a result of some code calling
+				% exception.throw/1.
+		;	type_exception.	
+				% The exception is a result of a compiler
+				% introduced unification/comparison maybe 
+				% throwing an exception (in the case of 
+				% user-defined equality or comparison) or
+				% propagating an exception from them.
 
 %
 % Stuff for the `type_spec' pragma.
@@ -1718,4 +1759,6 @@ add_extra_attribute(NewAttribute, Attributes0,
 extra_attribute_to_string(max_stack_size(Size)) =
 	"max_stack_size(" ++ string__int_to_string(Size) ++ ")".
 
+%-----------------------------------------------------------------------------%
+:- end_module prog_data.
 %-----------------------------------------------------------------------------%

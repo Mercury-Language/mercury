@@ -142,6 +142,9 @@
 :- pred mercury_output_pragma_unused_args(pred_or_func::in, sym_name::in,
 	int::in, mode_num::in, list(int)::in, io::di, io::uo) is det.
 
+:- pred mercury_output_pragma_exceptions(pred_or_func::in, sym_name::in,
+	int::in, mode_num::in, exception_status::in, io::di, io::uo) is det.
+
 	% Write an Aditi index specifier.
 :- pred mercury_output_index_spec(index_spec::in, io::di, io::uo) is det.
 
@@ -575,6 +578,11 @@ mercury_output_item(_UnqualifiedItemNames, pragma(Pragma), Context) -->
 			Arity, ModeNum, UnusedArgs) },
 		mercury_output_pragma_unused_args(PredOrFunc,
 			PredName, Arity, ModeNum, UnusedArgs)
+	;
+		{ Pragma = exceptions(PredOrFunc, PredName,
+			Arity, ModeNum, ThrowStatus) },
+		mercury_output_pragma_exceptions(PredOrFunc,
+			PredName, Arity, ModeNum, ThrowStatus)
 	;
 		{ Pragma = fact_table(Pred, Arity, FileName) },
 		mercury_format_pragma_fact_table(Pred, Arity, FileName)
@@ -3105,6 +3113,38 @@ mercury_format_int_list_2([First | Rest]) -->
 	add_string(", "),
 	add_int(First),
 	mercury_format_int_list_2(Rest).
+
+%-----------------------------------------------------------------------------%
+
+mercury_output_pragma_exceptions(PredOrFunc, SymName, Arity, ModeNum,
+		ThrowStatus, !IO) :-
+	io.write_string(":- pragma exceptions(", !IO),
+	write_pred_or_func(PredOrFunc, !IO),
+	io.write_string(", ", !IO),
+	mercury_output_bracketed_sym_name(SymName, !IO),
+	io.write_string(", ", !IO),
+	io.write_int(Arity, !IO),
+	io.write_string(", ", !IO),
+	io.write_int(ModeNum, !IO),
+	io.write_string(", ", !IO),
+	(
+		ThrowStatus = will_not_throw,
+		io.write_string("will_not_throw", !IO)
+	;
+		ThrowStatus = may_throw(ExceptionType),
+		io.write_string("may_throw(", !IO),
+		(
+			ExceptionType = user_exception,
+			io.write_string("user_exception)", !IO)
+		;
+			ExceptionType = type_exception,
+			io.write_string("type_exception)", !IO)
+		)
+	;
+		ThrowStatus = conditional,
+		io.write_string("conditional", !IO)
+	),
+	io.write_string(").\n", !IO).
 
 %-----------------------------------------------------------------------------%
 

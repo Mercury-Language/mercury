@@ -37,6 +37,8 @@
    :- include_module term_util.
    :- include_module lp. % this could alternatively go in the `libs' module
 
+:- include_module exception_analysis.
+
 % Optimizations (HLDS -> HLDS)
 :- include_module higher_order.
 :- include_module inlining.

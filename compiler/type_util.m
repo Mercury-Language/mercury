@@ -111,6 +111,11 @@
 :- pred type_body_is_solver_type(module_info::in, hlds_type_body::in)
 		is semidet.
 
+	% Succeeds iff one or more of the type constructors for a given
+	% type is existentially quantified.
+	%
+:- pred type_util__is_existq_type(module_info::in, (type)::in) is semidet.
+
 	% Certain types, e.g. io__state and store__store(S),
 	% are just dummy types used to ensure logical semantics;
 	% there is no need to actually pass them, and so when
@@ -892,6 +897,14 @@ type_util__type_body_is_solver_type(ModuleInfo, TypeBody) :-
 	;
 		TypeBody = eqv_type(Type),
 		type_util__is_solver_type(ModuleInfo, Type)
+	).
+
+type_util__is_existq_type(Module, Type) :-
+	type_constructors(Type, Module, Constructors),
+	some [Constructor]
+	(
+		list.member(Constructor, Constructors),
+		Constructor ^ cons_exist \= []
 	).
 
 	% Certain types, e.g. io__state and store__store(S),

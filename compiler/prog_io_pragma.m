@@ -1233,6 +1233,59 @@ parse_pragma_type(ModuleName, "does_not_terminate", PragmaTerms,
 			Pragma = does_not_terminate(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
+parse_pragma_type(ModuleName, "exceptions", PragmaTerms,
+		ErrorTerm, _VarSet, Result) :-
+	(
+		PragmaTerms = [
+			PredOrFuncTerm,
+			PredNameTerm,
+			term.functor(term.integer(Arity), [], _),
+			term.functor(term.integer(ModeNum), [], _),
+			ThrowStatusTerm
+		],
+		(
+			PredOrFuncTerm = term.functor(
+				term.atom("predicate"), [], _),
+			PredOrFunc = predicate
+		;	
+			PredOrFuncTerm = term.functor(
+				term.atom("function"), [], _),
+			PredOrFunc = function
+		),
+		parse_implicitly_qualified_term(ModuleName, PredNameTerm,
+			ErrorTerm, "`:- pragma exceptions' declaration",
+			PredNameResult),
+		PredNameResult = ok(PredName, []),
+		(
+			ThrowStatusTerm = term.functor(
+				term.atom("will_not_throw"), [], _),
+			ThrowStatus = will_not_throw
+		;
+			ThrowStatusTerm = term.functor(
+				term.atom("may_throw"),
+				[ExceptionTypeTerm], _),
+			(
+				ExceptionTypeTerm = term.functor(
+					term.atom("user_exception"), [], _),
+				ExceptionType = user_exception
+			;
+				ExceptionTypeTerm = term.functor(
+					term.atom("type_exception"), [], _),
+				ExceptionType = type_exception
+			),
+			ThrowStatus = may_throw(ExceptionType)
+		;
+			ThrowStatusTerm = term.functor(
+				term.atom("conditional"), [], _),
+			ThrowStatus = conditional
+		)
+	->	
+		Result = ok(pragma(exceptions(PredOrFunc, PredName,
+			Arity, ModeNum, ThrowStatus)))
+	;
+		Result = error("error in `:- pragma exceptions'", ErrorTerm)
+	).
+
 parse_pragma_type(ModuleName, "check_termination", PragmaTerms,
 		ErrorTerm, _VarSet, Result) :-
 	parse_simple_pragma(ModuleName, "check_termination",

@@ -480,6 +480,7 @@
 		;	termination_norm
 		;	termination_error_limit
 		;	termination_path_limit
+		;	analyse_exceptions
 	%	- HLDS->LLDS
 		;	smart_indexing
 		;	  dense_switch_req_density
@@ -1017,7 +1018,8 @@ option_defaults_2(special_optimization_option, [
 	termination_norm	-	string("total"),
 	termination_error_limit	-	int(3),
 	termination_path_limit	-	int(256),
-	split_c_files		-	bool(no)
+	split_c_files		-	bool(no),
+	analyse_exceptions 	-	bool(no)
 ]).
 option_defaults_2(optimization_option, [
 		% Optimization options
@@ -1741,6 +1743,7 @@ long_option("termination-error-limit",	termination_error_limit).
 long_option("term-err-limit",		termination_error_limit).
 long_option("termination-path-limit",	termination_path_limit).
 long_option("term-path-limit",		termination_path_limit).
+long_option("analyse-exceptions", 	analyse_exceptions).
 
 % HLDS->LLDS optimizations
 long_option("smart-indexing",		smart_indexing).
@@ -3649,7 +3652,11 @@ options_help_hlds_hlds_optimization -->
 		"--deforestation-size-threshold <threshold>",
 		"\tSpecify a rough limit on the size of a goal",
 		"\tto be optimized by deforestation.",
-		"\tA value of -1 specifies no limit. The default is 15."
+		"\tA value of -1 specifies no limit. The default is 15.",
+		"--analyse-exceptions",
+		"\tEnable exception analysis.  Identify those",
+		"\tprocedures that will not throw an exception.",
+		"\tSome optimizations can make use of this information."
 	]).
 
 :- pred options_help_hlds_llds_optimization(io::di, io::uo) is det.
