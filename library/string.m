@@ -81,12 +81,14 @@
 
 :- pred string__replace(string, string, string, string).
 :- mode string__replace(in, in, in, out) is semidet.
+% string__replace(String0, Search, Replace, String):
 % 	string__replace replaces the first occurence of the second string in 
 % 	the first string with the third string to give the fourth string.
 % 	It fails if the second string does not occur in the first.
 
 :- pred string__replace_all(string, string, string, string).
 :- mode string__replace_all(in, in, in, out) is det.
+% string__replace_all(String0, Search, Replace, String):
 % 	string__replace_all replaces any occurences of the second string in 
 % 	the first string with the third string to give the fourth string.
 
