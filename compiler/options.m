@@ -36,18 +36,21 @@ option_defaults([
 	verbose		-	bool(no),
 	very_verbose	-	bool(no),
 	dump_hlds	-	bool(no),
-	generate_code	-	bool(no)
+	generate_code	-	bool(no),
+	builtin_module	-	string("mercury_builtin")
 ]).
 
 short_option('v', 		verbose).
 short_option('w', 		very_verbose).
 short_option('d', 		dump_hlds).
 short_option('g', 		generate_code).
+short_option('b', 		builtin_module).
 
 long_option("verbose",		verbose).
 long_option("very-verbose",	very_verbose).
 long_option("dump-hlds",	dump_hlds).
 long_option("generate-code",	generate_code).
+long_option("builtin-module",	builtin_module).
 
 maybe_report_stats(yes) --> io__report_stats.
 maybe_report_stats(no) --> [].
