@@ -54,14 +54,14 @@
 :- import_module globals, options.
 :- import_module make_tags, quantification, shapes.
 :- import_module code_util, unify_proc, special_pred, type_util.
-:- import_module mercury_to_mercury, passes_aux.
+:- import_module mercury_to_mercury, passes_aux, clause_to_proc.
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ module_info_init(Name, Module0) },
-	add_item_list_decls(Items, local, Module0, Module1),
+	add_item_list_decls_pass_1(Items, local, Module0, Module1),
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
-	add_item_list_type_defns(Items, local, Module1, Module2),
+	add_item_list_decls_pass_2(Items, local, Module1, Module2),
 	maybe_report_stats(Statistics),
 		% balance the binary trees
 	{ module_info_optimize(Module2, Module3) },
@@ -73,34 +73,52 @@ parse_tree_to_hlds(module(Name, Items), Module) -->
 
 %-----------------------------------------------------------------------------%
 
-	% add the declarations (other than type definitions)
-	% one by one to the module
+	% pass 1:
+	% Add the declarations one by one to the module,
+	% except for type definitions and pragmas.
 
-:- pred add_item_list_decls(item_list, import_status, module_info, module_info,
+:- pred add_item_list_decls_pass_1(item_list, import_status,
+				module_info, module_info,
 				io__state, io__state).
-:- mode add_item_list_decls(in, in, in, out, di, uo) is det.
+:- mode add_item_list_decls_pass_1(in, in, in, out, di, uo) is det.
 
-add_item_list_decls([], _, Module, Module) --> [].
-add_item_list_decls([Item - Context | Items], Status0, Module0, Module) -->
-	add_item_decl(Item, Context, Status0, Module0, Status1, Module1),
-	add_item_list_decls(Items, Status1, Module1, Module).
+add_item_list_decls_pass_1([], _, Module, Module) --> [].
+add_item_list_decls_pass_1([Item - Context | Items], Status0, Module0, Module)
+		-->
+	add_item_decl_pass_1(Item, Context, Status0, Module0, Status1, Module1),
+	add_item_list_decls_pass_1(Items, Status1, Module1, Module).
 
-	% Add the type definitions one by one to the module.
-	% This needs to come after we have added the pred declarations,
+	% pass 2:
+	% Add the type definitions and pragmas one by one to the module,
+	% and add default modes for functions with no mode declaration.
+	%
+	% Adding type definitions needs to come after we have added the
+	% pred declarations,
 	% since we need to have the pred_id for `index/2' and `compare/3'
 	% when we add compiler-generated clauses for `compare/3'.
 	% (And similarly for other compiler-generated predicates like that.)
+	%
+	% Adding pragmas needs to come after we have added the
+	% pred declarations, in order to allow the pragma declarations 
+	% for a predicate to syntactically precede the pred declaration.
+	%
+	% Adding default modes for functions needs to come after we have
+	% have processed all the mode declarations, since otherwise we
+	% can't be sure that there isn't a mode declaration for the function.
 
-:- pred add_item_list_type_defns(item_list, import_status,
+:- pred add_item_list_decls_pass_2(item_list, import_status,
 		module_info, module_info, io__state, io__state).
-:- mode add_item_list_type_defns(in, in, in, out, di, uo) is det.
+:- mode add_item_list_decls_pass_2(in, in, in, out, di, uo) is det.
 
-add_item_list_type_defns([], _, Module, Module) --> [].
-add_item_list_type_defns([Item - Context | Items], Status0, Module0, Module) -->
-	add_item_type_defn(Item, Context, Status0, Module0, Status1, Module1),
-	add_item_list_type_defns(Items, Status1, Module1, Module).
+add_item_list_decls_pass_2([], _, Module, Module) --> [].
+add_item_list_decls_pass_2([Item - Context | Items], Status0, Module0, Module)
+		-->
+	add_item_decl_pass_2(Item, Context, Status0, Module0, Status1, Module1),
+	add_item_list_decls_pass_2(Items, Status1, Module1, Module).
 
+	% pass 3:
 	% add the clauses one by one to the module
+	% (I supposed this could conceivably be folded into pass 2?)
 
 :- pred add_item_list_clauses(item_list, module_info, module_info,
 				io__state, io__state).
@@ -115,48 +133,111 @@ add_item_list_clauses([Item - Context | Items], Module0, Module) -->
 
 	% dispatch on the different types of items
 
-:- pred add_item_decl(item, term__context, import_status, module_info,
+:- pred add_item_decl_pass_1(item, term__context, import_status, module_info,
 			import_status, module_info, io__state, io__state).
-:- mode add_item_decl(in, in, in, in, out, out, di, uo) is det.
+:- mode add_item_decl_pass_1(in, in, in, in, out, out, di, uo) is det.
 
 	% skip clauses
-add_item_decl(pred_clause(_, _, _, _), _, Status, Module, Status, Module)
+add_item_decl_pass_1(pred_clause(_, _, _, _), _, Status, Module, Status, Module)
 		--> [].
-add_item_decl(func_clause(_, _, _, _, _), _, Status, Module, Status, Module)
+add_item_decl_pass_1(func_clause(_, _, _, _, _), _, Status, Module, Status,
+		Module) --> [].
+
+add_item_decl_pass_1(type_defn(_, _, _), _, Status, Module, Status, Module)
 		--> [].
 
-add_item_decl(type_defn(_, _, _), _, Status, Module, Status, Module) --> [].
-
-add_item_decl(inst_defn(VarSet, InstDefn, Cond), Context, Status, Module0,
-		Status, Module) -->
+add_item_decl_pass_1(inst_defn(VarSet, InstDefn, Cond), Context,
+		Status, Module0, Status, Module) -->
 	module_add_inst_defn(Module0, VarSet, InstDefn, Cond, Context, Module).
 
-add_item_decl(mode_defn(VarSet, ModeDefn, Cond), Context, Status, Module0,
-		Status, Module) -->
+add_item_decl_pass_1(mode_defn(VarSet, ModeDefn, Cond), Context,
+		Status, Module0, Status, Module) -->
 	module_add_mode_defn(Module0, VarSet, ModeDefn, Cond, Context, Module).
 
-add_item_decl(pred(VarSet, PredName, TypesAndModes, MaybeDet, Cond), Context,
-		Status, Module0, Status, Module) -->
+add_item_decl_pass_1(pred(VarSet, PredName, TypesAndModes, MaybeDet, Cond),
+		Context, Status, Module0, Status, Module) -->
 	module_add_pred(Module0, VarSet, PredName, TypesAndModes, MaybeDet,
 		Cond, Context, Status, Module).
 
-add_item_decl(func(VarSet, FuncName, TypesAndModes, RetTypeAndMode, MaybeDet,
-		Cond), Context, Status, Module0, Status, Module) -->
+add_item_decl_pass_1(func(VarSet, FuncName, TypesAndModes, RetTypeAndMode,
+		MaybeDet, Cond), Context, Status, Module0, Status, Module) -->
 	module_add_func(Module0, VarSet, FuncName, TypesAndModes,
 		RetTypeAndMode, MaybeDet, Cond, Context, Status, Module).
 
-add_item_decl(pred_mode(VarSet, PredName, Modes, MaybeDet, Cond), Context,
-		Status, Module0, Status, Module) -->
+add_item_decl_pass_1(pred_mode(VarSet, PredName, Modes, MaybeDet, Cond),
+		Context, Status, Module0, Status, Module) -->
 	module_add_mode(Module0, VarSet, PredName, Modes, MaybeDet, Cond,
 		Context, predicate, Module).
 
-add_item_decl(func_mode(VarSet, FuncName, Modes, RetMode, MaybeDet, Cond),
-		Context, Status, Module0, Status, Module) -->
+add_item_decl_pass_1(func_mode(VarSet, FuncName, Modes, RetMode, MaybeDet,
+		Cond), Context, Status, Module0, Status, Module) -->
 	{ list__append(Modes, [RetMode], Modes1) },
 	module_add_mode(Module0, VarSet, FuncName, Modes1,
 		MaybeDet, Cond, Context, function, Module).
 
-add_item_decl(pragma(Pragma), Context, Status, Module0, Status, Module) -->
+add_item_decl_pass_1(pragma(_), _, Status, Module, Status, Module) --> [].
+
+add_item_decl_pass_1(module_defn(_VarSet, ModuleDefn), Context,
+		Status0, Module0, Status, Module) -->
+	( { ModuleDefn = interface } ->
+		{ Status = exported },
+		{ Module = Module0 }
+	; { ModuleDefn = implementation } ->
+		{ Status = local },
+		{ Module = Module0 }
+	; { ModuleDefn = imported } ->
+		{ Status = imported },
+		{ Module = Module0 }
+	; { ModuleDefn = import(module(_)) } ->
+		{ Status = Status0 },
+		{ Module = Module0 }
+	; { ModuleDefn = external(name_arity(Name, Arity)) } ->
+		{ Status = Status0 },
+		module_mark_as_external(Name, Arity, Context, Module0, Module)
+	;
+		{ Status = Status0 },
+		{ Module = Module0 },
+		io__stderr_stream(StdErr),
+		io__set_output_stream(StdErr, OldStream),
+		prog_out__write_context(Context),
+		report_warning("Warning: declaration not yet implemented.\n"),
+		io__set_output_stream(OldStream, _)
+	).
+
+add_item_decl_pass_1(nothing, _, Status, Module, Status, Module) --> [].
+
+%-----------------------------------------------------------------------------%
+
+	% dispatch on the different types of items
+
+:- pred add_item_decl_pass_2(item, term__context, import_status, module_info,
+			import_status, module_info,
+			io__state, io__state).
+:- mode add_item_decl_pass_2(in, in, in, in, out, out, di, uo) is det.
+
+add_item_decl_pass_2(module_defn(_VarSet, ModuleDefn), _Context,
+		Status0, Module0, Status, Module) -->
+	( { ModuleDefn = interface } ->
+		{ Status = exported },
+		{ Module = Module0 }
+	; { ModuleDefn = implementation } ->
+		{ Status = local },
+		{ Module = Module0 }
+	; { ModuleDefn = imported } ->
+		{ Status = imported },
+		{ Module = Module0 }
+	;
+		{ Status = Status0 },
+		{ Module = Module0 }
+	).
+
+add_item_decl_pass_2(type_defn(VarSet, TypeDefn, Cond), Context,
+		Status, Module0, Status, Module) -->
+	module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Status,
+		Module).
+
+add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
+		-->
 	(
 		{ Pragma  = c_code(C_Body_Code) },
 		{ module_add_c_body_code(C_Body_Code, Context,
@@ -218,111 +299,41 @@ add_item_decl(pragma(Pragma), Context, Status, Module0, Status, Module) -->
 		)
 	).
 
-add_item_decl(module_defn(_VarSet, ModuleDefn), Context, Status0, Module0,
-		Status, Module) -->
-	( { ModuleDefn = interface } ->
-		{ Status = exported },
-		{ Module = Module0 }
-	; { ModuleDefn = implementation } ->
-		{ Status = local },
-		{ Module = Module0 }
-	; { ModuleDefn = imported } ->
-		{ Status = imported },
-		{ Module = Module0 }
-	; { ModuleDefn = import(module(_)) } ->
-		{ Status = Status0 },
-		{ Module = Module0 }
-	; { ModuleDefn = external(name_arity(Name, Arity)) } ->
-		{ Status = Status0 },
-		module_mark_as_external(Name, Arity, Context, Module0, Module)
-	;
-		{ Status = Status0 },
-		{ Module = Module0 },
-		io__stderr_stream(StdErr),
-		io__set_output_stream(StdErr, OldStream),
-		prog_out__write_context(Context),
-		report_warning("Warning: declaration not yet implemented.\n"),
-		io__set_output_stream(OldStream, _)
-	).
-
-add_item_decl(nothing, _, Status, Module, Status, Module) --> [].
-
-%-----------------------------------------------------------------------------%
-
-:- pred add_pred_marker(module_info, string, sym_name, arity,
-	term__context, list(marker_status), module_info, io__state, io__state).
-:- mode add_pred_marker(in, in, in, in, in, in, out, di, uo) is det.
-
-add_pred_marker(Module0, PragmaName, Name, Arity, Context, Markers, Module) -->
+add_item_decl_pass_2(func(_VarSet, FuncName, TypesAndModes, _RetTypeAndMode,
+		_MaybeDet, _Cond), _Context, Status, Module0, Status, Module)
+		-->
+	%
+	% add default modes for function declarations, if necessary
+	%
+	{ list__length(TypesAndModes, Arity) },
 	{ module_info_get_predicate_table(Module0, PredTable0) },
 	(
-		{ predicate_table_search_sym_arity(PredTable0, Name, 
-			Arity, PredIds) }
+		{ predicate_table_search_func_sym_arity(PredTable0,
+			FuncName, Arity, PredIds) }
 	->
 		{ predicate_table_get_preds(PredTable0, Preds0) },
-		{ pragma_set_markers(Preds0, PredIds, Markers, Preds) },
-		{ predicate_table_set_preds(PredTable0, Preds, 
-			PredTable) },
-		{ module_info_set_predicate_table(Module0, PredTable, 
-			Module) }
+		{ maybe_add_default_modes(PredIds, Preds0, Preds) },
+		{ predicate_table_set_preds(PredTable0, Preds, PredTable) },
+		{ module_info_set_predicate_table(Module0, PredTable, Module) }
 	;
-		{ string__append_list(
-			["pragma(", PragmaName, ", ...) declaration"],
-			Description) },
-		undefined_pred_or_func_error(Name, Arity, Context,
-			Description),
-		{ module_info_incr_errors(Module0, Module) }
+		{ error("make_hlds.m: can't find func declaration") }
 	).
 
-%-----------------------------------------------------------------------------%
-	% dispatch on the different types of items
-
-:- pred add_item_type_defn(item, term__context, import_status, module_info,
-			import_status, module_info,
-			io__state, io__state).
-:- mode add_item_type_defn(in, in, in, in, out, out, di, uo) is det.
-
-add_item_type_defn(type_defn(VarSet, TypeDefn, Cond), Context, Status, Module0,
-		Status, Module) -->
-	module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Status,
-		Module).
-
-add_item_type_defn(module_defn(_VarSet, ModuleDefn), _Context, Status0, Module0,
-		Status, Module) -->
-	( { ModuleDefn = interface } ->
-		{ Status = exported },
-		{ Module = Module0 }
-	; { ModuleDefn = implementation } ->
-		{ Status = local },
-		{ Module = Module0 }
-	; { ModuleDefn = imported } ->
-		{ Status = imported },
-		{ Module = Module0 }
-	;
-		{ Status = Status0 },
-		{ Module = Module0 }
-	).
-
-add_item_type_defn(func_clause(_, _, _, _, _), _, Status, Module, Status,
-		Module) -->
-	[].
-add_item_type_defn(pred_clause(_, _, _, _), _, Status, Module, Status, Module)
-		-->
-	[].
-add_item_type_defn(inst_defn(_, _, _), _, Status, Module, Status, Module) -->
-	[].
-add_item_type_defn(mode_defn(_, _, _), _, Status, Module, Status, Module) -->
-	[].
-add_item_type_defn(pred(_, _, _, _, _), _, Status, Module, Status, Module) -->
-	[].
-add_item_type_defn(func(_, _, _, _, _, _), _, Status, Module, Status, Module)
-	--> [].
-add_item_type_defn(pred_mode(_, _, _, _, _), _, Status, Module, Status, Module)
-	--> [].
-add_item_type_defn(func_mode(_, _, _, _, _, _), _, Status, Module, Status,
+add_item_decl_pass_2(func_clause(_, _, _, _, _), _, Status, Module, Status,
 		Module) --> [].
-add_item_type_defn(pragma(_), _, Status, Module, Status, Module) --> [].
-add_item_type_defn(nothing, _, Status, Module, Status, Module) --> [].
+add_item_decl_pass_2(pred_clause(_, _, _, _), _, Status, Module, Status, Module)
+		--> [].
+add_item_decl_pass_2(inst_defn(_, _, _), _, Status, Module, Status, Module)
+		--> [].
+add_item_decl_pass_2(mode_defn(_, _, _), _, Status, Module, Status, Module)
+		--> [].
+add_item_decl_pass_2(pred(_, _, _, _, _), _, Status, Module, Status, Module)
+		--> [].
+add_item_decl_pass_2(pred_mode(_, _, _, _, _), _, Status, Module, Status,
+		Module) --> [].
+add_item_decl_pass_2(func_mode(_, _, _, _, _, _), _, Status, Module, Status,
+		Module) --> [].
+add_item_decl_pass_2(nothing, _, Status, Module, Status, Module) --> [].
 
 %-----------------------------------------------------------------------------%
 
@@ -359,6 +370,33 @@ add_item_clause(pragma(Pragma), Context, Module0, Module) -->
 		{ Module = Module0 }
 	).
 add_item_clause(nothing, _, Module, Module) --> [].
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_pred_marker(module_info, string, sym_name, arity,
+	term__context, list(marker_status), module_info, io__state, io__state).
+:- mode add_pred_marker(in, in, in, in, in, in, out, di, uo) is det.
+
+add_pred_marker(Module0, PragmaName, Name, Arity, Context, Markers, Module) -->
+	{ module_info_get_predicate_table(Module0, PredTable0) },
+	(
+		{ predicate_table_search_sym_arity(PredTable0, Name, 
+			Arity, PredIds) }
+	->
+		{ predicate_table_get_preds(PredTable0, Preds0) },
+		{ pragma_set_markers(Preds0, PredIds, Markers, Preds) },
+		{ predicate_table_set_preds(PredTable0, Preds, 
+			PredTable) },
+		{ module_info_set_predicate_table(Module0, PredTable, 
+			Module) }
+	;
+		{ string__append_list(
+			["pragma(", PragmaName, ", ...) declaration"],
+			Description) },
+		undefined_pred_or_func_error(Name, Arity, Context,
+			Description),
+		{ module_info_incr_errors(Module0, Module) }
+	).
 
 %-----------------------------------------------------------------------------%
 

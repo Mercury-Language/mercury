@@ -8,7 +8,7 @@
 
 :- interface.
 
-:- import_module hlds_pred.
+:- import_module hlds_pred, hlds_module.
 
 	% In the hlds, we initially record the clauses for a predicate
 	% in the clauses_info data structure which is part of the
@@ -34,6 +34,9 @@
 	% a default mode of `:- mode foo(in, in, ..., in) = out.'
 	% for functions that don't have an explicit mode declaration.
 
+:- pred maybe_add_default_modes(list(pred_id), pred_table, pred_table).
+:- mode maybe_add_default_modes(in, in, out) is det.
+
 :- pred maybe_add_default_mode(pred_info, pred_info).
 :- mode maybe_add_default_mode(in, out) is det.
 
@@ -43,6 +46,13 @@
 
 :- import_module hlds_goal, hlds_data, prog_data, make_hlds.
 :- import_module int, list, set, map, std_util.
+
+maybe_add_default_modes([], Preds, Preds).
+maybe_add_default_modes([PredId | PredIds], Preds0, Preds) :-
+	map__lookup(Preds0, PredId, PredInfo0),
+	maybe_add_default_mode(PredInfo0, PredInfo),
+	map__set(Preds0, PredId, PredInfo, Preds1),
+	maybe_add_default_modes(PredIds, Preds1, Preds).
 
 maybe_add_default_mode(PredInfo0, PredInfo) :-
 	pred_info_procedures(PredInfo0, Procs0),
@@ -145,3 +155,4 @@ get_clause_goals([Clause | Clauses], Goals) :-
 	goal_to_disj_list(Goal, GoalList),
 	list__append(GoalList, Goals1, Goals),
 	get_clause_goals(Clauses, Goals1).
+

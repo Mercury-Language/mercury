@@ -231,8 +231,7 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 		MaybePredInfo = no
 	;
 		MaybePredInfo0 = yes(PredInfo1),
-		maybe_add_default_mode(PredInfo1, PredInfo2),
-		copy_clauses_to_procs(PredInfo2, PredInfo),
+		copy_clauses_to_procs(PredInfo1, PredInfo),
 		MaybePredInfo = yes(PredInfo)
 	).
 
