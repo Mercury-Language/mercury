@@ -2017,7 +2017,7 @@ get_label_name(Module0, PredOrFunc, Name0, Arity, LabelName) :-
 			Name0 = "main",
 			Arity = 2
 		;
-			string__prefix("__", Name0)
+			string__prefix(Name0, "__")
 		)
 		% The conditions above define which labels are printed without
 		% module qualification.  XXX Changes to runtime/* are necessary
