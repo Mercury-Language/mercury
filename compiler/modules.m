@@ -7196,12 +7196,8 @@ create_java_shell_script(MainModuleName, Succeeded) -->
 
 	% XXX PathSeparator should be ";" on Windows
 	{ PathSeparator = ":" },
-	% XXX The correct classpath needs to be set somewhere.
-	%     It should take the form:
-	%     DirName:<path>/mer_std.jar:<path>/mer_std.runtime.jar:.
-	%     Currently this variable is empty, which causes problems, so
-	%     we prepend the .class files' directory and the current CLASSPATH.
 	globals__io_lookup_accumulating_option(java_classpath, Java_Incl_Dirs0),
+	% We prepend the .class files' directory and the current CLASSPATH.
 	{ Java_Incl_Dirs = [DirName, "$CLASSPATH" | Java_Incl_Dirs0] },
 	{ ClassPath = string.join_list(PathSeparator, Java_Incl_Dirs) },
 

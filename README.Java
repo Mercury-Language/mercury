@@ -37,21 +37,8 @@ The Mercury compiler currently supports the grade `java' to target Java
 bytecode.  The java grade is enabled by using any of the options
 `--grade java', `--target java', or just `--java'.
 
-Support for building and installation of this grade
-is still somewhat rudimentary.
-
 To run a Mercury program using the java grade, you need to build the Mercury
 library and runtime in the java grade, using the Mercury source distribution.
-
-You will also need to set the environment variable CLASSPATH to include the
-mercury standard and runtime libraries for java, as well as the current
-directory.  You should use a command of the form:
-
-	CLASSPATH=<prefix>/mer_std.jar:<prefix>/mer_std.runtime.jar:.
-	export CLASSPATH
-
-where <prefix> is the location of the installed jar files, which will probably
-be /usr/local/mercury/lib/mercury/lib/java or something similar.
 
 You can now build programs such as hello.m or calculator.m in the samples
 directory.

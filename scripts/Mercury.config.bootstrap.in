@@ -30,6 +30,14 @@ MERCURY_JAVA_INTERPRETER=@JAVA_INTERPRETER@
 # be used by the substitution for SHARED_LIBS.
 MATH_LIB=$(MERCURY_MATH_LIB)
 
+# This needed for Java classpath.
+INSTALL_JAVA_LIBRARY_DIR=$(MERCURY_STDLIB_DIR)/lib/java
+
+# If you change these, you will also need to change the files indicated in
+# scripts/c2init.in.
+RT_LIB_NAME=mer_rt
+STD_LIB_NAME=mer_std
+
 DEFAULT_MERCURY_LINKAGE=@DEFAULT_LINKAGE@
 
 # The default optimization level should be after
@@ -52,6 +60,8 @@ DEFAULT_MCFLAGS=\
 		--cflags-for-gotos "@CFLAGS_FOR_GOTOS@" \
 		--cflags-for-pic "@CFLAGS_FOR_PIC@" \
 		--c-flag-to-name-object-file "@OBJFILE_OPT@" \
+		--java-classpath "$(INSTALL_JAVA_LIBRARY_DIR)/$(RT_LIB_NAME).jar" \
+		--java-classpath "$(INSTALL_JAVA_LIBRARY_DIR)/$(STD_LIB_NAME).jar" \
 		--object-file-extension ".@OBJ_SUFFIX@" \
 		--pic-object-file-extension ".@EXT_FOR_PIC_OBJECTS@" \
 		--link-with-pic-object-file-extension ".@EXT_FOR_LINK_WITH_PIC_OBJECTS@" \

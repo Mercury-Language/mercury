@@ -246,7 +246,7 @@ java_symlinks:
 # ensure that the path names are correct within the jar files.
 # We also compile NATIVE_SO here and copy it into the library directory.
 
-JARS = $(STD_LIB_NAME).jar $(STD_LIB_NAME).runtime.jar
+JARS = $(STD_LIB_NAME).jar $(RT_LIB_NAME).jar
 
 # We ignore the exit status of the last two commands because NATIVE_SO is not
 # an essential part of the Mercury standard library for the Java
@@ -255,8 +255,7 @@ JARS = $(STD_LIB_NAME).jar $(STD_LIB_NAME).runtime.jar
 .PHONY:	jars
 jars:	classes
 	$(JAR) $(JAR_CREATE_FLAGS) $(STD_LIB_NAME).jar mercury/*.class
-	$(JAR) $(JAR_CREATE_FLAGS) $(STD_LIB_NAME).runtime.jar \
-			mercury/runtime/*.class
+	$(JAR) $(JAR_CREATE_FLAGS) $(RT_LIB_NAME).jar mercury/runtime/*.class
 	-+cd mercury/runtime && mmake $(NATIVE_SO)
 	-cp mercury/runtime/$(NATIVE_SO) .
 
