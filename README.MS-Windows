@@ -43,16 +43,13 @@ or <http://www.cygnus.com/misc/gnu-win32/>.
 
 RUNNING CONFIGURE
 
-Configure as follows (from the bash prompt):
+Configure with either
 
-	CC="gcc -Wl,--force-exe-suffix" sh configure i386-ms-win95
+	sh configure i386-ms-win95
 
-I don't think the CC="gcc -Wl,--force-exe-suffix" bit is needed on NT,
-so configuring with just
+or
 
 	sh configure i386-ms-winnt
-
-should work on NT -- but I haven't tested it.
 
 -----------------------------------------------------------------------------
 
@@ -104,11 +101,6 @@ which by default gets installed in /usr/local/mercury-VERSION/lib/mercury/html,
 using Netscape or MS Internet Explorer.  Or you can get a copy of GNU Emacs
 for NT and use it to browse the INFO version.
 
-The system() function in gnu-win32 version beta-16 is broken, which
-means that compiling programs by invoking `mc' directly, rather than
-via `mmake', will fail.  Just use mmake.  Ignore the complaints about
-"error invoking system command" when creating interface files.
-
 There may still be some problems with case-insensitive filenames
 and the nameclash between `mmake' and `Mmake'.  If you run into any
 such problems, rename the `Mmake' file in each subdirectory to `Mmakefile'.
@@ -122,7 +114,7 @@ RCS file: /home/staff/zs/imp/mercury/Mmake,v
 retrieving revision 1.62
 diff -u -r1.62 Mmake
 --- Mmake	1996/12/05 19:25:00	1.62
-+++ Mmake	1996/12/11 17:39:16
++++ Mmake	1996/12/20 11:40:23
 @@ -17,7 +17,9 @@
  
  SUBDIRS = scripts util boehm_gc runtime library compiler doc profiler
@@ -143,13 +135,17 @@ diff -u -r1.62 Mmake
  	# clean up
  	cd scripts && mmake realclean
  	cd util && mmake realclean
-@@ -183,7 +185,38 @@
+@@ -181,10 +183,51 @@
+ #-----------------------------------------------------------------------------#
+ 
  .PHONY: install
- install: all install_scripts install_util install_runtime install_boehm_gc \
+-install: all install_scripts install_util install_runtime install_boehm_gc \
++install: all preinstall_hack_for_win95 \
++		install_scripts install_util install_runtime install_boehm_gc \
  		install_library install_compiler install_profiler install_doc \
-+		hack_for_win95 \
++		postinstall_hack_for_win95 \
  		install_grades
-+
+ 
 +# `make touch_files' is a work-around for the broken gnu-win32 `tar'
 +# that loses all the file dates.
 +.PHONY: touch_files
@@ -173,54 +169,22 @@ diff -u -r1.62 Mmake
 +
 +# another work-around for gnu-win32 on Windows 95:
 +# the executable files need `.exe' filenames, otherwise they won't work.
-+.PHONY: hack_for_win95
-+hack_for_win95:
++# But the Mmake files expect them to not have `.exe' filenames.
++
++.PHONY: preinstall_hack_for_win95
++preinstall_hack_for_win95:
++	cd compiler && mv mercury_compile xyzzy && mv xyzzy mercury_compile.exe
++	cd profiler && mv mercury_profile xyzzy && mv xyzzy mercury_profile.exe
++	cd util && mv mkinit xyzzy && mv xyzzy mkinit.exe
++	cd util && mv mdemangle xyzzy && mv xyzzy mdemangle.exe
++
++.PHONY: postinstall_hack_for_win95
++postinstall_hack_for_win95:
 +	cd $(INSTALL_MERC_BIN_DIR) && mv mercury_compile mercury_compile.exe
 +	cd $(INSTALL_MERC_BIN_DIR) && mv mercury_profile mercury_profile.exe
 +	cd $(INSTALL_BINDIR) && mv mkinit mkinit.exe
 +	cd $(INSTALL_BINDIR) && mv mdemangle mdemangle.exe
- 
++
  .PHONY: install_scripts
  install_scripts: scripts
-Index: scripts/Mmake.rules
-===================================================================
-RCS file: /home/staff/zs/imp/mercury/scripts/Mmake.rules,v
-retrieving revision 1.39
-diff -u -r1.39 Mmake.rules
---- Mmake.rules	1996/11/06 01:38:47	1.39
-+++ Mmake.rules	1996/12/13 05:36:53
-@@ -49,27 +49,26 @@
- 	@touch $@
- 
- .m.date:
--	$(MCI) $(MCIFLAGS) $<
-+	-$(MCI) $(MCIFLAGS) $<
- 
- .m.date3:
--	$(MCSI) $(MCSIFLAGS) $<
-+	-$(MCSI) $(MCSIFLAGS) $<
- 
- .m.optdate:
--	$(MCOI) $(MCOIFLAGS) $<
-+	-$(MCOI) $(MCOIFLAGS) $<
- 
--# do not remove the whitespace in the following four rules!
- 
- .date.int:
--	
-+	mercury_update_interface $@
- 
- .date.int2:
--	
-+	mercury_update_interface $@
- 
- .date3.int3:
--	
-+	mercury_update_interface $@
- 
- .optdate.opt:
--	
-+	mercury_update_interface $@
- 
- 
- .m.garb:
+ 	cd scripts && $(SUBDIR_MMAKE) install
