@@ -73,18 +73,27 @@ $(qls_subdir)%.ql : %.nl
 # Rules for building dependency files
 #
 
-.PHONY: %.depend
-%.depend : $(deps_subdir)%.dep
-	@:
-
 # When creating the dependencies with `--use-subdirs' enabled,
-# we need to create the `Mercury/dates' directory manually
+# we need to create the `Mercury/dates' directories manually
 # in order to get things started.  This should not be necessary,
 # but there is a bug in GNU Make with regard to directory caching.
 # I have sent off a bug report to the GNU Make maintainers (19 March 1998).
 #	-fjh.
 
+# beware the code for `%.depend' and `%.dep' is duplicated
 $(deps_subdir)%.dep:
+	$(MCD) $(MCDFLAGS) $*
+ifeq ($(MMAKE_USE_SUBDIRS),yes)
+	# the following mkdirs work around a bug in GNU Make
+	-[ -d Mercury/dates ] || mkdir Mercury/dates
+	-[ -d Mercury/date0s ] || mkdir Mercury/date0s
+	-[ -d Mercury/date3s ] || mkdir Mercury/date3s
+	-[ -d Mercury/optdates ] || mkdir Mercury/optdates
+endif
+
+# beware the code for `%.depend' and `%.dep' is duplicated
+.PHONY: %.depend
+%.depend :
 	$(MCD) $(MCDFLAGS) $*
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
 	# the following mkdirs work around a bug in GNU Make
