@@ -1223,14 +1223,33 @@ then
 	mv "$type_stats".save.$$ "$type_stats"
 fi
 
-echo "finishing at `date`"
+exitstatus=0
 
-if test "$diff_status" = 0 -a "$test_status" = 0 -a "$extras_status" = 0 \
-	-a "$check_namespace_status" = 0
+if test "$diff_status" != 0
 then
-	exit 0
-else
-	exit 1
+	echo "error exit: stages 2 and 3 differ"
+	exitstatus=1
 fi
+
+if test "$test_status" != 0
+then
+	echo "error exit: some tests failed"
+	exitstatus=1
+fi
+
+if test "$extras_status" != 0
+then
+	echo "error exit: some tests failed in extras"
+	exitstatus=1
+fi
+
+if test "$check_namespace_status" != 0
+then
+	echo "error exit: some namespace isn't clean"
+	exitstatus=1
+fi
+
+echo "finishing at `date`"
+exit $exitstatus
 
 #-----------------------------------------------------------------------------#
