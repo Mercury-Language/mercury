@@ -177,8 +177,8 @@ echo "current directory `pwd`" 1>&2
 
 case $status in 0)
     case $install_anyway in
-        true)	cd mercury/stage2 || { false; exit 1; } ;;
-        false)	cd mercury || { false; exit 1; } ;;
+        false)	cd mercury/stage2 || { false; exit 1; } ;;
+        true)	cd mercury || { false; exit 1; } ;;
     esac
 
     case $HOST in
@@ -217,6 +217,7 @@ case $status in 0)
 		mmake clean MMAKEFLAGS=$PARALLEL || status=1
 		mmake install GRADE=asm_fast.gc.prof PROF=_prof \
 		 	MMAKEFLAGS=$PARALLEL || status=1
+		cd .. || status=1
 		;;
 	kryten)
 		mmake install MMAKEFLAGS=$PARALLEL || status=1
@@ -233,8 +234,8 @@ case $status in 0)
 		;;
     esac
     case $install_anyway in
-        true)	cd ../.. || status=1 ;;
-        false)	cd .. || status=1 ;;
+        false)	cd ../.. || status=1 ;;
+        true)	cd .. || status=1 ;;
     esac
 esac
 
