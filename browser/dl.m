@@ -311,7 +311,8 @@ ML_DL_generic_closure_wrapper(void *closure,
 		mercury_proc::in, mercury_proc::out) is det.
 check_proc_spec_matches_result_type(_Result, Value, Proc0, Proc) :-
 	Proc0 = mercury_proc(IsPredOrFunc, _Module, _Name, ProcArity, _Mode),
-	type_ctor_name_and_arity(type_ctor(type_of(Value)),
+	ResultType = type_of(Value),
+	type_ctor_name_and_arity(type_ctor(ResultType),
 		TypeModule, TypeName, TypeArity),
 	( TypeName = "func" ->
 		TypeProcArity = TypeArity - 1
@@ -324,7 +325,9 @@ check_proc_spec_matches_result_type(_Result, Value, Proc0, Proc) :-
 		)
 	->
 		error(
-		"dl__mercury_sym: result type is not a higher-order type")
+		"dl__mercury_sym: result type (`" ++
+		type_name(ResultType) ++
+		"') is not a higher-order type")
 	;
 		IsPredOrFunc = predicate, TypeName \= "pred"
 	->
