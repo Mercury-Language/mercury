@@ -256,8 +256,16 @@ mercury_il.dll: ../runtime/mercury_il.dll
 mercury_mcpp.dll: ../runtime/mercury_mcpp.dll
 	cp ../runtime/mercury_mcpp.dll .
 
-%__csharp_code.dll: $(RUNTIME_DLLS)
-%__cpp_code.dll: $(RUNTIME_DLLS)
+CSHARP_MODULES = array builtin char exception float io math \
+	rtti_implementation string type_desc
+CPP_MODULES = array builtin char construct exception float int io \
+	library math private_builtin profiling_builtin rtti_implementation \
+	std_util string table_builtin type_desc
+
+CSHARP_DLLS = $(CSHARP_MODULES:%=%__csharp_code.dll)
+CPP_DLLS = $(CPP_MODULES:%=%__cpp_code.dll)
+
+$(CSHARP_DLLS) $(CPP_DLLS) : $(RUNTIME_DLLS)
 
 builtin__cpp_code.dll : builtin__csharp_code.dll
 exception__csharp_code.dll : exception__cpp_code.dll
