@@ -50,11 +50,11 @@
 
 :- func rational:'/'(rational, rational) = rational.
 
-:- func rational:numer(rational) = integer.
+:- func rational__numer(rational) = integer.
 
-:- func rational:denom(rational) = integer.
+:- func rational__denom(rational) = integer.
 
-:- func rational:abs(rational) = rational.
+:- func rational__abs(rational) = rational.
 
 :- func one = rational.
 
@@ -85,10 +85,12 @@
 	--->	r(integer, integer).
 
 rational:'<'(R1, R2) :-
-	cmp(R1, R2) = lessthan.
+	Cmp = cmp(R1, R2),
+	Cmp = lessthan.
 
 rational:'>'(R1, R2) :-
-	cmp(R1, R2) = greaterthan.
+	Cmp = cmp(R1, R2),
+	Cmp = greaterthan.
 
 rational:'=<'(R1, R2) :-
 	Cmp = cmp(R1, R2),
@@ -104,8 +106,8 @@ rational_from_integers(Num, Den) = rational_norm(Num, Den).
 
 %% XXX: There are ways to do this in some cases even if the
 %% float conversions would overflow.
-% rational:float(r(Num, Den)) =
-%	float:'/'(integer:float(Num), integer:float(Den)).
+% rational__float(r(Num, Den)) =
+%	float:'/'(integer__float(Num), integer__float(Den)).
 
 one = r(integer(1), integer(1)).
 
@@ -115,8 +117,8 @@ rational:'+'(Rat) = Rat.
 
 rational:'-'(r(Num, Den)) = r(-Num, Den).
 
-rational:'+'(r(An, Ad), r(Bn, Bd)) =
-	rational_norm(An*CA + Bn*CB, M) :-
+rational:'+'(r(An, Ad), r(Bn, Bd)) = rational_norm(Numer, M) :-
+	Numer is An * CA + Bn * CB,
 	M = lcm(Ad, Bd),
 	CA = M // Ad,
 	CB = M // Bd.
@@ -124,9 +126,10 @@ rational:'+'(r(An, Ad), r(Bn, Bd)) =
 rational:'-'(R1, R2) =
 	R1 + (-R2).
 
-rational:'*'(r(An, Ad), r(Bn, Bd)) =
 	% XXX: need we call rational_norm here?
-	rational_norm((An//G1)*(Bn//G2), (Ad//G2)*(Bd//G1)) :-
+rational:'*'(r(An, Ad), r(Bn, Bd)) = rational_norm(Numer, Denom) :-
+	Numer is (An//G1) * (Bn//G2),
+	Denom is (Ad//G2) * (Bd//G1),
 	G1 = gcd(An, Bd),
 	G2 = gcd(Ad, Bn).
 
@@ -136,21 +139,21 @@ rational:'/'(R1, R2) =
 :- func inverse(rational) = rational.
 inverse(r(Num, Den)) = Rat :-
 	( Num = izero ->
-		error("rational:inverse: division by zero")
+		error("rational__inverse: division by zero")
 	;
 		Rat = r(signum(Num)*Den, abs(Num))
 	).
 
-rational:numer(r(Num, _)) = Num.
+rational__numer(r(Num, _)) = Num.
 
-rational:denom(r(_, Den)) = Den.
+rational__denom(r(_, Den)) = Den.
 
-rational:abs(r(Num, Den)) = r(abs(Num), Den).
+rational__abs(r(Num, Den)) = r(abs(Num), Den).
 
 :- func rational_norm(integer, integer) = rational.
 rational_norm(Num, Den) = Rat :-
 	( Den = izero ->
-		error("rational:rational_norm: division by zero")
+		error("rational__rational_norm: division by zero")
 	; Num = izero ->
 		Rat = r(izero, ione)
 	;
@@ -214,5 +217,6 @@ is_zero(r(Num, _)) :-
 :- pred is_negative(rational).
 :- mode is_negative(in) is semidet.
 is_negative(r(Num, _)) :-
-	Num < izero.
+	Zero = izero,
+	Num < Zero.
 

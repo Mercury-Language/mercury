@@ -82,10 +82,10 @@
 
 :- func integer(int) = integer.
 
-:- func integer:to_string(integer) = string.
+:- func integer__to_string(integer) = string.
 
-:- func integer:from_string(string) = integer.
-:- mode integer:from_string(in) = out is semidet.
+:- func integer__from_string(string) = integer.
+:- mode integer__from_string(in) = out is semidet.
 
 :- func integer:'+'(integer) = integer.
 
@@ -105,12 +105,12 @@
 
 :- func integer:'mod'(integer, integer) = integer.
 
-:- func integer:abs(integer) = integer.
+:- func integer__abs(integer) = integer.
 
-:- pred integer:pow(integer, integer, integer).
-:- mode integer:pow(in, in, out) is det.
+:- pred integer__pow(integer, integer, integer).
+:- mode integer__pow(in, in, out) is det.
 
-% :- func integer:float(integer) = float.
+% :- func integer__float(integer) = float.
 
 :- implementation.
 
@@ -137,11 +137,13 @@ base = 10000.
 :- func log10base = int.
 log10base = 4.
 
-integer:'<'(X1, X2) :-
-	big_cmp(X1, X2) = lessthan.
+integer:'<'(X1, X2) :- 
+	big_cmp(X1, X2) = C,
+	C = lessthan.
 
 integer:'>'(X1, X2) :-
-	big_cmp(X1, X2) = greaterthan.
+	big_cmp(X1, X2) = C,
+	C = greaterthan.
 
 integer:'=<'(X1, X2) :-
 	big_cmp(X1, X2) = C,
@@ -152,7 +154,8 @@ integer:'>='(X1, X2) :-
 	( C = greaterthan ; C = equal).
 
 integer:'='(X1, X2) :-
-	big_cmp(X1, X2) = equal.
+	big_cmp(X1, X2) = C,
+	C = equal.
 
 :- func one = integer.
 one = integer(1).
@@ -187,7 +190,7 @@ integer:'rem'(X1, X2) =
 integer:'mod'(X1, X2) =
 	big_mod(X1, X2).
 
-integer:abs(N) = Abs :-
+integer__abs(N) = Abs :-
 	( N < integer(0) ->
 		Abs = -N
 	;
@@ -233,7 +236,7 @@ big_mod(X, Y) = X - (X div Y) * Y.
 
 	% Compare two integers.
 :- func big_cmp(integer, integer) = comparison.
-big_cmp(i(S1, D1), i(S2, D2)) =
+big_cmp(i(S1, D1), i(S2, D2)) = 
 	( S1 < S2 ->
 		lessthan
 	; S1 > S2 ->
@@ -292,7 +295,7 @@ big_plus(i(S1, Ds1), i(S2, Ds2)) = Sum :-
 		)
 	).
 
-integer:from_string(S) = Big :-
+integer__from_string(S) = Big :-
 	string__to_char_list(S, Cs),
 	string_to_integer(Cs) = Big.
 
@@ -356,17 +359,17 @@ integer(N) =
 	% XXX: What about machines that aren't 2's complement?
 :- func int_to_integer(int) = integer.
 int_to_integer(D) = Int :-
-	( int:min_int(D) ->
-		% were we to call int:abs, int overflow might occur.
+	( int__min_int(D) ->
+		% were we to call int__abs, int overflow might occur.
 		Int = integer(D + 1) - one
 	;
-		int:abs(D, AD),
+		int__abs(D, AD),
 		Int = i(signum(D), pos_int_to_digits(AD))
 	).
 
 :- func int_max = int.
 int_max = Maxint :-
-	int:max_int(Maxint).
+	int__max_int(Maxint).
 
 :- func signum(int) = int.
 signum(N) = SN :-
@@ -444,7 +447,7 @@ equals_zero(X) :-
 :- mode drop_while(pred(in) is semidet, in) = out is det.
 drop_while(_F, []) = [].
 drop_while(F, [X|Xs]) =
-	( F(X) ->
+	( call(F,X) ->
 		drop_while(F, Xs)
 	;
 		[X|Xs]
@@ -493,7 +496,7 @@ pos_mul([X|Xs], Ys) = Sum :-
 	mul_base(XsYs) = TenXsYs,
 	Sum = pos_plus(XYs, TenXsYs).
 
-integer:to_string(N) = S :-
+integer__to_string(N) = S :-
 	integer_to_string_2(N) = S.
 
 :- func integer_to_string_2(integer) = string.
@@ -528,7 +531,7 @@ digit_to_string(D, S) :-
 :- mode big_quot_rem(in, in, out, out) is det.
 big_quot_rem(N1, N2, Qt, Rm) :-
 	( N2 = zero ->
-		error("integer:big_quot_rem: division by zero")
+		error("integer__big_quot_rem: division by zero")
 	; N1 = zero ->
 		Qt = zero,
 		Rm = N2
@@ -574,18 +577,19 @@ big_quot_rem(N1, N2, Qt, Rm) :-
 :- mode quot_rem_rev(in, in, in, out, out) is det.
 quot_rem_rev(Ur, U, V, Qt, Rm) :-
 	( V = [V0|_] ->
-		( V0 < base div 2 ->
+		BaseDiv2 = base div 2,
+		( V0 < BaseDiv2 ->
 			quot_rem_rev_2(mul_by_digit_rev(M, Ur),
 				mul_by_digit_rev(M, U),
 				mul_by_digit_rev(M, V), Q, R),
 			Qt = Q,
 			Rm = div_by_digit_rev(M, R),
-			M = base div (V0+1)
+			M = base div (V0 + 1)
 		;
 			quot_rem_rev_2(Ur, U, V, Qt, Rm)
 		)
 	;
-		error("integer:quot_rem_rev: software error")
+		error("integer__quot_rem_rev: software error")
 	).
 
 :- pred quot_rem_rev_2(list(digit), list(digit), list(digit), list(digit),
@@ -615,14 +619,16 @@ quot_rem_rev_2(Ur, U, V, Qt, Rm) :-
 		NewUr = pos_sub_rev(Ur, mul_by_digit_rev(Q, V)),
 		( pos_geq_rev(Ur, mul_by_digit_rev(Qhat, V)) ->
 			Q = Qhat
-		; pos_geq_rev(Ur, mul_by_digit_rev(Qhat-1, V)) ->
-			Q = Qhat-1
+		; pos_geq_rev(Ur, mul_by_digit_rev(Qhat - 1, V)) ->
+			Q = Qhat - 1
 		;
 			Q = Qhat - 2
 		),
 		V0 = head(V),
 		U0 = head(Ur),
-		( length(Ur) > length(V) ->
+		LengthUr = length(Ur),
+		LengthV = length(V),
+		( LengthUr > LengthV ->
 			Qhat = (U0*B+U1) div V0,
 			U1 = head(tail(Ur))
 		;
@@ -640,7 +646,7 @@ head(HT) = H :-
 	( HT = [Hd|_T] ->
 		H = Hd
 	;
-		error("integer:head: []")
+		error("integer__head: []")
 	).
 		
 :- func tail(list(T)) = list(T).
@@ -648,7 +654,7 @@ tail(HT) = T :-
 	( HT = [_H|Tl] ->
 		T = Tl
 	;
-		error("integer:tail: []")
+		error("integer__tail: []")
 	).
 
 
@@ -689,7 +695,8 @@ pos_sub_rev(Xs, Ys) = Rev :-
 pos_lt_rev(Xs, Ys) :-
 	list__reverse(Xs, RXs),
 	list__reverse(Ys, RYs),
-	big_cmp(i(1, RXs), i(1, RYs)) = lessthan.
+	C = big_cmp(i(1, RXs), i(1, RYs)),
+	C = lessthan.
 
 :- pred pos_geq_rev(list(digit), list(digit)).
 :- mode pos_geq_rev(in, in) is semidet.
@@ -702,11 +709,13 @@ pos_geq_rev(Xs, Ys) :-
 :- pred pos_is_zero(list(digit)).
 :- mode pos_is_zero(in) is semidet.
 pos_is_zero(Ds) :-
-	nuke_zeros(Ds) = [].
+	NDs = nuke_zeros(Ds),
+	NDs = [].
 
-integer:pow(A, N, P) :-
-	( N < zero ->
-		error("integer:pow: negative exponent")
+integer__pow(A, N, P) :-
+	Zero = zero,
+	( N < Zero ->
+		error("integer__pow: negative exponent")
 	;
 		P = big_pow(A, N)
 	).
@@ -731,5 +740,6 @@ big_sqr(A) = A * A.
 :- mode big_odd(in) is semidet.
 big_odd(N) :-
 	N = i(_S, [D|_Ds]),
-	D mod 2 = 1.
+	Dmod2 is D mod 2,
+	Dmod2 = 1.
 
