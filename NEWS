@@ -36,6 +36,27 @@ Changes to the standard library:
 
 * We've added a new `hash_table' library module.
 
+Changes to the Mercury implementation:
+
+* Native code compiler.
+
+  There's a new back-end for the Mercury compiler that compiles
+  directly to assembler, rather than than going via C.  This
+  back-end is enabled using the new `--target asm' option.
+
+  This new back-end is implemented by linking the Mercury compiler
+  with the (relatively) language independent GNU Compiler Collection
+  back-end.  In other words, there is now a Mercury front-end for GCC.
+
+  Note that this should be considered as a beta release of the native
+  code compiler.  Furthermore our current version of the native code
+  compiler is based on an unreleased snapshot version of the GCC
+  back-end.
+
+  So far we have only tested it on i686-pc-linux-gnu (Intel x86-based
+  PCs running Linux).  But in theory it should work fine on other
+  platforms too.
+
 NEWS for Mercury release 0.10:
 ------------------------------
 
