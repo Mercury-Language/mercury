@@ -733,10 +733,17 @@ code_gen__generate_det_goal_2(unify(_L, _R, _U, Uni, _C), _GoalInfo, Instr) -->
 		{ error("generate_det_goal_2: cannot have det simple_test") }
 	).
 
-code_gen__generate_det_goal_2(pragma_c_code(C_Code, IsRecursive,
-		PredId, ModeId, Args, ArgNames), GoalInfo, Instr) -->
-	code_gen__generate_pragma_c_code(model_det, C_Code, IsRecursive,
-		PredId, ModeId, Args, ArgNames, GoalInfo, Instr).
+code_gen__generate_det_goal_2(pragma_c_code(C_Code, MayCallMercury,
+		PredId, ModeId, Args, ArgNames, Extra), GoalInfo, Instr) -->
+	(
+		{ Extra = none },
+		code_gen__generate_pragma_c_code(model_det, C_Code,
+			MayCallMercury, PredId, ModeId, Args, ArgNames,
+			GoalInfo, Instr)
+	;
+		{ Extra = extra_pragma_info(_, _) },
+		{ error("det pragma has non-empty extras field") }
+	).
 
 %---------------------------------------------------------------------------%
 
@@ -810,10 +817,17 @@ code_gen__generate_semi_goal_2(unify(_L, _R, _U, Uni, _C),
 		{ error("code_gen__generate_semi_goal_2 - complicated_unify") }
 	).
 
-code_gen__generate_semi_goal_2(pragma_c_code(C_Code, IsRecursive,
-		PredId, ModeId, Args, ArgNameMap), GoalInfo, Instr) -->
-	code_gen__generate_pragma_c_code(model_semi, C_Code, IsRecursive,
-		PredId, ModeId, Args, ArgNameMap, GoalInfo, Instr).
+code_gen__generate_semi_goal_2(pragma_c_code(C_Code, MayCallMercury,
+		PredId, ModeId, Args, ArgNameMap, Extra), GoalInfo, Instr) -->
+	(
+		{ Extra = none },
+		code_gen__generate_pragma_c_code(model_semi, C_Code,
+			MayCallMercury, PredId, ModeId, Args, ArgNameMap,
+			GoalInfo, Instr)
+	;
+		{ Extra = extra_pragma_info(_, _) },
+		{ error("semidet pragma has non-empty extras field") }
+	).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -979,13 +993,24 @@ code_gen__generate_non_goal_2(
 code_gen__generate_non_goal_2(unify(_L, _R, _U, _Uni, _C),
 							_GoalInfo, _Code) -->
 	{ error("Cannot have a nondet unification.") }.
-code_gen__generate_non_goal_2(pragma_c_code(C_Code, IsRecursive,
-		PredId, ModeId, Args, ArgNames), GoalInfo, Instr) -->
-	% XXX This clause is here only for bootstrapping; we need it
-	% to compile string__append in library/string.m.
-	% Later this should be replaced by a call to error.
-	code_gen__generate_pragma_c_code(model_det, C_Code, IsRecursive,
-		PredId, ModeId, Args, ArgNames, GoalInfo, Instr).
+code_gen__generate_non_goal_2(pragma_c_code(C_Code, MayCallMercury,
+		PredId, ModeId, Args, ArgNameMap, Extra), GoalInfo, Instr) -->
+	(
+		{ Extra = none },
+		% Error disabled for bootstrapping. string.m uses this form,
+		% and we can't change it to the new form until the new form
+		% is completed, and even then we must wait until that compiler
+		% is installed on all our machines.
+		% { error("nondet pragma has empty extras field") }
+		code_gen__generate_pragma_c_code(model_semi, C_Code,
+			MayCallMercury, PredId, ModeId, Args, ArgNameMap,
+			GoalInfo, Instr)
+	;
+		{ Extra = extra_pragma_info(SavedVars, LabelNames) },
+		code_gen__generate_backtrack_pragma_c_code(model_semi, C_Code,
+			MayCallMercury, PredId, ModeId, Args, ArgNameMap,
+			SavedVars, LabelNames, GoalInfo, Instr)
+	).
 
 %---------------------------------------------------------------------------%
 

@@ -40,34 +40,42 @@
 
 :- type item		--->	pred_clause(varset, sym_name, list(term), goal)
 				%      VarNames, PredName, HeadArgs, ClauseBody
+
 			;	func_clause(varset, sym_name, list(term), term,
 						goal)
 				%      VarNames, PredName, HeadArgs, Result,
 				%      ClauseBody
+
 			; 	type_defn(varset, type_defn, condition)
 			; 	inst_defn(varset, inst_defn, condition)
 			; 	mode_defn(varset, mode_defn, condition)
 			; 	module_defn(varset, module_defn)
+
 			; 	pred(varset, sym_name, list(type_and_mode),
 					maybe(determinism), condition)
 				%       VarNames, PredName, ArgTypes,
 				%	Deterministicness, Cond
+
 			; 	func(varset, sym_name, list(type_and_mode),
 					type_and_mode,
 					maybe(determinism), condition)
 				%       VarNames, PredName, ArgTypes,
 				%	ReturnType,
 				%	Deterministicness, Cond
+
 			; 	pred_mode(varset, sym_name, list(mode),
 					maybe(determinism), condition)
 				%       VarNames, PredName, ArgModes,
 				%	Deterministicness, Cond
+
 			; 	func_mode(varset, sym_name, list(mode), mode,
 					maybe(determinism), condition)
 				%       VarNames, PredName, ArgModes,
 				%	ReturnValueMode,
 				%	Deterministicness, Cond
+
 			;	pragma(pragma_type)
+
 			;	nothing.
 				% used for items that should be ignored
 				% (currently only NU-Prolog `when' declarations,
@@ -79,40 +87,55 @@
 
 :- type pragma_type --->	c_header_code(string)
 			;	c_code(string)
-			;	c_code(c_is_recursive, sym_name, pred_or_func,
+
+			;	c_code(may_call_mercury, sym_name, pred_or_func,
 					list(pragma_var), varset, string)
 				% Whether or not the C code may call Mercury,
 				% PredName, Predicate or Function, Vars/Mode, 
 				% VarNames, C Code
+
+			;	c_code(may_call_mercury, sym_name,
+					pred_or_func, list(pragma_var),
+					list(string), list(string),
+					varset, string)
+				% Whether or not the C code may call Mercury,
+				% PredName, Predicate or Function, Vars/Mode, 
+				% SavedeVars, LabelNames, VarNames, C Code
+
 			;	memo(sym_name, int)
 				% Predname, Arity
+
 			;	inline(sym_name, int)
 				% Predname, Arity
+
 			;	obsolete(sym_name, int)
 				% Predname, Arity
+
 			;	export(sym_name, pred_or_func, list(mode),
 					string)
 				% Predname, Predicate/function, Modes,
 				% C function name.
+
 			;	source_file(string)
 				% Source file name.
+
 			;	unused_args(pred_or_func, sym_name, int,
 					proc_id, list(int))
 				% PredName, Arity, Mode, Optimized pred name,
 				% 	Removed arguments.
 				% Used for inter-module unused argument
 				% removal, should only appear in .opt files.
-			;	fact_table(sym_name, arity, string)
+
+			;	fact_table(sym_name, arity, string).
 				% Predname, Arity, Fact file name.
-			.
 
 	% For pragma c_code, there are two different calling conventions,
 	% one for C code that may recursively call Mercury code, and another
 	% more efficient one for the case when we know that the C code will
 	% not recursively invoke Mercury code.
-:- type c_is_recursive
-	--->	recursive	% possibly recursive
-	;	non_recursive.	% definitely not recursive
+:- type may_call_mercury
+	--->	may_call_mercury
+	;	will_not_call_mercury.
 
 :- type pragma_var    --->	pragma_var(var, string, mode).
 			  	% variable, name, mode

@@ -52,7 +52,6 @@
 		module_error, io__state, io__state).
 :- mode read_mod_ignore_errors(in, in, in, in, out, out, di, uo) is det.
 
-
 	% make_interface(ModuleName, Items):
 	%	Given a module name and the list of items in that module,
 	%	output the long (`.int') and short (`.int2') interface files
@@ -144,7 +143,7 @@
 
 :- implementation.
 :- import_module passes_aux, prog_out, mercury_to_mercury.
-:- import_module globals, options, intermod, module_qual.
+:- import_module prog_io_util, globals, options, intermod, module_qual.
 :- import_module bool, string, set, map, term, varset, dir, std_util, library.
 
 

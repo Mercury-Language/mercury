@@ -33,7 +33,7 @@
 
 :- implementation.
 
-:- import_module options, globals, prog_io.
+:- import_module options, globals, prog_io_util.
 :- import_module int, string, map, getopt, library.
 
 handle_options(MaybeError, Args, Link) -->

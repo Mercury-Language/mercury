@@ -53,15 +53,16 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module string, char, int, set, bintree, list, map, require.
-:- import_module bool, getopt, assoc_list, term, term_io, varset.
 
-:- import_module module_qual, prog_util, prog_io, prog_out, hlds_out.
-:- import_module globals, options.
+:- import_module prog_io, prog_io_goal, prog_io_util, prog_out, hlds_out.
+:- import_module module_qual, prog_util, globals, options.
 :- import_module make_tags, quantification, shapes.
 :- import_module code_util, unify_proc, special_pred, type_util, mode_util.
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc, inst_match.
 :- import_module fact_table.
+
+:- import_module string, char, int, set, bintree, list, map, require.
+:- import_module bool, getopt, assoc_list, term, term_io, varset.
 
 parse_tree_to_hlds(module(Name, Items), EqvMap, Module, UndefTypes, UndefModes)
 		-->
@@ -276,6 +277,11 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		{ Pragma = c_code(_, _, _, _, _, _) },
 		{ Module = Module0 }
 	;
+		% Handle pragma c_code decls later on (when we process
+		% clauses).
+		{ Pragma = c_code(_, _, _, _, _, _, _, _) },
+		{ Module = Module0 }
+	;
 		{ Pragma = memo(Name, Arity) },
 		add_pred_marker(Module0, "memo", Name, Arity, Context,
 			[request(memo)], Module1),
@@ -446,11 +452,19 @@ add_item_clause(module_defn(_, Defn), Status0, Status, _,
 add_item_clause(pragma(Pragma), Status, Status, Context,
 		Module0, Module, Info0, Info) -->
 	(
-		{ Pragma = c_code(IsRecursive, Pred, PredOrFunc, Vars, 
+		{ Pragma = c_code(MayCallMercury, Pred, PredOrFunc, Vars, 
 			VarSet, C_Code) }
 	->
-		module_add_pragma_c_code(IsRecursive, Pred, PredOrFunc, Vars, 
-			VarSet, C_Code, Status, Context, 
+		module_add_pragma_c_code(MayCallMercury, Pred, PredOrFunc,
+			Vars, VarSet, C_Code, Status, Context, no,
+			Module0, Module, Info0, Info)
+	;
+		{ Pragma = c_code(MayCallMercury, Pred, PredOrFunc, Vars, 
+			SavedVars, LabelNames, VarSet, C_Code) }
+	->
+		{ ExtraPragmaInfo = yes(SavedVars - LabelNames) },
+		module_add_pragma_c_code(MayCallMercury, Pred, PredOrFunc,
+			Vars, VarSet, C_Code, Status, Context, ExtraPragmaInfo,
 			Module0, Module, Info0, Info)
 	;
 		{ Pragma = fact_table(Pred, Arity, File) }
@@ -458,8 +472,8 @@ add_item_clause(pragma(Pragma), Status, Status, Context,
 		module_add_pragma_fact_table(Pred, Arity, File, 
 			Status, Context, Module0, Module, Info0, Info)
 	;
-		% don't worry about any pragma decs but c_code and fact_table
-		% here
+		% don't worry about any pragma decs but c_code
+		% and fact_table here
 		{ Module = Module0 },
 		{ Info = Info0 }	
 	).
@@ -776,11 +790,11 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context, Status0,
 :- mode combine_status(in, in, out) is det.
 
 combine_status(StatusA, StatusB, Status) :-
-        ( combine_status_2(StatusA, StatusB, CombinedStatus) ->
-                Status = CombinedStatus
-        ;
-                error("pseudo_imported or pseudo_exported type definition")
-        ).
+	( combine_status_2(StatusA, StatusB, CombinedStatus) ->
+		Status = CombinedStatus
+	;
+		error("pseudo_imported or pseudo_exported type definition")
+	).
 
 :- pred combine_status_2(import_status, import_status, import_status).
 :- mode combine_status_2(in, in, out) is semidet.
@@ -805,7 +819,6 @@ combine_status_imported(exported,	exported).
 combine_status_imported(opt_imported,	opt_imported).
 combine_status_imported(abstract_imported, imported).
 combine_status_imported(abstract_exported, abstract_exported).
-
 
 :- pred combine_status_local(import_status, import_status).
 :- mode combine_status_local(in, out) is semidet.
@@ -1192,7 +1205,6 @@ add_special_pred_decl(SpecialPredId,
 		SpecialPredMap),
 	module_info_set_special_pred_map(Module1, SpecialPredMap, Module).
 
-
 :- pred adjust_special_pred_status(import_status, special_pred_id,
 				import_status).
 :- mode adjust_special_pred_status(in, in, out) is det.
@@ -1559,15 +1571,16 @@ module_add_c_body_code(C_Body_Code, Context, Module0, Module) :-
 	
 %-----------------------------------------------------------------------------%
 
-:- pred module_add_pragma_c_code(c_is_recursive, sym_name, pred_or_func, 
+:- pred module_add_pragma_c_code(may_call_mercury, sym_name, pred_or_func, 
 		list(pragma_var), varset, string, import_status, term__context, 
-		module_info, module_info, qual_info, qual_info, 
-		io__state, io__state).
-:- mode module_add_pragma_c_code(in, in, in, in, in, in, in, in, in, out,
+		maybe(pair(list(string))), module_info, module_info,
+		qual_info, qual_info, io__state, io__state).
+:- mode module_add_pragma_c_code(in, in, in, in, in, in, in, in, in, in, out,
 		in, out, di, uo) is det.  
-module_add_pragma_c_code(IsRecursive, PredName, PredOrFunc, PVars, VarSet, 
-			C_Code, Status, Context, ModuleInfo0, ModuleInfo, 
-			Info0, Info) --> 
+
+module_add_pragma_c_code(MayCallMercury, PredName, PredOrFunc, PVars, VarSet, 
+			C_Code, Status, Context, ExtraInfo,
+			ModuleInfo0, ModuleInfo, Info0, Info) --> 
 	{ module_info_name(ModuleInfo0, ModuleName) },
 	{ list__length(PVars, Arity) },
 		% print out a progress message
@@ -1642,13 +1655,13 @@ module_add_pragma_c_code(IsRecursive, PredName, PredOrFunc, PVars, VarSet,
 		->
 			{ pred_info_clauses_info(PredInfo1, Clauses0) },
 			clauses_info_add_pragma_c_code(Clauses0,
-					IsRecursive, PredId, ProcId, VarSet,
-					PVars, C_Code, Context,
-					Clauses, Goal, Info0, Info),
+				MayCallMercury, PredId, ProcId, VarSet,
+				PVars, C_Code, Context, ExtraInfo,
+				Clauses, Goal, Info0, Info),
 			{ pred_info_set_clauses_info(PredInfo1, Clauses, 
-					PredInfo2) },
+				PredInfo2) },
 			{ pred_info_set_goal_type(PredInfo2, pragmas, 
-					PredInfo) },
+				PredInfo) },
 			{ map__set(Preds0, PredId, PredInfo, Preds) },
 			{ predicate_table_set_preds(PredicateTable1, Preds, 
 				PredicateTable) },
@@ -1699,8 +1712,8 @@ pragma_get_vars([P|PragmaVars], [V|Vars]) :-
 
 pragma_get_var_names([], []).
 pragma_get_var_names([P|PragmaVars], [yes(N)|Names]) :-
-        P = pragma_var(_Var, N, _Mode),
-        pragma_get_var_names(PragmaVars, Names).
+	P = pragma_var(_Var, N, _Mode),
+	pragma_get_var_names(PragmaVars, Names).
 
 %---------------------------------------------------------------------------%
 
@@ -1759,7 +1772,6 @@ mode_list_matches([Mode1 | Modes1], [Mode2 | Modes2], ModuleInfo) :-
 	mode_get_insts(ModuleInfo, Mode2, Inst1, Inst2),
 	mode_list_matches(Modes1, Modes2, ModuleInfo).
 
-
 %-----------------------------------------------------------------------------%
 
 	% Warn about variables which occur only once but don't start with
@@ -1779,7 +1791,6 @@ maybe_warn_overlap(Warnings, VarSet, PredOrFunc, PredCallId) -->
 	;	
 		[]
 	).
-
 
 :- pred warn_overlap(list(quant_warning), varset, pred_or_func, pred_call_id,
 				io__state, io__state).
@@ -1915,7 +1926,7 @@ warn_singletons_in_goal_2(unify(Var, RHS, _, _, _),
 	warn_singletons_in_unify(Var, RHS, GoalInfo, QuantVars, VarSet,
 		PredCallId).
 
-warn_singletons_in_goal_2(pragma_c_code(C_Code, _, _, _, _, ArgNames), 
+warn_singletons_in_goal_2(pragma_c_code(C_Code, _, _, _, _, ArgNames, _), 
 		GoalInfo, _QuantVars, _VarSet, PredCallId) --> 
 	{ goal_info_get_context(GoalInfo, Context) },
 	warn_singletons_in_pragma_c_code(C_Code, ArgNames, Context, 
@@ -2015,7 +2026,6 @@ warn_singletons_in_pragma_c_code(C_Code, ArgNames,
 		io__write_string(".\n"),
 		io__set_output_stream(OldStream, _)
 	).
-
 
 %-----------------------------------------------------------------------------%
 
@@ -2241,16 +2251,16 @@ clauses_info_add_clause(ClausesInfo0, PredId, ModeIds, CVarSet, TVarSet0,
 % pragma c_code declaration and the head vars of the pred. Also return the
 % hlds__goal.
 
-:- pred clauses_info_add_pragma_c_code(clauses_info, c_is_recursive,
+:- pred clauses_info_add_pragma_c_code(clauses_info, may_call_mercury,
 	pred_id, proc_id, varset, list(pragma_var), string, term__context,
-	clauses_info, hlds__goal, qual_info, qual_info,
-	io__state, io__state) is det.
-:- mode clauses_info_add_pragma_c_code(in, in, in, in, in, in, in, in, out, 
-	out, in, out, di, uo) is det.
+	maybe(pair(list(string))), clauses_info, hlds__goal,
+	qual_info, qual_info, io__state, io__state) is det.
+:- mode clauses_info_add_pragma_c_code(in, in, in, in, in, in, in, in, in,
+	out, out, in, out, di, uo) is det.
 
-clauses_info_add_pragma_c_code(ClausesInfo0, IsRecursive, PredId, ModeId,
-	PVarSet, PVars, C_Code, Context, ClausesInfo, HldsGoal, Info0, Info)
-		-->
+clauses_info_add_pragma_c_code(ClausesInfo0, MayCallMercury, PredId, ModeId,
+		PVarSet, PVars, C_Code, Context, ExtraInfo,
+		ClausesInfo, HldsGoal, Info0, Info) -->
 	{
 	ClausesInfo0 = clauses_info(VarSet0, VarTypes, VarTypes1,
 				 HeadVars, ClauseList),
@@ -2258,27 +2268,48 @@ clauses_info_add_pragma_c_code(ClausesInfo0, IsRecursive, PredId, ModeId,
 	pragma_get_var_names(PVars, Names),
 
 		% merge the varsets of the proc and the new pragma_c_code
-        varset__merge_subst(VarSet0, PVarSet, VarSet1, Subst),
-        map__apply_to_list(Args0, Subst, TermArgs),
+	varset__merge_subst(VarSet0, PVarSet, VarSet1, Subst),
+	map__apply_to_list(Args0, Subst, TermArgs),
 	term__term_list_to_var_list(TermArgs, Args),
+
+	(
+		ExtraInfo = no,
+		ExtraPragmaInfo = none,
+		VarSet2 = VarSet1
+	;
+		ExtraInfo = yes(SavedVarNames - LabelNames),
+		allocate_vars_for_saved_vars(SavedVarNames, SavedVars,
+			VarSet1, VarSet2),
+		ExtraPragmaInfo = extra_pragma_info(SavedVars, LabelNames)
+	),
 
 		% build the pragma_c_code
 	goal_info_init(GoalInfo0),
 	goal_info_set_context(GoalInfo0, Context, GoalInfo),
-	HldsGoal0 = pragma_c_code(C_Code, IsRecursive, PredId, ModeId, Args,
-				Names) - GoalInfo
+	HldsGoal0 = pragma_c_code(C_Code, MayCallMercury, PredId, ModeId, Args,
+				Names, ExtraPragmaInfo) - GoalInfo
 	}, 
 		% Insert unifications with the head args.
 	insert_arg_unifications(HeadVars, TermArgs, Context, head, HldsGoal0,
-		VarSet1, HldsGoal1, VarSet2, Info0, Info),
+		VarSet2, HldsGoal1, VarSet3, Info0, Info),
 	{
 	map__init(Empty),
-	implicitly_quantify_clause_body(HeadVars, HldsGoal1, VarSet2, Empty,
+	implicitly_quantify_clause_body(HeadVars, HldsGoal1, VarSet3, Empty,
 		HldsGoal, VarSet, _, _Warnings),
 	NewClause = clause([ModeId], HldsGoal, Context),
 	ClausesInfo =  clauses_info(VarSet, VarTypes, VarTypes1, HeadVars, 
 		[NewClause|ClauseList])
 	}.
+
+:- pred allocate_vars_for_saved_vars(list(string), list(pair(var, string)),
+	varset, varset).
+:- mode allocate_vars_for_saved_vars(in, out, in, out) is det.
+
+allocate_vars_for_saved_vars([], [], VarSet, VarSet).
+allocate_vars_for_saved_vars([Name | Names], [Var - Name | VarNames],
+		VarSet0, VarSet) :-
+	varset__new_var(VarSet0, Var, VarSet1),
+	allocate_vars_for_saved_vars(Names, VarNames, VarSet1, VarSet).
 
 %-----------------------------------------------------------------------------
 
@@ -2836,7 +2867,7 @@ unravel_unification(term__functor(LeftF, LeftAs, LeftC),
 	% unknown slots with dummy values
 
 create_atomic_unification(A, B, Context, UnifyMainContext, UnifySubContext,
-                Goal) :-
+		Goal) :-
 	UMode = ((free - free) -> (free - free)),
 	Mode = ((free -> free) - (free -> free)),
 	UnifyInfo = complicated_unify(UMode, can_fail),
@@ -3038,7 +3069,6 @@ update_qual_info(QualInfo0, TVarSet, VarTypes, PredId, QualInfo) :-
 				Index, VarTypes, PredId, MQInfo)
 	).
 
-
 	% All the other items are needed all at once in one or two places,
 	% so access predicates for them would be a waste of time.
 
@@ -3057,7 +3087,6 @@ qual_info_set_mq_info(qual_info(A,B,C,D,E,F,_), MQInfo,
 :- mode qual_info_get_var_types(in, out) is det.
 
 qual_info_get_var_types(qual_info(_,_,_,_,VarTypes,_,_), VarTypes).
-
 
 %-----------------------------------------------------------------------------%
 
@@ -3274,7 +3303,6 @@ module_add_pragma_fact_table(Pred, Arity, FileName, Status, Context,
 	    { Info = Info0 }
 	).
 
-
 	% Add a `pragma c_code' for each mode of the fact table lookup to the
 	% HLDS.
 	% `pragma fact_table's are represented in the HLDS by a 
@@ -3310,8 +3338,10 @@ module_add_fact_table_proc(ProcID, ProcTable, SymName, PredOrFunc, Arity,
 	{ proc_info_argmodes(ProcInfo, Modes) },
 	{ fact_table_pragma_vars(Vars, Modes, VarSet, PragmaVars) },
 	{ fact_table_generate_c_code(SymName, PragmaVars, C_Code) },
-	module_add_pragma_c_code(non_recursive, SymName, PredOrFunc, PragmaVars,
-		VarSet, C_Code, Status, Context, Module0, Module, Info0, Info).
+	% XXX this should be modified to use the new type of pragma_c.
+	module_add_pragma_c_code(will_not_call_mercury, SymName, PredOrFunc,
+		PragmaVars, VarSet, C_Code, Status, Context, no,
+		Module0, Module, Info0, Info).
 
 	% Create a list(pragma_var) that looks like the ones that are created
 	% for pragma c_code in prog_io.m.

@@ -517,7 +517,7 @@ polymorphism__process_goal_expr(if_then_else(Vars, A0, B0, C0, SM), GoalInfo,
 	polymorphism__process_goal(C0, C).
 
 polymorphism__process_goal_expr(pragma_c_code(IsRecursive, C_Code, PredId,
-		ProcId, ArgVars0, ArgNames0), GoalInfo, Goal) -->
+		ProcId, ArgVars0, ArgNames0, ExtraInfo), GoalInfo, Goal) -->
 	polymorphism__process_call(PredId, ProcId, ArgVars0,
 		ArgVars, ExtraVars, ExtraGoals),
 	%
@@ -544,7 +544,7 @@ polymorphism__process_goal_expr(pragma_c_code(IsRecursive, C_Code, PredId,
 	% plug it all back together
 	%
 	{ Call = pragma_c_code(IsRecursive, C_Code, PredId, ProcId, ArgVars,
-			ArgNames) - CallGoalInfo },
+			ArgNames, ExtraInfo) - CallGoalInfo },
 	{ list__append(ExtraGoals, [Call], GoalList) },
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) }.
 

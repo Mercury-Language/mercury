@@ -87,7 +87,7 @@ lco_in_goal_2(call(A,B,C,D,E,F), _ModuleInfo, call(A,B,C,D,E,F)).
 
 lco_in_goal_2(unify(A,B,C,D,E), _ModuleInfo, unify(A,B,C,D,E)).
 
-lco_in_goal_2(pragma_c_code(A,B,C,D,E,F), _, pragma_c_code(A,B,C,D,E,F)).
+lco_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), _, pragma_c_code(A,B,C,D,E,F,G)).
 
 %-----------------------------------------------------------------------------%
 

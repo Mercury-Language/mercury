@@ -186,7 +186,7 @@ first_order_check_goal(not(Goal - GoalInfo), _GoalInfo, _Negated,
 		WholeScc, ThisPredProcId, Error, Module0, Module) -->
 	first_order_check_goal(Goal, GoalInfo, yes, WholeScc, ThisPredProcId,
 		Error, Module0, Module).
-first_order_check_goal(pragma_c_code(_, _IsRec, CPred, CProc, _, _), 
+first_order_check_goal(pragma_c_code(_, _IsRec, CPred, CProc, _, _, _), 
 		GoalInfo, Negated, WholeScc, ThisPredProcId, 
 		Error, Module0, Module) -->
 	(

@@ -140,8 +140,9 @@
 :- implementation.
 
 :- import_module hlds_goal, hlds_data, prog_util, type_util, code_util.
-:- import_module prog_data, prog_io, prog_out, hlds_out, mercury_to_mercury.
-:- import_module options, getopt, globals, passes_aux, clause_to_proc.
+:- import_module prog_data, prog_io, prog_io_util, prog_out, hlds_out.
+:- import_module mercury_to_mercury, options, getopt, globals.
+:- import_module passes_aux, clause_to_proc.
 
 :- import_module int, list, map, string, require, std_util, tree234.
 :- import_module varset, term, term_io.
@@ -609,7 +610,7 @@ typecheck_goal_2(unify(A, B0, Mode, Info, UnifyContext),
 typecheck_goal_2(switch(_, _, _, _), _) -->
 	{ error("unexpected switch") }.
 % no need to typecheck pragmas
-typecheck_goal_2(pragma_c_code(A,B,C,D,E,F), pragma_c_code(A,B,C,D,E,F))
+typecheck_goal_2(pragma_c_code(A,B,C,D,E,F,G), pragma_c_code(A,B,C,D,E,F,G))
 	--> []. 
 
 %-----------------------------------------------------------------------------%

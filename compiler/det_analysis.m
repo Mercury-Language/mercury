@@ -556,14 +556,25 @@ det_infer_goal_2(some(Vars, Goal0), _, InstMap0, SolnContext, DetInfo, _, _,
 
 	% pragma c_codes are handled in the same way as predicate calls
 det_infer_goal_2(pragma_c_code(C_Code, IsRecursive, PredId, ProcId, Args,
-			ArgNameMap), 
+			ArgNameMap, Extra), 
 		GoalInfo, _, SolnContext, DetInfo, _, _,
 		pragma_c_code(C_Code, IsRecursive, PredId, ProcId, Args,
-			ArgNameMap),
+			ArgNameMap, Extra),
 		Detism, Msgs) :-
-	det_lookup_detism(DetInfo, PredId, ProcId, Detism),
-	determinism_components(Detism, _, NumSolns),
-	( NumSolns = at_most_many_cc, SolnContext \= first_soln ->
+	det_lookup_detism(DetInfo, PredId, ProcId, Detism0),
+	determinism_components(Detism0, CanFail, NumSolns0),
+	( Extra = extra_pragma_info(_, _) ->
+		% pragma C codes that specify saved variables and labels
+		% can have more than one solution
+		NumSolns = at_most_many
+	;
+		NumSolns = NumSolns0
+	),
+	determinism_components(Detism, CanFail, NumSolns),
+	(
+		NumSolns = at_most_many_cc,
+		SolnContext \= first_soln
+	->
 		Msgs = [cc_pred_in_wrong_context(GoalInfo, Detism,
 				PredId, ProcId)]
 	;

@@ -12,7 +12,7 @@
 %
 % The schemes we use to generate code for model_det and model_semi
 % pragma_c_codes are quite similar, so we handle them together.
-% The code that does this is reasonably simple
+% The code that does this is reasonably simple.
 %
 % The scheme for model_non pragma_c_codes is substantially different,
 % so we handle them seperately.
@@ -25,17 +25,16 @@
 :- import_module llds, code_info.
 :- import_module list, std_util.
 
-:- pred code_gen__generate_pragma_c_code(code_model, string,
-	c_is_recursive, pred_id, proc_id, list(var), list(maybe(string)),
-	hlds__goal_info, code_tree, code_info, code_info).
-:- mode code_gen__generate_pragma_c_code(in, in, in, in, in, in, in,
-	in, out, in, out) is det.
+:- pred code_gen__generate_pragma_c_code(code_model::in, string::in,
+	may_call_mercury::in, pred_id::in, proc_id::in, list(var)::in,
+	list(maybe(string))::in, hlds__goal_info::in, code_tree::out,
+	code_info::in, code_info::out) is det.
 
-% :- pred code_gen__generate_frame_pragma_c_code(code_model, string,
-% 	c_is_recursive, pred_id, proc_id, list(var), list(maybe(string)),
-% 	int, int, hlds__goal_info, code_tree, code_info, code_info).
-% :- mode code_gen__generate_frame_pragma_c_code(in, in, in, in, in, in, in,
-% 	in, in, in, out, in, out) is det.
+:- pred code_gen__generate_backtrack_pragma_c_code(code_model::in, string::in,
+	may_call_mercury::in, pred_id::in, proc_id::in, list(var)::in,
+	list(maybe(string))::in, list(pair(var, string))::in, list(string)::in,
+	hlds__goal_info::in, code_tree::out, code_info::in, code_info::out)
+	is erroneous.
 
 %---------------------------------------------------------------------------%
 
@@ -68,8 +67,8 @@
 %
 % Notes:
 %
-% (1)	These parts are only emitted if the C code may be recursive.
-%	If a pragma c_code(non_recursive, ...) declaration was used,
+% (1)	These parts are only emitted if the C code may call Mercury.
+%	If a pragma c_code(will_not_call_mercury, ...) declaration was used,
 %	they will not be emitted.
 %
 % (2)	The call to save_registers() is needed so that if the
@@ -88,7 +87,7 @@
 %	will be preserved, so if we're using conservative gc,
 %	there is nothing that needs restoring.
 
-code_gen__generate_pragma_c_code(CodeModel, C_Code, IsRecursive,
+code_gen__generate_pragma_c_code(CodeModel, C_Code, MayCallMercury,
 		PredId, ProcId, Args, Names, _GoalInfo, Code) -->
 	% First we need to get a list of input and output arguments
 	code_info__get_pred_proc_arginfo(PredId, ProcId, ArgInfo),
@@ -97,7 +96,7 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, IsRecursive,
 	{ pragma_select_in_args(ArgModes, InArgs) },
 	{ pragma_select_out_args(ArgModes, OutArgs) },
 
-	( { IsRecursive = non_recursive } ->
+	( { MayCallMercury = will_not_call_mercury } ->
 		{ SaveVarsCode = empty }
 	;
 		% the C code might call back Mercury code
@@ -121,7 +120,7 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, IsRecursive,
 
 		% C code goes here
 
-		( { IsRecursive = non_recursive } ->
+		( { MayCallMercury = will_not_call_mercury } ->
 			[]
 		;
 			% the C code may call Mercury code which clobbers
@@ -145,7 +144,7 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, IsRecursive,
 
 		% c code goes here
 
-		( { IsRecursive = non_recursive } ->
+		( { MayCallMercury = will_not_call_mercury } ->
 			[]
 		;
 			% the C code may call Mercury code which clobbers
@@ -159,7 +158,7 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, IsRecursive,
 	),
 	place_pragma_output_args_in_regs(OutArgs, Regs, Outputs),
 
-	( { IsRecursive = non_recursive } ->
+	( { MayCallMercury = will_not_call_mercury } ->
 		{ Wrapped_C_Code = C_Code }
 	;
 		{ string__append_list([
@@ -198,21 +197,21 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, IsRecursive,
 
 :- type c_arg	--->	c_arg(var, maybe(string)).
 
-:- pred make_c_arg_list(list(var), list(maybe(string)), list(c_arg)).
-:- mode make_c_arg_list(in, in, out) is det.
+:- pred make_c_arg_list(list(var)::in, list(maybe(string))::in,
+	list(c_arg)::out) is det.
 
 make_c_arg_list(Vars, Names, ArgNames) :-
 	make_c_arg_list_2(Vars, Names, [], ArgNames0),
 	list__reverse(ArgNames0, ArgNames).
 
-:- pred make_c_arg_list_2(list(var), list(maybe(string)),
-				list(c_arg), list(c_arg)).
-:- mode make_c_arg_list_2(in, in, in, out) is det.
+:- pred make_c_arg_list_2(list(var)::in, list(maybe(string))::in,
+	list(c_arg)::in, list(c_arg)::out) is det.
 
 make_c_arg_list_2([], [], ArgNames, ArgNames).
 make_c_arg_list_2([Var | Vars], [Name | Names], ArgNames0, ArgNames) :-
 	make_c_arg_list_2(Vars, Names, [c_arg(Var, Name) | ArgNames0],
-						ArgNames).
+		ArgNames).
+
 make_c_arg_list_2([], [_ | _], _, _) :-
 	error("code_gen:make_c_arg_list_2 - length mismatch").
 make_c_arg_list_2([_ | _], [], _, _) :-
@@ -229,8 +228,8 @@ get_c_arg_list_vars([c_arg(Var, _) | Args], [Var | Vars1]) :-
 % pragma_select_out_args returns the list of variables which are outputs for
 % a procedure
 
-:- pred pragma_select_out_args(assoc_list(c_arg, arg_info), list(c_arg)).
-:- mode pragma_select_out_args(in, out) is det.
+:- pred pragma_select_out_args(assoc_list(c_arg, arg_info)::in,
+	list(c_arg)::out) is det.
 
 pragma_select_out_args([], []).
 pragma_select_out_args([V - arg_info(_Loc, Mode) | Rest], Out) :-
@@ -246,8 +245,8 @@ pragma_select_out_args([V - arg_info(_Loc, Mode) | Rest], Out) :-
 % pragma_select_in_args returns the list of variables which are inputs for
 % a procedure
 
-:- pred pragma_select_in_args(assoc_list(c_arg, arg_info), list(c_arg)).
-:- mode pragma_select_in_args(in, out) is det.
+:- pred pragma_select_in_args(assoc_list(c_arg, arg_info)::in,
+	list(c_arg)::out) is det.
 
 pragma_select_in_args([], []).
 pragma_select_in_args([V - arg_info(_Loc, Mode) | Rest], In) :-
@@ -266,9 +265,8 @@ pragma_select_in_args([V - arg_info(_Loc, Mode) | Rest], In) :-
 % data structure in the llds. It is essentially a list of pairs of type and
 % variable name, so that declarations of the form "Type Name;" can be made.
 
-:- pred make_pragma_decls(list(c_arg), list(pragma_c_decl),
-				code_info, code_info).
-:- mode make_pragma_decls(in, out, in, out) is det.
+:- pred make_pragma_decls(list(c_arg)::in, list(pragma_c_decl)::out,
+	code_info::in, code_info::out) is det.
 
 make_pragma_decls([], []) --> [].
 make_pragma_decls([c_arg(Arg, ArgName) | ArgNames], Decls) -->
@@ -289,9 +287,8 @@ make_pragma_decls([c_arg(Arg, ArgName) | ArgNames], Decls) -->
 % data structure in the llds. It is essentially a list of the input variables,
 % and the corresponding rvals assigned to those (C) variables.
 
-:- pred get_pragma_input_vars(list(c_arg), list(pragma_c_input),
-			code_tree, code_info, code_info).
-:- mode get_pragma_input_vars(in, out, out, in, out) is det.
+:- pred get_pragma_input_vars(list(c_arg)::in, list(pragma_c_input)::out,
+	code_tree::out, code_info::in, code_info::out) is det.
 
 get_pragma_input_vars([], [], empty) --> [].
 get_pragma_input_vars([c_arg(Arg, MaybeName) | Args], Inputs, Code) -->
@@ -313,8 +310,8 @@ get_pragma_input_vars([c_arg(Arg, MaybeName) | Args], Inputs, Code) -->
 % pragma_acquire_regs acquires a list of registers in which to place each
 % of the given variables.
 
-:- pred pragma_acquire_regs(list(c_arg), list(lval), code_info, code_info).
-:- mode pragma_acquire_regs(in, out, in, out) is det.
+:- pred pragma_acquire_regs(list(c_arg)::in, list(lval)::out,
+	code_info::in, code_info::out) is det.
 
 pragma_acquire_regs([], []) --> [].
 pragma_acquire_regs([c_arg(V, _) | Vars], [Reg | Regs]) -->
@@ -327,9 +324,8 @@ pragma_acquire_regs([c_arg(V, _) | Vars], [Reg | Regs]) -->
 % are pairs of names of output registers and (C) variables which hold the
 % output value.
 
-:- pred place_pragma_output_args_in_regs(list(c_arg), list(lval),
-			list(pragma_c_output), code_info, code_info).
-:- mode place_pragma_output_args_in_regs(in, in, out, in, out) is det.
+:- pred place_pragma_output_args_in_regs(list(c_arg)::in, list(lval)::in,
+	list(pragma_c_output)::out, code_info::in, code_info::out) is det.
 
 place_pragma_output_args_in_regs([], [], []) --> [].
 place_pragma_output_args_in_regs([_X | _Xs], [], []) --> 
@@ -344,6 +340,12 @@ place_pragma_output_args_in_regs([Arg | Args], [Reg | Regs], [O | Outputs]) -->
 		{ O = pragma_c_output(Reg, Type, Name) },
 		place_pragma_output_args_in_regs(Args, Regs, Outputs)
 	;
-		{ error("code_gen:place_pragma_output_args_in_regs") }
+		{ error("place_pragma_output_args_in_regs") }
 	).
 
+%---------------------------------------------------------------------------%
+
+code_gen__generate_backtrack_pragma_c_code(_, _, _, _, _, _, _, _, _, _, _) -->
+	{ error("nondet pragma_c_codes not yet implemented") }.
+
+%---------------------------------------------------------------------------%

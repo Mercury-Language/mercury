@@ -12,8 +12,8 @@
 
 :- interface.
 
-:- import_module bool, list, set, map, std_util.
 :- import_module hlds_data, prog_data, instmap.
+:- import_module bool, list, assoc_list, set, map, std_util.
 
 	% Here is how goals are represented
 
@@ -141,12 +141,13 @@
 
 	;	pragma_c_code(
 			string,		% The C code to do the work
-			c_is_recursive, % Does the C code recursively
+			may_call_mercury,
+					% Can the C code recursively
 					% invoke Mercury code?
 			pred_id,	% The called predicate
 			proc_id, 	% The mode of the predicate
 			list(var),	% The (Mercury) argument variables
-			list(maybe(string))
+			list(maybe(string)),
 					% C variable names for each of the
 					% arguments. A no for a particular 
 					% argument means that it is not used
@@ -154,29 +155,21 @@
 					% type_info variables introduced by
 					% polymorphism.m might be represented
 					% in this way).
+			extra_pragma_info
+					% Extra information for model_non
+					% pragma_c_codes; none for others.
 		).
 
-%	;	frame_pragma_c_code(
-%			string,		% The C code to do the work
-%			c_is_recursive, % Does the C code recursively
-%					% invoke Mercury code?
-%			pred_id,	% The called predicate
-%			proc_id, 	% The mode of the predicate
-%			list(var),	% The (Mercury) argument variables
-%			list(maybe(string)),
-%					% C variable names for each of the
-%					% arguments. A no for a particular 
-%					% argument means that it is not used
-%					% by the C code.  (In particular, the
-%					% type_info variables introduced by
-%					% polymorphism.m might be represented
-%					% in this way).
-%			int,		% the number of framevars needed
-%					% by the hand-written C code (we may
-%					% need some more for saving the heap
-%					% pointer and/or tickets)
-%			int		% the number of labels needed
-%		).
+:- type extra_pragma_info
+	--->	none
+	;	extra_pragma_info(
+			assoc_list(var, string),
+					% the vars/names of the framevars used
+					% by the hand-written C code (we may
+					% need some more for saving the heap
+					% pointer and/or tickets)
+			list(string)	% the names of the labels needed
+		).
 
 	% Given the variable name field from a pragma c_code, get all the
 	% variable names.
@@ -816,7 +809,7 @@ goal_is_atomic(disj([], _)).
 goal_is_atomic(higher_order_call(_,_,_,_,_)).
 goal_is_atomic(call(_,_,_,_,_,_)).
 goal_is_atomic(unify(_,_,_,_,_)).
-goal_is_atomic(pragma_c_code(_,_,_,_,_,_)).
+goal_is_atomic(pragma_c_code(_,_,_,_,_,_,_)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

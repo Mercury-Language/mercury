@@ -183,8 +183,8 @@ detect_switches_in_goal_2(switch(Var, CanFail, Cases0, SM), _, InstMap,
 		VarTypes, ModuleInfo, switch(Var, CanFail, Cases, SM)) :-
 	detect_switches_in_cases(Cases0, InstMap, VarTypes, ModuleInfo, Cases).
 
-detect_switches_in_goal_2(pragma_c_code(A,B,C,D,E,F), _, _, _, _,
-		pragma_c_code(A,B,C,D,E,F)).
+detect_switches_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), _, _, _, _,
+		pragma_c_code(A,B,C,D,E,F,G)).
 
 %-----------------------------------------------------------------------------%
 

@@ -400,8 +400,8 @@ intermod__traverse_goal(if_then_else(Vars, Cond0, Then0, Else0, SM) - Info,
 
 	% Inlineable exported pragma_c_code goals can't use any
 	% non-exported types, so we just write out the clauses. 
-intermod__traverse_goal(pragma_c_code(A,B,C,D,E,F) - Info,
-			pragma_c_code(A,B,C,D,E,F) - Info, yes) --> [].
+intermod__traverse_goal(pragma_c_code(A,B,C,D,E,F,G) - Info,
+			pragma_c_code(A,B,C,D,E,F,G) - Info, yes) --> [].
 
 
 :- pred intermod__traverse_list_of_goals(hlds__goals::in, hlds__goals::out,
@@ -950,18 +950,18 @@ intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
 			{ Goal = conj(Goals) - _ },
 			{ list__filter(
 				lambda([X::in] is semidet, (
-					X = pragma_c_code(_, _, _, _, _, _) - _
+					X = pragma_c_code(_,_,_,_,_,_,_) - _
 				)),
 				Goals, [CCodeGoal]) },
-			{ CCodeGoal = pragma_c_code(CCode, IsRec,
-						_, _, Vars, _) - _ }
+			{ CCodeGoal = pragma_c_code(CCode, MayCallMercury,
+						_, _, Vars, _, _) - _ }
 		;
-			{ Goal = pragma_c_code(CCode, IsRec,
-						_, _, Vars, _) - _ }
+			{ Goal = pragma_c_code(CCode, MayCallMercury,
+						_, _, Vars, _, _) - _ }
 		)
 	->	
 		intermod__write_c_clauses(Procs, ProcIds, PredOrFunc, CCode, 
-					IsRec, Vars, Varset, SymName)
+					MayCallMercury, Vars, Varset, SymName)
 	;
 		{ error("intermod__write_c_code called with non c_code goal") }
 	),
@@ -969,19 +969,21 @@ intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
 				Clauses, Procs).
 
 :- pred intermod__write_c_clauses(proc_table::in, list(proc_id)::in, 
-		pred_or_func::in, string::in, c_is_recursive::in, list(var)::in,
-		varset::in, sym_name::in, io__state::di, io__state::uo) is det.
+		pred_or_func::in, string::in, may_call_mercury::in,
+		list(var)::in, varset::in, sym_name::in,
+		io__state::di, io__state::uo) is det.
 
 intermod__write_c_clauses(_, [], _, _, _, _, _, _) --> [].
 intermod__write_c_clauses(Procs, [ProcId | ProcIds], PredOrFunc,
-			CCode, IsRec, Vars, Varset, SymName) -->
+			CCode, MayCallMercury, Vars, Varset, SymName) -->
 	{ map__lookup(Procs, ProcId, ProcInfo) },
 	{ proc_info_argmodes(ProcInfo, ArgModes) },
 	{ get_pragma_c_code_vars(Vars, Varset, ArgModes, PragmaVars) },
-	mercury_output_pragma_c_code(IsRec, SymName, PredOrFunc, PragmaVars,
-						Varset, CCode),
-	intermod__write_c_clauses(Procs, ProcIds, PredOrFunc, CCode, IsRec, 
-					Vars, Varset, SymName).
+	% XXX will need modification for nondet pragma C code
+	mercury_output_pragma_c_code(MayCallMercury, SymName, PredOrFunc,
+		PragmaVars, no, Varset, CCode),
+	intermod__write_c_clauses(Procs, ProcIds, PredOrFunc, CCode,
+		MayCallMercury, Vars, Varset, SymName).
 
 :- pred get_pragma_c_code_vars(list(var)::in, varset::in,
 		list(mode)::in, list(pragma_var)::out) is det.

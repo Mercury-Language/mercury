@@ -35,14 +35,14 @@
 
 :- type gc_label_info 	--->	gc_label_info(
 					code_addr,
-					det,
+					frame_type,
 					num_slots,
 					list(liveinfo)
 				).
 
 :- type num_slots	==	int.
 
-:- type det		---> 	deterministic
+:- type frame_type	---> 	deterministic
 			;	nondeterministic
 			;	commit.
 
@@ -147,9 +147,9 @@ garbage_out__proc_instr(I, Cs, Cout) :-
 	(
 		I = call(_Target, Contn, LiveInfo, _)
 	->
-		garbage_out__get_det(LiveInfo, no, Det),
+		garbage_out__get_frame_type(LiveInfo, no, FrameType),
 		list__length(LiveInfo, Length),
-		C = gc_label_info(Contn, Det, Length, LiveInfo),
+		C = gc_label_info(Contn, FrameType, Length, LiveInfo),
 		Cout = [C | Cs]
 	;
 		Cout = Cs
@@ -163,54 +163,55 @@ garbage_out__proc_instr(I, Cs, Cout) :-
 % XXX would be better if this information was obtained elsewhere.
 %-----------------------------------------------------------------------------%
 
-:- pred garbage_out__get_det(list(liveinfo), maybe(det), det).
-:- mode garbage_out__get_det(in, in, out) is det.
+:- pred garbage_out__get_frame_type(list(liveinfo), maybe(frame_type),
+	frame_type).
+:- mode garbage_out__get_frame_type(in, in, out) is det.
 
-garbage_out__get_det([], no, nondeterministic).
+garbage_out__get_frame_type([], no, nondeterministic).
 	% XXX Is nondeterministic is a safe bet ?.
 	% or should we :
-	% error("garbage_out__get_det: Unable to determine determinism.").
-garbage_out__get_det([], yes(commit), commit).
-garbage_out__get_det([], yes(nondeterministic), nondeterministic).
-garbage_out__get_det([], yes(deterministic), deterministic).
+	% error("garbage_out__get_frame_type: Unable to determine determinism.").
+garbage_out__get_frame_type([], yes(commit), commit).
+garbage_out__get_frame_type([], yes(nondeterministic), nondeterministic).
+garbage_out__get_frame_type([], yes(deterministic), deterministic).
 
-garbage_out__get_det([L | Ls], OldD, NewDet) :-
+garbage_out__get_frame_type([L | Ls], MaybeOldFrameType, NewFrameType) :-
 	(
 		L = live_lvalue(stackvar(_), _, _)
 	->
 		(
-			OldD = yes(Detism)
+			MaybeOldFrameType = yes(OldFrameType)
 		->
 			( 
-				Detism = nondeterministic 
+				OldFrameType = nondeterministic 
 			->
-				Det = yes(commit)
+				MaybeNextFrameType = yes(commit)
 			;
-				Det = OldD
+				MaybeNextFrameType = MaybeOldFrameType
 			)	
 		;
-			Det = yes(deterministic)
+			MaybeNextFrameType = yes(deterministic)
 		)
 	;
 		L = live_lvalue(framevar(_), _, _)
 	->
 		(
-			OldD = yes(Detism)
+			MaybeOldFrameType = yes(OldFrameType)
 		->
 			(
-				Detism = deterministic
+				OldFrameType = deterministic
 			->
-				Det = yes(commit)
+				MaybeNextFrameType = yes(commit)
 			;
-				Det = OldD
+				MaybeNextFrameType = MaybeOldFrameType
 			)
 		;
-			Det = yes(nondeterministic)
+			MaybeNextFrameType = yes(nondeterministic)
 		)
 	;
-		Det = OldD
+		MaybeNextFrameType = MaybeOldFrameType
 	),
-	garbage_out__get_det(Ls, Det, NewDet).
+	garbage_out__get_frame_type(Ls, MaybeNextFrameType, NewFrameType).
 
 %-----------------------------------------------------------------------------%
 % Actually write the garbage information.
@@ -234,10 +235,10 @@ garbage_out__output(List, Shapes, Abs_Exports, SpecialPredShapes) -->
 
 garbage_out__write_cont_list([]) --> { true }.
 garbage_out__write_cont_list([G|Gs]) -->
-	{ G = gc_label_info(Code_Addr, Det, Num_Slots, Live_Info_List) },
+	{ G = gc_label_info(Code_Addr, FrameType, Num_Slots, Live_Info_List) },
 	io__write_string("continuation("),
 	garbage_out__write_code_addr(Code_Addr),
-	garbage_out__write_det(Det),
+	garbage_out__write_frame_type(FrameType),
 	io__write_string(", "),
 	io__write_int(Num_Slots),
 	io__write_string(", ["),
@@ -245,13 +246,13 @@ garbage_out__write_cont_list([G|Gs]) -->
 	io__write_string("]).\n"),
 	garbage_out__write_cont_list(Gs).
 
-:- pred garbage_out__write_det(det, io__state, io__state).
-:- mode garbage_out__write_det(in, di, uo) is det.
-garbage_out__write_det(deterministic) -->
+:- pred garbage_out__write_frame_type(frame_type, io__state, io__state).
+:- mode garbage_out__write_frame_type(in, di, uo) is det.
+garbage_out__write_frame_type(deterministic) -->
 	io__write_string(", deterministic").
-garbage_out__write_det(nondeterministic) -->
+garbage_out__write_frame_type(nondeterministic) -->
 	io__write_string(", nondeterministic").
-garbage_out__write_det(commit) -->
+garbage_out__write_frame_type(commit) -->
 	io__write_string(", commit").
 
 

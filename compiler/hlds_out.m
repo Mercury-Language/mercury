@@ -991,15 +991,26 @@ hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
 		[]
 	).
 
-hlds_out__write_goal_2(pragma_c_code(C_Code, _, _, _, ArgVars, ArgNames), _, _,
-		_, Indent, Follow, _) -->
+hlds_out__write_goal_2(pragma_c_code(C_Code, _, _, _, ArgVars, ArgNames, Extra),
+		_, _, _, Indent, Follow, _) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("$pragma(c_code, ["),
 	hlds_out__write_varnum_list(ArgVars),
 	io__write_string("], ["),
 	{ get_pragma_c_var_names(ArgNames, Names) },
 	hlds_out__write_string_list(Names),
-	io__write_string("], """),
+	io__write_string("], "),
+	(
+		{ Extra = none }
+	;
+		{ Extra = extra_pragma_info(SavedVarNames, LabelNames) },
+		io__write_string("["),
+		hlds_out__write_var_name_list(SavedVarNames),
+		io__write_string("], ["),
+		hlds_out__write_string_list(LabelNames),
+		io__write_string("], ")
+	),
+	io__write_string(""""),
 	io__write_string(C_Code),
 	io__write_string(""" )"),
 	io__write_string(Follow),
@@ -1022,6 +1033,22 @@ hlds_out__write_varnum_list([Var1, Var2 | Vars]) -->
 hlds_out__write_varnum(Var) -->
 	{ term__var_to_int(Var, VarNum) },
 	io__write_int(VarNum).
+
+:- pred hlds_out__write_var_name_list(list(pair(var, string)),
+	io__state, io__state).
+:- mode hlds_out__write_var_name_list(in, di, uo) is det.
+
+hlds_out__write_var_name_list([]) --> [].
+hlds_out__write_var_name_list([Var - Name]) -->
+	hlds_out__write_varnum(Var),
+	io__write_string(" - "),
+	io__write_string(Name).
+hlds_out__write_var_name_list([Var1 - Name1, VarName2 | Vars]) -->
+	hlds_out__write_varnum(Var1),
+	io__write_string(" - "),
+	io__write_string(Name1),
+	io__write_string(", "),
+	hlds_out__write_var_name_list([VarName2 | Vars]).
 
 :- pred hlds_out__write_string_list(list(string), io__state, io__state).
 :- mode hlds_out__write_string_list(in, di, uo) is det.

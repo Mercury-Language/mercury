@@ -78,7 +78,6 @@ module_qual__module_qualify_items(Items0, Items, ModuleName, ReportErrors,
 	),
 	{ mq_info_get_num_errors(Info, NumErrors) }.
 
-
 module_qual__qualify_mode_list(Modes0, Modes, Context, Info0, Info) -->
 	{ mq_info_set_error_context(Info0, lambda_expr - Context, Info1) },
 	qualify_mode_list(Modes0, Modes, Info1, Info).
@@ -86,7 +85,6 @@ module_qual__qualify_mode_list(Modes0, Modes, Context, Info0, Info) -->
 module_qual__qualify_type(Type0, Type, Context, Info0, Info) -->
 	{ mq_info_set_error_context(Info0, type_qual - Context, Info1) },
 	qualify_type(Type0, Type, Info1, Info).
-
 
 :- type mq_info
 	--->	mq_info(
@@ -105,7 +103,6 @@ module_qual__qualify_type(Type0, Type, Context, Info0, Info) -->
 			unit	% junk slot
 	).
 		
-
 	% Pass over the item list collecting all defined type, mode and
 	% inst ids and the names of all modules imported in the interface.
 :- pred collect_mq_info(item_list::in, mq_info::in, mq_info::out) is det.
@@ -134,8 +131,6 @@ collect_mq_info_2(func_mode(_,_,_,_,_,_), Info, Info).
 collect_mq_info_2(pragma(_), Info, Info).
 collect_mq_info_2(nothing, Info, Info).
 
-
-
 % Predicates to add the type, inst and mode ids visible
 % in this module to the mq_info.
 
@@ -152,7 +147,6 @@ add_type_defn(TypeDefn, Info0, Info) :-
 	id_set_insert(SymName - Arity, Types0, Types),
 	mq_info_set_types(Info0, Types, Info).
 
-
 :- pred add_inst_defn(inst_defn::in, mq_info::in, mq_info::out) is det.
 
 add_inst_defn(InstDefn, Info0, Info) :-
@@ -163,7 +157,6 @@ add_inst_defn(InstDefn, Info0, Info) :-
 	mq_info_get_insts(Info0, Insts0),
 	id_set_insert(SymName - Arity, Insts0, Insts),
 	mq_info_set_insts(Info0, Insts, Info).
-
 
 :- pred add_mode_defn(mode_defn::in, mq_info::in, mq_info::out) is det.
 
@@ -288,7 +281,6 @@ module_qualify_item(pragma(Pragma0) - Context, pragma(Pragma) - Context,
 module_qualify_item(nothing - Context, nothing - Context,
 						Info, Info, yes) --> [].
 
-
 :- pred update_import_status(module_defn::in, mq_info::in, mq_info::out,
 							bool::out) is det.
 
@@ -306,7 +298,6 @@ update_import_status(end_module(_), Info, Info, yes).
 update_import_status(export(_), Info, Info, yes).
 update_import_status(import(_), Info, Info, yes).
 update_import_status(use(_), Info, Info, yes).
-
 
 	% Qualify the constructors or other types in a type definition.	
 :- pred qualify_type_defn(type_defn::in, type_defn::out, mq_info::in,
@@ -346,7 +337,6 @@ qualify_constructors([SymName - Args0 | Ctors0], [SymName - Args | Ctors],
 	qualify_constructor_arg_list(Args0, Args, Info0, Info1),
 	qualify_constructors(Ctors0, Ctors, Info1, Info).
 
-
 	% Qualify the inst parameters of an inst definition.
 :- pred qualify_inst_defn(inst_defn::in, inst_defn::out, mq_info::in,
 	mq_info::out, term__context::in, io__state::di, io__state::uo) is det.
@@ -372,7 +362,6 @@ qualify_mode_defn(eqv_mode(SymName, Params, Mode0),
 								Info1) },
 	qualify_mode(Mode0, Mode, Info1, Info).	
 
-
 	% Qualify a list of items of the form Type::Mode, as in a
 	% predicate declaration.
 :- pred qualify_types_and_modes(list(type_and_mode)::in,
@@ -385,7 +374,6 @@ qualify_types_and_modes([TypeAndMode0 | TypesAndModes0],
 	qualify_type_and_mode(TypeAndMode0, TypeAndMode, Info0, Info1),
 	qualify_types_and_modes(TypesAndModes0, TypesAndModes, Info1, Info).
 
-
 :- pred qualify_type_and_mode(type_and_mode::in, type_and_mode::out,
 	mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.
 
@@ -396,7 +384,6 @@ qualify_type_and_mode(type_and_mode(Type0, Mode0), type_and_mode(Type, Mode),
 			Info0, Info) -->
 	qualify_type(Type0, Type, Info0, Info1),
 	qualify_mode(Mode0, Mode, Info1, Info).
-
 
 :- pred qualify_mode_list(list(mode)::in, list(mode)::out, mq_info::in,
 		mq_info::out, io__state::di, io__state::uo) is det.
@@ -421,7 +408,6 @@ qualify_mode(user_defined_mode(SymName0, Insts0),
 	find_unique_match(SymName0 - Arity, SymName - _, Modes,
 						mode_id, Info1, Info).
 	
-
 :- pred qualify_inst_list(list(inst)::in, list(inst)::out, mq_info::in,
 		mq_info::out, io__state::di, io__state::uo) is det.
 
@@ -429,7 +415,6 @@ qualify_inst_list([], [], Info, Info) --> [].
 qualify_inst_list([Inst0 | Insts0], [Inst | Insts], Info0, Info) -->
 	qualify_inst(Inst0, Inst, Info0, Info1),
 	qualify_inst_list(Insts0, Insts, Info1, Info).
-
 
 	% Qualify a single inst.
 :- pred qualify_inst((inst)::in, (inst)::out, mq_info::in, mq_info::out,
@@ -461,7 +446,6 @@ qualify_inst(abstract_inst(Name, Args0), abstract_inst(Name, Args),
 				Info0, Info) -->
 	qualify_inst_list(Args0, Args, Info0, Info).
 
-
 	% Find the unique inst_id that matches this inst, and qualify
 	% the argument insts.
 :- pred qualify_inst_name(inst_name::in, inst_name::out, mq_info::in,
@@ -489,7 +473,6 @@ qualify_inst_name(typed_ground(_, _), _, _, _) -->
 qualify_inst_name(typed_inst(_, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
 
-
 	% Qualify an inst of the form bound(functor(...)).
 :- pred qualify_bound_inst_list(list(bound_inst)::in, list(bound_inst)::out,
 	mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.
@@ -499,7 +482,6 @@ qualify_bound_inst_list([functor(ConsId, Insts0) | BoundInsts0],
 		 [functor(ConsId, Insts) | BoundInsts], Info0, Info) -->
 	qualify_inst_list(Insts0, Insts, Info0, Info1),
 	qualify_bound_inst_list(BoundInsts0, BoundInsts, Info1, Info).
-
 
 :- pred qualify_constructor_arg_list(list(constructor_arg)::in,
 	list(constructor_arg)::out, mq_info::in, mq_info::out,
@@ -555,7 +537,6 @@ qualify_type(Type0, Type, Info0, Info) -->
 		{ Info = Info0 }
 	).
 
-
 	% Qualify the modes in a pragma(c_code, ...) decl.
 :- pred qualify_pragma((pragma_type)::in, (pragma_type)::out,
 		mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.
@@ -566,6 +547,11 @@ qualify_pragma(c_code(Code), c_code(Code), Info, Info) --> [].
 qualify_pragma(c_code(Rec, SymName, PredOrFunc, PragmaVars0, Varset, CCode),
 	c_code(Rec, SymName, PredOrFunc, PragmaVars, Varset, CCode), 
 		Info0, Info) -->
+	qualify_pragma_vars(PragmaVars0, PragmaVars, Info0, Info).
+qualify_pragma(c_code(Rec, SymName, PredOrFunc, PragmaVars0,
+		SavedVars, LabelCount, Varset, CCode),
+	c_code(Rec, SymName, PredOrFunc, PragmaVars,
+		SavedVars, LabelCount, Varset, CCode), Info0, Info) -->
 	qualify_pragma_vars(PragmaVars0, PragmaVars, Info0, Info).
 qualify_pragma(memo(A, B), memo(A, B), Info, Info) --> [].
 qualify_pragma(inline(A, B), inline(A, B), Info, Info) --> [].
@@ -586,8 +572,6 @@ qualify_pragma_vars([pragma_var(Var, Name, Mode0) | PragmaVars0],
 		[pragma_var(Var, Name, Mode) | PragmaVars], Info0, Info) -->
 	qualify_mode(Mode0, Mode, Info0, Info1),
 	qualify_pragma_vars(PragmaVars0, PragmaVars, Info1, Info).
-
-
 
 	% Find the unique match in the current name space for a given id
 	% from a list of ids. If none exists, either because no match was
@@ -784,7 +768,6 @@ write_id(SymName - Arity) -->
 	io__write_string("'/"),
 	io__write_int(Arity).
 
-
 	% Warn about modules imported in the interface when they do not
 	% need to be.
 :- pred maybe_warn_unused_interface_imports(module_name::in,
@@ -827,7 +810,6 @@ is_or_are([], "") :- error("module_qual:is_or_are").
 is_or_are([_], "is").
 is_or_are([_, _ | _], "are").
 
-
 :- pred write_module_list(list(module_name)::in, io__state::di,
 					io__state::uo) is det.
 
@@ -841,7 +823,6 @@ write_module_list([Import]) -->
 	io__write_string(Import).
 write_module_list([]) -->
 	{ error("module_qual:write_module_list") }.
-
 
 	% Output an error message about an ill-formed type.
 :- pred report_invalid_type(term, error_context, io__state, io__state).
@@ -901,22 +882,18 @@ init_mq_info(ReportErrors, Info0) :-
 	term__context_init(Context),
 	ErrorContext = type(unqualified("") - 0) - Context,
 	set__init(InterfaceModules0),
-	id_set_init(Types0),
-	id_set_init(Insts0),
-	id_set_init(Modes0),
-	Info0 = mq_info(Types0, Insts0, Modes0, InterfaceModules0,
+	id_set_init(Empty),
+	Info0 = mq_info(Empty, Empty, Empty, InterfaceModules0,
 			local, 0, no, no, ReportErrors, ErrorContext, unit).
 
 init_mq_info_module(ModuleInfo, Info0) :-
 	module_info_typeids(ModuleInfo, TypeIds),
-	id_set_init(Types0),
-	list__foldl(id_set_insert, TypeIds, Types0, Types),
+	id_set_init(Empty),
+	list__foldl(id_set_insert, TypeIds, Empty, Types),
 	module_info_instids(ModuleInfo, InstIds),
-	id_set_init(Insts0),
-	list__foldl(id_set_insert, InstIds, Insts0, Insts),
+	list__foldl(id_set_insert, InstIds, Empty, Insts),
 	module_info_modeids(ModuleInfo, ModeIds),
-	id_set_init(Modes0),
-	list__foldl(id_set_insert, ModeIds, Modes0, Modes),
+	list__foldl(id_set_insert, ModeIds, Empty, Modes),
 	term__context_init(Context),
 	ErrorContext = type(unqualified("") - 0) - Context,
 	set__init(InterfaceModules0),
@@ -983,7 +960,6 @@ mq_info_incr_errors(mq_info(A,B,C,D,E, NumErrors0, G,H,I,J,K),
 		mq_info(A,B,C,D,E, NumErrors, G,H,I,J,K)) :-
 	NumErrors is NumErrors0 + 1.
 
-
 :- pred mq_info_set_error_flag(mq_info::in, id_type::in, mq_info::out) is det.
 
 mq_info_set_error_flag(Info0, type_id, Info) :-
@@ -992,7 +968,6 @@ mq_info_set_error_flag(Info0, mode_id, Info) :-
 	mq_info_set_mode_error_flag(Info0, Info).
 mq_info_set_error_flag(Info0, inst_id, Info) :-
 	mq_info_set_mode_error_flag(Info0, Info).
-
 
 :- pred mq_info_set_module_used(mq_info::in, module_name::in,
 						mq_info::out) is det.

@@ -46,9 +46,10 @@
 		maybe(determinism), term__context, io__state, io__state).
 :- mode mercury_output_func_mode_subdecl(in, in, in, in, in, in, di, uo) is det.
 
-:- pred mercury_output_pragma_c_code(c_is_recursive, sym_name, pred_or_func,
-		list(pragma_var), varset, string, io__state, io__state).
-:- mode mercury_output_pragma_c_code(in, in, in, in, in, in, di, uo) is det.
+:- pred mercury_output_pragma_c_code(may_call_mercury, sym_name, pred_or_func,
+		list(pragma_var), maybe(pair(list(string))),
+		varset, string, io__state, io__state).
+:- mode mercury_output_pragma_c_code(in, in, in, in, in, in, in, di, uo) is det.
 
 :- pred mercury_output_pragma_unused_args(pred_or_func, sym_name,
 		int, proc_id, list(int), io__state, io__state) is det.
@@ -250,10 +251,15 @@ mercury_output_item(pragma(Pragma), Context) -->
 		{ Pragma = c_code(Code) }, 
 		mercury_output_pragma_c_body_code(Code)
 	;
-		{ Pragma = c_code(IsRecursive, Pred, PredOrFunc, Vars, VarSet,
-				C_CodeString) }, 
-		mercury_output_pragma_c_code(IsRecursive, Pred, PredOrFunc, 
-				Vars, VarSet, C_CodeString)
+		{ Pragma = c_code(MayCallMercury, Pred, PredOrFunc, Vars,
+			VarSet, C_CodeString) }, 
+		mercury_output_pragma_c_code(MayCallMercury, Pred, PredOrFunc, 
+			Vars, no, VarSet, C_CodeString)
+	;
+		{ Pragma = c_code(MayCallMercury, Pred, PredOrFunc, Vars,
+			SavedVars, LabelNames, VarSet, C_CodeString) }, 
+		mercury_output_pragma_c_code(MayCallMercury, Pred, PredOrFunc, 
+			Vars, yes(SavedVars - LabelNames), VarSet, C_CodeString)
 	;
 		{ Pragma = export(Pred, PredOrFunc, ModeList, C_Function) },
 		mercury_output_pragma_export(Pred, PredOrFunc, ModeList,
@@ -277,11 +283,9 @@ mercury_output_item(pragma(Pragma), Context) -->
 		mercury_output_pragma_fact_table(Pred, Arity, FileName)
 	).
 
-
 mercury_output_item(nothing, _) --> [].
 
 %-----------------------------------------------------------------------------%
-
 
 mercury_output_pragma_unused_args(PredOrFunc, SymName,
 		Arity, ProcId, UnusedArgs) -->
@@ -1004,7 +1008,6 @@ mercury_output_goal_2(implies(_G1,_G2), _VarSet, _Indent) -->
 mercury_output_goal_2(equivalent(_G1,_G2), _VarSet, _Indent) -->
 	{ error("mercury_to_mercury: equivalent/2 in mercury_output_goal")}.
 
-
 mercury_output_goal_2(some(Vars, Goal), VarSet, Indent) -->
 	( { Vars = [] } ->
 		mercury_output_goal(Goal, VarSet, Indent)
@@ -1173,14 +1176,9 @@ mercury_output_pragma_c_body_code(C_CodeString) -->
 %-----------------------------------------------------------------------------%
 
 	% Output the given pragma c_code declaration
-mercury_output_pragma_c_code(IsRecursive, PredName, PredOrFunc, Vars0, VarSet,
-		C_CodeString) -->
+mercury_output_pragma_c_code(MayCallMercury, PredName, PredOrFunc, Vars0,
+		MaybeExtraInfo, VarSet, C_CodeString) -->
 	io__write_string(":- pragma c_code("),
-	(	{ IsRecursive = recursive },
-		io__write_string("recursive, ")
-	; 	{ IsRecursive = non_recursive },
-		io__write_string("non_recursive, ")
-	),
 	mercury_output_sym_name(PredName),
 	{
 		PredOrFunc = predicate,
@@ -1206,9 +1204,45 @@ mercury_output_pragma_c_code(IsRecursive, PredName, PredOrFunc, Vars0, VarSet,
 		mercury_output_pragma_c_code_vars(ResultVars, VarSet),
 		io__write_string(")")
 	),
-	io__write_string(", """),
+	(
+		{ MayCallMercury = may_call_mercury },
+		io__write_string(", may_call_mercury, ")
+	; 
+		{ MayCallMercury = will_not_call_mercury },
+		io__write_string(", will_not_call_mercury, ")
+	),
+	(
+		{ MaybeExtraInfo = no }
+	;
+		{ MaybeExtraInfo = yes(SavedVars - LabelNames) },
+		mercury_output_c_ident_list(SavedVars),
+		io__write_string(", "),
+		mercury_output_c_ident_list(LabelNames),
+		io__write_string(", ")
+	),
+	io__write_string(""""),
 	term_io__quote_string(C_CodeString),
 	io__write_string(""").\n").
+
+:- pred mercury_output_c_ident_list(list(string), io__state, io__state).
+:- mode mercury_output_c_ident_list(in, di, uo) is det.
+
+mercury_output_c_ident_list([]) -->
+	io__write_string("[]").
+mercury_output_c_ident_list([First | Rest]) -->
+	io__write_string("["),
+	io__write_string(First),
+	mercury_output_c_ident_list_2(Rest),
+	io__write_string("]").
+
+:- pred mercury_output_c_ident_list_2(list(string), io__state, io__state).
+:- mode mercury_output_c_ident_list_2(in, di, uo) is det.
+
+mercury_output_c_ident_list_2([]) --> [].
+mercury_output_c_ident_list_2([First | Rest]) -->
+	io__write_string(", "),
+	io__write_string(First),
+	mercury_output_c_ident_list_2(Rest).
 
 %-----------------------------------------------------------------------------%
 
@@ -1230,7 +1264,6 @@ mercury_output_pragma_c_code_vars([V|Vars], VarSet) -->
 		io__write_string(", ")
 	),
 	mercury_output_pragma_c_code_vars(Vars, VarSet).
-
 
 %-----------------------------------------------------------------------------%
 
