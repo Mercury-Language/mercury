@@ -1,25 +1,25 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2000-2002 The University of Melbourne.
+# Copyright (C) 2000-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
-
--include ../Mmake.params
 
 # This is needed to avoid conflicts with `bool'
 CFLAGS = -DMERCURY_BOOTSTRAP_H	
 
 INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
 
+# The following definition is correct for Linux.  You may need to change
+# this line to include the appropriate curses library for your OS. 
+MLLIBS = -lncurses
+
+-include ../Mmake.params
+
 default_target:	libmcurses
 
 depend:	mcurses.depend
 
 install: libmcurses.install
-
-# The following definition is correct for Linux.  You may need to change
-# this line to include the appropriate curses library for your OS. 
-MLLIBS = -lncurses
 
 .PHONY: check
 check:

@@ -1,10 +1,8 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-2000 University of Melbourne.
+# Copyright (C) 1997-2000, 2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
-
--include ../Mmake.params
 
 # extras/odbc/Mmakefile - Mmake file for building the ODBC interface.
 
@@ -28,6 +26,10 @@ IODBC_DIR=/home/aditi_db1/stayl/libiodbc-2.50.3
 
 # Pathname for the ODBC SDK (only for MODBC_MS)
 ODBC_SDK_DIR=/odbcsdk
+
+INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
+
+-include ../Mmake.params
 
 #-----------------------------------------------------------------------------#
 

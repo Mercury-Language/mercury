@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -163,6 +163,11 @@
 	% float, string, string, discriminated union and certain functions.
 	% Details are explained in the tutorials.
 	%
+	% If any test fails, quickcheck will report the failed test,
+	% and call io__set_exit_status(1).
+	% If all tests pass, quickcheck will print a summary of the
+	% tests executed.
+	%
 	% Quickcheck makes the assumption that the distincation between
 	% a function and a discriminated union is that num_functors(FuncType) 
 	% is -1, while num_functors(UnionType) is not -1.
@@ -300,7 +305,7 @@ qcheck(TestFunction, Name, TestCount, SpecificFrequency,
 		TrivialCount, Distributions, FailedConditionCount),
 	(if 	{ NoFlag = yes }	
 	 then
-	    	{ true }	
+	    	io__set_exit_status(1)
 	 else
 	    	io__write_string("\nTest Description : "),
 	    	io__write_string(Name),
