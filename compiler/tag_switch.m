@@ -25,8 +25,9 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_data, options, globals, code_gen.
-:- import_module map, tree, type_util, std_util, int, require.
+:- import_module hlds_module, hlds_pred, hlds_data, code_gen.
+:- import_module options, globals, type_util, std_util.
+:- import_module bool, map, tree, int, require.
 
 % where is the secondary tag (if any) for this primary tag value
 :- type stag_loc	--->	none ; local ; remote.
@@ -69,11 +70,25 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, StoreMap, EndLabel, Code)
 	% group the cases based on primary tag value
 	% and find out how many constructors share each primary tag value
 
-	tag_switch__get_tag_counts(Var, TagCountMap),
+	code_info__get_module_info(ModuleInfo),
+	code_info__get_proc_info(ProcInfo),
+	{ proc_info_vartypes(ProcInfo, VarTypes) },
+	{ map__lookup(VarTypes, Var, Type) },
+	{ tag_switch__get_tag_counts(Type, ModuleInfo,
+		MaxPrimary, TagCountMap) },
 	{ map__to_assoc_list(TagCountMap, TagCountList) },
 	{ map__init(TagCaseMap0) },
 	{ tag_switch__group_tags(Cases, TagCaseMap0, TagCaseMap) },
-	{ tag_switch__order_tags(TagCountList, TagCaseMap, TagCaseList) },
+
+	{ map__count(TagCaseMap, PtagsUsed) },
+	code_info__get_globals(Globals),
+	{ globals__lookup_int_option(Globals, dense_switch_size,
+		DenseSwitchSize) },
+	( { PtagsUsed < DenseSwitchSize } ->
+		{ PrimaryTable = no }
+	;
+		{ PrimaryTable = yes }
+	),
 
 	% We get a register for holding the tag. The tag is needed only
 	% by the switch, and no other code gets control between producing
@@ -87,9 +102,9 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, StoreMap, EndLabel, Code)
 	code_info__produce_variable_in_reg(Var, VarCode, VarRval),
 	code_info__acquire_reg(r, TagReg),
 	code_info__release_reg(TagReg),
-	code_info__get_globals(Globals),
 	{
-		TagCaseList = [_, _ | _],	% at least two primary tags
+		PrimaryTable = no,
+		PtagsUsed >= 2,
 		globals__lookup_int_option(Globals, num_real_r_regs,
 			NumRealRegs),
 		(
@@ -124,28 +139,50 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, StoreMap, EndLabel, Code)
 			node([label(FailLabel) - "switch has failed"]),
 			FailCode1) }
 	),
-
-	tag_switch__generate_primary_tag_codes(TagCaseList,
-		TagRval, VarRval, CodeModel, CanFail, StoreMap,
-		EndLabel, FailLabel, TagCountMap, CasesCode),
 	{ EndCode = node([label(EndLabel) - "end of tag switch"]) },
-	{ Code = tree(tree(tree(VarCode, TagCode), CasesCode),
-		tree(FailCode, EndCode)) }.
+
+	(
+		{ PrimaryTable = yes },
+		{ tag_switch__order_tags_by_value(0, MaxPrimary, TagCaseMap,
+			TagCaseList) },
+		tag_switch__generate_primary_tag_table(TagCaseList,
+			0, MaxPrimary, VarRval, CodeModel, StoreMap,
+			EndLabel, FailLabel, TagCountMap, Labels, TagsCode),
+		{ SwitchCode = node([
+			computed_goto(TagRval, Labels) -
+				"switch on primary tag"
+		]) },
+		{ CasesCode = tree(SwitchCode, TagsCode) }
+	;
+		{ PrimaryTable = no },
+		{ tag_switch__order_tags_by_count(TagCountList, TagCaseMap,
+			TagCaseList) },
+		tag_switch__generate_primary_tag_chain(TagCaseList,
+			TagRval, VarRval, CodeModel, CanFail, StoreMap,
+			EndLabel, FailLabel, TagCountMap, CasesCode)
+	),
+
+	{ Code =
+		tree(VarCode,
+		tree(TagCode,
+		tree(CasesCode,
+		tree(FailCode,
+		     EndCode)))) }.
 
 %-----------------------------------------------------------------------------%
 
 	% Generate a series of if-then-elses, one for each primary tag value.
 	% Jump tables are used only on secondary tags.
 
-:- pred tag_switch__generate_primary_tag_codes(tag_case_list,
+:- pred tag_switch__generate_primary_tag_chain(tag_case_list,
 	rval, rval, code_model, can_fail, store_map, label, label,
 	tag_count_map, code_tree, code_info, code_info).
-:- mode tag_switch__generate_primary_tag_codes(in, in, in, in, in, in, in, in,
+:- mode tag_switch__generate_primary_tag_chain(in, in, in, in, in, in, in, in,
 	in, out, in, out) is det.
 
-tag_switch__generate_primary_tag_codes([], _, _, _, _, _, _, _, _, empty) -->
+tag_switch__generate_primary_tag_chain([], _, _, _, _, _, _, _, _, empty) -->
 	[].
-tag_switch__generate_primary_tag_codes([TagGroup | TagGroups],
+tag_switch__generate_primary_tag_chain([TagGroup | TagGroups],
 		TagRval, VarRval, CodeModel, CanFail, StoreMap,
 		EndLabel, FailLabel, TagCountMap, Code) -->
 	{ TagGroup = Primary - (StagLoc - TagGoalMap) },
@@ -154,7 +191,7 @@ tag_switch__generate_primary_tag_codes([TagGroup | TagGroups],
 	{ StagLoc = StagLoc1 ->
 		true
 	;
-		error("secondary tag locations differ in tag_switch__generate_primary_tag_codes")
+		error("secondary tag locations differ in tag_switch__generate_primary_tag_chain")
 	},
 	(
 		{ TagGroups = [_|_] ; CanFail = can_fail }
@@ -163,15 +200,22 @@ tag_switch__generate_primary_tag_codes([TagGroup | TagGroups],
 		code_info__get_next_label(ElseLabel),
 		{ TestRval = binop(ne, TagRval,
 			unop(mktag, const(int_const(Primary)))) },
-		{ TestCode = node([if_val(TestRval, label(ElseLabel))
-			- "test primary tag only"]) },
+		{ TestCode = node([
+			if_val(TestRval, label(ElseLabel)) -
+				"test primary tag only"
+		]) },
 		tag_switch__generate_primary_tag_code(TagGoalMap,
 			Primary, MaxSecondary, StagLoc, VarRval, CodeModel,
 			StoreMap, EndLabel, FailLabel, TagCode),
 		{ ElseCode = node([
-			goto(label(EndLabel)) - "skip to end of tag switch",
-			label(ElseLabel) - "handle next primary tag"]) },
-		{ ThisTagCode = tree(tree(TestCode, TagCode), ElseCode) },
+			label(ElseLabel) -
+				"handle next primary tag"
+		]) },
+		{ ThisTagCode =
+			tree(TestCode,
+			tree(TagCode,
+			     ElseCode))
+		},
 		( { TagGroups = [_|_] } ->
 			code_info__slap_code_info(CodeInfo)
 		;
@@ -182,10 +226,82 @@ tag_switch__generate_primary_tag_codes([TagGroup | TagGroups],
 			Primary, MaxSecondary, StagLoc, VarRval, CodeModel,
 			StoreMap, EndLabel, FailLabel, ThisTagCode)
 	),
-	tag_switch__generate_primary_tag_codes(TagGroups,
+	tag_switch__generate_primary_tag_chain(TagGroups,
 		TagRval, VarRval, CodeModel, CanFail, StoreMap,
 		EndLabel, FailLabel, TagCountMap, OtherTagsCode),
 	{ Code = tree(ThisTagCode, OtherTagsCode) }.
+
+%-----------------------------------------------------------------------------%
+
+	% Generate the cases for a primary tag using a dense jump table
+	% that has an entry for all possible primary tag values.
+
+:- pred tag_switch__generate_primary_tag_table(tag_case_list, int, int,
+	rval, code_model, store_map, label, label, tag_count_map,
+	list(label), code_tree, code_info, code_info).
+:- mode tag_switch__generate_primary_tag_table(in, in, in, in,
+	in, in, in, in, in, out, out, in, out) is det.
+
+tag_switch__generate_primary_tag_table(TagGroups, CurPrimary, MaxPrimary,
+		VarRval, CodeModel, StoreMap, EndLabel, FailLabel, TagCountMap,
+		Labels, Code) -->
+	( { CurPrimary > MaxPrimary } ->
+		{ TagGroups = [] ->
+			true
+		;
+			error("caselist not empty when reaching limiting primary tag")
+		},
+		{ Labels = [] },
+		{ Code = empty }
+	;
+		{ NextPrimary is CurPrimary + 1 },
+		( { TagGroups = [CurPrimary - PrimaryInfo | TagGroups1] } ->
+			{ PrimaryInfo = StagLoc - TagGoalMap },
+			{ map__lookup(TagCountMap, CurPrimary, CountInfo) },
+			{ CountInfo = StagLoc1 - MaxSecondary },
+			{ StagLoc = StagLoc1 ->
+				true
+			;
+				error("secondary tag locations differ in tag_switch__generate_primary_tag_table")
+			},
+			code_info__get_next_label(NewLabel),
+			{ LabelCode = node([
+				label(NewLabel) -
+					"start of a case in primary tag switch"
+			]) },
+			( { TagGroups1 = [] } ->
+				tag_switch__generate_primary_tag_code(
+					TagGoalMap, CurPrimary, MaxSecondary,
+					StagLoc, VarRval, CodeModel,
+					StoreMap, EndLabel, FailLabel,
+					ThisTagCode)
+			;
+				code_info__grab_code_info(CodeInfo),
+				tag_switch__generate_primary_tag_code(
+					TagGoalMap, CurPrimary, MaxSecondary,
+					StagLoc, VarRval, CodeModel,
+					StoreMap, EndLabel, FailLabel,
+					ThisTagCode),
+				code_info__slap_code_info(CodeInfo)
+			),
+			tag_switch__generate_primary_tag_table(TagGroups1,
+				NextPrimary, MaxPrimary, VarRval, CodeModel,
+				StoreMap, EndLabel, FailLabel, TagCountMap,
+				OtherLabels, OtherCode),
+			{ Labels = [NewLabel | OtherLabels] },
+			{ Code =
+				tree(LabelCode,
+				tree(ThisTagCode,
+				     OtherCode))
+			}
+		;
+			tag_switch__generate_primary_tag_table(TagGroups,
+				NextPrimary, MaxPrimary, VarRval, CodeModel,
+				StoreMap, EndLabel, FailLabel, TagCountMap,
+				OtherLabels, Code),
+			{ Labels = [FailLabel | OtherLabels] }
+		)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -209,7 +325,15 @@ tag_switch__generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc,
 			code_gen__generate_goal(CodeModel, Goal, GoalCode),
 			code_info__generate_branch_end(CodeModel, StoreMap,
 				SaveCode),
-			{ Code = tree(GoalCode, SaveCode) }
+			{ GotoCode = node([
+				goto(label(EndLabel)) -
+					"skip to end of primary tag switch"
+			]) },
+			{ Code =
+				tree(GoalCode,
+				tree(SaveCode,
+				     GotoCode))
+			}
 		;
 			{ error("more than one goal for non-shared tag") }
 		)
@@ -228,7 +352,7 @@ tag_switch__generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc,
 		;
 			SecTagCode = node([assign(SecTagReg,
 				unop(unmkbody, Rval))
-				- "compute remote sec tag to switch on"])
+				- "compute local sec tag to switch on"])
 		},
 		{ SecTagRval = lval(SecTagReg) },
 		(
@@ -292,7 +416,7 @@ tag_switch__generate_secondary_tag_chain([Case0 | Cases0], SecTagRval,
 		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
 		{ ElseCode = node([
 			goto(label(EndLabel)) -
-				"skip to end of tag switch",
+				"skip to end of secondary tag switch",
 			label(ElseLabel) -
 				"handle next secondary tag"
 		]) },
@@ -300,7 +424,8 @@ tag_switch__generate_secondary_tag_chain([Case0 | Cases0], SecTagRval,
 			tree(TestCode,
 			tree(GoalCode,
 			tree(SaveCode,
-			     ElseCode))) },
+			     ElseCode)))
+		},
 		( { Cases0 = [_|_] } ->
 			code_info__slap_code_info(CodeInfo)
 		;
@@ -309,7 +434,15 @@ tag_switch__generate_secondary_tag_chain([Case0 | Cases0], SecTagRval,
 	;
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
 		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
-		{ ThisCode = tree(GoalCode, SaveCode) }
+		{ GotoCode = node([
+			goto(label(EndLabel)) -
+				"skip to end of secondary tag switch"
+		]) },
+		{ ThisCode =
+			tree(GoalCode,
+			tree(SaveCode,
+			     GotoCode))
+		}
 	),
 	tag_switch__generate_secondary_tag_chain(Cases0, SecTagRval,
 		CodeModel, CanFail, StoreMap, EndLabel, FailLabel, OtherCode),
@@ -342,7 +475,7 @@ tag_switch__generate_secondary_tag_table(CaseList, CurSecondary, MaxSecondary,
 			code_info__get_next_label(NewLabel),
 			{ LabelCode = node([
 				label(NewLabel) -
-					"start of a case in tag switch"
+					"start of a case in secondary tag switch"
 			]) },
 			( { CaseList1 = [] } ->
 				code_gen__generate_goal(CodeModel, Goal,
@@ -387,37 +520,37 @@ tag_switch__generate_secondary_tag_table(CaseList, CurSecondary, MaxSecondary,
 	% Find out how many secondary tags share each primary tag
 	% of the given variable.
 
-:- pred tag_switch__get_tag_counts(var, tag_count_map,
-	code_info, code_info).
-:- mode tag_switch__get_tag_counts(in, out, in, out) is det.
+:- pred tag_switch__get_tag_counts(type, module_info, int, tag_count_map).
+:- mode tag_switch__get_tag_counts(in, in, out, out) is det.
 
-tag_switch__get_tag_counts(Var, TagCountMap) -->
-	code_info__variable_type(Var, Type),
-	{ type_to_type_id(Type, TypeIdPrime, _) ->
+tag_switch__get_tag_counts(Type, ModuleInfo, MaxPrimary, TagCountMap) :-
+	( type_to_type_id(Type, TypeIdPrime, _) ->
 		TypeId = TypeIdPrime
 	;
 		error("unknown type in tag_switch__get_tag_counts")
-	},
-	code_info__get_module_info(ModuleInfo),
-	{ module_info_types(ModuleInfo, TypeTable) },
-	{ map__lookup(TypeTable, TypeId, TypeDefn) },
-	{ hlds_data__get_type_defn_body(TypeDefn, Body) },
-	{ Body = du_type(_, ConsTable, _) ->
+	),
+	module_info_types(ModuleInfo, TypeTable),
+	map__lookup(TypeTable, TypeId, TypeDefn),
+	hlds_data__get_type_defn_body(TypeDefn, Body),
+	( Body = du_type(_, ConsTable, _) ->
 		map__to_assoc_list(ConsTable, ConsList),
 		tag_switch__cons_list_to_tag_list(ConsList, TagList)
 	;
 		error("non-du type in tag_switch__get_tag_counts")
-	},
-	{ map__init(TagCountMap0) },
-	{ tag_switch__get_tag_counts_2(TagList, TagCountMap0, TagCountMap) }.
+	),
+	map__init(TagCountMap0),
+	tag_switch__get_tag_counts_2(TagList, -1, MaxPrimary,
+		TagCountMap0, TagCountMap).
 
-:- pred tag_switch__get_tag_counts_2(list(cons_tag),
+:- pred tag_switch__get_tag_counts_2(list(cons_tag), int, int,
 	tag_count_map, tag_count_map).
-:- mode tag_switch__get_tag_counts_2(in, in, out) is det.
+:- mode tag_switch__get_tag_counts_2(in, in, out, in, out) is det.
 
-tag_switch__get_tag_counts_2([], TagCountMap, TagCountMap).
-tag_switch__get_tag_counts_2([ConsTag | TagList], TagCountMap0, TagCountMap) :-
+tag_switch__get_tag_counts_2([], Max, Max, TagCountMap, TagCountMap).
+tag_switch__get_tag_counts_2([ConsTag | TagList], MaxPrimary0, MaxPrimary,
+		TagCountMap0, TagCountMap) :-
 	( ConsTag = simple_tag(Primary) ->
+		int__max(MaxPrimary0, Primary, MaxPrimary1),
 		( map__search(TagCountMap0, Primary, _) ->
 			error("simple tag is shared")
 		;
@@ -425,6 +558,7 @@ tag_switch__get_tag_counts_2([ConsTag | TagList], TagCountMap0, TagCountMap) :-
 				TagCountMap1)
 		)
 	; ConsTag = complicated_tag(Primary, Secondary) ->
+		int__max(MaxPrimary0, Primary, MaxPrimary1),
 		( map__search(TagCountMap0, Primary, Target) ->
 			Target = TagType - MaxSoFar,
 			( TagType = remote ->
@@ -440,6 +574,7 @@ tag_switch__get_tag_counts_2([ConsTag | TagList], TagCountMap0, TagCountMap) :-
 				TagCountMap1)
 		)
 	; ConsTag = complicated_constant_tag(Primary, Secondary) ->
+		int__max(MaxPrimary0, Primary, MaxPrimary1),
 		( map__search(TagCountMap0, Primary, Target) ->
 			Target = TagType - MaxSoFar,
 			( TagType = local ->
@@ -457,7 +592,8 @@ tag_switch__get_tag_counts_2([ConsTag | TagList], TagCountMap0, TagCountMap) :-
 	;
 		error("non-du tag in tag_switch__get_tag_counts_2")
 	),
-	tag_switch__get_tag_counts_2(TagList, TagCountMap1, TagCountMap).
+	tag_switch__get_tag_counts_2(TagList, MaxPrimary1, MaxPrimary,
+		TagCountMap1, TagCountMap).
 
 %-----------------------------------------------------------------------------%
 
@@ -512,33 +648,35 @@ tag_switch__group_tags([Case0 | Cases0], TagCaseMap0, TagCaseMap) :-
 
 %-----------------------------------------------------------------------------%
 
-	% Order the most primary tags based on the number of secondary tags
-	% associated with them. We use selection sort.
+	% Order the primary tags based on the number of secondary tags
+	% associated with them, putting the ones with the most secondary tags
+	% first. We use selection sort.
 	% Note that it is not an error for a primary tag to have no case list,
 	% since this can happen in semideterministic switches.
 
-:- pred tag_switch__order_tags(tag_count_list, tag_case_map, tag_case_list).
-:- mode tag_switch__order_tags(in, in, out) is det.
+:- pred tag_switch__order_tags_by_count(tag_count_list, tag_case_map,
+	tag_case_list).
+:- mode tag_switch__order_tags_by_count(in, in, out) is det.
 
-tag_switch__order_tags(TagCountList0, TagCaseMap0, TagCaseList) :-
+tag_switch__order_tags_by_count(TagCountList0, TagCaseMap0, TagCaseList) :-
 	(
 		tag_switch__select_frequent_tag(TagCountList0,
 			Primary, _, TagCountList1)
 	->
 		( map__search(TagCaseMap0, Primary, TagCase) ->
 			map__delete(TagCaseMap0, Primary, TagCaseMap1),
-			tag_switch__order_tags(TagCountList1, TagCaseMap1,
-				TagCaseList1),
+			tag_switch__order_tags_by_count(TagCountList1,
+				TagCaseMap1, TagCaseList1),
 			TagCaseList = [Primary - TagCase | TagCaseList1]
 		;
-			tag_switch__order_tags(TagCountList1, TagCaseMap0,
-				TagCaseList)
+			tag_switch__order_tags_by_count(TagCountList1,
+				TagCaseMap0, TagCaseList)
 		)
 	;
 		( map__is_empty(TagCaseMap0) ->
 			TagCaseList = []
 		;
-			error("TagCaseMap0 is not empty in tag_switch__order_tags")
+			error("TagCaseMap0 is not empty in tag_switch__order_tags_by_count")
 		)
 	).
 
@@ -564,6 +702,36 @@ tag_switch__select_frequent_tag([TagCount0 | TagCountList1], Primary, Count,
 		Primary = Primary0,
 		Count = Count0,
 		TagCountList = TagCountList1
+	).
+
+%-----------------------------------------------------------------------------%
+
+	% Order the primary tags based on their value, lowest value first.
+	% We scan through the primary tags values from zero to maximum.
+	% Note that it is not an error for a primary tag to have no case list,
+	% since this can happen in semideterministic switches.
+
+:- pred tag_switch__order_tags_by_value(int, int, tag_case_map, tag_case_list).
+:- mode tag_switch__order_tags_by_value(in, in, in, out) is det.
+
+tag_switch__order_tags_by_value(Ptag, MaxPtag, TagCaseMap0, TagCaseList) :-
+	( MaxPtag >= Ptag ->
+		NextPtag is Ptag + 1,
+		( map__search(TagCaseMap0, Ptag, TagCase) ->
+			map__delete(TagCaseMap0, Ptag, TagCaseMap1),
+			tag_switch__order_tags_by_value(NextPtag, MaxPtag,
+				TagCaseMap1, TagCaseList1),
+			TagCaseList = [Ptag - TagCase | TagCaseList1]
+		;
+			tag_switch__order_tags_by_value(NextPtag, MaxPtag,
+				TagCaseMap0, TagCaseList)
+		)
+	;
+		( map__is_empty(TagCaseMap0) ->
+			TagCaseList = []
+		;
+			error("TagCaseMap0 is not empty in tag_switch__order_tags_by_value")
+		)
 	).
 
 %-----------------------------------------------------------------------------%
