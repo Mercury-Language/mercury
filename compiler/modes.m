@@ -518,48 +518,6 @@ modecheck_proc_3(ProcId, PredId, ModuleInfo0, ProcInfo0, Changed0,
 	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3),
 	proc_info_set_argmodes(ProcInfo3, ArgModes, ProcInfo).
 
-% XXX FIXME move to mode_util.m
-:- pred inst_lists_to_mode_list(list(inst), list(inst), list(mode)).
-:- mode inst_lists_to_mode_list(in, in, out) is det.
-
-inst_lists_to_mode_list([], [_|_], _) :-
-	error("inst_lists_to_mode_list: length mis-match").
-inst_lists_to_mode_list([_|_], [], _) :-
-	error("inst_lists_to_mode_list: length mis-match").
-inst_lists_to_mode_list([], [], []).
-inst_lists_to_mode_list([Initial|Initials], [Final|Finals], [Mode|Modes]) :-
-	insts_to_mode(Initial, Final, Mode),
-	inst_lists_to_mode_list(Initials, Finals, Modes).
-
-:- pred insts_to_mode(inst, inst, mode).
-:- mode insts_to_mode(in, in, out) is det.
-
-insts_to_mode(Initial, Final, Mode) :-
-	%
-	% Use some abbreviations.
-	% This is just to make error messages and inferred modes
-	% more readable.
-	%
-	( Initial = free, Final = ground(shared, no) ->
-		Mode = user_defined_mode(unqualified("out"), [])
-	; Initial = free, Final = ground(unique, no) ->
-		Mode = user_defined_mode(unqualified("uo"), [])
-	; Initial = ground(shared, no), Final = ground(shared, no) ->
-		Mode = user_defined_mode(unqualified("in"), [])
-	; Initial = ground(unique, no), Final = ground(clobbered, no) ->
-		Mode = user_defined_mode(unqualified("di"), [])
-	; Initial = ground(unique, no), Final = ground(unique, no) ->
-		Mode = user_defined_mode(unqualified("ui"), [])
-	; Initial = free ->
-		Mode = user_defined_mode(unqualified("out"), [Final])
-	; Final = ground(clobbered, no) ->
-		Mode = user_defined_mode(unqualified("di"), [Initial])
-	; Initial = Final ->
-		Mode = user_defined_mode(unqualified("in"), [Initial])
-	;
-		Mode = (Initial -> Final)
-	).
-
 	% Given the head vars and the final insts of a predicate,
 	% work out which of those variables may be used again
 	% by the caller of that predicate (i.e. which variables
@@ -2362,8 +2320,10 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
 		ModeOfX = (InstOfX -> Inst),
 		ModeOfY = (InstOfY -> Inst),
 		Mode = ModeOfX - ModeOfY,
+		% the lambda expression just maps its argument variables
+		% from their current insts to the same inst
 		instmap_lookup_arg_list(ArgVars, InstMap0, ArgInsts),
-		mode_list_from_inst_list(ArgInsts, ArgModes),
+		inst_lists_to_mode_list(ArgInsts, ArgInsts, ArgModes),
 		categorize_unify_var_lambda(ModeOfX, ArgModes,
 				X, ArgVars, PredOrFunc,
 				Unification0, ModeInfo1,

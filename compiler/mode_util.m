@@ -122,8 +122,12 @@
 							list(uni_mode)).
 :- mode mode_util__modes_to_uni_modes(in, in, in, out) is det.
 
-:- pred mode_list_from_inst_list(list(inst), list(mode)).
-:- mode mode_list_from_inst_list(in, out) is det.
+	% inst_lists_to_mode_list(InitialInsts, FinalInsts, Modes):
+	%	Given two lists of corresponding initial and final
+	%	insts, return a list of modes which maps from the
+	%	initial insts to the final insts.
+:- pred inst_lists_to_mode_list(list(inst), list(inst), list(mode)).
+:- mode inst_lists_to_mode_list(in, in, out) is det.
 
 	% Given a user-defined or compiler-defined inst name,
 	% lookup the corresponding inst in the inst table.
@@ -204,9 +208,43 @@ mode_list_get_initial_insts([Mode | Modes], ModuleInfo, [Inst | Insts]) :-
 	mode_get_insts(ModuleInfo, Mode, Inst, _),
 	mode_list_get_initial_insts(Modes, ModuleInfo, Insts).
 
-mode_list_from_inst_list([], []).
-mode_list_from_inst_list([Inst|Insts], [(Inst -> Inst) | Modes]) :-
-	mode_list_from_inst_list(Insts, Modes).
+inst_lists_to_mode_list([], [_|_], _) :-
+	error("inst_lists_to_mode_list: length mis-match").
+inst_lists_to_mode_list([_|_], [], _) :-
+	error("inst_lists_to_mode_list: length mis-match").
+inst_lists_to_mode_list([], [], []).
+inst_lists_to_mode_list([Initial|Initials], [Final|Finals], [Mode|Modes]) :-
+	insts_to_mode(Initial, Final, Mode),
+	inst_lists_to_mode_list(Initials, Finals, Modes).
+
+:- pred insts_to_mode(inst, inst, mode).
+:- mode insts_to_mode(in, in, out) is det.
+
+insts_to_mode(Initial, Final, Mode) :-
+	%
+	% Use some abbreviations.
+	% This is just to make error messages and inferred modes
+	% more readable.
+	%
+	( Initial = free, Final = ground(shared, no) ->
+		Mode = user_defined_mode(unqualified("out"), [])
+	; Initial = free, Final = ground(unique, no) ->
+		Mode = user_defined_mode(unqualified("uo"), [])
+	; Initial = ground(shared, no), Final = ground(shared, no) ->
+		Mode = user_defined_mode(unqualified("in"), [])
+	; Initial = ground(unique, no), Final = ground(clobbered, no) ->
+		Mode = user_defined_mode(unqualified("di"), [])
+	; Initial = ground(unique, no), Final = ground(unique, no) ->
+		Mode = user_defined_mode(unqualified("ui"), [])
+	; Initial = free ->
+		Mode = user_defined_mode(unqualified("out"), [Final])
+	; Final = ground(clobbered, no) ->
+		Mode = user_defined_mode(unqualified("di"), [Initial])
+	; Initial = Final ->
+		Mode = user_defined_mode(unqualified("in"), [Initial])
+	;
+		Mode = (Initial -> Final)
+	).
 
 %-----------------------------------------------------------------------------%
 
