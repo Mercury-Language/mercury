@@ -36,7 +36,7 @@ command print_displayed_attributes/0.\
 
 % :- pred print_event is det.
 print_event_Op :-
-    ( getval(state_of_opium, running) ->
+    ( getval(state_of_morphine, running) ->
 	attribute_display(ChronoFlag, CallFlag, PortFlag, DepthFlag, DeterFlag,
 				PredOrFuncFlag, DeclModuleFlag, DefModuleFlag, 
 				NameFlag, ArityFlag, ModeNumFlag, ArgFlag, 
@@ -1297,7 +1297,6 @@ get_optype(fx,  prefix)  :- !.
 get_optype(fy,  prefix)  :- !.
 
 %------------------------------------------------------------------------------%
-% I copied that stuff from eclipse/opium/interface.op to avoid warnings.
 opium_procedure(
 	name		: read_input,
 	arg_list	: [Input],
@@ -1305,7 +1304,7 @@ opium_procedure(
 	parameters	: [],
 	message		:
 "Procedure which reads an input from within the current input stream \
-of Opium-M.\
+of Morphine.\
 "
 	).
 

@@ -8,12 +8,12 @@
  
 -opium_module_Op(opium_kernel).
 -	/* to get opium_kernel as first module always (manual) */
-+opium_module_Op('Opium-M').
-+	/* to get 'Opium-M' as first module always (manual) */
++opium_module_Op(morphine).
++	/* to get morphine as first module always (manual) */
  opium_module_Op(M) :-
  	current_module(M),
 -	M \== opium_kernel,
-+	M \== 'Opium-M',
++	M \== morphine,
  	not is_locked(M),
  	call(is_predicate(opium_module/0), M).
  

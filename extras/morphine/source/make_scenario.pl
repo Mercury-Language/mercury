@@ -4,18 +4,18 @@
 % Authors : Erwan Jahier <jahier@irisa.fr>, 
 %           Mireille Ducassé <ducasse@irisa.fr>
 % 
-% This file builds the Opium-M files. It is loaded from the INSTALL-OPIUM-M
+% This file builds the Morphine files. It is loaded from the INSTALL-MORPHINE
 % script.
 
-:- module('Opium-M').
+:- module(morphine).
 
 % We are using some files (the scenario handler) that are part of Eclipse.
-% To avoid licensing issues, we did not include them in the Opium-M distribution.
+% To avoid licensing issues, we did not include them in the Morphine distribution.
 % But since we need to patch them, we copy them and then apply the patches.
  
 patch_opium_files(FileName) :-
-	getenv('MERCURY_OPIUM_DIR', OpiumDir),
-	append_strings(OpiumDir, "/source/", SourceDir),
+	getenv('MERCURY_MORPHINE_DIR', MorphineDir),
+	append_strings(MorphineDir, "/source/", SourceDir),
 	atom_string(FileName, FileNameStr),
 	get_flag(installation_directory, InstallDir),
 	append_strings(InstallDir, "/lib_pd/opium_light/", OPIUM_LIGTH_DIR),
@@ -55,42 +55,42 @@ patch_all_files :-
 :- patch_all_files.
 
 :- 
-	getenv('MERCURY_OPIUM_DIR', OpiumDir),
-	append_strings(OpiumDir, "/source/", SourceStr),
+	getenv('MERCURY_MORPHINE_DIR', MorphineDir),
+	append_strings(MorphineDir, "/source/", SourceStr),
 	atom_string(Source, SourceStr),
 
 	append_strings(SourceStr, "util.pl", Util),
-	compile(Util, 'Opium-M'),
+	compile(Util, morphine),
 
-	append_strings(OpiumDir, "/source/error.op", Error),
-	append_strings(OpiumDir, "/source/scenario_handler.op", 
+	append_strings(MorphineDir, "/source/error.op", Error),
+	append_strings(MorphineDir, "/source/scenario_handler.op", 
 		Scenario_handler),
-	append_strings(OpiumDir, "/source/make.op", Make),
-	append_strings(OpiumDir, "/source/scenario.op", Scenario),
-	append_strings(OpiumDir, "/source/translate.op", Translate),
-	append_strings(OpiumDir, "/source/types.op", Types),
-	append_strings(OpiumDir, "/source/parameter.op", Parameter),
-	append_strings(OpiumDir, "/source/autoload.op", Autoload),
-	append_strings(OpiumDir, "/source/interface.op", Interface),
-	compile(Scenario_handler, 'Opium-M'),
-	compile(Error, 'Opium-M'),
-	compile(Make, 'Opium-M'),
-	compile(Parameter, 'Opium-M'),
-	compile(Scenario, 'Opium-M'),
-	compile(Autoload, 'Opium-M'),
-	compile(Translate, 'Opium-M'),
-	compile(Types, 'Opium-M'),
-	compile(Interface, 'Opium-M'),
+	append_strings(MorphineDir, "/source/make.op", Make),
+	append_strings(MorphineDir, "/source/scenario.op", Scenario),
+	append_strings(MorphineDir, "/source/translate.op", Translate),
+	append_strings(MorphineDir, "/source/types.op", Types),
+	append_strings(MorphineDir, "/source/parameter.op", Parameter),
+	append_strings(MorphineDir, "/source/autoload.op", Autoload),
+	append_strings(MorphineDir, "/source/interface.op", Interface),
+	compile(Scenario_handler, morphine),
+	compile(Error, morphine),
+	compile(Make, morphine),
+	compile(Parameter, morphine),
+	compile(Scenario, morphine),
+	compile(Autoload, morphine),
+	compile(Translate, morphine),
+	compile(Types, morphine),
+	compile(Interface, morphine),
 
 	build_obj_dir(OD),
-	make(scenario_handler, 'Opium-M', [active, traceable, global], Source, OD),
-	make('opium_m_kernel', 'Opium-M', [active, traceable, global], Source, OD),
-	make('source', 'Opium-M', [active, traceable, global], Source, OD),
-	make('display', 'Opium-M', [active, traceable, global], Source, OD),
-	make('step_by_step', 'Opium-M', [active, traceable, global], Source, OD),
-	make(collect, 'Opium-M', [active, traceable, global], Source, OD),
-	make(control_flow, 'Opium-M', [active, traceable, global], Source, OD),
-	make(help, 'Opium-M', [active, traceable, global], Source, OD),
+	make(scenario_handler, morphine, [active, traceable, global], Source, OD),
+	make('morphine_kernel', morphine, [active, traceable, global], Source, OD),
+	make('source', morphine, [active, traceable, global], Source, OD),
+	make('display', morphine, [active, traceable, global], Source, OD),
+	make('step_by_step', morphine, [active, traceable, global], Source, OD),
+	make(collect, morphine, [active, traceable, global], Source, OD),
+	make(control_flow, morphine, [active, traceable, global], Source, OD),
+	make(help, morphine, [active, traceable, global], Source, OD),
 
 	halt.
 

@@ -1,33 +1,31 @@
-%------------------------------------------------------------------------------%
-% Copyright (C) 1999 INRIA/INSA.
 --- /soft/eclipse/eclipse4.1/lib_pd/opium_light/help.op	Sat Feb 20 16:09:16 1999
-+++ help.op	Thu Nov  4 09:00:02 1999
++++ help.op	Mon Dec 13 13:41:17 1999
 @@ -41,8 +41,28 @@
  :- tool(show_all/2).
  
  help_Op :-
 -	opium_write(help, "\nThere are the following help commands: \n"),
 -	show_all(commands, help).
-+	opium_write(help, 
-+		"\nThere are the following help commands for Opium-M: \n"),
++	write(help, 
++		"\nThere are the following help commands for Morphine: \n"),
 +	show_all(commands, help),
 +
 +	% I copied this message here because I found no way to extend the
 +	% help/0 command by using its previous definition. 
-+        opium_write(help, "\nAnd here is the help message for ECLiPSe: \n\n"),
-+	opium_write(help, 
++        write(help, "\nAnd here is the help message for ECLiPSe: \n\n"),
++	 write(help, 
 +	    "   After the prompt [<module>]: ECLiPSe waits for a goal.\n"),
-+        opium_write(help, 
++        write(help, 
 +	    "   To type in clauses, call [user] or compile(user), and then\n"),
-+        opium_write(help, 
++        write(help, 
 +	    "   enter the clauses ended by ^D (EOF).\n\n"),
-+        opium_write(help, 
++        write(help, 
 +	    "   Call help(Pred/Arity) or help(Pred) or help(String)\n"),
-+        opium_write(help, 
++        write(help, 
 +	    "   to get help on a specific built-in predicate.\n\n"),
-+        opium_write(help, 
++        write(help, 
 +	    "   Call demo (in xeclipse) to invoke the demo programs.\n\n"),
-+        opium_write(help, 
++        write(help, 
 +	    "   This message can be modified by setting the handler for event 231.\n").
 +
  
@@ -62,7 +60,73 @@
  	system(Cmd1),
  	concat_atom([File, '.tex'], LatexFile),
  	concat_atom(['rm -f ', LatexFile], Cmd2),
-@@ -777,5 +799,63 @@
+@@ -728,16 +750,63 @@
+ 	opium_printf(help, "demo_goal: %w\ncondition: %w\n%w\n", [DemoGoal, Condition, Message]).
+ print_man_Op(tty, ArgList, ArgType, Message, DefaultValue, ObjType) :-
+ 	!,
+-	opium_printf(help, "%w\n", [Message]),
++	print_message(help, Message), nl,
+ 	print_arg_type(tty, ArgList, ArgType),
+ 	print_default_value(tty, DefaultValue),
+ 	print_object_type(tty, DefaultValue, ObjType).
+ print_man_Op(Manual, ArgList, ArgType, Message, DefaultValue, ObjType) :-
+-	writeln(Manual, Message),
++	print_message(Manual, Message), nl,
+ 	print_arg_type(Manual, ArgList, ArgType),
+ 	print_default_value(Manual, DefaultValue),
+ 	print_object_type(Manual, DefaultValue, ObjType).
+ 
++
++% Print on-line help messages in such a way that they fit into 80 columns. 
++print_message(Stream, Msg) :-
++	% To take into account the existing `\n\'.
++	split_string(Msg, "\n\\", "", ListStr),
++	print_message_list(Stream, ListStr).
++
++print_message_list(Stream, []).
++print_message_list(Stream, [X|Tail]) :-
++	print_message2([Stream, X]),
++	print_message_list(Stream, Tail).
++
++print_message2([Stream, Msg]) :-
++	Max = 80,
++	string_length(Msg, Length),
++	( Length > Max ->
++		print_message3(Stream, Msg, Max)
++	;
++		writeln(Stream, Msg)
++	).
++
++print_message3(Stream, Msg, Max) :-
++	(
++		% Make sure that there is at least one " " character in the Msg
++		% before trying to truncate the line at the first " ".
++		not(substring(Msg, " ", _)),
++		write(Stream, Msg),
++		!
++	;
++		(
++			% The Max th character is a " ". We truncate the line here.
++			substring(Msg, " ", Max),
++			substring(Msg, 1, Max, MsgBegin),
++			append_strings(MsgBegin, MsgEnd, Msg),
++			writeln(Stream, MsgBegin),
++			print_message2([Stream, MsgEnd]),
++			!
++		;
++			% The Max nt character is not a " ". We recursively try again
++			% Max - 1. 
++			Max2 is Max - 1,
++			print_message3(Stream, Msg, Max2)
++		)
++	).
++% To prevent print_message3/3 from looping. Should not be necessary
++print_message3(_,_,0).
++
+ print_arg_type(_, _, []) :- !.
+ print_arg_type(tty, [Arg | AList], [Type | TList]) :-
+ 	!,
+@@ -777,5 +846,63 @@
  
  
  
@@ -82,7 +146,7 @@
 +"Command which displays all the commands, primitives, procedures, parameters, \
 +or types for which Name is a substring of.\n\
 +Example: \n\
-+[Opium-M]: apropos man.\n\
++[morphine]: apropos man.\n\
 +    man\n\
 +    manual\n\
 +    latex_manual\n\

@@ -1,5 +1,5 @@
 write("\n**************************************************\n"),
-write("******** Non regression test for Opium-M *********\n"),
+write("******** Non regression test for Morphine *********\n"),
 write("**************************************************\n\n"),
 
 
@@ -184,7 +184,7 @@ write("\n**************************************************"),
 	write("collect: ok.\n").
 
 write("\n**************************************************"),
-	write("\n**** Testing other Opium commands...\n"),
+	write("\n**** Testing other Morphine commands...\n"),
 	write("apropos(window)"), nl, 
 	apropos(man),
 	write("man(apropos)"), nl, 

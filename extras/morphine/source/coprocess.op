@@ -3,8 +3,8 @@
 %
 % Author : Erwan Jahier <jahier@irisa.fr>
 % 
-%  Opium-M built-ins, primitives and commands related to coprocessing
-%  in the Opium-M process (part of scenario opium_kernel-M.op).
+%  Morphine built-ins, primitives and commands related to coprocessing
+%  in the Morphine process (part of scenario morphine_kernel.op).
 
 
 
@@ -40,11 +40,11 @@ start_connection(ProgramName, SockId2) :-
 	listen(sock, 1).
 
 construct_socket_address(Addr) :-
-	mercury_opium_socket_address(Addr0),
+	mercury_morphine_socket_address(Addr0),
 	append_strings(Addr0, "soc", Addr1),
 
 	% We add the pid to the socket path name to make sure that 2 users on 
-	% the same machine can use Opium-M simultaneously.
+	% the same machine can use Morphine simultaneously.
 	get_flag(pid, Pid),
 	number_string(Pid, PidStr),
 	append_strings(Addr1, PidStr, Addr),
@@ -67,7 +67,7 @@ opium_primitive(
 % :- pred end_connection is det.
 end_connection_Op :-
 	kill_all_socket_address,
-	setval(state_of_opium, not_running),
+	setval(state_of_morphine, not_running),
 	close(sock),
 	close(newsock),
 	write("End of connection with the traced program\n").
@@ -76,11 +76,11 @@ kill_all_socket_address :-
 	get_flag(pid, Pid),
 	number_string(Pid, PidStr),
 	append_strings("*", PidStr, StarPidStr),
-	mercury_opium_socket_address(AddressStr),
+	mercury_morphine_socket_address(AddressStr),
 	append_strings("rm -f ", AddressStr, C),
 	append_strings(C, StarPidStr, Command),
-	opium_write_debug(user, Command),
-	opium_write_debug(user, "\n"),
+	morphine_write_debug(user, Command),
+	morphine_write_debug(user, "\n"),
 	sh(Command).
 	% I should rather use exec(Command, []) here but for
 	% unknown reason, it does not remove the socket file.
@@ -92,12 +92,12 @@ kill_all_socket_address :-
 	% socket.
 
 send_message_to_socket(Query) :-
-	getval(state_of_opium, State),
+	getval(state_of_morphine, State),
 	( 
 		State == running 
 	->
 		printf(newsock, "%w. \n%b", [Query]),
-		opium_printf_debug("SEND    : +%w. +\n", [Query])
+		morphine_printf_debug("SEND    : +%w. +\n", [Query])
 	;
 		State == not_running
 	->
@@ -115,12 +115,12 @@ send_message_to_socket(Query) :-
 	% socket.
 read_message_from_socket(Message) :-
 	read(newsock, Message),
-	opium_printf_debug("RECEIVE : +%w+\n\n", Message).
+	morphine_printf_debug("RECEIVE : +%w+\n\n", Message).
 
 
 %------------------------------------------------------------------------------%
 opium_parameter(
-	name		: mercury_opium_socket_address,
+	name		: mercury_morphine_socket_address,
 	arg_list	: [SocketAdress],
 	arg_type_list	: [string],
 	parameter_type	: single,
@@ -135,29 +135,29 @@ process)."
 
 %------------------------------------------------------------------------------%
 opium_parameter(
-	name		: debug_opium,
+	name		: debug_morphine,
 	arg_list	: [OnOff],
 	arg_type_list	: [is_member([on, off])],
 	parameter_type	: single,
 	default		: [off],
-	commands	: [opium_write_debug, opium_printf_debug],
+	commands	: [morphine_write_debug, morphine_printf_debug],
 	message		: 
-'Prints additional information in the trace to debug Opium.'
+'Prints additional information in the trace to debug Morphine.'
 	).
 
 
 %------------------------------------------------------------------------------%
 opium_procedure(
-	name		: opium_write_debug,
+	name		: morphine_write_debug,
 	arg_list	: [X],
-	implementation	: opium_write_debug_Op,
-	parameters	: [debug_opium],
+	implementation	: morphine_write_debug_Op,
+	parameters	: [debug_morphine],
 	message		:
-'This procedure is used to print information to debug Opium.'
+'This procedure is used to print information to debug Morphine.'
 	).
 
-opium_write_debug_Op(X) :-
-	(debug_opium(on) ->
+morphine_write_debug_Op(X) :-
+	(debug_morphine(on) ->
 		write(X)
 	;
 		true
@@ -165,16 +165,16 @@ opium_write_debug_Op(X) :-
 
 
 opium_procedure(
-	name		: opium_write_debug,
+	name		: morphine_write_debug,
 	arg_list	: [Stream, X],
-	implementation	: opium_write_debug_Op,
-	parameters	: [debug_opium],
+	implementation	: morphine_write_debug_Op,
+	parameters	: [debug_morphine],
 	message		:
-'This procedure is used to print information to debug Opium.'
+'This procedure is used to print information to debug Morphine.'
 	).
 
-opium_write_debug_Op(Stream, X) :-
-	(debug_opium(on) ->
+morphine_write_debug_Op(Stream, X) :-
+	(debug_morphine(on) ->
 		write(Stream, X)
 	;
 		true
@@ -183,16 +183,16 @@ opium_write_debug_Op(Stream, X) :-
 
 
 opium_procedure(
-	name		: opium_printf_debug,
+	name		: morphine_printf_debug,
 	arg_list	: [Format, X],
-	implementation	: opium_printf_debug_Op,
-	parameters	: [debug_opium],
+	implementation	: morphine_printf_debug_Op,
+	parameters	: [debug_morphine],
 	message		:
-'This procedure is used to print information to debug Opium.'
+'This procedure is used to print information to debug Morphine.'
 	).
 
-opium_printf_debug_Op(Format, X) :-
-	(debug_opium(on) ->
+morphine_printf_debug_Op(Format, X) :-
+	(debug_morphine(on) ->
 		printf(Format, X)
 	;
 		true
@@ -200,16 +200,16 @@ opium_printf_debug_Op(Format, X) :-
 
 
 opium_procedure(
-	name		: opium_printf_debug,
+	name		: morphine_printf_debug,
 	arg_list	: [Stream, Format, X],
-	implementation	: opium_printf_debug_Op,
-	parameters	: [debug_opium],
+	implementation	: morphine_printf_debug_Op,
+	parameters	: [debug_morphine],
 	message		:
-'This procedure is used to print information to debug Opium.'
+'This procedure is used to print information to debug Morphine.'
 	).
 
-opium_printf_debug_Op(Stream, Format, X) :-
-	(debug_opium(on) ->
+morphine_printf_debug_Op(Stream, Format, X) :-
+	(debug_morphine(on) ->
 		printf(Stream, Format, X)
 	;
 		true

@@ -14,7 +14,7 @@
 
 :- get_flag(prolog_suffix, S), set_flag(prolog_suffix, [".op" | S]).
 
-% to initialize module 'Opium-M'
+% to initialize module morphine
 
 :- op(500, fx, =).
 :- op(500, fx, <).
@@ -87,9 +87,9 @@ opium_printf(V, F, A, S) :- opium_printf_Op(V, F, A, S).
 opium_nl(V) :- opium_nl_Op(V).
 
 
-get_opium_file("opium_module", File) :-
-	getenv('MERCURY_OPIUM_DIR', Path),
-	append_strings(Path, "source/opium_module.sd", File).
+get_morphine_file("morphine_module", File) :-
+	getenv('MERCURY_MORPHINE_DIR', Path),
+	append_strings(Path, "source/morphine_module.sd", File).
 
 
 /*
@@ -120,7 +120,7 @@ opium_level(0).
 
 build_obj_dir(OD) :-
 	getcwd(Cwd),
-	append_strings(Cwd, "opiumfiles/", ODS),
+	append_strings(Cwd, "morphinefiles/", ODS),
 	atom_string(OD, ODS).
 
 

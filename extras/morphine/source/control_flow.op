@@ -47,7 +47,7 @@ execution."
 	).
 
 control_flow_graph_Op(Program) :-
-	( getval(state_of_opium, running) ->
+	( getval(state_of_morphine, running) ->
 		abort_trace
 	;
 		true
@@ -64,13 +64,13 @@ control_flow_graph_Op(Program) :-
 %:- mode generate_control_flow_graph(out) is det.
 %
 generate_control_flow_graph(G) :-
-	getenv("MERCURY_OPIUM_DIR", OpiumDir),
-	append_strings(OpiumDir, "/source/collect__control_flow_graph", 
+	getenv("MERCURY_MORPHINE_DIR", MorphineDir),
+	append_strings(MorphineDir, "/source/collect__control_flow_graph", 
 		CollectFile),
 	collect(CollectFile, Result),
 	Result = collected_type(_,G).
 
-% This is the pure Opium-M version of generate_control_flow_graph that
+% This is the pure Morphine version of generate_control_flow_graph that
 % I originally wrote and which is about 20 times as slow as the collect 
 % one:
 %
@@ -115,13 +115,13 @@ dynamic_call_graph_Op(Program) :-
 %
 
 generate_dynamic_call_graph(G) :-
-	getenv("MERCURY_OPIUM_DIR", OpiumDir),
-	append_strings(OpiumDir, "/source/collect__dynamic_call_graph", 
+	getenv("MERCURY_MORPHINE_DIR", MorphineDir),
+	append_strings(MorphineDir, "/source/collect__dynamic_call_graph", 
 		CollectFile),
 	collect(CollectFile, Result),
 	Result = collected_type(_,G).
 
-% This is the pure Opium-M version:
+% This is the pure Morphine version:
 %
 % generate_dynamic_call_graph(G0, G) :-
 % 	( fget_np(port = call) ->

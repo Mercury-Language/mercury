@@ -279,7 +279,7 @@ synthetise_list_univ_and_list_string(L1, L2, Lout) :-
 		synthetise_list_univ_and_list_string2(L1, L2, Lout),
 		!
 	;
-		write("\nSoftware error in opium-M: "),
+		write("\nSoftware error in Morphine: "),
 		write("synthetise_list_univ_and_list_string failed.\n"),
 		abort
 	).
@@ -293,7 +293,7 @@ synthetise_list_univ_and_list_string2(X, [Name | TailName], ListArgLive) :-
 	     Arg = 'error',
 	     Type = 'error',
 	     write("***** Can't retrieve that type of argument. "),
-	     write("This is a bug in Opium-M...\n")
+	     write("This is a bug in Morphine...\n")
 	 ),
 	synthetise_list_univ_and_list_string2(TailArg, TailName, ListArgLeft),
 	ListArgLive = [live_var(Name, Arg, Type) | ListArgLeft].
@@ -335,7 +335,7 @@ You can get all the live variables by querying \
 current_live_var(VarId, VarValue, VarType) and typing \";\" at the prompt to \
 search for other solutions. \
 You can also get the list of all the currently live variables of type int \
-with the Opium-M query \
+with the Morphine query \
 setof((Name, Value), current_live_var(Name, Value, int), List).\
 '
 	).

@@ -8,8 +8,8 @@
  :- call_explicit(traceable check_arg_type/4, sepia_kernel).
 -:- ((call(is_predicate(current_options/1), opium_kernel),
 -     call(current_options([active, traceable, _]), opium_kernel)) ->
-+:- ((call(is_predicate(current_options/1), 'Opium-M'),
-+     call(current_options([active, traceable, _]), 'Opium-M')) ->
++:- ((call(is_predicate(current_options/1), morphine),
++     call(current_options([active, traceable, _]), morphine)) ->
  		call_explicit(unskipped check_arg_type/4, sepia_kernel)
     	;
  		call_explicit(skipped check_arg_type/4, sepia_kernel)

@@ -3,57 +3,57 @@
 %
 % Author : Erwan Jahier <jahier@irisa.fr>
 %
-% Opium-M built-ins, primitives and commands related to the control
-% of the execution (part of scenario opium_kernel-M.op). All predicates
+% Morphine built-ins, primitives and commands related to the control
+% of the execution (part of scenario morphine_kernel.op). All predicates
 % of this file are written to be run on an unix-like architecture.
 
 
 %--------------------------------------------------------------------------%
 opium_primitive(
-	name		: init_opium_session,
+	name		: init_morphine_session,
 	arg_list	: [],
 	arg_type_list	: [],
 	abbrev		: _,
-	implementation	: init_opium_session_Op,
+	implementation	: init_morphine_session_Op,
 	message		:
-"Initializes Opium-M."
+"Initializes Morphine."
 	).
 
 
-% :- pred init_opium_session_Op is det.
-init_opium_session_Op :-
-	load_opium_m_rc,
-	setval(state_of_opium, not_running),
+% :- pred init_morphine_session_Op is det.
+init_morphine_session_Op :-
+	load_morphine_rc,
+	setval(state_of_morphine, not_running),
 	setval(a_program_has_been_run, no).
 
 
-load_opium_m_rc :-
+load_morphine_rc :-
 	( 
 		getenv('PWD', Cwd),
-		append_strings(Cwd, "/.opium-m-rc", CurrentOpiumRc),
-		exists(CurrentOpiumRc) 
+		append_strings(Cwd, "/.morphine-rc", CurrentMorphineRc),
+		exists(CurrentMorphineRc) 
 	->
-		% If a `.opium-m-rc' exists in the current directory, load it.
-		( get_file_info(CurrentOpiumRc, size, 0) ->
+		% If a `.morphine-rc' exists in the current directory, load it.
+		( get_file_info(CurrentMorphineRc, size, 0) ->
 		    true
 		;
-		    % Only print thet message if .opium-m-rc is not empty
-		    compile(CurrentOpiumRc)
+		    % Only print thet message if .morphine-rc is not empty
+		    compile(CurrentMorphineRc)
 		)
 	;
-		% If no `.opium-m-rc' exists in the current directory, look
+		% If no `.morphine-rc' exists in the current directory, look
 		% in the home directory if such a file is available to load it.
 
 		getenv('HOME', Dir),
-		append_strings(Dir, "/.opium-m-rc", HomeOpiumRc),
+		append_strings(Dir, "/.morphine-rc", HomeMorphineRc),
 		( 
-			exists(HomeOpiumRc) 
+			exists(HomeMorphineRc) 
 		->
-			( get_file_info(HomeOpiumRc, size, 0) ->
+			( get_file_info(HomeMorphineRc, size, 0) ->
 			    true
 			;
-			    % Only print thet message if .opium-m-rc is not empty
-			    compile(HomeOpiumRc)
+			    % Only print thet message if .morphine-rc is not empty
+			    compile(HomeMorphineRc)
 			)
 		;
 			true
@@ -62,25 +62,25 @@ load_opium_m_rc :-
 
 %--------------------------------------------------------------------------%
 opium_command(
-	name		: re_init_opium,
+	name		: re_init_morphine,
 	arg_list	: [],
 	arg_type_list	: [],
 	abbrev		: _,
 	interface	: menu,
 	command_type	: opium,
-	implementation	: re_init_opium_Op,
+	implementation	: re_init_morphine_Op,
 	parameters	: [],
 	message		:
-'Re-initializes Opium-M. This command migth be useful if Opium-M is broken.\
+'Re-initializes Morphine. This command migth be useful if Morphine is broken.\
 '
 	).
 
-re_init_opium_Op :-
-	init_opium_session_Op.
+re_init_morphine_Op :-
+	init_morphine_session_Op.
 
 
 %--------------------------------------------------------------------------%
-opium_abort :-
+morphine_abort :-
 	end_connection,
 	abort.
 
@@ -95,10 +95,10 @@ opium_command(
 	implementation	: run_Op,
 	parameters	: [],
 	message		:
-'Executes a Mercury program from Opium-M. \n\
+'Executes a Mercury program from Morphine. \n\
 \n\
 Example:  \
-run(hello) will run the Mercury program hello under the control of Opium-M .\
+run(hello) will run the Mercury program hello under the control of Morphine .\
 run(\"./cat filename\") will run \
 the Mercury program \"cat\" that takes \"filename\" as argument.\
 '
@@ -106,7 +106,7 @@ the Mercury program \"cat\" that takes \"filename\" as argument.\
 
 % :- pred run_Op(atom).
 % :- mode run_Op(in) is det.
-	% run_Op(PathCallArgs) run the program ProgramName within Opium-M.
+	% run_Op(PathCallArgs) run the program ProgramName within Morphine.
 run_Op(PathCallArgs0) :-
 	( string(PathCallArgs0) ->
 		PathCallArgs = PathCallArgs0
@@ -146,8 +146,8 @@ run(ProgramPathStr, ProgramCallStr, ListArgsStr) :-
 
 	accept(sock, _, newsock),
 
-	% state_of_opium = running | not_running | eot (| bot) 
-	setval(state_of_opium, running),
+	% state_of_morphine = running | not_running | eot (| bot) 
+	setval(state_of_morphine, running),
 
 	read_message_from_socket(hello),
 	send_message_to_socket(hello_reply),
@@ -233,7 +233,7 @@ string_list_to_string([String1|StringList], String) :-
 run_program(ProgramPathStr, PathCallStr, ListArgsStr, 
 	SocketAddressStr, SocketDomain, RemoteMachine) :-
 	(
-		getenv('MERCURY_OPIUM_DIR', Dir),
+		getenv('MERCURY_MORPHINE_DIR', Dir),
 		window_command(WindowsStr),
 		concat_string([
 			Dir, "/scripts/exec_mercury_program ", 
@@ -242,12 +242,12 @@ run_program(ProgramPathStr, PathCallStr, ListArgsStr,
 			WindowsStr, " ",
 			" ", ProgramPathStr, 
 			PathCallStr, "", ListArgsStr," &"],Command),
-		opium_write_debug("Command ="),
-		opium_write_debug(Command ),
+		morphine_write_debug("Command ="),
+		morphine_write_debug(Command ),
 		sh(Command),
 		!
 	;
-		write(stderr, "eclipse.pl: error in opium_run_program/2")
+		write(stderr, "eclipse.pl: error in morphine_run_program/2")
 	).
 
 % :- pred list_args_to_string(list(atom), list(string)).
@@ -351,7 +351,7 @@ list_string(L, S) :-
 % 	implementation	: run_remote_Op,
 % 	parameters	: [],
 % 	message		:
-% 'Executes a Mercury program from Opium-M on a remote machine. \n\
+% 'Executes a Mercury program from Morphine on a remote machine. \n\
 % \n\
 % Example: run_remote(\"cripure.irisa.fr\",\"~mercury/sample/hello\") will \
 % run the mercury program \"hello\" on the machine cripure.\
@@ -387,8 +387,8 @@ run_remote(MachineName, ProgramPathStr, ProgramCallStr) :-
 
 	accept(sock, _, newsock),
 
-	% state_of_opium = running | not_running | eot (| bot) 
-	setval(state_of_opium, running),
+	% state_of_morphine = running | not_running | eot (| bot) 
+	setval(state_of_morphine, running),
 
 	read_message_from_socket(hello),
 	send_message_to_socket(hello_reply),
@@ -462,7 +462,7 @@ opium_command(
 ').
 
 % XX if the connection with the debuggee process ended with a crash,
-% this command may not work properly because the global variable state_of_opium
+% this command may not work properly because the global variable state_of_morphine
 % would be set to running instead of not running. I should intercept the CTRL-C
 % to fix that.
 
@@ -471,7 +471,7 @@ opium_command(
 rerun_Op :-
 	getval(a_program_has_been_run, yes),
 	getval(re_run_program, ReStartCommand), 
-	getval(state_of_opium, State),
+	getval(state_of_morphine, State),
 	write(ReStartCommand),nl,
 	( 
 		State = eot
@@ -571,7 +571,7 @@ opium_command(
 	parameters	: [window_command],
 	message		:
 "Set the `window_command' parameter to \"\" (its default value). \
-The Mercury program executes in the same window as Opium-M."
+The Mercury program executes in the same window as Morphine."
 	).
 
 no_window_Op :-
@@ -590,7 +590,7 @@ opium_command(
 	message		:
 "Set the `window_command' parameter to \"xterm -e \", which make the Mercury \
 executes in a new xterm window; the program's Input/Output will go to that \
-window and the Opium-M's Input/Output will go to the current terminal."
+window and the Morphine's Input/Output will go to the current terminal."
 	).
 
 use_xterm_Op :-
@@ -607,9 +607,9 @@ opium_command(
 	implementation	: use_gdb_Op,
 	parameters	: [window_command],
 	message		:
-"Set the `window_command' parameter to \"xterm -e gdb \". This is to be able to use \
-both gdb and Opium-M. Note that to use gdb, you will need to compile your mercury \
-program with the option `--c-debug'."
+"Set the `window_command' parameter to \"xterm -e gdb \". This is to be able \
+to use both gdb and Morphine. Note that to use gdb, you will need to compile \
+your mercury program with the option `--c-debug'."
 	).
 
 use_gdb_Op :-
