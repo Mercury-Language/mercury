@@ -37,7 +37,7 @@
 :- import_module constraint, unused_args, dead_proc_elim, excess, liveness.
 :- import_module follow_code, follow_vars, live_vars, arg_info, store_alloc.
 :- import_module code_gen, optimize, export.
-:- import_module llds_out.
+:- import_module llds_common, llds_out.
 
 	% miscellaneous compiler modules
 :- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds.
@@ -1214,18 +1214,20 @@ mercury_compile__maybe_do_optimize(LLDS0, Verbose, Stats, LLDS) -->
 	bool, io__state, io__state).
 :- mode mercury_compile__output_pass(in, in, in, out, di, uo) is det.
 
-mercury_compile__output_pass(HLDS16, LLDS2, ModuleName, CompileErrors) -->
+mercury_compile__output_pass(HLDS0, LLDS0, ModuleName, CompileErrors) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
-	mercury_compile__chunk_llds(HLDS16, LLDS2, LLDS3, NumChunks),
-	mercury_compile__output_llds(ModuleName, LLDS3, Verbose, Stats),
+	{ llds_common(LLDS0, ModuleName, LLDS1, CommonData) },
+	mercury_compile__chunk_llds(HLDS0, LLDS1, CommonData,
+		LLDS2, NumChunks),
+	mercury_compile__output_llds(ModuleName, LLDS2, Verbose, Stats),
 
-	mercury_compile__maybe_find_abstr_exports(HLDS16, Verbose, Stats,
-		HLDS17),
+	mercury_compile__maybe_find_abstr_exports(HLDS0, Verbose, Stats,
+		HLDS1),
 
-	{ module_info_shape_info(HLDS17, Shape_Info) },
-	mercury_compile__maybe_write_gc(ModuleName, Shape_Info, LLDS3,
+	{ module_info_shape_info(HLDS1, Shape_Info) },
+	mercury_compile__maybe_write_gc(ModuleName, Shape_Info, LLDS2,
 		Verbose, Stats),
 
 	globals__io_lookup_bool_option(compile_to_c, CompileToC),
@@ -1235,17 +1237,16 @@ mercury_compile__output_pass(HLDS16, LLDS2, ModuleName, CompileErrors) -->
 	;
 		{ CompileErrors = no }
 	),
-	export__produce_header_file(HLDS16, ModuleName).
+	export__produce_header_file(HLDS1, ModuleName).
 
 	% Split the code up into bite-size chunks for the C compiler.
 
-:- pred mercury_compile__chunk_llds(module_info, list(c_procedure), c_file, int,
-	io__state, io__state).
-% :- mode mercury_compile__chunk_llds(in, di, uo, out, di, uo) is det.
-:- mode mercury_compile__chunk_llds(in, in, out, out, di, uo) is det.
+:- pred mercury_compile__chunk_llds(module_info, list(c_procedure),
+	list(c_module), c_file, int, io__state, io__state).
+:- mode mercury_compile__chunk_llds(in, in, in, out, out, di, uo) is det.
 
-mercury_compile__chunk_llds(HLDS, Procedures, c_file(Name, C_HeaderCode,
-		ModuleList), NumChunks) -->
+mercury_compile__chunk_llds(HLDS, Procedures, CommonDataModules,
+		c_file(Name, C_HeaderCode, ModuleList), NumChunks) -->
 	{ module_info_name(HLDS, Name) },
 	{ string__append(Name, "_module", ModName) },
 	globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
@@ -1255,15 +1256,15 @@ mercury_compile__chunk_llds(HLDS, Procedures, c_file(Name, C_HeaderCode,
 	( { ProcsPerFunc = 0 } ->
 		% ProcsPerFunc = 0 really means infinity -
 		% we store all the procs in a single function.
-		{ ModuleList0 = [c_module(ModName, Procedures)] }
+		{ ProcModules = [c_module(ModName, Procedures)] }
 	;
 		{ list__chunk(Procedures, ProcsPerFunc, ChunkList) },
 		{ mercury_compile__combine_chunks(ChunkList, ModName,
-			ModuleList0) }
+			ProcModules) }
 	),
-	{ list__append(C_BodyCode, ModuleList0, ModuleList1) },
 	{ export__get_pragma_exported_procs(HLDS, PragmaExports) },
-	{ list__append(ModuleList1, [c_export(PragmaExports)], ModuleList) },
+	{ list__condense([C_BodyCode, CommonDataModules,
+		ProcModules, [c_export(PragmaExports)]], ModuleList) },
 	{ list__length(ModuleList, NumChunks) }.
 
 :- pred get_c_body_code(c_body_info, list(c_module)).
