@@ -241,7 +241,7 @@ lambda__transform_lambda(PredOrFunc, Vars, Modes, Detism, OrigNonLocals0,
 	% This optimization is only valid if the modes of the Xi are
 	% input, since only input arguments can be curried.
 	% It's also only valid if all the inputs in the Yi precede the
-	% outputs.
+	% outputs.  It's also not valid if any of the Xi are in the Yi.
 
 	LambdaGoal = _ - LambdaGoalInfo,
 	goal_info_get_nonlocals(LambdaGoalInfo, NonLocals0),
@@ -251,6 +251,13 @@ lambda__transform_lambda(PredOrFunc, Vars, Modes, Detism, OrigNonLocals0,
 		LambdaGoal = call(PredId0, ProcId0, CallVars,
 					_, _, PredName0) - _,
 		list__remove_suffix(CallVars, Vars, InitialVars),
+	
+		% check that none of the variables that we're trying to
+		% use as curried arguments are lambda-bound variables
+		\+ (
+			list__member(InitialVar, InitialVars),
+			list__member(InitialVar, Vars)
+		),
 
 		module_info_pred_proc_info(ModuleInfo0, PredId0, ProcId0, _,
 			Call_ProcInfo),
