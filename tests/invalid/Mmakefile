@@ -52,6 +52,7 @@ SINGLEMODULE_SOURCES= \
 	method_impl.m \
 	missing_det_decls.m \
 	missing_interface_import.m \
+	mode_inf.m \
 	modes_erroneous.m \
 	mostly_uniq1.m \
 	mostly_uniq2.m \
@@ -124,6 +125,7 @@ MCFLAGS-duplicate_modes	=	--verbose-error-messages
 MCFLAGS-missing_det_decls =	--no-infer-det
 MCFLAGS-missing_interface_import = --make-interface
 MCFLAGS-multisoln_func	=	--infer-types
+MCFLAGS-mode_inf	=	--infer-all
 MCFLAGS-no_exports = 		--halt-at-warn
 MCFLAGS-sub_c = 		--verbose-error-messages
 MCFLAGS-record_syntax_errors =	--verbose-error-messages
