@@ -89,13 +89,13 @@ output__call_graph_headers -->
 	io__write_string("\ttime due to calls from this parent.\n\n"),
 
 	io__write_string("descendents*\n"),
-	io__write_string("\tthe number of second's of the current predicate's descendent\n"),
-	io__write_string("\ttime which is due to call's from this parent.\n\n"),
+	io__write_string("\tthe number of seconds of the current predicate's descendent\n"),
+	io__write_string("\ttime which is due to calls from this parent.\n\n"),
 
 	io__write_string("called*\tthe number of times the current predicate is called\n"),
 	io__write_string("\tby this parent.\n\n"),
 
-	io__write_string("total\tthe number of times this predicate is called by it's parents.\n\n"),
+	io__write_string("total\tthe number of times this predicate is called by its parents.\n\n"),
 
 	io__write_string("parents\tthe name of this parent.\n\n"),
 
@@ -105,17 +105,17 @@ output__call_graph_headers -->
 
 	io__write_string("children listings:\n\n"),
 
-	io__write_string("self*\tthe number of second's of this child's self time which is due\n"),
+	io__write_string("self*\tthe number of seconds of this child's self time which is due\n"),
 	io__write_string("\tto being called by the current predicate.\n\n"),
 
 	io__write_string("descendent*\n"),
-	io__write_string("\tthe number of second's of this child's desdendent time which is due\n"),
+	io__write_string("\tthe number of seconds of this child's desdendent time which is due\n"),
 	io__write_string("\tto the current predicate.\n\n"),
 
 	io__write_string("called*\tthe number of times this child is called by the current\n"),
 	io__write_string("\tpredicate.\n\n"),
 
-	io__write_string("total*\tthe number of time's this child is called by all predicates.\n\n"),
+	io__write_string("total*\tthe number of times this child is called by all predicates.\n\n"),
 
 	io__write_string("children\tthe name of this child.\n\n"),
 
@@ -320,7 +320,7 @@ output__flat_headers -->
 	io__write_string(" %\tthe percentage of total running time of the program\n"),
 	io__write_string("time\tused by this function.\n\n"),
 
-	io__write_string(" cum\tthe total time of the current predicate and the one's\n"),
+	io__write_string(" cum\tthe total time of the current predicate and the ones\n"),
 	io__write_string("time\tlisted above it.\n\n"),
 
 	io__write_string(" self\tthe number of seconds accounted for by this predicate alone.\n"),
@@ -331,10 +331,10 @@ output__flat_headers -->
 	io__write_string(" self\tthe average number of milliseconds spent in\n"),
 	io__write_string("ms/call\tthis predicate per call.\n\n"),
 
-	io__write_string(" total\tthe average number of milliseconds spent in this predicate and it's\n"),
+	io__write_string(" total\tthe average number of milliseconds spent in this predicate and its\n"),
 	io__write_string("ms/call\tdescendents per call.\n\n"),
 
-	io__write_string("name\tthe name of the predicate followed by it's index number.\n\n"),
+	io__write_string("name\tthe name of the predicate followed by its index number.\n\n"),
 
 	io__write_string("   %  cumulative    self              self"),
 	io__write_string("    total\n"),
