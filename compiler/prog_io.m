@@ -1496,6 +1496,11 @@ process_decl(_ModuleName0, VarSet, "module", [ModuleName], Result) :-
 	->
 		Result = ok(module_defn(VarSet, module(Module)))
 	;
+		ModuleName = term__variable(_)
+	->
+		dummy_term(ErrorContext),
+		Result = error("Module names starting with capital letters must be quoted using single quotes (e.g. "":- module 'Foo'."")", ErrorContext)
+	;
 		Result = error("Module name expected", ModuleName)
 	).
 
