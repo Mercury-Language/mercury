@@ -66,14 +66,6 @@ CHECK_TERM_OPTS =
 
 endif
 
-# We need to compile the library with --strict-sequential for two reasons:
-# (1) Otherwise Mercury code that is compiled with --strict-sequential
-#     might do the wrong thing, because the standard library wasn't compiled
-#     with --strict-sequential.  (We could make it a separate grade, but
-#     that's not worth it.)
-# (2) The code for get_determinism in library/exception.m relies on it
-#     (in particular it relies on --no-reorder-disj).
-#
 # We compile the files in the library directory with --trace minimum by
 # default, which has no effect in non-debugging grades and causes the
 # library to be shallow traced, not deep traced, in debugging grades.
@@ -88,6 +80,14 @@ LIBRARY_TRACE_LEVEL =
 else
 LIBRARY_TRACE_LEVEL = --trace minimum
 endif
+
+# We need to compile the library with --strict-sequential for two reasons:
+# (1) Otherwise Mercury code that is compiled with --strict-sequential
+#     might do the wrong thing, because the standard library wasn't compiled
+#     with --strict-sequential.  (We could make it a separate grade, but
+#     that's not worth it.)
+# (2) The code for get_determinism in library/exception.m relies on it
+#     (in particular it relies on --no-reorder-disj).
 
 MCFLAGS += --strict-sequential $(LIBRARY_TRACE_LEVEL) --generate-mmc-deps \
 		$(INTERMODULE_OPTS) $(ENABLE_TERM_OPTS) $(CHECK_TERM_OPTS)
