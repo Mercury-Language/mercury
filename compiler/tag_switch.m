@@ -674,7 +674,7 @@ tag_switch__generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc,
 			trace__maybe_generate_internal_event_code(Goal,
 				TraceCode),
 			code_gen__generate_goal(CodeModel, Goal, GoalCode),
-			code_info__generate_branch_end(StoreMap,
+			code_info__generate_branch_end(StoreMap, no,
 				MaybeEnd0, MaybeEnd, SaveCode),
 			{ GotoCode = node([
 				goto(label(EndLabel)) -
@@ -819,8 +819,8 @@ tag_switch__generate_secondary_try_me_else_chain([Case0 | Cases0], StagRval,
 		]) },
 		trace__maybe_generate_internal_event_code(Goal, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
-		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd1,
-			SaveCode),
+		code_info__generate_branch_end(StoreMap, no,
+			MaybeEnd0, MaybeEnd1, SaveCode),
 		{ GotoLabelCode = node([
 			goto(label(EndLabel)) -
 				"skip to end of secondary tag switch",
@@ -852,8 +852,8 @@ tag_switch__generate_secondary_try_me_else_chain([Case0 | Cases0], StagRval,
 	;
 		trace__maybe_generate_internal_event_code(Goal, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
-		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
-			SaveCode),
+		code_info__generate_branch_end(StoreMap, no,
+			MaybeEnd0, MaybeEnd, SaveCode),
 		{ GotoCode = node([
 			goto(label(EndLabel)) -
 				"skip to end of secondary tag switch"
@@ -898,8 +898,8 @@ tag_switch__generate_secondary_try_chain([Case0 | Cases0], StagRval,
 		]) },
 		trace__maybe_generate_internal_event_code(Goal, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
-		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd1,
-			SaveCode),
+		code_info__generate_branch_end(StoreMap, no,
+			MaybeEnd0, MaybeEnd1, SaveCode),
 		{ GotoCode = node([
 			goto(label(EndLabel)) -
 				"skip to end of secondary tag switch"
@@ -930,8 +930,8 @@ tag_switch__generate_secondary_try_chain([Case0 | Cases0], StagRval,
 	;
 		trace__maybe_generate_internal_event_code(Goal, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
-		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
-			SaveCode),
+		code_info__generate_branch_end(StoreMap, no,
+			MaybeEnd0, MaybeEnd, SaveCode),
 		{ GotoCode = node([
 			goto(label(EndLabel)) -
 				"skip to end of secondary tag switch"
@@ -981,7 +981,7 @@ tag_switch__generate_secondary_jump_table(CaseList, CurSecondary, MaxSecondary,
 			trace__maybe_generate_internal_event_code(Goal,
 				TraceCode),
 			code_gen__generate_goal(CodeModel, Goal, GoalCode),
-			code_info__generate_branch_end(StoreMap,
+			code_info__generate_branch_end(StoreMap, no,
 				MaybeEnd0, MaybeEnd1, SaveCode),
 			( { CaseList1 = [] } ->
 				[]
@@ -1051,7 +1051,7 @@ tag_switch__generate_secondary_binary_search(StagGoals, MinStag, MaxStag,
 			trace__maybe_generate_internal_event_code(Goal,
 				TraceCode),
 			code_gen__generate_goal(CodeModel, Goal, GoalCode),
-			code_info__generate_branch_end(StoreMap,
+			code_info__generate_branch_end(StoreMap, no,
 				MaybeEnd0, MaybeEnd, SaveCode),
 			{ Code =
 				tree(TraceCode,

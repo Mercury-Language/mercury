@@ -893,9 +893,9 @@ code_info__get_active_temps_data(Temps) -->
 :- pred code_info__reset_to_position(position_info, code_info, code_info).
 :- mode code_info__reset_to_position(in, in, out) is det.
 
-:- pred code_info__generate_branch_end(store_map, branch_end, branch_end,
-	code_tree, code_info, code_info).
-:- mode code_info__generate_branch_end(in, in, out, out, in, out) is det.
+:- pred code_info__generate_branch_end(store_map, maybe(position_info),
+	branch_end, branch_end, code_tree, code_info, code_info).
+:- mode code_info__generate_branch_end(in, in, in, out, out, in, out) is det.
 
 :- pred code_info__after_all_branches(store_map, branch_end,
 	code_info, code_info).
@@ -925,11 +925,27 @@ code_info__reset_to_position(position_info(PosCI), CurCI, NextCI) :-
 	NextCI = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
 		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF).
 
-code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code) -->
+code_info__generate_branch_end(StoreMap, MaybeResetResumePointKnown,
+		MaybeEnd0, MaybeEnd, Code) -->
 	code_info__get_exprn_info(Exprn0),
 	{ map__to_assoc_list(StoreMap, VarLocs) },
 	{ code_exprn__place_vars(VarLocs, Code, Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn),
+	(
+		{ MaybeResetResumePointKnown = no }
+	;
+		{ MaybeResetResumePointKnown = yes(BranchStart) },
+		{ BranchStart = position_info(BranchStartCI) },
+		{ code_info__get_fail_info(BranchStartFailInfo, BranchStartCI,
+			_) },
+		{ BranchStartFailInfo = fail_info(_, BSResumeKnown, _, _, _) },
+		code_info__get_fail_info(CurFailInfo),
+		{ CurFailInfo = fail_info(CurFailStack,
+			_, CurCurfMaxfr, CurCondEnv, CurHijack) },
+		{ UpdatedFailInfo = fail_info(CurFailStack,
+			BSResumeKnown, CurCurfMaxfr, CurCondEnv, CurHijack) },
+		code_info__set_fail_info(UpdatedFailInfo)
+	),
 	=(EndCodeInfo1),
 	{
 		MaybeEnd0 = no,
@@ -946,10 +962,12 @@ code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code) -->
 		FailInfo1 = fail_info(R, ResumeKnown1, CurfrMaxfr1,
 			CondEnv1, Hijack1),
 		(
-			ResumeKnown0 = resume_point_known,
-			ResumeKnown1 = resume_point_known
+			ResumeKnown0 = resume_point_known(Redoip0),
+			ResumeKnown1 = resume_point_known(Redoip1)
 		->
-			ResumeKnown = resume_point_known
+			ResumeKnown = resume_point_known(Redoip0),
+			require(unify(Redoip0, Redoip1),
+				"redoip mismatch in generate_branch_end")
 		;
 			ResumeKnown = resume_point_unknown
 		),
@@ -1252,7 +1270,10 @@ code_info__fixup_lval(V - store_info(ref, L), V - reference(L)).
 
 :- type resume_map		==	map(prog_var, set(val_or_ref)).
 
-:- type resume_point_known	--->	resume_point_known
+:- type redoip_update		--->	has_been_done
+				;	wont_be_done.
+
+:- type resume_point_known	--->	resume_point_known(redoip_update)
 				;	resume_point_unknown.
 
 :- type curfr_vs_maxfr		--->	must_be_equal
@@ -1300,7 +1321,7 @@ code_info__prepare_for_disj_hijack(CodeModel, HijackInfo, Code) -->
 			"prepare for disjunction", Code)
 	;
 		{ CurfrMaxfr = must_be_equal },
-		{ ResumeKnown = resume_point_known }
+		{ ResumeKnown = resume_point_known(has_been_done) }
 	->
 		{ HijackInfo = disj_quarter_hijack },
 		{ Code = node([
@@ -1310,7 +1331,8 @@ code_info__prepare_for_disj_hijack(CodeModel, HijackInfo, Code) -->
 	;
 		{ CurfrMaxfr = must_be_equal }
 	->
-		% Here ResumeKnown must be resume_point_unknown.
+		% Here ResumeKnown must be resume_point_unknown
+		% or resume_point_known(wont_be_done).
 		code_info__acquire_temp_slot(lval(redoip(lval(curfr))),
 			RedoipSlot),
 		{ HijackInfo = disj_half_hijack(RedoipSlot) },
@@ -1350,8 +1372,6 @@ code_info__undo_disj_hijack(HijackInfo, Code) -->
 		]) }
 	;
 		{ HijackInfo = disj_quarter_hijack },
-		{ require(unify(ResumeKnown, resume_point_known),
-			"resume point not known in disj_quarter_hijack") },
 		{ require(unify(CurfrMaxfr, must_be_equal),
 			"maxfr may differ from curfr in disj_quarter_hijack") },
 		{ stack__top_det(ResumePoints, ResumePoint) },
@@ -1450,7 +1470,7 @@ code_info__prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code) -->
 		{ Code = tree(TempFrameCode, MaxfrCode) }
 	;
 		{ CurfrMaxfr = must_be_equal },
-		{ ResumeKnown = resume_point_known }
+		{ ResumeKnown = resume_point_known(_) }
 	->
 		{ HijackType = ite_quarter_hijack },
 		{ Code = node([
@@ -1501,7 +1521,7 @@ code_info__ite_enter_then(HijackInfo, ThenCode, ElseCode) -->
 	{ FailInfo0 = fail_info(ResumePoints0, ResumeKnown0, CurfrMaxfr,
 		_, Allow) },
 	{ stack__pop_det(ResumePoints0, _, ResumePoints) },
-	{ HijackInfo = ite_info(ResumeKnown1, OldCondEnv, HijackType) },
+	{ HijackInfo = ite_info(HijackResumeKnown, OldCondEnv, HijackType) },
 	{
 		HijackType = ite_no_hijack,
 		ThenCode = empty,
@@ -1559,13 +1579,10 @@ code_info__ite_enter_then(HijackInfo, ThenCode, ElseCode) -->
 				- "restore redofr for full ite hijack"
 		])
 	},
-	{
-		ResumeKnown0 = resume_point_known,
-		ResumeKnown1 = resume_point_known
-	->
-		ResumeKnown = resume_point_known
-	;
+	{ ResumeKnown0 = resume_point_unknown ->
 		ResumeKnown = resume_point_unknown
+	;
+		ResumeKnown = HijackResumeKnown
 	},
 	{ FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
 		OldCondEnv, Allow) },
@@ -1714,7 +1731,7 @@ code_info__prepare_for_semi_commit(SemiCommitInfo, Code) -->
 			"prepare for temp frame commit", TempFrameCode),
 		{ HijackCode = tree(MaxfrCode, TempFrameCode) }
 	;
-		{ ResumeKnown = resume_point_known },
+		{ ResumeKnown = resume_point_known(has_been_done) },
 		{ CurfrMaxfr = must_be_equal }
 	->
 		{ HijackInfo = commit_quarter_hijack },
@@ -1907,9 +1924,6 @@ code_info__effect_resume_point(ResumePoint, CodeModel, Code) -->
 	},
 
 	{ stack__push(ResumePoints0, ResumePoint, ResumePoints) },
-	{ FailInfo = fail_info(ResumePoints, resume_point_known, CurfrMaxfr,
-		CondEnv, Allow) },
-	code_info__set_fail_info(FailInfo),
 	( { CodeModel = model_non } ->
 		{ code_info__pick_stack_resume_point(ResumePoint,
 			_, StackLabel) },
@@ -1917,10 +1931,15 @@ code_info__effect_resume_point(ResumePoint, CodeModel, Code) -->
 		{ Code = node([
 			assign(redoip(lval(maxfr)), LabelConst)
 				- "hijack redoip to effect resume point"
-		]) }
+		]) },
+		{ RedoipUpdate = has_been_done }
 	;
-		{ Code = empty }
-	).
+		{ Code = empty },
+		{ RedoipUpdate = wont_be_done }
+	),
+	{ FailInfo = fail_info(ResumePoints, resume_point_known(RedoipUpdate),
+		CurfrMaxfr, CondEnv, Allow) },
+	code_info__set_fail_info(FailInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -1949,7 +1968,7 @@ code_info__generate_failure(Code) -->
 	code_info__get_fail_info(FailInfo),
 	{ FailInfo = fail_info(ResumePoints, ResumeKnown, _, _, _) },
 	(
-		{ ResumeKnown = resume_point_known },
+		{ ResumeKnown = resume_point_known(_) },
 		{ stack__top_det(ResumePoints, TopResumePoint) },
 		(
 			code_info__pick_matching_resume_addr(TopResumePoint,
@@ -1976,7 +1995,7 @@ code_info__fail_if_rval_is_false(Rval0, Code) -->
 	code_info__get_fail_info(FailInfo),
 	{ FailInfo = fail_info(ResumePoints, ResumeKnown, _, _, _) },
 	(
-		{ ResumeKnown = resume_point_known },
+		{ ResumeKnown = resume_point_known(_) },
 		{ stack__top_det(ResumePoints, TopResumePoint) },
 		(
 			code_info__pick_matching_resume_addr(TopResumePoint,
@@ -2028,7 +2047,7 @@ code_info__fail_if_rval_is_false(Rval0, Code) -->
 
 code_info__failure_is_direct_branch(CodeAddr) -->
 	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePoints, resume_point_known, _, _, _) },
+	{ FailInfo = fail_info(ResumePoints, resume_point_known(_), _, _, _) },
 	{ stack__top(ResumePoints, TopResumePoint) },
 	code_info__pick_matching_resume_addr(TopResumePoint, CodeAddr).
 
@@ -2036,7 +2055,7 @@ code_info__may_use_nondet_tailcall(MayTailCall) -->
 	code_info__get_fail_info(FailInfo),
 	{ FailInfo = fail_info(ResumePoints, ResumeKnown, _, _, _) },
 	(
-		{ ResumeKnown = resume_point_known },
+		{ ResumeKnown = resume_point_known(_) },
 		{ stack__top_det(ResumePoints, TopResumePoint) },
 		{ TopResumePoint = stack_only(_, do_fail) }
 	->
@@ -2196,7 +2215,7 @@ code_info__init_fail_info(CodeModel, MaybeFailVars, ResumePoint) -->
 			% will be part of the procedure epilog.
 		code_info__get_next_label(ResumeLabel),
 		{ ResumeAddress = label(ResumeLabel) },
-		{ ResumeKnown = resume_point_known },
+		{ ResumeKnown = resume_point_known(wont_be_done) },
 		{ CurfrMaxfr = may_be_different }
 	;
 		{ CodeModel = model_non },
@@ -2206,7 +2225,7 @@ code_info__init_fail_info(CodeModel, MaybeFailVars, ResumePoint) -->
 		;
 			{ ResumeAddress = do_fail }
 		),
-		{ ResumeKnown = resume_point_known },
+		{ ResumeKnown = resume_point_known(has_been_done) },
 		{ CurfrMaxfr = must_be_equal }
 	),
 	( { MaybeFailVars = yes(FailVars) } ->

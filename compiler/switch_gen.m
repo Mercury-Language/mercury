@@ -318,8 +318,8 @@ switch_gen__generate_cases([case(_, _, Cons, Goal) | Cases], Var, CodeModel,
 			NextLabel, TestCode),
 		trace__maybe_generate_internal_event_code(Goal, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
-		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd1,
-			SaveCode),
+		code_info__generate_branch_end(StoreMap, no,
+			MaybeEnd0, MaybeEnd1, SaveCode),
 		{ ElseCode = node([
 			goto(label(EndLabel)) -
 				"skip to the end of the switch",
@@ -336,8 +336,8 @@ switch_gen__generate_cases([case(_, _, Cons, Goal) | Cases], Var, CodeModel,
 	;
 		trace__maybe_generate_internal_event_code(Goal, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
-		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd1,
-			SaveCode),
+		code_info__generate_branch_end(StoreMap, no,
+			MaybeEnd0, MaybeEnd1, SaveCode),
 		{ ThisCaseCode =
 			tree(TraceCode,
 			tree(GoalCode,

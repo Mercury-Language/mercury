@@ -312,7 +312,7 @@ lookup_switch__generate(Var, OutVars, CaseValues,
 		{ MLiveness = no },
 		{ error("lookup_switch__generate: no liveness!") }
 	),
-	code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
+	code_info__generate_branch_end(StoreMap, no, MaybeEnd0, MaybeEnd,
 		LookupCode),
 		% Assemble to code together
 	{ Comment = node([comment("lookup switch") - ""]) },

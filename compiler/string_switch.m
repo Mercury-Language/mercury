@@ -311,8 +311,8 @@ string_switch__gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, StoreMap,
 		code_info__remember_position(BranchStart),
 		trace__maybe_generate_internal_event_code(Goal, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
-		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
-			SaveCode),
+		code_info__generate_branch_end(StoreMap, no,
+			MaybeEnd0, MaybeEnd, SaveCode),
 		(
 			{ string_switch__this_is_last_case(Slot, TblSize,
 				HashSlotMap) }
