@@ -57,7 +57,7 @@
 :- implementation.
 
 :- import_module prog_io, prog_io_goal, prog_io_dcg, prog_io_util, prog_out.
-:- import_module module_qual, prog_util, globals, options, hlds_out.
+:- import_module modules, module_qual, prog_util, globals, options, hlds_out.
 :- import_module make_tags, quantification, (inst).
 :- import_module code_util, unify_proc, special_pred, type_util, mode_util.
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc, inst_match.
@@ -288,6 +288,21 @@ add_item_decl_pass_2(type_defn(VarSet, TypeDefn, Cond), Context,
 
 add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		-->
+	%
+	% check for invalid pragmas in the `interface' section
+	%
+	{ Status = item_status(ImportStatus, _) },
+	{ pragma_allowed_in_interface(Pragma, Allowed) },
+	( { Allowed = no } ->
+		check_not_exported(ImportStatus, Context,
+			"`pragma' declaration")
+	;
+		[]
+	),
+
+	%
+	% switch on the pragma type
+	%
 	(
 		% ignore `pragma source_file' declarations - they're dealt
 		% with elsewhere
@@ -330,67 +345,22 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		{ Module = Module0 }
 	;
 		{ Pragma = export(Name, PredOrFunc, Modes, C_Function) },
-		{ module_info_get_predicate_table(Module0, PredTable) },
-		{ list__length(Modes, Arity) },
-		(
-			{ predicate_table_search_pf_sym_arity(PredTable,
-				PredOrFunc, Name, Arity, [PredId]) }
-		->
-			{ predicate_table_get_preds(PredTable, Preds) },
-			{ map__lookup(Preds, PredId, PredInfo) },
-			{ pred_info_procedures(PredInfo, Procs) },
-			{ map__to_assoc_list(Procs, ExistingProcs) },
-			(
-				{ get_procedure_matching_declmodes(
-					ExistingProcs, Modes, Module0, ProcId)}
-			->
-				{ module_info_get_pragma_exported_procs(Module0,
-					PragmaExportedProcs0) },
-				{ NewExportedProc = pragma_exported_proc(PredId,
-					ProcId, C_Function) },
-				{ PragmaExportedProcs = 
-					[NewExportedProc|PragmaExportedProcs0]},
-				{ module_info_set_pragma_exported_procs(Module0,
-					PragmaExportedProcs, Module) }
-			;
-				undefined_mode_error(Name, Arity, Context,
-					"`:- pragma export' declaration"),
-				{ module_info_incr_errors(Module0, Module) }
-			)
-		;
-			undefined_pred_or_func_error(Name, Arity, Context,
-				"`:- pragma export' declaration"),
-			{ module_info_incr_errors(Module0, Module) }
-		)
+		add_pragma_export(Name, PredOrFunc, Modes, C_Function,
+				Context, Module0, Module)
 	;
 			% Used for inter-module unused argument elimination.
 			% This can only appear in .opt files.
 		{ Pragma = unused_args(PredOrFunc, SymName,
 				Arity, ProcId, UnusedArgs) },
-		{ Status = item_status(ImportStatus, _) },
 		( { ImportStatus \= opt_imported } ->
 			prog_out__write_context(Context),
 			io__write_string(
-				"Error: unknown pragma unused_args.\n"),
+			    "Error: illegal use of pragma `unused_args'.\n"),
 			{ module_info_incr_errors(Module0, Module) }
 		;
-			{ module_info_get_predicate_table(Module0, Preds) },
-			(
-				{ predicate_table_search_pf_sym_arity(Preds,
-					PredOrFunc, SymName, Arity, [PredId]) }
-			->
-				{ module_info_unused_arg_info(Module0,
-					UnusedArgInfo0) },
-				{ map__set(UnusedArgInfo0,
-					proc(PredId, ProcId), UnusedArgs,
-					UnusedArgInfo) },
-				{ module_info_set_unused_arg_info(Module0,
-					UnusedArgInfo, Module) }
-			;
-				prog_out__write_context(Context),
-				io__write_string("Internal compiler error: unknown predicate in pragma unused_args\n"),
-				{ module_info_incr_errors(Module0, Module) }
-			)
+			add_pragma_unused_args(PredOrFunc, SymName, Arity,
+				ProcId, UnusedArgs, Context, Module0, Module)
+			
 		)
 	;
 		% Handle pragma fact_table decls later on (when we process
@@ -404,68 +374,9 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 	;
 		{ Pragma = termination_info(PredOrFunc, SymName, ModeList, 
 			MaybeArgSizeInfo, MaybeTerminationInfo) },
-		{ module_info_get_predicate_table(Module0, Preds) },
-		{ list__length(ModeList, Arity) },
-		(
-		    { predicate_table_search_pf_sym_arity(Preds,
-			PredOrFunc, SymName, Arity, PredIds) },
-		    { PredIds \= [] }
-		->
-		    ( { PredIds = [PredId] } ->
-			{ module_info_preds(Module0, PredTable0) },
-			{ map__lookup(PredTable0, PredId, PredInfo0) },
-			{ pred_info_procedures(PredInfo0, ProcTable0)},
-			{ map__to_assoc_list(ProcTable0, ProcList) },
-			( 
-				{ get_procedure_matching_declmodes(ProcList, 
-					ModeList, Module0, ProcId) }
-			->
-				{ map__lookup(ProcTable0, ProcId, ProcInfo0) },
-				{ proc_info_set_maybe_arg_size_info(ProcInfo0, 
-					MaybeArgSizeInfo, ProcInfo1) },
-				{ proc_info_set_maybe_termination_info(
-					ProcInfo1, 
-					MaybeTerminationInfo, ProcInfo) },
-				{ map__det_update(ProcTable0, ProcId, ProcInfo,
-					ProcTable) },
-				{ pred_info_set_procedures(PredInfo0, 
-					ProcTable, PredInfo) },
-				{ map__det_update(PredTable0, PredId, PredInfo,
-					PredTable) },
-				{ module_info_set_preds(Module0, PredTable,
-					Module) }
-		    	;
-				{ module_info_incr_errors(Module0, Module) }, 
-				prog_out__write_context(Context),
-				io__write_string(
-					"Error: `:- pragma termination_info' "),
-				io__write_string(
-					"declaration for undeclared mode of "),
-				hlds_out__write_call_id(PredOrFunc, 
-					SymName/Arity),
-				io__write_string(".\n")
-			)
-		    ;
-			prog_out__write_context(Context),
-			io__write_string("Error: ambiguous predicate name"),
-			hlds_out__write_call_id(PredOrFunc, SymName/Arity),
-			io__nl,
-			prog_out__write_context(Context),
-			io__write_string(
-				"  in `pragma termination_info'.\n"),
-			{ module_info_incr_errors(Module0, Module) }
-		    )
-		;
-		    % XXX This happens in `.trans_opt' files sometimes --
-		    % so just ignore it
-		    { Module = Module0 }
-		    /***
-		    ****   undefined_pred_or_func_error(
-		    ****	    SymName, Arity, Context,
-		    **** 	    "`:- pragma termination_info' declaration"),
-		    ****   { module_info_incr_errors(Module0, Module) }
-		    ***/
-		)
+		add_pragma_termination_info(PredOrFunc, SymName, ModeList,
+			MaybeArgSizeInfo, MaybeTerminationInfo, Context,
+			Module0, Module)
 	;
 		{ Pragma = terminates(Name, Arity) },
 		add_pred_marker(Module0, "terminates", Name, Arity,
@@ -556,10 +467,12 @@ module_defn_update_import_status(opt_imported,
 
 add_item_clause(func_clause(VarSet, PredName, Args, Result, Body), Status,
 		Status, Context, Module0, Module, Info0, Info) -->
+	check_not_exported(Status, Context, "clause"),
 	module_add_func_clause(Module0, VarSet, PredName, Args, Result, Body,
 		Status, Context, Module, Info0, Info).
 add_item_clause(pred_clause(VarSet, PredName, Args, Body), Status, Status,
 		Context, Module0, Module, Info0, Info) -->
+	check_not_exported(Status, Context, "clause"),
 	module_add_pred_clause(Module0, VarSet, PredName, Args, Body, Status,
 		Context, Module, Info0, Info).
 add_item_clause(type_defn(_, _, _), Status, Status, _,
@@ -620,6 +533,165 @@ add_item_clause(typeclass(_, _, _, _, _),
 	Status, Status, _, Module, Module, Info, Info) --> [].
 add_item_clause(instance(_, _, _, _, _),
 	Status, Status, _, Module, Module, Info, Info) --> [].
+
+%-----------------------------------------------------------------------------%
+
+:- pred check_not_exported(import_status, term__context, string,
+			io__state, io__state).
+:- mode check_not_exported(in, in, in, di, uo) is det.
+
+check_not_exported(Status, Context, Message) -->
+		%
+		% check that clauses are not exported
+		%
+	( { Status = exported } ->
+		prog_out__write_context(Context),
+		{ string__append_list(
+			["Warning: ", Message, " in module interface.\n"],
+			WarningMessage) },
+		report_warning(WarningMessage)
+	;
+		[]
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_pragma_export(sym_name, pred_or_func, list(mode), string,
+	term__context, module_info, module_info, io__state, io__state).
+:- mode add_pragma_export(in, in, in, in, in, in, out, di, uo) is det.
+
+add_pragma_export(Name, PredOrFunc, Modes, C_Function, Context,
+			Module0, Module) -->
+	{ module_info_get_predicate_table(Module0, PredTable) },
+	{ list__length(Modes, Arity) },
+	(
+		{ predicate_table_search_pf_sym_arity(PredTable,
+			PredOrFunc, Name, Arity, [PredId]) }
+	->
+		{ predicate_table_get_preds(PredTable, Preds) },
+		{ map__lookup(Preds, PredId, PredInfo) },
+		{ pred_info_procedures(PredInfo, Procs) },
+		{ map__to_assoc_list(Procs, ExistingProcs) },
+		(
+			{ get_procedure_matching_declmodes(
+				ExistingProcs, Modes, Module0, ProcId)}
+		->
+			{ module_info_get_pragma_exported_procs(Module0,
+				PragmaExportedProcs0) },
+			{ NewExportedProc = pragma_exported_proc(PredId,
+				ProcId, C_Function) },
+			{ PragmaExportedProcs = 
+				[NewExportedProc|PragmaExportedProcs0]},
+			{ module_info_set_pragma_exported_procs(Module0,
+				PragmaExportedProcs, Module) }
+		;
+			undefined_mode_error(Name, Arity, Context,
+				"`:- pragma export' declaration"),
+			{ module_info_incr_errors(Module0, Module) }
+		)
+	;
+		undefined_pred_or_func_error(Name, Arity, Context,
+			"`:- pragma export' declaration"),
+		{ module_info_incr_errors(Module0, Module) }
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_pragma_unused_args(pred_or_func, sym_name, arity, proc_id,
+		list(int), term__context, module_info, module_info,
+		io__state, io__state).
+:- mode add_pragma_unused_args(in, in, in, in, in, in, in, out, di, uo) is det.
+
+add_pragma_unused_args(PredOrFunc, SymName, Arity, ProcId, UnusedArgs, Context,
+		Module0, Module) -->
+	{ module_info_get_predicate_table(Module0, Preds) },
+	(
+		{ predicate_table_search_pf_sym_arity(Preds,
+			PredOrFunc, SymName, Arity, [PredId]) }
+	->
+		{ module_info_unused_arg_info(Module0, UnusedArgInfo0) },
+		{ map__set(UnusedArgInfo0, proc(PredId, ProcId), UnusedArgs,
+			UnusedArgInfo) },
+		{ module_info_set_unused_arg_info(Module0, UnusedArgInfo,
+			Module) }
+	;
+		prog_out__write_context(Context),
+		io__write_string(
+"Internal compiler error: unknown predicate in `pragma unused_args'.\n"),
+		{ module_info_incr_errors(Module0, Module) }
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_pragma_termination_info(pred_or_func, sym_name, list(mode),
+		maybe(arg_size_info), maybe(termination_info),
+		term__context, module_info, module_info, io__state, io__state).
+:- mode add_pragma_termination_info(in, in, in, in, in, in, in, out, di, uo)
+		is det.
+
+add_pragma_termination_info(PredOrFunc, SymName, ModeList, MaybeArgSizeInfo,
+		MaybeTerminationInfo, Context, Module0, Module) -->
+	{ module_info_get_predicate_table(Module0, Preds) },
+	{ list__length(ModeList, Arity) },
+	(
+	    { predicate_table_search_pf_sym_arity(Preds,
+		PredOrFunc, SymName, Arity, PredIds) },
+	    { PredIds \= [] }
+	->
+	    ( { PredIds = [PredId] } ->
+		{ module_info_preds(Module0, PredTable0) },
+		{ map__lookup(PredTable0, PredId, PredInfo0) },
+		{ pred_info_procedures(PredInfo0, ProcTable0)},
+		{ map__to_assoc_list(ProcTable0, ProcList) },
+		( 
+			{ get_procedure_matching_declmodes(ProcList, 
+				ModeList, Module0, ProcId) }
+		->
+			{ map__lookup(ProcTable0, ProcId, ProcInfo0) },
+			{ proc_info_set_maybe_arg_size_info(ProcInfo0, 
+				MaybeArgSizeInfo, ProcInfo1) },
+			{ proc_info_set_maybe_termination_info(ProcInfo1, 
+				MaybeTerminationInfo, ProcInfo) },
+			{ map__det_update(ProcTable0, ProcId, ProcInfo,
+				ProcTable) },
+			{ pred_info_set_procedures(PredInfo0, ProcTable,
+				PredInfo) },
+			{ map__det_update(PredTable0, PredId, PredInfo,
+				PredTable) },
+			{ module_info_set_preds(Module0, PredTable,
+				Module) }
+		;
+			{ module_info_incr_errors(Module0, Module) }, 
+			prog_out__write_context(Context),
+			io__write_string(
+				"Error: `:- pragma termination_info' "),
+			io__write_string(
+				"declaration for undeclared mode of "),
+			hlds_out__write_call_id(PredOrFunc, 
+				SymName/Arity),
+			io__write_string(".\n")
+		)
+	    ;
+		prog_out__write_context(Context),
+		io__write_string("Error: ambiguous predicate name"),
+		hlds_out__write_call_id(PredOrFunc, SymName/Arity),
+		io__nl,
+		prog_out__write_context(Context),
+		io__write_string(
+			"  in `pragma termination_info'.\n"),
+		{ module_info_incr_errors(Module0, Module) }
+	    )
+	;
+	    % XXX This happens in `.trans_opt' files sometimes --
+	    % so just ignore it
+	    { Module = Module0 }
+	    /***
+	    ****   undefined_pred_or_func_error(
+	    ****	    SymName, Arity, Context,
+	    **** 	    "`:- pragma termination_info' declaration"),
+	    ****   { module_info_incr_errors(Module0, Module) }
+	    ***/
+	).
 
 %-----------------------------------------------------------------------------%
 

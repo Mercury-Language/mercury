@@ -153,6 +153,12 @@
 :- pred update_interface(string, io__state, io__state).
 :- mode update_interface(in, di, uo) is det.
 
+	% Check whether a particular `pragma' declaration is allowed
+	% in the interface section of a module.
+
+:- pred pragma_allowed_in_interface(pragma_type, bool).
+:- mode pragma_allowed_in_interface(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -271,8 +277,6 @@ check_for_clauses_in_interface([ItemAndContext0 | Items0], Items) -->
 		{ Items = [ItemAndContext0 | Items1] },
 		check_for_clauses_in_interface(Items0, Items1)
 	).
-
-:- pred pragma_allowed_in_interface(pragma_type::in, bool::out) is det.
 
 % pragma `obsolete', `terminates', `does_not_terminate' 
 % `termination_info' and `check_termination' declarations
