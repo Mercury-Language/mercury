@@ -283,8 +283,8 @@ inst_matches_initial_2(InstA, InstB, ModuleInfo, Expansions) :-
 
 inst_matches_initial_3(any(UniqA), any(UniqB), _, _) :-
 	unique_matches_initial(UniqA, UniqB).
-/* not yet:
 inst_matches_initial_3(any(_), free, _, _).
+/* not yet:
 inst_matches_initial_3(free, any(_), _, _).
 */
 inst_matches_initial_3(free, free, _, _).
