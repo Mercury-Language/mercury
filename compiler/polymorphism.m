@@ -285,7 +285,11 @@ polymorphism__process_goal_2( call(PredId0, ProcId0, ArgVars0,
 		=(poly_info(_, VarTypes, _, _TypeInfoMap, ModuleInfo)),
 		{ special_pred_get_type(MangledPredName, ArgVars0, MainVar) },
 		{ map__lookup(VarTypes, MainVar, Type) },
-		{ Type \= term__variable(_) }
+		{ Type \= term__variable(_) },
+		% don't try this for type_to_term or term_to_type
+		% if they're not implemented
+		{ special_pred_list(SpecialPredIds) },
+		{ list__member(SpecialPredId, SpecialPredIds) }
 	    ->
 		{ classify_type(Type, ModuleInfo, TypeCategory) },
 		{ polymorphism__get_special_proc(TypeCategory, SpecialPredId,
