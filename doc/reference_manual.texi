@@ -799,8 +799,10 @@ For example:
 @end example
 
 Predicates may not be overloaded:
-there must only be one predicate with a given name and arity in each program.
-(This restriction will hopefully be relaxed in the future.)
+there must only be one predicate with a given name and arity in each module.
+A module qualifier must be used to dis-ambiguate imported and locally defined
+predicates that have the same name.
+(This restriction will hopefully be further relaxed in the future.)
 
 The compiler infers the types of variables and overloaded constructors.
 A @dfn{type assignment} is an assignment of a type
