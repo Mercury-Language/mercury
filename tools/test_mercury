@@ -1157,9 +1157,9 @@ case $status in
 	    $LN $BETA_WEBDIR/mercury-tests-$version-unstable.tar.gz \
 	        $BETA_WEBDIR/mercury-tests-$version.tar.gz &&
 	    $LN $BETA_WEBDIR/mercury-NEWS-$version-unstable.txt \
-	        $BETA_WEBDIR/mercury-NEWS-$version.tar.gz &&
+	        $BETA_WEBDIR/mercury-NEWS-$version.txt &&
 	    $LN $BETA_WEBDIR/mercury-INSTALL-$version-unstable.txt \
-	        $BETA_WEBDIR/mercury-INSTALL-$version.tar.gz 
+	        $BETA_WEBDIR/mercury-INSTALL-$version.txt
 	    ;;
 	esac || set_status "updating stable distribution"
 	;;
