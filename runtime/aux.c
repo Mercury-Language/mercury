@@ -320,7 +320,7 @@ void *newmem(size_t n)
 #else
 	p = malloc(n);
 #endif
-	if (p == NULL)
+	if (p == NULL && size != 0)
 	{
 		fatal_error("ran out of memory");
 	}
