@@ -11,10 +11,11 @@ main_target: $(MAIN_TARGET)
 #-----------------------------------------------------------------------------#
 
 # Beware that the order of suffixes is significant.
-.SUFFIXES: .pp .m .nl .no .err .int .int2 .int3 .dep .depend .doit .ugly \
-		.date .date3 .mod .c .nu .o .pic_o .i .s .garb .ql .pl
+.SUFFIXES: .pp .m .nl .no .err .int .int2 .int3 .opt .dep .depend .doit \
+		.ugly .date .date3 .optdate .mod .c .nu .o .pic_o .i .s \
+		.garb .ql .pl
 
-.PRECIOUS: %.date
+.PRECIOUS: %.date %.date3 %.optdate
 
 # All the builtin rules must use $@ as the target, so that they work
 # when $(VPATH) is set.
@@ -58,8 +59,10 @@ main_target: $(MAIN_TARGET)
 .m.date3:
 	$(MCSI) $(MCSIFLAGS) $<
 
+.m.optdate:
+	$(MCOI) $(MCOIFLAGS) $< > $*.err2 2>&1
 
-# do not remove the whitespace in the following three rules!
+# do not remove the whitespace in the following four rules!
 
 .date.int:
 	
@@ -69,6 +72,10 @@ main_target: $(MAIN_TARGET)
 
 .date3.int3:
 	
+
+.optdate.opt:
+	
+
 
 .m.garb:
 	$(MCG) -s $(GRADE) --garbage-collection accurate $(MCGFLAGS) $<
