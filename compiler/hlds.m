@@ -986,6 +986,11 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 
 :- interface.
 
+:- type import_status
+	--->	imported_pred
+	;	exported_pred
+	;	local_pred.
+
 :- pred predicate_module(module_info, pred_id, module_name).
 :- mode predicate_module(in, in, out) is det.
 
@@ -996,8 +1001,9 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- mode predicate_arity(in, in, out) is det.
 
 :- pred pred_info_init(module_name, sym_name, arity, varset, list(type),
-			condition, term__context, clauses_info, pred_info).
-:- mode pred_info_init(in, in, in, in, in, in, in, in, out) is det.
+			condition, term__context, clauses_info, import_status,
+			pred_info).
+:- mode pred_info_init(in, in, in, in, in, in, in, in, in, out) is det.
 
 :- pred pred_info_module(pred_info, module_name).
 :- mode pred_info_module(in, out) is det.
@@ -1033,6 +1039,8 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- mode pred_info_context(in, out) is det.
 
 :- pred pred_info_is_imported(pred_info::in) is semidet.
+
+:- pred pred_info_is_exported(pred_info::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -1072,58 +1080,61 @@ predicate_arity(ModuleInfo, PredId, Arity) :-
 
 			module_name,	% module in which pred occurs
 			string,		% predicate name
-			arity		% the arity of the pred
+			arity,		% the arity of the pred
+			import_status
 		).
 
 pred_info_init(ModuleName, SymName, Arity, VarSet, Types, Cond, Context,
-		ClausesInfo, PredInfo) :-
+		ClausesInfo, Status, PredInfo) :-
 	map__init(Procs),
 	unqualify_name(SymName, PredName),
 	sym_name_get_module_name(SymName, ModuleName, PredModuleName),
 	PredInfo = predicate(VarSet, Types, Cond, ClausesInfo, Procs, Context,
-					    PredModuleName, PredName, Arity).
+				PredModuleName, PredName, Arity, Status).
 
 pred_info_proc_ids(PredInfo, ProcIds) :-
-	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _),
+	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _),
 	map__keys(Procs, ProcIds).
 
 pred_info_clauses_info(PredInfo, Clauses) :-
-	PredInfo = predicate(_, _, _, Clauses, _, _, _, _, _).
+	PredInfo = predicate(_, _, _, Clauses, _, _, _, _, _, _).
 
 pred_info_set_clauses_info(PredInfo0, Clauses, PredInfo) :-
-	PredInfo0 = predicate(A, B, C,  _, E, F, G, H, I),
-	PredInfo = predicate(A, B, C, Clauses, E, F, G, H, I).
+	PredInfo0 = predicate(A, B, C,  _, E, F, G, H, I, J),
+	PredInfo = predicate(A, B, C, Clauses, E, F, G, H, I, J).
 
 pred_info_arg_types(PredInfo, TypeVars, ArgTypes) :-
-	PredInfo = predicate(TypeVars, ArgTypes, _, _, _, _, _, _, _).
+	PredInfo = predicate(TypeVars, ArgTypes, _, _, _, _, _, _, _, _).
 
 pred_info_procedures(PredInfo, Procs) :-
-	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _).
+	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _).
 
 pred_info_set_procedures(PredInfo0, Procedures, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, _, F, G, H, I),
-	PredInfo = predicate(A, B, C, D, Procedures, F, G, H, I).
+	PredInfo0 = predicate(A, B, C, D, _, F, G, H, I, J),
+	PredInfo = predicate(A, B, C, D, Procedures, F, G, H, I, J).
 
 pred_info_procids(PredInfo, ProcIds) :-
 	pred_info_procedures(PredInfo, Procedures),
 	map__keys(Procedures, ProcIds).
 
 pred_info_context(PredInfo, Context) :-
-	PredInfo = predicate(_, _, _, _, _, Context, _, _, _).
+	PredInfo = predicate(_, _, _, _, _, Context, _, _, _, _).
 
 pred_info_module(PredInfo, Module) :-
-	PredInfo = predicate(_, _, _, _, _, _, Module, _, _).
+	PredInfo = predicate(_, _, _, _, _, _, Module, _, _, _).
 
 pred_info_name(PredInfo, PredName) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, PredName, _).
+	PredInfo = predicate(_, _, _, _, _, _, _, PredName, _, _).
 
 pred_info_arity(PredInfo, Arity) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, Arity).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, Arity, _).
 
 pred_info_is_imported(PredInfo) :-
-	pred_info_clauses_info(PredInfo, ClauseInfo),
-	ClauseInfo = clauses_info(_, _, _, []).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, imported_pred).
 
+pred_info_is_exported(PredInfo) :-
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, exported_pred).
+	
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

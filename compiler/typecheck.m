@@ -187,14 +187,21 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 				ModuleInfo, Error, IOState0, IOState) :-
 	module_info_preds(ModuleInfo0, Preds0),
 	map__lookup(Preds0, PredId, PredInfo0),
-	pred_info_arg_types(PredInfo0, TypeVarSet, ArgTypes),
-	pred_info_clauses_info(PredInfo0, ClausesInfo0),
-	ClausesInfo0 = clauses_info(VarSet, VarTypes0, HeadVars, Clauses0),
-	( Clauses0 = [] ->
-		ModuleInfo2 = ModuleInfo0,
-		Error1 = Error0,
-		IOState2 = IOState0
+	( pred_info_is_imported(PredInfo0) ->
+	    ModuleInfo2 = ModuleInfo0,
+	    IOState2 = IOState0,
+	    Error1 = Error0
 	;
+	    pred_info_arg_types(PredInfo0, TypeVarSet, ArgTypes),
+	    pred_info_clauses_info(PredInfo0, ClausesInfo0),
+	    ClausesInfo0 = clauses_info(VarSet, VarTypes0, HeadVars,
+					Clauses0),
+	    ( Clauses0 = [] ->
+		report_warning_no_clauses(PredId, PredInfo0,
+			ModuleInfo0, IOState0, IOState2),
+		module_info_remove_predid(ModuleInfo0, PredId, ModuleInfo2),
+		Error1 = Error0
+	    ;
 		write_progress_message(PredId, ModuleInfo0, IOState0, IOState1),
 		term__vars_list(ArgTypes, HeadTypeParams),
 		type_info_init(IOState1, ModuleInfo0, PredId,
@@ -217,6 +224,7 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 			ModuleInfo2 = ModuleInfo1
 		),
 		type_info_get_io_state(TypeInfo2, IOState2)
+	    )
 	),
 	typecheck_pred_types_2(PredIds, ModuleInfo2, Error1, ModuleInfo, Error,
 		IOState2, IOState).
@@ -2103,6 +2111,19 @@ type_assign_set_type_bindings(type_assign(A, B, _), TypeBindings,
 %-----------------------------------------------------------------------------%
 
 % The next section contains predicates for writing error diagnostics.
+
+%-----------------------------------------------------------------------------%
+
+:- pred report_warning_no_clauses(pred_id, pred_info,
+					module_info, io__state, io__state).
+:- mode report_warning_no_clauses(in, in, in, di, uo) is det.
+
+report_warning_no_clauses(PredId, PredInfo, ModuleInfo) -->
+	{ pred_info_context(PredInfo, Context) },
+	prog_out__write_context(Context),
+	io__write_string("Warning: no clauses for "),
+	hlds_out__write_pred_id(ModuleInfo, PredId),
+	io__write_string("\n").
 
 %-----------------------------------------------------------------------------%
 

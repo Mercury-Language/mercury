@@ -217,6 +217,10 @@
 :- type module_defn	--->	module(module_name)
 			;	interface
 			;	implementation
+			;	imported
+				% this is used internally by the compiler,
+				% to identify declarations which originally
+				% came from some other module
 			;	end_module(module_name)
 			;	export(sym_list)
 			;	import(sym_list)
