@@ -117,5 +117,4 @@ MCFLAGS	= --no-infer-all --halt-at-warn $(EXTRA_MCFLAGS)
 
 #-----------------------------------------------------------------------------#
 
-# XXX as a temporary hack to get things to bootstrap, set `--no-type-layout'.
-MCFLAGS	= --no-infer-all --halt-at-warn --no-type-layout $(EXTRA_MCFLAGS)
+MCFLAGS	= --no-infer-all --halt-at-warn $(EXTRA_MCFLAGS)
