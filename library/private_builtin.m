@@ -357,10 +357,98 @@ const struct mercury_data_private_builtin__type_ctor_functors_type_info_1_struct
 	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
 
+Define_extern_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
+Define_extern_entry(mercury____Index___private_builtin__typeclass_info_1_0);
+Define_extern_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
+
+extern const struct
+	mercury_data_private_builtin__type_ctor_layout_typeclass_info_1_struct 
+	mercury_data_private_builtin__type_ctor_layout_typeclass_info_1;
+extern const struct
+	mercury_data_private_builtin__type_ctor_functors_typeclass_info_1_struct
+	mercury_data_private_builtin__type_ctor_functors_typeclass_info_1;
+
+MR_STATIC_CODE_CONST struct
+mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1_struct {
+	Integer f1;
+	Code *f2;
+	Code *f3;
+	Code *f4;
+	const Word *f5;
+	const Word *f6;
+	const Word *f7;
+	const Word *f8;
+	const Word *f9;
+} mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1 = {
+	((Integer) 1),
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Unify___private_builtin__typeclass_info_1_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Index___private_builtin__typeclass_info_1_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Compare___private_builtin__typeclass_info_1_0)),
+	(const Word *) &
+	    mercury_data_private_builtin__type_ctor_layout_typeclass_info_1,
+	(const Word *) &
+	    mercury_data_private_builtin__type_ctor_functors_typeclass_info_1,
+	(const Word *) &
+	    mercury_data_private_builtin__type_ctor_layout_typeclass_info_1,
+	(const Word *) string_const(""private_builtin"", 15),
+	(const Word *) string_const(""base_typeclass_info"", 19)
+};
+
+MR_STATIC_CODE_CONST struct
+mercury_data_private_builtin__type_ctor_info_typeclass_info_1_struct {
+	Integer f1;
+	Code *f2;
+	Code *f3;
+	Code *f4;
+	const Word *f5;
+	const Word *f6;
+	const Word *f7;
+	const Word *f8;
+	const Word *f9;
+} mercury_data_private_builtin__type_ctor_info_typeclass_info_1 = {
+	((Integer) 1),
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Unify___private_builtin__typeclass_info_1_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Index___private_builtin__typeclass_info_1_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Compare___private_builtin__typeclass_info_1_0)),
+	(const Word *) &
+	    mercury_data_private_builtin__type_ctor_layout_typeclass_info_1,
+	(const Word *) &
+	    mercury_data_private_builtin__type_ctor_functors_typeclass_info_1,
+	(const Word *) &
+	    mercury_data_private_builtin__type_ctor_layout_typeclass_info_1,
+	(const Word *) string_const(""private_builtin"", 15),
+	(const Word *) string_const(""typeclass_info"", 14)
+};
+
+const struct
+mercury_data_private_builtin__type_ctor_layout_typeclass_info_1_struct {
+	TYPE_LAYOUT_FIELDS
+} mercury_data_private_builtin__type_ctor_layout_typeclass_info_1 = {
+	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
+		mkbody(MR_TYPE_CTOR_LAYOUT_TYPECLASSINFO_VALUE))
+};
+
+const struct mercury_data_private_builtin__type_ctor_functors_typeclass_info_1_struct {
+	Integer f1;
+} mercury_data_private_builtin__type_ctor_functors_typeclass_info_1 = {
+	MR_TYPE_CTOR_FUNCTORS_SPECIAL
+};
+
+
+
 BEGIN_MODULE(type_info_module)
 	init_entry(mercury____Unify___private_builtin__type_info_1_0);
 	init_entry(mercury____Index___private_builtin__type_info_1_0);
 	init_entry(mercury____Compare___private_builtin__type_info_1_0);
+	init_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
+	init_entry(mercury____Index___private_builtin__typeclass_info_1_0);
+	init_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
 BEGIN_CODE
 Define_entry(mercury____Unify___private_builtin__type_info_1_0);
 {
@@ -396,6 +484,18 @@ Define_entry(mercury____Compare___private_builtin__type_info_1_0);
 	restore_transient_registers();
 	compare_output = comp;
 	proceed();
+}
+Define_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
+{
+	fatal_error(""attempt to unify typeclass_info"");
+}
+Define_entry(mercury____Index___private_builtin__typeclass_info_1_0);
+	index_output = -1;
+	proceed();
+
+Define_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
+{
+	fatal_error(""attempt to compare typeclass_info"");
 }
 END_MODULE
 
