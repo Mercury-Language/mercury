@@ -1,0 +1,6 @@
+*.err
+*.init
+help.h
+debugger_interface.h
+mer_browser.init
+Mercury
