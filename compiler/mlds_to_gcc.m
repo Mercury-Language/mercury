@@ -898,8 +898,10 @@ build_field_defns([Defn|Defns], ModuleName, GlobalInfo, FieldList,
 	% Insert the field definition into our field symbol table.
 	{ Defn = mlds__defn(Name, _, _, _) },
 	( { Name = data(var(FieldName)) } ->
+		{ GCC_FieldName = ml_var_name_to_string(FieldName) },
 		{ FieldTable1 = map__det_insert(FieldTable0,
-			qual(ModuleName, FieldName), GCC_FieldDefn) }
+			qual(ModuleName, GCC_FieldName),
+			GCC_FieldDefn) }
 	;
 		{ unexpected(this_file, "non-var field") }
 	),
@@ -1297,7 +1299,8 @@ build_local_data_defn(Name, Flags, Type, Initializer, DefnInfo, GCC_Defn) -->
 	(
 		{ PerInstance = per_instance },
 		% an ordinary local variable
-		gcc__build_local_var_decl(VarName, GCC_Type, GCC_Defn),
+		{ GCC_VarName = ml_var_name_to_string(VarName) },
+		gcc__build_local_var_decl(GCC_VarName, GCC_Type, GCC_Defn),
 		add_var_decl_flags(Flags, GCC_Defn),
 		( { Initializer = no_initializer } ->
 			[]
@@ -1312,9 +1315,10 @@ build_local_data_defn(Name, Flags, Type, Initializer, DefnInfo, GCC_Defn) -->
 		% these must always have initializers
 		build_initializer(Initializer, GCC_Type, DefnInfo,
 			GCC_InitExpr),
-		gcc__build_static_var_decl(VarName, GCC_Type, GCC_InitExpr,
+		{ GCC_VarName = ml_var_name_to_string(VarName) },
+		gcc__build_static_var_decl(GCC_VarName, GCC_Type, GCC_InitExpr,
 			GCC_Defn),
-		{ llds_out__name_mangle(VarName, MangledVarName) },
+		{ llds_out__name_mangle(GCC_VarName, MangledVarName) },
 		gcc__set_var_decl_asm_name(GCC_Defn, MangledVarName),
 		add_var_decl_flags(Flags, GCC_Defn),
 		gcc__finish_static_var_decl(GCC_Defn)
@@ -1332,7 +1336,8 @@ build_field_data_defn(Name, Type, Initializer, GlobalInfo, GCC_Defn) -->
 		GlobalInfo, GCC_Type),
 	{ Name = qual(_ModuleName, UnqualName) },
 	( { UnqualName = data(var(VarName)) } ->
-		gcc__build_field_decl(VarName, GCC_Type, GCC_Defn)
+		{ GCC_VarName = ml_var_name_to_string(VarName) },
+		gcc__build_field_decl(GCC_VarName, GCC_Type, GCC_Defn)
 	;
 		{ sorry(this_file, "build_field_data_defn: non-var") }
 	),
@@ -1518,7 +1523,7 @@ is_static_member(Defn) :-
 mlds_make_base_class(Context, ClassId, MLDS_Defn, BaseNum0, BaseNum) :-
 	BaseName = string__format("base_%d", [i(BaseNum0)]),
 	Type = ClassId,
-	MLDS_Defn = mlds__defn(data(var(BaseName)), Context,
+	MLDS_Defn = mlds__defn(data(var(var_name(BaseName, no))), Context,
 		ml_gen_public_field_decl_flags, data(Type, no_initializer)),
 	BaseNum = BaseNum0 + 1.
 
@@ -1807,7 +1812,8 @@ build_param_types_and_decls([Arg|Args], ModuleName, GlobalInfo,
 	{ Arg = ArgName - Type },
 	build_type(Type, GlobalInfo, GCC_Type),
 	( { ArgName = data(var(ArgVarName)) } ->
-		gcc__build_param_decl(ArgVarName, GCC_Type, ParamDecl),
+		{ GCC_ArgVarName = ml_var_name_to_string(ArgVarName) },
+		gcc__build_param_decl(GCC_ArgVarName, GCC_Type, ParamDecl),
 		{ SymbolTable = map__det_insert(SymbolTable0,
 			qual(ModuleName, ArgName), ParamDecl) }
 	;
@@ -2380,7 +2386,7 @@ build_name(export(Name)) = Name.
 :- func build_data_name(mlds__data_name) = string.
 
 build_data_name(var(Name)) = MangledName :-
-	llds_out__name_mangle(Name, MangledName).
+	llds_out__name_mangle(ml_var_name_to_string(Name), MangledName).
 build_data_name(common(Num)) =
 	string__format("common_%d", [i(Num)]).
 build_data_name(rtti(RttiTypeId0, RttiName0)) = RttiAddrName :-
@@ -2915,10 +2921,13 @@ gen_atomic_stmt(_DefnInfo, trail_op(_TrailOp), _) -->
 	%
 	% foreign language interfacing
 	%
-gen_atomic_stmt(_DefnInfo, target_code(_TargetLang, _Components),
+gen_atomic_stmt(_DefnInfo, inline_target_code(_TargetLang, _Components),
 		_Context) -->
 	% XXX we should support inserting inline asm code fragments
 	{ sorry(this_file, "target_code (for `--target asm')") }.
+gen_atomic_stmt(_DefnInfo, outline_foreign_proc(_, _, _), _Context) -->
+	% XXX I'm not sure if we need to handle this case
+	{ sorry(this_file, "outline_foreign_proc (for `--target asm')") }.
 
 	%
 	% gen_init_args generates code to initialize the fields
@@ -3066,14 +3075,15 @@ build_lval(var(qual(ModuleName, VarName), _VarType), DefnInfo, Expr) -->
 		% and is an RTTI enumeration constant
 		{ mercury_private_builtin_module(PrivateBuiltin) },
 		{ mercury_module_name_to_mlds(PrivateBuiltin) = ModuleName },
-		{ rtti_enum_const(VarName, IntVal) }
+		{ VarName = var_name(VarNameBase, _MaybeNum) },
+		{ rtti_enum_const(VarNameBase, IntVal) }
 	->
 		gcc__build_int(IntVal, Expr)
 	;
 		% check if it's private_builtin:dummy_var
 		{ mercury_private_builtin_module(PrivateBuiltin) },
 		{ mercury_module_name_to_mlds(PrivateBuiltin) = ModuleName },
-		{ VarName = "dummy_var" }
+		{ VarName = var_name("dummy_var", _) }
 	->
 		% if so, generate an extern declaration for it, and use that.
 		{ GCC_VarName = build_data_var_name(ModuleName, var(VarName)) },
