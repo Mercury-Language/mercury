@@ -204,7 +204,6 @@ static	void	MR_trace_expand_aliases(char ***words,
 			int *word_max, int *word_count);
 static	bool	MR_trace_source(const char *filename);
 static	void	MR_trace_source_from_open_file(FILE *fp);
-static	char	*MR_trace_getline(const char *prompt);
 static	char	*MR_trace_getline_queue(void);
 static	void	MR_insert_line_at_head(const char *line);
 static	void	MR_insert_line_at_tail(const char *line);
@@ -2225,7 +2224,7 @@ MR_trace_source_from_open_file(FILE *fp)
 ** occurs on an empty line, return NULL.
 */
 
-static char *
+char *
 MR_trace_getline(const char *prompt)
 {
 	char	*line;

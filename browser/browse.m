@@ -174,8 +174,8 @@ browse__browse(Object, InputStream, OutputStream, State0, State) -->
 :- pred browse_main_loop(browser_state, browser_state, io__state, io__state).
 :- mode browse_main_loop(in, out, di, uo) is det.
 browse_main_loop(State0, State) -->
-	prompt,
-	parse__read_command(Command),
+	{ prompt(Prompt) },
+	parse__read_command(Prompt, Command),
 	( { Command = quit } ->
 		% io__write_string("quitting...\n")
 		{ State = State0 }
@@ -189,9 +189,8 @@ startup_message -->
 	io__write_string("-- Simple Mercury Term Browser.\n"),
 	io__write_string("-- Type \"help\" for help.\n\n").
 
-:- pred prompt(io__state::di, io__state::uo) is det.
-prompt -->
-	io__write_string("browser> ").
+:- pred prompt(string::out) is det.
+prompt("browser> ").
 
 
 :- pred run_command(command, browser_state, browser_state,

@@ -212,7 +212,7 @@ MR_trace(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
 			path, max_r_num);
 }
 
-static void
+void
 MR_tracing_not_enabled(void)
 {
 	fatal_error("This executable is not set up for debugging.\n"

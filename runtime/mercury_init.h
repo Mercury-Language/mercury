@@ -117,6 +117,9 @@ extern	void	ML_io_stdin_stream(Word *);
 extern	void	ML_io_print_to_cur_stream(Word, Word);
 extern	void	ML_io_print_to_stream(Word, Word, Word);
 
+/* in trace/mercury_trace_internal.h */
+extern	char	*MR_trace_getline(const char *);
+
 /* in trace/mercury_trace_declarative.h */
 extern	void	MR_edt_root_node(Word EDT, Word *Node);
 

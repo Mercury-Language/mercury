@@ -1,0 +1,22 @@
+echo on
+goto 3
+print *
+browse 0
+print
+quit
+browse HeadVar__1
+ls
+cd /1
+ls
+cd /1/2
+ls
+cd /3
+ls
+cd 1/3/2
+ls
+cd
+ls
+quit
+retry
+continue -a
+

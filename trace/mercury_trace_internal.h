@@ -55,4 +55,6 @@ extern FILE *MR_mdb_in;
 extern FILE *MR_mdb_out;
 extern FILE *MR_mdb_err;
 
+extern	char	*MR_trace_getline(const char *prompt);
+
 #endif	/* MERCURY_TRACE_INTERNAL_H */

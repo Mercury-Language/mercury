@@ -17,6 +17,7 @@ MDB = MERCURY_SUPPRESS_MDB_BANNER=yes mdb
 #-----------------------------------------------------------------------------#
 
 DEBUGGER_PROGS=	\
+	browser_test			\
 	debugger_regs			\
 	existential_type_classes	\
 	implied_instance		\
@@ -56,6 +57,9 @@ else
 endif
 
 #-----------------------------------------------------------------------------#
+
+browser_test.out: browser_test browser_test.inp
+	$(MDB) ./browser_test < browser_test.inp > browser_test.out 2>&1
 
 debugger_regs.out: debugger_regs debugger_regs.inp
 	$(MDB) ./debugger_regs < debugger_regs.inp > debugger_regs.out 2>&1

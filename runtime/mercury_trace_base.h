@@ -137,6 +137,14 @@ extern	void	MR_trace_report(FILE *fp);
 extern	void	MR_trace_report_raw(int fd);
 
 /*
+** This function prints an error message and aborts.  It should be
+** called in situations where tracing is required, but `--trace' was
+** not passed to c2init.
+*/
+
+extern	void	MR_tracing_not_enabled(void);
+
+/*
 ** If MR_TRACE_HISTOGRAM is defined, MR_trace maintains two arrays of integers,
 ** MR_trace_histogram_all and MR_trace_histogram_exp, in which the element
 ** with subscript d is incremented when a trace event occurs at depth d.
