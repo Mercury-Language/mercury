@@ -503,12 +503,14 @@ is(X, X).
 :- pred int__to_float(int, float) is det.
 :- mode int__to_float(in, out) is det.
 */
-:- pragma foreign_proc("C", int__to_float(IntVal::in, FloatVal::out),
+:- pragma foreign_proc("C",
+	int__to_float(IntVal::in, FloatVal::out),
 		[will_not_call_mercury, promise_pure],
 "
 	FloatVal = IntVal;
 ").
-:- pragma foreign_proc("MC++", int__to_float(IntVal::in, FloatVal::out),
+:- pragma foreign_proc("MC++",
+	int__to_float(IntVal::in, FloatVal::out),
 		[will_not_call_mercury, promise_pure],
 "
 	FloatVal = (MR_Float) IntVal;
@@ -532,8 +534,10 @@ is(X, X).
 
 ").
 
-:- pragma foreign_proc("C", int__max_int(Max::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+:- pragma foreign_proc("C",
+	int__max_int(Max::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	if (sizeof(MR_Integer) == sizeof(int))
 		Max = INT_MAX;
 	else if (sizeof(MR_Integer) == sizeof(long))
@@ -542,8 +546,10 @@ is(X, X).
 		MR_fatal_error(""Unable to figure out max integer size"");
 ").
 
-:- pragma foreign_proc("C", int__min_int(Min::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+:- pragma foreign_proc("C",
+	int__min_int(Min::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	if (sizeof(MR_Integer) == sizeof(int))
 		Min = INT_MIN;
 	else if (sizeof(MR_Integer) == sizeof(long))
@@ -552,38 +558,52 @@ is(X, X).
 		MR_fatal_error(""Unable to figure out min integer size"");
 ").
 
-:- pragma foreign_proc("C", int__bits_per_int(Bits::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+:- pragma foreign_proc("C",
+	int__bits_per_int(Bits::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Bits = ML_BITS_PER_INT;
 ").
 
-:- pragma foreign_proc("C", int__quot_bits_per_int(Int::in) = (Div::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+:- pragma foreign_proc("C",
+	int__quot_bits_per_int(Int::in) = (Div::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Div = Int / ML_BITS_PER_INT;
 ").
 
-:- pragma foreign_proc("C", int__times_bits_per_int(Int::in) = (Result::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+:- pragma foreign_proc("C",
+	int__times_bits_per_int(Int::in) = (Result::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Result = Int * ML_BITS_PER_INT;
 ").
 
-:- pragma foreign_proc("C", int__rem_bits_per_int(Int::in) = (Rem::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+:- pragma foreign_proc("C",
+	int__rem_bits_per_int(Int::in) = (Rem::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Rem = Int % ML_BITS_PER_INT;
 ").
 
-:- pragma foreign_proc("MC++", int__max_int(Max::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+:- pragma foreign_proc("MC++",
+	int__max_int(Max::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Max = System::Int32::MaxValue;
 ").
 
-:- pragma foreign_proc("MC++", int__min_int(Min::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+:- pragma foreign_proc("MC++",
+	int__min_int(Min::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Min = System::Int32::MinValue;
 ").
 
-:- pragma foreign_proc("MC++", int__bits_per_int(Bits::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+:- pragma foreign_proc("MC++",
+	int__bits_per_int(Bits::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Bits = ML_BITS_PER_INT;
 ").
 
@@ -615,4 +635,3 @@ int__min_int = X :-
 
 int__bits_per_int = X :-
 	int__bits_per_int(X).
-

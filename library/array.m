@@ -700,8 +700,10 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 :- pred bounds_checks is semidet.
 :- pragma inline(bounds_checks/0).
 
-:- pragma foreign_proc("C", bounds_checks,
-		[will_not_call_mercury, promise_pure, thread_safe], "
+:- pragma foreign_proc("C",
+	bounds_checks,
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 #ifdef ML_OMIT_ARRAY_BOUNDS_CHECKS
 	SUCCESS_INDICATOR = MR_FALSE;
 #else
@@ -709,8 +711,10 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 #endif
 ").		
 
-:- pragma foreign_proc("MC++", bounds_checks,
-		[will_not_call_mercury, promise_pure, thread_safe], "
+:- pragma foreign_proc("MC++",
+	bounds_checks,
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 #if ML_OMIT_ARRAY_BOUNDS_CHECKS
 	SUCCESS_INDICATOR = MR_FALSE;
 #else
@@ -757,30 +761,34 @@ array__init(Size, Item, Array) :-
 :- mode array__init_2(in, in, array_uo) is det.
 
 :- pragma foreign_proc("C", 
-		array__init_2(Size::in, Item::in, Array::array_uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	array__init_2(Size::in, Item::in, Array::array_uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	MR_incr_hp_msg(Array, Size + 1, MR_PROC_LABEL, ""array:array/1"");
 	ML_init_array((MR_ArrayType *)Array, Size, Item);
 ").
 
 :- pragma foreign_proc("C",
-		array__make_empty_array(Array::array_uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	array__make_empty_array(Array::array_uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	MR_incr_hp_msg(Array, 1, MR_PROC_LABEL, ""array:array/1"");
 	ML_init_array((MR_ArrayType *)Array, 0, 0);
 ").
 
 :- pragma foreign_proc("C#", 
-		array__init_2(Size::in, Item::in, Array::array_uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	array__init_2(Size::in, Item::in, Array::array_uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Array = System.Array.CreateInstance(Item.GetType(), Size);
 	for (int i = 0; i < Size; i++) {
 		Array.SetValue(Item, i);
 	}
 ").
 :- pragma foreign_proc("C#", 
-		array__make_empty_array(Array::array_uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	array__make_empty_array(Array::array_uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	// XXX A better solution then using the null pointer to represent
 	// the empty array would be to create an array of size 0.  However
 	// we need to determine the element type of the array before we can
@@ -794,45 +802,52 @@ array__init(Size, Item, Array) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-		array__min(Array::array_ui, Min::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	array__min(Array::array_ui, Min::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	/* Array not used */
 	Min = 0;
 ").
 :- pragma foreign_proc("C", 
-		array__min(Array::in, Min::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	array__min(Array::in, Min::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	/* Array not used */
 	Min = 0;
 ").
 
 :- pragma foreign_proc("C#",
-		array__min(Array::array_ui, Min::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	array__min(Array::array_ui, Min::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	/* Array not used */
 	Min = 0;
 ").
 :- pragma foreign_proc("C#", 
-		array__min(Array::in, Min::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	array__min(Array::in, Min::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	/* Array not used */
 	Min = 0;
 ").
 
 :- pragma promise_pure(array__max/2).
 :- pragma foreign_proc("C", 
-		array__max(Array::array_ui, Max::out), 
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	array__max(Array::array_ui, Max::out), 
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Max = ((MR_ArrayType *)Array)->size - 1;
 ").
 :- pragma foreign_proc("C",
-		array__max(Array::in, Max::out), 
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	array__max(Array::in, Max::out), 
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Max = ((MR_ArrayType *)Array)->size - 1;
 ").
 :- pragma foreign_proc("C#", 
-		array__max(Array::array_ui, Max::out), 
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	array__max(Array::array_ui, Max::out), 
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	if (Array != null) {
 		Max = Array.Length - 1;
 	} else {
@@ -840,8 +855,9 @@ array__init(Size, Item, Array) :-
 	}
 ").
 :- pragma foreign_proc("C#",
-		array__max(Array::in, Max::out), 
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	array__max(Array::in, Max::out), 
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	if (Array != null) {
 		Max = Array.Length - 1;
 	} else {
@@ -856,19 +872,22 @@ array__bounds(Array, Min, Max) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-		array__size(Array::array_ui, Max::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	array__size(Array::array_ui, Max::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Max = ((MR_ArrayType *)Array)->size;
 ").
 :- pragma foreign_proc("C",
-		array__size(Array::in, Max::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	array__size(Array::in, Max::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Max = ((MR_ArrayType *)Array)->size;
 ").
 
 :- pragma foreign_proc("C#",
-		array__size(Array::array_ui, Max::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	array__size(Array::array_ui, Max::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	if (Array != null) {
 		Max = Array.Length;
 	} else {
@@ -876,8 +895,9 @@ array__bounds(Array, Min, Max) :-
 	}
 ").
 :- pragma foreign_proc("C#",
-		array__size(Array::in, Max::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	array__size(Array::in, Max::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	if (Array != null) {
 		Max = Array.Length;
 	} else {
@@ -921,26 +941,30 @@ array__lookup(Array, Index, Item) :-
 :- mode array__unsafe_lookup(in, in, out) is det.
 
 :- pragma foreign_proc("C",
-		array__unsafe_lookup(Array::array_ui, Index::in, Item::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	array__unsafe_lookup(Array::array_ui, Index::in, Item::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	MR_ArrayType *array = (MR_ArrayType *)Array;
 	Item = array->elements[Index];
 }").
 :- pragma foreign_proc("C",
-		array__unsafe_lookup(Array::in, Index::in, Item::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	array__unsafe_lookup(Array::in, Index::in, Item::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	MR_ArrayType *array = (MR_ArrayType *)Array;
 	Item = array->elements[Index];
 }").
 
 :- pragma foreign_proc("C#",
 		array__unsafe_lookup(Array::array_ui, Index::in, Item::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	Item = Array.GetValue(Index);
 }").
 :- pragma foreign_proc("C#",
 		array__unsafe_lookup(Array::in, Index::in, Item::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	Item = Array.GetValue(Index);
 }").
 
@@ -959,7 +983,8 @@ array__set(Array0, Index, Item, Array) :-
 :- pragma foreign_proc("C",
 		array__unsafe_set(Array0::array_di, Index::in,
 		Item::in, Array::array_uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	MR_ArrayType *array = (MR_ArrayType *)Array0;
 	array->elements[Index] = Item;	/* destructive update! */
 	Array = Array0;
@@ -968,7 +993,8 @@ array__set(Array0, Index, Item, Array) :-
 :- pragma foreign_proc("C#",
 		array__unsafe_set(Array0::array_di, Index::in,
 		Item::in, Array::array_uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	Array0.SetValue(Item, Index);	/* destructive update! */
 	Array = Array0;
 }").
@@ -1020,7 +1046,8 @@ ML_resize_array(MR_ArrayType *array, MR_ArrayType *old_array,
 :- pragma foreign_proc("C",
 		array__resize(Array0::array_di, Size::in, Item::in,
 		Array::array_uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	if (((MR_ArrayType *)Array0)->size == Size) {
 		Array = Array0;
 	} else {
@@ -1034,8 +1061,8 @@ ML_resize_array(MR_ArrayType *array, MR_ArrayType *old_array,
 :- pragma foreign_proc("C#",
 		array__resize(Array0::array_di, Size::in, Item::in,
 		Array::array_uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
-
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	if (Array0 == null) {
 		Array = System.Array.CreateInstance(Item.GetType(), Size);
 		for (int i = 0; i < Size; i++) {
@@ -1105,7 +1132,8 @@ array__shrink(Array0, Size, Array) :-
 
 :- pragma foreign_proc("C",
 		array__shrink_2(Array0::array_di, Size::in, Array::array_uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	MR_incr_hp_msg(Array, Size + 1, MR_PROC_LABEL, ""array:array/1"");
 	ML_shrink_array((MR_ArrayType *)Array, (MR_ArrayType *) Array0,
 		Size);
@@ -1113,7 +1141,8 @@ array__shrink(Array0, Size, Array) :-
 
 :- pragma foreign_proc("C#",
 		array__shrink_2(Array0::array_di, Size::in, Array::array_uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Array = System.Array.CreateInstance(
 				Array0.GetType().GetElementType(), Size);
 	System.Array.Copy(Array0, Array, Size);
@@ -1152,24 +1181,26 @@ ML_copy_array(MR_ArrayType *array, const MR_ArrayType *old_array)
 
 :- pragma foreign_proc("C",
 		array__copy(Array0::array_ui, Array::array_uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	MR_incr_hp_msg(Array, (((const MR_ArrayType *) Array0)->size) + 1,
 		MR_PROC_LABEL, ""array:array/1"");
-	ML_copy_array((MR_ArrayType *)Array, (const MR_ArrayType *) Array0);
+	ML_copy_array((MR_ArrayType *) Array, (const MR_ArrayType *) Array0);
 ").
 
 :- pragma foreign_proc("C",
 		array__copy(Array0::in, Array::array_uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	MR_incr_hp_msg(Array, (((const MR_ArrayType *) Array0)->size) + 1,
 		MR_PROC_LABEL, ""array:array/1"");
-	ML_copy_array((MR_ArrayType *)Array, (const MR_ArrayType *) Array0);
+	ML_copy_array((MR_ArrayType *) Array, (const MR_ArrayType *) Array0);
 ").
 
 :- pragma foreign_proc("C#",
 		array__copy(Array0::array_ui, Array::array_uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
-
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	// XXX we implement the same as ML_copy_array, which doesn't appear
 	// to deep copy the array elements
 	Array = System.Array.CreateInstance(
@@ -1179,8 +1210,8 @@ ML_copy_array(MR_ArrayType *array, const MR_ArrayType *old_array)
 
 :- pragma foreign_proc("C#",
 		array__copy(Array0::in, Array::array_uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
-
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	// XXX we implement the same as ML_copy_array, which doesn't appear
 	// to deep copy the array elements
 	Array = System.Array.CreateInstance(
@@ -1196,10 +1227,10 @@ array(List) = Array :-
 array__from_list([], Array) :-
 	array__make_empty_array(Array).
 array__from_list(List, Array) :-
-        List = [ Head | Tail ],
-        list__length(List, Len),
-        array__init(Len, Head, Array0),
-        array__insert_items(Tail, 1, Array0, Array).
+	List = [ Head | Tail ],
+	list__length(List, Len),
+	array__init(Len, Head, Array0),
+	array__insert_items(Tail, 1, Array0, Array).
 
 %-----------------------------------------------------------------------------%
 
@@ -1208,15 +1239,15 @@ array__from_list(List, Array) :-
 
 array__insert_items([], _N, Array, Array).
 array__insert_items([Head|Tail], N, Array0, Array) :-
-        array__set(Array0, N, Head, Array1),
-        N1 = N + 1,
-        array__insert_items(Tail, N1, Array1, Array).
+	array__set(Array0, N, Head, Array1),
+	N1 = N + 1,
+	array__insert_items(Tail, N1, Array1, Array).
 
 %-----------------------------------------------------------------------------%
 
 array__to_list(Array, List) :-
-        array__bounds(Array, Low, High),
-        array__fetch_items(Array, Low, High, List).
+	array__bounds(Array, Low, High),
+	array__fetch_items(Array, Low, High, List).
 
 %-----------------------------------------------------------------------------%
 
@@ -1359,13 +1390,13 @@ array__elem(Index, Array) = array__lookup(Array, Index).
 
 % ---------------------------------------------------------------------------- %
 
-    % array__sort/1 has type specialised versions for arrays of
-    % ints and strings on the expectation that these constitute
-    % the common case and are hence worth providing a fast-path.
-    %
-    % Experiments indicate that type specialisation improves
-    % array__sort/1 by a factor of 30-40%.
-    %
+	% array__sort/1 has type specialised versions for arrays of
+	% ints and strings on the expectation that these constitute
+	% the common case and are hence worth providing a fast-path.
+	%
+	% Experiments indicate that type specialisation improves
+	% array__sort/1 by a factor of 30-40%.
+	%
 :- pragma type_spec(array__sort/1, T = int).
 :- pragma type_spec(array__sort/1, T = string).
 
@@ -1378,8 +1409,6 @@ array__random_permutation(A0, A, RS0, RS) :-
 	Hi = array__max(A0),
 	Sz = array__size(A0),
 	permutation_2(Lo, Lo, Hi, Sz, A0, A, RS0, RS).
-
-
 
 :- pred permutation_2(int, int, int, int, array(T), array(T),
 		random__supply, random__supply).
@@ -1412,8 +1441,6 @@ swap_elems(A0, I, J) = A :-
 array__foldl(Fn, A, X) =
 	foldl_0(Fn, A, X, array__min(A), array__max(A)).
 
-
-
 :- func foldl_0(func(T1, T2) = T2, array(T1), T2, int, int) = T2.
 :- mode foldl_0(func(in, in) = out is det, array_ui, in, in, in) = out is det.
 :- mode foldl_0(func(in, in) = out is det, in, in, in, in) = out is det.
@@ -1430,8 +1457,6 @@ foldl_0(Fn, A, X, I, Max) =
 array__foldr(Fn, A, X) =
 	foldr_0(Fn, A, X, array__min(A), array__max(A)).
 
-
-
 :- func foldr_0(func(T1, T2) = T2, array(T1), T2, int, int) = T2.
 :- mode foldr_0(func(in, in) = out is det, array_ui, in, in, in) = out is det.
 :- mode foldr_0(func(in, in) = out is det, in, in, in, in) = out is det.
@@ -1446,12 +1471,13 @@ foldr_0(Fn, A, X, Min, I) =
 % ---------------------------------------------------------------------------- %
 % ---------------------------------------------------------------------------- %
 
-    % SAMsort (smooth applicative merge) invented by R.A. O'Keefe.
-    %
-    % SAMsort is a mergesort variant that works by identifying contiguous
-    % monotonic sequences and merging them, thereby taking advantage of
-    % any existing order in the input sequence.
-    %
+	% SAMsort (smooth applicative merge) invented by R.A. O'Keefe.
+	%
+	% SAMsort is a mergesort variant that works by identifying contiguous
+	% monotonic sequences and merging them, thereby taking advantage of
+	% any existing order in the input sequence.
+	%
+
 :- func samsort_subarray(array(T), int, int) = array(T).
 :- mode samsort_subarray(array_di, in, in) = array_uo is det.
 
@@ -1459,98 +1485,72 @@ foldr_0(Fn, A, X, Min, I) =
 :- pragma type_spec(samsort_subarray/3, T = string).
 
 samsort_subarray(A0, Lo, Hi) = A :-
-    samsort_up(0, A0, _, array__copy(A0), A, Lo, Hi, Lo).
-
-
+	samsort_up(0, A0, _, array__copy(A0), A, Lo, Hi, Lo).
 
 :- pred samsort_up(int, array(T), array(T), array(T), array(T), int, int, int).
 :- mode samsort_up(in, array_di, array_uo, array_di, array_uo, in, in, in)
-            is det.
+	is det.
 
 :- pragma type_spec(samsort_up/8, T = int).
 :- pragma type_spec(samsort_up/8, T = string).
 
-    % Precondition:
-    %   We are N levels from the bottom (leaf nodes) of the tree.
-    %   A0 is sorted from Lo .. I - 1.
-    %   A0 and B0 are identical from I .. Hi.
-    % Postcondition:
-    %   B is sorted from Lo .. Hi.
-    %
+	% Precondition:
+	%   We are N levels from the bottom (leaf nodes) of the tree.
+	%   A0 is sorted from Lo .. I - 1.
+	%   A0 and B0 are identical from I .. Hi.
+	% Postcondition:
+	%   B is sorted from Lo .. Hi.
+	%
 samsort_up(N, A0, A, B0, B, Lo, Hi, I) :-
-
-    ( if I > Hi then
-
-        A = A0,
-        B = B0
-
-      else if N > 0 then
-
-        samsort_down(N - 1, B0, B1, A0, A1, I, Hi, J),
-
-            % A1 is sorted from I .. J - 1.
-            % A1 and B1 are identical from J .. Hi.
-
-        B2 = merge_subarrays(A1, B1, Lo, I - 1, I, J - 1, Lo),
-        A2 = A1,
-
-            % B2 is sorted from Lo .. J - 1.
-
-        samsort_up(N + 1, B2, B, A2, A, Lo, Hi, J)
-
-      else /* N = 0, I = Lo */
-
-        copy_run_ascending(A0, B0, B1, Lo, Hi, J),
-
-            % B1 is sorted from Lo .. J - 1.
-
-        samsort_up(N + 1, B1, B, A0, A, Lo, Hi, J)
-    ).
-
-
+	( if I > Hi then
+		A = A0,
+		B = B0
+	else if N > 0 then
+		samsort_down(N - 1, B0, B1, A0, A1, I, Hi, J),
+			% A1 is sorted from I .. J - 1.
+			% A1 and B1 are identical from J .. Hi.
+		B2 = merge_subarrays(A1, B1, Lo, I - 1, I, J - 1, Lo),
+		A2 = A1,
+			% B2 is sorted from Lo .. J - 1.
+		samsort_up(N + 1, B2, B, A2, A, Lo, Hi, J)
+	else /* N = 0, I = Lo */
+		copy_run_ascending(A0, B0, B1, Lo, Hi, J),
+			% B1 is sorted from Lo .. J - 1.
+		samsort_up(N + 1, B1, B, A0, A, Lo, Hi, J)
+	).
 
 :- pred samsort_down(int,array(T),array(T),array(T),array(T),int,int,int).
 :- mode samsort_down(in, array_di, array_uo, array_di, array_uo, in, in, out)
-            is det.
+	is det.
 
 :- pragma type_spec(samsort_down/8, T = int).
 :- pragma type_spec(samsort_down/8, T = string).
 
-    % Precondition:
-    %   We are N levels from the bottom (leaf nodes) of the tree.
-    %   A0 and B0 are identical from Lo .. Hi.
-    % Postcondition:
-    %   B is sorted from Lo .. I - 1.
-    %   A and B are identical from I .. Hi.
-    %
+	% Precondition:
+	%   We are N levels from the bottom (leaf nodes) of the tree.
+	%   A0 and B0 are identical from Lo .. Hi.
+	% Postcondition:
+	%   B is sorted from Lo .. I - 1.
+	%   A and B are identical from I .. Hi.
+	%
 samsort_down(N, A0, A, B0, B, Lo, Hi, I) :-
-
-    ( if Lo > Hi then
-
-        A = A0,
-        B = B0,
-        I = Lo
-
-      else if N > 0 then
-
-        samsort_down(N - 1, B0, B1, A0, A1, Lo, Hi, J),
-        samsort_down(N - 1, B1, B2, A1, A2, J,  Hi, I),
-
-            % A2 is sorted from Lo .. J - 1.
-            % A2 is sorted from J  .. I - 1.
-
-        A = A2,
-        B = merge_subarrays(A2, B2, Lo, J - 1, J, I - 1, Lo)
-
-            % B is sorted from Lo .. I - 1.
-
-      else
-
-        A = A0,
-        copy_run_ascending(A0, B0, B, Lo, Hi, I)
-
-            % B is sorted from Lo .. I - 1.
-    ).
+	( if Lo > Hi then
+		A = A0,
+		B = B0,
+		I = Lo
+	else if N > 0 then
+		samsort_down(N - 1, B0, B1, A0, A1, Lo, Hi, J),
+		samsort_down(N - 1, B1, B2, A1, A2, J,  Hi, I),
+			% A2 is sorted from Lo .. J - 1.
+			% A2 is sorted from J  .. I - 1.
+		A = A2,
+		B = merge_subarrays(A2, B2, Lo, J - 1, J, I - 1, Lo)
+			% B is sorted from Lo .. I - 1.
+	else
+		A = A0,
+		copy_run_ascending(A0, B0, B, Lo, Hi, I)
+			% B is sorted from Lo .. I - 1.
+	).
 
 %------------------------------------------------------------------------------%
 
@@ -1561,13 +1561,13 @@ samsort_down(N, A0, A, B0, B, Lo, Hi, I) :-
 :- pragma type_spec(copy_run_ascending/6, T = string).
 
 copy_run_ascending(A, B0, B, Lo, Hi, I) :-
-    ( if Lo < Hi, compare((>), A ^ elem(Lo), A ^ elem(Lo + 1)) then
-        I = search_until((<), A, Lo, Hi),
-        B = copy_subarray_reverse(A, B0, Lo, I - 1, I - 1)
-      else
-        I = search_until((>), A, Lo, Hi),
-        B = copy_subarray(A, B0, Lo, I - 1, Lo)
-    ).
+	( if Lo < Hi, compare((>), A ^ elem(Lo), A ^ elem(Lo + 1)) then
+		I = search_until((<), A, Lo, Hi),
+		B = copy_subarray_reverse(A, B0, Lo, I - 1, I - 1)
+	else
+		I = search_until((>), A, Lo, Hi),
+		B = copy_subarray(A, B0, Lo, I - 1, Lo)
+	).
 
 %------------------------------------------------------------------------------%
 
@@ -1578,10 +1578,11 @@ copy_run_ascending(A, B0, B, Lo, Hi, I) :-
 :- pragma type_spec(search_until/4, T = string).
 
 search_until(R, A, Lo, Hi) =
-    ( if Lo < Hi, not compare(R, A ^ elem(Lo), A ^ elem(Lo + 1))
-      then search_until(R, A, Lo + 1, Hi)
-      else Lo + 1
-    ).
+	( if Lo < Hi, not compare(R, A ^ elem(Lo), A ^ elem(Lo + 1)) then
+		search_until(R, A, Lo + 1, Hi)
+	else
+		Lo + 1
+	).
 
 %------------------------------------------------------------------------------%
 
@@ -1592,10 +1593,12 @@ search_until(R, A, Lo, Hi) =
 :- pragma type_spec(copy_subarray/5, T = string).
 
 copy_subarray(A, B, Lo, Hi, I) =
-    ( if Lo =< Hi
-      then copy_subarray(A, B ^ elem(I) := A ^ elem(Lo), Lo + 1, Hi, I + 1)
-      else B
-    ).
+	( if Lo =< Hi then
+		copy_subarray(A, B ^ elem(I) := A ^ elem(Lo),
+			Lo + 1, Hi, I + 1)
+	else
+		B
+	).
 
 %------------------------------------------------------------------------------%
 
@@ -1606,41 +1609,48 @@ copy_subarray(A, B, Lo, Hi, I) =
 :- pragma type_spec(copy_subarray_reverse/5, T = string).
 
 copy_subarray_reverse(A, B, Lo, Hi, I) =
-    ( if Lo =< Hi
-      then copy_subarray_reverse(A, B ^ elem(I) := A ^ elem(Lo), Lo+1, Hi, I-1)
-      else B
-    ).
+	( if Lo =< Hi then
+		copy_subarray_reverse(A, B ^ elem(I) := A ^ elem(Lo),
+			Lo + 1, Hi, I - 1)
+	else
+		B
+	).
 
 %------------------------------------------------------------------------------%
 
-    % merges the two sorted consecutive subarrays Lo1 .. Hi1 and
-    % Lo2 .. Hi2 from A into the subarray starting at I in B.
-    % 
+	% merges the two sorted consecutive subarrays Lo1 .. Hi1 and
+	% Lo2 .. Hi2 from A into the subarray starting at I in B.
+	% 
 :- func merge_subarrays(array(T), array(T), int, int, int, int, int) = array(T).
 :- mode merge_subarrays(array_ui, array_di, in, in, in, in, in) = array_uo
-            is det.
+	is det.
 
 :- pragma type_spec(merge_subarrays/7, T = int).
 :- pragma type_spec(merge_subarrays/7, T = string).
 
 merge_subarrays(A, B0, Lo1, Hi1, Lo2, Hi2, I) = B :-
-    (      if Lo1 > Hi1 then B = copy_subarray(A, B0, Lo2, Hi2, I)
-      else if Lo2 > Hi2 then B = copy_subarray(A, B0, Lo1, Hi1, I)
-      else
-        X1 = A ^ elem(Lo1),
-        X2 = A ^ elem(Lo2),
-        compare(R, X1, X2),
-        (
-            R = (<),
-            B = merge_subarrays(A, B0^elem(I) := X1, Lo1+1, Hi1, Lo2, Hi2, I+1)
-        ;
-            R = (=),
-            B = merge_subarrays(A, B0^elem(I) := X1, Lo1+1, Hi1, Lo2, Hi2, I+1)
-        ;
-            R = (>),
-            B = merge_subarrays(A, B0^elem(I) := X2, Lo1, Hi1, Lo2+1, Hi2, I+1)
-        )
-    ).
+	( if Lo1 > Hi1 then
+		B = copy_subarray(A, B0, Lo2, Hi2, I)
+	else if Lo2 > Hi2 then
+		B = copy_subarray(A, B0, Lo1, Hi1, I)
+	else
+		X1 = A ^ elem(Lo1),
+		X2 = A ^ elem(Lo2),
+		compare(R, X1, X2),
+		(
+			R = (<),
+			B = merge_subarrays(A, B0^elem(I) := X1,
+				Lo1+1, Hi1, Lo2, Hi2, I+1)
+		;
+			R = (=),
+			B = merge_subarrays(A, B0^elem(I) := X1,
+				Lo1+1, Hi1, Lo2, Hi2, I+1)
+		;
+			R = (>),
+			B = merge_subarrays(A, B0^elem(I) := X2,
+				Lo1, Hi1, Lo2+1, Hi2, I+1)
+		)
+	).
 
 %------------------------------------------------------------------------------%
 

@@ -103,8 +103,6 @@
 %	The precision chosen from this range will be such to allow a
 %	successful decimal -> binary conversion of the float.
 
-
-
 :- pred string__first_char(string, char, string).
 :- mode string__first_char(in, in, in) is semidet.	% implied
 :- mode string__first_char(in, uo, in) is semidet.	% implied
@@ -568,7 +566,6 @@
 %		The implementation uses the sprintf() function, so the
 %		actual output will depend on the C standard library.
 
-
 %------------------------------------------------------------------------------%
 
 :- type string__poly_type --->
@@ -669,8 +666,6 @@ find_rest_of_sub_charlist(CharList, SubCharList, After) :-
 
 string__to_int(String, Int) :-
 	string__base_string_to_int(10, String, Int).
-
-
 
 string__base_string_to_int(Base, String, Int) :-
 	string__index(String, 0, Char),
@@ -928,8 +923,10 @@ string__from_char_list(CharList, Str) :-
 */
 
 :- pragma promise_pure(string__to_char_list/2).
-:- pragma foreign_proc("C", string__to_char_list(Str::in, CharList::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+:- pragma foreign_proc("C",
+	string__to_char_list(Str::in, CharList::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	MR_ConstString p = Str + strlen(Str);
 	CharList = MR_list_empty_msg(MR_PROC_LABEL);
 	while (p > Str) {
@@ -939,8 +936,10 @@ string__from_char_list(CharList, Str) :-
 	}
 }").
 
-:- pragma foreign_proc("C", string__to_char_list(Str::uo, CharList::in),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+:- pragma foreign_proc("C",
+	string__to_char_list(Str::uo, CharList::in),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 		/* mode (uo, in) is det */
 	MR_Word char_list_ptr;
 	size_t size;
@@ -975,7 +974,6 @@ string__from_char_list(CharList, Str) :-
 	Str[size] = '\\0';
 }").
 
-
 string__to_char_list(Str::in, CharList::out) :-
 	string__to_char_list_2(Str, 0, CharList).
 string__to_char_list(Str::uo, CharList::in) :-
@@ -995,7 +993,6 @@ string__to_char_list_2(Str, Index, CharList) :-
 		CharList = []
 	).
 	
-
 /*-----------------------------------------------------------------------*/
 
 %
@@ -1003,9 +1000,10 @@ string__to_char_list_2(Str, Index, CharList) :-
 % but the optimized implementation in C below is there for efficiency since
 % it improves the overall speed of parsing by about 7%.
 %
-:- pragma foreign_proc("C", string__from_rev_char_list(Chars::in, Str::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
-{
+:- pragma foreign_proc("C",
+	string__from_rev_char_list(Chars::in, Str::uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	MR_Word list_ptr;
 	MR_Word size, len;
 /*
@@ -1041,7 +1039,6 @@ string__to_char_list_2(Str, Index, CharList) :-
 		list_ptr = MR_list_tail(list_ptr);
 	}
 }").
-
 
 string__from_rev_char_list(Chars::in, Str::uo) :- 
 	Str = string__from_char_list(list__reverse(Chars)).
@@ -1107,8 +1104,6 @@ string__uncapitalize_first(S0, S) :-
 		S = S0
 	).
 
-
-
 :- pred string__all_match(pred(char), string).
 :- mode string__all_match(pred(in) is semidet, in) is semidet.
 
@@ -1126,8 +1121,6 @@ string__all_match_2(I, P, String) :-
 	  	true
 	).
 
-
-
 string__is_alpha(S) :-
 	string__all_match(char__is_alpha, S).
 
@@ -1136,8 +1129,6 @@ string__is_alpha_or_underscore(S) :-
 
 string__is_alnum_or_underscore(S) :-
 	string__all_match(char__is_alnum_or_underscore, S).
-
-
 
 string__pad_left(String0, PadChar, Width, String) :-
 	string__length(String0, Length),
@@ -1168,8 +1159,10 @@ string__append_list(Lists, string__append_list(Lists)).
 
 	% Implementation of string__append_list that uses C as this
 	% minimises the amount of garbage created.
-:- pragma foreign_proc("C", string__append_list(Strs::in) = (Str::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+:- pragma foreign_proc("C",
+	string__append_list(Strs::in) = (Str::uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	MR_Word	list = Strs;
 	MR_Word	tmp;
 	size_t	len;
@@ -1199,8 +1192,10 @@ string__append_list(Lists, string__append_list(Lists)).
 
 	% Implementation of string__join_list that uses C as this
 	% minimises the amount of garbage created.
-:- pragma foreign_proc("C", string__join_list(Sep::in, Strs::in) = (Str::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+:- pragma foreign_proc("C",
+	string__join_list(Sep::in, Strs::in) = (Str::uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	MR_Word	list = Strs;
 	MR_Word	tmp;
 	size_t	len = 0;
@@ -1259,9 +1254,6 @@ string__join_list(Sep, [H|T]) = H ++ string__join_list_2(Sep, T).
 string__join_list_2(_, []) = "".
 string__join_list_2(Sep, [H|T]) = Sep ++ H ++ string__join_list_2(Sep, T).
 
-	
-
-
 %-----------------------------------------------------------------------------%
 
 	% Note - string__hash is also defined in code/imp.h
@@ -1296,7 +1288,7 @@ string__combine_hash(H0, X, H) :-
 
 :- pragma foreign_proc("C", 
 	string__sub_string_search(WholeString::in, SubString::in,
-			Index::out),
+		Index::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
 	char *match;
@@ -1311,7 +1303,7 @@ string__combine_hash(H0, X, H) :-
 
 :- pragma foreign_proc("MC++", 
 	string__sub_string_search(WholeString::in, SubString::in,
-			Index::out),
+		Index::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
 	Index = WholeString->IndexOf(SubString);
@@ -1598,7 +1590,6 @@ digit -->
 	[ Char ],
 	{ char__is_digit(Char) }.
 
-
 	% Zero or more occurences of the string parsed by the ho pred.
 :- pred zero_or_more_occurences(pred(list(T), list(T)), list(T), list(T)).
 :- mode zero_or_more_occurences(pred(in, out) is semidet, in, out) is det.
@@ -1819,7 +1810,6 @@ make_format_sprintf(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 				from_char_list(Width),
 				from_char_list(Prec), LengthMod, Spec]).
 
-
 	% Construct a format string suitable to passing to .NET's formatting
 	% functions.
 	% XXX this code is not yet complete.  We need to do a lot more work
@@ -1858,11 +1848,11 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 :- func int_length_modifer = string.
 :- pragma foreign_proc("C", 
 	int_length_modifer = (LengthModifier::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	MR_make_aligned_string(LengthModifier,
 		(MR_String) (MR_Word) MR_INTEGER_LENGTH_MODIFIER);
 }").
-
 
 	% Create a string from a float using the format string.
 	% Note it is the responsibility of the caller to ensure that the
@@ -1870,7 +1860,8 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 :- func native_format_float(string, float) = string.
 :- pragma foreign_proc("C",
 	native_format_float(FormatStr::in, Val::in) = (Str::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	MR_save_transient_hp();
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, (double) Val);
 	MR_restore_transient_hp();
@@ -1882,7 +1873,8 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 :- func native_format_int(string, int) = string.
 :- pragma foreign_proc("C",
 	native_format_int(FormatStr::in, Val::in) = (Str::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	MR_save_transient_hp();
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
 	MR_restore_transient_hp();
@@ -1894,7 +1886,8 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 :- func native_format_string(string, string) = string.
 :- pragma foreign_proc("C", 
 	native_format_string(FormatStr::in, Val::in) = (Str::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
 }").
 
@@ -1904,7 +1897,8 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 :- func native_format_char(string, char) = string.
 :- pragma foreign_proc("C", 
 	native_format_char(FormatStr::in, Val::in) = (Str::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	MR_save_transient_hp();
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
 	MR_restore_transient_hp();
@@ -2328,7 +2322,6 @@ to_octal(Num) = NumStr :-
 		NumStr = ""
 	).
 
-
 	%
 	% Convert an integer to a hexadecimal string using a-f.
 	%
@@ -2342,7 +2335,6 @@ to_hex(Num) = NumStr :-
 	;
 		NumStr = ""
 	).
-
 
 	%
 	% Convert an integer to a hexadecimal string using A-F.
@@ -2804,7 +2796,8 @@ is_exponent('E').
 
 :- pragma foreign_proc("C",
 	string__float_to_string(Flt::in, Str::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	/*
 	** For efficiency reasons we duplicate the C implementation
 	** of string__lowlevel_float_to_string
@@ -2864,7 +2857,8 @@ max_precision = min_precision + 2.
 
 :- pragma foreign_proc("C",
 	string__lowlevel_float_to_string(Flt::in, Str::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	/*
 	** Note any changes here will require the same changes in
 	** string__float_to_string.
@@ -2874,7 +2868,8 @@ max_precision = min_precision + 2.
 
 :- pragma foreign_proc("C#",
 	string__lowlevel_float_to_string(FloatVal::in, FloatString::uo),
-	[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 
 		// The R format string prints the double out such that it
 		// can be round-tripped.
@@ -2887,7 +2882,8 @@ max_precision = min_precision + 2.
 :- pragma export(string__to_float(in, out), "ML_string_to_float").
 :- pragma foreign_proc("C",
 	string__to_float(FloatString::in, FloatVal::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	/*
 	** The %c checks for any erroneous characters appearing after
 	** the float; if there are then sscanf() will return 2 rather
@@ -2902,7 +2898,8 @@ max_precision = min_precision + 2.
 
 :- pragma foreign_proc("MC++",
 	string__to_float(FloatString::in, FloatVal::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	// leading or trailing whitespace is not allowed
 	if (FloatString->Length == 0 ||
 	    System::Char::IsWhiteSpace(FloatString, 0) ||
@@ -2930,7 +2927,8 @@ max_precision = min_precision + 2.
 */
 :- pragma foreign_proc("C",
 	string__to_int_list(Str::in, IntList::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	MR_ConstString p = Str + strlen(Str);
 	IntList = MR_list_empty_msg(MR_PROC_LABEL);
 	while (p > Str) {
@@ -2952,12 +2950,16 @@ string__to_int_list(String, IntList) :-
 	% strchr always returns true when searching for '\0',
 	% but the '\0' is an implementation detail which really
 	% shouldn't be considered to be part of the string itself.
-:- pragma foreign_proc("C", string__contains_char(Str::in, Ch::in),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+:- pragma foreign_proc("C",
+	string__contains_char(Str::in, Ch::in),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL) && Ch != '\\0';
 ").
-:- pragma foreign_proc("MC++", string__contains_char(Str::in, Ch::in),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+:- pragma foreign_proc("MC++",
+	string__contains_char(Str::in, Ch::in),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	SUCCESS_INDICATOR = (Str->IndexOf(Ch) != -1);
 ").
 string__contains_char(String, Char) :-
@@ -2998,8 +3000,9 @@ string__index(Str, Index, Char) :-
 :- mode string__index_check(in, in) is semidet.
 :- pragma promise_pure(string__index_check/2).
 /* We should consider making this routine a compiler built-in. */
-:- pragma foreign_proc("C", string__index_check(Index::in, Length::in),
-		[will_not_call_mercury, promise_pure, thread_safe],
+:- pragma foreign_proc("C",
+	string__index_check(Index::in, Length::in),
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	/*
 	** We do not test for negative values of Index
@@ -3012,8 +3015,10 @@ string__index(Str, Index, Char) :-
 	*/
 	SUCCESS_INDICATOR = ((MR_Unsigned) Index < (MR_Unsigned) Length);
 ").
-:- pragma foreign_proc("MC++", string__index_check(Index::in, Length::in),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+:- pragma foreign_proc("MC++",
+	string__index_check(Index::in, Length::in),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	SUCCESS_INDICATOR = ((MR_Unsigned) Index < (MR_Unsigned) Length);
 ").
 string__index_check(Index, Length) :-
@@ -3024,12 +3029,14 @@ string__index_check(Index, Length) :-
 
 :- pragma foreign_proc("C", 
 	string__unsafe_index(Str::in, Index::in, Ch::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Ch = Str[Index];
 ").
 :- pragma foreign_proc("MC++", 
 	string__unsafe_index(Str::in, Index::in, Ch::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Ch = Str->get_Chars(Index);
 ").
 string__unsafe_index(Str, Index, Char) :-
@@ -3081,7 +3088,8 @@ String ^ unsafe_elem(Index) = unsafe_index(String, Index).
 */
 :- pragma foreign_proc("C",
 	string__set_char(Ch::in, Index::in, Str0::in, Str::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	size_t len = strlen(Str0);
 	if ((MR_Unsigned) Index >= len) {
 		SUCCESS_INDICATOR = MR_FALSE;
@@ -3094,7 +3102,8 @@ String ^ unsafe_elem(Index) = unsafe_index(String, Index).
 ").
 :- pragma foreign_proc("MC++",
 	string__set_char(Ch::in, Index::in, Str0::in, Str::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	if (Index >= Str0->get_Length()) {
 		SUCCESS_INDICATOR = MR_FALSE;
 	} else {
@@ -3116,7 +3125,8 @@ string__set_char(Ch, Index, Str0, Str) :-
 /*
 :- pragma foreign_proc("C",
 	string__set_char(Ch::in, Index::in, Str0::di, Str::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	if ((MR_Unsigned) Index >= strlen(Str0)) {
 		SUCCESS_INDICATOR = MR_FALSE;
 	} else {
@@ -3128,7 +3138,8 @@ string__set_char(Ch, Index, Str0, Str) :-
 
 :- pragma foreign_proc("MC++",
 	string__set_char(Ch::in, Index::in, Str0::di, Str::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	if (Index >= Str0->get_Length()) {
 		SUCCESS_INDICATOR = MR_FALSE;
 	} else {
@@ -3148,7 +3159,8 @@ string__set_char(Ch, Index, Str0, Str) :-
 */
 :- pragma foreign_proc("C",
 	string__unsafe_set_char(Ch::in, Index::in, Str0::in, Str::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	size_t len = strlen(Str0);
 	MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
 	strcpy(Str, Str0);
@@ -3156,7 +3168,8 @@ string__set_char(Ch, Index, Str0, Str) :-
 ").
 :- pragma foreign_proc("MC++",
 	string__unsafe_set_char(Ch::in, Index::in, Str0::in, Str::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Str = System::String::Concat(Str0->Substring(0, Index),
 		System::Convert::ToString(Ch), 
 		Str0->Substring(Index + 1));
@@ -3169,13 +3182,15 @@ string__set_char(Ch, Index, Str0, Str) :-
 /*
 :- pragma foreign_proc("C",
 	string__unsafe_set_char(Ch::in, Index::in, Str0::di, Str::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Str = Str0;
 	MR_set_char(Str, Index, Ch);
 ").
 :- pragma foreign_proc("MC++",
 	string__unsafe_set_char(Ch::in, Index::in, Str0::di, Str::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Str = System::String::Concat(Str0->Substring(0, Index),
 		System::Convert::ToString(Ch), 
 		Str0->Substring(Index + 1));
@@ -3190,12 +3205,14 @@ string__set_char(Ch, Index, Str0, Str) :-
 */
 :- pragma foreign_proc("C",
 	string__length(Str::in, Length::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Length = strlen(Str);
 ").
 :- pragma foreign_proc("MC++",
 	string__length(Str::in, Length::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Length = Str->get_Length();
 ").
 
@@ -3205,12 +3222,14 @@ string__set_char(Ch, Index, Str0, Str) :-
 */
 :- pragma foreign_proc("C",
 	string__length(Str::ui, Length::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Length = strlen(Str);
 ").
 :- pragma foreign_proc("MC++",
 	string__length(Str::ui, Length::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Length = Str->get_Length();
 ").
 
@@ -3245,7 +3264,8 @@ string__append(S1::out, S2::out, S3::in) :-
 
 :- pragma foreign_proc("C",
 	string__append_iii(S1::in, S2::in, S3::in),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	size_t len_1 = strlen(S1);
 	SUCCESS_INDICATOR = (
 		strncmp(S1, S3, len_1) == 0 &&
@@ -3255,7 +3275,8 @@ string__append(S1::out, S2::out, S3::in) :-
 
 :- pragma foreign_proc("MC++",
 	string__append_iii(S1::in, S2::in, S3::in),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	SUCCESS_INDICATOR = S3->Equals(System::String::Concat(S1, S2));
 }").
 
@@ -3266,7 +3287,8 @@ string__append_iii(X, Y, Z) :-
 
 :- pragma foreign_proc("C",
 	string__append_ioi(S1::in, S2::uo, S3::in),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	size_t len_1, len_2, len_3;
 
 	len_1 = strlen(S1);
@@ -3287,7 +3309,8 @@ string__append_iii(X, Y, Z) :-
 
 :- pragma foreign_proc("MC++",
 	string__append_ioi(S1::in, S2::uo, S3::in),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	if (S3->StartsWith(S1)) {
 		S2 = S3->Remove(0, S1->Length);
 		SUCCESS_INDICATOR = MR_TRUE;
@@ -3303,7 +3326,8 @@ string__append_ioi(X, Y, Z) :-
 
 :- pragma foreign_proc("C",
 	string__append_iio(S1::in, S2::in, S3::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	size_t len_1, len_2;
 	len_1 = strlen(S1);
 	len_2 = strlen(S2);
@@ -3314,7 +3338,8 @@ string__append_ioi(X, Y, Z) :-
 
 :- pragma foreign_proc("MC++",
 	string__append_iio(S1::in, S2::in, S3::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	S3 = System::String::Concat(S1, S2);
 }").
 
@@ -3348,7 +3373,8 @@ string__append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
 
 :- pragma foreign_proc("C",
 	string__append_ooi_3(S1Len::in, S3Len::in, S1::out, S2::out, S3::in),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	MR_allocate_aligned_string_msg(S1, S1Len, MR_PROC_LABEL);
 	memcpy(S1, S3, S1Len);
 	S1[S1Len] = '\\0';
@@ -3357,9 +3383,9 @@ string__append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
 }").
 
 :- pragma foreign_proc("MC++",
-	string__append_ooi_3(S1Len::in, _S3Len::in,
-			S1::out, S2::out, S3::in),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	string__append_ooi_3(S1Len::in, _S3Len::in, S1::out, S2::out, S3::in),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	S1 = S3->Substring(0, S1Len);
 	S2 = S3->Substring(S1Len);
 ").
@@ -3400,9 +3426,8 @@ strchars(I, End, Str) =
 	).
 
 :- pragma foreign_proc("C",
-	string__substring(Str::in, Start::in, Count::in,
-		SubString::uo),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	string__substring(Str::in, Start::in, Count::in, SubString::uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
 "{
 	MR_Integer len;
 	MR_Word tmp;
@@ -3428,9 +3453,8 @@ strchars(I, End, Str) =
 */
 
 :- pragma foreign_proc("C",
-	string__unsafe_substring(Str::in, Start::in, Count::in,
-		SubString::uo),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	string__unsafe_substring(Str::in, Start::in, Count::in, SubString::uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
 "{
 	MR_Integer len;
 	MR_allocate_aligned_string_msg(SubString, Count, MR_PROC_LABEL);
@@ -3438,9 +3462,8 @@ strchars(I, End, Str) =
 	SubString[Count] = '\\0';
 }").
 :- pragma foreign_proc("MC++",
-	string__unsafe_substring(Str::in, Start::in, Count::in,
-		SubString::uo),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	string__unsafe_substring(Str::in, Start::in, Count::in, SubString::uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
 "{
 	SubString = Str->Substring(Start, Count);
 }").
@@ -3457,7 +3480,8 @@ strchars(I, End, Str) =
 
 :- pragma foreign_proc("C",
 	string__split(Str::in, Count::in, Left::uo, Right::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	MR_Integer len;
 	MR_Word tmp;
 	if (Count <= 0) {
@@ -3482,7 +3506,8 @@ strchars(I, End, Str) =
 
 :- pragma foreign_proc("MC++",
 	string__split(Str::in, Count::in, Left::uo, Right::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	MR_Integer len;
 	MR_Word tmp;
 	if (Count <= 0) {
@@ -3518,7 +3543,6 @@ string__split(Str, Count, Left, Right) :-
 		)
 	).
 
-
 /*-----------------------------------------------------------------------*/
 
 /*
@@ -3538,7 +3562,8 @@ string__split(Str, Count, Left, Right) :-
 */
 :- pragma foreign_proc("C",
 	string__first_char(Str::in, First::in, Rest::in),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	SUCCESS_INDICATOR = (
 		Str[0] == First &&
 		First != '\\0' &&
@@ -3547,7 +3572,8 @@ string__split(Str, Count, Left, Right) :-
 ").
 :- pragma foreign_proc("MC++",
 	string__first_char(Str::in, First::in, Rest::in),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	MR_Integer len = Str->get_Length();
 	SUCCESS_INDICATOR = (
 		len > 0 &&
@@ -3561,13 +3587,15 @@ string__split(Str, Count, Left, Right) :-
 */
 :- pragma foreign_proc("C",
 	string__first_char(Str::in, First::uo, Rest::in),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	First = Str[0];
 	SUCCESS_INDICATOR = (First != '\\0' && strcmp(Str + 1, Rest) == 0);
 ").
 :- pragma foreign_proc("MC++",
 	string__first_char(Str::in, First::uo, Rest::in),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	MR_Integer len = Str->get_Length();
 	if (len > 0) {
 		SUCCESS_INDICATOR = 
@@ -3583,7 +3611,8 @@ string__split(Str, Count, Left, Right) :-
 */
 :- pragma foreign_proc("C",
 	string__first_char(Str::in, First::in, Rest::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	if (Str[0] != First || First == '\\0') {
 		SUCCESS_INDICATOR = MR_FALSE;
 	} else {
@@ -3600,7 +3629,8 @@ string__split(Str, Count, Left, Right) :-
 }").
 :- pragma foreign_proc("MC++",
 	string__first_char(Str::in, First::in, Rest::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	MR_Integer len = Str->get_Length();
 	if (len > 0) {
 		SUCCESS_INDICATOR = (First == Str->get_Chars(0));
@@ -3615,7 +3645,8 @@ string__split(Str, Count, Left, Right) :-
 */
 :- pragma foreign_proc("C", 
 	string__first_char(Str::in, First::uo, Rest::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	First = Str[0];
 	if (First == '\\0') {
 		SUCCESS_INDICATOR = MR_FALSE;
@@ -3633,7 +3664,8 @@ string__split(Str, Count, Left, Right) :-
 }").
 :- pragma foreign_proc("MC++", 
 	string__first_char(Str::in, First::uo, Rest::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	if (Str->get_Length() == 0) {
 		SUCCESS_INDICATOR = MR_FALSE;
 	} else {
@@ -3643,13 +3675,13 @@ string__split(Str, Count, Left, Right) :-
         }
 }").
 
-
 /*
 :- mode string__first_char(uo, in, in) is det.
 */
 :- pragma foreign_proc("C",
 	string__first_char(Str::uo, First::in, Rest::in),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	size_t len = strlen(Rest) + 1;
 	MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
 	Str[0] = First;
@@ -3657,12 +3689,12 @@ string__split(Str, Count, Left, Right) :-
 }").
 :- pragma foreign_proc("MC++",
 	string__first_char(Str::uo, First::in, Rest::in),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
 	MR_String FirstStr;
 	FirstStr = new System::String(First, 1);
 	Str = System::String::Concat(FirstStr, Rest);
 }").
-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -3856,7 +3888,6 @@ lstrip(P, S)  = right(S, length(S) - prefix_length(P, S)).
 
 prefix_length(P, S) = prefix_length_2(0, length(S), P, S).
 
-
 :- func prefix_length_2(int, int, pred(char),            string) = int.
 :- mode prefix_length_2(in,  in,  pred(in  ) is semidet, in)     = out is det.
 
@@ -3872,7 +3903,6 @@ prefix_length_2(I, N, P, S) =
 
 suffix_length(P, S) = suffix_length_2(length(S) - 1, length(S), P, S).
 
-
 :- func suffix_length_2(int, int, pred(char),            string) = int.
 :- mode suffix_length_2(in,  in,  pred(in  ) is semidet, in)     = out is det.
 
@@ -3883,7 +3913,6 @@ suffix_length_2(I, N, P, S) =
 	       )
 	  else N - (I + 1)
 	).
-
 
 %------------------------------------------------------------------------------%
 

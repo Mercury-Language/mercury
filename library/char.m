@@ -429,19 +429,22 @@ char__lower_upper('z', 'Z').
 
 :- pragma foreign_proc("C",
 	char__to_int(Character::in, Int::out),
-               [will_not_call_mercury, promise_pure, thread_safe] , "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Int = (MR_UnsignedChar) Character;
 ").
 
 :- pragma foreign_proc("C",
 	char__to_int(Character::in, Int::in),
-               [will_not_call_mercury, promise_pure, thread_safe] , "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	SUCCESS_INDICATOR = ((MR_UnsignedChar) Character == Int);
 ").
 
 :- pragma foreign_proc("C",
 	char__to_int(Character::out, Int::in),
-               [will_not_call_mercury, promise_pure, thread_safe] , "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	/*
 	** If the integer doesn't fit into a char, then
 	** the assignment `Character = Int' below will truncate it.
@@ -454,19 +457,22 @@ char__lower_upper('z', 'Z').
 
 :- pragma foreign_proc("MC++",
 	char__to_int(Character::in, Int::out),
-               [will_not_call_mercury, promise_pure, thread_safe] , "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Int = Character;
 ").
 
 :- pragma foreign_proc("MC++",
 	char__to_int(Character::in, Int::in),
-               [will_not_call_mercury, promise_pure, thread_safe] , "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	SUCCESS_INDICATOR = (Character == Int);
 ").
 
 :- pragma foreign_proc("MC++",
 	char__to_int(Character::out, Int::in),
-               [will_not_call_mercury, promise_pure, thread_safe] , "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Character = Int;
 	SUCCESS_INDICATOR = (Character == Int);
 ").
@@ -479,12 +485,14 @@ char__min_char_value(0).
 :- pragma foreign_decl("C", "#include <limits.h>").
 :- pragma foreign_proc("C",
 		char__max_char_value(Max::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Max = UCHAR_MAX;
 ").
 :- pragma foreign_proc("C#",
 		char__max_char_value(Max::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	// .NET uses 16-bit 'Unicode'.  This might be either UCS-2,
 	// where Unicode characters that don't fit in 16 bits are encoded
 	// in two 16 bit characters, or it might be just the 16-bit subset,
@@ -516,4 +524,3 @@ char__to_lower(C1) = C2 :-
 
 char__det_int_to_digit(N) = C :-
 	char__det_int_to_digit(N, C).
-

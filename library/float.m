@@ -240,8 +240,10 @@ X / Y = Z :-
 :- pred domain_checks is semidet.
 :- pragma inline(domain_checks/0).
 
-:- pragma foreign_proc("C", domain_checks,
-		[will_not_call_mercury, promise_pure, thread_safe], "
+:- pragma foreign_proc("C",
+	domain_checks,
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 #ifdef ML_OMIT_MATH_DOMAIN_CHECKS
 	SUCCESS_INDICATOR = MR_FALSE;
 #else
@@ -249,8 +251,10 @@ X / Y = Z :-
 #endif
 ").
 
-:- pragma foreign_proc("MC++", domain_checks,
-		[thread_safe, promise_pure], "
+:- pragma foreign_proc("MC++",
+	domain_checks,
+	[thread_safe, promise_pure],
+"
 #if ML_OMIT_MATH_DOMAIN_CHECKS
 	SUCCESS_INDICATOR = MR_FALSE;
 #else
@@ -268,12 +272,14 @@ float(Int) = Float :-
 
 	% float__ceiling_to_int(X) returns the
 	% smallest integer not less than X.
-:- pragma foreign_proc("C", float__ceiling_to_int(X :: in) = (Ceil :: out),
+:- pragma foreign_proc("C",
+	float__ceiling_to_int(X :: in) = (Ceil :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Ceil = (MR_Integer) ceil(X);
 ").
-:- pragma foreign_proc("C#", float__ceiling_to_int(X :: in) = (Ceil :: out),
+:- pragma foreign_proc("C#",
+	float__ceiling_to_int(X :: in) = (Ceil :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Ceil = System.Convert.ToInt32(System.Math.Ceiling(X));
@@ -281,12 +287,14 @@ float(Int) = Float :-
 
 	% float__floor_to_int(X) returns the
 	% largest integer not greater than X.
-:- pragma foreign_proc("C", float__floor_to_int(X :: in) = (Floor :: out),
+:- pragma foreign_proc("C",
+	float__floor_to_int(X :: in) = (Floor :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Floor = (MR_Integer) floor(X);
 ").
-:- pragma foreign_proc("C#", float__floor_to_int(X :: in) = (Floor :: out),
+:- pragma foreign_proc("C#",
+	float__floor_to_int(X :: in) = (Floor :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Floor = System.Convert.ToInt32(System.Math.Floor(X));
@@ -294,12 +302,14 @@ float(Int) = Float :-
 
 	% float__round_to_int(X) returns the integer closest to X.
 	% If X has a fractional value of 0.5, it is rounded up.
-:- pragma foreign_proc("C", float__round_to_int(X :: in) = (Round :: out),
+:- pragma foreign_proc("C",
+	float__round_to_int(X :: in) = (Round :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Round = (MR_Integer) floor(X + 0.5);
 ").
-:- pragma foreign_proc("C#", float__round_to_int(X :: in) = (Round :: out),
+:- pragma foreign_proc("C#",
+	float__round_to_int(X :: in) = (Round :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Round = System.Convert.ToInt32(System.Math.Floor(X + 0.5));
@@ -307,12 +317,14 @@ float(Int) = Float :-
 
 	% float__truncate_to_int(X) returns the integer closest
 	% to X such that |float__truncate_to_int(X)| =< |X|.
-:- pragma foreign_proc("C", float__truncate_to_int(X :: in) = (Trunc :: out),
+:- pragma foreign_proc("C",
+	float__truncate_to_int(X :: in) = (Trunc :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Trunc = (MR_Integer) X;
 ").
-:- pragma foreign_proc("C#", float__truncate_to_int(X :: in) = (Trunc :: out),
+:- pragma foreign_proc("C#",
+	float__truncate_to_int(X :: in) = (Trunc :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Trunc = System.Convert.ToInt32(X);
@@ -402,12 +414,14 @@ float__multiply_by_pow(Scale0, Base, Exp) = Result :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_proc("C", float__hash(F::in) = (H::out),
+:- pragma foreign_proc("C",
+	float__hash(F::in) = (H::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	H = MR_hash_float(F);
 ").
-:- pragma foreign_proc("C#", float__hash(F::in) = (H::out),
+:- pragma foreign_proc("C#",
+	float__hash(F::in) = (H::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	H = F.GetHashCode();
@@ -421,24 +435,32 @@ is_nan_or_inf(Float) :-
 	).
 
 :- pragma promise_pure(is_nan/1).
-:- pragma foreign_proc(c, is_nan(Flt::in),
-		[will_not_call_mercury, thread_safe], "
+:- pragma foreign_proc(c,
+	is_nan(Flt::in),
+	[will_not_call_mercury, thread_safe],
+"
 	SUCCESS_INDICATOR = MR_is_nan(Flt);
 ").
-:- pragma foreign_proc(il, is_nan(Flt::in),
-		[will_not_call_mercury, thread_safe, max_stack_size(1)], "
+:- pragma foreign_proc(il,
+	is_nan(Flt::in),
+	[will_not_call_mercury, thread_safe, max_stack_size(1)],
+"
 	ldloc 'Flt'
 	call bool [mscorlib]System.Double::IsNaN(float64)
 	stloc 'succeeded'
 ").
 
 :- pragma promise_pure(is_inf/1).
-:- pragma foreign_proc(c, is_inf(Flt::in),
-		[will_not_call_mercury, thread_safe], "
+:- pragma foreign_proc(c,
+	is_inf(Flt::in),
+	[will_not_call_mercury, thread_safe],
+"
 	SUCCESS_INDICATOR = MR_is_inf(Flt);
 ").
-:- pragma foreign_proc(il, is_inf(Flt::in),
-		[will_not_call_mercury, thread_safe, max_stack_size(1)], "
+:- pragma foreign_proc(il,
+	is_inf(Flt::in),
+	[will_not_call_mercury, thread_safe, max_stack_size(1)],
+"
 	ldloc 'Flt'
 	call bool [mscorlib]System.Double::IsInfinity(float64)
 	stloc 'succeeded'
@@ -484,84 +506,126 @@ is_nan_or_inf(Float) :-
 ").
 
 	% Maximum floating-point number
-:- pragma foreign_proc("C", float__max = (Max::out),
+:- pragma foreign_proc("C",
+	float__max = (Max::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
-	"Max = ML_FLOAT_MAX;").
-:- pragma foreign_proc("C#", float__max = (Max::out),
+"
+	Max = ML_FLOAT_MAX;
+").
+:- pragma foreign_proc("C#",
+	float__max = (Max::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
-	"Max = System.Double.MaxValue;").
+"
+	Max = System.Double.MaxValue;
+").
 
 	% Minimum normalised floating-point number */
-:- pragma foreign_proc("C", float__min = (Min::out),
+:- pragma foreign_proc("C",
+	float__min = (Min::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
-	"Min = ML_FLOAT_MIN;").
-:- pragma foreign_proc("C#", float__min = (Min::out),
+"
+	Min = ML_FLOAT_MIN;
+").
+:- pragma foreign_proc("C#",
+	float__min = (Min::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
+"
 	% We can't use System.Double.MinValue, because in v1 of the .NET CLR,
 	% that means something completely different: the negative number
 	% with the greatest absolute value.
 	% Instead, we just hard-code the appropriate value (copied from the
 	% glibc header files); this is OK, because the ECMA specification
 	% nails down the representation of double as 64-bit IEEE.
-	"Min = 2.2250738585072014e-308;").
+	Min = 2.2250738585072014e-308;
+").
 
 	% Smallest x such that x \= 1.0 + x
-:- pragma foreign_proc("C", float__epsilon = (Eps::out),
+:- pragma foreign_proc("C",
+	float__epsilon = (Eps::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
-	"Eps = ML_FLOAT_EPSILON;").
-:- pragma foreign_proc("C#", float__epsilon = (Eps::out),
+"
+	Eps = ML_FLOAT_EPSILON;
+").
+:- pragma foreign_proc("C#",
+	float__epsilon = (Eps::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
+"
 	% We can't use System.Double.Epsilon, because in v1 of the .NET CLR,
 	% that means something completely different: the smallest (denormal)
 	% positive number.  I don't know what the people who designed that
-	% were smoking; that semantics for "epsilon" is different from the
-	% use of "epsilon" in C, Lisp, Ada, etc., not to mention Mercury.
+	% were smoking; that semantics for 'epsilon' is different from the
+	% use of 'epsilon' in C, Lisp, Ada, etc., not to mention Mercury.
 	% Instead, we just hard-code the appropriate value (copied from the
 	% glibc header files); this is OK, because the ECMA specification
 	% nails down the representation of double as 64-bit IEEE.
-	"Eps = 2.2204460492503131e-16;").
+	Eps = 2.2204460492503131e-16;
+").
 
 	% Radix of the floating-point representation.
-:- pragma foreign_proc("C", float__radix = (Radix::out),
+:- pragma foreign_proc("C",
+	float__radix = (Radix::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
-	"Radix = ML_FLOAT_RADIX;").
-:- pragma foreign_proc("C#", float__radix = (Radix::out),
+"
+	Radix = ML_FLOAT_RADIX;
+").
+:- pragma foreign_proc("C#",
+	float__radix = (Radix::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
+"
 	% The ECMA specification requires that double be 64-bit IEEE.
 	% I think that implies that it must have Radix = 2.
 	% This is definitely right for x86, anyway.
-	"Radix = 2;").
+	Radix = 2;
+").
 
 	% The number of base-radix digits in the mantissa.
-:- pragma foreign_proc("C", float__mantissa_digits = (MantDig::out),
+:- pragma foreign_proc("C",
+	float__mantissa_digits = (MantDig::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
-	"MantDig = ML_FLOAT_MANT_DIG;").
-:- pragma foreign_proc("C#", float__mantissa_digits = (MantDig::out),
+"
+	MantDig = ML_FLOAT_MANT_DIG;
+").
+:- pragma foreign_proc("C#",
+	float__mantissa_digits = (MantDig::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
+"
 	% ECMA specifies that System.Double is 64-bit IEEE float
-	"MantDig = 53;").
+	MantDig = 53;
+").
 
 	% Minimum negative integer such that:
 	%	radix ** (min_exponent - 1)
 	% is a normalised floating-point number.
-:- pragma foreign_proc("C", float__min_exponent = (MinExp::out),
+:- pragma foreign_proc("C",
+	float__min_exponent = (MinExp::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
-	"MinExp = ML_FLOAT_MIN_EXP;").
-:- pragma foreign_proc("C#", float__min_exponent = (MinExp::out),
+"
+	MinExp = ML_FLOAT_MIN_EXP;
+").
+:- pragma foreign_proc("C#",
+	float__min_exponent = (MinExp::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
+"
 	% ECMA specifies that System.Double is 64-bit IEEE float
-	"MinExp = -1021;").
+	MinExp = -1021;
+").
 
 	% Maximum integer such that:
 	%	radix ** (max_exponent - 1)
 	% is a normalised floating-point number.
-:- pragma foreign_proc("C", float__max_exponent = (MaxExp::out),
+:- pragma foreign_proc("C",
+	float__max_exponent = (MaxExp::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
-	"MaxExp = ML_FLOAT_MAX_EXP;").
-:- pragma foreign_proc("C#", float__max_exponent = (MaxExp::out),
+"
+	MaxExp = ML_FLOAT_MAX_EXP;
+").
+:- pragma foreign_proc("C#",
+	float__max_exponent = (MaxExp::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
+"
 	% ECMA specifies that System.Double is 64-bit IEEE float
-	"MaxExp = 1024;").
+	MaxExp = 1024;
+").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

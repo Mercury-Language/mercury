@@ -709,7 +709,8 @@ static void init_runtime(void)
 
 :- implementation.
 
-:- pragma foreign_proc("C", store_ticket(Ticket::out),
+:- pragma foreign_proc("C",
+	store_ticket(Ticket::out),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -719,7 +720,8 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_proc("C", reset_ticket_undo(Ticket::in),
+:- pragma foreign_proc("C",
+	reset_ticket_undo(Ticket::in),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -727,7 +729,8 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_proc("C", reset_ticket_commit(Ticket::in),
+:- pragma foreign_proc("C",
+	reset_ticket_commit(Ticket::in),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -735,7 +738,8 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_proc("C", reset_ticket_solve(Ticket::in),
+:- pragma foreign_proc("C",
+	reset_ticket_solve(Ticket::in),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -743,7 +747,8 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_proc("C", discard_ticket,
+:- pragma foreign_proc("C",
+	discard_ticket,
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -751,7 +756,8 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_proc("C", prune_ticket,
+:- pragma foreign_proc("C",
+	prune_ticket,
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -759,7 +765,8 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_proc("C", mark_ticket_stack(TicketCounter::out),
+:- pragma foreign_proc("C",
+	mark_ticket_stack(TicketCounter::out),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -769,7 +776,8 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_proc("C", prune_tickets_to(TicketCounter::in),
+:- pragma foreign_proc("C",
+	prune_tickets_to(TicketCounter::in),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -777,7 +785,8 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_proc("MC++", store_ticket(Ticket::out),
+:- pragma foreign_proc("MC++",
+	store_ticket(Ticket::out),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -788,7 +797,8 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_proc("MC++", reset_ticket_undo(Ticket::in),
+:- pragma foreign_proc("MC++",
+	reset_ticket_undo(Ticket::in),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -797,7 +807,8 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_proc("MC++", reset_ticket_commit(Ticket::in),
+:- pragma foreign_proc("MC++",
+	reset_ticket_commit(Ticket::in),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -806,7 +817,8 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_proc("MC++", reset_ticket_solve(Ticket::in),
+:- pragma foreign_proc("MC++",
+	reset_ticket_solve(Ticket::in),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -815,7 +827,8 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_proc("MC++", discard_ticket,
+:- pragma foreign_proc("MC++",
+	discard_ticket,
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -824,7 +837,8 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_proc("MC++", prune_ticket,
+:- pragma foreign_proc("MC++",
+	prune_ticket,
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -833,7 +847,8 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_proc("MC++", mark_ticket_stack(TicketCounter::out),
+:- pragma foreign_proc("MC++",
+	mark_ticket_stack(TicketCounter::out),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -844,7 +859,8 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_proc("MC++", prune_tickets_to(TicketCounter::in),
+:- pragma foreign_proc("MC++",
+	prune_tickets_to(TicketCounter::in),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -942,7 +958,8 @@ trailed_nondet_pragma_foreign_code :-
 	#include ""mercury_heap.h""	/* for MR_free_heap() */
 ").
 
-:- pragma foreign_proc("C", gc_trace(Pointer::in),
+:- pragma foreign_proc("C",
+	gc_trace(Pointer::in),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_NATIVE_GC
@@ -957,11 +974,15 @@ trailed_nondet_pragma_foreign_code :-
 #endif
 ").
 
-:- pragma foreign_proc("C", free_heap(Val::di),
+:- pragma foreign_proc("C",
+	free_heap(Val::di),
 	[will_not_call_mercury, promise_pure, thread_safe],
-	"MR_free_heap((void *) Val);").
+"
+	MR_free_heap((void *) Val);
+").
 
-:- pragma foreign_proc("C", mark_hp(SavedHeapPointer::out),
+:- pragma foreign_proc("C",
+	mark_hp(SavedHeapPointer::out),
 	[will_not_call_mercury, thread_safe],
 "
 #ifndef MR_CONSERVATIVE_GC
@@ -972,7 +993,8 @@ trailed_nondet_pragma_foreign_code :-
 #endif
 ").
 
-:- pragma foreign_proc("C", restore_hp(SavedHeapPointer::in),
+:- pragma foreign_proc("C",
+	restore_hp(SavedHeapPointer::in),
 	[will_not_call_mercury, thread_safe],
 "
 #ifndef MR_CONSERVATIVE_GC
@@ -980,14 +1002,16 @@ trailed_nondet_pragma_foreign_code :-
 #endif
 ").
 
-:- pragma foreign_proc("MC++", mark_hp(SavedHeapPointer::out),
+:- pragma foreign_proc("MC++",
+	mark_hp(SavedHeapPointer::out),
 	[will_not_call_mercury, thread_safe],
 "
 	/* We can't do heap reclamation on failure in the .NET back-end. */
 	SavedHeapPointer = 0;
 ").
 
-:- pragma foreign_proc("MC++", restore_hp(_SavedHeapPointer::in),
+:- pragma foreign_proc("MC++",
+	restore_hp(_SavedHeapPointer::in),
 	[will_not_call_mercury, thread_safe],
 "
 	/* We can't do heap reclamation on failure in the .NET back-end. */
@@ -1185,9 +1209,14 @@ sorry(PredName) :-
 no_clauses(PredName) :-
 	error("no clauses for " ++ PredName).
 
-:- pragma foreign_proc(c, imp, [will_not_call_mercury, thread_safe], "").
-:- pragma foreign_proc(il, imp,
-		[will_not_call_mercury, thread_safe, max_stack_size(0)], "").
+:- pragma foreign_proc(c,
+	imp,
+	[will_not_call_mercury, thread_safe],
+"").
+:- pragma foreign_proc(il,	
+	imp,
+	[will_not_call_mercury, thread_safe, max_stack_size(0)],
+"").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
