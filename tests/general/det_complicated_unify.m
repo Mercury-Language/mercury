@@ -13,7 +13,9 @@
 :- type foo ---> foo(bar).
 :- type bar ---> bar.
 
-main --> { p(foo(bar),foo(bar)), q(bar, bar) }.
+main -->
+	{ p(foo(bar),foo(bar)), q(bar, bar) },
+	io__write_string("worked\n").
 
 :- pred p(foo::in(bound(foo(bound(bar)))), foo::in(bound(foo(bound(bar)))))
 	is det.
