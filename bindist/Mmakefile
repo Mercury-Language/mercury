@@ -26,7 +26,7 @@ UTILS		= $(INSTALL_PREFIX)/bin/mkinit$(EXT_FOR_EXE) \
 
 README_ETC	= ../COPYING ../COPYING.LIB ../HISTORY ../LIMITATIONS \
 		  ../NEWS ../RELEASE_NOTES ../BUGS ../WORK_IN_PROGRESS \
-		  ../VERSION ../README.*
+		  ../TODO ../VERSION ../README.*
 
 SCRIPT_FILES	= ../scripts/*.in ../scripts/*.sh-subr \
 		  ../scripts/Mmake.rules \

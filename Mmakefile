@@ -570,7 +570,7 @@ uninstall:
 #-----------------------------------------------------------------------------#
 
 .PHONY : bindist
-bindist:
+bindist: WORK_IN_PROGRESS TODO
 	cd bindist; mmake binary_distribution
 
 #-----------------------------------------------------------------------------#
