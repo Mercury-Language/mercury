@@ -96,7 +96,8 @@ in an HLDS goal.
 	- undef_types.m checks for undefined types.
 	- typecheck.m handles type checking, overloading resolution &
 	  module name resolution, and fully qualifies all predicate and
-	  functor names.  When it has finished, typecheck.m calls
+	  functor names.  It sets the map(var, type) field in the pred_info.
+	  When it has finished, typecheck.m calls
 	  clause_to_proc.m to make duplicate copies of the clauses for
 	  each different mode of a predicate; all later stages work on
 	  procedures, not predicates.
@@ -106,7 +107,13 @@ in an HLDS goal.
 * mode analysis
 
 	- undef_modes.m checks for undefined insts and modes
-	- modes.m is the main mode analysis module.  It use the sub-modules
+	- modes.m is the main mode analysis module.  
+	  It checks that the code is mode-correct, reordering it
+	  if necessary, and annotates each goal with a delta-instmap
+	  that specifies the changes in instantiatedness of each
+	  variable over that goal.  It also converts higher-order
+	  pred terms into lambda expressions.
+	  It use the following sub-modules:
 		mode_info.m (the main data structure for mode analysis)
 		delay_info.m (a sub-component of the mode_info data
 			structure used for storing the information
@@ -124,16 +131,24 @@ in an HLDS goal.
 	  of the compiler)
 
 * introduction of type_info arguments for polymorphic predicates
-  and conversion of lambda expressions into higher-order predicate
-  terms referring to freshly introduced separate predicates
   (polymorphism.m)
+  
+* conversion of lambda expressions into higher-order predicate
+  terms referring to freshly introduced separate predicates
+  (lambda.m). 
+  
+To improve efficiency, the above two passes are actually combined into
+one - polymorphism.m calls lambda__transform_lambda directly.
+(Incidentally, these two modules should actually be classified as code
+simplification modules rather than semantic analysis or error checking.)
 
 * indexing and determinism analysis
 
 	switch detection (switch_detection.m),
 	common goal hoisting (cse_detection.m)
 		Note that if cse_detection.m modifies the code,
-		it will re-run mode analysis and switch detection
+		it will re-run mode analysis, lambda expansion,
+		and switch detection
 	common.m (XXX but it ought to go after determinism analysis)
 	inlining (inlining.m),
 		(XXX the only reason inlining comes here before determinism
