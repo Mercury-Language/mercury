@@ -110,6 +110,8 @@ SINGLEMODULE_SOURCES= \
 	type_mismatch.m \
 	type_vars.m \
 	typeclass_bogus_method.m \
+	typeclass_constraint_extra_var.m \
+	typeclass_constraint_no_var.m \
 	typeclass_mode.m \
 	typeclass_missing_det.m \
 	typeclass_missing_det_2.m \

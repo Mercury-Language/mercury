@@ -1007,7 +1007,8 @@ determinism_components(failure,     can_fail,    at_most_zero).
 
 :- type subclass_details 
 	--->	subclass_details(
-			list(tvar),		% variables of the superclass
+			list(type),		% arguments of the
+						% superclass constraint
 			class_id,		% name of the subclass
 			list(tvar),		% variables of the subclass
 			tvarset			% the names of these vars

@@ -1,0 +1,5 @@
+typeclass_constraint_no_var.m:015: Error: class constraint contains no variables: solver_for(list(float), float).
+typeclass_constraint_no_var.m:016: Error: mode declaration for predicate `typeclass_constraint_no_var:mg/2'
+typeclass_constraint_no_var.m:016:   without preceding `pred' declaration.
+typeclass_constraint_no_var.m:016: Inferred :- pred mg(T1, T1).
+For more information, try recompiling with `-E'.

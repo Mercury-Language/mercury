@@ -156,7 +156,7 @@ parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
 
 parse_superclass_constraints(ModuleName, Constraints, Result) :-
 	parse_simple_class_constraints(ModuleName, Constraints, 
-		"constraints on class declaration may only constrain type variables, not compound types",
+		"constraints on class declaration may only constrain type variables and ground types",
 		Result).
 
 :- pred parse_unconstrained_class(module_name, term, tvarset, maybe1(item)).
@@ -273,15 +273,15 @@ find_errors([X|Xs], Result) :-
 % or on an existentially quantified type definition.
 
 parse_class_constraints(ModuleName, ConstraintsTerm, Result) :-
-	parse_class_and_inst_constraints(ModuleName, ConstraintsTerm, Result0),
-	extract_class_constraints(Result0, Result).
-
-parse_class_and_inst_constraints(ModuleName, ConstraintsTerm, Result) :-
-	parse_simple_class_and_inst_constraints(ModuleName, ConstraintsTerm, 
-		"sorry, not implemented: constraints may only constrain type variables, not compound types",
+	parse_simple_class_constraints(ModuleName, ConstraintsTerm,
+		"sorry, not implemented: constraints may only constrain type variables and ground types",
 		Result).
 
-% Parse constraints which can only constrain type variables
+parse_class_and_inst_constraints(ModuleName, ConstraintsTerm, Result) :-
+	parse_arbitrary_class_and_inst_constraints(ModuleName, ConstraintsTerm, 
+		Result).
+
+% Parse constraints which can only constrain type variables and ground types.
 
 :- pred parse_simple_class_constraints(module_name, term, string,
 		maybe1(list(class_constraint))).
@@ -307,7 +307,8 @@ parse_simple_class_and_inst_constraints(ModuleName, ConstraintsTerm,
 			list__member(Constraint, ConstraintList),
 			Constraint = constraint(_, Types),
 			list__member(Type, Types),
-			\+ type_util__var(Type, _)
+			\+ type_util__var(Type, _),
+			\+ term__is_ground(Type)
 		->
 			Result = error(ErrorMessage, ConstraintsTerm)
 		;
@@ -376,7 +377,15 @@ parse_class_or_inst_constraint(_ModuleName, ConstraintTerm, Result) :-
 		% constraints do not contain any info in their prog_context
 		% fields
 		list__map(convert_type, Args0, Args),
-		Result = ok(class_constraint(constraint(ClassName, Args)))
+
+		% Check that the arguments contain at least one type variable.
+		( term__contains_var_list(Args, _) ->
+			Result = ok(class_constraint(constraint(ClassName,
+						Args)))
+		;
+			Result = error("class constraint contains no variables",
+					ConstraintTerm)
+		)
 	;
 		Result = error("expected atom as class name or inst constraint",
 			ConstraintTerm)
@@ -465,7 +474,7 @@ parse_derived_instance(ModuleName, Decl, Constraints, TVarSet,
 
 parse_instance_constraints(ModuleName, Constraints, Result) :-
 	parse_simple_class_constraints(ModuleName, Constraints,
-		"constraints on instance declaration may only constrain type variables, not compound types",
+		"constraints on instance declaration may only constrain type variables and ground types",
 		Result).
 
 :- pred parse_underived_instance(module_name, term, tvarset, maybe1(item)).

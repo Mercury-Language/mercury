@@ -4471,12 +4471,16 @@ by type variables in the signature to belong to particular type classes.
 A type class constraint is of the form:
 
 @example
-        <= @var{Typeclass}(@var{TypeVariable}, @dots{}), @dots{}
+        <= @var{Typeclass}(@var{Type}, @dots{}), @dots{}
 @end example
 
 @noindent
-where @var{Typeclass} is the name of a type class and @var{TypeVariable} is 
-a type variable that appears in the predicate's or function's type signature.
+where @var{Typeclass} is the name of a type class and @var{Type} is 
+a type.
+Any variable that appears in @var{Type} must also appear in
+the predicate's or function's type signature.
+Each type class constraint in a predicate or function declaration must contain
+at least one variable.
 
 For example
 
@@ -4503,7 +4507,10 @@ constraints are checked at compile time.
 Type class constraints may also appear in @code{typeclass} declarations, 
 meaning that one type class is a ``superclass'' of another. 
 
-The variables that appear as arguments to the type classes in the constraints
+The arguments of a constraint on a type class declaration must be either type
+variables or ground types.
+Each constraint must contain at least one variable argument and
+all variables that appear in the arguments 
 must also be arguments to the type class in question.
 
 For example, the following declares the @samp{ring} type class, which describes
@@ -4541,9 +4548,12 @@ class is its own (direct or indirect) superclass.
 @node Type class constraints on instance declarations
 @section Type class constraints on instance declarations
 
-Typeclass constraints may also be placed upon instance declarations.  The
-variables that appear as arguments to the type classes in the constraints must
-all be type variables that appear in the types in the instance declarations.
+Typeclass constraints may also be placed upon instance declarations.
+The arguments of such constraints must be either type variables or ground
+types.
+Each constraint must contain at least one variable argument and all
+variables that appear in the arguments
+must be type variables that appear in the types in the instance declaration.
 
 For example, consider the following declaration of a type class of types that 
 may be printed:

@@ -4312,12 +4312,31 @@ reduce_type_assign_context(SuperClassTable, InstanceTable,
 typecheck__reduce_context_by_rule_application(InstanceTable, SuperClassTable, 
 		AssumedConstraints, Bindings, Tvarset0, Tvarset,
 		Proofs0, Proofs, Constraints0, Constraints) :-
+	typecheck__reduce_context_by_rule_application_2(InstanceTable,
+		SuperClassTable, AssumedConstraints, Bindings, Tvarset0,
+		Tvarset, Proofs0, Proofs, Constraints0, Constraints,
+		Constraints0, _).
+
+:- pred typecheck__reduce_context_by_rule_application_2(instance_table,
+	superclass_table, list(class_constraint), tsubst, tvarset, tvarset, 
+	map(class_constraint, constraint_proof), 
+	map(class_constraint, constraint_proof),
+	list(class_constraint), list(class_constraint),
+	list(class_constraint), list(class_constraint)).
+:- mode typecheck__reduce_context_by_rule_application_2(in, in, in, in,
+	in, out, in, out, in, out, in, out) is det.
+
+typecheck__reduce_context_by_rule_application_2(InstanceTable,
+		SuperClassTable, AssumedConstraints, Bindings, Tvarset0,
+		Tvarset, Proofs0, Proofs, Constraints0, Constraints, Seen0,
+		Seen) :-
 	apply_rec_subst_to_constraint_list(Bindings, Constraints0,
 		Constraints1),
 	eliminate_assumed_constraints(Constraints1, AssumedConstraints,
 		Constraints2, Changed1),
 	apply_instance_rules(Constraints2, InstanceTable, 
-		Tvarset0, Tvarset1, Proofs0, Proofs1, Constraints3, Changed2),
+		Tvarset0, Tvarset1, Proofs0, Proofs1, Seen0, Seen1,
+		Constraints3, Changed2),
 	varset__vars(Tvarset1, Tvars),
 	apply_class_rules(Constraints3, AssumedConstraints, Tvars,
 		SuperClassTable, Tvarset0, Proofs1, Proofs2, Constraints4,
@@ -4328,12 +4347,13 @@ typecheck__reduce_context_by_rule_application(InstanceTable, SuperClassTable,
 			% We have reached fixpoint
 		list__sort_and_remove_dups(Constraints4, Constraints),
 		Tvarset = Tvarset1,
-		Proofs = Proofs2
+		Proofs = Proofs2,
+		Seen = Seen1
 	;
-		typecheck__reduce_context_by_rule_application(InstanceTable,
+		typecheck__reduce_context_by_rule_application_2(InstanceTable,
 			SuperClassTable, AssumedConstraints,
 			Bindings, Tvarset1, Tvarset, Proofs2, Proofs, 
-			Constraints4, Constraints)
+			Constraints4, Constraints, Seen1, Seen)
 	).
 
 :- pred eliminate_assumed_constraints(list(class_constraint), 
@@ -4355,34 +4375,42 @@ eliminate_assumed_constraints([C|Cs], AssumedCs, NewCs, Changed) :-
 
 :- pred apply_instance_rules(list(class_constraint), instance_table,
 	tvarset, tvarset, map(class_constraint, constraint_proof),
-	map(class_constraint, constraint_proof), list(class_constraint), bool).
-:- mode apply_instance_rules(in, in, in, out, in, out, out, out) is det.
+	map(class_constraint, constraint_proof), list(class_constraint),
+	list(class_constraint), list(class_constraint), bool).
+:- mode apply_instance_rules(in, in, in, out, in, out, in, out, out, out)
+	is det.
 
-apply_instance_rules([], _, Names, Names, Proofs, Proofs, [], no).
+apply_instance_rules([], _, Names, Names, Proofs, Proofs, Seen, Seen, [], no).
 apply_instance_rules([C|Cs], InstanceTable, TVarSet, NewTVarSet,
-		Proofs0, Proofs, Constraints, Changed) :-
+		Proofs0, Proofs, Seen0, Seen, Constraints, Changed) :-
 	C = constraint(ClassName, Types),
 	list__length(Types, Arity),
 	map__lookup(InstanceTable, class_id(ClassName, Arity), Instances),
 	(
 		find_matching_instance_rule(Instances, ClassName, Types,
 			TVarSet, NewTVarSet0, Proofs0, Proofs1,
-			NewConstraints0)
+			NewConstraints0),
+
+			% Remove any constraints we've already seen.
+			% This ensures we don't get into an infinite loop.
+		NewConstraints1 = NewConstraints0 `list__delete_elems` Seen0
 	->
 			% Put the new constraints at the front of the list
-		NewConstraints = NewConstraints0,
+		NewConstraints = NewConstraints1,
 		NewTVarSet1 = NewTVarSet0,
 		Proofs2 = Proofs1,
+		Seen1 = NewConstraints ++ Seen0,
 		Changed1 = yes
 	;
 			% Put the old constraint at the front of the list
 		NewConstraints = [C],
 		NewTVarSet1 = TVarSet,
 		Proofs2 = Proofs0,
+		Seen1 = Seen0,
 		Changed1 = no
 	),
 	apply_instance_rules(Cs, InstanceTable, NewTVarSet1,
-		NewTVarSet, Proofs2, Proofs, TheRest, Changed2),
+		NewTVarSet, Proofs2, Proofs, Seen1, Seen, TheRest, Changed2),
 	bool__or(Changed1, Changed2, Changed),
 	list__append(NewConstraints, TheRest, Constraints).
 
@@ -4520,8 +4548,7 @@ eliminate_constraint_by_class_rules(C, ConstVars,
 		term__var_list_to_term_list(SubVars0, SubVars1),
 		term__apply_substitution_to_list(SubVars1, 
 			RenameSubst, SubVars),
-		term__var_list_to_term_list(SuperVars0, SuperVars1),
-		term__apply_substitution_to_list(SuperVars1,
+		term__apply_substitution_to_list(SuperVars0,
 			RenameSubst, SuperVars),
 
 			% Work out what the (renamed) vars from the

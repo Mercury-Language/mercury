@@ -1,0 +1,8 @@
+typeclass_constraint_extra_var.m:015: In declaration for predicate `typeclass_constraint_extra_var:mg/2':
+typeclass_constraint_extra_var.m:015:   error in type class constraints: type variable
+typeclass_constraint_extra_var.m:015:   `U' occurs only in the constraints,
+typeclass_constraint_extra_var.m:015:   not in the predicate's argument types.
+typeclass_constraint_extra_var.m:025: In clause for predicate `typeclass_constraint_extra_var:mg/2':
+typeclass_constraint_extra_var.m:025:   unsatisfiable typeclass constraint(s):
+typeclass_constraint_extra_var.m:025:   `typeclass_constraint_extra_var:solver_for((list:list(T)), T)'.
+For more information, try recompiling with `-E'.

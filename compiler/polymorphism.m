@@ -2115,9 +2115,11 @@ polymorphism__make_typeclass_info_vars(PredClassContext,
 	ExtraVars0 = [],
 	ExtraGoals0 = [],
 
+	SeenInstances = [],
+
 		% do the work
 	polymorphism__make_typeclass_info_vars_2(PredClassContext, 
-		ExistQVars, Context,
+		SeenInstances, ExistQVars, Context,
 		ExtraVars0, ExtraVars1, 
 		ExtraGoals0, ExtraGoals1,
 		Info0, Info),
@@ -2129,38 +2131,39 @@ polymorphism__make_typeclass_info_vars(PredClassContext,
 % Accumulator version of the above.
 :- pred polymorphism__make_typeclass_info_vars_2(
 	list(class_constraint),
+	list(class_constraint),
 	existq_tvars, prog_context,
 	list(prog_var), list(prog_var), 
 	list(hlds_goal), list(hlds_goal), 
 	poly_info, poly_info).
-:- mode polymorphism__make_typeclass_info_vars_2(in, in, in,
+:- mode polymorphism__make_typeclass_info_vars_2(in, in, in, in,
 	in, out, in, out, in, out) is det.
 
-polymorphism__make_typeclass_info_vars_2([], _ExistQVars,
+polymorphism__make_typeclass_info_vars_2([], _Seen, _ExistQVars,
 		_Context, ExtraVars, ExtraVars, 
 		ExtraGoals, ExtraGoals, 
 		Info, Info).
-polymorphism__make_typeclass_info_vars_2([C|Cs], ExistQVars,
+polymorphism__make_typeclass_info_vars_2([C|Cs], Seen, ExistQVars,
 		Context, ExtraVars0, ExtraVars,
 		ExtraGoals0, ExtraGoals, 
 		Info0, Info) :-
-	polymorphism__make_typeclass_info_var(C, ExistQVars,
+	polymorphism__make_typeclass_info_var(C, [C | Seen], ExistQVars,
 			Context, ExtraGoals0, ExtraGoals1, 
 			Info0, Info1, MaybeExtraVar),
 	maybe_insert_var(MaybeExtraVar, ExtraVars0, ExtraVars1),
-	polymorphism__make_typeclass_info_vars_2(Cs,
+	polymorphism__make_typeclass_info_vars_2(Cs, Seen,
 			ExistQVars, Context, 
 			ExtraVars1, ExtraVars,
 			ExtraGoals1, ExtraGoals, 
 			Info1, Info).
 
 :- pred polymorphism__make_typeclass_info_var(class_constraint,
-	existq_tvars, prog_context, list(hlds_goal), list(hlds_goal),
-	poly_info, poly_info, maybe(prog_var)). 
-:- mode polymorphism__make_typeclass_info_var(in, in, in, in, out,
+	list(class_constraint), existq_tvars, prog_context, list(hlds_goal),
+	list(hlds_goal), poly_info, poly_info, maybe(prog_var)). 
+:- mode polymorphism__make_typeclass_info_var(in, in, in, in, in, out,
 	in, out, out) is det.
 
-polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
+polymorphism__make_typeclass_info_var(Constraint, Seen, ExistQVars,
 		Context, ExtraGoals0, ExtraGoals, 
 		Info0, Info, MaybeVar) :-
 	(
@@ -2183,9 +2186,9 @@ polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
 
 		map__search(Info0^proof_map, Constraint, Proof)
 	->
-		polymorphism__make_typeclass_info_from_proof(Constraint, Proof,
-			ExistQVars, Context, MaybeVar, ExtraGoals0, ExtraGoals,
-			Info0, Info)
+		polymorphism__make_typeclass_info_from_proof(Constraint, Seen,
+			Proof, ExistQVars, Context, MaybeVar, ExtraGoals0,
+			ExtraGoals, Info0, Info)
 	;
 		polymorphism__make_typeclass_info_head_var(Constraint,
 			NewVar, Info0, Info1),
@@ -2197,13 +2200,15 @@ polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
 	).
 
 :- pred polymorphism__make_typeclass_info_from_proof(class_constraint,
-	constraint_proof, existq_tvars, prog_context, maybe(prog_var),
-	list(hlds_goal), list(hlds_goal), poly_info, poly_info).
-:- mode polymorphism__make_typeclass_info_from_proof(in, in, in, in, out, 
+	list(class_constraint), constraint_proof, existq_tvars, prog_context,
+	maybe(prog_var), list(hlds_goal), list(hlds_goal), poly_info,
+	poly_info).
+:- mode polymorphism__make_typeclass_info_from_proof(in, in, in, in, in, out, 
 	in, out, in, out) is det.
 
-polymorphism__make_typeclass_info_from_proof(Constraint, Proof, ExistQVars, 
-		Context, MaybeVar, ExtraGoals0, ExtraGoals, Info0, Info) :-
+polymorphism__make_typeclass_info_from_proof(Constraint, Seen, Proof,
+		ExistQVars, Context, MaybeVar, ExtraGoals0, ExtraGoals,
+		Info0, Info) :-
 	Info0 = poly_info(VarSet0, VarTypes0, TypeVarSet, TypeInfoMap0, 
 		TypeClassInfoMap0, Proofs, PredName, ModuleInfo),
 	Constraint = constraint(ClassName, ConstrainedTypes),
@@ -2247,7 +2252,9 @@ polymorphism__make_typeclass_info_from_proof(Constraint, Proof, ExistQVars,
 		apply_subst_to_constraint_list(RenameSubst,
 			InstanceConstraints0, InstanceConstraints1),
 		apply_rec_subst_to_constraint_list(InstanceSubst,
-			InstanceConstraints1, InstanceConstraints),
+			InstanceConstraints1, InstanceConstraints2),
+		InstanceConstraints =
+			InstanceConstraints2 `list__delete_elems` Seen,
 		apply_subst_to_constraint_proofs(RenameSubst,
 			SuperClassProofs0, SuperClassProofs1),
 		apply_rec_subst_to_constraint_proofs(InstanceSubst,
@@ -2276,7 +2283,7 @@ polymorphism__make_typeclass_info_from_proof(Constraint, Proof, ExistQVars,
 			% constraints from the context of the
 			% instance decl.
 		polymorphism__make_typeclass_info_vars_2(
-			InstanceConstraints,
+			InstanceConstraints, Seen,
 			ExistQVars, Context,
 			[], InstanceExtraTypeClassInfoVars0, 
 			ExtraGoals0, ExtraGoals1, 
@@ -2343,7 +2350,7 @@ polymorphism__make_typeclass_info_from_proof(Constraint, Proof, ExistQVars,
 
 			% Make the typeclass_info for the subclass
 		polymorphism__make_typeclass_info_var(
-			SubClassConstraint,
+			SubClassConstraint, Seen,
 			ExistQVars, Context,
 			ExtraGoals0, ExtraGoals1, 
 			Info1, Info2,
@@ -2593,7 +2600,7 @@ polymorphism__make_superclasses_from_proofs([C|Cs],
 	polymorphism__make_superclasses_from_proofs(Cs,
 		ExistQVars, Goals0, Goals1, Info0, Info1, Vars0, Vars1),
 	term__context_init(Context),
-	polymorphism__make_typeclass_info_var(C,
+	polymorphism__make_typeclass_info_var(C, [],
 		ExistQVars, Context, Goals1, Goals, Info1, Info,
 		MaybeVar),
 	maybe_insert_var(MaybeVar, Vars1, Vars).

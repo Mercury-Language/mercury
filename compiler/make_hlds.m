@@ -2695,11 +2695,10 @@ module_add_class_defn(Module0, Constraints, Name, Vars, Interface, VarSet,
 						SuperTypes),
 					list__length(SuperTypes,
 						SuperClassArity),
-					term__vars_list(SuperTypes, SuperVars),
 					SuperClassId = class_id(SuperName,
 						SuperClassArity),
 					SubClassDetails =
-					    subclass_details(SuperVars,
+					    subclass_details(SuperTypes,
 						ClassId, Vars, VarSet),
 					multi_map__set(Ss0, SuperClassId,
 						SubClassDetails, Ss)

@@ -3103,7 +3103,7 @@ hlds_out__write_subclass_details(Indent, SuperClassId, SubClassDetails) -->
 	{ SuperClassId = class_id(SuperSymName, _SuperArity) },
 	prog_out__write_sym_name(SuperSymName),
 	io__write_char('('),
-	io__write_list(SuperClassVars, ", ", PrintVar),
+	io__write_list(SuperClassVars, ", ", term_io__write_term(VarSet)),
 	io__write_char(')').
 
 %-----------------------------------------------------------------------------%

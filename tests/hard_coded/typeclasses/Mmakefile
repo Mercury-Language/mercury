@@ -8,6 +8,9 @@ include ../../Mmake.common
 #-----------------------------------------------------------------------------#
 
 PROGS=	\
+	arbitrary_constraint_class \
+	arbitrary_constraint_pred_2 \
+	arbitrary_constraint_pred_1 \
 	constrained_lambda \
 	extract_typeinfo \
 	exist_disjunction \
@@ -42,6 +45,7 @@ PROGS=	\
 	nondet_class_method \
 	operator_classname \
 	record_syntax \
+	recursive_instance_1 \
 	reordered_existential_constraint \
 	superclass_bug \
 	superclass_bug2 \
