@@ -77,6 +77,11 @@ int main(int argc, char **argv)
 	setvbuf(stderr, NULL, _IONBF, 0);
 #endif
 
+#ifdef CONSERVATIVE_GC
+	/* call the init_gc() function defined in <foo>_init.c -
+	   this is to work around a Solaris 2.X (X <= 4) linker bug */
+	init_gc();
+#endif
 	/* initialize label table to be empty */
 	init_entries();
 #if defined(USE_GCC_GLOBAL_REGISTERS) && !defined(USE_ASM_LABELS)
