@@ -457,7 +457,7 @@ post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
 	resolve_aditi_builtin_overloading(ModuleInfo, CallerPredInfo, Args,
 		AdjustArgTypes, PredId0, PredId, SymName0, SymName),
 
-	Builtin = aditi_delete(PredId, Syntax),
+	Builtin = aditi_modify(PredId, Syntax),
 	ModifyCallId = PredOrFunc - SymName/Arity,
 
 	module_info_pred_info(ModuleInfo, PredId, RelationPredInfo),

@@ -53,11 +53,11 @@ aditi_update_mode_errors.m:105:   mode error: arguments `X0, V_12, V_10'
 aditi_update_mode_errors.m:105:   have insts `free, unique(1), free',
 aditi_update_mode_errors.m:105:   which does not match any of the modes for function `int:+/2'.
 aditi_update_mode_errors.m:115: In clause for `aditi_update_modes12((aditi:aditi_di), (aditi:aditi_uo))':
-aditi_update_mode_errors.m:115:   in argument 2 of `aditi_delete' of predicate `p/3':
+aditi_update_mode_errors.m:115:   in argument 2 of `aditi_modify' of predicate `p/3':
 aditi_update_mode_errors.m:115:   mode error: variable `ModifyP' has instantiatedness `/* unique */(pred((free -> free), (free -> ground), (free -> ground), (free -> free), (ground -> ground), (ground -> ground)) is semidet)',
 aditi_update_mode_errors.m:115:   expected instantiatedness was `(pred(unused, in, in, unused, out, out) is semidet)'.
 aditi_update_mode_errors.m:125: In clause for `aditi_update_modes13((aditi:aditi_di), (aditi:aditi_uo))':
-aditi_update_mode_errors.m:125:   in argument 2 of `aditi_delete' of function `q/2':
+aditi_update_mode_errors.m:125:   in argument 2 of `aditi_modify' of function `q/2':
 aditi_update_mode_errors.m:125:   mode error: variable `ModifyQ' has instantiatedness `/* unique */(pred((free -> free), (ground -> ground), (ground -> ground), (free -> free), (ground -> ground), (ground -> ground)) is semidet)',
 aditi_update_mode_errors.m:125:   expected instantiatedness was `(pred(unused, in, in, unused, out, out) is semidet)'.
 aditi_update_mode_errors.m:047: In clause for `anc((aditi:aditi_ui), out, out)':
