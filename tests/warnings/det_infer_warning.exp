@@ -1,3 +1,0 @@
-det_infer_warning.m:014: In `test2':
-det_infer_warning.m:014:   warning: determinism declaration could be tighter.
-det_infer_warning.m:014:   Declared `semidet', inferred `det'.

@@ -1,2 +1,0 @@
-foo((pred(A::in, B::out) is det :- p(A, C), q(C, B)), D, E).
-
