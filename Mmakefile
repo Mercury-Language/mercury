@@ -42,7 +42,7 @@ dep: dep_library dep_compiler dep_profiler
 .PHONY: dep_library
 dep_library: library/$(deps_subdir)library.dep
 
-library/library.dep:
+library/$(deps_subdir)library.dep:
 	cd library && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_compiler
