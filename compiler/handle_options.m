@@ -259,6 +259,8 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	% --generate-trace requires 
 	% 	- disabling optimizations that would change 
 	% 	  the trace being generated
+	%	- enabling excess_assign to exclude junk vars from the trace
+	%	  (and to ensure consistent paths across optimization levels)
 	% 	- enabling stack layouts
 	% 	- enabling typeinfo liveness
 	globals__io_lookup_bool_option(generate_trace, Trace),
@@ -271,6 +273,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		globals__io_set_option(optimize_duplicate_calls, bool(no)),
 		globals__io_set_option(optimize_constructor_last_call,
 			bool(no)),
+		globals__io_set_option(excess_assign, bool(yes)),
 		globals__io_set_option(trace_stack_layout, bool(yes)),
 		globals__io_set_option(typeinfo_liveness, bool(yes))
 	;
