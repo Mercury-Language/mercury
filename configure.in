@@ -1816,13 +1816,13 @@ AC_CHECK_LIB(socket,socket,SOCKET_LIBRARY=-lsocket,SOCKET_LIBRARY="")
 AC_SUBST(SOCKET_LIBRARY)
 
 #
-# temporarily add -lsocket to LIBS, for use by AC_TRY_LINK
+# temporarily add -lsocket to LIBS, for use by TRY_LINK
 #
 save_LIBS="$LIBS"
 LIBS="$LIBS $SOCKET_LIBRARY"
 
 #
-# use AC_TRY_LINK to see whether we can use sockets
+# use TRY_LINK to see whether we can use sockets
 #
 AC_MSG_CHECKING(whether we can use sockets (for Opium-M))
 AC_CACHE_VAL(mercury_cv_sockets_work,
