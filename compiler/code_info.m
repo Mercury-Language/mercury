@@ -1248,16 +1248,18 @@ code_info__setup_call([Var - arg_info(ArgLoc, Mode)|Vars], Args, CallDirection,
 %---------------------------------------------------------------------------%
 
 code_info__shuffle_register(Var, Args, Reg, Code) -->
+		% Generate code to swap the contents of
+		% the register out of the way
 	code_info__get_registers(Registers),
 	(
 		{ map__search(Registers, Reg, RegContents) }
 	->
-			% Generate code to swap the contents of
-			% the register out of the way
-		code_info__shuffle_registers_2(Reg, Args, RegContents, CodeA)
+		{ Contents = RegContents }
 	;
-		{ CodeA = empty }
+		{ set__init(NoVars) },
+		{ Contents = vars(NoVars) }
 	),
+	code_info__shuffle_registers_2(Reg, Args, Contents, CodeA),
 		% generate the code to place the variable in
 		% the desired register
 	code_info__generate_expression(Var, var(Var), reg(Reg), CodeB),
@@ -1299,7 +1301,9 @@ code_info__shuffle_registers_2(Reg, Args, Contents, Code) -->
 				"Swap live variable to a new register"
 		]) }
 	;
-		{ Code = empty }
+		{ Code = node([
+			comment("no shuffle needed, since vars not live") - ""
+		]) }
 	).
 
 %---------------------------------------------------------------------------%
@@ -1351,7 +1355,7 @@ code_info__slot_occupied([V - Stat|Rest], Var, Slot) :-
 %---------------------------------------------------------------------------%
 
 :- pred code_info__lval_contains(lval, lval).
-:- mode code_info__lval_contains(in ,in) is semidet.
+:- mode code_info__lval_contains(in, in) is semidet.
 
 code_info__lval_contains(reg(R), reg(R)).
 code_info__lval_contains(stackvar(N), stackvar(N)).
@@ -1417,8 +1421,7 @@ code_info__relocate_slot([V - S0|Rest0], Reg, Slot, [V - S|Rest]) -->
 		{ set__to_sorted_list(Set0, List0) },
 		{ code_info__get_matching_lval(List0, Slot, Lval0) }
 	->
-		{ set__singleton_set(SSet, Lval0) },
-		{ set__difference(Set0, SSet, Set1) },
+		{ set__remove(Set0, Lval0, Set1) },
 		{ code_info__replace_lval(Lval0, Slot, reg(Reg), Lval) },
 		{ set__insert(Set1, Lval, Set2) },
 		{ S = evaluated(Set2) },
@@ -1773,33 +1776,47 @@ code_info__variable_is_live(Var) -->
 	code_info__get_liveness_info(Liveness),
 	{ set__member(Var, Liveness) }.
 
-:- pred code_info__must_be_swapped(set(var), list(var), lval, code_info, code_info).
+:- pred code_info__must_be_swapped(set(var), list(var), lval,
+					code_info, code_info).
 :- mode code_info__must_be_swapped(in, in, in, in, out) is semidet.
 
-code_info__must_be_swapped(Vars, Args, _Lval) -->
+	% See comments below!
+
+code_info__must_be_swapped(VarsInIt, Args, Lval) -->
 	code_info__get_liveness_info(Liveness),
 	code_info__get_variables(Variables),
-	{ 
-			set__member(Var0, Vars),
-			set__member(Var0, Liveness)
+	code_info__variables_depending_on_lval(Lval, VarsDependingOnIt),
+	{ % some [Var]
+		% the variable is live
+		(
+			set__member(Var, Liveness)
+		;	
+			list__member(Var, Args)
+		),
+
+		% the variable needs this location
+		(
+			set__member(Var, VarsInIt)
 		;
-		% We also need to swap out variables if they might
-		% be an argument that we haven't positioned yet.
-		% (transitively)
-			set__member(Var1, Vars),
-			list__member(Var2, Args),
-			code_info__variable_depends(Var2, Var1, Variables)
+			set__member(Var, VarsDependingOnIt)
+		;
+			% some [Var2]
+			set__member(Var2, VarsInIt),
+			code_info__variable_depends(Var, Var2, Variables)
+		)
+	->
+		true
+	;
+		fail
 	}.
 
-	% The contents of a location must be swapped if any
-	% of the variables in it must be swapped.
-	% (NB this is actually overly conservative - we could
-	% avoid swapping unless *all* variables needed to be
-	% swapped, since we know that the variables must all be
-	% aliased since they share the same storage location.)
+	% The contents of a location must be swapped if any of the
+	% variables in it, or the variables that depend on it, or the
+	% variables that depend on any of the variables in it, must be
+	% swapped.
 	%
-	% A variable must be swapped iff it is live and
-	% it is not stored anywhere else.  A variable is live
+	% A variable must be swapped iff it is live (TODO: and
+	% it is not stored anywhere else!).  A variable is live
 	% if it is in the livevars or it is one of the remaining
 	% arguments for the current call.
 
