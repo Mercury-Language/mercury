@@ -262,9 +262,9 @@ void init_memory(void)
 #endif
 
 #ifndef	SPEED
-	/* We allocate as mach char *s as there are words in the detstack. */
+	/* We allocate as many `char *'s as there are words in the detstack. */
 	/* In the worst-case, all detstack frames have only one word. */
-	dumpstak_zone = create_zone("dumpstack",
+	dumpstack_zone = create_zone("dumpstack",
 		detstack_size * (sizeof(char *) / (sizeof(Word))), 0, 0);
 #endif
 
