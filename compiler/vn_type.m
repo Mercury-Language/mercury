@@ -70,8 +70,7 @@
 			;	vn_restore_ticket(vn)
 			;	vn_discard_ticket
 			;	vn_incr_sp(int)
-			;	vn_decr_sp(int)
-			;	vn_assign_curfr(vn).
+			;	vn_decr_sp(int).
 
 :- type parentry	==	pair(lval, list(rval)).
 :- type parallel	--->	parallel(label, label, list(parentry)).

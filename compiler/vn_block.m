@@ -202,20 +202,13 @@ vn_block__handle_instr(block(_, _, _),
 		LabelsSoFar, LabelsSoFar, SeenIncr, SeenIncr, Tuple, Tuple) :-
 	error("block should not be found in vn_block__handle_instr").
 vn_block__handle_instr(assign(Lval, Rval),
-		Livemap, Params, VnTables0, VnTables, Liveset0, Liveset,
-		LabelsSoFar, LabelsSoFar, SeenIncr, SeenIncr, Tuple0, Tuple) :-
+		_Livemap, _Params, VnTables0, VnTables, Liveset0, Liveset,
+		LabelsSoFar, LabelsSoFar, SeenIncr, SeenIncr, Tuple, Tuple) :-
 	vn_util__rval_to_vn(Rval, Vn, VnTables0, VnTables1),
-	( Lval = curfr ->
-		vn_block__new_ctrl_node(vn_assign_curfr(Vn), Livemap,
-			Params, LabelsSoFar, VnTables1, VnTables,
-			Liveset0, Liveset, Tuple0, Tuple)
-	;
-		vn_util__lval_to_vnlval(Lval, Vnlval, VnTables1, VnTables2),
-		vn_table__set_desired_value(Vnlval, Vn, VnTables2, VnTables),
-		vn_util__find_specials(Vnlval, Specials),
-		set__insert_list(Liveset0, Specials, Liveset),
-		Tuple = Tuple0
-	).
+	vn_util__lval_to_vnlval(Lval, Vnlval, VnTables1, VnTables2),
+	vn_table__set_desired_value(Vnlval, Vn, VnTables2, VnTables),
+	vn_util__find_specials(Vnlval, Specials),
+	set__insert_list(Liveset0, Specials, Liveset).
 vn_block__handle_instr(call(Proc, Return, Info, CallModel),
 		Livemap, Params, VnTables0, VnTables, Liveset0, Liveset,
 		LabelsSoFar, LabelsSoFar, SeenIncr, SeenIncr, Tuple0, Tuple) :-
@@ -483,13 +476,6 @@ vn_block__new_ctrl_node(VnInstr, Livemap, Params, LabelsSoFar,
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
-		LabelNo = LabelNo0,
-		Parallels = []
-	;
-		VnInstr = vn_assign_curfr(_),
-		set__to_sorted_list(Liveset0, Vnlivelist),
-		vn_block__record_livevnlvals(Vnlivelist, VnTables0, VnTables,
-			Liveset0, Liveset, FlushEntry0, FlushEntry),
 		LabelNo = LabelNo0,
 		Parallels = []
 	),

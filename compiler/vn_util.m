@@ -826,10 +826,6 @@ vn_util__build_uses_from_ctrl(Ctrl, Ctrlmap, VnTables0, VnTables) :-
 		;
 			VnInstr = vn_decr_sp(_),
 			VnTables1 = VnTables0
-		;
-			VnInstr = vn_assign_curfr(Vn),
-			vn_util__record_use(Vn, src_ctrl(Ctrl),
-				VnTables0, VnTables1)
 		),
 		NextCtrl is Ctrl + 1,
 		vn_util__build_uses_from_ctrl(NextCtrl, Ctrlmap,

@@ -270,58 +270,6 @@ vn_flush__ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 		VnTables = VnTables0,
 		Templocs = Templocs0,
 		Instrs = [decr_sp(Decr) - ""]
-	;
-		Vn_instr = vn_assign_curfr(Vn),
-		vn_table__get_loc_to_vn_table(VnTables0, LocToVnTable),
-		map__keys(LocToVnTable, Locs),
-		vn_flush__move_away_framevars(Locs, VnTables0, VnTables1,
-			Templocs0, Templocs1, Params, MoveAwayInstrs),
-		vn_flush__vn(Vn, [src_ctrl(N)], [], Rval, VnTables1, VnTables,
-			Templocs1, Templocs, Params, FlushInstrs),
-		Instr = assign(curfr, Rval) - "",
-		list__append(FlushInstrs, [Instr], MainInstrs),
-		list__append(MoveAwayInstrs, MainInstrs, Instrs)
-	).
-
-%-----------------------------------------------------------------------------%
-
-:- pred vn_flush__move_away_framevars(list(vnlval), vn_tables, vn_tables,
-	templocs, templocs, vn_params, list(instruction)).
-:- mode vn_flush__move_away_framevars(in, in, out, in, out, in, out) is det.
-
-vn_flush__move_away_framevars([], VnTables, VnTables, Templocs, Templocs,
-		_Params, []).
-vn_flush__move_away_framevars([Loc | Locs], VnTables0, VnTables,
-		Templocs0, Templocs, Params, Instrs) :-
-	vn_flush__move_away_framevars(Locs, VnTables0, VnTables1,
-		Templocs0, Templocs1, Params, Instrs1),
-	(
-		Loc = vn_framevar(_),
-		vn_table__search_current_value(Loc, Vn, VnTables1),
-		vn_table__lookup_uses(Vn, Uses0,
-			"vn_flush__move_away_framevars", VnTables1),
-		vn_util__real_uses(Uses0, Uses, VnTables1),
-		Uses = [_|_]
-	->
-		(
-			vn_flush__find_cheap_users(Vn, Users, VnTables1),
-			vn_util__choose_cheapest_loc(Users, BestUser),
-			vn_util__vnlval_access_vns(BestUser, []),
-			vn_util__classify_loc_cost(BestUser, 0)
-		->
-			Chosen = BestUser,
-			Templocs2 = Templocs1
-		;
-			vn_temploc__next_tempr(Templocs1, Templocs2, Chosen)
-		),
-		% We should also delete the record that Loc contains *anything*
-		vn_flush__ensure_assignment(Chosen, Vn, [], VnTables1, VnTables,
-			Templocs2, Templocs, Params, Instrs2),
-		list__append(Instrs1, Instrs2, Instrs)
-	;
-		VnTables = VnTables1,
-		Templocs = Templocs1,
-		Instrs = Instrs1
 	).
 
 %-----------------------------------------------------------------------------%
@@ -342,7 +290,8 @@ vn_flush__move_away_framevars([Loc | Locs], VnTables0, VnTables,
 	% choose a non-register user only if there are no other users of the
 	% value.
 
-:- pred vn_flush__choose_loc_for_shared_vn(vn, vnlval, vn_tables, templocs, templocs).
+:- pred vn_flush__choose_loc_for_shared_vn(vn, vnlval, vn_tables,
+	templocs, templocs).
 % :- mode vn_flush__choose_loc_for_shared_vn(in, out, in, di, uo) is det.
 :- mode vn_flush__choose_loc_for_shared_vn(in, out, in, in, out) is det.
 

@@ -323,9 +323,6 @@ opt_debug__dump_vninstr(vn_incr_sp(N), Str) :-
 opt_debug__dump_vninstr(vn_decr_sp(N), Str) :-
 	string__int_to_string(N, N_str),
 	string__append_list(["decr_sp(", N_str, ")"], Str).
-opt_debug__dump_vninstr(vn_assign_curfr(Vn), Str) :-
-	opt_debug__dump_vn(Vn, Vn_str),
-	string__append_list(["assign_curfr(", Vn_str, ")"], Str).
 
 opt_debug__dump_flushmap(Flushmap, Str) :-
 	map__to_assoc_list(Flushmap, Flushlist),
