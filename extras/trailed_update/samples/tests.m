@@ -36,8 +36,8 @@ main -->
 	),
 
 	( { create_solvable_delayed_goal(X, Y) } ->
-		print("X = "), dump_var(X), nl,
-		print("Y = "), dump_var(Y), nl
+		print("X = "), output_var(X), nl,
+		print("Y = "), output_var(Y), nl
 	;
 		print("Oops.\n")
 	),
@@ -57,18 +57,46 @@ main -->
 
 	print("test_delaying_3: "),
 	( { create_solvable_delayed_goal(X3, Y3) } ->
-		print("yes: X = "), dump_var(X3),
-		print(", Y = "), dump_var(Y3), nl
+		print("yes: X = "), output_var(X3),
+		print(", Y = "), output_var(Y3), nl
 	;
 		print("no"), nl
 	),
 	print("test_delaying_4: "),
 	( { create_unsolvable_delayed_goal(X4) } ->
-		print("yes: X = "), dump_var(X4), nl
+		print("yes: X = "), output_var(X4), nl
 	;
 		print("no"), nl
 	),
+	print("test_ground:"), nl,
+	{ Z = var(42) },
+	print("Z = "), output_var(Z), nl,
+	( { var__init(Z2), var__init(Z3), Z2 = Z3, Z3 = Z } ->
+		print("Z2 = "), output_var(Z2), nl
+	;
+		print("oops"), nl
+	),
+	print("test_alias_twice:"), nl,
+	( { A == B, A = B } ->
+		print("A = "), output_var(A), nl,
+		print("B = "), output_var(B), nl
+	;
+		print("oops"), nl
+	),
+	print("test_dup_call_bug:"), nl,
+	( { var__init(A1), var__init(A2), A1 = var(42) } ->
+		print("A1 = "), output_var(A1), nl,
+		print("A2 = "), output_var(A2), nl
+	;
+		print("oops"), nl
+	),
 	print("Done.\n").
+
+:- mode output_var(in(any), di, uo) is cc_multi.
+output_var(Var) -->
+	dump_var(Var),
+	{ var__is_ground(Var, MaybeVal) },
+	print(" [ground: "), write(MaybeVal), print("]").
 
 test_delaying_1 :-
 	create_solvable_delayed_goal(X, Y),
@@ -86,7 +114,7 @@ create_solvable_delayed_goal(X, Y) :-
 
 wake_and_succeed(var(0), var(1)).  % 1 = 0 + 1 succeeds
 %	unsafe_perform_io(print("Y = ")),
-%	unsafe_perform_io(dump_var(Y)),
+%	unsafe_perform_io(output_var(Y)),
 %	unsafe_perform_io(nl).
 
 wake_and_fail(var(0), var(42)). % 42 = 0 + 1 fails.
