@@ -256,7 +256,7 @@ io__read_char_code(Stream, Code, IO_0, IO) :-
 		IO = io__state(A, PutBack, C, D, E),
  		Code = Char
  	;
-		get0(Stream, Char),
+		get0(Stream, Code),
 		IO = IO_0
  	).
 	%%% io__update_state.
