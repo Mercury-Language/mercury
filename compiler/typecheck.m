@@ -426,8 +426,8 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 	        MaybePredInfo = no,
 		Changed = no
 	    ;
-		pred_info_get_marker_list(PredInfo0, Markers),
-		( list__member(request(infer_type), Markers) ->
+		pred_info_get_markers(PredInfo0, Markers),
+		( check_marker(Markers, infer_type) ->
 			% For a predicate whose type is inferred,
 			% the predicate is allowed to bind the type
 			% variables in the head of the predicate's
@@ -2874,9 +2874,9 @@ type_assign_set_type_bindings(type_assign(A, B, _), TypeBindings,
 write_inference_messages([], _) --> [].
 write_inference_messages([PredId | PredIds], ModuleInfo) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ pred_info_get_marker_list(PredInfo, Markers) },
+	{ pred_info_get_markers(PredInfo, Markers) },
 	(
-		{ list__member(request(infer_type), Markers) },
+		{ check_marker(Markers, infer_type) },
 		{ module_info_predids(ModuleInfo, ValidPredIds) },
 		{ list__member(PredId, ValidPredIds) }
 	->

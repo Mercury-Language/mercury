@@ -179,10 +179,8 @@ intermod__gather_preds([PredId | PredIds], CollectTypes, InlineThreshold) -->
 			(
 				{ inlining__is_simple_goal(Goal,
 						InlineThreshold) },
-				{ pred_info_get_marker_list(PredInfo0, 
-					Markers) },
-				{ \+ list__member(request(no_inline), 
-					Markers) }
+				{ pred_info_get_markers(PredInfo0, Markers) },
+				{ \+ check_marker(Markers, no_inline) }
 			;
 				{ pred_info_requested_inlining(PredInfo0) }
 			;
@@ -454,8 +452,8 @@ intermod_info_add_proc(PredId, DoWrite) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_import_status(PredInfo, Status) },
 	{ pred_info_procids(PredInfo, ProcIds) },
-	{ pred_info_get_marker_list(PredInfo, Markers) },
-	( { list__member(request(infer_modes), Markers) } ->
+	{ pred_info_get_markers(PredInfo, Markers) },
+	( { check_marker(Markers, infer_modes) } ->
 		% Don't write this pred if it calls preds without mode decls.
 		{ DoWrite = no }
 	; 
@@ -921,9 +919,10 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 	{ pred_info_module(PredInfo, Module) },
 	{ pred_info_name(PredInfo, Name) },
 	{ SymName = qualified(Module, Name) },
-	{ pred_info_get_marker_list(PredInfo, Markers) },
+	{ pred_info_get_markers(PredInfo, Markers) },
+	{ markers_to_marker_list(Markers, MarkerList) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-	intermod__write_pragmas(SymName, Arity, Markers, PredOrFunc),
+	intermod__write_pragmas(SymName, Arity, MarkerList, PredOrFunc),
 	{ pred_info_clauses_info(PredInfo, ClausesInfo) },
 	{ ClausesInfo = clauses_info(Varset, _, _VarTypes, HeadVars, Clauses) },
 		% handle pragma(c_code, ...) separately
@@ -939,17 +938,11 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 	),
 	intermod__write_preds(ModuleInfo, PredIds).
 
-:- pred intermod__write_pragmas(sym_name::in, int::in, list(marker_status)::in,
+:- pred intermod__write_pragmas(sym_name::in, int::in, list(marker)::in,
 		pred_or_func::in, io__state::di, io__state::uo) is det.
 
 intermod__write_pragmas(_, _, [], _) --> [].
-intermod__write_pragmas(SymName, Arity, [MarkerStatus | Markers], PredOrFunc)
-		-->
-	(
-		{ MarkerStatus = request(Marker) }
-	;
-		{ MarkerStatus = done(Marker) }
-	),
+intermod__write_pragmas(SymName, Arity, [Marker | Markers], PredOrFunc) -->
 	(
 		\+ (
 			% Since the inferred declarations are output, these

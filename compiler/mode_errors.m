@@ -825,8 +825,8 @@ maybe_report_error_no_modes(PredId, PredInfo, ModuleInfo) -->
 write_mode_inference_messages([], _) --> [].
 write_mode_inference_messages([PredId | PredIds], ModuleInfo) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ pred_info_get_marker_list(PredInfo, Markers) },
-	( { list__member(request(infer_modes), Markers) } ->
+	{ pred_info_get_markers(PredInfo, Markers) },
+	( { check_marker(Markers, infer_modes) } ->
 		{ pred_info_procedures(PredInfo, Procs) },
 		{ map__keys(Procs, ProcIds) },
 		write_mode_inference_messages_2(ProcIds, Procs, PredInfo)

@@ -80,8 +80,8 @@ dnf__transform_preds([PredId | PredIds0], TransformAll, MaybeNonAtomic,
 		;
 			module_info_preds(ModuleInfo0, PredTable),
 			map__lookup(PredTable, PredId, PredInfo),
-			pred_info_get_marker_list(PredInfo, Markers),
-			list__member(request(dnf), Markers)
+			pred_info_get_markers(PredInfo, Markers),
+			check_marker(Markers, dnf)
 		)
 	->
 		dnf__transform_pred(PredId, MaybeNonAtomic,
@@ -103,19 +103,7 @@ dnf__transform_pred(PredId, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_non_imported_procids(PredInfo0, ProcIds),
 	dnf__transform_procs(ProcIds, PredId, MaybeNonAtomic,
-		ModuleInfo0, ModuleInfo1, [], NewPredIds),
-
-	% We must look up the pred table again
-	% since dnf__transform_procs may have added new predicates
-	module_info_preds(ModuleInfo1, PredTable1),
-	map__lookup(PredTable1, PredId, PredInfo1),
-
-	pred_info_get_marker_list(PredInfo1, Markers1),
-	list__delete_all(Markers1, request(dnf), Markers2),
-	pred_info_set_marker_list(PredInfo1, [done(dnf) | Markers2], PredInfo),
-
-	map__det_update(PredTable1, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo).
+		ModuleInfo0, ModuleInfo, [], NewPredIds).
 
 :- pred dnf__transform_procs(list(proc_id)::in, pred_id::in,
 	maybe(set(pred_proc_id))::in, module_info::in, module_info::out,
@@ -148,7 +136,7 @@ dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
 		ModuleInfo0, ModuleInfo, ProcInfo, NewPredIds0, NewPredIds) :-
 	pred_info_name(PredInfo0, PredName),
 	pred_info_typevarset(PredInfo0, TVarSet),
-	pred_info_get_marker_list(PredInfo0, Markers),
+	pred_info_get_markers(PredInfo0, Markers),
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_variables(ProcInfo0, VarSet),
 	proc_info_vartypes(ProcInfo0, VarTypes),
@@ -166,7 +154,7 @@ dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
 				tvarset,
 				map(var, type),
 				varset,
-				list(marker_status)
+				pred_markers
 			).
 
 :- pred dnf__transform_goal(hlds_goal::in, instmap::in,

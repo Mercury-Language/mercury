@@ -429,7 +429,7 @@ do_ppid_check_terminates([ PPId | PPIds ], Error, Module0, Module) -->
 		{ pred_info_set_procedures(PredInfo0, ProcTable, PredInfo) },
 		{ map__det_update(PredTable0, PredId, PredInfo, PredTable) },
 		{ module_info_set_preds(Module0, PredTable, Module1) },
-		{ pred_info_get_marker_list(PredInfo, MarkerList) },
+		{ pred_info_get_markers(PredInfo, Markers) },
 		globals__io_lookup_bool_option(check_termination,
 			NormalErrors),
 		globals__io_lookup_bool_option(verbose_check_termination,
@@ -443,14 +443,15 @@ do_ppid_check_terminates([ PPId | PPIds ], Error, Module0, Module) -->
 		% then the error is printed out for each of them.
 		( 
 			{ \+ pred_info_is_imported(PredInfo) },
-			{ list__member(request(check_termination), MarkerList) }
+			{ check_marker(Markers, check_termination) }
 		->
 			term_errors__output(PredId, ProcId, Module1,
 				Success),
 			% Success is only no if there was no error
 			% defined for this predicate.  As we just set the
 			% error, term_errors__output should succeed.
-			{ require(unify(Success, yes), "term_util.m: Unexpected value in do_ppid_check_terminates") },
+			{ require(unify(Success, yes),
+		"term_util.m: Unexpected value in do_ppid_check_terminates") },
 			io__set_exit_status(1),
 			{ module_info_incr_errors(Module1, Module2) }
 		; % else if

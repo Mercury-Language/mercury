@@ -362,9 +362,10 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 			PermutedArgModes, Detism, LambdaGoal, LambdaContext,
 			TVarMap, ProcInfo),
 
+		init_markers(Markers),
 		pred_info_create(ModuleName, PredName, TVarSet, ArgTypes,
-			true, LambdaContext, local, [], PredOrFunc, ProcInfo,
-			ProcId, PredInfo),
+			true, LambdaContext, local, Markers, PredOrFunc,
+			ProcInfo, ProcId, PredInfo),
 
 		% save the new predicate in the predicate table
 

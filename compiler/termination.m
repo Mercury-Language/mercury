@@ -238,7 +238,7 @@ check_preds([PredId | PredIds] , Module0, Module, State0, State) :-
 	pred_info_import_status(PredInfo0, ImportStatus),
 	pred_info_context(PredInfo0, Context),
 	pred_info_procedures(PredInfo0, ProcTable0),
-	pred_info_get_marker_list(PredInfo0, Markers),
+	pred_info_get_markers(PredInfo0, Markers),
 	map__keys(ProcTable0, ProcIds),
 	( 
 		% It is possible for compiler generated/mercury builtin
@@ -254,7 +254,7 @@ check_preds([PredId | PredIds] , Module0, Module, State0, State) :-
 		; ImportStatus = pseudo_exported
 		)
 	->
-		( list__member(request(terminates), Markers) ->
+		( check_marker(Markers, terminates) ->
 			MaybeFind = no,
 			ReplaceTerminate = yes,
 			MaybeError = no,
@@ -280,10 +280,10 @@ check_preds([PredId | PredIds] , Module0, Module, State0, State) :-
 		% source file is compiled, so it cannot be depended upon. 
 		(
 		    (
-			list__member(request(terminates), Markers)
+			check_marker(Markers, terminates)
 		    ; 
 			MakeOptInt = no,
-			list__member(request(check_termination), Markers)
+			check_marker(Markers, check_termination)
 		    )
 		->
 			change_procs_terminate(ProcIds, no, yes, no, 
@@ -311,7 +311,7 @@ check_preds([PredId | PredIds] , Module0, Module, State0, State) :-
 		% here, and these import_status' refer to abstract types.
 		error("termination__check_preds: Unexpected import status of a predicate")
 	),
-	( list__member(request(does_not_terminate), Markers) ->
+	( check_marker(Markers, does_not_terminate) ->
 		MaybeFind1 = no,
 		ReplaceTerminate1 = dont_know,
 		MaybeError1 = yes(Context - does_not_term_pragma(PredId)),

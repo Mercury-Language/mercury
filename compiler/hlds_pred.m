@@ -170,36 +170,23 @@
 	--->	predicate
 	;	function.
 
-	% Predicates can be marked, to request that transformations be
-	% performed on them and to record that these transformations have been
-	% done and are still valid.
-	%
-	% The code that performs the transformation should remove the request
-	% marker status and substitute the done marker status.
-	%
-	% In the future, we can use markers to request the use of a different
-	% code generator for certain predicates, e.g. to generate RL instead
-	% of normal C code, with a C code stub to link to the RL.
+	% Predicates can be marked with various boolean flags, called
+	% "markers".
+
+	% an abstract set of markers.
+:- type pred_markers. 
 
 :- type marker
 	--->	infer_type	% Requests type inference for the predicate
 				% These markers are inserted by make_hlds
 				% for undeclared predicates.
-				% The `done' status could be meaningful,
-				% but it is currently not used.
 	;	infer_modes	% Requests mode inference for the predicate
 				% These markers are inserted by make_hlds
 				% for undeclared predicates.
-				% The `done' status could be meaningful,
-				% but it is currently not used.
 	;	obsolete	% Requests warnings if this predicate is used.
 				% Used for pragma(obsolete).
-				% The `done' status is not meaningful.
 	;	inline		% Requests that this be predicate be inlined.
 				% Used for pragma(inline).
-				% Since the transformation affects *other*
-				% predicates, the `done' status is not
-				% meaningful.
 	;	no_inline	% Requests that this be predicate not be 
 				% inlined.
 				% Used for pragma(no_inline).
@@ -222,28 +209,18 @@
 				% ProcInfos directly.
 	;	terminates	% The user guarantees that this predicate
 				% will terminate for all (finite?) input
-				% The `done' status could be meaningful,
-				% but it is currently not used.
 	;	does_not_terminate
 				% States that this predicate does not
 				% terminate.  This is useful for pragma c
 				% code, which the compiler assumes to be
 				% terminating.
-				% The `done' status could be meaningful,
-				% but it is currently not used.
 	;	check_termination
 				% The user requires the compiler to guarantee
 				% the termination of this predicate.
 				% If the compiler cannot guarantee termination
 				% then it must give an error message.
-				% The `done' status could be meaningful,
-				% but it is currently not used.
 	.
 	
-
-:- type marker_status
-	--->	request(marker)
-	;	done(marker).
 
 
 	% hlds_pred__define_new_pred(Goal, CallGoal, Args, InstMap, PredName,
@@ -255,7 +232,7 @@
 	% polymorphism.m.
 :- pred hlds_pred__define_new_pred(hlds_goal, hlds_goal, list(var),
 		instmap, string, tvarset, map(var, type), varset, 
-		list(marker_status), module_info, module_info, pred_proc_id).
+		pred_markers, module_info, module_info, pred_proc_id).
 :- mode hlds_pred__define_new_pred(in, out, in, in, in, 
 		in, in, in, in, in, out, out) is det.
 
@@ -264,19 +241,19 @@
 
 :- pred pred_info_init(module_name, sym_name, arity, tvarset, list(type),
 	condition, term__context, clauses_info, import_status,
-	list(marker_status), goal_type, pred_or_func, pred_info).
+	pred_markers, goal_type, pred_or_func, pred_info).
 :- mode pred_info_init(in, in, in, in, in, in, in, in, in, in, in, in, out)
 	is det.
 
 :- pred pred_info_create(module_name, sym_name, tvarset, list(type),
-	condition, term__context, import_status, list(marker_status),
+	condition, term__context, import_status, pred_markers,
 	pred_or_func, proc_info, proc_id, pred_info).
 :- mode pred_info_create(in, in, in, in, in, in, in, in, in, in, out, out)
 	is det.
 
 :- pred pred_info_set(tvarset, list(type), condition, clauses_info, proc_table,
 	term__context, module_name, string, arity, import_status,
-	tvarset, goal_type, list(marker_status), pred_or_func, pred_info).
+	tvarset, goal_type, pred_markers, pred_or_func, pred_info).
 :- mode pred_info_set(in, in, in, in, in, in, in, in, in, in, in, in, in, in,
 	out) is det.
 
@@ -371,14 +348,32 @@
 :- pred pred_info_requested_no_inlining(pred_info).
 :- mode pred_info_requested_no_inlining(in) is semidet.
 
-:- pred pred_info_get_marker_list(pred_info, list(marker_status)).
-:- mode pred_info_get_marker_list(in, out) is det.
-
-:- pred pred_info_set_marker_list(pred_info, list(marker_status), pred_info).
-:- mode pred_info_set_marker_list(in, in, out) is det.
-
 :- pred pred_info_get_is_pred_or_func(pred_info, pred_or_func).
 :- mode pred_info_get_is_pred_or_func(in, out) is det.
+
+:- type pred_markers.
+
+:- pred pred_info_get_markers(pred_info, pred_markers).
+:- mode pred_info_get_markers(in, out) is det.
+
+:- pred pred_info_set_markers(pred_info, pred_markers, pred_info).
+:- mode pred_info_set_markers(in, in, out) is det.
+
+	% create an empty set of markers
+:- pred init_markers(pred_markers).
+:- mode init_markers(out) is det.
+
+	% check if a particular is in the set
+:- pred check_marker(pred_markers, marker).
+:- mode check_marker(in, in) is semidet.
+
+	% a a marker to the set
+:- pred add_marker(pred_markers, marker, pred_markers).
+:- mode add_marker(in, in, out) is det.
+
+	% convert the set to a list
+:- pred markers_to_marker_list(pred_markers, list(marker)).
+:- mode markers_to_marker_list(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -441,9 +436,7 @@ invalid_proc_id(-1).
 			goal_type,	% whether the goals seen so far for
 					% this pred are clauses, 
 					% pragma(c_code, ...) decs, or none
-			list(marker_status),
-					% records which transformations
-					% have been done or are to be done
+			pred_markers,	% various boolean flags
 			pred_or_func	% whether this "predicate" was really
 					% a predicate or a function
 		).
@@ -586,23 +579,34 @@ pred_info_set_goal_type(PredInfo0, GoalType, PredInfo) :-
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, GoalType, M, N).
 
 pred_info_requested_inlining(PredInfo0) :-
-	pred_info_get_marker_list(PredInfo0, Markers),
-	list__member(request(inline), Markers).
+	pred_info_get_markers(PredInfo0, Markers),
+	check_marker(Markers, inline).
 
 pred_info_requested_no_inlining(PredInfo0) :-
-	pred_info_get_marker_list(PredInfo0, Markers),
-	list__member(request(no_inline), Markers).
+	pred_info_get_markers(PredInfo0, Markers),
+	check_marker(Markers, no_inline).
 
-pred_info_get_marker_list(PredInfo, Markers) :-
+pred_info_get_markers(PredInfo, Markers) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, Markers, _).
 
-pred_info_set_marker_list(PredInfo0, Markers, PredInfo) :-
+pred_info_set_markers(PredInfo0, Markers, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, _, N),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, Markers, N).
 
 pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _,
 			IsPredOrFunc).
+
+:- type pred_markers == list(marker).
+
+init_markers([]).
+
+check_marker(Markers, Marker) :-
+	list__member(Marker, Markers).
+
+add_marker(Markers, Marker, [Marker | Markers]).
+
+markers_to_marker_list(Markers, Markers).
 
 %-----------------------------------------------------------------------------%
 

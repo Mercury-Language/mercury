@@ -175,14 +175,14 @@ modecheck_call_pred(PredId, ArgVars0, TheProcId, ArgVars, ExtraGoals,
 	maybe_add_default_mode(PredInfo0, PredInfo),
 	pred_info_procedures(PredInfo, Procs),
 	map__keys(Procs, ProcIds),
-	pred_info_get_marker_list(PredInfo, Markers),
+	pred_info_get_markers(PredInfo, Markers),
 
 		% In order to give better diagnostics, we handle the
 		% cases where there are zero or one modes for the called
 		% predicate specially.
 	(
 		ProcIds = [],
-		\+ list__member(request(infer_modes), Markers)
+		\+ check_marker(Markers, infer_modes)
 	->
 		set__init(WaitingVars),
 		mode_info_error(WaitingVars, mode_error_no_mode_decl,
@@ -192,7 +192,7 @@ modecheck_call_pred(PredId, ArgVars0, TheProcId, ArgVars, ExtraGoals,
 		ExtraGoals = no_extra_goals
 	;
 		ProcIds = [ProcId],
-		\+ list__member(request(infer_modes), Markers)
+		\+ check_marker(Markers, infer_modes)
 	->
 		TheProcId = ProcId,
 		map__lookup(Procs, ProcId, ProcInfo),
@@ -265,8 +265,8 @@ no_matching_modes(PredId, ArgVars, WaitingVars, TheProcId,
 	%
 	mode_info_get_preds(ModeInfo0, Preds),
 	map__lookup(Preds, PredId, PredInfo),
-	pred_info_get_marker_list(PredInfo, Markers),
-	( list__member(request(infer_modes), Markers) ->
+	pred_info_get_markers(PredInfo, Markers),
+	( check_marker(Markers, infer_modes) ->
 		insert_new_mode(PredId, ArgVars, TheProcId,
 			ModeInfo0, ModeInfo1),
 		% we don't yet know the final insts for the newly created mode

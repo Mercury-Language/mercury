@@ -380,8 +380,8 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
 		{ Changed1 = Changed0 },
 		{ NumErrors1 = NumErrors0 }
 	;
-		{ pred_info_get_marker_list(PredInfo0, Markers) },
-		( { list__member(request(infer_modes), Markers) } ->
+		{ pred_info_get_markers(PredInfo0, Markers) },
+		( { check_marker(Markers, infer_modes) } ->
 			write_pred_progress_message("% Mode-analysing ",
 				PredId, ModuleInfo0)
 		;
@@ -582,8 +582,8 @@ modecheck_proc_3(ProcId, PredId, ModuleInfo0, ProcInfo0, Changed0,
 			Context, LiveVars, InstMap0, ModeInfo0),
 	mode_info_set_changed_flag(Changed0, ModeInfo0, ModeInfo1),
 	modecheck_goal(Body0, Body, ModeInfo1, ModeInfo2),
-	pred_info_get_marker_list(PredInfo, Markers),
-	( list__member(request(infer_modes), Markers) ->
+	pred_info_get_markers(PredInfo, Markers),
+	( check_marker(Markers, infer_modes) ->
 		InferModes = yes
 	;
 		InferModes = no

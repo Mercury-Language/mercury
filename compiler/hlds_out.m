@@ -445,7 +445,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	{ pred_info_context(PredInfo, Context) },
 	{ pred_info_name(PredInfo, PredName) },
 	{ pred_info_import_status(PredInfo, ImportStatus) },
-	{ pred_info_get_marker_list(PredInfo, Markers) },
+	{ pred_info_get_markers(PredInfo, Markers) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	mercury_output_pred_type(TVarSet, qualified(Module, PredName), ArgTypes,
 		no, Context),
@@ -459,11 +459,12 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	io__write_string(", status: "),
 	hlds_out__write_import_status(ImportStatus),
 	io__write_string("\n"),
-	( { Markers = [] } ->
+	{ markers_to_marker_list(Markers, MarkerList) },
+	( { MarkerList = [] } ->
 		[]
 	;
 		io__write_string("% markers:"),
-		hlds_out__write_marker_list(Markers),
+		hlds_out__write_marker_list(MarkerList),
 		io__write_string("\n")
 	),
 	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
@@ -487,25 +488,13 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 		ImportStatus, ProcTable),
 	io__write_string("\n").
 
-:- pred hlds_out__write_marker_list(list(marker_status), io__state, io__state).
+:- pred hlds_out__write_marker_list(list(marker), io__state, io__state).
 :- mode hlds_out__write_marker_list(in, di, uo) is det.
 
 hlds_out__write_marker_list([]) --> [].
 hlds_out__write_marker_list([Marker | Markers]) -->
-	hlds_out__write_marker_status(Marker),
+	hlds_out__write_marker(Marker),
 	hlds_out__write_marker_list(Markers).
-
-:- pred hlds_out__write_marker_status(marker_status, io__state, io__state).
-:- mode hlds_out__write_marker_status(in, di, uo) is det.
-
-hlds_out__write_marker_status(request(Marker)) -->
-	io__write_string(" request("),
-	hlds_out__write_marker(Marker),
-	io__write_string(")").
-hlds_out__write_marker_status(done(Marker)) -->
-	io__write_string(" done("),
-	hlds_out__write_marker(Marker),
-	io__write_string(")").
 
 hlds_out__marker_name(infer_type, "infer_type").
 hlds_out__marker_name(infer_modes, "infer_modes").
