@@ -83,7 +83,7 @@
 	% or    (c) it is the initialisation predicate for a solver type.
 	%
 :- pred special_pred_for_type_needs_typecheck(module_info::in,
-	hlds_type_body::in) is semidet.
+	special_pred_id::in, hlds_type_body::in) is semidet.
 
 	% Succeed if the type can have clauses generated for
 	% its special predicates. This will fail for abstract
@@ -232,18 +232,25 @@ special_pred_is_generated_lazily_2(ModuleInfo, _TypeCtor, Body, Status) :-
 	% The special predicates for types with user-defined
 	% equality or existentially typed constructors are always
 	% generated immediately by make_hlds.m.
-	\+ special_pred_for_type_needs_typecheck(ModuleInfo, Body).
+	\+ special_pred_for_type_needs_typecheck(ModuleInfo, unify, Body).
 
-special_pred_for_type_needs_typecheck(ModuleInfo, Body) :-
+special_pred_for_type_needs_typecheck(ModuleInfo, SpecialPredId, Body) :-
 	(
+		SpecialPredId = unify,
 		type_body_has_user_defined_equality_pred(ModuleInfo, Body,
 			unify_compare(_, _))
 	;
+		SpecialPredId = compare,
+		type_body_has_user_defined_equality_pred(ModuleInfo, Body,
+			unify_compare(_, UserCmp)), UserCmp = yes(_)
+	;
+		SpecialPredId \= initialise,
 		Ctors = Body ^ du_type_ctors,
 		list__member(Ctor, Ctors),
 		Ctor = ctor(ExistQTVars, _, _, _),
 		ExistQTVars \= []
 	;
+		SpecialPredId = initialise,
 		type_body_is_solver_type(ModuleInfo, Body)
 	).
 

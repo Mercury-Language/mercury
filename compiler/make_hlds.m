@@ -3973,13 +3973,15 @@ add_builtin(PredId, Types, !PredInfo) :-
     % predicates to be defined only for the kinds of types which do not
     % lead unify_proc__generate_index_clauses to abort.
 
-add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status, !ModuleInfo) :-
+add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
+        !ModuleInfo) :-
     (
         special_pred_is_generated_lazily(!.ModuleInfo, TypeCtor, Body, Status)
     ->
         true
     ;
-        can_generate_special_pred_clauses_for_type(!.ModuleInfo, TypeCtor, Body)
+        can_generate_special_pred_clauses_for_type(!.ModuleInfo, TypeCtor,
+            Body)
     ->
         add_special_pred(unify, TVarSet, Type, TypeCtor, Body, Context,
             Status, !ModuleInfo),

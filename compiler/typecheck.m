@@ -837,7 +837,7 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
 	% predicate, and if so, for which type
 	%
 	pred_info_get_origin(PredInfo, Origin),
-	Origin = special_pred(_SpecialId - TypeCtor),
+	Origin = special_pred(SpecialPredId - TypeCtor),
 	%
 	% check that the special pred isn't one of the builtin
 	% types which don't have a hlds_type_defn
@@ -850,7 +850,7 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
 	module_info_types(ModuleInfo, TypeTable),
 	map__lookup(TypeTable, TypeCtor, TypeDefn),
 	hlds_data__get_type_defn_body(TypeDefn, Body),
-	special_pred_for_type_needs_typecheck(ModuleInfo, Body).
+	special_pred_for_type_needs_typecheck(ModuleInfo, SpecialPredId, Body).
 
 %-----------------------------------------------------------------------------%
 
