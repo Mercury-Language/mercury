@@ -24,7 +24,7 @@
 **	HAVE_SYS_UCONTEXT	we have <sys/ucontext.h>
 **	HAVE_SYS_TIME		we have <sys/time.h>
 **	HAVE_SYS_PARAM		we have <sys/param.h>
-**	HAVE_SETTIMER		we have setitimer()
+**	HAVE_SETITIMER		we have setitimer()
 **	PC_INDEX		index of PC in ucontexts.
 **	HAVE_SIGACTION		the machine has the sigaction() syscall.
 **	SIGACTION_FIELD		the name of the field in the sigaction struct
@@ -44,7 +44,7 @@
 #undef	HAVE_SYS_UCONTEXT
 #undef	HAVE_SYS_TIME
 #undef	HAVE_SYS_PARAM
-#undef	HAVE_SET_ITIMER
+#undef	HAVE_SETITIMER
 #undef	PC_INDEX
 #undef	HAVE_SIGACTION
 #undef	SIGACTION_FIELD
