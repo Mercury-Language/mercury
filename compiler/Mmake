@@ -31,11 +31,6 @@ MNLFLAGS =	-u 6000
 
 #-----------------------------------------------------------------------------#
 
-COMPILER_SRCS = $(mercury_compile.srcs)
-COMPILER_OBJS = $(mercury_compile.nos)
-
-#-----------------------------------------------------------------------------#
-
 # targets
 #
 # mercury_compile
@@ -86,12 +81,12 @@ ints		: mercury_compile.ints
 
 #-----------------------------------------------------------------------------#
 
-tags		: $(mercury_compile.srcs)
-	mtags *.pp *.in $(mercury_compile.srcs) ../library/*.m
+tags		: $(mercury_compile.ms)
+	mtags *.pp *.in $(mercury_compile.ms) ../library/*.m
 
-mercury_compile.stats : source_stats.awk $(mercury_compile.srcs)
+mercury_compile.stats : source_stats.awk $(mercury_compile.ms)
 	awk -f `vpath_find source_stats.awk` \
-		`vpath_find $(mercury_compile.srcs)` > $@
+		`vpath_find $(mercury_compile.ms)` > $@
 
 #-----------------------------------------------------------------------------#
 
