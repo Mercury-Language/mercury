@@ -1947,6 +1947,15 @@ if-then-else is also in a single-solution context.
 The compiler will check that all calls to a committed-choice
 mode of a predicate do indeed occur in a single-solution context.
 
+You can declare two different modes of a predicate which differ
+only in ``cc-ness'' (i.e. one being @samp{multi} and the other
+@samp{cc_multi}, or one being @samp{nondet} and the other {cc_nondet}).
+In that case, the compiler will select the appropriate one for each
+call depending on whether the call comes from a single-solution context
+or not.  Calls from single-solution contexts will call the committed
+choice version, while calls which are not from single-solution contexts
+will call the backtracking version.
+
 There are several reasons to use committed choice determinism annotations.
 One reason is for efficiency: committed choice annotations allow
 the compiler to generate much more efficient code.
@@ -1955,12 +1964,6 @@ or @samp{cc_multi} predicates, not in @samp{multi} predicates.
 Another is for dealing with types that use non-canonical representations
 (@pxref{Equality preds}).
 And there are a variety of other applications.
-
-It would be nice to be able to declare a mode of a predicate as
-both @samp{multi} and @samp{cc_multi}, and have the compiler call
-the appropriate one depending on whether the call comes from a
-single-solution context or not.  However, the current implementation
-does not yet support this.
 
 @node Equality preds
 @chapter User-defined equality predicates

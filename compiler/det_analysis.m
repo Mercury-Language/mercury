@@ -103,9 +103,9 @@
 :- implementation.
 
 :- import_module hlds_goal, prog_data, det_report, det_util.
-:- import_module type_util, mode_util, options, passes_aux.
+:- import_module type_util, modecheck_call, mode_util, options, passes_aux.
 :- import_module hlds_out, mercury_to_mercury, instmap.
-:- import_module bool, map, set, require, term.
+:- import_module assoc_list, bool, map, set, require, term.
 
 %-----------------------------------------------------------------------------%
 
@@ -425,10 +425,10 @@ det_infer_goal_2(switch(Var, SwitchCanFail, Cases0, SM), GoalInfo,
 	% This is the point at which annotations start changing
 	% when we iterate to fixpoint for global determinism inference.
 
-det_infer_goal_2(call(PredId, ModeId, A, B, C, N), GoalInfo, _, SolnContext,
+det_infer_goal_2(call(PredId, ModeId0, A, B, C, N), GoalInfo, _, SolnContext,
 		DetInfo, _, _,
 		call(PredId, ModeId, A, B, C, N), Detism, Msgs) :-
-	det_lookup_detism(DetInfo, PredId, ModeId, Detism0),
+	det_lookup_detism(DetInfo, PredId, ModeId0, Detism0),
 	%
 	% Make sure we don't try to call a committed-choice pred
 	% from a non-committed-choice context.
@@ -438,14 +438,26 @@ det_infer_goal_2(call(PredId, ModeId, A, B, C, N), GoalInfo, _, SolnContext,
 		NumSolns = at_most_many_cc,
 		SolnContext \= first_soln
 	->
-		Msgs = [cc_pred_in_wrong_context(GoalInfo, Detism0,
-				PredId, ModeId)],
-		% Code elsewhere relies on the assumption that
-		% SolnContext \= first_soln => NumSolns \= at_most_many_cc,
-		% so we need to enforce that here.
-		determinism_components(Detism, CanFail, at_most_many)
+		(
+			det_find_matching_non_cc_mode(DetInfo, PredId, ModeId0,
+				ModeId1)
+		->
+			ModeId = ModeId1,
+			Msgs = [],
+			Detism = Detism0
+		;
+			Msgs = [cc_pred_in_wrong_context(GoalInfo, Detism0,
+					PredId, ModeId0)],
+			ModeId = ModeId0,
+			% Code elsewhere relies on the assumption that
+			%	SolnContext \= first_soln =>
+			%		NumSolns \= at_most_many_cc,
+			% so we need to enforce that here.
+			determinism_components(Detism, CanFail, at_most_many)
+		)
 	;
 		Msgs = [],
+		ModeId = ModeId0,
 		Detism = Detism0
 	).
 
@@ -752,6 +764,46 @@ det_infer_switch([Case0 | Cases0], InstMap0, SolnContext, DetInfo, CanFail0,
 	det_infer_switch(Cases0, InstMap0, SolnContext, DetInfo, CanFail2,
 		MaxSolns2, Cases, Detism, Msgs2),
 	list__append(Msgs1, Msgs2, Msgs).
+
+%-----------------------------------------------------------------------------%
+
+	% det_find_matching_non_cc_mode(DetInfo, PredId, ProcId0, ProcId):
+	%	Search for a mode of the given predicate that
+	% 	is identical to the mode ProcId0, except that its
+	%	determinism is non-cc whereas ProcId0's detism is cc.
+	%	Let ProcId be the first such mode.
+
+:- pred det_find_matching_non_cc_mode(det_info, pred_id, proc_id, proc_id).
+:- mode det_find_matching_non_cc_mode(in, in, in, out) is semidet.
+
+det_find_matching_non_cc_mode(DetInfo, PredId, ProcId0, ProcId) :-
+	det_info_get_module_info(DetInfo, ModuleInfo),
+        module_info_preds(ModuleInfo, PredTable),
+	map__lookup(PredTable, PredId, PredInfo),
+	pred_info_procedures(PredInfo, ProcTable),
+	map__to_assoc_list(ProcTable, ProcList),
+	det_find_matching_non_cc_mode_2(ProcList, ModuleInfo, PredInfo,
+		ProcId0, ProcId).
+
+:- pred det_find_matching_non_cc_mode_2(assoc_list(proc_id, proc_info),
+		module_info, pred_info, proc_id, proc_id).
+:- mode det_find_matching_non_cc_mode_2(in, in, in, in, out) is semidet.
+
+det_find_matching_non_cc_mode_2([ProcId1 - ProcInfo | Rest],
+		ModuleInfo, PredInfo, ProcId0, ProcId) :-
+	(
+		ProcId1 \= ProcId0,
+		proc_info_interface_determinism(ProcInfo, Detism),
+		determinism_components(Detism, _CanFail, MaxSoln),
+		MaxSoln = at_most_many,
+		modes_are_identical_bar_cc(ProcId0, ProcId1, PredInfo,
+			ModuleInfo)
+	->
+		ProcId = ProcId1
+	;
+		det_find_matching_non_cc_mode_2(Rest, ModuleInfo, PredInfo,
+				ProcId0, ProcId)
+	).
 
 %-----------------------------------------------------------------------------%
 

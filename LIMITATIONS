@@ -10,9 +10,6 @@ are the following:
 * The compiler does not yet use structure reuse or compile-time
   garbage collection to exploit unique modes :-(
 
-* It is not possible to give both `cc_multi' and `multi' (or `cc_nondet'
-  and `nondet') determinisms for the same mode of a predicate.
-
 * Type inference and mode inference are a bit imperfect.
 
 We are working on eliminating all of these problems. 

@@ -246,6 +246,12 @@ Changes to the Mercury language:
 * Mode inference can now infer "mostly-unique" modes as well as
   "unique" modes.
 
+* You can now declare both committed-choice ("cc") and backtracking (non-cc)
+  modes for the same predicate.
+  
+  Determinism analysis will pick the appropriate one to use for each
+  call based on the context.
+
 * The module system now includes support for sub-modules.
 
   The aim of this extension is twofold.  One aim is to provide more
