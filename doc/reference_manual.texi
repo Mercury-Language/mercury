@@ -3818,14 +3818,6 @@ The compiler sometimes reports spurious errors if you
 define an equivalence type in a sub-module and export it
 as abstract type.
 @item
-When using nested modules,
-the Mercury build tool Mmake sometimes tries to build things in the
-wrong order and hence reports spurious errors about @samp{.int*} files
-not being found.  In these cases, simply typing @samp{mmake} again will
-usually solve the problem.  (If it doesn't, the work-around is
-to use separate sub-modules rather than nested sub-modules, i.e. put
-the sub-modules in a separate source file.)
-@item
 Using @samp{mmake} to do parallel makes (e.g. @samp{mmake --jobs 2})
 doesn't always work correctly if you're using nested sub-modules.
 (The work-around is to use separate sub-modules instead of nested

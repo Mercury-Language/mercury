@@ -24,6 +24,8 @@ MULTIMODULE_SOURCES= \
 	ho_default_func_2.sub.m \
 	imported_mode.m \
 	partial_implied_mode.m \
+	sub_b.m \
+	sub_c.m \
 	test_nested.m \
 	transitive_import.m \
 	transitive_import_class.m \
@@ -136,7 +138,6 @@ SOURCES= $(SINGLEMODULE_SOURCES) $(MULTIMODULE_SOURCES)
 #		when doing dynamic linking, or when the library
 #		was built with `--split-c-files')
 #	parent.undeclared_child.m (just not yet implemented)
-#	sub_b.m and sub_c.m (bug with dependencies & nested modules)
 #	freefree.m 	(need bromage's aliasing stuff)
 #	typeclass_test_8.m (minor formatting error in the output --
 #			the type class name should be in quotes)
