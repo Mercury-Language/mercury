@@ -881,7 +881,7 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 	goal_info_get_context(GoalInfo, Context),
 
 	MLDSGenInfo0 = ml_gen_info_init(ModuleInfo, PredId, ProcId),
-	MLDS_Params0 = ml_gen_proc_params(ModuleInfo, PredId, ProcId),
+	MLDS_Params = ml_gen_proc_params(ModuleInfo, PredId, ProcId),
 	( CodeModel = model_non ->
 		% set up the initial success continuation
 		ml_initial_cont(InitialCont, MLDSGenInfo0, MLDSGenInfo1),
@@ -903,7 +903,6 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 	MLDS_LocalVars = [ml_gen_succeeded_var_decl(MLDS_Context)],
 	ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, Goal,
 			MLDS_Decls0, MLDS_Statements,
-			MLDS_Params0, MLDS_Params,
 			MLDSGenInfo2, MLDSGenInfo),
 	ml_gen_info_get_extra_defns(MLDSGenInfo, ExtraDefns),
 	MLDS_Decls = list__append(MLDS_LocalVars, MLDS_Decls0),
@@ -958,12 +957,11 @@ ml_gen_local_var_decl(VarSet, VarTypes, Context, ModuleInfo, Var, MLDS_Defn) :-
 	%
 :- pred ml_gen_proc_body(code_model, list(prog_var), list(prog_type),
 		hlds_goal, mlds__defns, mlds__statements,
-		mlds__func_params, mlds__func_params,
 		ml_gen_info, ml_gen_info).
-:- mode ml_gen_proc_body(in, in, in, in, out, out, in, out, in, out) is det.
+:- mode ml_gen_proc_body(in, in, in, in, out, out, in, out) is det.
 
 ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, Goal,
-		MLDS_Decls, MLDS_Statements, MLDS_Params0, MLDS_Params) -->
+		MLDS_Decls, MLDS_Statements) -->
 	{ Goal = _ - GoalInfo },
 	{ goal_info_get_context(GoalInfo, Context) },
 
@@ -973,30 +971,38 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, Goal,
 	{ DoGenGoal = ml_gen_goal(CodeModel, Goal) },
 
 	%
-	% For existentially typed procedures, we may need to
-	% box the existentially typed output arguments.
+	% In certain cases -- for example existentially typed procedures,
+	% or unification/compare procedures for equivalence types --
+	% the parameters types may not match the types of the head variables.
+	% In such cases, we need to box/unbox/cast them to the right type.
 	%
-	ml_gen_box_existential_outputs(HeadVars, ArgTypes,
-		Context, MLDS_Params0, MLDS_Params, BoxDecls, BoxStatements),
-	( { BoxDecls = [], BoxStatements = [] } ->
-		% No boxing required.
-		DoGenGoal(MLDS_Decls, MLDS_Statements0)
+	ml_gen_convert_headvars(HeadVars, ArgTypes, Context,
+		ConvDecls, ConvInputStatements, ConvOutputStatements),
+	(
+		{ ConvDecls = [] },
+		{ ConvInputStatements = [] },
+		{ ConvOutputStatements = [] }
+	->
+		% No boxing/unboxing/casting required.
+		DoGenGoal(MLDS_Decls, MLDS_Statements1)
 	;
-		% Boxing required.
-		% We need to generate the goal,
-		% box the output arguments,
+		% Boxing/unboxing/casting required.
+		% We need to convert the input arguments,
+		% generate the goal, convert the output arguments,
 		% and then succeeed.
-		{ DoBoxOutputs = (pred(Decls::out, Statements::out, in, out)
+		{ DoConvOutputs = (pred(Decls::out, Statements::out, in, out)
 					is det -->
 			ml_gen_success(CodeModel, Context, SuccStatements),
 			{ Decls = [] },
-			{ Statements = list__append(BoxStatements,
+			{ Statements = list__append(ConvOutputStatements,
 				SuccStatements) }
 		) },
 		ml_combine_conj(CodeModel, Context,
-			DoGenGoal, DoBoxOutputs,
+			DoGenGoal, DoConvOutputs,
 			MLDS_Decls0, MLDS_Statements0),
-		{ MLDS_Decls = list__append(BoxDecls, MLDS_Decls0) }
+		{ MLDS_Statements1 = list__append(ConvInputStatements,
+			MLDS_Statements0) },
+		{ MLDS_Decls = list__append(ConvDecls, MLDS_Decls0) }
 	),
 
 	%
@@ -1007,143 +1013,90 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, Goal,
 		{ ReturnStmt = return([Succeeded]) },
 		{ ReturnStatement = mlds__statement(ReturnStmt,
 			mlds__make_context(Context)) },
-		{ MLDS_Statements = list__append(MLDS_Statements0,
+		{ MLDS_Statements = list__append(MLDS_Statements1,
 			[ReturnStatement]) }
 	;
-		{ MLDS_Statements = MLDS_Statements0 }
+		{ MLDS_Statements = MLDS_Statements1 }
 	).
 
 %
-% For existentially typed procedures, the type of each parameter
-% can be an existentially quantified type variable, and the type
-% of the corresponding actual variable in the procedure may be
-% some concrete type.  In such cases, we need to generate code
-% to box the argument, to convert from the concrete type to
-% the polymorphic type.  (Note: this can only happen for output
-% arguments, so it's always boxing, never unboxing, that we need to do.)
-% This procedure handles the boxing of such arguments.
+% In certain cases -- for example existentially typed procedures,
+% or unification/compare procedures for equivalence types --
+% the parameter types may not match the types of the head variables.
+% In such cases, we need to box/unbox/cast them to the right type.
+% This procedure handles that.
 %
-:- pred ml_gen_box_existential_outputs(list(prog_var), list(prog_type),
-		prog_context, mlds__func_params, mlds__func_params,
-		mlds__defns, mlds__statements, ml_gen_info, ml_gen_info).
-:- mode ml_gen_box_existential_outputs(in, in, in, in, out, out, out,
-		in, out) is det.
+:- pred ml_gen_convert_headvars(list(prog_var), list(prog_type), prog_context,
+		mlds__defns, mlds__statements, mlds__statements,
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_convert_headvars(in, in, in, out, out, out, in, out) is det.
 
-ml_gen_box_existential_outputs(HeadVars, HeadTypes, Context,
-		Params0, Params, Decls, Statements) -->
-	ml_gen_box_existential_output_args(HeadVars, HeadTypes, Context,
-		BoxedExistentialVars, Decls, Statements),
-	{ Params0 = func_params(Arguments0, RetType) },
-	{ Arguments = list__map(ml_update_param(BoxedExistentialVars),
-		Arguments0) },
-	{ Params = func_params(Arguments, RetType) }.
-
-:- pred ml_gen_box_existential_output_args(list(prog_var), list(prog_type),
-		prog_context, list(mlds__var_name),
-		mlds__defns, mlds__statements, ml_gen_info, ml_gen_info).
-:- mode ml_gen_box_existential_output_args(in, in, in, out, out, out, in, out)
-		is det.
-ml_gen_box_existential_output_args([], [], _, [], [], []) --> [].
-ml_gen_box_existential_output_args([Var|Vars], [ArgType|ArgTypes],
-		Context, BoxedExistentialVars, Decls, Statements) -->
-	ml_variable_type(Var, VarType),
+ml_gen_convert_headvars([], [], _, [], [], []) --> [].
+ml_gen_convert_headvars([Var|Vars], [HeadType|HeadTypes],
+		Context, Decls, InputStatements, OutputStatements) -->
+	ml_variable_type(Var, BodyType),
 	(
-                %
-                % If the ArgType from the pred decl is polymorphic,
-		% but the actual VarType from the procedure body
-		% is monomorphic, then this must be an existentially
-		% quantified output argument, and we'll need to box it.
-                %
-                { VarType = term__functor(_, _, _) },
-                { ArgType = term__variable(_) }
-        ->
 		%
-		% Instead of
+		% Check whether HeadType is the same as BodyType
+		% (modulo the term__contexts)
 		%
-		%	foo(..., ArgType *VarName, ...) {
-		%		... code that assigns to *VarName ...
-		%	}
+		{ map__init(Subst0) },
+		{ type_unify(HeadType, BodyType, [], Subst0, Subst) },
+		{ map__is_empty(Subst) }
+	->
+		% just recursively process the remaining arguments
+		ml_gen_convert_headvars(Vars, HeadTypes, Context,
+				Decls, InputStatements, OutputStatements)
+	;
 		%
-		% we generate
+		% generate the lval for the head variable
 		%
-		%	foo(..., ArgType *head_VarName, ...) {
-		%		VarType VarName;
-		%		... code that assigns to VarName ...
-		%		*head_VarName = box(VarName);
-		%	}
-		%
-		% Note that select_output_vars in ml_code_util.m
-		% already ensures that the generated code for the
-		% body will assign to VarName rather than to *VarName.
-		% And ml_update_param will handle the renaming of
-		% the parameter.
-		% So all we need to do here is to declare VarName
-		% as a local and generate the assignment to *head_VarName.
-		%
+		ml_gen_var_with_type(Var, HeadType, HeadVarLval),
 
-		% create a fresh variable name for the boxed parameter
+		%
+		% generate code to box or unbox that head variable,
+		% to convert its type from HeadType to BodyType
+		%
 		=(MLDSGenInfo),
 		{ ml_gen_info_get_varset(MLDSGenInfo, VarSet) },
 		{ VarName = ml_gen_var_name(VarSet, Var) },
-		{ string__append("head_", VarName, HeadVarName) },
+		ml_gen_box_or_unbox_lval(HeadType, BodyType, HeadVarLval,
+			VarName, Context, BodyLval, ConvDecls,
+			ConvInputStatements, ConvOutputStatements),
 
-		( { type_util__is_dummy_argument_type(VarType) } ->
-			% if it has a dummy argument type (e.g. io__state),
-			% then we don't need to bother declaring the
-			% variable or assigning from it
-			{ ConvStatements = [] },
-			{ LocalVarDecls = [] }
+		%
+		% Ensure that for any uses of this variable in the procedure
+		% body, we use the BodyLval (which has type BodyType)
+		% rather than the HeadVarLval (which has type HeadType).
+		%
+		ml_gen_info_set_var_lval(Var, BodyLval),
+
+		%
+		% Recursively process the remaining arguments
+		%
+		ml_gen_convert_headvars(Vars, HeadTypes, Context,
+				Decls1, InputStatements1, OutputStatements1),
+
+		%
+		% Add the code to convert this input or output.
+		%
+		=(MLDSGenInfo2),
+		{ ml_gen_info_get_output_vars(MLDSGenInfo2, OutputVars) },
+		{ list__member(Var, OutputVars) ->
+			InputStatements = InputStatements1,
+			OutputStatements = list__append(OutputStatements1,
+				ConvOutputStatements)
 		;
-			% generate a declaration for the variable (which
-			% will now become a local rather than a parameter)
-			{ ml_gen_info_get_module_info(MLDSGenInfo,
-				ModuleInfo) },
-			{ VarDecl = ml_gen_var_decl(VarName, VarType,
-				mlds__make_context(Context), ModuleInfo) },
-			{ LocalVarDecls = [VarDecl] },
-
-			% generate the assignment of the boxed variable
-			% to the dereferenced headvar
-			ml_qualify_var(VarName, VarLval),
-			ml_qualify_var(HeadVarName, HeadVarLval),
-			ml_gen_type(VarType, MLDS_VarType),
-			{ BoxedVarRval = unop(box(MLDS_VarType),
-				lval(VarLval)) },
-			{ AssignStatement = ml_gen_assign(
-				mem_ref(lval(HeadVarLval), MLDS_VarType),
-				BoxedVarRval, Context) },
-			{ ConvStatements = [AssignStatement] }
-		),
-		ml_gen_box_existential_output_args(Vars, ArgTypes, Context,
-				BoxedExistentialVars1, Decls1, Statements1),
-		{ BoxedExistentialVars = [VarName | BoxedExistentialVars1] },
-		{ list__append(LocalVarDecls, Decls1, Decls) },
-		{ list__append(ConvStatements, Statements1, Statements) }
-        ;
-		ml_gen_box_existential_output_args(Vars, ArgTypes, Context,
-				BoxedExistentialVars, Decls, Statements)
+			InputStatements = list__append(ConvInputStatements,
+				InputStatements1),
+			OutputStatements = OutputStatements1
+		},
+		{ list__append(ConvDecls, Decls1, Decls) }
 	).
-ml_gen_box_existential_output_args([], [_|_], _, _, _, _) -->
-	{ error("ml_gen_box_existential_outputs: length mismatch") }.
-ml_gen_box_existential_output_args([_|_], [], _, _, _, _) -->
-	{ error("ml_gen_box_existential_outputs: length mismatch") }.
-
-% 
-% If this parameter occurs in BoxedExistentialVars,
-% then prepend `head_' to its name.
-%
-:- type mlds_argument == pair(mlds__entity_name, mlds__type).
-:- func ml_update_param(list(mlds__var_name), mlds_argument) = mlds_argument.
-ml_update_param(BoxedExistentialVars, Arg0) = Arg :-
-	(
-		Arg0 = data(var(Name0)) - Type,
-		list__member(Name0, BoxedExistentialVars)
-	->
-		string__append("head_", Name0, Name),
-		Arg = data(var(Name)) - Type
-	;
-		Arg = Arg0
-	).
+ml_gen_convert_headvars([], [_|_], _, _, _, _) -->
+	{ error("ml_gen_convert_headvars: length mismatch") }.
+ml_gen_convert_headvars([_|_], [], _, _, _, _) -->
+	{ error("ml_gen_convert_headvars: length mismatch") }.
 
 %-----------------------------------------------------------------------------%
 %
@@ -2063,7 +2016,7 @@ ml_gen_pragma_c_output_arg_list([C_Arg | C_Args], Context, Components,
 		ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_pragma_c_output_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
-		Context, AssignOutput, ConvDecls, ConvStatements) -->
+		Context, AssignOutput, ConvDecls, ConvOutputStatements) -->
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
 	(
@@ -2075,7 +2028,8 @@ ml_gen_pragma_c_output_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
 		ml_variable_type(Var, VarType),
 		ml_gen_var(Var, VarLval),
 		ml_gen_box_or_unbox_lval(VarType, OrigType, VarLval, ArgName,
-			Context, ArgLval, ConvDecls, ConvStatements),
+			Context, ArgLval, ConvDecls, _ConvInputStatements,
+			ConvOutputStatements),
 		{ module_info_globals(ModuleInfo, Globals) },
 		{ globals__lookup_bool_option(Globals, highlevel_data,
 			HighLevelData) },
@@ -2116,7 +2070,7 @@ ml_gen_pragma_c_output_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
 		% it can't be used, so we just ignore it
 		{ AssignOutput = [] },
 		{ ConvDecls = [] },
-		{ ConvStatements = [] }
+		{ ConvOutputStatements = [] }
 	).
 
 %-----------------------------------------------------------------------------%

@@ -62,20 +62,25 @@
 		ml_gen_info, ml_gen_info).
 :- mode ml_gen_box_or_unbox_rval(in, in, in, out, in, out) is det.
 
+	% ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName,
+	%	Context,
+	%	ArgLval, ConvDecls, ConvInputStatements, ConvOutputStatements):
+	%
 	% This is like `ml_gen_box_or_unbox_rval', except that it
 	% works on lvals rather than rvals.
 	% Given a source type and a destination type,
 	% a source lval holding a value of the source type,
 	% and a name to base the name of the local temporary variable on,
 	% this procedure produces an lval of the destination type,
-	% code to assign the destination lval (suitably converted)
-	% to the source lval, and the declaration for the local
-	% temporary used (if any).
+	% the declaration for the local temporary used (if any),
+	% code to assign from the source lval (suitable converted)
+	% to the destination lval, and code to assign from the
+	% destination lval (suitable converted) to the source lval.
 	%
 :- pred ml_gen_box_or_unbox_lval(prog_type, prog_type, mlds__lval, var_name,
 		prog_context, mlds__lval, mlds__defns, mlds__statements,
-		ml_gen_info, ml_gen_info).
-:- mode ml_gen_box_or_unbox_lval(in, in, in, in, in, out, out, out,
+		mlds__statements, ml_gen_info, ml_gen_info).
+:- mode ml_gen_box_or_unbox_lval(in, in, in, in, in, out, out, out, out,
 		in, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -475,7 +480,8 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes, Context,
 			%
 			ml_gen_box_or_unbox_lval(CallerType, CalleeType,
 				VarLval, VarName, Context, ArgLval,
-				ThisArgConvDecls, ThisArgConvOutput),
+				ThisArgConvDecls, _ThisArgConvInput,
+				ThisArgConvOutput),
 			{ ConvDecls = list__append(ThisArgConvDecls,
 				ConvDecls1) },
 			{ ConvOutputStatements = list__append(
@@ -556,7 +562,8 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, VarRval, ArgRval) -->
 	).
 	
 ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName, Context,
-		ArgLval, ConvDecls, ConvStatements) -->
+		ArgLval, ConvDecls, ConvInputStatements, ConvOutputStatements)
+		-->
 	%
 	% First see if we can just convert the lval as an rval;
 	% if no boxing/unboxing is required, then ml_box_or_unbox_rval
@@ -569,12 +576,13 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName, Context,
 	->
 		{ ArgLval = VarLval },
 		{ ConvDecls = [] },
-		{ ConvStatements = [] }
+		{ ConvInputStatements = [] },
+		{ ConvOutputStatements = [] }
 	;
 		%
 		% If that didn't work, then we need to declare a fresh variable
-		% to use as the arg, and to generate a statement to box/unbox
-		% that fresh arg variable and assign it to the output argument
+		% to use as the arg, and to generate statements to box/unbox
+		% that fresh arg variable and assign it to/from the output argument
 		% whose address we were passed.
 		%
 
@@ -595,19 +603,28 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName, Context,
 		( { type_util__is_dummy_argument_type(CallerType) } ->
 			% if it is a dummy argument type (e.g. io__state),
 			% then we don't need to bother assigning it
-			{ ConvStatements = [] }
+			{ ConvInputStatements = [] },
+			{ ConvOutputStatements = [] }
 		;
-			% generate a statement to box/unbox the fresh variable
-			% and assign it to the output argument whose address
-			% we were passed.  Note that we swap the caller type
-			% and the callee type, since this is an output not
-			% an input, so the callee type is the source type
-			% and the caller type is the destination type.
+			%
+			% generate statements to box/unbox the fresh variable
+			% and assign it to/from the output argument whose
+			% address we were passed.
+			%
+
+			% assign to the freshly generated arg variable
+			ml_gen_box_or_unbox_rval(CallerType, CalleeType,
+				lval(VarLval), ConvertedVarRval),
+			{ AssignInputStatement = ml_gen_assign(ArgLval,
+				ConvertedVarRval, Context) },
+			{ ConvInputStatements = [AssignInputStatement] },
+
+			% assign from the freshly generated arg variable
 			ml_gen_box_or_unbox_rval(CalleeType, CallerType,
 				lval(ArgLval), ConvertedArgRval),
-			{ AssignStatement = ml_gen_assign(VarLval,
+			{ AssignOutputStatement = ml_gen_assign(VarLval,
 				ConvertedArgRval, Context) },
-			{ ConvStatements = [AssignStatement] }
+			{ ConvOutputStatements = [AssignOutputStatement] }
 		)
 	).
 	

@@ -173,6 +173,13 @@
 :- pred ml_gen_var(prog_var, mlds__lval, ml_gen_info, ml_gen_info).
 :- mode ml_gen_var(in, out, in, out) is det.
 
+	% Generate the mlds__lval corresponding to a given prog_var,
+	% with a given type.
+	%
+:- pred ml_gen_var_with_type(prog_var, prog_type, mlds__lval,
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_var_with_type(in, in, out, in, out) is det.
+
 	% Lookup the types of a list of variables.
 	%
 :- pred ml_variable_types(list(prog_var), list(prog_type),
@@ -471,6 +478,24 @@
 :- pred ml_gen_info_current_success_cont(success_cont,
 			ml_gen_info, ml_gen_info).
 :- mode ml_gen_info_current_success_cont(out, in, out) is det.
+
+	%
+	% We keep a partial mapping from vars to lvals.
+	% This is used in special cases to override the normal
+	% lval for a variable.  ml_gen_var will check this
+	% map first, and if the variable is not in this map,
+	% then it will go ahead and generate an lval for it
+	% as usual.
+	%
+
+	% Set the lval for a variable.
+:- pred ml_gen_info_set_var_lval(prog_var, mlds__lval,
+			ml_gen_info, ml_gen_info).
+:- mode ml_gen_info_set_var_lval(in, in, in, out) is det.
+
+	% Get the partial mapping from variables to lvals.
+:- pred ml_gen_info_get_var_lvals(ml_gen_info, map(prog_var, mlds__lval)).
+:- mode ml_gen_info_get_var_lvals(in, out) is det.
 
 	%
 	% The ml_gen_info contains a list of extra definitions
@@ -963,7 +988,28 @@ ml_gen_var_list([Var | Vars], [Lval | Lvals]) -->
 	% Generate the mlds__lval corresponding to a given prog_var.
 	%
 ml_gen_var(Var, Lval) -->
-	ml_variable_type(Var, Type),
+	%
+	% First check the var_lvals override mapping;
+	% if an lval has been set for this variable, use it
+	%
+	=(Info),
+	{ ml_gen_info_get_var_lvals(Info, VarLvals) },
+	( { map__search(VarLvals, Var, VarLval) } ->
+		{ Lval = VarLval }
+	;
+		%
+		% Otherwise just look up the variable's type
+		% and generate an lval for it using the ordinary
+		% algorithm.
+		%
+		ml_variable_type(Var, Type),
+		ml_gen_var_with_type(Var, Type, Lval)
+	).
+
+	% Generate the mlds__lval corresponding to a given prog_var,
+	% with a given type.
+	%
+ml_gen_var_with_type(Var, Type, Lval) -->
 	( { type_util__is_dummy_argument_type(Type) } ->
 		%
 		% The variable won't have been declared, so
@@ -1260,6 +1306,10 @@ ml_declare_env_ptr_arg(Name - mlds__generic_env_ptr_type) -->
 			cond_var :: cond_seq,
 			conv_var :: conv_seq,
 			success_cont_stack :: stack(success_cont),
+				% a partial mapping from vars to lvals,
+				% used to override the normal lval
+				% that we use for a variable
+			var_lvals :: map(prog_var, mlds__lval),
 				% definitions of functions or global
 				% constants which should be inserted
 				% before the definition of the function
@@ -1284,6 +1334,7 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = MLDSGenInfo :-
 	CondVarCounter = 0,
 	ConvVarCounter = 0,
 	stack__init(SuccContStack),
+	map__init(VarLvals),
 	ExtraDefns = [],
 
 	MLDSGenInfo = ml_gen_info(
@@ -1298,6 +1349,7 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = MLDSGenInfo :-
 			CondVarCounter,
 			ConvVarCounter,
 			SuccContStack,
+			VarLvals,
 			ExtraDefns
 		).
 
@@ -1347,6 +1399,11 @@ ml_gen_info_pop_success_cont(Info0, Info) :-
 
 ml_gen_info_current_success_cont(SuccCont, Info, Info) :-
 	stack__top_det(Info^success_cont_stack, SuccCont).
+
+ml_gen_info_get_var_lvals(Info, Info^var_lvals).
+
+ml_gen_info_set_var_lval(Var, Lval, Info,
+		Info^var_lvals := map__set(Info^var_lvals, Var, Lval)).
 
 ml_gen_info_add_extra_defn(ExtraDefn, Info,
 	Info^extra_defns := [ExtraDefn | Info^extra_defns]).
