@@ -7,11 +7,6 @@
 % This file contains a mode-checker.
 % Still very incomplete.
 
-% XXX BUG! abstractly_unify_inst will go into an infinite loop
-% 	   when unifying two recursively defined insts.
-%	   We need to introduce compiler-generated recursive
-%	   insts in this case.
-
 % XXX we need to allow unification of free with free even when both
 %     *variables* are live, if one of the particular *sub-nodes* is 
 %     dead.
@@ -1039,6 +1034,7 @@ inst_expand(ModuleInfo, Inst0, Inst) :-
 
 %-----------------------------------------------------------------------------%
 
+/*************** not used
 :- pred modecheck_set_term_inst_list(list(term), list(inst),
 					mode_info, mode_info).
 :- mode modecheck_set_term_inst_list(in, in, mode_info_di, mode_info_uo) is det.
@@ -1048,6 +1044,7 @@ modecheck_set_term_inst_list([Arg | Args], [Inst | Insts]) -->
 	{ Arg = term__variable(Var) },
 	modecheck_set_var_inst(Var, Inst),
 	modecheck_set_term_inst_list(Args, Insts).
+***************/
 
 :- pred modecheck_set_var_inst_list(list(var), list(inst),
 					mode_info, mode_info).
@@ -1061,11 +1058,23 @@ modecheck_set_var_inst_list([Var | Vars], [Inst | Insts]) -->
 :- pred modecheck_set_var_inst(var, inst, mode_info, mode_info).
 :- mode modecheck_set_var_inst(in, in, mode_info_di, mode_info_uo) is det.
 
-modecheck_set_var_inst(Var, Inst, ModeInfo0, ModeInfo) :-
+modecheck_set_var_inst(Var, FinalInst, ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	( InstMap0 = reachable(InstMapping0) ->
-		mode_info_get_module_info(ModeInfo0, ModuleInfo),
+		% The new inst must be computed by unifying the
+		% old inst and the proc's final inst
 		instmap_lookup_var(InstMap0, Var, Inst0),
+		mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+		(
+			abstractly_unify_inst(dead, Inst0, FinalInst,
+				ModuleInfo0, UnifyInst, ModuleInfo1)
+		->
+			ModuleInfo = ModuleInfo1,
+			Inst = UnifyInst
+		;
+			error("modecheck_set_var_inst: unify_inst failed")
+		),
+		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
 		(
 			% If we haven't added any information and
 			% we haven't bound any part of the var, then
@@ -1073,7 +1082,7 @@ modecheck_set_var_inst(Var, Inst, ModeInfo0, ModeInfo) :-
 
 			inst_matches_initial(Inst0, Inst, ModuleInfo)
 		->
-			ModeInfo = ModeInfo0
+			ModeInfo = ModeInfo1
 		;
 			% We must have either added some information,
 			% or bound part of the var.  The call to
@@ -1087,15 +1096,15 @@ modecheck_set_var_inst(Var, Inst, ModeInfo0, ModeInfo) :-
 			set__singleton_set(WaitingVars, Var),
 			mode_info_error(WaitingVars,
 					mode_error_bind_var(Var, Inst0, Inst),
-					ModeInfo0, ModeInfo
+					ModeInfo1, ModeInfo
 			)
 		;
 			map__set(InstMapping0, Var, Inst, InstMapping),
 			InstMap = reachable(InstMapping),
-			mode_info_set_instmap(InstMap, ModeInfo0, ModeInfo1),
-			mode_info_get_delay_info(ModeInfo1, DelayInfo0),
+			mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo2),
+			mode_info_get_delay_info(ModeInfo2, DelayInfo0),
 			delay_info__bind_var(DelayInfo0, Var, DelayInfo),
-			mode_info_set_delay_info(DelayInfo, ModeInfo1, ModeInfo)
+			mode_info_set_delay_info(DelayInfo, ModeInfo2, ModeInfo)
 		)
 	;
 		ModeInfo = ModeInfo0
@@ -1115,6 +1124,8 @@ modecheck_set_var_inst(Var, Inst, ModeInfo0, ModeInfo) :-
 :- mode inst_merge(in, in, in, out, out) is semidet.
 
 inst_merge(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
+		% check whether this pair of insts is already in
+		% the merge_insts table
 	module_info_insts(ModuleInfo0, InstTable0),
 	inst_table_get_merge_insts(InstTable0, MergeInstTable0),
 	ThisInstPair = InstA - InstB,
@@ -1291,11 +1302,11 @@ inst_matches_final_3(bound(ListA), bound(ListB), ModuleInfo, Expansions) :-
 inst_matches_final_3(bound(ListA), ground, ModuleInfo, _Expansions) :-
 	bound_inst_list_is_ground(ListA, ModuleInfo).
 inst_matches_final_3(ground, bound(ListB), ModuleInfo, _Expansions) :-
-	bound_inst_list_is_ground(ListB, ModuleInfo),
-		% XXX Not implemented! Should fail if there are not_reached
+	bound_inst_list_is_ground(ListB, ModuleInfo).
+		% XXX BUG! Should fail if there are not_reached
 		% insts in ListB, or if ListB does not contain a complete list
 		% of all the constructors for the type in question.
-	error("not implemented: `ground' matches_final `bound(...)'").
+	%%% error("not implemented: `ground' matches_final `bound(...)'").
 inst_matches_final_3(ground, ground, _, _).
 inst_matches_final_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 		ModuleInfo, Expansions) :-
@@ -1603,19 +1614,27 @@ mode_set_args([Inst | Insts], FinalInst, [Mode | Modes]) :-
 :- mode abstractly_unify_inst(in, in, in, in, out, out) is semidet.
 
 abstractly_unify_inst(Live, InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
-		% XXX improve documentation
+		% check whether this pair of insts is already in
+		% the unify_insts table
 	ThisInstPair = InstA - InstB,
 	module_info_insts(ModuleInfo0, InstTable0),
 	inst_table_get_unify_insts(InstTable0, UnifyInsts0),
-	( map__contains(UnifyInsts0, ThisInstPair) ->
-		Inst = defined_inst(unify_inst(InstA, InstB)),
+	( map__search(UnifyInsts0, ThisInstPair, Result) ->
+		( Result = known(UnifyInst) ->
+			Inst = UnifyInst
+		;
+			Inst = defined_inst(unify_inst(InstA, InstB))
+		),
 		ModuleInfo = ModuleInfo0
 	;
-		inst_expand(ModuleInfo0, InstA, InstA2),
-		inst_expand(ModuleInfo0, InstB, InstB2),
+			% insert ThisInstPair into the table with value
+			%`unknown' 
 		map__set(UnifyInsts0, ThisInstPair, unknown, UnifyInsts1),
 		inst_table_set_unify_insts(InstTable0, UnifyInsts1, InstTable1),
 		module_info_set_insts(ModuleInfo0, InstTable1, ModuleInfo1),
+			% unify the insts
+		inst_expand(ModuleInfo0, InstA, InstA2),
+		inst_expand(ModuleInfo0, InstB, InstB2),
 		( InstB2 = not_reached ->
 			Inst = InstA2,
 			ModuleInfo2 = ModuleInfo1
@@ -1623,6 +1642,7 @@ abstractly_unify_inst(Live, InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
 			abstractly_unify_inst_3(Live, InstA2, InstB2,
 				ModuleInfo1, Inst, ModuleInfo2)
 		),
+			% now update the value associated with ThisInstPair
 		module_info_insts(ModuleInfo2, InstTable2),
 		inst_table_get_unify_insts(InstTable2, UnifyInsts2),
 		map__set(UnifyInsts2, ThisInstPair, known(Inst), UnifyInsts),
@@ -1651,12 +1671,15 @@ abstractly_unify_inst_3(live, bound(List), free,	M, bound(List), M) :-
 	bound_inst_list_is_ground(List, M).
 abstractly_unify_inst_3(live, bound(ListX),bound(ListY), M0, bound(List), M) :-
 	abstractly_unify_bound_inst_list(live, ListX, ListY, M0, List, M).
-abstractly_unify_inst_3(live, bound(_),	ground,		M, ground, M).
+abstractly_unify_inst_3(live, bound(BoundInsts0),	ground,	M0,
+		bound(BoundInsts), M) :-
+	make_ground_bound_inst_list(BoundInsts0, M0, BoundInsts, M).
 abstractly_unify_inst_3(live, bound(List), abstract_inst(_,_), ModuleInfo,
 							ground, ModuleInfo) :-
 	bound_inst_list_is_ground(List, ModuleInfo).
 
-abstractly_unify_inst_3(live, ground,	_,		M, ground, M).
+abstractly_unify_inst_3(live, ground,	Inst0,		M0, Inst, M) :-
+	make_ground_inst(Inst0, M0, Inst, M).
 
 abstractly_unify_inst_3(live, abstract_inst(_,_), free,	_, _, _) :- fail.
 abstractly_unify_inst_3(live, abstract_inst(_,_), bound(List), ModuleInfo,
@@ -1678,8 +1701,9 @@ abstractly_unify_inst_3(dead, bound(List), free, M, bound(List), M).
 abstractly_unify_inst_3(dead, bound(ListX), bound(ListY), M0, bound(List), M)
 		:-
 	abstractly_unify_bound_inst_list(dead, ListX, ListY, M0, List, M).
-	% XXX loses info
-abstractly_unify_inst_3(dead, bound(_), ground, M, ground, M).
+abstractly_unify_inst_3(dead, bound(BoundInsts0), ground, M0,
+			bound(BoundInsts), M) :-
+	make_ground_bound_inst_list(BoundInsts0, M0, BoundInsts, M).
 abstractly_unify_inst_3(dead, bound(List), abstract_inst(N,As), ModuleInfo,
 					Result, ModuleInfo) :-
 	( bound_inst_list_is_ground(List, ModuleInfo) ->
@@ -1690,8 +1714,8 @@ abstractly_unify_inst_3(dead, bound(List), abstract_inst(N,As), ModuleInfo,
 		fail
 	).
 
-	% XXX loses info
-abstractly_unify_inst_3(dead, ground,		_,		M, ground, M).
+abstractly_unify_inst_3(dead, ground,		Inst0,	M0, Inst, M) :-
+	make_ground_inst(Inst0, M0, Inst, M).
 
 abstractly_unify_inst_3(dead, abstract_inst(N,As), abstract_inst(N,As), _, _, _)
 						:- fail.
@@ -1801,8 +1825,12 @@ make_ground_inst(defined_inst(InstName), ModuleInfo0, Inst, ModuleInfo) :-
 		% ground_inst table
 	module_info_insts(ModuleInfo0, InstTable0),
 	inst_table_get_ground_insts(InstTable0, GroundInsts0),
-	( map__contains(GroundInsts0, InstName) ->
-		Inst = defined_inst(ground_inst(InstName)),
+	( map__search(GroundInsts0, InstName, Result) ->
+		( Result = known(GroundInst) ->
+			Inst = GroundInst
+		;
+			Inst = defined_inst(ground_inst(InstName))
+		),
 		ModuleInfo = ModuleInfo0
 	;
 		% insert the inst name in the ground_inst table, with
