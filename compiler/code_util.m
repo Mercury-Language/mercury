@@ -184,7 +184,7 @@ code_util__builtin_binop("int", "-", 3, (-)).
 code_util__builtin_binop("int", "builtin_times", 3, (*)).
 code_util__builtin_binop("int", "*", 3, (*)).
 code_util__builtin_binop("int", "builtin_div", 3, (/)).
-code_util__builtin_binop("int", "/", 3, (/)).
+code_util__builtin_binop("int", "//", 3, (/)).
 code_util__builtin_binop("int", "builtin_mod", 3, (mod)).
 code_util__builtin_binop("int", "mod", 3, (mod)).
 code_util__builtin_binop("int", "builtin_left_shift", 3, (<<)).
