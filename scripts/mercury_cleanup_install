@@ -1,0 +1,98 @@
+#! /bin/sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 1999 Monash University.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# mercury_cleanup_install
+#
+# Author: Warwick Harvey <wharvey@cs.monash.edu.au>
+#
+# Checks for failed/aborted installation attempts, and tries to clean up
+# after them, since simply re-starting the install may do the wrong thing.
+#
+# The main problem with restarting an install is when the install is
+# interrupted during the building of alternative grades of the library,
+# runtime, etc.  When the alternative grades are being built, the versions
+# of the compiled files needed for the compiler itself (as opposed to
+# installed libraries) are moved into a `tmp_dir' subdirectory, with the
+# alternative versions being built in the old location.  This means that if
+# the process is interrupted and then re-started, the build process will
+# attempt to re-build the compiler using some files with the wrong grade.
+#
+# This script checks for the presence of subdirectories named `tmp_dir',
+# and if it finds them, assumes that an install process has failed and
+# needs to be cleaned up.  Cleaning up the failed install consists simply
+# of moving all the files in each `tmp_dir' back to where they came
+# from, overwriting any alternative grade versions that may be there,
+# and deleting the temporary directories.
+#
+# If there is an error while doing the clean-up, a more aggressive approach
+# is used.  An "mmake clean" is run on the directory in question, and then
+# the `tmp_dir' is deleted completely.  Note that for some directories (e.g.
+# `library' and `browser'), this deletes some C files, which require a
+# working version of Mercury to rebuild.  However, if the installation got
+# as far as building the different grades of the library, then the compiler
+# (plus its default grade) has already been installed.  The build scripts
+# are smart enough to find and use this installed version even if it's not
+# in the user's path, so the "mmake clean" is safe even if there is no
+# existing Mercury installation (e.g. if the user is building it from
+# release sources).
+
+cleanup_failed_dirs=
+
+for tmp in `find . -name tmp_dir -print` ; do
+    dir=`dirname $tmp`
+    echo "Cleaning up from apparent failed install in \`$dir'..."
+    if (
+	cd $dir && (
+	    if [ -d Mercury/dirs ] ; then
+	    	dirs_subdir=Mercury/dirs/
+	    else
+	    	dirs_subdir=
+	    fi
+	    # For every saved `.dir' directory, delete any existing one so
+	    # it can be moved back (one can't just clobber directories).
+	    (
+		cd tmp_dir &&
+		for dir in *.dir ; do
+		    if [ "$dir" != "*.dir" ] ; then
+			rm -rf ../$dirs_subdir$dir
+		    fi
+		done
+	    )
+	    [ -d Mercury/dirs ] && mv tmp_dir/*.dir $dirs_subdir
+	    [ -d Mercury/cs ] && mv -f tmp_dir/*.c Mercury/cs
+	    [ -d Mercury/os ] && mv -f tmp_dir/*.o tmp_dir/*.pic_o Mercury/os
+	    mv -f tmp_dir/* .
+	    rmdir tmp_dir
+	)
+    ) ; then
+	echo "Done."
+    else
+	echo "Failed.  Trying a more aggressive approach..."
+	if ( cd $dir && mmake clean && rm -rf tmp_dir ) ; then
+	    echo "Succeeded."
+	else
+	    echo "Failed again.  :-("
+	    cleanup_failed_dirs="$cleanup_failed_dirs $dir"
+	fi
+    fi
+done
+
+if [ -n "$cleanup_failed_dirs" ] ; then
+	cat <<END
+
+Clean-up failed in the following directories:
+
+$cleanup_failed_dirs
+
+Either fix these directories by hand, or start over from scratch.
+
+END
+	exit 1
+fi
+
+exit 0
+

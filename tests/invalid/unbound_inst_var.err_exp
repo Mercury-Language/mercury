@@ -1,5 +1,0 @@
-unbound_inst_var.m:019: In mode declaration for predicate `unbound_inst_var:test/1':
-unbound_inst_var.m:019:   error: unbound inst variable(s).
-unbound_inst_var.m:019:   (Sorry, polymorphic modes are not supported.)
-unbound_inst_var.m:018: Error: no mode declaration for predicate `unbound_inst_var:test/1'.
-For more information, try recompiling with `-E'.

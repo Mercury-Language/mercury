@@ -1,8 +1,0 @@
-vars_in_wrong_places.m:002: Error: atom expected in clause head: _0 :- blah.
-vars_in_wrong_places.m:003: Error: atom expected in equation head: _0 = 42.
-vars_in_wrong_places.m:004: Error: atom expected in equation head: _0 = 42.
-Error: atom expected in `:- pred' declaration: _0.
-vars_in_wrong_places.m:006: Error: atom expected in `:- func' declaration: _0 = int.
-Error: atom expected in predicate `:- mode' declaration: _0.
-vars_in_wrong_places.m:008: Error: atom expected in function `:- mode' declaration: _0 = int.
-For more information, try recompiling with `-E'.

@@ -1,0 +1,1307 @@
+%-----------------------------------------------------------------------------%
+% Copyright (C) 1999 The University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
+
+% File: ml_elim_nested.m
+% Main author: fjh
+
+% This module is an MLDS-to-MLDS transformation
+% that eliminates nested functions.
+
+% Note that this module does not attempt to handle arbitrary MLDS
+% as input; it will only work with the output of the current MLDS
+% code generator.  In particular, it assumes that local variables
+% in nested functions can be hoisted into the outermost function's
+% environment.  That's not true in general (e.g. if the nested
+% functions are recursive), but it's true for the code that ml_code_gen
+% generates.
+
+% As well as eliminating nested functions, this transformation
+% also has the effect of fixing up the dangling `env_ptr' references
+% that ml_code_gen.m leaves in the code.
+
+%-----------------------------------------------------------------------------%
+% TRANSFORMATION SUMMARY
+%-----------------------------------------------------------------------------%
+%
+% We transform code of the form e.g.
+%
+%	<OuterRet> outer(<OuterArgs>) {
+%		<OuterLocals>
+%
+%		<Inner1Ret> inner(<Inner1Args>, void *env_ptr_arg) {
+%			<Inner1Locals>
+%
+%			<NestedInnerRet> nested_inner(<NestedInnerArgs>,
+%						void *env_ptr_arg)
+%			{
+%				<NestedInnerLocals>
+%
+%				<NestedInnerCode>
+%			}
+%
+%			<Inner1Code>
+%		}
+%
+%		<Inner2Ret> inner(<Inner2Args>, void *env_ptr_arg) {
+%			<Inner2Locals>
+%
+%			<Inner2Code>
+%		}
+%
+%		<OuterCode>
+%	}
+%
+% into
+%
+%	struct OuterLocals_struct {
+%		<OuterArgs>
+%		<OuterLocals>
+%		<Inner1Locals>
+%	};
+%
+%	<NestedInnerRet> nested_inner(<NestedInnerArgs>, void *env_ptr_arg) {
+%		OuterLocals *env_ptr = env_ptr_arg;
+%		<NestedInnerLocals>
+%
+%		<NestedInnerCode'>
+%	}
+%
+%	<Inner1Ret> inner(<Inner1Args>, void *env_ptr_arg) {
+%		OuterLocals *env_ptr = env_ptr_arg;
+%		
+%		<Inner1Code'>
+%	}
+%
+%	<Inner2Ret> inner(<Inner2Args>, void *env_ptr_arg) {
+%		OuterLocals *env_ptr = env_ptr_arg;
+%		<Inner2Locals>
+%
+%		<Inner2Code'>
+%	}
+%
+%	<OuterRet> outer(<OuterArgs>) {
+%		OuterLocals env;
+%		OuterLocals *env_ptr = &env;
+%
+%		env_ptr-><OuterArgs> = <OuterArgs>;
+%		<OuterCode'>
+%	}
+%
+% where <Inner1Code'>, <Inner2Code'> and <NestedInnerCode'> are the
+% same as <Inner1Code>, <Inner2Code> and <NestedInnerCode> (respectively)
+% except that any references to a local variable <Var> declared in
+% outer() are replaced with `env_ptr -> <Var>',
+% and likewise <OuterCode'> is the same as <OuterCode> with references to
+% local variables replaced with `env_ptr->foo'.  In the latter
+% case it could (depending on how smart the C compiler is) potentially
+% be more efficient to generate `env.foo', but currently we don't do that.
+%
+% Actually the description above is slightly over-simplified: not all local
+% variables need to be put in the environment struct.  Only those local
+% variables which are referenced by nested functions need to be
+% put in the environment struct.
+%
+% The `env_ptr' variables generated here serve as definitions for
+% the (previously dangling) references to such variables that
+% ml_code_gen puts in calls to the nested functions.
+
+%-----------------------------------------------------------------------------%
+
+:- module ml_elim_nested.
+
+:- interface.
+
+:- import_module mlds.
+:- import_module io.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+	% Eliminated nested functions for the whole MLDS.
+	%
+:- pred ml_elim_nested(mlds, mlds, io__state, io__state).
+:- mode ml_elim_nested(in, out, di, uo) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+:- import_module int, list, std_util, string, require.
+% the following imports are needed for mangling pred names
+:- import_module hlds_pred, prog_data, prog_out.
+
+	% Eliminated nested functions for the whole MLDS.
+	%
+ml_elim_nested(MLDS0, MLDS) -->
+	{ MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0) },
+	{ MLDS = mlds(ModuleName, ForeignCode, Imports, Defns) },
+	{ MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName) },
+	{ OuterVars = [] },
+	{ DefnsList = list__map(
+		ml_elim_nested_defns(MLDS_ModuleName, OuterVars),
+		Defns0) },
+	{ Defns = list__condense(DefnsList) }.
+
+	% Hoist out any nested function occurring in a single mlds__defn.
+	% Return a list of mlds__defns that contains no nested functions.
+	%
+:- func ml_elim_nested_defns(mlds_module_name, outervars, mlds__defn) =
+	list(mlds__defn).
+ml_elim_nested_defns(ModuleName, OuterVars, Defn0) = FlatDefns :-
+	Defn0 = mlds__defn(Name, Context, Flags, DefnBody0),
+	( DefnBody0 = mlds__function(PredProcId, Params, yes(FuncBody0)) ->
+		%
+		% traverse the function body, finding (and removing)
+		% any nested functions, and fixing up any references
+		% to the arguments or to local variables which
+		% occur in nested functions
+		%
+		ElimInfo0 = elim_info_init(ModuleName, OuterVars),
+		Params = mlds__func_params(Arguments, _RetValues),
+		ml_maybe_add_args(Arguments, FuncBody0, ModuleName,
+			Context, ElimInfo0, ElimInfo1),
+		flatten_statement(FuncBody0, FuncBody1, ElimInfo1, ElimInfo),
+		elim_info_finish(ElimInfo, NestedFuncs0, LocalVars),
+
+		%
+		% if there were no nested functions, then we're done
+		%
+		( NestedFuncs0 = [] ->
+			FuncBody = FuncBody1,
+			HoistedDefns = []
+		;
+			%
+			% If the function's arguments are referenced by
+			% nested functions, then we need to copy them to
+			% local variables in the environment structure.
+			%
+			ml_maybe_copy_args(Arguments, FuncBody0, ModuleName,
+				Context, _ArgsToCopy, CodeToCopyArgs),
+
+			%
+			% create a struct to hold the local variables,
+			% and initialize the environment pointers for
+			% both the containing function and the nested
+			% functions
+			%
+			EnvName = ml_env_name(Name),
+			ml_create_env(EnvName, LocalVars, Context, ModuleName,
+				EnvType, EnvDecls, InitEnv),
+			list__map(ml_insert_init_env(EnvName, ModuleName),
+				NestedFuncs0, NestedFuncs),
+
+			%
+			% insert the definition and initialization of the
+			% environment struct variable at the start of the
+			% top-level function's body
+			%
+			FuncBody = ml_block(EnvDecls,
+				list__append([InitEnv | CodeToCopyArgs],
+					[FuncBody1]),
+				Context),
+			%
+			% hoist the nested functions out, by
+			% inserting the environment struct type
+			% and the previously nested functions
+			% at the start of the list of definitions,
+			% followed by the new version of the top-level function
+			%
+			HoistedDefns = [EnvType | NestedFuncs]
+		),
+		DefnBody = mlds__function(PredProcId, Params, yes(FuncBody)),
+		Defn = mlds__defn(Name, Context, Flags, DefnBody),
+		FlatDefns = list__append(HoistedDefns, [Defn])
+	;
+		% leave definitions of things other than functions unchanged
+		FlatDefns = [Defn0]
+	).
+
+	%
+	% Add any arguments which are used in nested functions
+	% to the local_vars field in the elim_info.
+	%
+:- pred ml_maybe_add_args(mlds__arguments, mlds__statement,
+		mlds_module_name, mlds__context, elim_info, elim_info).
+:- mode ml_maybe_add_args(in, in, in, in, in, out) is det.
+
+ml_maybe_add_args([], _, _, _) --> [].
+ml_maybe_add_args([Arg|Args], FuncBody, ModuleName, Context) -->
+	(
+		{ Arg = data(var(VarName)) - _Type },
+		{ ml_should_add_local_var(ModuleName, VarName, [], [FuncBody]) }
+	->
+		{ ml_conv_arg_to_var(Context, Arg, ArgToCopy) },
+		elim_info_add_local_var(ArgToCopy)
+	;
+		[]
+	),
+	ml_maybe_add_args(Args, FuncBody, ModuleName, Context).
+
+	%
+	% Generate code to copy any arguments which are used in nested functions
+	% to the environment struct.
+	%
+:- pred ml_maybe_copy_args(mlds__arguments, mlds__statement,
+		mlds_module_name, mlds__context, mlds__defns, mlds__statements).
+:- mode ml_maybe_copy_args(in, in, in, in, out, out) is det.
+
+ml_maybe_copy_args([], _, _, _, [], []).
+ml_maybe_copy_args([Arg|Args], FuncBody, ModuleName, Context,
+		ArgsToCopy, CodeToCopyArgs) :-
+	ml_maybe_copy_args(Args, FuncBody, ModuleName, Context,
+			ArgsToCopy0, CodeToCopyArgs0),
+	(
+		Arg = data(var(VarName)) - _Type,
+		ml_should_add_local_var(ModuleName, VarName, [], [FuncBody])
+	->
+		ml_conv_arg_to_var(Context, Arg, ArgToCopy),
+
+		%
+		% Generate code to copy this arg to the environment
+		% struct:
+		%	env_ptr->foo = foo;
+		%
+		QualVarName = qual(ModuleName, VarName),
+		FieldName = named_field(QualVarName),
+		Tag = yes(0),
+		EnvPtr = lval(var(qual(ModuleName, "env_ptr"))),
+		EnvArgLval = field(Tag, EnvPtr, FieldName),
+		ArgRval = lval(var(QualVarName)),
+		AssignToEnv = assign(EnvArgLval, ArgRval),
+		CodeToCopyArg = mlds__statement(atomic(AssignToEnv), Context),
+
+		ArgsToCopy = [ArgToCopy | ArgsToCopy0],
+		CodeToCopyArgs = [CodeToCopyArg | CodeToCopyArgs0]
+	;
+		ArgsToCopy = ArgsToCopy0,
+		CodeToCopyArgs = CodeToCopyArgs0
+	).
+
+	% Create the environment struct type,
+	% the declaration of the environment variable,
+	% and the declaration and initializer for the environment
+	% pointer variable:
+	%
+	%	struct <EnvClassName> {
+	%		<LocalVars>
+	%	};
+	%	struct <EnvClassName> env;
+	%	struct <EnvClassName> *env_ptr;
+	%	env_ptr = &env;
+	%
+:- pred ml_create_env(mlds__class_name, list(mlds__defn), mlds__context,
+		mlds_module_name, mlds__defn,
+		list(mlds__defn), mlds__statement).
+:- mode ml_create_env(in, in, in, in, out, out, out) is det.
+
+ml_create_env(EnvClassName, LocalVars, Context, ModuleName,
+		EnvType, EnvDecls, InitEnv) :-
+	%
+	% generate the following type:
+	%
+	%	struct <EnvClassName> {
+	%		<LocalVars>
+	%	};
+	%
+	EnvTypeName = type(EnvClassName, 0),
+	EnvTypeFlags = env_decl_flags,
+	EnvTypeDefnBody = mlds__class(mlds__class_defn(mlds__struct, [], [], [],
+		LocalVars)),
+	EnvType = mlds__defn(EnvTypeName, Context, EnvTypeFlags,
+		EnvTypeDefnBody),
+
+	%
+	% generate the following variable declaration:
+	%
+	%	struct <EnvClassName> env;
+	%
+	EnvVarName = data(var("env")),
+	EnvVarFlags = env_decl_flags,
+	EnvVarType = mlds__class_type(qual(ModuleName, EnvClassName), 0),
+	EnvVarInitializer = no,
+	EnvVarDefnBody = mlds__data(EnvVarType, EnvVarInitializer),
+	EnvVarDecl = mlds__defn(EnvVarName, Context, EnvVarFlags, EnvVarDefnBody),
+
+	%
+	% declare the `env_ptr' var, and
+	% initialize the `env_ptr' with the address of `env'
+	%
+	EnvVar = qual(ModuleName, "env"),
+	EnvVarAddr = mem_addr(var(EnvVar)),
+	ml_init_env(EnvClassName, EnvVarAddr, Context, ModuleName,
+		EnvPtrVarDecl, InitEnv),
+
+	% group those two declarations together
+	EnvDecls = [EnvVarDecl, EnvPtrVarDecl].
+
+	% ml_insert_init_env:
+	%	If the definition is a nested function definition, and it's
+	%	body makes use of the environment pointer (`env_ptr'), then
+	%	insert code to declare and initialize the environment pointer.
+	%
+	% We transform code of the form
+	%	<Ret> <Func>(<Args>) {
+	%		<Body>
+	%	}
+	% to
+	%	<Ret> <Func>(<Args>) {
+	%		struct <EnvClassName> *env_ptr;
+	%		env_ptr = &env_ptr_arg;
+	%		<Body>
+	%	}
+	%
+:- pred ml_insert_init_env(mlds__class_name, mlds_module_name,
+		mlds__defn, mlds__defn).
+:- mode ml_insert_init_env(in, in, in, out) is det.
+ml_insert_init_env(ClassName, ModuleName, Defn0, Defn) :-
+	Defn0 = mlds__defn(Name, Context, Flags, DefnBody0),
+	(
+		DefnBody0 = mlds__function(PredProcId, Params, yes(FuncBody0)),
+		statement_contains_var(FuncBody0, qual(ModuleName, "env_ptr"))
+	->
+		%
+		% XXX we should really insert a type cast here,
+		% to convert from mlds__generic_ptr_type (i.e. `void *') to
+		% the mlds__class_type (i.e. `struct <EnvClassName> *').
+		% But the MLDS doesn't have any representation for casts.
+		%
+		EnvPtrVal = lval(var(qual(ModuleName, "env_ptr_arg"))),
+		ml_init_env(ClassName, EnvPtrVal, Context, ModuleName,
+			EnvPtrDecl, InitEnvPtr),
+		FuncBody = mlds__statement(block([EnvPtrDecl],
+				[InitEnvPtr, FuncBody0]), Context),
+		DefnBody = mlds__function(PredProcId, Params, yes(FuncBody)),
+		Defn = mlds__defn(Name, Context, Flags, DefnBody)
+	;
+		Defn = Defn0
+	).
+
+	% Create the environment pointer and initialize it:
+	%
+	%	struct <EnvClassName> *env_ptr;
+	%	env_ptr = <EnvPtrVal>;
+	%
+:- pred ml_init_env(mlds__class_name, mlds__rval,
+		mlds__context, mlds_module_name, mlds__defn, mlds__statement).
+:- mode ml_init_env(in, in, in, in, out, out) is det.
+
+ml_init_env(EnvClassName, EnvPtrVal, Context, ModuleName,
+		EnvPtrVarDecl, InitEnvPtr) :-
+
+	% compute the `struct <EnvClassName>' type
+	EnvVarType = mlds__class_type(qual(ModuleName, EnvClassName), 0),
+
+	%
+	% generate the following variable declaration:
+	%
+	%	struct <EnvClassName> *env_ptr;
+	%
+	EnvPtrVarName = data(var("env_ptr")),
+	EnvPtrVarFlags = env_decl_flags,
+	EnvPtrVarType = mlds__ptr_type(EnvVarType),
+	EnvPtrVarInitializer = no,
+	EnvPtrVarDefnBody = mlds__data(EnvPtrVarType, EnvPtrVarInitializer),
+	EnvPtrVarDecl = mlds__defn(EnvPtrVarName, Context, EnvPtrVarFlags,
+		EnvPtrVarDefnBody),
+
+	%
+	% generate the following statement:
+	%
+	%	env_ptr = <EnvPtrVal>;
+	%
+	EnvPtrVar = qual(ModuleName, "env_ptr"),
+	AssignEnvPtr = assign(var(EnvPtrVar), EnvPtrVal),
+	InitEnvPtr = mlds__statement(atomic(AssignEnvPtr), Context).
+
+	% Given the declaration for a function parameter, produce a
+	% declaration for a corresponding local variable or environment
+	% struct field.  We need to do this so as to include function
+	% parameter in the environment struct.
+	%
+:- pred ml_conv_arg_to_var(mlds__context, pair(entity_name, mlds__type),
+		mlds__defn).
+:- mode ml_conv_arg_to_var(in, in, out) is det.
+
+ml_conv_arg_to_var(Context, Name - Type, LocalVar) :-
+	Flags = env_decl_flags,
+	Initializer = no,
+	DefnBody = mlds__data(Type, Initializer),
+	LocalVar = mlds__defn(Name, Context, Flags, DefnBody).
+
+	% Return the declaration flags appropriate for a local variable.
+:- func env_decl_flags = mlds__decl_flags.
+env_decl_flags = MLDS_DeclFlags :-
+	Access = public,
+	PerInstance = per_instance,
+	Virtuality = non_virtual,
+	Finality = overridable,
+	Constness = modifiable,
+	Abstractness = concrete,
+	MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
+		Virtuality, Finality, Constness, Abstractness).
+
+	% Generate a block statement, i.e. `{ <Decls>; <Statements>; }'.
+	% But if the block consists only of a single statement with no
+	% declarations, then just return that statement.
+	%
+:- func ml_block(mlds__defns, mlds__statements, mlds__context) =
+		mlds__statement.
+
+ml_block(VarDecls, Statements, Context) =
+	(if VarDecls = [], Statements = [SingleStatement] then
+		SingleStatement
+	else
+		mlds__statement(block(VarDecls, Statements), Context)
+	).
+		
+%-----------------------------------------------------------------------------%
+%
+% This code does some name mangling.
+% It essentially duplicates the functionality in mlds_output_name.
+% 
+% Doing name mangling here is probably a bad idea;
+% it might be better to change the MLDS data structure
+% to allow structured type names, so that we don't have to
+% do any name mangling at this point.
+%
+
+	% Compute the name to use for the environment struct
+	% for the specified function.
+:- func ml_env_name(mlds__entity_name) = mlds__class_name.
+
+ml_env_name(type(_, _)) = _ :-
+	error("ml_env_name: expected function, got type").
+ml_env_name(data(_)) = _ :-
+	error("ml_env_name: expected function, got data").
+ml_env_name(function(PredLabel, ProcId, MaybeSeqNum, _PredId)) = ClassName :-
+	PredLabelString = ml_pred_label_name(PredLabel),
+	proc_id_to_int(ProcId, ModeNum),
+	( MaybeSeqNum = yes(SeqNum) ->
+		string__format("%s_%d_%d_env",
+			[s(PredLabelString), i(ModeNum), i(SeqNum)],
+			ClassName)
+	;
+		string__format("%s_%d_env",
+			[s(PredLabelString), i(ModeNum)],
+			ClassName)
+	).
+
+:- func ml_pred_label_name(mlds__pred_label) = string.
+
+ml_pred_label_name(pred(PredOrFunc, MaybeDefiningModule, Name, Arity))
+		= LabelName :-
+	( PredOrFunc = predicate, Suffix = "p"
+	; PredOrFunc = function, Suffix = "f"
+	),
+	( MaybeDefiningModule = yes(DefiningModule) ->
+		ModuleNameString = ml_module_name_string(DefiningModule),
+		string__format("%s_%d_%s_in__%s",
+			[s(Name), i(Arity), s(Suffix), s(ModuleNameString)],
+			LabelName)
+	;
+		string__format("%s_%d_%s",
+			[s(Name), i(Arity), s(Suffix)],
+			LabelName)
+	).
+ml_pred_label_name(special_pred(PredName, MaybeTypeModule,
+		TypeName, TypeArity)) = LabelName :-
+	( MaybeTypeModule = yes(TypeModule) ->
+		TypeModuleString = ml_module_name_string(TypeModule),
+		string__format("%s__%s__%s_%d",
+			[s(PredName), s(TypeModuleString),
+				s(TypeName), i(TypeArity)],
+			LabelName)
+	;
+		string__format("%s__%s_%d",
+			[s(PredName), s(TypeName), i(TypeArity)],
+			LabelName)
+	).
+
+:- func ml_module_name_string(mercury_module_name) = string.
+ml_module_name_string(ModuleName) = ModuleNameString :-
+	Separator = "__",
+	prog_out__sym_name_to_string(ModuleName, Separator, ModuleNameString).
+
+%-----------------------------------------------------------------------------%
+
+%
+% flatten_maybe_statement:
+% flatten_statements:
+% flatten_statement:
+%	Recursively process the statement(s), calling fixup_var on every
+%	use of a variable inside them, and calling flatten_nested_defns
+%	for every definition they contain (e.g. definitions of local
+%	variables and nested functions).
+%
+
+:- pred flatten_maybe_statement(maybe(mlds__statement), maybe(mlds__statement),
+		elim_info, elim_info).
+:- mode flatten_maybe_statement(in, out, in, out) is det.
+
+flatten_maybe_statement(no, no) --> [].
+flatten_maybe_statement(yes(Statement0), yes(Statement)) -->
+	flatten_statement(Statement0, Statement).
+	
+:- pred flatten_statements(mlds__statements, mlds__statements,
+		elim_info, elim_info).
+:- mode flatten_statements(in, out, in, out) is det.
+
+flatten_statements(Statements0, Statements) -->
+	list__map_foldl(flatten_statement, Statements0, Statements).
+
+:- pred flatten_statement(mlds__statement, mlds__statement,
+		elim_info, elim_info).
+:- mode flatten_statement(in, out, in, out) is det.
+
+flatten_statement(Statement0, Statement) -->
+	{ Statement0 = mlds__statement(Stmt0, Context) },
+	flatten_stmt(Stmt0, Stmt),
+	{ Statement = mlds__statement(Stmt, Context) }.
+
+:- pred flatten_stmt(mlds__stmt, mlds__stmt, elim_info, elim_info).
+:- mode flatten_stmt(in, out, in, out) is det.
+
+flatten_stmt(Stmt0, Stmt) -->
+	(
+		{ Stmt0 = block(Defns0, Statements0) },
+		flatten_nested_defns(Defns0, Statements0, Defns),
+		flatten_statements(Statements0, Statements),
+		{ Stmt = block(Defns, Statements) }
+	;
+		{ Stmt0 = while(Rval0, Statement0, Once) },
+		fixup_rval(Rval0, Rval),
+		flatten_statement(Statement0, Statement),
+		{ Stmt = while(Rval, Statement, Once) }
+	;
+		{ Stmt0 = if_then_else(Cond0, Then0, MaybeElse0) },
+		fixup_rval(Cond0, Cond),
+		flatten_statement(Then0, Then),
+		flatten_maybe_statement(MaybeElse0, MaybeElse),
+		{ Stmt = if_then_else(Cond, Then, MaybeElse) }
+	;
+		{ Stmt0 = label(_) },
+		{ Stmt = Stmt0 }
+	;
+		{ Stmt0 = goto(_) },
+		{ Stmt = Stmt0 }
+	;
+		{ Stmt0 = computed_goto(Rval0, Labels) },
+		fixup_rval(Rval0, Rval),
+		{ Stmt = computed_goto(Rval, Labels) }
+	;
+		{ Stmt0 = call(Sig, Func0, Obj0, Args0, RetLvals0, TailCall) },
+		fixup_rval(Func0, Func),
+		fixup_maybe_rval(Obj0, Obj),
+		fixup_rvals(Args0, Args),
+		fixup_lvals(RetLvals0, RetLvals),
+		{ Stmt = call(Sig, Func, Obj, Args, RetLvals, TailCall) }
+	;
+		{ Stmt0 = return(Rvals0) },
+		fixup_rvals(Rvals0, Rvals),
+		{ Stmt = return(Rvals) }
+	;
+		{ Stmt0 = do_commit(Ref0) },
+		fixup_rval(Ref0, Ref),
+		{ Stmt = do_commit(Ref) }
+	;
+		{ Stmt0 = try_commit(Ref0, Statement0, Handler0) },
+		fixup_lval(Ref0, Ref),
+		flatten_statement(Statement0, Statement),
+		flatten_statement(Handler0, Handler),
+		{ Stmt = try_commit(Ref, Statement, Handler) }
+	;
+		{ Stmt0 = atomic(AtomicStmt0) },
+		fixup_atomic_stmt(AtomicStmt0, AtomicStmt),
+		{ Stmt = atomic(AtomicStmt) }
+	).
+
+%-----------------------------------------------------------------------------%
+
+%
+% flatten_nested_defns:
+% flatten_nested_defn:
+%	Hoist out nested function definitions and local variables
+%	referenced by nested functions, storing them both in the elim_info.
+%
+
+:- pred flatten_nested_defns(mlds__defns, mlds__statements, mlds__defns,
+		elim_info, elim_info).
+:- mode flatten_nested_defns(in, in, out, in, out) is det.
+
+flatten_nested_defns([], _, []) --> [].
+flatten_nested_defns([Defn0 | Defns0], FollowingStatements, Defns) -->
+	flatten_nested_defn(Defn0, Defns0, FollowingStatements, Defns1),
+	flatten_nested_defns(Defns0, FollowingStatements, Defns2),
+	{ Defns = list__append(Defns1, Defns2) }.
+
+:- pred flatten_nested_defn(mlds__defn, mlds__defns, mlds__statements,
+		mlds__defns, elim_info, elim_info).
+:- mode flatten_nested_defn(in, in, in, out, in, out) is det.
+
+flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements, Defns) -->
+	{ Defn0 = mlds__defn(Name, Context, Flags, DefnBody0) },
+	(
+		{ DefnBody0 = mlds__function(PredProcId, Params, FuncBody0) },
+		%
+		% recursively flatten the nested function
+		%
+		flatten_maybe_statement(FuncBody0, FuncBody),
+		{ DefnBody = mlds__function(PredProcId, Params, FuncBody) },
+		{ Defn = mlds__defn(Name, Context, Flags, DefnBody) },
+
+		% Note that we assume that we can safely hoist stuff
+		% inside nested functions into the containing function.
+		% If that wasn't the case, we'd need code something
+		% like this:
+		/***************
+		{ LocalVars = elim_info_get_local_vars(ElimInfo) },
+		{ OuterVars0 = elim_info_get_outer_vars(ElimInfo) },
+		{ OuterVars = [LocalVars | OuterVars0] },
+		{ FlattenedDefns = ml_elim_nested_defns(ModuleName,
+			OuterVars, Defn0) },
+		list__foldl(elim_info_add_nested_func, FlattenedDefns),
+		***************/
+
+		%
+		% strip out the now flattened nested function,
+		% and store it in the elim_info
+		%
+		elim_info_add_nested_func(Defn),
+		{ Defns = [] }
+	;
+		{ DefnBody0 = mlds__data(_, _) },
+		%
+		% for local variable definitions, if they are
+		% referenced by any nested functions, then
+		% strip them out and store them in the elim_info
+		%
+		=(ElimInfo),
+		{ ModuleName = elim_info_get_module_name(ElimInfo) },
+		(
+			{ Name = data(var(VarName)) },
+			{ ml_should_add_local_var(ModuleName, VarName,
+				FollowingDefns, FollowingStatements) }
+		->
+			elim_info_add_local_var(Defn0),
+			{ Defns = [] }
+		;
+			{ Defns = [Defn0] }
+		)
+	;
+		{ DefnBody0 = mlds__class(_) },
+		%
+		% leave nested class declarations alone
+		%
+		% XXX that might not be the right thing to do,
+		% but currently ml_code_gen.m doesn't generate
+		% any of these, so it doesn't matter what we do
+		%
+		{ Defns = [Defn0] }
+	).
+
+	%
+	% check for a nested function definition
+	% that references this variable
+	%
+:- pred ml_should_add_local_var(mlds_module_name, mlds__var_name,
+		mlds__defns, mlds__statements).
+:- mode ml_should_add_local_var(in, in, in, in) is semidet.
+
+ml_should_add_local_var(ModuleName, VarName,
+		FollowingDefns, FollowingStatements) :-
+	QualVarName = qual(ModuleName, VarName),
+	(
+		list__member(FollowingDefn, FollowingDefns)
+	;
+		statements_contains_defn(FollowingStatements,
+			FollowingDefn)
+	),
+	FollowingDefn = mlds__defn(_, _, _,
+		mlds__function(_, _, _)),
+	defn_contains_var(FollowingDefn, QualVarName).
+
+%-----------------------------------------------------------------------------%
+
+%
+% fixup_atomic_stmt:
+% fixup_rvals:
+% fixup_maybe_rval:
+% fixup_rval:
+% fixup_trail_op:
+% fixup_lvals:
+% fixup_lval:
+%	Recursively process the specified construct, calling fixup_var on
+%	every variable inside it.
+%
+
+:- pred fixup_atomic_stmt(mlds__atomic_statement, mlds__atomic_statement,
+		elim_info, elim_info).
+:- mode fixup_atomic_stmt(in, out, in, out) is det.
+
+fixup_atomic_stmt(comment(C), comment(C)) --> [].
+fixup_atomic_stmt(assign(Lval0, Rval0), assign(Lval, Rval)) -->
+	fixup_lval(Lval0, Lval),
+	fixup_rval(Rval0, Rval).
+fixup_atomic_stmt(new_object(Target0, MaybeTag, Type, MaybeSize, MaybeCtorName,
+			Args0, ArgTypes),
+		new_object(Target, MaybeTag, Type, MaybeSize, MaybeCtorName,
+			Args, ArgTypes)) -->
+	fixup_lval(Target0, Target),
+	fixup_rvals(Args0, Args).
+fixup_atomic_stmt(mark_hp(Lval0), mark_hp(Lval)) -->
+	fixup_lval(Lval0, Lval).
+fixup_atomic_stmt(restore_hp(Rval0), restore_hp(Rval)) -->
+	fixup_rval(Rval0, Rval).
+fixup_atomic_stmt(trail_op(TrailOp0), trail_op(TrailOp)) -->
+	fixup_trail_op(TrailOp0, TrailOp).
+fixup_atomic_stmt(target_code(Lang, String), target_code(Lang, String)) --> [].
+
+:- pred fixup_trail_op(trail_op, trail_op, elim_info, elim_info).
+:- mode fixup_trail_op(in, out, in, out) is det.
+
+fixup_trail_op(store_ticket(Lval0), store_ticket(Lval)) -->
+	fixup_lval(Lval0, Lval).
+fixup_trail_op(reset_ticket(Rval0, Reason), reset_ticket(Rval, Reason)) -->
+	fixup_rval(Rval0, Rval).
+fixup_trail_op(discard_ticket, discard_ticket) --> [].
+fixup_trail_op(mark_ticket_stack(Lval0), mark_ticket_stack(Lval)) -->
+	fixup_lval(Lval0, Lval).
+fixup_trail_op(discard_tickets_to(Rval0), discard_tickets_to(Rval)) -->
+	fixup_rval(Rval0, Rval).
+
+:- pred fixup_rvals(list(mlds__rval), list(mlds__rval), elim_info, elim_info).
+:- mode fixup_rvals(in, out, in, out) is det.
+
+fixup_rvals([], []) --> [].
+fixup_rvals([X0|Xs0], [X|Xs]) -->
+	fixup_rval(X0, X),
+	fixup_rvals(Xs0, Xs).
+
+:- pred fixup_maybe_rval(maybe(mlds__rval), maybe(mlds__rval),
+		elim_info, elim_info).
+:- mode fixup_maybe_rval(in, out, in, out) is det.
+
+fixup_maybe_rval(no, no) --> [].
+fixup_maybe_rval(yes(Rval0), yes(Rval)) -->
+	fixup_rval(Rval0, Rval).
+
+:- pred fixup_rval(mlds__rval, mlds__rval, elim_info, elim_info).
+:- mode fixup_rval(in, out, in, out) is det.
+
+fixup_rval(lval(Lval0), lval(Lval)) -->
+	fixup_lval(Lval0, Lval).
+fixup_rval(mkword(Tag, Rval0), mkword(Tag, Rval)) -->
+	fixup_rval(Rval0, Rval).
+fixup_rval(const(Const), const(Const)) --> [].
+fixup_rval(unop(Op, Rval0), unop(Op, Rval)) -->
+	fixup_rval(Rval0, Rval).
+fixup_rval(binop(Op, X0, Y0), binop(Op, X, Y)) -->
+	fixup_rval(X0, X),
+	fixup_rval(Y0, Y).
+fixup_rval(mem_addr(Lval0), mem_addr(Lval)) -->
+	fixup_lval(Lval0, Lval).
+
+:- pred fixup_lvals(list(mlds__lval), list(mlds__lval), elim_info, elim_info).
+:- mode fixup_lvals(in, out, in, out) is det.
+
+fixup_lvals([], []) --> [].
+fixup_lvals([X0|Xs0], [X|Xs]) -->
+	fixup_lval(X0, X),
+	fixup_lvals(Xs0, Xs).
+
+:- pred fixup_lval(mlds__lval, mlds__lval, elim_info, elim_info).
+:- mode fixup_lval(in, out, in, out) is det.
+
+fixup_lval(field(MaybeTag, Rval0, FieldId), field(MaybeTag, Rval, FieldId)) --> 
+	fixup_rval(Rval0, Rval).
+fixup_lval(mem_ref(Rval0), mem_ref(Rval)) --> 
+	fixup_rval(Rval0, Rval).
+fixup_lval(var(Var0), VarLval) --> 
+	fixup_var(Var0, VarLval).
+
+%-----------------------------------------------------------------------------%
+
+%
+% fixup_var:
+%	change up any references to local vars in the
+%	containing function to go via the environment pointer
+%
+
+:- pred fixup_var(mlds__var, mlds__lval, elim_info, elim_info).
+:- mode fixup_var(in, out, in, out) is det.
+
+fixup_var(ThisVar, Lval, ElimInfo, ElimInfo) :-
+	ThisVar = qual(ThisVarModuleName, ThisVarName),
+	ModuleName = elim_info_get_module_name(ElimInfo),
+	LocalVars = elim_info_get_local_vars(ElimInfo),
+	(
+		%
+		% Check for references to local variables
+		% that are used by nested functions,
+		% and replace them with `env_ptr->foo'.
+		%
+		ThisVarModuleName = ModuleName,
+		list__member(Var, LocalVars),
+		Var = mlds__defn(data(var(ThisVarName)), _, _, _)
+	->
+		EnvPtr = lval(var(qual(ModuleName, "env_ptr"))),
+		FieldName = named_field(ThisVar),
+		Tag = yes(0),
+		Lval = field(Tag, EnvPtr, FieldName)
+	;
+		%
+		% leave everything else unchanged
+		%
+		Lval = var(ThisVar)
+	).
+/*****************************
+The following code is what we would have to use if we couldn't
+just hoist all local variables out to the outermost function.
+	(
+		%
+		% Check for references to local variables
+		% that are used by nested functions,
+		% and replace them with `(&env)->foo'.
+		% (The MLDS doesn't have any representation
+		% for `env.foo'.)
+		%
+		ThisVarModuleName = ModuleName,
+		list__member(Var, LocalVars),
+		Var = mlds__defn(data(var(ThisVarName)), _, _, _)
+	->
+		Env = var(qual(ModuleName, "env")),
+		FieldName = named_field(ThisVar),
+		Tag = yes(0),
+		Lval = field(Tag, mem_addr(Env), FieldName)
+	;
+		%
+		% Check for references to variables in the
+		% containing function(s), and replace them
+		% with envptr->foo, envptr->envptr->foo, etc.
+		% depending on the depth of nesting.
+		%
+		ThisVarModuleName = ModuleName,
+		outervar_member(ThisVarName, OuterVars, 1, Depth)
+	->
+		EnvPtrName = qual(ModuleName, "env_ptr"),
+		EnvPtr = lval(var(EnvPtrName)),
+		Lval = make_envptr_ref(Depth, EnvPtr, EnvPtrName, ThisVar)
+	;
+		%
+		% leave everything else unchanged
+		%
+		Lval = var(ThisVar)
+	).
+
+	% check if the specified variable is contained in the
+	% outervars, and if so, return the depth of nesting
+	%
+:- pred outervar_member(mlds__var_name, outervars, int, int).
+:- mode outervar_member(in, in, in, out) is semidet.
+
+outervar_member(ThisVarName, [OuterVars | OtherOuterVars], Depth0, Depth) :-
+	(	
+		list__member(Var, OuterVars),
+		Var = mlds__defn(data(var(ThisVarName)), _, _, _)
+	->
+		Depth = Depth0
+	;
+		outervar_member(ThisVarName, OtherOuterVars, Depth0 + 1, Depth)
+	).
+
+	% Produce a reference to a variable via `Depth' levels
+	% of `envptr->' indirections.
+	%
+:- func make_envptr_ref(int, mlds__rval, mlds__var, mlds__var) = lval.
+
+make_envptr_ref(Depth, CurEnvPtr, EnvPtrVar, Var) = Lval :-
+	( Depth = 1 ->
+		Tag = yes(0),
+		Lval = field(Tag, CurEnvPtr, named_field(Var))
+	;
+		Tag = yes(0),
+		NewEnvPtr = lval(field(Tag, CurEnvPtr, named_field(EnvPtrVar))),
+		Lval = make_envptr_ref(Depth - 1, NewEnvPtr, EnvPtrVar, Var)
+	).
+*********/
+
+%-----------------------------------------------------------------------------%
+%
+% defns_contains_defn:
+% defn_contains_defn:
+% defn_body_contains_defn:
+% maybe_statement_contains_defn:
+% statements_contains_defn:
+% statement_contains_defn:
+%	Nondeterministically return all the definitions contained
+%	in the specified construct.
+%
+
+:- pred defns_contains_defn(mlds__defns, mlds__defn).
+:- mode defns_contains_defn(in, out) is nondet.
+
+defns_contains_defn(Defns, Name) :-
+	list__member(Defn, Defns),
+	defn_contains_defn(Defn, Name).
+
+:- pred defn_contains_defn(mlds__defn, mlds__defn).
+:- mode defn_contains_defn(in, out) is multi.
+
+defn_contains_defn(Defn, Defn).	/* this is where we succeed! */
+defn_contains_defn(mlds__defn(_Name, _Context, _Flags, DefnBody), Defn) :-
+	defn_body_contains_defn(DefnBody, Defn).
+
+:- pred defn_body_contains_defn(mlds__entity_defn, mlds__defn).
+:- mode defn_body_contains_defn(in, out) is nondet.
+
+defn_body_contains_defn(mlds__data(_Type, _Initializer), _Defn) :- fail.
+defn_body_contains_defn(mlds__function(_PredProcId, _Params, MaybeBody),
+		Name) :-
+	maybe_statement_contains_defn(MaybeBody, Name).
+defn_body_contains_defn(mlds__class(ClassDefn), Name) :-
+	ClassDefn = mlds__class_defn(_Kind, _Imports, _Inherits, _Implements,
+		FieldDefns),
+	defns_contains_defn(FieldDefns, Name).
+
+:- pred statements_contains_defn(mlds__statements, mlds__defn).
+:- mode statements_contains_defn(in, out) is nondet.
+
+statements_contains_defn(Statements, Defn) :-
+	list__member(Statement, Statements),
+	statement_contains_defn(Statement, Defn).
+
+:- pred maybe_statement_contains_defn(maybe(mlds__statement), mlds__defn).
+:- mode maybe_statement_contains_defn(in, out) is nondet.
+
+maybe_statement_contains_defn(no, _Defn) :- fail.
+maybe_statement_contains_defn(yes(Statement), Defn) :-
+	statement_contains_defn(Statement, Defn).
+
+:- pred statement_contains_defn(mlds__statement, mlds__defn).
+:- mode statement_contains_defn(in, out) is nondet.
+
+statement_contains_defn(Statement, Defn) :-
+	Statement = mlds__statement(Stmt, _Context),
+	stmt_contains_defn(Stmt, Defn).
+
+:- pred stmt_contains_defn(mlds__stmt, mlds__defn).
+:- mode stmt_contains_defn(in, out) is nondet.
+
+stmt_contains_defn(Stmt, Defn) :-
+	(
+		Stmt = block(Defns, Statements),
+		( defns_contains_defn(Defns, Defn)
+		; statements_contains_defn(Statements, Defn)
+		)
+	;
+		Stmt = while(_Rval, Statement, _Once),
+		statement_contains_defn(Statement, Defn)
+	;
+		Stmt = if_then_else(_Cond, Then, MaybeElse),
+		( statement_contains_defn(Then, Defn)
+		; maybe_statement_contains_defn(MaybeElse, Defn)
+		)
+	;
+		Stmt = label(_Label),
+		fail
+	;
+		Stmt = goto(_),
+		fail
+	;
+		Stmt = computed_goto(_Rval, _Labels),
+		fail
+	;
+		Stmt = call(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall),
+		fail
+	;
+		Stmt = return(_Rvals),
+		fail
+	;
+		Stmt = do_commit(_Ref),
+		fail
+	;
+		Stmt = try_commit(_Ref, Statement, Handler),
+		( statement_contains_defn(Statement, Defn)
+		; statement_contains_defn(Handler, Defn)
+		)
+	;
+		Stmt = atomic(_AtomicStmt),
+		fail
+	).
+
+%-----------------------------------------------------------------------------%
+
+%
+% defns_contains_var:
+% defn_contains_var:
+% defn_body_contains_var:
+% maybe_statement_contains_var:
+% statements_contains_var:
+% statement_contains_var:
+% atomic_stmt_contains_var:
+% rvals_contains_var:
+% maybe_rval_contains_var:
+% rval_contains_var:
+% trail_op_contains_var:
+% lvals_contains_var:
+% lval_contains_var:
+%	Succeeds iff the specified construct contains a reference to
+%	the specified variable.
+%
+
+:- pred defns_contains_var(mlds__defns, mlds__var).
+:- mode defns_contains_var(in, in) is semidet.
+
+defns_contains_var(Defns, Name) :-
+	list__member(Defn, Defns),
+	defn_contains_var(Defn, Name).
+
+:- pred defn_contains_var(mlds__defn, mlds__var).
+:- mode defn_contains_var(in, in) is semidet.
+
+defn_contains_var(mlds__defn(_Name, _Context, _Flags, DefnBody), Name) :-
+	defn_body_contains_var(DefnBody, Name).
+
+:- pred defn_body_contains_var(mlds__entity_defn, mlds__var).
+:- mode defn_body_contains_var(in, in) is semidet.
+
+defn_body_contains_var(mlds__data(_Type, yes(Initializer)), Name) :-
+	rvals_contains_var(Initializer, Name).
+defn_body_contains_var(mlds__function(_PredProcId, _Params, MaybeBody),
+		Name) :-
+	maybe_statement_contains_var(MaybeBody, Name).
+defn_body_contains_var(mlds__class(ClassDefn), Name) :-
+	ClassDefn = mlds__class_defn(_Kind, _Imports, _Inherits, _Implements,
+		FieldDefns),
+	defns_contains_var(FieldDefns, Name).
+
+:- pred maybe_statement_contains_var(maybe(mlds__statement), mlds__var).
+:- mode maybe_statement_contains_var(in, in) is semidet.
+
+maybe_statement_contains_var(no, _) :- fail.
+maybe_statement_contains_var(yes(Statement), Name) :-
+	statement_contains_var(Statement, Name).
+	
+:- pred statements_contains_var(mlds__statements, mlds__var).
+:- mode statements_contains_var(in, in) is semidet.
+
+statements_contains_var(Statements, Name) :-
+	list__member(Statement, Statements),
+	statement_contains_var(Statement, Name).
+
+:- pred statement_contains_var(mlds__statement, mlds__var).
+:- mode statement_contains_var(in, in) is semidet.
+
+statement_contains_var(Statement, Name) :-
+	Statement = mlds__statement(Stmt, _Context),
+	stmt_contains_var(Stmt, Name).
+
+:- pred stmt_contains_var(mlds__stmt, mlds__var).
+:- mode stmt_contains_var(in, in) is semidet.
+
+stmt_contains_var(Stmt, Name) :-
+	(
+		Stmt = block(Defns, Statements),
+		( defns_contains_var(Defns, Name)
+		; statements_contains_var(Statements, Name)
+		)
+	;
+		Stmt = while(Rval, Statement, _Once),
+		( rval_contains_var(Rval, Name)
+		; statement_contains_var(Statement, Name)
+		)
+	;
+		Stmt = if_then_else(Cond, Then, MaybeElse),
+		( rval_contains_var(Cond, Name)
+		; statement_contains_var(Then, Name)
+		; maybe_statement_contains_var(MaybeElse, Name)
+		)
+	;
+		Stmt = label(_Label),
+		fail
+	;
+		Stmt = goto(_),
+		fail
+	;
+		Stmt = computed_goto(Rval, _Labels),
+		rval_contains_var(Rval, Name)
+	;
+		Stmt = call(_Sig, Func, Obj, Args, RetLvals, _TailCall),
+		( rval_contains_var(Func, Name)
+		; maybe_rval_contains_var(Obj, Name)
+		; rvals_contains_var(Args, Name)
+		; lvals_contains_var(RetLvals, Name)
+		)
+	;
+		Stmt = return(Rvals),
+		rvals_contains_var(Rvals, Name)
+	;
+		Stmt = do_commit(Ref),
+		rval_contains_var(Ref, Name)
+	;
+		Stmt = try_commit(Ref, Statement, Handler),
+		( lval_contains_var(Ref, Name)
+		; statement_contains_var(Statement, Name)
+		; statement_contains_var(Handler, Name)
+		)
+	;
+		Stmt = atomic(AtomicStmt),
+		atomic_stmt_contains_var(AtomicStmt, Name)
+	).
+
+:- pred atomic_stmt_contains_var(mlds__atomic_statement, mlds__var).
+:- mode atomic_stmt_contains_var(in, in) is semidet.
+
+atomic_stmt_contains_var(comment(_), _Name) :- fail.
+atomic_stmt_contains_var(assign(Lval, Rval), Name) :-
+	( lval_contains_var(Lval, Name)
+	; rval_contains_var(Rval, Name)
+	).
+atomic_stmt_contains_var(new_object(Target, _MaybeTag, _Type, _MaybeSize,
+			_MaybeCtorName, Args, _ArgTypes), Name) :-
+	( lval_contains_var(Target, Name)
+	; rvals_contains_var(Args, Name)
+	).
+atomic_stmt_contains_var(mark_hp(Lval), Name) :-
+	lval_contains_var(Lval, Name).
+atomic_stmt_contains_var(restore_hp(Rval), Name) :-
+	rval_contains_var(Rval, Name).
+atomic_stmt_contains_var(trail_op(TrailOp), Name) :-
+	trail_op_contains_var(TrailOp, Name).
+atomic_stmt_contains_var(target_code(_Lang, _String), _) :- fail.
+
+:- pred trail_op_contains_var(trail_op, mlds__var).
+:- mode trail_op_contains_var(in, in) is semidet.
+
+trail_op_contains_var(store_ticket(Lval), Name) :-
+	lval_contains_var(Lval, Name).
+trail_op_contains_var(reset_ticket(Rval, _Reason), Name) :-
+	rval_contains_var(Rval, Name).
+trail_op_contains_var(discard_ticket, _Name) :- fail.
+trail_op_contains_var(mark_ticket_stack(Lval), Name) :-
+	lval_contains_var(Lval, Name).
+trail_op_contains_var(discard_tickets_to(Rval), Name) :-
+	rval_contains_var(Rval, Name).
+
+:- pred rvals_contains_var(list(mlds__rval), mlds__var).
+:- mode rvals_contains_var(in, in) is semidet.
+
+rvals_contains_var(Rvals, Name) :-
+	list__member(Rval, Rvals),
+	rval_contains_var(Rval, Name).
+
+:- pred maybe_rval_contains_var(maybe(mlds__rval), mlds__var).
+:- mode maybe_rval_contains_var(in, in) is semidet.
+
+maybe_rval_contains_var(no, _Name) :- fail.
+maybe_rval_contains_var(yes(Rval), Name) :-
+	rval_contains_var(Rval, Name).
+
+:- pred rval_contains_var(mlds__rval, mlds__var).
+:- mode rval_contains_var(in, in) is semidet.
+
+rval_contains_var(lval(Lval), Name) :-
+	lval_contains_var(Lval, Name).
+rval_contains_var(mkword(_Tag, Rval), Name) :-
+	rval_contains_var(Rval, Name).
+rval_contains_var(const(_Const), _Name) :- fail.
+rval_contains_var(unop(_Op, Rval), Name) :-
+	rval_contains_var(Rval, Name).
+rval_contains_var(binop(_Op, X, Y), Name) :-
+	( rval_contains_var(X, Name)
+	; rval_contains_var(Y, Name)
+	).
+rval_contains_var(mem_addr(Lval), Name) :-
+	lval_contains_var(Lval, Name).
+
+:- pred lvals_contains_var(list(mlds__lval), mlds__var).
+:- mode lvals_contains_var(in, in) is semidet.
+
+lvals_contains_var(Lvals, Name) :-
+	list__member(Lval, Lvals),
+	lval_contains_var(Lval, Name).
+
+:- pred lval_contains_var(mlds__lval, mlds__var).
+:- mode lval_contains_var(in, in) is semidet.
+
+lval_contains_var(field(_MaybeTag, Rval, _FieldId), Name) :-
+	rval_contains_var(Rval, Name).
+lval_contains_var(mem_ref(Rval), Name) :-
+	rval_contains_var(Rval, Name).
+lval_contains_var(var(Name), Name).  /* this is where we can succeed! */
+
+%-----------------------------------------------------------------------------%
+
+%
+% The elim_info type holds information that we use or accumulate
+% as we traverse through the function body.
+%
+
+:- type elim_info
+	--->	elim_info(
+				% The name of the current module.
+			mlds_module_name,
+
+				% The lists of local variables for
+				% each of the containing functions,
+				% innermost first
+				% XXX this is not used.
+				% It would be needed if we want to
+				% handle arbitrary nesting.
+				% Currently we assume that any variables
+				% can safely be hoisted to the outermost
+				% function, so this field is not needed.
+			outervars,
+
+				% The list of nested function definitions
+				% that we must hoist out.
+				% This list is stored in reverse order.
+			list(mlds__defn),
+
+				% The list of local variables that we must
+				% put in the environment structure
+				% This list is stored in reverse order.
+			list(mlds__defn)
+	).
+
+	% The lists of local variables for
+	% each of the containing functions,
+	% innermost first
+:- type outervars == list(list(mlds__defn)).
+
+:- func elim_info_init(mlds_module_name, outervars) = elim_info.
+elim_info_init(ModuleName, OuterVars) =
+	elim_info(ModuleName, OuterVars, [], []).
+
+:- func elim_info_get_module_name(elim_info) = mlds_module_name.
+elim_info_get_module_name(elim_info(ModuleName, _, _, _)) = ModuleName.
+
+:- func elim_info_get_outer_vars(elim_info) = outervars.
+elim_info_get_outer_vars(elim_info(_, OuterVars, _, _)) = OuterVars.
+
+:- func elim_info_get_local_vars(elim_info) = list(mlds__defn).
+elim_info_get_local_vars(elim_info(_, _, _, LocalVars)) = LocalVars.
+
+:- pred elim_info_add_nested_func(mlds__defn, elim_info, elim_info).
+:- mode elim_info_add_nested_func(in, in, out) is det.
+elim_info_add_nested_func(NestedFunc, elim_info(A, B, NestedFuncs0, D),
+		elim_info(A, B, NestedFuncs, D)) :-
+	NestedFuncs = [NestedFunc | NestedFuncs0].
+
+:- pred elim_info_add_local_var(mlds__defn, elim_info, elim_info).
+:- mode elim_info_add_local_var(in, in, out) is det.
+elim_info_add_local_var(LocalVar, elim_info(A, B, C, LocalVars0),
+		elim_info(A, B, C, LocalVars)) :-
+	LocalVars = [LocalVar | LocalVars0].
+
+:- pred elim_info_finish(elim_info, list(mlds__defn), list(mlds__defn)).
+:- mode elim_info_finish(in, out, out) is det.
+elim_info_finish(elim_info(_ModuleName, _OuterVars, RevFuncs, RevLocalVars),
+		Funcs, LocalVars) :-
+	Funcs = list__reverse(RevFuncs),
+	LocalVars = list__reverse(RevLocalVars).
+
+%-----------------------------------------------------------------------------%

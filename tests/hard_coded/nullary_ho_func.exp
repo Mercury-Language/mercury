@@ -1,8 +1,0 @@
-X = 42
-apply(F) = 42
-apply_func(F) = 42
-apply_nullary_func(F) = 42
-Y = apply(G) failed
-Z = 42
-type_of(F) = ((func) = int)
-type_name(type_of(F)) = ((func) = int)

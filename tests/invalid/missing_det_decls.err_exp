@@ -1,9 +1,0 @@
-missing_det_decls.m:004: Error: no determinism declaration for exported
-missing_det_decls.m:004:   predicate `missing_det_decls:exp1/0'.
-missing_det_decls.m:007: Error: no determinism declaration for exported
-missing_det_decls.m:007:   predicate `missing_det_decls:exp2/1'.
-missing_det_decls.m:004: Error: no clauses for predicate `missing_det_decls:exp1/0'
-missing_det_decls.m:006: Error: no clauses for predicate `missing_det_decls:exp2/1'
-missing_det_decls.m:011: Error: no clauses for predicate `missing_det_decls:loc1/0'
-missing_det_decls.m:013: Error: no clauses for predicate `missing_det_decls:loc2/1'
-For more information, try recompiling with `-E'.

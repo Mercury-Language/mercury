@@ -1,3 +1,0 @@
-external.m:012: Warning: `external' declaration requires arity.
-external.m:007: Error: no clauses for predicate `external:p/2'
-For more information, try recompiling with `-E'.
