@@ -510,6 +510,15 @@ then
 		exit 1
 	fi
 
+	# We can remove the object files now, since the archive is there.
+	if $keep_objs
+	then
+		true
+	else
+		/bin/rm -f $root/stage2/library/[a-l]*.o < /dev/null
+		/bin/rm -f $root/stage2/library/[m-z]*.o < /dev/null
+	fi
+
 	if (cd stage2/compiler && mmake $mmake_opts $jfactor RM_C=: mercury_compile)
 	then
 		echo "building of stage 2 compiler successful"
@@ -527,17 +536,6 @@ then
 	else
 		echo "building of stage 2 not successful"
 		exit 1
-	fi
-
-	if $keep_objs
-	then
-		true
-	else
-		/bin/rm -f $root/stage2/library/[a-l]*.o < /dev/null
-		/bin/rm -f $root/stage2/library/[m-z]*.o < /dev/null
-		/bin/rm -f $root/stage2/compiler/[a-l]*.o < /dev/null
-		/bin/rm -f $root/stage2/compiler/[i-s]*.o < /dev/null
-		/bin/rm -f $root/stage2/compiler/[t-z]*.o < /dev/null
 	fi
 
 	MERCURY_COMPILER=$root/stage2/compiler/mercury_compile
@@ -625,6 +623,21 @@ then
 		exit 1
 	fi
 
+	# We delay deleting the stage 2 compiler objects until now,
+	# so that if (a) an error manifests itself during the creation
+	# of the stage 3 library, and (b) this error can be fixed by
+	# changing the runtime, a bootcheck -2, which requires a relink,
+	# will not have to expensively recreate the stage 2 compiler objects.
+
+	if $keep_objs
+	then
+		true
+	else
+		/bin/rm -f $root/stage2/compiler/[a-l]*.o < /dev/null
+		/bin/rm -f $root/stage2/compiler/[i-s]*.o < /dev/null
+		/bin/rm -f $root/stage2/compiler/[t-z]*.o < /dev/null
+	fi
+
 	if (cd stage3/compiler && mmake $mmake_opts $jfactor cs)
 	then
 		echo "building of stage 3 compiler successful"
@@ -672,35 +685,73 @@ fi
 
 if $runtests
 then
-	# use everything from stage 2
+	# Use everything from stage 2, unless we copied the runtime.
+	# In that case, the grades of stage 1 & 2 may be different,
+	# which means we have a choice between
+	#
+	# (a) using the stage 2 runtime and library, and the stage 2 flags, or
+	# (b) using the stage 1 runtime and library, and the default flags
+	#
+	# Some tests/ directories have several dozen executables. Compiling
+	# all these with debugging on yields far too many large (14 Mb +)
+	# executables. Since stage 2 is much more likely to have flags
+	# that turn on debugging, we prefer alternative (b).
 
 	MERCURY_COMPILER=$root/stage2/compiler/mercury_compile
 	export MERCURY_COMPILER
 
-	MERCURY_INT_DIR=$root/stage2/library
-	export MERCURY_INT_DIR
+	if $copy_runtime
+	then
+		MERCURY_INT_DIR=$root/library
+		export MERCURY_INT_DIR
 
-	MERCURY_LIBS="$root/stage2/library/libmercury.a
-                $root/stage2/runtime/libmer.a
-                $root/stage2/boehm_gc/libgc.a
-                -lm"
-	export MERCURY_LIBS
+		MERCURY_LIBS="$root/library/libmercury.a
+			$root/runtime/libmer.a
+			$root/boehm_gc/libgc.a
+			-lm"
+		export MERCURY_LIBS
 
-	MERCURY_ALL_C_INCL_DIRS="-I$root/stage2/runtime
-		-I$root/stage2/boehm_gc
-		-I$root/stage2/boehm_gc/include"
-	export MERCURY_ALL_C_INCL_DIRS
+		MERCURY_ALL_C_INCL_DIRS="-I$root/runtime
+			-I$root/boehm_gc
+			-I$root/boehm_gc/include"
+		export MERCURY_ALL_C_INCL_DIRS
 
-	MMAKE_DIR="$root/stage2/scripts"
-	export MMAKE_DIR
+		MMAKE_DIR="$root/scripts"
+		export MMAKE_DIR
 
-	MERCURY_MOD_LIB_MODS="$root/stage2/runtime/runtime.init
-		$root/stage2/library/libmercury.init"
-	export MERCURY_MOD_LIB_MODS
+		MERCURY_MOD_LIB_MODS="$root/runtime/runtime.init
+			$root/library/libmercury.init"
+		export MERCURY_MOD_LIB_MODS
 
-		# for mkinit, mmc, mgnuc, ml etc
-	PATH=$root/stage2/util:$root/stage2/scripts:$PATH
-	export PATH
+			# for mkinit, mmc, mgnuc, ml etc
+		PATH=$root/util:$root/scripts:$PATH
+		export PATH
+	else
+		MERCURY_INT_DIR=$root/stage2/library
+		export MERCURY_INT_DIR
+
+		MERCURY_LIBS="$root/stage2/library/libmercury.a
+			$root/stage2/runtime/libmer.a
+			$root/stage2/boehm_gc/libgc.a
+			-lm"
+		export MERCURY_LIBS
+
+		MERCURY_ALL_C_INCL_DIRS="-I$root/stage2/runtime
+			-I$root/stage2/boehm_gc
+			-I$root/stage2/boehm_gc/include"
+		export MERCURY_ALL_C_INCL_DIRS
+
+		MMAKE_DIR="$root/stage2/scripts"
+		export MMAKE_DIR
+
+		MERCURY_MOD_LIB_MODS="$root/stage2/runtime/runtime.init
+			$root/stage2/library/libmercury.init"
+		export MERCURY_MOD_LIB_MODS
+
+			# for mkinit, mmc, mgnuc, ml etc
+		PATH=$root/stage2/util:$root/stage2/scripts:$PATH
+		export PATH
+	fi
 
 	if test -d ../tests
 	then
