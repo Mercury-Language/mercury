@@ -931,6 +931,14 @@ add_pragma_type_spec_2(Pragma0, Context, PredId,
 		ModuleInfo1, ModuleInfo2),
 	    globals__io_lookup_bool_option(user_guided_type_specialization,
 	    	DoTypeSpec),
+
+	    { pred_info_is_imported(PredInfo0) ->
+		Status = opt_imported
+	    ;
+		pred_info_import_status(PredInfo0, Status)
+	    },
+	    { pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc) },
+
 	    {
 		ModesOk = yes,
 		% Even if we aren't doing type specialization, we need
@@ -946,7 +954,6 @@ add_pragma_type_spec_2(Pragma0, Context, PredId,
 		% specified types to force the specialization. For imported
 		% predicates this forces the creation of the proper interface. 
 		%
-		pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc),
 		adjust_func_arity(PredOrFunc, Arity, PredArity),
 		varset__init(ArgVarSet0),
 		make_n_fresh_vars("HeadVar__", PredArity,
@@ -981,11 +988,6 @@ add_pragma_type_spec_2(Pragma0, Context, PredId,
 			VarTypes0, Args, [Clause], TI_VarMap, TCI_VarMap),
 		pred_info_get_markers(PredInfo0, Markers),
 		map__init(Proofs),
-		( pred_info_is_imported(PredInfo0) ->
-			Status = opt_imported
-		;
-			pred_info_import_status(PredInfo0, Status)
-		),
 
 		pred_info_module(PredInfo0, ModuleName),
 		pred_info_get_aditi_owner(PredInfo0, Owner),
@@ -1031,15 +1033,25 @@ add_pragma_type_spec_2(Pragma0, Context, PredId,
 			ForceVersions, SpecMap, PragmaMap),
 		module_info_set_type_spec_info(ModuleInfo3,
 			TypeSpecInfo, ModuleInfo),
-
+		TransformInfo1 = transform_info(ModuleInfo, Info0)
+	    ;
+		TransformInfo1 = transform_info(ModuleInfo2, Info0)
+	    },
+	    { ModesOk = yes, status_is_imported(Status, yes) ->
+		%
+		% This isn't strictly necessary if we aren't doing
+		% user-guided type specialization, but it isn't very
+		% expensive and it avoids problems with differing output
+		% for the recompilation tests in debugging grades.
+		%
 		ItemType = pred_or_func_to_item_type(PredOrFunc),
 		apply_to_recompilation_info(
 			recompilation__record_used_equivalence_types(
 				item_id(ItemType, SymName - Arity), 
 				UsedEquivTypes),
-			transform_info(ModuleInfo, Info0), TransformInfo)
+			TransformInfo1, TransformInfo)
 	    ;
-		TransformInfo = transform_info(ModuleInfo2, Info0)
+	    	TransformInfo = TransformInfo1
 	    }
 	;
 	    { TransformInfo = transform_info(ModuleInfo1, Info0) }
