@@ -18,6 +18,7 @@
 			;	vn_framevar(int)
 			;	vn_succip
 			;	vn_maxfr
+			;	vn_curfr
 			;	vn_curredoip
 			;	vn_hp
 			;	vn_sp

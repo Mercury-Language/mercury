@@ -315,6 +315,9 @@ vn__choose_cheapest_loc([Loc | Locs], Stack0, Heap0, BestLoc) :-
 		Loc = vn_maxfr,
 		BestLoc = Loc
 	;
+		Loc = vn_curfr,
+		BestLoc = Loc
+	;
 		Loc = vn_curredoip,
 		vn__choose_cheapest_loc(Locs, yes(Loc), Heap0, BestLoc)
 	;
@@ -836,6 +839,12 @@ vn__flush_access_path(Vnlval, Srcs, Lval, Vn_tables0, Vn_tables,
 	;
 		Vnlval = vn_maxfr,
 		Lval = maxfr,
+		Vn_tables = Vn_tables0,
+		Templocs = Templocs0,
+		AccessInstrs = []
+	;
+		Vnlval = vn_curfr,
+		Lval = curfr,
 		Vn_tables = Vn_tables0,
 		Templocs = Templocs0,
 		AccessInstrs = []

@@ -38,6 +38,7 @@ vn__find_specials(vn_stackvar(_), []).
 vn__find_specials(vn_framevar(_), []).
 vn__find_specials(vn_succip, [vn_succip]).
 vn__find_specials(vn_maxfr, [vn_maxfr]).
+vn__find_specials(vn_curfr, [vn_curfr]).
 vn__find_specials(vn_curredoip, [vn_curredoip]).
 vn__find_specials(vn_hp, [vn_hp]).
 vn__find_specials(vn_sp, [vn_sp]).
@@ -336,6 +337,7 @@ vn__no_heap_lval_to_vnlval(stackvar(N),		yes(vn_stackvar(N))).
 vn__no_heap_lval_to_vnlval(framevar(N),		yes(vn_framevar(N))).
 vn__no_heap_lval_to_vnlval(succip,		yes(vn_succip)).
 vn__no_heap_lval_to_vnlval(maxfr,		yes(vn_maxfr)).
+vn__no_heap_lval_to_vnlval(curfr,		yes(vn_curfr)).
 vn__no_heap_lval_to_vnlval(curredoip,		yes(vn_curredoip)).
 vn__no_heap_lval_to_vnlval(hp,			yes(vn_hp)).
 vn__no_heap_lval_to_vnlval(sp,			yes(vn_sp)).
@@ -349,6 +351,7 @@ vn__no_heap_vnlval_to_lval(vn_stackvar(N),	yes(stackvar(N))).
 vn__no_heap_vnlval_to_lval(vn_framevar(N),	yes(framevar(N))).
 vn__no_heap_vnlval_to_lval(vn_succip,		yes(succip)).
 vn__no_heap_vnlval_to_lval(vn_maxfr,		yes(maxfr)).
+vn__no_heap_vnlval_to_lval(vn_curfr,		yes(curfr)).
 vn__no_heap_vnlval_to_lval(vn_curredoip,	yes(curredoip)).
 vn__no_heap_vnlval_to_lval(vn_hp,		yes(hp)).
 vn__no_heap_vnlval_to_lval(vn_sp,		yes(sp)).
@@ -360,6 +363,7 @@ vn__lval_access_rval(stackvar(_), []).
 vn__lval_access_rval(framevar(_), []).
 vn__lval_access_rval(succip, []).
 vn__lval_access_rval(maxfr, []).
+vn__lval_access_rval(curfr, []).
 vn__lval_access_rval(curredoip, []).
 vn__lval_access_rval(hp, []).
 vn__lval_access_rval(sp, []).
@@ -373,6 +377,7 @@ vn__vnlval_access_vns(vn_stackvar(_), []).
 vn__vnlval_access_vns(vn_framevar(_), []).
 vn__vnlval_access_vns(vn_succip, []).
 vn__vnlval_access_vns(vn_maxfr, []).
+vn__vnlval_access_vns(vn_curfr, []).
 vn__vnlval_access_vns(vn_curredoip, []).
 vn__vnlval_access_vns(vn_hp, []).
 vn__vnlval_access_vns(vn_sp, []).
@@ -416,6 +421,7 @@ vn__find_sub_vns_vnlval(vn_stackvar(_), []).
 vn__find_sub_vns_vnlval(vn_framevar(_), []).
 vn__find_sub_vns_vnlval(vn_succip, []).
 vn__find_sub_vns_vnlval(vn_maxfr, []).
+vn__find_sub_vns_vnlval(vn_curfr, []).
 vn__find_sub_vns_vnlval(vn_curredoip, []).
 vn__find_sub_vns_vnlval(vn_hp, []).
 vn__find_sub_vns_vnlval(vn_sp, []).
@@ -739,6 +745,11 @@ vn__lval_cost(Lval, O0, O, S0, S, H0, H) :-
 		H = H0
 	;
 		Lval = maxfr,
+		O = O0,
+		S = S0,
+		H = H0
+	;
+		Lval = curfr,
 		O = O0,
 		S = S0,
 		H = H0

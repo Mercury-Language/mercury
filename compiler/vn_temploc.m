@@ -161,6 +161,9 @@ vn__find_live_non_heap([Liveval | Livevals], Livevnlvals) :-
 		Liveval = maxfr,
 		Livevnlvals = [vn_maxfr | Livevnlvals0]
 	;
+		Liveval = curfr,
+		Livevnlvals = [vn_curfr | Livevnlvals0]
+	;
 		Liveval = curredoip,
 		Livevnlvals = [vn_curredoip | Livevnlvals0]
 	;

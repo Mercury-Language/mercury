@@ -424,6 +424,8 @@ opt_debug__dump_vnlval(vn_succip, Str) :-
 	string__append_list(["vn_succip"], Str).
 opt_debug__dump_vnlval(vn_maxfr, Str) :-
 	string__append_list(["vn_maxfr"], Str).
+opt_debug__dump_vnlval(vn_curfr, Str) :-
+	string__append_list(["vn_curfr"], Str).
 opt_debug__dump_vnlval(vn_curredoip, Str) :-
 	string__append_list(["vn_curredoip"], Str).
 opt_debug__dump_vnlval(vn_hp, Str) :-
@@ -480,6 +482,8 @@ opt_debug__dump_lval(succip, Str) :-
 	string__append_list(["succip"], Str).
 opt_debug__dump_lval(maxfr, Str) :-
 	string__append_list(["maxfr"], Str).
+opt_debug__dump_lval(curfr, Str) :-
+	string__append_list(["curfr"], Str).
 opt_debug__dump_lval(curredoip, Str) :-
 	string__append_list(["curredoip"], Str).
 opt_debug__dump_lval(hp, Str) :-
