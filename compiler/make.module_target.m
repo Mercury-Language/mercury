@@ -670,6 +670,7 @@ external_foreign_code_files(Imports, ForeignFiles) -->
 	% `:- pragma foreign_proc' declarations.
 	%
 	globals__io_get_target(CompilationTarget),
+	globals__io_lookup_string_option(object_file_extension, ObjExt),
 	{ ModuleName = Imports ^ module_name },
 	(
 		{ CompilationTarget = asm },
@@ -680,7 +681,7 @@ external_foreign_code_files(Imports, ForeignFiles) -->
 			foreign_language_module_name(ModuleName, c), ".c",
 			no, CCodeFileName),
 		module_name_to_file_name(
-			foreign_language_module_name(ModuleName, c), ".o",
+			foreign_language_module_name(ModuleName, c), ObjExt,
 			no, ObjFileName),
 		{ ForeignFiles0 =
 			[foreign_code_file(c, CCodeFileName, ObjFileName) ] }
@@ -704,8 +705,6 @@ external_foreign_code_files(Imports, ForeignFiles) -->
 					di, uo) is det -->
 				fact_table_file_name(ModuleName, FactTableFile,
 					".c", FactTableCFile),
-				globals__io_lookup_string_option(
-					object_file_extension, ObjExt),
 				fact_table_file_name(ModuleName, FactTableFile,
 					ObjExt, FactTableObjFile),
 				{ FactTableForeignFile = foreign_code_file(c, 
