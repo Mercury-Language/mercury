@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2003 The University of Melbourne.
+% Copyright (C) 2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -44,6 +44,25 @@
 	% procedure elimination.
 :- func term_size_plus(int, int) = int.
 
+	% We want to take measurements only of the top-level invocations of
+	% the procedures in the complexity experiment, not the recursive
+	% invocations. This type says whether we are already executing the
+	% relevant procedure. Its definition should be kept in sync with
+	% MR_ComplexityIsActive in runtime/mercury_term_size.h.
+:- type complexity_is_active ---> is_inactive ; is_active.
+
+	% For each procedure in the complexity experiment, we can take
+	% measurements for many different top-level invocations. Values
+	% of the complexity_slot type identify one of these invocations.
+:- type complexity_slot == int.
+
+:- impure pred complexity_is_active(complexity_is_active::out) is det.
+
+:- impure pred complexity_call_proc(complexity_slot::out) is det.
+:- impure pred complexity_exit_proc(complexity_slot::in) is det.
+:- impure pred complexity_fail_proc(complexity_slot::in) is failure.
+:- impure pred complexity_redo_proc(complexity_slot::in) is failure.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -81,6 +100,13 @@
 #endif
 }").
 
+measure_size(_Value, Size) :-
+	( semidet_succeed ->
+		error("measure_size: not implemented")
+	;
+		Size = 0
+	).
+
 :- pragma foreign_proc("C",
 	measure_size_acc(Term::in, Size0::in, Size::out),
 	[thread_safe, promise_pure, will_not_call_mercury],
@@ -101,6 +127,13 @@
 #endif
 }").
 
+measure_size_acc(_Value, Size0, Size) :-
+	( semidet_succeed ->
+		error("measure_size_acc: not implemented")
+	;
+		Size = Size0
+	).
+
 :- pragma foreign_proc("C",
 	increment_size(Term::in, Incr::in),
 	[thread_safe, will_not_call_mercury],
@@ -117,3 +150,78 @@
 	MR_fatal_error(""increment_size: term size profiling not enabled"");
 #endif
 }").
+
+increment_size(_Value, _Incr) :-
+	private_builtin__imp.
+
+%---------------------------------------------------------------------------%
+
+% None of the following predicates are designed to be called directly;
+% they are designed only to hang foreign_procs onto.
+
+:- pragma foreign_proc("C",
+	complexity_is_active(IsActive::out),
+	[thread_safe, will_not_call_mercury],
+"
+	/* mention IsActive to avoid warning */
+	MR_fatal_error(""complexity_mark_active"");
+").
+
+:- pragma foreign_proc("C",
+	complexity_call_proc(Slot::out),
+	[thread_safe, will_not_call_mercury],
+"
+	/* mention Slot to avoid warning */
+	MR_fatal_error(""complexity_call_proc"");
+").
+
+:- pragma foreign_proc("C",
+	complexity_exit_proc(Slot::in),
+	[thread_safe, will_not_call_mercury],
+"
+	/* mention Slot to avoid warning */
+	MR_fatal_error(""complexity_exit_proc"");
+").
+
+:- pragma foreign_proc("C",
+	complexity_fail_proc(Slot::in),
+	[thread_safe, will_not_call_mercury],
+"
+	/* mention Slot to avoid warning */
+	MR_fatal_error(""complexity_fail_proc"");
+").
+
+:- pragma foreign_proc("C",
+	complexity_redo_proc(Slot::in),
+	[thread_safe, will_not_call_mercury],
+"
+	/* mention Slot to avoid warning */
+	MR_fatal_error(""complexity_redo_proc"");
+").
+
+complexity_is_active(IsActive) :-
+	private_builtin__imp,
+	( semidet_succeed ->
+		error("complexity_mark_active: not implemented")
+	;
+		% Required only to avoid warnings; never executed.
+		IsActive = is_active
+	).
+
+complexity_call_proc(Slot) :-
+	private_builtin__imp,
+	% Required only to avoid warnings; never executed.
+	private_builtin__unsafe_type_cast(0, Slot).
+
+complexity_exit_proc(_Slot) :-
+	private_builtin__imp.
+
+complexity_fail_proc(_Slot) :-
+	private_builtin__imp,
+	fail.
+
+complexity_redo_proc(_Slot) :-
+	private_builtin__imp,
+	fail.
+
+%---------------------------------------------------------------------------%

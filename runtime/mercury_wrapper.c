@@ -262,14 +262,15 @@ static	int	MR_time_at_finish;
 enum MR_TimeProfileMethod
 		MR_time_profile_method = MR_profile_user_plus_system_time;
 
-const char *	MR_progname;
+const char	*MR_progname;
 int		mercury_argc;	/* not counting progname */
-char **		mercury_argv;
+char		**mercury_argv;
 int		mercury_exit_status = 0;
 
 MR_bool		MR_profiling = MR_TRUE;
 MR_bool		MR_print_deep_profiling_statistics = MR_FALSE;
 MR_bool		MR_deep_profiling_save_results = MR_TRUE;
+MR_bool		MR_complexity_save_results = MR_TRUE;
 
 #ifdef	MR_TYPE_CTOR_STATS
 
@@ -331,6 +332,9 @@ void	(*MR_address_of_mercury_init_io)(void);
 void	(*MR_address_of_init_modules)(void);
 void	(*MR_address_of_init_modules_type_tables)(void);
 void	(*MR_address_of_init_modules_debugger)(void);
+#ifdef	MR_RECORD_TERM_SIZES
+void	(*MR_address_of_init_modules_complexity)(void);
+#endif
 #ifdef	MR_DEEP_PROFILING
 void	(*MR_address_of_write_out_proc_statics)(FILE *fp);
 #endif
@@ -398,6 +402,11 @@ MR_Code	*(*MR_exec_trace_func_ptr)(const MR_Label_Layout *);
 void	(*MR_address_of_trace_interrupt_handler)(void);
 
 void	(*MR_register_module_layout)(const MR_Module_Layout *);
+
+#ifdef	MR_RECORD_TERM_SIZES
+MR_ComplexityProc	*MR_complexity_procs;
+int               	MR_num_complexity_procs;
+#endif
 
 #ifdef MR_USE_GCC_NONLOCAL_GOTOS
 
@@ -574,6 +583,13 @@ mercury_runtime_init(int argc, char **argv)
 	if (MR_deep_profiling_save_results) {
 		MR_deep_prof_init();
 		MR_deep_prof_turn_on_time_profiling();
+	}
+#endif
+
+#ifdef  MR_RECORD_TERM_SIZES
+	if (MR_complexity_save_results) {
+		MR_do_init_modules_complexity();
+		MR_check_complexity_init();
 	}
 #endif
 
@@ -754,6 +770,19 @@ MR_do_init_modules_debugger(void)
 		done = MR_TRUE;
 	}
 }
+
+#ifdef	MR_RECORD_TERM_SIZES
+void 
+MR_do_init_modules_complexity(void)
+{
+	static	MR_bool	done = MR_FALSE;
+
+	if (! done) {
+		(*MR_address_of_init_modules_complexity)();
+		done = MR_TRUE;
+	}
+}
+#endif
 
 /*
 ** Given a string, parse it into arguments and create an argv vector for it.
@@ -1381,6 +1410,7 @@ process_options(int argc, char **argv)
 
 		case 's':	
 			MR_deep_profiling_save_results = MR_FALSE;
+			MR_complexity_save_results = MR_FALSE;
 			break;
 
 		case 'S':	
@@ -1989,6 +2019,12 @@ mercury_runtime_terminate(void)
 	MR_deep_prof_turn_off_time_profiling();
 	if (MR_deep_profiling_save_results) {
 		MR_write_out_profiling_tree();
+	}
+#endif
+
+#ifdef MR_RECORD_TERM_SIZES
+	if (MR_complexity_save_results) {
+		MR_write_complexity_procs();
 	}
 #endif
 

@@ -14,8 +14,22 @@
 */
 
 #include "mercury_imp.h"
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
 
 #ifdef MR_RECORD_TERM_SIZES
+
+MR_ComplexityCounter    MR_complexity_word_counter = 0;
+MR_ComplexityCounter    MR_complexity_cell_counter = 0;
+MR_ComplexityCounter    MR_complexity_tick_counter = 0;
+
+static  void    MR_write_complexity_proc(MR_ComplexityProc *proc);
+static  void    MR_complexity_output_args_desc(FILE *fp,
+                    MR_ComplexityProc *proc);
 
 MR_Unsigned
 MR_term_size(MR_TypeInfo type_info, MR_Word term)
@@ -310,6 +324,380 @@ try_again:
     }
 
     MR_fatal_error("MR_term_size: unexpected fallthrough");
+}
+
+void
+MR_write_complexity_procs(void)
+{
+    int                 proc_num;
+    MR_ComplexityProc   *proc;
+
+    for (proc_num = 0; proc_num < MR_num_complexity_procs; proc_num++) {
+        proc = &MR_complexity_procs[proc_num];
+        if (proc->MR_clp_num_profiled_args >= 0) {
+            MR_write_complexity_proc(proc);
+        }
+    }
+}
+
+#define MR_COMPLEXITY_ARGS_DIR   "ComplexityArgs"
+#define MR_COMPLEXITY_DATA_DIR   "ComplexityData"
+
+static  MR_bool MR_have_created_complexity_dirs = MR_FALSE;
+static  MR_bool MR_have_printed_complexity_dirs_error = MR_FALSE;
+
+static void
+MR_write_complexity_proc(MR_ComplexityProc *proc)
+{
+    char                    *full_proc_name;
+    int                     full_proc_name_len;
+    FILE                    *fp;
+    char                    *args_filename;
+    char                    *data_filename;
+    const char              *data_filemode;
+    struct stat             statbuf;
+    char                    *slash;
+    MR_ComplexityMetrics    *metrics;
+    int                     num_profiled_args;
+    int                     *sizes;
+    int                     num_slots;
+    MR_ComplexityPastSlots  *past_slots;
+    char                    *cmd_buf;
+
+    full_proc_name_len = strlen(proc->MR_clp_full_proc_name);
+    full_proc_name = MR_malloc(100 + full_proc_name_len);
+    strcpy(full_proc_name, proc->MR_clp_full_proc_name);
+
+    /*
+    ** We can't have slash characters in the filenames we construct from
+    ** full_proc_name.
+    */
+    while ((slash = strchr(full_proc_name, '/')) != NULL) {
+        *slash = ':';
+    }
+
+    cmd_buf = MR_malloc(100 + 2 * full_proc_name_len);
+        /* will be big enough */
+
+    if (! MR_have_created_complexity_dirs) {
+        sprintf(cmd_buf, "mkdir -p %s %s",
+            MR_COMPLEXITY_ARGS_DIR, MR_COMPLEXITY_DATA_DIR);
+        if (system(cmd_buf) != 0) {
+            if (! MR_have_printed_complexity_dirs_error) {
+                fprintf(stderr, "%s: cannot create %s and %s: %s\n",
+                    MR_progname, MR_COMPLEXITY_ARGS_DIR,
+                    MR_COMPLEXITY_DATA_DIR, strerror(errno));
+                /* there is no point in aborting */
+                MR_have_printed_complexity_dirs_error = MR_TRUE;
+                return;
+            }
+        }
+        MR_have_created_complexity_dirs = MR_TRUE;
+    }
+
+    args_filename = MR_malloc(100 + full_proc_name_len);
+        /* will be big enough */
+    sprintf(args_filename, "%s/%s", MR_COMPLEXITY_ARGS_DIR, full_proc_name);
+
+    if (stat(args_filename, &statbuf) != 0) {
+        /* args_filename does not exist */
+        fp = fopen(args_filename, "w");
+        if (fp == NULL) {
+            fprintf(stderr, "%s: cannot open %s: %s\n",
+                MR_progname, args_filename, strerror(errno));
+            /* there is no point in aborting */
+            return;
+        }
+
+        MR_complexity_output_args_desc(fp, proc);
+        fclose(fp);
+        data_filemode = "w";
+    } else {
+        /* args_filename does exist */
+        char    *tmp_filename;
+
+        tmp_filename = MR_malloc(100 + full_proc_name_len);
+        sprintf(tmp_filename, "%s/%s.tmp",
+            MR_COMPLEXITY_ARGS_DIR, full_proc_name);
+        fp = fopen(tmp_filename, "w");
+        if (fp == NULL) {
+            fprintf(stderr, "%s: cannot open %s: %s\n",
+                MR_progname, tmp_filename, strerror(errno));
+            /* there is no point in aborting */
+            return;
+        }
+
+        MR_complexity_output_args_desc(fp, proc);
+        fclose(fp);
+
+        sprintf(cmd_buf, "cmp -s %s %s", args_filename, tmp_filename);
+        if (system(cmd_buf) == 0) {
+            /* the files are identical */
+            (void) unlink(tmp_filename);
+            data_filemode = "a";
+        } else {
+            /* the files are different */
+            rename(tmp_filename, args_filename);
+            data_filemode = "w";
+        }
+    }
+
+    data_filename = MR_malloc(100 + full_proc_name_len);
+    sprintf(data_filename, "%s/%s", MR_COMPLEXITY_DATA_DIR, full_proc_name);
+
+    fp = fopen(data_filename, data_filemode);
+    if (fp == NULL) {
+        fprintf(stderr, "%s: cannot open %s: %s\n",
+            MR_progname, data_filename, strerror(errno));
+        /* there is no point in aborting */
+        return;
+    }
+
+    num_profiled_args = proc->MR_clp_num_profiled_args;
+
+    metrics = proc->MR_clp_metrics;
+    sizes = proc->MR_clp_sizes;
+    num_slots = proc->MR_clp_next_slot_num;
+    past_slots = proc->MR_clp_past_slots;
+
+    do {
+        int slot, arg;
+
+        for (slot = num_slots - 1; slot >= 0; slot--) {
+            fprintf(fp, "%d %d %d",
+                metrics[slot].MR_clpm_num_words,
+                metrics[slot].MR_clpm_num_cells,
+                metrics[slot].MR_clpm_num_ticks);
+
+            for (arg = 0; arg < num_profiled_args; arg++) {
+                fprintf(fp, " %d", sizes[slot * num_profiled_args + arg]);
+            }
+
+            fprintf(fp, "\n");
+        }
+
+        if (past_slots == NULL) {
+            break;
+        }
+
+        metrics = past_slots->MR_clpps_metrics;
+        sizes = past_slots->MR_clpps_sizes;
+        num_slots = MR_COMPLEXITY_SLOTS_PER_CHUNK;
+        past_slots = past_slots->MR_clpps_previous;
+    } while (MR_TRUE);
+
+    (void) fclose(fp);
+}
+
+static void
+MR_complexity_output_args_desc(FILE *fp, MR_ComplexityProc *proc)
+{
+    int                     arg;
+    int                     num_args;
+    MR_ComplexityArgInfo    *arg_infos;
+
+    arg_infos = proc->MR_clp_arg_infos;
+    num_args = proc->MR_clp_num_args;
+
+    for (arg = 0; arg < num_args; arg++) {
+        if (arg_infos[arg].MR_clpai_maybe_name != NULL) {
+            fprintf(fp, "%s ", arg_infos[arg].MR_clpai_maybe_name);
+        } else {
+            fprintf(fp, "_ ");
+        }
+
+        switch (arg_infos[arg].MR_clpai_kind) {
+            case MR_COMPLEXITY_INPUT_VAR_SIZE:
+                fprintf(fp, "profiled_input\n");
+                break;
+            case MR_COMPLEXITY_INPUT_FIX_SIZE:
+                fprintf(fp, "unprofiled_input\n");
+                break;
+            case MR_COMPLEXITY_OUTPUT:
+                fprintf(fp, "output\n");
+                break;
+            default:
+                fprintf(fp, "unknown\n");
+                break;
+        }
+    }
+}
+
+void
+MR_init_complexity_proc(int proc_num, const char *fullname,
+    int num_profiled_args, int num_args, MR_ComplexityArgInfo *arg_infos)
+{
+    MR_ComplexityProc   *proc;
+
+    if (MR_complexity_procs == NULL) {
+        fprintf(stderr, "%s: executable wasn't fully prepared "
+            "for complexity experiment\n", MR_progname);
+        exit(1);
+    }
+
+    proc = &MR_complexity_procs[proc_num];
+    if (! MR_streq(fullname, proc->MR_clp_full_proc_name)) {
+        fprintf(stderr, "%s: proc_num %d is %s: expected %s\n",
+            MR_progname, proc_num, proc->MR_clp_full_proc_name, fullname);
+        exit(1);
+    }
+
+    if (proc->MR_clp_num_profiled_args >= 0) {
+        fprintf(stderr, "%s: proc_num %d: duplicate initialization\n",
+            MR_progname, proc_num);
+        exit(1);
+    }
+
+    if (num_profiled_args < 0) {
+        fprintf(stderr, "%s: proc_num %d: bad num_profiled_args\n",
+            MR_progname, proc_num);
+        exit(1);
+    }
+
+    proc->MR_clp_num_profiled_args = num_profiled_args;
+    proc->MR_clp_num_args = num_args;
+    proc->MR_clp_arg_infos = arg_infos;
+
+    proc->MR_clp_metrics = MR_NEW_ARRAY(MR_ComplexityMetrics,
+        MR_COMPLEXITY_SLOTS_PER_CHUNK);
+    proc->MR_clp_sizes = MR_NEW_ARRAY(int,
+        MR_COMPLEXITY_SLOTS_PER_CHUNK * num_profiled_args);
+}
+
+void
+MR_check_complexity_init(void)
+{
+    int                 proc_num;
+    MR_bool             printed_heading;
+    MR_ComplexityProc   *proc;
+
+    printed_heading = MR_FALSE;
+    for (proc_num = 0; proc_num < MR_num_complexity_procs; proc_num++) {
+        proc = &MR_complexity_procs[proc_num];
+
+        if (proc->MR_clp_num_profiled_args < 0) {
+            if (! printed_heading) {
+                fprintf(stderr, "%s: the following procedures are "
+                    "not available for complexity experiment:\n",
+                    MR_progname);
+                printed_heading = MR_TRUE;
+            }
+
+            fprintf(stderr, "%s\n", proc->MR_clp_full_proc_name);
+        }
+    }
+
+    if (printed_heading) {
+        exit(1);
+    }
+}
+
+MR_ComplexityIsActive
+MR_complexity_is_active_func(int num_procs, int proc_num, const char *name,
+    int num_profiled_inputs)
+{
+    MR_ComplexityProc   *proc;
+
+    if (num_procs != MR_num_complexity_procs || MR_complexity_procs == NULL) {
+        fprintf(stderr, "%s: executable wasn't fully prepared "
+            "for complexity experiment\n", MR_progname);
+        exit(1);
+    }
+
+    if (proc_num >= num_procs) {
+        fprintf(stderr, "%s: proc_num %d >= num_procs %d\n",
+            MR_progname, proc_num, num_procs);
+        exit(1);
+    }
+
+    proc = &MR_complexity_procs[proc_num];
+    if (! MR_streq(name, proc->MR_clp_full_proc_name)) {
+        fprintf(stderr, "%s: proc_num %d is %s: expected %s\n",
+            MR_progname, proc_num, proc->MR_clp_full_proc_name, name);
+        exit(1);
+    }
+
+    if (proc->MR_clp_num_profiled_args != num_profiled_inputs) {
+        fprintf(stderr, "%s: proc_num %d: bad num_profiled_inputs\n",
+            MR_progname, proc_num);
+        exit(1);
+    }
+
+    return proc->MR_clp_is_active;
+}
+
+int
+MR_complexity_call_func(int procnum)
+{
+    MR_ComplexityProc       *proc;
+    MR_ComplexityMetrics    *metrics;
+    int                     slot;
+
+    proc = &MR_complexity_procs[procnum];
+    slot = proc->MR_clp_next_slot_num;
+    if (slot < MR_COMPLEXITY_SLOTS_PER_CHUNK) {
+        proc->MR_clp_next_slot_num++;
+    } else {
+        MR_ComplexityPastSlots  *past_slots;
+
+        past_slots = MR_NEW(MR_ComplexityPastSlots);
+        past_slots->MR_clpps_metrics = proc->MR_clp_metrics;
+        past_slots->MR_clpps_sizes = proc->MR_clp_sizes;
+        past_slots->MR_clpps_previous = proc->MR_clp_past_slots;
+        proc->MR_clp_past_slots = past_slots;
+
+        proc->MR_clp_metrics = MR_NEW_ARRAY(MR_ComplexityMetrics,
+            MR_COMPLEXITY_SLOTS_PER_CHUNK);
+        proc->MR_clp_sizes = MR_NEW_ARRAY(int,
+            MR_COMPLEXITY_SLOTS_PER_CHUNK * proc->MR_clp_num_profiled_args);
+        proc->MR_clp_next_slot_num = 1;
+        slot = 0;
+    }
+    metrics = &proc->MR_clp_metrics[slot];
+    metrics->MR_clpm_num_words -= MR_complexity_word_counter;
+    metrics->MR_clpm_num_cells -= MR_complexity_cell_counter;
+    metrics->MR_clpm_num_ticks -= MR_complexity_tick_counter;
+    proc->MR_clp_is_active = MR_COMPLEXITY_IS_ACTIVE;
+
+    return slot;
+}
+
+void
+MR_complexity_fill_size_slot(MR_ComplexityProc *proc, int slot,
+    int num_profiled_args, int argnum, int size)
+{
+    MR_ComplexityCounter    *sizes;
+
+    sizes = proc->MR_clp_sizes;
+    sizes[(slot * proc->MR_clp_num_profiled_args) + argnum] = size;
+}
+
+void
+MR_complexity_leave_func(int procnum, int slot)
+{
+    MR_ComplexityProc       *proc;
+    MR_ComplexityMetrics    *metrics;
+
+    proc = &MR_complexity_procs[procnum];
+    metrics = &proc->MR_clp_metrics[slot];
+    metrics->MR_clpm_num_words += MR_complexity_word_counter;
+    metrics->MR_clpm_num_cells += MR_complexity_cell_counter;
+    metrics->MR_clpm_num_ticks += MR_complexity_tick_counter;
+    proc->MR_clp_is_active = MR_COMPLEXITY_IS_INACTIVE;
+}
+
+void
+MR_complexity_redo_func(int procnum, int slot)
+{
+    MR_ComplexityProc       *proc;
+    MR_ComplexityMetrics    *metrics;
+
+    proc = &MR_complexity_procs[procnum];
+    metrics = &proc->MR_clp_metrics[slot];
+    metrics->MR_clpm_num_words -= MR_complexity_word_counter;
+    metrics->MR_clpm_num_cells -= MR_complexity_cell_counter;
+    metrics->MR_clpm_num_ticks -= MR_complexity_tick_counter;
+    proc->MR_clp_is_active = MR_COMPLEXITY_IS_ACTIVE;
 }
 
 #endif  /* MR_RECORD_TERM_SIZES */

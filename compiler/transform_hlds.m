@@ -27,6 +27,8 @@
 
 :- include_module table_gen.
 
+:- include_module complexity.
+
 :- include_module (lambda).
 
 :- include_module termination.

@@ -1014,16 +1014,26 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName, ModuleNames, Result,
 	globals__io_lookup_bool_option(aditi, Aditi, !IO),
 	AditiOpt = ( Aditi = yes -> "-a" ; "" ),
 
+	globals__io_lookup_string_option(experimental_complexity,
+		ExperimentalComplexity, !IO),
+	( ExperimentalComplexity = "" ->
+		ExperimentalComplexityOpt = ""
+	;
+		ExperimentalComplexityOpt = "-X " ++ ExperimentalComplexity
+	),
+
 	globals__io_lookup_string_option(mkinit_command, Mkinit, !IO),
 	TmpInitCFileName = InitCFileName ++ ".tmp",
 	MkInitCmd = string__append_list(
 		[Mkinit, " -g ", Grade, " ", TraceOpt, " ", ExtraInitsOpt,
-		" ", NoMainOpt, " ", AditiOpt, " ", RuntimeFlags,
+		" ", NoMainOpt, " ", AditiOpt,
+		" ", ExperimentalComplexityOpt, " ", RuntimeFlags,
 		" -o ", quote_arg(TmpInitCFileName), " ", InitFileDirs,
 		" ", InitFileNames, " ", CFileNames]),
 	invoke_system_command(ErrorStream, verbose, MkInitCmd, MkInitOK0, !IO),
 	maybe_report_stats(Stats, !IO),
-	( MkInitOK0 = yes ->
+	(
+		MkInitOK0 = yes,
 		update_interface(InitCFileName, MkInitOK1, !IO),
 		(
 			MkInitOK1 = yes,
@@ -1059,9 +1069,11 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName, ModuleNames, Result,
 				compile_c_file(ErrorStream, PIC, InitCFileName,
 					InitObjFileName, CompileOK, !IO),
 				maybe_report_stats(Stats, !IO),
-				( CompileOK = no ->
+				(
+					CompileOK = no,
 					Result = no
 				;
+					CompileOK = yes,
 					Result = yes(InitObjFileName)
 				)
 			;
@@ -1073,6 +1085,7 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName, ModuleNames, Result,
 			Result = no
 		)
 	;
+		MkInitOK0 = no,
 		Result = no
 	).
 

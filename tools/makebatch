@@ -4,9 +4,10 @@
 #
 # The control and output files are all in the subdirectory batch.
 # The control files are $batch.MCFLAGS and possibly $batch.CFLAGS,
-# $batch.MGNUCFLAGS, $batch.GRADE, and/or $batch.MMAKE, where $batch is
-# the last argument of makebatch. $batch.CFLAGS, $batch.MGNUCFLAGS,
-# $batch.GRADE and $batch.MMAKE are consulted if they exist.
+# $batch.MGNUCFLAGS, $batch.MLFLAGS, $batch.GRADE, and/or $batch.MMAKE,
+# where $batch is the last argument of makebatch. $batch.CFLAGS,
+# $batch.MGNUCFLAGS, $batch.MLFLAGS, $batch.GRADE and $batch.MMAKE
+# are consulted if they exist.
 #
 # All the control files except $batch.MMAKE must have the same number
 # of lines. Each line corresponds to a version of the compiler that is
@@ -113,6 +114,13 @@ else
 	needcflags=false
 fi
 
+if test -r batch/$batch.MLFLAGS
+then
+	needmlflags=true
+else
+	needmlflags=false
+fi
+
 if test -r batch/$batch.GRADE
 then
 	needgrade=true
@@ -165,6 +173,12 @@ do
 	then
 		mgnucflags=`awk "NR == $n" batch/$batch.MGNUCFLAGS`
 		echo "EXTRA_MGNUCFLAGS = $mgnucflags" >> Mmake.stage.params
+	fi
+
+	if $needmlflags
+	then
+		mlflags=`awk "NR == $n" batch/$batch.MLFLAGS`
+		echo "EXTRA_MLFLAGS = $mlflags" >> Mmake.stage.params
 	fi
 
 	if $needgrade

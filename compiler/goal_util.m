@@ -6,7 +6,7 @@
 
 % Main author: conway.
 %
-% This module provides various utility procedures for maniupulating HLDS goals,
+% This module provides various utility procedures for manipulating HLDS goals,
 % e.g. some functionality for renaming variables in goals.
 
 %-----------------------------------------------------------------------------%
@@ -22,6 +22,23 @@
 :- import_module parse_tree__prog_data.
 
 :- import_module assoc_list, bool, list, set, map, term.
+
+	% create_renaming(OutputVars, InstMapDelta, !VarTypes, !VarSet,
+	%	UnifyGoals, NewVars, Renaming):
+	%
+	% This predicate is intended for use in program transformations
+	% that need to wrap up semidet goals, replacing Goal with
+	% ( Goal' -> UnifyGoals, ... ; ...), where Goal' has its output
+	% variables (OutputVars) replaced with new variables (NewVars),
+	% with the mapping from OutputVars to NewVars being Renaming.
+	% VarTypes and Varset are updated for the new variables. The final
+	% insts of NewVar are taken from the insts of the corresponding
+	% OutputVar in InstMapDelta (the initial inst is free).
+
+:- pred create_renaming(list(prog_var)::in, instmap_delta::in,
+	vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
+	list(hlds_goal)::out, list(prog_var)::out,
+	map(prog_var, prog_var)::out) is det.
 
 % The predicates rename_var* take a structure and a mapping from var -> var
 % and apply that translation. If a var in the input structure does not
@@ -274,6 +291,48 @@
 
 %-----------------------------------------------------------------------------%
 
+create_renaming(OrigVars, InstMapDelta, !VarTypes, !VarSet, Unifies, NewVars,
+		Renaming) :-
+	create_renaming_2(OrigVars, InstMapDelta, !VarTypes, !VarSet,
+		[], RevUnifies, [], RevNewVars, map__init, Renaming),
+	list__reverse(RevNewVars, NewVars),
+	list__reverse(RevUnifies, Unifies).
+
+:- pred create_renaming_2(list(prog_var)::in, instmap_delta::in,
+	vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
+	list(hlds_goal)::in, list(hlds_goal)::out,
+	list(prog_var)::in, list(prog_var)::out,
+	map(prog_var, prog_var)::in, map(prog_var, prog_var)::out) is det.
+
+create_renaming_2([], _, !VarTypes, !VarSet, !RevUnifies, !RevNewVars,
+		!Renaming).
+create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarTypes, !VarSet,
+		!RevUnifies, !RevNewVars, !Renaming) :-
+	varset__new_var(!.VarSet, NewVar, !:VarSet),
+	map__lookup(!.VarTypes, OrigVar, Type),
+	map__det_insert(!.VarTypes, NewVar, Type, !:VarTypes),
+	( instmap_delta_search_var(InstMapDelta, OrigVar, DeltaInst) ->
+		NewInst = DeltaInst
+	;
+		error("create_renaming_2: cannot get new inst")
+	),
+	Mode = ((NewInst -> NewInst) - (free -> NewInst)),
+	UnifyInfo = assign(OrigVar, NewVar),
+	UnifyContext = unify_context(explicit, []),
+	GoalExpr = unify(OrigVar, var(NewVar), Mode, UnifyInfo, UnifyContext),
+	set__list_to_set([OrigVar, NewVar], NonLocals),
+	instmap_delta_from_assoc_list([OrigVar - NewInst], UnifyInstMapDelta),
+	goal_info_init(NonLocals, UnifyInstMapDelta, det, pure,
+		term__context_init, GoalInfo),
+	Goal = GoalExpr - GoalInfo,
+	!:RevUnifies = [Goal | !.RevUnifies],
+	map__det_insert(!.Renaming, OrigVar, NewVar, !:Renaming),
+	!:RevNewVars = [NewVar | !.RevNewVars],
+	create_renaming_2(OrigVars, InstMapDelta, !VarTypes, !VarSet,
+		!RevUnifies, !RevNewVars, !Renaming).
+
+%-----------------------------------------------------------------------------%
+
 goal_util__create_variables([], _OldVarNames, _OldVarTypes,
 		!Varset, !VarTypes, !Subn).
 goal_util__create_variables([V | Vs], OldVarNames, OldVarTypes,
@@ -487,9 +546,9 @@ goal_util__rename_unify_rhs(
 	map(prog_var, prog_var)::in, unification::out) is det.
 
 goal_util__rename_unify(
-		construct(Var0, ConsId, Vars0, Modes, How0, Uniq, Size),
+		construct(Var0, ConsId, Vars0, Modes, How0, Uniq, MaybeSize0),
 		Must, Subn,
-		construct(Var, ConsId, Vars, Modes, How, Uniq, Size)) :-
+		construct(Var, ConsId, Vars, Modes, How, Uniq, MaybeSize)) :-
 	goal_util__rename_var(Var0, Must, Subn, Var),
 	goal_util__rename_var_list(Vars0, Must, Subn, Vars),
 	(
@@ -502,7 +561,22 @@ goal_util__rename_unify(
 	;
 		How0 = construct_statically(_),
 		How = How0
-	).
+	),
+	(
+		MaybeSize0 = no,
+		MaybeSize = no
+	;
+		MaybeSize0 = yes(Size0),
+		(
+			Size0 = known_size(_),
+			Size = Size0
+		;
+			Size0 = dynamic_size(SizeVar0),
+			goal_util__rename_var(SizeVar0, Must, Subn, SizeVar),
+			Size = dynamic_size(SizeVar)
+		),
+		MaybeSize = yes(Size)
+	).	
 goal_util__rename_unify(deconstruct(Var0, ConsId, Vars0, Modes, Cat, CanCGC),
 		Must, Subn,
 		deconstruct(Var, ConsId, Vars, Modes, Cat, CanCGC)) :-

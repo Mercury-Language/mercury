@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-2004 The University of Melbourne.
+** Copyright (C) 1993-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -87,6 +87,7 @@ extern	int	mercury_terminate(void);
 #include "mercury_trace_base.h"	/* for MR_trace_port */
 #include "mercury_type_info.h"	/* for MR_TypeCtorInfo_Struct */
 #include "mercury_library_types.h"	/* for MercuryFilePtr */
+#include "mercury_complexity.h"	/* for MR_ComplexityProc */
 
 #ifdef MR_CONSERVATIVE_GC
   #ifdef MR_MPS_GC

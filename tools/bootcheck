@@ -1189,6 +1189,27 @@ then
 		echo "** error - stage 2 and stage 3 differ!"
 	else
 		echo "stage 2 and stage 3 compare ok"
+		if test -d $stage3dir/library/ComplexityArgs
+		then
+			mv $stage3dir/library/ComplexityArgs \
+				$root/stage3_library_ComplexityArgs
+		fi
+		if test -d $stage3dir/library/ComplexityData
+		then
+			mv $stage3dir/library/ComplexityData \
+				$root/stage3_library_ComplexityData
+		fi
+		if test -d $stage3dir/compiler/ComplexityArgs
+		then
+			mv $stage3dir/compiler/ComplexityArgs \
+				$root/stage3_compiler_ComplexityArgs
+		fi
+		if test -d $stage3dir/compiler/ComplexityData
+		then
+			mv $stage3dir/compiler/ComplexityData \
+				$root/stage3_compiler_ComplexityData
+		fi
+
 		echo "removing stage 3..."
 		# We try to do the removal of the stage 3 directory in parallel
 		# since recursive rm's across NFS can be quite slow ...

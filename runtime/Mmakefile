@@ -30,6 +30,7 @@ HDRS		=	\
 			mercury_builtin_types.h	\
 			mercury_builtin_types_proc_layouts.h	\
 			mercury_calls.h		\
+			mercury_complexity.h	\
 			mercury_conf_bootstrap.h \
 			mercury_conf.h		\
 			mercury_conf_param.h	\

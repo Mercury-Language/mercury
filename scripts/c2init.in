@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-2004 The University of Melbourne.
+# Copyright (C) 1995-2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -69,7 +69,14 @@ case $profile_deep in true)
 	init_opt="-i" ;;
 esac
 
-if [ "$mercury_stdlib_dir" != "" ]
+if test "$experimental_complexity" != ""
+then
+	experimental_complexity_opt="-X $experimental_complexity"
+else
+	experimental_complexity_opt=""
+fi
+
+if test "$mercury_stdlib_dir" != ""
 then
 	MERCURY_MOD_LIB_MODS="$mercury_stdlib_dir/modules/$RT_LIB_NAME.init \
 		$mercury_stdlib_dir/modules/$STD_LIB_NAME.init"
@@ -93,13 +100,14 @@ esac
 case $# in
 	0) exec $MKINIT $aditi_opt -c"$maxcalls" $init_opt $trace_opt \
 		$library_opt $defentry_opt $extra_inits_opt \
-		-g "$GRADE" -o "$init_c_file" \
+		-g "$GRADE" -o "$init_c_file" $experimental_complexity_opt \
 		$extra_init_dirs $EXTRA_INIT_FILES $TRACE_INIT_FILES \
 		$MERCURY_ALL_LIB_MODS
 	   ;;
 	*) exec $MKINIT $aditi_opt -c"$maxcalls" $init_opt $trace_opt \
 		$library_opt $defentry_opt $extra_inits_opt \
-		-g "$GRADE" -o "$init_c_file" -r "$runtime_flags" \
+		-g "$GRADE" -o "$init_c_file" $experimental_complexity_opt \
+		-r "$runtime_flags" \
 		$extra_init_dirs "$@" $EXTRA_INIT_FILES $TRACE_INIT_FILES \
 		$MERCURY_ALL_LIB_MODS
 	   ;;

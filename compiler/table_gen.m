@@ -686,7 +686,8 @@ create_new_loop_goal(Detism, OrigGoal, PredId, ProcId, TablingViaExtraArgs,
 		InactiveGoalExpr = conj([OrigGoal, MarkInactiveGoal])
 	;
 		CodeModel = model_semi,
-		create_renaming(OutputVars, !VarTypes, !VarSet,
+		goal_info_get_instmap_delta(OrigGoalInfo, InstMapDelta),
+		create_renaming(OutputVars, InstMapDelta, !VarTypes, !VarSet,
 			Unifies, NewVars, Renaming),
 		rename_vars_in_goal(OrigGoal, Renaming, RenamedOrigGoal),
 
@@ -930,8 +931,8 @@ create_new_memo_goal(Detism, OrigGoal, PredId, ProcId, TablingViaExtraArgs,
 		]
 	;
 		CodeModel = model_semi,
-		create_renaming(OutputVars, !VarTypes, !VarSet,
-			Unifies, NewVars, Renaming),
+		create_renaming(OutputVars, OrigInstMapDelta,
+			!VarTypes, !VarSet, Unifies, NewVars, Renaming),
 		rename_vars_in_goal(OrigGoal, Renaming, RenamedOrigGoal),
 
 		ThenGoalExpr = conj(list__append(Unifies, SaveAnswerGoals)),
@@ -1791,45 +1792,6 @@ keep_marker(terminates) = yes.
 keep_marker(does_not_terminate) = yes.
 keep_marker(check_termination) = no.
 keep_marker(calls_are_fully_qualified) = yes.
-
-%-----------------------------------------------------------------------------%
-
-:- pred create_renaming(list(prog_var)::in, vartypes::in, vartypes::out,
-	prog_varset::in, prog_varset::out, list(hlds_goal)::out,
-	list(prog_var)::out, map(prog_var, prog_var)::out) is det.
-
-create_renaming(OrigVars, !VarTypes, !VarSet, Unifies, NewVars, Renaming) :-
-	create_renaming_2(OrigVars, !VarTypes, !VarSet, [], RevUnifies,
-		[], RevNewVars, map__init, Renaming),
-	list__reverse(RevNewVars, NewVars),
-	list__reverse(RevUnifies, Unifies).
-
-:- pred create_renaming_2(list(prog_var)::in, vartypes::in, vartypes::out,
-	prog_varset::in, prog_varset::out,
-	list(hlds_goal)::in, list(hlds_goal)::out,
-	list(prog_var)::in, list(prog_var)::out,
-	map(prog_var, prog_var)::in, map(prog_var, prog_var)::out) is det.
-
-create_renaming_2([], !VarTypes, !VarSet, !RevUnifies, !RevNewVars, !Renaming).
-create_renaming_2([OrigVar | OrigVars], !VarTypes, !VarSet, !RevUnifies,
-		!RevNewVars, !Renaming) :-
-	varset__new_var(!.VarSet, NewVar, !:VarSet),
-	map__lookup(!.VarTypes, OrigVar, Type),
-	map__det_insert(!.VarTypes, NewVar, Type, !:VarTypes),
-	Ground = ground(shared, none),
-	Mode = ((Ground -> Ground) - (free -> Ground)),
-	UnifyInfo = assign(OrigVar, NewVar),
-	UnifyContext = unify_context(explicit, []),
-	GoalExpr = unify(OrigVar, var(NewVar), Mode, UnifyInfo, UnifyContext),
-	set__list_to_set([OrigVar, NewVar], NonLocals),
-	goal_info_init_hide(NonLocals, bind_vars([OrigVar]), det, pure,
-		term__context_init, GoalInfo),
-	Goal = GoalExpr - GoalInfo,
-	!:RevUnifies = [Goal | !.RevUnifies],
-	map__det_insert(!.Renaming, OrigVar, NewVar, !:Renaming),
-	!:RevNewVars = [NewVar | !.RevNewVars],
-	create_renaming_2(OrigVars, !VarTypes, !VarSet, !RevUnifies,
-		!RevNewVars, !Renaming).
 
 %-----------------------------------------------------------------------------%
 

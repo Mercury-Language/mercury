@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000,2002-2004 The University of Melbourne.
+** Copyright (C) 1997-2000,2002-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -308,14 +308,6 @@ extern	void		MR_print_answerblock(FILE *fp,
 
   #define MR_TABLE_RESIZE_ARRAY(ptr, type, count)			\
 	MR_GC_RESIZE_ARRAY((ptr), type, (count))
-
-#if 0
-  #define MR_table_allocate_bytes(size)					\
-	MR_GC_malloc((size))
-
-  #define MR_table_reallocate_bytes(pointer, size)			\
-	MR_GC_realloc((pointer), (size))
-#endif
 
   #define MR_table_allocate_words(size)					\
 	((MR_Word *) MR_GC_malloc(sizeof(MR_Word) * (size)))

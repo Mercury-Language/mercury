@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2004 The University of Melbourne.
+** Copyright (C) 1995-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -194,8 +194,19 @@
 
 #endif /* not MR_CONSERVATIVE_GC */
 
+#ifdef	MR_RECORD_TERM_SIZES
+  #define MR_maybe_increment_allocation_counters(count)			\
+	(								\
+	 	MR_complexity_word_counter += (count),			\
+		MR_complexity_cell_counter += 1				\
+	)
+#else
+  #define MR_maybe_increment_allocation_counters(count)			\
+	((void) 0)
+#endif
+
 #if	defined (MR_DEEP_PROFILING) && defined(MR_DEEP_PROFILING_MEMORY)
-  #define MR_maybe_record_allocation(count, proclabel, type)		\
+  #define MR_prof_record_allocation(count, proclabel, type)		\
 	(								\
 		MR_current_call_site_dynamic->MR_csd_own.MR_own_allocs	\
 			+= 1,						\
@@ -203,13 +214,19 @@
 			+= (count)					\
 	)
 #elif	defined(MR_MPROF_PROFILE_MEMORY)
-  #define MR_maybe_record_allocation(count, proclabel, type)		\
+  #define MR_prof_record_allocation(count, proclabel, type)		\
 	MR_record_allocation((count), MR_ENTRY(proclabel),		\
 		MR_STRINGIFY(proclabel), (type))
 #else
-  #define MR_maybe_record_allocation(count, proclabel, type)		\
+  #define MR_prof_record_allocation(count, proclabel, type)		\
 	((void) 0)
 #endif
+
+#define	MR_maybe_record_allocation(count, proclabel, type)		\
+	(								\
+		MR_prof_record_allocation((count), proclabel, (type)),	\
+		MR_maybe_increment_allocation_counters(count)		\
+	)
 
 #define MR_tag_offset_incr_hp_msg(dest, tag, offset, count, proclabel, type) \
 	(								\

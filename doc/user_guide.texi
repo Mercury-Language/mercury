@@ -5903,10 +5903,8 @@ and grade modifier; they are followed by descriptions of those options.
 @findex --profiling
 @findex --memory-profiling
 @findex --deep-profiling
-@c The following are undocumented because they are not yet useful,
-@c and thus are not yet for public consumption.
-@c @findex --record-term-sizes-as-words
-@c @findex --record-term-sizes-as-cells
+@findex --record-term-sizes-as-words
+@findex --record-term-sizes-as-cells
 
 @item @samp{none}
 @code{--target c --no-gcc-global-registers --no-gcc-nonlocal-gotos --no-asm-labels}.
@@ -5974,13 +5972,11 @@ and grade modifier; they are followed by descriptions of those options.
 @item @samp{.tr}
 @code{--use-trail}.
 
-@c The following are undocumented because they are not yet useful,
-@c and thus are not yet for public consumption.
-@c @item @samp{.tsw}
-@c @code{--record-term-sizes-as-words}.
-@c 
-@c @item @samp{.tsc}
-@c @code{--record-term-sizes-as-cells}.
+@item @samp{.tsw}
+@code{--record-term-sizes-as-words}.
+
+@item @samp{.tsc}
+@code{--record-term-sizes-as-cells}.
 
 @item @samp{.rt}
 @code{--reserve-tag}.
@@ -6200,9 +6196,6 @@ has a small effect on the execution speed.
 
 @end ignore
 
-@ignore
-	The following are not yet useful, and hence undocumented.
-
 @sp 1
 @item @code{--record-term-sizes-as-words} (grades: any grade containing @samp{.tsw})
 @findex --record-term-sizes-as-words
@@ -6213,7 +6206,13 @@ Record the sizes of terms, using one word as the unit of memory.
 @findex --record-term-sizes-as-cells
 Record the sizes of terms, using one cell as the unit of memory.
 
-@end ignore
+@sp 1
+@item @code{--experimental-complexity @var{filename}}
+@findex --experimental-complexity
+Enable experimental complexity analysis
+for the predicates listed in the given file.
+This option is supported for the C back-end, with --no-highlevel-code.
+For now, this option itself is for developers only.
 
 @sp 1
 @item @code{--gc @{none, boehm, mps, accurate, automatic@}}
@@ -6642,6 +6641,9 @@ These optimizations are high-level transformations on our HLDS (high-level
 data structure).
 
 @table @code
+@c @item --no-allow-inlining
+@c This option is meant to used only inside the compiler;
+@c its effect is the same as plain --no-inlining
 @item --no-inlining
 @findex --no-inlining
 @findex --inlining

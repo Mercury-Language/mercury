@@ -63,6 +63,7 @@
 :- import_module transform_hlds__trans_opt.
 :- import_module transform_hlds__equiv_type_hlds.
 :- import_module transform_hlds__table_gen.
+:- import_module transform_hlds__complexity.
 :- import_module transform_hlds__lambda.
 :- import_module backend_libs__type_ctor_info.
 :- import_module transform_hlds__termination.
@@ -2277,6 +2278,8 @@ mercury_compile__middle_pass(ModuleName, !HLDS, !IO) :-
 	globals__io_lookup_bool_option(verbose, Verbose, !IO),
 	globals__io_lookup_bool_option(statistics, Stats, !IO),
 
+	mercury_compile__maybe_read_experimental_complexity_file(!HLDS, !IO),
+
 	mercury_compile__tabling(Verbose, Stats, !HLDS, !IO),
 	mercury_compile__maybe_dump_hlds(!.HLDS, 105, "tabling", !IO),
 
@@ -2393,6 +2396,13 @@ mercury_compile__middle_pass(ModuleName, !HLDS, !IO) :-
 	% disjunctions that might confuse other hlds->hlds transformations.
 	mercury_compile__maybe_deep_profiling(Verbose, Stats, !HLDS, !IO),
 	mercury_compile__maybe_dump_hlds(!.HLDS, 205, "deep_profiling", !IO),
+
+	% Experimental complexity transformation should be done late in the
+	% piece for the same reason as deep profiling. At the moment, they are
+	% exclusive.
+	mercury_compile__maybe_experimental_complexity(Verbose, Stats, !HLDS,
+		!IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 210, "complexity", !IO),
 
 	mercury_compile__maybe_dump_hlds(!.HLDS, 299, "middle_pass", !IO).
 
@@ -3311,11 +3321,13 @@ mercury_compile__maybe_higher_order(Verbose, Stats, !HLDS, !IO) :-
 	module_info::in, module_info::out, io::di, io::uo) is det.
 
 mercury_compile__maybe_do_inlining(Verbose, Stats, !HLDS, !IO) :-
+	globals__io_lookup_bool_option(allow_inlining, Allow, !IO),
 	globals__io_lookup_bool_option(inline_simple, Simple, !IO),
 	globals__io_lookup_bool_option(inline_single_use, SingleUse, !IO),
 	globals__io_lookup_int_option(inline_compound_threshold, Threshold,
 		!IO),
 	(
+		Allow = yes,
 		( Simple = yes
 		; SingleUse = yes
 		; Threshold > 0
@@ -3563,6 +3575,77 @@ mercury_compile__maybe_term_size_prof(Verbose, Stats, !HLDS, !IO) :-
 		maybe_report_stats(Stats, !IO)
 	;
 		MaybeTransform = no
+	).
+
+:- pred mercury_compile__maybe_read_experimental_complexity_file(
+	module_info::in, module_info::out, io::di, io::uo) is det.
+
+mercury_compile__maybe_read_experimental_complexity_file(!HLDS, !IO) :-
+	globals__io_lookup_string_option(experimental_complexity, FileName,
+		!IO),
+	globals__io_lookup_bool_option(record_term_sizes_as_words,
+		RecordTermSizesAsWords, !IO),
+	globals__io_lookup_bool_option(record_term_sizes_as_cells,
+		RecordTermSizesAsCells, !IO),
+	bool__or(RecordTermSizesAsWords, RecordTermSizesAsCells,
+		RecordTermSizes),
+	( FileName = "" ->
+%		While we could include the following sanity check, it is overly
+%		strong. For example, a bootcheck in a term size profiling grade
+%		would have to supply an --experimental-complexity option for
+%		both the stage3 compiler and the test cases. Since the runtime
+%		checks that all procedures mentioned in the files actually
+%		exist and are transformed by the compiler, this would require
+%		a different complexity experiment file for each test case,
+%		which is impractical.
+% 		(
+% 			RecordTermSizes = yes,
+% 			report_error("term size profiling grades require " ++
+% 				"the --experimental-complexity option", !IO)
+% 		;
+% 			RecordTermSizes = no
+% 		)
+			true
+	;
+		(
+			RecordTermSizes = yes
+		;
+			RecordTermSizes = no,
+			report_error("the --experimental-complexity option " ++
+				"requires a term size profiling grade", !IO)
+		),
+		complexity__read_spec_file(FileName, MaybeNumProcMap, !IO),
+		(
+			MaybeNumProcMap = ok(NumProcs - ProcMap),
+			module_info_set_maybe_complexity_proc_map(
+				yes(NumProcs - ProcMap), !HLDS)
+		;
+			MaybeNumProcMap = error(Msg),
+			report_error(Msg, !IO)
+		)
+	).
+
+:- pred mercury_compile__maybe_experimental_complexity(bool::in, bool::in,
+	module_info::in, module_info::out, io::di, io::uo) is det.
+
+mercury_compile__maybe_experimental_complexity(Verbose, Stats, !HLDS, !IO) :-
+	module_info_get_maybe_complexity_proc_map(!.HLDS, MaybeNumProcMap),
+	(
+		MaybeNumProcMap = no
+	;
+		MaybeNumProcMap = yes(NumProcs - ProcMap),
+		maybe_write_string(Verbose,
+			"% Applying complexity experiment " ++
+				"transformation...\n",
+			!IO),
+		maybe_flush_output(Verbose, !IO),
+		process_all_nonimported_nonaditi_procs(
+			update_module_io(
+				complexity__process_proc_msg(NumProcs,
+					ProcMap)),
+			!HLDS, !IO),
+		maybe_write_string(Verbose, "% done.\n", !IO),
+		maybe_report_stats(Stats, !IO)
 	).
 
 :- pred mercury_compile__maybe_deep_profiling(bool::in, bool::in,
@@ -3888,8 +3971,9 @@ mercury_compile__output_pass(HLDS, GlobalData0, Procs, MaybeRLFile,
 		AllData),
 	mercury_compile__construct_c_file(HLDS, C_InterfaceInfo,
 		Procs, GlobalVars, AllData, CFile, NumChunks, !IO),
-	mercury_compile__output_llds(ModuleName, CFile, LayoutLabels,
-		MaybeRLFile, Verbose, Stats, !IO),
+	module_info_get_complexity_proc_infos(HLDS, ComplexityProcs),
+	mercury_compile__output_llds(ModuleName, CFile, ComplexityProcs,
+		LayoutLabels, MaybeRLFile, Verbose, Stats, !IO),
 
 	C_InterfaceInfo = foreign_interface_info(_, _, _, _,
 		C_ExportDecls, _),
@@ -4042,18 +4126,19 @@ mercury_compile__combine_chunks_2([Chunk | Chunks], ModuleName, Num,
 	mercury_compile__combine_chunks_2(Chunks, ModuleName, Num1, Modules).
 
 :- pred mercury_compile__output_llds(module_name::in, c_file::in,
-	map(llds__label, llds__data_addr)::in, maybe(rl_file)::in,
-	bool::in, bool::in, io::di, io::uo) is det.
+	list(complexity_proc_info)::in, map(llds__label, llds__data_addr)::in,
+	maybe(rl_file)::in, bool::in, bool::in, io::di, io::uo) is det.
 
-mercury_compile__output_llds(ModuleName, LLDS0, StackLayoutLabels, MaybeRLFile,
-		Verbose, Stats, !IO) :-
+mercury_compile__output_llds(ModuleName, LLDS0, ComplexityProcs,
+		StackLayoutLabels, MaybeRLFile, Verbose, Stats, !IO) :-
 	maybe_write_string(Verbose, "% Writing output to `", !IO),
 	module_name_to_file_name(ModuleName, ".c", yes, FileName, !IO),
 	maybe_write_string(Verbose, FileName, !IO),
 	maybe_write_string(Verbose, "'...", !IO),
 	maybe_flush_output(Verbose, !IO),
 	transform_llds(LLDS0, LLDS, !IO),
-	output_llds(LLDS, StackLayoutLabels, MaybeRLFile, !IO),
+	output_llds(LLDS, ComplexityProcs, StackLayoutLabels, MaybeRLFile,
+		!IO),
 	maybe_write_string(Verbose, " done.\n", !IO),
 	maybe_flush_output(Verbose, !IO),
 	maybe_report_stats(Stats, !IO).

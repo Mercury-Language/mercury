@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2003 The University of Melbourne.
+** Copyright (C) 2003, 2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -16,11 +16,60 @@
 #ifndef MR_MERCURY_TERM_SIZE_H
 #define MR_MERCURY_TERM_SIZE_H
 
-#include "mercury_types.h"
+#include "mercury_std.h"        /* for MR_bool */
+#include "mercury_types.h"      /* for the typedefs of the structs we define */
+
+#include "mercury_complexity.h" /* for MR_ComplexityProc, etc */
 
 #ifdef  MR_RECORD_TERM_SIZES
 
+extern  MR_ComplexityCounter    MR_complexity_word_counter;
+extern  MR_ComplexityCounter    MR_complexity_cell_counter;
+extern  MR_ComplexityCounter    MR_complexity_tick_counter;
+
+#define MR_complexity_is_active(numprocs, procnum, name, inputs, is_active) \
+    do {                                                                    \
+        is_active = MR_complexity_is_active_func((numprocs), (procnum),     \
+            (name), (inputs));                                              \
+    } while (0)
+
+#define MR_complexity_call_proc(procnum, slot)                              \
+    do {                                                                    \
+        slot = MR_complexity_call_func(procnum);                            \
+    } while (0)
+
+#define MR_complexity_exit_proc(procnum, slot)                              \
+    do {                                                                    \
+        MR_complexity_leave_func(procnum, slot);                            \
+    } while (0)
+
+#define MR_complexity_fail_proc(procnum, slot)                              \
+    do {                                                                    \
+        MR_complexity_leave_func(procnum, slot);                            \
+    } while (0)
+
+#define MR_complexity_redo_proc(procnum, slot)                              \
+    do {                                                                    \
+        MR_complexity_redo_func(procnum, slot);                             \
+    } while (0)
+
 extern  MR_Unsigned MR_term_size(MR_TypeInfo type_info, MR_Word term);
+
+extern  void    MR_init_complexity_proc(int proc_num, const char *fullname,
+                    int num_profiled_args, int num_args,
+                    MR_ComplexityArgInfo *arg_infos);
+extern  void    MR_check_complexity_init(void);
+
+extern  void    MR_write_complexity_procs(void);
+
+extern  MR_ComplexityIsActive
+                MR_complexity_is_active_func(int num_procs, int proc_num,
+                    const char *name, int num_inputs);
+extern  int     MR_complexity_call_func(int procnum);
+extern  void    MR_complexity_leave_func(int procnum, int slot);
+extern  void    MR_complexity_redo_func(int procnum, int slot);
+extern  void    MR_complexity_fill_size_slot(MR_ComplexityProc *proc, int slot,
+                    int num_input_args, int argnum, int size);
 
 #else   /* MR_RECORD_TERM_SIZES */
 
@@ -36,3 +85,5 @@ extern  MR_Unsigned MR_term_size(MR_TypeInfo type_info, MR_Word term);
 #endif  /* MR_RECORD_TERM_SIZES */
 
 #endif  /* MR_MERCURY_TERM_SIZE_H */
+
+#define MR_COMPLEXITY_SLOTS_PER_CHUNK   1024

@@ -760,6 +760,18 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
 	option_implies(target_debug, strip, bool(no)),
 
+	% Inlining happens before the deep profiling transformation, so if
+	% we allowed inlining to happen, then we would lose all profiling
+	% information about the inlined calls.
+	option_implies(profile_deep, allow_inlining, bool(no)),
+
+	globals__io_lookup_string_option(experimental_complexity, ExpComp),
+	( { ExpComp = "" } ->
+		{ true }
+	;
+		globals__io_set_option(allow_inlining, bool(no))
+	),
+
 	% --decl-debug is an extension of --debug
 	option_implies(decl_debug, exec_trace, bool(yes)),
 
@@ -803,16 +815,13 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	% 	- enabling typeinfo liveness
 	globals__io_lookup_bool_option(trace_optimized, TraceOptimized),
 	( { given_trace_level_is_none(TraceLevel) = no } ->
-		( { TraceOptimized = no } ->
+		(
+			{ TraceOptimized = no },
 			% The following options modify the structure
 			% of the program, which makes it difficult to
 			% relate the trace to the source code (although
 			% it can be easily related to the transformed HLDS).
-			globals__io_set_option(inline_simple, bool(no)),
-			globals__io_set_option(inline_builtins, bool(no)),
-			globals__io_set_option(inline_single_use, bool(no)),
-			globals__io_set_option(inline_compound_threshold,
-				int(0)),
+			globals__io_set_option(allow_inlining, bool(no)),
 			globals__io_set_option(optimize_unused_args, bool(no)),
 			globals__io_set_option(optimize_higher_order, bool(no)),
 			globals__io_set_option(type_specialization, bool(no)),
@@ -842,7 +851,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 				[]
 			)
 		;
-			[]
+			{ TraceOptimized = yes }
 		),
 
 			% Disable hijacks if debugging is enabled. The

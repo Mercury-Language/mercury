@@ -20,6 +20,7 @@
 #include "mercury_stacks.h"		/* for `MR_{Cut,Generator}StackFrame' */
 #include "mercury_type_info.h"		/* for `MR_TypeCtorInfo' */
 #include "mercury_library_types.h"	/* for `MercuryFilePtr' */
+#include "mercury_complexity.h"		/* for `MR_ComplexityProc' */
 #include <stdio.h>			/* for `FILE' */
 
 /*
@@ -79,7 +80,7 @@ extern	MR_Code 	*MR_program_entry_point;
 			/* normally mercury__main_2_0; */
 #endif
 
-extern const char *	MR_runtime_flags;
+extern const char	*MR_runtime_flags;
 
 extern	void		(*MR_library_initializer)(void);
 extern	void		(*MR_library_finalizer)(void);
@@ -95,6 +96,9 @@ extern	void		(*MR_address_of_mercury_init_io)(void);
 extern	void		(*MR_address_of_init_modules)(void);
 extern	void		(*MR_address_of_init_modules_type_tables)(void);
 extern	void		(*MR_address_of_init_modules_debugger)(void);
+#ifdef	MR_RECORD_TERM_SIZES
+extern	void		(*MR_address_of_init_modules_complexity)(void);
+#endif
 #ifdef	MR_DEEP_PROFILING
 extern	void		(*MR_address_of_write_out_proc_statics)(FILE *fp);
 #endif
@@ -173,9 +177,21 @@ extern	void		(*MR_address_of_trace_interrupt_handler)(void);
 */
 extern	void		(*MR_register_module_layout)(const MR_Module_Layout *);
 
+/*
+** These global variables have their values defined in the program's _init.c
+** file. MR_complexity_preds_size gives the number of elements in the
+** MR_complexity_preds array.
+*/
+
 extern	void		MR_do_init_modules(void);
 extern	void		MR_do_init_modules_type_tables(void);
 extern	void		MR_do_init_modules_debugger(void);
+#ifdef	MR_RECORD_TERM_SIZES
+extern	void		MR_do_init_modules_complexity(void);
+
+extern	MR_ComplexityProc *MR_complexity_procs;
+extern  int             MR_num_complexity_procs;
+#endif
 
 extern	const char	*MR_progname;
 extern	int		mercury_argc;

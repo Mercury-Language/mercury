@@ -19,6 +19,7 @@
 
 :- import_module aditi_backend__rl_file.
 :- import_module backend_libs__builtin_ops.
+:- import_module hlds__hlds_module.
 :- import_module libs__globals.
 :- import_module ll_backend__llds.
 :- import_module mdbcomp__prim_data.
@@ -31,8 +32,8 @@
 	% labels that have layout structures. The third gives the Aditi-RL
 	% code for the module.
 
-:- pred output_llds(c_file::in, map(label, data_addr)::in, maybe(rl_file)::in,
-	io::di, io::uo) is det.
+:- pred output_llds(c_file::in, list(complexity_proc_info)::in,
+	map(label, data_addr)::in, maybe(rl_file)::in, io::di, io::uo) is det.
 
 	% output_rval_decls(Rval, DeclSet0, DeclSet) outputs the declarations
 	% of any static constants, etc. that need to be declared before
@@ -203,9 +204,10 @@ decl_set_is_member(DeclId, DeclSet) :-
 
 %-----------------------------------------------------------------------------%
 
-output_llds(C_File, StackLayoutLabels, MaybeRLFile, !IO) :-
+output_llds(C_File, ComplexityProcs, StackLayoutLabels, MaybeRLFile, !IO) :-
 	globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
-	( SplitFiles = yes ->
+	(
+		SplitFiles = yes,
 		C_File = c_file(ModuleName, C_HeaderInfo,
 			UserForeignCodes, Exports, Vars, Datas, Modules),
 		module_name_to_file_name(ModuleName, ".dir", yes, ObjDirName,
@@ -213,17 +215,22 @@ output_llds(C_File, StackLayoutLabels, MaybeRLFile, !IO) :-
 		dir__make_directory(ObjDirName, _, !IO),
 
 		output_split_c_file_init(ModuleName, Modules, Datas,
-			StackLayoutLabels, MaybeRLFile, !IO),
+			ComplexityProcs, StackLayoutLabels, MaybeRLFile, !IO),
 		output_split_user_foreign_codes(UserForeignCodes, ModuleName,
-			C_HeaderInfo, StackLayoutLabels, 1, Num1, !IO),
+			C_HeaderInfo, ComplexityProcs, StackLayoutLabels,
+			1, Num1, !IO),
 		output_split_c_exports(Exports, ModuleName,
-			C_HeaderInfo, StackLayoutLabels, Num1, Num2, !IO),
+			C_HeaderInfo, ComplexityProcs, StackLayoutLabels,
+			Num1, Num2, !IO),
 		output_split_comp_gen_c_vars(Vars, ModuleName,
-			C_HeaderInfo, StackLayoutLabels, Num2, Num3, !IO),
+			C_HeaderInfo, ComplexityProcs, StackLayoutLabels,
+			Num2, Num3, !IO),
 		output_split_comp_gen_c_datas(Datas, ModuleName,
-			C_HeaderInfo, StackLayoutLabels, Num3, Num4, !IO),
+			C_HeaderInfo, ComplexityProcs, StackLayoutLabels,
+			Num3, Num4, !IO),
 		output_split_comp_gen_c_modules(Modules, ModuleName,
-			C_HeaderInfo, StackLayoutLabels, Num4, Num, !IO),
+			C_HeaderInfo, ComplexityProcs, StackLayoutLabels,
+			Num4, Num, !IO),
 
 		compile_target_code__write_num_split_c_files(ModuleName,
 			Num, Succeeded, !IO),
@@ -234,89 +241,99 @@ output_llds(C_File, StackLayoutLabels, MaybeRLFile, !IO) :-
 			true
 		)
 	;
-		output_single_c_file(C_File, no,
+		SplitFiles = no,
+		output_single_c_file(C_File, no, ComplexityProcs,
 			StackLayoutLabels, MaybeRLFile, !IO)
 	).
 
 :- pred output_split_user_foreign_codes(list(user_foreign_code)::in,
-	module_name::in, list(foreign_decl_code)::in, map(label, data_addr)::in,
+	module_name::in, list(foreign_decl_code)::in,
+	list(complexity_proc_info)::in, map(label, data_addr)::in,
 	int::in, int::out, io::di, io::uo) is det.
 
-output_split_user_foreign_codes([], _, _, _, !Num, !IO).
+output_split_user_foreign_codes([], _, _, _, _, !Num, !IO).
 output_split_user_foreign_codes([UserForeignCode | UserForeignCodes],
-		ModuleName, C_HeaderLines, StackLayoutLabels, !Num, !IO) :-
+		ModuleName, C_HeaderLines, ComplexityProcs, StackLayoutLabels,
+		!Num, !IO) :-
 	CFile = c_file(ModuleName, C_HeaderLines, [UserForeignCode],
 		[], [], [], []),
-	output_single_c_file(CFile, yes(!.Num), StackLayoutLabels, no, !IO),
+	output_single_c_file(CFile, yes(!.Num), ComplexityProcs,
+		StackLayoutLabels, no, !IO),
 	!:Num = !.Num + 1,
 	output_split_user_foreign_codes(UserForeignCodes, ModuleName,
-		C_HeaderLines, StackLayoutLabels, !Num, !IO).
+		C_HeaderLines, ComplexityProcs, StackLayoutLabels, !Num, !IO).
 
 :- pred output_split_c_exports(list(foreign_export)::in, module_name::in,
-	list(foreign_decl_code)::in, map(label, data_addr)::in,
-	int::in, int::out, io::di, io::uo) is det.
+	list(foreign_decl_code)::in, list(complexity_proc_info)::in,
+	map(label, data_addr)::in, int::in, int::out, io::di, io::uo) is det.
 
-output_split_c_exports([], _, _, _, !Num, !IO).
+output_split_c_exports([], _, _, _, _, !Num, !IO).
 output_split_c_exports([Export | Exports], ModuleName, C_HeaderLines,
-		StackLayoutLabels, !Num, !IO) :-
+		ComplexityProcs, StackLayoutLabels, !Num, !IO) :-
 	CFile = c_file(ModuleName, C_HeaderLines, [], [Export], [], [], []),
-	output_single_c_file(CFile, yes(!.Num), StackLayoutLabels, no, !IO),
+	output_single_c_file(CFile, yes(!.Num), ComplexityProcs,
+		StackLayoutLabels, no, !IO),
 	!:Num = !.Num + 1,
 	output_split_c_exports(Exports, ModuleName, C_HeaderLines,
-		StackLayoutLabels, !Num, !IO).
+		ComplexityProcs, StackLayoutLabels, !Num, !IO).
 
 :- pred output_split_comp_gen_c_vars(list(comp_gen_c_var)::in,
-	module_name::in, list(foreign_decl_code)::in, map(label, data_addr)::in,
+	module_name::in, list(foreign_decl_code)::in,
+	list(complexity_proc_info)::in, map(label, data_addr)::in,
 	int::in, int::out, io::di, io::uo) is det.
 
-output_split_comp_gen_c_vars([], _, _, _, !Num, !IO).
+output_split_comp_gen_c_vars([], _, _, _, _, !Num, !IO).
 output_split_comp_gen_c_vars([Var | Vars], ModuleName, C_HeaderLines,
-		StackLayoutLabels, !Num, !IO) :-
+		ComplexityProcs, StackLayoutLabels, !Num, !IO) :-
 	CFile = c_file(ModuleName, C_HeaderLines, [], [], [Var], [], []),
-	output_single_c_file(CFile, yes(!.Num), StackLayoutLabels, no, !IO),
+	output_single_c_file(CFile, yes(!.Num), ComplexityProcs,
+		StackLayoutLabels, no, !IO),
 	!:Num = !.Num + 1,
 	output_split_comp_gen_c_vars(Vars, ModuleName, C_HeaderLines,
-		StackLayoutLabels, !Num, !IO).
+		ComplexityProcs, StackLayoutLabels, !Num, !IO).
 
 :- pred output_split_comp_gen_c_datas(list(comp_gen_c_data)::in,
-	module_name::in, list(foreign_decl_code)::in, map(label, data_addr)::in,
+	module_name::in, list(foreign_decl_code)::in,
+	list(complexity_proc_info)::in, map(label, data_addr)::in,
 	int::in, int::out, io::di, io::uo) is det.
 
-output_split_comp_gen_c_datas([], _, _, _, !Num, !IO).
+output_split_comp_gen_c_datas([], _, _, _, _, !Num, !IO).
 output_split_comp_gen_c_datas([Data | Datas], ModuleName, C_HeaderLines,
-		StackLayoutLabels, !Num, !IO) :-
+		ComplexityProcs, StackLayoutLabels, !Num, !IO) :-
 	CFile = c_file(ModuleName, C_HeaderLines, [], [], [], [Data], []),
-	output_single_c_file(CFile, yes(!.Num), StackLayoutLabels, no, !IO),
+	output_single_c_file(CFile, yes(!.Num), ComplexityProcs,
+		StackLayoutLabels, no, !IO),
 	!:Num = !.Num + 1,
 	output_split_comp_gen_c_datas(Datas, ModuleName, C_HeaderLines,
-		StackLayoutLabels, !Num, !IO).
+		ComplexityProcs, StackLayoutLabels, !Num, !IO).
 
 :- pred output_split_comp_gen_c_modules(list(comp_gen_c_module)::in,
-	module_name::in, list(foreign_decl_code)::in, map(label, data_addr)::in,
+	module_name::in, list(foreign_decl_code)::in,
+	list(complexity_proc_info)::in, map(label, data_addr)::in,
 	int::in, int::out, io::di, io::uo) is det.
 
-output_split_comp_gen_c_modules([], _, _, _, !Num, !IO).
+output_split_comp_gen_c_modules([], _, _, _, _, !Num, !IO).
 output_split_comp_gen_c_modules([Module | Modules], ModuleName, C_HeaderLines,
-		StackLayoutLabels, !Num, !IO) :-
+		ComplexityProcs, StackLayoutLabels, !Num, !IO) :-
 	CFile = c_file(ModuleName, C_HeaderLines, [], [], [], [], [Module]),
-	output_single_c_file(CFile, yes(!.Num), StackLayoutLabels, no, !IO),
+	output_single_c_file(CFile, yes(!.Num), ComplexityProcs,
+		StackLayoutLabels, no, !IO),
 	!:Num = !.Num + 1,
 	output_split_comp_gen_c_modules(Modules, ModuleName, C_HeaderLines,
-		StackLayoutLabels, !Num, !IO).
+		ComplexityProcs, StackLayoutLabels, !Num, !IO).
 
 :- pred output_split_c_file_init(module_name::in, list(comp_gen_c_module)::in,
-	list(comp_gen_c_data)::in, map(label, data_addr)::in,
-	maybe(rl_file)::in, io::di, io::uo) is det.
+	list(comp_gen_c_data)::in, list(complexity_proc_info)::in,
+	map(label, data_addr)::in, maybe(rl_file)::in, io::di, io::uo) is det.
 
-output_split_c_file_init(ModuleName, Modules, Datas,
+output_split_c_file_init(ModuleName, Modules, Datas, ComplexityProcs,
 		StackLayoutLabels, MaybeRLFile, !IO) :-
 	module_name_to_file_name(ModuleName, ".m", no, SourceFileName, !IO),
 	module_name_to_split_c_file_name(ModuleName, 0, ".c", FileName, !IO),
 
 	io__open_output(FileName, Result, !IO),
 	(
-		Result = ok(FileStream)
-	->
+		Result = ok(FileStream),
 		library__version(Version),
 		io__set_output_stream(FileStream, OutputStream, !IO),
 		output_c_file_intro_and_grade(SourceFileName, Version, !IO),
@@ -325,17 +342,21 @@ output_split_c_file_init(ModuleName, Modules, Datas,
 		io__write_string("\n", !IO),
 		decl_set_init(DeclSet0),
 		output_c_module_init_list(ModuleName, Modules, Datas,
-			StackLayoutLabels, DeclSet0, _DeclSet, !IO),
+			ComplexityProcs, StackLayoutLabels,
+			DeclSet0, _DeclSet, !IO),
 		c_util__output_rl_file(ModuleName, MaybeRLFile, !IO),
 		io__set_output_stream(OutputStream, _, !IO),
 		io__close_output(FileStream, !IO)
 	;
+		Result = error(Error),
 		io__progname_base("llds.m", ProgName, !IO),
 		io__write_string("\n", !IO),
 		io__write_string(ProgName, !IO),
 		io__write_string(": can't open `", !IO),
 		io__write_string(FileName, !IO),
-		io__write_string("' for output\n", !IO),
+		io__write_string("' for output:\n", !IO),
+		io__write_string(io__error_message(Error), !IO),
+		io__write_string("\n", !IO),
 		io__set_exit_status(1, !IO)
 	).
 
@@ -365,9 +386,11 @@ output_c_file_mercury_headers(!IO) :-
 	).
 
 :- pred output_single_c_file(c_file::in, maybe(int)::in,
-	map(label, data_addr)::in, maybe(rl_file)::in, io::di, io::uo) is det.
+	list(complexity_proc_info)::in, map(label, data_addr)::in,
+	maybe(rl_file)::in, io::di, io::uo) is det.
 
-output_single_c_file(CFile, SplitFiles, StackLayoutLabels, MaybeRLFile, !IO) :-
+output_single_c_file(CFile, SplitFiles, ComplexityProcs, StackLayoutLabels,
+		MaybeRLFile, !IO) :-
 	CFile = c_file(ModuleName, _, _, _, _, _, _),
 	( SplitFiles = yes(Num) ->
 		module_name_to_split_c_file_name(ModuleName, Num, ".c",
@@ -376,26 +399,32 @@ output_single_c_file(CFile, SplitFiles, StackLayoutLabels, MaybeRLFile, !IO) :-
 		module_name_to_file_name(ModuleName, ".c", yes, FileName, !IO)
 	),
 	io__open_output(FileName, Result, !IO),
-	( Result = ok(FileStream) ->
+	(
+		Result = ok(FileStream),
 		decl_set_init(DeclSet0),
-		do_output_single_c_file(CFile, SplitFiles, StackLayoutLabels,
-			MaybeRLFile, FileStream, DeclSet0, _, !IO),
+		do_output_single_c_file(CFile, SplitFiles, ComplexityProcs,
+			StackLayoutLabels, MaybeRLFile, FileStream,
+			DeclSet0, _, !IO),
 		io__close_output(FileStream, !IO)
 	;
+		Result = error(Error),
 		io__progname_base("llds.m", ProgName, !IO),
 		io__write_string("\n", !IO),
 		io__write_string(ProgName, !IO),
 		io__write_string(": can't open `", !IO),
 		io__write_string(FileName, !IO),
-		io__write_string("' for output\n", !IO),
+		io__write_string("' for output:\n", !IO),
+		io__write_string(io__error_message(Error), !IO),
+		io__write_string("\n", !IO),
 		io__set_exit_status(1, !IO)
 	).
 
 :- pred do_output_single_c_file(c_file::in, maybe(int)::in,
-	map(label, data_addr)::in, maybe(rl_file)::in, io__output_stream::in,
+	list(complexity_proc_info)::in, map(label, data_addr)::in,
+	maybe(rl_file)::in, io__output_stream::in,
 	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-do_output_single_c_file(CFile, SplitFiles, StackLayoutLabels,
+do_output_single_c_file(CFile, SplitFiles, ComplexityProcs, StackLayoutLabels,
 		MaybeRLFile, FileStream, !DeclSet, !IO) :-
 	CFile = c_file(ModuleName, C_HeaderLines,
 		UserForeignCode, Exports, Vars, Datas, Modules),
@@ -404,9 +433,10 @@ do_output_single_c_file(CFile, SplitFiles, StackLayoutLabels,
 	module_name_to_file_name(ModuleName, ".m", no, SourceFileName,
 		!IO),
 	output_c_file_intro_and_grade(SourceFileName, Version, !IO),
-	( SplitFiles = yes(_) ->
-		true
+	(
+		SplitFiles = yes(_)
 	;
+		SplitFiles = no,
 		output_init_comment(ModuleName, !IO)
 	),
 	output_c_file_mercury_headers(!IO),
@@ -434,12 +464,13 @@ do_output_single_c_file(CFile, SplitFiles, StackLayoutLabels,
 	list__foldl(output_user_foreign_code, UserForeignCode, !IO),
 	list__foldl(io__write_string, Exports, !IO),
 
-	( SplitFiles = yes(_) ->
-		true
+	(
+		SplitFiles = yes(_)
 	;
+		SplitFiles = no,
 		io__write_string("\n", !IO),
 		output_c_module_init_list(ModuleName, Modules, Datas,
-			StackLayoutLabels, !DeclSet, !IO)
+			ComplexityProcs, StackLayoutLabels, !DeclSet, !IO)
 	),
 	c_util__output_rl_file(ModuleName, MaybeRLFile, !IO),
 	io__set_output_stream(OutputStream, _, !IO).
@@ -474,11 +505,12 @@ order_layout_datas_2([Layout | Layouts], !ProcLayouts, !LabelLayouts,
 		!OtherLayouts).
 
 :- pred output_c_module_init_list(module_name::in, list(comp_gen_c_module)::in,
-	list(comp_gen_c_data)::in, map(label, data_addr)::in,
-	decl_set::in, decl_set::out, io::di, io::uo) is det.
+	list(comp_gen_c_data)::in, list(complexity_proc_info)::in,
+	map(label, data_addr)::in, decl_set::in, decl_set::out,
+	io::di, io::uo) is det.
 
-output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels,
-		!DeclSet, !IO) :-
+output_c_module_init_list(ModuleName, Modules, Datas, ComplexityProcs,
+		StackLayoutLabels, !DeclSet, !IO) :-
 	MustInit = (pred(Module::in) is semidet :-
 		module_defines_label_with_layout(Module, StackLayoutLabels)
 	),
@@ -491,9 +523,10 @@ output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels,
 	output_init_bunch_defs(AlwaysInitModuleBunches, ModuleName,
 		"always", 0, SplitFiles, !IO),
 
-	( MaybeInitModuleBunches = [] ->
-		true
+	(
+		MaybeInitModuleBunches = []
 	;
+		MaybeInitModuleBunches = [_ | _],
 		output_init_bunch_defs(MaybeInitModuleBunches, ModuleName,
 			"maybe", 0, SplitFiles, !IO)
 	),
@@ -502,17 +535,26 @@ output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels,
 	io__write_string("void ", !IO),
 	output_init_name(ModuleName, !IO),
 	io__write_string("init(void);\n", !IO),
+
 	io__write_string("void ", !IO),
 	output_init_name(ModuleName, !IO),
 	io__write_string("init_type_tables(void);\n", !IO),
 	io__write_string("void ", !IO),
 	output_init_name(ModuleName, !IO),
 	io__write_string("init_debugger(void);\n", !IO),
+
 	io__write_string("#ifdef MR_DEEP_PROFILING\n", !IO),
 	io__write_string("void ", !IO),
 	output_init_name(ModuleName, !IO),
 	io__write_string("write_out_proc_statics(FILE *fp);\n", !IO),
 	io__write_string("#endif\n", !IO),
+
+	io__write_string("#ifdef MR_RECORD_TERM_SIZES\n", !IO),
+	io__write_string("void ", !IO),
+	output_init_name(ModuleName, !IO),
+	io__write_string("init_complexity_procs(void);\n", !IO),
+	io__write_string("#endif\n", !IO),
+
 	io__write_string("\n", !IO),
 
 	io__write_string("void ", !IO),
@@ -528,9 +570,10 @@ output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels,
 	output_init_bunch_calls(AlwaysInitModuleBunches, ModuleName,
 		"always", 0, !IO),
 
-	( MaybeInitModuleBunches = [] ->
-		true
+	(
+		MaybeInitModuleBunches = []
 	;
+		MaybeInitModuleBunches = [_ | _],
 		output_init_bunch_calls(MaybeInitModuleBunches, ModuleName,
 			"maybe", 0, !IO)
 	),
@@ -582,6 +625,16 @@ output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels,
 	io__write_string("}\n", !IO),
 	io__write_string("\n#endif\n\n", !IO),
 
+	io__write_string("#ifdef MR_RECORD_TERM_SIZES\n", !IO),
+	output_complexity_arg_info_arrays(ComplexityProcs, !IO),
+	io__write_string("\nvoid ", !IO),
+	output_init_name(ModuleName, !IO),
+	io__write_string("init_complexity_procs(void)\n", !IO),
+	io__write_string("{\n", !IO),
+	output_init_complexity_proc_list(ComplexityProcs, !IO),
+	io__write_string("}\n", !IO),
+	io__write_string("\n#endif\n\n", !IO),
+
 	io__write_string(
 		"/* ensure everything is compiled with the same grade */\n",
 		!IO),
@@ -623,7 +676,8 @@ output_init_bunch_defs([Bunch | Bunches], ModuleName, InitStatus, Seq,
 output_init_bunch_def([], _, _, !IO).
 output_init_bunch_def([Module | Modules], ModuleName, SplitFiles, !IO) :-
 	Module = comp_gen_c_module(C_ModuleName, _),
-	( SplitFiles = yes ->
+	(
+		SplitFiles = yes,
 		io__write_string("\t{ extern MR_ModuleFunc ", !IO),
 		io__write_string(C_ModuleName, !IO),
 		io__write_string(";\n", !IO),
@@ -631,6 +685,7 @@ output_init_bunch_def([Module | Modules], ModuleName, SplitFiles, !IO) :-
 		io__write_string(C_ModuleName, !IO),
 		io__write_string("(); }\n", !IO)
 	;
+		SplitFiles = no,
 		io__write_string("\t", !IO),
 		io__write_string(C_ModuleName, !IO),
 		io__write_string("();\n", !IO)
@@ -671,9 +726,7 @@ output_c_data_init_list([Data | Datas], !IO) :-
 
 output_type_tables_init_list([], _, !IO).
 output_type_tables_init_list([Data | Datas], SplitFiles, !IO) :-
-	(
-		Data = rtti_data(RttiData)
-	->
+	( Data = rtti_data(RttiData) ->
 		rtti_out__register_rtti_data_if_nec(RttiData, SplitFiles, !IO)
 	;
 		true
@@ -770,6 +823,80 @@ output_write_proc_static_list([Data | Datas], !IO) :-
 	),
 	output_write_proc_static_list(Datas, !IO).
 
+:- func complexity_arg_info_array_name(int) = string.
+
+complexity_arg_info_array_name(ProcNum) =
+	"MR_complexity_arg_info_" ++ int_to_string(ProcNum).
+
+:- pred output_complexity_arg_info_arrays(list(complexity_proc_info)::in,
+	io::di, io::uo) is det.
+
+output_complexity_arg_info_arrays([], !IO).
+output_complexity_arg_info_arrays([Info | Infos], !IO) :-
+	Info = complexity_proc_info(ProcNum, _, Args),
+	io__write_string("\nMR_ComplexityArgInfo ", !IO),
+	io__write_string(complexity_arg_info_array_name(ProcNum), !IO),
+	io__write_string("[", !IO),
+	io__write_int(list__length(Args), !IO),
+	io__write_string("] = {\n", !IO),
+	output_complexity_arg_info_array(Args, !IO),
+	io__write_string("};\n", !IO),
+	output_complexity_arg_info_arrays(Infos, !IO).
+
+:- pred output_complexity_arg_info_array(list(complexity_arg_info)::in,
+	io::di, io::uo) is det.
+
+output_complexity_arg_info_array([], !IO).
+output_complexity_arg_info_array([Arg | Args], !IO) :-
+	Arg = complexity_arg_info(MaybeName, Kind),
+	io__write_string("{ ", !IO),
+	(
+		MaybeName = yes(Name),
+		io__write_string("""", !IO),
+		io__write_string(Name, !IO),
+		io__write_string(""", ", !IO)
+	;
+		MaybeName = no,
+		io__write_string("NULL, ", !IO)
+	),
+	(
+		Kind = complexity_input_variable_size,
+		io__write_string("MR_COMPLEXITY_INPUT_VAR_SIZE", !IO)
+	;
+		Kind = complexity_input_fixed_size,
+		io__write_string("MR_COMPLEXITY_INPUT_FIX_SIZE", !IO)
+	;
+		Kind = complexity_output,
+		io__write_string("MR_COMPLEXITY_OUTPUT", !IO)
+	),
+	io__write_string(" },\n", !IO),
+	output_complexity_arg_info_array(Args, !IO).
+
+:- pred output_init_complexity_proc_list(list(complexity_proc_info)::in,
+	io::di, io::uo) is det.
+
+output_init_complexity_proc_list([], !IO).
+output_init_complexity_proc_list([Info | Infos], !IO) :-
+	Info = complexity_proc_info(ProcNum, FullProcName, ArgInfos),
+	io__write_string("\tMR_init_complexity_proc(", !IO),
+	io__write_int(ProcNum, !IO),
+	io__write_string(", """, !IO),
+	c_util__output_quoted_string(FullProcName, !IO),
+	io__write_string(""", ", !IO),
+	list__filter(complexity_arg_is_profiled, ArgInfos, ProfiledArgInfos),
+	io__write_int(list__length(ProfiledArgInfos), !IO),
+	io__write_string(", ", !IO),
+	io__write_int(list__length(ArgInfos), !IO),
+	io__write_string(", ", !IO),
+	io__write_string(complexity_arg_info_array_name(ProcNum), !IO),
+	io__write_string(");\n", !IO),
+	output_init_complexity_proc_list(Infos, !IO).
+
+:- pred complexity_arg_is_profiled(complexity_arg_info::in) is semidet.
+
+complexity_arg_is_profiled(complexity_arg_info(_, Kind)) :-
+	Kind = complexity_input_variable_size.
+
 	% Output a comment to tell mkinit what functions to
 	% call from <module>_init.c.
 :- pred output_init_comment(module_name::in, io::di, io::uo) is det.
@@ -780,13 +907,14 @@ output_init_comment(ModuleName, !IO) :-
 	output_init_name(ModuleName, !IO),
 	io__write_string("init\n", !IO),
 	globals__io_lookup_bool_option(aditi, Aditi, !IO),
-	( Aditi = yes ->
+	(
+		Aditi = yes,
 		RLName = make_rl_data_name(ModuleName),
 		io__write_string("ADITI_DATA ", !IO),
 		io__write_string(RLName, !IO),
 		io__write_string("\n", !IO)
 	;
-		true
+		Aditi = no
 	),
 	io__write_string("ENDINIT\n", !IO),
 	io__write_string("*/\n\n", !IO).

@@ -123,6 +123,41 @@
 	--->    do_aditi_compilation
 	;       no_aditi_compilation.
 
+	% Maps the full names of procedures (in the sense of
+	% complexity_proc_name in complexity.m) to the number of their slot
+	% in MR_complexity_proc_table.
+
+:- type complexity_proc_map == map(string, int).
+
+:- type complexity_proc_info --->
+	complexity_proc_info(
+		complexity_proc_num	:: int,
+					% The index of the procedure
+					% in the runtime system's
+					% MR_complexity_procs array.
+
+		complexity_proc_name	:: string,
+					% The full name of the
+					% procedure, in the form
+					% fqn/arity-modenum, where
+					% fqn is the predicate or
+					% function's fully qualified
+					% name.
+
+		complexity_proc_args	:: list(complexity_arg_info)
+	).
+
+:- type complexity_arg_info --->
+	complexity_arg_info(
+		complexity_arg_name	:: maybe(string),
+		complexity_arg_kind	:: complexity_arg_kind
+	).
+
+:- type complexity_arg_kind
+	--->	complexity_input_variable_size
+	;	complexity_input_fixed_size
+	;	complexity_output.
+
 	% Mercury procedures which can be called from Aditi join conditions.
 	% Each procedure has one input and one output argument.
 	% The compiler generates a constant structure containing 
@@ -369,6 +404,19 @@
 :- pred module_info_set_analysis_info(analysis_info::in,
 	module_info::in, module_info::out) is det.
 
+:- pred module_info_get_maybe_complexity_proc_map(module_info::in,
+	maybe(pair(int, complexity_proc_map))::out) is det.
+
+:- pred module_info_set_maybe_complexity_proc_map(
+	maybe(pair(int, complexity_proc_map))::in,
+	module_info::in, module_info::out) is det.
+
+:- pred module_info_get_complexity_proc_infos(module_info::in,
+	list(complexity_proc_info)::out) is det.
+
+:- pred module_info_set_complexity_proc_infos(list(complexity_proc_info)::in,
+	module_info::in, module_info::out) is det.
+
 :- pred module_info_aditi_top_down_procs(module_info::in,
 	list(aditi_top_down_proc)::out) is det.
 
@@ -387,7 +435,7 @@
 :- pred module_info_pred_info(module_info::in, pred_id::in, pred_info::out)
 	is det.
 
-	% Given a pred_id and a proc_id, get the pred_info that predicate
+	% Given a pred_id and a proc_id, get the pred_info of that predicate
 	% and the proc_info for that mode of that predicate.
 	%
 :- pred module_info_pred_proc_info(module_info::in, pred_id::in, proc_id::in,
@@ -604,15 +652,23 @@
 						% but lookups in this table
 						% will be much faster.
 
+		maybe_complexity_proc_map	:: maybe(pair(int,
+							complexity_proc_map)),
+
+		complexity_proc_infos		:: list(complexity_proc_info),
+						% Information about the
+						% procedures we are performing
+						% complexity experiments on.
+
 		analysis_info			:: analysis_info,
 						% Information for the
 						% inter-module analysis
 						% framework.
-		aditi_top_down_procs :: list(aditi_top_down_proc),
+		aditi_top_down_procs		:: list(aditi_top_down_proc),
 						% List of top-down procedures
 						% which could be called from
 						% bottom-up Aditi procedures.
-		aditi_proc_counter :: counter
+		aditi_proc_counter		:: counter
 
 	).
 
@@ -652,11 +708,12 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
 	map__init(FieldNameTable),
 
 	map__init(NoTagTypes),
-	ModuleSubInfo = module_sub(Name, Globals, no, [], [], [], [], no, 0, 
+	ModuleSubInfo = module_sub(Name, Globals, no, [], [], [], [], no, 0,
 		[], [], StratPreds, UnusedArgInfo, ExceptionInfo,
 		counter__init(1), counter__init(1), ImportedModules,
 		IndirectlyImportedModules, no_aditi_compilation, TypeSpecInfo,
-		NoTagTypes, init_analysis_info(mmc), [], counter__init(1)),
+		NoTagTypes, no, [], init_analysis_info(mmc),
+		[], counter__init(1)),
 	ModuleInfo = module(ModuleSubInfo, PredicateTable, Requests,
 		UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
 		ClassTable, SuperClassTable, InstanceTable, AssertionTable,
@@ -738,6 +795,10 @@ module_info_get_do_aditi_compilation(MI,
 module_info_type_spec_info(MI, MI ^ sub_info ^ type_spec_info).
 module_info_no_tag_types(MI, MI ^ sub_info ^ no_tag_type_table).
 module_info_analysis_info(MI, MI ^ sub_info ^ analysis_info).
+module_info_get_maybe_complexity_proc_map(MI,
+	MI ^ sub_info ^ maybe_complexity_proc_map).
+module_info_get_complexity_proc_infos(MI,
+	MI ^ sub_info ^ complexity_proc_infos).
 module_info_aditi_top_down_procs(MI, MI ^ sub_info ^ aditi_top_down_procs).
 
 module_info_next_aditi_top_down_proc(MI0, Proc, MI) :-
@@ -796,6 +857,10 @@ module_info_set_no_tag_types(NewVal, MI,
 	MI ^ sub_info ^ no_tag_type_table := NewVal).
 module_info_set_analysis_info(NewVal, MI,
 	MI ^ sub_info ^ analysis_info := NewVal).
+module_info_set_maybe_complexity_proc_map(NewVal, MI,
+	MI ^ sub_info ^ maybe_complexity_proc_map := NewVal).
+module_info_set_complexity_proc_infos(NewVal, MI,
+	MI ^ sub_info ^ complexity_proc_infos := NewVal).
 module_info_set_aditi_top_down_procs(MI, NewVal,
 	MI ^ sub_info ^ aditi_top_down_procs := NewVal).
 

@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 2001-2004 The University of Melbourne.
+# Copyright (C) 2001-2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -64,6 +64,7 @@ extra_init_dirs=""
 trace_init_files=""
 init_c_file="-"
 runtime_flags=""
+experimental_complexity=""
 
 # include the file `init_grade_options.sh-subr'
 @INIT_GRADE_OPTIONS@
@@ -183,6 +184,9 @@ Initialization options:
 		For the list of available flags, see the documentation
 		for MERCURY_OPTIONS in the "Environment" chapter
 		of the Mercury User's Guide.
+	--experimental-complexity <filename>
+		Set up for the experimental determination of the complexity
+		of the procedures listed in the given file.
 	--init-c-file <filename>
 		Output the generated C initialization program to the
 		specified file, rather than sending it to the standard
@@ -438,6 +442,18 @@ EOF
 
 	--runtime-flags)
 		runtime_flags="$runtime_flags $2"; shift;;
+
+	--experimental-complexity)
+		if test "$experimental_complexity" = ""
+		then
+			experimental_complexity="$2"; shift
+		else
+			cat 1>&2 << EOF
+$progname: Error: duplicate --experimental-complexity parameter
+EOF
+			exit 1
+		fi
+		;;
 
 	-w|--entry-point)
 		defentry_opt="-w$2"; shift;;

@@ -153,6 +153,7 @@
 :- import_module hlds__hlds_data.
 :- import_module hlds__passes_aux.
 :- import_module hlds__quantification.
+:- import_module transform_hlds__complexity.
 :- import_module transform_hlds__dead_proc_elim.
 :- import_module transform_hlds__dependency_graph.
 
@@ -902,9 +903,23 @@ inlining__can_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 	% fragments.
 	proc_info_eval_method(ProcInfo, eval_normal),
 
-	% Don't inlining anything we have been specifically requested
+	% Don't inline anything we have been specifically requested
 	% not to inline.
 	\+ pred_info_requested_no_inlining(PredInfo),
+
+	% Don't inline any procedure whose complexity we are trying to
+	% determine, since the complexity transformation can't transform
+	% *part* of a procedure.
+	module_info_get_maybe_complexity_proc_map(ModuleInfo,
+		MaybeComplexityProcMap),
+	(
+		MaybeComplexityProcMap = no
+	;
+		MaybeComplexityProcMap = yes(_ - ComplexityProcMap),
+		IsInComplexityMap = is_in_complexity_proc_map(
+			ComplexityProcMap, ModuleInfo, PredId, ProcId),
+		IsInComplexityMap = no
+	),
 
 	% For the LLDS back-end,
 	% under no circumstances inline model_non pragma c codes.

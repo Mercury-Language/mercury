@@ -235,6 +235,7 @@
 		;	deep_profile_tail_recursion
 		;	record_term_sizes_as_words
 		;	record_term_sizes_as_cells
+		;	experimental_complexity
 
 		%   (c) Aditi
 		;	aditi	
@@ -433,6 +434,7 @@
 		;	transitive_optimization
 		;	split_c_files
 	%	- HLDS
+		;	allow_inlining
 		;	inlining
 		;	inline_simple
 		;	inline_builtins
@@ -906,6 +908,7 @@ option_defaults_2(compilation_model_option, [
 				-	bool(no),
 	record_term_sizes_as_words -	bool(no),
 	record_term_sizes_as_cells -	bool(no),
+	experimental_complexity -	string(""),
 		% (c) Miscellaneous optional features
 	gc			-	string("boehm"),
 	parallel		-	bool(no),
@@ -1047,6 +1050,7 @@ option_defaults_2(optimization_option, [
 		% optimization level in the opt_level table.
 		%
 % HLDS
+	allow_inlining		-	bool(yes),
 	inlining		-	bool_special,
 	inline_simple		-	bool(no),
 	inline_builtins		-	bool(yes),
@@ -1563,6 +1567,7 @@ long_option("deep-profile-tail-recursion",
 					deep_profile_tail_recursion).
 long_option("record-term-sizes-as-words", record_term_sizes_as_words).
 long_option("record-term-sizes-as-cells", record_term_sizes_as_cells).
+long_option("experimental-complexity",	experimental_complexity).
 	% (c) miscellaneous optional features
 long_option("gc",			gc).
 long_option("garbage-collection",	gc).
@@ -3114,33 +3119,38 @@ options_help_compilation_model -->
 		"--deep-profiling\t\t(grade modifier: `.profdeep')",
 		"\tEnable deep profiling.",
 		"\tThis option is not supported for the high-level C, IL",
-		"\tor Java back-ends."
-/*****************
-XXX The following options are not documented,
-because they are currently not useful.
-The idea was for you to be able to use --profile-calls
-and --profile-time separately, but that doesn't work
-because compiling with --profile-time instead of
---profile-calls results in different code addresses,
-so you can't combine the data from versions of
-your program compiled with different options.
+		"\tor Java back-ends.",
+% XXX The following options are not documented,
+% because they are currently not useful.
+% The idea was for you to be able to use --profile-calls
+% and --profile-time separately, but that doesn't work
+% because compiling with --profile-time instead of
+% --profile-calls results in different code addresses,
+% so you can't combine the data from versions of
+% your program compiled with different options.
+%
+%		"--profile-calls\t\t(grade modifier: `.profcalls')",
+%		"\tSimilar to `--profiling', except that only gathers",
+%		"\tcall counts, not timing information.",
+%		"\tUseful on systems where time profiling is not supported,",
+%		"\tbut not as useful as `--memory-profiling'.",
+%		"--profile-time\t\t(grade modifier: `.proftime')",
+%		"\tSimilar to `--profiling', except that it only gathers",
+%		"\ttiming information, not call counts.",
+%		"--profile-memory\t\t(grade modifier: `.profmem')",
+%		"\tSimilar to `--memory-profiling', except that it only",
+%		"\tgathers memory usage information, not call counts.",
 
-		"--profile-calls\t\t(grade modifier: `.profcalls')",
-		"\tSimilar to `--profiling', except that only gathers",
-		"\tcall counts, not timing information.",
-		"\tUseful on systems where time profiling is not supported,",
-		"\tbut not as useful as `--memory-profiling'.",
-		"--profile-time\t\t(grade modifier: `.proftime')",
-		"\tSimilar to `--profiling', except that it only gathers",
-		"\ttiming information, not call counts.",
-		"--profile-memory\t\t(grade modifier: `.profmem')",
-		"\tSimilar to `--memory-profiling', except that it only gathers",
-		"\tmemory usage information, not call counts.",
-%		"--record-term-sizes-as-words\t\t(grade modifier: `.tsw')",
-%		"\tAugment each heap cells with its size in words.",
-%		"--record-term-sizes-as-cells\t\t(grade modifier: `.tsc')",
-%		"\tAugment each heap cells with its size in cells.",
-********************/
+		"--record-term-sizes-as-words\t\t(grade modifier: `.tsw')",
+		"\tAugment each heap cells with its size in words.",
+		"--record-term-sizes-as-cells\t\t(grade modifier: `.tsc')",
+		"\tAugment each heap cells with its size in cells.",
+
+		"--experimental-complexity=<filename>\t\t",
+		"\tEnable experimental complexity analysis for the predicates",
+		"\tlisted in the given file.",
+		"\tThis option is supported for the C back-end, with",
+		"\t--no-highlevel-code."
 	]),
 	io__write_string("      Aditi\n"),
 	write_tabbed_lines([

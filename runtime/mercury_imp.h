@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1998,2000,2003-2004 The University of Melbourne.
+** Copyright (C) 1993-1998,2000,2003-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -91,6 +91,7 @@
 #endif
 
 #include	"mercury_univ.h"
+#include	"mercury_complexity.h"
 #include	"mercury_term_size.h"
 
 #include	"mercury_grade.h"
