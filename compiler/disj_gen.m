@@ -89,8 +89,7 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 	code_info__slap_code_info(CodeInfo),
 	{ SuccCode =
 		node([
-			goto(label(EndLab), label(EndLab)) -
-				"Jump to end of disj"
+			goto(label(EndLab)) - "Jump to end of disj"
 		])
 	},
 	( { Goals = [] } ->

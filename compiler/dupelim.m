@@ -142,11 +142,11 @@ dupelim__replace_labels_instr(assign(Lval0, Rval0), Replmap,
 		assign(Lval, Rval)) :-
 	dupelim__replace_labels_lval(Lval0, Replmap, Lval),
 	dupelim__replace_labels_rval(Rval0, Replmap, Rval).
-dupelim__replace_labels_instr(call(Target, Return0, Caller, LiveInfo), Replmap,
-		call(Target, Return, Caller, LiveInfo)) :-
+dupelim__replace_labels_instr(call(Target, Return0, LiveInfo, CM),
+		Replmap, call(Target, Return, LiveInfo, CM)) :-
 	dupelim__replace_labels_code_addr(Return0, Replmap, Return).
-dupelim__replace_labels_instr(call_closure(Target, Return0, Caller, LiveInfo),
-		Replmap, call_closure(Target, Return, Caller, LiveInfo)) :-
+dupelim__replace_labels_instr(call_closure(Target, Return0, LiveInfo),
+		Replmap, call_closure(Target, Return, LiveInfo)) :-
 	dupelim__replace_labels_code_addr(Return0, Replmap, Return).
 dupelim__replace_labels_instr(mkframe(Name, Size, Redoip0), Replmap,
 		mkframe(Name, Size, Redoip)) :-
@@ -155,8 +155,7 @@ dupelim__replace_labels_instr(modframe(Redoip0), Replmap, modframe(Redoip)) :-
 	dupelim__replace_labels_code_addr(Redoip0, Replmap, Redoip).
 dupelim__replace_labels_instr(label(_), _, _) :-
 	error("found label in dupelim__replace_labels_instr").
-dupelim__replace_labels_instr(goto(Target0, Caller), Replmap,
-		goto(Target, Caller)) :-
+dupelim__replace_labels_instr(goto(Target0), Replmap, goto(Target)) :-
 	dupelim__replace_labels_code_addr(Target0, Replmap, Target).
 dupelim__replace_labels_instr(computed_goto(Rval0, Labels0), Replmap,
 		computed_goto(Rval, Labels)) :-

@@ -96,7 +96,7 @@ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, Label) :-
 
 code_util__make_local_label(ModuleInfo, PredId, ProcId, LabelNum, Label) :-
 	code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel),
-	Label = local(ProcLabel, LabelNum, unknown).
+	Label = local(ProcLabel, LabelNum).
 
 %-----------------------------------------------------------------------------%
 

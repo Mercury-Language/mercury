@@ -28,7 +28,6 @@
 :- import_module cse_detection, polymorphism, garbage_out, shapes.
 :- import_module liveness, det_analysis, follow_code, follow_vars, live_vars.
 :- import_module arg_info, store_alloc, code_gen, optimize, llds, inlining.
-:- import_module prof.
 :- import_module prog_out, prog_util, hlds_out.
 :- import_module mercury_to_mercury, mercury_to_goedel.
 :- import_module conf, getopt, options, globals.
@@ -1962,12 +1961,11 @@ mercury_compile__maybe_do_optimize(LLDS0, LLDS) -->
 		maybe_write_string(Verbose,
 			"% Doing optimizations...\n"),
 		maybe_flush_output(Verbose),
-		optimize__main(LLDS0, LLDS1),
+		optimize__main(LLDS0, LLDS),
 		maybe_write_string(Verbose, "% done.\n")
 	;
-		{ LLDS1 = LLDS0 }
-	),
-	prof__main(LLDS1, LLDS).
+		{ LLDS = LLDS0 }
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -2072,11 +2070,10 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 	{ module_info_set_shapes(ModuleInfo1, Shapes, ModuleInfo) },
 	globals__io_lookup_bool_option(optimize, Optimize),
 	( { Optimize = yes } ->
-		optimize__proc(Proc0, Proc1)
+		optimize__proc(Proc0, Proc)
 	;
-		{ Proc1 = Proc0 }
-	),
-	prof__proc(Proc1, Proc).
+		{ Proc = Proc0 }
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

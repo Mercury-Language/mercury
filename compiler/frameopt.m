@@ -211,7 +211,7 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap,
 				yes, no, no,
 				FrameSet1, FrameSet, SuccipSet1, SuccipSet)
 		;
-			Uinstr0 = call_closure(_, ReturnAddr, _, _),
+			Uinstr0 = call_closure(_, ReturnAddr, _),
 			frameopt__targeting_code_addr(ReturnAddr,
 				yes, FrameSet0, FrameSet1),
 			frameopt__targeting_code_addr(ReturnAddr,
@@ -253,7 +253,7 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap,
 				First, SetupFrame1, SetupSuccip1,
 				FrameSet2, FrameSet, SuccipSet2, SuccipSet)
 		;
-			Uinstr0 = goto(Target, _CallerAddress),
+			Uinstr0 = goto(Target),
 			frameopt__targeting_code_addr(Target,
 				SetupFrame0, FrameSet0, FrameSet1),
 			frameopt__targeting_code_addr(Target,
@@ -576,7 +576,7 @@ frameopt__dup_teardown_labels([Instr0 | Instrs0], FrameSize,
 	->
 		N1 is N0 + 1,
 		% XXX What do I need to have here in the bool field.
-		NewLabel = local(ProcLabel, N0, local),
+		NewLabel = local(ProcLabel, N0),
 		NewLabelInstr = label(NewLabel) - "non-teardown parallel label",
 		list__condense([[NewLabelInstr], Tail, Goto], Extra1),
 		bimap__set(TeardownMap0, Label, NewLabel, TeardownMap1),
@@ -673,7 +673,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, First, SetupFrame0, SetupSuccip0,
 				N0, N, Instrs1),
 			list__append(SetupCode, [Instr0 | Instrs1], Instrs)
 		;
-			Uinstr0 = call_closure(_, _, _, _),
+			Uinstr0 = call_closure(_, _, _),
 			frameopt__generate_setup(SetupFrame0, yes,
 				SetupSuccip0, yes, FrameSize, SetupCode),
 			frameopt__doit(Instrs0, FrameSize, yes, no, no,
@@ -709,7 +709,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, First, SetupFrame0, SetupSuccip0,
 				N0, N, Instrs1),
 			list__append(SetupCode, [Instr0 | Instrs1], Instrs)
 		;
-			Uinstr0 = goto(TargetAddr, _CallerAddress),
+			Uinstr0 = goto(TargetAddr),
 			( TargetAddr = label(Label) ->
 				set__is_member(Label, FrameSet, SetupFrame1),
 				set__is_member(Label, SuccipSet, SetupSuccip1),
@@ -927,13 +927,13 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 						InsertMap1 = InsertMap0
 					;
 						N1 is N0 + 1,
-						NewLabel = local(ProcLabel, N0, local),
+						NewLabel = local(ProcLabel, N0),
 						map__det_insert(Insert0, ExtraCode, NewLabel, Insert),
 						map__set(InsertMap0, Label, Insert, InsertMap1)
 					)
 				;
 					N1 is N0 + 1,
-					NewLabel = local(ProcLabel, N0, local),
+					NewLabel = local(ProcLabel, N0),
 					map__init(Insert0),
 					map__det_insert(Insert0, ExtraCode, NewLabel, Insert),
 					map__set(InsertMap0, Label, Insert, InsertMap1)
@@ -1075,14 +1075,13 @@ frameopt__generate_labels([Label | Labels], SetupFrame0, SetupSuccip0,
 		;
 			N is N1 + 1,
 			% XXX What option does the bool need to be?
-			NewLabel = local(ProcLabel, N1, local),
+			NewLabel = local(ProcLabel, N1),
 			LabelCode = [
 				label(NewLabel)
 					- "setup bridging label"
 			],
 			GotoCode = [
-				goto(label(Label), label(Label))
-					- "cross the bridge"
+				goto(label(Label)) - "cross the bridge"
 			],
 			list__condense([LabelCode, SetupCode, GotoCode, SetupCodes1],
 				SetupCodes)
@@ -1184,7 +1183,7 @@ frameopt__detstack_teardown_2(Instrs0, FrameSize,
 			SeenSuccip0, SeenDecrsp0, SeenExtra0, SeenLivevals1,
 			Tail, Teardown, Goto, Remain)
 	;
-		Uinstr1 = goto(_, _),
+		Uinstr1 = goto(_),
 		SeenDecrsp0 = [_],
 		list__append(SeenSuccip0, SeenDecrsp0, Teardown),
 		Tail = SeenExtra0,
@@ -1210,8 +1209,7 @@ frameopt__insert_late_setups([Instr0 | Instrs0], InsertMap, Prev, Instrs) :-
 		opt_util__can_instr_fall_through(Prev, FallThrough),
 		(
 			FallThrough = yes,
-			Guard = [goto(label(Label), label(Label))
-				- "jump around setup"]
+			Guard = [goto(label(Label)) - "jump around setup"]
 		;
 			FallThrough = no,
 			Guard = []
@@ -1234,8 +1232,7 @@ frameopt__insert_late_setups_list([SetupCode0 - Label | Inserts], OrigLabel,
 	( SetupCode1 = [] ->
 		JumpAround = []
 	;
-		JumpAround = [goto(label(OrigLabel), label(OrigLabel))
-			- "jump around next setup"]
+		JumpAround = [goto(label(OrigLabel)) - "jump around next setup"]
 	),
 	LabelInstr = label(Label) - "label for late setup code",
 	list__condense([[LabelInstr | SetupCode0], JumpAround, SetupCode1],

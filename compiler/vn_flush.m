@@ -175,15 +175,15 @@ vn__flush_ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 		Templocs = Templocs0,
 		Instrs = [livevals(Livevals) - ""]
 	;
-		Vn_instr = vn_call(ProcAddr, RetAddr, CallerAddr, LiveInfo),
+		Vn_instr = vn_call(ProcAddr, RetAddr, LiveInfo, CodeModel),
 		VnTables = VnTables0,
 		Templocs = Templocs0,
-		Instrs = [call(ProcAddr, RetAddr, CallerAddr, LiveInfo) - ""]
+		Instrs = [call(ProcAddr, RetAddr, LiveInfo, CodeModel) - ""]
 	;
-		Vn_instr = vn_call_closure(ClAddr, RetAddr, Caller, LiveInfo),
+		Vn_instr = vn_call_closure(ClAddr, RetAddr, LiveInfo),
 		VnTables = VnTables0,
 		Templocs = Templocs0,
-		Instrs = [call_closure(ClAddr, RetAddr, Caller, LiveInfo) - ""]
+		Instrs = [call_closure(ClAddr, RetAddr, LiveInfo) - ""]
 	;
 		Vn_instr = vn_mkframe(Name, Size, Redoip),
 		vn__rval_to_vn(const(address_const(Redoip)), AddrVn,
@@ -199,10 +199,10 @@ vn__flush_ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 		Templocs = Templocs0,
 		Instrs = [label(Label) - ""]
 	;
-		Vn_instr = vn_goto(TargetAddr, CallerAddr),
+		Vn_instr = vn_goto(TargetAddr),
 		VnTables = VnTables0,
 		Templocs = Templocs0,
-		Instrs = [goto(TargetAddr, CallerAddr) - ""]
+		Instrs = [goto(TargetAddr) - ""]
 	;
 		Vn_instr = vn_computed_goto(Vn, Labels),
 		vn__flush_vn(Vn, [src_ctrl(N)], [], Rval,

@@ -247,14 +247,14 @@ opt_debug__dump_vninstr(vn_call(Proc, Ret, _, _), Str) :-
 	opt_debug__dump_code_addr(Proc, P_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call(", P_str, ", ", R_str, ")"], Str).
-opt_debug__dump_vninstr(vn_call_closure(_, Ret, _, _), Str) :-
+opt_debug__dump_vninstr(vn_call_closure(_, Ret, _), Str) :-
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call_closure(", R_str, ")"], Str).
 opt_debug__dump_vninstr(vn_mkframe(_, _, _), "mkframe").
 opt_debug__dump_vninstr(vn_label(Label), Str) :-
 	opt_debug__dump_label(Label, L_str),
 	string__append_list(["label(", L_str, ")"], Str).
-opt_debug__dump_vninstr(vn_goto(CodeAddr, _Caller), Str) :-
+opt_debug__dump_vninstr(vn_goto(CodeAddr), Str) :-
 	opt_debug__dump_code_addr(CodeAddr, C_str),
 	string__append_list(["goto(", C_str, ")"], Str).
 opt_debug__dump_vninstr(vn_computed_goto(Vn, _), Str) :-
@@ -614,7 +614,7 @@ opt_debug__dump_code_addrs([Addr | Addrs], Str) :-
 opt_debug__dump_label(local(ProcLabel), Str) :-
 	opt_debug__dump_proclabel(ProcLabel, P_str),
 	string__append_list([P_str], Str).
-opt_debug__dump_label(local(ProcLabel, N, _), Str) :-
+opt_debug__dump_label(local(ProcLabel, N), Str) :-
 	opt_debug__dump_proclabel(ProcLabel, P_str),
 	string__int_to_string(N, N_str),
 	string__append_list([P_str, "_", N_str], Str).
@@ -668,7 +668,7 @@ opt_debug__dump_instr(call(Proc, Ret, _, _), Str) :-
 	opt_debug__dump_code_addr(Proc, P_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call(", P_str, ", ", R_str, ", ...)"], Str).
-opt_debug__dump_instr(call_closure(CodeModel, Ret, _, _), Str) :-
+opt_debug__dump_instr(call_closure(CodeModel, Ret, _), Str) :-
 	opt_debug__dump_code_model(CodeModel, F_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call_closure(", F_str, ", ", R_str, ", ...)"],
@@ -684,7 +684,7 @@ opt_debug__dump_instr(modframe(Redoip), Str) :-
 opt_debug__dump_instr(label(Label), Str) :-
 	opt_debug__dump_label(Label, L_str),
 	string__append_list(["label(", L_str, ")"], Str).
-opt_debug__dump_instr(goto(CodeAddr, _Caller), Str) :-
+opt_debug__dump_instr(goto(CodeAddr), Str) :-
 	opt_debug__dump_code_addr(CodeAddr, C_str),
 	string__append_list(["goto(", C_str, ")"], Str).
 opt_debug__dump_instr(computed_goto(Rval, Labels), Str) :-

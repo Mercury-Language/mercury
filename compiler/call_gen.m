@@ -77,13 +77,9 @@ call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
 	{ call_gen__output_args(Args, OutputArguments) },
 	call_gen__generate_return_livevals(OutArgs, OutputArguments, OutLiveVals),
 	code_info__make_entry_label(ModuleInfo, PredId, ModeId, Address),
-	code_info__get_pred_id(CallerPredId),
-	code_info__get_proc_id(CallerProcId),
-	code_info__make_entry_label(ModuleInfo, CallerPredId, CallerProcId, 
-		CallerAddress),
 	{ CodeC1 = node([
-		call(Address, label(ReturnLabel), CallerAddress, OutLiveVals) -
-					"branch to det procedure",
+		call(Address, label(ReturnLabel), OutLiveVals, det)
+			- "branch to det procedure",
 		label(ReturnLabel) - "Continuation label"
 	]) },
 	{ Code = tree(CodeA, tree(CodeB, tree(CodeC0, CodeC1))) },
@@ -139,13 +135,9 @@ call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 	{ call_gen__output_args(Args, OutputArguments) },
 	call_gen__generate_return_livevals(OutArgs, OutputArguments, OutLiveVals),
 	code_info__make_entry_label(ModuleInfo, PredId, ModeId, Address),
-        code_info__get_pred_id(CallerPredId),
-        code_info__get_proc_id(CallerProcId),
-        code_info__make_entry_label(ModuleInfo, CallerPredId, CallerProcId,
-                CallerAddress),
         { CodeC1 = node([
-                call(Address, label(ReturnLabel), CallerAddress, OutLiveVals) -
-			"branch to semidet procedure",
+                call(Address, label(ReturnLabel), OutLiveVals, semidet)
+			- "branch to semidet procedure",
 		label(ReturnLabel) - "Continuation label"
 	]) },
 	call_gen__rebuild_registers(Args),
@@ -173,13 +165,18 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 	{ call_gen__output_args(Args, OutputArguments) },
 	call_gen__generate_return_livevals(OutArgs, OutputArguments, OutLiveVals),
 	code_info__make_entry_label(ModuleInfo, PredId, ModeId, Address),
-        code_info__get_pred_id(CallerPredId),
-        code_info__get_proc_id(CallerProcId),
-        code_info__make_entry_label(ModuleInfo, CallerPredId, CallerProcId,
-                CallerAddress),
+	code_info__failure_cont(failure_cont(IsKnown, _, FailureMap)),
+	(
+		{ IsKnown = known(_) },
+		{ FailureMap = [_ - do_fail|_] }
+	->
+		{ TailCallable = nondet(yes) }
+	;
+		{ TailCallable = nondet(no) }
+	),
         { CodeC1 = node([
-                call(Address, label(ReturnLabel), CallerAddress, OutLiveVals) -
-			"branch to nondet procedure",
+                call(Address, label(ReturnLabel), OutLiveVals, TailCallable)
+			- "branch to nondet procedure",
 		label(ReturnLabel) - "Continuation label"
 	]) },
 	{ Code = tree(CodeA, tree(CodeB, tree(CodeC0, CodeC1))) },
@@ -426,14 +423,17 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, CanFail, Code) -->
 			Address = label(local(UniLabel))
 		},
 	**************/
-		code_info__get_pred_id(CallerPredId),
-		code_info__get_proc_id(CallerProcId),
-		code_info__make_entry_label(ModuleInfo, CallerPredId, 
-			CallerProcId, CallerAddress),
+		(
+			{ CanFail = can_fail }
+		->
+			{ CallModel = semidet }
+		;
+			{ CallModel = det }
+		),
 		{ CodeC1 = node([
-			call(Address, label(ReturnLabel), CallerAddress,
-				 OutLiveVals) -
-				"branch to out-of-line unification procedure",
+			call(Address, label(ReturnLabel),
+				OutLiveVals, CallModel)
+				- "branch to out-of-line unification procedure",
 			label(ReturnLabel) - "Continuation label"
 		]) }
 	;
@@ -615,15 +615,10 @@ call_gen__generate_higher_call(CodeModel, Var, InVars, OutVars, Code) -->
 		])
 	) },
 	code_info__get_next_label(ReturnLabel),
-	code_info__get_module_info(ModuleInfo),
-	code_info__get_pred_id(CallerPredId),
-	code_info__get_proc_id(CallerProcId),
-	code_info__make_entry_label(ModuleInfo, CallerPredId, 
-		CallerProcId, CallerAddress),
 	{ TryCallCode = node([
 		livevals(LiveVals) - "",
-		call_closure(CodeModel, label(ReturnLabel), CallerAddress,
-			OutLiveVals) - "setup and call higher order pred",
+		call_closure(CodeModel, label(ReturnLabel), OutLiveVals)
+			- "setup and call higher order pred",
 		label(ReturnLabel) - "Continuation label"
 	]) },
 	(

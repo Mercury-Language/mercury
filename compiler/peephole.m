@@ -83,7 +83,7 @@ peephole__opt_instr(Instr0, Comment0, TeardownMap, Instrs0, Instrs, Mod) :-
 	%	<comments, labels>	=>	<comments, labels>
 	%     next:			      next:
 
-peephole__match(goto(label(Label), _Caller), _, _, Instrs0, Instrs) :-
+peephole__match(goto(label(Label)), _, _, Instrs0, Instrs) :-
 	opt_util__is_this_label_next(Label, Instrs0, _),
 	Instrs = Instrs0.
 
@@ -110,16 +110,14 @@ peephole__match(if_val(Rval, label(Target)), Comment, _, Instrs0, Instrs) :-
 	( opt_util__is_const_condition(Rval, Taken) ->
 		(
 			Taken = yes,
-			% XXX must be fixed before profiling is finished
-			Instrs = [goto(label(Target), label(Target)) - Comment
-				| Instrs0]
+			Instrs = [goto(label(Target)) - Comment | Instrs0]
 		;
 			Taken = no,
 			Instrs = Instrs0
 		)
 	;
 		opt_util__skip_comments_livevals(Instrs0, Instrs1),
-		( Instrs1 = [goto(Somewhere, _) - C2 | Instrs2] ->
+		( Instrs1 = [goto(Somewhere) - C2 | Instrs2] ->
 			opt_util__is_this_label_next(Target, Instrs2, _),
 			code_util__neg_rval(Rval, NotRval),
 			Instrs = [if_val(NotRval, Somewhere) - C2 | Instrs2]
@@ -219,9 +217,8 @@ peephole__match(modframe(Redoip), Comment, _, Instrs0, Instrs) :-
 		opt_util__touches_nondet_ctrl(Between, no)
 	->
 		list__condense([Between,
-			% XXX must be fixed before profiling is finished
-			[goto(do_succeed(yes), do_succeed(yes)) -
-			"early discard"], After], Instrs)
+			[goto(do_succeed(yes)) - "early discard"], After],
+				Instrs)
 	;
 		fail
 	).

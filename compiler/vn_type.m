@@ -55,13 +55,13 @@
 			;	node_ctrl(int).
 
 :- type vn_instr	--->	vn_livevals(lvalset)
-			;	vn_call(code_addr, code_addr, code_addr, 
-					list(liveinfo))
+			;	vn_call(code_addr, code_addr,
+					list(liveinfo), call_model)
 			;	vn_call_closure(code_model, code_addr,
-					code_addr, list(liveinfo))
+					list(liveinfo))
 			;	vn_mkframe(string, int, code_addr)
 			;	vn_label(label)
-			;	vn_goto(code_addr, code_addr)
+			;	vn_goto(code_addr)
 			;	vn_computed_goto(vn, list(label))
 			;	vn_if_val(vn, code_addr)
 			;	vn_mark_hp(vnlval)

@@ -505,8 +505,7 @@ unify_gen__generate_semi_deconstruction(Var, Tag, Args, Modes, Code) -->
 	code_info__slap_code_info(CodeInfo), % XXX
 	{ CodeC = tree(
 		node([
-			goto(label(SkipLab), label(SkipLab)) -
-						"branch over failure",
+			goto(label(SkipLab)) - "branch over failure",
 			label(ElseLab) - "failure continuation of tag test"
 		]),
 		tree(FailCode,node([ label(SkipLab) - "" ]))

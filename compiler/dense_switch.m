@@ -195,8 +195,8 @@ dense_switch__generate_cases(Cases0, NextVal, EndVal, CodeModel, EndLabel,
 		{ ThisCaseCode = tree(
 			node([ label(ThisLabel) - Comment ]),
 			tree(	ThisCode,
-				node([ goto(label(EndLabel), label(EndLabel))
-				- "branch to end of dense switch" ])
+				node([ goto(label(EndLabel))
+					- "branch to end of dense switch" ])
 			)
 		) },
 		{ dense_switch__merge_maybe_liveness(Liveness0, NewLiveness,

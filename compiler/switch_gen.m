@@ -228,7 +228,7 @@ switch_gen__generate_all_cases(Cases, Var, CodeModel, CanFail, EndLabel, Code) -
 					Case2Code)),
 			tree(
 				node([
-					goto(label(EndLabel), label(EndLabel)) -
+					goto(label(EndLabel)) -
 						"skip to the end of the switch",
 					label(NextLab) - "next case" ]),
 				tree(
@@ -270,8 +270,7 @@ switch_gen__generate_cases([case(_, _, Cons, Goal)|Cases], Var, CodeModel,
 		unify_gen__generate_tag_test(Var, Cons, NextLab, TestCode),
 		code_gen__generate_forced_goal(CodeModel, Goal, ThisCode),
 		{ ElseCode = node([
-			goto(label(EndLabel), label(EndLabel)) -
-				"skip to the end of the switch",
+			goto(label(EndLabel)) - "skip to the end of the switch",
 			label(NextLab) - "next case"
 		]) },
 		{ ThisCaseCode = tree(tree(TestCode, ThisCode), ElseCode) },

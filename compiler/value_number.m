@@ -502,7 +502,7 @@ vn__verify_tags_instr(Instr, NoDeref0, NoDeref, Tested0, Tested) :-
 		NoDeref = NoDeref0,
 		Tested = Tested0
 	;
-		Instr = call_closure(_, _, _, _),
+		Instr = call_closure(_, _, _),
 		NoDeref = NoDeref0,
 		Tested = Tested0
 	;
@@ -518,7 +518,7 @@ vn__verify_tags_instr(Instr, NoDeref0, NoDeref, Tested0, Tested) :-
 		NoDeref = NoDeref0,
 		Tested = Tested0
 	;
-		Instr = goto(_, _),
+		Instr = goto(_),
 		NoDeref = NoDeref0,
 		Tested = Tested0
 	;
@@ -782,14 +782,13 @@ vn__process_parallels(Pars, Livemap, Instr0, Instr, AllBlocks, Extras) -->
 			{ error("more than one parallel for if_val") }
 		)
 	;
-		{ Uinstr0 = goto(label(Label), Profile) }
+		{ Uinstr0 = goto(label(Label)) }
 	->
 		( { Pars = [Par] } ->
 			( { Par = parallel(Label, NewLabel, ParEntries) } ->
 				vn__process_parallel(Par, Livemap, AllBlocks,
 					FinalLabel, Extras),
-				{ Instr = goto(label(FinalLabel), Profile) 
-					- Comment }
+				{ Instr = goto(label(FinalLabel)) - Comment }
 			;
 				{ error("wrong label in parallel for goto") }
 			)
@@ -801,8 +800,7 @@ vn__process_parallels(Pars, Livemap, Instr0, Instr, AllBlocks, Extras) -->
 	->
 		vn__process_parallel_list(Pars, Labels, Livemap, AllBlocks,
 			FinalLabels, Extras),
-		{ Instr = computed_goto(Rval, FinalLabels) 
-			- Comment }
+		{ Instr = computed_goto(Rval, FinalLabels) - Comment }
 	;
 		{ Instr = Instr0 },
 		{ Extras = [] }
@@ -1095,11 +1093,11 @@ vn__boundary_instr(livevals(_), no).
 vn__boundary_instr(block(_, _), no).
 vn__boundary_instr(assign(_,_), no).
 vn__boundary_instr(call(_, _, _, _), yes).
-vn__boundary_instr(call_closure(_, _, _, _), yes).
+vn__boundary_instr(call_closure(_, _, _), yes).
 vn__boundary_instr(mkframe(_, _, _), yes).
 vn__boundary_instr(modframe(_), yes).
 vn__boundary_instr(label(_), yes).
-vn__boundary_instr(goto(_, _), yes).
+vn__boundary_instr(goto(_), yes).
 vn__boundary_instr(computed_goto(_, _), yes).
 vn__boundary_instr(c_code(_), yes).
 vn__boundary_instr(if_val(_, _), yes).

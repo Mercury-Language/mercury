@@ -102,7 +102,7 @@ jumpopt__build_maps([Instr0 | Instrs0], Blockopt, Recjump, Instrmap0, Instrmap,
 		),
 		% put the start of the procedure into Blockmap
 		% only after frameopt and value_number have had a shot at it
-		( Blockopt = yes, (Label = local(_, _, _) ; Recjump = yes) ->
+		( Blockopt = yes, ( Label = local(_, _) ; Recjump = yes ) ->
 			opt_util__find_no_fallthrough(Instrs1, Block),
 			map__det_insert(Blockmap0, Label, Block, Blockmap1)
 		;
@@ -170,25 +170,42 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 	Instr0 = Uinstr0 - Comment0,
 	string__append(Comment0, " (redirected return)", Redirect),
 	(
-		Uinstr0 = call(Proc, label(RetLabel), Caller, CallLiveVals)
+		Uinstr0 = call(Proc, label(RetLabel), GC, CallModel)
 	->
 		(
+			CallModel = det,
 			map__search(Procmap, RetLabel, Between0),
 			PrevInstr = livevals(Livevals) 
 		->
 			opt_util__filter_out_livevals(Between0, Between1),
 			list__append(Between1, [livevals(Livevals) - "",
-				goto(Proc, Caller) - Redirect], NewInstrs),
+				goto(Proc) - Redirect], NewInstrs),
 			Mod0 = yes
 		;
+			CallModel = semidet,
 			map__search(Forkmap, RetLabel, Between0),
 			PrevInstr = livevals(Livevals) 
 		->
 			opt_util__filter_out_livevals(Between0, Between1),
 			list__append(Between1, [livevals(Livevals) - "",
-				goto(Proc, Caller) - Redirect], NewInstrs),
+				goto(Proc) - Redirect], NewInstrs),
 			Mod0 = yes
 		;
+%			CallModel = nondet(yes),
+%			map__search(Succmap, RetLabel, BetweenIncl),
+%			BetweenIncl = [livevals(_) - _, goto(_) - _],
+%			PrevInstr = livevals(Livevals) 
+%		->
+%			NewInstrs = [
+%				assign(maxfr, lval(prevfr(lval(curfr))))
+%					- "discard this frame",
+%				assign(curfr, lval(succfr(lval(curfr))))
+%					- "setup return from tailcall",
+%				livevals(Livevals) - "",
+%				goto(Proc) - Redirect
+%			],
+%			Mod0 = yes
+%		;
 			map__search(Instrmap, RetLabel, RetInstr)
 		->
 			jumpopt__final_dest(RetLabel, RetInstr, Instrmap,
@@ -198,7 +215,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 				Mod0 = no
 			;
 				NewInstrs = [call(Proc, label(DestLabel),
-					Caller, CallLiveVals) - Redirect],
+					GC, CallModel) - Redirect],
 				Mod0 = yes
 			)
 		;
@@ -206,7 +223,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			Mod0 = no
 		)
 	;
-		Uinstr0 = goto(label(TargetLabel), _CallerAddress)
+		Uinstr0 = goto(label(TargetLabel))
 	->
 		(
 			opt_util__is_this_label_next(TargetLabel, Instrs0, _)
@@ -230,15 +247,15 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			map__search(Procmap, TargetLabel, Between0)
 		->
 			jumpopt__adjust_livevals(PrevInstr, Between0, Between),
-			list__append(Between, [goto(succip, succip) -
-				"shortcircuit"], NewInstrs),
+			list__append(Between, [goto(succip) - "shortcircuit"],
+				NewInstrs),
 			Mod0 = yes
 		;
 			map__search(Sdprocmap, TargetLabel, Between0)
 		->
 			jumpopt__adjust_livevals(PrevInstr, Between0, Between),
-			list__append(Between, [goto(succip, succip) -
-				"shortcircuit"], NewInstrs),
+			list__append(Between, [goto(succip) - "shortcircuit"],
+				NewInstrs),
 			Mod0 = yes
 		;
 			map__search(Succmap, TargetLabel, BetweenIncl0)
@@ -274,8 +291,8 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 					NewInstrs0 = [Instr0],
 					Mod0 = no
 				;
-					NewInstrs0 = [goto(label(DestLabel),
-						label(DestLabel)) - Shorted],
+					NewInstrs0 = [goto(label(DestLabel))
+						- Shorted],
 					Mod0 = yes
 				)
 			),
@@ -389,7 +406,7 @@ jumpopt__final_dest_2(SrcLabel, SrcInstr, Instrmap, LabelsSofar,
 	(
 		SrcInstr = SrcUinstr - _Comment,
 		(
-			SrcUinstr = goto(label(TargetLabel), _CallerAddress)
+			SrcUinstr = goto(label(TargetLabel))
 		;
 			SrcUinstr = label(TargetLabel)
 		),

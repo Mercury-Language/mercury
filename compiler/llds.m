@@ -38,7 +38,9 @@
 :- type code_tree	==	tree(list(instruction)).
 
 :- type instruction	==	pair(instr, string).
-			%	 instruction, comment
+			%	instruction, comment
+
+:- type call_model	--->	det ; semidet ; nondet(bool).
 
 :- type instr	
 	--->	comment(string)
@@ -56,20 +58,20 @@
 			% Assign the value specified by rval to the location
 			% specified by lval.
 
-	;	call(code_addr, code_addr, code_addr, list(liveinfo)) 
-			% call(Target, Continuation) is the same as
+	;	call(code_addr, code_addr, list(liveinfo), call_model) 
+			% call(Target, Continuation, _, _) is the same as
 			% succip = Continuation; goto(Target).
-			% The third code_addr is the entry address for
-			% the caller predicate and is used for profiling.
+			% The third argument is the shape table for the
+			% values live on return. The last gives the model
+			% of the called procedure, and if it is nondet,
+			% says whether tail recursion is applicable to the call.
 
-	;	call_closure(code_model, code_addr, code_addr, list(liveinfo))
+	;	call_closure(code_model, code_addr, list(liveinfo))
 			% Setup the arguments and branch to a higher
 			% order call. The closure is in r1 and the
 			% input arguments are in r2, r3, ...
 			% The output arguments are in r1, r2, ...
 			% except for semidet calls, where they are in r2, ...
-			% The second code_addr is the entry address for
-			% the caller predicate and is used for profiling.
 
 	;	mkframe(string, int, code_addr)
 			% mkframe(Comment, SlotCount, FailureContinuation)
@@ -81,13 +83,11 @@
 
 	;	label(label)
 
-	;	goto(code_addr, code_addr)
-			% goto(Target, CallerAddress)
+	;	goto(code_addr)
+			% goto(Target)
 			% Branch to the specified address.
 			% Note that jumps to do_fail, etc., can get
 			% optimized into the invocations of macros fail(), etc..
-			% CallerAddress is needed for profiling,
-			% when tailcall optimization is turned on.
 
 	;	computed_goto(rval, list(label))
 			% Evaluate rval, which should be an integer,
@@ -233,14 +233,8 @@
 
 :- type label
 	--->		local(proc_label)
-	;		local(proc_label, int, cont_type)
+	;		local(proc_label, int)
 	;		exported(proc_label).
-
-:- type cont_type
-	--->		unknown
-	;		no
-	;		local
-	;		exported.
 
 :- type code_addr
 	--->		label(label)
@@ -281,7 +275,6 @@
 
 :- pred output_label(label, io__state, io__state).
 :- mode output_label(in, di, uo) is det.
-
 
 	% Output a proc label (used for building static call graph for prof).
 
@@ -494,7 +487,7 @@ output_c_label_decl(Label, ProcsPerFunc) -->
 			io__write_string(");\n")
 		)
 	;
-		{ Label = local(_, _, _) },
+		{ Label = local(_, _) },
 		io__write_string("Declare_label("),
 		output_label(Label),
 		io__write_string(");\n")
@@ -536,7 +529,7 @@ output_c_label_init(Label, ProcPerFunc) -->
 			io__write_string(");\n")
 		)
 	;
-		{ Label = local(_, _, _) },
+		{ Label = local(_, _) },
 		io__write_string("\tinit_label("),
 		output_label(Label),
 		io__write_string(");\n")
@@ -559,7 +552,7 @@ output_c_procedure_list([P|Ps]) -->
 :- pred output_c_procedure(c_procedure, io__state, io__state).
 :- mode output_c_procedure(in, di, uo) is det.
 
-output_c_procedure(c_procedure(Name,Arity,ModeNum0,Instructions)) -->
+output_c_procedure(c_procedure(Name, Arity, ModeNum0, Instrs)) -->
 	globals__io_lookup_bool_option(auto_comments, PrintAutoComments),
 	( { PrintAutoComments = yes } ->
 		io__write_string("\n/*-------------------------------------"),
@@ -575,33 +568,93 @@ output_c_procedure(c_procedure(Name,Arity,ModeNum0,Instructions)) -->
 	{ ModeNum is ModeNum0 mod 10000 },	% strip off the priority
 	io__write_int(ModeNum),
 	io__write_string(" */\n"),
-	output_instruction_list(Instructions).
+	{ set__init(ContLabelSet0) },
+	{ llds__find_caller_label(Instrs, CallerLabel) },
+	{ llds__find_cont_labels(Instrs, ContLabelSet0, ContLabelSet) },
+	output_instruction_list(Instrs, CallerLabel - ContLabelSet).
 
-:- pred output_instruction_list(list(instruction), io__state, io__state).
-:- mode output_instruction_list(in, di, uo) is det.
+:- pred llds__find_caller_label(list(instruction), label).
+:- mode llds__find_caller_label(in, out) is det.
 
-output_instruction_list([]) --> [].
-output_instruction_list([Inst - Comment|Instructions]) -->
+llds__find_caller_label([], _) :-
+	error("cannot find caller label").
+llds__find_caller_label([Instr0 - _ | Instrs], CallerLabel) :-
+	( Instr0 = label(Label) ->
+		( ( Label = local(_) ; Label = exported(_) ) ->
+			CallerLabel = Label
+		;
+			error("caller label is internal label")
+		)
+	;
+		llds__find_caller_label(Instrs, CallerLabel)
+	).
+
+	% Locate all the labels which are the continutation labels for calls
+	% or nondet disjunctions, and store them in ContLabelSet.
+
+:- pred llds__find_cont_labels(list(instruction), set(label), set(label)).
+:- mode llds__find_cont_labels(in, in, out) is det.
+
+llds__find_cont_labels([], ContLabelSet, ContLabelSet).
+llds__find_cont_labels([Instr - _ | Instrs], ContLabelSet0, ContLabelSet) :-
+	(
+		(
+			Instr = call(_, label(ContLabel), _, _)
+		;
+			Instr = mkframe(_Comment2, _SlotCount, label(ContLabel))
+		;
+			Instr = modframe(label(ContLabel))
+		;
+			Instr = assign(redoip(lval(maxfr)), 
+				const(address_const(label(ContLabel))))
+		)
+	->
+		set__insert(ContLabelSet0, ContLabel, ContLabelSet1)
+	;
+		ContLabelSet1 = ContLabelSet0
+	),
+	llds__find_cont_labels(Instrs, ContLabelSet1, ContLabelSet).
+
+:- pred output_instruction_list(list(instruction), pair(label, set(label)),
+	io__state, io__state).
+:- mode output_instruction_list(in, in, di, uo) is det.
+
+output_instruction_list([], _) --> [].
+output_instruction_list([Instr0 - Comment0 | Instrs], ProfInfo) -->
 	globals__io_lookup_bool_option(auto_comments, PrintAutoComments),
-	( { PrintAutoComments = no, Inst = comment(_) } ->
+	(
+		{ PrintAutoComments = no },
+		{ Instr0 = comment(_) ; Instr0 = livevals(_) }
+	->
 		[]
 	;
-		output_instruction(Inst),
+		output_instruction(Instr0, ProfInfo),
 		io__write_string("\n")
 	),
 	(
-		{ Comment \= "" },
+		{ Comment0 \= "" },
 		{ PrintAutoComments = yes }
 	->
 		io__write_string("\t\t/* "),
-		io__write_string(Comment),
+		io__write_string(Comment0),
 		io__write_string(" */\n")
 	;
 		[]
 	),
-	output_instruction_list(Instructions).
+	output_instruction_list(Instrs, ProfInfo).
 
-output_instruction(comment(Comment)) -->
+	% The three-argument output_instruction is only for debugging.
+
+output_instruction(Instr) -->
+	{ set__init(ContLabelSet) },
+	{ ProfInfo = local(proc("DEBUG", "DEBUG", 0, 0)) - ContLabelSet },
+	output_instruction(Instr, ProfInfo).
+
+:- pred output_instruction(instr, pair(label, set(label)),
+	io__state, io__state).
+:- mode output_instruction(in, in, di, uo) is det.
+
+output_instruction(comment(Comment), _) -->
 	globals__io_lookup_bool_option(auto_comments, PrintAutoComments),
 	(
 		{ Comment \= "" },
@@ -612,7 +665,7 @@ output_instruction(comment(Comment)) -->
 		[]
 	).
 
-output_instruction(livevals(LiveVals)) -->
+output_instruction(livevals(LiveVals), _) -->
 	globals__io_lookup_bool_option(auto_comments, PrintAutoComments),
 	(
 		{ PrintAutoComments = yes }
@@ -625,14 +678,14 @@ output_instruction(livevals(LiveVals)) -->
 		[]
 	).
 
-output_instruction(block(N, Instrs)) -->
+output_instruction(block(N, Instrs), ProfInfo) -->
 	io__write_string("\t{ Word "),
 	output_temp_decls(N),
 	io__write_string(";\n"),
-	output_instruction_list(Instrs),
+	output_instruction_list(Instrs, ProfInfo),
 	io__write_string("\t}\n").
 
-output_instruction(assign(Lval, Rval)) -->
+output_instruction(assign(Lval, Rval), _) -->
 	io__write_string("\t{ "),
 	{ set__init(DeclSet0) },
 	output_lval_decls(Lval, DeclSet0, DeclSet1),
@@ -642,31 +695,30 @@ output_instruction(assign(Lval, Rval)) -->
 	output_rval(Rval),
 	io__write_string("; }").
 
-output_instruction(call(Target, Continuation, CallerAddress, LiveVals)) -->
+output_instruction(call(Target, ContLabel, LiveVals, _), ProfInfo) -->
+	{ ProfInfo = CallerLabel - _ },
 	io__write_string("\t{ "),
 	{ set__init(DeclSet0) },
 	output_code_addr_decls(Target, DeclSet0, DeclSet1),
-	output_code_addr_decls(Continuation, DeclSet1, DeclSet2),
-	output_code_addr_decls(CallerAddress, DeclSet2, _),
-	output_call(Target, Continuation, CallerAddress),
+	output_code_addr_decls(ContLabel, DeclSet1, _),
+	output_call(Target, ContLabel, CallerLabel),
 	io__write_string(" }\n"),
 	output_gc_livevals(LiveVals).
 
-output_instruction(call_closure(IsSemidet, Continuation, CallerAddress,
-		LiveVals)) -->
+output_instruction(call_closure(CodeModel, ContLabel, LiveVals), ProfInfo) -->
+	{ ProfInfo = CallerLabel - _ },
 	io__write_string("\t{ "),
 	{ set__init(DeclSet0) },
-	output_code_addr_decls(Continuation, DeclSet0, DeclSet1),
-	output_code_addr_decls(CallerAddress, DeclSet1, _),
-	output_call_closure(IsSemidet, Continuation, CallerAddress),
+	output_code_addr_decls(ContLabel, DeclSet0, _),
+	output_call_closure(CodeModel, ContLabel, CallerLabel),
 	io__write_string(" }\n"),
 	output_gc_livevals(LiveVals).
 
-output_instruction(c_code(C_Code_String)) -->
+output_instruction(c_code(C_Code_String), _) -->
 	io__write_string("\t"),
 	io__write_string(C_Code_String).
 
-output_instruction(mkframe(Str, Num, FailureContinuation)) -->
+output_instruction(mkframe(Str, Num, FailureContinuation), _) -->
 	io__write_string("\t{ "),
 	{ set__init(DeclSet0) },
 	output_code_addr_decls(FailureContinuation, DeclSet0, _),
@@ -678,7 +730,7 @@ output_instruction(mkframe(Str, Num, FailureContinuation)) -->
 	output_code_addr(FailureContinuation),
 	io__write_string("); }").
 
-output_instruction(modframe(FailureContinuation)) -->
+output_instruction(modframe(FailureContinuation), _) -->
 	io__write_string("\t{ "),
 	{ set__init(DeclSet0) },
 	output_code_addr_decls(FailureContinuation, DeclSet0, _),
@@ -686,19 +738,19 @@ output_instruction(modframe(FailureContinuation)) -->
 	output_code_addr(FailureContinuation),
 	io__write_string("); }").
 
-output_instruction(label(Label)) -->
+output_instruction(label(Label), ProfInfo) -->
 	output_label_defn(Label),
-	maybe_output_update_prof_counter(Label).
+	maybe_output_update_prof_counter(Label, ProfInfo).
 
-output_instruction(goto(CodeAddr, CallerAddr)) -->
+output_instruction(goto(CodeAddr), ProfInfo) -->
+	{ ProfInfo = CallerLabel - _ },
 	io__write_string("\t{ "),
 	{ set__init(DeclSet0) },
-	output_code_addr_decls(CodeAddr, DeclSet0, DeclSet1),
-	output_code_addr_decls(CallerAddr, DeclSet1, _),
-	output_goto(CodeAddr, CallerAddr),
+	output_code_addr_decls(CodeAddr, DeclSet0, _),
+	output_goto(CodeAddr, CallerLabel),
 	io__write_string(" }").
 
-output_instruction(computed_goto(Rval, Labels)) -->
+output_instruction(computed_goto(Rval, Labels), _) -->
 	io__write_string("\t{ "),
 	{ set__init(DeclSet0) },
 	output_rval_decls(Rval, DeclSet0, _),
@@ -708,7 +760,8 @@ output_instruction(computed_goto(Rval, Labels)) -->
 	output_label_list(Labels),
 	io__write_string("); }").
 
-output_instruction(if_val(Rval, Target)) -->
+output_instruction(if_val(Rval, Target), ProfInfo) -->
+	{ ProfInfo = CallerLabel - _ },
 	io__write_string("\t{ "),
 	{ set__init(DeclSet0) },
 	output_rval_decls(Rval, DeclSet0, DeclSet1),
@@ -716,10 +769,10 @@ output_instruction(if_val(Rval, Target)) -->
 	io__write_string("if ("),
 	output_rval(Rval),
 	io__write_string(")\n\t\t"),
-	output_goto(Target, Target),
+	output_goto(Target, CallerLabel),
 	io__write_string(" }").
 
-output_instruction(incr_hp(Lval, MaybeTag, Rval)) -->
+output_instruction(incr_hp(Lval, MaybeTag, Rval), _) -->
 	(
 		{ MaybeTag = no },
 		io__write_string("\t{ "),
@@ -746,7 +799,7 @@ output_instruction(incr_hp(Lval, MaybeTag, Rval)) -->
 		io__write_string("); }")
 	).
 
-output_instruction(mark_hp(Lval)) -->
+output_instruction(mark_hp(Lval), _) -->
 	io__write_string("\t{ "),
 	{ set__init(DeclSet0) },
 	output_lval_decls(Lval, DeclSet0, _),
@@ -754,7 +807,7 @@ output_instruction(mark_hp(Lval)) -->
 	output_lval(Lval),
 	io__write_string("); }").
 
-output_instruction(restore_hp(Rval)) -->
+output_instruction(restore_hp(Rval), _) -->
 	io__write_string("\t{ "),
 	{ set__init(DeclSet0) },
 	output_rval_decls(Rval, DeclSet0, _),
@@ -762,13 +815,13 @@ output_instruction(restore_hp(Rval)) -->
 	output_rval(Rval),
 	io__write_string("); }").
 
-output_instruction(incr_sp(N)) -->
+output_instruction(incr_sp(N), _) -->
 	io__write_string("\t"),
 	io__write_string("incr_sp("),
 	io__write_int(N),
 	io__write_string(");").
 
-output_instruction(decr_sp(N)) -->
+output_instruction(decr_sp(N), _) -->
 	io__write_string("\t"),
 	io__write_string("decr_sp("),
 	io__write_int(N),
@@ -1008,30 +1061,22 @@ output_code_addr_decls(imported(ProcLabel), DeclSet, DeclSet) -->
 	output_proc_label(ProcLabel),
 	io__write_string(");\n\t  ").
 
-:- pred maybe_output_update_prof_counter(label, io__state, io__state).
-:- mode maybe_output_update_prof_counter(in, di, uo) is det.
+:- pred maybe_output_update_prof_counter(label, pair(label, set(label)),
+	io__state, io__state).
+:- mode maybe_output_update_prof_counter(in, in, di, uo) is det.
 
-maybe_output_update_prof_counter(Label) -->
+maybe_output_update_prof_counter(Label, CallerLabel - ContLabelSet) -->
 	(
-		% XXX All the label's should be local.
-		{ Label = local(ProcLabel, _, exported) }
+		{ set__member(Label, ContLabelSet) }
 	->
-		{ Label2 = exported(ProcLabel) },
 		io__write_string("\n\tupdate_prof_current_proc(LABEL("),
-		output_label(Label2),
-		io__write_string("));\n")
-	;
-		{ Label = local(ProcLabel, _, local) }
-	->
-		{ Label2 = local(ProcLabel) },
-		io__write_string("\n\tupdate_prof_current_proc(LABEL("),
-		output_label(Label2),
-		io__write_string("));\n")
+		output_label(CallerLabel),
+		io__write_string("));")
 	;
 		[]
 	).
 
-:- pred output_goto(code_addr, code_addr, io__state, io__state).
+:- pred output_goto(code_addr, label, io__state, io__state).
 :- mode output_goto(in, in, di, uo) is det.
 
 	% Note that we do some optimization here:
@@ -1066,23 +1111,23 @@ output_goto(do_redo, _) -->
 		{ UseMacro = no },
 		io__write_string("GOTO(ENTRY(do_redo));")
 	).
-output_goto(imported(ProcLabel), CallerAddr) -->
+output_goto(imported(ProcLabel), CallerLabel) -->
 	io__write_string("tailcall(ENTRY("),
 	output_proc_label(ProcLabel),
 	io__write_string("),\n\t\t"),
-	output_code_addr(CallerAddr),
+	output_label_as_code_addr(CallerLabel),
 	io__write_string(");").
-output_goto(label(Label), CallerAddr) -->
+output_goto(label(Label), CallerLabel) -->
 	(
 		{ Label = local(_) ; Label = exported(_) }
 	->
 		io__write_string("localtailcall("),
 		output_label(Label),
 		io__write_string(",\n\t\t"),
-		output_code_addr(CallerAddr),
+		output_label_as_code_addr(CallerLabel),
 		io__write_string(");")
 	;
-		{ Label = local(_,_,_) }
+		{ Label = local(_, _) }
 	->
 		io__write_string("GOTO_LABEL("),
 		output_label(Label),
@@ -1099,33 +1144,27 @@ output_goto(label(Label), CallerAddr) -->
 	% outputting `localcall' rather than `call' for
 	% calls to local labels.
 
-:- pred output_call(code_addr, code_addr, code_addr, io__state, io__state).
+:- pred output_call(code_addr, code_addr, label, io__state, io__state).
 :- mode output_call(in, in, in, di, uo) is det.
 
-output_call(Target, Continuation, CallerAddress) -->
+output_call(Target, Continuation, CallerLabel) -->
 	( { Target = label(Label) } ->
 		io__write_string("localcall("),
-		output_label(Label),
-		io__write_string(",\n\t\t"),
-		output_code_addr(Continuation),
-		io__write_string(",\n\t\t"),
-		output_code_addr(CallerAddress),
-		io__write_string(");")
+		output_label(Label)
 	;
 		io__write_string("call("),
-		output_code_addr(Target),
-		io__write_string(",\n\t\t"),
-		output_code_addr(Continuation),
-		io__write_string(",\n\t\t"),
-		output_code_addr(CallerAddress),
-		io__write_string(");")
-	).
+		output_code_addr(Target)
+	),
+	io__write_string(",\n\t\t"),
+	output_code_addr(Continuation),
+	io__write_string(",\n\t\t"),
+	output_label_as_code_addr(CallerLabel),
+	io__write_string(");").
 
-:- pred output_call_closure(code_model, code_addr, code_addr,
-				io__state, io__state).
+:- pred output_call_closure(code_model, code_addr, label, io__state, io__state).
 :- mode output_call_closure(in, in, in, di, uo) is det.
 
-output_call_closure(CodeModel, Continuation, CallerAddress) -->
+output_call_closure(CodeModel, Continuation, CallerLabel) -->
 	(
 		{ CodeModel = model_det },
 		io__write_string("call_det_closure(")
@@ -1138,7 +1177,7 @@ output_call_closure(CodeModel, Continuation, CallerAddress) -->
 	),
 	output_code_addr(Continuation),
 	io__write_string(","),
-	output_code_addr(CallerAddress),
+	output_label_as_code_addr(CallerLabel),
 	io__write_string(");").
 
 :- pred output_code_addr(code_addr, io__state, io__state).
@@ -1159,12 +1198,18 @@ output_code_addr(do_fail) -->
 output_code_addr(do_redo) -->
 	io__write_string("ENTRY(do_redo)").
 output_code_addr(label(Label)) -->
-	io__write_string("LABEL("),
-	output_label(Label),
-	io__write_string(")").
+	output_label_as_code_addr(Label).
 output_code_addr(imported(ProcLabel)) -->
 	io__write_string("ENTRY("),
 	output_proc_label(ProcLabel),
+	io__write_string(")").
+
+:- pred output_label_as_code_addr(label, io__state, io__state).
+:- mode output_label_as_code_addr(in, di, uo) is det.
+
+output_label_as_code_addr(Label) -->
+	io__write_string("LABEL("),
+	output_label(Label),
 	io__write_string(")").
 
 :- pred output_label_list(list(label), io__state, io__state).
@@ -1209,7 +1254,7 @@ output_label_defn(local(ProcLabel)) -->
 		output_proc_label(ProcLabel),
 		io__write_string(");")
 	).
-output_label_defn(local(ProcLabel, Num, _)) -->
+output_label_defn(local(ProcLabel, Num)) -->
 	io__write_string("Define_label("),
 	output_proc_label(ProcLabel),
 	io__write_string("_i"),		% i for "internal" (not Intel ;-)
@@ -1232,7 +1277,7 @@ output_label(local(ProcLabel)) -->
 		% in a different function, so don't make them local
 		[]
 	).
-output_label(local(ProcLabel, Num, _)) -->
+output_label(local(ProcLabel, Num)) -->
 	output_proc_label(ProcLabel),
 	io__write_string("_i"),		% i for "internal" (not Intel ;-)
 	io__write_int(Num).
@@ -1772,7 +1817,6 @@ llds__name_mangle(Name, MangledName) :-
 	;
 		llds__convert_to_valid_c_identifier(Name, MangledName)
 	).
-
 
 :- pred llds__convert_to_valid_c_identifier(string, string).
 :- mode llds__convert_to_valid_c_identifier(in, out) is det.

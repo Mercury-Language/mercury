@@ -51,7 +51,7 @@
 :- pred code_info__get_next_label_number(int, code_info, code_info).
 :- mode code_info__get_next_label_number(out, in, out) is det.
 
-		% Set's up call to code_info__make_entry_label_2.
+		% Sets up call to code_info__make_entry_label_2.
 :- pred code_info__make_entry_label(module_info, pred_id, proc_id, code_addr,
 					code_info, code_info).
 :- mode code_info__make_entry_label(in, in, in, out, in, out) is det.
@@ -1260,13 +1260,11 @@ code_info__generate_failure(Code) -->
 		;
 			{error("code_info__generate_failure: no valid failmap")}
 		),
-		{ BranchCode = node([
-			goto(FailureAddress, FailureAddress) -"fail"
-		]) },
+		{ BranchCode = node([goto(FailureAddress) - "fail"]) },
 		{ Code = tree(PlaceCode, BranchCode) }
 	;
 		{ Cont = unknown },
-		{ Code = node([goto(do_redo, do_redo) -"fail"]) }
+		{ Code = node([goto(do_redo) - "fail"]) }
 	),
 	code_info__slap_code_info(CodeInfo).
 
@@ -1305,7 +1303,7 @@ code_info__generate_test_and_fail(Rval0, Code) -->
 			{ TestCode = node([ if_val(Rval0, SuccessAddress) -
 					"Test for failure" ]) },
 			{ FailCode = tree(PlaceCode, node([
-				goto(FailureAddress, SuccessAddress) - ""
+				goto(FailureAddress) - ""
 			])) },
 			{ Code = tree(tree(TestCode, FailCode), node([
 				label(SuccessLabel) - "success continuation"
@@ -1422,8 +1420,7 @@ code_info__generate_pre_commit(RedoLab, PreCommit) -->
 code_info__generate_commit(RedoLab, Commit) -->
 	code_info__get_next_label(SuccLabel),
 	{ GotoSuccLabel = node([
-		goto(label(SuccLabel), label(SuccLabel)) -
-			"Jump to success continuation"
+		goto(label(SuccLabel)) - "Jump to success continuation"
 	]) },
 	{ SuccLabelCode = node([
 		label(SuccLabel) - "Success continuation"

@@ -772,7 +772,7 @@ vn__build_uses_from_ctrl(Ctrl, Ctrlmap, VnTables0, VnTables) :-
 			VnInstr = vn_call(_, _, _, _),
 			VnTables1 = VnTables0
 		;
-			VnInstr = vn_call_closure(_, _, _, _),
+			VnInstr = vn_call_closure(_, _, _),
 			VnTables1 = VnTables0
 		;
 			VnInstr = vn_mkframe(_, _, _),
@@ -781,7 +781,7 @@ vn__build_uses_from_ctrl(Ctrl, Ctrlmap, VnTables0, VnTables) :-
 			VnInstr = vn_label(_),
 			VnTables1 = VnTables0
 		;
-			VnInstr = vn_goto(_, _),
+			VnInstr = vn_goto(_),
 			VnTables1 = VnTables0
 		;
 			VnInstr = vn_computed_goto(Vn, _),

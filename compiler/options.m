@@ -113,6 +113,7 @@
 		;	optimize_fulljumps
 		;	optimize_labels
 		;	optimize_dups
+		;	optimize_copyprop
 		;	optimize_value_number
 		;	optimize_frames
 		;	optimize_repeat
@@ -247,6 +248,7 @@ option_defaults_2(optimization_option, [
 	optimize_fulljumps	-	bool(yes),
 	optimize_labels		-	bool(yes),
 	optimize_dups		-	bool(no),
+	optimize_copyprop	-	bool(yes),
 	optimize_value_number	-	bool(no),
 	optimize_frames		-	bool(yes),
 	optimize_repeat		-	int(3),
@@ -379,6 +381,8 @@ long_option("optimize-labels",		optimize_labels).
 long_option("optimise-labels",		optimize_labels).
 long_option("optimize-dups",		optimize_dups).
 long_option("optimise-dups",		optimize_dups).
+long_option("optimize-copyprop",	optimize_copyprop).
+long_option("optimise-copyprop",	optimize_copyprop).
 long_option("optimize-value-number",	optimize_value_number).
 long_option("optimise-value-number",	optimize_value_number).
 long_option("optimize-frames",		optimize_frames).
@@ -573,12 +577,12 @@ options_help -->
 	io__write_string("\t\tDisable elimination of jumps to ordinary code.\n"),
 	io__write_string("\t--no-optimize-labels\n"),
 	io__write_string("\t\tDisable elimination of dead labels and code.\n"),
-	io__write_string("\t--no-optimize-dups\n"),
-	io__write_string("\t\tDisable elimination of duplicate code.\n"),
+	io__write_string("\t--optimize-dups\n"),
+	io__write_string("\t\tEnable elimination of duplicate code.\n"),
+	io__write_string("\t--optimize-copyprop\n"),
+	io__write_string("\t\tEnable the copy propagation optimization.\n"),
 	io__write_string("\t--optimize-value-number\n"),
-	io__write_string("\t\tPerform value numbering. Use of this option together with\n"),
-	io__write_string("\t\tconservative garbage collection requires a collector\n"),
-	io__write_string("\t\tcompiled with -DALL_INTERIOR_POINTERS.\n"),
+	io__write_string("\t\tPerform value numbering on extended basic blocks.\n"),
 	io__write_string("\t--no-optimize-frames\n"),
 	io__write_string("\t\tDisable stack frame optimizations.\n"),
 	io__write_string("\t--optimize-repeat <n>\n"),

@@ -124,8 +124,7 @@ tag_switch__generate_primary_tag_codes([TagGroup | TagGroups], Var, Rval,
 			Primary, MaxSecondary, StagLoc, Rval, CodeModel,
 			EndLabel, FailLabel, TagCode),
 		{ ElseCode = node([
-			goto(label(EndLabel), label(EndLabel)) -
-				"skip to end of tag switch",
+			goto(label(EndLabel)) - "skip to end of tag switch",
 			label(ElseLabel) - "handle next primary tag"]) },
 		{ ThisTagCode = tree(tree(TestCode, TagCode), ElseCode) },
 		( { TagGroups = [_|_] } ->
@@ -211,8 +210,7 @@ tag_switch__generate_secondary_tag_tests([Case0 | Cases0], Rval, Primary,
 		},
 		code_gen__generate_forced_goal(CodeModel, Goal, GoalCode),
 		{ ElseCode = node([
-			goto(label(EndLabel), label(EndLabel)) -
-				"skip to end of tag switch",
+			goto(label(EndLabel)) - "skip to end of tag switch",
 			label(ElseLabel) - "handle next secondary tag"]) },
 		{ ThisCode = tree(TestCode, tree(GoalCode, ElseCode)) },
 		( { Cases0 = [_|_] } ->
@@ -258,8 +256,7 @@ tag_switch__generate_secondary_tag_codes(CaseList, CurSecondary, MaxSecondary,
 			),
 			{ LabelCode = node([label(NewLabel) -
 				"start of a case in tag switch"]) },
-			{ GotoCode = node([goto(label(EndLabel), 
-				label(EndLabel)) -
+			{ GotoCode = node([goto(label(EndLabel)) -
 				"branch to end of tag switch"]) },
 			tag_switch__generate_secondary_tag_codes(CaseList1,
 				NextSecondary, MaxSecondary, CodeModel,

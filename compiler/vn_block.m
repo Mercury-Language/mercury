@@ -68,9 +68,7 @@ vn__divide_into_blocks_2([Instr0|Instrs0], BlockInstrs0, PrevBlocks0, Blocks) :-
 		( BlockInstrs0 = [] ->
 			PrevBlocks = PrevBlocks0
 		;
-			% XXX profiling entry is incorrect
-			BlockInstrs1 = [goto(label(Label), label(Label)) - ""
-				| BlockInstrs0],
+			BlockInstrs1 = [goto(label(Label)) - "" | BlockInstrs0],
 			list__reverse(BlockInstrs1, ThisBlock),
 			PrevBlocks = [ThisBlock | PrevBlocks0]
 		)
@@ -193,15 +191,15 @@ vn__handle_instr(assign(Lval, Rval),
 	vn__set_desired_value(Vnlval, Vn, VnTables2, VnTables),
 	vn__find_specials(Vnlval, Specials),
 	set__insert_list(Liveset0, Specials, Liveset).
-vn__handle_instr(call(Proc, Return, Caller, Info),
+vn__handle_instr(call(Proc, Return, Info, CallModel),
 		Livemap, VnTables0, VnTables,
 		Liveset0, Liveset, SeenIncr, SeenIncr, Tuple0, Tuple) :-
-	vn__new_ctrl_node(vn_call(Proc, Return, Caller, Info),
+	vn__new_ctrl_node(vn_call(Proc, Return, Info, CallModel),
 		Livemap, VnTables0, VnTables, Liveset0, Liveset, Tuple0, Tuple).
-vn__handle_instr(call_closure(Proc, Return, Caller, Info),
+vn__handle_instr(call_closure(Proc, Return, Info),
 		Livemap, VnTables0, VnTables,
 		Liveset0, Liveset, SeenIncr, SeenIncr, Tuple0, Tuple) :-
-	vn__new_ctrl_node(vn_call_closure(Proc, Return, Caller, Info),
+	vn__new_ctrl_node(vn_call_closure(Proc, Return, Info),
 		Livemap, VnTables0, VnTables, Liveset0, Liveset, Tuple0, Tuple).
 vn__handle_instr(mkframe(Name, Size, Redoip),
 		Livemap, VnTables0, VnTables,
@@ -222,10 +220,10 @@ vn__handle_instr(label(Label),
 		Liveset0, Liveset, SeenIncr, SeenIncr, Tuple0, Tuple) :-
 	vn__new_ctrl_node(vn_label(Label),
 		Livemap, VnTables0, VnTables, Liveset0, Liveset, Tuple0, Tuple).
-vn__handle_instr(goto(Target, Caller),
+vn__handle_instr(goto(Target),
 		Livemap, VnTables0, VnTables,
 		Liveset0, Liveset, SeenIncr, SeenIncr, Tuple0, Tuple) :-
-	vn__new_ctrl_node(vn_goto(Target, Caller),
+	vn__new_ctrl_node(vn_goto(Target),
 		Livemap, VnTables0, VnTables, Liveset0, Liveset, Tuple0, Tuple).
 vn__handle_instr(computed_goto(Rval, Labels),
 		Livemap, VnTables0, VnTables,
@@ -309,7 +307,7 @@ vn__new_ctrl_node(Vn_instr, Livemap, VnTables0, VnTables, Liveset0, Liveset,
 		LabelNo = LabelNo0,
 		Parallels = []
 	;
-		Vn_instr = vn_call_closure(_, _, _, _),
+		Vn_instr = vn_call_closure(_, _, _),
 		vn__record_at_call(VnTables0, VnTables, Liveset0, Liveset,
 			FlushEntry0, FlushEntry),
 		LabelNo = LabelNo0,
@@ -329,7 +327,7 @@ vn__new_ctrl_node(Vn_instr, Livemap, VnTables0, VnTables, Liveset0, Liveset,
 		LabelNo = LabelNo0,
 		Parallels = []
 	;
-		Vn_instr = vn_goto(TargetAddr, _),
+		Vn_instr = vn_goto(TargetAddr),
 		(
 			TargetAddr = label(Label),
 			map__search(Livemap, Label, _)
@@ -562,9 +560,9 @@ vn__record_label(Label, Livemap, VnTables0, VnTables, Livevals0, Livevals,
 			LabelNo = LabelNo0,
 			Parallels = []
 		;
-			( Label = local(ProcLabel, _, Cont) ->
+			( Label = local(ProcLabel, _) ->
 				LabelNo is LabelNo0 + 1,
-				NewLabel = local(ProcLabel, LabelNo, Cont),
+				NewLabel = local(ProcLabel, LabelNo),
 				Parallels = [parallel(Label, NewLabel,
 					ParEntries)]
 			;
@@ -736,11 +734,11 @@ vn__is_ctrl_instr(livevals(_), yes).
 vn__is_ctrl_instr(block(_, _), no).
 vn__is_ctrl_instr(assign(_, _), no).
 vn__is_ctrl_instr(call(_, _, _, _), yes).
-vn__is_ctrl_instr(call_closure(_, _, _, _), yes).
+vn__is_ctrl_instr(call_closure(_, _, _), yes).
 vn__is_ctrl_instr(mkframe(_, _, _), yes).
 vn__is_ctrl_instr(modframe(_), no).
 vn__is_ctrl_instr(label(_), yes).
-vn__is_ctrl_instr(goto(_, _), yes).
+vn__is_ctrl_instr(goto(_), yes).
 vn__is_ctrl_instr(computed_goto(_, _), yes).
 vn__is_ctrl_instr(c_code(_), no).
 vn__is_ctrl_instr(if_val(_, _), yes).
