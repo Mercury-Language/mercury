@@ -35,7 +35,8 @@
 
 :- pred generate_proc_code(proc_info, proc_id, pred_id, module_info, 
 	shape_table, shape_table, c_procedure, io__state, io__state).
-:- mode generate_proc_code(in, in, in, in, di, uo, out, di, uo) is det.
+:- mode generate_proc_code(in, in, in, in, in, out, out, di, uo) is det.
+		% N.B. could use unique mode for `shape_table'
 
 		% This predicate generates code for a goal.
 
@@ -153,7 +154,10 @@ generate_pred_code(ModuleInfo0, ModuleInfo, PredId, PredInfo, ProcIds, Code) -->
 :- pred generate_proc_list_code(list(proc_id), pred_id, pred_info, module_info,
 	shape_table, shape_table, list(c_procedure), list(c_procedure),
 	io__state, io__state).
-:- mode generate_proc_list_code(in, in, in, in, di, uo, di, uo, di, uo) is det.
+% :- mode generate_proc_list_code(in, in, in, in, di, uo, di, uo, di, uo)
+%	is det.
+:- mode generate_proc_list_code(in, in, in, in, in, out, in, out, di, uo)
+	is det.
 
 generate_proc_list_code([], _PredId, _PredInfo, _ModuleInfo,
 		Shapes, Shapes, Procs, Procs) --> [].

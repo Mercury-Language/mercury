@@ -96,7 +96,7 @@ postprocess_options_2(OptionTable, GC_Method, Tags_Method) -->
 		[]
 	),
 
-	{ copy(OptionTable, OptionTable1) }, % XXX
+	{ copy(OptionTable, OptionTable1) },
 	globals__io_init(OptionTable1, GC_Method, Tags_Method),
 	
 	% --gc conservative implies --no-reclaim-heap-*
@@ -1605,11 +1605,9 @@ mercury_compile__middle_pass(HLDS8, HLDS11, Proceed) -->
 	bool, bool, io__state, io__state).
 % :- mode mercury_compile__middle_pass_by_phases(di, uo, in, out, di, uo)
 %	is det.
-:- mode mercury_compile__middle_pass_by_phases(in, out, in, out, di, uo)
-	is det.
+:- mode mercury_compile__middle_pass_by_phases(in, out, in, out, di, uo) is det.
 
-mercury_compile__middle_pass_by_phases(HLDS8, HLDS11, ErrorcheckOnly, Proceed)
-		-->
+mercury_compile__middle_pass_by_phases(HLDS8, HLDS11, ErrorcheckOnly, Proceed) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 
 	mercury_compile__check_determinism(HLDS8, HLDS9, FoundError),
@@ -1681,8 +1679,7 @@ mercury_compile__map_args_to_regs(HLDS0, HLDS) -->
 % :- mode mercury_compile__middle_pass_by_preds(di, uo, in, out, di, uo) is det.
 :- mode mercury_compile__middle_pass_by_preds(in, out, in, out, di, uo) is det.
 
-mercury_compile__middle_pass_by_preds(HLDS8, HLDS11, ErrorcheckOnly, Proceed)
-		-->
+mercury_compile__middle_pass_by_preds(HLDS8, HLDS11, ErrorcheckOnly, Proceed) -->
 	mercury_compile__middle_pass_by_phases(HLDS8, HLDS11, ErrorcheckOnly,
 		Proceed).
 
@@ -1913,10 +1910,10 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], ModuleInfo0,
 :- pred mercury_compile__backend_pass_by_preds_3(list(proc_id), pred_id,
 	pred_info, module_info, module_info, list(c_procedure),
 	io__state, io__state).
-% :- mode mercury_compile__backend_pass_by_preds_3(in, in, in, di, uo,
-% 	out, di, uo) is det.
-:- mode mercury_compile__backend_pass_by_preds_3(in, in, in, in, out,
-	out, di, uo) is det.
+% :- mode mercury_compile__backend_pass_by_preds_3(in, in, in, di, uo, out,
+% 	di, uo) is det.
+:- mode mercury_compile__backend_pass_by_preds_3(in, in, in, in, out, out,
+	di, uo) is det.
 
 mercury_compile__backend_pass_by_preds_3([], _, _, ModuleInfo, ModuleInfo, [])
 		--> [].
@@ -2029,7 +2026,7 @@ mercury_compile__chunk_llds(HLDS, Procedures, c_file(Name, C_HeaderCode,
 :- mode get_c_header_code(in, out) is det.
 
 get_c_header_code([], []).
-get_c_header_code([Header - _Context0 | HeadersAndContexts], [Header|Headers]):-
+get_c_header_code((Header - _Context0).HeadersAndContexts, Header.Headers):-
 	get_c_header_code(HeadersAndContexts, Headers).
 
 
