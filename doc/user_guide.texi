@@ -1206,12 +1206,22 @@ Assume that branch instructions have a delay slot.
 @sp 1
 @item @code{--num-real-r-regs @var{n}}
 (This option is not intended for general use.)
-Assume r1 up to r@var{n} are real machine registers.
+Assume r1 up to r@var{n} are real general purpose registers.
 
 @sp 1
-@item @code{--num-real-temps @var{n}}
+@item @code{--num-real-f-regs @var{n}}
 (This option is not intended for general use.)
-Assume that @var{n} temporaries will fit into real machine registers.
+Assume f1 up to f@var{n} are real floating point registers.
+
+@sp 1
+@item @code{--num-real-r-temps @var{n}}
+(This option is not intended for general use.)
+Assume that @var{n} non-float temporaries will fit into real machine registers.
+
+@sp 1
+@item @code{--num-real-f-temps @var{n}}
+(This option is not intended for general use.)
+Assume that @var{n} float temporaries will fit into real machine registers.
 
 @sp 1
 @item @code{--profiling} (grades: any grade ending in @samp{.prof})
