@@ -1262,7 +1262,9 @@ mercury_sys_init_mercury_builtin_types_init(void)
 	/*
 	** We need to call MR_init_entry() for the unification and comparison
 	** predicates for the types that are automatically predefined
-	** by the type checker.
+	** by the type checker.  (Note that c_pointer is *not* predefined
+	** by the type checker, instead it is explicitly declared in
+	** library/builtin.m.)
 	*/
 	
 	MR_init_entry(mercury__builtin____Unify____int_0_0);
@@ -1270,7 +1272,6 @@ mercury_sys_init_mercury_builtin_types_init(void)
 	MR_init_entry(mercury__builtin____Unify____float_0_0);
 	MR_init_entry(mercury__builtin____Unify____character_0_0);
 	MR_init_entry(mercury__builtin____Unify____void_0_0);
-	MR_init_entry(mercury__builtin____Unify____c_pointer_0_0);
 	MR_init_entry(mercury__builtin____Unify____pred_0_0);
 	MR_init_entry(mercury__builtin____Unify____func_0_0);
 	MR_init_entry(mercury__builtin____Unify____tuple_0_0);
@@ -1280,7 +1281,6 @@ mercury_sys_init_mercury_builtin_types_init(void)
 	MR_init_entry(mercury__builtin____Compare____string_0_0);
 	MR_init_entry(mercury__builtin____Compare____character_0_0);
 	MR_init_entry(mercury__builtin____Compare____void_0_0);
-	MR_init_entry(mercury__builtin____Compare____c_pointer_0_0);
 	MR_init_entry(mercury__builtin____Compare____pred_0_0);
 	MR_init_entry(mercury__builtin____Compare____func_0_0);
 	MR_init_entry(mercury__builtin____Compare____tuple_0_0);
