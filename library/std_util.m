@@ -878,13 +878,13 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 #else
   /*
   ** Note that we need to save/restore the MR_hp register, if it
-  ** is transient, before/after calling deep_copy().
+  ** is transient, before/after calling MR_deep_copy().
   */
   #define MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr,			\\
   		OldVar, NewVal, TypeInfo_for_T)				\\
   	do {								\\
 		MR_save_transient_hp();					\\
-		NewVal = deep_copy(&OldVal, (MR_TypeInfo) TypeInfo_for_T,\\
+		NewVal = MR_deep_copy(&OldVal, (MR_TypeInfo) TypeInfo_for_T,\\
 				(const MR_Word *) SolutionsHeapPtr,	\\
 				MR_ENGINE(solutions_heap_zone)->top);	\\
 		MR_restore_transient_hp();				\\
@@ -2656,7 +2656,7 @@ extern  bool    ML_arg(MR_TypeInfo type_info, MR_Word *term, int arg_index,
 **  call MR_save_transient_registers(), and afterwards, call
 **  MR_restore_transient_registers().
 **
-**  If writing a C function that calls deep_copy, make sure you
+**  If writing a C function that calls MR_deep_copy, make sure you
 **  document that around your function, MR_save_transient_registers()
 **  MR_restore_transient_registers() need to be used.
 **
