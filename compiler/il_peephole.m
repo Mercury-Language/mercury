@@ -36,12 +36,14 @@
 
 :- import_module ml_backend__ilasm.
 
-:- import_module list.
+:- import_module bool, list.
 
-	% Peephole optimize a list of instructions.
+	% il_peephole__optimize(VerifyOnly, IL0, IL)
+	% Peephole optimize a list of instructions, possibly only doing
+	% those optimizations which are necessary for verifiable code.
 
-:- pred il_peephole__optimize(list(ilasm__decl)::in, list(ilasm__decl)::out) 
-	is det.
+:- pred il_peephole__optimize(bool::in,
+		list(ilasm__decl)::in, list(ilasm__decl)::out) is det.
 
 :- implementation.
 
@@ -57,25 +59,25 @@
 	% when we find a sequence we can't optimize, we back up and try
 	% to optimize the sequence starting with the previous instruction.
 
-optimize(Decls0, Decls) :-
-	list__map_foldl(optimize_decl, Decls0, Decls, no, _Mod).
+optimize(VerifyOnly, Decls0, Decls) :-
+	list__map_foldl(optimize_decl(VerifyOnly), Decls0, Decls, no, _Mod).
 
 	% Mod is a bool that says whether the code was modified as a
 	% result of the optimization (that is, whether Decl \= Decl0).
 	% This can be used to decide whether to keep repeat the
 	% optimizations.
-:- pred optimize_decl(decl::in, decl::out, bool::in, bool::out) is det.
-optimize_decl(Decl0, Decl, Mod0, Mod) :-
+:- pred optimize_decl(bool::in, decl::in, decl::out, bool::in, bool::out) is det.
+optimize_decl(VerifyOnly, Decl0, Decl, Mod0, Mod) :-
 	( Decl0 = class(A, B, C, D, ClassMembers0) ->
-		list__map_foldl(optimize_class_member, ClassMembers0,
-			ClassMembers, Mod0, Mod),
+		list__map_foldl(optimize_class_member(VerifyOnly),
+			ClassMembers0, ClassMembers, Mod0, Mod),
 		Decl = class(A, B, C, D, ClassMembers)
 	; Decl0 = method(A, MethodDecls0) ->
-		list__map_foldl(optimize_method_decl, MethodDecls0,
+		list__map_foldl(optimize_method_decl(VerifyOnly), MethodDecls0,
 			MethodDecls, Mod0, Mod),
 		Decl = method(A, MethodDecls)
 	; Decl0 = namespace(A, NamespaceDecls0) ->
-		list__map_foldl(optimize_decl, NamespaceDecls0,
+		list__map_foldl(optimize_decl(VerifyOnly), NamespaceDecls0,
 			NamespaceDecls, Mod0, Mod),
 		Decl = namespace(A, NamespaceDecls)
 	;
@@ -83,11 +85,11 @@ optimize_decl(Decl0, Decl, Mod0, Mod) :-
 	 	Decl0 = Decl 
 	).
 
-:- pred optimize_class_member(class_member::in, class_member::out, 
+:- pred optimize_class_member(bool::in, class_member::in, class_member::out, 
 	bool::in, bool::out) is det.
-optimize_class_member(Decl0, Decl, Mod0, Mod) :-
+optimize_class_member(VerifyOnly, Decl0, Decl, Mod0, Mod) :-
 	( Decl0 = method(A, MethodDecls0) ->
-		list__map_foldl(optimize_method_decl, MethodDecls0,
+		list__map_foldl(optimize_method_decl(VerifyOnly), MethodDecls0,
 			MethodDecls1, Mod0, Mod),
 		( Mod = yes ->
 				% find the new maxstack
@@ -114,11 +116,12 @@ optimize_class_member(Decl0, Decl, Mod0, Mod) :-
 	 	Decl0 = Decl 
 	).
 
-:- pred optimize_method_decl(method_body_decl::in, method_body_decl::out, 
+:- pred optimize_method_decl(bool::in,
+	method_body_decl::in, method_body_decl::out, 
 	bool::in, bool::out) is det.
-optimize_method_decl(Decl0, Decl, Mod0, Mod) :-
+optimize_method_decl(VerifyOnly, Decl0, Decl, Mod0, Mod) :-
 	( Decl0 = instrs(Instrs0) ->
-		optimize_instrs(Instrs0, Instrs, Mod1),
+		optimize_instrs(VerifyOnly, Instrs0, Instrs, Mod1),
 		bool__or(Mod0, Mod1, Mod),
 		Decl = instrs(Instrs)
 	;
@@ -126,31 +129,31 @@ optimize_method_decl(Decl0, Decl, Mod0, Mod) :-
 	 	Decl0 = Decl 
 	).
 
-:- pred optimize_instrs(instrs::in, instrs::out, bool::out) is det.
+:- pred optimize_instrs(bool::in, instrs::in, instrs::out, bool::out) is det.
 
-optimize_instrs(Instrs0, Instrs, Mod) :-
-	optimize_2(Instrs0, Instrs, Mod).
+optimize_instrs(VerifyOnly, Instrs0, Instrs, Mod) :-
+	optimize_2(VerifyOnly, Instrs0, Instrs, Mod).
 
-:- pred optimize_2(instrs, instrs, bool).
-:- mode optimize_2(in, out, out) is det.
-optimize_2([], [], no).
-optimize_2([Instr0 | Instrs0], Instrs, Mod) :-
-	optimize_2(Instrs0, Instrs1, Mod0),
-	opt_instr(Instr0, Instrs1, Instrs, Mod1),
+:- pred optimize_2(bool, instrs, instrs, bool).
+:- mode optimize_2(in, in, out, out) is det.
+optimize_2(_, [], [], no).
+optimize_2(VerifyOnly, [Instr0 | Instrs0], Instrs, Mod) :-
+	optimize_2(VerifyOnly, Instrs0, Instrs1, Mod0),
+	opt_instr(VerifyOnly, Instr0, Instrs1, Instrs, Mod1),
 	bool__or(Mod0, Mod1, Mod).
 
 	% Try to optimize the beginning of the given instruction sequence.
 	% If successful, try it again.
 
-:- pred opt_instr(instr, instrs, instrs, bool).
-:- mode opt_instr(in, in, out, out) is det.
+:- pred opt_instr(bool, instr, instrs, instrs, bool).
+:- mode opt_instr(in, in, in, out, out) is det.
 
-opt_instr(Instr0, Instrs0, Instrs, Mod) :-
+opt_instr(VerifyOnly, Instr0, Instrs0, Instrs, Mod) :-
 	(
-		match(Instr0, Instrs0, Instrs2)
+		match(Instr0, VerifyOnly, Instrs0, Instrs2)
 	->
 		( Instrs2 = [Instr2 | Instrs3] ->
-			opt_instr(Instr2, Instrs3, Instrs, _)
+			opt_instr(VerifyOnly, Instr2, Instrs3, Instrs, _)
 		;
 			Instrs = Instrs2
 		),
@@ -163,9 +166,11 @@ opt_instr(Instr0, Instrs0, Instrs, Mod) :-
 %-----------------------------------------------------------------------------%
 
 	% Look for code patterns that can be optimized, and optimize them.
+	% The second argument says whether or not to only do the optimizations
+	% which are needed for verifiability.
 
-:- pred match(instr, instrs, instrs).
-:- mode match(in, in, out) is semidet.
+:- pred match(instr, bool, instrs, instrs).
+:- mode match(in, in, in, out) is semidet.
 
 	% If a ret is followed by anything other than a label,
 	% then we can delete the instruction that follows,
@@ -177,7 +182,7 @@ opt_instr(Instr0, Instrs0, Instrs, Mod) :-
 	% Push ret past nops so we can find instructions on the other
 	% side of them (but don't eliminate them because they may be
 	% useful).
-match(ret, Instrs0, Replacement) :-
+match(ret, _, Instrs0, Replacement) :-
 	list__takewhile((pred(X::in) is semidet :- 
 		X \= label(_)
 	), Instrs0, PreLabel, NextInstrs0),
@@ -194,7 +199,8 @@ match(ret, Instrs0, Replacement) :-
 	% to just the return.
 	% NOTE: We only look for forwards branches. 
 
-match(br(label_target(Label)), Instrs0, Instrs) :-
+match(br(label_target(Label)), VerifyOnly, Instrs0, Instrs) :-
+	VerifyOnly = no,
 	list__takewhile((pred(X::in) is semidet :- 
 		X \= label(Label)
 	), Instrs0, _, [label(Label) | NextInstrs0]),
@@ -214,7 +220,8 @@ match(br(label_target(Label)), Instrs0, Instrs) :-
 	% This might be slightly denser, and is easier to detect and
 	% remove if it turns out the local is not used.
 
-match(stloc(Var), Instrs0, Instrs) :-
+match(stloc(Var), VerifyOnly, Instrs0, Instrs) :-
+	VerifyOnly = no,
 		% The pattern
 	skip_nops(Instrs0, Instrs1, Nops),
 	Instrs1 = [ldloc(Var) | Rest],
@@ -235,7 +242,8 @@ match(stloc(Var), Instrs0, Instrs) :-
 	% dup
 	% stloc(X)
 
-match(ldc(Type, Const), [stloc(Var)| Instrs0], Instrs) :-
+match(ldc(Type, Const), VerifyOnly, [stloc(Var)| Instrs0], Instrs) :-
+	VerifyOnly = no,
 		% The pattern
 	list__takewhile((pred(X::in) is semidet :- 
 		X \= ldloc(Var),
@@ -254,7 +262,8 @@ match(ldc(Type, Const), [stloc(Var)| Instrs0], Instrs) :-
 	Instrs = list__append(Replacement, Rest).
 
 	% Two patterns begin with start_scope.
-match(start_block(scope(Locals), Id)) -->
+match(start_block(scope(Locals), Id), VerifyOnly) -->
+	{ VerifyOnly = no },
 	( 
 		match_start_scope_1(start_block(scope(Locals), Id))
 	->

@@ -386,6 +386,15 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 			globals__io_set_option(optimize_dead_procs, bool(yes))
 		;
 			[]
+		),
+
+
+		% On the .NET backend we will be using a language independent
+		% debugger not mdb.  Thus --debug has to imply --target-debug.
+		( { given_trace_level_is_none(TraceLevel) = no } ->
+			globals__io_set_option(target_debug, bool(yes))
+		;
+			[]
 		)
 	;
 		[]
@@ -747,7 +756,17 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 				bool(no)),
 			globals__io_set_option(optimize_saved_vars_cell,
 				bool(no)),
-			globals__io_set_option(loop_invariants, bool(no))
+			globals__io_set_option(loop_invariants, bool(no)),
+
+			% For the IL backend we turn off optimize_peep
+			% so that we don't optimize away references to the 
+			% local variables of a procedure.
+			( { Target = il } ->
+				globals__io_set_option(optimize_peep,
+					bool(no))
+			;
+				[]
+			)
 		;
 			[]
 		),
@@ -852,6 +871,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	(
 		{ given_trace_level_is_none(TraceLevel) = yes
 		; HighLevel = no, Target = c
+		; Target = il
 		}
 	->
 		[]

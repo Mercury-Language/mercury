@@ -123,13 +123,23 @@ output_assembler(MLDS, ForeignLangs) -->
 
 	generate_il(MLDS, ILAsm0, ForeignLangs),
 
-		% Perform peephole optimization if requested.
+		% Perform peephole optimization if requested.  If peephole
+		% optimization was not requested, we may still need to invoke
+		% the peephole optimization pass, because some of the peephole
+		% optimizations are actually needed for verifiability of the
+		% generated IL.
 	globals__io_lookup_bool_option(optimize_peep, Peephole),
-	{ Peephole = yes ->
-		il_peephole__optimize(ILAsm0, ILAsm)
+	globals__io_lookup_bool_option(verifiable_code, Verifiable),
+	( { Peephole = yes } ->
+		{ VerifyOnly = no },
+		{ il_peephole__optimize(VerifyOnly, ILAsm0, ILAsm) }
+	; { Verifiable = yes } ->
+		{ VerifyOnly = yes },
+		{ il_peephole__optimize(VerifyOnly, ILAsm0, ILAsm) }
 	;
-		ILAsm0 = ILAsm
-	},
+		{ ILAsm0 = ILAsm }
+	),
+
 		% Output the assembly.
 	ilasm__output(ILAsm),
 
