@@ -102,6 +102,12 @@
 % file.
 
 intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
+	% We don't want to output line numbers in the .opt files,
+	% since that causes spurious changes to the .opt files
+	% when you make trivial changes (e.g. add comments) to the source files.
+	globals__io_lookup_bool_option(line_numbers, LineNumbers),
+	globals__io_set_option(line_numbers, bool(no)),
+
 	{ module_info_name(ModuleInfo0, ModuleName) },
 	module_name_to_file_name(ModuleName, ".opt.tmp", yes, TmpName),
 	io__tell(TmpName, Result2),
@@ -143,7 +149,9 @@ intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 		;
 			{ ModuleInfo = ModuleInfo1 }
 		)
-	).
+	),
+	% restore the option setting that we overrode above
+	globals__io_set_option(line_numbers, bool(LineNumbers)).
 
 	% a collection of stuff to go in the .opt file
 :- type intermod_info
