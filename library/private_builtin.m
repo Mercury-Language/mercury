@@ -1245,7 +1245,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 
 	table = (MR_TrieNode) T;
 	MR_TABLE_SAVE_ANSWER(table, Offset, I,
-		mercury_data___type_ctor_info_int_0);
+		&mercury_data___type_ctor_info_int_0);
 ").
 
 :- pragma c_code(table_save_char_ans(T::in, Offset::in, C::in),
@@ -1254,7 +1254,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 
 	table = (MR_TrieNode) T;
 	MR_TABLE_SAVE_ANSWER(table, Offset, C,
-		mercury_data___type_ctor_info_character_0);
+		&mercury_data___type_ctor_info_character_0);
 ").
 
 :- pragma c_code(table_save_string_ans(T::in, Offset::in, S::in),
@@ -1263,7 +1263,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 
 	table = (MR_TrieNode) T;
 	MR_TABLE_SAVE_ANSWER(table, Offset, (Word) S,
-		mercury_data___type_ctor_info_string_0);
+		&mercury_data___type_ctor_info_string_0);
 ").
 
 :- pragma c_code(table_save_float_ans(T::in, Offset::in, F::in),
@@ -1272,7 +1272,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 
 	table = (MR_TrieNode) T;
 	MR_TABLE_SAVE_ANSWER(table, Offset, float_to_word(F),
-		mercury_data___type_ctor_info_float_0);
+		&mercury_data___type_ctor_info_float_0);
 ").
 
 :- pragma c_code(table_save_any_ans(T::in, Offset::in, V::in),

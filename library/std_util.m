@@ -697,8 +697,8 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 "
 	/* save heap states */
 #ifndef CONSERVATIVE_GC
- 	HeapPtr = MR_hp;
- 	SolutionsHeapPtr = MR_sol_hp;
+ 	HeapPtr = (Word) MR_hp;
+ 	SolutionsHeapPtr = (Word) MR_sol_hp;
 #else
 	HeapPtr = SolutionsHeapPtr = 0;
 #endif
@@ -783,8 +783,8 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
   		OldVar, NewVal, TypeInfo_for_T)				\\
   	do {								\\
 		save_transient_hp();					\\
-		NewVal = deep_copy(&OldVal, TypeInfo_for_T,		\\
-				SolutionsHeapPtr,			\\
+		NewVal = deep_copy(&OldVal, (MR_TypeInfo) TypeInfo_for_T,\\
+				(const Word *) SolutionsHeapPtr,	\\
 				MR_ENGINE(solutions_heap_zone)->top);	\\
 		restore_transient_hp();					\\
 	} while (0)

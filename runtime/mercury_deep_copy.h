@@ -129,7 +129,7 @@ Word agc_deep_copy(Word *data_ptr, MR_TypeInfo type_info,
 #ifdef CONSERVATIVE_GC
   #define MR_make_long_lived(term, type_info, lower_limit) (term)
 #else
-  Word MR_make_long_lived(Word term, Word *type_info, Word *lower_limit);
+  Word MR_make_long_lived(Word term, MR_TypeInfo type_info, Word *lower_limit);
 #endif
 
 #endif /* not MERCURY_DEEP_COPY_H */

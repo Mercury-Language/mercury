@@ -33,7 +33,7 @@
 #include <stdio.h>
 
 static	Word		MR_trace_browser_state;
-static	Word		MR_trace_browser_state_type;
+static	MR_TypeInfo	MR_trace_browser_state_type;
 
 static	void		MR_trace_browse_ensure_init(void);
 
@@ -60,7 +60,7 @@ MR_trace_browse(Word type_info, Word value)
 			MR_trace_browser_state, &MR_trace_browser_state);
 	);
 	MR_trace_browser_state = MR_make_permanent(MR_trace_browser_state,
-				(Word *) MR_trace_browser_state_type);
+				MR_trace_browser_state_type);
 }
 
 	
@@ -85,7 +85,7 @@ MR_trace_browse_external(Word type_info, Word value)
 			MR_trace_browser_state, &MR_trace_browser_state);
 	);
 	MR_trace_browser_state = MR_make_permanent(MR_trace_browser_state,
-				(Word *) MR_trace_browser_state_type);
+				MR_trace_browser_state_type);
 }
 
 #endif
@@ -109,22 +109,25 @@ static void
 MR_trace_browse_ensure_init(void)
 {
 	static	bool	done = FALSE;
-	Word		typeinfo_type;
+	Word		typeinfo_type_word;
+	Word		MR_trace_browser_state_type_word;
 
 	if (! done) {
 		MR_TRACE_CALL_MERCURY(
-			ML_get_type_info_for_type_info(&typeinfo_type);
+			ML_get_type_info_for_type_info(&typeinfo_type_word);
 			ML_BROWSE_browser_state_type(
-				&MR_trace_browser_state_type);
+				&MR_trace_browser_state_type_word);
+			MR_trace_browser_state_type = (MR_TypeInfo)
+				MR_trace_browser_state_type_word;
 			ML_BROWSE_init_state(&MR_trace_browser_state);
 		);
 
-		MR_trace_browser_state_type = MR_make_permanent(
-					MR_trace_browser_state_type,
-					(Word *) typeinfo_type);
+		MR_trace_browser_state_type = (MR_TypeInfo) MR_make_permanent(
+					(Word) MR_trace_browser_state_type,
+					(MR_TypeInfo) typeinfo_type_word);
 		MR_trace_browser_state = MR_make_permanent(
 					MR_trace_browser_state,
-					(Word *) MR_trace_browser_state_type);
+					MR_trace_browser_state_type);
 		done = TRUE;
 	}
 }

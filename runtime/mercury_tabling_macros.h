@@ -367,5 +367,5 @@
 	do {								\
 		(table)->MR_answerblock[offset] =			\
 			MR_make_permanent((value),			\
-					((Word *) (Word) &type_info));	\
+					(MR_TypeInfo) (type_info));	\
 	} while(0)

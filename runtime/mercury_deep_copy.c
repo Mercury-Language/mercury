@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1999 The University of Melbourne.
+** Copyright (C) 1997-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -97,7 +97,6 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_func_0);
 
 #include "mercury_deep_copy_body.h"
 
-
 /*---------------------------------------------------------------------------*/
 
 #define SWAP(val1, val2, type)		\
@@ -109,11 +108,13 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_func_0);
 	} while (0)
 
 #ifndef CONSERVATIVE_GC
+
 /*
 ** MR_make_long_lived(): see mercury_deep_copy.h for documentation.
 */
+
 Word
-MR_make_long_lived(Word term, Word *type_info, Word *lower_limit)
+MR_make_long_lived(Word term, MR_TypeInfo type_info, Word *lower_limit)
 {
 	Word result;
 
@@ -142,5 +143,5 @@ MR_make_long_lived(Word term, Word *type_info, Word *lower_limit)
 
 	return result;
 }
-#endif	/* not CONSERVATIVE_GC */
 
+#endif	/* not CONSERVATIVE_GC */

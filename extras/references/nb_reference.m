@@ -64,7 +64,7 @@
 #ifndef CONSERVATIVE_GC
 	save_transient_registers();
 #endif
-	*(Word *) Ref = MR_make_long_lived(X, (Word *) TypeInfo_for_T,
+	*(Word *) Ref = MR_make_long_lived(X, (MR_TypeInfo) TypeInfo_for_T,
 			(Word *) Ref);
 #ifndef CONSERVATIVE_GC
 	restore_transient_registers();
@@ -81,7 +81,7 @@
 #ifndef CONSERVATIVE_GC
 	save_transient_registers();
 #endif
-	*(Word *) Ref = MR_make_long_lived(X, (Word *) TypeInfo_for_T,
+	*(Word *) Ref = MR_make_long_lived(X, (MR_TypeInfo) TypeInfo_for_T,
 			(Word *) Ref);
 #ifndef CONSERVATIVE_GC
 	restore_transient_registers();

@@ -34,7 +34,7 @@
 #include <stdio.h>
 
 static	Word		MR_trace_help_system;
-static	Word		MR_trace_help_system_type;
+static	MR_TypeInfo	MR_trace_help_system_type;
 static	Word		MR_trace_help_stdout;
 
 static	const char	*MR_trace_help_add_node(Word path, const char *name,
@@ -94,7 +94,7 @@ MR_trace_help_add_node(Word path, const char *name, int slot, const char *text)
 	);
 
 	MR_trace_help_system = MR_make_permanent(MR_trace_help_system,
-				(Word *) MR_trace_help_system_type);
+				MR_trace_help_system_type);
 
 	return (error ? msg : NULL);
 }
@@ -162,23 +162,27 @@ MR_trace_help_ensure_init(void)
 	static	bool	done = FALSE;
 	Word		typeinfo_type;
 	Word		output_stream_type;
+	Word		MR_trace_help_system_type_word;
 
 	if (! done) {
 		MR_TRACE_CALL_MERCURY(
 			ML_get_type_info_for_type_info(&typeinfo_type);
-			ML_HELP_help_system_type(&MR_trace_help_system_type);
+			ML_HELP_help_system_type(
+				&MR_trace_help_system_type_word);
+			MR_trace_help_system_type =
+				(MR_TypeInfo) MR_trace_help_system_type_word;
 			ML_HELP_init(&MR_trace_help_system);
 			ML_io_output_stream_type(&output_stream_type);
 			ML_io_stdout_stream(&MR_trace_help_stdout);
 		);
 
-		MR_trace_help_system_type = MR_make_permanent(
-					MR_trace_help_system_type,
-					(Word *) typeinfo_type);
+		MR_trace_help_system_type = (MR_TypeInfo) MR_make_permanent(
+					(Word) MR_trace_help_system_type,
+					(MR_TypeInfo) typeinfo_type);
 		MR_trace_help_system = MR_make_permanent(MR_trace_help_system,
-					(Word *) MR_trace_help_system_type);
+					MR_trace_help_system_type);
 		MR_trace_help_stdout = MR_make_permanent(MR_trace_help_stdout,
-					(Word *) output_stream_type);
+					(MR_TypeInfo) output_stream_type);
 
 		done = TRUE;
 	}

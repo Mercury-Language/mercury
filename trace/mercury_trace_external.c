@@ -790,7 +790,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 					MR_collecting_variable = 
 					    MR_make_permanent(
 						MR_collecting_variable,
-						(Word *) 
+						(MR_TypeInfo) 
 						MR_collecting_variable_type);
 				} else {
 					MR_send_message_to_socket(
