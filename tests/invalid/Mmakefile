@@ -165,7 +165,7 @@ USE_SUBDIR_MODULES = \
 
 #-----------------------------------------------------------------------------#
 
-ifeq($(MMAKE_USE_SUBDIRS),yes)
+ifeq ($(MMAKE_USE_SUBDIRS),yes)
 PROGS= $(SINGLEMODULE_PROGS) $(MULTIMODULE_PROGS) $(USE_SUBDIR_MODULES)
 else
 PROGS= $(SINGLEMODULE_PROGS) $(MULTIMODULE_PROGS)
