@@ -2441,7 +2441,7 @@ e.g. @samp{--no-verbose}.
 Disable all warning messages.
 
 @sp 1
-@item --halt-at-warn.
+@item --halt-at-warn
 This option causes the compiler to treat all
 warnings as if they were errors.  This means that
 if any warning is issued, the compiler will not
@@ -2449,7 +2449,7 @@ generate code --- instead, it will return a
 non-zero exit status.
 
 @sp 1
-@item --halt-at-syntax-error.
+@item --halt-at-syntax-error
 This option causes the compiler to halt immediately
 after syntax checking and not do any semantic checking
 if it finds any syntax errors in the program.
@@ -3529,7 +3529,7 @@ Enable the optimization of ``last'' calls that are followed by
 constructor application.
 
 @sp 1
-@item --optimize-dead-procs.
+@item --optimize-dead-procs
 Enable dead predicate elimination.
 
 @sp 1
