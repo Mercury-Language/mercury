@@ -616,8 +616,28 @@ hlds_out__write_goal_2(call(_PredId, _ProcId, ArgVars, _, _, PredName, _Follow),
 hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
 		Indent) -->
 	mercury_output_var(A, VarSet),
-	hlds_out__write_unification(Unification),
-	hlds_out__write_unify_rhs(B, ModuleInfo, VarSet, Indent).
+	io__write_string(" = "),
+	hlds_out__write_unify_rhs(B, ModuleInfo, VarSet, Indent),
+	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
+	(
+		{ Verbose = no }
+	->
+		[]
+	;
+		% don't output bogus info if we haven't been through
+		% mode analysis yet
+		{ Unification = complicated_unify(Mode, CanFail, Follow) },
+		{ CanFail = can_fail },
+		{ Mode = (free - free -> free - free) },
+		{ map__is_empty(Follow) }
+	->
+		[]
+	;
+		mercury_output_newline(Indent),
+		io__write_string("% "),
+		hlds_out__write_unification(Unification, ModuleInfo, VarSet,
+			Indent)
+	).
 
 hlds_out__write_goal_2(pragma_c_code(C_Code, _, _, _, ArgNameMap), _, _, _) -->
 	{ map__values(ArgNameMap, Names) },
@@ -638,19 +658,63 @@ hlds_out__write_string_list([Name1, Name2|Names]) -->
 	io__write_string(", "),
 	hlds_out__write_string_list([Name2|Names]).
 
-:- pred hlds_out__write_unification(unification, io__state, io__state).
-:- mode hlds_out__write_unification(in, di, uo) is det.
+:- pred hlds_out__write_unification(unification, module_info, varset,
+					io__state, io__state).
+:- mode hlds_out__write_unification(in, in, in, di, uo) is det.
 
-hlds_out__write_unification(assign(_, _)) -->
-	io__write_string(" :=: ").
-hlds_out__write_unification(simple_test(_, _)) -->
-	io__write_string(" == ").
-hlds_out__write_unification(construct(_, _, _, _)) -->
-	io__write_string(" :=: ").
-hlds_out__write_unification(deconstruct(_, _, _, _, _)) -->
-	io__write_string(" == ").
-hlds_out__write_unification(complicated_unify(_, _, _)) -->
-	io__write_string(" = ").
+hlds_out__write_unification(assign(X, Y), _ModuleInfo, VarSet, _Indent) -->
+	mercury_output_var(X, VarSet),
+	io__write_string(" := "),
+	mercury_output_var(Y, VarSet).
+hlds_out__write_unification(simple_test(X, Y), _ModuleInfo, VarSet, _Indent) -->
+	mercury_output_var(X, VarSet),
+	io__write_string(" == "),
+	mercury_output_var(Y, VarSet).
+hlds_out__write_unification(construct(Var, ConsId, ArgVars, ArgModes, Indent),
+		_ModuleInfo, VarSet) -->
+	mercury_output_var(Var, VarSet),
+	io__write_string(" := "),
+	mercury_output_functor(ConsId, ArgVars, ArgModes, ModuleInfo, VarSet,
+			Indent).
+hlds_out__write_unification(deconstruct(Var, ConsId, ArgVars, ArgModes,
+		CanFail), _ModuleInfo, VarSet, Indent) -->
+	mercury_output_var(Var, VarSet),
+	( { CanFail = can_fail },
+		io__write_string(" ?= ")
+	; { CanFail = cannot_fail },
+		io__write_string(" => ")
+	),
+	!,
+	mercury_output_functor(ConsId, ArgVars, ArgModes, ModuleInfo, VarSet,
+			Indent).
+hlds_out__write_unification(complicated_unify(Mode, CanFail, _),
+		_ModuleInfo, VarSet, _Indent) -->
+	( { CanFail = can_fail },
+		io__write_string("can_fail, ")
+	; { CanFail = cannot_fail },
+		io__write_string("cannot_fail, ")
+	),
+	!,
+	io__write_string("mode: "),
+	mercury_output_uni_mode(Mode, VarSet).
+
+:- pred mercury_output_functor(cons_id, list(var), list(uni_mode),
+			module_info, varset, int, io__state, io__state).
+:- mode mercury_output_functor(in, in, in, in, in, di, uo) is det.
+
+mercury_output_functor(ConsId, ArgVars, ArgModes, ModuleInfo, VarSet,
+		Indent) -->
+	hlds_out__write_cons_id(ConsId),
+	( ArgVars = [] ->
+		[]
+	;
+		io__write_string(" ("),
+		mercury_output_vars(ArgVars, VarSet),
+		io__write_string(")"),
+		mercury_output_indent(Indent),
+		io__write_string("% arg-modes "),
+		mercury_output_uni_mode_list(ArgModes, VarSet)
+	).
 
 hlds_out__write_unify_rhs(var(Var), _, VarSet, _) -->
 	mercury_output_var(Var, VarSet).

@@ -45,6 +45,13 @@
 :- pred mercury_output_mode_list(list(mode), varset, io__state, io__state).
 :- mode mercury_output_mode_list(in, in, di, uo) is det.
 
+:- pred mercury_output_uni_mode(uni_mode, varset, io__state, io__state).
+:- mode mercury_output_uni_mode(in, in, di, uo) is det.
+
+:- pred mercury_output_uni_mode_list(list(uni_mode), varset,
+					io__state, io__state).
+:- mode mercury_output_uni_mode_list(in, in, di, uo) is det.
+
 :- pred mercury_output_det(determinism, io__state, io__state).
 :- mode mercury_output_det(in, di, uo) is det.
 
@@ -234,28 +241,21 @@ mercury_output_inst(free, _) -->
 mercury_output_inst(free(_T), _) -->
 	io__write_string("free(with some type)").
 mercury_output_inst(bound(Uniq, BoundInsts), VarSet) -->
-	(	
-		{ Uniq = shared },
-		io__write_string("bound(")
-	;
-		{ Uniq = unique },
-		io__write_string("unique(")
-	;
-		{ Uniq = clobbered },
-		io__write_string("clobbered(")
-	;
-		{ Uniq = mostly_unique },
-		io__write_string("mostly_unique(")
-	;
-		{ Uniq = mostly_clobbered },
-		io__write_string("mostly_clobbered(")
-	), !,
+	mercury_output_uniqueness(Uniq, "bound"),
+	io__write_string("("),
 	mercury_output_bound_insts(BoundInsts, VarSet),
 	io__write_string(")").
 mercury_output_inst(ground(Uniq, MaybePredInfo), VarSet) -->
 	(	
 		{ MaybePredInfo = yes(pred_inst_info(Modes, Det)) }
 	->
+		( { Uniq = shared } ->
+			[]
+		;
+			io__write_string("/* "),
+			mercury_output_uniqueness(Uniq, "ground"),
+			io__write_string(" */")
+		),
 		( { Modes = [] } ->
 			io__write_string("(pred) is ")
 		;
@@ -265,22 +265,8 @@ mercury_output_inst(ground(Uniq, MaybePredInfo), VarSet) -->
 		),
 		mercury_output_det(Det)
 	;
-		{ Uniq = shared },
-		io__write_string("ground")
-	;
-		{ Uniq = unique },
-		io__write_string("unique")
-	;
-		{ Uniq = clobbered },
-		io__write_string("clobbered")
-	;
-		{ Uniq = mostly_unique },
-		io__write_string("mostly_unique")
-	;
-		{ Uniq = mostly_clobbered },
-		io__write_string("mostly_clobbered")
-	),
-	!.
+		mercury_output_uniqueness(Uniq, "ground")
+	).
 mercury_output_inst(inst_var(Var), VarSet) -->
 	mercury_output_var(Var, VarSet).
 mercury_output_inst(abstract_inst(Name, Args), VarSet) -->
@@ -337,7 +323,7 @@ mercury_output_inst_name(ground_inst(InstName, IsLive, Uniq, Real), VarSet) -->
 	;
 		io__write_string("dead, ")
 	),
-	mercury_output_uniqueness(Uniq),
+	mercury_output_uniqueness(Uniq, "shared"),
 	( { Real = real_unify } ->
 		io__write_string(", real")
 	;
@@ -346,7 +332,7 @@ mercury_output_inst_name(ground_inst(InstName, IsLive, Uniq, Real), VarSet) -->
 	io__write_string(")").
 mercury_output_inst_name(typed_ground(Uniqueness, Type), _VarSet) -->
 	io__write_string("$typed_ground("),
-	mercury_output_uniqueness(Uniqueness),
+	mercury_output_uniqueness(Uniqueness, "shared"),
 	io__write_string(", "),
 	{ varset__init(TypeVarSet) },
 	mercury_output_term(Type, TypeVarSet),
@@ -359,18 +345,18 @@ mercury_output_inst_name(typed_inst(Type, InstName), VarSet) -->
 	mercury_output_inst_name(InstName, VarSet),
 	io__write_string(")").
 
-:- pred mercury_output_uniqueness(uniqueness, io__state, io__state).
-:- mode mercury_output_uniqueness(in, di, uo) is det.
+:- pred mercury_output_uniqueness(uniqueness, string, io__state, io__state).
+:- mode mercury_output_uniqueness(in, in, di, uo) is det.
 
-mercury_output_uniqueness(shared) -->
-	io__write_string("shared").
-mercury_output_uniqueness(unique) -->
+mercury_output_uniqueness(shared, SharedString) -->
+	io__write_string(SharedString).
+mercury_output_uniqueness(unique, _) -->
 	io__write_string("unique").
-mercury_output_uniqueness(mostly_unique) -->
+mercury_output_uniqueness(mostly_unique, _) -->
 	io__write_string("mostly_unique").
-mercury_output_uniqueness(clobbered) -->
+mercury_output_uniqueness(clobbered, _) -->
 	io__write_string("clobbered").
-mercury_output_uniqueness(mostly_clobbered) -->
+mercury_output_uniqueness(mostly_clobbered, _) -->
 	io__write_string("mostly_clobbered").
 
 :- pred mercury_output_bound_insts(list(bound_inst), varset, io__state,
@@ -418,6 +404,21 @@ mercury_output_mode_list([Mode | Modes], VarSet) -->
 		io__write_string(", "),
 		mercury_output_mode_list(Modes, VarSet)
 	).
+
+mercury_output_uni_mode_list([], _VarSet) --> [].
+mercury_output_uni_mode_list([Mode | Modes], VarSet) -->
+	mercury_output_uni_mode(Mode, VarSet),
+	( { Modes = [] } ->
+		[]
+	;
+		io__write_string(", "),
+		mercury_output_uni_mode_list(Modes, VarSet)
+	).
+
+mercury_output_uni_mode((InstA1 - InstB1 -> InstA2 - InstB2), VarSet) -->
+	mercury_output_mode(InstA1 -> InstA2, VarSet),
+	io__write_string(" = "),
+	mercury_output_mode(InstB1 -> InstB2, VarSet).
 
 mercury_output_mode((InstA -> InstB), VarSet) -->
 	( 
