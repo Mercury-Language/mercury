@@ -206,8 +206,8 @@ Changes to the Mercury standard library:
 * We've added some constant functions, integer.zero/0 and integer.one/0
   to integer.m.  We have also added a function version of integer.pow/3.
 
-* We've added some functions, rational.int/1, rational.from_integer/1
-  and rational.from_integers/2 to rational.m
+* We've added some functions, rational.int/1, rational.from_integer/1,
+  rational.from_integers/2 and rational.reciprocal/1 to rational.m
   The function rational.rational_from_integers/2 has been deprecated.
 
 Changes to the extras distribution:

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -63,6 +63,8 @@
 :- func rational__denom(rational) = integer.
 
 :- func rational__abs(rational) = rational.
+
+:- func rational__reciprocal(rational) = rational.
 
 :- func rational__one = rational.
 
@@ -148,13 +150,11 @@ r(An, Ad) * r(Bn, Bd) = rational_norm(Numer, Denom) :-
 	Numer = (An // G1) * (Bn // G2),
 	Denom = (Ad // G2) * (Bd // G1).
 
-R1 / R2 = R1 * inverse(R2).
+R1 / R2 = R1 * reciprocal(R2).
 
-:- func inverse(rational) = rational.
-
-inverse(r(Num, Den)) = 
+rational__reciprocal(r(Num, Den)) = 
 	( Num = integer__zero ->
-		func_error("rational__inverse: division by zero")
+		func_error("rational.reciprocal: division by zero")
 	;
 		r(signum(Num) * Den, integer__abs(Num))
 	).
