@@ -29,8 +29,9 @@ Label *makeentry(const char *name, Code *addr)
 	entry->e_name  = name;
 	entry->e_addr  = addr;
 
-#ifdef	LABEL_DEBUG
-	printf("inserting label %s at %x\n", name, addr);
+#ifndef	SPEED
+	if (progdebug)
+		printf("inserting label %s at %x\n", name, addr);
 #endif
 
 	if (insert_table(entry_name_table, entry))
@@ -46,8 +47,9 @@ Label *makeentry(const char *name, Code *addr)
 
 Label *lookup_label_addr(const Code *addr)
 {
-#ifdef	LABEL_DEBUG
-	printf("looking for label at %x\n", addr);
+#ifndef	SPEED
+	if (progdebug)
+		printf("looking for label at %x\n", addr);
 #endif
 
 	return (Label *) lookup_table(entry_addr_table, addr);
@@ -55,8 +57,9 @@ Label *lookup_label_addr(const Code *addr)
 
 Label *lookup_label_name(const char *name)
 {
-#ifdef	LABEL_DEBUG
-	printf("looking for label %s\n", name);
+#ifndef	SPEED
+	if (progdebug)
+		printf("looking for label %s\n", name);
 #endif
 
 	return (Label *) lookup_table(entry_name_table, name);

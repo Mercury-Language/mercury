@@ -106,8 +106,9 @@ static void process_options(int argc, char *argv[])
 	for (i = 0; i < MAXFLAG; i++)
 		debugflag[i] = FALSE;
 
-	/* printf("default entry is %s\n", default_entry); */
 	which = lookup_label_name(default_entry);
+	if (which == NULL)
+		printf("default entry %s not found\n", default_entry);
 
 	while ((c = getopt(argc, argv, "cltp:d:r:w:s:z:1:2:3:")) != EOF)
 	{
@@ -226,7 +227,7 @@ static void process_options(int argc, char *argv[])
 	}
 
 	/* search the table for predname_input */
-	if (strneq(which->e_name, "mercury_", 8))
+	if (strneq(which->e_name, "mercury__", 9))
 		which_input = NULL;
 	else
 	{
