@@ -62,6 +62,7 @@
 :- import_module hlds__make_tags, parse_tree__prog_data.
 :- import_module parse_tree__prog_util, parse_tree__prog_out.
 :- import_module ll_backend__code_util, hlds__special_pred.
+:- import_module hlds__hlds_code_util, hlds__special_pred.
 :- import_module check_hlds__type_util, libs__globals, libs__options.
 :- import_module backend_libs__builtin_ops, hlds__error_util.
 
@@ -100,7 +101,9 @@ type_ctor_info__gen_type_ctor_gen_infos([TypeCtor | TypeCtors], TypeTable,
 			map__lookup(TypeTable, TypeCtor, TypeDefn),
 			hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 			TypeBody \= abstract_type,
-			\+ type_ctor_has_hand_defined_rtti(TypeCtor)
+			\+ type_ctor_has_hand_defined_rtti(TypeCtor),
+			( are_equivalence_types_expanded(ModuleInfo)
+					=> TypeBody \= eqv_type(_) )
 		->
 			type_ctor_info__gen_type_ctor_gen_info(TypeCtor,
 				TypeName, TypeArity, TypeDefn,

@@ -112,6 +112,7 @@
 :- import_module transform_hlds__term_util.
 :- import_module ll_backend, ll_backend__llds.
 :- import_module ll_backend__code_util, ll_backend__fact_table.
+:- import_module hlds__hlds_code_util.
 :- import_module backend_libs__export, backend_libs__foreign.
 :- import_module recompilation.
 :- import_module libs__options, libs__globals.
@@ -2102,9 +2103,19 @@ process_type_defn(TypeCtor, TypeDefn, Module0, Module) -->
 	;
 		{ Module3 = Module0 }
 	),
-	{ construct_type(TypeCtor, Args, Type) },
-	{ add_special_preds(Module3, TVarSet, Type, TypeCtor,
-		Body, Context, Status, Module) }.
+
+		% Equivalence types are fully expanded on the IL and Java
+		% backends, so the special predicates aren't required.
+	{
+		are_equivalence_types_expanded(Module3),
+		Body = eqv_type(_)
+	->
+		Module = Module3
+	;
+		construct_type(TypeCtor, Args, Type),
+		add_special_preds(Module3, TVarSet, Type, TypeCtor,
+			Body, Context, Status, Module)
+	}.
 
 	% check_foreign_type ensures that if we are generating code for
 	% a specific backend that the foreign type has a representation
