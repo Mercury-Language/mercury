@@ -82,10 +82,28 @@
 :- mode string__is_alnum_or_underscore(in).
 	% True if string contains only letters, digits, and underscores.
 
+:- pred string__pad_left(string, character, int, string).
+:- mode string__pad_left(in, in, in, out) is det.
+%	string__pad_left(String0, PadChar, Width, String):
+%	insert `PadChar's at the left of `String0' until it is at least
+%	as long as `Width', giving `String'.
+
+:- pred string__pad_right(string, character, int, string).
+:- mode string__pad_right(in, in, in, out) is det.
+%	string__pad_right(String0, PadChar, Width, String):
+%	insert `PadChar's at the right of `String0' until it is at least
+%	as long as `Width', giving `String'.
+
+:- pred string__duplicate_char(character, int, string).
+:- mode string__duplicate_char(in, in, out) is det.
+%	string__duplicate_char(Char, Count, String):
+%	construct a string consisting of `Count' occurrences of `Char'
+%	in sequence.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, int.
+:- import_module list, int, require.
 
 :- pred string__to_int_list(string, list(int)).
 :- mode string__to_int_list(in, out).
@@ -115,7 +133,7 @@ string__append(A, B, C) :-
 string__prefix(String, Prefix) :-
 	string__append(Prefix, _, String).
 
-:- string__char_to_string(Char,String) when Char or String.
+:- string__char_to_string(Char, String) when Char or String.
 string__char_to_string(Char, String) :-
 	string__to_int_list(String, [Code]),
 	char_to_int(Char, Code).
@@ -142,15 +160,14 @@ string__int_to_base_string_2(N, Base, Str) :-
 	(
 		N < Base
 	->
-		digit_to_string(N,Str)
+		string__digit_to_string(N,Str)
 	;
 		N10 is N mod Base,
 		N1 is N // Base,
-		( digit_to_string(N10, Digit0) ->
+		( string__digit_to_string(N10, Digit0) ->
 			Digit = Digit0
 		;
-			error(
-			"string__int_to_base_string_2: digit_to_string failed")
+			error("string__int_to_base_string_2: string__digit_to_string failed")
 		),
 		string__int_to_base_string_2(N1, Base, Str1),
 		string__append(Str1, Digit, Str)
@@ -158,45 +175,45 @@ string__int_to_base_string_2(N, Base, Str) :-
 
 % Simple-minded, but extremely portable.
 
-:- pred digit_to_string(int, string).
-:- mode digit_to_string(in, out) is semidet.
+:- pred string__digit_to_string(int, string).
+:- mode string__digit_to_string(in, out) is semidet.
 
-digit_to_string(0, "0").
-digit_to_string(1, "1").
-digit_to_string(2, "2").
-digit_to_string(3, "3").
-digit_to_string(4, "4").
-digit_to_string(5, "5").
-digit_to_string(6, "6").
-digit_to_string(7, "7").
-digit_to_string(8, "8").
-digit_to_string(9, "9").
-digit_to_string(10, "A").
-digit_to_string(11, "B").
-digit_to_string(12, "C").
-digit_to_string(13, "D").
-digit_to_string(14, "E").
-digit_to_string(15, "F").
-digit_to_string(16, "G").
-digit_to_string(17, "H").
-digit_to_string(18, "I").
-digit_to_string(19, "J").
-digit_to_string(20, "K").
-digit_to_string(21, "L").
-digit_to_string(22, "M").
-digit_to_string(23, "N").
-digit_to_string(24, "O").
-digit_to_string(25, "P").
-digit_to_string(26, "Q").
-digit_to_string(27, "R").
-digit_to_string(28, "S").
-digit_to_string(29, "T").
-digit_to_string(30, "U").
-digit_to_string(31, "V").
-digit_to_string(32, "W").
-digit_to_string(33, "X").
-digit_to_string(34, "Y").
-digit_to_string(35, "Z").
+string__digit_to_string(0, "0").
+string__digit_to_string(1, "1").
+string__digit_to_string(2, "2").
+string__digit_to_string(3, "3").
+string__digit_to_string(4, "4").
+string__digit_to_string(5, "5").
+string__digit_to_string(6, "6").
+string__digit_to_string(7, "7").
+string__digit_to_string(8, "8").
+string__digit_to_string(9, "9").
+string__digit_to_string(10, "A").
+string__digit_to_string(11, "B").
+string__digit_to_string(12, "C").
+string__digit_to_string(13, "D").
+string__digit_to_string(14, "E").
+string__digit_to_string(15, "F").
+string__digit_to_string(16, "G").
+string__digit_to_string(17, "H").
+string__digit_to_string(18, "I").
+string__digit_to_string(19, "J").
+string__digit_to_string(20, "K").
+string__digit_to_string(21, "L").
+string__digit_to_string(22, "M").
+string__digit_to_string(23, "N").
+string__digit_to_string(24, "O").
+string__digit_to_string(25, "P").
+string__digit_to_string(26, "Q").
+string__digit_to_string(27, "R").
+string__digit_to_string(28, "S").
+string__digit_to_string(29, "T").
+string__digit_to_string(30, "U").
+string__digit_to_string(31, "V").
+string__digit_to_string(32, "W").
+string__digit_to_string(33, "X").
+string__digit_to_string(34, "Y").
+string__digit_to_string(35, "Z").
 
 string__first_char(String0, Char, String) :-
 	string__to_int_list(String0, List0),
@@ -249,6 +266,35 @@ string__is_alnum_or_underscore(S) :-
 		string__is_alnum_or_underscore(S1)
 	;
 		true
+	).
+
+string__pad_left(String0, PadChar, Width, String) :-
+	string__length(String0, Length),
+	( Length < Width ->
+		Count is Width - Length,
+		string__duplicate_char(PadChar, Count, PadString),
+		string__append(PadString, String0, String)
+	;
+		String = String0
+	).
+
+string__pad_right(String0, PadChar, Width, String) :-
+	string__length(String0, Length),
+	( Length < Width ->
+		Count is Width - Length,
+		string__duplicate_char(PadChar, Count, PadString),
+		string__append(String0, PadString, String)
+	;
+		String = String0
+	).
+
+string__duplicate_char(Char, Count, String) :-
+	( Count = 0 ->
+		String = ""
+	;
+		Count1 is Count - 1,
+		string__first_char(String, Char, String1),
+		string__duplicate_char(Char, Count1, String1)
 	).
 
 :- end_module string.

@@ -100,6 +100,9 @@
 :- pred map__merge(map(K, V), map(K, V), map(K, V)).
 :- mode map__merge(in, in, out).
 
+:- pred map__optimize(map(K, V), map(K, V)).
+:- mode map__optimize(in, out).
+
 %-----------------------------------------------------------------------------%
 
 :- import_module bintree.
@@ -117,7 +120,8 @@ map__init(M) :-
 	bintree__init(M).
 
 map__is_empty(M) :-
-	bintree__init(M).
+	bintree__init(M0), M = M0.
+		% XXX work-around bug in determinism analysis
 
 map__contains(Map, K) :-
 	map__search(Map, K, _).
@@ -198,8 +202,13 @@ map__from_corresponding_lists(Keys, Values, Map) :-
 map__merge(M0, M1, M) :-
 	map__to_assoc_list(M0, ML0),
 	map__to_assoc_list(M1, ML1),
-	append(ML0, ML1, ML),
-	map__from_assoc_list(ML, M).
+	merge(ML0, ML1, ML),
+	map__from_sorted_assoc_list(ML, M).
+
+%-----------------------------------------------------------------------------%
+
+map__optimize(Map0, Map) :-
+	bintree__balance(Map0, Map).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -180,12 +180,20 @@
 					% The list must be sorted
 			;	ground
 			;	not_reached
+
 			;	inst_var(var)
-			;	abstract_inst(sym_name, list(inst))
-			;	user_defined_inst(sym_name, list(inst)).
+			;	defined_inst(inst_name)
+				% An abstract inst is a defined inst which
+				% has been declared but not actually been
+				% defined (yet).
+			;	abstract_inst(sym_name, list(inst)).
 
 :- type bound_inst	--->	functor(const, list(inst)).
 
+:- type inst_name	--->	user_inst(sym_name, list(inst))
+			;	merge_inst(inst, inst)
+			;	unify_inst(inst, inst)
+			;	ground_inst(inst).
 
 % mode_defn/3 defined above
 
@@ -237,12 +245,13 @@
 			;	fixity(sym_name_specifier, fixity).
 :- type fixity		--->	infix ; prefix ; postfix.
 :- type sym_name_specifier ---> name(sym_name)
-			;	name_arity(sym_name, int).
+			;	name_arity(sym_name, arity).
 :- type sym_name 	--->	unqualified(string)
 			;	qualified(module_specifier, string).
 
 :- type module_specifier ==	string.
 :- type module_name 	== 	string.
+:- type arity		==	int.
 
 %-----------------------------------------------------------------------------%
 
@@ -1708,7 +1717,7 @@ convert_inst(term__functor(Name, Args0, Context), Result) :-
 		parse_qualified_term(term__functor(Name, Args0, Context),
 			"", ok(QualifiedName, Args1)),
 		convert_inst_list(Args1, Args),
-		Result = user_defined_inst(QualifiedName, Args)
+		Result = defined_inst(user_inst(QualifiedName, Args))
 	).
 
 :- pred convert_bound_inst_list(list(term), list(bound_inst)).
@@ -2455,7 +2464,7 @@ parse_symbol_name_specifier(Term, Result) :-
 	process_name_specifier(SymbolNameResult, Result)
     ).
 
-:- pred process_name_arity_specifier(maybe(sym_name), int,
+:- pred process_name_arity_specifier(maybe(sym_name), arity,
 		maybe(sym_name_specifier)).
 :- mode process_name_arity_specifier(in, in, out).
 process_name_arity_specifier(ok(Name), Arity, ok(name_arity(Name, Arity))).

@@ -148,6 +148,14 @@ mode_info_get_module_info(mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_),
 
 %-----------------------------------------------------------------------------%
 
+:- pred mode_info_set_module_info(mode_info, module_info, mode_info).
+:- mode mode_info_set_module_info(in, in, out) is det.
+
+mode_info_set_module_info(mode_info(A,_,B,C,D,E,F,G,H,I,J), ModuleInfo,
+				mode_info(A,ModuleInfo,B,C,D,E,F,G,H,I,J)).
+
+%-----------------------------------------------------------------------------%
+
 :- pred mode_info_get_preds(mode_info, pred_table).
 :- mode mode_info_get_preds(in, out) is det.
 

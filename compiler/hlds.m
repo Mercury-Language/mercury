@@ -105,7 +105,7 @@
 :- type det_source	--->	declared
 			;	inferred.
 
-:- type pred_id 	--->	pred(module_name, string, int).
+:- type pred_id 	--->	pred(module_name, string, arity).
 			%	module, predname, arity
 
 %%% :- export_type pred_table.
@@ -125,7 +125,7 @@
 
 	% The symbol table for types.
 
-:- type type_id		== 	pair(sym_name, int).
+:- type type_id		== 	pair(sym_name, arity).
 				% name, arity
 
 %%% :- export_type type_table.
@@ -135,7 +135,7 @@
 
 	% The symbol table for modes.
 
-:- type mode_id		==	pair(sym_name, int).
+:- type mode_id		==	pair(sym_name, arity).
 				% name, arity
 
 %%% :- export_type mode_table.
@@ -145,19 +145,92 @@
 
 	% The symbol table for insts.
 
-:- type inst_id		==	pair(sym_name, int).
+:- type inst_id		==	pair(sym_name, arity).
 				% name, arity.
 
 %%% :- export_type inst_table.
-:- type inst_table	==	map(inst_id, hlds__inst_defn).
+:- type inst_table	--->	inst_table(
+					user_inst_table,
+					unify_inst_table,
+					merge_inst_table,
+					ground_inst_table
+				).
+
+:- type user_inst_table	==	map(inst_id, hlds__inst_defn).
+
+:- type unify_inst_table ==	map(pair(inst), maybe_inst).
+
+:- type merge_inst_table ==	map(pair(inst), maybe_inst).
+
+:- type ground_inst_table == 	map(inst, maybe_inst).
+
+:- type maybe_inst	--->	unknown
+			;	known(inst).
+
+:- pred inst_table_init(inst_table).
+:- mode inst_table_init(out) is det.
+
+:- pred inst_table_get_user_insts(inst_table, user_inst_table).
+:- mode inst_table_get_user_insts(in, out) is det.
+
+:- pred inst_table_get_unify_insts(inst_table, unify_inst_table).
+:- mode inst_table_get_unify_insts(in, out) is det.
+
+:- pred inst_table_get_merge_insts(inst_table, merge_inst_table).
+:- mode inst_table_get_merge_insts(in, out) is det.
+
+:- pred inst_table_get_ground_insts(inst_table, ground_inst_table).
+:- mode inst_table_get_ground_insts(in, out) is det.
+
+:- pred inst_table_set_user_insts(inst_table, user_inst_table, inst_table).
+:- mode inst_table_set_user_insts(in, in, out) is det.
+
+:- pred inst_table_set_unify_insts(inst_table, unify_inst_table, inst_table).
+:- mode inst_table_set_unify_insts(in, in, out) is det.
+
+:- pred inst_table_set_merge_insts(inst_table, merge_inst_table, inst_table).
+:- mode inst_table_set_merge_insts(in, in, out) is det.
+
+:- pred inst_table_set_ground_insts(inst_table, ground_inst_table, inst_table).
+:- mode inst_table_set_ground_insts(in, in, out) is det.
+
+:- implementation.
+
+inst_table_init(inst_table(UserInsts, UnifyInsts, MergeInsts, GroundInsts)) :-
+	map__init(UserInsts),
+	map__init(UnifyInsts),
+	map__init(MergeInsts),
+	map__init(GroundInsts).
+
+inst_table_get_user_insts(inst_table(UserInsts, _, _, _), UserInsts).
+
+inst_table_get_unify_insts(inst_table(_, UnifyInsts, _, _), UnifyInsts).
+
+inst_table_get_merge_insts(inst_table(_, _, MergeInsts, _), MergeInsts).
+
+inst_table_get_ground_insts(inst_table(_, _, _, GroundInsts), GroundInsts).
+
+inst_table_set_user_insts(inst_table(_, B, C, D), UserInsts,
+			inst_table(UserInsts, B, C, D)).
+
+inst_table_set_unify_insts(inst_table(A, _, C, D), UnifyInsts,
+			inst_table(A, UnifyInsts, C, D)).
+
+inst_table_set_merge_insts(inst_table(A, B, _, D), MergeInsts,
+			inst_table(A, B, MergeInsts, D)).
+
+inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
+			inst_table(A, B, C, GroundInsts)).
 
 %-----------------------------------------------------------------------------%
+
+:- interface.
 
 	% The symbol table for constructors.
 	% This table is used by the type-checker to look
 	% up the type of functors/constants.
 
-:- type cons_id		--->	cons(string, int)	% name, arity
+:- type cons_id		--->	cons(string, arity)	% name, arity
 			;	int_const(int)
 			;	string_const(string)
 			;	float_const(float).
@@ -450,7 +523,7 @@ module_info_init(Name, module(Name, Preds, [], PredNameIndex, Types, Insts,
 	map__init(Preds),
 	map__init(PredNameIndex),
 	map__init(Types),
-	map__init(Insts),
+	inst_table_init(Insts),
 	map__init(Modes),
 	map__init(Ctors).
 
@@ -480,8 +553,9 @@ module_info_insts(ModuleInfo, Insts) :-
 	ModuleInfo = module(_, _, _, _, _, Insts, _, _, _, _).
 
 module_info_instids(ModuleInfo, InstIDs) :-
-	ModuleInfo = module(_, _, _, _, _, Insts, _, _, _, _),
-	map__keys(Insts, InstIDs).
+	module_info_insts(ModuleInfo, InstTable),
+	inst_table_get_user_insts(InstTable, UserInstTable),
+	map__keys(UserInstTable, InstIDs).
 
 module_info_modes(ModuleInfo, Modes) :-
 	ModuleInfo = module(_, _, _, _, _, _, Modes, _, _, _).
@@ -585,7 +659,7 @@ module_info_remove_predid(ModuleInfo0, PredId, ModuleInfo) :-
 
 :- interface.
 
-:- pred make_functor_cons_id(const, int, cons_id).
+:- pred make_functor_cons_id(const, arity, cons_id).
 :- mode make_functor_cons_id(in, in, out) is det.
 
 :- pred cons_id_get_name(cons_id, const).
@@ -627,10 +701,10 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- pred predicate_name(pred_id, string).
 :- mode predicate_name(in, out).
 
-:- pred predicate_arity(pred_id, int).
+:- pred predicate_arity(pred_id, arity).
 :- mode predicate_arity(in, out).
 
-:- pred make_predid(string, sym_name, int, pred_id).
+:- pred make_predid(string, sym_name, arity, pred_id).
 :- mode make_predid(in, in, in, out).
 
 

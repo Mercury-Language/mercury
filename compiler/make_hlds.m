@@ -55,27 +55,30 @@ parse_tree_to_hlds(module(Name, Items), Module) -->
 module_balance(ModuleInfo0, ModuleInfo) :-
 
 	module_info_preds(ModuleInfo0, Preds0),
-	bintree__balance(Preds0, Preds),
+	map__optimize(Preds0, Preds),
 	module_info_set_preds(ModuleInfo0, Preds, ModuleInfo1),
 
 	module_info_pred_name_index(ModuleInfo1, PredNameIndex0),
-	bintree__balance(PredNameIndex0, PredNameIndex),
-	module_info_set_pred_name_index(ModuleInfo1, PredNameIndex, ModuleInfo2),
+	map__optimize(PredNameIndex0, PredNameIndex),
+	module_info_set_pred_name_index(ModuleInfo1, PredNameIndex,
+		ModuleInfo2),
 
 	module_info_types(ModuleInfo2, Types0),
-	bintree__balance(Types0, Types),
+	map__optimize(Types0, Types),
 	module_info_set_types(ModuleInfo2, Types, ModuleInfo3),
 
-	module_info_insts(ModuleInfo3, Insts0),
-	bintree__balance(Insts0, Insts),
-	module_info_set_insts(ModuleInfo3, Insts, ModuleInfo4),
+	module_info_insts(ModuleInfo3, InstTable0),
+	inst_table_get_user_insts(InstTable0, Insts0),
+	map__optimize(Insts0, Insts),
+	inst_table_set_user_insts(InstTable0, Insts, InstTable),
+	module_info_set_insts(ModuleInfo3, InstTable, ModuleInfo4),
 
 	module_info_modes(ModuleInfo4, Modes0),
-	bintree__balance(Modes0, Modes),
+	map__optimize(Modes0, Modes),
 	module_info_set_modes(ModuleInfo4, Modes, ModuleInfo5),
 
 	module_info_ctors(ModuleInfo5, Ctors0),
-	bintree__balance(Ctors0, Ctors),
+	map__optimize(Ctors0, Ctors),
 	module_info_set_ctors(ModuleInfo5, Ctors, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -203,14 +206,16 @@ add_item_clause(nothing, _, Module, Module) --> [].
 :- mode module_add_inst_defn(in, in, in, in, in, out, di, uo).
 
 module_add_inst_defn(Module0, VarSet, InstDefn, Cond, Context, Module) -->
-	{ module_info_insts(Module0, Insts0) },
+	{ module_info_insts(Module0, InstTable0) },
+	{ inst_table_get_user_insts(InstTable0, Insts0) },
 	insts_add(Insts0, VarSet, InstDefn, Cond, Context, Insts),
-	{ module_info_set_insts(Module0, Insts, Module) }.
+	{ inst_table_set_user_insts(InstTable0, Insts, InstTable) },
+	{ module_info_set_insts(Module0, InstTable, Module) }.
 
 	% XXX handle abstract insts
 
-:- pred insts_add(inst_table, varset, inst_defn, condition, term__context,
-			inst_table, io__state, io__state).
+:- pred insts_add(user_inst_table, varset, inst_defn, condition, term__context,
+			user_inst_table, io__state, io__state).
 :- mode insts_add(in, in, in, in, in, out, di, uo).
 insts_add(Insts0, VarSet, eqv_inst(Name, Args, Body), Cond, Context, Insts) -->
 	{ length(Args, Arity),

@@ -216,6 +216,16 @@ mercury_output_inst(ground, _) -->
 mercury_output_inst(inst_var(Var), VarSet) -->
 	mercury_output_var(Var, VarSet).
 mercury_output_inst(abstract_inst(Name, Args), VarSet) -->
+	mercury_output_inst_name(user_inst(Name, Args), VarSet).
+mercury_output_inst(defined_inst(InstName), VarSet) -->
+	mercury_output_inst_name(InstName, VarSet).
+mercury_output_inst(not_reached, _) -->
+	io__write_string("not_reached").
+
+:- pred mercury_output_inst_name(inst_name, varset, io__state, io__state).
+:- mode mercury_output_inst_name(in, in, di, uo).
+
+mercury_output_inst_name(user_inst(Name, Args), VarSet) -->
 	( { Args = [] } ->
 		mercury_output_bracketed_sym_name(Name)
 	;
@@ -224,10 +234,18 @@ mercury_output_inst(abstract_inst(Name, Args), VarSet) -->
 		mercury_output_inst_list(Args, VarSet),
 		io__write_string(")")
 	).
-mercury_output_inst(user_defined_inst(Name, Args), VarSet) -->
-	mercury_output_inst(abstract_inst(Name, Args), VarSet).
-mercury_output_inst(not_reached, _) -->
-	io__write_string("not_reached").
+mercury_output_inst_name(merge_inst(InstA, InstB), VarSet) -->
+	io__write_string("$merge("),
+	mercury_output_inst_list([InstA, InstB], VarSet),
+	io__write_string(")").
+mercury_output_inst_name(unify_inst(InstA, InstB), VarSet) -->
+	io__write_string("$unify("),
+	mercury_output_inst_list([InstA, InstB], VarSet),
+	io__write_string(")").
+mercury_output_inst_name(ground_inst(Inst), VarSet) -->
+	io__write_string("$ground("),
+	mercury_output_inst(Inst, VarSet),
+	io__write_string(")").
 
 :- pred mercury_output_bound_insts(list(bound_inst), varset, io__state,
 		io__state).

@@ -86,6 +86,15 @@
 
 %-----------------------------------------------------------------------------%
 
+	% `semidet_succeed' is exactly the same as `true', except that
+	% the compiler thinks that it is semi-deterministic.  You can
+	% use calls to `semidet_succeed' to suppress warnings about
+	% determinism declarations which could be stricter.
+
+:- pred semidet_succeed is semidet.
+
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 /*
@@ -101,6 +110,11 @@ assoc_list__reverse_members([K-V|KVs], [V-K|VKs]) :-
 
 univ_to_type(Univ, X) :- type_to_univ(X, Univ).
 
-:- end_module std_util.
+%-----------------------------------------------------------------------------%
+
+	% Some hacks to prevent compiler warnings.
+
+semidet_succeed :-
+	1 = 1.
 
 %-----------------------------------------------------------------------------%

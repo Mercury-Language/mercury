@@ -44,6 +44,10 @@
 :- mode is_alpha(in).
 	% True iff the character is a letter.
 
+:- pred is_alnum(character).
+:- mode is_alnum(in).
+	% True iff the character is a letter or digit.
+
 :- pred is_alpha_or_underscore(character).
 :- mode is_alpha_or_underscore(in).
 	% True iff the character is a letter or an underscore.
@@ -67,10 +71,6 @@
 	% Lower is a lower-case letter and Upper is the corresponding
 	% upper-case letter.
 
-:- pred char__escape(character, list(character)).
-:- mode char__escape(in, out).
-:- mode char__escape(out, in).
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -80,6 +80,15 @@ is_alpha(Char) :-
 	( is_lower(Char) ->
 		true
 	; is_upper(Char) ->
+		true
+	;
+		fail
+	).
+
+is_alnum(Char) :-
+	( is_alpha(Char) ->
+		true
+	; is_digit(Char) ->
 		true
 	;
 		fail
@@ -442,142 +451,5 @@ lower_upper('w', 'W').
 lower_upper('x', 'X').
 lower_upper('y', 'Y').
 lower_upper('z', 'Z').
-
-%-----------------------------------------------------------------------------%
-
-char__escape(C, Cs) :-
-	char_to_int(C, C1),
-	char__escape_2(C1, Cs).
-
-:- pred char__escape_2(int, list(character)).
-:- mode char__escape_2(in, out) is det.
-
-char__escape_2(1, ['\\','1']).
-char__escape_2(2, ['\\','2']).
-char__escape_2(3, ['\\','3']).
-char__escape_2(4, ['\\','4']).
-char__escape_2(5, ['\\','5']).
-char__escape_2(6, ['\\','6']).
-char__escape_2(7, ['\\','7']).
-char__escape_2(8, ['\\','1','0']).
-char__escape_2(9, ['\\','1','1']).
-char__escape_2(10, ['\\','1','2']).
-char__escape_2(11, ['\\','1','3']).
-char__escape_2(12, ['\\','1','4']).
-char__escape_2(13, ['\\','1','5']).
-char__escape_2(14, ['\\','1','6']).
-char__escape_2(15, ['\\','1','7']).
-char__escape_2(16, ['\\','2','0']).
-char__escape_2(17, ['\\','2','1']).
-char__escape_2(18, ['\\','2','2']).
-char__escape_2(19, ['\\','2','3']).
-char__escape_2(20, ['\\','2','4']).
-char__escape_2(21, ['\\','2','5']).
-char__escape_2(22, ['\\','2','6']).
-char__escape_2(23, ['\\','2','7']).
-char__escape_2(24, ['\\','3','0']).
-char__escape_2(25, ['\\','3','1']).
-char__escape_2(26, ['\\','3','2']).
-char__escape_2(27, ['\\','3','3']).
-char__escape_2(28, ['\\','3','4']).
-char__escape_2(29, ['\\','3','5']).
-char__escape_2(30, ['\\','3','6']).
-char__escape_2(31, ['\\','3','7']).
-char__escape_2(32, ['\\','4','0']).
-char__escape_2(33, ['\\','4','1']).
-char__escape_2(34, ['\\','4','2']).
-char__escape_2(35, ['\\','4','3']).
-char__escape_2(36, ['\\','4','4']).
-char__escape_2(37, ['\\','4','5']).
-char__escape_2(38, ['\\','4','6']).
-char__escape_2(39, ['\\','4','7']).
-char__escape_2(40, ['\\','5','0']).
-char__escape_2(41, ['\\','5','1']).
-char__escape_2(42, ['\\','5','2']).
-char__escape_2(43, ['\\','5','3']).
-char__escape_2(44, ['\\','5','4']).
-char__escape_2(45, ['\\','5','5']).
-char__escape_2(46, ['\\','5','6']).
-char__escape_2(47, ['\\','5','7']).
-char__escape_2(48, ['\\','6','0']).
-char__escape_2(49, ['\\','6','1']).
-char__escape_2(50, ['\\','6','2']).
-char__escape_2(51, ['\\','6','3']).
-char__escape_2(52, ['\\','6','4']).
-char__escape_2(53, ['\\','6','5']).
-char__escape_2(54, ['\\','6','6']).
-char__escape_2(55, ['\\','6','7']).
-char__escape_2(56, ['\\','7','0']).
-char__escape_2(57, ['\\','7','1']).
-char__escape_2(58, ['\\','7','2']).
-char__escape_2(59, ['\\','7','3']).
-char__escape_2(60, ['\\','7','4']).
-char__escape_2(61, ['\\','7','5']).
-char__escape_2(62, ['\\','7','6']).
-char__escape_2(63, ['\\','7','7']).
-char__escape_2(64, ['\\','1','0','0']).
-char__escape_2(65, ['\\','1','0','1']).
-char__escape_2(66, ['\\','1','0','2']).
-char__escape_2(67, ['\\','1','0','3']).
-char__escape_2(68, ['\\','1','0','4']).
-char__escape_2(69, ['\\','1','0','5']).
-char__escape_2(70, ['\\','1','0','6']).
-char__escape_2(71, ['\\','1','0','7']).
-char__escape_2(72, ['\\','1','1','0']).
-char__escape_2(73, ['\\','1','1','1']).
-char__escape_2(74, ['\\','1','1','2']).
-char__escape_2(75, ['\\','1','1','3']).
-char__escape_2(76, ['\\','1','1','4']).
-char__escape_2(77, ['\\','1','1','5']).
-char__escape_2(78, ['\\','1','1','6']).
-char__escape_2(79, ['\\','1','1','7']).
-char__escape_2(80, ['\\','1','2','0']).
-char__escape_2(81, ['\\','1','2','1']).
-char__escape_2(82, ['\\','1','2','2']).
-char__escape_2(83, ['\\','1','2','3']).
-char__escape_2(84, ['\\','1','2','4']).
-char__escape_2(85, ['\\','1','2','5']).
-char__escape_2(86, ['\\','1','2','6']).
-char__escape_2(87, ['\\','1','2','7']).
-char__escape_2(88, ['\\','1','3','0']).
-char__escape_2(89, ['\\','1','3','1']).
-char__escape_2(90, ['\\','1','3','2']).
-char__escape_2(91, ['\\','1','3','3']).
-char__escape_2(92, ['\\','1','3','4']).
-char__escape_2(93, ['\\','1','3','5']).
-char__escape_2(94, ['\\','1','3','6']).
-char__escape_2(95, ['\\','1','3','7']).
-char__escape_2(96, ['\\','1','4','0']).
-char__escape_2(97, ['\\','1','4','1']).
-char__escape_2(98, ['\\','1','4','2']).
-char__escape_2(99, ['\\','1','4','3']).
-char__escape_2(100, ['\\','1','4','4']).
-char__escape_2(101, ['\\','1','4','5']).
-char__escape_2(102, ['\\','1','4','6']).
-char__escape_2(103, ['\\','1','4','7']).
-char__escape_2(104, ['\\','1','5','0']).
-char__escape_2(105, ['\\','1','5','1']).
-char__escape_2(106, ['\\','1','5','2']).
-char__escape_2(107, ['\\','1','5','3']).
-char__escape_2(108, ['\\','1','5','4']).
-char__escape_2(109, ['\\','1','5','5']).
-char__escape_2(110, ['\\','1','5','6']).
-char__escape_2(111, ['\\','1','5','7']).
-char__escape_2(112, ['\\','1','6','0']).
-char__escape_2(113, ['\\','1','6','1']).
-char__escape_2(114, ['\\','1','6','2']).
-char__escape_2(115, ['\\','1','6','3']).
-char__escape_2(116, ['\\','1','6','4']).
-char__escape_2(117, ['\\','1','6','5']).
-char__escape_2(118, ['\\','1','6','6']).
-char__escape_2(119, ['\\','1','6','7']).
-char__escape_2(120, ['\\','1','7','0']).
-char__escape_2(121, ['\\','1','7','1']).
-char__escape_2(122, ['\\','1','7','2']).
-char__escape_2(123, ['\\','1','7','3']).
-char__escape_2(124, ['\\','1','7','4']).
-char__escape_2(125, ['\\','1','7','5']).
-char__escape_2(126, ['\\','1','7','6']).
-char__escape_2(127, ['\\','1','7','7']).
 
 %-----------------------------------------------------------------------------%

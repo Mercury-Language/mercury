@@ -303,8 +303,6 @@ modecheck_proc(ProcId, PredId, ModuleInfo, ProcInfo0, ProcInfo, NumErrors,
 :- pred modecheck_final_insts(list(var), list(mode), mode_info, mode_info).
 :- mode modecheck_final_insts(in, in, in, out).
 
-modecheck_final_insts(_, _, ModeInfo, ModeInfo).	% XXX Stub only!!!
-
 modecheck_final_insts(HeadVars, ArgModes, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	mode_list_get_final_insts(ArgModes, ModuleInfo, ArgFinalInsts),
@@ -660,8 +658,6 @@ get_all_waiting_vars_2([delayed_goal(Vars1, _, _) | Rest], Vars0, Vars) :-
 
 %-----------------------------------------------------------------------------%
 
-	% XXX we don't handle disjunctions or if-then-else yet
-
 :- pred modecheck_disj_list(list(hlds__goal), list(hlds__goal), list(instmap),
 				mode_info, mode_info).
 :- mode modecheck_disj_list(in, out, out, mode_info_di, mode_info_uo).
@@ -686,31 +682,32 @@ modecheck_disj_list([Goal0 | Goals0], [Goal | Goals], [InstMap | InstMaps]) -->
 
 instmap_merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
-	mode_info_get_module_info(ModeInfo0, ModuleInfo),
+	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	get_reachable_instmaps(InstMapList, InstMappingList),
 	( InstMappingList = [] ->
 		InstMap = unreachable,
-		ModeInfo1 = ModeInfo0
+		ModeInfo2 = ModeInfo0
 	; InstMap0 = reachable(InstMapping0) ->
 		set__to_sorted_list(NonLocals, NonLocalsList),
-		instmap_merge_2(NonLocalsList, InstMapList, ModuleInfo,
-					InstMapping0, InstMapping, ErrorList),
+		instmap_merge_2(NonLocalsList, InstMapList, ModuleInfo0,
+			InstMapping0, ModuleInfo, InstMapping, ErrorList),
+		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
 		( ErrorList = [] ->
-			ModeInfo1 = ModeInfo0
+			ModeInfo2 = ModeInfo1
 		;
 			ErrorList = [Var - _|_], 
 			set__singleton_set(WaitingVars, Var),
 			mode_info_error(WaitingVars,
 				mode_error_disj(MergeContext, ErrorList),
-				ModeInfo0, ModeInfo1
+				ModeInfo1, ModeInfo2
 			)
 		),
 		InstMap = reachable(InstMapping)
 	;
 		InstMap = unreachable,
-		ModeInfo1 = ModeInfo0
+		ModeInfo2 = ModeInfo0
 	),
-	mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo).
+	mode_info_set_instmap(InstMap, ModeInfo2, ModeInfo).
 
 :- pred get_reachable_instmaps(list(instmap), list(map(var,inst))).
 :- mode get_reachable_instmaps(in, out) is det.
@@ -732,16 +729,17 @@ get_reachable_instmaps([unreachable | InstMaps], Reachables) :-
 	%	there are two instmaps in `InstMaps' for which the inst
 	%	the variable is incompatible.
 
-:- pred instmap_merge_2(list(var), list(instmap), module_info,
-			map(var, inst), map(var, inst), merge_errors).
-:- mode instmap_merge_2(in, in, in, in, out, out) is det.
+:- pred instmap_merge_2(list(var), list(instmap), module_info, map(var, inst),
+			module_info, map(var, inst), merge_errors).
+:- mode instmap_merge_2(in, in, in, in, out, out, out) is det.
 
-instmap_merge_2([], _, _, InstMap, InstMap, []).
-instmap_merge_2([Var|Vars], InstMapList, ModuleInfo, InstMap0,
-			InstMap, ErrorList) :-
-	instmap_merge_2(Vars, InstMapList, ModuleInfo, InstMap0,
-			InstMap1, ErrorList1),
-	instmap_merge_var(InstMapList, Var, ModuleInfo, Insts, Inst, Error),
+instmap_merge_2([], _, ModuleInfo, InstMap, ModuleInfo, InstMap, []).
+instmap_merge_2([Var|Vars], InstMapList, ModuleInfo0, InstMap0,
+			ModuleInfo, InstMap, ErrorList) :-
+	instmap_merge_2(Vars, InstMapList, ModuleInfo0, InstMap0,
+			ModuleInfo1, InstMap1, ErrorList1),
+	instmap_merge_var(InstMapList, Var, ModuleInfo1,
+			Insts, Inst, ModuleInfo, Error),
 	( Error = yes ->
 		ErrorList = [Var - Insts | ErrorList1],
 		map__set(InstMap1, Var, not_reached, InstMap)
@@ -757,20 +755,23 @@ instmap_merge_2([Var|Vars], InstMapList, ModuleInfo, InstMap0,
 	%	is incompatible.
 
 :- pred instmap_merge_var(list(instmap), var, module_info,
-				list(inst), inst, bool).
-:- mode instmap_merge_var(in, in, in, out, out, out) is det.
+				list(inst), inst, module_info, bool).
+:- mode instmap_merge_var(in, in, in, out, out, out, out) is det.
 
-instmap_merge_var([], _, _, [], not_reached, no).
-instmap_merge_var([InstMap | InstMaps], Var, ModuleInfo, InstList, Inst, Error)
-		:-
-	instmap_merge_var(InstMaps, Var, ModuleInfo, InstList0, Inst0, Error0),
+instmap_merge_var([], _, ModuleInfo, [], not_reached, ModuleInfo, no).
+instmap_merge_var([InstMap | InstMaps], Var, ModuleInfo0,
+		InstList, Inst, ModuleInfo, Error) :-
+	instmap_merge_var(InstMaps, Var, ModuleInfo0,
+		InstList0, Inst0, ModuleInfo1, Error0),
 	instmap_lookup_var(InstMap, Var, VarInst),
 	InstList = [VarInst | InstList0],
-	( inst_merge(Inst0, VarInst, ModuleInfo, Inst1) ->
+	( inst_merge(Inst0, VarInst, ModuleInfo1, Inst1, ModuleInfo2) ->
 		Inst = Inst1,
+		ModuleInfo = ModuleInfo2,
 		Error = Error0
 	;
 		Error = yes,
+		ModuleInfo = ModuleInfo1,
 		Inst = not_reached
 	).
 
@@ -972,10 +973,10 @@ inst_matches_initial_3(bound(ListA), bound(ListB), ModuleInfo, Expansions) :-
 	bound_inst_list_matches_initial(ListA, ListB, ModuleInfo, Expansions).
 inst_matches_initial_3(bound(List), ground, ModuleInfo, _) :-
 	bound_inst_list_is_ground(List, ModuleInfo).
-inst_matches_initial_3(bound(List), abstract_inst(_, _), ModuleInfo, _) :-
+inst_matches_initial_3(bound(List), abstract_inst(_,_), ModuleInfo, _) :-
 	bound_inst_list_is_ground(List, ModuleInfo).
 inst_matches_initial_3(ground, Inst, _, _) :- Inst \= not_reached.
-inst_matches_initial_3(abstract_inst(_Name, _Args), free, _, _).
+inst_matches_initial_3(abstract_inst(_,_), free, _, _).
 inst_matches_initial_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 				ModuleInfo, Expansions) :-
 	inst_list_matches_initial(ArgsA, ArgsB, ModuleInfo, Expansions).
@@ -1029,8 +1030,8 @@ inst_list_matches_initial([X|Xs], [Y|Ys], ModuleInfo, Expansions) :-
 :- mode inst_expand(in, in, out) is det.
 
 inst_expand(ModuleInfo, Inst0, Inst) :-
-	( Inst0 = user_defined_inst(Name, Args) ->
-		inst_lookup(ModuleInfo, Name, Args, Inst1),
+	( Inst0 = defined_inst(InstName) ->
+		inst_lookup(ModuleInfo, InstName, Inst1),
 		inst_expand(ModuleInfo, Inst1, Inst)
 	;
 		Inst = Inst0
@@ -1110,75 +1111,101 @@ modecheck_set_var_inst(Var, Inst, ModeInfo0, ModeInfo) :-
 	%	InstB specify a binding (free or bound), it must be
 	%	the same in both.
 
-:- pred inst_merge(inst, inst, module_info, inst).
-:- mode inst_merge(in, in, in, out) is semidet.
+:- pred inst_merge(inst, inst, module_info, inst, module_info).
+:- mode inst_merge(in, in, in, out, out) is semidet.
 
-inst_merge(InstA, InstB, ModuleInfo, Inst) :-
-	set__init(Expansions),
-	inst_merge_2(InstA, InstB, ModuleInfo, Expansions, Inst).
-
-:- pred inst_merge_2(inst, inst, module_info, expansions, inst).
-:- mode inst_merge_2(in, in, in, in, out) is semidet.
-
-inst_merge_2(InstA, InstB, ModuleInfo, Expansions, Inst) :-
-	ThisExpansion = InstA - InstB,
-	( set__member(ThisExpansion, Expansions) ->
-		error("not implemented: inst_merge of recursive insts")
-	;
-		inst_expand(ModuleInfo, InstA, InstA2),
-		inst_expand(ModuleInfo, InstB, InstB2),
-		set__insert(Expansions, ThisExpansion, Expansions2),
-		( InstB2 = not_reached ->
-			Inst = InstA2
+inst_merge(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
+	module_info_insts(ModuleInfo0, InstTable0),
+	inst_table_get_merge_insts(InstTable0, MergeInstTable0),
+	ThisInstPair = InstA - InstB,
+	( map__search(MergeInstTable0, ThisInstPair, Result) ->
+		ModuleInfo = ModuleInfo0,
+		( Result = known(MergedInst) ->
+			Inst = MergedInst
 		;
-			inst_merge_3(InstA2, InstB2, ModuleInfo, Expansions2,
-				Inst)
+			Inst = defined_inst(merge_inst(InstA, InstB))
 		)
+	;
+			% insert ThisInstPair into the table with value
+			%`unknown' 
+		map__insert(MergeInstTable0, ThisInstPair, unknown,
+			MergeInstTable1),
+		inst_table_set_merge_insts(InstTable0, MergeInstTable1,
+			InstTable1),
+		module_info_set_insts(ModuleInfo0, InstTable1, ModuleInfo1),
+
+			% merge the insts
+		inst_merge_2(InstA, InstB, ModuleInfo1, Inst, ModuleInfo2),
+
+			% now update the value associated with ThisInstPair
+		module_info_insts(ModuleInfo2, InstTable2),
+		inst_table_get_merge_insts(InstTable2, MergeInstTable2),
+		map__set(MergeInstTable2, ThisInstPair, known(Inst),
+			MergeInstTable3),
+		inst_table_set_merge_insts(InstTable2, MergeInstTable3,
+			InstTable3),
+		module_info_set_insts(ModuleInfo2, InstTable3, ModuleInfo)
 	).
 
-:- pred inst_merge_3(inst, inst, module_info, expansions, inst).
-:- mode inst_merge_3(in, in, in, in, out) is semidet.
+:- pred inst_merge_2(inst, inst, module_info, inst, module_info).
+:- mode inst_merge_2(in, in, in, out, out) is semidet.
+			
+inst_merge_2(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
+	inst_expand(ModuleInfo0, InstA, InstA2),
+	inst_expand(ModuleInfo0, InstB, InstB2),
+	( InstB2 = not_reached ->
+		Inst = InstA2,
+		ModuleInfo = ModuleInfo0
+	;
+		inst_merge_3(InstA2, InstB2, ModuleInfo0, Inst, ModuleInfo)
+	).
+
+:- pred inst_merge_3(inst, inst, module_info, inst, module_info).
+:- mode inst_merge_3(in, in, in, out, out) is semidet.
 
 :- inst_merge_3(A, B, _, _, _) when A and B.
 
-inst_merge_3(free, free, _, _, free).
-inst_merge_3(bound(ListA), bound(ListB), ModuleInfo, Expansions, bound(List)) :-
-	bound_inst_list_merge(ListA, ListB, ModuleInfo, Expansions, List).
-inst_merge_3(bound(ListA), ground, ModuleInfo, _Expansions, ground) :-
+inst_merge_3(free, free, M, free, M).
+inst_merge_3(bound(ListA), bound(ListB), ModuleInfo0, bound(List), ModuleInfo)
+		:-
+	bound_inst_list_merge(ListA, ListB, ModuleInfo0, List, ModuleInfo).
+inst_merge_3(bound(ListA), ground, ModuleInfo, ground, ModuleInfo) :-
 	bound_inst_list_is_ground(ListA, ModuleInfo).
-inst_merge_3(ground, bound(ListB), ModuleInfo, _Expansions, ground) :-
+inst_merge_3(ground, bound(ListB), ModuleInfo, ground, ModuleInfo) :-
 	bound_inst_list_is_ground(ListB, ModuleInfo).
-inst_merge_3(ground, ground, _, _, ground).
+inst_merge_3(ground, ground, M, ground, M).
 inst_merge_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
-		ModuleInfo, Expansions, abstract_inst(Name, Args)) :-
-	inst_list_merge(ArgsA, ArgsB, ModuleInfo, Expansions, Args).
-inst_merge_3(not_reached, Inst, _, _, Inst).
+		ModuleInfo0, abstract_inst(Name, Args), ModuleInfo) :-
+	inst_list_merge(ArgsA, ArgsB, ModuleInfo0, Args, ModuleInfo).
+inst_merge_3(not_reached, Inst, M, Inst, M).
 
-:- pred inst_list_merge(list(inst), list(inst), module_info, expansions,
-			list(inst)).
-:- mode inst_list_merge(in, in, in, in, out) is semidet.
+:- pred inst_list_merge(list(inst), list(inst), module_info, list(inst),
+			module_info).
+:- mode inst_list_merge(in, in, in, out, out) is semidet.
 
-inst_list_merge([], [], _ModuleInfo, _, []).
-inst_list_merge([ArgA | ArgsA], [ArgB | ArgsB], ModuleInfo, Expansions,
-		[Arg | Args]) :-
-	inst_merge_2(ArgA, ArgB, ModuleInfo, Expansions, Arg),
-	inst_list_merge(ArgsA, ArgsB, ModuleInfo, Expansions, Args).
+inst_list_merge([], [], ModuleInfo, [], ModuleInfo).
+inst_list_merge([ArgA | ArgsA], [ArgB | ArgsB], ModuleInfo0,
+		[Arg | Args], ModuleInfo) :-
+	inst_merge_2(ArgA, ArgB, ModuleInfo0, Arg, ModuleInfo1),
+	inst_list_merge(ArgsA, ArgsB, ModuleInfo1, Args, ModuleInfo).
 
-	% bound_inst_list_merge(Xs, Ys, ModuleInfo, Exps, Zs):
+	% bound_inst_list_merge(Xs, Ys, ModuleInfo0, Zs, ModuleInfo):
 	% The two input lists Xs and Ys must already be sorted.
 	% Here we perform a sorted merge operation,
 	% so that the functors of the output list Zs are the union
 	% of the functors of the input lists Xs and Ys.
 
 :- pred bound_inst_list_merge(list(bound_inst), list(bound_inst),
-				module_info, expansions, list(bound_inst)).
-:- mode bound_inst_list_merge(in, in, in, in, out) is semidet.
+				module_info, list(bound_inst), module_info).
+:- mode bound_inst_list_merge(in, in, in, out, out) is semidet.
 
-bound_inst_list_merge(Xs, Ys, ModuleInfo, Expansions, Zs) :-
+bound_inst_list_merge(Xs, Ys, ModuleInfo0, Zs, ModuleInfo) :-
 	( Xs = [] ->
-		Zs = Ys
+		Zs = Ys,
+		ModuleInfo = ModuleInfo0
 	; Ys = [] ->
-		Zs = Xs
+		Zs = Xs,
+		ModuleInfo = ModuleInfo0
 	;
 		Xs = [X | Xs1],
 		Ys = [Y | Ys1],
@@ -1187,20 +1214,20 @@ bound_inst_list_merge(Xs, Ys, ModuleInfo, Expansions, Zs) :-
 		length(ArgsX, ArityX),
 		length(ArgsY, ArityY),
 		( NameX = NameY, ArityX = ArityY ->
-			inst_list_merge(ArgsX, ArgsY, ModuleInfo, Expansions,
-					Args),
+			inst_list_merge(ArgsX, ArgsY, ModuleInfo0,
+					Args, ModuleInfo1),
 			Z = functor(NameX, Args),
 			Zs = [Z | Zs1],
-			bound_inst_list_merge(Xs1, Ys1, ModuleInfo, Expansions,
-				Zs1)
+			bound_inst_list_merge(Xs1, Ys1, ModuleInfo1,
+				Zs1, ModuleInfo)
 		; compare(<, X, Y) ->
 			Zs = [X | Zs1],
-			bound_inst_list_merge(Xs1, Ys, ModuleInfo,
-						Expansions, Zs1)
+			bound_inst_list_merge(Xs1, Ys, ModuleInfo0,
+						Zs1, ModuleInfo)
 		;
 			Zs = [Y | Zs1],
-			bound_inst_list_merge(Xs, Ys1, ModuleInfo,
-						Expansions, Zs1)
+			bound_inst_list_merge(Xs, Ys1, ModuleInfo0,
+						Zs1, ModuleInfo)
 		)
 	).
 
@@ -1265,8 +1292,8 @@ inst_matches_final_3(bound(ListA), ground, ModuleInfo, _Expansions) :-
 	bound_inst_list_is_ground(ListA, ModuleInfo).
 inst_matches_final_3(ground, bound(ListB), ModuleInfo, _Expansions) :-
 	bound_inst_list_is_ground(ListB, ModuleInfo),
-		% XXX Bug! Should fail if there are not_reached insts in
-		% ListB, or if ListB does not contain a complete list
+		% XXX Not implemented! Should fail if there are not_reached
+		% insts in ListB, or if ListB does not contain a complete list
 		% of all the constructors for the type in question.
 	error("not implemented: `ground' matches_final `bound(...)'").
 inst_matches_final_3(ground, ground, _, _).
@@ -1491,7 +1518,7 @@ modecheck_unification(term__functor(_, _, _), term__functor(_, _, _),
 :- mode bind_args(in, in, mode_info_di, mode_info_uo) is det.
 
 		% This first clause shouldn't be necessary, but it is
-		% until the code above marked "Loses information" get fixed.
+		% until the code below marked "Loses information" get fixed.
 bind_args(not_reached, _) -->
 	mode_info_set_instmap(unreachable).
 bind_args(ground, Args) -->
@@ -1584,6 +1611,7 @@ abstractly_unify_inst(Live, InstA, InstB, ModuleInfo, Inst) :-
 abstractly_unify_inst_2(Live, InstA, InstB, ModuleInfo, Expansions, Inst) :-
 	ThisExpansion = InstA - InstB,
 	( set__member(ThisExpansion, Expansions) ->
+		% XXX
 		error(
 		    "not implemented: abstractly_unify_inst of recursive insts"
 		)
@@ -1720,8 +1748,9 @@ abstractly_unify_inst_functor_2(live, bound(ListX), Name, Args, ArgLives, M,
 		bound(List)) :-
 	abstractly_unify_bound_inst_list_lives(ListX, Name, Args, ArgLives,
 						M, List).
-		% XXX loses information:
-abstractly_unify_inst_functor_2(live, ground, _Name, _Args, _, _, ground).
+abstractly_unify_inst_functor_2(live, ground, Name, ArgInsts, _, _, Inst) :-
+	make_ground_inst_list(ArgInsts, GroundArgInsts), 
+	Inst = bound([functor(Name, GroundArgInsts)]).
 abstractly_unify_inst_functor_2(live, abstract_inst(_,_), _, _, _, _, _) :-
 	fail.
 
@@ -1734,10 +1763,44 @@ abstractly_unify_inst_functor_2(dead, bound(ListX), Name, Args, _ArgLives, M,
 	set__init(Expansions),
 	abstractly_unify_bound_inst_list(dead, ListX, ListY, M, Expansions,
 		List). 
-		% XXX loses information:
-abstractly_unify_inst_functor_2(dead, ground, _Name, _Args, _, _, ground).
+abstractly_unify_inst_functor_2(dead, ground, Name, ArgInsts, _, _, Inst) :-
+	make_ground_inst_list(ArgInsts, GroundArgInsts),
+	Inst = bound([functor(Name, GroundArgInsts)]).
 abstractly_unify_inst_functor_2(dead, abstract_inst(_,_), _, _, _, _, _) :-
 	fail.
+
+:- pred make_ground_inst_list(list(inst), list(inst)).
+:- mode make_ground_inst_list(in, out) is det.
+
+make_ground_inst_list([], []).
+make_ground_inst_list([Inst0 | Insts0], [Inst | Insts]) :-
+	make_ground_inst(Inst0, Inst),
+	make_ground_inst_list(Insts0, Insts).
+
+:- pred make_ground_inst(inst, inst).
+:- mode make_ground_inst(in, out) is det.
+
+make_ground_inst(not_reached, not_reached).
+make_ground_inst(free, ground).
+make_ground_inst(bound(BoundInsts0), bound(BoundInsts)) :-
+	make_ground_bound_inst_list(BoundInsts0, BoundInsts).
+make_ground_inst(ground, ground).
+make_ground_inst(inst_var(_), _) :-
+	error("free inst var").
+make_ground_inst(abstract_inst(_,_), ground).
+make_ground_inst(defined_inst(_InstName), _) :-
+	% XXX
+	error("not implemented: make_ground_inst of defined inst").
+
+:- pred make_ground_bound_inst_list(list(bound_inst), list(bound_inst)).
+:- mode make_ground_bound_inst_list(in, out) is det.
+
+make_ground_bound_inst_list([], []).
+make_ground_bound_inst_list([Bound0 | Bounds0], [Bound | Bounds]) :-
+	Bound0 = functor(Name, ArgInsts0),
+	make_ground_inst_list(ArgInsts0, ArgInsts),
+	Bound = functor(Name, ArgInsts),
+	make_ground_bound_inst_list(Bounds0, Bounds).
 
 	% Given a list of insts, and a corresponding list of livenesses,
 	% return true iff for every element in the list of insts, either

@@ -52,8 +52,8 @@
 :- pred mode_list_get_initial_insts(list(mode), module_info, list(inst)).
 :- mode mode_list_get_initial_insts(in, in, out) is det.
 
-:- pred inst_lookup(module_info, sym_name, list(inst), inst).
-:- mode inst_lookup(in, in, in, out) is det.
+:- pred inst_lookup(module_info, inst_name, inst).
+:- mode inst_lookup(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -97,8 +97,8 @@ mode_is_output(ModuleInfo, Mode) :-
 inst_is_free(_, free).
 inst_is_free(_, inst_var(_)) :-
 	error("internal error: uninstantiated inst parameter").
-inst_is_free(ModuleInfo, user_defined_inst(Name, Args)) :-
-	inst_lookup(ModuleInfo, Name, Args, Inst),
+inst_is_free(ModuleInfo, defined_inst(InstName)) :-
+	inst_lookup(ModuleInfo, InstName, Inst),
 	inst_is_free(ModuleInfo, Inst).
 
 	% inst_is_bound succeeds iff the inst passed is not `free'
@@ -111,8 +111,8 @@ inst_is_bound(_, ground).
 inst_is_bound(_, bound(_)).
 inst_is_bound(_, inst_var(_)) :-
 	error("internal error: uninstantiated inst parameter").
-inst_is_bound(ModuleInfo, user_defined_inst(Name, Args)) :-
-	inst_lookup(ModuleInfo, Name, Args, Inst),
+inst_is_bound(ModuleInfo, defined_inst(InstName)) :-
+	inst_lookup(ModuleInfo, InstName, Inst),
 	inst_is_bound(ModuleInfo, Inst).
 inst_is_bound(_, abstract_inst(_, _)).
 
@@ -125,9 +125,9 @@ inst_is_bound(_, abstract_inst(_, _)).
 inst_is_bound_to_functors(_, bound(Functors), Functors).
 inst_is_bound_to_functors(_, inst_var(_), _) :-
 	error("internal error: uninstantiated inst parameter").
-inst_is_bound_to_functors(ModuleInfo, user_defined_inst(Name, Args), Functors)
+inst_is_bound_to_functors(ModuleInfo, defined_inst(InstName), Functors)
 		:-
-	inst_lookup(ModuleInfo, Name, Args, Inst),
+	inst_lookup(ModuleInfo, InstName, Inst),
 	inst_is_bound_to_functors(ModuleInfo, Inst, Functors).
 
 	% inst_is_ground succeeds iff the inst passed is `ground'
@@ -152,12 +152,12 @@ inst_is_ground_2(ModuleInfo, bound(List), _, Expansions) :-
 inst_is_ground_2(_, ground, _, _).
 inst_is_ground_2(_, inst_var(_), _, _) :-
 	error("internal error: uninstantiated inst parameter").
-inst_is_ground_2(ModuleInfo, user_defined_inst(Name, Args), Inst, Expansions) :-
+inst_is_ground_2(ModuleInfo, defined_inst(InstName), Inst, Expansions) :-
 	( set__member(Inst, Expansions) ->
 		true
 	;
 		set__insert(Expansions, Inst, Expansions2),
-		inst_lookup(ModuleInfo, Name, Args, Inst2),
+		inst_lookup(ModuleInfo, InstName, Inst2),
 		inst_is_ground_2(ModuleInfo, Inst2, Inst2, Expansions2)
 	).
 
@@ -198,27 +198,61 @@ inst_list_is_free([Inst | Insts], ModuleInfo) :-
 	inst_is_free(ModuleInfo, Inst),
 	inst_list_is_free(Insts, ModuleInfo).
 
-inst_lookup(ModuleInfo, Name, Args, Inst) :-
+inst_lookup(ModuleInfo, InstName, Inst) :-
+	module_info_insts(ModuleInfo, InstTable),
+	inst_lookup_2(InstName, InstTable, Inst).
+
+:- pred inst_lookup_2(inst_name, inst_table, inst).
+:- mode inst_lookup_2(in, in, out) is det.
+
+inst_lookup_2(unify_inst(A, B), InstTable, Inst) :-
+	inst_table_get_unify_insts(InstTable, UnifyInstTable),
+	map__lookup(UnifyInstTable, A - B, MaybeInst),
+	( MaybeInst = known(Inst0) ->
+		Inst = Inst0
+	;
+		Inst = defined_inst(unify_inst(A, B))
+	).
+inst_lookup_2(merge_inst(A, B), InstTable, Inst) :-
+	inst_table_get_merge_insts(InstTable, MergeInstTable),
+	map__lookup(MergeInstTable, A - B, MaybeInst),
+	( MaybeInst = known(Inst0) ->
+		Inst = Inst0
+	;
+		Inst = defined_inst(merge_inst(A, B))
+	).
+inst_lookup_2(ground_inst(A), InstTable, Inst) :-
+	inst_table_get_ground_insts(InstTable, GroundInstTable),
+	map__lookup(GroundInstTable, A, MaybeInst),
+	( MaybeInst = known(Inst0) ->
+		Inst = Inst0
+	;
+		Inst = defined_inst(ground_inst(A))
+	).
+inst_lookup_2(user_inst(Name, Args), InstTable, Inst) :-
+	inst_table_get_user_insts(InstTable, UserInstTable),
 	length(Args, Arity),
-	module_info_insts(ModuleInfo, Insts),
-	map__search(Insts, Name - Arity, InstDefn),
-	InstDefn = hlds__inst_defn(_VarSet, Params, Inst0, _Cond, _Context),
-	inst_lookup_2(Inst0, Params, Name, Args, Inst).
+	( map__search(UserInstTable, Name - Arity, InstDefn) ->
+		InstDefn = hlds__inst_defn(_VarSet, Params, Inst0, _Cond, _C),
+		inst_lookup_subst_args(Inst0, Params, Name, Args, Inst)
+	;
+		Inst = abstract_inst(Name, Args)
+	).
 
-:- pred inst_lookup_2(hlds__inst_body, list(inst_param), sym_name, list(inst),
-			inst).
-:- mode inst_lookup_2(in, in, in, in, out).
+:- pred inst_lookup_subst_args(hlds__inst_body, list(inst_param), sym_name,
+			list(inst), inst).
+:- mode inst_lookup_subst_args(in, in, in, in, out) is det.
 
-inst_lookup_2(eqv_inst(Inst0), Params, _Name, Args, Inst) :-
+inst_lookup_subst_args(eqv_inst(Inst0), Params, _Name, Args, Inst) :-
 	inst_substitute_arg_list(Inst0, Params, Args, Inst).
-inst_lookup_2(abstract_inst, _Params, Name, Args,
+inst_lookup_subst_args(abstract_inst, _Params, Name, Args,
 		abstract_inst(Name, Args)).
 
 	% mode_get_insts returns the initial instantiatedness and
 	% the final instantiatedness for a given mode.
 
 :- pred mode_get_insts(module_info, mode, inst, inst).
-:- mode mode_get_insts(in, in, out, out).
+:- mode mode_get_insts(in, in, out, out) is det.
 
 mode_get_insts(_ModuleInfo, InitialInst -> FinalInst, InitialInst, FinalInst).
 mode_get_insts(ModuleInfo, user_defined_mode(Name, Args), Initial, Final) :-
@@ -236,7 +270,7 @@ mode_get_insts(ModuleInfo, user_defined_mode(Name, Args), Initial, Final) :-
 	% value in Args.
 
 :- pred mode_substitute_arg_list(mode, list(inst_param), list(inst), mode).
-:- mode mode_substitute_arg_list(in, in, in, out).
+:- mode mode_substitute_arg_list(in, in, in, out) is det.
 
 mode_substitute_arg_list(Mode0, Params, Args, Mode) :-
 	( Params = [] ->
@@ -252,7 +286,7 @@ mode_substitute_arg_list(Mode0, Params, Args, Mode) :-
 	% value in Args.
 
 :- pred inst_substitute_arg_list(inst, list(inst_param), list(inst), inst).
-:- mode inst_substitute_arg_list(in, in, in, out).
+:- mode inst_substitute_arg_list(in, in, in, out) is det.
 
 inst_substitute_arg_list(Inst0, Params, Args, Inst) :-
 	( Params = [] ->
@@ -268,7 +302,7 @@ inst_substitute_arg_list(Inst0, Params, Args, Inst) :-
 :- type inst_subst == map(inst_param, inst).
 
 :- pred mode_apply_substitution(mode, inst_subst, mode).
-:- mode mode_apply_substitution(in, in, out).
+:- mode mode_apply_substitution(in, in, out) is det.
 
 mode_apply_substitution(I0 -> F0, Subst, I -> F) :-
 	inst_apply_substitution(I0, Subst, I),
@@ -281,7 +315,7 @@ mode_apply_substitution(user_defined_mode(Name, Args0), Subst,
 	% iff Inst is the inst that results from applying Subst to Insts0.
 
 :- pred inst_list_apply_substitution(list(inst), inst_subst, list(inst)).
-:- mode inst_list_apply_substitution(in, in, out).
+:- mode inst_list_apply_substitution(in, in, out) is det.
 
 inst_list_apply_substitution([], _, []).
 inst_list_apply_substitution([A0 | As0], Subst, [A | As]) :-
@@ -293,7 +327,7 @@ inst_list_apply_substitution([A0 | As0], Subst, [A | As]) :-
 	% occurrences of Param in Inst0 with Arg.
 
 :- pred inst_apply_substitution(inst, inst_subst, inst).
-:- mode inst_apply_substitution(in, in, out).
+:- mode inst_apply_substitution(in, in, out) is det.
 
 inst_apply_substitution(free, _, free).
 inst_apply_substitution(ground, _, ground).
@@ -308,12 +342,29 @@ inst_apply_substitution(inst_var(Var), Subst, Result) :-
 	;
 		Result = inst_var(Var)
 	).
-inst_apply_substitution(user_defined_inst(Name, Args0), Subst,
-		    user_defined_inst(Name, Args)) :-
-	inst_list_apply_substitution(Args0, Subst, Args).
+inst_apply_substitution(defined_inst(InstName0), Subst,
+		    defined_inst(InstName)) :-
+	inst_name_apply_substitution(InstName0, Subst, InstName).
 inst_apply_substitution(abstract_inst(Name, Args0), Subst,
 		    abstract_inst(Name, Args)) :-
 	inst_list_apply_substitution(Args0, Subst, Args).
+
+:- pred inst_name_apply_substitution(inst_name, inst_subst, inst_name).
+:- mode inst_name_apply_substitution(in, in, out) is det.
+
+inst_name_apply_substitution(user_inst(Name, Args0), Subst,
+		user_inst(Name, Args)) :-
+	inst_list_apply_substitution(Args0, Subst, Args).
+inst_name_apply_substitution(unify_inst(InstA0, InstB0), Subst,
+		unify_inst(InstA, InstB)) :-
+	inst_apply_substitution(InstA0, Subst, InstA),
+	inst_apply_substitution(InstB0, Subst, InstB).
+inst_name_apply_substitution(merge_inst(InstA0, InstB0), Subst,
+		merge_inst(InstA, InstB)) :-
+	inst_apply_substitution(InstA0, Subst, InstA),
+	inst_apply_substitution(InstB0, Subst, InstB).
+inst_name_apply_substitution(ground_inst(Inst0), Subst, ground_inst(Inst)) :-
+	inst_apply_substitution(Inst0, Subst, Inst).
 
 :- pred alt_list_apply_substitution(list(bound_inst), inst_subst,
 				list(bound_inst)).

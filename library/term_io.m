@@ -20,8 +20,8 @@
 %-----------------------------------------------------------------------------%
 
 :- module term_io.
-:- import_module io, int, float, string, list, varset, term, require.
 :- interface.
+:- import_module io, int, float, string, list, varset, term, char.
 
 % External interface: imported predicate
 
@@ -66,14 +66,30 @@
 
 :- pred mercury_quote_string(string, io__state, io__state).
 :- mode mercury_quote_string(in, di, uo).
+	% Given a string S, write S in double-quotes, with characters
+	% escaped if necessary, to stdout.
 
 :- pred mercury_quote_atom(string, io__state, io__state).
 :- mode mercury_quote_atom(in, di, uo).
+	% Given an atom-name A, write A, enclosed in single-quotes if necessary,
+	% with characters escaped if necessary, to stdout.
 
+:- pred mercury_quote_char(character, io__state, io__state).
+:- mode mercury_quote_char(in, di, uo).
+	% Given a character C, write C in single-quotes,
+	% escaped if necessary, to stdout.
+
+:- pred mercury_quote_single_char(character, io__state, io__state).
+:- mode mercury_quote_single_char(in, di, uo).
+	% Given a character C, write C, escaped if necessary, to stdout.
+	% The character is not enclosed in quotes.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+:- import_module std_util, require.
 
 /*
 :- external("NU-Prolog", io__op/4).
@@ -150,7 +166,8 @@ io__write_term_2(term__functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
 		io__write_string(" }")
 	;
 		{ Args = [PrefixArg] },
-		io__unary_prefix_op(Functor)
+		io__unary_prefix_op(Functor, Result),
+		{ Result = yes }
 	->
 		io__write_char('('),
 		io__write_constant(Functor),
@@ -159,7 +176,8 @@ io__write_term_2(term__functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
 		io__write_char(')')
 	;
 		{ Args = [PostfixArg] },
-		io__unary_postfix_op(Functor)
+		io__unary_postfix_op(Functor, Result),
+		{ Result = yes }
 	->
 		io__write_char('('),
 		io__write_term_2(PostfixArg, VarSet0, N0, VarSet, N),
@@ -168,7 +186,8 @@ io__write_term_2(term__functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
 		io__write_char(')')
 	;
 		{ Args = [Arg1, Arg2] },
-		io__infix_op(Functor)
+		io__infix_op(Functor, Result),
+		{ Result = yes }
 	->
 		io__write_char('('),
 		io__write_term_2(Arg1, VarSet0, N0, VarSet1, N1),
@@ -262,6 +281,11 @@ io__write_constant(term__string(S)) -->
 
 %-----------------------------------------------------------------------------%
 
+mercury_quote_char(C) -->
+	io__write_char('\''),
+	mercury_quote_single_char(C),
+	io__write_char('\'').
+
 mercury_quote_atom(S) -->
 	( { string__is_alnum_or_underscore(S) } ->
 		io__write_string(S)
@@ -273,27 +297,102 @@ mercury_quote_atom(S) -->
 
 mercury_quote_string(S0) -->
 	( { string__first_char(S0, Char, S1) } ->
-		( { mercury_quote_char(Char, QuoteChar) } ->
-			io__write_char('\\'),
-			io__write_char(QuoteChar)
-		;
-			io__write_char(Char)
-		),
+		mercury_quote_single_char(Char),
 		mercury_quote_string(S1)
 	;
 		[]
 	).
 
+mercury_quote_single_char(Char) -->
+	( { mercury_quote_special_char(Char, QuoteChar) } ->
+		io__write_char('\\'),
+		io__write_char(QuoteChar)
+	; { is_mercury_source_char(Char) } ->
+		io__write_char(Char)
+	;
+		{ mercury__escape_char(Char, String) },
+		io__write_string(String)
+	).
+
+:- pred mercury__escape_char(character, string).
+:- mode mercury__escape_char(in, out) is det.
+
+	% Convert a character to the corresponding octal escape code.
+
+mercury__escape_char(Char, EscapeCode) :-
+	char_to_int(Char, Int),
+	string__int_to_base_string(Int, 8, OctalString0),
+	string__pad_left(OctalString0, '0', 3, OctalString),
+	string__first_char(EscapeCode, '\\', OctalString).
+
+:- pred is_mercury_source_char(character).
+:- mode is_mercury_source_char(in) is semidet.
+
+	% Succeed if Char is a character which is allowed in
+	% Mercury string and character literals.
+
+is_mercury_source_char(Char) :-
+	( is_alnum(Char) ->
+		true
+	; is_mercury_punctuation_char(Char) ->
+		true
+	;
+		fail
+	).
+
+	% Currently we only allow the following characters.
+	% XXX should we just use is_printable(Char) instead?
+
+:- pred is_mercury_punctuation_char(character).
+:- mode is_mercury_punctuation_char(in) is semidet.
+
+is_mercury_punctuation_char(' ').
+is_mercury_punctuation_char('!').
+is_mercury_punctuation_char('@').
+is_mercury_punctuation_char('#').
+is_mercury_punctuation_char('$').
+is_mercury_punctuation_char('%').
+is_mercury_punctuation_char('^').
+is_mercury_punctuation_char('&').
+is_mercury_punctuation_char('*').
+is_mercury_punctuation_char('(').
+is_mercury_punctuation_char(')').
+is_mercury_punctuation_char('-').
+is_mercury_punctuation_char('_').
+is_mercury_punctuation_char('+').
+is_mercury_punctuation_char('=').
+is_mercury_punctuation_char('`').
+is_mercury_punctuation_char('~').
+is_mercury_punctuation_char('{').
+is_mercury_punctuation_char('}').
+is_mercury_punctuation_char('[').
+is_mercury_punctuation_char(']').
+is_mercury_punctuation_char(';').
+is_mercury_punctuation_char(':').
+is_mercury_punctuation_char('\'').
+is_mercury_punctuation_char('"').
+is_mercury_punctuation_char('"').
+is_mercury_punctuation_char(',').
+is_mercury_punctuation_char('<').
+is_mercury_punctuation_char('>').
+is_mercury_punctuation_char('.').
+is_mercury_punctuation_char(',').
+is_mercury_punctuation_char('/').
+is_mercury_punctuation_char('?').
+is_mercury_punctuation_char('\\').
+is_mercury_punctuation_char('|').
+
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_quote_char(character, character).
-:- mode mercury_quote_char(in, out).
+:- pred mercury_quote_special_char(character, character).
+:- mode mercury_quote_special_char(in, out).
 
-mercury_quote_char('\"', '"').
-mercury_quote_char('\\', '\\').
-mercury_quote_char('\n', 'n').
-mercury_quote_char('\t', 't').
-mercury_quote_char('\b', 'b').
+mercury_quote_special_char('\'', '\'').
+mercury_quote_special_char('\"', '"').
+mercury_quote_special_char('\\', '\\').
+mercury_quote_special_char('\n', 'n').
+mercury_quote_special_char('\t', 't').
+mercury_quote_special_char('\b', 'b').
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
