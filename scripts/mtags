@@ -29,12 +29,13 @@ while ($#ARGV >= 0)
 
 		($cmd, $decl, @rest) = split;
 		$body = join(' ', @rest);
-		if ($decl ne "pred" && $decl ne "type" && $decl ne "inst"
+		if ($decl ne "pred" && $decl ne "type" && $decl ne "inst" &&
+		    $decl ne "func"
 		&& ($decl ne "mode" || $body !~ /::/))
 			{ next; }
 
 		# printf "<%s> <%s>\n", $decl, $body;
-		if ($decl ne "pred")
+		if ($decl ne "pred" && $decl ne "func")
 		{
 			if ($body =~ /\.[ \t]*$/ &&
 			$body !~ /--->/ && $body !~ /=/ && $body !~ /::/)
