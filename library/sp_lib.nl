@@ -7,6 +7,8 @@
 %
 %-----------------------------------------------------------------------------%
 
+% Translate various NU-Prolog-isms into Sicstus Prolog.
+
 nuprolog :-
 	fail.
 
@@ -39,15 +41,9 @@ lineCount(X,Y1) :-
 
 eof(end_of_file).
 
-member(X, [X|_]).
-member(X, [_|Xs]) :- member(X, Xs).
-
 member(Element, List, SubList) :-
 	SubList = [Element | _],
 	append(_, SubList, List).
-
-	% define =/3 for DCGs
-=(A, A, A).
 
 system(Command, Status) :-
 	atom_chars(Com, Command),
@@ -66,11 +62,17 @@ intToString(I, S) :-
 
 % Sheesh - do I really have to define these myself!
 
+member(X, [X|_]).
+member(X, [_|Xs]) :- member(X, Xs).
+
 append([], X, X).
 append([X|Xs], Ys, [X|Zs]) :-
 	append(Xs, Ys, Zs).
 
 A \= B :- \+ A = B.
+
+	% define =/3 for DCGs
+=(A, A, A).
 
 %-----------------------------------------------------------------------------%
 
@@ -405,6 +407,10 @@ report_stats :-
 ",
 		[Heap, Program, TotalMemory, TimeInSeconds]),
 	fail ; true.
+
+io__gc_call(X) -->
+	io__call(X).
+	% { garbage_collect }.
 
 %-----------------------------------------------------------------------------%
 
