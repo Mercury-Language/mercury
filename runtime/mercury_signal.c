@@ -12,12 +12,17 @@
 
 #include "mercury_imp.h"
 
+/*
+** XXX This code is duplicated in three files:
+** mercury_memory.c, mercury_memory_handlers.c, and mercury_signal.c.
+*/
 #ifdef HAVE_SIGCONTEXT_STRUCT
   /*
   ** Some versions of Linux call it struct sigcontext_struct, some call it
   ** struct sigcontext.  The following #define eliminates the differences.
   */
   #define sigcontext_struct sigcontext /* must be before #include <signal.h> */
+  struct sigcontext; /* this forward decl avoids a gcc warning in signal.h */
 
   /*
   ** On some systems (e.g. most versions of Linux) we need to #define
