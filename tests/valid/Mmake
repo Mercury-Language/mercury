@@ -24,21 +24,27 @@ SOURCES= \
 	implied_mode.m \
 	indexing.m \
 	loop.m \
+	multidet_prune1.m \
+	multidet_test.m \
 	name_mangling.m \
 	nondet_live.m \
 	semidet_disj.m \
 	stack_alloc.m \
 	switches.m \
 	two_pragma_c_codes.m \
+	same_length_2.m \
+	uniq_unify.m \
 	unreachable_code.m
 
 # The mode system can't handle the following test cases yet:
 #	assoc_list.m
 #	determinism.m
 #	mode_merge_insts.m
-# There is a bug which prevents us from passing this test case:
-#	same_length_2.m
-# Bug in code_exprn.m stops this case from working:
+# There is a bug which prevents us from passing these test cases
+# (the code generator can't handle deterministic disjuncts):
+#	same_length_3.m
+#	loop_in_disj.m
+# A bug with no_tags functors stops this case from working:
 #	unused_args_test2.m
 
 OBJS=	$(SOURCES:%.m=%.o)
