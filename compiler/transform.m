@@ -9,7 +9,7 @@
 % This module defines the primitive operations that may be performed
 % on a logic program.  These include:
 %
-%	- unfold
+%	- unfold (NYI)
 %	  Replaces a goal with its possible expansions.
 %
 %	- fold (NYI)
