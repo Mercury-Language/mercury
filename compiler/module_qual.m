@@ -751,25 +751,25 @@ report_multiply_defined(ErrorContext - Context, Id, IdType, MatchIds) -->
 						io__state::uo) is det.
 
 write_error_context2(type(Id)) -->
-	io__write_string("definition of type"),
+	io__write_string("definition of type "),
 	write_id(Id).
 write_error_context2(mode(Id)) -->
-	io__write_string("definition of mode"),
+	io__write_string("definition of mode "),
 	write_id(Id).
 write_error_context2(inst(Id)) -->
-	io__write_string("definition of inst"),
+	io__write_string("definition of inst "),
 	write_id(Id).
 write_error_context2(pred(Id)) -->
-	io__write_string("definition of predicate"),
+	io__write_string("definition of predicate "),
 	write_id(Id).
 write_error_context2(pred_mode(Id)) -->
-	io__write_string("mode declaration for predicate"),
+	io__write_string("mode declaration for predicate "),
 	write_id(Id).
 write_error_context2(func(Id)) -->
-	io__write_string("definition of function"),
+	io__write_string("definition of function "),
 	write_id(Id).
 write_error_context2(func_mode(Id)) -->
-	io__write_string("mode declaration for function"),
+	io__write_string("mode declaration for function "),
 	write_id(Id).
 write_error_context2(lambda_expr) -->
 	io__write_string("mode declaration for lambda expression").
