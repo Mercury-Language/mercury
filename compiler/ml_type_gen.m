@@ -66,7 +66,7 @@
 
 :- implementation.
 :- import_module hlds_pred, prog_data, prog_util, type_util, polymorphism.
-:- import_module ml_code_util.
+:- import_module ml_code_util, error_util.
 :- import_module globals, options.
 
 :- import_module bool, int, string, list, map, std_util, term, require.
@@ -207,6 +207,8 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
 %
 % Discriminated union types.
 %
+% XXX we ought to optimize the case where there is only one alternative.
+%
 
 	%
 	% For each discriminated union type, we generate an MLDS type of the
@@ -256,6 +258,14 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
 	%			MR_Word F1;
 	%			MR_Word F2;
 	%			...
+	%			/*
+	%			** A constructor to initialize the fields
+	%			*/
+	%			<ctor1>(MR_Word F1, MR_Word F2, ...) {
+	%				this->F1 = F1;
+	%				this->F2 = F2;
+	%				...
+	%			}
 	%		};
 	%		static class <ctor2> : public <ClassName>::tag_type {
 	%		public:
@@ -331,8 +341,9 @@ ml_gen_du_parent_type(ModuleInfo, TypeId, TypeDefn, Ctors, TagValues,
 	),
 
 	% generate the nested derived classes for the constructors
-	list__foldl(ml_gen_du_ctor_type(ModuleInfo, BaseClassId, TagClassId,
-		TypeDefn, TagValues), Ctors, [], CtorMembers),
+	list__foldl(ml_gen_du_ctor_type(ModuleInfo, BaseClassId,
+		BaseClassQualifier, TagClassId, TypeDefn, TagValues),
+		Ctors, [], CtorMembers),
 
 	% the base class doesn't import or inherit anything
 	Imports = [],
@@ -439,13 +450,13 @@ ml_gen_secondary_tag_class(MLDS_Context, BaseClassQualifier, BaseClassId, Member
 	% Generate a definition for the class corresponding to
 	% a constructor of a discriminated union type.
 	%
-:- pred ml_gen_du_ctor_type(module_info, mlds__class_id, mlds__class_id,
-		hlds_type_defn, cons_tag_values, constructor,
+:- pred ml_gen_du_ctor_type(module_info, mlds__class_id, mlds_module_name,
+		mlds__class_id, hlds_type_defn, cons_tag_values, constructor,
 		mlds__defns, mlds__defns).
-:- mode ml_gen_du_ctor_type(in, in, in, in, in, in, in, out) is det.
+:- mode ml_gen_du_ctor_type(in, in, in, in, in, in, in, in, out) is det.
 
-ml_gen_du_ctor_type(ModuleInfo, BaseClassId, SecondaryTagClassId,
-		TypeDefn, ConsTagValues, Ctor,
+ml_gen_du_ctor_type(ModuleInfo, BaseClassId, BaseClassQualifier,
+		SecondaryTagClassId, TypeDefn, ConsTagValues, Ctor,
 		MLDS_Defns0, MLDS_Defns) :-
 	Ctor = ctor(ExistQTVars, Constraints, CtorName, Args),
 
@@ -492,15 +503,27 @@ ml_gen_du_ctor_type(ModuleInfo, BaseClassId, SecondaryTagClassId,
 	% we inherit either the base class for this type,
 	% or the secondary tag class, depending on whether
 	% we need a secondary tag
-	( ml_uses_secondary_tag(ConsTagValues, Ctor, _) ->
-		ParentClassId = SecondaryTagClassId
+	( ml_uses_secondary_tag(ConsTagValues, Ctor, TagVal) ->
+		ParentClassId = SecondaryTagClassId,
+		MaybeTagVal = yes(TagVal)
 	;
-		ParentClassId = BaseClassId
+		ParentClassId = BaseClassId,
+		MaybeTagVal = no
 	),
 	Imports = [],
 	Inherits = [ParentClassId],
 	Implements = [],
-	Ctors = [],
+
+	% generate a constructor function to initialize the fields
+	%
+	CtorClassType = mlds__class_type(qual(BaseClassQualifier, CtorClassName),
+			CtorArity, mlds__class),
+	CtorClassQualifier = mlds__append_class_qualifier(
+			BaseClassQualifier, CtorClassName, CtorArity),
+	CtorFunction = gen_constructor_function(BaseClassId, CtorClassType,
+		CtorClassQualifier, SecondaryTagClassId, MaybeTagVal, Members,
+		MLDS_Context),
+	Ctors = [CtorFunction],
 
 	% put it all together
 	MLDS_TypeName = type(CtorClassName, CtorArity),
@@ -512,6 +535,97 @@ ml_gen_du_ctor_type(ModuleInfo, BaseClassId, SecondaryTagClassId,
 	
 	MLDS_Defns = [MLDS_TypeDefn | MLDS_Defns0].
 
+:- func gen_constructor_function(mlds__class_id, mlds__type, mlds_module_name,
+		mlds__class_id, maybe(int), mlds__defns, mlds__context) =
+		mlds__defn.
+gen_constructor_function(BaseClassId, ClassType, ClassQualifier,
+		SecondaryTagClassId, MaybeTag, Members, Context) = CtorDefn :-
+	Args = list__map(make_arg, Members),
+	ReturnValues = [],
+
+	InitMembers0 = list__map(gen_init_field(BaseClassId,
+			ClassType, ClassQualifier), Members),
+	(
+		MaybeTag = yes(TagVal)
+	->
+		InitTag = gen_init_tag(ClassType, SecondaryTagClassId, TagVal,
+			Context),
+		InitMembers = [InitTag | InitMembers0]
+	;
+		InitMembers = InitMembers0
+	),
+	
+	Stmt = mlds__statement(block([], InitMembers), Context),
+
+	Ctor = mlds__function(no, func_params(Args, ReturnValues),
+			defined_here(Stmt)),
+	CtorFlags = init_decl_flags(public, per_instance, non_virtual,
+			overridable, modifiable, concrete),
+
+		% Note that the name of constructor is
+		% determined by the backend convention.
+	CtorDefn = mlds__defn(export("<constructor>"), Context, CtorFlags, Ctor).
+
+	% Get the name and type from the field definition,
+	% for use as a constructor argument name and type.
+:- func make_arg(mlds__defn) = pair(mlds__entity_name, mlds__type) is det.
+make_arg(mlds__defn(Name, _Context, _Flags, Defn)) = Name - Type :-
+	( Defn = data(Type0, _Init) ->
+		Type = Type0
+	;
+		unexpected(this_file, "make_arg: non-data member")
+	).
+
+	% Generate "this-><fieldname> = <fieldname>;".
+:- func gen_init_field(mlds__class_id, mlds__type, mlds_module_name, mlds__defn)
+		= mlds__statement is det.
+gen_init_field(BaseClassId, ClassType, ClassQualifier, Member) = Statement :-
+	Member = mlds__defn(EntityName, Context, _Flags, Defn),
+	( Defn = data(Type0, _Init) ->
+		Type = Type0
+	;
+		unexpected(this_file, "gen_init_field: non-data member")
+	),
+	(
+		EntityName = data(var(VarName0)),
+		VarName0 = mlds__var_name(Name0, no)
+	->
+		Name = Name0,
+		VarName = VarName0
+	;
+		unexpected(this_file, "gen_init_field: non-var member")
+	),
+	Param = mlds__lval(mlds__var(qual(ClassQualifier, VarName), Type)),
+	Field = mlds__field(yes(0), self(ClassType),
+			named_field(qual(ClassQualifier, Name),
+				mlds__ptr_type(ClassType)),
+				% XXX we should use ClassType rather than
+				% BaseClassId here.  But doing so breaks the
+				% IL back-end, because then the hack in
+				% fixup_class_qualifiers doesn't work.
+			Type, BaseClassId),
+	Statement = mlds__statement(atomic(assign(Field, Param)), Context).
+
+	% Generate "this->data_tag = <TagVal>;".
+:- func gen_init_tag(mlds__type, mlds__class_id, int, mlds__context) =
+		mlds__statement is det.
+gen_init_tag(ClassType, SecondaryTagClassId, TagVal, Context) = Statement :-
+	( SecondaryTagClassId = mlds__class_type(TagClass, TagArity, _) ->
+		TagClass = qual(BaseClassQualifier, TagClassName),
+		TagClassQualifier = mlds__append_class_qualifier(
+				BaseClassQualifier, TagClassName, TagArity)
+	;
+		unexpected(this_file, "gen_init_tag: class_id should be a class")
+	),
+	Name = "data_tag",
+	Type = mlds__native_int_type,
+	Val = const(int_const(TagVal)),
+	Field = mlds__field(yes(0), self(ClassType),
+			named_field(qual(TagClassQualifier, Name),
+				mlds__ptr_type(SecondaryTagClassId)),
+			Type, ClassType),
+	Statement = mlds__statement(atomic(assign(Field, Val)), Context).
+
 :- pred ml_gen_typeclass_info_member(module_info, prog_context,
 		class_constraint, mlds__defn, int, int).
 :- mode ml_gen_typeclass_info_member(in, in, in, out, in, out) is det.
@@ -519,8 +633,7 @@ ml_gen_du_ctor_type(ModuleInfo, BaseClassId, SecondaryTagClassId,
 ml_gen_typeclass_info_member(ModuleInfo, Context, Constraint, MLDS_Defn,
 		ArgNum0, ArgNum) :-
 	polymorphism__build_typeclass_info_type(Constraint, Type),
-	ml_gen_field(ModuleInfo, Context, no, Type, MLDS_Defn,
-		ArgNum0, ArgNum).
+	ml_gen_field(ModuleInfo, Context, no, Type, MLDS_Defn, ArgNum0, ArgNum).
 
 :- pred ml_gen_type_info_member(module_info, prog_context, tvar, mlds__defn,
 		int, int).
@@ -635,5 +748,13 @@ ml_gen_special_member_decl_flags = MLDS_DeclFlags :-
 	Abstractness = concrete,
 	MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
 		Virtuality, Finality, Constness, Abstractness).
+
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+this_file = "ml_type_gen.m".
+
+:- end_module ml_type_gen.
 
 %-----------------------------------------------------------------------------%

@@ -1438,7 +1438,7 @@ statement_to_il(statement(do_commit(_Ref), Context), Instrs) -->
 	% 	throw
 	% 
 
-	{ NewObjInstr = newobj_constructor(il_commit_class_name) },
+	{ NewObjInstr = newobj_constructor(il_commit_class_name, []) },
 	{ Instrs = tree__list([
 			context_node(Context),
 			comment_node("do_commit/1"),
@@ -1652,7 +1652,7 @@ atomic_statement_to_il(delete_object(Target), Instrs) -->
 	{ Instrs = tree__list([LoadInstrs, instr_node(ldnull), StoreInstrs]) }.
 
 atomic_statement_to_il(new_object(Target, _MaybeTag, Type, Size, MaybeCtorName,
-		Args, ArgTypes), Instrs) -->
+		Args0, ArgTypes), Instrs) -->
 	DataRep =^ il_data_rep,
 	( 
 		{ 
@@ -1686,11 +1686,30 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, Type, Size, MaybeCtorName,
 		;
 		 	{ ClassName = ClassName0 }
 		),
+		{ Type = mlds__generic_env_ptr_type ->
+			ILArgTypes = [],
+			Args = Args0
+		;
+			% It must be a user-defined type.
+			% Skip the secondary tag.
+			% We assume there is always a secondary tag,
+			% since ml_type_gen always generates one
+			% if we have --tags none, which the IL back-end
+			% requires.
+			ArgTypes = [_SecondaryTag | ArgTypes1],
+			Args0 = [_SecondaryTagVal | Args1]
+		->
+			Args = Args1,
+			ILArgTypes = list__map(mlds_type_to_ilds_type(DataRep),
+				ArgTypes1)
+		;
+			sorry(this_file, "newobj without secondary tag")
+		},
 		list__map_foldl(load, Args, ArgsLoadInstrsTrees),
 		{ ArgsLoadInstrs = tree__list(ArgsLoadInstrsTrees) },
 		get_load_store_lval_instrs(Target, LoadMemRefInstrs,
 			StoreLvalInstrs),
-		{ CallCtor = newobj_constructor(ClassName) },
+		{ CallCtor = newobj_constructor(ClassName, ILArgTypes) },
 		{ Instrs = tree__list([
 			LoadMemRefInstrs, 
 			comment_node("new object (call constructor)"),
@@ -1726,7 +1745,7 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, Type, Size, MaybeCtorName,
 		{ Box = (pred(A - T::in, B::out) is det :- 
 			B = unop(box(T), A)   
 		) },
-		{ assoc_list__from_corresponding_lists(Args, ArgTypes,
+		{ assoc_list__from_corresponding_lists(Args0, ArgTypes,
 			ArgsAndTypes) },
 		{ list__map(Box, ArgsAndTypes, BoxedArgs) },
 	
@@ -1772,7 +1791,7 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, Type, Size, MaybeCtorName,
 			ArgsLoadInstrs,
 			StoreLvalInstrs
 			]) }
-		).
+	).
 
 :- func inline_code_to_il_asm(list(target_code_component)) = instr_tree.
 inline_code_to_il_asm([]) = empty.
@@ -3266,11 +3285,13 @@ get_fieldref(DataRep, FieldNum, FieldType, ClassType0,
 		% and which are namespace qualifiers... we first generate
 		% a name for the CtorClass as if it wasn't nested, and then
 		% we call fixup_class_qualifiers to make it correct.
+		% XXX This is a bit of a hack.  It would be nicer for the
+		% MLDS to keep the information around.
 		CtorClassName = mlds_module_name_to_class_name(ModuleName),
-		BaseClassName = mlds_type_to_ilds_class_name(DataRep, ClassType),
-		ClassName = fixup_class_qualifiers(CtorClassName, BaseClassName),
+		PtrClassName = mlds_type_to_ilds_class_name(DataRep, ClassType),
+		ClassName = fixup_class_qualifiers(CtorClassName, PtrClassName),
 		(
-			BaseClassName = CtorClassName
+			PtrClassName = CtorClassName
 		->
 			CastClassInstrs = empty
 		;
@@ -3280,27 +3301,49 @@ get_fieldref(DataRep, FieldNum, FieldType, ClassType0,
 	),
 	FieldRef = make_fieldref(FieldILType, ClassName, FieldId).
 
-	% The CtorClass will be nested inside the BaseClass.
+	% The CtorClass will be nested inside the base class.
 	% But when we initially generate the name, we don't
 	% know that it is nested.  This routine fixes up the
 	% CtorClassName by moving the nested parts into the
 	% third field of the structured_name.
 :- func fixup_class_qualifiers(ilds__class_name, ilds__class_name) =
 	ilds__class_name.
-fixup_class_qualifiers(CtorClassName0, BaseClassName) = CtorClassName :-
-	BaseClassName  = structured_name(BaseAssembly, BaseClass, BaseNested),
+fixup_class_qualifiers(CtorClassName0, PtrClassName) = CtorClassName :-
+	PtrClassName = structured_name(PtrAssembly, PtrClass, PtrNested),
 	CtorClassName0 = structured_name(CtorAssembly, CtorClass, CtorNested),
 	(
-		list__append(BaseClass, NestedClasses, CtorClass),
 		% some sanity checks
-		BaseAssembly = CtorAssembly,
-		BaseNested = [],
+		PtrAssembly = CtorAssembly,
+		PtrNested = [],
 		CtorNested = []
 	->
-		CtorClassName = structured_name(CtorAssembly, BaseClass,
+		% The part of the prefix which CtorClass shares with PtrClass
+		% will be the outermost class name; the remainder of CtorClass,
+		% if any, will be a nested class within.
+		% (XXX This relies on the way that ml_type_gen.m generates
+		% the nested MLDS classes for discriminated unions.)
+		common_prefix(CtorClass, PtrClass, OuterClass, NestedClasses, _),
+		CtorClassName = structured_name(CtorAssembly, OuterClass,
 			NestedClasses)
 	;
 		unexpected(this_file, "fixup_class_qualifiers")
+	).
+
+	% common_prefix(List1, List2, Prefix, Tail1, Tail2):
+	%	List1 = Prefix ++ Tail1,
+	%	List2 = Prefix ++ Tail2.
+:- pred common_prefix(list(T), list(T), list(T), list(T), list(T)).
+:- mode common_prefix(in, in, out, out, out) is det.
+common_prefix([],     Ys,     [],     [],     Ys).
+common_prefix([X|Xs], [],     [],     [X|Xs], []).
+common_prefix([X|Xs], [Y|Ys], Prefix, TailXs, TailYs) :-
+	(if X = Y then
+		common_prefix(Xs, Ys, Prefix1, TailXs, TailYs),
+		Prefix = [X|Prefix1]
+	else
+		TailXs = [X|Xs],
+		TailYs = [Y|Ys],
+		Prefix = []
 	).
 
 %-----------------------------------------------------------------------------%
@@ -3669,7 +3712,7 @@ call_class_constructor(CtorMemberName) =
 
 :- func call_constructor(ilds__class_name) = instr.
 call_constructor(CtorMemberName) = 
-	call(get_constructor_methoddef(CtorMemberName)).
+	call(get_constructor_methoddef(CtorMemberName, [])).
 
 :- func throw_unimplemented(string) = instr_tree.
 throw_unimplemented(String) = 
@@ -3680,13 +3723,13 @@ throw_unimplemented(String) =
 		throw]
 	).
 
-:- func newobj_constructor(ilds__class_name) = instr.
-newobj_constructor(CtorMemberName) = 
-	newobj(get_constructor_methoddef(CtorMemberName)).
+:- func newobj_constructor(ilds__class_name, list(ilds__type)) = instr.
+newobj_constructor(CtorMemberName, ArgTypes) = 
+	newobj(get_constructor_methoddef(CtorMemberName, ArgTypes)).
 
-:- func get_constructor_methoddef(ilds__class_name) = methodref.
-get_constructor_methoddef(CtorMemberName) = 
-	get_instance_methodref(CtorMemberName, ctor, void, []).
+:- func get_constructor_methoddef(ilds__class_name, list(ilds__type)) = methodref.
+get_constructor_methoddef(CtorMemberName, ArgTypes) = 
+	get_instance_methodref(CtorMemberName, ctor, void, ArgTypes).
 
 :- func get_instance_methodref(ilds__class_name, member_name, ret_type,
 		list(ilds__type)) = methodref.
