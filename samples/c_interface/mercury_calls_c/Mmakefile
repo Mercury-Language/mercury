@@ -8,7 +8,7 @@ depend: mercury_main.depend
 all: mercury_main
 
 # tell the Mercury linker to link in c_main.o
-MLLIBS=c_main.o
+MLOBJS=c_main.o
 
 # tell mmake that it needs to make c_main.o before it can make mercury_main
 mercury_main: c_main.o
