@@ -1,0 +1,20 @@
+This file documents the port of Mercury to PowerPC Macs running MacOS X,
+i.e. the "powerpc-apple-darwin" configuration.
+
+The version of tar in /usr/bin/tar on MacOS (10.1) doesn't work properly --
+it truncates long path names.  Make sure you use GNU tar, which is available
+in /sw/bin/gtar, when unpacking the Mercury source or binary distributions.
+
+Apple's version of gcc includes support for precompiled headers.
+Unfortunately this support seems to be somewhat buggy, causing it
+to sometimes crash with mysterious errors when building Mercury.
+Furthermore, for the kinds of C code that the Mercury compiler generates,
+it results in a very big slow-down, rather than any speedup.
+So you should use `--traditional-cpp' to disable the use of the
+new ``smart'' [sic] preprocessor.  Configure with
+
+	sh configure --with-cc="cc --traditional-cpp"
+
+The configure script will by default choose grade reg.gc.
+You can get better performance by using the hlc.gc grade.
+The fast.gc and asm_fast.gc grades are not supported on PowerPC.
