@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1997 The University of Melbourne.
+% Copyright (C) 1993-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -65,9 +65,6 @@
 :- mode varset__vars(in, out) is det.
 
 	% set the name of a variable
-	% (if there is already a variable with the same name "Foo",
-	% then try naming it "Foo'", or "Foo''", or "Foo'''", etc. until
-	% an unused name is found.)
 :- pred varset__name_var(varset, var, string, varset).
 :- mode varset__name_var(in, in, in, out) is det.
 
@@ -181,7 +178,7 @@ varset__new_var(varset(MaxId0, Names, Vals), Var,
 varset__new_named_var(varset(MaxId0, Names0, Vals), Name, Var,
 		varset(MaxId, Names, Vals)) :-
 	term__create_var(MaxId0, Var, MaxId),
-	varset__name_var_2(Names0, Var, Name, Names).
+	map__set(Names0, Var, Name, Names).
 
 varset__new_vars(Varset0, NumVars, NewVars, Varset) :-
 	varset__new_vars_2(Varset0, NumVars, [], NewVars, Varset).
@@ -241,26 +238,10 @@ varset__vars_2(N, Max, L0, L) :-
 
 %-----------------------------------------------------------------------------%
 
-	% If you attempt to name a variable a name which is already
-	% in use, we append sufficient primes ("'") to make the name unique.
-	% Potential efficiency problem: this means that giving N variables
-	% the same name costs O(N*N) time and space.
-
 varset__name_var(VarSet0, Id, Name, VarSet) :-
 	VarSet0 = varset(MaxId, Names0, Vals),
-	varset__name_var_2(Names0, Id, Name, Names),
+	map__set(Names0, Id, Name, Names),
 	VarSet = varset(MaxId, Names, Vals).
-
-:- pred varset__name_var_2(map(var, string), var, string, map(var, string)).
-:- mode varset__name_var_2(in, in, in, out) is det.
-
-varset__name_var_2(Names0, Id, Name, Names) :-
-	( string__remove_suffix(Name, "'", _) ->
-		error("varset__name_var: name is already primed")
-	;
-		true
-	),
-	map__set(Names0, Id, Name, Names).
 
 %-----------------------------------------------------------------------------%
 
