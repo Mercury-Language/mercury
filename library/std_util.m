@@ -3762,7 +3762,7 @@ get_functor_info(Univ, FunctorInfo) :-
     % Given a value of an arbitrary type, succeed if its type is defined
     % as a notag type, and return a univ which bundles up the value
     % with the type of the single function symbol of the notag type.
-:- pred get_notag_functor_info(Univ::in, ExpUniv::out) is semidet.
+:- pred get_notag_functor_info(univ::in, univ::out) is semidet.
 
 :- pragma foreign_proc("C", 
 	get_notag_functor_info(Univ::in, ExpUniv::out),
@@ -3813,7 +3813,7 @@ get_functor_info(Univ, FunctorInfo) :-
     % as an equivalence type, and return a univ which bundles up the value
     % with the equivalent type. (I.e. this removes one layer of equivalence
     % from the type stored in the univ.)
-:- pred get_equiv_functor_info(Univ::in, ExpUniv::out) is semidet.
+:- pred get_equiv_functor_info(univ::in, univ::out) is semidet.
 
 :- pragma foreign_proc("C",
 	get_equiv_functor_info(Univ::in, ExpUniv::out),
@@ -3857,7 +3857,7 @@ get_functor_info(Univ, FunctorInfo) :-
 
     % Given a value of an arbitrary type, succeed if it is an enum type,
     % and return the integer value corresponding to the value.
-:- pred get_enum_functor_info(Univ::in, Int::out) is semidet.
+:- pred get_enum_functor_info(univ::in, int::out) is semidet.
 
 :- pragma foreign_proc("C",
 	get_enum_functor_info(Univ::in, Enum::out),
