@@ -206,9 +206,9 @@ install_all: install_mercury install_nuprolog install_sicstus
 install_mercury: install_ints install_init install_library
 
 .PHONY: install_ints
-install_ints: $(library.ints)
+install_ints: $(library.ints) $(library.int3s)
 	[ -d $(INSTALL_INT_DIR) ] || mkdir -p $(INSTALL_INT_DIR)
-	for file in `vpath_find $(library.ints)`; do \
+	for file in `vpath_find $(library.ints) $(library.int3s)`; do \
 		target=$(INSTALL_INT_DIR)/`basename $$file`; \
 		if cmp -s $$file $$target; then \
 			echo "$$target unchanged"; \
