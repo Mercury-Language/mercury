@@ -1,6 +1,7 @@
-
 NEWS since Mercury release 0.9:
 -------------------------------
+
+Changes to the Mercury language:
 
 * We've added support for record syntax, so that fields of
   constructors can be conveniently extracted and updated
@@ -20,9 +21,15 @@ NEWS since Mercury release 0.9:
   	GetEvens = list__filter_map(
 		(func(X) = X is semidet :- X mod 2 = 0)).
  
+Changes to the standard library:
+
 * Functions `int:^/2' and `integer:^/2' have been removed.
   Use `int__xor/2' and `integer__xor/2' instead.
   The operator `^' is now used for record syntax.
+
+* There's a new predicate `random__permutation', for
+  computing a random permutation of a list.
+
 
 NEWS for Mercury release 0.9.1:
 -------------------------------

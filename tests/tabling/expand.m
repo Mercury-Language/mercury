@@ -14,7 +14,7 @@
 
 main -->
 	{ random__init(0, RS0) },
-	{ random__permutation(1024, Perm, RS0, RS1) },
+	{ random__permutation(range(0, 1023), Perm, RS0, RS1) },
 	{ choose_signs_and_enter(Perm, Solns, RS1, _RS) },
 	( { test_tables(Solns, yes) } ->
 		io__write_string("Test successful.\n")
@@ -22,6 +22,14 @@ main -->
 		io__write_string("Test unsuccessful.\n")
 	).
 	% io__report_tabling_stats.
+
+:- func range(int, int) = list(int).
+range(Min, Max) =
+	(if Min > Max then
+		[]
+	else
+		[Min | range(Min + 1, Max)]
+	).
 
 :- pred choose_signs_and_enter(list(int)::in, assoc_list(int)::out,
 	random__supply::mdi, random__supply::muo) is det.

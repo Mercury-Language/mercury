@@ -43,10 +43,10 @@
 :- pred random__randmax(int, random__supply, random__supply).
 :- mode random__randmax(out, mdi, muo) is det.
 
-	% random__permutation(Num, List, RS0, RS): binds List to a
-	% random permutation of the numbers in the range 0 .. Num - 1,
+	% random__permutation(List0, List, RS0, RS):
+	% binds List to a random permutation of List0,
 	% and binds RS to the new state of the random number supply.
-:- pred random__permutation(int, list(int), random__supply, random__supply).
+:- pred random__permutation(list(T), list(T), random__supply, random__supply).
 :- mode random__permutation(in, out, mdi, muo) is det.
 
 %---------------------------------------------------------------------------%
@@ -91,33 +91,32 @@ random__randmax(M1, Rs, Rs) :-
 
 	% The random permutation is implemented via a "sampling without
 	% replacement" method. In init_record, we build up a map in which
-	% every integer in the range 0 .. Num - 1 is mapped to itself. The
-	% sampling stage iterates from Num - 1 down to 0. The invariant being
-	% maintained is that at iteration I, the numbers in the image of
-	% the part of the map indexed by 0 .. I-1 are the numbers that have
+	% every integer in the range 0 .. Length - 1 is mapped to the
+	% corresponding element in the list.  The sampling stage
+	% iterates from Length - 1 down to 0. The invariant being
+	% maintained is that at iteration I, the elements in the image of
+	% the part of the map indexed by 0 .. I-1 are the elements that have
 	% not been selected yet. At each iteration, perform_sampling generates
-	% a random number Index in the range 0 .. I-1, adds the number that
+	% a random number Index in the range 0 .. I-1, adds the element that
 	% Index is mapped to, Next, to the permutation, and then ensures that
 	% Next is not generated again by swapping it with the image of I-1.
 
-random__permutation(Num, List, RS0, RS) :-
-	map__init(Empty),
-	init_record(Num, Empty, Samples0),
-	perform_sampling(Num, Samples0, [], List, RS0, RS).
+random__permutation(List0, List, RS0, RS) :-
+	map__init(Samples0),
+	init_record(List0, 0, Samples0, Len, Samples),
+	perform_sampling(Len, Samples, [], List, RS0, RS).
 
-:- pred init_record(int::in, map(int, int)::in, map(int, int)::out) is det.
+:- pred init_record(list(T)::in, int::in, map(int, T)::in, 
+		int::out, map(int, T)::out) is det.
 
-init_record(N, Record0, Record) :-
-	( N =< 0 ->
-		Record = Record0
-	;
-		N1 = N - 1,
-		map__det_insert(Record0, N1, N1, Record1),
-		init_record(N1, Record1, Record)
-	).
+init_record([], N, Record, N, Record).
+init_record([X|Xs], N0, Record0, N, Record) :-
+	map__det_insert(Record0, N0, X, Record1),
+	N1 = N0 + 1,
+	init_record(Xs, N1, Record1, N, Record).
 
-:- pred perform_sampling(int::in, map(int, int)::in,
-	list(int)::in, list(int)::out,
+:- pred perform_sampling(int::in, map(int, T)::in,
+	list(T)::in, list(T)::out,
 	random__supply::mdi, random__supply::muo) is det.
 
 perform_sampling(I, Record0, Order0, Order, RS0, RS) :-
