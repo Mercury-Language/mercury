@@ -210,10 +210,11 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 
 	code_info__grab_code_info(CodeInfo),
 
-		% Generate the condition as a non-deterministic goal
-		% XXX surely we ought to pass CondCodeModel here?
+		% Generate the condition es either a semi-deterministic
+		% or as a non-deterministic goal (the failure continuation
+		% must be set up the same way)
 	code_info__push_resume_point_vars(ResumeVars),
-	code_gen__generate_goal(model_non, CondGoal, CondCode),
+	code_gen__generate_goal(CondCodeModel, CondGoal, CondCode),
 	code_info__pop_resume_point_vars,
 
 	code_info__pop_failure_cont,

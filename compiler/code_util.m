@@ -729,8 +729,11 @@ code_util__cannot_fail_before_stack_flush_conj([]).
 code_util__cannot_fail_before_stack_flush_conj([Goal | Goals]) :-
 	Goal = GoalExpr - GoalInfo,
 	(
-		( GoalExpr = call(_, _, _, _, _, _)
-		; GoalExpr = higher_order_call(_, _, _, _, _)
+		(
+			GoalExpr = call(_, _, _, IsBuiltin, _, _),
+			\+ hlds__is_builtin_is_inline(IsBuiltin)
+		;
+			GoalExpr = higher_order_call(_, _, _, _, _)
 		)
 	->
 		true

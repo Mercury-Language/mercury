@@ -20,12 +20,12 @@
 %
 % We compute liveness related information in three distinct passes.
 %
-% The first pass, detect_liveness_in_goal, finds the first occurrence
-% of each variable on each computation path. Goals containing the first
-% occurrence of a variable include that variable in their pre-birth
-% set. In branched structures, branches whose endpoint is not reachable
-% include a post-birth set listing the variables that should have been
-% born in that branch but haven't.
+% The first pass, detect_liveness_in_goal, finds the first value-giving
+% occurrence of each variable on each computation path. Goals containing
+% the first such occurrence of a variable include that variable in their
+% pre-birth set. In branched structures, branches whose endpoint is not
+% reachable include a post-birth set listing the variables that should
+% have been born in that branch but haven't.
 %
 % The second pass, detect_deadness_in_goal, finds the last occurrence
 % of each variable on each computation path. Goals containing the last
@@ -113,7 +113,7 @@ detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, LiveInfo,
 	set__to_sorted_list(NewVarsSet, NewVarsList),
 	goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
 	set__init(Births0),
-	find_binding_occurrences(NewVarsList, LiveInfo,
+	find_value_giving_occurrences(NewVarsList, LiveInfo,
 		InstMapDelta, Births0, Births),
 	set__union(Liveness0, Births, Liveness),
 	(
@@ -498,6 +498,9 @@ detect_resume_points_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 	detect_resume_points_in_goal(Else0, Liveness0, LiveInfo,
 		ResumeVars0, Else, LivenessElse),
 
+	% Figure out which entry labels we need at the resumption point.
+	% By minimizing the number of labels we use, we also minimize
+	% the amount of data movement code we emit between such labels.
 	(
 		code_util__cannot_stack_flush(Cond1),
 		goal_info_get_code_model(GoalInfo0, CodeModel),
@@ -512,6 +515,8 @@ detect_resume_points_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 		CondResumeLocs = stack_and_orig
 	),
 
+	% Attach the set of variables needed after the condition
+	% as the resume point set of the condition.
 	CondResume = resume_point(CondResumeVars, CondResumeLocs),
 	goal_set_resume_point(Cond1, CondResume, Cond),
 
@@ -552,8 +557,9 @@ detect_resume_points_in_goal_2(not(Goal0), _, Liveness0, LiveInfo, ResumeVars0,
 	detect_resume_points_in_goal(Goal0, Liveness0, LiveInfo, ResumeVars1,
 		Goal1, _Liveness),
 
-	% attach the set of variables alive after the negation
-	% as the resume point set of the negated goal
+	% Figure out which entry labels we need at the resumption point.
+	% By minimizing the number of labels we use, we also minimize
+	% the amount of data movement code we emit between such labels.
 	( code_util__cannot_stack_flush(Goal1) ->
 		ResumeLocs = orig_only
 	; code_util__cannot_fail_before_stack_flush(Goal1) ->
@@ -561,6 +567,9 @@ detect_resume_points_in_goal_2(not(Goal0), _, Liveness0, LiveInfo, ResumeVars0,
 	;
 		ResumeLocs = stack_and_orig
 	),
+
+	% Attach the set of variables alive after the negation
+	% as the resume point set of the negated goal.
 	Resume = resume_point(ResumeVars1, ResumeLocs),
 	goal_set_resume_point(Goal1, Resume, Goal).
 
@@ -667,6 +676,9 @@ detect_resume_points_in_non_last_disjunct(Goal0, MayUseOrigOnly,
 	detect_resume_points_in_goal(Goal0, Liveness0, LiveInfo,
 		ResumeVars1, Goal1, Liveness),
 
+	% Figure out which entry labels we need at the resumption point.
+	% By minimizing the number of labels we use, we also minimize
+	% the amount of data movement code we emit between such labels.
 	(
 		MayUseOrigOnly = yes,
 		code_util__cannot_stack_flush(Goal1)
@@ -680,6 +692,8 @@ detect_resume_points_in_non_last_disjunct(Goal0, MayUseOrigOnly,
 		ResumeLocs = stack_and_orig
 	),
 
+	% Attach the set of variables needed in the following disjuncts
+	% as the resume point set of this disjunct.
 	Resume = resume_point(ResumeVars1, ResumeLocs),
 	goal_set_resume_point(Goal1, Resume, Goal),
 
@@ -829,28 +843,32 @@ stuff_deadness_residue_before_goal(Goal - GoalInfo0, Residue, Goal - GoalInfo)
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-	% Given a list of variables and an instmap delta, determine
-	% which of those variables become bound (according to the instmap
-	% delta) and insert them into the accumulated set of bound vars.
+	% Given a list of variables and an instmap delta, determine which
+	% of those variables have a value given to them (i.e. they are bound
+	% or aliased; in the latter case the "value" is the location they
+	% should be stored in), and insert them into the accumulated set
+	% of value-given vars.
+	%
+	% We don't handle the aliasing part yet.
 
-:- pred find_binding_occurrences(list(var), live_info,
+:- pred find_value_giving_occurrences(list(var), live_info,
 	instmap_delta, set(var), set(var)).
-:- mode find_binding_occurrences(in, in, in, in, out) is det.
+:- mode find_value_giving_occurrences(in, in, in, in, out) is det.
 
-find_binding_occurrences([], _, _, BoundVars, BoundVars).
-find_binding_occurrences([Var | Vars], LiveInfo, InstMapDelta,
-		BoundVars0, BoundVars) :-
+find_value_giving_occurrences([], _, _, ValueVars, ValueVars).
+find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
+		ValueVars0, ValueVars) :-
 	live_info_get_var_types(LiveInfo, VarTypes),
 	live_info_get_module_info(LiveInfo, ModuleInfo),
 	map__lookup(VarTypes, Var, Type),
 	instmap_delta_lookup_var(InstMapDelta, Var, Inst),
 	( mode_to_arg_mode(ModuleInfo, (free -> Inst), Type, top_out) ->
-		set__insert(BoundVars0, Var, BoundVars1)
+		set__insert(ValueVars0, Var, ValueVars1)
 	;
-		BoundVars1 = BoundVars0
+		ValueVars1 = ValueVars0
 	),
-	find_binding_occurrences(Vars, LiveInfo, InstMapDelta,
-		BoundVars1, BoundVars).
+	find_value_giving_occurrences(Vars, LiveInfo, InstMapDelta,
+		ValueVars1, ValueVars).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

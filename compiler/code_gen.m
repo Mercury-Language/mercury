@@ -691,7 +691,7 @@ code_gen__generate_det_goal_2(call(PredId, ProcId, Args, Builtin, _, _),
 	->
 		call_gen__generate_det_builtin(PredId, ProcId, Args, Instr)
 	;
-		code_info__set_succip_used(yes),
+		code_info__succip_is_used,
 		call_gen__generate_det_call(PredId, ProcId, Args, Instr)
 	).
 code_gen__generate_det_goal_2(switch(Var, CanFail, CaseList, StoreMap),
@@ -795,9 +795,9 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, IsRecursive,
 	( { IsRecursive = non_recursive } ->
 		{ SaveVarsCode = empty }
 	;
-		% the C code might call back Mercury code which clobbers the
-		% succip
-		code_info__set_succip_used(yes),
+		% the C code might call back Mercury code
+		% which clobbers the succip
+		code_info__succip_is_used,
 
 		% the C code might call back Mercury code which clobbers the
 		% other registers, so we need to save any live variables
@@ -1060,7 +1060,7 @@ code_gen__generate_semi_goal_2(call(PredId, ProcId, Args, Builtin, _, _),
 	->
 		call_gen__generate_semidet_builtin(PredId, ProcId, Args, Code)
 	;
-		code_info__set_succip_used(yes),
+		code_info__succip_is_used,
 		call_gen__generate_semidet_call(PredId, ProcId, Args, Code)
 	).
 code_gen__generate_semi_goal_2(switch(Var, CanFail, CaseList, StoreMap),
@@ -1239,7 +1239,7 @@ code_gen__generate_non_goal_2(call(PredId, ProcId, Args, Builtin, _, _),
 	->
 		call_gen__generate_nondet_builtin(PredId, ProcId, Args, Code)
 	;
-		code_info__set_succip_used(yes),
+		code_info__succip_is_used,
 		call_gen__generate_nondet_call(PredId, ProcId, Args, Code)
 	).
 code_gen__generate_non_goal_2(switch(Var, CanFail, CaseList, StoreMap),

@@ -220,6 +220,11 @@ code_aux__is_recursive_call(Goal, CodeInfo) :-
 	% Update the code info structure to be consistent
 	% immediately prior to generating a goal
 code_aux__pre_goal_update(GoalInfo, Atomic) -->
+	% The liveness pass puts resume_point annotations on some kinds
+	% of goals. The parts of the code generator that handle those kinds
+	% of goals should handle the resume point annotation as well;
+	% when they do, they remove the annotation. The following code
+	% is a sanity check to make sure that this has in fact been done.
 	{ goal_info_get_resume_point(GoalInfo, ResumePoint) },
 	(
 		{ ResumePoint = no_resume_point }

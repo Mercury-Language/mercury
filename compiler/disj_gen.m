@@ -233,7 +233,7 @@ disj_gen__generate_non_disj(Goals, StoreMap, Code) -->
 		% Sanity check
 	{
 		Goals = [],
-		error("empty disjunction shouldn't be non-det")
+		error("empty disjunction shouldn't be nondet")
 	;
 		Goals = [_],
 		error("singleton disjunction")
@@ -247,7 +247,7 @@ disj_gen__generate_non_disj(Goals, StoreMap, Code) -->
 	{ globals__lookup_bool_option(Globals, constraints, Constraints) },
 	code_info__maybe_save_ticket(Constraints, SaveTicketCode),
 
-		% With non-det disjunctions, we must recover memory across
+		% With nondet disjunctions, we must recover memory across
 		% all disjuncts, since we can backtract to disjunct N
 		% even after control leaves disjunct N-1.
 	{ globals__lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
@@ -271,11 +271,6 @@ disj_gen__generate_non_disj(Goals, StoreMap, Code) -->
 %---------------------------------------------------------------------------%
 
 	% XXX We ought not to restore anything in the first disjunct.
-	%
-	% XXX We ought to be able to pass information between the calls to
-	% make_known_failure_cont and restore_failure_cont, in order to
-	% prevent the repeated construction and discarding of a temporary
-	% nondet frame.
 
 :- pred disj_gen__generate_non_disjuncts(list(hlds__goal), store_map, label,
 	bool, bool, bool, code_tree, code_info, code_info).
@@ -321,11 +316,6 @@ disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 			% stack slot
 		code_info__flush_resume_vars_to_stack(FlushResumeVarsCode),
 
-		% make sure the redoip of the top frame points to the
-		% right label
-		% XXX code missing
-
-
 			% Kill any variables made zombies by the goal
 			% XXX should not be necessary, since the state
 			% we set up will be discarded anyway
@@ -339,6 +329,10 @@ disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 
 		code_info__slap_code_info(CodeInfo),
 		code_info__pop_resume_point_vars,
+
+			% make sure that the redoip of the top nondet frame
+			% points to the right label, and set up the start of
+			% the next disjunct
 		code_info__restore_failure_cont(RestoreContCode),
 
 		disj_gen__generate_non_disjuncts(Goals, StoreMap, EndLabel,

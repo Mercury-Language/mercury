@@ -609,7 +609,7 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 :- mode call_gen__generate_higher_call(in, in, in, in, out, in, out) is det.
 
 call_gen__generate_higher_call(CodeModel, PredVar, InVars, OutVars, Code) -->
-	code_info__set_succip_used(yes),
+	code_info__succip_is_used,
 	{ set__list_to_set(OutVars, OutArgs) },
 	call_gen__save_variables(OutArgs, SaveCode),
 	( { CodeModel = model_non } ->
