@@ -332,7 +332,7 @@ clean_local: distclean clean_texi
 
 .PHONY: distclean
 distclean:
-	rm -f *.aux *.cp *.fn *.ky *.log *.pg *.toc *.tp *.vr
+	rm -f *.aux *.cp *.cps *.fn *.ky *.log *.pg *.toc *.tp *.vr
 
 .PHONY: clean_texi
 clean_texi:
