@@ -193,9 +193,6 @@
 :- mode try_all(in(bound(nondet)),  pred(out) is nondet,
 				    	     out(try_all_nondet)) is cc_multi.
 
-% The functors in this type must be in the same order as the
-% enumeration constants in the foreign language enums `ML_Determinism'
-% defined below.
 :- type determinism
 	--->	det
 	;	semidet
@@ -222,159 +219,54 @@
 :- mode get_determinism_2(pred(out, di, uo) is cc_multi, out(bound(cc_multi)))
 	is cc_multi.
 
-% Unfortunately the only way to implement get_determinism/2 is to use
-% the C interface, since Mercury doesn't allow different code for different
-% modes.
+% The calls to error/1 here are needed to ensure that the
+% declarative semantics of each clause is equivalent,
+% but operationally they are unreachable;
+% since each mode has determinism cc_multi,
+% it will pick the first disjunct and discard the call to error/1.
+% This relies on --no-reorder-disj.
 
-:- pragma foreign_decl("C", "
-/* The `#ifndef ... #define ... #endif' guards against multiple inclusion */
-#ifndef ML_DETERMINISM_GUARD
-#define ML_DETERMINISM_GUARD
-	/*
-	** The enumeration constants in this enum must be in the same
-	** order as the functors in the Mercury type `determinism'
-	** defined above.
-	*/
-	typedef enum {
-		ML_DET,
-		ML_SEMIDET,
-		ML_CC_MULTI,
-		ML_CC_NONDET,
-		ML_MULTI,
-		ML_NONDET,
-		ML_ERRONEOUS,
-		ML_FAILURE
-	} ML_Determinism;
-#endif
-").
+:- pragma promise_pure(get_determinism/2).
 
-:- pragma foreign_proc("C",
-	get_determinism(_Pred::pred(out) is det,
-			Det::out(bound(det))),
-	[will_not_call_mercury, promise_pure],
-	"Det = ML_DET"
-).
-:- pragma foreign_proc("C",
-	get_determinism(_Pred::pred(out) is semidet,
-			Det::out(bound(semidet))),
-	[will_not_call_mercury, promise_pure],
-	"Det = ML_SEMIDET"
-).
-:- pragma foreign_proc("C",
-	get_determinism(_Pred::pred(out) is cc_multi,
-			Det::out(bound(cc_multi))),
-	[will_not_call_mercury, promise_pure],
-	"Det = ML_CC_MULTI"
-).
-:- pragma foreign_proc("C",
-	get_determinism(_Pred::pred(out) is cc_nondet,
-			Det::out(bound(cc_nondet))),
-	[will_not_call_mercury, promise_pure],
-	"Det = ML_CC_NONDET"
-).
-:- pragma foreign_proc("C",
-	get_determinism(_Pred::pred(out) is multi,
-			Det::out(bound(multi))),
-	[will_not_call_mercury, promise_pure],
-	"Det = ML_MULTI"
-).
-:- pragma foreign_proc("C",
-	get_determinism(_Pred::pred(out) is nondet,
-			Det::out(bound(nondet))),
-	[will_not_call_mercury, promise_pure],
-	"Det = ML_NONDET"
-).
+get_determinism(_Pred::(pred(out) is det), Det::out(bound(det))) :-
+	( cc_multi_equal(det, Det)
+	; error("get_determinism")
+	).
+get_determinism(_Pred::(pred(out) is semidet), Det::out(bound(semidet))) :-
+	( cc_multi_equal(semidet, Det)
+	; error("get_determinism")
+	).
+get_determinism(_Pred::(pred(out) is cc_multi), Det::out(bound(cc_multi))) :-
+	( cc_multi_equal(cc_multi, Det)
+	; error("get_determinism")
+	).
+get_determinism(_Pred::(pred(out) is cc_nondet), Det::out(bound(cc_nondet))) :-
+	( cc_multi_equal(cc_nondet, Det)
+	; error("get_determinism")
+	).
+get_determinism(_Pred::(pred(out) is multi), Det::out(bound(multi))) :-
+	( cc_multi_equal(multi, Det)
+	; error("get_determinism")
+	).
+get_determinism(_Pred::(pred(out) is nondet), Det::out(bound(nondet))) :-
+	( cc_multi_equal(nondet, Det)
+	; error("get_determinism")
+	).
 
-:- pragma foreign_proc("C",
-	get_determinism_2(_Pred::pred(out, di, uo) is det,
-			Det::out(bound(det))),
-	[will_not_call_mercury, promise_pure],
-	"Det = ML_DET"
-).
+:- pragma promise_pure(get_determinism_2/2).
 
-:- pragma foreign_proc("C",
-	get_determinism_2(_Pred::pred(out, di, uo) is cc_multi,
-			Det::out(bound(cc_multi))),
-	[will_not_call_mercury, promise_pure],
-	"Det = ML_CC_MULTI"
-).
-
-:- pragma foreign_decl("MC++", "
-/* The `#ifndef ... #define ... #endif' guards against multiple inclusion */
-#ifndef ML_DETERMINISM_GUARD
-#define ML_DETERMINISM_GUARD
-
-	/*
-	** The constants in these #defines must be in the same
-	** order as the functors in the Mercury type `determinism'
-	** defined above.
-	** XXX It would be nice to use an enum here, but at the moment
-	** I can't convince the MC++ compiler to accept the syntax for it.
-	*/
-
-#define ML_DET	0
-#define	ML_SEMIDET	1
-#define	ML_CC_MULTI	2
-#define	ML_CC_NONDET	3
-#define	ML_MULTI	4
-#define	ML_NONDET	5
-#define	ML_ERRONEOUS	6
-#define	ML_FAILURE	7
-
-#endif
-").
-
-:- pragma foreign_proc("MC++",
-	get_determinism(_Pred::pred(out) is det,
-			Det::out(bound(det))),
-	[will_not_call_mercury, promise_pure],
-	"MR_newenum(Det, ML_DET);"
-).
-:- pragma foreign_proc("MC++",
-	get_determinism(_Pred::pred(out) is semidet,
-			Det::out(bound(semidet))),
-	[will_not_call_mercury, promise_pure],
-	"MR_newenum(Det, ML_SEMIDET);"
-).
-:- pragma foreign_proc("MC++",
-	get_determinism(_Pred::pred(out) is cc_multi,
-			Det::out(bound(cc_multi))),
-	[will_not_call_mercury, promise_pure],
-	"MR_newenum(Det, ML_CC_MULTI);"
-).
-:- pragma foreign_proc("MC++",
-	get_determinism(_Pred::pred(out) is cc_nondet,
-			Det::out(bound(cc_nondet))),
-	[will_not_call_mercury, promise_pure],
-	"MR_newenum(Det, ML_CC_NONDET);"
-).
-:- pragma foreign_proc("MC++",
-	get_determinism(_Pred::pred(out) is multi,
-			Det::out(bound(multi))),
-	[will_not_call_mercury, promise_pure],
-	"MR_newenum(Det, ML_MULTI);"
-).
-:- pragma foreign_proc("MC++",
-	get_determinism(_Pred::pred(out) is nondet,
-			Det::out(bound(nondet))),
-	[will_not_call_mercury, promise_pure],
-	"MR_newenum(Det, ML_NONDET);"
-).
-
-:- pragma foreign_proc("MC++",
-	get_determinism_2(_Pred::pred(out, di, uo) is det,
-			Det::out(bound(det))),
-	[will_not_call_mercury, promise_pure],
-	"MR_newenum(Det, ML_DET);"
-).
-
-:- pragma foreign_proc("MC++",
-	get_determinism_2(_Pred::pred(out, di, uo) is cc_multi,
-			Det::out(bound(cc_multi))),
-	[will_not_call_mercury, promise_pure],
-	"MR_newenum(Det, ML_CC_MULTI);"
-).
-
+get_determinism_2(
+	_Pred::pred(out, di, uo) is det,
+			Det::out(bound(det))) :-
+	( cc_multi_equal(det, Det)
+	; error("get_determinism_2")
+	).
+get_determinism_2(
+	_Pred::pred(out, di, uo) is cc_multi,
+			Det::out(bound(cc_multi))) :-
+	( cc_multi_equal(cc_multi, Det)
+	; error("get_determinism_2")
+	).
 
 % These are not worth inlining, since they will
 % (presumably) not be called frequently, and so

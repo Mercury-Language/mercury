@@ -23,6 +23,15 @@ VPATH=.
 
 #-----------------------------------------------------------------------------#
 
+# We need to compile the library with --strict-sequential for two reasons:
+# (1) Otherwise Mercury code that is compiled with --strict-sequential
+#     might do the wrong thing, because the standard library wasn't compiled
+#     with --strict-sequential.  (We could make it a separate grade, but
+#     that's not worth it.)
+# (2) The code for get_determinism in library/exception.m relies on it
+#     (in particular it relies on --no-reorder-disj).
+MCFLAGS += --strict-sequential
+
 # Modules which use user-guided type specialization need to be
 # compiled with these flags to make sure all calls
 # to the builtin comparison routines are inlined.
