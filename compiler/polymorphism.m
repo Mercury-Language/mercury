@@ -647,22 +647,32 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars,
 :- mode polymorphism__fixup_quantification(in, out, in, out) is det.
 
 %
-% If the predicate we are processing is a polymorphic predicate, we
+% If the predicate we are processing is a polymorphic predicate,
+% or contains polymorphically-typed goals, we
 % may need to fix up the quantification (non-local variables)
+% so that it includes the type-info variables in the non-locals set.
 %
 
 polymorphism__fixup_quantification(Goal0, Goal, Info0, Info) :-
 	Info0 = poly_info(VarSet0, VarTypes0, TypeVarSet, TypeVarMap,
 			ModuleInfo),
-	map__values(TypeVarMap, ExtraHeadVars),
-	( ExtraHeadVars = [] ->
+	%
+	% A type-info variable may be non-local to a goal if any of
+	% the ordinary non-local variables for that goal are polymorphically
+	% typed with a type that depends on that type-info variable.
+	%
+	Goal0 = _ - GoalInfo0,
+	goal_info_get_nonlocals(GoalInfo0, NonLocals),
+	set__to_sorted_list(NonLocals, NonLocalsList),
+	map__apply_to_list(NonLocalsList, VarTypes0, NonLocalsTypes),
+	term__vars_list(NonLocalsTypes, NonLocalTypeVars),
+	map__apply_to_list(NonLocalTypeVars, TypeVarMap, ExtraNonLocals),
+	( ExtraNonLocals = [] ->
 		Goal = Goal0,
 		VarTypes = VarTypes0,
 		VarSet = VarSet0
 	;
-		Goal0 = _ - GoalInfo0,
-		goal_info_get_nonlocals(GoalInfo0, NonLocals),
-		set__list_to_set(ExtraHeadVars, NewOutsideVars),
+		set__list_to_set(ExtraNonLocals, NewOutsideVars),
 		set__union(NewOutsideVars, NonLocals, OutsideVars),
 		implicitly_quantify_goal(Goal0, VarSet0, VarTypes0,
 			OutsideVars, Goal, VarSet, VarTypes, _Warnings)
