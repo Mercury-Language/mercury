@@ -320,8 +320,8 @@ static void process_options(int argc, char **argv)
 
 	if (which == NULL)
 	{
-		fprintf(stderr, "no entry point supplied on command line "
-				"or by default\n");
+		fprintf(stderr, "Mercury runtime: no entry point supplied "
+				"on command line or by default\n");
 		exit(1);
 	}
 }
