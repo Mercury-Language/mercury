@@ -810,7 +810,9 @@ transform_goal(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 		make_fresh_arg_vars(Args, VarSet0, HeadVars, VarSet1),
 		term__var_list_to_term_list(HeadVars, HeadArgs),
 		invalid_pred_id(PredId),
-		Goal2 = call(PredId, ModeId, HeadArgs, Builtin, SymName) -
+		map__init(Follow),
+		Goal2 = call(PredId, ModeId, HeadArgs, Builtin,
+							SymName, Follow) -
 				GoalInfo,
 		goal_info_init(GoalInfo),
 		insert_arg_unifications(HeadVars, Args, call(PredCallId),

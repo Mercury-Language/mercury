@@ -411,7 +411,7 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 					io__state, io__state).
 :- mode hlds_out__write_goal_2(in, in, in, in, di, uo) is det.
 
-hlds_out__write_goal_2(switch(Var, CasesList, _), ModuleInfo, VarSet, Indent)
+hlds_out__write_goal_2(switch(Var, CasesList), ModuleInfo, VarSet, Indent)
 		-->
 	io__write_string("( % switch on `"),
 	mercury_output_var(Var, VarSet),
@@ -511,8 +511,8 @@ hlds_out__write_goal_2(disj(List), ModuleInfo, VarSet, Indent) -->
 		io__write_string("fail")
 	).
 
-hlds_out__write_goal_2(call(_PredId, _ProcId, Args, _, PredName), _ModuleInfo,
-		VarSet, _Indent) -->
+hlds_out__write_goal_2(call(_PredId, _ProcId, Args, _, PredName, _Follow),
+					_ModuleInfo, VarSet, _Indent) -->
 		% XXX we should print more info here
 	{ unqualify_name(PredName, Name) },
 	{ term__context_init(0, Context) },

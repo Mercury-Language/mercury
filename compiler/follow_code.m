@@ -106,7 +106,7 @@ move_follow_code_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
 move_follow_code_in_goal_2(some(Vars, Goal0), ModuleInfo, some(Vars, Goal)) :-
 	move_follow_code_in_goal(Goal0, ModuleInfo, Goal).
 
-move_follow_code_in_goal_2(call(A,B,C,D,E), _, call(A,B,C,D,E)).
+move_follow_code_in_goal_2(call(A,B,C,D,E,F), _, call(A,B,C,D,E,F)).
 
 move_follow_code_in_goal_2(unify(A,B,C,D,E), _, unify(A,B,C,D,E)).
 
@@ -267,7 +267,7 @@ move_follow_code_is_builtin(Goal - _GoalInfo) :-
 	->
 		true
 	;
-		Goal = call(_,_,_,is_builtin, _)
+		Goal = call(_,_,_,is_builtin, _, _)
 	).
 		
 %-----------------------------------------------------------------------------%

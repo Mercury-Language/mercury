@@ -165,7 +165,7 @@ detect_liveness_in_goal_2(some(Vars, Goal0), Liveness, ModuleInfo,
 		some(Vars, Goal)) :-
 	detect_liveness_in_goal(Goal0, Liveness, ModuleInfo, Goal).
 
-detect_liveness_in_goal_2(call(A,B,C,D,E), _, _, call(A,B,C,D,E)).
+detect_liveness_in_goal_2(call(A,B,C,D,E,F), _, _, call(A,B,C,D,E,F)).
 
 detect_liveness_in_goal_2(unify(A,B,C,D,E), _, _, unify(A,B,C,D,E)).
 
@@ -284,7 +284,7 @@ detect_deadness_in_goal_2(some(Vars, Goal0), Deadness, ModuleInfo,
 		some(Vars, Goal)) :-
 	detect_deadness_in_goal(Goal0, Deadness, ModuleInfo, Goal).
 
-detect_deadness_in_goal_2(call(A,B,C,D,E), _, _, call(A,B,C,D,E)).
+detect_deadness_in_goal_2(call(A,B,C,D,E,F), _, _, call(A,B,C,D,E,F)).
 
 detect_deadness_in_goal_2(unify(A,B,C,D,E), _, _, unify(A,B,C,D,E)).
 
@@ -419,7 +419,7 @@ stuff_deadness_residue_into_goal(Goal - GoalInfo0, Residue, Goal - GoalInfo) :-
 
 detect_liveness_is_atomic(conj([])).
 detect_liveness_is_atomic(disj([])).
-detect_liveness_is_atomic(call(_,_,_,_,_)).
+detect_liveness_is_atomic(call(_,_,_,_,_,_)).
 detect_liveness_is_atomic(unify(_,_,_,_,_)).
 
 %-----------------------------------------------------------------------------%

@@ -61,9 +61,11 @@ find_follow_vars_in_procs([ProcId | ProcIds], PredId, ModuleInfo0,
 
 	find_final_follow_vars(ProcInfo0, FollowVars0),
 	find_follow_vars_in_goal(Goal0, ModuleInfo0,
-				FollowVars0, Goal, _FollowVars),
+				FollowVars0, Goal, FollowVars),
 
-	proc_info_set_goal(ProcInfo0, Goal, ProcInfo),
+	proc_info_set_follow_vars(ProcInfo0, FollowVars, ProcInfo1),
+	proc_info_set_goal(ProcInfo1, Goal, ProcInfo),
+
 	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 	map__set(PredTable0, PredId, PredInfo, PredTable),
@@ -73,7 +75,7 @@ find_follow_vars_in_procs([ProcId | ProcIds], PredId, ModuleInfo0,
 %-----------------------------------------------------------------------------%
 
 :- pred find_final_follow_vars(proc_info, follow_vars).
-:- mode find_final_follow_vars(in, out).
+:- mode find_final_follow_vars(in, out) is det.
 
 find_final_follow_vars(ProcInfo, Follow) :-
 	proc_info_arg_info(ProcInfo, ArgInfo),
@@ -89,7 +91,8 @@ find_final_follow_vars(ProcInfo, Follow) :-
 
 find_follow_vars_in_goal(Goal0 - GoalInfo, ModuleInfo, FollowVars0,
 					Goal - GoalInfo, FollowVars) :-
-	find_follow_vars_in_goal_2(Goal0, ModuleInfo, FollowVars0, Goal, FollowVars).
+	find_follow_vars_in_goal_2(Goal0, ModuleInfo, FollowVars0,
+							Goal, FollowVars).
 
 %-----------------------------------------------------------------------------%
 
@@ -125,8 +128,8 @@ find_follow_vars_in_goal_2(some(Vars, Goal0), ModuleInfo, FollowVars0,
 						some(Vars, Goal), FollowVars) :-
 	find_follow_vars_in_goal(Goal0, ModuleInfo, FollowVars0, Goal, FollowVars).
 
-find_follow_vars_in_goal_2(call(A,B,C,D,E), ModuleInfo, FollowVars0,
-					call(A,B,C,D,E), FollowVars) :-
+find_follow_vars_in_goal_2(call(A,B,C,D,E,_F), ModuleInfo, FollowVars0,
+				call(A,B,C,D,E, FollowVars0), FollowVars) :-
 	(
 		D = is_builtin
 	->

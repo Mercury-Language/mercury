@@ -403,8 +403,9 @@ det_infer_goal_2(switch(Var, Cases0), MiscInfo, _, _, switch(Var, Cases), D) :-
 	% compilation becomes a bottleneck before worrying about
 	% this.
 
-det_infer_goal_2(call(PredId, ModeId, Args, BuiltIn, Name), MiscInfo, _, _,
-		call(PredId, ModeId, Args, BuiltIn, Name), Category) :-
+det_infer_goal_2(call(PredId, ModeId, Args, BuiltIn, Name, Follow),
+							MiscInfo, _, _,
+		call(PredId, ModeId, Args, BuiltIn, Name, Follow), Category) :-
 	detism_lookup(MiscInfo, PredId, ModeId, Category).
 		% XXX need to handle calls to inferred modes!
 

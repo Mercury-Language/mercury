@@ -442,8 +442,8 @@ modecheck_goal_2(some(Vs, G0), _, some(Vs, G)) -->
 	modecheck_goal(G0, G),
 	mode_checkpoint(exit, "some").
 
-modecheck_goal_2(call(PredId, _, Args, Builtin, PredName), _,
-		 call(PredId, Mode, Args, Builtin, PredName)) -->
+modecheck_goal_2(call(PredId, _, Args, Builtin, PredName, Follow), _,
+		 call(PredId, Mode, Args, Builtin, PredName, Follow)) -->
 	mode_checkpoint(enter, "call"),
 	{ list__length(Args, Arity) },
 	mode_info_set_call_context(call(PredName/Arity)),
