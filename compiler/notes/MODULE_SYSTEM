@@ -1,46 +1,6 @@
-1.  Let S be the set of modules interfaces on which
-    the current module (directly or indirectly) depends.
-    For each module in S, read in the module and write out the
-    full interface of that module (i.e. copy the type and mode
-    declarations for the predicates into the interface and add
-    `:- adt' declarations for types which are exported as
-    opaque abstract data types.
+%-----------------------------------------------------------------------------%
 
-2.  For each module in S, read in the full interface
-    and resolve all the types, insts, and modes in the bodies
-    of the symbols defined in the interface (add explicit module
-    qualifiers).  This gives us a "resolved full interface" file.
-    Write this out.
-
-3.  Read in the resolved full interface files for each module in S.
-    Resolve all the types, insts, and modes in the bodies
-    of the symbols defined in the current module.
-    Resolve all the preds and constructors in the current module.
-    Generate code for the current module.
-
-/* file t1.nl */
-
-:- module t1.
-:- use_module t2.
-:- type t1 ---> g(t2) ; x.
-:- export_type t1/0.
-:- end_module t1.
-
-/* full interface file for module t1 */
-:- module t1.
-:- use_module t2.
-:- type t1 ---> g(t2:t2) ; x.
-:- export_type t1/0.
-:- export_adt t2/0.
-:- end_module t1.
-
-/* file t2.nl */
-
-:- module t2.
-:- use_module t1.
-:- type t2 ---> f(t1:t1) ; y.
-:- export_type t2/0.
-:- end_module t2.
+This file contains some very old notes about the module system.
 
 %-----------------------------------------------------------------------------%
 
@@ -162,9 +122,10 @@ section.
 			TypedConstructorSpecifier.
 		cons(ConstructorSpecifier)
 			Matches only constructors.
-		pred(PredSpecifier)
-			Matches only predicates, ie. constructors of type
-			`pred'.
+		pred(PredicateSpecifier)
+			Matches only predicates.
+		func(FunctionSpecifier)
+			Matches only functions.
 		adt(SymbolNameSpecifier)
 			Matches only type names.
 		type(SymbolNameSpecifier)
@@ -197,6 +158,8 @@ section.
 			types.
 		SymbolSpecifier
 
+	A FunctionSpecifier is the same as a ConstructorSpecifier.
+
 	An OpSpecifier is one of
 		SymbolSpecifier
 			Matches any operators matched by SymbolSpecifier
@@ -226,6 +189,12 @@ section.
 	This is just an abbreviation for
 		:- export_sym pred(Pred1), ..., pred(PredN).
 	All predicates matched by the listed PredicateSpecifiers are exported.
+	If there is any ambiguity, *all* matching predicates are exported.
+
+:- export_func Func1, ..., FuncN.
+	This is just an abbreviation for
+		:- export_sym func(Func1), ..., func(FuncN).
+	All predicates matched by the listed FunctionSpecifiers are exported.
 	If there is any ambiguity, *all* matching predicates are exported.
 
 :- export_adt Type1, ..., TypeN.
@@ -258,6 +227,7 @@ section.
 	should have explicit module qualifications.
 
 :- import_pred Pred1, Pred2, ..., PredN.
+:- import_func Func1, Func2, ..., FuncN.
 :- import_type Type1, Type2, ..., TypeN.
 :- import_adt  Type1, Type2, ..., TypeN.
 :- import_cons Cons1, Cons2, ..., ConsN.
@@ -272,6 +242,7 @@ section.
 	have explicit module qualifications.
 
 :- use_pred Pred1, Pred2, ..., PredN.
+:- use_func Func1, Func1, ..., Func1.
 :- use_type Type1, Type2, ..., TypeN.
 :- use_adt  Type1, Type2, ..., TypeN.
 :- use_cons Cons1, Cons2, ..., ConsN.
@@ -389,5 +360,54 @@ contains(bag(Bag), Item) :-
 	list:member(Item, Bag).
 
 :- end_module bag.
+
+%-----------------------------------------------------------------------------%
+
+Here's a rough sketch of an algorithm (probably buggy) for handling these
+things.
+
+1.  Let S be the set of modules interfaces on which
+    the current module (directly or indirectly) depends.
+    For each module in S, read in the module and write out the
+    full interface of that module (i.e. copy the type and mode
+    declarations for the predicates into the interface and add
+    `:- adt' declarations for types which are exported as
+    opaque abstract data types.
+
+2.  For each module in S, read in the full interface
+    and resolve all the types, insts, and modes in the bodies
+    of the symbols defined in the interface (add explicit module
+    qualifiers).  This gives us a "resolved full interface" file.
+    Write this out.
+
+3.  Read in the resolved full interface files for each module in S.
+    Resolve all the types, insts, and modes in the bodies
+    of the symbols defined in the current module.
+    Resolve all the preds and constructors in the current module.
+    Generate code for the current module.
+
+/* file t1.nl */
+
+:- module t1.
+:- use_module t2.
+:- type t1 ---> g(t2) ; x.
+:- export_type t1/0.
+:- end_module t1.
+
+/* full interface file for module t1 */
+:- module t1.
+:- use_module t2.
+:- type t1 ---> g(t2:t2) ; x.
+:- export_type t1/0.
+:- export_adt t2/0.
+:- end_module t1.
+
+/* file t2.nl */
+
+:- module t2.
+:- use_module t1.
+:- type t2 ---> f(t1:t1) ; y.
+:- export_type t2/0.
+:- end_module t2.
 
 %-----------------------------------------------------------------------------%
