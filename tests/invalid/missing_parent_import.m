@@ -10,7 +10,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -21,16 +21,16 @@
 % test case is testing.
 % :- import_module children.
 
-:- import_module children:child.
-:- use_module children:child2.
+:- import_module children.child.
+:- use_module children.child2.
 :- import_module std_util, require.
 
 main -->
-	children:child:hello,
-	child:hello,
+	children.child.hello,
+	child.hello,
 	hello,
-	children:child2:hello,
-	child2:hello,
+	children.child2.hello,
+	child2.hello,
 
 	{ true }.
 

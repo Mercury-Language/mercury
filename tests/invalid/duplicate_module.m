@@ -67,14 +67,14 @@ hello --> io__write_string("duplicate_module:child2:hello\n").
 
 % now we're back in the parent module.
 
-:- use_module duplicate_module:child.
-:- use_module duplicate_module:child2.
-:- use_module duplicate_module:child3.
+:- use_module duplicate_module.child.
+:- use_module duplicate_module.child2.
+:- use_module duplicate_module.child3.
 :- import_module std_util, require.
 
 do_main -->
-	duplicate_module:child:hello,
-	duplicate_module:child2:hello,
-	duplicate_module:child3:hello.
+	duplicate_module.child.hello,
+	duplicate_module.child2.hello,
+	duplicate_module.child3.hello.
 
 :- end_module duplicate_module.
