@@ -3145,7 +3145,7 @@ I - imported predicates,
 M - mode and inst information,
 P - path information,
 T - type and typeclass information,
-U - unify predicates.
+U - unify and compare predicates.
 
 @ifset aditi
 @sp 1

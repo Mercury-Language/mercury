@@ -240,7 +240,7 @@
 
 :- import_module mercury_to_mercury, globals, options, purity, special_pred.
 :- import_module llds_out, prog_out, prog_util, (inst), instmap, trace.
-:- import_module rl, termination, term_errors, check_typeclass.
+:- import_module rl, code_util, termination, term_errors, check_typeclass.
 
 :- import_module int, string, set, assoc_list, map, multi_map.
 :- import_module require, getopt, std_util, term_io, varset.
@@ -675,15 +675,12 @@ hlds_out__write_preds_2(Indent, ModuleInfo, PredIds0, PredTable) -->
 		->
 			[]
 		;
-			% We dump unification predicates if suboption
-			% 'U' is on. We don't really need that
-			% information to understand how the program has
-			% been transformed.
+			% We dump unification and other compiler-generated
+			% special predicates if suboption 'U' is on. We don't
+			% need that information to understand how the program
+			% has been transformed.
 			{ \+ string__contains_char(Verbose, 'U') },
-			{ pred_info_arity(PredInfo, Arity) },
-			{ Arity = 2 },
-			{ pred_info_name(PredInfo, PredName) },
-			{ PredName =  "__Unify__" }
+			{ code_util__compiler_generated(PredInfo) }
 		->
 			[]
 		;
