@@ -738,9 +738,11 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 	{ allocate_stack_slots_in_proc(ProcInfo4, ModuleInfo1, ProcInfo5) },
 	{ store_alloc_in_proc(ProcInfo5, ModuleInfo1, ProcInfo6) },
 	{ module_info_get_shapes(ModuleInfo1, Shapes0) },
+	{ module_info_get_cell_count(ModuleInfo1, CellCount0) },
 	generate_proc_code(ProcInfo6, ProcId, PredId, ModuleInfo1,
-		Shapes0, Shapes, Proc0),
-	{ module_info_set_shapes(ModuleInfo1, Shapes, ModuleInfo) },
+		Shapes0, CellCount0, Shapes, CellCount, Proc0),
+	{ module_info_set_shapes(ModuleInfo1, Shapes, ModuleInfo2) },
+	{ module_info_set_cell_count(ModuleInfo2, CellCount, ModuleInfo) },
 	globals__io_lookup_bool_option(optimize, Optimize),
 	( { Optimize = yes } ->
 		optimize__proc(Proc0, Proc)

@@ -66,8 +66,8 @@
 		% Create a new code_info structure.
 :- pred code_info__init(varset, set(var), stack_slots, bool, globals,
 	pred_id, proc_id, proc_info, instmap, follow_vars, module_info,
-	shape_table, code_info).
-:- mode code_info__init(in, in, in, in, in, in, in, in, in, in, in, in, out)
+	int /* cell number */, shape_table, code_info).
+:- mode code_info__init(in, in, in, in, in, in, in, in, in, in, in, in, in, out)
 	is det.
 
 		% Get the variables for the current procedure.
@@ -148,9 +148,6 @@
 
 :- pred code_info__set_label_count(int, code_info, code_info).
 :- mode code_info__set_label_count(in, in, out) is det.
-
-:- pred code_info__get_cell_count(int, code_info, code_info).
-:- mode code_info__get_cell_count(out, in, out) is det.
 
 :- pred code_info__set_cell_count(int, code_info, code_info).
 :- mode code_info__set_cell_count(in, in, out) is det.
@@ -285,7 +282,7 @@
 
 code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		PredId, ProcId, ProcInfo, Requests, FollowVars,
-		ModuleInfo, Shapes, C) :-
+		ModuleInfo, CellCount, Shapes, C) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_arg_info(ProcInfo, ArgInfos),
 	assoc_list__from_corresponding_lists(HeadVars, ArgInfos, Args),
@@ -313,7 +310,7 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		StackSlots,
 		PredId,
 		ProcId,
-		0,
+		CellCount,
 		ExprnInfo,
 		ProcInfo,
 		SaveSuccip,
@@ -704,9 +701,13 @@ code_info__set_commit_triple_count(W, CI0, CI) :-
 :- pred code_info__get_next_label(label, code_info, code_info).
 :- mode code_info__get_next_label(out, in, out) is det.
 
-	% Generate the next local cell number in sequence.
+	% Generate the next cell number in sequence.
 :- pred code_info__get_next_cell_number(int, code_info, code_info).
 :- mode code_info__get_next_cell_number(out, in, out) is det.
+
+	% Get the current cell number.
+:- pred code_info__get_cell_count(int, code_info, code_info).
+:- mode code_info__get_cell_count(out, in, out) is det.
 
 :- pred code_info__succip_is_used(code_info, code_info).
 :- mode code_info__succip_is_used(in, out) is det.
@@ -934,7 +935,10 @@ code_info__slap_code_info(C0, C1, C) :-
 	code_info__get_max_temp_slot_count(PC, C1, _),
 	code_info__set_max_temp_slot_count(PC, C4, C5),
 	code_info__get_shapes(Shapes, C1, _),
-	code_info__set_shapes(Shapes, C5, C).
+	code_info__set_shapes(Shapes, C5, C6),
+	code_info__get_cell_count(CellCount, C1, _),
+	code_info__set_cell_count(CellCount, C6, C).
+
 
 code_info__apply_instmap_delta(Delta) -->
 	code_info__get_instmap(InstMap0),

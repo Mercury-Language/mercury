@@ -335,7 +335,9 @@ output_c_module_list([M | Ms], DeclSet0, BaseName) -->
 	io__state, io__state).
 :- mode output_c_module(in, in, out, in, di, uo) is det.
 
-output_c_module(c_module(ModuleName, Procedures), DeclSet, DeclSet, _) -->
+output_c_module(c_module(ModuleName, Procedures), DeclSet0, DeclSet, _) -->
+	io__write_string("\n"),
+	output_c_procedure_list_decls(Procedures, DeclSet0, DeclSet),
 	io__write_string("\n"),
 	io__write_string("BEGIN_MODULE("),
 	output_module_name(ModuleName),
@@ -346,7 +348,7 @@ output_c_module(c_module(ModuleName, Procedures), DeclSet, DeclSet, _) -->
 	io__write_string("\n"),
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
 	globals__io_lookup_bool_option(emit_c_loops, EmitCLoops),
-	output_c_procedure_list(Procedures, DeclSet, PrintComments, EmitCLoops),
+	output_c_procedure_list(Procedures, PrintComments, EmitCLoops),
 	io__write_string("END_MODULE\n").
 
 output_c_module(c_data(BaseName, VarName, ExportedFromModule, ArgVals, _Refs),
@@ -510,20 +512,37 @@ output_c_label_init(Label) -->
 		io__write_string(");\n")
 	).
 
-:- pred output_c_procedure_list(list(c_procedure), decl_set, bool, bool,
+:- pred output_c_procedure_list_decls(list(c_procedure), decl_set, decl_set,
 	io__state, io__state).
-:- mode output_c_procedure_list(in, in, in, in, di, uo) is det.
+:- mode output_c_procedure_list_decls(in, in, out, di, uo) is det.
 
-output_c_procedure_list([], _, _, _) --> [].
-output_c_procedure_list([Proc | Procs], DeclSet, PrintComments, EmitCLoops) -->
-	output_c_procedure(Proc, DeclSet, PrintComments, EmitCLoops),
-	output_c_procedure_list(Procs, DeclSet, PrintComments, EmitCLoops).
+output_c_procedure_list_decls([], DeclSet, DeclSet) --> [].
+output_c_procedure_list_decls([Proc | Procs], DeclSet0, DeclSet) -->
+	output_c_procedure_decls(Proc, DeclSet0, DeclSet1),
+	output_c_procedure_list_decls(Procs, DeclSet1, DeclSet).
 
-:- pred output_c_procedure(c_procedure, decl_set, bool, bool,
+:- pred output_c_procedure_list(list(c_procedure), bool, bool,
+				io__state, io__state).
+:- mode output_c_procedure_list(in, in, in, di, uo) is det.
+
+output_c_procedure_list([], _, _) --> [].
+output_c_procedure_list([Proc | Procs], PrintComments, EmitCLoops) -->
+	output_c_procedure(Proc, PrintComments, EmitCLoops),
+	output_c_procedure_list(Procs, PrintComments, EmitCLoops).
+
+:- pred output_c_procedure_decls(c_procedure, decl_set, decl_set,
+				io__state, io__state).
+:- mode output_c_procedure_decls(in, in, out, di, uo) is det.
+
+output_c_procedure_decls(Proc, DeclSet0, DeclSet) -->
+	{ Proc = c_procedure(_Name, _Arity, _ModeNum0, Instrs) },
+	output_instruction_list_decls(Instrs, DeclSet0, DeclSet).
+
+:- pred output_c_procedure(c_procedure, bool, bool,
 	io__state, io__state).
-:- mode output_c_procedure(in, in, in, in, di, uo) is det.
+:- mode output_c_procedure(in, in, in, di, uo) is det.
 
-output_c_procedure(Proc, DeclSet, PrintComments, EmitCLoops) -->
+output_c_procedure(Proc, PrintComments, EmitCLoops) -->
 	{ Proc = c_procedure(Name, Arity, ModeNum0, Instrs) },
 	( { PrintComments = yes } ->
 		io__write_string("\n/*-------------------------------------"),
@@ -550,7 +569,7 @@ output_c_procedure(Proc, DeclSet, PrintComments, EmitCLoops) -->
 	;
 		{ WhileSet = WhileSet0 }
 	),
-	output_instruction_list(Instrs, DeclSet, PrintComments,
+	output_instruction_list(Instrs, PrintComments,
 		CallerLabel - ContLabelSet, WhileSet).
 
 	% Find the entry label for the procedure, 
@@ -658,53 +677,108 @@ llds_out__is_while_label(Label, [Instr0 - Comment0 | Instrs0], Instrs,
 		llds_out__is_while_label(Label, Instrs0, Instrs, Count0, Count)
 	).
 
-:- pred output_instruction_list(list(instruction), decl_set, bool,
-	pair(label, set(label)), set(label), io__state, io__state).
-:- mode output_instruction_list(in, in, in, in, in, di, uo) is det.
+%-----------------------------------------------------------------------------%
 
-output_instruction_list([], _, _, _, _) --> [].
-output_instruction_list([Instr0 - Comment0 | Instrs], DeclSet,
-		PrintComments, ProfInfo, WhileSet) -->
-	output_instruction_and_comment(Instr0, Comment0, DeclSet,
+:- pred output_instruction_list_decls(list(instruction), decl_set, decl_set,
+					io__state, io__state).
+:- mode output_instruction_list_decls(in, in, out, di, uo) is det.
+
+output_instruction_list_decls([], DeclSet, DeclSet) --> [].
+output_instruction_list_decls([Instr0 - _Comment0 | Instrs],
+		DeclSet0, DeclSet) -->
+	output_instruction_decls(Instr0, DeclSet0, DeclSet1),
+	output_instruction_list_decls(Instrs, DeclSet1, DeclSet).
+
+:- pred output_instruction_decls(instr, decl_set, decl_set,
+	io__state, io__state).
+:- mode output_instruction_decls(in, in, out, di, uo) is det.
+
+output_instruction_decls(comment(_), DeclSet, DeclSet) --> [].
+output_instruction_decls(livevals(_), DeclSet, DeclSet) --> [].
+output_instruction_decls(block(_TempR, _TempF, Instrs),
+		DeclSet0, DeclSet) --> 
+	output_instruction_list_decls(Instrs, DeclSet0, DeclSet).
+output_instruction_decls(assign(Lval, Rval), DeclSet0, DeclSet) -->
+	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet1),
+	output_rval_decls(Rval, "", "", 0, _, DeclSet1, DeclSet).
+output_instruction_decls(call(Target, ContLabel, _, _), DeclSet0, DeclSet) -->
+	output_code_addr_decls(Target, "", "", 0, _, DeclSet0, DeclSet1),
+	output_code_addr_decls(ContLabel, "", "", 0, _, DeclSet1, DeclSet).
+output_instruction_decls(c_code(_), DeclSet, DeclSet) --> [].
+output_instruction_decls(mkframe(_, _, FailureContinuation),
+		DeclSet0, DeclSet) -->
+	output_code_addr_decls(FailureContinuation, "", "", 0, _,
+		DeclSet0, DeclSet).
+output_instruction_decls(modframe(FailureContinuation), DeclSet0, DeclSet) -->
+	output_code_addr_decls(FailureContinuation, "", "", 0, _,
+		DeclSet0, DeclSet).
+output_instruction_decls(label(_), DeclSet, DeclSet) --> [].
+output_instruction_decls(goto(CodeAddr), DeclSet0, DeclSet) -->
+	output_code_addr_decls(CodeAddr, "", "", 0, _, DeclSet0, DeclSet).
+output_instruction_decls(computed_goto(Rval, _Labels), DeclSet0, DeclSet) -->
+	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet).
+output_instruction_decls(if_val(Rval, Target), DeclSet0, DeclSet) -->
+	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet1),
+	output_code_addr_decls(Target, "", "", 0, _, DeclSet1, DeclSet).
+output_instruction_decls(incr_hp(Lval, _Tag, Rval), DeclSet0, DeclSet) -->
+	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet1),
+	output_rval_decls(Rval, "", "", 0, _, DeclSet1, DeclSet).
+output_instruction_decls(mark_hp(Lval), DeclSet0, DeclSet) -->
+	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet).
+output_instruction_decls(restore_hp(Rval), DeclSet0, DeclSet) -->
+	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet).
+output_instruction_decls(store_ticket(Lval), DeclSet0, DeclSet) -->
+	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet).
+output_instruction_decls(restore_ticket(Rval), DeclSet0, DeclSet) -->
+	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet).
+output_instruction_decls(discard_ticket, DeclSet, DeclSet) --> [].
+output_instruction_decls(incr_sp(_, _), DeclSet, DeclSet) --> [].
+output_instruction_decls(decr_sp(_), DeclSet, DeclSet) --> [].
+output_instruction_decls(pragma_c(_Decls, Inputs, _C_Code, Outputs, _Context),
+		DeclSet0, DeclSet) -->
+	output_pragma_input_rval_decls(Inputs, DeclSet0, DeclSet1),
+	output_pragma_output_lval_decls(Outputs, DeclSet1, DeclSet).
+
+%-----------------------------------------------------------------------------%
+
+:- pred output_instruction_list(list(instruction), bool,
+	pair(label, set(label)), set(label), io__state, io__state).
+:- mode output_instruction_list(in, in, in, in, di, uo) is det.
+
+output_instruction_list([], _, _, _) --> [].
+output_instruction_list([Instr0 - Comment0 | Instrs], PrintComments, ProfInfo,
+		WhileSet) -->
+	output_instruction_and_comment(Instr0, Comment0,
 		PrintComments, ProfInfo),
 	( { Instr0 = label(Label), set__member(Label, WhileSet) } ->
 		io__write_string("\twhile (1) {\n"),
-		output_instruction_list_while(Instrs, Label, DeclSet,
+		output_instruction_list_while(Instrs, Label,
 			PrintComments, ProfInfo, WhileSet)
 	;
-		output_instruction_list(Instrs, DeclSet,
-			PrintComments, ProfInfo, WhileSet)
+		output_instruction_list(Instrs, PrintComments, ProfInfo,
+			WhileSet)
 	).
 
-:- pred output_instruction_list_while(list(instruction), label, decl_set,
+:- pred output_instruction_list_while(list(instruction), label,
 	bool, pair(label, set(label)), set(label), io__state, io__state).
-:- mode output_instruction_list_while(in, in, in, in, in, in, di, uo) is det.
+:- mode output_instruction_list_while(in, in, in, in, in, di, uo) is det.
 
-output_instruction_list_while([], _, _, _, _, _) -->
+output_instruction_list_while([], _, _, _, _) -->
 	io__write_string("\tbreak; } /* end while */\n").
-output_instruction_list_while([Instr0 - Comment0 | Instrs], Label, DeclSet0,
+output_instruction_list_while([Instr0 - Comment0 | Instrs], Label,
 		PrintComments, ProfInfo, WhileSet) -->
 	( { Instr0 = label(_) } ->
 		io__write_string("\tbreak; } /* end while */\n"),
-		output_instruction_list([Instr0 - Comment0 | Instrs], DeclSet0,
+		output_instruction_list([Instr0 - Comment0 | Instrs],
 			PrintComments, ProfInfo, WhileSet)
 	; { Instr0 = goto(label(Label)) } ->
 		io__write_string("\t/* continue */ } /* end while */\n"),
-		output_instruction_list(Instrs, DeclSet0,
-			PrintComments, ProfInfo, WhileSet)
+		output_instruction_list(Instrs, PrintComments, ProfInfo,
+			WhileSet)
 	; { Instr0 = if_val(Rval, label(Label)) } ->
-		output_rval_decls(Rval, "\t{\n\t\t", "\t\t", 0, M,
-			DeclSet0, DeclSet1),
-		output_code_addr_decls(label(Label), "\t{\n\t\t", "\t\t", M, N,
-			DeclSet1, _),
 		io__write_string("\tif ("),
 		output_rval(Rval),
 		io__write_string(")\n\t\tcontinue;\n"),
-		( { N > 0 } ->
-			io__write_string("\t}\n")
-		;
-			[]
-		),
 		( { PrintComments = yes, Comment0 \= "" } ->
 			io__write_string("\t\t/* "),
 			io__write_string(Comment0),
@@ -712,31 +786,31 @@ output_instruction_list_while([Instr0 - Comment0 | Instrs], Label, DeclSet0,
 		;
 			[]
 		),
-		output_instruction_list_while(Instrs, Label, DeclSet0,
+		output_instruction_list_while(Instrs, Label,
 			PrintComments, ProfInfo, WhileSet)
 	;
-		output_instruction_and_comment(Instr0, Comment0, DeclSet0,
+		output_instruction_and_comment(Instr0, Comment0,
 			PrintComments, ProfInfo),
-		output_instruction_list_while(Instrs, Label, DeclSet0,
+		output_instruction_list_while(Instrs, Label,
 			PrintComments, ProfInfo, WhileSet)
 	).
 
-:- pred output_instruction_and_comment(instr, string, decl_set, bool,
+:- pred output_instruction_and_comment(instr, string, bool,
 	pair(label, set(label)), io__state, io__state).
-:- mode output_instruction_and_comment(in, in, in, in, in, di, uo) is det.
+:- mode output_instruction_and_comment(in, in, in, in, di, uo) is det.
 
-output_instruction_and_comment(Instr, Comment, DeclSet, PrintComments,
+output_instruction_and_comment(Instr, Comment, PrintComments,
 		ProfInfo) -->
 	(
 		{ PrintComments = no },
 		( { Instr = comment(_) ; Instr = livevals(_) } ->
 			[]
 		;
-			output_instruction(Instr, DeclSet, ProfInfo)
+			output_instruction(Instr, ProfInfo)
 		)
 	;
 		{ PrintComments = yes },
-		output_instruction(Instr, DeclSet, ProfInfo),
+		output_instruction(Instr, ProfInfo),
 		( { Comment = "" } ->
 			[]
 		;
@@ -746,30 +820,29 @@ output_instruction_and_comment(Instr, Comment, DeclSet, PrintComments,
 		)
 	).
 
-	% output_instruction/3 is only for debugging.
-	% Normally we use output_instruction/5.
+	% output_instruction/2 is only for debugging.
+	% Normally we use output_instruction/4.
 
 output_instruction(Instr) -->
-	{ set__init(DeclSet) },
 	{ set__init(ContLabelSet) },
 	{ ProfInfo = local(proc("DEBUG", predicate, "DEBUG", 0, 0))
 			- ContLabelSet },
-	output_instruction(Instr, DeclSet, ProfInfo).
+	output_instruction(Instr, ProfInfo).
 
-:- pred output_instruction(instr, decl_set, pair(label, set(label)),
-	io__state, io__state).
-:- mode output_instruction(in, in, in, di, uo) is det.
+:- pred output_instruction(instr, pair(label, set(label)),
+				io__state, io__state).
+:- mode output_instruction(in, in, di, uo) is det.
 
-output_instruction(comment(Comment), _, _) -->
+output_instruction(comment(Comment), _) -->
 	io__write_strings(["/* ", Comment, " */\n"]).
 
-output_instruction(livevals(LiveVals), _, _) -->
+output_instruction(livevals(LiveVals), _) -->
 	io__write_string("/*\n * Live lvalues:\n"),
 	{ set__to_sorted_list(LiveVals, LiveValsList) },
 	output_livevals(LiveValsList),
 	io__write_string(" */\n").
 
-output_instruction(block(TempR, TempF, Instrs), DeclSet, ProfInfo) -->
+output_instruction(block(TempR, TempF, Instrs), ProfInfo) -->
 	io__write_string("\t{\n"),
 	( { TempR > 0 } ->
 		io__write_string("\tWord "),
@@ -787,118 +860,65 @@ output_instruction(block(TempR, TempF, Instrs), DeclSet, ProfInfo) -->
 	),
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
 	{ set__init(WhileSet0) },
-	output_instruction_list(Instrs, DeclSet, PrintComments, ProfInfo,
+	output_instruction_list(Instrs, PrintComments, ProfInfo,
 		WhileSet0),
 	io__write_string("\t}\n").
 
-output_instruction(assign(Lval, Rval), DeclSet0, _) -->
-	output_lval_decls(Lval, "\t{\n\t", "\t", 0, M,
-		DeclSet0, DeclSet1),
-	output_rval_decls(Rval, "\t{\n\t", "\t", M, N,
-		DeclSet1, _),
+output_instruction(assign(Lval, Rval), _) -->
 	io__write_string("\t"),
 	output_lval(Lval),
 	io__write_string(" = "),
 	{ llds__lval_type(Lval, Type) },
 	output_rval_as_type(Rval, Type),
-	io__write_string(";\n"),
-	( { N > 0 } ->
-		io__write_string("\t}\n")
-	;
-		[]
-	).
+	io__write_string(";\n").
 
-output_instruction(call(Target, ContLabel, LiveVals, _), DeclSet0, ProfInfo) -->
+output_instruction(call(Target, ContLabel, LiveVals, _), ProfInfo) -->
 	{ ProfInfo = CallerLabel - _ },
-	output_code_addr_decls(Target, "\t{\n\t", "\t", 0, M,
-		DeclSet0, DeclSet1),
-	output_code_addr_decls(ContLabel, "\t{\n\t", "\t", M, N,
-		DeclSet1, _),
 	output_call(Target, ContLabel, CallerLabel),
-	( { N > 0 } ->
-		io__write_string("\t}\n")
-	;
-		[]
-	),
 	output_gc_livevals(LiveVals).
 
-output_instruction(c_code(C_Code_String), _, _) -->
+output_instruction(c_code(C_Code_String), _) -->
 	io__write_string("\t"),
 	io__write_string(C_Code_String).
 
-output_instruction(mkframe(Str, Num, FailureContinuation), DeclSet0, _) -->
-	output_code_addr_decls(FailureContinuation, "\t{\n\t", "\t", 0, N,
-		DeclSet0, _),
+output_instruction(mkframe(Str, Num, FailureContinuation), _) -->
 	io__write_string("\tmkframe("""),
 	io__write_string(Str),
 	io__write_string(""", "),
 	io__write_int(Num),
 	io__write_string(", "),
 	output_code_addr(FailureContinuation),
-	io__write_string(");\n"),
-	( { N > 0 } ->
-		io__write_string("\t}\n")
-	;
-		[]
-	).
+	io__write_string(");\n").
 
-output_instruction(modframe(FailureContinuation), DeclSet0, _) -->
-	output_code_addr_decls(FailureContinuation, "\t{\n\t", "\t", 0, N,
-		DeclSet0, _),
+output_instruction(modframe(FailureContinuation), _) -->
 	io__write_string("\tmodframe("),
 	output_code_addr(FailureContinuation),
-	io__write_string(");\n"),
-	( { N > 0 } ->
-		io__write_string("\t}\n")
-	;
-		[]
-	).
+	io__write_string(");\n").
 
-output_instruction(label(Label), _, ProfInfo) -->
+output_instruction(label(Label), ProfInfo) -->
 	output_label_defn(Label),
 	maybe_output_update_prof_counter(Label, ProfInfo).
 
-output_instruction(goto(CodeAddr), DeclSet0, ProfInfo) -->
+output_instruction(goto(CodeAddr), ProfInfo) -->
 	{ ProfInfo = CallerLabel - _ },
-	output_code_addr_decls(CodeAddr, "\t{\n\t", "\t", 0, N, DeclSet0, _),
 	io__write_string("\t"),
-	output_goto(CodeAddr, CallerLabel),
-	( { N > 0 } ->
-		io__write_string("\t}\n")
-	;
-		[]
-	).
+	output_goto(CodeAddr, CallerLabel).
 
-output_instruction(computed_goto(Rval, Labels), DeclSet0, _) -->
-	output_rval_decls(Rval, "\t{\n\t", "\t", 0, N, DeclSet0, _),
+output_instruction(computed_goto(Rval, Labels), _) -->
 	io__write_string("\tCOMPUTED_GOTO("),
 	output_rval_as_type(Rval, unsigned),
 	io__write_string(",\n\t\t"),
 	output_label_list(Labels),
-	io__write_string(");\n"),
-	( { N > 0 } ->
-		io__write_string("\t}\n")
-	;
-		[]
-	).
+	io__write_string(");\n").
 
-output_instruction(if_val(Rval, Target), DeclSet0, ProfInfo) -->
+output_instruction(if_val(Rval, Target), ProfInfo) -->
 	{ ProfInfo = CallerLabel - _ },
-	output_rval_decls(Rval, "\t{\n\t", "\t", 0, M, DeclSet0, DeclSet1),
-	output_code_addr_decls(Target, "\t{\n\t", "\t", M, N, DeclSet1, _),
 	io__write_string("\tif ("),
 	output_rval_as_type(Rval, bool),
 	io__write_string(")\n\t\t"),
-	output_goto(Target, CallerLabel),
-	( { N > 0 } ->
-		io__write_string("\t}\n")
-	;
-		[]
-	).
+	output_goto(Target, CallerLabel).
 
-output_instruction(incr_hp(Lval, MaybeTag, Rval), DeclSet0, _) -->
-	output_lval_decls(Lval, "\t{\n\t", "\t", 0, M, DeclSet0, DeclSet1),
-	output_rval_decls(Rval, "\t{\n\t", "\t", M, N, DeclSet1, _),
+output_instruction(incr_hp(Lval, MaybeTag, Rval), _) -->
 	(
 		{ MaybeTag = no },
 		io__write_string("\tincr_hp("),
@@ -912,68 +932,39 @@ output_instruction(incr_hp(Lval, MaybeTag, Rval), DeclSet0, _) -->
 	),
 	io__write_string(", "),
 	output_rval_as_type(Rval, word),
-	io__write_string(");\n"),
-	( { N > 0 } ->
-		io__write_string("\t}\n")
-	;
-		[]
-	).
+	io__write_string(");\n").
 
-output_instruction(mark_hp(Lval), DeclSet0, _) -->
-	output_lval_decls(Lval, "\t{\n\t", "\t", 0, N, DeclSet0, _),
+output_instruction(mark_hp(Lval), _) -->
 	io__write_string("\tmark_hp("),
 	output_lval_as_word(Lval),
-	io__write_string(");\n"),
-	( { N > 0 } ->
-		io__write_string("\t}\n")
-	;
-		[]
-	).
+	io__write_string(");\n").
 
-output_instruction(restore_hp(Rval), DeclSet0, _) -->
-	output_rval_decls(Rval, "\t{\n\t", "\t", 0, N, DeclSet0, _),
+output_instruction(restore_hp(Rval), _) -->
 	io__write_string("\trestore_hp("),
 	output_rval_as_type(Rval, word),
-	io__write_string(");\n"),
-	( { N > 0 } ->
-		io__write_string("\t}\n")
-	;
-		[]
-	).
+	io__write_string(");\n").
 
-output_instruction(store_ticket(Lval), DeclSet0, _) -->
-	output_lval_decls(Lval, "\t{\n\t", "\t", 0, N, DeclSet0, _),
+output_instruction(store_ticket(Lval), _) -->
 	io__write_string("\tstore_ticket("),
 	output_lval_as_word(Lval),
-	io__write_string(");\n"),
-	( { N > 0 } ->
-		io__write_string("\t}\n")
-	;
-		[]
-	).
+	io__write_string(");\n").
 
-output_instruction(restore_ticket(Rval), DeclSet0, _) -->
-	output_rval_decls(Rval, "\t{\n\t", "\t", 0, N, DeclSet0, _),
+output_instruction(restore_ticket(Rval), _) -->
 	io__write_string("\trestore_ticket("),
 	output_rval_as_type(Rval, word),
-	io__write_string(");\n"),
-	( { N > 0 } ->
-		io__write_string("\t}\n")
-	;
-		[]
-	).
+	io__write_string(");\n").
 
-output_instruction(discard_ticket, _, _) -->
+output_instruction(discard_ticket, _) -->
 	io__write_string("\tdiscard_ticket();\n").
 
-output_instruction(incr_sp(N, Msg), _, _) -->
+output_instruction(incr_sp(N, Msg), _) -->
 	io__write_string("\tincr_sp_push_msg("),
 	io__write_int(N),
 	io__write_string(", """),
 	io__write_string(Msg),
 	io__write_string(""");\n").
 
-output_instruction(decr_sp(N), _, _) -->
+output_instruction(decr_sp(N), _) -->
 	io__write_string("\tdecr_sp_pop_msg("),
 	io__write_int(N),
 	io__write_string(");\n").
@@ -988,7 +979,7 @@ output_instruction(decr_sp(N), _, _) -->
 	% }
 	%
 	% The printing of the #line directives is currently disabled.
-output_instruction(pragma_c(Decls, Inputs, C_Code, Outputs, _Context), _, _) -->
+output_instruction(pragma_c(Decls, Inputs, C_Code, Outputs, _Context), _) -->
 %	{ term__context_file(Context, File) },
 %	{ term__context_line(Context, Line) },
 %	% The context is unfortunately bogus for pragma_c_codes inlined
@@ -1007,9 +998,6 @@ output_instruction(pragma_c(Decls, Inputs, C_Code, Outputs, _Context), _, _) -->
 %	),
 	io__write_string("\t{\n"),
 	output_pragma_decls(Decls),
-	{ set__init(DeclSet0) },
-	output_pragma_input_rval_decls(Inputs, DeclSet0, DeclSet1),
-	output_pragma_output_lval_decls(Outputs, DeclSet1, _DeclSet),
 	output_pragma_inputs(Inputs),
 	io__write_string("\t\t"),
 	io__write_string(C_Code),

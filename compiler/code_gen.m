@@ -39,8 +39,9 @@
 :- mode generate_code(in, out, out, di, uo) is det.
 
 :- pred generate_proc_code(proc_info, proc_id, pred_id, module_info, 
-	shape_table, shape_table, c_procedure, io__state, io__state).
-:- mode generate_proc_code(in, in, in, in, in, out, out, di, uo) is det.
+	shape_table, int, shape_table, int, c_procedure, io__state, io__state).
+:- mode generate_proc_code(in, in, in, in, in, in, out, out, out,
+	di, uo) is det.
 		% N.B. could use unique mode for `shape_table'
 
 		% This predicate generates code for a goal.
@@ -124,37 +125,39 @@ generate_pred_code(ModuleInfo0, ModuleInfo, PredId, PredInfo, ProcIds, Code) -->
 	),
 		% generate all the procedures for this predicate
 	{ module_info_get_shapes(ModuleInfo0, Shapes0) },
+	{ module_info_get_cell_count(ModuleInfo0, CellCount0) },
 	generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
-		Shapes0, Shapes, [], Code),
-	{ module_info_set_shapes(ModuleInfo0, Shapes, ModuleInfo) }.
+		Shapes0, Shapes, CellCount0, CellCount, [], Code),
+	{ module_info_set_cell_count(ModuleInfo0, CellCount, ModuleInfo1) },
+	{ module_info_set_shapes(ModuleInfo1, Shapes, ModuleInfo) }.
 
 % For all the modes of predicate PredId, generate the appropriate
 % code (deterministic, semideterministic, or nondeterministic).
 
 :- pred generate_proc_list_code(list(proc_id), pred_id, pred_info, module_info,
-	shape_table, shape_table, list(c_procedure), list(c_procedure),
-	io__state, io__state).
+	shape_table, shape_table, int, int,
+	list(c_procedure), list(c_procedure), io__state, io__state).
 % :- mode generate_proc_list_code(in, in, in, in, di, uo, di, uo, di, uo)
 %	is det.
-:- mode generate_proc_list_code(in, in, in, in, in, out, in, out, di, uo)
-	is det.
+:- mode generate_proc_list_code(in, in, in, in, in, out, in, out, in, out,
+	di, uo) is det.
 
 generate_proc_list_code([], _PredId, _PredInfo, _ModuleInfo,
-		Shapes, Shapes, Procs, Procs) --> [].
+		Shapes, Shapes, CellCount, CellCount, Procs, Procs) --> [].
 generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
-		Shapes0, Shapes, Procs0, Procs) -->
+		Shapes0, Shapes, CellCount0, CellCount, Procs0, Procs) -->
 	{ pred_info_procedures(PredInfo, ProcInfos) },
 		% locate the proc_info structure for this mode of the predicate
 	{ map__lookup(ProcInfos, ProcId, ProcInfo) },
 		% find out if the proc is deterministic/etc
 	generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo0,
-		Shapes0, Shapes1, Proc),
+		Shapes0, CellCount0, Shapes1, CellCount1, Proc),
 	{ Procs1 = [Proc | Procs0] },
 	generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
-		Shapes1, Shapes, Procs1, Procs).
+		Shapes1, Shapes, CellCount1, CellCount, Procs1, Procs).
 
 generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo,
-		Shapes0, Shapes, Proc) -->
+		Shapes0, CellCount0, Shapes, CellCount, Proc) -->
 		% find out if the proc is deterministic/etc
 	{ proc_info_interface_code_model(ProcInfo, CodeModel) },
 		% get the goal for this procedure
@@ -182,12 +185,13 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo,
 		% initialise the code_info structure 
 	{ code_info__init(VarInfo, Liveness, StackSlots, SaveSuccip, Globals,
 		PredId, ProcId, ProcInfo, InitialInst, FollowVars,
-		ModuleInfo, Shapes0, CodeInfo0) },
+		ModuleInfo, CellCount0, Shapes0, CodeInfo0) },
 		% generate code for the procedure
 	{ generate_category_code(CodeModel, Goal, CodeTree, SUsed, CodeInfo0,
 		CodeInfo) },
-		% extract the new shape table
+		% extract the new shape table and cell count
 	{ code_info__get_shapes(Shapes, CodeInfo, _CodeInfo1) },
+	{ code_info__get_cell_count(CellCount, CodeInfo, _CodeInfo2) },
 
 		% turn the code tree into a list
 	{ tree__flatten(CodeTree, FragmentList) },
