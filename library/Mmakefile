@@ -80,8 +80,9 @@ endif
 # maintain the expected output of the debugging test cases in debugging grades.
 #
 # Always generate dependencies for use by `mmc --make'.
-MCFLAGS += --strict-sequential --trace minimum --generate-mmc-deps \
-		$(INTERMODULE_OPTS) $(ENABLE_TERM_OPTS) $(CHECK_TERM_OPTS)
+MCFLAGS += --strict-sequential --trace minimum $(ALL_GRADEFLAGS) \
+		--generate-mmc-deps $(INTERMODULE_OPTS) \
+		$(ENABLE_TERM_OPTS) $(CHECK_TERM_OPTS)
 
 # The IL and Java implementations of the standard library are not yet complete,
 # so we need to pass `--allow-stubs' to get them to compile.
