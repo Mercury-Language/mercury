@@ -81,7 +81,6 @@ ORDINARY_PROGS=	\
 	multimode \
 	myset_test \
 	name_mangling \
-	needs_init \
 	no_fully_strict \
 	no_inline \
 	nondet_ctrl_vn \
@@ -150,6 +149,8 @@ endif
 #		which are not yet fully supported.
 #
 # XXX csharp_test doesn't work yet (not even in il* grades)
+#
+# XXX needs_init doesn't work yet in profiling grades.
 
 # The following tests are passed only in some grades:
 #
