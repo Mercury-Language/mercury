@@ -434,12 +434,16 @@ printlabel(/* const */ Code *w)
 
 	internal = MR_lookup_internal_by_addr(w);
 	if (internal != NULL) {
-		printf("label %s (%p)\n", internal->i_name, w);
+		if (internal->i_name != NULL) {
+			printf("label %s (%p)\n", internal->i_name, w);
+		} else {
+			printf("label (%p)\n", w);
+		}
 	} else {
 #ifdef	MR_DEBUG_GOTOS
 		MR_Entry	*entry;
 		entry = MR_prev_entry_by_addr(w);
-		if (entry->e_addr == w) {
+		if (entry->e_addr == w && entry->e_name != NULL) {
 			printf("label %s (%p)\n", entry->e_name, w);
 		} else {
 			printf("label UNKNOWN (%p)\n", w);

@@ -236,6 +236,41 @@
 #endif
 
 /*
+** MR_INSERT_ENTRY_LABEL_NAMES -- the internal label table should contain
+**				  the names of labels as well as their
+**				  addresses and layouts (label names are
+**				  quite big, so prefer not to include them
+**				  unless they are necessary).
+*/
+
+#ifdef MR_INSERT_ENTRY_LABEL_NAMES
+  #error "MR_INSERT_ENTRY_LABEL_NAMES should not be defined on the command line"
+#endif
+#if defined(PROFILE_CALLS) || defined(MR_LOWLEVEL_DEBUG) \
+		|| defined(MR_DEBUG_AGC_SCHEDULING)
+  #define MR_INSERT_ENTRY_LABEL_NAMES
+#endif
+
+/*
+** MR_INSERT_INTERNAL_LABEL_NAMES -- the internal label table should contain
+**				     the names of labels as well as their
+**				     addresses and layouts (label names are
+**				     quite big, so prefer not to include them
+**				     unless they are necessary).
+**
+** XXX I am not sure whether MR_INSERT_INTERNAL_LABEL_NAMES needs to be
+** enabled for PROFILE_CALLS - zs.
+*/
+
+#ifdef MR_INSERT_INTERNAL_LABEL_NAMES
+  #error "MR_INSERT_INTERNAL_LABEL_NAMES should not be defined on the command line"
+#endif
+#if defined(PROFILE_CALLS) || defined(MR_LOWLEVEL_DEBUG) \
+		|| defined(MR_DEBUG_AGC_SCHEDULING)
+  #define MR_INSERT_INTERNAL_LABEL_NAMES
+#endif
+
+/*
 ** MR_NEED_INITIALIZATION_AT_START -- the module specific initialization code
 **				      must be run before any Mercury code
 **				      is run.
