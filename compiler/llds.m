@@ -195,10 +195,37 @@
 :- type instruction	==	pair(instr, string).
 			%	instruction, comment
 
+:- type nondet_tail_call
+	--->	no_tail_call
+				% At the point of the call, the procedure has
+				% more alternatives.
+				%
+				% Under these conditions, the call cannot be
+				% transformed into a tail call.
+	;	checked_tail_call
+				% At the point of the call, the procedure has
+				% no more alternatives, and curfr and maxfr
+				% are not guaranteed to be identical.
+				%
+				% Under these conditions, the call can be
+				% transformed into a tail call whenever its
+				% return address leads to the procedure
+				% epilogue AND curfr and maxfr are found
+				% to be identical at runtime.
+	;	unchecked_tail_call.
+				% At the point of the call the procedure has no
+				% more alternatives, and curfr and maxfr are
+				% guaranteed to be identical.
+				%
+				% Under these conditions, the call can be
+				% transformed into a tail call whenever its
+				% return address leads to the procedure
+				% epilogue.
+
 :- type call_model
 	--->	det
 	;	semidet
-	;	nondet(bool).
+	;	nondet(nondet_tail_call).
 
 	% `instr' defines the various LLDS virtual machine instructions.
 	% Each instruction gets compiled to a simple piece of C code

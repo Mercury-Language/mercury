@@ -3576,6 +3576,12 @@ Disable elimination of jumps to jumps.
 Disable elimination of jumps to ordinary code.
 
 @sp 1
+@item --checked-nondet-tailcalls
+Convert nondet calls into tail calls whenever possible, even
+when this requires a runtime check. This option tries to
+minimize stack consumption, possibly at the expense of speed.
+
+@sp 1
 @item --no-optimize-labels
 Disable elimination of dead labels and code.
 

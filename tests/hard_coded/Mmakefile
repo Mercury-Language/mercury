@@ -16,6 +16,7 @@ PROGS=	\
 	cc_and_non_cc_test \
 	cc_nondet_disj \
 	cc_multi_bug \
+	checked_nondet_tailcall \
 	closure_extension \
 	common_type_cast \
 	construct \
@@ -104,6 +105,7 @@ PROGS=	\
 
 # some tests need to be compiled with particular options
 
+MCFLAGS-checked_nondet_tailcall	=	--checked-nondet-tailcalls
 MCFLAGS-bigtest		=	--intermodule-optimization -O3
 MCFLAGS-lp		=	--intermodule-optimization -O3
 MCFLAGS-boyer		=	--infer-all

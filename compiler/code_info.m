@@ -1188,12 +1188,12 @@ code_info__save_hp_in_branch(Code, Slot, Pos0, Pos) :-
 :- pred code_info__failure_is_direct_branch(code_addr::out,
 	code_info::in, code_info::out) is semidet.
 
-	% Checks whether the current failure environment would allow
-	% a model_non call at this point to be turned into a tail call,
-	% provided of course that the return from the call is followed
-	% immediately by succeed().
+	% Checks under what circumstances the current failure environment
+	% would allow a model_non call at this point to be turned into a
+	% tail call, provided of course that the return from the call is
+	% followed immediately by succeed().
 
-:- pred code_info__may_use_nondet_tailcall(bool::out,
+:- pred code_info__may_use_nondet_tailcall(nondet_tail_call::out,
 	code_info::in, code_info::out) is det.
 
 	% Materialize the given variables into registers or stack slots.
@@ -2102,18 +2102,24 @@ code_info__failure_is_direct_branch(CodeAddr) -->
 	{ stack__top(ResumePoints, TopResumePoint) },
 	code_info__pick_matching_resume_addr(TopResumePoint, CodeAddr).
 
-code_info__may_use_nondet_tailcall(MayTailCall) -->
+code_info__may_use_nondet_tailcall(TailCallStatus) -->
 	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePoints, ResumeKnown, _, _, _) },
-	(
-		{ ResumeKnown = resume_point_known },
-		{ stack__top_det(ResumePoints, TopResumePoint) },
-		{ TopResumePoint = stack_only(_, do_fail) }
+	{ FailInfo = fail_info(ResumePoints0, ResumeKnown, _, _, _) },
+	{
+		stack__pop(ResumePoints0, ResumePoint1, ResumePoints1),
+		stack__is_empty(ResumePoints1),
+		ResumePoint1 = stack_only(_, do_fail)
 	->
-		{ MayTailCall = yes }
+		(
+			ResumeKnown = resume_point_known,
+			TailCallStatus = unchecked_tail_call
+		;
+			ResumeKnown = resume_point_unknown,
+			TailCallStatus = checked_tail_call
+		)
 	;
-		{ MayTailCall = no }
-	).
+		TailCallStatus = no_tail_call
+	}.
 
 %---------------------------------------------------------------------------%
 

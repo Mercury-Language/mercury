@@ -394,8 +394,8 @@ call_gen__prepare_for_call(CodeModel, FlushCode, CallModel) -->
 		{ FlushCode = empty }
 	;
 		{ CodeModel = model_non },
-		code_info__may_use_nondet_tailcall(TailCall),
-		{ CallModel = nondet(TailCall) },
+		code_info__may_use_nondet_tailcall(TailCallStatus),
+		{ CallModel = nondet(TailCallStatus) },
 		code_info__flush_resume_vars_to_stack(FlushCode),
 		code_info__set_resume_point_and_frame_to_unknown
 	).
