@@ -1,22 +1,31 @@
 #!/bin/sh
 #---------------------------------------------------------------------------#
-# Copyright (C) 2001 The University of Melbourne.
+# Copyright (C) 2001,2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
 #
 # This shell script allows you to execute a version of the Mercury compiler
-# that you have built in a workspace. Everything that the compilation process
-# needs will come from that workspace: the libraries for the runtime system,
-# the trace system, the Mercury standard library, the Boehm collector, etc.
-# You specify the directory containing the workspace by setting the value of
-# the WORKSPACE environment variable. This can be done by setting up a small
-# shell script for each workspace you have:
+# that you have built in a workspace. By default, everything that the
+# compilation process needs will come from that workspace: the libraries
+# for the runtime system, the trace system, the Mercury standard library,
+# the Boehm collector, etc. You specify the directory containing the workspace
+# by setting the value of the WORKSPACE environment variable. This can be done
+# by setting up a small shell script for each workspace you have:
 #
 # #!/bin/sh
 # WORKSPACE=$HOME/mer/ws1
 # export WORKSPACE
 # exec $WORKSPACE/tools/lmc "$@"
+#
+# You can specify that the compiler executable itself should come from
+# somewhere else than $WORKSPACE/compiler/mercury_compile by putting the
+# pathname of the desired compiler into the environment variable
+# MERCURY_COMPILER_OVERRIDE. For example, if the stage2 compiler is buggy,
+# but you want to link test programs with stage2 libraries, you can set
+# WORKSPACE to point to the stage2 directory but make MERCURY_COMPILER_OVERRIDE
+# specify the stage1 compiler. This works because the stage1 and stage2
+# compilers are *supposed* to behave identically.
 #
 # If you want to track down some C level bug, you can ask this script to
 # pass -g to the C compiler and to the linker by setting the environment
@@ -37,13 +46,18 @@
 # execute the Mercury compiler under gdb by setting the environment variable
 # MMC_UNDER_GDB to the string "true".
 
-MERCURY_COMPILER=$WORKSPACE/compiler/mercury_compile
-export MERCURY_COMPILER
-
 if test ! -d $WORKSPACE
 then
 	echo "workspace $WORKSPACE does not exist"
 fi
+
+if test "$MERCURY_COMPILER_OVERRIDE" != ""
+then
+	MERCURY_COMPILER=$MERCURY_COMPILER_OVERRIDE
+else
+	MERCURY_COMPILER=$WORKSPACE/compiler/mercury_compile
+fi
+export MERCURY_COMPILER
 
 if test -s $WORKSPACE/boehm_gc/libgc.a
 then
@@ -58,7 +72,8 @@ else
 	echo "$WORKSPACE/boehm_gc does not have a gc library"
 fi
 
-LIB_FLAGS="--link-object $WORKSPACE/trace/libmer_trace.a --link-object $WORKSPACE/browser/libmer_browser.a --link-object $WORKSPACE/library/libmer_std.a --link-object $WORKSPACE/runtime/libmer_rt.a --link-object $gclib -lm"
+LIB_FLAGS="--link-object $WORKSPACE/trace/libmer_trace.a --link-object $WORKSPACE/browser/libmer_browser.a --link-object $WORKSPACE/library/libmer_std.a --link-object $WORKSPACE/runtime/libmer_rt.a --link-object $gclib -lm @TRACE_LIBS_SYSTEM@ @READLINE_LIBRARIES@"
+
 INIT_FLAGS="--trace-init-file $WORKSPACE/browser/mer_browser.init --init-file $WORKSPACE/library/mer_std.init --init-file $WORKSPACE/runtime/mer_rt.init"
 
 if test "$MMC_CDEBUG" != ""

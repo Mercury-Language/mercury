@@ -1,0 +1,38 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2003 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmakefile for the Mercury tools
+
+MAIN_TARGET=all
+
+MERCURY_DIR=..
+include $(MERCURY_DIR)/Mmake.common
+
+CONFIGURED_SCRIPTS = lmc
+
+.SUFFIXES: .in
+
+.in:
+	CONFIG_FILES=$@ CONFIG_HEADERS= $(MERCURY_DIR)/config.status
+	# check to ensure there were no mispelt autoconf variable names
+	if grep -n '[^$$]@' $@; then false; else true; fi
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: all
+all: $(CONFIGURED_SCRIPTS)
+
+#-----------------------------------------------------------------------------#
+
+clean_local: clean_scripts
+
+realclean_local: clean_scripts
+
+.PHONY: clean_scripts
+clean_scripts:
+	for file in *.in; do rm -f `basename $$file .in`; done
+
+#-----------------------------------------------------------------------------#
