@@ -24,12 +24,13 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module prog_util, prog_out, require.
+:- import_module prog_util, prog_out, require, globals, options.
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ moduleinfo_init(Name, Module0) },
 	add_item_list_decls(Items, Module0, Module1),
-	%%% { report_stats },
+	lookup_option(very_verbose, bool(VeryVerbose)),
+	maybe_report_stats(VeryVerbose),
 	add_item_list_clauses(Items, Module1, Module2),
 	{ moduleinfo_predids(Module2, RevPredIds),
 	  reverse(RevPredIds, PredIds),
@@ -457,6 +458,8 @@ preds_add(Module0, VarSet, Name, Types, Cond, Context, Module) -->
 				Module) }
 	).
 
+	% XXX This doesn't work.
+
 :- pred pred_is_compat(pred_info, pred_info).
 :- mode pred_is_compat(input, input).
 
@@ -608,19 +611,21 @@ clauses_info_init(Arity, clauses_info(VarSet, VarTypes, HeadVars, [])) :-
 clauses_info_add_clause(ClausesInfo0, ModeIds, CVarSet, Args, Body,
 		Context, ClausesInfo) :-
 	ClausesInfo0 = clauses_info(VarSet0, VarTypes, HeadVars, ClauseList0),
-	varset__merge_subst(VarSet0, CVarSet, VarSet, Subst),
-	transform(Subst, HeadVars, Args, Body, Goal),
+	varset__merge_subst(VarSet0, CVarSet, VarSet1, Subst),
+	transform(Subst, HeadVars, Args, Body, VarSet1, Goal, VarSet),
 		% XXX we should avoid append - this gives O(N*N)
 	append(ClauseList0, [clause(ModeIds, Goal, Context)], ClauseList),
 	ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, ClauseList).
 
-:- pred transform(substitution, list(var), list(term), goal, hlds__goal).
-:- mode transform(input, input, input, input, output) is det.
+:- pred transform(substitution, list(var), list(term), goal, varset,
+			hlds__goal, varset).
+:- mode transform(input, input, input, input, input, output, output) is det.
 
-transform(Subst, HeadVars, Args0, Body, Goal) :-
-	transform_goal(Body, Subst, Goal0),
+transform(Subst, HeadVars, Args0, Body, VarSet0, Goal, VarSet) :-
+	transform_goal(Body, VarSet0, Subst, Goal1, VarSet1),
 	term__apply_substitution_to_list(Args0, Subst, Args),
-	insert_head_unifications(HeadVars, Args, Goal0, Goal).
+	insert_head_unifications(HeadVars, Args, head, Goal1, VarSet1,
+		Goal, VarSet).
 
 :- pred make_n_fresh_vars(int, varset, list(var), varset).
 :- mode make_n_fresh_vars(input, input, output, output).
@@ -638,94 +643,111 @@ make_n_fresh_vars_2(N, Max, VarSet0, Vars, VarSet) :-
 	;
 		N1 is N + 1,
 		varset__new_var(VarSet0, Var, VarSet1),
-		string__int_to_string(N1, Num),
-		string__append("HeadVar__", Num, VarName),
-		varset__name_var(VarSet1, Var, VarName, VarSet2),
+		%%% string__int_to_string(N1, Num),
+		%%% string__append("HeadVar__", Num, VarName),
+		%%% varset__name_var(VarSet1, Var, VarName, VarSet2),
 		Vars = [Var | Vars1],
-		make_n_fresh_vars_2(N1, Max, VarSet2, Vars1, VarSet)
+		make_n_fresh_vars_2(N1, Max, VarSet1, Vars1, VarSet)
 	).
 
-:- pred insert_head_unifications(list(var), list(term), hlds__goal, hlds__goal).
-:- mode insert_head_unifications(input, input, input, output).
+:- type head_context ---> head ; call(pred_id).
 
-insert_head_unifications(HeadVars, Args, Goal0, Goal) :-
+:- pred insert_head_unifications(list(var), list(term), head_context,
+				hlds__goal, varset, hlds__goal, varset).
+:- mode insert_head_unifications(input, input, input, input, input, 
+				output, output).
+
+insert_head_unifications(HeadVars, Args, HeadContext, Goal0, VarSet0,
+			Goal, VarSet) :-
 	( HeadVars = [] ->
-		Goal = Goal0
+		Goal = Goal0,
+		VarSet = VarSet0
 	;
-		insert_head_unifications_2(HeadVars, Args, 0, [Goal0], List),
+		insert_head_unifications_2(HeadVars, Args, HeadContext, 0,
+			[Goal0], VarSet0, List, VarSet),
 		goalinfo_init(GoalInfo),
 		Goal = conj(List) - GoalInfo
 	).
 
-:- pred insert_head_unifications_2(list(var), list(term), int, list(hlds__goal),
-				 list(hlds__goal)).
-:- mode insert_head_unifications_2(input, input, input, input, output).
+:- pred insert_head_unifications_2(list(var), list(term), head_context, int,
+				list(hlds__goal), varset,
+				list(hlds__goal), varset).
+:- mode insert_head_unifications_2(input, input, input, input, input, input,
+				output, output).
 
-insert_head_unifications_2([], [], _, List, List).
-insert_head_unifications_2([Var|Vars], [Arg|Args], N0, List0, List) :-
+insert_head_unifications_2([], [], _, _, List, VarSet, List, VarSet).
+insert_head_unifications_2([Var|Vars], [Arg|Args], Context, N0, List0, VarSet0,
+				List, VarSet) :-
 	N1 is N0 + 1,
 	Goal = unify(Arg, term_variable(Var), Mode, UnifyInfo, UnifyC) -
 		GoalInfo,
 	goalinfo_init(GoalInfo),
-	UnifyC = unify_context(head(N1), []),
+	head_context_to_unify_context(Context, N1, UnifyMainContext),
+	UnifyC = unify_context(UnifyMainContext, []),
 		% fill in unused slots with garbage values
 	Mode = ((free -> free) - (free -> free)),
 	UnifyInfo = complicated_unify(Mode, Arg, term_variable(Var)),
 	List = [Goal | List1],
-	insert_head_unifications_2(Vars, Args, N1, List0, List1).
+	insert_head_unifications_2(Vars, Args, Context, N1, List0, VarSet0,
+				List1, VarSet).
 
-:- pred transform_goal(goal, substitution, hlds__goal).
-:- mode transform_goal(input, input, output).
+:- pred head_context_to_unify_context(head_context, int, unify_main_context).
+:- mode head_context_to_unify_context(input, input, output) is det.
 
-transform_goal(fail, _, disj([]) - GoalInfo) :-
+head_context_to_unify_context(head, N, head(N)).
+head_context_to_unify_context(call(PredId), N, call(PredId, N)).
+
+:- pred transform_goal(goal, varset, substitution, hlds__goal, varset).
+:- mode transform_goal(input, input, input, output, output).
+
+transform_goal(fail, VarSet, _, disj([]) - GoalInfo, VarSet) :-
 	goalinfo_init(GoalInfo).
 
-transform_goal(true, _, conj([]) - GoalInfo) :-
+transform_goal(true, VarSet, _, conj([]) - GoalInfo, VarSet) :-
 	goalinfo_init(GoalInfo).
 
-transform_goal(some(Vars0, Goal0), Subst, some(Vars, Goal) - GoalInfo) :-
+transform_goal(some(Vars0, Goal0), VarSet0, Subst,
+		some(Vars, Goal) - GoalInfo, VarSet) :-
 	substitute_vars(Vars0, Subst, Vars),
-	transform_goal(Goal0, Subst, Goal),
+	transform_goal(Goal0, VarSet0, Subst, Goal, VarSet),
 	goalinfo_init(GoalInfo).
 
-transform_goal(all(Vars0, Goal0), Subst, all(Vars, Goal) - GoalInfo) :-
+transform_goal(all(Vars0, Goal0), VarSet0, Subst,
+		all(Vars, Goal) - GoalInfo, VarSet) :-
 	substitute_vars(Vars0, Subst, Vars),
-	transform_goal(Goal0, Subst, Goal),
+	transform_goal(Goal0, VarSet0, Subst, Goal, VarSet),
 	goalinfo_init(GoalInfo).
 
-transform_goal(if_then_else(Vars0, A0, B0, C0), Subst,
-		if_then_else(Vars, A, B, C) - GoalInfo) :-
+transform_goal(if_then_else(Vars0, A0, B0, C0), VarSet0, Subst,
+		if_then_else(Vars, A, B, C) - GoalInfo, VarSet) :-
 	substitute_vars(Vars0, Subst, Vars),
-	transform_goal(A0, Subst, A),
-	transform_goal(B0, Subst, B),
-	transform_goal(C0, Subst, C),
+	transform_goal(A0, VarSet0, Subst, A, VarSet1),
+	transform_goal(B0, VarSet1, Subst, B, VarSet2),
+	transform_goal(C0, VarSet2, Subst, C, VarSet),
 	goalinfo_init(GoalInfo).
 
-transform_goal(if_then(Vars0, A0, B0), Subst,
-		if_then_else(Vars, A, B, C) - GoalInfo) :-
+transform_goal(if_then(Vars0, A0, B0), Subst, VarSet0, Goal, VarSet) :-
+	transform_goal(if_then_else(Vars0, A0, B0, fail), Subst, VarSet0,
+		Goal, VarSet).
+
+transform_goal(not(Vars0, A0), VarSet0, Subst,
+		not(Vars, A) - GoalInfo, VarSet) :-
 	substitute_vars(Vars0, Subst, Vars),
-	transform_goal(A0, Subst, A),
-	transform_goal(B0, Subst, B),
-	transform_goal(fail, Subst, C),
+	transform_goal(A0, VarSet0, Subst, A, VarSet),
 	goalinfo_init(GoalInfo).
 
-transform_goal(not(Vars0, A0), Subst, not(Vars, A) - GoalInfo) :-
-	substitute_vars(Vars0, Subst, Vars),
-	transform_goal(A0, Subst, A),
+transform_goal((A0,B0), VarSet0, Subst, conj(L) - GoalInfo, VarSet) :-
+	get_conj(B0, Subst, [], VarSet0, L0, VarSet1),
+	get_conj(A0, Subst, L0, VarSet1, L, VarSet),
 	goalinfo_init(GoalInfo).
 
-transform_goal((A0,B0), Subst, conj(L) - GoalInfo) :-
-	get_conj(B0, Subst, [], L0),
-	get_conj(A0, Subst, L0, L),
+transform_goal((A0;B0), VarSet0, Subst, disj(L) - GoalInfo, VarSet) :-
+	get_disj(B0, Subst, [], VarSet0, L0, VarSet1),
+	get_disj(A0, Subst, L0, VarSet1, L, VarSet),
 	goalinfo_init(GoalInfo).
 
-transform_goal((A0;B0), Subst, disj(L) - GoalInfo) :-
-	get_disj(B0, Subst, [], L0),
-	get_disj(A0, Subst, L0, L),
-	goalinfo_init(GoalInfo).
+transform_goal(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 
-transform_goal(call(Goal0), Subst,
-		call(PredId, ModeId, Args, Builtin) - GoalInfo) :-
 	% fill unused slots with any old junk 
 	ModeId = 0,
 	Builtin = not_builtin,
@@ -734,33 +756,35 @@ transform_goal(call(Goal0), Subst,
 	% XXX we need to know the module name!!!
 	ModuleName = "xxx",
 
-	term__apply_substitution(Goal0, Subst, Goal),
-	( Goal = term_functor(term_atom(PredName0), Args0, _) ->
+	term__apply_substitution(Goal0, Subst, Goal1),
+	( Goal1 = term_functor(term_atom(PredName0), Args0, _) ->
 		PredName = PredName0,
 		Args = Args0
 	;
-		( Goal = term_functor(_, _, Context) ->
-			% XXX we should handle this more gracefully
-			term__context_file(Context, File0),
-			string__append(File0, ":", File),
-			term__context_line(Context, Line0),
-			string__int_to_string(Line0, Line),
-			string__append(Line,
-			    ": fatal error: called term is not an atom", Str0),
-			string__append(File, Str0, Str),
-			error(Str)
-		;
-			PredName = "call",
-			Args = [Goal]
-		)
+		% If the called term is not an atom, then it is
+		% either a variable, or something stupid like a number.
+		% In the first case, we want to transform it to a call
+		% to builtin:call/1, and in the latter case, we
+		% In either case, we transform it to a call to call/1.
+		% The latter case will will be caught by the type-checker.
+		PredName = "call",
+		Args = [Goal1]
 	),
 	length(Args, Arity),
 	make_predid(ModuleName, unqualified(PredName), Arity, PredId),
+	goalinfo_init(GoalInfo),
+	Goal = call(PredId, ModeId, Args, Builtin) - GoalInfo,
+	VarSet = VarSet0.
 
-	goalinfo_init(GoalInfo).
+	%%% make_n_fresh_vars(Arity, VarSet0, HeadVars, VarSet1),
+	%%% var_list_to_term_list(HeadVars, HeadArgs),
+	%%% Goal2 = call(PredId, ModeId, HeadArgs, Builtin) - GoalInfo,
+	%%% goalinfo_init(GoalInfo),
+	%%% insert_head_unifications(HeadVars, Args, call(PredId), Goal2,
+	%%% 	VarSet0, Goal, VarSet).
 
-transform_goal(unify(A0, B0), Subst,
-		unify(A, B, Mode, UnifyInfo, UnifyC) - GoalInfo) :-
+transform_goal(unify(A0, B0), VarSet, Subst,
+		unify(A, B, Mode, UnifyInfo, UnifyC) - GoalInfo, VarSet) :-
 	term__apply_substitution(A0, Subst, A),
 	term__apply_substitution(B0, Subst, B),
 	goalinfo_init(GoalInfo),
@@ -786,18 +810,19 @@ substitute_vars([Var0 | Vars0], Subst, [Var | Vars]) :-
 % 	Goal is a tree of conjuncts.  Flatten it into a list (applying Subst),
 %	append Conj0, and return the result in Conj.
 
-:- pred get_conj(goal, substitution, list(hlds__goal), list(hlds__goal)).
-:- mode get_conj(input, input, input, output).
+:- pred get_conj(goal, substitution, list(hlds__goal), varset,
+		list(hlds__goal), varset).
+:- mode get_conj(input, input, input, input, output, output).
 
-get_conj(Goal, Subst, Conj0, Conj) :-
+get_conj(Goal, Subst, Conj0, VarSet0, Conj, VarSet) :-
 	(
 		%some [A,B]
 		Goal = (A,B)
 	->
-		get_conj(B, Subst, Conj0, Conj1),
-		get_conj(A, Subst, Conj1, Conj)
+		get_conj(B, Subst, Conj0, VarSet0, Conj1, VarSet1),
+		get_conj(A, Subst, Conj1, VarSet1, Conj, VarSet)
 	;
-		transform_goal(Goal, Subst, Goal1),
+		transform_goal(Goal, VarSet0, Subst, Goal1, VarSet),
 		Conj = [Goal1 | Conj0]
 	).
 
@@ -805,18 +830,19 @@ get_conj(Goal, Subst, Conj0, Conj) :-
 % 	Goal is a tree of disjuncts.  Flatten it into a list (applying Subst)
 %	append Disj0, and return the result in Disj.
 
-:- pred get_disj(goal, substitution, list(hlds__goal), list(hlds__goal)).
-:- mode get_disj(input, input, input, output).
+:- pred get_disj(goal, substitution, list(hlds__goal), varset,
+		list(hlds__goal), varset).
+:- mode get_disj(input, input, input, input, output, output).
 
-get_disj(Goal, Subst, Disj0, Disj) :-
+get_disj(Goal, Subst, Disj0, VarSet0, Disj, VarSet) :-
 	(
 		%some [A,B]
 		Goal = (A;B)
 	->
-		get_disj(B, Subst, Disj0, Disj1),
-		get_disj(A, Subst, Disj1, Disj)
+		get_disj(B, Subst, Disj0, VarSet0, Disj1, VarSet1),
+		get_disj(A, Subst, Disj1, VarSet1, Disj, VarSet)
 	;
-		transform_goal(Goal, Subst, Goal1),
+		transform_goal(Goal, VarSet0, Subst, Goal1, VarSet),
 		Disj = [Goal1 | Disj0]
 	).
 

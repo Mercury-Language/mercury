@@ -74,7 +74,7 @@
 */
 
 :- pred intToString(int, string).
-:- mode intToString(int, string).
+:- mode intToString(out, in).
 
 string__to_int(String, Int) :-
 	intToString(Int, String).

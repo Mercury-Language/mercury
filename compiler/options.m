@@ -19,7 +19,7 @@
 :- pred long_option(string::in, option::out) is semidet.
 :- pred option_defaults(list(pair(option, option_data))::output) is det.
 
-:- pred option_help(io__state::di, io__state::uo).
+:- pred options_help(io__state::di, io__state::uo).
 
 % A couple of misc utilities
 

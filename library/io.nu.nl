@@ -66,6 +66,7 @@ run(Args) :-
 	io__final_state(IOState).
 
 :- pred io__call(pred).
+
 /******
 io__call(Goal, IOState0, IOState) :-
 	findall(Goal - IOState1, call(Goal, IOState0, IOState1), Solutions),
@@ -94,9 +95,19 @@ io__call_2(Goal, Solutions, IOState) :-
 		abort
 	).
 *****/
+
 io__call(Goal, IOState0, IOState) :-
-	call(Goal, IOState0, IOState),
-	!.
+	( call(Goal, IOState0, IOState) ->
+		true
+	;
+		write(user_error, '\nio.nl: error: goal `'),
+		functor(Goal, F, N),
+		write(user_error, F),
+		write(user_error, '/'),
+		write(user_error, N),
+		write(user_error, '\' failed.\n'),
+		abort
+	).
 
 :- pred atoms_to_strings(list(atom), list(string)).
 atoms_to_strings([],[]).
@@ -304,7 +315,6 @@ preallocate_heap(KBytes) :-
 	(
 		N is KBytes // 16,	
 		preallocate_heap_2(N),
-		report_stats,
 		fail
 	;
 		true
