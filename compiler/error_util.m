@@ -78,7 +78,10 @@
 :- pred write_error_plain_with_progname(string::in, string::in,
 	io::di, io::uo) is det.
 
-	% Display the given error message.
+	% write_error_pieces(Context, Indent, Components).
+	% Display `Components' as the error message, with
+	% `Context' as a context and indent by `Indent'.
+	%
 :- pred write_error_pieces(prog_context::in, int::in,
 	list(format_component)::in, io::di, io::uo) is det.
 

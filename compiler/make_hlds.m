@@ -5381,12 +5381,15 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
 	pred_info_get_markers(PredInfo0, Markers),
 	globals.io_lookup_bool_option(warn_table_with_inline, WarnInline, !IO),	
 	( check_marker(Markers, inline), WarnInline = yes ->
-		PredNameStr = hlds_out.simple_call_id_to_string(PredOrFunc, PredName/Arity),
-		TablePragmaStr = string.format("`:- pragma %s'", [s(EvalMethodS)]),
+		PredNameStr = hlds_out.simple_call_id_to_string(PredOrFunc,
+			PredName/Arity),
+		TablePragmaStr = string.format("`:- pragma %s'",
+			[s(EvalMethodS)]),
 		InlineWarning = [
 			words("Warning: "), fixed(PredNameStr), 
 			words("has a"), nl, fixed(TablePragmaStr),
-			words("declaration but also has a"), fixed("`:- pragma inline'"),
+			words("declaration but also has a"),
+			fixed("`:- pragma inline'"),
 			words("declaration."), nl,
 			words("This inline pragma will be ignored"),
 			words("since tabled predicates cannot be inlined."), nl,
@@ -5460,8 +5463,9 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
 				PredName/Arity, !IO),
 			io__write_string(" with no declared modes.\n", !IO)
 		;
-			set_eval_method_list(ExistingProcs, EvalMethod,
-				Procs0, Procs),
+			set_eval_method_list(ExistingProcs, Context,
+				PredOrFunc, PredName/Arity, EvalMethod,
+				Procs0, Procs, !ModuleInfo, !IO),
 			pred_info_set_procedures(Procs,
 				PredInfo0, PredInfo),
 			module_info_set_pred_info(PredId, PredInfo,
@@ -5470,13 +5474,46 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
 	).
 
 :- pred set_eval_method_list(assoc_list(proc_id, proc_info)::in,
-	eval_method::in, proc_table::in, proc_table::out) is det.
+	prog_context::in, pred_or_func::in, sym_name_and_arity::in,
+	eval_method::in, proc_table::in, proc_table::out,
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
-set_eval_method_list([], _, !Procs).
-set_eval_method_list([ProcId - ProcInfo0|Rest], EvalMethod, !Procs) :-
-	proc_info_set_eval_method(EvalMethod, ProcInfo0, ProcInfo),
-	map__det_update(!.Procs, ProcId, ProcInfo, !:Procs),
-	set_eval_method_list(Rest, EvalMethod, !Procs).
+set_eval_method_list([], _, _, _, _, !Procs, !ModuleInfo, !IO).
+set_eval_method_list([ProcId - ProcInfo0 | Rest], Context, PredOrFunc,
+		PredNameAndArity, EvalMethod, !Procs, !ModuleInfo, !IO) :-
+	proc_info_eval_method(ProcInfo0, OldEvalMethod),
+	% NOTE: We don't bother detecting multiple tabling pragmas
+	% of the same type here.
+	( 
+		OldEvalMethod \= eval_normal,
+		OldEvalMethod \= EvalMethod
+	->
+		% If there are conflicting tabling pragmas then
+		% emit an error message and do not bother changing 
+		% the evaluation method.
+		OldEvalMethodStr = eval_method_to_string(OldEvalMethod),
+		EvalMethodStr = eval_method_to_string(EvalMethod),
+		Name = hlds_out.simple_call_id_to_string(PredOrFunc,
+			PredNameAndArity),
+		ErrorMsg = [
+			words("Error:"),
+			fixed(Name),
+			words("has both"),
+			fixed(OldEvalMethodStr),
+			words("and"),
+			fixed(EvalMethodStr),
+			words("pragmas specified."),
+			words("Only one kind of"),
+			words("tabling pragma may be applied to it.")
+		],
+		module_info_incr_errors(!ModuleInfo),
+		error_util.write_error_pieces(Context, 0, ErrorMsg, !IO)
+	;
+		proc_info_set_eval_method(EvalMethod, ProcInfo0, ProcInfo),
+		map__det_update(!.Procs, ProcId, ProcInfo, !:Procs)
+	),
+	set_eval_method_list(Rest, Context, PredOrFunc, PredNameAndArity,
+		EvalMethod, !Procs, !ModuleInfo, !IO).
 
 %-----------------------------------------------------------------------------%
 

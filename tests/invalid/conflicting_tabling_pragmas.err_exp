@@ -1,0 +1,6 @@
+conflicting_tabling_pragmas.m:012: Error:
+conflicting_tabling_pragmas.m:012:   function `conflicting_tabling_pragmas.fac/1'
+conflicting_tabling_pragmas.m:012:   has both memo and loop_check pragmas
+conflicting_tabling_pragmas.m:012:   specified. Only one kind of tabling pragma
+conflicting_tabling_pragmas.m:012:   may be applied to it.
+For more information, try recompiling with `-E'.
