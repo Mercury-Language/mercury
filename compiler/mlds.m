@@ -1254,8 +1254,15 @@ XXX Full exception handling support is not yet implemented.
 
 	;	binop(binary_op, mlds__rval, mlds__rval)
 
-	;	mem_addr(mlds__lval).
+	;	mem_addr(mlds__lval)
 		% The address of a variable, etc.
+
+	;	self(mlds__type).
+		% The equivalent of the `this' pointer in C++ with the
+		% type of the object.  Note that this rval is valid iff
+		% we are targetting an object oriented backend and we
+		% are in an instance method (procedures which have the
+		% per_instance flag set).
 
 :- type mlds__unary_op
 	--->	box(mlds__type)

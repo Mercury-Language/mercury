@@ -2013,6 +2013,9 @@ output_rval(binop(Op, Rval1, Rval2)) -->
 output_rval(mem_addr(_Lval)) -->
 	{ unexpected(this_file, "output_rval: mem_addr(_) not supported") }.
 
+output_rval(self(_)) -->
+	io__write_string("this").
+
 :- pred output_unop(mlds__unary_op, mlds__rval, io__state, io__state).
 :- mode output_unop(in, in, di, uo) is det.
 	

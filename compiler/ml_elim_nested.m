@@ -1009,6 +1009,7 @@ fixup_rval(binop(Op, X0, Y0), binop(Op, X, Y)) -->
 	fixup_rval(Y0, Y).
 fixup_rval(mem_addr(Lval0), mem_addr(Lval)) -->
 	fixup_lval(Lval0, Lval).
+fixup_rval(self(T), self(T)) --> [].
 
 :- pred fixup_lvals(list(mlds__lval), list(mlds__lval), elim_info, elim_info).
 :- mode fixup_lvals(in, out, in, out) is det.

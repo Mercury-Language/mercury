@@ -2709,6 +2709,9 @@ mlds_output_rval(mem_addr(Lval)) -->
 	io__write_string("&"),
 	mlds_output_lval(Lval).
 
+mlds_output_rval(self(_)) -->
+	{ error("mlds_to_c: self rval encountered.\n") }.
+
 :- pred mlds_output_unop(mlds__unary_op, mlds__rval, io__state, io__state).
 :- mode mlds_output_unop(in, in, di, uo) is det.
 	

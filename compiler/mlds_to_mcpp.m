@@ -427,6 +427,9 @@ write_managed_cpp_rval(binop(Binop, Rval1, Rval2)) -->
 
 write_managed_cpp_rval(mem_addr(_)) -->
 	io__write_string(" /* mem_addr rval -- unimplemented */ ").
+
+write_managed_cpp_rval(self(_)) -->
+	io__write_string(" /* self rval -- unimplemented */ ").
 	
 :- pred write_managed_cpp_rval_const(mlds__rval_const, io__state, io__state).
 :- mode write_managed_cpp_rval_const(in, di, uo) is det.

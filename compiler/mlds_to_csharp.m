@@ -329,6 +329,9 @@ write_csharp_rval(binop(Binop, Rval1, Rval2)) -->
 write_csharp_rval(mem_addr(_)) -->
 	{ sorry(this_file, "mem_addr rval") }.
 	
+write_csharp_rval(self(_)) -->
+	{ sorry(this_file, "self rval") }.
+	
 :- pred write_csharp_rval_const(mlds__rval_const, io__state, io__state).
 :- mode write_csharp_rval_const(in, di, uo) is det.
 write_csharp_rval_const(true) --> io__write_string("1").

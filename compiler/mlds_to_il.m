@@ -1385,6 +1385,8 @@ load(mem_addr(Lval), Instrs) -->
 		{ Instrs = throw_unimplemented("load mem_addr lval mem_ref") }
 	).
 
+load(self(_), tree__list([instr_node(ldarg(index(0)))])) --> [].
+
 :- pred store(mlds__lval, instr_tree, il_info, il_info) is det.
 :- mode store(in, out, in, out) is det.
 
@@ -1718,6 +1720,8 @@ rval_to_function(Rval, MemberName) :-
 		unexpected(this_file, "binop_function_name")
 	; Rval = mem_addr(_),
 		unexpected(this_file, "mem_addr_function_name")
+	; Rval = self(_),
+		unexpected(this_file, "self_function_name")
 	).
 
 %-----------------------------------------------------------------------------
@@ -2361,7 +2365,7 @@ rval_to_type(lval(Lval), Type, Info0, Info) :-
 		Info = Info0
 	).
 
-	% The following four conversions should never occur or be boxed
+	% The following five conversions should never occur or be boxed
 	% anyway, but just in case they are we make them reference
 	% mercury.invalid which is a non-exisitant class.   If we try to
 	% run this code, we'll get a runtime error.
@@ -2379,6 +2383,10 @@ rval_to_type(binop(_, _, _), Type, I, I) :-
 	Type = mlds__class_type(qual(ModuleName, ModuleName, "invalid"),
 		0, mlds__class).
 rval_to_type(mem_addr(_), Type, I, I) :-
+	ModuleName = mercury_module_name_to_mlds(unqualified("mercury")),
+	Type = mlds__class_type(qual(ModuleName, ModuleName, "invalid"),
+		0, mlds__class).
+rval_to_type(self(_), Type, I, I) :-
 	ModuleName = mercury_module_name_to_mlds(unqualified("mercury")),
 	Type = mlds__class_type(qual(ModuleName, ModuleName, "invalid"),
 		0, mlds__class).
