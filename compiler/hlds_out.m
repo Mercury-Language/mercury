@@ -2495,7 +2495,7 @@ hlds_out__write_constraint_proof(Indent, VarSet, Constraint - Proof) -->
 	mercury_output_constraint(VarSet, Constraint),
 	io__write_string(": "),
 	(
-		{ Proof = apply_instance(_, Num) },
+		{ Proof = apply_instance(Num) },
 		io__write_string("apply instance decl #"),
 		io__write_int(Num)
 	;

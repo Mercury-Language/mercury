@@ -202,6 +202,16 @@
 	class_constraint).
 :- mode apply_subst_to_constraint(in, in, out) is det.
 
+:- pred apply_subst_to_constraint_proofs(substitution, 
+	map(class_constraint, constraint_proof),
+	map(class_constraint, constraint_proof)).
+:- mode apply_subst_to_constraint_proofs(in, in, out) is det.
+
+:- pred apply_rec_subst_to_constraint_proofs(substitution, 
+	map(class_constraint, constraint_proof),
+	map(class_constraint, constraint_proof)).
+:- mode apply_rec_subst_to_constraint_proofs(in, in, out) is det.
+
 :- pred apply_variable_renaming_to_constraints(map(var, var), 
 	class_constraints, class_constraints).
 :- mode apply_variable_renaming_to_constraints(in, in, out) is det.
@@ -835,6 +845,46 @@ apply_subst_to_constraint(Subst, Constraint0, Constraint) :-
 	Constraint0 = constraint(ClassName, Types0),
 	term__apply_substitution_to_list(Types0, Subst, Types),
 	Constraint  = constraint(ClassName, Types).
+
+apply_subst_to_constraint_proofs(Subst, Proofs0, Proofs) :-
+	map__init(Empty),
+	map__foldl(
+		lambda([Constraint0::in, Proof0::in, Map0::in, Map::out] is det,
+		(
+			apply_subst_to_constraint(Subst, Constraint0,
+				Constraint), 
+			(
+				Proof0 = apply_instance(_),
+				Proof = Proof0
+			;
+				Proof0 = superclass(Super0),
+				apply_subst_to_constraint(Subst, Super0, 
+					Super),
+				Proof = superclass(Super)
+			),
+			map__set(Map0, Constraint, Proof, Map)
+		)),
+	Proofs0, Empty, Proofs).
+
+apply_rec_subst_to_constraint_proofs(Subst, Proofs0, Proofs) :-
+	map__init(Empty),
+	map__foldl(
+		lambda([Constraint0::in, Proof0::in, Map0::in, Map::out] is det,
+		(
+			apply_rec_subst_to_constraint(Subst, Constraint0,
+				Constraint), 
+			(
+				Proof0 = apply_instance(_),
+				Proof = Proof0
+			;
+				Proof0 = superclass(Super0),
+				apply_rec_subst_to_constraint(Subst, Super0, 
+					Super),
+				Proof = superclass(Super)
+			),
+			map__set(Map0, Constraint, Proof, Map)
+		)),
+	Proofs0, Empty, Proofs).
 
 apply_variable_renaming_to_constraints(Renaming,
 		constraints(UniversalCs0, ExistentialCs0),

@@ -754,12 +754,24 @@ determinism_to_code_model(failure,     model_semi).
 
 	% `Proof' of why a constraint is redundant
 :- type constraint_proof			
-			% Apply the following instance rule, the second 
-			% argument being the number of the instance decl.
-	--->	apply_instance(hlds_instance_defn, int)
+			% Apply the instance decl with the given number.
+			% Note that we don't store the actual 
+			% hlds_instance_defn for two reasons:
+			% - That would require storing a renamed version of
+			%   the constraint_proofs for *every* use of an
+			%   instance declaration. This would't even get GCed
+			%   for a long time because it would be stored in
+			%   the pred_info.
+			% - The superclass proofs stored in the
+			%   hlds_instance_defn would need to store all the
+			%   constraint_proofs for all its ancestors. This
+			%   would require the class relation to be
+			%   topologically sorted before checking the
+			%   instance declarations.
+	--->	apply_instance(int)
 
-			% The constraint is redundant because of the following
-			% class's superclass declaration
+			% The constraint is redundant because of the
+			% following class's superclass declaration
 	;	superclass(class_constraint).
 
 %-----------------------------------------------------------------------------%

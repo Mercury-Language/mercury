@@ -2959,8 +2959,8 @@ expand_types([Var | Vars], TypeSubst, VarTypes0, VarTypes) :-
 
 % apply a type variable renaming to a class constraint proof
 
-rename_constraint_proof(_TSubst, apply_instance(Instance, Num),
-				apply_instance(Instance, Num)).
+rename_constraint_proof(_TSubst, apply_instance(Num),
+				apply_instance(Num)).
 rename_constraint_proof(TSubst, superclass(ClassConstraint0),
 			superclass(ClassConstraint)) :-
 	apply_variable_renaming_to_constraint(TSubst, ClassConstraint0,
@@ -3394,23 +3394,22 @@ find_matching_instance_rule(Instances, ClassName, Types, TVarSet,
 
 find_matching_instance_rule_2([I|Is], N0, ClassName, Types, TVarSet,
 		NewTVarSet, Proofs0, Proofs, NewConstraints) :-
-	I = hlds_instance_defn(ModuleName, NewConstraints0, InstanceTypes0,
-		Interface, PredProcIds, InstanceNames, SuperClassProofs),
+	I = hlds_instance_defn(_ModuleName, NewConstraints0, InstanceTypes0,
+		_Interface, _PredProcIds, InstanceNames, _SuperClassProofs),
 	(
 		varset__merge_subst(TVarSet, InstanceNames, NewTVarSet0,
 			RenameSubst),
-		term__apply_rec_substitution_to_list(InstanceTypes0,
+		term__apply_substitution_to_list(InstanceTypes0,
 			RenameSubst, InstanceTypes),
 		type_list_subsumes(InstanceTypes, Types, Subst)
 	->
-		apply_rec_subst_to_constraint_list(RenameSubst, NewConstraints0,
-			NewConstraints1),
-		apply_rec_subst_to_constraint_list(Subst, NewConstraints1,
-			NewConstraints),
 		NewTVarSet = NewTVarSet0,
-		NewProof = apply_instance(hlds_instance_defn(ModuleName,
-			NewConstraints, InstanceTypes, Interface, PredProcIds,
-			InstanceNames, SuperClassProofs), N0),
+		apply_subst_to_constraint_list(RenameSubst, 
+			NewConstraints0, NewConstraints1),
+		apply_rec_subst_to_constraint_list(Subst, 
+			NewConstraints1, NewConstraints),
+
+		NewProof = apply_instance(N0),
 		Constraint = constraint(ClassName, Types),
 		map__set(Proofs0, Constraint, NewProof, Proofs)
 	;
@@ -3658,8 +3657,8 @@ convert_cons_defn(TypeCheckInfo, HLDS_ConsDefn, ConsTypeInfo) :-
 				% or universal constraints on the declaration
 				% of the predicate we are analyzing.
 			map(class_constraint,	% for each constraint
-			    constraint_proof)	% constraint found to be 
-						% redundant, why is it so?
+			    constraint_proof)	% found to be redundant, 
+			    			% why is it so?
 		).
 
 %-----------------------------------------------------------------------------%
