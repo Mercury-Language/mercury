@@ -361,7 +361,7 @@ process_module_defn(abstract_imported, Info0, Info) :-
 	mq_info_set_need_qual_flag(Info1, must_be_qualified, Info).
 process_module_defn(transitively_imported, _, _) :-
 	error("process_module_defn: transitively_imported item").
-process_module_defn(external(_), Info, Info).
+process_module_defn(external(_, _), Info, Info).
 process_module_defn(end_module(_), Info, Info).
 process_module_defn(export(_), Info, Info).
 process_module_defn(import(Imports), Info0, Info) :-
@@ -714,7 +714,7 @@ update_import_status(private_interface, Info0, Info, yes) :-
 	mq_info_set_import_status(Info0, local, Info).
 update_import_status(imported(_), Info, Info, no).
 update_import_status(used(_), Info, Info, no).
-update_import_status(external(_), Info, Info, yes).
+update_import_status(external(_, _), Info, Info, yes).
 update_import_status(end_module(_), Info, Info, yes).
 update_import_status(export(_), Info, Info, yes).
 update_import_status(import(_), Info, Info, yes).

@@ -1277,11 +1277,25 @@ process_decl(_ModuleName, VarSet0, "implementation", [], Attributes, Result) :-
 	Result0 = ok(module_defn(VarSet, implementation)),
 	check_no_attributes(Result0, Attributes, Result).
 
-process_decl(ModuleName, VarSet, "external", [PredSpec], Attributes,
-		Result) :-
+process_decl(ModuleName, VarSet, "external", Args, Attributes, Result) :-
+	(
+		Args = [PredSpec],
+		MaybeBackend = no
+	;
+		Args = [BackendArg, PredSpec],
+		BackendArg = term__functor(term__atom(Functor), [], _),
+		(
+			Functor = "high_level_backend",
+			Backend = high_level_backend
+		;
+			Functor = "low_level_backend",
+			Backend = low_level_backend
+		),
+		MaybeBackend = yes(Backend)
+	),
 	parse_implicitly_qualified_symbol_name_specifier(ModuleName,
 		PredSpec, Result0),
-	process_maybe1(make_external(VarSet), Result0, Result1),
+	process_maybe1(make_external(VarSet, MaybeBackend), Result0, Result1),
 	check_no_attributes(Result1, Attributes, Result).
 
 process_decl(DefaultModuleName, VarSet0, "module", [ModuleName], Attributes,
@@ -1507,9 +1521,11 @@ make_type_defn(VarSet0, Cond, processed_type_body(Name, Args, TypeDefn),
 		type_defn(VarSet, Name, Args, TypeDefn, Cond)) :-
 	varset__coerce(VarSet0, VarSet).
 
-:- pred make_external(varset::in, sym_name_specifier::in, item::out) is det.
+:- pred make_external(varset::in, maybe(backend)::in, sym_name_specifier::in,
+	item::out) is det.
 
-make_external(VarSet0, SymSpec, module_defn(VarSet, external(SymSpec))) :-
+make_external(VarSet0, MaybeBackend, SymSpec,
+		module_defn(VarSet, external(MaybeBackend, SymSpec))) :-
 	varset__coerce(VarSet0, VarSet).
 
 :- pred get_is_solver_type(is_solver_type::out,

@@ -1287,6 +1287,7 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
     ;       purity(purity)
     ;       aliasing
     ;       max_stack_size(int)
+    ;       backend(backend)
     ;       terminates(terminates)
     ;       will_not_throw_exception
     ;       ordinary_despite_detism.
@@ -1370,6 +1371,8 @@ process_attribute(will_not_throw_exception, !Attrs) :-
     set_may_throw_exception(will_not_throw_exception, !Attrs).
 process_attribute(max_stack_size(Size), !Attrs) :-
     add_extra_attribute(max_stack_size(Size), !Attrs).
+process_attribute(backend(Backend), !Attrs) :-
+    add_extra_attribute(backend(Backend), !Attrs).
 process_attribute(ordinary_despite_detism, !Attrs) :-
     set_ordinary_despite_detism(yes, !Attrs).
 
@@ -1428,6 +1431,8 @@ parse_single_pragma_foreign_proc_attribute(Term, Flag) :-
         Flag = aliasing
     ; parse_max_stack_size(Term, Size) ->
         Flag = max_stack_size(Size)
+    ; parse_backend(Term, Backend) ->
+        Flag = backend(Backend)
     ; parse_purity_promise(Term, Purity) ->
         Flag = purity(Purity)
     ; parse_terminates(Term, Terminates) ->
@@ -1490,6 +1495,17 @@ parse_aliasing(term__functor(term__atom("alias"), [_Types, _Alias], _)).
 parse_max_stack_size(term__functor(
         term__atom("max_stack_size"), [SizeTerm], _), Size) :-
     SizeTerm = term__functor(term__integer(Size), [], _).
+
+:- pred parse_backend(term::in, backend::out) is semidet.
+
+parse_backend(term__functor(term__atom(Functor), [], _), Backend) :-
+    (
+        Functor = "high_level_backend",
+        Backend = high_level_backend
+    ;
+        Functor = "low_level_backend",
+        Backend = low_level_backend
+    ).
 
 :- pred parse_purity_promise(term::in, purity::out) is semidet.
 

@@ -5785,6 +5785,10 @@ predicates throw exceptions then unifications or comparisons involving
 these types may also throw exceptions.  As such, we recommend that
 only implementors of the Mercury system use this annotation for
 polymorphic predicates and functions.
+@c @item @samp{high_level_backend}
+@c The foreign_proc will apply only on the high level backend.
+@c @item @samp{low_level_backend}
+@c The foreign_proc will apply only on the low level backend.
 @end table
 
 @c -----------------------------------------------------------------------

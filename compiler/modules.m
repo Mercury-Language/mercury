@@ -1551,7 +1551,7 @@ standardize_impl_items([ItemAndContext | ItemAndContexts], !Unexpected,
             ModuleDefn = transitively_imported,
             !:Unexpected = yes
         ;
-            ModuleDefn = external(_),
+            ModuleDefn = external(_, _),
             !:Unexpected = yes
         ;
             ModuleDefn = export(_),
@@ -7238,7 +7238,7 @@ item_needs_foreign_imports(pragma(_, foreign_proc(Attrs, _, _, _, _, _)),
 
 include_in_int_file_implementation(type_defn(_, _, _, _, _)).
 include_in_int_file_implementation(module_defn(_, Defn)) :-
-    Defn \= external(_).
+    Defn \= external(_, _).
 
     % `:- typeclass declarations' may be referred to
     % by the constructors in type declarations.
