@@ -25,7 +25,7 @@
 # that version. When makebatch exits normally, it removes the file to indicate
 # completion.
 
-usage="Usage: makebatch [-jN] [-fost] batchname"
+usage="Usage: makebatch [-jN] [-cost] [--compile-times] batchname"
 jfactor=-j1
 runtests=""
 objects=""
