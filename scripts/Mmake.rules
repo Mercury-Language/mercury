@@ -55,7 +55,7 @@ main_target: $(MAIN_TARGET)
 	$(MCSI) $(MCSIFLAGS) $<
 
 .m.optdate:
-	$(MCOI) $(MCOIFLAGS) $< > $*.err 2>&1
+	$(MCOI) $(MCOIFLAGS) $<
 
 # do not remove the whitespace in the following four rules!
 
