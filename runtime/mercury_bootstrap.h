@@ -15,15 +15,15 @@
 #ifndef	MERCURY_BOOTSTRAP_H
 #define	MERCURY_BOOTSTRAP_H
 
+#define	MR_STATIC(l)		MR_ENTRY(l)
+#define	MR_GOTO_STATIC(l)	MR_GOTO_ENTRY(l)
+
 /*
 ** This stuff is enabled by default,
 ** but you can disable it by defining MR_NO_BACKWARDS_COMPAT.
 */
 
 #ifndef MR_NO_BACKWARDS_COMPAT
-
-#define	MR_STATIC(l)		MR_ENTRY(l)
-#define	MR_GOTO_STATIC(l)	MR_GOTO_ENTRY(l)
 
 /*
 ** bool, TRUE and FALSE appear in the generated code.

@@ -32,8 +32,11 @@ MCFLAGS-make.module_target = --no-ansi-c
 MCFLAGS-make.program_target = --no-ansi-c
 
 # The c_code in the module gcc.m needs the header files from the GNU C
-# distribution.
-CFLAGS-gcc =	-DIN_GCC -DHAVE_CONFIG_H \
+# distribution.  Note that we need to compile these with
+# -DMR_NO_BACKWARDS_COMPAT, because otherwise there are name
+# conflicts with symbols defined in the GCC headers.
+CFLAGS-gcc =	-DMR_NO_BACKWARDS_COMPAT \
+		-DIN_GCC -DHAVE_CONFIG_H \
 		-I. \
 		-I$(GCC_SRC_DIR)/gcc \
 		-I$(GCC_SRC_DIR)/gcc/mercury \
