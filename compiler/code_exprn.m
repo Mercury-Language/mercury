@@ -35,19 +35,35 @@
 
 :- type exprn_info.
 
-%	code_exprn__init_state(Arguments, Varset, Opts, ExprnInfo)
+%	code_exprn__init_state(Arguments, Varset, StackSlots, FollowVars,
+%			Opts, ExprnInfo)
 %		Produces an initial state of the ExprnInfo given
 %		an association list of variables and lvalues. The initial
 %		state places the given variables at their corresponding
 %		locations. The Varset parameter contains a mapping from
 %		variables to names, which is used when code is generated
-%		to provide meaningful comments. Opts gives the table of
-%		options; this is used to decide what expressions are
-%		considered constants.
+%		to provide meaningful comments. StackSlots maps each variable
+%		to its stack slot (if it has one). FollowVars is the initial
+%		follow_vars set; such sets give guidance as to what lvals
+%		(if any) each variable will be needed in next. Opts gives
+%		the table of options; this is used to decide what expressions
+%		are considered constants.
 
-:- pred code_exprn__init_state(assoc_list(var, rval), varset, option_table,
-	exprn_info).
-:- mode code_exprn__init_state(in, in, in, out) is det.
+:- pred code_exprn__init_state(assoc_list(var, rval), varset, stack_slots,
+	follow_vars, option_table, exprn_info).
+:- mode code_exprn__init_state(in, in, in, in, in, out) is det.
+
+%	code_exprn__reinit_state(VarLocs, ExprnInfo0, ExprnInfo)
+%		Produces a new state of the ExprnInfo in which the static
+%		and mostly static information (stack slot map, follow vars map,
+%		varset, option settings) comes from ExprnInfo0 but the dynamic
+%		state regarding variable locations is thrown away and then
+%		rebuilt from the information in VarLocs, an association list
+%		of variables and lvalues. The new state places the given
+%		variables at their corresponding locations.
+
+:- pred code_exprn__reinit_state(assoc_list(var, rval), exprn_info, exprn_info).
+:- mode code_exprn__reinit_state(in, in, out) is det.
 
 %	code_exprn__clobber_regs(CriticalVars, ExprnInfo0, ExprnInfo)
 %		Modifies the state ExprnInfo0 to produce ExprnInfo
@@ -117,17 +133,17 @@
 %		provide it as an Rval of the form lval(reg(_)).
 
 :- pred code_exprn__produce_var_in_reg(var, rval, code_tree,
-						exprn_info, exprn_info).
+	exprn_info, exprn_info).
 :- mode code_exprn__produce_var_in_reg(in, out, out, in, out) is det.
 
-%	code_exprn__produce_var_in_reg_or_stack(Var, Rval, Code,
+%	code_exprn__produce_var_in_reg_or_stack(Var, FollowVars, Rval, Code,
 %			ExprnInfo0, ExprnInfo)
 %		Produces a code fragment Code to evaluate Var and
 %		provide it as an Rval of the form lval(reg(_)),
 %		lval(stackvar(_)), or lval(framevar(_)).
 
 :- pred code_exprn__produce_var_in_reg_or_stack(var, rval, code_tree,
-						exprn_info, exprn_info).
+	exprn_info, exprn_info).
 :- mode code_exprn__produce_var_in_reg_or_stack(in, out, out, in, out) is det.
 
 %	code_exprn__materialize_vars_in_rval(Rval0, Rval, Code, ExprnInfo0,
@@ -196,6 +212,27 @@
 :- pred code_exprn__get_varlocs(exprn_info, map(var, set(rval))).
 :- mode code_exprn__get_varlocs(in, out) is det.
 
+%	code_exprn__get_stack_slots(StackSlots)
+%		Returns the table mapping each variable to its stack slot
+%		(if any).
+
+:- pred code_exprn__get_stack_slots(stack_slots, exprn_info, exprn_info).
+:- mode code_exprn__get_stack_slots(out, in, out) is det.
+
+%	code_exprn__get_follow_vars(FollowVars)
+%		Returns the table mapping each variable to the lval (if any)
+%		where it is desired next.
+
+:- pred code_exprn__get_follow_vars(follow_vars, exprn_info, exprn_info).
+:- mode code_exprn__get_follow_vars(out, in, out) is det.
+
+%	code_exprn__set_follow_vars(FollowVars)
+%		Sets the table mapping each variable to the lval (if any)
+%		where it is desired next.
+
+:- pred code_exprn__set_follow_vars(follow_vars, exprn_info, exprn_info).
+:- mode code_exprn__set_follow_vars(in, in, out) is det.
+
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
@@ -215,18 +252,32 @@
 			var_map,	% what each variable stands for
 			bag(lval),	% the 'in use' markers for regs
 			set(lval),	% extra markers for acquired regs
+			stack_slots,	% map vars to the stack slot (if any)
+			follow_vars,	% where vars are needed next
 			exprn_opts	% options needed for constant checks
 		).
 
 %------------------------------------------------------------------------------%
 
-code_exprn__init_state(Initializations, Varset, Options, ExprnInfo) :-
+code_exprn__init_state(VarLocs, Varset, StackSlots, FollowVars,
+		Options, ExprnInfo) :-
 	map__init(Vars0),
 	bag__init(Regs0),
-	code_exprn__init_state_2(Initializations, Vars0, Vars, Regs0, Regs),
+	code_exprn__init_state_2(VarLocs, Vars0, Vars, Regs0, Regs),
 	set__init(Acqu),
 	exprn_aux__init_exprn_opts(Options, ExprnOpts),
-	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu, ExprnOpts).
+	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu,
+		StackSlots, FollowVars, ExprnOpts).
+
+code_exprn__reinit_state(VarLocs, ExprnInfo0, ExprnInfo) :-
+	map__init(Vars0),
+	bag__init(Regs0),
+	code_exprn__init_state_2(VarLocs, Vars0, Vars, Regs0, Regs),
+	set__init(Acqu),
+	ExprnInfo0 = exprn_info(Varset, _, _, _,
+		StackSlots, FollowVars, ExprnOpts),
+	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu,
+		StackSlots, FollowVars, ExprnOpts).
 
 :- pred code_exprn__init_state_2(assoc_list(var, rval), var_map, var_map,
 	bag(lval), bag(lval)).
@@ -784,25 +835,15 @@ code_exprn__update_dependent_vars_3([R0 | Rs0], Var, Rval, [R | Rs]) -->
 :- mode code_exprn__select_rval(in, out) is det.
 
 code_exprn__select_rval(Rvals, Rval) :-
-	(
-		Rvals = []
-	->
+	( Rvals = [] ->
 		error("code_exprn__select_rval: no rvals")
-	;
-		code_exprn__select_reg(Rvals, Rval0)
-	->
+	; code_exprn__select_reg(Rvals, Rval0) ->
 		Rval = Rval0
-	;
-		code_exprn__select_simple_const(Rvals, Rval1)
-	->
+	; code_exprn__select_simple_const(Rvals, Rval1) ->
 		Rval = Rval1
-	;
-		code_exprn__select_stackvar(Rvals, Rval2)
-	->
+	; code_exprn__select_stackvar(Rvals, Rval2) ->
 		Rval = Rval2
-	;
-		Rvals = [Rval3 | _]
-	->
+	; Rvals = [Rval3 | _] ->
 		Rval = Rval3
 	;
 		error("code_exprn__select_rval: cosmic rays strike again")
@@ -1302,7 +1343,7 @@ code_exprn__free_arg_dependenciess([Target | Targets]) -->
 %------------------------------------------------------------------------------%
 
 :- pred code_exprn__produce_vars(list(var), assoc_list(var, rval), code_tree,
-						exprn_info, exprn_info).
+	exprn_info, exprn_info).
 :- mode code_exprn__produce_vars(in, out, out, in, out) is det.
 
 code_exprn__produce_vars([], [], empty) --> [].
@@ -1334,7 +1375,7 @@ code_exprn__produce_var(Var, Rval, Code) -->
 		{ code_exprn__select_rval(RvalList, Rval) },
 		{ Code = empty }
 	;
-		code_exprn__get_spare_reg(r, Lval),
+		code_exprn__select_preferred_reg(Var, Lval),
 		{ Rval = lval(Lval) },
 		code_exprn__place_var(Var, Lval, Code)
 	).
@@ -1342,33 +1383,107 @@ code_exprn__produce_var(Var, Rval, Code) -->
 %------------------------------------------------------------------------------%
 
 code_exprn__produce_var_in_reg(Var, Rval, Code) -->
-	code_exprn__produce_var(Var, Rval0, Code0),
+	code_exprn__get_var_status(Var, Stat),
 	(
-		{ Rval0 = lval(reg(_, _)) }
+		{ Stat = evaled(Rvals) },
+		{ set__to_sorted_list(Rvals, RvalList) },
+		{ code_exprn__select_reg_rval(RvalList, Rval0) }
 	->
-		{ Code = Code0 },
+		{ Code = empty },
 		{ Rval = Rval0 }
 	;
-		code_exprn__get_spare_reg(r, Lval),
-		code_exprn__place_var(Var, Lval, Code1),
-		{ Rval = lval(Lval) },
-		{ Code = tree(Code0, Code1) }
+		code_exprn__select_preferred_reg(Var, Lval),
+		code_exprn__place_var(Var, Lval, Code),
+		{ Rval = lval(Lval) }
 	).
 
 code_exprn__produce_var_in_reg_or_stack(Var, Rval, Code) -->
-	code_exprn__produce_var(Var, Rval0, Code0),
+	code_exprn__get_var_status(Var, Stat),
 	(
-		{ Rval0 = lval(Loc) },
-		{ Loc = reg(_, _) ; Loc = stackvar(_) ; Loc = framevar(_) }
+		{ Stat = evaled(Rvals) },
+		{ set__to_sorted_list(Rvals, RvalList) },
+		{ code_exprn__select_reg_or_stack_rval(RvalList, Rval0) }
 	->
-		{ Code = Code0 },
+		{ Code = empty },
 		{ Rval = Rval0 }
 	;
-		code_exprn__get_spare_reg(r, Lval),
-		code_exprn__place_var(Var, Lval, Code1),
-		{ Rval = lval(Lval) },
-		{ Code = tree(Code0, Code1) }
+		code_exprn__select_preferred_lval(Var, Lval),
+		code_exprn__place_var(Var, Lval, Code),
+		{ Rval = lval(Lval) }
 	).
+
+%------------------------------------------------------------------------------%
+
+:- pred code_exprn__select_reg_rval(list(rval), rval).
+:- mode code_exprn__select_reg_rval(in, out) is semidet.
+
+code_exprn__select_reg_rval([Rval0 | Rvals0], Rval) :-
+	( Rval0 = lval(reg(_, _)) ->
+		Rval = Rval0
+	;
+		code_exprn__select_reg_rval(Rvals0, Rval)
+	).
+
+:- pred code_exprn__select_reg_or_stack_rval(list(rval), rval).
+:- mode code_exprn__select_reg_or_stack_rval(in, out) is semidet.
+
+code_exprn__select_reg_or_stack_rval([Rval0 | Rvals0], Rval) :-
+	(
+		Rval0 = lval(Lval),
+		( Lval = reg(_, _) ; Lval = stackvar(_) ; Lval = framevar(_) )
+	->
+		Rval = Rval0
+	;
+		code_exprn__select_reg_or_stack_rval(Rvals0, Rval)
+	).
+
+%------------------------------------------------------------------------------%
+
+:- pred code_exprn__select_preferred_lval(var, lval, exprn_info, exprn_info).
+:- mode code_exprn__select_preferred_lval(in, out, in, out) is det.
+
+code_exprn__select_preferred_lval(Var, Lval) -->
+	code_exprn__get_follow_vars(FollowVars),
+	(
+		{ map__search(FollowVars, Var, PrefLval) }
+	->
+		(
+			\+ { unreal_lval(PrefLval) },
+			\+ code_exprn__lval_in_use(PrefLval)
+		->
+			{ Lval = PrefLval }
+		;
+			code_exprn__get_spare_reg(r, Lval)
+		)
+	;
+		code_exprn__get_spare_reg(r, Lval)
+	).
+
+:- pred code_exprn__select_preferred_reg(var, lval, exprn_info, exprn_info).
+:- mode code_exprn__select_preferred_reg(in, out, in, out) is det.
+
+code_exprn__select_preferred_reg(Var, Lval) -->
+	code_exprn__get_follow_vars(FollowVars),
+	(
+		{ map__search(FollowVars, Var, PrefLval) },
+		{ PrefLval = reg(_, _) }
+	->
+		(
+			\+ { unreal_lval(PrefLval) },
+			\+ code_exprn__lval_in_use(PrefLval)
+		->
+			{ Lval = PrefLval }
+		;
+			code_exprn__get_spare_reg(r, Lval)
+		)
+	;
+		code_exprn__get_spare_reg(r, Lval)
+	).
+
+:- pred unreal_lval(lval).
+:- mode unreal_lval(in) is semidet.
+
+unreal_lval(reg(_, 0)).
 
 %------------------------------------------------------------------------------%
 
@@ -1678,35 +1793,45 @@ code_exprn__get_var_name(Var, Name) -->
 :- mode code_exprn__get_options(out, in, out) is det.
 
 code_exprn__get_varset(Varset, ExprnInfo, ExprnInfo) :-
-	ExprnInfo = exprn_info(Varset, _Vars, _Regs, _Acqu, _Opt).
+	ExprnInfo = exprn_info(Varset, _Vars, _Regs, _Acqu, _SS, _FV, _Opt).
 
 code_exprn__set_varset(Varset, ExprnInfo0, ExprnInfo) :-
-	ExprnInfo0 = exprn_info(_Varset, Vars, Regs, Acqu, Opt),
-	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu, Opt).
+	ExprnInfo0 = exprn_info(_Varset, Vars, Regs, Acqu, SS, FV, Opt),
+	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu, SS, FV, Opt).
 
 code_exprn__get_vars(Vars, ExprnInfo, ExprnInfo) :-
-	ExprnInfo = exprn_info(_Varset, Vars, _Regs, _Acqu, _Opt).
+	ExprnInfo = exprn_info(_Varset, Vars, _Regs, _Acqu, _SS, _FV, _Opt).
 
 code_exprn__set_vars(Vars, ExprnInfo0, ExprnInfo) :-
-	ExprnInfo0 = exprn_info(Varset, _Vars, Regs, Acqu, Opt),
-	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu, Opt).
+	ExprnInfo0 = exprn_info(Varset, _Vars, Regs, Acqu, SS, FV, Opt),
+	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu, SS, FV, Opt).
 
 code_exprn__get_regs(Regs, ExprnInfo, ExprnInfo) :-
-	ExprnInfo = exprn_info(_Varset, _Vars, Regs, _Acqu, _Opt).
+	ExprnInfo = exprn_info(_Varset, _Vars, Regs, _Acqu, _SS, _FV, _Opt).
 
 code_exprn__set_regs(Regs, ExprnInfo0, ExprnInfo) :-
-	ExprnInfo0 = exprn_info(Varset, Vars, _Regs, Acqu, Opt),
-	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu, Opt).
+	ExprnInfo0 = exprn_info(Varset, Vars, _Regs, Acqu, SS, FV, Opt),
+	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu, SS, FV, Opt).
 
 code_exprn__get_acquired(Acqu, ExprnInfo, ExprnInfo) :-
-	ExprnInfo = exprn_info(_Varset, _Vars, _Regs, Acqu, _Opt).
+	ExprnInfo = exprn_info(_Varset, _Vars, _Regs, Acqu, _SS, _FV, _Opt).
 
 code_exprn__set_acquired(Acqu, ExprnInfo0, ExprnInfo) :-
-	ExprnInfo0 = exprn_info(Varset, Vars, Regs, _Acqu, Opt),
-	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu, Opt).
+	ExprnInfo0 = exprn_info(Varset, Vars, Regs, _Acqu, SS, FV, Opt),
+	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu, SS, FV, Opt).
+
+code_exprn__get_stack_slots(SS, ExprnInfo, ExprnInfo) :-
+	ExprnInfo = exprn_info(_Varset, _Vars, _Regs, _Acqu, SS, _FV, _Opt).
+
+code_exprn__get_follow_vars(FV, ExprnInfo, ExprnInfo) :-
+	ExprnInfo = exprn_info(_Varset, _Vars, _Regs, _Acqu, _SS, FV, _Opt).
+
+code_exprn__set_follow_vars(FV, ExprnInfo0, ExprnInfo) :-
+	ExprnInfo0 = exprn_info(Varset, Vars, Regs, Acqu, SS, _FV, Opt),
+	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu, SS, FV, Opt).
 
 code_exprn__get_options(Opt, ExprnInfo, ExprnInfo) :-
-	ExprnInfo = exprn_info(_Varset, _Vars, _Regs, _Acqu, Opt).
+	ExprnInfo = exprn_info(_Varset, _Vars, _Regs, _Acqu, _SS, _FV, Opt).
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%

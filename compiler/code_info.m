@@ -74,10 +74,6 @@
 :- pred code_info__get_varset(varset, code_info, code_info).
 :- mode code_info__get_varset(out, in, out) is det.
 
-		% Get the hlds mapping from variables to stack slots
-:- pred code_info__get_stack_slots(stack_slots, code_info, code_info).
-:- mode code_info__get_stack_slots(out, in, out) is det.
-
 		% Get the id of the predicate we are generating code for.
 :- pred code_info__get_pred_id(pred_id, code_info, code_info).
 :- mode code_info__get_pred_id(out, in, out) is det.
@@ -125,16 +121,6 @@
 
 :- pred code_info__set_shapes(shape_table, code_info, code_info).
 :- mode code_info__set_shapes(in, in, out) is det.
-
-		% Get the table that contains advice about where
-		% variables should be put.
-:- pred code_info__get_follow_vars(follow_vars, code_info, code_info).
-:- mode code_info__get_follow_vars(out, in, out) is det.
-
-		% Set the table that contains advice about where
-		% variables should be put.
-:- pred code_info__set_follow_vars(follow_vars, code_info, code_info).
-:- mode code_info__set_follow_vars(in, in, out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -218,10 +204,6 @@
 			int,		% Counter for the local labels used
 					% by this procedure.
 			varset,		% The variables in this procedure.
-			stack_slots,	% The map giving the stack slot
-					% to be used for each variable
-					% that will ever need to be stored
-					% on the stack.
 			pred_id,	% The label of the current predicate.
 			proc_id,	% The label of the current procedure.
 			int,		% Counter for cells in this proc.
@@ -247,8 +229,6 @@
 					% The temp locations in use on the stack
 					% and what they contain (for gc).
 			shape_table,	% Table of shapes.
-			follow_vars,	% Advisory information about where
-					% each variable will be needed next.
 			set(var),	% Zombie variables; variables that have
 					% been killed but are protected by a
 					% resume point.
@@ -288,7 +268,8 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 	assoc_list__from_corresponding_lists(HeadVars, ArgInfos, Args),
 	code_info__build_input_arg_list(Args, ArgList),
 	globals__get_options(Globals, Options),
-	code_exprn__init_state(ArgList, Varset, Options, ExprnInfo),
+	code_exprn__init_state(ArgList, Varset, StackSlots, FollowVars,
+		Options, ExprnInfo),
 	stack__init(Continue),
 	stack__init(ResumeSetStack0),
 	set__init(AvailSlots0),
@@ -307,7 +288,6 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		VarSlotCount,
 		0,
 		Varset,
-		StackSlots,
 		PredId,
 		ProcId,
 		CellCount,
@@ -323,7 +303,6 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		Globals,
 		TempsInUse0,
 		Shapes,
-		FollowVars,
 		Zombies0,
 		ResumeSetStack0,
 		0
@@ -351,95 +330,87 @@ code_info__build_input_arg_list([V - Arg | Rest0], VarArgs) :-
 
 code_info__get_var_slot_count(A, CI, CI) :-
 	CI = code_info(A, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _, _).
+		_, _).
 
 code_info__get_label_count(B, CI, CI) :-
 	CI = code_info(_, B, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _, _).
+		_, _).
 
 code_info__get_varset(C, CI, CI) :-
 	CI = code_info(_, _, C, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _, _).
+		_, _).
 
-code_info__get_stack_slots(D, CI, CI) :-
+code_info__get_pred_id(D, CI, CI) :-
 	CI = code_info(_, _, _, D, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _, _).
+		_, _).
 
-code_info__get_pred_id(E, CI, CI) :-
+code_info__get_proc_id(E, CI, CI) :-
 	CI = code_info(_, _, _, _, E, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _, _).
+		_, _).
 
-code_info__get_proc_id(F, CI, CI) :-
+code_info__get_cell_count(F, CI, CI) :-
 	CI = code_info(_, _, _, _, _, F, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _, _).
+		_, _).
 
-code_info__get_cell_count(G, CI, CI) :-
+code_info__get_exprn_info(G, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, G, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _, _).
+		_, _).
 
-code_info__get_exprn_info(H, CI, CI) :-
+code_info__get_proc_info(H, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, H, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _, _).
+		_, _).
 
-code_info__get_proc_info(I, CI, CI) :-
+code_info__get_succip_used(I, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, I, _, _, _, _, _, _, _, _, _, _,
-		_, _, _, _).
+		_, _).
 
-code_info__get_succip_used(J, CI, CI) :-
+code_info__get_fail_stack(J, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, J, _, _, _, _, _, _, _, _, _,
-		_, _, _, _).
+		_, _).
 
-code_info__get_fail_stack(K, CI, CI) :-
+code_info__get_module_info(K, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, K, _, _, _, _, _, _, _, _,
-		_, _, _, _).
+		_, _).
 
-code_info__get_module_info(L, CI, CI) :-
+code_info__get_forward_live_vars(L, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, L, _, _, _, _, _, _, _,
-		_, _, _, _).
+		_, _).
 
-code_info__get_forward_live_vars(M, CI, CI) :-
+code_info__get_instmap(M, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, M, _, _, _, _, _, _,
-		_, _, _, _).
+		_, _).
 
-code_info__get_instmap(N, CI, CI) :-
+code_info__get_avail_temp_slots(N, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, N, _, _, _, _, _,
-		_, _, _, _).
+		_, _).
 
-code_info__get_avail_temp_slots(O, CI, CI) :-
+code_info__get_max_temp_slot_count(O, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, O, _, _, _, _,
-		_, _, _, _).
+		_, _).
 
-code_info__get_max_temp_slot_count(P, CI, CI) :-
+code_info__get_globals(P, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, P, _, _, _,
-		_, _, _, _).
+		_, _).
 
-code_info__get_globals(Q, CI, CI) :-
+code_info__get_temps_in_use(Q, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, Q, _, _,
-		_, _, _, _).
+		_, _).
 
-code_info__get_temps_in_use(R, CI, CI) :-
+code_info__get_shapes(R, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, R, _,
-		_, _, _, _).
+		_, _).
 
-code_info__get_shapes(S, CI, CI) :-
+code_info__get_zombies(S, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, S,
-		_, _, _, _).
+		_, _).
 
-code_info__get_follow_vars(T, CI, CI) :-
+code_info__get_resume_point_stack(T, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		T, _, _, _).
+		T, _).
 
-code_info__get_zombies(U, CI, CI) :-
+code_info__get_commit_triple_count(U, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, U, _, _).
-
-code_info__get_resume_point_stack(V, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, V, _).
-
-code_info__get_commit_triple_count(W, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _, W).
+		_, U).
 
 % :- type code_info	--->
 %		code_info(
@@ -450,41 +421,35 @@ code_info__get_commit_triple_count(W, CI, CI) :-
 %	B		int,		% Counter for the local labels used
 %					% by this procedure.
 %	C		varset,		% The variables in this procedure.
-%	D		stack_slots,	% The map giving the stack slot
-%					% to be used for each variable
-%					% that will ever need to be stored
-%					% on the stack.
-%	E		pred_id,	% The label of the current predicate.
-%	F		proc_id,	% The label of the current procedure.
-%	G		int,		% Counter for cells in this proc.
-%	H		exprn_info,	% A map storing the information about
+%	D		pred_id,	% The label of the current predicate.
+%	E		proc_id,	% The label of the current procedure.
+%	F		int,		% Counter for cells in this proc.
+%	G		exprn_info,	% A map storing the information about
 %					% the status of each variable.
-%	I		proc_info,	% The proc_info for the this procedure.
-%	J		bool,		% do we need to store succip?
-%	K		fail_stack,	% The failure continuation stack
-%	L		module_info,	% The module_info structure - you just
+%	H		proc_info,	% The proc_info for the this procedure.
+%	I		bool,		% do we need to store succip?
+%	J		fail_stack,	% The failure continuation stack
+%	K		module_info,	% The module_info structure - you just
 %					% never know when you might need it.
 %					% It should be read-only.
-%	M		set(var),	% Variables that are forward live
+%	L		set(var),	% Variables that are forward live
 %					% after this goal
-%	N		instmap,	% insts of variables
-%	O		set(lval),	% Stack variables that have been used
+%	M		instmap,	% insts of variables
+%	N		set(lval),	% Stack variables that have been used
 %					% for temporaries and are now again
 %					% available for reuse.
-%	P		int,		% The maximum number of extra
+%	O		int,		% The maximum number of extra
 %					% temporary stackslots that have been
 %					% used during the procedure
-%	Q		globals,	% code generation options
-%	R		map(lval, lval_or_ticket),
+%	P		globals,	% code generation options
+%	Q		map(lval, lval_or_ticket),
 %					% The temp locations in use on the stack
 %					% and what they contain (for gc).
-%	S		shape_table,	% Table of shapes.
-%	T		follow_vars,	% Advisory information about where
-%					% each variable will be needed next.
-%	U		set(var),	% Zombie variables; variables that have
+%	R		shape_table,	% Table of shapes.
+%	S		set(var),	% Zombie variables; variables that have
 %					% been killed but are protected by a
 %					% resume point.
-%	V		stack(set(var)),
+%	T		stack(set(var)),
 %					% Each resumption point has an
 %					% associated set of variables
 %					% whose values may be needed on
@@ -496,7 +461,7 @@ code_info__get_commit_triple_count(W, CI, CI) :-
 %					% When a variable included in the top
 %					% set becomes no longer forward live,
 %					% we must save its value to the stack.
-%	W		int,
+%	U		int,
 %					% A count of how many triples of
 %					% curfr, maxfr and redoip are live on
 %					% the det stack. These triples are
@@ -513,99 +478,92 @@ code_info__get_commit_triple_count(W, CI, CI) :-
 % code_info__set_varset
 % code_info__set_pred_id
 % code_info__set_proc_id
-% code_info__set_stack_slots
 % code_info__set_module_info
 % code_info__set_globals
 
 code_info__set_label_count(B, CI0, CI) :-
 	CI0 = code_info(A, _, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V, W),
+		R, S, T, U),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V, W).
+		R, S, T, U).
 
-code_info__set_cell_count(G, CI0, CI) :-
+code_info__set_cell_count(F, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, _, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U).
+
+code_info__set_exprn_info(G, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, _, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V, W),
+		R, S, T, U),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V, W).
+		R, S, T, U).
 
-code_info__set_exprn_info(H, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, _, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V, W),
+code_info__set_succip_used(I, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, H, _, J, K, L, M, N, O, P, Q,
+		R, S, T, U),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V, W).
+		R, S, T, U).
 
-code_info__set_succip_used(J, CI0, CI) :-
+code_info__set_fail_stack(J, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P, Q,
-		R, S, T, U, V, W),
+		R, S, T, U),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V, W).
+		R, S, T, U).
 
-code_info__set_fail_stack(K, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, _, L, M, N, O, P, Q,
-		R, S, T, U, V, W),
+code_info__set_forward_live_vars(L, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, _, M, N, O, P, Q,
+		R, S, T, U),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V, W).
+		R, S, T, U).
 
-code_info__set_forward_live_vars(M, CI0, CI) :-
+code_info__set_instmap(M, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, _, N, O, P, Q,
-		R, S, T, U, V, W),
+		R, S, T, U),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V, W).
+		R, S, T, U).
 
-code_info__set_instmap(N, CI0, CI) :-
+code_info__set_avail_temp_slots(N, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, _, O, P, Q,
-		R, S, T, U, V, W),
+		R, S, T, U),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V, W).
+		R, S, T, U).
 
-code_info__set_avail_temp_slots(O, CI0, CI) :-
+code_info__set_max_temp_slot_count(O, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, _, P, Q,
-		R, S, T, U, V, W),
+		R, S, T, U),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V, W).
+		R, S, T, U).
 
-code_info__set_max_temp_slot_count(P, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, _, Q,
-		R, S, T, U, V, W),
+code_info__set_temps_in_use(Q, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, _,
+		R, S, T, U),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V, W).
+		R, S, T, U).
 
-code_info__set_temps_in_use(R, CI0, CI) :-
+code_info__set_shapes(R, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		_, S, T, U, V, W),
+		_, S, T, U),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V, W).
+		R, S, T, U).
 
-code_info__set_shapes(S, CI0, CI) :-
+code_info__set_zombies(S, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, _, T, U, V, W),
+		R, _, T, U),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V, W).
+		R, S, T, U).
 
-code_info__set_follow_vars(T, CI0, CI) :-
+code_info__set_resume_point_stack(T, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, _, U, V, W),
+		R, S, _, U),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V, W).
+		R, S, T, U).
 
-code_info__set_zombies(U, CI0, CI) :-
+code_info__set_commit_triple_count(U, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, _, V, W),
+		R, S, T, _),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V, W).
-
-code_info__set_resume_point_stack(V, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, _, W),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V, W).
-
-code_info__set_commit_triple_count(W, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V, _),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V, W).
+		R, S, T, U).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -613,6 +571,20 @@ code_info__set_commit_triple_count(W, CI0, CI) :-
 	% Submodule for simple wrappers around access predicates.
 
 :- interface.
+
+		% Get the hlds mapping from variables to stack slots
+:- pred code_info__get_stack_slots(stack_slots, code_info, code_info).
+:- mode code_info__get_stack_slots(out, in, out) is det.
+
+		% Get the table that contains advice about where
+		% variables should be put.
+:- pred code_info__get_follow_vars(follow_vars, code_info, code_info).
+:- mode code_info__get_follow_vars(out, in, out) is det.
+
+		% Set the table that contains advice about where
+		% variables should be put.
+:- pred code_info__set_follow_vars(follow_vars, code_info, code_info).
+:- mode code_info__set_follow_vars(in, in, out) is det.
 
 	% code_info__pre_goal_update(GoalInfo, Atomic, OldCodeInfo, NewCodeInfo)
 	% updates OldCodeInfo to produce NewCodeInfo with the changes
@@ -627,7 +599,6 @@ code_info__set_commit_triple_count(W, CI0, CI) :-
 :- mode code_info__post_goal_update(in, in, out) is det.
 
 	% Find out the type of the given variable.
-
 :- pred code_info__variable_type(var, type, code_info, code_info).
 :- mode code_info__variable_type(in, out, in, out) is det.
 
@@ -637,14 +608,12 @@ code_info__set_commit_triple_count(W, CI0, CI) :-
 
 	% Given a list of type variables, find the lvals where the
 	% corresponding type_infos are being stored.
-
 :- pred code_info__find_type_infos(list(var), list(lval), code_info, code_info).
 :- mode code_info__find_type_infos(in, out, in, out) is det.
 
 	% Given a constructor id, and a variable (so that we can work out the
 	% type of the constructor), determine correct tag (representation)
 	% of that constructor.
-
 :- pred code_info__cons_id_to_tag(var, cons_id, cons_tag, code_info, code_info).
 :- mode code_info__cons_id_to_tag(in, in, out, in, out) is det.
 
@@ -661,7 +630,6 @@ code_info__set_commit_triple_count(W, CI0, CI) :-
 :- mode code_info__get_pred_proc_arginfo(in, in, out, in, out) is det.
 
 	% Pop the failure continuation stack.
-
 :- pred code_info__pop_failure_cont(code_info, code_info).
 :- mode code_info__pop_failure_cont(in, out) is det.
 
@@ -735,6 +703,21 @@ code_info__set_commit_triple_count(W, CI0, CI) :-
 
 :- pred code_info__rem_commit_triple(code_info, code_info).
 :- mode code_info__rem_commit_triple(in, out) is det.
+
+%-----------------------------------------------------------------------------%
+
+code_info__get_stack_slots(StackSlots, CI, CI) :-
+	code_info__get_exprn_info(ExprnInfo, CI, _),
+	code_exprn__get_stack_slots(StackSlots, ExprnInfo, _).
+
+code_info__get_follow_vars(FollowVars, CI, CI) :-
+	code_info__get_exprn_info(ExprnInfo, CI, _),
+	code_exprn__get_follow_vars(FollowVars, ExprnInfo, _).
+
+code_info__set_follow_vars(FollowVars, CI0, CI) :-
+	code_info__get_exprn_info(ExprnInfo0, CI0, _),
+	code_exprn__set_follow_vars(FollowVars, ExprnInfo0, ExprnInfo),
+	code_info__set_exprn_info(ExprnInfo, CI0, CI).
 
 %-----------------------------------------------------------------------------%
 
@@ -1256,7 +1239,6 @@ code_info__produce_resume_vars([], Map, empty) -->
 	{ map__init(Map) }.
 code_info__produce_resume_vars([V | Vs], Map, Code) -->
 	code_info__produce_resume_vars(Vs, Map0, Code0),
-		% XXX should use follow_vars to decide whether to put into reg
 	code_info__produce_variable_in_reg_or_stack(V, Code1, Rval),
 	{ set__singleton_set(Rvals, Rval) },
 	{ map__set(Map0, V, Rvals, Map) },
@@ -1533,10 +1515,8 @@ code_info__place_resume_var(Var, [Target | Targets], Code) -->
 code_info__set_var_locations(Map) -->
 	{ map__to_assoc_list(Map, List0) },
 	{ code_info__flatten_varlval_list(List0, List) },
-	code_info__get_varset(Varset),
-	code_info__get_globals(Globals),
-	{ globals__get_options(Globals, Options) },
-	{ code_exprn__init_state(List, Varset, Options, Exprn) },
+	code_info__get_exprn_info(Exprn0),
+	{ code_exprn__reinit_state(List, Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn).
 
 :- pred code_info__flatten_varlval_list(assoc_list(var, set(rval)),
@@ -2507,10 +2487,8 @@ code_info__generate_branch_end(CodeModel, StoreMap, Code) -->
 code_info__remake_with_store_map(StoreMap) -->
 	{ map__to_assoc_list(StoreMap, VarLvals) },
 	{ code_info__fixup_lvallist(VarLvals, VarRvals) },
-	code_info__get_varset(Varset),
-	code_info__get_globals(Globals),
-	{ globals__get_options(Globals, Options) },
-	{ code_exprn__init_state(VarRvals, Varset, Options, Exprn) },
+	code_info__get_exprn_info(Exprn0),
+	{ code_exprn__reinit_state(VarRvals, Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn).
 
 :- pred code_info__fixup_lvallist(assoc_list(var, lval), assoc_list(var, rval)).
