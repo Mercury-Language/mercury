@@ -352,12 +352,16 @@ HEADER_CLEAN_FILTER = \
 AWK = awk
 
 %.check.macros: %.h %.check_hdr.c
+	@> $*.empty.c
+	-@CC@ -E $*.empty.c -nostdinc -dN 2> /dev/null | \
+		$(AWK) '/[ \t]*#define/ { print $$2; }' | sort -u > $*.base
 	-$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) \
 		-DMERCURY_BOOTSTRAP_H -DMR_NO_CONF_BACKWARDS_COMPAT \
-		-E $*.check_hdr.c \
-		-nostdinc -dN \
+		-E $*.check_hdr.c -nostdinc -dN \
 		2> /dev/null | $(AWK) '/[ \t]*#define/ { print $$2; }' | \
-		$(HEADER_CLEAN_FILTER) | sort -u > $@
+		$(HEADER_CLEAN_FILTER) | sort -u > $*.actual
+	@comm -1 -3 $*.base $*.actual > $@
+	@rm $*.base $*.actual
 	@if cmp -s /dev/null $@; then \
 		true; \
 	else \
@@ -368,14 +372,18 @@ AWK = awk
 	fi
 
 %.check.mmacros: %.mh %.check_mhdr.c
+	@> $*.mempty.c
+	-@CC@ -E $*.mempty.c -nostdinc -dN 2> /dev/null | \
+		$(AWK) '/[ \t]*#define/ { print $$2; }' | sort -u > $*.mbase
 	-$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) \
 		-DMERCURY_BOOTSTRAP_H -DMR_NO_CONF_BACKWARDS_COMPAT \
-		-E $*.check_mhdr.c \
-		-nostdinc -dN \
+		-E $*.check_mhdr.c -nostdinc -dN \
 		2> /dev/null | $(AWK) '/[ \t]*#define/ { print $$2; }' | \
 		grep -v -e `echo $(subst .check.mmacros,,$@) | tr '[a-z]' '[A-Z]'`_H | \
 		grep -v -e `echo $(subst .check.mmacros,,$@) | tr '[a-z]' '[A-Z]'`_DECL_GUARD | \
-		$(HEADER_CLEAN_FILTER) | sort -u > $@
+		$(HEADER_CLEAN_FILTER) | sort -u > $*.mactual
+	@comm -1 -3 $*.mbase $*.mactual > $@
+	@rm $*.mbase $*.mactual
 	@if cmp -s /dev/null $@; then \
 		true; \
 	else \
