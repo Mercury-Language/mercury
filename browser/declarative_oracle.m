@@ -122,9 +122,17 @@
 :- import_module mdb.util.
 :- import_module mdbcomp.prim_data.
 
-:- import_module map, bool, std_util, set, int, bimap, counter, assoc_list,
-	exception, list.
+:- import_module assoc_list.
+:- import_module bimap.
+:- import_module bool.
+:- import_module counter.
+:- import_module exception.
+:- import_module int.
 :- import_module library.
+:- import_module list.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
 
 query_oracle(Question, Response, !Oracle, !IO) :-
 	(
