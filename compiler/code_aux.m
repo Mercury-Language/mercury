@@ -56,7 +56,8 @@
 	%	  are removed from the exprn_info structure.
 	%	- The variables that die but may still become live on
 	%	  backtracking (and therefore still need to be stored on
-	%	  the stack) are added to the set of nondet-live variables.
+	%	  the stack) are updated (those in the goal-info replace
+	%	  the existing set).
 :- pred code_aux__pre_goal_update(hlds__goal_info, code_info, code_info).
 :- mode code_aux__pre_goal_update(in, in, out) is det.
 
@@ -68,8 +69,6 @@
 	%	- Variables that became live at the end of the goal (the post-
 	%	  birth set) are added to the exprn_info structure and to the
 	%	  set of live variables.
-	%	- Variables that were nondet-live only during the current goal
-	%	  are removed from the set of nondet-live variables.
 :- pred code_aux__post_goal_update(hlds__goal_info, code_info, code_info).
 :- mode code_aux__post_goal_update(in, in, out) is det.
 

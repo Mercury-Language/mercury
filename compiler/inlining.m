@@ -136,10 +136,8 @@ inlining__inlining_in_goal_2(
         	module_info_preds(ModuleInfo, Preds),
         	map__lookup(Preds, PredId, PredInfo),
 		\+ pred_info_is_imported(PredInfo),
-			% unify, except in a mode other than (in, in)
-			% because modes other than (in, in) will be
-			% local whether the type was defined locally
-			% or not.
+			% this catches the case of locally defined
+			% unification predicates for imported types.
 		\+ (pred_info_is_pseudo_imported(PredInfo), ProcId = 0),
         	pred_info_procedures(PredInfo, Procs),
         	map__lookup(Procs, ProcId, ProcInfo),

@@ -596,9 +596,15 @@ add_nondet_lives_to_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Liveness0,
 					Else1, Liveness, Extras3),
 	set__union(Extras2, Extras3, Extras),
 
+		% things that become nondet live in the Else
+		% but not the Then have to become automagically
+		% live at the end of the Then.
 	set__difference(Extras, Extras2, ElseOnlyExtras),
 	stuff_liveness_residue_into_goal(Then1, ElseOnlyExtras, Then),
 
+		% things that become nondet live in the Then
+		% but not the Else have to become automagically
+		% live at the end of the Else.
 	set__difference(Extras, Extras3, ThenOnlyExtras),
 	stuff_liveness_residue_into_goal(Else1, ThenOnlyExtras, Else).
 
