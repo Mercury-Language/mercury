@@ -37,6 +37,7 @@ RM_C	=	$(LIBRARY_RM_C)
 M_ENV	=	MERCURY_INT_DIR=$(LIBRARY_DIR) \
 		MERCURY_ALL_C_INCL_DIRS="\
 			-I$(TRACE_DIR) \
+			-I$(LIBRARY_DIR) \
 			-I$(RUNTIME_DIR) \
 			-I$(BOEHM_GC_DIR) \
 			-I$(BOEHM_GC_DIR)/include \
