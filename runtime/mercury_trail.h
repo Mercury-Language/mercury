@@ -134,7 +134,7 @@ typedef struct {
   #define MR_store_function_trail_entry(entry, func, datum)		\
 	  do {								\
 		(entry)->MR_union.MR_func.MR_untrail_func =		\
-			(MR_untrail_func_type *)			\
+			(MR_untrail_func_type *) (Word)			\
 			  mkword(MR_func_trail_tag, (func));		\
 		(entry)->MR_union.MR_func.MR_datum = (datum);		\
 	  } while (0)
