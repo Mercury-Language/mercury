@@ -1106,6 +1106,10 @@ output_temp_decls_2(Next, Max, Type) -->
 		[]
 	).
 
+% output_rval_decls(Rval, ...) outputs the declarations of any
+% static constants, etc. that need to be declared before
+% output_rval(Rval) is called.
+
 % Every time we emit a declaration for a symbol, we insert it into the
 % set of symbols we've already declared.  That way, we avoid generating
 % the same symbol twice, which would cause an error in the C code.
@@ -1137,16 +1141,17 @@ output_rval_decls(const(Const), DeclSet0, DeclSet) -->
 		globals__io_lookup_bool_option(static_ground_terms,
 			StaticGroundTerms),
 		( { UnboxedFloat = no, StaticGroundTerms = yes } ->
-			{ string__float_to_string(FloatVal, FloatString) },
-			{ FloatLabel = float_label(FloatString) },
+			{ llds_out__float_literal_name(FloatVal, FloatName) },
+			{ FloatLabel = float_label(FloatName) },
 			( { set__member(FloatLabel, DeclSet0) } ->
 				{ DeclSet = DeclSet0 }
 			;
 				{ set__insert(DeclSet0, FloatLabel, DeclSet) },
-				{ llds_out__float_const_name(FloatString,
-					FloatName) },
+				{ string__float_to_string(FloatVal,
+					FloatString) },
 				io__write_strings([
-					"static const Float ", FloatName,
+					"static const Float ",
+					"mercury_float_const_", FloatName,
 					" = ", FloatString, ";\n\t  "
 				])
 			)
@@ -1158,9 +1163,42 @@ output_rval_decls(const(Const), DeclSet0, DeclSet) -->
 	).
 output_rval_decls(unop(_, Rval), DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, DeclSet0, DeclSet).
-output_rval_decls(binop(_, Rval1, Rval2), DeclSet0, DeclSet) -->
+output_rval_decls(binop(Op, Rval1, Rval2), DeclSet0, DeclSet) -->
 	output_rval_decls(Rval1, DeclSet0, DeclSet1),
-	output_rval_decls(Rval2, DeclSet1, DeclSet).
+	output_rval_decls(Rval2, DeclSet1, DeclSet2),
+		%
+		% If floats are boxed, and the static ground terms
+		% option is enabled, then for each float constant
+		% which we might want to box we declare a static const
+		% variable holding that constant. 
+		%
+	globals__io_lookup_bool_option(unboxed_float, UnboxFloat),
+	globals__io_lookup_bool_option(static_ground_terms, StaticGroundTerms),
+	(
+		{ UnboxFloat = no, StaticGroundTerms = yes },
+		{ llds_out__float_op(Op, OpStr) },
+		{ llds_out__float_const_binop_expr_name(Op, Rval1, Rval2,
+			FloatName) }
+	->
+		{ FloatLabel = float_label(FloatName) },
+		( { set__member(FloatLabel, DeclSet2) } ->
+			{ DeclSet = DeclSet2 }
+		;
+			{ set__insert(DeclSet2, FloatLabel, DeclSet) },
+			io__write_string(
+				"static const Float mercury_float_const_"),
+			io__write_string(FloatName),
+			io__write_string(" = "),
+			output_rval_as_float(Rval1),
+			io__write_string(" "),
+			io__write_string(OpStr),
+			io__write_string(" "),
+			output_rval_as_float(Rval2),
+			io__write_string(";\n\t  ")
+		)
+	;
+		{ DeclSet = DeclSet2 }
+	).
 
 	%
 	% Originally we used to output static constants as
@@ -1237,19 +1275,74 @@ output_rval_decls(create(_Tag, ArgVals, Label), DeclSet0, DeclSet) -->
 		)
 	).
 
-:- pred llds_out__float_const_name(string::in, string::out) is det.
+%-----------------------------------------------------------------------------%
 
-llds_out__float_const_name(FloatName0, FloatName) :-
+% The following predicates are used to compute the names used for
+% floating point static constants.
+
+:- pred llds_out__float_const_expr_name(rval::in, string::out) is semidet.
+
+% Given an rval, succeed iff it is a floating point constant expression;
+% if so, return a name for that rval that is suitable for use in a C identifier.
+% Different rvals must be given different names.
+
+llds_out__float_const_expr_name(Expr, Name) :-
+	( Expr = const(float_const(Float)) ->
+		llds_out__float_literal_name(Float, Name)
+	; Expr = binop(Op, Arg1, Arg2) ->
+		llds_out__float_const_binop_expr_name(Op, Arg1, Arg2, Name)
+	;
+		fail
+	).
+
+
+:- pred llds_out__float_const_binop_expr_name(binary_op::in, rval::in, rval::in,
+				string::out) is semidet.
+
+% Given a binop rval, succeed iff that rval is a floating point constant
+% expression; if so, return a name for that rval that is suitable for use in
+% a C identifier.  Different rvals must be given different names.
+
+llds_out__float_const_binop_expr_name(Op, Arg1, Arg2, Name) :-
+	llds_out__float_op_name(Op, OpName),
+	llds_out__float_const_expr_name(Arg1, Arg1Name),
+	llds_out__float_const_expr_name(Arg2, Arg2Name),
+	% we use prefix notation (operator, argument, argument)
+	% rather than infix, to ensure that different rvals get
+	% different names
+	string__append_list([OpName, "_", Arg1Name, "_", Arg2Name],
+		Name).
+
+:- pred llds_out__float_literal_name(float::in, string::out) is det.
+
+% Given an rval which is a floating point literal, return
+% a name for that rval that is suitable for use in a C identifier.
+% Different rvals must be given different names.
+
+llds_out__float_literal_name(Float, FloatName) :-
 	%
 	% The name of the variable is based on the
 	% value of the float const, with "pt" instead
 	% of ".", and "neg" instead of "-".
-	% We call llds_name_mangle too, just to be sure.
 	%
+	string__float_to_string(Float, FloatName0),
 	string__replace_all(FloatName0, ".", "pt", FloatName1),
-	string__replace_all(FloatName1, "-", "neg", FloatName2),
-	llds_out__name_mangle(FloatName2, FloatName3),
-	string__append("mercury_float_const_", FloatName3, FloatName).
+	string__replace_all(FloatName1, "-", "neg", FloatName).
+
+
+:- pred llds_out__float_op_name(binary_op, string).
+:- mode llds_out__float_op_name(in, out) is semidet.
+	
+% succeed iff the binary operator is an operator whose return
+% type is float; bind the output string to a name for that operator
+% that is suitable for use in a C identifier
+
+llds_out__float_op_name(float_plus, "plus").
+llds_out__float_op_name(float_minus, "minus").
+llds_out__float_op_name(float_times, "times").
+llds_out__float_op_name(float_divide, "divide").
+
+%-----------------------------------------------------------------------------%
 
 :- pred output_cons_arg_decls(list(maybe(rval)), decl_set, decl_set,
 				io__state, io__state).
@@ -1291,6 +1384,10 @@ output_cons_args([Arg | Args], CastToPointer) -->
 		io__write_string("\n\t  ")
 	).
 
+% output_lval_decls(Lval, ...) outputs the declarations of any
+% static constants, etc. that need to be declared before
+% output_lval(Lval) is called.
+
 :- pred output_lval_decls(lval, decl_set, decl_set, io__state, io__state).
 :- mode output_lval_decls(in, in, out, di, uo) is det.
 
@@ -1315,6 +1412,10 @@ output_lval_decls(hp, DeclSet, DeclSet) --> [].
 output_lval_decls(sp, DeclSet, DeclSet) --> [].
 output_lval_decls(lvar(_), DeclSet, DeclSet) --> [].
 output_lval_decls(temp(_), DeclSet, DeclSet) --> [].
+
+% output_code_addr_decls(CodeAddr, ...) outputs the declarations of any
+% extern symbols, etc. that need to be declared before
+% output_code_addr(CodeAddr) is called.
 
 :- pred output_code_addr_decls(code_addr, decl_set, decl_set,
 				io__state, io__state).
@@ -1353,6 +1454,8 @@ output_code_addr_decls(do_semidet_closure, DeclSet, DeclSet) -->
 	io__write_string("Declare_entry(do_call_semidet_closure);\n\t  ").
 output_code_addr_decls(do_nondet_closure, DeclSet, DeclSet) -->
 	io__write_string("Declare_entry(do_call_nondet_closure);\n\t  ").
+
+
 
 :- pred maybe_output_update_prof_counter(label, pair(label, set(label)),
 	io__state, io__state).
@@ -1748,13 +1851,32 @@ output_rval(binop(Op, X, Y)) -->
 	;
 		{ llds_out__float_op(Op, OpStr) }
 	->
-		io__write_string("float_to_word("),
-		output_rval_as_float(X),
-		io__write_string(" "),
-		io__write_string(OpStr),
-		io__write_string(" "),
-		output_rval_as_float(Y),
-		io__write_string(")")
+		%
+		% for float constant expressions, if we're using boxed
+		% boxed floats and --static-ground-terms is enabled,
+		% we just refer to the static const which we declared
+		% earlier
+		%
+		globals__io_lookup_bool_option(unboxed_float, UnboxFloat),
+		globals__io_lookup_bool_option(static_ground_terms,
+			StaticGroundTerms),
+		(
+			{ UnboxFloat = no, StaticGroundTerms = yes },
+			{ llds_out__float_const_binop_expr_name(Op, X, Y,
+				FloatName) }
+		->
+			io__write_string("(Word)(&mercury_float_const_"),
+			io__write_string(FloatName),
+			io__write_string(")")
+		;
+			io__write_string("float_to_word("),
+			output_rval_as_float(X),
+			io__write_string(" "),
+			io__write_string(OpStr),
+			io__write_string(" "),
+			output_rval_as_float(Y),
+			io__write_string(")")
+		)
 	;
 		{ Op = (+) },
 		{ Y = const(int_const(C)) },
@@ -1890,9 +2012,8 @@ output_rval_const(float_const(Float)) -->
 		% for boxed floats, if --static-ground-terms is enabled,
 		% we just refer to the static const which we declared earlier
 		%
-		{ string__float_to_string(Float, FloatString) },
-		{ llds_out__float_const_name(FloatString, FloatName) },
-		io__write_string("(Word)(&"),
+		{ llds_out__float_literal_name(Float, FloatName) },
+		io__write_string("(Word)(&mercury_float_const_"),
 		io__write_string(FloatName),
 		io__write_string(")")
 	;
