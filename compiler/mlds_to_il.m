@@ -165,6 +165,8 @@
 	file_foreign_langs :: set(foreign_language), % file foreign code
 	il_data_rep	:: il_data_rep,		% data representation.
 	debug_il_asm	:: bool,		% --debug-il-asm
+	verifiable_code	:: bool,		% --verifiable-code
+	il_byref_tailcalls :: bool,		% --il-byref-tailcalls
 		% class-wide attributes (all accumulate)
 	alloc_instrs	:: instr_tree,		% .cctor allocation instructions
 	init_instrs	:: instr_tree,		% .cctor init instructions
@@ -200,10 +202,13 @@ generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
 	prog_out__sym_name_to_string(mlds_module_name_to_sym_name(ModuleName),
 			".", AssemblyName),
 	get_il_data_rep(ILDataRep, IO0, IO1),
-	globals__io_lookup_bool_option(debug_il_asm, DebugIlAsm, IO1, IO),
+	globals__io_lookup_bool_option(debug_il_asm, DebugIlAsm, IO1, IO2),
+	globals__io_lookup_bool_option(verifiable_code, VerifiableCode, IO2, IO3),
+	globals__io_lookup_bool_option(il_byref_tailcalls, ByRefTailCalls,
+			IO3, IO),
 
 	IlInfo0 = il_info_init(ModuleName, AssemblyName, Imports,
-			ILDataRep, DebugIlAsm),
+			ILDataRep, DebugIlAsm, VerifiableCode, ByRefTailCalls),
 
 	list__map_foldl(mlds_defn_to_ilasm_decl, Defns, ILDecls,
 			IlInfo0, IlInfo),
@@ -939,10 +944,10 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassDecl) -->
 		il_info_get_next_block_id(TryBlockId),
 		il_info_make_next_label(DoneLabel),
 
-			% Replace all the returns with leave
-			% instructions as a side effect this means that
-			% we can no longer have any tail calls so
-			% replace them with nops.
+			% Replace all the returns with leave instructions;
+			% as a side effect, this means that
+			% we can no longer have any tail calls,
+			% so replace them with nops.
 		{ RenameRets = (func(I) = 
 			(if (I = ret) then
 				leave(label_target(DoneLabel))
@@ -1222,11 +1227,33 @@ statement_to_il(statement(atomic(Atomic), Context), Instrs) -->
 
 statement_to_il(statement(call(Sig, Function, _This, Args, Returns, IsTail), 
 		Context), Instrs) -->
-	( { IsTail = tail_call } ->
-		% For tail calls, to make the code verifiable, 
-		% we need a `ret' instruction immediately after
-		% the call.
+	VerifiableCode =^ verifiable_code,
+	ByRefTailCalls =^ il_byref_tailcalls,
+	DataRep =^ il_data_rep,
+	{ TypeParams = mlds_signature_to_ilds_type_params(DataRep, Sig) },
+	{ ReturnParam = mlds_signature_to_il_return_param(DataRep, Sig) },
+	(
+		{ IsTail = tail_call },
+		% if --verifiable-code is enabled,
+		% and the arguments contain one or more byrefs,
+		% then don't emit the "tail." prefix,
+		% unless --il-byref-tailcalls is set
+		\+ (
+			{ VerifiableCode = yes },
+			some [Ref] (
+				{ list__member(Ref, TypeParams) },
+				{ Ref = ilds__type(_, '&'(_)) 
+				; Ref = ilds__type(_, '*'(_)) 
+				; Ref = ilds__type(_, refany) 
+				}
+			),
+			{ ByRefTailCalls = no }
+		)
+	->
 		{ TailCallInstrs = [tailcall] },
+		% For calls marked with "tail.", we need a `ret'
+		% instruction immediately after the call (this is in fact
+		% needed for correct IL, not just for verifiability)
 		{ RetInstrs = [ret] },
 		{ ReturnsStoredInstrs = empty },
 		{ LoadMemRefInstrs = empty }
@@ -1241,9 +1268,6 @@ statement_to_il(statement(call(Sig, Function, _This, Args, Returns, IsTail),
 	),
 	list__map_foldl(load, Args, ArgsLoadInstrsTrees),
 	{ ArgsLoadInstrs = tree__list(ArgsLoadInstrsTrees) },
-	DataRep =^ il_data_rep,
-	{ TypeParams = mlds_signature_to_ilds_type_params(DataRep, Sig) },
-	{ ReturnParam = mlds_signature_to_il_return_param(DataRep, Sig) },
 	( { Function = const(_) } ->
 		{ FunctionLoadInstrs = empty },
 		{ rval_to_function(Function, MemberName) },
@@ -3546,11 +3570,13 @@ runtime_init_method_name = id("init_runtime").
 %
 
 :- func il_info_init(mlds_module_name, assembly_name, mlds__imports,
-		il_data_rep, bool) = il_info.
+		il_data_rep, bool, bool, bool) = il_info.
 
-il_info_init(ModuleName, AssemblyName, Imports, ILDataRep, DebugIlAsm) =
+il_info_init(ModuleName, AssemblyName, Imports, ILDataRep,
+		DebugIlAsm, VerifiableCode, ByRefTailCalls) =
 	il_info(ModuleName, AssemblyName, Imports, set__init, ILDataRep,
-		DebugIlAsm, empty, empty, [], no, set__init, set__init,
+		DebugIlAsm, VerifiableCode, ByRefTailCalls,
+		empty, empty, [], no, set__init, set__init,
 		map__init, empty, counter__init(1), counter__init(1), no,
 		Args, MethodName, DefaultSignature) :-
 	Args = [],
