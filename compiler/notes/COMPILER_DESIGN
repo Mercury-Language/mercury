@@ -36,9 +36,9 @@ The action is co-ordinated from mercury_compile.m.
 0. Option handling
 
 The command-line options are defined in the module options.m.
-The command-line is parsed in getopt.m.
-The results are stored in the io__state, using the
-type globals defined in globals.m.
+mercury_compile.pp calls library/getopt.m, passing the predicates
+defined in options.m as arguments, to parse them.  The results are
+stored in the io__state, using the type globals defined in globals.m.
 
 1. Parsing
 
@@ -133,45 +133,44 @@ in an HLDS goal.
 * introduction of type_info arguments for polymorphic predicates
   (polymorphism.m)
   
-* conversion of lambda expressions into higher-order predicate
-  terms referring to freshly introduced separate predicates
-  (lambda.m). 
-  
-To improve efficiency, the above two passes are actually combined into
-one - polymorphism.m calls lambda__transform_lambda directly.
-(Incidentally, these two modules should actually be classified as code
-simplification modules rather than semantic analysis or error checking.)
-
 * indexing and determinism analysis
 
 	switch detection (switch_detection.m),
 	common goal hoisting (cse_detection.m)
 		Note that if cse_detection.m modifies the code,
-		it will re-run mode analysis, lambda expansion,
-		and switch detection
-	common.m (XXX but it ought to go after determinism analysis)
-	inlining (inlining.m),
-		(XXX the only reason inlining comes here before determinism
-		analysis is because it happened to be easier - it ought
-		to be in the HLDS-to-HLDS optimizations section)
+		it will re-run mode analysis and switch detection
 	determinism analysis (det_analysis.m and det_report.m)
 
-* checking of unique modes (unique_modes.m, when it is eventually written...)
+* checking of unique modes (unique_modes.m)
 
 	unique_modes.m checks that non-backtrackable unique modes were
 	not used in a context which might require backtracking.
+	Note that what unique_modes.m does is quite similar to
+	what modes.m does, and unique_modes calls lots of predicates
+	defined in modes.m to do it.
+
+* removal of lambda expressions (lambda.m)
+
+	lambda.m converts lambda expressions into higher-order predicate
+        terms referring to freshly introduced separate predicates.
+	This pass needs to come after unique_modes.m to ensure that
+	the modes we give to the introduced predicates are correct.
+  
+To improve efficiency, the above two passes are actually combined into
+one - unique_modes.m calls modecheck_unification in modes.m which (if
+it was called from unique_modes.m) calls lambda__transform_lambda.
 
 3. High-level optimization
 
 The various HLDS-to-HLDS optimizations are:
+
+* inlining (i.e. unfolding) of simple procedures (inlining.m)
 
 * detection of common terms constructions (common.m)
 
 	common.m looks for construction unifications which
 	constructs a term that is the same as one that already exists,
 	and replaces them with assignment unifications
-	    	XXX common.m is actually invoked between cse_detection.m
-		    and inlining.m above - why???
 
 * constraint propagation (constraint.m)
 
@@ -334,10 +333,6 @@ Some of them are obsolete; other are work-in-progress.
 	utils.m
 		Higher-order predicates.  Has suffered from software rot.
 		Should go in library/{list,map,...}.m anyway.
-
-	debugger.m, debug_util.m
-		Steven Siew (ksiew)'s debugger which works by
-		interpreting the HLDS.  Very unfinished.
 
 	swi_lib.m, swi_builtin.m:
 		Support for SWI-Prolog.  Incomplete.
