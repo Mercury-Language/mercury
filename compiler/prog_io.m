@@ -773,11 +773,12 @@ parse_dcg_goal(Term0, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 				], Args),
 			Term = term__functor(term__atom(Functor), Args, Context)
 		;
+			term__context_init(0, CallContext),
 			Term = term__functor(term__atom("call"), [
 					Term0,
 					term__variable(Var0),
 					term__variable(Var)
-				], Context)
+				], CallContext)
 		),
 		Goal = call(Term)
 	).
@@ -1210,7 +1211,7 @@ get_determinism(B, Body, Determinism) :-
 		->
 			Determinism = ok(Determinism3)
 		;
-			Determinism = error(Determinism2, "invalid category")
+			Determinism = error("invalid category", Determinism1)
 		)
 	;
 		Body = B,
