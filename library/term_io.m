@@ -286,7 +286,11 @@ term_io__quote_char(C) -->
 	io__write_char('''').
 
 term_io__quote_atom(S) -->
-	( { string__is_alnum_or_underscore(S) } ->
+	(
+		{ string__first_char(S, FirstChar, Rest) },
+		{ char__is_alpha(FirstChar) },
+		{ string__is_alnum_or_underscore(Rest) }
+	->
 		io__write_string(S)
 	;
 		io__write_char(''''),
