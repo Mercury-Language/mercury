@@ -16,15 +16,19 @@
 ** you may need to change compiler/stack_layout.m as well.
 */
 
+/*-------------------------------------------------------------------------*/
 /*
 ** Definitions for MR_PredFunc
 */
 
 typedef	enum { MR_PREDICATE, MR_FUNCTION } MR_PredFunc;
 
+/*-------------------------------------------------------------------------*/
 /*
 ** Definitions for MR_Determinism
-**
+*/
+
+/*
 ** The max_soln component of the determinism is encoded in the 1 and 2 bits.
 ** The can_fail component of the determinism is encoded in the 4 bit.
 ** The first_solution component of the determinism is encoded in the 8 bit.
@@ -56,9 +60,12 @@ typedef	Word MR_Determinism;
 #define MR_DETISM_DET_STACK(d)		(!MR_DETISM_AT_MOST_MANY(d) \
 					|| MR_DETISM_FIRST_SOLN(d))
 
+/*-------------------------------------------------------------------------*/
 /*
-** Definitions for "MR_Live_Lval"
-**
+** Definitions for MR_Live_Lval
+*/
+
+/*
 ** MR_Live_Lval is a Word which describes an lval. This includes:
 ** 	- stack slots, registers, and special lvals such as succip, hp,
 ** 	  etc.
@@ -107,9 +114,12 @@ typedef enum {
 #define MR_LIVE_LVAL_NUMBER(Lval) 			\
 	((int) ((Word) Lval) >> MR_LIVE_LVAL_TAGBITS)
 
+/*-------------------------------------------------------------------------*/
 /*
 ** Definitions for MR_Live_Type
-**
+*/
+
+/*
 ** MR_Live_Type describes live data. This includes:
 ** 	- succip, hp, curfr, maxfr, redoip, and
 ** 	  mercury data values (vars).
@@ -150,9 +160,96 @@ typedef struct {
 #define MR_LIVE_TYPE_GET_VAR_INST(T)   			\
 		(((MR_Var_Shape_Info *) T)->inst)
 
+/* MR_Stack_Layout_Var --------------------------------------------------- */
+
+typedef	struct MR_Stack_Layout_Var_Struct {
+	MR_Live_Lval		MR_slv_locn;
+	MR_Live_Type		MR_slv_live_type;
+} MR_Stack_Layout_Var;
+
+/*-------------------------------------------------------------------------*/
 /*
-** Macros to support hand-written C code.
+** Definitions for MR_Stack_Layout_Vars
 */
+
+/*
+** If MR_slvs_tvars == NULL, there are no type parameters.
+** If it is != NULL, then (Integer) MR_slvs_tvars[0] is the index
+** of the highest numbered type parameter, and MR_slvs_tvars[i]
+** for values of i between 1 and (Integer) MR_slvs_tvars[0] (both inclusive)
+** describe the location of the typeinfo structure for the type variable
+** of the corresponding number. If one of these type variables
+** is not referred to by the variables described in MR_slvs_pairs,
+** the corresponding entry will be zero.
+*/
+
+typedef	struct MR_Stack_Layout_Vars_Struct {
+	MR_Stack_Layout_Var	*MR_slvs_pairs;
+	String			*MR_slvs_names;
+	MR_Live_Lval		*MR_slvs_tvars;
+} MR_Stack_Layout_Vars;
+
+#define	MR_name_if_present(vars, i)					\
+				((vars->MR_slvs_names != NULL		\
+				&& vars->MR_slvs_names[(i)] != NULL)	\
+				? vars->MR_slvs_names[(i)]		\
+				: "")
+
+/*-------------------------------------------------------------------------*/
+/*
+** Definitions for MR_Stack_Layout_Entry
+*/
+
+/*
+** This structure records information about a procedure.
+** The structure has three groups of fields:
+**
+**	(1) those needed for traversing the stack;
+**	(2) those needed for identifying the procedure;
+**	(3) those needed for execution tracing.
+**
+** For accurate garbage collection, we only need group (1).
+** For stack tracing, we need groups (1) and (2).
+** For execution tracing, we need groups (1), (2) and (3).
+**
+** To save space, for each use we only include the fields that belong
+** to the needed groups, plus the first field in the first non-included group,
+** which is set to a special value to indicate the absence of the group
+** and any following groups.
+**
+** Group (1) is always present and meaningful.
+** Group (2) is present and meaningful
+** if MR_ENTRY_LAYOUT_HAS_PROC_ID(entry) evaluates to true.
+** Group (3) is present and meaningful
+** if MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry) evaluates to true.
+*/
+
+typedef	struct MR_Stack_Layout_Entry_Struct {
+	/* stack traversal group */
+	Code			*MR_sle_code_addr;
+	MR_Determinism		MR_sle_detism;
+	Integer			MR_sle_stack_slots;
+	MR_Live_Lval		MR_sle_succip_locn;
+
+	/* proc id group */
+	MR_PredFunc		MR_sle_pred_or_func;
+	String			MR_sle_decl_module;
+	String			MR_sle_def_module;
+	String			MR_sle_name;
+	Integer			MR_sle_arity;
+	Integer			MR_sle_mode;
+
+	/* exec trace group */
+	struct MR_Stack_Layout_Label_Struct
+				*MR_sle_call_label;
+} MR_Stack_Layout_Entry;
+
+#define	MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)			\
+		((int) entry->MR_sle_pred_or_func >= 0)
+
+#define	MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)			\
+		(MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)		\
+		&& entry->MR_sle_call_label != NULL)
 
 /*
 ** Define a stack layout for a label that you know very little about.
@@ -163,27 +260,43 @@ typedef struct {
 #ifdef MR_USE_STACK_LAYOUTS
   #define MR_MAKE_STACK_LAYOUT_ENTRY(l) 				\
   const struct mercury_data__layout__##l##_struct {			\
-	Code * f1;							\
-	Integer f2;							\
-	Integer f3;							\
-	Integer f4;							\
+	Code	*f1;							\
+	Integer	f2;							\
+	Integer	f3;							\
+	Integer	f4;							\
+	Integer	f5;							\
   } mercury_data__layout__##l = {					\
 	STATIC(l),							\
 	(Integer) -1, 	/* Unknown determinism */			\
 	(Integer) -1,	/* Unknown number of stack slots */		\
-        (Integer) MR_LVAL_TYPE_UNKNOWN 	/* Unknown succip location */	\
+        (Integer) MR_LVAL_TYPE_UNKNOWN,	/* Unknown succip location */	\
+	(Integer) -1, 	/* The procid component is not present */	\
   };
 #else
   #define MR_MAKE_STACK_LAYOUT_ENTRY(l)        
 #endif	/* MR_USE_STACK_LAYOUTS */
 
+/*-------------------------------------------------------------------------*/
 /*
-** The layout structure for an internal label will have a field containing
-** the label number of that label (or -1, if the internal label has no
-** label number, being the entry label) only if we are using native gc.
+** Definitions for MR_Stack_Layout_Label
 */
 
-#ifdef	NATIVE_GC
+/*
+** The MR_sll_var_count field should be set to a negative number
+** if there is no information about the variables live at the label.
+*/
+
+typedef	struct MR_Stack_Layout_Label_Struct {
+	MR_Stack_Layout_Entry	*MR_sll_entry;
+#ifdef	MR_LABEL_STRUCTS_INCLUDE_NUMBER
+	Integer			MR_sll_label_num;
+#endif
+	Integer			MR_sll_var_count;
+	/* the last field is present only if MR_sll_var_count > 0 */
+	MR_Stack_Layout_Vars	MR_sll_var_info;
+} MR_Stack_Layout_Label;
+
+#ifdef	MR_LABEL_STRUCTS_INCLUDE_NUMBER
   #define	UNKNOWN_INTERNAL_LABEL_FIELD	Integer f2;
   #define	UNKNOWN_INTERNAL_LABEL_NUMBER	(Integer) -1,
 #else
@@ -202,13 +315,13 @@ typedef struct {
 #ifdef MR_USE_STACK_LAYOUTS
   #define MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(l, e)		\
   const struct mercury_data__layout__##l##_struct {			\
-	const Word * f1;						\
+	const Word *f1;							\
 	UNKNOWN_INTERNAL_LABEL_FIELD					\
 	Integer f3;							\
   } mercury_data__layout__##l = {					\
 	(const Word *) &mercury_data__layout__##e,			\
 	UNKNOWN_INTERNAL_LABEL_NUMBER					\
-	(Integer) 0		/* No live values */			\
+	(Integer) -1		/* No information about live values */	\
   };
 #else
   #define MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(l, e)        
@@ -233,96 +346,16 @@ typedef struct {
 #ifdef MR_USE_STACK_LAYOUTS
   #define MR_MAKE_STACK_LAYOUT_INTERNAL(e, x)				\
   const struct mercury_data__layout__##e##_i##x##_struct {		\
-	const Word * f1;						\
+	const Word *f1;							\
 	UNKNOWN_INTERNAL_LABEL_FIELD					\
 	Integer f3;							\
   } mercury_data__layout__##e##_i##x = {				\
 	(const Word *) &mercury_data__layout__##e,			\
 	UNKNOWN_INTERNAL_LABEL_NUMBER					\
-	(Integer) 0		/* No live values */			\
+	(Integer) -1		/* No information about live values */	\
   };
 #else
   #define MR_MAKE_STACK_LAYOUT_INTERNAL(l, x)        
 #endif	/* MR_USE_STACK_LAYOUTS */
 
-/*
-** Structs and macros to support stack layouts.
-*/
-
-typedef	struct MR_Stack_Layout_Var_Struct {
-	MR_Live_Lval		MR_slv_locn;
-	MR_Live_Type		MR_slv_live_type;
-} MR_Stack_Layout_Var;
-
-typedef	struct MR_Stack_Layout_Vars_Struct {
-	MR_Stack_Layout_Var	*MR_slvs_pairs;
-	String			*MR_slvs_names;
-	MR_Live_Lval		*MR_slvs_tvars;
-				/*
-				** If MR_slvs_tvars == NULL, there are no
-				** type parameters. If it is != NULL, then
-				** (Integer) MR_slvs_tvars[0] is the index
-				** of the highest numbered type parameter,
-				** and MR_slvs_tvars[i] for values of i
-				** between 1 and (Integer) MR_slvs_tvars[0]
-				** (both inclusive) describe the location
-				** of the typeinfo structure for the type
-				** variable of the corresponding number.
-				** If one of these type variables is not
-				** referred to by the variables described in
-				** MR_slvs_pairs, the corresponding entry
-				** will be zero.
-				*/
-} MR_Stack_Layout_Vars;
-
-#define	MR_name_if_present(vars, i)					\
-				((vars->MR_slvs_names != NULL		\
-				&& vars->MR_slvs_names[(i)] != NULL)	\
-				? vars->MR_slvs_names[(i)]		\
-				: "")
-
-typedef	struct MR_Stack_Layout_Entry_Struct {
-	Code			*MR_sle_code_addr;
-	MR_Determinism		MR_sle_detism;
-	Integer			MR_sle_stack_slots;
-	MR_Live_Lval		MR_sle_succip_locn;
-	/* the fields from here onwards are present only with procid layouts */
-	MR_PredFunc		MR_sle_pred_or_func;
-	String			MR_sle_decl_module;
-	String			MR_sle_def_module;
-	String			MR_sle_name;
-	Integer			MR_sle_arity;
-	Integer			MR_sle_mode;
-	/* the fields from here onwards are present only with trace layouts */
-	struct MR_Stack_Layout_Label_Struct
-				*MR_sle_call_label;
-} MR_Stack_Layout_Entry;
-
-typedef	struct MR_Stack_Layout_Label_Struct {
-	MR_Stack_Layout_Entry	*MR_sll_entry;
-#if 0
-	Integer			MR_sll_label_num;
-#endif
-	Integer			MR_sll_var_count;
-	/* the last field is present only if MR_sll_var_count > 0 */
-	MR_Stack_Layout_Vars	MR_sll_var_info;
-} MR_Stack_Layout_Label;
-
-/* The following macros support obsolete code (and probably don't work). */
-#define MR_ENTRY_STACK_LAYOUT_GET_LABEL_ADDRESS(s)		\
-		((Code *) field(0, (s), 0))
-
-#define MR_CONT_STACK_LAYOUT_GET_ENTRY_LAYOUT(s)		\
-		(field(0, (s), 0))
-
-#define MR_ENTRY_STACK_LAYOUT_GET_NUM_SLOTS(s)			\
-		(field(0, (s), 2))
-
-#define MR_ENTRY_STACK_LAYOUT_GET_CODE_MODEL(s)			\
-		(field(0, (s), 1) & 1)
-
-#define MR_ENTRY_STACK_LAYOUT_GET_SUCCIP_LOC(s)			\
-		(field(0, (s), 3))
-
-/*---------------------------------------------------------------------------*/
 #endif /* not MERCURY_STACK_LAYOUT_H */

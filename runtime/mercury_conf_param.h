@@ -132,6 +132,9 @@
 **	Include a "name" field in the nondet stack frames.
 **	(Since this affects binary compatibility,
 **	this is a "compilation model" option which affects the grade.)
+**
+** MR_LABEL_STRUCTS_INCLUDE_NUMBER
+**	Include a label number in each label layout structure.
 */
 
 /*

@@ -61,7 +61,9 @@
 %
 % The runtime system can figure out which form is present by testing
 % the value of the first slot. A value of 0 or 1 indicates the first form;
-% any higher value indicates the second form.
+% any higher value indicates the second form. A negative value indicates
+% that procid_stack_layout is not set, and that the later fields are not
+% present.
 %
 % The meanings of the fields in both forms are the same as in procedure labels.
 %
@@ -75,6 +77,8 @@
 % information is to allow the runtime debugger to find out which variables
 % are where on entry, so it can reexecute the procedure if asked to do so
 % and if the values of the required variables are still available.
+% (If trace_stack_layout is not set, this field will be present,
+% but it will be set to NULL.)
 %
 % If the option basic_stack_layout is set, we generate stack layout tables
 % for some labels internal to the procedure. This table will be stored in the
@@ -289,7 +293,8 @@ stack_layout__construct_proc_layout(ProcLabel, Detism, StackSlots,
 		{ stack_layout__construct_procid_rvals(ProcLabel, IdRvals) },
 		{ list__append(MaybeRvals0, IdRvals, MaybeRvals1) }
 	;
-		{ MaybeRvals1 = MaybeRvals0 }
+		{ NoIdRvals = yes(const(int_const(-1))) },
+		{ list__append(MaybeRvals0, [NoIdRvals], MaybeRvals1) }
 	),
 
 	stack_layout__get_module_name(ModuleName),
@@ -306,7 +311,8 @@ stack_layout__construct_proc_layout(ProcLabel, Detism, StackSlots,
 			{ error("stack_layout__construct_proc_layout: call label not present") }
 		)
 	;
-		{ MaybeRvals = MaybeRvals1 }
+		{ NoCallRval = yes(const(int_const(0))) },
+		{ list__append(MaybeRvals1, [NoCallRval], MaybeRvals) }
 	),
 
 	{ Exported = no },	% XXX With the new profiler, we will need to
