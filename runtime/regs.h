@@ -7,22 +7,33 @@
 
 #include "machregs.h"
 
+/* GNU C allows lvalue casts, so if we have gcc, use them.
+** If we don't have gcc, then we can use *(type *)&val,
+** but that wouldn't work for gcc since val might be a global
+** register in which case we couldn't take it's address.
+*/
+#ifdef __GNUC__
+#define LVALUE_CAST(type, lval) ((type)(lval))
+#else
+#define LVALUE_CAST(type, lval) (*(type*)&(lval))
+#endif
+
 /*
 ** These are defined in order of priority.
 ** We should experiment to determine how often each is used in real code.
 */
 
-#define succip		((Code *) mr0)
+#define succip		LVALUE_CAST(Code *, mr0)
 #define r1		mr1
 #define r2		mr2
 #define r3		mr3
 #define r4		mr4
 #define r5		mr5
-#define hp		((Word *) mr6)
-#define sp		((Word *) mr7)
-#define childcp		((Word *) mr8)
-#define curcp		((Word *) mr9)
-#define maxcp		((Word *) mr10)
+#define hp		LVALUE_CAST(Word *, mr6)
+#define sp		LVALUE_CAST(Word *, mr7)
+#define childcp		LVALUE_CAST(Word *, mr8)
+#define curcp		LVALUE_CAST(Word *, mr9)
+#define maxcp		LVALUE_CAST(Word *, mr10)
 #define r6		mr11
 #define r7		mr12
 #define r8		mr13

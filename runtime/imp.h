@@ -1,3 +1,6 @@
+#ifndef IMP_H
+#define IMP_H
+
 #include	<stdio.h>
 #include	<assert.h>
 #include	"getopt.h"
@@ -5,10 +8,10 @@
 
 /* GENERAL DEFINITIONS */
 
-#define	WORDSIZE	4
-
 typedef	uint	Word;
 typedef void	Code;
+
+#define	WORDSIZE	sizeof(Word)
 
 /* DEFINITIONS FOR THE LABEL TABLE */
 
@@ -60,18 +63,20 @@ enum {
 #define	MAXLABELS	800
 
 #define	makeentry(e, n, a, i)					\
-			do {					\
-				entries[e].e_name  = n;		\
-				entries[e].e_addr  = a;		\
-				entries[e].e_input = i;		\
-			} while (0)
+			(					\
+				entries[e].e_name  = n,		\
+				entries[e].e_addr  = a,		\
+				entries[e].e_input = i,		\
+				((void)0)			\
+			)
 
-#define	makelabel(n, a)	do {					\
-				entries[cur_entry].e_name  = n;	\
-				entries[cur_entry].e_addr  = a;	\
-				entries[cur_entry].e_input = NULL;\
-				cur_entry += 1;			\
-			} while (0)
+#define	makelabel(n, a)	(					\
+				entries[cur_entry].e_name  = n,	\
+				entries[cur_entry].e_addr  = a,	\
+				entries[cur_entry].e_input = NULL, \
+				cur_entry += 1,			\
+				((void)0)			\
+			)
 
 /* a table of the entry points defined by the various modules */
 extern	Entry	entries[];
@@ -117,19 +122,35 @@ extern	Code	*dofastnegproceed;
 #define	TAG_CONS	mktag(bTAG_CONS)
 #define	TAG_VAR		mktag(bTAG_VAR)
 
-#define	deref(p)	({					\
+	/* the macro is more efficient than a function, but it requires
+	   GNU C's statement-expressions extension, since we need a loop
+	   inside an expression */
+#ifdef __GNUC__
+#define	deref(p)	__extension__ ({			\
 				reg	Word	pt;		\
 								\
 				pt = p;				\
 				while (tag(pt) == TAG_VAR)	\
 					pt = * (Word *)		\
 						body(pt, TAG_VAR);\
-				pt;				\
+				/* return */ pt;		\
 			})
+#else
+static Word deref(Word p) {
+	reg	Word	pt;		
+					
+	pt = p;				
+	while (tag(pt) == TAG_VAR)	
+		pt = * (Word *)	body(pt, TAG_VAR);
+	return pt;
+}
+#endif
 
 /* DEFINITIONS FOR VIRTUAL MACHINE REGISTERS */
 
 #include "regs.h"
+
+#include "modules.h"
 
 /* DEFINITIONS FOR CALLS AND RETURNS */
 
@@ -137,30 +158,30 @@ extern	Code	*dofastnegproceed;
 			do {					\
 				debugcall(proc, succcont);	\
 				succip = succcont;		\
-				goto *proc;			\
+				GOTO(proc);			\
 			} while (0)
 
 #define	callentry(entry, succcont)				\
 			do {					\
 				debugcall(entries[entry].e_addr, succcont);\
 				succip = succcont;		\
-				goto *entries[entry].e_addr;	\
+				GOTO(entries[entry].e_addr);	\
 			} while (0)
 
 #define	tailcall(proc)	do {					\
 				debugtailcall(proc);		\
-				goto *proc;			\
+				GOTO(proc);			\
 			} while (0)
 
 #define	tailcallentry(entry, succcont)				\
 			do {					\
 				debugtailcall(entries[entry].e_addr);\
-				goto *entries[entry].e_addr;	\
+				GOTO(entries[entry].e_addr);	\
 			} while (0)
 
 #define	proceed()	do {					\
 				debugproceed();			\
-				goto *succip;			\
+				GOTO(succip);			\
 			} while (0)
 
 /* DEFINITIONS FOR VIRTUAL MACHINE DATA AREAS */
@@ -184,66 +205,63 @@ extern	Word	*cpstackmin;
 
 /* DEFINITIONS FOR MANIPULATING THE HEAP */
 
-#define create1(w1)	({					\
-				reg	Word	p;		\
-								\
-				hp[0] = (Word) (w1);		\
-				debugcr1(hp[0], hp);	\
-				p = (Word) hp;			\
-				hp += 1;			\
-				heap_overflow_check();		\
-				/* return */ p;			\
-			})
+/* Note that gcc optimizes `hp += 2; return hp - 2;' to
+   `tmp = hp; hp += 2; return tmp;', so we don't need to
+   use gcc's expression statements here */
 
-#define create2(w1, w2)	({					\
-				reg	Word	p;		\
-								\
-				hp[0] = (Word) (w1);		\
-				hp[1] = (Word) (w2);		\
-				debugcr2(hp[0], hp[1], hp);	\
-				p = (Word) hp;			\
-				hp += 2;			\
-				heap_overflow_check();		\
-				/* return */ p;			\
-			})
+#define create1(w1)	(					\
+				hp[0] = (Word) (w1),		\
+				debugcr1(hp[0], hp),		\
+				p = (Word) hp,			\
+				heap_overflow_check(),		\
+				hp += 1,			\
+				/* return */ (Word) (hp - 1)	\
+			)
+
+#define create2(w1, w2)	(					\
+				hp[0] = (Word) (w1),		\
+				hp[1] = (Word) (w2),		\
+				debugcr2(hp[0], hp[1], hp),	\
+				hp += 2,			\
+				heap_overflow_check(),		\
+				/* return */ (Word) (hp - 2)	\
+			)
 
 /* DEFINITIONS FOR MANIPULATING THE STACK */
 
 #define	stackvar(n)	sp[-n]
 
-#define	push(w)		do {					\
-				*sp = (Word) (w);		\
-				debugpush(*sp, sp);		\
-				sp += 1;			\
-				stack_overflow_check();		\
-			} while (0)
+#define	push(w)		(					\
+				*sp = (Word) (w),		\
+				debugpush(*sp, sp),		\
+				sp += 1,			\
+				stack_overflow_check(),		\
+				(void)0				\
+			)
 
-#define	pop()		({					\
-				reg	Word	w;		\
-								\
-				sp -= 1;			\
-				w = *sp;			\
-				debugpop(*sp, sp);		\
-				stack_underflow_check();	\
-				/* return */ w;			\
-			})
+#define	pop()		(					\
+				sp -= 1,			\
+				debugpop(*sp, sp),		\
+				stack_underflow_check(),	\
+				/* return */ *sp		\
+			)
 
 /* DEFINITIONS FOR CHOICE AND RECLAIM POINTS */
 
-#define	PREDNM		-0	/* for debugging, set up at call 	*/
-#define	REDOIP		-1	/* in this proc, set up at clause entry	*/
-#define	PREVCP		-2	/* prev cp on stack, set up at call	*/
-#define	SAVEHP		-3	/* in calling proc, set up at call	*/
-#define	SUCCIP		-3	/* in calling proc, set up at call	*/
-#define	SUCCCP		-4	/* cp of calling proc, set up at call	*/
-#define	SAVEVAL		-5	/* saved values start at this offset	*/
+#define	PREDNM		(-0)	/* for debugging, set up at call 	*/
+#define	REDOIP		(-1)	/* in this proc, set up at clause entry	*/
+#define	PREVCP		(-2)	/* prev cp on stack, set up at call	*/
+#define	SAVEHP		(-3)	/* in calling proc, set up at call	*/
+#define	SUCCIP		(-3)	/* in calling proc, set up at call	*/
+#define	SUCCCP		(-4)	/* cp of calling proc, set up at call	*/
+#define	SAVEVAL		(-5)	/* saved values start at this offset	*/
 
-#define	bt_prednm(curcp)	((const char *) curcp[PREDNM])
-#define	bt_redoip(curcp)	((Code *) curcp[REDOIP])
-#define	bt_prevcp(curcp)	((Word *) curcp[PREVCP])
-#define	bt_savehp(curcp)	((Code *) curcp[SAVEHP])
-#define	bt_succip(curcp)	((Code *) curcp[SUCCIP])
-#define	bt_succcp(curcp)	((Word *) curcp[SUCCCP])
+#define	bt_prednm(curcp)	LVALUE_CAST(const char *, curcp[PREDNM])
+#define	bt_redoip(curcp)	LVALUE_CAST(Code *, curcp[REDOIP])
+#define	bt_prevcp(curcp)	LVALUE_CAST(Word *, curcp[PREVCP])
+#define	bt_savehp(curcp)	LVALUE_CAST(Code *, curcp[SAVEHP])
+#define	bt_succip(curcp)	LVALUE_CAST(Code *, curcp[SUCCIP])
+#define	bt_succcp(curcp)	LVALUE_CAST(Word *, curcp[SUCCCP])
 #define	bt_var(curcp,n)		curcp[SAVEVAL-n]
 
 /* the offsets used by choice points */
@@ -260,7 +278,8 @@ extern	Word	*cpstackmin;
 #define	recprevcp	bt_prevcp(maxcp)
 #define	recsavehp	bt_savehp(maxcp)
 
-#define	RECLAIM_SIZE	4	/* units: words */
+#define	RECLAIM_SIZE		4	/* units: words */
+#define	CHOICE_POINT_SIZE	5	/* units: words */
 
 /* DEFINITIONS FOR MANIPULATING THE CHOICE POINT STACK */
 
@@ -271,7 +290,7 @@ extern	Word	*cpstackmin;
 								\
 				prevcp = maxcp;			\
 				succcp = curcp;			\
-				maxcp += (-SAVEVAL + n);	\
+				maxcp += (CHOICE_POINT_SIZE + n);	\
 				curcp = maxcp;			\
 				curcp[PREDNM] = (Word) prednm;	\
 				curcp[REDOIP] = (Word) redoip;	\
@@ -302,10 +321,12 @@ extern	Word	*cpstackmin;
 			} while (0)
 
 #define	succeed()	do {					\
+				reg Code *tmp_succip;		\
+								\
 				debugsucceed();			\
-				childcp = curcp;		\
+				tmp_succip = cpsuccip;		\
 				curcp = cpsucccp;		\
-				goto * bt_succip(childcp);	\
+				GOTO(tmp_succip);		\
 			} while (0)
 
 #define	fail()		do {					\
@@ -313,13 +334,13 @@ extern	Word	*cpstackmin;
 				maxcp = cpprevcp;		\
 				curcp = maxcp;			\
 				cpstack_underflow_check();	\
-				goto *cpredoip;			\
+				GOTO(cpredoip);			\
 			} while (0)
 
 #define	redo()		do {					\
 				debugredo();			\
 				curcp = maxcp;			\
-				goto *cpredoip;			\
+				GOTO(cpredoip);			\
 			} while (0)
 
 #define	slowneg_setup(XXX)					\
@@ -338,68 +359,67 @@ extern	Word	*cpstackmin;
 
 #ifdef	SPEED
 
-#define	heap_overflow_check()					\
-			do { } while (0)
-#define	stack_overflow_check()					\
-			do { } while (0)
-#define	stack_underflow_check()					\
-			do { } while (0)
-#define	cpstack_overflow_check()				\
-			do { } while (0)
-#define	cpstack_underflow_check()				\
-			do { } while (0)
+#define	heap_overflow_check()		((void)0)
+#define	stack_overflow_check()		((void)0)
+#define	stack_underflow_check()		((void)0)
+#define	cpstack_overflow_check()	((void)0)
+#define	cpstack_underflow_check()	((void)0)
+
 #else
 
 #define	heap_overflow_check()					\
-			do {					\
-				if (hp >= &heap[MAXHEAP])	\
-				{				\
-					printf("heap overflow\n");\
-					exit(1);		\
-				}				\
-				if (hp > heapmax)		\
-					heapmax = hp;		\
-			} while (0)
+			(					\
+				IF (hp >= &heap[MAXHEAP],(	\
+					printf("heap overflow\n"),\
+					exit(1)			\
+				)),				\
+				IF (hp > heapmax,(		\
+					heapmax = hp		\
+				)),				\
+				(void)0				\
+			)
 
 #define	stack_overflow_check()					\
-			do {					\
-				if (sp >= &stack[MAXSTACK])	\
-				{				\
-					printf("stack overflow\n");\
-					exit(1);		\
-				}				\
-				if (sp > stackmax)		\
-					stackmax = sp;		\
-			} while (0)
+			(					\
+				IF (sp >= &stack[MAXSTACK],(	\
+					printf("stack overflow\n"),\
+					exit(1)			\
+				)),				\
+				IF (sp > stackmax,(		\
+					stackmax = sp		\
+				)),				\
+				(void)0				\
+			)
 
 #define	stack_underflow_check()					\
-			do {					\
-				if (sp < stackmin)		\
-				{				\
-					printf("stack underflow\n");\
-					exit(1);		\
-				}				\
-			} while (0)
+			(					\
+				IF (sp < stackmin,(		\
+					printf("stack underflow\n"),\
+					exit(1)			\
+				)),				\
+				(void)0				\
+			)
 
 #define	cpstack_overflow_check()				\
-			do {					\
-				if (maxcp >= &cpstack[MAXCPSTACK])	\
-				{				\
-					printf("cpstack overflow\n");\
-					exit(1);		\
-				}				\
-				if (maxcp > cpstackmax)		\
-					cpstackmax = maxcp;	\
-			} while (0)
+			(					\
+				IF (maxcp >= &cpstack[MAXCPSTACK],(	\
+					printf("cpstack overflow\n"),\
+					exit(1)			\
+				)),				\
+				IF (maxcp > cpstackmax,(		\
+					cpstackmax = maxcp	\
+				)),				\
+				(void)0				\
+			)
 
 #define	cpstack_underflow_check()				\
-			do {					\
-				if (maxcp < cpstackmin)		\
-				{				\
-					printf("cpstack underflow\n");\
-					exit(1);		\
-				}				\
-			} while (0)
+			(					\
+				IF (maxcp < cpstackmin,(		\
+					printf("cpstack underflow\n"),\
+					exit(1)			\
+				)),				\
+				(void)0				\
+			)
 
 #endif
 
@@ -407,141 +427,84 @@ extern	Word	*cpstackmin;
 
 #ifdef	SPEED
 
-#define	debugcr1(val0, hp)					\
-			do { } while (0)
-#define	debugcr2(val0, val1, hp)				\
-			do { } while (0)
-#define	debugpush(val, sp)					\
-			do { } while (0)
-#define	debugpop(val, sp)					\
-			do { } while (0)
-#define	debugregs(msg)						\
-			do { } while (0)
-#define	debugframe(msg)						\
-			do { } while (0)
-#define	debugmkcp()						\
-			do { } while (0)
-#define	debugmkreclaim()					\
-			do { } while (0)
-#define	debugmodcp()						\
-			do { } while (0)
-#define	debugsucceed()						\
-			do { } while (0)
-#define	debugfail()						\
-			do { } while (0)
-#define	debugredo()						\
-			do { } while (0)
-#define	debugcall(proc, succcont)				\
-			do { } while (0)
-#define	debugtailcall(proc)					\
-			do { } while (0)
-#define	debugproceed()						\
-			do { } while (0)
-#define	debugmsg0(msg)						\
-			do { } while (0)
-#define	debugmsg1(msg, arg1)					\
-			do { } while (0)
-#define	debugmsg2(msg, arg1, arg2)				\
-			do { } while (0)
-#define	debugmsg3(msg, arg1, arg2, arg3)			\
-			do { } while (0)
+#define	debugcr1(val0, hp)			((void)0)
+#define	debugcr2(val0, val1, hp)		((void)0)
+#define	debugpush(val, sp)			((void)0)
+#define	debugpop(val, sp)			((void)0)
+#define	debugregs(msg)				((void)0)
+#define	debugframe(msg)				((void)0)
+#define	debugmkcp()				((void)0)
+#define	debugmkreclaim()			((void)0)
+#define	debugmodcp()				((void)0)
+#define	debugsucceed()				((void)0)
+#define	debugfail()				((void)0)
+#define	debugredo()				((void)0)
+#define	debugcall(proc, succcont)		((void)0)
+#define	debugtailcall(proc)			((void)0)
+#define	debugproceed()				((void)0)
+#define	debugmsg0(msg)				((void)0)
+#define	debugmsg1(msg, arg1)			((void)0)
+#define	debugmsg2(msg, arg1, arg2)		((void)0)
+#define	debugmsg3(msg, arg1, arg2, arg3)	((void)0)
 
 #else
 
-#define	debugcr1(val0, hp)					\
-			do {					\
-				if (heapdebug)			\
-					cr1_msg(val0, hp);	\
-			} while (0)
+#define IF(cond, val)	((cond) ? ((val),(void)0) : (void)0)
 
-#define	debugcr2(val0, val1, hp)				\
-			do {					\
-				if (heapdebug)			\
-					cr2_msg(val0, val1, hp);\
-			} while (0)
+#define	debugcr1(val0, hp) \
+	IF (heapdebug, cr1_msg(val0, hp))
 
-#define	debugpush(val, sp)					\
-			do {					\
-				if (stackdebug)			\
-					push_msg(val, sp);	\
-			} while (0)
+#define	debugcr2(val0, val1, hp) \
+	IF (heapdebug, cr2_msg(val0, val1, hp))
 
-#define	debugpop(val, sp)					\
-			do {					\
-				if (stackdebug)			\
-					pop_msg(val, sp);	\
-			} while (0)
+#define	debugpush(val, sp) \
+	IF (stackdebug, push_msg(val, sp))
+
+#define	debugpop(val, sp) \
+	IF (stackdebug, pop_msg(val, sp))
 
 #define	debugregs(msg)	printregs(msg)
 
+#define	debugmkcp() \
+	IF (cpstackdebug, mkcp_msg())
+
 #define	debugframe(msg)	printframe(msg)
 
-#define	debugmkcp()	do {					\
-				if (cpstackdebug)		\
-					mkcp_msg();		\
-			} while (0)
+#define	debugmkreclaim() \
+	IF (cpstackdebug, mkreclaim_msg())
 
-#define	debugmkreclaim()					\
-			do {					\
-				if (cpstackdebug)		\
-					mkreclaim_msg();	\
-			} while (0)
+#define	debugmodcp() \
+	IF (cpstackdebug, modcp_msg())
 
-#define	debugmodcp()	do {					\
-				if (cpstackdebug)		\
-					modcp_msg();		\
-			} while (0)
+#define	debugsucceed() \
+	IF (cpstackdebug, succeed_msg())
 
-#define	debugsucceed()	do {					\
-				if (cpstackdebug)		\
-					succeed_msg();		\
-			} while (0)
+#define	debugfail() \
+	IF (cpstackdebug, fail_msg())
 
-#define	debugfail()	do {					\
-				if (cpstackdebug)		\
-					fail_msg();		\
-			} while (0)
+#define	debugredo() \
+	IF (cpstackdebug, redo_msg())
 
-#define	debugredo()	do {					\
-				if (cpstackdebug)		\
-					redo_msg();		\
-			} while (0)
+#define	debugcall(proc, succcont) \
+	IF (calldebug, call_msg(proc, succcont))
 
-#define	debugcall(proc, succcont)				\
-			do {					\
-				if (calldebug)			\
-					call_msg(proc, succcont);\
-			} while (0)
+#define	debugtailcall(proc) \
+	IF (calldebug, tailcall_msg(proc))
 
-#define	debugtailcall(proc)					\
-			do {					\
-				if (calldebug)			\
-					tailcall_msg(proc);	\
-			} while (0)
+#define	debugproceed() \
+	IF (calldebug, proceed_msg())
 
-#define	debugproceed()	do {					\
-				if (calldebug)			\
-					proceed_msg();		\
-			} while (0)
+#define	debugmsg0(msg) \
+	printf(msg)
 
-#define	debugmsg0(msg)	do {					\
-				printf(msg);			\
-			} while (0)
+#define	debugmsg1(msg, arg1) \
+	printf(msg, arg1)
 
-#define	debugmsg1(msg, arg1)					\
-			do {					\
-				printf(msg, arg1);		\
-			} while (0)
+#define	debugmsg2(msg, arg1, arg2) \
+	printf(msg, arg1, arg2)
 
-#define	debugmsg2(msg, arg1, arg2)				\
-			do {					\
-				printf(msg, arg1, arg2);	\
-			} while (0)
-
-#define	debugmsg3(msg, arg1, arg2, arg3)			\
-			do {					\
-				printf(msg, arg1, arg2, arg3);	\
-			} while (0)
+#define	debugmsg3(msg, arg1, arg2, arg3) \
+	printf(msg, arg1, arg2, arg3)
 
 #endif
 
@@ -615,3 +578,5 @@ extern	void	printregs(const char *);
 extern	void	printframe(const char *);
 extern	void	dumpframe(Word *);
 extern	void	dumpcpstack(void);
+
+#endif /* IMP_H */
