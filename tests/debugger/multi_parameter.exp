@@ -9,11 +9,11 @@ mdb>
 mdb> print *
        HeadVar__1           		'z'
 mdb> 
-       4:      4  4 CALL pred multi_parameter:Introduced_pred_for_multi_parameter__m__character_0_int_0_____multi_parameter__a_2/2-0 (det) 
+       4:      4  4 CALL pred multi_parameter:Introduced_pred_for_multi_parameter__m__character__arity0__int__arity0______multi_parameter__a_2/2-0 (det) 
 mdb> print *
        HeadVar__1           		'z'
 mdb> 
-       5:      4  4 EXIT pred multi_parameter:Introduced_pred_for_multi_parameter__m__character_0_int_0_____multi_parameter__a_2/2-0 (det) 
+       5:      4  4 EXIT pred multi_parameter:Introduced_pred_for_multi_parameter__m__character__arity0__int__arity0______multi_parameter__a_2/2-0 (det) 
 mdb> print *
        HeadVar__1           		'z'
        HeadVar__2           		122

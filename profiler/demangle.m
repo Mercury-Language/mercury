@@ -1,6 +1,6 @@
 %-----------------------------------------------------------------------------%
 %
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %
@@ -76,6 +76,8 @@ demangle_from_c -->
 	( demangle_proc ->
 		{ true }
 	; demangle_data ->
+		{ true }
+	; demangle_typeclass_info ->
 		{ true }
 	;
 		{ fail }
@@ -394,6 +396,42 @@ format_data(common, MaybeModule, _Name, Arity, Result) :-
 	;
 		fail
 	).
+
+:- pred demangle_typeclass_info(string, string).
+:- mode demangle_typeclass_info(in, out) is semidet.
+demangle_typeclass_info -->
+	remove_prefix("mercury_data_"),
+	remove_prefix("__base_typeclass_info_"),
+	remove_maybe_module_prefix(yes(ClassName), ["arity"]),
+	{ ClassName \= "" },
+	remove_prefix("arity"),
+	remove_int(ClassArity),
+	remove_prefix("__"),
+	fix_mangled_ascii,
+	demangle_class_args(ClassArity, Args),
+	{ string__format("<instance declaration for %s(%s)>",
+		[s(ClassName), s(Args)], Result) },
+	dcg_set(Result).
+
+:- pred demangle_class_args(int, string, string, string).
+:- mode demangle_class_args(in, out, in, out) is semidet.
+demangle_class_args(Num, FormattedArgs) -->
+	remove_maybe_module_prefix(yes(TypeName), ["arity"]),
+	{ TypeName \= "" },
+	remove_prefix("arity"),
+	remove_int(TypeArity),
+	remove_prefix("__"),
+	( { Num > 1 } ->
+		{ Sep = ", " },
+		{ Num1 is Num - 1 },
+		demangle_class_args(Num1, Rest)
+	;
+		{ Sep = "" },
+		{ Rest = "" }
+	),
+	{ string__format("%s/%d%s%s",
+		[s(TypeName), i(TypeArity), s(Sep), s(Rest)],
+		FormattedArgs) }.
 
 /*---------------------------------------------------------------------------*/
 

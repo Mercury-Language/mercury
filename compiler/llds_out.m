@@ -3818,20 +3818,11 @@ llds_out__make_base_type_name(BaseData, TypeName0, TypeArity, Str) :-
 
 llds_out__make_base_typeclass_info_name(class_id(ClassSym, ClassArity),
 		TypeNames, Str) :-
-	(
-		ClassSym = unqualified(_),
-		error("llds_out__make_base_typeclass_info_name: unqualified name")
-	;
-		ClassSym = qualified(ModuleName, ClassName),
-		llds_out__sym_name_mangle(ModuleName, MangledModuleName),
-		llds_out__name_mangle(ClassName, MangledClassName),
-		llds_out__qualify_name(MangledModuleName, MangledClassName,
-			MangledClassString)
-	),
+	llds_out__sym_name_mangle(ClassSym, MangledClassString),
 	string__int_to_string(ClassArity, ArityString),
 	llds_out__name_mangle(TypeNames, MangledTypeNames),
 	string__append_list(["base_typeclass_info_", MangledClassString,
-		"_", ArityString, "__", MangledTypeNames], Str).
+		"__arity", ArityString, "__", MangledTypeNames], Str).
 
 %-----------------------------------------------------------------------------%
 
