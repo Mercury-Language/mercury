@@ -92,8 +92,16 @@ excess_assignments_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) :-
 
 excess_assignments_proc(ProcInfo0, _ModuleInfo, ProcInfo) :-
 	proc_info_goal(ProcInfo0, Goal0),
-	excess_assignments_in_goal(Goal0, [], Goal, ElimVars),
+	map__init(Subn0),
+	excess_assignments_in_goal(Goal0, Subn0, Goal1, Subn),
+	( map__is_empty(Subn) ->
+		Goal = Goal1
+	;
+		goal_util__rename_vars_in_goal(Goal1, Subn, Goal)
+	),
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
+
+	map__keys(Subn, ElimVars),
 
 	% XXX We probably ought to remove these vars from the type map as well.
 	proc_info_variables(ProcInfo1, Varset0),
@@ -120,54 +128,54 @@ excess_assignments_proc(ProcInfo0, _ModuleInfo, ProcInfo) :-
 % and the notation `<Foo> [X/Y]' means <Foo> with all
 % occurrences of `X' replaced with `Y'.
 
-:- pred excess_assignments_in_goal(hlds__goal, list(var),
-				   hlds__goal, list(var)).
+:- pred excess_assignments_in_goal(hlds__goal, map(var,var),
+				   hlds__goal, map(var,var)).
 :- mode excess_assignments_in_goal(in, in, out, out) is det.
 
-excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
+excess_assignments_in_goal(GoalExpr0 - GoalInfo0, Subn0, Goal, Subn) :-
 	(
 		GoalExpr0 = conj(Goals0),
 		goal_info_get_nonlocals(GoalInfo0, NonLocals),
-		excess_assignments_in_conj(Goals0, [], [], NonLocals,
-					Goals, ElimVars),
+		excess_assignments_in_conj(Goals0, [], Subn0, NonLocals,
+					Goals, Subn),
 		conj_list_to_goal(Goals, GoalInfo0, Goal)
 	;
 		GoalExpr0 = disj(Goals0),
-		excess_assignments_in_disj(Goals0, ElimVars0, Goals, ElimVars),
+		excess_assignments_in_disj(Goals0, Subn0, Goals, Subn),
 		Goal = disj(Goals) - GoalInfo0
 	;
 		GoalExpr0 = not(NegGoal0),
-		excess_assignments_in_goal(NegGoal0, ElimVars0,
-						NegGoal, ElimVars),
+		excess_assignments_in_goal(NegGoal0, Subn0,
+						NegGoal, Subn),
 		Goal = not(NegGoal) - GoalInfo0
 	;
 		GoalExpr0 = switch(Var, CanFail, Cases0),
-		excess_assignments_in_switch(Cases0, ElimVars0,
-						Cases, ElimVars),
+		excess_assignments_in_switch(Cases0, Subn0,
+						Cases, Subn),
 		Goal = switch(Var, CanFail, Cases) - GoalInfo0
 	;
 		GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-		excess_assignments_in_goal(Cond0, ElimVars0, Cond, ElimVars1),
-		excess_assignments_in_goal(Then0, ElimVars1, Then, ElimVars2),
-		excess_assignments_in_goal(Else0, ElimVars2, Else, ElimVars),
+		excess_assignments_in_goal(Cond0, Subn0, Cond, Subn1),
+		excess_assignments_in_goal(Then0, Subn1, Then, Subn2),
+		excess_assignments_in_goal(Else0, Subn2, Else, Subn),
 		Goal = if_then_else(Vars, Cond, Then, Else) - GoalInfo0
 	;
 		GoalExpr0 = some(Var, SubGoal0),
-		excess_assignments_in_goal(SubGoal0, ElimVars0,
-					   SubGoal, ElimVars),
+		excess_assignments_in_goal(SubGoal0, Subn0,
+					   SubGoal, Subn),
 		Goal = some(Var, SubGoal) - GoalInfo0
 	;
 		GoalExpr0 = call(_, _, _, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
-		ElimVars = ElimVars0
+		Subn = Subn0
 	;
 		GoalExpr0 = unify(_, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
-		ElimVars = ElimVars0
+		Subn = Subn0
 	;
 		GoalExpr0 = pragma_c_code(_, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
-		ElimVars = ElimVars0
+		Subn = Subn0
 	).
 
 %-----------------------------------------------------------------------------%
@@ -180,16 +188,18 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 	% is left alone.
 
 :- pred excess_assignments_in_conj(list(hlds__goal), list(hlds__goal),
-	list(var), set(var), list(hlds__goal), list(var)).
+	map(var,var), set(var), list(hlds__goal), map(var,var)).
 :- mode excess_assignments_in_conj(in, in, in, in, out, out) is det.
 
-excess_assignments_in_conj([], RevGoals, ElimVars, _, Goals, ElimVars) :-
+excess_assignments_in_conj([], RevGoals, Subn, _, Goals, Subn) :-
 	list__reverse(RevGoals, Goals).
-excess_assignments_in_conj([Goal0 | Goals0], RevGoals0, ElimVars0, NonLocals,
-		Goals, ElimVars) :-
+excess_assignments_in_conj([Goal0 | Goals0], RevGoals0, Subn0, NonLocals,
+		Goals, Subn) :-
 	(
 		Goal0 = unify(_, _, _, Unif, _) - _,
-		Unif = assign(LeftVar, RightVar),
+		Unif = assign(LeftVar0, RightVar0),
+		goal_util__rename_var(LeftVar0, Subn0, LeftVar),
+		goal_util__rename_var(RightVar0, Subn0, RightVar),
 		( \+ set__member(LeftVar, NonLocals) ->
 			LocalVar = LeftVar, ReplacementVar = RightVar
 		; \+ set__member(RightVar, NonLocals) ->
@@ -198,39 +208,34 @@ excess_assignments_in_conj([Goal0 | Goals0], RevGoals0, ElimVars0, NonLocals,
 			fail
 		)
 	->
-		map__init(Subn0),
-		map__set(Subn0, LocalVar, ReplacementVar, Subn),
-		goal_util__rename_vars_in_goals(Goals0, Subn, Goals1),
-		goal_util__rename_vars_in_goals(RevGoals0, Subn, RevGoals1),
-		ElimVars1 = [LocalVar | ElimVars0]
+		map__det_insert(Subn0, LocalVar, ReplacementVar, Subn1),
+		RevGoals1 = RevGoals0
 	;
-		Goals1 = Goals0,
-		excess_assignments_in_goal(Goal0, ElimVars0, Goal1, ElimVars1),
+		excess_assignments_in_goal(Goal0, Subn0, Goal1, Subn1),
 		RevGoals1 = [Goal1 | RevGoals0]
 	),
-	excess_assignments_in_conj(Goals1, RevGoals1, ElimVars1,
-		NonLocals, Goals, ElimVars).
+	excess_assignments_in_conj(Goals0, RevGoals1, Subn1,
+		NonLocals, Goals, Subn).
 
 %-----------------------------------------------------------------------------%
 
-:- pred excess_assignments_in_disj(list(hlds__goal), list(var),
-	list(hlds__goal), list(var)).
+:- pred excess_assignments_in_disj(list(hlds__goal), map(var,var),
+	list(hlds__goal), map(var,var)).
 :- mode excess_assignments_in_disj(in, in, out, out) is det.
 
-excess_assignments_in_disj([], ElimVars, [], ElimVars).
-excess_assignments_in_disj([Goal0 | Goals0], ElimVars0,
-			   [Goal | Goals], ElimVars) :-
-	excess_assignments_in_goal(Goal0, ElimVars0, Goal, ElimVars1),
-	excess_assignments_in_disj(Goals0, ElimVars1, Goals, ElimVars).
+excess_assignments_in_disj([], Subn, [], Subn).
+excess_assignments_in_disj([Goal0 | Goals0], Subn0, [Goal | Goals], Subn) :-
+	excess_assignments_in_goal(Goal0, Subn0, Goal, Subn1),
+	excess_assignments_in_disj(Goals0, Subn1, Goals, Subn).
 
-:- pred excess_assignments_in_switch(list(case), list(var),
-				     list(case), list(var)).
+:- pred excess_assignments_in_switch(list(case), map(var,var),
+				     list(case), map(var,var)).
 :- mode excess_assignments_in_switch(in, in, out, out) is det.
 
-excess_assignments_in_switch([], ElimVars, [], ElimVars).
-excess_assignments_in_switch([case(Cons, Goal0) | Cases0], ElimVars0,
-		[case(Cons, Goal) | Cases], ElimVars) :-
-	excess_assignments_in_goal(Goal0, ElimVars0, Goal, ElimVars1),
-	excess_assignments_in_switch(Cases0, ElimVars1, Cases, ElimVars).
+excess_assignments_in_switch([], Subn, [], Subn).
+excess_assignments_in_switch([case(Cons, Goal0) | Cases0], Subn0,
+		[case(Cons, Goal) | Cases], Subn) :-
+	excess_assignments_in_goal(Goal0, Subn0, Goal, Subn1),
+	excess_assignments_in_switch(Cases0, Subn1, Cases, Subn).
 
 %-----------------------------------------------------------------------------%
