@@ -106,34 +106,14 @@ make_module_target(target(TargetFile) @ Dep, Succeeded, Info0, Info) -->
 			io__nl
 		    )),
 
-		%
-		% For comparison, find the oldest of the touched
-		% timestamp files.
-		%
-		list__map_foldl2(
-			get_timestamp_file_timestamp, TouchedTargetFiles,
-			TouchedTargetFileTimestamps, Info5, Info6),
-		list__map_foldl2(get_file_timestamp([dir__this_directory]),
-			TouchedFiles, TouchedFileTimestamps, Info6, Info8),
-		{ MaybeOldestTimestamp0 = list__foldl(find_oldest_timestamp, 
-			TouchedTargetFileTimestamps, ok(newest_timestamp)) },
-		{ MaybeOldestTimestamp = list__foldl(find_oldest_timestamp, 
-			TouchedFileTimestamps, MaybeOldestTimestamp0) },
-		module_name_to_file_name(ModuleName,
-			target_extension(Globals, FileType),
-			no, TargetFileName),
-
 		globals__io_lookup_bool_option(keep_going, KeepGoing),
 		( { DepsSuccess = no, KeepGoing = no } ->
-			{ Info10 = Info8 },
+			{ Info6 = Info5 },
 			{ DepsResult = error }
 		;
-			foldl2_maybe_stop_at_error(KeepGoing,
-				make_module_target, DepFilesToMake,
-				_, Info8, Info9),
-			check_dependencies(TargetFileName,
-				MaybeOldestTimestamp, DepFilesToMake,
-				DepsResult0, Info9, Info10),
+			make_dependency_files(TargetFile, DepFilesToMake,
+				TouchedTargetFiles, TouchedFiles, DepsResult0,
+				Info5, Info6),
 			{ DepsResult =
 				( DepsSuccess = yes -> DepsResult0 ; error ) }
 		),
@@ -141,19 +121,19 @@ make_module_target(target(TargetFile) @ Dep, Succeeded, Info0, Info) -->
 			{ DepsResult = error },
 			{ Succeeded = no },
 			{ list__foldl(update_target_status(error),
-	    			TouchedTargetFiles, Info10, Info) }
+	    			TouchedTargetFiles, Info6, Info) }
 		;
 			{ DepsResult = out_of_date },
 			build_target(CompilationTask, TargetFile, Imports,
 				TouchedTargetFiles, TouchedFiles, Succeeded,
-				Info10, Info)
+				Info6, Info)
 		;
 			{ DepsResult = up_to_date },
 			debug_file_msg(TargetFile, "up to date"),
 			{ Succeeded = yes },
 			{ list__foldl(update_target_status(up_to_date),
 	    			[TargetFile | TouchedTargetFiles],
-				Info10, Info) }
+				Info6, Info) }
 		)
 	    )
     	)
@@ -172,6 +152,49 @@ make_module_target(target(TargetFile) @ Dep, Succeeded, Info0, Info) -->
 	{ Succeeded = no },
 	{ Info = Info1 }
     ).
+
+:- pred make_dependency_files(target_file::in, list(dependency_file)::in,
+	list(target_file)::in, list(file_name)::in, dependencies_result::out,
+	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+
+make_dependency_files(TargetFile, DepFilesToMake, TouchedTargetFiles,
+		TouchedFiles, DepsResult, Info0, Info) -->
+	%
+	% Build the dependencies.
+	%
+	globals__io_lookup_bool_option(keep_going, KeepGoing),
+	foldl2_maybe_stop_at_error(KeepGoing, make_module_target,
+		DepFilesToMake, _, Info0, Info1),
+
+	%
+	% Check that the target files exist.
+	%
+	list__map_foldl2(get_target_timestamp, TouchedTargetFiles,
+			TargetTimestamps, Info1, Info2),
+	( { list__member(error(_), TargetTimestamps) } ->
+		debug_file_msg(TargetFile, "target file does not exist"),
+		{ DepsResult = out_of_date },
+		{ Info = Info2 }
+	;
+		%
+		% Compare the oldest of the timestamps of the touched
+		% files with the timestamps of the dependencies.
+		%
+		list__map_foldl2(get_timestamp_file_timestamp,
+			TouchedTargetFiles, TouchedTargetFileTimestamps,
+			Info2, Info3),
+		list__map_foldl2(get_file_timestamp([dir__this_directory]),
+			TouchedFiles, TouchedFileTimestamps, Info3, Info4),
+		{ MaybeOldestTimestamp0 = list__foldl(find_oldest_timestamp, 
+			TouchedTargetFileTimestamps, ok(newest_timestamp)) },
+		{ MaybeOldestTimestamp = list__foldl(find_oldest_timestamp, 
+			TouchedFileTimestamps, MaybeOldestTimestamp0) },
+
+		get_file_name(TargetFile, TargetFileName, Info4, Info5),
+		check_dependencies(TargetFileName,
+			MaybeOldestTimestamp, DepFilesToMake,
+			DepsResult, Info5, Info)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -561,11 +584,14 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
 			make_target_list(TargetModuleNames, FileType) }
 	),
 
-
+	globals__io_get_globals(Globals),
 	list__foldl2(
 	    (pred((TargetModuleName - TargetFileType)::in, TimestampFiles0::in,
 			TimestampFiles1::out, di, uo) is det -->
-		( { TimestampExt = timestamp_extension(TargetFileType) } ->
+		(
+			{ TimestampExt =
+				timestamp_extension(Globals, TargetFileType) }
+		->
 			module_name_to_file_name(TargetModuleName,
 				TimestampExt, no, TimestampFile),
 			{ TimestampFiles1 =

@@ -774,7 +774,21 @@ check_dependency_timestamps(TargetFileName, MaybeTimestamp, DepFiles,
 	    { list__member(MaybeDepTimestamp1, DepTimestamps) },
 	    { MaybeDepTimestamp1 = error(_) }
 	->
-	    { DepsResult = error }
+	    { DepsResult = error },
+	    debug_msg(
+	        (pred(di, uo) is det -->
+		    { assoc_list__from_corresponding_lists(DepFiles,
+				DepTimestamps, DepTimestampAL) },
+		    { solutions(
+			    (pred(DepFile::out) is nondet :-
+				list__member(DepFile - error(_),
+					DepTimestampAL)
+			    ), ErrorDeps) },
+		    io__write_string(TargetFileName),
+		    io__write_string(": failed dependencies: "),
+		    io__write_list(ErrorDeps, ",\n\t", WriteDepFile),
+		    io__nl
+		))
 	;
 	    { Rebuild = yes }
 	->
@@ -839,7 +853,8 @@ dependency_status(file(FileName, _) @ Dep, Status, Info0, Info) -->
 			io__write_string("** Error: file `"),
 			io__write_string(FileName),
 			io__write_string("' not found: "),
-			io__write_string(Error)
+			io__write_string(Error),
+			io__nl
 		),
 		{ Info = Info1 ^ dependency_status ^ elem(Dep) := Status }
 	).
@@ -876,7 +891,8 @@ dependency_status(target(Target) @ Dep, Status, Info0, Info) -->
 		    io__write_string("** Error: file `"),
 		    write_target_file(Target),
 		    io__write_string("' not found: "),
-		    io__write_string(Error)
+		    io__write_string(Error),
+		    io__nl
 	        )
 	    ;
 		{ Info2 = Info1 },
