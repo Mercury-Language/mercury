@@ -117,12 +117,6 @@
 	hlds_type_body::in, prog_context::in, module_info::in,
 	clauses_info::out) is det.
 
-	% This number gives the maximum number of constructors in a type
-	% whose compare procedure can be specialized, and whose compare
-	% procedure therefore does need an index procedure on that type.
-
-:- func unify_proc__max_exploited_compare_spec_value = int.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1059,54 +1053,20 @@ unify_proc__generate_du_compare_clauses(Type, Ctors, Res, H1, H2,
 		{ Ctors = [] },
 		{ error("compare for type with no functors") }
 	;
-		{ Ctors = [Ctor] },
+		{ Ctors = [_ | _] },
 		unify_proc__info_get_module_info(ModuleInfo),
 		{ module_info_globals(ModuleInfo, Globals) },
 		{ globals__lookup_int_option(Globals, compare_specialization,
 			CompareSpec) },
-		( { CompareSpec >= 1 } ->
-			unify_proc__generate_du_one_compare_clause(
-				Ctor, Res, H1, H2,
-				Context, Clauses)
+		{ list__length(Ctors, NumCtors) },
+		( { NumCtors =< CompareSpec } ->
+			unify_proc__generate_du_quad_compare_clauses(
+				Ctors, Res, H1, H2, Context, Clauses)
 		;
-			unify_proc__generate_du_general_compare_clauses(Type,
+			unify_proc__generate_du_linear_compare_clauses(Type,
 				Ctors, Res, H1, H2, Context, Clauses)
 		)
-	;
-		{ Ctors = [Ctor1, Ctor2] },
-		unify_proc__info_get_module_info(ModuleInfo),
-		{ module_info_globals(ModuleInfo, Globals) },
-		{ globals__lookup_int_option(Globals, compare_specialization,
-			CompareSpec) },
-		( { CompareSpec >= 2 } ->
-			unify_proc__generate_du_two_compare_clauses(
-				Ctor1, Ctor2, Res, H1, H2,
-				Context, Clauses)
-		;
-			unify_proc__generate_du_general_compare_clauses(Type,
-				Ctors, Res, H1, H2, Context, Clauses)
-		)
-	;
-		{ Ctors = [Ctor1, Ctor2, Ctor3] },
-		unify_proc__info_get_module_info(ModuleInfo),
-		{ module_info_globals(ModuleInfo, Globals) },
-		{ globals__lookup_int_option(Globals, compare_specialization,
-			CompareSpec) },
-		( { CompareSpec >= 3 } ->
-			unify_proc__generate_du_three_compare_clauses(
-				Ctor1, Ctor2, Ctor3, Res, H1, H2,
-				Context, Clauses)
-		;
-			unify_proc__generate_du_general_compare_clauses(Type,
-				Ctors, Res, H1, H2, Context, Clauses)
-		)
-	;
-		{ Ctors = [_, _, _, _ | _] },
-		unify_proc__generate_du_general_compare_clauses(Type,
-			Ctors, Res, H1, H2, Context, Clauses)
 	).
-
-unify_proc__max_exploited_compare_spec_value = 3.
 
 %-----------------------------------------------------------------------------%
 
@@ -1114,7 +1074,7 @@ unify_proc__max_exploited_compare_spec_value = 3.
 %
 %		:- type foo ---> f(a, b, c)
 %
-%   	we want to generate code
+%   	the "quadratic" code we want to generate is
 %
 %		compare(Res, X, Y) :-
 %			X = f(X1, X2, X3), Y = f(Y1, Y2, Y3),
@@ -1138,11 +1098,11 @@ unify_proc__generate_du_one_compare_clause(Ctor, R, X, Y, Context, Clauses) -->
 
 %-----------------------------------------------------------------------------%
 
-%	For a du type with two or three function symbols, such as 
+%	For a du type with N function symbols for N > 1, such as 
 %
 %		:- type foo ---> f(a) ; g(a, b, c)
 %
-%   	we want to generate code such as
+%   	the quadratic code we want to generate is
 %
 %		compare(Res, X, Y) :-
 %			(
@@ -1169,65 +1129,65 @@ unify_proc__generate_du_one_compare_clause(Ctor, R, X, Y, Context, Clauses) -->
 %				)
 %			).
 
-:- pred unify_proc__generate_du_two_compare_clauses(
-	constructor::in, constructor::in, prog_var::in, prog_var::in,
-	prog_var::in, prog_context::in, list(clause)::out,
-	unify_proc_info::in, unify_proc_info::out) is det.
-
-unify_proc__generate_du_two_compare_clauses(Ctor1, Ctor2, R, X, Y,
-		Context, Clauses) -->
-	unify_proc__generate_compare_case(Ctor1, R, X, Y, Context, Case11),
-	unify_proc__generate_compare_case(Ctor2, R, X, Y, Context, Case22),
-	unify_proc__generate_asymmetric_compare_case(Ctor1, Ctor2, "<",
-		R, X, Y, Context, Case12),
-	unify_proc__generate_asymmetric_compare_case(Ctor2, Ctor1, ">",
-		R, X, Y, Context, Case21),
-
-	{ goal_info_init(GoalInfo0) },
-	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
-	{ map__init(Empty) },
-	{ Goal = disj([Case11, Case12, Case21, Case22], Empty) - GoalInfo },
-	{ HeadVars = [R, X, Y] },
-	unify_proc__quantify_clauses_body(HeadVars, Goal, Context, Clauses).
-
-:- pred unify_proc__generate_du_three_compare_clauses(
-	constructor::in, constructor::in, constructor::in,
+:- pred unify_proc__generate_du_quad_compare_clauses(list(constructor)::in,
 	prog_var::in, prog_var::in, prog_var::in, prog_context::in,
 	list(clause)::out, unify_proc_info::in, unify_proc_info::out) is det.
 
-unify_proc__generate_du_three_compare_clauses(Ctor1, Ctor2, Ctor3, R, X, Y,
-		Context, Clauses) -->
-	unify_proc__generate_compare_case(Ctor1, R, X, Y, Context, Case11),
-	unify_proc__generate_compare_case(Ctor2, R, X, Y, Context, Case22),
-	unify_proc__generate_compare_case(Ctor3, R, X, Y, Context, Case33),
-	unify_proc__generate_asymmetric_compare_case(Ctor1, Ctor2, "<",
-		R, X, Y, Context, Case12),
-	unify_proc__generate_asymmetric_compare_case(Ctor1, Ctor3, "<",
-		R, X, Y, Context, Case13),
-	unify_proc__generate_asymmetric_compare_case(Ctor2, Ctor3, "<",
-		R, X, Y, Context, Case23),
-	unify_proc__generate_asymmetric_compare_case(Ctor2, Ctor1, ">",
-		R, X, Y, Context, Case21),
-	unify_proc__generate_asymmetric_compare_case(Ctor3, Ctor1, ">",
-		R, X, Y, Context, Case31),
-	unify_proc__generate_asymmetric_compare_case(Ctor3, Ctor2, ">",
-		R, X, Y, Context, Case32),
-
+unify_proc__generate_du_quad_compare_clauses(Ctors, R, X, Y, Context,
+		Clauses) -->
+	unify_proc__generate_du_quad_compare_clauses_1(Ctors, Ctors, R, X, Y,
+		Context, [], Cases),
 	{ goal_info_init(GoalInfo0) },
 	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
-	{ map__init(Empty) },
-	{ Goal = disj([Case11, Case12, Case13, Case21, Case22, Case23,
-		Case31, Case32, Case33], Empty) - GoalInfo },
+	{ disj_list_to_goal(Cases, GoalInfo, Goal) },
 	{ HeadVars = [R, X, Y] },
 	unify_proc__quantify_clauses_body(HeadVars, Goal, Context, Clauses).
 
+:- pred unify_proc__generate_du_quad_compare_clauses_1(
+	list(constructor)::in, list(constructor)::in,
+	prog_var::in, prog_var::in, prog_var::in, prog_context::in,
+	list(hlds_goal)::in, list(hlds_goal)::out,
+	unify_proc_info::in, unify_proc_info::out) is det.
+
+unify_proc__generate_du_quad_compare_clauses_1([],
+		_RightCtors, _R, _X, _Y, _Context, Cases, Cases) --> [].
+unify_proc__generate_du_quad_compare_clauses_1([LeftCtor | LeftCtors],
+		RightCtors, R, X, Y, Context, Cases0, Cases) -->
+	unify_proc__generate_du_quad_compare_clauses_2(LeftCtor, RightCtors,
+		">", R, X, Y, Context, Cases0, Cases1),
+	unify_proc__generate_du_quad_compare_clauses_1(LeftCtors, RightCtors,
+		R, X, Y, Context, Cases1, Cases).
+
+:- pred unify_proc__generate_du_quad_compare_clauses_2(
+	constructor::in, list(constructor)::in, string::in,
+	prog_var::in, prog_var::in, prog_var::in, prog_context::in,
+	list(hlds_goal)::in, list(hlds_goal)::out,
+	unify_proc_info::in, unify_proc_info::out) is det.
+
+unify_proc__generate_du_quad_compare_clauses_2(_LeftCtor,
+		[], _Cmp, _R, _X, _Y, _Context, Cases, Cases) --> [].
+unify_proc__generate_du_quad_compare_clauses_2(LeftCtor,
+		[RightCtor | RightCtors], Cmp0, R, X, Y, Context,
+		Cases0, Cases) -->
+	( { LeftCtor = RightCtor } ->
+		unify_proc__generate_compare_case(LeftCtor, R, X, Y, Context,
+			Case),
+		{ Cmp1 = "<" }
+	;
+		unify_proc__generate_asymmetric_compare_case(LeftCtor,
+			RightCtor, Cmp0, R, X, Y, Context, Case),
+		{ Cmp1 = Cmp0 }
+	),
+	unify_proc__generate_du_quad_compare_clauses_2(LeftCtor, RightCtors,
+		Cmp1, R, X, Y, Context, [Case | Cases0], Cases).
+
 %-----------------------------------------------------------------------------%
 
-%	For a du type with four or more function symbols, such as 
+%	For a du type, such as 
 %
 %		:- type foo ---> f ; g(a) ; h(b, foo).
 %
-%   	we want to generate code
+%   	the linear code we want to generate is
 %
 %		compare(Res, X, Y) :-
 %			__Index__(X, X_Index),	% Call_X_Index
@@ -1259,25 +1219,25 @@ unify_proc__generate_du_three_compare_clauses(Ctor1, Ctor2, Ctor3, R, X, Y,
 %				compare_error 	% Abort
 %			).
 
-:- pred unify_proc__generate_du_general_compare_clauses((type)::in,
+:- pred unify_proc__generate_du_linear_compare_clauses((type)::in,
 	list(constructor)::in, prog_var::in, prog_var::in, prog_var::in,
 	prog_context::in, list(clause)::out,
 	unify_proc_info::in, unify_proc_info::out) is det.
 
-unify_proc__generate_du_general_compare_clauses(Type, Ctors, Res, X, Y,
+unify_proc__generate_du_linear_compare_clauses(Type, Ctors, Res, X, Y,
 		Context, [Clause]) -->
-	unify_proc__generate_du_compare_clauses_2(Type, Ctors, Res,
+	unify_proc__generate_du_linear_compare_clauses_2(Type, Ctors, Res,
 		X, Y, Context, Goal),
 	{ HeadVars = [Res, X, Y] },
 	unify_proc__quantify_clause_body(HeadVars, Goal, Context, Clause).
 
-:- pred unify_proc__generate_du_compare_clauses_2((type)::in,
+:- pred unify_proc__generate_du_linear_compare_clauses_2((type)::in,
 	list(constructor)::in, prog_var::in, prog_var::in, prog_var::in,
 	prog_context::in, hlds_goal::out,
 	unify_proc_info::in, unify_proc_info::out) is det.
 
-unify_proc__generate_du_compare_clauses_2(Type, Ctors, Res, X, Y, Context,
-		Goal) -->
+unify_proc__generate_du_linear_compare_clauses_2(Type, Ctors, Res, X, Y,
+		Context, Goal) -->
 	{ IntType = int_type },
 	{ mercury_public_builtin_module(MercuryBuiltin) },
 	{ construct_type(qualified(MercuryBuiltin, "comparison_result") - 0,
@@ -1338,6 +1298,7 @@ unify_proc__generate_du_compare_clauses_2(Type, Ctors, Res, X, Y, Context,
 %		:- type foo ---> f ; g(a) ; h(b, foo).
 %
 %   	we want to generate code
+%
 %		(
 %			X = f,		% UnifyX_Goal
 %			Y = f,		% UnifyY_Goal

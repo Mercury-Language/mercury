@@ -772,8 +772,11 @@ option_defaults_2(code_gen_option, [
 					% at configuration time
 	pic			-	bool(no),
 	max_jump_table_size	-	int(0),
-	compare_specialization	-	int(4),
 					% 0 indicates any size.
+	compare_specialization	-	int(-1),
+					% -1 asks handle_options.m to give
+					% the value, which may be grade
+					% dependent.
 	fact_table_max_array_size -	int(1024),
 	fact_table_hash_percent_full - 	int(90),
 	gcc_local_labels	-	bool(no),

@@ -462,15 +462,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	% --split-c-files implies --procs-per-c-function 1
 	option_implies(split_c_files, procs_per_c_function, int(1)),
 
-	% make_hlds contains an optimization which requires the value of the
-	% compare_specialization option to accurately specify the max number
-	% of constructors in a type whose comparison procedure is specialized
-	% and which therefore don't need index functions.
-	globals__io_lookup_int_option(compare_specialization, CompareSpec0),
-	{ int__min(unify_proc__max_exploited_compare_spec_value,
-		CompareSpec0, CompareSpec) },
-	globals__io_set_option(compare_specialization, int(CompareSpec)),
-
 	% Minimal model tabling is not compatible with trailing;
 	% see the comment in runtime/mercury_tabling.c.
 
@@ -847,6 +838,23 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	->
 		globals__io_set_option(backend_foreign_languages,
 			accumulating(BackendForeignLanguages))
+	;
+		[]
+	),
+
+	globals__io_lookup_int_option(compare_specialization, CompareSpec),
+	( { CompareSpec < 0 } ->
+		% This indicates that the option was not set by the user;
+		% we should set the option to the default value. This value
+		% may be back end specific, since different back ends have
+		% different performance tradeoffs.
+		(
+			{ HighLevel = no },
+			globals__io_set_option(compare_specialization, int(13))
+		;
+			{ HighLevel = yes },
+			globals__io_set_option(compare_specialization, int(14))
+		)
 	;
 		[]
 	),
