@@ -851,9 +851,9 @@ opt_level(0, _, [
 	optimize_peep		-	bool(yes),
 	static_ground_terms	-	bool(yes),
 	smart_indexing		-	bool(yes),
+	optimize_jumps		-	bool(yes),
+	optimize_labels		-	bool(yes),
 	excess_assign		-	bool(yes)	% ???
-	% jumps?
-	% labels?
 ]).
 
 % Optimization level 1: apply optimizations which are cheap and
@@ -861,8 +861,6 @@ opt_level(0, _, [
 
 opt_level(1, OptionTable, [
 	c_optimize		-	bool(yes),	% XXX we want `gcc -O1'
-	optimize_jumps		-	bool(yes),
-	optimize_labels		-	bool(yes),
 	optimize_frames		-	bool(yes),
 	optimize_delay_slot	-	bool(DelaySlot),
 	optimize_saved_vars	-	bool(yes),
