@@ -2076,6 +2076,8 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 		{ Body_2 \= abstract_type }
 	->
 		globals__io_get_target(Target),
+		globals__io_lookup_bool_option(make_optimization_interface,
+				MakeOptInt),
 	  	(
 			% then if this definition was abstract, ignore it
 			% (but update the status of the old defn if necessary)
@@ -2093,8 +2095,8 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 				module_info_set_types(Module0, Types, Module)
 			}
 		;
-			{ merge_foreign_type_bodies(Target, Body, Body_2,
-				NewBody) }
+			{ merge_foreign_type_bodies(Target, MakeOptInt,
+					Body, Body_2, NewBody) }
 		->
 			(
 				{ check_foreign_type_visibility(OrigStatus,
@@ -2334,12 +2336,17 @@ generating_code(bool__not(NotGeneratingCode)) -->
 			TypeCheckOnly, ErrorCheckOnly, OutputGradeString],
 			NotGeneratingCode) }.
 
-:- pred merge_foreign_type_bodies(compilation_target::in, hlds_type_body::in,
+:- pred merge_foreign_type_bodies(compilation_target::in,
+		bool::in, hlds_type_body::in,
 		hlds_type_body::in, hlds_type_body::out) is semidet.
 
 	% Ignore Mercury definitions if we've got a foreign type
-	% declaration suitable for this back-end.
-merge_foreign_type_bodies(Target, foreign_type(ForeignTypeBody0),
+	% declaration suitable for this back-end and we aren't making the
+	% optimization interface.  We need to keep the Mercury definition
+	% if we are making the optimization interface so that it gets
+	% output in the .opt file.
+merge_foreign_type_bodies(Target, MakeOptInterface,
+		foreign_type(ForeignTypeBody0),
 		Body1 @ du_type(_, _, _, _, MaybeForeignTypeBody1), Body) :-
 	( MaybeForeignTypeBody1 = yes(ForeignTypeBody1)
 	; MaybeForeignTypeBody1 = no,
@@ -2347,15 +2354,19 @@ merge_foreign_type_bodies(Target, foreign_type(ForeignTypeBody0),
 	),
 	merge_foreign_type_bodies_2(ForeignTypeBody0,
 		ForeignTypeBody1, ForeignTypeBody),
-	( have_foreign_type_for_backend(Target, ForeignTypeBody, yes) ->
+	(
+		have_foreign_type_for_backend(Target, ForeignTypeBody, yes),
+		MakeOptInterface = no
+	->
 		Body = foreign_type(ForeignTypeBody)
 	;
 		Body = Body1 ^ du_type_is_foreign_type := yes(ForeignTypeBody)
 	).
-merge_foreign_type_bodies(Target, Body0 @ du_type(_, _, _, _, _),
+merge_foreign_type_bodies(Target, MakeOptInterface,
+		Body0 @ du_type(_, _, _, _, _),
 		Body1 @ foreign_type(_), Body) :-
-	merge_foreign_type_bodies(Target, Body1, Body0, Body).
-merge_foreign_type_bodies(_, foreign_type(Body0), foreign_type(Body1),
+	merge_foreign_type_bodies(Target, MakeOptInterface, Body1, Body0, Body).
+merge_foreign_type_bodies(_, _, foreign_type(Body0), foreign_type(Body1),
 		foreign_type(Body)) :-
 	merge_foreign_type_bodies_2(Body0, Body1, Body).
 
