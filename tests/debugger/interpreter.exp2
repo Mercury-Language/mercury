@@ -27,7 +27,7 @@ mdb> print *
        HeadVar__1           		two('<<c_pointer>>', "<standard input>", empty, empty)
        HeadVar__2           		'<<c_pointer>>'
        HeadVar__3           		"interpreter.m"
-       HeadVar__4           		three('<<c_pointer>>', "interpreter.m", '<<c_pointer>>', "<standard input>", empty, empty, empty)
+       HeadVar__4           		three(<<c_pointer>>, "interpreter.m", <<c_pointer>>, "<standard input>", empty, empty, empty)
 mdb> 
       34:     16  8 EXIT pred tree234:set/4-1 (det) 
 mdb> finish -n

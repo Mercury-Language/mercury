@@ -1,8 +1,8 @@
 Software error: string__format: argument list has more elements than format string
 Stack dump follows:
-        0       pred require:error/1-0 (erroneous)
-        1    5* pred string:format_2/3-0 (det)
-        6       pred string:format/3-0 (det)
-        7       pred io:format/5-0 (det)
-        8       pred io:format/4-0 (det)
-        9       pred string_format_test_2:main/2-0 (det)
+   0       pred require:error/1-0 (erroneous)
+   1    5* pred string:format_2/3-0 (det)
+   6       pred string:format/3-0 (det)
+   7       pred io:format/5-0 (det)
+   8       pred io:format/4-0 (det)
+   9       pred string_format_test_2:main/2-0 (det)
