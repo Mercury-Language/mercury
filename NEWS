@@ -90,6 +90,9 @@ Changes to the Mercury standard library:
   `is_nan_or_inf/1' to float.m.  These predicates are for use only on
   systems which support IEEE floating point arithmetic.
 
+* `hash_table__search/3' has been made obsolete and replaced by a function,
+  for consistency with the rest of the interface.
+
 * getopt.m now accepts a `maybe_string_special' option type.
 
 * builtin.m now contains types and insts `unify' and `compare' for use
