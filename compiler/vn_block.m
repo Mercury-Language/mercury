@@ -203,27 +203,25 @@ vn_block__handle_instr(assign(Lval, Rval),
 	vn_util__rval_to_vn(Rval, Vn, VnTables0, VnTables1),
 	vn_util__lval_to_vnlval(Lval, Vnlval, VnTables1, VnTables2),
 	vn_table__set_desired_value(Vnlval, Vn, VnTables2, VnTables),
-	vn_util__find_specials(Vnlval, Specials),
-%	vn_util__find_specials(Vnlval, LeftSpecials),
-%	(
-%		% Assignments of this form occur in the setup for commit.
-%		% We must record the left hand side (which will be a stackvar)
-%		% as a must flush location, because liveness will not force
-%		% it to be flushed. The reason for this is that livemap.m
-%		% may be confused by an incr_sp and assignment to a similarly
-%		% numbered stackvar in later code into thinking that this
-%		% assignment is redundant.
-%		Rval = lval(SubLval),
-%		( SubLval = curfr
-%		; SubLval = maxfr
-%		; SubLval = redoip(_)
-%		; SubLval = redofr(_)
-%		)
-%	->
-%		Specials = [Vnlval | LeftSpecials]
-%	;
-%		Specials = LeftSpecials
-%	),
+	vn_util__find_specials(Vnlval, LeftSpecials),
+	(
+		% Assignments of this form occur in hijacking.
+		% We must record the left hand side (which will be a stackvar
+		% or framevar) as a must flush location, because liveness will
+		% not force it to be flushed. The reason for this is that
+		% we do not properly include temporary slots (such as those
+		% used by hijacking) in livevals annotations.
+		Rval = lval(SubLval),
+		( SubLval = curfr
+		; SubLval = maxfr
+		; SubLval = redoip(_)
+		; SubLval = redofr(_)
+		)
+	->
+		Specials = [Vnlval | LeftSpecials]
+	;
+		Specials = LeftSpecials
+	),
 	set__insert_list(Liveset0, Specials, Liveset).
 vn_block__handle_instr(call(Proc, Return, Info, CallModel),
 		Livemap, Params, VnTables0, VnTables, Liveset0, Liveset,
