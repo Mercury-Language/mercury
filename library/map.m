@@ -136,7 +136,15 @@ map__to_assoc_list(M, M).
 :- pred map__delete(list(K,V), K, list(K,V)).
 :- mode map__delete(input, input, output).
 
-map__delete(_Map0, _Key, _Map) :-
-	require(fail, "unimplemented").
+map__delete([K-V | Map0], Key, Map) :-
+	(if
+		K = Key
+	then
+		Map = Map0
+	else
+		map__delete(Map0, Key, Map1),
+		Map = [K-V|Map1]
+	).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
