@@ -99,7 +99,7 @@
 
 
 /* void MR_allocate_aligned_string_msg(MR_ConstString &ptr, size_t len,
-**		Code *proclabel, const char *type);
+**		MR_Code *proclabel, const char *type);
 ** Allocate enough word aligned memory to hold len characters.  Also
 ** record for memory profiling purposes the location, proclabel, of the
 ** allocation if profiling is enabled.
