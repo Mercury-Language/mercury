@@ -560,12 +560,12 @@ intermod_info_add_proc(PredId, DoWrite) -->
 		% becomes
 		% 	p(HeadVar1, HeadVar2, HeadVar3) :-
 		%		A = HeadVar1, B = HeadVar2, C = HeadVar3,
-		% 		impure_goal(A, B, C).
+		% 		impure foo(A, B, C).
 		% 
 		% In the clauses written to `.opt' files, the head
 		% unifications are already expanded, and are expanded
 		% again when the `.opt' file is read in. The `C = HeadVar3'
-		% unficiation cannot be reordered with the impure goal,
+		% unification cannot be reordered with the impure goal,
 		% resulting in a mode error. Fixing this in mode analysis
 		% would be tricky.
 		%
