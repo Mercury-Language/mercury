@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995, 1997-1998, 2001 The University of Melbourne.
+% Copyright (C) 1995, 1997-1998, 2001, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -11,7 +11,7 @@
 % This module exports the `globals' type and associated access predicates.
 % The globals type is used to collect together all the various data
 % that would be global variables in an imperative language.
-% This global data is stored in the io__state.
+% This global data is stored in the io.
 
 %-----------------------------------------------------------------------------%
 
@@ -52,44 +52,41 @@
 
 :- pred globals__lookup_bool_option(globals, option, bool).
 :- mode globals__lookup_bool_option(in, in, out) is det.
-:- mode globals__lookup_bool_option(in, in, in) is semidet. % implied
 :- pred globals__lookup_int_option(globals::in, option::in, int::out) is det.
 :- pred globals__lookup_string_option(globals::in, option::in, string::out)
 	is det.
 :- pred globals__lookup_accumulating_option(globals::in, option::in,
-		list(string)::out) is det.
+	list(string)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
 	% Access predicates for storing a `globals' structure in the
-	% io__state using io__set_globals and io__get_globals.
+	% io using io__set_globals and io__get_globals.
 
-:- pred globals__io_init(option_table::in, io__state::di, io__state::uo) is det.
+:- pred globals__io_init(option_table::in, io::di, io::uo) is det.
 
-:- pred globals__io_get_globals(globals::out, io__state::di, io__state::uo)
-	is det.
+:- pred globals__io_get_globals(globals::out, io::di, io::uo) is det.
 
-:- pred globals__io_set_globals(globals::in, io__state::di, io__state::uo)
-	is det.
+:- pred globals__io_set_globals(globals::in, io::di, io::uo) is det.
 
 :- pred globals__io_lookup_option(option::in, option_data::out,
-			io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 :- pred globals__io_set_option(option::in, option_data::in,
-			io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
-:- pred globals__io_lookup_bool_option(option, bool, io__state, io__state).
+:- pred globals__io_lookup_bool_option(option, bool, io, io).
 :- mode globals__io_lookup_bool_option(in, out, di, uo) is det.
 :- mode globals__io_lookup_bool_option(in, in, di, uo) is semidet. % implied
 
 :- pred globals__io_lookup_int_option(option::in, int::out,
-			io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 :- pred globals__io_lookup_string_option(option::in, string::out,
-			io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 :- pred globals__io_lookup_accumulating_option(option::in, list(string)::out,
-			io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -116,7 +113,7 @@ globals__init(Options, globals(user_plus_system_time, Options)).
 globals__get_what_to_profile(globals(WhatToProfile, _), WhatToProfile).
 
 globals__set_what_to_profile(globals(_, A), WhatToProfile,
-				globals(WhatToProfile, A)).
+	globals(WhatToProfile, A)).
 
 globals__get_options(globals(_, Options), Options).
 
