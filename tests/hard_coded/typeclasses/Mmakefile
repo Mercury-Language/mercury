@@ -49,6 +49,7 @@ PROGS=	\
 	reordered_existential_constraint \
 	superclass_bug \
 	superclass_bug2 \
+	superclass_bug3 \
 	superclass_call \
 	test_default_func_mode \
 	tuple_instance \
