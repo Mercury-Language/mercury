@@ -144,7 +144,7 @@ EXTRA_CFLAGS	=
 # use to compile Managed C++ code in the .NET backend.
 MS_CL		= cl
 ALL_MS_CLFLAGS	= $(MS_CLFLAGS) $(EXTRA_MS_CLFLAGS) $(TARGET_MS_CLFLAGS) \
-		$(LIB_MS_CLFLAGS) $(ALL_CFLAGS)
+		$(LIB_MS_CLFLAGS)
 MS_CLFLAGS	=
 EXTRA_MS_CLFLAGS =
 LIB_MS_CLFLAGS	= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
@@ -153,9 +153,8 @@ LIB_MS_CLFLAGS	= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
 # MS_CL_NOASM=:noAssembly to turn it off, leave it blank to turn it on.
 MS_CL_NOASM	=
 MS_DOTNET_SDK_DIR=@MS_DOTNET_SDK_DIR@
-# The system libraries.
-MS_CL_LIBS	= "$(MS_DOTNET_SDK_DIR)/Lib/mscoree.lib" \
-		  "$(MS_DOTNET_SDK_DIR)/Lib/kernel32.lib"
+# The system libraries were once needed here, but are currently unnecessary.
+MS_CL_LIBS	= 
 MERC_C_INCL_DIR = @LIBDIR@/inc
 MERC_DLL_DIR    = @LIBDIR@/inc
 
