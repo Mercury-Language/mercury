@@ -2393,16 +2393,16 @@ call_field_constructor(ObjClassName, MLDSDefn, Instrs) :-
 		FieldRef = make_fieldref(ILType, ObjClassName,
 			MangledName),
 		( 
-			ILType = il_envptr_type, 
-			ClassName = il_envptr_class_name
+			ILType = il_envptr_type
 		->
+			ClassName = il_envptr_class_name,
 			Instrs = [ldarg(index(0)),
 				newobj_constructor(ClassName),
 				stfld(FieldRef)]
 		;
-			ILType = il_commit_type,
-			ClassName = il_commit_class_name
+			ILType = il_commit_type
 		->
+			ClassName = il_commit_class_name,
 			Instrs = [ldarg(index(0)),
 				newobj_constructor(ClassName),
 				stfld(FieldRef)]
