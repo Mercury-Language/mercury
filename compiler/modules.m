@@ -3232,19 +3232,26 @@ get_extra_link_objects_2([Module | Modules], DepsMap, Target,
 	list__length(FactDeps, NumFactDeps),
 	list__duplicate(NumFactDeps, Module, ModuleList),
 	assoc_list__from_corresponding_lists(FactDeps, ModuleList,
-		NewLinkObjs0),
+		FactTableObjs),
 	%
-	% Handle object files for foreign code
+	% Handle object files for foreign code.
 	% XXX currently we only support `C' foreign code.
+	%
+	% Note that we implement fact tables by generating
+	% some inline C, so code which uses fact tables must
+	% be treated as if it also contained foreign code.
 	%
 	(
 		Target = asm,
-		ModuleImports ^ foreign_code = contains_foreign_code
+		( ModuleImports ^ foreign_code = contains_foreign_code
+		; FactTableObjs \= []
+		)
 	->
 		prog_out__sym_name_to_string(Module, ".", FileName),
-		NewLinkObjs = [(FileName ++ "__c_code") - Module | NewLinkObjs0]
+		NewLinkObjs = [(FileName ++ "__c_code") - Module |
+			FactTableObjs]
 	;
-		NewLinkObjs = NewLinkObjs0
+		NewLinkObjs = FactTableObjs
 	),
 	list__append(NewLinkObjs, ExtraLinkObjs0, ExtraLinkObjs1),
 	get_extra_link_objects_2(Modules, DepsMap, Target, ExtraLinkObjs1, 
