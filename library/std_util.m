@@ -1309,24 +1309,24 @@ XXX `ui' modes don't work yet
 	*(MR_Word *) Ref = X;
 ").
 
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 	new_mutvar(X::in, Ref::out),
 	[will_not_call_mercury, thread_safe],
 "
-	MR_untagged_newobj(Ref, 1);
+	Ref = new object[1];
 	Ref[0] = X;
 ").
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 	new_mutvar(X::di, Ref::uo),
 	[will_not_call_mercury, thread_safe],
 "
-	MR_untagged_newobj(Ref, 1);
+	Ref = new object[1];
 	Ref[0] = X;
 ").
 
 :- pragma inline(get_mutvar/2).
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	get_mutvar(Ref::in, X::uo),
 	[will_not_call_mercury, thread_safe],
 "
@@ -1335,7 +1335,7 @@ XXX `ui' modes don't work yet
 
 :- pragma inline(set_mutvar/2).
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	set_mutvar(Ref::in, X::in),
 	[will_not_call_mercury, thread_safe],
 "
