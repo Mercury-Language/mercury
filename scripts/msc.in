@@ -16,7 +16,7 @@ sicstus_compile=\
 ${MERCURY_SICSTUS_COMPILER=@LIBDIR@/sicstus/@FULLARCH@/sicstus_compile}
 
 help=false
-compile_mode=fastcode
+compile_mode=compactcode
 target=
 
 while true; do
