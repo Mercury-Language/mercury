@@ -30,20 +30,11 @@ extern	bool	debugflag[];
 extern	void	init_engine(void);
 extern	void	call_engine(Code *entry_point);
 
-extern	void	special_labels_module(void); /* unnecessary */
-
-#define	doredo			ENTRY(do_redo)
-#define	dofail			ENTRY(do_fail)
-#define	doresethpfail		ENTRY(do_reset_hp_fail)
-#define	doresetframevar0fail	ENTRY(do_reset_framevar0_fail)
-#define	dosucceed		ENTRY(do_succeed)
-#define	donotreached		ENTRY(do_not_reached)
-
-extern	EntryPoint	doredo;
-extern	EntryPoint	dofail;
-extern	EntryPoint	doresethpfail;
-extern	EntryPoint	doresetframevar0fail;
-extern	EntryPoint	dosucceed;
-extern	EntryPoint	donotreached;
+Declare_entry(do_redo);
+Declare_entry(do_fail);
+Declare_entry(do_reset_hp_fail);
+Declare_entry(do_reset_framevar0_fail);
+Declare_entry(do_succeed);
+Declare_entry(do_not_reached);
 
 #endif

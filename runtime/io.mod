@@ -90,6 +90,11 @@ mercury_close(MercuryFile* mf)
 #define COMPARE_LESS 1
 #define COMPARE_GREATER 2
 
+Declare_entry(mercury__io__init_state_2_0);
+Declare_entry(mercury__parser__read_term_3_0);
+Declare_entry(mercury__main_2_0);
+Declare_entry(mercury__unify_2_0);
+
 BEGIN_MODULE(io_module)
 	mercury_init_io();
 BEGIN_CODE
@@ -98,16 +103,14 @@ mercury__io__run_0_0:
 	incr_sp(1);
 	detstackvar(1) = (int) succip;
 	r1 = initial_external_state();
-	{ extern EntryPoint ENTRY(mercury__io__init_state_2_0); 
-	  call(ENTRY(mercury__io__init_state_2_0),
+	call(ENTRY(mercury__io__init_state_2_0),
 		LABEL(mercury__io__run_0_0_i1),
-		LABEL(mercury__io__run_0_0)); }
+		LABEL(mercury__io__run_0_0));
 mercury__io__run_0_0_i1:
 	r1 = r2;
-	{ extern EntryPoint ENTRY(mercury__main_2_0); 
-	  call(ENTRY(mercury__main_2_0),
+	call(ENTRY(mercury__main_2_0),
 		LABEL(mercury__io__run_0_0_i2),
-		LABEL(mercury__io__run_0_0)); }
+		LABEL(mercury__io__run_0_0));
 mercury__io__run_0_0_i2:
 	final_io_state(r2);
 	LVALUE_CAST(Word, succip) = detstackvar(1);
@@ -426,7 +429,7 @@ mercury____Unify___univ_0_0:
 	r4 = field(mktag(0), r3, 1);
 	r3 = field(mktag(0), r2, 1);
 	r2 = r1;
-	tailcallentry(mercury__unify_2_0);
+	tailcall(ENTRY(mercury__unify_2_0));
 
 mercury____Compare___univ_0_0:
 	/* Comparison for univ:
@@ -544,8 +547,7 @@ mercury__builtin_strcmp_3_0:
 /*-----------------------------------------------------------------------*/
 
 mercury__term_io__read_term_3_0:
-	{ extern EntryPoint ENTRY(mercury__parser__read_term_3_0);
-	  tailcall(ENTRY(mercury__parser__read_term_3_0)); }
+	tailcall(ENTRY(mercury__parser__read_term_3_0));
 
 /*-----------------------------------------------------------------------*/
 

@@ -1,9 +1,7 @@
 #ifndef	LABEL_H
 #define	LABEL_H
 
-#ifndef	LIST_H
 #include	"list.h"
-#endif
 
 typedef struct s_label
 {
@@ -19,16 +17,18 @@ typedef struct s_label
 */
 
 #if defined(SPEED) && !defined(DEBUG_GOTOS)
-#define	makelabel(n, a)	/* nothing */
+#define	make_label(n, a)	/* nothing */
 #else
-#define	makelabel(n, a)	makeentry((n),(a))
+#define	make_label(n, a)	make_entry((n),(a))
 #endif
 
-#if defined(USE_PROFILING) || defined(DEBUG_GOTOS) || !defined(SPEED)
-#define makelocalentry(n, a)	makeentry((n),(a))
+#if defined(SPEED) && !defined(DEBUG_GOTOS) && !defined(USE_PROFILING)
+#define make_local(n, a)	/* nothing */
 #else 
-#define makelocalentry(n, a)	/* nothing */
+#define make_local(n, a)	make_entry((n),(a))
 #endif
+
+#define make_entry(n, a)	makeentry(n, a)
 
 extern	void	init_entries(void);
 extern	Label	*makeentry(const char *name, Code *addr);

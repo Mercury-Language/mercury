@@ -8,6 +8,8 @@
 void	*global_pointer;
 void	*global_pointer_2;
 
+void	*volatile volatile_global_pointer;
+
 void dummy_function_call(void)
 {
 }

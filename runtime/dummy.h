@@ -5,4 +5,6 @@ extern	void	dummy_function_call(void);
 extern	void	*global_pointer;
 extern	void	*global_pointer_2;
 
+extern	void	*volatile volatile_global_pointer;
+
 #endif

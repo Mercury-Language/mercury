@@ -63,10 +63,7 @@ static	void	run_code(void);
 static	void	print_register_usage_counts(void);
 #endif
 
-void	interpreter_module(void);
-void	special_labels_module(void);
-
-extern	EntryPoint	ENTRY(do_interpreter);
+Declare_entry(do_interpreter);
 
 int main(int argc, char **argv)
 {

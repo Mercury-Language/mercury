@@ -29,32 +29,127 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 /* DEFINITIONS FOR THE "PORTABLE ASSEMBLER" NON-LOCAL GOTOS */
 
 #define paste(a,b) a##b
+#define stringify(string) #string
+#define entry(label) paste(entry_,label)
 
-#ifdef USE_GCC_NONLOCAL_GOTOS
+#if defined(USE_GCC_NONLOCAL_GOTOS)
 
   #ifndef __GNUC__
   #error "You must use gcc if you define USE_GCC_NONLOCAL_GOTOS"
   #endif
 
-  typedef void *EntryPoint;
+  #define BEGIN_MODULE(module_name)	\
+	void module_name(void);	/* suppress gcc warning */	\
+	void module_name(void) { {	\
+	
+	    /* initialization code for module goes here */
 
-  #define ENTRY(predname) 	paste(entry_,predname)
+  #define BEGIN_CODE } return; {
+
+	    /* body of module goes here */
+
+  #define END_MODULE } }
+
+  #if defined(USE_ASM_LABELS)
+
+    #define Declare_entry(label)	\
+	extern void label(void) __asm__("entry_" stringify(label))
+
+    #define Define_entry(label)	\
+	}	\
+	label:	\
+		__asm__(".globl entry_" stringify(label) "\n\t"	\
+			"entry_" stringify(label) ":");	\
+	{
+    #include	"dummy.h"
+    #define init_entry(label)	\
+	/* prevent over-zealous optimization */	\
+	volatile_global_pointer = &&label;	\
+	makeentry(stringify(label), label)
+
+    #define ENTRY(label) 	(&label)
+
+  #else
+    /* !defined(USE_ASM_LABELS) */
+
+    #define Declare_entry(label)	\
+	extern Code * entry(label)
+
+    #define Define_entry(label)	\
+	}	\
+	label:	\
+	{
+
+    #define init_entry(label)	\
+	makeentry(stringify(label), &&label);	\
+	entry(label) = &&label
+
+    #define ENTRY(label) 	(entry(label))
+
+  #endif
+
+  #define Declare_local(label)	/* no declaration required */
+  #define Define_local(label)	\
+	}	\
+	label:	\
+	{
+  #define init_local(label)	make_local(stringify(label), label)
+
+  #define Declare_label(label)	/* no declaration required */
+  #define Define_label(label)	\
+	}	\
+	label:	\
+	{
+  #define init_label(label)	make_label(stringify(label), label)
+
+
+  #define LOCAL(label)		(&&label)
   #define LABEL(label)		(&&label)
-  #define GOTO(label)		do { debuggoto(label); debugsreg(); goto *(label); } while(0)
+  #define GOTO(label)		do { debuggoto(label); goto *(label); } while(0)
+  #define GOTO_ENTRY(label) 	GOTO(ENTRY(label))
+  #define GOTO_LOCAL(label) 	GOTO_LABEL(label)
+  #define GOTO_LABEL(label) 	do { debuggoto(&&label); goto label; } while(0)
   /*
   ** GOTO_LABEL(label) is the same as GOTO(LABEL(label)) except
   ** that it may allow gcc to generate slightly better code
   */
-  #define GOTO_LABEL(label) 	do { debuggoto(&&label); debugsreg(); goto label; } while(0)
 
 #else
+  /* !defined(USE_GCC_NONLOCAL_GOTOS) */
 
-  typedef Code *EntryPoint(void);
+  #define BEGIN_MODULE(module_name)	Code* module_name(void); \
+					Code* module_name(void) {
+  #define BEGIN_CODE			return 0;
+  #define END_MODULE			}
 
-  #define ENTRY(predname) 	predname
+  #define Declare_entry(label)	void *label(void);
+  #define Define_entry(label)	\
+		GOTO(label);	\
+	}			\
+	Code* label(void) {
+  #define init_entry(label)	make_entry(stringify(label), label)
+
+  #define Declare_local(label)	static Code *label(void);
+  #define Define_local(label)	\
+		GOTO(label);	\
+	}			\
+	static Code* label(void) {
+  #define init_local(label)	make_local(stringify(label), label)
+
+  #define Declare_label(label)	static Code *label(void);
+  #define Define_label(label)	\
+		GOTO(label);	\
+	}			\
+	static Code* label(void) {
+  #define init_label(label)	make_label(stringify(label), label)
+
+  #define ENTRY(label) 		(label)
+  #define LOCAL(label)		(label)
   #define LABEL(label)		(label)
-  #define GOTO(label)		do { return (label); } while(0)
+  #define GOTO(label)		return (label)
 				/* the call to debuggoto() is in engine.mod */
+  #define GOTO_ENTRY(label) 	GOTO(ENTRY(label))
+  #define GOTO_LOCAL(label) 	GOTO(LOCAL(label))
   #define GOTO_LABEL(label) 	GOTO(LABEL(label))
 
 #endif
@@ -68,29 +163,6 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 	  GOTO(jump_table[val]);			\
 	}
 #define AND ,	/* used to separate the labels */
-
-
-#ifdef __GNUC__
-
-/*
-** Note that hash_string is also defined in compiler/string.nl and in
-** code/aux.c.  The three definitions must be kept equivalent.
-*/
-
-#define hash_string(s)					\
-	({ int len = 0;					\
-	   int hash = 0;				\
-	   while(((char *)s)[len]) {			\
-		hash ^= (hash << 5);			\
-		hash ^= ((char *)s)[len];		\
-		len++;					\
-	   }						\
-	   hash ^= len;					\
-	   hash;					\
-	})
-#else
-extern	int	hash_string(const char *);
-#endif
 
 #include	"engine.h"
 
@@ -127,29 +199,21 @@ extern	int	hash_string(const char *);
 
 #define	call_closure(succ_cont)					\
 		do {						\
-			extern EntryPoint ENTRY(do_call_closure); \
+			Declare_entry(do_call_closure); \
 			call(ENTRY(do_call_closure), succ_cont); \
 		} while (0)
 
 #define	call_semidet_closure(succ_cont)				\
 		do {						\
-			extern EntryPoint ENTRY(do_call_semidet_closure); \
+			Declare_entry(do_call_semidet_closure); \
 			call(ENTRY(do_call_semidet_closure), succ_cont); \
 		} while (0)
 
 #define	solutions(succ_cont)					\
 		do {						\
-			extern EntryPoint ENTRY(do_solutions);	\
+			Declare_entry(do_solutions);		\
 			call(ENTRY(do_solutions), succ_cont); 	\
 		} while (0)
-
-/* used only by the hand-written example programs */
-/* not by the automatically generated code */
-#define	callentry(procname, succ_cont)				\
-			do {					\
-				extern EntryPoint ENTRY(procname); \
-				call(ENTRY(procname), succ_cont); \
-			} while (0)
 
 #define	localtailcall(label)					\
 			do {					\
@@ -159,14 +223,6 @@ extern	int	hash_string(const char *);
 #define	tailcall(proc)	do {					\
 				debugtailcall(proc);		\
 				GOTO(proc);			\
-			} while (0)
-
-/* used only by the hand-written example programs */
-/* not by the automatically generated code */
-#define	tailcallentry(procname)					\
-			do {					\
-				extern EntryPoint ENTRY(procname); \
-				tailcall(ENTRY(procname));	\
 			} while (0)
 
 #define	proceed()	do {					\
@@ -185,6 +241,7 @@ extern	int	hash_string(const char *);
 #define	mark_hp(dest)	((void)0)
 #define	restore_hp(src)	((void)0)
 #define hp_alloc(count) (incr_hp(hp,(count)), hp += (count), (void)0)
+			/* we use `hp' as a convenient temporary here */
 
 #else
 
@@ -426,7 +483,7 @@ extern	int	hash_string(const char *);
 
 /* DEFINITIONS FOR OVERFLOW CHECKS */
 
-#define IF(cond, val)	((cond) ? ((val),(void)0) : (void)0)
+#define IF(cond, val)	((cond) ? (val) : 0)
 
 #ifdef	SPEED
 
@@ -606,6 +663,28 @@ extern	int	hash_string(const char *);
 
 #define string_const(string, len) ((Word)string)
 #define string_equal(s1,s2) (strcmp((char*)(s1),(char*)(s2))==0)
+
+#ifdef __GNUC__
+
+/*
+** Note that hash_string is also defined in compiler/string.nl and in
+** code/aux.c.  The three definitions must be kept equivalent.
+*/
+
+#define hash_string(s)					\
+	({ int len = 0;					\
+	   int hash = 0;				\
+	   while(((char *)s)[len]) {			\
+		hash ^= (hash << 5);			\
+		hash ^= ((char *)s)[len];		\
+		len++;					\
+	   }						\
+	   hash ^= len;					\
+	   hash;					\
+	})
+#else
+extern	int	hash_string(const char *);
+#endif
 
 /* DEFINITIONS TO SUPPORT DEBUGGING */
 

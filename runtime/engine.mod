@@ -26,7 +26,7 @@ void init_engine(void)
 	init_registers();
 
 #ifndef USE_GCC_NONLOCAL_GOTOS
-	makelabel("engine_done", LABEL(engine_done));
+	make_label("engine_done", LABEL(engine_done));
 #endif
 }
 
