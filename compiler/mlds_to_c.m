@@ -2561,6 +2561,16 @@ mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context) -->
 	mlds_indent(Indent),
 	io__write_string("{\n"),
 
+	% for --gc accurate, we need to insert a call to GC_check()
+	% before every allocation
+	globals__io_get_gc_method(GC_Method),
+	( { GC_Method = accurate } ->
+		mlds_indent(Context, Indent + 1),
+		io__write_string("MR_GC_check();\n")
+	;
+		[]
+	),
+
 	{ FuncInfo = func_info(FuncName, _FuncSignature) },
 	mlds_maybe_output_heap_profile_instr(Context, Indent + 1, Args,
 			FuncName, MaybeCtorName),

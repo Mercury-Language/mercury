@@ -149,6 +149,11 @@
 % and chain these structs together.  At GC time, we traverse the chain
 % of structs.  This allows us to accurately scan the C stack.
 %
+% This is described in more detail in the following paper:
+%	Fergus Henderson <fjh@cs.mu.oz.au>,
+%	"Accurate garbage collection in an uncooperative environment".
+%	Submitted for publication.  Available from the author on request.
+%
 % XXX Accurate GC is still not yet fully implemented.
 % TODO:
 %	- fix problem with undeclared local vars for some test cases
@@ -216,6 +221,12 @@
 % efficient and thread-safe.
 % XXX Currently, for simplicity, we're using a global variable.
 %
+% At each allocation, we do a call to MR_GC_check(),
+% which checks for heap exhaustion, and if necessary
+% calls MR_garbage_collect() in runtime/mercury_accurate_gc.c
+% to do the collection.  The calls to MR_GC_check() are
+% inserted by compiler/mlds_to_c.m.
+%
 % As an optimization, we ought to not bother allocating a struct for
 % functions that don't have any variables that might contain pointers.
 % We also ought to not bother allocating a struct for leaf functions that
@@ -277,8 +288,6 @@
 %		this_frame.local1 = NULL;
 %		stack_chain = &this_frame;
 %
-%		GC_check();
-%		
 %		...
 %		this_frame.local1 = MR_new_object(...);
 %		...
@@ -303,8 +312,6 @@
 %		this_frame.arg1 = arg1;
 %		this_frame.local1 = NULL;
 %
-%		GC_check();
-%		
 %		...
 %		this_frame.local1 = MR_new_object(&this_frame, ...);
 %		...
@@ -524,30 +531,6 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0)
 					Context, _ArgsToCopy, CodeToCopyArgs),
 
 				%
-				% for accurate GC,
-				% add a call to GC_check() at start of every
-				% function that might allocate memory
-				%
-				% (XXX we could perhaps reduce the overhead of
-				% this slightly by only doing it for
-				% possibly-recursive functions, i.e.
-				% by not doing it for leaf functions).
-				% 
-				(
-					Action = chain_gc_stack_frames,
-					statement_contains_statement(FuncBody2,
-						NewObject),
-					NewObject = mlds__statement(atomic(
-					    new_object(_, _, _, _, _, _, _, _)
-					    ), _)
-				->
-					GC_Check = [mlds__statement(
-						atomic(gc_check), Context)]
-				;
-					GC_Check = []
-				),
-
-				%
 				% Insert code to unlink this stack frame
 				% before doing any tail calls or returning
 				% from the function, either explicitly
@@ -588,7 +571,7 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0)
 				% (if any) at the end
 				%
 				FuncBody = ml_block(EnvDecls,
-					InitEnv ++ CodeToCopyArgs ++ GC_Check ++
+					InitEnv ++ CodeToCopyArgs ++
 					[FuncBody2] ++ UnchainFrame,
 					Context),
 				%
@@ -1541,41 +1524,7 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
 		%
 		% recursively flatten the nested function
 		%
-		flatten_function_body(FuncBody0, FuncBody1),
-
-		%
-		% for accurate GC,
-		% add a call to GC_check() at start of every
-		% nested function that might allocate memory
-		%
-		% (XXX we could perhaps reduce the overhead of
-		% this slightly by only doing it for
-		% possibly-recursive functions, i.e.
-		% by not doing it for leaf functions).
-		%
-		% XXX This won't work properly with --nondet-copy-out:
-		% we'd need to check out to come after
-		% we copy the arguments to the GC frame struct.
-		% In fact, do we even copy the arguments of
-		% nested functions to the GC frame struct?
-		% 
-		{
-			FuncBody1 = defined_here(FuncBody2),
-			Action = chain_gc_stack_frames,
-			some [NewObjectStmt] (
-				statement_contains_statement(FuncBody2,
-					NewObjectStmt),
-				NewObjectStmt = mlds__statement(atomic(
-				    new_object(_, _, _, _, _, _, _, _)
-				    ), _)
-			)
-		->
-			GC_Check = mlds__statement(atomic(gc_check), Context),
-			FuncBody = defined_here(mlds__statement(
-				block([], [GC_Check, FuncBody2]), Context))
-		;
-			FuncBody = FuncBody1
-		},
+		flatten_function_body(FuncBody0, FuncBody),
 
 		%
 		% mark the function as private / one_copy,
