@@ -130,8 +130,9 @@ memalign(size_t unit, size_t size)
 	}
 
   #ifdef MR_CONSERVATIVE_GC
-	if (ptr != NULL)
+	if (ptr != NULL) {
 		GC_add_roots((char *)ptr, (char *)ptr + size);
+	}
   #endif
 	return ptr;
 }

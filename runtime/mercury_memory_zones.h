@@ -169,17 +169,6 @@ int MR_protect_pages(void *addr, size_t size, int prot_flags);
 #endif
 
 /*
-** MR_init_memory_arena() allocates (if necessary) the top-level memory pool
-** from which all allocations should come. If PARALLEL is defined, then
-** this pool should be shared memory. In the absence of PARALLEL, it
-** doesn't need to do anything, since with MR_CONSERVATIVE_GC, the collector
-** manages the heap, and without GC, we can allocate memory using memalign
-** or malloc.
-*/
-
-extern	void		MR_init_memory_arena(void);
-
-/*
 ** MR_init_zones() initializes the memory zone pool and the offset
 ** generator.  It should be used before any zones are created or
 ** offsets requested.
