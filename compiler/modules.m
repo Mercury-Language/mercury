@@ -6930,8 +6930,13 @@ item_needs_imports(promise(_, _, _, _)) = yes.
 item_needs_imports(nothing(_)) = no.
 
 :- pred item_needs_foreign_imports(item, foreign_language).
-:- mode item_needs_foreign_imports(in, out) is semidet.
+:- mode item_needs_foreign_imports(in, out) is nondet.
 
+item_needs_foreign_imports(pragma(export(_, _, _, _)), Lang) :-
+	foreign_language(Lang).
+
+	% `:- pragma import' is only supported for C.
+item_needs_foreign_imports(pragma(import(_, _, _, _, _)), c).
 item_needs_foreign_imports(Item @ type_defn(_, _, _, _, _), Lang) :-
 	Item ^ td_ctor_defn = foreign_type(ForeignType, _),
 	Lang = foreign_type_language(ForeignType).

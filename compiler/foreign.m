@@ -221,6 +221,11 @@
 
 :- func foreign_type_language(foreign_language_type) = foreign_language.
 
+	% The `multi' mode returns all supported foreign languages.
+:- pred foreign_language(foreign_language).
+:- mode foreign_language(in) is det.
+:- mode foreign_language(out) is multi.
+
 :- implementation.
 
 :- import_module backend_libs__code_model.
@@ -844,6 +849,14 @@ decl_guard(ModuleName) = UppercaseModuleName ++ "_DECL_GUARD" :-
 foreign_type_language(il(_)) = il.
 foreign_type_language(c(_)) = c.
 foreign_type_language(java(_)) = java.
+
+%-----------------------------------------------------------------------------%
+
+foreign_language(c).
+foreign_language(java).
+foreign_language(csharp).
+foreign_language(managed_cplusplus).
+foreign_language(il).
 
 %-----------------------------------------------------------------------------%
 
