@@ -151,7 +151,8 @@ main_2(no, Args) -->
 		{ relation__atsort(StaticCallGraph, Cliques) },
 		% output_cliques(Cliques),
                 io__stdout_stream(StdOut),
-                io__write_string(StdOut, "mprof done\n").
+		{ map__values(ProfNodeMap, ProfNodeList) },
+		output_basic(ProfNodeList).
         % ).
 
 
@@ -316,8 +317,6 @@ build_static_call_graph(Files, StaticCallGraph) -->
 
 build_static_call_graph_2([], StaticCallGraph, StaticCallGraph) --> []. 
 build_static_call_graph_2([File | Files], StaticCallGraph0, StaticCallGraph) -->
-	io__write_string(File),
-	io__write_string("\n"),
 	process_prof_file(File, StaticCallGraph0, StaticCallGraph1),
 	build_static_call_graph_2(Files, StaticCallGraph1, StaticCallGraph).
 	
@@ -478,6 +477,7 @@ output_pred_info_list([]) --> [].
 output_pred_info_list([X | Xs]) -->
 	{ pred_info_get_pred_name(X, Name) },
 	{ pred_info_get_counts(X, Counts) },
+
 	io__write_string("\t"),
 	io__write_string(Name),
 	io__write_string(" : "),
@@ -486,3 +486,44 @@ output_pred_info_list([X | Xs]) -->
 	output_pred_info_list(Xs).
 
 %-----------------------------------------------------------------------------%
+
+
+:- pred output_basic(list(prof_node), io__state, io__state).
+:- mode output_basic(in, di, uo) is det.
+
+output_basic([]) --> [].
+output_basic([PN | PNs])  -->
+	io__write_string("-------------------------------------------------\n"),
+	output_formatted_prof_node(PN),
+	output_basic(PNs).
+
+:- pred output_formatted_prof_node(prof_node, io__state, io__state).
+:- mode output_formatted_prof_node(in, di, uo) is det.
+
+output_formatted_prof_node(ProfNode) -->
+        { prof_node_get_pred_name(ProfNode, Name) },
+	{ prof_node_get_parent_list(ProfNode, ParentList) },
+	{ prof_node_get_child_list(ProfNode, ChildList) },
+
+	output_formatted_list(ParentList),
+	io__write_string(Name),
+	io__write_string("\n"),
+	output_formatted_list(ChildList),
+	io__write_string("-------------------------------------------------\n").
+
+
+:- pred output_formatted_list(list(pred_info), io__state, io__state).
+:- mode output_formatted_list(in, di, uo) is det.
+
+output_formatted_list([]) --> [].
+output_formatted_list([X | Xs]) -->
+	{ pred_info_get_pred_name(X, Name0) },
+	{ pred_info_get_counts(X, Counts) },
+	{ string__pad_right(Name0, ' ', 40, Name) },
+
+	io__write_string("\t"),
+	io__write_string(Name),
+	io__write_string(" : "),
+	io__write_int(Counts),
+	io__write_string("\n"),
+	output_formatted_list(Xs).
