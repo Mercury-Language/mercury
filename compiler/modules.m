@@ -1142,10 +1142,10 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 
 	io__write_strings(DepStream, [
 		ModuleName, " : $(", ModuleName, ".os) ",
-		ModuleName, "_init.o\n",
+		ModuleName, "_init.o $(MLOBJS)\n",
 		"\t$(ML) $(GRADEFLAGS) $(MLFLAGS) -o ", ModuleName, " ",
 		ModuleName, "_init.o \\\n",
-		"\t$(", ModuleName, ".os) $(MLLIBS)\n\n"
+		"\t	$(", ModuleName, ".os) $(MLOBJS) $(MLLIBS)\n\n"
 	]),
 
 	io__write_strings(DepStream, [
@@ -1153,13 +1153,14 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 				ModuleName, "_init.o\n",
 		"\t$(ML) $(GRADEFLAGS) $(MLFLAGS) -o ", ModuleName, ".split ",
 			ModuleName, "_init.o \\\n",
-			"\t", ModuleName, ".split.a $(MLLIBS)\n\n"
+		"\t	", ModuleName, ".split.a $(MLLIBS)\n\n"
 	]),
 
 	io__write_strings(DepStream, [
-		ModuleName, ".split.a : $(", ModuleName, ".dir_os)\n",
+		ModuleName, ".split.a : $(", ModuleName, ".dir_os) ",
+				"$(MLOBJS)\n",
 		"\trm -f ", ModuleName, ".split.a\n",
-		"\t$(AR) $(ARFLAGS) ", ModuleName, ".split.a\n",
+		"\t$(AR) $(ARFLAGS) ", ModuleName, ".split.a $(MLOBJS)\n",
 		"\tfor dir in $(", ModuleName, ".dirs); do \\\n",
 		"\t	$(AR) q ", ModuleName, ".split.a $$dir/*.o; \\\n",
 		"\tdone\n",
@@ -1176,17 +1177,18 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	]),
 
 	io__write_strings(DepStream, [
-		"lib", ModuleName, ".so : $(", ModuleName, ".pic_os)\n",
+		"lib", ModuleName, ".so : $(", ModuleName, ".pic_os) ",
+				"$(MLPICOBJS)\n",
 		"\t$(ML) --make-shared-lib $(GRADEFLAGS) $(MLFLAGS) -o ",
 			"lib", ModuleName, ".so \\\n",
-		"\t\t$(", ModuleName, ".pic_os) $(MLLIBS)\n\n"
+		"\t\t$(", ModuleName, ".pic_os) $(MLPICOBJS) $(MLLIBS)\n\n"
 	]),
 
 	io__write_strings(DepStream, [
-		"lib", ModuleName, ".a : $(", ModuleName, ".os)\n",
+		"lib", ModuleName, ".a : $(", ModuleName, ".os) $(MLOBJS)\n",
 		"\trm -f ", ModuleName, ".a\n",
 		"\t$(AR) $(ARFLAGS) lib", ModuleName, ".a ",
-			"$(", ModuleName, ".os)\n",
+			"$(", ModuleName, ".os) $(MLOBJS)\n",
 		"\t$(RANLIB) $(RANLIBFLAGS) lib", ModuleName, ".a\n\n"
 	]),
 

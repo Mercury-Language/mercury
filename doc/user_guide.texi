@@ -861,6 +861,13 @@ The executable that invokes the linker.
 @item MLFLAGS and EXTRA_MLFLAGS
 Flags to pass to the linker.
 
+@item MLLIBS
+A list of @samp{-l} options specifying libraries used by the program
+(or library) that you are building.  @xref{Using libraries}.
+
+@item MLOBJS
+A list of extra object files to link into any programs or libraries
+that you are building.
 @end table
 
 Other variables also exist - see
@@ -945,12 +952,12 @@ libmypackage: libmypackage.a libmypackage.so \
 
 libmypackage.a: $(mypackage.os)
 	rm -f libmypackage.a
-	$(AR) $(ARFLAGS) libmypackage.a $(mypackage.os)
+	$(AR) $(ARFLAGS) libmypackage.a $(mypackage.os) $(MLOBJS)
 	$(RANLIB) $(RANLIBFLAGS) mypackage.a
 
 libmypackage.so: $(mypackage.pic_os)
 	$(ML) $(MLFLAGS) --make-shared-lib -o libmypackage.so \
-		$(mypackage.pic_os) $(MLLIBS)
+		$(mypackage.pic_os) $(MLPICOBJS) $(MLLIBS)
 
 libmypackage.init:
 	...
@@ -959,11 +966,15 @@ clean:
 	rm -f libmypackage.a libmypackage.so
 @end example
 
-If necessary, you can override the default definitions of the
-variables such as @samp{ML}, @samp{MLFLAGS}, and @samp{MLLIBS}
-to customize the way shared libraries are built.  Similarly
-@samp{AR}, @samp{ARFLAGS}, @samp{RANLIB}, and @samp{RANLIBFLAGS}
-control the way static libraries are built.
+If necessary, you can override the default definitions of the variables
+such as @samp{ML}, @samp{MLFLAGS}, @samp{MLPICOBJS}, and @samp{MLLIBS}
+to customize the way shared libraries are built.  Similarly @samp{AR},
+@samp{ARFLAGS}, @samp{MLOBJS}, @samp{RANLIB}, and @samp{RANLIBFLAGS}
+control the way static libraries are built.  (The @samp{MLOBJS} variable
+is supposed to contain a list of additional object files to link into
+the library, while the @samp{MLLIBS} variable should contain a list of
+@samp{-l} options naming other libraries used by this library.
+@samp{MLPICOBJS} is described below.)
 
 Note that to use a library, as well as the shared or static object library,
 you also need the interface files.  That's why the
@@ -987,9 +998,12 @@ code (PIC), which requires passing some special options to the C compiler.
 On these platforms, @code{Mmake} will create @file{.pic_o} files,
 and @samp{$(mypackage.pic_os)} will contain a list of the @file{.pic_o} files
 for the library whose top-level module is @samp{mypackage}.
+In addition, @samp{$(MLPICOBJS)} will be set to @samp{$MLOBJS} with
+all occurrences of @samp{.o} replaced with @samp{.pic_o}.
 On other platforms, position independent code is the default,
-and @samp{$(mypackage.pic_os)} will just be the same as @samp{$(mypackage.os)},
-which contains a list of the @file{.o} files for that module.
+so @samp{$(mypackage.pic_os)} will just be the same as @samp{$(mypackage.os)},
+which contains a list of the @file{.o} files for that module,
+and @samp{$(MLPICOBJS)} will be the same as @samp{$(MLOBJS)}.
 
 @node Installing libraries
 @section Installing libraries
