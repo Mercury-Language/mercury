@@ -5577,6 +5577,37 @@ report_error_undef_cons(TypeCheckInfo, InvalidFieldUpdates, Functor, Arity) -->
 		;
 			[]
 		)
+	; { Functor = cons(unqualified("^"), 2) } ->
+		io__write_string(
+		  "  error: invalid use of field selection operator (`^').\n"),
+		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+		( { VerboseErrors = yes } ->
+			prog_out__write_context(Context),
+			io__write_string(
+			  "  This is probably some kind of syntax error.\n"),
+			prog_out__write_context(Context),
+			io__write_string(
+			  "  The field name must be an atom, not a variable or other term.\n")
+		;
+			[]
+		)
+	; { Functor = cons(unqualified(":="), 2) } ->
+		io__write_string(
+		  "  error: invalid use of field update operator (`:=').\n"),
+		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+		( { VerboseErrors = yes } ->
+			prog_out__write_context(Context),
+			io__write_string(
+			  "  This is probably some kind of syntax error.\n")
+		;
+			[]
+		)
+	; { Functor = cons(unqualified(":-"), 2) } ->
+		io__write_string(
+		  "  syntax error in lambda expression (`:-').\n")
+	; { Functor = cons(unqualified("-->"), 2) } ->
+		io__write_string(
+		  "  syntax error in DCG lambda expression (`-->').\n")
 	; { InvalidFieldUpdates = [_ | _] } ->
 		io__write_string(
 			"  error: invalid field update `"),

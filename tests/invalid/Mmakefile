@@ -38,6 +38,7 @@ SINGLEMODULE_SOURCES= \
 	external.m \
 	ext_type_bug.m \
 	exported_mode.m \
+	field_syntax_error.m \
 	func_errors.m \
 	funcs_as_preds.m \
 	ho_type_mode_bug.m \
@@ -47,6 +48,7 @@ SINGLEMODULE_SOURCES= \
 	invalid_main.m \
 	inst_list_dup.m \
 	io_in_ite_cond.m \
+	lambda_syntax_error.m \
 	missing_det_decls.m \
 	missing_interface_import.m \
 	modes_erroneous.m \
