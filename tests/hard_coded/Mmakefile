@@ -23,6 +23,8 @@ ORDINARY_PROGS=	\
 	compare_spec \
 	comparison \
 	contains_char \
+	constant_prop_1 \
+	constant_prop_2 \
 	constraint \
 	constraint_order \
 	construct_test \
@@ -239,7 +241,7 @@ else
 endif
 
 # Tests of the Java foreign language interface only
-# work in IL grades
+# work in Java grades
 ifeq "$(filter java%,$(GRADE))" ""
 	JAVA_PROGS =
 else
@@ -456,6 +458,31 @@ no_fully_strict.out: no_fully_strict
 			< $@.tmp > $@; \
 		rm -f $@.tmp; \
 	fi
+
+# For the constant_prop_1 test case, we test that constant propagation
+# has been achieved by grepping the generated target code for particular
+# patterns that will only arise if the Mercury compiler did the intended
+# constant propagation.
+constant_prop_1.c: constant_prop_1.c_date
+	grep foobar $@
+	grep 1234 $@
+	grep 5678.0 $@
+constant_prop_1.s: constant_prop_1.s_date
+	grep foobar $@
+	grep 1234 $@
+	grep 5678.0 $@
+constant_prop_1.pic_s: constant_prop_1.pic_s_date
+	grep foobar $@
+	grep 1234 $@
+	grep 5678.0 $@
+constant_prop_1.java: constant_prop_1.java_date
+	grep foobar $@
+	grep 1234 $@
+	grep 5678.0 $@
+constant_prop_1.il: constant_prop_1.il_date
+	grep foobar $@
+	grep 1234 $@
+	grep 5678.0 $@
 
 #-----------------------------------------------------------------------------#
 

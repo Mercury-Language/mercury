@@ -85,3 +85,7 @@ MLFLAGS-needs_init	= 	--include-initialization-code --extra-inits
 MLFLAGS-integer_test = \
 		--runtime-flags "--heap-size 70000 --mdb-out \"mdb\\mdb out\""
 MLFLAGS-rational_test = --runtime-flags "--heap-size 20000"
+
+MCFLAGS-constant_prop_1 = --optimize-constant-propagation
+MCFLAGS-constant_prop_2 = --optimize-constant-propagation \
+		--optimize-dead-procs --trace-optimized
