@@ -80,6 +80,96 @@ digit_to_string(7, "7").
 digit_to_string(8, "8").
 digit_to_string(9, "9").
 
+:- pred string_first_char(string, char, string).
+:- mode string_first_char(input, output, output).
+:- mode string_first_char(output, input, input).
+
+string_first_char([CharCode|String], Char, String) :-
+	name(Char, [CharCode]).
+
+:- pred string_capitalize_first(string, string).
+:- mode string_capitalize_first(input, output).
+
+string__capitalize_first(S0, S) :-
+	string_first_char(S0, C, S1),
+	to_upper(C, UpperC),
+	string_first_char(S, UpperC, S1).
+
+:- pred string_uncapitalize_first(string, string).
+:- mode string_uncapitalize_first(input, output).
+
+string__uncapitalize_first(S0, S) :-
+	string_first_char(S0, C, S1),
+	to_lower(C, LowerC),
+	string_first_char(S, LowerC, S1).
+
+:- pred to_upper(char, char).
+:- mode to_upper(char, char).
+
+to_upper(Char, Upper) :-
+	(if some [UpperChar]
+		upper_lower(Char, UpperChar)
+	then
+		Upper = UpperChar
+	else
+		Upper = Char
+	).
+
+:- pred to_lower(char, char).
+:- mode to_lower(char, char).
+
+to_lower(Char, Lower) :-
+	(if some [LowerChar]
+		upper_lower(LowerChar, Char)
+	then
+		Lower = LowerChar
+	else
+		Lower = Char
+	).
+
+:- pred is_upper(char).
+:- mode is_upper(input).
+
+is_upper(Upper) :-
+	some [Lower] upper_lower(Lower, Upper).
+
+:- pred is_lower(char).
+:- mode is_lower(input).
+
+is_lower(Lower) :-
+	some [Upper] upper_lower(Lower, Upper).
+
+:- pred upper_lower(char, char).
+:- mode upper_lower(input, output).
+:- mode upper_lower(output, input).
+
+upper_lower('a', 'A').
+upper_lower('b', 'B').
+upper_lower('c', 'C').
+upper_lower('d', 'D').
+upper_lower('e', 'E').
+upper_lower('f', 'F').
+upper_lower('g', 'G').
+upper_lower('h', 'H').
+upper_lower('i', 'I').
+upper_lower('j', 'J').
+upper_lower('k', 'K').
+upper_lower('l', 'L').
+upper_lower('m', 'M').
+upper_lower('n', 'N').
+upper_lower('o', 'O').
+upper_lower('p', 'P').
+upper_lower('q', 'Q').
+upper_lower('r', 'R').
+upper_lower('s', 'S').
+upper_lower('t', 'T').
+upper_lower('u', 'U').
+upper_lower('v', 'V').
+upper_lower('w', 'W').
+upper_lower('x', 'X').
+upper_lower('y', 'Y').
+upper_lower('z', 'Z').
+
 :- end_module string.
 
 %-----------------------------------------------------------------------------%
