@@ -58,7 +58,7 @@ extern	int	getpagesize(void);
 #endif
 
 #ifdef CONSERVATIVE_GC
-#define memalign(a,s)   GC_MALLOC(s)
+#define memalign(a,s)   GC_MALLOC_UNCOLLECTABLE(s)
 #else
 #ifndef	HAVE_MEMALIGN
 #define	memalign(a,s)	malloc(s)
