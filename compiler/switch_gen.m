@@ -78,9 +78,9 @@ switch_gen__generate_switch(Det, CaseVar, LocalDet, Cases, Code) -->
 	switch_gen__lookup_tags(Cases, CaseVar, TaggedCases0),
 	{ list__sort(TaggedCases0, TaggedCases) },
 	code_info__get_globals(Globals),
+	{ globals__lookup_bool_option(Globals, smart_indexing,
+		Indexing) },
 	(
-		{ globals__lookup_bool_option(Globals, smart_indexing,
-			Indexing) },
 		{ Indexing = yes },
 		{ SwitchCategory = atomic_switch },
 		{ list__length(TaggedCases, NumCases) },
