@@ -38,7 +38,7 @@
 
 :- module getopt.
 :- interface.
-:- import_module bool, list, map, std_util.
+:- import_module bool, char, list, map, std_util.
 
 % getopt__process_options(OptionOps, Args, NonOptionArgs, Result)
 %
@@ -53,7 +53,7 @@
 %	predicates used to categorize a set of options. Their
 %	interfaces should be like these:
 %
-% :- pred short_option(character::in, option::out) is semidet.
+% :- pred short_option(char::in, option::out) is semidet.
 % 	True if the character names a valid single-character option.
 %
 % :- pred long_option(string::in, option::out) is semidet.
@@ -82,12 +82,12 @@
 
 :- type option_ops(OptionType)
 	--->	option_ops(
-			pred(character, OptionType),	% short_option
+			pred(char, OptionType),		% short_option
 			pred(string, OptionType),	% long_option
 			pred(OptionType, option_data)	% option_default
 		)
 	;	option_ops(
-			pred(character, OptionType),	% short_option
+			pred(char, OptionType),		% short_option
 			pred(string, OptionType),	% long_option
 			pred(OptionType, option_data),	% option_default
 			pred(OptionType, special_data,	% special option handler
@@ -312,7 +312,7 @@ getopt__handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
 		)
 	).
 
-:- pred getopt__handle_short_options(list(character)::in,
+:- pred getopt__handle_short_options(list(char)::in,
 	option_ops(OptionType)::in(option_ops), list(string)::in,
 	list(string)::out, option_table(OptionType)::in,
 	maybe_option_table(OptionType)::out) is det.
@@ -359,7 +359,7 @@ getopt__handle_short_options([Opt | Opts0], OptionOps, Args0, Args,
 		Args = Args0
 	).
 
-:- pred getopt__get_short_option_arg(list(character), string,
+:- pred getopt__get_short_option_arg(list(char), string,
 	list(string), list(string)).
 :- mode getopt__get_short_option_arg(in, out, in, out) is det.
 
@@ -543,7 +543,7 @@ getopt__numeric_argument(Option, Arg, Result) :-
 %-----------------------------------------------------------------------------%
 
 :- pred getopt__get_short_options(option_ops(OptionType)::in(option_ops),
-	pred(character, OptionType)::out(pred(in, out) is semidet)) is det.
+	pred(char, OptionType)::out(pred(in, out) is semidet)) is det.
 
 getopt__get_short_options(option_ops(ShortOpt, _, _), ShortOpt).
 getopt__get_short_options(option_ops(ShortOpt, _, _, _), ShortOpt).
