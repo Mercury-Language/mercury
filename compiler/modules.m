@@ -2065,7 +2065,8 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			IntermodDirs),
 
 			% If intermodule_optimization is enabled then
-			% build all the .c files before the .o files to
+			% build all the .c files for modules that exist in
+			% the current directory before the .o files to
 			% avoid problems with foreign_import_module
 			% dependencies not being correctly calculated.
 		( { Intermod = yes } ->
@@ -2073,7 +2074,8 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 				"\n\n",
 				ObjFileName, " : "
 			]),
-			write_dependencies_list(AllDeps, ".c", DepStream)
+			source_files_in_current_dir(AllDeps, CurrentDirDeps),
+			write_dependencies_list(CurrentDirDeps, ".c", DepStream)
 		;
 			[]
 		),
@@ -2559,6 +2561,19 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			maybe_write_string(Verbose, " done.\n")
 		)
 	).
+
+:- pred source_files_in_current_dir(list(module_name)::in,
+		list(module_name)::out, io__state::di, io__state::uo) is det.
+
+source_files_in_current_dir([], []) --> [].
+source_files_in_current_dir([Module | Modules], FoundModules) -->
+	source_files_in_current_dir(Modules, FoundModules0),
+	search_for_module_source(["."], Module, Result),
+	{ Result = ok(_),
+		FoundModules = [Module | FoundModules0]
+	; Result = error(_),
+		FoundModules = FoundModules0
+	}.
 
 	% Generate the following dependency.  This dependency is
 	% needed because module__cpp_code.dll might refer to
