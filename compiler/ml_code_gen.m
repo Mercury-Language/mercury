@@ -628,7 +628,6 @@
 % TODO:
 %	- `pragma export'
 %	- complicated `pragma c_code'
-%	- typeclass_infos and class method calls
 %	- high level data representation
 %	  (i.e. generate MLDS type declarations for user-defined types)
 %	...
@@ -702,9 +701,12 @@ ml_gen_foreign_code(ModuleInfo, MLDS_ForeignCode) -->
 :- mode ml_gen_imports(in, out) is det.
 
 ml_gen_imports(ModuleInfo, MLDS_ImportList) :-
-	module_info_get_imported_module_specifiers(ModuleInfo, ImportSet),
-	set__to_sorted_list(ImportSet, ImportList),
-	MLDS_ImportList = list__map(mercury_module_name_to_mlds, ImportList).
+	module_info_get_imported_module_specifiers(ModuleInfo, DirectImports),
+	module_info_get_indirectly_imported_module_specifiers(ModuleInfo,
+		IndirectImports),
+	AllImports = DirectImports `set__union` IndirectImports,
+	MLDS_ImportList = list__map(mercury_module_name_to_mlds,
+		set__to_sorted_list(AllImports)).
 
 :- pred ml_gen_defns(module_info, mlds__defns, io__state, io__state).
 :- mode ml_gen_defns(in, out, di, uo) is det.

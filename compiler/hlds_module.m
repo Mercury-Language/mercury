@@ -216,6 +216,14 @@
 		set(module_specifier)).
 :- mode module_info_get_imported_module_specifiers(in, out) is det.
 
+:- pred module_add_indirectly_imported_module_specifiers(
+		list(module_specifier), module_info, module_info).
+:- mode module_add_indirectly_imported_module_specifiers(in, in, out) is det.
+
+:- pred module_info_get_indirectly_imported_module_specifiers(module_info,
+		set(module_specifier)).
+:- mode module_info_get_indirectly_imported_module_specifiers(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- pred module_info_name(module_info, module_name).
@@ -470,8 +478,12 @@
 					% number of the structure types defined
 					% so far for model_non pragma C codes
 		imported_module_specifiers ::	set(module_specifier),
-					% All the imported module specifiers
-					% (used during type checking).
+					% All the directly imported module
+					% specifiers (used during type
+					% checking, and by the MLDS back-end)
+		indirectly_imported_module_specifiers :: set(module_specifier),
+					% All the indirectly imported modules
+					% (used by the MLDS back-end)
 		do_aditi_compilation ::		do_aditi_compilation,
 					% are there any local Aditi predicates
 					% for which Aditi-RL must be produced.
@@ -508,13 +520,14 @@ module_info_init(Name, Globals, QualifierInfo, ModuleInfo) :-
 	mercury_public_builtin_module(PublicBuiltin),
 	mercury_private_builtin_module(PrivateBuiltin),
 	set__list_to_set([PublicBuiltin, PrivateBuiltin], ImportedModules),
+	set__init(IndirectlyImportedModules),
 
 	assertion_table_init(AssertionTable),
 	map__init(FieldNameTable),
 
 	ModuleSubInfo = module_sub(Name, Globals, [], [], no, 0, 0, [], 
 		[], StratPreds, UnusedArgInfo, 0, ImportedModules,
-		no_aditi_compilation, TypeSpecInfo),
+		IndirectlyImportedModules, no_aditi_compilation, TypeSpecInfo),
 	ModuleInfo = module(ModuleSubInfo, PredicateTable, Requests,
 		UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
 		ClassTable, SuperClassTable, InstanceTable, AssertionTable,
@@ -581,6 +594,8 @@ module_info_get_model_non_pragma_count(MI,
 	MI^sub_info^model_non_pragma_types_so_far).
 module_info_get_imported_module_specifiers(MI,
 	MI^sub_info^imported_module_specifiers).
+module_info_get_indirectly_imported_module_specifiers(MI,
+	MI^sub_info^indirectly_imported_module_specifiers).
 module_info_type_spec_info(MI, MI^sub_info^type_spec_info).
 module_info_get_do_aditi_compilation(MI,
 	MI^sub_info^do_aditi_compilation).
@@ -613,9 +628,11 @@ module_info_set_unused_arg_info(MI, NewVal,
 module_info_set_model_non_pragma_count(MI, NewVal,
 	MI^sub_info^model_non_pragma_types_so_far := NewVal).
 module_add_imported_module_specifiers(ModuleSpecifiers, MI,
-	MI^sub_info^imported_module_specifiers :=
-		set__insert_list(MI^sub_info^imported_module_specifiers,
-			ModuleSpecifiers)).
+	MI^sub_info^imported_module_specifiers := set__insert_list(
+		MI^sub_info^imported_module_specifiers, ModuleSpecifiers)).
+module_add_indirectly_imported_module_specifiers(Modules, MI,
+	MI^sub_info^indirectly_imported_module_specifiers := set__insert_list(
+		MI^sub_info^indirectly_imported_module_specifiers, Modules)).
 module_info_set_type_spec_info(MI, NewVal,
 	MI^sub_info^type_spec_info := NewVal).
 module_info_set_do_aditi_compilation(MI,

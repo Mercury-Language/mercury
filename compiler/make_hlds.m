@@ -235,7 +235,8 @@ add_item_decl_pass_1(module_defn(_VarSet, ModuleDefn), Context,
 			{ module_add_imported_module_specifiers(Specifiers,
 				Module0, Module) }
 		;
-			{ Module = Module0 }
+			{ module_add_indirectly_imported_module_specifiers(
+				Specifiers, Module0, Module) }
 		)
 	; { ModuleDefn = use(module(Specifiers)) } ->
 		{ Status = Status0 },
@@ -244,7 +245,8 @@ add_item_decl_pass_1(module_defn(_VarSet, ModuleDefn), Context,
 			{ module_add_imported_module_specifiers(Specifiers,
 				Module0, Module) }
 		;
-			{ Module = Module0 }
+			{ module_add_indirectly_imported_module_specifiers(
+				Specifiers, Module0, Module) }
 		)
 	; { ModuleDefn = include_module(_) } ->
 		{ Status = Status0 },
