@@ -1789,6 +1789,7 @@ opt_space([
 	optimize_labels		-	bool(yes),
 	optimize_dups		-	bool(yes),
 	optimize_fulljumps	-	bool(no),
+	optimize_reassign	-	bool(yes),
 	inline_alloc		-	bool(no),
 	use_macro_for_redo_fail	-	bool(no)
 ]).
