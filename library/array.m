@@ -68,7 +68,8 @@
 
 :- import_module require.
 
-:- type array(T)	--->	node(T)
+:- type array(T)	--->	empty
+			;	node(T)
 			;	two(
 					int,
 					int,
@@ -89,12 +90,12 @@ array__init(Low, High, Init, Array) :-
 	(
 		Size = 0
 	->
-		error("Cannot have a zero length array")
+		Array = empty
 	;
 		Size = 1
 	->
 		Array = node(Init)
-	;
+	, empty;
 		Size = 2
 	->
 		Array = two(Low, High, node(Init), node(Init))
@@ -128,6 +129,7 @@ array__init(Low, High, Init, Array) :-
 
 %-----------------------------------------------------------------------------%
 
+array__bounds(empty, 1, 0).
 array__bounds(node(_), 0, 0).
 array__bounds(two(Low, High, _, _), Low, High).
 array__bounds(three(Low, High, _, _, _), Low, High).
@@ -151,6 +153,8 @@ array__lookup(Array, Index, Item) :-
 :- pred array__search_2(array(T), int, T).
 :- mode array__search_2(in, in, out) is det.
 
+array__search_2(empty, _, _) :-
+	error("Attempt to access element of non-existent array").
 array__search_2(node(Item), _Index, Item).
 array__search_2(two(Low, High, Left, Right), Index, Item) :-
 	Size is High - Low,
@@ -183,6 +187,8 @@ array__search_2(three(Low, High, Left, Middle, Right), Index, Item) :-
 
 %-----------------------------------------------------------------------------%
 
+array__set(empty, _, _, empty) :-
+	error("Attempt to access element of non-existent array").
 array__set(node(_), _Index, Item, node(Item)).
 array__set(two(Low, High, Left, Right), Index, Item, A) :-
 	Size is High - Low,
@@ -231,17 +237,11 @@ array__resize(Array0, L, H, Array) :-
 
 %-----------------------------------------------------------------------------%
 
-array__from_list(List, Array) :-
-	(
-		List = [Head | Tail]
-	->
-		list__length(List, Len),
-		Len1 is Len - 1,
-		array__init(0, Len1, Head, Array0),
-		array__insert_items(Array0, 1, Tail, Array)
-	;
-		error("Cannot create an array with zero elements")
-	).
+array__from_list([], empty).
+array__from_list([Head | Tail], Array) :-
+	list__length(Tail, Len1),
+	array__init(0, Len1, Head, Array0),
+	array__insert_items(Array0, 1, Tail, Array).
 
 %-----------------------------------------------------------------------------%
 
