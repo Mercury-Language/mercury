@@ -61,12 +61,14 @@ call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
 	code_info__setup_call(Args, Arguments, caller, CodeB),
 	code_info__get_next_label(ReturnLabel),
 	code_info__get_module_info(ModuleInfo),
+	{ call_gen__input_args(Args, InputArguments) },
+	code_info__generate_call_livevals(InputArguments, CodeC0),
 	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Address) },
-	{ CodeC = node([
+	{ CodeC1 = node([
 		call(Address, label(ReturnLabel)) - "branch to det procedure",
 		label(ReturnLabel) - "Continuation label"
 	]) },
-	{ Code = tree(CodeA, tree(CodeB, CodeC)) },
+	{ Code = tree(CodeA, tree(CodeB, tree(CodeC0, CodeC1))) },
 	call_gen__rebuild_registers(Args).
 
 %---------------------------------------------------------------------------%
@@ -118,8 +120,10 @@ call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 	code_info__setup_call(Args, Arguments, caller, CodeB),
 	code_info__get_next_label(ReturnLabel),
 	code_info__get_module_info(ModuleInfo),
+	{ call_gen__input_args(Args, InputArguments) },
+	code_info__generate_call_livevals(InputArguments, CodeC0),
 	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Address) },
-	{ CodeC = node([
+	{ CodeC1 = node([
 		call(Address, label(ReturnLabel)) -
 			"branch to semidet procedure",
 		label(ReturnLabel) - "Continuation label"
@@ -131,7 +135,7 @@ call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 			"Test for success"
 		]), tree(FailCode, node([ label(ContLab) - "" ]))) },
 
-	{ Code = tree(CodeA, tree(CodeB, tree(CodeC, CodeD))) },
+	{ Code = tree(CodeA, tree(CodeB, tree(tree(CodeC0, CodeC1), CodeD))) },
 	call_gen__rebuild_registers(Args).
 
 %---------------------------------------------------------------------------%
@@ -144,13 +148,15 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 	code_info__setup_call(Args, Arguments, caller, CodeB),
 	code_info__get_next_label(ReturnLabel),
 	code_info__get_module_info(ModuleInfo),
+	{ call_gen__input_args(Args, InputArguments) },
+	code_info__generate_call_livevals(InputArguments, CodeC0),
 	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Address) },
-	{ CodeC = node([
+	{ CodeC1 = node([
 		call(Address, label(ReturnLabel)) -
 			"branch to nondet procedure",
 		label(ReturnLabel) - "Continuation label"
 	]) },
-	{ Code = tree(CodeA, tree(CodeB, CodeC)) },
+	{ Code = tree(CodeA, tree(CodeB, tree(CodeC0, CodeC1))) },
 	call_gen__rebuild_registers(Args),
 		% the nondet procedure may have created choice points,
 		% so we must set the current failure continuation to `unknown'
@@ -260,9 +266,11 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
 	code_info__request_unify(VarTypeId, UniMode),
 	code_info__get_requests(Requests),
 	{ unify_proc__lookup_num(Requests, VarTypeId, UniMode, ModeNum) },
+	{ call_gen__input_args(Args, InputArguments) },
+	code_info__generate_call_livevals(InputArguments, CodeC0),
 	{ code_util__make_uni_label(ModuleInfo, VarTypeId, ModeNum, UniLabel) },
 	{ Address = label(local(UniLabel)) },
-	{ CodeC = node([
+	{ CodeC1 = node([
 		call(Address, label(ReturnLabel)) -
 			"branch to out-of-line unification procedure",
 		label(ReturnLabel) - "Continuation label"
@@ -280,8 +288,24 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
 		{ CodeD = empty }
 	),
 
-	{ Code = tree(CodeA, tree(CodeB, tree(CodeC, CodeD))) },
+	{ Code = tree(CodeA, tree(CodeB, tree(tree(CodeC0, CodeC1), CodeD))) },
 	call_gen__rebuild_registers(Args).
+
+%---------------------------------------------------------------------------%
+
+:- pred call_gen__input_args(assoc_list(var, arg_info), list(var)).
+:- mode call_gen__input_args(in, out) is det.
+
+call_gen__input_args([], []).
+call_gen__input_args([V - arg_info(_Loc, Mode)|Args], Vs) :-
+	(
+		Mode = top_in
+	->
+		Vs = [V|Vs0]
+	;
+		Vs = Vs0
+	),
+	call_gen__input_args(Args, Vs0).
 
 %---------------------------------------------------------------------------%
 

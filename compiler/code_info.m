@@ -340,6 +340,13 @@
 :- pred code_info__get_requests(unify_requests, code_info, code_info).
 :- mode code_info__get_requests(out, in, out) is det.
 
+:- pred code_info__generate_livevals(code_tree, code_info, code_info).
+:- mode code_info__generate_livevals(out, in, out) is det.
+
+:- pred code_info__generate_call_livevals(list(var), code_tree,
+						code_info, code_info).
+:- mode code_info__generate_call_livevals(in, out, in, out) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 :- implementation.
@@ -876,7 +883,7 @@ code_info__generate_expression_vars(mkword(Tag, Rval0), mkword(Tag, Rval),
 								Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code).
 code_info__generate_expression_vars(unop(Unop, Rval0), unop(Unop, Rval), Code)
-		-->
+						-->
 	code_info__generate_expression_vars(Rval0, Rval, Code).
 code_info__generate_expression_vars(const(Const), const(Const), empty) --> [].
 code_info__generate_expression_vars(field(Tag, Rval0, Field),
@@ -2302,6 +2309,39 @@ code_info__current_store_map(Map) -->
 		{ Map = Map0 }
 	;
 		{ error("No store map on stack") }
+	).
+
+%---------------------------------------------------------------------------%
+
+code_info__generate_call_livevals(ArgVars, Code) -->
+	code_info__get_live_variables(LiveVars),
+	{ set__list_to_set(ArgVars, VarSet0) },
+	{ set__list_to_set(LiveVars, VarSet1) },
+	{ set__union(VarSet0, VarSet1, VarSet) },
+	{ set__to_sorted_list(VarSet, VarList) },
+	code_info__generate_livevals_2(VarList, LiveVals),
+	{ Code = node([livevals(LiveVals) - ""]) }.
+
+%---------------------------------------------------------------------------%
+
+code_info__generate_livevals(Code) -->
+	code_info__get_live_variables(LiveVars),
+	code_info__generate_livevals_2(LiveVars, LiveVals),
+	{ Code = node([livevals(LiveVals) - ""]) }.
+
+:- pred code_info__generate_livevals_2(list(var), list(lval),
+						code_info, code_info).
+:- mode code_info__generate_livevals_2(in, out, in, out) is det.
+
+code_info__generate_livevals_2([], []) --> [].
+code_info__generate_livevals_2([V|Vs], Vals) -->
+	code_info__generate_livevals_2(Vs, Vals1),
+	(
+		code_info__variable_register(V, Val0)
+	->
+		{ Vals = [Val0|Vals1] }
+	;
+		{ Vals = Vals1 }
 	).
 
 %---------------------------------------------------------------------------%

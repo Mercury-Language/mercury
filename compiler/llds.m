@@ -31,6 +31,10 @@
 	--->	comment(string)
 			% Insert a comment into the output code.
 
+	;	livevals(list(lval))
+			% A list of which registers and stack locations
+			% are currently live.
+
 	;	assign(lval, rval)
 			% Assign the value specified by rval to the location
 			% specified by lval
@@ -278,6 +282,18 @@ output_instruction(comment(Comment)) -->
 		[]
 	).
 
+output_instruction(livevals(LiveVals)) -->
+	globals__io_lookup_bool_option(mod_comments, PrintModComments),
+	(
+		{ PrintModComments = yes }
+	->
+		io__write_string("/*\n * Live Lvalues:\n"),
+		output_livevals(LiveVals),
+		io__write_string(" */\n")
+	;
+		[]
+	).
+
 output_instruction(assign(Lval, Rval)) -->
 	io__write_string("\t{ "),
 	output_lval_decls(Lval),
@@ -362,6 +378,16 @@ output_instruction(incr_hp(N)) -->
 	io__write_string("incr_hp("),
 	io__write_int(N),
 	io__write_string(");").
+
+:- pred output_livevals(list(lval), io__state, io__state).
+:- mode output_livevals(in, di, uo) is det.
+
+output_livevals([]) --> [].
+output_livevals([Lval|Lvals]) -->
+	io__write_string(" *\t"),
+	output_lval(Lval),
+	io__write_string("\n"),
+	output_livevals(Lvals).
 
 :- pred output_rval_decls(rval, io__state, io__state).
 :- mode output_rval_decls(in, di, uo) is det.
