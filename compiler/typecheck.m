@@ -169,7 +169,7 @@
 :- import_module mercury_to_mercury, mode_util, options, getopt, globals.
 :- import_module passes_aux, clause_to_proc.
 
-:- import_module int, list, map, string, require, std_util, tree234.
+:- import_module int, list, map, set, string, require, std_util, tree234.
 :- import_module varset, term, term_io.
 
 %-----------------------------------------------------------------------------%
@@ -482,7 +482,8 @@ typecheck_clause(Clause0, HeadVars, ArgTypes, Clause) -->
 	% then we issue an error message here.
 
 	%
-	% If stuff-to-check = whole_pred, report an error for any ambiguity.
+	% If stuff-to-check = whole_pred, report an error for any ambiguity,
+	% and also check for unbound type variables.
 	% But if stuff-to-check = clause_only(HeadVars), then only report
 	% errors for type ambiguities that don't involve the head vars,
 	% because we may be able to resolve a type ambiguity for a head var
@@ -501,8 +502,17 @@ typecheck_clause(Clause0, HeadVars, ArgTypes, Clause) -->
 
 typecheck_check_for_ambiguity(StuffToCheck, TypeCheckInfo0, TypeCheckInfo) :-
 	typecheck_info_get_type_assign_set(TypeCheckInfo0, TypeAssignSet),
-	( TypeAssignSet = [_TypeAssign] ->
-		TypeCheckInfo = TypeCheckInfo0
+	( TypeAssignSet = [TypeAssign] ->
+		typecheck_info_get_found_error(TypeCheckInfo0, FoundError),
+		(
+			StuffToCheck = whole_pred,
+			FoundError = no
+		->
+			check_type_bindings(TypeAssign,
+				TypeCheckInfo0, TypeCheckInfo)
+		;
+			TypeCheckInfo = TypeCheckInfo0
+		)
 	; TypeAssignSet = [TypeAssign1, TypeAssign2 | _] ->
 		%
 		% we only report an ambiguity error if
@@ -561,10 +571,6 @@ typecheck_check_for_ambiguity(StuffToCheck, TypeCheckInfo0, TypeCheckInfo) :-
 		TypeCheckInfo = TypeCheckInfo0
 	).
 
-/************************ BEGIN JUNK
-This section is commented out, since the error which it attempts
-to detect is in fact not an error at all!
-
 	% Check that the all of the types which have been inferred
 	% for the variables in the clause do not contain any unbound type
 	% variables other than the HeadTypeParams.
@@ -575,91 +581,104 @@ to detect is in fact not an error at all!
 check_type_bindings(TypeAssign, TypeCheckInfo0, TypeCheckInfo) :-
 	typecheck_info_get_head_type_params(TypeCheckInfo0, HeadTypeParams),
 	type_assign_get_type_bindings(TypeAssign, TypeBindings),
-	type_assign_get_var_types(TypeAssign, VarTypes),
-	map__values(VarTypes, Types),
+	type_assign_get_var_types(TypeAssign, VarTypesMap),
+	map__to_assoc_list(VarTypesMap, VarTypesList),
 	set__init(Set0),
-	check_type_bindings_2(Types, TypeBindings, HeadTypeParams, Set0, Set),
-	set__to_sorted_list(Set, ErrorVars),
-	( ErrorVars = [] ->
+	check_type_bindings_2(VarTypesList, TypeBindings, HeadTypeParams,
+		[], Errs, Set0, _Set),
+	% ... we could at this point bind all the type variables in `Set'
+	% to `void' ...
+	( Errs = [] ->
 		TypeCheckInfo = TypeCheckInfo0
 	;
 		type_assign_get_typevarset(TypeAssign, TVarSet),
-		report_unresolved_type_error(ErrorVars, TVarSet, TypeCheckInfo0,
-			TypeCheckInfo)
+		report_unresolved_type_error(Errs, TVarSet, TypeCheckInfo0,
+				TypeCheckInfo)
 	).
 
-:- pred check_type_bindings_2(list(term), tsubst, headtypes, set(var),
-				set(var)).
-:- mode check_type_bindings_2(in, in, in, in, out) is det.
+:- pred check_type_bindings_2(assoc_list(var, (type)), tsubst, headtypes,
+			assoc_list(var, (type)), assoc_list(var, (type)),
+			set(tvar), set(tvar)).
+:- mode check_type_bindings_2(in, in, in, in, out, in, out) is det.
 
-check_type_bindings_2([], _, _, Set, Set).
-check_type_bindings_2([Type0 | Types], TypeBindings, HeadTypeParams, Set0,
-			Set) :-
+check_type_bindings_2([], _, _, Errs, Errs, Set, Set).
+check_type_bindings_2([Var - Type0 | VarTypes], TypeBindings, HeadTypeParams,
+			Errs0, Errs, Set0, Set) :-
 	term__apply_rec_substitution(Type0, TypeBindings, Type),
 	term__vars(Type, TVars),
 	set__list_to_set(TVars, TVarsSet0),
-	set__remove_list(TVarsSet0, HeadTypeParams, TVarsSet1),
-	set__union(Set0, TVarsSet1, Set1),
-	check_type_bindings_2(Types, TypeBindings, HeadTypeParams, Set1, Set).
+	set__delete_list(TVarsSet0, HeadTypeParams, TVarsSet1),
+	( \+ set__empty(TVarsSet1) ->
+		Errs1 = [Var - Type | Errs0],
+		set__union(Set0, TVarsSet1, Set1)
+	;
+		Errs1 = Errs0,
+		Set0 = Set1
+	),
+	check_type_bindings_2(VarTypes, TypeBindings, HeadTypeParams,
+		Errs1, Errs, Set1, Set).
 
 	% report an error: uninstantiated type parameter
 
-:- pred report_unresolved_type_error(list(var), tvarset, typecheck_info, 
-				typecheck_info).
+:- pred report_unresolved_type_error(assoc_list(var, (type)), tvarset,
+				typecheck_info, typecheck_info).
 :- mode report_unresolved_type_error(in, in, typecheck_info_di, 
 				typecheck_info_uo) is det.
 
-report_unresolved_type_error(TVars, TVarSet, TypeCheckInfo0, TypeCheckInfo) :-
+report_unresolved_type_error(Errs, TVarSet, TypeCheckInfo0, TypeCheckInfo) :-
 	typecheck_info_get_io_state(TypeCheckInfo0, IOState0),
-	report_unresolved_type_error_2(TypeCheckInfo0, TVars, TVarSet,
+	report_unresolved_type_error_2(TypeCheckInfo0, Errs, TVarSet,
 		IOState0, IOState),
-	typecheck_info_set_io_state(TypeCheckInfo0, IOState, TypeCheckInfo1),
-	typecheck_info_set_found_error(TypeCheckInfo1, yes, TypeCheckInfo).
+	typecheck_info_set_io_state(TypeCheckInfo0, IOState, TypeCheckInfo).
+	% Currently it is just a warning, not an error.
+	% typecheck_info_set_found_error(TypeCheckInfo1, yes, TypeCheckInfo).
 
-:- pred report_unresolved_type_error_2(typecheck_info, list(var), tvarset,
-					io__state, io__state).
+:- pred report_unresolved_type_error_2(typecheck_info, assoc_list(var, (type)),
+					tvarset, io__state, io__state).
 :- mode report_unresolved_type_error_2(typecheck_info_no_io, in, in, di, uo) 
 					is det.
 
-report_unresolved_type_error_2(TypeCheckInfo, TVars, TVarSet) -->
+report_unresolved_type_error_2(TypeCheckInfo, Errs, TVarSet) -->
 	write_typecheck_info_context(TypeCheckInfo),
+	{ typecheck_info_get_varset(TypeCheckInfo, VarSet) },
 	{ typecheck_info_get_context(TypeCheckInfo, Context) },
-	io__write_string("  type error: unresolved polymorphism.\n"),
+	io__write_string("  warning: unresolved polymorphism.\n"),
 	prog_out__write_context(Context),
-	io__write_string("  Unbound type vars were: "),
-	write_type_var_list(TVars, TVarSet),
-	io__write_string(".\n"),
-	globals__io_lookup_option(verbose_errors, bool(VerboseErrors)),
+	( { Errs = [_] } ->
+		io__write_string("  The variable with an unbound type was:\n")
+	;
+		io__write_string("  The variables with unbound types were:\n")
+	),
+	write_type_var_list(Errs, Context, VarSet, TVarSet),
+	prog_out__write_context(Context),
+	io__write_string("  The unbound type variable(s) will be implicitly\n"),
+	prog_out__write_context(Context),
+	io__write_string("  bound to the builtin type `void'.\n"),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
 		io__write_string("\tThe body of the clause contains a call to a polymorphic predicate,\n"),
 		io__write_string("\tbut I can't determine which version should be called,\n"),
 		io__write_string("\tbecause the type variables listed above didn't get bound.\n"),
 			% XXX improve error message
-		io__write_string("\t(I ought to tell you which call caused the error, but I'm afraid\n"),
+		io__write_string("\t(I ought to tell you which call caused the problem, but I'm afraid\n"),
 		io__write_string("\tyou'll have to work it out yourself.  My apologies.)\n")
 	;
 		[]
 	).
 
-:- pred write_type_var_list(list(var), varset, io__state, io__state).
-:- mode write_type_var_list(in, in, di, uo) is det.
+:- pred write_type_var_list(assoc_list(var, (type)), term__context,
+			varset, tvarset, io__state, io__state).
+:- mode write_type_var_list(in, in, in, in, di, uo) is det.
 
-write_type_var_list([], _) -->
-	io__write_string("<none>").
-write_type_var_list([V|Vs], VarSet) -->
-	mercury_output_var(V, VarSet),
-	write_type_var_list_2(Vs, VarSet).
-
-:- pred write_type_var_list_2(list(var), varset, io__state, io__state).
-:- mode write_type_var_list_2(in, in, di, uo) is det.
-
-write_type_var_list_2([], _) --> [].
-write_type_var_list_2([V|Vs], VarSet) -->
-	io__write_string(", "),
-	mercury_output_var(V, VarSet),
-	write_type_var_list_2(Vs, VarSet).
-
-END JUNK ***************************/
+write_type_var_list([], _, _, _) --> [].
+write_type_var_list([Var - Type | Rest], Context, VarSet, TVarSet) -->
+	prog_out__write_context(Context),
+	io__write_string("      "),
+	mercury_output_var(Var, VarSet, no),
+	io__write_string(" :: "),
+	mercury_output_term(Type, TVarSet, no),
+	io__write_string("\n"),
+	write_type_var_list(Rest, Context, VarSet, TVarSet).
 
 %-----------------------------------------------------------------------------%
 

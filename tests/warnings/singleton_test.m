@@ -19,7 +19,7 @@
 :- implementation.
 
 my_append([], L, L) :-
-	L1 = L2.
+	L = L2.
 my_append([H | T], L, [H | NT]) :-
 	my_append(T, L, NT).
 

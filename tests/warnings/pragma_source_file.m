@@ -12,8 +12,8 @@
 #1
 my_append([], L, L) :-
 #2
-	L1 = L2.
+	L = L2.
 #10
 my_append([H | T], L, [H | NT]) :-
-	X = Y,
+	X = L,
 	my_append(T, L, NT).
