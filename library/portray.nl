@@ -639,7 +639,7 @@ printable_char_list([N|Ns]) :-
 	(   N >= 32, N =< 126 -> true
 	;   N =:= 0'\n -> true
 	;   N =:= 0'\r -> true
-	;	N =:= 0'\t
+	;   N =:= 0'\t
 	),
 	printable_char_list(Ns).
 	

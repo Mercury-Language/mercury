@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -57,6 +57,12 @@
 :- pred stack__top(stack(T), T).
 :- mode stack__top(in, out) is semidet.
 
+	% `stack__top_det' is like `stack__top' except that it will
+	% call error/1 rather than failing if given an empty stack.
+
+:- pred stack__top_det(stack(T), T).
+:- mode stack__top_det(in, out) is det.
+
 	% `stack__pop(Stack0, Elem, Stack)' is true iff `Stack0' is
 	% a non-empty stack whose top element is `Elem', and `Stack'
 	% the stack which results from popping `Elem' off `Stack0'.
@@ -100,6 +106,13 @@ stack__push_list(Stack0, [Elem | Elems], Stack1) :-
 	stack__push_list(Stack2, Elems, Stack1).
 
 stack__top([Elem | _], Elem).
+
+stack__top_det(Stack, Elem) :-
+	( Stack = [Elem1 | _] ->
+		Elem = Elem1
+	;
+		error("stack__top_det: top of empty stack")
+	).
 
 stack__pop([Elem | Stack], Elem, Stack).
 
