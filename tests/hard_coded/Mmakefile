@@ -21,6 +21,7 @@ PROGS=	\
 	deep_copy_bug \
 	det_in_semidet_cntxt \
 	division_test \
+	dupcall_types_bug \
 	elim_special_pred \
 	eqv_type_bug \
 	error_func \

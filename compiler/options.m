@@ -142,8 +142,13 @@
 				% `--tags high' and doesn't specify
 				% `--num-tag-bits'.
 		;	args
+		;	highlevel_c
+		;	unboxed_float
 		;	sync_term_size % in words
 		;	type_layout
+	% Options for internal use only
+	% (the values of these options are implied by the
+	% settings of other options)
 				% Stack layout information required to do
 				% a stack trace.
 		;	basic_stack_layout
@@ -160,8 +165,6 @@
 				% where typeinfos are live for any live data
 				% the includes that type variable.
 		;	typeinfo_liveness
-		;	highlevel_c
-		;	unboxed_float
 	% Code generation options
 		;	low_level_debug
 		;	trad_passes
@@ -1107,7 +1110,14 @@ opt_level(2, _, [
 	inline_single_use	-	bool(yes),
 	inline_compound_threshold -	int(10),
 	common_struct		-	bool(yes),
+/****
+% XXX optimize_duplicate_calls is broken --
+% it doesn't take type information into account.
+% See tests/hard_coded/dupcall_types_bug.m.
+% We should re-enable the optimization only
+% when we have fixed that bug.
 	optimize_duplicate_calls -	bool(yes),
+****/
 	simple_neg		-	bool(yes)
 ]).
 
