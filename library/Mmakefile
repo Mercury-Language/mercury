@@ -313,7 +313,7 @@ install_ints:
 	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
 
 .PHONY: install_hdrs
-install_ints:
+install_hdrs:
 	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
 
 .PHONY: install_init
