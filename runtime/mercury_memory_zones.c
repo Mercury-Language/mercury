@@ -125,7 +125,7 @@ static	SpinLock	*offset_lock;
 size_t	next_offset(void);
 
 void 
-init_memory_arena()
+init_memory_arena(void)
 {
 #ifdef	PARALLEL
   #ifndef CONSERVATIVE_GC
@@ -141,7 +141,7 @@ init_memory_arena()
 }
 
 void 
-init_zones()
+init_zones(void)
 {
 	int i;
 	size_t fake_reg_offset;
