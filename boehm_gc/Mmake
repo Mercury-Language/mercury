@@ -27,6 +27,10 @@ submake: force
 .PHONY: force
 force:
 
+clean:
+	MAKEFLAGS=""; export MAKEFLAGS; \
+	$(MAKE) $(MMAKEFLAGS) clean
+
 #-----------------------------------------------------------------------------#
 
 # installation rules
