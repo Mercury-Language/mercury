@@ -45,6 +45,7 @@ PROGS=		commit_bug \
 		mu \
 		parse_list \
 		petdr1 \
+		prune_switch \
 		semidet_map \
 		set_test \
 		string__format_test \

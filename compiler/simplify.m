@@ -359,14 +359,29 @@ simplify__goal_2(switch(Var, SwitchCanFail, Cases0, SM),
 		->
 			simplify__create_test_unification(Var, ConsId, Arity,
 				UnifyGoal, Info0, Info1),
-			conjoin_goals(UnifyGoal, SingleGoal0, Goal1)
+
+			% Conjoin the test and the rest of the case.
+			goal_to_conj_list(SingleGoal0, SingleGoalConj),
+			GoalList = [UnifyGoal | SingleGoalConj],
+
+			% Work out the nonlocals, instmap_delta and determinism
+			% of the entire conjunction, starting with an empty
+			% goal_info.
+			set__init(NonLocals),
+			instmap_delta_init_reachable(InstMapDelta),
+			goal_info_init(NonLocals, InstMapDelta, det, 
+				CombinedGoalInfo0),
+			simplify__approximate_goal_info(GoalList, 
+				CombinedGoalInfo0, CombinedGoalInfo),
+			simplify_info_set_requantify(Info1, Info2),
+			Goal1 = conj(GoalList) - CombinedGoalInfo
 		;
 			% The var can only be bound to this cons_id, so
 			% a test is unnecessary.
 			Goal1 = SingleGoal0,
-			Info1 = Info0
+			Info2 = Info0
 		),
-		simplify__goal(Goal1, Goal - GoalInfo, Info1, Info)
+		simplify__goal(Goal1, Goal - GoalInfo, Info2, Info)
 	;
 		GoalInfo = GoalInfo0,
 		simplify__switch(Var, Cases1, Cases, [], InstMaps,
@@ -1091,7 +1106,7 @@ simplify__create_test_unification(Var, ConsId, ConsArity,
 	),
 	InstToUniMode =
 		lambda([ArgInst::in, ArgUniMode::out] is det, (
-			ArgUniMode = ((ArgInst - ArgInst) -> (free - ArgInst))
+			ArgUniMode = ((ArgInst - free) -> (ArgInst - ArgInst))
 		)),
 	list__map(InstToUniMode, ArgInsts, UniModes),
 	UniMode = (Inst0 -> Inst0) - (Inst0 -> Inst0),
@@ -1100,10 +1115,12 @@ simplify__create_test_unification(Var, ConsId, ConsArity,
 		ArgVars, UniModes, can_fail),
 	ExtraGoal = unify(Var, functor(ConsId, ArgVars),
 		UniMode, Unification, UnifyContext),
-	goal_info_init(ExtraGoalInfo0),
 	set__singleton_set(NonLocals, Var),
-	goal_info_set_nonlocals(ExtraGoalInfo0, NonLocals, ExtraGoalInfo1),
-	goal_info_set_determinism(ExtraGoalInfo1, semidet, ExtraGoalInfo).
+
+		% The test can't bind any variables, so the
+		% InstMapDelta should be empty.
+	instmap_delta_init_reachable(InstMapDelta),
+	goal_info_init(NonLocals, InstMapDelta, semidet, ExtraGoalInfo).
 
 %-----------------------------------------------------------------------------%
 

@@ -206,6 +206,9 @@ polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo) :-
 					module_info, module_info).
 :- mode polymorphism__process_procs(in, in, in, out) is det.
 
+% XXX
+:- import_module debug.
+
 polymorphism__process_procs(_PredId, [], ModuleInfo, ModuleInfo).
 polymorphism__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 		ModuleInfo) :-
@@ -213,6 +216,10 @@ polymorphism__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
+
+	pred_info_name(PredInfo0, PredName),
+	proc_id_to_int(ProcId, ProcInt),
+	dump("Processing %s mode %i\n", [s(PredName), i(ProcInt)]),
 
 	polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 					ProcInfo, PredInfo1, ModuleInfo1),
@@ -479,9 +486,11 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 		% lambda goal and then convert the lambda expression
 		% into a new predicate
 		{ LambdaGoal0 = _ - GoalInfo0 },
+		{ dump("processing lambda...") },
 		{ goal_info_get_nonlocals(GoalInfo0, OrigNonLocals) },
 		polymorphism__process_goal(LambdaGoal0, LambdaGoal1),
 		polymorphism__fixup_quantification(LambdaGoal1, LambdaGoal),
+		{ dump("done\n") },
 		polymorphism__process_lambda(PredOrFunc, Vars, Modes, Det,
 				OrigNonLocals, LambdaGoal, Unification,
 				Y1, Unification1),
@@ -944,14 +953,9 @@ polymorphism__init_with_int_constant(CountVar, Num, CountUnifyGoal) :-
 
 	% create a goal_info for the unification
 
-	goal_info_init(CountGoalInfo0),
 	set__singleton_set(CountNonLocals, CountVar),
-	goal_info_set_nonlocals(CountGoalInfo0, CountNonLocals,	
-				CountGoalInfo1),
 	instmap_delta_from_assoc_list([CountVar - CountInst], InstmapDelta),
-	goal_info_set_instmap_delta(CountGoalInfo1, InstmapDelta,
-			CountGoalInfo2),
-	goal_info_set_determinism(CountGoalInfo2, det, CountGoalInfo),
+	goal_info_init(CountNonLocals, InstmapDelta, det, CountGoalInfo),
 
 	CountUnifyGoal = CountUnify - CountGoalInfo.
 
@@ -1021,12 +1025,9 @@ polymorphism__get_special_proc_list_2([Id | Ids],
 
 	% create a goal_info for the unification
 
-	goal_info_init(GoalInfo0),
 	set__singleton_set(NonLocals, Var),
-	goal_info_set_nonlocals(GoalInfo0, NonLocals,	GoalInfo1),
 	instmap_delta_from_assoc_list([Var - Inst], InstMapDelta),
-	goal_info_set_instmap_delta(GoalInfo1, InstMapDelta, GoalInfo2),
-	goal_info_set_determinism(GoalInfo2, det, GoalInfo),
+	goal_info_init(NonLocals, InstMapDelta, det, GoalInfo),
 	Goal = Unify - GoalInfo,
 
 	polymorphism__get_special_proc_list_2(Ids,
@@ -1137,9 +1138,7 @@ polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 			Unification, UnifyContext),
 
 	% create a goal_info for the unification
-	goal_info_init(GoalInfo0),
 	set__list_to_set([TypeInfoVar | ArgVars], NonLocals),
-	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
 	list__duplicate(NumArgVars, ground(shared, no), ArgInsts),
 		% note that we could perhaps be more accurate than
 		% `ground(shared)', but it shouldn't make any
@@ -1148,8 +1147,7 @@ polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 	instmap_delta_from_assoc_list(
 		[TypeInfoVar - bound(unique, [functor(InstConsId, ArgInsts)])],
 		InstMapDelta),
-	goal_info_set_instmap_delta(GoalInfo1, InstMapDelta, GoalInfo2),
-	goal_info_set_determinism(GoalInfo2, det, GoalInfo),
+	goal_info_init(NonLocals, InstMapDelta, det, GoalInfo),
 
 	TypeInfoGoal = Unify - GoalInfo.
 
@@ -1193,13 +1191,10 @@ polymorphism__init_const_base_type_info_var(Type, TypeId,
 			Unification, UnifyContext),
 
 	% create a goal_info for the unification
-	goal_info_init(GoalInfo0),
 	set__list_to_set([BaseTypeInfoVar], NonLocals),
-	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
 	instmap_delta_from_assoc_list([BaseTypeInfoVar - ground(shared, no)],
 		InstmapDelta),
-	goal_info_set_instmap_delta(GoalInfo1, InstmapDelta, GoalInfo2),
-	goal_info_set_determinism(GoalInfo2, det, GoalInfo),
+	goal_info_init(NonLocals, InstmapDelta, det, GoalInfo),
 
 	BaseTypeInfoGoal = Unify - GoalInfo.
 

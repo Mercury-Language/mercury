@@ -473,6 +473,9 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 :- pred goal_info_init(hlds_goal_info).
 :- mode goal_info_init(out) is det.
 
+:- pred goal_info_init(set(var), instmap_delta, determinism, hlds_goal_info).
+:- mode goal_info_init(in, in, in, out) is det.
+
 % Instead of recording the liveness of every variable at every
 % part of the goal, we just keep track of the initial liveness
 % and the changes in liveness.
@@ -647,6 +650,12 @@ goal_info_init(GoalInfo) :-
 	GoalInfo = goal_info(PreBirths, PostBirths, PreDeaths, PostDeaths,
 		Detism, InstMapDelta, Context, NonLocals, no, Features,
 		no_resume_point).
+
+goal_info_init(NonLocals, InstMapDelta, Detism, GoalInfo) :-
+	goal_info_init(GoalInfo0),
+	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
+	goal_info_set_instmap_delta(GoalInfo1, InstMapDelta, GoalInfo2),
+	goal_info_set_determinism(GoalInfo2, Detism, GoalInfo).
 
 goal_info_get_pre_births(GoalInfo, PreBirths) :-
 	GoalInfo = goal_info(PreBirths, _, _, _, _, _, _, _, _, _, _).
