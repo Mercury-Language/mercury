@@ -1,6 +1,6 @@
 %------------------------------------------------------------------------------%
 % pprint.m
-% Copyright (C) 2000-2001 Ralph Becket <rbeck@microsoft.com>
+% Copyright (C) 2000-2002 Ralph Becket <rbeck@microsoft.com>
 % Wed Mar 22 17:44:32  2000
 % vi: ts=4 sw=4 et tw=0 wm=0
 %
@@ -696,7 +696,7 @@ dynamic_cast_to_tuple(X, X) :-
 
 out_of_depth_term_to_doc(X) = Doc :-
 
-    deconstruct(X, Name, Arity, _UnivArgs),
+    functor(X, Name, Arity),
 
     Doc = ( if Arity = 0 then text(Name)
                          else text(Name) `<>` text("/") `<>` poly(i(Arity))
