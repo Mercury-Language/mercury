@@ -2183,19 +2183,21 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
     base_type_layout_entry = MR_BASE_TYPEINFO_GET_TYPELAYOUT_ENTRY(
         base_type_info, data_tag);
     base_type_functors = MR_BASE_TYPEINFO_GET_TYPEFUNCTORS(base_type_info);
+    functors_indicator = MR_TYPEFUNCTORS_INDICATOR(base_type_functors);
 
-    entry_value = body(base_type_layout_entry, entry_tag);
 
-    data_rep = MR_categorize_data(functors_indicator,
-        base_type_layout_entry);
+    data_rep = MR_categorize_data(functors_indicator, base_type_layout_entry);
+
+    entry_value = strip_tag(base_type_layout_entry);
 
     switch(data_rep) {
 
         case MR_DATAREP_ENUM:
             info->functor = MR_TYPELAYOUT_ENUM_VECTOR_FUNCTOR_NAME(
-                entry_value, data_value);
+                entry_value, data_word);
             info->arity = 0;
             info->argument_vector = NULL;
+            info->type_info_vector = NULL;	
             break;
 
         case MR_DATAREP_COMPLICATED_CONST:
