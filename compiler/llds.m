@@ -797,6 +797,10 @@ llds__find_cont_labels([Instr - _ | Instrs], ContLabelSet0, ContLabelSet) :-
 	->
 		set__insert(ContLabelSet0, ContLabel, ContLabelSet1)
 	;
+		Instr = block(_, Block)
+	->
+		llds__find_cont_labels(Block, ContLabelSet0, ContLabelSet1)
+	;
 		ContLabelSet1 = ContLabelSet0
 	),
 	llds__find_cont_labels(Instrs, ContLabelSet1, ContLabelSet).

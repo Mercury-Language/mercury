@@ -492,7 +492,7 @@ vn_debug__flush_end_msg(Instrs, VnTables) -->
 
 vn_debug__dump_instrs([]) --> [].
 vn_debug__dump_instrs([Uinstr - _ | Instrs]) -->
-	vn_debug__cost_msg_flag(Flag),
+	vn_debug__parallel_msg_flag(Flag),
 	(
 		{ Flag = yes },
 		output_instruction(Uinstr),

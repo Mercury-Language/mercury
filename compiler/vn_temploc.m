@@ -110,7 +110,8 @@ vn_temploc__find_free_regs(N, Max, Livevals, VnTables, Freeregs) :-
 		Freeregs = []
 	;
 		N1 is N + 1,
-		vn_temploc__find_free_regs(N1, Max, Livevals, VnTables, Freeregs0),
+		vn_temploc__find_free_regs(N1, Max, Livevals, VnTables,
+			Freeregs0),
 		(
 			set__member(vn_reg(r(N)), Livevals)
 		->

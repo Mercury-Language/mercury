@@ -82,7 +82,8 @@
 		;	debug_data
 		;	tags
 		;	num_tag_bits
-		;	word_size
+		;	bits_per_word
+		;	bytes_per_word
 		;	conf_low_tag_bits
 				% The undocumented conf_low_tag_bits option
 				% is used by the `mc' script to pass the
@@ -106,6 +107,7 @@
 		;	lazy_code
 		;	use_macro_for_redo_fail
 		;	num_real_r_regs
+		;	num_real_temps
 		;	cc
 		;	cflags
 		;	cflags_for_regs
@@ -271,9 +273,11 @@ option_defaults_2(compilation_model_option, [
 					% -1 is a special value which means
 					% use the value of conf_low_tag_bits
 					% instead
-	word_size		-	int(32),
-					% A good default for the number of
-					% bits in a word for the current
+	bits_per_word		-	int(32),
+					% A good default for the current
+					% generation of architectures.
+	bytes_per_word		-	int(4),
+					% A good default for the current
 					% generation of architectures.
 	conf_low_tag_bits	-	int(2),
 					% the `mc' script will override the
@@ -293,8 +297,9 @@ option_defaults_2(code_gen_option, [
 	reclaim_heap_on_nondet_failure	-	bool(yes),
 	use_macro_for_redo_fail	-	bool(no),
 	num_real_r_regs		-	int(5),
+	num_real_temps		-	int(5),
 					% the `mc' script will override the
-					% above default with a value determined
+					% above defaults with values determined
 					% at configuration time
 	cc			-	string("gcc"),
 					% the `mc' script will override the
@@ -481,7 +486,9 @@ long_option("profiling",		profiling).
 long_option("debug",			debug).
 long_option("tags",			tags).
 long_option("num-tag-bits",		num_tag_bits).
-long_option("word-size",		word_size).
+long_option("word-size",		bits_per_word).	% for bootstrapping
+long_option("bits-per-word",		bits_per_word).
+long_option("bytes-per-word",		bytes_per_word).
 long_option("conf-low-tag-bits",	conf_low_tag_bits).
 long_option("args",			args).
 long_option("arg-convention",		args).
@@ -952,17 +959,23 @@ options_help -->
 	io__write_string("\t--num-tag-bits <n>\t"),
 	io__write_string("\t(This option is not for general use.)\n"),
 	io__write_string("\t\tUse <n> tag bits.\n"),
-		%
+
 		% The --conf-low-tag-bits option is reserved for use
 		% by the `mc' script; it is deliberately not documented.
-		%
-		%
-		% The --word-size option is intended for use
+
+		% The --bits-per-word option is intended for use
 		% by the `mc' script; it is deliberately not documented.
-		%
+
+		% The --bytes-per-word option is intended for use
+		% by the `mc' script; it is deliberately not documented.
+
 	io__write_string("\t--num-real-r-regs <n>\t"),
 	io__write_string("\t(This option is not for general use.)\n"),
 	io__write_string("\t\tAssume registers r1 up to r<n> are real machine registers.\n"),
+	io__write_string("\t--num-real-temps <n>\t"),
+	io__write_string("\t(This option is not for general use.)\n"),
+	io__write_string("\t\tAssume that <n> temporaries will fit into\n"),
+	io__write_string("\t\treal machine registers.\n"),
 	io__write_string("\t--args {simple, compact}\n"),
 	io__write_string("\t--arg-convention {simple, compact}\n"),
 	io__write_string("\t\tUse the specified argument passing convention\n"),

@@ -136,7 +136,6 @@ vn_flush__lval_node(Vnlval, Ctrlmap, Nodes0, Nodes,
 :- pred vn_flush__shared_node(vn, list(vn_node), list(vn_node),
 	vn_tables, vn_tables, templocs, templocs, list(instruction),
 	io__state, io__state).
-% :- mode vn_flush__shared_node(in, di, uo, di, uo, di, uo, out, di, uo) is det.
 :- mode vn_flush__shared_node(in, in, out, in, out, in, out, out, di, uo)
 	is det.
 
@@ -191,7 +190,8 @@ vn_flush__ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 			VnTables0, VnTables1),
 		vn_util__lval_to_vnlval(redoip(lval(maxfr)), SlotVnlval,
 			VnTables1, VnTables2),
-		vn_table__set_current_value(SlotVnlval, AddrVn, VnTables2, VnTables),
+		vn_table__set_current_value(SlotVnlval, AddrVn,
+			VnTables2, VnTables),
 		Templocs = Templocs0,
 		Instrs = [mkframe(Name, Size, Redoip) - ""]
 	;
@@ -222,7 +222,8 @@ vn_flush__ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 			VnTables0, VnTables1, Templocs0, Templocs, FlushInstrs),
 		vn_table__lookup_assigned_vn(vn_origlval(vn_hp), OldhpVn,
 			"vn_flush__ctrl_node", VnTables1),
-		vn_table__set_current_value(Vnlval, OldhpVn, VnTables1, VnTables),
+		vn_table__set_current_value(Vnlval, OldhpVn,
+			VnTables1, VnTables),
 		Instr = mark_hp(Lval) - "",
 		list__append(FlushInstrs, [Instr], Instrs)
 	;
@@ -356,8 +357,8 @@ vn_flush__find_cheap_users_2([Src | Srcs], Vnlvals, VnTables) :-
 		% \+ Live = vn_field(_, _, _)
 	->
 		( vn_table__search_current_value(Live, Vn, VnTables) ->
-			vn_table__lookup_uses(Vn, Uses, "vn_flush__find_cheap_users_2",
-				VnTables),
+			vn_table__lookup_uses(Vn, Uses,
+				"vn_flush__find_cheap_users_2", VnTables),
 			(
 				Uses = []
 			->
@@ -367,8 +368,8 @@ vn_flush__find_cheap_users_2([Src | Srcs], Vnlvals, VnTables) :-
 				list__member(UserSrc, Uses),
 				(
 					UserSrc = src_liveval(User),
-					vn_table__search_current_value(User, UserVn,
-						VnTables)
+					vn_table__search_current_value(User,
+						UserVn, VnTables)
 				->
 					User = vn_reg(_),
 					vn_table__lookup_uses(UserVn, [],
@@ -418,10 +419,12 @@ vn_flush__ensure_assignment(Vnlval, Vn, Forbidden, VnTables0, VnTables,
 			VnTables0, VnTables, Templocs0, Templocs, _, Instrs)
 	).
 
-:- pred vn_flush__generate_assignment(vnlval, vn, list(lval), vn_tables, vn_tables,
-	templocs, templocs, lval, list(instruction)).
-% :- mode vn_flush__generate_assignment(in, in, in, di, uo, di, uo, out, out) is det.
-:- mode vn_flush__generate_assignment(in, in, in, in, out, in, out, out, out) is det.
+:- pred vn_flush__generate_assignment(vnlval, vn, list(lval),
+	vn_tables, vn_tables, templocs, templocs, lval, list(instruction)).
+% :- mode vn_flush__generate_assignment(in, in, in, di, uo, di, uo, out, out)
+%	is det.
+:- mode vn_flush__generate_assignment(in, in, in, in, out, in, out, out, out)
+	is det.
 
 vn_flush__generate_assignment(Vnlval, Vn, Forbidden0, VnTables0, VnTables,
 		Templocs0, Templocs, Lval, Instrs) :-
@@ -514,7 +517,8 @@ vn_flush__vn(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 			VnTables0, VnTables3, Templocs0, Templocs, Instrs)
 	;
 		IsConst = no,
-		vn_table__lookup_current_locs(Vn, Locs, "vn_flush__vn", VnTables0),
+		vn_table__lookup_current_locs(Vn, Locs, "vn_flush__vn",
+			VnTables0),
 		vn_table__lookup_uses(Vn, Uses, "vn_flush__vn", VnTables0),
 		list__delete_all(Uses, Src, NewUses),
 		( vn_util__choose_cheapest_loc(Locs, Loc) ->
@@ -530,9 +534,10 @@ vn_flush__vn(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 				\+ ( Loc = vn_reg(_) ; Loc = vn_temp(_) ),
 				\+ Src = src_liveval(_)
 			->
-				vn_temploc__next_temploc(Templocs0, Templocs1, Vnlval),
-				vn_flush__generate_assignment(Vnlval, Vn, Forbidden,
-					VnTables0, VnTables3,
+				vn_temploc__next_temploc(Templocs0, Templocs1,
+					Vnlval),
+				vn_flush__generate_assignment(Vnlval, Vn,
+					Forbidden, VnTables0, VnTables3,
 					Templocs1, Templocs, Lval, Instrs),
 				Rval = lval(Lval)
 			;
@@ -552,8 +557,8 @@ vn_flush__vn(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 			->
 				vn_flush__choose_loc_for_shared_vn(Vn, Vnlval,
 					VnTables0, Templocs0, Templocs1),
-				vn_flush__generate_assignment(Vnlval, Vn, Forbidden,
-					VnTables0, VnTables3,
+				vn_flush__generate_assignment(Vnlval, Vn,
+					Forbidden, VnTables0, VnTables3,
 					Templocs1, Templocs, Lval, Instrs),
 				Rval = lval(Lval)
 			;
@@ -589,7 +594,8 @@ vn_flush__vn_value(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 			% For code understandability, and for aesthetics,
 			% we prefer to take the value from its original home,
 			% but only if by doing so we incur no cost penalty.
-			vn_table__lookup_current_value(Vnlval, CurVn, "vn_flush__vn_value", VnTables0),
+			vn_table__lookup_current_value(Vnlval, CurVn,
+				"vn_flush__vn_value", VnTables0),
 			Vn = CurVn
 		->
 			Locs1 = [Vnlval | Locs0]
@@ -610,15 +616,15 @@ vn_flush__vn_value(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 	;
 		Vnrval = vn_mkword(Tag, SubVn1),
 		(
-			vn_table__lookup_defn(SubVn1, SubVnrval, "vn_flush__vn_value",
-				VnTables0),
+			vn_table__lookup_defn(SubVn1, SubVnrval,
+				"vn_flush__vn_value", VnTables0),
 			SubVnrval = vn_origlval(vn_hp)
 		->
 			vn_flush__vn(SubVn1, [src_vn(Vn) | Srcs], Forbidden,
 				Rval1, VnTables0, VnTables,
 				Templocs0, Templocs, Instrs),
-			vn_table__lookup_current_locs(Vn, Locs, "vn_flush__vn_value",
-				VnTables),
+			vn_table__lookup_current_locs(Vn, Locs,
+				"vn_flush__vn_value", VnTables),
 			( Locs = [Loc0 | _] ->
 				% see below for an explanation
 				vn_flush__access_path(Loc0, [], Forbidden, Lval,
@@ -670,7 +676,8 @@ vn_flush__vn_value(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 vn_flush__old_hp(Srcs0, Forbidden0, ReturnRval, VnTables0, VnTables,
 		Templocs0, Templocs, Instrs) :-
 	% First take care of the "assignment to hp" part of incr_hp.
-	vn_table__lookup_desired_value(vn_hp, NewhpVn, "vn_flush__old_hp", VnTables0),
+	vn_table__lookup_desired_value(vn_hp, NewhpVn, "vn_flush__old_hp",
+		VnTables0),
 	vn_flush__hp_incr(NewhpVn, Srcs0, Forbidden0, MaybeRval,
 		VnTables0, VnTables1, Templocs0, Templocs1, IncrInstrs),
 	(
@@ -690,8 +697,8 @@ vn_flush__old_hp(Srcs0, Forbidden0, ReturnRval, VnTables0, VnTables,
 	vn_table__set_current_value(vn_hp, NewhpVn, VnTables1, VnTables2),
 
 	% Find out whether we should tag the old hp, and if so, with what.
-	vn_table__lookup_assigned_vn(vn_origlval(vn_hp), OldhpVn, "vn_flush__old_hp",
-		VnTables2),
+	vn_table__lookup_assigned_vn(vn_origlval(vn_hp), OldhpVn,
+		"vn_flush__old_hp", VnTables2),
 	( Srcs0 = [Src0Prime | Srcs1Prime] ->
 		Src0 = Src0Prime,
 		Srcs1 = Srcs1Prime
@@ -699,7 +706,8 @@ vn_flush__old_hp(Srcs0, Forbidden0, ReturnRval, VnTables0, VnTables,
 		error("empty src list in vn_flush__old_hp")
 	),
 	vn_table__del_old_use(OldhpVn, Src0, VnTables2, VnTables3),
-	vn_table__lookup_uses(OldhpVn, OldhpUses, "vn_flush__old_hp", VnTables3),
+	vn_table__lookup_uses(OldhpVn, OldhpUses, "vn_flush__old_hp",
+		VnTables3),
 	(
 		OldhpUses = [],
 		Src0 = src_vn(UserVn),
@@ -765,8 +773,9 @@ vn_flush__old_hp(Srcs0, Forbidden0, ReturnRval, VnTables0, VnTables,
 	( vn_table__search_current_value(Vnlval, OldVn, VnTables3) ->
 		vn_util__find_lvals_in_rval(Rval, Forbidden1),
 		list__append(Forbidden0, Forbidden1, Forbidden),
-		vn_flush__maybe_save_prev_value(Vnlval, OldVn, AssignedVn, Forbidden,
-			VnTables3, VnTables4, Templocs2, Templocs, SaveInstrs)
+		vn_flush__maybe_save_prev_value(Vnlval, OldVn, AssignedVn,
+			Forbidden, VnTables3, VnTables4, Templocs2, Templocs,
+			SaveInstrs)
 	;
 		VnTables4 = VnTables2,
 		Templocs = Templocs2,
@@ -794,7 +803,8 @@ vn_flush__hp_incr(Vn, Srcs, Forbidden, MaybeRval, VnTables0, VnTables,
 			Templocs0, Templocs, Instrs),
 		MaybeRval = yes(Rval)
 	;
-		vn_table__lookup_defn(Vn, Vnrval, "vn_flush__hp_incr", VnTables0),
+		vn_table__lookup_defn(Vn, Vnrval, "vn_flush__hp_incr",
+			VnTables0),
 		(
 			Vnrval = vn_origlval(Vnlval),
 			( Vnlval = vn_hp ->
@@ -882,7 +892,8 @@ vn_flush__free_of_old_hp([Vn | Vns], VnTables) :-
 :- mode vn_flush__rec_find_ref_vns(in, out, in) is det.
 
 vn_flush__rec_find_ref_vns(Vn, [Vn | DeepVns], VnTables) :-
-	vn_table__lookup_defn(Vn, Vnrval, "vn_flush__rec_find_ref_vns", VnTables),
+	vn_table__lookup_defn(Vn, Vnrval, "vn_flush__rec_find_ref_vns",
+		VnTables),
 	vn_util__find_sub_vns(Vnrval, ImmedVns),
 	vn_flush__rec_find_ref_vns_list(ImmedVns, DeepVns, VnTables).
 
@@ -1012,13 +1023,16 @@ vn_flush__access_path(Vnlval, Srcs, Forbidden, Lval, VnTables0, VnTables,
 
 :- pred vn_flush__maybe_save_prev_value(vnlval, vn, vn, list(lval),
 	vn_tables, vn_tables, templocs, templocs, list(instruction)).
-% :- mode vn_flush__maybe_save_prev_value(in, in, in, in, di, uo, di, uo, out) is det.
-:- mode vn_flush__maybe_save_prev_value(in, in, in, in, in, out, in, out, out) is det.
+% :- mode vn_flush__maybe_save_prev_value(in, in, in, in, di, uo, di, uo, out)
+%	is det.
+:- mode vn_flush__maybe_save_prev_value(in, in, in, in, in, out, in, out, out)
+	is det.
 
 vn_flush__maybe_save_prev_value(Vnlval, OldVn, NewVn, Forbidden,
 		VnTables0, VnTables, Templocs0, Templocs, Instrs) :-
 	(
-		vn_table__set_current_value(Vnlval, NewVn, VnTables0, VnTablesProbe),
+		vn_table__set_current_value(Vnlval, NewVn, VnTables0,
+			VnTablesProbe),
 		vn_table__search_uses(OldVn, Uses, VnTablesProbe),
 		vn_util__real_uses(Uses, RealUses, VnTablesProbe),
 		\+ RealUses = [],
@@ -1032,15 +1046,16 @@ vn_flush__maybe_save_prev_value(Vnlval, OldVn, NewVn, Forbidden,
 			vn_flush__find_cheap_users(OldVn, ReqLocs, VnTables0),
 			vn_util__choose_cheapest_loc(ReqLocs, Presumed)
 		->
-			vn_util__no_access_vnlval_to_lval(Presumed, MaybePresumed),
+			vn_util__no_access_vnlval_to_lval(Presumed,
+				MaybePresumed),
 			(
 				MaybePresumed = yes(PresumedLval),
 				( list__member(PresumedLval, Forbidden) ->
-					vn_temploc__next_temploc(Templocs0, Templocs1,
-						Chosen)
+					vn_temploc__next_temploc(Templocs0,
+						Templocs1, Chosen)
 				; RealUses = [_,_|_], \+ Presumed = vn_reg(_) ->
-					vn_temploc__next_temploc(Templocs0, Templocs1,
-						Chosen)
+					vn_temploc__next_temploc(Templocs0,
+						Templocs1, Chosen)
 				;
 					Chosen = Presumed,
 					Templocs1 = Templocs0

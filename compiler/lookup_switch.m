@@ -29,7 +29,7 @@
 % since putting the values produced for each tag value side-by-side in
 % memory will tend to lead to fewer cache misses.
 
-% The number of bits per word is taken from the word_size option which
+% The number of bits per word is taken from the bits_per_word option which
 % uses a flag in the mc script with a value from configuration. This is
 % used when generating bit-vectors.
 
@@ -341,7 +341,7 @@ lookup_switch__generate_bitvec_test(Index, CaseVals, Start, _End,
 	generate_bit_vec(CaseVals, Start, BitVec),
 	code_info__get_globals(Globals),
 	{ globals__get_options(Globals, Options) },
-	{ getopt__lookup_int_option(Options, word_size, WordBits) },
+	{ getopt__lookup_int_option(Options, bits_per_word, WordBits) },
 	{ UIndex = unop(cast_to_unsigned, Index) },
 	{ Word = lval(field(0, BitVec,
 			binop(/, UIndex,const(int_const(WordBits)))))},
@@ -362,7 +362,7 @@ generate_bit_vec(CaseVals, Start, BitVec) -->
 	{ map__init(Empty) },
 	code_info__get_globals(Globals),
 	{ globals__get_options(Globals, Options) },
-	{ getopt__lookup_int_option(Options, word_size, WordBits) },
+	{ getopt__lookup_int_option(Options, bits_per_word, WordBits) },
 	{ generate_bit_vec_2(CaseVals, Start, WordBits, Empty, BitMap) },
 	{ map__to_assoc_list(BitMap, WordVals) },
 	{ generate_bit_vec_args(WordVals, 0, Args) },

@@ -42,8 +42,9 @@
 :- import_module set, map, bimap, require, int, string, std_util, assoc_list.
 
 :- import_module vn_type, vn_table, vn_block, vn_order, vn_flush, vn_temploc. 
-:- import_module vn_cost, vn_debug, vn_util, vn_verify, opt_debug, labelopt.
-:- import_module globals, options, peephole, livemap, code_util, opt_util.
+:- import_module vn_cost, vn_debug, vn_util, vn_verify, vn_filter.
+:- import_module opt_debug, opt_util, peephole, labelopt.
+:- import_module globals, options, livemap, code_util.
 
 	% We can't find out what variables are used by C code sequences,
 	% so we don't optimize any predicates containing them.
@@ -200,8 +201,9 @@ value_number__breakup_complex_if(Test, TrueAddr, FalseAddr, NextAddr,
 :- mode value_number__procedure(in, in, in, in, in, out, di, uo) is det.
 
 value_number__procedure(Instrs0, LiveMap, UseSet, AllocSet, N0, OptInstrs) -->
+	globals__io_get_globals(Globals),
 	{ opt_util__gather_comments(Instrs0, Comments, Instrs1) },
-	globals__io_get_gc_method(GC),
+	{ globals__get_gc_method(Globals, GC) },
 	( { GC = conservative } ->
 		{ set__union(UseSet, AllocSet, DivideSet) }
 	;
@@ -210,16 +212,18 @@ value_number__procedure(Instrs0, LiveMap, UseSet, AllocSet, N0, OptInstrs) -->
 	vn_debug__cost_header_msg("procedure before value numbering"),
 	vn_debug__dump_instrs(Instrs1),
 	{ vn_block__divide_into_blocks(Instrs1, DivideSet, Blocks) },
-	value_number__optimize_blocks(Blocks, LiveMap, N0, OptBlocks0,
+	{ globals__get_options(Globals, OptionTable) },
+	{ vn_type__init_params(OptionTable, Params) },
+	value_number__optimize_blocks(Blocks, LiveMap, Params, N0, OptBlocks0,
 		[], RevTuples),
-	globals__io_lookup_bool_option(pred_value_number, PredVn),
+	{ globals__lookup_bool_option(Globals, pred_value_number, PredVn) },
 	( { PredVn = yes } ->
 		{ list__condense([Comments | OptBlocks0], OptInstrs0) },
 		vn_debug__cost_header_msg("procedure before parallels"),
 		vn_debug__dump_instrs(OptInstrs0),
 		{ list__reverse(RevTuples, Tuples) },
 		value_number__process_parallel_tuples(Tuples, OptBlocks0,
-			LiveMap, OptBlocks1),
+			LiveMap, Params, OptBlocks1),
 		{ list__condense([Comments | OptBlocks1], OptInstrs) },
 		vn_debug__cost_header_msg("procedure after parallels"),
 		vn_debug__dump_instrs(OptInstrs)
@@ -228,31 +232,33 @@ value_number__procedure(Instrs0, LiveMap, UseSet, AllocSet, N0, OptInstrs) -->
 		{ list__condense([Comments | OptBlocks1], OptInstrs) }
 	).
 
-:- pred value_number__optimize_blocks(list(list(instruction)), livemap, int,
-	list(list(instruction)), list(maybe(vn_ctrl_tuple)),
+:- pred value_number__optimize_blocks(list(list(instruction)), livemap,
+	vn_params, int, list(list(instruction)), list(maybe(vn_ctrl_tuple)),
 	list(maybe(vn_ctrl_tuple)), io__state, io__state).
-% :- mode value_number__optimize_blocks(in, in, in, out, di, uo, di, uo) is det.
-:- mode value_number__optimize_blocks(in, in, in, out, in, out, di, uo) is det.
+% :- mode value_number__optimize_blocks(in, in, in, in, out, di, uo, di, uo)
+%	is det.
+:- mode value_number__optimize_blocks(in, in, in, in, out, in, out, di, uo)
+	is det.
 
-value_number__optimize_blocks([], _, _, [], Tuples, Tuples) --> [].
-value_number__optimize_blocks([Block0 | Blocks0], LiveMap, LabelNo0,
+value_number__optimize_blocks([], _, _, _, [], Tuples, Tuples) --> [].
+value_number__optimize_blocks([Block0 | Blocks0], LiveMap, Params, LabelNo0,
 		[Block | Blocks], RevTuples0, RevTuples) -->
-	value_number__optimize_block(Block0, LiveMap, [], LabelNo0, LabelNo1,
-		Block, RevTuples0, RevTuples1),
-	value_number__optimize_blocks(Blocks0, LiveMap, LabelNo1,
+	value_number__optimize_block(Block0, LiveMap, Params, [],
+		LabelNo0, LabelNo1, Block, RevTuples0, RevTuples1),
+	value_number__optimize_blocks(Blocks0, LiveMap, Params, LabelNo1,
 		Blocks, RevTuples1, RevTuples).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred value_number__optimize_block(list(instruction), livemap, list(parentry),
-	int, int, list(instruction), list(maybe(vn_ctrl_tuple)),
+:- pred value_number__optimize_block(list(instruction), livemap, vn_params,
+	list(parentry), int, int, list(instruction), list(maybe(vn_ctrl_tuple)),
 	list(maybe(vn_ctrl_tuple)), io__state, io__state).
-:- mode value_number__optimize_block(in, in, in, in, out, out, in, out, di, uo)
-	is det.
+:- mode value_number__optimize_block(in, in, in, in, in, out, out, in, out,
+	di, uo) is det.
 
-value_number__optimize_block(Instrs0, LiveMap, ParEntries, LabelNo0, LabelNo,
-		Instrs, RevTuples0, RevTuples) -->
+value_number__optimize_block(Instrs0, LiveMap, Params, ParEntries,
+		LabelNo0, LabelNo, Instrs, RevTuples0, RevTuples) -->
 	(
 		{ list__reverse(Instrs0, RevInstrs) },
 		{ RevInstrs = [LastInstr - _ | _] },
@@ -264,8 +270,8 @@ value_number__optimize_block(Instrs0, LiveMap, ParEntries, LabelNo0, LabelNo,
 		{ LabelNo = LabelNo0 },
 		{ RevTuples = [no | RevTuples0] }
 	;
-		value_number__optimize_fragment(Instrs0, LiveMap, ParEntries,
-			LabelNo0, Tuple, Instrs),
+		value_number__optimize_fragment(Instrs0, LiveMap, Params,
+			ParEntries, LabelNo0, Tuple, Instrs),
 		vn_debug__tuple_msg(no, Instrs, Tuple),
 		{ Tuple = tuple(_, _, _, LabelNo, _) },
 		{ RevTuples = [yes(Tuple) | RevTuples0] }
@@ -278,13 +284,13 @@ value_number__optimize_block(Instrs0, LiveMap, ParEntries, LabelNo0, LabelNo,
 	% or it may be a part of the block; we optimize parts of blocks if
 	% a conflict prevents us from optimizing the whole block together.
 
-:- pred value_number__optimize_fragment(list(instruction), livemap,
+:- pred value_number__optimize_fragment(list(instruction), livemap, vn_params,
 	list(parentry), int, vn_ctrl_tuple, list(instruction),
 	io__state, io__state).
-:- mode value_number__optimize_fragment(in, in, in, in, out, out, di, uo)
+:- mode value_number__optimize_fragment(in, in, in, in, in, out, out, di, uo)
 	is det.
 
-value_number__optimize_fragment(Instrs0, LiveMap, ParEntries, LabelNo0,
+value_number__optimize_fragment(Instrs0, LiveMap, Params, ParEntries, LabelNo0,
 		Tuple, Instrs) -->
 	globals__io_get_gc_method(GC),
 	(
@@ -293,30 +299,27 @@ value_number__optimize_fragment(Instrs0, LiveMap, ParEntries, LabelNo0,
 		{ NumIncrs >= 2 }
 	->
 		{ error("instruction sequence with several incr_hps in value_number__optimize_fragment") }
-		% { Instrs = Instrs0 },
-		% { vn_block__build_block_info(Instrs0, LiveMap, ParEntries,	
-		% 	LabelNo0, _, _, _, Tuple) }
 	;
-		value_number__optimize_fragment_2(Instrs0, LiveMap, ParEntries,
-			LabelNo0, Tuple, Instrs)
+		value_number__optimize_fragment_2(Instrs0, LiveMap, Params,
+			ParEntries, LabelNo0, Tuple, Instrs)
 	).
 
-:- pred value_number__optimize_fragment_2(list(instruction), livemap,
+:- pred value_number__optimize_fragment_2(list(instruction), livemap, vn_params,
 	list(parentry), int, vn_ctrl_tuple, list(instruction),
 	io__state, io__state).
-:- mode value_number__optimize_fragment_2(in, in, in, in, out, out, di, uo)
+:- mode value_number__optimize_fragment_2(in, in, in, in, in, out, out, di, uo)
 	is det.
 
-value_number__optimize_fragment_2(Instrs0, LiveMap, ParEntries, LabelNo0,
-		Tuple, Instrs) -->
+value_number__optimize_fragment_2(Instrs0, LiveMap, Params, ParEntries,
+		LabelNo0, Tuple, Instrs) -->
 	( { Instrs0 = [Uinstr0Prime - _ | _] } ->
 		{ Uinstr0 = Uinstr0Prime },
 		vn_debug__fragment_msg(Uinstr0)
 	;
 		{ error("empty instruction sequence in value_number__optimize_fragment") }
 	),
-	{ vn_block__build_block_info(Instrs0, LiveMap, ParEntries, LabelNo0,
-		VnTables0, Liveset0, SeenIncr0, Tuple0) },
+	{ vn_block__build_block_info(Instrs0, LiveMap, Params, ParEntries,
+		LabelNo0, VnTables0, Liveset0, SeenIncr0, Tuple0) },
 	{ Tuple0 = tuple(Ctrl, Ctrlmap, Flushmap, LabelNo, _Parmap) },
 
 	{ vn_util__build_uses(Liveset0, Ctrlmap, VnTables0, VnTables1) },
@@ -325,8 +328,8 @@ value_number__optimize_fragment_2(Instrs0, LiveMap, ParEntries, LabelNo0,
 		Flushmap, Res),
 	(
 		{ Res = success(VnTables2, Order) },
-		{ value_number__max_real_regs(MaxRealRegs) },
-		{ value_number__max_real_temps(MaxRealTemps) },
+		{ vn_type__real_r_regs(Params, MaxRealRegs) },
+		{ vn_type__real_temps(Params, MaxRealTemps) },
 		{ vn_temploc__init_templocs(MaxRealRegs, MaxRealTemps,
 			Liveset0, VnTables2, Templocs0) },
 		vn_flush__nodelist(Order, Ctrlmap, VnTables2, Templocs0,
@@ -336,24 +339,32 @@ value_number__optimize_fragment_2(Instrs0, LiveMap, ParEntries, LabelNo0,
 		{ value_number__push_incr_sp_forw(Instrs2, Instrs3) },
 		{ value_number__push_livevals_back(Instrs3, Instrs4) },
 		{ value_number__convert_back_modframe(Instrs4, Instrs5) },
+		{ vn_filter__block(Instrs5, Instrs6) },
 		{ bimap__init(TeardownMap) },
-		{ peephole__optimize(Instrs5, Instrs6, TeardownMap, no, _) },
+		{ peephole__optimize(Instrs6, Instrs7, TeardownMap, no, _) },
 
 		vn_debug__cost_header_msg("original code sequence"),
-		vn_cost__block_cost(Instrs0, yes, OrigCost),
+		vn_cost__block_cost(Instrs0, Params, yes, OrigCost),
+		( { Instrs5 = Instrs6 } ->
+			[]
+		;
+			vn_debug__cost_header_msg("unfiltered code sequence"),
+			vn_cost__block_cost(Instrs5, Params, yes, _)
+		),
+
 		vn_debug__cost_header_msg("new code sequence"),
-		vn_cost__block_cost(Instrs6, yes, VnCost),
+		vn_cost__block_cost(Instrs7, Params, yes, VnCost),
 		vn_debug__cost_msg(OrigCost, VnCost),
 
 		( { VnCost < OrigCost } ->
-			{ vn_block__build_block_info(Instrs6, LiveMap,
-				ParEntries, LabelNo0, VnTables6, Liveset6,
-				SeenIncr6, Tuple6) },
-			vn_verify__ok(Instrs6, Uinstr0, SeenIncr0, SeenIncr6,
-				Liveset0, Liveset6, VnTables0, VnTables6, OK),
+			{ vn_block__build_block_info(Instrs7, LiveMap, Params,
+				ParEntries, LabelNo0, VnTables7, Liveset7,
+				SeenIncr7, Tuple7) },
+			vn_verify__ok(Instrs7, Uinstr0, SeenIncr0, SeenIncr7,
+				Liveset0, Liveset7, VnTables0, VnTables7, OK),
 			( { OK = yes } ->
-				{ Instrs = Instrs6 },
-				{ Tuple = Tuple6 }
+				{ Instrs = Instrs7 },
+				{ Tuple = Tuple7 }
 			;
 				{ Instrs = Instrs0 },
 				{ Tuple = Tuple0 }
@@ -366,34 +377,84 @@ value_number__optimize_fragment_2(Instrs0, LiveMap, ParEntries, LabelNo0,
 	;
 		{ Res = failure(MaybeLabel) },
 		(
-			{ MaybeLabel = yes(RestartLabel) },
+			{ MaybeLabel = yes(RestartLabel) }
+%			( { MaybeLabel = yes(RestartLabelPrime) } ->
+%				{ RestartLabel = RestartLabelPrime }
+%			;
+%				{ map__init(Positions) },
+%				{ value_number__find_restart_label(0, Positions,
+%					Ctrlmap, Flushmap, no, RestartLabel) }
+%			)
+		->
 			value_number__try_again(Instrs0, [], RestartLabel,
-				LiveMap, LabelNo, Instrs)
+				LiveMap, Params, LabelNo, Instrs)
 		;
-			{ MaybeLabel = no },
 			value_number__last_ditch(Instrs0,
-				LiveMap, LabelNo, Instrs)
+				LiveMap, Params, LabelNo, Instrs)
 		),
-		{ vn_block__build_block_info(Instrs, LiveMap, ParEntries,	
-			LabelNo0, _, _, _, Tuple) },
+		{ vn_block__build_block_info(Instrs, LiveMap, Params,
+			ParEntries, LabelNo0, _, _, _, Tuple) },
 		vn_debug__tuple_msg(yes(yes), Instrs, Tuple)
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred value_number__try_again(list(instruction), list(instruction), label,
-	livemap, int, list(instruction), io__state, io__state).
-:- mode value_number__try_again(in, in, in, in, in, out, di, uo) is det.
+:- pred value_number__find_restart_label(int, flushmapentry, ctrlmap, flushmap,
+	maybe(label), label).
+:- mode value_number__find_restart_label(in, in, in, in, in, out) is semidet.
 
-value_number__try_again([], RevInstrs, _Label, LiveMap, LabelNo0, Instrs) -->
+value_number__find_restart_label(Ctrl0, Positions0, Ctrlmap, Flushmap,
+		PrevLabel0, RestartLabel) :-
+	map__search(Ctrlmap, Ctrl0, VnInstr),
+	map__search(Flushmap, Ctrl0, FlushmapEntry),
+	(
+		VnInstr = vn_label(Label)
+	->
+		PrevLabel1 = yes(Label)
+	;
+		PrevLabel1 = PrevLabel0
+	),
+	(
+		map__to_assoc_list(FlushmapEntry, NewPositions),
+		value_number__compatible_positions(NewPositions, Positions0,
+			Positions1)
+	->
+		Ctrl1 is Ctrl0 + 1,
+		value_number__find_restart_label(Ctrl1, Positions1,
+			Ctrlmap, Flushmap, PrevLabel1, RestartLabel)
+	;
+		PrevLabel1 = yes(RestartLabel)
+	).
+
+:- pred value_number__compatible_positions(assoc_list(vnlval, vn),
+	flushmapentry, flushmapentry).
+:- mode value_number__compatible_positions(in, in, out) is semidet.
+
+value_number__compatible_positions([], Positions, Positions).
+value_number__compatible_positions([Entry | Entries], Positions0, Positions) :-
+	Entry = Vnlval - Vn,
+	( map__search(Positions0, Vnlval, OldVn) ->
+		Vn = OldVn,
+		Positions1 = Positions0
+	;
+		map__det_insert(Positions0, Vnlval, Vn, Positions1)
+	),
+	value_number__compatible_positions(Entries, Positions1, Positions).
+
+:- pred value_number__try_again(list(instruction), list(instruction), label,
+	livemap, vn_params, int, list(instruction), io__state, io__state).
+:- mode value_number__try_again(in, in, in, in, in, in, out, di, uo) is det.
+
+value_number__try_again([], RevInstrs, _Label, LiveMap, Params, LabelNo0,
+		Instrs) -->
 	{ list__reverse(RevInstrs, Instrs0) },
-	value_number__last_ditch(Instrs0, LiveMap, LabelNo0, Instrs).
+	value_number__last_ditch(Instrs0, LiveMap, Params, LabelNo0, Instrs).
 value_number__try_again([Instr0 | Instrs0], RevInstrs0, RestartLabel, LiveMap,
-		LabelNo0, Instrs) -->
+		Params, LabelNo0, Instrs) -->
 	( { Instr0 = label(RestartLabel) - _ } ->
 		( { RevInstrs0 = [] } ->
-			value_number__last_ditch(Instrs0, LiveMap, LabelNo0,
-				Instrs1),
+			value_number__last_ditch(Instrs0, LiveMap, Params,
+				LabelNo0, Instrs1),
 			{ Instrs = [Instr0 | Instrs1] }
 		;
 			vn_debug__divide_msg(Instr0),
@@ -401,9 +462,9 @@ value_number__try_again([Instr0 | Instrs0], RevInstrs0, RestartLabel, LiveMap,
 			{ list__reverse([GotoInstr | RevInstrs0],
 				FrontInstrs0) },
 			value_number__optimize_fragment(FrontInstrs0, LiveMap,
-				[], LabelNo0, _, FrontInstrs),
-			value_number__optimize_fragment(Instrs0, LiveMap, [],
-				LabelNo0, _, BackInstrs),
+				Params, [], LabelNo0, _, FrontInstrs),
+			value_number__optimize_fragment(Instrs0, LiveMap,
+				Params, [], LabelNo0, _, BackInstrs),
 			{ list__append(FrontInstrs, [Instr0 | BackInstrs],
 				Instrs1) },
 			{ bimap__init(TeardownMap) },
@@ -414,17 +475,18 @@ value_number__try_again([Instr0 | Instrs0], RevInstrs0, RestartLabel, LiveMap,
 	;
 		{ RevInstrs1 = [Instr0 | RevInstrs0] },
 		value_number__try_again(Instrs0, RevInstrs1, RestartLabel,
-			LiveMap, LabelNo0, Instrs)
+			LiveMap, Params, LabelNo0, Instrs)
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred value_number__last_ditch(list(instruction), livemap, int,
+:- pred value_number__last_ditch(list(instruction), livemap, vn_params, int,
 	list(instruction), io__state, io__state).
-:- mode value_number__last_ditch(in, in, in, out, di, uo) is det.
+:- mode value_number__last_ditch(in, in, in, in, out, di, uo) is det.
 
-value_number__last_ditch([], _, _, []) --> [].
-value_number__last_ditch([Instr0 | Instrs0], LiveMap, LabelNo0, Instrs) -->
+value_number__last_ditch([], _, _, _, []) --> [].
+value_number__last_ditch([Instr0 | Instrs0], LiveMap, Params, LabelNo0,
+		Instrs) -->
 	(
 		{ Instr0 = Uinstr0 - _ },
 		{
@@ -436,11 +498,12 @@ value_number__last_ditch([Instr0 | Instrs0], LiveMap, LabelNo0, Instrs) -->
 		}
 	->
 		vn_debug__restart_msg(Instr0),
-		value_number__optimize_fragment(Instrs0, LiveMap, [], LabelNo0,
-			_, Instrs1),
+		value_number__optimize_fragment(Instrs0, LiveMap, Params,
+			[], LabelNo0, _, Instrs1),
 		{ Instrs = [Instr0 | Instrs1] }
 	;
-		value_number__last_ditch(Instrs0, LiveMap, LabelNo0, Instrs1),
+		value_number__last_ditch(Instrs0, LiveMap, Params,
+			LabelNo0, Instrs1),
 		{ Instrs = [Instr0 | Instrs1] }
 	).
 
@@ -448,21 +511,22 @@ value_number__last_ditch([Instr0 | Instrs0], LiveMap, LabelNo0, Instrs) -->
 %-----------------------------------------------------------------------------%
 
 :- pred value_number__process_parallel_tuples(list(maybe(vn_ctrl_tuple)),
-	list(list(instruction)), livemap, list(list(instruction)),
+	list(list(instruction)), livemap, vn_params, list(list(instruction)),
 	io__state, io__state).
-:- mode value_number__process_parallel_tuples(in, in, in, out, di, uo) is det.
+:- mode value_number__process_parallel_tuples(in, in, in, in, out, di, uo)
+	is det.
 
-value_number__process_parallel_tuples(Tuples0, Blocks0, LiveMap, Blocks) -->
+value_number__process_parallel_tuples(Tuples0, Blocks0, LiveMap, Params,
+		Blocks) -->
 	{ list__length(Tuples0, TupleLength) },
 	{ list__length(Blocks0, BlockLength) },
-	{ TupleLength = BlockLength ->
-		true
+	( { TupleLength = BlockLength } ->
+		value_number__process_parallel_tuples_2(Blocks0, Tuples0,
+			LiveMap, Params, Blocks0, Blocks1, Extras),
+		{ value_number__insert_new_blocks(Extras, Blocks1, Blocks) }
 	;
-		error("number of tuples and blocks differ")
-	},
-	value_number__process_parallel_tuples_2(Blocks0, Tuples0,
-		LiveMap, Blocks0, Blocks1, Extras),
-	{ value_number__insert_new_blocks(Extras, Blocks1, Blocks) }.
+		{ error("number of tuples and blocks differ") }
+	).
 
 :- pred value_number__insert_new_blocks(assoc_list(label, list(instruction)),
 	list(list(instruction)), list(list(instruction))).
@@ -476,15 +540,15 @@ value_number__insert_new_blocks([Label - Extra | Extras], Blocks0, Blocks) :-
 	value_number__insert_new_blocks(Extras, Blocks1, Blocks).
 
 :- pred value_number__process_parallel_tuples_2(list(list(instruction)),
-	list(maybe(vn_ctrl_tuple)), livemap,
+	list(maybe(vn_ctrl_tuple)), livemap, vn_params,
 	list(list(instruction)), list(list(instruction)),
 	assoc_list(label, list(instruction)), io__state, io__state).
-:- mode value_number__process_parallel_tuples_2(in, in, in, in, out, out,
+:- mode value_number__process_parallel_tuples_2(in, in, in, in, in, out, out,
 	di, uo) is det.
 
-value_number__process_parallel_tuples_2([], _, _, _, [], []) --> [].
+value_number__process_parallel_tuples_2([], _, _, _, _, [], []) --> [].
 value_number__process_parallel_tuples_2([Block0 | Blocks0], MaybeTuples0,
-		LiveMap, AllBlocks, [Block | Blocks], Extras) -->
+		LiveMap, Params, AllBlocks, [Block | Blocks], Extras) -->
 	{ MaybeTuples0 = [MaybeTuple0Prime | MaybeTuples1Prime] ->
 		MaybeTuple0 = MaybeTuple0Prime,
 		MaybeTuples1 = MaybeTuples1Prime
@@ -494,30 +558,30 @@ value_number__process_parallel_tuples_2([Block0 | Blocks0], MaybeTuples0,
 	(
 		{ MaybeTuple0 = yes(Tuple) },
 		value_number__process_parallel_tuple(Block0, Tuple,
-			LiveMap, AllBlocks, Block, Extras1)
+			LiveMap, Params, AllBlocks, Block, Extras1)
 	;
 		{ MaybeTuple0 = no },
 		{ Block = Block0 },
 		{ Extras1 = [] }
 	),
 	value_number__process_parallel_tuples_2(Blocks0, MaybeTuples1,
-		LiveMap, AllBlocks, Blocks, Extras2),
+		LiveMap, Params, AllBlocks, Blocks, Extras2),
 	{ list__append(Extras1, Extras2, Extras) }.
 
 :- pred value_number__process_parallel_tuple(list(instruction), vn_ctrl_tuple,
-	livemap, list(list(instruction)), list(instruction),
+	livemap, vn_params, list(list(instruction)), list(instruction),
 	assoc_list(label, list(instruction)), io__state, io__state).
-:- mode value_number__process_parallel_tuple(in, in, in, in, out, out, di, uo)
-	is det.
+:- mode value_number__process_parallel_tuple(in, in, in, in, in, out, out,
+	di, uo) is det.
 
 value_number__process_parallel_tuple(Block0, tuple(_, _, _, _, Parmap),
-		LiveMap, AllBlocks, Block, Extras) -->
+		LiveMap, Params, AllBlocks, Block, Extras) -->
 	{ map__values(Parmap, ParList) },
 	( { value_number__all_empty_lists(ParList) } ->
 		{ Block = Block0 },
 		{ Extras = [] }
 	;
-		value_number__process_parallel_nodes(ParList, LiveMap,
+		value_number__process_parallel_nodes(ParList, LiveMap, Params,
 			Block0, AllBlocks, Block, Extras)
 	).
 
@@ -529,30 +593,31 @@ value_number__all_empty_lists([[] | Lists]) :-
 	value_number__all_empty_lists(Lists).
 
 :- pred value_number__process_parallel_nodes(list(list(parallel)), livemap,
-	list(instruction), list(list(instruction)), list(instruction),
-	assoc_list(label, list(instruction)), io__state, io__state).
-:- mode value_number__process_parallel_nodes(in, in, in, in, out, out,
+	vn_params, list(instruction), list(list(instruction)),
+	list(instruction), assoc_list(label, list(instruction)),
+	io__state, io__state).
+:- mode value_number__process_parallel_nodes(in, in, in, in, in, out, out,
 	di, uo) is det.
 
-value_number__process_parallel_nodes([], _, Block, _, Block, []) --> [].
-value_number__process_parallel_nodes([Par0 | Pars1], LiveMap,
+value_number__process_parallel_nodes([], _, _, Block, _, Block, []) --> [].
+value_number__process_parallel_nodes([Par0 | Pars1], LiveMap, Params,
 		Block0, AllBlocks, Block, Extras) -->
 	{ vn_block__split_at_next_ctrl_instr(Block0, Start, NodeInstr,
 		Block1) },
-	value_number__process_parallels(Par0, LiveMap,
+	value_number__process_parallels(Par0, LiveMap, Params,
 		NodeInstr, NewNodeInstr, AllBlocks, Extras1),
-	value_number__process_parallel_nodes(Pars1, LiveMap,
+	value_number__process_parallel_nodes(Pars1, LiveMap, Params,
 		Block1, AllBlocks, Block2, Extras2),
 	{ list__condense([Start, [NewNodeInstr], Block2], Block) },
 	{ list__append(Extras1, Extras2, Extras) }.
 
-:- pred value_number__process_parallels(list(parallel), livemap,
+:- pred value_number__process_parallels(list(parallel), livemap, vn_params,
 	instruction, instruction, list(list(instruction)),
 	assoc_list(label, list(instruction)), io__state, io__state).
-:- mode value_number__process_parallels(in, in, in, out, in, out, di, uo)
+:- mode value_number__process_parallels(in, in, in, in, out, in, out, di, uo)
 	is det.
 
-value_number__process_parallels(Pars, LiveMap, Instr0, Instr,
+value_number__process_parallels(Pars, LiveMap, Params, Instr0, Instr,
 		AllBlocks, Extras) -->
 	{ Instr0 = Uinstr0 - Comment },
 	( { Pars = [] } ->
@@ -562,7 +627,7 @@ value_number__process_parallels(Pars, LiveMap, Instr0, Instr,
 		( { Pars = [Par] } ->
 			( { Par = parallel(Label, _NewLabel, _ParEntries) } ->
 				value_number__process_parallel(Par, LiveMap,
-					AllBlocks, FinalLabel, Extras),
+					Params, AllBlocks, FinalLabel, Extras),
 				{ Instr = if_val(Rval, label(FinalLabel))
 					- Comment }
 			;
@@ -575,7 +640,7 @@ value_number__process_parallels(Pars, LiveMap, Instr0, Instr,
 		( { Pars = [Par] } ->
 			( { Par = parallel(Label, _NewLabel, _ParEntries) } ->
 				value_number__process_parallel(Par, LiveMap,
-					AllBlocks, FinalLabel, Extras),
+					Params, AllBlocks, FinalLabel, Extras),
 				{ Instr = goto(label(FinalLabel)) - Comment }
 			;
 				{ error("wrong label in parallel for goto") }
@@ -587,7 +652,7 @@ value_number__process_parallels(Pars, LiveMap, Instr0, Instr,
 		{ value_number__pair_labels_pars(Labels, Pars, LabelPars) },
 		vn_debug__computed_goto_msg(Labels, Pars, LabelPars),
 		value_number__process_parallel_list(LabelPars, LiveMap,
-			AllBlocks, FinalLabels, Extras),
+			Params, AllBlocks, FinalLabels, Extras),
 		{ Instr = computed_goto(Rval, FinalLabels) - Comment }
 	;
 		{ Instr = Instr0 },
@@ -629,44 +694,45 @@ value_number__find_parallel_for_label([Par0 | Pars0], Label, Par, Rest) :-
 	).
 
 :- pred value_number__process_parallel_list(assoc_list(label, maybe(parallel)),
-	livemap, list(list(instruction)), list(label),
+	livemap, vn_params, list(list(instruction)), list(label),
 	assoc_list(label, list(instruction)), io__state, io__state).
-:- mode value_number__process_parallel_list(in, in, in, out, out, di, uo)
+:- mode value_number__process_parallel_list(in, in, in, in, out, out, di, uo)
 	is det.
 
-value_number__process_parallel_list([], _, _, [], []) --> [].
+value_number__process_parallel_list([], _, _, _, [], []) --> [].
 value_number__process_parallel_list([OldLabel - MaybePar | LabelPars],
-		LiveMap, AllBlocks, [Label | Labels], Extras) -->
+		LiveMap, Params, AllBlocks, [Label | Labels], Extras) -->
 	( { MaybePar = yes(Par) } ->
 		( { Par = parallel(OldLabel, _, _) } ->
 			[]
 		;
 			{ error("wrong label in parallel for computed_goto") }
 		),
-		value_number__process_parallel(Par, LiveMap,
+		value_number__process_parallel(Par, LiveMap, Params,
 			AllBlocks, Label, Extras1),
-		value_number__process_parallel_list(LabelPars, LiveMap,
+		value_number__process_parallel_list(LabelPars, LiveMap, Params,
 			AllBlocks, Labels, Extras2),
 		{ list__append(Extras1, Extras2, Extras) }
 	;
 		{ Label = OldLabel },
-		value_number__process_parallel_list(LabelPars, LiveMap,
+		value_number__process_parallel_list(LabelPars, LiveMap, Params,
 			AllBlocks, Labels, Extras)
 	).
 
-:- pred value_number__process_parallel(parallel, livemap,
+:- pred value_number__process_parallel(parallel, livemap, vn_params,
 	list(list(instruction)), label, assoc_list(label, list(instruction)),
 	io__state, io__state).
-:- mode value_number__process_parallel(in, in, in, out, out, di, uo) is det.
+:- mode value_number__process_parallel(in, in, in, in, out, out, di, uo) is det.
 
-value_number__process_parallel(Par, LiveMap, AllBlocks, FinalLabel, Extras) -->
+value_number__process_parallel(Par, LiveMap, Params, AllBlocks, FinalLabel,
+		Extras) -->
 	vn_debug__parallel_msg(Par),
 	{ Par = parallel(OldLabel, NewLabel, ParEntries) },
 	{ value_number__find_block_by_label(AllBlocks, OldLabel, _, Block, _) },
-	value_number__optimize_block(Block, LiveMap, ParEntries, 2000, _,
-		NewBlock0, [], _),
-	vn_cost__block_cost(Block, no, OrigCost),
-	vn_cost__block_cost(NewBlock0, no, ParCost),
+	value_number__optimize_block(Block, LiveMap, Params, ParEntries,
+		2000, _, NewBlock0, [], _),
+	vn_cost__block_cost(Block, Params, no, OrigCost),
+	vn_cost__block_cost(NewBlock0, Params, no, ParCost),
 	{
 		ParCost < OrigCost
 	->
@@ -928,20 +994,6 @@ value_number__boundary_instr(discard_ticket, yes).
 value_number__boundary_instr(incr_sp(_), yes).
 value_number__boundary_instr(decr_sp(_), yes).
 value_number__boundary_instr(pragma_c(_, _, _, _), yes).
-
-%-----------------------------------------------------------------------------%
-
-	% The best values of these two parameters are platform dependent.
-
-:- pred value_number__max_real_regs(int).
-:- mode value_number__max_real_regs(out) is det.
-
-value_number__max_real_regs(5).
-
-:- pred value_number__max_real_temps(int).
-:- mode value_number__max_real_temps(out) is det.
-
-value_number__max_real_temps(5).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -153,16 +153,7 @@ vn_order__req_order_2(Ctrl, Ctrlmap, Flushmap, Heapop0, VnTables,
 			;
 				MustSuccmap = MustSuccmap1,
 				MustPredmap = MustPredmap1,
-				(
-					NextCtrl is Ctrl + 1,
-					map__search(Ctrlmap, NextCtrl,
-						NextInstr),
-					NextInstr = vn_label(ProbLabel)
-				->
-					Problem = yes(yes(ProbLabel))
-				;
-					Problem = yes(LastLabel)
-				)
+				Problem = yes(no)
 			)
 		)
 	;

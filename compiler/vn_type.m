@@ -13,7 +13,8 @@
 :- module vn_type.
 
 :- interface.
-:- import_module llds, livemap, set, list, std_util.
+:- import_module llds, livemap, options.
+:- import_module getopt, set, list, std_util.
 
 :- type vn == int.
 
@@ -85,4 +86,57 @@
 
 :- type vn_ctrl_tuple	--->	tuple(int, ctrlmap, flushmap, int, parmap).
 
-% There is no implementation section.
+:- type vn_params.
+
+:- pred vn_type__init_params(option_table(option), vn_params).
+:- mode vn_type__init_params(in, out) is det.
+
+:- pred vn_type__word_size(vn_params, int).
+:- mode vn_type__word_size(in, out) is det.
+
+:- pred vn_type__real_r_regs(vn_params, int).
+:- mode vn_type__real_r_regs(in, out) is det.
+
+:- pred vn_type__real_temps(vn_params, int).
+:- mode vn_type__real_temps(in, out) is det.
+
+:- pred vn_type__costof_assign(vn_params, int).
+:- mode vn_type__costof_assign(in, out) is det.
+
+:- pred vn_type__costof_intops(vn_params, int).
+:- mode vn_type__costof_intops(in, out) is det.
+
+:- pred vn_type__costof_stackref(vn_params, int).
+:- mode vn_type__costof_stackref(in, out) is det.
+
+:- pred vn_type__costof_heapref(vn_params, int).
+:- mode vn_type__costof_heapref(in, out) is det.
+
+:- implementation.
+
+:- import_module int.
+
+:- type vn_params	--->	vn_params(
+					int,	% word size in bytes
+						% needed for incr_hp; incr_hp
+					int,	% number of real r regs
+					int,	% number of real temps
+					int,	% cost of assign
+					int,	% cost of int operation
+					int,	% cost of stack reference
+					int	% cost of heap reference
+				).
+
+vn_type__init_params(OptionTable, VnParams) :-
+	getopt__lookup_int_option(OptionTable, num_real_r_regs, RealRegs),
+	getopt__lookup_int_option(OptionTable, num_real_temps, RealTemps),
+	getopt__lookup_int_option(OptionTable, bytes_per_word, WordBytes),
+	VnParams = vn_params(WordBytes, RealRegs, RealTemps, 1, 1, 2, 2).
+
+vn_type__word_size(vn_params(WordSize, _, _, _, _, _, _), WordSize).
+vn_type__real_r_regs(vn_params(_, RealRegs, _, _, _, _, _), RealRegs).
+vn_type__real_temps(vn_params(_, _, RealTemps, _, _, _, _), RealTemps).
+vn_type__costof_assign(vn_params(_, _, _, AssignCost, _, _, _), AssignCost).
+vn_type__costof_intops(vn_params(_, _, _, _, IntOpCost, _, _), IntOpCost).
+vn_type__costof_stackref(vn_params(_, _, _, _, _, StackCost, _), StackCost).
+vn_type__costof_heapref(vn_params(_, _, _, _, _, _, HeapCost), HeapCost).

@@ -14,33 +14,36 @@
 
 :- interface.
 
+:- import_module vn_type, llds.
 :- import_module bool, list, int, io.
-:- import_module llds.
 
-:- pred vn_cost__block_cost(list(instruction), bool, int, io__state, io__state).
-:- mode vn_cost__block_cost(in, in, out, di, uo) is det.
+:- pred vn_cost__block_cost(list(instruction), vn_params, bool, int,
+	io__state, io__state).
+:- mode vn_cost__block_cost(in, in, in, out, di, uo) is det.
 
-:- pred vn_cost__lval_cost(lval, int).
-:- mode vn_cost__lval_cost(in, out) is det.
+:- pred vn_cost__lval_cost(lval, vn_params, int).
+:- mode vn_cost__lval_cost(in, in, out) is det.
 
-:- pred vn_cost__rval_cost(rval, int).
-:- mode vn_cost__rval_cost(in, out) is det.
+:- pred vn_cost__rval_cost(rval, vn_params, int).
+:- mode vn_cost__rval_cost(in, in, out) is det.
 
 :- implementation.
 
-:- import_module vn_debug, require, string, std_util.
+:- import_module vn_debug.
+:- import_module require, string, std_util.
 
-vn_cost__block_cost(Instr, PrintInstr, Cost) -->
-	vn_cost__block_cost_2(Instr, PrintInstr, 0, Cost).
+vn_cost__block_cost(Instr, Params, PrintInstr, Cost) -->
+	vn_cost__block_cost_2(Instr, Params, PrintInstr, 0, Cost).
 
-:- pred vn_cost__block_cost_2(list(instruction), bool, int, int,
+:- pred vn_cost__block_cost_2(list(instruction), vn_params, bool, int, int,
 	io__state, io__state).
-:- mode vn_cost__block_cost_2(in, in, in, out, di, uo) is det.
+:- mode vn_cost__block_cost_2(in, in, in, in, out, di, uo) is det.
 
-vn_cost__block_cost_2([], _, Cost, Cost) --> [].
-vn_cost__block_cost_2([Instr | Instrs], PrintInstr, CostBefore, Cost) -->
+vn_cost__block_cost_2([], _, _, Cost, Cost) --> [].
+vn_cost__block_cost_2([Instr | Instrs], Params, PrintInstr, CostBefore, Cost)
+		-->
 	{ Instr = Uinstr - _ },
-	{ vn_cost__instr_cost(Uinstr, InstrCost) },
+	{ vn_cost__instr_cost(Uinstr, Params, InstrCost) },
 	{ Uinstr = if_val(_, _) ->
 		% We can now count earlier instructions twice
 		% to favor code sequences that move code after ifs.
@@ -57,13 +60,12 @@ vn_cost__block_cost_2([Instr | Instrs], PrintInstr, CostBefore, Cost) -->
 	;
 		{ PrintInstr = no }
 	),
-	vn_cost__block_cost_2(Instrs, PrintInstr, CostNow, Cost).
+	vn_cost__block_cost_2(Instrs, Params, PrintInstr, CostNow, Cost).
 
-:- pred vn_cost__instr_cost(instr, int).
-:- mode vn_cost__instr_cost(in, out) is det.
+:- pred vn_cost__instr_cost(instr, vn_params, int).
+:- mode vn_cost__instr_cost(in, in, out) is det.
 
-vn_cost__instr_cost(Uinstr, Cost) :-
-	vn_cost__costof_assign(AssignCost),
+vn_cost__instr_cost(Uinstr, Params, Cost) :-
 	(
 		Uinstr = comment(_),
 		Cost = 0
@@ -75,8 +77,9 @@ vn_cost__instr_cost(Uinstr, Cost) :-
 		error("block found in vn_block_cost")
 	;
 		Uinstr = assign(Lval, Rval),
-		vn_cost__lval_cost(Lval, LvalCost),
-		vn_cost__rval_cost(Rval, RvalCost),
+		vn_cost__lval_cost(Lval, Params, LvalCost),
+		vn_cost__rval_cost(Rval, Params, RvalCost),
+		vn_type__costof_assign(Params, AssignCost),
 		(
 			% Is this an assignment that speeds up future accesses?
 			% If yes, do not count a cost for the assignment.
@@ -94,8 +97,7 @@ vn_cost__instr_cost(Uinstr, Cost) :-
 		->
 			Cost is RvalCost + LvalCost
 		;
-			Cost1 is RvalCost + LvalCost,
-			Cost is Cost1 + AssignCost
+			Cost is RvalCost + LvalCost + AssignCost
 		)
 	;
 		Uinstr = call(_, _, _, _),
@@ -117,45 +119,44 @@ vn_cost__instr_cost(Uinstr, Cost) :-
 		Cost = 0
 	;
 		Uinstr = computed_goto(Rval, _),
-		vn_cost__rval_cost(Rval, RvalCost),
+		vn_cost__rval_cost(Rval, Params, RvalCost),
 		Cost = RvalCost
 	;
 		Uinstr = c_code(_),
 		error("c_code found in vn_block_cost")
 	;
 		Uinstr = if_val(Rval, _),
-		vn_cost__rval_cost(Rval, RvalCost),
+		vn_cost__rval_cost(Rval, Params, RvalCost),
 		Cost = RvalCost
 	;
 		Uinstr = incr_hp(Lval, MaybeTag, Rval),
-		vn_cost__lval_cost(Lval, LvalCost),
-		vn_cost__rval_cost(Rval, RvalCost),
-		Cost1 is RvalCost + LvalCost,
-		Cost2 is 3 * AssignCost,
-		Cost12 is Cost1 + Cost2,
+		vn_type__costof_assign(Params, AssignCost),
+		vn_cost__lval_cost(Lval, Params, LvalCost),
+		vn_cost__rval_cost(Rval, Params, RvalCost),
+		Cost1 is RvalCost + LvalCost + 3 * AssignCost,
 		(
 			MaybeTag = yes(_),
-			Cost3 = 1
+			vn_type__costof_intops(Params, Cost2)
 		;
 			MaybeTag = no,
-			Cost3 = 0
+			Cost2 = 0
 		),
-		Cost is Cost12 + Cost3
+		Cost is Cost1 + Cost2
 	;
 		Uinstr = mark_hp(Lval),
-		vn_cost__lval_cost(Lval, LvalCost),
+		vn_cost__lval_cost(Lval, Params, LvalCost),
 		Cost = LvalCost
 	;
 		Uinstr = restore_hp(Rval),
-		vn_cost__rval_cost(Rval, RvalCost),
+		vn_cost__rval_cost(Rval, Params, RvalCost),
 		Cost = RvalCost
 	;
 		Uinstr = store_ticket(Lval),
-		vn_cost__lval_cost(Lval, LvalCost),
+		vn_cost__lval_cost(Lval, Params, LvalCost),
 		Cost = LvalCost
 	;
 		Uinstr = restore_ticket(Rval),
-		vn_cost__rval_cost(Rval, RvalCost),
+		vn_cost__rval_cost(Rval, Params, RvalCost),
 		Cost = RvalCost
 	;
 		Uinstr = discard_ticket,
@@ -171,34 +172,46 @@ vn_cost__instr_cost(Uinstr, Cost) :-
 		error("pragma_c found in vn_block_cost")
 	).
 
-vn_cost__lval_cost(Lval, Cost) :-
-	vn_cost__costof_stackref(StackrefCost),
-	vn_cost__costof_heapref(HeaprefCost),
+vn_cost__lval_cost(Lval, Params, Cost) :-
 	(
-		Lval = reg(_),
-		Cost = 0
+		Lval = reg(Reg),
+		(
+			Reg = r(Regno),
+			vn_type__real_r_regs(Params, MaxRealRegno),
+			Regno =< MaxRealRegno
+		->
+			Cost = 0
+		;
+			vn_type__costof_stackref(Params, Cost)
+		)
 	;
 		Lval = stackvar(_),
+		vn_type__costof_stackref(Params, StackrefCost),
 		Cost = StackrefCost
 	;
 		Lval = framevar(_),
+		vn_type__costof_stackref(Params, StackrefCost),
 		Cost = StackrefCost
 	;
-		Lval = succfr(Rval1),
-		vn_cost__rval_cost(Rval1, RvalCost1),
-		Cost is RvalCost1 + StackrefCost
+		Lval = succfr(Rval),
+		vn_type__costof_stackref(Params, StackrefCost),
+		vn_cost__rval_cost(Rval, Params, RvalCost),
+		Cost is RvalCost + StackrefCost
 	;
-		Lval = prevfr(Rval1),
-		vn_cost__rval_cost(Rval1, RvalCost1),
-		Cost is RvalCost1 + StackrefCost
+		Lval = prevfr(Rval),
+		vn_type__costof_stackref(Params, StackrefCost),
+		vn_cost__rval_cost(Rval, Params, RvalCost),
+		Cost is RvalCost + StackrefCost
 	;
-		Lval = redoip(Rval1),
-		vn_cost__rval_cost(Rval1, RvalCost1),
-		Cost is RvalCost1 + StackrefCost
+		Lval = redoip(Rval),
+		vn_type__costof_stackref(Params, StackrefCost),
+		vn_cost__rval_cost(Rval, Params, RvalCost),
+		Cost is RvalCost + StackrefCost
 	;
-		Lval = succip(Rval1),
-		vn_cost__rval_cost(Rval1, RvalCost1),
-		Cost is RvalCost1 + StackrefCost
+		Lval = succip(Rval),
+		vn_cost__rval_cost(Rval, Params, RvalCost),
+		vn_type__costof_stackref(Params, StackrefCost),
+		Cost is RvalCost + StackrefCost
 	;
 		Lval = succip,
 		Cost = 0
@@ -216,23 +229,29 @@ vn_cost__lval_cost(Lval, Cost) :-
 		Cost = 0
 	;
 		Lval = field(_, Rval1, Rval2),
-		vn_cost__rval_cost(Rval1, RvalCost1),
-		vn_cost__rval_cost(Rval2, RvalCost2),
-		Cost1 is RvalCost1 + RvalCost2,
-		Cost is Cost1 + HeaprefCost
+		vn_cost__rval_cost(Rval1, Params, RvalCost1),
+		vn_cost__rval_cost(Rval2, Params, RvalCost2),
+		vn_type__costof_heapref(Params, HeaprefCost),
+		Cost is RvalCost1 + RvalCost2 + HeaprefCost
 	;
 		Lval = lvar(_),
 		error("lvar found in lval_cost")
 	;
-		Lval = temp(_),
-		Cost = 0
+		Lval = temp(Tempno),
+		(
+			vn_type__real_r_regs(Params, MaxRealTempno),
+			Tempno =< MaxRealTempno
+		->
+			Cost = 0
+		;
+			vn_type__costof_stackref(Params, Cost)
+		)
 	).
 
-vn_cost__rval_cost(Rval, Cost) :-
-	vn_cost__costof_ops(OpsCost),
+vn_cost__rval_cost(Rval, Params, Cost) :-
 	(
 		Rval = lval(Lval),
-		vn_cost__lval_cost(Lval, LvalCost),
+		vn_cost__lval_cost(Lval, Params, LvalCost),
 		Cost = LvalCost
 	;
 		Rval = var(_),
@@ -242,39 +261,24 @@ vn_cost__rval_cost(Rval, Cost) :-
 		Cost = 0
 	;
 		Rval = mkword(_, Rval1),
-		vn_cost__rval_cost(Rval1, RvalCost1),
-		Cost is RvalCost1 + OpsCost
+		vn_cost__rval_cost(Rval1, Params, RvalCost),
+		vn_type__costof_intops(Params, OpsCost),
+		Cost is RvalCost + OpsCost
 	;
 		Rval = const(_),
 		Cost = 0
 	;
 		Rval = unop(_, Rval1),
-		vn_cost__rval_cost(Rval1, RvalCost1),
-		Cost is RvalCost1 + OpsCost
+		vn_cost__rval_cost(Rval1, Params, RvalCost),
+		vn_type__costof_intops(Params, OpsCost),
+		Cost is RvalCost + OpsCost
 	;
 		Rval = binop(_, Rval1, Rval2),
-		vn_cost__rval_cost(Rval1, RvalCost1),
-		vn_cost__rval_cost(Rval2, RvalCost2),
-		Cost1 is RvalCost1 + RvalCost2,
-		Cost is Cost1 + OpsCost
+		vn_cost__rval_cost(Rval1, Params, RvalCost1),
+		vn_cost__rval_cost(Rval2, Params, RvalCost2),
+		vn_type__costof_intops(Params, OpsCost),
+		Cost is RvalCost1 + RvalCost2 + OpsCost
 	).
-
-:- pred vn_cost__costof_assign(int).
-:- mode vn_cost__costof_assign(out) is det.
-
-:- pred vn_cost__costof_ops(int).
-:- mode vn_cost__costof_ops(out) is det.
-
-:- pred vn_cost__costof_stackref(int).
-:- mode vn_cost__costof_stackref(out) is det.
-
-:- pred vn_cost__costof_heapref(int).
-:- mode vn_cost__costof_heapref(out) is det.
-
-vn_cost__costof_assign(1).
-vn_cost__costof_ops(1).
-vn_cost__costof_stackref(2).
-vn_cost__costof_heapref(2).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -127,7 +127,7 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, EndLabel, Code) -->
 			FailCode1) }
 	),
 
-	tag_switch__generate_primary_tag_codes(TagCaseList, Var,
+	tag_switch__generate_primary_tag_codes(TagCaseList,
 		TagRval, VarRval, CodeModel, CanFail, EndLabel, FailLabel,
 		TagCountMap, CasesCode),
 	{ EndCode = node([label(EndLabel) - "end of tag switch"]) },
@@ -140,16 +140,16 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, EndLabel, Code) -->
 	% Jump tables are used only on secondary tags.
 
 :- pred tag_switch__generate_primary_tag_codes(tag_case_list,
-	var, rval, rval, code_model, can_fail, label, label,
+	rval, rval, code_model, can_fail, label, label,
 	tag_count_map, code_tree, code_info, code_info).
-:- mode tag_switch__generate_primary_tag_codes(in, in, in, in, in, in, in, in,
+:- mode tag_switch__generate_primary_tag_codes(in, in, in, in, in, in, in,
 	in, out, in, out) is det.
 
-tag_switch__generate_primary_tag_codes([], _Var, _TagRval, _VarRval, _CodeModel,
+tag_switch__generate_primary_tag_codes([], _TagRval, _VarRval, _CodeModel,
 		_CanFail, _EndLabel, _FailLabel, _TagCountMap, empty) -->
 	[].
 tag_switch__generate_primary_tag_codes([TagGroup | TagGroups],
-		Var, TagRval, VarRval, CodeModel, CanFail,
+		TagRval, VarRval, CodeModel, CanFail,
 		EndLabel, FailLabel, TagCountMap, Code) -->
 	{ TagGroup = Primary - (StagLoc - TagGoalMap) },
 	{ map__lookup(TagCountMap, Primary, CountInfo) },
@@ -186,7 +186,7 @@ tag_switch__generate_primary_tag_codes([TagGroup | TagGroups],
 			EndLabel, FailLabel, ThisTagCode)
 	),
 	tag_switch__generate_primary_tag_codes(TagGroups,
-		Var, TagRval, VarRval, CodeModel, CanFail, EndLabel, FailLabel,
+		TagRval, VarRval, CodeModel, CanFail, EndLabel, FailLabel,
 		TagCountMap, OtherTagsCode),
 	{ Code = tree(ThisTagCode, OtherTagsCode) }.
 

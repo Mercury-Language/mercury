@@ -298,7 +298,6 @@ peephole__match(incr_sp(N), _, _, _, Instrs0, Instrs) :-
 	->
 		list__append(Between, Remain, Instrs)
 	;
-		fail,
 		Instrs0 = [Instr0, Instr1, Instr2, Instr3 | Instrs3],
 		Instr0 = goto(label(L2)) - _,
 		Instr1 = label(_) - _,

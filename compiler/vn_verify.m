@@ -75,8 +75,7 @@ vn_verify__equivalence(Liveset0, Liveset7, VnTables0, VnTables7,
 		map__keys(VerifyMap7, Keys7),
 		list__append(Keys0, Keys7, KeysDups),
 		list__remove_dups(KeysDups, Keys),
-		vn_verify__correspondence(Keys,
-			VerifyMap0, VerifyMap7, Problem)
+		vn_verify__correspondence(Keys, VerifyMap0, VerifyMap7, Problem)
 	).
 
 :- pred vn_verify__correspondence(list(lval), map(lval, rval),
@@ -244,17 +243,16 @@ vn_verify__tags(Instrs) :-
 	set__init(Tested),
 	vn_verify__tags_2(RevInstrs, NoDeref, Tested).
 
-:- pred vn_verify__tags_2(list(instruction), set(rval), set(rval)).
+:- pred vn_verify__tags_2(list(instruction), set(rval), set(lval)).
 :- mode vn_verify__tags_2(in, in, in) is semidet.
 
 vn_verify__tags_2([], _, _).
 vn_verify__tags_2([Instr0 - _| RevInstrs], NoDeref0, Tested0) :-
-	vn_verify__tags_instr(Instr0, NoDeref0, NoDeref1,
-		Tested0, Tested1),
+	vn_verify__tags_instr(Instr0, NoDeref0, NoDeref1, Tested0, Tested1),
 	vn_verify__tags_2(RevInstrs, NoDeref1, Tested1).
 
 :- pred vn_verify__tags_instr(instr, set(rval), set(rval),
-	set(rval), set(rval)).
+	set(lval), set(lval)).
 % :- mode vn_verify__tags_instr(in, di, uo, di, uo) is semidet.
 :- mode vn_verify__tags_instr(in, in, out, in, out) is semidet.
 
@@ -275,22 +273,23 @@ vn_verify__tags_instr(Instr, NoDeref0, NoDeref, Tested0, Tested) :-
 		vn_verify__tags_lval(Lval, NoDeref0),
 		(
 			set__member(lval(Lval), NoDeref0),
-			Rval = lval(_)
+			vn_verify__tags_is_base(Rval, Base)
 		->
-			set__insert(NoDeref0, Rval, NoDeref1)
+			set__insert(NoDeref0, Base, NoDeref1)
 		;
 			NoDeref1 = NoDeref0
 		),
 		(
-			set__member(lval(Lval), Tested0)
+			set__member(Lval, Tested0)
 		->
-			vn_verify__tags_cond(Rval, NoDeref1, NoDeref2,
+			vn_verify__tags_cond(lval(Lval), NoDeref1, NoDeref2,
 				Tested0, Tested)
 		;
 			NoDeref2 = NoDeref1,
 			Tested = Tested0
 		),
-		% Lval on the right hand side refers to the old value;
+		% Any appearance of Lval on the right hand side of the
+		% assignment and in previous statements refers to its old value;
 		% the new value is the one that should not be tested.
 		set__delete(NoDeref2, lval(Lval), NoDeref),
 		vn_verify__tags_rval(Rval, NoDeref)
@@ -346,6 +345,20 @@ vn_verify__tags_instr(Instr, NoDeref0, NoDeref, Tested0, Tested) :-
 		NoDeref = NoDeref0,
 		Tested = Tested0
 	;
+		Instr = store_ticket(Lval),
+		vn_verify__tags_lval(Lval, NoDeref0),
+		NoDeref = NoDeref0,
+		Tested = Tested0
+	;
+		Instr = restore_ticket(Rval),
+		vn_verify__tags_rval(Rval, NoDeref0),
+		NoDeref = NoDeref0,
+		Tested = Tested0
+	;
+		Instr = discard_ticket,
+		NoDeref = NoDeref0,
+		Tested = Tested0
+	;
 		Instr = incr_sp(_),
 		NoDeref = NoDeref0,
 		Tested = Tested0
@@ -353,6 +366,9 @@ vn_verify__tags_instr(Instr, NoDeref0, NoDeref, Tested0, Tested) :-
 		Instr = decr_sp(_),
 		NoDeref = NoDeref0,
 		Tested = Tested0
+	;
+		Instr = pragma_c(_, _, _, _),
+		error("found c_code in vn_verify__tags_instr")
 	).
 
 :- pred vn_verify__tags_lval(lval, set(rval)).
@@ -364,6 +380,8 @@ vn_verify__tags_lval(framevar(_), _).
 vn_verify__tags_lval(succip, _).
 vn_verify__tags_lval(maxfr, _).
 vn_verify__tags_lval(curfr, _).
+vn_verify__tags_lval(succip(Rval), NoDeref) :-
+	vn_verify__tags_rval(Rval, NoDeref).
 vn_verify__tags_lval(redoip(Rval), NoDeref) :-
 	vn_verify__tags_rval(Rval, NoDeref).
 vn_verify__tags_lval(succfr(Rval), NoDeref) :-
@@ -397,48 +415,68 @@ vn_verify__tags_rval(binop(_, Rval1, Rval2), NoDeref) :-
 	vn_verify__tags_rval(Rval1, NoDeref),
 	vn_verify__tags_rval(Rval2, NoDeref).
 
-:- pred vn_verify__tags_cond(rval, set(rval), set(rval),
-	set(rval), set(rval)).
+	% If the tag of an rval is tested in the condition of an if_val,
+	% that rval should not be dereferenced in previous statements.
+	% We therefore put this rval into NoDeref.
+
+	% If an rval is tested in the condition of an if_val, and that
+	% rval is defined as the tag of another rval, the second rval
+	% should not be dereferenced in previous statements. We put the
+	% first rval (all we can see here) into NoDeref; the rest has
+	% to be done when handling assignments.
+
+	% If the condition is simply the value of an lval, then we put
+	% this lval into Tested. When processing an assignment to an lval
+	% that is in tested, we process the right hand side of the assignment
+	% as if it were the condition of an if_val (which in a way it is).
+
+:- pred vn_verify__tags_cond(rval, set(rval), set(rval), set(lval), set(lval)).
 % :- mode vn_verify__tags_cond(in, di, uo, di, uo) is semidet.
 :- mode vn_verify__tags_cond(in, in, out, in, out) is semidet.
 
 vn_verify__tags_cond(Cond, NoDeref0, NoDeref, Tested0, Tested) :-
-	( Cond = binop(Binop, Rval1, Rval2) ->
-		( ( Binop = (and) ; Binop = (or) ) ->
-			vn_verify__tags_cond(Rval2,
-				NoDeref0, NoDeref1, Tested0, Tested1),
-			vn_verify__tags_cond(Rval1,
-				NoDeref1, NoDeref, Tested1, Tested)
+	(
+		Cond = binop(Binop, Rval1, Rval2),
+		( Binop = eq ; Binop = (<) ; Binop = (>)
+		; Binop = ne ; Binop = (<=) ; Binop = (>=) )
+	->
+		( vn_verify__tags_is_base(Rval1, Base1) ->
+			set__insert(NoDeref0, Base1, NoDeref1)
 		;
-			( Binop = eq ; Binop = ne ),
-			% at most one of the next two ifs should be taken
-			( vn_verify__tags_is_base(Rval1, Base1) ->
-				set__insert(NoDeref0, Base1, NoDeref1)
-			;
-				vn_verify__tags_rval(Rval1, NoDeref0),
-				NoDeref1 = NoDeref0
-			),
-			( vn_verify__tags_is_base(Rval2, Base2) ->
-				set__insert(NoDeref1, Base2, NoDeref)
-			;
-				vn_verify__tags_rval(Rval2, NoDeref1),
-				NoDeref = NoDeref1
-			),
-			Tested = Tested0
-		)
-	; Cond = unop(Unop, Rval1) ->
-		( Unop = (not) ->
-			vn_verify__tags_cond(Rval1, NoDeref0, NoDeref,
-				Tested0, Tested)
+			vn_verify__tags_rval(Rval1, NoDeref0),
+			NoDeref1 = NoDeref0
+		),
+		( vn_verify__tags_is_base(Rval2, Base2) ->
+			set__insert(NoDeref1, Base2, NoDeref)
 		;
-			vn_verify__tags_rval(Cond, NoDeref0),
-			NoDeref = NoDeref0,
-			set__insert(Tested0, Rval1, Tested)
-		)
+			vn_verify__tags_rval(Rval2, NoDeref1),
+			NoDeref = NoDeref1
+		),
+		Tested = Tested0
+	;
+		Cond = binop(Binop, Rval1, Rval2),
+		( Binop = (and) ; Binop = (or) )
+	->
+		vn_verify__tags_cond(Rval2,
+			NoDeref0, NoDeref1, Tested0, Tested1),
+		vn_verify__tags_cond(Rval1,
+			NoDeref1, NoDeref, Tested1, Tested)
+	;
+		Cond = unop(Unop, Rval),
+		Unop = (not)
+	->
+		vn_verify__tags_cond(Rval, NoDeref0, NoDeref,
+			Tested0, Tested)
+	;
+		Cond = lval(Lval)
+	->
+		vn_verify__tags_rval(Cond, NoDeref0),
+		NoDeref = NoDeref0,
+		set__insert(Tested0, Lval, Tested)
 	;
 		vn_verify__tags_rval(Cond, NoDeref0),
 		NoDeref = NoDeref0,
-		set__insert(Tested0, Cond, Tested)
+		Tested = Tested0
 	).
 
 :- pred vn_verify__tags_is_base(rval, rval).
