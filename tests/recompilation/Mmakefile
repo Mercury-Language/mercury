@@ -33,7 +33,7 @@ override EXTRA_MCFLAGS += --no-intermodule-optimization --smart-recompilation \
 # for which no version numbers have been computed.
 MCFLAGS-no_version_numbers_r_2 = --no-smart-recompilation
 
-$(ints_subdir)nested_module_2_r_2.date: \
+$(dates_subdir)nested_module_2_r_2.date: \
 				$(int0s_subdir)nested_module_2_r_2.int0
 
 #-----------------------------------------------------------------------------#
