@@ -44,7 +44,7 @@
 
 :- implementation.
 :- import_module int, list, set, map, term, varset, std_util, require.
-:- import_module prog_io, type_util, mode_util.
+:- import_module prog_io, type_util, mode_util, quantification.
 
 %-----------------------------------------------------------------------------%
 
@@ -176,8 +176,15 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo,
 					UnifyProcMap),
 		Info0 = poly_info(VarSet1, VarTypes1, TypeVarSet0,
 					UnifyProcMap, ModuleInfo),
-		polymorphism__process_goal(Goal0, Goal, Info0, Info),
-		Info = poly_info(VarSet, VarTypes, TypeVarSet, _, _)
+		polymorphism__process_goal(Goal0, Goal1, Info0, Info),
+		Info = poly_info(VarSet, VarTypes, TypeVarSet, _, _),
+		% if we introduced any new head variables, we need to
+		% fix up the quantification (non-local variables)
+		( ExtraHeadVars = [] ->
+			Goal = Goal1
+		;
+			implicitly_quantify_clause_body(HeadVars, Goal1, Goal)
+		)
 	),
 
 	% set the new values of the fields in proc_info and pred_info
@@ -212,8 +219,8 @@ polymorphism__process_goal_2(
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) }.
 
 	% XXX handle polymorphic unifications!
-polymorphism__process_goal_2(unify(A, B, C, D, E), GoalInfo,
-			unify(A, B, C, D, E) - GoalInfo) --> [].
+polymorphism__process_goal_2(unify(X, Y, Unification, Mode, Context), GoalInfo,
+		unify(X, Y, Unification, Mode, Context) - GoalInfo) --> [].
 
 	% the rest of the clauses just process goals recursively
 
@@ -255,6 +262,14 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars, ExtraGoals,
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_arg_types(PredInfo, PredTypeVarSet, PredArgTypes0),
 		% rename apart
+		% XXX this merge may be a performance bottleneck:
+		% it gets executed O(m) times,
+		% each merge takes O(size of PredTypeVarSet) = O(n) insertions,
+		% each insertion takes O(log(n)) for the search plus
+		% (in the worst case, if all the types are named "T")
+		% O(n*n) for the variable naming.
+		% So overall it's O(m * n^3).
+		% (m = number of predicates, n = predicate size)
 	varset__merge(TypeVarSet0, PredTypeVarSet, PredArgTypes0,
 			TypeVarSet, PredArgTypes),
 	term__vars_list(PredArgTypes, PredTypeVars0),
