@@ -422,7 +422,8 @@ MR_count_call(MR_Code *proc)
 
 	/* the bitwise ORs implement logical OR */
 	MR_lld_print_enabled = MR_lld_print_region_enabled
-		| MR_lld_print_name_enabled | MR_lld_print_csd_enabled;
+		| MR_lld_print_name_enabled | MR_lld_print_csd_enabled
+		| MR_lld_debug_enabled;
 }
 
 void 

@@ -43,27 +43,28 @@ extern	MR_bool	MR_debugflag[];
 ** array that maps these names to their slots in the source file.
 */
 
-#define	MR_PROGFLAG		0
-#define	MR_GOTOFLAG		1
-#define	MR_CALLFLAG		2
-#define	MR_HEAPFLAG		3
-#define	MR_DETSTACKFLAG		4
-#define	MR_NONDSTACKFLAG	5
-#define	MR_FINALFLAG		6
-#define	MR_MEMFLAG		7
-#define	MR_SREGFLAG		8
-#define	MR_TRACEFLAG		9
-#define	MR_TABLEFLAG		10
-#define	MR_TABLEHASHFLAG	11
-#define	MR_TABLESTACKFLAG	12
-#define	MR_UNBUFFLAG		13
-#define	MR_AGC_FLAG 		14
-#define	MR_ORDINARY_REG_FLAG	15
-#define	MR_ANY_REG_FLAG 	16
-#define	MR_PRINT_LOCN_FLAG 	17
-#define	MR_NOT_NEAREST_FLAG 	18
-#define	MR_DETAILFLAG		19
-#define	MR_MAXFLAG		20
+#define	MR_PROGFLAG			0
+#define	MR_GOTOFLAG			1
+#define	MR_CALLFLAG			2
+#define	MR_HEAPFLAG			3
+#define	MR_DETSTACKFLAG			4
+#define	MR_NONDSTACKFLAG		5
+#define	MR_FINALFLAG			6
+#define	MR_MEMFLAG			7
+#define	MR_SREGFLAG			8
+#define	MR_TRACEFLAG			9
+#define	MR_TABLEFLAG			10
+#define	MR_TABLEHASHFLAG		11
+#define	MR_TABLESTACKFLAG		12
+#define	MR_UNBUFFLAG			13
+#define	MR_AGC_FLAG 			14
+#define	MR_ORDINARY_REG_FLAG		15
+#define	MR_ANY_REG_FLAG 		16
+#define	MR_PRINT_LOCN_FLAG 		17
+#define	MR_LLD_DEBUG_ENABLED_FLAG 	18
+#define	MR_NOT_NEAREST_FLAG 		19
+#define	MR_DETAILFLAG			20
+#define	MR_MAXFLAG			21
 /* MR_DETAILFLAG should be the last real flag */
 
 /*
@@ -118,6 +119,9 @@ extern	MR_bool	MR_debugflag[];
 ** MR_printlocndebug controls whether we want to get diagnostics showing how
 ** the runtime system looks up locations recorded in RTTI data structures.
 **
+** MR_lld_debug_enabled turns on the generation of diagnostic output even when
+** they would otherwise be disabled.
+**
 ** MR_not_nearest_flag, if set, tells minimal model tabling to save stack
 ** segments only to the nearest generator, not to the nearest common ancestor
 ** of the consumer being suspended and its generator.
@@ -141,6 +145,7 @@ extern	MR_bool	MR_debugflag[];
 #define	MR_ordregdebug		MR_debugflag[MR_ORDINARY_REG_FLAG]
 #define	MR_anyregdebug		MR_debugflag[MR_ANY_REG_FLAG]
 #define	MR_printlocndebug	MR_debugflag[MR_PRINT_LOCN_FLAG]
+#define	MR_lld_debug_enabled	MR_debugflag[MR_LLD_DEBUG_ENABLED_FLAG]
 #define	MR_not_nearest_flag	MR_debugflag[MR_NOT_NEAREST_FLAG]
 #define	MR_detaildebug		MR_debugflag[MR_DETAILFLAG]
 

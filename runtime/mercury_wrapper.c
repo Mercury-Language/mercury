@@ -129,13 +129,13 @@ MR_bool		MR_force_readline = MR_FALSE;
 ** Getting low level debugging messages from *every* call, *every* heap
 ** allocation etc usually results in an avalanche of data that buries the
 ** information you are looking for, and often runs filesystems out of space.
-** Therefore we inhibit these messages unless any one of three conditions
+** Therefore we inhibit these messages unless any one of four conditions
 ** apply. We implement this by making MR_lld_print_enabled, which controls
 ** the printing of these messages, the logical OR of MR_lld_print_name_enabled,
-** MR_lld_print_csd_enabled and MR_lld_print_region_enabled, which are flags
-** implementing the three conditions. (We rely on these flags being 0 or 1
-** (i.e. MR_FALSE or MR_TRUE) so we can implement logical OR as bitwise OR,
-** which is faster.)
+** MR_lld_print_csd_enabled, MR_lld_print_region_enabled and
+** MR_lld_debug_enabled, which are flags implementing the four conditions.
+** (We rely on these flags being 0 or 1 (i.e. MR_FALSE or MR_TRUE) so we can
+** implement logical OR as bitwise OR, which is faster.)
 **
 ** One condition is MR_lld_start_block calls starting with a call to a
 ** predicate whose entry label matches MR_lld_start_name. Another is
@@ -144,7 +144,8 @@ MR_bool		MR_force_readline = MR_FALSE;
 ** MR_watch_csd_addr. The third is calls whose sequence number is in a range
 ** specified by MR_lld_print_more_min_max, which should point to a string
 ** containing a comma-separated list of integer intervals (the last interval
-** may be open ended).
+** may be open ended). The fourth is calls between debugger commands that
+** enable and disable low level messages.
 **
 ** MR_lld_start_until and MR_lld_csd_until give the end call numbers of the 
 ** blocks printed for the first two conditions. MR_lld_print_{min,max} give the
