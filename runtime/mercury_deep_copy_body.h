@@ -670,12 +670,33 @@ try_again:
         break;
 
     case MR_TYPECTOR_REP_HP:
+#if handle_saved_heap_pointers
         /*
-        ** Tyson hasn't yet moved the code for copying saved heap pointers
-        ** here.
+        ** We can't copy saved heap pointer values now,
+        ** since we don't know what the new heap pointer will be
+        ** after garbage collection has finished.
+        ** Instead we just push the saved heap pointer onto a list,
+        ** and fill in the correct value later.
+        ** See fixup_saved_heap_pointers() in mercury_accurate_gc.c.
         */
-        MR_fatal_error("Sorry, not implemented: copying saved heap pointers");
+  #ifdef MR_DEBUG_AGC_SAVED_HPS
+        fprintf(stderr, "found saved heap pointer: "
+                        "addr = %p, val = %p, chain = %p\n",
+                        (void *) data_ptr, (void *) data,
+                        (void *) MR_saved_heap_pointers_list);
+  #endif
+        /* insert this pointer at the start of the list */
+        new_data = *data_ptr = (MR_Word) MR_saved_heap_pointers_list;
+        MR_saved_heap_pointers_list = data_ptr;
         break;
+#else
+        /*
+        ** Copying of saved heap pointers should only occur in native GC
+        ** grades.  For `--gc none', there can be saved heap pointers,
+        ** but they should never be copied.
+        */
+        MR_fatal_error("Unexpected: copying saved heap pointer");
+#endif
 
     case MR_TYPECTOR_REP_CURFR: /* fallthru */
     case MR_TYPECTOR_REP_MAXFR:

@@ -60,6 +60,39 @@ static MR_RootList root_list = NULL;
 /* The last root on the list */
 static MR_RootList last_root = NULL;
 
+/*
+** During garbage collection, when traversing from the roots, we may
+** encounter saved heap pointers.  We want to handle these by just
+** resetting them to point to the first free byte of the new heap,
+** but until the collection has finished, we don't know much of the
+** new heap will be used.  So when traversing saved heap pointers,
+** we just put them onto a list; when we've finished traversing
+** all the roots, we can then fill in the correct values for the
+** saved heap pointers.
+**
+** To avoid the need for dynamic allocation,
+** the list is stored in saved heap pointers themselves.
+** We represent the list by just chaining the saved heap pointers
+** together, so that each saved heap pointer points to the next one.
+** The `MR_saved_heap_pointers_list' variable points to the start of
+** this list.
+*/
+MR_Word *MR_saved_heap_pointers_list;
+
+static void
+fixup_saved_heap_pointers(MR_Word *new_hp)
+{
+	MR_Word *p;
+	MR_Word next;
+
+	for (p = MR_saved_heap_pointers_list; p != NULL; p = (MR_Word *) next)
+	{
+		next = *p;
+		*p = (MR_Word) new_hp;
+	}
+	MR_saved_heap_pointers_list = NULL;
+}
+
 #ifdef MR_HIGHLEVEL_CODE
 
 /*
@@ -124,11 +157,13 @@ MR_garbage_collect(void)
     */
     garbage_collect_roots();
 
+    fixup_saved_heap_pointers(MR_virtual_hp);
+
 #ifdef MR_DEBUG_AGC_COLLECTION
     fprintf(stderr, "Clearing old heap:\n");
 
     {
-	Word *tmp_hp;
+	MR_Word *tmp_hp;
 
 	for (tmp_hp = old_heap->min; tmp_hp <= old_hp; tmp_hp++) {
 		*tmp_hp = 1;

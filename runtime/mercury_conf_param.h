@@ -245,6 +245,10 @@
 **	Display debugging information when leaving or finding forwarding
 **	pointers during accurate garbage collection.
 **
+** MR_DEBUG_AGC_SAVED_HPS
+**	Display debugging information about saved heap pointers
+**	during accurate garbage collection.
+**
 ** MR_DEBUG_AGC_PRINT_VARS
 **	Display the values of live variables during accurate garbage
 **	collection.
@@ -286,6 +290,7 @@
   #define MR_DEBUG_AGC_SCHEDULING
   #define MR_DEBUG_AGC_COLLECTION
   #define MR_DEBUG_AGC_FORWARDING
+  #define MR_DEBUG_AGC_SAVED_HPS
   #define MR_DEBUG_AGC_PRINT_VARS
   #define MR_DEBUG_AGC_SMALL_HEAP
 #endif

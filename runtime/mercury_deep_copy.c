@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2001 The University of Melbourne.
+** Copyright (C) 1997-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -18,6 +18,7 @@
 #include "mercury_ho_call.h"
 #include "mercury_layout_util.h"
 #include "mercury_memory.h"
+#include "mercury_accurate_gc.h"
 
 
 /*
@@ -51,6 +52,9 @@
 
 #undef	found_forwarding_pointer
 #define found_forwarding_pointer(Data)
+
+#undef handle_saved_heap_pointers
+#define handle_saved_heap_pointers MR_FALSE
 
 #include "mercury_deep_copy_body.h"
 
@@ -101,6 +105,9 @@
 #undef  found_forwarding_pointer
 #define found_forwarding_pointer(Data)	\
 		FORWARD_DEBUG_MSG("not on this heap: %lx\n", (long) Data);
+
+#undef handle_saved_heap_pointers
+#define handle_saved_heap_pointers MR_TRUE
 
 #include "mercury_deep_copy_body.h"
 
