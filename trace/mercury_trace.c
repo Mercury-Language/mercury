@@ -646,7 +646,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 			char	*answer;
 
 			if (found_io_action_counter
-			|| MR_io_tabling_counter == 0)
+				|| MR_io_tabling_counter == 0)
 			{
 				fprintf(out_fp,
 					"Retry across I/O operations "
@@ -1148,6 +1148,10 @@ MR_check_minimal_model_calls(MR_Event_Info *event_info, int ancestor_level,
 	top_maxfr = MR_saved_maxfr(event_info->MR_saved_regs);
 	cur_gen = MR_gen_next - 1;
 
+	record_ptrs = NULL;
+	record_ptr_max = 0;
+	record_ptr_next = 0;
+
 	for (cur_maxfr = top_maxfr;
 		cur_maxfr > target_maxfr;
 		cur_maxfr = MR_prevfr_slot(cur_maxfr))
@@ -1182,7 +1186,7 @@ MR_check_minimal_model_calls(MR_Event_Info *event_info, int ancestor_level,
 		** procedures.
 		*/
 
-		redoip = MR_prevfr_slot(cur_maxfr);
+		redoip = MR_redoip_slot(cur_maxfr);
 		label = MR_lookup_internal_by_addr(redoip);
 		if (label == NULL) {
 			*problem = "reached unknown label ";
@@ -1253,7 +1257,7 @@ MR_check_minimal_model_calls(MR_Event_Info *event_info, int ancestor_level,
 		return MR_RETRY_ERROR;
 	} else if (record_ptr_next > 0) {
 		if (event_info->MR_trace_port == MR_PORT_EXCEPTION
-		&& ancestor_level == 0)
+			&& ancestor_level == 0)
 		{
 			*problem = "cannot retry minimal model procedure "
 				"from the exception port";
