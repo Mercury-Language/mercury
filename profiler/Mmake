@@ -55,8 +55,8 @@ ints		: mercury_profile.ints
 
 #-----------------------------------------------------------------------------#
 
-tags		: $(mercury_profile.srcs)
-	mtags $(mercury_profile.srcs) ../library/*.m
+tags		: $(mercury_profile.ms)
+	mtags $(mercury_profile.ms) ../library/*.m
 
 #-----------------------------------------------------------------------------#
 
@@ -67,8 +67,8 @@ dates		:
 #-----------------------------------------------------------------------------#
 
 .PHONY: os cs
-os: $(mercury_profile.os) mercury_profile.o
-cs: $(mercury_profile.cs) mercury_profile.c
+os: $(mercury_profile.os) mercury_profile_init.o
+cs: $(mercury_profile.cs) mercury_profile_init.c
 
 #-----------------------------------------------------------------------------#
 
