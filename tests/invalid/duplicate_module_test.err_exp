@@ -1,0 +1,19 @@
+duplicate_module.m:014: In module `duplicate_module':
+duplicate_module.m:014:   error: sub-module `child' declared as both
+duplicate_module.m:014:   a separate sub-module and a nested sub-module.
+duplicate_module.m:016: In module `duplicate_module':
+duplicate_module.m:016:   error: sub-module `child' declared as both
+duplicate_module.m:016:   a separate sub-module and a nested sub-module.
+duplicate_module.m:032: In module `duplicate_module':
+duplicate_module.m:032:   error: sub-module `child2' declared as both
+duplicate_module.m:032:   a separate sub-module and a nested sub-module.
+duplicate_module.m:034: In module `duplicate_module':
+duplicate_module.m:034:   error: sub-module `child2' declared as both
+duplicate_module.m:034:   a separate sub-module and a nested sub-module.
+duplicate_module.m:050: In module `duplicate_module':
+duplicate_module.m:050:   error: sub-module `child3' declared as both
+duplicate_module.m:050:   a separate sub-module and a nested sub-module.
+duplicate_module.m:052: In module `duplicate_module':
+duplicate_module.m:052:   error: sub-module `child3' declared as both
+duplicate_module.m:052:   a separate sub-module and a nested sub-module.
+For more information, try recompiling with `-E'.

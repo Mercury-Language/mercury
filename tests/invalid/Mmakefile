@@ -10,6 +10,9 @@ include ../Mmake.common
 # Note: multi-module tests (including tests of nested modules)
 # need to be listed separately from single-module tests, since
 # we need to make dependencies only for multimodule tests.
+# However, multi-module tests where the error is detected when
+# building the dependencies (e.g. duplicate_module_test.m) should 
+# not be included in this list; we handle those specially (see below).
 
 MULTIMODULE_SOURCES= \
 	aditi_errors.m \
@@ -37,6 +40,7 @@ SINGLEMODULE_SOURCES= \
 	constructor_warning.m \
 	det_errors.m \
 	duplicate_modes.m \
+	duplicate_module_test.m \
 	errors.m \
 	errors1.m \
 	errors2.m \
@@ -179,9 +183,10 @@ MCFLAGS-typeclass_mode =	--infer-all
 MCFLAGS-undef_mod_qual = 	--no-intermodule-optimization
 MCFLAGS-undef_symbol = 		--no-intermodule-optimization
 
-# The bug is caught when generating dependencies, so it is
-# easiest just to do that step.
+# For these test cases, the bug is caught when generating dependencies,
+# so it is easiest just to do that step.
 MCFLAGS-nested_impl_in_int =	--generate-dependencies
+MCFLAGS-duplicate_module_test =	--generate-dependencies
 
 MULTIMODULE_DEPENDS=	$(MULTIMODULE_SOURCES:%.m=%.depend)
 

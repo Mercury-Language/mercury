@@ -390,8 +390,10 @@
 
 	% Given a module (well, a list of items), split it into
 	% its constituent sub-modules, in top-down order.
-	% Report an error if the `implementation' section of a sub-module
-	% is contained inside the `interface' section of its parent module.
+	% Also do some error checking:
+	% - report an error if the `implementation' section of a sub-module
+	%   is contained inside the `interface' section of its parent module
+	% - check for modules declared as both nested and separate sub-modules.
 
 :- type module_list == list(pair(module_name, item_list)).
 
@@ -4301,17 +4303,9 @@ lookup_dependencies(Module, DepsMap0, Search, Done, ModuleImports, DepsMap) -->
 	% the previous entry will be a dummy entry that we inserted
 	% after trying to read the source file and failing.
 	%
-	% XXX We could make some effort here to catch the case where a
-	% module is defined as both a separate sub-module and also
-	% as a nested sub-module.  However, that doesn't seem worthwhile,
-	% since not all such cases would arrive here anyway --
-	% it would be nice to catch that case but this is not the
-	% place to catch it.
-	% (Currently for that case we just ignore the file containing the
-	% separate sub-module.  Since we don't consider the
-	% file containing the separate sub-module to be part of the
-	% program's source, there's no duplicate definition, and thus
-	% no requirement to report any error message.)
+	% Note that the case where a module is defined as both a
+	% separate sub-module and also as a nested sub-module is
+	% caught in split_into_submodules.
 	%
 :- pred insert_into_deps_map(module_imports, deps_map, deps_map).
 :- mode insert_into_deps_map(in, in, out) is det.
@@ -5122,7 +5116,19 @@ split_into_submodules(ModuleName, Items0, ModuleList) -->
 	{ InParentInterface = no },
 	split_into_submodules_2(ModuleName, Items0, InParentInterface,
 		Items, ModuleList),
-	{ require(unify(Items, []), "modules.m: items after end_module") }.
+	{ require(unify(Items, []), "modules.m: items after end_module") },
+	%
+	% check for modules declared as both nested and separate sub-modules
+	%
+	{ get_children(Items0, NestedSubmodules) },
+	{ assoc_list__keys(ModuleList, SeparateSubModules) },
+	{ Duplicates = set__intersect(set__list_to_set(NestedSubmodules),
+				set__list_to_set(SeparateSubModules)) },
+	( { set__empty(Duplicates) } ->
+		[]
+	;
+		report_duplicate_modules(Duplicates, Items0)
+	).
 
 :- pred split_into_submodules_2(module_name, item_list, bool, item_list,
 				module_list, io__state, io__state).
@@ -5244,6 +5250,10 @@ add_submodule(ModuleName - ModuleItemList, SubModules0, SubModules) :-
 	% Perhaps we should be a bit more strict about this, for
 	% example by only allowing one `:- implementation' section
 	% and one `:- interface' section for each module?
+	% (That is what the Mercury language reference manual mandates.
+	% On the other hand, it also says that top-level modules
+	% should only have one `:- interface' and one `:- implementation'
+	% section, and we don't enforce that either...)
 	%
 	( map__search(SubModules0, ModuleName, ItemList0) ->
 		list__append(ModuleItemList, ItemList0, ItemList),
@@ -5278,6 +5288,50 @@ report_error_implementation_in_interface(ModuleName, Context) -->
 	prog_out__write_context(Context),
 	io__write_string(
 		"  occurs in interface section of parent module.\n"),
+	io__set_exit_status(1).
+
+:- pred report_duplicate_modules(set(module_name), item_list,
+		io__state, io__state).
+:- mode report_duplicate_modules(in, in, di, uo) is det.
+
+report_duplicate_modules(Duplicates, Items) -->
+	{ IsDuplicateError = (pred(SubModuleName - Context::out) is nondet :-
+		list__member(Item, Items),
+		Item = module_defn(_VarSet, ModuleDefn) - Context,
+		( ModuleDefn = module(SubModuleName)
+		; ModuleDefn = include_module(SubModuleNames),
+		  list__member(SubModuleName, SubModuleNames)
+		),
+		set__member(SubModuleName, Duplicates)
+	  ) },
+	{ solutions(IsDuplicateError, DuplicateErrors) },
+	list__foldl(report_error_duplicate_module_decl, DuplicateErrors).
+
+:- pred report_error_duplicate_module_decl(pair(module_name, prog_context),
+		io__state, io__state).
+:- mode report_error_duplicate_module_decl(in, di, uo) is det.
+
+report_error_duplicate_module_decl(ModuleName - Context) -->
+	{ ModuleName = qualified(ParentModule0, ChildModule0) ->
+		ParentModule = ParentModule0,
+		ChildModule = ChildModule0
+	;
+		error("report_error_duplicate_module_decl")
+	},
+	% The error message should look this this:
+	% foo.m:123: In module `foo':
+	% foo.m:123:   error: sub-module `bar' declared as both
+	% foo.m:123:   a separate sub-module and a nested sub-module.
+	prog_out__write_context(Context),
+	io__write_string("In module `"),
+	prog_out__write_sym_name(ParentModule),
+	io__write_string("':\n"),
+	prog_out__write_context(Context),
+	io__write_string("  error: sub-module `"),
+	io__write_string(ChildModule),
+	io__write_string("' declared as both\n"),
+	prog_out__write_context(Context),
+	io__write_string("  a separate sub-module and a nested sub-module.\n"),
 	io__set_exit_status(1).
 
 	% Given a module (well, a list of items), extract the interface
