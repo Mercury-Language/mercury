@@ -433,16 +433,55 @@ polymorphism__process_goal_2(if_then_else(Vars, A0, B0, C0), GoalInfo,
 	polymorphism__process_goal(C0, C).
 
 polymorphism__process_goal_2(pragma_c_code(C_Code, PredId, ProcId,
-		ArgVars0, ArgNameMap), GoalInfo, Goal) -->
+		ArgVars0, ArgNameMap0), GoalInfo, Goal) -->
 	polymorphism__process_call(PredId, ProcId, ArgVars0, 
 		ArgVars, ExtraVars, ExtraGoals),
+	%
+	% update the non-locals
+	%
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals0) },
 	{ set__insert_list(NonLocals0, ExtraVars, NonLocals) },
 	{ goal_info_set_nonlocals(GoalInfo, NonLocals, CallGoalInfo) },
+
+	%
+	% insert the type_info vars into the arg-name map,
+	% so that the c_code can refer to the type_info variable
+	% for type T as `TypeInfo_for_T'.
+	%
+	=(poly_info(_, _, _, _, ModuleInfo)),
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	{ pred_info_arg_types(PredInfo, PredTypeVarSet, PredArgTypes) },
+	{ term__vars_list(PredArgTypes, PredTypeVars) },
+	{ polymorphism__c_code_add_typeinfos(ExtraVars, PredTypeVars,
+			PredTypeVarSet, ArgNameMap0, ArgNameMap) },
+
+	%
+	% plug it all back together
+	%
 	{ Call = pragma_c_code(C_Code, PredId, ProcId, ArgVars, ArgNameMap)
 			- CallGoalInfo },
 	{ list__append(ExtraGoals, [Call], GoalList) },
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) }.
+
+:- pred polymorphism__c_code_add_typeinfos(list(var), list(tvar),
+			tvarset, map(var, string), map(var, string)).
+:- mode polymorphism__c_code_add_typeinfos(in, in, in, in, out) is det.
+
+polymorphism__c_code_add_typeinfos([], [], _, ArgNameMap, ArgNameMap).
+polymorphism__c_code_add_typeinfos([Var|Vars], [TVar|TVars], TypeVarSet,
+		ArgNameMap0, ArgNameMap) :-
+	( varset__lookup_name(TypeVarSet, TVar, TypeVarName) ->
+		string__append("TypeInfo_for_", TypeVarName, C_VarName),
+		map__set(ArgNameMap0, Var, C_VarName, ArgNameMap1)
+	;
+		ArgNameMap1 = ArgNameMap0
+	),
+	polymorphism__c_code_add_typeinfos(Vars, TVars, TypeVarSet,
+		ArgNameMap1, ArgNameMap).
+polymorphism__c_code_add_typeinfos([], [_|_], _, _, _) :-
+	error("polymorphism__c_code_add_typeinfos: length mismatch").
+polymorphism__c_code_add_typeinfos([_|_], [], _, _, _) :-
+	error("polymorphism__c_code_add_typeinfos: length mismatch").
 
 :- pred polymorphism__process_goal_list(list(hlds__goal), list(hlds__goal),
 					poly_info, poly_info).
