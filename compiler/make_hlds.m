@@ -508,11 +508,16 @@ add_item_decl_pass_2(func_mode(_, _, _, _, _, _), _, Status, Module, Status,
 add_item_decl_pass_2(nothing, _, Status, Module, Status, Module) --> [].
 add_item_decl_pass_2(typeclass(_, _, _, _, _)
 	, _, Status, Module, Status, Module) --> [].
-add_item_decl_pass_2(instance(Constraints, Name, Types, Interface, VarSet), 
+add_item_decl_pass_2(instance(Constraints, Name, Types, Body, VarSet), 
 		Context, Status, Module0, Status, Module) -->
 	{ Status = item_status(ImportStatus, _) },
-	module_add_instance_defn(Module0, Constraints, Name, Types, Interface,
-		VarSet, ImportStatus, Context, Module).
+	{ Body = abstract ->
+		make_status_abstract(ImportStatus, BodyStatus)
+	;
+		BodyStatus = ImportStatus
+	},
+	module_add_instance_defn(Module0, Constraints, Name, Types, Body,
+		VarSet, BodyStatus, Context, Module).
 
 %------------------------------------------------------------------------------
 
@@ -1191,13 +1196,7 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 	{ convert_type_defn(TypeDefn, Globals, Name, Args, Body) },
 	{ list__length(Args, Arity) },
 	{ Body = abstract_type ->
-		( Status0 = exported ->
-			Status1 = abstract_exported
-		; Status0 = imported ->
-			Status1 = abstract_imported
-		;
-			Status1 = Status0
-		)
+		make_status_abstract(Status0, Status1)
 	;
 		Status1 = Status0
 	},
@@ -1330,6 +1329,18 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 		)
 	).
 
+:- pred make_status_abstract(import_status, import_status).
+:- mode make_status_abstract(in, out) is det.
+
+make_status_abstract(Status, AbstractStatus) :-
+	( Status = exported ->
+		AbstractStatus = abstract_exported
+	; Status = imported ->
+		AbstractStatus = abstract_imported
+	;
+		AbstractStatus = Status
+	).
+
 :- pred combine_status(import_status, import_status, import_status).
 :- mode combine_status(in, in, out) is det.
 
@@ -1344,7 +1355,7 @@ combine_status(StatusA, StatusB, Status) :-
 :- mode combine_status_2(in, in, out) is semidet.
 
 combine_status_2(imported, Status2, Status) :-
-	 combine_status_imported(Status2, Status).
+	combine_status_imported(Status2, Status).
 combine_status_2(local, Status2, Status) :-
 	combine_status_local(Status2, Status).
 combine_status_2(exported, _Status2, exported).
@@ -1764,40 +1775,72 @@ add_default_class_method_func_modes([M|Ms], PredProcIds0, PredProcIds,
 		Module1, Module).
 
 :- pred module_add_instance_defn(module_info, list(class_constraint), sym_name,
-	list(type), instance_interface, tvarset, import_status, prog_context, 
+	list(type), instance_body, tvarset, import_status, prog_context, 
 	module_info, io__state, io__state).
 :- mode module_add_instance_defn(in, in, in, in, in, in, in, in, out, 
 	di, uo) is det.
 
-module_add_instance_defn(Module0, Constraints, Name, Types, Interface, VarSet,
+module_add_instance_defn(Module0, Constraints, ClassName, Types, Body, VarSet,
 		Status, Context, Module) -->
 	{ module_info_classes(Module0, Classes) },
 	{ module_info_instances(Module0, Instances0) },
 	{ list__length(Types, ClassArity) },
-	{ Key = class_id(Name, ClassArity) },
+	{ ClassId = class_id(ClassName, ClassArity) },
 	(
-		{ map__search(Classes, Key, _) }
+		{ map__search(Classes, ClassId, _) }
 	->
 		{ map__init(Empty) },
-		{ NewValue = hlds_instance_defn(Status, Context, Constraints, 
-			Types, Interface, no, VarSet, Empty) },
-		{ map__lookup(Instances0, Key, Values) },
-		{ map__det_update(Instances0, Key, [NewValue|Values], 
+		{ NewValue = hlds_instance_defn(Status, Context,
+			Constraints, Types, Body, no, VarSet, Empty) },
+		{ map__lookup(Instances0, ClassId, Values) },
+		check_for_overlapping_instances(NewValue, Values, ClassId),
+		{ map__det_update(Instances0, ClassId, [NewValue|Values], 
 			Instances) },
-		{ module_info_set_instances(Module0, Instances, Module) }
+		{ module_info_set_instances(Module0, Instances,
+			Module) }
 	;
-		io__stderr_stream(StdErr),
-		io__set_output_stream(StdErr, OldStream),
-		prog_out__write_context(Context),
-		io__write_string("Error: typeclass `"),
-		prog_out__write_sym_name(Name),
-		io__write_char('/'),
-		io__write_int(ClassArity),
-		io__write_string("' not defined.\n"),
-		io__set_exit_status(1),
-		io__set_output_stream(OldStream, _),
+		undefined_type_class_error(ClassName, ClassArity, Context,
+			"instance declaration"),
 		{ Module = Module0 }
 	).
+
+:- pred check_for_overlapping_instances(hlds_instance_defn,
+		list(hlds_instance_defn), class_id, io__state, io__state).
+:- mode check_for_overlapping_instances(in, in, in, di, uo) is det.
+
+check_for_overlapping_instances(NewValue, Values, ClassId) -->
+	{ IsOverlapping = lambda([(Context - OtherContext)::out] is nondet, (
+		NewValue = hlds_instance_defn(_Status, Context,
+				_, Types, Body, _, VarSet, _),
+		Body \= abstract, % XXX
+		list__member(OtherValue, Values),
+		OtherValue = hlds_instance_defn(_OtherStatus, OtherContext,
+				_, OtherTypes, OtherBody, _, OtherVarSet, _),
+		OtherBody \= abstract, % XXX
+		varset__merge(VarSet, OtherVarSet, OtherTypes,
+				_NewVarSet, NewOtherTypes),
+		type_list_subsumes(Types, NewOtherTypes, _)
+	)) },
+	aggregate(IsOverlapping,
+		report_overlapping_instance_declaration(ClassId)).
+
+:- pred report_overlapping_instance_declaration(class_id, pair(prog_context),
+		io__state, io__state).
+:- mode report_overlapping_instance_declaration(in, in, di, uo) is det.
+
+report_overlapping_instance_declaration(class_id(ClassName, ClassArity),
+		Context - OtherContext) -->
+	io__set_exit_status(1),
+	prog_out__write_context(Context),
+	io__write_string("Error: multiply defined (or overlapping) instance\n"),
+	prog_out__write_context(Context),
+	io__write_string("declarations for class `"),
+        prog_out__write_sym_name(ClassName),
+	io__write_string("/"),
+	io__write_int(ClassArity),
+	io__write_string("'.\n"),
+	prog_out__write_context(OtherContext),
+	io__write_string("Previous instance declaration was here.\n").
 
 %-----------------------------------------------------------------------------%
 

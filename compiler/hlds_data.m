@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -753,7 +753,7 @@ determinism_to_code_model(failure,     model_semi).
 			prog_context,		% context of declaration
 			list(class_constraint), % Constraints
 			list(type), 		% ClassTypes 
-			instance_interface, 	% Methods
+			instance_body, 		% Methods
 			maybe(hlds_class_interface),
 						% After check_typeclass, we 
 						% will know the pred_ids and

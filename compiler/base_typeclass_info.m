@@ -75,9 +75,10 @@ base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
 	base_typeclass_info__gen_infos_for_instance_list(ClassId - Is,
 		ModuleName, ModuleInfo, CModules1),
 	InstanceDefn = hlds_instance_defn(ImportStatus, _TermContext,
-				InstanceConstraints, InstanceTypes, _Interface,
+				InstanceConstraints, InstanceTypes, Body,
 				PredProcIds, _Varset, _SuperClassProofs),
 	(
+		Body = concrete(_),
 			% Only make the base_typeclass_info if the instance
 			% declaration originally came from _this_ module.
 		status_defined_in_this_module(ImportStatus, yes)
@@ -108,8 +109,8 @@ base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
 			Status, Rvals, Procs),
 		CModules = [CModule | CModules1]
 	;
-			% The instance decl is from another module, so
-			% we don't bother including it.
+			% The instance decl is from another module,
+			% or is abstract, so we don't bother including it.
 		CModules = CModules1
 	).
 

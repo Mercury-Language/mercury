@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 University of Melbourne.
+% Copyright (C) 1997-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -354,11 +354,10 @@ parse_derived_instance(ModuleName, Decl, Constraints, TVarSet,
 		->
 			Result = Result0
 		;
-			Result0 = ok(instance(_, Name, Types, Interface,
-					VarSet0))
+			Result0 = ok(instance(_, Name, Types, Body, VarSet0))
 		->
-			Result = ok(instance(ConstraintList, Name, Types,
-				Interface, VarSet0))
+			Result = ok(instance(ConstraintList, Name, Types, Body,
+					VarSet0))
 		;
 				% if the item we get back isn't an instance, 
 				% something has gone wrong...
@@ -444,7 +443,7 @@ parse_underived_instance(_ModuleName, Name, TVarSet, Result) :-
 		(
 			ErroneousTypes = [],
 			Result = ok(instance([], ClassName,
-				TermTypes, [], TVarSet))
+				TermTypes, abstract, TVarSet))
 		;
 				% XXX We should report an error for _each_
 				% XXX erroneous type
@@ -476,7 +475,7 @@ parse_non_empty_instance(ModuleName, Name, Methods, TVarSet, Result) :-
 				NameString, Types, _, _))
 		->
 			Result = ok(instance(Constraints, NameString, Types,
-				MethodList, TVarSet))
+				concrete(MethodList), TVarSet))
 		;
 				% if the item we get back isn't a typeclass,
 				% something has gone wrong...

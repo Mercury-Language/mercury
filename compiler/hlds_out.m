@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2249,8 +2249,8 @@ hlds_out__write_instance_defns(Indent, ClassId - InstanceDefns) -->
 hlds_out__write_instance_defn(Indent, InstanceDefn) -->
 
 	{ InstanceDefn = hlds_instance_defn(_, Context,
-		Constraints, Types, Interface,
-		_MaybeClassInterface, VarSet, Proofs) },
+		Constraints, Types, Body,
+		MaybePredProcIds, VarSet, Proofs) },
 
 	{ term__context_file(Context, FileName) },
 	{ term__context_line(Context, LineNumber) },
@@ -2280,9 +2280,22 @@ hlds_out__write_instance_defn(Indent, InstanceDefn) -->
 	io__nl,
 
 	hlds_out__write_indent(Indent),
-	io__write_string("% Instance Methods: "),
-	mercury_output_instance_methods(Interface),
+	(	{ Body = abstract },
+		io__write_string("% abstract")
+	;	{ Body = concrete(Methods) },
+		io__write_string("% Instance Methods: "),
+		mercury_output_instance_methods(Methods)
+	),
 	io__nl,
+
+	( { MaybePredProcIds = yes(PredProcIds) } ->
+		hlds_out__write_indent(Indent),
+		io__write_string("% procedures: "),
+		io__write(PredProcIds),
+		io__nl
+	;
+		[]
+	),
 
 	hlds_out__write_constraint_proofs(Indent, VarSet, Proofs),
 	io__nl.

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -133,30 +133,53 @@ check_one_class(ClassTable, ClassId - InstanceDefns0,
 
 check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 		PredIds, InstanceDefn0, InstanceDefn, 
-		ModuleInfo0, ModuleInfo):-
+		Errors0 - ModuleInfo0, Errors - ModuleInfo):-
 		
-		% check conformance of the instance interface
+		% check conformance of the instance body
+	InstanceDefn0 = hlds_instance_defn(_, _, _, _, InstanceBody, _, _, _),
 	(
-		PredIds \= []
-	->
+		InstanceBody = abstract,
+		InstanceDefn1 = InstanceDefn0,
+		ModuleInfo1 = ModuleInfo0,
+		Errors2 = Errors0
+	;
+		InstanceBody = concrete(Methods),
 		list__foldl2(
 			check_instance_pred(ClassId, Vars, ClassInterface), 
 			PredIds, InstanceDefn0, InstanceDefn1,
-			ModuleInfo0, ModuleInfo1)
-	;
-		% there are no methods for this class
-		InstanceDefn0 = hlds_instance_defn(A, B, C, D, E,
-				_MaybeInstancePredProcs, G, H),
-		InstanceDefn1 = hlds_instance_defn(A, B, C, D, E,
-				yes([]), G, H),
-		ModuleInfo1 = ModuleInfo0
+			Errors0 - ModuleInfo0, Errors1 - ModuleInfo1),
+		%
+		% Check if there are any instance methods left over,
+		% for which we did not produce a pred_id/proc_id;
+		% if there are any, the instance declaration must have
+		% specified some methods that don't occur in the class.
+		%
+		InstanceDefn1 = hlds_instance_defn(_, Context, _, _,
+				_, MaybePredProcs, _, _),
+		(
+			MaybePredProcs = yes(PredProcs),
+			list__same_length(PredProcs, Methods)
+		->
+			Errors2 = Errors1
+		;
+			ClassId = class_id(ClassName, ClassArity),
+			prog_out__sym_name_to_string(ClassName,
+				ClassNameString),
+			string__int_to_string(ClassArity, ClassArityString),
+			string__append_list([
+				"In instance declaration for `",
+				ClassNameString, "/", ClassArityString, "': ",
+				"incorrect method name(s)."],
+				NewError),
+			Errors2 = [Context - [words(NewError)] | Errors1]
+		)
 	),
-
 
 		% check that the superclass constraints are satisfied for the
 		% types in this instance declaration
 	check_superclass_conformance(ClassId, SuperClasses, Vars, ClassVarSet,
-		InstanceDefn1, InstanceDefn, ModuleInfo1, ModuleInfo).
+		InstanceDefn1, InstanceDefn,
+		Errors2 - ModuleInfo1, Errors - ModuleInfo).
 
 %----------------------------------------------------------------------------%
 
@@ -268,12 +291,12 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, InstanceDefn0,
 		InstanceDefn, Info0, Info) :-
 	InstanceDefn0 = hlds_instance_defn(A, InstanceContext, 
 				InstanceConstraints, InstanceTypes,
-				InstanceInterface, MaybeInstancePredProcs,
+				InstanceBody, MaybeInstancePredProcs,
 				InstanceVarSet, H),
 	Info0 = instance_method_info(ModuleInfo, PredName, PredArity, 
 		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors0,
 		ArgTypeVars, Status, PredOrFunc),
-	get_matching_instance_names(InstanceInterface, PredOrFunc, MethodName,
+	get_matching_instance_names(InstanceBody, PredOrFunc, MethodName,
 		PredArity, InstanceNames),
 	(
 		InstanceNames = [InstancePredName - Context]
@@ -300,7 +323,7 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, InstanceDefn0,
 			InstancePredProcs = InstancePredProcs1
 		),
 		InstanceDefn = hlds_instance_defn(A, Context, 
-			InstanceConstraints, InstanceTypes, InstanceInterface,
+			InstanceConstraints, InstanceTypes, InstanceBody,
 			yes(InstancePredProcs), InstanceVarSet, H)
 	;
 		InstanceNames = [I1, I2 | Is]
@@ -324,17 +347,10 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, InstanceDefn0,
 			InstanceTypesString),
 		string__append_list([
 			"In instance declaration for `",
-			ClassNameString,
-			"(",
-			InstanceTypesString,
-			")': ",
+			ClassNameString, "(", InstanceTypesString, ")': ",
 			"multiple implementations of type class ",
-			PredOrFuncString,
-			" method `",
-			MethodNameString,
-			"/",
-			PredArityString,
-			"'."],
+			PredOrFuncString, " method `",
+			MethodNameString, "/", PredArityString, "'."],
 			ErrorHeader),
 		I1 = _ - I1Context, 
 		Heading = 
@@ -373,17 +389,10 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, InstanceDefn0,
 			InstanceTypesString),
 		string__append_list([
 			"In instance declaration for `",
-			ClassNameString,
-			"(",
-			InstanceTypesString,
-			")': ",
+			ClassNameString, "(", InstanceTypesString, ")': ",
 			"no implementation for type class ",
-			PredOrFuncString,
-			" method `",
-			MethodNameString,
-			"/",
-			PredArityString,
-			"'."],
+			PredOrFuncString, " method `",
+			MethodNameString, "/", PredArityString, "'."],
 			NewError),
 		Errors = [InstanceContext - [words(NewError)] | Errors0],
 		Info = instance_method_info(ModuleInfo, PredName, PredArity,
@@ -391,18 +400,20 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, InstanceDefn0,
 			ArgTypeVars, Status, PredOrFunc)
 	).
 
-:- pred get_matching_instance_names(list(instance_method), pred_or_func,
+:- pred get_matching_instance_names(instance_body, pred_or_func,
 	sym_name, arity, list(pair(sym_name, prog_context))).
 :- mode get_matching_instance_names(in, in, in, in, out) is det.
 
-get_matching_instance_names(InstanceInterface, PredOrFunc, PredName,
+get_matching_instance_names(InstanceBody, PredOrFunc, PredName,
 	PredArity, InstanceNames) :-
 	(
 		PredOrFunc = predicate,
 		solutions(
 			lambda([Pair::out] is nondet, 
 				(
-					list__member(Method, InstanceInterface),
+					InstanceBody =
+						concrete(InstanceMethods),
+					list__member(Method, InstanceMethods),
 					Method = pred_instance(PredName, 
 							SymName, PredArity,
 							Context),
@@ -415,7 +426,9 @@ get_matching_instance_names(InstanceInterface, PredOrFunc, PredName,
 		solutions(
 			lambda([Pair::out] is nondet, 
 				(
-					list__member(Method, InstanceInterface),
+					InstanceBody =
+						concrete(InstanceMethods),
+					list__member(Method, InstanceMethods),
 					Method = func_instance(PredName, 
 							SymName, FuncArity,
 							Context),
@@ -584,14 +597,10 @@ make_introduced_pred_name(ClassId, MethodName, PredArity,
 		InstanceString),
 	string__append_list(
 		["Introduced_pred_for_",
-		ClassNameString,
-		"__",
-		InstanceString,
-		"____",
-		MethodNameString,
-		"_",
-		PredArityString
-		], 
+		ClassNameString, "__",
+		InstanceString, "____",
+		MethodNameString, "_",
+		PredArityString], 
 		PredNameString),
 	PredName = unqualified(PredNameString).
 
@@ -657,13 +666,9 @@ check_superclass_conformance(ClassId, SuperClasses0, ClassVars0, ClassVarSet,
 			ConstraintsString),
 		string__append_list([
 			"In instance declaration for `",
-			ClassNameString,
-			"(",
-			InstanceTypesString,
-			")': ",
+			ClassNameString, "(", InstanceTypesString, ")': ",
 			"superclass constraint(s) not satisfied: ",
-			ConstraintsString,
-			"."],
+			ConstraintsString, "."],
 			NewError),
 		Errors = [Context - [words(NewError)] | Errors0],
 		InstanceDefn = InstanceDefn0

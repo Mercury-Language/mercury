@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -85,7 +85,7 @@
 		%	ClassMethods, VarNames
 
 	;	instance(list(class_constraint), class_name, list(type),
-			instance_interface, tvarset)
+			instance_body, tvarset)
 		%	DerivingClass, ClassName, Types, 
 		%	MethodInstances, VarNames
 
@@ -341,7 +341,11 @@
 				% Line number of declaration
 	.
 
-:- type instance_interface ==	list(instance_method).
+:- type instance_body
+	--->	abstract
+	;	concrete(instance_methods).
+
+:- type instance_methods ==	list(instance_method).
 
 		% an abstract type for representing a set of
 		% `pragma_c_code_attribute's.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -155,10 +155,10 @@ equiv_type__replace_in_item(
 
 equiv_type__replace_in_item(
 			instance(Constraints0, ClassName, Ts0, 
-				InstanceInterface, VarSet0),
+				InstanceBody, VarSet0),
 			EqvMap,
 			instance(Constraints, ClassName, Ts, 
-				InstanceInterface, VarSet),
+				InstanceBody, VarSet),
 			no) :-
 	equiv_type__replace_in_class_constraint_list(Constraints0, VarSet0, 
 				EqvMap, Constraints, VarSet1),
