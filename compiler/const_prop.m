@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2003 The University of Melbourne.
+% Copyright (C) 1997-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -248,11 +248,6 @@ evaluate_builtin_tri("int", "\\/", 0, X, Y, Z, Z, int_const(ZVal)) :-
 	X = _XVar - bound(_XUniq, [functor(int_const(XVal), [])]),
 	Y = _YVar - bound(_YUniq, [functor(int_const(YVal), [])]),
 	ZVal = XVal \/ YVal.
-
-evaluate_builtin_tri("int", "^", 0, X, Y, Z, Z, int_const(ZVal)) :-
-	X = _XVar - bound(_XUniq, [functor(int_const(XVal), [])]),
-	Y = _YVar - bound(_YUniq, [functor(int_const(YVal), [])]),
-	ZVal = XVal `xor` YVal.
 
 evaluate_builtin_tri("int", "xor", 0, X, Y, Z, Z, int_const(ZVal)) :-
 	X = _XVar - bound(_XUniq, [functor(int_const(XVal), [])]),
