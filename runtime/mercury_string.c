@@ -13,7 +13,7 @@
   #define vsnprintf	_vsnprintf
 #endif
 
-#define SIZE	4096
+#define BUFFER_SIZE	4096
 
 MR_String
 MR_make_string(MR_Code *proclabel, const char *fmt, ...) {
@@ -23,46 +23,42 @@ MR_make_string(MR_Code *proclabel, const char *fmt, ...) {
 	char		*p;
 
 #if defined(HAVE_VSNPRINTF) || defined(HAVE__VSNPRINTF)
-	int 		size = 2 * SIZE;
-	char		fixed[SIZE];
-	int		dynamically_allocated = FALSE;
+	int 		size = 2 * BUFFER_SIZE;
+	char		fixed[BUFFER_SIZE];
+	bool		dynamically_allocated = FALSE;
 	
-	va_start(ap, fmt);
-	n = vsnprintf(fixed, SIZE, fmt, ap);
-	va_end(ap);
-
 	/*
+	** On the first iteration we try with a fixed-size buffer.
 	** If that didn't work, use a dynamically allocated array twice
 	** the size of the fixed array and keep growing the array until
 	** the string fits.
 	*/
-	if (!(n > -1 && n < size)) {
-		p = MR_NEW_ARRAY(char, size);
+	p = fixed;
 
-		while (1) {
+	while (1) {
+		/* Try to print in the allocated space. */
+		va_start(ap, fmt);
+		n = vsnprintf(p, size, fmt, ap);
+		va_end(ap);
+
+		/* If that worked, return the string.  */
+		if (n > -1 && n < size) {
+			break;
+		}
+
+		/* Else try again with more space.  */
+		if (n > -1) {   /* glibc 2.1 */
+			size = n + 1; /* precisely what is needed */
+		} else {        /* glibc 2.0 */
+			size *= 2;  /* twice the old size */
+		}
+
+		if (!dynamically_allocated) {
+			p = MR_NEW_ARRAY(char, size);
 			dynamically_allocated = TRUE;
-
-			/* Try to print in the allocated space. */
-			va_start(ap, fmt);
-			n = vsnprintf(p, size, fmt, ap);
-			va_end(ap);
-
-			/* If that worked, return the string.  */
-			if (n > -1 && n < size) {
-				break;
-			}
-
-			/* Else try again with more space.  */
-			if (n > -1) {	/* glibc 2.1 */
-				size = n + 1; /* precisely what is needed */
-			} else {	/* glibc 2.0 */
-				size *= 2;  /* twice the old size */
-			}
-
+		} else {
 			MR_RESIZE_ARRAY(p, char, size);
 		}
-	} else {
-		p = fixed;
 	}
 
 #else
