@@ -2,7 +2,7 @@
 # -g -O2 -DSPEED
 
 # Use these options for optimizing compiles with gcc
-# -O2 -fomit-frame-pointer -DSPEED
+-O2 -fomit-frame-pointer -DSPEED
 
 # Use this with gcc if you want to look at the .s files
 # -fverbose-asm
@@ -15,7 +15,7 @@
 # -dr -df -ds
 
 # Use these options for debugging compiles
--g 
+# -g 
 
 # Use this option only with gcc
 # Currently only supported for mips and sparc cpus.
@@ -32,3 +32,6 @@
 # count you need to disable all the debugging routines by compiling
 # with -DSPEED and not using any -d* flags.
 # -DMEASURE_REGISTER_USAGE -DSPEED
+
+# Always search the current directory for header files
+-I.
