@@ -550,7 +550,7 @@ install_library(MainModuleName, Succeeded, Info0, Info) -->
 		IntsSucceeded, Info1, Info2),
 
 	globals__io_get_globals(Globals),
-	{ compute_grade(Globals, Grade) },
+	{ grade_directory_component(Globals, Grade) },
         install_library_grade_files(LinkSucceeded, Grade, MainModuleName,
 		AllModules, GradeSucceeded, Info2, Info3),
 	(
