@@ -866,7 +866,6 @@ opt_level(1, OptionTable, [
 	c_optimize		-	bool(yes),	% XXX we want `gcc -O1'
 	optimize_frames		-	bool(yes),
 	optimize_delay_slot	-	bool(DelaySlot),
-	optimize_saved_vars	-	bool(yes),
 	follow_vars		-	bool(yes),
 	middle_rec		-	bool(yes),
 	emit_c_loops		-	bool(yes)
@@ -897,6 +896,16 @@ opt_level(2, _, [
 
 opt_level(3, _, [
 %%%	optimize_copyprop	-	bool(yes),
+/*********
+The optimize_saved_vars pass is disabled for now,
+because it is broken.  The bug is that it renames variables
+without renaming all occurrences of that variable in instmap
+deltas; this can cause the code generator to abort, because some of
+the instmap deltas specify variables that don't occur in the code
+(e.g. the compiler aborts when compiling llds_out.m at -O5).
+	optimize_saved_vars	-	bool(yes),
+*********/
+	optimize_saved_vars	-	bool(no),
 	optimize_unused_args	-	bool(yes),	
 	optimize_higher_order	-	bool(yes),
 	optimize_repeat		-	int(4)
