@@ -123,6 +123,7 @@ SINGLEMODULE_PROGS= \
 	type_spec \
 	unbound_type_vars \
 	undef_lambda_mode \
+	undef_inst \
 	undef_mode \
 	undef_mode_and_no_clauses \
 	undef_symbol \
@@ -160,6 +161,10 @@ USE_SUBDIR_MODULES = \
 #			the type class name should be in quotes)
 #	typeclass_mode_{2,3,4} (compiler calls error/1)
 #	cyclic_typeclass (compiler goes into an infinite loop)
+#	circ_inst{,2} (error is not detected)
+#	circ_inst{3,4} (compiler goes into an infinite loop)
+#	circ_mode{,2} (error is not detected)
+#	circ_mode{3,4} (compiler goes into an infinite loop)
 #	ho_default_func_4 (due to a bug in the mode-checker ---
 #			see XXX comment in inst_match:inst_matches_final_3)
 #	inst_matches_final_bug (due to same bug as ho_default_func_4)
