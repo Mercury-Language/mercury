@@ -4140,7 +4140,7 @@ module_add_pragma_foreign_proc(Attributes, PredName, PredOrFunc,
 	( 
 		{ VeryVerbose = yes }
 	->
-		io__write_string("% Processing `:- pragma foreign_code' for "),
+		io__write_string("% Processing `:- pragma foreign_proc' for "),
 		hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity),
 		io__write_string("...\n")
 	;
@@ -4162,7 +4162,7 @@ module_add_pragma_foreign_proc(Attributes, PredName, PredOrFunc,
 	;
 		preds_add_implicit_report_error(ModuleName,
 			PredOrFunc, PredName, Arity, Status, no, Context,
-			"`:- pragma foreign_code' declaration",
+			"`:- pragma foreign_proc' declaration",
 			PredId, ModuleInfo0, ModuleInfo1)
 	),
 		% Lookup the pred_info for this pred,
@@ -4257,7 +4257,7 @@ module_add_pragma_foreign_proc(Attributes, PredName, PredOrFunc,
 			io__stderr_stream(StdErr),
 			io__set_output_stream(StdErr, OldStream),
 			prog_out__write_context(Context),
-			io__write_string("Error: `:- pragma foreign_code' "),
+			io__write_string("Error: `:- pragma foreign_proc' "),
 			io__write_string("declaration for undeclared mode "),
 			io__write_string("of "),
 			hlds_out__write_simple_call_id(PredOrFunc,
