@@ -175,7 +175,7 @@ struct MR_Subgoal_Struct {
 	MR_Word			*MR_sg_generator_fr;
 #ifdef	MR_TABLE_DEBUG
 	const MR_Proc_Layout	*MR_sg_proc_layout;
-#endif	MR_TABLE_DEBUG
+#endif	/* MR_TABLE_DEBUG */
 };
 
 /*---------------------------------------------------------------------------*/
