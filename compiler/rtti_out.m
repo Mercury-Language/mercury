@@ -687,9 +687,12 @@ rtti_out__register_rtti_data_if_nec(Data) -->
 		{ Data = type_ctor_info(RttiTypeId,
 			_,_,_,_,_,_,_,_,_,_,_,_) }
 	->
-		io__write_string("\tMR_register_type_ctor_info(\n\t\t&"),
+		io__write_string("\t{\n\t"),
+		output_rtti_addr_storage_type_name(RttiTypeId, type_ctor_info,
+			no),
+		io__write_string(";\n\tMR_register_type_ctor_info(\n\t\t&"),
 		output_rtti_addr(RttiTypeId, type_ctor_info),
-		io__write_string(");\n")
+		io__write_string(");\n\t}\n")
 	;
 		{ Data = base_typeclass_info(_ClassId, _InstanceString,
 			_BaseTypeClassInfo) }
