@@ -35,7 +35,7 @@ main -->
 :- pred c_write_integer(int::in, io__state::di, io__state::uo) is det.
 
 :- pragma(c_code, c_write_integer(Int::in, IO0::di, IO::uo), "
-	printf(""%d\n"", Int);
+	printf(""%ld\n"", (long) Int);
 	IO = IO0;
 ").
 

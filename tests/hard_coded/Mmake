@@ -5,7 +5,7 @@ main_target: check
 #-----------------------------------------------------------------------------#
 
 PROGS=	qual_basic_test qual_basic_test2 qual_is_test qual_adv_test \
-	pragma_c_code pragma_inline
+	pragma_c_code pragma_inline higher_order_func_test
 
 #-----------------------------------------------------------------------------#
 

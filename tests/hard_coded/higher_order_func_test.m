@@ -1,0 +1,27 @@
+:- module l.
+:- import_module int.
+
+:- interface.
+:- import_module std_util, list, io.
+
+:- pred main(io__state::di, io__state::uo) is det.
+
+:- func map(func(X) = Y, list(X)) = list(Y).
+:- mode map(func(in) = out is det, in) = out is det.
+:- mode map(func(in) = out is semidet, in) = out is semidet.
+:- mode map(func(in) = out is multi, in) = out is multi.
+:- mode map(func(in) = out is nondet, in) = out is nondet.
+
+:- implementation.
+
+map(_, []) = [].
+map(F, [H0|T0]) = [apply(F, H0) | map(F, T0)].
+
+main -->
+	{ L1 = [1,2,3] },
+	{ map((func(X::in) = (Y::out) is det :- Y = 2*X), L1, L2) },
+	{ map((func(X2) = Y2 :- Y2 = 5*X2), L2, L3) },
+	{ map(func(X3) = 10*X3, L3, L) },
+	list__foldl(io__write_int, L),
+	io__write_string("\n").
+
