@@ -81,7 +81,6 @@ unique_modes__check_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 	{ pred_info_procedures(PredInfo0, ProcTable0) },
 	{ map__lookup(ProcTable0, ProcId, ProcInfo0) },
 
-	%%% XXX detect_liveness_proc(ProcInfo0, ModuleInfo0, ProcInfo),
 	unique_modes__check_proc(ProcInfo0, PredId, ProcId, ModuleInfo0,
 		ProcInfo),
 
@@ -135,6 +134,7 @@ unique_modes__check_proc(ProcInfo0, PredId, ProcId, ModuleInfo, ProcInfo) -->
 	% is nondet-live - and stays nondet-live.
 
 unique_modes__check_goal(Goal0, UniqModesInfo0, Goal, UniqModesInfo) :-
+	uniq_info_get_instmap(UniqModesInfo0, InstMap0),
 	Goal0 = GoalExpr0 - GoalInfo0,
 	goal_info_get_code_model(GoalInfo0, CodeModel),
 	(
@@ -149,7 +149,11 @@ unique_modes__check_goal(Goal0, UniqModesInfo0, Goal, UniqModesInfo) :-
 	;
 		UniqModesInfo1 = UniqModesInfo0
 	),
-	unique_modes__check_goal_2(Goal0, UniqModesInfo1, Goal, UniqModesInfo).
+	unique_modes__check_goal_2(Goal0, UniqModesInfo1, Goal, UniqModesInfo2),
+	Goal = _GoalExpr - GoalInfo,
+	goal_info_get_instmap_delta(GoalInfo, InstmapDelta),
+	apply_instmap_delta(InstMap0, InstmapDelta, InstMap),
+	uniq_info_set_instmap(UniqModesInfo2, InstMap, UniqModesInfo).
 
 :- pred unique_modes__check_goal_2(hlds__goal, uniq_info,
 				   hlds__goal, uniq_info).
@@ -159,7 +163,8 @@ unique_modes__check_goal_2(GoalExpr0 - GoalInfo0, UniqModesInfo0,
 		Goal, UniqModesInfo) :-
 	(
 		GoalExpr0 = disj(Goals0),
-		unique_modes__check_disj(Goals0, UniqModesInfo0,
+		uniq_info_get_instmap(UniqModesInfo0, InstMap0),
+		unique_modes__check_disj(Goals0, UniqModesInfo0, InstMap0,
 					Goals, UniqModesInfo),
 		Goal = disj(Goals) - GoalInfo0
 	;
@@ -168,22 +173,17 @@ unique_modes__check_goal_2(GoalExpr0 - GoalInfo0, UniqModesInfo0,
 		goal_info_context(GoalInfo0, Context),
 		unique_modes__check_call(PredId, ProcId, ArgVars,
 				Context, CallContext,
-				UniqModesInfo0, UniqModesInfo1),
-		unique_modes__update_instmap(GoalInfo0,
-				UniqModesInfo1, UniqModesInfo),
+				UniqModesInfo0, UniqModesInfo),
 		Goal = GoalExpr0 - GoalInfo0
 	;
 		GoalExpr0 = unify(LHS, RHS, _, _, _),
 		unique_modes__propagate_nondet_liveness(RHS, LHS,
-				UniqModesInfo0, UniqModesInfo1),
-		Goal = GoalExpr0 - GoalInfo0,
-		unique_modes__update_instmap(GoalInfo0,
-				UniqModesInfo1, UniqModesInfo)
+				UniqModesInfo0, UniqModesInfo),
+		Goal = GoalExpr0 - GoalInfo0
 	;
 		GoalExpr0 = pragma_c_code(_, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
-		unique_modes__update_instmap(GoalInfo0,
-				UniqModesInfo0, UniqModesInfo)
+		UniqModesInfo = UniqModesInfo0
 	
 	% for the remaining cases, we just process goals recursively
 
@@ -199,16 +199,20 @@ unique_modes__check_goal_2(GoalExpr0 - GoalInfo0, UniqModesInfo0,
 		Goal = not(NegGoal) - GoalInfo0
 	;
 		GoalExpr0 = switch(Var, CanFail, Cases0),
-		unique_modes__check_switch(Cases0, UniqModesInfo0,
+		uniq_info_get_instmap(UniqModesInfo0, InstMap0),
+		unique_modes__check_switch(Cases0, UniqModesInfo0, InstMap0,
 						Cases, UniqModesInfo),
 		Goal = switch(Var, CanFail, Cases) - GoalInfo0
 	;
 		GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+		uniq_info_get_instmap(UniqModesInfo0, InstMap0),
 		unique_modes__check_goal(Cond0, UniqModesInfo0,
 					Cond, UniqModesInfo1),
 		unique_modes__check_goal(Then0, UniqModesInfo1,
 					Then, UniqModesInfo2),
-		unique_modes__check_goal(Else0, UniqModesInfo2,
+		uniq_info_set_instmap(UniqModesInfo2, InstMap0,
+					UniqModesInfo3),
+		unique_modes__check_goal(Else0, UniqModesInfo3,
 					Else, UniqModesInfo),
 		Goal = if_then_else(Vars, Cond, Then, Else) - GoalInfo0
 	;
@@ -222,15 +226,11 @@ unique_modes__check_goal_2(GoalExpr0 - GoalInfo0, UniqModesInfo0,
 :- pred unique_modes__update_instmap(hlds__goal_info, uniq_info, uniq_info).
 :- mode unique_modes__update_instmap(in, in, out) is det.
 
-unique_modes__update_instmap(_GoalInfo, UniqModesInfo, UniqModesInfo).
-
-/* XXX we don't use the instmap (yet - do we need to?)
 unique_modes__update_instmap(GoalInfo, UniqModesInfo0, UniqModesInfo) :-
 	goal_info_get_instmap_delta(GoalInfo, InstmapDelta),
-	uniq_info_get_instmap(UniqModesInfo, InstMap0),
+	uniq_info_get_instmap(UniqModesInfo0, InstMap0),
 	apply_instmap_delta(InstMap0, InstmapDelta, InstMap),
-	uniq_info_set_instmap(UniqModesInfo, InstMap, FinalUniqModesInfo).
-*/
+	uniq_info_set_instmap(UniqModesInfo0, InstMap, UniqModesInfo).
 
 :- pred unique_modes__propagate_nondet_liveness(unify_rhs, var, 
 			uniq_info, uniq_info).
@@ -324,6 +324,8 @@ unique_modes__check_args(Vars, Insts,
 	uniq_info, list(hlds__goal), uniq_info).
 :- mode unique_modes__check_conj(in, in, out, out) is det.
 
+	% just process each conjunct in turn
+
 unique_modes__check_conj([], UniqModesInfo, [], UniqModesInfo).
 unique_modes__check_conj([Goal0 | Goals0], UniqModesInfo0, 
 		[Goal | Goals], UniqModesInfo) :-
@@ -332,27 +334,36 @@ unique_modes__check_conj([Goal0 | Goals0], UniqModesInfo0,
 
 %-----------------------------------------------------------------------------%
 
-:- pred unique_modes__check_disj(list(hlds__goal), uniq_info,
+:- pred unique_modes__check_disj(list(hlds__goal), uniq_info, instmap,
 	list(hlds__goal), uniq_info).
-:- mode unique_modes__check_disj(in, in, out, out) is det.
+:- mode unique_modes__check_disj(in, in, in, out, out) is det.
 
-unique_modes__check_disj([], UniqModesInfo, [], UniqModesInfo).
-unique_modes__check_disj([Goal0 | Goals0], UniqModesInfo0,
+	% process each of the disjunctions in turn, making sure to restore
+	% the original instmap before processing the next one
+
+unique_modes__check_disj([], UniqModesInfo, _, [], UniqModesInfo).
+unique_modes__check_disj([Goal0 | Goals0], UniqModesInfo0, InstMap0,
 			   [Goal | Goals], UniqModesInfo) :-
 	unique_modes__check_goal(Goal0, UniqModesInfo0, Goal, UniqModesInfo1),
-	unique_modes__check_disj(Goals0, UniqModesInfo1, Goals, UniqModesInfo).
+	uniq_info_set_instmap(UniqModesInfo1, InstMap0, UniqModesInfo2),
+	unique_modes__check_disj(Goals0, UniqModesInfo2, InstMap0,
+		Goals, UniqModesInfo).
 
 %-----------------------------------------------------------------------------%
 
-:- pred unique_modes__check_switch(list(case), uniq_info,
+:- pred unique_modes__check_switch(list(case), uniq_info, instmap,
 				     list(case), uniq_info).
-:- mode unique_modes__check_switch(in, in, out, out) is det.
+:- mode unique_modes__check_switch(in, in, in, out, out) is det.
 
-unique_modes__check_switch([], UniqModesInfo, [], UniqModesInfo).
+	% process each of the cases in turn, making sure to restore
+	% the original instmap before processing the next one
+
+unique_modes__check_switch([], UniqModesInfo, _, [], UniqModesInfo).
 unique_modes__check_switch([case(Cons, Goal0) | Cases0], UniqModesInfo0,
-		[case(Cons, Goal) | Cases], UniqModesInfo) :-
+		InstMap0, [case(Cons, Goal) | Cases], UniqModesInfo) :-
 	unique_modes__check_goal(Goal0, UniqModesInfo0, Goal, UniqModesInfo1),
-	unique_modes__check_switch(Cases0, UniqModesInfo1,
+	uniq_info_set_instmap(UniqModesInfo1, InstMap0, UniqModesInfo2),
+	unique_modes__check_switch(Cases0, UniqModesInfo2, InstMap0,
 			Cases, UniqModesInfo).
 
 %-----------------------------------------------------------------------------%
