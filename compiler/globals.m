@@ -201,7 +201,6 @@
 
 :- pred globals__io_lookup_bool_option(option, bool, io__state, io__state).
 :- mode globals__io_lookup_bool_option(in, out, di, uo) is det.
-:- mode globals__io_lookup_bool_option(in, in, di, uo) is semidet. % implied
 
 :- pred globals__io_lookup_int_option(option::in, int::out,
 	io__state::di, io__state::uo) is det.
