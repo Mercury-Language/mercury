@@ -2118,7 +2118,7 @@ AC_TRY_LINK([
 		if (unix_socket) {
 		
 			addr_family = AF_UNIX;
-			memset(&unix_address, 0, sizeof(unix_address));
+			(memset)(&unix_address, 0, sizeof(unix_address));
 			unix_address.sun_family = AF_UNIX;
 			strcpy(unix_address.sun_path, unix_socket);
 			addr = (struct sockaddr *) &unix_address;
@@ -2141,7 +2141,7 @@ AC_TRY_LINK([
 			{
 				fatal_error("MERCURY_DEBUGGER_INET_SOCKET invalid");
 			}
-			host_addr = inet_network(hostname);
+			host_addr = inet_addr(hostname);
 			if (host_addr == -1) {
 				fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
 					"invalid address");
