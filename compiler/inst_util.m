@@ -256,41 +256,64 @@ abstractly_unify_inst_3(live, bound(Uniq, List), abstract_inst(_,_), Real, M,
 	bound_inst_list_is_ground(List, M).
 ***/
 
-abstractly_unify_inst_3(live, ground(UniqX, yes(PredInst)), any(UniqY), Real, M,
-				ground(Uniq, yes(PredInst)), semidet, M) :-
+abstractly_unify_inst_3(live, ground(UniqX, higher_order(PredInst)),
+		any(UniqY), Real, M, ground(Uniq, higher_order(PredInst)),
+		semidet, M) :-
 	Real = fake_unify,
 	unify_uniq(live, Real, det, UniqX, UniqY, Uniq).
 
-abstractly_unify_inst_3(live, ground(Uniq0, yes(PredInst)), free, Real, M,
-				ground(Uniq, yes(PredInst)), det, M) :-
+abstractly_unify_inst_3(live, ground(Uniq0, higher_order(PredInst)), free,
+		Real, M, ground(Uniq, higher_order(PredInst)), det, M) :-
 	unify_uniq(live, Real, det, unique, Uniq0, Uniq).
 
-abstractly_unify_inst_3(live, ground(UniqX, yes(_)), bound(UniqY, BoundInsts0),
-		Real, M0, bound(Uniq, BoundInsts), Det, M) :-
+abstractly_unify_inst_3(live, ground(UniqX, higher_order(_)),
+		bound(UniqY, BoundInsts0), Real, M0, bound(Uniq, BoundInsts),
+		Det, M) :-
 	% check `Real = fake_unify' ?
 	unify_uniq(live, Real, semidet, UniqX, UniqY, Uniq),
 	make_ground_bound_inst_list(BoundInsts0, live, UniqX, Real, M0,
 			BoundInsts, Det1, M),
 	det_par_conjunction_detism(Det1, semidet, Det).
 
-abstractly_unify_inst_3(live, ground(UniqA, yes(PredInstA)),
-				ground(UniqB, _MaybePredInstB), Real, M,
-				ground(Uniq, PredInst), semidet, M) :-
+abstractly_unify_inst_3(live, ground(UniqA, higher_order(PredInstA)),
+				ground(UniqB, _GroundInstInfoB), Real, M,
+				ground(Uniq, GroundInstInfo), semidet, M) :-
 	% It is an error to unify higher-order preds,
 	% so if Real \= fake_unify, then we must fail.
 	Real = fake_unify,
 	% In theory we should choose take the union of the
-	% information specified by PredInstA and _MaybePredInstB.
+	% information specified by PredInstA and _GroundInstInfoB.
 	% However, since our data representation provides no
 	% way of doing that, and since this will only happen
 	% for fake_unifys, for which it shouldn't make any difference,
 	% we just choose the information specified by PredInstA.
-	PredInst = yes(PredInstA),
+	GroundInstInfo = higher_order(PredInstA),
 	unify_uniq(live, Real, semidet, UniqA, UniqB, Uniq).
 
-abstractly_unify_inst_3(live, ground(Uniq, no), Inst0, Real, M0,
+abstractly_unify_inst_3(live, ground(Uniq, none), Inst0, Real, M0,
 				Inst, Det, M) :-
 	make_ground_inst(Inst0, live, Uniq, Real, M0, Inst, Det, M).
+
+abstractly_unify_inst_3(live, ground(UniqX, constrained_inst_var(Var)),
+		any(UniqY), Real, M, ground(Uniq, constrained_inst_var(Var)),
+		semidet, M) :-
+	unify_uniq(live, Real, det, UniqX, UniqY, Uniq).
+
+abstractly_unify_inst_3(live, ground(Uniq0, constrained_inst_var(Var)), free,
+		Real, M, ground(Uniq, constrained_inst_var(Var)), det, M) :-
+	unify_uniq(live, Real, det, unique, Uniq0, Uniq).
+
+abstractly_unify_inst_3(live, ground(UniqX, constrained_inst_var(_)),
+		bound(UniqY, BoundInsts0), Real, M0, bound(Uniq, BoundInsts),
+		Det, M) :-
+	unify_uniq(live, Real, semidet, UniqX, UniqY, Uniq),
+	make_ground_bound_inst_list(BoundInsts0, live, UniqX, Real, M0,
+			BoundInsts, Det1, M),
+	det_par_conjunction_detism(Det1, semidet, Det).
+
+abstractly_unify_inst_3(live, ground(UniqA, constrained_inst_var(_V)),
+		ground(UniqB, GII), Real, M, ground(Uniq, GII), semidet, M) :-
+	unify_uniq(live, Real, semidet, UniqA, UniqB, Uniq).
 
 % abstractly_unify_inst_3(live, abstract_inst(_,_), free,       _, _, _, _, _)
 %       :- fail.
@@ -358,31 +381,55 @@ abstractly_unify_inst_3(dead, bound(Uniq, List), abstract_inst(N,As),
 	).
 *****/
 
-abstractly_unify_inst_3(dead, ground(UniqX, yes(PredInst)), any(UniqY), Real, M,
-				ground(Uniq, yes(PredInst)), semidet, M) :-
+abstractly_unify_inst_3(dead, ground(UniqX, higher_order(PredInst)),
+		any(UniqY), Real, M, ground(Uniq, higher_order(PredInst)),
+		semidet, M) :-
 	allow_unify_bound_any(Real),
 	unify_uniq(dead, Real, semidet, UniqX, UniqY, Uniq).
 
-abstractly_unify_inst_3(dead, ground(Uniq, yes(PredInst)), free, _Real, M,
-				ground(Uniq, yes(PredInst)), det, M).
+abstractly_unify_inst_3(dead, ground(Uniq, higher_order(PredInst)), free,
+		_Real, M, ground(Uniq, higher_order(PredInst)), det, M).
 
-abstractly_unify_inst_3(dead, ground(UniqA, yes(_)), bound(UniqB, BoundInsts0),
-			Real, M0, bound(Uniq, BoundInsts), Det, M) :-
+abstractly_unify_inst_3(dead, ground(UniqA, higher_order(_)),
+		bound(UniqB, BoundInsts0), Real, M0, bound(Uniq, BoundInsts),
+		Det, M) :-
 	unify_uniq(dead, Real, semidet, UniqA, UniqB, Uniq),
 	make_ground_bound_inst_list(BoundInsts0, dead, UniqA, Real, M0,
 					BoundInsts, Det1, M),
 	det_par_conjunction_detism(Det1, semidet, Det).
 
-abstractly_unify_inst_3(dead, ground(UniqA, yes(PredInstA)),
-				ground(UniqB, _MaybePredInstB), Real, M,
-				ground(Uniq, PredInst), det, M) :-
+abstractly_unify_inst_3(dead, ground(UniqA, higher_order(PredInstA)),
+				ground(UniqB, _GroundInstInfoB), Real, M,
+				ground(Uniq, GroundInstInfo), det, M) :-
 	Real = fake_unify,
-	PredInst = yes(PredInstA),
+	GroundInstInfo = higher_order(PredInstA),
 	unify_uniq(dead, Real, det, UniqA, UniqB, Uniq).
 
-abstractly_unify_inst_3(dead, ground(Uniq, no), Inst0, Real, M0,
+abstractly_unify_inst_3(dead, ground(Uniq, none), Inst0, Real, M0,
 				Inst, Det, M) :-
 	make_ground_inst(Inst0, dead, Uniq, Real, M0, Inst, Det, M).
+
+abstractly_unify_inst_3(dead, ground(UniqX, constrained_inst_var(Var)),
+		any(UniqY), Real, M, ground(Uniq, constrained_inst_var(Var)),
+		semidet, M) :-
+	allow_unify_bound_any(Real),
+	unify_uniq(dead, Real, semidet, UniqX, UniqY, Uniq).
+
+abstractly_unify_inst_3(dead, ground(Uniq, constrained_inst_var(Var)), free,
+		_Real, M, ground(Uniq, constrained_inst_var(Var)), det, M).
+
+abstractly_unify_inst_3(dead, ground(UniqA, constrained_inst_var(_)),
+		bound(UniqB, BoundInsts0), Real, M0, bound(Uniq, BoundInsts),
+		Det, M) :-
+	unify_uniq(dead, Real, semidet, UniqA, UniqB, Uniq),
+	make_ground_bound_inst_list(BoundInsts0, dead, UniqA, Real, M0,
+					BoundInsts, Det1, M),
+	det_par_conjunction_detism(Det1, semidet, Det).
+
+abstractly_unify_inst_3(dead, ground(UniqA, constrained_inst_var(_Var)),
+				ground(UniqB, GroundInstInfo), Real, M,
+				ground(Uniq, GroundInstInfo), det, M) :-
+	unify_uniq(dead, Real, det, UniqA, UniqB, Uniq).
 
 /***** abstract insts aren't really supported
 abstractly_unify_inst_3(dead, abstract_inst(N,As), bound(List), Real,
@@ -756,10 +803,10 @@ make_ground_inst_list([Inst0 | Insts0], Live, Uniq, Real, ModuleInfo0,
 :- mode make_ground_inst(in, in, in, in, in, out, out, out) is semidet.
 
 make_ground_inst(not_reached, _, _, _, M, not_reached, erroneous, M).
-make_ground_inst(any(Uniq0), IsLive, Uniq1, Real, M, ground(Uniq, no),
+make_ground_inst(any(Uniq0), IsLive, Uniq1, Real, M, ground(Uniq, none),
 		semidet, M) :-
 	unify_uniq(IsLive, Real, semidet, Uniq0, Uniq1, Uniq).
-make_ground_inst(free, IsLive, Uniq0, Real, M, ground(Uniq, no), det, M) :-
+make_ground_inst(free, IsLive, Uniq0, Real, M, ground(Uniq, none), det, M) :-
 	unify_uniq(IsLive, Real, det, unique, Uniq0, Uniq).
 make_ground_inst(free(T), IsLive, Uniq0, Real, M,
 		defined_inst(typed_ground(Uniq, T)), det, M) :-
@@ -770,12 +817,12 @@ make_ground_inst(bound(Uniq0, BoundInsts0), IsLive, Uniq1, Real, M0,
 	make_ground_bound_inst_list(BoundInsts0, IsLive, Uniq1, Real, M0,
 					BoundInsts, Det1, M),
 	det_par_conjunction_detism(Det1, semidet, Det).
-make_ground_inst(ground(Uniq0, _PredInst), IsLive, Uniq1, Real, M,
-		ground(Uniq, no), semidet, M) :-
+make_ground_inst(ground(Uniq0, _GII0), IsLive, Uniq1, Real, M,
+		ground(Uniq, none), semidet, M) :-
 	unify_uniq(IsLive, Real, semidet, Uniq0, Uniq1, Uniq).
 make_ground_inst(inst_var(_), _, _, _, _, _, _, _) :-
 	error("free inst var").
-make_ground_inst(abstract_inst(_,_), _, _, _, M, ground(shared, no),
+make_ground_inst(abstract_inst(_,_), _, _, _, M, ground(shared, none),
 		semidet, M).
 make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, ModuleInfo0,
 			Inst, Det, ModuleInfo) :-
@@ -1335,31 +1382,36 @@ inst_merge_3(bound(UniqA, ListA), bound(UniqB, ListB), ModuleInfo0,
 	merge_uniq(UniqA, UniqB, Uniq),
 	bound_inst_list_merge(ListA, ListB, ModuleInfo0, List, ModuleInfo).
 inst_merge_3(bound(UniqA, ListA), ground(UniqB, _), ModuleInfo,
-		ground(Uniq, no), ModuleInfo) :-
+		ground(Uniq, none), ModuleInfo) :-
 	merge_uniq_bound(UniqB, UniqA, ListA, ModuleInfo, Uniq),
 	bound_inst_list_is_ground(ListA, ModuleInfo).
 inst_merge_3(ground(UniqA, _), bound(UniqB, ListB), ModuleInfo,
-		ground(Uniq, no), ModuleInfo) :-
+		ground(Uniq, none), ModuleInfo) :-
 	merge_uniq_bound(UniqA, UniqB, ListB, ModuleInfo, Uniq),
 	bound_inst_list_is_ground(ListB, ModuleInfo).
-inst_merge_3(ground(UniqA, MaybePredA), ground(UniqB, MaybePredB), ModuleInfo,
-		ground(Uniq, MaybePred), ModuleInfo) :-
+inst_merge_3(ground(UniqA, GroundInstInfoA), ground(UniqB, GroundInstInfoB),
+		ModuleInfo, ground(Uniq, GroundInstInfo), ModuleInfo) :-
 	(
-		MaybePredA = yes(PredA),
-		MaybePredB = yes(PredB)
+		GroundInstInfoA = higher_order(PredA),
+		GroundInstInfoB = higher_order(PredB)
 	->
 		% if they specify matching pred insts, but one is more
 		% precise (specifies more info) than the other,
 		% then we want to choose the least precise one
 		( pred_inst_matches(PredA, PredB, ModuleInfo) ->
-			MaybePred = yes(PredB)
+			GroundInstInfo = higher_order(PredB)
 		; pred_inst_matches(PredB, PredA, ModuleInfo) ->
-			MaybePred = yes(PredA)
+			GroundInstInfo = higher_order(PredA)
 		;
-			MaybePred = no
+			GroundInstInfo = none
 		)
 	;       
-		MaybePred = no
+		GroundInstInfoA = constrained_inst_var(V),
+		GroundInstInfoB = constrained_inst_var(V)
+	->
+		GroundInstInfo = constrained_inst_var(V)
+	;
+		GroundInstInfo = none
 	),
 	merge_uniq(UniqA, UniqB, Uniq).
 inst_merge_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),

@@ -90,7 +90,6 @@ SINGLEMODULE_SOURCES= \
 	typeclass_test_9.m \
 	types.m	\
 	type_spec.m \
-	unbound_inst_var.m \
 	unbound_type_vars.m \
 	undef_lambda_mode.m \
 	undef_mode.m \

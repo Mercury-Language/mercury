@@ -184,8 +184,8 @@
 	% - any possible change in termination behaviour is allowed
 	% 	according to the semantics options.
 	%
-:- pred goal_util__can_reorder_goals(module_info::in, bool::in, instmap::in,
-		hlds_goal::in, instmap::in, hlds_goal::in) is semidet.
+:- pred goal_util__can_reorder_goals(module_info::in, vartypes::in, bool::in,
+	instmap::in, hlds_goal::in, instmap::in, hlds_goal::in) is semidet.
 
 	% goal_util__reordering_maintains_termination(ModuleInfo,
 	%		 FullyStrict, Goal1, Goal2)
@@ -1092,8 +1092,9 @@ goal_util__compute_disjunct_goal_info(Goal1, Goal2, GoalInfo, CombinedInfo) :-
 %-----------------------------------------------------------------------------%
 
 
-goal_util__can_reorder_goals(ModuleInfo, FullyStrict, InstmapBeforeEarlierGoal,
-		EarlierGoal, InstmapBeforeLaterGoal, LaterGoal) :-
+goal_util__can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
+		InstmapBeforeEarlierGoal, EarlierGoal, InstmapBeforeLaterGoal,
+		LaterGoal) :-
 
 	EarlierGoal = _ - EarlierGoalInfo,
 	LaterGoal = _ - LaterGoalInfo,
@@ -1110,7 +1111,7 @@ goal_util__can_reorder_goals(ModuleInfo, FullyStrict, InstmapBeforeEarlierGoal,
 	% on the outputs of the current goal.
 	%
 	\+ goal_depends_on_earlier_goal(LaterGoal, EarlierGoal,
-			InstmapBeforeEarlierGoal, ModuleInfo),
+			InstmapBeforeEarlierGoal, VarTypes, ModuleInfo),
 
 	%
 	% Don't reorder the goals if the later goal changes the 
@@ -1120,7 +1121,7 @@ goal_util__can_reorder_goals(ModuleInfo, FullyStrict, InstmapBeforeEarlierGoal,
 	% full mode analysis in other cases.
 	%
 	\+ goal_depends_on_earlier_goal(EarlierGoal, LaterGoal, 
-			InstmapBeforeLaterGoal, ModuleInfo).
+			InstmapBeforeLaterGoal, VarTypes, ModuleInfo).
 
 
 goal_util__reordering_maintains_termination(ModuleInfo, FullyStrict, 
@@ -1159,17 +1160,17 @@ goal_util__reordering_maintains_termination(ModuleInfo, FullyStrict,
 	%
 	% This code does work on the alias branch.
 	%
-:- pred goal_depends_on_earlier_goal(hlds_goal::in,
-		hlds_goal::in, instmap::in, module_info::in) is semidet.
+:- pred goal_depends_on_earlier_goal(hlds_goal::in, hlds_goal::in, instmap::in,
+		vartypes::in, module_info::in) is semidet.
 
 goal_depends_on_earlier_goal(_ - LaterGoalInfo, _ - EarlierGoalInfo,
-		InstMapBeforeEarlierGoal, ModuleInfo) :-
+		InstMapBeforeEarlierGoal, VarTypes, ModuleInfo) :-
 	goal_info_get_instmap_delta(EarlierGoalInfo, EarlierInstMapDelta),
 	instmap__apply_instmap_delta(InstMapBeforeEarlierGoal,
 			EarlierInstMapDelta, InstMapAfterEarlierGoal),
 
 	instmap_changed_vars(InstMapBeforeEarlierGoal, InstMapAfterEarlierGoal,
-			ModuleInfo, EarlierChangedVars),
+			VarTypes, ModuleInfo, EarlierChangedVars),
 
 	goal_info_get_nonlocals(LaterGoalInfo, LaterGoalNonLocals),
 	set__intersect(EarlierChangedVars, LaterGoalNonLocals, Intersection),

@@ -730,11 +730,8 @@
 % inst_defn/3 defined above
 
 :- type inst_defn	
-	--->	eqv_inst(sym_name, list(inst_param), inst)
-	;	abstract_inst(sym_name, list(inst_param)).
-
-	% probably inst parameters should be variables not terms
-:- type inst_param	==	inst_term.
+	--->	eqv_inst(sym_name, list(inst_var), inst)
+	;	abstract_inst(sym_name, list(inst_var)).
 
 	% An `inst_name' is used as a key for the inst_table.
 	% It is either a user-defined inst `user_inst(Name, Args)',
@@ -795,7 +792,7 @@
 % mode_defn/3 defined above
 
 :- type mode_defn	
-	--->	eqv_mode(sym_name, list(inst_param), mode).
+	--->	eqv_mode(sym_name, list(inst_var), mode).
 
 :- type (mode)		
 	--->	((inst) -> (inst))

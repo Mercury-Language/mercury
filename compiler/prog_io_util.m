@@ -267,7 +267,7 @@ convert_mode(Term, Mode) :-
 		standard_det(DetString, Detism),
 		convert_mode_list(ArgModesTerms, ArgModes),
 		PredInstInfo = pred_inst_info(predicate, ArgModes, Detism),
-		Inst = ground(shared, yes(PredInstInfo)),
+		Inst = ground(shared, higher_order(PredInstInfo)),
 		Mode = (Inst -> Inst)
 	;
 		% Handle higher-order function modes:
@@ -289,7 +289,7 @@ convert_mode(Term, Mode) :-
 		convert_mode(RetModeTerm, RetMode),
 		list__append(ArgModes0, [RetMode], ArgModes),
 		FuncInstInfo = pred_inst_info(function, ArgModes, Detism),
-		Inst = ground(shared, yes(FuncInstInfo)),
+		Inst = ground(shared, higher_order(FuncInstInfo)),
 		Mode = (Inst -> Inst)
 	;
 		parse_qualified_term(Term, Term, "mode definition", R),
@@ -325,15 +325,15 @@ convert_inst(Term, Result) :-
 
 	% `ground' insts
 	; Name = term__atom("ground"), Args0 = [] ->
-		Result = ground(shared, no)
+		Result = ground(shared, none)
 	; Name = term__atom("unique"), Args0 = [] ->
-		Result = ground(unique, no)
+		Result = ground(unique, none)
 	; Name = term__atom("mostly_unique"), Args0 = [] ->
-		Result = ground(mostly_unique, no)
+		Result = ground(mostly_unique, none)
 	; Name = term__atom("clobbered"), Args0 = [] ->
-		Result = ground(clobbered, no)
+		Result = ground(clobbered, none)
 	; Name = term__atom("mostly_clobbered"), Args0 = [] ->
-		Result = ground(mostly_clobbered, no)
+		Result = ground(mostly_clobbered, none)
 	;
 		% The syntax for a higher-order pred inst is
 		%
@@ -349,7 +349,7 @@ convert_inst(Term, Result) :-
 		standard_det(DetString, Detism),
 		convert_mode_list(ArgModesTerm, ArgModes),
 		PredInst = pred_inst_info(predicate, ArgModes, Detism),
-		Result = ground(shared, yes(PredInst))
+		Result = ground(shared, higher_order(PredInst))
 	;
 
 		% The syntax for a higher-order func inst is
@@ -370,7 +370,7 @@ convert_inst(Term, Result) :-
 		convert_mode(RetModeTerm, RetMode),
 		list__append(ArgModes0, [RetMode], ArgModes),
 		FuncInst = pred_inst_info(function, ArgModes, Detism),
-		Result = ground(shared, yes(FuncInst))
+		Result = ground(shared, higher_order(FuncInst))
 
 	% `not_reached' inst
 	; Name = term__atom("not_reached"), Args0 = [] ->

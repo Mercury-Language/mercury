@@ -56,8 +56,9 @@ move_follow_code_in_proc(_PredInfo, ProcInfo0, ProcInfo,
 			Goal2, Varset, VarTypes, _Warnings),
 		proc_info_get_initial_instmap(ProcInfo0,
 			ModuleInfo0, InstMap0),
-		recompute_instmap_delta(no, Goal2, Goal, VarTypes, InstMap0,
-			ModuleInfo0, ModuleInfo)
+		proc_info_inst_varset(ProcInfo0, InstVarSet),
+		recompute_instmap_delta(no, Goal2, Goal, VarTypes, InstVarSet,
+			InstMap0, ModuleInfo0, ModuleInfo)
 	;
 		Goal = Goal0,
 		Varset = Varset0,

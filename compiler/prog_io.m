@@ -1961,8 +1961,9 @@ process_mode(ModuleName, VarSet, Term, Cond, MaybeDet, Result) :-
 
 process_pred_mode(ok(F, As0), PredMode, VarSet0, MaybeDet, Cond, Result) :-
 	(
-		convert_mode_list(As0, As)
+		convert_mode_list(As0, As1)
 	->
+		list__map(constrain_inst_vars_in_mode, As1, As),
 		varset__coerce(VarSet0, VarSet),
 		Result = ok(pred_mode(VarSet, F, As, MaybeDet, Cond))
 	;
@@ -1978,9 +1979,11 @@ process_pred_mode(error(M, T), _, _, _, _, error(M, T)).
 process_func_mode(ok(F, As0), FuncMode, RetMode0, VarSet0, MaybeDet, Cond,
 		Result) :-
 	(
-		convert_mode_list(As0, As)
+		convert_mode_list(As0, As1)
 	->
-		( convert_mode(RetMode0, RetMode) ->
+		list__map(constrain_inst_vars_in_mode, As1, As),
+		( convert_mode(RetMode0, RetMode1) ->
+			constrain_inst_vars_in_mode(RetMode1, RetMode),
 			varset__coerce(VarSet0, VarSet),
 			Result = ok(func_mode(VarSet, F, As, RetMode, MaybeDet,
 					Cond))
@@ -1995,6 +1998,63 @@ process_func_mode(ok(F, As0), FuncMode, RetMode0, VarSet0, MaybeDet, Cond,
 				FuncMode)
 	).
 process_func_mode(error(M, T), _, _, _, _, _, error(M, T)).
+
+%-----------------------------------------------------------------------------%
+
+% Replace all occurrences of inst_var(I) with
+% ground(shared, constrained_inst_var(I)).
+
+:- pred constrain_inst_vars_in_mode(mode, mode).
+:- mode constrain_inst_vars_in_mode(in, out) is det.
+
+constrain_inst_vars_in_mode(I0 -> F0, I -> F) :-
+	constrain_inst_vars_in_inst(I0, I),
+	constrain_inst_vars_in_inst(F0, F).
+constrain_inst_vars_in_mode(user_defined_mode(Name, Args0),
+		user_defined_mode(Name, Args)) :-
+	list__map(constrain_inst_vars_in_inst, Args0, Args).
+
+:- pred constrain_inst_vars_in_inst(inst, inst).
+:- mode constrain_inst_vars_in_inst(in, out) is det.
+
+constrain_inst_vars_in_inst(any(U), any(U)).
+constrain_inst_vars_in_inst(free, free).
+constrain_inst_vars_in_inst(free(T), free(T)).
+constrain_inst_vars_in_inst(bound(U, BIs0), bound(U, BIs)) :-
+	list__map((pred(functor(C, Is0)::in, functor(C, Is)::out) is det :-
+		list__map(constrain_inst_vars_in_inst, Is0, Is)), BIs0, BIs).
+constrain_inst_vars_in_inst(ground(U, none), ground(U, none)).
+constrain_inst_vars_in_inst(ground(U, higher_order(PredInstInfo0)),
+		ground(U, higher_order(PredInstInfo))) :-
+	constrain_inst_vars_in_pred_inst_info(PredInstInfo0, PredInstInfo).
+constrain_inst_vars_in_inst(ground(U, constrained_inst_var(V)),
+		ground(U, constrained_inst_var(V))).
+constrain_inst_vars_in_inst(not_reached, not_reached).
+constrain_inst_vars_in_inst(inst_var(V),
+		ground(shared, constrained_inst_var(V))).
+constrain_inst_vars_in_inst(defined_inst(Name0), defined_inst(Name)) :-
+	constrain_inst_vars_in_inst_name(Name0, Name).
+constrain_inst_vars_in_inst(abstract_inst(N, Is0), abstract_inst(N, Is)) :-
+	list__map(constrain_inst_vars_in_inst, Is0, Is).
+
+:- pred constrain_inst_vars_in_pred_inst_info(pred_inst_info, pred_inst_info).
+:- mode constrain_inst_vars_in_pred_inst_info(in, out) is det.
+
+constrain_inst_vars_in_pred_inst_info(PII0, PII) :-
+	PII0 = pred_inst_info(PredOrFunc, Modes0, Det),
+	list__map(constrain_inst_vars_in_mode, Modes0, Modes),
+	PII = pred_inst_info(PredOrFunc, Modes, Det).
+
+:- pred constrain_inst_vars_in_inst_name(inst_name, inst_name).
+:- mode constrain_inst_vars_in_inst_name(in, out) is det.
+
+constrain_inst_vars_in_inst_name(Name0, Name) :-
+	( Name0 = user_inst(SymName, Args0) ->
+		list__map(constrain_inst_vars_in_inst, Args0, Args),
+		Name = user_inst(SymName, Args)
+	;
+		Name = Name0
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -2052,55 +2112,53 @@ convert_inst_defn(ModuleName, Head, Body, Result) :-
 :- mode convert_inst_defn_2(in, in, in, out) is det.
 
 convert_inst_defn_2(error(M, T), _, _, error(M, T)).
-convert_inst_defn_2(ok(Name, Args), Head, Body, Result) :-
-	% check that all the head args are variables
-	( %%%	some [Arg]
-		(
-			list__member(Arg, Args),
-			Arg \= term__variable(_)
-		)
+convert_inst_defn_2(ok(Name, ArgTerms), Head, Body, Result) :-
+	(
+		% check that all the head args are variables
+		term__var_list_to_term_list(Args, ArgTerms)
 	->
-		Result = error("inst parameters must be variables", Head)
-	;
-	% check that all the head arg variables are distinct
-	%%%	some [Arg2, OtherArgs]
 		(
+			% check that all the head arg variables are distinct
 			list__member(Arg2, Args, [Arg2|OtherArgs]),
 			list__member(Arg2, OtherArgs)
-		)
-	->
-		Result = error("repeated inst parameters in LHS of inst defn",
-				Head)
-	;
-	% check that all the variables in the body occur in the head
-	%%%	some [Var2]
-		(
-			term__contains_var(Body, Var2),
-			\+ term__contains_var_list(Args, Var2)
-		)
-	->
-		Result = error("free inst parameter in RHS of inst definition",
-				Body)
-	;
-	% check that the inst is a valid user-defined inst, i.e. that
-	% it does not have the form of one of the builtin insts
-		\+ (
-			convert_inst(Head, UserInst),
-			UserInst = defined_inst(user_inst(_, _))
-		)
-	->
-		Result = error("attempt to redefine builtin inst", Head)
-	;
-		% should improve the error message here
-
-		( %%% some [ConvertedBody]
-			convert_inst(Body, ConvertedBody)
 		->
-			list__map(term__coerce, Args, InstArgs),
-			Result = ok(eqv_inst(Name, InstArgs, ConvertedBody))
+			Result = error(
+				"repeated inst parameters in LHS of inst defn",
+				Head)
 		;
-			Result = error("syntax error in inst body", Body)
+			% check that all the variables in the body occur
+			% in the head
+			term__contains_var(Body, Var2),
+			\+ list__member(Var2, Args)
+		->
+			Result = error(
+				"free inst parameter in RHS of inst definition",
+				Body)
+		;
+			% check that the inst is a valid user-defined
+			% inst, i.e. that it does not have the form of
+			% one of the builtin insts
+			\+ (
+				convert_inst(Head, UserInst),
+				UserInst = defined_inst(user_inst(_, _))
+			)
+		->
+			Result = error("attempt to redefine builtin inst", Head)
+		;
+			% should improve the error message here
+			(
+				convert_inst(Body, ConvertedBody)
+			->
+				list__map(term__coerce_var, Args, InstArgs),
+				Result = ok(eqv_inst(Name, InstArgs,
+					ConvertedBody))
+			;
+				Result = error("syntax error in inst body",
+					Body)
+			)
 		)
+	;
+		Result = error("inst parameters must be variables", Head)
 	).
 
 :- pred convert_abstract_inst_defn(module_name, term, maybe1(inst_defn)).
@@ -2113,29 +2171,25 @@ convert_abstract_inst_defn(ModuleName, Head, Result) :-
 :- pred convert_abstract_inst_defn_2(maybe_functor, term, maybe1(inst_defn)).
 :- mode convert_abstract_inst_defn_2(in, in, out) is det.
 convert_abstract_inst_defn_2(error(M, T), _, error(M, T)).
-convert_abstract_inst_defn_2(ok(Name, Args), Head, Result) :-
-	% check that all the head args are variables
-	( %%%	some [Arg]
-		(
-			list__member(Arg, Args),
-			Arg \= term__variable(_)
-		)
+convert_abstract_inst_defn_2(ok(Name, ArgTerms), Head, Result) :-
+	(
+		% check that all the head args are variables
+		term__var_list_to_term_list(Args, ArgTerms)
 	->
-		Result = error("inst parameters must be variables", Head)
-	;
-	% check that all the head arg variables are distinct
-	%%%	some [Arg2, OtherArgs]
 		(
+			% check that all the head arg variables are distinct
 			list__member(Arg2, Args, [Arg2|OtherArgs]),
 			list__member(Arg2, OtherArgs)
-		)
-	->
-		Result = error(
+		->
+			Result = error(
 			"repeated inst parameters in abstract inst definition",
 				Head)
+		;
+			list__map(term__coerce_var, Args, InstArgs),
+			Result = ok(abstract_inst(Name, InstArgs))
+		)
 	;
-		list__map(term__coerce, Args, InstArgs),
-		Result = ok(abstract_inst(Name, InstArgs))
+		Result = error("inst parameters must be variables", Head)
 	).
 
 :- pred make_inst_defn(varset, condition, inst_defn, item).
@@ -2197,48 +2251,46 @@ convert_mode_defn(ModuleName, Head, Body, Result) :-
 :- pred convert_mode_defn_2(maybe_functor, term, term, maybe1(mode_defn)).
 :- mode convert_mode_defn_2(in, in, in, out) is det.
 convert_mode_defn_2(error(M, T), _, _, error(M, T)).
-convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
-	% check that all the head args are variables
-	( %%% some [Arg]
-		(
-			list__member(Arg, Args),
-			Arg \= term__variable(_)
-		)
+convert_mode_defn_2(ok(Name, ArgTerms), Head, Body, Result) :-
+	(
+		% check that all the head args are variables
+		term__var_list_to_term_list(Args, ArgTerms)
 	->
-		Result = error("mode parameters must be variables", Head)
-	;
-	% check that all the head arg variables are distinct
-		%%% some [Arg2, OtherArgs]
 		(
+			% check that all the head arg variables are distinct
 			list__member(Arg2, Args, [Arg2|OtherArgs]),
 			list__member(Arg2, OtherArgs)
-		)
-	->
-		Result = error("repeated parameters in LHS of mode defn",
-				Head)
-	% check that all the variables in the body occur in the head
-	; %%% some [Var2]
-		(
-			term__contains_var(Body, Var2),
-			\+ term__contains_var_list(Args, Var2)
-		)
-	->
-		Result = error("free inst parameter in RHS of mode definition",
-				Body)
-	;
-		% should improve the error message here
-
-		( %%% some [ConvertedBody]
-			convert_mode(Body, ConvertedBody)
 		->
-			list__map(term__coerce, Args, InstArgs),
-			Result = ok(eqv_mode(Name, InstArgs, ConvertedBody))
+			Result = error(
+				"repeated parameters in LHS of mode defn",
+				Head)
+			% check that all the variables in the body occur
+			% in the head
 		;
-			% catch-all error message - we should do
-			% better than this
-			Result = error("syntax error in mode definition body",
+			term__contains_var(Body, Var2),
+			\+ list__member(Var2, Args)
+		->
+			Result = error(
+				"free inst parameter in RHS of mode definition",
+				Body)
+		;
+			% should improve the error message here
+			(
+				convert_mode(Body, ConvertedBody)
+			->
+				list__map(term__coerce_var, Args, InstArgs),
+				Result = ok(eqv_mode(Name, InstArgs,
+					ConvertedBody))
+			;
+				% catch-all error message - we should do
+				% better than this
+				Result = error(
+					"syntax error in mode definition body",
 					Body)
+			)
 		)
+	;
+		Result = error("mode parameters must be variables", Head)
 	).
 
 :- pred convert_type_and_mode_list(list(term), list(type_and_mode)).
@@ -2256,7 +2308,8 @@ convert_type_and_mode(Term, Result) :-
 				_Context)
 	->
 		convert_type(TypeTerm, Type),
-		convert_mode(ModeTerm, Mode),
+		convert_mode(ModeTerm, Mode0),
+		constrain_inst_vars_in_mode(Mode0, Mode),
 		Result = type_and_mode(Type, Mode)
 	;
 		convert_type(Term, Type),

@@ -220,8 +220,8 @@ a variable live if its value will be used later on in the computation.
 	% inst.
 	%
 :- pred modecheck_var_has_inst_list(list(prog_var), list(inst), int,
-		mode_info, mode_info).
-:- mode modecheck_var_has_inst_list(in, in, in, mode_info_di, mode_info_uo)
+		inst_var_sub, mode_info, mode_info).
+:- mode modecheck_var_has_inst_list(in, in, in, out, mode_info_di, mode_info_uo)
 	is det.
 
 :- pred modecheck_set_var_inst(prog_var, inst, mode_info, mode_info).
@@ -320,7 +320,7 @@ a variable live if its value will be used later on in the computation.
 
 :- import_module make_hlds, hlds_data, unique_modes, mode_debug.
 :- import_module mode_info, delay_info, mode_errors, inst_match, instmap.
-:- import_module type_util, mode_util, code_util, unify_proc.
+:- import_module type_util, mode_util, code_util, unify_proc, special_pred.
 :- import_module globals, options, mercury_to_mercury, hlds_out, int, set.
 :- import_module passes_aux, typecheck, module_qual, clause_to_proc.
 :- import_module modecheck_unify, modecheck_call, inst_util, purity.
@@ -611,9 +611,26 @@ modecheck_pred_mode_2(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
 	{ pred_info_procedures(PredInfo0, Procs0) },
 	{ map__keys(Procs0, ProcIds) },
 	( { WhatToCheck = check_modes } ->
-		( { ProcIds = [] } ->
+		(
+			{ ProcIds = [] }
+		->
 			maybe_report_error_no_modes(PredId, PredInfo0,
 					ModuleInfo0),
+			{ NumErrors0 = 0 }
+		;
+			{ special_pred_name_arity(unify, _, PredName,
+				PredArity) },
+			{ pred_info_name(PredInfo0, PredName) },
+			{ pred_info_arity(PredInfo0, PredArity) }
+		->
+			% Don't check for indistinguishable modes in unification
+			% predicates.  The default (in, in) mode must be
+			% semidet, but for single-value types we also want to
+			% create a det mode which will be indistinguishable
+			% from the semidet mode.
+			% (When the type is known, the det mode is called,
+			% but the polymorphic unify needs to be able to call
+			% the semidet mode.)
 			{ NumErrors0 = 0 }
 		;
 			check_for_indistinguishable_modes(ProcIds, PredId,
@@ -891,7 +908,7 @@ maybe_clobber_insts([_|_], [], _) :-
 maybe_clobber_insts([], [], []).
 maybe_clobber_insts([Inst0 | Insts0], [IsLive | IsLives], [Inst | Insts]) :-
 	( IsLive = dead ->
-		Inst = ground(clobbered, no)
+		Inst = ground(clobbered, none)
 	;
 		Inst = Inst0
 	),
@@ -908,7 +925,10 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
 		{ Changed = Changed0 }
 	; { Vars = [Var|Vars1], Insts = [Inst|Insts1],
 	    VarInsts = [VarInst|VarInsts1] } ->
-		( { inst_matches_final(VarInst, Inst, ModuleInfo) } ->
+		=(ModeInfo),
+		{ mode_info_get_var_types(ModeInfo, VarTypes) },
+		{ map__lookup(VarTypes, Var, Type) },
+		( { inst_matches_final(VarInst, Inst, Type, ModuleInfo) } ->
 			{ Changed1 = Changed0 }
 		;
 			{ Changed1 = yes },
@@ -921,10 +941,10 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
 				% XXX this might need to be reconsidered now
 				% we have unique modes
 				( { inst_matches_initial(VarInst, Inst,
-				    ModuleInfo) } ->
+					    Type, ModuleInfo) } ->
 					{ Reason = too_instantiated }
 				; { inst_matches_initial(Inst, VarInst,
-				    ModuleInfo) } ->
+					    Type, ModuleInfo) } ->
 					{ Reason = not_instantiated_enough }
 				;
 					% I don't think this can happen. 
@@ -1798,28 +1818,47 @@ modecheck_var_is_live(VarId, ExpectedIsLive, ModeInfo0, ModeInfo) :-
 	% that the inst of each variable matches the corresponding initial
 	% inst.
 
-modecheck_var_has_inst_list([_|_], [], _) -->
+modecheck_var_has_inst_list(Vars, Insts, ArgNum, Subst) -->
+	{ map__init(Subst0) },
+	modecheck_var_has_inst_list_2(Vars, Insts, ArgNum, Subst0, Subst).
+
+:- pred modecheck_var_has_inst_list_2(list(prog_var), list(inst), int,
+		inst_var_sub, inst_var_sub, mode_info, mode_info).
+:- mode modecheck_var_has_inst_list_2(in, in, in, in, out,
+		mode_info_di, mode_info_uo) is det.
+
+modecheck_var_has_inst_list_2([_|_], [], _, _, _) -->
 	{ error("modecheck_var_has_inst_list: length mismatch") }.
-modecheck_var_has_inst_list([], [_|_], _) -->
+modecheck_var_has_inst_list_2([], [_|_], _, _, _) -->
 	{ error("modecheck_var_has_inst_list: length mismatch") }.
-modecheck_var_has_inst_list([], [], _ArgNum) --> [].
-modecheck_var_has_inst_list([Var|Vars], [Inst|Insts], ArgNum0) -->
+modecheck_var_has_inst_list_2([], [], _ArgNum, Subst, Subst) --> [].
+modecheck_var_has_inst_list_2([Var|Vars], [Inst|Insts], ArgNum0, Subst0, Subst)
+		-->
 	{ ArgNum is ArgNum0 + 1 },
 	mode_info_set_call_arg_context(ArgNum),
-	modecheck_var_has_inst(Var, Inst),
-	modecheck_var_has_inst_list(Vars, Insts, ArgNum).
+	modecheck_var_has_inst(Var, Inst, Subst0, Subst1),
+	modecheck_var_has_inst_list_2(Vars, Insts, ArgNum, Subst1, Subst).
 
-:- pred modecheck_var_has_inst(prog_var, inst, mode_info, mode_info).
-:- mode modecheck_var_has_inst(in, in, mode_info_di, mode_info_uo) is det.
+:- pred modecheck_var_has_inst(prog_var, inst, inst_var_sub, inst_var_sub,
+		mode_info, mode_info).
+:- mode modecheck_var_has_inst(in, in, in, out, mode_info_di, mode_info_uo)
+		is det.
 
-modecheck_var_has_inst(VarId, Inst, ModeInfo0, ModeInfo) :-
+modecheck_var_has_inst(VarId, Inst, Subst0, Subst, ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap),
 	instmap__lookup_var(InstMap, VarId, VarInst),
+	mode_info_get_var_types(ModeInfo0, VarTypes),
+	map__lookup(VarTypes, VarId, Type),
 
-	mode_info_get_module_info(ModeInfo0, ModuleInfo),
-	( inst_matches_initial(VarInst, Inst, ModuleInfo) ->
-		ModeInfo = ModeInfo0
+	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+	(
+		inst_matches_initial(VarInst, Inst, Type, ModuleInfo0,
+			ModuleInfo, Subst0, Subst1)
+	->
+		Subst = Subst1,
+		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo)
 	;
+		Subst = Subst0,
 		set__singleton_set(WaitingVars, VarId),
 		mode_info_error(WaitingVars,
 			mode_error_var_has_inst(VarId, VarInst, Inst),
@@ -1919,7 +1958,9 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo00, ModeInfo) :-
 			% If we haven't added any information and
 			% we haven't bound any part of the var, then
 			% the only thing we can have done is lose uniqueness.
-			inst_matches_initial(Inst0, Inst, ModuleInfo)
+			mode_info_get_var_types(ModeInfo1, VarTypes),
+			map__lookup(VarTypes, Var0, Type),
+			inst_matches_initial(Inst0, Inst, Type, ModuleInfo)
 		->
 			instmap__set(InstMap0, Var0, Inst, InstMap),
 			mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo3)
@@ -1928,7 +1969,9 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo00, ModeInfo) :-
 			% lost some uniqueness, or bound part of the var.
 			% The call to inst_matches_binding will succeed
 			% only if we haven't bound any part of the var.
-			inst_matches_binding(Inst, Inst0, ModuleInfo)
+			mode_info_get_var_types(ModeInfo1, VarTypes),
+			map__lookup(VarTypes, Var0, Type),
+			inst_matches_binding(Inst, Inst0, Type, ModuleInfo)
 		->
 			% We've just added some information
 			% or lost some uniqueness.
@@ -1987,12 +2030,15 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var,
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	inst_expand(ModuleInfo0, InitialInst0, InitialInst),
 	inst_expand(ModuleInfo0, VarInst0, VarInst1),
+
+	mode_info_get_var_types(ModeInfo0, VarTypes0),
+	map__lookup(VarTypes0, Var0, VarType),
 	(
 		% If the initial inst of the variable matches_final
 		% the initial inst specified in the pred's mode declaration,
 		% then it's not a call to an implied mode, it's an exact
 		% match with a genuine mode.
-		inst_matches_final(VarInst1, InitialInst, ModuleInfo0)
+		inst_matches_final(VarInst1, InitialInst, VarType, ModuleInfo0)
 	->
 		Var = Var0,
 		ExtraGoals = ExtraGoals0,
@@ -2018,9 +2064,6 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var,
 			% where <mod>:<type> is the type of the variable.
 			% XXX We ought to use a more elegant method
 			% XXX than hard-coding the name `<foo>_init_any'.
-
-			mode_info_get_var_types(ModeInfo0, VarTypes0),
-			map__lookup(VarTypes0, Var, VarType),
 
 			mode_info_get_context(ModeInfo0, Context),
 			mode_info_get_mode_context(ModeInfo0, ModeContext),
@@ -2080,9 +2123,7 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var,
 
 			% Introduce a new variable
 			mode_info_get_varset(ModeInfo0, VarSet0),
-			mode_info_get_var_types(ModeInfo0, VarTypes0),
 			varset__new_var(VarSet0, Var, VarSet),
-			map__lookup(VarTypes0, Var0, VarType),
 			map__set(VarTypes0, Var, VarType, VarTypes),
 			mode_info_set_varset(VarSet, ModeInfo0, ModeInfo1),
 			mode_info_set_var_types(VarTypes, ModeInfo1, ModeInfo),
@@ -2233,11 +2274,11 @@ check_mode_of_main([Di, Uo], ModuleInfo) :-
 	% manual specifies, rather than looking for a particular
 	% abstract property.
 	%
-	inst_expand(ModuleInfo, DiInitialInst, ground(unique, no)),
-	inst_expand(ModuleInfo, DiFinalInst, ground(clobbered, no)),
+	inst_expand(ModuleInfo, DiInitialInst, ground(unique, none)),
+	inst_expand(ModuleInfo, DiFinalInst, ground(clobbered, none)),
 	inst_expand(ModuleInfo, UoInitialInst, Free),
 	( Free = free ; Free = free(_Type) ),
-	inst_expand(ModuleInfo, UoFinalInst, ground(unique, no)).
+	inst_expand(ModuleInfo, UoFinalInst, ground(unique, none)).
 
 :- pred report_eval_method_requires_ground_args(proc_info,
 		module_info, module_info, io__state, io__state).

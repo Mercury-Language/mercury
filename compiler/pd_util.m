@@ -151,15 +151,16 @@ pd_util__simplify_goal(Simplifications, Goal0, Goal) -->
 	pd_info_get_module_info(ModuleInfo0),
 	{ module_info_globals(ModuleInfo0, Globals) },
 	pd_info_get_pred_proc_id(proc(PredId, ProcId)),
-	{ det_info_init(ModuleInfo0, PredId, ProcId,
+	{ proc_info_vartypes(ProcInfo0, VarTypes0) },
+	{ det_info_init(ModuleInfo0, VarTypes0, PredId, ProcId,
 		Globals, DetInfo0) },
 	pd_info_get_instmap(InstMap0),
 	pd_info_get_proc_info(ProcInfo0),
 	{ proc_info_varset(ProcInfo0, VarSet0) },
-	{ proc_info_vartypes(ProcInfo0, VarTypes0) },
+	{ proc_info_inst_varset(ProcInfo0, InstVarSet0) },
 	{ proc_info_typeinfo_varmap(ProcInfo0, TVarMap) },
 	{ simplify_info_init(DetInfo0, Simplifications, InstMap0,
-		VarSet0, VarTypes0, TVarMap, SimplifyInfo0) },
+		VarSet0, InstVarSet0, TVarMap, SimplifyInfo0) },
 
 	{ simplify__process_goal(Goal0, Goal, SimplifyInfo0, SimplifyInfo) },
 
@@ -678,8 +679,9 @@ pd_util__recompute_instmap_delta(Goal0, Goal) -->
 	pd_info_get_instmap(InstMap),
 	pd_info_get_proc_info(ProcInfo),
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
-	{ recompute_instmap_delta(yes, Goal0, Goal,
-		VarTypes, InstMap, ModuleInfo0, ModuleInfo) },
+	{ proc_info_inst_varset(ProcInfo, InstVarSet) },
+	{ recompute_instmap_delta(yes, Goal0, Goal, VarTypes, InstVarSet,
+		InstMap, ModuleInfo0, ModuleInfo) },
 	pd_info_set_module_info(ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -796,7 +798,7 @@ bound_inst_list_MSG(Xs, Ys, Expansions, ModuleInfo, Uniq, List, Inst) :-
 			Uniq = unique,
 			inst_is_unique(ModuleInfo, bound(unique, List))
 		),		
-		Inst = ground(Uniq, no)
+		Inst = ground(Uniq, none)
 	).
 
 %-----------------------------------------------------------------------------%

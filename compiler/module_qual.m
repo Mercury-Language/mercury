@@ -750,15 +750,20 @@ qualify_inst(free(_), _, _, _) -->
 qualify_inst(bound(Uniq, BoundInsts0), bound(Uniq, BoundInsts),
 				Info0, Info) -->
 	qualify_bound_inst_list(BoundInsts0, BoundInsts, Info0, Info).
-qualify_inst(ground(Uniq, MaybePredInstInfo0), ground(Uniq, MaybePredInstInfo),
+qualify_inst(ground(Uniq, GroundInstInfo0), ground(Uniq, GroundInstInfo),
 				Info0, Info) -->
 	(
-		{ MaybePredInstInfo0 = yes(pred_inst_info(A, Modes0, Det)) },
+		{ GroundInstInfo0 = higher_order(pred_inst_info(A, Modes0,
+				Det)) },
 		qualify_mode_list(Modes0, Modes, Info0, Info),
-		{ MaybePredInstInfo = yes(pred_inst_info(A, Modes, Det)) }
+		{ GroundInstInfo = higher_order(pred_inst_info(A, Modes, Det)) }
 	;
-		{ MaybePredInstInfo0 = no },
-		{ MaybePredInstInfo = no },
+		{ GroundInstInfo0 = constrained_inst_var(Var) },
+		{ GroundInstInfo = constrained_inst_var(Var) },
+		{ Info = Info0 }
+	;
+		{ GroundInstInfo0 = none },
+		{ GroundInstInfo = none },
 		{ Info = Info0 }
 	).
 qualify_inst(inst_var(Var), inst_var(Var), Info, Info) --> [].

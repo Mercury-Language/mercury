@@ -329,7 +329,7 @@ format_method_name(Method) = StringName :-
 							% arguments.
 		class_constraints,			% Constraints from
 							% class method.
-		list(pair(list(mode), determinism)),	% Modes and 
+		list(modes_and_detism),			% Modes and 
 							% determinisms of the
 							% required procs.
 		error_messages,				% Error messages
@@ -396,7 +396,9 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 				proc_info_argmodes(ProcInfo, Modes),
 				proc_info_interface_determinism(ProcInfo, 
 					Detism),
-				ModesAndDetism = Modes - Detism
+				proc_info_inst_varset(ProcInfo, InstVarSet),
+				ModesAndDetism = modes_and_detism(Modes,
+						InstVarSet, Detism)
 			)),
 		ProcIds, 
 		ArgModes),
@@ -423,6 +425,9 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 
 	InstanceCheckInfo = instance_check_info(InstanceDefn,
 				OrderedMethods, Errors, ModuleInfo, QualInfo).
+
+:- type modes_and_detism
+	--->	modes_and_detism(list(mode), inst_varset, determinism).
 
 :- pred check_instance_pred_procs(class_id, list(tvar), sym_name, pred_markers,
 	hlds_instance_defn, hlds_instance_defn, 
@@ -683,9 +688,9 @@ produce_auxiliary_procs(ClassVars, Markers0,
 	AddProc = lambda([ModeAndDet::in, NewProcId::out,
 			OldPredInfo::in, NewPredInfo::out] is det,
 	(
-		ModeAndDet = Modes - Det,
-		add_new_proc(OldPredInfo, PredArity, Modes, yes(Modes), no,
-			yes(Det), Context, address_is_taken,
+		ModeAndDet = modes_and_detism(Modes, InstVarSet, Det),
+		add_new_proc(OldPredInfo, InstVarSet, PredArity, Modes,
+			yes(Modes), no, yes(Det), Context, address_is_taken,
 			NewPredInfo, NewProcId)
 	)),
 	list__map_foldl(AddProc, ArgModes, InstanceProcIds, 

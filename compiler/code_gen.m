@@ -307,10 +307,11 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 		proc_info_eval_method(ProcInfo, EvalMethod),
 		proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap0),
 		proc_info_varset(ProcInfo, VarSet),
+		proc_info_vartypes(ProcInfo, VarTypes),
 		ProcLayout = proc_layout_info(EntryLabel, Detism, TotalSlots,
 			MaybeSuccipSlot, EvalMethod, MaybeTraceCallLabel,
 			MaxTraceReg, Goal, InstMap0, TraceSlotInfo,
-			ForceProcId, VarSet, InternalMap),
+			ForceProcId, VarSet, VarTypes, InternalMap),
 		global_data_add_new_proc_layout(GlobalData0,
 			proc(PredId, ProcId), ProcLayout, GlobalData1)
 	;

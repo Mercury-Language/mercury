@@ -657,12 +657,14 @@ mercury_write_module_spec_list([ModuleName | ModuleNames]) -->
 
 mercury_output_inst_defn(VarSet, abstract_inst(Name, Args), Context) -->
 	io__write_string(":- inst ("),
-	{ construct_qualified_term(Name, Args, Context, InstTerm) },
+	{ list__map(pred(V::in, variable(V)::out) is det, Args, ArgTerms) },
+	{ construct_qualified_term(Name, ArgTerms, Context, InstTerm) },
 	mercury_output_term(InstTerm, VarSet, no),
 	io__write_string(").\n").
 mercury_output_inst_defn(VarSet, eqv_inst(Name, Args, Body), Context) -->
 	io__write_string(":- inst ("),
-	{ construct_qualified_term(Name, Args, Context, InstTerm) },
+	{ list__map(pred(V::in, variable(V)::out) is det, Args, ArgTerms) },
+	{ construct_qualified_term(Name, ArgTerms, Context, InstTerm) },
 	mercury_output_term(InstTerm, VarSet, no),
 	io__write_string(") = "),
 	mercury_output_inst(Body, VarSet),
@@ -700,12 +702,12 @@ mercury_output_structured_inst(bound(Uniq, BoundInsts), Indent, VarSet) -->
 	mercury_output_structured_bound_insts(BoundInsts, Indent, VarSet),
 	mercury_output_tabs(Indent),
 	io__write_string(")\n").
-mercury_output_structured_inst(ground(Uniq, MaybePredInfo), Indent, VarSet)
+mercury_output_structured_inst(ground(Uniq, GroundInstInfo), Indent, VarSet)
 		-->
 	mercury_output_tabs(Indent),
 	(	
-		{ MaybePredInfo = yes(pred_inst_info(PredOrFunc, Modes, Det)) }
-	->
+		{ GroundInstInfo = higher_order(pred_inst_info(PredOrFunc,
+				Modes, Det)) },
 		( { Uniq = shared } ->
 			[]
 		;
@@ -742,6 +744,12 @@ mercury_output_structured_inst(ground(Uniq, MaybePredInfo), Indent, VarSet)
 			io__write_string(")\n")
 		)
 	;
+		{ GroundInstInfo = constrained_inst_var(Var) },
+		mercury_output_tabs(Indent),
+		mercury_output_var(Var, VarSet, no),
+		io__write_string("\n")
+	;
+		{ GroundInstInfo = none},
 		mercury_output_uniqueness(Uniq, "ground"),
 		io__write_string("\n")
 	).
@@ -769,10 +777,10 @@ mercury_output_inst(bound(Uniq, BoundInsts), VarSet) -->
 	io__write_string("("),
 	mercury_output_bound_insts(BoundInsts, VarSet),
 	io__write_string(")").
-mercury_output_inst(ground(Uniq, MaybePredInfo), VarSet) -->
+mercury_output_inst(ground(Uniq, GroundInstInfo), VarSet) -->
 	(	
-		{ MaybePredInfo = yes(pred_inst_info(PredOrFunc, Modes, Det)) }
-	->
+		{ GroundInstInfo = higher_order(pred_inst_info(PredOrFunc,
+				Modes, Det)) },
 		( { Uniq = shared } ->
 			[]
 		;
@@ -810,6 +818,10 @@ mercury_output_inst(ground(Uniq, MaybePredInfo), VarSet) -->
 			io__write_string(")")
 		)
 	;
+		{ GroundInstInfo = constrained_inst_var(Var) },
+		mercury_output_var(Var, VarSet, no)
+	;
+		{ GroundInstInfo = none },
 		mercury_output_uniqueness(Uniq, "ground")
 	).
 mercury_output_inst(inst_var(Var), VarSet) -->
@@ -1162,7 +1174,8 @@ mercury_output_cons_id(tabling_pointer_const(_, _), _) -->
 
 mercury_output_mode_defn(VarSet, eqv_mode(Name, Args, Mode), Context) -->
 	io__write_string(":- mode ("),
-	{ construct_qualified_term(Name, Args, Context, ModeTerm) },
+	{ list__map(pred(V::in, variable(V)::out) is det, Args, ArgTerms) },
+	{ construct_qualified_term(Name, ArgTerms, Context, ModeTerm) },
 	mercury_output_term(ModeTerm, VarSet, no),
 	io__write_string(") :: "),
 	mercury_output_mode(Mode, VarSet),
@@ -1199,8 +1212,8 @@ mercury_output_mode((InstA -> InstB), VarSet) -->
 	    % check for higher-order pred or func modes, and output them
 	    % in a nice format
 	    %
-	    { InstA = ground(_Uniq,
-			yes(pred_inst_info(_PredOrFunc, _Modes, _Det))) },
+	    { InstA = ground(_Uniq, higher_order(pred_inst_info(_PredOrFunc,
+				_Modes, _Det))) },
 	    { InstB = InstA }
 	->
 	    mercury_output_inst(InstA, VarSet)

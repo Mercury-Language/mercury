@@ -356,7 +356,7 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes,
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	instmap__lookup_var(InstMap0, X, InstOfX),
-	InstOfY = ground(unique, yes(LambdaPredInfo)),
+	InstOfY = ground(unique, higher_order(LambdaPredInfo)),
 	LambdaPredInfo = pred_inst_info(PredOrFunc, LambdaModes, LambdaDet),
 	(
 		abstractly_unify_inst(dead, InstOfX, InstOfY, real_unify,
@@ -878,13 +878,15 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
 		ModeInfo2 = ModeInfo0
 	;
 		list__length(UnifyTypeInfoVars, NumTypeInfoVars),
-		list__duplicate(NumTypeInfoVars, ground(shared, no),
+		list__duplicate(NumTypeInfoVars, ground(shared, none),
 			ExpectedInsts),
 		mode_info_set_call_context(unify(UnifyContext),
 			ModeInfo0, ModeInfo1),
 		InitialArgNum = 0,
 		modecheck_var_has_inst_list(UnifyTypeInfoVars, ExpectedInsts,
-			InitialArgNum, ModeInfo1, ModeInfo2)
+			InitialArgNum, _InstVarSub, ModeInfo1, ModeInfo2)
+			% We can ignore _InstVarSub since type_info variables
+			% should not have variable insts.
 	),
 
 	mode_info_get_module_info(ModeInfo2, ModuleInfo2),
@@ -958,7 +960,8 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
 		type_to_type_id(Type, TypeId, _)
 	->
 		mode_info_get_context(ModeInfo2, Context),
-		unify_proc__request_unify(TypeId - UniMode,
+		mode_info_get_instvarset(ModeInfo2, InstVarSet),
+		unify_proc__request_unify(TypeId - UniMode, InstVarSet,
 			Det, Context, ModuleInfo2, ModuleInfo),
 		mode_info_set_module_info(ModeInfo2, ModuleInfo,
 			ModeInfo)
@@ -1169,8 +1172,8 @@ check_type_info_args_are_ground([ArgVar | ArgVars], VarTypes, UnifyContext)
 	->
 		mode_info_set_call_context(unify(UnifyContext)),
 		{ InitialArgNum = 0 },
-		modecheck_var_has_inst_list([ArgVar], [ground(shared, no)],
-			InitialArgNum),
+		modecheck_var_has_inst_list([ArgVar], [ground(shared, none)],
+			InitialArgNum, _InstVarSub),
 		check_type_info_args_are_ground(ArgVars, VarTypes,
 			UnifyContext)
 	;
@@ -1185,7 +1188,7 @@ check_type_info_args_are_ground([ArgVar | ArgVars], VarTypes, UnifyContext)
 bind_args(not_reached, _) -->
 	{ instmap__init_unreachable(InstMap) },
 	mode_info_set_instmap(InstMap).
-bind_args(ground(Uniq, no), Args) -->
+bind_args(ground(Uniq, none), Args) -->
 	ground_args(Uniq, Args).
 bind_args(bound(_Uniq, List), Args) -->
 	( { List = [] } ->
@@ -1210,7 +1213,7 @@ bind_args_2([Arg | Args], [Inst | Insts]) -->
 
 ground_args(_Uniq, []) --> [].
 ground_args(Uniq, [Arg | Args]) -->
-	modecheck_set_var_inst(Arg, ground(Uniq, no)),
+	modecheck_set_var_inst(Arg, ground(Uniq, none)),
 	ground_args(Uniq, Args).
 
 %-----------------------------------------------------------------------------%
@@ -1228,8 +1231,8 @@ get_mode_of_args(not_reached, ArgInsts, ArgModes) :-
 	mode_set_args(ArgInsts, not_reached, ArgModes).
 get_mode_of_args(any(Uniq), ArgInsts, ArgModes) :-
 	mode_set_args(ArgInsts, any(Uniq), ArgModes).
-get_mode_of_args(ground(Uniq, no), ArgInsts, ArgModes) :-
-	mode_set_args(ArgInsts, ground(Uniq, no), ArgModes).
+get_mode_of_args(ground(Uniq, none), ArgInsts, ArgModes) :-
+	mode_set_args(ArgInsts, ground(Uniq, none), ArgModes).
 get_mode_of_args(bound(_Uniq, List), ArgInstsA, ArgModes) :-
 	( List = [] ->
 		% the code is unreachable

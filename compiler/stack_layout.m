@@ -594,7 +594,7 @@ stack_layout__construct_layouts(ProcLayoutInfo) -->
 	{ ProcLayoutInfo = proc_layout_info(EntryLabel, Detism, StackSlots,
 		SuccipLoc, EvalMethod, MaybeCallLabel, MaxTraceReg,
 		Goal, InstMap, TraceSlotInfo, ForceProcIdLayout,
-		VarSet, InternalMap) },
+		VarSet, VarTypes, InternalMap) },
 	{ map__to_assoc_list(InternalMap, Internals) },
 	stack_layout__set_cur_proc_named_vars(map__init),
 	list__foldl(stack_layout__construct_internal_layout(EntryLabel),
@@ -607,7 +607,7 @@ stack_layout__construct_layouts(ProcLayoutInfo) -->
 	stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 		SuccipLoc, EvalMethod, MaybeCallLabel, MaxTraceReg,
 		Goal, InstMap, TraceSlotInfo, ForceProcIdLayout,
-		VarSet, NamedVars).
+		VarSet, VarTypes, NamedVars).
 
 %---------------------------------------------------------------------------%
 
@@ -702,15 +702,15 @@ stack_layout__context_is_valid(Context) :-
 	% Construct a procedure-specific layout.
 
 :- pred stack_layout__construct_proc_layout(label::in, determinism::in,
-	int::in, maybe(int)::in, eval_method::in, maybe(label)::in,
-	int::in, hlds_goal::in, instmap::in, trace_slot_info::in, bool::in,
-	prog_varset::in, map(int, string)::in,
+	int::in, maybe(int)::in, eval_method::in, maybe(label)::in, int::in,
+	hlds_goal::in, instmap::in, trace_slot_info::in, bool::in,
+	prog_varset::in, vartypes::in, map(int, string)::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
-		MaybeSuccipLoc, EvalMethod, MaybeCallLabel, MaxTraceReg,
-		Goal, InstMap, TraceSlotInfo, ForceProcIdLayout,
-		VarSet, UsedVarNames) -->
+		MaybeSuccipLoc, EvalMethod, MaybeCallLabel, MaxTraceReg, Goal,
+		InstMap, TraceSlotInfo, ForceProcIdLayout, VarSet, VarTypes,
+		UsedVarNames) -->
 	{
 		MaybeSuccipLoc = yes(Location0)
 	->
@@ -772,10 +772,9 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 			ProcLabel) },
 		{ stack_layout__construct_procid_rvals(ProcLabel, IdRvals,
 			IdArgTypes) },
-		stack_layout__construct_trace_layout(EvalMethod,
-			MaybeCallLabel, MaxTraceReg, Goal, InstMap,
-			TraceSlotInfo, VarSet, UsedVarNames,
-			TraceRvals, TraceArgTypes),
+		stack_layout__construct_trace_layout(EvalMethod, MaybeCallLabel,
+			MaxTraceReg, Goal, InstMap, TraceSlotInfo, VarSet,
+			VarTypes, UsedVarNames, TraceRvals, TraceArgTypes),
 		{ list__append(IdRvals, TraceRvals, IdTraceRvals) },
 		{ IdTraceArgTypes = initial(IdArgTypes, TraceArgTypes) }
 	;
@@ -797,14 +796,14 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 		Rvals, ArgTypes, []) },
 	stack_layout__add_proc_layout_data(CData, CDataName, EntryLabel).
 
-:- pred stack_layout__construct_trace_layout(eval_method::in,
-	maybe(label)::in, int::in, hlds_goal::in, instmap::in,
-	trace_slot_info::in, prog_varset::in, map(int, string)::in,
+:- pred stack_layout__construct_trace_layout(eval_method::in, maybe(label)::in,
+	int::in, hlds_goal::in, instmap::in, trace_slot_info::in,
+	prog_varset::in, vartypes::in, map(int, string)::in,
 	list(maybe(rval))::out, create_arg_types::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_trace_layout(EvalMethod, MaybeCallLabel, MaxTraceReg,
-		Goal, InstMap, TraceSlotInfo, VarSet, UsedVarNameMap,
+		Goal, InstMap, TraceSlotInfo, VarSet, VarTypes, UsedVarNameMap,
 		Rvals, ArgTypes) -->
 	stack_layout__get_trace_stack_layout(TraceLayout),
 	( { TraceLayout = yes } ->
@@ -820,8 +819,8 @@ stack_layout__construct_trace_layout(EvalMethod, MaybeCallLabel, MaxTraceReg,
 		;
 			{ BodyReps = yes },
 			stack_layout__get_module_info(ModuleInfo0),
-			{ prog_rep__represent_goal(Goal, InstMap, ModuleInfo0,
-				GoalRep) },
+			{ prog_rep__represent_goal(Goal, InstMap, VarTypes,
+				ModuleInfo0, GoalRep) },
 			{ type_to_univ(GoalRep, GoalRepUniv) },
 			stack_layout__get_cell_counter(CellCounter0),
 			{ static_term__term_to_rval(GoalRepUniv, GoalRepRval,

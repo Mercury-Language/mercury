@@ -196,8 +196,22 @@
 
 	% Work out the types of the arguments of a functor.
 	% Aborts if the functor is existentially typed.
+	% The cons_id is expected to be un-module-qualified.
 :- pred type_util__get_cons_id_arg_types(module_info::in, (type)::in,
 		cons_id::in, list(type)::out) is det.
+
+	% The same as type_util__get_cons_id_arg_types except that it
+	% fails rather than aborting if the functor is existentially
+	% typed.
+	% The cons_id is expected to be un-module-qualified.
+:- pred type_util__get_cons_id_non_existential_arg_types(module_info::in,
+		(type)::in, cons_id::in, list(type)::out) is semidet.
+
+	% The same as type_util__get_cons_id_arg_types except that the
+	% cons_id is output non-deterministically.
+	% The cons_id is not module-qualified.
+:- pred type_util__cons_id_arg_types(module_info::in, (type)::in,
+		cons_id::out, list(type)::out) is nondet.
 
 	% Given a type and a cons_id, look up the definitions of that
 	% type and constructor. Aborts if the cons_id is not user-defined.
@@ -777,7 +791,28 @@ type_util__switch_type_num_functors(ModuleInfo, Type, NumFunctors) :-
 
 %-----------------------------------------------------------------------------%
 
-type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
+type_util__get_cons_id_arg_types(ModuleInfo, Type, ConsId, ArgTypes) :-
+	type_util__get_cons_id_arg_types_2(abort_on_exist_qvar,
+		ModuleInfo, Type, ConsId, ArgTypes).
+
+type_util__get_cons_id_non_existential_arg_types(ModuleInfo, Type, ConsId,
+		ArgTypes) :-
+	type_util__get_cons_id_arg_types_2(fail_on_exist_qvar,
+		ModuleInfo, Type, ConsId, ArgTypes).
+
+:- type exist_qvar_action
+	--->	fail_on_exist_qvar
+	;	abort_on_exist_qvar.
+
+:- pred type_util__get_cons_id_arg_types_2(exist_qvar_action,
+	module_info, (type), cons_id, list(type)).
+:- mode type_util__get_cons_id_arg_types_2(in(bound(fail_on_exist_qvar)),
+		in, in, in, out) is semidet.
+:- mode type_util__get_cons_id_arg_types_2(in(bound(abort_on_exist_qvar)),
+		in, in, in, out) is det.
+
+type_util__get_cons_id_arg_types_2(EQVarAction, ModuleInfo, VarType, ConsId,
+		ArgTypes) :-
 	(
 		% The argument types of a tuple cons_id are the
 		% arguments of the tuple type.
@@ -796,8 +831,17 @@ type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 		term__term_list_to_var_list(TypeDefnParams, TypeDefnVars),
 
 		% XXX handle ExistQVars
-		require(unify(ExistQVars0, []),
-	"type_util__get_cons_id_arg_types: existentially typed cons_id"),
+		( ExistQVars0 = [] ->
+			true
+		; 
+			(
+				EQVarAction = abort_on_exist_qvar,
+				error("type_util__get_cons_id_arg_types: existentially typed cons_id")
+			;
+				EQVarAction = fail_on_exist_qvar,
+				fail
+			)
+		),
 
 		map__from_corresponding_lists(TypeDefnVars, TypeArgs, TSubst),
 		assoc_list__values(Args, ArgTypes0),
@@ -805,6 +849,31 @@ type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 	;
 		ArgTypes = []
 	).
+
+type_util__cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
+	type_to_type_id(VarType, TypeId, TypeArgs),
+	module_info_types(ModuleInfo, Types),
+	map__search(Types, TypeId, TypeDefn),
+	hlds_data__get_type_defn_body(TypeDefn, TypeDefnBody),
+	TypeDefnBody = du_type(_, ConsTags, _, _),
+	map__member(ConsTags, ConsId, _),
+	
+	module_info_ctors(ModuleInfo, Ctors),
+	map__lookup(Ctors, ConsId, ConsDefns),
+	list__member(ConsDefn, ConsDefns),
+	
+	ConsDefn = hlds_cons_defn(ExistQVars0, _, Args, TypeId, _),
+
+	% XXX handle ExistQVars
+	ExistQVars0 = [],
+
+	hlds_data__get_type_defn_tparams(TypeDefn, TypeDefnParams),
+	term__term_list_to_var_list(TypeDefnParams, TypeDefnVars),
+
+	map__from_corresponding_lists(TypeDefnVars, TypeArgs, TSubst),
+	assoc_list__values(Args, ArgTypes0),
+	term__apply_substitution_to_list(ArgTypes0, TSubst, ArgTypes).
+
 
 type_util__is_existq_cons(ModuleInfo, VarType, ConsId) :-
 	type_util__is_existq_cons(ModuleInfo, VarType, ConsId, _). 

@@ -62,18 +62,18 @@
 	% Add a new request for a unification procedure to the
 	% proc_requests table.
 
-:- pred unify_proc__request_unify(unify_proc_id, determinism, prog_context,
-				module_info, module_info).
-:- mode unify_proc__request_unify(in, in, in, in, out) is det.
+:- pred unify_proc__request_unify(unify_proc_id, inst_varset,
+		determinism, prog_context, module_info, module_info).
+:- mode unify_proc__request_unify(in, in, in, in, in, out) is det.
 
 	% Add a new request for a procedure (not necessarily a unification)
 	% to the request queue.  Return the procedure's newly allocated
 	% proc_id.  (This is used by unique_modes.m.)
 
-:- pred unify_proc__request_proc(pred_id, list(mode), maybe(list(is_live)),
-				maybe(determinism), prog_context,
-				module_info, proc_id, module_info).
-:- mode unify_proc__request_proc(in, in, in, in, in, in, out, out) is det.
+:- pred unify_proc__request_proc(pred_id, list(mode), inst_varset,
+		maybe(list(is_live)), maybe(determinism), prog_context,
+		module_info, proc_id, module_info).
+:- mode unify_proc__request_proc(in, in, in, in, in, in, in, out, out) is det.
 
 	% unify_proc__add_lazily_generated_unify_pred(TypeId,
 	%	UnifyPredId_for_Type, ModuleInfo0, ModuleInfo).
@@ -237,8 +237,8 @@ unify_proc__search_mode_num(ModuleInfo, TypeId, UniMode, Determinism, ProcId) :-
 
 %-----------------------------------------------------------------------------%
 
-unify_proc__request_unify(UnifyId, Determinism, Context, ModuleInfo0,
-		ModuleInfo) :-
+unify_proc__request_unify(UnifyId, InstVarSet, Determinism, Context,
+		ModuleInfo0, ModuleInfo) :-
 	%
 	% check if this unification has already been requested, or
 	% if the proc is hand defined.
@@ -291,7 +291,7 @@ unify_proc__request_unify(UnifyId, Determinism, Context, ModuleInfo0,
 
 		ArgLives = no,  % XXX ArgLives should be part of the UnifyId
 
-		unify_proc__request_proc(PredId, ArgModes, ArgLives,
+		unify_proc__request_proc(PredId, ArgModes, InstVarSet, ArgLives,
 			yes(Determinism), Context, ModuleInfo1,
 			ProcId, ModuleInfo2),
 
@@ -306,8 +306,8 @@ unify_proc__request_unify(UnifyId, Determinism, Context, ModuleInfo0,
 			ModuleInfo)
 	).
 
-unify_proc__request_proc(PredId, ArgModes, ArgLives, MaybeDet, Context,
-		ModuleInfo0, ProcId, ModuleInfo) :-
+unify_proc__request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet,
+		Context, ModuleInfo0, ProcId, ModuleInfo) :-
 	%
 	% create a new proc_info for this procedure
 	%
@@ -315,7 +315,7 @@ unify_proc__request_proc(PredId, ArgModes, ArgLives, MaybeDet, Context,
 	map__lookup(Preds0, PredId, PredInfo0),
 	list__length(ArgModes, Arity),
 	DeclaredArgModes = no,
-	add_new_proc(PredInfo0, Arity, ArgModes, DeclaredArgModes,
+	add_new_proc(PredInfo0, InstVarSet, Arity, ArgModes, DeclaredArgModes,
 		ArgLives, MaybeDet, Context, address_is_not_taken,
 		PredInfo1, ProcId),
 
@@ -1076,11 +1076,11 @@ unify_proc__generate_du_compare_clauses_2(Type, Ctors, Res, X, Y, Context,
 	{ goal_info_init(GoalInfo0) },
 	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
 
-	{ instmap_delta_from_assoc_list([X_Index - ground(shared, no)],
+	{ instmap_delta_from_assoc_list([X_Index - ground(shared, none)],
 		X_InstmapDelta) },
 	unify_proc__build_specific_call(Type, index, [X, X_Index],
 		X_InstmapDelta, det, Context, Call_X_Index),
-	{ instmap_delta_from_assoc_list([Y_Index - ground(shared, no)],
+	{ instmap_delta_from_assoc_list([Y_Index - ground(shared, none)],
 		Y_InstmapDelta) },
 	unify_proc__build_specific_call(Type, index, [Y, Y_Index],
 		Y_InstmapDelta, det, Context, Call_Y_Index),

@@ -474,7 +474,7 @@ post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
 		PredOrFunc, ArgTypes, ClosurePredOrFunc,
 		ClosureArgModes, ClosureDetism),
 
-	Inst = ground(shared, yes(pred_inst_info(ClosurePredOrFunc,
+	Inst = ground(shared, higher_order(pred_inst_info(ClosurePredOrFunc,
 		ClosureArgModes, ClosureDetism))),
 	Modes = [(Inst -> Inst), aditi_di_mode, aditi_uo_mode].
 
@@ -896,7 +896,7 @@ check_aditi_state_modes_2(ModuleInfo, [Type | Types], [Mode | Modes],
 		mode_get_insts(ModuleInfo, Mode, InitialInst, _),
 		% Mode analysis will check the final inst.
 		inst_matches_initial(InitialInst, InitialAditiStateInst,
-			ModuleInfo)
+			Type, ModuleInfo)
 	;
 		check_aditi_state_modes_2(ModuleInfo, Types, Modes,
 			InitialAditiStateInst)

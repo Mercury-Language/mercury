@@ -574,7 +574,7 @@ magic__get_scc_inputs([PredProcId | PredProcIds],
 			OutputMode = (free -> OutputInst)
 		)) },
 	{ list__map(GetOutputMode, InputModes, InputRelModes) },
- 	{ Inst = ground(unique, yes(pred_inst_info(predicate, 
+ 	{ Inst = ground(unique, higher_order(pred_inst_info(predicate, 
 				InputRelModes, nondet))) },
 	{ Mode = (Inst -> Inst) },
 	magic__get_scc_inputs(PredProcIds, Types, Modes).
@@ -703,6 +703,7 @@ magic__adjust_proc_info(EntryPoints, CPredProcId, AditiPredProcId,
 		InterfaceRequired = no
 	},
 
+	{ proc_info_inst_varset(ProcInfo1, InstVarSet) },
 	magic__adjust_args(CPredProcId, AditiPredProcId, InterfaceRequired,
 		Index, MagicTypes, MagicModes, PredInfo0, ProcInfo1,
 		InputArgTypes, InputArgModes, LocalAditiPredProcId),
@@ -714,7 +715,7 @@ magic__adjust_proc_info(EntryPoints, CPredProcId, AditiPredProcId,
 			% for the current procedure.
 		magic__create_magic_pred(CPredProcId, LocalAditiPredProcId,
 			MagicTypes, MagicModes, InputArgTypes, InputArgModes, 
-			Index)
+			InstVarSet, Index)
 	),
 
 	%
@@ -854,6 +855,7 @@ magic__create_interface_proc(Index, CPredProcId, AditiPredProcId,
 	{ proc_info_headvars(LocalProcInfo, HeadVars) },
 	{ proc_info_vartypes(LocalProcInfo, VarTypes) },
 	{ proc_info_varset(LocalProcInfo, VarSet) },
+	{ proc_info_inst_varset(LocalProcInfo, InstVarSet) },
 	{ pred_info_get_markers(ExportedPredInfo0, Markers) },
 	{ pred_info_get_aditi_owner(ExportedPredInfo0, Owner) },
 
@@ -863,8 +865,9 @@ magic__create_interface_proc(Index, CPredProcId, AditiPredProcId,
 	{ varset__init(TVarSet) },
 	{ hlds_pred__define_new_pred(Goal, CallGoal, HeadVars, ExtraArgs,
 		InstMap, PredName, TVarSet, VarTypes, ClassContext, TVarMap,
-		TCVarMap, VarSet, Markers, Owner, address_is_not_taken,
-		ModuleInfo1, ModuleInfo2, LocalPredProcId) },
+		TCVarMap, VarSet, InstVarSet, Markers, Owner,
+		address_is_not_taken, ModuleInfo1, ModuleInfo2,
+		LocalPredProcId) },
 	{ ExtraArgs = [] ->
 		true
 	;
@@ -1070,7 +1073,7 @@ magic__create_input_join_proc(CPredProcId, AditiPredProcId, JoinPredProcId,
 		InputArgs, MagicArgModes, nondet) - InputGoalInfo,
 
 	ClosureInst = ground(shared,
-	    yes(pred_inst_info(predicate, MagicArgModes, nondet))),
+	    higher_order(pred_inst_info(predicate, MagicArgModes, nondet))),
 	ClosureMode = (ClosureInst -> ClosureInst),
 	proc_info_set_argmodes(JoinProcInfo1,
 		[ClosureMode | OutputArgModes], JoinProcInfo2),
@@ -1283,11 +1286,11 @@ magic__make_const(Type, ConsId, Var, Goal, ProcInfo0, ProcInfo) :-
 	% Allocate a predicate to collect the input for the current predicate.
 :- pred magic__create_magic_pred(pred_proc_id::in, pred_proc_id::in, 
 		list(type)::in, list(mode)::in, list(type)::in, 
-		list(mode)::in, maybe(int)::in,
+		list(mode)::in, inst_varset::in, maybe(int)::in,
 		magic_info::in, magic_info::out) is det.
 
 magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes, 
-		InputTypes0, InputModes0, Index) -->
+		InputTypes0, InputModes0, InstVarSet, Index) -->
 
 	magic_info_get_module_info(ModuleInfo0),
 
@@ -1385,8 +1388,8 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 	{ map__init(TVarMap) },
 	{ map__init(TCVarMap) },
 
-	{ proc_info_create(VarSet, VarTypes, AllArgs, AllArgModes, nondet,
-		Goal, Context, TVarMap, TCVarMap, address_is_not_taken,
+	{ proc_info_create(VarSet, VarTypes, AllArgs, AllArgModes, InstVarSet,
+		nondet, Goal, Context, TVarMap, TCVarMap, address_is_not_taken,
 		ProcInfo) },
 	
 	%
@@ -1632,7 +1635,7 @@ magic__preprocess_call_args([Arg | Args], [NewArg | NewArgs], SeenArgs,
 		{ IntroducedArgs1 = [NewArg | IntroducedArgs0] },
 		{ in_mode(InMode) },
 		{ out_mode(OutMode) },
-		{ Inst = ground(shared, no) },
+		{ Inst = ground(shared, none) },
 		{ set__list_to_set([Arg, NewArg], NonLocals) },
 		{ instmap_delta_from_assoc_list([NewArg - Inst], Delta) },
 		{ goal_info_init(NonLocals, Delta, det, GoalInfo) },

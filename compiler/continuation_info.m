@@ -103,6 +103,7 @@
 					% procid_stack_layout is not set?
 			varset		:: prog_varset,
 					% The names of all the variables.
+			vartypes	:: vartypes,
 			internal_map	:: proc_label_layout_info
 					% Info for each internal label,
 					% needed for basic_stack_layouts.

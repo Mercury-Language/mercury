@@ -40,10 +40,10 @@
 			qual_info, bool, bool, io__state, io__state).
 :- mode parse_tree_to_hlds(in, in, in, out, out, out, out, di, uo) is det.
 
-:- pred add_new_proc(pred_info, arity, list(mode), maybe(list(mode)),
-		maybe(list(is_live)), maybe(determinism),
+:- pred add_new_proc(pred_info, inst_varset, arity, list(mode),
+		maybe(list(mode)), maybe(list(is_live)), maybe(determinism),
 		prog_context, is_address_taken, pred_info, proc_id).
-:- mode add_new_proc(in, in, in, in, in, in, in, in, out, out) is det.
+:- mode add_new_proc(in, in, in, in, in, in, in, in, in, out, out) is det.
 
 	% add_special_pred_for_real(SpecialPredId, ModuleInfo0, TVarSet,
 	% 	Type, TypeId, TypeBody, TypeContext, TypeStatus, ModuleInfo).
@@ -113,6 +113,7 @@ parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
 	maybe_report_stats(Statistics),
 	add_item_list_decls_pass_2(Items,
 		item_status(local, may_be_unqualified), Module1, Module2),
+
 	maybe_report_stats(Statistics),
 		% balance the binary trees
 	{ module_info_optimize(Module2, Module3) },
@@ -1728,7 +1729,7 @@ modes_add(Modes0, VarSet, eqv_mode(Name, Args, Body),
 		)
 	).
 
-:- pred mode_name_args(mode_defn, sym_name, list(inst_param), hlds_mode_body).
+:- pred mode_name_args(mode_defn, sym_name, list(inst_var), hlds_mode_body).
 :- mode mode_name_args(in, out, out, out) is det.
 
 mode_name_args(eqv_mode(Name, Args, Body), Name, Args, eqv_mode(Body)).
@@ -3116,7 +3117,10 @@ add_special_pred_decl_for_real(SpecialPredId,
 		ArgTypes, Cond, Context, ClausesInfo0, Status, Markers,
 		none, predicate, ClassContext, Proofs, Owner, PredInfo0),
 	ArgLives = no,
-	add_new_proc(PredInfo0, Arity, ArgModes, yes(ArgModes),
+	varset__init(InstVarSet),
+		% Should not be any inst vars here so it's ok to use a 
+		% fresh inst_varset.
+	add_new_proc(PredInfo0, InstVarSet, Arity, ArgModes, yes(ArgModes),
 		ArgLives, yes(Det), Context, address_is_not_taken, PredInfo,
 		_),
 
@@ -3176,13 +3180,15 @@ adjust_special_pred_status(Status0, SpecialPredId, Status) :-
 		Status = Status1
 	).
 
-add_new_proc(PredInfo0, Arity, ArgModes, MaybeDeclaredArgModes, MaybeArgLives, 
-		MaybeDet, Context, IsAddressTaken, PredInfo, ModeId) :-
+add_new_proc(PredInfo0, InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes,
+		MaybeArgLives, MaybeDet, Context, IsAddressTaken, PredInfo,
+		ModeId) :-
 	pred_info_procedures(PredInfo0, Procs0),
 	pred_info_arg_types(PredInfo0, ArgTypes),
 	next_mode_id(Procs0, MaybeDet, ModeId),
 	proc_info_init(Arity, ArgTypes, ArgModes, MaybeDeclaredArgModes,
-		MaybeArgLives, MaybeDet, Context, IsAddressTaken, NewProc),
+		MaybeArgLives, MaybeDet, Context, IsAddressTaken, NewProc0),
+	proc_info_set_inst_varset(NewProc0, InstVarSet, NewProc),
 	map__det_insert(Procs0, ModeId, NewProc, Procs),
 	pred_info_set_procedures(PredInfo0, Procs, PredInfo).
 
@@ -3200,7 +3206,7 @@ add_new_proc(PredInfo0, Arity, ArgModes, MaybeDeclaredArgModes, MaybeArgLives,
 	% We should store the mode varset and the mode condition
 	% in the hlds - at the moment we just ignore those two arguments.
 
-module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
+module_add_mode(ModuleInfo0, InstVarSet, PredName, Modes, MaybeDet, _Cond,
 		Status, MContext, PredOrFunc, IsClassMethod, PredProcId,
 		ModuleInfo) -->
 
@@ -3233,19 +3239,20 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 	{ predicate_table_get_preds(PredicateTable1, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
 
-	module_do_add_mode(PredInfo0, Arity, Modes, MaybeDet, MContext,
-		PredInfo, ProcId),
+	module_do_add_mode(PredInfo0, InstVarSet, Arity, Modes, MaybeDet,
+		MContext, PredInfo, ProcId),
 	{ map__det_update(Preds0, PredId, PredInfo, Preds) },
 	{ predicate_table_set_preds(PredicateTable1, Preds, PredicateTable) },
 	{ module_info_set_predicate_table(ModuleInfo0, PredicateTable,
 		ModuleInfo) },
 	{ PredProcId = PredId - ProcId }.
 
-:- pred module_do_add_mode(pred_info, arity, list(mode), maybe(determinism),
-		prog_context, pred_info, proc_id, io__state, io__state).
-:- mode module_do_add_mode(in, in, in, in, in, out, out, di, uo) is det.
+:- pred module_do_add_mode(pred_info, inst_varset, arity, list(mode),
+		maybe(determinism), prog_context, pred_info, proc_id,
+		io__state, io__state).
+:- mode module_do_add_mode(in, in, in, in, in, in, out, out, di, uo) is det.
 
-module_do_add_mode(PredInfo0, Arity, Modes, MaybeDet, MContext,
+module_do_add_mode(PredInfo0, InstVarSet, Arity, Modes, MaybeDet, MContext,
 		PredInfo, ProcId) -->
 		% check that the determinism was specified
 	(
@@ -3276,8 +3283,9 @@ module_do_add_mode(PredInfo0, Arity, Modes, MaybeDet, MContext,
 
 		% add the mode declaration to the pred_info for this procedure.
 	{ ArgLives = no },
-	{ add_new_proc(PredInfo0, Arity, Modes, yes(Modes), ArgLives,
-		MaybeDet, MContext, address_is_not_taken, PredInfo, ProcId) }.
+	{ add_new_proc(PredInfo0, InstVarSet, Arity, Modes, yes(Modes),
+		ArgLives, MaybeDet, MContext, address_is_not_taken, PredInfo,
+		ProcId) }.
 
 	% Whenever there is a clause or mode declaration for an undeclared
 	% predicate, we add an implicit declaration

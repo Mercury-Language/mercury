@@ -139,6 +139,7 @@ OTHER_SOURCES= \
 	two_pragma_c_codes.m \
 	two_way_unif.m \
 	type_inf_ambig_test.m \
+	unbound_inst_var.m \
 	unbound_tvar_in_lambda.m \
 	undead_proc.m \
 	unify_typeinfo_bug.m \

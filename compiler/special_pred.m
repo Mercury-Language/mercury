@@ -27,6 +27,11 @@
 	;	index
 	;	compare.
 
+	% This predicate always returns determinism `semidet' for 
+	% unification procedures.  For types with only one value, the 
+	% unification is actually `det', however we need to pretend it
+	% is `semidet' so that it can be called correctly from the 
+	% polymorphic `unify' procedure.
 :- pred special_pred_info(special_pred_id, type, string, list(type),
 			list(mode), determinism).
 :- mode special_pred_info(in, in, out, out, out, out) is det.

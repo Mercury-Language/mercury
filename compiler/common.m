@@ -403,12 +403,13 @@ common__optimise_call(PredId, ProcId, Args, Goal0,
 	(
 		goal_info_get_determinism(GoalInfo, Det),
 		common__check_call_detism(Det),
+		simplify_info_get_var_types(Info0, VarTypes),
 		simplify_info_get_module_info(Info0, ModuleInfo),
 		module_info_pred_proc_info(ModuleInfo, PredId,
 			ProcId, _, ProcInfo),
 		proc_info_argmodes(ProcInfo, ArgModes),
-	    	common__partition_call_args(ModuleInfo, ArgModes, Args,
-			InputArgs, OutputArgs, OutputModes)
+	    	common__partition_call_args(VarTypes, ModuleInfo, ArgModes,
+	    		Args, InputArgs, OutputArgs, OutputModes)
 	->
 		common__optimise_call_2(seen_call(PredId, ProcId), InputArgs,
 			OutputArgs, OutputModes, Goal0, GoalInfo, Goal,
@@ -422,8 +423,9 @@ common__optimise_higher_order_call(Closure, Args, Modes, Det, Goal0,
 		GoalInfo, Goal, Info0, Info) :-
 	(
 		common__check_call_detism(Det),
+		simplify_info_get_var_types(Info0, VarTypes),
 		simplify_info_get_module_info(Info0, ModuleInfo),
-	    	common__partition_call_args(ModuleInfo, Modes, Args,
+	    	common__partition_call_args(VarTypes, ModuleInfo, Modes, Args,
 			InputArgs, OutputArgs, OutputModes)
 	->
 		common__optimise_call_2(higher_order_call,
@@ -517,21 +519,22 @@ common__optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, Goal0,
 	% Partition the arguments of a call into inputs and outputs,
 	% failing if any of the outputs have a unique component
 	% or if any of the outputs contain any `any' insts.
-:- pred common__partition_call_args(module_info::in, list(mode)::in,
-		list(prog_var)::in, list(prog_var)::out,
+:- pred common__partition_call_args(vartypes::in, module_info::in,
+		list(mode)::in, list(prog_var)::in, list(prog_var)::out,
 		list(prog_var)::out, list(mode)::out) is semidet.
 
-common__partition_call_args(_, [], [_ | _], _, _, _) :-
+common__partition_call_args(_, _, [], [_ | _], _, _, _) :-
 	error("common__partition_call_args").
-common__partition_call_args(_, [_ | _], [], _, _, _) :-
+common__partition_call_args(_, _, [_ | _], [], _, _, _) :-
 	error("common__partition_call_args").
-common__partition_call_args(_, [], [], [], [], []).
-common__partition_call_args(ModuleInfo, [ArgMode | ArgModes], [Arg | Args],
-		InputArgs, OutputArgs, OutputModes) :-
-	common__partition_call_args(ModuleInfo, ArgModes, Args,
+common__partition_call_args(_, _, [], [], [], [], []).
+common__partition_call_args(VarTypes, ModuleInfo, [ArgMode | ArgModes],
+		[Arg | Args], InputArgs, OutputArgs, OutputModes) :-
+	common__partition_call_args(VarTypes, ModuleInfo, ArgModes, Args,
 		InputArgs1, OutputArgs1, OutputModes1),
 	mode_get_insts(ModuleInfo, ArgMode, InitialInst, FinalInst),
-	( inst_matches_binding(InitialInst, FinalInst, ModuleInfo) ->
+	map__lookup(VarTypes, Arg, Type),
+	( inst_matches_binding(InitialInst, FinalInst, Type, ModuleInfo) ->
 		InputArgs = [Arg | InputArgs1],
 		OutputArgs = OutputArgs1,
 		OutputModes = OutputModes1
@@ -545,7 +548,7 @@ common__partition_call_args(ModuleInfo, [ArgMode | ArgModes], [Arg | Args],
 		% between the different variables.
 		% (inst_matches_binding applied to identical insts
 		% fails only for `any' insts.)
-		inst_matches_binding(FinalInst, FinalInst, ModuleInfo),
+		inst_matches_binding(FinalInst, FinalInst, Type, ModuleInfo),
 
 		% Don't optimize calls where a partially instantiated
 		% variable is further instantiated. That case is difficult

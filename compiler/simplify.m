@@ -150,15 +150,17 @@ simplify__proc(Simplifications, PredId, ProcId, ModuleInfo0, ModuleInfo,
 simplify__proc_2(Simplifications, PredId, ProcId, ModuleInfo0, ModuleInfo,
 		ProcInfo0, ProcInfo, Msgs) :-
 	module_info_globals(ModuleInfo0, Globals),
-	det_info_init(ModuleInfo0, PredId, ProcId, Globals, DetInfo0),
+	proc_info_vartypes(ProcInfo0, VarTypes0),
+	det_info_init(ModuleInfo0, VarTypes0, PredId, ProcId, Globals,
+		DetInfo0),
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
 	proc_info_varset(ProcInfo0, VarSet0),
-	proc_info_vartypes(ProcInfo0, VarTypes0),
+	proc_info_inst_varset(ProcInfo0, InstVarSet0),
 	proc_info_typeinfo_varmap(ProcInfo0, TVarMap),
 	proc_info_goal(ProcInfo0, Goal0),
 
 	simplify_info_init(DetInfo0, Simplifications, InstMap0,
-		VarSet0, VarTypes0, TVarMap, Info0),
+		VarSet0, InstVarSet0, TVarMap, Info0),
 	simplify__process_goal(Goal0, Goal, Info0, Info),
 	
 	simplify_info_get_varset(Info, VarSet),
@@ -222,7 +224,8 @@ simplify__do_process_goal(Goal0, Goal, Info0, Info) :-
 
 		simplify_info_get_module_info(Info3, ModuleInfo3),
 		recompute_instmap_delta(RecomputeAtomic, Goal2, Goal3,
-			VarTypes, InstMap0, ModuleInfo3, ModuleInfo4),
+			VarTypes, Info3^inst_varset, InstMap0, ModuleInfo3,
+			ModuleInfo4),
 		simplify_info_set_module_info(Info3, ModuleInfo4, Info4)
 	;
 		Goal3 = Goal1,
@@ -1936,7 +1939,7 @@ simplify__contains_multisoln_goal(Goals) :-
 					% Info about common subexpressions.
 			instmap		::	instmap,
 			varset		::	prog_varset,
-			var_types	::	map(prog_var, type),
+			inst_varset	::	inst_varset,
 			requantify	::	bool,
 					% Does the goal need requantification.
 			recompute_atomic ::	bool,
@@ -1955,23 +1958,26 @@ simplify__contains_multisoln_goal(Goals) :-
 		).
 
 simplify_info_init(DetInfo, Simplifications0, InstMap,
-		VarSet, VarTypes, TVarMap, Info) :-
+		VarSet, InstVarSet, TVarMap, Info) :-
 	common_info_init(CommonInfo),
 	set__init(Msgs),
 	set__list_to_set(Simplifications0, Simplifications),
 	Info = simplify_info(DetInfo, Msgs, Simplifications, CommonInfo,
-			InstMap, VarSet, VarTypes, no, no, no, 0, 0, TVarMap). 
+		InstMap, VarSet, InstVarSet, no, no, no, 0, 0, TVarMap). 
 
 	% Reinitialise the simplify_info before reprocessing a goal.
 :- pred simplify_info_reinit(set(simplification)::in, instmap::in,
 		simplify_info::in, simplify_info::out) is det.
 
-simplify_info_reinit(Simplifications, InstMap0, Info0, Info) :-
-	Info0 = simplify_info(DetInfo, Msgs, _, _, _,
-		VarSet, VarTypes, _, _, _, CostDelta, _, TVarMap),
-	common_info_init(Common),
-	Info = simplify_info(DetInfo, Msgs, Simplifications, Common, InstMap0,
-		VarSet, VarTypes, no, no, no, CostDelta, 0, TVarMap).
+simplify_info_reinit(Simplifications, InstMap0) -->
+	{ common_info_init(Common) },
+	^simplifications := Simplifications,
+	^common_info := Common,
+	^instmap := InstMap0,
+	^requantify := no,
+	^recompute_atomic := no,
+	^rerun_det := no,
+	^lambdas := 0.
 
 	% exported for common.m
 :- interface.
@@ -1979,9 +1985,9 @@ simplify_info_reinit(Simplifications, InstMap0, Info0, Info) :-
 :- import_module prog_data.
 :- import_module set.
 
-:- pred simplify_info_init(det_info, list(simplification), instmap,
-		prog_varset, vartypes, type_info_varmap, simplify_info).
-:- mode simplify_info_init(in, in, in, in, in, in, out) is det.
+:- pred simplify_info_init(det_info::in, list(simplification)::in, instmap::in,
+		prog_varset::in, inst_varset::in, 
+		type_info_varmap::in, simplify_info::out) is det.
 
 :- pred simplify_info_get_det_info(simplify_info::in, det_info::out) is det.
 :- pred simplify_info_get_msgs(simplify_info::in, set(det_msg)::out) is det.
@@ -2013,7 +2019,7 @@ simplify_info_get_simplifications(SI, SI^simplifications).
 simplify_info_get_common_info(SI, SI^common_info).
 simplify_info_get_instmap(SI, SI^instmap).
 simplify_info_get_varset(SI, SI^varset).
-simplify_info_get_var_types(SI, SI^var_types).
+simplify_info_get_var_types(SI, SI^det_info^vartypes).
 simplify_info_requantify(SI) :-
 	SI^requantify = yes.
 simplify_info_recompute_atomic(SI) :-
@@ -2081,7 +2087,7 @@ simplify_info_set_simplifications(SI, Simp, SI^simplifications := Simp).
 simplify_info_set_instmap(SI, InstMap, SI^instmap := InstMap). 
 simplify_info_set_common_info(SI, Common, SI^common_info := Common). 
 simplify_info_set_varset(SI, VarSet, SI^varset := VarSet). 
-simplify_info_set_var_types(SI, VarTypes, SI^var_types := VarTypes).
+simplify_info_set_var_types(SI, VarTypes, SI^det_info^vartypes := VarTypes).
 simplify_info_set_requantify(SI, SI^requantify := yes).
 simplify_info_set_recompute_atomic(SI, SI^recompute_atomic := yes).
 simplify_info_set_rerun_det(SI, SI^rerun_det := yes).

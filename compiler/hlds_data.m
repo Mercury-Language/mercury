@@ -454,7 +454,7 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 	--->	hlds_inst_defn(
 			inst_varset,		% The names of the inst
 						% parameters (if any).
-			list(inst_param),	% The inst parameters (if any).
+			list(inst_var),		% The inst parameters (if any).
 						% ([I] in the above example.)
 			hlds_inst_body,	% The definition of this inst.
 			condition,		% Unused (reserved for
@@ -651,7 +651,7 @@ user_inst_table_optimize(user_inst_table(InstDefns0, InstIds0),
 	--->	hlds_mode_defn(
 			inst_varset,		% The names of the inst
 						% parameters (if any).
-			list(inst_param),	% The list of the inst
+			list(inst_var),		% The list of the inst
 						% parameters (if any).
 						% (e.g. [I] for the second
 						% example above.)

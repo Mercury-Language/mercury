@@ -50,7 +50,7 @@
 
 :- import_module hlds_goal, hlds_data, prog_data, mode_util, make_hlds, purity.
 :- import_module globals.
-:- import_module bool, int, set, map.
+:- import_module bool, int, set, map, varset.
 
 maybe_add_default_func_modes([], Preds, Preds).
 maybe_add_default_func_modes([PredId | PredIds], Preds0, Preds) :-
@@ -87,7 +87,9 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
 		Determinism = det,
 		pred_info_context(PredInfo0, Context),
 		MaybePredArgLives = no,
-		add_new_proc(PredInfo0, PredArity, PredArgModes, 
+		varset__init(InstVarSet),
+			% No inst_vars in default func mode.
+		add_new_proc(PredInfo0, InstVarSet, PredArity, PredArgModes, 
 			yes(PredArgModes), MaybePredArgLives, yes(Determinism),
 			Context, address_is_not_taken, PredInfo, ProcId),
 		MaybeProcId = yes(ProcId)

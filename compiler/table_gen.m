@@ -741,7 +741,7 @@ generate_non_lookup_goal(Vars, PredId, ProcId, Context, VarTypes0, VarTypes,
 	generate_new_table_var("SubgoalVar", VarTypes2, VarTypes,
 		VarSet2, VarSet, SubgoalVar),
 	generate_call("table_nondet_setup", [TableNodeVar, SubgoalVar],
-		det, impure, [SubgoalVar - ground(unique, no)],
+		det, impure, [SubgoalVar - ground(unique, none)],
 		Module, Context, SetupGoal),
 
 	list__append([GetTableGoal | LookupGoals], [SetupGoal], Goals),
@@ -813,7 +813,7 @@ gen_lookup_call_for_type(TypeCat, Type, TableVar, ArgVar, Context,
 			generate_call("table_lookup_insert_enum",
 				[TableVar, RangeVar, ArgVar, NextTableVar],
 				det, impure,
-				[NextTableVar - ground(unique, no)],
+				[NextTableVar - ground(unique, none)],
 				Module, Context, LookupGoal),
 			set__init(NonLocals0),
 			set__insert_list(NonLocals0, [TableVar, ArgVar],
@@ -829,7 +829,7 @@ gen_lookup_call_for_type(TypeCat, Type, TableVar, ArgVar, Context,
 	;
 		generate_new_table_var("TableNodeVar", VarTypes0, VarTypes1,
 			VarSet0, VarSet1, NextTableVar),
-		InstMapAL = [NextTableVar - ground(unique, no)],
+		InstMapAL = [NextTableVar - ground(unique, none)],
 		(
 			( TypeCat = pred_type
 			; TypeCat = polymorphic_type
@@ -891,7 +891,7 @@ generate_save_goal(AnsList, TableVar, Context, VarTypes0, VarTypes,
 
 		generate_call("table_create_ans_block",
 			[TableVar, NumAnsVarsVar, AnsTableVar], det, impure,
-			[AnsTableVar - ground(unique, no)], Module, Context,
+			[AnsTableVar - ground(unique, none)], Module, Context,
 			CreateAnsBlockGoal),
 
 		generate_save_goals(AnsList, AnsTableVar, 0, Context,
@@ -928,7 +928,7 @@ generate_non_save_goal(AnsList, TableVar, Context, VarTypes0, VarTypes,
 	generate_new_table_var("AnswerTableVar", VarTypes0, VarTypes1,
 		VarSet0, VarSet1, AnsTableVar0),
 	generate_call("table_nondet_get_ans_table", [TableVar, AnsTableVar0],
-		det, impure, [AnsTableVar0 - ground(unique, no)],
+		det, impure, [AnsTableVar0 - ground(unique, none)],
 		Module, Context, GetAnsTableGoal),
 	generate_lookup_goals(AnsList, Context, AnsTableVar0, AnsTableVar1,
 		VarTypes1, VarTypes2, VarSet1, VarSet2, TableInfo0, TableInfo1,
@@ -939,7 +939,7 @@ generate_non_save_goal(AnsList, TableVar, Context, VarTypes0, VarTypes,
 	generate_new_table_var("AnswerSlotVar", VarTypes2, VarTypes3,
 		VarSet2, VarSet3, AnsSlotVar),
 	generate_call("table_nondet_new_ans_slot", [TableVar, AnsSlotVar], det,
-		impure, [AnsSlotVar - ground(unique, no)],
+		impure, [AnsSlotVar - ground(unique, none)],
 		Module, Context, NewAnsSlotGoal),
 
 	list__length(AnsList, NumAnsVars),
@@ -949,7 +949,7 @@ generate_non_save_goal(AnsList, TableVar, Context, VarTypes0, VarTypes,
 		VarSet4, VarSet5, AnsBlockVar),
 	generate_call("table_create_ans_block",
 		[AnsSlotVar, NumAnsVarsVar, AnsBlockVar], det, impure,
-		[AnsBlockVar - ground(unique, no)],
+		[AnsBlockVar - ground(unique, none)],
 		Module, Context, CreateAnsBlockGoal),
 
 	generate_save_goals(AnsList, AnsBlockVar, 0, Context,
@@ -1072,7 +1072,7 @@ generate_restore_all_goal(Detism, OutputVars, TableVar, Module, Context,
 		error("generate_restore_all_goal: invalid determinism")
 	),
 	generate_call(ReturnAllAns, [TableVar, AnsTableVar],
-		Detism, semipure, [AnsTableVar - ground(unique, no)],
+		Detism, semipure, [AnsTableVar - ground(unique, none)],
 		Module, Context, ReturnAnsBlocksGoal),
 
 	generate_restore_goals(OutputVars, AnsTableVar, 0, Module, Context,
@@ -1127,7 +1127,7 @@ gen_restore_call_for_type(TypeCat, _Type, TableVar, Var, OffsetVar, Module,
 			LookupPredName)
 	),
 	generate_call(LookupPredName, [TableVar, OffsetVar, Var], det, impure,
-		[Var - ground(shared, no)], Module, Context, Goal).
+	[Var - ground(shared, none)], Module, Context, Goal).
 
 %-----------------------------------------------------------------------------%
 
@@ -1142,7 +1142,7 @@ generate_suspend_goal(OutputVars, TableVar, Module, Context,
 	generate_new_table_var("AnswerTable", VarTypes0, VarTypes1,
 		VarSet0, VarSet1, AnsTableVar),
 	generate_call("table_nondet_suspend", [TableVar, AnsTableVar],
-		nondet, semipure, [AnsTableVar - ground(unique, no)],
+		nondet, semipure, [AnsTableVar - ground(unique, none)],
 		Module, Context, ReturnAnsBlocksGoal),
 
 	generate_restore_goals(OutputVars, AnsTableVar, 0, Module, Context,
