@@ -944,31 +944,60 @@ get_interface_2([Item - Context | Rest], InInterface0, Items0, Items) :-
 	),
 	get_interface_2(Rest, InInterface1, Items1, Items).
 
-	% Given a module (well, a list of items), extract the short interface
-	% part of that module, i.e. the exported type/inst/mode declarations,
-	% but not the exported pred or constructor declarations.
+	% Given a module interface (well, a list of items), extract the
+	% short interface part of that module, i.e. the exported
+	% type/inst/mode declarations, but not the exported pred or
+	% constructor declarations.  If the module interface imports
+	% other modules, then the short interface only needs to include
+	% those import_module declarations only if the short interface
+	% contains some equivalence types or some mode or inst definitions
+	% that might use declarations in the imported modules.
+	% If the short interface is empty, or only contains abstract
+	% type declarations, then it doesn't need any import_module
+	% declarations.
 
 :- pred get_short_interface(item_list, item_list).
 :- mode get_short_interface(in, out) is det.
 
 get_short_interface(Items0, Items) :-
-	get_short_interface_2(Items0, [], RevItems),
-	list__reverse(RevItems, Items).
-
-:- pred get_short_interface_2(item_list, item_list, item_list).
-:- mode get_short_interface_2(in, in, out) is det.
-
-get_short_interface_2([], Items, Items).
-get_short_interface_2([ItemAndContext | Rest], Items0, Items) :-
-	ItemAndContext = Item0 - Context,
-	( make_abstract_type_defn(Item0, Item1) ->
-		Items1 = [Item1 - Context | Items0]
-	; include_in_short_interface(Item0) ->
-		Items1 = [ItemAndContext | Items0]
+	get_short_interface_2(Items0, [], [], no,
+			RevItems, RevImports, NeedsImports),
+	list__reverse(RevItems, Items1),
+	( NeedsImports = yes ->
+		list__reverse(RevImports, Imports1),
+		list__append(Imports1, Items1, Items)
 	;
-		Items1 = Items0
+		Items = Items1
+	).
+
+:- pred get_short_interface_2(item_list, item_list, item_list, bool,
+				item_list, item_list, bool).
+:- mode get_short_interface_2(in, in, in, in, out, out, out) is det.
+
+get_short_interface_2([], Items, Imports, NeedsImports,
+			Items, Imports, NeedsImports).
+get_short_interface_2([ItemAndContext | Rest], Items0, Imports0, NeedsImports0,
+			Items, Imports, NeedsImports) :-
+	ItemAndContext = Item0 - Context,
+	( Item0 = module_defn(_, import(_)) ->
+		Items1 = Items0,
+		Imports1 = [ItemAndContext | Imports0],
+		NeedsImports1 = NeedsImports0
+	; make_abstract_type_defn(Item0, Item1) ->
+		Imports1 = Imports0,
+		Items1 = [Item1 - Context | Items0],
+		NeedsImports1 = NeedsImports0
+	; include_in_short_interface(Item0) ->
+		Imports1 = Imports0,
+		Items1 = [ItemAndContext | Items0],
+		NeedsImports1 = yes
+	;
+		Items1 = Items0,
+		Imports1 = Imports0,
+		NeedsImports1 = NeedsImports0
 	),
-	get_short_interface_2(Rest, Items1, Items).
+	get_short_interface_2(Rest, Items1, Imports1, NeedsImports1,
+				Items, Imports, NeedsImports).
 
 :- pred include_in_short_interface(item).
 :- mode include_in_short_interface(in) is semidet.
@@ -982,6 +1011,8 @@ include_in_short_interface(module_defn(_, _)).
 :- mode make_abstract_type_defn(in, out) is semidet.
 
 make_abstract_type_defn(type_defn(VarSet, du_type(Name, Args, _Ctors), Cond),
+			type_defn(VarSet, abstract_type(Name, Args), Cond)).
+make_abstract_type_defn(type_defn(VarSet, abstract_type(Name, Args), Cond),
 			type_defn(VarSet, abstract_type(Name, Args), Cond)).
 
 %-----------------------------------------------------------------------------%
