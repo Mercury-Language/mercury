@@ -425,7 +425,7 @@ ifeq ($(USE_DLLS),yes)
 LIBGC_DLL_H = libgc_dll.h 
 LIBGC_GLOBALS_H = libgc_globals.h 
 
-DLL_CFLAGS = -DGC_DEFINE_DLL
+DLL_CFLAGS = -DUSE_DLLS -DGC_DEFINE_DLL
 
 .PHONY: dll
 dll: libgc.dll libgc.a libgc_dll.h libgc_globals.h

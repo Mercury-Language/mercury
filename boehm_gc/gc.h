@@ -36,7 +36,7 @@
 # define __GC
 # include <stddef.h>
 
-#if defined(__CYGWIN32__) && !defined(GC_DEFINE_DLL)
+#if defined(USE_DLLS)
 #include "libgc_dll.h"
 #endif
 
