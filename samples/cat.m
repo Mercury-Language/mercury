@@ -39,9 +39,11 @@ cat_file_list([File | Files]) -->
 
 cat_file(File) -->
 	io__open_input(File, Result),
-	( { Result = ok(Stream) },
+	(
+		{ Result = ok(Stream) },
 		cat_stream(Stream)
-	; { Result = error(Error) },
+	;
+		{ Result = error(Error) },
 		io__progname("cat", Progname),
 		{ io__error_message(Error, Message) },
 		io__write_strings([
