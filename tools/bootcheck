@@ -79,7 +79,12 @@ Options:
 		be put into TYPE_STATS_FILE_NAME.tests.$$. Both filenames will
 		be reported in the output of bootcheck, to allow the statistics
 		files to be matched with the bootcheck that created them.
-
+	-W, --windows
+        Translate paths into the Microsoft Windows format and use the
+        extension `.lib' for libraries. This option also implies
+        --no-sym-links.
+	--no-sym-links
+		Use this option on systems which don't support symbolic links.
 "
 
 testdirs=""
@@ -98,6 +103,9 @@ copy_profiler=false
 keep_stage_2=false
 keep_stage_3=false
 stop_after_stage_2=false
+windows=false
+use_cp=false
+A=a		# the extension for libraries
 if [ -d compiler/Mercury ]; then
 	use_subdirs=${MMAKE_USE_SUBDIRS=yes}
 else
@@ -186,6 +194,12 @@ while [ $# -gt 0 ]; do
 	--type-stats)
 		type_stats="$2"; shift ;;
 
+	-W|--windows)
+		windows=true; use_cp=true; A=lib ;;
+
+	--no-sym-links)
+		use_cp=true ;;
+
 	--)	
 		shift; break ;;
 	-*)
@@ -227,12 +241,23 @@ export MMAKE_USE_SUBDIRS
 
 #-----------------------------------------------------------------------------#
 
-LN="ln"
-LN_S="ln -s"
+if $use_cp
+then
+	LN="cp -r"
+	LN_S="cp -r"
+else
+	LN="ln"
+	LN_S="ln -s"
+fi
 
-# uncomment this code if the file system doesn't support links
-### LN="cp -r"
-### LN_S="cp -r"
+#-----------------------------------------------------------------------------#
+
+if $windows
+then
+	CYGPATH='cygpath -w'
+else
+	CYGPATH='echo'
+fi
 
 #-----------------------------------------------------------------------------#
 
@@ -723,11 +748,11 @@ then
 	export MERCURY_INT_DIR
 
 	MERCURY_LIBS="
-		$root/${stage2_insert}trace/lib$TRACE_LIB_NAME.a
-		$root/${stage2_insert}browser/lib$BROWSER_LIB_NAME.a
-		$root/${stage2_insert}library/lib$STD_LIB_NAME.a
-		$root/${stage2_insert}runtime/lib$RT_LIB_NAME.a
-		$root/${stage2_insert}boehm_gc/libgc.a
+		`$CYGPATH $root/${stage2_insert}trace/lib$TRACE_LIB_NAME.$A`
+		`$CYGPATH $root/${stage2_insert}browser/lib$BROWSER_LIB_NAME.$A`
+		`$CYGPATH $root/${stage2_insert}library/lib$STD_LIB_NAME.$A`
+		`$CYGPATH $root/${stage2_insert}runtime/lib$RT_LIB_NAME.$A`
+		`$CYGPATH $root/${stage2_insert}boehm_gc/libgc.$A`
 		-lm"
 	export MERCURY_LIBS
 
