@@ -59,12 +59,12 @@ peephole__opt_proc_list(Options, [P0|Ps0], [P|Ps]) :-
 
 peephole__opt_proc(Options, c_procedure(Name,Arity,Mode,Instructions0),
 		   c_procedure(Name,Arity,Mode,Instructions)) :-
-	( options__lookup_bool_option(Options, peephole_jump_opt, Jumpopt) ->
+	( options__lookup_bool_option(Options, peephole_jump_opt, yes) ->
 		peephole__jumpopt_instr_list(Instructions0, Instructions1)
 	;
 		Instructions1 = Instructions0
 	),
-	( options__lookup_bool_option(Options, peephole_local, Local) ->
+	( options__lookup_bool_option(Options, peephole_local, yes) ->
 		peephole__opt_instr_list(Instructions1, Instructions)
 	;
 		Instructions = Instructions1
