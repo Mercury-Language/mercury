@@ -441,6 +441,10 @@ mercury_runtime_init(int argc, char **argv)
 
 	(*MR_address_of_mercury_init_io)();
 
+#ifdef MR_THREAD_SAFE
+ 	MR_init_thread_stuff();
+#endif
+
 #if defined(MR_HIGHLEVEL_CODE) && defined(MR_CONSERVATIVE_GC)
 	MR_init_memory();
   #ifdef MR_USE_TRAIL
@@ -459,7 +463,6 @@ mercury_runtime_init(int argc, char **argv)
   #else
 	{
 		int i;
-		MR_init_thread_stuff();
 		MR_init_thread(MR_use_now);
 		MR_exit_now = MR_FALSE;
 		for (i = 1 ; i < MR_num_threads ; i++)
