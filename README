@@ -19,6 +19,8 @@ THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY
 EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.
 
 See the file INSTALL for installation instructions.
+But first read README.IRIX-5 and/or README.64-bit if you are
+installing on a machine running IRIX 5 or a 64-bit machine.
 
 The documentation sources are in the `doc' subdirectory.  The installation
 process will install INFO, HTML, and DVI versions in the locations specified

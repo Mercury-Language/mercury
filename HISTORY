@@ -40,11 +40,19 @@ Lots of bug fixes.
 
 Mercury 0.3
 -----------
+The first public release.
 Better type error messages.
 Better determinism error messages.
 Only recompiles <module>_init.c after `mmake depend', rather than after
 anything changes.
 Ported to ULTRIX (N.B. - ULTRIX's /bin/sh sucks).
-A few minor efficiency improvements.
-A few bug fixes.
+Avoid saving variables on the stack before negated contexts.
+Don't embed label names as strings in the executable.
+A few other efficiency improvements.
+Lots of bug fixes.
+Made the rule for `mmake clean' less reckless (don't do `rm -f *.c').
+Rationalized the options to `mc'.  Implemented a couple of new ones.
+Added a symbol demangler to improve linker error messages.
+Made very significant improvements to the documentation.
+Added a "Prolog to Mercury transition guide".
 
