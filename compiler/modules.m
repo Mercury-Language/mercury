@@ -2869,9 +2869,10 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	},
 
 	%
-	% We include $(foo.cs) first in the dependency list, before $(foo.os).
+	% When compiling to C, we want to include $(foo.cs) first in
+	% the dependency list, before $(foo.os).
 	% This is not strictly necessary, since the .$O files themselves depend
-	% on the .c files, but we do it to ensure that Make will try to
+	% on the .c files, but want to do it to ensure that Make will try to
 	% create all the C files first, thus detecting errors early,
 	% rather than first spending time compiling C files to .$O,
 	% which could be a waste of time if the program contains errors.
@@ -2882,6 +2883,13 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	% This needs to be defined here in the .dep file rather than
 	% in the .dv file since it depends on the setting of the $(RM_C) file
 	% which can be overridden by the user's Mmakefile.
+	%
+	% When compiling to assembler, we want to do the same kind of
+	% thing, for the same reason, but with the `.s' files rather
+	% than the `.c' files.  So if TARGET_ASM=yes, we define
+	% $(foo.maybe_cs) to be $(foo.ss).
+	% XXX The name `.maybe_cs' is a bit misleading in this case.
+	%     Perhaps we should change it.
 	%
 	module_name_to_file_name(SourceModuleName, "", no, ExeFileName),
 	io__write_strings(DepStream, [
