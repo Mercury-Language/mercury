@@ -14,14 +14,22 @@ TESTS_SHOULD_SUCCEED="\
 	func_overloading_nr \
 	func_overloading_r \
 	lambda_mode_r \
-	nested_module_r \
 	no_version_numbers_r \
 	pragma_type_spec_r \
 	pred_ctor_ambiguity_r \
 	pred_overloading_r"
+
+# Parallel mmake with nested sub-modules is broken.
+# The commands to create `.c' files from the `.m' file containing the
+# nested sub-module are run twice, resulting in incorrect output in
+# the `.err' file.
+NO_PARALLEL_MAKE_TESTS="\
+	nested_module_r
+"
 
 TESTS_SHOULD_FAIL="\
 	add_type_re \
 	remove_type_re \
 	type_qual_re"
 
+ALL_TESTS=$TESTS_SHOULD_SUCCEED $NO_PARALLEL_MAKE_TESTS $TESTS_SHOULD_FAIL

@@ -45,6 +45,16 @@ run_all_tests () {
 run_all_tests false $TESTS_SHOULD_SUCCEED
 run_all_tests true $TESTS_SHOULD_FAIL
 
+# Parallel mmake does not work with nested sub-modules,
+# so disable it for tests which contain nested sub-modules.
+oldmmakeopts="$mmakeopts"
+mmakeopts="$mmakeopts -j1"
+export mmakeopts
+run_all_tests false $NO_PARALLEL_MAKE_TESTS
+
+mmakeopts=$oldmmakeopts
+export mmakeopts
+
 cat *.res > .allres
 if [ "$failing_tests" = "" -a ! -s .allres ]
 then

@@ -12,7 +12,7 @@ clean_local:
 
 realclean_local:
 	. ./TESTS; \
-	for module in $$TESTS_SHOULD_SUCCEED $$TESTS_SHOULD_FAIL; do \
+	for module in $$ALL_TESTS; do \
 		rm -rf $$module.m $${module}_2.m ;\
 	done
 
