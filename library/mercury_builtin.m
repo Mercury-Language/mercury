@@ -311,24 +311,9 @@ builtin_compare_float(R, F1, F2) :-
 :- pragma(c_code, builtin_strcmp(Res::out, S1::in, S2::in),
 	"Res = strcmp(S1, S2);").
 
-builtin_unify_pred(_Pred1, _Pred2) :-
-	% suppress determinism warning
-	( semidet_succeed ->
-		error("attempted unification of higher-order predicate terms")
-	;
-		semidet_fail
-	).
-
-builtin_index_pred(_, -1).
-
-builtin_compare_pred(Res, _Pred1, _Pred2) :-
-	% suppress determinism warning
-	( semidet_succeed ->
-		error("attempted comparison of higher-order predicate terms")
-	;
-		% the following is never executed
-		Res = (<)
-	).
+:- external(builtin_unify_pred/2).
+:- external(builtin_index_pred/2).
+:- external(builtin_compare_pred/3).
 
 unused :-
 	( semidet_succeed ->
@@ -383,16 +368,6 @@ const struct mercury_data___base_type_layout_float_0_struct {
 		mkbody(TYPELAYOUT_FLOAT_VALUE))
 };
 
-	/* base_type_layout for `pred' */
-	/* (this is used for all higher-order types) */
-
-const struct mercury_data___base_type_layout_pred_0_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data___base_type_layout_pred_0 = {
-	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
-		mkbody(TYPELAYOUT_PREDICATE_VALUE))
-};
-
 	/* base_type_layout for `void' */
 
 const struct mercury_data___base_type_layout_void_0_struct {
@@ -433,15 +408,6 @@ const struct mercury_data___base_type_functors_string_0_struct {
 const struct mercury_data___base_type_functors_float_0_struct {
 	Integer f1;
 } mercury_data___base_type_functors_float_0 = {
-	MR_TYPEFUNCTORS_SPECIAL
-};
-
-	/* base_type_functors for `pred' */
-	/* (this is used for all higher-order types) */
-
-const struct mercury_data___base_type_functors_pred_0_struct {
-	Integer f1;
-} mercury_data___base_type_functors_pred_0 = {
 	MR_TYPEFUNCTORS_SPECIAL
 };
 
@@ -579,38 +545,6 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_float_0_struct {
 	(const Word *) & mercury_data___base_type_layout_float_0,
 	(const Word *) & mercury_data___base_type_functors_float_0,
 	(const Word *) string_const(""float"", 5)
-#endif
-};
-
-	/* base_type_info for `pred' */
-	/* (this is used for all higher-order types) */
-
-Declare_entry(mercury__builtin_unify_pred_2_0);
-Declare_entry(mercury__builtin_index_pred_2_0);
-Declare_entry(mercury__builtin_compare_pred_3_0);
-MR_STATIC_CODE_CONST struct mercury_data___base_type_info_pred_0_struct {
-	Integer f1;
-	Code *f2;
-	Code *f3;
-	Code *f4;
-#ifdef USE_TYPE_TO_TERM
-	Code *f5;
-	Code *f6;
-#endif
-#ifdef USE_TYPE_LAYOUT
-	const Word *f7;
-	const Word *f8;
-	const Word *f9;
-#endif
-} mercury_data___base_type_info_pred_0 = {
-	((Integer) 0),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_pred_2_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_pred_2_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_pred_3_0)),
-#ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___base_type_layout_pred_0,
-	(const Word *) & mercury_data___base_type_functors_pred_0,
-	(const Word *) string_const(""pred"", 4)
 #endif
 };
 

@@ -397,7 +397,7 @@
 
 :- implementation.
 
-:- import_module require, set, int, string.
+:- import_module require, set, int, string, bool.
 
 %-----------------------------------------------------------------------------%
 
@@ -757,8 +757,6 @@ int	ML_compare_type_info(Word type_info_1, Word type_info_2);
 ** calls to this function.
 */
 
-MR_DECLARE_STRUCT(mercury_data___base_type_info_pred_0);
-
 int
 ML_compare_type_info(Word t1, Word t2)
 {
@@ -818,8 +816,7 @@ ML_compare_type_info(Word t1, Word t2)
 	** But we need to recursively compare the argument types, if any.
 	*/
 		/* Check for higher order */
-	if (base_type_info_1 ==
-		(const Word *) &mercury_data___base_type_info_pred_0)
+	if (MR_BASE_TYPEINFO_IS_HO(base_type_info_1)) 
 	{
 		int num_arg_types_2;
 
@@ -1204,20 +1201,25 @@ type_name(Type) = TypeName :-
 	( Arity = 0 ->
 		TypeName = Name
 	;
-		type_arg_names(ArgTypes, ArgTypeNames),
-		string__append_list([Name, "(" | ArgTypeNames], TypeName)
+		( Name = "func" -> IsFunc = yes ; IsFunc = no ),
+		type_arg_names(ArgTypes, IsFunc, ArgTypeNames),
+		string__append_list([Name, "(" | ArgTypeNames], 
+			TypeName)
 	).
 
-:- pred type_arg_names(list(type_info), list(string)).
-:- mode type_arg_names(in, out) is det.
+:- pred type_arg_names(list(type_info), bool, list(string)).
+:- mode type_arg_names(in, in, out) is det.
 
-type_arg_names([], []).
-type_arg_names([Type|Types], ArgNames) :-
+type_arg_names([], _, []).
+type_arg_names([Type|Types], IsFunc, ArgNames) :-
 	Name = type_name(Type),
 	( Types = [] ->
 		ArgNames = [Name, ")"]
+	; IsFunc = yes, Types = [FuncReturnType] ->
+		FuncReturnName = type_name(FuncReturnType),
+		ArgNames = [Name, ") = ", FuncReturnName]
 	;
-		type_arg_names(Types, Names),
+		type_arg_names(Types, IsFunc, Names),
 		ArgNames = [Name, ", " | Names]
 	).
 
@@ -1240,31 +1242,82 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 :- pragma c_code(type_ctor(TypeInfo::in) = (TypeCtor::out), 
 	will_not_call_mercury, "
 {
-	Word *type_info;
+	Word *type_info, *base_type_info;
 
 	save_transient_registers();
 	type_info = (Word *) ML_collapse_equivalences(TypeInfo);
 	restore_transient_registers();
 
-	TypeCtor = (Word) MR_TYPEINFO_GET_BASE_TYPEINFO(type_info);
+	base_type_info = (Word *) MR_TYPEINFO_GET_BASE_TYPEINFO(type_info);
+
+	TypeCtor = ML_make_ctor_info(type_info, base_type_info);
 }
 ").
+
+:- pragma c_header_code("
+
+Word ML_make_ctor_info(Word *type_info, Word *base_type_info);
+
+	/*
+	** Several predicates use these (the MR_BASE_TYPEINFO_IS_HO_*
+	** macros need access to these addresses).
+	*/
+MR_DECLARE_STRUCT(mercury_data___base_type_info_pred_0);
+MR_DECLARE_STRUCT(mercury_data___base_type_info_func_0);
+
+
+").
+
+:- pragma c_code("
+
+
+Word ML_make_ctor_info(Word *type_info, Word *base_type_info)
+{
+	Word ctor_info = (Word) base_type_info;
+
+	if (MR_BASE_TYPEINFO_IS_HO_PRED(base_type_info)) {
+		ctor_info = MR_TYPECTOR_MAKE_PRED(
+			MR_TYPEINFO_GET_HIGHER_ARITY(type_info));
+		if (!MR_TYPECTOR_IS_HIGHER_ORDER(ctor_info)) {
+			fatal_error(""std_util:ML_make_ctor_info""
+				""- arity out of range."");
+		}
+	} else if (MR_BASE_TYPEINFO_IS_HO_FUNC(base_type_info)) {
+		ctor_info = MR_TYPECTOR_MAKE_FUNC(
+			MR_TYPEINFO_GET_HIGHER_ARITY(type_info));
+		if (!MR_TYPECTOR_IS_HIGHER_ORDER(ctor_info)) {
+			fatal_error(""std_util:ML_make_ctor_info""
+				""- arity out of range."");
+		}
+	}
+	return ctor_info;
+}
+
+").
+
 
 :- pragma c_code(type_ctor_and_args(TypeInfo::in,
 		TypeCtor::out, TypeArgs::out), will_not_call_mercury, "
 {
-	Word *type_info;
-	Word *base_type_info;
+	Word *type_info, *base_type_info;
 	Integer arity;
 
 	save_transient_registers();
 	type_info = (Word *) ML_collapse_equivalences(TypeInfo);
 	base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(type_info);
-	TypeCtor = (Word) base_type_info;
-	arity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
-	TypeArgs = ML_copy_argument_typeinfos(arity, 0,
+	TypeCtor = ML_make_ctor_info(type_info, base_type_info);
+
+	if (MR_TYPECTOR_IS_HIGHER_ORDER(TypeCtor)) {
+		arity = MR_TYPECTOR_GET_HOT_ARITY(TypeCtor);
+		TypeArgs = ML_copy_argument_typeinfos(arity, 0,
+			type_info + TYPEINFO_OFFSET_FOR_PRED_ARGS);
+	} else {
+		arity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
+		TypeArgs = ML_copy_argument_typeinfos(arity, 0,
 			type_info + OFFSET_FOR_ARG_TYPE_INFOS);
+	}
 	restore_transient_registers();
+
 }
 ").
 
@@ -1286,7 +1339,11 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 	
 	base_type_info = (Word *) TypeCtor;
 
-	arity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
+	if (MR_TYPECTOR_IS_HIGHER_ORDER(base_type_info)) {
+		arity = MR_TYPECTOR_GET_HOT_ARITY(base_type_info);
+	} else {
+		arity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
+	}
 
 	arg_type = ArgTypes; 
 	for (list_length = 0; !list_is_empty(arg_type); list_length++) {
@@ -1315,21 +1372,38 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 {
 	Word *type_info = (Word *) TypeInfo;
 	Word *base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(type_info);
-	Integer arity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
-	TypeCtor = (Word) base_type_info;
-	save_transient_registers();
-	ArgTypes = ML_copy_argument_typeinfos(arity, 0,
+	Integer arity;
+
+	TypeCtor = ML_make_ctor_info(type_info, base_type_info);
+	if (MR_TYPECTOR_IS_HIGHER_ORDER(TypeCtor)) {
+		arity = MR_TYPECTOR_GET_HOT_ARITY(base_type_info);
+		save_transient_registers();
+		ArgTypes = ML_copy_argument_typeinfos(arity, 0,
+			type_info + TYPEINFO_OFFSET_FOR_PRED_ARGS);
+		restore_transient_registers();
+	} else {
+		arity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
+		save_transient_registers();
+		ArgTypes = ML_copy_argument_typeinfos(arity, 0,
 			type_info + OFFSET_FOR_ARG_TYPE_INFOS);
-	restore_transient_registers();
+		restore_transient_registers();
+	}
 }
 ").
 
 :- pragma c_code(type_ctor_name_and_arity(TypeCtor::in,
 	TypeCtorName::out, TypeCtorArity::out), will_not_call_mercury, "
 {
-	Word *base_type_info = (Word *) TypeCtor;
-	TypeCtorName = MR_BASE_TYPEINFO_GET_TYPE_NAME(base_type_info);
-	TypeCtorArity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
+	Word *type_ctor = (Word *) TypeCtor;
+
+	if (MR_TYPECTOR_IS_HIGHER_ORDER(type_ctor)) {
+		TypeCtorName = (String) (Word) 
+			MR_TYPECTOR_GET_HOT_NAME(type_ctor);
+		TypeCtorArity = MR_TYPECTOR_GET_HOT_ARITY(type_ctor);
+	} else {
+		TypeCtorName = MR_BASE_TYPEINFO_GET_TYPE_NAME(type_ctor);
+		TypeCtorArity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(type_ctor);
+	}
 }
 ").
 
@@ -1353,7 +1427,7 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 		** Get information for this functor number and
 		** store in info. If this is a discriminated union
 		** type and if the functor number is in range, we
-	 	** succeed.
+		** succeed.
 		*/
 	save_transient_registers();
 	success = ML_get_functors_check_range(FunctorNumber,
@@ -1656,7 +1730,7 @@ ML_copy_arguments_from_list_to_vector(int arity, Word arg_list,
 	** ML_make_type(arity, base_type_info, arg_types_list):
 	**
 	** Construct and return a type_info for a type using the
-	** specified base_type_info for the type constructor,
+	** specified type_ctor for the type constructor,
 	** and using the arguments specified in arg_types_list
 	** for the type arguments (if any).
 	**
@@ -1669,28 +1743,39 @@ ML_copy_arguments_from_list_to_vector(int arity, Word arg_list,
 	*/
 
 Word
-ML_make_type(int arity, Word *base_type_info, Word arg_types_list) 
+ML_make_type(int arity, Word *type_ctor, Word arg_types_list) 
 {
-	int i;
+	int i, extra_args;
+	Word base_type_info;
 
 	/*
 	** XXX: do we need to treat higher-order predicates as
 	**      a special case here?
 	*/
 
+	if (MR_TYPECTOR_IS_HIGHER_ORDER(type_ctor)) {
+		base_type_info = MR_TYPECTOR_GET_HOT_BASE_TYPE_INFO(type_ctor);
+		extra_args = 2;
+	} else {
+		base_type_info = (Word) type_ctor;
+		extra_args = 1;
+	}
 
 	if (arity == 0) {
-		return (Word) base_type_info;
+		return base_type_info;
 	} else {
 		Word *type_info;
 
 		restore_transient_registers();
-		incr_hp(LVALUE_CAST(Word, type_info), arity + 1);
+		incr_hp(LVALUE_CAST(Word, type_info), arity + extra_args);
 		save_transient_registers();
 		
-		field(mktag(0), type_info, 0) = (Word) base_type_info;
+		field(mktag(0), type_info, 0) = base_type_info;
+		if (MR_TYPECTOR_IS_HIGHER_ORDER(type_ctor)) {
+			field(mktag(0), type_info, 1) = (Word) arity;
+		}
 		for (i = 0; i < arity; i++) {
-			field(mktag(0), type_info, i + 1) = 
+			field(mktag(0), type_info, i + extra_args) = 
 				list_head(arg_types_list);
 			arg_types_list = list_tail(arg_types_list);
 		}
@@ -2311,7 +2396,7 @@ ML_expand_builtin(Word data_value, Word entry_value, ML_Expand_Info *info)
 	** type_info.
 	**
 	** NOTE: If you are changing this code, you might also need
-	** to change the code in ML_create_type_info in runtime/deep_copy.c,
+	** to change the code in make_type_info in runtime/deep_copy.c,
 	** which does much the same thing, only allocating using malloc
 	** instead of on the heap.
 	*/
@@ -2319,8 +2404,8 @@ ML_expand_builtin(Word data_value, Word entry_value, ML_Expand_Info *info)
 Word * 
 ML_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 {
-	int i, arity;
-	Word base_type_info;
+	int i, arity, extra_args;
+	Word *base_type_info;
 	Word *type_info;
 
 		/* 
@@ -2337,30 +2422,68 @@ ML_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 		fatal_error(""ML_create_type_info: unbound type variable"");
 	}
 
-	base_type_info = arg_pseudo_type_info[0];
+	base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(arg_pseudo_type_info);
 
 		/* no arguments - optimise common case */
-	if (base_type_info == 0) {
+	if (base_type_info == arg_pseudo_type_info) {
 		return arg_pseudo_type_info;
 	}
 
-	arity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
+	if (MR_BASE_TYPEINFO_IS_HO(base_type_info)) {
+		arity = MR_TYPEINFO_GET_HIGHER_ARITY(arg_pseudo_type_info);
+		extra_args = 2;
+	} else {
+		arity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
+		extra_args = 1;
+	}
 
-	incr_saved_hp(LVALUE_CAST(Word, type_info), arity + 1);
 
-	for (i = 0; i <= arity; i++) {
+		/* 
+		** Check for type variables -- if there are none,
+		** we don't need to create a new type_info.
+		*/
+	for (i = arity + extra_args - 1; i >= extra_args; i--) {
 		if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info[i])) {
-			type_info[i] = term_type_info[arg_pseudo_type_info[i]];
-			if (TYPEINFO_IS_VARIABLE(type_info[i])) {
-				fatal_error(""ML_create_type_info: ""
-					""unbound type variable"");
-			}
-
-		} else {
-			type_info[i] = arg_pseudo_type_info[i];
+			break;
 		}
 	}
-	return type_info;
+
+		/*
+		** Do we need to create a new type_info?
+		*/
+	if (i >= extra_args) {
+		incr_saved_hp(LVALUE_CAST(Word, type_info), arity + extra_args);
+
+			/* 
+			** Copy any preliminary arguments to the type_info 
+			** (this means the base_type_info and possibly
+			** arity for higher order terms).
+			*/ 
+		for (i = 0; i < extra_args; i++) {
+			type_info[i] = arg_pseudo_type_info[i];
+		}
+
+			/*
+			** Copy type arguments, substituting for any 
+			** type variables.
+			*/
+		for (i = extra_args; i < arity + extra_args; i++) {
+			if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info[i])) {
+				type_info[i] = term_type_info[
+					arg_pseudo_type_info[i]];
+				if (TYPEINFO_IS_VARIABLE(type_info[i])) {
+					fatal_error(""ML_create_type_info: ""
+						""unbound type variable"");
+				}
+
+			} else {
+				type_info[i] = arg_pseudo_type_info[i];
+			}
+		}
+		return type_info;
+	} else {
+		return arg_pseudo_type_info;
+	}
 }
 
 ").

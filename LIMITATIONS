@@ -19,12 +19,16 @@ are the following:
 * The order of mode declarations is significant:
   unique mode declarations must precede non-unique mode declarations.
 
-* Predicates can have at most about 1000 arguments.
-
 We are working on eliminating all of these problems. 
 
-Of course, those are not the only things we're working on.  Among other
-things, we'd like to provide better support for debugging, and a better
-garbage collector.  We're also working on a parallel/multithreaded
-version of Mercury, and on adding support for constraint solving.
+In addition, design decisions in this implementation have imposed the
+following fixed limits:
+
+* Predicates can have at most about 1000 arguments.
+
+* Higher order terms are limited to arity of about 500.
+
+These limits can be lifted (with some effort), but would possibly incur
+performance penalties. Contact the Mercury team (mercury@cs.mu.oz.au) if
+you find these limits are affecting your application.
 

@@ -31,6 +31,7 @@ PROGS=	\
 	getopt_test \
 	higher_order_func_test \
 	higher_order_syntax \
+	higher_order_type_manip \
 	ho_func_reg \
 	ho_solns \
 	ho_univ_to_type \

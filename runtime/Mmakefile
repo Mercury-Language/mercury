@@ -35,8 +35,8 @@ MACHHDRS	= machdeps/no_regs.h machdeps/i386_regs.h \
 		  machdeps/mips_regs.h machdeps/sparc_regs.h \
 		  machdeps/alpha_regs.h machdeps/pa_regs.h \
 		  machdeps/rs6000_regs.h
-MODS		= engine.mod wrapper.mod call.mod context.mod
-MOD_CS		= engine.c wrapper.c call.c context.c
+MODS		= engine.mod wrapper.mod call.mod context.mod type_info.mod
+MOD_CS		= engine.c wrapper.c call.c context.c type_info.c
 MOD_OS		= $(MOD_CS:.c=.o)
 ORIG_CS		= deep_copy.c dlist.c dummy.c label.c \
 		  memory.c misc.c regs.c table.c timing.c prof.c prof_mem.c \

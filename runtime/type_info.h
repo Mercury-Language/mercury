@@ -268,6 +268,40 @@
 #define TYPEINFO_IS_VARIABLE(T)		( (Word) T <= TYPELAYOUT_MAX_VARINT )
 
 /*
+** This constant is also used for other information - for
+** ctor infos a small integer is used for higher order types.
+** Even integers represent preds, odd represent functions.
+** The arity of the pred or function can be found by dividing by
+** two (integer division).
+*/
+
+#define MR_BASE_TYPEINFO_HO_PRED				\
+	((const Word *) &mercury_data___base_type_info_pred_0)
+#define MR_BASE_TYPEINFO_HO_FUNC				\
+	((const Word *) &mercury_data___base_type_info_func_0)
+#define MR_BASE_TYPEINFO_IS_HO_PRED(T)				\
+	(T == MR_BASE_TYPEINFO_HO_PRED)
+#define MR_BASE_TYPEINFO_IS_HO_FUNC(T)				\
+	(T == MR_BASE_TYPEINFO_HO_FUNC)
+#define MR_BASE_TYPEINFO_IS_HO(T)				\
+	(T == MR_BASE_TYPEINFO_HO_FUNC || T == MR_BASE_TYPEINFO_HO_PRED)
+
+#define MR_TYPECTOR_IS_HIGHER_ORDER(T)				\
+	( (Word) T <= TYPELAYOUT_MAX_VARINT )
+#define MR_TYPECTOR_MAKE_PRED(Arity)				\
+	( (Word) ((Integer) (Arity) * 2) )
+#define MR_TYPECTOR_MAKE_FUNC(Arity)				\
+	( (Word) ((Integer) (Arity) * 2 + 1) )
+#define MR_TYPECTOR_GET_HOT_ARITY(T)				\
+	((Integer) (T) / 2 )
+#define MR_TYPECTOR_GET_HOT_NAME(T)				\
+	((ConstString) ( ( ((Integer) (T)) % 2 ) ? "func" : "pred" ))
+#define MR_TYPECTOR_GET_HOT_BASE_TYPE_INFO(T)			\
+	((Word) ( ( ((Integer) (T)) % 2 ) ?		\
+		(const Word *) &mercury_data___base_type_info_func_0 :	\
+		(const Word *) &mercury_data___base_type_info_pred_0 ))
+
+/*
 ** Offsets into the type_layout structure for functors and arities.
 **
 ** Constant and enumeration values start at 0, so the functor
@@ -654,6 +688,9 @@ typedef struct {
 
 #define MR_TYPEINFO_GET_BASE_TYPEINFO(TypeInfo)				\
 		((*TypeInfo) ? ((Word *) *TypeInfo) : TypeInfo)
+
+#define MR_TYPEINFO_GET_HIGHER_ARITY(TypeInfo)				\
+		((Integer) (Word *) (TypeInfo)[TYPEINFO_OFFSET_FOR_PRED_ARITY]) 
 
 #define MR_BASE_TYPEINFO_GET_TYPEFUNCTORS(BaseTypeInfo)			\
 		((Word *) (BaseTypeInfo)[OFFSET_FOR_BASE_TYPE_FUNCTORS])

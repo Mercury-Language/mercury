@@ -1,0 +1,6 @@
+func(type_info) = string
+pred(type_info, c_pointer, list(type_info))
+int
+container(list(int))
+container(pred(state, state))
+func(int) = int

@@ -23,6 +23,9 @@ static Word * make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
 static Word * deep_copy_type_info(Word *type_info,
 	Word *lower_limit, Word *upper_limit);
 
+MR_DECLARE_STRUCT(mercury_data___base_type_info_pred_0);
+MR_DECLARE_STRUCT(mercury_data___base_type_info_func_0);
+
 /*
 ** Due to the depth of the control here, we'll use 4 space indentation.
 */
@@ -383,46 +386,73 @@ Word *
 make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
 	bool *allocated) 
 {
-	int arity, i;
-	Word base_type_info;
+	int arity, i, extra_args;
+	Word *base_type_info;
 	Word *type_info;
 
 	*allocated = FALSE;
 
-		/* The arg_pseudo_type_info might be a polymorphic variable */
+		/* 
+		** The arg_pseudo_type_info might be a polymorphic variable,
+		** is so - substitute.
+		*/
 
-	if ((Word) arg_pseudo_type_info < TYPELAYOUT_MAX_VARINT) {
+	if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
 		return (Word *) term_type_info[(Word) arg_pseudo_type_info];
 	}
 
-
-	base_type_info = arg_pseudo_type_info[0];
+	base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(arg_pseudo_type_info);
 
 		/* no arguments - optimise common case */
-	if (base_type_info == 0) {
+	if (base_type_info == arg_pseudo_type_info) {
 		return arg_pseudo_type_info;
-	} else {
-		arity = ((Word *) base_type_info)[0];
-	}
+	} 
 
-	for (i = arity; i > 0; i--) {
-		if (arg_pseudo_type_info[i] < TYPELAYOUT_MAX_VARINT) {
+        if (MR_BASE_TYPEINFO_IS_HO(base_type_info)) {
+                arity = MR_TYPEINFO_GET_HIGHER_ARITY(arg_pseudo_type_info);
+                extra_args = 2;
+        } else {
+                arity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
+                extra_args = 1;
+        }
+
+		/*
+                ** Check for type variables -- if there are none,
+                ** we don't need to create a new type_info.
+                */
+	for (i = arity + extra_args - 1; i >= extra_args; i--) {
+		if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info[i])) {
 			break;
 		}
 	}
 
-		/* 
-		** See if any of the arguments were polymorphic.
-		** If so, substitute.
-		*/
-	if (i > 0) {
-		type_info = checked_malloc(arity * sizeof(Word));
+		/*
+		** Do we need to create a new type_info?
+		*/ 
+	if (i >= extra_args) {
+		type_info = checked_malloc((arity + extra_args) * sizeof(Word));
 		*allocated = TRUE;
-		for (i = 0; i <= arity; i++) {
-			if (arg_pseudo_type_info[i] < TYPELAYOUT_MAX_VARINT) {
-				type_info[i] = term_type_info[arg_pseudo_type_info[i]];
+
+			/*
+			** Copy any preliminary arguments to the type_info 
+			** (this means the base_type_info and possibly 
+			** arity for higher order terms).
+			*/ 
+                for (i = 0; i < extra_args; i++) {
+                        type_info[i] = arg_pseudo_type_info[i];
+                }
+
+			/*
+			**  Copy type arguments, substituting for any
+			**  type variables.
+			*/ 
+		for (i = extra_args; i < arity + extra_args; i++) {
+			if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info[i])) {
+				type_info[i] = term_type_info[
+					arg_pseudo_type_info[i]];
 				if (type_info[i] < TYPELAYOUT_MAX_VARINT) {
-					fatal_error("Error! Can't instantiate type variable.");
+					fatal_error("make_type_info: "
+						"unbound type variable.");
 				}
 			} else {
 				type_info[i] = arg_pseudo_type_info[i];

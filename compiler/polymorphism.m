@@ -163,6 +163,7 @@
 :- import_module hlds_pred, hlds_goal, hlds_data, llds, (lambda), globals.
 :- import_module prog_data, type_util, mode_util, quantification, instmap.
 :- import_module code_util, unify_proc, special_pred, prog_util, make_hlds.
+:- import_module hlds_out.
 
 :- import_module bool, int, string, list, set, map.
 :- import_module term, varset, std_util, require.
@@ -719,19 +720,20 @@ polymorphism__make_vars([Type | Types], ModuleInfo, TypeInfoMap0,
 polymorphism__make_var(Type, ModuleInfo, TypeInfoMap0, VarSet0, VarTypes0, 
 		Var, TypeInfoMap, ExtraGoals, VarSet, VarTypes) :-
 	(
-		type_is_higher_order(Type, _PredOrFunc, TypeArgs)
+		type_is_higher_order(Type, PredOrFunc, TypeArgs)
 	->
 		% This occurs for code where a predicate calls a polymorphic
 		% predicate with a known higher-order value of the type
 		% variable.
-		% The transformation we perform is basically the same
-		% as in the first-order case below, except that
-		% we ignore the PredOrFunc and map all pred/func types to 
-		% builtin pred/0 for the purposes of creating type_infos.
+		% The transformation we perform is basically the same as
+		% in the first-order case below, except that we map
+		% pred/func types to builtin pred/0 or func/0 for the
+		% purposes of creating type_infos.  
 		% To allow univ_to_type to check the type_infos
-		% correctly, the actual arity of the pred is added to 
+		% correctly, the actual arity of the pred is added to
 		% the type_info of higher-order types.
-		TypeId = unqualified("pred") - 0,
+		hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncStr),
+		TypeId = unqualified(PredOrFuncStr) - 0,
 		polymorphism__construct_type_info(Type, TypeId, TypeArgs,
 			yes, ModuleInfo, TypeInfoMap0, VarSet0, VarTypes0,
 			Var, TypeInfoMap, ExtraGoals, VarSet, VarTypes)
