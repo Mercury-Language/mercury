@@ -221,6 +221,16 @@ mercury____Index___io__stream_0_0:
 	r2 = -1;
 	proceed();
 
+/********************************/
+mercury____Read___io__stream_0_0:
+	/* don't know what to put here yet. */
+	fatal_error("cannot read io__stream");
+
+mercury____Write___io__stream_0_0:
+	/* don't know what to put here yet. */
+	fatal_error("cannot write io__stream");
+/********************************/
+
 mercury__io__stdin_stream_3_0:
 	r1 = (int) &mercury_stdin;
 	update_io(r2, r3);
@@ -371,8 +381,10 @@ mercury__io__call_system_code_4_0:
 mercury____Unify___io__external_state_0_0:
 mercury____Compare___io__external_state_0_0:
 mercury____Index___io__external_state_0_0:
+mercury____Read___io__external_state_0_0:
+mercury____Write___io__external_state_0_0:
 	/* the unique mode system should prevent these */
-	fatal_error("cannot unify/compare/index io__external_state");
+	fatal_error("cannot unify/compare/index/read/write io__external_state");
 
 /*---------------------------------------------------------------------------*/
 
@@ -486,6 +498,16 @@ mercury____Compare___univ_0_0:
 mercury____Index___univ_0_0:
 	r2 = -1;
 	proceed();
+
+/********************************/
+mercury____Read___univ_0_0:
+	/* don't know what to put here yet. */
+	fatal_error("cannot read univ");
+	
+mercury____Write___univ_0_0:
+	/* don't know what to put here yet. */
+	fatal_error("cannot write univ");
+/********************************/
 
 /* semidet_succeed and semidet_fail, from std_util.nl */
 
