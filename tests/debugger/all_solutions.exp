@@ -13,11 +13,11 @@ mdb> stack
    0       pred all_solutions:hello/1-0 (multi)
 reached unknown label.
 mdb> retry 1
-reached unknown label
+cannot retry across non-debuggable region
 mdb> retry 2
-reached unknown label
+cannot retry across non-debuggable region
 mdb> retry 3
-reached unknown label
+cannot retry across non-debuggable region
 mdb> continue -n -S
 Hello again, world
 Hello, world
