@@ -50,6 +50,11 @@ umask 002
 # An abstract name for the branch, i.e. `0.10' or `latest'.
 # This is not the same as the branch name used by CVS.
 #
+# TEST_ID:
+# A name that identifies the version being tested.
+# This should include all the relevant test
+# parameters, e.g. BRANCH, HOST, C_COMPILER.
+#
 # INSTALL_DIR_NAME:
 # The name of the directory in which to install this branch.
 # (Not the full path, just the final directory name.)
@@ -95,6 +100,10 @@ case $BRANCH in
 		RELEASE_VERSION_PATTERN=0.10.1-beta-*
 		;;
 esac
+case "$C_COMPILER" in
+	gcc)	TEST_ID=$HOST.$BRANCH ;;
+	*)	TEST_ID=$HOST.$BRANCH."$C_COMPILER" ;;
+esac
 
 #-----------------------------------------------------------------------------#
 
@@ -107,7 +116,7 @@ case $HOST in
 	roy) 		OPTIMIZE=-O4 ;;	# hlc
 	hydra)		OPTIMIZE=-O2 ;;
 	ender)		OPTIMIZE=-O3 ;;
-	venus) 		case $C_COMPILER in
+	venus) 		case "$C_COMPILER" in
 				gcc)	OPTIMIZE=-O5 ;;
 				*)	OPTIMIZE=-O2 ;;
 			esac ;;
@@ -166,7 +175,7 @@ case $HOST in
 	*)		
 		INSTALL_DIR=/home/mercury/public/$INSTALL_DIR_NAME/$FULLARCH ;;
 esac
-case $C_COMPILER in
+case "$C_COMPILER" in
 	gcc)	;;
 	*)	INSTALL_DIR="$INSTALL_DIR-$C_COMPILER" ;;
 esac
@@ -301,7 +310,7 @@ case $HOST in
 		;;
 	hg)
 		CONFIG_OPTS=""
-		case $C_COMPILER in asm)
+		case "$C_COMPILER" in asm)
 			INSTALL_GRADE="hlc.gc"
 			INSTALL_LIBGRADES="asm_fast.gc asm_fast \
 				asm_fast.gc.prof asm_fast.prof  \
@@ -312,13 +321,13 @@ case $HOST in
 		;;
 	venus)
 		CONFIG_OPTS=""
-		case $C_COMPILER in lcc)
+		case "$C_COMPILER" in lcc)
 			# For grade none.gc.tr.debug, lcc 4.1 gets an
 			# internal error when compiling library/hash_table.c.
 			# So we need to disable that grade.
-			INSTALL_LIBGRADES="none 
-				none.gc.prof none.prof none.gc.memprof
-				none.gc.tr
+			INSTALL_LIBGRADES="none  \
+				none.gc.prof none.prof none.gc.memprof \
+				none.gc.tr \
 				hlc.gc hlc.par.gc"
 			;;
 		esac
@@ -442,7 +451,7 @@ cd mercury || { false; exit 1; }
 # variable; it means to build with `--target asm'.
 # $CC holds the name of the real C compiler.
 
-case $C_COMPILER in
+case "$C_COMPILER" in
 	asm)
 		CC=gcc
 		target_opts="--target asm"
@@ -530,16 +539,11 @@ case $status in 0)
     [ -d $TESTDIR/logs ] || mkdir -p $TESTDIR/logs
     case $status in
         0) 
-	    case $C_COMPILER in
-	        gcc) date >> $TESTDIR/logs/install.$INSTALL_DIR_NAME.$HOST ;;
-	        *)   date >> $TESTDIR/logs/install.$INSTALL_DIR_NAME.$HOST-$C_COMPILER ;;
-	    esac
+	    date >> $TESTDIR/logs/install."$TEST_ID"
+	    rm -f $TESTDIR/logs/install-failed."$TEST_ID"
 	    ;;
         *)
-	    case $C_COMPILER in
-	        gcc) date >> $TESTDIR/logs/install-failed.$INSTALL_DIR_NAME.$HOST ;;
-	        *)   date >> $TESTDIR/logs/install-failed.$INSTALL_DIR_NAME.$HOST-$C_COMPILER ;;
-	    esac
+	    date >> $TESTDIR/logs/install-failed."$TEST_ID"
 	    ;;
     esac
 esac
@@ -553,7 +557,7 @@ case $HOST in
 		GRADES="asm_fast.gc.tr asm_fast.tr"
 		;;
 	hg|quicksilver|hydra|ender|kryten|taifun|venus|earth)
-		case $C_COMPILER in
+		case "$C_COMPILER" in
 			gcc)	GRADES="asm_fast.gc.tr" ;;
 			*)	GRADES="" ;;
 		esac
@@ -689,7 +693,7 @@ case $HOST in
 		;;
 
 	venus)
-		case $C_COMPILER in
+		case "$C_COMPILER" in
 			gcc)	GRADES="asm_fast.gc asm_fast
 				asm_fast.gc.prof asm_fast.prof
 				asm_fast.gc.memprof asm_fast.gc.tr
@@ -850,13 +854,13 @@ case $fullname in
 		;;
 esac
 
-case $C_COMPILER in
+case "$C_COMPILER" in
 	gcc)	;;
 	*)	fullname="$fullname-$C_COMPILER" ;;
 esac
 
-# cvs does not allow `.' in tag names, so we use `_' instead
-fullname_tag=`echo $fullname | tr . _`
+# cvs does not allow `.' or space in tag names, so we use `_' instead
+fullname_tag=`echo $fullname | tr ' .' __`
 
 {
 	cd $DIR/mercury &&
@@ -897,10 +901,7 @@ case $status in
     0)
 	: if we get this far, then it worked.
 	[ -d $TESTDIR/logs ] || mkdir -p $TESTDIR/logs
-	case $C_COMPILER in
-		gcc) date >> $TESTDIR/logs/successful_tests.$INSTALL_DIR_NAME.$HOST ;;
-		*) date >> $TESTDIR/logs/successful_tests.$INSTALL_DIR_NAME.$HOST."$C_COMPILER" ;;
-	esac
+	date >> $TESTDIR/logs/success."$TEST_ID" ;;
 	case $HOST in murlibobo)
 	    cd $DIR &&
 		# Delete older stable versions that this one replaces
