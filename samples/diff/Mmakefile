@@ -7,8 +7,6 @@
 
 # This source file is hereby placed in the public domain.  -fjh (the author).
 
--include ../Mmake.params
-
 MAIN_TARGET=all
 depend: diff.depend
 all: diff
@@ -21,5 +19,4 @@ all: diff
 # BTW, the predicate which isn't compiled correctly is diff_out__show_file_2
 # in diff_out.m.
 CFLAGS=-O0
-
 
