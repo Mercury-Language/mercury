@@ -33,14 +33,11 @@ at some time in the future:
   collection (hlc.agc grade).  See the comments in
   compiler/ml_elim_nested.m and the paper on our web page for more details.
 
-* Mercury is now the official programming language for Melbourne Uni's
-  "Aditi" deductive database system.  The Mercury compiler includes
-  support for interfacing to Aditi.  However Aditi itself is not yet
-  complete and has not yet been made publicly available.
-  (The Aditi support is documented in doc/reference_manual.texi,
-  but for now that documentation is commented out -- it's not
-  included in the formatted versions of the reference manual,
-  only in the TexInfo source code.)
+* Mercury is now the official programming language for Melbourne University's
+  "Aditi" deductive database system (see <http://www.cs.mu.oz.au/aditi>).
+  The Mercury compiler includes incomplete support for interfacing to Aditi.
+  In particular, the support for executing ordinary Mercury code within
+  Aditi queries is currently poor.
 
 * The Mercury debugger (mdb) now includes support for declarative
   debugging.  There are still some limitations to be dealt with, and
@@ -67,6 +64,7 @@ distribution.
   new memory on the heap) and compile time garbage collection
   This is on the "reuse" branch of our CVS repository.
 
+* Better support for inter-module analysis and optimization.
 
 Work not in progress
 --------------------
