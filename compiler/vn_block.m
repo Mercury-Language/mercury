@@ -202,7 +202,7 @@ vn__handle_instr(mkframe(Name, Size, Redoip),
 		Liveset0, Liveset, SeenIncr0, SeenIncr, Tuple0, Tuple) :-
 	vn__new_ctrl_node(vn_mkframe(Name, Size, Redoip),
 		Livemap, VnTables0, VnTables1, Liveset0, Liveset1, Tuple0, Tuple1),
-	vn__handle_instr(assign(redoip(lval(curfr)), const(address_const(Redoip))),
+	vn__handle_instr(assign(redoip(lval(maxfr)), const(address_const(Redoip))),
 		Livemap, VnTables1, VnTables,
 		Liveset1, Liveset, SeenIncr0, SeenIncr, Tuple1, Tuple).
 vn__handle_instr(modframe(Redoip),
@@ -309,13 +309,6 @@ vn__new_ctrl_node(Vn_instr, Livemap, VnTables0, VnTables, Liveset0, Liveset,
 		Parallels = []
 	;
 		Vn_instr = vn_mkframe(_, _, _),
-		VnTables = VnTables0,
-		Liveset = Liveset0,
-		FlushEntry = FlushEntry0,
-		LabelNo = LabelNo0,
-		Parallels = []
-	;
-		Vn_instr = vn_modframe(_),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,

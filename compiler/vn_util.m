@@ -547,9 +547,6 @@ vn__build_uses_from_ctrl(Ctrl, Ctrlmap, VnTables0, VnTables) :-
 			VnInstr = vn_mkframe(_, _, _),
 			VnTables1 = VnTables0
 		;
-			VnInstr = vn_modframe(_),
-			VnTables1 = VnTables0
-		;
 			VnInstr = vn_label(_),
 			VnTables1 = VnTables0
 		;

@@ -275,6 +275,8 @@ peephole__match(if_val(Rval, label(Target)), Comment, _Procmap, _Forkmap,
 	% If a `mkframe' is followed by a `modframe', with the instructions
 	% in between containing only straight-line code, we can delete the
 	% `modframe' and instead just set the redoip directly in the `mkframe'.
+	% This should also be done if the modframe appears instead as an
+	% assignment to the redoip of curfr or maxfr.
 	%
 	%	mkframe(D, S, _)	=>	mkframe(D, S, Redoip)
 	%	<straightline instrs>		<straightline instrs>
@@ -358,7 +360,8 @@ peephole__match(modframe(Redoip), Comment,
 		Instrs = [modframe(Redoip2) - Comment | Instrs1]
 	;
 		Redoip = do_fail,
-		opt_util__straight_alternative(Instrs0, Between, After)
+		opt_util__straight_alternative(Instrs0, Between, After),
+		opt_util__touches_nondet_ctrl(Between, no)
 	->
 		list__condense([Between,
 			% XXX must be fixed before profiling is finished

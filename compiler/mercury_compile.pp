@@ -445,7 +445,7 @@ touch_datestamp(ModuleName) -->
 				io__state, io__state).
 :- mode write_dependency_file(in, in, in, di, uo) is det.
 
-write_dependency_file(ModuleName, LongDeps, ShortDeps) -->
+write_dependency_file(ModuleName, LongDeps0, ShortDeps0) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	{ string__append(ModuleName, ".d", DependencyFileName) },
 	maybe_write_string(Verbose, "% Writing auto-dependency file `"),
@@ -454,6 +454,9 @@ write_dependency_file(ModuleName, LongDeps, ShortDeps) -->
 	maybe_flush_output(Verbose),
 	io__open_output(DependencyFileName, Result),
 	( { Result = ok(DepStream) } ->
+		{ list__sort(LongDeps0, LongDeps) },
+		{ list__sort(ShortDeps0, ShortDeps) },
+
 		io__write_string(DepStream, ModuleName),
 		io__write_string(DepStream, ".err : "),
 		io__write_string(DepStream, ModuleName),

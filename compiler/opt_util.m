@@ -332,11 +332,23 @@ opt_util__skip_comments_livevals_labels(Instrs0, Instrs) :-
 
 opt_util__next_modframe([Instr | Instrs], RevSkip, Redoip, Skip, Rest) :-
 	Instr = Uinstr - _Comment,
-	( Uinstr = modframe(Redoip0) ->
+	(
+		Uinstr = modframe(Redoip0)
+	->
 		Redoip = Redoip0,
 		list__reverse(RevSkip, Skip),
 		Rest = Instrs
-	; Uinstr = mkframe(_, _, _) ->
+	;
+		Uinstr = assign(redoip(lval(Fr)),
+			const(address_const(Redoip0))),
+		( Fr = maxfr ; Fr = curfr )
+	->
+		Redoip = Redoip0,
+		list__reverse(RevSkip, Skip),
+		Rest = Instrs
+	;
+		Uinstr = mkframe(_, _, _)
+	->
 		fail
 	;
 		opt_util__can_instr_branch_away(Uinstr, Canbranchaway),
@@ -493,17 +505,7 @@ opt_util__straight_alternative_2([Instr0 | Instrs0], Between0, Between,
 	(
 		(
 			opt_util__can_instr_branch_away(Uinstr0, no),
-			\+ (
-				Uinstr0 = mkframe(_, _, _)
-			;
-				Uinstr0 = modframe(_)
-			;
-				Uinstr0 = assign(redoip(_), _)
-			;
-				Uinstr0 = assign(succfr(_), _)
-			;
-				Uinstr0 = assign(prevfr(_), _)
-			)
+			opt_util__touches_nondet_ctrl_instr(Uinstr0, no)
 		;
 			Uinstr0 = if_val(_, CodeAddr),
 			( CodeAddr = do_fail ; CodeAddr = do_redo )
@@ -1057,27 +1059,33 @@ opt_util__remove_both_incr_decr_sp([Instr0 | Instrs0], Instrs) :-
 
 opt_util__touches_nondet_ctrl([], no).
 opt_util__touches_nondet_ctrl([Uinstr - _ | Instrs], Touch) :-
-	( Uinstr = assign(Lval, Rval) ->
-		opt_util__touches_nondet_ctrl_lval(Lval, TouchLval),
-		opt_util__touches_nondet_ctrl_rval(Rval, TouchRval),
-		bool__or(TouchLval, TouchRval, Touch0)
-	; Uinstr = incr_hp(Lval, _, Rval) ->
-		opt_util__touches_nondet_ctrl_lval(Lval, TouchLval),
-		opt_util__touches_nondet_ctrl_rval(Rval, TouchRval),
-		bool__or(TouchLval, TouchRval, Touch0)
-	; Uinstr = mark_hp(Lval) ->
-		opt_util__touches_nondet_ctrl_lval(Lval, Touch0)
-	; Uinstr = restore_hp(Rval) ->
-		opt_util__touches_nondet_ctrl_rval(Rval, Touch0)
-	;
-		Touch0 = yes
-	),
+	opt_util__touches_nondet_ctrl_instr(Uinstr, Touch0),
 	(
 		Touch0 = yes,
 		Touch = yes
 	;
 		Touch0 = no,
 		opt_util__touches_nondet_ctrl(Instrs, Touch)
+	).
+
+:- pred opt_util__touches_nondet_ctrl_instr(instr, bool).
+:- mode opt_util__touches_nondet_ctrl_instr(in, out) is det.
+
+opt_util__touches_nondet_ctrl_instr(Uinstr, Touch) :-
+	( Uinstr = assign(Lval, Rval) ->
+		opt_util__touches_nondet_ctrl_lval(Lval, TouchLval),
+		opt_util__touches_nondet_ctrl_rval(Rval, TouchRval),
+		bool__or(TouchLval, TouchRval, Touch)
+	; Uinstr = incr_hp(Lval, _, Rval) ->
+		opt_util__touches_nondet_ctrl_lval(Lval, TouchLval),
+		opt_util__touches_nondet_ctrl_rval(Rval, TouchRval),
+		bool__or(TouchLval, TouchRval, Touch)
+	; Uinstr = mark_hp(Lval) ->
+		opt_util__touches_nondet_ctrl_lval(Lval, Touch)
+	; Uinstr = restore_hp(Rval) ->
+		opt_util__touches_nondet_ctrl_rval(Rval, Touch)
+	;
+		Touch = yes
 	).
 
 :- pred opt_util__touches_nondet_ctrl_lval(lval, bool).
