@@ -98,7 +98,7 @@ endif
 %.res: %.exp %.out
 	@echo "Comparing $*.out with $*.exp*,"
 	@echo "	results in $@"
-	@-rm -f $@ $*.res[1-3]
+	@-rm -f $@ $*.res[1-5]
 	@{ diff $(DIFF_OPTS) $*.exp $*.out > $*.res1 && \
 		echo "Matched $*.exp" && \
 		cp $*.res1 $@; } || \
@@ -118,7 +118,7 @@ endif
 		diff $(DIFF_OPTS) $*.exp5 $*.out > $*.res5 && \
 		echo "Matched $*.exp5" && \
 		cp $*.res5 $@; } || \
-	{ shortest=`wc -l $*.res[1-3] | grep -v total | sort -n | \
+	{ shortest=`wc -l $*.res[1-5] | grep -v total | sort -n | \
 		head -1 | awk '{ print $$2; }' `; \
 		echo "** $*.out did not match the expected output"; \
 		echo "** (closest match was $$shortest)"; \
@@ -204,8 +204,12 @@ runtests:
 			cat $$subdir/$(ERROR_OUTPUT_FILE) \
 				>> $(ERROR_OUTPUT_FILE); \
 		    fi; \
+		    if [ -f $$subdir/FAILED_TESTS ]; then \
+			sed "s@^@$$subdir/@" $$subdir/FAILED_TESTS \
+				>> FAILED_TESTS; \
+		    fi; \
 		done; \
-		echo SOME TESTS FAILED: see $(ERROR_OUTPUT_FILE); \
+		echo SOME TESTS FAILED: see FAILED_TESTS and $(ERROR_OUTPUT_FILE); \
 		exit 1; \
 	fi
 
