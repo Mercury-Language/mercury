@@ -560,6 +560,12 @@
 %	- class method calls
 %	- type declarations for user-defined types
 %	...
+%
+% POTENTIAL EFFICIENCY IMPROVEMENTS:
+%	- generate local declarations for the `succeeded' variable;
+%	  this would help in nondet code, because it would avoid
+%	  the need to access the outermost function's `succeeded'
+%	  variable via the environment pointer
 
 %-----------------------------------------------------------------------------%
 
@@ -772,8 +778,24 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId) = MLDS_ProcDefnBody :-
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 			_PredInfo, ProcInfo),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
-	proc_info_goal(ProcInfo, Goal),
-	Goal = _ - GoalInfo,
+	proc_info_goal(ProcInfo, Goal0),
+
+	%
+	% The HLDS front-end sometimes over-estimates
+	% the set of non-locals.  We need to restrict
+	% the set of non-locals for the top-level goal
+	% to just the headvars, because otherwise variables
+	% which occur in the top-level non-locals but which
+	% are not really non-local will not be declared.
+	%
+	proc_info_headvars(ProcInfo, HeadVars),
+	Goal0 = GoalExpr - GoalInfo0,
+	goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+	set__list_to_set(HeadVars, HeadVarsSet),
+	set__intersect(HeadVarsSet, NonLocals0, NonLocals),
+	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo),
+	Goal = GoalExpr - GoalInfo,
+
 	goal_info_get_context(GoalInfo, Context),
 
 	MLDSGenInfo0 = ml_gen_info_init(ModuleInfo, PredId, ProcId),
