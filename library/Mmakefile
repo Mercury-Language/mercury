@@ -284,7 +284,7 @@ mercury_il.dll: ../runtime/mercury_il.dll
 mercury_dotnet.dll: ../runtime/mercury_dotnet.dll
 	cp ../runtime/mercury_dotnet.dll .
 
-CSHARP_MODULES = array builtin char construct dir exception float int io \ 
+CSHARP_MODULES = array builtin char construct dir exception float int io \
 		math private_builtin rtti_implementation std_util string \
 		time type_desc
 CPP_MODULES = builtin io library private_builtin type_desc
