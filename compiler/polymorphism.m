@@ -709,14 +709,14 @@ polymorphism__make_var(Type, ModuleInfo, TypeInfoMap,
 		type_is_higher_order(Type, _PredOrFunc, _TypeArgs)
 	->
 		% This occurs for code where a predicate calls a polymorphic
-		% predicate with a known (higher-order) value of the type
+		% predicate with a known higher-order value of the type
 		% variable.
-		% The transformation we perform is shown in the comment
-		% at the top of the module.
-		% We ignore the PredOrFunc and TypeArgs,
+		% The transformation we perform is basically the same
+		% as in the first-order case below, except that
+		% we ignore the PredOrFunc and TypeArgs,
 		% and map all pred/func types to mercury_builtin:pred/0
 		% for the purposes of creating type_infos.
-		% XXX that probably causes type_to_term to give
+		% XXX that probably causes univ_to_type to give
 		% the wrong results
 		TypeId = qualified("mercury_builtin", "pred") - 0,
 		polymorphism__construct_type_info(Type, TypeId, [],
