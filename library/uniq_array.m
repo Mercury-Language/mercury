@@ -349,14 +349,14 @@ uniq_array__slow_set(UniqArray0, Index, Item, UniqArray) :-
 :- pragma(c_code, uniq_array__lookup(UniqArray::uniq_array_ui, Index::in,
 		Item::out), "{
 	UniqArrayType *uniq_array = (UniqArrayType *)UniqArray;
-	if ((Unsigned) Index >= uniq_array->size) {
+	if ((Unsigned) Index >= (Unsigned) uniq_array->size) {
 		fatal_error(""uniq_array__lookup: array index out of bounds"");
 	}
 	Item = uniq_array->elements[Index];
 }").
 :- pragma(c_code, uniq_array__lookup(UniqArray::in, Index::in, Item::out), "{
 	UniqArrayType *uniq_array = (UniqArrayType *)UniqArray;
-	if ((Unsigned) Index >= uniq_array->size) {
+	if ((Unsigned) Index >= (Unsigned) uniq_array->size) {
 		fatal_error(""uniq_array__lookup: array index out of bounds"");
 	}
 	Item = uniq_array->elements[Index];
@@ -367,7 +367,7 @@ uniq_array__slow_set(UniqArray0, Index, Item, UniqArray) :-
 :- pragma(c_code, uniq_array__set(UniqArray0::uniq_array_di, Index::in,
 		Item::in, UniqArray::uniq_array_uo), "{
 	UniqArrayType *uniq_array = (UniqArrayType *)UniqArray0;
-	if ((Unsigned) Index >= uniq_array->size) {
+	if ((Unsigned) Index >= (Unsigned) uniq_array->size) {
 		fatal_error(""uniq_array__set: array index out of bounds"");
 	}
 	uniq_array->elements[Index] = Item;	/* destructive update! */
