@@ -150,7 +150,8 @@ __gc public class Constants {
     static int MR_TYPECTOR_REP_TYPEDESC	        	=35;
     static int MR_TYPECTOR_REP_TYPECTORDESC	        =36;
     static int MR_TYPECTOR_REP_FOREIGN			=37;
-    static int MR_TYPECTOR_REP_UNKNOWN		        =38;
+    static int MR_TYPECTOR_REP_REFERENCE		=38;
+    static int MR_TYPECTOR_REP_UNKNOWN		        =39;
 
     static int MR_SECTAG_NONE				= 0;
     static int MR_SECTAG_LOCAL				= 1;

@@ -254,6 +254,23 @@ get_ftn_ptr_c_pointer_unify() {
 }
 
 .method public static default int32 
+get_ftn_ptr_ref_compare() {
+	ldftn void ['mercury'] 'mercury'.'private_builtin__cpp_code'.'mercury_code'::
+	do_compare__ref_1_0(
+		class [mscorlib]System.Object[]&,
+		class [mscorlib]System.Object, class [mscorlib]System.Object)
+	ret
+}
+
+.method public static default int32 
+get_ftn_ptr_ref_unify() {
+	ldftn int32 ['mercury'] 'mercury'.'private_builtin__cpp_code'.'mercury_code'::
+	do_unify__ref_1_0(
+		class [mscorlib]System.Object, class [mscorlib]System.Object)
+	ret
+}
+
+.method public static default int32 
 get_ftn_ptr_string_compare() {
 	ldftn void ['mercury'] 'mercury'.'builtin__cpp_code'.'mercury_code'::
 	do_compare__string_0_0(
