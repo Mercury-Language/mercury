@@ -22,7 +22,7 @@
 #include "mercury_imp.h"
 
 /*
-** Bootstrapping the hand-defintion of private_builtin:type_info/1
+** Bootstrapping the hand-definition of private_builtin:type_info/1
 ** means that the stage 1 compiler has a compiler generated definition,
 ** while stage 2 doesn't.
 */
