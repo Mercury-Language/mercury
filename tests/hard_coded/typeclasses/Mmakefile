@@ -37,6 +37,7 @@ PROGS=	\
 	multi_constraint_same_tvar \
 	multi_moded \
 	multi_parameter \
+	multi_parameter_bug \
 	nondet_class_method \
 	operator_classname \
 	record_syntax \
