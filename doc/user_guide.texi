@@ -1297,7 +1297,8 @@ then its three components will have the paths
 @samp{d2;c3;?;}, @samp{d2;c3;t;} and @samp{d2;c3;e;}.
 
 Paths refer to the internal form of the procedure definition.
-When debugging is enabled (and the option --trace-optimized is not given),
+When debugging is enabled
+(and the option @samp{--trace-optimized} is not given),
 the compiler will try to keep this form
 as close as possible to the source form of the procedure,
 in order to make event paths as useful as possible to the programmer.
