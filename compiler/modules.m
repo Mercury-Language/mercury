@@ -7215,7 +7215,7 @@ create_java_shell_script(MainModuleName, Succeeded) -->
 
         globals__io_lookup_bool_option(verbose, Verbose),
         maybe_write_string(Verbose, "% Generating shell script `" ++
-			FileName ++ "':\n"),
+			FileName ++ "'...\n"),
 
 	module_name_to_file_name(MainModuleName, ".class", no, ClassFileName),
 	{ DirName = dir.dirname(ClassFileName) },
@@ -7242,12 +7242,13 @@ create_java_shell_script(MainModuleName, Succeeded) -->
 		io__call_system("chmod a+x " ++ FileName, ChmodResult),
 		(
 			{ ChmodResult = ok(Status) },
-			{ Status = 0 ->
-				Succeeded = yes
+			( { Status = 0 } ->
+				{ Succeeded = yes },
+        			maybe_write_string(Verbose, "% done.\n")
 			;
-				error("chmod exit status != 0"),
-				Succeeded = no
-			}
+				{ error("chmod exit status != 0") },
+				{ Succeeded = no }
+			)
 		;
 			{ ChmodResult = error(Message) },
 			{ error(io__error_message(Message)) },
