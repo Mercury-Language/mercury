@@ -234,8 +234,9 @@ store_alloc_in_disj([Goal0 | Goals0], Liveness0, ResumeVars0, ModuleInfo,
 :- mode store_alloc_in_cases(in, in, in, in, out, out) is det.
 
 store_alloc_in_cases([], Liveness, _ResumeVars0, _ModuleInfo, [], Liveness).
-store_alloc_in_cases([case(Cons, Goal0) | Goals0], Liveness0, ResumeVars0,
-		ModuleInfo, [case(Cons, Goal) | Goals], Liveness) :-
+store_alloc_in_cases([case(Cons, IMDelta, Goal0) | Goals0], Liveness0,
+		ResumeVars0, ModuleInfo, [case(Cons, IMDelta, Goal) | Goals],
+		Liveness) :-
 	store_alloc_in_goal(Goal0, Liveness0, ResumeVars0, ModuleInfo,
 		Goal, Liveness),
 	store_alloc_in_cases(Goals0, Liveness0, ResumeVars0, ModuleInfo,

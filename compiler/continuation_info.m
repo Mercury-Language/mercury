@@ -44,8 +44,8 @@
 
 :- interface.
 
-:- import_module llds, hlds_pred, hlds_data.
-:- import_module list.
+:- import_module llds, hlds_pred, hlds_data, prog_data.
+:- import_module list, std_util, map, set, assoc_list, term.
 
 	%
 	% Information used by the continuation_info module.

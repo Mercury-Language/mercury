@@ -13,7 +13,7 @@
 
 :- interface.
 
-:- import_module list, term.
+:- import_module list, term, std_util.
 :- import_module prog_data.
 
 %-----------------------------------------------------------------------------%

@@ -53,6 +53,20 @@ extern	void		(*address_of_init_modules)(void);
 extern	void		(*address_of_init_gc)(void);
 #endif
 
+/*
+** Similarly, these are for the debugger interface; they're defined in
+** library/debugger_interface.m.
+*/
+void	(*MR_DI_output_current)(Integer, Integer, Integer, Word, String,
+		String, Integer, Integer, Integer, Word, String, Word, Word);
+		/* normally ML_DI_output_current (output_current/13) */
+bool	(*MR_DI_found_match)(Integer, Integer, Integer, Word, String, String,
+		Integer, Integer, Integer, Word, String, Word);
+		/* normally ML_DI_found_match (output_current/12) */
+void	(*MR_DI_read_request_from_socket)(Word, Word *, Integer *);
+		/* normally ML_DI_read_request_from_socket
+		   (read_request_from_socket/5) */
+
 extern	void		do_init_modules(void);
 
 extern	const char *	progname;

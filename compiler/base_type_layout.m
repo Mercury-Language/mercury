@@ -217,7 +217,8 @@
 
 :- interface.
 
-:- import_module hlds_module.
+:- import_module prog_data, hlds_module, llds.
+:- import_module list.
 
 :- pred base_type_layout__generate_hlds(module_info, module_info).
 :- mode base_type_layout__generate_hlds(in, out) is det.

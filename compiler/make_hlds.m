@@ -23,9 +23,9 @@
 :- interface.
 
 :- import_module prog_data, hlds_module, hlds_pred, hlds_goal, hlds_data.
-:- import_module equiv_type, module_qual.
+:- import_module equiv_type, module_qual, globals.
 
-:- import_module io, std_util.
+:- import_module io, std_util, bool, term, list.
 
 % parse_tree_to_hlds(ParseTree, MQInfo, EqvMap, HLDS, UndefTypes, UndefModes):
 %	Given MQInfo (returned by module_qual.m) and EqvMap (returned by
@@ -2808,7 +2808,7 @@ warn_singletons_in_goal_list([Goal|Goals], QuantVars, VarSet, CallPredId, MI)
 
 warn_singletons_in_cases([], _, _, _, _) --> [].
 warn_singletons_in_cases([Case|Cases], QuantVars, VarSet, CallPredId, MI) -->
-	{ Case = case(_ConsId, Goal) },
+	{ Case = case(_ConsId, _IMDelta, Goal) },
 	warn_singletons_in_goal(Goal, QuantVars, VarSet, CallPredId, MI),
 	warn_singletons_in_cases(Cases, QuantVars, VarSet, CallPredId, MI).
 

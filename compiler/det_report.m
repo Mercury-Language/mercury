@@ -14,8 +14,9 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal, det_util, prog_data.
-:- import_module io.
+:- import_module hlds_module, hlds_pred, hlds_data, hlds_goal, det_util.
+:- import_module prog_data.
+:- import_module io, list, term, varset.
 
 :- type det_msg	--->
 			% warnings
@@ -668,7 +669,7 @@ det_diagnose_disj([Goal | Goals], Desired, Actual, SwitchContext, DetInfo,
 :- mode det_diagnose_switch(in, in, in, in, in, out, di, uo) is det.
 
 det_diagnose_switch(_Var, [], _Desired, _SwitchContext, _DetInfo, no) --> [].
-det_diagnose_switch(Var, [case(ConsId, Goal) | Cases], Desired,
+det_diagnose_switch(Var, [case(ConsId, _, Goal) | Cases], Desired,
 		SwitchContext0, DetInfo, Diagnosed) -->
 	{ SwitchContext1 = [switch_context(Var, ConsId) | SwitchContext0] },
 	det_diagnose_goal(Goal, Desired, SwitchContext1, DetInfo, Diagnosed1),
@@ -686,7 +687,7 @@ det_diagnose_missing_consids([ConsId | ConsIds], Cases, Missing) :-
 	det_diagnose_missing_consids(ConsIds, Cases, Missing0),
 	(
 		list__member(Case, Cases),
-		Case = case(ConsId, _)
+		Case = case(ConsId, _, _)
 	->
 		Missing = Missing0
 	;

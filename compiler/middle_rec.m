@@ -36,8 +36,8 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 	Goal = GoalExpr - GoalInfo,
 	(
 		GoalExpr = switch(Var, cannot_fail, [Case1, Case2], SM),
-		Case1 = case(ConsId1, Goal1),
-		Case2 = case(ConsId2, Goal2),
+		Case1 = case(ConsId1, _, Goal1),
+		Case2 = case(ConsId2, _, Goal2),
 		(
 			code_aux__contains_only_builtins(Goal1),
 			code_aux__contains_simple_recursive_call(Goal2,

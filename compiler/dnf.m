@@ -43,7 +43,8 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, set.
+:- import_module hlds_module, hlds_pred.
+:- import_module bool, std_util, list, set.
 
 :- pred dnf__transform_module(module_info::in, bool::in,
 	maybe(set(pred_proc_id))::in, module_info::out) is det.
@@ -266,7 +267,7 @@ dnf__transform_switch([], _, _, ModuleInfo, ModuleInfo, _, _, _, [],
 dnf__transform_switch([Case0 | Cases0], InstMap0, MaybeNonAtomic,
 		ModuleInfo0, ModuleInfo, Base, Counter0, DnfInfo,
 		[Case | Cases], NewPredIds0, NewPredIds) :-
-	Case0 = case(ConsId, Goal0),
+	Case0 = case(ConsId, IMDelta, Goal0),
 	goal_to_conj_list(Goal0, ConjList0),
 	% XXX should adjust instmap to account for binding of switch variable
 	dnf__transform_conj(ConjList0, InstMap0, MaybeNonAtomic,
@@ -274,7 +275,7 @@ dnf__transform_switch([Case0 | Cases0], InstMap0, MaybeNonAtomic,
 		ConjList, NewPredIds0, NewPredIds1),
 	Goal0 = _ - GoalInfo,
 	conj_list_to_goal(ConjList, GoalInfo, Goal),
-	Case = case(ConsId, Goal),
+	Case = case(ConsId, IMDelta, Goal),
 	dnf__transform_switch(Cases0, InstMap0, MaybeNonAtomic,
 		ModuleInfo1, ModuleInfo, Base, Counter1, DnfInfo,
 		Cases, NewPredIds1, NewPredIds).
@@ -475,7 +476,7 @@ dnf__goals_free_of_nonatomic([Goal | Goals], NonAtomic) :-
 	set(pred_proc_id)::in) is semidet.
 
 dnf__cases_free_of_nonatomic([], _NonAtomic).
-dnf__cases_free_of_nonatomic([case(_, Goal) | Cases], NonAtomic) :-
+dnf__cases_free_of_nonatomic([case(_, _, Goal) | Cases], NonAtomic) :-
 	dnf__goal_free_of_nonatomic(Goal, NonAtomic),
 	dnf__cases_free_of_nonatomic(Cases, NonAtomic).
 

@@ -18,7 +18,7 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module prog_data, io, term.
+:- import_module prog_data, io, term, list.
 
 :- pred prog_out__write_messages(message_list, io__state, io__state).
 :- mode prog_out__write_messages(in, di, uo) is det.

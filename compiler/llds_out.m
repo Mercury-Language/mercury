@@ -17,8 +17,8 @@
 
 :- interface.
 
-:- import_module llds, hlds_data.
-:- import_module io.
+:- import_module llds, hlds_data, prog_data.
+:- import_module io, bool.
 
 	% Given a 'c_file' structure, open the appropriate .c file
 	% and output the code into that file.

@@ -13,7 +13,7 @@
 :- module opt_util.
 
 :- interface.
-:- import_module bool, list, std_util.
+:- import_module bool, list, std_util, map.
 :- import_module llds.
 
 :- type instrmap == map(label, instruction).

@@ -13,7 +13,8 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred.
+:- import_module hlds_module, hlds_pred, hlds_goal.
+:- import_module list.
 
 :- pred move_follow_code_in_proc(proc_info, proc_info,
 	module_info, module_info).
@@ -58,8 +59,11 @@ move_follow_code_in_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) :-
 		proc_info_get_initial_instmap(ProcInfo0,
 			ModuleInfo0, InstMap0),
 		proc_info_inst_table(ProcInfo0, InstTable0),
-		recompute_instmap_delta(VarTypes, Goal2, Goal, InstMap0,
-			InstTable0, InstTable, ModuleInfo0, ModuleInfo),
+		proc_info_headvars(ProcInfo0, ArgVars),
+		proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives),
+		recompute_instmap_delta(ArgVars, ArgLives, VarTypes,
+			Goal2, Goal, InstMap0, InstTable0, InstTable,
+			_, ModuleInfo0, ModuleInfo),
 		proc_info_set_inst_table(ProcInfo0, InstTable, ProcInfo1),
 		proc_info_set_goal(ProcInfo1, Goal, ProcInfo2),
 		proc_info_set_varset(ProcInfo2, Varset, ProcInfo3),
@@ -138,8 +142,8 @@ move_follow_code_in_disj([Goal0|Goals0], [Goal|Goals], Flags, R0, R) :-
 :- mode move_follow_code_in_cases(in, out, in, in, out) is det.
 
 move_follow_code_in_cases([], [], _, R, R).
-move_follow_code_in_cases([case(Cons, Goal0)|Goals0], [case(Cons, Goal)|Goals],
-		Flags, R0, R) :-
+move_follow_code_in_cases([case(Cons, IMDelta, Goal0)|Goals0],
+		[case(Cons, IMDelta, Goal)|Goals], Flags, R0, R) :-
 	move_follow_code_in_goal(Goal0, Goal, Flags, R0, R1),
 	move_follow_code_in_cases(Goals0, Goals, Flags, R1, R).
 
@@ -241,9 +245,9 @@ move_follow_code_move_goals(Goal0 - GoalInfo, FollowGoals, Goal - GoalInfo) :-
 
 move_follow_code_move_goals_cases([], _FollowGoals, []).
 move_follow_code_move_goals_cases([Case0|Cases0], FollowGoals, [Case|Cases]) :-
-	Case0 = case(Cons, Goal0),
+	Case0 = case(Cons, IMDelta, Goal0),
 	follow_code__conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal),
-	Case = case(Cons, Goal),
+	Case = case(Cons, IMDelta, Goal),
 	move_follow_code_move_goals_cases(Cases0, FollowGoals, Cases).
 
 %-----------------------------------------------------------------------------%

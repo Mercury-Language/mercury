@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module prog_io_util.
+:- import_module prog_io_util, prog_data.
 :- import_module varset, term.
 
 :- pred parse_dcg_clause(string, varset, term, term, term__context,

@@ -15,7 +15,7 @@
 :- interface.
 
 :- import_module hlds_goal, hlds_data, hlds_pred, prog_data, (inst), purity.
-:- import_module list, io, varset, term.
+:- import_module list, io, varset, term, std_util, bool.
 
 :- type expand_inst_alias --->
 		dont_expand		% alias(IK)

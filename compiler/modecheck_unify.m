@@ -20,8 +20,8 @@
 :- module modecheck_unify.
 :- interface.
 
-:- import_module hlds_goal, mode_info, modes.
-:- import_module term.
+:- import_module hlds_goal, hlds_data, mode_info, modes, prog_data.
+:- import_module term, map, list.
 
 	% Modecheck a unification
 :- pred modecheck_unification( var, unify_rhs, unification, unify_context,
@@ -759,7 +759,7 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 		),
 		mode_info_get_var_types(ModeInfo4, VarTypes),
 		categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ModeArgs,
-				X, ConsId, ArgVars0, VarTypes,
+				X, ConsId, ArgVars0, VarTypes, Det1,
 				Unification0, ModeInfo4,
 				Unification1, ModeInfo5),
 		split_complicated_subunifies(Unification1, ArgVars0,
@@ -1234,13 +1234,13 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars,
 % be deterministic or semideterministic.
 
 :- pred categorize_unify_var_functor(mode, list(mode), list(mode), var,
-		cons_id, list(var), map(var, type),
+		cons_id, list(var), map(var, type), determinism,
 		unification, mode_info, unification, mode_info).
-:- mode categorize_unify_var_functor(in, in, in, in, in, in, in, in,
+:- mode categorize_unify_var_functor(in, in, in, in, in, in, in, in, in,
 			mode_info_di, out, mode_info_uo) is det.
 
 categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
-		X, NewConsId, ArgVars, VarTypes,
+		X, NewConsId, ArgVars, VarTypes, Det,
 		Unification0, ModeInfo0, Unification, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	mode_info_get_inst_table(ModeInfo0, InstTable0),
@@ -1270,6 +1270,8 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 			% be `not_reached' or `bound([])'.  So if both
 			% the initial and final inst are `bound([_])',
 			% then the unification must be deterministic.
+
+			/*********************
 			mode_get_insts(ModuleInfo, ModeOfX,
 					InitialInst0, FinalInst0),
 			inst_expand(InstTable0, ModuleInfo, InitialInst0,
@@ -1278,6 +1280,8 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 				FinalInst),
 			InitialInst = bound(_, [_]),
 			FinalInst = bound(_, [_])
+			*********************/
+			determinism_components(Det, cannot_fail, _)
 		->
 			CanFail = cannot_fail,
 			ModeInfo = ModeInfo0

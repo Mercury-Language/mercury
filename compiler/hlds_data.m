@@ -14,7 +14,7 @@
 :- interface.
 
 :- import_module hlds_pred, llds, prog_data, (inst).
-:- import_module bool, list, map, varset.
+:- import_module bool, list, map, varset, std_util, term.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

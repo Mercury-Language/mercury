@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,7 +22,7 @@
 
 :- interface.
 
-:- import_module relation, io.
+:- import_module relation, io, list, string.
 
 :- pred call_graph__main(list(string), relation(string), relation(string),
 							io__state, io__state).
@@ -35,7 +35,7 @@
 
 :- import_module read.
 :- import_module options, globals.
-:- import_module list, require, bool, std_util.
+:- import_module require, bool, std_util.
 
 
 call_graph__main(Args, StaticCallGraph0, StaticCallGraph) -->

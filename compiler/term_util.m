@@ -22,7 +22,7 @@
 :- import_module term_errors, prog_data.
 :- import_module hlds_module, hlds_pred, hlds_data, hlds_goal.
 
-:- import_module bool, int, list, map, bag, term.
+:- import_module bool, int, list, map, bag, term, std_util.
 
 %-----------------------------------------------------------------------------%
 

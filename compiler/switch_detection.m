@@ -333,14 +333,14 @@ detect_sub_switches_in_disj([Goal0 | Goals0], InstMap, VarTypes, InstTable,
 :- mode detect_switches_in_cases(in, in, in, in, in, out) is det.
 
 detect_switches_in_cases([], _InstMap, _VarTypes, _InstTable, _ModuleInfo, []).
-detect_switches_in_cases([Case0 | Cases0], InstMap, VarTypes, InstTable, ModuleInfo,
-		[Case | Cases]) :-
-	Case0 = case(Functor, Goal0),
+detect_switches_in_cases([Case0 | Cases0], InstMap, VarTypes, InstTable,
+		ModuleInfo, [Case | Cases]) :-
+	Case0 = case(Functor, IMDelta, Goal0),
 	detect_switches_in_goal(Goal0, InstMap, VarTypes, InstTable, ModuleInfo,
 			Goal),
-	Case = case(Functor, Goal),
-	detect_switches_in_cases(Cases0, InstMap, VarTypes, InstTable, ModuleInfo,
-			Cases).
+	Case = case(Functor, IMDelta, Goal),
+	detect_switches_in_cases(Cases0, InstMap, VarTypes, InstTable,
+			ModuleInfo, Cases).
 
 :- pred detect_switches_in_conj(list(hlds_goal), instmap, map(var, type),
 	inst_table, module_info, list(hlds_goal)).
@@ -556,7 +556,8 @@ switch_covers_all_cases(CasesList, Type, ModuleInfo) :-
 
 fix_case_list([], _, []).
 fix_case_list([Functor - DisjList | Cases0], GoalInfo,
-		[case(Functor, Goal) | Cases]) :-
+		[case(Functor, IMDelta, Goal) | Cases]) :-
+	instmap_delta_init_reachable(IMDelta),
 	disj_list_to_goal(DisjList, GoalInfo, Goal),
 	fix_case_list(Cases0, GoalInfo, Cases).
 

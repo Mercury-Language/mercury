@@ -20,7 +20,7 @@
 :- interface.
 
 :- import_module hlds_goal, hlds_data, llds, code_info.
-:- import_module list.
+:- import_module list, term.
 
 :- type test_sense --->
 		branch_on_success

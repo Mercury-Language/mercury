@@ -35,7 +35,7 @@
 :- interface.
 
 :- import_module hlds_goal, hlds_pred, prog_data.
-:- import_module list, set, term, varset.
+:- import_module list, set, term, varset, map.
 
 :- pred implicitly_quantify_clause_body(list(var),
 		hlds_goal, varset, map(var, type),
@@ -512,8 +512,8 @@ implicitly_quantify_disj([Goal0 | Goals0], [Goal | Goals]) -->
 implicitly_quantify_cases([], []) -->
 	{ set__init(NonLocalVars) },
 	quantification__set_nonlocals(NonLocalVars).
-implicitly_quantify_cases([case(Cons, Goal0) | Cases0],
-				[case(Cons, Goal) | Cases]) -->
+implicitly_quantify_cases([case(Cons, IMDelta, Goal0) | Cases0],
+				[case(Cons, IMDelta, Goal) | Cases]) -->
 	implicitly_quantify_goal(Goal0, Goal),
 	quantification__get_nonlocals(NonLocalVars0),
 	implicitly_quantify_cases(Cases0, Cases),
@@ -577,8 +577,8 @@ goal_list_vars_2([Goal - _GoalInfo| Goals], Set0, LambdaSet0, Set, LambdaSet) :-
 :- mode case_list_vars_2(in, in, in, out, out) is det.
 
 case_list_vars_2([], Set, LambdaSet, Set, LambdaSet).
-case_list_vars_2([case(_Cons, Goal - _GoalInfo)| Cases], Set0, LambdaSet0,
-			Set, LambdaSet) :-
+case_list_vars_2([case(_Cons, _IMDelta, Goal - _GoalInfo)| Cases], Set0,
+			LambdaSet0, Set, LambdaSet) :-
 	quantification__goal_vars_2(Goal, Set0, LambdaSet0, Set1, LambdaSet1),
 	case_list_vars_2(Cases, Set1, LambdaSet1, Set, LambdaSet).
 

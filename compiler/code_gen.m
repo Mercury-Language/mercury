@@ -30,8 +30,8 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, llds, code_info.
-:- import_module continuation_info.
-:- import_module list, assoc_list, io.
+:- import_module continuation_info, globals.
+:- import_module list, assoc_list, io, term, set.
 
 		% Translate a HLDS structure into an LLDS
 

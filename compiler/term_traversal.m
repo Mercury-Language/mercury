@@ -21,8 +21,8 @@
 :- interface.
 
 :- import_module term_util, term_errors.
-:- import_module hlds_module, hlds_pred, hlds_goal, prog_data.
-:- import_module list, bag, map, std_util, term.
+:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data.
+:- import_module list, bag, map, std_util, term, set.
 
 :- type traversal_info
 	--->	ok(
@@ -311,7 +311,7 @@ traverse_disj([Goal | Goals], Params, Info0, Info) :-
 
 traverse_switch([], _, _, ok(Empty, [])) :-
 	set__init(Empty).
-traverse_switch([case(_, Goal) | Cases], Params, Info0, Info) :-
+traverse_switch([case(_, _, Goal) | Cases], Params, Info0, Info) :-
 	traverse_goal(Goal, Params, Info0, Info1),
 	traverse_switch(Cases, Params, Info0, Info2),
 	combine_paths(Info1, Info2, Params, Info).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module mode_info.
+:- import_module mode_info, hlds_goal.
 
 	% Print a debugging message which includes the port, message string,
 	% and the current instmap (but only if `--debug-modes' was enabled).

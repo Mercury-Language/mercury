@@ -27,6 +27,8 @@
 :- op(1199, fx, (export_adt)).
 :- op(1199, fx, (export_op)).
 
+:- op(1199, fx, (include_module)).
+
 :- op(1199, fx, (import_module)).
 :- op(1199, fx, (import_sym)).
 :- op(1199, fx, (import_pred)).
@@ -73,6 +75,12 @@
 
 :- op(701, xfx, (is)).
 
+% N.B. Sicstus has ':' already, but with the wrong precedence
+% (550 instead of the ISO Prolog predence of 600),
+% and as xfy instead of yfx (xfy is correct according to ISO Prolog,
+% but Mercury has it as yfx).
+:- op(600, yfx, (:)).
+
 :- op(400, yfx, (rem)).
 :- op(400, yfx, (div)).
 
@@ -87,10 +95,15 @@ mercury_declaration(func(_)).
 mercury_declaration(mode(_)).
 mercury_declaration(inst(_)).
 
+mercury_declaration(impure(_)).
+mercury_declaration(semipure(_)).
+
 mercury_declaration(module(_)).
 mercury_declaration(end_module(_)).
 mercury_declaration(interface).
 mercury_declaration(implementation).
+
+mercury_declaration(include_module(_)).
 
 mercury_declaration(import_module(_)).
 mercury_declaration(import_sym(_)).

@@ -18,7 +18,8 @@
 
 :- interface.
 
-:- import_module hlds_module, io.
+:- import_module hlds_module, hlds_pred, io.
+:- import_module std_util, map.
 
 :- pred dead_proc_elim(module_info, module_info, io__state, io__state).
 :- mode dead_proc_elim(in, out, di, uo) is det.
@@ -381,8 +382,8 @@ dead_proc_elim__examine_goals([Goal | Goals], CurrProc, Queue0, Queue,
 :- mode dead_proc_elim__examine_cases(in, in, in, out, in, out) is det.
 
 dead_proc_elim__examine_cases([], _CurrProc, Queue, Queue, Needed, Needed).
-dead_proc_elim__examine_cases([case(_, Goal) | Cases], CurrProc, Queue0, Queue,
-		Needed0, Needed) :-
+dead_proc_elim__examine_cases([case(_, _, Goal) | Cases], CurrProc,
+		Queue0, Queue, Needed0, Needed) :-
 	dead_proc_elim__examine_goal(Goal, CurrProc, Queue0, Queue1,
 		Needed0, Needed1),
 	dead_proc_elim__examine_cases(Cases, CurrProc, Queue1, Queue,
@@ -756,7 +757,7 @@ pre_modecheck_examine_goal(if_then_else(_, If, Then, Else, _) - _) -->
 	list__foldl(pre_modecheck_examine_goal, [If, Then, Else]).
 pre_modecheck_examine_goal(switch(_, _, Cases, _) - _) -->
 	{ ExamineCase = lambda([Case::in, Info0::in, Info::out] is det, (
-		Case = case(_, Goal),
+		Case = case(_, _, Goal),
 		pre_modecheck_examine_goal(Goal, Info0, Info)
 	)) },
 	list__foldl(ExamineCase, Cases).

@@ -29,7 +29,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred.
+:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
 
 :- pred find_final_follow_vars(proc_info, follow_vars).
 :- mode find_final_follow_vars(in, out) is det.
@@ -47,8 +47,8 @@
 :- import_module code_util, quantification, arg_info, globals.
 :- import_module bool, list, map, set, std_util, term, require.
 
-:- type follow_vars_info --->
-		follow_vars_info(
+:- type follow_vars_info
+	--->	follow_vars_info(
 			module_info,
 			inst_table
 		).
@@ -334,8 +334,8 @@ find_follow_vars_in_disj([Goal0 | Goals0], FVInfo, FollowVars0,
 :- mode find_follow_vars_in_cases(in, in, in, out, out) is det.
 
 find_follow_vars_in_cases([], _FVInfo, FollowVars, [], FollowVars).
-find_follow_vars_in_cases([case(Cons, Goal0) | Goals0], FVInfo,
-			FollowVars0, [case(Cons, Goal) | Goals], FollowVars) :-
+find_follow_vars_in_cases([case(Cons, IMDelta, Goal0) | Goals0], FVInfo,
+		FollowVars0, [case(Cons, IMDelta, Goal) | Goals], FollowVars) :-
 	find_follow_vars_in_goal(Goal0, FVInfo, FollowVars0,
 		Goal1, FollowVars),
 	goal_set_follow_vars(Goal1, yes(FollowVars), Goal),

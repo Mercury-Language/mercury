@@ -47,8 +47,8 @@
 
 :- interface.
 
-:- import_module io.
-:- import_module hlds_module, term_util.
+:- import_module io, bool, std_util.
+:- import_module hlds_module, hlds_pred, term_util, prog_data.
 
 	% Perform termination analysis on the module.
 

@@ -606,7 +606,7 @@ add_construction_aliases(UseInf0, Alias, [Var | Vars], UseInf) :-
 :- pred list_case_to_list_goal(list(case)::in, list(hlds_goal)::out) is det.
 
 list_case_to_list_goal([], []).
-list_case_to_list_goal([case(_, Goal) | Cases], [Goal | Goals]) :-
+list_case_to_list_goal([case(_, _, Goal) | Cases], [Goal | Goals]) :-
 	list_case_to_list_goal(Cases, Goals).
 
 
@@ -1344,7 +1344,8 @@ fixup_disjuncts(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed0, Chang
 		
 fixup_cases(_, _, _, _, Changed, Changed, [], []).
 fixup_cases(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed0, Changed, 
-		[case(ConsId, Goal0) | Cases0], [case(ConsId, Goal) | Cases]) :-
+		[case(ConsId, IMDelta, Goal0) | Cases0],
+		[case(ConsId, IMDelta, Goal) | Cases]) :-
 	fixup_goal(InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
 				LocalChanged, Goal0, Goal),
 	(	

@@ -36,7 +36,8 @@
 
 :- interface.
 
-:- import_module hlds_goal, llds, list, varset, assoc_list, options.
+:- import_module hlds_goal, llds, options.
+:- import_module list, varset, assoc_list, term, map, set.
 
 :- type exprn_info.
 

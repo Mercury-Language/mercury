@@ -51,11 +51,8 @@ ENDINIT
 #define MR_CLASS_METHOD_CALL_INPUTS	4
 
 Define_extern_entry(do_call_det_closure);
-Declare_label(det_closure_return);
 Define_extern_entry(do_call_semidet_closure);
-Declare_label(semidet_closure_return);
 Define_extern_entry(do_call_nondet_closure);
-Declare_label(nondet_closure_return);
 
 Define_extern_entry(do_call_det_class_method);
 Define_extern_entry(do_call_semidet_class_method);
@@ -71,14 +68,8 @@ Define_extern_entry(mercury__compare_3_3);
 Declare_label(mercury__compare_3_0_i1);
 
 MR_MAKE_STACK_LAYOUT_ENTRY(do_call_det_closure);
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(det_closure_return, 
-	do_call_det_closure);
 MR_MAKE_STACK_LAYOUT_ENTRY(do_call_semidet_closure);
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(semidet_closure_return,
-	do_call_semidet_closure);
 MR_MAKE_STACK_LAYOUT_ENTRY(do_call_nondet_closure);
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(nondet_closure_return,
-	do_call_nondet_closure);
 
 MR_MAKE_STACK_LAYOUT_ENTRY(do_call_det_class_method);
 MR_MAKE_STACK_LAYOUT_ENTRY(do_call_semidet_class_method);
@@ -96,11 +87,8 @@ MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__compare_3_0, 1);
 
 BEGIN_MODULE(call_module)
 	init_entry(do_call_det_closure);
-	init_label(det_closure_return);
 	init_entry(do_call_semidet_closure);
-	init_label(semidet_closure_return);
 	init_entry(do_call_nondet_closure);
-	init_label(nondet_closure_return);
 
 	init_entry(do_call_det_class_method);
 	init_entry(do_call_semidet_class_method);

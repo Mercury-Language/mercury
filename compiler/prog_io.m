@@ -56,7 +56,7 @@
 :- interface.
 
 :- import_module prog_data, prog_io_util.
-:- import_module list, io. 
+:- import_module list, io, bool, term, varset.
 
 %-----------------------------------------------------------------------------%
 

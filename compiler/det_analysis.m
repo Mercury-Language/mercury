@@ -52,7 +52,8 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_data, det_report, io.
+:- import_module hlds_module, hlds_pred, hlds_data, det_report, globals.
+:- import_module std_util, list, io.
 
 	% Perform determinism inference for local predicates with no
 	% determinism declarations, and determinism checking for all other
@@ -743,10 +744,10 @@ det_infer_switch([Case0 | Cases0], InstMap0, SolnContext, DetInfo, CanFail0,
 	% knowledge that the var is bound to this particular
 	% constructor, but we wouldn't use that information here anyway,
 	% so we don't bother.
-	Case0 = case(ConsId, Goal0),
+	Case0 = case(ConsId, IMDelta, Goal0),
 	det_infer_goal(Goal0, InstMap0, SolnContext, DetInfo,
 			Goal, Detism1, Msgs1),
-	Case = case(ConsId, Goal),
+	Case = case(ConsId, IMDelta, Goal),
 	determinism_components(Detism1, CanFail1, MaxSolns1),
 	det_switch_canfail(CanFail0, CanFail1, CanFail2),
 	det_switch_maxsoln(MaxSolns0, MaxSolns1, MaxSolns2),

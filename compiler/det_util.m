@@ -18,7 +18,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, globals.
 :- import_module instmap.
-:- import_module bool, set, list.
+:- import_module bool, set, list, term.
 
 :- type maybe_changed	--->	changed ; unchanged.
 
@@ -102,7 +102,7 @@ update_instmap(_Goal0 - GoalInfo0, InstMap0, InstMap) :-
 delete_unreachable_cases([], _, []).
 delete_unreachable_cases([_ | _], [], []).
 delete_unreachable_cases([Case | Cases0], [ConsId | ConsIds], Cases) :-
-	Case = case(CaseConsId, _DisjList),
+	Case = case(CaseConsId, _IMDelta, _DisjList),
 	( CaseConsId = ConsId ->
 		Cases = [Case | Cases1],
 		delete_unreachable_cases(Cases0, ConsIds, Cases1)

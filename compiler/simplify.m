@@ -29,7 +29,9 @@
 :- interface.
 
 :- import_module common, hlds_pred, det_report, det_util, instmap.
-:- import_module io.
+:- import_module prog_data, hlds_goal, hlds_module, hlds_data.
+:- import_module io, std_util, bool, term, instmap, map, varset.
+:- import_module set.
 
 :- pred simplify__proc(simplify, pred_id, proc_id, module_info, module_info,
 	proc_info, proc_info, int, int, io__state, io__state).
@@ -142,25 +144,41 @@ simplify__proc_2(Proc0, Proc, Info0, Info, State0, State) :-
 	proc_info_goal(Proc0, Goal0),
 	simplify__goal(Goal0, Goal, Info0, Info1),
 	simplify_info_get_varset(Info1, VarSet),
-	simplify_info_get_var_types(Info1, VarTypes),
+	simplify_info_get_var_types(Info1, VarTypes1),
 	proc_info_set_goal(Proc0, Goal, Proc1),
 	proc_info_set_varset(Proc1, VarSet, Proc2),
-	proc_info_set_vartypes(Proc2, VarTypes, Proc3),
-	( simplify_info_requantify(Info1) ->
+	proc_info_set_vartypes(Proc2, VarTypes1, Proc3),
+	(
+		simplify_info_requantify(Info1)
+	->
 		requantify_proc(Proc3, Proc4),
-		proc_info_goal(Proc4, Goal2),
+		proc_info_goal(Proc4, Goal4),
+		proc_info_vartypes(Proc4, VarTypes4),
 		simplify_info_get_inst_table(Info1, InstTable1),
 		simplify_info_get_module_info(Info1, ModuleInfo1),
 		proc_info_get_initial_instmap(Proc4, ModuleInfo1, InstMap0),
-		% hlds_out__write_goal(Goal2, ModuleInfo1, VarSet, yes,
-		% 	2, ".", State0, State),
-		recompute_instmap_delta(VarTypes, Goal2, Goal3, InstMap0,
-			InstTable1, InstTable, ModuleInfo1, ModuleInfo),
+		proc_info_headvars(Proc4, HeadVars),
+		proc_info_arglives(Proc4, ModuleInfo1, ArgLives),
+		% hlds_out__write_goal(Goal4, ModuleInfo1, VarSet, yes,
+		% 	2, ".", State0, State1),
+		State1 = State0,
+		recompute_instmap_delta(HeadVars, ArgLives, VarTypes4, Goal4,
+			Goal5, InstMap0, InstTable1, InstTable, Changed,
+			ModuleInfo1, ModuleInfo),
 		simplify_info_set_module_info(Info1, ModuleInfo, Info2),
-		simplify_info_set_inst_table(Info2, InstTable, Info),
+		simplify_info_set_inst_table(Info2, InstTable, Info3),
 		proc_info_set_inst_table(Proc4, InstTable, Proc5),
-		proc_info_set_goal(Proc5, Goal3, Proc),
-		State = State0
+		proc_info_set_goal(Proc5, Goal5, Proc6),
+		(
+			Changed = yes
+		->
+			simplify__proc_2(Proc6, Proc, Info3, Info,
+				State1, State)
+		;
+			Info = Info3,
+			Proc = Proc6,
+			State = State1
+		)
 	;
 		Info = Info1,
 		Proc = Proc3,
@@ -379,7 +397,7 @@ simplify__goal_2(switch(Var, SwitchCanFail, Cases0, SM),
 		% An empty switch always fails.
 		fail_goal(Goal - GoalInfo),
 		Info = Info0
-	; Cases1 = [case(ConsId, SingleGoal0)] ->
+	; Cases1 = [case(ConsId, InstMapDelta, SingleGoal0)] ->
 		% a singleton switch is equivalent to the goal itself with 
 		% a possibly can_fail unification with the functor on the front.
 		cons_id_arity(ConsId, Arity),
@@ -398,7 +416,6 @@ simplify__goal_2(switch(Var, SwitchCanFail, Cases0, SM),
 			% of the entire conjunction, starting with an empty
 			% goal_info.
 			set__init(NonLocals),
-			instmap_delta_init_reachable(InstMapDelta),
 			goal_info_init(NonLocals, InstMapDelta, det, 
 				CombinedGoalInfo0),
 			simplify__approximate_goal_info(GoalList, 
@@ -580,6 +597,14 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	Goal0 = unify(LT0, RT0, M, U0, C),
 	(
+		% A unification of the form X = X can safely be
+		% optimised away.
+
+		RT0 = var(LT0)
+	->
+		true_goal(Goal - GoalInfo),
+		Info = Info0
+	;
 		RT0 = lambda_goal(PredOrFunc, NonLocals, Vars, 
 			Modes, LambdaDeclaredDet, IMDelta, LambdaGoal0)
 	->
@@ -1057,7 +1082,7 @@ simplify__inst_contains_more_information(bound(_, BoundInsts),
 		Cases = [],
 		fail_goal(Goal)
 	;
-		Cases = [case(_, Goal)]
+		Cases = [case(_, _, Goal)]
 	).
 
 :- pred simplify__merge_switch_into_goals(hlds_goals::in, hlds_goals::in,
@@ -1081,8 +1106,9 @@ simplify__merge_switch_into_cases([], _, [_|_], []) :-
 	error("simplify__merge_switch_into_cases").
 simplify__merge_switch_into_cases([_|_], _, [], []) :-
 	error("simplify__merge_switch_into_cases").
-simplify__merge_switch_into_cases([case(ConsId, Goal0) | Cases0], Builtins, 
-		[SwitchGoal | SwitchGoals], [case(ConsId, Goal) | Cases]) :-
+simplify__merge_switch_into_cases([case(ConsId, IMDelta, Goal0) | Cases0],
+		Builtins, [SwitchGoal | SwitchGoals],
+		[case(ConsId, IMDelta, Goal) | Cases]) :-
 	simplify__merge_switch_into_goal(Goal0, Builtins, SwitchGoal, Goal),
 	simplify__merge_switch_into_cases(Cases0, Builtins, SwitchGoals, Cases).
 
@@ -1196,21 +1222,16 @@ simplify__switch(_, [], [], InstMaps, InstMaps, _, Info, Info).
 simplify__switch(Var, [Case0 | Cases0], [Case | Cases],
 		InstMaps0, InstMaps, Info0, Info1, Info) :-
 	simplify_info_get_instmap(Info0, InstMap0),
-	Case0 = case(ConsId, Goal0),
-	simplify_info_get_module_info(Info1, ModuleInfo0),
-	simplify_info_get_inst_table(Info1, InstTable0),
-	instmap_bind_var_to_functor(Var, ConsId, InstMap0, InstMap2,
-		InstTable0, InstTable, ModuleInfo0, ModuleInfo2),
-	simplify_info_set_module_info(Info1, ModuleInfo2, Info2),
-	simplify_info_set_inst_table(Info2, InstTable, Info3),
-	simplify_info_set_instmap(Info3, InstMap2, Info4),
-	simplify__goal(Goal0, Goal, Info4, Info5),
-	simplify_info_post_branch_update(Info0, Info5, Info6),
-	Case = case(ConsId, Goal),
+	Case0 = case(ConsId, IMDelta, Goal0),
+	instmap__apply_instmap_delta(InstMap0, IMDelta, InstMap1),
+	simplify_info_set_instmap(Info1, InstMap1, Info2),
+	simplify__goal(Goal0, Goal, Info2, Info3),
+	simplify_info_post_branch_update(Info0, Info3, Info4),
+	Case = case(ConsId, IMDelta, Goal),
 	Goal = _ - GoalInfo,
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	simplify__switch(Var, Cases0, Cases, [InstMapDelta | InstMaps0],
-		InstMaps, Info0, Info6, Info).
+		InstMaps, Info0, Info4, Info).
 
 	% Create a semidet unification at the start of a singleton case
 	% in a can_fail switch.
@@ -1402,8 +1423,8 @@ simplify__contains_multisoln_goal(Goals) :-
 			varset,
 			map(var, type),
 			bool,		% Does the goal need requantification.
-			bool,		% Does mode analysis need rerunning
-					% rather than recompute_instmap_delta.
+			bool,		% Should we rerun simplification over
+					% the proc once this pass has finished?
 			maybe(branch_info),	% Final instmaps at the end
 					% of each branch of the last 
 					% branching goal
@@ -1441,7 +1462,7 @@ simplify_info_init(DetInfo, Simplify, InstMap, VarSet, VarTypes, Info) :-
 :- pred simplify_info_get_var_types(simplify_info::in,
 		map(var, type)::out) is det.
 :- pred simplify_info_requantify(simplify_info::in) is semidet.
-:- pred simplify_info_recompute_atomic(simplify_info::in) is semidet.
+:- pred simplify_info_rerun_simplify(simplify_info::in) is semidet.
 :- pred simplify_info_get_branch_info(simplify_info::in,
 		maybe(branch_info)::out) is det.
 
@@ -1464,7 +1485,7 @@ simplify_info_get_varset(simplify_info(_,_,_,_,_, VarSet, _,_,_,_,_,_), VarSet).
 simplify_info_get_var_types(simplify_info(_,_,_,_,_,_, VarTypes, _,_,_,_,_),
 	VarTypes). 
 simplify_info_requantify(simplify_info(_,_,_,_,_,_,_, yes, _,_,_,_)).
-simplify_info_recompute_atomic(simplify_info(_,_,_,_,_,_,_,_, yes,_,_,_)).
+simplify_info_rerun_simplify(simplify_info(_,_,_,_,_,_,_,_, yes,_,_,_)).
 simplify_info_get_branch_info(simplify_info(_,_,_,_,_,_,_,_,_,BranchInfo,_,_),
 	BranchInfo).
 simplify_info_get_inst_table(simplify_info(_,_,_,_,_,_,_,_,_,_,_,InstTable),
@@ -1494,7 +1515,7 @@ simplify_info_get_module_info(Info, ModuleInfo) :-
 		simplify_info::out) is det.
 :- pred simplify_info_set_requantify(simplify_info::in,
 		simplify_info::out) is det.
-:- pred simplify_info_set_recompute_atomic(simplify_info::in,
+:- pred simplify_info_set_retun_simplify(simplify_info::in,
 		simplify_info::out) is det.
 :- pred simplify_info_reset_branch_info(simplify_info::in, simplify_info::out,
 		maybe(branch_info)::out) is det.
@@ -1532,7 +1553,7 @@ simplify_info_set_var_types(simplify_info(A, B, C, D, E, F, _, H, I, J, K, L),
 		VarTypes, simplify_info(A, B, C, D, E, F, VarTypes, H, I, J, K, L)). 
 simplify_info_set_requantify(simplify_info(A, B, C, D, E, F, G, _, I, J, K, L),
 		simplify_info(A, B, C, D, E, F, G, yes, I, J, K, L)). 
-simplify_info_set_recompute_atomic(
+simplify_info_set_retun_simplify(
 		simplify_info(A, B, C, D, E, F, G, H, _, J, K, L),
 		simplify_info(A, B, C, D, E, F, G, H, yes, J, K, L)). 
 simplify_info_reset_branch_info(

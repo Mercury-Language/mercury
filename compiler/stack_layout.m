@@ -137,7 +137,7 @@
 
 :- interface.
 
-:- import_module hlds_module.
+:- import_module hlds_module, llds, list.
 
 :- pred stack_layout__generate_llds(module_info, module_info, list(c_module)).
 :- mode stack_layout__generate_llds(in, out, out) is det.

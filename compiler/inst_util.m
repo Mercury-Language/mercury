@@ -41,7 +41,8 @@ in the general case.
 :- module inst_util.
 :- interface.
 
-:- import_module hlds_module, prog_data, (inst).
+:- import_module hlds_module, hlds_data, prog_data, (inst).
+:- import_module list.
 
 :- pred abstractly_unify_inst(is_live, inst, inst, unify_is_real,
 		inst_table, module_info, inst_key_sub, inst, determinism,
@@ -661,7 +662,7 @@ abstractly_unify_inst_functor(Live, InstA, ConsId, ArgInsts, ArgLives, Real,
 			ArgInsts, ArgLives, UI0, Inst0, Det, UI),
 		UI = unify_inst_info(ModuleInfo, InstTable1, Sub1),
 		( determinism_components(Det, _, at_most_zero) ->
-			Inst = Inst0,
+			Inst = not_reached,
 			Sub = Sub1,
 			InstTable = InstTable1
 		;
@@ -703,13 +704,25 @@ abstractly_unify_inst_functor_2(live, _Real, free, ConsId, Args, ArgLives, UI,
 abstractly_unify_inst_functor_2(live, Real, bound(Uniq, ListX), ConsId, Args,
 			ArgLives, UI0, bound(Uniq, List), Det, UI) :-
 	abstractly_unify_bound_inst_list_lives(ListX, ConsId, Args, ArgLives,
-					Real, UI0, List, Det, UI).
+					Real, UI0, List, Det0, UI),
+		% Determine if there is a tag test required to factor
+		% into the determinism.
+	( ListX = [_, _ | _] ->
+		det_par_conjunction_detism(Det0, semidet, Det)
+	;
+		Det = Det0
+	).
 
 abstractly_unify_inst_functor_2(live, Real, ground(Uniq, _), ConsId, ArgInsts,
 		ArgLives, UI0, Inst, Det, UI) :-
 	make_ground_inst_list_lives(ArgInsts, live, ArgLives, Uniq, Real, UI0,
-		GroundArgInsts, Det, UI),
-	Inst = bound(Uniq, [functor(ConsId, GroundArgInsts)]).
+		GroundArgInsts, Det0, UI),
+	Inst = bound(Uniq, [functor(ConsId, GroundArgInsts)]),
+	( Real = real_unify,
+		det_par_conjunction_detism(Det0, semidet, Det)
+	; Real = fake_unify,
+		Det = Det0
+	).
 
 % abstractly_unify_inst_functor_2(live, _, abstract_inst(_,_), _, _, _, _,
 %		_, _, _) :-
@@ -730,8 +743,13 @@ abstractly_unify_inst_functor_2(dead, Real, bound(Uniq, ListX), ConsId, Args,
 abstractly_unify_inst_functor_2(dead, Real, ground(Uniq, _), ConsId, ArgInsts,
 		_ArgLives, UI0, Inst, Det, UI) :-
 	make_ground_inst_list(ArgInsts, dead, Uniq, Real, UI0, GroundArgInsts,
-		Det, UI),
-	Inst = bound(Uniq, [functor(ConsId, GroundArgInsts)]).
+		Det0, UI),
+	Inst = bound(Uniq, [functor(ConsId, GroundArgInsts)]),
+	( Real = real_unify,
+		det_par_conjunction_detism(Det0, semidet, Det)
+	; Real = fake_unify,
+		Det = Det0
+	).
 
 % abstractly_unify_inst_functor_2(dead, _, abstract_inst(_,_), _, _, _, _,
 %		_, _, _) :-
@@ -1376,16 +1394,8 @@ make_shared(clobbered, clobbered).
 make_shared_bound_inst_list([], UI, [], UI).
 make_shared_bound_inst_list([Bound0 | Bounds0], UI0, [Bound | Bounds], UI) :-
 	Bound0 = functor(ConsId, ArgInsts0),
-/*###1367 [cc] In clause for predicate `inst_util:make_shared_bound_inst_list/4':%%%*/
-/*###1367 [cc] in argument 2 of call to pred `make_shared_inst_list/4':%%%*/
-/*###1367 [cc] type error: variable `UI0' has type `(inst_util:unify_inst_info)',%%%*/
-/*###1367 [cc] expected type was `(hlds_module:module_info)'.%%%*/
 	make_shared_inst_list(ArgInsts0, UI0, ArgInsts, UI1),
 	Bound = functor(ConsId, ArgInsts),
-/*###1369 [cc] In clause for predicate `inst_util:make_shared_bound_inst_list/4':%%%*/
-/*###1369 [cc] in argument 2 of call to pred `make_shared_bound_inst_list/4':%%%*/
-/*###1369 [cc] type error: variable `UI1' has type `(hlds_module:module_info)',%%%*/
-/*###1369 [cc] expected type was `(inst_util:unify_inst_info)'.%%%*/
 	make_shared_bound_inst_list(Bounds0, UI1, Bounds, UI).
 
 %-----------------------------------------------------------------------------%

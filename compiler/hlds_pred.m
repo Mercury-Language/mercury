@@ -15,8 +15,8 @@
 
 :- import_module hlds_data, hlds_goal, hlds_module, llds, prog_data, instmap.
 :- import_module purity, globals.
-:- import_module bool, list, map, std_util, term, varset.
 :- import_module term_util.
+:- import_module bool, list, map, std_util, term, varset, set.
 
 :- implementation.
 

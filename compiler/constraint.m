@@ -236,8 +236,8 @@ constraint__propagate_disj([Goal0|Goals0], [Goal|Goals]) -->
 				mode_info_di, mode_info_uo) is det.
 
 constraint__propagate_cases([], []) --> [].
-constraint__propagate_cases([case(Cons, Goal0)|Goals0],
-			[case(Cons, Goal)|Goals]) -->
+constraint__propagate_cases([case(Cons, IMDelta, Goal0)|Goals0],
+			[case(Cons, IMDelta, Goal)|Goals]) -->
 	mode_info_dcg_get_instmap(InstMap0),
 	constraint__propagate_goal(Goal0, Goal),
 	mode_info_set_instmap(InstMap0),

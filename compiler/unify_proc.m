@@ -48,7 +48,7 @@
 :- interface.
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
 :- import_module modes, prog_data, special_pred.
-:- import_module std_util, io.
+:- import_module std_util, io, list, bool.
 
 :- type proc_requests.
 

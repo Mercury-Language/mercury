@@ -35,7 +35,7 @@
 :- interface.
 
 :- import_module prog_data, prog_io.
-:- import_module list, io.
+:- import_module list, io, bool, std_util.
 
 	% read_mod(ModuleName, Extension, Descr, Search, Items, Error):
 	%	Given a module name and a file extension (e.g. `.m',

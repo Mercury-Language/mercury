@@ -9,6 +9,7 @@
 :- interface.
 
 :- import_module hlds_pred, hlds_module.
+:- import_module list, std_util.
 
 	% In the hlds, we initially record the clauses for a predicate
 	% in the clauses_info data structure which is part of the

@@ -15,7 +15,7 @@
 :- interface.
 
 :- import_module hlds_data, prog_data, llds, tree.
-:- import_module list, std_util, io.
+:- import_module list, std_util, io, char.
 
 :- type byte_tree	==	tree(list(byte_code)).
 

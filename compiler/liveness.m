@@ -124,6 +124,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred.
+:- import_module set, term.
 
 	% Add liveness annotations to the goal of the procedure.
 	% This consists of the {pre,post}{birth,death} sets and
@@ -347,8 +348,9 @@ detect_liveness_in_disj([Goal0 | Goals0], Liveness, NonLocals, LiveInfo,
 
 detect_liveness_in_cases([], _Liveness, _NonLocals, _LiveInfo,
 		Union, Union, []).
-detect_liveness_in_cases([case(Cons, Goal0) | Goals0], Liveness, NonLocals,
-		LiveInfo, Union0, Union, [case(Cons, Goal) | Goals]) :-
+detect_liveness_in_cases([case(Cons, IMDelta, Goal0) | Goals0], Liveness,
+		NonLocals, LiveInfo, Union0, Union,
+		[case(Cons, IMDelta, Goal) | Goals]) :-
 	detect_liveness_in_goal(Goal0, Liveness, LiveInfo, Liveness1, Goal1),
 	set__union(Union0, Liveness1, Union1),
 	detect_liveness_in_cases(Goals0, Liveness, NonLocals, LiveInfo,
@@ -528,9 +530,9 @@ detect_deadness_in_disj([Goal0 | Goals0], Deadness, NonLocals, LiveInfo,
 
 detect_deadness_in_cases(_Var, [], _Deadness, _NonLocals, _LiveInfo,
 		Union, Union, []).
-detect_deadness_in_cases(SwitchVar, [case(Cons, Goal0) | Goals0], Deadness0,
-		NonLocals, LiveInfo, Union0, Union,
-		[case(Cons, Goal) | Goals]) :-
+detect_deadness_in_cases(SwitchVar, [case(Cons, IMDelta, Goal0) | Goals0],
+		Deadness0, NonLocals, LiveInfo, Union0, Union,
+		[case(Cons, IMDelta, Goal) | Goals]) :-
 	detect_deadness_in_goal(Goal0, Deadness0, LiveInfo, Deadness1, Goal1),
 	set__union(Union0, Deadness1, Union1),
 	detect_deadness_in_cases(SwitchVar, Goals0, Deadness0, NonLocals,
@@ -814,9 +816,9 @@ detect_resume_points_in_last_disjunct(Goal0, Liveness0, LiveInfo,
 :- mode detect_resume_points_in_cases(in, in, in, in, out, out) is det.
 
 detect_resume_points_in_cases([], Liveness, _, _, [], Liveness).
-detect_resume_points_in_cases([case(ConsId, Goal0) | Cases0], Liveness0,
-		LiveInfo, ResumeVars0,
-		[case(ConsId, Goal) | Cases], LivenessFirst) :-
+detect_resume_points_in_cases([case(ConsId, IMDelta, Goal0) | Cases0],
+		Liveness0, LiveInfo, ResumeVars0,
+		[case(ConsId, IMDelta, Goal) | Cases], LivenessFirst) :-
 	detect_resume_points_in_goal(Goal0, Liveness0, LiveInfo, ResumeVars0,
 		Goal, LivenessFirst),
 	( Cases0 = [_ | _] ->

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,8 +14,8 @@
 
 :- interface.
 
-:- import_module atsort, vn_type, vn_table, livemap.
-:- import_module assoc_list, bool, list, io.
+:- import_module atsort, vn_type, vn_table, livemap, llds.
+:- import_module assoc_list, bool, list, io, std_util.
 
 :- pred vn_debug__tuple_msg(maybe(bool), list(instruction), vn_ctrl_tuple,
 	io__state, io__state).

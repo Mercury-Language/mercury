@@ -829,7 +829,7 @@ c_gen_disj([Goal|Goals], Label, Indent, CGenInfo0, CGenInfo) -->
 				io__state, io__state).
 :- mode c_gen_case(in, in, in, in, out, di, uo) is erroneous.
 
-c_gen_case(case(_ConsId, Goal), Var, Indent, CGenInfo0, CGenInfo) -->
+c_gen_case(case(_ConsId, _, Goal), Var, Indent, CGenInfo0, CGenInfo) -->
 	{ sorry(10) },
 	mercury_output_var(Var, _VarSet, no),
 	io__write_string(" has functor "),

@@ -196,8 +196,8 @@ excess_assignments_in_disj([Goal0 | Goals0], ElimVars0,
 :- mode excess_assignments_in_switch(in, in, out, out) is det.
 
 excess_assignments_in_switch([], ElimVars, [], ElimVars).
-excess_assignments_in_switch([case(Cons, Goal0) | Cases0], ElimVars0,
-		[case(Cons, Goal) | Cases], ElimVars) :-
+excess_assignments_in_switch([case(Cons, IMDelta, Goal0) | Cases0], ElimVars0,
+		[case(Cons, IMDelta, Goal) | Cases], ElimVars) :-
 	excess_assignments_in_goal(Goal0, ElimVars0, Goal, ElimVars1),
 	excess_assignments_in_switch(Cases0, ElimVars1, Cases, ElimVars).
 

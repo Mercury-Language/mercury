@@ -124,9 +124,11 @@ recompute_instmap_delta_new_preds_2([NewPred | NewPreds],
 	proc_info_vartypes(ProcInfo0, VarTypes),
 	proc_info_inst_table(ProcInfo0, InstTable0),
 	proc_info_goal(ProcInfo0, Goal0),
+	proc_info_headvars(ProcInfo0, ArgVars),
+	proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives),
 
-	recompute_instmap_delta(VarTypes, Goal0, Goal, InstMap0,
-		InstTable0, InstTable, ModuleInfo0, ModuleInfo1),
+	recompute_instmap_delta(ArgVars, ArgLives, VarTypes, Goal0, Goal,
+		InstMap0, InstTable0, InstTable, _, ModuleInfo0, ModuleInfo1),
 
 	proc_info_set_inst_table(ProcInfo0, InstTable, ProcInfo1),
 	proc_info_set_goal(ProcInfo1, Goal, ProcInfo),
@@ -439,8 +441,9 @@ traverse_disj_2([Goal0 | Goals0], [Goal | Goals], PredProcId, Changed0, Changed,
 		higher_order_info::out) is det.
 
 traverse_cases([], [], _, unchanged, 0) --> [].
-traverse_cases([case(ConsId, Goal0) | Cases0], [case(ConsId, Goal) | Cases], 
-				PredProcId, Changed, GoalSize) -->
+traverse_cases([case(ConsId, IMDelta, Goal0) | Cases0],
+			[case(ConsId, IMDelta, Goal) | Cases], PredProcId,
+			Changed, GoalSize) -->
 	=(Info0),
 	traverse_goal(Goal0, Goal, PredProcId, Changed0, ThisGoalSize),
 	traverse_cases_2(Cases0, Cases, PredProcId, Changed0,
@@ -453,10 +456,10 @@ traverse_cases([case(ConsId, Goal0) | Cases0], [case(ConsId, Goal) | Cases],
 traverse_cases_2([], [], _, Changed, Changed, Size, Size, _, Info, Info).
 traverse_cases_2([Case0 | Cases0], [Case | Cases], PredProcId, Changed0,
 		Changed, GoalSize0, GoalSize, InitialInfo, Info0, Info) :-
-	Case0 = case(ConsId, Goal0),
+	Case0 = case(ConsId, IMDelta, Goal0),
 	traverse_goal(Goal0, Goal, PredProcId, LocalChanged,
 				ThisGoalSize, InitialInfo, ThisGoalInfo),
-	Case = case(ConsId, Goal),
+	Case = case(ConsId, IMDelta, Goal),
 	update_changed_status(Changed0, LocalChanged, Changed1),
 	GoalSize1 is GoalSize0 + ThisGoalSize,
 	merge_higher_order_infos(Info0, ThisGoalInfo, Info1),

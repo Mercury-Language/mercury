@@ -326,17 +326,6 @@
 */
 
 /*
-** Static code addresses are available, unless using gcc non-local gotos,
-** without assembler labels.
-*/
-
-#if	(defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS))
-	#undef MR_STATIC_CODE_ADDRESSES
-#else
-	#define MR_STATIC_CODE_ADDRESSES
-#endif
-
-/*
 ** Definitions for initialization of base_type_infos. If
 ** MR_STATIC_CODE_ADDRESSES are not available, we need to initialize
 ** the special predicates in the base_type_infos.

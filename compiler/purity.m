@@ -79,7 +79,7 @@
 :- module purity.
 :- interface.
 
-:- import_module hlds_module.
+:- import_module hlds_module, hlds_goal.
 :- import_module io.
 
 :- type purity		--->	pure
@@ -650,9 +650,9 @@ compute_goals_purity([Goal0|Goals0], [Goal|Goals], PredInfo, ModuleInfo,
 
 compute_cases_purity([], [], _, _, _, Purity, Purity, NumErrors, NumErrors) -->
 	[].
-compute_cases_purity([case(Ctor,Goal0)|Goals0], [case(Ctor,Goal)|Goals],
-		PredInfo, ModuleInfo, InClosure, Purity0, Purity,
-		NumErrors0, NumErrors) -->
+compute_cases_purity([case(Ctor,IMDelta,Goal0)|Goals0],
+		[case(Ctor,IMDelta,Goal)|Goals], PredInfo, ModuleInfo,
+		InClosure, Purity0, Purity, NumErrors0, NumErrors) -->
 	compute_goal_purity(Goal0, Goal, PredInfo, ModuleInfo, 
 			    InClosure, Purity1, NumErrors0, NumErrors1),
 	{ worst_purity(Purity0, Purity1, Purity2) },

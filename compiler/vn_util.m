@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module list.
+:- import_module list, bool, std_util.
 :- import_module llds, vn_type, vn_table.
 
 %-----------------------------------------------------------------------------%

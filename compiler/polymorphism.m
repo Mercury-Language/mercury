@@ -833,9 +833,9 @@ polymorphism__process_goal_list([Goal0 | Goals0], [Goal | Goals]) -->
 
 polymorphism__process_case_list([], []) --> [].
 polymorphism__process_case_list([Case0 | Cases0], [Case | Cases]) -->
-	{ Case0 = case(ConsId, Goal0) },
+	{ Case0 = case(ConsId, IMDelta, Goal0) },
 	polymorphism__process_goal(Goal0, Goal),
-	{ Case = case(ConsId, Goal) },
+	{ Case = case(ConsId, IMDelta, Goal) },
 	polymorphism__process_case_list(Cases0, Cases).
 
 %-----------------------------------------------------------------------------%

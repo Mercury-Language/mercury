@@ -17,8 +17,9 @@
 
 :- interface.
 
-:- import_module hlds_data, prog_data, mode_info, (inst).
-:- import_module set, assoc_list.
+:- import_module hlds_data, hlds_goal, hlds_pred, hlds_module.
+:- import_module prog_data, mode_info, (inst).
+:- import_module set, assoc_list, list, term, bool.
 
 %-----------------------------------------------------------------------------%
 

@@ -41,9 +41,19 @@ MSL	=	MERCURY_SP_LIB_DIR=. \
 		MERCURY_SP_OVERRIDING_LIB_OBJS="$(NU_OVERRIDING_LIBRARY_QLS)" \
 		$(SCRIPTS_DIR)/msl
 
+ifeq ($(LIBRARY_INTERMODULE),yes)
+
 INTERMODULE_OPTS = --transitive-intermodule-optimization
 ENABLE_TERM_OPTS = --enable-termination
 # CHECK_TERM_OPTS = --check-termination
+
+else
+
+INTERMODULE_OPTS =
+ENABLE_TERM_OPTS =
+CHECK_TERM_OPTS =
+
+endif
 
 MCD	=	MERCURY_INT_DIR=. \
 		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) \
@@ -70,7 +80,7 @@ MCS	=	MERCURY_INT_DIR=. \
 		--cflags "-I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)" \
 		$(INTERMODULE_OPTS) $(CHECK_TERM_OPTS)
 MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(SCRIPTS_DIR)/mgnuc
-MGNUCFLAGS =	-I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) \
+MGNUCFLAGS =	$(EXTRA_MGNUCFLAGS) -I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR)  \
 		$(DLL_CFLAGS) $(EXTRA_CFLAGS)
 LDFLAGS	=	-L$(BOEHM_GC_DIR) -L$(RUNTIME_DIR)
 LDLIBS	=	-lmer							\
@@ -116,14 +126,15 @@ NU_OVERRIDING_LIBRARY_QLS = map.nu.ql assoc_list.nu.ql array.nu.ql
 all : mercury nuprolog sicstus
 
 .PHONY: mercury
-mercury : ints opts libmercury
+mercury : all-ints libmercury
 
 .PHONY: nuprolog
-nuprolog : ints library.nu library.nu.debug $(library.nos) $(NU_LIBRARY_NOS) \
+nuprolog : all-ints library.nu library.nu.debug \
+			$(library.nos) $(NU_LIBRARY_NOS) \
 			$(NU_OVERRIDING_LIBRARY_NOS) nc_builtin.nl
 
 .PHONY: sicstus
-sicstus : ints sicstus_compile library.sicstus.debug
+sicstus : all-ints sicstus_compile library.sicstus.debug
 
 #-----------------------------------------------------------------------------#
 
@@ -133,12 +144,26 @@ depend		: library.depend
 .PHONY: check
 check		: library.check
 
+.PHONY: all-ints 
+
+ifeq ($(LIBRARY_INTERMODULE),yes)
+
+all-ints: ints int3s opts trans_opts
+
+else
+
+all-ints: ints int3s
+
+endif
+
 .PHONY: ints 
 ints		: library.ints
 
+.PHONY: int3s 
+int3s		: library.int3s
+
 .PHONY: opts 
 opts		: library.opts
-library.opts	: $(library.opts)
 
 .PHONY: trans_opts 
 trans_opts		: library.trans_opts
@@ -258,7 +283,15 @@ realclean:
 
 #-----------------------------------------------------------------------------#
 
+ifeq ($(LIBRARY_INTERMODULE),yes)
+
 # Installation targets
+
+# LIBRARY_INTERMODULE should be turned off only during development.
+# A full install requires the library's .opt and .trans_opt files.
+
+# If you add a new target below, please add a parallel target for the
+# case LIBRARY_INTERMODULE != yes.
 
 .PHONY: install
 install: install_mercury $(INSTALL_SICSTUS) $(INSTALL_NUPROLOG)
@@ -341,5 +374,61 @@ install_interpreter_sicstus: library.sicstus.debug
 install_sicstus_compile: sicstus_compile
 	[ -d $(INSTALL_SP_ARCH_DIR) ] || mkdir -p $(INSTALL_SP_ARCH_DIR)
 	cp `vpath_find sicstus_compile` $(INSTALL_SP_ARCH_DIR)
+
+else
+
+.PHONY: install
+install:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_all
+install_all:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_mercury
+install_mercury:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_ints
+install_ints:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_init
+install_init:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_library
+install_library:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_split_library
+install_split_library:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_nuprolog
+install_nuprolog:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_library_nu
+install_library_nu:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_interpreter_nu
+install_interpreter_nu:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_sicstus
+install_sicstus:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_interpreter_sicstus
+install_interpreter_sicstus:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_sicstus_compile
+install_sicstus_compile:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+endif
 
 #-----------------------------------------------------------------------------#

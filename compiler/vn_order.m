@@ -15,7 +15,7 @@
 :- interface.
 
 :- import_module llds, vn_type, vn_table.
-:- import_module bool, list.
+:- import_module bool, list, std_util.
 
 :- type order_result	--->	success(vn_tables, list(vn_node))
 			;	failure(maybe(label)).

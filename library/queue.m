@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -89,6 +89,12 @@
 :- pred queue__list_to_queue(list(T), queue(T)).
 :- mode queue__list_to_queue(in, out) is det.
 
+	% `queue__delete_all(Queue0, Elem, Queue)' is true iff `Queue' is
+	% the same queue as `Queue0' with all occurences of `Elem' removed
+	% from it.
+:- pred queue__delete_all(queue(T), T, queue(T)).
+:- mode queue__delete_all(in, in, out) is det.
+
 %--------------------------------------------------------------------------%
 
 :- implementation.
@@ -157,5 +163,9 @@ queue__length(On - Off, Length) :-
 	Length is LengthOn + LengthOff.
 
 queue__list_to_queue(List, [] - List).
+
+queue__delete_all(On0 - Off0, Elem, On - Off) :-
+	list__delete_all(On0, Elem, On),
+	list__delete_all(Off0, Elem, Off).
 
 %--------------------------------------------------------------------------%

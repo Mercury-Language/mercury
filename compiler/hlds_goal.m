@@ -13,7 +13,7 @@
 :- interface.
 
 :- import_module hlds_data, hlds_pred, llds, prog_data, (inst), instmap.
-:- import_module list, set, map, std_util.
+:- import_module list, set, map, std_util, term.
 
 	% Here is how goals are represented
 
@@ -205,9 +205,13 @@
 			;	out_of_line_builtin
 			;	not_builtin.
 
-:- type case		--->	case(cons_id, hlds_goal).
-			%	functor to match with,
-			%	goal to execute if match succeeds.
+:- type case
+	--->	case(
+			cons_id,	% functor to match with,
+			instmap_delta,	% instmap delta across the tag test
+					% unification
+			hlds_goal	% goal to execute if match succeeds.
+		).
 
 :- type stack_slots	==	map(var, lval).
 				% Maps variables to their stack slots.

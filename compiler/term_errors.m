@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module hlds_module.
+:- import_module hlds_module, hlds_pred.
 
 :- import_module io, bag, std_util, list, assoc_list, term.
 

@@ -131,8 +131,8 @@ a variable live if its value will be used later on in the computation.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, (inst), instmap.
-:- import_module bool, io.
+:- import_module hlds_module, hlds_pred, hlds_goal, (inst), instmap, prog_data.
+:- import_module bool, io, term, list.
 
 	% modecheck(HLDS0, HLDS, UnsafeToContinue):
 	% Perform mode inference and checking for a whole module.
@@ -201,12 +201,6 @@ a variable live if its value will be used later on in the computation.
 	%
 :- pred unify_rhs_vars(unify_rhs, list(var)).
 :- mode unify_rhs_vars(in, out) is det.
-
-	% Given a list of variables, and a list of livenesses,
-	% select the live variables.
-	%
-:- pred get_live_vars(list(var), list(is_live), list(var)).
-:- mode get_live_vars(in, in, out) is det.
 
 	% Given a list of variables and a list of expected liveness, ensure
 	% that the inst of each variable satisfies the corresponding expected
@@ -1411,13 +1405,16 @@ modecheck_disj_list([Goal0 | Goals0], [Goal | Goals], [InstMap | InstMaps]) -->
 modecheck_case_list([], _Var, [], []) --> [].
 modecheck_case_list([Case0 | Cases0], Var,
 			[Case | Cases], [InstMap | InstMaps]) -->
-	{ Case0 = case(ConsId, Goal0) },
-	{ Case = case(ConsId, Goal) },
+	{ Case0 = case(ConsId, _, Goal0) },
+	{ Case = case(ConsId, IMDelta, Goal) },
 	mode_info_dcg_get_instmap(InstMap0),
 
 		% record the fact that Var was bound to ConsId in the
 		% instmap before processing this case
 	mode_info_bind_var_to_functor(Var, ConsId),
+	mode_info_dcg_get_instmap(InstMap1),
+	{ instmap__vars(InstMap0, InstMapVars) },
+	{ compute_instmap_delta(InstMap0, InstMap1, InstMapVars, IMDelta) },
 
 	modecheck_goal(Goal0, Goal1),
 	mode_info_dcg_get_instmap(InstMap),
@@ -1943,23 +1940,6 @@ mode_context_to_unify_context(higher_order_call(_PredOrFunc, _Arg), _ModeInfo,
 		% XXX could do better; it's not really explicit
 mode_context_to_unify_context(uninitialized, _, _) :-
 	error("mode_context_to_unify_context: uninitialized context").
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-	% Given a list of variables, and a list of livenesses,
-	% select the live variables.
-
-get_live_vars([_|_], [], _) :- error("get_live_vars: length mismatch").
-get_live_vars([], [_|_], _) :- error("get_live_vars: length mismatch").
-get_live_vars([], [], []).
-get_live_vars([Var|Vars], [IsLive|IsLives], LiveVars) :-
-	( IsLive = live ->
-		LiveVars = [Var | LiveVars0]
-	;
-		LiveVars = LiveVars0
-	),
-	get_live_vars(Vars, IsLives, LiveVars0).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

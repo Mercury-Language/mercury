@@ -81,7 +81,7 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module hlds_module.
+:- import_module hlds_module, hlds_goal.
 :- import_module io.
 
 :- pred inlining(module_info, module_info, io__state, io__state).
@@ -356,8 +356,11 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 		proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0,
 			Instmap0),
 		proc_info_inst_table(ProcInfo0, InstTable0),
-		recompute_instmap_delta(VarTypes, Goal1, Goal, Instmap0,
-			InstTable0, InstTable, ModuleInfo0, ModuleInfo1),
+		proc_info_headvars(ProcInfo0, ArgVars),
+		proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives),
+		recompute_instmap_delta(ArgVars, ArgLives, VarTypes, Goal1,
+			Goal, Instmap0, InstTable0, InstTable, _, ModuleInfo0,
+			ModuleInfo1),
 		proc_info_set_inst_table(ProcInfo0, InstTable, ProcInfo1)
 	; DidInlining = no,
 		Goal = Goal1,
@@ -564,8 +567,8 @@ inlining__inlining_in_disj([Goal0 | Goals0], [Goal | Goals]) -->
 :- mode inlining__inlining_in_cases(in, out, in, out) is det.
 
 inlining__inlining_in_cases([], []) --> [].
-inlining__inlining_in_cases([case(Cons, Goal0) | Goals0],
-		[case(Cons, Goal) | Goals]) -->
+inlining__inlining_in_cases([case(Cons, IMDelta, Goal0) | Goals0],
+		[case(Cons, IMDelta, Goal) | Goals]) -->
 	inlining__inlining_in_goal(Goal0, Goal),
 	inlining__inlining_in_cases(Goals0, Goals).
 

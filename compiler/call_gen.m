@@ -18,8 +18,8 @@
 
 :- interface.
 
-:- import_module hlds_pred, llds, code_info.
-:- import_module term.
+:- import_module hlds_goal, hlds_data, hlds_pred, llds, code_info, prog_data.
+:- import_module term, list, assoc_list, set, std_util.
 
 :- pred call_gen__generate_higher_order_call(code_model, var, list(var),
 			list(type), argument_modes, determinism,

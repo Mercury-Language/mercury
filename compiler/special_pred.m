@@ -15,7 +15,8 @@
 
 :- module special_pred.
 :- interface.
-:- import_module list, map, prog_data, hlds_data, hlds_pred.
+:- import_module prog_data, hlds_data, hlds_pred.
+:- import_module list, map, std_util.
 
 :- type special_pred_map	==	map(special_pred, pred_id).
 

@@ -28,7 +28,7 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer)
 #ifndef MR_STACK_TRACE
 	fprintf(stderr, "Stack dump not available in this grade.\n");
 #else
-	fprintf(stderr, "Stack dump follows (deterministic stack only):\n");
+	fprintf(stderr, "Stack dump follows (determinisitic stack only):\n");
 
 	do {
 		label = lookup_label_addr(success_pointer);

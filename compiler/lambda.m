@@ -40,7 +40,7 @@
 
 :- interface. 
 
-:- import_module hlds_module, hlds_pred, prog_data.
+:- import_module hlds_module, hlds_pred, hlds_data, hlds_goal, prog_data.
 :- import_module list, map, term, varset.
 
 :- pred lambda__process_pred(pred_id, module_info, module_info).
@@ -226,8 +226,8 @@ lambda__process_goal_list([Goal0 | Goals0], [Goal | Goals]) -->
 :- mode lambda__process_cases(in, out, in, out) is det.
 
 lambda__process_cases([], []) --> [].
-lambda__process_cases([case(ConsId, Goal0) | Cases0],
-		[case(ConsId, Goal) | Cases]) -->
+lambda__process_cases([case(ConsId, IMDelta, Goal0) | Cases0],
+		[case(ConsId, IMDelta, Goal) | Cases]) -->
 	lambda__process_goal(Goal0, Goal),
 	lambda__process_cases(Cases0, Cases).
 

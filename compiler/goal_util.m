@@ -26,8 +26,8 @@
 
 :- interface.
 
-:- import_module hlds_goal, hlds_pred.
-:- import_module bool, list, map.
+:- import_module hlds_goal, hlds_pred, prog_data.
+:- import_module bool, list, map, term, varset, set.
 
 	% goal_util__rename_vars_in_goals(GoalList, MustRename, Substitution,
 	%	NewGoalList).
@@ -269,8 +269,9 @@ goal_util__name_apart_list([G0 | Gs0], Must, Subn, [G | Gs]) :-
 :- mode goal_util__name_apart_cases(in, in, in, out) is det.
 
 goal_util__name_apart_cases([], _Must, _Subn, []).
-goal_util__name_apart_cases([case(Cons, G0) | Gs0], Must, Subn,
-		[case(Cons, G) | Gs]) :-
+goal_util__name_apart_cases([case(Cons, IMDelta0, G0) | Gs0], Must, Subn,
+		[case(Cons, IMDelta, G) | Gs]) :-
+	instmap_delta_apply_sub(IMDelta0, Must, Subn, IMDelta),
 	goal_util__rename_vars_in_goal(G0, Must, Subn, G),
 	goal_util__name_apart_cases(Gs0, Must, Subn, Gs).
 
@@ -471,7 +472,7 @@ goal_util__goals_goal_vars([Goal - _ | Goals], Set0, Set) :-
 :- mode goal_util__cases_goal_vars(in, in, out) is det.
 
 goal_util__cases_goal_vars([], Set, Set).
-goal_util__cases_goal_vars([case(_, Goal - _) | Cases], Set0, Set) :-
+goal_util__cases_goal_vars([case(_, _, Goal - _) | Cases], Set0, Set) :-
 	goal_util__goal_vars_2(Goal, Set0, Set1),
 	goal_util__cases_goal_vars(Cases, Set1, Set).
 
@@ -514,7 +515,7 @@ goals_size([Goal | Goals], Size) :-
 :- mode cases_size(in, out) is det.
 
 cases_size([], 0).
-cases_size([case(_, Goal) | Cases], Size) :-
+cases_size([case(_, _, Goal) | Cases], Size) :-
 	goal_size(Goal, Size1),
 	cases_size(Cases, Size2),
 	Size is Size1 + Size2.
@@ -565,7 +566,7 @@ goals_calls([Goal | Goals], PredProcId) :-
 :- pred cases_calls(list(case), pred_proc_id).
 :- mode cases_calls(in, in) is semidet.
 
-cases_calls([case(_, Goal) | Cases], PredProcId) :-
+cases_calls([case(_, _, Goal) | Cases], PredProcId) :-
 	(
 		goal_calls(Goal, PredProcId)
 	;

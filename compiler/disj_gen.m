@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -21,6 +21,7 @@
 :- interface.
 
 :- import_module hlds_goal, llds, code_info.
+:- import_module list.
 
 :- pred disj_gen__generate_det_disj(list(hlds_goal), store_map,
 					code_tree, code_info, code_info).

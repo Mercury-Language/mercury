@@ -37,7 +37,7 @@
 
 :- interface.
 
-:- import_module io.
+:- import_module io, bool.
 :- import_module hlds_module, modules.
 
 :- pred intermod__write_optfile(module_info, module_info,
@@ -431,8 +431,8 @@ intermod__traverse_list_of_goals([Goal0 | Goals0], [Goal | Goals], DoWrite) -->
 			intermod_info::in, intermod_info::out) is det.
 
 intermod__traverse_cases([], [], yes) --> [].
-intermod__traverse_cases([case(F, Goal0) | Cases0],
-		[case(F, Goal) | Cases], DoWrite) -->
+intermod__traverse_cases([case(A, B, Goal0) | Cases0],
+		[case(A, B, Goal) | Cases], DoWrite) -->
 	intermod__traverse_goal(Goal0, Goal, DoWrite1),
 	( { DoWrite1 = yes } ->
 		intermod__traverse_cases(Cases0, Cases, DoWrite)

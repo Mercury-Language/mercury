@@ -105,8 +105,8 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred.
-:- import_module bool, io.
+:- import_module hlds_module, hlds_pred, hlds_data, prog_data.
+:- import_module bool, io, term, map, list.
 
 :- pred typecheck(module_info, module_info, bool, bool, io__state, io__state).
 :- mode typecheck(in, out, in, out, di, uo) is det.

@@ -274,7 +274,7 @@ dependency_graph__add_arcs_in_list([Goal|Goals], Caller, DepGraph0, DepGraph) :-
 :- mode dependency_graph__add_arcs_in_cases(in, in, in, out) is det.
 
 dependency_graph__add_arcs_in_cases([], _Caller, DepGraph, DepGraph).
-dependency_graph__add_arcs_in_cases([case(Cons, Goal) | Goals], Caller,
+dependency_graph__add_arcs_in_cases([case(Cons, _, Goal) | Goals], Caller,
 						DepGraph0, DepGraph) :-
 	dependency_graph__add_arcs_in_cons(Cons, Caller, DepGraph0, DepGraph1),
 	dependency_graph__add_arcs_in_goal(Goal, Caller, DepGraph1, DepGraph2),

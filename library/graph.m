@@ -18,7 +18,7 @@
 :- module graph.
 
 :- interface.
-:- import_module set, std_util.
+:- import_module list, set, std_util.
 
 	% graph(Node, Arc) represents a directed graph with information of
 	% type Node associated with each node, and information of type Arc

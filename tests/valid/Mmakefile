@@ -16,8 +16,6 @@ AGC_SOURCES= \
 	agc_unused_in.m 
 
 OTHER_SOURCES= \
-	alias_det_unification.m \
-	alias_failure_unification.m \
 	compl_unify_bug.m \
 	complicated_unify.m \
 	constructor_arg_names.m \
@@ -67,7 +65,6 @@ OTHER_SOURCES= \
 	module_d.m \
 	module_e.m \
 	mostly_uniq_mode_inf.m \
-	mother.m \
 	multidet_prune1.m \
 	multidet_test.m \
 	nasty_func_test.m \

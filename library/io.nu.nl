@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -533,6 +533,47 @@ io__update_state(IOState0, IOState) :-
 :- pred io__final_state(io__state).
 io__final_state(IOState) :-
 	io__update_state(IOState, _).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+% The following routines work only under SICStus, not under NU-Prolog.
+
+io__tmpnam_2(Name) -->
+	{ use_module(library(system)) }, % for tmpnam/1
+	{ tmpnam(Atom) },
+	{ name(Atom, Name) }.
+
+io__tmpnam(Dir, Prefix, Name) -->
+	{ use_module(library(system)) }, % for mktemp/2
+	{ dir__directory_separator(SepChar) },
+	{ string__char_to_string(SepChar, Sep) },
+	{ string__left(Prefix, 5, LeftPrefix) },
+	{ string__append_list([Dir, Sep, LeftPrefix, "XXXXXX"], TemplateName) },
+	{ name(TemplateAtom, TemplateName) },
+	{ mktemp(TemplateAtom, TmpAtom) },
+	{ name(TmpAtom, Name) }.
+
+io__rename_file_2(OldName, NewName, Result, ResultStr) -->
+	{ use_module(library(system)) }, % for rename_file/2
+	{ name(OldAtom, OldName) },
+	{ name(NewAtom, NewName) },
+	{ rename_file(OldAtom, NewAtom) ->
+		Result = 0
+	;
+		Result = -1,
+		Resultstr = "rename_file/2 failed"
+	}.
+
+io__remove_file_2(FileName, Result) -->
+	{ use_module(library(system)) }, % for delete_file/2
+	{ name(FileAtom, OldName) },
+	{ delete_file(FileAtom, []) ->
+		Result = 0
+	;
+		Result = -1,
+		Resultstr = "delete_file/2 failed"
+	}.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

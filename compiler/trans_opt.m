@@ -51,7 +51,8 @@
 
 :- interface.
 
-:- import_module io, bool, hlds_module, modules.
+:- import_module hlds_module, modules.
+:- import_module io, bool, list.
 
 :- pred trans_opt__write_optfile(module_info, io__state, io__state).
 :- mode trans_opt__write_optfile(in, di, uo) is det.

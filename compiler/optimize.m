@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module llds, io.
+:- import_module llds, io, list.
 
 :- pred optimize_main(list(c_procedure), list(c_procedure),
 	io__state, io__state).

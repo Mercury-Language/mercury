@@ -21,8 +21,9 @@
 
 :- interface.
 
-:- import_module hlds_pred, unify_proc, special_pred.
-:- import_module relation, globals, continuation_info.
+:- import_module hlds_pred, hlds_data, unify_proc, special_pred, prog_data.
+:- import_module relation, globals, continuation_info, llds.
+:- import_module list, map, std_util, set.
 
 :- implementation.
 

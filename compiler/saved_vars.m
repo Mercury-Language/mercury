@@ -55,16 +55,17 @@ saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo,
 
 	{ final_slot_info(Varset1, VarTypes1, SlotInfo) },
 	{ proc_info_headvars(ProcInfo0, HeadVars) },
+	{ proc_info_inst_table(ProcInfo0, InstTable0) },
 
-	% hlds_out__write_goal(Goal1, ModuleInfo, Varset1, 0, ""),
+	% hlds_out__write_goal(Goal1, InstTable0, ModuleInfo0, Varset1, no, 0, ""),
 
 	% recompute the nonlocals for each goal
 	{ implicitly_quantify_clause_body(HeadVars, Goal1, Varset1,
 		VarTypes1, Goal2, Varset, VarTypes, _Warnings) },
 	{ proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0) },
-	{ proc_info_inst_table(ProcInfo0, InstTable0) },
-	{ recompute_instmap_delta(VarTypes, Goal2, Goal, InstMap0, 
-		InstTable0, InstTable, ModuleInfo0, ModuleInfo) },
+	{ proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives) },
+	{ recompute_instmap_delta(HeadVars, ArgLives, VarTypes, Goal2, Goal,
+		InstMap0, InstTable0, InstTable, _, ModuleInfo0, ModuleInfo) },
 
 	% hlds_out__write_goal(Goal, ModuleInfo, Varset, 0, ""),
 
@@ -431,8 +432,8 @@ push_into_goals_rename([Goal0 | Goals0], Construct, Var, SlotInfo0,
 :- mode push_into_cases_rename(in, in, in, in, out, out) is det.
 
 push_into_cases_rename([], _Construct, _Var, SlotInfo, [], SlotInfo).
-push_into_cases_rename([case(ConsId, Goal0) | Cases0], Construct, Var,
-		SlotInfo0, [case(ConsId, Goal) | Cases], SlotInfo) :-
+push_into_cases_rename([case(ConsId, IMDelta, Goal0) | Cases0], Construct, Var,
+		SlotInfo0, [case(ConsId, IMDelta, Goal) | Cases], SlotInfo) :-
 	push_into_goal_rename(Goal0, Construct, Var, SlotInfo0,
 		Goal, SlotInfo1),
 	push_into_cases_rename(Cases0, Construct, Var, SlotInfo1,
@@ -454,8 +455,8 @@ saved_vars_in_disj([Goal0 | Goals0], SlotInfo0, [Goal | Goals], SlotInfo) :-
 :- mode saved_vars_in_switch(in, in, out, out) is det.
 
 saved_vars_in_switch([], SlotInfo, [], SlotInfo).
-saved_vars_in_switch([case(Cons, Goal0) | Cases0], SlotInfo0,
-		[case(Cons, Goal) | Cases], SlotInfo) :-
+saved_vars_in_switch([case(Cons, IMDelta, Goal0) | Cases0], SlotInfo0,
+		[case(Cons, IMDelta, Goal) | Cases], SlotInfo) :-
 	saved_vars_in_goal(Goal0, SlotInfo0, Goal, SlotInfo1),
 	saved_vars_in_switch(Cases0, SlotInfo1, Cases, SlotInfo).
 

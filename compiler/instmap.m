@@ -18,8 +18,9 @@
 :- module instmap.
 
 :- interface.
-:- import_module hlds_module, prog_data, mode_info, (inst).
-:- import_module set, term.
+:- import_module hlds_module, prog_data, mode_info, (inst), mode_errors.
+:- import_module hlds_data.
+:- import_module set, term, list, assoc_list, map, bool.
 
 :- type instmap.
 :- type instmap_delta.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -31,6 +31,7 @@
 :- module transform.
 :- interface.
 :- import_module hlds_goal, mode_info.
+:- import_module list.
 
 %:- pred unfold__in_proc(pred_id, proc_id, hlds_goal_expr,
 %			mode_info, mode_info).

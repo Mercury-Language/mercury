@@ -45,8 +45,8 @@
 
 :- interface.
 
-:- import_module hlds_goal, hlds_data, code_info.
-:- import_module term.
+:- import_module hlds_goal, hlds_data, code_info, llds.
+:- import_module term, list.
 
 :- pred switch_gen__generate_switch(code_model, var, can_fail, list(case),
 	store_map, hlds_goal_info, code_tree, code_info, code_info).
@@ -188,7 +188,7 @@ switch_gen__type_cat_to_switch_cat(polymorphic_type, other_switch).
 
 switch_gen__lookup_tags([], _, []) --> [].
 switch_gen__lookup_tags([Case | Cases], Var, [TaggedCase | TaggedCases]) -->
-	{ Case = case(ConsId, Goal) },
+	{ Case = case(ConsId, _IMDelta, Goal) },
 	code_info__cons_id_to_tag(Var, ConsId, Tag),
 	{ switch_gen__priority(Tag, Priority) },
 	{ TaggedCase = case(Priority, Tag, ConsId, Goal) },

@@ -32,7 +32,8 @@
 
 :- module unique_modes.
 :- interface. 
-:- import_module hlds_module, hlds_pred, hlds_goal, mode_info, io.
+:- import_module hlds_module, hlds_pred, hlds_goal, mode_info.
+:- import_module bool, io.
 
 	% check every predicate in a module
 :- pred unique_modes__check_module(module_info, module_info,
@@ -625,13 +626,16 @@ unique_modes__check_disj([Goal0 | Goals0], [Goal | Goals],
 unique_modes__check_case_list([], _Var, [], []) --> [].
 unique_modes__check_case_list([Case0 | Cases0], Var,
 			[Case | Cases], [InstMap | InstMaps]) -->
-	{ Case0 = case(ConsId, Goal0) },
-	{ Case = case(ConsId, Goal) },
+	{ Case0 = case(ConsId, _, Goal0) },
+	{ Case = case(ConsId, IMDelta, Goal) },
 	mode_info_dcg_get_instmap(InstMap0),
 
 		% record the fact that Var was bound to ConsId in the
 		% instmap before processing this case
 	mode_info_bind_var_to_functor(Var, ConsId),
+	mode_info_dcg_get_instmap(InstMap1),
+	{ instmap__vars(InstMap0, InstMapVars) },
+	{ compute_instmap_delta(InstMap0, InstMap1, InstMapVars, IMDelta) },
 
 	unique_modes__check_goal(Goal0, Goal1),
 	mode_info_dcg_get_instmap(InstMap),

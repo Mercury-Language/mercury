@@ -109,8 +109,8 @@ lco_in_disj([Goal0 | Goals0], ModuleInfo, [Goal | Goals]) :-
 :- mode lco_in_cases(in, in, out) is det.
 
 lco_in_cases([], __ModuleInfo, []).
-lco_in_cases([case(Cons, Goal0) | Cases0], ModuleInfo,
-		[case(Cons, Goal) | Cases]) :-
+lco_in_cases([case(Cons, IMDelta, Goal0) | Cases0], ModuleInfo,
+		[case(Cons, IMDelta, Goal) | Cases]) :-
 	lco_in_goal(Goal0, ModuleInfo, Goal),
 	lco_in_cases(Cases0, ModuleInfo, Cases).
 

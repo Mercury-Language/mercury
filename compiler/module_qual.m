@@ -21,7 +21,7 @@
 :- interface.
 
 :- import_module prog_data.
-:- import_module bool, io.
+:- import_module bool, io, list.
 
 	% module_qualify_items(Items0, Items, ReportUndefErrors,
 	%				NumErrors, UndefTypes, UndefModes).

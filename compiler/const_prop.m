@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module hlds_goal, hlds_pred, instmap.
+:- import_module hlds_module, hlds_goal, hlds_pred, instmap.
 :- import_module list, term.
 
 :- pred evaluate_builtin(pred_id, proc_id, list(var), hlds_goal_info,

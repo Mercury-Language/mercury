@@ -17,7 +17,8 @@
 :- module term_pass2.
 :- interface.
 
-:- import_module hlds_module, term_util.
+:- import_module hlds_pred, hlds_module, term_util.
+:- import_module list.
 
 :- pred prove_termination_in_scc(list(pred_proc_id)::in, module_info::in,
 	pass_info::in, int::in, termination_info::out) is det.

@@ -380,9 +380,9 @@ detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
 detect_cse_in_cases_2([], _, CseInfo, CseInfo, no, []).
 detect_cse_in_cases_2([Case0 | Cases0], InstMap, CseInfo0, CseInfo, Redo,
 		[Case | Cases]) :-
-	Case0 = case(Functor, Goal0),
+	Case0 = case(Functor, IMDelta, Goal0),
 	detect_cse_in_goal(Goal0, InstMap, CseInfo0, CseInfo1, Redo1, Goal),
-	Case = case(Functor, Goal),
+	Case = case(Functor, IMDelta, Goal),
 	detect_cse_in_cases_2(Cases0, InstMap, CseInfo1, CseInfo, Redo2, Cases),
 	bool__or(Redo1, Redo2, Redo).
 
@@ -491,8 +491,9 @@ common_deconstruct_cases(Cases0, Var, CseInfo0, CseInfo,
 
 common_deconstruct_cases_2([], _Var, MaybeUnify, CseInfo, CseInfo,
 	[], MaybeUnify).
-common_deconstruct_cases_2([case(ConsId, Goal0) | Cases0], Var, MaybeUnify0,
-		CseInfo0, CseInfo, [case(ConsId, Goal) | Cases], MaybeUnify) :-
+common_deconstruct_cases_2([case(ConsId, IMDelta, Goal0) | Cases0], Var,
+		MaybeUnify0, CseInfo0, CseInfo,
+		[case(ConsId, IMDelta, Goal) | Cases], MaybeUnify) :-
 	goal_to_conj_list(Goal0, ConjList0),
 	Goal0 = _ - GoalInfo,
 	map__init(Substitution),

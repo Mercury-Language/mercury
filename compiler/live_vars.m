@@ -464,7 +464,7 @@ build_live_sets_in_disj([Goal0 | Goals0], Liveness0, ResumeVars0, LiveSets0,
 
 build_live_sets_in_cases([], Liveness, ResumeVars, LiveSets, _, _,
 		Liveness, ResumeVars, LiveSets).
-build_live_sets_in_cases([case(_Cons, Goal0) | Goals0],
+build_live_sets_in_cases([case(_Cons, _IMDelta, Goal0) | Goals0],
 		Liveness0, ResumeVars0, LiveSets0, ModuleInfo, ProcInfo,
 		Liveness, ResumeVars, LiveSets) :-
 	build_live_sets_in_goal(Goal0, Liveness0, ResumeVars0, LiveSets0,

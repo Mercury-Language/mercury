@@ -24,6 +24,8 @@
 % :- op(1199, fx, (export_adt)).
 % :- op(1199, fx, (export_op)).
 
+:- op(1199, fx, (include_module)).
+
 :- op(1199, fx, (import_module)).
 % :- op(1199, fx, (import_sym)).
 % :- op(1199, fx, (import_pred)).
@@ -62,6 +64,7 @@
 
 % In NU-Prolog, ':' has precedence 1175, whereas according to the
 % ISO Prolog modules standard it should have precedence 600.
+% Also in Mercury it is yfx whereas in ISO Prolog it is xfy.
 % Hence we need to override the original precedence for it.
 % Because ':' is both unary prefix and binary in NU-Prolog,
 % we can't simply set the precedence, since that would cause a
@@ -73,7 +76,7 @@
 % warning messages.
 
 :- $setOpField((:), []).
-:- op(600, xfy, (:)).
+:- op(600, yfx, (:)).
 
 % In ISO Prolog, `is' has precedence 700, but
 % in Mercury we want `is' to have a higher precedence, so that
@@ -99,10 +102,15 @@ termExpansion((:- pred(_)), (:- fail)).
 termExpansion((:- mode(_)), (:- fail)).
 termExpansion((:- inst(_)), (:- fail)).
 
+termExpansion((:- impure(_)), (:- fail)).
+termExpansion((:- semipure(_)), (:- fail)).
+
 termExpansion((:- module(_)), (:- fail)).
 termExpansion((:- end_module(_)), (:- fail)).
 termExpansion((:- interface), (:- fail)).
 termExpansion((:- implementation), (:- fail)).
+
+termExpansion((:- include_module(_)), (:- fail)).
 
 termExpansion((:- import_module(_)), (:- fail)).
 % termExpansion((:- import_sym(_)), (:- fail)).

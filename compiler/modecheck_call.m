@@ -21,8 +21,9 @@
 :- module modecheck_call.
 :- interface.
 
-:- import_module hlds_goal, mode_info.
-:- import_module term.
+:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, mode_info.
+:- import_module prog_data, modes.
+:- import_module term, list, std_util.
 
 :- pred modecheck_call_pred(pred_id, list(var), maybe(determinism),
 				proc_id, list(var), extra_goals,

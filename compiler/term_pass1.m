@@ -24,8 +24,8 @@
 
 :- interface.
 
-:- import_module hlds_module, term_util, term_errors.
-:- import_module io.
+:- import_module hlds_module, hlds_pred, term_util, term_errors.
+:- import_module io, list, std_util.
 
 :- type arg_size_result
 --->	ok(

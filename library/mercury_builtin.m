@@ -175,6 +175,14 @@
 
 :- interface.
 
+	% unsafe_type_cast/2 is used internally by the compiler. Bad things
+	% will happen if this is used in programs. This is generated inline
+	% by the compiler.
+
+:- pred unsafe_type_cast(T1, T2).
+:- mode unsafe_type_cast(in, out) is det.
+:- external(unsafe_type_cast/2).
+
 % The following are used by the compiler, to implement polymorphism.
 % They should not be used in programs.
 
@@ -685,6 +693,10 @@ compare_error :-
 
 %-----------------------------------------------------------------------------%
 
+:- external(unsafe_promise_unique/2).
+
+% XXX This is now a compiler builtin. Once the changes
+% have been installed, remove this code.
 /* unsafe_promise_unique/2
 	:- pred unsafe_promise_unique(T, T).
 	:- mode unsafe_promise_unique(in, uo) is det.
@@ -695,7 +707,6 @@ compare_error :-
 		"Y = X;").
 */
 
-:- external(unsafe_promise_unique/2).
 :- pragma c_code("
 Define_extern_entry(mercury__unsafe_promise_unique_2_0);
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury__unsafe_promise_unique_2_0);
@@ -705,7 +716,7 @@ BEGIN_MODULE(unsafe_promise_unique_module)
 BEGIN_CODE
 
 Define_entry(mercury__unsafe_promise_unique_2_0);
-#ifdef	COMPACT_ARGS
+#ifdef COMPACT_ARGS
 	r1 = r2;
 #else
 	r3 = r2;
@@ -726,6 +737,8 @@ void sys_init_unsafe_promise_unique_module(void) {
 }
 
 ").
+
+
 
 %-----------------------------------------------------------------------------%
 

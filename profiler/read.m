@@ -18,7 +18,7 @@
 
 :- interface.
 
-:- import_module int, io.
+:- import_module int, io, std_util, string.
 :- import_module globals.
 
 :- pred maybe_read_label_addr(maybe(int), io__state, io__state).
@@ -50,8 +50,8 @@
 
 :- implementation.
 
-:- import_module list, string, char.
-:- import_module std_util, require.
+:- import_module list, char.
+:- import_module require.
 
 :- import_module demangle.
 

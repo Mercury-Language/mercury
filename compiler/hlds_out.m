@@ -35,7 +35,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
 :- import_module prog_data, llds.
-:- import_module io.
+:- import_module io, bool, list, map, term, varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -1594,21 +1594,42 @@ hlds_out__write_disj(GoalList, InstTable, ModuleInfo, VarSet, AppendVarnums, Ind
 	bool, int, vartypes, io__state, io__state).
 :- mode hlds_out__write_case(in, in, in, in, in, in, in, in, di, uo) is det.
 
-hlds_out__write_case(case(ConsId, Goal), Var, InstTable, ModuleInfo, VarSet,
-		AppendVarnums, Indent, VarTypes) -->
+hlds_out__write_case(case(ConsId, IMDelta, Goal), Var, InstTable, ModuleInfo,
+		VarSet, AppendVarnums, Indent, VarTypes) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("% "),
 	mercury_output_var(Var, VarSet, AppendVarnums),
 	io__write_string(" has functor "),
 	hlds_out__write_cons_id(ConsId),
 	io__write_string("\n"),
+
+	% Print out the new insts after the implicit case unification.
+	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	( { string__contains_char(Verbose, 'i') } ->
+		(
+			{ instmap_delta_is_reachable(IMDelta) },
+			{ instmap_delta_changed_vars(IMDelta, Vars) },
+			{ set__empty(Vars) }
+		->
+			[]
+		;
+			hlds_out__write_indent(Indent),
+			io__write_string("% new insts: "),
+			hlds_out__write_instmap_delta(IMDelta, VarSet,
+				AppendVarnums, Indent, InstTable),
+			io__write_string("\n")
+		)
+	;
+		[]
+	),
+
 	% XXX if the output of this is to be used, e.g. in
 	% inter-module optimization, output a unification to bind the
 	% Var to the functor, since simplify.m and unused_args.m remove
 	% the unification. At the moment this is not a problem, since
 	% intermod.m works on the unoptimized clauses.
-	hlds_out__write_goal_a(Goal, InstTable, ModuleInfo, VarSet, AppendVarnums,
-		Indent, "", VarTypes).
+	hlds_out__write_goal_a(Goal, InstTable, ModuleInfo, VarSet,
+		AppendVarnums, Indent, "", VarTypes).
 
 :- pred hlds_out__write_cases(list(case), var, inst_table, module_info,
 	varset, bool, int, vartypes, io__state, io__state).

@@ -20,7 +20,8 @@
 
 :- interface.
 
-:- import_module hlds_module.
+:- import_module hlds_module, llds, prog_data.
+:- import_module list.
 
 :- pred base_typeclass_info__generate_llds(module_info, list(c_module)).
 :- mode base_typeclass_info__generate_llds(in, out) is det.

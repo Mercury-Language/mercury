@@ -566,7 +566,7 @@ bytecode_gen__disj([Disjunct | Disjuncts], ByteInfo0, EndLabel,
 	int::in, byte_info::out, byte_tree::out) is det.
 
 bytecode_gen__switch([], _, ByteInfo, _, ByteInfo, empty).
-bytecode_gen__switch([case(ConsId, Goal) | Cases], Var, ByteInfo0, EndLabel,
+bytecode_gen__switch([case(ConsId, _, Goal) | Cases], Var, ByteInfo0, EndLabel,
 		ByteInfo, Code) :-
 	bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId),
 	bytecode_gen__goal(Goal, ByteInfo0, ByteInfo1, ThisCode),

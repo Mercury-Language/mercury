@@ -260,7 +260,7 @@ first_order_check_goal_list([Goal - GoalInfo|Goals], Negated, WholeScc,
 first_order_check_case_list([], _, _, _, _, Module, Module) --> [].
 first_order_check_case_list([Case|Goals], Negated, WholeScc, ThisPredProcId,
 		Error, Module0, Module) -->
-	{ Case = case(_ConsId, Goal - GoalInfo) },
+	{ Case = case(_ConsId, _IMDelta, Goal - GoalInfo) },
 	first_order_check_goal(Goal, GoalInfo, Negated, WholeScc, 
 		ThisPredProcId, Error, Module0, Module1),
 	first_order_check_case_list(Goals, Negated, WholeScc, ThisPredProcId,
@@ -447,7 +447,7 @@ higher_order_check_goal_list([Goal - GoalInfo|Goals], Negated, WholeScc,
 higher_order_check_case_list([], _, _, _, _, _, Module, Module) --> [].
 higher_order_check_case_list([Case|Goals], Negated, WholeScc, ThisPredProcId,
 		HighOrderLoops, Error, Module0, Module) -->
-	{ Case = case(_ConsId, Goal - GoalInfo) },
+	{ Case = case(_ConsId, _IMDelta, Goal - GoalInfo) },
 	higher_order_check_goal(Goal, GoalInfo, Negated, WholeScc, 
 		ThisPredProcId, HighOrderLoops, Error, Module0, Module1),
 	higher_order_check_case_list(Goals, Negated, WholeScc, ThisPredProcId,
@@ -885,7 +885,7 @@ check_goal_list([Goal - _GoalInfo|Goals], Calls0, Calls, HasAT0, HasAT,
 check_case_list([], Calls, Calls, HasAT, HasAT, CallsHO, CallsHO). 
 check_case_list([Case|Goals], Calls0, Calls, HasAT0, HasAT, CallsHO0, 
 		CallsHO) :-
-	Case = case(_ConsId, Goal - _GoalInfo),
+	Case = case(_ConsId, _IMDelta, Goal - _GoalInfo),
 	check_goal1(Goal, Calls0, Calls1, HasAT0, HasAT1, CallsHO0, CallsHO1),
 	check_case_list(Goals, Calls1, Calls, HasAT1, HasAT, CallsHO1, CallsHO).
 
@@ -971,7 +971,7 @@ check_goal_list([Goal - _GoalInfo|Goals], Calls0, Calls) :-
 
 check_case_list([], Calls, Calls). 
 check_case_list([Case|Goals], Calls0, Calls) :-
-	Case = case(_ConsId, Goal - _GoalInfo),
+	Case = case(_ConsId, _IMDelta, Goal - _GoalInfo),
 	get_called_procs(Goal, Calls0, Calls1), 
 	check_case_list(Goals, Calls1, Calls).
 

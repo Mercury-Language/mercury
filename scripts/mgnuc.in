@@ -33,6 +33,7 @@ Options:
 	--pic-reg
 	--inline-alloc
 	--split-c-files
+	--stack-trace
 		See the documentation in the \"Invocation\" section
 		of the Mercury User's Guide.
 		
@@ -43,7 +44,7 @@ Description:
 	but this can be changed using the \`--no-ansi' or \`--no-check'
 	options.
 Environment variables:
-	MERCURY_C_INCL_DIR, MERCURY_DEFAULT_GRADE.
+	MERCURY_C_INCL_DIR, MERCURY_ALL_C_INCL_DIRS, MERCURY_DEFAULT_GRADE.
 "
 
 # *************************************************************************
@@ -54,7 +55,7 @@ Environment variables:
 FULLARCH=@FULLARCH@
 NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=@NONSHARED_LIB_DIR@}
 C_INCL_DIR=${MERCURY_C_INCL_DIR=@LIBDIR@/inc}
-GC_INCL_DIR=${MERCURY_GC_INCL_DIR=@LIBDIR@/inc}
+ALL_C_INCL_DIRS=${MERCURY_ALL_C_INCL_DIRS=-I$C_INCL_DIR}
 DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 CC=${MERCURY_C_COMPILER="@CC@"}
 CFLAGS_FOR_REGS="@CFLAGS_FOR_REGS@"
@@ -138,6 +139,13 @@ while : ; do
 		;;
 	--no-split-c-files)
 		SPLIT_OPTS=
+		;;
+
+	--stack-trace)
+		STACK_TRACE_OPTS=-DMR_STACK_TRACE
+		;;
+	--no-stack-trace)
+		STACK_TRACE_OPTS=
 		;;
 
 	--inline-alloc)
@@ -343,26 +351,16 @@ case $assemble in true)
 	exec $AS $AS_OPTS "$@" ;;
 esac
 
-# please keep the three long lines below in sync
-case $verbose in true)
-	echo $CC -I$C_INCL_DIR -I$GC_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
-		$GRADE_OPTS $GC_OPTS \
+
+ALL_CC_OPTS="$ALL_C_INCL_DIRS $ANSI_OPTS $CHECK_OPTS $GRADE_OPTS $GC_OPTS \
 		$PROF_TIME_OPTS $PROF_CALLS_OPTS $PROF_MEMORY_OPTS \
 		$INLINE_ALLOC_OPTS $TRAIL_OPTS $SPLIT_OPTS \
-		$PICREG_OPTS $ARCH_OPTS $ARG_OPTS \
-		"$@" $OVERRIDE_OPTS ;;
+		$STACK_TRACE_OPTS $PICREG_OPTS $ARCH_OPTS $ARG_OPTS"
+
+case $verbose in true)
+	echo $CC $ALL_CC_OPTS "$@" $OVERRIDE_OPTS ;;
 esac
 case $# in
-	0) exec $CC -I$C_INCL_DIR -I$GC_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
-		$GRADE_OPTS $GC_OPTS \
-		$PROF_TIME_OPTS $PROF_CALLS_OPTS $PROF_MEMORY_OPTS \
-		$INLINE_ALLOC_OPTS $TRAIL_OPTS $SPLIT_OPTS \
-		$PICREG_OPTS $ARCH_OPTS $ARG_OPTS \
-		$OVERRIDE_OPTS ;;
-	*) exec $CC -I$C_INCL_DIR -I$GC_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
-		$GRADE_OPTS $GC_OPTS \
-		$PROF_TIME_OPTS $PROF_CALLS_OPTS $PROF_MEMORY_OPTS \
-		$INLINE_ALLOC_OPTS $TRAIL_OPTS $SPLIT_OPTS \
-		$PICREG_OPTS $ARCH_OPTS $ARG_OPTS \
-		"$@" $OVERRIDE_OPTS ;;
+	0) exec $CC $ALL_CC_OPTS $OVERRIDE_OPTS ;;
+	*) exec $CC $ALL_CC_OPTS "$@" $OVERRIDE_OPTS ;;
 esac
