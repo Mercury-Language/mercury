@@ -15,23 +15,32 @@
    So it looks like we'll have to use the sliding registers.
    It won't work at all unless we are using gcc's non-local gotos.
 */
-#ifndef USE_GCC_NONLOCAL_GOTOS
-#error "on sparcs, you must use non-local gotos if you want global registers"
-#endif
-
+#ifdef USE_GCC_NONLOCAL_GOTOS
 reg 	Word	mr0 __asm__("i0");
 reg	Word	mr1 __asm__("i1");
 reg	Word	mr2 __asm__("i2");
 reg	Word	mr3 __asm__("i3");
 reg	Word	mr4 __asm__("i4");
 reg	Word	mr5 __asm__("i5");
-reg	Word	mr6 __asm__("l0");
-reg	Word	mr7 __asm__("l1");
-reg	Word	mr8 __asm__("l2");
-reg	Word	mr9 __asm__("l3");
-reg	Word	mr10 __asm__("l4");
+reg	Word	mr6 __asm__("l1");
+reg	Word	mr7 __asm__("l2");
+reg	Word	mr8 __asm__("l3");
+reg	Word	mr9 __asm__("l4");
 /* we could use l5, l6, and l7 as well, but for the moment at least I'll
    leave them for gcc */
+#else
+/* i0 gets clobbered (set to the continuation address) when return
+   to the driver function.
+   The local vars might not survive if we returned to a driver function
+   and came back again */
+reg 	Word	mr0 __asm__("i1");
+reg	Word	mr1 __asm__("i2");
+reg	Word	mr2 __asm__("i3");
+reg	Word	mr3 __asm__("i4");
+reg	Word	mr4 __asm__("i5");
+extern Word mr5, mr6, mr7, mr8, mr9;
+#endif
+
 
 #define NUM_REAL_REGS 11
 
@@ -49,7 +58,6 @@ extern Word saved_regs[];
 		saved_regs[7] = mr7,		\
 		saved_regs[8] = mr8,		\
 		saved_regs[9] = mr9,		\
-		saved_regs[10] = mr10,		\
 		(void)0				\
 	)
 #define restore_registers()			\
@@ -64,11 +72,10 @@ extern Word saved_regs[];
 		mr7 = saved_regs[7],		\
 		mr8 = saved_regs[8],		\
 		mr9 = saved_regs[9],		\
-		mr10 = saved_regs[10],		\
 		(void)0				\
 	)
 
-extern Word mr11, mr12, mr13, mr14, mr15;
+extern Word mr10, mr11, mr12, mr13, mr14, mr15;
 extern Word mr16, mr17, mr18, mr19, mr20, mr21, mr22, mr23;
 extern Word mr24, mr25, mr26, mr27, mr28, mr29, mr30, mr31;
 
