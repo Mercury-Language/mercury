@@ -177,6 +177,10 @@
 :- pred code_info__produce_variable(var, code_tree, rval, code_info, code_info).
 :- mode code_info__produce_variable(in, out, out, in, out) is det.
 
+:- pred code_info__produce_variable_in_reg(var, code_tree, rval,
+						code_info, code_info).
+:- mode code_info__produce_variable_in_reg(in, out, out, in, out) is det.
+
 :- pred code_info__place_var(var, lval, code_tree, code_info, code_info).
 :- mode code_info__place_var(in, in, out, in, out) is det.
 
@@ -732,6 +736,13 @@ code_info__set_var_location(Var, Lval) -->
 code_info__produce_variable(Var, Code, Rval) -->
 	code_info__get_exprn_info(Exprn0),
 	{ code_exprn__produce_var(Var, Rval, Code, Exprn0, Exprn) },
+	code_info__set_exprn_info(Exprn).
+
+%---------------------------------------------------------------------------%
+
+code_info__produce_variable_in_reg(Var, Code, Rval) -->
+	code_info__get_exprn_info(Exprn0),
+	{ code_exprn__produce_var_in_reg(Var, Rval, Code, Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn).
 
 %---------------------------------------------------------------------------%
@@ -1582,17 +1593,6 @@ code_info__produce_vars([V|Vs], Map, Code) -->
 	{ set__singleton_set(Rvals, Rval) },
 	{ map__set(Map0, V, Rvals, Map) },
 	{ Code = tree(Code0, Code1) }.
-
-%---------------------------------------------------------------------------%
-
-:- pred code_info__produce_variable_in_reg(var, code_tree, rval,
-						code_info, code_info).
-:- mode code_info__produce_variable_in_reg(in, out, out, in, out) is det.
-
-code_info__produce_variable_in_reg(Var, Code, Rval) -->
-	code_info__get_exprn_info(Exprn0),
-	{ code_exprn__produce_var_in_reg(Var, Rval, Code, Exprn0, Exprn) },
-	code_info__set_exprn_info(Exprn).
 
 %---------------------------------------------------------------------------%
 

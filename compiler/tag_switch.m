@@ -77,7 +77,7 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, EndLabel, Code) -->
 	% by the switch, and noe other code gets control between producing
 	% the tag value and all uses of it, so we can release the register
 	% for use by the code of the various cases.
-	code_info__produce_variable(Var, VarCode, VarRval),
+	code_info__produce_variable_in_reg(Var, VarCode, VarRval),
 	code_info__acquire_reg(TagReg),
 	code_info__release_reg(TagReg),
 	{ TagCode = node([assign(reg(TagReg), unop(tag, VarRval))
