@@ -44,13 +44,13 @@ optimize__proc(c_procedure(Name, Arity, Mode, Instrs0),
 	opt_debug__dump_instrs(DebugOpt, Instrs0),
 	globals__io_lookup_int_option(optimize_repeat, AllRepeat),
 	globals__io_lookup_int_option(optimize_vnrepeat, VnRepeat),
-	{ NovnRepeat is AllRepeat - VnRepeat },
-	optimize__repeat(NovnRepeat, no,  Instrs0, Instrs1),
 	globals__io_lookup_bool_option(optimize_value_number, ValueNumber),
 	( { ValueNumber = yes } ->
+		{ NovnRepeat is AllRepeat - VnRepeat },
+		optimize__repeat(NovnRepeat, no,  Instrs0, Instrs1),
 		optimize__repeat(VnRepeat, yes, Instrs1, Instrs2)
 	;
-		{ Instrs2 = Instrs1 }
+		optimize__repeat(AllRepeat, no,  Instrs0, Instrs2)
 	),
 	optimize__nonrepeat(Instrs2, Instrs).
 
