@@ -342,7 +342,7 @@
 :- mode array__foldl(func(in, di) = uo is det, array_ui, di) = uo is det.
 :- mode array__foldl(func(in, di) = uo is det, in, di) = uo is det.
 
-			printf("%15s: %% array__foldr(Fn, Array, X) is equivalent tod", "% array__foldr(Fn, Array, X) is \nequivalent to", a[i]);
+	% array__foldr(Fn, Array, X) is equivalent to
 	% 	list__foldr(Fn, array__to_list(Array), X)
 	% but more efficient.
 	%
