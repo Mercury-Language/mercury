@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1994-1998, 2000-2003 The University of Melbourne.
+# Copyright (C) 1994-1998, 2000-2004 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -17,6 +17,9 @@
 MERCURY_COMPILER=${MERCURY_COMPILER-'@LIBDIR@/bin/@FULLARCH@/mercury_compile'}
 MERCURY_CONFIG_DIR=${MERCURY_CONFIG_DIR-${MERCURY_STDLIB_DIR-'@CONFIG_LIBDIR@'}}
 export MERCURY_COMPILER MERCURY_CONFIG_DIR
+
+# Set the MACOSX_DEPLOYMENT_TARGET environment variable if needed.
+@SET_MACOSX_DEPLOYMENT_TARGET@
 
 case $# in
 	0) exec $MERCURY_COMPILER ;;

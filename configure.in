@@ -2591,8 +2591,7 @@ AC_ARG_ENABLE(libgrades,
 [  --enable-libgrades=...
                           install exactly the given versions of the library.
 			  The versions are specified using a comma-separated
-			  list.
-],
+			  list.],
 enable_libgrades_given=yes;enable_libgrades="$enableval",enable_libgrades_given=no)
 
 if test "$enable_most_grades" = no; then
@@ -3227,16 +3226,56 @@ case "$host" in
 		# If the compiler is gcc then use darwin style dynamic linking.
 		# Otherwise use static linking.
 		if test "$GCC_PROG" != ""; then
+		    AC_MSG_RESULT(yes)
+		    # Check if the user has explicitly requested that flat
+		    # namespaces be used.
+		    darwin_flat_namespaces=no
+		    AC_ARG_ENABLE(darwin-flat-namespace,
+  			  [  --enable-darwin-flat-namespace  
+			  enable flat namespaces on Darwin.  This is the
+			  default for Darwin versions less than 7 (Mac OS
+			  10.3).  On versions greater than or equal to 7
+			  two-level namespaces are used by default.  This
+			  option therefore only affects Darwin versions 
+			  greater than or equal to 7.],
+		    [ darwin_flat_namespaces=yes ])
 		    SHLIB_USE_INSTALL_NAME="--shlib-linker-use-install-name"
 		    SHLIB_INSTALL_NAME_FLAG="-install_name "
-		    LINK_SHARED_OBJ="$GCC_PROG -dynamiclib -single_module"
-		    LINK_SHARED_OBJ_SH="$GCC_PROG -dynamiclib -single_module"
 		    EXT_FOR_SHARED_LIB=dylib
 		    EXT_FOR_LINK_WITH_PIC_OBJECTS=o
 		    CFLAGS_FOR_PIC="-fPIC -DMR_PIC"
 		    ERROR_UNDEFINED="-undefined error"
-		    ALLOW_UNDEFINED="-undefined suppress"
-		    AC_MSG_RESULT(yes)
+		    # Test if the Darwin version is >= 7.  If it is 
+		    # then we can use the -undefined dynamic_lookup option
+		    # and two-level namespaces.  If it isn't then we use
+		    # flat namespaces.
+		    AC_MSG_CHECKING(whether to use two-level namespaces)
+		    if uname -r | sed "s/^\(@<:@0-9@:>@*\)\..*$/\1/" | \
+		            xargs test "$darwin_flat_namespaces" != "yes" \
+			    -a 7 -le;
+		    then
+		        AC_MSG_RESULT(yes)
+			# The MACOSX_DEPLOYMENT_TARGET environment variable
+			# needs to be set when linking with two level 
+			# namespaces so we can use the
+			# `-undefined dynamic_lookup' option.
+		        SET_MACOSX_DEPLOYMENT_TARGET="\
+				MACOSX_DEPLOYMENT_TARGET=10.3; \
+				export MACOSX_DEPLOYMENT_TARGET"
+			AC_SUBST(SET_MACOSX_DEPLOYMENT_TARGET)
+		        LINK_SHARED_OBJ="$GCC_PROG -multiply_defined suppress \
+				 -dynamiclib -single_module"
+		        LINK_SHARED_OBJ_SH="$GCC_PROG -multiply_defined \ 
+				suppress -dynamiclib -single_module"
+		        ALLOW_UNDEFINED="-undefined dynamic_lookup"
+		    else
+		        AC_MSG_RESULT(no)
+		        LINK_SHARED_OBJ="$GCC_PROG -flat_namespace \
+				-dynamiclib -single_module"
+		        LINK_SHARED_OBJ_SH="$GCC_PROG -flat_namespace \
+				-dynamiclib -single_module"
+		        ALLOW_UNDEFINED="-undefined error"
+		    fi
 		else
 		    CFLAGS_FOR_PIC=
 		    EXT_FOR_PIC_OBJECTS=o

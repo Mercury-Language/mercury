@@ -80,6 +80,9 @@ MERCURY_DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 MKTEMP=@MKTEMP@
 TMPDIR=${TMPDIR=/tmp}
 
+# Set the MACOSX_DEPLOYMENT_TARGET environment variable if needed.
+@SET_MACOSX_DEPLOYMENT_TARGET@
+
 MMAKE=$0
 include_makefile=
 verbose=false

@@ -57,6 +57,9 @@ MATH_LIB=${MERCURY_MATH_LIB="@MATH_LIB@"}
 # since @SHARED_LIBS_SH@ may refer to $MATH_LIB.
 SHARED_LIBS=${MERCURY_SHARED_LIBS="@SHARED_LIBS_SH@"}
 
+# Set the MACOSX_DEPLOYMENT_TARGET environment variable if needed.
+@SET_MACOSX_DEPLOYMENT_TARGET@
+
 # When compiling in the hlc.gc grade using the Microsoft Visual C
 # compiler, the default maximum stack size of 4Mb is too low for a
 # recursive language.
