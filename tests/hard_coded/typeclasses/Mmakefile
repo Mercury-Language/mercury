@@ -24,6 +24,7 @@ TYPECLASS_PROGS=	\
 	mode_decl_order_bug \
 	multi_constraint_diff_tvar \
 	multi_constraint_same_tvar \
+	multi_moded \
 	multi_parameter \
 	nondet_class_method \
 	operator_classname \

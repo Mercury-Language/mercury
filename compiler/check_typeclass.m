@@ -146,7 +146,7 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 		ModuleInfo1 = ModuleInfo0,
 		Errors2 = Errors0
 	;
-		InstanceBody = concrete(Methods),
+		InstanceBody = concrete(_Methods),
 		list__foldl2(
 			check_instance_pred(ClassId, Vars, ClassInterface), 
 			PredIds, InstanceDefn0, InstanceDefn1,
@@ -178,7 +178,7 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 				_, MaybePredProcs, _, _),
 		(
 			MaybePredProcs = yes(PredProcs),
-			list__same_length(PredProcs, Methods)
+			list__same_length(PredProcs, ClassInterface)
 		->
 			Errors2 = Errors1
 		;
