@@ -401,7 +401,7 @@
 	% (Map ^ elem(Key) := Value) = map__set(Map, Key, Value).
 :- func 'map__elem :='(K, map(K, V), V) = map(K, V).
 
-	% (Map ^ elem(Key) := Value) = map__det_update(Map, Key, Value).
+	% (Map ^ det_elem(Key) := Value) = map__det_update(Map, Key, Value).
 :- func 'map__det_elem :='(K, map(K, V), V) = map(K, V).
 
 %-----------------------------------------------------------------------------%
