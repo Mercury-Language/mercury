@@ -185,45 +185,41 @@ ssize_t GC_repeat_read(int fd, char *buf, size_t count)
 /*
  * Apply fn to a buffer containing the contents of /proc/self/maps.
  * Return the result of fn or, if we failed, 0.
+ * We currently do nothing to /proc/self/maps other than simply read
+ * it.  This code could be simplified if we could determine its size
+ * ahead of time.
  */
 
 word GC_apply_to_maps(word (*fn)(char *))
 {
     int f;
     int result;
-    int maps_size;
-    char maps_temp[32768];
-    char *maps_buf;
+    size_t maps_size = 4000;  /* Initial guess. 	*/
+    static char init_buf[1];
+    static char *maps_buf = init_buf;
+    static size_t maps_buf_sz = 1;
 
-    /* Read /proc/self/maps	*/
-        /* Note that we may not allocate, and thus can't use stdio.	*/
-        f = open("/proc/self/maps", O_RDONLY);
-        if (-1 == f) return 0;
-	/* stat() doesn't work for /proc/self/maps, so we have to
-	   read it to find out how large it is... */
-	maps_size = 0;
+    /* Read /proc/self/maps, growing maps_buf as necessary.	*/
+        /* Note that we may not allocate conventionally, and	*/
+        /* thus can't use stdio.				*/
 	do {
-	    result = GC_repeat_read(f, maps_temp, sizeof(maps_temp));
-	    if (result <= 0) return 0;
-	    maps_size += result;
-	} while (result == sizeof(maps_temp));
-
-	if (maps_size > sizeof(maps_temp)) {
-	    /* If larger than our buffer, close and re-read it. */
-	    close(f);
+	    if (maps_size >= maps_buf_sz) {
+	      /* Grow only by powers of 2, since we leak "too small" buffers. */
+	      while (maps_size >= maps_buf_sz) maps_buf_sz *= 2;
+	      maps_buf = GC_scratch_alloc(maps_buf_sz);
+	      if (maps_buf == 0) return 0;
+	    }
 	    f = open("/proc/self/maps", O_RDONLY);
 	    if (-1 == f) return 0;
-	    maps_buf = alloca(maps_size);
-	    if (NULL == maps_buf) return 0;
-	    result = GC_repeat_read(f, maps_buf, maps_size);
-	    if (result <= 0) return 0;
-	} else {
-	    /* Otherwise use the fixed size buffer */
-	    maps_buf = maps_temp;
-	}
-
-	close(f);
-        maps_buf[result] = '\0';
+	    maps_size = 0;
+	    do {
+	        result = GC_repeat_read(f, maps_buf, maps_buf_sz-1);
+	        if (result <= 0) return 0;
+	        maps_size += result;
+	    } while (result == maps_buf_sz-1);
+	    close(f);
+	} while (maps_size >= maps_buf_sz);
+        maps_buf[maps_size] = '\0';
 	
     /* Apply fn to result. */
 	return fn(maps_buf);
