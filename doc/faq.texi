@@ -259,3 +259,9 @@ and we'll try to solve your problem.
 
 @contents
 @bye
+
+@c XXX
+@c ld: elf error: file .../libmer.a: unable to locate archive symbol table:
+@c Request error: offset out of range
+@c caused by linking an asm_fast.gc.prof grade program
+@c against an asm_fast.gc grade runtime system

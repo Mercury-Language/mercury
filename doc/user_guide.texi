@@ -1274,6 +1274,10 @@ Specify options to be passed to @samp{ml}, the Mercury linker.
 Disable the optimization passes.
 
 @sp 1
+@item --optimize-dead
+Enable dead predicate elimination.
+
+@sp 1
 @item --no-optimize-peep
 Disable local peephole optimizations.
 
