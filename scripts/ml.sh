@@ -85,6 +85,6 @@ case "`hostname`" in
 esac
 
 if $verbose; then
-	echo $GCC "$@" $LIBDIR_OPTS -lmer -lmercury $LIBGC
+	echo $GCC "$@" $LIBDIR_OPTS -lmer -lmercury -lmer $LIBGC
 fi
-exec $GCC "$@" $LIBDIR_OPTS -lmer -lmercury $LIBGC
+exec $GCC "$@" $LIBDIR_OPTS -lmer -lmercury -lmer $LIBGC
