@@ -63,6 +63,7 @@ OTHER_SOURCES= \
 	module_b.m \
 	module_c.m \
 	module_d.m \
+	module_e.m \
 	mostly_uniq_mode_inf.m \
 	multidet_prune1.m \
 	multidet_test.m \
