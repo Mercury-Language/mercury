@@ -155,7 +155,9 @@ typedef void (*Cont) (void);
 
 /* STRING HANDLING */
 
-typedef char *String;
+typedef char Char;	/* we may eventually move to using wchar_t */
+
+typedef Char *String;
 
 #define string_const(string, len) ((Word)string)
 #define string_equal(s1,s2) (strcmp((char*)(s1),(char*)(s2))==0)
