@@ -1,14 +1,11 @@
 missing_interface_import.m:007: In definition of type `missing_interface_import.bar'/0:
 missing_interface_import.m:007:   error: undefined type `map'/2
-missing_interface_import.m:007:   (the module  `map'
-missing_interface_import.m:007:   has not been imported in the interface).
+missing_interface_import.m:007:   (the module `map' has not been imported in the interface).
 missing_interface_import.m:009: In definition of predicate `missing_interface_import.p'/1:
 missing_interface_import.m:009:   error: undefined type `std_util.univ'/0
-missing_interface_import.m:009:   (the module  `std_util'
-missing_interface_import.m:009:   has not been imported in the interface).
+missing_interface_import.m:009:   (the module `std_util' has not been imported in the interface).
 missing_interface_import.m:010: In definition of predicate `missing_interface_import.q'/1:
 missing_interface_import.m:010:   error: undefined type `list'/1
-missing_interface_import.m:010:   (the module  `list'
-missing_interface_import.m:010:   has not been imported in the interface).
+missing_interface_import.m:010:   (the module `list' has not been imported in the interface).
 `missing_interface_import.int' not written.
 For more information, try recompiling with `-E'.
