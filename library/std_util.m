@@ -1058,6 +1058,20 @@ mercury_data_std_util__type_ctor_functors_type_info_0_struct {
 	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
 
+const struct MR_TypeCtorInfo_struct
+mercury_data_std_util__type_ctor_info_type_info_0 = {
+	(Integer) 0,
+	ENTRY(mercury____Unify___std_util__type_info_0_0),
+	ENTRY(mercury____Index___std_util__type_info_0_0),
+	ENTRY(mercury____Compare___std_util__type_info_0_0),
+	(Integer) 15,
+	(Word *) &mercury_data_std_util__type_ctor_functors_type_info_0,
+	(Word *) &mercury_data_std_util__type_ctor_layout_type_info_0,
+	string_const(""std_util"", 8),
+	string_const(""type_info"", 9),
+	MR_RTTI_VERSION
+};
+
 #ifndef	COMPACT_ARGS
 
 Declare_label(mercury____Compare___std_util__univ_0_0_i1);
@@ -1219,6 +1233,8 @@ void sys_init_unify_univ_module(void) {
 
 	MR_INIT_TYPE_CTOR_INFO(mercury_data_std_util__type_ctor_info_univ_0,
 		std_util__univ_0_0);
+	MR_INIT_TYPE_CTOR_INFO(mercury_data_std_util__type_ctor_info_type_info_0,
+		std_util__type_info_0_0);
 }
 
 ").
