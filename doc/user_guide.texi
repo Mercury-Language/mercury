@@ -454,7 +454,7 @@ you can load them into the interpreter.  The command to use is just
 @table @emph
 @item What does the error message ``undefined symbol @samp{'.'/2}'' mean?
 
-You need to explicit import the @samp{list} module
+You need to explicitly import the @samp{list} module
 
 @example
 :- import_module list.
@@ -473,6 +473,38 @@ as @samp{<=}, which is used for reverse implication.
 Try compiling with the @samp{-e} (@samp{--verbose-errors}) option.
 This option causes the compiler to give even more verbose descriptions
 than usual.
+
+@item I get a mode error (or a "scope error") in an if-then-else. I checked and both branches bind the same variables. What is the error?
+
+A common cause of this sort of error is trying to bind non-local variables
+in the @emph{condition} of the if-then-else. Since
+
+@example
+(
+	Cond
+->
+	Then
+;
+	Else
+)
+@end example
+
+@noindent
+is equivalent to
+
+@example
+(
+	Cond,
+	Then
+;
+	not Cond,
+	Else
+)
+@end example
+
+@noindent
+attempting to bind a non-local variable in Cond would lead to an
+unsound negation, so mode analysis rejects such programs.
 
 @item I followed the instructions in the user's guide, but it still didn't work.  What do I do next?
 

@@ -1028,29 +1028,8 @@ reasonable easy to understand in practice.
 The compiler can index on any input variable to a disjunction
 (not just the first head variable).  It can also index on more than
 one variable, since after indexing on the first one, switch detection is
-applied to all sub-disjunctions.  The current implementation does
-not do the common sub-expression hoisting that is necessary for
-deep indexing (indexing on a sub-term, not just on the top-level
-functor), but you can do the common-subexpression hoisting yourself.
-For example, it cannot detect that the following two clauses
-
-@example
-        :- mode p(in).
-        p(f(a)) :-
-                ...
-        p(f(b)) :- 
-                ..
-@end example
-
-@noindent
-are disjoint, but it can index them if you write the code as
-
-@example
-        p(f(X)) :-
-                ( X = a, ...
-                ; X = b, ...
-                ).
-@end example
+applied to all sub-disjunctions.  It can index on any functor, not
+just the top-most one.
 
 The local determinism of a switch is @code{det} if the different
 cases of the switch cover all the possible alternatives for the
@@ -1080,6 +1059,8 @@ the determinism of the negation is @code{failure}.
 Otherwise, the determinism of the negation is @code{semidet}.
 
 @end table
+
+@subsection Replacing compile-time checking with run-time checking
 
 Note that ``perfect'' determinism inference is an undecidable
 problem, because it requires solving the halting problem.
@@ -1120,6 +1101,74 @@ determinism for the body of @code{p/1} is @code{det}.
 (Note that checking assumptions like this is good coding style anyway.
 The small amount of up-front work that Mercury requires is paid back in
 reduced debugging time.)
+
+@subsection Interfacing nondeterministic code with the real world
+
+Normally, attempting to call a @samp{nondet} or @samp{multidet} mode
+of a predicate from a predicate declared as @samp{semidet} or @samp{det}
+will cause a determinism error.  So how can we call nondeterministic
+code from deterministic code?  There are several alternative possibilities.
+
+If you just want to see if a nondeterministic goal is satisfiable or not,
+without needing to know what variable bindings it produces, then there is
+no problem - implicit pruning means that a @samp{nondet} or @samp{multidet}
+goal is considered @samp{semidet} or @samp{det} respectively if it does
+not have any non-local output variables.
+
+If you want need to use the values of output variables, then you need
+to ask yourself which one of possibly many solutions to a goal do you
+want?  If you want all of them, you need to use the predicate
+@code{solutions/2} in the standard library module @samp{std_util}.
+
+If you just want one solution and don't care which, the calling predicate
+should be declared @samp{nondet} or @samp{multidet}; the nondeterminism
+should be propagated up to the point at which it can be pruned.
+In Mercury, pruning can be achieved in several ways.
+
+Firstly, as mentioned above, if a goal has no non-local output variables
+then the implementation will only attempt to satisfy the goal once.
+Any potential duplicate solutions will be implicitly pruned away.
+
+Secondly, the implementation will only seek a single solution to
+@samp{main/2}, so alternative solutions to @samp{main/2} (and
+hence also to @samp{nondet} or @samp{multidet} predicates
+called directly or indirectly from @samp{main/2}) are implicitly pruned
+away.  This is one way to achieve "don't care" nondeterminism in Mercury.
+
+The other situation in which you may want pruning and committed
+choice style nondeterminism is when you know that all the solutions
+returned will be equivalent.  For example, you might want to count
+the elements in a set by removing them one at a time.  Removing
+an unspecified element from a set is a nondeterministic operation,
+but no matter which order you remove them, the computed size of the
+set should be the same.
+
+We plan to eventually extend Mercury to allow users to write
+
+@example
+
+	unique [X] Goal
+
+@end example
+
+@noindent
+as a special quantifier, meaning ``there exists a unique @code{X}
+for which @samp{Goal} is true''.  This would allow the implementation
+to prune alternative solutions for @samp{Goal} if @samp{X} was the
+only output variable of @samp{Goal}.  
+
+We would also like to allow users to specify a user-defined equivalence
+relation as the equality relation for user-defined types, so that the
+@samp{unique} quantifier could be used to express more general forms of
+equivalence.  For example, if you define a set type which represents
+sets as unsorted lists, you would want to define a user-defined
+equivalence relation for that type, which could sort the lists before
+comparing them.  The @samp{unique} quantifier could then be used for
+sets even though the lists used to represent the sets might not be
+in the same order in every solution.
+
+However, the current implementation does not yet support either the
+@samp{unique} quantifier or user-defined equivalence relations.
 
 @node Modules, Semantics, Determinism, Top
 @chapter Modules
@@ -1237,7 +1286,8 @@ plus the usual equality axioms.  The declarative semantics of a legal Mercury
 program is specified by this theory.  Mercury implementations must be
 sound: the answers they compute must be true in every model of the theory.
 
-Execution of a legal Mercury program begins with the predicate @samp{main}.
+Execution of a legal Mercury program begins with the predicate @samp{main/2}.
+Only one solution is sought, even if @samp{main/2} is multidet.
 
 @contents
 @bye
