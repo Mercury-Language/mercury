@@ -52,7 +52,7 @@
 :- import_module prog_util, prog_out, hlds_out.
 :- import_module globals, options.
 :- import_module make_tags, quantification, shapes.
-:- import_module code_util, unify_proc, type_util.
+:- import_module code_util, unify_proc, type_util, mercury_to_mercury.
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ module_info_init(Name, Module0) },
@@ -467,6 +467,7 @@ ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) -->
 		io__write_string("' for type `"),
 		hlds_out__write_type_id(TypeId),
 		io__write_string("' multiply defined.\n"),
+		io__set_exit_status(1),
 		io__set_output_stream(OldStream, _),
 		{ ConsDefns2 = ConsDefns1 }
 	;
@@ -809,7 +810,7 @@ determinism_priority_step(10000).
 			term__context, module_info, io__state, io__state).
 :- mode module_add_clause(in, in, in, in, in, in, out, di, uo) is det.
 
-module_add_clause(ModuleInfo0, VarSet, PredName, Args, Body, Context,
+module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
 			ModuleInfo) -->
 		% print out a progress message
 	{ module_info_name(ModuleInfo0, ModuleName) },
@@ -849,21 +850,23 @@ module_add_clause(ModuleInfo0, VarSet, PredName, Args, Body, Context,
 	( { pred_info_is_imported(PredInfo0) } ->
 		{ module_info_incr_errors(ModuleInfo1, ModuleInfo) },
 		clause_for_imported_pred_error(PredName, Arity, Context)
-	; {
+	;
+		{
 		pred_info_clauses_info(PredInfo0, Clauses0), 
 		pred_info_procedures(PredInfo0, Procs),
 		map__keys(Procs, ModeIds),
-		clauses_info_add_clause(Clauses0, ModeIds, VarSet, Args,
-				Body, Context, Clauses),
+		clauses_info_add_clause(Clauses0, ModeIds, ClauseVarSet, Args,
+				Body, Context, Goal, VarSet, Clauses),
 		pred_info_set_clauses_info(PredInfo0, Clauses, PredInfo),
 		map__set(Preds0, PredId, PredInfo, Preds),
 		predicate_table_set_preds(PredicateTable1, Preds,
 			PredicateTable),
 		module_info_set_predicate_table(ModuleInfo1, PredicateTable,
 			ModuleInfo)
-	} ),
-		% Warn about singleton variables in the clauses.
-	maybe_warn_singletons(VarSet, PredName/Arity, Args, Body, Context).
+		},
+		% warn about singleton variables 
+		maybe_warn_singletons(VarSet, PredName/Arity, Goal)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -882,149 +885,220 @@ module_add_c_header(C_Header, Context, Module0, Module) :-
 	% an underscore, or about variables which do start with an underscore
 	% but occur more than once.
 	%
-	% XXX This should be based on scopes, not over the entire clause.
-	%     We shouldn't warn about variables which start with '_'
-	%     unless they occur more than once *in the same scope*.
-	%     We should also warn about variables which occur twice
-	%     but only occur once in a particular scope.
+	% XXX contexts are not valid at this point
 	%
-	% XXX This is O(N*N) in the number of vars per clause
+:- pred maybe_warn_singletons(varset, pred_call_id, hlds__goal,
+				io__state, io__state).
+:- mode maybe_warn_singletons(in, in, in, di, uo) is det.
 
-:- pred maybe_warn_singletons(varset, pred_call_id, list(term), goal,
-				term__context, io__state, io__state).
-:- mode maybe_warn_singletons(in, in, in, in, in, di, uo) is det.
-
-maybe_warn_singletons(VarSet, PredCallId, Args, Body, Context) -->
+maybe_warn_singletons(VarSet, PredCallId, Body) -->
 	globals__io_lookup_bool_option(warn_singleton_vars, WarnSingletonVars),
 	( { WarnSingletonVars = yes } ->
-		{ term__vars_list(Args, VarList0) },
-		{ vars_in_goal(Body, VarList0, VarList) },
-		warn_singletons(VarList, VarSet, PredCallId, Context)
+		warn_singletons_in_goal(Body, VarSet, PredCallId)
 	;	
 		[]
 	).
 
-:- pred warn_singletons(list(var), varset, pred_call_id, term__context,
-			io__state, io__state).
-:- mode warn_singletons(in, in, in, in, di, uo) is det.
+:- pred warn_singletons_in_goal(hlds__goal, varset, pred_call_id,
+				io__state, io__state).
+:- mode warn_singletons_in_goal(in, in, in, di, uo) is det.
 
-warn_singletons([], _, _, _) --> [].
-warn_singletons([Var | Vars0], VarSet, PredCallId, Context) -->
-	{ delete_all(Vars0, Var, Vars1, Found) },
-	(
-		{ varset__lookup_name(VarSet, Var, Name) },
-			% suppress warnings for compiler-introduced DCG
-			% variables
-		{ \+ string__append("DCG_", _, Name) }
-	->
-		(
-			{ string__first_char(Name, '_', _) }
-		->
-			(
-				{ Found = yes }
-			->
-				prog_out__write_context(Context),
-				io__stderr_stream(StdErr),
-				io__write_string(StdErr, "In clause for predicate `"),
-				hlds_out__write_pred_call_id(PredCallId),
-				io__write_string(StdErr, "':\n"),
-				prog_out__write_context(Context),
-				io__write_string(StdErr, "  Warning: variable `"),
-				term_io__write_variable(Var, VarSet),
-				report_warning(StdErr, "' occurs more than once.")
-			;
-				[]
-			)
-		;
-			(
-				{ Found = no }
-			->
-				prog_out__write_context(Context),
-				io__stderr_stream(StdErr),
-				io__write_string(StdErr, "In clause for predicate `"),
-				hlds_out__write_pred_call_id(PredCallId),
-				io__write_string(StdErr, "':\n"),
-				prog_out__write_context(Context),
-				io__write_string(StdErr, "  Warning: variable `"),
-				term_io__write_variable(Var, VarSet),
-				report_warning(StdErr, "' occurs only once.\n")
-			;
-				[]
-			)
-		)
+warn_singletons_in_goal(Goal - GoalInfo, VarSet, PredCallId) -->
+	warn_singletons_in_goal_2(Goal, GoalInfo, VarSet, PredCallId).
+
+:- pred warn_singletons_in_goal_2(hlds__goal_expr, hlds__goal_info,
+				varset, pred_call_id, io__state, io__state).
+:- mode warn_singletons_in_goal_2(in, in, in, in, di, uo) is det.
+
+warn_singletons_in_goal_2(conj(Goals), _GoalInfo, VarSet, PredCallId) -->
+	warn_singletons_in_goal_list(Goals, VarSet, PredCallId).
+
+warn_singletons_in_goal_2(disj(Goals), _GoalInfo, VarSet, PredCallId) -->
+	warn_singletons_in_goal_list(Goals, VarSet, PredCallId).
+
+warn_singletons_in_goal_2(switch(_Var, _CanFail, Cases),
+			_GoalInfo, VarSet, PredCallId) -->
+	warn_singletons_in_cases(Cases, VarSet, PredCallId).
+
+warn_singletons_in_goal_2(not(Goal), _GoalInfo, VarSet, PredCallId) -->
+	warn_singletons_in_goal(Goal, VarSet, PredCallId).
+
+warn_singletons_in_goal_2(some(Vars, SubGoal), GoalInfo, VarSet, PredCallId) -->
+	%
+	% warn if any quantified variables occur only in the quantifier
+	%
+	{ SubGoal = _ - SubGoalInfo },
+	{ goal_info_get_nonlocals(SubGoalInfo, SubNonLocals) },
+	{ goal_info_context(GoalInfo, Context) },
+	warn_singletons(Vars, SubNonLocals, VarSet, Context, PredCallId),
+
+	warn_singletons_in_goal(SubGoal, VarSet, PredCallId).
+
+warn_singletons_in_goal_2(if_then_else(Vars, Cond, Then, Else), GoalInfo,
+				VarSet, PredCallId) -->
+	%
+	% warn if any quantified variables do not occur in the condition
+	% or the "then" part of the if-then-else
+	%
+	{ Cond = _ - CondGoalInfo },
+	{ Then = _ - ThenGoalInfo },
+	{ goal_info_get_nonlocals(CondGoalInfo, CondNonLocals) },
+	{ goal_info_get_nonlocals(ThenGoalInfo, ThenNonLocals) },
+	{ set__union(CondNonLocals, ThenNonLocals, CondThenNonLocals) },
+	{ goal_info_context(GoalInfo, Context) },
+	warn_singletons(Vars, CondThenNonLocals, VarSet, Context, PredCallId),
+
+	warn_singletons_in_goal(Cond, VarSet, PredCallId),
+	warn_singletons_in_goal(Then, VarSet, PredCallId),
+	warn_singletons_in_goal(Else, VarSet, PredCallId).
+
+warn_singletons_in_goal_2(call(_, _, Args, _, _, _, _),
+			GoalInfo, VarSet, PredCallId) -->
+	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
+	{ goal_info_context(GoalInfo, Context) },
+	warn_singletons(Args, NonLocals, VarSet, Context, PredCallId).
+
+warn_singletons_in_goal_2(unify(Var, RHS, _, _, _),
+			GoalInfo, VarSet, PredCallId) -->
+	warn_singletons_in_unify(Var, RHS, GoalInfo, VarSet, PredCallId).
+
+:- pred warn_singletons_in_goal_list(list(hlds__goal), varset, pred_call_id,
+					io__state, io__state).
+:- mode warn_singletons_in_goal_list(in, in, in, di, uo) is det.
+
+warn_singletons_in_goal_list([], _, _) --> [].
+warn_singletons_in_goal_list([Goal|Goals], VarSet, CallPredId) -->
+	warn_singletons_in_goal(Goal, VarSet, CallPredId),
+	warn_singletons_in_goal_list(Goals, VarSet, CallPredId).
+
+:- pred warn_singletons_in_cases(list(case), varset, pred_call_id,
+					io__state, io__state).
+:- mode warn_singletons_in_cases(in, in, in, di, uo) is det.
+
+warn_singletons_in_cases([], _, _) --> [].
+warn_singletons_in_cases([Case|Cases], VarSet, CallPredId) -->
+	{ Case = case(_ConsId, Goal) },
+	warn_singletons_in_goal(Goal, VarSet, CallPredId),
+	warn_singletons_in_cases(Cases, VarSet, CallPredId).
+
+:- pred warn_singletons_in_unify(var, unify_rhs, hlds__goal_info, varset,
+			pred_call_id, io__state, io__state).
+:- mode warn_singletons_in_unify(in, in, in, in, in, di, uo) is det.
+
+warn_singletons_in_unify(X, var(Y), GoalInfo, VarSet, CallPredId) -->
+	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
+	{ goal_info_context(GoalInfo, Context) },
+	warn_singletons([X, Y], NonLocals, VarSet,
+			Context, CallPredId).
+
+warn_singletons_in_unify(X, functor(_ConsId, Vars), GoalInfo, VarSet,
+				CallPredId) -->
+	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
+	{ goal_info_context(GoalInfo, Context) },
+	warn_singletons([X | Vars], NonLocals, VarSet, Context, CallPredId).
+
+warn_singletons_in_unify(X, lambda_goal(LambdaVars, _Modes, _Det, LambdaGoal),
+				GoalInfo, VarSet, CallPredId) -->
+	%
+	% warn if any lambda-quantified variables occur only in the quantifier
+	%
+	{ LambdaGoal = _ - LambdaGoalInfo },
+	{ goal_info_get_nonlocals(LambdaGoalInfo, LambdaNonLocals) },
+	{ goal_info_context(GoalInfo, Context) },
+	warn_singletons(LambdaVars, LambdaNonLocals, VarSet,
+			Context, CallPredId),
+
+	%
+	% warn if X (the variable we're unifying the lambda expression with)
+	% is singleton
+	%
+	{ set__to_sorted_list(LambdaNonLocals, Vars) },
+	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
+	warn_singletons([X | Vars], NonLocals, VarSet, Context, CallPredId),
+
+	%
+	% warn if the lambda-goal contains singletons
+	%
+	warn_singletons_in_goal(LambdaGoal, VarSet, CallPredId).
+
+%-----------------------------------------------------------------------------%
+
+	% warn_singletons(Vars, NonLocals, ...):
+	% 	Warn if any of the non-underscore variables in Vars don't
+	%	occur in NonLocals, or if any of the underscore variables
+	%	in vars do occur in NonLocals.
+
+:- pred warn_singletons(list(var), set(var), varset, term__context,
+			pred_call_id, io__state, io__state).
+:- mode warn_singletons(in, in, in, in, in, di, uo) is det.
+
+warn_singletons(GoalVars, NonLocals, VarSet, Context, PredCallId) -->
+	io__stderr_stream(StdErr),
+
+	% find all the variables in the goal that don't occur outside the
+	% goal (i.e. are singleton) and have a variable name that doesn't
+	% start with "_" or "DCG_".
+	
+	{ solutions(lambda([Var::out] is nondet, (
+		  	list__member(Var, GoalVars),
+			\+ set__member(Var, NonLocals),
+			varset__lookup_name(VarSet, Var, Name),
+			\+ string__prefix(Name, "_"),
+			\+ string__prefix(Name, "DCG_")
+		)), SingletonVars) },
+
+	% if there were any such variables, issue a warning
+
+	( { SingletonVars = [] } ->
+		[]
 	;
-		[]
+		prog_out__write_context(Context),
+		io__write_string(StdErr, "In clause for predicate `"),
+		hlds_out__write_pred_call_id(PredCallId),
+		io__write_string(StdErr, "':\n"),
+		prog_out__write_context(Context),
+		( { SingletonVars = [_] } ->
+			io__write_string(StdErr, "  Warning: variable `"),
+			mercury_output_vars(SingletonVars, VarSet),
+			report_warning(StdErr, "' occurs only once in this scope.\n")
+		;
+			io__write_string(StdErr, "  Warning: variables `"),
+			mercury_output_vars(SingletonVars, VarSet),
+			report_warning(StdErr, "' occur only once in this scope.\n")
+		)
 	),
-	warn_singletons(Vars1, VarSet, PredCallId, Context).
 
-	% delete_all(List0, Elem, List, Found) is true iff
-	% List is List0 with all occurrences of Elem removed,
-	% and Found = 'yes' if Elem occurred in List0 and 'no' otherwise.
+	% find all the variables in the goal that do occur outside the
+	% goal (i.e. are not singleton) and have a variable name that starts
+	% with "_".
+	
+	{ solutions(lambda([Var2::out] is nondet, (
+		  	list__member(Var2, GoalVars),
+			set__member(Var2, NonLocals),
+			varset__lookup_name(VarSet, Var2, Name2),
+			string__prefix(Name2, "_")
+		)), MultiVars) },
 
-:- pred delete_all(list(T), T, list(T), bool).
-:- mode delete_all(in, in, out, out) is det.
+	% if there were any such variables, issue a warning
 
-delete_all([], _, [], no).
-delete_all([X | Xs], Y, L, Found) :-
-	( X = Y ->
-		Found = yes,
-		delete_all(Xs, Y, L, _)
-	;	
-		L = [X | Xs1],
-		delete_all(Xs, Y, Xs1, Found)
+	( { MultiVars = [] } ->
+		[]
+	;
+		prog_out__write_context(Context),
+		io__write_string(StdErr, "In clause for predicate `"),
+		hlds_out__write_pred_call_id(PredCallId),
+		io__write_string(StdErr, "':\n"),
+		prog_out__write_context(Context),
+		( { MultiVars = [_] } ->
+			io__write_string(StdErr, "  Warning: variable `"),
+			mercury_output_vars(MultiVars, VarSet),
+			report_warning(StdErr, "' occurs more than once in this scope.\n")
+		;
+			io__write_string(StdErr, "  Warning: variables `"),
+			mercury_output_vars(MultiVars, VarSet),
+			report_warning(StdErr, "' occur more than once in this scope.\n")
+		)
 	).
-
-:- pred vars_in_goal(goal, list(var), list(var)).
-:- mode vars_in_goal(in, in, out) is det.
-
-vars_in_goal(Goal - _Context) -->
-	vars_in_goal_2(Goal).
-
-:- pred vars_in_goal_2(goal_expr, list(var), list(var)).
-:- mode vars_in_goal_2(in, in, out) is det.
-
-vars_in_goal_2(true) --> [].
-vars_in_goal_2(fail) --> [].
-vars_in_goal_2((A,B)) -->
-	vars_in_goal(A),
-	vars_in_goal(B).
-vars_in_goal_2((A;B)) -->
-	vars_in_goal(A),
-	vars_in_goal(B).
-vars_in_goal_2(not(G)) -->
-	vars_in_goal(G).
-vars_in_goal_2(some(Vs, G)) -->
-	list__append(Vs),
-	vars_in_goal(G).
-vars_in_goal_2(all(Vs, G)) -->
-	list__append(Vs),
-	vars_in_goal(G).
-vars_in_goal_2(implies(A,B)) -->
-	vars_in_goal(A),
-	vars_in_goal(B).
-vars_in_goal_2(equivalent(A,B)) -->
-	vars_in_goal(A),
-	vars_in_goal(B).
-vars_in_goal_2(unify(A, B)) -->
-	vars_in_term(A),
-	vars_in_term(B).
-vars_in_goal_2(call(Term)) -->
-	vars_in_term(Term).
-vars_in_goal_2(if_then(Vars,A,B)) -->
-	list__append(Vars),
-	vars_in_goal(A),
-	vars_in_goal(B).
-vars_in_goal_2(if_then_else(Vars,A,B,C)) -->
-	list__append(Vars),
-	vars_in_goal(A),
-	vars_in_goal(B),
-	vars_in_goal(C).
-
-:- pred vars_in_term(term, list(var), list(var)).
-:- mode vars_in_term(in, in, out) is det.
-
-vars_in_term(Term) -->
-	term__vars_2(Term).
 
 %-----------------------------------------------------------------------------
 
@@ -1035,10 +1109,11 @@ clauses_info_init(Arity, clauses_info(VarSet, VarTypes, HeadVars, [])) :-
 
 :- pred clauses_info_add_clause(clauses_info::in,
 		list(proc_id)::in, varset::in, list(term)::in, goal::in,
-		term__context::in, clauses_info::out) is det.
+		term__context::in,
+		hlds__goal::out, varset::out, clauses_info::out) is det.
 
 clauses_info_add_clause(ClausesInfo0, ModeIds, CVarSet, Args, Body,
-		Context, ClausesInfo) :-
+		Context, Goal, VarSet, ClausesInfo) :-
 	ClausesInfo0 = clauses_info(VarSet0, VarTypes, HeadVars, ClauseList0),
 	varset__merge_subst(VarSet0, CVarSet, VarSet1, Subst),
 	transform(Subst, HeadVars, Args, Body, VarSet1, Goal, VarSet),
@@ -1516,6 +1591,7 @@ get_disj(Goal, Subst, Disj0, VarSet0, Disj, VarSet) :-
 :- mode multiple_def_error(in, in, in, in, di, uo) is det.
 
 multiple_def_error(Name, Arity, DefType, Context) -->
+	io__set_exit_status(1),
 	prog_out__write_context(Context),
 	io__write_string("Error: "),
 	io__write_string(DefType),
@@ -1530,6 +1606,7 @@ multiple_def_error(Name, Arity, DefType, Context) -->
 :- mode undefined_pred_error(in, in, in, in, di, uo) is det.
 
 undefined_pred_error(Name, Arity, Context, Description) -->
+	io__set_exit_status(1),
 	prog_out__write_context(Context),
 	io__write_string("Error: "),
 	io__write_string(Description),
@@ -1566,9 +1643,9 @@ unspecified_det_warning(Name, Arity, Context) -->
 :- mode unspecified_det_error(in, in, in, di, uo) is det.
 
 unspecified_det_error(Name, Arity, Context) -->
+	io__set_exit_status(1),
 	prog_out__write_context(Context),
 	io__write_string("Error: no determinism declaration for exported pred\n"),
-	io__set_exit_status(1),
 	prog_out__write_context(Context),
 	io__write_string("  `"),
 	prog_out__write_sym_name(Name),
@@ -1581,9 +1658,9 @@ unspecified_det_error(Name, Arity, Context) -->
 :- mode clause_for_imported_pred_error(in, in, in, di, uo) is det.
 
 clause_for_imported_pred_error(Name, Arity, Context) -->
+	io__set_exit_status(1),
 	prog_out__write_context(Context),
 	io__write_string("Error: clause for imported pred `"),
-	io__set_exit_status(1),
 	prog_out__write_sym_name(Name),
 	io__write_string("/"),
 	io__write_int(Arity),
