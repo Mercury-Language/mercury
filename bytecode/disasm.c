@@ -1,5 +1,5 @@
 /*
- *	$Id: disasm.c,v 1.8 1997-02-11 07:52:16 aet Exp $
+ *	$Id: disasm.c,v 1.9 1997-03-20 08:16:50 aet Exp $
  *
  *	Copyright: The University of Melbourne, 1996
  */
@@ -12,13 +12,14 @@
 #include	<assert.h>
 
 #include	<util.h>
+#include	<mem.h>
 #include	<bytecode.h>
 #include	<disasm.h>
 
 /* Local declarations */
 
 static char
-rcs_id[]	= "$Id: disasm.c,v 1.8 1997-02-11 07:52:16 aet Exp $";
+rcs_id[]	= "$Id: disasm.c,v 1.9 1997-03-20 08:16:50 aet Exp $";
 
 static void
 print_bytecode(Bytecode bytecode);
@@ -65,10 +66,11 @@ disassemble(FILE* fp)
 	/* Read two-byte version number */
 	if (read_bytecode_version_number(fp, &bytecode_version_number))
 	{
-		printf("%d\n", bytecode_version_number);
+		printf("bytecode_version %d\n", bytecode_version_number);
 		/* XXX: We should check the version number is 
 		 * what we expect. Should use major and minor version
 		 * numbers? Should use a magic number?
+		 * Should have the module name in the bytecode.
 		 */
 	}
 	else
@@ -393,6 +395,11 @@ print_bytecode(Bytecode bc)
 			/* No args */
 		}
 		break;
+	case BC_noop:
+		{
+			/* No args */
+		}
+		break;
 	default:
 		{
 			assert(FALSE); /*XXX*/
@@ -413,7 +420,8 @@ print_cons_id(Cons_id cons_id)
 	{
 	case CONSID_CONS:
 		{
-			printf("functor %s ", cons_id.opt.cons.string);
+			printf("functor %s %s ", cons_id.opt.cons.module_id,
+				cons_id.opt.cons.string);
 			printf("%d ", cons_id.opt.cons.arity);
 			print_tag(cons_id.opt.cons.tag);
 		}
@@ -425,10 +433,6 @@ print_cons_id(Cons_id cons_id)
 		break;
 	case CONSID_STRING_CONST:
 		{
-			/* 
-			 * XXX: This string printing is shitful.
-			 * Should quote newlines, backslashes, etc.
-			 */
 			printf("string_const \"%s\"", 
 				quote_cstring(cons_id.opt.string_const));
 		}
@@ -466,6 +470,13 @@ print_cons_id(Cons_id cons_id)
 				type_name);
 			printf("%d ", cons_id.opt.base_type_info_const.
 				type_arity);
+		}
+		break;
+	case CONSID_CHAR_CONST:
+		{
+			printf("%s", "char_const ");
+			/* XXX : fix so that char is printed sensibly */
+			printf("'%c'", cons_id.opt.char_const.ch);
 		}
 		break;
 	default:
@@ -754,7 +765,7 @@ quote_cstring(CString str)
 	/* Allocate initial static string */
 	if (NULL == str_s)
 	{
-		str_s = malloc(sizeof(char) * str_size_s);
+		str_s = mem_malloc(sizeof(char) * str_size_s);
 	}
 
 	i = j = 0;
@@ -800,7 +811,7 @@ quote_cstring(CString str)
 				CString		ret_str;
 
 				str_s[j] = '\0';
-				ret_str = malloc((strlen(str_s) + 1) 
+				ret_str = mem_malloc((strlen(str_s) + 1) 
 					* sizeof(char));
 				strcpy(ret_str, str_s);
 				return ret_str;
