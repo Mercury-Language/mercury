@@ -370,24 +370,26 @@
 	module_info::in, module_info::out) is det.
 
 :- pred module_info_aditi_top_down_procs(module_info::in,
-		list(aditi_top_down_proc)::out) is det.
+	list(aditi_top_down_proc)::out) is det.
 
 :- pred module_info_set_aditi_top_down_procs(module_info::in,
-		list(aditi_top_down_proc)::in, module_info::out) is det.
+	list(aditi_top_down_proc)::in, module_info::out) is det.
 
 :- pred module_info_next_aditi_top_down_proc(module_info::in, int::out,
-		module_info::out) is det.
+	module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- pred module_info_preds(module_info::in, pred_table::out) is det.
 
+	% Given a pred_id, return the pred_info of the specified pred.
+	%
 :- pred module_info_pred_info(module_info::in, pred_id::in, pred_info::out)
 	is det.
 
-	% Given a pred_id and a proc_id, get the
-	% pred_info that predicate and the proc_info for that
-	% mode of that predicate.
+	% Given a pred_id and a proc_id, get the pred_info that predicate
+	% and the proc_info for that mode of that predicate.
+	%
 :- pred module_info_pred_proc_info(module_info::in, pred_id::in, proc_id::in,
 	pred_info::out, proc_info::out) is det.
 
@@ -398,6 +400,7 @@
 	% (Predicates whose definition contains a type error, etc.
 	% get removed from this list, so that later passes can rely
 	% on the predicates in this list being type-correct, etc.)
+	%
 :- pred module_info_predids(module_info::in, list(pred_id)::out) is det.
 
 	% Reverse the list of pred_ids.
@@ -405,14 +408,17 @@
 	% for efficiency; once we've done so, we reverse the list
 	% so that progress messages and error messages come out
 	% in the expected order.)
+	%
 :- pred module_info_reverse_predids(module_info::in, module_info::out) is det.
 
 	% Remove a predicate from the list of pred_ids, to prevent
 	% further processing of this predicate after an error is encountered.
+	%
 :- pred module_info_remove_predid(pred_id::in,
 	module_info::in, module_info::out) is det.
 
 	% Completely remove a predicate from a module.
+	%
 :- pred module_info_remove_predicate(pred_id::in,
 	module_info::in, module_info::out) is det.
 
@@ -440,6 +446,7 @@
 
 	% Please see module_info_ensure_dependency_info for the
 	% constraints on this dependency_info.
+	%
 :- pred module_info_dependency_info(module_info::in, dependency_info::out)
 	is det.
 
@@ -448,6 +455,7 @@
 
 	% Please see module_info_ensure_dependency_info for the
 	% constraints on this dependency_info.
+	%
 :- pred module_info_set_dependency_info(dependency_info::in,
 	module_info::in, module_info::out) is det.
 
@@ -456,10 +464,9 @@
 
 :- pred module_info_incr_errors(module_info::in, module_info::out) is det.
 
-	% The module_info stores a counter which is used to number
-	% introduced lambda predicates as __LambdaGoal__1, __LambdaGoal__2,
-	% etc.; this predicate returns the next number and increments
-	% the counter.
+	% The module_info stores a counter which is used to number introduced
+	% lambda predicates as __LambdaGoal__1, __LambdaGoal__2, etc.; this
+	% predicate returns the next number and increments the counter.
 :- pred module_info_next_lambda_count(int::out,
 	module_info::in, module_info::out) is det.
 
@@ -473,6 +480,7 @@
 	% 234-trees, it is a no-op, except for the mode and inst tables,
 	% where the cached lists of mode_ids and inst_ids are sorted for
 	% efficient conversion to sets in module_qual.m.)
+	%
 :- pred module_info_optimize(module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
