@@ -1178,9 +1178,6 @@ pred_info_is_exported(PredInfo) :-
 :- pred proc_info_call_info(proc_info, call_info).
 :- mode proc_info_call_info(in, out) is det.
 
-:- pred proc_info_arg_registers(proc_info, list(var), map(var, int)).
-:- mode proc_info_arg_registers(in, in, out) is det.
-
 :- pred proc_info_liveness_info(proc_info, liveness_info).
 :- mode proc_info_liveness_info(in, out) is det.
 

@@ -80,7 +80,15 @@ code_util__make_entry_label(ModuleInfo, PredId, ProcId, PredAddress) :-
 
 code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, Label) :-
 	code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel),
-	Label = exported(ProcLabel).
+	module_info_preds(ModuleInfo, Preds),
+	map__lookup(Preds, PredId, PredInfo),
+	(
+		pred_info_is_exported(PredInfo)
+	->
+		Label = exported(ProcLabel)
+	;
+		Label = local(ProcLabel)
+	).
 
 code_util__make_local_label(ModuleInfo, PredId, ProcId, LabelNum, Label) :-
 	code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel),

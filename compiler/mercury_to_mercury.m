@@ -44,9 +44,6 @@
 :- pred mercury_output_term(term, varset, io__state, io__state).
 :- mode mercury_output_term(in, in, di, uo) is det.
 
-:- pred mercury_output_hlds_goal(hlds__goal, varset, int, io__state, io__state).
-:- mode mercury_output_hlds_goal(in, in, in, di, uo) is det.
-
 :- pred mercury_output_newline(int, io__state, io__state).
 :- mode mercury_output_newline(in, di, uo) is det.
 

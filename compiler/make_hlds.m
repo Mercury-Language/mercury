@@ -34,7 +34,7 @@
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ module_info_init(Name, Module0) },
-	add_item_list_decls(Items, Module0, Module1),
+	add_item_list_decls(Items, local_pred, Module0, Module1),
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
 		% balance the binary trees
@@ -42,34 +42,21 @@ parse_tree_to_hlds(module(Name, Items), Module) -->
 	maybe_report_stats(Statistics),
 	add_item_list_clauses(Items, Module2, Module3),
 		% the predid list is constructed in reverse order, for
-		% effiency, so we return it to the correct order here.
+		% efficiency, so we return it to the correct order here.
 	{ module_info_reverse_predids(Module3, Module) }.
 
 %-----------------------------------------------------------------------------%
 
 	% add the declarations one by one to the module
 
-:- pred add_item_list_decls(item_list, module_info, module_info,
+:- pred add_item_list_decls(item_list, import_status, module_info, module_info,
 				io__state, io__state).
-:- mode add_item_list_decls(in, in, out, di, uo) is det.
+:- mode add_item_list_decls(in, in, in, out, di, uo) is det.
 
-add_item_list_decls([], Module, Module) --> [].
-add_item_list_decls([Item - Context | Items], Module0, Module) -->
-	( add_item_decl(Item, Context, Module0, Module1) ->
-		{ Module2 = Module1 }
-	;
-		io__stderr_stream(StdErr),
-		io__set_output_stream(StdErr, OldStream),
-		io__write_string("\n"),
-		prog_out__write_context(Context),
-		io__write_string("Internal error in make_hlds.\n"),
-		io__write_string("Failed to process the following item:\n"),
-		io__write_anything(Item),
-		io__write_string("\n"),
-		io__set_output_stream(OldStream, _),
-		{ module_info_incr_errors(Module0, Module2) }
-	),
-	add_item_list_decls(Items, Module2, Module).
+add_item_list_decls([], _, Module, Module) --> [].
+add_item_list_decls([Item - Context | Items], Status0, Module0, Module) -->
+	add_item_decl(Item, Context, Status0, Module0, Status1, Module1),
+	add_item_list_decls(Items, Status1, Module1, Module).
 
 	% add the clauses one by one to the module
 
@@ -79,59 +66,55 @@ add_item_list_decls([Item - Context | Items], Module0, Module) -->
 
 add_item_list_clauses([], Module, Module) --> [].
 add_item_list_clauses([Item - Context | Items], Module0, Module) -->
-	( add_item_clause(Item, Context, Module0, Module1) ->
-		{ Module2 = Module1 }
-	;
-		io__stderr_stream(StdErr),
-		io__set_output_stream(StdErr, OldStream),
-		io__write_string("\n"),
-		prog_out__write_context(Context),
-		io__write_string("Internal error in make_hlds.\n"),
-		io__write_string("Failed to process the following clause:\n"),
-		io__write_anything(Item),
-		io__write_string("\n"),
-		io__set_output_stream(OldStream, _),
-		{ module_info_incr_errors(Module0, Module2) }
-	),
-	add_item_list_clauses(Items, Module2, Module).
+	add_item_clause(Item, Context, Module0, Module1),
+	add_item_list_clauses(Items, Module1, Module).
 
 %-----------------------------------------------------------------------------%
 
 	% dispatch on the different types of items
 
-:- pred add_item_decl(item, term__context, module_info, module_info,
+:- pred add_item_decl(item, term__context, import_status, module_info,
+			import_status, module_info,
 			io__state, io__state).
-:- mode add_item_decl(in, in, in, out, di, uo) is det.
+:- mode add_item_decl(in, in, in, in, out, out, di, uo) is det.
 
-add_item_decl(clause(_, _, _, _), _, Module, Module) --> [].	% skip clauses
+	% skip clauses
+add_item_decl(clause(_, _, _, _), _, Status, Module, Status, Module) --> [].
 
-add_item_decl(type_defn(VarSet, TypeDefn, Cond), Context, Module0, Module) -->
+add_item_decl(type_defn(VarSet, TypeDefn, Cond), Context, Status, Module0,
+		Status, Module) -->
 	module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module).
 
-add_item_decl(inst_defn(VarSet, InstDefn, Cond), Context, Module0, Module) -->
+add_item_decl(inst_defn(VarSet, InstDefn, Cond), Context, Status, Module0,
+		Status, Module) -->
 	module_add_inst_defn(Module0, VarSet, InstDefn, Cond, Context, Module).
 
-add_item_decl(mode_defn(VarSet, ModeDefn, Cond), Context, Module0, Module) -->
+add_item_decl(mode_defn(VarSet, ModeDefn, Cond), Context, Status, Module0,
+		Status, Module) -->
 	module_add_mode_defn(Module0, VarSet, ModeDefn, Cond, Context, Module).
 
 add_item_decl(pred(VarSet, PredName, TypesAndModes, Det, Cond), Context,
-		Module0, Module) -->
+		Status, Module0, Status, Module) -->
 	module_add_pred(Module0, VarSet, PredName, TypesAndModes, Det, Cond,
-		Context, Module).
+		Context, Status, Module).
 
-add_item_decl(mode(VarSet, PredName, Modes, Det, Cond), Context, Module0,
-		Module) -->
+add_item_decl(mode(VarSet, PredName, Modes, Det, Cond), Context, Status,
+		Module0, Status, Module) -->
 	module_add_mode(Module0, VarSet, PredName, Modes, Det, Cond, Context,
 		Module).
 
-add_item_decl(module_defn(_VarSet, ModuleDefn), Context, Module, Module) -->
+add_item_decl(module_defn(_VarSet, ModuleDefn), Context, Status0, Module,
+		Status, Module) -->
 	( { ModuleDefn = interface } ->
-		[]
+		{ Status = exported_pred }
 	; { ModuleDefn = implementation } ->
-		[]
+		{ Status = local_pred }
+	; { ModuleDefn = imported } ->
+		{ Status = imported_pred }
 	; { ModuleDefn = import(module(_)) } ->
-		[]
+		{ Status = Status0 }
 	;
+		{ Status = Status0 },
 		io__stderr_stream(StdErr),
 		io__set_output_stream(StdErr, OldStream),
 		prog_out__write_context(Context),
@@ -139,8 +122,7 @@ add_item_decl(module_defn(_VarSet, ModuleDefn), Context, Module, Module) -->
 		io__set_output_stream(OldStream, _)
 	).
 
-add_item_decl(nothing, _, Module, Module) -->
-	[].
+add_item_decl(nothing, _, Status, Module, Status, Module) --> [].
 
 %-----------------------------------------------------------------------------%
 
@@ -338,14 +320,16 @@ ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) -->
 %---------------------------------------------------------------------------%
 
 :- pred module_add_pred(module_info, varset, sym_name, list(type_and_mode),
-		determinism, condition, term__context, module_info,
+		determinism, condition, term__context, import_status,
+		module_info,
 		io__state, io__state).
-:- mode module_add_pred(in, in, in, in, in, in, in, out, di, uo) is det.
+:- mode module_add_pred(in, in, in, in, in, in, in, in, out, di, uo) is det.
 
 module_add_pred(Module0, VarSet, PredName, TypesAndModes, Det, Cond, Context,
-		Module) -->
+		Status, Module) -->
 	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
-	preds_add(Module0, VarSet, PredName, Types, Cond, Context, Module1),
+	preds_add(Module0, VarSet, PredName, Types, Cond, Context, Status,
+		Module1),
 	(
 		% some [Modes]
 		{ MaybeModes = yes(Modes) }
@@ -357,16 +341,17 @@ module_add_pred(Module0, VarSet, PredName, TypesAndModes, Det, Cond, Context,
 	).
 
 :- pred preds_add(module_info, varset, sym_name, list(type),
-		condition, term__context, module_info, io__state, io__state).
-:- mode preds_add(in, in, in, in, in, in, out, di, uo) is det.
+		condition, term__context, import_status,
+		module_info, io__state, io__state).
+:- mode preds_add(in, in, in, in, in, in, in, out, di, uo) is det.
 
-preds_add(Module0, VarSet, PredName, Types, Cond, Context, Module) -->
+preds_add(Module0, VarSet, PredName, Types, Cond, Context, Status, Module) -->
 	{ module_info_name(Module0, ModuleName) },
 	{ module_info_get_predicate_table(Module0, PredicateTable0) },
 	{ list__length(Types, Arity) },
 	{ clauses_info_init(Arity, ClausesInfo) },
 	{ pred_info_init(ModuleName, PredName, Arity, VarSet, Types, Cond,
-		Context, ClausesInfo, PredInfo) },
+		Context, ClausesInfo, Status, PredInfo) },
 	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
 	(
 		{ \+ predicate_table_search_m_n_a(PredicateTable0,
@@ -467,7 +452,7 @@ preds_add_implicit(PredicateTable0,
 	Cond = true,
 	clauses_info_init(Arity, ClausesInfo),
 	pred_info_init(ModuleName, PredName, Arity, TVarSet, Types, Cond,
-		Context, ClausesInfo, PredInfo),
+		Context, ClausesInfo, local_pred, PredInfo),
 	unqualify_name(PredName, PName),	% ignore any module qualifier
 	(
 		\+ predicate_table_search_m_n_a(PredicateTable0,

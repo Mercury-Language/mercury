@@ -636,7 +636,8 @@ output_label_list_2([Label | Labels]) -->
 output_label(exported(ProcLabel)) -->
 	output_proc_label(ProcLabel).
 output_label(local(ProcLabel)) -->
-	output_proc_label(ProcLabel).
+	output_proc_label(ProcLabel),
+	io__write_string("_l").		% l for "local".
 output_label(local(ProcLabel, Num)) -->
 	output_proc_label(ProcLabel),
 	io__write_string("_i"),		% i for "internal" (not Intel ;-)
