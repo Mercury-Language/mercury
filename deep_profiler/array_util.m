@@ -106,7 +106,7 @@
 :- import_module int, string.
 
 :- pragma foreign_proc("C", u(A::in) = (B::array_uo),
-	[will_not_call_mercury, thread_safe],
+	[will_not_call_mercury, thread_safe, promise_pure],
 	"B = A;"
 ).
 
