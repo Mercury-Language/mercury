@@ -46,6 +46,8 @@ register --quiet
 break print_list
 break qdelete
 continue -a
+break info
+enable *
 step -aS 5
 disable 1
 continue -n

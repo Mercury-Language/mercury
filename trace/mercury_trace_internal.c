@@ -865,12 +865,12 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		MR_Spy_Action	action;
 
 		if (word_count == 2 && streq(words[1], "info")) {
-			int i;
+			int	i;
 			for (i = 0; i < MR_spy_point_next; i++) {
 				MR_print_spy_point(i);
 			}
 
-			return STOP_INTERACTING;
+			return KEEP_INTERACTING;
 		}
 
 		when = MR_SPY_INTERFACE;
@@ -930,7 +930,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			int i;
 			for (i = 0; i < MR_spy_point_next; i++) {
 				MR_spy_points[i]->spy_enabled = TRUE;
-				MR_print_spy_point(n);
+				MR_print_spy_point(i);
 			}
 
 			if (MR_spy_point_next == 0) {

@@ -144,6 +144,12 @@ mdb> continue -a
       50:     14  8 REDO pred queens:qperm/2-0 (nondet) 
       51:     14  8 FAIL pred queens:qperm/2-0 (nondet) 
       52:     13  8 REDO pred queens:qdelete/3-0 (nondet) 
+mdb> break info
+ 0: + stop  interface pred queens:print_list/3-0 (det)
+ 1: + stop  interface pred queens:qdelete/3-0 (nondet)
+mdb> enable *
+ 0: + stop  interface pred queens:print_list/3-0 (det)
+ 1: + stop  interface pred queens:qdelete/3-0 (nondet)
 mdb> step -aS 5
       53:     13  8 DISJ pred queens:qdelete/3-0 (nondet) c2;d2;
       54:     17  9 CALL pred queens:qdelete/3-0 (nondet) 
