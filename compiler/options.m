@@ -742,7 +742,8 @@ opt_level(2, _, [
 							% caused by inlining
 							% parse_dcg_goal is
 							% solved.
-	inline_threshold	-	int(10),
+	inline_threshold	-	int(0),		% 10 when various
+							% bugs are fixed
 	common_struct		-	bool(yes),
 	simple_neg		-	bool(yes)
 ]).
