@@ -8,7 +8,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is nondet.
+:- pred main(io__state::di, io__state::uo) is multidet.
 
 :- implementation.
 :- import_module list, char, int, string.
