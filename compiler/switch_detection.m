@@ -222,7 +222,8 @@ detect_switches_in_disj([], Goals0, GoalInfo, InstMap, InstMapDelta,
 			ModuleInfo, SwitchGoal),
 		detect_switches_in_disj(AllVars, Left0, GoalInfo, InstMap,
 			InstMapDelta, VarTypes, AllVars, ModuleInfo, [], Left),
-		Goals = [SwitchGoal - GoalInfo, Left - GoalInfo]
+		goal_to_disj_list(Left - GoalInfo, LeftList),
+		Goals = [SwitchGoal - GoalInfo | LeftList]
 	).
 
 :- pred select_best_switch(list(again), again, again).
