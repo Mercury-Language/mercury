@@ -34,6 +34,7 @@ save_stage2="false"
 errfiles="false"
 compile_times=""
 testparams=""
+failed="continue"
 
 while test $# -gt 0
 do
