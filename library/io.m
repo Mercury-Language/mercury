@@ -1918,10 +1918,10 @@ void sys_init_io_stream_module(void) {
 
 :- pragma(c_code, io__command_line_arguments(Args::out, IO0::di, IO::uo), "
 	/* convert mercury_argv from a vector to a list */
-	{ char **p = mercury_argv + mercury_argc;
+	{ int i = mercury_argc;
 	  Args = list_empty();
-	  while (--p >= mercury_argv) {
-		Args = list_cons((Word)*p, Args);
+	  while (--i >= 0) {
+		Args = list_cons((Word) mercury_argv[i], Args);
 	  }
 	}
 	update_io(IO0, IO);
