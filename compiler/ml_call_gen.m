@@ -21,7 +21,7 @@
 :- import_module backend_libs__code_model.
 :- import_module ml_backend__mlds, ml_backend__ml_code_util.
 
-:- import_module list.
+:- import_module list, bool.
 
 	% Generate MLDS code for an HLDS generic_call goal.
 	% This includes boxing/unboxing the arguments if necessary.
@@ -31,13 +31,23 @@
 :- mode ml_gen_generic_call(in, in, in, in, in, out, out, in, out) is det.
 
 	%
+	% ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ArgTypes,
+	%	CodeModel, Context, ForClosureWrapper,
+	%	MLDS_Defns, MLDS_Statements):
+	%
 	% Generate MLDS code for an HLDS procedure call, making sure to
 	% box/unbox the arguments if necessary.
 	%
+	% If ForClosureWrapper = yes, then the type_info for type variables
+	% in CallerType may not be available in the current procedure, so
+	% the GC tracing code for temps introduced for boxing/unboxing (if any)
+	% should obtain the type_info from the corresponding entry in the
+	% `type_params' local.
+	%
 :- pred ml_gen_call(pred_id, proc_id, list(var_name), list(mlds__lval),
-		list(prog_data__type), code_model, prog_context,
+		list(prog_data__type), code_model, prog_context, bool,
 		mlds__defns, mlds__statements, ml_gen_info, ml_gen_info).
-:- mode ml_gen_call(in, in, in, in, in, in, in, out, out, in, out) is det.
+:- mode ml_gen_call(in, in, in, in, in, in, in, in, out, out, in, out) is det.
 
 	%
 	% Generate MLDS code for a call to a builtin procedure.
@@ -63,7 +73,7 @@
 :- mode ml_gen_box_or_unbox_rval(in, in, in, out, in, out) is det.
 
 	% ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName,
-	%	Context,
+	%	Context, ForClosureWrapper, ArgNum,
 	%	ArgLval, ConvDecls, ConvInputStatements, ConvOutputStatements):
 	%
 	% This is like `ml_gen_box_or_unbox_rval', except that it
@@ -77,16 +87,22 @@
 	% to the destination lval, and code to assign from the
 	% destination lval (suitable converted) to the source lval.
 	%
+	% If ForClosureWrapper = yes, then the type_info for type variables
+	% in CallerType may not be available in the current procedure, so
+	% the GC tracing code for the ConvDecls (if any) should obtain the
+	% type_info from the ArgNum-th entry in the `type_params' local.
+	% (If ForClosureWrapper = no, then ArgNum is unused.)
+	%
 :- pred ml_gen_box_or_unbox_lval(prog_type, prog_type, mlds__lval, var_name,
-		prog_context, mlds__lval, mlds__defns, mlds__statements,
-		mlds__statements, ml_gen_info, ml_gen_info).
-:- mode ml_gen_box_or_unbox_lval(in, in, in, in, in, out, out, out, out,
+		prog_context, bool, int, mlds__lval,
+		mlds__defns, mlds__statements, mlds__statements,
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_box_or_unbox_lval(in, in, in, in, in, in, in, out, out, out, out,
 		in, out) is det.
 
         % Generate the appropriate MLDS type for a continuation function
         % for a nondet procedure whose output arguments have the
         % specified types.
-        % 
         %
 :- pred ml_gen_cont_params(list(mlds__type), mlds__func_params,
 		ml_gen_info, ml_gen_info).
@@ -97,6 +113,7 @@
 
 :- implementation.
 
+:- import_module ml_backend__ml_closure_gen.
 :- import_module hlds__hlds_module, hlds__hlds_data.
 :- import_module backend_libs__builtin_ops.
 :- import_module check_hlds__type_util, check_hlds__mode_util.
@@ -231,7 +248,7 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
 	ml_gen_var_list(ArgVars, ArgLvals),
 	ml_variable_types(ArgVars, ActualArgTypes),
 	ml_gen_arg_list(ArgNames, ArgLvals, ActualArgTypes, BoxedArgTypes,
-		ArgModes, PredOrFunc, CodeModel, Context,
+		ArgModes, PredOrFunc, CodeModel, Context, no, 1,
 		InputRvals, OutputLvals, OutputTypes,
 		ConvArgDecls, ConvOutputStatements),
 	{ ClosureRval = unop(unbox(ClosureArgType), lval(ClosureLval)) },
@@ -315,7 +332,7 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
 	% we just pass the original argument unchanged.
 	%
 ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
-		Context, MLDS_Decls, MLDS_Statements) -->
+		Context, ForClosureWrapper, MLDS_Decls, MLDS_Statements) -->
 	%
 	% Compute the function signature
 	%
@@ -344,7 +361,7 @@ ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
 	% to pass as the function call's arguments and return values
 	%
 	ml_gen_arg_list(ArgNames, ArgLvals, ActualArgTypes, PredArgTypes,
-		ArgModes, PredOrFunc, CodeModel, Context,
+		ArgModes, PredOrFunc, CodeModel, Context, ForClosureWrapper, 1,
 		InputRvals, OutputLvals, OutputTypes,
 		ConvArgDecls, ConvOutputStatements),
 
@@ -599,14 +616,14 @@ ml_gen_proc_addr_rval(PredId, ProcId, CodeAddrRval) -->
 %
 :- pred ml_gen_arg_list(list(var_name), list(mlds__lval), list(prog_type),
 		list(prog_type), list(mode), pred_or_func, code_model,
-		prog_context, list(mlds__rval), list(mlds__lval),
+		prog_context, bool, int, list(mlds__rval), list(mlds__lval),
 		list(mlds__type), mlds__defns, mlds__statements,
 		ml_gen_info, ml_gen_info).
-:- mode ml_gen_arg_list(in, in, in, in, in, in, in, in, out, out, out, out, out,
-		in, out) is det.
+:- mode ml_gen_arg_list(in, in, in, in, in, in, in, in, in, in,
+		out, out, out, out, out, in, out) is det.
 
 ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
-		PredOrFunc, CodeModel, Context,
+		PredOrFunc, CodeModel, Context, ForClosureWrapper, ArgNum,
 		InputRvals, OutputLvals, OutputTypes,
 		ConvDecls, ConvOutputStatements) -->
 	(
@@ -630,8 +647,8 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
 	->
 		ml_gen_arg_list(VarNames1, VarLvals1,
 			CallerTypes1, CalleeTypes1, Modes1,
-			PredOrFunc, CodeModel, Context,
-			InputRvals1, OutputLvals1, OutputTypes1,
+			PredOrFunc, CodeModel, Context, ForClosureWrapper,
+			ArgNum + 1, InputRvals1, OutputLvals1, OutputTypes1,
 			ConvDecls1, ConvOutputStatements1),
 		=(MLDSGenInfo),
 		{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
@@ -674,9 +691,9 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
 			% it's an output argument, or an unused argument
 			%
 			ml_gen_box_or_unbox_lval(CallerType, CalleeType,
-				VarLval, VarName, Context, ArgLval,
-				ThisArgConvDecls, _ThisArgConvInput,
-				ThisArgConvOutput),
+				VarLval, VarName, Context, ForClosureWrapper,
+				ArgNum, ArgLval, ThisArgConvDecls,
+				_ThisArgConvInput, ThisArgConvOutput),
 			{ ConvDecls = ThisArgConvDecls ++ ConvDecls1 },
 			{ ConvOutputStatements =
 				(if ArgMode = top_out then
@@ -826,8 +843,8 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, VarRval, ArgRval) -->
 	).
 	
 ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName, Context,
-		ArgLval, ConvDecls, ConvInputStatements, ConvOutputStatements)
-		-->
+		ForClosureWrapper, ArgNum, ArgLval, ConvDecls,
+		ConvInputStatements, ConvOutputStatements) -->
 	%
 	% First see if we can just convert the lval as an rval;
 	% if no boxing/unboxing is required, then ml_box_or_unbox_rval
@@ -868,11 +885,25 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName, Context,
 			"conv%d_%s", [i(ConvVarNum), s(VarNameStr)]),
 			MaybeNum) },
 		ml_gen_type(CalleeType, MLDS_CalleeType),
-		ml_gen_maybe_gc_trace_code(ArgVarName, CalleeType, CallerType,
-			Context, GC_TraceCode),
-		{ ArgVarDecl = ml_gen_mlds_var_decl(var(ArgVarName),
-			MLDS_CalleeType, GC_TraceCode,
-			mlds__make_context(Context)) },
+		( { ForClosureWrapper = yes } ->
+			% For closure wrappers, the argument type_infos are
+			% stored in the `type_params' local, so we need to
+			% handle the GC tracing code specially
+			( { type_util__var(CallerType, _TypeVar) } ->
+				ml_gen_local_for_output_arg(ArgVarName,
+					CalleeType, ArgNum, Context,
+					ArgVarDecl)
+			;
+				{ unexpected(this_file,
+				    "invalid CalleeType for closure wrapper") }
+			)
+		;
+			ml_gen_maybe_gc_trace_code(ArgVarName, CalleeType,
+				CallerType, Context, GC_TraceCode),
+			{ ArgVarDecl = ml_gen_mlds_var_decl(var(ArgVarName),
+				MLDS_CalleeType, GC_TraceCode,
+				mlds__make_context(Context)) }
+		),
 		{ ConvDecls = [ArgVarDecl] },
 
 		% create the lval for the variable and use it for the
