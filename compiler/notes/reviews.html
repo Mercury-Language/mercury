@@ -46,8 +46,11 @@ need to be reviewed.
 <li>  Write log message for this change - use template (see below).
 <li>  Review diff and log message yourself. (see below)
 <li>  Send to mercury-developers@cs.mu.oz.au, with the subject
-	    "cvs diff: &lt;short description of change&gt;".
+	    "for review: &lt;short description of change&gt;".
 	    Nominate a reviewer at top of diff (see below).
+	    (If this change has been reviewed once before, it might
+	    fall into the "commit before review" category -- see the
+	    section on exceptions).
 <li>  Wait for review (see below).
 <li>  Fix any changes suggested. 
 <li>  Repeat above steps until approval.
@@ -229,6 +232,17 @@ This is particularly true if others are waiting for your work.
 
 <p>
 
+Usually, a change that has already been reviewed falls into this
+category, provided you have addressed the reviewers comments, and 
+there are no disputes over design decisions. If the reviewer has
+specifically asked for another review, or there were a large number of
+comments at the review, you should not commit before a second review.
+
+<p>
+
+If you are going to commit before the review, use the subject line:<br>
+	    "diff: &lt;short description of change&gt;".
+
 <h2> Exceptions: No review </h2>
 
 <p>
@@ -259,9 +273,14 @@ person is when they satisfy all of the following conditions:
 		ignored.
 </ul>
 
+If your change falls into this category, you should still send the
+diff and log message to mercury-developers, but use the subject line:<br>
+"trivial diff: &lt;short description of change&gt;".
+
+
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1997-04-03 05:17:53 $ by $Author: aet $@cs.mu.oz.au. <br>
+Last update was $Date: 1997-12-05 02:05:50 $ by $Author: trd $@cs.mu.oz.au. <br>
 </body>
 </html>
