@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2002 The University of Melbourne.
+** Copyright (C) 1997-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1203,6 +1203,10 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
 
         case MR_TYPECTOR_REP_FOREIGN:
             MR_fatal_error("Attempt to table a value of a foreign type");
+            break;
+
+        case MR_TYPECTOR_REP_REFERENCE:
+            MR_fatal_error("Attempt to table a value of a reference type");
             break;
 
         case MR_TYPECTOR_REP_UNKNOWN: /* fallthru */

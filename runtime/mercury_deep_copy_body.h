@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2002 The University of Melbourne.
+** Copyright (C) 1997-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -614,6 +614,27 @@ try_again:
         new_data = data;
         break;
 
+    case MR_TYPECTOR_REP_REFERENCE:
+        {
+            MR_Word *ref;
+            MR_Word *new_ref;
+            int     i;
+
+            assert(MR_tag(data) == 0);
+            ref = (MR_Word *) MR_body(data, MR_mktag(0));
+
+            RETURN_IF_OUT_OF_RANGE(data, ref, 0, MR_Word);
+            
+            MR_incr_saved_hp(new_data, 1);
+            new_ref = (MR_Word *) new_data;
+            *new_ref = copy_arg(NULL, *ref, NULL,
+                        MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
+                        (const MR_PseudoTypeInfo) 1, lower_limit, upper_limit);
+            leave_forwarding_pointer(data, 0, new_data);
+        }
+        break;
+
+    case MR_TYPECTOR_REP_FOREIGN: /* fallthru */
     case MR_TYPECTOR_REP_UNKNOWN: /* fallthru */
     default:
         MR_fatal_error("Unknown layout type in deep copy");

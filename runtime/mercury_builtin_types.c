@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002 The University of Melbourne.
+** Copyright (C) 2002-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -49,6 +49,7 @@ MR_DEFINE_PROC_STATICS(builtin, redoip, 0);
 MR_DEFINE_PROC_STATICS(builtin, trailptr, 0);
 MR_DEFINE_PROC_STATICS(builtin, ticket, 0);
 MR_DEFINE_PROC_STATICS(private_builtin, heap_pointer, 0);
+MR_DEFINE_PROC_STATICS(private_builtin, ref, 1);
 MR_DEFINE_PROC_STATICS(private_builtin, type_ctor_info, 1);
 MR_DEFINE_PROC_STATICS(private_builtin, type_info, 1);
 MR_DEFINE_PROC_STATICS(private_builtin, base_typeclass_info, 1);
@@ -85,6 +86,7 @@ MR_DEFINE_TYPE_CTOR_INFO(builtin, ticket, 0, TICKET);
 #endif
 
 MR_DEFINE_TYPE_CTOR_INFO(private_builtin, heap_pointer, 0, HP);
+MR_DEFINE_TYPE_CTOR_INFO(private_builtin, ref, 1, REFERENCE);
 MR_DEFINE_TYPE_CTOR_INFO(private_builtin, type_ctor_info, 1, TYPECTORINFO);
 MR_DEFINE_TYPE_CTOR_INFO(private_builtin, type_info, 1, TYPEINFO);
 MR_DEFINE_TYPE_CTOR_INFO(private_builtin, base_typeclass_info, 1,
@@ -161,9 +163,16 @@ mercury__private_builtin____Unify____heap_pointer_0_0(MR_Heap_Pointer x,
 	MR_Heap_Pointer y)
 {
 	MR_fatal_error(
-		"called unify/2 for `private_builtin:heap_pointer' type");
+		"called unify/2 for `private_builtin.heap_pointer' type");
 
     return MR_TRUE;
+}
+
+MR_bool MR_CALL
+mercury__private_builtin____Unify____ref_1_0(MR_Reference x,
+	MR_Reference y)
+{
+	return x == y;
 }
 
 MR_bool MR_CALL
@@ -310,7 +319,15 @@ mercury__private_builtin____Compare____heap_pointer_0_0(
 	MR_Comparison_Result *result, MR_Heap_Pointer x, MR_Heap_Pointer y)
 {
 	MR_fatal_error(
-		"called compare/3 for `private_builtin:heap_pointer' type");
+		"called compare/3 for `private_builtin.heap_pointer' type");
+}
+
+void MR_CALL
+mercury__private_builtin____Compare____ref_1_0(
+	MR_Comparison_Result *result, MR_Reference x, MR_Reference y)
+{
+	MR_fatal_error(
+		"called compare/3 for `private_builtin.ref' type");
 }
 
 void MR_CALL
@@ -437,6 +454,13 @@ mercury__private_builtin__do_unify__heap_pointer_0_0(MR_Box x, MR_Box y)
 {
 	return mercury__private_builtin____Unify____heap_pointer_0_0(
 		(MR_Heap_Pointer) x, (MR_Heap_Pointer) y);
+}
+
+MR_bool MR_CALL
+mercury__private_builtin__do_unify__ref_1_0(MR_Box x, MR_Box y)
+{
+	return mercury__private_builtin____Unify____ref_1_0(
+		(MR_Reference) x, (MR_Reference) y);
 }
 
 MR_bool MR_CALL
@@ -569,7 +593,15 @@ mercury__private_builtin__do_compare__heap_pointer_0_0(
 	MR_Comparison_Result *result, MR_Box x, MR_Box y)
 {
 	MR_fatal_error(
-		"called compare/3 for `private_builtin:heap_pointer' type");
+		"called compare/3 for `private_builtin.heap_pointer' type");
+}
+
+void MR_CALL
+mercury__private_builtin__do_compare__ref_1_0(
+	MR_Comparison_Result *result, MR_Box x, MR_Box y)
+{
+	MR_fatal_error(
+		"called compare/3 for `private_builtin.ref' type");
 }
 
 void MR_CALL
@@ -672,6 +704,7 @@ MR_UNIFY_COMPARE_DEFNS(builtin, redoip, 0)
 MR_UNIFY_COMPARE_DEFNS(builtin, trailptr, 0)
 MR_UNIFY_COMPARE_DEFNS(builtin, ticket, 0)
 MR_UNIFY_COMPARE_DEFNS(private_builtin, heap_pointer, 0)
+MR_UNIFY_COMPARE_DEFNS(private_builtin, ref, 1)
 MR_UNIFY_COMPARE_DEFNS(private_builtin, type_ctor_info, 1)
 MR_UNIFY_COMPARE_DEFNS(private_builtin, type_info, 1)
 MR_UNIFY_COMPARE_DEFNS(private_builtin, base_typeclass_info, 1)
@@ -697,6 +730,7 @@ MR_BEGIN_MODULE(mercury_builtin_types)
 	MR_UNIFY_COMPARE_LABELS(builtin, trailptr, 0)
 	MR_UNIFY_COMPARE_LABELS(builtin, ticket, 0)
 	MR_UNIFY_COMPARE_LABELS(private_builtin, heap_pointer, 0)
+	MR_UNIFY_COMPARE_LABELS(private_builtin, ref, 1)
 	MR_UNIFY_COMPARE_LABELS(private_builtin, type_ctor_info, 1)
 	MR_UNIFY_COMPARE_LABELS(private_builtin, type_info, 1)
 	MR_UNIFY_COMPARE_LABELS(private_builtin, base_typeclass_info, 1)
@@ -1073,6 +1107,28 @@ MR_BEGIN_CODE
 /*****************************************************************************/
 
 /*
+** Unify and compare of references are usually handled by the generic unify/2
+** and compare/3 predicates.
+*/
+
+#define	module		private_builtin
+#define	type		ref
+#define	arity		1
+#define	unify_code	MR_r1 = (MR_r1 == MR_r2);
+#define	compare_code	MR_fatal_error("called compare/3 for `ref' type");
+
+#include "mercury_hand_unify_compare_body.h"
+
+#undef	module
+#undef	type
+#undef	arity
+#undef	unify_code
+#undef	compare_code
+
+
+/*****************************************************************************/
+
+/*
 ** Unify and compare of type_ctor_infos are usually handled by the generic
 ** unify/2 and compare/3 predicates.
 */
@@ -1333,6 +1389,7 @@ mercury_sys_init_mercury_builtin_types_init(void)
 	MR_INIT_TYPE_CTOR_INFO_MNA(builtin, ticket, 0);
 #endif
 	MR_INIT_TYPE_CTOR_INFO_MNA(private_builtin, heap_pointer, 0);
+	MR_INIT_TYPE_CTOR_INFO_MNA(private_builtin, ref, 1);
 	MR_INIT_TYPE_CTOR_INFO_MNA(private_builtin, type_ctor_info, 1);
 	MR_INIT_TYPE_CTOR_INFO_MNA(private_builtin, type_info, 1);
 	MR_INIT_TYPE_CTOR_INFO_MNA(private_builtin, base_typeclass_info, 1);
@@ -1364,6 +1421,7 @@ mercury_sys_init_mercury_builtin_types_init_type_tables(void)
 	MR_REGISTER_TYPE_CTOR_INFO(builtin, ticket, 0);
 #endif
 	MR_REGISTER_TYPE_CTOR_INFO(private_builtin, heap_pointer, 0);
+	MR_REGISTER_TYPE_CTOR_INFO(private_builtin, ref, 1);
 	MR_REGISTER_TYPE_CTOR_INFO(private_builtin, type_ctor_info, 1);
 	MR_REGISTER_TYPE_CTOR_INFO(private_builtin, type_info, 1);
 	MR_REGISTER_TYPE_CTOR_INFO(private_builtin, base_typeclass_info, 1);
@@ -1394,6 +1452,7 @@ mercury_sys_init_mercury_builtin_types_write_out_proc_statics(FILE *fp)
 	MR_WRITE_OUT_PROC_STATICS(fp, builtin, trailptr, 0);
 	MR_WRITE_OUT_PROC_STATICS(fp, builtin, ticket, 0);
 	MR_WRITE_OUT_PROC_STATICS(fp, private_builtin, heap_pointer, 0);
+	MR_WRITE_OUT_PROC_STATICS(fp, private_builtin, ref, 1);
 	MR_WRITE_OUT_PROC_STATICS(fp, private_builtin, type_ctor_info, 1);
 	MR_WRITE_OUT_PROC_STATICS(fp, private_builtin, type_info, 1);
 	MR_WRITE_OUT_PROC_STATICS(fp, private_builtin, base_typeclass_info, 1);
