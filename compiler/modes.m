@@ -450,10 +450,9 @@ modecheck_goal_2(unify(A0, B0, _, UnifyInfo0, UnifyContext), NonLocals, Goal)
 				Mode, UnifyInfo),
 	=(ModeInfo),
 	{ Unify = unify(A, B, Mode, UnifyInfo, UnifyContext) },
-	{ unify_rhs_vars(B0, B0Vars) },
-	{ unify_rhs_vars(B, BVars) },
-	{ handle_extra_goals(Unify, ExtraGoals, NonLocals,
-				[A0|B0Vars], [A|BVars],
+	{ term__vars_list([A0, B0], Vars0) },
+	{ term__vars_list([A, B], Vars) },
+	{ handle_extra_goals(Unify, ExtraGoals, NonLocals, Vars0, Vars,
 				ModeInfo0, ModeInfo, Goal) },
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "unify").
@@ -470,18 +469,6 @@ modecheck_goal_2(switch(Var, CanFail, Cases0), NonLocals,
 	),
 	mode_checkpoint(exit, "switch").
 
-	% given the right-hand-side of a unification, return a list of
-	% the potentially non-local variables of that unification.
-
-:- pred unify_rhs_vars(unify_rhs, list(var)).
-:- mode unify_rhs_vars(in, out) is det.
-
-unify_rhs_vars(var(Var), [Var]).
-unify_rhs_vars(functor(_Functor, Vars), Vars).
-unify_rhs_vars(lambda_goal(LambdaVars, _Goal - GoalInfo), Vars) :-
-	goal_info_get_nonlocals(GoalInfo, NonLocals0),
-	set__delete_list(NonLocals0, LambdaVars, NonLocals),
-	set__to_sorted_list(NonLocals, Vars).
 
 	% handle_extra_goals combines MainGoal and ExtraGoals into a single
 	% hlds__goal_expr.
@@ -1245,8 +1232,12 @@ handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
 			mode_info_get_mode_context(ModeInfo, ModeContext),
 			mode_context_to_unify_context(ModeContext,
 				UnifyContext),
-			AfterGoal = unify(Var0, var(Var),
-				ModeVar0 - ModeVar, Unification, UnifyContext),
+			AfterGoal = unify(term__variable(Var0),
+					term__variable(Var),
+					ModeVar0 - ModeVar,
+					Unification,
+					UnifyContext
+			),
 
 			% compute the goal_info nonlocal vars & instmap delta
 			set__list_to_set([Var0, Var], NonLocals),
@@ -1498,13 +1489,14 @@ write_var_insts([Var - Inst | VarInsts], VarSet, InstVarSet) -->
 
 	% Mode check a unification.
 
-:- pred modecheck_unification(var, unify_rhs, unification,
-			var, unify_rhs, pair(list(hlds__goal)),
+:- pred modecheck_unification(term, term, unification,
+			term, term, pair(list(hlds__goal)),
 			pair(mode, mode), unification, mode_info, mode_info).
 :- mode modecheck_unification(in, in, in, out, out,
 			out, out, out, mode_info_di, mode_info_uo) is det.
 
-modecheck_unification(X, var(Y), _Unification0, X, var(Y),
+modecheck_unification(term__variable(X), term__variable(Y), _Unification0,
+			term__variable(X), term__variable(Y),
 			ExtraGoals, Modes, Unification, ModeInfo0, ModeInfo) :-
 	ExtraGoals = [] - [],
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
@@ -1544,12 +1536,14 @@ modecheck_unification(X, var(Y), _Unification0, X, var(Y),
 	categorize_unify_var_var(ModeX, ModeY, LiveX, LiveY, X, Y,
 			Det, VarTypes, ModeInfo3, Unification, ModeInfo).
 
-modecheck_unification(X, functor(Name, ArgVars0), Unification0,
-			X, functor(Name, ArgVars),
+modecheck_unification(term__variable(X), term__functor(Name, Args0, Context),
+			Unification0,
+			term__variable(X), term__functor(Name, Args, Context),
 			ExtraGoals, Mode, Unification, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	instmap_lookup_var(InstMap0, X, InstX),
+	term__term_list_to_var_list(Args0, ArgVars0),
 	instmap_lookup_arg_list(ArgVars0, InstMap0, InstArgs),
 	mode_info_var_is_live(ModeInfo0, X, LiveX),
 	mode_info_var_list_is_live(ArgVars0, ModeInfo0, LiveArgs),
@@ -1566,7 +1560,7 @@ modecheck_unification(X, functor(Name, ArgVars0), Unification0,
 	->
 		set__list_to_set([X], WaitingVars),
 		mode_info_error(WaitingVars,
-			mode_error_unify_var_functor(X, Name, ArgVars0,
+			mode_error_unify_var_functor(X, Name, Args0,
 							InstX, InstArgs),
 			ModeInfo0, ModeInfo1
 		),
@@ -1580,7 +1574,7 @@ modecheck_unification(X, functor(Name, ArgVars0), Unification0,
 	;
 		set__list_to_set([X | ArgVars0], WaitingVars), % conservative
 		mode_info_error(WaitingVars,
-			mode_error_unify_var_functor(X, Name, ArgVars0,
+			mode_error_unify_var_functor(X, Name, Args0,
 							InstX, InstArgs),
 			ModeInfo0, ModeInfo1
 		),
@@ -1600,8 +1594,9 @@ modecheck_unification(X, functor(Name, ArgVars0), Unification0,
 	categorize_unify_var_functor(ModeX, ModeArgs, X, Name, ArgVars0,
 			VarTypes, Unification0, ModeInfo1,
 			Unification1, ModeInfo2),
-	split_complicated_subunifies(Unification1, ArgVars0,
-			Unification, ArgVars, ExtraGoals, ModeInfo2, ModeInfo3),
+	split_complicated_subunifies(Unification1, Args0, ArgVars0,
+			Unification, Args, ArgVars,
+			ExtraGoals, ModeInfo2, ModeInfo3),
 	modecheck_set_var_inst(X, Inst, ModeInfo3, ModeInfo4),
 	( bind_args(Inst, ArgVars, ModeInfo4, ModeInfo5) ->
 		ModeInfo = ModeInfo5
@@ -1609,8 +1604,18 @@ modecheck_unification(X, functor(Name, ArgVars0), Unification0,
 		error("bind_args failed")
 	).
 
-modecheck_unification(_, lambda_goal(_Vars, _Goal), _, _, _, _, _, _, _, _) :-
-	error("modechecking of lambda expressions not implemented").
+modecheck_unification(term__functor(F, As, Context), term__variable(Y),
+		Unification0,
+		Var, Functor, ExtraGoals, Modes, Unification,
+		ModeInfo0, ModeInfo) :-
+	modecheck_unification(term__variable(Y), term__functor(F, As, Context),
+		Unification0,
+		Var, Functor, ExtraGoals, Modes, Unification,
+		ModeInfo0, ModeInfo).
+	
+modecheck_unification(term__functor(_, _, _), term__functor(_, _, _),
+		_, _, _, _, _, _, _, _) :-
+	error("modecheck internal error: unification of term with term\n").
 
 %-----------------------------------------------------------------------------%
 
@@ -1619,14 +1624,14 @@ modecheck_unification(_, lambda_goal(_Vars, _Goal), _, _, _, _, _, _, _, _) :-
 	% complicated unifications.  If they are, we split them out
 	% into separate unifications by introducing fresh variables here.
 
-:- pred split_complicated_subunifies(unification, list(var),
-			unification, list(var), pair(list(hlds__goal)),
-			mode_info, mode_info).
-:- mode split_complicated_subunifies(in, in, out, out, out,
-			mode_info_di, mode_info_uo) is det.
+:- pred split_complicated_subunifies(unification, list(term), list(var),
+			unification, list(term), list(var),
+			pair(list(hlds__goal)), mode_info, mode_info).
+:- mode split_complicated_subunifies(in, in, in, out, out, out, out,
+		mode_info_di, mode_info_uo) is det.
 
-split_complicated_subunifies(Unification0, ArgVars0,
-				Unification, ArgVars, ExtraGoals) -->
+split_complicated_subunifies(Unification0, Args0, ArgVars0,
+				Unification, Args, ArgVars, ExtraGoals) -->
 	(
 		{ Unification0 = deconstruct(X, ConsId, ArgVars0, ArgModes0,
 			Det) }
@@ -1638,12 +1643,14 @@ split_complicated_subunifies(Unification0, ArgVars0,
 			{ ArgVars = ArgVars1 },
 			{ Unification = deconstruct(X, ConsId, ArgVars,
 							ArgModes, Det) },
+			{ term__var_list_to_term_list(ArgVars, Args) },
 			{ ExtraGoals = ExtraGoals1 }
 		;
 			{ error("split_complicated_subunifies_2 failed") }
 		)
 	;
 		{ Unification = Unification0 },
+		{ Args = Args0 },
 		{ ArgVars = ArgVars0 },
 		{ ExtraGoals = [] - [] }
 	).
@@ -1705,8 +1712,12 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 		mode_info_get_mode_context(ModeInfo, ModeContext),
 		mode_context_to_unify_context(ModeContext,
 			UnifyContext),
-		AfterGoal = unify(Var0, var(Var),
-				ModeVar0 - ModeVar, Unification, UnifyContext),
+		AfterGoal = unify(term__variable(Var0),
+				term__variable(Var),
+				ModeVar0 - ModeVar,
+				Unification,
+				UnifyContext
+		),
 
 		% compute the goal_info nonlocal vars & instmap delta
 		% for the newly created goal
@@ -2294,17 +2305,7 @@ categorize_unify_var_var(ModeX, ModeY, LiveX, LiveY, X, Y, Det, VarTypes,
 			Unification = complicated_unify(UniMode, CanFail,
 				Follow),
 			(
-				Type = term__functor(term__atom("pred"), _, _),
-
-				% we do not want to report this as an error
-				% if it occurs in a compiler-generated
-				% predicate - instead, we delay the error
-				% until runtime so that it only occurs if
-				% the compiler-generated predicate gets called
-				mode_info_get_predid(ModeInfo0, PredId),
-				module_info_pred_info(ModuleInfo0, PredId,
-					PredInfo),
-				\+ code_util__compiler_generated(PredInfo)
+				Type = term__functor(term__atom("pred"), _, _)
 			->
 				set__init(WaitingVars),
 				mode_info_error(WaitingVars,

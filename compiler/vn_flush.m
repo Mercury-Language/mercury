@@ -132,24 +132,16 @@ vn__flush_lval_node(Vnlval, Ctrlmap, Nodes0, Nodes,
 
 vn__flush_shared_node(Vn, Nodes0, Nodes, VnTables0, VnTables,
 		Templocs0, Templocs, Instrs) -->
-	( { vn__lookup_uses(Vn, [], "vn__flush_shared_node", VnTables0) } ->
-		% earlier nodes must have taken care of this vn
-		{ Nodes = Nodes0 },
-		{ VnTables = VnTables0 },
-		{ Templocs = Templocs0 },
-		{ Instrs = [] }
+	{ vn__choose_loc_for_shared_vn(Vn, Vnlval, VnTables0,
+		Templocs0, Templocs1) },
+	( { vn__search_desired_value(Vnlval, Vn, VnTables0) } ->
+		vn__flush_also_msg(Vnlval),
+		{ list__delete_all(Nodes0, node_lval(Vnlval), Nodes) }
 	;
-		{ vn__choose_loc_for_shared_vn(Vn, Vnlval, VnTables0,
-			Templocs0, Templocs1) },
-		( { vn__search_desired_value(Vnlval, Vn, VnTables0) } ->
-			vn__flush_also_msg(Vnlval),
-			{ list__delete_all(Nodes0, node_lval(Vnlval), Nodes) }
-		;
-			{ Nodes = Nodes0 }
-		),
-		{ vn__ensure_assignment(Vnlval, Vn, [],
-			VnTables0, VnTables, Templocs1, Templocs, Instrs) }
-	).
+		{ Nodes = Nodes0 }
+	),
+	{ vn__ensure_assignment(Vnlval, Vn, [],
+		VnTables0, VnTables, Templocs1, Templocs, Instrs) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -176,13 +168,14 @@ vn__flush_ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 		Instrs = [call_closure(ClAddr, RetAddr, LiveInfo) - ""]
 	;
 		Vn_instr = vn_mkframe(Name, Size, Redoip),
-		vn__rval_to_vn(const(address_const(Redoip)), AddrVn,
-			VnTables0, VnTables1),
-		vn__lval_to_vnlval(redoip(lval(maxfr)), SlotVnlval,
-			VnTables1, VnTables2),
-		vn__set_current_value(SlotVnlval, AddrVn, VnTables2, VnTables),
+		VnTables = VnTables0,
 		Templocs = Templocs0,
 		Instrs = [mkframe(Name, Size, Redoip) - ""]
+	;
+		Vn_instr = vn_modframe(Redoip),
+		VnTables = VnTables0,
+		Templocs = Templocs0,
+		Instrs = [modframe(Redoip) - ""]
 	;
 		Vn_instr = vn_label(Label),
 		VnTables = VnTables0,

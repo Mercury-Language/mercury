@@ -75,17 +75,6 @@
 				io__state, io__state).
 :- mode hlds_out__write_goal(in, in, in, in, di, uo) is det.
 
-	% print out a functor and its arguments
-
-:- pred hlds_out__write_functor(const, list(var), varset, io__state, io__state).
-:- mode hlds_out__write_functor(in, in, in, di, uo) is det.
-
-	% print out the right-hand-side of a unification
-
-:- pred hlds_out__write_unify_rhs(unify_rhs, module_info, varset, int,
-					io__state, io__state).
-:- mode hlds_out__write_unify_rhs(in, in, in, in, di, uo) is det.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -386,8 +375,13 @@ hlds_out__write_intlist_2(Ns0) -->
 :- mode hlds_out__write_clause_head(in, in, in, in, di, uo) is det.
 
 hlds_out__write_clause_head(ModuleInfo, PredId, VarSet, HeadVars) -->
-	{ predicate_name(ModuleInfo, PredId, PredName) },
-	hlds_out__write_functor(term__atom(PredName), HeadVars, VarSet).
+	{
+		predicate_name(ModuleInfo, PredId, PredName),
+		term__context_init(Context),
+		term__var_list_to_term_list(HeadVars, HeadTerms),
+		Term = term__functor(term__atom(PredName), HeadTerms, Context)
+	},
+	mercury_output_term(Term, VarSet).
 
 hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
@@ -572,13 +566,16 @@ hlds_out__write_goal_2(call(_PredId, _ProcId, ArgVars, _, PredName, _Follow),
 					_ModuleInfo, VarSet, _Indent) -->
 		% XXX we should print more info here
 	{ unqualify_name(PredName, Name) },
-	hlds_out__write_functor(term__atom(Name), ArgVars, VarSet).
+	{ term__context_init(Context) },
+	{ term__var_list_to_term_list(ArgVars, Args) },
+	mercury_output_term(term__functor(term__atom(Name), Args, Context),
+				VarSet).
 
-hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
-		Indent) -->
-	mercury_output_var(A, VarSet),
+hlds_out__write_goal_2(unify(A, B, _, Unification, _), _ModuleInfo, VarSet,
+		_Indent) -->
+	mercury_output_term(A, VarSet),
 	hlds_out__write_unification(Unification),
-	hlds_out__write_unify_rhs(B, ModuleInfo, VarSet, Indent).
+	mercury_output_term(B, VarSet).
 
 :- pred hlds_out__write_unification(unification, io__state, io__state).
 :- mode hlds_out__write_unification(in, di, uo) is det.
@@ -593,27 +590,6 @@ hlds_out__write_unification(deconstruct(_, _, _, _, _)) -->
 	io__write_string(" == ").
 hlds_out__write_unification(complicated_unify(_, _, _)) -->
 	io__write_string(" = ").
-
-hlds_out__write_unify_rhs(var(Var), _, VarSet, _) -->
-	mercury_output_var(Var, VarSet).
-hlds_out__write_unify_rhs(functor(Functor, ArgVars), _, VarSet, _) -->
-	hlds_out__write_functor(Functor, ArgVars, VarSet).
-hlds_out__write_unify_rhs(lambda_goal(Vars, Goal), ModuleInfo, VarSet, Indent)
-		-->
-	io__write_string("lambda ["),
-	mercury_output_vars(Vars, VarSet),
-	io__write_string("] (\n"),
-	{ Indent1 is Indent + 1 },
-	hlds_out__write_indent(Indent1),
-	hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent1),
-	hlds_out__write_indent(Indent),
-	io__write_string(")").
-
-hlds_out__write_functor(Functor, ArgVars, VarSet) -->
-	{ term__context_init(Context) },
-	{ term__var_list_to_term_list(ArgVars, ArgTerms) },
-	{ Term = term__functor(Functor, ArgTerms, Context) },
-	mercury_output_term(Term, VarSet).
 
 :- pred hlds_out__write_conj(list(hlds__goal), module_info, varset, int,
 				io__state, io__state).

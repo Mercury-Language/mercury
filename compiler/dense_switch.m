@@ -189,7 +189,7 @@ dense_switch__generate_cases(Cases0, NextVal, EndVal, CodeModel, EndLabel,
 		{ Labels = [] },
 		{ Liveness = Liveness0 }
 	;
-		code_info__get_next_label(ThisLabel),
+		code_info__get_next_label(ThisLabel, no),
 		dense_switch__generate_case(Cases0, NextVal, CodeModel,
 					Cases1, ThisCode, Comment, NewLiveness),
 		{ ThisCaseCode = tree(

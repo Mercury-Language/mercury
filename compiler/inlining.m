@@ -257,14 +257,8 @@ inlining__init_subn([A-H|Vs], Subn0, Subn) :-
 
 inlining__rename_var_list([], _Subn, []).
 inlining__rename_var_list([V|Vs], Subn, [N|Ns]) :-
-	inlining__rename_var(V, Subn, N),
+	map__lookup(Subn, V, N),
 	inlining__rename_var_list(Vs, Subn, Ns).
-
-:- pred inlining__rename_var(var, map(var, var), var).
-:- mode inlining__rename_var(in, in, out) is det.
-
-inlining__rename_var(V, Subn, N) :-
-	map__lookup(Subn, V, N).
 
 %-----------------------------------------------------------------------------%
 
@@ -313,8 +307,8 @@ inlining__name_apart_2(
 
 inlining__name_apart_2(unify(TermL0,TermR0,Mode,Unify0,Context), Subn,
 		unify(TermL,TermR,Mode,Unify,Context)) :-
-	inlining__rename_var(TermL0, Subn, TermL),
-	inlining__rename_unify_rhs(TermR0, Subn, TermR),
+	inlining__rename_term(TermL0, Subn, TermL),
+	inlining__rename_term(TermR0, Subn, TermR),
 	inlining__rename_unify(Unify0, Subn, Unify).
 
 %-----------------------------------------------------------------------------%
@@ -360,19 +354,6 @@ inlining__rename_term(term__functor(Cons, Terms0, Cont), Subn,
 	inlining__rename_args(Terms0, Subn, Terms).
 
 %-----------------------------------------------------------------------------%
-
-:- pred inlining__rename_unify_rhs(unify_rhs, map(var, var), unify_rhs).
-:- mode inlining__rename_unify_rhs(in, in, out) is det.
-
-inlining__rename_unify_rhs(var(Var0), Subn, var(Var)) :-
-	inlining__rename_var(Var0, Subn, Var).
-inlining__rename_unify_rhs(functor(Functor, ArgVars0), Subn,
-			functor(Functor, ArgVars)) :-
-	inlining__rename_var_list(ArgVars0, Subn, ArgVars).
-inlining__rename_unify_rhs(lambda_goal(Vars0, Goal0), Subn,
-			lambda_goal(Vars, Goal)) :-
-	inlining__rename_var_list(Vars0, Subn, Vars),
-	inlining__name_apart(Goal0, Subn, Goal).
 
 :- pred inlining__rename_unify(unification, map(var, var), unification).
 :- mode inlining__rename_unify(in, in, out) is det.

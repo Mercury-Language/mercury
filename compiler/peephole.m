@@ -275,8 +275,6 @@ peephole__match(if_val(Rval, label(Target)), Comment, _Procmap, _Forkmap,
 	% If a `mkframe' is followed by a `modframe', with the instructions
 	% in between containing only straight-line code, we can delete the
 	% `modframe' and instead just set the redoip directly in the `mkframe'.
-	% This should also be done if the modframe appears instead as an
-	% assignment to the redoip of curfr or maxfr.
 	%
 	%	mkframe(D, S, _)	=>	mkframe(D, S, Redoip)
 	%	<straightline instrs>		<straightline instrs>
@@ -360,8 +358,7 @@ peephole__match(modframe(Redoip), Comment,
 		Instrs = [modframe(Redoip2) - Comment | Instrs1]
 	;
 		Redoip = do_fail,
-		opt_util__straight_alternative(Instrs0, Between, After),
-		opt_util__touches_nondet_ctrl(Between, no)
+		opt_util__straight_alternative(Instrs0, Between, After)
 	->
 		list__condense([Between,
 			% XXX must be fixed before profiling is finished
@@ -381,15 +378,3 @@ peephole__match(modframe(Redoip), Comment,
 peephole__match(incr_sp(N), _Comment, _Procmap, _Forkmap, Instrs0, Instrs) :-
 	opt_util__no_stackvars_til_decr_sp(Instrs0, N, Between, Remain),
 	list__append(Between, Remain, Instrs).
-
-	% If an incr_sp follows a decr_sp of the same amount, then the two
-	% cancel out. The optimization that creates these opportunities
-	% (full jumpopt) should not put any instructions between the incr_sp
-	% and the decr_sp, so looking for such would be redundant.
-	%
-	%	decr_sp N 	=>	<...>
-	%	incr_sp N
-
-peephole__match(decr_sp(N), _Comment, _Procmap, _Forkmap, Instrs0, Instrs) :-
-	opt_util__skip_comments_livevals(Instrs0, Instrs1),
-	Instrs1 = [incr_sp(N) - _ | Instrs].

@@ -4,10 +4,9 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% Common subexpression detection - hoist common subexpression goals out of
+% Common subexpression detection - hoist common subexpressions out of
 % branched structures. This can enable us to find more indexing opportunities
 % and hence can make the code more deterministic.
-% This code is switched on/off with the `--common-goal' option.
 %
 % Main author: zs.
 % Much of the code is based on switch_detection.m by fjh.
@@ -452,7 +451,7 @@ find_bind_var_for_cse([Goal0 - GoalInfo | Goals0], Substitution0, Var,
 		)
 	; Goal0 = unify(A, B, _, UnifyInfo0, _) ->
 			 % otherwise abstractly interpret the unification
-		( interpret_unify(A, B, Substitution0, Substitution1) ->
+		( term__unify(A, B, Substitution0, Substitution1) ->
 			Substitution2 = Substitution1
 		;
 			% the unification must fail - just ignore it
@@ -475,9 +474,8 @@ find_bind_var_for_cse([Goal0 - GoalInfo | Goals0], Substitution0, Var,
 			Term = term__functor(_, _, _),
 			UnifyInfo0 = deconstruct(_, _, _, _, _),
 			MaybeUnify0 = yes(OldUnifyGoal),
-			goal_info_context(GoalInfo, Context),
 			find_similar_deconstruct(OldUnifyGoal, UnifyInfo0,
-				Context, Replacements)
+				Replacements)
 		->
 			list__append(Replacements, Goals0, Goals),
 			Substitution = Substitution2,
@@ -498,12 +496,16 @@ find_bind_var_for_cse([Goal0 - GoalInfo | Goals0], Substitution0, Var,
 
 construct_common_unify(Var, Goal0, Goal) :-
 	(
-		Goal0 = unify(_, Term, Umode, Unif0, Ucontext),
+		Goal0 = unify(Term1, Term2, Umode, Unif0, Ucontext),
 		Unif0 = deconstruct(_, Consid, Args, Submodes, CanFail)
 	->
 		Unif = deconstruct(Var, Consid, Args, Submodes, CanFail),
-		( Term = functor(_, _) ->
-			Goal = unify(Var, Term, Umode, Unif, Ucontext)
+		( Term1 = term__variable(_), Term2 = term__functor(_, _, _) ->
+			Goal = unify(term__variable(Var), Term2, Umode,
+				Unif, Ucontext)
+		; Term2 = term__variable(_), Term1 = term__functor(_, _, _) ->
+			Goal = unify(Term1, term__variable(Var), Umode,
+				Unif, Ucontext)
 		;
 			error("unexpected unify structure in construct_common_unify")
 		)
@@ -511,11 +513,11 @@ construct_common_unify(Var, Goal0, Goal) :-
 		error("unexpected goal in construct_common_unify")
 	).
 
-:- pred find_similar_deconstruct(hlds__goal_expr, unification, term__context,
+:- pred find_similar_deconstruct(hlds__goal_expr, unification,
 	list(hlds__goal)).
-:- mode find_similar_deconstruct(in, in, in, out) is semidet.
+:- mode find_similar_deconstruct(in, in, out) is semidet.
 
-find_similar_deconstruct(OldUnifyGoal, NewUnifyInfo, Context, Replacement) :-
+find_similar_deconstruct(OldUnifyGoal, NewUnifyInfo, Replacement) :-
 	(
 		OldUnifyGoal = unify(_OT1, _OT2, _OM, OldUnifyInfo, OC),
 		OldUnifyInfo = deconstruct(_OV, OF, OFV, _OUM, _OCF),
@@ -525,28 +527,28 @@ find_similar_deconstruct(OldUnifyGoal, NewUnifyInfo, Context, Replacement) :-
 		list__length(OFV, OFVC),
 		list__length(NFV, NFVC),
 		OFVC = NFVC,
-		pair_subterms(OFV, NFV, Context, OC, Replacement)
+		pair_subterms(OFV, NFV, OC, Replacement)
 	;
 		error("goals should be deconstructions")
 	).
 
-:- pred pair_subterms(list(var), list(var),
-			term__context, unify_context, list(hlds__goal)).
-:- mode pair_subterms(in, in, in, in, out) is det.
+:- pred pair_subterms(list(var), list(var), unify_context, list(hlds__goal)).
+:- mode pair_subterms(in, in, in, out) is det.
 
-pair_subterms(OFV0, NFV0, Context, UnifyContext, Replacement) :-
+pair_subterms(OFV0, NFV0, UnifyContext, Replacement) :-
 	(
 		OFV0 = [OFV | OFV1],
 		NFV0 = [NFV | NFV1]
 	->
-		pair_subterms(OFV1, NFV1, Context, UnifyContext, Replacement1),
+		pair_subterms(OFV1, NFV1, UnifyContext, Replacement1),
 		( OFV = NFV ->
 			Replacement = Replacement1
 		;
 			UnifyContext = unify_context(MainCtxt, SubCtxt),
-
-			create_atomic_unification(OFV, var(NFV),
-					Context, MainCtxt, SubCtxt, Goal),
+			OT = term__variable(OFV),
+			NT = term__variable(NFV),
+			create_atomic_unification(OT, NT, MainCtxt, SubCtxt,
+				Goal),
 			Replacement = [Goal | Replacement1]
 		)
 	;

@@ -199,13 +199,14 @@ find_follow_vars_in_goal_2(call(A,B,C,D,E,_F), ModuleInfo, FollowVars0,
 find_follow_vars_in_goal_2(unify(A,B,C,D0,E), _ModuleInfo, FollowVars0,
 					unify(A,B,C,D,E), FollowVars) :-
 	(
-		B = var(BVar),
+		A = term__variable(Var1),
+		B = term__variable(Var2),
 		D0 = complicated_unify(Mode, CanFail, _F),
 		determinism_components(Det, CanFail, at_most_one),
 		determinism_to_code_model(Det, CodeModel),
 		map__init(Follow0),
 		arg_info__unify_arg_info(CodeModel, ArgInfo),
-		find_follow_vars_in_call_2(ArgInfo, [A, BVar],
+		find_follow_vars_in_call_2(ArgInfo, [Var1, Var2],
 						Follow0, FollowVars1)
 	->
 		D = complicated_unify(Mode, CanFail, FollowVars0),

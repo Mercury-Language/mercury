@@ -1,10 +1,10 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995 University of Melbourne.  
-% This file may only be copied under the terms of the GNU General 
-% Public License - see the file COPYING in the Mercury distribution.  
-%-----------------------------------------------------------------------------% 
-% 
-% File: shapes.m 
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
+%
+% File: shapes.m
 % Main author: trd 
 %
 % This file prepares the shape information that is required by each
@@ -42,8 +42,8 @@
 :- module shapes.
 :- interface.
 
-:- import_module int, map, std_util, list, hlds, require.
-:- import_module prog_io, type_util, string, term, io.
+:- import_module int, map, std_util, list, hlds, require,
+		 prog_io, type_util, string, term.
 
 :- type tagged_num	==	pair(shape_num,tag_type).
 :- type tag_type	--->    const; simple; complicated.
@@ -52,22 +52,11 @@
 :- type length_list	==	list(int).
 :- type contents_list	==	list(int).
 
-:- type shape_num       --->    num(int)
-                        ;       succip
-                        ;       hp
-                        ;       maxfr
-                        ;       curfr
-                        ;       redoip
-			;	succfr
-			;	prevfr
-                        ;       sp
-			;	unwanted.
-
 :- pred shapes__init_shape_table(shape_table).
 :- mode shapes__init_shape_table(out) is det.
 
 :- pred shapes__request_shape_number(shape_id, type_table, shape_table, 
-			shape_table, int).
+			shape_table, shape_num).
 :- mode shapes__request_shape_number(in, in, in, out, out) is det.
 
 :- pred shapes__construct_shape_lists(shape_table, shape_list, 
@@ -76,9 +65,6 @@
 
 :- pred shapes__do_abstract_exports(module_info, module_info).
 :- mode shapes__do_abstract_exports(in, out) is det.
-
-:- pred shapes__write_shape_num(shape_num, io__state, io__state).
-:- mode shapes__write_shape_num(in, di, uo) is det.
 
 :- implementation.
 
@@ -103,13 +89,13 @@ shapes__init_shape_table((S_Tab_Out - S_Num)) :-
 	term__context_init(TermContext),
 	(
 		map__insert(S_Tab0, term__functor(term__atom("string"), [],
-			TermContext) - ground, num(0) - Const, S_Tab1),
+			TermContext) - ground, 0 - Const, S_Tab1),
 		map__insert(S_Tab1, term__functor(term__atom("float"), [],
-			TermContext) - ground, num(1) - Const, S_Tab2),
+			TermContext) - ground, 1 - Const, S_Tab2),
 		map__insert(S_Tab2, term__functor(term__atom("int"), [],
-			TermContext) - ground, num(2) - Const, S_Tab3),
+			TermContext) - ground, 2 - Const, S_Tab3),
 		map__insert(S_Tab3, term__functor(term__atom("character"), [],
-			TermContext) - ground, num(3) - Const, S_Tab4) 
+			TermContext) - ground, 3 - Const, S_Tab4) 
 	-> 
 		S_Num = 4,
 		S_Tab_Out = S_Tab4
@@ -129,26 +115,21 @@ shapes__request_shape_number(ShapeId0, Type_Table, S_Tab0 - Next_S_Num0,
 	(
 		map__contains(S_Tab0, ShapeId)  
 	-> 
-		map__lookup(S_Tab0, ShapeId, (Shape_Num - _)),
+		map__lookup(S_Tab0, ShapeId, (S_Num - _)),
 		S_Tab = S_Tab0,
-		NextNum = Next_S_Num0,
-		( Shape_Num = num(_) -> 
-			Shape_Num = num(S_Num) ; 
-			error("shapes: Unexpected shape_num type found")
-		)
+		NextNum = Next_S_Num0
 	;
 		Next_S_Num1 is Next_S_Num0 + 1,
 		S_Num is Next_S_Num0 + 1,
 	% Avoid infinite recursion by inserting a 'dummy' shape
 	% so that if the shape is self-referential, it doesn't
 	% cause trouble.
-		map__set(S_Tab0, ShapeId, num(Next_S_Num1) - quad(constant, 
+		map__set(S_Tab0, ShapeId, Next_S_Num1 - quad(constant, 
 			constant, constant, constant), S_Tab1),
 		shapes__create_shape(Type_Table, ShapeId, Shape, 
 			S_Tab1 - Next_S_Num1, S_Tab2 - NextNum),
-		map__set(S_Tab2, ShapeId, num(Next_S_Num1) - Shape, S_Tab) 
+		map__set(S_Tab2, ShapeId, (Next_S_Num1 - Shape), S_Tab) 
 	).
-
 %-----------------------------------------------------------------------------%
 % To actually construct the flat lists that are nearly ready for output
 % into a file. 
@@ -196,7 +177,7 @@ shapes__add_shape_numbers([T - S | Ts] , Types, S0, S2, [ N | Ns] ) :-
 	->
 		shapes__request_shape_number(Type - ground, Types,  
  			S1, S2, S_Num),
-		N = T - yes(num(S_Num))
+		N = T - yes(S_Num)
 	;
 		error("shapes__add_shape_numbers: Unreachable case reached!") 
 	).
@@ -316,7 +297,7 @@ shapes__create_shape_2(Type_Tab, Type, Type_Id, TypeArgs, Shape,
 				shapes__get_snums(ShapeList, SNums),
 				Shape = abstract(Type, SNums) 
 			;
-				Shape = abstract(Type, []),
+				Shape = abstract(Type, [2000]),
 				S_Tab = S_Tab0
 			) 
 		;
@@ -328,7 +309,18 @@ shapes__create_shape_2(Type_Tab, Type, Type_Id, TypeArgs, Shape,
 			shapes__replace_context(ET - ground, EqvType - G),
 			shapes__request_shape_number(EqvType - G,
 				Type_Tab, S_Tab0, S_Tab, EqvShapeNum),
-			Shape = equivalent(num(EqvShapeNum))
+			Shape = equivalent(EqvShapeNum)
+	%		(
+	%			type_to_type_id(EqvType, _, TypeArgs)
+	%		->
+	%			shapes__lookup_simple_info(TypeArgs, 
+	%				ShapeList, Type_Tab, S_Tab0, S_Tab),
+	%			shapes__get_snums(ShapeList, SNums),
+	%			Shape = abstract(EqvType, SNums) 
+	%		;
+	%			Shape = abstract(EqvType, [2001]),
+	%			S_Tab = S_Tab0
+	%		) 
 		;
 			error("shapes__create_shape_2: unknown type")
 		)
@@ -437,10 +429,10 @@ shapes__create_shapeA(Type_Id, [ Ctor | Rest ] , TagVals, Bits, A,
 :- mode shapes__lookup_simple_info(in, out, in, in, out) is det.
 
 shapes__lookup_simple_info([], [], _, S_Tab, S_Tab).
-shapes__lookup_simple_info([ Arg | Args], [ num(Num) - S | ShapeIds],
+shapes__lookup_simple_info([ Arg | Args], [ S_Num - S | ShapeIds],
 				Type_Table, S_Tab0, S_Tab) :-
 	S = Arg - ground,
-        shapes__request_shape_number(S, Type_Table, S_Tab0, S_Tab1, Num),
+        shapes__request_shape_number(S, Type_Table, S_Tab0, S_Tab1, S_Num),
 	shapes__lookup_simple_info(Args, ShapeIds, Type_Table, S_Tab1, S_Tab).
 
 %-----------------------------------------------------------------------------%
@@ -549,7 +541,7 @@ shapes__construct_lists([Num - Stag | Rest], N_tab, Ss, Ls, L_Num, Cs, C_Num) :-
 shapes__constr_lists_1(constant, Num, Rest, N_tab, [Num - Const_Tag|Ss],
 		  Ls, L_Num, Cs, C_Num) :-
 	shapes__construct_lists(Rest, N_tab, Ss, Ls, L_Num, Cs, C_Num),
-	shapes__make_const_tag(num(0),Const_Tag).
+	shapes__make_const_tag(0,Const_Tag).
 shapes__constr_lists_1(simple(S_Ids), Num, I_Rest, N_tab,
 		  [Num - Tagged_L_Num | S_Rest], [C_Len | L_Rest], L_Num_New,
 		  C_New, C_Num_New) :-
@@ -558,7 +550,7 @@ shapes__constr_lists_1(simple(S_Ids), Num, I_Rest, N_tab,
 	shapes__constr_lists_3(S_Ids, N_tab, C_Rest, C_New, C_Len),
 	C_Num_New is C_Num + C_Len,
 	L_Num_New is L_Num + 1,
-	shapes__make_simple_tag(num(L_Num),Tagged_L_Num).
+	shapes__make_simple_tag(L_Num,Tagged_L_Num).
 shapes__constr_lists_1(complicated(S_Id_List), Num, I_Rest, N_tab, 
 		[Num - Tagged_L_Num | S_Rest], L_New, L_Num_New,
 		 C_New, C_Num_New) :-
@@ -568,7 +560,7 @@ shapes__constr_lists_1(complicated(S_Id_List), Num, I_Rest, N_tab,
 % Want to reverse, so they end up in an indexable format for easy C indexing.
 	shapes__constr_lists_2(Rev_S_Id_List, N_tab, L_Rest, L_New, L_Num, 
 		L_Num_New, C_Rest, C_New, C_Num, C_Num_New),
-	shapes__make_complicated_tag(num(L_Num), Tagged_L_Num).
+	shapes__make_complicated_tag(L_Num, Tagged_L_Num).
 
 %-----------------------------------------------------------------------------%
 % In complicated shape_tags we want to basically do a simple tag 
@@ -600,11 +592,7 @@ shapes__constr_lists_2([S_Ids | Rest], N_tab, Ls0, Ls2, L_Num0, L_Num2, Cs0, Cs2
 
 shapes__constr_lists_3([], _S_tab, Cs_Old, Cs_Old, 0).
 shapes__constr_lists_3([Shape_Number - _ | S_Ids], S_tab, Cs_Old,
-		[Num | Cs], C_Len_New) :-
-	( Shape_Number = num(_) -> 
-		Shape_Number = num(Num) ; 
-		error("shapes: Unexpected shape_num type")
-	),
+		[Shape_Number | Cs], C_Len_New) :-
 	shapes__constr_lists_3(S_Ids, S_tab, Cs_Old, Cs, C_Len),
 	C_Len_New is C_Len + 1.
 
@@ -615,24 +603,4 @@ shapes__constr_lists_3([Shape_Number - _ | S_Ids], S_tab, Cs_Old,
 :- mode shapes__make_cons_id(in, in, out) is det.
 shapes__make_cons_id(Sym, Typelist, C_Id) :- 
 	make_cons_id(Sym, Typelist, unqualified("X") - 0, C_Id).
-
-%-----------------------------------------------------------------------------%
-% 
-%-----------------------------------------------------------------------------%
-/*###622 [cc] The switch on HeadVar__1 does not cover prevfr/0 and succfr/0.%%%*/
-shapes__write_shape_num(num(Number)) --> 
-	io__write_string("num("),
-	io__write_int(Number),
-	io__write_string(")").
-shapes__write_shape_num(succip) --> io__write_string("succip").
-shapes__write_shape_num(hp) --> io__write_string("hp").
-shapes__write_shape_num(maxfr) --> io__write_string("maxfr").
-shapes__write_shape_num(curfr) --> io__write_string("curfr").
-shapes__write_shape_num(redoip) --> io__write_string("redoip").
-shapes__write_shape_num(sp) --> io__write_string("sp").
-shapes__write_shape_num(unwanted) --> io__write_string("unwanted").
-shapes__write_shape_num(prevfr) --> io__write_string("prevfr").
-shapes__write_shape_num(succfr) --> io__write_string("succfr").
-
-
 

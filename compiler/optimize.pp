@@ -105,7 +105,6 @@ optimize__repeated(Instructions0, DoVn, Instructions, Mod) -->
 		{ Instructions1 = Instructions0 }
 	),
 	globals__io_lookup_bool_option(optimize_jumps, Jumpopt),
-	globals__io_lookup_bool_option(optimize_fulljumps, FullJumpopt),
 	( { Jumpopt = yes } ->
 		( { VeryVerbose = yes } ->
 			io__write_string("% Optimizing jumps for "),
@@ -114,8 +113,7 @@ optimize__repeated(Instructions0, DoVn, Instructions, Mod) -->
 		;
 			[]
 		),
-		{ jumpopt__main(Instructions1, FullJumpopt, Instructions2,
-			Mod1) }
+		{ jumpopt__main(Instructions1, Instructions2, Mod1) }
 	;
 		{ Instructions2 = Instructions1 },
 		{ Mod1 = no }

@@ -44,8 +44,9 @@
 			is det.
 
 		% Generate the next local label in sequence.
-:- pred code_info__get_next_label(label, code_info, code_info).
-:- mode code_info__get_next_label(out, in, out) is det.
+		% Bool option is if the label can be accessed externally.
+:- pred code_info__get_next_label(label, bool, code_info, code_info).
+:- mode code_info__get_next_label(out, in, in, out) is det.
 
 		% Generate the next local label number in sequence.
 :- pred code_info__get_next_label_number(int, code_info, code_info).
@@ -203,73 +204,33 @@
 :- mode code_info__set_shapes(in, in, out) is det.
 
 :- type failure_cont
-	--->	failure_cont(failure_continuation, maybe(label), failure_map).
-				% the maybe(label) is yes if we created a
-				% temporary frame and we need to restore
-				% curfr after a redo()
-
-:- type failure_continuation
-	--->	known(bool)	% on failure we jump to a label
-				% the bool is `yes' if we are inside
-				% a nondet context
+	--->	known(label)	% on failure we jump to `Label'
+	;	do_fail		% on failure we do a `fail()'
 	;	unknown.	% on failure we do a `redo()'
-				% NB. any piece of code that sets the current
-				% failure continuation to `unknown' had
-				% better save variables that are live (on
-				% redo) onto the stack.
-
-:- type failure_map	==	assoc_list(map(var, set(rval)), code_addr).
-			% we assume that there are exactly two
-			% alternatives in the failure_map list;
-			% the first one is the entry point with variables
-			% potentially in registers and the second one in
-			% the list is the entry point with variables on the
-			% stack.
 
 	% push a new failure continuation onto the stack
 
-:- pred code_info__make_known_failure_cont(set(var), bool, code_tree,
-						code_info, code_info).
-:- mode code_info__make_known_failure_cont(in, in, out, in, out) is det.
-
-	% We manufacture a failure cont when we start generating
-	% code for a proc because on the failure of a procedure
-	% we don't need to prepare for execution to resume in this
-	% procedure.
-:- pred code_info__manufacture_failure_cont(bool, code_info, code_info).
-:- mode code_info__manufacture_failure_cont(in, in, out) is det.
+:- pred code_info__push_failure_cont(failure_cont, code_info, code_info).
+:- mode code_info__push_failure_cont(in, in, out) is det.
 
 	% pop the failure continuation stack
 
 :- pred code_info__pop_failure_cont(code_info, code_info).
 :- mode code_info__pop_failure_cont(in, out) is det.
 
-	% set the topmost failure cont to `unknown' (e.g. after
-	% a nondet call or after a disjunction).
-
-:- pred code_info__unset_failure_cont(code_info, code_info).
-:- mode code_info__unset_failure_cont(in, out) is det.
-
 	% lookup the value on the top of the failure continuation stack
 
 :- pred code_info__failure_cont(failure_cont, code_info, code_info).
 :- mode code_info__failure_cont(out, in, out) is det.
+
+:- pred code_info__failure_cont_address(failure_cont, code_addr).
+:- mode code_info__failure_cont_address(in, out) is det.
 
 	% generate some code to restore the current redoip, by looking
 	% at the top of the failure continuation stack.
 
 :- pred code_info__restore_failure_cont(code_tree, code_info, code_info).
 :- mode code_info__restore_failure_cont(out, in, out) is det.
-
-:- pred code_info__modify_failure_cont(code_tree, code_info, code_info).
-:- mode code_info__modify_failure_cont(out, in, out) is det.
-
-		% do_soft_cut takes the lval where the address of the
-		% failure frame is stored, and it returns code to
-		% set the redoip of that frame to do_fail.
-
-:- pred code_info__do_soft_cut(lval, code_tree, code_info, code_info).
-:- mode code_info__do_soft_cut(in, out, in, out) is det.
 
 :- pred code_info__stack_variable(int, lval, code_info, code_info).
 :- mode code_info__stack_variable(in, out, in, out) is det.
@@ -280,21 +241,15 @@
 :- pred code_info__generate_failure(code_tree, code_info, code_info).
 :- mode code_info__generate_failure(out, in, out) is det.
 
-:- pred code_info__generate_under_failure(code_tree, code_info, code_info).
-:- mode code_info__generate_under_failure(out, in, out) is det.
-
 :- pred code_info__generate_test_and_fail(rval, code_tree,
 							code_info, code_info).
 :- mode code_info__generate_test_and_fail(in, out, in, out) is det.
 
-:- pred code_info__generate_pre_commit(label, code_tree, code_info, code_info).
+:- pred code_info__generate_pre_commit(code_tree, label, code_info, code_info).
 :- mode code_info__generate_pre_commit(out, out, in, out) is det.
 
 :- pred code_info__generate_commit(label, code_tree, code_info, code_info).
 :- mode code_info__generate_commit(in, out, in, out) is det.
-
-:- pred code_info__save_maxfr(lval, code_tree, code_info, code_info).
-:- mode code_info__save_maxfr(out, out, in, out) is det.
 
 :- pred code_info__save_hp(code_tree, code_info, code_info).
 :- mode code_info__save_hp(out, in, out) is det.
@@ -476,7 +431,7 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 	).
 
 :- pred code_info__build_input_arg_list(assoc_list(var, arg_info),
-						assoc_list(var, rval)).
+						assoc_list(var, lval)).
 :- mode code_info__build_input_arg_list(in, out) is det.
 
 code_info__build_input_arg_list([], []).
@@ -486,7 +441,7 @@ code_info__build_input_arg_list([V - Arg|Rest0], VarArgs) :-
 		Mode = top_in
 	->
 		code_util__arg_loc_to_register(Loc, Reg),
-		VarArgs = [V - lval(reg(Reg))|VarArgs0]
+		VarArgs = [V - reg(Reg)|VarArgs0]
 	;
 		VarArgs = VarArgs0
 	),
@@ -522,12 +477,28 @@ code_info__max_slot_2([L|Ls], Max0, Max) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-code_info__get_next_label(Label) -->
+code_info__get_next_label(Label, Cont0) -->
 	code_info__get_pred_id(PredId),
 	code_info__get_proc_id(ProcId),
 	code_info__get_next_label_number(N),
 	code_info__get_module_info(ModuleInfo),
-	{ code_util__make_local_label(ModuleInfo, PredId, ProcId, N, Label) }.
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	(
+		{ Cont0 = yes }
+	->
+		(
+			{ pred_info_is_exported(PredInfo) }
+		->
+			{ Cont = exported }
+		;
+			{ Cont = local }
+		)
+	;
+		{ Cont = no }
+	),
+	{ code_util__make_local_label(ModuleInfo, PredId, ProcId, N, Cont,
+		Label) 
+	}.
 
 code_info__get_next_label_number(N) -->
 	code_info__get_label_count(N0),
@@ -713,25 +684,6 @@ code_info__place_var(Var, Lval, Code) -->
 	code_info__get_exprn_info(Exprn0),
 	{ code_exprn__place_var(Var, Lval, Code, Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn).
-
-%---------------------------------------------------------------------------%
-
-:- pred code_info__place_vars(assoc_list(var, set(rval)), code_tree,
-							code_info, code_info).
-:- mode code_info__place_vars(in, out, in, out) is det.
-
-code_info__place_vars([], empty) --> [].
-code_info__place_vars([V-Rs|RestList], Code) -->
-	(
-		{ set__to_sorted_list(Rs, RList) },
-		{ code_info__lval_member(L, RList) }
-	->
-		code_info__place_var(V, L, ThisCode)
-	;
-		{ ThisCode = empty }
-	),
-	code_info__place_vars(RestList, RestCode),
-	{ Code = tree(ThisCode, RestCode) }.
 
 %---------------------------------------------------------------------------%
 
@@ -924,8 +876,7 @@ code_info__remake_with_store_map -->
 	code_info__current_store_map(StoreMap),
 	{ map__overlay(CallInfo, StoreMap, LvalMap0) },
 	{ map__select(LvalMap0, Vars, LvalMap) },
-	{ map__to_assoc_list(LvalMap, VarLvals0) },
-	{ code_info__fixup_lvallist(VarLvals0, VarLvals) },
+	{ map__to_assoc_list(LvalMap, VarLvals) },
 	code_info__get_globals(Globals),
 	{ globals__get_options(Globals, Options) },
 	{ code_exprn__init_state(VarLvals, Varset, Options, Exprn) },
@@ -947,21 +898,11 @@ code_info__remake_with_call_info -->
 	{ set__list_to_set(VarList, Vars) },
 	code_info__get_call_info(CallInfo),
 	{ map__select(CallInfo, Vars, LvalMap) },
-	{ map__to_assoc_list(LvalMap, VarLvals0) },
-	{ code_info__fixup_lvallist(VarLvals0, VarLvals) },
+	{ map__to_assoc_list(LvalMap, VarLvals) },
 	code_info__get_globals(Globals),
 	{ globals__get_options(Globals, Options) },
 	{ code_exprn__init_state(VarLvals, Varset, Options, Exprn) },
 	code_info__set_exprn_info(Exprn).
-
-%---------------------------------------------------------------------------%
-
-:- pred code_info__fixup_lvallist(assoc_list(var, lval), assoc_list(var, rval)).
-:- mode code_info__fixup_lvallist(in, out) is det.
-
-code_info__fixup_lvallist([], []).
-code_info__fixup_lvallist([V - L|Ls], [V - lval(L)|Rs]) :-
-	code_info__fixup_lvallist(Ls, Rs).
 
 %---------------------------------------------------------------------------%
 
@@ -1068,11 +1009,6 @@ code_info__save_redoip(Code) -->
 	code_info__push_temp(redoip(lval(maxfr)), RedoIpSlot),
 	{ Code = node([ assign(RedoIpSlot, lval(redoip(lval(maxfr))))
 				- "Save the redoip" ]) }.
-
-code_info__save_maxfr(MaxfrSlot, Code) -->
-	code_info__push_temp(maxfr, MaxfrSlot),
-	{ Code = node([ assign(MaxfrSlot, lval(maxfr))
-				- "Save maxfr" ]) }.
 
 code_info__restore_redoip(Code) -->
 	code_info__pop_temp(Lval),
@@ -1191,99 +1127,20 @@ code_info__get_stack_top(StackVar) -->
 %---------------------------------------------------------------------------%
 
 code_info__generate_failure(Code) -->
-	code_info__failure_cont(failure_cont(Cont, _MaybeRedoLab, FailureMap)),
-	(
-		{ Cont = known(_) },
-		(
-			code_info__pick_failure(FailureMap, FailureAddress0)
-		->
-			{ FailureAddress = FailureAddress0 },
-			{ PlaceCode = empty }
-		;
-			{ FailureMap = [Map - Addr|_] }
-		->
-			{ FailureAddress = Addr },
-			{ map__to_assoc_list(Map, AssocList) },
-			code_info__place_vars(AssocList, PlaceCode)
-		;
-			{error("code_info__generate_failure: no valid failmap")}
-		),
-		{ BranchCode = node([
-			goto(FailureAddress, FailureAddress) -"fail"
-		]) },
-		{ Code = tree(PlaceCode, BranchCode) }
-	;
-		{ Cont = unknown },
-		{ Code = node([goto(do_redo, do_redo) -"fail"]) }
-	).
+	code_info__failure_cont(Cont),
+	{ code_info__failure_cont_address(Cont, FailureAddress) },
+	{ Code = node([ goto(FailureAddress, FailureAddress) - "Fail" ]) }.
 
-%---------------------------------------------------------------------------%
-
-code_info__generate_under_failure(Code) -->
-	code_info__grab_code_info(CodeInfo),
-	code_info__pop_failure_cont,
-	code_info__generate_failure(Code),
-	code_info__slap_code_info(CodeInfo).
-
-%---------------------------------------------------------------------------%
-
-code_info__generate_test_and_fail(Rval0, Code) -->
-	code_info__failure_cont(failure_cont(Cont, _MaybeRedoLab, FailureMap)),
-	(
-		{ Cont = known(_) },
-		(
-			code_info__pick_failure(FailureMap, FailureAddress0)
-		->
-			{ FailureAddress = FailureAddress0 }
-		;
-			% XXX this needs to be fixed
-			{ error("code_info__generate_test_and_fail: no valid failmap") }
-		)
-	;
-		{ Cont = unknown },
-		{ FailureAddress = do_redo }
-	),
-		% We branch away if the test *fails*
-	{ code_util__neg_rval(Rval0, Rval) },
-	{ Code = node([ if_val(Rval, FailureAddress) -
+code_info__generate_test_and_fail(Rval, Code) -->
+	code_info__failure_cont(Cont),
+	{ code_info__failure_cont_address(Cont, FailureAddress) },
+	{ code_util__neg_rval(Rval, NegRval) },
+	{ Code = node([ if_val(NegRval, FailureAddress) -
 				"Test for failure" ]) }.
 
-:- pred code_info__pick_failure(assoc_list(map(var, set(rval)), code_addr),
-			code_addr, code_info, code_info).
-:- mode code_info__pick_failure(in, out, in, out) is semidet.
-
-code_info__pick_failure([], _CodeAddr) -->
-	{ fail }.
-code_info__pick_failure([Map - Addr | Rest], CodeAddr) -->
-	{ map__keys(Map, KeyList) },
-	{ set__list_to_set(KeyList, Keys) },
-	code_info__variable_locations(Locations0),
-	{ map__select(Locations0, Keys, Locations) },
-	{ map__to_assoc_list(Locations, List) },
-	(
-		\+ (
-			{ list__member(Thingy, List) },
-			\+ (
-				{ Thingy = Var - Actual },
-				{ map__search(Map, Var, Rvals) },
-				{ set__subset(Rvals, Actual) }
-			)
-		)
-	->
-		{ CodeAddr = Addr }
-	;
-		code_info__pick_failure(Rest, CodeAddr)
-	).
-
-%---------------------------------------------------------------------------%
-
-:- pred code_info__variable_locations(map(var, set(rval)),
-						code_info, code_info).
-:- mode code_info__variable_locations(out, in, out) is det.
-
-code_info__variable_locations(Locations) -->
-	code_info__get_exprn_info(Exprn),
-	{ code_exprn__get_varlocs(Locations, Exprn, _) }.
+code_info__failure_cont_address(known(Label), label(Label)).
+code_info__failure_cont_address(do_fail, do_fail).
+code_info__failure_cont_address(unknown, do_redo).
 
 %---------------------------------------------------------------------------%
 
@@ -1292,7 +1149,7 @@ code_info__variable_locations(Locations) -->
 	% If the goal succeeds, the `commit' will cut any choice points
 	% generated in the goal.
 
-code_info__generate_pre_commit(RedoLab, PreCommit) -->
+code_info__generate_pre_commit(PreCommit, FailLabel) -->
 	code_info__get_globals(Globals),
 	{ globals__get_gc_method(Globals, GC_Method) },
 	( { GC_Method = accurate } ->
@@ -1323,36 +1180,25 @@ code_info__generate_pre_commit(RedoLab, PreCommit) -->
 		assign(RedoipSlot, lval(redoip(lval(maxfr)))) -
 				"Save the top redoip"
 	]) },
-	code_info__failure_cont(failure_cont(_OrigCont, _MaybeRedo,
-				FailureMap0)),
-	code_info__relabel_failure_cont(FailureMap0, FailureMap),
-	code_info__push_failure_cont(failure_cont(known(yes), no, FailureMap)),
-	code_info__get_next_label(RedoLab),
-	{ HijackCode = node([
+	code_info__get_next_label(FailLabel, yes),
+	code_info__push_failure_cont(known(FailLabel)),
+	{ SetRedoip = node([
 		assign(redoip(lval(maxfr)),
-			const(address_const(label(RedoLab)))) -
-			"Hijack the failure cont"
+		 		const(address_const(label(FailLabel)))) -
+			"Hijack the failure continuation"
 	]) },
-	{ PreCommit = tree(tree(PushCode, SaveCode), HijackCode) }.
+	{ PreCommit = tree(tree(PushCode, SaveCode), SetRedoip) }.
 
-code_info__generate_commit(RedoLab, Commit) -->
-	code_info__get_next_label(SuccLabel),
+code_info__generate_commit(FailLabel, Commit) -->
+	code_info__get_next_label(SuccLabel, yes),
 	{ GotoSuccLabel = node([
 		goto(label(SuccLabel), label(SuccLabel)) -
-			"Jump to success continuation"
+			"Jump to success continuation",
+		label(FailLabel) - "Failure continuation"
 	]) },
 	{ SuccLabelCode = node([
 		label(SuccLabel) - "Success continuation"
 	]) },
-	{ RedoLabCode = node([
-		label(RedoLab) - "Failure (redo) continuation"
-	]) },
-	code_info__grab_code_info(CodeInfo0),
-	code_info__failure_cont(failure_cont(_OldCont, _MaybeRedo,
-				HFailureMap)),
-	code_info__generate_failure_continuation(HFailureMap, FailureContCode),
-	code_info__generate_under_failure(Fail),
-	code_info__slap_code_info(CodeInfo0),
 	code_info__pop_failure_cont,
 	code_info__get_proc_model(CodeModel),
 	( { CodeModel = model_non } ->
@@ -1378,21 +1224,13 @@ code_info__generate_commit(RedoLab, Commit) -->
 		assign(curfr, lval(CurfrSlot)) -
 			"Prune nondet frame pointer"
 	]) },
-	{ SuccessCode = tree(
-		RestoreMaxfr,
-		tree(RestoreRedoip, RestoreCurfr)
-	) },
-	{ FailCode = tree(
-		tree(tree(RedoLabCode, RestoreCurfr), FailureContCode),
-		tree(tree(RestoreRedoip, PopCode), Fail)
-	) },
-	{ Commit = tree(tree(SuccessCode, tree(GotoSuccLabel, FailCode)),
-			SuccLabelCode) }.
+	code_info__generate_failure(Fail),
+	{ SuccessCode = tree(RestoreMaxfr, tree(RestoreRedoip, RestoreCurfr)) },
+	{ FailCode = tree(RestoreRedoip, tree(RestoreCurfr, Fail)) },
+	{ Commit = tree(tree(SuccessCode, GotoSuccLabel),
+			tree(FailCode, SuccLabelCode)) }.
 
 %---------------------------------------------------------------------------%
-
-:- pred code_info__push_failure_cont(failure_cont, code_info, code_info).
-:- mode code_info__push_failure_cont(in, in, out) is det.
 
 code_info__push_failure_cont(Cont) -->
 	code_info__get_fall_through(Fall0),
@@ -1420,438 +1258,18 @@ code_info__failure_cont(Cont) -->
 		{ error("code_info__failure_cont: no failure continuation") }
 	).
 
-%---------------------------------------------------------------------------%
-
-code_info__manufacture_failure_cont(IsNondet) -->
-	{ map__init(Empty) },
-	(
-		{ IsNondet = no }
-	->
-		code_info__get_next_label(ContLab1),
-		code_info__get_next_label(ContLab2),
-		{ Address1 = label(ContLab1) },
-		{ Address2 = label(ContLab2) }
+code_info__restore_failure_cont(ContCode) -->
+	code_info__failure_cont(FailCont),
+	( { FailCont = known(ContLab) } ->
+		{ Label = label(ContLab) }
+	; { FailCont = do_fail } ->
+		{ Label = do_fail }
 	;
-		{ Address1 = do_fail },
-		{ Address2 = do_fail }
+		{ error("cannot restore unknown failure continuation") }
 	),
-	code_info__push_failure_cont(failure_cont(known(IsNondet),
-				no, [Empty - Address1, Empty - Address2])).
-
-code_info__make_known_failure_cont(Vars, IsNondet, ModContCode) -->
-	code_info__get_next_label(ContLab),
-	code_info__get_next_label(StackLab),
-	(
-		{ IsNondet = no }
-	->
-		% In semidet continuations we don't use the redoip
-		{ HijackCode = empty },
-		{ MaybeRedoLab = no }
-	;
-		code_info__failure_cont(failure_cont(OrigCont, _, _)),
-		{ OrigCont = unknown }
-	->
-			% efficiency of this code could be improved
-			% ("mkframe()" is a bit of a sledge hammer)
-		code_info__get_next_label(RedoLab),
-		{ MaybeRedoLab = yes(RedoLab) },
-		{ HijackCode =
-			node([
-				mkframe("hijack", 1, label(RedoLab)) -
-					"create a temporary frame",
-				assign(curfr, lval(succfr(lval(maxfr)))) -
-				"restore curfr (which was clobbered by mkframe)"
-			])
-		}
-	;
-		{ MaybeRedoLab = no },
-		{ HijackCode = node([
-			assign(redoip(lval(maxfr)),
-				const(address_const(label(StackLab)))) -
-				"Set failure continuation"
-		]) }
-	),
-	{ set__to_sorted_list(Vars, VarList) },
-	code_info__produce_vars(VarList, RegMap, RegCode),
-	code_info__get_call_info(CallInfo),
-	{ map__select(CallInfo, Vars, StackMap0) },
-	{ map__to_assoc_list(StackMap0, StackList0) },
-	{ code_info__tweak_stacklist(StackList0, StackList) },
-	{ map__from_assoc_list(StackList, StackMap) },
-	{ ContMap = [RegMap-label(ContLab), StackMap-label(StackLab)] },
-	code_info__push_failure_cont(
-		failure_cont(known(IsNondet), MaybeRedoLab, ContMap)),
-	{ ModContCode = tree(RegCode, HijackCode) }.
-
-%---------------------------------------------------------------------------%
-
-:- pred code_info__produce_vars(list(var), map(var, set(rval)), code_tree,
-						code_info, code_info).
-:- mode code_info__produce_vars(in, out, out, in, out) is det.
-
-code_info__produce_vars([], Map, empty) -->
-	{ map__init(Map) }.
-code_info__produce_vars([V|Vs], Map, Code) -->
-	code_info__produce_vars(Vs, Map0, Code0),
-	code_info__produce_variable_in_reg(V, Code1, Rval),
-	{ set__singleton_set(Rvals, Rval) },
-	{ map__set(Map0, V, Rvals, Map) },
-	{ Code = tree(Code0, Code1) }.
-
-%---------------------------------------------------------------------------%
-
-:- pred code_info__produce_variable_in_reg(var, code_tree, rval,
-						code_info, code_info).
-:- mode code_info__produce_variable_in_reg(in, out, out, in, out) is det.
-
-code_info__produce_variable_in_reg(Var, Code, Rval) -->
-	code_info__get_exprn_info(Exprn0),
-	{ code_exprn__produce_var_in_reg(Var, Rval, Code, Exprn0, Exprn) },
-	code_info__set_exprn_info(Exprn).
-
-%---------------------------------------------------------------------------%
-
-:- pred code_info__tweak_stacklist(assoc_list(var, lval),
-					assoc_list(var, set(rval))).
-:- mode code_info__tweak_stacklist(in, out) is det.
-
-code_info__tweak_stacklist([], []).
-code_info__tweak_stacklist([V-L|Rest0], [V-Rs|Rest]) :-
-	set__singleton_set(Rs, lval(L)),
-	code_info__tweak_stacklist(Rest0, Rest).
-
-%---------------------------------------------------------------------------%
-
-code_info__unset_failure_cont -->
-	code_info__failure_cont(
-		failure_cont(_OrigCont, MaybeRedoLabel, FailureMap)),
-	code_info__pop_failure_cont,
-	code_info__push_failure_cont(
-		failure_cont(unknown, MaybeRedoLabel, FailureMap)).
-
-%---------------------------------------------------------------------------%
-
-:- pred code_info__relabel_failure_cont(failure_map, failure_map,
-					code_info, code_info).
-:- mode code_info__relabel_failure_cont(in, out, in, out) is det.
-
-code_info__relabel_failure_cont([], []) --> [].
-code_info__relabel_failure_cont([Map - _|Rest0], [Map - L|Rest]) -->
-	code_info__get_next_label(L0),
-	{ L = label(L0) },
-	code_info__relabel_failure_cont(Rest0, Rest).
-
-%---------------------------------------------------------------------------%
-
-code_info__modify_failure_cont(ModifyCode) -->
-	code_info__failure_cont(failure_cont(OldCont, MaybeRedo0, FailureMap)),
-	code_info__generate_failure_cont(FailureMap, FailureCode),
-	code_info__pop_failure_cont,
-	code_info__get_next_label(New0),
-	code_info__get_next_label(New1),
-	(
-		{ OldCont = unknown ; OldCont = known(yes) }
-	->
-		{ NewCont = known(yes) },
-		( { MaybeRedo0 = yes(_OldRedo) } ->
-			code_info__get_next_label(NewRedo),
-			{ MaybeRedo = yes(NewRedo) }
-		;
-			{ MaybeRedo = no }
-		),
-		{ ResetCode = node([
-			assign(redoip(lval(maxfr)),
-				const(address_const(label(New1)))) -
-				"modify failure cont"
-		]) }
-	;
-		{ error("code_info__modify_failure_cont: semidet context") }
-		% { NewCont = known(no) },
-		% { ResetCode = empty },
-		% { MaybeRedo = no }
-	),
-	(
-		{ FailureMap = [Map0 - _Lab0, Map1 - _Lab1] }
-	->
-		code_info__push_failure_cont(failure_cont(NewCont, MaybeRedo,
-			[Map0 - label(New0), Map1 - label(New1)]))
-	;
-		{ error("code_info__modify_failure_cont: bad failure map.") }
-	),
-	{ ModifyCode = tree(FailureCode, ResetCode) }.
-
-	% XXX rewrite this to fit on one screeen
-code_info__restore_failure_cont(Code) -->
-	code_info__failure_cont(failure_cont(CurrentCont, _Redo1, FailureMap)),
-	code_info__generate_failure_cont(FailureMap, FailureCode),
-	code_info__pop_failure_cont,
-		% Fixup the redoip of the top frame if necessary
-	(
-		{ CurrentCont = known(no) }
-	->
-		{ RestoreCode = empty },
-		{ ResetCode = empty }
-	;
-		% { CurrentCont = known(yes)  ; CurrentCont = unknown }
-		{ RestoreCode = empty },
-		code_info__failure_cont(failure_cont(NewCont, MaybeRedoLab,
-					NewFailureMap)),
-		(
-			{ NewCont = unknown },
-			{ ResetCode = node([
-				assign(redoip(lval(maxfr)),
-					const(address_const(do_fail))) -
-					"restore failure cont"
-			]) }
-		;
-			{ NewCont = known(NondetCont) },
-			(
-				{ NondetCont = no },
-				{ error("code_info__restore_failure_cont: semidet code calls nondet code") }
-			;
-				{ NondetCont = yes },
-				(
-					{ MaybeRedoLab = yes(RedoLab) }
-				->
-					{ NewRedoAddress = label(RedoLab) }
-				;
-					{ NewFailureMap = [_, _Map - Cont] }
-				->
-					{ NewRedoAddress = Cont }
-				;
-					{ error("code_info__restore_failure_cont: no valid failure-map") }
-				),
-				{ ResetCode = node([
-					assign(redoip(lval(maxfr)),
-					const(address_const(NewRedoAddress))) -
-					"restore failure cont"
-				]) }
-			)
-		)
-	),
-	{ Code = tree(FailureCode, tree(RestoreCode, ResetCode)) }.
-
-%---------------------------------------------------------------------------%
-
-code_info__do_soft_cut(TheFrame, Code) -->
-	code_info__failure_cont(failure_cont(ContType, MaybeRedo, FailMap)),
-	(
-		{ ContType = known(_) },
-		(
-			{ MaybeRedo = yes(RedoLab) }
-		->
-			{ Address = label(RedoLab) }
-		;
-			{ FailMap = [_, _Places - StackLab] }
-		->
-			{ Address = StackLab }
-		;
-			{ error("code_info__do_soft_cut: invalid failmap") }
-		)
-	;
-			% If the newly uncovered cont is unknown then
-			% we must have created a new frame before the
-			% condition which we no longer need, so we
-			% set its redoip to do_fail.
-		{ ContType = unknown },
-		{ Address = do_fail }
-	),
-	{ Code = node([
-		assign(redoip(lval(TheFrame)), const(address_const(Address))) -
-			"prune away the `else' case of the if-then-else"
+	{ ContCode = node([
+		modframe(Label) - "Restore failure continuation"
 	]) }.
-
-%---------------------------------------------------------------------------%
-
-:- pred code_info__generate_failure_cont(failure_map,
-					code_tree, code_info, code_info).
-:- mode code_info__generate_failure_cont(in, out, in, out) is det.
-
-code_info__generate_failure_cont(FailMap, Code) -->
-	code_info__failure_cont(FailureCont),
-	{ FailureCont = failure_cont(_CurrentCont, MaybeRedo, _FailureMap) },
-
-		% did we create a temp nondet frame?
-		% if so, we need to create a redo() continuation, 
-		% which restores curfr before continuing
-	(
-		{ MaybeRedo = yes(RedoLab) }
-	->
-		{ FixCurFrCode = 
-			node([
-				label(RedoLab) - "redo entry point",
-				assign(curfr, lval(succfr(lval(maxfr)))) -
-					"restore curfr"
-			])
-		}
-	;
-		{ FixCurFrCode = empty }
-	),
-	code_info__generate_failure_continuation(FailMap, Code0),
-	{ Code = tree(FixCurFrCode, Code0) }.
-
-:- pred code_info__generate_failure_continuation(failure_map,
-					code_tree, code_info, code_info).
-:- mode code_info__generate_failure_continuation(in, out, in, out) is det.
-
-code_info__generate_failure_continuation([], _) -->
-	{ error("code_info__generate_failure_continuation: no mapping!") }.
-code_info__generate_failure_continuation([C|Cs], Code) -->
-	{ C = Map0 - CodeAddr },
-	(
-		{ CodeAddr = label(Label0) }
-	->
-		{ Label = Label0 }
-	;
-		{ error("code_info__generate_failure_continuation: non-label!") }
-	),
-	(
-		{ Cs = [] },
-		{ Code = node([ label(Label) - "Failure Continuation" ]) },
-		code_info__set_var_locations(Map0)
-	;
-		{ Cs = [_|_] },
-		{ ThisCode = node([ label(Label) - "End of failure continuation" ]) },
-		code_info__generate_failure_cont_2(Cs, Map0, Map, RestCode),
-		code_info__set_var_locations(Map),
-		{ Code = tree(RestCode, ThisCode) }
-	).
-
-:- pred code_info__generate_failure_cont_2(failure_map,
-		map(var, set(rval)), map(var, set(rval)), code_tree,
-							code_info, code_info).
-:- mode code_info__generate_failure_cont_2(in, in, out, out, in, out) is det.
-
-code_info__generate_failure_cont_2([], Map, Map, empty) --> [].
-code_info__generate_failure_cont_2([C0|Cs], Map0, Map, Code) -->
-	{ C0 = ThisMap - CodeAddr0 },
-	(
-		{ CodeAddr0 = label(Label) },
-		{ map__to_assoc_list(ThisMap, VarLvalList) },
-		code_info__place_cont_vars(VarLvalList, Map0, Map1,
-							PlaceVarsCode),
-		{ ThisContCode = tree(
-			node([ label(Label) - "Part of the failure continuation" ]),
-			PlaceVarsCode
-		) }
-	;
-		{ CodeAddr0 = imported(_ProcLabel) },
-		{ error("what is imported/1 doing in a failure continuation?") }
-	;
-		{ CodeAddr0 = succip },
-		{ error("what is succip/0 doing in a failure continuation?") }
-	;
-		{ CodeAddr0 = do_succeed(_) },
-		{ error("what is do_succeed/1 doing in a failure continuation?") }
-	;
-		{ CodeAddr0 = do_redo },
-		{ ThisContCode = empty },
-		{ Map1 = Map0}
-	;
-		{ CodeAddr0 = do_fail },
-		{ ThisContCode = empty },
-		{ Map1 = Map0}
-	),
-	{ Code = tree(ThisContCode, RestCode) },
-	code_info__generate_failure_cont_2(Cs, Map1, Map, RestCode).
-
-%---------------------------------------------------------------------------%
-
-:- pred code_info__place_cont_vars(assoc_list(var, set(rval)),
-		map(var, set(rval)), map(var, set(rval)),
-					code_tree, code_info, code_info).
-:- mode code_info__place_cont_vars(in, in, out, out, in, out) is det.
-
-code_info__place_cont_vars([], Map, Map, empty) --> [].
-	% Map0 has the places where each var may finally be stored,
-	% Map has the places where each var is actually stored.
-code_info__place_cont_vars([Var - CurrSet | Rest], Map0, Map, Code) -->
-	{ map__lookup(Map0, Var, TargetSet) },
-	{ set__intersect(CurrSet, TargetSet, Rvals) },
-	(
-		{ set__empty(Rvals) }
-	->
-		{ set__to_sorted_list(CurrSet, CurrList) },
-		{ set__to_sorted_list(TargetSet, TargetList) },
-		(
-			% Should use cheapest, currently,
-			% just use first.
-			{ CurrList = [Source|_] },
-			{ code_info__lval_member(TargetLval, TargetList) }
-		->
-			{ ThisCode = node([
-				assign(TargetLval, Source) - ""
-			]) },
-			{ set__singleton_set(Rvals2, lval(TargetLval)) },
-			{ map__set(Map0, Var, Rvals2, Map1) }
-		;
-			{ list__member(Thing, TargetList) },
-			{ Thing = create(_, _, _) }
-		->
-			{ Map1 = Map0 },
-			{ ThisCode = empty }
-		;
-			{ list__member(Thing, TargetList) },
-			{ Thing = const(_) }
-		->
-			{ Map1 = Map0 },
-			{ ThisCode = empty }
-		;
-			{ error("code_info__place_cont_vars: No vars!") }
-		)
-	;
-		{ map__set(Map0, Var, Rvals, Map1) },
-		{ ThisCode = empty }
-	),
-	{ Code = tree(ThisCode, RestCode) },
-	code_info__place_cont_vars(Rest, Map1, Map, RestCode).
-
-%---------------------------------------------------------------------------%
-
-:- pred code_info__lval_member(lval, list(rval)).
-:- mode code_info__lval_member(out, in) is semidet.
-
-code_info__lval_member(Lval, [X|Xs]) :-
-	(
-		X = lval(Lval0)
-	->
-		Lval = Lval0
-	;
-		code_info__lval_member(Lval, Xs)
-	).
-
-%---------------------------------------------------------------------------%
-
-:- pred code_info__set_var_locations(map(var, set(rval)), code_info, code_info).
-:- mode code_info__set_var_locations(in, in, out) is det.
-
-code_info__set_var_locations(Map) -->
-	{ map__to_assoc_list(Map, List0) },
-	{ code_info__flatten_varlval_list(List0, List) },
-	code_info__get_varset(Varset),
-	code_info__get_globals(Globals),
-	{ globals__get_options(Globals, Options) },
-	{ code_exprn__init_state(List, Varset, Options, Exprn) },
-	code_info__set_exprn_info(Exprn).
-
-:- pred code_info__flatten_varlval_list(assoc_list(var, set(rval)),
-						assoc_list(var, rval)).
-:- mode code_info__flatten_varlval_list(in, out) is det.
-
-code_info__flatten_varlval_list([], []).
-code_info__flatten_varlval_list([V - Rvals | Rest0], All) :-
-	code_info__flatten_varlval_list(Rest0, Rest),
-	set__to_sorted_list(Rvals, RvalList),
-	code_info__flatten_varlval_list_2(RvalList, V, Rest1),
-	list__append(Rest1, Rest, All).
-
-:- pred code_info__flatten_varlval_list_2(list(rval), var,
-						assoc_list(var, rval)).
-:- mode code_info__flatten_varlval_list_2(in, in, out) is det.
-
-code_info__flatten_varlval_list_2([], _V, []).
-code_info__flatten_varlval_list_2([R|Rs], V, [V - R|Rest]) :-
-	code_info__flatten_varlval_list_2(Rs, V, Rest).
 
 %---------------------------------------------------------------------------%
 
@@ -1952,7 +1370,7 @@ code_info__generate_stack_livelvals_2([V|Vs], Vals0, Vals) -->
 	code_info__generate_stack_livelvals_2(Vs, Vals1, Vals).
 
 :- pred code_info__generate_stack_livelvals_3(stack(pair(lval)), 
-			list(liveinfo), list(liveinfo)).
+					list(liveinfo), list(liveinfo)).
 :- mode code_info__generate_stack_livelvals_3(in, in, out) is det.
 
 code_info__generate_stack_livelvals_3(Stack0, LiveInfo0, LiveInfo) :-
@@ -1966,31 +1384,30 @@ code_info__generate_stack_livelvals_3(Stack0, LiveInfo0, LiveInfo) :-
 		LiveInfo = LiveInfo0
 	).
 
-:- pred code_info__get_shape_num(lval, shape_num).
+:- pred code_info__get_shape_num(lval, int).
 :- mode code_info__get_shape_num(in, out) is det.
 
-code_info__get_shape_num(succip, succip).
-code_info__get_shape_num(hp, hp).
-code_info__get_shape_num(maxfr, maxfr).
-code_info__get_shape_num(curfr, curfr).	
-code_info__get_shape_num(succfr(_), succfr).	
-code_info__get_shape_num(prevfr(_), prevfr).	
-code_info__get_shape_num(redoip(_), redoip). 
-code_info__get_shape_num(sp, sp).
-code_info__get_shape_num(lvar(_), unwanted).
-code_info__get_shape_num(field(_, _, _), unwanted).
-code_info__get_shape_num(temp(_), unwanted).
-code_info__get_shape_num(reg(_), unwanted).
-code_info__get_shape_num(stackvar(_), unwanted).
-code_info__get_shape_num(framevar(_), unwanted).
+code_info__get_shape_num(succip, -1).
+code_info__get_shape_num(hp, -2).
+code_info__get_shape_num(maxfr, -3).
+code_info__get_shape_num(curfr, -7).	% XXX magic numbers! is this one right?
+code_info__get_shape_num(succfr(_), -7). % XXX magic numbers! is this one right?
+code_info__get_shape_num(prevfr(_), -7). % XXX magic numbers! is this one right?
+code_info__get_shape_num(redoip(_), -4). % And this one?
+code_info__get_shape_num(sp, -5).
+code_info__get_shape_num(lvar(_), -6).
+code_info__get_shape_num(field(_, _, _), -6).
+code_info__get_shape_num(temp(_), -6).
+code_info__get_shape_num(reg(_), -6).
+code_info__get_shape_num(stackvar(_), -6).
+code_info__get_shape_num(framevar(_), -6).
 
 :- pred code_info__livevals_to_livelvals(list(pair(lval, var)), list(liveinfo),
 					 code_info, code_info).
 :- mode code_info__livevals_to_livelvals(in, out, in, out) is det.
 
 code_info__livevals_to_livelvals([], [], C, C).
-code_info__livevals_to_livelvals([L - V|Ls], 
-			[live_lvalue(L, num(S_Num))|Lives]) --> 
+code_info__livevals_to_livelvals([L - V|Ls], [live_lvalue(L, S_Num )|Lives]) --> 
 	code_info__get_module_info(Module),
 	code_info__get_shapes(S_Tab0),
 	{ module_info_types(Module, Type_Table) } ,
@@ -2271,7 +1688,7 @@ code_info__slap_code_info(C0, C1, C) :-
 	code_info__set_succip_used(S, C2, C3),
 	code_info__get_store_map(F, C1, _),
 	code_info__set_store_map(F, C3, C4),
-	code_info__get_fall_through(J, C0, _),
+	code_info__get_fall_through(J, C1, _),
 	code_info__set_fall_through(J, C4, C5),
 	code_info__get_max_push_count(PC, C1, _),
 	code_info__set_max_push_count(PC, C5, C).

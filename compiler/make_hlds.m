@@ -26,9 +26,9 @@
 :- pred parse_tree_to_hlds(program, module_info, io__state, io__state).
 :- mode parse_tree_to_hlds(in, out, di, uo) is det.
 
-:- pred create_atomic_unification(var, unify_rhs, term__context,
-			unify_main_context, unify_sub_contexts, hlds__goal).
-:- mode create_atomic_unification(in, in, in, in, in, out) is det.
+:- pred create_atomic_unification(term, term, unify_main_context,
+				unify_sub_contexts, hlds__goal).
+:- mode create_atomic_unification(in, in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1315,9 +1315,8 @@ make_fresh_arg_vars_2([Arg | Args], Vars0, VarSet0, Vars, VarSet) :-
 
 unravel_unification(term__variable(X), term__variable(Y), MainContext,
 			SubContext, VarSet0, Goal, VarSet) :-
-	term__context_init(Context),
-	create_atomic_unification(X, var(Y), Context, MainContext, SubContext,
-		Goal),
+	create_atomic_unification(term__variable(X), term__variable(Y),
+			MainContext, SubContext, Goal),
 	VarSet0 = VarSet.
 
 	% If we find a unification of the form
@@ -1332,14 +1331,16 @@ unravel_unification(term__variable(X), term__variable(Y), MainContext,
 unravel_unification(term__variable(X), term__functor(F, Args, C), MainContext,
 			SubContext, VarSet0, Goal, VarSet) :-
 	( Args = [] ->
-		create_atomic_unification(X, functor(F, []),
-				C, MainContext, SubContext, Goal),
+		create_atomic_unification(term__variable(X),
+				term__functor(F, Args, C),
+				MainContext, SubContext, Goal),
 		VarSet = VarSet0
 	;
 		make_fresh_arg_vars(Args, VarSet0, HeadVars, VarSet1),
-		create_atomic_unification(X,
-				functor(F, HeadVars),
-				C, MainContext, SubContext, Goal0),
+		term__var_list_to_term_list(HeadVars, HeadArgs),
+		create_atomic_unification(term__variable(X),
+				term__functor(F, HeadArgs, C),
+				MainContext, SubContext, Goal0),
 		list__length(Args, Arity),
 		make_functor_cons_id(F, Arity, ConsId),
 		ArgContext = functor(ConsId, MainContext, SubContext),
@@ -1365,6 +1366,8 @@ unravel_unification(term__functor(LeftF, LeftAs, LeftC),
 			MainContext, SubContext, VarSet0, Goal, VarSet) :-
 	make_fresh_arg_vars(LeftAs, VarSet0, LeftHeadVars, VarSet1),
 	make_fresh_arg_vars(RightAs, VarSet1, RightHeadVars, VarSet2),
+	term__var_list_to_term_list(LeftHeadVars, LeftHeadArgs),
+	term__var_list_to_term_list(RightHeadVars, RightHeadArgs),
 	list__length(LeftAs, LeftArity),
 	list__length(RightAs, RightArity),
 	make_functor_cons_id(LeftF, LeftArity, LeftConsId),
@@ -1372,12 +1375,12 @@ unravel_unification(term__functor(LeftF, LeftAs, LeftC),
 	LeftArgContext = functor(LeftConsId, MainContext, SubContext),
 	RightArgContext = functor(RightConsId, MainContext, SubContext),
 	varset__new_var(VarSet2, TmpVar, VarSet3),
-	create_atomic_unification(TmpVar,
-			functor(LeftF, LeftHeadVars),
-			LeftC, MainContext, SubContext, Goal0),
-	create_atomic_unification(TmpVar,
-			functor(RightF, RightHeadVars),
-			RightC, MainContext, SubContext, Goal1),
+	create_atomic_unification(term__variable(TmpVar),
+			term__functor(LeftF, LeftHeadArgs, LeftC),
+			MainContext, SubContext, Goal0),
+	create_atomic_unification(term__variable(TmpVar),
+			term__functor(RightF, RightHeadArgs, RightC),
+			MainContext, SubContext, Goal1),
 	goal_info_init(GoalInfo),
 	goal_to_conj_list(Goal0, ConjList0),
 	goal_to_conj_list(Goal1, ConjList1),
@@ -1392,15 +1395,13 @@ unravel_unification(term__functor(LeftF, LeftAs, LeftC),
 	% further simplified, filling in all the as yet
 	% unknown slots with dummy values
 
-create_atomic_unification(A, B, Context, UnifyMainContext, UnifySubContext,
-		Goal) :-
+create_atomic_unification(A, B, UnifyMainContext, UnifySubContext, Goal) :-
 	UMode = ((free - free) -> (free - free)),
 	Mode = ((free -> free) - (free -> free)),
 	map__init(Follow),
 	UnifyInfo = complicated_unify(UMode, can_fail, Follow),
 	UnifyC = unify_context(UnifyMainContext, UnifySubContext),
-	goal_info_init(GoalInfo0),
-	goal_info_set_context(GoalInfo0, Context, GoalInfo),
+	goal_info_init(GoalInfo),
 	Goal = unify(A, B, Mode, UnifyInfo, UnifyC) - GoalInfo.
 
 %-----------------------------------------------------------------------------%

@@ -133,36 +133,31 @@ vn__optimize_block(Instrs0, Livemap, ParEntries, LabelNo0, LabelNo, Instrs,
 :- mode vn__optimize_fragment(in, in, in, in, out, out, di, uo) is det.
 
 vn__optimize_fragment(Instrs0, Livemap, ParEntries, LabelNo0, Tuple, Instrs) -->
-	( { vn__separate_tag_test(Instrs0, Instrs1) } ->
-		vn__optimize_fragment_2(Instrs1, Livemap, ParEntries,
-			LabelNo0, Tuple, Instrs)
-	;
-		{ Instrs = Instrs0 },
-		{ vn__build_block_info(Instrs0, Livemap, ParEntries,	
-			LabelNo0, _, _, _, Tuple) }
-	).
-
-:- pred vn__optimize_fragment_2(list(instruction), livemap, list(parentry),
-	int, vn_ctrl_tuple, list(instruction), io__state, io__state).
-:- mode vn__optimize_fragment_2(in, in, in, in, out, out, di, uo) is det.
-
-vn__optimize_fragment_2(Instrs0, Livemap, ParEntries, LabelNo0, Tuple, Instrs) -->
 	( { Instrs0 = [Uinstr0Prime - _ | _] } ->
 		{ Uinstr0 = Uinstr0Prime },
 		vn__fragment_msg(Uinstr0)
 	;
 		{ error("empty instruction sequence in vn__optimize_fragment") }
 	),
-	{ Instrs1 = Instrs0 },	% historical relic
+	{ vn__separate_tag_test(Instrs0, Instrs1) },
 	{ vn__build_block_info(Instrs1, Livemap, ParEntries, LabelNo0,
 		VnTables0, Liveset, SeenIncr, Tuple0) },
-	{ Tuple0 = tuple(Ctrl, Ctrlmap, Flushmap, LabelNo, _Parmap) },
+	{ Tuple0 = tuple(_Ctrl, Ctrlmap, Flushmap, LabelNo, _Parmap) },
 
 	{ vn__build_uses(Liveset, Ctrlmap, VnTables0, VnTables1) },
 
-	vn__order(Liveset, VnTables1, SeenIncr, Ctrl, Ctrlmap, Flushmap, Maybe),
+	vn__order(Liveset, VnTables1, SeenIncr, Ctrlmap, Flushmap, Maybe),
 	(
 		{ Maybe = yes(VnTables2 - Order) },
+		(
+			{ list__reverse(Order, RevOrder) },
+			{ RevOrder = [node_ctrl(_) | _] }
+		->
+			{ true }
+		;
+			vn__failure_msg(Uinstr0, "last node is not ctrl")
+		),
+
 		{ vn__max_real_regs(MaxRealRegs) },
 		{ vn__max_real_temps(MaxRealTemps) },
 		{ vn__init_templocs(MaxRealRegs, MaxRealTemps,
@@ -216,21 +211,13 @@ vn__optimize_fragment_2(Instrs0, Livemap, ParEntries, LabelNo0, Tuple, Instrs) -
 	).
 
 :- pred vn__separate_tag_test(list(instruction), list(instruction)).
-:- mode vn__separate_tag_test(di, uo) is semidet.
+:- mode vn__separate_tag_test(di, uo) is det.
 
 vn__separate_tag_test([], []).
 vn__separate_tag_test([Instr0 | Instrs0], Instrs) :-
 	vn__separate_tag_test(Instrs0, Instrs1),
 	Instr0 = Uinstr0 - Comment,
 	(
-		Uinstr0 = if_val(binop(and, Test1, Test2), Addr),
-		Test1 = binop(eq, unop(tag, Rval), unop(mktag, const(int_const(Tag)))),
-		Test2 = binop(eq, lval(field(Tag, Rval, Index)), FieldVal)
-	->
-		% separating these tests would require introducing nested ifs,
-		% which would break up the extended basic block
-		fail
-	;
 		Uinstr0 = if_val(unop(not, binop(and, Test1, Test2)), Addr),
 		Test1 = binop(eq, unop(tag, Rval), unop(mktag, const(int_const(Tag)))),
 		Test2 = binop(eq, lval(field(Tag, Rval, Index)), FieldVal)
@@ -326,12 +313,10 @@ vn__make_verify_map_2([Vnlval | Vnlvals], VnTables, VerifyMap0, VerifyMap,
 		vn__make_verify_map_2(Vnlvals, VnTables,
 			VerifyMap1, VerifyMap, Problem)
 	;
-		% opt_debug__dump_vnlval(Vnlval, Lstr),
-		% string__append("cannot find desired value of ", Lstr, Msg),
-		% Problem = yes(Msg),
-		% VerifyMap = VerifyMap0	% should be ignored
-		vn__make_verify_map_2(Vnlvals, VnTables,
-			VerifyMap0, VerifyMap, Problem)
+		opt_debug__dump_vnlval(Vnlval, Lstr),
+		string__append("cannot find desired value of ", Lstr, Msg),
+		Problem = yes(Msg),
+		VerifyMap = VerifyMap0	% should be ignored
 	).
 
 :- pred vn__make_verify_map_specials(list(vnrval), list(vnlval), list(vnlval)).
@@ -445,14 +430,7 @@ vn__verify_tags_instr(Instr, NoDeref0, NoDeref) :-
 		Instr = assign(Lval, Rval),
 		vn__verify_tags_lval(Lval, NoDeref0),
 		vn__verify_tags_rval(Rval, NoDeref0),
-		(
-			set__member(lval(Lval), NoDeref0),
-			Rval = lval(_)
-		->
-			set__insert(NoDeref0, Rval, NoDeref)
-		;
-			NoDeref = NoDeref0
-		)
+		NoDeref = NoDeref0
 	;
 		Instr = call(_, _, _, _),
 		NoDeref = NoDeref0
@@ -552,15 +530,13 @@ vn__verify_tags_cond(Cond, NoDeref0, NoDeref) :-
 			vn__verify_tags_cond(Rval2, NoDeref0, NoDeref1),
 			vn__verify_tags_cond(Rval1, NoDeref1, NoDeref)
 		;
-			( Binop = eq ; Binop = ne ),
-			% at most one of the next two ifs should be taken
-			( vn__verify_tags_is_base(Rval1, Base1) ->
+			( Rval1 = unop(tag, Base1) ->
 				set__insert(NoDeref0, Base1, NoDeref1)
 			;
 				vn__verify_tags_rval(Rval1, NoDeref0),
 				NoDeref1 = NoDeref0
 			),
-			( vn__verify_tags_is_base(Rval2, Base2) ->
+			( Rval2 = unop(tag, Base2) ->
 				set__insert(NoDeref1, Base2, NoDeref)
 			;
 				vn__verify_tags_rval(Rval2, NoDeref1),
@@ -577,17 +553,6 @@ vn__verify_tags_cond(Cond, NoDeref0, NoDeref) :-
 	;
 		vn__verify_tags_rval(Cond, NoDeref0),
 		NoDeref = NoDeref0
-	).
-
-:- pred vn__verify_tags_is_base(rval, rval).
-:- mode vn__verify_tags_is_base(in, out) is semidet.
-
-vn__verify_tags_is_base(Rval, Base) :-
-	(
-		Rval = unop(tag, Base)
-	;
-		Rval = lval(_),
-		Base = Rval
 	).
 
 %-----------------------------------------------------------------------------%

@@ -5,10 +5,6 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %
-% file: ite_gen.m
-%
-% main authors: conway, fjh.
-%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -37,16 +33,6 @@
 
 ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	code_info__get_globals(Options),
-	{ CondGoal = _Goal - CondGoalInfo },
-	{ goal_info_cont_lives(CondGoalInfo, MaybeLives) },
-	{
-		MaybeLives = yes(Vars0)
-	->
-		Vars = Vars0
-	;
-		error("ite_gen__generate_det_ite: no cont_lives!")
-	},
-	code_info__make_known_failure_cont(Vars, no, ModContCode),
 	{ 
 		globals__lookup_bool_option(Options,
 				reclaim_heap_on_semidet_failure, yes),
@@ -57,30 +43,29 @@ ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 		ReclaimHeap = no
 	},
 	code_info__maybe_save_hp(ReclaimHeap, HPSaveCode),
+	code_info__get_next_label(ElseLab, no),
+	code_info__push_failure_cont(known(ElseLab)),
+	code_info__generate_nondet_saves(SaveCode),
 		% Grab the instmap
 		% generate the semi-deterministic test goal
 	code_info__get_instmap(InstMap),
-	code_gen__generate_semi_goal(CondGoal, TestCode),
 	code_info__grab_code_info(CodeInfo),
+	code_gen__generate_semi_goal(CondGoal, TestCode),
 	code_info__pop_failure_cont,
 	code_info__maybe_pop_stack(ReclaimHeap, HPPopCode),
 	code_gen__generate_forced_det_goal(ThenGoal, ThenGoalCode),
 		% generate code that executes the then condition
 		% and branches to the end of the if-then-else
 	code_info__slap_code_info(CodeInfo),
-	code_info__restore_failure_cont(RestoreContCode),
+	code_info__remake_with_call_info,
 		% restore the instmap
 	code_info__set_instmap(InstMap),
 	code_info__maybe_restore_hp(ReclaimHeap, HPRestoreCode),
 	code_gen__generate_forced_det_goal(ElseGoal, ElseGoalCode),
-	code_info__get_next_label(EndLab),
+	code_info__get_next_label(EndLab, no),
 		% place the label marking the start of the then code,
 		% then execute the then goal, and then mark the end
 		% of the if-then-else
-	{ CondCode = tree(
-		HPSaveCode,
-		TestCode
-	) },
 	{ ThenCode = tree(
 		tree(HPPopCode, ThenGoalCode),
 		node([ goto(label(EndLab), label(EndLab)) -
@@ -88,14 +73,14 @@ ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	) },
 	{ ElseCode = tree(
 		tree(
-			tree(RestoreContCode, HPRestoreCode),
-			ElseGoalCode
+			node([label(ElseLab) - "else case"]),
+			tree(HPRestoreCode, ElseGoalCode)
 		),
 		node([label(EndLab) - "end of if-then-else"])
 	) },
 		% generate the then condition
 	{ Instr = tree(
-		tree(ModContCode, CondCode),
+		tree(tree(HPSaveCode, SaveCode), TestCode),
 		tree(ThenCode, ElseCode)
 	) },
 	code_info__remake_with_store_map.
@@ -104,16 +89,6 @@ ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 
 ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	code_info__get_globals(Options),
-	{ CondGoal = _Goal - CondGoalInfo },
-	{ goal_info_cont_lives(CondGoalInfo, MaybeLives) },
-	{
-		MaybeLives = yes(Vars0)
-	->
-		Vars = Vars0
-	;
-		error("ite_gen__generate_det_ite: no cont_lives!")
-	},
-	code_info__make_known_failure_cont(Vars, no, ModContCode),
 	{ 
 		globals__lookup_bool_option(Options,
 				reclaim_heap_on_semidet_failure, yes),
@@ -124,22 +99,25 @@ ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 		ReclaimHeap = no
 	},
 	code_info__maybe_save_hp(ReclaimHeap, HPSaveCode),
+	code_info__get_next_label(ElseLab, no),
+	code_info__push_failure_cont(known(ElseLab)),
+	code_info__generate_nondet_saves(SaveCode),
 		% generate the semi-deterministic test goal
-	code_info__get_instmap(InstMap),
 	code_gen__generate_semi_goal(CondGoal, CondCode),
+	code_info__pop_failure_cont,
+	code_info__get_instmap(InstMap),
 	code_info__grab_code_info(CodeInfo),
 	code_info__maybe_pop_stack(ReclaimHeap, HPPopCode),
-	code_info__pop_failure_cont,
 	code_gen__generate_forced_semi_goal(ThenGoal, ThenGoalCode),
 	code_info__slap_code_info(CodeInfo),
-	code_info__restore_failure_cont(RestoreContCode),
+	code_info__remake_with_call_info,
 		% restore the instmap
 	code_info__set_instmap(InstMap),
 	code_info__maybe_restore_hp(ReclaimHeap, HPRestoreCode),
 	code_gen__generate_forced_semi_goal(ElseGoal, ElseGoalCode),
-	code_info__get_next_label(EndLab),
+	code_info__get_next_label(EndLab, no),
 	{ TestCode = tree(
-		tree(ModContCode, HPSaveCode),
+		tree(HPSaveCode, SaveCode),
 		CondCode
 	) },
 	{ ThenCode = tree(
@@ -152,8 +130,11 @@ ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	) },
 	{ ElseCode = tree(
 		tree(
-			tree(RestoreContCode, HPRestoreCode),
-			ElseGoalCode
+			node([label(ElseLab) - "else case"]),
+			tree(
+				HPRestoreCode,
+				ElseGoalCode
+			)
 		),
 		node([label(EndLab) - "end of if-then-else"])
 	) },
@@ -174,80 +155,49 @@ ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	;
 		ReclaimHeap = no
 	},
-	{ CondGoal = _ - GoalInfo },
-	{ goal_info_get_code_model(GoalInfo, CodeModel) },
-	(
-		{ CodeModel = model_non }
-	->
-		{ NondetCond = yes }
-	;
-		{ NondetCond = no }
-	),
-	{ CondGoal = _Goal - CondGoalInfo },
-	{ goal_info_cont_lives(CondGoalInfo, MaybeLives) },
-	{
-		MaybeLives = yes(Vars0)
-	->
-		Vars = Vars0
-	;
-		error("ite_gen__generate_det_ite: no cont_lives!")
-	},
-	code_info__make_known_failure_cont(Vars, NondetCond, ModContCode),
-	(
-		{ NondetCond = yes }
-	->
-			% prevent the condition from hijacking the redoip slot
-			% We could improve the efficiency of this
-		code_info__unset_failure_cont,
-		code_info__save_maxfr(MaxfrLval0, SaveMaxfrCode),
-		{ MaybeMaxfrLval = yes(MaxfrLval0) }
-	;
-		{ MaybeMaxfrLval = no },
-		{ SaveMaxfrCode = empty }
-	),
 	code_info__maybe_save_hp(ReclaimHeap, HPSaveCode),
-	(
-		{ NondetCond = yes }
-	->
-		% we need to save variables on the stack here since the
-		% condition might do a redo() without saving them
-		{ set__to_sorted_list(Vars, VarList) },
-		code_gen__ensure_vars_are_saved(VarList, EnsureCode)
+	code_info__get_next_label(ElseLab, no),
+	code_info__push_failure_cont(known(ElseLab)),
+	code_info__generate_nondet_saves(SaveCode),
+	{ CondGoal = _ - GoalInfo },
+	{ goal_info_get_code_model(GoalInfo, CondModel) },
+	{ CondModel = model_non ->
+		ModRedoipCode = node([
+			modframe(label(ElseLab)) - "Set failure continuation"
+		])
 	;
-		{ EnsureCode = empty }
+		ModRedoipCode = empty
+	},
+	code_gen__generate_non_goal(CondGoal, CondCode),
+	code_info__pop_failure_cont,
+	( { CondModel = model_non } ->
+		% XXX bug
+		code_info__restore_failure_cont(RestoreRedoipCode)
+	;
+		{ RestoreRedoipCode = empty }
 	),
 	code_info__get_instmap(InstMap),
-	code_gen__generate_non_goal(CondGoal, CondCode0),
-	{ CondCode = tree(EnsureCode, CondCode0) },
 	code_info__grab_code_info(CodeInfo),
 	code_info__maybe_pop_stack(ReclaimHeap, HPPopCode),
-	code_info__pop_failure_cont,
-	(
-		{ MaybeMaxfrLval = yes(MaxfrLval) }
-	->
-		code_info__do_soft_cut(MaxfrLval, HackStackCode)
-	;
-		{ HackStackCode = empty }
-	),
 	code_gen__generate_forced_non_goal(ThenGoal, ThenGoalCode),
 	code_info__slap_code_info(CodeInfo),
-	code_info__restore_failure_cont(RestoreContCode),
+	code_info__remake_with_call_info,
 		% restore the instmap
 	code_info__set_instmap(InstMap),
 	code_info__maybe_restore_hp(ReclaimHeap, HPRestoreCode),
 	code_gen__generate_forced_non_goal(ElseGoal, ElseGoalCode),
-	code_info__get_next_label(EndLab),
+	code_info__get_next_label(EndLab, no),
 	{ TestCode = tree(
 		tree(
-			tree(ModContCode, SaveMaxfrCode),
-			HPSaveCode
+			tree(HPSaveCode, SaveCode),
+			ModRedoipCode
 		),
 		CondCode
 	) },
 	{ ThenCode = tree(
 		tree(
 			tree(
-				HackStackCode,
+				RestoreRedoipCode,
 				HPPopCode
 			),
 			ThenGoalCode
@@ -257,11 +207,14 @@ ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	) },
 	{ ElseCode = tree(
 		tree(
+			node([label(ElseLab) - "else case"]),
 			tree(
-				RestoreContCode,
-				HPRestoreCode
-			),
-			ElseGoalCode
+				tree(
+					RestoreRedoipCode,
+					HPRestoreCode
+				),
+				ElseGoalCode
+			)
 		),
 		node([label(EndLab) - "end of if-then-else"])
 	) },

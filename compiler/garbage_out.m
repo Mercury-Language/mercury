@@ -18,6 +18,8 @@
 % altogether. We also use io__write_anything, which is a bit dodgy,
 % and is a real hack.
 %
+% XXX Would it be easier to use spaces rather than commas to delimit
+%     items?
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -84,8 +86,9 @@ garbage_out__do_garbage_out(ShapeInfo, c_file(Name, Modules)) -->
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+
 %-----------------------------------------------------------------------------%
-% Create the list of continuations.
+% Want to output only the livevals for call, attach the continuation to them.
 %-----------------------------------------------------------------------------%
 :- pred garbage_out__create_cont_list(list(c_module), cont_list).
 :- mode garbage_out__create_cont_list(in, out) is det.
@@ -98,21 +101,20 @@ garbage_out__create_cont_list([M |Ms], C_List) :-
 	list__append(C, Cs, C_List).
 
 %-----------------------------------------------------------------------------%
-% Create the list of continuations.
+% Want to output only the livevals for call, attach the continuation to them.
 %-----------------------------------------------------------------------------%
 :- pred garbage_out__create_cont_list_2(list(c_procedure), cont_list).
 :- mode garbage_out__create_cont_list_2(in, out) is det.
 
 garbage_out__create_cont_list_2([], []).
-garbage_out__create_cont_list_2([P |Ps], CList) :-
+garbage_out__create_cont_list_2([P |Ps], C_List) :-
+	garbage_out__create_cont_list_2(Ps, Cs),
 	P = c_procedure(_Name, _Arity, _ModeNum0, Instructions),
 	garbage_out__proc_instr_list(Instructions, [], C),
-	list__reverse(C, ReverseC),
-	garbage_out__create_cont_list_2(Ps, Cs),
-	list__append(ReverseC, Cs, CList).
+	list__append(C, Cs, C_List).
 
 %-----------------------------------------------------------------------------%
-% Process the instruction list.
+% Want to output only the livevals for call, attach the continuation to them.
 %-----------------------------------------------------------------------------%
 :- pred garbage_out__proc_instr_list(list(instruction), cont_list,  cont_list).
 :- mode garbage_out__proc_instr_list(in, in, out) is det.
@@ -201,16 +203,14 @@ garbage_out__get_det([L | Ls], Det) :-
 				io__state, io__state).
 :- mode garbage_out__output(in, in, in, di, uo) is det.
 
-garbage_out__output(List, Shapes, Abs_Exports) --> 
+garbage_out__output(List, Shapes, _Abs_Exports) --> 
 	io__write_string("garbage_out(\n[\n"),
 	garbage_out__write_cont_list(List),
 	io__write_string("],\n"),
 	io__write_string("[\n"),
 	garbage_out__write_shape_table(Shapes),
-	io__write_string("],\n"),
-	{ map__to_assoc_list(Abs_Exports, Abs_Exports_List) },
-	garbage_out__write_abs_exports(Abs_Exports_List),
-	io__write_string(").\n").
+	io__write_string("],\n").
+
 
 %-----------------------------------------------------------------------------%
 % Write the continuation list.
@@ -226,13 +226,13 @@ garbage_out__write_cont_list([G|Gs]) -->
 	( 
 		{ Det = nondeterministic }   % We treat semi = det
         ->
-		io__write_string(", nondeterministic")
+		io__write_string(",nondeterministic")
 	;
-		io__write_string(", deterministic")
+		io__write_string(",deterministic")
 	),
-	io__write_string(", "),
+	io__write_string(","),
 	io__write_int(Num_Slots),
-	io__write_string(", ["),
+	io__write_string(",["),
 	garbage_out__write_liveinfo_list(Live_Info_List),
 	io__write_string("])"),
 	garbage_out__maybe_write_comma_newline(Gs),
@@ -254,14 +254,6 @@ garbage_out__maybe_write_comma_newline([_ | _]) --> io__write_string(",\n").
 :- mode garbage_out__maybe_write_comma(in, di, uo) is det.
 garbage_out__maybe_write_comma([]) --> { true }.
 garbage_out__maybe_write_comma([_ | _]) --> io__write_string(",").
-
-%-----------------------------------------------------------------------------%
-% Perhaps write a comma and a space 
-%-----------------------------------------------------------------------------%
-:- pred garbage_out__maybe_write_comma_space(list(T), io__state, io__state).
-:- mode garbage_out__maybe_write_comma_space(in, di, uo) is det.
-garbage_out__maybe_write_comma_space([]) --> { true }.
-garbage_out__maybe_write_comma_space([_ | _]) --> io__write_string(", ").
 
 %-----------------------------------------------------------------------------%
 % Write a continuation label (don't write anything that isn't a label).
@@ -288,9 +280,9 @@ garbage_out__write_code_addr(L) -->
 garbage_out__write_liveinfo_list([]) --> { true }.
 garbage_out__write_liveinfo_list([live_lvalue(L, S)| Ls]) --> 
 	garbage_out__write_liveval(L),
-	io__write_string(" - "),
-	shapes__write_shape_num(S),
-	garbage_out__maybe_write_comma_space(Ls),
+	io__write_string("-"),
+	io__write_int(S),
+	garbage_out__maybe_write_comma(Ls),
 	garbage_out__write_liveinfo_list(Ls).
 
 %-----------------------------------------------------------------------------%
@@ -301,7 +293,7 @@ garbage_out__write_liveinfo_list([live_lvalue(L, S)| Ls]) -->
 garbage_out__write_liveval(hp) --> io__write_string("hp").
 garbage_out__write_liveval(sp) --> io__write_string("sp").
 garbage_out__write_liveval(succip) --> io__write_string("succip").
-	% XXX possibly the next three lines are wrong - they should not
+	% XXX the next three lines are wrong - they should not
 	% ignore the argument of redoip/succfr/prevfr
 garbage_out__write_liveval(redoip(_)) --> io__write_string("redoip").
 garbage_out__write_liveval(succfr(_)) --> io__write_string("succfr").
@@ -363,8 +355,8 @@ garbage_out__write_shape_table(ShapeTable - _NextNum) -->
 
 garbage_out__write_shapes([]) --> { true }.
 garbage_out__write_shapes([ShapeNum - Shape | Shapes]) --> 
-	shapes__write_shape_num(ShapeNum),
-	io__write_string(" - "),
+	io__write_int(ShapeNum),
+	io__write_string("-"),
 	garbage_out__write_shape(Shape),
 	garbage_out__maybe_write_comma_newline(Shapes),
 	garbage_out__write_shapes(Shapes).
@@ -385,17 +377,17 @@ garbage_out__write_shapes([ShapeNum - Shape | Shapes]) -->
 garbage_out__write_shape(quad(S1, S2, S3, S4)) -->
 	io__write_string("quad("),
 	garbage_out__write_shape_tag(S1),
-	io__write_string(", "),
+	io__write_string(","),
 	garbage_out__write_shape_tag(S2),
-	io__write_string(", "),
+	io__write_string(","),
 	garbage_out__write_shape_tag(S3),
-	io__write_string(", "),
+	io__write_string(","),
 	garbage_out__write_shape_tag(S4),
 	io__write_string(")").
 garbage_out__write_shape(abstract(Type, Shape_List)) -->
 	io__write_string("abstract("),
 	garbage_out__write_type(Type),
-	io__write_string(", ["),
+	io__write_string(",["),
 	garbage_out__write_int_list(Shape_List),
 	io__write_string("])").
 garbage_out__write_shape(polymorphic(_Type)) -->
@@ -406,7 +398,7 @@ garbage_out__write_shape(closure(Type)) -->
 	io__write_string(")").
 garbage_out__write_shape(equivalent(ShapeNum)) -->
 	io__write_string("equivalent("),
-	shapes__write_shape_num(ShapeNum),
+	io__write_int(ShapeNum),
 	io__write_string(")").
 
 
@@ -443,7 +435,7 @@ garbage_out__write_shape_tag(complicated(Shape_List_List)) -->
 garbage_out__write_complicated([]) --> { true }.
 garbage_out__write_complicated([Simple | Complicateds]) -->
 	garbage_out__write_shape_tag(simple(Simple)),
-	garbage_out__maybe_write_comma_space(Complicateds),
+	garbage_out__maybe_write_comma(Complicateds),
 	garbage_out__write_complicated(Complicateds).
 
 
@@ -477,66 +469,22 @@ garbage_out__write_type(Type) -->
 :- mode garbage_out__write_shape_list(in, di, uo) is det.
 garbage_out__write_shape_list([]) --> {true}.
 garbage_out__write_shape_list([ShapeNum - _ShapeId | Shape_List]) -->
-	shapes__write_shape_num(ShapeNum),
-	garbage_out__maybe_write_comma_space(Shape_List),
+	io__write_int(ShapeNum),
+	garbage_out__maybe_write_comma(Shape_List),
 	garbage_out__write_shape_list(Shape_List).
 
 %-----------------------------------------------------------------------------%
-% Write a list of integers. 
+% 
 %-----------------------------------------------------------------------------%
 :- pred garbage_out__write_int_list(list(shape_num), io__state, io__state).
 :- mode garbage_out__write_int_list(in, di, uo) is det.
 garbage_out__write_int_list([]) --> {true}.
 garbage_out__write_int_list([ShapeNum | Shape_List]) -->
-	shapes__write_shape_num(ShapeNum),
-	garbage_out__maybe_write_comma_space(Shape_List),
+	io__write_int(ShapeNum),
+	garbage_out__maybe_write_comma(Shape_List),
 	garbage_out__write_int_list(Shape_List).
 
 
 
-%-----------------------------------------------------------------------------%
-% Write out the abstract export table (all the shapes that are exported from
-% this module that could be abstracts in another module).
-%-----------------------------------------------------------------------------%
-:- pred garbage_out__write_abs_exports(list(pair(type_id, maybe_shape_num)),
-		io__state, io__state).
-:- mode garbage_out__write_abs_exports(in, di, uo) is det.
-garbage_out__write_abs_exports(AE_List) -->
-	io__write_string("["),
-	garbage_out__write_abs_list(AE_List),
-	io__write_string("]").
 
-%-----------------------------------------------------------------------------%
-% Output each item in the abstract exports list.
-%-----------------------------------------------------------------------------%
-:- pred garbage_out__write_abs_list(list(pair(type_id, maybe_shape_num)),
-		io__state, io__state).
-:- mode garbage_out__write_abs_list(in, di, uo) is det.
-garbage_out__write_abs_list([]) --> [].
-garbage_out__write_abs_list([T_Id - M_SN | As]) -->
-	garbage_out__write_type_id(T_Id),
-	(
-		{ M_SN = no(Type) },
-		io__write_string(" - no("),
-		garbage_out__write_type(Type)
-	;
-		{ M_SN = yes(S_Num) },
-		io__write_string(" - yes("),
-		shapes__write_shape_num(S_Num)
-	),
-	io__write_string(")"),
-	garbage_out__maybe_write_comma_newline(As),
-	garbage_out__write_abs_list(As).
 
-%-----------------------------------------------------------------------------%
-% Write a type id out.
-%-----------------------------------------------------------------------------%
-:- pred garbage_out__write_type_id(type_id, io__state, io__state).
-:- mode garbage_out__write_type_id(in, di, uo) is det.
-garbage_out__write_type_id(unqualified(TypeName) - Arity) -->
-	io__write_strings(["unqualified(", TypeName, ")", " - "]),
-	io__write_int(Arity).
-garbage_out__write_type_id(qualified(Module,TypeName) - Arity) -->
-	io__write_strings(["qualified(", Module, ", ", TypeName, ") - "]),
-	io__write_int(Arity).
-	

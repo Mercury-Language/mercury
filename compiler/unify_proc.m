@@ -272,10 +272,10 @@ unify_proc__generate_unify_clauses(TypeBody, H1, H2, Clauses) -->
 	( { TypeBody = du_type(Ctors, _, IsEnum), IsEnum = no } ->
 		unify_proc__generate_du_unify_clauses(Ctors, H1, H2, Clauses)
 	;
-		{ term__context_init(Context) },
-		{ create_atomic_unification(H1, var(H2), Context, explicit, [],
-			Goal) },
+		{ create_atomic_unification(term__variable(H1),
+			term__variable(H2), explicit, [], Goal) },
 		{ implicitly_quantify_clause_body([H1, H2], Goal, Body) },
+		{ term__context_init(Context) },
 		{ Clauses = [clause([], Body, Context)] }
 	).
 
@@ -356,11 +356,15 @@ unify_proc__generate_du_unify_clauses([Ctor | Ctors], H1, H2,
 	{ term__context_init(Context) },
 	unify_proc__make_fresh_vars(ArgTypes, Vars1),
 	unify_proc__make_fresh_vars(ArgTypes, Vars2),
+	{ term__var_list_to_term_list(Vars1, VarTerms1) },
+	{ term__var_list_to_term_list(Vars2, VarTerms2) },
 	{ create_atomic_unification(
-		H1, functor(Functor, Vars1), Context, explicit, [], 
+		term__variable(H1), term__functor(Functor, VarTerms1, Context), 
+		explicit, [], 
 		UnifyH1_Goal) },
 	{ create_atomic_unification(
-		H2, functor(Functor, Vars2), Context, explicit, [], 
+		term__variable(H2), term__functor(Functor, VarTerms2, Context),
+		explicit, [], 
 		UnifyH2_Goal) },
 	{ unify_proc__unify_var_lists(Vars1, Vars2, UnifyArgs_Goal) },
 	{ GoalList = [UnifyH1_Goal, UnifyH2_Goal | UnifyArgs_Goal] },
@@ -405,11 +409,14 @@ unify_proc__generate_du_index_clauses([Ctor | Ctors], X, Index, N,
 	{ Functor = term__atom(UnqualifiedFunctorName) },
 	{ term__context_init(Context) },
 	unify_proc__make_fresh_vars(ArgTypes, ArgVars),
+	{ term__var_list_to_term_list(ArgVars, ArgVarTerms) },
 	{ create_atomic_unification(
-		X, functor(Functor, ArgVars), Context, explicit, [], 
+		term__variable(X), term__functor(Functor, ArgVarTerms,
+			Context), explicit, [], 
 		UnifyX_Goal) },
 	{ create_atomic_unification(
-		Index, functor(term__integer(N), []), Context, explicit, [], 
+		term__variable(Index), term__functor(term__integer(N), [],
+			Context), explicit, [], 
 		UnifyIndex_Goal) },
 	{ GoalList = [UnifyX_Goal, UnifyIndex_Goal] },
 	{ goal_info_init(GoalInfo) },
@@ -502,14 +509,17 @@ unify_proc__generate_du_compare_clauses_2(Ctors, Res, X, Y, Goal) -->
 	unify_proc__build_call(">", [X_Index, Y_Index], Call_Greater_Than),
 
 	{ create_atomic_unification(
-		Res, functor(term__atom("<"), []), Context, explicit, [], 
+		term__variable(Res), term__functor(term__atom("<"), [],
+				Context), explicit, [], 
 		Return_Less_Than) },
 
 	{ create_atomic_unification(
-		Res, functor(term__atom(">"), []), Context, explicit, [], 
+		term__variable(Res), term__functor(term__atom(">"), [],
+				Context), explicit, [], 
 		Return_Greater_Than) },
 
-	{ create_atomic_unification(Res, var(R), Context, explicit, [],
+	{ create_atomic_unification(
+		term__variable(Res), term__variable(R), explicit, [], 
 		Return_R) },
 
 	unify_proc__generate_compare_cases(Ctors, R, X, Y, Cases),
@@ -574,11 +584,15 @@ unify_proc__generate_compare_case(Ctor, R, X, Y, Case) -->
 	{ term__context_init(Context) },
 	unify_proc__make_fresh_vars(ArgTypes, Vars1),
 	unify_proc__make_fresh_vars(ArgTypes, Vars2),
+	{ term__var_list_to_term_list(Vars1, VarTerms1) },
+	{ term__var_list_to_term_list(Vars2, VarTerms2) },
 	{ create_atomic_unification(
-		X, functor(Functor, Vars1), Context, explicit, [], 
+		term__variable(X), term__functor(Functor, VarTerms1, Context), 
+		explicit, [], 
 		UnifyX_Goal) },
 	{ create_atomic_unification(
-		Y, functor(Functor, Vars2), Context, explicit, [], 
+		term__variable(Y), term__functor(Functor, VarTerms2, Context),
+		explicit, [], 
 		UnifyY_Goal) },
 	unify_proc__compare_args(Vars1, Vars2, R, CompareArgs_Goal),
 	{ GoalList = [UnifyX_Goal, UnifyY_Goal, CompareArgs_Goal] },
@@ -618,7 +632,8 @@ unify_proc__generate_compare_case(Ctor, R, X, Y, Case) -->
 unify_proc__compare_args([], [], R, Return_Equal) -->
 	{ term__context_init(Context) },
 	{ create_atomic_unification(
-		R, functor(term__atom("="), []), Context, explicit, [], 
+		term__variable(R), term__functor(term__atom("="), [],
+				Context), explicit, [], 
 		Return_Equal) }.
 unify_proc__compare_args([X|Xs], [Y|Ys], R, Goal) -->
 	{ goal_info_init(GoalInfo) },
@@ -633,12 +648,14 @@ unify_proc__compare_args([X|Xs], [Y|Ys], R, Goal) -->
 		unify_proc__build_call("compare", [R1, X, Y], Do_Comparison),
 
 		{ create_atomic_unification(
-			R1, functor(term__atom("="), []), Context, explicit, [],
+			term__variable(R1), term__functor(term__atom("="), [],
+					Context), explicit, [], 
 			Check_Equal) },
 		{ Check_Not_Equal = not(Check_Equal) - GoalInfo },
 
 		{ create_atomic_unification(
-			R, var(R1), Context, explicit, [], Return_R1) },
+			term__variable(R), term__variable(R1), explicit, [], 
+			Return_R1) },
 		{ Condition = conj([Do_Comparison, Check_Not_Equal])
 					- GoalInfo },
 		{ Goal = if_then_else([], Condition, Return_R1, ElseCase)
@@ -694,8 +711,9 @@ unify_proc__unify_var_lists([_|_], [], _) :-
 	error("unify_proc__unify_var_lists: length mismatch").
 unify_proc__unify_var_lists([], [], []).
 unify_proc__unify_var_lists([Var1 | Vars1], [Var2 | Vars2], [Goal | Goals]) :-
-	term__context_init(Context),
-	create_atomic_unification(Var1, var(Var2), Context, explicit, [],
+	create_atomic_unification(
+		term__variable(Var1), term__variable(Var2),
+		explicit, [], 
 		Goal),
 	unify_proc__unify_var_lists(Vars1, Vars2, Goals).
 

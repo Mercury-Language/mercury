@@ -13,7 +13,7 @@
 %-----------------------------------------------------------------------------%
 :- module mode_info.
 :- interface.
-:- import_module hlds, map, list, varset, set.
+:- import_module hlds, map, list, varset, set, mode_util.
 
 :- interface.
 
@@ -110,6 +110,9 @@
 
 :- pred mode_info_set_instmap(instmap, mode_info, mode_info).
 :- mode mode_info_set_instmap(in, mode_info_di, mode_info_uo) is det.
+
+:- pred mode_info_apply_instmap_delta(instmap_delta, mode_info, mode_info).
+:- mode mode_info_apply_instmap_delta(in, mode_info_di, mode_info_uo) is det.
 
 :- pred mode_info_get_locked_vars(mode_info, list(set(var))).
 :- mode mode_info_get_locked_vars(mode_info_ui, out) is det.
@@ -382,6 +385,13 @@ mode_info_get_vars_instmap(ModeInfo, _Vars, InstMap) :-
 
 mode_info_set_instmap( InstMap, mode_info(A,B,C,D,E,F,G,H,_,J,K,L,M),
 			mode_info(A,B,C,D,E,F,G,H,InstMap,J,K,L,M)).
+
+%-----------------------------------------------------------------------------%
+
+mode_info_apply_instmap_delta(InstMapDelta, ModeInfo0, ModeInfo) :-
+	mode_info_get_instmap(ModeInfo0, InstMap0),
+	apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+	mode_info_set_instmap(InstMap, ModeInfo0, ModeInfo).
 
 %-----------------------------------------------------------------------------%
 

@@ -67,7 +67,7 @@
 		;	vndebug
 	% Output options
 		;	make_interface
-		;	make_call_graph
+		;	show_dependency_graph
 		;	convert_to_mercury
 		;	convert_to_goedel
 		;	modecheck
@@ -100,7 +100,6 @@
 		;	optimize
 		;	optimize_peep
 		;	optimize_jumps
-		;	optimize_fulljumps
 		;	optimize_labels
 		;	optimize_dups
 		;	optimize_value_number
@@ -122,6 +121,7 @@
 		;	debug
 		;	grade
 		;	procs_per_c_function
+		;	constraint_propagation
 	% Miscellaneous Options
 		;	builtin_module
 		;	heap_space
@@ -175,7 +175,7 @@ option_defaults_2(output_option, [
 		% Output Options
 	generate_dependencies	-	bool(no),
 	make_interface		-	bool(no),
-	make_call_graph		-	bool(no),
+	show_dependency_graph	-	bool(no),
 	convert_to_mercury 	-	bool(no),
 	convert_to_goedel 	-	bool(no),
 	modecheck		-	bool(yes),
@@ -213,7 +213,6 @@ option_defaults_2(optimization_option, [
 	optimize		-	bool(yes),
 	optimize_peep		-	bool(yes),
 	optimize_jumps		-	bool(yes),
-	optimize_fulljumps	-	bool(yes),
 	optimize_labels		-	bool(yes),
 	optimize_dups		-	bool(no),
 	optimize_value_number	-	bool(no),
@@ -231,7 +230,8 @@ option_defaults_2(optimization_option, [
 	inlining		-	bool(yes),
 	common_struct		-	bool(no),
 	common_goal		-	bool(yes),
-	procs_per_c_function	-	int(5)
+	procs_per_c_function	-	int(5),
+	constraint_propagation	-	bool(no)
 ]).
 option_defaults_2(miscellaneous_option, [
 		% Miscellaneous Options
@@ -245,7 +245,7 @@ option_defaults_2(miscellaneous_option, [
 	% please keep this in alphabetic order
 short_option('b', 			builtin_module).
 short_option('c', 			compile).
-short_option('C', 			make_call_graph).
+short_option('C', 			show_dependency_graph).
 short_option('d', 			dump_hlds).
 short_option('D', 			verbose_dump_hlds).
 short_option('e', 			verbose_errors).
@@ -284,7 +284,7 @@ long_option("verbose-dump-hlds",	verbose_dump_hlds).
 long_option("generate-code",		generate_code).
 long_option("trad-passes",		trad_passes).
 long_option("builtin-module",		builtin_module).
-long_option("make-call-graph",		make_call_graph).
+long_option("show-dependency-graph",	show_dependency_graph).
 long_option("make-interface",		make_interface).
 long_option("heap-space",		heap_space).
 long_option("search-directory",		search_directories).
@@ -328,8 +328,6 @@ long_option("optimize-peep",		optimize_peep).
 long_option("optimise-peep",		optimize_peep).
 long_option("optimize-jumps",		optimize_jumps).
 long_option("optimise-jumps",		optimize_jumps).
-long_option("optimize-fulljumps",	optimize_fulljumps).
-long_option("optimise-fulljumps",	optimize_fulljumps).
 long_option("optimize-labels",		optimize_labels).
 long_option("optimise-labels",		optimize_labels).
 long_option("optimize-dups",		optimize_dups).
@@ -355,6 +353,7 @@ long_option("common-struct",		common_struct).
 long_option("common-goal",		common_goal).
 long_option("procs-per-c-function",	procs_per_c_function).
 long_option("procs-per-C-function",	procs_per_c_function).
+long_option("constraint-propagation",	constraint_propagation).
 
 options_help -->
 	io__write_string("\t-h, --help\n"),
@@ -397,8 +396,8 @@ options_help -->
 	io__write_string("\t\tWrite the module interface to `<module>.int'.\n"),
 	io__write_string("\t\tAlso write the short interface to `<module>.int2'\n"),
 	io__write_string("\t\tAs with -M, this disables type-checking, etc.\n"),
-	io__write_string("\t-C --make-call-graph\n"),
-	io__write_string("\t\tWrite out the call graph to <module>.call_graph.\n"),
+	io__write_string("\t-C --show-dependency-graph\n"),
+	io__write_string("\t\tWrite out the dependency graph to <module>.dependency_graph.\n"),
 	io__write_string("\t-G, --convert-to-goedel\n"),
 	io__write_string("\t\tConvert to Goedel. Output to file `<module>.loc'\n"),
 	io__write_string("\t\tAs with -M, this disables type-checking, etc.\n"),
@@ -487,8 +486,6 @@ options_help -->
 	io__write_string("\t\tDisable local peephole optimisations.\n"),
 	io__write_string("\t--no-optimize-jumps\n"),
 	io__write_string("\t\tDisable elimination of jumps to jumps.\n"),
-	io__write_string("\t--no-optimize-fulljumps\n"),
-	io__write_string("\t\tDisable elimination of jumps to ordinary code.\n"),
 	io__write_string("\t--no-optimize-labels\n"),
 	io__write_string("\t\tDisable elimination of dead labels and code\n"),
 	io__write_string("\t--no-optimize-dups\n"),
@@ -528,8 +525,8 @@ options_help -->
 	io__write_string("\t\tDisable the inlining of simple procedures.\n"),
 	io__write_string("\t--common-struct\n"),
 	io__write_string("\t\tEnable optimisation of common term structures.\n"),
-	io__write_string("\t--no-common-goal\n"),
-	io__write_string("\t\tDisable optimisation of common goals.\n"),
+	io__write_string("\t--common-goal\n"),
+	io__write_string("\t\tEnable optimisation of common goal.\n"),
 	io__write_string("\t--procs-per-c-function <n>\n"),
 	io__write_string("\t\tDon't put the code for more than <n> Mercury\n"),
 	io__write_string("\t\tprocedures in a single C function.  The default\n"),
@@ -538,7 +535,9 @@ options_help -->
 	io__write_string("\t\tSetting <n> to the special value zero has the effect of\n"),
 	io__write_string("\t\tputting all the procedures in a single function,\n"),
 	io__write_string("\t\twhich produces the most efficient code but tends to\n"),
-	io__write_string("\t\tseverely stress the C compiler on large modules.\n"),
+	io__write_string("\t\tseverely stress the C compiler.\n"),
+	io__write_string("\t--constraint-propagation\n"),
+	io__write_string("\t\tPerform the C-transformation on each module.\n"),
 	io__write_string("\t--no-c-optimize\n"),
 	io__write_string("\t\tDon't enable the C compiler's optimizations.\n"),
 
