@@ -1,6 +1,6 @@
 #-----------------------------------------------------------------------------#
 
-# Makefile.common - this is the part of the Makefile
+# Mmake.common - this is the part of the makefiles
 # for building the Mercury implementation that is shared
 # between all the subdirectories.
 
@@ -11,12 +11,31 @@
 INSTALL_PREFIX		= /usr/local/contrib
 INSTALL_BINDIR 		= $(INSTALL_PREFIX)/bin
 INSTALL_LIBDIR 		= $(INSTALL_PREFIX)/lib/mercury
+INSTALL_INFO_DIR 	= $(INSTALL_PREFIX)/info
+INSTALL_DVI_DIR 	= $(INSTALL_PREFIX)/lib/mercury/doc
+INSTALL_HTML_DIR 	= $(INSTALL_PREFIX)/lib/mercury/html
+
+# Specify the compilation model to use for compiling the compiler
+GRADE			= asm_fast.gc
+
+# Specify the compilation models to install the library for
+LIBGRADES  		= asm_fast.gc asm_fast debug.gc debug fast
+
+# Specify the names of various programs
+RANLIB			= :
+SP			= sp
+
+# You should not need to modify anything below here
+
+#-----------------------------------------------------------------------------#
+
 INSTALL_MODULE_DIR	= $(INSTALL_LIBDIR)/modules
 INSTALL_INT_DIR		= $(INSTALL_LIBDIR)/ints
-INSTALL_INC_DIR		= $(INSTALL_LIBDIR)/incs
+INSTALL_INC_DIR		= $(INSTALL_LIBDIR)/inc
 INSTALL_MMAKE_DIR 	= $(INSTALL_LIBDIR)/mmake
 FULLARCH		= `fullarch`
 INSTALL_MERC_BIN_DIR	= $(INSTALL_LIBDIR)/bin/$(FULLARCH)
+INSTALL_MERC_GC_LIB_DIR	= $(INSTALL_LIBDIR)/lib/$(FULLARCH)
 INSTALL_MERC_LIB_DIR	= $(INSTALL_LIBDIR)/lib/$(GRADE)/$(FULLARCH)
 INSTALL_NU_ARCH_DIR 	= $(INSTALL_LIBDIR)/nuprolog/$(FULLARCH)
 INSTALL_NU_DIR		= $(INSTALL_LIBDIR)/nuprolog
@@ -24,18 +43,10 @@ INSTALL_NU_ARCH_DIR 	= $(INSTALL_LIBDIR)/nuprolog/$(FULLARCH)
 INSTALL_SP_DIR		= $(INSTALL_LIBDIR)/sicstus
 INSTALL_SP_ARCH_DIR 	= $(INSTALL_LIBDIR)/sicstus/$(FULLARCH)
 
-# Specify the compilation model to use for compiling the compiler
-GRADE	=	asm_fast.gc
-
-# Specify the compilation models for which we want to install the library
-GRADES  =	asm_fast.gc asm_fast debug.gc debug fast
-
-RANLIB			= :
-
-# Specify the location of the scripts which get installed
-
-SCRIPTS_DIR = ../scripts
-RUNTIME_DIR = ../runtime
+SCRIPTS_DIR = $(MERCURY_DIR)/scripts
+RUNTIME_DIR = $(MERCURY_DIR)/runtime
+LIBRARY_DIR = $(MERCURY_DIR)/library
+BOEHM_GC_DIR = $(MERCURY_DIR)/boehm_gc
 
 # Specify the location of the system .mod files 
 
@@ -45,28 +56,10 @@ SYS_MODS = \
 	$(RUNTIME_DIR)/wrapper.mod \
 	$(RUNTIME_DIR)/call.mod
 
-SCRIPTS = \
-	$(SCRIPTS_DIR)/mc.sh \
-	$(SCRIPTS_DIR)/mcn.sh \
-	$(SCRIPTS_DIR)/mcs.sh \
-	$(SCRIPTS_DIR)/mod2init.sh \
-	$(SCRIPTS_DIR)/mgnuc.sh \
-	$(SCRIPTS_DIR)/ml.sh \
-	$(SCRIPTS_DIR)/mercury_update_interface.sh \
-	$(SCRIPTS_DIR)/mint.sh \
-	$(SCRIPTS_DIR)/mnc.sh \
-	$(SCRIPTS_DIR)/mnl.sh \
-	$(SCRIPTS_DIR)/mnp.sh
-
-EXTRA_SCRIPTS = \
-	$(SCRIPTS_DIR)/mtags \
-	$(SCRIPTS_DIR)/mod2c \
-	$(SCRIPTS_DIR)/vpath_find
-
 #-----------------------------------------------------------------------------#
 
 .PHONY:
 
--include Mmake.params
+-include $(MERCURY_DIR)/Mmake.params
 
 #-----------------------------------------------------------------------------#
