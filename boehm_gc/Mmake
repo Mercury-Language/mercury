@@ -16,10 +16,10 @@ libgc.a: submake
 
 libgc.so: submake
 
-	# We need to export MAKEFLAGS="" to avoid passing the `-r' (suppress
-	# builtin rules) supplied by Mmake to the boehm_gc Makefile, which
-	# needs the builtin rules. 
-	# We don't use `unset', since the Ultrix /bin/sh doesn't have `unset'.
+#	We need to export MAKEFLAGS="" to avoid passing the `-r' (suppress
+#	builtin rules) supplied by Mmake to the boehm_gc Makefile, which
+#	needs the builtin rules. 
+#	We don't use `unset', since the Ultrix /bin/sh doesn't have `unset'.
 submake: force
 	MAKEFLAGS=""; export MAKEFLAGS; \
 	$(MAKE) $(MMAKEFLAGS) libgc.a libgc.$(SO)
