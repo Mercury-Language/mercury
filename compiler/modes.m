@@ -327,7 +327,7 @@ modecheck_to_fixpoint(PredIds, DoModuleQual, MaxIterations,
 				[]
 			),
 			{ MaxIterations1 is MaxIterations - 1 },
-			modecheck_to_fixpoint(PredIds, no,
+			modecheck_to_fixpoint(PredIds, DoModuleQual,
 				MaxIterations1, ModuleInfo2, ModuleInfo)
 		)
 	).
