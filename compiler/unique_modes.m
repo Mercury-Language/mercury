@@ -35,9 +35,9 @@
 :- mode unique_modes__check_module(in, out, di, uo) is det.
 
 	% just check a single procedure
-:- pred unique_modes__check_proc(proc_info, module_info, proc_info,
-					io__state, io__state).
-:- mode unique_modes__check_proc(in, in, out, di, uo) is det.
+:- pred unique_modes__check_proc(proc_info, pred_id, proc_id, module_info,
+				proc_info, io__state, io__state).
+:- mode unique_modes__check_proc(in, in, in, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -81,7 +81,8 @@ unique_modes__check_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 	{ map__lookup(ProcTable0, ProcId, ProcInfo0) },
 
 	%%% XXX detect_liveness_proc(ProcInfo0, ModuleInfo0, ProcInfo),
-	unique_modes__check_proc(ProcInfo0, ModuleInfo0, ProcInfo),
+	unique_modes__check_proc(ProcInfo0, PredId, ProcId, ModuleInfo0,
+		ProcInfo),
 
 	{ map__set(ProcTable0, ProcId, ProcInfo, ProcTable) },
 	{ pred_info_set_procedures(PredInfo0, ProcTable, PredInfo) },
@@ -92,26 +93,68 @@ unique_modes__check_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 
 %-----------------------------------------------------------------------------%
 
-unique_modes__check_proc(ProcInfo0, ModuleInfo, ProcInfo) -->
+unique_modes__check_proc(ProcInfo0, PredId, ProcId, ModuleInfo, ProcInfo) -->
+	%
+	% first check the initial insts of all the predicate calls in the goal
+	%
 	{ proc_info_goal(ProcInfo0, Goal0) },
 	{ proc_info_get_initial_instmap(ProcInfo0, ModuleInfo, Instmap0) },
 	{ uniq_info_init(ModuleInfo, Instmap0, UniqModesInfo0) },
 	{ unique_modes__check_goal(Goal0, UniqModesInfo0,
-				Goal, UniqModesInfo) },
+				Goal, UniqModesInfo1) },
+	{ proc_info_set_goal(ProcInfo0, Goal, ProcInfo) },
+
+	%
+	% then check that the final insts of the head vars is OK
+	%
+	{ proc_info_headvars(ProcInfo0, Args) },
+	{ proc_info_argmodes(ProcInfo0, ArgModes) },
+	{ proc_info_context(ProcInfo0, Context) },
+	{ mode_list_get_final_insts(ArgModes, ModuleInfo, ArgInsts) },
+	{ unique_modes__check_args(Args, ArgInsts, PredId, ProcId, 1,
+		Context, no, UniqModesInfo1, UniqModesInfo) },
+
+	%
+	% finally if we encountered any errors then report them
+	%
 	{ uniq_info_get_errors(UniqModesInfo, Errors) },
 	( { Errors \= [] } ->
 		unique_modes__report_errors(Errors, ModuleInfo),
 		io__set_exit_status(1)
 	;
 		[]
-	),
-	{ proc_info_set_goal(ProcInfo0, Goal, ProcInfo) }.
+	).
 
 :- pred unique_modes__check_goal(hlds__goal, uniq_info,
 				   hlds__goal, uniq_info).
 :- mode unique_modes__check_goal(in, in, out, out) is det.
 
-unique_modes__check_goal(GoalExpr0 - GoalInfo0, UniqModesInfo0,
+	% XXX we currently make the conservative assumption that
+	% any non-local variable in a disjunction or nondet call
+	% is nondet-live - and stays nondet-live.
+
+unique_modes__check_goal(Goal0, UniqModesInfo0, Goal, UniqModesInfo) :-
+	Goal0 = GoalExpr0 - GoalInfo0,
+	goal_info_get_code_model(GoalInfo0, CodeModel),
+	(
+		CodeModel = model_non,
+		( GoalExpr0 = disj(_) ; GoalExpr0 = call(_,_,_,_,_,_,_) )
+	->
+		uniq_info_get_nondet_live_vars(UniqModesInfo0, Vars0),
+		goal_info_get_nonlocals(GoalInfo0, NonLocals),
+		set__union(Vars0, NonLocals, Vars),
+		uniq_info_set_nondet_live_vars(UniqModesInfo0, Vars,
+			UniqModesInfo1)
+	;
+		UniqModesInfo1 = UniqModesInfo0
+	),
+	unique_modes__check_goal_2(Goal0, UniqModesInfo1, Goal, UniqModesInfo).
+
+:- pred unique_modes__check_goal_2(hlds__goal, uniq_info,
+				   hlds__goal, uniq_info).
+:- mode unique_modes__check_goal_2(in, in, out, out) is det.
+
+unique_modes__check_goal_2(GoalExpr0 - GoalInfo0, UniqModesInfo0,
 		Goal, UniqModesInfo) :-
 	(
 		GoalExpr0 = disj(Goals0),
@@ -208,17 +251,17 @@ unique_modes__check_call(PredId, ProcId, Args, Context, CallContext,
 			maybe(call_unify_context), uniq_info, uniq_info).
 :- mode unique_modes__check_args(in, in, in, in, in, in, in, in, out) is det.
 
-unique_modes__check_args(Vars, InitialInsts, 
+unique_modes__check_args(Vars, Insts, 
 		PredId, ProcId, ArgNum, Context, CallContext,
 		UniqInfo0, UniqInfo) :-
-	( Vars = [], InitialInsts = [] ->
+	( Vars = [], Insts = [] ->
 		UniqInfo = UniqInfo0
-	; Vars = [Var|Vars1], InitialInsts = [InitialInst|InitialInsts1] ->
+	; Vars = [Var|Vars1], Insts = [Inst|Insts1] ->
 		uniq_info_get_nondet_live_vars(UniqInfo0, NondetLiveVars),
 		uniq_info_get_module_info(UniqInfo0, ModuleInfo),
 		(
 			set__member(Var, NondetLiveVars),
-			inst_is_unique(ModuleInfo, InitialInst)
+			inst_is_unique(ModuleInfo, Inst)
 		->
 			Error = uniq_error(PredId, ProcId, ArgNum,
 					Context, CallContext),
@@ -229,7 +272,7 @@ unique_modes__check_args(Vars, InitialInsts,
 			UniqInfo1 = UniqInfo0
 		),
 		ArgNum1 is ArgNum + 1,
-		unique_modes__check_args(Vars1, InitialInsts1,
+		unique_modes__check_args(Vars1, Insts1,
 			PredId, ProcId, ArgNum1, Context, CallContext,
 			UniqInfo1, UniqInfo)
 	;
@@ -371,7 +414,6 @@ unique_modes__report_error(uniq_error(PredId, ProcId, ArgNum, Context,
 
 unique_modes__report_call_context(PredId, ProcId, ArgNum, Context,
 		CallUnifyContext, ModuleInfo) -->
-	prog_out__write_context(Context),
 	(
 		{ CallUnifyContext = yes(call_unify_context(LT, RT, UC)) },
 		unique_modes__report_unify_context(Context, UC, ModuleInfo,
@@ -385,7 +427,7 @@ unique_modes__report_call_context(PredId, ProcId, ArgNum, Context,
 		prog_out__write_context(Context),
 		io__write_string("In argument "),
 		io__write_int(ArgNum),
-		io__write_string(" of call to `"),
+		io__write_string(" of `"),
 		unique_modes__report_pred_name_mode(PredName, ArgModes),
 		io__write_string("':\n")
 	).
