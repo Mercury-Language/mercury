@@ -69,7 +69,7 @@
 
 :- implementation.
 
-:- import_module bool, require, string, int.
+:- import_module array, bool, int, require, string.
 
 	% std_util has a lot of types and functions with the same names,
 	% so we prefer to keep the namespace separate.
@@ -813,9 +813,20 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
 		Arguments = []
 	;
 		TypeCtorRep = array,
-		Functor = "some_array", 
-		Arity = 0,
-		Arguments = []
+		det_dynamic_cast(Term, Array),
+		std_util__type_ctor_and_args(std_util__type_of(Term), _, Args),
+		( Args = [ElemType] ->
+			std_util__has_type(Elem, ElemType),
+			same_array_elem_type(Array, Elem)
+		;
+			error("An array which doesn't have type_ctor arg")
+		),
+		Functor = "<<array>>", 
+		Arity = array__size(Array),
+		Arguments = array__foldr(
+				(func(Elem, List) =
+					[std_util__univ(Elem) | List]),
+				Array, [])
 	;
 		TypeCtorRep = succip,
 		Functor = "<<succip>>", 
@@ -904,6 +915,9 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
 det_dynamic_cast(Term, Actual) :-
 	std_util__type_to_univ(Term, Univ),
 	std_util__det_univ_to_type(Univ, Actual).
+
+:- pred same_array_elem_type(array(T)::unused, T::unused) is det.
+same_array_elem_type(_, _).
 
 
 :- inst usereq == bound(enum_usereq; du_usereq; notag_usereq;
