@@ -26,7 +26,7 @@ SUBDIR_MMAKE =	PATH=../scripts:../util:$$PATH \
 # `mmake depend' forces them to be remade to ensure that they are up-to-date.
 
 .PHONY: dep
-dep: dep_library dep_compiler
+dep: dep_library dep_compiler dep_profiler
 
 .PHONY: dep_library
 dep_library: library/library.dep
@@ -40,12 +40,19 @@ dep_compiler: compiler/mercury_compile.dep
 compiler/mercury_compile.dep: library/library.dep
 	cd compiler && $(SUBDIR_MMAKE) depend
 
-# depend_library MUST be done before depend_compiler
+.PHONY: dep_profiler
+dep_profiler: profiler/mercury_profile.dep
+
+compiler/mercury_compile.dep: library/library.dep
+	cd compiler && $(SUBDIR_MMAKE) depend
+
+# depend_library MUST be done before depend_compiler and depend_profiler
 
 .PHONY: depend
 depend:
 	cd library && $(SUBDIR_MMAKE) depend
 	cd compiler && $(SUBDIR_MMAKE) depend
+	cd profiler && $(SUBDIR_MMAKE) depend
 
 .PHONY: depend_library
 depend_library:
