@@ -801,7 +801,7 @@ MR_trace_browse_one_goal(FILE *out, MR_GoalBrowser browser,
                 prev = MR_list_empty();
                 cur = arg_list;
                 while (!MR_list_is_empty(cur) &&
-                       headvar_num < vars[MR_list_head(cur)].MR_var_is_headvar)
+                       headvar_num > vars[MR_list_head(cur)].MR_var_is_headvar)
                 {
                     prev = cur;
                     cur = MR_list_tail(cur);

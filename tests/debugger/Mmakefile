@@ -44,6 +44,7 @@ NONRETRY_PROGS = \
 	nondet_stack			\
 	output_term_dep			\
 	polymorphic_output		\
+	print_goal			\
 	queens_rep			\
 	resume_typeinfos		\
 	shallow				\
@@ -258,6 +259,9 @@ multi_parameter.out: multi_parameter multi_parameter.inp
 output_term_dep.out: output_term_dep output_term_dep.inp
 	$(MDB) ./output_term_dep < output_term_dep.inp 2>&1 | \
 		sed 's/io.m:[0-9]*/io.m:NNNN/g' > output_term_dep.out 2>&1
+
+print_goal.out: print_goal print_goal.inp
+	$(MDB) ./print_goal < print_goal.inp > print_goal.out 2>&1
 
 queens.out: queens queens.inp
 	$(MDB) ./queens < queens.inp > queens.out 2>&1
