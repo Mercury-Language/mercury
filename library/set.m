@@ -27,13 +27,15 @@
 :- mode set__list_to_set(in, out) is det.
 
 	% `set__sorted_list_to_set(List, Set)' is true iff `Set' is the set 
-	% containing only the members of `List'.  `List' must be sorted.
+	% containing only the members of `List'.  `List' must be sorted
+	% and must not contain any duplicates.
 
 :- pred set__sorted_list_to_set(list(T), set(T)).
 :- mode set__sorted_list_to_set(in, out) is det.
 
 	% `set__to_sorted_list(Set, List)' is true iff `List' is the list
-	% of all the members of `Set', in sorted order.
+	% of all the members of `Set', in sorted order without any
+	% duplicates.
 
 :- pred set__to_sorted_list(set(T), list(T)).
 :- mode set__to_sorted_list(in, out) is det.
