@@ -564,7 +564,7 @@ export__produce_header_file(C_ExportDecls, ModuleName) -->
 		io__write_strings(["/*\n** Automatically generated from `", 
 			SourceFileName,
 			"' by the\n** Mercury compiler, version ", Version,
-			".  Do not edit.\n*/\n"]),
+			".\n** Do not edit.\n*/\n"]),
 		{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
 		{ string__to_upper(MangledModuleName, UppercaseModuleName) },
 		{ string__append(UppercaseModuleName, "_H", GuardMacroName) },
