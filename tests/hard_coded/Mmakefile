@@ -123,6 +123,7 @@ ORDINARY_PROGS=	\
 	shift_test \
 	solve_quadratic \
 	space \
+	split_c_files \
 	string_alignment \
 	string_alignment_bug \
 	string_loop \
@@ -229,8 +230,9 @@ PROGS = $(ORDINARY_PROGS) $(CLOSURE_LAYOUT_PROGS) $(EXCEPTION_PROGS) \
 # --split-c-files does not work in the hl* grades (e.g. hlc.gc),
 # because it hasn't yet been implemented yet.
 # The same is true for deep profiling grades.
+# The modules in SPLIT_PROGS should also be in ORDINARY_PROGS above.
 ifeq "$(findstring hl,$(GRADE))$(findstring profdeep,$(GRADE))" ""
-	SPLIT_PROGS = split_c_files
+	SPLIT_PROGS = mapped_module split_c_files
 else
 	SPLIT_PROGS =
 endif
@@ -317,8 +319,8 @@ no_fully_strict.out: no_fully_strict
 
 #-----------------------------------------------------------------------------#
 
-DEPS=	$(PROGS:%=%.dep) $(SPLIT_PROGS:%=%.dep)
-DEPENDS=$(PROGS:%=%.depend) $(SPLIT_PROGS:%=%.depend)
+DEPS=	$(PROGS:%=%.dep)
+DEPENDS=$(PROGS:%=%.depend)
 OUTS=	$(PROGS:%=%.out) $(SPLIT_PROGS:%=%.split.out)
 RESS=	$(PROGS:%=%.res) $(SPLIT_PROGS:%=%.split.res)
 
