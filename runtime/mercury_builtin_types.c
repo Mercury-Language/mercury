@@ -1114,7 +1114,8 @@ MR_BEGIN_CODE
 #define	module		private_builtin
 #define	type		ref
 #define	arity		1
-#define	unify_code	MR_r1 = (MR_r1 == MR_r2);
+/* The inputs are type_info in r1, first ref in r2, second ref in r3. */
+#define	unify_code	MR_r1 = (MR_r2 == MR_r3);
 #define	compare_code	MR_fatal_error("called compare/3 for `ref' type");
 
 #include "mercury_hand_unify_compare_body.h"
