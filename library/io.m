@@ -413,6 +413,29 @@
 %	For stdout this is the string "<standard output>".
 %	For stderr this is the string "<standard error>".
 
+:- pred io__get_output_line_number(int, io__state, io__state).
+:- mode io__get_output_line_number(out, di, uo) is det.
+%	Return the line number of the current output stream.
+%	Lines are normally numbered starting at 1
+%	(but this can be overridden by calling io__set_output_line_number).
+
+:- pred io__get_output_line_number(io__output_stream, int,
+				io__state, io__state).
+:- mode io__get_output_line_number(in, out, di, uo) is det.
+%	Return the line number of the specified output stream.
+%	Lines are normally numbered starting at 1
+%	(but this can be overridden by calling io__set_output_line_number).
+
+:- pred io__set_output_line_number(int, io__state, io__state).
+:- mode io__set_output_line_number(in, di, uo) is det.
+%	Set the line number of the current output stream.
+
+:- pred io__set_output_line_number(io__output_stream, int,
+				io__state, io__state).
+:- mode io__set_output_line_number(in, in, di, uo) is det.
+%	Set the line number of the specified output stream.
+
+
 %-----------------------------------------------------------------------------%
 
 % Binary input predicates.
@@ -1851,6 +1874,32 @@ void sys_init_io_run_module(void) {
 	
 :- pragma(c_code,
 	io__set_line_number(Stream::in, LineNum::in, IO0::di, IO::uo),
+"{
+	MercuryFile *stream = (MercuryFile *) Stream;
+	stream->line_number = LineNum;
+	update_io(IO0, IO);
+}").
+	
+:- pragma(c_code, io__get_output_line_number(LineNum::out, IO0::di, IO::uo), "
+	LineNum = mercury_current_text_output->line_number;
+	update_io(IO0, IO);
+").
+	
+:- pragma(c_code,
+	io__get_output_line_number(Stream::in, LineNum::out, IO0::di, IO::uo),
+"{
+	MercuryFile *stream = (MercuryFile *) Stream;
+	LineNum = stream->line_number;
+	update_io(IO0, IO);
+}").
+
+:- pragma(c_code, io__set_output_line_number(LineNum::in, IO0::di, IO::uo), "
+	mercury_current_text_output->line_number = LineNum;
+	update_io(IO0, IO);
+").
+	
+:- pragma(c_code,
+	io__set_output_line_number(Stream::in, LineNum::in, IO0::di, IO::uo),
 "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	stream->line_number = LineNum;
