@@ -169,7 +169,7 @@ static void process_options(int argc, char **argv)
 #ifdef CONSERVATIVE_GC
 					GC_quiet = FALSE;
 #else
-					fatal_error("-dG: GC not enabled")
+					fatal_error("-dG: GC not enabled");
 #endif
 				or (streq(optarg, "s"))
 					detstackdebug   = TRUE;
