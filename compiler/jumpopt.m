@@ -632,6 +632,18 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 				Shorted),
 			NewInstrs = [assign(Lval, Rval) - Shorted]
 		)
+	; Uinstr0 = mkframe(FrameInfo, label(Label0)) ->
+		jumpopt__short_label(Label0, Instrmap, Label),
+		RemainInstrs = Instrs0,
+		CheckedNondetTailCallInfo1 = CheckedNondetTailCallInfo0,
+		( Label = Label0 ->
+			NewInstrs = [Instr0]
+		;
+			string__append(Comment0, " (some shortcircuits)",
+				Shorted),
+			NewInstrs = [mkframe(FrameInfo, label(Label))
+				- Shorted]
+		)
 	;
 		NewInstrs = [Instr0],
 		RemainInstrs = Instrs0,
