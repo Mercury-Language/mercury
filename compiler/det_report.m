@@ -388,12 +388,12 @@ det_diagnose_goal_2(conj(Goals), _GoalInfo, Desired, _Actual, Context, DetInfo,
 det_diagnose_goal_2(disj(Goals, _), GoalInfo, Desired, Actual, SwitchContext,
 		DetInfo, Diagnosed) -->
 	det_diagnose_disj(Goals, Desired, Actual, SwitchContext, DetInfo, 0,
-		Clauses, Diagnosed1),
+		ClausesWithSoln, Diagnosed1),
 	{ determinism_components(Desired, _, DesSolns) },
 	(
 		{ DesSolns \= at_most_many },
 		{ DesSolns \= at_most_many_cc },
-		{ Clauses > 1 }
+		{ ClausesWithSoln > 1 }
 	->
 		{ goal_info_get_context(GoalInfo, Context) },
 		prog_out__write_context(Context),
@@ -459,7 +459,6 @@ det_diagnose_goal_2(call(PredId, ModeId, _, _, CallContext, _), GoalInfo,
 det_diagnose_goal_2(higher_order_call(_, _, _, _, _, _), GoalInfo,
 		Desired, Actual, _, _DetInfo, yes) -->
 	{ goal_info_get_context(GoalInfo, Context) },
-	prog_out__write_context(Context),
 	det_diagnose_atomic_goal(Desired, Actual,
 		report_higher_order_call_context(Context), Context).
 
@@ -616,9 +615,9 @@ det_diagnose_conj([Goal | Goals], Desired, SwitchContext, DetInfo,
 :- mode det_diagnose_disj(in, in, in, in, in, in, out, out, di, uo) is det.
 
 det_diagnose_disj([], _Desired, _Actual, _SwitchContext, _DetInfo,
-		Clauses, Clauses, no) --> [].
+		ClausesWithSoln, ClausesWithSoln, no) --> [].
 det_diagnose_disj([Goal | Goals], Desired, Actual, SwitchContext, DetInfo,
-		Clauses0, Clauses, Diagnosed) -->
+		ClausesWithSoln0, ClausesWithSoln, Diagnosed) -->
 	{ determinism_components(Actual, ActualCanFail, _) },
 	{ determinism_components(Desired, DesiredCanFail, DesiredSolns) },
 	{ DesiredCanFail = cannot_fail, ActualCanFail = can_fail ->
@@ -637,9 +636,17 @@ det_diagnose_disj([Goal | Goals], Desired, Actual, SwitchContext, DetInfo,
 	{ determinism_components(ClauseDesired, ClauseCanFail, DesiredSolns) },
 	det_diagnose_goal(Goal, ClauseDesired, SwitchContext, DetInfo,
 		Diagnosed1),
-	{ Clauses1 is Clauses0 + 1 },
+	(
+		{ Goal = _ - GoalInfo },
+		{ goal_info_get_determinism(GoalInfo, GoalDetism) },
+		{ determinism_components(GoalDetism, _, at_most_zero) }
+	->
+		{ ClausesWithSoln1 = ClausesWithSoln0 }
+	;
+		{ ClausesWithSoln1 is ClausesWithSoln0 + 1 }
+	),
 	det_diagnose_disj(Goals, Desired, Actual, SwitchContext, DetInfo,
-		Clauses1, Clauses, Diagnosed2),
+		ClausesWithSoln1, ClausesWithSoln, Diagnosed2),
 	{ bool__or(Diagnosed1, Diagnosed2, Diagnosed) }.
 
 :- pred det_diagnose_switch(var, list(case), determinism,
