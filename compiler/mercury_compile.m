@@ -45,7 +45,7 @@
 :- import_module llds_common, transform_llds, llds_out.
 :- import_module continuation_info, stack_layout.
 
-:- import_module mlds, ml_code_gen, ml_elim_nested, mlds_to_c.
+:- import_module mlds, ml_code_gen, ml_elim_nested, ml_tailcall, mlds_to_c.
 
 	% miscellaneous compiler modules
 :- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds, rl.
@@ -2223,21 +2223,33 @@ mercury_compile__output_llds(ModuleName, LLDS0, StackLayoutLabels, MaybeRLFile,
 :- pred mercury_compile__mlds_backend(module_info, io__state, io__state).
 :- mode mercury_compile__mlds_backend(in, di, uo) is det.
 
-mercury_compile__mlds_backend(HLDS) -->
+mercury_compile__mlds_backend(HLDS50) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
+
+	mercury_compile__simplify(HLDS50, no, yes, Verbose, Stats, 
+		process_all_nonimported_nonaditi_procs, HLDS53),
+	mercury_compile__maybe_dump_hlds(HLDS53, "53", "simplify2"),
+
+	{ HLDS = HLDS53 },
 
 	maybe_write_string(Verbose, "% Converting HLDS to MLDS...\n"),
 	ml_code_gen(HLDS, MLDS0),
 	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats),
 
+	% XXX this pass should be conditional on a compilation option
+
+	maybe_write_string(Verbose, "% Detecting tail calls...\n"),
+	ml_mark_tailcalls(MLDS0, MLDS1),
+
 	globals__io_lookup_bool_option(gcc_nested_functions, NestedFuncs),
 	( { NestedFuncs = no } ->
-		maybe_write_string(Verbose, "% Flattening nested functions...\n"),
-		ml_elim_nested(MLDS0, MLDS)
+		maybe_write_string(Verbose,
+			"% Flattening nested functions...\n"),
+		ml_elim_nested(MLDS1, MLDS)
 	;
-		{ MLDS = MLDS0 }
+		{ MLDS = MLDS1 }
 	),
 
 	maybe_write_string(Verbose, "% Converting MLDS to C...\n"),

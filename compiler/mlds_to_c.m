@@ -241,7 +241,8 @@ mlds_output_defns(Indent, ModuleName, Defns) -->
 		% GNU C __label__ declarations must precede
 		% ordinary variable declarations.
 		%
-		{ list__filter(defn_is_commit_type_var, Defns, LabelDecls, OtherDefns) },
+		{ list__filter(defn_is_commit_type_var, Defns, LabelDecls,
+			OtherDefns) },
 		list__foldl(OutputDefn, LabelDecls),
 		list__foldl(OutputDefn, OtherDefns)
 	;
@@ -429,14 +430,44 @@ mlds_output_func(Indent, Name, Signature, MaybeBody) -->
 	;
 		{ MaybeBody = yes(Body) },
 		io__write_string("\n"),
+
+		mlds_indent(Indent),
+		io__write_string("{\n"),
+
 		%
-		% C requires function bodies to be blocks
+		% We wrap the function body inside a `for(;;)' loop
+		% so that we can use `continue;' inside the function body
+		% to optimize tail recursive calls.
+		% XXX tail recursion optimization should be disable-able
 		%
-		( { Body = statement(block(_, _), _) } ->
-			mlds_output_statement(Indent, Name, Body)
+		mlds_indent(Indent + 1),
+		io__write_string("for(;;)\n"),
+		mlds_indent(Indent + 2),
+		io__write_string("{\n"),
+
+		{ FuncInfo = func_info(Name, Signature) },
+		mlds_output_statement(Indent + 3, FuncInfo, Body),
+
+		%
+		% Output a `return' statement to terminate the `for(;;)' loop.
+		% This should only be necessary for functions with no
+		% return values; for functions with return values,
+		% the function body should never just fall through,
+		% instead it must always return via a `return' statement.
+		%
+		{ Signature = mlds__func_params(_Parameters, RetTypes) },
+		( { RetTypes = [] } ->
+			mlds_output_stmt(Indent + 3, FuncInfo, return([]))
 		;
-			mlds_output_stmt(Indent, Name, block([], [Body]))
-		)
+			mlds_indent(Indent + 3),
+			io__write_string("/*NOTREACHED*/\n")
+		),
+
+		mlds_indent(Indent + 2),
+		io__write_string("}\n"), % end the `for(;;)'
+
+		mlds_indent(Indent),
+		io__write_string("}\n")	% end the function
 	).
 
 :- pred mlds_output_func_decl(int, qualified_entity_name, func_params, 
@@ -688,64 +719,67 @@ mlds_output_abstractness(concrete) --> [].
 % Code to output statements
 %
 
-:- pred mlds_output_statements(int, qualified_entity_name,
-		list(mlds__statement), io__state, io__state).
+:- type func_info
+	--->	func_info(mlds__qualified_entity_name, mlds__func_params).
+
+:- pred mlds_output_statements(int, func_info, list(mlds__statement),
+		io__state, io__state).
 :- mode mlds_output_statements(in, in, in, di, uo) is det.
 
-mlds_output_statements(Indent, FuncName, Statements) -->
-	list__foldl(mlds_output_statement(Indent, FuncName), Statements).
+mlds_output_statements(Indent, FuncInfo, Statements) -->
+	list__foldl(mlds_output_statement(Indent, FuncInfo), Statements).
 
-:- pred mlds_output_statement(int, qualified_entity_name, mlds__statement,
+:- pred mlds_output_statement(int, func_info, mlds__statement,
 		io__state, io__state).
 :- mode mlds_output_statement(in, in, in, di, uo) is det.
 
-mlds_output_statement(Indent, FuncName, mlds__statement(Statement, Context)) -->
+mlds_output_statement(Indent, FuncInfo, mlds__statement(Statement, Context)) -->
 	mlds_output_context(Context),
-	mlds_output_stmt(Indent, FuncName, Statement).
+	mlds_output_stmt(Indent, FuncInfo, Statement).
 
-:- pred mlds_output_stmt(int, qualified_entity_name, mlds__stmt,
-		io__state, io__state).
+:- pred mlds_output_stmt(int, func_info, mlds__stmt, io__state, io__state).
 :- mode mlds_output_stmt(in, in, in, di, uo) is det.
 
 	%
 	% sequence
 	%
-mlds_output_stmt(Indent, FuncName, block(Defns, Statements)) -->
+mlds_output_stmt(Indent, FuncInfo, block(Defns, Statements)) -->
 	mlds_indent(Indent),
 	io__write_string("{\n"),
 	( { Defns \= [] } ->
+		{ FuncInfo = func_info(FuncName, _) },
 		{ FuncName = qual(ModuleName, _) },
 		mlds_output_defns(Indent + 1, ModuleName, Defns),
 		io__write_string("\n")
 	;
 		[]
 	),
-	mlds_output_statements(Indent + 1, FuncName, Statements),
+	mlds_output_statements(Indent + 1, FuncInfo, Statements),
 	mlds_indent(Indent),
 	io__write_string("}\n").
 
 	%
 	% iteration
 	%
-mlds_output_stmt(Indent, FuncName, while(Cond, Statement, no)) -->
+mlds_output_stmt(Indent, FuncInfo, while(Cond, Statement, no)) -->
 	mlds_indent(Indent),
 	io__write_string("while ("),
 	mlds_output_rval(Cond),
 	io__write_string(")\n"),
-	mlds_output_statement(Indent + 1, FuncName, Statement).
-mlds_output_stmt(Indent, FuncName, while(Cond, Statement, yes)) -->
+	mlds_output_statement(Indent + 1, FuncInfo, Statement).
+mlds_output_stmt(Indent, FuncInfo, while(Cond, Statement, yes)) -->
 	mlds_indent(Indent),
-	io__write_string("do {\n"),
-	mlds_output_statement(Indent + 1, FuncName, Statement),
+	io__write_string("do\n"),
+	mlds_output_statement(Indent + 1, FuncInfo, Statement),
 	mlds_indent(Indent),
-	io__write_string("} while ("),
+	io__write_string("while ("),
 	mlds_output_rval(Cond),
 	io__write_string(");\n").
 
 	%
 	% selection (see also computed_goto)
 	%
-mlds_output_stmt(Indent, FuncName, if_then_else(Cond, Then0, MaybeElse)) -->
+mlds_output_stmt(Indent, FuncInfo, if_then_else(Cond, Then0, MaybeElse)) -->
 	%
 	% we need to take care to avoid problems caused by the
 	% dangling else ambiguity
@@ -762,11 +796,11 @@ mlds_output_stmt(Indent, FuncName, if_then_else(Cond, Then0, MaybeElse)) -->
 	io__write_string("if ("),
 	mlds_output_rval(Cond),
 	io__write_string(")\n"),
-	mlds_output_statement(Indent + 1, FuncName, Then),
+	mlds_output_statement(Indent + 1, FuncInfo, Then),
 	( { MaybeElse = yes(Else) } ->
 		mlds_indent(Indent),
 		io__write_string("else\n"),
-		mlds_output_statement(Indent + 1, FuncName, Else)
+		mlds_output_statement(Indent + 1, FuncInfo, Else)
 	;
 		[]
 	).
@@ -774,7 +808,7 @@ mlds_output_stmt(Indent, FuncName, if_then_else(Cond, Then0, MaybeElse)) -->
 	%
 	% transfer of control
 	%
-mlds_output_stmt(Indent, _FuncName, label(LabelName)) -->
+mlds_output_stmt(Indent, _FuncInfo, label(LabelName)) -->
 	%
 	% Note: MLDS allows labels at the end of blocks.
 	% C doesn't.  Hence we need to insert a semi-colon after the colon
@@ -783,12 +817,12 @@ mlds_output_stmt(Indent, _FuncName, label(LabelName)) -->
 	mlds_indent(Indent - 1),
 	mlds_output_label_name(LabelName),
 	io__write_string(":;\n").
-mlds_output_stmt(Indent, _FuncName, goto(LabelName)) -->
+mlds_output_stmt(Indent, _FuncInfo, goto(LabelName)) -->
 	mlds_indent(Indent),
 	io__write_string("goto "),
 	mlds_output_label_name(LabelName),
 	io__write_string(";\n").
-mlds_output_stmt(Indent, _FuncName, computed_goto(Expr, Labels)) -->
+mlds_output_stmt(Indent, _FuncInfo, computed_goto(Expr, Labels)) -->
 	% XXX for GNU C, we could output potentially more efficient code
 	% by using an array of labels; this would tell the compiler that
 	% it didn't need to do any range check.
@@ -815,34 +849,111 @@ mlds_output_stmt(Indent, _FuncName, computed_goto(Expr, Labels)) -->
 	%
 	% function call/return
 	%
-mlds_output_stmt(Indent, _FuncName, call(_Signature, Func, MaybeObject,
-		Args, Results, IsTailCall)) -->
-	mlds_indent(Indent),
-	( { IsTailCall = tail_call } ->
-		io__write_string("return ")
-	;
-		[]
-	),
-	( { MaybeObject = yes(Object) } ->
-		mlds_output_bracketed_rval(Object),
-		io__write_string(".")
-	;
-		[]
-	),
-	( { Results = [] } ->
-		[]
-	; { Results = [Lval] } ->
-		mlds_output_lval(Lval),
-		io__write_string(" = ")
-	;
-		{ error("mld_output_stmt: multiple return values") }
-	),
-	mlds_output_bracketed_rval(Func),
-	io__write_string("("),
-	io__write_list(Args, ", ", mlds_output_rval),
-	io__write_string(");\n").
+mlds_output_stmt(Indent, CallerFuncInfo, call(_Signature, FuncRval,
+	 	MaybeObject, CallArgs, Results, IsTailCall)) -->
+	%
+	% Optimize directly-recursive tail calls
+	% XXX tail recursion optimization should be disable-able
+	%
+	{ CallerFuncInfo = func_info(Name, Params) },
+	(
+		%
+		% check if this call can be optimized as a tail call
+		%
+		{ IsTailCall = tail_call },
 
-mlds_output_stmt(Indent, _FuncName, return(Results)) -->
+		%
+		% check if the callee adddress is the same as
+		% the caller
+		%
+		{ FuncRval = const(code_addr_const(CodeAddr)) },
+		{	
+			CodeAddr = proc(QualifiedProcLabel),
+			MaybeSeqNum = no
+		;
+			CodeAddr = internal(QualifiedProcLabel, SeqNum),
+			MaybeSeqNum = yes(SeqNum)
+		},
+		{ QualifiedProcLabel = qual(ModuleName, PredLabel - ProcId) },
+		% check that the module name matches
+		{ Name = qual(ModuleName, FuncName) },
+		% check that the PredLabel, ProcId, and MaybeSeqNum match
+		{ FuncName = function(PredLabel, ProcId, MaybeSeqNum, _) },
+
+		%
+		% In C++, `this' is a constant, so our usual technique
+		% of assigning the arguments won't work if it is a
+		% member function.  Thus we don't do this optimization
+		% if we're optimizing a member function call
+		%
+		{ MaybeObject = no }
+	->
+		mlds_indent(Indent),
+		io__write_string("{\n"),
+		mlds_indent(Indent + 1),
+		io__write_string("/* tail recursive call */\n"),
+		{ Params = mlds__func_params(FuncArgs, _RetTypes) },
+		mlds_output_assign_args(Indent + 1, ModuleName, FuncArgs,
+			CallArgs),
+		mlds_indent(Indent + 1),
+		io__write_string("continue; /* go to start of function */\n"),
+		mlds_indent(Indent),
+		io__write_string("}\n")
+	;
+		%
+		% Optimize general tail calls.
+		% We can't really do much here except to insert `return'
+		% as an extra hint to the C compiler.
+		%
+		% If Results = [], i.e. the function has `void' return type,
+		% then this would result in code that is not legal ANSI C
+		% (although it _is_ legal in GNU C and in C++),
+		% so for that case, we put the return statement after
+		% the call -- see below.  We need to enclose it inside
+		% an extra pair of curly braces in case this `call'
+		% is e.g. inside an if-then-else.
+		%
+		mlds_indent(Indent),
+		( { IsTailCall = tail_call } ->
+			( { Results \= [] } ->
+				io__write_string("return ")
+			;
+				io__write_string("{\n"),
+				mlds_indent(Indent + 1)
+			)
+		;
+			[]
+		),
+		( { MaybeObject = yes(Object) } ->
+			mlds_output_bracketed_rval(Object),
+			io__write_string(".") % XXX should this be "->"?
+		;
+			[]
+		),
+		( { Results = [] } ->
+			[]
+		; { Results = [Lval] } ->
+			mlds_output_lval(Lval),
+			io__write_string(" = ")
+		;
+			{ error("mld_output_stmt: multiple return values") }
+		),
+		mlds_output_bracketed_rval(FuncRval),
+		io__write_string("("),
+		io__write_list(CallArgs, ", ", mlds_output_rval),
+		io__write_string(");\n"),
+
+		( { IsTailCall = tail_call, Results = [] } ->
+			mlds_indent(Indent + 1),
+			io__write_string("return;\n"),
+			mlds_indent(Indent),
+			io__write_string("}\n")
+		;
+			[]
+		)
+	).
+
+mlds_output_stmt(Indent, _FuncInfo, return(Results)) -->
 	mlds_indent(Indent),
 	io__write_string("return"),
 	( { Results = [] } ->
@@ -858,7 +969,7 @@ mlds_output_stmt(Indent, _FuncName, return(Results)) -->
 	%
 	% commits
 	%
-mlds_output_stmt(Indent, _FuncName, do_commit(Ref)) -->
+mlds_output_stmt(Indent, _FuncInfo, do_commit(Ref)) -->
 	mlds_indent(Indent),
 	globals__io_lookup_bool_option(gcc_local_labels, GCC_LocalLabels),
 	( { GCC_LocalLabels = yes } ->
@@ -872,7 +983,7 @@ mlds_output_stmt(Indent, _FuncName, do_commit(Ref)) -->
 		io__write_string(", 1)")
 	),
 	io__write_string(";\n").
-mlds_output_stmt(Indent, FuncName, try_commit(Ref, Stmt0, Handler)) -->
+mlds_output_stmt(Indent, FuncInfo, try_commit(Ref, Stmt0, Handler)) -->
 	globals__io_lookup_bool_option(gcc_local_labels, GCC_LocalLabels),
 	(
 		{ GCC_LocalLabels = yes },
@@ -890,7 +1001,7 @@ mlds_output_stmt(Indent, FuncName, try_commit(Ref, Stmt0, Handler)) -->
 		% not a complicated expression.  If not, the
 		% C compiler will catch it.
 
-		mlds_output_statement(Indent, FuncName, Stmt0),
+		mlds_output_statement(Indent, FuncInfo, Stmt0),
 
 		mlds_indent(Indent),
 		io__write_string("goto "),
@@ -901,7 +1012,7 @@ mlds_output_stmt(Indent, FuncName, try_commit(Ref, Stmt0, Handler)) -->
 		mlds_output_lval(Ref),
 		io__write_string(":\n"),
 
-		mlds_output_statement(Indent, FuncName, Handler),
+		mlds_output_statement(Indent, FuncInfo, Handler),
 
 		mlds_indent(Indent - 1),
 		mlds_output_lval(Ref),
@@ -939,14 +1050,45 @@ mlds_output_stmt(Indent, FuncName, try_commit(Ref, Stmt0, Handler)) -->
 		mlds_output_lval(Ref),
 		io__write_string(") == 0)\n"),
 
-		mlds_output_statement(Indent + 1, FuncName, Stmt),
+		mlds_output_statement(Indent + 1, FuncInfo, Stmt),
 
 		mlds_indent(Indent),
 		io__write_string("else\n"),
 
-		mlds_output_statement(Indent + 1, FuncName, Handler)
+		mlds_output_statement(Indent + 1, FuncInfo, Handler)
 	).
 
+	% Assign the specified list of rvals to the arguments.
+	% This is used as part of tail recursion optimization (see above).
+:- pred mlds_output_assign_args(int, mlds_module_name, mlds__arguments,
+		list(mlds__rval), io__state, io__state).
+:- mode mlds_output_assign_args(in, in, in, in, di, uo) is det.
+
+mlds_output_assign_args(_, _, [_|_], []) -->
+	{ error("mlds_output_assign_args: length mismatch") }.
+mlds_output_assign_args(_, _, [], [_|_]) -->
+	{ error("mlds_output_assign_args: length mismatch") }.
+mlds_output_assign_args(_, _, [], []) --> [].
+mlds_output_assign_args(Indent, ModuleName,
+		[Name - _Type | Rest], [Arg | Args]) -->
+	(
+		%
+		% don't bother assigning a variable to itself
+		%
+		{ Name = data(var(VarName)) },
+		{ QualVarName = qual(ModuleName, VarName) },
+		{ Arg = lval(var(QualVarName)) }
+	->
+		[]
+	;
+		mlds_indent(Indent),
+		mlds_output_fully_qualified_name(qual(ModuleName, Name),
+			mlds_output_name),
+		io__write_string(" = "),
+		mlds_output_rval(Arg),
+		io__write_string(";\n")
+	),
+	mlds_output_assign_args(Indent, ModuleName, Rest, Args).
 
 	%
 	% exception handling
@@ -958,7 +1100,7 @@ mlds_output_stmt(Indent, FuncName, try_commit(Ref, Stmt0, Handler)) -->
 	%
 	% atomic statements
 	%
-mlds_output_stmt(Indent, _FuncName, atomic(AtomicStatement)) -->
+mlds_output_stmt(Indent, _FuncInfo, atomic(AtomicStatement)) -->
 	mlds_output_atomic_stmt(Indent, AtomicStatement).
 
 :- pred mlds_output_label_name(mlds__label, io__state, io__state).
