@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001,2003 The University of Melbourne.
+% Copyright (C) 1994-2001,2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,7 @@
 %		...
 %	L1:	finalization
 %		succip = stackvar(N)
-%		incr_sp(N)
+%		decr_sp(N)
 %		proceed
 %
 % into
@@ -30,7 +30,7 @@
 %		...
 %		finalization
 %		succip = stackvar(N)
-%		incr_sp(N)
+%		decr_sp(N)
 %		proceed
 %	L1:	finalization
 %		proceed
@@ -49,7 +49,7 @@
 %		...
 %		finalization
 %		succip = stackvar(N)
-%		incr_sp(N)
+%		decr_sp(N)
 %		goto proc_entry
 %
 % into
