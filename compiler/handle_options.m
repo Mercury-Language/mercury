@@ -17,13 +17,22 @@
 :- module libs__handle_options.
 
 :- interface.
-:- import_module list, bool, std_util, io.
+:- import_module list, bool, getopt, std_util, io.
 :- import_module libs__globals, libs__options.
 
 	% handle_options(Args, MaybeError, OptionArgs, NonOptionArgs, Link).
 :- pred handle_options(list(string), maybe(string), list(string),
 		list(string), bool, io__state, io__state).
 :- mode handle_options(in, out, out, out, out, di, uo) is det.
+
+	% process_options(Args, OptionArgs, NonOptionArgs, MaybeOptionTable).
+	%
+	% Process the options, but don't do any post-processing or
+	% modify the globals. This is mainly useful for separating
+	% the list of arguments into option and non-option arguments.
+:- pred process_options(list(string), list(string), list(string),
+			maybe_option_table(option)).
+:- mode process_options(in, out, out, out) is det.
 
 	% usage_error(Descr, Message)
 	%
@@ -59,17 +68,12 @@
 :- import_module libs__options, libs__globals, parse_tree__prog_io_util.
 :- import_module libs__trace_params, check_hlds__unify_proc.
 :- import_module parse_tree__prog_data, backend_libs__foreign.
-:- import_module char, dir, int, string, map, set, getopt, library.
+:- import_module char, dir, int, string, map, set, library.
 
 handle_options(Args0, MaybeError, OptionArgs, Args, Link) -->
 	% io__write_string("original arguments\n"),
 	% dump_arguments(Args0),
-	{ OptionOps = option_ops(short_option, long_option,
-		option_defaults, special_handler) },
-	% default to optimization level `-O2'
-	{ Args1 = ["-O2" | Args0] },
-	{ getopt__process_options(OptionOps, Args1,
-		OptionArgs, Args, Result) },
+	{ process_options(Args0, OptionArgs, Args, Result) },
 	% io__write_string("final arguments\n"),
 	% dump_arguments(Args),
 	postprocess_options(Result, MaybeError),
@@ -117,6 +121,14 @@ handle_options(Args0, MaybeError, OptionArgs, Args, Link) -->
 			[]	
 		)
 	).
+
+process_options(Args0, OptionArgs, Args, Result) :-
+	OptionOps = option_ops(short_option, long_option,
+		option_defaults, special_handler),
+	% default to optimization level `-O2'
+	Args1 = ["-O2" | Args0],
+	getopt__process_options(OptionOps, Args1,
+		OptionArgs, Args, Result).
 
 :- pred dump_arguments(list(string), io__state, io__state).
 :- mode dump_arguments(in, di, uo) is det.
@@ -511,6 +523,13 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	% --rebuild is just like --make but always rebuilds the files
 	% without checking timestamps.
 	option_implies(rebuild, make, bool(yes)),
+
+	% --make handles creation of the module dependencies itself,
+	% and they don't need to be recreated when compiling to C.
+	option_implies(invoked_by_mmc_make,
+		generate_mmc_make_module_dependencies, bool(no)),
+	option_implies(invoked_by_mmc_make, make, bool(no)),
+	option_implies(invoked_by_mmc_make, rebuild, bool(no)),
 
 	% --make does not handle --transitive-intermodule-optimization.
 	% --transitive-intermodule-optimization is in the process of

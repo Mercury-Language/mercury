@@ -119,7 +119,6 @@
 				% and cannot be set explicitly by the user.
 		;	generate_item_version_numbers
 		;	generate_mmc_make_module_dependencies
-		;	generate_mmake_module_dependencies
 		;	assume_gmake
 		;	trace
 		;	trace_optimized
@@ -539,6 +538,7 @@
 		;	make
 		;	keep_going
 		;	rebuild
+		;	invoked_by_mmc_make
 		;	install_prefix
 		;	install_command
 		;	libgrades
@@ -667,7 +667,6 @@ option_defaults_2(aux_output_option, [
 	smart_recompilation	-	bool(no),
 	generate_item_version_numbers -	bool(no),
 	generate_mmc_make_module_dependencies - bool(no),
-	generate_mmake_module_dependencies - bool(yes),
 	assume_gmake		-	bool(yes),
 	trace			-	string("default"),
 	trace_optimized		-	bool(no),
@@ -1069,6 +1068,7 @@ option_defaults_2(build_system_option, [
 	make			-	bool(no),
 	keep_going		-	bool(no),
 	rebuild			-	bool(no),
+	invoked_by_mmc_make	-	bool(no),
 	install_prefix		-	string("/usr/local/"),
 	install_command		-	string("cp"),
 	libgrades		-	accumulating([]),
@@ -1213,8 +1213,6 @@ long_option("generate-mmc-make-module-dependencies",
 					generate_mmc_make_module_dependencies).
 long_option("generate-mmc-deps",
 					generate_mmc_make_module_dependencies).
-long_option("generate-mmake-module-dependencies",
-					generate_mmake_module_dependencies).
 long_option("trace",			trace).
 long_option("trace-optimised",		trace_optimized).
 long_option("trace-optimized",		trace_optimized).
@@ -1639,6 +1637,7 @@ long_option("ranlib-command",		ranlib_command).
 long_option("make",			make).
 long_option("keep-going",		keep_going).
 long_option("rebuild",			rebuild).
+long_option("invoked-by-mmc-make",	invoked_by_mmc_make).
 long_option("install-prefix",		install_prefix).
 long_option("install-command",		install_command).
 long_option("library-grade",		libgrades).
@@ -2261,9 +2260,6 @@ options_help_aux_output -->
 		"\tGenerate dependencies for use by `mmc --make' even",
 		"\twhen using Mmake. This is recommended when building a",
 		"\tlibrary for installation.",
-
-		% --generate-mmake-module-dependencies is for internal
-		% use by the compiler.
 
 % declarative debugging is not documented yet, since it is still experimental
 %		"--trace {minimum, shallow, deep, decl, rep, default}",
@@ -3364,6 +3360,9 @@ options_help_link -->
 options_help_build_system -->
 	io__write_string("\nBuild System Options:\n"),
 	write_tabbed_lines([
+		% `--invoked-by-mmc-make' is for internal use by the
+		% compiler. `mmc --make' passes it as the first argument
+		% when compiling a module.
 		"-m, --make",
 		"\tTreat the non-option arguments to `mmc' as files to",
 		"\tmake, rather than source files.",

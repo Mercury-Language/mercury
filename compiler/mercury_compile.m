@@ -126,15 +126,32 @@ main -->
 
 	% Lookup the the default options in the
 	% environment (set by the mmc script).
-	lookup_default_options(options_variables_init, MaybeMCFlags),
-	(
-	    { MaybeMCFlags = yes(MCFlags) },
-	    handle_options(MCFlags ++ Args0, MaybeError,
-	    	OptionArgs, NonOptionArgs, Link),
-	    main_2(MaybeError, OptionArgs, NonOptionArgs, Link)
+	( { Args0 = ["--invoked-by-mmc-make" | _] } ->
+		{ MaybeMCFlags = yes([]) }
 	;
-	    { MaybeMCFlags = no },
-	    io__set_exit_status(1)
+		lookup_default_options(options_variables_init, MaybeMCFlags)
+	),
+	(
+		{ MaybeMCFlags = yes(MCFlags) },
+		handle_options(MCFlags ++ Args0, MaybeError,
+	    		OptionArgs0, NonOptionArgs, Link),
+		
+		%
+		% When computing the option arguments to pass
+		% to `--make', only include the command-line
+		% arguments, not the contents of DEFAULT_MCFLAGS.
+		%
+		globals__io_lookup_bool_option(make, Make),
+		{ Make = yes ->
+			process_options(Args0, OptionArgs, _, _)
+		;
+			% OptionArgs is only used with `--make'.
+			OptionArgs = OptionArgs0
+		},
+		main_2(MaybeError, OptionArgs, NonOptionArgs, Link)
+	;
+		{ MaybeMCFlags = no },
+		io__set_exit_status(1)
 	).
 
 main(Args) -->
@@ -1237,9 +1254,8 @@ mercury_compile__pre_hlds_pass(ModuleImports0, DontWriteDFile0,
 		UndefTypes, UndefModes, FoundError) -->
 	globals__io_lookup_bool_option(statistics, Stats),
 	globals__io_lookup_bool_option(verbose, Verbose),
-	globals__io_lookup_bool_option(generate_mmake_module_dependencies,
-		WriteDFile),
-	{ DontWriteDFile = DontWriteDFile0 `or` not(WriteDFile) },
+	globals__io_lookup_bool_option(invoked_by_mmc_make, MMCMake),
+	{ DontWriteDFile = DontWriteDFile0 `or` MMCMake },
 
 	{ module_imports_get_module_name(ModuleImports0, Module) },
 

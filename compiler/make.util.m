@@ -271,13 +271,12 @@ build_with_module_options(ModuleName, ExtraOptions,
 		{ OptionsResult = yes(OptionArgs) }, 
 		globals__io_get_globals(Globals),
 
-		% --no-generate-mmake-module-dependencies disables
-		% generation of `.d' files.
-		{ AllOptionArgs = list__condense(
-		    [["--no-generate-mmake-module-dependencies" | OptionArgs],
-		    Info0 ^ option_args, ExtraOptions,
-		    ["--no-make", "--no-rebuild"]]) },
-	    	
+		% --invoked-by-mmc-make disables reading DEFAULT_MCFLAGS
+		% from the environment (DEFAULT_MCFLAGS is included in
+		% OptionArgs) and generation of `.d' files.
+		{ AllOptionArgs = list__condense([
+		    ["--invoked-by-mmc-make" | OptionArgs],
+		    Info0 ^ option_args, ExtraOptions]) },
 		handle_options(AllOptionArgs, OptionsError, _, _, _),
 		(
 			{ OptionsError = yes(OptionsMessage) },
