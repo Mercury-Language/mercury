@@ -674,20 +674,21 @@ mercury_compile__frontend_pass_2_by_phases(HLDS3, HLDS20, FoundError) -->
 		mercury_compile__maybe_dump_hlds(HLDS9, "09", "unique_modes"),
 		!,
 		
-		mercury_compile__check_stratification(HLDS9, Verbose, Stats, 
-			HLDS10, FoundStratError), !,
-		mercury_compile__maybe_dump_hlds(HLDS10, "10",
+		maybe_write_string(Verbose, 
+			"% Mode and type checking typeclass instances...\n"),
+		check_typeclass__check_instance_decls(HLDS9, HLDS10,
+			FoundTypeclassError),
+		mercury_compile__maybe_dump_hlds(HLDS10, "10", "typeclass"), !,
+
+		mercury_compile__check_stratification(HLDS10, Verbose, Stats, 
+			HLDS11, FoundStratError), !,
+		mercury_compile__maybe_dump_hlds(HLDS11, "11",
 			"stratification"), !,
 
 		globals__io_lookup_bool_option(warn_simple_code, Warn),
-		mercury_compile__simplify(HLDS10, Warn, no,
-			Verbose, Stats, HLDS11), !,
-		mercury_compile__maybe_dump_hlds(HLDS11, "11", "simplify"), !,
-
-		maybe_write_string(Verbose, 
-			"% Mode and type checking typeclass instances...\n"),
-		check_typeclass__check_instance_decls(HLDS11, HLDS12,
-			FoundTypeclassError),
+		mercury_compile__simplify(HLDS11, Warn, no,
+			Verbose, Stats, HLDS12), !,
+		mercury_compile__maybe_dump_hlds(HLDS11, "12", "simplify"), !,
 
 		%
 		% work out whether we encountered any errors
