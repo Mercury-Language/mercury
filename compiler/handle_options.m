@@ -774,6 +774,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		[]
 	),
 
+	% The pthreads headers on some architectures (Solaris, Linux)
+	% don't work with -ansi.
+	option_implies(parallel, ansi_c, bool(no)),
+
 	% --no-reorder-conj implies --no-deforestation,
 	% --no-constraint-propagation and --no-local-constraint-propagation.
 	option_neg_implies(reorder_conj, deforestation, bool(no)),
