@@ -521,15 +521,23 @@ MR_edt_root_node(Word EDT, Word *Node)
 static ConstString
 MR_edt_root_node_name(const MR_Stack_Layout_Entry *entry)
 {
+	ConstString	name;
+
 	if (MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)) {
 		if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)) {
-			return (ConstString) "(internal)";
+			MR_TRACE_USE_HP(
+				make_aligned_string(name, "(internal)");
+			);
 		} else {
-			return entry->MR_sle_proc_id.MR_proc_user.MR_user_name;
+			name = entry->MR_sle_proc_id.MR_proc_user.MR_user_name;
 		}
 	} else {
-		return (ConstString) "(unknown)";
+		MR_TRACE_USE_HP(
+			make_aligned_string(name, "(unknown)");
+		);
 	}
+
+	return name;
 }
 
 static Word
