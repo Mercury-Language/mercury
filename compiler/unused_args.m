@@ -872,7 +872,7 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, NameSuffix, Status,
 		type_util__type_id_arity(ModuleInfo, TypeId, TypeArity),
 		string__int_to_string(TypeArity, TypeAr),
 		string__append_list(
-			[Name0, "_", TypeModule, "_", TypeName, "_", TypeAr],
+			[Name0, "_", TypeModule, "__", TypeName, "_", TypeAr],
 			Name1)
 	;
 		Name1 = Name0
