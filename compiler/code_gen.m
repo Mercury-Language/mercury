@@ -8,6 +8,7 @@
 % Main author: conway.
 %
 % Notes:
+%
 %	code_gen forwards most of the actual construction of intruction
 %	sequences to code_info, and other modules. The generation of
 %	calls is done by call_gen, switches by switch_gen, if-then-elses
@@ -16,7 +17,7 @@
 %	The general scheme for generating semideterministic code is
 %	to treat it as deterministic code, and have a fall-through
 %	point for failure.  Semideterministic procedures leave a 'true'
-%	in register r(1) to indicate success, and 'fail' to indicate
+%	in register r(1) to indicate success, and 'false' to indicate
 %	failure.
 %
 %---------------------------------------------------------------------------%
@@ -514,7 +515,8 @@ code_gen__generate_semi_epilog(Instr) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred code_gen__generate_non_prolog(code_tree, maybe(int), code_info, code_info).
+:- pred code_gen__generate_non_prolog(code_tree, maybe(int),
+	code_info, code_info).
 :- mode code_gen__generate_non_prolog(out, out, in, out) is det.
 
 code_gen__generate_non_prolog(EntryCode, no) -->
@@ -761,8 +763,7 @@ code_gen__generate_det_goal_2(
 
 %---------------------------------------------------------------------------%
 
-:- type c_arg
-	--->	c_arg(var, maybe(string)).
+:- type c_arg	--->	c_arg(var, maybe(string)).
 
 :- pred code_gen__generate_pragma_c_code(code_model, string, c_is_recursive,
 		pred_id, proc_id, list(var), list(maybe(string)),
@@ -801,25 +802,25 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, IsRecursive,
 %
 % Notes:
 %
-% (1)      These parts are only emitted if the C code may be recursive.
-%	   If a pragma c_code(non_recursive, ...) declaration was used,
-%	   they will not be emitted.
+% (1)	These parts are only emitted if the C code may be recursive.
+%	If a pragma c_code(non_recursive, ...) declaration was used,
+%	they will not be emitted.
 %
-% (2)	   The call to save_registers() is needed so that if the
-%	   C code calls Mercury code, we can call restore_registers()
-%	   on entry to the Mercury code (see export.m) to get the
-%	   right values of `sp', `hp', `curfr' and `maxfr' for the
-%	   recursive invocation of Mercury.
+% (2)	The call to save_registers() is needed so that if the
+%	C code calls Mercury code, we can call restore_registers()
+%	on entry to the Mercury code (see export.m) to get the
+%	right values of `sp', `hp', `curfr' and `maxfr' for the
+%	recursive invocation of Mercury.
 %
-% (3)	   The call to restore_registers() is needed in case the
-%	   C code calls Mercury code which allocates some data
-%	   on the heap, and this data is returned from Mercury
-%	   through C back to Mercury.  In that case, we need to
-%	   keep the value of `hp' that was set by the recursive
-%	   invocation of Mercury.  The Mercury calling convention
-%	   guarantees that the values of `sp', `curfr', and `maxfr'
-%	   will be preserved, so if we're using conservative gc,
-%	   there is nothing that needs restoring.
+% (3)	The call to restore_registers() is needed in case the
+%	C code calls Mercury code which allocates some data
+%	on the heap, and this data is returned from Mercury
+%	through C back to Mercury.  In that case, we need to
+%	keep the value of `hp' that was set by the recursive
+%	invocation of Mercury.  The Mercury calling convention
+%	guarantees that the values of `sp', `curfr', and `maxfr'
+%	will be preserved, so if we're using conservative gc,
+%	there is nothing that needs restoring.
 
 	( { IsRecursive = non_recursive } ->
 		{ SaveVarsCode = empty }
@@ -926,7 +927,6 @@ make_c_arg_list_2([_|_], [], _, _) :-
 get_c_arg_list_vars([], []).
 get_c_arg_list_vars([c_arg(Var, _) | Args], [Var | Vars1]) :-
 	get_c_arg_list_vars(Args, Vars1).
-
 
 % pragma_select_out_args returns the list of variables which are outputs for
 % a procedure
@@ -1052,7 +1052,6 @@ place_pragma_output_args_in_regs([Arg|Args], [Reg|Regs], [O|Outputs]) -->
 	).
 
 %---------------------------------------------------------------------------%
-
 
 :- pred code_gen__generate_semi_goal_2(hlds__goal_expr, hlds__goal_info,
 					code_tree, code_info, code_info).

@@ -445,7 +445,21 @@ cases_to_switch(CasesList, Var, VarTypes, GoalInfo, FV, InstMap, ModuleInfo,
 	),
 	fix_case_list(CasesList1, GoalInfo, Cases0),
 	detect_switches_in_cases(Cases0, InstMap, VarTypes, ModuleInfo, Cases),
-	Goal = switch(Var, CanFail, Cases, FV).
+
+	% We turn switches with no arms into fail, since this avoids having
+	% the code generator flush the control variable of the switch.
+	% We can't easily eliminate switches with one arm, since the
+	% code of the arm will have the unification between the variable
+	% and the function symbol as det. The gain would be minimal to
+	% nonexistent anyway.
+	(
+		Cases = [],
+		map__init(Empty),
+		Goal = disj([], Empty)
+	;
+		Cases = [_ | _],
+		Goal = switch(Var, CanFail, Cases, FV)
+	).
 
 :- pred delete_unreachable_cases(sorted_case_list, list(cons_id),
 	sorted_case_list).

@@ -68,7 +68,7 @@ frameopt__main(Instrs0, Instrs, FillDelaySlot, TeardownMap, Mod) :-
 	(
 		Instrs2 = [LabelInstr | Instrs3],
 		frameopt__detstack_setup(Instrs3, FrameSize, Msg, Body0),
-		livemap__build(Instrs0, no, Livemap)
+		livemap__build(Instrs0, yes(Livemap))
 	->
 		set__init(FrameSet0),
 		set__init(SuccipSet0),

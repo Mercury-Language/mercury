@@ -55,17 +55,17 @@ value_number__main(Instrs0, Instrs) -->
 	{ value_number__prepare_for_vn(Instrs1, ProcLabel,
 		no, AllocSet, BreakSet, N0, N, Instrs2) },
 	{ labelopt__build_useset(Instrs2, UseSet) },
-	{ livemap__build(Instrs2, Ccode, LiveMap) },
+	{ livemap__build(Instrs2, MaybeLiveMap) },
 	(
-		{ Ccode = no },
+		{ MaybeLiveMap = yes(LiveMap) },
 		vn_debug__livemap_msg(LiveMap),
 		value_number__procedure(Instrs2, LiveMap, UseSet,
 			AllocSet, BreakSet, N, Instrs3),
 		{ list__append(Comments, Instrs3, Instrs) }
 	;
-		% Don't perform value numbering if there is a c_code or a 
-		% pragma_c in the instructions.
-		{ Ccode = yes },
+		% Can't find live lvals and thus can't perform value numbering
+		% if there is a c_code or a pragma_c in the instructions.
+		{ MaybeLiveMap = no },
 		{ Instrs = Instrs0 }
 	).
 

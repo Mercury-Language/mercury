@@ -378,8 +378,7 @@ vn_block__new_ctrl_node(VnInstr, Livemap, Params,
 			vn_block__record_one_label(Label, Livemap, Params,
 				VnTables0, VnTables, Liveset0, Liveset,
 				FlushEntry0, FlushEntry,
-				LabelNo0, LabelNo, Parallels1),
-			Parallels = Parallels1
+				LabelNo0, LabelNo, Parallels)
 		;
 			vn_block__record_at_call(VnTables0, VnTables,
 				Liveset0, Liveset, FlushEntry0, FlushEntry),
@@ -390,14 +389,12 @@ vn_block__new_ctrl_node(VnInstr, Livemap, Params,
 		VnInstr = vn_computed_goto(_, Labels),
 		vn_block__record_several_labels(Labels, Livemap, Params,
 			VnTables0, VnTables, Liveset0, Liveset,
-			FlushEntry0, FlushEntry, LabelNo0, LabelNo, Parallels1),
-		Parallels = Parallels1
+			FlushEntry0, FlushEntry, LabelNo0, LabelNo, Parallels)
 	;
 		VnInstr = vn_if_val(_, TargetAddr),
 		vn_block__new_if_node(TargetAddr, Livemap, Params,
 			Ctrlmap0, Ctrl0, VnTables0, VnTables, Liveset0, Liveset,
-			FlushEntry0, FlushEntry, LabelNo0, LabelNo, Parallels1),
-		Parallels = Parallels1
+			FlushEntry0, FlushEntry, LabelNo0, LabelNo, Parallels)
 	;
 		VnInstr = vn_mark_hp(Vnlval),
 		vn_util__rval_to_vn(lval(hp), Vn, VnTables0, VnTables1),
