@@ -2719,14 +2719,11 @@ then
 	LIBGRADES="$LIBGRADES il"
 fi
 
-# XXX The java grade is temporarily disabled because
-# the standard library won't compile in grade java.
-#
 # add Java back-end grade, if Java is installed
-#if test $mercury_cv_java = yes -a "$enable_java_grade" = yes
-#then
-#	LIBGRADES="$LIBGRADES java"
-#fi
+if test $mercury_cv_java = yes -a "$enable_java_grade" = yes
+then
+	LIBGRADES="$LIBGRADES java"
+fi
 
 # Allow the user to override the default list of library grades
 
