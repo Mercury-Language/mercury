@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000 University of Melbourne.
+** Copyright (C) 1998-2001 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -131,7 +131,7 @@ struct MR_MemoryZone_Struct {
 ** MR_clear_zone_for_GC(MR_MemoryZone *zone, void *start_address):
 **	Zero out the (hopefully unused) portion of the zone
 **	from the specified `start_address' to the end of the zone.
-**	This is used to avoid unwanted memory retition due to 
+**	This is used to avoid unwanted memory retention due to 
 **	false hits in the conservative garbage collector.
 */
 #define MR_clear_zone_for_GC(zone, start_address) \
