@@ -247,7 +247,7 @@ case $basic_machine in
 	# We use `pc' rather than `unknown'
 	# because (1) that's what they normally are, and
 	# (2) the word "unknown" tends to confuse beginning users.
-	i[234567]86 | x86_64)
+	i[0-9]*86 | x86_64)
 	  basic_machine=$basic_machine-pc
 	  ;;
 	# Object if more than one company name word.
@@ -257,7 +257,7 @@ case $basic_machine in
 		;;
 	# Recognize the basic CPU types with company name.
 	# FIXME: clean up the formatting here.
-	vax-* | tahoe-* | i[234567]86-* | i860-* | ia64-* | m32r-* | m68k-* | m68000-* \
+	vax-* | tahoe-* | i[0-9]*86-* | i860-* | ia64-* | m32r-* | m68k-* | m68000-* \
 	      | m88k-* | sparc-* | ns32k-* | fx80-* | arc-* | c[123]* \
 	      | arm-*  | armbe-* | armle-* | armv*-* | strongarm-* | xscale-* \
 	      | mips-* | pyramid-* | tron-* | a29k-* | romp-* | rs6000-* \
@@ -506,19 +506,19 @@ case $basic_machine in
 		basic_machine=i370-ibm
 		;;
 # I'm not sure what "Sysv32" means.  Should this be sysv3.2?
-	i[34567]86v32)
+	i[0-9]*86v32)
 		basic_machine=`echo $1 | sed -e 's/86.*/86-pc/'`
 		os=-sysv32
 		;;
-	i[34567]86v4*)
+	i[0-9]*86v4*)
 		basic_machine=`echo $1 | sed -e 's/86.*/86-pc/'`
 		os=-sysv4
 		;;
-	i[34567]86v)
+	i[0-9]*86v)
 		basic_machine=`echo $1 | sed -e 's/86.*/86-pc/'`
 		os=-sysv
 		;;
-	i[34567]86sol2)
+	i[0-9]*86sol2)
 		basic_machine=`echo $1 | sed -e 's/86.*/86-pc/'`
 		os=-solaris2
 		;;
