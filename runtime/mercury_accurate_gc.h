@@ -60,11 +60,5 @@ typedef	struct MR_RootNode	*MR_RootList;
 
 extern	void	MR_agc_add_root(MR_Word *root_addr, MR_TypeInfo type_info);
 
-/*
-** A list of the saved heap pointers.
-** See documentation in mercury_accurate_gc.c.
-*/
-extern MR_Word *MR_saved_heap_pointers_list;
-
 /*---------------------------------------------------------------------------*/
 #endif /* not MERCURY_ACCURATE_GC_H */

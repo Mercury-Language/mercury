@@ -876,12 +876,12 @@ Using `pragma c_code' doesn't work, due to the lack of support for
 aliasing, and in particular the lack of support for `ui' modes.
 :- pragma c_code(copy(Value::ui, Copy::uo), "
 	MR_save_transient_registers();
-	Copy = MR_deep_copy(&Value, TypeInfo_for_T, NULL, NULL);
+	Copy = MR_deep_copy(Value, TypeInfo_for_T, NULL, NULL);
 	MR_restore_transient_registers();
 ").
 :- pragma c_code(copy(Value::in, Copy::uo), "
 	MR_save_transient_registers();
-	Copy = MR_deep_copy(&Value, TypeInfo_for_T, NULL, NULL);
+	Copy = MR_deep_copy(Value, TypeInfo_for_T, NULL, NULL);
 	MR_restore_transient_registers();
 ").
 *************/
@@ -909,7 +909,7 @@ mercury__builtin__copy_2_p_0(MR_Mercury_Type_Info type_info,
 	MR_Box value, MR_Box *copy)
 {
 	MR_Word val = (MR_Word) value;
-	*copy = (MR_Box) MR_deep_copy(&val, (MR_TypeInfo) type_info,
+	*copy = (MR_Box) MR_deep_copy(val, (MR_TypeInfo) type_info,
 		NULL, NULL);
 }
 
@@ -966,7 +966,7 @@ MR_BEGIN_CODE
 		value = MR_stackvar(2);					\
 									\
 		MR_save_transient_registers();				\
-		copy = MR_deep_copy(&value, type_info, NULL, NULL);	\
+		copy = MR_deep_copy(value, type_info, NULL, NULL);	\
 		MR_restore_transient_registers();			\
 									\
 		MR_stackvar(1) = copy;					\
@@ -989,7 +989,7 @@ MR_BEGIN_CODE
 		value = MR_r2;						\
 									\
 		MR_save_transient_registers();				\
-		copy = MR_deep_copy(&value, type_info, NULL, NULL);	\
+		copy = MR_deep_copy(value, type_info, NULL, NULL);	\
 		MR_restore_transient_registers();			\
 									\
 		MR_r1 = copy;						\

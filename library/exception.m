@@ -1860,7 +1860,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 	assert(MR_EXCEPTION_STRUCT->MR_excp_heap_ptr <=
 		MR_EXCEPTION_STRUCT->MR_excp_heap_zone->top);
 	MR_save_transient_registers();
-	exception = MR_deep_copy(&exception,
+	exception = MR_deep_copy(exception,
 		(MR_TypeInfo) &mercury_data_std_util__type_ctor_info_univ_0,
 		MR_EXCEPTION_STRUCT->MR_excp_heap_ptr,
 		MR_EXCEPTION_STRUCT->MR_excp_heap_zone->top);
@@ -1877,7 +1877,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 	assert(MR_EXCEPTION_STRUCT->MR_excp_solns_heap_ptr <=
 		MR_ENGINE(MR_eng_solutions_heap_zone)->top);
 	MR_save_transient_registers();
-	exception = MR_deep_copy(&exception,
+	exception = MR_deep_copy(exception,
 		(MR_TypeInfo) &mercury_data_std_util__type_ctor_info_univ_0,
 		saved_solns_heap_ptr,
 		MR_ENGINE(MR_eng_solutions_heap_zone)->top);

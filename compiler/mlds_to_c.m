@@ -2718,7 +2718,23 @@ mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context) -->
 	globals__io_get_gc_method(GC_Method),
 	( { GC_Method = accurate } ->
 		mlds_indent(Context, Indent + 1),
-		io__write_string("MR_GC_check();\n")
+		io__write_string("MR_GC_check();\n"),
+		% For types which hold RTTI that will be traversed
+		% by the collector at GC-time, we need to allocate
+		% an extra word at the start, to hold the forwarding
+		% pointer.  Normally we would just overwrite the
+		% first word of the object in the "from" space,
+		% but this can't be done for objects which will be
+		% referenced during the garbage collection process.
+		( { type_needs_forwarding_pointer_space(Type) = yes } ->
+			mlds_indent(Context, Indent + 1),
+			io__write_string(
+			    "/* reserve space for GC forwarding pointer*/\n"),
+			mlds_indent(Context, Indent + 1),
+			io__write_string("MR_hp_alloc(1);\n")
+		;
+			[]
+		)
 	;
 		[]
 	),
@@ -2853,6 +2869,35 @@ mlds_output_target_code_component(_Context, target_code_output(Lval)) -->
 mlds_output_target_code_component(_Context, name(Name)) -->
 	mlds_output_fully_qualified_name(Name),
 	io__write_string("\n").
+
+:- func type_needs_forwarding_pointer_space(mlds__type) = bool.
+type_needs_forwarding_pointer_space(mlds__type_info_type) = yes.
+type_needs_forwarding_pointer_space(mlds__pseudo_type_info_type) = yes.
+type_needs_forwarding_pointer_space(mercury_type(Type, _, _)) =
+	(if is_introduced_type_info_type(Type) then yes else no).
+type_needs_forwarding_pointer_space(mercury_array_type(_)) = no.
+type_needs_forwarding_pointer_space(mlds__cont_type(_)) = no.
+type_needs_forwarding_pointer_space(mlds__commit_type) = no.
+type_needs_forwarding_pointer_space(mlds__native_bool_type) = no.
+type_needs_forwarding_pointer_space(mlds__native_int_type) = no.
+type_needs_forwarding_pointer_space(mlds__native_float_type) = no.
+type_needs_forwarding_pointer_space(mlds__native_char_type) = no.
+type_needs_forwarding_pointer_space(mlds__foreign_type(_)) = no.
+type_needs_forwarding_pointer_space(mlds__class_type(_, _, _)) = no.
+type_needs_forwarding_pointer_space(mlds__array_type(_)) = no.
+type_needs_forwarding_pointer_space(mlds__ptr_type(_)) = no.
+type_needs_forwarding_pointer_space(mlds__func_type(_)) = no.
+type_needs_forwarding_pointer_space(mlds__generic_type) = no.
+type_needs_forwarding_pointer_space(mlds__generic_env_ptr_type) = no.
+type_needs_forwarding_pointer_space(mlds__rtti_type(_)) = _ :-
+	% these should all be statically allocated, not dynamically allocated,
+	% so we should never get here
+	unexpected(this_file,
+		"type_needs_forwarding_pointer_space: rtti_type"). 
+type_needs_forwarding_pointer_space(mlds__unknown_type) = _ :-
+	unexpected(this_file,
+		"type_needs_forwarding_pointer_space: unknown_type"). 
+
 
 :- pred mlds_output_init_args(list(mlds__rval), list(mlds__type), mlds__context,
 		int, mlds__lval, mlds__tag, indent, io__state, io__state).

@@ -29,12 +29,6 @@
 #define in_range(X)	(lower_limit == NULL || \
 				((X) >= lower_limit && (X) <= upper_limit))
 
-#undef  in_traverse_range
-#define in_traverse_range(X)	(MR_FALSE)
-
-#undef	maybeconst
-#define	maybeconst	const
-
 #undef  copy
 #define copy		MR_deep_copy
 
@@ -47,14 +41,14 @@
 #undef  copy_typeclass_info
 #define copy_typeclass_info	MR_deep_copy_typeclass_info
 
+#undef  if_forwarding_pointer
+#define if_forwarding_pointer(Data, ACTION)
+
 #undef  leave_forwarding_pointer
-#define leave_forwarding_pointer(DataPtr, NewData)
+#define leave_forwarding_pointer(Data, Offset, NewData)
 
-#undef	found_forwarding_pointer
-#define found_forwarding_pointer(Data)
-
-#undef handle_saved_heap_pointers
-#define handle_saved_heap_pointers MR_FALSE
+#undef	found_out_of_range_pointer
+#define found_out_of_range_pointer(Data)
 
 #include "mercury_deep_copy_body.h"
 
@@ -64,16 +58,9 @@
 */
 #ifdef MR_NATIVE_GC
 
+	/* in_range() is true iff X is in the from-space */
 #undef  in_range
 #define in_range(X)	((X) >= lower_limit && (X) <= upper_limit)
-
-#undef  in_traverse_range(X)
-#define in_traverse_range(X)	\
-		((X) >= MR_ENGINE(MR_eng_solutions_heap_zone)->min && \
-			(X) <= MR_ENGINE(MR_eng_solutions_heap_zone)->hardmax)
-
-#undef	maybeconst
-#define	maybeconst
 
 #undef  copy
 #define copy		MR_agc_deep_copy
@@ -91,23 +78,50 @@
   #define FORWARD_DEBUG_MSG(Msg, Data)	\
 		fprintf(stderr, Msg, Data)
 #else
-  #define FORWARD_DEBUG_MSG(Msg, Data)
+  #define FORWARD_DEBUG_MSG(Msg, Data) ((void)0)
 #endif
 
+/*
+** This points to a bitmap, which is used to record which objects
+** have already been copied and now hold forwarding pointers.
+*/  
+MR_Word *MR_has_forwarding_pointer;
+
+#define mark_as_forwarding_pointer(Data) \
+	do { \
+		size_t fwdptr_offset = \
+			(MR_Word *)(Data) - (MR_Word *)lower_limit; \
+		size_t fwdptr_word = fwdptr_offset / MR_WORDBITS; \
+		size_t fwdptr_bit = fwdptr_offset % MR_WORDBITS; \
+		MR_has_forwarding_pointer[fwdptr_word] |= (1 << fwdptr_bit); \
+	} while (0)
+
+#undef  if_forwarding_pointer
+#define if_forwarding_pointer(Data, ACTION) \
+	do { \
+		size_t fwdptr_offset = \
+			(MR_Word *)(Data) - (MR_Word *)lower_limit; \
+		size_t fwdptr_word = fwdptr_offset / MR_WORDBITS; \
+		size_t fwdptr_bit = fwdptr_offset % MR_WORDBITS; \
+		if (MR_has_forwarding_pointer[fwdptr_word] & \
+			(1 << fwdptr_bit)) \
+		{ \
+			ACTION; \
+		} \
+	} while (0)
+
 #undef  leave_forwarding_pointer
-#define leave_forwarding_pointer(DataPtr, NewData)		\
-		if (in_range(DataPtr)) {			\
-			FORWARD_DEBUG_MSG("forwarding to %lx\n",\
+#define leave_forwarding_pointer(Data, Offset, NewData)		\
+	do {							\
+		FORWARD_DEBUG_MSG("forwarding to %lx\n",	\
 					(long) NewData);	\
-			*DataPtr = NewData;			\
-		}
+		*(((MR_Word *)Data) + Offset) = NewData;	\
+		mark_as_forwarding_pointer(Data);		\
+	} while (0)
 
-#undef  found_forwarding_pointer
-#define found_forwarding_pointer(Data)	\
-		FORWARD_DEBUG_MSG("not on this heap: %lx\n", (long) Data);
-
-#undef handle_saved_heap_pointers
-#define handle_saved_heap_pointers MR_TRUE
+#undef  found_out_of_range_pointer
+#define found_out_of_range_pointer(Data)	\
+		FORWARD_DEBUG_MSG("not on this heap: %lx\n", (long) Data)
 
 #include "mercury_deep_copy_body.h"
 
@@ -148,7 +162,7 @@ MR_make_long_lived(MR_Word term, MR_TypeInfo type_info, MR_Word *lower_limit)
 
 	/* copy values from the heap to the global heap */
 	MR_save_transient_hp();
-	result = MR_deep_copy(&term, type_info, lower_limit,
+	result = MR_deep_copy(term, type_info, lower_limit,
 			MR_ENGINE(MR_eng_global_heap_zone)->top);
 	MR_restore_transient_hp();
 

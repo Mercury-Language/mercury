@@ -60,39 +60,6 @@ static MR_RootList root_list = NULL;
 /* The last root on the list */
 static MR_RootList last_root = NULL;
 
-/*
-** During garbage collection, when traversing from the roots, we may
-** encounter saved heap pointers.  We want to handle these by just
-** resetting them to point to the first free byte of the new heap,
-** but until the collection has finished, we don't know much of the
-** new heap will be used.  So when traversing saved heap pointers,
-** we just put them onto a list; when we've finished traversing
-** all the roots, we can then fill in the correct values for the
-** saved heap pointers.
-**
-** To avoid the need for dynamic allocation,
-** the list is stored in saved heap pointers themselves.
-** We represent the list by just chaining the saved heap pointers
-** together, so that each saved heap pointer points to the next one.
-** The `MR_saved_heap_pointers_list' variable points to the start of
-** this list.
-*/
-MR_Word *MR_saved_heap_pointers_list;
-
-static void
-fixup_saved_heap_pointers(MR_Word *new_hp)
-{
-	MR_Word *p;
-	MR_Word next;
-
-	for (p = MR_saved_heap_pointers_list; p != NULL; p = (MR_Word *) next)
-	{
-		next = *p;
-		*p = (MR_Word) new_hp;
-	}
-	MR_saved_heap_pointers_list = NULL;
-}
-
 #ifdef MR_HIGHLEVEL_CODE
 
 /*
@@ -109,6 +76,10 @@ MR_garbage_collect(void)
 {
     MR_MemoryZone                   *old_heap, *new_heap;
     MR_Word                         *old_hp, *new_hp;
+    size_t			    heap_size_in_words;
+    size_t			    num_words_for_bitmap;
+    size_t			    num_bytes_for_bitmap;
+    static size_t		    prev_num_bytes_for_bitmap;
 
     old_heap = MR_ENGINE(MR_eng_heap_zone);
     new_heap = MR_ENGINE(MR_eng_heap_zone2);
@@ -130,6 +101,21 @@ MR_garbage_collect(void)
     ** The new heap pointer starts at the bottom of the new heap.
     */
     MR_virtual_hp = new_heap->min;
+
+    /*
+    ** Initialize the forwarding pointer bitmap.
+    */
+    heap_size_in_words = old_heap->hardmax - old_heap->min;
+    num_words_for_bitmap = (heap_size_in_words + MR_WORDBITS - 1) / MR_WORDBITS;
+    num_bytes_for_bitmap = num_words_for_bitmap * sizeof(MR_Word);
+    if (MR_has_forwarding_pointer == NULL
+	|| num_bytes_for_bitmap > prev_num_bytes_for_bitmap)
+    {
+	MR_has_forwarding_pointer = MR_realloc(MR_has_forwarding_pointer,
+					num_bytes_for_bitmap);
+	prev_num_bytes_for_bitmap = num_bytes_for_bitmap;
+    }
+    memset(MR_has_forwarding_pointer, 0, num_bytes_for_bitmap);
 
     /*
     ** Swap the two heaps.
@@ -156,8 +142,6 @@ MR_garbage_collect(void)
     ** Copy any roots that are not on the stack.
     */
     garbage_collect_roots();
-
-    fixup_saved_heap_pointers(MR_virtual_hp);
 
 #ifdef MR_DEBUG_AGC_COLLECTION
     fprintf(stderr, "Clearing old heap:\n");
@@ -732,7 +716,7 @@ copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, MR_bool copy_regs,
 		case MR_LONG_LVAL_TYPE_R:
 			if (copy_regs) {
 				MR_virtual_reg(locn_num) = MR_agc_deep_copy(
-					&MR_virtual_reg(locn_num), type_info,
+					MR_virtual_reg(locn_num), type_info,
 					MR_ENGINE(MR_eng_heap_zone2->min),
 					MR_ENGINE(MR_eng_heap_zone2->hardmax));
 			}
@@ -743,7 +727,7 @@ copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, MR_bool copy_regs,
 
 		case MR_LONG_LVAL_TYPE_STACKVAR:
 			MR_based_stackvar(stack_pointer, locn_num) =
-				MR_agc_deep_copy(&MR_based_stackvar(
+				MR_agc_deep_copy(MR_based_stackvar(
 						stack_pointer,locn_num),
 					type_info,
 					MR_ENGINE(MR_eng_heap_zone2->min),
@@ -753,7 +737,7 @@ copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, MR_bool copy_regs,
 		case MR_LONG_LVAL_TYPE_FRAMEVAR:
 			MR_based_framevar(current_frame, locn_num) =
 				MR_agc_deep_copy(
-				&MR_based_framevar(current_frame, locn_num),
+				MR_based_framevar(current_frame, locn_num),
 				type_info,
 				MR_ENGINE(MR_eng_heap_zone2->min),
 				MR_ENGINE(MR_eng_heap_zone2->hardmax));
@@ -798,7 +782,7 @@ copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info, MR_bool copy_regs,
 			if (copy_regs) {
 				locn_num = MR_SHORT_LVAL_NUMBER(locn);
 				MR_virtual_reg(locn_num) = MR_agc_deep_copy(
-					&MR_virtual_reg(locn_num), type_info,
+					MR_virtual_reg(locn_num), type_info,
 					MR_ENGINE(MR_eng_heap_zone2->min),
 					MR_ENGINE(MR_eng_heap_zone2->hardmax));
 			}
@@ -807,7 +791,7 @@ copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info, MR_bool copy_regs,
 		case MR_SHORT_LVAL_TYPE_STACKVAR:
 			locn_num = MR_SHORT_LVAL_NUMBER(locn);
 			MR_based_stackvar(stack_pointer, locn_num) =
-				MR_agc_deep_copy(&MR_based_stackvar(
+				MR_agc_deep_copy(MR_based_stackvar(
 						stack_pointer,locn_num),
 					type_info,
 					MR_ENGINE(MR_eng_heap_zone2->min),
@@ -818,7 +802,7 @@ copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info, MR_bool copy_regs,
 			locn_num = MR_SHORT_LVAL_NUMBER(locn);
 			MR_based_framevar(current_frame, locn_num) =
 				MR_agc_deep_copy(
-					&MR_based_framevar(current_frame,
+					MR_based_framevar(current_frame,
 						locn_num),
 					type_info,
 					MR_ENGINE(MR_eng_heap_zone2->min),
@@ -847,7 +831,7 @@ garbage_collect_roots(void)
 	MR_RootList current = root_list;
 
 	while (current != NULL) {
-		*current->root = MR_agc_deep_copy(current->root,
+		*current->root = MR_agc_deep_copy(*current->root,
 			current->type_info, MR_ENGINE(MR_eng_heap_zone2->min), 
 			MR_ENGINE(MR_eng_heap_zone2->hardmax));
 		current = current->next;

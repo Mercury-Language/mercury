@@ -19,30 +19,75 @@
 ** Prototypes.
 */
 
-static  MR_Word         copy_arg(maybeconst MR_Word *parent_data_ptr,
-                            maybeconst MR_Word *data_ptr,
+static  MR_Word         copy_arg(const MR_Word *parent_data_ptr, MR_Word data,
                             const MR_DuFunctorDesc *functor_descriptor,
                             const MR_TypeInfoParams type_params,
                             const MR_PseudoTypeInfo arg_pseudotype_info,
                             const MR_Word *lower_limit,
                             const MR_Word *upper_limit);
-static  MR_TypeInfo     copy_type_info(maybeconst MR_TypeInfo *type_info_ptr,
+static  MR_TypeInfo     copy_type_info(MR_TypeInfo type_info,
                             const MR_Word *lower_limit,
                             const MR_Word *upper_limit);
-static  MR_Word         copy_typeclass_info(maybeconst MR_Word
-                            *typeclass_info_ptr, const MR_Word *lower_limit,
+static  MR_Word         copy_typeclass_info(MR_Word typeclass_info,
+                            const MR_Word *lower_limit,
                             const MR_Word *upper_limit);
 
+/*
+** We need to make sure that we don't clobber any part of
+** the closure which might be used by the collector for
+** tracing stack frames of closure wrapper functions.
+** So we store the forwarding pointer for closure in the MR_closure_code
+** field (which is not used by the collector), rather than
+** at offset zero (where it would clobber the closure layout,
+** which is used by the collector).
+*/
+#define CLOSURE_FORWARDING_PTR_OFFSET \
+    (offsetof(MR_Closure, MR_closure_code) / sizeof(MR_Word))
+
+/*
+** We must not clobber type_infos or typeclass_infos with forwarding pointers,
+** since they may be referenced by the garbage collector during
+** collection.  Unfortunately in this case there is no spare field
+** which we can use.  So we allocate an extra word before the front of
+** the object (see the code for new_object in compiler/mlds_to_c.m),
+** and use that for the forwarding pointer.  Hence the offsets here
+** are -1, meaning one word before the start of the object.
+*/
+#define TYPEINFO_FORWARDING_PTR_OFFSET -1
+#define TYPECLASSINFO_FORWARDING_PTR_OFFSET -1
+
+/*
+** RETURN_IF_OUT_OF_RANGE(MR_Word tagged_pointer, MR_Word *pointer,
+**                        int forwarding_pointer_offset):
+**      Check if `pointer' is either out of range, or has already been
+**      processed, and if so, return (from the function that called this macro)
+**      with the appropriate value.
+**
+**      If the pointer is out of range, we return the original tagged pointer
+**      value unchanged.
+**      If the pointer has already been processed, then return the forwarding
+**      pointer that was saved in the object, which will be stored at
+**      pointer[forwarding_pointer_offset].
+*/
+#define RETURN_IF_OUT_OF_RANGE(tagged_pointer, pointer, offset, rettype) \
+        do {                                                            \
+            if (!in_range(pointer)) {                                   \
+                found_out_of_range_pointer(pointer);                    \
+                return (rettype) (tagged_pointer);                      \
+            }                                                           \
+            if_forwarding_pointer((pointer),                            \
+                return (rettype) (pointer)[offset]);                    \
+        } while (0)
+
+            
+
 MR_Word
-copy(maybeconst MR_Word *data_ptr, MR_TypeInfo type_info,
+copy(MR_Word data, MR_TypeInfo type_info,
     const MR_Word *lower_limit, const MR_Word *upper_limit)
 {
-    MR_Word             data;
     MR_Word             new_data;
     MR_TypeCtorInfo     type_ctor_info;
     MR_DuTypeLayout     du_type_layout;
-
-    data = *data_ptr;
 
 try_again:
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
@@ -148,11 +193,12 @@ try_again:
                     cur_slot = 1;                                           \
                 }                                                           \
         } while(0)
-                                                                            \
+
 #define MR_handle_sectag_remote_or_none(have_sectag)                        \
         do {                                                                \
                 data_value = (MR_Word *) MR_body(data, ptag);               \
-                if (in_range(data_value)) {                                 \
+                RETURN_IF_OUT_OF_RANGE(data, data_value, 0, MR_Word);       \
+                {                                                           \
                     const MR_DuFunctorDesc  *functor_desc;                  \
                     const MR_DuExistInfo    *exist_info;                    \
                     int                     sectag;                         \
@@ -200,15 +246,15 @@ try_again:
                                                                             \
                         for (i = 0; i < num_ti_plain; i++) {                \
                             MR_field(0, new_data, cur_slot) = (MR_Word)     \
-                                copy_type_info((MR_TypeInfo *)              \
-                                    &data_value[cur_slot],                  \
+                                copy_type_info((MR_TypeInfo)                \
+                                    data_value[cur_slot],                   \
                                     lower_limit, upper_limit);              \
                             cur_slot++;                                     \
                         }                                                   \
                                                                             \
                         for (i = 0; i < num_tci; i++) {                     \
                             MR_field(0, new_data, cur_slot) = (MR_Word)     \
-                                copy_typeclass_info(&data_value[cur_slot],  \
+                                copy_typeclass_info(data_value[cur_slot],   \
                                     lower_limit, upper_limit);              \
                             cur_slot++;                                     \
                         }                                                   \
@@ -222,7 +268,7 @@ try_again:
                                 parent_data++;                              \
                             }                                               \
                             MR_field(0, new_data, cur_slot) =               \
-                                copy_arg(parent_data, &data_value[cur_slot], \
+                                copy_arg(parent_data, data_value[cur_slot], \
                                     functor_desc,                           \
                                     MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR( \
                                         type_info),                         \
@@ -230,7 +276,7 @@ try_again:
                                     lower_limit, upper_limit);              \
                         } else {                                            \
                             MR_field(0, new_data, cur_slot) =               \
-                                copy(&data_value[cur_slot],                 \
+                                copy(data_value[cur_slot],                 \
                                     MR_pseudo_type_info_is_ground(          \
                                     functor_desc->MR_du_functor_arg_types[i]), \
                                     lower_limit, upper_limit);              \
@@ -239,10 +285,7 @@ try_again:
                     }                                                       \
                                                                             \
                     new_data = (MR_Word) MR_mkword(ptag, new_data);         \
-                    leave_forwarding_pointer(data_ptr, new_data);           \
-                } else {                                                    \
-                    new_data = data;                                        \
-                    found_forwarding_pointer(data);                         \
+                    leave_forwarding_pointer(data_value, 0, new_data);      \
                 }                                                           \
         } while(0)
 
@@ -268,7 +311,7 @@ try_again:
 
     case MR_TYPECTOR_REP_NOTAG:
     case MR_TYPECTOR_REP_NOTAG_USEREQ:
-        new_data = copy_arg(NULL, data_ptr, NULL,
+        new_data = copy_arg(NULL, data, NULL,
             MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
             MR_type_ctor_layout(type_ctor_info).layout_notag->
             MR_notag_functor_arg_type, lower_limit, upper_limit);
@@ -283,7 +326,7 @@ try_again:
         break;
 
     case MR_TYPECTOR_REP_EQUIV:
-        new_data = copy_arg(NULL, data_ptr, NULL,
+        new_data = copy_arg(NULL, data, NULL,
             MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
             MR_type_ctor_layout(type_ctor_info).layout_equiv,
             lower_limit, upper_limit);
@@ -308,7 +351,9 @@ try_again:
                 assert(MR_tag(data) == 0);
                 data_value = (MR_Word *) MR_body(data, MR_mktag(0));
 
-                if (in_range(data_value)) {
+                RETURN_IF_OUT_OF_RANGE(data, data_value, 0, MR_Word);
+
+                {
                     MR_restore_transient_hp();
 #ifdef MR_HIGHLEVEL_CODE
                     /*
@@ -322,10 +367,7 @@ try_again:
                     new_data = MR_float_to_word(MR_word_to_float(data));
 #endif
                     MR_save_transient_hp();
-                    leave_forwarding_pointer(data_ptr, new_data);
-                } else {
-                    new_data = data;
-                    found_forwarding_pointer(data);
+                    leave_forwarding_pointer(data_value, 0, new_data);
                 }
             }
         #else
@@ -339,17 +381,17 @@ try_again:
             ** Not all Mercury strings are aligned; in particular,
             ** string constants containing the empty string may be
             ** allocated unaligned storage by the C compiler.
+            ** So we can't do `assert(MR_tag(data) == 0)' here.
             */
 
-            if (in_range((MR_Word *) data)) {
+            RETURN_IF_OUT_OF_RANGE(data, (MR_Word *) data, 0, MR_Word);
+
+            {
                 MR_incr_saved_hp_atomic(new_data,
                     (strlen((MR_String) data) + sizeof(MR_Word)) / 
                         sizeof(MR_Word));
                 strcpy((MR_String) new_data, (MR_String) data);
-                leave_forwarding_pointer(data_ptr, new_data);
-            } else {
-                new_data = data;
-                found_forwarding_pointer(data);
+                leave_forwarding_pointer(data, 0, new_data);
             }
         }
         break;
@@ -362,16 +404,17 @@ try_again:
             assert(MR_tag(data) == 0);
             data_value = (MR_Word *) MR_body(data, MR_mktag(0));
 
+            RETURN_IF_OUT_OF_RANGE(data, data_value, CLOSURE_FORWARDING_PTR_OFFSET,
+                    MR_Word);
+
             /*
             ** Closures have the structure given by the MR_Closure type.
             **
             ** Their type_infos have a pointer to type_ctor_info for
             ** pred/0 or func/0, the number of argument typeinfos,
             ** and then the argument typeinfos themselves.
-            **
-            ** XXX pred needs to handle traversals.
             */
-            if (in_range(data_value)) {
+            {
                 MR_Unsigned         args, i;
                 MR_Closure          *old_closure;
                 MR_Closure          *new_closure;
@@ -406,7 +449,7 @@ try_again:
                         closure_layout->MR_closure_arg_pseudo_type_info[i];
                     new_closure->MR_closure_hidden_args_0[i] =
                         copy_arg(NULL,
-                            &old_closure->MR_closure_hidden_args_0[i], NULL,
+                            old_closure->MR_closure_hidden_args_0[i], NULL,
                             type_info_arg_vector, arg_pseudo_type_info,
                             lower_limit, upper_limit);
                 }
@@ -416,12 +459,8 @@ try_again:
                 }
 
                 new_data = (MR_Word) new_closure;
-                leave_forwarding_pointer(data_ptr, new_data);
-            } else if (in_traverse_range(data_value)) {
-                MR_fatal_error("sorry, unimplemented: traversal of closures");
-            } else {
-                new_data = data;
-                found_forwarding_pointer(data);
+                leave_forwarding_pointer(data, CLOSURE_FORWARDING_PTR_OFFSET,
+                    new_data);
             }
         }
         break;
@@ -434,7 +473,9 @@ try_again:
             assert(MR_tag(data) == 0);
             data_value = (MR_Word *) MR_body(data, MR_mktag(0));
 
-            if (in_range(data_value)) {
+            RETURN_IF_OUT_OF_RANGE(data, data_value, 0, MR_Word);
+            
+            {
                 MR_Word *new_data_ptr;
                 MR_TypeInfo *arg_typeinfo_vector;
 
@@ -451,15 +492,12 @@ try_again:
                         MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info);
                     for (i = 0; i < arity; i++) {
                        /* type_infos are counted from one */
-                       new_data_ptr[i] = copy(&data_value[i],
+                       new_data_ptr[i] = copy(data_value[i],
                             (const MR_TypeInfo) arg_typeinfo_vector[i + 1],
                             lower_limit, upper_limit);
                     }
-                    leave_forwarding_pointer(data_ptr, new_data);
+                    leave_forwarding_pointer(data, 0, new_data);
                 }
-            } else {
-                new_data = data;
-                found_forwarding_pointer(data);
             }
         }
         break;
@@ -476,7 +514,9 @@ try_again:
             assert(MR_tag(data) == 0);
             data_value = (MR_Word *) MR_body(data, MR_mktag(0));
 
-            if (in_range(data_value)) {
+            RETURN_IF_OUT_OF_RANGE(data, data_value, 0, MR_Word);
+            
+            {
                 MR_ArrayType *new_array;
                 MR_ArrayType *old_array;
                 MR_Integer array_size;
@@ -488,34 +528,18 @@ try_again:
                 new_array->size = array_size;
                 for (i = 0; i < array_size; i++) {
                     new_array->elements[i] = copy_arg(NULL,
-                        &old_array->elements[i], NULL,
+                        old_array->elements[i], NULL,
                         MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
                         (const MR_PseudoTypeInfo) 1, lower_limit, upper_limit);
                 }
-                leave_forwarding_pointer(data_ptr, new_data);
-            } else if (in_traverse_range(data_value)) {
-                MR_ArrayType *old_array;
-                MR_Integer array_size;
-
-                old_array = (MR_ArrayType *) data_value;
-                array_size = old_array->size;
-                for (i = 0; i < array_size; i++) {
-                    (void) copy_arg(NULL, 
-                        &old_array->elements[i], NULL, 
-                        MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
-                        (const MR_PseudoTypeInfo) 1, lower_limit, upper_limit);
-                }
-                new_data = data;
-            } else {
-                new_data = data;
-                found_forwarding_pointer(data);
+                leave_forwarding_pointer(data, 0, new_data);
             }
         }
         break;
 
     case MR_TYPECTOR_REP_TYPEINFO:
     case MR_TYPECTOR_REP_TYPEDESC:
-        new_data = (MR_Word) copy_type_info((MR_TypeInfo *) data_ptr,
+        new_data = (MR_Word) copy_type_info((MR_TypeInfo) data,
             lower_limit, upper_limit);
         break;
 
@@ -533,7 +557,7 @@ try_again:
         break;
 
     case MR_TYPECTOR_REP_TYPECLASSINFO:
-        new_data = (MR_Word) copy_typeclass_info(data_ptr,
+        new_data = (MR_Word) copy_typeclass_info(data,
             lower_limit, upper_limit);
         break;
 
@@ -551,7 +575,7 @@ try_again:
             data_tag = MR_tag(data);
             data_value = (MR_Word *) MR_body(data, data_tag);
 
-            if (in_range(data_value) || in_traverse_range(data_value)) {
+            if (in_range(data_value)) {
                 /*
                 ** This error occurs if we try to copy() a
                 ** `c_pointer' type that points to memory allocated
@@ -571,33 +595,7 @@ try_again:
         break;
 
     case MR_TYPECTOR_REP_HP:
-#if handle_saved_heap_pointers
-        /*
-        ** We can't copy saved heap pointer values now,
-        ** since we don't know what the new heap pointer will be
-        ** after garbage collection has finished.
-        ** Instead we just push the saved heap pointer onto a list,
-        ** and fill in the correct value later.
-        ** See fixup_saved_heap_pointers() in mercury_accurate_gc.c.
-        */
-  #ifdef MR_DEBUG_AGC_SAVED_HPS
-        fprintf(stderr, "found saved heap pointer: "
-                        "addr = %p, val = %p, chain = %p\n",
-                        (void *) data_ptr, (void *) data,
-                        (void *) MR_saved_heap_pointers_list);
-  #endif
-        /* insert this pointer at the start of the list */
-        new_data = *data_ptr = (MR_Word) MR_saved_heap_pointers_list;
-        MR_saved_heap_pointers_list = data_ptr;
-        break;
-#else
-        /*
-        ** Copying of saved heap pointers should only occur in native GC
-        ** grades.  For `--gc none', there can be saved heap pointers,
-        ** but they should never be copied.
-        */
-        MR_fatal_error("Unexpected: copying saved heap pointer");
-#endif
+        MR_fatal_error("Sorry, not implemented: copying saved heap pointer");
 
     case MR_TYPECTOR_REP_CURFR: /* fallthru */
     case MR_TYPECTOR_REP_MAXFR:
@@ -632,7 +630,7 @@ try_again:
 */
 
 static MR_Word
-copy_arg(maybeconst MR_Word *parent_data_ptr, maybeconst MR_Word *data_ptr,
+copy_arg(const MR_Word *parent_data_ptr, MR_Word data,
     const MR_DuFunctorDesc *functor_descriptor,
     const MR_TypeInfoParams type_params,
     const MR_PseudoTypeInfo arg_pseudo_type_info,
@@ -647,19 +645,20 @@ copy_arg(maybeconst MR_Word *parent_data_ptr, maybeconst MR_Word *data_ptr,
         arg_pseudo_type_info, parent_data_ptr,
         functor_descriptor, &allocated_memory_cells);
 
-    new_data = copy(data_ptr, new_type_info, lower_limit, upper_limit);
+    new_data = copy(data, new_type_info, lower_limit, upper_limit);
     MR_deallocate(allocated_memory_cells);
 
     return new_data;
 }
 
 static MR_TypeInfo
-copy_type_info(maybeconst MR_TypeInfo *type_info_ptr,
+copy_type_info(MR_TypeInfo type_info,
     const MR_Word *lower_limit, const MR_Word *upper_limit)
 {
-    MR_TypeInfo type_info = *type_info_ptr;
+    RETURN_IF_OUT_OF_RANGE((MR_Word) type_info, (MR_Word *) type_info,
+        TYPEINFO_FORWARDING_PTR_OFFSET, MR_TypeInfo);
 
-    if (in_range((MR_Word *) type_info)) {
+    {
         MR_TypeCtorInfo type_ctor_info;
         MR_Word         *new_type_info_arena;
         MR_TypeInfo     *type_info_args;
@@ -703,25 +702,25 @@ copy_type_info(maybeconst MR_TypeInfo *type_info_ptr,
                 type_ctor_info, new_type_info_args);
         }
         for (i = 1; i <= arity; i++) {
-            new_type_info_args[i] = copy_type_info(&type_info_args[i],
+            new_type_info_args[i] = copy_type_info(type_info_args[i],
                 lower_limit, upper_limit);
         }
-        leave_forwarding_pointer((MR_Word *) type_info_ptr,
-            (MR_Word) new_type_info_arena);
+        leave_forwarding_pointer((MR_Word) type_info,
+            TYPEINFO_FORWARDING_PTR_OFFSET, (MR_Word) new_type_info_arena);
         return (MR_TypeInfo) new_type_info_arena;
-    } else {
-        found_forwarding_pointer(type_info);
-        return type_info;
     }
 }
 
 static MR_Word
-copy_typeclass_info(maybeconst MR_Word *typeclass_info_ptr,
+copy_typeclass_info(MR_Word typeclass_info_param,
     const MR_Word *lower_limit, const MR_Word *upper_limit)
 {
-    MR_Word *typeclass_info = (MR_Word *) *typeclass_info_ptr;
+    MR_Word *typeclass_info = (MR_Word *) typeclass_info_param;
 
-    if (in_range(typeclass_info)) {
+    RETURN_IF_OUT_OF_RANGE(typeclass_info_param, typeclass_info,
+        TYPECLASSINFO_FORWARDING_PTR_OFFSET, MR_Word);
+
+    {
         MR_Word *base_typeclass_info;
         MR_Word *new_typeclass_info;
         int     num_arg_typeinfos;
@@ -755,7 +754,7 @@ copy_typeclass_info(maybeconst MR_Word *typeclass_info_ptr,
             */
         for (i = 1; i < num_unconstrained + 1; i++) {
             new_typeclass_info[i] = (MR_Word) copy_type_info(
-                (MR_TypeInfo *)(&typeclass_info[i]), lower_limit, upper_limit);
+                (MR_TypeInfo) typeclass_info[i], lower_limit, upper_limit);
         }
             /*
             ** Next, copy all the typeclass infos: both the ones for
@@ -768,7 +767,7 @@ copy_typeclass_info(maybeconst MR_Word *typeclass_info_ptr,
             i++) 
         {
             new_typeclass_info[i] = (MR_Word) copy_typeclass_info(
-                &typeclass_info[i], lower_limit, upper_limit);
+                typeclass_info[i], lower_limit, upper_limit);
         }
 
             /*
@@ -781,13 +780,11 @@ copy_typeclass_info(maybeconst MR_Word *typeclass_info_ptr,
             i++)
         {
             new_typeclass_info[i] = (MR_Word) copy_type_info(
-                (MR_TypeInfo *) &typeclass_info[i], lower_limit, upper_limit);
+                (MR_TypeInfo) typeclass_info[i], lower_limit, upper_limit);
         }
-        leave_forwarding_pointer(typeclass_info_ptr,
-            (MR_Word) new_typeclass_info);
+        leave_forwarding_pointer(typeclass_info,
+                TYPECLASSINFO_FORWARDING_PTR_OFFSET,
+                (MR_Word) new_typeclass_info);
         return (MR_Word) new_typeclass_info;
-    } else {
-        found_forwarding_pointer(typeclass_info);
-        return (MR_Word) typeclass_info;
     }
 }

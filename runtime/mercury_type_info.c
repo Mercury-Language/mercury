@@ -56,10 +56,21 @@ MR_get_arg_type_info(const MR_TypeInfoParams type_info_params,
 #define	exist_func_string	"MR_create_type_info_maybe_existq"
 #define	MAYBE_DECLARE_ALLOC_ARG
 #define	MAYBE_PASS_ALLOC_ARG
-#define	ALLOCATE_WORDS(target, size)	MR_incr_saved_hp(		      \
-						MR_LVALUE_CAST(MR_Word,	      \
-							(target)),	      \
-						(size))
+#ifdef MR_NATIVE_GC
+  #define ALLOCATE_WORDS(target, size)					     \
+	do {								     \
+		/* reserve one extra word for GC forwarding pointer */	     \
+		/* (see comments in compiler/mlds_to_c.m for details) */     \
+		MR_incr_saved_hp(MR_LVALUE_CAST(MR_Word, (target)), 1);      \
+		MR_incr_saved_hp(MR_LVALUE_CAST(MR_Word, (target)), (size)); \
+	} while (0)
+#else /* !MR_NATIVE_GC */
+  #define ALLOCATE_WORDS(target, size)					     \
+	do {								     \
+		MR_incr_saved_hp(MR_LVALUE_CAST(MR_Word, (target)), (size)); \
+	} while (0)
+#endif /* !MR_NATIVE_GC */
+
 #include "mercury_make_type_info_body.h"
 #undef	usual_func
 #undef	exist_func

@@ -1183,7 +1183,7 @@ gc_trace(_::in) :-
 "
 #ifdef MR_NATIVE_GC
 	*(MR_Word *)Pointer =
-		MR_agc_deep_copy((MR_Word *) Pointer,
+		MR_agc_deep_copy(* (MR_Word *) Pointer,
 			(MR_TypeInfo) TypeInfo_for_T,
 			MR_ENGINE(MR_eng_heap_zone2->min),
                         MR_ENGINE(MR_eng_heap_zone2->hardmax));
