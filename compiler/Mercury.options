@@ -6,8 +6,6 @@
 # Mercury.options - module-specific flags for Mmake and `mmc --make'.
 #-----------------------------------------------------------------------------#
 
-MCFLAGS-hlds.make_hlds = --trace deep
-
 # Compilation of rl_code.c is really slow, especially with --trace deep,
 # at the default level of -O2, due to the C optimizer's use of quadratic
 # algorithms on a couple of 20,000-line functions (the automatically
