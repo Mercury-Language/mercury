@@ -1355,11 +1355,25 @@ case "$host" in
 		AC_MSG_RESULT(no)
 		;;
 esac
+
+case $EXT_FOR_PIC_OBJECTS in
+	o)
+		LIBRARY_RM_C='$(RM_C)'
+		;;
+	*)
+		# If we're going to be building both `.pic_o' files
+		# and `.o' files, then we should not remove the generated `.c'
+		# files in the library directory after building the `.o' files.
+		LIBRARY_RM_C=:
+		;;
+esac
+
 AC_SUBST(LINK_SHARED_OBJ)
 AC_SUBST(CFLAGS_FOR_PIC)
 AC_SUBST(EXT_FOR_PIC_OBJECTS)
 AC_SUBST(EXT_FOR_SHARED_LIB)
 AC_SUBST(SHARED_LIBS)
+AC_SUBST(LIBRARY_RM_C)
 #-----------------------------------------------------------------------------#
 if test "$BOOTSTRAP_MC" = ""; then
 	BOOTSTRAP_MC=mc
