@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1996-2000 The University of Melbourne.
+** Copyright (C) 1996-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -224,7 +224,7 @@ MR_printheap(const MR_Word *h)
 void 
 MR_dumpframe(/* const */ MR_Word *fr)
 {
-	reg	int	i;
+	int	i;
 
 	printf("frame at ptr %p, offset %3ld words\n",
 		(const void *) fr, 
@@ -244,7 +244,7 @@ MR_dumpframe(/* const */ MR_Word *fr)
 void 
 MR_dumpnondstack(void)
 {
-	reg	MR_Word	*fr;
+	MR_Word	*fr;
 
 	printf("\nnondstack dump\n");
 	for (fr = MR_maxfr; fr > MR_CONTEXT(nondetstack_zone)->min;

@@ -3,7 +3,7 @@ INIT mercury_sys_init_engine
 ENDINIT
 */
 /*
-** Copyright (C) 1993-2000 The University of Melbourne.
+** Copyright (C) 1993-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -599,7 +599,7 @@ MR_dump_prev_locations(void)
 static void 
 call_engine_inner(MR_Code *entry_point)
 {
-	reg	Func	*fp;
+	register Func	*fp;
 
 	/*
 	** Start up the actual engine.
