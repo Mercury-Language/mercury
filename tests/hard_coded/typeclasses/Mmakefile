@@ -10,6 +10,8 @@ PROGS=	\
 	constrained_lambda \
 	extract_typeinfo \
 	ho_map \
+	implied_instance \
+	implied_instance_poly \
 	multi_constraint_diff_tvar \
 	multi_constraint_same_tvar \
 	multi_parameter \
