@@ -4,10 +4,10 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#define r1		count_usage(R_RN(1), mr1)
-#define r2		count_usage(R_RN(2), mr2)
-#define r3		count_usage(R_RN(3), mr3)
-#define r4		count_usage(R_RN(4), mr4)
+#define r1		count_usage(R_RN(1), mr2)
+#define r2		count_usage(R_RN(2), mr3)
+#define r3		count_usage(R_RN(3), mr4)
+#define r4		count_usage(R_RN(4), mr6)
 #define r5		count_usage(R_RN(5), mr7)
 #define r6		count_usage(R_RN(6), mr10)
 #define r7		count_usage(R_RN(7), mr11)
@@ -37,17 +37,17 @@
 #define r31		count_usage(R_RN(31), mr35)
 #define r32		count_usage(R_RN(32), mr36)
 
-#define succip		LVALUE_CAST(Code *, count_usage(SI_RN, mr0))
+#define succip		LVALUE_CAST(Code *, count_usage(SI_RN, mr1))
 #define hp		LVALUE_CAST(Word *, count_usage(HP_RN, mr5))
-#define sp		LVALUE_CAST(Word *, count_usage(SP_RN, mr6))
+#define sp		LVALUE_CAST(Word *, count_usage(SP_RN, mr0))
 #define curfr		LVALUE_CAST(Word *, count_usage(CF_RN, mr8))
 #define maxfr		LVALUE_CAST(Word *, count_usage(MF_RN, mr9))
 
 #define VIRTUAL_REG_MAP_BODY	{ \
-	1, \
 	2, \
 	3, \
 	4, \
+	6, \
 	7, \
 	10, \
 	11, \

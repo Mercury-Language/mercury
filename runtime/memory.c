@@ -159,7 +159,7 @@ void init_memory(void)
 	nondstack_zone_size = round_up(nondstack_zone_size * 1024, unit);
 
 	/*
-	** If the zone sizes where set to something too big, then
+	** If the zone sizes were set to something too big, then
 	** set them to a single unit.
 	*/
 
@@ -255,6 +255,7 @@ void init_memory(void)
 			(void *) fake_reg, (long) fake_reg & (unit-1));
 		fprintf(stderr, "\n");
 
+#ifndef CONSERVATIVE_GC
 		fprintf(stderr, "heap           = %p (offset %ld)\n",
 			(void *) heap, (long) heap & (unit-1));
 		fprintf(stderr, "heapmin        = %p (offset %ld)\n",
@@ -263,6 +264,7 @@ void init_memory(void)
 			(void *) heapend, (long) heapend & (unit-1));
 		fprintf(stderr, "heap_zone      = %p (offset %ld)\n",
 			(void *) heap_zone, (long) heap_zone & (unit-1));
+#endif
 
 		fprintf(stderr, "\n");
 		fprintf(stderr, "detstack       = %p (offset %ld)\n",
@@ -293,9 +295,11 @@ void init_memory(void)
 			(long) (arena+total_size) & (unit-1));
 
 		fprintf(stderr, "\n");
+#ifndef CONSERVATIVE_GC
 		fprintf(stderr, "heap size      = %ld (0x%lx)\n",
 			(long) ((char *) heapend - (char *) heapmin),
 			(long) ((char *) heapend - (char *) heapmin));
+#endif
 		fprintf(stderr, "detstack size  = %ld (0x%lx)\n",
 			(long) ((char *) detstackend - (char *) detstackmin),
 			(long) ((char *) detstackend - (char *) detstackmin));
@@ -336,7 +340,7 @@ void init_memory(void)
 #define MY_PROT PROT_NONE
 #endif
 
-/* The BSD/386 headers don't define PROT_NONE */
+/* The BSDI BSD/386 1.1 headers don't define PROT_NONE */
 #ifndef PROT_NONE
 #define PROT_NONE 0
 #endif

@@ -57,6 +57,8 @@
 
   #if defined(__mips__)
     #include "machdeps/mips_regs.h"
+  #elif defined(__i386__)
+    #include "machdeps/i386_regs.h"
   #elif defined(__sparc__)
     #include "machdeps/sparc_regs.h"
   #elif defined(__alpha__)

@@ -9,6 +9,8 @@
 #include	"prof.h"
 #include	"init.h"
 
+#include	<string.h>
+
 static	const void	*entry_name(const void *entry);
 static	const void	*entry_addr(const void *entry);
 static	bool		equal_name(const void *name1, const void *name2);

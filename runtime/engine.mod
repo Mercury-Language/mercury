@@ -4,10 +4,11 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#include 	<string.h>
 #include	"imp.h"
 #include	"dummy.h"
 #include	"prof.h"
+
+#include 	<string.h>
 
 #ifdef USE_GCC_NONLOCAL_GOTOS
 

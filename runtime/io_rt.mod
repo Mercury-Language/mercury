@@ -12,11 +12,12 @@
 **  modules `io', `require', `std_util', `int', and `string'.
 */
 
-#include <string.h>
-#include "io_rt.h"
 #include "imp.h"
+#include "io_rt.h"
 #include "wrapper.h"
 #include "type_info.h"
+
+#include <string.h>
 
 /*
 ** Mercury files are not quite the same as C stdio FILEs,

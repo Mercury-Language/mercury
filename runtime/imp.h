@@ -4,6 +4,16 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
+/*
+** imp.h - defines the interface to the Mercury abstract machine.
+**
+** IMPORTANT: this must be the *first* header file that is #included.
+** It must come before any system header files.  This is because on some
+** systems, the system header files include inline functions, and this
+** causes problems when using global register variables, as gcc requires
+** global register variable declarations to precede any function definitions.
+*/
+
 #ifndef IMP_H
 #define IMP_H
 
@@ -12,14 +22,9 @@
 #define NDEBUG
 #endif
 
-#include	<stdio.h>
-#include	<stdlib.h>
-#include	<assert.h>
-#include	<sys/types.h>
-#include	"std.h"
-#include	"conf.h"
-
 /* GENERAL DEFINITIONS */
+
+#include	"conf.h"
 
 typedef	unsigned WORD_TYPE	Word;
 typedef WORD_TYPE		Integer;
@@ -31,8 +36,16 @@ typedef void			Code; /* should be `typedef function_t Code' */
 
 #define	WORDSIZE	sizeof(Word)
 
+#include	<stddef.h>
+#include	"std.h"
+#include	"regs.h"	/* must come before system headers */
+
+#include	<stdio.h>
+#include	<stdlib.h>
+#include	<assert.h>
+#include	<sys/types.h>
+
 #include	"tags.h"
-#include	"regs.h"
 #include	"goto.h"
 #include	"engine.h"
 

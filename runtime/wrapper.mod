@@ -11,6 +11,8 @@
 #include	"init.h"
 #include	"prof.h"
 
+#include	<string.h>
+
 /* global variables concerned with testing (i.e. not with the engine) */
 
 /* command-line options */
@@ -139,8 +141,6 @@ process_options(int argc, char **argv)
 	int	c;
 	int	i;
 	int	val;
-	List	*ptr;
-	List	*label_list;
 
 	progname = argv[0];
 
@@ -212,7 +212,11 @@ process_options(int argc, char **argv)
 		case 'h':	usage();
 				break;
 
-		case 'l':	label_list = get_all_labels();
+		case 'l': {
+				List	*ptr;
+				List	*label_list;
+
+				label_list = get_all_labels();
 				for_list (ptr, label_list)
 				{
 					Label	*label;
@@ -224,6 +228,7 @@ process_options(int argc, char **argv)
 				}
 
 				exit(0);
+		}
 
 		case 'p':	if (sscanf(optarg, "%d", &pcache_size) != 1)
 					usage();
