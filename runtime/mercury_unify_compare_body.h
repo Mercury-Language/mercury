@@ -36,12 +36,12 @@
 ** because they implement the same task.
 **
 ** We need separate C functions for unifications and comparison because
-** with --no-special-preds, a type with user-defined equality has an
-** a non-NULL unify_pred field in its type_ctor_info but a NULL compare_pred
-** field. While in principle unification is a special case of comparison,
-** we cannot implement unifications by comparisons for such types:
-** they support unifications but not comparisons. Since we cannot do it
-** for such types, it is simplest not to do it for any types.
+** with --no-special-preds, a type with user-defined equality (but not
+** comparison) has a non-NULL unify_pred field in its type_ctor_info but a
+** NULL compare_pred field. While in principle unification is a special case
+** of comparison, we cannot implement unifications by comparisons for such
+** types: they support unifications but not comparisons. Since we cannot do
+** it for such types, it is simplest not to do it for any types.
 */
 #ifdef  select_compare_code
   #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
@@ -141,6 +141,12 @@ start_label:
         case MR_TYPECTOR_REP_ARRAY:
             MR_fatal_error("sorry, not implemented: "
                 "compare_representation for arrays");
+  #endif
+
+  #ifdef include_compare_rep_code
+        case MR_TYPECTOR_REP_FOREIGN:
+            MR_fatal_error("sorry, not implemented: "
+                "compare_representation for foreign types");
   #endif
 
   #ifdef include_compare_rep_code
@@ -384,6 +390,7 @@ start_label:
         case MR_TYPECTOR_REP_NOTAG_USEREQ:
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
         case MR_TYPECTOR_REP_ARRAY:
+        case MR_TYPECTOR_REP_FOREIGN:
 
             /*
             ** We call the type-specific compare routine as
@@ -670,9 +677,6 @@ start_label:
 
         case MR_TYPECTOR_REP_BASETYPECLASSINFO:
             MR_fatal_error(attempt_msg "base_typeclass_infos");
-
-        case MR_TYPECTOR_REP_FOREIGN:
-            MR_fatal_error(attempt_msg "terms of a foreign type");
 
         case MR_TYPECTOR_REP_REFERENCE:
 #ifdef  select_compare_code
