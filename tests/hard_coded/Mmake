@@ -6,15 +6,43 @@ include ../Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-PROGS=	qual_basic_test qual_is_test qual_adv_test \
-	pragma_c_code pragma_inline higher_order_func_test \
-	free_free_mode func_test string_alignment tim_qual1 c_write_string \
-	no_fully_strict float_rounding_bug string_loop func_and_pred \
-	cc_nondet_disj bidirectional address_of_builtins \
-	reverse_arith curry curry2 higher_order_syntax \
-	ho_func_reg float_reg write expand ho_solns write_reg1 \
-	ho_univ_to_type elim_special_pred division_test test_imported_no_tag \
-	name_mangling cycles deep_copy_bug construct
+PROGS=	\
+	address_of_builtins \
+	bidirectional \
+	c_write_string \
+	cc_nondet_disj \
+	construct \
+	curry \
+	curry2 \
+	cycles \
+	deep_copy_bug \
+	division_test \
+	elim_special_pred \
+	expand \
+	float_reg \
+	float_rounding_bug \
+	free_free_mode \
+	func_and_pred \
+	func_test \
+	higher_order_func_test \
+	higher_order_syntax \
+	ho_func_reg \
+	ho_solns \
+	ho_univ_to_type \
+	name_mangling \
+	no_fully_strict \
+	pragma_c_code \
+	pragma_inline \
+	qual_adv_test \
+	qual_basic_test \
+	qual_is_test \
+	reverse_arith \
+	string_alignment \
+	string_loop \
+	test_imported_no_tag \
+	tim_qual1 \
+	write \
+	write_reg1
 
 #-----------------------------------------------------------------------------#
 
