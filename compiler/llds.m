@@ -15,10 +15,10 @@
 :- type c_file		--->	c_file(string, list(c_module)).
 			%	filename, modules
 
-:- type c_module	--->	c_module(string, list(c_predicate)).
+:- type c_module	--->	c_module(string, list(c_procedure)).
 			%	module name, code
 
-:- type c_predicate	--->	c_predicate(string, int, mode_id,
+:- type c_procedure	--->	c_procedure(string, int, mode_id,
 						list(instruction)).
 			%	predicate name, arity, mode, code
 :- type instruction	--->	instr - string.	
@@ -122,21 +122,21 @@ output_c_module(c_module(Name,Predicates)) -->
 	io__write_string("\t/* no module initialization in automatically generated code */\n"),
 	io__write_string("BEGIN_CODE\n"),
 	io__write_string("\n"),
-	output_c_predicate_list(Predicates),
+	output_c_procedure_list(Predicates),
 	io__write_string("END_MODULE\n").
 
-:- pred output_c_predicate_list(list(c_predicate), io__state, io__state).
-:- mode output_c_predicate_list(i, di, uo).
+:- pred output_c_procedure_list(list(c_procedure), io__state, io__state).
+:- mode output_c_procedure_list(i, di, uo).
 
-output_c_predicate_list([]) --> [].
-output_c_predicate_list([P|Ps]) -->
-	output_c_predicate(P),
-	output_c_predicate_list(Ps).
+output_c_procedure_list([]) --> [].
+output_c_procedure_list([P|Ps]) -->
+	output_c_procedure(P),
+	output_c_procedure_list(Ps).
 
-:- pred output_c_predicate(c_predicate, io__state, io__state).
-:- mode output_c_predicate(i, di, uo).
+:- pred output_c_procedure(c_procedure, io__state, io__state).
+:- mode output_c_procedure(i, di, uo).
 
-output_c_predicate(c_predicate(Name,Arity,Mode,Instructions)) -->
+output_c_procedure(c_procedure(Name,Arity,Mode,Instructions)) -->
 	io__write_string("/* code for predicate "),
 	io__write_string(Name),
 	io__write_string("/"),
