@@ -61,6 +61,11 @@
 :- pred eqvclass__same_eqvclass(eqvclass(T), T, T).
 :- mode eqvclass__same_eqvclass(in, in, in) is semidet.
 
+	% Test if a list of elements are equivalent.
+
+:- pred eqvclass__same_eqvclass_list(eqvclass(T), list(T)).
+:- mode eqvclass__same_eqvclass_list(in, in) is semidet.
+
 	% Return the set of the partitions of the equivalence class.
 
 :- pred eqvclass__partition_set(eqvclass(T), set(set(T))).
@@ -188,6 +193,21 @@ eqvclass__same_eqvclass(EqvClass0, Element1, Element2) :-
 	map__search(ElementMap0, Element1, Id1),
 	map__search(ElementMap0, Element2, Id2),
 	Id1 = Id2.
+
+eqvclass__same_eqvclass_list(_, []).
+eqvclass__same_eqvclass_list(EqvClass, [Element | Elements]) :-
+	EqvClass = eqvclass(_NextId, _PartitionMap, ElementMap),
+	map__search(ElementMap, Element, Id),
+	eqvclass__same_eqvclass_list_2(ElementMap, Elements, Id).
+
+:- pred eqvclass__same_eqvclass_list_2(map(T, partition_id), 
+		list(T), partition_id).
+:- mode eqvclass__same_eqvclass_list_2(in, in, in) is semidet.
+
+eqvclass__same_eqvclass_list_2(_, [], _).
+eqvclass__same_eqvclass_list_2(ElementMap, [Element | Elements], Id) :-
+	map__search(ElementMap, Element, Id),
+	eqvclass__same_eqvclass_list_2(ElementMap, Elements, Id).
 
 eqvclass__partition_set(EqvClass0, PartitionSet) :-
 	eqvclass__partition_ids(EqvClass0, Ids),
