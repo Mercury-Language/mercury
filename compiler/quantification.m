@@ -216,6 +216,14 @@ goal_list_vars_2([Goal - _GoalInfo| Goals], Set0, Set) :-
 	goal_vars_2(Goal, Set0, Set1),
 	goal_list_vars_2(Goals, Set1, Set).
 
+:- pred case_list_vars_2(list(case), set(var), set(var)).
+:- mode case_list_vars_2(in, in, out) is det.
+
+case_list_vars_2([], Set, Set).
+case_list_vars_2([case(_Cons, Goal - _GoalInfo)| Cases], Set0, Set) :-
+	goal_vars_2(Goal, Set0, Set1),
+	case_list_vars_2(Cases, Set1, Set).
+
 :- pred goal_vars(hlds__goal, set(var)).
 :- mode goal_vars(in, out) is det.
 
@@ -241,6 +249,9 @@ goal_vars_2(conj(Goals), Set0, Set) :-
 
 goal_vars_2(disj(Goals), Set0, Set) :-
 	goal_list_vars_2(Goals, Set0, Set).
+
+goal_vars_2(switch(_Var, Cases, _F), Set0, Set) :-
+	case_list_vars_2(Cases, Set0, Set).
 
 goal_vars_2(some(Vars, Goal), Set0, Set) :-
 	goal_vars(Goal, Set1),
