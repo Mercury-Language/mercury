@@ -46,6 +46,7 @@ DETPROGS=	arithmetic \
 		petdr1 \
 		semidet_map \
 		set_test \
+		space \
 		string__format_test \
 		string_test \
 		string_test_2 \
