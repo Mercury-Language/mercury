@@ -17,7 +17,7 @@
 
 :- implementation.
 :- import_module list, map, set, std_util.
-:- import_module mode_util, term, require, quantification.
+:- import_module mode_util, term, require.
 :- import_module varset, code_aux, prog_io.
 
 %-----------------------------------------------------------------------------%
@@ -63,8 +63,7 @@ inlining_in_procs([ProcId | ProcIds], PredId, ModuleInfo0,
 	proc_info_headvars(ProcInfo0, HeadVars),
 
 	inlining__inlining_in_goal(Goal0, Varset0, VarTypes0, ModuleInfo0,
-		Goal1, Varset, VarTypes),
-	implicitly_quantify_clause_body(HeadVars, Goal1, Goal),
+		Goal, Varset, VarTypes),
 
 	proc_info_set_variables(ProcInfo0, Varset, ProcInfo1),
 	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
