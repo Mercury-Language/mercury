@@ -697,8 +697,11 @@
 /*	HEURISTIC1 reportedly no longer works under 2.7.  		*/
 /*  	HEURISTIC2 probably works, but this appears to be preferable.	*/
 #       include <sys/vmparam.h>
+#ifdef _USERLIMIT
 #	define STACKBOTTOM USRSTACK
+#else
 #	define HEURISTIC2
+#endif
 #	include <unistd.h>
 #       define GETPAGESIZE()  sysconf(_SC_PAGESIZE)
 		/* getpagesize() appeared to be missing from at least one */
