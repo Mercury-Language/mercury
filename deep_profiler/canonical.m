@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,8 +22,8 @@
 :- implementation.
 
 :- import_module measurements, callgraph, array_util.
-:- import_module unsafe, io.
-:- import_module std_util, bool, int, array, list, map, set, require.
+:- import_module io, std_util, bool, int, array, list, map, set, require.
+% :- import_module unsafe.
 
 :- type merge_info
 	--->	merge_info(
@@ -525,16 +525,16 @@ lookup_multi_sites([RestArray | RestArrays], SlotNum, [CSDList | CSDLists]) :-
 	),
 	lookup_multi_sites(RestArrays, SlotNum, CSDLists).
 
-:- pragma promise_pure(record_pd_redirect/4).
+% :- pragma promise_pure(record_pd_redirect/4).
 :- pred record_pd_redirect(list(proc_dynamic_ptr)::in, proc_dynamic_ptr::in,
 	redirect::in, redirect::out) is det.
 
 record_pd_redirect(RestPDPtrs, PrimePDPtr, Redirect0, Redirect) :-
-	impure unsafe_perform_io(io__write_string("pd redirect: ")),
-	impure unsafe_perform_io(io__print(RestPDPtrs)),
-	impure unsafe_perform_io(io__write_string(" -> ")),
-	impure unsafe_perform_io(io__print(PrimePDPtr)),
-	impure unsafe_perform_io(io__nl),
+	% impure unsafe_perform_io(io__write_string("pd redirect: ")),
+	% impure unsafe_perform_io(io__print(RestPDPtrs)),
+	% impure unsafe_perform_io(io__write_string(" -> ")),
+	% impure unsafe_perform_io(io__print(PrimePDPtr)),
+	% impure unsafe_perform_io(io__nl),
 	lookup_pd_redirect(Redirect0 ^ pd_redirect, PrimePDPtr, OldRedirect),
 	( OldRedirect = proc_dynamic_ptr(0) ->
 		record_pd_redirect_2(RestPDPtrs, PrimePDPtr,
@@ -560,16 +560,16 @@ record_pd_redirect_2([RestPDPtr | RestPDPtrs], PrimePDPtr,
 	Redirect1 = Redirect0 ^ pd_redirect := ProcRedirect,
 	record_pd_redirect_2(RestPDPtrs, PrimePDPtr, Redirect1, Redirect).
 
-:- pragma promise_pure(record_csd_redirect/4).
+% :- pragma promise_pure(record_csd_redirect/4).
 :- pred record_csd_redirect(list(call_site_dynamic_ptr)::in,
 	call_site_dynamic_ptr::in, redirect::in, redirect::out) is det.
 
 record_csd_redirect(RestCSDPtrs, PrimeCSDPtr, Redirect0, Redirect) :-
-	impure unsafe_perform_io(io__write_string("csd redirect: ")),
-	impure unsafe_perform_io(io__print(RestCSDPtrs)),
-	impure unsafe_perform_io(io__write_string(" -> ")),
-	impure unsafe_perform_io(io__print(PrimeCSDPtr)),
-	impure unsafe_perform_io(io__nl),
+	% impure unsafe_perform_io(io__write_string("csd redirect: ")),
+	% impure unsafe_perform_io(io__print(RestCSDPtrs)),
+	% impure unsafe_perform_io(io__write_string(" -> ")),
+	% impure unsafe_perform_io(io__print(PrimeCSDPtr)),
+	% impure unsafe_perform_io(io__nl),
 	lookup_csd_redirect(Redirect0 ^ csd_redirect, PrimeCSDPtr, OldRedirect),
 	( OldRedirect = call_site_dynamic_ptr(0) ->
 		record_csd_redirect_2(RestCSDPtrs, PrimeCSDPtr,
