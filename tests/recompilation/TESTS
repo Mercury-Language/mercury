@@ -28,8 +28,8 @@ TESTS_SHOULD_SUCCEED="\
 # nested sub-module are run twice, resulting in incorrect output in
 # the `.err' file.
 NO_PARALLEL_MAKE_TESTS="\
-	nested_module_r
-"
+	nested_module_r \
+	nested_module_2_r"
 
 TESTS_SHOULD_FAIL="\
 	add_type_re \

@@ -131,7 +131,7 @@ recompilation_check__should_recompile_2(IsSubModule, FindTargetFiles,
 		io__set_input_stream(OldInputStream, VersionStream),
 		io__close_input(VersionStream),
 
-		( { (all) = Info1 ^ modules_to_recompile } ->
+		( { (all) = Info4 ^ modules_to_recompile } ->
 			{ Info = Info4 }
 		;
 			{ Info5 = Info4 ^ is_inline_sub_module := yes },
@@ -158,6 +158,15 @@ recompilation_check__should_recompile_2(IsSubModule, FindTargetFiles,
 
 recompilation_check__should_recompile_3(IsSubModule, FindTargetFiles,
 		Info0, Info) -->
+
+	%
+	% WARNING: any exceptions thrown before the sub_modules
+	% field is set in the recompilation_check_info must set
+	% the modules_to_recompile field to `all', or else
+	% the nested sub-modules will not be checked and necessary
+	% recompilations may be missed.
+	%
+
 	%
 	% Check that the format of the usage file is the current format.
 	%
@@ -179,11 +188,11 @@ recompilation_check__should_recompile_3(IsSubModule, FindTargetFiles,
 		[]
 	;
 		io__input_stream_name(UsageFileName),
-		{ throw(recompile_exception(
+		{ throw_syntax_error(
 			file_error(UsageFileName,
 				"invalid usage file version number in file `"
 				++ UsageFileName ++ "'."),
-			Info0)) }
+			Info0) }
 	), 
 
 	%
@@ -213,44 +222,25 @@ recompilation_check__should_recompile_3(IsSubModule, FindTargetFiles,
 		->
 			record_read_file(ModuleName,
 				ModuleTimestamp ^ timestamp := NewTimestamp,
-				Items, Error, FileName, Info0, ErrorInfo),
+				Items, Error, FileName, Info0, RecompileInfo0),
+			RecompileInfo =
+				RecompileInfo0 ^ modules_to_recompile := (all),
 			throw(recompile_exception(module_changed(FileName),
-					ErrorInfo))
+					RecompileInfo))
 		;
 			( Error \= no_module_errors
 			; MaybeNewTimestamp = no
 			)
 		->
-			throw(recompile_exception(
+			throw_syntax_error(
 				file_error(FileName,
 				    "error reading file `"
 				    ++ FileName ++ "'."),
-				Info0))
+				Info0)
 		;
 			true
 		}
 	),
-
-	%
-	% Check whether the output files are present and up-to-date.
-	%
-	FindTargetFiles(Info0 ^ module_name, TargetFiles),
-	list__foldl(
-	    (pred(TargetFile::in, di, uo) is det -->
-		io__file_modification_time(TargetFile, TargetModTimeResult),
-		(
-			{ TargetModTimeResult = ok(TargetModTime) },
-			{ compare(TargetModTimeCompare,
-				time_t_to_timestamp(TargetModTime),
-				RecordedTimestamp) },
-			{ TargetModTimeCompare = (>) }
-		->
-			[]
-		;
-			{ Reason1 = output_file_not_up_to_date(TargetFile) },
-			{ throw(recompile_exception(Reason1, Info0)) }
-		)
-	    ), TargetFiles),
 
 	%
 	% Find out whether this module has any inline sub-modules.
@@ -268,10 +258,31 @@ recompilation_check__should_recompile_3(IsSubModule, FindTargetFiles,
 	->
 		Info1 = Info0 ^ sub_modules := SubModules
 	;
-		Reason2 = syntax_error(get_term_context(SubModulesTerm),
+		Reason1 = syntax_error(get_term_context(SubModulesTerm),
 				"error in sub_modules term"),
-		throw(recompile_exception(Reason2, Info0)) 
+		throw_syntax_error(Reason1, Info0)
 	},
+
+	%
+	% Check whether the output files are present and up-to-date.
+	%
+	FindTargetFiles(Info1 ^ module_name, TargetFiles),
+	list__foldl(
+	    (pred(TargetFile::in, di, uo) is det -->
+		io__file_modification_time(TargetFile, TargetModTimeResult),
+		(
+			{ TargetModTimeResult = ok(TargetModTime) },
+			{ compare(TargetModTimeCompare,
+				time_t_to_timestamp(TargetModTime),
+				RecordedTimestamp) },
+			{ TargetModTimeCompare = (>) }
+		->
+			[]
+		;
+			{ Reason2 = output_file_not_up_to_date(TargetFile) },
+			{ throw(recompile_exception(Reason2, Info1)) }
+		)
+	    ), TargetFiles),
 
 	%
 	% Read in the used items, used for checking for
@@ -299,7 +310,7 @@ recompilation_check__should_recompile_3(IsSubModule, FindTargetFiles,
 	;
 		Reason3 = syntax_error(get_term_context(UsedClassesTerm),
 				"error in used_typeclasses term"),
-		throw(recompile_exception(Reason3, Info2))
+		throw_syntax_error(Reason3, Info2)
 	},
 	check_imported_modules(Info3, Info).
 
@@ -332,7 +343,7 @@ parse_module_timestamp(Info, Term, ModuleName, ModuleTimestamp) :-
 	;	
 		Reason = syntax_error(get_term_context(Term),
 				"error in module timestamp"),
-		throw(recompile_exception(Reason, Info))
+		throw_syntax_error(Reason, Info)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -348,7 +359,7 @@ parse_used_items(Info, Term, UsedItems) :-
 	;
 		Reason = syntax_error(get_term_context(Term),
 				"error in used items"),
-		throw(recompile_exception(Reason, Info))
+		throw_syntax_error(Reason, Info)
 	).
 
 :- pred parse_used_item_set(recompilation_check_info::in, term::in,
@@ -378,12 +389,12 @@ parse_used_item_set(Info, Term, UsedItems0, UsedItems) :-
 				string__append(
 				    "error in used items: unknown item type :",
 				    ItemTypeStr)),
-			throw(recompile_exception(Reason, Info))
+			throw_syntax_error(Reason, Info)
 		)
 	;
 		Reason = syntax_error(get_term_context(Term),
 				"error in used items"),
-		throw(recompile_exception(Reason, Info))
+		throw_syntax_error(Reason, Info)
 	).
 
 :- pred parse_simple_item(recompilation_check_info::in, term::in,
@@ -403,7 +414,7 @@ parse_simple_item(Info, Term, Set0, Set) :-
 	;
 		Reason = syntax_error(get_term_context(Term),
 				"error in simple items"),
-		throw(recompile_exception(Reason, Info))
+		throw_syntax_error(Reason, Info)
 	).
 
 :- pred parse_simple_item_match(recompilation_check_info::in, term::in,
@@ -427,7 +438,7 @@ parse_simple_item_match(Info, Term, Items0, Items) :-
 	;
 		Reason = syntax_error(get_term_context(Term),
 				"error in simple item match"),
-		throw(recompile_exception(Reason, Info))
+		throw_syntax_error(Reason, Info)
 	).
 
 :- pred parse_pred_or_func_item(recompilation_check_info::in,
@@ -448,7 +459,7 @@ parse_pred_or_func_item(Info, Term, Set0, Set) :-
 	;
 		Reason = syntax_error(get_term_context(Term),
 				"error in pred or func match"),
-		throw(recompile_exception(Reason, Info))
+		throw_syntax_error(Reason, Info)
 	).
 
 :- pred parse_pred_or_func_item_match(recompilation_check_info::in, term::in,
@@ -479,7 +490,7 @@ parse_pred_or_func_item_match(Info, Term, Items0, Items) :-
 	;
 		Reason = syntax_error(get_term_context(Term),
 				"error in pred or func match"),
-		throw(recompile_exception(Reason, Info))
+		throw_syntax_error(Reason, Info)
 	).
 
 :- pred parse_functor_item(recompilation_check_info::in, term::in,
@@ -498,7 +509,7 @@ parse_functor_item(Info, Term, Set0, Set) :-
 	;
 		Reason = syntax_error(get_term_context(Term),
 				"error in functor matches"),
-		throw(recompile_exception(Reason, Info))
+		throw_syntax_error(Reason, Info)
 	).
 
 :- pred parse_functor_arity_matches(recompilation_check_info::in, term::in,
@@ -517,7 +528,7 @@ parse_functor_arity_matches(Info, Term, Arity - MatchMap) :-
 	;
 		Reason = syntax_error(get_term_context(Term),
 				"error in functor match"),
-		throw(recompile_exception(Reason, Info))
+		throw_syntax_error(Reason, Info)
 	).
 
 :- pred parse_functor_matches(recompilation_check_info::in, term::in,
@@ -537,7 +548,7 @@ parse_functor_matches(Info, Term, Map0, Map) :-
 	;
 		Reason = syntax_error(get_term_context(Term),
 				"error in functor match"),
-		throw(recompile_exception(Reason, Info))
+		throw_syntax_error(Reason, Info)
 	).
 
 :- pred parse_resolved_functor(recompilation_check_info::in, term::in,
@@ -571,7 +582,7 @@ parse_resolved_functor(Info, Term, Ctor) :-
 	;
 		Reason = syntax_error(get_term_context(Term),
 				"error in functor match"),
-		throw(recompile_exception(Reason, Info))
+		throw_syntax_error(Reason, Info)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -600,7 +611,7 @@ check_imported_modules(Info0, Info) -->
 		io__input_stream_name(FileName),
 		{ Reason = syntax_error(term__context(FileName, Line),
 				Message) },
-		{ throw(recompile_exception(Reason, Info0)) }
+		{ throw_syntax_error(Reason, Info0) }
 	;
 		{ TermResult = eof },
 		%
@@ -613,7 +624,7 @@ check_imported_modules(Info0, Info) -->
 		io__get_line_number(Line),
 		{ Reason = syntax_error(term__context(FileName, Line),
 				"unexpected end of file") },
-		{ throw(recompile_exception(Reason, Info0)) }
+		{ throw_syntax_error(Reason, Info0) }
 	).
 	
 :- pred check_imported_module(term::in, recompilation_check_info::in,
@@ -661,7 +672,8 @@ check_imported_module(Term, Info0, Info) -->
 	),
 	{
 		MaybeNewTimestamp = yes(NewTimestamp),
-		NewTimestamp \= RecordedTimestamp
+		NewTimestamp \= RecordedTimestamp,
+		Error = no_module_errors
 	->
 		( Recorded = no ->
 			record_read_file(ImportedModuleName,
@@ -687,10 +699,10 @@ check_imported_module(Term, Info0, Info) -->
 	;
 		Error \= no_module_errors
 	->
-		throw(recompile_exception(
+		throw_syntax_error(
 			file_error(FileName,
 				"error reading file `" ++ FileName ++ "'."),
-			Info0))
+			Info0)
 	;
 		Info = Info0
 	}.
@@ -710,9 +722,8 @@ check_module_used_items(ModuleName, NeedQualifier, OldTimestamp,
 		UsedItemsResult = ok(UsedVersionNumbers)
 	;
 		UsedItemsResult = error(Msg, ErrorTerm),
-		Reason = syntax_error(get_term_context(ErrorTerm),
-				Msg),
-		throw(recompile_exception(Reason, Info0))
+		Reason = syntax_error(get_term_context(ErrorTerm), Msg),
+		throw_syntax_error(Reason, Info0)
 	},
 
 	{ UsedVersionNumbers = version_numbers(UsedItemVersionNumbers,
@@ -1473,7 +1484,7 @@ read_term_check_for_error_or_eof(Info, Item, Term) -->
 		io__input_stream_name(FileName),
 		{ Reason = syntax_error(term__context(FileName, Line),
 				Message) },
-		{ throw(recompile_exception(Reason, Info)) }
+		{ throw_syntax_error(Reason, Info) }
 	;
 		{ TermResult = eof },
 		io__input_stream_name(FileName),
@@ -1482,7 +1493,7 @@ read_term_check_for_error_or_eof(Info, Item, Term) -->
 			string__append_list(
 				["unexpected end of file, expected ",
 				Item, "."])) },
-		{ throw(recompile_exception(Reason, Info)) }
+		{ throw_syntax_error(Reason, Info) }
 	).
 
 :- func get_term_context(term) = term__context.
@@ -1493,5 +1504,15 @@ get_term_context(Term) =
 	;
 		term__context_init
 	).
+
+:- pred throw_syntax_error(recompile_reason::in,
+		recompilation_check_info::in) is erroneous.
+
+throw_syntax_error(Reason, Info) :-
+	% If there were syntax errors in a `.used' file written during
+	% a compilation, all outputs of that compilation are slightly
+	% suspect, so it's worth entirely redoing the compilation.
+	RecompileInfo = Info ^ modules_to_recompile := (all),
+	throw(recompile_exception(Reason, RecompileInfo)).
 
 %-----------------------------------------------------------------------------%

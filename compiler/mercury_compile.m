@@ -721,11 +721,11 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
 					list__member(SubModule,
 						ModulesToRecompile)
 				),
-				SubModuleList0, SubModuleList)
+				SubModuleList0, SubModuleListToCompile)
 		;
-				SubModuleList = SubModuleList0	
+				SubModuleListToCompile = SubModuleList0	
 		},
-		{ assoc_list__keys(SubModuleList, NestedSubModules0) },
+		{ assoc_list__keys(SubModuleList0, NestedSubModules0) },
 		{ list__delete_all(NestedSubModules0,
 			ModuleName, NestedSubModules) },
 
@@ -751,7 +751,7 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
 			compile_all_submodules(FileName,
 				ModuleName - NestedSubModules,
 				MaybeTimestamp, ReadModules,
-				FindTimestampFiles, SubModuleList,
+				FindTimestampFiles, SubModuleListToCompile,
 				ModulesToLink),
 
 			globals__io_set_option(trace_stack_layout, bool(TSL)),
@@ -760,7 +760,7 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
 			compile_all_submodules(FileName,
 				ModuleName - NestedSubModules,
 				MaybeTimestamp, ReadModules,
-				FindTimestampFiles, SubModuleList,
+				FindTimestampFiles, SubModuleListToCompile,
 				ModulesToLink)
 		)
 	).
