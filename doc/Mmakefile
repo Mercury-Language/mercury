@@ -78,7 +78,7 @@ split_html: mercury.html user_guide_1.html reference_manual_1.html \
 	library_1.html faq_1.html transition_guide_1.html
 
 .PHONY: manpages
-manpages: c2init.1 mmc.1 mgnuc.1 ml.1 mmake.1 mdb.1 msc.1 mprof.1 \
+manpages: c2init.1 mmc.1 mgnuc.1 ml.1 mmake.1 mdb.1 mprof.1 \
 	mprof_merge_runs.1 mtags.1
 
 #-----------------------------------------------------------------------------#
