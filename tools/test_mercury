@@ -75,7 +75,7 @@ DIR=$HOSTDIR/build.$BRANCH.$C_COMPILER
 ROTD_HOST=earth
 
 # Host to use to build the release of the day mercury-gcc source distribution.
-GCC_ROTD_HOST=earth
+GCC_ROTD_HOST=hg
 
 set_status () {
 	status=1;
