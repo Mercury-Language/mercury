@@ -1712,8 +1712,8 @@ code_info__prepare_for_semi_commit(SemiCommitInfo, Code) -->
 	{ stack__top_det(ResumePoints0, TopResumePoint) },
 	code_info__clone_resume_point(TopResumePoint, NewResumePoint),
 	{ stack__push(ResumePoints0, NewResumePoint, ResumePoints) },
-	{ FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
-		CondEnv, Allow) },
+	{ FailInfo = fail_info(ResumePoints, resume_point_known(has_been_done),
+		CurfrMaxfr, CondEnv, Allow) },
 	code_info__set_fail_info(FailInfo),
 
 	{ code_info__pick_stack_resume_point(NewResumePoint, _, StackLabel) },
