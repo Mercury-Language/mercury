@@ -805,11 +805,16 @@ list__remove_suffix(List, Suffix, Prefix) :-
 %-----------------------------------------------------------------------------%
 
 list__nth_member_search([X | Xs], Y, N) :-
+	list__nth_member_search_2([X | Xs], Y, 1, N).
+
+:- pred list__nth_member_search_2(list(T)::in, T::in, int::in, int::out)
+	is semidet.
+
+list__nth_member_search_2([X | Xs], Y, P, N) :-
 	( X = Y ->
-		N = 1
+		N = P
 	;
-		list__nth_member_search(Xs, Y, N0),
-		N = N0 + 1
+		list__nth_member_search_2(Xs, Y, P + 1, N)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -818,8 +823,7 @@ list__index0([X | Xs], N, Elem) :-
 	( N = 0 ->
 		Elem = X
 	;
-		N1 = N - 1,
-		list__index0(Xs, N1, Elem)
+		list__index0(Xs, N - 1, Elem)
 	).
 
 list__index0_det(List, N, Elem) :-
@@ -830,12 +834,10 @@ list__index0_det(List, N, Elem) :-
 	).
 
 list__index1(List, N, Elem) :-
-	N1 = N - 1,
-	list__index0(List, N1, Elem).
+	list__index0(List, N - 1, Elem).
 
 list__index1_det(List, N, Elem) :-
-	N1 = N - 1,
-	list__index0_det(List, N1, Elem).
+	list__index0_det(List, N - 1, Elem).
 
 %-----------------------------------------------------------------------------%
 
@@ -865,8 +867,8 @@ list__delete_first([X | Xs], Y, Zs) :-
 	( X = Y ->
 		Zs = Xs
 	;
-		Zs = [X | Zs1],
-		list__delete_first(Xs, Y, Zs1)
+		list__delete_first(Xs, Y, Zs1),
+		Zs = [X | Zs1]
 	).
 
 list__delete_all([], _, []).
@@ -874,8 +876,8 @@ list__delete_all([X | Xs], Y, Zs) :-
 	( X = Y ->
 		list__delete_all(Xs, Y, Zs)
 	;
-		Zs = [X | Zs1],
-		list__delete_all(Xs, Y, Zs1)
+		list__delete_all(Xs, Y, Zs1),
+		Zs = [X | Zs1]
 	).
 
 list__delete_elems(Xs, [], Xs).
@@ -893,18 +895,18 @@ list__replace_first([X | Xs], Y, Z, List) :-
 	( X = Y ->
 		List = [Z | Xs]
 	;
-		List = [X | L1],
-		list__replace_first(Xs, Y, Z, L1)
+		list__replace_first(Xs, Y, Z, L1),
+		List = [X | L1]
 	).
 
 list__replace_all([], _, _, []).
 list__replace_all([X | Xs], Y, Z, L) :-
 	( X = Y ->
-		L = [Z | L0],
-		list__replace_all(Xs, Y, Z, L0)
+		list__replace_all(Xs, Y, Z, L0),
+		L = [Z | L0]
 	;
-		L = [X | L0],
-		list__replace_all(Xs, Y, Z, L0)
+		list__replace_all(Xs, Y, Z, L0),
+		L = [X | L0]
 	).
 
 list__replace_nth(Xs, P, R, L) :-
@@ -933,8 +935,7 @@ list__replace_nth_2([X | Xs], P, R, L) :-
 	( P = 1 ->
 		L = [R | Xs]
 	;
-		P1 = P - 1,
-		list__replace_nth(Xs, P1, R, L0),
+		list__replace_nth(Xs, P - 1, R, L0),
 		L = [X | L0]
 	).
 
@@ -950,47 +951,36 @@ list__member(Element, List, SubList) :-
 
 %-----------------------------------------------------------------------------%
 
-list__merge(A, B, C) :-
-	( A = [X | Xs] ->
-		( B = [Y | Ys] ->
-			C = [Z | Zs],
-			( compare(>, X, Y) ->
-				Z = Y,
-				list__merge(A, Ys, Zs)
-			;
-				% If compare((=), X, Y), take X first.
-				Z = X,
-				list__merge(Xs, B, Zs)
-			)
-		;
-			C = A
-		)
+list__merge([], [], []).
+list__merge([A | As], [], [A | As]).
+list__merge([], [B | Bs], [B | Bs]).
+list__merge([A | As], [B | Bs], [C | Cs]) :-
+	( compare(>, A, B) ->
+		C = B,
+		list__merge([A | As], Bs, Cs)
 	;
-		C = B
+		% If compare((=), A, B), take A first.
+		C = A,
+		list__merge(As, [B | Bs], Cs)
 	).
 
-list__merge_and_remove_dups(A, B, C) :-
-	( A = [X | Xs] ->
-		( B = [Y | Ys] ->
-			compare(Res, X, Y),
-			(
-				Res = (<),
-				C = [X | Zs],
-				list__merge_and_remove_dups(Xs, B, Zs)
-			;
-				Res = (>),
-				C = [Y | Zs],
-				list__merge_and_remove_dups(A, Ys, Zs)
-			;
-				Res = (=),
-				C = [X | Zs],
-				list__merge_and_remove_dups(Xs, Ys, Zs)
-			)
-		;
-			C = A
-		)
+list__merge_and_remove_dups([], [], []).
+list__merge_and_remove_dups([A | As], [], [A | As]).
+list__merge_and_remove_dups([], [B | Bs], [B | Bs]).
+list__merge_and_remove_dups([A | As], [B | Bs], [C | Cs]) :-
+	compare(Res, A, B),
+	(
+		Res = (<),
+		C = A,
+		list__merge_and_remove_dups(As, [B | Bs], Cs)
 	;
-		C = B
+		Res = (=),
+		C = A,
+		list__merge_and_remove_dups(As, Bs, Cs)
+	;
+		Res = (>),
+		C = B,
+		list__merge_and_remove_dups([A | As], Bs, Cs)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1069,9 +1059,7 @@ list__remove_dups(Xs, Ys) :-
 
 list__remove_dups_2([], _SoFar, []).
 list__remove_dups_2([X | Xs], SoFar0, Zs) :-
-	(
-		bintree_set__member(X, SoFar0)
-	->
+	( bintree_set__member(X, SoFar0) ->
 		list__remove_dups_2(Xs, SoFar0, Zs)
 	;
 		bintree_set__insert(SoFar0, X, SoFar),
@@ -1088,14 +1076,13 @@ list__remove_adjacent_dups([X | Xs], L) :-
 :- pred list__remove_adjacent_dups_2(list(T)::in, T::in, list(T)::out) is det.
 :- pragma type_spec(list__remove_adjacent_dups_2/3, T = var(_)).
 
-
 list__remove_adjacent_dups_2([], X, [X]).
 list__remove_adjacent_dups_2([X1 | Xs], X0, L) :-
 	( X0 = X1 ->
 		list__remove_adjacent_dups_2(Xs, X0, L)
 	;
-		L = [X0 | L0],
-		list__remove_adjacent_dups_2(Xs, X1, L0)
+		list__remove_adjacent_dups_2(Xs, X1, L0),
+		L = [X0 | L0]
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1119,18 +1106,16 @@ list__split_list(N, List, Start, End) :-
 		End = List
 	;
 		N > 0,
-		N1 = N - 1,
 		List = [Head | List1],
 		Start = [Head | Start1],
-		list__split_list(N1, List1, Start1, End)
+		list__split_list(N - 1, List1, Start1, End)
 	).
 
 list__take(N, As, Bs) :-
 	( N > 0 ->
-		N1 = N - 1,
 		As = [A | As1],
-		Bs = [A | Bs1],
-		list__take(N1, As1, Bs1)
+		list__take(N - 1, As1, Bs1),
+		Bs = [A | Bs1]
 	;
 		Bs = []
 	).
@@ -1144,9 +1129,8 @@ list__take_upto(N, As, Bs) :-
 
 list__drop(N, As, Bs) :-
 	( N > 0 ->
-		N1 = N - 1,
 		As = [_ | Cs],
-		list__drop(N1, Cs, Bs)
+		list__drop(N - 1, Cs, Bs)
 	;
 		As = Bs
 	).
@@ -1155,9 +1139,8 @@ list__drop(N, As, Bs) :-
 
 list__duplicate(N, X, L) :-
 	( N > 0 ->
-		N1 = N - 1,
-		L = [X | L1],
-		list__duplicate(N1, X, L1)
+		list__duplicate(N - 1, X, L1),
+		L = [X | L1]
 	;
 		L = []
 	).
@@ -1179,12 +1162,11 @@ list__chunk_2([], _ChunkSize, List0, _N, Lists) :-
 	).
 list__chunk_2([X | Xs], ChunkSize, List0, N, Lists) :-
 	( N > 1 ->
-		N1 = N - 1,
-		list__chunk_2(Xs, ChunkSize, [X | List0], N1, Lists)
+		list__chunk_2(Xs, ChunkSize, [X | List0], N - 1, Lists)
 	;
 		list__reverse([X | List0], List),
-		Lists = [List | Lists1],
-		list__chunk_2(Xs, ChunkSize, [], ChunkSize, Lists1)
+		list__chunk_2(Xs, ChunkSize, [], ChunkSize, Lists1),
+		Lists = [List | Lists1]
 	).
 
 %-----------------------------------------------------------------------------%
