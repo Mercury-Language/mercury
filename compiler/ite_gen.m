@@ -40,7 +40,7 @@ ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	},
 	code_info__maybe_save_hp(ReclaimHeap, HPSaveCode),
 	code_info__get_next_label(ElseLab),
-	code_info__push_failure_cont(yes(ElseLab)),
+	code_info__push_failure_cont(known(ElseLab)),
 		% generate the semi-deterministic test goal
 	code_gen__generate_semi_goal(CondGoal, TestCode),
 	code_info__pop_failure_cont,
@@ -89,7 +89,7 @@ ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	},
 	code_info__maybe_save_hp(ReclaimHeap, HPSaveCode),
 	code_info__get_next_label(ElseLab),
-	code_info__push_failure_cont(yes(ElseLab)),
+	code_info__push_failure_cont(known(ElseLab)),
 		% generate the semi-deterministic test goal
 	code_gen__generate_semi_goal(CondGoal, CondCode),
 	code_info__pop_failure_cont,
@@ -140,7 +140,7 @@ ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	},
 	code_info__maybe_save_hp(ReclaimHeap, HPSaveCode),
 	code_info__get_next_label(ElseLab),
-	code_info__push_failure_cont(yes(ElseLab)),
+	code_info__push_failure_cont(known(ElseLab)),
 	{ CondGoal = _ - GoalInfo },
 	{ goal_info_determinism(GoalInfo, CondDeterminism) },
 	{ CondDeterminism = nondeterministic ->
@@ -154,14 +154,7 @@ ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	code_gen__generate_non_goal(CondGoal, CondCode),
 	code_info__pop_failure_cont,
 	( { CondDeterminism = nondeterministic } ->
-		( code_info__failure_cont(ContLab1) ->
-			{ Label = yes(ContLab1) }
-		;
-			{ Label = no }
-		),
-		{ RestoreRedoipCode = node([
-			modframe(Label) - "Restore failure continuation"
-		]) }
+		code_info__restore_failure_cont(RestoreRedoipCode)
 	;
 		{ RestoreRedoipCode = empty }
 	),

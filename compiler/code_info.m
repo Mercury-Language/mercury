@@ -253,17 +253,31 @@
 :- pred code_info__get_module_info(module_info, code_info, code_info).
 :- mode code_info__get_module_info(out, in, out) is det.
 
-:- pred code_info__push_failure_cont(maybe(label), code_info, code_info).
+:- type failure_cont
+	--->	known(label)	% on failure we jump to `Label'
+	;	do_fail		% on failure we do a `fail()'
+	;	unknown.	% on failure we do a `redo()'
+
+	% push a new failure continuation onto the stack
+
+:- pred code_info__push_failure_cont(failure_cont, code_info, code_info).
 :- mode code_info__push_failure_cont(in, in, out) is det.
+
+	% pop the failure continuation stack
 
 :- pred code_info__pop_failure_cont(code_info, code_info).
 :- mode code_info__pop_failure_cont(in, out) is det.
 
-:- pred code_info__get_failure_cont(label, code_info, code_info).
-:- mode code_info__get_failure_cont(out, in, out) is det.
+	% lookup the value on the top of the failure continuation stack
 
-:- pred code_info__failure_cont(label, code_info, code_info).
-:- mode code_info__failure_cont(out, in, out) is semidet.
+:- pred code_info__failure_cont(failure_cont, code_info, code_info).
+:- mode code_info__failure_cont(out, in, out) is det.
+
+	% generate some code to restore the current redoip, by looking
+	% at the top of the failure continuation stack.
+
+:- pred code_info__restore_failure_cont(code_tree, code_info, code_info).
+:- mode code_info__restore_failure_cont(out, in, out) is det.
 
 :- pred code_info__stack_variable(int, lval, code_info, code_info).
 :- mode code_info__stack_variable(in, out, in, out) is det.
@@ -385,9 +399,7 @@
 			;	evaluated(set(lval))
 			;	cached(rval, target_register).
 
-:- type fall_through	==	stack(maybe(label)).
-	% `yes(Label)' means on failure we jump to `Label'
-	% `no' means on failure we do a `redo()'.
+:- type fall_through	==	stack(failure_cont).
 
 %---------------------------------------------------------------------------%
 
@@ -2234,9 +2246,16 @@ code_info__pop_lval(Lval, Code) -->
 %---------------------------------------------------------------------------%
 
 code_info__generate_failure(Code) -->
-	( code_info__failure_cont(Cont) ->
-		{ Code = node([ goto(Cont) -
+	code_info__failure_cont(Cont),
+	(
+		{ Cont = known(Label) }
+	->
+		{ Code = node([ goto(Label) -
 				"Branch to failure continuation" ]) }
+	;
+		{ Cont = do_fail }
+	->
+		{ Code = node([ fail - "" ]) }
 	;
 		{ Code = node([ redo - "" ]) }
 	).
@@ -2244,21 +2263,20 @@ code_info__generate_failure(Code) -->
 %---------------------------------------------------------------------------%
 
 code_info__generate_test_and_fail(Rval, Code) -->
+	code_info__failure_cont(Cont),
 	(
-		code_info__failure_cont(Cont)
+		{ Cont = known(Label) }
 	->
-		{ code_util__neg_rval(Rval, NegRval) },
-		{ Code = node([ if_val(NegRval, goto(Cont)) - "" ]) }
+		{ Failure = goto(Label) }
 	;
-		% XXX the jump around the redo should be generated
-		% XXX as a reverse conditional redo
-		code_info__get_next_label(Success),
-		{ Code = node([
-			if_val(Rval, goto(Success)) - "",
-			redo - "",
-			label(Success) - ""
-		]) }
-	).
+		{ Cont = do_fail }
+	->
+		{ Failure = fail }
+	;
+		{ Failure = redo }
+	),
+	{ code_util__neg_rval(Rval, NegRval) },
+	{ Code = node([ if_val(NegRval, Failure) - "" ]) }.
 
 %---------------------------------------------------------------------------%
 
@@ -2271,7 +2289,7 @@ code_info__generate_pre_commit(PreCommit, FailLabel) -->
 	code_info__get_next_label(FailLabel),
 	code_info__push_rval(lval(maxfr), SaveMaxfr),
 	code_info__push_rval(lval(curredoip), SaveRedoip),
-	code_info__push_failure_cont(yes(FailLabel)),
+	code_info__push_failure_cont(known(FailLabel)),
 	{ SetRedoIp = node([
 		modframe(yes(FailLabel)) - "hijack the failure continuation"
 	]) },
@@ -2314,19 +2332,28 @@ code_info__pop_failure_cont -->
 		{ error("code_info__pop_failure_cont: empty stack") }
 	).
 
-code_info__get_failure_cont(Cont) -->
+code_info__failure_cont(Cont) -->
 	code_info__get_fall_through(Fall),
 	(
-		{ stack__top(Fall, yes(Cont0)) }
+		{ stack__top(Fall, Cont0) }
 	->
 		{ Cont = Cont0 }
 	;
-		{ error("code_info__get_failure_cont: no failure continuation") }
+		{ error("code_info__failure_cont: no failure continuation") }
 	).
 
-code_info__failure_cont(Cont) -->
-	code_info__get_fall_through(Fall),
-	{ stack__top(Fall, yes(Cont)) }.
+code_info__restore_failure_cont(ContCode) -->
+	code_info__failure_cont(FailCont),
+	( { FailCont = known(ContLab) } ->
+		{ Label = yes(ContLab) }
+	; { FailCont = do_fail } ->
+		{ Label = no }
+	;
+		{ error("cannot restore unknown failure continuation") }
+	),
+	{ ContCode = node([
+		modframe(Label) - "Restore failure continuation"
+	]) }.
 
 %---------------------------------------------------------------------------%
 

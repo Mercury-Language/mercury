@@ -179,10 +179,10 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 	{ Code = tree(CodeA, tree(CodeB, CodeC)) },
 	call_gen__rebuild_registers(Args),
 		% the nondet procedure may have created choice points,
-		% so we must set the current failure continuation to `no'
+		% so we must set the current failure continuation to `unknown'
 		% which means `on failure, just do a redo()'.
 	code_info__pop_failure_cont,
-	code_info__push_failure_cont(no).
+	code_info__push_failure_cont(unknown).
 
 %---------------------------------------------------------------------------%
 

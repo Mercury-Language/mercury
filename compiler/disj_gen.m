@@ -64,7 +64,7 @@ disj_gen__generate_semi_cases([Goal|Goals], EndLabel, GoalsCode) -->
 	;
 		code_info__grab_code_info(CodeInfo),
 		code_info__get_next_label(ElseLab),
-		code_info__push_failure_cont(yes(ElseLab)),
+		code_info__push_failure_cont(known(ElseLab)),
 			% generate the case as a semi-deterministic goal
 		code_gen__generate_forced_semi_goal(Goal, ThisCode),
 		code_info__pop_failure_cont,
@@ -106,7 +106,7 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 		{ Goals = [_|_] }
 	->
 		code_info__get_next_label(ContLab0),
-		code_info__push_failure_cont(yes(ContLab0)),
+		code_info__push_failure_cont(known(ContLab0)),
 		{ ContCode = node([
 			modframe(yes(ContLab0)) -
 					"Set failure continuation"
@@ -134,14 +134,7 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 			tree(SuccCode, tree(RestoreHeapCode, RestCode))) },
 		disj_gen__generate_non_disj_2(Goals, EndLab, RestCode)
 	;
-		( code_info__failure_cont(ContLab1) ->
-			{ Label = yes(ContLab1) }
-		;
-			{ Label = no }
-		),
-		{ ContCode = node([
-			modframe(Label) - "Restore failure continuation"
-		]) },
+		code_info__restore_failure_cont(ContCode),
 		code_info__grab_code_info(CodeInfo),
 		code_gen__generate_forced_non_goal(Goal, GoalCode),
 		{ RestCode = node([
