@@ -76,9 +76,11 @@ how to build and debug Mercury programs.
 @menu
 * Introduction::    General overview
 * Filenames::       File naming conventions
-* Using mmc::        Compiling and linking programs with the Mercury compiler
+* Using mmc::       Compiling and linking programs with the Mercury compiler
+* Running::         Execution of programs built with the Mercury compiler
 * Using Prolog::    Building and debugging Mercury programs with Prolog
 * Using Mmake::     ``Mercury Make'', a tool for building Mercury programs
+* Libraries::       Creating and using libraries of Mercury modules
 * Profiling::       The Mercury profiler @samp{mprof}, a tool for analyzing
                     program performance
 * Invocation::      List of options for the Mercury compiler
@@ -161,6 +163,8 @@ As usual, @file{.c} files are C source code,
 @file{.o} files are object code,
 @file{.no} files are NU-Prolog object code, and
 @file{.ql} files are SICStus Prolog object code.
+In addition, @file{.pic_o} files are object code files
+that contain position-independent code (PIC).
 
 @node Using mmc
 @chapter Using the Mercury compiler
@@ -185,7 +189,7 @@ Unlike traditional Unix compilers, however,
 @samp{mmc} will put the executable into a file called @file{@var{module}},
 not @file{a.out}.
 
-For programs that consist of more than one module, we recommend
+For programs that consist of more than one module, we @emph{strongly} recommend
 that you use Mmake (@pxref{Using Mmake}).  Mmake will perform
 all the steps listed below, using automatic dependency analysis
 to ensure that things are done in the right order, and that
@@ -278,6 +282,9 @@ would put the executable into the file @file{a.out}.
 @samp{mmc} and @samp{ml} both accept a @samp{-v} (verbose) option.
 You can use that option to see what is actually going on.
 For the full set of options of @samp{mmc}, see @ref{Invocation}.
+
+@node Running
+@chapter Running programs
 
 Once you have created an executable for a Mercury program,
 you can go ahead and execute it.  You may however wish to specify
@@ -454,7 +461,12 @@ mode, which compiles files to a bytecode format.
 @section Hazards of using Prolog
 
 There are some Mercury programs which are not valid Prolog programs.
-In particular, Mercury will always reorder goals
+In particular, Mercury programs that use functions will generally not
+be valid Prolog programs (with the exception that the basic arithmetic
+functions such as @samp{+}, @samp{-}, etc., will work fine if you use
+Prolog's @samp{is} predicate).
+
+Also, Mercury will always reorder goals
 to ensure that they are mode-correct
 (or report a mode error if it cannot do so),
 but Prolog systems will not always do so,
@@ -519,7 +531,8 @@ Each program must have its own @file{.dep} file,
 and therefore you must run @samp{mmake @var{program}.depend}
 for each program.
 
-If there is a file called @samp{Mmake} in the current directory,
+If there is a file called @samp{Mmake} or @samp{Mmakefile} in the
+current directory,
 Mmake will include that file in its automatically-generated Makefile.
 The @samp{Mmake} file can override the default values of
 various variables used by Mmake's builtin rules,
@@ -576,6 +589,12 @@ Compiles and links @var{main-module} using SICStus Prolog.
 The resulting executable will start up in the SICStus Prolog interpreter
 rather than calling main/2.
 
+@item lib@var{main-module}
+Builds a library whose top-level module is @var{main-module}.
+This will build a static object library, a shared object library
+(for platforms that support it), and the necessary interface files.
+@xref{Libraries} for more information.
+
 @item @var{main-module}.clean
 Removes the automatically generated files
 that contain the compiled code of the program
@@ -585,8 +604,8 @@ Specifically, this will remove all the @samp{.c}, @samp{.s}, @samp{.o},
 belonging to the named @var{main-module} or its imported modules.
 
 @item @var{main-module}.change_clean
-Removes files that need updating if changing garbage collection method or
-starting to use inter-module optimization.
+Removes files that need updating when changing garbage collection method or
+when enabling inter-module optimization.
 Specifically, this will remove all the @samp{.c}, @samp{.s}, @samp{.o},
 @samp{.dep} and executable files belonging to the named @var{main-module}
 or its imported modules.
@@ -624,6 +643,10 @@ these may be overridden by user @samp{Mmake} files. Some of the more
 useful variables are:
 
 @table @code
+
+@item MAIN_TARGET
+The name of the default target to create if @samp{mmake} is invoked with
+any target explicitly named on the command line.
 
 @item MC
 The executable that invokes the Mercury compiler.
@@ -665,7 +688,165 @@ you can make use of the features supported by the underlying Make.
 In particular, GNU Make has support for running jobs in parallel,
 which is very useful if you have a machine with more than one CPU.
 
-@c ---------------------------------------------------------------------------
+@node Libraries
+@chapter Libraries
+
+Often you will want to use a particular set of Mercury modules
+in more than one program. The Mercury implementation 
+includes support for developing libraries, i.e. sets of Mercury modules
+intended for reuse.  It allows separate compilation of libraries
+and, on many platforms, it supports shared object libraries.
+
+@menu
+* Writing libraries::
+* Building libraries::
+* Installing libraries::
+* Using libraries::
+@end menu
+
+@node Writing libraries
+@section Writing libraries
+
+A Mercury library is identified by a top-level module, which must
+directly or indirectly use (import) all of the modules in that
+library.  It may be as simple as this @file{mypackage.m} file:
+
+@example
+:- module mypackage.
+:- import_module foo, bar, baz.
+@end example
+
+@node Building libraries
+@section Building libraries
+
+Generally Mmake will do most of the work of building
+libraries automatically.  Here's a sample @code{Mmakefile} for
+creating a library.
+
+@example
+MAIN_TARGET = libmypackage
+depend: mypackage.depend
+@end example
+
+The Mmake target @samp{lib@var{foo}} is a built-in target for
+creating a library whose top-level module is @samp{@var{foo}.m}.
+The automatically generated Make rules for the target @samp{lib@var{foo}}
+will create all the files needed to use the library.
+
+Mmake will create static (non-shared) object libraries
+and, on most platforms, shared object libraries;
+however, we do not yet support the creation of dynamic link
+libraries (DLLs) on Windows.
+Static libraries are created using the standard tools @samp{ar}
+and @samp{ranlib}.
+Shared libraries are created using the @samp{--make-shared-lib}
+option to @samp{ml}. 
+The automatically-generated Make rules for @samp{libmypackage}
+will look something like this:
+
+@example
+libmypackage: libmypackage.a libmypackage.so \
+		$(mypackage.ints) $(mypackage.opts) mypackage.init
+
+libmypackage.a: $(mypackage.os)
+	rm -f libmypackage.a
+	$(AR) $(ARFLAGS) libmypackage.a $(mypackage.os)
+	$(RANLIB) $(RANLIBFLAGS) mypackage.a
+
+libmypackage.so: $(mypackage.pic_os)
+	$(ML) $(MLFLAGS) --make-shared-lib -o libmypackage.so \
+		$(mypackage.pic_os) $(MLLIBS)
+
+libmypackage.init:
+	...
+
+clean:
+	rm -f libmypackage.a libmypackage.so
+@end example
+
+If necessary, you can override the default definitions of the
+variables such as @samp{ML}, @samp{MLFLAGS}, and @samp{MLLIBS}
+to customize the way shared libraries are built.  Similarly
+@samp{AR}, @samp{ARFLAGS}, @samp{RANLIB}, and @samp{RANLIBFLAGS}
+control the way static libraries are built.
+
+Note that to use a library, as well as the shared or static object library,
+you also need the interface files.  That's why the
+@samp{libmypackage} target builds @samp{$(mypackage.ints)}.
+Also, if the people using the library are going to use intermodule
+optimization, you need the intermodule optimization interfaces.
+That's why the @samp{libmypackage} target builds @samp{$(mypackage.opts)}.
+In addition, with certain compilation grades, programs will need to
+execute some startup code to initialize the library; the
+@samp{mypackage.init} file contains information about initialization
+code for the library.
+
+On some platforms, shared objects must be created using position independent
+code (PIC), which requires passing some special options to the C compiler.
+On these platforms, @code{Mmake} will create @file{.pic_o} files,
+and @samp{$(mypackage.pic_os)} will contain a list of the @file{.pic_o} files
+for the library whose top-level module is @samp{mypackage}.
+On other platforms, position independent code is the default,
+and @samp{$(mypackage.pic_os)} will just be the same as @samp{$(mypackage.os)},
+which contains a list of the @file{.o} files for that module.
+
+@node Installing libraries
+@section Installing libraries
+
+If you want, once you have built a library, you could then install
+(i.e. copy) the shared object library, the static object library,
+the interface files and the initialization file into a different directory,
+or into several different directories, for that matter -- though it
+is probably easiest for the users of the library if you keep them
+in a single directory.
+Or alternatively, you could package them up into a @samp{tar}, @samp{shar}, or
+@samp{zip} archive and ship them to the people who will use the
+library.
+
+@node Using libraries
+@section Using libraries
+
+To use a library, you need to set the Mmake variables @samp{VPATH},
+@samp{MCFLAGS}, @samp{MLFLAGS}, @samp{MLLIBS}, and @samp{C2INITFLAGS}
+to specify the name and location of the library or libraries that you
+wish to use.
+For example, if you want to link in the libraries @samp{mypackage} and
+@samp{myotherlib}, which were built in the directories
+@samp{/some/directory/mypackage} and @samp{/some/directory/myotherlib}
+respectively, you could use the following settings:
+
+@example
+# Specify the location of the `mypackage' and `myotherlib' directories
+MYPACKAGE_DIR = /some/directory/mypackage
+MYOTHERLIB_DIR = /some/directory/myotherlib
+
+# The following stuff tells Mmake to use the two libraries
+VPATH = $(MYPACKAGE_DIR):$(MYOTHERLIB_DIR):$(MMAKE_VPATH)
+MCFLAGS = -I$(MYPACKAGE_DIR) -I$(MYOTHERLIB_DIR) $(EXTRA_MCFLAGS)
+MLFLAGS = -R$(MYPACKAGE_DIR) -R$(MYOTHERLIB_DIR) $(EXTRA_MLFLAGS) \
+          -L$(MYPACKAGE_DIR) -L$(MYOTHERLIB_DIR)
+MLLIBS = -lmypackage -lmyotherlib $(EXTRA_MLLIBS)
+C2INITFLAGS = $(MYPACKAGE_DIR)/mypackage.init \
+              $(MYOTHERLIB_DIR)/myotherlib.init
+@end example
+
+Here @samp{VPATH} is a colon-separated list of path names specifying
+directories that Mmake will search for interface files.
+The @samp{-I} options in @samp{MCFLAGS} tell @samp{mc} where to find
+the interface files.  The @samp{-R} options in @samp{MLFLAGS} tell
+the loader where to find shared libraries, and the @samp{-L}
+options tell the linker where to find libraries. 
+(Note that the @samp{-R} options must precede the @samp{-L} options.)
+The @samp{-l} options tell the linker which libraries to link with. 
+The extras arguments to @samp{c2init} specified in the @samp{C2INITLFLAGS}
+variable tell @samp{c2init} where to find the @samp{.init} files for the
+libraries, so that it can generate appropriate initialization code.
+
+The example above assumes that the static object library,
+shared object library, interface files and initialization file are
+for each Mercury library being used all put in a single directory,
+which is probably the simplest way of organizing things, but the
+Mercury implementation does not require that.
 
 @node Profiling
 @chapter Profiling
