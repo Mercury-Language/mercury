@@ -27,6 +27,7 @@ ENDINIT
 **	various cleanups that are needed to terminate cleanly.
 */
 
+#define		MR_STACK_TRACE_THIS_MODULE
 #include	"mercury_imp.h"
 
 #include	<stdio.h>
@@ -857,11 +858,12 @@ Define_entry(do_interpreter);
 	push(MR_maxfr);
 	mkframe("interpreter", 1, LABEL(global_fail));
 
+	MR_nondet_stack_trace_bottom = MR_maxfr;
+	MR_stack_trace_bottom = LABEL(global_success);
+
 	if (program_entry_point == NULL) {
 		fatal_error("no program entry point supplied");
 	}
-
-	MR_stack_trace_bottom = LABEL(global_success);
 
 #ifdef  PROFILE_TIME
 	if (MR_profiling) MR_prof_turn_on_time_profiling();

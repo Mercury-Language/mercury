@@ -140,33 +140,33 @@ peephole__match(if_val(Rval, CodeAddr), Comment, _, Instrs0, Instrs) :-
 	% This should also be done if the modframe appears instead as an
 	% assignment to the redoip of curfr or maxfr.
 	%
-	%	mkframe(D, S, _)	=>	mkframe(D, S, Redoip)
+	%	mkframe(NFI, _)		=>	mkframe(NFI, Redoip)
 	%	<straightline instrs>		<straightline instrs>
 	%	modframe(Redoip)
 	%
 	% If a `mkframe' is followed by a test that can fail, we try to
 	% swap the two instructions to avoid doing the mkframe unnecessarily.
 	%
-	%	mkframe(D, S, dofail)	=>	if_val(test, redo)
-	%	if_val(test, redo/fail)		mkframe(D, S, dofail)
+	%	mkframe(NFI, dofail)	=>	if_val(test, redo)
+	%	if_val(test, redo/fail)		mkframe(NFI, dofail)
 	%
-	%	mkframe(D, S, label)	=>	if_val(test, redo)
-	%	if_val(test, fail)		mkframe(D, S, label)
+	%	mkframe(NFI, label)	=>	if_val(test, redo)
+	%	if_val(test, fail)		mkframe(NFI, label)
 	%
-	%	mkframe(D, S, label)	=>	mkframe(D, S, label)
+	%	mkframe(NFI, label)	=>	mkframe(NFI, label)
 	%	if_val(test, redo)		if_val(test, label)
 	%
 	% These two patterns are mutually exclusive because if_val is not
 	% straight-line code.
 
-peephole__match(mkframe(Name, Slots, Pragma, Redoip1), Comment, _,
+peephole__match(mkframe(NondetFrameInfo, Redoip1), Comment, _,
 		Instrs0, Instrs) :-
 	(
 		opt_util__next_modframe(Instrs0, [], Redoip2, Skipped, Rest),
 		opt_util__touches_nondet_ctrl(Skipped, no)
 	->
 		list__append(Skipped, Rest, Instrs1),
-		Instrs = [mkframe(Name, Slots, Pragma, Redoip2) - Comment
+		Instrs = [mkframe(NondetFrameInfo, Redoip2) - Comment
 			| Instrs1]
 	;
 		opt_util__skip_comments_livevals(Instrs0, Instrs1),
@@ -177,8 +177,10 @@ peephole__match(mkframe(Name, Slots, Pragma, Redoip1), Comment, _,
 			( Target = do_redo ; Target = do_fail)
 		->
 			Instrs = [
-				if_val(Test, do_redo) - Comment2,
-				mkframe(Name, Slots, Pragma, do_fail) - Comment
+				if_val(Test, do_redo)
+					- Comment2,
+				mkframe(NondetFrameInfo, do_fail)
+					- Comment
 				| Instrs2
 			]
 		;
@@ -188,8 +190,9 @@ peephole__match(mkframe(Name, Slots, Pragma, Redoip1), Comment, _,
 				Target = do_fail
 			->
 				Instrs = [
-					if_val(Test, do_redo) - Comment2,
-					mkframe(Name, Slots, Pragma, Redoip1)
+					if_val(Test, do_redo)
+						- Comment2,
+					mkframe(NondetFrameInfo, Redoip1)
 						- Comment
 					| Instrs2
 				]
@@ -197,9 +200,10 @@ peephole__match(mkframe(Name, Slots, Pragma, Redoip1), Comment, _,
 				Target = do_redo
 			->
 				Instrs = [
-					mkframe(Name, Slots, Pragma, Redoip1)
+					mkframe(NondetFrameInfo, Redoip1)
 						- Comment,
-					if_val(Test, Redoip1) - Comment2
+					if_val(Test, Redoip1)
+						- Comment2
 					| Instrs2
 				]
 			;

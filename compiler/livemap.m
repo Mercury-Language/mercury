@@ -160,7 +160,7 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Livemap = Livemap0,
 		DontValueNumber = DontValueNumber0
 	;
-		Uinstr0 = mkframe(_, _, _, _),
+		Uinstr0 = mkframe(_, _),
 		Livemap = Livemap0,
 		Livevals = Livevals0,
 		Instrs = Instrs0,

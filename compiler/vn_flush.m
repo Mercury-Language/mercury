@@ -190,7 +190,7 @@ vn_flush__ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 		Templocs = Templocs0,
 		Instrs = [call(ProcAddr, RetAddr, LiveInfo, CodeModel) - ""]
 	;
-		Vn_instr = vn_mkframe(Name, Size, Pragma, Redoip),
+		Vn_instr = vn_mkframe(NondetFrameInfo, Redoip),
 		vn_util__rval_to_vn(const(code_addr_const(Redoip)), AddrVn,
 			VnTables0, VnTables1),
 		vn_util__lval_to_vnlval(redoip(lval(maxfr)), SlotVnlval,
@@ -198,7 +198,7 @@ vn_flush__ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 		vn_table__set_current_value(SlotVnlval, AddrVn,
 			VnTables2, VnTables),
 		Templocs = Templocs0,
-		Instrs = [mkframe(Name, Size, Pragma, Redoip) - ""]
+		Instrs = [mkframe(NondetFrameInfo, Redoip) - ""]
 	;
 		Vn_instr = vn_label(Label),
 		VnTables = VnTables0,
@@ -1042,6 +1042,12 @@ vn_flush__access_path(Vnlval, Srcs, Forbidden, Lval, VnTables0, VnTables,
 			VnTables0, VnTables,
 			Templocs0, Templocs, Params, AccessInstrs),
 		Lval = prevfr(Rval)
+	;
+		Vnlval = vn_redofr(Vn1),
+		vn_flush__vn(Vn1, [src_access(Vnlval) | Srcs], Forbidden, Rval,
+			VnTables0, VnTables,
+			Templocs0, Templocs, Params, AccessInstrs),
+		Lval = redofr(Rval)
 	;
 		Vnlval = vn_redoip(Vn1),
 		vn_flush__vn(Vn1, [src_access(Vnlval) | Srcs], Forbidden, Rval,

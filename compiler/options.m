@@ -159,7 +159,7 @@
 				% procedure identification.
 		;	procid_stack_layout
 				% Stack layout information required to do
-				% tracing.
+				% execution tracing.
 		;	trace_stack_layout
 				% Use an alternate calculation of liveness
 				% where typeinfos are live for any live data
@@ -249,6 +249,7 @@
 		;	middle_rec
 		;	simple_neg
 		;	follow_vars
+		;	allow_hijacks
 	%	- LLDS
 		;	optimize
 		;	optimize_peep
@@ -553,6 +554,7 @@ option_defaults_2(optimization_option, [
 	middle_rec		-	bool(no),
 	simple_neg		-	bool(no),
 	follow_vars		-	bool(no),
+	allow_hijacks		-	bool(yes),
 
 % LLDS
 	optimize		-	bool(no),
@@ -870,6 +872,7 @@ long_option("static-ground-terms",	static_ground_terms).
 long_option("middle-rec",		middle_rec).
 long_option("simple_neg",		simple_neg).
 long_option("follow-vars",		follow_vars).
+long_option("allow-hijacks",		allow_hijacks).
 
 % LLDS optimizations
 long_option("llds-optimize",		optimize).
@@ -1849,6 +1852,10 @@ options_help_hlds_llds_optimization -->
 	io__write_string("\t\tDon't generate simplified code for simple negations.\n"),
 	io__write_string("\t--no-follow-vars\n"),
 	io__write_string("\t\tDon't optimize the assignment of registers in branched goals.\n").
+%	io__write_string("\t--no-allow-hijacks\n"),
+%	io__write_string("\t\tDo not generate code in which a procedure hijacks\n"),
+%	io__write_string("\t\ta nondet stack frame that possibly belongs to\n"),
+%	io__write_string("\t\tanother procedure invocation\n").
 
 :- pred options_help_llds_llds_optimization(io__state::di, io__state::uo) is det.
 

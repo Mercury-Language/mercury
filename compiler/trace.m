@@ -68,16 +68,21 @@
 	% layouts).
 :- pred trace__fail_vars(module_info::in, proc_info::in, set(var)::out) is det.
 
-	% Set up the code generator state for tracing, by reserving stack slots
-	% for the call number, call depth and (for interface tracing) for
-	% the flag that says whether this call should be traced.
-:- pred trace__setup(trace_level::in, code_info::in, code_info::out) is det.
+	% Reserve the stack slots for the call number, call depth and
+	% (for interface tracing) for the flag that says whether this call
+	% should be traced. Return our (abstract) struct that says which
+	% slots these are, so that it can be made part of the code generator
+	% state.
+:- pred trace__setup(trace_level::in, trace_info::out,
+	code_info::in, code_info::out) is det.
 
 	% Generate code to fill in the reserevd stack slots.
 :- pred trace__generate_slot_fill_code(trace_info::in, code_tree::out) is det.
 
-	% Generate code to prepare for a call.
-:- pred trace__prepare_for_call(trace_info::in, code_tree::out) is det.
+	% If we are doing execution tracing, generate code to prepare for
+	% a call.
+:- pred trace__prepare_for_call(code_tree::out, code_info::in, code_info::out)
+	is det.
 
 	% If we are doing execution tracing, generate code for an internal
 	% trace event. This predicate must be called just before generating
@@ -159,17 +164,16 @@ trace__fail_vars(ModuleInfo, ProcInfo, FailVars) :-
 		error("length mismatch in trace__fail_vars")
 	).
 
-trace__setup(TraceLevel) -->
-	code_info__get_trace_slot(CallNumSlot),
-	code_info__get_trace_slot(CallDepthSlot),
+trace__setup(TraceLevel, TraceInfo) -->
+	code_info__acquire_temp_slot(trace_data, CallNumSlot),
+	code_info__acquire_temp_slot(trace_data, CallDepthSlot),
 	( { trace_level_trace_ports(TraceLevel, yes) } ->
 		{ TraceType = full_trace }
 	;
-		code_info__get_trace_slot(CallFromFullSlot),
+		code_info__acquire_temp_slot(trace_data, CallFromFullSlot),
 		{ TraceType = interface_trace(CallFromFullSlot) }
 	),
-	{ TraceInfo = trace_info(CallNumSlot, CallDepthSlot, TraceType) },
-	code_info__set_maybe_trace_info(yes(TraceInfo)).
+	{ TraceInfo = trace_info(CallNumSlot, CallDepthSlot, TraceType) }.
 
 trace__generate_slot_fill_code(TraceInfo, TraceCode) :-
 	TraceInfo = trace_info(CallNumLval, CallDepthLval, TraceType),
@@ -198,24 +202,32 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) :-
 			will_not_call_mercury, no, yes) - ""
 	]).
 
-trace__prepare_for_call(TraceInfo, TraceCode) :-
-	TraceInfo = trace_info(_CallNumLval, CallDepthLval, TraceType),
-	trace__stackref_to_string(CallDepthLval, CallDepthStr),
-	string__append_list(["MR_trace_reset_depth(", CallDepthStr, ");\n"],
-		ResetDepthStmt),
-	(
-		TraceType = interface_trace(_),
-		TraceCode = node([
-			c_code("MR_trace_from_full = FALSE;\n") - "",
-			c_code(ResetDepthStmt) - ""
-		])
+trace__prepare_for_call(TraceCode) -->
+	code_info__get_maybe_trace_info(MaybeTraceInfo),
+	{
+		MaybeTraceInfo = yes(TraceInfo)
+	->
+		TraceInfo = trace_info(_CallNumLval, CallDepthLval, TraceType),
+		trace__stackref_to_string(CallDepthLval, CallDepthStr),
+		string__append_list(["MR_trace_reset_depth(", CallDepthStr,
+			");\n"],
+			ResetDepthStmt),
+		(
+			TraceType = interface_trace(_),
+			TraceCode = node([
+				c_code("MR_trace_from_full = FALSE;\n") - "",
+				c_code(ResetDepthStmt) - ""
+			])
+		;
+			TraceType = full_trace,
+			TraceCode = node([
+				c_code("MR_trace_from_full = TRUE;\n") - "",
+				c_code(ResetDepthStmt) - ""
+			])
+		)
 	;
-		TraceType = full_trace,
-		TraceCode = node([
-			c_code("MR_trace_from_full = TRUE;\n") - "",
-			c_code(ResetDepthStmt) - ""
-		])
-	).
+		TraceCode = empty
+	}.
 
 trace__maybe_generate_internal_event_code(Goal, Code) -->
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
@@ -455,10 +467,11 @@ trace__code_model_to_string(model_non,  "MR_MODEL_NON").
 trace__stackref_to_string(Lval, LvalStr) :-
 	( Lval = stackvar(Slot) ->
 		string__int_to_string(Slot, SlotString),
-		string__append_list(["detstackvar(", SlotString, ")"], LvalStr)
+		string__append_list(["MR_stackvar(", SlotString, ")"], LvalStr)
 	; Lval = framevar(Slot) ->
-		string__int_to_string(Slot, SlotString),
-		string__append_list(["framevar(", SlotString, ")"], LvalStr)
+		Slot1 is Slot + 1,
+		string__int_to_string(Slot1, SlotString),
+		string__append_list(["MR_framevar(", SlotString, ")"], LvalStr)
 	;
 		error("non-stack lval in stackref_to_string")
 	).

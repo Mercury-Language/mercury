@@ -13,11 +13,11 @@
 %
 %	proc_entry:
 %		incr_sp(N)
-%		detstackvar(N) = succip
+%		stackvar(N) = succip
 %		if (cond) goto L1
 %		...
 %	L1:	finalization
-%		succip = detstackvar(N)
+%		succip = stackvar(N)
 %		incr_sp(N)
 %		proceed
 %
@@ -26,10 +26,10 @@
 %	proc_entry:
 %		if (cond) goto L1
 %		incr_sp(N)
-%		detstackvar(N) = succip
+%		stackvar(N) = succip
 %		...
 %		finalization
-%		succip = detstackvar(N)
+%		succip = stackvar(N)
 %		incr_sp(N)
 %		proceed
 %	L1:	finalization
@@ -45,10 +45,10 @@
 %
 %	proc_entry:
 %		incr_sp(N)
-%		detstackvar(N) = succip
+%		stackvar(N) = succip
 %		...
 %		finalization
-%		succip = detstackvar(N)
+%		succip = stackvar(N)
 %		incr_sp(N)
 %		goto proc_entry
 %
@@ -56,10 +56,10 @@
 %
 %	proc_entry:
 %		incr_sp(N)
-%		detstackvar(N) = succip
+%		stackvar(N) = succip
 %	L1:
 %		...
-%		succip = detstackvar(N)
+%		succip = stackvar(N)
 %		finalization
 %		goto L1
 %
@@ -533,7 +533,7 @@ block_needs_frame(Instrs, NeedsFrame) :-
 			(
 				Uinstr = call(_, _, _, _)
 			;
-				Uinstr = mkframe(_, _, _, _)
+				Uinstr = mkframe(_, _)
 			;
 				Uinstr = c_code(_)
 			;
@@ -666,7 +666,7 @@ possible_targets(call(_, ReturnAddr, _, _), Labels) :-
 	;
 		Labels = []
 	).
-possible_targets(mkframe(_, _, _, _), []).
+possible_targets(mkframe(_, _), []).
 possible_targets(modframe(_), []).
 possible_targets(label(_), []).
 possible_targets(goto(CodeAddr), Targets) :-
@@ -1274,8 +1274,8 @@ substitute_labels_instr(call(Target, ReturnAddr0, LiveInfo, Model), LabelMap,
 	;
 		ReturnAddr = ReturnAddr0
 	).
-substitute_labels_instr(mkframe(Name, Size, Pragma, Redoip), _,
-		mkframe(Name, Size, Pragma, Redoip)).
+substitute_labels_instr(mkframe(NondetFrameInfo, Redoip), _,
+		mkframe(NondetFrameInfo, Redoip)).
 substitute_labels_instr(modframe(Redoip), _, modframe(Redoip)).
 substitute_labels_instr(label(_), _, _) :-
 	error("label in substitute_labels_instr").

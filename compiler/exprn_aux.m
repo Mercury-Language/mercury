@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -319,6 +319,8 @@ exprn_aux__vars_in_lval(succip(Rval), Vars) :-
 	exprn_aux__vars_in_rval(Rval, Vars).
 exprn_aux__vars_in_lval(redoip(Rval), Vars) :-
 	exprn_aux__vars_in_rval(Rval, Vars).
+exprn_aux__vars_in_lval(redofr(Rval), Vars) :-
+	exprn_aux__vars_in_rval(Rval, Vars).
 exprn_aux__vars_in_lval(succfr(Rval), Vars) :-
 	exprn_aux__vars_in_rval(Rval, Vars).
 exprn_aux__vars_in_lval(prevfr(Rval), Vars) :-
@@ -469,6 +471,11 @@ exprn_aux__substitute_lval_in_lval_2(OldLval, NewLval, Lval0, Lval) :-
 			Rval0, Rval),
 		Lval = redoip(Rval)
 	;
+		Lval0 = redofr(Rval0),
+		exprn_aux__substitute_lval_in_rval(OldLval, NewLval,
+			Rval0, Rval),
+		Lval = redofr(Rval)
+	;
 		Lval0 = succfr(Rval0),
 		exprn_aux__substitute_lval_in_rval(OldLval, NewLval,
 			Rval0, Rval),
@@ -617,6 +624,11 @@ exprn_aux__substitute_rval_in_lval(OldRval, NewRval, Lval0, Lval) :-
 		exprn_aux__substitute_rval_in_rval(OldRval, NewRval,
 			Rval0, Rval),
 		Lval = redoip(Rval)
+	;
+		Lval0 = redofr(Rval0),
+		exprn_aux__substitute_rval_in_rval(OldRval, NewRval,
+			Rval0, Rval),
+		Lval = redofr(Rval)
 	;
 		Lval0 = succfr(Rval0),
 		exprn_aux__substitute_rval_in_rval(OldRval, NewRval,
@@ -817,6 +829,8 @@ exprn_aux__lval_addrs(curfr, [], []).
 exprn_aux__lval_addrs(prevfr(Rval), CodeAddrs, DataAddrs) :-
 	exprn_aux__rval_addrs(Rval, CodeAddrs, DataAddrs).
 exprn_aux__lval_addrs(succfr(Rval), CodeAddrs, DataAddrs) :-
+	exprn_aux__rval_addrs(Rval, CodeAddrs, DataAddrs).
+exprn_aux__lval_addrs(redofr(Rval), CodeAddrs, DataAddrs) :-
 	exprn_aux__rval_addrs(Rval, CodeAddrs, DataAddrs).
 exprn_aux__lval_addrs(redoip(Rval), CodeAddrs, DataAddrs) :-
 	exprn_aux__rval_addrs(Rval, CodeAddrs, DataAddrs).

@@ -31,11 +31,11 @@
 #define MR_PASTE2(p1,p2)	MR_PASTE2_2(p1,p2)
 #define MR_PASTE2_2(p1,p2)	p1##p2
 
-/* paste 12 macros together */
-#define MR_PASTE12(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12) \
-			MR_PASTE12_2(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12)
-#define MR_PASTE12_2(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12) \
-			p1##p2##p3##p4##p5##p6##p7##p8##p9##p10##p11##p12
+/* paste 13 macros together */
+#define MR_PASTE13(p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12) \
+			MR_PASTE13_2(p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12)
+#define MR_PASTE13_2(p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12) \
+			p0##p1##p2##p3##p4##p5##p6##p7##p8##p9##p10##p11##p12
 
 /*
 ** Here we build up the MR_GRADE macro part at a time,
@@ -44,6 +44,12 @@
 ** IMPORTANT: any changes here will probably require similar
 ** changes to compiler/handle_options.m and scripts/mgnuc.in.
 */
+
+#ifdef MR_USE_REDOFR
+  #define MR_GRADE_PART_0	redofr_
+#else
+  #define MR_GRADE_PART_0
+#endif
 
 #ifdef USE_ASM_LABELS
   #define MR_GRADE_PART_1	asm_
@@ -177,7 +183,8 @@
   #endif
 #endif
 
-#define MR_GRADE		MR_PASTE12(			\
+#define MR_GRADE		MR_PASTE13(			\
+					MR_GRADE_PART_0,	\
 					MR_GRADE_PART_1,	\
 					MR_GRADE_PART_2,	\
 					MR_GRADE_PART_3,	\

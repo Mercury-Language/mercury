@@ -145,7 +145,6 @@ MR_find_nth_ancestor(const MR_Stack_Layout_Label *label_layout,
 	return label_layout;
 }
 
-
 static MR_Stack_Walk_Step_Result
 MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
 	const MR_Stack_Layout_Label **return_label_layout,
@@ -207,6 +206,40 @@ MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
 
 	*return_label_layout = label->i_layout;
 	return STEP_OK;
+}
+
+void
+MR_dump_nondet_stack_from_layout(FILE *fp, Word *base_maxfr)
+{
+	/*
+	** Change the >= below to > if you don't want the trace to include
+	** the bottom frame created by mercury_wrapper.c (whose redoip/redofr
+	** field can be hijacked by other code).
+	*/
+
+	while (base_maxfr >= MR_nondet_stack_trace_bottom) {
+#ifdef	MR_USE_REDOFR
+		if ((base_maxfr - bt_prevfr(base_maxfr)) < NONDET_FIXED_SIZE) {
+			fprintf(fp, "%p: temp\n", base_maxfr);
+			fprintf(fp, " redoip: ");
+			printlabel(bt_redoip(base_maxfr));
+			fprintf(fp, " redofr: %p\n", bt_redofr(base_maxfr));
+		} else
+#endif
+		{
+			fprintf(fp, "%p: ordinary\n", base_maxfr);
+			fprintf(fp, " redoip: ");
+			printlabel(bt_redoip(base_maxfr));
+#ifdef	MR_USE_REDOFR
+			fprintf(fp, " redofr: %p\n", bt_redofr(base_maxfr));
+#endif
+			fprintf(fp, " succip: ");
+			printlabel(bt_succip(base_maxfr));
+			fprintf(fp, " succfr: %p\n", bt_succfr(base_maxfr));
+		}
+
+		base_maxfr = bt_prevfr(base_maxfr);
+	}
 }
 
 static	const MR_Stack_Layout_Entry	*prev_entry_layout;

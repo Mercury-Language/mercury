@@ -18,6 +18,7 @@ PROGS=	\
 	construct \
 	curry \
 	curry2 \
+	cut_test \
 	deep_copy_bug \
 	det_in_semidet_cntxt \
 	division_test \

@@ -1,28 +1,29 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
 % Code generation - convert from HLDS to LLDS.
 %
-% Main author: conway.
+% Main authors: conway, zs.
 %
-% Notes:
+% The two main tasks of this module are
 %
-%	code_gen forwards most of the actual construction of intruction
-%	sequences to code_info, and other modules. The generation of
-%	calls is done by call_gen, switches by switch_gen, if-then-elses
-%	by ite_gen, unifications by unify_gen, disjunctions by disj_gen,
-%	and pragma_c_codes by pragma_c_gen.
+% 1	to look after the aspects of generating code for a procedure
+%	that do not involve generating code for a specific goal, and
 %
-%	The general scheme for generating semideterministic code is
-%	to treat it as deterministic code, and have a fall-through
-%	point for failure.  Semideterministic procedures leave a 'true'
-%	in register r(1) to indicate success, and 'false' to indicate
-%	failure.
+% 2	to provide a generic predicate that can be called from anywhere in
+%	the code generator to generate code for a goal.
 %
-%---------------------------------------------------------------------------%
+% Code_gen forwards most of the actual construction of code for particular
+% goals to other modules. The generation of code for unifications is done
+% by unify_gen, for calls, higher-order calls and method calls by call_gen,
+% for commits by commit_gen, for if-then-elses and negations by ite_gen,
+% for switches by switch_gen and its subsidiary modules, for disjunctions
+% by disj_gen, and for pragma_c_codes by pragma_c_gen. The only kind of goal
+% handled directly by code_gen is the conjunction.
+%
 %---------------------------------------------------------------------------%
 
 :- module code_gen.
@@ -31,26 +32,27 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, llds, code_info.
 :- import_module continuation_info, globals.
-:- import_module set, list, assoc_list, term, io.
+:- import_module list, io.
 
-		% Translate a HLDS structure into an LLDS
+		% Translate a HLDS module to LLDS.
 
-:- pred generate_code(module_info, module_info, list(c_procedure),
-						io__state, io__state).
-:- mode generate_code(in, out, out, di, uo) is det.
+:- pred generate_code(module_info::in, module_info::out,
+	list(c_procedure)::out, io__state::di, io__state::uo) is det.
 
-:- pred generate_proc_code(proc_info, proc_id, pred_id, module_info, globals,
-	continuation_info, int, continuation_info, int, c_procedure).
-:- mode generate_proc_code(in, in, in, in, in, in, in, out, out, out) is det.
+		% Translate a HLDS procedure to LLDS, threading through
+		% the data structure that records information about layout
+		% structures and the counter for ensuring the uniqueness
+		% of cell numbers.
 
-		% This predicate generates code for a goal.
+:- pred generate_proc_code(proc_info::in, proc_id::in, pred_id::in,
+	module_info::in, globals::in,
+	continuation_info::in, continuation_info::out, int::in, int::out,
+	c_procedure::out) is det.
 
-:- pred code_gen__generate_goal(code_model, hlds_goal, code_tree,
-						code_info, code_info).
-:- mode code_gen__generate_goal(in, in, out, in, out) is det.
+		% Translate a HLDS goal to LLDS.
 
-:- pred code_gen__output_args(assoc_list(var, arg_info), set(lval)).
-:- mode code_gen__output_args(in, out) is det.
+:- pred code_gen__generate_goal(code_model::in, hlds_goal::in, code_tree::out,
+	code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -58,17 +60,15 @@
 :- implementation.
 
 :- import_module call_gen, unify_gen, ite_gen, switch_gen, disj_gen.
-:- import_module par_conj_gen, pragma_c_gen, trace, options, hlds_out.
+:- import_module par_conj_gen, pragma_c_gen, commit_gen.
+:- import_module trace, options, hlds_out.
 :- import_module code_aux, middle_rec, passes_aux, llds_out.
 :- import_module code_util, type_util, mode_util.
 :- import_module prog_data, prog_out, instmap.
 :- import_module bool, char, int, string.
-:- import_module map, tree, std_util, require, varset.
+:- import_module map, assoc_list, set, term, tree, std_util, require, varset.
 
 %---------------------------------------------------------------------------%
-
-% For a set of high level data structures and associated data, given in
-% ModuleInfo, generate a list of c_procedure structures.
 
 generate_code(ModuleInfo0, ModuleInfo, Procedures) -->
 		% get a list of all the predicate ids
@@ -77,12 +77,11 @@ generate_code(ModuleInfo0, ModuleInfo, Procedures) -->
 		% now generate the code for each predicate
 	generate_pred_list_code(ModuleInfo0, ModuleInfo, PredIds, Procedures).
 
-% Generate a list of c_procedure structures for each mode of each
-% predicate given in ModuleInfo
+	% Translate a list of HLDS predicates to LLDS.
 
-:- pred generate_pred_list_code(module_info, module_info, list(pred_id), 
-				list(c_procedure), io__state, io__state).
-:- mode generate_pred_list_code(in, out, in, out, di, uo) is det.
+:- pred generate_pred_list_code(module_info::in, module_info::out,
+	list(pred_id)::in, list(c_procedure)::out,
+	io__state::di, io__state::uo) is det.
 
 generate_pred_list_code(ModuleInfo, ModuleInfo, [], []) --> [].
 generate_pred_list_code(ModuleInfo0, ModuleInfo, [PredId | PredIds],
@@ -104,12 +103,11 @@ generate_pred_list_code(ModuleInfo0, ModuleInfo, [PredId | PredIds],
 		% and generate the code for the rest of the predicates
 	generate_pred_list_code(ModuleInfo1, ModuleInfo, PredIds, Predicates1).
 
-% For the predicate identified by PredId, with the the associated
-% data in ModuleInfo, generate a code_tree.
+	% Translate a HLDS predicate to LLDS.
 
-:- pred generate_pred_code(module_info, module_info, pred_id, pred_info,
-		list(proc_id), list(c_procedure), io__state, io__state).
-:- mode generate_pred_code(in, out, in, in, in, out, di, uo) is det.
+:- pred generate_pred_code(module_info::in, module_info::out,
+	pred_id::in, pred_info::in, list(proc_id)::in, list(c_procedure)::out,
+	io__state::di, io__state::uo) is det.
 
 generate_pred_code(ModuleInfo0, ModuleInfo, PredId, PredInfo, ProcIds, Code) -->
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
@@ -122,7 +120,6 @@ generate_pred_code(ModuleInfo0, ModuleInfo, PredId, PredInfo, ProcIds, Code) -->
 	;
 		[]
 	),
-		% generate all the procedures for this predicate
 	{ module_info_get_continuation_info(ModuleInfo0, ContInfo0) },
 	{ module_info_get_cell_count(ModuleInfo0, CellCount0) },
 	globals__io_get_globals(Globals),
@@ -133,16 +130,12 @@ generate_pred_code(ModuleInfo0, ModuleInfo, PredId, PredInfo, ProcIds, Code) -->
 	{ module_info_set_continuation_info(ModuleInfo1, ContInfo, 
 		ModuleInfo) }.
 
-% For all the modes of predicate PredId, generate the appropriate
-% code (deterministic, semideterministic, or nondeterministic).
+	% Translate all the procedures of a HLDS predicate to LLDS.
 
-:- pred generate_proc_list_code(list(proc_id), pred_id, pred_info, module_info,
-	globals, continuation_info, continuation_info, int, int,
-	list(c_procedure), list(c_procedure)).
-% :- mode generate_proc_list_code(in, in, in, in, in, di, uo, di, uo)
-%	is det.
-:- mode generate_proc_list_code(in, in, in, in, in, in, out, in, out, in, out)
-	is det.
+:- pred generate_proc_list_code(list(proc_id)::in, pred_id::in, pred_info::in,
+	module_info::in, globals::in,
+	continuation_info::in, continuation_info::out, int::in, int::out,
+	list(c_procedure)::in, list(c_procedure)::out) is det.
 
 generate_proc_list_code([], _PredId, _PredInfo, _ModuleInfo, _Globals,
 		ContInfo, ContInfo, CellCount, CellCount, Procs, Procs).
@@ -150,10 +143,9 @@ generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
 		Globals, ContInfo0, ContInfo, CellCount0, CellCount,
 		Procs0, Procs) :-
 	pred_info_procedures(PredInfo, ProcInfos),
-		% locate the proc_info structure for this mode of the predicate
 	map__lookup(ProcInfos, ProcId, ProcInfo),
 	generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo0, Globals,
-		ContInfo0, CellCount0, ContInfo1, CellCount1, Proc),
+		ContInfo0, ContInfo1, CellCount0, CellCount1, Proc),
 	generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
 		Globals, ContInfo1, ContInfo, CellCount1, CellCount,
 		[Proc | Procs0], Procs).
@@ -164,28 +156,24 @@ generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
 	% generated when generating prologs and is used in generating epilogs
 	% and when massaging the code generated for the procedure.
 
-:- type frame_info	--->	frame(
-					int, 	    % Number of slots in frame.
+:- type frame_info
+	--->	frame(
+			int,		% Number of slots in frame.
 
-					maybe(int), % Slot number of succip
-						    % if succip is present
-						    % in a general slot.
+			maybe(int),	% Slot number of succip if succip is
+					% present in a general slot.
 
-					bool	    % Is this the frame of a
-						    % model_non proc defined
-						    % via pragma C code?
-				).
+			bool		% Is this the frame of a model_non
+					% proc defined via pragma C code?
+		).
 
 %---------------------------------------------------------------------------%
 
 generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
-		ContInfo0, CellCount0, ContInfo, CellCount, Proc) :-
-		% find out if the proc is deterministic/etc
+		ContInfo0, ContInfo, CellCount0, CellCount, Proc) :-
 	proc_info_interface_determinism(ProcInfo, Detism),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
-		% get the goal for this procedure
 	proc_info_goal(ProcInfo, Goal),
-		% get the information about this procedure that we need.
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_liveness_info(ProcInfo, Liveness),
 	proc_info_stack_slots(ProcInfo, StackSlots),
@@ -205,38 +193,43 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 	;
 		SaveSuccip = no
 	),
-		% initialise the code_info structure 
+		% Initialise the code_info structure. Generate_category_code
+		% below will use the returned OutsideResumePoint as the
+		% entry to the code that handles the failure of the procedure,
+		% if such code is needed. It is never needed for model_det
+		% procedures, always needed for model_semi procedures, and
+		% needed for model_non procedures only if we are doing
+		% execution tracing.
 	code_info__init(VarSet, Liveness, StackSlots, SaveSuccip, Globals,
 		PredId, ProcId, ProcInfo, InitialInst, FollowVars,
-		ModuleInfo, CellCount0, CodeInfo0),
-		% generate code for the procedure
-	globals__get_trace_level(Globals, TraceLevel),
-	( trace_level_trace_interface(TraceLevel, yes) ->
-		trace__setup(TraceLevel, CodeInfo0, CodeInfo1)
-	;
-		CodeInfo1 = CodeInfo0
-	),
-	generate_category_code(CodeModel, Goal, ProcInfo, CodeTree,
-		MaybeTraceCallLabel, FrameInfo, CodeInfo1, CodeInfo),
-		% extract the new continuation_info and cell count
-	code_info__get_cell_count(CellCount, CodeInfo, _CodeInfo1),
+		ModuleInfo, CellCount0, OutsideResumePoint, CodeInfo0),
 
-		% turn the code tree into a list
+		% Generate code for the procedure.
+	generate_category_code(CodeModel, Goal, OutsideResumePoint,
+		CodeTree, MaybeTraceCallLabel, FrameInfo, CodeInfo0, CodeInfo),
+	code_info__get_cell_count(CellCount, CodeInfo, _),
+
+		% Turn the code tree into a list.
 	tree__flatten(CodeTree, FragmentList),
-		% now the code is a list of code fragments (== list(instr)),
+		% Now the code is a list of code fragments (== list(instr)),
 		% so we need to do a level of unwinding to get a flat list.
 	list__condense(FragmentList, Instructions0),
 	FrameInfo = frame(TotalSlots, MaybeSuccipSlot, _),
 	(
 		MaybeSuccipSlot = yes(SuccipSlot)
 	->
+			% The set of recorded live values at calls (for value
+			% numbering) and returns (for accurate gc and execution
+			% tracing) do not yet record the stack slot holding the
+			% succip, so add it to those sets.
 		code_gen__add_saved_succip(Instructions0,
 			SuccipSlot, Instructions)
 	;
 		Instructions = Instructions0
 	),
 	( BasicStackLayout = yes ->
-		code_info__get_layout_info(LayoutInfo, CodeInfo, _CodeInfo2),
+			% Create the procedure layout structure.
+		code_info__get_layout_info(LayoutInfo, CodeInfo, _),
 		code_util__make_local_entry_label(ModuleInfo, PredId, ProcId,
 			no, EntryLabel),
 		continuation_info__add_proc_info(proc(PredId, ProcId),
@@ -246,12 +239,12 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		ContInfo = ContInfo0
 	),
 
-		% get the name and arity of this predicate
 	predicate_name(ModuleInfo, PredId, Name),
 	predicate_arity(ModuleInfo, PredId, Arity),
-		% construct a c_procedure structure with all the information
+		% Construct a c_procedure structure with all the information.
 	Proc = c_procedure(Name, Arity, proc(PredId, ProcId), Instructions).
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 	% Generate_category_code generates code for an entire procedure.
@@ -297,11 +290,11 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 	% continuation needs no code. Only model_semi procedures need code
 	% for the failure continuation at all times.)
 
-:- pred generate_category_code(code_model, hlds_goal, proc_info, code_tree,
-	maybe(label), frame_info, code_info, code_info).
-:- mode generate_category_code(in, in, in, out, out, out, in, out) is det.
+:- pred generate_category_code(code_model::in, hlds_goal::in,
+	resume_point_info::in, code_tree::out, maybe(label)::out,
+	frame_info::out, code_info::in, code_info::out) is det.
 
-generate_category_code(model_det, Goal, ProcInfo, Code,
+generate_category_code(model_det, Goal, ResumePoint, Code,
 		MaybeTraceCallLabel, FrameInfo) -->
 		% generate the code for the body of the clause
 	(
@@ -313,18 +306,8 @@ generate_category_code(model_det, Goal, ProcInfo, Code,
 		{ MaybeTraceCallLabel = no },
 		{ FrameInfo = frame(0, no, no) }
 	;
-		% make a new failure cont (not model_non);
-		% this continuation is never actually used,
-		% but is a place holder
-		code_info__manufacture_failure_cont(no),
-
 		code_info__get_maybe_trace_info(MaybeTraceInfo),
 		( { MaybeTraceInfo = yes(TraceInfo) } ->
-			code_info__get_module_info(ModuleInfo),
-			{ trace__fail_vars(ModuleInfo, ProcInfo, ResumeVars) },
-				% Protect these vars from being forgotten,
-				% so they will be around for the exit trace.
-			code_info__push_resume_point_vars(ResumeVars),
 			trace__generate_external_event_code(call, TraceInfo,
 				TraceCallLabel, _TypeInfos, TraceCallCode),
 			{ MaybeTraceCallLabel = yes(TraceCallLabel) }
@@ -333,8 +316,8 @@ generate_category_code(model_det, Goal, ProcInfo, Code,
 			{ MaybeTraceCallLabel = no }
 		),
 		code_gen__generate_goal(model_det, Goal, BodyCode),
-		code_gen__generate_entry(model_det, Goal, FrameInfo,
-			EntryCode),
+		code_gen__generate_entry(model_det, Goal, ResumePoint,
+			FrameInfo, EntryCode),
 		code_gen__generate_exit(model_det, FrameInfo, _, ExitCode),
 		{ Code =
 			tree(EntryCode,
@@ -344,55 +327,49 @@ generate_category_code(model_det, Goal, ProcInfo, Code,
 		}
 	).
 
-generate_category_code(model_semi, Goal, ProcInfo, Code,
+generate_category_code(model_semi, Goal, ResumePoint, Code,
 		MaybeTraceCallLabel, FrameInfo) -->
-		% make a new failure cont (not model_non)
-	code_info__manufacture_failure_cont(no),
-	code_info__get_maybe_trace_info(MaybeTraceInfo),
 	{ set__singleton_set(FailureLiveRegs, reg(r, 1)) },
 	{ FailCode = node([
 		assign(reg(r, 1), const(false)) - "Fail",
 		livevals(FailureLiveRegs) - "",
 		goto(succip) - "Return from procedure call"
 	]) },
+	code_info__get_maybe_trace_info(MaybeTraceInfo),
 	( { MaybeTraceInfo = yes(TraceInfo) } ->
-		code_info__get_module_info(ModuleInfo),
-		{ trace__fail_vars(ModuleInfo, ProcInfo, ResumeVars) },
-		code_info__make_known_failure_cont(ResumeVars, orig_and_stack,
-			no, SetupCode),
-		code_info__push_resume_point_vars(ResumeVars),
 		trace__generate_external_event_code(call, TraceInfo,
 			TraceCallLabel, _TypeInfos, TraceCallCode),
 		{ MaybeTraceCallLabel = yes(TraceCallLabel) },
 		code_gen__generate_goal(model_semi, Goal, BodyCode),
-		code_gen__generate_entry(model_semi, Goal, FrameInfo,
-			EntryCode),
+		code_gen__generate_entry(model_semi, Goal, ResumePoint,
+			FrameInfo, EntryCode),
 		code_gen__generate_exit(model_semi, FrameInfo,
 			RestoreDeallocCode, ExitCode),
-		code_info__pop_resume_point_vars,
-		code_info__restore_failure_cont(ResumeCode),
+
+		code_info__generate_resume_point(ResumePoint, ResumeCode),
+		{ code_info__resume_point_vars(ResumePoint, ResumeVarList) },
+		{ set__list_to_set(ResumeVarList, ResumeVars) },
 		code_info__set_forward_live_vars(ResumeVars),
 		trace__generate_external_event_code(fail, TraceInfo, _, _,
 			TraceFailCode),
 		{ Code =
 			tree(EntryCode,
-			tree(SetupCode,
 			tree(TraceCallCode,
 			tree(BodyCode,
 			tree(ExitCode,
 			tree(ResumeCode,
 			tree(TraceFailCode,
 			tree(RestoreDeallocCode,
-			     FailCode))))))))
+			     FailCode)))))))
 		}
 	;
 		{ MaybeTraceCallLabel = no },
 		code_gen__generate_goal(model_semi, Goal, BodyCode),
-		code_gen__generate_entry(model_semi, Goal, FrameInfo,
-			EntryCode),
+		code_gen__generate_entry(model_semi, Goal, ResumePoint,
+			FrameInfo, EntryCode),
 		code_gen__generate_exit(model_semi, FrameInfo,
 			RestoreDeallocCode, ExitCode),
-		code_info__restore_failure_cont(ResumeCode),
+		code_info__generate_resume_point(ResumePoint, ResumeCode),
 		{ Code =
 			tree(EntryCode,
 			tree(BodyCode,
@@ -403,52 +380,46 @@ generate_category_code(model_semi, Goal, ProcInfo, Code,
 		}
 	).
 
-generate_category_code(model_non, Goal, ProcInfo, Code,
+generate_category_code(model_non, Goal, ResumePoint, Code,
 		MaybeTraceCallLabel, FrameInfo) -->
-		% make a new failure cont (yes, it is model_non)
-	code_info__manufacture_failure_cont(yes),
-		% we must arrange the tracing of failure out of this proc
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
 	( { MaybeTraceInfo = yes(TraceInfo) } ->
-		code_info__get_module_info(ModuleInfo),
-		{ trace__fail_vars(ModuleInfo, ProcInfo, ResumeVars) },
-		code_info__make_known_failure_cont(ResumeVars, orig_and_stack,
-			yes, SetupCode),
-		code_info__push_resume_point_vars(ResumeVars),
 		trace__generate_external_event_code(call, TraceInfo,
 			TraceCallLabel, _TypeInfos, TraceCallCode),
 		{ MaybeTraceCallLabel = yes(TraceCallLabel) },
 		code_gen__generate_goal(model_non, Goal, BodyCode),
-		code_gen__generate_entry(model_non, Goal, FrameInfo,
-			PrologCode),
-		code_gen__generate_exit(model_non, FrameInfo, _, EpilogCode),
+		code_gen__generate_entry(model_non, Goal, ResumePoint,
+			FrameInfo, EntryCode),
+		code_gen__generate_exit(model_non, FrameInfo, _, ExitCode),
 
-		code_info__pop_resume_point_vars,
-		code_info__restore_failure_cont(RestoreCode),
+		code_info__generate_resume_point(ResumePoint, ResumeCode),
+		{ code_info__resume_point_vars(ResumePoint, ResumeVarList) },
+		{ set__list_to_set(ResumeVarList, ResumeVars) },
 		code_info__set_forward_live_vars(ResumeVars),
 		trace__generate_external_event_code(fail, TraceInfo, _, _,
 			TraceFailCode),
-		code_info__generate_failure(FailCode),
+		{ FailCode = node([
+			goto(do_fail) - "fail after fail trace port"
+		]) },
 		{ Code =
-			tree(PrologCode,
-			tree(SetupCode,
+			tree(EntryCode,
 			tree(TraceCallCode,
 			tree(BodyCode,
-			tree(EpilogCode,
-			tree(RestoreCode,
+			tree(ExitCode,
+			tree(ResumeCode,
 			tree(TraceFailCode,
-			     FailCode)))))))
+			     FailCode))))))
 		}
 	;
 		{ MaybeTraceCallLabel = no },
 		code_gen__generate_goal(model_non, Goal, BodyCode),
-		code_gen__generate_entry(model_non, Goal, FrameInfo,
-			PrologCode),
-		code_gen__generate_exit(model_non, FrameInfo, _, EpilogCode),
+		code_gen__generate_entry(model_non, Goal, ResumePoint,
+			FrameInfo, EntryCode),
+		code_gen__generate_exit(model_non, FrameInfo, _, ExitCode),
 		{ Code =
-			tree(PrologCode,
+			tree(EntryCode,
 			tree(BodyCode,
-			     EpilogCode))
+			     ExitCode))
 		}
 	).
 
@@ -473,11 +444,12 @@ generate_category_code(model_non, Goal, ProcInfo, Code,
 	% need a stack frame, and if the procedure is nondet, then the code
 	% to fill in the succip slot is subsumed by the mkframe.
 
-:- pred code_gen__generate_entry(code_model, hlds_goal, frame_info,
-	code_tree, code_info, code_info).
-:- mode code_gen__generate_entry(in, in, out, out, in, out) is det.
+:- pred code_gen__generate_entry(code_model::in, hlds_goal::in,
+	resume_point_info::in, frame_info::out, code_tree::out,
+	code_info::in, code_info::out) is det.
 
-code_gen__generate_entry(CodeModel, Goal, FrameInfo, PrologCode) -->
+code_gen__generate_entry(CodeModel, Goal, OutsideResumePoint,
+		FrameInfo, EntryCode) -->
 	code_info__get_stack_slots(StackSlots),
 	code_info__get_varset(VarSet),
 	{ code_aux__explain_stack_slots(StackSlots, VarSet, SlotsComment) },
@@ -530,6 +502,8 @@ code_gen__generate_entry(CodeModel, Goal, FrameInfo, PrologCode) -->
 	(
 		{ CodeModel = model_non }
 	->
+		{ code_info__resume_point_stack_addr(OutsideResumePoint,
+			OutsideResumeAddress) },
 		(
 			{ Goal = pragma_c_code(_,_,_,_,_,_, PragmaCode) - _},
 			{ PragmaCode = nondet(Fields, FieldsContext,
@@ -542,9 +516,10 @@ code_gen__generate_entry(CodeModel, Goal, FrameInfo, PrologCode) -->
 			{ string__format("#define\tMR_ORDINARY_SLOTS\t%d\n",
 				[i(TotalSlots)], DefineStr) },
 			{ DefineComponents = [pragma_c_raw_code(DefineStr)] },
+			{ NondetFrameInfo = ordinary_frame(PushMsg, TotalSlots,
+				yes(Struct)) },
 			{ AllocCode = node([
-				mkframe(PushMsg, TotalSlots, yes(Struct),
-					do_fail)
+				mkframe(NondetFrameInfo, OutsideResumeAddress)
 					- "Allocate stack frame",
 				pragma_c([], DefineComponents,
 					will_not_call_mercury, no, no)
@@ -552,9 +527,11 @@ code_gen__generate_entry(CodeModel, Goal, FrameInfo, PrologCode) -->
 			]) },
 			{ NondetPragma = yes }
 		;
+			{ NondetFrameInfo = ordinary_frame(PushMsg, TotalSlots,
+				no) },
 			{ AllocCode = node([
-				mkframe(PushMsg, TotalSlots, no, do_fail) -
-					"Allocate stack frame"
+				mkframe(NondetFrameInfo, OutsideResumeAddress)
+					- "Allocate stack frame"
 			]) },
 			{ NondetPragma = no }
 		)
@@ -574,7 +551,7 @@ code_gen__generate_entry(CodeModel, Goal, FrameInfo, PrologCode) -->
 	{ EndComment = node([
 		comment("End of procedure prologue") - ""
 	]) },
-	{ PrologCode =
+	{ EntryCode =
 		tree(StartComment,
 		tree(LabelCode,
 		tree(AllocCode,
@@ -613,12 +590,10 @@ code_gen__generate_entry(CodeModel, Goal, FrameInfo, PrologCode) -->
 	% of the epilogue are handled when traversing the pragma C code goal;
 	% we need only #undef a macro defined by the procedure prologue.
 
-:- pred code_gen__generate_exit(code_model, frame_info, code_tree, code_tree,
-	code_info, code_info).
-:- mode code_gen__generate_exit(in, in, out, out, in, out) is det.
+:- pred code_gen__generate_exit(code_model::in, frame_info::in,
+	code_tree::out, code_tree::out, code_info::in, code_info::out) is det.
 
-code_gen__generate_exit(CodeModel, FrameInfo, RestoreDeallocCode, EpilogCode)
-		-->
+code_gen__generate_exit(CodeModel, FrameInfo, RestoreDeallocCode, ExitCode) -->
 	{ StartComment = node([
 		comment("Start of procedure epilogue") - ""
 	]) },
@@ -635,7 +610,7 @@ code_gen__generate_exit(CodeModel, FrameInfo, RestoreDeallocCode, EpilogCode)
 				- ""
 		]) },
 		{ RestoreDeallocCode = empty },	% always empty for nondet code
-		{ EpilogCode =
+		{ ExitCode =
 			tree(StartComment,
 			tree(UndefCode,
 			     EndComment))
@@ -728,7 +703,7 @@ code_gen__generate_exit(CodeModel, FrameInfo, RestoreDeallocCode, EpilogCode)
 				     SuccessCode)
 			}
 		),
-		{ EpilogCode =
+		{ ExitCode =
 			tree(StartComment,
 			tree(FlushCode,
 			tree(AllSuccessCode,
@@ -740,7 +715,7 @@ code_gen__generate_exit(CodeModel, FrameInfo, RestoreDeallocCode, EpilogCode)
 
 % Generate a goal. This predicate arranges for the necessary updates of
 % the generic data structures before and after the actual code generation,
-% which is delegated to context-specific predicates.
+% which is delegated to goal-specific predicates.
 
 code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 		% Make any changes to liveness before Goal
@@ -755,26 +730,29 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 		{ instmap__is_reachable(Instmap) }
 	->
 		{ goal_info_get_code_model(GoalInfo, CodeModel) },
-		(
-			{ CodeModel = model_det },
-			code_gen__generate_det_goal_2(Goal, GoalInfo, Code)
+
+			% sanity check: code of some code models
+			% should occur only in limited contexts
+		{
+			CodeModel = model_det
 		;
-			{ CodeModel = model_semi },
-			( { ContextModel \= model_det } ->
-				code_gen__generate_semi_goal_2(Goal, GoalInfo,
-					Code)
+			CodeModel = model_semi,
+			( ContextModel \= model_det ->
+				true
 			;
-				{ error("semidet model in det context") }
+				error("semidet model in det context")
 			)
 		;
-			{ CodeModel = model_non },
-			( { ContextModel = model_non } ->
-				code_gen__generate_non_goal_2(Goal, GoalInfo,
-					Code)
+			CodeModel = model_non,
+			( ContextModel = model_non ->
+				true
 			;
-				{ error("nondet model in det/semidet context") }
+				error("nondet model in det/semidet context")
 			)
-		),
+		},
+
+		code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, Code),
+
 			% Make live any variables which subsequent goals
 			% will expect to be live, but were not generated
 		code_info__set_instmap(Instmap),
@@ -786,13 +764,62 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 
 %---------------------------------------------------------------------------%
 
+:- pred code_gen__generate_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
+	code_model::in, code_tree::out, code_info::in, code_info::out) is det.
+
+code_gen__generate_goal_2(unify(_, _, _, Uni, _), _, CodeModel, Code) -->
+	unify_gen__generate_unification(CodeModel, Uni, Code).
+code_gen__generate_goal_2(conj(Goals), _GoalInfo, CodeModel, Code) -->
+	code_gen__generate_goals(Goals, CodeModel, Code).
+code_gen__generate_goal_2(par_conj(Goals, _SM), GoalInfo, CodeModel, Code) -->
+	par_conj_gen__generate_par_conj(Goals, GoalInfo, CodeModel, Code).
+code_gen__generate_goal_2(disj(Goals, StoreMap), _, CodeModel, Code) -->
+	disj_gen__generate_disj(CodeModel, Goals, StoreMap, Code).
+code_gen__generate_goal_2(not(Goal), _GoalInfo, CodeModel, Code) -->
+	ite_gen__generate_negation(CodeModel, Goal, Code).
+code_gen__generate_goal_2(if_then_else(_Vars, Cond, Then, Else, StoreMap),
+		_GoalInfo, CodeModel, Code) -->
+	ite_gen__generate_ite(CodeModel, Cond, Then, Else, StoreMap, Code).
+code_gen__generate_goal_2(switch(Var, CanFail, CaseList, StoreMap),
+		GoalInfo, CodeModel, Code) -->
+	switch_gen__generate_switch(CodeModel, Var, CanFail, CaseList,
+		StoreMap, GoalInfo, Code).
+code_gen__generate_goal_2(some(_Vars, Goal), _GoalInfo, CodeModel, Code) -->
+	commit_gen__generate_commit(CodeModel, Goal, Code).
+code_gen__generate_goal_2(higher_order_call(PredVar, Args, Types,
+		Modes, Det, _PredOrFunc), GoalInfo, CodeModel, Code) -->
+	call_gen__generate_higher_order_call(CodeModel, PredVar, Args,
+		Types, Modes, Det, GoalInfo, Code).
+code_gen__generate_goal_2(class_method_call(TCVar, Num, Args, Types,
+		Modes, Det), GoalInfo, CodeModel, Code) -->
+	call_gen__generate_class_method_call(CodeModel, TCVar, Num, Args,
+		Types, Modes, Det, GoalInfo, Code).
+code_gen__generate_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
+		GoalInfo, CodeModel, Code) -->
+	(
+		{ BuiltinState = not_builtin }
+	->
+		call_gen__generate_call(CodeModel, PredId, ProcId, Args,
+			GoalInfo, Code)
+	;
+		call_gen__generate_builtin(CodeModel, PredId, ProcId, Args,
+			Code)
+	).
+code_gen__generate_goal_2(pragma_c_code(MayCallMercury, PredId, ProcId,
+		Args, ArgNames, OrigArgTypes, PragmaImpl),
+		GoalInfo, CodeModel, Code) -->
+	pragma_c_gen__generate_pragma_c_code(CodeModel, MayCallMercury,
+		PredId, ProcId, Args, ArgNames, OrigArgTypes, GoalInfo,
+		PragmaImpl, Code).
+
+%---------------------------------------------------------------------------%
+
 % Generate a conjoined series of goals.
 % Note of course, that with a conjunction, state information
 % flows directly from one conjunct to the next.
 
-:- pred code_gen__generate_goals(hlds_goals, code_model, code_tree,
-							code_info, code_info).
-:- mode code_gen__generate_goals(in, in, out, in, out) is det.
+:- pred code_gen__generate_goals(hlds_goals::in, code_model::in,
+	code_tree::out, code_info::in, code_info::out) is det.
 
 code_gen__generate_goals([], _, empty) --> [].
 code_gen__generate_goals([Goal | Goals], CodeModel, Instr) -->
@@ -809,376 +836,8 @@ code_gen__generate_goals([Goal | Goals], CodeModel, Instr) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred code_gen__generate_det_goal_2(hlds_goal_expr, hlds_goal_info,
-					code_tree, code_info, code_info).
-:- mode code_gen__generate_det_goal_2(in, in, out, in, out) is det.
-
-code_gen__generate_det_goal_2(conj(Goals), _GoalInfo, Instr) -->
-	code_gen__generate_goals(Goals, model_det, Instr).
-code_gen__generate_det_goal_2(par_conj(Goals, _StoreMap), GoalInfo, Instr) -->
-	par_conj_gen__generate_det_par_conj(Goals, GoalInfo, Instr).
-code_gen__generate_det_goal_2(some(_Vars, Goal), _GoalInfo, Instr) -->
-	{ Goal = _ - InnerGoalInfo },
-	{ goal_info_get_code_model(InnerGoalInfo, CodeModel) },
-	(
-		{ CodeModel = model_det },
-		code_gen__generate_goal(model_det, Goal, Instr)
-	;
-		{ CodeModel = model_semi },
-		{ error("semidet model in det context") }
-	;
-		{ CodeModel = model_non },
-		code_info__generate_det_pre_commit(Slots, PreCommit),
-		code_gen__generate_goal(model_non, Goal, GoalCode),
-		code_info__generate_det_commit(Slots, Commit),
-		{ Instr = tree(PreCommit, tree(GoalCode, Commit)) }
-	).
-code_gen__generate_det_goal_2(disj(Goals, StoreMap), _GoalInfo, Instr) -->
-	disj_gen__generate_det_disj(Goals, StoreMap, Instr).
-code_gen__generate_det_goal_2(not(Goal), _GoalInfo, Instr) -->
-	code_gen__generate_negation(model_det, Goal, Instr).
-code_gen__generate_det_goal_2(higher_order_call(PredVar, Args, Types,
-		Modes, Det, _PredOrFunc),
-		GoalInfo, Instr) -->
-	call_gen__generate_higher_order_call(model_det, PredVar, Args,
-		Types, Modes, Det, GoalInfo, Instr).
-code_gen__generate_det_goal_2(class_method_call(TCVar, Num, Args, Types,
-		Modes, Det),
-		GoalInfo, Instr) -->
-	call_gen__generate_class_method_call(model_det, TCVar, Num, Args,
-		Types, Modes, Det, GoalInfo, Instr).
-code_gen__generate_det_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
-		GoalInfo, Instr) -->
-	(
-		{ BuiltinState = not_builtin }
-	->
-		code_info__succip_is_used,
-		call_gen__generate_call(model_det, PredId, ProcId, Args,
-			GoalInfo, Instr)
-	;
-		call_gen__generate_det_builtin(PredId, ProcId, Args, Instr)
-	).
-code_gen__generate_det_goal_2(switch(Var, CanFail, CaseList, StoreMap),
-		GoalInfo, Instr) -->
-	switch_gen__generate_switch(model_det, Var, CanFail, CaseList,
-		StoreMap, GoalInfo, Instr).
-code_gen__generate_det_goal_2(
-		if_then_else(_Vars, CondGoal, ThenGoal, ElseGoal, StoreMap),
-							_GoalInfo, Instr) -->
-	ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, StoreMap,
-		Instr).
-code_gen__generate_det_goal_2(unify(_L, _R, _U, Uni, _C), _GoalInfo, Instr) -->
-	(
-		{ Uni = assign(Left, Right) },
-		unify_gen__generate_assignment(Left, Right, Instr)
-	;
-		{ Uni = construct(Var, ConsId, Args, Modes) },
-		unify_gen__generate_construction(Var, ConsId, Args,
-								Modes, Instr)
-	;
-		{ Uni = deconstruct(Var, ConsId, Args, Modes, _Det) },
-		unify_gen__generate_det_deconstruction(Var, ConsId, Args,
-								Modes, Instr)
-	;
-		% These should have been transformed into calls by
-		% polymorphism.m.
-		{ Uni = complicated_unify(_UniMode, _CanFail) },
-		{ error("code_gen__generate_det_goal_2 - complicated unify") }
-	;
-		{ Uni = simple_test(_, _) },
-		{ error("generate_det_goal_2: cannot have det simple_test") }
-	).
-
-code_gen__generate_det_goal_2(pragma_c_code(MayCallMercury,
-		PredId, ModeId, Args, ArgNames, OrigArgTypes, PragmaCode),
-		GoalInfo, Instr) -->
-	pragma_c_gen__generate_pragma_c_code(model_det, MayCallMercury,
-		PredId, ModeId, Args, ArgNames, OrigArgTypes, GoalInfo,
-		PragmaCode, Instr).
-
-%---------------------------------------------------------------------------%
-
-:- pred code_gen__generate_semi_goal_2(hlds_goal_expr, hlds_goal_info,
-					code_tree, code_info, code_info).
-:- mode code_gen__generate_semi_goal_2(in, in, out, in, out) is det.
-
-code_gen__generate_semi_goal_2(conj(Goals), _GoalInfo, Code) -->
-	code_gen__generate_goals(Goals, model_semi, Code).
-code_gen__generate_semi_goal_2(par_conj(_Goals, _SM), _GoalInfo, _Code) -->
-	% Determinism analysis will report a determinism error if the
-	% parallel conj is not det.
-	{ error("sorry, semidet parallel conjunction not implemented") }.
-code_gen__generate_semi_goal_2(some(_Vars, Goal), _GoalInfo, Code) -->
-	{ Goal = _ - InnerGoalInfo },
-	{ goal_info_get_code_model(InnerGoalInfo, CodeModel) },
-	(
-		{ CodeModel = model_det },
-		code_gen__generate_goal(model_det, Goal, Code)
-	;
-		{ CodeModel = model_semi },
-		code_gen__generate_goal(model_semi, Goal, Code)
-	;
-		{ CodeModel = model_non },
-		code_info__generate_semi_pre_commit(Label, Slots, PreCommit),
-		code_gen__generate_goal(model_non, Goal, GoalCode),
-		code_info__generate_semi_commit(Label, Slots, Commit),
-		{ Code = tree(PreCommit, tree(GoalCode, Commit)) }
-	).
-code_gen__generate_semi_goal_2(disj(Goals, StoreMap), _GoalInfo, Code) -->
-	disj_gen__generate_semi_disj(Goals, StoreMap, Code).
-code_gen__generate_semi_goal_2(not(Goal), _GoalInfo, Code) -->
-	code_gen__generate_negation(model_semi, Goal, Code).
-code_gen__generate_semi_goal_2(higher_order_call(PredVar, Args, Types, Modes,
-		Det, _PredOrFunc), GoalInfo, Code) -->
-	call_gen__generate_higher_order_call(model_semi, PredVar, Args,
-		Types, Modes, Det, GoalInfo, Code).
-code_gen__generate_semi_goal_2(class_method_call(TCVar, Num, Args, Types, Modes,
-		Det), GoalInfo, Code) -->
-	call_gen__generate_class_method_call(model_semi, TCVar, Num, Args,
-		Types, Modes, Det, GoalInfo, Code).
-code_gen__generate_semi_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
-							GoalInfo, Code) -->
-	(
-		{ BuiltinState = not_builtin }
-	->
-		code_info__succip_is_used,
-		call_gen__generate_call(model_semi, PredId, ProcId, Args,
-			GoalInfo, Code)
-	;
-		call_gen__generate_semidet_builtin(PredId, ProcId, Args, Code)
-	).
-code_gen__generate_semi_goal_2(switch(Var, CanFail, CaseList, StoreMap),
-		GoalInfo, Instr) -->
-	switch_gen__generate_switch(model_semi, Var, CanFail,
-		CaseList, StoreMap, GoalInfo, Instr).
-code_gen__generate_semi_goal_2(
-		if_then_else(_Vars, CondGoal, ThenGoal, ElseGoal, StoreMap),
-							_GoalInfo, Instr) -->
-	ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, StoreMap,
-		Instr).
-code_gen__generate_semi_goal_2(unify(_L, _R, _U, Uni, _C),
-							_GoalInfo, Code) -->
-	(
-		{ Uni = assign(Left, Right) },
-		unify_gen__generate_assignment(Left, Right, Code)
-	;
-		{ Uni = construct(Var, ConsId, Args, Modes) },
-		unify_gen__generate_construction(Var, ConsId, Args,
-								Modes, Code)
-	;
-		{ Uni = deconstruct(Var, ConsId, Args, Modes, _) },
-		unify_gen__generate_semi_deconstruction(Var, ConsId, Args,
-								Modes, Code)
-	;
-		{ Uni = simple_test(Var1, Var2) },
-		unify_gen__generate_test(Var1, Var2, Code)
-	;
-		{ Uni = complicated_unify(_UniMode, _CanFail) },
-		{ error("code_gen__generate_semi_goal_2 - complicated_unify") }
-	).
-
-code_gen__generate_semi_goal_2(pragma_c_code(MayCallMercury,
-		PredId, ModeId, Args, ArgNames, OrigArgTypes, PragmaCode),
-		GoalInfo, Instr) -->
-	pragma_c_gen__generate_pragma_c_code(model_semi, MayCallMercury,
-		PredId, ModeId, Args, ArgNames, OrigArgTypes, GoalInfo,
-		PragmaCode, Instr).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- pred code_gen__generate_negation(code_model, hlds_goal, code_tree,
-	code_info, code_info).
-:- mode code_gen__generate_negation(in, in, out, in, out) is det.
-
-code_gen__generate_negation(CodeModel, Goal0, Code) -->
-	{ Goal0 = GoalExpr - GoalInfo0 },
-	{ goal_info_get_resume_point(GoalInfo0, Resume) },
-	(
-		{ Resume = resume_point(ResumeVarsPrime, ResumeLocsPrime) }
-	->
-		{ ResumeVars = ResumeVarsPrime},
-		{ ResumeLocs = ResumeLocsPrime}
-	;
-		{ error("negated goal has no resume point") }
-	),
-	code_info__push_resume_point_vars(ResumeVars),
-		% The next line is to enable Goal to pass the
-		% pre_goal_update sanity check
-	{ goal_info_set_resume_point(GoalInfo0, no_resume_point, GoalInfo) },
-	{ Goal = GoalExpr - GoalInfo },
-
-		% for a negated simple test, we can generate better code
-		% than the general mechanism, because we don't have to
-		% flush the cache.
-	(
-		{ CodeModel = model_semi },
-		{ GoalExpr = unify(_, _, _, simple_test(L, R), _) },
-		code_info__failure_is_direct_branch(CodeAddr),
-		code_info__get_globals(Globals),
-		{ globals__lookup_bool_option(Globals, simple_neg, yes) }
-	->
-			% Because we're generating a goal
-			% (special-cased, though it may be)
-			% we need to apply the pre- and post-
-			% updates.
-		code_info__pre_goal_update(GoalInfo, yes),
-		code_info__produce_variable(L, CodeL, ValL),
-		code_info__produce_variable(R, CodeR, ValR),
-		code_info__variable_type(L, Type),
-		{ Type = term__functor(term__atom("string"), [], _) ->
-			Op = str_eq
-		; Type = term__functor(term__atom("float"), [], _) ->
-			Op = float_eq
-		;
-			Op = eq
-		},
-		{ TestCode = node([
-			if_val(binop(Op, ValL, ValR), CodeAddr) -
-				"test inequality"
-		]) },
-		code_info__post_goal_update(GoalInfo),
-		{ Code = tree(tree(CodeL, CodeR), TestCode) }
-	;
-		code_gen__generate_negation_general(CodeModel, Goal,
-			ResumeVars, ResumeLocs, Code)
-	),
-	code_info__pop_resume_point_vars.
-
-:- pred code_gen__generate_negation_general(code_model, hlds_goal,
-	set(var), resume_locs, code_tree, code_info, code_info).
-:- mode code_gen__generate_negation_general(in, in, in, in, out, in, out)
-	is det.
-
-code_gen__generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs,
-		Code) -->
-		% This code is a cut-down version of the code for semidet
-		% if-then-elses.
-
-	code_info__make_known_failure_cont(ResumeVars, ResumeLocs, no,
-		ModContCode),
-
-		% Maybe save the heap state current before the condition;
-		% this ought to be after we make the failure continuation
-		% because that causes the cache to get flushed
-	code_info__get_globals(Globals),
-	{
-		globals__lookup_bool_option(Globals,
-			reclaim_heap_on_semidet_failure, yes),
-		code_util__goal_may_allocate_heap(Goal)
-	->
-		ReclaimHeap = yes
-	;
-		ReclaimHeap = no
-	},
-	code_info__maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot),
-
-	{ globals__lookup_bool_option(Globals, use_trail, UseTrail) },
-	code_info__maybe_save_ticket(UseTrail, SaveTicketCode,
-		MaybeTicketSlot),
-
-		% Generate the condition as a semi-deterministic goal;
-		% it cannot be nondet, since mode correctness requires it
-		% to have no output vars
-	code_gen__generate_goal(model_semi, Goal, GoalCode),
-
-	( { CodeModel = model_det } ->
-		{ DiscardTicketCode = empty },
-		{ FailCode = empty }
-	;
-		code_info__grab_code_info(CodeInfo),
-		code_info__pop_failure_cont,
-		% The call to reset_ticket(..., commit) here is necessary
-		% in order to properly detect floundering.
-		code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot,
-			commit, DiscardTicketCode),
-		code_info__generate_failure(FailCode),
-		code_info__slap_code_info(CodeInfo)
-	),
-	code_info__restore_failure_cont(RestoreContCode),
-	code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot, undo,
-		RestoreTicketCode),
-	code_info__maybe_restore_and_discard_hp(MaybeHpSlot, RestoreHpCode),
-	{ Code = tree(ModContCode,
-		 tree(SaveHpCode,
-		 tree(SaveTicketCode,
-		 tree(GoalCode,
-		 tree(DiscardTicketCode, % is this necessary?
-		 tree(FailCode,
-		 tree(RestoreContCode,
-		 tree(RestoreTicketCode,
-		      RestoreHpCode)))))))) }.
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- pred code_gen__generate_non_goal_2(hlds_goal_expr, hlds_goal_info,
-					code_tree, code_info, code_info).
-:- mode code_gen__generate_non_goal_2(in, in, out, in, out) is det.
-
-code_gen__generate_non_goal_2(conj(Goals), _GoalInfo, Code) -->
-	code_gen__generate_goals(Goals, model_non, Code).
-code_gen__generate_non_goal_2(par_conj(_Goals, _SM), _GoalInfo, _Code) -->
-		% Determinism analysis will report a determinism error if the
-		% parallel conj is not det.
-	{ error("sorry, nondet parallel conjunction not implemented") }.
-code_gen__generate_non_goal_2(some(_Vars, Goal), _GoalInfo, Code) -->
-	{ Goal = _ - InnerGoalInfo },
-	{ goal_info_get_code_model(InnerGoalInfo, CodeModel) },
-	code_gen__generate_goal(CodeModel, Goal, Code).
-code_gen__generate_non_goal_2(disj(Goals, StoreMap), _GoalInfo, Code) -->
-	disj_gen__generate_non_disj(Goals, StoreMap, Code).
-code_gen__generate_non_goal_2(not(_Goal), _GoalInfo, _Code) -->
-	{ error("Cannot have a nondet negation.") }.
-code_gen__generate_non_goal_2(higher_order_call(PredVar, Args, Types, Modes,
-		Det, _PredOrFunc),
-		GoalInfo, Code) -->
-	call_gen__generate_higher_order_call(model_non, PredVar, Args, Types,
-		Modes, Det, GoalInfo, Code).
-code_gen__generate_non_goal_2(class_method_call(TCVar, Num, Args, Types, Modes,
-		Det),
-		GoalInfo, Code) -->
-	call_gen__generate_class_method_call(model_non, TCVar, Num, Args, Types,
-		Modes, Det, GoalInfo, Code).
-code_gen__generate_non_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
-							GoalInfo, Code) -->
-	(
-		{ BuiltinState = not_builtin }
-	->
-		code_info__succip_is_used,
-		call_gen__generate_call(model_non, PredId, ProcId, Args,
-			GoalInfo, Code)
-	;
-		call_gen__generate_nondet_builtin(PredId, ProcId, Args, Code)
-	).
-code_gen__generate_non_goal_2(switch(Var, CanFail, CaseList, StoreMap),
-		GoalInfo, Instr) -->
-	switch_gen__generate_switch(model_non, Var, CanFail,
-		CaseList, StoreMap, GoalInfo, Instr).
-code_gen__generate_non_goal_2(
-		if_then_else(_Vars, CondGoal, ThenGoal, ElseGoal, StoreMap),
-							_GoalInfo, Instr) -->
-	ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal,
-		StoreMap, Instr).
-code_gen__generate_non_goal_2(unify(_L, _R, _U, _Uni, _C),
-							_GoalInfo, _Code) -->
-	{ error("Cannot have a nondet unification.") }.
-code_gen__generate_non_goal_2(pragma_c_code(MayCallMercury,
-		PredId, ModeId, Args, ArgNames, OrigArgTypes, PragmaCode),
-		GoalInfo, Instr) -->
-	pragma_c_gen__generate_pragma_c_code(model_non, MayCallMercury,
-		PredId, ModeId, Args, ArgNames, OrigArgTypes, GoalInfo,
-		PragmaCode, Instr).
-
-%---------------------------------------------------------------------------%
-
-code_gen__output_args(Args, Vs) :-
-	code_gen__select_args_with_mode(Args, top_out, _, Lvals),
-	set__list_to_set(Lvals, Vs).
-
-:- pred code_gen__select_args_with_mode(assoc_list(var, arg_info), 
-	arg_mode, list(var), list(lval)).
-:- mode code_gen__select_args_with_mode(in, in, out, out) is det.
+:- pred code_gen__select_args_with_mode(assoc_list(var, arg_info)::in,
+	arg_mode::in, list(var)::out, list(lval)::out) is det.
 
 code_gen__select_args_with_mode([], _, [], []).
 code_gen__select_args_with_mode([Var - ArgInfo | Args], DesiredMode, Vs, Ls) :-
@@ -1195,15 +854,14 @@ code_gen__select_args_with_mode([Var - ArgInfo | Args], DesiredMode, Vs, Ls) :-
 		Ls = Ls0
 	).
 
-
 %---------------------------------------------------------------------------%
 
 % Add the succip to the livevals before and after calls.
 % Traverses the list of instructions looking for livevals and calls,
 % adding succip in the stackvar number given as an argument.
 
-:- pred code_gen__add_saved_succip(list(instruction), int, list(instruction)).
-:- mode code_gen__add_saved_succip(in, in, out) is det.
+:- pred code_gen__add_saved_succip(list(instruction)::in, int::in,
+	list(instruction)::out) is det.
 
 code_gen__add_saved_succip([], _StackLoc, []).
 code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc, 
@@ -1212,7 +870,7 @@ code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
 		Instrn0 = livevals(LiveVals0),
 		Instrns0 \= [goto(succip) - _ | _]
 		% XXX We should also test for tailcalls
-		% if we ever start generating them directly.
+		% once we start generating them directly.
 	->
 		set__insert(LiveVals0, stackvar(StackLoc), LiveVals1),
 		Instrn = livevals(LiveVals1)
@@ -1227,5 +885,4 @@ code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
 	),
 	code_gen__add_saved_succip(Instrns0, StackLoc, Instrns).
 
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

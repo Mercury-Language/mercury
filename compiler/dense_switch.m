@@ -34,9 +34,10 @@
 	% Generate code for a switch using a dense jump table.
 
 :- pred dense_switch__generate(cases_list, int, int, var, code_model,
-	can_fail, store_map, label, code_tree, code_info, code_info).
+	can_fail, store_map, label, branch_end, branch_end, code_tree,
+	code_info, code_info).
 :- mode dense_switch__generate(in, in, in, in, in, in, in, in,
-	out, in, out) is det.
+	in, out, out, in, out) is det.
 
 	% also used by lookup_switch
 :- pred dense_switch__calc_density(int, int, int).
@@ -138,7 +139,7 @@ dense_switch__type_range(enum_type, Type, TypeRange) -->
 %---------------------------------------------------------------------------%
 
 dense_switch__generate(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
-		StoreMap, EndLabel, Code) -->
+		StoreMap, EndLabel, MaybeEnd0, MaybeEnd, Code) -->
 		% Evaluate the variable which we are going to be switching on
 	code_info__produce_variable(Var, VarCode, Rval),
 		% If the case values start at some number other than 0,
@@ -163,20 +164,14 @@ dense_switch__generate(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
 	),
 		% Now generate the jump table and the cases
 	dense_switch__generate_cases(Cases, StartVal, EndVal, CodeModel,
-			StoreMap, EndLabel, Labels, CasesCode, no,
-			MaybeFinalCodeInfo),
+			StoreMap, EndLabel, MaybeEnd0, MaybeEnd,
+			Labels, CasesCode),
+		% XXX
 		% We keep track of the code_info at the end of one of
 		% the non-fail cases.  We have to do this because 
 		% generating a `fail' slot last would yield the
 		% wrong liveness and would not unset the failure cont
 		% for a nondet switch.
-	(
-		{ MaybeFinalCodeInfo = yes(FinalCodeInfo) }
-	->
-		code_info__slap_code_info(FinalCodeInfo)
-	;
-		{ error("dense_switch__generate: no final code_info") }
-	),
 	{ DoJump = node([
 		computed_goto(Index, Labels)
 			- "switch (using dense jump table)"
@@ -185,51 +180,59 @@ dense_switch__generate(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
 	{ Code = tree(VarCode, tree(RangeCheck, tree(DoJump, CasesCode))) }.
 
 :- pred dense_switch__generate_cases(cases_list, int, int,
-	code_model, store_map, label, list(label), code_tree, 
-	maybe(code_info), maybe(code_info), code_info, code_info).
-:- mode dense_switch__generate_cases(in, in, in, in, in, in, out, out,
-	in, out, in, out) is det.
+	code_model, store_map, label, branch_end, branch_end,
+	list(label), code_tree, code_info, code_info).
+:- mode dense_switch__generate_cases(in, in, in, in, in, in, in, out,
+	out, out, in, out) is det.
 
 dense_switch__generate_cases(Cases0, NextVal, EndVal, CodeModel, StoreMap,
-		EndLabel, Labels, Code, MaybeCodeInfo0, MaybeCodeInfo) -->
+		EndLabel, MaybeEnd0, MaybeEnd, Labels, Code) -->
 	(
 		{ NextVal > EndVal }
 	->
-		{ Code = node([ label(EndLabel) - "End of dense switch" ]) },
+		{ MaybeEnd = MaybeEnd0 },
 		{ Labels = [] },
-		{ MaybeCodeInfo = MaybeCodeInfo0 }
+		{ Code = node([
+			label(EndLabel)
+				- "End of dense switch"
+		]) }
 	;
 		code_info__get_next_label(ThisLabel),
 		dense_switch__generate_case(Cases0, NextVal, CodeModel,
-			StoreMap, Cases1, ThisCode, Comment, MaybeNewCodeInfo),
-		{ ThisCaseCode = tree(
-			node([ label(ThisLabel) - Comment ]),
-			tree(	ThisCode,
-				node([ goto(label(EndLabel))
-					- "branch to end of dense switch" ])
-			)
-		) },
-		{ dense_switch__merge_maybe_code_info(MaybeCodeInfo0,
-				MaybeNewCodeInfo, MaybeCodeInfo1) },
+			StoreMap, Cases1, MaybeEnd0, MaybeEnd1,
+			ThisCode, Comment),
+		{ LabelCode = node([
+			label(ThisLabel)
+				- Comment
+		]) },
+		{ JumpCode = node([
+			goto(label(EndLabel))
+				- "branch to end of dense switch"
+		]) },
 			% generate the rest of the cases.
 		{ NextVal1 is NextVal + 1 },
 		dense_switch__generate_cases(Cases1, NextVal1, EndVal,
-			CodeModel, StoreMap, EndLabel, Labels1, OtherCasesCode,
-			MaybeCodeInfo1, MaybeCodeInfo),
+			CodeModel, StoreMap, EndLabel, MaybeEnd1, MaybeEnd,
+			Labels1, OtherCasesCode),
 		{ Labels = [ThisLabel | Labels1] },
-		{ Code = tree(ThisCaseCode, OtherCasesCode) }
+		{ Code =
+			tree(LabelCode,
+			tree(ThisCode,
+			tree(JumpCode,
+			     OtherCasesCode)))
+		}
 	).
 
 %---------------------------------------------------------------------------%
 
 :- pred dense_switch__generate_case(cases_list, int, code_model, store_map,
-		cases_list, code_tree, string, maybe(code_info),
+		cases_list, branch_end, branch_end, code_tree, string,
 		code_info, code_info).
-:- mode dense_switch__generate_case(in, in, in, in, out, out, out, out,
+:- mode dense_switch__generate_case(in, in, in, in, out, in, out, out, out,
 		in, out) is det.
 
 dense_switch__generate_case(Cases0, NextVal, CodeModel, StoreMap, Cases,
-		Code, Comment, MaybeCodeInfo) -->
+		MaybeEnd0, MaybeEnd, Code, Comment) -->
 	(
 		{ Cases0 = [Case | Cases1] },
 		{ Case = case(_, int_constant(NextVal), _, Goal) }
@@ -237,38 +240,23 @@ dense_switch__generate_case(Cases0, NextVal, CodeModel, StoreMap, Cases,
 		{ Comment = "case of dense switch" },
 		% We need to save the expression cache, etc.,
 		% and restore them when we've finished.
-		code_info__grab_code_info(CodeInfoAtStart),
+		code_info__remember_position(BranchStart),
 		trace__maybe_generate_internal_event_code(Goal, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
-		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
+		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
+			SaveCode),
 		{ Code =
 			tree(TraceCode,
 			tree(GoalCode,
 			     SaveCode))
 		},
-		code_info__grab_code_info(CodeInfoAtEnd),
-		code_info__slap_code_info(CodeInfoAtStart),
-		{ Cases = Cases1 },
-		{ MaybeCodeInfo = yes(CodeInfoAtEnd) }
+		code_info__reset_to_position(BranchStart),
+		{ Cases = Cases1 }
 	;
-		% This case didn't occur in the original case list - just
-		% generate a `fail' for it.
+		% This case didn't occur in the original case list
+		% - just generate a `fail' for it.
 		{ Comment = "compiler-introduced `fail' case of dense switch" },
 		code_info__generate_failure(Code),
-		{ Cases = Cases0 },
-		{ MaybeCodeInfo = no }
+		{ MaybeEnd = MaybeEnd0 },
+		{ Cases = Cases0 }
 	).
-
-:- pred dense_switch__merge_maybe_code_info(maybe(code_info),
-				maybe(code_info), maybe(code_info)).
-:- mode dense_switch__merge_maybe_code_info(in, in, out) is det.
-
-dense_switch__merge_maybe_code_info(CodeInfo0, CodeInfo1, CodeInfo) :-
-	(
-		CodeInfo0 = no
-	->
-		CodeInfo = CodeInfo1
-	;
-		CodeInfo = CodeInfo0
-	).
-

@@ -40,6 +40,8 @@ typedef enum {
 static	MR_spy_point	MR_spy_points[MR_MAX_SPY_POINTS];
 static	int		MR_next_spy_point = 0;
 
+static	bool		MR_echo_commands = FALSE;
+
 static	MR_next	MR_trace_debug_cmd(MR_trace_cmd_info *cmd,
 			const MR_Stack_Layout_Label *layout,
 			MR_trace_port port, int seqno, int depth,
@@ -124,6 +126,10 @@ MR_trace_debug_cmd(MR_trace_cmd_info *cmd, const MR_Stack_Layout_Label *layout,
 		*/
 
 		(void) strcpy(line, "a\n");
+	}
+
+	if (MR_echo_commands) {
+		fputs(line, stdout);
 	}
 
 	/*
@@ -312,11 +318,21 @@ MR_trace_debug_cmd(MR_trace_cmd_info *cmd, const MR_Stack_Layout_Label *layout,
 		} else {
 			printf("This command expects no argument.\n");
 		}
+	} else if (streq(words[0], "D")) {
+		if (word_count == 1) {
+			do_init_modules();
+			MR_dump_nondet_stack_from_layout(stdout,
+				MR_saved_maxfr(MR_saved_regs));
+		} else {
+			printf("This command expects no argument.\n");
+		}
 	} else if (streq(words[0], "X")) {
 		printf("sp = %p, curfr = %p, maxfr = %p\n",
 			MR_saved_sp(MR_saved_regs),
 			MR_saved_curfr(MR_saved_regs),
 			MR_saved_maxfr(MR_saved_regs));
+	} else if (streq(words[0], "toggle_echo")) {
+		MR_echo_commands = !MR_echo_commands;
 	} else if (streq(words[0], "b")) {
 		if (word_count != 3) {
 			printf("This command expects two arguments,\n");

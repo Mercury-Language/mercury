@@ -135,14 +135,14 @@ postprocess_options(ok(OptionTable), Error) -->
                 ->
                     { map__lookup(OptionTable,
                         fact_table_hash_percent_full, PercentFull) },
-                    ( 
+                    (
                         { PercentFull = int(Percent) },
                         { Percent >= 1 },
                         { Percent =< 100 }
                     ->
                         { map__lookup(OptionTable, termination_norm,
                                 TermNorm0) },
-                        ( 
+                        (
                             { TermNorm0 = string(TermNormStr) },
                             { convert_termination_norm(TermNormStr, TermNorm) }
                         ->
@@ -181,7 +181,7 @@ postprocess_options(ok(OptionTable), Error) -->
         { Error = yes("Invalid GC option (must be `none', `conservative' or `accurate')") }
     ).
 
-:- pred postprocess_options_2(option_table, gc_method, tags_method, 
+:- pred postprocess_options_2(option_table, gc_method, tags_method,
 	args_method, prolog_dialect, termination_norm, trace_level,
 	io__state, io__state).
 :- mode postprocess_options_2(in, in, in, in, in, in, in, di, uo) is det.
@@ -225,7 +225,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		{ NumTagBits0 = -1 }
 	->
 		globals__io_lookup_int_option(conf_low_tag_bits, NumTagBits1)
-	;	
+	;
 		{ NumTagBits1 = NumTagBits0 }
 	),
 
@@ -264,12 +264,12 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	% --split-c-files implies --procs-per-c-function 1
 	option_implies(split_c_files, procs_per_c_function, int(1)),
 
-	% -D all is really -D "abcdefghijklmnopqrstuvwxyz"
+	% -D all is really "all possible flag chars are in VerboseDump"
 	globals__io_lookup_string_option(verbose_dump_hlds, VerboseDump),
 	( { VerboseDump = "all" } ->
 		globals__io_set_option(verbose_dump_hlds,
 			string("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"))
-	;	
+	;
 		[]
 	),
 
@@ -290,8 +290,8 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		[]
 	),
 
-	% Tracing requires 
-	% 	- disabling optimizations that would change 
+	% Execution tracing requires
+	% 	- disabling optimizations that would change
 	% 	  the trace being generated
 	%	- enabling some low level optimizations to ensure consistent
 	%	  paths across optimization levels
@@ -350,11 +350,12 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	option_implies(trace_stack_layout, procid_stack_layout, bool(yes)),
 
 	% --gc accurate requires `agc' stack layouts, typeinfo liveness,
-	% and needs frameopt to be switched off.
+	% and needs hijacks and frameopt to be switched off.
 	( { GC_Method = accurate } ->
 		globals__io_set_option(agc_stack_layout, bool(yes)),
 		globals__io_set_option(typeinfo_liveness, bool(yes)),
-		globals__io_set_option(optimize_frames, bool(no)) 
+		globals__io_set_option(allow_hijacks, bool(no)),
+		globals__io_set_option(optimize_frames, bool(no))
 	;
 		[]
 	),
@@ -384,7 +385,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 
 	% --intermod-unused-args implies --intermodule-optimization and
 	% --optimize-unused-args.
-	option_implies(intermod_unused_args, intermodule_optimization, 
+	option_implies(intermod_unused_args, intermodule_optimization,
 		bool(yes)),
 	option_implies(intermod_unused_args, optimize_unused_args, bool(yes)),
 
@@ -426,8 +427,9 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 % option_implies(SourceBoolOption, ImpliedOption, ImpliedOptionValue, IO0, IO).
 % If the SourceBoolOption is set to yes, then the ImpliedOption is set
 % to ImpliedOptionValue.
-:- pred option_implies(option::in, option::in, option_data::in, 
+:- pred option_implies(option::in, option::in, option_data::in,
 	io__state::di, io__state::uo) is det.
+
 option_implies(SourceOption, ImpliedOption, ImpliedOptionValue) -->
 	globals__io_lookup_bool_option(SourceOption, SourceOptionValue),
 	( { SourceOptionValue = yes } ->
@@ -436,12 +438,13 @@ option_implies(SourceOption, ImpliedOption, ImpliedOptionValue) -->
 		[]
 	).
 
-% option_neg_implies(SourceBoolOption, ImpliedOption, 
+% option_neg_implies(SourceBoolOption, ImpliedOption,
 %	ImpliedOptionValue, IO0, IO).
 % If the SourceBoolOption is set to no, then the ImpliedOption is set
 % to ImpliedOptionValue.
-:- pred option_neg_implies(option::in, option::in, option_data::in, 
+:- pred option_neg_implies(option::in, option::in, option_data::in,
 	io__state::di, io__state::uo) is det.
+
 option_neg_implies(SourceOption, ImpliedOption, ImpliedOptionValue) -->
 	globals__io_lookup_bool_option(SourceOption, SourceOptionValue),
 	( { SourceOptionValue = no } ->
@@ -509,14 +512,14 @@ compute_grade(Globals, Grade) :-
 		( ProfileCalls = yes ->
 			( ProfileMemory = yes ->
 				Part4 = ".profall"
-			; 
+			;
 				Part4 = ".prof"
 			)
 		;
 			( ProfileMemory = yes ->
 				Part4 = ".profmemtime" /* not allowed */
 					/* `ml' will catch the error */
-			; 
+			;
 				Part4 = ".proftime" /* currently useless */
 			)
 		)
@@ -524,14 +527,14 @@ compute_grade(Globals, Grade) :-
 		( ProfileCalls = yes ->
 			( ProfileMemory = yes ->
 				Part4 = ".memprof"
-			; 
+			;
 				Part4 = ".profcalls"
 			)
-		; 
+		;
 			( ProfileMemory = yes ->
 				Part4 = ".profmem" /* not allowed */
 					/* `ml' will catch the error */
-			; 
+			;
 				Part4 = ""
 			)
 		)
@@ -550,8 +553,6 @@ compute_grade(Globals, Grade) :-
 		string__format(".hightags%d", [i(TagBits)], Part6)
 	;
 		string__format(".tags%d", [i(TagBits)], Part6)
-	;
-		
 	),
 	( UnboxedFloat = yes ->
 		Part7 = ".ubf"
@@ -688,10 +689,10 @@ convert_grade_option(Grade0) -->
 	),
 	% Set the type of gc that the grade option implies.
 	% 'accurate' is now set in the grade, so we can override it here.
-	( 
-		{ GC = accurate }, 
+	(
+		{ GC = accurate },
 		set_string_opt(gc, "accurate")
-	; 
+	;
 		{ GC = conservative },
 		set_string_opt(gc, "conservative")
 	;

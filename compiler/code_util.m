@@ -18,7 +18,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data, llds.
-:- import_module list, std_util, term.
+:- import_module list, assoc_list, set, std_util, term.
 
 	% Create a code address which holds the address of the specified
 	% procedure.
@@ -147,6 +147,11 @@
 	int, int).
 :- mode code_util__count_recursive_calls(in, in, in, out, out) is det.
 
+	% Return the set of locations occupied by output arguments.
+
+:- pred code_util__output_args(assoc_list(var, arg_info), set(lval)).
+:- mode code_util__output_args(in, out) is det.
+
 	% These predicates return the set of lvals referenced in an rval
 	% and an lval respectively. Lvals referenced indirectly through
 	% lvals of the form var(_) are not counted.
@@ -160,8 +165,10 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
+
 :- import_module prog_data, type_util, special_pred.
-:- import_module bool, char, int, string, map, term, varset, require, std_util.
+:- import_module bool, char, int, string, set, map, term, varset.
+:- import_module require, std_util, assoc_list.
 
 %---------------------------------------------------------------------------%
 
@@ -353,7 +360,8 @@ code_util__inline_builtin(FullyQualifiedModule, PredName, ProcId, Arity) :-
 	% --- not yet:
 	% FullyQualifiedModule = qualified(unqualified("std"), ModuleName),
 	FullyQualifiedModule = unqualified(ModuleName),
-	code_util__translate_builtin_2(ModuleName, PredName, ProcId, Args, _, _).
+	code_util__translate_builtin_2(ModuleName, PredName, ProcId, Args,
+		_, _).
 
 code_util__translate_builtin(FullyQualifiedModule, PredName, ProcId, Args,
 		BinOp, AsgOp) :-
@@ -881,6 +889,19 @@ code_util__count_recursive_calls_cases([case(_, Goal) | Cases], PredId, ProcId,
 		int__max(Max0, Max1, Max)
 	).
 
+code_util__output_args([], LiveVals) :-
+	set__init(LiveVals).
+code_util__output_args([_V - arg_info(Loc, Mode) | Args], Vs) :-
+	code_util__output_args(Args, Vs0),
+	(
+		Mode = top_out
+	->
+		code_util__arg_loc_to_register(Loc, Reg),
+		set__insert(Vs0, Reg, Vs)
+	;
+		Vs = Vs0
+	).
+
 %-----------------------------------------------------------------------------%
 
 code_util__lvals_in_rval(lval(Lval), [Lval | Lvals]) :-
@@ -906,6 +927,8 @@ code_util__lvals_in_lval(succip, []).
 code_util__lvals_in_lval(maxfr, []).
 code_util__lvals_in_lval(curfr, []).
 code_util__lvals_in_lval(succip(Rval), Lvals) :-
+	code_util__lvals_in_rval(Rval, Lvals).
+code_util__lvals_in_lval(redofr(Rval), Lvals) :-
 	code_util__lvals_in_rval(Rval, Lvals).
 code_util__lvals_in_lval(redoip(Rval), Lvals) :-
 	code_util__lvals_in_rval(Rval, Lvals).

@@ -4,7 +4,7 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-/* mercury_stacks.h - definitions for manipulation the det and nondet stacks */
+/* mercury_stacks.h - definitions for manipulating the det and nondet stacks */
 
 #ifndef MERCURY_STACKS_H
 #define MERCURY_STACKS_H
@@ -17,9 +17,13 @@
 
 /* DEFINITIONS FOR MANIPULATING THE DET STACK */
 
-#define	detstackvar(n)	(MR_sp[-n])
-#define	based_detstackvar(base_sp, n)	((base_sp)[-n])
-#define	saved_detstackvar(save_area, n)	(MR_saved_sp(save_area)[-n])
+#define	MR_based_stackvar(base_sp, n)	((base_sp)[-n])
+#define	MR_stackvar(n)			MR_based_stackvar(MR_sp, n)
+
+#define	detstackvar(n)			MR_based_stackvar(MR_sp, n)
+#define	based_detstackvar(base_sp, n)	MR_based_stackvar(base_sp, n)
+#define	saved_detstackvar(save_area, n)	\
+			MR_based_stackvar(MR_saved_sp(save_area), n)
 
 #define	incr_sp_push_msg(n, msg)				\
 			(					\
@@ -55,7 +59,7 @@
 
 #define	push(w)		(					\
 				*MR_sp = (Word) (w),		\
-				debugpush(*sp, MR_sp),		\
+				debugpush(*MR_sp, MR_sp),	\
 				MR_sp = MR_sp + 1,		\
 				detstack_overflow_check(),	\
 				(void)0				\
@@ -70,47 +74,61 @@
 
 /* DEFINITIONS FOR NONDET STACK FRAMES */
 
-#define	REDOIP		(-0)	/* in this proc, set up at clause entry	*/
-#define	PREVFR		(-1)	/* prev frame on stack, set up at call	*/
-#define	SUCCIP		(-2)	/* in caller proc, set up at call	*/
-#define	SUCCFR		(-3)	/* frame of caller proc, set up at call	*/
+#define	PREVFR		(-0)	/* prev frame on stack, set up at call	*/
+#define	REDOIP		(-1)	/* in this proc, set up at clause entry	*/
+#define	REDOFR		(-2)	/* value for curfr on backtracking      */
+#define	SUCCIP		(-3)	/* in caller proc, set up at call	*/
+#define	SUCCFR		(-4)	/* frame of caller proc, set up at call	*/
 
 #ifdef MR_DEBUG_NONDET_STACK
-  #define PREDNM		(-4)	/* for debugging, set up at call */
-  #define bt_prednm(fr)	LVALUE_CAST(const char *, ((Word *) fr)[PREDNM])
-  #define NONDET_FIXED_SIZE_0	5	/* units: words */
+  #define PREDNM		(-5)	/* for debugging, set up at call */
+  #define MR_prednm(fr)		LVALUE_CAST(const char *, ((Word *) fr)[PREDNM])
+  #define NONDET_FIXED_SIZE	6	/* units: words */
 #else
-  #define bt_prednm(fr)	"unknown"
-  #define NONDET_FIXED_SIZE_0	4	/* units: words */
+  #define MR_prednm(fr)	"unknown"
+  #define NONDET_FIXED_SIZE	5	/* units: words */
 #endif
 
-#define NONDET_FIXED_SIZE	NONDET_FIXED_SIZE_0
+#define	NONDET_TEMP_SIZE	3	/* prevfr, redoip, redofr */
 
-#define	SAVEVAL		(-NONDET_FIXED_SIZE)
-			/* saved values start at this offset	*/
+#define	SAVEVAL			(-NONDET_FIXED_SIZE)
+				/* saved values start at this offset	*/
 
-#define	bt_redoip(fr)	LVALUE_CAST(Code *, ((Word *) (fr))[REDOIP])
-#define	bt_prevfr(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[PREVFR])
-#define	bt_succip(fr)	LVALUE_CAST(Code *, ((Word *) (fr))[SUCCIP])
-#define	bt_succfr(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[SUCCFR])
-#define	bt_var(fr,n)	(((Word *) (fr))[SAVEVAL-(n)])
+#define	MR_prevfr_slot(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[PREVFR])
+#define	MR_redoip_slot(fr)	LVALUE_CAST(Code *, ((Word *) (fr))[REDOIP])
+#define	MR_redofr_slot(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[REDOFR])
+#define	MR_succip_slot(fr)	LVALUE_CAST(Code *, ((Word *) (fr))[SUCCIP])
+#define	MR_succfr_slot(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[SUCCFR])
+#define	MR_based_framevar(fr,n)	(((Word *) (fr))[SAVEVAL+1-(n)])
 
-#define	curprednm	bt_prednm(MR_curfr)
-#define	curredoip	bt_redoip(MR_curfr)
-#define	curprevfr	bt_prevfr(MR_curfr)
-#define	cursuccip	bt_succip(MR_curfr)
-#define	cursuccfr	bt_succfr(MR_curfr)
-#define	framevar(n)	bt_var(MR_curfr,n)
+#define	bt_prevfr(fr)		MR_prevfr_slot(fr)
+#define	bt_redoip(fr)		MR_redoip_slot(fr)
+#define	bt_redofr(fr)		MR_redofr_slot(fr)
+#define	bt_succip(fr)		MR_succip_slot(fr)
+#define	bt_succfr(fr)		MR_succfr_slot(fr)
+#define	bt_prednm(fr)		MR_prednm_slot(fr)
+#define	bt_var(fr,n)		MR_based_framevar(fr,n+1)
 
-#define	based_framevar(base_curfr, n)	bt_var(base_curfr, n)
-#define	saved_framevar(save_area, n)	bt_var(MR_saved_curfr(save_area), n)
+#define	curprevfr		bt_prevfr(MR_curfr)
+#define	curredoip		bt_redoip(MR_curfr)
+#define	curredofr		bt_redofr(MR_curfr)
+#define	cursuccip		bt_succip(MR_curfr)
+#define	cursuccfr		bt_succfr(MR_curfr)
+#define	curprednm		bt_prednm(MR_curfr)
+
+#define	MR_framevar(n)		MR_based_framevar(MR_curfr,n)
+#define	framevar(n)		MR_framevar(n+1)
+#define	based_framevar(base_curfr, n)	\
+			MR_based_framevar(base_curfr, n+1)
+#define	saved_framevar(save_area, n)	\
+			MR_based_framevar(MR_saved_curfr(save_area), n+1)
 
 /* DEFINITIONS FOR MANIPULATING THE NONDET STACK */
 
-#ifdef	MR_DEBUG_NONDET_STACK
-#define mkframe_save_prednm(prednm) (curprednm = prednm)
+#ifdef MR_DEBUG_NONDET_STACK
+  #define mkframe_save_prednm(prednm) (curprednm = prednm)
 #else
-#define mkframe_save_prednm(prednm) /* nothing */
+  #define mkframe_save_prednm(prednm) /* nothing */
 #endif
 
 #define	mkframe(prednm, numslots, redoip)			\
@@ -126,6 +144,7 @@
 				curprevfr = prevfr;		\
 				cursuccip = MR_succip;		\
 				cursuccfr = succfr;		\
+				curredofr = MR_curfr;		\
 				mkframe_save_prednm(prednm);	\
 				debugmkframe();			\
 				nondstack_overflow_check();	\
@@ -147,8 +166,23 @@
 				curprevfr = prevfr;		\
 				cursuccip = MR_succip;		\
 				cursuccfr = succfr;		\
+				curredofr = MR_curfr;		\
 				mkframe_save_prednm(prednm);	\
 				debugmkframe();			\
+				nondstack_overflow_check();	\
+			} while (0)
+
+#define	mktempframe(redoip)						\
+			do {					\
+				reg	Word	*prevfr;	\
+				reg	Word	*succfr;	\
+								\
+				prevfr = MR_maxfr;		\
+				succfr = MR_curfr;		\
+				MR_maxfr += NONDET_TEMP_SIZE;	\
+				bt_prevfr(MR_maxfr) = prevfr;	\
+				bt_redoip(MR_maxfr) = redoip;	\
+				bt_redofr(MR_maxfr) = MR_curfr;	\
 				nondstack_overflow_check();	\
 			} while (0)
 
@@ -178,18 +212,20 @@
 				GOTO(bt_succip(childfr));	\
 			} while (0)
 
+
 #define	fail()		do {					\
 				debugfail();			\
-				MR_maxfr = curprevfr;		\
-				MR_curfr = MR_maxfr;			\
+				MR_maxfr = bt_prevfr(MR_maxfr);	\
 				nondstack_underflow_check();	\
-				GOTO(curredoip);		\
+				MR_curfr = bt_redofr(MR_maxfr);	\
+				GOTO(bt_redoip(MR_maxfr));	\
 			} while (0)
+
 
 #define	redo()		do {					\
 				debugredo();			\
-				MR_curfr = MR_maxfr;			\
-				GOTO(curredoip);		\
+				MR_curfr = bt_redofr(MR_maxfr);	\
+				GOTO(bt_redoip(MR_maxfr));	\
 			} while (0)
 
 #endif /* not MERCURY_STACKS_H */

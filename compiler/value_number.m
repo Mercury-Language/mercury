@@ -172,7 +172,7 @@ value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel,
 				Target = succfr(_)
 			)
 		;
-			Uinstr0 = mkframe(_, _, _, _)
+			Uinstr0 = mkframe(_, _)
 		)
 	->
 		N1 is N0 + 1,
@@ -1076,7 +1076,7 @@ value_number__boundary_instr(livevals(_), no).
 value_number__boundary_instr(block(_, _, _), no).
 value_number__boundary_instr(assign(_,_), no).
 value_number__boundary_instr(call(_, _, _, _), yes).
-value_number__boundary_instr(mkframe(_, _, _, _), yes).
+value_number__boundary_instr(mkframe(_, _), yes).
 value_number__boundary_instr(modframe(_), yes).
 value_number__boundary_instr(label(_), yes).
 value_number__boundary_instr(goto(_), yes).

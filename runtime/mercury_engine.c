@@ -8,6 +8,7 @@ ENDINIT
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
+#define		MR_STACK_TRACE_THIS_MODULE
 #include	"mercury_imp.h"
 
 #include	<stdio.h>

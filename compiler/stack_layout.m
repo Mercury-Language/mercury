@@ -647,10 +647,12 @@ stack_layout__represent_live_value_type(curfr, Rval) -->
 	{ Rval = const(int_const(2)) }.
 stack_layout__represent_live_value_type(maxfr, Rval) -->
 	{ Rval = const(int_const(3)) }.
-stack_layout__represent_live_value_type(redoip, Rval) -->
+stack_layout__represent_live_value_type(redofr, Rval) -->
 	{ Rval = const(int_const(4)) }.
-stack_layout__represent_live_value_type(unwanted, Rval) -->
+stack_layout__represent_live_value_type(redoip, Rval) -->
 	{ Rval = const(int_const(5)) }.
+stack_layout__represent_live_value_type(unwanted, Rval) -->
+	{ Rval = const(int_const(6)) }.
 stack_layout__represent_live_value_type(var(Type, _Inst), Rval) -->
 	stack_layout__get_cell_number(CNum0),
 	{ base_type_layout__construct_pseudo_type_info(Type, Rval0,
@@ -694,6 +696,8 @@ stack_layout__represent_lval(temp(_, _), _) :-
 stack_layout__represent_lval(succip(_), _) :-
 	error("stack_layout: continuation live value stored in code address").
 stack_layout__represent_lval(redoip(_), _) :-
+	error("stack_layout: continuation live value stored in code address").
+stack_layout__represent_lval(redofr(_), _) :-
 	error("stack_layout: continuation live value stored in code address").
 stack_layout__represent_lval(succfr(_), _) :-
 	error("stack_layout: continuation live value stored in code address").
