@@ -1290,6 +1290,11 @@ Specify options to be passed to the C compiler.
 Set optimization level to @var{n}.
 Optimimization level 0 means no optimization
 while optimimization level 5 means full optimization.
+
+@item --opt-space
+@item --optimize-space
+Turn on optimizations that reduce code size
+and turn off optimizations that significantly increase code size.
 @end table
 
 @node High-level (HLDS->HLDS) optimization options
