@@ -607,8 +607,6 @@ esac
 
 #-----------------------------------------------------------------------------#
 
-: check for success
-
 case $status in
     0)
 	: if we get this far, then it worked.
@@ -647,6 +645,26 @@ case $status in
 	        $BETA_WEBDIR/mercury-tests-$version.tar.gz 
 	    ;;
 	esac
+	;;
+    *)
+	;;
+esac
+
+# Now rebuild the index files on the www site
+echo "test_mercury generating index files on www site, starting at `date`" 1>&2
+(
+PATH="`pwd`:$PATH"
+export PATH
+cd $BETA_WEBDIR_TOP
+generate_index_html
+)
+echo "test_mercury generating index files on www site, finished at `date`" 1>&2
+
+: check for success
+
+case $status in
+    0)
+
 	echo "test_mercury exiting successfully at `date`" 1>&2
 	true
 	exit 0
@@ -659,13 +677,5 @@ case $status in
 	exit 1
 	;;
 esac
-
-# Now rebuild the index files on the www site
-(
-PATH="`pwd`:$PATH"
-export PATH
-cd $BETA_WEBDIR_TOP
-generate_index_html
-)
 
 #-----------------------------------------------------------------------------#
