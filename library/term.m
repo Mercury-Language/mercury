@@ -126,7 +126,7 @@ term__get_string(term_functor(term_string(String), _, _), String).
 
 :- term__unify(X, Y, _, _) when X and Y.		% NU-Prolog indexing
 
-:- pred term__unify(term, term, substition, substition).
+:- pred term__unify(term, term, substitution, substitution).
 :- mode term__unify(input, input, input, output).
 
 term__unify(term_variable(X), term_variable(Y), Bindings0, Bindings) :-
@@ -189,7 +189,7 @@ term__unify(term_functor(F, As, C), term_variable(X), Bindings0, Bindings) :-
 term__unify(term_functor(F, AsX, _), term_functor(F, AsY, _)) -->
 	term__unify_list(AsX, AsY).
 
-:- pred term__unify_list(list(term), list(term), substition, substition).
+:- pred term__unify_list(list(term), list(term), substitution, substitution).
 :- mode term__unify_list(input, input, input, output).
 
 term__unify_list([], []) --> [].
@@ -200,8 +200,8 @@ term__unify_list([X | Xs], [Y | Ys]) -->
 %-----------------------------------------------------------------------------%
 
 	% succeeds if term contains variable (perhaps indirectly, via
-	% the substition).  (The variable must not be mapped by the
-	% substition.)
+	% the substitution).  (The variable must not be mapped by the
+	% substitution.)
 
 :- pred term__occurs(term, variable, substitution).
 :- mode term__occurs(input, input, input).
