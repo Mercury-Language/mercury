@@ -11,8 +11,6 @@ the rest of the stuff in this directory and to get it to actually work.
 :- import_module io, bag.
 
 %-----------------------------------------------------------------------------%
-	io__write_string("Type-checking...\n"),
-%-----------------------------------------------------------------------------%
 %
 % There are three sorts of types:
 %
@@ -40,11 +38,11 @@ the rest of the stuff in this directory and to get it to actually work.
 % 4) pred declarations:
 %	:- pred app(list(T), list(T), list(T)).
 %
-% builtin types: (these have special syntax)
-%	char, int, float
+% builtin types: (these have special syntax for constants)
+%	char, int, float, string
 %	pred, pred(T), pred(T1, T2), pred(T1, T2, T3), ...
 % system types:
-%	module <system>: array(T), list(T), string.
+%	module <system>: array(T), list(T).
 %	module <io>: io__state.
 %	module <lowlevel>: byte, word, ...
 % generally useful types:
@@ -56,6 +54,48 @@ the rest of the stuff in this directory and to get it to actually work.
 %		where (Func : all [X] some [Y] Func(X,Y),
 %			all [X,Y1,Y2] (Func(X,Y1),Func(X,Y2) => Y1 = Y2)).
 %
+%-----------------------------------------------------------------------------%
+
+:- pred typecheck(module_info, module_info, io__state, io__state).
+:- mode typecheck(input, output, di, uo).
+
+typecheck(Module0, Module) -->
+	io__write_string("Checking for undefined types...\n"),
+	check_undefined_types(Module0, Module1),
+	{Module = Module1}.
+	/****** NOT YET COMPLETED
+	io__write_string("Checking for circularly defined types...\n"),
+	check_circular_types(Module1, Module2),
+	io__write_string("Type-checking clauses...\n"),
+	check_pred_types(Module2, Module).
+	*******/
+
+%-----------------------------------------------------------------------------%
+
+:- pred check_pred_types(module_info, module_info, io__state, io__state).
+:- mode check_pred_types(input, output, di, uo).
+
+check_pred_types(Module0, Module) -->
+	{ moduleinfo_types(Module0, Types0) },
+	check_pred_types_2(Types0, Types),
+	{ moduleinfo_set_types(Module0, Types, Module) }.
+
+check_pred_types([], _) --> [].
+check_pred_types(clause(VarSet,Head,Body).Clauses, Types) -->
+	{ check_clause(Types, VarSet, Head, Body, Result) },
+	check_pred_types_2(Result),
+	check_pred_types(Clauses, Types).
+
+check_pred_types_2(ok) --> [].
+check_pred_types_2(error(Error)) --> print_error(Error).
+
+check_clause(Types, VarSet, Head, Body, Result) :-
+	(if some [Error] check_clause_2(Types, VarSet, Head, Body, Error) then
+		Result = error(Error)
+	else
+		Result = ok
+	).
+
 %-----------------------------------------------------------------------------%
 
 type_check_clause(clause(VarSet,PredName,Args,Body), GlobalTypes, Types) :-
@@ -94,79 +134,200 @@ type_check_goal_2(unify(A,B,_Info)) -->
 
 %-----------------------------------------------------------------------------%
 
-typecheck(Module) -->
-	io__write_string("Checking for undefined types...\n"),
-	check_undefined_types(Module),
-	check_circular_eqv_types(Module),
-	io__write_string("Type-checking clauses...\n"),
-	check_pred_types(Module).
+	% XXX - At the moment we don't check for circular types.
+	% (If they aren't used, the compiler will probably not
+	% detect the error; if they are, it will probably go into
+	% an infinite loop).
 
-%-----------------------------------------------------------------------------%
+:- pred check_circular_types(module_info, module_info, io__state, io__state).
+:- mode check_circular_types(input, output, di, uo).
 
-check_pred_types([], _) --> [].
-check_pred_types(clause(VarSet,Head,Body).Clauses, Types) -->
-	{ check_clause(Types, VarSet, Head, Body, Result) },
-	check_pred_types_2(Result),
-	check_pred_types(Clauses, Types).
+check_circular_types(Module0, Module) -->
+	{ Module = Module0 }.
 
-check_pred_types_2(ok) --> [].
-check_pred_types_2(error(Error)) --> print_error(Error).
+/**** JUNK
+	{ moduleinfo_types(Module0, Types0 },
+	{ map__keys(Types0, TypeIds) },
+	check_circular_types_2(TypeIds, Types0, Types),
+	{ moduleinfo_set_types(Module0, Types, Module) }.
 
-check_clause(Types, VarSet, Head, Body, Result) :-
-	(if some [Error] check_clause_2(Types, VarSet, Head, Body, Error) then
-		Result = error(Error)
-	else
-		Result = ok
-	).
+check_circular_types_2([], Types, Types) --> [].
+check_circular_types_2([TypeId | TypeIds], Types0, Types) -->
 
-%-----------------------------------------------------------------------------%
-
-	% XXX - At the moment we don't check for circular eqv types.
-check_circular_eqv_types(_Module) --> [].
+JUNK ****/
+	
 
 %-----------------------------------------------------------------------------%
 
 	% Check for any possible undefined types.
+	% XXX should we add a definition for undefined types?
 
-check_undefined_types(Module) -->
-	{ solutions(UndefType, undefined_type(Types, UndefType), List) },
-	write_undefined_types(List).
+:- pred check_undefined_types(module_info, io__state, io__state).
+:- mode check_undefined_types(input, di, uo).
+check_undefined_types(Module, Module) -->
+	{ moduleinfo_types(Module, TypeDefns) },
+	{ map__keys(TypeDefns, TypeIds) },
+	find_undef_type_bodies(TypeIds, TypeDefns),
+	{ moduleinfo_preds(Module, Preds) },
+	{ map__keys(Preds, PredIds) },
+	find_undef_pred_types(PredIds, Preds, TypeDefns).
 
-:- pred write_undefined_types(list(type_id), io__state, io__state).
-:- mode write_undefined_types(input, di, uo).
+	% Find any undefined types used in `:- pred' declarations.
 
-write_undefined_types([]) --> [].
-write_undefined_types((F/N).Ts) -->
+:- pred find_undef_pred_types(list(pred_id), pred_table, type_table,
+				io__state, io__state).
+:- mode find_undef_pred_types(input, input, input, di, uo).
+
+find_undef_pred_types([], _Preds, _TypeDefns) --> [].
+find_undef_pred_types([PredId | PredIds], Preds, TypeDefns) -->
+	{ map__search(Preds, PredId, PredDefn) },
+	{ predinfo_arg_types(PredDefn, _VarSet, ArgTypes) },
+	find_undef_type_list(ArgTypes, pred(PredId), TypeDefns),
+	find_undef_pred_types(PredIds, Preds, TypeDefns).
+
+	% Find any undefined types used in the bodies of other type
+	% declarations.
+
+:- pred find_undef_type_bodies(list(type_id), type_table, io__state, io__state).
+:- mode find_undef_type_bodies(input, input, di, uo).
+
+find_undef_type_bodies([], _) --> [].
+find_undef_type_bodies([TypeId | TypeIds], TypeDefns) -->
+	{ map__search(TypeDefns, TypeId, HLDS_TypeDefn) },
+		% XXX abstract hlds__type_defn/4
+	{ HLDS_TypeDefn = hlds__type_defn(_, _, TypeBody, _) },
+	find_undef_type_body(TypeBody, type(TypeId), TypeDefns),
+	find_undef_type_bodies(TypeIds, TypeDefns).
+
+	% Find any undefined types used in the given type definition.
+
+:- pred find_undef_type_body(hlds__type_body, context, type_table,
+				io__state, io__state).
+:- mode find_undef_type_body(input, input, input, di, uo).
+
+find_undef_type_body(eqv_type(Type), Context, TypeDefns) -->
+	find_undef_type(Type, Context, TypeDefns).
+find_undef_type_body(uu_type(Types), Context, TypeDefns) -->
+	find_undef_type_list(Types, Context, TypeDefns).
+find_undef_type_body(du_type(Constructors), Context, TypeDefns) -->
+	find_undef_type_du_body(Constructors, Context, TypeDefns).
+
+	% Find any undefined types in a list of types.
+
+:- pred find_undef_type_list(list(type), context, type_table,
+				io__state, io__state).
+:- mode find_undef_type_list(input, input, input, di, uo).
+
+find_undef_type_list([], _Context, _TypeDefns) --> [].
+find_undef_type_list([Type|Types], Context, TypeDefns) -->
+	find_undef_type(Type, Context, TypeDefns),
+	find_undef_type_list(Types, Context, TypeDefns).
+
+	% Find any undefined types in a list of contructors
+	% (the constructors for a discrimiated union type).
+
+:- pred find_undef_type_du_body(list(constructor), context, type_table,
+				io__state, io__state).
+:- mode find_undef_type_du_body(input, input, input, di, uo).
+
+find_undef_type_du_body([], _Context, _TypeDefns) --> [].
+find_undef_type_du_body([Constructor | Constructors], Context, TypeDefns) -->
+	{ Constructor = _Functor - ArgTypes },
+	find_undef_type_list(ArgTypes, Context, TypeDefns),
+	find_undef_type_du_body(Constructors, Context, TypeDefns).
+
+	% Find any undefined types used in type.
+	% The type itself may be undefined, and also
+	% any type arguments may also be undefined.
+	% (eg. the type `undef1(undef2, undef3)' should generate 3 errors.)
+
+:- pred find_undef_type(type, context, type_table,
+				io__state, io__state).
+:- mode find_undef_type(input, input, input, di, uo).
+
+find_undef_type(term_variable(_), _Context, _TypeDefns) --> [].
+find_undef_type(term_functor(F, As), Context, TypeDefns) -->
+	{ length(As, Arity) },
+	{ make_type_id(F, Arity, TypeId) },
+	(if { not map__contains(TypeDefns, TypeId) } then
+		write_undef_type(TypeId, Context)
+	else
+		[]
+	),
+	find_undef_type_list(As, Context, TypeDefns).
+
+%-----------------------------------------------------------------------------%
+
+	% Given a constant and an arity, return a type_id.
+	% XXX this should take a name and an arity;
+	% use of integers/floats/strings as type names should
+	% be rejected by the parser in prog_io.nl, not here.
+
+:- pred make_type_id(const, int, type_id).
+:- mode make_type_id(input, input, output).
+
+make_type_id(term_atom(Name), Arity, unqualified(Name) - Arity).
+make_type_id(term_integer(_), _, "<error>" - 0) :-
+	error("atom expected").
+make_type_id(term_float(_), _, "<error>" - 0) :-
+	error("atom expected").
+make_type_id(term_string(_), _, "<error>" - 0) :-
+	error("atom expected").
+
+%-----------------------------------------------------------------------------%
+
+:- type context ---> type(type_id) ; pred(pred_id).
+
+	% Output an error message about an undefined type
+	% in the specified context.
+
+:- pred write_undef_type(type_id, context, io__state, io__state).
+:- mode write_undef_type(input, context, di, uo).
+write_undef_type(TypeId, Context) -->
 	io__write_string("Undefined type "),
-	io__write_string(F),
+	write_type_id(TypeId),
+	io__write_string(" used in definition of "),
+	write_context(Context),
+	io__write_string(".\n").
+
+	% Output a description of the context where an undefined type was
+	% used.
+
+:- pred write_context(context, io__state, io__state).
+:- mode write_context(input, di, uo).
+
+write_context(pred(PredId)) -->
+	io__write_string("predicate "),
+	write_pred_id(PredId).
+write_context(type(TypeId)) -->
+	io__write_string("type "),
+	write_type_id(TypeId).
+
+%-----------------------------------------------------------------------------%
+
+	% Predicates to output type_ids and pred_ids.
+	% XXX type_ids should include the module.
+
+:- pred write_type_id(type_id, io__state, io__state).
+:- mode write_type_id(input, di, uo).
+
+write_type_id(F - N) -->
+	prog_out__write_sym_name(F),
 	io__write_string("/"),
-	io__write_int(N),
-	io__write_string(".\n"),
-	write_undefined_types(Ts).
+	io__write_int(N).
 
-	% true if Type/Arity is an undefined type
-:- type func_arity ---> string / integer.
-:- pred undefined_types(types, func_arity).
-undefined_type(Types, Type/Arity) :-
-	types_type_template(Types, _Name, _VarSet, _TypeArgs, Template, _Cond),
-	undefined_type_2(Template, Types, Type, Arity).
+:- pred write_pred_id(pred_id, io__state, io__state).
+:- mode write_pred_id(input, di, uo).
 
-	% true if the type template contains a type which is not defined.
-undefined_type_2(functor(Term), Types, Type, Arity) :-
-	term_contains_functor(Term, term_atom(Type), Args),
-	Term ~= term_functor(term_atom(Type), Args),
-	length(Args, Arity),
-	not (some [ArgTemplate,X1,X2,X3] (
-		length(ArgTemplate, Arity),
-		types_type_template(Types, Type, X1, ArgTemplate, X2, X3)
-	)).
-undefined_type_2(type(Term), Types, Type, Arity) :-
-	term_contains_functor(Term, term_atom(Type), Args),
-	length(Args, Arity),
-	not (some [ArgTemplate,X1,X2,X3] (
-		length(ArgTemplate, Arity),
-		types_type_template(Types, Type, X1, ArgTemplate, X2, X3)
-	)).
+write_pred_id(PredId) -->
+	{ predicate_module(PredId, Module) },
+	{ predicate_name(PredId, Name) },
+	{ predicate_arity(PredId, Arity) },
+	io__write_string(Module),
+	io__write_string(":"),
+	io__write_string(Name),
+	io__write_string("/"),
+	io__write_int(Arity).
 
 %-----------------------------------------------------------------------------%
 
@@ -228,6 +389,7 @@ types_lookup_type(Types, Functor, VarSet, Args, term_functor(F1,As1), Cond) :-
 
 builtin_type(term_integer(_), "integer").
 builtin_type(term_float(_), "float").
+builtin_type(term_string(_), "string").
 builtin_type(term_atom(String), "char") :-
 	char_to_string(_, String).
 
