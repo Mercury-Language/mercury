@@ -1041,10 +1041,21 @@ string__append_list(Strs::in) = (Str::uo) :-
 	).
 
 :- pragma foreign_proc("C#",
-		string__join_list(_Sep::in, _Strs::in) = (_Str::uo),
-		[will_not_call_mercury, thread_safe], "{
-	mercury.runtime.Errors.SORRY(""foreign code for this function"");
-	_Str = null;
+		string__join_list(Sep::in, Strs::in) = (Str::uo),
+		[will_not_call_mercury, thread_safe], "
+{	
+	System.Text.StringBuilder tmpStr = new System.Text.StringBuilder();
+
+	while(mercury.runtime.LowLevelData.list_is_cons(Strs)) {
+		tmpStr.Append(mercury.runtime.LowLevelData.list_get_head(Strs));
+		Strs = mercury.runtime.LowLevelData.list_get_tail(Strs);
+
+		if (mercury.runtime.LowLevelData.list_is_cons(Strs)) {
+			tmpStr.Append(Sep);
+		}
+	}
+
+	Str = tmpStr.ToString();
 }").
 
 %-----------------------------------------------------------------------------%
