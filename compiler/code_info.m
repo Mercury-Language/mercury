@@ -1406,7 +1406,7 @@ code_info__generate_forced_saves([Var - Slot|VarSlots], Code) -->
 			->
 				{ CodeA = empty }
 			;
-				{ Lval = reg(Reg) },
+				{ Lval = reg(Reg) },	% XXX semidet!
 				code_info__swap_out_reg(Reg, CodeA)
 			),
 			code_info__generate_expression(var(Var), Lval, CodeB),
