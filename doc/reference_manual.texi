@@ -4018,7 +4018,6 @@ constraints on existentially quantified type variables.
 * Existential class constraints::
 * Existentially typed data types::
 * Some idioms using existentially quantified types::
-* Known bugs in the current implementation::
 @end menu
 
 @node Existentially typed predicates and functions
@@ -4406,30 +4405,6 @@ harder_example(Name, Showable) :-
 	),
 	Univ = mkshowable(Showable).
 @end example
-
-@node Known bugs in the current implementation
-@section Known bugs in the current implementation
-
-The current implementation does not properly deal with most cases
-that involve both existentially quantified constraints and
-mode reordering due to the modes of type variables.
-Note that this can easily arise if you're using nested function calls.
-The symptom in such cases is usually spurious mode errors,
-or sometimes internal compiler errors of the form
-
-@example
-Software error: map__lookup: key not found
-Key Type: prog_data:class_constraint
-Key Functor: constraint/2
-Value Type: hlds_data:constraint_proof
-@end example
-
-@noindent
-The work-around is to write such code in the correct order manually
-rather than relying on the compiler's mode reordering.
-For nested function calls, you may need to split them up using
-temporary variables, e.g. instead of @samp{X = f(g(Y))},
-write @samp{G = g(Y), X = f(G)}.
 
 @node Semantics
 @chapter Semantics
