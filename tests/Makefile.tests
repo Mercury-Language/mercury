@@ -16,8 +16,10 @@ VPATH=$(MLIB)/nuprolog/$(shell fullarch):$(MLIB)/ints:$(MLIB)/modules
 	engine.mod io.mod wrapper.mod > $@
 
 %.mod: printlist.int
+%_init.c: Entry
 
-%_init.c: %.mod printlist.mod engine.mod wrapper.mod io.mod Entry
+%_init.c: %.mod printlist.mod /usr/contrib/lib/mercury/modules/*
+	$(MOD2INIT) -w"`extract $* '' Entry`" $^ > $@
 
 %_init.nl: NP_Entry
 	echo "main(_) :- `extract $* '' NP_Entry`." > $@
