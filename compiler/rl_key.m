@@ -164,22 +164,19 @@ rl_key__bounds_to_key_range(MaybeConstructArgs, Args, VarTypes,
 	),
 		% Partial matches on indexes aren't yet allowed.
 	list__map(lambda([Attr::in, (Attr - AttrBound)::out] is semidet, (
-			list__index0(Args, Attr, KeyArg), 
+			list__index1(Args, Attr, KeyArg), 
 			map__search(VarBoundMap, KeyArg, AttrBound)
 		)), Attrs, AttrBounds),
 				
-	list__map(list__index0(Args), Attrs, KeyArgs),
+	list__map(list__index1(Args), Attrs, KeyArgs),
 	map__apply_to_list(KeyArgs, VarTypes, ArgTypes),
 
-	rl_key__split_key_tuples(AttrBounds, ArgTypes,
-		LowerTuple, UpperTuple, Types),
-	rl_key__convert_bound(MaybeConstructArgs,
-		LowerTuple, LowerBound),
-	rl_key__convert_bound(MaybeConstructArgs,
-		UpperTuple, UpperBound),
+	rl_key__split_key_tuples(AttrBounds, LowerTuple, UpperTuple),
+	rl_key__convert_bound(MaybeConstructArgs, LowerTuple, LowerBound),
+	rl_key__convert_bound(MaybeConstructArgs, UpperTuple, UpperBound),
 	\+ (LowerBound = infinity, UpperBound = infinity),
 	KeyRange = key_range(LowerBound, UpperBound,
-		MaybeConstructArgTypes, Types).
+		MaybeConstructArgTypes, ArgTypes).
 
 :- pred rl_key__convert_bound(maybe(list(prog_var))::in,
 	assoc_list(int, key_term)::in, bounding_tuple::out) is det.
@@ -231,9 +228,8 @@ rl_key__convert_key_attr(MaybeArgs, var - Vars, Attr) :-
 		set__list_to_set(Args, ArgSet),
 		set__intersect(ArgSet, Vars, Intersection),
 		set__to_sorted_list(Intersection, [Arg | _]),
-		list__nth_member_search(Args, Arg, Index0)
+		list__nth_member_search(Args, Arg, Index)
 	->
-		Index is Index0 - 1,
 		Attr = input_field(Index)
 	;
 		Attr = infinity
@@ -243,16 +239,12 @@ rl_key__convert_key_attr(MaybeArgs, functor(ConsId, Type, Terms) - _,
 	list__map(rl_key__convert_key_attr(MaybeArgs), Terms, Attrs).
 		
 :- pred rl_key__split_key_tuples(assoc_list(int, pair(key_term))::in,
-	list(type)::in, assoc_list(int, key_term)::out,
-	assoc_list(int, key_term)::out, list(type)::out) is det.
+	assoc_list(int, key_term)::out, assoc_list(int, key_term)::out) is det.
 
-rl_key__split_key_tuples([], _, [], [], []).
-rl_key__split_key_tuples([Index - (Lower - Upper) | Tuples0], IndexArgTypes,
-		[Index - Lower | Lowers], [Index - Upper | Uppers],
-		[Type | Types]) :-
-	list__index1_det(IndexArgTypes, Index, Type),
-	rl_key__split_key_tuples(Tuples0, IndexArgTypes,
-		Lowers, Uppers, Types).
+rl_key__split_key_tuples([], [], []).
+rl_key__split_key_tuples([Index - (Lower - Upper) | Tuples0],
+		[Index - Lower | Lowers], [Index - Upper | Uppers]) :-
+	rl_key__split_key_tuples(Tuples0, Lowers, Uppers).
 
 %-----------------------------------------------------------------------------%
 

@@ -280,7 +280,8 @@
 :- type index_spec
 	---> index_spec(
 		index_type,
-		list(int)	% which attributes are being indexed on.
+		list(int)	% which attributes are being indexed on
+				% (attribute numbers start at 1)
 	).
 
 	% Hash indexes?

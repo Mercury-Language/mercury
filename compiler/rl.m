@@ -357,6 +357,7 @@
 					% Sort on the given attributes.
 	.
 
+	% Attribute numbers start at 1.
 :- type sort_attrs == assoc_list(int, sort_dir).
 
 :- type sort_dir
@@ -599,10 +600,10 @@ rl__ascending_sort_spec(Schema, Attrs) :-
 			Attr = Index0 - ascending,
 			Index is Index0 + 1
 		)),
-	list__map_foldl(GetAttr, Schema, Attrs, 0, _).
+	list__map_foldl(GetAttr, Schema, Attrs, 1, _).
 
 rl__attr_list(Schema, Attrs) :-
-	rl__attr_list_2(0, Schema, Attrs).
+	rl__attr_list_2(1, Schema, Attrs).
 
 :- pred rl__attr_list_2(int::in, list(T)::in,
 		list(int)::out) is det.

@@ -96,7 +96,12 @@
 	% in turn.
 rl_exprn__generate_compare_exprn(_ModuleInfo, Spec, Schema, Code) :-
 	(
-		Spec = attributes(Attrs),
+		Spec = attributes(Attrs0),
+		list__map(
+			(pred((Attr0 - Dir)::in, (Attr - Dir)::out) is det :-
+				rl_exprn__adjust_arg_number(Attr0, Attr)
+			),
+			Attrs0, Attrs),
 		list__foldl(rl_exprn__generate_compare_instrs(Schema),
 				Attrs, empty, CompareCode)
 	;
@@ -144,6 +149,14 @@ rl_exprn__generate_compare_instrs(Types, Attr - Dir, Code0, Code) :-
 			])
 	),
 	Code = tree(Code0, CompareAttr).
+
+%-----------------------------------------------------------------------------%
+
+	% The compiler numbers arguments starting at 1, Aditi numbers
+	% arguments starting at 0.
+:- pred rl_exprn__adjust_arg_number(int::in, int::out) is det.
+
+rl_exprn__adjust_arg_number(Attr, Attr - 1).
 
 %-----------------------------------------------------------------------------%
 
@@ -215,7 +228,8 @@ rl_exprn__generate_bound_3(_, _, _, _, _, infinity, _, _, _, _) :-
 	error("rl_exprn__generate_bound_3: embedded infinities NYI").
 
 rl_exprn__generate_bound_3(_ModuleInfo, MaybeArgTypes, IsSubTerm, FieldNum,
-		TupleNum, input_field(InputFieldNum), Code, 1, Info, Info) :-
+		TupleNum, input_field(InputFieldNum0), Code, 1, Info, Info) :-
+	rl_exprn__adjust_arg_number(InputFieldNum0, InputFieldNum),
 	rl_exprn__get_key_arg(MaybeArgTypes, InputFieldNum, FieldType0),
 	rl_exprn__type_to_aditi_type(FieldType0, FieldType),
 	rl_exprn__get_input_field_code(one, FieldType, InputFieldNum, GetCode),
