@@ -101,7 +101,8 @@ You need to explicitly import the @samp{list} module
 @end example
 
 @noindent
-if your code uses lists.
+if your code uses lists. Similarly, if your code uses arithmetic operations,
+you will need to import the @samp{int} and possibly @samp{float} modules.
 
 @sp 1
 @item
