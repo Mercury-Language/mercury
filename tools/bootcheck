@@ -20,7 +20,7 @@ Options:
 		Run using <num-jobs> different parallel processes.
 	-k, --keep-objs
 		Keep the stage 2 object files even if stage 2 is successful.
-	-m <mmake-args>, --mmake-args <mmake-args>
+	-m <mmake-args>, --mmake-opts <mmake-args>
 		Pass <mmake-args> as options to \`mmake'.
 	-o <filename>, --output-file <filename>
 		Output results to <filename>.
@@ -298,13 +298,13 @@ then
 		echo "building of stage 1 successful"
 	else
 		cd $root/library;
-		mmake depend
+		mmake $mmake_opts depend
 		cd $root/browser;
-		mmake depend
+		mmake $mmake_opts depend
 		cd $root/compiler;
-		mmake depend
+		mmake $mmake_opts depend
 		cd $root/profiler;
-		mmake depend
+		mmake $mmake_opts depend
 		cd $root
 		if mmake $mmake_opts MMAKEFLAGS=$jfactor all
 		then
