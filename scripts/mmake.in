@@ -28,7 +28,12 @@ Options:
 		Compile directly to assembler, rather than going via C.
 	--target c:
 		Compile via C, rather than going directly to assembler.
-		This is the default.
+		This is the default."
+	# XXX `--target il' is not documented because it is not yet
+	#     supported.
+	#--target il:
+	#	Compile via IL, rather than going via C or assembler.
+Help="$Help\
 	-s, --save-makefile:
 		Save the generated makefile to \`Mmake.makefile'.
 		This is useful for tracking down syntax errors in
@@ -103,7 +108,12 @@ while [ $# -gt 0 ]; do
 		--target)
 			case "$2" in
 				asm)	target_asm=yes ;;
-				c|il)	target_asm=no ;;
+				c)	target_asm=no ;;
+				il)	# XXX we should do something
+					# sensible for `--target il'
+					echo "$0: warning: \`--target il'"
+						"option not supported." 1>&2
+					target_asm=no ;;
 				*)	echo "$0: invalid argument to" \
 						"\`--target' option" 1>&2
 					exit 1 ;;
