@@ -1397,7 +1397,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err, "mdb: %s.\n", problem);
 			}
-		} else if (word_count == 3 && streq(words[1], "action")
+		} else if (word_count == 3 && MR_streq(words[1], "action")
 				&& MR_trace_is_number(words[2], &n))
 		{
 			const char	*problem;
@@ -1454,7 +1454,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err, "mdb: %s.\n", problem);
 			}
-		} else if (word_count == 3 && streq(words[1], "action")
+		} else if (word_count == 3 && MR_streq(words[1], "action")
 				&& MR_trace_is_number(words[2], &n))
 		{
 			const char	*problem;
