@@ -16,15 +16,15 @@ c                  f                  p                  subgoal
 cc_query           finish             pneg_stack         table
 class_decl         flag               print              table_io
 clear_histogram    forward            print_optionals    term_size
-consumer           g                  printlevel         type_ctor
-context            gen_stack          proc_stats         unalias
-continue           goal_paths         procedures         unhide_events
-current            goto               query              up
-cut_stack          h                  quit               v
-d                  help               r                  var_name_stats
-dd                 histogram_all      register           vars
-dd_dd              histogram_exp      retry              view
-debug_vars         ignore             return             
+consumer           g                  printlevel         trust
+context            gen_stack          proc_stats         type_ctor
+continue           goal_paths         procedures         unalias
+current            goto               query              unhide_events
+cut_stack          h                  quit               up
+d                  help               r                  v
+dd                 histogram_all      register           var_name_stats
+dd_dd              histogram_exp      retry              vars
+debug_vars         ignore             return             view
 delete             io_query           s                  
 h              help           histogram_all  histogram_exp  
 var_name_stats  vars            view            
