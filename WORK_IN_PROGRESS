@@ -5,7 +5,9 @@ The compiler contains some code for the following features,
 which are not yet completed, but which we hope to complete
 at some time in the future:
 
-* Existential types.
+* There is a `--high-level-c' option, for a new back-end
+  that generates C code but at a much higher level than the
+  current back-end (e.g. no gotos).
 
 * Thread-safe engine.
 
@@ -67,7 +69,3 @@ if someone has the time for it.
 * There is a `--generate-prolog' option for a new back-end
   that generates Prolog code.
   Not very much progress has really been made on this.
-
-* There is a `--high-level-c' option, for a new back-end
-  that generates C code but at a much higher level than the
-  current back-end.  

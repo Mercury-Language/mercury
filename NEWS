@@ -4,6 +4,30 @@ NEWS since Mercury release 0.8:
 Changes to the Mercury language:
 ********************************
 
+* The Mercury type system now supports existentially quantified types.
+
+  Existential types let you create heterogenous collections (e.g. lists
+  containing objects of different types).  In combination with type
+  classes, they allow you to write code in an OOP-like style.
+  See the "Existential types" chapter of the Mercury Language Reference
+  Manual for details.
+
+  Our current implementation still has a couple of important limitations;
+  see the "Known bugs and limitations" section of the "Existential types"
+  chapter of the Mercury Language Reference Manual.
+
+* We now allow abstract instance declarations.
+
+  You can declare in the interface of a module that a type is an
+  instance of a particular type class, and provide the definition
+  of that instance in the implementation section of that module.
+
+* We now support a simple form of user-defined infix operators.
+  
+  Terms in the form of x `fun` y are transformed into fun(x, y).  `fun`
+  is parsed as an infix operator with the highest possible precedence
+  and left associativity.
+
 * We've made a small change to the rule for quantification of lambda
   expressions.  
 
@@ -11,7 +35,7 @@ Changes to the Mercury language:
   expressions are treated as locally quantified to that lambda expression.
   For function lambda expressions, variables in the result term
   use the normal quantification rules.  See the "Data-terms" section
-  of the "Syntax" chapter of the Mercury language reference manual
+  of the "Syntax" chapter of the Mercury Language Reference Manual
   for details.
   
   Previously, the exact quantification rule for lambda expressions was
@@ -35,12 +59,6 @@ Changes to the Mercury language:
   Please use the new syntax-style `(pred([<Args>]) is <Det> :- <Goal>)'
   instead.  The compiler still supports the old-style syntax, but
   we plan to eventually drop this support in some future release.
-
-* We now support a simple form of user-defined infix operators.
-  
-  Terms in the form of x `fun` y are transformed into fun(x, y).  `fun`
-  is parsed as an infix operator with the highest possible precedence
-  and left associativity.
 
 Changes to the Mercury standard library:
 ****************************************
@@ -66,11 +84,16 @@ Changes to the Mercury standard library:
 	bag__count_value/3,
 	std_util__do_while/4.
 
+* We've added function versions of many of the predicates in the
+  Mercury standard library.
+
 * The following predicates have been replaced by functions with
   the same names, and will be removed in a future release.
+
   The predicate versions were intended for use in programs which needed
   to work in both Prolog and Mercury, but executing Mercury programs using
   Prolog is no longer supported.
+
 	float__ceiling_to_int/2,
 	float__floor_to_int/2,
 	float__round_to_int/2,
@@ -114,10 +137,22 @@ New library packages in the Mercury extras distribution:
   See the files in extras/dynamic_linking for details.
 
 * We've added some use-at-your-own-risk bindings to POSIX.3 functionality.
+
   At this stage it's quite incomplete.
+  See the files in extras/posix for details.
 
 Changes to the Mercury implementation:
 **************************************
+
+* Mmake, the Mercury make tool, now includes better support for
+  installing libraries.
+
+  It's now much easier to build and install libraries in several
+  different grades (e.g. for debugging, time profiling, and memory
+  profiling) or for more than one architecture.
+
+  See the "Supporting multiple grades and architectures" section
+  of the "Libraries" chapter of the Mercury User's Guide.
 
 * We've fixed a bug in switch detection.
 
@@ -180,4 +215,6 @@ Changes to the Mercury implementation:
 
   See the "Type specialization" section of the "Pragmas" chapter of the
   Mercury Language Reference Manual for details.
+
+* Numerous bug fixes.
 
