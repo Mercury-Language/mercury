@@ -31,6 +31,9 @@ Changes to the standard library:
 * We've added std_util__dynamic_cast/2 for type-safe runtime dynamic
   type casting for ground types.
 
+* We've extended the array module with array__sort/1, array__foldl/3 and
+  array__foldr/3.
+
 NEWS for Mercury release 0.10:
 ------------------------------
 

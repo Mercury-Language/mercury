@@ -28,12 +28,38 @@
 % part of the library.
 %
 
+% WARNING!
+%
+% Arrays are currently not unique objects - until this situation is
+% resolved it is up to the programmer to ensure that arrays are used
+% in such a way as to preserve correctness.  In the absence of mode
+% reordering, one should therefore assume that evaluation will take
+% place in left-to-right order.  For example, the following code will
+% probably not work as expected (f is a function, A an array, I an
+% index, and X an appropriate value):
+%
+%       Y = f(A ^ elem(I) := X, A ^ elem(I))
+%
+% The compiler is likely to compile this as
+%
+%       V0 = A ^ elem(I) := X,
+%       V1 = A ^ elem(I),
+%       Y  = f(V0, V1)
+%
+% and will be unaware that the first line should be ordered
+% *after* the second.  The safest thing to do is write things out
+% by hand in the form
+%
+%       A0I = A0 ^ elem(I),
+%       A1  = A0 ^ elem(I) := X,
+%       Y   = f(A1, A0I)
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module array.
 :- interface.
-:- import_module list, std_util.
+:- import_module list, std_util, random.
 
 :- type array(T).
 
@@ -286,6 +312,48 @@
 
 :- func array_compare(array(T), array(T)) = comparison_result.
 :- mode array_compare(in, in) = out is det.
+
+	% array__sort(Array) returns a version of Array sorted
+	% into ascending order.
+	%
+	% This sort is not stable.  That is, elements that
+	% compare/3 decides are equal will appear together in
+	% the sorted array, but not necessarily in the same
+	% order in which they occurred in the input array.
+	% This is primarily only an issue with types with
+	% user-defined equivalence for which `equivalent'
+	% objects are otherwise distinguishable.
+	%
+:- func array__sort(array(T)) = array(T).
+:- mode array__sort(array_di) = array_uo is det.
+
+	% array__foldl(Fn, Array, X) is equivalent to
+	% 	list__foldl(Fn, array__to_list(Array), X)
+	% but more efficient.
+	%
+:- func array__foldl(func(T1, T2) = T2, array(T1), T2) = T2.
+:- mode array__foldl(func(in, in) = out is det, array_ui, in) = out is det.
+:- mode array__foldl(func(in, in) = out is det, in, in) = out is det.
+:- mode array__foldl(func(in, di) = uo is det, array_ui, di) = uo is det.
+:- mode array__foldl(func(in, di) = uo is det, in, di) = uo is det.
+
+	% array__foldr(Fn, Array, X) is equivalent to
+	% 	list__foldr(Fn, array__to_list(Array), X)
+	% but more efficient.
+	%
+:- func array__foldr(func(T1, T2) = T2, array(T1), T2) = T2.
+:- mode array__foldr(func(in, in) = out is det, array_ui, in) = out is det.
+:- mode array__foldr(func(in, in) = out is det, in, in) = out is det.
+:- mode array__foldr(func(in, di) = uo is det, array_ui, di) = uo is det.
+:- mode array__foldr(func(in, di) = uo is det, in, di) = uo is det.
+
+	% array__random_permutation(A0, A, RS0, RS) permutes the elements in
+	% A0 given random seed RS0 and returns the permuted array in A
+	% and the next random seed in RS.
+	%
+:- pred array__random_permutation(array(T), array(T),
+		random__supply, random__supply).
+:- mode array__random_permutation(array_di, array_uo, mdi, muo) is det.
 
 %-----------------------------------------------------------------------------%
 :- implementation.
@@ -971,16 +1039,7 @@ array__to_list(Array, List) :-
 %-----------------------------------------------------------------------------%
 
 array__fetch_items(Array, Low, High, List) :-
-        (
-                Low > High
-        ->
-                List = []
-        ;
-                Low1 is Low + 1,
-                array__fetch_items(Array, Low1, High, List0),
-                array__lookup(Array, Low, Item),
-                List = [Item|List0]
-        ).
+	List = foldr_0(func(X, Xs) = [X | Xs], Array, [], Low, High).
 
 %-----------------------------------------------------------------------------%
 
@@ -1115,3 +1174,188 @@ array_compare(A1, A2) = C :-
 array__elem(Index, Array) = array__lookup(Array, Index).
 
 'array__elem :='(Index, Array, Value) = array__set(Array, Index, Value).
+
+% ---------------------------------------------------------------------------- %
+
+    % array__sort/1 has type specialised versions for arrays of
+    % ints and strings on the expectation that these constitute
+    % the common case and are hence worth providing a fast-path.
+    %
+    % Experiments indicate that type specialisation improves
+    % array__sort/1 by a factor of 30-40%.
+    %
+:- pragma type_spec(array__sort/1, T = int).
+:- pragma type_spec(array__sort/1, T = string).
+
+array__sort(A) = merge_sort(A).
+
+%------------------------------------------------------------------------------%
+
+    % Merge sort an array.
+    %
+:- func merge_sort(array(T)) = array(T).
+:- mode merge_sort(array_di) = array_uo is det.
+
+:- pragma type_spec(merge_sort/1, T = int).
+:- pragma type_spec(merge_sort/1, T = string).
+
+merge_sort(A) =
+    merge_sort_2(A, array__copy(A), 1, array__min(A), array__max(A)).
+
+
+
+    % Keep performing merging passes and doubling the size of the
+    % sorted subarrays until we're done.
+    %
+:- func merge_sort_2(array(T), array(T), int, int, int) = array(T).
+:- mode merge_sort_2(array_ui, array_di, in, in, in) = array_uo is det.
+
+:- pragma type_spec(merge_sort_2/5, T = int).
+:- pragma type_spec(merge_sort_2/5, T = string).
+
+merge_sort_2(A, B, N, Lo, Hi) =
+    ( if N >= Hi
+      then A
+      else merge_sort_2(merge_sort_3(A, B, Lo, N, Hi), A, N + N, Lo, Hi)
+    ).
+
+
+
+    % Perform a merge operation over each successive pair of
+    % sorted subarrays.
+    %
+:- func merge_sort_3(array(T), array(T), int, int, int) = array(T).
+:- mode merge_sort_3(array_ui, array_di, in, in, in) = array_uo is det.
+
+:- pragma type_spec(merge_sort_3/5, T = int).
+:- pragma type_spec(merge_sort_3/5, T = string).
+
+merge_sort_3(A, B0, I, N, Hi) = B :-
+    (      if I + N > Hi then
+                B  = copy_subarray(A, B0, I, Hi, I)
+      else if I + N + N > Hi then
+                B  = merge_subarrays(A, B0, I, I+N-1, I+N, Hi, I)
+      else
+                B1 = merge_subarrays(A, B0, I, I+N-1, I+N, I+N+N-1, I),
+                B  = merge_sort_3(A, B1, I+N+N, N, Hi)
+    ).
+
+%------------------------------------------------------------------------------%
+
+    % merges the two sorted consecutive subarrays Lo1 .. Hi1 and
+    % Lo2 .. Hi2 from A into the subarray starting at I in B.
+    % 
+:- func merge_subarrays(array(T), array(T), int, int, int, int, int) = array(T).
+:- mode merge_subarrays(array_ui, array_di, in, in, in, in, in) = array_uo
+            is det.
+
+:- pragma type_spec(merge_subarrays/7, T = int).
+:- pragma type_spec(merge_subarrays/7, T = string).
+
+merge_subarrays(A, B0, Lo1, Hi1, Lo2, Hi2, I) = B :-
+    (      if Lo1 > Hi1 then B = copy_subarray(A, B0, Lo2, Hi2, I)
+      else if Lo2 > Hi2 then B = copy_subarray(A, B0, Lo1, Hi1, I)
+      else
+        X1 = A ^ elem(Lo1),
+        X2 = A ^ elem(Lo2),
+        compare(R, X1, X2),
+        (
+            R = (<),
+            B = merge_subarrays(A, B0^elem(I) := X1, Lo1+1, Hi1, Lo2, Hi2, I+1)
+        ;
+            R = (=),
+            B = merge_subarrays(A, B0^elem(I) := X1, Lo1+1, Hi1, Lo2, Hi2, I+1)
+        ;
+            R = (>),
+            B = merge_subarrays(A, B0^elem(I) := X2, Lo1, Hi1, Lo2+1, Hi2, I+1)
+        )
+    ).
+
+%------------------------------------------------------------------------------%
+
+:- func copy_subarray(array(T), array(T), int, int, int) = array(T).
+:- mode copy_subarray(array_ui, array_di, in, in, in) = array_uo is det.
+
+:- pragma type_spec(copy_subarray/5, T = int).
+:- pragma type_spec(copy_subarray/5, T = string).
+
+copy_subarray(A, B, Lo, Hi, I) =
+    ( if Lo > Hi
+      then B
+      else copy_subarray(A, B ^ elem(I) := A ^ elem(Lo), Lo + 1, Hi, I + 1)
+    ).
+
+% ---------------------------------------------------------------------------- %
+
+array__random_permutation(A0, A, RS0, RS) :-
+	Lo = array__min(A0),
+	Hi = array__max(A0),
+	Sz = array__size(A0),
+	permutation_2(Lo, Lo, Hi, Sz, A0, A, RS0, RS).
+
+
+
+:- pred permutation_2(int, int, int, int, array(T), array(T),
+		random__supply, random__supply).
+:- mode permutation_2(in, in, in, in, array_di, array_uo, mdi, muo) is det.
+
+permutation_2(I, Lo, Hi, Sz, A0, A, RS0, RS) :-
+	( if I > Hi then
+		A  = A0,
+		RS = RS0
+	  else
+	  	random__random(R, RS0, RS1),
+	  	J  = Lo + (R `rem` Sz),
+		A1 = swap_elems(A0, I, J),
+		permutation_2(I + 1, Lo, Hi, Sz, A1, A, RS1, RS)
+	).
+
+%------------------------------------------------------------------------------%
+
+:- func swap_elems(array(T), int, int) = array(T).
+:- mode swap_elems(array_di, in, in) = array_uo is det.
+
+swap_elems(A0, I, J) = A :-
+	XI = A0 ^ elem(I),
+	XJ = A0 ^ elem(J),
+	A  = ((A0 ^ elem(I) := XJ)
+		  ^ elem(J) := XI).
+
+% ---------------------------------------------------------------------------- %
+
+array__foldl(Fn, A, X) =
+	foldl_0(Fn, A, X, array__min(A), array__max(A)).
+
+
+
+:- func foldl_0(func(T1, T2) = T2, array(T1), T2, int, int) = T2.
+:- mode foldl_0(func(in, in) = out is det, array_ui, in, in, in) = out is det.
+:- mode foldl_0(func(in, in) = out is det, in, in, in, in) = out is det.
+:- mode foldl_0(func(in, di) = uo is det, array_ui, di, in, in) = uo is det.
+:- mode foldl_0(func(in, di) = uo is det, in, di, in, in) = uo is det.
+
+foldl_0(Fn, A, X, I, Max) =
+	( if Max < I	then X
+			else foldl_0(Fn, A, Fn(A ^ elem(I), X), I + 1, Max)
+	).
+
+% ---------------------------------------------------------------------------- %
+
+array__foldr(Fn, A, X) =
+	foldr_0(Fn, A, X, array__min(A), array__max(A)).
+
+
+
+:- func foldr_0(func(T1, T2) = T2, array(T1), T2, int, int) = T2.
+:- mode foldr_0(func(in, in) = out is det, array_ui, in, in, in) = out is det.
+:- mode foldr_0(func(in, in) = out is det, in, in, in, in) = out is det.
+:- mode foldr_0(func(in, di) = uo is det, array_ui, di, in, in) = uo is det.
+:- mode foldr_0(func(in, di) = uo is det, in, di, in, in) = uo is det.
+
+foldr_0(Fn, A, X, Min, I) =
+	( if I < Min	then X
+			else foldr_0(Fn, A, Fn(A ^ elem(I), X), Min, I - 1)
+	).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
