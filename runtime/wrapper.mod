@@ -270,6 +270,7 @@ process_options(int argc, char **argv)
 				{
 					Label *which_label;
 
+					do_init_modules();
 					which_label = lookup_label_name(optarg);
 					if (which_label == NULL)
 					{
@@ -280,7 +281,6 @@ process_options(int argc, char **argv)
 					which = which_label->e_addr;
 				}
 
-				do_init_modules();
 				break;
 
 		case 'x':
