@@ -254,7 +254,7 @@ collect_mq_info_2(type_defn(_, SymName, Params, _, _), Info0, Info) :-
 		mq_info_set_types(Info0, Types, Info1),
 		mq_info_set_impl_types(Info1, ImplTypes, Info)
 	).
-collect_mq_info_2(inst_defn(_, SymName, Params, _, _), Info0, Info) :-
+collect_mq_info_2(inst_defn(_, _, SymName, Params, _, _), Info0, Info) :-
 	% This item is not visible in the current module.
 	( mq_info_get_import_status(Info0, abstract_imported) ->
 		Info = Info0
@@ -265,7 +265,7 @@ collect_mq_info_2(inst_defn(_, SymName, Params, _, _), Info0, Info) :-
 		id_set_insert(NeedQualifier, SymName - Arity, Insts0, Insts),
 		mq_info_set_insts(Info0, Insts, Info)
 	).
-collect_mq_info_2(mode_defn(_, SymName, Params, _, _), Info0, Info) :-
+collect_mq_info_2(mode_defn(_, _, SymName, Params, _, _), Info0, Info) :-
 	% This item is not visible in the current module.
 	( mq_info_get_import_status(Info0, abstract_imported) ->
 		Info = Info0
@@ -280,7 +280,7 @@ collect_mq_info_2(module_defn(_, ModuleDefn), Info0, Info) :-
 	process_module_defn(ModuleDefn, Info0, Info).
 collect_mq_info_2(pred_or_func(_,_,_,_,__,_,_,_,_,_,_,_), Info, Info).
 collect_mq_info_2(pred_or_func_mode(_,_,_,_,_,_,_), Info, Info).
-collect_mq_info_2(pragma(_), Info, Info).
+collect_mq_info_2(pragma(_,_), Info, Info).
 collect_mq_info_2(promise(_PromiseType, Goal, _ProgVarSet, _UnivVars), Info0,
 		Info) :-
 	process_assert(Goal, SymNames, Success),
@@ -605,16 +605,18 @@ module_qualify_item(
 		type(SymName - Arity) - Context, Info1) },
 	qualify_type_defn(TypeDefn0, TypeDefn, Info1, Info).
 
-module_qualify_item(inst_defn(A, SymName, Params, InstDefn0, C) - Context,
-		inst_defn(A, SymName, Params, InstDefn, C) - Context,
+module_qualify_item(inst_defn(OldSyntax, A, SymName, Params, InstDefn0, C)
+			- Context,
+		inst_defn(OldSyntax, A, SymName, Params, InstDefn, C) - Context,
 		Info0, Info, yes) -->
 	{ list__length(Params, Arity) },
 	{ mq_info_set_error_context(Info0,
 		inst(SymName - Arity) - Context, Info1) },
 	qualify_inst_defn(InstDefn0, InstDefn, Info1, Info).
 
-module_qualify_item(mode_defn(A, SymName, Params, ModeDefn0, C) - Context,
-		mode_defn(A, SymName, Params, ModeDefn, C) - Context,
+module_qualify_item(mode_defn(OldSyntax, A, SymName, Params, ModeDefn0, C)
+			- Context,
+		mode_defn(OldSyntax, A, SymName, Params, ModeDefn, C) - Context,
 		Info0, Info, yes) -->
 	{ list__length(Params, Arity) },
 	{ mq_info_set_error_context(Info0,
@@ -653,8 +655,8 @@ module_qualify_item(
 	qualify_mode_list(Modes0, Modes, Info1, Info2),
 	map_fold2_maybe(qualify_inst, WithInst0, WithInst, Info2, Info).
 
-module_qualify_item(pragma(Pragma0) - Context, pragma(Pragma) - Context,
-						Info0, Info, yes) -->
+module_qualify_item(pragma(OldSyntax, Pragma0) - Context,
+		pragma(OldSyntax, Pragma) - Context, Info0, Info, yes) -->
 	{ mq_info_set_error_context(Info0, (pragma) - Context, Info1) },
 	qualify_pragma(Pragma0, Pragma, Info1, Info).
 module_qualify_item(promise(T, G, V, U) - Context,

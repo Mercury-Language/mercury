@@ -439,7 +439,7 @@ mercury_output_item(UnqualifiedItemNames,
 	mercury_output_type_defn(VarSet, Name, Args, TypeDefn, Context).
 
 mercury_output_item(UnqualifiedItemNames,
-		inst_defn(VarSet, Name0, Args, InstDefn, _Cond),
+		inst_defn(_, VarSet, Name0, Args, InstDefn, _Cond),
 		Context) -->
 	{ maybe_unqualify_sym_name(UnqualifiedItemNames, Name0, Name1) },
 	% If the unqualified name is a builtin inst, then output the qualified
@@ -454,7 +454,7 @@ mercury_output_item(UnqualifiedItemNames,
 	mercury_output_inst_defn(VarSet, Name, Args, InstDefn, Context).
 
 mercury_output_item(UnqualifiedItemNames,
-		mode_defn(VarSet, Name0, Args, ModeDefn, _Cond),
+		mode_defn(_, VarSet, Name0, Args, ModeDefn, _Cond),
 		Context) -->
 	{ maybe_unqualify_sym_name(UnqualifiedItemNames, Name0, Name) },
 	maybe_output_line_number(Context),
@@ -528,7 +528,7 @@ mercury_output_item(UnqualifiedItemNames,
 	),
 	io__write_string(".\n").
 
-mercury_output_item(_UnqualifiedItemNames, pragma(Pragma), Context) -->
+mercury_output_item(_UnqualifiedItemNames, pragma(_, Pragma), Context) -->
 	maybe_output_line_number(Context),
 	(
 		{ Pragma = source_file(SourceFile) },

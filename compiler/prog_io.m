@@ -694,7 +694,7 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
 		% file name
 		%
 		MaybeFirstItem = ok(FirstItem, _),
-		FirstItem = pragma(source_file(NewSourceFileName))
+		FirstItem = pragma(_, source_file(NewSourceFileName))
 	->
 		read_first_item(DefaultModuleName, NewSourceFileName,
 			ModuleName, Messages, Items, MaybeSecondTerm, Error,
@@ -881,7 +881,7 @@ read_items_loop_2(ok(Item0, Context), ModuleName0, SourceFileName0,
 	% parsing context according.  Next, unless the item is a
 	% `pragma source_file' declaration, insert it into the item list.
 	% Then continue looping.
-	( Item = pragma(source_file(NewSourceFileName)) ->
+	( Item = pragma(_, source_file(NewSourceFileName)) ->
 		SourceFileName = NewSourceFileName,
 		ModuleName = ModuleName0
 	; Item = module_defn(_VarSet, module(NestedModuleName)) ->
@@ -3213,9 +3213,11 @@ parse_inst_decl(ModuleName, VarSet, InstDefn, Result) :-
 		InstDefn = term__functor(term__atom(Op), [H, B], _Context),
 		( Op = "=" ; Op = "==" )
 	->
+		OldSyntax = ( if Op = "=" then yes else no ),
 		get_condition(B, Body, Condition),
 		convert_inst_defn(ModuleName, H, Body, R),
-		process_maybe1(make_inst_defn(VarSet, Condition), R, Result)
+		process_maybe1(make_inst_defn(OldSyntax, VarSet, Condition),
+			R, Result)
 	;
 		% XXX this is for `abstract inst' declarations,
 		% which are not really supported
@@ -3224,14 +3226,14 @@ parse_inst_decl(ModuleName, VarSet, InstDefn, Result) :-
 	->
 		Condition = true,
 		convert_abstract_inst_defn(ModuleName, Head, R),
-		process_maybe1(make_inst_defn(VarSet, Condition), R, Result)
+		process_maybe1(make_inst_defn(no, VarSet, Condition), R, Result)
 	;
 		InstDefn = term__functor(term__atom("--->"), [H, B], Context)
 	->
 		get_condition(B, Body, Condition),
 		Body1 = term__functor(term__atom("bound"), [Body], Context),
 		convert_inst_defn(ModuleName, H, Body1, R),
-		process_maybe1(make_inst_defn(VarSet, Condition), R, Result)
+		process_maybe1(make_inst_defn(no, VarSet, Condition), R, Result)
 	;
 		Result = error("`==' expected in `:- inst' definition",
 			InstDefn)
@@ -3347,11 +3349,12 @@ convert_abstract_inst_defn_2(ok(Name, ArgTerms), Head, Result) :-
 		Result = error("inst parameters must be variables", Head)
 	).
 
-:- pred make_inst_defn(varset::in, condition::in, processed_inst_body::in,
-	item::out) is det.
+:- pred make_inst_defn(bool::in, varset::in, condition::in,
+	processed_inst_body::in, item::out) is det.
 
-make_inst_defn(VarSet0, Cond, processed_inst_body(Name, Params, InstDefn),
-		inst_defn(VarSet, Name, Params, InstDefn, Cond)) :-
+make_inst_defn(OldSyntax, VarSet0, Cond,
+		processed_inst_body(Name, Params, InstDefn),
+		inst_defn(OldSyntax, VarSet, Name, Params, InstDefn, Cond)) :-
 	varset__coerce(VarSet0, VarSet).
 
 %-----------------------------------------------------------------------------%
@@ -3363,11 +3366,13 @@ make_inst_defn(VarSet0, Cond, processed_inst_body(Name, Params, InstDefn),
 
 parse_mode_decl(ModuleName, VarSet, ModeDefn, Attributes, Result) :-
 	( %%% some [H, B]
-		mode_op(ModeDefn, H, B)
+		mode_op(ModeDefn, H, B, Op)
 	->
+		OldSyntax = ( Op = "::" -> yes ; no ),
 		get_condition(B, Body, Condition),
 		convert_mode_defn(ModuleName, H, Body, R),
-		process_maybe1(make_mode_defn(VarSet, Condition), R, Result)
+		process_maybe1(make_mode_defn(OldSyntax, VarSet, Condition),
+			R, Result)
 	;
 		parse_mode_decl_pred(ModuleName, VarSet, ModeDefn, Attributes,
 			Result)
@@ -3394,9 +3399,9 @@ parse_mode_decl(ModuleName, VarSet, ModeDefn, Attributes, Result) :-
 	% Before phasing it out, a deprecated syntax warning should be
 	% given for a version or two.
 	%
-:- pred mode_op(term::in, term::out, term::out) is semidet.
+:- pred mode_op(term::in, term::out, term::out, string::out) is semidet.
 
-mode_op(term__functor(term__atom(Op), [H, B], _), H, B) :-
+mode_op(term__functor(term__atom(Op), [H, B], _), H, B, Op) :-
 	( Op = "==" ; Op = "::" ).
 
 :- type processed_mode_body
@@ -3486,11 +3491,12 @@ convert_type_and_mode(InstConstraints, Term, Result) :-
 		Result = type_only(Type)
 	).
 
-:- pred make_mode_defn(varset::in, condition::in, processed_mode_body::in,
-	item::out) is det.
+:- pred make_mode_defn(bool::in, varset::in, condition::in,
+	processed_mode_body::in, item::out) is det.
 
-make_mode_defn(VarSet0, Cond, processed_mode_body(Name, Params, ModeDefn),
-		mode_defn(VarSet, Name, Params, ModeDefn, Cond)) :-
+make_mode_defn(OldSyntax, VarSet0, Cond,
+		processed_mode_body(Name, Params, ModeDefn),
+		mode_defn(OldSyntax, VarSet, Name, Params, ModeDefn, Cond)) :-
 	varset__coerce(VarSet0, VarSet).
 
 %-----------------------------------------------------------------------------%

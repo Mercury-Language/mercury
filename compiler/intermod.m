@@ -1353,7 +1353,7 @@ intermod__write_type(TypeCtor - TypeDefn, !IO) :-
 		ReservedTag = Body ^ du_type_reserved_tag,
 		ReservedTag = yes
 	->
-		mercury_output_item(pragma(reserve_tag(Name, Arity)),
+		mercury_output_item(pragma(no, reserve_tag(Name, Arity)),
 			Context, !IO)
 	;
 		true
@@ -1379,7 +1379,8 @@ intermod__write_mode(ModuleName, ModeId, ModeDefn, !IO) :-
 		import_status_to_write(ImportStatus)
 	->
 		mercury_output_item(
-			mode_defn(Varset, SymName, Args, eqv_mode(Mode), true),
+			mode_defn(no, Varset, SymName, Args, eqv_mode(Mode),
+				true),
 			Context, !IO)
 	;
 		true
@@ -1413,7 +1414,7 @@ intermod__write_inst(ModuleName, InstId, InstDefn, !IO) :-
 			InstBody = abstract_inst
 		),
 		mercury_output_item(
-			inst_defn(Varset, SymName, Args, InstBody, true),
+			inst_defn(no, Varset, SymName, Args, InstBody, true),
 			Context, !IO)
 	;
 		true
@@ -2248,7 +2249,7 @@ intermod__grab_optfiles(!Module, FoundError, !IO) :-
 		read_optimization_interfaces(no, ModuleName, [ModuleName],
 			set__init, [], LocalItems, no, UAError, !IO),
 		IsPragmaUnusedArgs = (pred(Item::in) is semidet :-
-			Item = pragma(PragmaType) - _,
+			Item = pragma(_, PragmaType) - _,
 			PragmaType = unused_args(_,_,_,_,_)
 		),
 		list__filter(IsPragmaUnusedArgs, LocalItems, PragmaItems),

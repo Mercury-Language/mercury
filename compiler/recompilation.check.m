@@ -895,11 +895,11 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
 		NeedsCheck = no
 	).
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
-		inst_defn(_, Name, Params, _, _) - _, !Info) :-
+		inst_defn(_, _, Name, Params, _, _) - _, !Info) :-
 	check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
 		VersionNumbers, (inst), Name, list__length(Params), _, !Info).
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
-		mode_defn(_, Name, Params, _, _) - _, !Info) :-
+		mode_defn(_, _, Name, Params, _, _) - _, !Info) :-
 	check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
 		VersionNumbers, (mode), Name, list__length(Params), _, !Info).
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
@@ -940,7 +940,7 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
 		VersionNumbers, PredOrFunc, Name, Args, WithType, !Info).
 check_for_ambiguities(_, _, _,
 		pred_or_func_mode(_, _, _, _, _, _, _) - _, !Info).
-check_for_ambiguities(_, _, _, pragma(_) - _, !Info).
+check_for_ambiguities(_, _, _, pragma(_,_) - _, !Info).
 check_for_ambiguities(_, _, _, promise(_, _, _, _) - _, !Info).
 check_for_ambiguities(_, _, _, module_defn(_, _) - _, !Info).
 check_for_ambiguities(_, _, _, instance(_, _, _, _, _, _) - _, !Info).

@@ -1671,7 +1671,7 @@ check_for_clauses_in_interface([ItemAndContext0 | Items0], Items, !IO) :-
 		report_warning("Warning: clause in module interface.\n", !IO),
 		check_for_clauses_in_interface(Items0, Items, !IO)
 	;
-		Item0 = pragma(Pragma),
+		Item0 = pragma(_, Pragma),
 		pragma_allowed_in_interface(Pragma, no)
 	->
 		prog_out__write_context(Context, !IO),
@@ -1711,7 +1711,7 @@ split_clauses_and_decls([ItemAndContext0 | Items0],
 		(
 			Item0 = clause(_,_,_,_,_)
 		;
-			Item0 = pragma(Pragma),
+			Item0 = pragma(_, Pragma),
 			pragma_allowed_in_interface(Pragma, no)
 		)
 	->
@@ -2442,7 +2442,7 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
 
 contains_tabling_pragma([Item | Items]) :-
 	(
-		Item = pragma(Pragma) - _Context,
+		Item = pragma(_, Pragma) - _Context,
 		Pragma = tabled(_, _, _, _, _)
 	;
 		contains_tabling_pragma(Items)
@@ -5400,7 +5400,7 @@ get_item_list_foreign_code(Globals, Items, LangSet, ForeignImports,
 	module_foreign_info::in, module_foreign_info::out) is det.
 
 get_item_foreign_code(Globals, Item, !Info) :-
-	( Item = pragma(Pragma) - Context ->
+	( Item = pragma(_, Pragma) - Context ->
 		do_get_item_foreign_code(Globals, Pragma, Context, !Info)
 	;
 		true
@@ -6575,7 +6575,7 @@ get_fact_table_dependencies(Items, Deps) :-
 
 get_fact_table_dependencies_2([], Deps, Deps).
 get_fact_table_dependencies_2([Item - _Context | Items], Deps0, Deps) :-
-	( Item = pragma(fact_table(_SymName, _Arity, FileName)) ->
+	( Item = pragma(_, fact_table(_SymName, _Arity, FileName)) ->
 		Deps1 = [FileName | Deps0]
 	;
 		Deps1 = Deps0
@@ -6853,7 +6853,8 @@ get_interface_and_implementation(ModuleName, IncludeImplTypes,
 maybe_add_foreign_import_module(ModuleName, Items0, Items) :-
 	get_foreign_self_imports(Items0, Langs),
 	Imports = list__map(
-		(func(Lang) = pragma(foreign_import_module(Lang, ModuleName))
+		(func(Lang) = pragma(no,
+				foreign_import_module(Lang, ModuleName))
 			- term__context_init),
 		Langs),
 	Items = Imports ++ Items0.
@@ -6987,11 +6988,11 @@ get_short_interface_2([ItemAndContext | Rest], Kind, Items0, Items) :-
 :- pred include_in_short_interface(item::in) is semidet.
 
 include_in_short_interface(type_defn(_, _, _, _, _)).
-include_in_short_interface(inst_defn(_, _, _, _, _)).
-include_in_short_interface(mode_defn(_, _, _, _, _)).
+include_in_short_interface(inst_defn(_,_, _, _, _, _)).
+include_in_short_interface(mode_defn(_,_, _, _, _, _)).
 include_in_short_interface(module_defn(_, _)).
 include_in_short_interface(instance(_, _, _, _, _, _)).
-include_in_short_interface(pragma(foreign_import_module(_, _))).
+include_in_short_interface(pragma(_, foreign_import_module(_, _))).
 
 	% Could this item use items from imported modules.
 :- func item_needs_imports(item) = bool.
@@ -6999,10 +7000,10 @@ include_in_short_interface(pragma(foreign_import_module(_, _))).
 item_needs_imports(clause(_, _, _, _, _)) = yes.
 item_needs_imports(Item @ type_defn(_, _, _, _, _)) =
 		( Item ^ td_ctor_defn = abstract_type(_) -> no ; yes ).
-item_needs_imports(inst_defn(_, _, _, _, _)) = yes.
-item_needs_imports(mode_defn(_, _, _, _, _)) = yes.
+item_needs_imports(inst_defn(_,_, _, _, _, _)) = yes.
+item_needs_imports(mode_defn(_,_, _, _, _, _)) = yes.
 item_needs_imports(module_defn(_, _)) = no.
-item_needs_imports(pragma(_)) = yes.
+item_needs_imports(pragma(_,_)) = yes.
 item_needs_imports(pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _)) = yes.
 item_needs_imports(pred_or_func_mode(_, _, _, _, _, _, _)) = yes.
 item_needs_imports(Item @ typeclass(_, _, _, _, _)) =
@@ -7025,17 +7026,17 @@ item_needs_imports(nothing(_)) = no.
 
 :- pred item_needs_foreign_imports(item::in, foreign_language::out) is nondet.
 
-item_needs_foreign_imports(pragma(export(_, _, _, _)), Lang) :-
+item_needs_foreign_imports(pragma(_, export(_, _, _, _)), Lang) :-
 	foreign_language(Lang).
 
 	% `:- pragma import' is only supported for C.
-item_needs_foreign_imports(pragma(import(_, _, _, _, _)), c).
+item_needs_foreign_imports(pragma(_, import(_, _, _, _, _)), c).
 item_needs_foreign_imports(Item @ type_defn(_, _, _, _, _), Lang) :-
 	Item ^ td_ctor_defn = foreign_type(ForeignType, _, _),
 	Lang = foreign_type_language(ForeignType).
-item_needs_foreign_imports(pragma(foreign_decl(Lang, _, _)), Lang).
-item_needs_foreign_imports(pragma(foreign_code(Lang, _)), Lang).
-item_needs_foreign_imports(pragma(foreign_proc(Attrs, _, _, _, _, _)),
+item_needs_foreign_imports(pragma(_, foreign_decl(Lang, _, _)), Lang).
+item_needs_foreign_imports(pragma(_, foreign_code(Lang, _)), Lang).
+item_needs_foreign_imports(pragma(_, foreign_proc(Attrs, _, _, _, _, _)),
 		foreign_language(Attrs)).
 
 :- pred include_in_int_file_implementation(item::in) is semidet.
@@ -7049,7 +7050,7 @@ include_in_int_file_implementation(module_defn(_, Defn)) :-
 	% Since these constructors are abstractly exported,
 	% we won't need the local instance declarations.
 include_in_int_file_implementation(typeclass(_, _, _, _, _)).
-include_in_int_file_implementation(pragma(foreign_import_module(_, _))).
+include_in_int_file_implementation(pragma(_, foreign_import_module(_, _))).
 
 :- pred make_abstract_defn(item::in, short_interface_kind::in, item::out)
 	is semidet.
@@ -7166,7 +7167,8 @@ maybe_strip_import_decls(!Items) :-
 	->
 		list__filter(
 			(pred((ThisItem - _)::in) is semidet :-
-				ThisItem \= pragma(foreign_import_module(_, _))
+				ThisItem \= pragma(_,
+					foreign_import_module(_, _))
 			), !Items)
 	;
 		true

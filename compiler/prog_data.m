@@ -65,6 +65,7 @@
 		% `:- inst ... = ...':
 		% a definition of an inst.
 	; 	inst_defn(
+			id_old_syntax		:: bool,
 			id_varset		:: inst_varset,
 			id_inst_name		:: sym_name,
 			id_inst_args		:: list(inst_var),
@@ -75,6 +76,7 @@
 		% `:- mode ... = ...':
 		% a definition of a mode.
 	; 	mode_defn(
+			md_old_syntax		:: bool,
 			md_varset		:: inst_varset,
 			md_mode_name		:: sym_name,
 			md_mode_args		:: list(inst_var),
@@ -126,6 +128,7 @@
 		%	equiv_type.m. equiv_type.m will set the field to `no'.
 
 	;	pragma(
+			pragma_old_syntax	:: bool,
 			pragma_type		:: pragma_type
 		)
 

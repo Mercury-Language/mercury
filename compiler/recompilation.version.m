@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2004 The University of Melbourne.
+% Copyright (C) 2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -361,7 +361,7 @@ recompilation__version__gather_items_2(ItemAndContext, !Section, !Info) :-
 			GatheredItems0, GatheredItems),
 		!:Info = !.Info ^ gathered_items := GatheredItems
 	;
-		Item = pragma(PragmaType),
+		Item = pragma(_, PragmaType),
 		is_pred_pragma(PragmaType, yes(PredOrFuncId))
 	->
 		PragmaItems = !.Info ^ pragma_items,
@@ -521,10 +521,10 @@ item_to_item_id_2(clause(_, _, _, _, _), no).
 item_to_item_id_2(type_defn(_, Name, Params, _, _),
 		yes(item_id((type), Name - Arity))) :-
 	list__length(Params, Arity).
-item_to_item_id_2(inst_defn(_, Name, Params, _, _),
+item_to_item_id_2(inst_defn(_, _, Name, Params, _, _),
 		yes(item_id((inst), Name - Arity))) :-
 	list__length(Params, Arity).
-item_to_item_id_2(mode_defn(_, Name, Params, _, _),
+item_to_item_id_2(mode_defn(_, _, Name, Params, _, _),
 		yes(item_id((mode), Name - Arity))) :-
 	list__length(Params, Arity).
 item_to_item_id_2(module_defn(_, _), no).
@@ -561,7 +561,7 @@ item_to_item_id_2(Item, ItemId) :-
 
 	% We need to handle these separately because some pragmas
 	% may affect a predicate and a function.
-item_to_item_id_2(pragma(_), no).
+item_to_item_id_2(pragma(_, _), no).
 item_to_item_id_2(promise(_, _, _, _), no).
 item_to_item_id_2(Item, yes(item_id((typeclass), ClassName - ClassArity))) :-
 	Item = typeclass(_, ClassName, ClassVars, _, _),
@@ -667,10 +667,10 @@ items_are_unchanged([Section - (Item1 - _) | Items1],
 
 item_is_unchanged(type_defn(_, Name, Args, Defn, Cond), Item2) =
 	( Item2 = type_defn(_, Name, Args, Defn, Cond) -> yes ; no ).
-item_is_unchanged(mode_defn(_VarSet, Name, Args, Defn, Cond), Item2) =
-	( Item2 = mode_defn(_, Name, Args, Defn, Cond) -> yes ; no ).
-item_is_unchanged(inst_defn(_VarSet, Name, Args, Defn, Cond), Item2) =
-	( Item2 = inst_defn(_, Name, Args, Defn, Cond) -> yes ; no ).
+item_is_unchanged(mode_defn(_, _VarSet, Name, Args, Defn, Cond), Item2) =
+	( Item2 = mode_defn(_, _, Name, Args, Defn, Cond) -> yes ; no ).
+item_is_unchanged(inst_defn(_, _VarSet, Name, Args, Defn, Cond), Item2) =
+	( Item2 = inst_defn(_, _, Name, Args, Defn, Cond) -> yes ; no ).
 item_is_unchanged(module_defn(_VarSet, Defn), Item2) =
 	( Item2 = module_defn(_, Defn) -> yes ; no ).
 item_is_unchanged(instance(Constraints, Name, Types, Body, _VarSet, Module),
@@ -693,8 +693,8 @@ item_is_unchanged(promise(PromiseType, Goal, _, UnivVars), Item2) =
 	% declarations because the names of the variables are used
 	% to find the corresponding variables in the predicate or
 	% function type declaration.
-item_is_unchanged(pragma(PragmaType1), Item2) = Result :-
-	( Item2 = pragma(PragmaType2) ->
+item_is_unchanged(pragma(_, PragmaType1), Item2) = Result :-
+	( Item2 = pragma(_, PragmaType2) ->
 		(
 			PragmaType1 = type_spec(Name, SpecName, Arity,
 				MaybePredOrFunc, MaybeModes, TypeSubst1,

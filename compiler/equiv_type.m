@@ -157,7 +157,7 @@ equiv_type__build_eqv_map([Item - _Context | Items0], !EqvMap, !EqvInstMap) :-
 		list__length(Args, Arity),
 		map__set(!.EqvMap, Name - Arity,
 			eqv_type_body(VarSet, Args, Body), !:EqvMap)
-	; Item = inst_defn(VarSet, Name, Args, eqv_inst(Body), _) ->
+	; Item = inst_defn(_, VarSet, Name, Args, eqv_inst(Body), _) ->
 		Items = Items0,
 		list__length(Args, Arity),
 		map__set(!.EqvInstMap, Name - Arity,
@@ -369,10 +369,10 @@ equiv_type__replace_in_item(ModuleName,
 		UsedTypeCtors, !Info).
 
 equiv_type__replace_in_item(ModuleName,
-		pragma(type_spec(PredName, B, Arity, D, E,
+		pragma(OldSyntax, type_spec(PredName, B, Arity, D, E,
 			Subst0, VarSet0, ItemIds0)),
 		_Context, EqvMap, _EqvInstMap,
-		pragma(type_spec(PredName, B, Arity, D, E,
+		pragma(OldSyntax, type_spec(PredName, B, Arity, D, E,
 			Subst, VarSet, ItemIds)),
 		[], !Info) :-
 	( ( !.Info = no ; PredName = qualified(ModuleName, _) ) ->

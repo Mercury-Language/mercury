@@ -348,13 +348,35 @@ add_item_decl_pass_1(
 		true
 	).
 
-add_item_decl_pass_1(inst_defn(VarSet, Name, Params, InstDefn, Cond), Context,
-		!Status, !Module, InvalidMode, !IO) :-
+add_item_decl_pass_1(inst_defn(OldSyntax, VarSet, Name, Params, InstDefn, Cond),
+		Context, !Status, !Module, InvalidMode, !IO) :-
+	( OldSyntax = yes ->
+		Warning = [words("Warning: the use of `=' in inst declarations"),
+			words("is deprecated."),
+			nl,
+			words("Please use `==' instead.")
+		],
+		report_warning(Context, 0, Warning, !IO)
+	;
+		true
+	),
 	module_add_inst_defn(VarSet, Name, Params, InstDefn, Cond, Context,
 		!.Status, !Module, InvalidMode, !IO).
 
-add_item_decl_pass_1(mode_defn(VarSet, Name, Params, ModeDefn, Cond), Context,
-		!Status, !Module, InvalidMode, !IO) :-
+add_item_decl_pass_1(mode_defn(OldSyntax, VarSet, Name, Params, ModeDefn, Cond),
+		Context, !Status, !Module, InvalidMode, !IO) :-
+	( OldSyntax = yes ->
+		Warning = [words("Warning: the syntax"),
+		fixed("`:- mode <Mode> :: <InitialInst> -> <FinalInst>'"),
+		words("is deprecated."),
+		nl,
+		words("Please use"),
+		fixed("`:- mode <Mode> == <InitialInst> >> <FinalInst>'"),
+		words("instead.")],
+		report_warning(Context, 0, Warning, !IO)
+	;
+		true
+	),
 	module_add_mode_defn(VarSet, Name, Params, ModeDefn,
 		Cond, Context, !.Status, !Module, InvalidMode, !IO).
 
@@ -383,7 +405,7 @@ add_item_decl_pass_1(pred_or_func_mode(VarSet, MaybePredOrFunc, PredName,
 			"no pred_or_func on mode declaration")
 	).
 
-add_item_decl_pass_1(pragma(_), _, !Status, !Module, no, !IO).
+add_item_decl_pass_1(pragma(_, _), _, !Status, !Module, no, !IO).
 
 add_item_decl_pass_1(promise(_, _, _, _), _, !Status, !Module, no, !IO).
 
@@ -685,7 +707,25 @@ add_item_decl_pass_2(type_defn(VarSet, Name, Args, TypeDefn, Cond),
 	module_add_type_defn(VarSet, Name, Args, TypeDefn,
 		Cond, Context, !.Status, !Module, !IO).
 
-add_item_decl_pass_2(pragma(Pragma), Context, !Status, !Module, !IO) :-
+add_item_decl_pass_2(pragma(OldSyntax, Pragma), Context,
+		!Status, !Module, !IO) :-
+	%
+	% Issue a warning if the pragma uses deprecated syntax.
+	%
+	( OldSyntax = yes ->
+		Warning = [words("Warning: the old syntax for pragma"),
+		words("declarations,"),
+		fixed("`:- pragma (foo, ...).',"),
+		words("is deprecated."),
+		nl,
+		words("Please use the form"),
+		fixed("`:- pramga foo(...).'"),
+		words("instead.")
+		],
+		report_warning(Context, 0, Warning, !IO)
+	;
+		true
+	),	
 	%
 	% check for invalid pragmas in the `interface' section
 	%
@@ -892,8 +932,8 @@ add_item_decl_pass_2(pred_or_func(_TypeVarSet, _InstVarSet, _ExistQVars,
 	).
 add_item_decl_pass_2(promise(_, _, _, _), _, !Status, !Module, !IO).
 add_item_decl_pass_2(clause(_, _, _, _, _), _, !Status, !Module, !IO).
-add_item_decl_pass_2(inst_defn(_, _, _, _, _), _, !Status, !Module, !IO).
-add_item_decl_pass_2(mode_defn(_, _, _, _, _), _, !Status, !Module, !IO).
+add_item_decl_pass_2(inst_defn(_, _, _, _, _, _), _, !Status, !Module, !IO).
+add_item_decl_pass_2(mode_defn(_, _, _, _, _, _), _, !Status, !Module, !IO).
 add_item_decl_pass_2(pred_or_func_mode(_, _, _, _, _, _, _), _,
 		!Status, !Module, !IO).
 add_item_decl_pass_2(nothing(_), _, !Status, !Module, !IO).
@@ -987,8 +1027,8 @@ add_item_clause(type_defn(_TVarSet, SymName, TypeParams, TypeDefn, _Cond),
 	;
 		true
 	).
-add_item_clause(inst_defn(_, _, _, _, _), !Status, _, !Module, !Info, !IO).
-add_item_clause(mode_defn(_, _, _, _, _), !Status, _, !Module, !Info, !IO).
+add_item_clause(inst_defn(_, _, _, _, _, _), !Status, _, !Module, !Info, !IO).
+add_item_clause(mode_defn(_, _, _, _, _, _), !Status, _, !Module, !Info, !IO).
 add_item_clause(pred_or_func(_, _, _, PredOrFunc, SymName, TypesAndModes,
 			_WithType, _WithInst, _, _, _, _),
 		!Status, Context, !Module, !Info, !IO) :-
@@ -1026,7 +1066,7 @@ add_item_clause(module_defn(_, Defn), !Status, _, !Module, !Info, !IO) :-
 	;
 		true
 	).
-add_item_clause(pragma(Pragma), !Status, Context, !Module, !Info, !IO) :-
+add_item_clause(pragma(_, Pragma), !Status, Context, !Module, !Info, !IO) :-
 	(
 		Pragma = foreign_proc(Attributes, Pred, PredOrFunc,
 			Vars, VarSet, PragmaImpl)
@@ -1182,7 +1222,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
 			VarSet,
 			Impl
 		),
-	ToGroundRepnItem = pragma(ToGroundRepnForeignProc),
+	ToGroundRepnItem = pragma(no, ToGroundRepnForeignProc),
 	add_item_clause(ToGroundRepnItem, !Status, Context, !Module, !Info,
 		!IO),
 
@@ -1201,7 +1241,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
 			VarSet,
 			Impl
 		),
-	ToAnyRepnItem = pragma(ToAnyRepnForeignProc),
+	ToAnyRepnItem = pragma(no, ToAnyRepnForeignProc),
 	add_item_clause(ToAnyRepnItem, !Status, Context, !Module, !Info, !IO),
 
 		% The `func(in(<i_ground>)) = out is det' mode.
@@ -1219,7 +1259,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
 			VarSet,
 			Impl
 		),
-	FromGroundRepnItem = pragma(FromGroundRepnForeignProc),
+	FromGroundRepnItem = pragma(no, FromGroundRepnForeignProc),
 	add_item_clause(FromGroundRepnItem, !Status, Context, !Module, !Info,
 		!IO),
 
@@ -1238,7 +1278,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
 			VarSet,
 			Impl
 		),
-	FromAnyRepnItem = pragma(FromAnyRepnForeignProc),
+	FromAnyRepnItem = pragma(no, FromAnyRepnForeignProc),
 	add_item_clause(FromAnyRepnItem, !Status, Context, !Module, !Info,
 		!IO).
 
