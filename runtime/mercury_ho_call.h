@@ -19,6 +19,7 @@
 #define	MERCURY_HO_CALL_H
 
 #include "mercury_stack_layout.h"
+#include "mercury_type_info.h"		/* for MR_PseudoTypeInfo */
 
 /*
 ** A closure layout structure identifies a procedure, and contains
