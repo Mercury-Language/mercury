@@ -164,6 +164,7 @@
 	debug_il_asm	:: bool,		% --debug-il-asm
 	verifiable_code	:: bool,		% --verifiable-code
 	il_byref_tailcalls :: bool,		% --il-byref-tailcalls
+	support_ms_clr	:: bool,		% --support-ms-clr
 		% class-wide attributes (all accumulate)
 	alloc_instrs	:: instr_tree,		% .cctor allocation instructions
 	init_instrs	:: instr_tree,		% .cctor init instructions
@@ -250,10 +251,13 @@ generate_il(MLDS, Version, ILAsm, ForeignLangs, IO0, IO) :-
 	globals__io_lookup_bool_option(sign_assembly, SignAssembly,
 			IO4, IO5),
 	globals__io_lookup_bool_option(separate_assemblies, SeparateAssemblies,
-			IO5, IO),
+			IO5, IO6),
+	globals__io_lookup_bool_option(support_ms_clr, MsCLR,
+			IO6, IO),
 
 	IlInfo0 = il_info_init(ModuleName, AssemblyName, Imports,
-			ILDataRep, DebugIlAsm, VerifiableCode, ByRefTailCalls),
+			ILDataRep, DebugIlAsm, VerifiableCode, ByRefTailCalls,
+			MsCLR),
 
 		% Generate code for all the methods.
 	list__map_foldl(mlds_defn_to_ilasm_decl, Defns, ILDecls,
@@ -1558,6 +1562,7 @@ statement_to_il(statement(call(Sig, Function, _This, Args, Returns, IsTail),
 		Context), Instrs) -->
 	VerifiableCode =^ verifiable_code,
 	ByRefTailCalls =^ il_byref_tailcalls,
+	MsCLR =^ support_ms_clr,
 	DataRep =^ il_data_rep,
 	{ TypeParams = mlds_signature_to_ilds_type_params(DataRep, Sig) },
 	{ ReturnParam = mlds_signature_to_il_return_param(DataRep, Sig) },
@@ -1580,10 +1585,20 @@ statement_to_il(statement(call(Sig, Function, _This, Args, Returns, IsTail),
 			),
 			{ ByRefTailCalls = no }
 		),
-		% We must not output the "tail." prefix unless the
-		% callee return type is compatible with the caller
-		% return type
-		{ ReturnParam = CallerReturnParam }
+		% if --verifiable-code is enabled, then we must not output
+		% the "tail." prefix unless the callee return type is
+		% compatible with the caller return type
+		\+ (
+			{ VerifiableCode = yes },
+			{ ReturnParam \= CallerReturnParam }
+		),
+		% In the MS CLR implementation the callee and caller return
+		% type of a tail call must be compatible even when we are
+		% using unverifiable code.
+		\+ (
+			{ MsCLR = yes },
+			{ ReturnParam \= CallerReturnParam }
+		)
 	->
 		{ TailCallInstrs = [tailcall] },
 		% For calls marked with "tail.", we need a `ret'
@@ -4138,12 +4153,12 @@ runtime_init_method_name = id("init_runtime").
 %
 
 :- func il_info_init(mlds_module_name, ilds__id, mlds__imports,
-		il_data_rep, bool, bool, bool) = il_info.
+		il_data_rep, bool, bool, bool, bool) = il_info.
 
 il_info_init(ModuleName, AssemblyName, Imports, ILDataRep,
-		DebugIlAsm, VerifiableCode, ByRefTailCalls) =
+		DebugIlAsm, VerifiableCode, ByRefTailCalls, MsCLR) =
 	il_info(ModuleName, AssemblyName, Imports, set__init, ILDataRep,
-		DebugIlAsm, VerifiableCode, ByRefTailCalls,
+		DebugIlAsm, VerifiableCode, ByRefTailCalls, MsCLR,
 		empty, empty, [], no, set__init, set__init,
 		map__init, empty, counter__init(1), counter__init(1), no,
 		Args, MethodName, DefaultSignature) :-

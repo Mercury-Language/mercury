@@ -4412,6 +4412,17 @@ Generate IL assembler code in @file{@var{module}.il}, but do not invoke
 ilasm to produce IL object code.
 
 @sp 1
+@item --dotnet-library-version @var{version-number}
+@findex --dotnet-library-version
+The version number for the mscorlib assembly distributed with the
+Microsoft .NET SDK.
+
+@sp 1
+@item --no-support-ms-clr
+@findex --no-support-ms-clr
+Don't use Microsoft CLR specific workarounds in the generated code.
+
+@sp 1
 @item @code{--compile-to-c}
 @itemx @code{--compile-to-C}
 @findex --compile-to-c
@@ -5631,12 +5642,6 @@ Set the classpath for the Java compiler.
 @cindex File extensions
 Specify an extension for Java object (bytecode) files.  By default this
 is @samp{.class}. 
-
-@sp 1
-@item --dotnet-library-version @var{version-number}
-@findex --dotnet-library-version
-The version number for the mscorlib assembly distributed with the
-Microsoft .NET SDK.
 
 @end table
 

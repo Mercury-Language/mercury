@@ -475,6 +475,7 @@
 			
 			% IL
 		;	dotnet_library_version
+		;	support_ms_clr
 
 	% Link options
 		;	output_file_name
@@ -948,7 +949,8 @@ option_defaults_2(target_code_compilation_option, [
 % IL
 		% We default to the version of the library that came
 		% with Beta2.
-	dotnet_library_version	-	string("1.0.3300.0")
+	dotnet_library_version	-	string("1.0.3300.0"),
+	support_ms_clr		-	bool(yes)
 ]).
 option_defaults_2(link_option, [
 		% Link Options
@@ -1478,6 +1480,7 @@ long_option("java-classpath",   	java_classpath).
 long_option("java-object-file-extension", java_object_file_extension).
 
 long_option("dotnet-library-version",	dotnet_library_version).
+long_option("support-ms-clr",		support_ms_clr).
 
 % link options
 long_option("output-file",		output_file_name).
@@ -2307,6 +2310,13 @@ options_help_compilation_model -->
 		"\tAn abbreviation for `--target il --target-code-only'.",
 		"\tGenerate IL code in `<module>.il', but do not generate",
 		"\tobject code.",
+
+		"--dotnet-library-version <version-number>",
+		"\tThe version number for the mscorlib assembly distributed",
+		"\twith the Microsoft .NET SDK.",
+
+		"--no-support-ms-clr",
+		"\tDon't use MS CLR specific workarounds in the generated code.",
 		
 		"--java",
 		"\tAn abbreviation for `--target java'.",
@@ -3089,11 +3099,7 @@ options_help_target_code_compilation -->
 
 		"--java-object-file-extension",
 		"\tSpecify an extension for Java object (bytecode) files",
-		"\tBy default this is `.class'.",
-
-		"--dotnet-library-version <version-number>",
-		"\tThe version number for the mscorlib assembly distributed",
-		"\twith the Microsoft .NET SDK."
+		"\tBy default this is `.class'."
 	]).
 
 :- pred options_help_link(io__state::di, io__state::uo) is det.
