@@ -24,28 +24,22 @@
 ** thus detecting area overflow.
 */
 
-/* the following should be derived by autoconf */
-#ifdef	__svr4__
-#define	HAVE_MPROTECT
-#define	HAVE_SIGINFO
-#define	HAVE_SYSCONF
-#define	HAVE_MEMALIGN
-#endif
-
 #ifdef	HAVE_MPROTECT
-#include <sys/types.h>
 #include <sys/mman.h>
 #endif
 
-#ifdef	HAVE_SIGINFO
 #include <signal.h>
+
+#ifdef	HAVE_SIGINFO
 #include <siginfo.h>
-#include <ucontext.h>
 static	void	complex_bushandler(int, siginfo_t *, void *);
 static	void	complex_segvhandler(int, siginfo_t *, void *);
 #else
-#include <signal.h>
 static	void	simple_sighandler(int);
+#endif
+
+#ifdef	HAVE_UCONTEXT
+#include <ucontext.h>
 #endif
 
 #ifdef	HAVE_SYSCONF
@@ -58,9 +52,12 @@ extern	int	getpagesize(void);
 #define	memalign(a,s)	malloc(s)
 #endif
 
+#include "conf.h"
+
 static	int	roundup(int, int);
-static	void	do_mprotect(void);
-static	void	do_signal(void);
+static	void	setup_mprotect(void);
+static	bool	try_munprotect(void *);
+static	void	setup_signal(void);
 
 Word	unreal_reg_0;
 Word	unreal_reg_1;
@@ -119,9 +116,13 @@ Word	*heapend;
 Word	*detstackend;
 Word	*nondstackend;
 
-char	*heap_zone;
-char	*detstack_zone;
-char	*nondstack_zone;
+caddr_t	heap_zone;
+caddr_t	detstack_zone;
+caddr_t	nondstack_zone;
+
+int	heap_zone_left = 0;
+int	detstack_zone_left = 0;
+int	nondstack_zone_left = 0;
 
 static	int	unit;
 static	int	page_size;
@@ -212,6 +213,15 @@ void init_memory(void)
 
 	nondstackmin[PREDNM] = (Word) "bottom";
 
+	if (arena + total_size <= (char *) nondstackend)
+	{
+		printf("allocated too much memory\n");
+		exit(1);
+	}
+
+	setup_mprotect();
+	setup_signal();
+
 	if (memdebug)
 	{
 
@@ -221,62 +231,59 @@ void init_memory(void)
 		printf("unit         = %d (%x)\n", unit, unit);
 
 		printf("\n");
-		printf("saved_regs   = %p (%d)\n", saved_regs,
+		printf("saved_regs     = %p (%d)\n", saved_regs,
 			(int) saved_regs & (unit-1));
-		printf("num_uses     = %p (%d)\n", num_uses,
+		printf("num_uses       = %p (%d)\n", num_uses,
 			(int) num_uses & (unit-1));
 
 		printf("\n");
-		printf("heap         = %p (%d)\n", heap,
+		printf("heap           = %p (%d)\n", heap,
 			(int) heap & (unit-1));
-		printf("heapmin      = %p (%d)\n", heapmin,
+		printf("heapmin        = %p (%d)\n", heapmin,
 			(int) heapmin & (unit-1));
-		printf("heapend      = %p (%d)\n", heapend,
+		printf("heapend        = %p (%d)\n", heapend,
 			(int) heapend & (unit-1));
+		printf("heap_zone      = %p (%d)\n", heap_zone,
+			(int) heap_zone & (unit-1));
 
 		printf("\n");
-		printf("detstack     = %p (%d)\n", detstack,
+		printf("detstack       = %p (%d)\n", detstack,
 			(int) detstack & (unit-1));
-		printf("detstackmin  = %p (%d)\n", detstackmin,
+		printf("detstackmin    = %p (%d)\n", detstackmin,
 			(int) detstackmin & (unit-1));
-		printf("detstackend  = %p (%d)\n", detstackend,
+		printf("detstackend    = %p (%d)\n", detstackend,
 			(int) detstackend & (unit-1));
+		printf("detstack_zone  = %p (%d)\n", detstack_zone,
+			(int) detstack_zone & (unit-1));
 
 		printf("\n");
-		printf("nondstack    = %p (%d)\n", nondstack,
+		printf("nondstack      = %p (%d)\n", nondstack,
 			(int) nondstack & (unit-1));
-		printf("nondstackmin = %p (%d)\n", nondstackmin,
+		printf("nondstackmin   = %p (%d)\n", nondstackmin,
 			(int) nondstackmin & (unit-1));
-		printf("nondstackend = %p (%d)\n", nondstackend,
+		printf("nondstackend   = %p (%d)\n", nondstackend,
 			(int) nondstackend & (unit-1));
+		printf("nondstack_zone = %p (%d)\n", detstack_zone,
+			(int) nondstack_zone & (unit-1));
 
 		printf("\n");
-		printf("arena start  = %p (%d)\n", arena,
+		printf("arena start    = %p (%d)\n", arena,
 			(int) arena & (unit-1));
-		printf("arena end    = %p (%d)\n", arena+total_size,
+		printf("arena end      = %p (%d)\n", arena+total_size,
 			(int) (arena+total_size) & (unit-1));
 
 		printf("\n");
-		printf("heap         = %d (%x)\n",
+		printf("heap           = %d (%x)\n",
 			(char *) heapend - (char *) heapmin,
 			(char *) heapend - (char *) heapmin);
-		printf("detstack     = %d (%x)\n",
+		printf("detstack       = %d (%x)\n",
 			(char *) detstackend - (char *) detstackmin,
 			(char *) detstackend - (char *) detstackmin);
-		printf("nondstack    = %d (%x)\n",
+		printf("nondstack      = %d (%x)\n",
 			(char *) nondstackend - (char *) nondstackmin,
 			(char *) nondstackend - (char *) nondstackmin);
-		printf("arena size   = %d (%x)\n", total_size, total_size);
+		printf("arena size     = %d (%x)\n", total_size, total_size);
 	}
-
-	if (arena + total_size <= (char *) nondstackend)
-	{
-		printf("allocated too much memory\n");
-		exit(0);
-	}
-
-	do_mprotect();
-	do_signal();
 }
 
 static int roundup(int value, int align)
@@ -303,23 +310,26 @@ static int roundup(int value, int align)
 ** PROT_NONE    page can not be accessed
 */
 
-void do_mprotect(void)
+void setup_mprotect(void)
 {
-	heap_zone = (char *) (heapend) - heap_zone_size;
+	heap_zone_left = heap_zone_size;
+	heap_zone = (caddr_t) (heapend) - heap_zone_size;
 	if (mprotect(heap_zone, heap_zone_size, PROT_NONE) != 0)
 	{
 		perror("cannot protect head redzone");
 		exit(1);
 	}
 
-	detstack_zone = (char *) (detstackend) - detstack_zone_size;
+	detstack_zone_left = detstack_zone_size;
+	detstack_zone = (caddr_t) (detstackend) - detstack_zone_size;
 	if (mprotect(detstack_zone, detstack_zone_size, PROT_NONE) != 0)
 	{
 		perror("cannot protect detstack redzone");
 		exit(1);
 	}
 
-	nondstack_zone = (char *) (nondstackend) - nondstack_zone_size;
+	nondstack_zone_left = nondstack_zone_size;
+	nondstack_zone = (caddr_t) (nondstackend) - nondstack_zone_size;
 	if (mprotect(nondstack_zone, nondstack_zone_size, PROT_NONE) != 0)
 	{
 		perror("cannot protect nondstack redzone");
@@ -327,24 +337,112 @@ void do_mprotect(void)
 	}
 }
 
+bool try_munprotect(void *addr)
+{
+	caddr_t	fault_addr;
+	caddr_t	new_zone;
+
+	fault_addr = (caddr_t) addr;
+
+	if (heap_zone != NULL && heap_zone <= fault_addr
+	&& fault_addr <= heap_zone + heap_zone_size)
+	{
+		printf("address is in heap red zone\n");
+		new_zone = (caddr_t) roundup((int) fault_addr+4, unit);
+		if (new_zone <= heap_zone + heap_zone_left)
+		{
+			printf("trying to unprotect from %p to %p\n",
+				heap_zone, new_zone);
+			if (mprotect(heap_zone, new_zone-heap_zone, PROT_READ|PROT_WRITE) != 0)
+			{
+				perror("cannot unprotect heap\n");
+				exit(1);
+			}
+
+			heap_zone_left -= new_zone-heap_zone;
+			heap_zone = new_zone;
+			printf("successful, heap_zone now %p\n", heap_zone);
+
+			/* printf("value at fault addr %p is %d\n", addr,
+				* ((Word *) addr)); */
+			return TRUE;
+		}
+	}
+	or (detstack_zone != NULL && detstack_zone <= fault_addr
+	&& fault_addr <= detstack_zone + detstack_zone_size)
+	{
+		printf("address is in detstack red zone\n");
+		new_zone = (caddr_t) roundup((int) fault_addr+4, unit);
+		if (new_zone <= detstack_zone + detstack_zone_left)
+		{
+			printf("trying to unprotect from %p to %p\n",
+				detstack_zone, new_zone);
+			if (mprotect(detstack_zone, new_zone-detstack_zone, PROT_READ|PROT_WRITE) != 0)
+			{
+				perror("cannot unprotect detstack\n");
+				exit(1);
+			}
+
+			detstack_zone_left -= new_zone-detstack_zone;
+			detstack_zone = new_zone;
+			printf("successful, detstack_zone now %p\n", detstack_zone);
+
+			/* printf("value at fault addr %p is %d\n", addr,
+				* ((Word *) addr)); */
+			return TRUE;
+		}
+	}
+	or (nondstack_zone != NULL && nondstack_zone <= fault_addr
+	&& fault_addr <= nondstack_zone + nondstack_zone_size)
+	{
+		printf("address is in nondstack red zone\n");
+		new_zone = (caddr_t) roundup((int) fault_addr+4, unit);
+		if (new_zone <= nondstack_zone + nondstack_zone_left)
+		{
+			printf("trying to unprotect from %p to %p\n",
+				nondstack_zone, new_zone);
+			if (mprotect(nondstack_zone, new_zone-nondstack_zone, PROT_READ|PROT_WRITE) != 0)
+			{
+				perror("cannot unprotect nondstack\n");
+				exit(1);
+			}
+
+			nondstack_zone_left -= new_zone-nondstack_zone;
+			nondstack_zone = new_zone;
+			printf("successful, nondstack_zone now %p\n", nondstack_zone);
+
+			/* printf("value at fault addr %p is %d\n", addr,
+				* ((Word *) addr)); */
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
 #else
 
-void do_mprotect(void)
+void setup_mprotect(void)
 {
 	heap_zone      = NULL;
 	detstack_zone  = NULL;
 	nondstack_zone = NULL;
 }
 
+bool try_munprotect(void *addr)
+{
+	return FALSE;
+}
+
 #endif
 
 #ifdef	HAVE_SIGINFO
 
-void do_signal(void)
+void setup_signal(void)
 {
 	struct sigaction	act;
 
-	act.sa_flags = SA_SIGINFO;
+	act.sa_flags = SA_SIGINFO | SA_RESTART;
 	if (sigemptyset(&act.sa_mask) != 0)
 	{
 		perror("cannot set clear signal mask");
@@ -417,29 +515,25 @@ static void complex_segvhandler(int sig, siginfo_t *info, void *context)
 
 		}
 
+		printf("PC at signal: %d (%x)\n",
+			((ucontext_t *) context)->uc_mcontext.gregs[PC_INDEX],
+			((ucontext_t *) context)->uc_mcontext.gregs[PC_INDEX]);
 		printf("address involved: %p\n", info->si_addr);
 
-		if (heap_zone != NULL && heap_zone <= info->si_addr
-		&& info->si_addr <= heap_zone + heap_zone_size)
-			printf("address is in heap red zone\n");
-		or (detstack_zone != NULL && detstack_zone <= info->si_addr
-		&& info->si_addr <= detstack_zone + detstack_zone_size)
-			printf("address is in detstack red zone\n");
-		or (nondstack_zone != NULL && nondstack_zone <= info->si_addr
-		&& info->si_addr <= nondstack_zone + nondstack_zone_size)
-			printf("address is in nondstack red zone\n");
-
-		printf("PC at the time: %d (%x)\n",
-			((ucontext_t *) context)->uc_mcontext.gregs[REG_PC],
-			((ucontext_t *) context)->uc_mcontext.gregs[REG_PC]);
+		if (try_munprotect(info->si_addr))
+		{
+			printf("returning from signal handler\n\n");
+			return;
+		}
 	}
 
+	printf("exiting from signal handler\n");
 	exit(1);
 }
 
 #else
 
-void do_signal(void)
+void setup_signal(void)
 {
 	if (signal(SIGBUS, simple_sighandler) == SIG_ERR)
 	{

@@ -1,0 +1,51 @@
+/*
+**	Various configuration parameters. Their meanings are:
+**
+**	HAVE_MEMALIGN		the machine has the memalign libcall.
+**	HAVE_SYSCONF		the machine has the sysconf syscall.
+**	HAVE_MPROTECT		the machine has the mprotect syscall.
+**	HAVE_SIGINFO		sighandlers are given siginfo arguments.
+**	HAVE_UCONTEXT		sighandlers are given ucontext arguments
+**				and we need ucontext.h to get access.
+**	PC_INDEX		index of PC in ucontexts.
+**
+**	At the moment, the answers are valid only for
+**
+**	Suns running SunOS 4.x
+**	Suns running SunOS 5.x
+**	SGIs running IRIX 4.x
+**	SGIs running IRIX 5.x
+*/
+
+#if	defined(__sparc) && !defined(__svr4__)
+#define	KNOWN
+#endif
+
+#if	defined(__sparc) && defined(__svr4__)
+#define	HAVE_MEMALIGN
+#define	HAVE_MPROTECT
+#define	HAVE_SIGINFO
+#define	HAVE_SYSCONF
+#define	HAVE_UCONTEXT
+#define	PC_INDEX	REG_PC
+#define	KNOWN
+#endif
+
+#if	defined(__sgi) && !defined(__SYSTYPE_SVR4__)
+#define	KNOWN
+#endif
+
+#if	defined(__sgi) && defined(__SYSTYPE_SVR4__)
+#define	HAVE_MEMALIGN
+#define	HAVE_MPROTECT
+#define	HAVE_SIGINFO
+#define	HAVE_SYSCONF
+#define	HAVE_UCONTEXT
+#define	PC_INDEX	CTX_EPC
+#define	sa_sigaction	sa_handler
+#define	KNOWN
+#endif
+
+#ifndef	KNOWN
+#error	"machine type with unknown capabilities"
+#endif

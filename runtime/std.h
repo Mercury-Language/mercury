@@ -16,11 +16,6 @@
 #define	bool		char
 #endif
 
-#define	ulong		unsigned long
-#define	uint		unsigned int
-#define	ushort		unsigned short
-#define	uchar		unsigned char
-
 #define	IGNORE		(void)
 
 #define	max(a, b)	((a) > (b) ? (a) : (b))

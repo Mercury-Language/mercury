@@ -3,9 +3,11 @@
 /* further hacked for Solaris 2 by zs */
 /*---------------------------------------------------------------------------*/
 
-#include "timing.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include "conf.h"
+#include "timing.h"
 
 /* Copyright (C) 1987, 1988, 1989, 1992, 1993 Free Software Foundation, Inc.
 
@@ -25,7 +27,7 @@ You should have received a copy of the GNU General Public License
 along with GNU CC; see the file COPYING.  If not, write to
 the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-#ifdef __svr4__
+#ifdef HAVE_SYSCONF
 #include <sys/times.h>
 #include <limits.h>
 #else
@@ -49,7 +51,7 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 int get_run_time (void)
 {
-#ifdef __svr4__
+#ifdef HAVE_SYSCONF
   struct tms tms;
 #else
 #ifdef USG
@@ -69,9 +71,9 @@ int get_run_time (void)
 #endif
 #endif
 
-#ifdef __svr4__
+#ifdef HAVE_SYSCONF
   times (&tms);
-  return (tms.tms_utime /* + tms.tms_stime */) * (1000 / _sysconf(3));
+  return (tms.tms_utime /* + tms.tms_stime */) * (1000 / sysconf(3));
 #else
 #ifdef USG
   times (&tms);

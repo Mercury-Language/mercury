@@ -9,7 +9,9 @@
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<assert.h>
+#include	<sys/types.h>
 #include	"std.h"
+#include	"conf.h"
 
 /* GENERAL DEFINITIONS */
 

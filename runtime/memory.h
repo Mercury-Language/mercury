@@ -65,9 +65,13 @@ extern	Word	*detstackend;
 extern	Word	*nondstackend;
 
 /* beginning of redzones */
-extern	char	*heap_zone;
-extern	char	*detstack_zone;
-extern	char	*nondstack_zone;
+extern	caddr_t	heap_zone;
+extern	caddr_t	detstack_zone;
+extern	caddr_t	nondstack_zone;
+
+extern	int	heap_zone_left;
+extern	int	detstack_zone_left;
+extern	int	nondstack_zone_left;
 
 extern	void	init_memory(void);
 
