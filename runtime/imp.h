@@ -26,15 +26,13 @@
 
 #include	"conf.h"
 
+/* Note that we require sizeof(Word) == sizeof(Integer) == sizeof(Code*) */
+/* this is assured by the autoconfiguration script */
+
 typedef	unsigned WORD_TYPE	Word;
 typedef WORD_TYPE		Integer;
 typedef unsigned WORD_TYPE	Unsigned;
 typedef void			Code;	/* code addresses are `void *' */
-
-/* Note that we require sizeof(Word) == sizeof(Integer) == sizeof(Code*) */
-/* this is assured by the autoconfiguration script */
-
-#define	WORDSIZE	sizeof(Word)
 
 #include	"regs.h"	/* must come before system headers */
 
@@ -46,12 +44,15 @@ typedef void			Code;	/* code addresses are `void *' */
 #include	<sys/types.h>
 
 #include	"std.h"
-#include	"tags.h"
-#include	"goto.h"
-#include	"engine.h"
 
 /* continuation function type, for --high-level-C option */
 typedef void (*Cont) (void);
+
+/*
+** semidet predicates indicate success or failure by leaving nonzero or zero
+** respectively in register r1
+*/
+#define SUCCESS_INDICATOR r1
 
 /* DEFINITIONS FOR PROFILING */
 
@@ -148,11 +149,6 @@ typedef void (*Cont) (void);
 			GOTO(succip);				\
 		} while (0)
 
-#include	"heap.h"
-#include	"stacks.h"
-#include	"overflow.h"
-#include	"debug.h"
-
 /* STRING HANDLING */
 
 typedef char Char;	/* we may eventually move to using wchar_t */
@@ -162,24 +158,29 @@ typedef Char *String;
 #define string_const(string, len) ((Word)string)
 #define string_equal(s1,s2) (strcmp((char*)(s1),(char*)(s2))==0)
 
-#ifdef __GNUC__
-
 /*
 ** Note that hash_string is also defined in compiler/string.m.
 ** The two definitions here and the definition in string.m
 ** must be kept equivalent.
 */
 
-#define hash_string(s)					\
-	({						\
+#define do_hash_string(hash,s)				\
+	{						\
 	   int len = 0;					\
-	   int hash = 0;				\
-	   while(((char *)s)[len]) {			\
+	   hash = 0;					\
+	   while(((char *)(s))[len]) {			\
 		hash ^= (hash << 5);			\
-		hash ^= ((char *)s)[len];		\
+		hash ^= ((char *)(s))[len];		\
 		len++;					\
 	   }						\
 	   hash ^= len;					\
+	}
+
+#ifdef __GNUC__
+
+#define hash_string(s)					\
+	({ int hash;					\
+	   do_hash_string(hash,s);			\
 	   hash;					\
 	})
 
@@ -191,14 +192,8 @@ typedef Char *String;
 extern	int	hash_string(const char *);
 
 #define HASH_STRING_FUNC_BODY				\
-	   int len = 0;					\
-	   int hash = 0;				\
-	   while(((char *)s)[len]) {			\
-		hash ^= (hash << 5);			\
-		hash ^= ((char *)s)[len];		\
-		len++;					\
-	   }						\
-	   hash ^= len;					\
+	   int hash;					\
+	   do_hash_string(hash, s);			\
 	   return hash;
 
 #endif
@@ -263,12 +258,21 @@ union FloatWord {
 
 #else
 
-static Word float_to_word(Float f) { union FloatWord tmp = f; return f.w; }
-static Float word_to_float(Word w) { union FloatWord tmp = w; return w.f; }
+static Word float_to_word(Float f) { union FloatWord tmp = f; return tmp.w; }
+static Float word_to_float(Word w) { union FloatWord tmp = w; return tmp.f; }
 
 #endif
 
 #endif
+
+#include	"tags.h"
+#include	"goto.h"
+#include	"engine.h"
+
+#include	"heap.h"
+#include	"stacks.h"
+#include	"overflow.h"
+#include	"debug.h"
 
 #include	"aux.h"
 #include	"label.h"

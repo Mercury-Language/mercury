@@ -7,6 +7,8 @@
 #ifndef	AUX_H
 #define	AUX_H
 
+#ifndef SPEED
+
 extern	void	mkframe_msg(void);
 extern	void	modframe_msg(void);
 extern	void	succeed_msg(void);
@@ -23,8 +25,16 @@ extern	void	incr_sp_msg(Word val, const Word *addr);
 extern	void	decr_sp_msg(Word val, const Word *addr);
 extern	void	push_msg(Word val, const Word *addr);
 extern	void	pop_msg(Word val, const Word *addr);
+#endif
+
+#if !defined(SPEED) || defined(DEBUG_GOTOS)
+
 extern	void	goto_msg(/* const */ Code *addr);
 extern	void	reg_msg(void);
+
+#endif
+
+#ifndef SPEED
 
 extern	void	printint(Word n);
 extern	void	printstring(const char *s);
@@ -38,7 +48,11 @@ extern	void	printlabel(/* const */ Code *w);
 extern	void	printframe(const char *);
 extern	void	printregs(const char *msg);
 
+#endif
+
+#if 0 /* this used to be used for some hand-coded examples */
 extern	Word	do_mklist(int start, int len);
+#endif
 
 #if __GNUC__
 	#define NO_RETURN __attribute__((noreturn))

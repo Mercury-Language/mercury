@@ -11,7 +11,7 @@
 
 /* DEFINITIONS FOR WORD LAYOUT */
 
-#define	WORDBITS	(CHAR_BIT * WORDSIZE)
+#define	WORDBITS	(CHAR_BIT * sizeof(Word))
 #ifndef TAGBITS
 #define	TAGBITS		2
 #endif

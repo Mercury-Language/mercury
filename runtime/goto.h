@@ -47,6 +47,7 @@
 	   can result in incorrect code. */
   #define BEGIN_MODULE(module_name)	\
 	static void module_name(void) {	\
+		__asm__("" : : "g"(module_name)); \
 		__asm__("" : : "g"(&& paste(module_name, _dummy_label))); \
 		paste(module_name,_dummy_label): \
 		{

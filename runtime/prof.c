@@ -89,7 +89,9 @@ typedef struct s_prof_time_node
 ** Private global variables
 */
 static	FILE	 	*declfptr = NULL;
+#ifdef PROFILE_CALLS
 static	prof_call_node	*addr_pair_table[CALL_TABLE_SIZE] = {NULL};
+#endif
 #ifdef PROFILE_TIME
 static	prof_time_node	*addr_table[TIME_TABLE_SIZE] = {NULL};
 #endif
@@ -124,6 +126,8 @@ char *strerror(int errnum) {
 
 /* utility routines for opening and closing files */
 
+#if defined(PROFILE_TIME) || defined(PROFILE_CALLS)
+
 static FILE*
 checked_fopen(const char *filename, const char *message, const char *mode)
 {
@@ -149,6 +153,8 @@ static void checked_fclose(FILE* file, const char *filename)
 		exit(1);
 	}
 }
+
+#endif /* defined(PROFILE_TIME) || defined(PROFILE_CALLS) */
 
 #ifdef	PROFILE_TIME
 
@@ -212,6 +218,8 @@ void prof_init_time_profile()
 
 /* ======================================================================== */
 
+#ifdef PROFILE_CALLS
+
 /*
 **	prof_call_profile:
 **		Saves the callee, caller pair into a hash table. If the
@@ -241,6 +249,8 @@ void prof_call_profile(Code *Callee, Code *Caller)
         new_node->next = NULL;
         *node_addr = new_node;
 }
+
+#endif /* PROFILE_CALLS */
 
 /* ======================================================================== */
 
@@ -306,6 +316,8 @@ void prof_turn_off_time_profiling()
 
 /* ======================================================================== */
 
+#ifdef PROFILE_CALLS
+
 /*
 **	prof_output_addr_pair_table :
 **		Writes the hash table to a file called "Prof.CallPair".
@@ -330,7 +342,11 @@ void prof_output_addr_pair_table(void)
 	checked_fclose(fptr, "Prof.CallPair");
 }
 
+#endif /* PROFILE_CALLS */
+
 /* ======================================================================== */
+
+#ifdef PROFILE_CALLS
 
 /*
 **	prof_output_addr_decls:
@@ -346,6 +362,8 @@ void prof_output_addr_decls(const char *name, const Code *address)
 	}
 	fprintf(declfptr, "%p\t%s\n", address, name);
 }
+
+#endif /* PROFILE_CALLS */
 
 /* ======================================================================== */
 

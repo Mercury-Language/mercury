@@ -130,6 +130,8 @@
 
 #endif
 
+#if 0
+
 /* DEFINITIONS TO SUPPORT MANUAL DEBUGGING */
 
 #ifdef __GNUC__
@@ -148,4 +150,6 @@
 	** (which would have been tricky to do in a portable macro)
 	*/
 #define mklist(start,len) do_mklist(start,len)
+#endif
+
 #endif

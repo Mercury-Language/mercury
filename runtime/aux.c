@@ -14,6 +14,8 @@ static void print_ordinary_regs(void);
 
 /* debugging messages */
 
+#ifndef SPEED
+
 void mkframe_msg(void)
 {
 	restore_transient_registers();
@@ -155,6 +157,10 @@ void pop_msg(Word val, const Word *addr)
 	printdetstack(addr);
 }
 
+#endif /* !defined(SPEED) */
+
+#if !defined(SPEED) || defined(DEBUG_GOTOS)
+
 void goto_msg(/* const */ Code *addr)
 {
 	printf("\ngoto ");
@@ -178,7 +184,11 @@ void reg_msg(void)
 	printf("\n");
 }
 
+#endif /* !defined(SPEED) || defined(DEBUG_GOTOS) */
+
 /*--------------------------------------------------------------------*/
+
+#ifndef SPEED
 
 /* debugging printing tools */
 
@@ -296,6 +306,10 @@ static void print_ordinary_regs(void)
 	}
 }
 
+#endif
+
+#if 0
+
 Word do_mklist(int start, int len)
 {
 	Word	curr;
@@ -310,6 +324,8 @@ Word do_mklist(int start, int len)
 	save_transient_registers();
 	return curr;
 }
+
+#endif
 
 void *newmem(size_t n)
 {
