@@ -44,7 +44,6 @@ into another language, under the above conditions for modified versions.
 @titlepage
 @c @finalout
 @title The Mercury User's Guide
-@subtitle BETA TEST version, July 1995
 @author Fergus Henderson
 @author Thomas Conway
 @author Zoltan Somogyi
@@ -69,7 +68,7 @@ into another language, under the above conditions for modified versions.
 
 @ifinfo
 @node Top,,, (mercury)
-@top The Mercury User's Guide - BETA TEST version, July 1995
+@top The Mercury User's Guide
 
 This guide describes the compilation environment of Mercury ---
 how to build and debug Mercury programs.

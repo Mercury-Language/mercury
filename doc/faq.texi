@@ -53,7 +53,6 @@ into another language, under the above conditions for modified versions.
 
 @titlepage
 @title The Mercury Frequently Asked Questions list
-@subtitle BETA TEST version, July 1995
 @author Fergus Henderson
 @author Thomas Conway
 @author Zoltan Somogyi

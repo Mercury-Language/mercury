@@ -44,7 +44,6 @@ into another language, under the above conditions for modified versions.
 @titlepage
 @finalout
 @title The Mercury Library Reference Manual
-@subtitle BETA TEST version - July, 1995
 @c @author Fergus Henderson
 @c @author Thomas Conway
 @c @author Zoltan Somogyi

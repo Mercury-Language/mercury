@@ -71,7 +71,6 @@ into another language, under the above conditions for modified versions.
 @ifinfo
 @node Top,,, (mercury)
 @top
-@c @chapter Mercury Language Reference Manual - BETA TEST version, July 1995
 @end ifinfo
 @menu
 * Introduction::      A brief introduction to Mercury
@@ -2064,7 +2063,7 @@ Mercury implementations must be sound:
 the answers they compute must be true in every model of the theory.
 
 Execution of a legal Mercury program begins with the predicate @samp{main/2}.
-Only one solution is sought, even if @samp{main/2} is declared as @code{multi}.
+Only one solution of main/2 is sought.
 
 @node Pragmas
 @chapter Pragmas
