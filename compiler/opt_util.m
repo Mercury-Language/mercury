@@ -309,7 +309,7 @@
 
 :- implementation.
 
-:- import_module exprn_aux, llds_out.
+:- import_module exprn_aux, llds_out, hlds_pred.
 :- import_module int, string, set, map, require.
 
 opt_util__get_prologue(Instrs0, ProcLabel, LabelInstr, Comments, Instrs) :-
@@ -1252,14 +1252,16 @@ opt_util__format_label(exported(ProcLabel), Str) :-
 :- pred opt_util__format_proclabel(proc_label, string).
 :- mode opt_util__format_proclabel(in, out) is det.
 
-opt_util__format_proclabel(proc(_Module, _PredOrFunc, _, Name, Arity, Mode),
+opt_util__format_proclabel(proc(_Module, _PredOrFunc, _, Name, Arity, ProcId),
 		Str) :-
 	string__int_to_string(Arity, ArityStr),
+	proc_id_to_int(ProcId, Mode),
 	string__int_to_string(Mode, ModeStr),
 	string__append_list([Name, "/", ArityStr, " mode ", ModeStr], Str).
-opt_util__format_proclabel(special_proc(_Module, Pred, _, Type, Arity, Mode),
+opt_util__format_proclabel(special_proc(_Module, Pred, _, Type, Arity, ProcId),
 		Str) :-
 	string__int_to_string(Arity, ArityStr),
+	proc_id_to_int(ProcId, Mode),
 	string__int_to_string(Mode, ModeStr),
 	string__append_list(
 		[Pred, "_", Type, "/", ArityStr, " mode ", ModeStr], Str).

@@ -562,7 +562,10 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, InlinedProcs,
 	\+ pred_info_is_imported(PredInfo),
 		% this next line catches the case of locally defined
 		% unification predicates for imported types.
-	\+ (pred_info_is_pseudo_imported(PredInfo), ProcId = 0),
+	\+ (
+		pred_info_is_pseudo_imported(PredInfo),
+		hlds_pred__in_in_unification_proc_id(ProcId)
+	),
 
 	% OK, we could inline it - but should we?  Apply our heuristic.
 	(

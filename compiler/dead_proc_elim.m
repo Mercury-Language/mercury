@@ -447,9 +447,13 @@ dead_proc_elim__eliminate_pred(PredId, Needed, ModuleInfo,
 		% Find out if the predicate is defined in this module.
 		% If yes, find out also whether any of its procedures
 		% must be kept.
-		( Status = local, Keep = no
-		; Status = pseudo_imported, Keep = no
-		; Status = pseudo_exported, Keep = yes(0)
+		( Status = local,
+			Keep = no
+		; Status = pseudo_imported,
+			Keep = no
+		; Status = pseudo_exported,
+			hlds_pred__in_in_unification_proc_id(InitProcId),
+			Keep = yes(InitProcId)
 		)
 	->
 		pred_info_procids(PredInfo0, ProcIds0),

@@ -247,9 +247,10 @@ parse_pragma_type(_ModuleName, "unused_args", PragmaTerms,
 			PredOrFuncTerm,
 			PredNameTerm,
 			term__functor(term__integer(Arity), [], _),
-			term__functor(term__integer(ProcId), [], _),
+			term__functor(term__integer(ProcInt), [], _),
 			UnusedArgsTerm
 		],
+		proc_id_to_int(ProcId, ProcInt),
 		(
 			PredOrFuncTerm = term__functor(
 					term__atom("predicate"), [], _),

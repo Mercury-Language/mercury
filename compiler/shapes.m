@@ -88,7 +88,7 @@
 
 :- implementation.
 
-:- import_module code_util, hlds_data, llds, prog_data, type_util.
+:- import_module code_util, hlds_pred, hlds_data, llds, prog_data, type_util.
 :- import_module int, assoc_list, map, std_util, require.
 
 :- type bit_number --->	bit_zero; bit_one; bit_two; bit_three.
@@ -212,7 +212,8 @@ shapes__create_special_preds([], _ModuleInfo, SpecialPredShapes) :-
 shapes__create_special_preds([L | Ls], ModuleInfo, SpecialPredShapes) :-
 	shapes__create_special_preds(Ls, ModuleInfo, SpecialPredShapes0),
 	L = TypeId - MaybeShapeNum,
-	code_util__make_uni_label(ModuleInfo, TypeId, 1, UniLabel),
+	proc_id_to_int(ProcId, 1),	% XXX What is this magic number?
+	code_util__make_uni_label(ModuleInfo, TypeId, ProcId, UniLabel),
 	Label = local(UniLabel),
 	(
 		MaybeShapeNum = yes(ShapeNum)

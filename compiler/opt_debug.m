@@ -185,7 +185,7 @@
 
 :- implementation.
 
-:- import_module llds_out, opt_util, vn_util.
+:- import_module llds_out, opt_util, vn_util, hlds_pred.
 :- import_module int, set, map, string.
 
 opt_debug__msg(OptDebug, Msg) -->
@@ -758,8 +758,9 @@ opt_debug__dump_label_pairs([L1 - L2 | Labels], Str) :-
 	string__append_list([" ", L1_str, "-", L2_str, L_str], Str).
 
 opt_debug__dump_proclabel(proc(Module, _PredOrFunc, PredModule,
-		PredName, Arity, Mode), Str) :-
+		PredName, Arity, ProcId), Str) :-
 	string__int_to_string(Arity, A_str),
+	proc_id_to_int(ProcId, Mode),
 	string__int_to_string(Mode, M_str),
 	( Module = PredModule ->
 		ExtraModule = ""
@@ -769,8 +770,9 @@ opt_debug__dump_proclabel(proc(Module, _PredOrFunc, PredModule,
 	string__append_list([ExtraModule, Module, "_", PredName,
 		"_", A_str, "_", M_str], Str).
 opt_debug__dump_proclabel(special_proc(Module, Pred, TypeModule,
-		Type, Arity, Mode), Str) :-
+		Type, Arity, ProcId), Str) :-
 	string__int_to_string(Arity, A_str),
+	proc_id_to_int(ProcId, Mode),
 	string__int_to_string(Mode, M_str),
 	llds_out__maybe_qualify_name(TypeModule, Type, TypeName),
 	string__append_list([Module, "_", Pred, "_",

@@ -442,7 +442,8 @@ module_info_pred_info(ModuleInfo, PredId, PredInfo) :-
 	( map__search(Preds, PredId, PredInfoPrime) ->
 		PredInfo = PredInfoPrime
 	;
-		string__int_to_string(PredId, PredStr),
+		pred_id_to_int(PredId, PredInt),
+		string__int_to_string(PredInt, PredStr),
 		string__append("cannot find predicate number ", PredStr, Msg),
 		error(Msg)
 	).
@@ -996,14 +997,6 @@ hlds_dependency_info_set_dependency_ordering(DepInfo0, DepRel, DepInfo) :-
 				predicate_table).
 :- mode predicate_table_insert(in, in, out, out) is det.
 
-	% Return an invalid pred_id. Used to initialize the pred_id
-	% in call(...) goals before we do typechecking or when type-checking
-	% finds that there was no predicate which matched the call.
-
-:- pred invalid_pred_id(pred_id).
-:- mode invalid_pred_id(out) is det.
-:- mode invalid_pred_id(in) is semidet.
-
 :- pred predicate_id(module_info, pred_id, module_name, string, arity).
 :- mode predicate_id(in, in, out, out, out) is det.
 
@@ -1060,7 +1053,7 @@ predicate_table_init(PredicateTable) :-
 				Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
 				Func_N_Index, Func_NA_Index, Func_MNA_Index),
 	map__init(Preds),
-	NextPredId = 0,
+	hlds_pred__initial_pred_id(NextPredId),
 	PredIds = [],
 	map__init(Pred_N_Index),
 	map__init(Pred_NA_Index),
@@ -1345,7 +1338,7 @@ predicate_table_insert(PredicateTable0, PredInfo, PredId, PredicateTable) :-
 
 		% allocate a new pred_id
 	PredId = NextPredId0,
-	NextPredId is PredId + 1,
+	hlds_pred__next_pred_id(PredId, NextPredId),
 
 		% insert the pred_id into either the function or predicate
 		% indices, as appropriate
@@ -1497,10 +1490,6 @@ get_pred_id_and_proc_id(SymName, Arity, PredOrFunc, PredArgTypes, ModuleInfo,
 		Msg),
 	    error(Msg)
 	).
-
-%-----------------------------------------------------------------------------%
-
-invalid_pred_id(-1).
 
 %-----------------------------------------------------------------------------%
 

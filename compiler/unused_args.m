@@ -234,7 +234,7 @@ setup_pred_args(ModuleInfo, PredId, [ProcId | Rest], UnusedArgInfo, VarUsage0,
 		PredProcs1 = PredProcs0
 	;
 		pred_info_is_pseudo_imported(PredInfo),
-		ProcId = 0
+		hlds_pred__in_in_unification_proc_id(ProcId)
 	->
 		PredProcs1 = PredProcs0,
 		OptProcs1 = OptProcs0,
@@ -847,7 +847,8 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, NameSuffix, Status,
 	pred_info_module(PredInfo0, PredModule),
 	pred_info_name(PredInfo0, Name0),
 	pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc),
-	string__int_to_string(ProcId, Id),
+	proc_id_to_int(ProcId, ProcInt),
+	string__int_to_string(ProcInt, Id),
 	pred_info_arg_types(PredInfo0, Tvars, ArgTypes0),
 		% create a unique new pred name using the old proc_id
 	(
@@ -1031,11 +1032,12 @@ fixup_unused_args(VarUsage, [PredProc | PredProcs], ProcCallInfo,
 		io__write_string("% Fixing up `"),
 		{ predicate_name(ModuleInfo0, PredId, Name) },
 		{ predicate_arity(ModuleInfo0, PredId, Arity) },
+		{ proc_id_to_int(ProcId, ProcInt) },
 		io__write_string(Name),
 		io__write_string("/"),
 		io__write_int(Arity),
 		io__write_string("' in mode "),
-		io__write_int(ProcId),
+		io__write_int(ProcInt),
 		io__write_char('\n')
 	;
 		[]

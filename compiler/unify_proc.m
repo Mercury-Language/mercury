@@ -174,15 +174,15 @@ unify_proc__search_mode_num(ModuleInfo, TypeId, UniMode, Determinism, ProcId) :-
 		inst_is_ground(ModuleInfo, XInitial),
 		inst_is_ground(ModuleInfo, YInitial)
 	->
-		ProcId = 0
+		hlds_pred__in_in_unification_proc_id(ProcId)
 	;
 		XInitial = not_reached
 	->
-		ProcId = 0
+		hlds_pred__in_in_unification_proc_id(ProcId)
 	;
 		YInitial = not_reached
 	->
-		ProcId = 0
+		hlds_pred__in_in_unification_proc_id(ProcId)
 	;
 		module_info_get_unify_requests(ModuleInfo, Requests),
 		unify_proc__get_req_map(Requests, ReqMap),
@@ -1270,7 +1270,7 @@ unify_proc__build_call(Name, ArgVars, Goal) -->
 			ErrorMessage),
 		error(ErrorMessage)
 	},
-	{ ModeId = 0 },
+	{ hlds_pred__initial_proc_id(ModeId) },
 	% We cheat by not providing a context for the call.
 	% Since automatically generated procedures should not have errors,
 	% the absence of a context should not be a problem.

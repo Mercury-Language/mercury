@@ -477,10 +477,10 @@
 	% from `.opt' files, the defining module's name is added as a
 	% qualifier to the label.
 :- type proc_label
-	--->	proc(string, pred_or_func, string, string, int, int)
+	--->	proc(string, pred_or_func, string, string, int, proc_id)
 			% defining module, predicate/function,
 			% declaring module, name, arity, mode #
-	;	special_proc(string, string, string, string, int, int).
+	;	special_proc(string, string, string, string, int, proc_id).
 			% defining module, pred name, type module,
 			% type name, type arity, mode #
 

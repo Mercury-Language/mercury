@@ -887,8 +887,9 @@ output_instruction_and_comment(Instr, Comment, PrintComments,
 
 output_instruction(Instr) -->
 	{ set__init(ContLabelSet) },
-	{ ProfInfo = local(proc("DEBUG", predicate, "DEBUG", "DEBUG", 0, 0))
-			- ContLabelSet },
+	{ hlds_pred__initial_proc_id(ProcId) },
+	{ ProfInfo = local(proc("DEBUG", predicate, "DEBUG", "DEBUG", 0,
+			ProcId)) - ContLabelSet },
 	output_instruction(Instr, ProfInfo).
 
 :- pred output_instruction(instr, pair(label, set(label)),
@@ -2140,7 +2141,8 @@ get_proc_label(proc(DefiningModule, PredOrFunc, PredModule,
 		OrigArity = Arity
 	),
 	string__int_to_string(OrigArity, ArityString),
-	ModeNum is ModeNum0 mod 10000,		% strip off the priority
+	proc_id_to_int(ModeNum0, ModeInt),
+	ModeNum is ModeInt mod 10000,		% strip off the priority
 	string__int_to_string(ModeNum, ModeNumString),
 	string__append_list([LabelName, "_", ArityString, "_", ModeNumString], 
 		ProcLabelString).
@@ -2152,7 +2154,8 @@ get_proc_label(special_proc(Module, PredName, TypeModule, TypeName0, TypeArity,
 	DummyArity = -1,	% not used by get_label_name.
 	get_label_name("", predicate, "", PredName, DummyArity, LabelName),
 	string__int_to_string(TypeArity, TypeArityString),
-	ModeNum is ModeNum0 mod 10000,		% strip off the priority
+	proc_id_to_int(ModeNum0, ModeInt),
+	ModeNum is ModeInt mod 10000,		% strip off the priority
 	string__int_to_string(ModeNum, ModeNumString),
 	% Handle locally produced unification preds for imported types.
 	( Module \= TypeModule ->

@@ -237,7 +237,7 @@ fact_table_compile_facts(PredName, Arity, FileName, PredInfo0, PredInfo,
 	    	{ Result2 = error },
 	    	{ PredInfo = PredInfo0 },
 	    	{ C_HeaderCode = C_HeaderCode0 },
-	    	{ PrimaryProcID = -1 },
+	    	{ invalid_proc_id(PrimaryProcID) },
 	    	{ WriteDataAfterSorting = no },
 	    	{ DataFileName = "" }
 	    ),
@@ -257,7 +257,7 @@ fact_table_compile_facts(PredName, Arity, FileName, PredInfo0, PredInfo,
 	    io__set_exit_status(1),
 	    { PredInfo = PredInfo0 },
 	    { C_HeaderCode = "" },
-	    { PrimaryProcID = -1 }
+	    { invalid_proc_id(PrimaryProcID) }
 	)
     ;
 	{ Result0 = error(ErrorCode) },
@@ -274,7 +274,7 @@ fact_table_compile_facts(PredName, Arity, FileName, PredInfo0, PredInfo,
 	io__set_exit_status(1),
 	{ PredInfo = PredInfo0 },
 	{ C_HeaderCode = "" },
-	{ PrimaryProcID = -1 }
+	{ invalid_proc_id(PrimaryProcID) }
     ).
 
 %---------------------------------------------------------------------------%
@@ -1186,7 +1186,8 @@ write_fact_table_arrays(ProcFiles0, DataFileName, StructName, ProcTable,
 		%	=> nothing left to be done here
 	    { ProcFiles0 = [] },
 	    { C_HeaderCode = "" },
-	    { PrimaryProcID = 0 }	% This won't get used anyway.
+			% This won't get used anyway.
+	    { hlds_pred__initial_proc_id(PrimaryProcID) }
 	;
 	    { ProcFiles0 = [(PrimaryProcID - FileName) | ProcFiles1] },
 	    (
@@ -1393,8 +1394,9 @@ write_primary_hash_table(ProcID, FileName, DataFileName, StructName, ProcTable,
 		),
 		(
 			{ Result2 = ok },
+			{ proc_id_to_int(ProcID, ProcInt) },
 			{ string__format("%s_hash_table_%d_", 
-				[s(StructName), i(ProcID)], HashTableName) },
+				[s(StructName), i(ProcInt)], HashTableName) },
 			{ string__format("extern %s0;\n", [s(HashTableName)],
 				C_HeaderCode0) },
 			{ map__lookup(ProcTable, ProcID, ProcInfo) },
@@ -1465,8 +1467,9 @@ write_secondary_hash_tables([ProcID - FileName | ProcFiles], StructName,
 	io__see(FileName, Result0),
 	(
 		{ Result0 = ok },
+		{ proc_id_to_int(ProcID, ProcInt) },
 		{ string__format("%s_hash_table_%d_",
-			[s(StructName), i(ProcID)], HashTableName) },
+			[s(StructName), i(ProcInt)], HashTableName) },
 		{ string__format("extern %s0;\n", [s(HashTableName)],
 			C_HeaderCode1) },
 		{ string__append(C_HeaderCode1, C_HeaderCode0,
@@ -2567,7 +2570,7 @@ void sys_init_%s_module(void) {
 		],
 		ExtraCode).
 
-:- pred generate_nondet_proc_code(list(pragma_var)::in, string::in, int::in,
+:- pred generate_nondet_proc_code(list(pragma_var)::in, string::in, proc_id::in,
 		string::out, string::out) is det.
 
 generate_nondet_proc_code(PragmaVars, PredName, ProcID, ExtraCodeLabel,
@@ -2590,8 +2593,9 @@ generate_nondet_proc_code(PragmaVars, PredName, ProcID, ExtraCodeLabel,
 	",
 
 	list__length(PragmaVars, Arity),
+	proc_id_to_int(ProcID, ProcInt),
 	string__format("mercury__%s_%d_%d_xx", 
-		[s(PredName), i(Arity), i(ProcID)], ExtraCodeLabel),
+		[s(PredName), i(Arity), i(ProcInt)], ExtraCodeLabel),
 	pragma_vars_to_names_string(PragmaVars, NamesString),
 	string__format(ProcCodeTemplate, [s(NamesString), s(ExtraCodeLabel),
 		s(ExtraCodeLabel)], ProcCode).
@@ -2643,7 +2647,8 @@ generate_all_in_code(PredName, PragmaVars, ProcID, ArgTypes, ModuleInfo,
 		FactTableSize, ProcCode) :-
 	generate_decl_code(PredName, ProcID, DeclCode),
 
-	string__format("%s_%d", [s(PredName), i(ProcID)], LabelName), 
+	proc_id_to_int(ProcID, ProcInt),
+	string__format("%s_%d", [s(PredName), i(ProcInt)], LabelName), 
 	generate_hash_code(PragmaVars, ArgTypes, ModuleInfo, LabelName, 0,
 		PredName, 1, FactTableSize, HashCode),
 
@@ -2674,7 +2679,8 @@ generate_semidet_in_out_code(PredName, PragmaVars, ProcID, ArgTypes,
 		ModuleInfo, FactTableSize, ProcCode):-
 	generate_decl_code(PredName, ProcID, DeclCode),
 
-	string__format("%s_%d", [s(PredName), i(ProcID)], LabelName), 
+	proc_id_to_int(ProcID, ProcInt),
+	string__format("%s_%d", [s(PredName), i(ProcInt)], LabelName), 
 	generate_hash_code(PragmaVars, ArgTypes, ModuleInfo, LabelName, 0,
 		PredName, 1, FactTableSize, HashCode),
 
@@ -2720,7 +2726,8 @@ generate_decl_code(Name, ProcID, DeclCode) :-
 				&mercury__%s_fact_table_hash_table_%d_0;
 
 	",
-	string__format(DeclCodeTemplate, [s(Name), i(ProcID)], DeclCode).
+	proc_id_to_int(ProcID, ProcInt),
+	string__format(DeclCodeTemplate, [s(Name), i(ProcInt)], DeclCode).
 
 	% generate code to calculate hash values and lookup the hash tables
 :- pred generate_hash_code(list(pragma_var), list(type), module_info, string,
@@ -3074,7 +3081,8 @@ void sys_init_%s_module(void) {
 		ModuleInfo, ArgDeclCode, InputCode, OutputCode, SaveRegsCode,
 		GetRegsCode, NumFrameVars),
 	generate_decl_code(PredName, ProcID, DeclCode),
-	string__format("%s_%d", [s(PredName), i(ProcID)], LabelName), 
+	proc_id_to_int(ProcID, ProcInt),
+	string__format("%s_%d", [s(PredName), i(ProcInt)], LabelName), 
 	generate_hash_code(PragmaVars, ArgTypes, ModuleInfo, LabelName, 0,
 		PredName, 1, FactTableSize, HashCode),
 	generate_fact_lookup_code(PredName, PragmaVars, ArgTypes, ModuleInfo, 1,
@@ -3392,7 +3400,8 @@ void sys_init_%s_module(void) {
 		ModuleInfo, ArgDeclCode, InputCode, OutputCode, _SaveRegsCode,
 		_GetRegsCode, _NumFrameVars),
 	generate_decl_code(PredName, ProcID, DeclCode),
-	string__format("%s_%d", [s(PredName), i(ProcID)], LabelName), 
+	proc_id_to_int(ProcID, ProcInt),
+	string__format("%s_%d", [s(PredName), i(ProcInt)], LabelName), 
 	string__append(LabelName, "_2", LabelName2),
 	generate_hash_code(PragmaVars, ArgTypes, ModuleInfo, LabelName, 0,
 		PredName, 1, FactTableSize, HashCode),

@@ -25,12 +25,49 @@
 
 :- interface.
 
-	% A proc_id is a mode number within a particular predicate -
+	% A proc_id is the name of a mode within a particular predicate -
 	% not to be confused with a mode_id, which is the name of a
 	% user-defined mode.
 
-:- type proc_id		==	int.
-:- type pred_id		==	int.
+:- type pred_id.
+:- type proc_id.
+
+:- pred hlds_pred__initial_pred_id(pred_id).
+:- mode hlds_pred__initial_pred_id(out) is det.
+
+:- pred hlds_pred__initial_proc_id(proc_id).
+:- mode hlds_pred__initial_proc_id(out) is det.
+
+:- pred hlds_pred__next_pred_id(pred_id, pred_id).
+:- mode hlds_pred__next_pred_id(in, out) is det.
+
+:- pred hlds_pred__next_proc_id(proc_id, proc_id).
+:- mode hlds_pred__next_proc_id(in, out) is det.
+
+:- pred pred_id_to_int(pred_id, int).
+:- mode pred_id_to_int(in, out) is det.
+:- mode pred_id_to_int(out, in) is det.
+
+:- pred proc_id_to_int(proc_id, int).
+:- mode proc_id_to_int(in, out) is det.
+:- mode proc_id_to_int(out, in) is det.
+
+	% For semidet complicated unifications with mode (in, in),
+	% these are defined to have the same proc_id (0).  This
+	% returns that proc_id.
+
+:- pred hlds_pred__in_in_unification_proc_id(proc_id).
+:- mode hlds_pred__in_in_unification_proc_id(out) is det.
+
+        % Return an invalid pred_id. Used to initialize the pred_id
+        % in call(...) goals before we do typechecking or when type-checking
+        % finds that there was no predicate which matched the call.
+
+:- pred invalid_pred_id(pred_id).
+:- mode invalid_pred_id(out) is det.
+
+:- pred invalid_proc_id(proc_id).
+:- mode invalid_proc_id(out) is det.
 
 :- type pred_info.
 :- type proc_info.
@@ -292,6 +329,29 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- type pred_id		==	int.
+:- type proc_id		==	int.
+
+hlds_pred__initial_pred_id(0).
+
+hlds_pred__initial_proc_id(0).
+
+hlds_pred__next_pred_id(PredId, NextPredId) :-
+	NextPredId is PredId + 1.
+
+hlds_pred__next_proc_id(ProcId, NextProcId) :-
+	NextProcId is ProcId + 1.
+
+pred_id_to_int(PredId, PredId).
+
+proc_id_to_int(ProcId, ProcId).
+
+hlds_pred__in_in_unification_proc_id(0).
+
+invalid_pred_id(-1).
+
+invalid_proc_id(-1).
 
 	% The information specific to a predicate, as opposed to a procedure.
 	% Any changes in this type definition will almost certainly require

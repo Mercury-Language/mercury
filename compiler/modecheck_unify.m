@@ -187,7 +187,7 @@ modecheck_unification(X0, functor(ConsId, ArgVars0), Unification0,
 		% replace `X = f(A, B, C)'
 		% with `f(A, B, C, X)'
 		%
-		ProcId = 0,
+		invalid_proc_id(ProcId),
 		list__append(ArgVars0, [X0], ArgVars),
 		FuncCallUnifyContext = call_unify_context(X0,
 			functor(ConsId, ArgVars0), UnifyContext),

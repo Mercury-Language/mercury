@@ -119,7 +119,8 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 	;
 		BodyCode = node(BodyCode0)
 	),
-	EnterCode = node([enter_proc(ProcId, Detism, LabelCount, TempCount,
+	proc_id_to_int(ProcId, ProcInt),
+	EnterCode = node([enter_proc(ProcInt, Detism, LabelCount, TempCount,
 		VarInfos)]),
 	( CodeModel = model_semi ->
 		EndofCode = node([semidet_succeed, endof_proc])
@@ -305,7 +306,8 @@ bytecode_gen__call(PredId, ProcId, ArgVars, Detism, ByteInfo, Code) :-
 	bytecode_gen__gen_pickups(OutputArgs, ByteInfo, PickupArgs),
 
 	predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity),
-	Call = node([call(ModuleName, PredName, Arity, ProcId)]),
+	proc_id_to_int(ProcId, ProcInt),
+	Call = node([call(ModuleName, PredName, Arity, ProcInt)]),
 	determinism_to_code_model(Detism, CodeModel),
 	( CodeModel = model_semi ->
 		Check = node([semidet_success_check])
@@ -587,12 +589,14 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 	;
 		ConsId = pred_const(PredId, ProcId),
 		predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity),
-		ByteConsId = pred_const(ModuleName, PredName, Arity, ProcId)
+		proc_id_to_int(ProcId, ProcInt),
+		ByteConsId = pred_const(ModuleName, PredName, Arity, ProcInt)
 	;
 		ConsId = code_addr_const(PredId, ProcId),
 		predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity),
+		proc_id_to_int(ProcId, ProcInt),
 		ByteConsId = code_addr_const(ModuleName, PredName, Arity,
-			ProcId)
+			ProcInt)
 	;
 		ConsId = base_type_info_const(ModuleName, TypeName, TypeArity),
 		ByteConsId = base_type_info_const(ModuleName, TypeName,

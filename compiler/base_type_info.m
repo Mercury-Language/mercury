@@ -109,7 +109,8 @@ base_type_info__gen_proc_list([], _, _, []).
 base_type_info__gen_proc_list([Special | Specials], SpecMap, TypeId,
 		[proc(PredId, ProcId) | Procs]) :-
 	map__lookup(SpecMap, Special - TypeId, PredId),
-	special_pred_mode_num(Special, ProcId),
+	special_pred_mode_num(Special, ProcInt),
+	proc_id_to_int(ProcId, ProcInt),
 	base_type_info__gen_proc_list(Specials, SpecMap, TypeId, Procs).
 
 %---------------------------------------------------------------------------%
@@ -201,9 +202,11 @@ base_type_info__construct_pred_addrs(Procs, Elim, ModuleInfo, PredAddrArgs) :-
 		(
 			globals__have_static_code_addresses(Globals, yes)
 		->
+			hlds_pred__initial_proc_id(ProcId),
 			PredAddrArg = yes(const(code_addr_const(
 				imported(proc("mercury_builtin", predicate,
-					"mercury_builtin", "unused", 0, 0)))))
+					"mercury_builtin", "unused", 0,
+						ProcId)))))
 		;
 			PredAddrArg = yes(const(int_const(0)))
 		),

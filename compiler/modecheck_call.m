@@ -149,7 +149,7 @@ modecheck_call_pred(PredId, ArgVars0, TheProcId, ArgVars, ExtraGoals,
 		set__init(WaitingVars),
 		mode_info_error(WaitingVars, mode_error_no_mode_decl,
 			ModeInfo0, ModeInfo),
-		TheProcId = 0,
+		invalid_proc_id(TheProcId),
 		ArgVars = ArgVars0,
 		ExtraGoals = [] - []
 	;
@@ -237,7 +237,7 @@ modecheck_call_pred_2([], PredId, _Procs, ArgVars, WaitingVars,
 		instmap__init_unreachable(Instmap),
 		mode_info_set_instmap(Instmap, ModeInfo1, ModeInfo)
 	;
-		TheProcId = 0, % dummy value
+		invalid_proc_id(TheProcId),	% dummy value
 		mode_info_get_instmap(ModeInfo0, InstMap),
 		instmap__lookup_vars(ArgVars, InstMap, ArgInsts),
 		mode_info_set_call_arg_context(0, ModeInfo0, ModeInfo1),

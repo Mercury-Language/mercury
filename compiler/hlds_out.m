@@ -246,7 +246,8 @@ hlds_out__write_pred_id(ModuleInfo, PredId) -->
 hlds_out__write_pred_proc_id(ModuleInfo, PredId, ProcId) -->
 	hlds_out__write_pred_id(ModuleInfo, PredId),
 	io__write_string(" mode "),
-	{ ModeNum is ProcId mod 10000 },
+	{ proc_id_to_int(ProcId, ProcInt) },
+	{ ModeNum is ProcInt mod 10000 },
 	io__write_int(ModeNum).
 
 hlds_out__write_call_id(PredOrFunc, Name/Arity) -->
@@ -402,7 +403,8 @@ hlds_out__write_preds_2(Indent, ModuleInfo, PredIds0, PredTable) -->
 			% mode for them
 			{ pred_info_is_pseudo_imported(PredInfo) },
 			{ pred_info_procids(PredInfo, ProcIds) },
-			{ ProcIds = [0] }
+			{ hlds_pred__in_in_unification_proc_id(ProcId) },
+			{ ProcIds = [ProcId] }
 		->
 			[]
 		;
@@ -432,7 +434,8 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	{ ClausesInfo = clauses_info(VarSet, _, VarTypes, HeadVars, Clauses) },
 	hlds_out__write_indent(Indent),
 	io__write_string("% pred id: "),
-	io__write_int(PredId),
+	{ pred_id_to_int(PredId, PredInt) },
+	io__write_int(PredInt),
 	io__write_string(", category: "),
 	hlds_out__write_pred_or_func(PredOrFunc),
 	io__write_string(", status: "),
@@ -533,7 +536,9 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
 	( { string__contains_char(Verbose, 'm') } ->
 		hlds_out__write_indent(Indent),
 		io__write_string("% Modes for which this clause applies: "),
-		hlds_out__write_intlist(Modes),
+		{ list__map(lambda([Mode :: in, ModeInt :: out] is det,
+			proc_id_to_int(Mode, ModeInt)), Modes, ModeInts) },
+		hlds_out__write_intlist(ModeInts),
 		io__write_string("\n")
 	;
 		[]
@@ -1740,7 +1745,8 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 
 	hlds_out__write_indent(Indent1),
 	io__write_string("% mode number "),
-	io__write_int(ProcId),
+	{ proc_id_to_int(ProcId, ProcInt) },
+	io__write_int(ProcInt),
 	io__write_string(" of "),
 	hlds_out__write_pred_id(ModuleInfo, PredId),
 	io__write_string(" ("),
@@ -1756,7 +1762,10 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	mercury_output_pred_mode_decl(ModeVarSet, unqualified(PredName),
 			HeadModes, DeclaredDeterminism, ModeContext),
 
-	( { ImportStatus = pseudo_imported, ProcId = 0 } ->
+	(
+		{ ImportStatus = pseudo_imported },
+		{ hlds_pred__in_in_unification_proc_id(ProcId) }
+	->
 		[]
 	;
 		{ proc_info_stack_slots(Proc, StackSlots) },

@@ -1098,7 +1098,7 @@ add_builtin(PredId, Types, PredInfo0, PredInfo) :-
 		% construct the pseudo-recursive call to Module:Name(HeadVars)
 		%
 	SymName = qualified(Module, Name),
-	ModeId = 0, % mode checking will figure it out
+	invalid_proc_id(ModeId),	% mode checking will figure it out
 	MaybeUnifyContext = no,
 	Call = call(PredId, ModeId, HeadVars, inline_builtin, MaybeUnifyContext,
 			SymName),
@@ -1386,7 +1386,8 @@ next_mode_id(Procs, MaybeDet, ModeId) :-
 	;
 		true
 	),
-	ModeId is ModeId0 + Priority.
+	ModeInt is ModeId0 + Priority,
+	proc_id_to_int(ModeId, ModeInt).
 
 	% If we can call a predicate in either of two different modes,
 	% we should prefer to call it in a deterministic mode
@@ -2471,7 +2472,7 @@ transform_goal_2(call(Name, Args0), Context, VarSet0, Subst, Goal, VarSet,
 		;
 			% initialize some fields to junk
 			invalid_pred_id(PredId),
-			ModeId = 0,
+			hlds_pred__initial_proc_id(ModeId),
 			MaybeUnifyContext = no,
 			Call = call(PredId, ModeId, HeadVars, not_builtin,
 					MaybeUnifyContext, Name)

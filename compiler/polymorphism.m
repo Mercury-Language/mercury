@@ -479,7 +479,7 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 			%     and report an error (e.g. "unification of
 			%     polymorphically typed variables in partially
 			%     instantiated mode") if it isn't
-			{ ProcId = 0 },
+			{ hlds_pred__in_in_unification_proc_id(ProcId) },
 			{ map__lookup(TypeInfoMap, TypeVar, TypeInfoVar) },
 			{ SymName = unqualified("unify") },
 			{ ArgVars = [TypeInfoVar, XVar, YVar] },
@@ -504,7 +504,7 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 			;
 				error("can't locate mercury_builtin:builtin_unify_pred/2")
 			},
-			{ ProcId = 0 },
+			{ hlds_pred__in_in_unification_proc_id(ProcId) },
 			{ CallContext = call_unify_context(XVar, Y, Context) },
 			{ Call = call(PredId, ProcId, ArgVars, not_builtin,
 				yes(CallContext), SymName) },
@@ -1143,7 +1143,8 @@ polymorphism__get_special_proc(TypeCategory, SpecialPredId, ModuleInfo,
 			PredId),
 		PredName = unqualified(Name)
 	),
-	special_pred_mode_num(SpecialPredId, ProcId).
+	special_pred_mode_num(SpecialPredId, ProcInt),
+	proc_id_to_int(ProcId, ProcInt).
 
 :- pred polymorphism__get_category_name(builtin_type, string).
 :- mode polymorphism__get_category_name(in, out) is det.
