@@ -928,7 +928,7 @@ contains more detailed documentation.
 
 To use the debugger, you must
 first compile your program with debugging enabled.
-You can do this by using the @samp{--debug} option to @samp{mdb},
+You can do this by using the @samp{--debug} option to @samp{mmc},
 or by including @samp{GRADEFLAGS = --debug} in your @file{Mmakefile}.
 
 @example
@@ -972,12 +972,13 @@ mdb>
 
 For each trace event, the debugger prints out several pieces of
 information.  The three numbers at the start of the display are the
-event number, the sequence number, and the call depth. 
+event number, the call sequence number, and the call depth. 
 (You don't really need to pay too much attention to those.)
 They are followed by the event type (e.g. @samp{CALL} or @samp{EXIT}).
-After that comes the module name (@samp{io}),
-procedure name (@samp{write_string}), arity (@samp{3}),
-mode number (@samp{0}), and determinism (@samp{det}).
+After that comes the identification of the procedure
+in which the event occurred, consisting of the module-qualified name
+of the predicate or function to which the procedure belongs,
+followed by its arity, mode number and determinism.
 This may sometimes be followed by a "path"
 (@pxref{Tracing of Mercury programs}).
 At the end is the file name and line number of the
@@ -1051,7 +1052,7 @@ that your Mercury implementation was installed in.
 Build your program with debugging enabled, as described
 in @ref{Quick overview} or @ref{Preparing a program for debugging}.
 Then start up Emacs, e.g. using the command @samp{emacs},
-and type @kbd{M-x mdb @key{RET}}. Emacs will prompt you for
+and type @kbd{M-x mdb @key{RET}}. Emacs will then prompt you for
 the mdb command to invoke
 
 @example
@@ -1067,8 +1068,8 @@ Run mdb (like this): mdb ./hello arg1 arg2 ...
 @end example
 
 Emacs will then create several "buffers": one for the debugger prompt,
-one for the output of the program being executed, and one or more for
-the source files.  By default, Emacs will split the display into two
+one for the input and output of the program being executed, and one or more
+for the source files.  By default, Emacs will split the display into two
 parts, called "windows", so that two of these buffers will be visible.
 You can use the command @kbd{C-x o} to switch between windows,
 and you can use the command @kbd{C-x 2} to split a window into two
@@ -1133,6 +1134,12 @@ and then selecting the "Print variable" command from the
 "Data browsing" sub-menu of the "MDB" menu.
 Most of the menu commands also have keyboard short-cuts,
 which are displayed on the menu.
+
+Note that mdb's @samp{context} command should not be used if
+you are using the Emacs interface, otherwise the Emacs
+interface won't be able to parse the file names and
+line numbers that mdb outputs, and so it won't be able to
+highlight the correct location in the source code.
 
 @node Tracing of Mercury programs
 @section Tracing of Mercury programs
