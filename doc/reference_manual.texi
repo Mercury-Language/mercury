@@ -750,6 +750,9 @@ lambda expression.  For variables which occur in Result or Goal,
 but not in the arguments, the usual Mercury rules for implicit
 quantification apply (@pxref{Implicit quantification}).
 
+The form of lambda expression using @samp{lambda} as its top level functor
+is deprecated; please use the form using @samp{pred} instead.
+
 The form of lambda expression using @samp{-->} as its top level functor
 is a syntactic abbreviation: an expression of the form
 
@@ -2195,11 +2198,13 @@ Z = sum
 In the above example, the type of @samp{X}, @samp{Y}, and @samp{Z} is
 @samp{pred(list(int), int)}, which means a predicate of two
 arguments of types @samp{list(int)} and @samp{int} respectively.
-[The syntax using @samp{lambda} is supported to enable programs to work
-in both Mercury and Prolog, because the syntax using @samp{pred} and
-@samp{:-} can't be easily emulated in Prolog.  When we have implemented
-better debugging environments for Mercury, the syntax using @samp{lambda}
-will be deprecated.]
+
+The syntax using @samp{lambda} is deprecated;
+please use the syntax using @samp{pred} instead.
+[The syntax using @samp{lambda} was supported to enable programs to work
+in both Mercury and Prolog, because the syntax using @samp{pred} 
+can't be easily emulated in Prolog.  Now that we have implemented
+better debugging environments for Mercury, there is no need for this.]
 
 Similarly, given
 
@@ -2504,7 +2509,7 @@ higher-order terms is undecidable in the general case.
 For example, given the definition of @samp{foo} above, the goal
 
 @example
-        foo(lambda([X::out] is det, X = 6))
+        foo((pred(X::out) is det :- X = 6))
 @end example
 
 @noindent
@@ -2513,7 +2518,7 @@ for equivalence, you must program it yourself; for example,
 the above goal could legally be written as
 
 @example
-        P = lambda([X::out] is det, X = 6),
+        P = (pred(X::out) is det :- X = 6),
         foo(Q),
         all [X] (call(P, X) <=> call(Q, X)).
 @end example

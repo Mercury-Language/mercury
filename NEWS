@@ -29,6 +29,13 @@ Changes to the Mercury language:
   predicate argument and unify it with the compound term in the body of
   the lambda expression.
 
+* The old-style syntax for predicate lambda expressions,
+  `lambda([<Args>] is <Det>, <Goal>)', is now officially deprecated.
+
+  Please use the new syntax-style `(pred([<Args>]) is <Det> :- <Goal>)'
+  instead.  The compiler still supports the old-style syntax, but
+  we plan to eventually drop this support in some future release.
+
 Changes to the Mercury standard library:
 ****************************************
 
