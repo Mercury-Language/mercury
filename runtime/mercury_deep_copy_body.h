@@ -411,9 +411,6 @@ try_again:
                 closure_layout = old_closure->MR_closure_layout;
                 args = old_closure->MR_closure_num_hidden_args;
 
-                /* get number of curried arguments */
-                args = data_value[0];
-
                 /* create new closure */
                 incr_saved_hp(LVALUE_CAST(MR_Word, new_closure), args + 3);
 
@@ -443,7 +440,7 @@ try_again:
 
                 new_data = (MR_Word) new_closure;
                 leave_forwarding_pointer(data_ptr, new_data);
-	    } else if (in_range(data_value)) {
+	    } else if (in_traverse_range(data_value)) {
 		fatal_error("sorry, unimplemented: traversal of closures");
             } else {
                 new_data = data;
