@@ -94,6 +94,7 @@ OTHER_PROGS= \
 	inlining_bug \
 	inst_perf_bug_1 \
 	int64 \
+	intermod_bug_nested \
 	intermod_dcg_bug \
 	intermod_impure \
 	intermod_lambda \
@@ -139,6 +140,7 @@ OTHER_PROGS= \
 	multidet_test \
 	nasty_func_test \
 	nested_mod_type_bug \
+	nested_module_bug \
 	nondet_live \
 	parsing_bug_main \
 	pred_with_no_modes \

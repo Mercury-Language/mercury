@@ -1439,24 +1439,25 @@ compress_filename(Deep, FileName0, FileName) :-
 
 classify_call(ModuleInfo, Expr, Class) :-
 	( Expr = call(PredId, ProcId, Args, _, _, _) ->
-		module_info_get_predicate_table(ModuleInfo, PredTable),
-		mercury_public_builtin_module(MercuryBuiltin),
 		(
-			predicate_table_search_pred_m_n_a(PredTable,
-				MercuryBuiltin, "unify", 2, [PredId]),
+			lookup_builtin_pred_proc_id(ModuleInfo,
+				mercury_public_builtin_module, "unify", 2,
+				mode_no(0), PredId, _),
 			Args = [TypeInfoVar | _]
 		->
 			Class = special(proc(PredId, ProcId), TypeInfoVar)
 		;
-			predicate_table_search_pred_m_n_a(PredTable,
-				MercuryBuiltin, "compare", 3, [PredId]),
+			lookup_builtin_pred_proc_id(ModuleInfo,
+				mercury_public_builtin_module, "compare", 3,
+				mode_no(0), PredId, _),
 			Args = [TypeInfoVar | _]
 		->
 			Class = special(proc(PredId, ProcId), TypeInfoVar)
 		;
-			predicate_table_search_pred_m_n_a(PredTable,
-				MercuryBuiltin, "compare_representation", 3,
-				[PredId]),
+			lookup_builtin_pred_proc_id(ModuleInfo,
+				mercury_public_builtin_module,
+				"compare_representation", 3,
+				mode_no(0), PredId, _),
 			Args = [TypeInfoVar | _]
 		->
 			Class = special(proc(PredId, ProcId), TypeInfoVar)
@@ -1680,7 +1681,7 @@ get_deep_profile_builtin_ppid(ModuleInfo, Name, Arity, PredId, ProcId) :-
 	module_info_get_predicate_table(ModuleInfo, PredTable),
 	(
 		predicate_table_search_pred_m_n_a(PredTable,
-			ModuleName, Name, Arity, PredIds)
+			is_fully_qualified, ModuleName, Name, Arity, PredIds)
 	->
 		(
 			PredIds = [],

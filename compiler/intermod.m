@@ -348,6 +348,9 @@ intermod__should_be_processed(ProcessLocalPreds, PredId, PredInfo,
 		\+ check_marker(Markers, class_method),
 		\+ check_marker(Markers, class_instance_method),
 
+		% Don't write stub clauses to `.opt' files.
+		\+ check_marker(Markers, stub),
+
 		% Don't export builtins since they will be
 		% recreated in the importing module anyway.
 		\+ code_util__compiler_generated(PredInfo),
@@ -900,7 +903,7 @@ intermod__qualify_instance_method(ModuleInfo,
 	;
 		InstanceMethodDefn0 = name(InstanceMethodName0),
 		PredOrFunc = predicate,
-		typecheck__resolve_pred_overloading(ModuleInfo,
+		typecheck__resolve_pred_overloading(ModuleInfo, local,
 			MethodCallArgTypes, MethodCallTVarSet,
 			InstanceMethodName0, InstanceMethodName, PredId),
 		PredIds = [PredId | PredIds0],
@@ -968,7 +971,8 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	(
 		predicate_table_search_func_sym_arity(PredicateTable,
-			InstanceMethodName0, MethodArity, PredIds),
+			may_be_partially_qualified, InstanceMethodName0,
+			MethodArity, PredIds),
 		typecheck__find_matching_pred_id(PredIds, ModuleInfo,
 			MethodCallTVarSet, MethodCallArgTypes,
 			PredId, InstanceMethodFuncName)
@@ -1100,7 +1104,7 @@ intermod__resolve_user_special_pred_overloading(ModuleInfo, SpecialId,
 	map__lookup(SpecialPreds, SpecialId - TypeCtor, UnifyPredId),
 	module_info_pred_info(ModuleInfo, UnifyPredId, UnifyPredInfo),
 	pred_info_arg_types(UnifyPredInfo, TVarSet, _, ArgTypes),
-	typecheck__resolve_pred_overloading(ModuleInfo, ArgTypes,
+	typecheck__resolve_pred_overloading(ModuleInfo, local, ArgTypes,
 		TVarSet, Pred0, Pred, UserEqPredId),
 	intermod__add_proc(UserEqPredId, _, Info0, Info).
 

@@ -124,9 +124,10 @@
 	% Abort if there is no matching pred.
 	% Abort if there are multiple matching preds.
 
-:- pred typecheck__resolve_pred_overloading(module_info, list(type),
-		tvarset, sym_name, sym_name, pred_id).
-:- mode typecheck__resolve_pred_overloading(in, in, in, in, out, out) is det.
+:- pred typecheck__resolve_pred_overloading(module_info, import_status,
+		list(type), tvarset, sym_name, sym_name, pred_id).
+:- mode typecheck__resolve_pred_overloading(in,
+		in, in, in, in, out, out) is det.
 
 	% Find a predicate or function from the list of pred_ids
 	% which matches the given name and argument types.
@@ -1686,6 +1687,8 @@ typecheck_call_pred_adjust_arg_types(CallId, Args, AdjustArgTypes,
 	( 
 		CallId = PorF - SymName/Arity,
 		predicate_table_search_pf_sym_arity(PredicateTable,
+			calls_are_fully_qualified(
+				TypeCheckInfo1 ^ import_status),
 			PorF, SymName, Arity, PredIdList)
 	->
 		% handle the case of a non-overloaded predicate specially
@@ -1787,6 +1790,8 @@ report_pred_call_error(PredCallId, TypeCheckInfo1, TypeCheckInfo) :-
 	typecheck_info_get_io_state(TypeCheckInfo1, IOState0),
 	(
 		predicate_table_search_pf_sym(PredicateTable,
+			calls_are_fully_qualified(
+				TypeCheckInfo1 ^ import_status),
 			PredOrFunc0, SymName, OtherIds),
 		predicate_table_get_preds(PredicateTable, Preds),
 		OtherIds \= []
@@ -1799,6 +1804,8 @@ report_pred_call_error(PredCallId, TypeCheckInfo1, TypeCheckInfo) :-
 		; PredOrFunc0 = function, PredOrFunc = predicate
 		),
 		predicate_table_search_pf_sym(PredicateTable,
+			calls_are_fully_qualified(
+				TypeCheckInfo1 ^ import_status),
 			PredOrFunc, SymName, OtherIds),
 		OtherIds \= []
 	->
@@ -1873,12 +1880,12 @@ get_overloaded_pred_arg_types([PredId | PredIds], Preds, AdjustArgTypes,
 	% module qualified, so they should not be considered
 	% when resolving overloading.
 
-typecheck__resolve_pred_overloading(ModuleInfo, ArgTypes, TVarSet,
+typecheck__resolve_pred_overloading(ModuleInfo, Status, ArgTypes, TVarSet,
 		 PredName0, PredName, PredId) :-
 	module_info_get_predicate_table(ModuleInfo, PredTable),
 	(
-		predicate_table_search_pred_sym(PredTable, PredName0,
-			PredIds0)
+		predicate_table_search_pred_sym(PredTable,
+			calls_are_fully_qualified(Status), PredName0, PredIds0)
 	->
 		PredIds = PredIds0
 	;
@@ -3033,7 +3040,12 @@ builtin_pred_type(TypeCheckInfo, Functor, Arity, PredConsInfoList) :-
 	Functor = cons(SymName, _),
 	typecheck_info_get_module_info(TypeCheckInfo, ModuleInfo),
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
-	( predicate_table_search_sym(PredicateTable, SymName, PredIdList) ->
+	(
+		predicate_table_search_sym(PredicateTable,
+			calls_are_fully_qualified(
+				TypeCheckInfo ^ import_status),
+			SymName, PredIdList)
+	->
 		predicate_table_get_preds(PredicateTable, Preds),
 		make_pred_cons_info_list(TypeCheckInfo, PredIdList, Preds,
 			Arity, ModuleInfo, [], PredConsInfoList)
@@ -3250,8 +3262,9 @@ get_field_access_constructor(TypeCheckInfo, FuncName, Arity, _AccessType,
 	unqualify_name(FuncName, UnqualFuncName),
 	(
 		TypeCheckInfo ^ is_field_access_function = no,
-		\+ predicate_table_search_func_m_n_a(PredTable, TypeModule,
-			UnqualFuncName, Arity, _)
+		\+ predicate_table_search_func_m_n_a(PredTable,
+			is_fully_qualified, TypeModule, UnqualFuncName,
+			Arity, _)
 	;
 		TypeCheckInfo ^ is_field_access_function = yes
 	),

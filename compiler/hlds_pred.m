@@ -362,6 +362,12 @@
 	% status_is_imported.
 :- pred status_defined_in_this_module(import_status::in, bool::out) is det.
 
+	% Are calls from a predicate with the given import_status
+	% always fully qualified. For calls occurring in `.opt' files
+	% this will return `is_fully_qualified', otherwise
+	% `may_be_partially_qualified'.
+:- func calls_are_fully_qualified(import_status) = is_fully_qualified.
+
 	% Predicates can be marked with various boolean flags, called
 	% "markers".
 
@@ -947,6 +953,12 @@ status_defined_in_this_module(abstract_exported,	yes).
 status_defined_in_this_module(pseudo_exported,		yes).
 status_defined_in_this_module(exported_to_submodules,	yes).
 status_defined_in_this_module(local,			yes).
+
+calls_are_fully_qualified(Status) =
+	( Status = opt_imported ->
+	  is_fully_qualified
+	; may_be_partially_qualified
+	).
 
 	% The information specific to a predicate, as opposed to a procedure.
 	% (Functions count as predicates.)

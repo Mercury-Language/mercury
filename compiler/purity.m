@@ -787,8 +787,11 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity) -->
 		{ map__apply_to_list(Args, VarTypes, ArgTypes0) },
 		{ list__append(ArgTypes0, VarArgTypes, PredArgTypes) },
 		ModuleInfo =^ module_info,
+		CallerPredInfo =^ pred_info,
+		{ pred_info_import_status(CallerPredInfo, CallerStatus) },
 		( 
-			{ get_pred_id(PName, PredOrFunc, TVarSet, PredArgTypes,
+			{ get_pred_id(calls_are_fully_qualified(CallerStatus),
+				PName, PredOrFunc, TVarSet, PredArgTypes,
 				ModuleInfo, CalleePredId) }
 		->
 			{ module_info_pred_info(ModuleInfo,

@@ -1240,9 +1240,10 @@ process_decl(_ModuleName, VarSet0, "implementation", [], Attributes, Result) :-
 	Result0 = ok(module_defn(VarSet, implementation)),
 	check_no_attributes(Result0, Attributes, Result).
 
-process_decl(_ModuleName, VarSet, "external", [PredSpec], Attributes,
+process_decl(ModuleName, VarSet, "external", [PredSpec], Attributes,
 		Result) :-
-	parse_symbol_name_specifier(PredSpec, Result0),
+	parse_implicitly_qualified_symbol_name_specifier(ModuleName,
+		PredSpec, Result0),
 	process_maybe1(make_external(VarSet), Result0, Result1),
 	check_no_attributes(Result1, Attributes, Result).
 
@@ -3358,6 +3359,15 @@ make_untyped_cons_spec(name_args(Name, Args), typed(name_args(Name, Args))).
 :- pred parse_symbol_name_specifier(term, maybe1(sym_name_specifier)).
 :- mode parse_symbol_name_specifier(in, out) is det.
 parse_symbol_name_specifier(Term, Result) :-
+	root_module_name(DefaultModule),
+	parse_implicitly_qualified_symbol_name_specifier(DefaultModule,
+		Term, Result).
+
+:- pred parse_implicitly_qualified_symbol_name_specifier(module_name,
+		term, maybe1(sym_name_specifier)).
+:- mode parse_implicitly_qualified_symbol_name_specifier(in, in, out) is det.
+
+parse_implicitly_qualified_symbol_name_specifier(DefaultModule, Term, Result) :-
     ( %%% some [NameTerm, ArityTerm, Context]
        	Term = term__functor(term__atom("/"), [NameTerm, ArityTerm], _Context)
     ->
@@ -3365,7 +3375,8 @@ parse_symbol_name_specifier(Term, Result) :-
             ArityTerm = term__functor(term__integer(Arity), [], _Context2)
 	->
             ( Arity >= 0 ->
-		parse_symbol_name(NameTerm, NameResult),
+		parse_implicitly_qualified_symbol_name(DefaultModule,
+			NameTerm, NameResult),
 		process_maybe1(make_name_arity_specifier(Arity), NameResult,
 			Result)
 	    ;
@@ -3375,7 +3386,8 @@ parse_symbol_name_specifier(Term, Result) :-
 	    Result = error("arity in symbol name specifier must be an integer", Term)
         )
     ;
-	parse_symbol_name(Term, SymbolNameResult),
+	parse_implicitly_qualified_symbol_name(DefaultModule,
+		Term, SymbolNameResult),
 	process_maybe1(make_name_specifier, SymbolNameResult, Result)
     ).
 

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -302,8 +302,8 @@ check_for_bogus_methods(InstanceMethods, ClassId, ClassPredIds, Context,
 		adjust_func_arity(MethodPredOrFunc, MethodArity,
 			MethodPredArity),
 		predicate_table_search_pf_sym_arity(PredTable,
-			MethodPredOrFunc, MethodName, MethodPredArity,
-			MatchingPredIds),
+			is_fully_qualified, MethodPredOrFunc,
+			MethodName, MethodPredArity, MatchingPredIds),
 		some [PredId] (
 			list__member(PredId, MatchingPredIds),
 			list__member(PredId, ClassPredIds)

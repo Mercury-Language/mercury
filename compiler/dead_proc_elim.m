@@ -901,7 +901,10 @@ dead_pred_info_add_pred_name(Name, DeadInfo0, DeadInfo) :-
 	;
 		module_info_get_predicate_table(ModuleInfo, PredicateTable),
 		set__insert(NeededNames0, Name, NeededNames),
-		( predicate_table_search_sym(PredicateTable, Name, PredIds) ->
+		(
+			predicate_table_search_sym(PredicateTable,
+				may_be_partially_qualified, Name, PredIds)
+		->
 			queue__put_list(Q0, PredIds, Q)
 		;
 			Q = Q0

@@ -637,7 +637,8 @@ recompilation__usage__do_record_used_pred_or_func(PredOrFunc, ModuleQualifier,
 		{ module_info_get_predicate_table(ModuleInfo, PredTable) },
 		{ adjust_func_arity(PredOrFunc, OrigArity, Arity) },
 		{ predicate_table_search_pf_sym_arity(PredTable,
-			PredOrFunc, SymName, OrigArity, MatchingPredIds) }
+			may_be_partially_qualified, PredOrFunc, SymName,
+			OrigArity, MatchingPredIds) }
 	->
 		{ Recorded = yes },
 		{ PredModules = set__list_to_set(list__map(
@@ -733,7 +734,10 @@ recompilation__usage__find_matching_functors(ModuleInfo, SymName, Arity,
 	% Is it a higher-order term or function call.
 	%
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
-	( predicate_table_search_sym(PredicateTable, SymName, PredIds) ->
+	(
+		predicate_table_search_sym(PredicateTable,
+			may_be_partially_qualified, SymName, PredIds)
+	->
 		MatchingPreds = list__filter_map(
 			recompilation__usage__get_pred_or_func_ctors(ModuleInfo,
 				SymName, Arity),

@@ -637,7 +637,8 @@ add_item_decl_pass_2(
 		module_info_get_predicate_table(Module0, PredTable0),
 		(
 			predicate_table_search_func_sym_arity(PredTable0,
-				SymName, FuncArity, PredIds)
+				is_fully_qualified, SymName,
+				FuncArity, PredIds)
 		->
 			predicate_table_get_preds(PredTable0, Preds0),
 			maybe_add_default_func_modes(PredIds, Preds0, Preds),
@@ -902,7 +903,9 @@ add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context, Status,
 		% 	( R = A + B <=> R = B + A ).
 		%
 	{ GoalType = promise(PromiseType) },
-	module_add_clause(Module0, VarSet, predicate, unqualified(Name),
+	{ module_info_name(Module0, ModuleName) },
+	module_add_clause(Module0, VarSet, predicate,
+			qualified(ModuleName, Name),
 			HeadVars, Goal, Status, Context, GoalType, 
 			Module, Info0, Info).
 
@@ -945,7 +948,8 @@ add_pragma_export(Name, PredOrFunc, Modes, C_Function, Context,
 	{ list__length(Modes, Arity) },
 	(
 		{ predicate_table_search_pf_sym_arity(PredTable,
-			PredOrFunc, Name, Arity, [PredId]) }
+			may_be_partially_qualified, PredOrFunc, Name,
+			Arity, [PredId]) }
 	->
 		{ predicate_table_get_preds(PredTable, Preds) },
 		{ map__lookup(Preds, PredId, PredInfo) },
@@ -1160,7 +1164,8 @@ add_pragma_unused_args(PredOrFunc, SymName, Arity, ModeNum, UnusedArgs,
 	{ module_info_get_predicate_table(Module0, Preds) },
 	(
 		{ predicate_table_search_pf_sym_arity(Preds,
-			PredOrFunc, SymName, Arity, [PredId]) }
+			is_fully_qualified, PredOrFunc, SymName,
+			Arity, [PredId]) }
 	->
 		{ module_info_unused_arg_info(Module0, UnusedArgInfo0) },
 		% convert the mode number to a proc_id
@@ -1191,10 +1196,11 @@ add_pragma_type_spec(Pragma, Context, Module0, Module, Info0, Info) -->
 		{ MaybePredOrFunc = yes(PredOrFunc) ->
 			adjust_func_arity(PredOrFunc, Arity, PredArity),
 			predicate_table_search_pf_sym_arity(Preds,
-				PredOrFunc, SymName, PredArity, PredIds)
+				is_fully_qualified, PredOrFunc,
+				SymName, PredArity, PredIds)
 		;
 			predicate_table_search_sym_arity(Preds,
-				SymName, Arity, PredIds)
+				is_fully_qualified, SymName, Arity, PredIds)
 		},
 		{ PredIds \= [] }
 	->
@@ -1652,8 +1658,8 @@ add_pragma_termination_info(PredOrFunc, SymName, ModeList,
 	{ module_info_get_predicate_table(Module0, Preds) },
 	{ list__length(ModeList, Arity) },
 	(
-	    { predicate_table_search_pf_sym_arity(Preds,
-		PredOrFunc, SymName, Arity, PredIds) },
+	    { predicate_table_search_pf_sym_arity(Preds, is_fully_qualified,
+                    PredOrFunc, SymName, Arity, PredIds) },
 	    { PredIds \= [] }
 	->
 	    ( { PredIds = [PredId] } ->
@@ -1725,8 +1731,8 @@ add_pragma_termination_info(PredOrFunc, SymName, ModeList,
 add_stratified_pred(Module0, PragmaName, Name, Arity, Context, Module) -->
 	{ module_info_get_predicate_table(Module0, PredTable0) },
 	(
-		{ predicate_table_search_sym_arity(PredTable0, Name, 
-			Arity, PredIds) }
+		{ predicate_table_search_sym_arity(PredTable0,
+			is_fully_qualified, Name, Arity, PredIds) }
 	->
 		{ module_info_stratified_preds(Module0, StratPredIds0) },
 		{ set__insert_list(StratPredIds0, PredIds, StratPredIds) },
@@ -1933,8 +1939,8 @@ get_matching_pred_ids(Module0, Name, Arity, PredIds) :-
 	->
 		error("get_matching_pred_ids: unqualified name")
 	;
-		predicate_table_search_sym_arity(PredTable0, Name, 
-			Arity, PredIds)
+		predicate_table_search_sym_arity(PredTable0,
+			is_fully_qualified, Name, Arity, PredIds)
 	).	
 
 %-----------------------------------------------------------------------------%
@@ -1949,7 +1955,7 @@ module_mark_as_external(PredName, Arity, Context, Module0, Module) -->
 	{ module_info_get_predicate_table(Module0, PredicateTable0) },
 	(
 		{ predicate_table_search_sym_arity(PredicateTable0,
-			PredName, Arity, PredIdList) }
+			is_fully_qualified, PredName, Arity, PredIdList) }
 	->
 		{ module_mark_preds_as_external(PredIdList, Module0, Module) }
 	;
@@ -3177,8 +3183,9 @@ check_method_modes([M|Ms], PredProcIds0, PredProcIds, Module0, Module) -->
 		{ list__length(TypesAndModes, PredArity) },
 		{ module_info_get_predicate_table(Module0, PredTable) },
 		(
-			{ predicate_table_search_pf_m_n_a(PredTable, PorF,
-				ModuleName, Name, PredArity, [PredId]) }
+			{ predicate_table_search_pf_m_n_a(PredTable,
+				is_fully_qualified, PorF, ModuleName,
+				Name, PredArity, [PredId]) }
 		->
 			{ module_info_pred_info(Module0, PredId, PredInfo0) },
 			(
@@ -3347,8 +3354,8 @@ add_new_pred(Module0, TVarSet, ExistQVars, PredName, Types, Cond, Purity,
 				Owner, PredInfo0) },
 		(
 			{ predicate_table_search_pf_m_n_a(PredicateTable0,
-				PredOrFunc, MNameOfPred, PName, Arity,
-				[OrigPred|_]) }
+				is_fully_qualified, PredOrFunc, MNameOfPred,
+				PName, Arity, [OrigPred|_]) }
 		->
 			{ module_info_pred_info(Module1, OrigPred,
 				OrigPredInfo) },
@@ -3976,7 +3983,7 @@ module_add_mode(ModuleInfo0, InstVarSet, PredName, Modes, MaybeDet, _Cond,
 	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) },
 	(
 		{ predicate_table_search_pf_sym_arity(PredicateTable0,
-			PredOrFunc, PredName, Arity,
+			is_fully_qualified, PredOrFunc, PredName, Arity,
 			[PredId0]) }
 	->
 		{ ModuleInfo1 = ModuleInfo0 },
@@ -4136,7 +4143,7 @@ preds_add_implicit_2(ClausesInfo, ModuleInfo, PredicateTable0, ModuleName,
 	pred_info_set_markers(PredInfo0, Markers, PredInfo),
 	(
 		\+ predicate_table_search_pf_sym_arity(PredicateTable0,
-			PredOrFunc, PredName, Arity, _)
+			is_fully_qualified, PredOrFunc, PredName, Arity, _)
 	->
 		module_info_get_partial_qualifier_info(ModuleInfo,
 			MQInfo),
@@ -4200,7 +4207,8 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredOrFunc, PredName, Args0, Body,
 	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) },
 	(
 		{ predicate_table_search_pf_sym_arity(PredicateTable0,
-				PredOrFunc, PredName, Arity, [PredId0]) }
+			is_fully_qualified, PredOrFunc, PredName,
+			Arity, [PredId0]) }
 	->
 		{ PredId = PredId0 },
 		{ ModuleInfo1 = ModuleInfo0 },
@@ -4677,7 +4685,8 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes,
 	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) }, 
 	( 
 		{ predicate_table_search_pf_sym_arity(PredicateTable0,
-			PredOrFunc, PredName, Arity, [PredId0]) }
+			is_fully_qualified, PredOrFunc, PredName,
+			Arity, [PredId0]) }
 	->
 		{ PredId = PredId0 },
 		{ ModuleInfo1 = ModuleInfo0 }
@@ -4832,7 +4841,8 @@ module_add_pragma_foreign_proc(Attributes, PredName, PredOrFunc,
 	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) }, 
 	( 
 		{ predicate_table_search_pf_sym_arity(PredicateTable0,
-			PredOrFunc, PredName, Arity, [PredId0]) }
+			is_fully_qualified, PredOrFunc, PredName,
+			Arity, [PredId0]) }
 	->
 		{ PredId = PredId0 },
 		{ ModuleInfo1 = ModuleInfo0 }
@@ -4969,7 +4979,8 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
 			% a dummy declaration for the predicate.) 
 		(
 			{ predicate_table_search_pf_sym_arity(PredicateTable0,
-				PredOrFunc, PredName, Arity, PredIds0) }
+				is_fully_qualified, PredOrFunc,
+				PredName, Arity, PredIds0) }
 		->
 			{ PredIds = PredIds0 },
 			{ ModuleInfo1 = ModuleInfo0 }	
@@ -4987,7 +4998,8 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
 	;
 		(	
 			{ predicate_table_search_sym_arity(PredicateTable0,
-					PredName, Arity, PredIds0) }
+				is_fully_qualified, PredName,
+				Arity, PredIds0) }
 		->
 			{ ModuleInfo1 = ModuleInfo0 },
 			{ PredIds = PredIds0 }
@@ -9099,8 +9111,8 @@ module_add_pragma_fact_table(Pred, Arity, FileName, Status, Context,
 		Module0, Module, Info0, Info) -->
 	{ module_info_get_predicate_table(Module0, PredicateTable) },
 	(
-	    { predicate_table_search_sym_arity(PredicateTable, Pred, 
-		    Arity, PredIDs0) },
+	    { predicate_table_search_sym_arity(PredicateTable,
+	    	    is_fully_qualified, Pred, Arity, PredIDs0) },
 	    { PredIDs0 = [PredID | PredIDs1] }
 	->
 	    (

@@ -1371,25 +1371,10 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
 		% convert higher-order unifications into calls to
 		% builtin_unify_pred (which calls error/1)
 		%
-		{ SymName = unqualified("builtin_unify_pred") },
-		{ ArgVars = [XVar, YVar] },
-		{ module_info_get_predicate_table(ModuleInfo,
-			PredicateTable) },
-		{
-			mercury_private_builtin_module(PrivateBuiltin),
-			predicate_table_search_pred_m_n_a(
-			    PredicateTable,
-			    PrivateBuiltin, "builtin_unify_pred", 2,
-			    [PredId0])
-		->
-			PredId = PredId0
-		;
-			error("can't locate private_builtin:builtin_unify_pred/2")
-		},
-		{ hlds_pred__in_in_unification_proc_id(ProcId) },
-		{ CallContext = call_unify_context(XVar, var(YVar), Context) },
-		{ Call0 = call(PredId, ProcId, ArgVars, not_builtin,
-			yes(CallContext), SymName) },
+		{ goal_info_get_context(GoalInfo0, GContext) },
+		{ generate_simple_call(mercury_private_builtin_module, 
+			"builtin_unify_pred", [XVar, YVar], mode_no(0),
+			semidet, no, [], ModuleInfo, GContext, Call0 - _) },
 		simplify__goal_2(Call0, GoalInfo0, Call1, GoalInfo),
 		{ Call = Call1 - GoalInfo },
 		{ ExtraGoals = [] }
@@ -1459,35 +1444,13 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
 	module_info::in, simplify_info::in, unify_context::in,
 	hlds_goal_info::in, hlds_goal::out) is det.
 
-simplify__call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, Info,
-		Context, GoalInfo0, Call) :-
+simplify__call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, _,
+		_, GoalInfo, Call) :-
 	ArgVars = [TypeInfoVar, XVar, YVar],
-	module_info_get_predicate_table(ModuleInfo, PredicateTable),
-	mercury_public_builtin_module(MercuryBuiltin),
-	( predicate_table_search_pred_m_n_a(PredicateTable,
-		MercuryBuiltin, "unify", 2, [CallPredId])
-	->
-		PredId = CallPredId
-	;
-		error("simplify.m: can't find `builtin:unify/2'")
-	),
-	% Note: the mode for polymorphic unifications
-	% should be `in, in'. 
-	% (This should have been checked by mode analysis.)
-	hlds_pred__in_in_unification_proc_id(ProcId),
-
-	SymName = qualified(MercuryBuiltin, "unify"),
-
-	simplify_info_get_det_info(Info, DetInfo),
-	det_info_get_pred_id(DetInfo, CallerPredId),
-	code_util__builtin_state(ModuleInfo, CallerPredId,
-		PredId, ProcId, BuiltinState),
-	CallContext = call_unify_context(XVar, var(YVar), Context),
-	goal_info_get_nonlocals(GoalInfo0, NonLocals0),
-	set__insert(NonLocals0, TypeInfoVar, NonLocals),
-	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo),
-	Call = call(PredId, ProcId, ArgVars, BuiltinState, yes(CallContext),
-		SymName) - GoalInfo.
+	goal_info_get_context(GoalInfo, Context),
+	goal_util__generate_simple_call(mercury_public_builtin_module,
+		"unify", ArgVars, mode_no(0), semidet, no, [],
+		ModuleInfo, Context, Call).
 
 :- pred simplify__call_specific_unify(type_ctor::in, list(prog_var)::in,
 	prog_var::in, prog_var::in, proc_id::in,

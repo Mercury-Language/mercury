@@ -2162,8 +2162,8 @@ modes__build_call(Module, Name, ArgVars, Context, CallUnifyContext, ModuleInfo,
 		Goal) :-
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	list__length(ArgVars, Arity),
-	predicate_table_search_pred_m_n_a(PredicateTable, Module, Name, Arity,
-		[PredId]),
+	predicate_table_search_pred_m_n_a(PredicateTable, is_fully_qualified,
+		Module, Name, Arity, [PredId]),
 	hlds_pred__proc_id_to_int(ModeId, 0), % first mode
 	Call = call(PredId, ModeId, ArgVars, not_builtin, CallUnifyContext,
 		qualified(Module, Name)),
