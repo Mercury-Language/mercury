@@ -1,0 +1,15 @@
+
+The current implementation does not yet completely implement
+the Mercury language. The features which are not yet fully
+implemented are
+
+	- higher order predicates and lambda closures
+	- partially instantiated modes
+	- unique modes
+	- module qualifiers
+
+These features are also not yet documented. :-(
+
+We'd also like to provide a much better C interface and
+a better garbage collector.
+
