@@ -72,15 +72,34 @@
 % 	   SIMPLE above. 
 %
 % Tag 3 - 	VAR/EQ  Word = type variable number, or pointer to 
-% 		 		equivalent base_type_info.
+% 		 		indicator, equivalent base_type_info
+% 		 		and maybe functor.
 %
-% VAR/EQ:  If under 1024, the rest of the word is a type variable number,
+% VAR/EQ:  There are 3 cases covered by this tag, all of them forms
+% 	   of equivalences.
+% 	   If under 1024, the rest of the word is a type variable number,
 % 	   that is, the polymophic argument number (starting at 1) of
 % 	   the type. Substitute that variable, and you have the type
 % 	   this type is equivalent to.
-% 	   If over, it's just a pointer to a pseudo-typeinfo that this
-% 	   type is equivalent to. 
-% 	   In either case, you need to look at the equivalent type
+%
+% 	   If over 1024, it's just a pointer to a vector, containing
+% 	   	- an indicator whether this is a no_tag or not
+% 	   	- a pseudo-typeinfo 
+% 	   	- possibly a string constant - the name of the 
+% 	   	  functor if it is a no_tag.
+%	   If the indicator says it isn't a no_tag, the pseudo-typeinfo
+%	   is the type this type is equivalent to. There is no string
+%	   constant.
+%	   If the indicator says it is a no_tag, then the string
+%	   contains the functor, and the pseudo-typeinfo is the
+%	   type of the argument. Except for the functor, this is much 
+%	   the same as an equivalence - the data word has a type
+%	   given by the pseudo-typeinfo (it might be worth taking
+%	   advantage of the fact that the vector for a no_tag type
+%	   is exactly the same vector that a simple tag type would
+%	   have - one argument, type of argument, functor).
+%
+% 	   In any case, you need to look at the equivalent type
 % 	   to find out what the data word represents.
 %
 % Argument vector 	- arity, then pointers to pseudo-typeinfos.
@@ -245,9 +264,9 @@ base_type_layout__construct_base_type_layouts([BaseGenInfo | BaseGenInfos],
 		;
 			Enum = no,
 			( 
-				type_is_no_tag_type(Ctors, _Name, TypeArg)
+				type_is_no_tag_type(Ctors, Name, TypeArg)
 			->
-				base_type_layout__construct_eqv_type(
+				base_type_layout__construct_no_tag_type(Name,
 					TypeArg, LayoutInfo1, LayoutInfo2,
 					TypeData)
 			;
@@ -301,8 +320,13 @@ base_type_layout__const_value(character, 5).
 base_type_layout__const_value(univ, 6).
 base_type_layout__const_value(predicate, 7).
 
-	% What value do we use to indicate an enum, and not an
-	% enum.
+	% The value we use to indicate whether a type is an no_tag type
+	
+:- pred base_type_layout__no_tag_indicator(bool::in, int::out) is det.
+base_type_layout__no_tag_indicator(no, 0).
+base_type_layout__no_tag_indicator(yes, 1).
+
+	% The value we use to indicate whether a type is an enum
 	
 :- pred base_type_layout__enum_indicator(bool::in, int::out) is det.
 base_type_layout__enum_indicator(no, 0).
@@ -443,12 +467,45 @@ base_type_layout__construct_enum(ConsList, LayoutInfo0, LayoutInfo, Rvals) :-
 	list__duplicate(MaxTags, Rval, RvalList),
 	list__condense(RvalList, Rvals).
 	
+	% For no_tag types:
+	%
+	% Tag is 3, rest of word is pointer to vector of
+	% no_tag indicator, pseudo_type_info and functor name.
+
+:- pred base_type_layout__construct_no_tag_type(sym_name, type, layout_info, 
+		layout_info, list(maybe(rval))).
+:- mode base_type_layout__construct_no_tag_type(in, in, in, out, out) is det.
+base_type_layout__construct_no_tag_type(SymName, Type, LayoutInfo0, 
+		LayoutInfo, Rvals) :-
+
+		% indicator of tag_type
+	base_type_layout__no_tag_indicator(yes, NoTagIndicator),
+	Rval0 = yes(const(int_const(NoTagIndicator))),
+
+		% generate pseudo_type_info
+	base_type_layout__generate_pseudo_type_info(Type, LayoutInfo0, 
+		LayoutInfo1, Rval1),
+
+		% functor name
+	unqualify_name(SymName, Name),
+	Rval2 = yes(const(string_const(Name))),
+
+	base_type_layout__get_next_label(LayoutInfo1, NextLabel),
+	base_type_layout__incr_next_label(LayoutInfo1, LayoutInfo),
+	base_type_layout__tag_value_equiv(Tag),
+
+	base_type_layout__encode_create(LayoutInfo, Tag, 
+			[Rval0, Rval1, Rval2], no, NextLabel, Rval),
+
+	base_type_layout__get_max_tags(LayoutInfo, MaxTags),
+	list__duplicate(MaxTags, Rval, RvalsList),
+	list__condense(RvalsList, Rvals).
+
 
 	% For equivalences:
 	%
-	% Tag is 3, rest of word is pointer to pseudotypeinfo or
+	% Tag is 3, rest of word is pointer to vector or
 	% variable number
-	
 
 :- pred base_type_layout__construct_eqv_type(type, layout_info, 
 		layout_info, list(maybe(rval))).
@@ -457,7 +514,7 @@ base_type_layout__construct_eqv_type(Type, LayoutInfo0, LayoutInfo, Rvals) :-
 
 		% generate rest of word, remove a level of creates
 	base_type_layout__generate_pseudo_type_info(Type, LayoutInfo0, 
-		LayoutInfo, Rval0),
+		LayoutInfo1, Rval0),
 	base_type_layout__tag_value_equiv(Tag),
 	( 
 		% If it was a constant (a type variable), then tag it
@@ -465,17 +522,18 @@ base_type_layout__construct_eqv_type(Type, LayoutInfo0, LayoutInfo, Rvals) :-
 		Rval0 = yes(const(Const))
 	->
 		base_type_layout__encode_mkword(LayoutInfo, Tag, 
-				const(Const), Rval)
+				const(Const), Rval),
+		LayoutInfo = LayoutInfo1
 	;
-		% If it was a create cell (a type), then change its
-		% tag.
+		% Otherwise, package it into a vector
 
-		Rval0 = yes(create(_, TypeInfos, Unique, Label))
-	->
+		base_type_layout__no_tag_indicator(no, NoTagIndicator),
+		IndicatorRval = yes(const(int_const(NoTagIndicator))),
+		
+		base_type_layout__get_next_label(LayoutInfo1, NextLabel),
+		base_type_layout__incr_next_label(LayoutInfo1, LayoutInfo),
 		base_type_layout__encode_create(LayoutInfo, Tag, 
-			TypeInfos, Unique, Label, Rval)
-	;
-		error("base_type_layout: unexpected rval generated")
+			[IndicatorRval, Rval0], no, NextLabel, Rval)
 	),
 	base_type_layout__get_max_tags(LayoutInfo, MaxTags),
 	list__duplicate(MaxTags, Rval, RvalsList),
