@@ -387,6 +387,7 @@
   #define MR_WIN32
   #define MR_WIN32_GETSYSTEMINFO
   #define MR_WIN32_VIRTUAL_ALLOC
+  #define MR_WIN32_GETPROCESSTIMES
 #endif
 
 /*---------------------------------------------------------------------------*/
