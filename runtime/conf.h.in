@@ -9,6 +9,8 @@
 /*
 **	Various configuration parameters. Their meanings are:
 **
+**	WORD_TYPE		the base type for the definition of Word.
+**	LOW_TAG_BITS		the number of low-order tag bits we can use.
 **	HAVE_SYSCONF		the machine has the sysconf() syscall.
 **	HAVE_GETPAGESIZE	the machine has the getpagesize() syscall.
 **	HAVE_MEMALIGN		the machine has the memalign() libcall.
@@ -21,9 +23,11 @@
 **	HAVE_SIGACTION		the machine has the sigaction() syscall.
 **	SIGACTION_FIELD		the name of the field in the sigaction struct
 **				(either sa_handler or sa_sigaction).
-**	HAVE_CWD_DECL		<unistd.h> contains a declaration for cwd()
+**	HAVE_CWD_DECL		<unistd.h> contains a declaration for cwd().
 */
 
+#undef	WORD_TYPE
+#undef	LOW_TAG_BITS
 #undef	HAVE_SYSCONF
 #undef	HAVE_GETPAGESIZE
 #undef	HAVE_MEMALIGN

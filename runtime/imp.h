@@ -21,11 +21,12 @@
 
 /* GENERAL DEFINITIONS */
 
-typedef	uint	Word;
-typedef int	Integer;
-typedef void	Code;		/* should be `typedef function_t Code' */
+typedef	unsigned WORD_TYPE	Word;
+typedef WORD_TYPE		Integer;
+typedef void			Code; /* should be `typedef function_t Code' */
 
 /* Note that we require sizeof(Word) == sizeof(Integer) == sizeof(Code*) */
+/* this is assured by the autoconfiguration script */
 
 #define	WORDSIZE	sizeof(Word)
 
@@ -63,22 +64,22 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 /* DEFINITIONS FOR CALLS AND RETURNS */
 
 #define	localcall(label, succ_cont, current_label)		\
-			do {					\
-				debugcall(LABEL(label), (succ_cont)); \
-				succip = (succ_cont);		\
-				PROFILE(LABEL(label), (current_label));	\
-				set_prof_current_proc(LABEL(label)); \
-				GOTO_LABEL(label);		\
-			} while (0)
+		do {						\
+			debugcall(LABEL(label), (succ_cont));	\
+			succip = (succ_cont);			\
+			PROFILE(LABEL(label), (current_label));	\
+			set_prof_current_proc(LABEL(label));	\
+			GOTO_LABEL(label);			\
+		} while (0)
 
 #define	call(proc, succ_cont, current_label)			\
-			do {					\
-				debugcall((proc), (succ_cont));	\
-				succip = (succ_cont);		\
-				PROFILE((proc), (current_label));	\
-				set_prof_current_proc(proc);	\
-				GOTO(proc);			\
-			} while (0)
+		do {						\
+			debugcall((proc), (succ_cont));		\
+			succip = (succ_cont);			\
+			PROFILE((proc), (current_label));	\
+			set_prof_current_proc(proc);		\
+			GOTO(proc);				\
+		} while (0)
 
 #define	call_det_closure(succ_cont, current_label)		\
 		do {						\
@@ -102,22 +103,26 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 		} while (0)
 
 #define	localtailcall(label, current_label)			\
-			do {					\
-				debugtailcall(LABEL(label));	\
-				PROFILE(LABEL(label), (current_label)); \
-				set_prof_current_proc(LABEL(label)); \
-				GOTO_LABEL(label);		\
-			} while (0)
-#define	tailcall(proc, current_label)	do {			\
-				debugtailcall(proc);		\
-				PROFILE((proc), (current_label)); \
-				set_prof_current_proc(proc); \
-				GOTO(proc);			\
-			} while (0)
-#define	proceed()	do {					\
-				debugproceed();			\
-				GOTO(succip);			\
-			} while (0)
+		do {						\
+			debugtailcall(LABEL(label));		\
+			PROFILE(LABEL(label), (current_label)); \
+			set_prof_current_proc(LABEL(label));	\
+			GOTO_LABEL(label);			\
+		} while (0)
+
+#define	tailcall(proc, current_label)				\
+		do {						\
+			debugtailcall(proc);			\
+			PROFILE((proc), (current_label));	\
+			set_prof_current_proc(proc);		\
+			GOTO(proc);				\
+		} while (0)
+
+#define	proceed()						\
+		do {						\
+			debugproceed();				\
+			GOTO(succip);				\
+		} while (0)
 
 #include	"heap.h"
 #include	"stacks.h"
@@ -132,12 +137,14 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 #ifdef __GNUC__
 
 /*
-** Note that hash_string is also defined in compiler/string.nl and in
-** code/aux.c.  The three definitions must be kept equivalent.
+** Note that hash_string is also defined in compiler/string.m.
+** The two definitions here and the definition in string.m
+** must be kept equivalent.
 */
 
 #define hash_string(s)					\
-	({ int len = 0;					\
+	({						\
+	   int len = 0;					\
 	   int hash = 0;				\
 	   while(((char *)s)[len]) {			\
 		hash ^= (hash << 5);			\
@@ -147,8 +154,25 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 	   hash ^= len;					\
 	   hash;					\
 	})
+
 #else
+
+/* the actual definition of hash_string is in aux.c */
+/* it uses the macro below */
+
 extern	int	hash_string(const char *);
+
+#define HASH_STRING_FUNC_BODY				\
+	   int len = 0;					\
+	   int hash = 0;				\
+	   while(((char *)s)[len]) {			\
+		hash ^= (hash << 5);			\
+		hash ^= ((char *)s)[len];		\
+		len++;					\
+	   }						\
+	   hash ^= len;					\
+	   return hash;
+
 #endif
 
 /* FLOATING POINT HANDLING */
