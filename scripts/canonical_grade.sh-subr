@@ -1,0 +1,108 @@
+#---------------------------------------------------------------------------#
+# Copyright (C) 2000 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# canonical_grade.sh-subr:
+#	An `sh' subroutine for computing a canonical grade string based on
+#	the values of grade-related options.
+#	It is used by the `ml' and `canonical_grade' scripts.
+#
+#	The code here should be inserted after init_grade_options.sh-subr,
+#	parse_grade_options.sh-subr and final_grade_options.sh-subr, which
+#	together define a set of shell variables giving the values of the
+#	various grade options.
+#
+#	Canonical_grade.sh-subr defines the variable GRADE, which will contain
+#	the canonical string for the grade implied by the option values.
+#
+#	If the option values are inconsistent, this script fragment will
+#	print an error message and exit with failure.
+#
+# IMPORTANT: any changes to the handling of grades here may also require
+# changes to all the files indicated by runtime/mercury_grade.h.
+
+case $non_local_gotos,$global_regs in
+	true,true) 	GRADE="fast" ;;
+	true,false)  	GRADE="jump" ;;
+	false,true)  	GRADE="reg" ;;
+	false,false)   	GRADE="none" ;;
+esac
+
+case $asm_labels in
+	true)		GRADE="asm_$GRADE" ;;
+	false)		;;
+esac
+
+case $highlevel_code,$highlevel_data,$GRADE in
+	true,true,none)		
+		GRADE="hl" ;;
+	true,false,none)	
+		GRADE="hlc" ;;
+	false,false,*)
+		# GRADE was set above
+		;;
+	false,true,*)
+		progname=`basename $0`
+		echo "$progname: error: \`--high-level-data' requires \`--high-level-code'" 1>&2
+		exit 1
+		;;
+	*)
+		echo "$progname: error: \`--high-level-code' is incompatible with the use of" 1>&2
+		echo "$progname: error: low-level gcc extensions implied by grade \`$GRADE'" 1>&2
+		exit 1
+		;;
+esac
+
+case $gcc_nested_functions,$highlevel_code in
+	true,true)	GRADE="${GRADE}_nest" ;;
+	*)		;;
+esac
+	
+case $thread_safe in
+	true)	GRADE="$GRADE.par" ;;
+	false)	;;
+esac
+
+case $gc_method in
+	conservative)	GRADE="$GRADE.gc" ;;
+	accurate)	GRADE="$GRADE.agc" ;;
+esac
+
+case $profile_time,$profile_calls,$profile_memory in
+	true,true,false)	GRADE="$GRADE.prof" ;;
+	true,false,false)	GRADE="$GRADE.proftime" ;;
+	false,true,false)	GRADE="$GRADE.profcalls" ;;
+	true,true,true)		GRADE="$GRADE.profall" ;;
+	false,true,true)	GRADE="$GRADE.memprof" ;;
+	false,false,false)	;;
+	*)			progname=`basename $0`
+				echo "$progname: error: invalid combination of profiling options." 1>&2
+				exit 1
+				;;
+esac
+
+case $use_trail in
+	true)		GRADE="$GRADE.tr" ;;
+	false)		;;
+esac
+
+case $use_minimal_model in
+	true)	GRADE="$GRADE.mm" ;;
+	false)	;;
+esac
+
+# We ignore the value of $picreg in computing the name of the grade
+# that we will use as a directory name in the Mercury linker.
+# case $picreg in
+# 	true)	GRADE="$GRADE.picreg" ;;
+# 	false)	;;
+# esac
+
+case $stack_trace,$require_tracing in
+	true,true)	GRADE="$GRADE.debug" ;;
+	false,true)	GRADE="$GRADE.trace" ;;
+	true,false)	GRADE="$GRADE.strce" ;;
+	false,false)	;;
+esac

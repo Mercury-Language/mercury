@@ -1,0 +1,133 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2000 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+#
+# RESERVED_MACRO_NAMES
+#
+# This file lists the macro names, other than the
+# ones starting with `MR_', `MERCURY_', or `GC_',
+# that are defined by the Mercury header files.
+# The Mmakefile target `check_headers' automatically
+# checks that no other macro names are defined.
+# This is done to keep our headers namespace-clean,
+# i.e. ensure that we don't invade the user's namespace.
+#
+# This file is used as the argument to `fgrep -f'.
+# Lines starting with `#' will not match anything in the input,
+# and can thus be used as comments.
+# Other lines are treated as strings to match against.
+#
+#-----------------------------------------------------------------------------#
+# This is documented in the Mercury language reference manual
+# and defined by mercury_types.h.
+SUCCESS_INDICATOR
+#-----------------------------------------------------------------------------#
+# These are defined by mercury_std.h
+# XXX we should probably add MR_ prefixes to all of these,
+# especially the str* ones, which violate the ANSI/ISO C standard.
+bool
+TRUE
+FALSE
+strdiff
+streq
+strndiff
+strneq
+strntest
+strtest
+ungetchar
+max
+min
+reg
+NO_RETURN
+#-----------------------------------------------------------------------------#
+# These are configuration parameters that are defined
+# by mercury_conf.h and/or mercury_conf_param.h and/or
+# on the command-line or by scripts/mgnuc.
+# XXX we ought to add MR_ prefixes to all of these.
+# XXX USE_TYPE_LAYOUT is defined in mercury_type_info.h
+# but it ought to be defined in mercury_conf_param.h,
+# or just deleted, since it is not used at all
+# XXX TAG_BITS is defined in mercury_tags.h
+BOXED_FLOAT
+CONSERVATIVE_GC
+LOW_TAG_BITS
+NATIVE_GC
+NO_TYPE_LAYOUT
+PARALLEL
+PC_ACCESS
+PC_ACCESS_GREG
+PIC
+PROFILE_CALLS
+PROFILE_MEMORY
+PROFILE_TIME
+RETSIGTYPE
+SIGACTION_FIELD
+TAG_BITS
+USE_ASM_LABELS
+USE_DLLS
+USE_GCC_GLOBAL_REGISTERS
+USE_GCC_NONLOCAL_GOTOS
+USE_SINGLE_PREC_FLOAT
+USE_TYPE_LAYOUT
+HAVE_ASM_SIGCONTEXT
+HAVE_DLCLOSE
+HAVE_DLERROR
+HAVE_DLFCN_H
+HAVE_DLOPEN
+HAVE_DLSYM
+HAVE_FDOPEN
+HAVE_FILENO
+HAVE_FSTAT
+HAVE_GETPAGESIZE
+HAVE_MEMALIGN
+HAVE_MEMMOVE
+HAVE_MPROTECT
+HAVE_READLINE_HISTORY
+HAVE_READLINE_READLINE
+HAVE_SETITIMER
+HAVE_SIGACTION
+HAVE_SIGCONTEXT_STRUCT
+HAVE_SIGCONTEXT_STRUCT_2ARG
+HAVE_SIGCONTEXT_STRUCT_3ARG
+HAVE_SIGINFO
+HAVE_SIGINFO_T
+HAVE_STRERROR
+HAVE_SYSCONF
+HAVE_SYS_PARAM
+HAVE_SYS_STAT_H
+HAVE_SYS_SIGINFO
+HAVE_SYS_TIME
+HAVE_SYS_TIMES_H
+HAVE_SYS_TYPES_H
+HAVE_SYS_UCONTEXT
+HAVE_SYS_WAIT
+HAVE_UCONTEXT
+HAVE_UNISTD_H
+HAVE_VSNPRINTF
+HAVE__VSNPRINTF
+#-----------------------------------------------------------------------------#
+# These are defined by mercury.h
+# Normally macros should start with capital letters,
+# but in this case we need to use lowercase, otherwise
+# the macros wouldn't achieve their desired effect.
+# The `mercury__' prefix is unique enough.
+mercury__builtin____type_ctor_info_character_0
+mercury__builtin____type_ctor_info_float_0
+mercury__builtin____type_ctor_info_int_0
+mercury__builtin____type_ctor_info_pred_0
+mercury__builtin____type_ctor_info_string_0
+mercury__builtin____type_ctor_info_tuple_0
+mercury__private_builtin__SIZEOF_WORD
+mercury__private_builtin__unsafe_type_cast_2_p_0
+#-----------------------------------------------------------------------------#
+# These are defined by boehm_gc/gc.h.
+__GC
+_GC_H
+#-----------------------------------------------------------------------------#
+# This is defined by mercury_getopt.h
+# That header file is NOT #included by any of the other
+# headers, so this doesn't cause any name space polution.
+__GNU_LIBRARY__
+#-----------------------------------------------------------------------------#

@@ -1,0 +1,63 @@
+#!/bin/sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 2001 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# This shell script allows you to execute a version of the Mercury compiler
+# that you have built in a workspace. Everything that the compilation process
+# needs will come from that workspace: the libraries for the runtime system,
+# the trace system, the Mercury standard library, the Boehm collector, etc.
+# You specify the directory containing the workspace by setting the value of
+# the WORKSPACE environment variable. This can be done by setting up a small
+# shell script for each workspace you have:
+#
+# #!/bin/sh
+# WORKSPACE=$HOME/mer/ws1
+# export WORKSPACE
+# $WORKSPACE/tools/lmc "$@"
+#
+# If you want to track down some C level bug, you can ask this script to
+# pass -g to the C compiler and to the linker by setting the environment
+# variable MMC_CDEBUG to the string "true".
+#
+# If you want to track down some low level bug, you can ask this script to
+# execute the Mercury compiler under gdb by setting the environment variable
+# MMC_UNDER_GDB to the string "true".
+
+MERCURY_COMPILER=$WORKSPACE/compiler/mercury_compile
+export MERCURY_COMPILER
+MERCURY_INT_DIR=$WORKSPACE/library
+export MERCURY_INT_DIR
+MERCURY_LIBS="$WORKSPACE/trace/libmer_trace.a $WORKSPACE/browser/libmer_browser.a $WORKSPACE/library/libmer_std.a $WORKSPACE/runtime/libmer_rt.a $WORKSPACE/boehm_gc/libgc.a -lm"
+export MERCURY_LIBS
+MERCURY_ALL_C_INCL_DIRS="-I$WORKSPACE/runtime -I$WORKSPACE/trace -I$WORKSPACE/boehm_gc -I$WORKSPACE/boehm_gc/include"
+export MERCURY_ALL_C_INCL_DIRS
+MMAKE_DIR=$WORKSPACE/scripts
+export MMAKE_DIR
+MERCURY_TRACE_LIB_MODS="$WORKSPACE/browser/mer_browser.init"
+export MERCURY_TRACE_LIB_MODS
+MERCURY_MOD_LIB_MODS="$WORKSPACE/library/mer_std.init $WORKSPACE/runtime/mer_rt.init"
+export MERCURY_MOD_LIB_MODS
+PATH="$WORKSPACE/scripts:$WORKSPACE/util:$PATH"
+export PATH
+
+if test "$MMC_CDEBUG" = true
+then
+	CDEBUG_FLAGS="--link-flags -g --cflags -g"
+else
+	CDEBUG_FLAGS=""
+fi
+
+DIR_FLAGS="--cflags -I$WORKSPACE/trace --cflags -I$WORKSPACE/runtime --cflags -I$WORKSPACE/boehm_gc --cflags -I$WORKSPACE/boehm_gc/include"
+
+set -x
+
+if test "$MMC_UNDER_GDB" = true
+then
+	MERCURY_COMPILER="$WORKSPACE/tools/gdbrun $MERCURY_COMPILER"
+	export MERCURY_COMPILER
+fi
+
+mmc $CDEBUG_FLAGS $DIR_FLAGS "$@"

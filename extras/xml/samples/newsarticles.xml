@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE NEWSARTICLE SYSTEM "newsarticles.dtd">
+<NEWSARTICLE>
+<ARTICLE DATE="10/05/00">
+    <TITLE>Events and Reports</TITLE>
+    <BODY>Two new sections have been added to the web site. The events section will give information about events Mercury has been involved in -- we start this section with a page on Mercury coming 4th (of 38 teams) in the ICFP 2000 programming contest. The reports section contains regular reports from the developers, such as minutes from Mercury meetings. Both are available from the sidebar menu.</BODY>
+</ARTICLE>
+<ARTICLE DATE="10/04/00">
+    <TITLE>Two new papers</TITLE>
+    <BODY>Two new papers on Mercury are now available from our papers page. One describes a binding-time analysis for higher order code, while the other describes an analysis for detecting whether a memory cell is availble for reuse.</BODY>
+</ARTICLE>
+</NEWSARTICLE>

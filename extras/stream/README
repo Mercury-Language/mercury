@@ -1,0 +1,29 @@
+This directory contains an implementation of generic IO streams in Mercury.
+The streams interface uses type classes, so that users can define their
+own stream types and can write generic code that will work on any
+appropriate stream.
+
+To build this library you need mutvar.m and semaphore.m from the
+extras/concurrency directory.
+
+The following files implement the stream interfaces at various levels
+
+    stream.m
+        The pure high-level interface.  This is the interface external
+        code should use to the stream library.  The file also contains
+        examples of extending any stream with infinite putback and/or
+        line numbering.
+
+    lowlevel.m
+        A pure low-level interface.  This interface is more useful for
+        using the foreign language binding to define a new stream
+        type.  This file also provides implementations of read/write one
+        char which can be used in instance declarations for the
+        highlevel stream typeclasses.  This allows an implementor to do
+        the minimum amount of work to achieve an instance of the
+        highlevel stream type class.
+         
+    impure.m
+        An impure low-level interface, which provides the same
+        functionality as lowlevel.m except the interface methods are
+        impure.

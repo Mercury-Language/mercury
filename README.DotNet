@@ -1,0 +1,157 @@
+-----------------------------------------------------------------------------
+
+INTRODUCTION
+
+This release of Mercury contains an incomplete port to the Microsoft.NET
+Common Language Runtime (CLR).  This port is very new, and the target
+platform is still in beta, so there are many unimplemented features.
+
+The Mercury compiler will generate code in Microsoft's Intermediate
+Language (IL) that can be assembled into bytecode suitable for running
+in the .NET runtime system.  In addition, a small part of the Mercury library
+has been ported to use the .NET Frameworks.
+
+In order to try this system you will need 
+
+	- The Microsoft .NET Beta 1 SDK, see
+		<http://msdn.microsoft.com/net/>
+	  to download.  If you are an MSDN Universal subscriber you can
+	  also order CDs as part of your subscription.
+
+	- A windows system suitable for development with Microsoft .NET
+	  (Windows 2000 is the most likely).  Microsoft advises not to
+	  install the SDK onto a production machine.  Consider using a
+	  separate boot partition, or a virtual environment such as
+	  VMWare (www.vmware.com).
+
+	- Cygwin (see README.MS-Windows for how to install).
+  	  The Mercury compiler still runs as a native compiler, built
+	  with gcc by default -- although see README.MS-VisualC for how
+	  to build with VC++ if you wish).
+	  Mercury still relies upon the Cygwin environment for
+	  development environment tools such as `mmake'.
+
+	- The Mercury distribution -- installed as usual.  You make sure
+	  the installation is run after the .NET SDK is installed (run
+	  it again if necessary) so that the configuration scripts
+	  detect the installation path of the SDK.  If `configure' finds
+	  `ilasm' then this has been successful.
+
+	  If you're reading this file from somewhere other than the
+	  Mercury distribution, try the Mercury homepage at
+	  	<http://www.cs.mu.oz.au/mercury/>
+
+-----------------------------------------------------------------------------
+
+THE ILC GRADE
+
+The Mercury compiler currently supports the grade 'ilc' to target the
+Microsoft.NET CLR.  Support for building and installation of this grade
+is still somewhat rudimentary.
+
+To run a Mercury program using the ilc grade, you need to build the
+library and runtime.  Run the following commands in a cygwin shell:
+
+	cd mercury
+	autoconf
+	./configure
+	cd runtime
+	MMAKE_DIR=../scripts mmake GRADE=ilc
+	cd ..
+	cp runtime/*.dll library
+	cd library
+	mmake depend
+	MMAKE_DIR=../scripts mmake GRADE=ilc
+	cd ..
+
+You can now build programs such as hello.m or eliza.m in the samples
+directory.
+	
+	cd samples
+	mmake hello.depend
+	mmake hello.il
+	ilasm hello.il
+
+Currently, to run executables, you also need to create a corresponding
+.cfg file which describes where to find the library.  So create a file
+called hello.cfg which contains the following XML fragment:
+
+	<configuration>
+	<assemblies>
+	</assemblies>
+	<AppDomain 
+		PrivatePath="../library/"
+	/>
+	</configuration>
+
+Now you can finally run hello
+
+	./hello.exe
+
+We expect to automate or eliminate most of these steps in the future.
+
+-----------------------------------------------------------------------------
+
+USING DOTNET
+
+The Mercury standard library has not been ported to .NET yet, only a few
+important predicates have been implemented.  Unimplemented predicates
+will issue a message saying "Unimplemented: foreign code for this
+function".
+
+If you find missing functionality, you can interface to the .NET
+Frameworks using the Managed extensions for C++, and Mercury's foreign
+language interface.
+
+For example:
+
+:- pragma foreign_code("MC++", io__getenv(Var::in, Value::out),
+                [will_not_call_mercury],
+"{
+        Value = System::Environment::GetEnvironmentVariable(Var);
+        SUCCESS_INDICATOR = (Value != 0);
+}").
+
+The implementation will put this Managed C++ code into a separate file,
+which can be compiled with Microsoft's VC++.NET.  You will need to make
+sure it is compiled into a dll by running
+	mmake <modulename>.il
+	ilasm <modulename>.il
+	mmake <modulename>__c_code.dll
+Once again, we expect to add automatic dependency generation in future,
+so this step will be done for you. 
+
+If you add MC++ code to the Mercury standard library, the library/Mmakefile 
+will take care of this step when you run `mmake GRADE=ilc'.
+
+You can also use the MC++ interface to interface with any .NET language
+(Implementations have been announced or are under development for
+C++, C#, Visual Basic, Cobol, Eiffel, SmallTalk, ML, Haskell, Scheme,
+Python, Perl, Component Pascal and others).  
+
+Add a
+
+:- pragma foreign_header("MC++", "
+	#using ""foreignmodulename.dll""
+").
+
+and you can use a .dll that contains .NET code for any other language to
+implement Mercury predicates.  You can use the tool `ildasm' to look at
+the contents of a DLL.
+
+We plan to offer a tool that automatically generates a Mercury interface
+for any .NET component in the future.
+
+-----------------------------------------------------------------------------
+
+RESOURCES
+
+You might find the following pages useful:
+
+	http://www.cs.mu.oz.au/research/mercury/dotnet.html
+
+	http://msdn.microsoft.com/net/
+
+	http://www.gotdotnet.com/
+
+
