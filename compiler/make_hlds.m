@@ -924,8 +924,9 @@ add_pragma_type_spec_2(Pragma, SymName, SpecName, Arity,
 		% predicates this forces the creation of the proper interface. 
 		%
 		varset__init(ArgVarSet0),
-		varset__new_vars(ArgVarSet0, Arity, Args, ArgVarSet),
-		map__from_corresponding_lists(Args, Types, VarTypes0),
+		make_n_fresh_vars("HeadVar__", Arity,
+			ArgVarSet0, Args, ArgVarSet),
+		map__init(VarTypes0),
 		goal_info_init(GoalInfo0),
 		set__list_to_set(Args, NonLocals),
 		goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
