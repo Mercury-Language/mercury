@@ -35,7 +35,7 @@
 % (Without type information, we cannot distinguish a pointer from an integer.)
 % Most of the code in this module is concerned with adding code to the
 % procedure being transformed to find or construct the typeinfos we need
-% in order to find out the sizes of subterms. mainly because we want to
+% in order to find out the sizes of subterms, mainly because we want to
 % minimize the number of goals that construct typeinfos that we add to the
 % procedure body.
 %
@@ -55,7 +55,7 @@
 % The transformation we perform is not optimal: for example, if two branches
 % of a switch bind a variable to terms of the same size, we don't exploit
 % this fact. The transformation tries to get all the "low-hanging fruit";
-% we will go afer higher hanging fruit if and when a performance evaluation
+% we will go after higher hanging fruit if and when a performance evaluation
 % says we need to.
 %
 % We do not associate sizes with the memory cells of a small set of types,
@@ -135,7 +135,7 @@
 % the type_ctor_infos of type constructors. However, we treat type_ctor_map
 % differently from type_info_maps, because the tradeoff are different.
 % Creating a new type_ctor_info reference is cheap: just return a pointer
-% to static compiler-generated data structure. Creating a new type_info isn't
+% to a static compiler-generated data structure. Creating a new type_info isn't
 % cheap: it requires memory allocation. This is why in some places (calls, ends
 % of branched control structures) we simply clean out the type_ctor_map:
 % it is cheaper to recreate a type_ctor_info than to store it or move it
