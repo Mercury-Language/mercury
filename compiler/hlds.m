@@ -117,10 +117,6 @@
 
 :- type soln_count	--->	at_most_zero ; at_most_one ; at_most_many.
 
-:- type code_model	--->	model_det		% functional & total
-			;	model_semi		% just functional
-			;	model_non.		% not functional
-
 :- type procedure_id	--->	proc(pred_id, proc_id).
 
 :- type liveness_info   ==      set(var).	% The live variables

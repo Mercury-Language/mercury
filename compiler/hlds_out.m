@@ -30,7 +30,7 @@
 
 :- module hlds_out.
 :- interface.
-:- import_module int, io, hlds.
+:- import_module int, io, hlds, llds.
 
 %-----------------------------------------------------------------------------%
 

@@ -872,7 +872,7 @@ goedel_unary_prefix_op("-").
 :- pred goedel_unary_postfix_op(string).
 :- mode goedel_unary_postfix_op(in) is semidet.
 
-goedel_unary_postfix_op(_) :- fail.
+goedel_unary_postfix_op(_) :- semidet_fail.
 
 :- pred goedel_infix_pred(string).
 :- mode goedel_infix_pred(in) is semidet.

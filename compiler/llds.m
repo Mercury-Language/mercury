@@ -20,6 +20,10 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type code_model	--->	model_det		% functional & total
+			;	model_semi		% just functional
+			;	model_non.		% not functional
+
 :- type c_file		--->	c_file(string, list(c_module)).
 			%	filename, modules
 
@@ -58,9 +62,12 @@
 			% The third code_addr is the entry address for
 			% the caller predicate and is used for profiling.
 
-	;	call_closure(bool, code_addr, list(liveinfo))
+	;	call_closure(code_model, code_addr, list(liveinfo))
 			% Setup the arguments and branch to a higher
-			% order call. The closure is in r1.
+			% order call. The closure is in r1 and the
+			% input arguments are in r2, r3, ...
+			% The output arguments are in r1, r2, ...
+			% except for semidet calls, where they are in r2, ...
 
 	;	mkframe(string, int, code_addr)
 			% mkframe(Comment, SlotCount, FailureContinuation)
@@ -787,18 +794,23 @@ output_call(Target, Continuation, CallerAddress) -->
 		io__write_string(");")
 	).
 
-:- pred output_call_closure(bool, code_addr, io__state, io__state).
+:- pred output_call_closure(code_model, code_addr, io__state, io__state).
 :- mode output_call_closure(in, in, di, uo) is det.
 
-output_call_closure(IsSemidet, Continuation) -->
+output_call_closure(CodeModel, Continuation) -->
 	(
-		{ IsSemidet = no }
-	->
-		io__write_string("call_closure("),
+		{ CodeModel = model_det },
+		io__write_string("call_det_closure("),
 		output_code_addr(Continuation),
 		io__write_string(");")
 	;
+		{ CodeModel = model_semi },
 		io__write_string("call_semidet_closure("),
+		output_code_addr(Continuation),
+		io__write_string(");")
+	;
+		{ CodeModel = model_non },
+		io__write_string("call_nondet_closure("),
 		output_code_addr(Continuation),
 		io__write_string(");")
 	).

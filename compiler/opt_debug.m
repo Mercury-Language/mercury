@@ -155,6 +155,9 @@
 :- pred opt_debug__dump_fullinstrs(list(instruction), string).
 :- mode opt_debug__dump_fullinstrs(in, out) is det.
 
+:- pred opt_debug__dump_code_model(code_model, string).
+:- mode opt_debug__dump_code_model(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -623,6 +626,10 @@ opt_debug__dump_proclabel(special_proc(Module, Pred, Type, Arity, Mode), Str) :-
 opt_debug__dump_bool(yes, "yes").
 opt_debug__dump_bool(no, "no").
 
+opt_debug__dump_code_model(model_det, "model_det").
+opt_debug__dump_code_model(model_semi, "model_semi").
+opt_debug__dump_code_model(model_non, "model_non").
+
 opt_debug__dump_instr(comment(Comment), Str) :-
 	string__append_list(["comment(", Comment, ")"], Str).
 opt_debug__dump_instr(livevals(Livevals), Str) :-
@@ -639,8 +646,8 @@ opt_debug__dump_instr(call(Proc, Ret, _, _), Str) :-
 	opt_debug__dump_code_addr(Proc, P_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call(", P_str, ", ", R_str, ", ...)"], Str).
-opt_debug__dump_instr(call_closure(Flag, Ret, _), Str) :-
-	opt_debug__dump_bool(Flag, F_str),
+opt_debug__dump_instr(call_closure(CodeModel, Ret, _), Str) :-
+	opt_debug__dump_code_model(CodeModel, F_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call_closure(", F_str, ", ", R_str, ", ...)"],
 		Str).

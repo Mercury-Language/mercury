@@ -55,7 +55,8 @@
 :- type vn_instr	--->	vn_livevals(lvalset)
 			;	vn_call(code_addr, code_addr, code_addr, 
 					list(liveinfo))
-			;	vn_call_closure(bool, code_addr, list(liveinfo))
+			;	vn_call_closure(code_model, code_addr,
+					list(liveinfo))
 			;	vn_mkframe(string, int, code_addr)
 			;	vn_modframe(code_addr)
 			;	vn_label(label)

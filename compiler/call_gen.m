@@ -625,48 +625,29 @@ call_gen__generate_higher_call(CodeModel, Var, InVars, OutVars, Code) -->
 		])
 	) },
 	code_info__get_next_label(ReturnLabel, yes),
+	{ TryCallCode = node([
+		livevals(LiveVals) - "",
+		call_closure(CodeModel, label(ReturnLabel), OutLiveVals) -
+			"setup and call higher order pred",
+		label(ReturnLabel) - "Continuation label"
+	]) },
 	(
-		{ CodeModel = model_det },
-		{ CallCode = node([
-			livevals(LiveVals) - "",
-			call_closure(no, label(ReturnLabel), OutLiveVals) -
-				"setup and call det higher order pred",
-			label(ReturnLabel) - "Continuation label"
-		]) }
-	;
-		{ CodeModel = model_semi },
-		{ TryCallCode = node([
-			livevals(LiveVals) - "",
-			call_closure(yes, label(ReturnLabel), OutLiveVals) -
-				"setup and call semidet higher order pred",
-			label(ReturnLabel) - "Continuation label"
-		]) },
+		{ CodeModel = model_semi }
+	->
 		code_info__generate_failure(FailCode),
 		code_info__get_next_label(ContLab, no),
 		{ CheckReturnCode = tree(node([
 			if_val(lval(reg(r(1))), label(ContLab)) -
 				"Test for success"
 			]), tree(FailCode, node([ label(ContLab) - "" ]))) },
-		{ CallCode = tree(TryCallCode, CheckReturnCode) }
+		{ CallCode = tree(TryCallCode, CheckReturnCode) },
+		{ FirstArg = 2 }
 	;
-		{ CodeModel = model_non },
-		{ CallCode = node([
-			livevals(LiveVals) - "",
-			call_closure(no, label(ReturnLabel),
-						OutLiveVals)
-				- "setup and call nondet higher order pred",
-			label(ReturnLabel) - "Continuation label"
-		]) }
+		{ CallCode = TryCallCode },
+		{ FirstArg = 1 }
 	),
 	{ Code = tree(tree(SaveCode, tree(ImmediateCode, VarCode)),
 		tree(SetupCode, CallCode)) },
-	(
-		{ CodeModel = model_semi }
-	->
-		{ FirstArg = 2 }
-	;
-		{ FirstArg = 1 }
-	),
 	{ call_gen__outvars_to_outargs(OutVars, FirstArg, OutArguments) },
 	call_gen__rebuild_registers(OutArguments).
 
