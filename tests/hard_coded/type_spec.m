@@ -43,6 +43,17 @@
 :- pred list_all_zero(list(T)::in) is semidet <= all_zero(T). 
 :- pragma type_spec(list_all_zero/1, T = int).
 
+	% Test specialization where the substituted types are non-ground.
+:- pred my_unify(T::in, T::in) is semidet.
+:- pragma type_spec(my_unify/2, T = list(U)).
+
+:- type no_tag
+	---> no_tag(int).
+
+	% Test specialization of unifications involving no tag types.
+:- pred unify_no_tag(no_tag::in, no_tag::in) is semidet.
+:- pragma no_inline(unify_no_tag/2).
+
 :- implementation.
 
 main -->
@@ -58,6 +69,26 @@ main -->
 		io__write_string("Succeeded\n")
 	),
 	( { all_zero([0,0,0]) } ->
+		io__write_string("Succeeded\n")
+	;
+		io__write_string("Failed\n")
+	),
+	( { my_unify([1,2,3], [1,2,3]) } ->
+		io__write_string("Succeeded\n")
+	;
+		io__write_string("Failed\n")
+	),
+	( { my_unify([1,2,3], [1]) } ->
+		io__write_string("Succeeded\n")
+	;
+		io__write_string("Failed\n")
+	),
+	( { unify_no_tag(no_tag(1), no_tag(1)) } ->
+		io__write_string("Succeeded\n")
+	;
+		io__write_string("Failed\n")
+	),
+	( { unify_no_tag(no_tag(1), no_tag(2)) } ->
 		io__write_string("Succeeded\n")
 	;
 		io__write_string("Failed\n")
@@ -106,3 +137,7 @@ list_all_zero([H | T]) :-
 	list_all_zero(T).
 
 is_zero(0).
+
+my_unify(X, X).
+
+unify_no_tag(X, X).

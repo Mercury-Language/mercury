@@ -411,8 +411,20 @@ equiv_type__replace_in_type_2(Type0, VarSet0, EqvMap,
 		(	
 			map__search(EqvMap, EqvTypeId,
 				eqv_type_body(EqvVarSet, Args0, Body0)),
-			varset__merge(VarSet1, EqvVarSet, [Body0 | Args0],
-					VarSet2, [Body | Args]),
+			%
+			% Don't merge in the variable names from the
+			% type declaration to avoid creating multiple
+			% variables with the same name so that
+			% `varset__create_name_var_map' can be used
+			% on the resulting tvarset.
+			% make_hlds.m uses `varset__create_name_var_map' to
+			% match up type variables in `:- pragma type_spec'
+			% declarations and explicit type qualifications
+			% with the type variables in the predicate's
+			% declaration.
+			%
+			varset__merge_without_names(VarSet1, EqvVarSet,
+				[Body0 | Args0], VarSet2, [Body | Args]),
 			Circ0 = no,
 			Circ1 = no
 		->

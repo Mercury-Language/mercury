@@ -5207,15 +5207,6 @@ The University of Melbourne Mercury compiler performs user-requested type
 specializations when invoked with @samp{--user-guided-type-specialization},
 which is enabled at optimization level @samp{-O2} or higher.
 
-In the current implementation, the replacement types must be ground.
-Substitutions such as @w{@samp{T = list(U)}} are not supported.
-The compiler will warn about such substitutions, and will ignore
-the request for specialization. This restriction may be lifted in the future.
-@c The main reason for this restriction is that it is tricky to ensure that
-@c any extra typeclass_infos that may be needed are ordered the same way in
-@c different modules. The efficiency gain from replacing a type variable with 
-@c a non-ground type will usually be pretty small anyway.
-
 @node Obsolescence
 @section Obsolescence
 

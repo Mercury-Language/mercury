@@ -846,8 +846,9 @@ add_pragma_type_spec(Pragma, SymName, SpecName, Arity, MaybePredOrFunc,
 	{ module_info_get_predicate_table(Module0, Preds) },
 	(
 		{ MaybePredOrFunc = yes(PredOrFunc) ->
+			adjust_func_arity(PredOrFunc, Arity, PredArity),
 			predicate_table_search_pf_sym_arity(Preds,
-				PredOrFunc, SymName, Arity, PredIds)
+				PredOrFunc, SymName, PredArity, PredIds)
 		;
 			predicate_table_search_sym_arity(Preds,
 				SymName, Arity, PredIds)
@@ -996,47 +997,66 @@ add_pragma_type_spec_2(Pragma, SymName, SpecName, Arity,
 handle_pragma_type_spec_subst(Context, Subst, TVarSet0, PredInfo0,
 		TVarSet, Types, ExistQVars, ClassContext, SubstOk,
 		ModuleInfo0, ModuleInfo) -->
-	( { Subst = [] } ->
+	{ assoc_list__keys(Subst, VarsToSub) },
+	(
+	    { Subst = [] }
+	->
 	    { error("handle_pragma_type_spec_subst: empty substitution") }
+	;
+	    { find_duplicate_list_elements(VarsToSub, MultiSubstVars0) },
+	    { MultiSubstVars0 \= [] }
+	->
+    	    { list__sort_and_remove_dups(MultiSubstVars0, MultiSubstVars) },
+	    report_multiple_subst_vars(PredInfo0, Context,
+	    	TVarSet0, MultiSubstVars),
+	    { module_info_incr_errors(ModuleInfo0, ModuleInfo) },
+	    io__set_exit_status(1),
+	    { ExistQVars = [] },
+	    { Types = [] },
+	    { ClassContext = constraints([], []) },
+	    { varset__init(TVarSet) },
+	    { SubstOk = no }
 	;
 	    { pred_info_typevarset(PredInfo0, CalledTVarSet) },
 	    { varset__create_name_var_map(CalledTVarSet, NameVarIndex0) },
-	    { assoc_list__keys(Subst, VarsToSub) },
 	    { list__filter(lambda([Var::in] is semidet, (
 		varset__lookup_name(TVarSet0, Var, VarName),
 		\+ map__contains(NameVarIndex0, VarName)
 	    )), VarsToSub, UnknownVarsToSub) },
 	    ( { UnknownVarsToSub = [] } ->
-		% Check that the substitution makes all types involved
-		% ground. This is not strictly necessary, but handling
-		% this case with --typeinfo-liveness is tricky (to get the
-		% order of any extra typeclass_infos right), and it probably
-		% isn't very useful. If this restriction is removed later,
-		% remember to report an error for recursive substitutions.
-		{ map__init(TVarRenaming0) },
-		{ assoc_list__values(Subst, SubstTypes) },
-		{ list__filter(lambda([SubstType::in] is semidet, (
-			\+ term__is_ground(SubstType)
-		)), SubstTypes, NonGroundTypes) },
+		% Check that the substitution is not recursive.
+		{ set__list_to_set(VarsToSub, VarsToSubSet) },
 
-		( { NonGroundTypes = [] } ->
-		    { get_new_tvars(VarsToSub, TVarSet0, CalledTVarSet,
-			TVarSet, NameVarIndex0, _,
-			TVarRenaming0, TVarRenaming) },
+		{ assoc_list__values(Subst, SubstTypes0) },
+		{ term__vars_list(SubstTypes0, TVarsInSubstTypes0) },
+		{ set__list_to_set(TVarsInSubstTypes0, TVarsInSubstTypes) },
+
+		{ set__intersect(TVarsInSubstTypes, VarsToSubSet,
+			RecSubstTVars0) },
+		{ set__to_sorted_list(RecSubstTVars0, RecSubstTVars) },
+
+		( { RecSubstTVars = [] } ->
+		    { map__init(TVarRenaming0) },
+		    { list__append(VarsToSub, TVarsInSubstTypes0,
+				VarsToReplace) },
+		    
+		    { get_new_tvars(VarsToReplace, TVarSet0, CalledTVarSet,
+				TVarSet, NameVarIndex0, _,
+				TVarRenaming0, TVarRenaming) },
 
 		    % Check that none of the existentially quantified
 		    % variables were substituted.
 		    { map__apply_to_list(VarsToSub, TVarRenaming,
-				RenamedVars) },
+				RenamedVarsToSub) },
 		    { pred_info_get_exist_quant_tvars(PredInfo0, ExistQVars) },
 		    { list__filter(lambda([RenamedVar::in] is semidet, (
 				list__member(RenamedVar, ExistQVars)
-			)), RenamedVars, SubExistQVars) },
+			)), RenamedVarsToSub, SubExistQVars) },
 		    ( { SubExistQVars = [] } ->
 			{
-			map__apply_to_list(VarsToSub, TVarRenaming, 
-				RenamedVarsToSub),
 			map__init(TypeSubst0),
+			term__apply_variable_renaming_to_list(SubstTypes0,
+				TVarRenaming, SubstTypes),
 			assoc_list__from_corresponding_lists(RenamedVarsToSub,
 				SubstTypes, SubAL),
 			list__foldl(
@@ -1066,14 +1086,10 @@ handle_pragma_type_spec_subst(Context, Subst, TVarSet0, PredInfo0,
 			{ SubstOk = no }
 		    )
 		;
-		    report_non_ground_subst(PredInfo0, Context),
-		    globals__io_lookup_bool_option(halt_at_warn, Halt),
-		    ( { Halt = yes } ->
-		    	{ module_info_incr_errors(ModuleInfo0, ModuleInfo) },
-			io__set_exit_status(1)
-		    ;	
-		    	{ ModuleInfo = ModuleInfo0 }
-		    ),
+		    report_recursive_subst(PredInfo0, Context,
+		    	TVarSet0, RecSubstTVars),
+		    io__set_exit_status(1),
+		    { module_info_incr_errors(ModuleInfo0, ModuleInfo) },
 		    { ExistQVars = [] },
 		    { Types = [] },
 		    { ClassContext = constraints([], []) },
@@ -1093,6 +1109,18 @@ handle_pragma_type_spec_subst(Context, Subst, TVarSet0, PredInfo0,
 	    )
 	).
 
+:- pred find_duplicate_list_elements(list(T), list(T)).
+:- mode find_duplicate_list_elements(in, out) is det.
+
+find_duplicate_list_elements([], []).
+find_duplicate_list_elements([H | T], Vars) :-
+	find_duplicate_list_elements(T, Vars0),
+	( list__member(H, T) ->
+		Vars = [H | Vars0]
+	;
+		Vars = Vars0
+	).
+
 :- pred report_subst_existq_tvars(pred_info, prog_context,
 		list(tvar), io__state, io__state).
 :- mode report_subst_existq_tvars(in, in, in, di, uo) is det.
@@ -1100,40 +1128,57 @@ handle_pragma_type_spec_subst(Context, Subst, TVarSet0, PredInfo0,
 report_subst_existq_tvars(PredInfo0, Context, SubExistQVars) -->
 	report_pragma_type_spec(PredInfo0, Context),
 	prog_out__write_context(Context),
-	io__write_string("  error: the substitution includes the existentially\n"),
+	io__write_string(
+		"  error: the substitution includes the existentially\n"),
 	prog_out__write_context(Context),
 	io__write_string("  quantified type "),
 	{ pred_info_typevarset(PredInfo0, TVarSet) },
 	report_variables(SubExistQVars, TVarSet),
 	io__write_string(".\n").
 
-:- pred report_non_ground_subst(pred_info, prog_context,
-		io__state, io__state).
-:- mode report_non_ground_subst(in, in, di, uo) is det.
-
-report_non_ground_subst(PredInfo0, Context) -->
-	report_pragma_type_spec(PredInfo0, Context),
-	prog_out__write_context(Context),
-	io__write_string(
-		"  warning: the substitution does not make the substituted\n"),
-	prog_out__write_context(Context),
-	io__write_string("  types ground. The declaration will be ignored.\n"),
-	prog_out__write_context(Context),
-	io__write_string(
-		"  This is a limitation of the current implementation\n"),
-	prog_out__write_context(Context),
-	io__write_string("  which may be removed in a future release.\n").
-
-:- pred report_unknown_vars_to_subst(pred_info, prog_context, tvarset,
+:- pred report_recursive_subst(pred_info, prog_context, tvarset,
 		list(tvar), io__state, io__state).
-:- mode report_unknown_vars_to_subst(in, in, in, in, di, uo) is det.
+:- mode report_recursive_subst(in, in, in, in, di, uo) is det.
 
-report_unknown_vars_to_subst(PredInfo0, Context, TVarSet, RecursiveVars) -->
+report_recursive_subst(PredInfo0, Context, TVarSet, RecursiveVars) -->
 	report_pragma_type_spec(PredInfo0, Context),
 	prog_out__write_context(Context),
 	io__write_string("  error: "),
 	report_variables(RecursiveVars, TVarSet),
 	( { RecursiveVars = [_] } ->
+		io__write_string(" occurs\n")
+	;
+		io__write_string(" occur\n")
+	),
+	prog_out__write_context(Context),
+	io__write_string("  on both sides of the substitution.\n").
+
+:- pred report_multiple_subst_vars(pred_info, prog_context, tvarset,
+		list(tvar), io__state, io__state).
+:- mode report_multiple_subst_vars(in, in, in, in, di, uo) is det.
+
+report_multiple_subst_vars(PredInfo0, Context, TVarSet, MultiSubstVars) -->
+	report_pragma_type_spec(PredInfo0, Context),
+	prog_out__write_context(Context),
+	io__write_string("  error: "),
+	report_variables(MultiSubstVars, TVarSet),
+	( { MultiSubstVars = [_] } ->
+		io__write_string(" has ")
+	;
+		io__write_string(" have ")
+	),
+	io__write_string("multiple replacement types.\n").
+
+:- pred report_unknown_vars_to_subst(pred_info, prog_context, tvarset,
+		list(tvar), io__state, io__state).
+:- mode report_unknown_vars_to_subst(in, in, in, in, di, uo) is det.
+
+report_unknown_vars_to_subst(PredInfo0, Context, TVarSet, UnknownVars) -->
+	report_pragma_type_spec(PredInfo0, Context),
+	prog_out__write_context(Context),
+	io__write_string("  error: "),
+	report_variables(UnknownVars, TVarSet),
+	( { UnknownVars = [_] } ->
 		io__write_string(" does not ")
 	;
 		io__write_string(" do not ")

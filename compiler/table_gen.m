@@ -1345,9 +1345,8 @@ table_gen__make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals,
 	% Call polymorphism.m to create the type_infos
 	%
 	create_poly_info(ModuleInfo0, PredInfo0, ProcInfo2, PolyInfo0),
-	ExistQVars = [],
 	term__context_init(Context),
-	polymorphism__make_type_info_vars(Types, ExistQVars, Context,
+	polymorphism__make_type_info_vars(Types, Context,
 		TypeInfoVars, TypeInfoGoals, PolyInfo0, PolyInfo),
 	poly_info_extract(PolyInfo, PredInfo0, PredInfo,
 		ProcInfo0, ProcInfo, ModuleInfo),

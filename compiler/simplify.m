@@ -1202,9 +1202,8 @@ simplify__make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals,
 	% Call polymorphism.m to create the type_infos
 	%
 	create_poly_info(ModuleInfo0, PredInfo0, ProcInfo2, PolyInfo0),
-	ExistQVars = [],
 	term__context_init(Context),
-	polymorphism__make_type_info_vars(Types, ExistQVars, Context,
+	polymorphism__make_type_info_vars(Types, Context,
 		TypeInfoVars, TypeInfoGoals, PolyInfo0, PolyInfo),
 	poly_info_extract(PolyInfo, PredInfo0, PredInfo,
 		ProcInfo0, ProcInfo, ModuleInfo1),
@@ -1258,12 +1257,10 @@ simplify__extract_type_info(TypeVar, TypeClassInfoVar, Index,
 	simplify_info_get_module_info(Info0, ModuleInfo),
 	simplify_info_get_varset(Info0, VarSet0),
 	simplify_info_get_var_types(Info0, VarTypes0),
-	simplify_info_get_typeinfo_map(Info0, TypeInfoLocns0),
 
 	polymorphism__gen_extract_type_info(TypeVar, TypeClassInfoVar, Index,
 		ModuleInfo, Goals, TypeInfoVar,
-		VarSet0, VarTypes0, TypeInfoLocns0,
-		VarSet, VarTypes, _TypeInfoLocns),
+		VarSet0, VarTypes0, VarSet, VarTypes),
 
 	simplify_info_set_var_types(Info0, VarTypes, Info1),
 	simplify_info_set_varset(Info1, VarSet, Info).

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1998 The University of Melbourne.
+% Copyright (C) 1993-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -119,6 +119,22 @@
 :- pred varset__merge_subst(varset(T), varset(T), varset(T), substitution(T)).
 :- mode varset__merge_subst(in, in, out, out) is det.
 
+	% Same as varset__merge, except that the names of variables
+	% in NewVarSet are not included in the final varset.
+	% This is useful if varset__create_name_var_map needs
+	% to be used on the resulting varset.
+
+:- pred varset__merge_without_names(varset(T), varset(T), list(term(T)),
+		varset(T), list(term(T))).
+:- mode varset__merge_without_names(in, in, in, out, out) is det.
+
+	% As above, except return the substitution directly
+	% rather than applying it to a list of terms.
+
+:- pred varset__merge_subst_without_names(varset(T),
+		varset(T), varset(T), substitution(T)).
+:- mode varset__merge_subst_without_names(in, in, out, out) is det.
+
 	% get the bindings for all the bound variables.
 :- pred varset__get_bindings(varset(T), substitution(T)).
 :- mode varset__get_bindings(in, out) is det.
@@ -170,7 +186,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, list, map, std_util, assoc_list, set, require, string.
+:- import_module bool, int, list, map, std_util, assoc_list.
+:- import_module set, require, string.
 
 :- type varset(T)	--->	varset(
 					var_supply(T),
@@ -346,22 +363,47 @@ varset__set_bindings(varset(C, N, _), S, varset(C, N, S)).
 	% this substition to the list of terms.
 
 varset__merge(VarSet0, VarSet1, TermList0, VarSet, TermList) :-
-	varset__merge_subst(VarSet0, VarSet1, VarSet, Subst),
+	IncludeNames = yes,
+	varset__merge_subst(IncludeNames, VarSet0, VarSet1, VarSet, Subst),
+	term__apply_substitution_to_list(TermList0, Subst, TermList).
+
+varset__merge_without_names(VarSet0, VarSet1, TermList0, VarSet, TermList) :-
+	IncludeNames = no,
+	varset__merge_subst(IncludeNames,
+		VarSet0, VarSet1, VarSet, Subst),
 	term__apply_substitution_to_list(TermList0, Subst, TermList).
 
 varset__merge_subst(VarSet0, varset(MaxId, Names, Vals),
 			VarSet, Subst) :-
+	IncludeNames = yes,	
+	varset__merge_subst(IncludeNames, VarSet0, varset(MaxId, Names, Vals),
+			VarSet, Subst).
+
+varset__merge_subst_without_names(VarSet0, varset(MaxId, Names, Vals),
+			VarSet, Subst) :-
+	IncludeNames = no,	
+	varset__merge_subst(IncludeNames, VarSet0, varset(MaxId, Names, Vals),
+			VarSet, Subst).
+
+:- pred varset__merge_subst(bool, varset(T), varset(T), varset(T),
+		substitution(T)).
+:- mode varset__merge_subst(in, in, in, out, out) is det.
+
+varset__merge_subst(IncludeNames, VarSet0, varset(MaxId, Names, Vals),
+			VarSet, Subst) :-
 	term__init_var_supply(N),
 	map__init(Subst0),
-	varset__merge_subst_2(N, MaxId, Names, Vals, VarSet0, Subst0,
-				VarSet, Subst).
+	varset__merge_subst_2(IncludeNames, N, MaxId, Names, Vals,
+			VarSet0, Subst0, VarSet, Subst).
 
-:- pred varset__merge_subst_2(var_supply(T), var_supply(T), map(var(T), string),
+:- pred varset__merge_subst_2(bool, var_supply(T),
+	var_supply(T), map(var(T), string),
 	map(var(T), term(T)), varset(T), substitution(T),
 	varset(T), substitution(T)).
-:- mode varset__merge_subst_2(in, in, in, in, in, in, out, out) is det.
+:- mode varset__merge_subst_2(in, in, in, in, in, in, in, out, out) is det.
 
-varset__merge_subst_2(N, Max, Names, Vals, VarSet0, Subst0, VarSet, Subst) :-
+varset__merge_subst_2(IncludeNames, N, Max, Names, Vals,
+		VarSet0, Subst0, VarSet, Subst) :-
 	( N = Max ->
 		VarSet = VarSet0,
 		Subst0 = Subst
@@ -369,6 +411,7 @@ varset__merge_subst_2(N, Max, Names, Vals, VarSet0, Subst0, VarSet, Subst) :-
 		varset__new_var(VarSet0, VarId, VarSet1),
 		term__create_var(N, VarN, N1),
 		(
+			IncludeNames = yes,
 			map__search(Names, VarN, Name)
 		->
 			varset__name_var(VarSet1, VarId, Name, VarSet2)
@@ -376,8 +419,8 @@ varset__merge_subst_2(N, Max, Names, Vals, VarSet0, Subst0, VarSet, Subst) :-
 			VarSet2 = VarSet1
 		),
 		map__set(Subst0, VarN, term__variable(VarId), Subst1),
-		varset__merge_subst_2(N1, Max, Names, Vals, VarSet2, Subst1,
-				VarSet, Subst)
+		varset__merge_subst_2(IncludeNames, N1, Max, Names,
+				Vals, VarSet2, Subst1, VarSet, Subst)
 	).
 
 %-----------------------------------------------------------------------------%

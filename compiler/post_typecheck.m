@@ -589,8 +589,22 @@ post_typecheck__finish_ill_typed_pred(ModuleInfo, PredId,
 	% 
 post_typecheck__finish_imported_pred(ModuleInfo, PredId,
 		PredInfo0, PredInfo) -->
+	% Make sure the var-types field in the clauses_info is
+	% valid for imported predicates.
+	% Unification procedures have clauses generated, so
+	% they already have valid var-types.
+	{ pred_info_is_pseudo_imported(PredInfo0) ->
+		PredInfo1 = PredInfo0
+	;
+		pred_info_clauses_info(PredInfo0, ClausesInfo0),
+		clauses_info_headvars(ClausesInfo0, HeadVars),
+		pred_info_arg_types(PredInfo0, ArgTypes),
+		map__from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
+		clauses_info_set_vartypes(ClausesInfo0, VarTypes, ClausesInfo),
+		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo1)
+	},
 	post_typecheck__propagate_types_into_modes(ModuleInfo, PredId,
-		PredInfo0, PredInfo).
+		PredInfo1, PredInfo).
 
 	%
 	% Now that the assertion has finished being typechecked,

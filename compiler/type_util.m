@@ -45,6 +45,12 @@
 :- pred type_id_is_higher_order(type_id, pred_or_func, lambda_eval_method).
 :- mode type_id_is_higher_order(in, out, out) is semidet.
 
+	% return true iff there was a `where equality is <predname>'
+	% declaration for the specified type, and return the name of
+	% the equality predicate and the context of the type declaration.
+:- pred type_has_user_defined_equality_pred(module_info, (type), sym_name).
+:- mode type_has_user_defined_equality_pred(in, in, out) is semidet.
+
 	% Certain types, e.g. io__state and store__store(S),
 	% are just dummy types used to ensure logical semantics;
 	% there is no need to actually pass them, and so when
@@ -445,6 +451,13 @@ type_id_is_higher_order(SymName - _Arity, PredOrFunc, EvalMethod) :-
 		PorFStr = "func",
 		PredOrFunc = function
 	).
+
+type_has_user_defined_equality_pred(ModuleInfo, Type, SymName) :-
+	module_info_types(ModuleInfo, TypeTable),
+	type_to_type_id(Type, TypeId, _TypeArgs),
+	map__search(TypeTable, TypeId, TypeDefn),
+	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+	TypeBody = du_type(_, _, _, yes(SymName)).
 
 	% Certain types, e.g. io__state and store__store(S),
 	% are just dummy types used to ensure logical semantics;
