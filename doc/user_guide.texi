@@ -1054,6 +1054,7 @@ Mercury implementation does not require that.
 @menu
 * Profiling introduction::          What is profiling useful for?
 * Building profiled applications::  How to enable profiling.
+* Time profiling methods::          Choose user, user + system, or real time.
 * Creating the profile::            How to create profile data.
 * Displaying the profile::          How to display the profile data.
 * Analysis of results::             How to interpret the output.
@@ -1095,6 +1096,33 @@ records the caller and callee.  Secondly, your program will be linked
 with versions of the library and runtime that were compiled with
 profiling enabled.  (It also has the effect for each source file the compiler
 generates the static call graph for that file in @samp{@var{module}.prof}.)
+
+@node Time profiling methods
+@section Time profiling methods
+
+By setting the environment variable MERCURY_OPTIONS,
+which is used for passing options to the Mercury runtime system,
+you can control how the Mercury profiler measures the time spent.
+The default (@samp{-Tp}) is to count time spent executing the process,
+including time spent by the system performing operations on behalf of
+the process, but not including time that the process was suspended
+(e.g. due to time slicing, or while waiting for input).
+Using @samp{-Tv} counts only time spent executing the process.
+Using @samp{-Tr} counts all elapsed time, even including time that
+the process was suspended.
+
+@table @asis
+@item @samp{-Tr}
+Profile real (elapsed) time (using ITIMER_REAL).
+@item @samp{-Tv}
+Profile user time (using ITIMER_VIRTUAL).
+@item @samp{-Tp}
+Profile user time plus system time (using ITIMER_PROF).
+This is the default.
+@end table
+
+Currently, the @samp{-Tv} and @samp{-Tp} options don't work on Windows,
+so on Windows you must explicitly specify @samp{-Tr}.
 
 @node Creating the profile
 @section Creating the profile
