@@ -1,0 +1,53 @@
+/*
+ *	$Id: machine.h,v 1.1 1997-03-20 08:17:33 aet Exp $
+ *
+ *	Copyright: The University of Melbourne, 1996
+ */
+
+#if	! defined(MACHINE_H)
+#define	MACHINE_H
+
+#define	MAX_REGISTERS	40
+
+#define	MAX_INT_STACK	10000
+#define	MAX_INT_HEAP	10000
+#define	MAX_CODE	10000
+
+/*
+ *	XXX: Currently we store full bloated bytecodes in the
+ *	code area (text segment). This is extremely inefficient.
+ *	We should alter design a stripped-down streamlined `machine
+ *	code' that is a minimalist bytecode with all symbolic information
+ *	stripped out and and placed in tables (`data segment'), and all 
+ *	labels replaced with offsets into the text segment
+ */
+
+/*
+ * An Address is an index into code, heap, or stack area.
+ * This should be identical to a pointer since we will need
+ * to use the same heap as the compiled Mercury when we interface
+ * with compiled code.
+ */
+typedef Word
+	Address;
+
+typedef struct Machine {
+
+	Word	reg[MAX_REGISTERS];	/* Machine registers */
+
+	Word	maxfr;		/* Top stack frame pointer */
+	Word	curfr;		/* Current stack frame pointer */
+	Word	ip;		/* Instruction pointer */
+
+	Word	hp;	/* Heap pointer */
+	Word	sp;	/* Stack pointer */
+
+	Word	stack[MAX_INT_STACK];	/* Interpreter stack */
+	Word	heap[MAX_INT_HEAP];	/* Interpreter heap */
+
+	Bytecode
+		code[MAX_CODE];		/* Data area for storing bytecodes */
+} Machine;
+
+
+#endif	/* MACHINE_H */
