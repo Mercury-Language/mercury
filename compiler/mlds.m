@@ -341,7 +341,7 @@
 	==	mlds__fully_qualified_name(mlds__entity_name).
 
 :- type mlds__entity_name
-	--->	type(string, arity)		% Name, arity.
+	--->	type(mlds__class_name, arity)	% Name, arity.
 	;	data(mlds__data_name)
 	;	function(
 			mlds__pred_label,	% Identifies the source code
@@ -392,7 +392,7 @@
 		)
 		% packages, classes, interfaces, structs, enums
 	;	mlds__class(
-			mlds__class
+			mlds__class_defn
 		).
 
 :- type mlds__initializer == list(mlds__rval).
@@ -434,8 +434,12 @@
 					% (cannot inherit anything).
 	.
 
-:- type mlds__class
-	---> mlds__class(
+
+:- type mlds__class_name == string.
+:- type mlds__class == mlds__fully_qualified_name(mlds__class_name).
+
+:- type mlds__class_defn
+	---> mlds__class_defn(
 		mlds__class_kind,
 		mlds__imports,			% imports these classes (or
 						% modules, packages, ...)
@@ -468,9 +472,20 @@
 	;	mlds__float_type
 	;	mlds__char_type
 
+		% MLDS types defined using mlds__class_defn
+	;	mlds__class_type(mlds__class, arity)	% name, arity
+
 		% Pointer types.
 		% Currently these are used for handling output arguments.
-	;	mlds__ptr_type(mlds__type).
+	;	mlds__ptr_type(mlds__type)
+
+		% A generic pointer type (e.g. `void *' in C)
+		% that can be used to point to the environment
+		% (set of local variables) of the containing function.
+		% This is used for handling nondeterminism
+		% if the target language doesn't supported
+		% nested functions.
+	;	mlds__generic_env_ptr_type.
 
 :- type mercury_type == prog_data__type.
 
@@ -662,8 +677,8 @@
 		% in goals called from the GoalToTry goal in the
 		% try_commit instruction with the same Ref.
 		%	
-	;	try_commit(mlds__var, mlds__statement, mlds__statement)
-	;	do_commit(mlds__var)
+	;	try_commit(mlds__lval, mlds__statement, mlds__statement)
+	;	do_commit(mlds__rval)
 
 	%
 	% exception handling

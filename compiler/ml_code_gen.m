@@ -552,8 +552,8 @@
 %			- constructions
 %			- deconstructions
 %		- switches
+%		- commits
 % TODO:
-%	- commits
 %	- c_code pragmas
 %	- no_tag types
 %	- construction of closures, and higher-order calls
@@ -590,8 +590,9 @@
 :- import_module hlds_pred, hlds_goal, hlds_data, prog_data, special_pred.
 :- import_module hlds_out, builtin_ops, passes_aux, type_util, mode_util.
 :- import_module prog_util.
+:- import_module globals, options.
 
-:- import_module string, int, varset, term.
+:- import_module string, int, bool, varset, term.
 :- import_module list, assoc_list, map, set, stack.
 :- import_module require, std_util.
 
@@ -779,8 +780,9 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId) = MLDS_ProcDefnBody :-
 	MLDS_Params = ml_gen_params(ModuleInfo, PredId, ProcId),
 	( CodeModel = model_non ->
 		% set up the initial success continuation
-		ml_cont_rval(Cont, MLDSGenInfo0, MLDSGenInfo1),
-		ml_gen_info_push_success_cont(Cont, MLDSGenInfo1, MLDSGenInfo2)
+		ml_initial_cont(InitialCont, MLDSGenInfo0, MLDSGenInfo1),
+		ml_gen_info_push_success_cont(InitialCont,
+			MLDSGenInfo1, MLDSGenInfo2)
 	;
 		MLDSGenInfo2 = MLDSGenInfo0
 	),
@@ -862,17 +864,6 @@ ml_gen_succeeded_var_decl(Context) = MLDS_Defn :-
 	DeclFlags = ml_gen_var_decl_flags,
 	MLDS_Defn = mlds__defn(Name, Context, DeclFlags, Defn).
 
-	% Generate the declaration for the `commit' variable.
-	%
-:- func ml_gen_commit_var_decl(mlds__context, mlds__var_name) = mlds__defn.
-ml_gen_commit_var_decl(Context, VarName) = MLDS_Defn :-
-	Name = data(var(VarName)),
-	Type = mlds__commit_type,
-	MaybeInitializer = no,
-	Defn = data(Type, MaybeInitializer),
-	DeclFlags = ml_gen_var_decl_flags,
-	MLDS_Defn = mlds__defn(Name, Context, DeclFlags, Defn).
-
 	% Generate the code for a procedure body.
 	%
 :- pred ml_gen_proc_body(code_model, hlds_goal, mlds__defns, mlds__statements,
@@ -929,27 +920,32 @@ ml_gen_goal(CodeModel, Goal, MLDS_Statement) -->
 			ml_gen_info, ml_gen_info).
 :- mode ml_gen_goal(in, in, out, out, in, out) is det.
 
-ml_gen_goal(CodeModel, Goal - GoalInfo, MLDS_Decls, MLDS_Statements) -->
+ml_gen_goal(CodeModel, Goal, MLDS_Decls, MLDS_Statements) -->
+	{ Goal = GoalExpr - GoalInfo },
 	%
 	% Generate the local variables for this goal.
-	%
-	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
-	{ SubGoalNonLocals =
-		union_of_direct_subgoal_nonlocals(Goal - GoalInfo) },
-	{ set__difference(SubGoalNonLocals, NonLocals, VarsToDeclareHere) },
-	{ set__to_sorted_list(VarsToDeclareHere, LocalVarsList) },
+	% We need to declare any variables which
+	% are local to this goal (including its subgoals),
+	% but which are not local to a subgoal.
+	% (If they're local to a subgoal, they'll be declared
+	% when we generate code for that subgoal.)
+
+	{ Locals = goal_local_vars(Goal) },
+	{ SubGoalLocals = union_of_direct_subgoal_locals(Goal) },
+	{ set__difference(Locals, SubGoalLocals, VarsToDeclareHere) },
+	{ set__to_sorted_list(VarsToDeclareHere, VarsList) },
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_varset(MLDSGenInfo, VarSet) },
 	{ ml_gen_info_get_var_types(MLDSGenInfo, VarTypes) },
-	{ LocalVarDecls = ml_gen_local_var_decls(VarSet, VarTypes,
-		mlds__make_context(Context), LocalVarsList) },
+	{ VarDecls = ml_gen_local_var_decls(VarSet, VarTypes,
+		mlds__make_context(Context), VarsList) },
 
 	%
 	% Generate code for the goal in its own code model.
 	%
 	{ goal_info_get_context(GoalInfo, Context) },
 	{ goal_info_get_code_model(GoalInfo, GoalCodeModel) },
-	ml_gen_goal_expr(Goal, GoalCodeModel, Context,
+	ml_gen_goal_expr(GoalExpr, GoalCodeModel, Context,
 		GoalDecls, GoalStatements0),
 
 	%
@@ -959,25 +955,35 @@ ml_gen_goal(CodeModel, Goal - GoalInfo, MLDS_Decls, MLDS_Statements) -->
 	ml_gen_wrap_goal(CodeModel, GoalCodeModel, Context,
 		GoalStatements0, GoalStatements),
 	
-	{ ml_join_decls(LocalVarDecls, [], GoalDecls, GoalStatements, Context,
+	{ ml_join_decls(VarDecls, [], GoalDecls, GoalStatements, Context,
 		MLDS_Decls, MLDS_Statements) }.
 
-:- func union_of_direct_subgoal_nonlocals(hlds_goal) = set(prog_var).
+	% Return the set of variables which occur in the specified goal
+	% (including in its subgoals) and which are local to that goal.
+:- func goal_local_vars(hlds_goal) = set(prog_var).
+goal_local_vars(Goal) = LocalVars :-
+	% find all the variables in the goal
+	goal_util__goal_vars(Goal, GoalVars),
+	% delete the non-locals
+	Goal = _ - GoalInfo,
+	goal_info_get_nonlocals(GoalInfo, NonLocalVars),
+	set__difference(GoalVars, NonLocalVars, LocalVars).
 
-union_of_direct_subgoal_nonlocals(Goal - _GoalInfo) =
-	promise_only_solution((pred(UnionOfNonLocals::out) is cc_multi :-
+:- func union_of_direct_subgoal_locals(hlds_goal) = set(prog_var).
+
+union_of_direct_subgoal_locals(Goal - _GoalInfo) =
+	promise_only_solution((pred(UnionOfSubGoalLocals::out) is cc_multi :-
 		set__init(EmptySet),
 		unsorted_aggregate(direct_subgoal(Goal),
-			union_subgoal_nonlocals, EmptySet, UnionOfNonLocals)
+			union_subgoal_locals, EmptySet, UnionOfSubGoalLocals)
 	)).
 
-:- pred union_subgoal_nonlocals(hlds_goal, set(prog_var), set(prog_var)).
-:- mode union_subgoal_nonlocals(in, in, out) is det.
+:- pred union_subgoal_locals(hlds_goal, set(prog_var), set(prog_var)).
+:- mode union_subgoal_locals(in, in, out) is det.
 
-union_subgoal_nonlocals(SubGoal, UnionOfNonLocals0, UnionOfNonLocals) :-
-	SubGoal = _ - SubGoalInfo,
-	goal_info_get_nonlocals(SubGoalInfo, SubGoalNonLocals),
-	set__union(UnionOfNonLocals0, SubGoalNonLocals, UnionOfNonLocals).
+union_subgoal_locals(SubGoal, UnionOfSubGoalLocals0, UnionOfSubGoalLocals) :-
+	SubGoalLocals = goal_local_vars(SubGoal),
+	set__union(UnionOfSubGoalLocals0, SubGoalLocals, UnionOfSubGoalLocals).
 
 	% ml_gen_wrap_goal(OuterCodeModel, InnerCodeModel, Context,
 	%		MLDS_Statements0, MLDS_Statements):
@@ -1089,7 +1095,7 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		%			succeeded = TRUE;
 		%			MR_DO_COMMIT(ref);
 		%		}
-		%		MR_TRY_COMMIT(info, {
+		%		MR_TRY_COMMIT(ref, {
 		%			<Goal && success()>
 		%			succeeded = FALSE;
 		%		}, {
@@ -1102,22 +1108,24 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		{ MLDS_Context = mlds__make_context(Context) },
 		ml_gen_info_new_commit_label(CommitLabelNum),
 		{ string__format("commit_%d", [i(CommitLabelNum)], CommitRef) },
-		ml_commit_var(CommitRef, CommitRefVar),
+		ml_commit_var(CommitRef, CommitRefLval),
 		{ CommitRefDecl = ml_gen_commit_var_decl(MLDS_Context,
 			CommitRef) },
-		{ DoCommitStmt = do_commit(CommitRefVar) },
+		{ DoCommitStmt = do_commit(lval(CommitRefLval)) },
 		{ DoCommitStatement = mlds__statement(DoCommitStmt,
 			MLDS_Context) },
 		/* pop nesting level */
 		ml_gen_label_func(SuccessFuncLabel, Context, DoCommitStatement,
 			SuccessFunc),
 
-		ml_gen_info_push_success_cont(SuccessFuncLabelRval),
+		ml_get_env_ptr(EnvPtrRval),
+		{ SuccessCont = success_cont(SuccessFuncLabelRval, EnvPtrRval) },
+		ml_gen_info_push_success_cont(SuccessCont),
 		ml_gen_goal(model_non, Goal, GoalStatement),
 		ml_gen_info_pop_success_cont,
 		ml_gen_set_success(const(false), Context, SetSuccessFalse),
 		ml_gen_set_success(const(true), Context, SetSuccessTrue),
-		{ TryCommitStmt = try_commit(CommitRefVar,
+		{ TryCommitStmt = try_commit(CommitRefLval,
 			ml_gen_block([], [GoalStatement, SetSuccessFalse],
 				Context),
 			SetSuccessTrue) },
@@ -1146,21 +1154,23 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		{ MLDS_Context = mlds__make_context(Context) },
 		ml_gen_info_new_commit_label(CommitLabelNum),
 		{ string__format("commit_%d", [i(CommitLabelNum)], CommitRef) },
-		ml_commit_var(CommitRef, CommitRefVar),
+		ml_commit_var(CommitRef, CommitRefLval),
 		{ CommitRefDecl = ml_gen_commit_var_decl(MLDS_Context,
 			CommitRef) },
-		{ DoCommitStmt = do_commit(CommitRefVar) },
+		{ DoCommitStmt = do_commit(lval(CommitRefLval)) },
 		{ DoCommitStatement = mlds__statement(DoCommitStmt,
 			MLDS_Context) },
 		/* pop nesting level */
 		ml_gen_label_func(SuccessFuncLabel, Context, DoCommitStatement,
 			SuccessFunc),
 
-		ml_gen_info_push_success_cont(SuccessFuncLabelRval),
+		ml_get_env_ptr(EnvPtrRval),
+		{ SuccessCont = success_cont(SuccessFuncLabelRval, EnvPtrRval) },
+		ml_gen_info_push_success_cont(SuccessCont),
 		ml_gen_goal(model_non, Goal, GoalStatement),
 		ml_gen_info_pop_success_cont,
 
-		{ TryCommitStmt = try_commit(CommitRefVar, GoalStatement,
+		{ TryCommitStmt = try_commit(CommitRefLval, GoalStatement,
 			ml_gen_block([], [], Context)) },
 		{ TryCommitStatement = mlds__statement(TryCommitStmt,
 			MLDS_Context) },
@@ -1172,6 +1182,27 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		ml_gen_goal(CodeModel, Goal, MLDS_Decls, MLDS_Statements)
 	).
 
+	% Generate the declaration for the `commit' variable.
+	%
+:- func ml_gen_commit_var_decl(mlds__context, mlds__var_name) = mlds__defn.
+ml_gen_commit_var_decl(Context, VarName) = MLDS_Defn :-
+	Name = data(var(VarName)),
+	Type = mlds__commit_type,
+	MaybeInitializer = no,
+	Defn = data(Type, MaybeInitializer),
+	DeclFlags = ml_gen_var_decl_flags,
+	MLDS_Defn = mlds__defn(Name, Context, DeclFlags, Defn).
+
+	% Qualify the name of the specified commit var.
+	%
+:- pred ml_commit_var(mlds__var_name, mlds__lval,
+		ml_gen_info, ml_gen_info).
+:- mode ml_commit_var(in, out, in, out) is det.
+ml_commit_var(CommitRef, CommitLval) -->
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_module_name(MLDSGenInfo, ModuleName) },
+	{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
+	{ CommitLval = var(qual(MLDS_Module, CommitRef)) }.
 
 	% Generate MLDS code for the different kinds of HLDS goals.
 	%
@@ -1273,7 +1304,14 @@ ml_gen_call(PredId, ProcId, ArgVars, CodeModel, Context,
 		{ CodeModel = model_non },
 		% pass the current success continuation
 		ml_gen_info_current_success_cont(Cont),
-		{ ArgRvals = list__append(ArgRvals0, [Cont]) },
+		{ Cont = success_cont(FuncPtrRval, EnvPtrRval) },
+		ml_gen_info_use_gcc_nested_functions(UseNestedFuncs),
+		( { UseNestedFuncs = yes } ->
+			{ ArgRvals = list__append(ArgRvals0, [FuncPtrRval]) }
+		;
+			{ ArgRvals = list__append(ArgRvals0,
+				[FuncPtrRval, EnvPtrRval]) }
+		),
 		{ RetLvals = RetLvals0 }
 	;
 		{ CodeModel = model_semi },
@@ -1834,7 +1872,9 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 
 		% generate the main body
 		ml_gen_set_success(const(false), Context, SetSuccessFalse),
-		ml_gen_info_push_success_cont(ThenFuncLabelRval),
+		ml_get_env_ptr(EnvPtrRval),
+		{ SuccessCont = success_cont(ThenFuncLabelRval, EnvPtrRval) },
+		ml_gen_info_push_success_cont(SuccessCont),
 		ml_gen_goal(model_non, Cond, CondDecls, CondStatements),
 		ml_gen_info_pop_success_cont,
 		ml_gen_test_success(Succeeded),
@@ -1996,7 +2036,9 @@ ml_gen_conj([First | Rest], CodeModel, Context,
 		ml_gen_label_func(RestFuncLabel, Context, RestStatement,
 			RestFunc),
 
-		ml_gen_info_push_success_cont(RestFuncLabelRval),
+		ml_get_env_ptr(EnvPtrRval),
+		{ SuccessCont = success_cont(RestFuncLabelRval, EnvPtrRval) },
+		ml_gen_info_push_success_cont(SuccessCont),
 		ml_gen_goal(model_non, First, FirstDecls, FirstStatements),
 		ml_gen_info_pop_success_cont,
 
@@ -2050,7 +2092,13 @@ ml_gen_label_func(FuncLabel, Context, Statement, Func) -->
 	% compute the function definition
 	%
 	{ DeclFlags = ml_gen_label_func_decl_flags },
-	{ FuncParams = mlds__func_params([], []) },
+	ml_gen_info_use_gcc_nested_functions(UseNested),
+	( { UseNested = yes } ->
+		{ FuncParams = mlds__func_params([], []) }
+	;
+		ml_declare_env_ptr_arg(EnvPtrArg),
+		{ FuncParams = mlds__func_params([EnvPtrArg], []) }
+	),
 	{ MaybePredProcId = no },
 	{ FuncDefn = function(MaybePredProcId, FuncParams, yes(Statement)) },
 	{ Func = mlds__defn(FuncName, mlds__make_context(Context), DeclFlags,
@@ -3152,29 +3200,47 @@ ml_gen_set_success(Value, Context, MLDS_Statement) -->
 	{ MLDS_Statement = mlds__statement(MLDS_Stmt,
 		mlds__make_context(Context)) }.
 
-	% Return the rval for the current function's `cont' argument.
-	% (The `cont' argument is a continuation function that
-	% will be called when a model_non goal succeeds.)
-	%
-:- pred ml_cont_rval(mlds__rval, ml_gen_info, ml_gen_info).
-:- mode ml_cont_rval(out, in, out) is det.
-ml_cont_rval(ContRval) -->
+	% Return an rval for a pointer to the current environment
+	% (the set of local variables in the containing procedure).
+	% Note that we generate this as a dangling reference.
+	% The ml_elim_nested pass will insert the declaration
+	% of the env_ptr variable.
+:- pred ml_get_env_ptr(mlds__rval, ml_gen_info, ml_gen_info).
+:- mode ml_get_env_ptr(out, in, out) is det.
+ml_get_env_ptr(EnvPtrRval) -->
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_module_name(MLDSGenInfo, ModuleName) },
 	{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
-	{ ContRval = lval(var(qual(MLDS_Module, "cont"))) }.
+	{ EnvPtrRval = lval(var(qual(MLDS_Module, "env_ptr"))) }.
 
-	% Return the rval for the current function's `cont' argument.
-	% (The `cont' argument is a continuation function that
-	% will be called when a model_non goal succeeds.)
+	% Return an rval for a pointer to the current environment
+	% (the set of local variables in the containing procedure).
+:- pred ml_declare_env_ptr_arg(pair(mlds__entity_name, mlds__type),
+		ml_gen_info, ml_gen_info).
+:- mode ml_declare_env_ptr_arg(out, in, out) is det.
+ml_declare_env_ptr_arg(Name - mlds__generic_env_ptr_type) -->
+	{ Name = data(var("env_ptr_arg")) }.
+
+	% Return rvals for the success continuation that was
+	% passed as the current function's argument(s).
+	% The success continuation consists of two parts, the
+	% `cont' argument, and the `cont_env' argument.
+	% The `cont' argument is a continuation function that
+	% will be called when a model_non goal succeeds.
+	% The `cont_env' argument is a pointer to the environment (set
+	% of local variables in the containing procedure) for the continuation
+	% function.  (If we're using gcc nested function, the `cont_env'
+	% is not used.)
 	%
-:- pred ml_commit_var(mlds__var_name, mlds__var, ml_gen_info, ml_gen_info).
-:- mode ml_commit_var(in, out, in, out) is det.
-ml_commit_var(CommitRef, CommitVar) -->
+:- pred ml_initial_cont(success_cont, ml_gen_info, ml_gen_info).
+:- mode ml_initial_cont(out, in, out) is det.
+ml_initial_cont(Cont) -->
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_module_name(MLDSGenInfo, ModuleName) },
 	{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
-	{ CommitVar = qual(MLDS_Module, CommitRef) }.
+	{ ContRval = lval(var(qual(MLDS_Module, "cont"))) },
+	{ ContEnvRval = lval(var(qual(MLDS_Module, "cont_env_ptr"))) },
+	{ Cont = success_cont(ContRval, ContEnvRval) }.
 
 	% Generate code to call the current success continuation.
 	% This is used for generating success when in a model_non context.
@@ -3185,18 +3251,37 @@ ml_commit_var(CommitRef, CommitVar) -->
 
 ml_gen_call_current_success_cont(Context, MLDS_Statement) -->
 	ml_gen_info_current_success_cont(SuccCont),
-	{ FuncRval = SuccCont },
-	{ ArgTypes = [] },
+	{ SuccCont = success_cont(FuncRval, EnvPtrRval) },
+	ml_gen_info_use_gcc_nested_functions(UseNestedFuncs),
+	( { UseNestedFuncs = yes } ->
+		{ ArgTypes = [] }
+	;
+		{ ArgTypes = [mlds__generic_env_ptr_type] }
+	),
 	{ RetTypes = [] },
 	{ Signature = mlds__func_signature(ArgTypes, RetTypes) },
 	{ ObjectRval = no },
-	{ ArgRvals = [] },
+	( { UseNestedFuncs = yes } ->
+		{ ArgRvals = [] }
+	;
+		{ ArgRvals = [EnvPtrRval] }
+	),
 	{ RetLvals = [] },
 	{ CallOrTailcall = call },
 	{ MLDS_Stmt = call(Signature, FuncRval, ObjectRval, ArgRvals, RetLvals,
 			CallOrTailcall) },
 	{ MLDS_Statement = mlds__statement(MLDS_Stmt,
 			mlds__make_context(Context)) }.
+
+:- pred ml_gen_info_use_gcc_nested_functions(bool, ml_gen_info, ml_gen_info).
+:- mode ml_gen_info_use_gcc_nested_functions(out, in, out) is det.
+
+ml_gen_info_use_gcc_nested_functions(UseNestedFuncs) -->
+	=(Info),
+	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
+	{ module_info_globals(ModuleInfo, Globals) },
+	{ globals__lookup_bool_option(Globals, gcc_nested_functions,
+		UseNestedFuncs) }.
 
 %-----------------------------------------------------------------------------%
 %
@@ -3319,7 +3404,19 @@ ml_gen_params(ModuleInfo, PredId, ProcId) = FuncParams :-
 		ContType = mlds__cont_type,
 		ContName = data(var("cont")),
 		ContArg = ContName - ContType,
-		FuncArgs = list__append(FuncArgs0, [ContArg])
+		ContEnvType = mlds__generic_env_ptr_type,
+		ContEnvName = data(var("cont_env_ptr")),
+		ContEnvArg = ContEnvName - ContEnvType,
+		(
+			module_info_globals(ModuleInfo, Globals),
+			globals__lookup_bool_option(Globals,
+				gcc_nested_functions, yes)
+		->
+			FuncArgs = list__append(FuncArgs0, [ContArg])
+		;
+			FuncArgs = list__append(FuncArgs0,
+				[ContArg, ContEnvArg])
+		)
 	;
 		FuncArgs = FuncArgs0
 	),
@@ -3594,7 +3691,14 @@ ml_gen_info_new_commit_label(CommitLabel,
 		ml_gen_info(A, B, C, D, E, F, G, CommitLabel, I)) :-
 	CommitLabel is CommitLabel0 + 1.
 
-:- type success_cont == mlds__rval.
+:- type success_cont 
+	--->	success_cont(
+			mlds__rval,	% function pointer
+			mlds__rval	% environment pointer
+				% note that if we're using nested
+				% functions then the environment
+				% pointer will not be used
+		).
 
 /******
 :- pred ml_gen_info_get_success_cont_stack(ml_gen_info,

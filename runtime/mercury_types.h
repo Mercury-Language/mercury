@@ -92,7 +92,8 @@ typedef Char *String;
 typedef const Char *ConstString;
 
 /* continuation function type, for --high-level-C option */
-typedef void (*Cont) (void);
+typedef void (*MR_NestedCont) (void);	/* for --gcc-nested-functions */
+typedef void (*MR_Cont) (void *);	/* for --no-gcc-nested-functions */
 
 /*
 ** semidet predicates indicate success or failure by leaving nonzero or zero

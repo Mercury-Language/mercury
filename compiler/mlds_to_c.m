@@ -266,6 +266,11 @@ mlds_output_decl(Indent, ModuleName, Defn) -->
 
 mlds_output_defn(Indent, ModuleName, Defn) -->
 	{ Defn = mlds__defn(Name, Context, Flags, DefnBody) },
+	( { DefnBody \= mlds__data(_, _) } ->
+		io__nl
+	;
+		[]
+	),
 	mlds_output_context(Context),
 	mlds_indent(Indent),
 	mlds_output_decl_flags(Flags),
@@ -325,19 +330,27 @@ mlds_output_context(Context) -->
 % Code to output type declarations/definitions
 %
 
-:- pred mlds_output_class(int, mlds__qualified_entity_name, mlds__class,
+:- pred mlds_output_class_decl(int, mlds__qualified_entity_name,
+		mlds__class_defn, io__state, io__state).
+:- mode mlds_output_class_decl(in, in, in, di, uo) is det.
+
+mlds_output_class_decl(_Indent, Name, _ClassDefn) -->
+	io__write_string("struct "),
+	mlds_output_fully_qualified_name(Name, mlds_output_name).
+
+:- pred mlds_output_class(int, mlds__qualified_entity_name, mlds__class_defn,
 		io__state, io__state).
-:- mode mlds_output_class(in, in, in, di, uo) is erroneous.
+:- mode mlds_output_class(in, in, in, di, uo) is det.
 
-mlds_output_class(_Indent, _Name, _ClassDefn) -->
-	{ error("NYI 3") }.
-
-:- pred mlds_output_class_decl(int, mlds__qualified_entity_name, mlds__class,
-		io__state, io__state).
-:- mode mlds_output_class_decl(in, in, in, di, uo) is erroneous.
-
-mlds_output_class_decl(_Indent, _Name, _ClassDefn) -->
-	{ error("NYI 3b") }.
+mlds_output_class(Indent, Name, ClassDefn) -->
+	mlds_output_class_decl(Indent, Name, ClassDefn),
+	io__write_string(" {\n"),
+	{ ClassDefn = class_defn(_Kind, _Imports, _BaseClasses, _Implements,
+		Defns) },
+	{ Name = qual(ModuleName, _) },
+	mlds_output_defns(Indent + 1, ModuleName, Defns),
+	mlds_indent(Indent),
+	io__write_string("}").
 
 %-----------------------------------------------------------------------------%
 %
@@ -588,14 +601,26 @@ mlds_output_type(mercury_type(Type)) -->
 		% so that distinct Mercury types map to distinct C types
 		io__write_string("Word")
 	).
-mlds_output_type(mlds__cont_type)  --> io__write_string("Cont").
 mlds_output_type(mlds__int_type)   --> io__write_string("int").
 mlds_output_type(mlds__float_type) --> io__write_string("float").
 mlds_output_type(mlds__bool_type)  --> io__write_string("bool").
 mlds_output_type(mlds__char_type)  --> io__write_string("char").
+mlds_output_type(mlds__class_type(Name, Arity)) -->
+	io__write_string("struct "),
+	mlds_output_fully_qualified_name(Name, io__write_string),
+	io__format("_%d", [i(Arity)]).
 mlds_output_type(mlds__ptr_type(Type)) -->
 	mlds_output_type(Type),
 	io__write_string(" *").
+mlds_output_type(mlds__generic_env_ptr_type) -->
+	io__write_string("void *").
+mlds_output_type(mlds__cont_type) -->
+	globals__io_lookup_bool_option(gcc_nested_functions, GCC_NestedFuncs),
+	( { GCC_NestedFuncs = yes } ->
+		io__write_string("MR_NestedCont")
+	;
+		io__write_string("MR_Cont")
+	).
 mlds_output_type(mlds__commit_type) -->
 	globals__io_lookup_bool_option(gcc_local_labels, GCC_LocalLabels),
 	( { GCC_LocalLabels = yes } ->
@@ -839,11 +864,11 @@ mlds_output_stmt(Indent, _FuncName, do_commit(Ref)) -->
 	( { GCC_LocalLabels = yes } ->
 		% output "goto <Ref>"
 		io__write_string("goto "),
-		mlds_output_var(Ref)
+		mlds_output_rval(Ref)
 	;
 		% output "longjmp(<Ref>, 1)"
 		io__write_string("longjmp("),
-		mlds_output_var(Ref),
+		mlds_output_rval(Ref),
 		io__write_string(", 1)")
 	),
 	io__write_string(";\n").
@@ -861,21 +886,25 @@ mlds_output_stmt(Indent, FuncName, try_commit(Ref, Stmt0, Handler)) -->
 		%       <Ref>_done:
 		%               ;
 
+		% Note that <Ref> should be just variable name,
+		% not a complicated expression.  If not, the
+		% C compiler will catch it.
+
 		mlds_output_statement(Indent, FuncName, Stmt0),
 
 		mlds_indent(Indent),
 		io__write_string("goto "),
-		mlds_output_var(Ref),
+		mlds_output_lval(Ref),
 		io__write_string("_done;\n"),
 
 		mlds_indent(Indent - 1),
-		mlds_output_var(Ref),
+		mlds_output_lval(Ref),
 		io__write_string(":\n"),
 
 		mlds_output_statement(Indent, FuncName, Handler),
 
 		mlds_indent(Indent - 1),
-		mlds_output_var(Ref),
+		mlds_output_lval(Ref),
 		io__write_string("_done:\t;\n")
 
 	;
@@ -907,7 +936,7 @@ mlds_output_stmt(Indent, FuncName, try_commit(Ref, Stmt0, Handler)) -->
 
 		mlds_indent(Indent),
 		io__write_string("if (setjmp("),
-		mlds_output_var(Ref),
+		mlds_output_lval(Ref),
 		io__write_string(") == 0)\n"),
 
 		mlds_output_statement(Indent + 1, FuncName, Stmt),
@@ -1078,9 +1107,15 @@ mlds_output_lval(field(MaybeTag, Rval, offset(OffsetRval))) -->
 	io__write_string(", "),
 	mlds_output_rval(OffsetRval),
 	io__write_string(")").
-mlds_output_lval(field(MaybeTag, Rval, named_field(FieldId))) -->
+mlds_output_lval(field(MaybeTag, PtrRval, named_field(FieldId))) -->
 	( { MaybeTag = yes(0) } ->
-		mlds_output_rval(Rval)
+		( { PtrRval = mem_addr(Lval) } ->
+			mlds_output_bracketed_lval(Lval),
+			io__write_string(".")
+		;
+			mlds_output_bracketed_rval(PtrRval),
+			io__write_string("->")
+		)
 	;
 		( { MaybeTag = yes(Tag) } ->
 			io__write_string("MR_body("),
@@ -1089,10 +1124,10 @@ mlds_output_lval(field(MaybeTag, Rval, named_field(FieldId))) -->
 		;
 			io__write_string("MR_strip_tag(")
 		),
-		mlds_output_rval(Rval),
-		io__write_string(")")
+		mlds_output_rval(PtrRval),
+		io__write_string(")"),
+		io__write_string("->")
 	),
-	io__write_string("->"),
 	mlds_output_fully_qualified_name(FieldId, io__write_string).
 mlds_output_lval(mem_ref(Rval)) -->
 	io__write_string("*"),
@@ -1105,6 +1140,21 @@ mlds_output_lval(var(VarName)) -->
 
 mlds_output_var(VarName) -->
 	mlds_output_fully_qualified_name(VarName, io__write_string).
+
+:- pred mlds_output_bracketed_lval(mlds__lval, io__state, io__state).
+:- mode mlds_output_bracketed_lval(in, di, uo) is det.
+
+mlds_output_bracketed_lval(Lval) -->
+	(
+		% if it's just a variable name, then we don't need parentheses
+		{ Lval = var(_) }
+	->
+		mlds_output_lval(Lval)
+	;
+		io__write_char('('),
+		mlds_output_lval(Lval),
+		io__write_char(')')
+	).
 
 :- pred mlds_output_bracketed_rval(mlds__rval, io__state, io__state).
 :- mode mlds_output_bracketed_rval(in, di, uo) is det.

@@ -45,7 +45,7 @@
 :- import_module llds_common, transform_llds, llds_out.
 :- import_module continuation_info, stack_layout.
 
-:- import_module mlds, ml_code_gen, mlds_to_c.
+:- import_module mlds, ml_code_gen, ml_elim_nested, mlds_to_c.
 
 	% miscellaneous compiler modules
 :- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds, rl.
@@ -2234,9 +2234,8 @@ mercury_compile__mlds_backend(HLDS) -->
 
 	globals__io_lookup_bool_option(gcc_nested_functions, NestedFuncs),
 	( { NestedFuncs = no } ->
-		% XXX the pass to convert nested functions into unnested
-		% functions is not yet implemented.
-		{ error("Sorry, not implemented: --no-gcc-nested-functions.") }
+		maybe_write_string(Verbose, "% Flattening nested functions...\n"),
+		ml_elim_nested(MLDS0, MLDS)
 	;
 		{ MLDS = MLDS0 }
 	),
