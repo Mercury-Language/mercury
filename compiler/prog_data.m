@@ -966,13 +966,13 @@
 		% such items need to be exported to the
 		% sub-modules.
 
-	;	imported(section)
+	;	imported(import_locn)
 		% This is used internally by the compiler,
 		% to identify declarations which originally
 		% came from some other module imported with 
 		% a `:- import_module' declaration, and which
 		% section the module was imported.
-	;	used(section)
+	;	used(import_locn)
 		% This is used internally by the compiler,
 		% to identify declarations which originally
 		% came from some other module and for which
@@ -1013,6 +1013,11 @@
 :- type section
 	--->	implementation
 	;	interface.
+
+:- type import_locn
+	--->	implementation
+	;	interface
+	;	ancestor.
 
 :- type sym_list	
 	--->	sym(list(sym_specifier))

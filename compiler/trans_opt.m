@@ -136,7 +136,7 @@ trans_opt__grab_optfiles(Module0, TransOptDeps, Module, FoundError) -->
 
 	read_trans_opt_files(TransOptDeps, [], OptItems, no, FoundError),
 
-	{ append_pseudo_decl(Module0, opt_imported, Module1) },
+	{ append_pseudo_decl(opt_imported, Module0, Module1) },
 	{ module_imports_get_items(Module1, Items0) },
 	{ list__append(Items0, OptItems, Items) },
 	{ module_imports_set_items(Module1, Items, Module2) },

@@ -2637,6 +2637,8 @@ hlds_out__write_import_status(imported(interface)) -->
 	io__write_string("imported in the interface").
 hlds_out__write_import_status(imported(implementation)) -->
 	io__write_string("imported in the implementation").
+hlds_out__write_import_status(imported(ancestor)) -->
+	io__write_string("imported by an ancestor").
 hlds_out__write_import_status(external(interface)) -->
 	io__write_string("external (and exported)").
 hlds_out__write_import_status(external(implementation)) -->

@@ -869,6 +869,7 @@ is_defined_in_implementation_section(imported(implementation), yes).
 is_defined_in_implementation_section(external(implementation), yes).
 
 is_defined_in_implementation_section(imported(interface), no).
+is_defined_in_implementation_section(imported(ancestor), no).
 is_defined_in_implementation_section(external(interface), no).
 is_defined_in_implementation_section(opt_imported, no).
 is_defined_in_implementation_section(abstract_imported, no).

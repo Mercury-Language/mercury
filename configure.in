@@ -104,12 +104,12 @@ if test "$BOOTSTRAP_MC" != ""; then
 
 		:- import_module int.
         
-		main --> 
-			{ return_rtti_version(Version) },
-			( { Version >= 6 } ->
-				print("Hello, world\n")
+		main(!IO) :-
+			return_rtti_version(Version),
+			( Version >= 6 ->
+				print("Hello, world\n", !IO)
 			;
-				print("Nope.\n")
+				print("Nope.\n", !IO)
 			).
 
 		:- pred return_rtti_version(int::out) is det.

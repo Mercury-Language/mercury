@@ -435,11 +435,11 @@
 :- pred make_pseudo_decl(module_defn, item_and_context).
 :- mode make_pseudo_decl(in, out) is det.
 
-	% append_pseudo_decl(Module0, PseudoDecl, Module):
+	% append_pseudo_decl(PseudoDecl, Module0, Module):
 	%	append the specified module declaration to the list
 	%	of items in Module0 to give Module.
 	%
-:- pred append_pseudo_decl(module_imports, module_defn, module_imports).
+:- pred append_pseudo_decl(module_defn, module_imports, module_imports).
 :- mode append_pseudo_decl(in, in, out) is det.
 
 	% Strip off the `:- interface' declaration at the start of
@@ -1612,7 +1612,7 @@ touch_datestamp(OutputFileName) -->
 
 grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
 		NestedChildren, ReadModules, MaybeTimestamp,
-		Items0, Module, Error) -->
+		Items0, !:Module, Error) -->
 		%
 		% Find out which modules this one depends on
 		%
@@ -1646,7 +1646,7 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
 	},
 	{ init_module_imports(SourceFileName, SourceFileModuleName, ModuleName,
 		Items0, PublicChildren, NestedChildren, FactDeps,
-		MaybeTimestamps, Module0) },
+		MaybeTimestamps, !:Module) },
 
 		% If this module has any seperately-compiled sub-modules,
 		% then we need to make everything in the implementation
@@ -1655,8 +1655,7 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
 		% them in a special `:- private_interface' section.
 	{ get_children(Items0, Children) },
 	{ Children = [] ->
-		Items1 = Items0,
-		Module1 = Module0
+		Items1 = Items0
 	;
 		split_clauses_and_decls(ImplItems, Clauses, ImplDecls),
 		make_pseudo_decl(interface, InterfaceDecl),
@@ -1666,13 +1665,8 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
 			[[InterfaceDecl | InterfaceItems],
 			[PrivateInterfaceDecl | ImplDecls],
 			[ImplementationDecl | Clauses]], Items1),
-		module_imports_set_items(Module0, Items1, Module1)
+		module_imports_set_items(!.Module, Items1, !:Module)
 	},
-
-		% We add a pseudo-declarations `:- imported' at the end
-		% of the item list. Uses of the items with declarations 
-		% following this do not need module qualifiers.
-	{ append_pseudo_decl(Module1, imported(interface), Module2) },
 
 		% Add `builtin' and `private_builtin' to the
 		% list of imported modules
@@ -1681,59 +1675,70 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
 			IntImportedModules1, IntUsedModules1,
 			IntImportedModules2, IntUsedModules2) },
 
+		% We add a pseudo-declaration `:- imported(ancestor)' at the
+		% end of the item list. Uses of the items with declarations 
+		% following this do not need module qualifiers. Modules
+		% imported by ancestors are considered to be visible
+		% in the current module.
+	{ append_pseudo_decl(imported(ancestor), !Module) },
+
 		% Process the ancestor modules
 	process_module_private_interfaces(ReadModules, AncestorModules,
 		IntImportedModules2, IntImportedModules,
-		IntUsedModules2, IntUsedModules,
-		Module2, Module3),
+		IntUsedModules2, IntUsedModules, !Module),
+
+		% We add a pseudo-declaration `:- imported(interface)' at
+		% the end of the item list. Uses of the items with declarations 
+		% following this do not need module qualifiers.
+	{ append_pseudo_decl(imported(interface), !Module) },
 
 		% Process the modules imported using `import_module'.
 	{ IntIndirectImports0 = [] },
 	process_module_long_interfaces(ReadModules, may_be_unqualified,
 		IntImportedModules, ".int", IntIndirectImports0,
-		IntIndirectImports1, Module3, Module4),
+		IntIndirectImports1, !Module),
 
-	{ append_pseudo_decl(Module4, imported(implementation), Module5) },
+	{ append_pseudo_decl(imported(implementation), !Module) },
 
 	{ ImpIndirectImports0 = [] },
 	process_module_long_interfaces(ReadModules, may_be_unqualified,
 		ImpImportedModules, ".int", ImpIndirectImports0,
-		ImpIndirectImports1, Module5, Module6),
+		ImpIndirectImports1, !Module),
 
 		% Process the modules imported using `use_module' .
-	{ append_pseudo_decl(Module6, used(interface), Module7) },
+	{ append_pseudo_decl(used(interface), !Module) },
 	process_module_long_interfaces(ReadModules, must_be_qualified,
 		IntUsedModules, ".int", IntIndirectImports1,
-		IntIndirectImports, Module7, Module8),
-	{ append_pseudo_decl(Module8, used(implementation), Module9) },
+		IntIndirectImports, !Module),
+	{ append_pseudo_decl(used(implementation), !Module) },
 	process_module_long_interfaces(ReadModules, must_be_qualified,
 		ImpUsedModules, ".int", ImpIndirectImports1,
-		ImpIndirectImports, Module9, Module10),
+		ImpIndirectImports, !Module),
 
 		% Process the short interfaces for indirectly imported modules.
 		% The short interfaces are treated as if
 		% they are imported using `use_module'.
-	{ append_pseudo_decl(Module10, transitively_imported, Module11) },
-	{ append_pseudo_decl(Module11, used(interface), Module12) },
+	{ append_pseudo_decl(transitively_imported, !Module) },
+	{ append_pseudo_decl(used(interface), !Module) },
 	process_module_short_interfaces_transitively(ReadModules,
-		IntIndirectImports, ".int2", Module12, Module13),
-	{ append_pseudo_decl(Module13, used(implementation), Module14) },
+		IntIndirectImports, ".int2", !Module),
+	{ append_pseudo_decl(used(implementation), !Module) },
 	process_module_short_interfaces_transitively(ReadModules,
-		ImpIndirectImports, ".int2", Module14, Module),
+		ImpIndirectImports, ".int2", !Module),
 
-	{ module_imports_get_items(Module, Items) },
+	{ module_imports_get_items(!.Module, Items) },
 	check_imports_accessibility(ModuleName,
 		IntImportedModules ++ IntUsedModules ++
 		ImpImportedModules ++ ImpUsedModules, Items),
 
-	{ module_imports_get_error(Module, Error) }.
+	{ module_imports_get_error(!.Module, Error) }.
 
 % grab_unqual_imported_modules:
 %	like grab_imported_modules, but gets the `.int3' files
 %	instead of the `.int' and `.int2' files.
 
 grab_unqual_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
-		Items0, Module, Error) -->
+		Items0, !:Module, Error) -->
 		%
 		% Find out which modules this one depends on
 		%
@@ -1746,8 +1751,8 @@ grab_unqual_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
 		% and append a `:- imported' decl to the items.
 		%
 	{ init_module_imports(SourceFileName, SourceFileModuleName, ModuleName,
-		Items0, [], [], [], no, Module0) },
-	{ append_pseudo_decl(Module0, imported(interface), Module1) },
+		Items0, [], [], [], no, !:Module) },
+	{ append_pseudo_decl(imported(interface), !Module) },
 
 		% Add `builtin' and `private_builtin' to the imported modules.
 	globals__io_get_globals(Globals),
@@ -1762,50 +1767,52 @@ grab_unqual_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
 		% first the .int0s for parent modules
 	process_module_private_interfaces(ReadModules, ParentDeps,
 			IntImportDeps1, IntImportDeps, IntUseDeps1, IntUseDeps,
-			Module1, Module2),
+			!Module),
 
 		% then the .int3s for `:- import'-ed modules
 	process_module_long_interfaces(ReadModules, may_be_unqualified,
 			IntImportDeps, ".int3", [],
-			IntIndirectImportDeps0, Module2, Module3),
+			IntIndirectImportDeps0, !Module),
 
-	{ append_pseudo_decl(Module3, imported(implementation), Module4) },
+	{ append_pseudo_decl(imported(ancestor), !Module) },
 
 	process_module_private_interfaces(ReadModules, ParentDeps,
 			ImpImportDeps0, ImpImportDeps, ImpUseDeps0, ImpUseDeps,
-			Module4, Module5),
+			!Module),
+
+	{ append_pseudo_decl(imported(implementation), !Module) },
 
 	process_module_long_interfaces(ReadModules, may_be_unqualified,
 			ImpImportDeps, ".int3", [], ImpIndirectImportDeps0,
-			Module5, Module6),
+			!Module),
 
 		% then (after appropriate `:- used' decls)
 		% the .int3s for `:- use'-ed modules
-	{ append_pseudo_decl(Module6, used(interface), Module7) },
+	{ append_pseudo_decl(used(interface), !Module) },
 	process_module_long_interfaces(ReadModules, must_be_qualified,
 			IntUseDeps, ".int3", IntIndirectImportDeps0,
-			IntIndirectImportDeps, Module7, Module8),
-	{ append_pseudo_decl(Module8, used(implementation), Module9) },
+			IntIndirectImportDeps, !Module),
+	{ append_pseudo_decl(used(implementation), !Module) },
 	process_module_long_interfaces(ReadModules, must_be_qualified,
 			ImpUseDeps, ".int3", ImpIndirectImportDeps0,
-			ImpIndirectImportDeps, Module9, Module10),
+			ImpIndirectImportDeps, !Module),
 
 		% then (after appropriate `:- used' decl)
 		% the .int3s for indirectly imported modules
-	{ append_pseudo_decl(Module10, used(interface), Module11) },
+	{ append_pseudo_decl(used(interface), !Module) },
 	process_module_short_interfaces_transitively(ReadModules,
-			IntIndirectImportDeps, ".int3", Module11, Module12),
+			IntIndirectImportDeps, ".int3", !Module),
 
-	{ append_pseudo_decl(Module12, used(implementation), Module13) },
+	{ append_pseudo_decl(used(implementation), !Module) },
 	process_module_short_interfaces_transitively(ReadModules,
-			ImpIndirectImportDeps, ".int3", Module13, Module),
+			ImpIndirectImportDeps, ".int3", !Module),
 
-	{ module_imports_get_items(Module, Items) },
+	{ module_imports_get_items(!.Module, Items) },
 	check_imports_accessibility(ModuleName,
 		IntImportDeps ++ IntUseDeps ++ ImpImportDeps ++ ImpUseDeps,
 		Items),
 
-	{ module_imports_get_error(Module, Error) }.
+	{ module_imports_get_error(!.Module, Error) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -1847,7 +1854,7 @@ module_imports_set_impl_deps(Module, ImplDeps,
 module_imports_set_indirect_deps(Module, IndirectDeps,
 	Module ^ indirect_deps := IndirectDeps).
 
-append_pseudo_decl(Module0, PseudoDecl, Module) :-
+append_pseudo_decl(PseudoDecl, Module0, Module) :-
 	Items0 = Module0 ^ items,
 	make_pseudo_decl(PseudoDecl, Item),
 	list__append(Items0, [Item], Items),

@@ -282,7 +282,7 @@
 				% It can be through the use of another
 				% language, or it could be through some
 				% other method we haven't thought of yet.
-	;	imported(section)
+	;	imported(import_locn)
 				% defined in the interface of some other module
 	;	opt_imported	% defined in the optimization
 				% interface of another module
