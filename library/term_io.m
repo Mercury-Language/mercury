@@ -259,7 +259,7 @@ term_io__write_arg_term(Ops, Term, !VarSet, !N, !IO) :-
 term_io__write_term_3(Ops, term__variable(Id), _, !VarSet, !N, !IO) :-
 	term_io__write_variable_2(Ops, Id, !VarSet, !N, !IO).
 term_io__write_term_3(Ops, term__functor(Functor, Args, _), Priority,
-			!VarSet, !N, !IO) :-
+		!VarSet, !N, !IO) :-
 	(
 		Functor = term__atom("[|]"),
 		Args = [ListHead, ListTail]
