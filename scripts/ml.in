@@ -18,11 +18,13 @@
 #		Specify which grade of the Mercury library to link with.
 #		Defaults to `asm_fast.gc'.
 #
-# Environment variables: MERCURY_C_LIB_DIR
+# Environment variables: MERCURY_C_LIB_DIR, MERCURY_DEFAULT_GRADE
 
 LIBDIR=${MERCURY_C_LIB_DIR=@LIBDIR@/lib}
+DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
+
 verbose=false
-GRADE=asm_fast.gc
+GRADE=$DEFAULT_GRADE
 
 while true; do
     case "$1" in

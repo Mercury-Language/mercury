@@ -5,7 +5,7 @@
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
-
+#
 # MGNUC - Mercury GNU C
 #
 # Usage: mgnuc [-v|--verbose] [-s<grade>] -- [<gcc options>] files...
@@ -30,8 +30,11 @@
 # -Wid-clash-31 	causes warnings about entry_mercury__xxx ...
 # -Wenum-clash 		is for C++ only
 # -Wunused		causes various spurious warnings
+#
+# Environment variables: MERCURY_C_INCL_DIR, MERCURY_DEFAULT_GRADE.
 
 C_INCL_DIR=${MERCURY_C_INCL_DIR=@LIBDIR@/inc}
+DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 
 CHECK_OPTS="-ansi
       -Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wtraditional -Wshadow
@@ -40,7 +43,7 @@ OPT_OPTS="-O2 -fomit-frame-pointer -DSPEED"
 OPT_OPTS="-O2 -g -DSPEED"
 DEBUG_OPTS="-g"
 
-grade=asm_fast.gc
+grade=$DEFAULT_GRADE
 verbose=false
 
 while true; do

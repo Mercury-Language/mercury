@@ -12,10 +12,11 @@
 #
 #-----------------------------------------------------------------------------#
 
-MAKE=${MMAKE_MAKE=@GNU_MAKE@}
+MMAKE_MAKE=${MMAKE_MAKE=@GNU_MAKE@}
 MMAKE_VARS=${MMAKE_VARS=@LIBDIR@/mmake/Mmake.vars}
 MMAKE_RULES=${MMAKE_RULES=@LIBDIR@/mmake/Mmake.rules}
 MERCURY_INT_DIR=${MERCURY_INT_DIR=@LIBDIR@/ints}
+MERCURY_DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 
 MMAKE=$0
 verbose=false
@@ -40,10 +41,16 @@ Targets:
 		in preparation for the targets below.
 	<module>:
 		Compile and link a Mercury program with main module
-		`<module>.nl' to produce an executable.
+		`<module>.m' to produce an executable.
 	<module>.nu:
 		Compile and link a Mercury program with NU-Prolog
 		rather than with the Mercury compiler.
+	<module>.sicstus:
+		Compile and link a Mercury program with SICStus Prolog
+		rather than with the Mercury compiler.
+	<module>.nu.debug:
+	<module>.sicstus.debug:
+		Debugging versions of the above.
 	clean:
 		Remove intermediate files.
 	realclean:
@@ -102,10 +109,13 @@ if $verbose; then
 	echo export MMAKE
 	echo MERCURY_INT_DIR=$MERCURY_INT_DIR
 	echo export MERCURY_INT_DIR
+	echo MERCURY_DEFAULT_GRADE=$MERCURY_DEFAULT_GRADE
+	echo export MERCURY_DEFAULT_GRADE
 	echo cat ${MMAKE_VARS} $deps $ds $mmake ${MMAKE_RULES} ">" $tmp
-	echo ${MAKE} -f $tmp "$@"
+	echo ${MMAKE_MAKE} -f $tmp -r "$@"
 fi
 export MMAKE
 export MERCURY_INT_DIR
+export MERCURY_DEFAULT_GRADE
 cat ${MMAKE_VARS} $deps $ds $mmake ${MMAKE_RULES} > $tmp
-${MAKE} -f $tmp -r "$@"
+${MMAKE_MAKE} -f $tmp -r "$@"

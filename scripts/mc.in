@@ -11,10 +11,12 @@
 # Use `mc -h' for help.
 #
 # Environment variables: MERCURY_INT_DIR, MERCURY_C_INCL_DIR,
-# MERCURY_COMPILER.
+# MERCURY_COMPILER, MERCURY_DEFAULT_GRADE.
 
 INTDIR=${MERCURY_INT_DIR=@LIBDIR@/ints}
 C_INCL=${MERCURY_C_INCL_DIR=@LIBDIR@/inc}
 MC=${MERCURY_COMPILER="@LIBDIR@/bin/@FULLARCH@/mercury_compile"}
+DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 
-exec $MC -- -I "$INTDIR" --c-include-directory "$C_INCL" "$@"
+exec $MC -- -I "$INTDIR" --c-include-directory "$C_INCL" \
+	--grade "$DEFAULT_GRADE" "$@"
