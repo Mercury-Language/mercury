@@ -1226,7 +1226,7 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
 	is det.
 
 simplify__call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, Context,
-		GoalInfo, Call) :-
+		GoalInfo0, Call) :-
 	ArgVars = [TypeInfoVar, XVar, YVar],
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	mercury_public_builtin_module(MercuryBuiltin),
@@ -1245,6 +1245,9 @@ simplify__call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, Context,
 	SymName = unqualified("unify"),
 	code_util__builtin_state(ModuleInfo, PredId, ProcId, BuiltinState),
 	CallContext = call_unify_context(XVar, var(YVar), Context),
+	goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+	set__insert(NonLocals0, TypeInfoVar, NonLocals),
+	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo),
 	Call = call(PredId, ProcId, ArgVars, BuiltinState, yes(CallContext),
 		SymName) - GoalInfo.
 

@@ -140,6 +140,7 @@ OTHER_SOURCES= \
 	type_inf_ambig_test.m \
 	unbound_tvar_in_lambda.m \
 	undead_proc.m \
+	unify_typeinfo_bug.m \
 	uniq_unify.m \
 	uniq_mode_inf_bug.m \
 	unreachable_code.m \
@@ -248,6 +249,7 @@ MCFLAGS-quantifier_warning	= --halt-at-warn
 MCFLAGS-simplify_bug		= -O-1
 MCFLAGS-two_way_unif		= -O-1
 MCFLAGS-type_inf_ambig_test	= --infer-all
+MCFLAGS-unify_typeinfo_bug	= -O3 --no-special-preds
 MCFLAGS-uniq_mode_inf_bug	= --infer-all
 MCFLAGS-vn_float		= -O5
 MCFLAGS-zero_arity		= --infer-modes
