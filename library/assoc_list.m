@@ -49,17 +49,16 @@
 	% Find the first element of the association list that matches
 	% the given key, and return the associated value.
 
-:- pred assoc_list__find_key(assoc_list(K, V), K, V).
-:- mode assoc_list__find_key(in, in, out) is semidet.
+:- pred assoc_list__search(assoc_list(K, V), K, V).
+:- mode assoc_list__search(in, in, out) is semidet.
 
 	% Find the first element of the association list that matches
-	% the given key, and return the associated value. Return also
-	% all the other elements of the list, including those before
-	% the element selected by the key.
+	% the given key. Return the associated value, and the original
+	% list with the selected element removed.
 
-:- pred assoc_list__find_key_return_rest(assoc_list(K, V), K, V,
+:- pred assoc_list__remove(assoc_list(K, V), K, V,
 	assoc_list(K, V)).
-:- mode assoc_list__find_key_return_rest(in, in, out, out) is semidet.
+:- mode assoc_list__remove(in, in, out, out) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -93,19 +92,19 @@ assoc_list__values([], []).
 assoc_list__values([_ - V | KVs], [V | Vs]) :-
 	assoc_list__values(KVs, Vs).
 
-assoc_list__find_key([K - V | KVs], Key, Value) :-
+assoc_list__search([K - V | KVs], Key, Value) :-
 	( K = Key ->
 		Value = V
 	;
-		assoc_list__find_key(KVs, Key, Value)
+		assoc_list__search(KVs, Key, Value)
 	).
 
-assoc_list__find_key_return_rest([K - V | KVs], Key, Value, Rest) :-
+assoc_list__remove([K - V | KVs], Key, Value, Rest) :-
 	( K = Key ->
 		Value = V,
 		Rest = KVs
 	;
-		assoc_list__find_key_return_rest(KVs, Key, Value, Rest1),
+		assoc_list__remove(KVs, Key, Value, Rest1),
 		Rest = [K - V | Rest1]
 	).
 

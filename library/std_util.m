@@ -149,23 +149,37 @@ univ_to_type(Univ, X) :- type_to_univ(X, Univ).
 
 /*---------------------------------------------------------------------------*/
 
+:- pragma(c_header_code, "
+
+#include ""timing.h""
+
+").
+
 :- pragma(c_code, report_stats, "
+	int	time_at_prev_stat;
+
+	time_at_prev_stat = time_at_last_stat;
+	time_at_last_stat = get_run_time();
+
+	fprintf(stderr, 
+		""[Time: %.3fs, D Stack: %.3fk, ND Stack: %.3fk, "",
+		(time_at_last_stat - time_at_prev_stat) / 1000.0,
+		((char *) sp - (char *) detstackmin) / 1024.0,
+		((char *) maxfr - (char *) nondstackmin) / 1024.0
+	);
+
 #ifdef CONSERVATIVE_GC
 	fprintf(stderr, 
-		""[D Stack: %.3fk, ND Stack: %.3fk, #GCs: %lu,\\n""
+		""#GCs: %lu,\\n""
 		""Heap used since last GC: %.3fk, Total used: %.3fk]\\n"",
-		((char *)sp - (char *)detstackmin) / 1000.0,
-		((char *)maxfr - (char *)nondstackmin) / 1000.0,
 		(unsigned long) GC_gc_no,
-		GC_get_bytes_since_gc() / 1000.0,
-		GC_get_heap_size() / 1000.0
+		GC_get_bytes_since_gc() / 1024.0,
+		GC_get_heap_size() / 1024.0
 	);
 #else
 	fprintf(stderr, 
-		""[Heap: %.3fk, D Stack: %.3fk, ND Stack: %.3fk]\\n"",
-		((char *)hp - (char *)heapmin) / 1000.0,
-		((char *)sp - (char *)detstackmin) / 1000.0,
-		((char *)maxfr - (char *)nondstackmin) / 1000.0
+		""Heap: %.3fk]\\n"",
+		((char *) hp - (char *) heapmin) / 1024.0
 	);
 #endif
 ").
