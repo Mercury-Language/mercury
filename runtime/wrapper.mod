@@ -44,6 +44,8 @@ static	int	start_time;
 static	int	finish_time;
 
 const char *	progname;
+int		mercury_argc;	/* not counting progname or debug options */
+char **		mercury_argv;
 
 #ifdef USE_GCC_NONLOCAL_GOTOS
 
@@ -93,7 +95,7 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-static void process_options(int argc, char *argv[])
+static void process_options(int argc, char **argv)
 {
 	int	c;
 	int	i;
@@ -230,6 +232,17 @@ static void process_options(int argc, char *argv[])
 		otherwise:	usage();
 
 		}
+	}
+	if (strcmp(argv[optind],"--") == 0) {
+		/* this is a workaround for broken (?) versions of getopt() */
+		/* printf("getopt() is broken\n"); */
+		mercury_argc = argc - optind - 1;
+		mercury_argv = argv + optind + 1;
+	} else {
+		/* printf("getopt() works\n");
+		   printf("argv[optind] = '%s'\n", argv[optind]); */
+		mercury_argc = argc - optind;
+		mercury_argv = argv + optind;
 	}
 
 	if (which == NULL)

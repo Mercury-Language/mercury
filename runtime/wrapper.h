@@ -2,6 +2,8 @@
 #define	WRAPPER_H
 
 extern	const	char	*progname;
+extern	int	mercury_argc;
+extern	char **	mercury_argv;
 
 extern	int	heap_size;
 extern	int	detstack_size;

@@ -7,6 +7,7 @@
 */
 
 #include "imp.h"
+#include "wrapper.h"
 
 /*
 ** Mercury files are not quite the same as C stdio FILEs,
@@ -24,7 +25,9 @@ MercuryFile mercury_stderr = { NULL, 0 };
 MercuryFile *mercury_current_input = &mercury_stdin;
 MercuryFile *mercury_current_output = &mercury_stdout;
 
-#define update_io(r_src, r_dest) ((r_dest) = (r_src))
+#define initial_external_state()	0	/* some random number */
+#define update_io(r_src, r_dest)	((r_dest) = (r_src))
+#define final_io_state(r)		((void)0)
 
 static void
 mercury_init_io(void)
@@ -86,6 +89,24 @@ mercury_close(MercuryFile* mf)
 BEGIN_MODULE(io_module)
 	mercury_init_io();
 BEGIN_CODE
+
+mercury__io__run_0_0:
+	incr_sp(1);
+	detstackvar(1) = (int) succip;
+	r1 = initial_external_state();
+	{ extern EntryPoint ENTRY(mercury__io__init_state_2_0); 
+	  call(ENTRY(mercury__io__init_state_2_0),
+		LABEL(mercury__io__run_0_0_i1)); }
+mercury__io__run_0_0_i1:
+	r1 = r2;
+	{ extern EntryPoint ENTRY(mercury__main_2_0); 
+	  call(ENTRY(mercury__main_2_0),
+		LABEL(mercury__io__run_0_0_i2)); }
+mercury__io__run_0_0_i2:
+	final_io_state(r2);
+	LVALUE_CAST(Word, succip) = detstackvar(1);
+	decr_sp(1);
+	proceed();
 
 /* input predicates */
 
@@ -158,7 +179,7 @@ mercury__io__flush_output_3_0:
 
 /* stream predicates */
 
-mercury__unify_io__stream_0_0:
+mercury____Unify___io__stream_0_0:
 	r1 = ((MercuryFile*) r2 == (MercuryFile *)r3);
 	proceed();
 
@@ -243,6 +264,17 @@ mercury__io__progname_4_0:
 	update_io(r3, r4);
 	proceed();
 
+mercury__io__command_line_arguments_3_0:
+	/* convert mercury_argv from a vector to a list */
+	{ char **p = mercury_argv + mercury_argc;
+	  r1 = mkword(TAG_NIL, 0);
+	  while (--p >= mercury_argv) {
+		r1 = mkword(TAG_CONS, create2((Word)*p, r1));
+	  }
+	}
+	update_io(r2, r3);
+	proceed();
+
 mercury__io__preallocate_heap_space_3_0:
 	/* don't do anything - preallocate_heap_space was just a
 	   hack for NU-Prolog */
@@ -254,7 +286,7 @@ mercury__io__call_system_code_4_0:
 	update_io(r3, r4);
 	proceed();
 
-mercury__unify_io__external_state_0_0:
+mercury____Unify___io__external_state_0_0:
 	/* the unique mode system should prevent this */
 	fatal_error("cannot unify io__external_state");
 
@@ -323,7 +355,7 @@ mercury__type_to_univ_2_1:
 	r1 = TRUE;
 	proceed();
 
-mercury__unify_univ_0_0:
+mercury____Unify___univ_0_0:
 	r1 = field(mktag(0), r2, 0);
 	if (r1 != field(mktag(0), r3, 0)) {
 		r1 = FALSE;
@@ -414,16 +446,22 @@ mercury__string__to_int_list_2_2_i1:
 	LVALUE_CAST(Word,succip) = (int) detstackvar(1);
 	decr_sp(1);
 	proceed();
-		
+
+mercury__builtin_strcmp_3_0:
+	r1 = strcmp((char *)r2, (char *)r3);
+	proceed();
+
+/*-----------------------------------------------------------------------*/
+
+mercury__term_io__read_term_3_0:
+	{ extern EntryPoint ENTRY(mercury__parser__read_term_3_0);
+	  tailcall(ENTRY(mercury__parser__read_term_3_0)); }
+
 /*-----------------------------------------------------------------------*/
 
 /* XXX The following predicates have not yet been implemented! */
 
 mercury__opt_debug__write_1_0:
 	fatal_error("opt_debug__write/1 not implemented");
-
-mercury__compare_3_0:
-mercury__compare_3_1:
-	fatal_error("compare/3 not yet implemented");
 
 END_MODULE

@@ -54,7 +54,7 @@ do_call_closure:
 
 	restore_registers();
 
-	call(field(0, closure, 1), LABEL(do_closure_return));
+	call((Code *)field(0, closure, 1), LABEL(do_closure_return));
 }
 do_closure_return:
 {
@@ -102,7 +102,7 @@ do_call_semidet_closure:
 	for(i=1; i <= num_in_args; i++) 
 		virtual_reg(i+1) = field(0, closure, i+1); /* copy args */
 	restore_registers();
-	call(field(0, closure, 1), LABEL(do_semidet_closure_return));
+	call((Code *)field(0, closure, 1), LABEL(do_semidet_closure_return));
 }
 do_semidet_closure_return:
 {
@@ -122,6 +122,135 @@ do_semidet_closure_return:
 	proceed();
 }
 
+/* See polymorphism.nl for explanation of these offsets and how the
+   type_info structure is layed out */
 
+#define OFFSET_FOR_COUNT 0
+#define OFFSET_FOR_UNIFY_PRED 1
+#define OFFSET_FOR_INDEX_PRED 2
+#define OFFSET_FOR_COMPARE_PRED 3
+#define OFFSET_FOR_ARG_TYPE_INFOS 4
+
+mercury__index_2_0:
+{
+	Word type_info;
+	Code* index_pred;
+	Word x;
+	int i, type_arity;
+
+	/* we get called as `index(TypeInfo, X, Index)' */
+	/* in the mode `index(in, in, out) is det'. */
+	type_info = r1;
+	x = r2;
+	/* r3 will hold the result */
+	type_arity = field(0, type_info, OFFSET_FOR_COUNT);
+		/* number of type_info args */
+	index_pred = (Code *)field(0, type_info, OFFSET_FOR_INDEX_PRED);
+		/* address of the comparison pred for this type */
+
+	save_registers();
+
+	/* we call `IndexPred(...TypeInfos..., X, Index)' */
+	for (i = 1; i <= type_arity; i++) {
+		virtual_reg(i) =
+			field(0, type_info, i - 1 + OFFSET_FOR_ARG_TYPE_INFOS);
+	}
+	virtual_reg(type_arity + 1) = x;
+	/* virtual_reg(type_arity + 2) will hold the result */
+
+	restore_registers();
+
+	push(succip);
+	push(type_arity);
+	call(index_pred, LABEL(mercury__index_3_0_i1));
+}
+mercury__index_3_0_i1:
+{
+	int type_arity;
+	type_arity = pop();
+	succip = pop();
+	save_registers();
+	r3 = virtual_reg(type_arity + 2);
+	proceed();
+}
+
+mercury__compare_3_0:
+{
+	Word type_info;
+	Code *compare_pred;
+	Word x, y;
+	int i, type_arity;
+
+	/* we get called as `compare(TypeInfo, Result, X, Y)' */
+	/* in the mode `compare(in, out, in, in) is det'. */
+	type_info = r1;
+	/* r2 will hold the result */
+	x = r3;
+	y = r4;
+	type_arity = field(0, type_info, OFFSET_FOR_COUNT);
+		/* number of type_info args */
+	compare_pred = (Code *)field(0, type_info, OFFSET_FOR_COMPARE_PRED);
+		/* address of the comparison pred for this type */
+
+	save_registers();
+
+	/* we call `ComparePred(...TypeInfos..., Result, X, Y)' */
+	for (i = 1; i <= type_arity; i++) {
+		virtual_reg(i) =
+			field(0, type_info, i - 1 + OFFSET_FOR_ARG_TYPE_INFOS);
+	}
+	/* virtual_reg(type_arity + 1) will hold the result */
+	virtual_reg(type_arity + 2) = x;
+	virtual_reg(type_arity + 3) = y;
+
+	restore_registers();
+
+	push(succip);
+	push(type_arity);
+	call(compare_pred, LABEL(mercury__compare_3_0_i1));
+}
+mercury__compare_3_0_i1:
+{
+	int type_arity;
+	type_arity = pop();
+	succip = pop();
+	save_registers();
+	r2 = virtual_reg(type_arity + 1);
+	proceed();
+}
+
+mercury__unify_2_0:
+{
+	Word type_info;
+	Code *unify_pred;
+	Word x, y;
+	int i, type_arity;
+
+	/* we get called as `unify(TypeInfo, X, Y)' */
+	/* in the mode `unify(in, in, in) is semidet'. */
+	/* r1 will hold the success/failure indication */
+	type_info = r2;
+	x = r3;
+	y = r4;
+	type_arity = field(0, type_info, OFFSET_FOR_COUNT);
+		/* number of type_info args */
+	unify_pred = (Code *)field(0, type_info, OFFSET_FOR_UNIFY_PRED);
+		/* address of the comparison pred for this type */
+
+	save_registers();
+
+	/* we call `UnifyPred(...TypeInfos..., X, Y)' */
+	/* virtual_reg(1) will hold the success/failure indication */
+	for (i = 1; i <= type_arity; i++) {
+		virtual_reg(i + 1) =
+			field(0, type_info, i - 1 + OFFSET_FOR_ARG_TYPE_INFOS);
+	}
+	virtual_reg(type_arity + 2) = x;
+	virtual_reg(type_arity + 3) = y;
+
+	restore_registers();
+
+	tailcall(unify_pred);
+}
 
 END_MODULE
