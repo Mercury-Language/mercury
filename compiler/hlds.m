@@ -2108,7 +2108,13 @@ proc_info_init(Arity, Modes, MaybeDet, MContext, NewProc) :-
 	goal_info_init(GoalInfo),
 	varset__init(BodyVarSet0),
 	make_n_fresh_vars(Arity, BodyVarSet0, HeadVars, BodyVarSet),
-	InferredDet = det,
+	( MaybeDet = yes(erroneous) ->
+		InferredDet = erroneous
+	; MaybeDet = yes(failure) ->
+		InferredDet = erroneous
+	;
+		InferredDet = det
+	),
 	map__init(CallInfo),
 	set__init(Liveness),
 	ArgInfo = [],
