@@ -1018,6 +1018,7 @@ AC_SUBST(SHARED_LIBS)
 if test "$BOOTSTRAP_MC" = ""; then
 	BOOTSTRAP_MC=mc
 fi
+BOOTSTRAP_MC="$BOOTSTRAP_MC $HAVE_BOXED_FLOATS --conf-low-tag-bits $LOW_TAG_BITS --bits-per-word $BITS_PER_WORD --bytes-per-word $BYTES_PER_WORD"
 AC_SUBST(BOOTSTRAP_MC)
 #-----------------------------------------------------------------------------#
 
