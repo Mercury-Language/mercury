@@ -16,8 +16,6 @@ PROGS=	set_test arithmetic disj_disj interpreter \
 # float_test doesn't work because io__write_float
 # prints a different number of digits in the C / NU-Prolog implementations.
 
-# string__format_test doesn't work in NU-Prolog, for as yet unknown reasons
-
 DEPENDS=$(PROGS:%=%.depend)
 OUTS=	$(PROGS:%=%.out)
 EXPS=	$(PROGS:%=%.exp)
