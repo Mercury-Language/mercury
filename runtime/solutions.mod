@@ -201,6 +201,7 @@ mercury__std_util__builtin_solutions_2_1:
 		LABEL(mercury__std_util__builtin_solutions_2_1));
 
 mercury__std_util__builtin_solutions_2_0_i1:
+{
 	/* we found a solution (in r1) */
 
 	/* save the current heap pointer */
@@ -223,6 +224,7 @@ mercury__std_util__builtin_solutions_2_0_i1:
 	hp = temp_hp;
 
 	redo();
+}
 	
 mercury__std_util__builtin_solutions_2_0_i2:
 	/* no more solutions */
