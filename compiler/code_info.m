@@ -1144,7 +1144,7 @@ code_info__generate_commit(FailLabel, Commit) -->
 			"Prune away unwanted choice-points"
 	]) },
 	{ RestoreRedoIp = node([
-		assign(redoip(lval(curfr)), lval(RedoIpSlot)) -
+		assign(redoip(lval(maxfr)), lval(RedoIpSlot)) -
 			"Restore the top redoip"
 	]) },
 	code_info__generate_failure(Fail),
