@@ -151,3 +151,10 @@ The compiler sometimes aborts with a map_lookup failed
 after mode inference finds some mode errors.
 
 -----------------------------------------------------------------------------
+Subject: relation.m
+Date: Mon, 29 Jul 1996 16:34:46 +1000 (EST)
+
+relation__atsort does not correctly compute the topological sort for
+disconnected cliques.  These cliques do not appear in the output list.
+
+-----------------------------------------------------------------------------
