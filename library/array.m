@@ -368,11 +368,27 @@
 
 :- import_module exception, int, require, string.
 
+%
+% Define the array type appropriately for the different targets.
+% Note that the definitions here should match what is output by
+% mlds_to_c.m, mlds_to_il.m, or mlds_to_java.m for mlds__mercury_array_type.
+%
+
 	% MR_ArrayPtr is defined in runtime/mercury_library_types.h.
 :- pragma foreign_type("C", array(T), "MR_ArrayPtr")
 	where equality is array__array_equal,
 	comparison is array__array_compare.
+
 :- pragma foreign_type(il,  array(T), "class [mscorlib]System.Array")
+	where equality is array__array_equal,
+	comparison is array__array_compare.
+
+	% We can't use `java.lang.Object []', since we want
+	% a generic type that is capable of holding any kind
+	% of array, including e.g. `int []'.
+	% Java doesn't have any equivalent of .NET's System.Array
+	% class, so we just use the universal base `java.lang.Object'.
+:- pragma foreign_type(java,  array(T), "/* Array */ java.lang.Object")
 	where equality is array__array_equal,
 	comparison is array__array_compare.
 

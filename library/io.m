@@ -1422,6 +1422,7 @@
 :- pragma foreign_type(c, io__system_error, "MR_Integer").
 :- pragma foreign_type(il, io__system_error,
 		"class [mscorlib]System.Exception").
+:- pragma foreign_type(java, io__system_error, "java.lang.Exception").
 
 % io__make_err_msg(Error, MessagePrefix, Message):
 %	`Message' is an error message obtained by looking up the
