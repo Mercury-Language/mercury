@@ -22,7 +22,7 @@ END-INFO-DIR-ENTRY
 @ifinfo
 This file documents the Mercury programming language.
 
-Copyright (C) 1995-1998 The University of Melbourne.
+Copyright (C) 1995-1999 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -52,7 +52,7 @@ into another language, under the above conditions for modified versions.
 @author David Jeffery
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995-1998 The University of Melbourne.
+Copyright @copyright{} 1995-1999 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -2715,8 +2715,9 @@ It must start with a @samp{:- module} declaration
 which matches that in the @samp{:- include_module} declaration
 in the parent, followed by the interface and (if necessary)
 implementation sections, and it may optionally end with a @samp{:- end_module}
-declaration.  (Note: the module names in the @samp{:- module}
-and @samp{:- end_module} declaration need not be fully-qualified.)
+declaration.  (Note: the module names in the @samp{:- module},
+@samp{:- end_module}, and @samp{:- include_module} declarations
+need not be fully-qualified.)
 
 If an @samp{:- include_module} declaration occurs in the interface
 section of a module, then only the declarations (interfaces) of the sub-modules
