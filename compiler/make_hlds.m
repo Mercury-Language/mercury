@@ -179,6 +179,37 @@ add_item_decl(pragma(Pragma), Context, Status, Module0, Status, Module) -->
 			[request(inline)], Module)
 	).
 
+add_item_decl(module_defn(_VarSet, ModuleDefn), Context, Status0, Module0,
+		Status, Module) -->
+	( { ModuleDefn = interface } ->
+		{ Status = exported },
+		{ Module = Module0 }
+	; { ModuleDefn = implementation } ->
+		{ Status = local },
+		{ Module = Module0 }
+	; { ModuleDefn = imported } ->
+		{ Status = imported },
+		{ Module = Module0 }
+	; { ModuleDefn = import(module(_)) } ->
+		{ Status = Status0 },
+		{ Module = Module0 }
+	; { ModuleDefn = external(name_arity(Name, Arity)) } ->
+		{ Status = Status0 },
+		module_mark_as_external(Name, Arity, Context, Module0, Module)
+	;
+		{ Status = Status0 },
+		{ Module = Module0 },
+		io__stderr_stream(StdErr),
+		io__set_output_stream(StdErr, OldStream),
+		prog_out__write_context(Context),
+		report_warning("warning: declaration not yet implemented.\n"),
+		io__set_output_stream(OldStream, _)
+	).
+
+add_item_decl(nothing, _, Status, Module, Status, Module) --> [].
+
+%-----------------------------------------------------------------------------%
+
 :- pred add_pred_marker(module_info, string, sym_name, arity,
 	term__context, list(marker_status), module_info, io__state, io__state).
 :- mode add_pred_marker(in, in, in, in, in, in, out, di, uo) is det.
@@ -213,37 +244,6 @@ add_pred_marker(Module0, PragmaName, Pred, Arity, Context, Markers, Module) -->
 		io__set_output_stream(OldStream, _),
 		{ Module = Module0 }
 	).
-
-add_item_decl(module_defn(_VarSet, ModuleDefn), Context, Status0, Module0,
-		Status, Module) -->
-	( { ModuleDefn = interface } ->
-		{ Status = exported },
-		{ Module = Module0 }
-	; { ModuleDefn = implementation } ->
-		{ Status = local },
-		{ Module = Module0 }
-	; { ModuleDefn = imported } ->
-		{ Status = imported },
-		{ Module = Module0 }
-	; { ModuleDefn = import(module(_)) } ->
-		{ Status = Status0 },
-		{ Module = Module0 }
-	; { ModuleDefn = external(name_arity(Name, Arity)) } ->
-		{ Status = Status0 },
-		module_mark_as_external(Name, Arity, Context, Module0, Module)
-	;
-		{ Status = Status0 },
-		{ Module = Module0 },
-		io__stderr_stream(StdErr),
-		io__set_output_stream(StdErr, OldStream),
-		prog_out__write_context(Context),
-		report_warning("warning: declaration not yet implemented.\n"),
-		io__set_output_stream(OldStream, _)
-	).
-
-add_item_decl(nothing, _, Status, Module, Status, Module) --> [].
-
-%-----------------------------------------------------------------------------%
 
 %-----------------------------------------------------------------------------%
 	% dispatch on the different types of items
