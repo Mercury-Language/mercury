@@ -1,3 +1,4 @@
+*.text
 *.info *.info-*
 *.html
 *.aux *.cp *.fn *.ky *.log *.pg *.toc *.tp *.vr
