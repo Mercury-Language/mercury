@@ -1535,7 +1535,7 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, AppendVarnums) -->
 			class_id(Name, Arity), _, Instance) },
 		io__write_string("base_typeclass_info("""),
 		prog_out__write_sym_name(Module),
-		io__write_string(""", """),
+		io__write_string(""", "),
 		io__write_string("class_id("),
 		prog_out__write_sym_name(Name),
 		io__write_string(", "),
