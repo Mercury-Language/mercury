@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2001 The University of Melbourne.
+** Copyright (C) 1997-2001, 2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -15,6 +15,7 @@
 #include <errno.h>
 
 #ifdef	MR_THREAD_SAFE
+  MercuryThreadKey MR_exception_handler_key;
   MercuryThreadKey MR_engine_base_key;
   MercuryLock MR_global_lock;
 #endif
