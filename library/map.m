@@ -9,8 +9,8 @@
 % Key.
 %
 % The implementation is using balanced binary trees, as provided by
-% bintree.nl.  Virtually all the predicates in this file just
-% forward the work to the corresponding predicate in bintree.nl.
+% tree234.nl.  Virtually all the predicates in this file just
+% forward the work to the corresponding predicate in tree234.nl.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -152,9 +152,9 @@
 
 %-----------------------------------------------------------------------------%
 
-:- import_module bintree.
+:- import_module tree234.
 
-:- type map(K,V)	==	bintree(K,V).
+:- type map(K,V)	==	tree234(K,V).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -164,10 +164,10 @@
 %-----------------------------------------------------------------------------%
 
 map__init(M) :-
-	bintree__init(M).
+	tree234__init(M).
 
 map__is_empty(M) :-
-	bintree__init(M).
+	tree234__init(M).
 
 map__contains(Map, K) :-
 	map__search(Map, K, _).
@@ -175,63 +175,63 @@ map__contains(Map, K) :-
 :- map__search(_Map, K, _V) when K.	% required by bimap.nl
 
 map__search(Map, K, V) :-
-	bintree__search(Map, K, V).
+	tree234__search(Map, K, V).
 
 :- map__lookup(_Map, K, _V) when K.	% required by bimap.nl
 
 map__lookup(Map, K, V) :-
-	( bintree__search(Map, K, V1) ->
+	( tree234__search(Map, K, V1) ->
 		V = V1
 	;
 		error("map__lookup: key not found")
 	).
 
 map__insert(Map0, K, V, Map) :-
-	bintree__insert(Map0, K, V, Map).
+	tree234__insert(Map0, K, V, Map).
  
 map__det_insert(Map0, K, V, Map) :-
-	( bintree__insert(Map0, K, V, Map1) ->
+	( tree234__insert(Map0, K, V, Map1) ->
 		Map = Map1
 	;	
 		error("map__det_insert: key already present")
 	).
  
 map__update(Map0, K, V, Map) :-
-	bintree__update(Map0, K, V, Map).
+	tree234__update(Map0, K, V, Map).
 
 map__det_update(Map0, K, V, Map) :-
-	( bintree__update(Map0, K, V, Map1) ->
+	( tree234__update(Map0, K, V, Map1) ->
 		Map = Map1
 	;	
 		error("map__det_update: key not found")
 	).
 
 map__set(Map0, K, V, Map) :-
-	bintree__set(Map0, K, V, Map).
+	tree234__set(Map0, K, V, Map).
 
 map__keys(Map, KeyList) :-
-	bintree__keys(Map, KeyList).
+	tree234__keys(Map, KeyList).
 
 map__values(Map, KeyList) :-
-	bintree__values(Map, KeyList).
+	tree234__values(Map, KeyList).
 
 map__to_assoc_list(M, L) :-
-	bintree__to_list(M, L).
+	tree234__tree234_to_assoc_list(M, L).
 
 map__from_assoc_list(L, M) :-
-	bintree__from_list(L, M).
+	tree234__assoc_list_to_tree234(L, M).
 
 map__from_sorted_assoc_list(L, M) :-
-	bintree__from_sorted_list(L, M).
+	tree234__assoc_list_to_tree234(L, M).
 
 map__delete(Map0, Key, Map) :-
-	bintree__delete(Map0, Key, Map).
+	tree234__delete(Map0, Key, Map).
 
 map__remove(Map0, Key, Value, Map) :-
-	bintree__remove(Map0, Key, Value, Map).
+	tree234__remove(Map0, Key, Value, Map).
 
 map__det_remove(Map0, Key, Value, Map) :-
-	( bintree__remove(Map0, Key, Value1, Map1) ->
+	( tree234__remove(Map0, Key, Value1, Map1) ->
 		Value = Value1,
 		Map = Map1
 	;
@@ -239,14 +239,14 @@ map__det_remove(Map0, Key, Value, Map) :-
 	).
 
 map__count(Map, Count) :-
-	bintree__count(Map, Count).
+	tree234__count(Map, Count).
 
 %-----------------------------------------------------------------------------%
 
 	% XXX innefficient
 
 map__inverse_search(Map, V, K) :-
-	bintree__to_list(Map, AssocList),
+	tree234__tree234_to_assoc_list(Map, AssocList),
 	assoc_list_member(K, V, AssocList).
 
 %-----------------------------------------------------------------------------%
@@ -267,7 +267,8 @@ assoc_list_member(K, V, [_ | Xs]) :-
 %-----------------------------------------------------------------------------%
 
 map__from_corresponding_lists(Keys, Values, Map) :-
-	bintree__from_corresponding_lists(Keys, Values, Map).
+	assoc_list__from_corresponding_lists(Keys, Values, AssocList),
+	tree234__assoc_list_to_tree234(AssocList, Map).
 
 %-----------------------------------------------------------------------------%
 
@@ -279,8 +280,7 @@ map__merge(M0, M1, M) :-
 
 %-----------------------------------------------------------------------------%
 
-map__optimize(Map0, Map) :-
-	bintree__balance(Map0, Map).
+map__optimize(Map, Map).
 
 %-----------------------------------------------------------------------------%
 
