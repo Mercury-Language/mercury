@@ -2014,7 +2014,11 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 		% Figure out which .int files are needed by the .opt files
 		%
 	{ get_dependencies(OptItems, NewImportDeps0, NewUseDeps0) },
-	{ list__append(NewImportDeps0, NewUseDeps0, NewDeps0) },
+	globals__io_get_globals(Globals),
+	{ get_implicit_dependencies(OptItems, Globals,
+		NewImplicitImportDeps0, NewImplicitUseDeps0) },
+	{ NewDeps0 = list__condense([NewImportDeps0, NewUseDeps0,
+		NewImplicitImportDeps0, NewImplicitUseDeps0]) },
 	{ set__list_to_set(NewDeps0, NewDepsSet0) },
 	{ set__delete_list(NewDepsSet0, [ModuleName | OptFiles], NewDepsSet) },
 	{ set__to_sorted_list(NewDepsSet, NewDeps) },
