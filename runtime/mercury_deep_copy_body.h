@@ -460,7 +460,7 @@ try_again:
                 arity = MR_TYPEINFO_GET_TUPLE_ARITY(type_info);
 
                 if (arity == 0) {
-                        new_data = NULL;
+                        new_data = (MR_Word) NULL;
                 } else {
                         /* allocate space for the new tuple */
                         incr_saved_hp(new_data, arity);

@@ -1916,7 +1916,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
                 arity = MR_TYPEINFO_GET_TUPLE_ARITY(type_info);
     
                 if (arity == 0) {
-                    new_data = NULL;
+                    new_data = (MR_Word) NULL;
                 } else {
                     incr_hp_msg(new_data, arity, MR_PROC_LABEL,
                             ""<created by std_util:construct/3>"");
@@ -1982,7 +1982,7 @@ construct_tuple(Args) =
 	** Create the tuple.
 	*/
 	if (Arity == 0) {
-		new_data = NULL;
+		new_data = (MR_Word) NULL;
 	} else {
 		incr_hp_msg(new_data, Arity, MR_PROC_LABEL,
 			""<created by std_util:construct_tuple/1>"");
