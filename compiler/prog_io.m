@@ -780,8 +780,15 @@ parse_expression(Expression, Destination, VarSet0, Goal, VarSet) :-
 			Context)),
 		Goal = (ArgGoal, ExprGoal)
 	;
-		Goal = unify(Destination, Expression),
-		VarSet = VarSet0
+		VarSet = VarSet0,
+		(
+			Destination = term__variable(Var),
+			Expression = term__variable(Var)
+		->
+			Goal = true
+		;
+			Goal = unify(Destination, Expression)
+		)
 	).
 
 :- pred parse_expression_list(list(term), varset, list(term), goal, varset).
