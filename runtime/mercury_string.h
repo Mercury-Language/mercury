@@ -16,12 +16,15 @@
 
 /*
 ** Mercury characters are given type `Char', which is a typedef for `char'.
+** But BEWARE: when stored in an Integer, the value must be
+** first cast to `UnsignedChar'.
 ** Mercury strings are stored as pointers to '\0'-terminated arrays of Char.
 **
 ** We may eventually move to using wchar_t for Mercury characters and strings,
 ** so it is important to use these typedefs.
 */
 typedef char Char;
+typedef unsigned char UnsignedChar;
 
 typedef Char *String;
 typedef const Char *ConstString;

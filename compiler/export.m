@@ -361,6 +361,13 @@ convert_type_to_mercury(Rval, Type, ConvertedRval) :-
 		string__append_list(["float_to_word(", Rval, ")" ],
 			ConvertedRval)
 	;
+        	Type = term__functor(term__atom("character"), [], _)
+	->
+		% We need to explicitly cast to UnsignedChar
+		% to avoid problems with C compilers for which `char'
+		% is signed.
+		string__append("(UnsignedChar) ", Rval, ConvertedRval)
+	;
 		ConvertedRval = Rval
 	).
 

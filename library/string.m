@@ -554,10 +554,12 @@ string__digit_to_char(33, 'X').
 string__digit_to_char(34, 'Y').
 string__digit_to_char(35, 'Z').
 
+% NB: it would be more efficient to do this directly (using pragma c_code)
 string__to_char_list(String, CharList) :-
 	string__to_int_list(String, IntList),
 	string__int_list_to_char_list(IntList, CharList).
 
+% NB: it would be more efficient to do this directly (using pragma c_code)
 string__from_char_list(CharList, String) :-
 	string__char_list_to_int_list(CharList, IntList),
 	string__to_int_list(String, IntList).
@@ -1527,17 +1529,18 @@ string__special_precision_and_width(-1).
 */
 
 :- pragma(c_code, string__to_int_list(Str::in, IntList::out), "{
-	char *p = Str + strlen(Str);
+	const char *p = Str + strlen(Str);
 	IntList = list_empty();
-	while (--p >= Str) {
-		IntList = list_cons(*p, IntList);
+	while (p > Str) {
+		p--;
+		IntList = list_cons((UnsignedChar) *p, IntList);
 	}
 }").
 
 :- pragma(c_code, string__to_int_list(Str::out, IntList::in), "{
 		/* mode (out, in) is det */
 	Word int_list_ptr;
-	Word size;
+	size_t size;
 	Word str_ptr;
 /*
 ** loop to calculate list length + sizeof(Word) in `size' using list in
@@ -1561,7 +1564,7 @@ string__special_precision_and_width(-1).
 	size = 0;
 	int_list_ptr = IntList;
 	while (!list_is_empty(int_list_ptr)) {
-		Str[size++] = (char) list_head(int_list_ptr);
+		Str[size++] = list_head(int_list_ptr);
 		int_list_ptr = list_tail(int_list_ptr);
 	}
 /*
@@ -1756,8 +1759,7 @@ void sys_init_string_append_module(void) {
 	Integer len;
 	Word tmp;
 	if (Count <= 0) {
-		/* XXX need to guarantee alignment of strings */
-		Left = (String) (Word) """";
+		make_aligned_string(LVALUE_CAST(ConstString, Left), """");
 		Right = Str;
 	} else {
 		len = strlen(Str);

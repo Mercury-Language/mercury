@@ -31,7 +31,7 @@
 
 :- import_module hlds_goal, hlds_data, prog_data, instmap.
 :- import_module modes, mode_util, type_util, det_util.
-:- import_module int, list, assoc_list, map, set, std_util, term, require.
+:- import_module char, int, list, assoc_list, map, set, std_util, term, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -476,9 +476,13 @@ cases_to_switch(CasesList, Var, VarTypes, _GoalInfo, SM, InstMap, ModuleInfo,
 
 switch_covers_all_cases(CasesList, Type, _ModuleInfo) :-
 	Type = term__functor(term__atom("character"), [], _),
-	list__length(CasesList, 127).	% XXX should be 256
-		% NU-Prolog only allows chars '\001' .. '\0177'.
-		% Currently we assume the same set.
+	% XXX the following code uses the source machine's character size,
+	% not the target's, so it won't work if cross-compiling to a
+	% machine with a different size character.
+	char__max_char_value(MaxChar),
+	char__min_char_value(MinChar),
+	NumChars is MaxChar - MinChar + 1,
+	list__length(CasesList, NumChars).
 
 switch_covers_all_cases(CasesList, Type, ModuleInfo) :-
 	type_to_type_id(Type, TypeId, _),

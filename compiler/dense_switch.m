@@ -50,7 +50,7 @@
 :- implementation.
 
 :- import_module hlds_module, hlds_goal, hlds_data, code_gen.
-:- import_module map, tree, int, std_util, require.
+:- import_module char, map, tree, int, std_util, require.
 
 dense_switch__is_dense_switch(CaseVar, TaggedCases, CanFail0, ReqDensity,
 		FirstVal, LastVal, CanFail) -->
@@ -109,9 +109,15 @@ dense_switch__calc_density(NumCases, Range, Density) :-
 	% Fail if the type isn't the sort of type that has a range
 	% or if the type's range is to big to switch on (e.g. int).
 
-	% XXX the size of `character' is hard-coded here.
-
-dense_switch__type_range(char_type, _, 128) --> [].
+dense_switch__type_range(char_type, _, CharRange) -->
+	% XXX the following code uses the host's character size,
+	% not the target's, so it won't work if cross-compiling
+	% to a machine with a different character size.
+	% Note also that the code above in dense_switch.m and the code
+	% in lookup_switch.m assume that char__min_char_value is 0.
+	{ char__max_char_value(MaxChar) },
+	{ char__min_char_value(MinChar) },
+	{ CharRange is MaxChar - MinChar + 1 }.
 dense_switch__type_range(enum_type, Type, TypeRange) -->
 	{ type_to_type_id(Type, TypeId0, _) ->
 		TypeId = TypeId0
