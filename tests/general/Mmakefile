@@ -93,11 +93,25 @@ MLFLAGS-string_test = --no-strip
 
 # string_format_test_2 and string__format_test_3 are expected to fail
 # (string__format should call error/1 for these test cases)
-# so we need to ignore the exit status (hence the leading `-')
+# so we need to ignore the exit status; hence the leading `-'.
+# Also we pipe the output through sed to avoid hard-coding
+# dependencies on particular line numbers in the standard library
+# source code.
 string_format_test_2.out: string_format_test_2
-	-./string_format_test_2 > string_format_test_2.out 2>&1;
+	-./string_format_test_2 2>&1 | \
+		sed -e 's/io.m:[0-9]*/io.m:NNNN/g' \
+		    -e 's/string.m:[0-9]*/string.m:NNNN/g' \
+		    -e 's/require.m:[0-9]*/require.m:NNNN/g' \
+		    -e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
+		> string_format_test_2.out
+		
 string_format_test_3.out: string_format_test_3
-	-./string_format_test_3 > string_format_test_3.out 2>&1;
+	-./string_format_test_3 2>&1 | \
+		sed -e 's/io.m:[0-9]*/io.m:NNNN/g' \
+		    -e 's/string.m:[0-9]*/string.m:NNNN/g' \
+		    -e 's/require.m:[0-9]*/require.m:NNNN/g' \
+		    -e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
+		> string_format_test_3.out
 
 #-----------------------------------------------------------------------------#
 

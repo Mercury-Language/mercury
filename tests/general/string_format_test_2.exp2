@@ -1,10 +1,10 @@
 Uncaught exception:
 Software Error: string__format: argument list has more elements than format string
 Stack dump follows:
-   0       pred exception:throw/1-0 (erroneous) (exception.m:278)
-   1       pred require:error/1-0 (erroneous) (require.m:90)
-   2    5* pred string:format_2/3-0 (det) (string.m:846 and others)
-   7       pred string:format/3-0 (det) (string.m:803)
-   8       pred io:format/5-0 (det) (io.m:1761)
-   9       pred io:format/4-0 (det) (io.m:1758)
+   0       pred exception:throw/1-0 (erroneous) (exception.m:NNNN)
+   1       pred require:error/1-0 (erroneous) (require.m:NNNN)
+   2    5* pred string:format_2/3-0 (det) (string.m:NNNN and others)
+   7       pred string:format/3-0 (det) (string.m:NNNN)
+   8       pred io:format/5-0 (det) (io.m:NNNN)
+   9       pred io:format/4-0 (det) (io.m:NNNN)
   10       pred string_format_test_2:main/2-0 (det) (string_format_test_2.m:13)
