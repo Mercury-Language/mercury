@@ -15,7 +15,7 @@
 
 :- import_module array, char, int, list, require, std_util, store, string.
 
-:- type my_store_type.
+:- type my_store_type ---> my_store_type.
 
 :- type curse	== store(my_store_type).
 
