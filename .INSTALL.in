@@ -77,6 +77,13 @@
 #	   and you may want to print out a hard-copy of the documentation
 #	   from the DVI files in /usr/local/mercury-@VERSION@/lib/mercury/doc.
 #
+#	   If step #1 enabled deep profiling, then check whether "make install"
+#	   was able to copy scripts/mdprof to your web server's CGI directory
+#	   (usually /usr/lib/cgi-bin). This directory is often writeable only
+#	   by root or by the web server administrator, so you may need more
+#	   than your usual set of privileges to do the copy (i.e. you may
+#	   need to "su" to the appropriate user).
+#
 #	   To use the emacs debugger interface ("M-x mdb"), you also need to
 #	   add the following lines to the `.emacs' file in your home directory:
 #
@@ -134,6 +141,15 @@ make install
 #
 #	   The option --enable-hlc-prof-grades causes the installation
 #	   of profiling versions of the high level code grades.
+#
+#	   The option --enable-deep-profiler=/some/dir/name enables the deep
+#	   profiler, and specifies the directory in which to install the
+#	   deep profiler's CGI script. The option --disable-deep-profiler
+#	   causes the deep profiler not to be installed, even if the underlying
+#	   system would be able to support it. The default is to enable the
+#	   deep profiler and to install its CGI script in /usr/lib/cgi-bin
+#	   if that directory exists and if the system has the required
+#	   features.
 #
 #	   If you are short on RAM, you can add -DSMALL_CONFIG to the CFLAGS
 #          line in the file boehm_gc/Makefile.  (This tells the garbage
