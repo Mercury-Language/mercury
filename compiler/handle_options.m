@@ -35,7 +35,11 @@
 :- pred process_options(list(string)::in, list(string)::out, list(string)::out,
 	maybe_option_table(option)::out) is det.
 
-	% usage_errors(Message)
+	% Display the compiler version.
+	%
+:- pred display_compiler_version(io::di, io::uo) is det.
+
+	% usage_error(Descr, Message)
 	%
 	% Display given list of error messages and then the usage message.
 :- pred usage_errors(list(string)::in, io::di, io::uo) is det.
@@ -1523,16 +1527,21 @@ usage_errors(Errors, !IO) :-
 	io__set_exit_status(1, !IO),
 	usage(!IO).
 
+display_compiler_version(!IO) :-
+	library__version(Version),
+	io__write_strings([
+		"Mercury Compiler, version ", Version, "\n",
+		"Copyright (C) 1993-2004 The University of Melbourne\n"
+	], !IO).
+
 usage(!IO) :-
 	% usage is called from many places; ensure that we don't print the
 	% duplicate copies of the message.
 	globals__io_printing_usage(AlreadyPrinted, !IO),
 	(
 		AlreadyPrinted = no,
-		library__version(Version),
+		display_compiler_version(!IO),
 		io__write_strings([
-			"Mercury Compiler, version ", Version, "\n",
-			"Copyright (C) 1993-2004 The University of Melbourne\n",
 			"Usage: mmc [<options>] <arguments>\n",
 			"Use `mmc --help' for more information.\n"
 		], !IO)

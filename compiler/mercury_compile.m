@@ -177,16 +177,16 @@ real_main(!IO) :-
 	io__set_output_stream(StdErr, _, !IO),
 	io__command_line_arguments(Args0, !IO),
 
+	% read_args_file and globals__io_printing_usage may attempt
+	% to look up options, so we need to initialize the globals.
+	handle_options([], _, _, _, _, !IO),
+
 	( Args0 = ["--arg-file", ArgFile] ->
 		%
 		% All the configuration and options file options
 		% are passed in the given file, which is created
 		% by the parent `mmc --make' process.
 		%
-
-		% read_args_file may attempt to look up options,
-		% so we need to initialize the globals..
-		handle_options([], _, _, _, _, !IO),
 
 		options_file__read_args_file(ArgFile, MaybeArgs1, !IO),
 		(
@@ -333,6 +333,7 @@ main_2(Errors @ [_ | _], _, _, _, _, !IO) :-
 	usage_errors(Errors, !IO).
 main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
 	globals__io_get_globals(Globals, !IO),
+	globals__lookup_bool_option(Globals, version, Version),
 	globals__lookup_bool_option(Globals, help, Help),
 	globals__lookup_bool_option(Globals, generate_source_file_mapping,
 		GenerateMapping),
@@ -345,7 +346,12 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
 	globals__lookup_bool_option(Globals, filenames_from_stdin,
 		FileNamesFromStdin),
 	globals__lookup_bool_option(Globals, make, Make),
-	( Help = yes ->
+	( Version = yes ->
+		io__stdout_stream(Stdout, !IO),
+		io__set_output_stream(Stdout, OldOutputStream, !IO),
+		display_compiler_version(!IO),
+		io__set_output_stream(OldOutputStream, _, !IO)
+	; Help = yes ->
 		io__stdout_stream(Stdout, !IO),
 		io__set_output_stream(Stdout, OldOutputStream, !IO),
 		long_usage(!IO),

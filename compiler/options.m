@@ -678,6 +678,7 @@
 					% section
 		;	aditi_user
 		;	help
+		;	version
 		;	fullarch
 		;	compiler_sufficiently_recent
 				% This option is used to test that the compiler
@@ -1307,6 +1308,7 @@ option_defaults_2(miscellaneous_option, [
 	aditi			-	bool(no),
 	aditi_user		-	string(""),
 	help 			-	bool(no),
+	version			-	bool(no),
 	fullarch		-	string(""),
 	compiler_sufficiently_recent
 				-	bool(no)
@@ -1966,6 +1968,7 @@ long_option("use-search-directories-for-intermod",
 
 % misc options
 long_option("help",			help).
+long_option("version",			version).
 long_option("filenames-from-stdin",	filenames_from_stdin).
 long_option("aditi",			aditi).
 long_option("aditi-user",		aditi_user).
@@ -4125,7 +4128,9 @@ options_help_misc -->
 		"\tpredicates, and is also used for security checks.",
 		"\tDefaults to the value of the `USER' environment",
 		"\tvariable. If `$USER' is not set, `--aditi-user'",
-		"\tdefaults to the string ""guest""."
+		"\tdefaults to the string ""guest"".",
+		"--version",
+		"\tDisplay the compiler version."
 
 		% The `--fullarch' option is reserved for
 		% use by the `Mercury.config' file.
