@@ -2,12 +2,11 @@
 #
 # INSTALL - installation instructions and installation script.
 #
-# You need GNU C (2.7.2 or later -- 2.6.3 might work too, but it is known
-# to have problems compiling Mercury on some architectures, e.g. SPARC)
-# and GNU Make (3.69 or later).  Make sure that they are somewhere in
-# your PATH.  It's also helpful if you have GNU Readline installed
-# in one of the standard locations (normally /usr/local or /usr),
-# but this is not essential.
+# You need GNU C (version 2.7.2 or later, we recommend version 2.95.x,
+# version 3.0 will not work) and GNU Make (3.69 or later).  Make sure
+# that they are somewhere in your PATH.  It's also helpful if you have
+# GNU Readline installed in one of the standard locations (normally
+# /usr/local or /usr), but this is not essential.
 #
 # The source distributions for GNU C, GNU Make, and GNU Readline are
 # available from <ftp://ftp.gnu.org/gnu/>.  Binaries for these are
@@ -22,6 +21,8 @@
 #	   /usr/local/mercury-@VERSION@.
 #	   If you want the files to be installed someplace else,
 #	   use the `--prefix <directory>' option to `configure'.
+#	   The directory name specified with the `--prefix' option
+#	   must not contain spaces.
 #
 #      NOTE: If you use the `--prefix' option to configure,
 #      be aware that `mercury' is not automatically
