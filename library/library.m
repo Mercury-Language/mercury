@@ -30,36 +30,89 @@
 % Please keep both parts of this list in alphabetical order.
 
 % The modules intended for application programmers.
-:- import_module array, array2d, assoc_list, bag, benchmarking.
-:- import_module bimap, bintree, bintree_set, bitmap, bool, bt_array, builtin.
-:- import_module char, construct, cord, counter, deconstruct, dir.
-:- import_module enum, eqvclass, exception.
-:- import_module float, gc, getopt, graph, group, hash_table.
-:- import_module int, integer, io, lexer, list, map, math, multi_map, ops.
-:- import_module parser, pprint, pqueue, prolog, queue.
-:- import_module random, rational, rbtree, relation, require.
-:- import_module set, set_bbbtree, set_ordlist, set_unordlist, sparse_bitset.
-:- import_module stack, std_util, store, string.
-:- import_module term, term_io, tree234, time, type_desc, varset.
+:- import_module array.
+:- import_module array2d.
+:- import_module assoc_list.
+:- import_module bag.
+:- import_module benchmarking.
+:- import_module bimap.
+:- import_module bintree.
+:- import_module bintree_set.
+:- import_module bitmap.
+:- import_module bool.
+:- import_module bt_array.
+:- import_module builtin.
+:- import_module char.
+:- import_module construct.
+:- import_module cord.
+:- import_module counter.
+:- import_module deconstruct.
+:- import_module dir.
+:- import_module enum.
+:- import_module eqvclass.
+:- import_module exception.
+:- import_module float.
+:- import_module gc.
+:- import_module getopt.
+:- import_module graph.
+:- import_module group.
+:- import_module hash_table.
+:- import_module int.
+:- import_module integer.
+:- import_module io.
+:- import_module lexer.
+:- import_module list.
+:- import_module map.
+:- import_module math.
+:- import_module multi_map.
+:- import_module ops.
+:- import_module parser.
+:- import_module pprint.
+:- import_module pqueue.
+:- import_module prolog.
+:- import_module queue.
+:- import_module random.
+:- import_module rational.
+:- import_module rbtree.
+:- import_module relation.
+:- import_module require.
+:- import_module set.
+:- import_module set_bbbtree.
+:- import_module set_ordlist.
+:- import_module set_unordlist.
+:- import_module sparse_bitset.
+:- import_module stack.
+:- import_module std_util.
+:- import_module store.
+:- import_module string.
+:- import_module term.
+:- import_module term_io.
+:- import_module time.
+:- import_module tree234.
+:- import_module type_desc.
+:- import_module varset.
 
 % The modules intended for Mercury system implementors.
-:- import_module private_builtin, table_builtin, profiling_builtin.
+:- import_module private_builtin.
+:- import_module profiling_builtin.
 :- import_module rtti_implementation.
+:- import_module table_builtin.
 
 % library__version must be implemented using pragma foreign_proc,
 % so we can get at the MR_VERSION and MR_FULLARCH configuration
 % parameters.  We can't just generate library.m from library.m.in
 % at configuration time, because that would cause bootstrapping problems --
-% might not have a Mercury compiler around to compile library.m with.
+% we might not have a Mercury compiler around to compile library.m with.
 
 :- pragma foreign_proc("C",
-	library__version(Version::out), [will_not_call_mercury, promise_pure],
+	library__version(Version::out),
+	[will_not_call_mercury, promise_pure],
 "
 	MR_ConstString version_string = 
 		MR_VERSION "", configured for "" MR_FULLARCH;
 	/*
 	** Cast away const needed here, because Mercury declares Version
-	** with type String rather than MR_ConstString.
+	** with type MR_String rather than MR_ConstString.
 	*/
 	Version = (MR_String) (MR_Word) version_string;
 ").
@@ -69,7 +122,8 @@
 ").
 
 :- pragma foreign_proc("MC++",
-	library__version(Version::out), [will_not_call_mercury, promise_pure],
+	library__version(Version::out),
+	[will_not_call_mercury, promise_pure],
 "
 	// MR_VERSION and MR_FULLARCH are C string literals.
 	// We need to paste 'S' to the front of them to make them into .NET
