@@ -488,8 +488,9 @@ MR_dumpnondstack(void)
 	MR_Word	*fr;
 
 	printf("\nnondstack dump\n");
-	for (fr = MR_maxfr; fr > MR_CONTEXT(MR_ctxt_nondetstack_zone)->min;
-			fr = MR_prevfr_slot(fr)) {
+	for (fr = MR_maxfr; fr > MR_nondet_stack_trace_bottom;
+		fr = MR_prevfr_slot(fr))
+	{
 		MR_dumpframe(fr);
 	}
 }
