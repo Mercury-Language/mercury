@@ -15,7 +15,7 @@ END-INFO-DIR-ENTRY
 @c @smallbook
 @c @cropmarks
 @finalout
-@setchapternewpage odd
+@setchapternewpage on
 @ifinfo
 This file documents the Mercury implementation.
 
@@ -66,19 +66,37 @@ into another language, under the above conditions for modified versions.
 @end titlepage
 @page
 
-@iftex
-@chapter Getting Started
-@end iftex
-@node Top,,, (DIR)
 @ifinfo
-@chapter The Mercury User's Guide - BETA TEST version, July 1995
+@node Top
+@top The Mercury User's Guide - BETA TEST version, July 1995
+
+This guide describes the compilation environment of Mercury ---
+how to build and debug Mercury programs.
+
+@menu
+* Introduction::    General overview
+* Filenames::       File naming conventions
+* Using mc::        Compiling and linking programs with the Mercury compiler
+* Using Prolog::    Building and debugging Mercury programs with Prolog
+* Using Mmake::     ``Mercury Make'', a tool for building Mercury programs
+* Invocation::      List of options for the Mercury compiler
+* Environment::     Environment variables used by the compiler and utilities.
+@end menu
 @end ifinfo
 
+@node Introduction
+@chapter Introduction
+
 This document describes the compilation environment of Mercury.
-It describes how to use @samp{mc}, the Mercury compiler,
-and @samp{mmake} or ``Mercury make'',
+It describes how to use @samp{mc}, the Mercury compiler;
+how to use @samp{mmake}, the ``Mercury make'' program,
 a tool built on top of ordinary or GNU make
-to simplify the handling of Mercury programs.
+to simplify the handling of Mercury programs;
+and how to use Prolog to debug Mercury programs.
+
+We strongly recommend that programmers use @samp{mmake} rather
+than invoking @samp{mc} directly, because @samp{mmake} is generally
+easier to use and avoids unnecessary recompilation.
 
 Mercury is a compiled language like C or Pascal,
 not an interpreted one like Prolog or Lisp.
@@ -91,20 +109,11 @@ to execute their Mercury programs in order to gain access to this facility.
 The feasibility of this technique is dependent upon the program
 being written in the intersection of the Prolog and Mercury languages,
 which is possible because the two languages have almost the same syntax.
-This guide therefore also documents how to run a Mercury program
-using NU-Prolog or SICStus Prolog.
+The Mercury implementation allows you to run a Mercury program
+using NU-Prolog or SICStus Prolog (@pxref{Using Prolog}).
 
-@menu
-* Filenames::       File naming conventions
-* Using mc::        Compiling and linking programs with the Mercury compiler
-* Using Prolog::    Building and debugging Mercury programs with Prolog
-* Using Mmake::     ``Mercury Make'', a tool for building Mercury programs
-* Invocation::      List of options for the Mercury compiler
-* Environment::     Environment variables used by the compiler and utilities.
-@end menu
-
-@node Filenames, Using mc,, Top
-@section File naming conventions
+@node Filenames
+@chapter File naming conventions
 
 Mercury source files should be named @file{*.m}.
 Each Mercury source file must contain a single Mercury module
@@ -134,7 +143,7 @@ which contain the rules for an entire program.
 
 In the source code for the Mercury runtime library,
 we use a few files ending in @file{.mod};
-these are preprocessed using the perl script mod2c to produce C files.
+these are preprocessed using the perl script @samp{mod2c} to produce C files.
 Originally the Mercury compiler also produced @file{.mod} files,
 but now we compile directly to C.
 
@@ -142,7 +151,7 @@ As usual, @file{.c} files are C source code, @file{.o} files are object code,
 @file{.no} files are NU-Prolog object code, and
 @file{.ql} files are SICStus Prolog object code.
 
-@node Using mc, Using Prolog, Filenames, Top
+@node Using mc
 @chapter Using the Mercury compiler
 
 Following a long Unix tradition,
@@ -171,9 +180,9 @@ use the command
 mc -c @var{module}.m
 @end example
 
-@samp{mc} will put the object code into a file called `@file{@var{module}.o}'.
+@samp{mc} will put the object code into a file called @file{@var{module}.o}.
 It also will leave the intermediate C code in a file called
-`@file{@var{module}.c}'.
+@file{@var{module}.c}.
 
 Before you can compile a module,
 you must make the interface files
@@ -181,7 +190,7 @@ for the modules that it imports (directly or indirectly).
 You can create the interface files for one or more modules using the command
 
 @example
-mc -i @var{module1}.m ...
+mc -i @var{module1}.m @var{module2}.m ...
 @end example
 
 Given that you have made all the interface files,
@@ -193,9 +202,9 @@ using the command
 mc @var{module1}.m @var{module2}.m ...
 @end example
 
-This will put the resulting executable in @var{module1}.
-If you use this approach, we recommend that
-@var{module1} be the main module of the program.
+This will by default put the resulting executable in @file{@var{module1}},
+but you can use the @samp{-o @var{filename}} option to specify a different
+name for the output file, if you so desire.
 
 The other way to create an executable for a multi-module program
 is to compile each module separately using @samp{mc -c},
@@ -230,7 +239,10 @@ ml -o @var{main_module} @var{module1}.o @var{module2}.o ... @var{main_module2}_i
 
 @samp{ml}, the Mercury linker, is another shell script
 that invokes a C compiler with options appropriate for Mercury,
-this time for linking.
+this time for linking.  @samp{ml} also pipes any error messages
+from the linker through @samp{mdemangle}, the Mercury symbol demangler,
+so that error messages refer to predicate names in the Mercury source
+code rather than to the names used in the intermediate C code.
 
 The above command puts the executable in the file @file{@var{main_module}}.
 The same command line without the @samp{-o} option
@@ -238,7 +250,7 @@ would put the executable into the file @file{a.out}.
 
 @samp{mc} and @samp{ml} both accept a @samp{-v} (verbose) option.
 You can use that option to see what is actually going on.
-For the full set of options of @samp{mc}, see @pxref{Invocation}.
+For the full set of options of @samp{mc}, see @ref{Invocation}.
 
 Once you have created an executable for a Mercury program,
 the scheme for invoking it is
@@ -259,9 +271,9 @@ The default size is 512k for the det stack and 128k for the nondet stack,
 but these can be overridden with the @samp{-sd} and @samp{-sn} options,
 whose arguments are the desired sizes of the det and nondet stacks
 respectively, in units of kilobytes.
-The Mercury runtime will ensure that stack overflow
-is trapped by the virtual memory system,
-on operating systems that support that.
+On operating systems that provide the appropriate support,
+the Mercury runtime will ensure that stack overflow
+is trapped by the virtual memory system.
 
 With conservative garbage collection (the default),
 the heap will start out with a zero size,
@@ -271,13 +283,13 @@ the heap has a fixed size like the stacks.
 The default size is 40 Mb, but this can be overridden
 with the @samp{-sh} option.
 
-@node Using Prolog, Using Mmake, Using mc, Top
+@node Using Prolog
 @chapter Using Prolog
 
-Mercury programmers may wish to run their programs using a Prolog system
-to gain the use of the debugging facilities of the Prolog implementation,
-at least until the Mercury debugger is complete.
-Hwoever, there is no point in using a Prolog debugger to track down a bug
+Since the current Mercury implementation does not yet provide any
+useful support for debugging, we recommend that you use a Prolog
+system for debugging your Mercury programs.
+However, there is no point in using a Prolog debugger to track down a bug
 that can be detected statically by the Mercury compiler.
 The command
 
@@ -299,7 +311,7 @@ debugging problems that the compiler could have detected for you.
 * Prolog hazards::  The hazards of executing Mercury programs using Prolog
 @end menu
 
-@node Using NU-Prolog, Using SICStus,, Using Prolog
+@node Using NU-Prolog
 @section Using NU-Prolog
 
 You can compile a Mercury source module using NU-Prolog via the command
@@ -384,7 +396,8 @@ commands of the tracer.
 For more information, see the NU-Prolog documentation.
 
 By default the debugger only displays the top levels of terms;
-you can use the @code{|} command to enter an interactive term browser.
+you can use the @samp{|} command to enter an interactive term browser.
+(Within the term browser, type @samp{h.} for help.)
 @c XXX the following is not yet implemented
 @ignore
 Also note that in the debugger, we use a version of @code{error/1}
@@ -393,7 +406,7 @@ This makes debugging easier,
 but will of course change the behaviour after an error occurs.
 @end ignore
 
-@node Using SICStus, Prolog hazards, Using NU-Prolog, Using Prolog
+@node Using SICStus
 @section Using SICStus Prolog
 
 Using SICStus Prolog is similar to using NU-Prolog,
@@ -411,7 +424,7 @@ The command to use is just
 sicstus_conv @var{module}.m
 @end example
 
-@node Prolog hazards,, Using SICStus, Using Prolog
+@node Prolog hazards
 @section Hazards of using Prolog
 
 There are some Mercury programs which are not valid Prolog programs.
@@ -437,14 +450,16 @@ the test @samp{L \= []} is reordered to after the call to @code{q/2},
 but in Prolog, it executes even though @code{L} is not bound,
 and consequently the test always fails.
 
-(NU-Prolog has logical alternatives
-to non-logical Prolog operations such as @samp{\=},
-but during the development of the Mercury compiler
-we had to abandon their use for efficiency reasons.)
+NU-Prolog has logical alternatives
+to the non-logical Prolog operations,
+and since Mercury supports both syntaxes,
+you can use NU-Prolog's logical alternatives to avoid this problem. 
+However, during the development of the Mercury compiler
+we had to abandon their use for efficiency reasons.
 
 Another hazard is that NU-Prolog does not have a garbage collector.
 
-@node Using Mmake, Invocation, Using Prolog, Top
+@node Using Mmake
 @chapter Using Mmake
 
 Mmake, short for ``Mercury Make'',
@@ -530,38 +545,62 @@ rather than calling main/2.
 
 @item @var{main-module}.clean
 Removes the automatically generated files
-that contain the compiled code of the program.
-These are the files
-@file{@var{module}.c}, @file{@var{module}.s}, @file{@var{module}.o}, @file{@var{module}.no} and @file{@var{module}.ql}
-belonging to one of the modules of the program.
+that contain the compiled code of the program
+and the error messages produced by the compiler.
+Specifically, this will remove all the @samp{.c}, @samp{.s}, @samp{.o},
+@samp{.no}, @samp{.ql}, @samp{.err}, and @samp{.err} files
+belonging to the named @var{main-module} or its imported modules.
 
 @item @var{main-module}.realclean
-Removes all the automatically generated files
-that @var{main-module}.clean removes,
-plus the files with the suffixes
-@file{@var{module}.err} @file{@var{module}.date} @file{@var{module}.int} @file{@var{module}.int2}
-and @file{@var{module}.d}
-@file{.dep}
-@file{.d}
-@file{.d}
-belonging to one of the modules of the program.
+Removes all the automatically generated files.
+In addition to the files removed by @var{main-module}.clean, this
+removes the @samp{.date}, @samp{.int}, @samp{.int2},
+@samp{.d}, and @samp{.dep} belonging to one of the modules of the program,
+and also the various possible executables for the program ---
+@samp{@var{main-module}}, 
+@samp{@var{main-module}.nu}, 
+@samp{@var{main-module}.nu.save}, 
+@samp{@var{main-module}.nu.debug}, 
+@samp{@var{main-module}.nu.debug.save}, 
+@samp{@var{main-module}.sicstus}, and
+@samp{@var{main-module}.sicstus.debug}.
 
 @item clean
+This makes @samp{@var{main-module}.clean} for every @var{main-module}
+for which there is a @file{@var{main-module}.dep} file in the current
+directory.
+
 @item realclean
-Like @samp{clean}, but also removes the executables and the dependency files.
+This makes @samp{@var{main-module}.realclean} for every @var{main-module}
+for which there is a @file{@var{main-module}.dep} file in the current
+directory.
 
 @end table
 
 The variables used by the builtin rules are defined in
 @file{@var{prefix}/lib/mercury/mmake/Mmake.vars}.
 
-@node Invocation, Environment, Using Mmake, Top
+@node Invocation
 @chapter Invocation
 
 This section contains a brief description of all the options
 available for @samp{mc}, the Mercury compiler.
 Sometimes this list is a little out-of-date;
 use @samp{mc --help} to get the most up-to-date list.
+
+@menu
+* Invocation overview::
+* Verbosity options::           
+* Warning options::   
+* Output options::   
+* Auxiliary output options::   
+* Code generation options::   
+* Optimization options::   
+* Miscellaneous options::   
+@end menu
+
+@node Invocation overview
+@section Invocation overview
 
 @code{mc} is invoked as
 @example
@@ -580,6 +619,7 @@ by appending another trailing @samp{-}, e.g. @samp{-v-}.
 Long flags may be negated by preceding them with @samp{no-},
 e.g. @samp{--no-verbose}.
 
+@node Warning options
 @section Warning options
 @table @code
 @item -w
@@ -590,14 +630,18 @@ Disable all warning messages.
 Don't warn about variables which only occur once.
 
 @item --no-warn-missing-det-decls
-Don't warn about predicate declarations which don't
-have a determinism annotation.
+For predicate that are local to a module (those that
+are not exported), don't issue a warning if the @samp{pred}
+or @samp{mode} declaration does not have a determinism annotation.
+Use this option if you want the compiler to perform automatic
+determinism inference for non-exported predicates.
 
 @item --no-warn-det-decls-too-lax
 Don't warn about determinism declarations
 which could have been stricter.
 @end table
 
+@node Verbosity options
 @section Verbosity options
 @table @code
 @item -v
@@ -633,6 +677,7 @@ The different bits in the number argument of this option control the
 printing of different types of tracing messages.
 @end table
 
+@node Output options
 @section Output options
 These options are mutually exclusive.
 If more than one of these options is specified, only the first in
@@ -661,7 +706,7 @@ translated into Goedel.
 @item -P
 @itemx --pretty-print
 @itemx --convert-to-mercury
-Convert to Mercury. Output to file @file{@var{module}.ugly}
+Convert to Mercury. Output to file @file{@var{module}.ugly}.
 This option acts as a Mercury ugly-printer. 
 (It would be a pretty-printer, except that comments are stripped
 and nested if-then-elses are indented too much --- so the result
@@ -691,6 +736,7 @@ and object code in @file{@var{module}.o}
 but do not attempt to link the named modules.
 @end table
 
+@node Auxiliary output options
 @section Auxiliary output options
 @table @code
 @item --auto-comments
@@ -724,6 +770,7 @@ With @samp{--dump-hlds}, dumps some additional info.
 @c Output to file <module>.prof the profiling info.
 @end table
 
+@node Code generation options
 @section Code generation options
 @table @code
 @item --no-trad-passes
@@ -740,8 +787,9 @@ Select the compilation model.  This is a convenient way of
 selecting a setting for the @samp{--c-optimize}, @samp{--gc},
 @samp{--gcc-global-registers}, @samp{--gcc-non-local-gotos},
 @samp{--asm-labels}, and @samp{--debug} options simultaneously.
-@var{grade} should be one of
-@{@samp{debug, none, reg, jump, asm_jump, fast, asm_fast}@}
+The @var{grade} should be one of
+@samp{debug}, @samp{none}, @samp{reg}, @samp{jump}, @samp{asm_jump},
+@samp{fast}, or @samp{asm_fast},
 or one of those with @file{.gc} appended.
 
 @item --gc @{none, conservative, accurate@}
@@ -754,7 +802,7 @@ Specify which method of garbage collection to use
 Don't migrate builtin goals into branched goals.
 
 @item --no-follow-vars
-Don't optimise the assignment of registers in branched goals.
+Don't optimize the assignment of registers in branched goals.
 
 @item --no-reclaim-heap-on-nondet-failure
 Don't reclaim heap on backtracking in nondet code.
@@ -770,7 +818,7 @@ to the fail or redo code in the runtime system.
 Don't use GNU C's global register variables extension.
 
 @item --no-gcc-non-local-gotos
-Don't use GNU C's "labels as values" extension.
+Don't use GNU C's ``labels as values'' extension.
 
 @item --no-asm-labels
 Don't use inline assembler labels.
@@ -793,6 +841,15 @@ Specify the directory containing the Mercury C header files.
 @item --cflags @var{options}
 Specify options to be passed to the C compiler.
 
+@item -o @var{filename}
+@itemx --output-file @var{filename}
+Specify the name of the final executable.
+(The default executable name is the same as the name of the
+first module on the command line, but without the @samp{.m} extension.)
+
+@item --link-flags @var{options}
+Specify options to be passed to @samp{ml}, the Mercury linker.
+
 @item --debug
 Pass the @samp{-g} flag to the C compiler, instead of @samp{-DSPEED},
 to enable debugging of the generated C code. 
@@ -800,13 +857,14 @@ This option also implies @samp{--no-c-optimize}.
 This option is probably not useful to anyone except the Mercury implementors.
 @end table
 
+@node Optimization options
 @section Optimization options
 @table @code
 @item --no-optimize
-Disable the optimisation passes.
+Disable the optimization passes.
 
 @item --no-optimize-peep
-Disable local peephole optimisations.
+Disable local peephole optimizations.
 
 @item --no-optimize-jumps
 Disable elimination of jumps to jumps.
@@ -865,13 +923,13 @@ Disable the middle recursion optimization.
 Disable the inlining of simple procedures.
 
 @c @item --common-struct
-@c Enable optimisation of common term structures.
+@c Enable optimization of common term structures.
 
 @item --no-common-goal
-Disable optimisation of common goals.
-At the moment this optimisation
+Disable optimization of common goals.
+At the moment this optimization
 detects only common deconstruction unifications.
-Disabling this optimisation reduces the class of predicates
+Disabling this optimization reduces the class of predicates
 that the compiler considers to be deterministic.
 
 @item --procs-per-c-function @var{n}
@@ -885,12 +943,13 @@ which produces the most efficient code
 but tends to severely stress the C compiler.
 
 @c @item --constraint-propagation
-@c Enable the constraint propagation tranformation.
+@c Enable the constraint propagation transformation.
 
 @item --no-c-optimize
 Don't enable the C compiler's optimizations.
 @end table
 
+@node Miscellaneous options
 @section Miscellaneous options
 @table @code
 @item -b @var{builtin}
@@ -915,7 +974,7 @@ Print a usage message.
 @c message.
 @end table
 
-@node Environment,, Invocation, Top
+@node Environment
 @chapter Environment Variables
 
 The shell scripts in the Mercury compilation environment
