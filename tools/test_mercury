@@ -295,11 +295,11 @@ do
 		$PARALLEL || status=1
 	case $grade in
 		*.prof)	cd benchmarks
-			./poly
+			./poly > poly.$grade.out
 			mprof -V > poly.$grade.mprof 2>&1 
-			cp -f Prof.CallPair poly.$grade.CallPair
-			cp -f Prof.Counts poly.$grade.Counts
-			cp -f Prof.Decl poly.$grade.Decl
+			cp Prof.CallPair poly.$grade.CallPair
+			cp Prof.Counts poly.$grade.Counts
+			cp Prof.Decl poly.$grade.Decl
 			cd ..
 			;;
 	esac
