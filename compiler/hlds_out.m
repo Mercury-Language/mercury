@@ -7,8 +7,8 @@
 
 % print out an hlds structure.
 
-:- pred hlds_out__write_hlds(moduleinfo, io_state, io_state).
-:- mode hlds_out__write_hlds(input, input, output).
+:- pred hlds_out__write_hlds(int, moduleinfo, io_state, io_state).
+:- mode hlds_out__write_hlds(input, input, input, output).
 
 hlds_out__write_hlds(Indent, Module) -->
 	hlds_out__write_header(Indent, Module),
@@ -31,6 +31,9 @@ hlds_out__write_hlds(Indent, Module) -->
 	hlds_out__write_modes(Indent1, ModeTable),
 	hlds_out__write_footer(Indent, Module).
 
+:- pred hlds_out__write_header(int, moduleinfo, io_state, io_state).
+:- mode hlds_out__write_header(input, input, input, output).
+
 hlds_out__write_header(Indent, Module) -->
 	{ moduleinfo_name(Module, Name) },
 	hlds_out__write_indent(Indent),
@@ -41,6 +44,9 @@ hlds_out__write_header(Indent, Module) -->
 	hlds_out__write_indent(Indent1),
 	io__write_string("module(\n").
 
+:- pred hlds_out__write_footer(int, moduleinfo, io_state, io_state).
+:- mode hlds_out__write_footer(input, input, input, output).
+
 hlds_out__write_footer(Indent, Module) -->
 	{ moduleinfo_name(Module, Name) },
 	hlds_out__write_indent(Indent),
@@ -49,6 +55,9 @@ hlds_out__write_footer(Indent, Module) -->
 	io__write_string("% End of module: "),
 	io__write_string(Name),
 	io__write_string(".\n").
+
+:- pred hlds_out__write_preds(int, pred_table, io_state, io_state).
+:- mode hlds_out__write_preds(input, input, input, output).
 
 hlds_out__write_preds(Indent, PredTable) -->
 	hlds_out__write_indent(Indent),
@@ -60,6 +69,10 @@ hlds_out__write_preds(Indent, PredTable) -->
 	hlds_out__write_preds_2(Indent1, PredIds, PredTable),
 	hlds_out__write_indent(Indent),
 	io__write_string("]\n").
+
+:- pred hlds_out__write_preds_2(int, list(PredId), pred_table,
+			io_state, io_state).
+:- mode hlds_out__write_preds_2(input, input, input, input, output).
 
 hlds_out__write_preds_2(Indent, PredIds0, PredTable) --> 
 	(if
@@ -86,6 +99,9 @@ hlds_out__write_preds_2(Indent, PredIds0, PredTable) -->
 		io__write_string(",\n"),
 		hlds_out__write_preds_2(Indent, PredIds, PredTable)
 	).
+
+:- pred hlds_out__write_pred(int, pred_info, io_state, io_state).
+:- mode hlds_out__write_pred(input, input, input, output).
 
 hlds_out__write_pred(Indent, PredId, PredInfo) -->
 	{
@@ -122,6 +138,9 @@ hlds_out__write_pred(Indent, PredId, PredInfo) -->
 	hlds_out__write_indent(Indent),
 	io__write_string(")\n").
 
+:- pred hlds_out__write_clauses(int, list(clause), io_state, io_state).
+:- mode hlds_out__write_clauses(input, input, input, output).
+
 hlds_out__write_clauses(Indent, Clauses0) -->
 	(if
 		{ Clauses0 = [] }
@@ -144,6 +163,9 @@ hlds_out__write_clauses(Indent, Clauses0) -->
 		io__write_string(",\n"),
 		hlds_out__write_clauses(Indent, Clauses)
 	).
+
+:- pred hlds_out__write_clause(int, clause, io_state, io_state).
+:- mode hlds_out__write_clause(input, input, input, output).
 
 hlds_out__write_clause(Indent, Clause) -->
 	{
@@ -186,6 +208,8 @@ hlds_out__write_clause(Indent, Clause) -->
 	hlds_out__write_indent(Indent),
 	io__write_string(")\n").
 
+:- pred hlds_out__write_intlist(int, list(int), io_state, io_state).
+:- mode hlds_out__write_intlist(input, input, input, output).
 
 hlds_out__write_intlist(Indent, IntList) -->
 	(if
@@ -199,6 +223,9 @@ hlds_out__write_intlist(Indent, IntList) -->
 		hlds_out__write_intlist_2(IntList),
 		io__write_string("]")
 	).
+
+:- pred hlds_out__write_intlist_2(list(int), io_state, io_state).
+:- mode hlds_out__write_intlist_2(input, input, output).
 
 hlds_out__write_intlist_2(Ns0) -->
 	(if
@@ -218,12 +245,18 @@ hlds_out__write_intlist_2(Ns0) -->
 		hlds_out__write_intlist_2(Ns)
 	).
 
+:- pred hlds_out__write_hlds__goal(int, hlds__goal, io_state, io_state).
+:- mode hlds_out__write_hlds__goal(input, input, input, output).
+
 hlds_out__write_hlds__goal(Indent, GoalExprn - GoalInfo) -->
 	hlds_out__write_goal(Indent, GoalExprn),
 	{ Indent1 is Indent + 1 },
 	hlds_out__write_indent(Indent1),
 	io__write_string("-\n"),
 	hlds_out__write_goalinfo(Indent1, GoalInfo).
+
+:- pred hlds_out__write_goal(int, hlds__goal_expr, io_state, io_state).
+:- mode hlds_out__write_goal(input, input, input, output).
 
 hlds_out__write_goal(Indent, conj(Goals)) -->
 	hlds_out__write_indent(Indent),
