@@ -36,7 +36,7 @@
 
 :- implementation.
 :- import_module string, char, int, float, list, std_util, require.
-:- import_module term, varset.
+:- import_module map, term, varset.
 :- import_module lexer, ops.
 
 :- type parse(T)
@@ -514,7 +514,9 @@ parser__parse_args(List) -->
 			ops__table,	% the current set of operators
 			varset,		% the names of the variables in the
 					% term being parsed
-			token_list	% the remaining tokens
+			token_list,	% the remaining tokens
+			map(string, var)% a map from variable name to variable
+					% so we know when to make a fresh var
 		).
 
 %-----------------------------------------------------------------------------%
@@ -564,7 +566,7 @@ parser__unexpected_tok(Token, Context, UsualMessage, Error) -->
 :- mode parser__error(in, out, in, out) is det.
 
 parser__error(Message, error(Message, Tokens), ParserState, ParserState) :-
-	ParserState = parser__state(_, _, _, Tokens).
+	ParserState = parser__state(_, _, _, Tokens, _).
 
 %-----------------------------------------------------------------------------%
 
@@ -599,14 +601,16 @@ parser__could_start_term(eof, no).
 parser__init_state(Tokens, ParserState) -->
 	{ ops__init_op_table(OpTable) },
 	{ varset__init(VarSet) },
+	{ map__init(Names) },
 	io__input_stream_name(FileName),
-	{ ParserState = parser__state(FileName, OpTable, VarSet, Tokens) }.
+	{ ParserState = parser__state(FileName, OpTable, VarSet,
+		Tokens, Names) }.
 
 :- pred parser__final_state(parser__state, varset, token_list).
 :- mode parser__final_state(in, out, out) is det.
 
-parser__final_state(parser__state(_FileName, _OpTable, VarSet, TokenList),
-			VarSet, TokenList).
+parser__final_state(parser__state(_FileName, _OpTable, VarSet, TokenList,
+		_Names), VarSet, TokenList).
 
 %-----------------------------------------------------------------------------%
 
@@ -621,8 +625,8 @@ parser__get_token(Token) -->
 :- mode parser__get_token(in, in, out, in) is det.
 
 parser__get_token(Token, Context,
-			parser__state(FileName, OpTable, VarSet, Tokens0),
-			parser__state(FileName, OpTable, VarSet, Tokens)) :-
+		parser__state(FileName, OpTable, VarSet, Tokens0, Names),
+		parser__state(FileName, OpTable, VarSet, Tokens, Names)) :-
 	Tokens0 = [Token - Context | Tokens].
 
 :- pred parser__unget_token(token, token_context, parser__state, parser__state).
@@ -642,7 +646,7 @@ parser__peek_token(Token) -->
 :- mode parser__peek_token(out, out, in, out) is semidet.
 
 parser__peek_token(Token, Context) -->
-	=(parser__state(_, _, _, Tokens)),
+	=(parser__state(_, _, _, Tokens, _)),
 	{ Tokens = [Token - Context | _] }.
 
 %-----------------------------------------------------------------------------%
@@ -651,23 +655,26 @@ parser__peek_token(Token, Context) -->
 :- mode parser__add_var(in, out, in, out) is det.
 
 parser__add_var(VarName, Var,
-			parser__state(FileName, OpTable, VarSet0, Tokens),
-			parser__state(FileName, OpTable, VarSet, Tokens)) :-
+		parser__state(FileName, OpTable, VarSet0, Tokens, Names0),
+		parser__state(FileName, OpTable, VarSet, Tokens, Names)) :-
 	( VarName = "_" ->
-		varset__new_var(VarSet0, Var, VarSet)
-	; varset__lookup_name(VarSet0, Var0, VarName) ->
+		varset__new_var(VarSet0, Var, VarSet),
+		Names = Names0
+	; map__search(Names0, VarName, Var0) ->
 		Var = Var0,
-		VarSet = VarSet0
+		VarSet = VarSet0,
+		Names = Names0
 	;
 		varset__new_var(VarSet0, Var, VarSet1),
-		varset__name_var(VarSet1, Var, VarName, VarSet)
+		varset__name_var(VarSet1, Var, VarName, VarSet),
+		map__det_insert(Names0, VarName, Var, Names)
 	).
 
 :- pred parser__get_ops_table(ops__table, parser__state, parser__state).
 :- mode parser__get_ops_table(out, in, out) is det.
 
 parser__get_ops_table(OpTable) -->
-	=(parser__state(_, OpTable, _, _)).
+	=(parser__state(_, OpTable, _, _, _)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -692,7 +699,7 @@ parser__check_priority(x, MaxPriority, Priority) :-
 :- mode parser__get_term_context(in, out, in, out) is det.
 
 parser__get_term_context(TokenContext, TermContext) -->
-	=(parser__state(FileName, _Ops, _VarSet, _Tokens)),
+	=(parser__state(FileName, _Ops, _VarSet, _Tokens, _Names)),
 	{ term__context_init(FileName, TokenContext, TermContext) }.
 
 %-----------------------------------------------------------------------------%
