@@ -312,26 +312,41 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 	code_info__get_module_info(ModuleInfo),
 	{ module_info_preds(ModuleInfo, Preds) },
 	{ map__lookup(Preds, PredId, PredInfo) },
-	{ list__length(Args, NumArgs) },
-/******
+	{ pred_info_procedures(PredInfo, Procs) },
+	{ map__lookup(Procs, ProcId, ProcInfo) },
 %
-% We used to handle
-%	P = call(P0, ...)
-% [which can't occur in the source code, but could arise from a
-% source code construct like
-%	P = lambda([A, B, C], call(P0, ..., A, B, C))
-% ] as a special case, by generating special code to construct the
-% new closure from the old closure.
-% Now that we treat higher-order predicate calls
-% as a different type of hlds__goal, this isn't necessary
-% any more.  It might still be worth doing as an optimization,
-% but I've left it commented out for now.  It probably doesn;t
-% happen very often.  To fix it, the condition of the
-% if-then-else would have to be changed to check whether the
-% body of the (lambda) predicate was a higher-order call.
+% We handle currying of a higher-order pred variable as a special case.
+% We recognize
 %
-	{ pred_info_name(PredInfo, PredName) },
-	( { PredName = "call", Args = [CallPred | CallArgs] } ->
+%	P = l(P0, A, B, C)
+%
+%  where
+%
+%	l(P0, A, B, C, ...) :- call(P0, A, B, C, ...). % higher-order call
+%
+% as a special case, and generate special code to construct the
+% new closure P from the old closure P0 by appending the args A, B, C.
+% The advantage of this optimization is that when P is called, we
+% will only need to do one indirect call rather than two.
+% (Hmm... is this optimization really worth it?  It probably
+% doesn't happen very often, and it's not guaranteed to be a win.)
+%
+	{ proc_info_goal(ProcInfo, ProcInfoGoal) },
+	{ proc_info_interface_code_model(ProcInfo, CodeModel) },
+	(
+		{ ProcInfoGoal = higher_order_call(_, _, _, _,
+					CallDeterminism) - _GoalInfo },
+		{ Args = [CallPred | CallArgs] },
+		{ determinism_to_code_model(CallDeterminism, CallCodeModel) },
+			% Check that the code models are compatible.
+			% Note that det is not compatible with semidet,
+			% and semidet is not compatible with nondet,
+			% since the arguments go in different registers.
+			% But det is compatible with nondet.
+		{ CodeModel = CallCodeModel
+		; CodeModel = model_non, CallCodeModel = model_det
+		}
+	->
 		code_info__get_next_label(LoopEnd),
 		code_info__get_next_label(LoopStart),
 		code_info__acquire_reg(LoopCounter),
@@ -384,21 +399,17 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 		{ Code = tree(Code1, tree(Code2, Code3)) },
 		{ Value = lval(NewClosureReg) }
 	;
-********/
 		{ Code = empty },
-		{ pred_info_procedures(PredInfo, Procs) },
-		{ map__lookup(Procs, ProcId, ProcInfo) },
 		{ proc_info_arg_info(ProcInfo, ArgInfo) },
 		code_info__make_entry_label(ModuleInfo, PredId, ProcId, no,
 				CodeAddress),
 		code_info__get_next_cell_number(CellNo),
+		{ list__length(Args, NumArgs) },
 		{ unify_gen__generate_pred_args(Args, ArgInfo, PredArgs) },
 		{ Vector = [yes(const(int_const(NumArgs))),
 			yes(const(code_addr_const(CodeAddress))) | PredArgs] },
-		{ Value = create(0, Vector, no, CellNo) },
-/******
+		{ Value = create(0, Vector, no, CellNo) }
 	),
-******/
 	code_info__cache_expression(Var, Value).
 
 :- pred unify_gen__generate_extra_closure_args(list(var), lval, lval,
