@@ -105,7 +105,7 @@ mvar__put(mvar(Full, Empty, Ref), Data) -->
 		[will_not_call_mercury, thread_safe],
 "
 	incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""mvar:ref/1"");
-	*(MR_Word *) Ref = NULL;
+	*(MR_Word *) Ref = (MR_Word) NULL;
 ").
 
 :- pragma inline(get_ref/2).
@@ -113,7 +113,7 @@ mvar__put(mvar(Full, Empty, Ref), Data) -->
 		[will_not_call_mercury, thread_safe],
 "
 	X = *(MR_Word *) Ref;
-	*(MR_Word *) Ref = NULL;
+	*(MR_Word *) Ref = (MR_Word) NULL;
 ").
 
 :- pragma inline(set_ref/2).
