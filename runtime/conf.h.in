@@ -10,6 +10,11 @@
 **	the auto-configuration script.
 */
 
+/*
+** Note -- this file must not contain any #include statements,
+** for reasons explained in imp.h.
+*/
+
 #ifndef CONF_H
 #define CONF_H
 
