@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -103,7 +103,7 @@ in the general case.
 
 :- implementation.
 :- import_module hlds_data, inst_match, mode_util, det_analysis.
-:- import_module bool, std_util, require, map, list, set.
+:- import_module bool, std_util, require, map, list, set, assoc_list.
 
 :- pred find_latest_inst_key(inst_key_sub, inst_key, inst_key).
 :- mode find_latest_inst_key(in, in, out) is det.
@@ -1857,40 +1857,106 @@ inst_table_create_sub(InstTable0, NewInstTable, Sub, InstTable) :-
 	inst_table_get_all_tables(NewInstTable, NewUnifyInstTable,
 	        NewMergeInstTable, NewGroundInstTable, NewAnyInstTable,
 	        NewSharedInstTable, NewMostlyUniqInstTable, NewIKT),
-	inst_key_table_create_sub(IKT0, NewIKT, Sub, IKT),
-	( map__is_empty(NewUnifyInstTable) ->
-		UnifyInstTable = UnifyInstTable0
-	;
-		error("NYI: inst_table_create_sub (unify_inst_table)")
-	),
+	inst_key_table_create_sub(IKT0, NewIKT, Sub0, IKT),
+
+	maybe_inst_det_table_apply_sub(UnifyInstTable0, NewUnifyInstTable,
+		UnifyInstTable, Sub0),
+
+	Sub1 = Sub0,
 	( map__is_empty(NewMergeInstTable) ->
-		MergeInstTable = MergeInstTable0
+		MergeInstTable = MergeInstTable0,
+		Sub2 = Sub1
 	;
 		error("NYI: inst_table_create_sub (merge_inst_table)")
 	),
 	( map__is_empty(NewGroundInstTable) ->
-		GroundInstTable = GroundInstTable0
+		GroundInstTable = GroundInstTable0,
+		Sub3 = Sub2
 	;
 		error("NYI: inst_table_create_sub (ground_inst_table)")
 	),
 	( map__is_empty(NewAnyInstTable) ->
-		AnyInstTable = AnyInstTable0
+		AnyInstTable = AnyInstTable0,
+		Sub4 = Sub3
 	;
 		error("NYI: inst_table_create_sub (any_inst_table)")
 	),
 	( map__is_empty(NewSharedInstTable) ->
-		SharedInstTable = SharedInstTable0
+		SharedInstTable = SharedInstTable0,
+		Sub5 = Sub4
 	;
 		error("NYI: inst_table_create_sub (shared_inst_table)")
 	),
 	( map__is_empty(NewMostlyUniqInstTable) ->
-		MostlyUniqInstTable = MostlyUniqInstTable0
+		MostlyUniqInstTable = MostlyUniqInstTable0,
+		Sub = Sub5
 	;
 		error("NYI: inst_table_create_sub (mostly_uniq_inst_table)")
 	),
 	inst_table_set_all_tables(InstTable0, UnifyInstTable,
 	        MergeInstTable, GroundInstTable, AnyInstTable,
 	        SharedInstTable, MostlyUniqInstTable, IKT, InstTable).
+
+:- pred maybe_inst_det_table_apply_sub(map(inst_name, maybe_inst_det),
+		map(inst_name, maybe_inst_det), map(inst_name, maybe_inst_det),
+		inst_key_sub).
+:- mode maybe_inst_det_table_apply_sub(in, in, out, in) is det.
+
+maybe_inst_det_table_apply_sub(Table0, NewTable, Table, Sub) :-
+	( map__is_empty(Table0) ->
+		% Optimise common case
+		Table = Table0
+	;
+		map__to_assoc_list(NewTable, NewTableAL),
+		maybe_inst_det_table_apply_sub_2(NewTableAL, Table0, Table,
+			Sub)
+	).
+
+:- pred maybe_inst_det_table_apply_sub_2(assoc_list(inst_name, maybe_inst_det),
+		map(inst_name, maybe_inst_det), map(inst_name, maybe_inst_det),
+		inst_key_sub).
+:- mode maybe_inst_det_table_apply_sub_2(in, in, out, in) is det.
+
+maybe_inst_det_table_apply_sub_2([], Table, Table, _).
+maybe_inst_det_table_apply_sub_2([InstName0 - InstDet0 | Rest], Table0, Table, 
+		Sub) :-
+	inst_name_apply_sub(Sub, InstName0, InstName),
+	( InstDet0 = unknown,
+		InstDet = unknown
+	; InstDet0 = known(Inst0, Det),
+		inst_apply_sub(Sub, Inst0, Inst),
+		InstDet = known(Inst, Det)
+	),
+	map__det_insert(Table0, InstName, InstDet, Table1),
+	maybe_inst_det_table_apply_sub_2(Rest, Table1, Table, Sub).
+
+:- pred inst_name_apply_sub(inst_key_sub, inst_name, inst_name).
+:- mode inst_name_apply_sub(in, in, out) is det.
+
+inst_name_apply_sub(Sub, user_inst(Sym, Insts0), user_inst(Sym, Insts)) :-
+	list__map(inst_apply_sub(Sub), Insts0, Insts).
+inst_name_apply_sub(Sub, merge_inst(InstA0, InstB0),
+		merge_inst(InstA, InstB)) :-
+	inst_apply_sub(Sub, InstA0, InstA),
+	inst_apply_sub(Sub, InstB0, InstB).
+inst_name_apply_sub(Sub, unify_inst(IsLive, InstA0, InstB0, IsReal),
+		unify_inst(IsLive, InstA, InstB, IsReal)) :-
+	inst_apply_sub(Sub, InstA0, InstA),
+	inst_apply_sub(Sub, InstB0, InstB).
+inst_name_apply_sub(Sub, ground_inst(Name0, IsLive, Uniq, IsReal),
+		ground_inst(Name, IsLive, Uniq, IsReal)) :-
+	inst_name_apply_sub(Sub, Name0, Name).
+inst_name_apply_sub(Sub, any_inst(Name0, IsLive, Uniq, IsReal),
+		any_inst(Name, IsLive, Uniq, IsReal)) :-
+	inst_name_apply_sub(Sub, Name0, Name).
+inst_name_apply_sub(Sub, shared_inst(Name0), shared_inst(Name)) :-
+	inst_name_apply_sub(Sub, Name0, Name).
+inst_name_apply_sub(Sub, mostly_uniq_inst(Name0), mostly_uniq_inst(Name)) :-
+	inst_name_apply_sub(Sub, Name0, Name).
+inst_name_apply_sub(_Sub, typed_ground(Uniq, Type), typed_ground(Uniq, Type)).
+inst_name_apply_sub(Sub, typed_inst(Type, Name0), typed_inst(Type, Name)) :-
+	inst_name_apply_sub(Sub, Name0, Name).
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
