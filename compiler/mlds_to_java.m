@@ -2836,6 +2836,10 @@ java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
 	Type = mlds__mercury_type(term__functor(term__atom(":"), _, _), _, _),
 	Type = mlds__mercury_type(MercuryType, _, _),
 	type_util__is_dummy_argument_type(MercuryType).
+java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
+	Type = mlds__mercury_type(term__functor(term__atom("."), _, _), _, _),
+	Type = mlds__mercury_type(MercuryType, _, _),
+	type_util__is_dummy_argument_type(MercuryType).
 
 :- pred output_std_unop(builtin_ops__unary_op, mlds__rval, 
 		io__state, io__state).
