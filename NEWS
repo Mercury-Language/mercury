@@ -1,3 +1,11 @@
+NEWS for Mercury release 0.11.1:
+--------------------------------
+
+Changes to the Mercury standard library:
+* `hash_table__search/3' has been made obsolete and replaced by a function,
+  for consistency with the rest of the interface.
+
+
 NEWS for Mercury release 0.11:
 ------------------------------
 

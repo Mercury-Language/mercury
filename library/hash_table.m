@@ -162,8 +162,8 @@
 
     % Like lookup, but just fails if there is no entry for the key.
     %
-:- pred search(hash_table(K, V), K, V).
-:- mode search(hash_table_ui, in, out) is semidet.
+:- func search(hash_table(K, V), K) = V.
+:- mode search(hash_table_ui, in) = out is semidet.
 %:- mode search(in, in, out) is semidet.
 
     % Convert a hash table into an association list.
@@ -183,9 +183,19 @@
 
 :- implementation.
 
+% Everything beyond here is not intended as part of the public interface,
+% and will not appear in the Mercury Library Reference Manual.
+
+:- interface.
+
+:- pred search(hash_table(K, V), K, V).
+:- mode search(hash_table_ui, in, out) is semidet.
+%:- mode search(in, in, out) is semidet.
+:- pragma obsolete(search/3).
+
+:- implementation.
+
 :- import_module math, bool, exception, list, require, std_util.
-
-
 
 :- type hash_table(K, V) 
     --->    ht(
@@ -209,7 +219,7 @@
     % odd and is therefore coprime to the number of buckets) and
     % probe the table where the Kth probe examines slot
     %
-    %   (H1 + K * H2) `rem` num_buckets
+    %   (H1 + K * H2) `mod` num_buckets
     %
     % The search is guaranteed to terminate because table occupancy
     % must be less than 1.0.
@@ -270,14 +280,11 @@ new_default(HashPred) = new(HashPred, 7, 0.9).
 %:- mode find_slot(in, in) = out is det.
 
 find_slot(HT, K) = H :-
-    (HT ^ hash_pred)(K, Hash1a, Hash2a),
-    int__abs(Hash1a, Hash1),
-    int__abs(Hash2a, Hash2),
-    H0    = Hash1 rem HT ^ num_buckets,
-    Delta = Hash2 + Hash2 + 1,          % Have to ensure it's odd and non-zero.
+    (HT ^ hash_pred)(K, Hash1, Hash2),
+    H0    = Hash1 mod HT ^ num_buckets,
+    		% Have to ensure it's odd and non-zero.
+    Delta = Hash2 + Hash2 + 1,
     H     = find_slot_2(HT, K, H0, Delta).
-
-
 
 :- func find_slot_2(hash_table(K, V), K, int, int) = int.
 :- mode find_slot_2(hash_table_ui, in, in, in) = out is det.
@@ -289,7 +296,7 @@ find_slot_2(HT, K, H0, Delta) = H :-
       else if HT ^ keys ^ elem(H0) = K then
         H  = H0
       else
-        H1 = (H0 + Delta) rem HT ^ num_buckets,
+        H1 = (H0 + Delta) mod HT ^ num_buckets,
         H  = find_slot_2(HT, K, H1, Delta)
     ).
 
@@ -330,7 +337,9 @@ set(HT0, K, V) = HT :-
 
 % ---------------------------------------------------------------------------- %
 
-search(HT, K, V) :-
+search(HT, K, search(HT, K)).
+
+search(HT, K) = V :-
     H = find_slot(HT, K),
     bitmap__is_set(HT ^ bitmap, H),
     V = HT ^ values ^ elem(H).
@@ -372,7 +381,7 @@ det_update(HT, K, V) =
 % ---------------------------------------------------------------------------- %
 
 lookup(HT, K) =
-    ( if search(HT, K, V)
+    ( if V = search(HT, K)
       then V
       else throw(software_error("hash_table__lookup: key not found"))
     ).
