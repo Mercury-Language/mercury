@@ -25,6 +25,7 @@
 
 main --> 
 	io__write_string("calculator> "),
+	io__flush_output,
 	io__read_line(Res),
 	( { Res = error(_) },
 		io__write_string("Error reading from stdin\n")

@@ -129,6 +129,7 @@ eliza__get_response2(Type, MsgOut,
 :- mode eliza__read_line(out, out, di, uo) is det.
 eliza__read_line(Line, Ok) -->
 	io__write_string("\n> "),
+	io__flush_output,
 	io__input_stream(Stdin),
 	io__read_line(Stdin, Result),
 	io__write_string("\n"),
