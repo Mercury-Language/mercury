@@ -8,10 +8,6 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 type system
 -----------
 
-- handle predicate overloading in the case where predicates
-  with the same name and arity occur in different modules
-	  [will be done by fjh]
-
 - allow a module exporting an abstract type to specify that other modules
   should not be allowed to test two values of that type for equality (similar
   to Ada's limited private types). This would be useful for e.g. sets
@@ -87,10 +83,8 @@ C interface
 - make C interface bidirectional: allow C programs to call Mercury programs
 	  [is being done by dgj]
 
-runtime system
---------------
-
-- reimplement runtime/*.mod using the new C interface.
+- support functions (currently c_code pragmas are only allowed for predicates,
+  not functions)
 
 *******************************************************************************
 
@@ -100,21 +94,22 @@ WISH LIST
 typechecking
 ------------
 
-- allow explicit type qualifications `X :: Type'
-
-- allow type inference for non-exported predicates
+- allow explicit type qualifications `X : Type'
 
 
 mode analysis:
 --------------
+
+- implement mode inference
+	[being worked on by pets]
 
 - handle polymorphic modes (some research issues?)
 
 - handle abstract insts in the same way abstract types are handled
   (a research issue - is this possible at all?)
 
-- implement `willbe(Inst)' insts
-	  [will be done by conway and fjh]
+- implement `willbe(Inst)' insts?
+	  [will be done by conway]
 
 - mode segments & high-level transformation of circularly moded programs.
 
@@ -138,8 +133,6 @@ code generation:
   macro which takes an extra string parameter identifying which
   routine allocated the memory.  Then we can do heap-allocation
   profiling to identify which routines use up all the bloody memory.
-
-- We could still generate better code for switches
 
 
 source-level transformations
@@ -216,9 +209,6 @@ better diagnostics
 
 - give better error messages for syntax errors in lambda expressions
 
-- issue a warning if the only use of an argument is in a recursive call
-	[being done by Simon Taylor]
-
 general
 -------
 
@@ -238,6 +228,6 @@ general
 - implement user-defined operators:
 	Add a new construct `:- op(Pred, Type, Op).' as in Prolog;
 	change prog_io.m to parse this construct and call io__op
-	accordingly.
+	accordingly.  But how does this fit in with the module system?
 
 *******************************************************************************
