@@ -55,12 +55,13 @@
 
 :- implementation.
 
-:- import_module bool, char, string, list, varset, term, map, tree, require.
-:- import_module type_util, mode_util, std_util, int, set.
-:- import_module code_util, call_gen, unify_gen, ite_gen, switch_gen.
+:- import_module call_gen, unify_gen, ite_gen, switch_gen.
 :- import_module disj_gen, globals, options, hlds_out.
 :- import_module code_aux, middle_rec, passes_aux.
+:- import_module code_util, type_util, mode_util.
 :- import_module prog_data, instmap.
+:- import_module bool, char, int, string, list, term.
+:- import_module map, tree, std_util, require, set, varset.
 
 %---------------------------------------------------------------------------%
 

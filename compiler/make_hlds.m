@@ -1767,11 +1767,11 @@ warn_overlap([Warn|Warns], VarSet, PredOrFunc, PredCallId) -->
 	prog_out__write_context(Context),
 	( { Vars = [Var] } ->
 		io__write_string(StdErr, "  Warning: variable `"),
-		mercury_output_var(Var, VarSet),
+		mercury_output_var(Var, VarSet, no),
 		report_warning(StdErr, "' has overlapping scopes.\n")
 	;
 		io__write_string(StdErr, "  Warning: variables `"),
-		mercury_output_vars(Vars, VarSet),
+		mercury_output_vars(Vars, VarSet, no),
 		report_warning(StdErr, "'\n"),
 		prog_out__write_context(Context),
 		report_warning(StdErr, "  each have overlapping scopes.\n")
@@ -2132,11 +2132,11 @@ warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context, PredCallId) -->
 		prog_out__write_context(Context),
 		( { SingletonVars = [_] } ->
 			io__write_string(StdErr, "  Warning: variable `"),
-			mercury_output_vars(SingletonVars, VarSet),
+			mercury_output_vars(SingletonVars, VarSet, no),
 			report_warning(StdErr, "' occurs only once in this scope.\n")
 		;
 			io__write_string(StdErr, "  Warning: variables `"),
-			mercury_output_vars(SingletonVars, VarSet),
+			mercury_output_vars(SingletonVars, VarSet, no),
 			report_warning(StdErr, "' occur only once in this scope.\n")
 		)
 	),
@@ -2164,11 +2164,11 @@ warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context, PredCallId) -->
 		prog_out__write_context(Context),
 		( { MultiVars = [_] } ->
 			io__write_string(StdErr, "  Warning: variable `"),
-			mercury_output_vars(MultiVars, VarSet),
+			mercury_output_vars(MultiVars, VarSet, no),
 			report_warning(StdErr, "' occurs more than once in this scope.\n")
 		;
 			io__write_string(StdErr, "  Warning: variables `"),
-			mercury_output_vars(MultiVars, VarSet),
+			mercury_output_vars(MultiVars, VarSet, no),
 			report_warning(StdErr, "' occur more than once in this scope.\n")
 		)
 	).

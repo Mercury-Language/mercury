@@ -569,7 +569,7 @@ goal_vars_2(if_then_else(Vars, A, B, C, _), Set0, LambdaSet0, Set, LambdaSet) :-
 	set__union(Set5, Set6, Set),
 	set__union(LambdaSet5, LambdaSet6, LambdaSet).
 
-goal_vars_2(pragma_c_code(_, _, _, _, ArgVars, _), LambdaSet, Set0,
+goal_vars_2(pragma_c_code(_, _, _, _, ArgVars, _), Set0, LambdaSet,
 		Set, LambdaSet) :-
 	set__insert_list(Set0, ArgVars, Set).
 

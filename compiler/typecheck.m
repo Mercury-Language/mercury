@@ -2594,23 +2594,23 @@ report_error_unif_var_var(TypeInfo, X, Y, TypeAssignSet) -->
 
 	prog_out__write_context(Context),
 	io__write_string("  type error in unification of variable `"),
-	mercury_output_var(X, VarSet),
+	mercury_output_var(X, VarSet, no),
 	io__write_string("'\n"),
 	prog_out__write_context(Context),
 	io__write_string("  and variable `"),
-	mercury_output_var(Y, VarSet),
+	mercury_output_var(Y, VarSet, no),
 	io__write_string("'.\n"),
 
 	prog_out__write_context(Context),
 	io__write_string("  `"),
-	mercury_output_var(X, VarSet),
+	mercury_output_var(X, VarSet, no),
 	io__write_string("'"),
 	write_type_of_var(TypeInfo, TypeAssignSet, X),
 	io__write_string(",\n"),
 
 	prog_out__write_context(Context),
 	io__write_string("  `"),
-	mercury_output_var(Y, VarSet),
+	mercury_output_var(Y, VarSet, no),
 	io__write_string("'"),
 	write_type_of_var(TypeInfo, TypeAssignSet, Y),
 	io__write_string(".\n"),
@@ -2678,15 +2678,15 @@ report_error_lambda_var(TypeInfo, PredOrFunc, Var, ArgVars, TypeAssignSet) -->
 	(
 		{ PredOrFunc = predicate },
 		io__write_string("  and `pred("),
-		mercury_output_vars(ArgVars, VarSet),
+		mercury_output_vars(ArgVars, VarSet, no),
 		io__write_string(") :- ...':\n")
 	;
 		{ PredOrFunc = function },
 		{ pred_args_to_func_args(ArgVars, FuncArgs, RetVar) },
 		io__write_string("  and `func("),
-		mercury_output_vars(FuncArgs, VarSet),
+		mercury_output_vars(FuncArgs, VarSet, no),
 		io__write_string(") = "),
-		mercury_output_var(RetVar, VarSet),
+		mercury_output_var(RetVar, VarSet, no),
 		io__write_string(" :- ...':\n")
 	),
 
@@ -2754,7 +2754,7 @@ report_error_functor_arg_types(TypeInfo, Var, ConsDefnList, Functor, Args,
 	io__write_string("\n"),
 	prog_out__write_context(Context),
 	io__write_string("  and term `"),
-	hlds_out__write_functor_cons_id(Functor, Args, VarSet),
+	hlds_out__write_functor_cons_id(Functor, Args, VarSet, no),
 	io__write_string("':\n"),
 	prog_out__write_context(Context),
 	io__write_string("  type error in argument(s) of "),
@@ -2790,7 +2790,7 @@ write_types_of_vars([Var | Vars], VarSet, Context, TypeInfo, TypeAssignSet) -->
 write_argument_name(VarSet, VarId) -->
 	( { varset__search_name(VarSet, VarId, _) } ->
 		io__write_string("variable `"),
-		mercury_output_var(VarId, VarSet),
+		mercury_output_var(VarId, VarSet, no),
 		io__write_string("'")
 	;
 		io__write_string("argument")
@@ -2873,13 +2873,13 @@ write_cons_type(cons_type_info(TVarSet, ConsType0, ArgTypes0), Functor, Context)
 		;
 			error("typecheck:write_cons_type - invalid cons_id")
 		},	
-		mercury_output_term(Term, TVarSet),
+		mercury_output_term(Term, TVarSet, no),
 		io__write_string(" :: ")
 	;
 		[]
 	),
 	{ strip_builtin_qualifiers_from_type(ConsType0, ConsType) },
-	mercury_output_term(ConsType, TVarSet).
+	mercury_output_term(ConsType, TVarSet, no).
 
 :- pred write_cons_type_list(list(cons_type_info), cons_id, int, term__context,
 				io__state, io__state).
@@ -2997,7 +2997,7 @@ write_type_assign_2([Var | Vars], VarSet, VarTypes, TypeBindings, TypeVarSet,
 		;
 			[]
 		),
-		mercury_output_var(Var, VarSet),
+		mercury_output_var(Var, VarSet, no),
 		io__write_string(" :: "),
 		write_type_b(Type, TypeVarSet, TypeBindings),
 		write_type_assign_2(Vars, VarSet, VarTypes, TypeBindings,
@@ -3015,7 +3015,7 @@ write_type_assign_2([Var | Vars], VarSet, VarTypes, TypeBindings, TypeVarSet,
 write_type_b(Type, TypeVarSet, TypeBindings) -->
 	{ term__apply_rec_substitution(Type, TypeBindings, Type2) },
 	{ strip_builtin_qualifiers_from_type(Type2, Type3) },
-	mercury_output_term(Type3, TypeVarSet).
+	mercury_output_term(Type3, TypeVarSet, no).
 
 %-----------------------------------------------------------------------------%
 
@@ -3084,12 +3084,12 @@ report_error_arg_var(TypeInfo, VarId, ArgTypeAssignSet0) -->
 		{ SingleArgTypeStuff = arg_type_stuff(Type0, VType0, TVarSet) },
 		io__write_string(" has type `"),
 		{ strip_builtin_qualifiers_from_type(VType0, VType) },
-		mercury_output_term(VType, TVarSet),
+		mercury_output_term(VType, TVarSet, no),
 		io__write_string("',\n"),
 		prog_out__write_context(Context),
 		io__write_string("  expected type was `"),
 		{ strip_builtin_qualifiers_from_type(Type0, Type) },
-		mercury_output_term(Type, TVarSet),
+		mercury_output_term(Type, TVarSet, no),
 		io__write_string("'.\n")
 	;
 		io__write_string("type of "),
@@ -3156,10 +3156,10 @@ write_var_type_stuff_list_2([type_stuff(VT, TVarSet, TBinding) | Ts], T) -->
 write_arg_type_stuff_list([]) --> [].
 write_arg_type_stuff_list([arg_type_stuff(T0, VT0, TVarSet) | Ts]) -->
 	{ strip_builtin_qualifiers_from_type(VT0, VT) },
-	mercury_output_term(VT, TVarSet),
+	mercury_output_term(VT, TVarSet, no),
 	io__write_string("/"),
 	{ strip_builtin_qualifiers_from_type(T0, T) },
-	mercury_output_term(T, TVarSet),
+	mercury_output_term(T, TVarSet, no),
 	write_arg_type_stuff_list_2(Ts).
 
 :- pred write_arg_type_stuff_list_2(list(arg_type_stuff), io__state, io__state).
@@ -3169,10 +3169,10 @@ write_arg_type_stuff_list_2([]) --> [].
 write_arg_type_stuff_list_2([arg_type_stuff(T0, VT0, TVarSet) | Ts]) -->
 	io__write_string(", "),
 	{ strip_builtin_qualifiers_from_type(VT0, VT) },
-	mercury_output_term(VT, TVarSet),
+	mercury_output_term(VT, TVarSet, no),
 	io__write_string("/"),
 	{ strip_builtin_qualifiers_from_type(T0, T) },
-	mercury_output_term(T, TVarSet),
+	mercury_output_term(T, TVarSet, no),
 	write_arg_type_stuff_list_2(Ts).
 
 %-----------------------------------------------------------------------------%
@@ -3504,15 +3504,15 @@ report_ambiguity_error_2([V | Vs], VarSet, TypeInfo, TypeAssign1, TypeAssign2,
 		),
 		{ Found1 = yes },
 		prog_out__write_context(Context),
-		mercury_output_var(V, VarSet),
+		mercury_output_var(V, VarSet, no),
 		io__write_string(" :: "),
 		{ type_assign_get_typevarset(TypeAssign1, TVarSet1) },
 		{ strip_builtin_qualifiers_from_type(T1a, T1) },
-		mercury_output_term(T1, TVarSet1),
+		mercury_output_term(T1, TVarSet1, no),
 		io__write_string(" or "),
 		{ type_assign_get_typevarset(TypeAssign2, TVarSet2) },
 		{ strip_builtin_qualifiers_from_type(T2a, T2) },
-		mercury_output_term(T2, TVarSet2),
+		mercury_output_term(T2, TVarSet2, no),
 		io__write_string("\n")
 	;
 		{ Found1 = Found0 }

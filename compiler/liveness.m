@@ -847,13 +847,46 @@ initial_deadness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+	% Consider a goal such as
+	%
+	% ( Cond ->
+	%	DCG = value1
+	%	error
+	% ;
+	%	...
+	%	DCG = value2
+	% )
+	%
+	% detect_liveness_in_goal working on the then-part will put DCG
+	% into the post-death set, because the then-part cannot succeed
+	% and thus cannot the lifetime of DCG is over at that point.
+	%
+	% Later, at the end of the processing of the if-then-else, we will
+	% then put DCG into the post-birth set, since it would have to be
+	% produced by the then-part if it ever terminated.
+	%
+	% Rather than end up with DCG in both the post-death and post-birth
+	% sets, which can cause problems if they are applied in the wrong
+	% order, we instead put into neither. This is fine; the intended
+	% result is that DCG should be live after the then-part, and it must
+	% have been born during the then-part (otherwise it would not have
+	% been put into the post-death set).
+
 :- pred add_liveness_after_goal(hlds__goal, set(var), hlds__goal).
 :- mode add_liveness_after_goal(in, in, out) is det.
 
 add_liveness_after_goal(Goal - GoalInfo0, Residue, Goal - GoalInfo) :-
+	goal_info_get_post_deaths(GoalInfo0, PostDeaths0),
 	goal_info_get_post_births(GoalInfo0, PostBirths0),
-	set__union(PostBirths0, Residue, PostBirths),
-	goal_info_set_post_births(GoalInfo0, PostBirths, GoalInfo).
+
+	set__intersect(Residue, PostDeaths0, CancelledDeaths),
+	set__difference(Residue, CancelledDeaths, NewBirths),
+
+	set__difference(PostDeaths0, CancelledDeaths, PostDeaths),
+	set__union(PostBirths0, NewBirths, PostBirths),
+
+	goal_info_set_post_births(GoalInfo0, PostBirths, GoalInfo1),
+	goal_info_set_post_deaths(GoalInfo1, PostDeaths, GoalInfo).
 
 :- pred add_deadness_before_goal(hlds__goal, set(var), hlds__goal).
 :- mode add_deadness_before_goal(in, in, out) is det.

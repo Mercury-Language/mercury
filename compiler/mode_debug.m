@@ -96,7 +96,7 @@ mode_checkpoint_2(Port, Msg, ModeInfo) -->
 write_var_insts([], _, _) --> [].
 write_var_insts([Var - Inst | VarInsts], VarSet, InstVarSet) -->
         io__write_string("\t"),
-        mercury_output_var(Var, VarSet),
+        mercury_output_var(Var, VarSet, no),
         io__write_string(" :: "),
         mercury_output_inst(Inst, InstVarSet),
         ( { VarInsts = [] } ->

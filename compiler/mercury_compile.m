@@ -723,13 +723,14 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 	),
 	globals__io_lookup_bool_option(excess_assign, ExcessAssign),
 	( { ExcessAssign = yes } ->
-		{ excess_assignments_proc(ProcInfo1, ModuleInfo0, ProcInfo2) }
+		{ excess_assignments_proc(ProcInfo1, ModuleInfo1, ProcInfo2) }
 	;
 		{ ProcInfo2 = ProcInfo1 }
 	),
 	globals__io_lookup_bool_option(optimize_saved_vars, SavedVars),
 	( { SavedVars = yes } ->
-		{ saved_vars_proc(ProcInfo2, ModuleInfo0, ProcInfo3) }
+		saved_vars_proc(PredId, ProcId, ModuleInfo1,
+			ProcInfo2, ProcInfo3)
 	;
 		{ ProcInfo3 = ProcInfo2 }
 	),
@@ -1236,7 +1237,7 @@ mercury_compile__maybe_saved_vars(HLDS0, Verbose, Stats, HLDS) -->
 	( { SavedVars = yes } ->
 		maybe_write_string(Verbose, "% Reordering to minimize variable saves..."),
 		maybe_flush_output(Verbose),
-		process_all_nonimported_procs(update_proc(
+		process_all_nonimported_procs(update_proc_io(
 			saved_vars_proc), HLDS0, HLDS),
 		maybe_write_string(Verbose, " done.\n"),
 		maybe_report_stats(Stats)

@@ -380,20 +380,11 @@ option_defaults_2(optimization_option, [
 	inline_simple		-	bool(no),
 	inline_single_use	-	bool(no),
 	inline_compound_threshold -	int(0),
-	inline_simple_threshold	-	int(0),
-/********
-XXX the compiler aborts on `mc --inline-simple-threshold 5 library/string.m',
-so this is disabled for the moment.
 	inline_simple_threshold	-	int(5),	% has no effect until
 						% --inline-simple is enabled
-*********/
 	inline_vars_threshold	-	int(100),
-/********
-XXX this is disabled for the moment for the same reason as above
-	inline_intermod_simple_threshold - int(5),	
-*********/
-	intermod_inline_simple_threshold
-				-	int(0),
+	intermod_inline_simple_threshold -	% has no effect until
+					int(5),	% --intermodule-optimization
 	common_struct		-	bool(no),
 	common_goal		-	bool(yes),
 		% common_goal is not really an optimization, since
@@ -897,14 +888,9 @@ opt_level(3, _, [
 % and increases the inlining thresholds
 
 opt_level(4, _, [
-	optimize_value_number	-	bool(yes)
-/***
-XXX Unfortunately the compiler doesn't bootstrap with these options
-enabled -- it dies compiling library/string.m -- so for the moment,
-they're disabled.
+	optimize_value_number	-	bool(yes),
 	inline_simple_threshold	-	int(8),
 	inline_compound_threshold -	int(20)
-***/
 ]).
 
 % Optimization level 5: apply optimizations which may have some
@@ -916,7 +902,8 @@ they're disabled.
 opt_level(5, _, [
 	pred_value_number	-	bool(yes),
 	optimize_repeat		-	int(5),
-	optimize_vnrepeat	-	int(2)
+	optimize_vnrepeat	-	int(2),
+	inline_compound_threshold -	int(100)
 ]).
 
 % Optimization level 6: apply optimizations which may have any
@@ -1092,8 +1079,9 @@ options_help_aux_output -->
 	io__write_string("\t\tStage numbers range from 1-19.\n"),
 	io__write_string("\t\tMultiple dump options accumulate.\n"),
 	io__write_string("\t-D, --verbose-dump-hlds <fields>\n"),
-	io__write_string("\t\tWith `--dump-hlds', dump with each goal the fields\n"),
-	io__write_string("\t\twhose initials are given in the option argument\n"),
+	io__write_string("\t\tWith `--dump-hlds', include extra detail in the dump.\n"),
+	io__write_string("\t\tEach type of detail is included in the dump if its\n"),
+	io__write_string("\t\tcorresponding letter occurs in the option argument\n"),
 	io__write_string("\t\t(see the Mercury User's Guide for details).\n").
 
 :- pred options_help_semantics(io__state::di, io__state::uo) is det.

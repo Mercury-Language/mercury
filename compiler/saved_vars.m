@@ -26,36 +26,45 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred.
+:- import_module io.
 
-:- pred saved_vars_proc(proc_info, module_info, proc_info).
-:- mode saved_vars_proc(in, in, out) is det.
+:- pred saved_vars_proc(pred_id, proc_id, module_info, proc_info, proc_info,
+	io__state, io__state).
+:- mode saved_vars_proc(in, in, in, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module hlds_goal, goal_util, quantification.
+:- import_module hlds_goal, hlds_out, goal_util, quantification, passes_aux.
 :- import_module bool, list, set, map, std_util, varset.
 
 %-----------------------------------------------------------------------------%
 
-saved_vars_proc(ProcInfo0, _ModuleInfo, ProcInfo) :-
-	proc_info_goal(ProcInfo0, Goal0),
-	proc_info_variables(ProcInfo0, Varset0),
-	proc_info_vartypes(ProcInfo0, VarTypes0),
-	init_slot_info(Varset0, VarTypes0, SlotInfo0),
+saved_vars_proc(PredId, ProcId, ModuleInfo, ProcInfo0, ProcInfo) -->
+	write_proc_progress_message("% Minimizing saved vars in ",
+		PredId, ProcId, ModuleInfo),
+	{ proc_info_goal(ProcInfo0, Goal0) },
+	{ proc_info_variables(ProcInfo0, Varset0) },
+	{ proc_info_vartypes(ProcInfo0, VarTypes0) },
+	{ init_slot_info(Varset0, VarTypes0, SlotInfo0) },
 
-	saved_vars_in_goal(Goal0, SlotInfo0, Goal1, SlotInfo),
+	{ saved_vars_in_goal(Goal0, SlotInfo0, Goal1, SlotInfo) },
 
-	final_slot_info(Varset1, VarTypes1, SlotInfo),
-	proc_info_headvars(ProcInfo0, HeadVars),
+	{ final_slot_info(Varset1, VarTypes1, SlotInfo) },
+	{ proc_info_headvars(ProcInfo0, HeadVars) },
+
+	% hlds_out__write_goal(Goal1, ModuleInfo, Varset1, 0, ""),
+
 	% recompute the nonlocals for each goal
-	implicitly_quantify_clause_body(HeadVars, Goal1, Varset1,
-		VarTypes1, Goal, Varset, VarTypes, _Warnings),
+	{ implicitly_quantify_clause_body(HeadVars, Goal1, Varset1,
+		VarTypes1, Goal, Varset, VarTypes, _Warnings) },
 
-	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
-	proc_info_set_variables(ProcInfo1, Varset, ProcInfo2),
-	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo).
+	% hlds_out__write_goal(Goal, ModuleInfo, Varset, 0, ""),
+
+	{ proc_info_set_goal(ProcInfo0, Goal, ProcInfo1) },
+	{ proc_info_set_variables(ProcInfo1, Varset, ProcInfo2) },
+	{ proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo) }.
 
 %-----------------------------------------------------------------------------%
 

@@ -180,7 +180,7 @@ c_gen_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 		globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
 		globals__io_set_option(verbose_dump_hlds, string("")),
 		{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-		hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet,
+		hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet, no,
 			HeadVars, PredOrFunc, Clauses, no),
 		globals__io_set_option(verbose_dump_hlds, string(Verbose)),
 
@@ -459,7 +459,7 @@ c_gen_arg_decl(ModuleInfo, Var, Type, Mode, VarSet) -->
 	;
 		io__write_string(" ")
 	),
-	mercury_output_var(Var, VarSet).
+	mercury_output_var(Var, VarSet, no).
 
 :- pred c_gen_local_var_decls(int, hlds__goal, varset, map(var, type),
 				list(var),
@@ -482,7 +482,7 @@ c_gen_local_var_decls_2([Var|Vars], VarSet, VarTypes, Indent) -->
 	{ map__lookup(VarTypes, Var, Type) },
 	c_gen_type(Type),
 	io__write_string(" "),
-	mercury_output_var(Var, VarSet),
+	mercury_output_var(Var, VarSet, no),
 	io__write_string(";\n"),
 	c_gen_local_var_decls_2(Vars, VarSet, VarTypes, Indent).
 
@@ -522,7 +522,7 @@ c_gen_goal_2(switch(Var, _CanFail, CasesList, _), Indent,
 	io__write_string("/* "),
 	% c_gen_can_fail(CanFail), 
 	io__write_string(" switch on `"),
-	mercury_output_var(Var, _VarSet),
+	mercury_output_var(Var, _VarSet, no),
 	io__write_string("' */"),
 	{ Indent1 is Indent + 1 },
 	mercury_output_newline(Indent1),
@@ -539,7 +539,7 @@ c_gen_goal_2(switch(Var, _CanFail, CasesList, _), Indent,
 c_gen_goal_2(some(Vars, Goal), Indent, CGenInfo0, CGenInfo) -->
 	{ sorry(8) },
 	io__write_string("some ["),
-	mercury_output_vars(Vars, _VarSet),
+	mercury_output_vars(Vars, _VarSet, no),
 	io__write_string("] ("),
 	{ Indent1 is Indent + 1 },
 	mercury_output_newline(Indent1),
@@ -742,7 +742,7 @@ c_gen_arg_list(Vars, Modes, CGenInfo0, CGenInfo) -->
 		;
 			[]
 		),
-		mercury_output_var(Var, VarSet),	% XXX name mangling
+		mercury_output_var(Var, VarSet, no),	% XXX name mangling
 		( { Vars1 = [] } ->
 			[]
 		;
@@ -764,7 +764,7 @@ c_gen_var(Var, CGenInfo, CGenInfo) -->
 	;
 		[]
 	),
-	mercury_output_var(Var, VarSet).	% XXX name mangling
+	mercury_output_var(Var, VarSet, no).	% XXX name mangling
 
 :- pred sorry(int::in) is erroneous.
 
@@ -778,7 +778,7 @@ sorry(N) :-
 
 c_gen_var_modes([], [], _) --> [].
 c_gen_var_modes([Var|Vars], [Mode|Modes], VarSet) -->
-	mercury_output_var(Var, VarSet),
+	mercury_output_var(Var, VarSet, no),
 	io__write_string("::"),
 	mercury_output_mode(Mode, VarSet),
 	( { Vars \= [] } ->
@@ -819,7 +819,7 @@ c_gen_disj([Goal|Goals], Label, Indent, CGenInfo0, CGenInfo) -->
 
 c_gen_case(case(_ConsId, Goal), Var, Indent, CGenInfo0, CGenInfo) -->
 	{ sorry(10) },
-	mercury_output_var(Var, _VarSet),
+	mercury_output_var(Var, _VarSet, no),
 	io__write_string(" has functor "),
 	% c_gen_cons_id(ConsId),
 	io__write_string(","),
@@ -864,9 +864,9 @@ c_gen_var_types_2([Var | Vars], Indent, VarSet, VarTypes, TypeVarSet)
 	c_gen_indent(Indent),
 	c_gen_type(Type),
 	io__write_string(" "),
-	mercury_output_var(Var, VarSet),
+	mercury_output_var(Var, VarSet, no),
 	io__write_string(";\t/* "),
-	mercury_output_term(Type, TypeVarSet),
+	mercury_output_term(Type, TypeVarSet, no),
 	io__write_string(" */\n"),
 	c_gen_var_types_2(Vars, Indent, VarSet, VarTypes, TypeVarSet).
 

@@ -332,13 +332,13 @@ det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases, _), GoalInfo,
 			{ det_diagnose_missing_consids(ConsIds, Cases,
 				Missing) },
 			io__write_string("  The switch on "),
-			mercury_output_var(Var, Varset),
+			mercury_output_var(Var, Varset, no),
 			io__write_string(" does not cover "),
 			det_output_consid_list(Missing, yes),
 			io__write_string(".\n")
 		;
 			io__write_string("  The switch on "),
-			mercury_output_var(Var, Varset),
+			mercury_output_var(Var, Varset, no),
 			io__write_string(" can fail.\n")
 		),
 		{ Diagnosed1 = yes }
@@ -637,7 +637,7 @@ det_diagnose_write_switch_context(Context, [SwitchContext | SwitchContexts],
 	io__write_string("  Inside the case "),
 	hlds_out__write_cons_id(ConsId),
 	io__write_string(" of the switch on "),
-	mercury_output_var(Var, Varset),
+	mercury_output_var(Var, Varset, no),
 	io__write_string(":\n"),
 	det_diagnose_write_switch_context(Context, SwitchContexts, DetInfo).
 
@@ -736,16 +736,16 @@ det_report_unify_context(First0, Last, Context, UnifyContext, DetInfo, LT, RT)
 			\+ { varset__search_name(Varset, RV, _) }
 		->
 			io__write_string("with `"),
-			mercury_output_var(LT, Varset)
+			mercury_output_var(LT, Varset, no)
 		;
 			io__write_string("of `"),
-			mercury_output_var(LT, Varset),
+			mercury_output_var(LT, Varset, no),
 			io__write_string("' and `"),
-			hlds_out__write_unify_rhs(RT, ModuleInfo, Varset, 3)
+			hlds_out__write_unify_rhs(RT, ModuleInfo, Varset, no, 3)
 		)
 	;
 		io__write_string("with `"),
-		hlds_out__write_unify_rhs(RT, ModuleInfo, Varset, 3)
+		hlds_out__write_unify_rhs(RT, ModuleInfo, Varset, no, 3)
 	),
 	io__write_string("'").
 

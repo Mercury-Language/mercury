@@ -854,7 +854,7 @@ report_invalid_type(Type, ErrorContext - Context) -->
 	prog_out__write_context(Context),
 	io__write_string("  error: ill-formed type `"),
 	{ varset__init(VarSet) },
-	mercury_output_term(Type, VarSet),
+	mercury_output_term(Type, VarSet, no),
 	io__write_string("'.\n").
 
 %-----------------------------------------------------------------------------%

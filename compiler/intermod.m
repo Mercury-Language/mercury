@@ -887,9 +887,9 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 						Clauses, Procs)
 	;
 		{ pred_info_typevarset(PredInfo, _TVarSet) },
-		hlds_out__write_clauses(1, ModuleInfo, PredId, Varset,
-				HeadVars, PredOrFunc, Clauses, no)
-		%		HeadVars, Clauses, yes(TVarSet, VarTypes))
+		hlds_out__write_clauses(1, ModuleInfo, PredId, Varset, no,
+			HeadVars, PredOrFunc, Clauses, no)
+		%	HeadVars, Clauses, yes(TVarSet, VarTypes))
 	),
 	intermod__write_preds(ModuleInfo, PredIds).
 

@@ -344,7 +344,7 @@ mode_info_write_goal(Goal, Indent, ModeInfo0, ModeInfo) :-
 	( semidet_succeed ->
 		mode_info_get_module_info(ModeInfo0, ModuleInfo),
 		mode_info_get_varset(ModeInfo0, VarSet),
-		hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent, "",
+		hlds_out__write_goal(Goal, ModuleInfo, VarSet, no, Indent, "",
 				IOState1, IOState)
 	;
 		IOState = IOState1

@@ -136,7 +136,7 @@
 					% fills it with authoritative
 					% information.
 		)
-	
+
 		% C code from a pragma(c_code, ...) decl.
 
 	;	pragma_c_code(
@@ -296,15 +296,15 @@
 :- type unify_main_context
 		% an explicit call to =/2
 	--->	explicit
-			
+
 		% a unification in an argument of a clause head
-	;	head(	
+	;	head(
 			int		% the argument number
 					% (first argument == no. 1)
 		)
 
 		% a unification in an argument of a predicate call
-	;	call(	
+	;	call(
 			pred_call_id,	% the name and arity of the predicate
 			int		% the argument number (first arg == 1)
 		).
@@ -406,7 +406,7 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 		Names1 = Names0
 	),
 	get_pragma_c_var_names_2(MaybeNames, Names1, Names).
-		
+
 :- interface.
 
 :- type unify_mode	==	pair(mode, mode).

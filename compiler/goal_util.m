@@ -85,7 +85,7 @@
 
 goal_util__create_variables([], Varset, VarTypes, Subn, _OldVarTypes,
 		_OldVarNames, Varset, VarTypes, Subn).
-goal_util__create_variables([V|Vs], Varset0, VarTypes0, Subn0, OldVarTypes,
+goal_util__create_variables([V | Vs], Varset0, VarTypes0, Subn0, OldVarTypes,
 					OldVarNames, Varset, VarTypes, Subn) :-
 	(
 		map__contains(Subn0, V)
@@ -116,18 +116,19 @@ goal_util__create_variables([V|Vs], Varset0, VarTypes0, Subn0, OldVarTypes,
 
 %-----------------------------------------------------------------------------%
 
-:- pred goal_util__init_subn(assoc_list(var, var), map(var, var), map(var, var)).
+:- pred goal_util__init_subn(assoc_list(var, var),
+	map(var, var), map(var, var)).
 :- mode goal_util__init_subn(in, in, out) is det.
 
 goal_util__init_subn([], Subn, Subn).
-goal_util__init_subn([A-H|Vs], Subn0, Subn) :-
+goal_util__init_subn([A - H | Vs], Subn0, Subn) :-
 	map__set(Subn0, H, A, Subn1),
 	goal_util__init_subn(Vs, Subn1, Subn).
 
 %-----------------------------------------------------------------------------%
 
 goal_util__rename_var_list([], _Must, _Subn, []).
-goal_util__rename_var_list([V|Vs], Must, Subn, [N|Ns]) :-
+goal_util__rename_var_list([V | Vs], Must, Subn, [N | Ns]) :-
 	goal_util__rename_var(V, Must, Subn, N),
 	goal_util__rename_var_list(Vs, Must, Subn, Ns).
 
@@ -140,8 +141,13 @@ goal_util__rename_var(V, Must, Subn, N) :-
 	->
 		N = N0
 	;
-		( Must = no, N = V
-		; Must = yes, error("goal_util__rename_var: no substitute") )
+		(
+			Must = no,
+			N = V
+		;
+			Must = yes,
+			error("goal_util__rename_var: no substitute")
+		)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -231,7 +237,7 @@ goal_util__name_apart_2(pragma_c_code(A,B,C,D,Vars0,E), Must, Subn,
 :- mode goal_util__name_apart_list(in, in, in, out) is det.
 
 goal_util__name_apart_list([], _Must, _Subn, []).
-goal_util__name_apart_list([G0|Gs0], Must, Subn, [G|Gs]) :-
+goal_util__name_apart_list([G0 | Gs0], Must, Subn, [G | Gs]) :-
 	goal_util__rename_vars_in_goal(G0, Must, Subn, G),
 	goal_util__name_apart_list(Gs0, Must, Subn, Gs).
 
@@ -242,7 +248,8 @@ goal_util__name_apart_list([G0|Gs0], Must, Subn, [G|Gs]) :-
 :- mode goal_util__name_apart_cases(in, in, in, out) is det.
 
 goal_util__name_apart_cases([], _Must, _Subn, []).
-goal_util__name_apart_cases([case(Cons, G0)|Gs0], Must, Subn, [case(Cons, G)|Gs]) :-
+goal_util__name_apart_cases([case(Cons, G0) | Gs0], Must, Subn,
+		[case(Cons, G) | Gs]) :-
 	goal_util__rename_vars_in_goal(G0, Must, Subn, G),
 	goal_util__name_apart_cases(Gs0, Must, Subn, Gs).
 
@@ -254,7 +261,7 @@ goal_util__name_apart_cases([case(Cons, G0)|Gs0], Must, Subn, [case(Cons, G)|Gs]
 :- mode goal_util__rename_args(in, in, in, out) is det.
 
 goal_util__rename_args([], _Must, _Subn, []).
-goal_util__rename_args([T0|Ts0], Must, Subn, [T|Ts]) :-
+goal_util__rename_args([T0 | Ts0], Must, Subn, [T | Ts]) :-
 	goal_util__rename_term(T0, Must, Subn, T),
 	goal_util__rename_args(Ts0, Must, Subn, Ts).
 
