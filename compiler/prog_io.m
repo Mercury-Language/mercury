@@ -285,7 +285,7 @@ prog_io__read_program(FileName, Result) -->
 
 :- type module_end ---> no ; yes(module_name).
 
-:- pred get_end_module(message_list, message_list, module_end).
+:- pred get_end_module(list(item), list(item), module_end).
 :- mode get_end_module(input, output, output).
 
 get_end_module(RevItems0, RevItems, EndModule) :-
@@ -359,14 +359,15 @@ check_begin_module(Messages0, Items0, Error, EndModule, Result) :-
 
 :- type yes_or_no ---> yes ; no.
 
-:- pred read_program_3(message_list, program, yes_or_no, io__state, io__state).
+:- pred read_program_3(message_list, list(item), yes_or_no, io__state,
+			io__state).
 :- mode read_program_3(output, output, output, di, uo).
 read_program_3(Messages, Items, Error) -->
 	io__read_term(MaybeTerm),
 	read_program_4(MaybeTerm, [], [], no, Messages, Items, Error).
 
-:- pred read_program_4(read_term, message_list, program, yes_or_no,
-			message_list, program, yes_or_no,
+:- pred read_program_4(read_term, message_list, list(item), yes_or_no,
+			message_list, list(item), yes_or_no,
 			io__state,io__state).
 :- mode read_program_4(input, input, input, input,
 			output, output, output, di, uo).
@@ -375,7 +376,7 @@ read_program_4(eof, Msgs, Items, Error, Msgs, Items, Error) --> [].
 
 read_program_4(error(ErrorMsg), Msgs0, Items, _, Msgs, Items, yes) -->
 	{
-	  Error = error(ErrorMsg, term_functor(term_atom(""), [])),
+	  Error = ErrorMsg - term_functor(term_atom(""), []),
 	  Msgs = [Error | Msgs0]
 	}.
 
@@ -390,8 +391,8 @@ read_program_4(term(VarSet, Term), Msgs0, Items0,
  	read_program_4(MaybeTerm, Msgs1, Items1, Error1,
 			Msgs, Items, Error).
 
-:- pred process_item(maybe(item),  message_list, program, yes_or_no,
-		       message_list, program, yes_or_no). 
+:- pred process_item(maybe(item),  message_list, list(item), yes_or_no,
+		       message_list, list(item), yes_or_no). 
 :- mode process_item(input, input, input, input,
 			output, output, output).
 process_item(ok(Item), Msgs, Items0, Error, Msgs, [Item|Items0], Error).
@@ -421,7 +422,7 @@ parse_item(VarSet, Term, Result) :-
 		process_clause(R, VarSet, Body2, Result)
 	).
 
-:- pred process_clause(maybe_functor, varset, term, maybe(item)).
+:- pred process_clause(maybe_functor, varset, goal, maybe(item)).
 :- mode process_clause(input, input, input, input, output).
 process_clause(ok(Name, Args), VarSet, Body,
 		ok(clause(VarSet, Name, Args, Body))).
@@ -495,7 +496,7 @@ parse_some_vars_goal(A0, Vars, A) :-
 
 	% parse a declaration
 
-:- pred parse_decl(varset, term, maybe_item).
+:- pred parse_decl(varset, term, maybe(item)).
 :- mode parse_decl(input, input, output).
 parse_decl(VarSet, F, Result) :-
 	(if some [Atom, As]
