@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -15,7 +15,7 @@
 % type information, including a description of the type_ctor_info structures.
 %
 % WARNING: if you change this module, you will probably need to also
-% change ml_base_type_info.m, which does the smae thing for the MLDS
+% change ml_base_type_info.m, which does the same thing for the MLDS
 % back-end.
 %
 %---------------------------------------------------------------------------%
