@@ -139,7 +139,8 @@
 %		You can even put back something that you didn't actually read.
 %		Note: `io__putback_char' uses the C library function ungetc().
 %		On some systems only one character of pushback is guaranteed.
-%		`io__putback_char' will abort with an error if ungetc() fails.
+%		`io__putback_char' will throw an io__error exception
+%		if ungetc() fails.
 
 :- pred io__read_char(io__input_stream, io__result(char),
 				io__state, io__state).
@@ -183,7 +184,8 @@
 %		You can even put back something that you didn't actually read.
 %		Note: `io__putback_char' uses the C library function ungetc().
 %		On some systems only one character of pushback is guaranteed.
-%		`io__putback_char' will abort with an error if ungetc() fails.
+%		`io__putback_char' will throw an io__error exception
+%		if ungetc() fails.
 
 :- pred io__read(io__read_result(T), io__state, io__state).
 :- mode io__read(out, di, uo) is det.
@@ -243,6 +245,7 @@
 %-----------------------------------------------------------------------------%
 
 % Text output predicates.
+% These will all throw an io__error exception if an I/O error occurs.
 
 :- pred io__print(T, io__state, io__state).
 :- mode io__print(in, di, uo) is det.
@@ -399,6 +402,8 @@
 :- mode io__seen(di, uo) is det.
 %		Closes the current input stream.
 %		The current input stream reverts to standard input.
+%		This will all throw an io__error exception
+%		if an I/O error occurs.
 
 :- pred io__open_input(string, io__res(io__input_stream),
 			io__state, io__state).
@@ -411,6 +416,8 @@
 :- mode io__close_input(in, di, uo) is det.
 %	io__close_input(File, IO0, IO1).
 %		Closes an open input stream.
+%		This will all throw an io__error exception
+%		if an I/O error occurs.
 
 :- pred io__input_stream(io__input_stream, io__state, io__state).
 :- mode io__input_stream(out, di, uo) is det.
@@ -480,6 +487,8 @@
 %		Closes the current output stream.
 %		The default output stream reverts to standard output.
 %		As per Prolog told/0.
+%		This will all throw an io__error exception
+%		if an I/O error occurs.
 
 :- pred io__open_output(string, io__res(io__output_stream),
 				io__state, io__state).
@@ -499,6 +508,8 @@
 :- mode io__close_output(in, di, uo) is det.
 %	io__close_output(File, IO0, IO1).
 %		Closes an open output stream.
+%		This will all throw an io__error exception
+%		if an I/O error occurs.
 
 :- pred io__output_stream(io__output_stream, io__state, io__state).
 :- mode io__output_stream(out, di, uo) is det.
@@ -621,6 +632,7 @@
 %-----------------------------------------------------------------------------%
 
 % Binary output predicates.
+% These will all throw an io__error exception if an I/O error occurs.
 
 % XXX what about wide characters?
 
@@ -693,6 +705,8 @@
 :- mode io__seen_binary(di, uo) is det.
 %		Closes the current input stream.
 %		The current input stream reverts to standard input.
+%		This will all throw an io__error exception
+%		if an I/O error occurs.
 
 :- pred io__open_binary_input(string, io__res(io__binary_input_stream),
 			io__state, io__state).
@@ -705,6 +719,8 @@
 :- mode io__close_binary_input(in, di, uo) is det.
 %	io__close_binary_input(File, IO0, IO1).
 %		Closes an open binary input stream.
+%		This will all throw an io__error exception
+%		if an I/O error occurs.
 
 :- pred io__binary_input_stream(io__binary_input_stream,
 			io__state, io__state).
@@ -756,6 +772,8 @@
 %		Closes the current binary output stream.
 %		The default binary output stream reverts to standard output.
 %		As per Prolog told/0.
+%		This will all throw an io__error exception
+%		if an I/O error occurs.
 
 :- pred io__open_binary_output(string, io__res(io__binary_output_stream),
 				io__state, io__state).
@@ -776,6 +794,8 @@
 :- mode io__close_binary_output(in, di, uo) is det.
 %	io__close_binary_output(File, IO0, IO1).
 %		Closes an open binary output stream.
+%		This will all throw an io__error exception
+%		if an I/O error occurs.
 
 :- pred io__binary_output_stream(io__binary_output_stream,
 				io__state, io__state).
@@ -874,8 +894,8 @@
 :- mode io__set_environment_var(in, in, di, uo) is det.
 	% First argument is the name of the environment variable,
 	% second argument is the value to be assigned to that
-	% variable.  Will abort if the system runs out of environment
-	% space.
+	% variable.  Will throw an exception if the system runs
+	% out of environment space.
 
 %-----------------------------------------------------------------------------%
 
@@ -1041,7 +1061,7 @@
 
 :- implementation.
 :- import_module map, dir, term, term_io, varset, require, benchmarking, array.
-:- import_module int, parser.
+:- import_module int, parser, exception.
 
 :- type io__state ---> io__state(c_pointer).
 	% Values of type `io__state' are never really used:
@@ -1112,13 +1132,13 @@
 %		Attempts to open a file in the specified mode.
 %		Result is 0 for success, -1 for failure.
 
-:- pred io__getenv(string, string).
+:- semipure pred io__getenv(string, string).
 :- mode io__getenv(in, out) is semidet.
 %	io__getenv(Var, Value).
 %		Gets the value Value associated with the environment
 %		variable Var.  Fails if the variable was not set.
 
-:- pred io__putenv(string).
+:- impure pred io__putenv(string).
 :- mode io__putenv(in) is semidet.
 %	io__putenv(VarString).
 %		If VarString is a string of the form "name=value",
@@ -1145,7 +1165,7 @@ io__read_char(Stream, Result) -->
 		{ Result = ok(Char) }
 	;
 		io__make_err_msg("read failed: ", Msg),
-		{ Result = error(Msg) }
+		{ Result = error(io_error(Msg)) }
 	).
 
 io__read_byte(Result) -->
@@ -1164,7 +1184,7 @@ io__read_byte(Stream, Result) -->
 		{ Result = eof }
 	;
 		io__make_err_msg("read failed: ", Msg),
-		{ Result = error(Msg) }
+		{ Result = error(io_error(Msg)) }
 	).
 
 io__read_word(Result) -->
@@ -1239,7 +1259,7 @@ io__read_line(Stream, Result) -->
 		)
 	;
 		io__make_err_msg("read failed: ", Msg),
-		{ Result = error(Msg) }
+		{ Result = error(io_error(Msg)) }
 	).
 
 :- pred io__read_line_2(io__input_stream, list(char), io__state, io__state).
@@ -1276,7 +1296,7 @@ io__read_line_as_string(Stream, Result, IO0, IO) :-
 			IO = IO1
 		;
 			io__make_err_msg("read failed: ", Msg, IO1, IO),
-			Result = error(Msg)
+			Result = error(io_error(Msg))
 		)
 	;
 		Result = ok(String),
@@ -1448,7 +1468,7 @@ io__check_err(Stream, Res) -->
 	{ Int = 0 ->
 		Res = ok
 	;
-		Res = error(Msg)
+		Res = error(io_error(Msg))
 	}.
 
 :- pred io__ferror(stream, int, string, io__state, io__state).
@@ -2157,7 +2177,7 @@ io__read_binary(Result) -->
 
 io__convert_read_result(ok(T), ok(T)).
 io__convert_read_result(eof, eof).
-io__convert_read_result(error(Error, _Line), error(Error)).
+io__convert_read_result(error(Error, _Line), error(io_error(Error))).
 
 %-----------------------------------------------------------------------------%
 
@@ -2170,7 +2190,7 @@ io__open_input(FileName, Result) -->
 		io__insert_stream_name(NewStream, FileName)
 	;
 		io__make_err_msg("can't open input file: ", Msg),
-		{ Result = error(Msg) }
+		{ Result = error(io_error(Msg)) }
 	).
 
 io__open_output(FileName, Result) -->
@@ -2180,7 +2200,7 @@ io__open_output(FileName, Result) -->
 		io__insert_stream_name(NewStream, FileName)
 	;
 		io__make_err_msg("can't open output file: ", Msg),
-		{ Result = error(Msg) }
+		{ Result = error(io_error(Msg)) }
 	).
 
 io__open_append(FileName, Result) -->
@@ -2190,7 +2210,7 @@ io__open_append(FileName, Result) -->
 		io__insert_stream_name(NewStream, FileName)
 	;
 		io__make_err_msg("can't append to file: ", Msg),
-		{ Result = error(Msg) }
+		{ Result = error(io_error(Msg)) }
 	).
 
 io__open_binary_input(FileName, Result) -->
@@ -2200,7 +2220,7 @@ io__open_binary_input(FileName, Result) -->
 		io__insert_stream_name(NewStream, FileName)
 	;
 		io__make_err_msg("can't open input file: ", Msg),
-		{ Result = error(Msg) }
+		{ Result = error(io_error(Msg)) }
 	).
 
 io__open_binary_output(FileName, Result) -->
@@ -2210,7 +2230,7 @@ io__open_binary_output(FileName, Result) -->
 		io__insert_stream_name(NewStream, FileName)
 	;
 		io__make_err_msg("can't open output file: ", Msg),
-		{ Result = error(Msg) }
+		{ Result = error(io_error(Msg)) }
 	).
 
 io__open_binary_append(FileName, Result) -->
@@ -2220,7 +2240,7 @@ io__open_binary_append(FileName, Result) -->
 		io__insert_stream_name(NewStream, FileName)
 	;
 		io__make_err_msg("can't append to file: ", Msg),
-		{ Result = error(Msg) }
+		{ Result = error(io_error(Msg)) }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -2405,22 +2425,24 @@ io__progname_base(DefaultName, PrognameBase) -->
 
 % environment interface predicates
 
+:- pragma promise_pure(io__get_environment_var/4).
+
 io__get_environment_var(Var, OptValue) -->
-	( { io__getenv(Var, Value) } ->
+	( { semipure io__getenv(Var, Value) } ->
 	    { OptValue0 = yes(Value) }
 	;
 	    { OptValue0 = no }
 	),
 	{ OptValue = OptValue0 }.
 
+:- pragma promise_pure(io__set_environment_var/4).
+
 io__set_environment_var(Var, Value) -->
 	{ string__format("%s=%s", [s(Var), s(Value)], EnvString) },
-	( { io__putenv(EnvString) } ->
+	( { impure io__putenv(EnvString) } ->
 	    []
 	;
-	    % XXX What is good behaviour here?
-
-	    { string__format("Could not set environment variable %s",
+	    { string__format("Could not set environment variable `%s'",
 				[s(Var)], Message) },
 	    { error(Message) }
 	).
@@ -2503,20 +2525,25 @@ io__call_system(Command, Result) -->
 	io__call_system_code(Command, Status),
 	{ Status = 127 ->
 		% XXX improve error message
-		Result = error("can't invoke system command")
+		Result = error(io_error("can't invoke system command"))
 	; Status < 0 ->
 		Signal is - Status,
 		string__int_to_string(Signal, SignalStr),
 		string__append("system command killed by signal number ",
 			SignalStr, ErrMsg),
-		Result = error(ErrMsg)
+		Result = error(io_error(ErrMsg))
 	;
 		Result = ok(Status)
 	}.
 
-:- type io__error	==	string.		% This is subject to change.
+:- type io__error	
+	--->	io_error(string).		% This is subject to change.
+	% Note that we use `io_error' rather than `io__error'
+	% because io__print, which may be called to print out the uncaught
+	% exception if there is no exception hander, does not print out
+	% the module name.
 
-io__error_message(Error, Error).
+io__error_message(io_error(Error), Error).
 
 %-----------------------------------------------------------------------------%
 
@@ -2568,6 +2595,7 @@ io__get_io_output_stream_type(Type) -->
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include <errno.h>
 
@@ -2589,7 +2617,7 @@ extern MercuryFile *mercury_current_binary_output;
 
 void 		mercury_init_io(void);
 MercuryFile*	mercury_open(const char *filename, const char *type);
-void		mercury_fatal_io_error(void);
+void		mercury_io_error(MercuryFile* mf, const char *format, ...);
 void		mercury_output_error(MercuryFile* mf);
 void		mercury_print_string(MercuryFile* mf, const char *s);
 void		mercury_print_binary_string(MercuryFile* mf, const char *s);
@@ -2635,12 +2663,33 @@ mercury_open(const char *filename, const char *type)
 
 ").
 
+:- pred throw_io_error(string::in) is erroneous.
+:- pragma export(throw_io_error(in), "ML_throw_io_error").
+throw_io_error(Message) :- throw(io_error(Message)).
+
 :- pragma c_code("
 
 void
-mercury_fatal_io_error(void)
+mercury_io_error(MercuryFile* mf, const char *format, ...)
 {
-	fatal_error(""cannot recover from I/O error -- execution terminated"");
+	va_list args;
+	char message[5000];
+	ConstString message_as_mercury_string;
+
+	/* the `mf' parameter is currently not used */
+
+	/* format the error message using vsprintf() */
+	va_start(args, format);
+	vsprintf(message, format, args);
+	va_end(args);
+
+	/* copy the error message to a Mercury string */
+	restore_registers(); /* for MR_hp */
+	make_aligned_string(message_as_mercury_string, message);
+	save_registers(); /* for MR_hp */
+
+	/* call some Mercury code to throw the exception */
+	ML_throw_io_error((String) message_as_mercury_string);
 }
 
 ").
@@ -2648,12 +2697,10 @@ mercury_fatal_io_error(void)
 :- pragma c_code("
 
 void
-mercury_output_error(MercuryFile* mf)
+mercury_output_error(MercuryFile *mf)
 {
-	fprintf(stderr,
-		""Mercury runtime: error writing to output file: %s\\n"",
+	mercury_io_error(mf, ""error writing to output file: %s"",
 		strerror(errno));
-	mercury_fatal_io_error();
 }
 
 ").
@@ -2711,10 +2758,8 @@ mercury_close(MercuryFile* mf)
 	    mf != &mercury_stderr)
 	{
 		if (fclose(mf->file) < 0) {
-			fprintf(stderr,
-				""Mercury runtime: error closing file: %s\\n"",
+			mercury_io_error(mf, ""error closing file: %s"",
 				strerror(errno));
-			mercury_fatal_io_error();
 		}
 		oldmem(mf);
 	}
@@ -2731,24 +2776,24 @@ mercury_close(MercuryFile* mf)
 ").
 
 :- pragma c_code(io__putback_char(File::in, Character::in, IO0::di, IO::uo),
-		will_not_call_mercury, "{
+		may_call_mercury, "{
 	MercuryFile* mf = (MercuryFile *) File;
 	if (Character == '\\n') {
 		mf->line_number--;
 	}
 	/* XXX should work even if ungetc() fails */
 	if (ungetc(Character, mf->file) == EOF) {
-		fatal_error(""io__putback_char: ungetc failed"");
+		mercury_io_error(mf, ""io__putback_char: ungetc failed"");
 	}
 	update_io(IO0, IO);
 }").
 
 :- pragma c_code(io__putback_byte(File::in, Character::in, IO0::di, IO::uo),
-		will_not_call_mercury, "{
+		may_call_mercury, "{
 	MercuryFile* mf = (MercuryFile *) File;
 	/* XXX should work even if ungetc() fails */
 	if (ungetc(Character, mf->file) == EOF) {
-		fatal_error(""io__putback_byte: ungetc failed"");
+		mercury_io_error(mf, ""io__putback_byte: ungetc failed"");
 	}
 	update_io(IO0, IO);
 }").
@@ -2756,13 +2801,13 @@ mercury_close(MercuryFile* mf)
 /* output predicates - with output to mercury_current_text_output */
 
 :- pragma c_code(io__write_string(Message::in, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "
+		[may_call_mercury, thread_safe], "
 	mercury_print_string(mercury_current_text_output, Message);
 	update_io(IO0, IO);
 ").
 
 :- pragma c_code(io__write_char(Character::in, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "
+		[may_call_mercury, thread_safe], "
 	if (putc(Character, mercury_current_text_output->file) < 0) {
 		mercury_output_error(mercury_current_text_output);
 	}
@@ -2773,7 +2818,7 @@ mercury_close(MercuryFile* mf)
 ").
 
 :- pragma c_code(io__write_int(Val::in, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "
+		[may_call_mercury, thread_safe], "
 	if (fprintf(mercury_current_text_output->file, ""%ld"", (long) Val) < 0) {
 		mercury_output_error(mercury_current_text_output);
 	}
@@ -2781,7 +2826,7 @@ mercury_close(MercuryFile* mf)
 ").
 
 :- pragma c_code(io__write_float(Val::in, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "
+		[may_call_mercury, thread_safe], "
 	if (fprintf(mercury_current_text_output->file, ""%#.15g"", Val) < 0) {
 		mercury_output_error(mercury_current_text_output);
 	}
@@ -2789,7 +2834,7 @@ mercury_close(MercuryFile* mf)
 ").
 
 :- pragma c_code(io__write_byte(Byte::in, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "
+		[may_call_mercury, thread_safe], "
 	/* call putc with a strictly non-negative byte-sized integer */
 	if (putc((int) ((unsigned char) Byte),
 			mercury_current_binary_output->file) < 0) {
@@ -2799,13 +2844,13 @@ mercury_close(MercuryFile* mf)
 ").
 
 :- pragma c_code(io__write_bytes(Message::in, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "{
+		[may_call_mercury, thread_safe], "{
 	mercury_print_binary_string(mercury_current_binary_output, Message);
 	update_io(IO0, IO);
 }").
 
 :- pragma c_code(io__flush_output(IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "
+		[may_call_mercury, thread_safe], "
 	if (fflush(mercury_current_text_output->file) < 0) {
 		mercury_output_error(mercury_current_text_output);
 	}
@@ -2813,7 +2858,7 @@ mercury_close(MercuryFile* mf)
 ").
 
 :- pragma c_code(io__flush_binary_output(IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "
+		[may_call_mercury, thread_safe], "
 	if (fflush(mercury_current_binary_output->file) < 0) {
 		mercury_output_error(mercury_current_binary_output);
 	}
@@ -2840,6 +2885,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 "{
 	static const int seek_flags[] = { SEEK_SET, SEEK_CUR, SEEK_END };
 	MercuryFile *stream = (MercuryFile *) Stream;
+	/* XXX should check for failure */
 	fseek(stream->file, Off, seek_flags[Flag]);
 	IO = IO0;
 }").
@@ -2848,6 +2894,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 		IO0::di, IO::uo), [will_not_call_mercury, thread_safe],
 "{
 	MercuryFile *stream = (MercuryFile *) Stream;
+	/* XXX should check for failure */
 	Offset = ftell(stream->file);
 	IO = IO0;
 }").
@@ -2856,7 +2903,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 /* output predicates - with output to the specified stream */
 
 :- pragma c_code(io__write_string(Stream::in, Message::in, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], 
+		[may_call_mercury, thread_safe], 
 "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	mercury_print_string(stream, Message);
@@ -2864,7 +2911,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 }").
 
 :- pragma c_code(io__write_char(Stream::in, Character::in, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], 
+		[may_call_mercury, thread_safe], 
 "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	if (putc(Character, stream->file) < 0) {
@@ -2877,7 +2924,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 }").
 
 :- pragma c_code(io__write_int(Stream::in, Val::in, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "{
+		[may_call_mercury, thread_safe], "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	if (fprintf(stream->file, ""%ld"", (long) Val) < 0) {
 		mercury_output_error(stream);
@@ -2886,7 +2933,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 }").
 
 :- pragma c_code(io__write_float(Stream::in, Val::in, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "{
+		[may_call_mercury, thread_safe], "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	if (fprintf(stream->file, ""%#.15g"", Val) < 0) {
 		mercury_output_error(stream);
@@ -2895,7 +2942,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 }").
 
 :- pragma c_code(io__write_byte(Stream::in, Byte::in, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "{
+		[may_call_mercury, thread_safe], "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	/* call putc with a strictly non-negative byte-sized integer */
 	if (putc((int) ((unsigned char) Byte), stream->file) < 0) {
@@ -2905,14 +2952,14 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 }").
 
 :- pragma c_code(io__write_bytes(Stream::in, Message::in, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "{
+		[may_call_mercury, thread_safe], "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	mercury_print_binary_string(stream, Message);
 	update_io(IO0, IO);
 }").
 
 :- pragma c_code(io__flush_output(Stream::in, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "{
+		[may_call_mercury, thread_safe], "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	if (fflush(stream->file) < 0) {
 		mercury_output_error(stream);
@@ -2921,7 +2968,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 }").
 
 :- pragma c_code(io__flush_binary_output(Stream::in, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "{
+		[may_call_mercury, thread_safe], "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	if (fflush(stream->file) < 0) {
 		mercury_output_error(stream);
@@ -3096,25 +3143,25 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 ").
 
 :- pragma c_code(io__close_input(Stream::in, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "
+		[may_call_mercury, thread_safe], "
 	mercury_close((MercuryFile *) Stream);
 	update_io(IO0, IO);
 ").
 
 :- pragma c_code(io__close_output(Stream::in, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "
+		[may_call_mercury, thread_safe], "
 	mercury_close((MercuryFile *) Stream);
 	update_io(IO0, IO);
 ").
 
 :- pragma c_code(io__close_binary_input(Stream::in, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "
+		[may_call_mercury, thread_safe], "
 	mercury_close((MercuryFile *) Stream);
 	update_io(IO0, IO);
 ").
 
 :- pragma c_code(io__close_binary_output(Stream::in, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "
+		[may_call_mercury, thread_safe], "
 	mercury_close((MercuryFile *) Stream);
 	update_io(IO0, IO);
 ").
@@ -3290,17 +3337,15 @@ io__make_temp(Name) -->
 	} while (fd == -1 && errno == EEXIST &&
 		num_tries < MAX_TEMPNAME_TRIES);
 	if (fd == -1) {
-		fprintf(stderr, ""Mercury runtime: ""
-			""error opening temporary file: %s\\n"",
-			strerror(errno));
-		mercury_fatal_io_error();
+		mercury_io_error(NULL,
+			""error opening temporary file `%s': %s"",
+			FileName, strerror(errno));
 	} 
 	err = close(fd);
 	if (err != 0) {
-		fprintf(stderr, ""Mercury runtime: ""
-			""error closing temporary file: %s\\n"",
-			strerror(errno));
-		mercury_fatal_io_error();
+		mercury_io_error(NULL,
+			""error closing temporary file `%s': %s"",
+			FileName, strerror(errno));
 	}
 	update_io(IO0, IO);
 }").
@@ -3345,7 +3390,7 @@ io__make_temp(Name) -->
 io__remove_file(FileName, Result, IO0, IO) :-
 	io__remove_file_2(FileName, Res, ResString, IO0, IO),
 	( Res \= 0 ->
-		Result = error(ResString)
+		Result = error(io_error(ResString))
 	;
 		Result = ok
 	).
@@ -3364,7 +3409,7 @@ io__remove_file(FileName, Result, IO0, IO) :-
 io__rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 	io__rename_file_2(OldFileName, NewFileName, Res, ResString, IO0, IO),
 	( Res \= 0 ->
-		Result = error(ResString)
+		Result = error(io_error(ResString))
 	;
 		Result = ok
 	).
