@@ -14,7 +14,7 @@ main_target: $(MAIN_TARGET)
 .SUFFIXES: .m .nl .no .err .int .int2 .int3 .opt .dep .depend .doit \
 		.ugly .date .date3 .optdate .mod .c .nu .o .pic_o \
 		.i .s .pic_s \
-		.garb .ql .pl
+		.ql .pl
 
 .PRECIOUS: %.date %.date3 %.optdate
 
@@ -75,9 +75,6 @@ main_target: $(MAIN_TARGET)
 
 .optdate.opt:
 	@:
-
-.m.garb:
-	$(MCG) -s $(GRADE) --garbage-collection accurate $(MCGFLAGS) $<
 
 .m.ugly:
 	$(MC) --convert-to-mercury $(MCFLAGS) $<

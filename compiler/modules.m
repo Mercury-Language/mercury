@@ -744,50 +744,13 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	write_compact_dependencies_list(Modules, ".opt", Basis, DepStream),
 	io__write_string(DepStream, "\n\n"),
 
-	globals__io_lookup_string_option(gc, GC_Opt),
-	( { GC_Opt = "accurate" } ->
-		{ map__init(AllMap) },
-		trans_impl_dependencies([ModuleName], AllMap, yes,
-			AllDeps, _),
-		io__write_string(DepStream, ModuleName),
-		io__write_string(DepStream, ".garbs = "),
-		write_compact_dependencies_list(AllDeps, ".garb",
-			Basis, DepStream),
-		io__write_string(DepStream, "\n\n")
-	;
-		[]
-	),
-
-	( { GC_Opt = "accurate" } ->
-		io__write_strings(DepStream, [
-			ModuleName, "_garb.c : $(",
-			ModuleName, ".garbs)\n",
-                        "\t$(MLINK) $(MLINKFLAGS) -o ", ModuleName,
-                        "_garb.c $(", ModuleName, ".garbs)\n\n"
-		])
-	;
-		[]
-	),
-
-	( { GC_Opt = "accurate" } ->
-		io__write_strings(DepStream, [
-			ModuleName, " : $(", ModuleName, ".os) ",
-			ModuleName, "_init.o ",
-			ModuleName, "_garb.o\n",
+	io__write_strings(DepStream, [
+		ModuleName, " : $(", ModuleName, ".os) ",
+		ModuleName, "_init.o\n",
 		"\t$(ML) -s $(GRADE) $(MLFLAGS) -o ", ModuleName, " ",
-			ModuleName, "_garb.o ",
-			ModuleName, "_init.o \\\n",
-			"\t$(", ModuleName, ".os) $(MLLIBS)\n\n"
-		])
-	;
-		io__write_strings(DepStream, [
-			ModuleName, " : $(", ModuleName, ".os) ",
-			ModuleName, "_init.o\n",
-			"\t$(ML) -s $(GRADE) $(MLFLAGS) -o ", ModuleName, " ",
-			ModuleName, "_init.o \\\n",
-			"\t$(", ModuleName, ".os) $(MLLIBS)\n\n"
-		])
-	),
+		ModuleName, "_init.o \\\n",
+		"\t$(", ModuleName, ".os) $(MLLIBS)\n\n"
+	]),
 
 	io__write_strings(DepStream, [
 		ModuleName, ".split : ", ModuleName, ".split.a ",
@@ -876,15 +839,7 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", ModuleName, ".errs)\n"
 	]),
 
-	( { GC_Opt = "accurate" } ->
-		io__write_strings(DepStream, [
-			"\t-rm -f $(", ModuleName, ".garbs)\n",
-			"\t-rm -f ", ModuleName, "_garb.o ", ModuleName, 
-				"_garb.c ", ModuleName, "_garb.s\n\n"
-		])
-	;
-		io__write_string(DepStream, "\n")
-	),
+	io__write_string(DepStream, "\n"),
 
 	io__write_strings(DepStream, [
 		ModuleName, ".change_clean :\n",
