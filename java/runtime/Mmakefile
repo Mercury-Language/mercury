@@ -1,0 +1,35 @@
+
+# Copyright (C) 2004 The University of Melbourne.
+# This file may only be copied under the terms of the GNU Library General
+# Public License - see the file COPYING.LIB in the Mercury distribution.
+#
+# This Makefile compiles the shared object for use with mercury.runtime.Native
+#
+
+MERCURY_DIR	= ../..
+RUNTIME_DIR	= $(MERCURY_DIR)/runtime
+
+include $(MERCURY_DIR)/Mmake.common
+
+NATIVE_PIC	= Native.$(EXT_FOR_PIC_OBJECTS)
+NATIVE_SO	= Native.$(EXT_FOR_SHARED_LIB)
+
+MAIN_TARGET	= $(NATIVE_SO)
+
+PIC_OBJS	= $(RUNTIME_DIR)/mercury_timing.$(EXT_FOR_PIC_OBJECTS) \
+		  $(NATIVE_PIC)
+
+CFLAGS		= -I$(RUNTIME_DIR)
+
+$(NATIVE_SO):	$(PIC_OBJS)
+		$(LINK_SHARED_OBJ) -o $(NATIVE_SO) $(PIC_OBJS)
+
+$(NATIVE_PIC):	Native.c
+		$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) \
+		$(CFLAGS_FOR_PIC) -o $(NATIVE_PIC) -c Native.c
+
+clean:
+		rm -f $(PIC_OBJS)
+
+realclean:
+		rm -f $(PIC_OBJS) $(NATIVE_SO) *.class

@@ -701,6 +701,18 @@ repeat(N) :-
 	Time = (int) (1000 * System::Diagnostics::Counter::GetElapsed());
 ").
 */
+:- pragma foreign_proc("Java",
+	get_user_cpu_miliseconds(Time::out), [will_not_call_mercury],
+"
+	if (mercury.runtime.Native.isAvailable()) {
+		Time = mercury.runtime.Native.get_user_cpu_miliseconds();
+	} else {
+		throw new java.lang.RuntimeException(
+				""get_user_cpu_miliseconds is not "" +
+				""implemented in pure Java.  Native "" +
+				""dynamic link library is required."");
+	}
+").
 
 /*
 ** To prevent the C compiler from optimizing the benchmark code

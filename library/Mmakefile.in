@@ -24,6 +24,7 @@ ALLOW_LIB_PREFIX=yes
 ALLOW_BROWSER_PREFIX=no
 
 MERCURY_DIR=..
+FULLARCH=@FULLARCH@
 LINK_RUNTIME_ONLY=yes
 include $(MERCURY_DIR)/Mmake.common
 -include Mmake.library.params
@@ -244,12 +245,23 @@ java_symlinks:
 # jar file.  At this point we also add the runtime classes to a jar file.
 # Note that this stage makes use of the symbolic links created earlier to
 # ensure that the path names are correct within the jar files.
+# We also compile NATIVE_SO here and copy it into the library directory.
+
 JARS = $(STD_LIB_NAME).jar $(STD_LIB_NAME).runtime.jar
 
+# We ignore the exit status of the last two commands because NATIVE_SO is not
+# an essential part of the Mercury standard library for the Java
+# implementation.  Users should be able to run programs in grade Java without
+# any architecture-specific objects.
 .PHONY:	jars
 jars:	classes
 	jar cf $(STD_LIB_NAME).jar mercury/*.class
 	jar cf $(STD_LIB_NAME).runtime.jar mercury/runtime/*.class
+	-+cd mercury/runtime && mmake $(NATIVE_SO)
+	-cp mercury/runtime/$(NATIVE_SO) .
+
+# This shared object is needed to run some of the standard library methods.
+NATIVE_SO = Native.$(EXT_FOR_SHARED_LIB)
 
 #-----------------------------------------------------------------------------#
 
@@ -404,6 +416,7 @@ realclean_local:
 	rm -f liblibrary.$A liblibrary.so library.init
 	rm -f $($(STD_LIB_NAME).mods:%=%.h)
 	rm -f tags
+	rm -f $(JARS) $(NATIVE_SO)
 
 #-----------------------------------------------------------------------------#
 
@@ -486,10 +499,15 @@ else
 
 ifneq (,$(findstring java,$(GRADE)))
 
+# Copy the jars and NATIVE_SO to INSTALL_JAVA_LIBRARY_DIR.  Ignore the exit
+# status of last command, since NATIVE_SO may not be available and is not
+# essential.
+
 .PHONY: install_library
 install_library: jars
 	mkdir -p $(INSTALL_JAVA_LIBRARY_DIR)
 	cp $(JARS) $(INSTALL_JAVA_LIBRARY_DIR)
+	-cp $(NATIVE_SO) $(INSTALL_JAVA_LIBRARY_DIR)/$(FULLARCH)
 
 else
 

@@ -255,8 +255,18 @@ time__clock(Result, IO0, IO) :-
 		.UserProcessorTime.Ticks;
 }").
 */
-
-% XXX Java implementation still to come, will require some native code.
+:- pragma foreign_proc("Java", time__c_clock(Ret::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
+"
+	if (mercury.runtime.Native.isAvailable()) {
+		Ret = mercury.runtime.Native.clock();
+	} else {
+		throw new java.lang.RuntimeException(
+				""time__clock is not implemented "" +
+				""in pure Java.  Native dynamic link "" +
+				""library is required."");
+	}
+").
 
 %-----------------------------------------------------------------------------%
 
@@ -273,7 +283,18 @@ time__clock(Result, IO0, IO) :-
 	// TicksPerSecond is guaranteed to be 10,000,000
 	Ret = (int) System.TimeSpan.TicksPerSecond;
 }").
-% XXX Java implementation still to come, will require some native code.
+:- pragma foreign_proc("Java", time__clocks_per_sec = (Ret::out),
+	[will_not_call_mercury, promise_pure],
+"
+	if (mercury.runtime.Native.isAvailable()) {
+		Ret = mercury.runtime.Native.clocks_per_sec();
+	} else {
+		throw new java.lang.RuntimeException(
+				""time__clocks_per_sec is not implemented "" +
+				""in pure Java.  Native dynamic link "" +
+				""library is required."");
+	}
+").
 
 %-----------------------------------------------------------------------------%
 
@@ -312,7 +333,31 @@ time__times(Tms, Result, IO0, IO) :-
 	MR_update_io(IO0, IO);
 }").
 
-% XXX Java implementation still to come, will require some native code.
+:- pragma foreign_proc("Java",
+	time__c_times(Ret::out, Ut::out, St::out, CUt::out,
+                               CSt::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
+"
+	if (mercury.runtime.Native.isAvailable()) {
+		int[] times = mercury.runtime.Native.times();
+		if (times != null) {
+			Ret	= times[0];
+			Ut	= times[1];
+			St	= times[2];
+			CUt	= times[3];
+			CSt	= times[4];
+		} else {
+			throw new java.lang.RuntimeException(
+					""time_times failed to construct "" +
+					""integer array"");
+		}
+	} else {
+		throw new java.lang.RuntimeException(
+				""time__times is not implemented "" +
+				""in pure Java.  Native dynamic link "" +
+				""library is required."");
+	}
+").
 
 %-----------------------------------------------------------------------------%
 
