@@ -6,10 +6,10 @@
 
 :- import_module io.
 
-:- pred qual_basic_test2:main(io__state, io__state).
-:- mode qual_basic_test2:main(di, uo) is det.
+:- pred qual_basic_test2.main(io, io).
+:- mode qual_basic_test2.main(di, uo) is det.
 
 :- implementation.
 
-qual_basic_test2:main --> io:io__write_string("Gotcha!\n").
+qual_basic_test2.main --> io.io__write_string("Gotcha!\n").
 
