@@ -25,6 +25,9 @@
 :- pred inst_list_is_ground(list(inst), module_info).
 :- mode inst_list_is_ground(in, in) is semidet.
 
+:- pred bound_inst_list_is_ground(list(bound_inst), module_info).
+:- mode bound_inst_list_is_ground(in, in) is semidet.
+
 :- pred inst_is_free(module_info, inst).
 :- mode inst_is_free(in, in) is semidet.
 
@@ -34,8 +37,11 @@
 :- pred bound_inst_list_is_free(list(bound_inst), module_info).
 :- mode bound_inst_list_is_free(in, in) is semidet.
 
-:- pred bound_inst_list_is_ground(list(bound_inst), module_info).
-:- mode bound_inst_list_is_ground(in, in) is semidet.
+:- pred inst_is_bound(module_info, inst).
+:- mode inst_is_bound(in, in) is semidet.
+
+:- pred inst_is_bound_to_functors(module_info, inst, list(bound_inst)).
+:- mode inst_is_bound_to_functors(in, in, out) is semidet.
 
 :- pred mode_id_to_int(mode_id, int).
 :- mode mode_id_to_int(in, out) is det.
@@ -99,9 +105,6 @@ inst_is_free(ModuleInfo, user_defined_inst(Name, Args)) :-
 	% or is a user-defined inst which is not defined as `free'.
 	% Abstract insts must be bound.
 
-:- pred inst_is_bound(module_info, inst).
-:- mode inst_is_bound(in, in) is semidet.
-
 :- inst_is_bound(_, X) when X.		% NU-Prolog indexing.
 
 inst_is_bound(_, ground).
@@ -116,9 +119,6 @@ inst_is_bound(_, abstract_inst(_, _)).
 	% inst_is_bound_to_functors succeeds iff the inst passed is
 	% `bound(Functors)' or is a user-defined inst which expands to
 	% `bound(Functors)'.
-
-:- pred inst_is_bound_to_functors(module_info, inst, list(bound_inst)).
-:- mode inst_is_bound_to_functors(in, in, out) is semidet.
 
 :- inst_is_bound_to_functors(_, _, X) when X.		% NU-Prolog indexing.
 
@@ -300,12 +300,12 @@ inst_apply_substitution(ground, _, ground).
 inst_apply_substitution(bound(Alts0), Subst, bound(Alts)) :-
 	alt_list_apply_substitution(Alts0, Subst, Alts).
 inst_apply_substitution(inst_var(Var), Subst, Result) :-
-	(if some [Replacement]
+	(
 		% XXX should params be vars?
 		map__search(Subst, term__variable(Var), Replacement)
-	then
+	->
 		Result = Replacement
-	else
+	;
 		Result = inst_var(Var)
 	).
 inst_apply_substitution(user_defined_inst(Name, Args0), Subst,
