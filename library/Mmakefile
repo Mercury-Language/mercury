@@ -35,6 +35,12 @@ MCFLAGS-set_ordlist += $(TYPE_SPEC_FLAGS)
 
 #-----------------------------------------------------------------------------#
 
+# Bug workarounds.
+
+MCFLAGS-std_util += --no-halt-at-warn
+
+#-----------------------------------------------------------------------------#
+
 # Specify which options to use to compile the library.
 # Don't change these without good reason - if you want to
 # do a temporary change, change ../Mmake.params.
