@@ -51,33 +51,27 @@
 	% runtime/mercury_type_info.{c,h}.
 
 :- pred builtin_unify_int(int::in, int::in) is semidet.
-:- pred builtin_index_int(int::in, int::out) is det.
 :- pred builtin_compare_int(comparison_result::uo, int::in, int::in) is det.
 
 :- pred builtin_unify_character(character::in, character::in) is semidet.
-:- pred builtin_index_character(character::in, int::out) is det.
 :- pred builtin_compare_character(comparison_result::uo, character::in,
 	character::in) is det.
 
 :- pred builtin_unify_string(string::in, string::in) is semidet.
-:- pred builtin_index_string(string::in, int::out) is det.
 :- pred builtin_compare_string(comparison_result::uo, string::in, string::in)
 	is det.
 
 :- pred builtin_unify_float(float::in, float::in) is semidet.
-:- pred builtin_index_float(float::in, int::out) is det.
 :- pred builtin_compare_float(comparison_result::uo, float::in, float::in)
 	is det.
 
 :- pred builtin_unify_pred((pred)::in, (pred)::in) is semidet.
-:- pred builtin_index_pred((pred)::in, int::out) is det.
 :- pred builtin_compare_pred(comparison_result::uo, (pred)::in, (pred)::in)
 	is det.
 
-	% The following two preds are used for index/1 or compare/3
+	% The following pred is used for compare/3
 	% on non-canonical types (types for which there is a
 	% `where equality is ...' declaration).
-:- pred builtin_index_non_canonical_type(T::in, int::out) is det.
 :- pred builtin_compare_non_canonical_type(comparison_result::uo,
 		T::in, T::in) is det.
 
@@ -120,8 +114,6 @@
 
 builtin_unify_int(X, X).
 
-builtin_index_int(X, X).
-
 builtin_compare_int(R, X, Y) :-
 	( X < Y ->
 		R = (<)
@@ -132,9 +124,6 @@ builtin_compare_int(R, X, Y) :-
 	).
 
 builtin_unify_character(C, C).
-
-builtin_index_character(C, N) :-
-	char__to_int(C, N).
 
 builtin_compare_character(R, X, Y) :-
 	char__to_int(X, XI),
@@ -149,8 +138,6 @@ builtin_compare_character(R, X, Y) :-
 
 builtin_unify_string(S, S).
 
-builtin_index_string(_, -1).
-
 builtin_compare_string(R, S1, S2) :-
 	builtin_strcmp(Res, S1, S2),
 	( Res < 0 ->
@@ -162,8 +149,6 @@ builtin_compare_string(R, S1, S2) :-
 	).
 
 builtin_unify_float(F, F).
-
-builtin_index_float(_, -1).
 
 builtin_compare_float(R, F1, F2) :-
 	( F1 < F2 ->
@@ -182,10 +167,7 @@ builtin_compare_float(R, F1, F2) :-
 	"Res = strcmp(S1, S2);").
 
 :- external(builtin_unify_pred/2).
-:- external(builtin_index_pred/2).
 :- external(builtin_compare_pred/3).
-
-builtin_index_non_canonical_type(_, -1).
 
 builtin_compare_non_canonical_type(Res, X, _Y) :-
 	% suppress determinism warning
@@ -304,10 +286,8 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, typeclass_info, 1,
 
 BEGIN_MODULE(type_info_module)
 	init_entry(mercury____Unify___private_builtin__type_info_1_0);
-	init_entry(mercury____Index___private_builtin__type_info_1_0);
 	init_entry(mercury____Compare___private_builtin__type_info_1_0);
 	init_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
-	init_entry(mercury____Index___private_builtin__typeclass_info_1_0);
 	init_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
 BEGIN_CODE
 Define_entry(mercury____Unify___private_builtin__type_info_1_0);
@@ -327,10 +307,6 @@ Define_entry(mercury____Unify___private_builtin__type_info_1_0);
 	proceed();
 }
 
-Define_entry(mercury____Index___private_builtin__type_info_1_0);
-	r1 = -1;
-	proceed();
-
 Define_entry(mercury____Compare___private_builtin__type_info_1_0);
 {
 	/*
@@ -347,13 +323,11 @@ Define_entry(mercury____Compare___private_builtin__type_info_1_0);
 	r1 = comp;
 	proceed();
 }
+
 Define_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
 {
 	fatal_error(""attempt to unify typeclass_info"");
 }
-Define_entry(mercury____Index___private_builtin__typeclass_info_1_0);
-	r1 = -1;
-	proceed();
 
 Define_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
 {

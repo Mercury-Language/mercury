@@ -175,11 +175,6 @@
 :- mode compare(uo, in, ui) is det.
 :- mode compare(uo, in, in) is det.
 
-	% This predicate is obsolete. It is required only while bootstrapping
-	% the change that deletes references to it by compiler-generated
-	% compare and index predicates.
-:- pred index(T::in, int::out) is det.
-
 % In addition, the following predicate-like constructs are builtin:
 %
 %	:- pred (T = T).
@@ -231,7 +226,6 @@ promise_only_solution(Pred) = OutVal :-
 %-----------------------------------------------------------------------------%
 
 :- external(unify/2).
-:- external(index/2).
 :- external(compare/3).
 
 %-----------------------------------------------------------------------------%
@@ -299,23 +293,16 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(trailptr, 0, MR_TYPECTOR_REP_TRAIL_PTR);
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(ticket, 0, MR_TYPECTOR_REP_TICKET);
 
 Define_extern_entry(mercury__builtin_unify_pred_2_0);
-Define_extern_entry(mercury__builtin_index_pred_2_0);
 Define_extern_entry(mercury__builtin_compare_pred_3_0);
 
 BEGIN_MODULE(builtin_types_module)
 	init_entry_ai(mercury__builtin_unify_pred_2_0);
-	init_entry_ai(mercury__builtin_index_pred_2_0);
 	init_entry_ai(mercury__builtin_compare_pred_3_0);
 BEGIN_CODE
 /* code for predicate 'builtin_unify_pred'/2 in mode 0 */
 Define_entry(mercury__builtin_unify_pred_2_0);
 	MR_incr_sp_push_msg(2, ""private_builtin:builtin_unify_pred"");
 	fatal_error(""attempted unification of higher-order terms"");
-
-/* code for predicate 'builtin_index_pred'/2 in mode 0 */
-Define_entry(mercury__builtin_index_pred_2_0);
-	r1 = (Integer) -1;
-	proceed();
 
 /* code for predicate 'builtin_compare_pred'/3 in mode 0 */
 Define_entry(mercury__builtin_compare_pred_3_0);
@@ -472,7 +459,6 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(builtin, c_pointer, 0,
 
 BEGIN_MODULE(unify_c_pointer_module)
 	init_entry(mercury____Unify___builtin__c_pointer_0_0);
-	init_entry(mercury____Index___builtin__c_pointer_0_0);
 	init_entry(mercury____Compare___builtin__c_pointer_0_0);
 
 BEGIN_CODE
@@ -485,10 +471,6 @@ Define_entry(mercury____Unify___builtin__c_pointer_0_0);
 	** However, it might not be correct in general...
 	*/
 	r1 = (r1 == r2);
-	proceed();
-
-Define_entry(mercury____Index___builtin__c_pointer_0_0);
-	r1 = -1;
 	proceed();
 
 Define_entry(mercury____Compare___builtin__c_pointer_0_0);

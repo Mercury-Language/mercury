@@ -1048,15 +1048,12 @@ MR_MAKE_INTERNAL_LAYOUT(mercury____Compare___std_util__univ_0_0, 1);
 #endif
 
 Define_extern_entry(mercury____Unify___std_util__type_desc_0_0);
-Define_extern_entry(mercury____Index___std_util__type_desc_0_0);
 Define_extern_entry(mercury____Compare___std_util__type_desc_0_0);
 
 BEGIN_MODULE(unify_univ_module)
 	init_entry(mercury____Unify___std_util__univ_0_0);
-	init_entry(mercury____Index___std_util__univ_0_0);
 	init_entry(mercury____Compare___std_util__univ_0_0);
 	init_entry(mercury____Unify___std_util__type_desc_0_0);
-	init_entry(mercury____Index___std_util__type_desc_0_0);
 	init_entry(mercury____Compare___std_util__type_desc_0_0);
 BEGIN_CODE
 Define_entry(mercury____Unify___std_util__univ_0_0);
@@ -1097,10 +1094,6 @@ Define_entry(mercury____Unify___std_util__univ_0_0);
 			LABEL(mercury____Unify___std_util__univ_0_0));
 	}
 }
-
-Define_entry(mercury____Index___std_util__univ_0_0);
-	r1 = -1;
-	proceed();
 
 Define_entry(mercury____Compare___std_util__univ_0_0);
 {
@@ -1155,10 +1148,6 @@ Define_entry(mercury____Unify___std_util__type_desc_0_0);
 	r1 = (comp == MR_COMPARE_EQUAL);
 	proceed();
 }
-
-Define_entry(mercury____Index___std_util__type_desc_0_0);
-	r1 = -1;
-	proceed();
 
 Define_entry(mercury____Compare___std_util__type_desc_0_0);
 {
