@@ -18,7 +18,8 @@ INSTALL_MAN_DIR = $(INSTALL_PREFIX)/man
 INSTALL_SCRIPTS		= scripts/c2init scripts/mmc \
 			scripts/mercury_update_interface scripts/mgnuc \
 			scripts/ml scripts/mmake scripts/mprof \
-			scripts/mdb scripts/mkfifo_using_mknod
+			scripts/mdb scripts/mkfifo_using_mknod \
+			scripts/mdbrc
 
 SICSTUS_SCRIPTS		= scripts/msc scripts/msl \
 			scripts/msp scripts/sicstus_conv

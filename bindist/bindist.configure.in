@@ -17,6 +17,9 @@ NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=$PREFIX/lib/nonshared}
 AC_SUBST(PREFIX)
 AC_SUBST(NONSHARED_LIB_DIR)
 AC_SUBST(LIBDIR)
+DEFAULT_MERCURY_DEBUGGER_INIT_DIR=$LIBDIR/mdb
+AC_SUBST(DEFAULT_MERCURY_DEBUGGER_INIT_DIR)
+
 #-----------------------------------------------------------------------------#
 #
 # Source the build_vars script to get the variables whoes bindings
@@ -156,6 +159,23 @@ test "$MKNOD" = "" && MKNOD=mknod
 AC_SUBST(MKNOD)
 
 PATH="$save_PATH"
+#-----------------------------------------------------------------------------#
+MERCURY_MSG("looking for a way to create temporary files...")
+
+AC_PATH_PROG(MKTEMP,mktemp)
+if test "$MKTEMP" != ""; then
+	# check that it really works
+	TMPFILE="`mktemp /tmp/configure.XXXXXX < /dev/null`"
+	case "$TMPFILE" in 
+		/tmp/configure.*) rm -f $TMPFILE ;;
+		*) MKTEMP="" ;;
+	esac
+fi
+if test "$MKTEMP" = ""; then
+	AC_MSG_WARN(cannot find a working \`mktemp', using \`mkdir || exit'')
+	MKTEMP=""
+fi
+AC_SUBST(MKTEMP)
 #-----------------------------------------------------------------------------#
 AC_PROG_CC
 AC_SUBST(CC)

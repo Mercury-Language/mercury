@@ -18,13 +18,14 @@ LIB_FILES	= bin doc html inc ints lib modules $(NUPROLOG) $(SICSTUS)
 
 UTILS		= $(INSTALL_PREFIX)/bin/mkinit \
 		  $(INSTALL_PREFIX)/bin/mdemangle \
-		  $(INSTALL_PREFIX)/bin/mtags
+		  $(INSTALL_PREFIX)/bin/mtags \
+		  $(INSTALL_PREFIX)/bin/mprof_merge_runs
 
 README_ETC	= ../COPYING ../COPYING.LIB ../HISTORY ../LIMITATIONS \
 		  ../NEWS ../RELEASE_NOTES ../BUGS ../WORK_IN_PROGRESS \
 		  ../VERSION
 
-SCRIPT_FILES	= ../scripts/*.in ../scripts/mdb ../scripts/*.sh-subr \
+SCRIPT_FILES	= ../scripts/*.in ../scripts/*.sh-subr \
 		  ../scripts/Mmake.rules
 
 CONFIG_FILES	= ../config.sub ../config.guess ../install-sh
