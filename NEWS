@@ -122,7 +122,7 @@ DRAFT NEWS for Mercury release 0.7
 
     	For traversing terms: 
     		Predicates argument/3, det_argument/3, functor/3,
-		and expand/4.  These are similar to Prolog's arg/3,
+		and deconstruct/4.  These are similar to Prolog's arg/3,
 		functor/3, and '=..'.
 
 	For constructing terms:

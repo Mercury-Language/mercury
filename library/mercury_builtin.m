@@ -772,15 +772,11 @@ mercury_data_mercury_builtin__base_type_functors_c_pointer_0_struct {
 Define_extern_entry(mercury____Unify___mercury_builtin__c_pointer_0_0);
 Define_extern_entry(mercury____Index___mercury_builtin__c_pointer_0_0);
 Define_extern_entry(mercury____Compare___mercury_builtin__c_pointer_0_0);
-Define_extern_entry(mercury____Term_To_Type___mercury_builtin__c_pointer_0_0);
-Define_extern_entry(mercury____Type_To_Term___mercury_builtin__c_pointer_0_0);
 
 BEGIN_MODULE(unify_c_pointer_module)
 	init_entry(mercury____Unify___mercury_builtin__c_pointer_0_0);
 	init_entry(mercury____Index___mercury_builtin__c_pointer_0_0);
 	init_entry(mercury____Compare___mercury_builtin__c_pointer_0_0);
-	init_entry(mercury____Term_To_Type___mercury_builtin__c_pointer_0_0);
-	init_entry(mercury____Type_To_Term___mercury_builtin__c_pointer_0_0);
 
 BEGIN_CODE
 Define_entry(mercury____Unify___mercury_builtin__c_pointer_0_0);
@@ -803,12 +799,6 @@ Define_entry(mercury____Compare___mercury_builtin__c_pointer_0_0);
 			  compare_input1 < compare_input2 ? COMPARE_LESS :
 			  COMPARE_GREATER);
 	proceed();
-
-Define_entry(mercury____Term_To_Type___mercury_builtin__c_pointer_0_0);
-	fatal_error(""cannot convert term to type `c_pointer'"");
-
-Define_entry(mercury____Type_To_Term___mercury_builtin__c_pointer_0_0);
-	fatal_error(""cannot convert type `c_pointer' to term"");
 
 END_MODULE
 

@@ -333,11 +333,11 @@
 
 %-----------------------------------------------------------------------------%
 
-	% functor, argument and expand take any type (including univ),
+	% functor, argument and deconstruct take any type (including univ),
 	% and return representation information for that type.
 	%
 	% The string representation of the functor that `functor' and 
-	% `expand' return is:
+	% `deconstruct' return is:
 	% 	- for user defined types, the functor that is given
 	% 	  in the type defintion. For lists, this
 	% 	  means the functors ./2 and []/0 are used, even if
@@ -383,14 +383,14 @@
 	%
 :- func det_argument(T::in, int::in) = (univ::out) is det.
 
-	% expand(Data, Functor, Arity, Arguments) 
+	% deconstruct(Data, Functor, Arity, Arguments) 
 	% 
 	% Given a data item (Data), binds Functor to a string
 	% representation of the functor, Arity to the arity of this data
 	% item, and Arguments to a list of arguments of the functor.
 	% The arguments in the list are each of type univ.
 	%
-:- pred expand(T::in, string::out, int::out, list(univ)::out) is det.
+:- pred deconstruct(T::in, string::out, int::out, list(univ)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -962,28 +962,20 @@ Define_extern_entry(mercury____Unify___std_util__univ_0_0);
 Define_extern_entry(mercury____Index___std_util__univ_0_0);
 Define_extern_entry(mercury____Compare___std_util__univ_0_0);
 Declare_label(mercury____Compare___std_util__univ_0_0_i1);
-Define_extern_entry(mercury____Term_To_Type___std_util__univ_0_0);
-Define_extern_entry(mercury____Type_To_Term___std_util__univ_0_0);
 
 Define_extern_entry(mercury____Unify___std_util__type_info_0_0);
 Define_extern_entry(mercury____Index___std_util__type_info_0_0);
 Define_extern_entry(mercury____Compare___std_util__type_info_0_0);
-Define_extern_entry(mercury____Term_To_Type___std_util__type_info_0_0);
-Define_extern_entry(mercury____Type_To_Term___std_util__type_info_0_0);
 
 BEGIN_MODULE(unify_univ_module)
 	init_entry(mercury____Unify___std_util__univ_0_0);
 	init_entry(mercury____Index___std_util__univ_0_0);
 	init_entry(mercury____Compare___std_util__univ_0_0);
 	init_label(mercury____Compare___std_util__univ_0_0_i1);
-	init_entry(mercury____Term_To_Type___std_util__univ_0_0);
-	init_entry(mercury____Type_To_Term___std_util__univ_0_0);
 
 	init_entry(mercury____Unify___std_util__type_info_0_0);
 	init_entry(mercury____Index___std_util__type_info_0_0);
 	init_entry(mercury____Compare___std_util__type_info_0_0);
-	init_entry(mercury____Term_To_Type___std_util__type_info_0_0);
-	init_entry(mercury____Type_To_Term___std_util__type_info_0_0);
 BEGIN_CODE
 Define_entry(mercury____Unify___std_util__univ_0_0);
 {
@@ -1091,15 +1083,6 @@ Define_label(mercury____Compare___std_util__univ_0_0_i1);
 	proceed();
 #endif
 
-Define_entry(mercury____Term_To_Type___std_util__univ_0_0);
-	/* don't know what to put here. */
-	fatal_error(""cannot convert univ type to term"");
-
-Define_entry(mercury____Type_To_Term___std_util__univ_0_0);
-	/* don't know what to put here. */
-	fatal_error(""cannot convert type univ to term"");
-
-
 Define_entry(mercury____Unify___std_util__type_info_0_0);
 {
 	/*
@@ -1135,14 +1118,6 @@ Define_entry(mercury____Compare___std_util__type_info_0_0);
 	compare_output = comp;
 	proceed();
 }
-
-Define_entry(mercury____Term_To_Type___std_util__type_info_0_0);
-	/* don't know what to put here. */
-	fatal_error(""cannot convert term to type type_info"");
-
-Define_entry(mercury____Type_To_Term___std_util__type_info_0_0);
-	/* don't know what to put here. */
-	fatal_error(""cannot convert type type_info to term"");
 
 END_MODULE
 
@@ -1899,7 +1874,7 @@ ML_get_num_functors(Word type_info)
 	#include <stdio.h>
 
 	/* 
-	 * Code for functor, arg and expand
+	 * Code for functor, arg and deconstruct
 	 * 
 	 * This relies on some C primitives that take a type_info
 	 * and a data_word, and get a functor, arity, argument vector,
@@ -2072,7 +2047,7 @@ ML_expand(Word* type_info, Word data_word, ML_Expand_Info *info)
 	default:
 		/* If this happens, the layout data is corrupt */
 
-		fatal_error(""Found unused tag value in expand"");
+		fatal_error(""ML_expand: found unused tag value"");
 	}
 }
 
@@ -2189,11 +2164,11 @@ ML_expand_builtin(Word data_value, Word entry_value, ML_Expand_Info *info)
 	switch ((int) entry_value) {
 	
 	case TYPELAYOUT_UNASSIGNED_VALUE:
-		fatal_error(""Attempt to use an UNASSIGNED tag in expand."");
+		fatal_error(""ML_expand: attempt to use an UNASSIGNED tag"");
 		break;
 
 	case TYPELAYOUT_UNUSED_VALUE:
-		fatal_error(""Attempt to use an UNUSED tag in expand."");
+		fatal_error(""ML_expand: attempt to use an UNUSED tag"");
 		break;
 
 	case TYPELAYOUT_STRING_VALUE:
@@ -2303,7 +2278,7 @@ ML_expand_builtin(Word data_value, Word entry_value, ML_Expand_Info *info)
 		
 		
 	default:
-		fatal_error(""Invalid tag value in expand"");
+		fatal_error(""ML_expand: invalid tag value"");
 		break;
 	}
 }
@@ -2359,7 +2334,7 @@ ML_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 	}
 
 	if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
-		fatal_error(""unbound type variable"");
+		fatal_error(""ML_create_type_info: unbound type variable"");
 	}
 
 	base_type_info = arg_pseudo_type_info[0];
@@ -2377,7 +2352,8 @@ ML_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 		if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info[i])) {
 			type_info[i] = term_type_info[arg_pseudo_type_info[i]];
 			if (TYPEINFO_IS_VARIABLE(type_info[i])) {
-				fatal_error(""unbound type variable"");
+				fatal_error(""ML_create_type_info: ""
+					""unbound type variable"");
 			}
 
 		} else {
@@ -2391,7 +2367,7 @@ ML_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 
 %-----------------------------------------------------------------------------%
 
-	% Code for functor, arg and expand.
+	% Code for functor, arg and deconstruct.
 
 :- pragma c_code(functor(Type::in, Functor::out, Arity::out),
 		will_not_call_mercury, " 
@@ -2468,8 +2444,8 @@ det_argument(Type, ArgumentIndex) = Argument :-
 		error("det_argument : argument out of range")
 	).
 
-:- pragma c_code(expand(Type::in, Functor::out, Arity::out, Arguments::out),
-		will_not_call_mercury, " 
+:- pragma c_code(deconstruct(Type::in, Functor::out, Arity::out, 
+		Arguments::out), will_not_call_mercury, " 
 {
 	ML_Expand_Info info;
 	Word arg_pseudo_type_info;

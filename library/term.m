@@ -340,7 +340,7 @@ term__type_to_term_2(Univ, Term) :-
 			error("term__type_to_term: unknown type")
 		)
 	;
-		expand(Univ, FunctorString, _FunctorArity, FunctorArgs),
+		deconstruct(Univ, FunctorString, _FunctorArity, FunctorArgs),
 		term__type_list_to_term_list(FunctorArgs, TermArgs),
 		Term = term__functor(term__atom(FunctorString), TermArgs,
 			Context)

@@ -1314,7 +1314,7 @@ io__write_univ_as_univ(Univ) -->
 :- mode io__write_ordinary_term(in, in, di, uo) is det.
 
 io__write_ordinary_term(Term, Priority) -->
-	{ expand(Term, Functor, _Arity, Args) },
+	{ deconstruct(Term, Functor, _Arity, Args) },
 	io__get_op_table(OpTable),
 	(
 		{ Functor = "." },
@@ -1437,13 +1437,13 @@ adjust_priority(Priority, x, Priority - 1).
 
 io__write_list_tail(Term) -->
 	( 
-		{ expand(Term, ".", _Arity, [ListHead, ListTail]) }
+		{ deconstruct(Term, ".", _Arity, [ListHead, ListTail]) }
 	->
 		io__write_string(", "),
 		io__write_univ(ListHead),
 		io__write_list_tail(ListTail)
 	;
-		{ expand(Term, "[]", _Arity, []) }
+		{ deconstruct(Term, "[]", _Arity, []) }
 	->
 		[]
 	;

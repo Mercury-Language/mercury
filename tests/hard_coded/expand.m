@@ -95,7 +95,7 @@ test_arg(T) -->
 	).
 
 test_expand(T) -->
-	{ expand(T, Functor, Arity, Arguments) },
+	{ deconstruct(T, Functor, Arity, Arguments) },
 	{ string__format("expand: functor %s arity %d arguments ", [s(Functor),
 		i(Arity)], Str) },
 	io__write_string(Str),

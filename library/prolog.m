@@ -116,7 +116,7 @@ X @>= Y :- compare(R, X, Y), R \= (<).
 % we use a module qualifier here to avoid
 % overriding the builtin Prolog version
 'prolog__=..'(Term, Functor - Args) :-
-	expand(Term, Functor, _Arity, Args).
+	deconstruct(Term, Functor, _Arity, Args).
 
 % we use a module qualifier here to avoid
 % overriding the builtin Prolog version
