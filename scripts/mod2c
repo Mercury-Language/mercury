@@ -5,7 +5,6 @@
 # the gcc-specific output instead of the portable output,
 # and -l, which causes it to generate #line directives in the output file.
 
-
 sub println {
     local ($line) = @_;
     if ($line =~ /\n/) {
@@ -109,7 +108,11 @@ while ($ARGV = shift) {
         }
 	}
         $init .= "\tinit_$type($label);\n";
-        $decl .= "Declare_$type($label);\n";
+	if ($type eq "entry") {
+		$decl .= "Define_extern_entry($label);\n";
+	} else {
+		$decl .= "Declare_$type($label);\n";
+	}
         $code .= "Define_$type($label);\n";
     } else {
         $code .= $save;
