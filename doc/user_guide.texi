@@ -1052,7 +1052,7 @@ and everything else with no tracing, you could use the following:
 C2INITFLAGS = --trace
 MLFLAGS     = --trace
 MCFLAGS-foo = --trace deep
-MCFLAGS-bar = --trace shalow
+MCFLAGS-bar = --trace shallow
 @end example
 
 @node Selecting trace events
