@@ -1,0 +1,49 @@
+#-----------------------------------------------------------------------------#
+
+main_target: check
+
+#-----------------------------------------------------------------------------#
+
+include ../Mmake
+
+#-----------------------------------------------------------------------------#
+
+SOURCES= \
+	bigtest.m \
+	det_errors.m \
+	errors.m \
+	errors1.m \
+	errors2.m \
+	io_in_ite_cond.m \
+	missing_det_decls.m \
+	modes_erroneous.m \
+	mostly_uniq1.m \
+	mostly_uniq2.m \
+	occurs.m \
+	pragma_c_code_and_clauses1.m \
+	pragma_c_code_and_clauses2.m \
+	prog_io_erroneous.m \
+	types.m \
+	undef_type.m
+
+DEPS=		$(SOURCES:%.m=%.dep)
+DEPENDS=	$(SOURCES:%.m=%.depend)
+ERRS=		$(SOURCES:%.m=%.err)
+ERR_RESS=	$(SOURCES:%.m=%.err_res)	# not yet used
+
+%.err: %.m
+	if mc --errorcheck-only $* > $*.err 2>&1; then false; else true; fi
+
+# this rule not yet used
+%.err_res: %.err %.err_exp
+	-rm -f $@
+	diff -u $*.err_exp $*.err > $@
+
+all: check
+check: $(ERRS)
+errs: $(ERRS)
+depend:
+clean:
+	rm -f *.c *.o *.err *.err2 *.d
+
+#-----------------------------------------------------------------------------#

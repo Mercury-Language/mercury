@@ -5,7 +5,7 @@
 fact.
 rule :- fact.
 
-/* :- incorrect_declaration. */
+:- incorrect_declaration.
 
 :- pred p(t1).
 p(a).
