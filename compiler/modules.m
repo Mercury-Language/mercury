@@ -1598,13 +1598,17 @@ read_dependency_file_get_modules(TransOptDeps) -->
 			\+ char__is_whitespace(Char)
 		)) },
 		{ list__takewhile(NotIsWhitespace, CharList1, CharList, _) },
-		% Remove the ".trans_opt" suffix from the word which was
-		% read in.
-		{ list__remove_suffix(CharList, 
-			['.','t','r','a','n','s','_','o','p','t'], 
-			ModuleCharList) }
+		{ string__from_char_list(CharList, FileName0) },
+		{ string__remove_suffix(FileName0, ".trans_opt", FileName) }
 	->
-		{ string__from_char_list(ModuleCharList, ModuleFileName) },
+		(
+			{ string__append("Mercury/trans_opts/", BaseFileName,
+				FileName) }
+		->
+			{ ModuleFileName = BaseFileName }
+		;
+			{ ModuleFileName = FileName }
+		),
 		{ file_name_to_module_name(ModuleFileName, Module) },
 		read_dependency_file_get_modules(TransOptDeps0),
 		{ TransOptDeps = [ Module | TransOptDeps0 ] }
