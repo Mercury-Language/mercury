@@ -18,6 +18,8 @@
 #ifndef MERCURY_TRACE_SOURCE_H
 #define MERCURY_TRACE_SOURCE_H
 
+#include "mercury_std.h"	/* for bool */
+
 /*
 ** This holds the information for one server that the program is
 ** attached to.  The fields are:
