@@ -576,7 +576,7 @@ transform_det_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 		counter__init(0), [], Vars5, VarTypes5,
 		FileName, MaybeRecInfo),
 
-	transform_goal([], Goal0, TransformedGoal, DeepInfo0, DeepInfo),
+	transform_goal([], Goal0, TransformedGoal, _, DeepInfo0, DeepInfo),
 
 	Vars = DeepInfo ^ vars,
 	VarTypes = DeepInfo ^ var_types,
@@ -614,12 +614,13 @@ transform_det_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 			[TopCSD, MiddleCSD], [], ExitPortCode)
 	),
 
+	goal_info_add_feature(GoalInfo0, impure, GoalInfo),
 	Goal = conj([
 		BindProcStaticVarGoal,
 		CallPortCode,
 		TransformedGoal,
 		ExitPortCode
-	]) - GoalInfo0,
+	]) - GoalInfo,
 	proc_info_set_varset(Proc0, Vars, Proc1),
 	proc_info_set_vartypes(Proc1, VarTypes, Proc2),
 	proc_info_set_goal(Proc2, Goal, Proc).
@@ -663,7 +664,7 @@ transform_semi_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 		counter__init(0), [], Vars5, VarTypes5,
 		FileName, MaybeRecInfo),
 
-	transform_goal([], Goal0, TransformedGoal, DeepInfo0, DeepInfo),
+	transform_goal([], Goal0, TransformedGoal, _, DeepInfo0, DeepInfo),
 
 	Vars = DeepInfo ^ vars,
 	VarTypes = DeepInfo ^ var_types,
@@ -711,6 +712,7 @@ transform_semi_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 	ExitConjGoalInfo = goal_info_add_nonlocals_make_impure(GoalInfo0,
 		NewNonlocals),
 
+	goal_info_add_feature(GoalInfo0, impure, GoalInfo),
 	Goal = conj([
 		BindProcStaticVarGoal,
 		CallPortCode,
@@ -721,7 +723,7 @@ transform_semi_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 			]) - ExitConjGoalInfo,
 			FailPortCode
 		], map__init) - ExitConjGoalInfo
-	]) - GoalInfo0,
+	]) - GoalInfo,
 	proc_info_set_varset(Proc0, Vars, Proc1),
 	proc_info_set_vartypes(Proc1, VarTypes, Proc2),
 	proc_info_set_goal(Proc2, Goal, Proc).
@@ -772,7 +774,7 @@ transform_non_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 		counter__init(0), [], Vars5, VarTypes5,
 		FileName, MaybeRecInfo),
 
-	transform_goal([], Goal0, TransformedGoal, DeepInfo0, DeepInfo),
+	transform_goal([], Goal0, TransformedGoal, _, DeepInfo0, DeepInfo),
 
 	Vars = DeepInfo ^ vars,
 	VarTypes = DeepInfo ^ var_types,
@@ -830,16 +832,17 @@ transform_non_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 	goal_info_get_determinism(GoalInfo0, Detism0),
 	determinism_components(Detism0, CanFail, _),
 	determinism_components(Detism, CanFail, at_most_many),
-	goal_info_set_determinism(GoalInfo0, Detism, GoalInfo),
+	goal_info_set_determinism(GoalInfo0, Detism, GoalInfo1),
 
 	ExitRedoNonLocals = set__union(NewNonlocals,
 		list_to_set([NewOutermostProcDyn])),
 	ExitRedoGoalInfo = impure_reachable_init_goal_info(ExitRedoNonLocals,
 		multidet),
 
-	CallExitRedoGoalInfo = goal_info_add_nonlocals_make_impure(GoalInfo,
+	CallExitRedoGoalInfo = goal_info_add_nonlocals_make_impure(GoalInfo1,
 		ExitRedoNonLocals),
 
+	goal_info_add_feature(GoalInfo1, impure, GoalInfo),
 	Goal = conj([
 		BindProcStaticVarGoal,
 		CallPortCode,
@@ -879,7 +882,7 @@ transform_inner_proc(ModuleInfo, PredProcId, Proc0, Proc, no) :-
 		counter__init(0), [], Vars1, VarTypes1,
 		FileName, MaybeRecInfo),
 
-	transform_goal([], Goal0, TransformedGoal, DeepInfo0, DeepInfo),
+	transform_goal([], Goal0, TransformedGoal, _, DeepInfo0, DeepInfo),
 
 	Vars = DeepInfo ^ vars,
 	VarTypes = DeepInfo ^ var_types,
@@ -906,60 +909,97 @@ is_proc_in_interface(ModuleInfo, PredId, _ProcId) = IsInInterface :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred transform_goal(goal_path::in, hlds_goal::in, hlds_goal::out,
+:- pred add_impurity_if_needed(bool::in, hlds_goal_info::in,
+	hlds_goal_info::out) is det.
+
+add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo) :-
+	(
+		AddedImpurity = no,
+		GoalInfo = GoalInfo0
+	;
+		AddedImpurity = yes,
+		goal_info_add_feature(GoalInfo0, impure, GoalInfo)
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred transform_goal(goal_path::in, hlds_goal::in, hlds_goal::out, bool::out,
 	deep_info::in, deep_info::out) is det.
 
-transform_goal(Path, conj(Goals0) - Info, conj(Goals) - Info)  -->
-	transform_conj(0, Path, Goals0, Goals).
+transform_goal(Path, conj(Goals0) - Info0, conj(Goals) - Info,
+		AddedImpurity) -->
+	transform_conj(0, Path, Goals0, Goals, AddedImpurity),
+	{ add_impurity_if_needed(AddedImpurity, Info0, Info) }.
 
-transform_goal(Path, par_conj(Goals0, SM) - Info,
-		par_conj(Goals, SM) - Info) -->
-	transform_conj(0, Path, Goals0, Goals).
+transform_goal(Path, par_conj(Goals0, SM) - Info0,
+		par_conj(Goals, SM) - Info, AddedImpurity) -->
+	transform_conj(0, Path, Goals0, Goals, AddedImpurity),
+	{ add_impurity_if_needed(AddedImpurity, Info0, Info) }.
 
-transform_goal(Path, switch(Var, CF, Cases0, SM) - Info,
-		switch(Var, CF, Cases, SM) - Info) -->
-	transform_switch(list__length(Cases0), 0, Path, Cases0, Cases).
+transform_goal(Path, switch(Var, CF, Cases0, SM) - Info0,
+		switch(Var, CF, Cases, SM) - Info, AddedImpurity) -->
+	transform_switch(list__length(Cases0), 0, Path, Cases0, Cases,
+		AddedImpurity),
+	{ add_impurity_if_needed(AddedImpurity, Info0, Info) }.
 
-transform_goal(Path, disj(Goals0, SM) - Info, disj(Goals, SM) - Info) -->
-	transform_disj(0, Path, Goals0, Goals).
+transform_goal(Path, disj(Goals0, SM) - Info0, disj(Goals, SM) - Info,
+		AddedImpurity) -->
+	transform_disj(0, Path, Goals0, Goals, AddedImpurity),
+	{ add_impurity_if_needed(AddedImpurity, Info0, Info) }.
 
-transform_goal(Path, not(Goal0) - Info, not(Goal) - Info) -->
-	transform_goal([neg | Path], Goal0, Goal).
+transform_goal(Path, not(Goal0) - Info0, not(Goal) - Info, AddedImpurity) -->
+	transform_goal([neg | Path], Goal0, Goal, AddedImpurity),
+	{ add_impurity_if_needed(AddedImpurity, Info0, Info) }.
 
-transform_goal(Path, some(QVars, CR, Goal0) - Info,
-		some(QVars, CR, Goal) - Info) -->
+transform_goal(Path, some(QVars, CR, Goal0) - Info0,
+		some(QVars, CR, Goal) - Info, AddedImpurity) -->
 	{ Goal0 = _ - InnerInfo },
-	{ goal_info_get_determinism(Info, OuterDetism) },
+	{ goal_info_get_determinism(Info0, OuterDetism) },
 	{ goal_info_get_determinism(InnerInfo, InnerDetism) },
 	{ InnerDetism = OuterDetism ->
 		MaybeCut = no_cut
 	;
 		MaybeCut = cut
 	},
-	transform_goal([exist(MaybeCut) | Path], Goal0, Goal).
+	transform_goal([exist(MaybeCut) | Path], Goal0, Goal, AddedImpurity),
+	{ add_impurity_if_needed(AddedImpurity, Info0, Info) }.
 
-transform_goal(Path, if_then_else(IVars, Cond0, Then0, Else0, SM) - Info,
-		if_then_else(IVars, Cond, Then, Else, SM) - Info) -->
-	transform_goal([ite_cond | Path], Cond0, Cond),
-	transform_goal([ite_then | Path], Then0, Then),
-	transform_goal([ite_else | Path], Else0, Else).
+transform_goal(Path, if_then_else(IVars, Cond0, Then0, Else0, SM) - Info0,
+		if_then_else(IVars, Cond, Then, Else, SM) - Info,
+		AddedImpurity) -->
+	transform_goal([ite_cond | Path], Cond0, Cond, AddedImpurityC),
+	transform_goal([ite_then | Path], Then0, Then, AddedImpurityT),
+	transform_goal([ite_else | Path], Else0, Else, AddedImpurityE),
+	{
+		( AddedImpurityC = yes
+		; AddedImpurityT = yes
+		; AddedImpurityE = yes
+		)
+	->
+		AddedImpurity = yes
+	;
+		AddedImpurity = no
+	},
+	{ add_impurity_if_needed(AddedImpurity, Info0, Info) }.
 
-transform_goal(_, shorthand(_) - _, _) -->
-	{ error("transform_goal/5: shorthand should have gone by now") }.
+transform_goal(_, shorthand(_) - _, _, _) -->
+	{ error("transform_goal/6: shorthand should have gone by now") }.
 
-transform_goal(Path0, Goal0 - Info0, GoalAndInfo) -->
+transform_goal(Path0, Goal0 - Info0, GoalAndInfo, AddedImpurity) -->
 	{ Goal0 = foreign_proc(Attrs, _, _, _, _, _, _) },
 	( { may_call_mercury(Attrs, may_call_mercury) } ->
 		{ reverse(Path0, Path) },
-		wrap_foreign_code(Path, Goal0 - Info0, GoalAndInfo)
+		wrap_foreign_code(Path, Goal0 - Info0, GoalAndInfo),
+		{ AddedImpurity = yes }
 	;
-		{ GoalAndInfo = Goal0 - Info0 }
+		{ GoalAndInfo = Goal0 - Info0 },
+		{ AddedImpurity = no }
 	).
 
-transform_goal(_Path, Goal - Info, Goal - Info) -->
+transform_goal(_Path, Goal - Info, Goal - Info, no) -->
 	{ Goal = unify(_, _, _, _, _) }.
 
-transform_goal(Path0, Goal0 - Info0, GoalAndInfo) -->
+transform_goal(Path0, Goal0 - Info0, GoalAndInfo, yes) -->
 	{ Goal0 = call(_, _, _, BuiltinState, _, _) },
 	( { BuiltinState \= inline_builtin } ->
 		{ reverse(Path0, Path) },
@@ -968,38 +1008,43 @@ transform_goal(Path0, Goal0 - Info0, GoalAndInfo) -->
 		{ GoalAndInfo = Goal0 - Info0 }
 	).
 
-transform_goal(Path0, Goal0 - Info0, GoalAndInfo) -->
+transform_goal(Path0, Goal0 - Info0, GoalAndInfo, yes) -->
 	{ Goal0 = generic_call(_, _, _, _) },
 	{ reverse(Path0, Path) },
 	wrap_call(Path, Goal0 - Info0, GoalAndInfo).
 
 :- pred transform_conj(int::in, goal_path::in,
-	list(hlds_goal)::in, list(hlds_goal)::out,
+	list(hlds_goal)::in, list(hlds_goal)::out, bool::out,
 	deep_info::in, deep_info::out) is det.
 
-transform_conj(_, _, [], []) --> [].
-transform_conj(N, Path, [Goal0 | Goals0], [Goal | Goals]) -->
-	transform_goal([conj(N) | Path], Goal0, Goal),
-	transform_conj(N + 1, Path, Goals0, Goals).
+transform_conj(_, _, [], [], no) --> [].
+transform_conj(N, Path, [Goal0 | Goals0], [Goal | Goals], AddedImpurity) -->
+	transform_goal([conj(N) | Path], Goal0, Goal, AddedImpurityFirst),
+	transform_conj(N + 1, Path, Goals0, Goals, AddedImpurityLater),
+	{ bool__or(AddedImpurityFirst, AddedImpurityLater, AddedImpurity) }.
 
 :- pred transform_disj(int::in, goal_path::in,
-	list(hlds_goal)::in, list(hlds_goal)::out,
+	list(hlds_goal)::in, list(hlds_goal)::out, bool::out,
 	deep_info::in, deep_info::out) is det.
 
-transform_disj(_, _, [], []) --> [].
-transform_disj(N, Path, [Goal0 | Goals0], [Goal | Goals]) -->
-	transform_goal([disj(N) | Path], Goal0, Goal),
-	transform_disj(N + 1, Path, Goals0, Goals).
+transform_disj(_, _, [], [], no) --> [].
+transform_disj(N, Path, [Goal0 | Goals0], [Goal | Goals], AddedImpurity) -->
+	transform_goal([disj(N) | Path], Goal0, Goal, AddedImpurityFirst),
+	transform_disj(N + 1, Path, Goals0, Goals, AddedImpurityLater),
+	{ bool__or(AddedImpurityFirst, AddedImpurityLater, AddedImpurity) }.
 
 :- pred transform_switch(int::in, int::in, goal_path::in,
-	list(case)::in, list(case)::out,
+	list(case)::in, list(case)::out, bool::out,
 	deep_info::in, deep_info::out) is det.
 
-transform_switch(_, _, _, [], []) --> [].
+transform_switch(_, _, _, [], [], no) --> [].
 transform_switch(NumCases, N, Path, [case(Id, Goal0) | Goals0],
-		[case(Id, Goal) | Goals]) -->
-	transform_goal([switch(NumCases, N) | Path], Goal0, Goal),
-	transform_switch(NumCases, N + 1, Path, Goals0, Goals).
+		[case(Id, Goal) | Goals], AddedImpurity) -->
+	transform_goal([switch(NumCases, N) | Path], Goal0, Goal,
+		AddedImpurityFirst),
+	transform_switch(NumCases, N + 1, Path, Goals0, Goals,
+		AddedImpurityLater),
+	{ bool__or(AddedImpurityFirst, AddedImpurityLater, AddedImpurity) }.
 
 :- pred wrap_call(goal_path::in, hlds_goal::in, hlds_goal::out,
 	deep_info::in, deep_info::out) is det.
@@ -1008,7 +1053,8 @@ wrap_call(GoalPath, Goal0, Goal, DeepInfo0, DeepInfo) :-
 	Goal0 = GoalExpr - GoalInfo0,
 	ModuleInfo = DeepInfo0 ^ module_info,
 	goal_info_get_features(GoalInfo0, GoalFeatures),
-	goal_info_remove_feature(GoalInfo0, tailcall, GoalInfo),
+	goal_info_remove_feature(GoalInfo0, tailcall, GoalInfo1),
+	goal_info_add_feature(GoalInfo1, impure, GoalInfo),
 
 	SiteNumCounter0 = DeepInfo0 ^ site_num_counter,
 	counter__allocate(SiteNum, SiteNumCounter0, SiteNumCounter),
@@ -1331,11 +1377,12 @@ wrap_foreign_code(GoalPath, Goal0, Goal, DeepInfo0, DeepInfo) :-
 	compress_filename(DeepInfo0, FileName0, FileName),
 	CallSite = callback(FileName, LineNumber, GoalPath),
 
+	goal_info_add_feature(GoalInfo0, impure, GoalInfo),
 	Goal = conj([
 		SiteNumVarGoal,
 		PrepareGoal,
 		Goal0
-	]) - GoalInfo0,
+	]) - GoalInfo,
 	DeepInfo = ((((DeepInfo0 ^ site_num_counter := SiteNumCounter)
 		^ vars := Vars)
 		^ var_types := VarTypes)
