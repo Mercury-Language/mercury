@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995, 1997-1998 The University of Melbourne.
+% Copyright (C) 1995, 1997-1998, 2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,7 +16,7 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module bool, list, options, getopt.
+:- import_module bool, list, options, getopt, io.
 
 :- type globals.
 
@@ -95,7 +95,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, std_util, io, require.
+:- import_module map, std_util, require.
 
 %-----------------------------------------------------------------------------%
 
