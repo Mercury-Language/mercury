@@ -69,8 +69,6 @@ fi
 if test "$MMC_LOWLEVEL_DEBUG" != ""
 then
 	CDEBUG_FLAGS="$CDEBUG_FLAGS --cflags -DMR_LOWLEVEL_DEBUG"
-else
-	CDEBUG_FLAGS=""
 fi
 
 if test "$MMC_ADDED_CFLAGS" != ""
