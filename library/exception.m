@@ -1778,26 +1778,36 @@ MR_proc_static_user_one_site(exception, builtin_catch, 3, 5,
 ** on the nondet stack, so for the purposes of doing stack traces we say
 ** they have MR_DETISM_NON, even though they are not actually nondet.
 **
-** MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT(detism, slots, succip_locn,
+** The fields of the MR_EXTERN_USER_PROC_STATIC_PROC_LAYOUT macro are
+** the following:
+**
+** MR_EXTERN_USER_PROC_STATIC_PROC_LAYOUT(detism, slots, succip_locn,
 **	pred_or_func, module, name, arity, mode)
+**
+** We must use MR_EXTERN_USER_PROC_STATIC_PROC_LAYOUT instead of the
+** MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT version, because with intermodule
+** optimization, the caller of builtin_catch may be inlined in other modules
+** (e.g. browser/declarative_debugger.m), and deep profiling may therefore
+** need the address of the proc_layout structure for the call's
+** call_site_static structure.
 */
 
-MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT(
+MR_EXTERN_USER_PROC_STATIC_PROC_LAYOUT(
 	MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, -1,
 	MR_PREDICATE, exception, builtin_catch, 3, 0);
-MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT(
+MR_EXTERN_USER_PROC_STATIC_PROC_LAYOUT(
 	MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, -1,
 	MR_PREDICATE, exception, builtin_catch, 3, 1);
-MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT(
+MR_EXTERN_USER_PROC_STATIC_PROC_LAYOUT(
 	MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, -1,
 	MR_PREDICATE, exception, builtin_catch, 3, 2);
-MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT(
+MR_EXTERN_USER_PROC_STATIC_PROC_LAYOUT(
 	MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, -1,
 	MR_PREDICATE, exception, builtin_catch, 3, 3);
-MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT(
+MR_EXTERN_USER_PROC_STATIC_PROC_LAYOUT(
 	MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, -1,
 	MR_PREDICATE, exception, builtin_catch, 3, 4);
-MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT(
+MR_EXTERN_USER_PROC_STATIC_PROC_LAYOUT(
 	MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, -1,
 	MR_PREDICATE, exception, builtin_catch, 3, 5);
 
