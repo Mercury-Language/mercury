@@ -612,6 +612,9 @@
 		% only classify the topmost level of the type, whereas we
 		% really want to classify the element type for arrays, so
 		% we can generate int[] for array(int)).
+		% Note that mlds__mercury_array_type/1 is used for representing
+		% Mercury arrays, whereas mlds__array_type/1 (see below)
+		% is used for representing the target language's native arrays.
 	;	mlds__mercury_array_type(mlds__type)
 
 		% The type for the continuation functions used
@@ -668,9 +671,23 @@
 		% These are single-dimensional, and can be indexed
 		% using the `field' lval with an `offset' field_id;
 		% indices start at zero.
-		% Currently these are used for static constants
-		% that would otherwise be allocated with a `new_object'
-		% statement.
+		%
+		% Note that mlds__array_type/1 is used for representing
+		% the target language's native arrays, whereas
+		% mlds__mercury_array_type/1 (see above) is used for
+		% representing Mercury arrays.
+		%
+		% Currently MLDS array types are used for
+		% (a) static constants that would otherwise be allocated
+		%     with a `new_object', if we're using the low-level
+		%     data representation (--no-high-level-data)
+		% (b) for static constants of certain Mercury types which are
+		%     always represented using the low-level data
+		%     representation, regardless of --high-level-data,
+		%     in particular closures and type_infos.
+		% (c) for any other arrays generated internally by the
+		%     MLDS code generator, e.g. the arrays used for
+		%     string switches.
 	;	mlds__array_type(mlds__type)
 
 		% Pointer types.
