@@ -59,7 +59,7 @@ static const char header2[] =
 	"*/\n"
 	"\n"
 	"#include <stddef.h>\n"
-	"#include \"init.h\"\n"
+	"#include \"mercury_init.h\"\n"
 	"\n"
 	"/*\n"
 	"** Work around a bug in the Solaris 2.X (X<=4) linker;\n"
