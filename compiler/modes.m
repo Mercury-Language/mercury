@@ -134,7 +134,7 @@ a variable live if its value will be used later on in the computation.
 	% Perform mode inference and checking for a whole module.
 	% UnsafeToContinue = yes means that mode inference
 	% was halted prematurely, due to an error, and that
-	% we should therefore not perform type-checking, because we
+	% we should therefore not perform determinism-checking, because we
 	% might get internal errors.
 
 :- pred modecheck(module_info, module_info, bool, io__state, io__state).
