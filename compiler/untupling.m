@@ -114,8 +114,8 @@
 :- import_module parse_tree__prog_type.
 :- import_module parse_tree__prog_util.
 
-:- import_module bool, counter, list, map, require, std_util, string, svmap.
-:- import_module svvarset, term, varset.
+:- import_module bool, counter, int, list, map, require, std_util, string.
+:- import_module svmap, svvarset, term, varset.
 
 	% The transform_map structure records which procedures were
 	% transformed into what procedures during the first pass.
@@ -319,10 +319,9 @@ expand_one_arg_in_proc_2(HeadVar0, ArgMode0, MaybeHeadVarsAndArgModes,
 		Expansion),
 	(
 		Expansion = expansion(ConsId, NewTypes),
-		NumVars = list__length(NewTypes),
-		svvarset__new_vars(NumVars, NewHeadVars, !VarSet),
-		svmap__det_insert_from_corresponding_lists(
-			NewHeadVars, NewTypes, !VarTypes),
+		varset__lookup_name(!.VarSet, HeadVar0, ParentName),
+		create_untuple_vars(ParentName, 0, NewTypes, NewHeadVars,
+			!VarSet, !VarTypes),
 		list__duplicate(list__length(NewHeadVars), ArgMode0,
 			NewArgModes),
 		MaybeHeadVarsAndArgModes = yes(NewHeadVars - NewArgModes),
@@ -345,6 +344,19 @@ expand_one_arg_in_proc_2(HeadVar0, ArgMode0, MaybeHeadVarsAndArgModes,
 		MaybeHeadVarsAndArgModes = no,
 		ContainerTypes = ContainerTypes0
 	).
+
+:- pred create_untuple_vars(string::in, int::in, list(type)::in,
+	list(prog_var)::out, prog_varset::in, prog_varset::out,
+	vartypes::in, vartypes::out) is det.
+
+create_untuple_vars(_, _, [], [], !VarSet, !VarTypes).
+create_untuple_vars(ParentName, Num, [Type | Types], [NewVar | NewVars],
+		!VarSet, !VarTypes) :-
+	string__format("Untupled_%s_%d", [s(ParentName), i(Num)], Name),
+	svvarset__new_named_var(Name, NewVar, !VarSet),
+	svmap__det_insert(NewVar, Type, !VarTypes),
+	create_untuple_vars(ParentName, Num+1, Types, NewVars,
+		!VarSet, !VarTypes).
 
 :- pred conjoin_goals_keep_detism(hlds_goal::in, hlds_goal::in,
 	hlds_goal::out) is det.

@@ -22,6 +22,7 @@
 :- include_module compile_target_code.
 :- include_module export.
 :- include_module foreign.
+:- include_module interval.
 :- include_module matching.
 :- include_module name_mangle.
 :- include_module proc_label.

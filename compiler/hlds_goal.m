@@ -792,6 +792,9 @@
 				% therefore should refrain from "optimizing"
 				% it away, even though it is a copy of another,
 				% previous goal.
+	;	tuple_opt	% This goal was create by the tupling
+				% optimization. The comment for the stack slot
+				% optimization above applies here.
 	;	call_table_gen	% This goal generates the variable that
 				% represents the call table tip. If debugging
 				% is enabled, the code generator needs to save

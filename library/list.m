@@ -314,6 +314,11 @@
 	%
 :- pred list__nth_member_search(list(T)::in, T::in, int::out) is semidet.
 
+	% A deterministic version of list__nth_member_search, which aborts
+	% instead of failing if the element is not found in the list.
+	%
+:- pred list__nth_member_lookup(list(T)::in, T::in, int::out) is det.
+
 	% list__index*(List, Position, Elem):
 	%	These predicates select an element in a list from it's
 	%	position.  The `index0' preds consider the first element
@@ -1051,6 +1056,13 @@ list__nth_member_search_2([X | Xs], Y, P, N) :-
 		N = P
 	;
 		list__nth_member_search_2(Xs, Y, P + 1, N)
+	).
+
+nth_member_lookup(List, Elem, Position) :-
+	( list__nth_member_search(List, Elem, PositionPrime) ->
+		Position = PositionPrime
+	;
+		error("list__nth_member_lookup/3: element not found in list")
 	).
 
 %-----------------------------------------------------------------------------%

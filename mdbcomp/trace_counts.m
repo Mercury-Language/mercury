@@ -43,6 +43,9 @@
 :- mode string_to_trace_port(in, out) is semidet.
 :- mode string_to_trace_port(out, in) is det.
 
+:- pred restrict_trace_counts_to_module(module_name::in, trace_counts::in,
+	trace_counts::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -220,3 +223,19 @@ string_to_goal_path(String) = Path :-
 	string__length(String, Length),
 	string__substring(String, 1, Length-2, SubString),
 	path_from_string(SubString, Path).
+
+%-----------------------------------------------------------------------------%
+
+restrict_trace_counts_to_module(ModuleName, TraceCounts0, TraceCounts) :-
+	map__foldl(restrict_trace_counts_2(ModuleName), TraceCounts0,
+		map__init, TraceCounts).
+	
+:- pred restrict_trace_counts_2(module_name::in, proc_label::in, 
+	proc_trace_counts::in, trace_counts::in, trace_counts::out) is det.
+
+restrict_trace_counts_2(ModuleName, ProcLabel, ProcCounts, Acc0, Acc) :-
+	(if ProcLabel = proc(ModuleName, _, _, _, _, _) then
+		map__det_insert(Acc0, ProcLabel, ProcCounts, Acc)
+	else
+		Acc = Acc0
+	).

@@ -70,6 +70,7 @@
 :- import_module transform_hlds__exception_analysis.
 :- import_module transform_hlds__higher_order.
 :- import_module transform_hlds__accumulator.
+:- import_module transform_hlds__tupling.
 :- import_module transform_hlds__untupling.
 :- import_module transform_hlds__inlining.
 :- import_module transform_hlds__loop_inv.
@@ -2335,6 +2336,9 @@ mercury_compile__middle_pass(ModuleName, !HLDS, !IO) :-
 	mercury_compile__maybe_untuple_arguments(Verbose, Stats, !HLDS, !IO),
 	mercury_compile__maybe_dump_hlds(!.HLDS, 133, "untupling", !IO),
 
+	mercury_compile__maybe_tuple_arguments(Verbose, Stats, !HLDS, !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 134, "tupling", !IO),
+
 	mercury_compile__maybe_higher_order(Verbose, Stats, !HLDS, !IO),
 	mercury_compile__maybe_dump_hlds(!.HLDS, 135, "higher_order", !IO),
 
@@ -3279,7 +3283,24 @@ mercury_compile__maybe_untuple_arguments(Verbose, Stats, !HLDS, !IO) :-
 		maybe_flush_output(Verbose, !IO),
 		untuple_arguments(!HLDS, !IO),
 		maybe_write_string(Verbose, "% done.\n", !IO),
+		mercury_compile__simplify(no, yes, Verbose, Stats,
+			process_all_nonimported_nonaditi_procs, !HLDS, !IO),
 		maybe_report_stats(Stats, !IO)
+	;
+		true
+	).
+
+:- pred mercury_compile__maybe_tuple_arguments(bool::in, bool::in,
+	module_info::in, module_info::out, io::di, io::uo) is det.
+
+mercury_compile__maybe_tuple_arguments(Verbose, Stats, !HLDS, !IO) :-
+	globals.io_lookup_bool_option(tuple, Tuple, !IO),	
+	( Tuple = yes ->
+		maybe_write_string(Verbose, "% Tupling...\n", !IO),
+		maybe_flush_output(Verbose, !IO),
+		tuple_arguments(!HLDS, !IO),
+ 		maybe_write_string(Verbose, "% done.\n", !IO),
+ 		maybe_report_stats(Stats, !IO)
 	;
 		true
 	).

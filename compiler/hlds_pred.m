@@ -655,6 +655,10 @@
 			int	% The procedure number of the original
 				% procedure.
 		)
+	;	tuple(
+			int	% The procedure number of the original
+				% procedure.
+		)
 	;	untuple(
 			int	% The procedure number of the original
 				% procedure.

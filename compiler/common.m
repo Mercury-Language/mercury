@@ -320,6 +320,7 @@ common__optimise_unification(Unification0, _Left0, _Right0, Mode, _Context,
                 % stack_opt.m, which has done a more comprehensive cost
                 % analysis than common.m can do.
                 \+ goal_info_has_feature(GoalInfo, stack_opt),
+                \+ goal_info_has_feature(GoalInfo, tuple_opt),
 
                 map__search(SinceCallStructMap0, TypeCtor, ConsIdMap0),
                 map__search(ConsIdMap0, ConsId, Structs),

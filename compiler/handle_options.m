@@ -862,6 +862,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 				bool(no)),
 			globals__io_set_option(loop_invariants, bool(no)),
 			globals__io_set_option(untuple, bool(no)),
+			globals__io_set_option(tuple, bool(no)),
 
 			% For the IL backend we turn off optimize_peep
 			% so that we don't optimize away references to the

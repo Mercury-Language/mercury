@@ -499,6 +499,10 @@
 		;	termination_path_limit
 		;	analyse_exceptions
 		;	untuple
+		;	tuple
+		;	tuple_trace_counts_file
+		;	tuple_costs_ratio
+		;	tuple_min_args
 	%	- HLDS->LLDS
 		;	smart_indexing
 		;	  dense_switch_req_density
@@ -1114,7 +1118,11 @@ option_defaults_2(optimization_option, [
 	deforestation_cost_factor	-	int(1000),
 	deforestation_vars_threshold 	-	int(200),
 	deforestation_size_threshold 	-	int(15),
-	untuple			- 	bool(no),
+	untuple			-	bool(no),
+	tuple			-	bool(no),
+	tuple_trace_counts_file	-	string(""),
+	tuple_costs_ratio	-	int(100),
+	tuple_min_args		-	int(4),
 
 % HLDS -> LLDS
 	smart_indexing		-	bool(no),
@@ -1727,6 +1735,8 @@ long_option("osv-loop",			optimize_saved_vars_cell_loop).
 long_option("osv-full-path",		optimize_saved_vars_cell_full_path).
 long_option("osv-on-stack",		optimize_saved_vars_cell_on_stack).
 long_option("osv-cand-head",		optimize_saved_vars_cell_candidate_headvars).
+	% The next four options are used by tupling.m as well; changes to
+	% them may require changes there as well.
 long_option("osv-cvstore-cost",		optimize_saved_vars_cell_cv_store_cost).
 long_option("osv-cvload-cost",		optimize_saved_vars_cell_cv_load_cost).
 long_option("osv-fvstore-cost",		optimize_saved_vars_cell_fv_store_cost).
@@ -1791,6 +1801,10 @@ long_option("termination-path-limit",	termination_path_limit).
 long_option("term-path-limit",		termination_path_limit).
 long_option("analyse-exceptions", 	analyse_exceptions).
 long_option("untuple",			untuple).
+long_option("tuple",			tuple).
+long_option("tuple-trace-counts-file",	tuple_trace_counts_file).
+long_option("tuple-costs-ratio",	tuple_costs_ratio).
+long_option("tuple-min-args",		tuple_min_args).
 
 % HLDS->LLDS optimizations
 long_option("smart-indexing",		smart_indexing).
@@ -3745,7 +3759,28 @@ options_help_hlds_hlds_optimization -->
 		% "--untuple",
 		% "\tExpand out procedure arguments when the argument type",
 		% "\tis a tuple or a type with exactly one functor.",
-		% "\tNote: this is almost always a pessimization."
+		% "\tNote: this is almost always a pessimization.",
+		% "--tuple",
+		% "\tTry to find opportunities for procedures to pass some",
+		% "\targuments to each other as a tuple rather than as",
+		% "\tindividual arguments.",
+		% "\tNote: so far this has mostly a detrimental effect.",
+		% "--tuple-trace-counts-file",
+		% "\tSupply a trace counts summary file for the tupling",
+		% "\ttransformation. The summary should be made from a sample",
+		% "\trun of the program you are compiling, compiled without",
+		% "\toptimizations.",
+		% "--tuple-costs-ratio",
+		% "\tA value of 110 for this parameter means the tupling",
+		% "\ttransformation will transform a procedure if it thinks",
+		% "\tthat procedure would be 10% worse, on average, than",
+		% "\twhatever transformed version of the procedure it has in",
+		% "\tmind. The default is 100.",
+		% "--tuple-min-args",
+		% "\tThe minimum number of input arguments that the tupling",
+		% "\ttransformation will consider passing together as a",
+		% "\ttuple. This is mostly to speed up the compilation",
+		% "\tprocess by not pursuing (presumably) unfruitful searches."
 	]).
 
 :- pred options_help_hlds_llds_optimization(io::di, io::uo) is det.

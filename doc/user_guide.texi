@@ -6927,6 +6927,43 @@ optimization passes.
 @c is a tuple or a type with exactly one functor.
 @c Note: this is almost always a pessimization.
 
+@c @sp 1
+@c @item --tuple
+@c @findex --tuple
+@c Try to find opportunities for procedures to pass some
+@c arguments to each other as a tuple rather than as
+@c individual arguments.  It requires the option
+@c @samp{--tuple-trace-counts-file}, and can be tuned with
+@c the options @samp{--osv-cvload-cost}, @samp{--osv-cvstore-cost},
+@c @samp{--osv-fvload-cost}, @samp{--osv-fvstore-cost},
+@c @samp{--tuple-costs-ratio} and @samp{--tuple-min-args}.
+@c Note: so far this has mostly a detrimental effect.
+
+@c @sp 1
+@c @item --tuple-trace-counts-file
+@c @findex --tuple-trace-counts-file
+@c Supply a trace counts summary file for the tupling
+@c transformation. The summary should be made from a sample
+@c run of the program you are compiling, compiled without
+@c optimizations.
+
+@c @sp 1
+@c @item --tuple-costs-ratio
+@c @findex --tuple-costs-ratio
+@c A value of 110 for this parameter means the tupling
+@c transformation will transform a procedure if it thinks
+@c that procedure would be 10% worse, on average, than
+@c whatever transformed version of the procedure it has in
+@c mind. The default is 100.
+
+@c @sp 1
+@c @item --tuple-min-args
+@c @findex --tuple-min-args
+@c The minimum number of input arguments that the tupling
+@c transformation will consider passing together as a
+@c tuple. This is mostly to speed up the compilation
+@c process by not pursuing (presumably) unfruitful searches.
+
 @end table
 
 @node MLDS backend (MLDS -> MLDS) optimization options
