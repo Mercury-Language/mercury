@@ -1,3 +1,9 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1994-1995, 1997 The University of Melbourne. 
+# This file may only be copied under the terms of the GNU General
+# Public Licence - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+#
 #  Usage: awk -f source_stats.awk *.m
 #
 #  This computes some simple statistics about Mercury source code.

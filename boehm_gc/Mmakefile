@@ -1,4 +1,8 @@
 #-----------------------------------------------------------------------------#
+# Copyright (C) 1995-1997 University of Melbourne. 
+# This file may only be copied under the terms of the GNU General
+# Public Licence - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
 
 # Mmake - Mmake file for Hans Boehm's conservative garbage collector.
 

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995 University of Melbourne.
+% Copyright (C) 1994-1996 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -156,7 +156,7 @@ io__main -->
 		write('Mercury Interpreter, version '), 
 		library__version(VersionString),
 		format("~s", [VersionString]), nl,
-		write('Copyright (C) 1995 University of Melbourne'), nl,
+		write('Copyright (C) 1995 The University of Melbourne'), nl,
 		write('Underlying Prolog implementation: '),
 		currentOutput(Output), flushOutput(Output),
 		assert(io__main_has_been_executed)

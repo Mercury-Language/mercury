@@ -1,5 +1,13 @@
-/* regtest.c - attempt to determine whether a register gets clobbered when you
-   call the C standard library */
+/*
+** Copyright (C) 1993, 1997 The University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+
+/*
+** regtest.c - attempt to determine whether a register gets clobbered when you
+** call the C standard library
+*/
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,9 +1,9 @@
 /*
-** Copyright (C) 1997 University of Melbourne.
+** Copyright (C) 1997 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: mem.c,v 1.5 1997-04-26 05:57:03 fjh Exp $
+** $Id: mem.c,v 1.6 1997-07-27 14:59:28 fjh Exp $
 */
 
 /* Imports */
@@ -19,7 +19,7 @@
 /* Local declarations */
 
 static char
-rcs_id[]	= "$Id: mem.c,v 1.5 1997-04-26 05:57:03 fjh Exp $";
+rcs_id[]	= "$Id: mem.c,v 1.6 1997-07-27 14:59:28 fjh Exp $";
 
 /* 
  * Make sure the size of guard_bytes is a multiple of 8 to ensure we 

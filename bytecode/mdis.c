@@ -1,9 +1,9 @@
 /*
-** Copyright (C) 1997 University of Melbourne.
+** Copyright (C) 1997 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: mdis.c,v 1.6 1997-04-26 05:56:59 fjh Exp $
+** $Id: mdis.c,v 1.7 1997-07-27 14:59:27 fjh Exp $
 */
 
 /* Imports */
@@ -18,7 +18,7 @@
 #include	<mdis.h>
 
 static char
-rcs_id[]	= "$Id: mdis.c,v 1.6 1997-04-26 05:56:59 fjh Exp $";
+rcs_id[]	= "$Id: mdis.c,v 1.7 1997-07-27 14:59:27 fjh Exp $";
 
 /* Local declarations */
 static void

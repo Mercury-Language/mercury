@@ -1,10 +1,10 @@
 
 /*
-** Copyright (C) 1997 University of Melbourne.
+** Copyright (C) 1997 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: slist.c,v 1.1 1997-06-02 13:54:15 aet Exp $
+** $Id: slist.c,v 1.2 1997-07-27 14:59:29 fjh Exp $
 */
 
 /* Imports */
@@ -18,7 +18,7 @@
 /* Local declarations */
 
 static char
-rcs_id[]	= "$Id: slist.c,v 1.1 1997-06-02 13:54:15 aet Exp $";
+rcs_id[]	= "$Id: slist.c,v 1.2 1997-07-27 14:59:29 fjh Exp $";
 
 /* Implementation */
 

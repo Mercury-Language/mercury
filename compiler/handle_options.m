@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995 University of Melbourne.
+% Copyright (C) 1996-1997 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -425,7 +425,7 @@ usage -->
  	io__write_strings(StdErr,
 			["Mercury Compiler, version ", Version, "\n"]),
  	io__write_string(StdErr,
-			"Copyright (C) 1995 University of Melbourne\n"),
+			"Copyright (C) 1995 The University of Melbourne\n"),
 	io__write_string(StdErr, "Usage: "),
 	io__write_string(StdErr, ProgName),
 	io__write_string(StdErr, " [<options>] <module(s)>\n"),
@@ -437,7 +437,7 @@ long_usage -->
 	io__progname_base("mercury_compile", ProgName),
 	{ library__version(Version) },
  	io__write_strings(["Mercury Compiler, version ", Version, "\n"]),
- 	io__write_string("Copyright (C) 1995 University of Melbourne\n"),
+ 	io__write_string("Copyright (C) 1995 The University of Melbourne\n"),
 	io__write_string("Usage: "),
 	io__write_string(ProgName),
 	io__write_string(" [<options>] <module(s)>\n"),

@@ -3,8 +3,8 @@ University of Melbourne Mercury compiler, version <VERSION>,
 built on a `<FULLARCH>' system.
 
 The Mercury implementation is free software, but it is Copyright (C)
-1994, 1995, 1996 The University of Melbourne.  It is distributed under
-the terms of the GNU General Public License.  See the file COPYING for
+1993-1997 The University of Melbourne.  It is distributed under the
+terms of the GNU General Public License.  See the file COPYING for
 copying permission.  The Mercury library and runtime (libmercury.* and
 libmer.*) are distributed under the terms of the GNU Library General
 Public License.  See the file COPYING.LIB for copying permissions for
@@ -31,9 +31,8 @@ of the garbage collector source):
 	notice that the code was modified is included with the above
 	copyright notice.
 
-A few files in the source (config*, runtime/timing.h) and binary
-(config*) distributions are derived from code that is copyright by the
-Free Software Foundation, Inc.
+A few files (config*) in the source and binary distributions are derived
+from code that is copyright by the Free Software Foundation, Inc.
 
 THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY
 EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.  See the file COPYING.

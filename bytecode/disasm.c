@@ -1,9 +1,9 @@
 /*
-** Copyright (C) 1997 University of Melbourne.
+** Copyright (C) 1997 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: disasm.c,v 1.13 1997-04-26 05:56:50 fjh Exp $
+** $Id: disasm.c,v 1.14 1997-07-27 14:59:21 fjh Exp $
 */
 
 /* Imports */
@@ -21,7 +21,7 @@
 /* Local declarations */
 
 static char
-rcs_id[]	= "$Id: disasm.c,v 1.13 1997-04-26 05:56:50 fjh Exp $";
+rcs_id[]	= "$Id: disasm.c,v 1.14 1997-07-27 14:59:21 fjh Exp $";
 
 static void
 print_bytecode(MB_Bytecode bytecode);
