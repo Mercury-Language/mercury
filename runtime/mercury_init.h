@@ -109,10 +109,6 @@ extern	int	mercury_terminate(void);
 ** generated header files for some of the library modules, and therefore
 ** represent a potential double maintenance problem. At the moment we
 ** accept this because it avoids having the runtime rely on the library.
-** However, the dependence on browser/debugger_interface.m is unnecessary,
-** since the only code that relies on the ML_DI_* variables below is
-** in the trace directory, which is allowed to rely on the browser
-** directory.
 */
 
 /* in library/io.h */
@@ -147,25 +143,6 @@ extern	const char *MR_trace_browse_all_on_level(FILE *,
 /* in trace/mercury_trace_external.h */
 extern	void	MR_trace_init_external(void);
 extern	void	MR_trace_final_external(void);
-
-/* in browser/debugger_interface.h */
-extern	void	ML_DI_output_current_vars(MR_Word, MR_Word, MR_Word);
-		/* output_current_vars/4 */
-extern	void	ML_DI_output_current_nth_var(MR_Word, MR_Word);
-		/* output_current_nth_var/3 */
-extern	void	ML_DI_output_current_live_var_names(MR_Word, MR_Word, MR_Word);
-		/* output_current_live_var_names/5 */
-extern	void	ML_DI_output_current_slots(MR_Integer, MR_Integer, MR_Integer,
-			MR_Word, MR_String, MR_String, MR_Integer, MR_Integer,
-			MR_Integer, MR_String, MR_Word);
-		/* output_current_slots/13 */
-extern	MR_bool	ML_DI_found_match(MR_Integer, MR_Integer, MR_Integer, MR_Word,
-			MR_String, MR_String, MR_Integer, MR_Integer,
-			MR_Integer, MR_Word, MR_String, MR_Word);
-		/* found_match/12 */
-extern	void	ML_DI_read_request_from_socket(MR_Word, MR_Word *,
-			MR_Integer *);
-extern	MR_Integer	ML_DI_get_var_number(MR_Word);
 
 /* in library/std_util.m  */
 extern	MR_String	ML_type_name(MR_Word);
