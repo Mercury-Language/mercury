@@ -14,6 +14,30 @@
 #	   make.
 #
 # Step 3.  Check the permissions on the installed files.
+#
+#
+# Fine-tuning:
+# ------------
+#
+#	   If you are short on disk space, you can add the line "LIBGRADES="
+#	   to the file Mmake.params before installing.  (This tells it
+#	   to install only the default grade of the libraries.)
+#
+#	   If you are short on RAM, you can add -DSMALL_CONFIG to the CFLAGS
+#          line in the file boehm_gc/Makefile.  (This tells the garbage
+#	   collector to tune itself for small physical memory.)
+#
+#	   If your system supports shared libraries, but `configure' says
+#	   Mercury does not support shared libraries on this system,
+#	   you can try setting the LINK_SHARED_OBJECT, SO, PIC, and PIC_O
+#	   variables in the Mmake file.
+#
+#	   Efficiency will be much improved if Mercury can use gcc global
+#	   register variables.  Currently these are supported for mips,
+#	   sparc, and maybe soon for i386 (see runtime/regs.h and
+#	   runtime/machdeps/*).  If you want to use Mercury on some other
+#	   CPU, contact us and we'll add support for gcc global registers
+#	   for that CPU.
 
 PATH=`pwd`/scripts:$PATH
 MMAKE_VARS=`pwd`/scripts/Mmake.vars
