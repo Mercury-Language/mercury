@@ -208,7 +208,10 @@ demangle(const char *orig_name)
 	int arity;
 	const char *pred_or_func; /* either "predicate" or "function" */
 	bool unused_args = FALSE; /* does this proc have any unused arguments */
+	bool unused_args_extra = FALSE; /* __uab suffix rather than __ua */
+	int unused_args_num = 0;
 	bool higher_order = FALSE; /* has this proc been specialized */
+	int higher_order_num = 0;
 	int internal = -1;
 	char *name_before_prefixes = NULL;
 	int lambda_line = 0;
@@ -362,11 +365,15 @@ demangle(const char *orig_name)
 	if (check_for_suffix(start, position, ua_suffix,
 			sizeof(ua_suffix), &mode_num2)) {
 		unused_args = TRUE;
+		unused_args_extra = FALSE;
+		unused_args_num = mode_num;
 		end = position + 1 - (sizeof(ua_suffix) - 1);
 		mode_num = mode_num2 % 10000;
 	} else if (check_for_suffix(start, position, ua_suffix2,
 			sizeof(ua_suffix2), &mode_num2)) {
 		unused_args = TRUE;
+		unused_args_extra = TRUE;
+		unused_args_num = mode_num;
 		end = position + 1 - (sizeof(ua_suffix2) - 1);
 		mode_num = mode_num2 % 10000;
 	}
@@ -384,7 +391,7 @@ demangle(const char *orig_name)
 		position--;
 	} while (MR_isdigit(*position));
 	if (check_for_suffix(start, position, ho_suffix,
-			sizeof(ho_suffix), &mode_num2)) {
+			sizeof(ho_suffix), &higher_order_num)) {
 		end = position + 1 - (sizeof(ho_suffix) - 1);
 		higher_order = TRUE;
 	}
@@ -572,10 +579,15 @@ demangle(const char *orig_name)
 		printf(" (type specialized %s)", type_spec_sub);	
 	}
 	if (higher_order) {
-		printf(" (specialized)");
+		printf(" (specialized [#%d])", higher_order_num);
 	}
 	if (unused_args) {
-		printf(" (minus unused args)");
+		if (unused_args_extra) {
+			printf(" (minus extra unused args [#%d])",
+				unused_args_num);
+		} else {
+			printf(" (minus unused args [#%d])", unused_args_num);
+		}
 	}
 	if (internal != -1) {
 		printf(" label %d", internal);
