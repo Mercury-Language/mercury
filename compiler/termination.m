@@ -36,7 +36,7 @@
 % handle_options.m 	To change the error message that is produced when
 % 			an incorrect argument is given to --termination-norm.
 %
-% term_util.m		To change the functor_norm predicate and change the
+% term_norm.m		To change the functor_norm predicate and change the
 % 			functor_alg type.
 %
 % termination.m		To change the set_functor_info predicate.
@@ -105,6 +105,7 @@
 :- import_module parse_tree__prog_util.
 :- import_module transform_hlds__dependency_graph.
 :- import_module transform_hlds__term_errors.
+:- import_module transform_hlds__term_norm.
 :- import_module transform_hlds__term_pass1.
 :- import_module transform_hlds__term_pass2.
 

@@ -25,6 +25,7 @@
 :- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_data.
 :- import_module transform_hlds__term_errors.
+:- import_module transform_hlds__term_norm.
 :- import_module transform_hlds__term_util.
 
 :- import_module list, bag, map, std_util, set.

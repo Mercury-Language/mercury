@@ -29,6 +29,7 @@
    :- include_module term_pass2.
    :- include_module term_traversal.
    :- include_module term_errors.
+   :- include_module term_norm.
    :- include_module term_util.
    :- include_module lp. % this could alternatively go in the `libs' module
 

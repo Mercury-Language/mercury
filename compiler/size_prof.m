@@ -65,7 +65,7 @@
 % need for their sizes, and (2) this allows us to create e.g. static type_info
 % structures without worrying about term size slots. The set of type categories
 % whose values are always considered zero sized is defined by the predicate
-% zero_size_type in term_util.m.
+% zero_size_type in term_norm.m.
 %
 % We currently do not associate sizes with data types which are handled mostly
 % by hand-written C code in the runtime system or in the standard library:
@@ -119,7 +119,7 @@
 :- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_util.
-:- import_module transform_hlds__term_util.
+:- import_module transform_hlds__term_norm.
 
 :- import_module bool, int, string, list, assoc_list, map, set, std_util.
 :- import_module varset, term, require.
