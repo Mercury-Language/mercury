@@ -142,9 +142,10 @@ ORDINARY_PROGS=	\
 	target_mlobjs \
 	term_io_test \
 	term_to_univ_test \
-	test_bitset \
-	test_imported_no_tag \
 	test_array2d \
+	test_bitset \
+	test_cord \
+	test_imported_no_tag \
 	tim_qual1 \
 	time_test \
 	tuple_test \

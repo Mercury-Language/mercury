@@ -1,0 +1,31 @@
+
+cords:
+Z    = nil
+A    = leaf('a')
+B    = leaves(['b'])
+AB   = branch(leaf('a'), leaves(['b']))
+BA   = branch(leaves(['b']), leaf('a'))
+ABA1 = branch(leaf('a'), branch(leaves(['b']), leaf('a')))
+ABA2 = branch(branch(leaf('a'), leaves(['b'])), leaf('a'))
+BAB1 = branch(leaves(['b']), branch(leaf('a'), leaves(['b'])))
+BAB2 = branch(branch(leaves(['b']), leaf('a')), leaves(['b']))
+ABBA = branch(branch(leaf('a'), leaves(['b'])), branch(leaves(['b']), leaf('a')))
+BAAB = branch(branch(leaves(['b']), leaf('a')), branch(leaf('a'), leaves(['b'])))
+
+construction: ok
+
+concatenation: ok
+
+equals: ok
+
+identity: ok
+
+length: ok
+
+membership: ok
+
+map: ok
+
+foldl: ok
+
+foldr: ok

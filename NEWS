@@ -18,6 +18,8 @@ Changes to the Mercury compiler:
   with `mmc --make'.
 
 Changes to the Mercury standard library:
+* We've added a new module, cord, for sequences with O(1) consing and
+  concatenation.
 * Several new functions have been added to the string module, namely
   elem/2, unsafe_elem/2, chomp/1, lstrip/1, lstrip/2, rstrip/1, rstrip/2,
   strip/1, prefix_length/2, and suffix_length/2.
@@ -70,6 +72,11 @@ Changes to the Mercury language:
   chapter of the Mercury Language Reference Manual.
 
 Changes to the Mercury standard library:
+
+* We've added a new module, cord, for sequences with O(1) consing and
+  concatenation.  A cord is essentially a tree structure with data stored
+  in the leaf nodes.  Joining two cords together to construct a new cord
+  is therefore an O(1) operation.
 
 * Several new functions have been added to the string module, namely
   elem/2, unsafe_elem/2, chomp/1, lstrip/1, lstrip/2, rstrip/1, rstrip/2,
