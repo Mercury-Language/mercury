@@ -482,11 +482,14 @@ generate_wrapper_decls(ModuleName, Context, [Arg | Args],
 	ArrayIndex = const(int_const(Count)),		
 	NewVarName = qual(mercury_module_name_to_mlds(ModuleName), 
 		var_name("args", no)),
-	NewArgLval = var(NewVarName, mlds__generic_type),
+	NewArgLval = var(NewVarName, mlds__array_type(mlds__generic_type)),
 	%	
-	% Package everything together.
+	% Package everything together. 
 	%
-	Initializer = binop(array_index, lval(NewArgLval), ArrayIndex),
+	% XXX Don't we need a cast here? -fjh.
+	%
+	Initializer = binop(array_index(elem_type_generic),
+		lval(NewArgLval), ArrayIndex),
 	Body = mlds__data(Type, init_obj(Initializer)),	
 	Defn = mlds__defn(Name, Context, Flags, Body),
 	%	
@@ -2116,7 +2119,7 @@ output_std_unop(UnaryOp, Exprn) -->
 	
 output_binop(Op, X, Y) -->
 	(
-		{ Op = array_index }
+		{ Op = array_index(_Type) }
 	->
 		output_bracketed_rval(X),
 		io__write_string("["),

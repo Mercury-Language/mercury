@@ -3798,7 +3798,7 @@ output_rval(unop(UnaryOp, Exprn)) -->
 	io__write_string(")").
 output_rval(binop(Op, X, Y)) -->
 	(
-		{ Op = array_index }
+		{ Op = array_index(_Type) }
 	->
 		io__write_string("("),
 		output_rval_as_type(X, data_ptr),

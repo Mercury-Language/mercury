@@ -49,7 +49,7 @@
 	;	eq	% ==
 	;	ne	% !=
 	;	body
-	;	array_index
+	;	array_index(array_elem_type)
 	;	str_eq	% string comparisons
 	;	str_ne
 	;	str_lt
@@ -77,6 +77,20 @@
 	;	float_gt
 	;	float_le
 	;	float_ge.
+
+	% For the MLDS back-end, we need to know the element type for each
+	% array_index operation.
+	%
+	% Currently array index operations are only generated in limited
+	% circumstances.  Using a simple representation for them here,
+	% rather than just putting the MLDS type here, avoids the need
+	% for this module to depend on back-end specific stuff like MLDS types.
+:- type array_elem_type
+	--->	elem_type_string	% ml_string_type
+	;	elem_type_int		% mlds__native_int_type
+	;	elem_type_generic	% mlds__generic_type
+	.
+
 
 	% translate_builtin:
 	%

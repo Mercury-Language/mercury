@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -102,15 +102,15 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, StoreMap,
 			  "compute the hash value of the input string",
 			label(LoopLabel) -
 			  "begin hash chain loop",
-			assign(StringReg, binop(array_index, StringTable,
-							lval(SlotReg))) -
+			assign(StringReg, binop(array_index(elem_type_string),
+					StringTable, lval(SlotReg))) -
 			  "lookup the string for this hash slot",
 			if_val(binop(and, lval(StringReg),
 				binop(str_eq, lval(StringReg), VarRval)),
 					label(JumpLabel)) -
 			  "did we find a match?",
-			assign(SlotReg, binop(array_index, NextSlotsTable,
-							lval(SlotReg))) -
+			assign(SlotReg, binop(array_index(elem_type_int),
+					NextSlotsTable, lval(SlotReg))) -
 			  "not yet, so get next slot in hash chain",
 			if_val(binop(>=, lval(SlotReg), const(int_const(0))),
 				label(LoopLabel)) -

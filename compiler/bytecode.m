@@ -1037,7 +1037,6 @@ determinism_debug(failure,	"failure").
 
 :- pred binop_code(binary_op, int).
 :- mode binop_code(in, out) is det.
-:- mode binop_code(out, in) is semidet.	% enforce non-duplication of bytecodes
 
 binop_code((+),			 0).
 binop_code((-),			 1).
@@ -1053,7 +1052,7 @@ binop_code((and),		10).
 binop_code((or),		11).
 binop_code(eq,			12).
 binop_code(ne,			13).
-binop_code(array_index,		14).
+binop_code(array_index(_Type),	14).
 binop_code(str_eq,		15).
 binop_code(str_ne,		16).
 binop_code(str_lt,		17).
@@ -1094,7 +1093,7 @@ binop_debug((and),		"and").
 binop_debug((or),		"or").
 binop_debug(eq,			"eq").
 binop_debug(ne,			"ne").
-binop_debug(array_index,	"array_index").
+binop_debug(array_index(_Type),	"array_index").
 binop_debug(str_eq,		"str_eq").
 binop_debug(str_ne,		"str_ne").
 binop_debug(str_lt,		"str_lt").

@@ -56,16 +56,18 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 	ml_gen_info_new_cond_var(SlotVarSeq),
 	{ SlotVarName = mlds__var_name(
 		string__format("slot_%d", [i(SlotVarSeq)]), no) },
-	{ SlotVarDefn = ml_gen_mlds_var_decl(var(SlotVarName),
-		mlds__native_int_type, MLDS_Context) },
-	ml_gen_var_lval(SlotVarName, mlds__native_int_type, SlotVarLval),
+	{ SlotVarType = mlds__native_int_type },
+	{ SlotVarDefn = ml_gen_mlds_var_decl(var(SlotVarName), SlotVarType,
+		MLDS_Context) },
+	ml_gen_var_lval(SlotVarName, SlotVarType, SlotVarLval),
 
 	ml_gen_info_new_cond_var(StringVarSeq),
 	{ StringVarName = mlds__var_name(
 		string__format("str_%d", [i(StringVarSeq)]), no) },
+	{ StringVarType = ml_string_type },
 	{ StringVarDefn = ml_gen_mlds_var_decl(var(StringVarName),
-		ml_string_type, MLDS_Context) },
-	ml_gen_var_lval(StringVarName, ml_string_type, StringVarLval),
+		StringVarType, MLDS_Context) },
+	ml_gen_var_lval(StringVarName, StringVarType, StringVarLval),
 
 	%
 	% Generate new labels
@@ -112,7 +114,7 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 	ml_gen_info_new_const(NextSlotsSeq),
 	ml_format_static_const_name("next_slots_table", NextSlotsSeq,
 		NextSlotsName),
-	{ NextSlotsType = mlds__array_type(mlds__native_int_type) },
+	{ NextSlotsType = mlds__array_type(SlotVarType) },
 	{ NextSlotsDefn = ml_gen_static_const_defn(NextSlotsName,
 		NextSlotsType,
 		init_array(NextSlots), Context) },
@@ -121,7 +123,7 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 	ml_gen_info_new_const(StringTableSeq),
 	ml_format_static_const_name("string_table", StringTableSeq,
 		StringTableName),
-	{ StringTableType = mlds__array_type(ml_string_type) },
+	{ StringTableType = mlds__array_type(StringVarType) },
 	{ StringTableDefn = ml_gen_static_const_defn(StringTableName,
 		StringTableType, init_array(Strings), Context) },
 	ml_gen_var_lval(StringTableName, StringTableType ,StringTableLval),
@@ -130,7 +132,7 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 	% Generate code which does the hash table lookup.
 	%
 
-	{ SwitchStmt0 = switch(mlds__native_int_type, lval(SlotVarLval),
+	{ SwitchStmt0 = switch(SlotVarType, lval(SlotVarLval),
 		range(0, TableSize - 1),
 		SlotsCases, default_is_unreachable) },
 	ml_simplify_switch(SwitchStmt0, MLDS_Context, SwitchStatement),
@@ -139,7 +141,7 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 			binop(and,
 				binop(ne,
 					lval(StringVarLval),
-					const(null(ml_string_type))),
+					const(null(StringVarType))),
 				binop(str_eq,
 					lval(StringVarLval),
 					VarRval)
@@ -162,7 +164,7 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 				MLDS_Context),
 			mlds__statement(
 				atomic(assign(StringVarLval,
-					binop(array_index,
+					binop(array_index(elem_type_string),
 						lval(StringTableLval),
 						lval(SlotVarLval)))),
 				MLDS_Context),
@@ -178,7 +180,7 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 				MLDS_Context),
 			mlds__statement(
 				atomic(assign(SlotVarLval,
-					binop(array_index,
+					binop(array_index(elem_type_int),
 						lval(NextSlotsLval),
 						lval(SlotVarLval)))),
 				MLDS_Context)
@@ -291,6 +293,3 @@ ml_string_switch__gen_hash_slot(Slot, HashSlotMap, CodeModel, MLDS_Context,
 		{ NextSlotRval = const(int_const(-2)) },
 		{ MLDS_Cases = [] }
 	).
-
-:- func ml_string_type = mlds__type.
-ml_string_type = mercury_type(string_type, str_type).

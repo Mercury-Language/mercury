@@ -2835,7 +2835,7 @@ mlds_output_std_unop(UnaryOp, Exprn) -->
 	
 mlds_output_binop(Op, X, Y) -->
 	(
-		{ Op = array_index }
+		{ Op = array_index(_Type) }
 	->
 		mlds_output_bracketed_rval(X),
 		io__write_string("["),

@@ -1557,11 +1557,11 @@ binaryop_to_il(body, _) -->
 	{ unexpected(this_file, "binop: body") }.
 
 
-	% XXX we need to know what kind of thing is being indexed
-	% from the array in general. 
-binaryop_to_il(array_index, node([
-		ldelem(refany)	% XXX FIXME element type here is wrong
-		])) --> [].
+binaryop_to_il(array_index(ElemType), instr_node(I)) -->
+	DataRep =^ il_data_rep,
+	{ MLDS_Type = ml_gen_array_elem_type(ElemType) },
+	{ ILSimpleType = mlds_type_to_ilds_simple_type(DataRep, MLDS_Type) },
+	{ I = ldelem(ILSimpleType) }.
 
 	% String operations.
 binaryop_to_il(str_eq, node([
