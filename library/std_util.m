@@ -66,6 +66,13 @@
 :- mode univ(di) = uo is det.
 :- mode univ(out) = in is semidet.
 
+	% det_univ_to_type(Univ, Object):
+	% 	the same as the forwards mode of univ_to_type, but
+	% 	abort if univ_to_type fails.
+	%
+:- pred det_univ_to_type(univ, T).
+:- mode det_univ_to_type(in, out) is det.
+
 	% univ_type(Univ):
 	%	returns the type_info for the type stored in `Univ'.
 	%
@@ -937,6 +944,18 @@ unsorted_aggregate(Generator, Accumulator, Acc0, Acc) :-
 univ_to_type(Univ, X) :- type_to_univ(X, Univ).
 
 univ(X) = Univ :- type_to_univ(X, Univ).
+
+det_univ_to_type(Univ, X) :-
+	( type_to_univ(X0, Univ) ->
+		X = X0
+	;
+		UnivTypeName = type_name(univ_type(Univ)),
+		ObjectTypeName = type_name(type_of(X)),
+		string__append_list(["det_univ_to_type: conversion failed\n",
+			"\tUniv Type: ", UnivTypeName,
+			"\n\tObject Type: ", ObjectTypeName], ErrorString),
+		error(ErrorString)
+	).
 
 /****
 

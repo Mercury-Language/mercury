@@ -504,16 +504,6 @@ term__det_term_to_type(Term, X) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred det_univ_to_type(univ::in, T::out) is det.
-det_univ_to_type(Univ, Value) :-
-	( univ_to_type(Univ, Value1) ->
-		Value = Value1
-	;
-		error("det_univ_to_type: univ_to_type failed")
-	).
-
-%-----------------------------------------------------------------------------%
-
 /**********
 XXX existential types not yet implemented
 :- some [T] pred has_type(T::unused, type_info::in) is det.
