@@ -157,7 +157,7 @@ diff -u -u -r1.11 Mmakefile
 +# that loses all the file dates.
 +.PHONY: touch_files
 +touch_files:
-+	find . | xargs touch
++	-find . | xargs touch
 +	sleep 1
 +	touch library/*.date*
 +	touch library/*.optdate
@@ -169,14 +169,14 @@ diff -u -u -r1.11 Mmakefile
 +	touch profiler/*.date*
 +	chmod +w profiler/*.dep
 +	touch profiler/*.dep
-+	touch doc/*.texi
++	touch doc/*.texi configure
 +	sleep 1
 +	touch boehm_gc/*.c
 +	touch runtime/*.c
 +	touch library/*.c
 +	touch compiler/*.c
 +	touch profiler/*.c
-+	touch doc/*.info doc/*.dvi doc/*.html
++	touch doc/*.info doc/*.dvi doc/*.html config.status
 +
 +# another work-around for gnu-win32 on Windows 95:
 +# the executable files need `.exe' filenames, otherwise they won't work.
