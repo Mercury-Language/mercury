@@ -1382,7 +1382,7 @@ mercury_compile__pre_hlds_pass(module(Module, ShortDeps, LongDeps, Items0, _),
 
 	mercury_compile__make_hlds(Module, Items, HLDS0, FoundError),
 	maybe_report_stats(Statistics),
-	mercury_compile__maybe_dump_hlds(HLDS0, "0", "initial"),
+	mercury_compile__maybe_dump_hlds(HLDS0, "1", "initial"),
 
 	( { FoundError = yes } ->
 		{ module_info_incr_errors(HLDS0, HLDS1) },

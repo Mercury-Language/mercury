@@ -55,8 +55,9 @@ process_options_2([Option | Args0], OptionTable0, Args, Result) :-
 		Result = ok(OptionTable0)
 	; string__append("--no-", LongOption, Option) ->
 		( long_option(LongOption, Flag) ->
-			process_negated_bool_option(Flag, Args0, OptionTable0,
-					Args, Result)
+			string__append("--", LongOption, OptName),
+			process_negated_bool_option(OptName, Flag, Args0,
+					OptionTable0, Args, Result)
 		;
 			string__append("unrecognized option `--no-",
 					LongOption, Tmp),
@@ -66,11 +67,10 @@ process_options_2([Option | Args0], OptionTable0, Args, Result) :-
 		)
 	; string__append("--", LongOption, Option) ->
 	  	( long_option(LongOption, Flag) ->
-			process_option(Flag, Args0, OptionTable0,
+			process_option(Option, Flag, Args0, OptionTable0,
 					Args, Result)
 		;
-			string__append("unrecognized option `--", LongOption,
-				Tmp),
+			string__append("unrecognized option `", Option, Tmp),
 			string__append(Tmp, "'", ErrorMsg),
 			Result = error(ErrorMsg),
 			Args = Args0
@@ -80,11 +80,11 @@ process_options_2([Option | Args0], OptionTable0, Args, Result) :-
 		    % check for a single `-x' option
 		( ShortOptionsList = [SingleShortOpt] ->
 			( short_option(SingleShortOpt, Flag) ->
-				process_option(Flag, Args0, OptionTable0,
-						Args, Result)
+				process_option(Option, Flag, Args0,
+					OptionTable0, Args, Result)
 			;
-				string__append("unrecognized option `-",
-					ShortOptions, Tmp),
+				string__append("unrecognized option `",
+					Option, Tmp),
 				string__append(Tmp, "'", ErrorMsg),
 				Result = error(ErrorMsg),
 				Args = Args0
@@ -92,8 +92,10 @@ process_options_2([Option | Args0], OptionTable0, Args, Result) :-
 		    % check for a single negated option `-x-'
 		; ShortOptionsList = [SingleShortOpt, '-'] ->
 			( short_option(SingleShortOpt, Flag) ->
-				process_negated_bool_option(Flag, Args0,
-					OptionTable0, Args, Result)
+				string__from_char_list(['-', SingleShortOpt],
+						OptName),
+				process_negated_bool_option(OptName, Flag,
+					Args0, OptionTable0, Args, Result)
 			;
 				string__append("unrecognized option `-",
 					ShortOptions, Tmp),
@@ -123,7 +125,7 @@ process_short_option_list([], Args0, OptionsTable0, Args, Result) :-
 
 process_short_option_list([Opt | Opts], Args0, OptionsTable0, Args, Result) :-
 	( short_option(Opt, Flag) ->
-		process_short_option(Flag, Opts, Args0, OptionsTable0,
+		process_short_option(Opt, Flag, Opts, Args0, OptionsTable0,
 				Args, Result)
 	;
 		string__char_to_string(Opt, OptString),
@@ -133,102 +135,121 @@ process_short_option_list([Opt | Opts], Args0, OptionsTable0, Args, Result) :-
 		Args = Args0
 	).
 
-:- pred process_short_option(option, list(character), list(string),
+:- pred process_short_option(character, option, list(character), list(string),
 		option_table, list(string), maybe_option_table).
-:- mode process_short_option(in, in, in, in, out, out) is det.
+:- mode process_short_option(in, in, in, in, in, out, out) is det.
 
-process_short_option(Flag, Opts, Args0, OptionTable0, Args, Result) :-
+process_short_option(Opt, Flag, Opts, Args0, OptionTable0, Args, Result) :-
 	map__lookup(OptionTable0, Flag, Data),
-	process_short_option_2(Data, Flag, Opts, Args0, OptionTable0,
+	process_short_option_2(Data, Opt, Flag, Opts, Args0, OptionTable0,
 		Args, Result).
 
-:- pred process_short_option_2(option_data, option, list(character),
+:- pred process_short_option_2(option_data, character, option, list(character),
 		list(string), option_table, list(string), maybe_option_table).
-:- mode process_short_option_2(in, in, in, in, in, out, out) is det.
+:- mode process_short_option_2(in, in, in, in, in, in, out, out) is det.
 
-process_short_option_2(bool(_), Flag, Opts, Args0, OptionTable0, Args,
+process_short_option_2(bool(_), _Opt, Flag, Opts, Args0, OptionTable0, Args,
 		Result) :-
 	map__set(OptionTable0, Flag, bool(yes), OptionTable1),
 	process_short_option_list(Opts, Args0, OptionTable1, Args, Result).
-process_short_option_2(string(_), _Flag, _Opts, Args, _OptionTable0, Args,
+process_short_option_2(string(_), _Opt, Flag, Opts, Args0, OptionTable0, Args,
 		Result) :-
-			% XXX improve error message
-	Result = error("option in group requires an argument").
-process_short_option_2(int(_), _Flag, _Opts, Args, _OptionTable0, Args,
+	string__from_char_list(Opts, Arg),
+	map__set(OptionTable0, Flag, string(Arg), OptionTable1),
+	process_options_2(Args0, OptionTable1, Args, Result).
+process_short_option_2(int(_), Opt, Flag, Opts, Args0, OptionTable0, Args,
 		Result) :-
-			% XXX improve error message
-	Result = error("option in group requires an argument").
-process_short_option_2(accumulating(_), _Flag, _Opts, Args, _OptionTable0, Args,
-		Result) :-
-			% XXX improve error message
-	Result = error("option in group requires an argument").
+	string__from_char_list(Opts, Arg),
+	( string__to_int(Arg, IntArg) ->
+		map__set(OptionTable0, Flag, int(IntArg), OptionTable1),
+		process_options_2(Args0, OptionTable1, Args, Result)
+	;
+		Args = Args0,
+		string__char_to_string(Opt, Option),
+		string__append_list(["option `-", Option,
+			"' requires a numeric argument"], ErrorMsg),
+		Result = error(ErrorMsg)
+	).
+process_short_option_2(accumulating(List0), _Opt, Flag, Opts, Args0,
+		OptionTable0, Args, Result) :-
+	string__from_char_list(Opts, Arg),
+	list__append(List0, [Arg], List),
+	map__set(OptionTable0, Flag, accumulating(List), OptionTable1),
+	process_options_2(Args0, OptionTable1, Args, Result).
 
-
-:- pred process_option(option, list(string), option_table,
+:- pred process_option(string, option, list(string), option_table,
 			list(string), maybe_option_table).
-:- mode process_option(in, in, in, out, out) is det.
+:- mode process_option(in, in, in, in, out, out) is det.
 
-process_option(Flag, Args0, OptionTable0, Args, Result) :-
+process_option(OptName, Flag, Args0, OptionTable0, Args, Result) :-
 	map__lookup(OptionTable0, Flag, Data),
-	process_option_2(Data, Flag, Args0, OptionTable0, Args, Result).
+	process_option_2(Data, OptName, Flag, Args0, OptionTable0,
+		Args, Result).
 
-:- pred process_option_2(option_data, option, list(string), option_table,
-			list(string), maybe_option_table).
-:- mode process_option_2(in, in, in, in, out, out) is det.
+:- pred process_option_2(option_data, string, option, list(string),
+		 	option_table, list(string), maybe_option_table).
+:- mode process_option_2(in, in, in, in, in, out, out) is det.
 
-process_option_2(bool(_), Flag, Args0, OptionTable0, Args, Result) :-
+process_option_2(bool(_), _OptName, Flag, Args0, OptionTable0, Args, Result) :-
 	map__set(OptionTable0, Flag, bool(yes), OptionTable1),
 	process_options_2(Args0, OptionTable1, Args, Result).
 
-process_option_2(string(_), Flag, Args0, OptionTable0, Args, Result) :-
+process_option_2(string(_), OptName, Flag, Args0, OptionTable0, Args, Result) :-
 	( Args0 = [Arg | Args1] ->
 		map__set(OptionTable0, Flag, string(Arg), OptionTable1),
 		process_options_2(Args1, OptionTable1, Args, Result)
 	;
 		Args = Args0,
-		Result = error("option requires an argument")
+		string__append_list(["option `", OptName,
+			"' requires an argument"], ErrorMsg),
+		Result = error(ErrorMsg)
 	).
 
-process_option_2(int(_), Flag, Args0, OptionTable0, Args, Result) :-
+process_option_2(int(_), OptName, Flag, Args0, OptionTable0, Args, Result) :-
 	( Args0 = [Arg | Args1] ->
 		( string__to_int(Arg, IntArg) ->
 			map__set(OptionTable0, Flag, int(IntArg), OptionTable1),
 			process_options_2(Args1, OptionTable1, Args, Result)
 		;
 			Args = Args0,
-				% XXX improve error message
-			Result = error("option requires numeric argument")
+			string__append_list(["option `", OptName,
+				"' requires a numeric argument"], ErrorMsg),
+			Result = error(ErrorMsg)
 		)
 	;
 		Args = Args0,
-				% XXX improve error message
-		Result = error("option requires an argument")
+		string__append_list(["option `", OptName,
+			"' requires an argument"], ErrorMsg),
+		Result = error(ErrorMsg)
 	).
 
-process_option_2(accumulating(List0), Flag, Args0, OptionTable0, Args, Result)
-		:-
+process_option_2(accumulating(List0), OptName, Flag, Args0, OptionTable0,
+		Args, Result) :-
 	( Args0 = [Arg | Args1] ->
 		list__append(List0, [Arg], List),
 		map__set(OptionTable0, Flag, accumulating(List), OptionTable1),
 		process_options_2(Args1, OptionTable1, Args, Result)
 	;
 		Args = Args0,
-		Result = error("option requires an argument")
+		string__append_list(["option `", OptName,
+			"' requires an argument"], ErrorMsg),
+		Result = error(ErrorMsg)
 	).
 
-:- pred process_negated_bool_option(option, list(string), option_table,
+:- pred process_negated_bool_option(string, option, list(string), option_table,
 			list(string), maybe_option_table).
-:- mode process_negated_bool_option(in, in, in, out, out) is det.
+:- mode process_negated_bool_option(in, in, in, in, out, out) is det.
 
-process_negated_bool_option(Flag, Args0, OptionTable0, Args, Result) :-
+process_negated_bool_option(OptName, Flag, Args0, OptionTable0, Args, Result) :-
 	map__lookup(OptionTable0, Flag, Data),
 	( Data = bool(_) ->
 		map__set(OptionTable0, Flag, bool(no), OptionTable1),
 		process_options_2(Args0, OptionTable1, Args, Result)
 	;
 		Args = Args0,
-			% XXX improve error message
-		Result = error("only boolean options can be negated")
+		string__append_list(["cannot negate option `", OptName,
+			"' -- only boolean options can be negated"], ErrorMsg),
+		Result = error(ErrorMsg)
 	).
 
 :- end_module getopt.
