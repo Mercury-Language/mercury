@@ -191,6 +191,14 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod) -->
 
 	globals__io_set_option(num_tag_bits, int(NumTagBits)),
 
+	% --split-c-files implies --procs-per-c-function 1
+	globals__io_lookup_bool_option(split_c_files, Split_C_Files),
+	( { Split_C_Files = yes } ->
+		globals__io_set_option(procs_per_c_function, int(1))
+	;	
+		[]
+	),
+
 	% --very-verbose implies --verbose
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	( { VeryVerbose = yes } ->
