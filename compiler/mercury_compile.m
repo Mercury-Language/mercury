@@ -78,8 +78,30 @@
 %-----------------------------------------------------------------------------%
 
 main -->
+	gc_init,
 	handle_options(MaybeError, Args, Link),
 	main_2(MaybeError, Args, Link).
+
+%-----------------------------------------------------------------------------%
+
+:- pred gc_init(io__state::di, io__state::uo) is det.
+
+:- pragma c_code(gc_init(_IO0::di, _IO::uo), [will_not_call_mercury], "
+#ifdef CONSERVATIVE_GC
+	/*
+	** Explicitly force the initial heap size to be at least 2 Mb.
+	**
+	** This works around a bug in the Boehm collector (for versions up
+	** to at least 6.2) where the collector would sometimes abort with
+	** the message `unexpected mark stack overflow' (e.g. in grade hlc.gc
+	** on dec-alpha-osf3.2).
+	**
+	** Doing this should also improve performance slightly by avoiding
+	** frequent garbage collection during start-up.
+	*/
+	GC_expand_hp(2 * 1024 * 1024);
+#endif
+").
 
 %-----------------------------------------------------------------------------%
 
