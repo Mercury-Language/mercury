@@ -243,6 +243,9 @@ unsafe_rewind(VA, unsafe_rewind(VA)).
             where equality   is eq_version_array,
                   comparison is cmp_version_array.
 
+    % This is necessary for the library to compile in the il and java
+    % grades.
+:- type version_array(T) ---> version_array(T).
 
 :- pred eq_version_array(version_array(T)::in, version_array(T)::in)
             is semidet.

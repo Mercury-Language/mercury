@@ -856,6 +856,12 @@ mercury_std_library_module("time").
 mercury_std_library_module("tree234").
 mercury_std_library_module("type_desc").
 mercury_std_library_module("varset").
+mercury_std_library_module("version_array").
+mercury_std_library_module("version_array2d").
+mercury_std_library_module("version_bitmap").
+mercury_std_library_module("version_hash_table").
+mercury_std_library_module("version_store").
+mercury_std_library_module("version_types").
 
 module_name_to_search_file_name(ModuleName, Ext, FileName, !IO) :-
 	module_name_to_file_name(ModuleName, Ext, yes, no, FileName, !IO).
