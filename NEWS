@@ -36,11 +36,14 @@ NEWS for Mercury release 0.6
   We also support higher-order functions and function lambda expressions.
   See the Mercury language reference manual for details.
   
-  This is all still work-in-progress, and should be considered
-  experimental.  The compiler will probably get very confused if you
-  try to define a function of arity N and a predicate of arity N+1 with
-  the same name.  There is no support for debugging programs using
-  functional syntax.
+  The support for functions is not quite complete; there is one minor
+  limitation and one major one.  The minor limitation is that the C
+  interface does not yet support Mercury functions.  (Fortunately there
+  is an easy work-around - since the C interface does support predicates,
+  you can just make your Mercury function call a Mercury predicate.)
+  The major limitation is that there is currently no support for
+  debugging programs using functional syntax; obviously using a Prolog
+  system won't work, since Prolog doesn't support functions.
 
 * We now support overloading of predicates (and functions) with the
   same name and arity defined in different modules. 
