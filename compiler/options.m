@@ -513,7 +513,10 @@ option_defaults_2(aux_output_option, [
 	trace_table_io		-	bool(no),
 	trace_table_io_states	-	bool(no),
 	suppress_trace		-	string(""),
-	delay_death		-	bool(yes),
+		% XXX delay_death should be enabled by default,
+		% but currently it is disabled because it is broken --
+		% it fails on tests/hard_coded/erroneous_liveness.m.
+	delay_death		-	bool(no),
 	stack_trace_higher_order -	bool(no),
 	generate_bytecode	-	bool(no),
 	generate_prolog		-	bool(no),
