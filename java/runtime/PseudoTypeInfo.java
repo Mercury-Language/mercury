@@ -25,4 +25,14 @@ public class PseudoTypeInfo {
 	public int variable_number;
 	public    PseudoTypeInfo(int n) { variable_number = n; }
 	protected PseudoTypeInfo()      { variable_number = -1; }
+
+		// XXX This should be renamed `equals'
+	public boolean unify(PseudoTypeInfo ti) {
+		if (this.getClass() == TypeInfo_Struct.class &&
+				ti.getClass() == TypeInfo_Struct.class) {
+			return ((TypeInfo_Struct) this).unify(
+						(TypeInfo_Struct) ti);
+		}
+		return variable_number == ti.variable_number;
+	}
 }

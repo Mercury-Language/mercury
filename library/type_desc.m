@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2003 The University of Melbourne.
+% Copyright (C) 2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -253,7 +253,8 @@ special___Unify___type_desc_0_0(object[] x, object[] y)
 	type_of(_Value::unused) = (TypeInfo::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
-	TypeInfo = TypeInfo_for_T;
+	TypeInfo = new mercury.type_desc.type_desc_0(
+			(mercury.runtime.TypeInfo_Struct) TypeInfo_for_T);
 ").
 
 
@@ -275,7 +276,7 @@ special___Unify___type_desc_0_0(object[] x, object[] y)
 	has_type(_Arg::unused, TypeInfo::in),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
-	TypeInfo_for_T = TypeInfo;
+	TypeInfo_for_T = ((mercury.type_desc.type_desc_0) TypeInfo).struct;
 ").
 
 
@@ -404,6 +405,29 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 	MR_restore_transient_registers();
 }").
 
+:- pragma foreign_proc("Java",
+	type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out),
+	[may_call_mercury, thread_safe, promise_pure],
+"
+	java.lang.Object [] result =
+			mercury.rtti_implementation.type_ctor_and_args_3_p_0(
+			((mercury.type_desc.type_desc_0) TypeDesc).struct);
+	
+	TypeCtorDesc = new type_ctor_desc_0((TypeCtorInfo_Struct) result[0]);
+	ArgTypes = result[1];
+
+	// Convert list from TypeInfo_Struct to type_desc_0
+	mercury.list.list_1 type_list = (mercury.list.list_1) ArgTypes;
+	while (type_list.data_tag == 1) {
+		((mercury.list.list_1.f_cons_2) type_list).F1 =
+				new mercury.type_desc.type_desc_0(
+				(TypeInfo_Struct)
+				((mercury.list.list_1.f_cons_2) type_list).F1);
+		type_list = (mercury.list.list_1)
+				((mercury.list.list_1.f_cons_2) type_list).F2;
+	}
+").
+
 type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
 	rtti_implementation__type_ctor_and_args(
 		rtti_implementation__unsafe_cast(TypeDesc),
@@ -514,6 +538,20 @@ type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
         }
 }").
 
+:- pragma foreign_proc("Java",
+	type_ctor_name_and_arity(TypeCtorDesc::in, TypeCtorModuleName::out,
+		TypeCtorName::out, TypeCtorArity::out),
+        [will_not_call_mercury, thread_safe, promise_pure],
+"
+	Object[] result = mercury.rtti_implementation.
+			type_ctor_name_and_arity_4_p_0(
+			((type_ctor_desc_0) TypeCtorDesc).struct);
+	
+	TypeCtorModuleName = (java.lang.String) result[0];
+	TypeCtorName = (java.lang.String) result[1];
+	TypeCtorArity = ((java.lang.Integer) result[2]).intValue();
+").
+
 type_ctor_name_and_arity(TypeCtorDesc::in, ModuleName::out,
 		TypeCtorName::out, TypeCtorArity::out) :-
 	rtti_implementation__type_ctor_name_and_arity(
@@ -541,20 +579,28 @@ get_type_info_for_type_info = TypeDesc :-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_code("Java", "
-	public class type_desc_0 {
-		// stub only
+	public static class type_desc_0 {
+		public mercury.runtime.TypeInfo_Struct struct;
+
+		public type_desc_0(mercury.runtime.TypeInfo_Struct init) {
+			struct = init;
+		}
 	}
-	public class type_ctor_desc_0 {
-		// stub only
+	public static class type_ctor_desc_0 {
+		public mercury.runtime.TypeCtorInfo_Struct struct;
+
+		public type_ctor_desc_0(
+				mercury.runtime.TypeCtorInfo_Struct init)
+		{
+			struct = init;
+		}
 	}
 
 	public static boolean
 	__Unify____type_desc_0_0(mercury.type_desc.type_desc_0 x,
 		mercury.type_desc.type_desc_0 y)
 	{
-		// stub only
-		throw new java.lang.Error
-			(""unify/2 called for type_desc type not implemented"");
+		return x.struct.unify(y.struct);
 	}
 
 	public static boolean

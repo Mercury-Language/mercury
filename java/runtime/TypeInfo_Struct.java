@@ -125,4 +125,32 @@ public class TypeInfo_Struct extends PseudoTypeInfo {
 			}
 		}
 	}
+
+		// XXX this should be renamed `equals'
+	public boolean unify(TypeInfo_Struct ti) {
+		if (this == ti) {
+			return true;
+		}
+
+		if (type_ctor.unify(ti.type_ctor) == false) {
+			return false;
+		}
+
+		if (args == null || ti.args == null) {
+			if (args == null && ti.args == null) {
+				return true;
+			}
+			return false;
+		}
+
+		for (int i = 0; i < args.length || i < ti.args.length; i++) {
+			if (i == args.length || i == ti.args.length) {
+				return false;
+			}
+			if (args[i].unify(ti.args[i]) == false) {
+				return false;
+			}
+		}
+		return true;
+	}
 }

@@ -48,4 +48,14 @@ public class TypeCtorInfo_Struct extends PseudoTypeInfo {
 			value_ordered_functor_descs;
 		type_ctor_flags = flags;
 	}
+
+		// XXX this should be renamed `equals'
+	public boolean unify(TypeCtorInfo_Struct tci) {
+		return this == tci;
+		/*
+		return type_ctor_module_name.equals(tci.type_ctor_module_name)
+				&& type_ctor_name.equals(tci.type_ctor_name)
+				&& arity == tci.arity;
+		*/
+	}
 }

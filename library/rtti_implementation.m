@@ -24,6 +24,13 @@
 % The plan is to migrate most of the Mercury level data structures in
 % compiler/rtti.m here, and to interpret them, instead of relying on access
 % to C level data structures.
+%
+% XXX The Java implementation of this module is incomplete.  Currently, it can
+% handle strings, ints, floats and enumerated types, but anything more
+% complicated will throw exceptions.  This is mainly due to the fact that a lot
+% of the low-level procedures have yet to be implemented for the Java back-end.
+%
+% XXX Also, the existing Java code needs to be reviewed.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -32,7 +39,8 @@
 
 :- interface.
 
-:- import_module deconstruct, list.
+:- import_module deconstruct.
+:- import_module list.
 
 :- use_module std_util.
 :- use_module type_desc.
@@ -85,7 +93,11 @@
 
 :- implementation.
 
-:- import_module array, bool, int, require, string.
+:- import_module array.
+:- import_module bool.
+:- import_module int.
+:- import_module require.
+:- import_module string.
 
 	% std_util has a lot of types and functions with the same names,
 	% so we prefer to keep the namespace separate.
@@ -147,11 +159,13 @@
 
 :- type type_info ---> type_info(c_pointer).
 :- pragma foreign_type("Java", type_info,
-		% XXX should this be "mercury.runtime.PseudoTypeInfo" instead?
 		"mercury.runtime.TypeInfo_Struct").
 
 :- type compare_pred ---> compare_pred(c_pointer).
+
 :- type type_layout ---> type_layout(c_pointer).
+:- pragma foreign_type("Java", type_layout, "mercury.runtime.TypeLayout").
+
 :- type pred_type ---> pred_type(c_pointer).
 :- type pseudo_type_info ---> pred_type(c_pointer).
 
@@ -503,7 +517,7 @@ get_type_info(_) = _ :-
 	get_var_arity_typeinfo_arity(TypeInfo::in) = (Arity::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 " 
-	Arity = TypeInfo.args.length;
+	Arity = ((TypeInfo_Struct) TypeInfo).args.length;
 ").
 
 :- pragma foreign_proc("C#",
@@ -950,12 +964,13 @@ type_ctor_and_args(TypeInfo0, TypeCtorInfo, TypeArgs) :-
 		type_ctor_is_variable_arity(TypeCtorInfo)
 	->
 		Arity = get_var_arity_typeinfo_arity(TypeInfo),
-		TypeArgs = iterate(1, Arity,
+		% XXX Do indexes start at 0?
+		TypeArgs = iterate(0, Arity - 1,
 			(func(X) = TypeInfo ^ var_arity_type_info_index(X))
 		)
 	;
 		Arity = type_ctor_arity(TypeCtorInfo),
-		TypeArgs = iterate(1, Arity,
+		TypeArgs = iterate(0, Arity - 1,
 			(func(X) = TypeInfo ^ type_info_index(X))
 		)
 	).
@@ -1011,7 +1026,10 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
 				NonCanon, Functor, Arity, Arguments)
 	; 	
 		TypeCtorRep = enum,
-		Functor = "some_enum", 
+		TypeFunctors = type_ctor_functors(TypeCtorInfo),
+		EnumFunctorDesc = enum_functor_desc(TypeCtorRep,
+				unsafe_get_enum_value(Term), TypeFunctors),
+		Functor = enum_functor_name(EnumFunctorDesc),
 		Arity = 0,
 		Arguments = []
 	;
@@ -1490,6 +1508,16 @@ new_type_info(TypeInfo::in, _::in) = (NewTypeInfo::uo) :-
 get_pti_from_arg_types(_::in, _::in) = (42::out) :-
 	det_unimplemented("get_pti_from_arg_types").
 
+:- pragma foreign_proc("Java",
+	get_pti_from_arg_types(ArgTypes::in, Index::in) = (ArgTypeInfo::out),
+	[will_not_call_mercury, promise_pure],
+"
+	// XXX Should this be something else?
+	TypeInfo_for_T = null;
+
+	ArgTypeInfo = ArgTypes[Index];
+").
+
 :- pragma foreign_proc("C#",
 	get_pti_from_arg_types(ArgTypes::in, Index::in) =
 		(ArgTypeInfo::out), [promise_pure], "
@@ -1591,6 +1619,21 @@ typeinfo_is_variable(_::in, 42::out) :-
 	}
 ").
 
+:- pragma foreign_proc("Java",
+	typeinfo_is_variable(TypeInfo::in, VarNum::out),
+	[will_not_call_mercury, promise_pure],
+"
+	succeeded = (TypeInfo.getClass() ==
+			mercury.runtime.PseudoTypeInfo.class);
+	if (succeeded) {
+		// This number is used to index into an array, hence the -1
+		VarNum = ((mercury.runtime.PseudoTypeInfo)TypeInfo).
+				variable_number - 1;
+	} else {
+		VarNum = -1; // just to keep the compiler happy
+	}
+").
+
 	% Tests for universal and existentially quantified variables.
 
 :- pred type_variable_is_univ_quant(int::in) is semidet.
@@ -1688,6 +1731,13 @@ pseudotypeinfo_max_var = 1024.
 	}
 ").
 
+:- pragma foreign_proc("Java",
+	get_type_ctor_info(TypeInfo::in) = (TypeCtorInfo::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	TypeCtorInfo = ((mercury.runtime.TypeInfo_Struct) TypeInfo).type_ctor;
+").
+
 :- pragma foreign_proc("C",
 	get_type_ctor_info(TypeInfo::in) = (TypeCtorInfo::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -1756,6 +1806,29 @@ get_remote_secondary_tag(_::in) = (0::out) :-
 	}
 ").
 
+:- pragma foreign_proc("Java",
+	get_primary_tag(_X::in) = (Tag::out), [promise_pure],
+"
+	// For the Java back-end, there is no primary tag, so always return 0.
+	Tag = 0;
+").
+
+:- pragma foreign_proc("Java",
+	get_remote_secondary_tag(X::in) = (Tag::out), [promise_pure],
+"
+	// If there is a secondary tag, it will be in a member called
+	// `data_tag', which we obtain by reflection.
+
+	try {
+		Tag = X.getClass().getField(""data_tag"").getInt(X);
+	}
+	catch (java.lang.Exception e) {
+		throw new java.lang.RuntimeException(
+				""get_remote_secondary_tag: `data_tag' not "" +
+				""found"");
+	}
+").
+
 :- type sectag_locn ---> none ; local ; remote ; variable.
 % :- pragma foreign_type("Java", sectag_locn, "mercury.runtime.Sectag_Locn").
 
@@ -1791,6 +1864,12 @@ ptag_index(_::in, TypeLayout::in) = (unsafe_cast(TypeLayout)::out) :-
 	PtagEntry = (object[]) TypeLayout[X];
 ").
 
+:- pragma foreign_proc("Java",
+	ptag_index(X::in, TypeLayout::in) = (PtagEntry::out), [promise_pure],
+"
+	PtagEntry = TypeLayout.layout_du()[X];
+").
+
 :- func sectag_locn(ptag_entry) = sectag_locn.
 
 sectag_locn(PTagEntry::in) = (unsafe_cast(PTagEntry)::out) :- 
@@ -1800,6 +1879,15 @@ sectag_locn(PTagEntry::in) = (unsafe_cast(PTagEntry)::out) :-
 	sectag_locn(PTagEntry::in) = (SectagLocn::out), [promise_pure], "
 	SectagLocn = mercury.runtime.LowLevelData.make_enum((int)
 		PTagEntry[(int) ptag_layout_field_nums.sectag_locn]);
+").
+
+:- pragma foreign_proc("Java",
+	sectag_locn(PTagEntry::in) = (SectagLocn::out), [promise_pure],
+"
+	mercury.runtime.Sectag_Locn SL_struct = PTagEntry.sectag_locn;
+
+	SectagLocn = new mercury.rtti_implementation.sectag_locn_0(
+			SL_struct.value);
 ").
 
 :- func du_sectag_alternatives(int, ptag_entry) = du_functor_desc.
@@ -1814,6 +1902,13 @@ du_sectag_alternatives(_::in, PTagEntry::in) = (unsafe_cast(PTagEntry)::out) :-
 	sectag_alternatives = (object []) 
 		PTagEntry[(int) ptag_layout_field_nums.sectag_alternatives];
 	FunctorDescriptor = (object []) sectag_alternatives[X];
+").
+
+:- pragma foreign_proc("Java",
+		du_sectag_alternatives(X::in, PTagEntry::in) =
+		(FunctorDescriptor::out), [promise_pure],
+"
+	FunctorDescriptor = PTagEntry.sectag_alternatives[X];
 ").
 
 :- func typeinfo_locns_index(int, exist_info) = typeinfo_locn.
@@ -1920,6 +2015,14 @@ var_arity_type_info_index(Index, TypeInfo) =
 type_info_index(_::in, TypeInfo::in) = (TypeInfo::out) :- 
 	det_unimplemented("type_info_index").
 
+:- pragma foreign_proc("Java",
+	type_info_index(X::in, TypeInfo::in) = (TypeInfoAtIndex::out),
+	[will_not_call_mercury, promise_pure],
+"
+	TypeInfoAtIndex = (TypeInfo_Struct)
+			((TypeInfo_Struct) TypeInfo).args[X];
+").
+
 :- pragma foreign_proc("C#",
 	type_info_index(X::in, TypeInfo::in) = (TypeInfoAtIndex::out),
 	[will_not_call_mercury, promise_pure],
@@ -1966,6 +2069,12 @@ det_unimplemented(S) :-
 "
 	Arity = (int) TypeCtorInfo[
 			(int) type_ctor_info_field_nums.type_ctor_arity];
+").
+:- pragma foreign_proc("Java",
+	type_ctor_arity(TypeCtorInfo::in) = (Arity::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Arity = ((TypeCtorInfo_Struct) TypeCtorInfo).arity;
 ").
 :- pragma foreign_proc("C",
 	type_ctor_arity(TypeCtorInfo::in) = (Arity::out),
@@ -2031,6 +2140,14 @@ type_ctor_compare_pred(_) = "dummy value" :-
 		(int) type_ctor_info_field_nums.type_ctor_rep];
 	TypeCtorRep = mercury.runtime.LowLevelData.make_enum(rep);
 ").
+:- pragma foreign_proc("Java",
+	type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	TypeCtorRep = new type_ctor_rep_0(
+			((mercury.runtime.TypeCtorInfo_Struct) TypeCtorInfo).
+			type_ctor_rep.value);
+").
 :- pragma foreign_proc("C",
 	type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -2054,6 +2171,13 @@ type_ctor_rep(_) = _ :-
 		type_ctor_info_field_nums.type_ctor_module_name];
 ").
 
+:- pragma foreign_proc("Java",
+	type_ctor_module_name(TypeCtorInfo::in) = (Name::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Name = TypeCtorInfo.type_ctor_module_name;
+").
+
 :- pragma foreign_proc("C",
 	type_ctor_module_name(TypeCtorInfo::in) = (Name::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -2075,6 +2199,12 @@ type_ctor_module_name(_) = _ :-
 "
 	Name = (string)
 		TypeCtorInfo[(int) type_ctor_info_field_nums.type_ctor_name];
+").
+:- pragma foreign_proc("Java",
+	type_ctor_name(TypeCtorInfo::in) = (Name::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Name = TypeCtorInfo.type_ctor_name;
 ").
 :- pragma foreign_proc("C",
 	type_ctor_name(TypeCtorInfo::in) = (Name::out),
@@ -2101,6 +2231,13 @@ type_ctor_name(_) = _ :-
 		TypeCtorInfo[(int) type_ctor_info_field_nums.type_functors];
 ").
 
+:- pragma foreign_proc("Java",
+	type_ctor_functors(TypeCtorInfo::in) = (Functors::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Functors = TypeCtorInfo.type_functors;
+").
+
 type_ctor_functors(_) = _ :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
@@ -2116,6 +2253,12 @@ type_ctor_functors(_) = _ :-
 "
 	TypeLayout = (object[])
 		TypeCtorInfo[(int) type_ctor_info_field_nums.type_layout];
+").
+:- pragma foreign_proc("Java",
+	type_layout(TypeCtorInfo::in) = (TypeLayout::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	TypeLayout = TypeCtorInfo.type_layout;
 ").
 :- pragma foreign_proc("C",
 	type_layout(TypeCtorInfo::in) = (TypeLayout::out),
@@ -2158,6 +2301,12 @@ type_ctor_num_functors(_) = _ :-
 "
 	VarOut = VarIn;
 ").
+:- pragma foreign_proc("Java",
+	unsafe_cast(VarIn::in) = (VarOut::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	VarOut = VarIn;
+").
 
 unsafe_cast(_) = _ :-
 	% This version is only used for back-ends for which there is no
@@ -2195,42 +2344,135 @@ unsafe_cast(_) = _ :-
 du_functor_desc(_, Num, TypeFunctors) = DuFunctorDesc :-
 	DuFunctorDesc = TypeFunctors ^ unsafe_index(Num).
 
+:- pragma foreign_proc("Java",
+	du_functor_desc(_TypeCtorRep::in(du), X::in, TypeFunctors::in) =
+			(DuFunctorDesc::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	DuFunctorDesc = TypeFunctors.functors_du()[X];
+").
+
 :- func du_functor_name(du_functor_desc) = string.
+
 du_functor_name(DuFunctorDesc) = DuFunctorDesc ^ unsafe_index(0).
 
+:- pragma foreign_proc("Java",
+	du_functor_name(DuFunctorDesc::in) = (Name::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Name = DuFunctorDesc.du_functor_name;
+").
+
 :- func du_functor_arity(du_functor_desc) = int.
+
 du_functor_arity(DuFunctorDesc) = DuFunctorDesc ^ unsafe_index(1).
 
+:- pragma foreign_proc("Java",
+	du_functor_arity(DuFunctorDesc::in) = (Arity::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Arity = DuFunctorDesc.du_functor_orig_arity;
+").
+
 :- func du_functor_arg_type_contains_var(du_functor_desc) = int.
+
 du_functor_arg_type_contains_var(DuFunctorDesc) =
 		DuFunctorDesc ^ unsafe_index(2).
 
+:- pragma foreign_proc("Java",
+	du_functor_arg_type_contains_var(DuFunctorDesc::in) = (Contains::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Contains = DuFunctorDesc.du_functor_arg_type_contains_var;
+").
+
 :- func du_functor_sectag_locn(du_functor_desc) = sectag_locn.
+
 du_functor_sectag_locn(DuFunctorDesc) =
 	unsafe_make_enum(DuFunctorDesc ^ unsafe_index(3)).
 
+:- pragma foreign_proc("Java",
+	du_functor_sectag_locn(DuFunctorDesc::in) = (SectagLocn::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	SectagLocn = DuFunctorDesc.du_functor_sectag_locn;
+").
+
 :- func du_functor_primary(du_functor_desc) = int.
+
 du_functor_primary(DuFunctorDesc) = DuFunctorDesc ^ unsafe_index(4).
 
+:- pragma foreign_proc("Java",
+	du_functor_primary(DuFunctorDesc::in) = (Primary::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Primary = DuFunctorDesc.du_functor_primary;
+").
+
 :- func du_functor_secondary(du_functor_desc) = int.
+
 du_functor_secondary(DuFunctorDesc) = DuFunctorDesc ^ unsafe_index(5).
 
+:- pragma foreign_proc("Java",
+	du_functor_secondary(DuFunctorDesc::in) = (Secondary::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Secondary = DuFunctorDesc.du_functor_secondary;
+").
+
 :- func du_functor_ordinal(du_functor_desc) = int.
+
 du_functor_ordinal(DuFunctorDesc) = DuFunctorDesc ^ unsafe_index(6).
 
+:- pragma foreign_proc("Java",
+	du_functor_ordinal(DuFunctorDesc::in) = (Ordinal::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Ordinal = DuFunctorDesc.du_functor_ordinal;
+").
+
 :- func du_functor_arg_types(du_functor_desc) = arg_types.
+
 du_functor_arg_types(DuFunctorDesc) = DuFunctorDesc ^ unsafe_index(7).
 
-:- func du_functor_arg_names(du_functor_desc::in) = (arg_names::out) is semidet.
+:- pragma foreign_proc("Java",
+	du_functor_arg_types(DuFunctorDesc::in) = (ArgTypes::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	ArgTypes = DuFunctorDesc.du_functor_arg_types;
+").
+
+:- func du_functor_arg_names(du_functor_desc::in) =
+		(arg_names::out) is semidet.
+
 du_functor_arg_names(DuFunctorDesc) = ArgNames :-
 	ArgNames = DuFunctorDesc ^ unsafe_index(8),
 	not null(ArgNames).
 
+:- pragma foreign_proc("Java",
+	du_functor_arg_names(DuFunctorDesc::in) = (ArgNames::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	ArgNames = DuFunctorDesc.du_functor_arg_names;
+
+	succeeded = (ArgNames != null);
+").
+
 :- func du_functor_exist_info(du_functor_desc::in) =
 		(exist_info::out) is semidet.
+
 du_functor_exist_info(DuFunctorDesc) = ExistInfo :-
 	ExistInfo = DuFunctorDesc ^ unsafe_index(9),
 	not null(ExistInfo).
+
+:- pragma foreign_proc("Java",
+	du_functor_exist_info(DuFunctorDesc::in) = (ExistInfo::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	ExistInfo = DuFunctorDesc.du_functor_exist_info;
+
+	succeeded = (ExistInfo != null);
+").
 
  %--------------------------%
 
@@ -2241,11 +2483,35 @@ du_functor_exist_info(DuFunctorDesc) = ExistInfo :-
 enum_functor_desc(_, Num, TypeFunctors) = EnumFunctorDesc :-
 	EnumFunctorDesc = TypeFunctors ^ unsafe_index(Num).
 
+:- pragma foreign_proc("Java",
+	enum_functor_desc(_TypeCtorRep::in(enum), X::in, TypeFunctors::in) =
+			(EnumFunctorDesc::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	EnumFunctorDesc = (TypeFunctors.functors_enum())[X];
+").
+
 :- func enum_functor_name(enum_functor_desc) = string.
+
 enum_functor_name(EnumFunctorDesc) = EnumFunctorDesc ^ unsafe_index(0).
 
+:- pragma foreign_proc("Java",
+	enum_functor_name(EnumFunctorDesc::in) = (Name::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Name = EnumFunctorDesc.enum_functor_name;
+").
+
 :- func enum_functor_ordinal(enum_functor_desc) = int.
+
 enum_functor_ordinal(EnumFunctorDesc) = EnumFunctorDesc ^ unsafe_index(1).
+
+:- pragma foreign_proc("Java",
+	enum_functor_ordinal(EnumFunctorDesc::in) = (Ordinal::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Ordinal = EnumFunctorDesc.enum_functor_ordinal;
+").
 
  %--------------------------%
 
@@ -2256,14 +2522,49 @@ enum_functor_ordinal(EnumFunctorDesc) = EnumFunctorDesc ^ unsafe_index(1).
 notag_functor_desc(_, Num, TypeFunctors) = NoTagFunctorDesc :-
 	NoTagFunctorDesc = TypeFunctors ^ unsafe_index(Num).
 
+:- pragma foreign_proc("Java",
+	notag_functor_desc(_TypeCtorRep::in(notag), _X::in, TypeFunctors::in) =
+			(NotagFunctorDesc::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	NotagFunctorDesc = TypeFunctors.functors_notag();
+").
+
 :- func notag_functor_name(notag_functor_desc) = string.
+
 notag_functor_name(NoTagFunctorDesc) = NoTagFunctorDesc ^ unsafe_index(0).
 
+:- pragma foreign_proc("Java",
+	notag_functor_name(NotagFunctorDesc::in) = (Name::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Name = NotagFunctorDesc.no_tag_functor_name;
+").
+
+	% XXX This is a bug.  This function should actually return a
+	% PseudoTypeInfo.  The Java code below should work once this is
+	% corrected.
 :- func notag_functor_arg_type(notag_functor_desc) = type_info.
+
 notag_functor_arg_type(NoTagFunctorDesc) = NoTagFunctorDesc ^ unsafe_index(1).
 
+% :- pragma foreign_proc("Java",
+%	notag_functor_arg_type(NotagFunctorDesc::in) = (ArgType::out),
+%	[will_not_call_mercury, promise_pure, thread_safe],
+% "
+% 	ArgType = NotagFunctorDesc.no_tag_functor_arg_type;
+% ").
+
 :- func notag_functor_arg_name(notag_functor_desc) = string.
+
 notag_functor_arg_name(NoTagFunctorDesc) = NoTagFunctorDesc ^ unsafe_index(2).
+
+:- pragma foreign_proc("Java",
+	notag_functor_arg_name(NotagFunctorDesc::in) = (ArgName::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	ArgName = NotagFunctorDesc.no_tag_functor_arg_name;
+").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -2304,6 +2605,12 @@ unsafe_make_enum(_) = _ :-
 "
 	SUCCESS_INDICATOR = (S == null);
 ").
+:- pragma foreign_proc("Java",
+	null(S::in),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	succeeded = (S == null);
+").
 null(_) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
@@ -2324,10 +2631,39 @@ null(_) :-
 "
 	Str = null;
 ").
+:- pragma foreign_proc("Java",
+	null_string = (Str::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	Str = null;
+").
 null_string = _ :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
 	private_builtin__sorry("rtti_implementation__null_string/0").
+
+ %--------------------------%
+
+:- func unsafe_get_enum_value(T) = int.
+
+:- pragma foreign_proc("Java",
+	unsafe_get_enum_value(Enum::in) = (Value::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	try {
+		Value = Enum.getClass().getField(""value"").getInt(Enum);
+	}
+	catch (java.lang.Exception e) {
+		throw new java.lang.RuntimeException(
+				""unsafe_get_enum_value/1 called on an "" +
+				""object which is not of enumerated type."");
+	}
+").
+
+unsafe_get_enum_value(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("rtti_implementation__unsafe_get_enum_value/1").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
