@@ -29,7 +29,7 @@
 %
 %	2.  For accumulating typecheck_infos, which contain:
 %		- an io_state, which is modified if we need to
-%		  to write out an error message
+%		  write out an error message
 %		- various semi-global info which doesn't change often,
 %		  namely the pred_id and term__context of the clause
 %		  we are type-checking
@@ -3478,7 +3478,7 @@ report_error_pred_num_args(TypeCheckInfo, Name / Arity, Arities) -->
 	io__write_string("  error: wrong number of arguments ("),
 	io__write_int(Arity),
 	io__write_string("; should be "),
-	report_error_pred_num_right_args(Arities),
+	report_error_right_num_args(Arities),
 	io__write_string(")\n"),
 	{ typecheck_info_get_context(TypeCheckInfo, Context) },
 	prog_out__write_context(Context),
@@ -3486,11 +3486,11 @@ report_error_pred_num_args(TypeCheckInfo, Name / Arity, Arities) -->
 	prog_out__write_sym_name(Name),
 	io__write_string("'.\n").
 
-:- pred report_error_pred_num_right_args(list(int), io__state, io__state).
-:- mode report_error_pred_num_right_args(in, di, uo) is det.
+:- pred report_error_right_num_args(list(int), io__state, io__state).
+:- mode report_error_right_num_args(in, di, uo) is det.
 
-report_error_pred_num_right_args([]) --> [].
-report_error_pred_num_right_args([Arity | Arities]) -->
+report_error_right_num_args([]) --> [].
+report_error_right_num_args([Arity | Arities]) -->
 	io__write_int(Arity),
 	( { Arities = [] } ->
 		[]
@@ -3499,7 +3499,7 @@ report_error_pred_num_right_args([Arity | Arities]) -->
 	;
 		io__write_string(", ")
 	),
-	report_error_pred_num_right_args(Arities).
+	report_error_right_num_args(Arities).
 
 :- pred report_error_undef_cons(typecheck_info, cons_id, int, io__state, 
 			io__state).
@@ -3577,12 +3577,42 @@ report_error_undef_cons(TypeCheckInfo, Functor, Arity) -->
 		;
 			[]
 		)
-	;
-		io__write_string("  error: undefined symbol `"),
-		{ strip_builtin_qualifier_from_cons_id(Functor, Functor1) },
-		hlds_out__write_cons_id(Functor1),
-		io__write_string("'.\n")
+	; 
+		(
+			{ Functor = cons(Constructor, Arity) },
+			{ typecheck_info_get_ctors(TypeCheckInfo, ConsTable) },
+			{ solutions(lambda([N::out] is nondet, 
+				map__member(ConsTable, 
+					    cons(Constructor, N),
+					    _)),
+				ActualArities) },
+			{ ActualArities = [_|_] }
+		->
+			report_wrong_arity_constructor(Constructor, Arity,
+				ActualArities, Context)
+		;
+			io__write_string("  error: undefined symbol `"),
+			{ strip_builtin_qualifier_from_cons_id(Functor, 
+				Functor1) },
+			hlds_out__write_cons_id(Functor1),
+			io__write_string("'.\n")
+		)
 	).
+
+:- pred report_wrong_arity_constructor(sym_name, arity, list(int), 
+	term__context, io__state, io__state).
+:- mode report_wrong_arity_constructor(in, in, in, in, di, uo) is det.
+
+report_wrong_arity_constructor(Name, Arity, ActualArities, Context) -->
+	io__write_string("  error: wrong number of arguments ("),
+	io__write_int(Arity),
+	io__write_string("; should be "),
+	report_error_right_num_args(ActualArities),
+	io__write_string(")\n"),
+	prog_out__write_context(Context),
+	io__write_string("  in use of constructor `"),
+	prog_out__write_sym_name(Name),
+	io__write_string("'.\n").
 
 % language_builtin(Name, Arity) is true iff Name/Arity
 % is the name of a builtin language construct that should be
