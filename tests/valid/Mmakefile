@@ -25,7 +25,7 @@ TYPECLASS_SOURCES= \
 	func_method.m \
 	instance_superclass.m \
 	instance_unconstrained_tvar.m \
-	typeclass_det_warning
+	typeclass_det_warning.m
 
 ADITI_SOURCES= \
 	aditi_error_bug.m \
