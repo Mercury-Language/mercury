@@ -914,7 +914,7 @@ string__format_mod_conv_char(Precision0, Poly_var, Conversion_in,
 	; 
 	Conversion_in = 'g' ->			%g is either %e of %f
 		(Poly_var = f(F) ->
-			float__abs(F, Ft),
+			Ft = float__abs(F),
 			int__pow(10, Prec, P),
 			int__to_float(P, Pe),
 			(
@@ -933,7 +933,7 @@ string__format_mod_conv_char(Precision0, Poly_var, Conversion_in,
 	;
 	Conversion_in = 'G' ->		%G is either %E of %f
 		(Poly_var = f(F) ->
-			float__abs(F, Ft),
+			Ft = float__abs(F),
 			int__pow(10, Prec, P),
 			int__to_float(P, Pe),
 			(
