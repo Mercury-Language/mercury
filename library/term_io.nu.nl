@@ -36,7 +36,9 @@ io__read_term(Result) -->
 	    term__context_init(StreamName, LineNumber, Context),
 	    convert_tokens(Tokens0, Tokens),
 	    ( treadTerm(Tokens, Term0, NameList, VarList) ->
-		expandTerm(Term0, Term1),
+		% DCG expansion is now done by prog_io.nl.
+		% expandTerm(Term0, Term1), 
+		Term1 = Term0,
 		( nonvar(Term1), eof(Term1) ->
 			Result = eof
 		;
