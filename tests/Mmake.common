@@ -139,10 +139,14 @@ clean_errors:
 	rm -f $(ERROR_OUTPUT_FILE)
 
 # Remove gzipped executables for tests which have failed.
+ifeq ($(TESTS),)
+clean_zip: ;
+else
 clean_zip:
 	for test in $(TESTS); do \
 		rm -f `basename $$test -nodepend`.gz; \
 	done
+endif
 
 #
 # The `foo' targets make recursively make `foo' in all subdirectories.
