@@ -6,20 +6,29 @@
 
 -include ../Mmake.params
 
-MLOBJS = posix_workarounds.o
-MLPICOBJS = posix_workarounds.o
+# This library has some parts that are implemented in C
+# rather than in Mercury.  The following lines ensure that
+# the .h and .o files for those parts get included in the library.
+ADDITIONAL_HDRS = posix_workarounds.h text_header.h
+MLOBJS = posix_workarounds.$O
+MLPICOBJS = posix_workarounds.$(EXT_FOR_PIC_OBJECTS)
 
 .PHONY: default_target
-default_target: hello
+default_target: all
 
 .PHONY: depend
-depend: hello.depend
+depend: posix.depend hello.depend
 
-hello:	posix_workarounds.o
+.PHONY: all
+all: libposix hello
 
 .PHONY: check
-check:
-	true
+check: hello
+	./hello
+
+.PHONY: install
+install: libposix.install
+	cp $(ADDITIONAL_HDRS) $(INSTALL_PREFIX)/lib/mercury/inc
 
 .PHONY: clean
 clean:
