@@ -6,4 +6,5 @@
 *.aux *.cp *.fn *.ky *.log *.pg *.toc *.tp *.vr *.ps *.dvi *.dvi_log
 *.cps *.fns *.kys *.pgs *.tps *.vrs
 library-menu.texi library-chapters.texi
+mercury.html mercury.info
 mdb_doc mdb_command_list mdb_command_test.inp
