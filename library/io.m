@@ -45,6 +45,11 @@
 %	io__write_int(Int, IO0, IO1).
 %		Writes an integer to standard output.
 
+:- pred io__write_float(float, io__state, io__state).
+%	io__write_float(Float, IO0, IO1).
+%		Writes a floating point number to standard output.
+
+
 :- type res ---> ok ; error.
 :- pred io__see(string, res, io__state, io__state).
 %	io__see(File, Result, IO0, IO1).
@@ -523,6 +528,13 @@ io__write_constant_2(term_string(S)) :- write('"'), write_string(S), write('"').
 :- io__write_int(I, IO0, _) when I and IO0.
 io__write_int(I) -->
 	{ write(I) },
+	io__update_state.
+
+%-----------------------------------------------------------------------------%
+
+:- io__write_float(F, IO0, _) when F and IO0.
+io__write_float(F) -->
+	{ write(F) },
 	io__update_state.
 
 %-----------------------------------------------------------------------------%
