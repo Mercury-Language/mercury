@@ -42,7 +42,7 @@
 :- import_module prog_data.
 :- import_module hlds_pred, hlds_goal, hlds_data.
 :- import_module type_util, mode_util, goal_util.
-:- import_module builtin_ops, code_model, passes_aux.
+:- import_module builtin_ops, code_model, passes_aux, error_util.
 :- import_module globals, tree.
 :- import_module prog_out.
 
@@ -189,9 +189,8 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 			% XXX
 			functor(GenericCallType, _GenericCallFunctor, _),
 			/*string__append_list([
-				"sorry: bytecode not yet implemented for ",
-				GenericCallFunctor, " calls"], Msg),
-			error(Msg)*/
+				"bytecode for ", GenericCallFunctor, " calls"], Msg),
+			sorry(this_file, Msg)*/
 			Code = node([not_supported]),
 			ByteInfo = ByteInfo0
 		)
@@ -233,7 +232,7 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 		bytecode_gen__conj(GoalList, ByteInfo0, ByteInfo, Code)
 	;
 		GoalExpr = par_conj(_GoalList, _SM),
-		error("sorry, bytecode_gen of parallel conj not implemented")
+		sorry(this_file, "bytecode_gen of parallel conjunction")
 	;
 		GoalExpr = disj(GoalList, _),
 		( GoalList = [] ->
@@ -285,7 +284,7 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 	;
 		GoalExpr = shorthand(_),
 		% these should have been expanded out by now
-		error("bytecode_gen__goal_expr: unexpected shorthand")
+		unexpected(this_file, "bytecode_gen__goal_expr: unexpected shorthand")
 	).
 
 %---------------------------------------------------------------------------%
@@ -397,7 +396,7 @@ bytecode_gen__builtin(PredId, ProcId, Args, ByteInfo, Code) :-
 		)
 	;
 		string__append("unknown builtin predicate ", PredName, Msg),
-		error(Msg)
+		unexpected(this_file, Msg)
 	).
 
 :- pred bytecode_gen__map_test(byte_info::in,
@@ -516,9 +515,9 @@ bytecode_gen__unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
 		type_to_type_id(Var2Type, TypeId2, _)
 	->	(	TypeId2 = TypeId1
 		->	TypeId = TypeId1
-		;	error("unexpected simple_test between different types")
+		;	unexpected(this_file, "simple_test between different types")
 		)
-	;	error("failed lookup of type id")
+	;	unexpected(this_file, "failed lookup of type id")
 	),
 
 	ByteInfo = byte_info(_, _, ModuleInfo, _, _),
@@ -541,21 +540,22 @@ bytecode_gen__unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
 		TestId = enum_test 
 
 	;	BuiltinType = pred_type,
-		error("unexpected pred_type in simple_test")
+		unexpected(this_file, "pred_type in simple_test")
 	
 	;	BuiltinType = tuple_type,
-		error("unexpected tuple_type in simple_test")
+		unexpected(this_file, "tuple_type in simple_test")
 
 	;	BuiltinType = user_type,
-		error("unexpected user_type in simple_test")
+		unexpected(this_file, "user_type in simple_test")
 
 	;	BuiltinType = polymorphic_type,
-		error("unexpected polymorphic_type in simple_test")
+		unexpected(this_file, "polymorphic_type in simple_test")
 
 	),
 	Code = node([test(ByteVar1, ByteVar2, TestId)]).
 bytecode_gen__unify(complicated_unify(_,_,_), _Var, _RHS, _ByteInfo, _Code) :-
-	error("complicated unifications should have been handled by polymorphism.m").
+	unexpected(this_file,
+		"complicated unifications should have been handled by polymorphism.m").
 
 :- pred bytecode_gen__map_uni_modes(list(uni_mode)::in, list(prog_var)::in,
 	byte_info::in, list(byte_dir)::out) is det.
@@ -584,13 +584,13 @@ bytecode_gen__map_uni_modes([UniMode | UniModes], [Arg | Args], ByteInfo,
 	->
 		Dir = to_none
 	;
-		error("invalid mode for (de)construct unification")
+		unexpected(this_file, "invalid mode for (de)construct unification")
 	),
 	bytecode_gen__map_uni_modes(UniModes, Args, ByteInfo, Dirs).
 bytecode_gen__map_uni_modes([], [_|_], _, _) :-
-	error("bytecode_gen__map_uni_modes: length mismatch").
+	unexpected(this_file, "bytecode_gen__map_uni_modes: length mismatch").
 bytecode_gen__map_uni_modes([_|_], [], _, _) :-
-	error("bytecode_gen__map_uni_modes: length mismatch").
+	unexpected(this_file, "bytecode_gen__map_uni_modes: length mismatch").
 
 :- pred bytecode_gen__all_dirs_same(list(byte_dir)::in, byte_dir::in)
 	is semidet.
@@ -620,7 +620,7 @@ bytecode_gen__conj([Goal | Goals], ByteInfo0, ByteInfo, Code) :-
 	int::in, byte_info::out,  byte_tree::out) is det.
 
 bytecode_gen__disj([], _, _, _, _) :-
-	error("empty disjunction in bytecode_gen__disj").
+	unexpected(this_file, "empty disjunction in bytecode_gen__disj").
 bytecode_gen__disj([Disjunct | Disjuncts], ByteInfo0, EndLabel,
 		ByteInfo, Code) :-
 	bytecode_gen__goal(Disjunct, ByteInfo0, ByteInfo1, ThisCode),
@@ -681,7 +681,8 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 			( FunctorList = [Char] ->
 				ByteConsId = char_const(Char)
 			;	
-				error("bytecode_gen__map_cons_id: unqualified cons_id is not a char_const")
+				unexpected(this_file,
+					"map_cons_id: unqualified cons_id is not a char_const")
 			)
 		;
 			(
@@ -719,8 +720,7 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 				PredName, Arity, IsFunc, ProcInt)
 		;
 			% XXX
-			error(
-	"sorry: bytecode not yet implemented for Aditi lambda expressions")
+			sorry(this_file, "bytecode for Aditi lambda expressions")
 		)
 	;
 		ConsId = code_addr_const(PredId, ProcId),
@@ -739,10 +739,10 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 			Instance)
 	;
 		ConsId = tabling_pointer_const(_, _),
-		error("bytecode cannot implement tabling")
+		sorry(this_file, "bytecode cannot implement tabling")
 	;
 		ConsId = deep_profiling_proc_static(_),
-		error("bytecode cannot implement deep profiling")
+		sorry(this_file, "bytecode cannot implement deep profiling")
 	).
 
 :- pred bytecode_gen__map_cons_tag(cons_tag::in, byte_cons_tag::out) is det.
@@ -754,22 +754,22 @@ bytecode_gen__map_cons_tag(shared_remote_tag(Primary, Secondary),
 bytecode_gen__map_cons_tag(shared_local_tag(Primary, Secondary),
 	shared_local_tag(Primary, Secondary)).
 bytecode_gen__map_cons_tag(string_constant(_), _) :-
-	error("string_constant cons tag for non-string_constant cons id").
+	unexpected(this_file, "string_constant cons tag for non-string_constant cons id").
 bytecode_gen__map_cons_tag(int_constant(IntVal), enum_tag(IntVal)).
 bytecode_gen__map_cons_tag(float_constant(_), _) :-
-	error("float_constant cons tag for non-float_constant cons id").
+	unexpected(this_file, "float_constant cons tag for non-float_constant cons id").
 bytecode_gen__map_cons_tag(pred_closure_tag(_, _, _), _) :-
-	error("pred_closure_tag cons tag for non-pred_const cons id").
+	unexpected(this_file, "pred_closure_tag cons tag for non-pred_const cons id").
 bytecode_gen__map_cons_tag(code_addr_constant(_, _), _) :-
-	error("code_addr_constant cons tag for non-address_const cons id").
+	unexpected(this_file, "code_addr_constant cons tag for non-address_const cons id").
 bytecode_gen__map_cons_tag(type_ctor_info_constant(_, _, _), _) :-
-	error("type_ctor_info_constant cons tag for non-type_ctor_info_constant cons id").
+	unexpected(this_file, "type_ctor_info_constant cons tag for non-type_ctor_info_constant cons id").
 bytecode_gen__map_cons_tag(base_typeclass_info_constant(_, _, _), _) :-
-	error("base_typeclass_info_constant cons tag for non-base_typeclass_info_constant cons id").
+	unexpected(this_file, "base_typeclass_info_constant cons tag for non-base_typeclass_info_constant cons id").
 bytecode_gen__map_cons_tag(tabling_pointer_constant(_, _), _) :-
-	error("tabling_pointer_constant cons tag for non-tabling_pointer_constant cons id").
+	unexpected(this_file, "tabling_pointer_constant cons tag for non-tabling_pointer_constant cons id").
 bytecode_gen__map_cons_tag(deep_profiling_proc_static_tag(_), _) :-
-	error("deep_profiling_proc_static_tag cons tag for non-deep_profiling_proc_static cons id").
+	unexpected(this_file, "deep_profiling_proc_static_tag cons tag for non-deep_profiling_proc_static cons id").
 
 %---------------------------------------------------------------------------%
 
@@ -867,3 +867,11 @@ bytecode_gen__get_is_func(PredInfo, IsFunc) :-
 	;	IsFunc = 1
 	).
 
+%---------------------------------------------------------------------------%
+
+:- func this_file = string.
+this_file = "bytecode_gen.m".
+
+:- end_module bytecode_gen.
+
+%---------------------------------------------------------------------------%
