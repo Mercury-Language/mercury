@@ -79,7 +79,7 @@ MR_CallSiteDynamic	*MR_next_call_site_dynamic = NULL;
 MR_CallSiteDynList	**MR_current_callback_site =
 				(MR_CallSiteDynList **)
 				&MR_main_parent_call_site_dynamics[0];
-bool	 		MR_inside_deep_profiling_code = FALSE;
+volatile bool	 	MR_inside_deep_profiling_code = FALSE;
 volatile unsigned	MR_quanta_inside_deep_profiling_code = 0L;
 volatile unsigned	MR_quanta_outside_deep_profiling_code = 0L;
 
