@@ -1652,11 +1652,7 @@ else
 	if test $mercury_cv_gcc_model_reg = yes; then
 		BEST_GRADE=reg
 	else
-		if test $ac_microsoft = yes; then
-			BEST_GRADE=hlc
-		else
-			BEST_GRADE=none
-		fi
+		BEST_GRADE=none
 	fi
 fi
 
@@ -1687,10 +1683,14 @@ if test "$GRADE" = jump.gc || test "$GRADE" = fast.gc; then
 		rm -f library/*.c compiler/*.c browser/*.c profiler/*.c
 	fi
 else
-	MERCURY_MSG("using \`GRADE=$GRADE' to compile the compiler")
+	# If we are using the MS compiler we want to install all the
+	# none.* and hlc.* grades.  The easiest way to do this is to
+	# pretend we want to use the none.gc grade and then override it
+	# later.
+	if test $ac_microsoft = no; then
+		MERCURY_MSG("using \`GRADE=$GRADE' to compile the compiler")
+	fi
 fi
-
-AC_SUBST(GRADE)
 
 if test "$DEFAULT_GRADE" = ""; then
 	DEFAULT_GRADE=$GRADE
@@ -1703,8 +1703,6 @@ if test "$DEFAULT_GRADE" = ""; then
 			;;
 	esac
 fi
-MERCURY_MSG("using \`DEFAULT_GRADE=$DEFAULT_GRADE' as the default grade for applications")
-AC_SUBST(DEFAULT_GRADE)
 
 #
 # Figure out which grades to use if --enable-all-grades is specified.
@@ -1768,14 +1766,37 @@ fi
 # add `.debug' (--debug) grades
 LIBGRADES="$LIBGRADES $DEFAULT_GRADE.tr.debug"
 
-# add `hlc' (--high-level-code, i.e. MLDS back-end) grade
+# add `hlc' (--high-level-code, i.e. MLDS back-end) grades
 LIBGRADES="$LIBGRADES hlc.gc"
 
-# Not all grades compile with the MS compiler, only install those grades
-# which do.
-if test $ac_microsoft = yes; then
-	LIBGRADES=none.gc
+AC_ARG_ENABLE(all-hlc-grades,
+[  --enable-all-hlc-grades install all the hlc grades],
+enable_all_hlc_grades=yes,enable_all_hlc_grades=no)
+
+if test $enable_all_hlc_grades = "yes" -o $ac_microsoft = "yes"; then
+	# add `hlc' grade
+	LIBGRADES="$LIBGRADES hlc"
+
+	# add `.prof' (--profiling) grades, if time profiling is supported,
+	# and a `.memprof' (--memory-profiling) grade.
+	if test $mercury_cv_profiling = yes; then
+		LIBGRADES="$LIBGRADES hlc.gc.prof"
+	fi
+	LIBGRADES="$LIBGRADES hlc.gc.memprof"
 fi
+
+# If we are using the Microsoft compiler then use hlc.gc as the default
+# grade.
+if test $ac_microsoft = yes; then
+	GRADE=hlc.gc
+	DEFAULT_GRADE=hlc.gc
+	MERCURY_MSG("\`GRADE=$GRADE' to compile the compiler")
+fi
+AC_SUBST(GRADE)
+
+# Output default grade
+MERCURY_MSG("using \`DEFAULT_GRADE=$DEFAULT_GRADE' as the default grade for applications")
+AC_SUBST(DEFAULT_GRADE)
 
 # remove GRADE from LIBGRADES
 LIBGRADES=` echo " $LIBGRADES " | sed "s/ $GRADE / /" `
