@@ -63,6 +63,10 @@
 				list(pair(var, arg_loc))).
 :- mode call_gen__output_arg_locs(in, out) is det.
 
+:- pred call_gen__save_variables(set(var), code_tree,
+						code_info, code_info).
+:- mode call_gen__save_variables(in, out, in, out) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -202,10 +206,6 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 	call_gen__rebuild_registers(Args).
 
 %---------------------------------------------------------------------------%
-
-:- pred call_gen__save_variables(set(var), code_tree,
-						code_info, code_info).
-:- mode call_gen__save_variables(in, out, in, out) is det.
 
 call_gen__save_variables(Args, Code) -->
 	code_info__get_live_variables(Variables0),
@@ -392,15 +392,12 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, CanFail, Code) -->
 			label(ReturnLabel) - "Continuation label"
 		]) }
 	;
-		% type_to_type_id failed - the type must be a type variable
-		% { error("sorry, polymorphic unifications not implemented") }
-		% XXX a temporary hack
-		{ CodeC0 = empty },
-		{ CodeC1 = node([
-			c_code(
-	"fatal_error(""Sorry, polymorphic unifications not implemented"");") -
-				"Temporary hack"
-		]) }
+		% `type_to_type_id' failed - the type must be a type variable,
+		% i.e. it is a polymorphic unification.
+		% However, these sorts of unifications should have been changed
+		% into calls to unify/2 by polymorphism.m, so if we encounter
+		% any here, it's an internal error.
+		{ error("unexpected polymorphic unification") }
 	),
 	(
 		{ CanFail = can_fail }

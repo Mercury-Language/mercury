@@ -271,32 +271,26 @@ detect_live_vars_in_goal_2(unify(_,_,_,D,_), NondetLives, Liveness, LiveSets0,
 		LiveSets = LiveSets0
 	).
 
-	% We needn't save any variables onto the stack before pragma_c_code
-	% since it won't clobber any registers. This assumes that no mercury
-	% code (which will clobber regs) will be called from the c code.
-	% XXX Note if we change this, and allow calls back to mercury, this
-	% will have to be changed
 detect_live_vars_in_goal_2(
-		pragma_c_code(_C_Code, _PredId, _ProcId, _Args, _ArgNameMap), 
-		_NondetLives, Liveness, LiveSets, _Model, _ModuleInfo,
-		Liveness, LiveSets).
+		pragma_c_code(_C_Code, PredId, ProcId, Args, _ArgNameMap), 
+		NondetLives, Liveness, LiveSets0, _Model, ModuleInfo,
+		Liveness, LiveSets) :-
 
-/************ Here's the code we'll need if we support calls back into mercury
-
-% The variables which need to be saved onto the stack
-% before the c_code execution are all the variables that are live
-% after the c_code execution, except for the output arguments produced
-% by the c_code , plus all the variables that are nondet
-% live at the c_code.
+	% The variables which need to be saved onto the stack
+	% before the c_code execution are all the variables that are live
+	% after the c_code execution, except for the output arguments produced
+	% by the c_code, plus all the variables that are nondet
+	% live at the c_code.
+	%
+	% Note that we wouldn't need to save any variables onto the stack
+	% before a pragma_c_code if we knew that it was not going to call
+	% back Mercury code, because C code won't clobber the registers.
+	% But in general we don't know that.
 
 	find_output_vars(PredId, ProcId, Args, ModuleInfo, OutVars),
-	set__difference(Liveness, OutVars, LiveVars),
+	set__difference(Liveness, OutVars, LiveVars0),
+	set__union(LiveVars0, NondetLives, LiveVars),
 	set__insert(LiveSets0, LiveVars, LiveSets).
-
-************/
-
-	
-
 
 %-----------------------------------------------------------------------------%
 

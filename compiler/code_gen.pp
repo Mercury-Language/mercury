@@ -788,13 +788,51 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, PredId, ModeId, Args,
 
 % The code generated for pragma_c_code is of the following form:
 %
+% <save live variables onto the stack>
 % {
 %	<declaration of one local variable for each arg>
 %	<assignment of input values from registers to local variables>
-%	<the c code itself>
+%	save_registers(); /* see note (1) below */
+%	{ <the c code itself> }
+%	#ifndef CONSERVATIVE_GC
+%	  restore_registers(); /* see note (2) below */
+%	#endif
 %	<assignment of the output values from local variables to registers>
 % }
 %
+% In the case of a semidet pragma c_code, this is followed by
+%
+%	if (r1) goto label;
+%	<code to fail>
+%	label:
+%
+% Notes:
+%
+% (1)	   The call to save_registers() is needed so that if the
+%	   C code calls Mercury code, we can call restore_registers()
+%	   on entry to the Mercury code (see export.m) to get the
+%	   right values of `sp', `hp', `curfr' and `maxfr' for the
+%	   recursive invocation of Mercury.
+%
+% (2)	   The call to restore_registers() is needed in case the
+%	   C code calls Mercury code which allocates some data
+%	   on the heap, and this data is returned from Mercury
+%	   through C back to Mercury.  In that case, we need to
+%	   keep the value of `hp' that was set by the recursive
+%	   invocation of Mercury.  The Mercury calling convention
+%	   guarantees that the values of `sp', `curfr', and `maxfr'
+%	   will be preserved, so if we're using conservative gc,
+%	   there is nothing that needs restoring.
+
+	% the C code might call back Mercury code which clobbers the succip
+	code_info__set_succip_used(yes),
+
+	% the C code might call back Mercury code which clobbers the other
+	% registers, so we need to save any live variables (other than the
+	% output args) onto the stack
+	{ set__list_to_set(OutArgs, OutArgsSet) },
+	call_gen__save_variables(OutArgsSet, SaveVarsCode),
+
 	make_pragma_decls(Args, ArgNameMap, Decls),
 	get_pragma_input_vars(InArgs, ArgNameMap, Inputs, InputVarsCode),
 	( { CodeModel = model_semi } ->
@@ -802,12 +840,13 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, PredId, ModeId, Args,
 		% so that it is safe to assign to SUCCESS_INDICATOR.
 		code_info__clear_r1(ShuffleR1_Code),
 
-		% c_code goes here
+		% C code goes here
+
+		% the C code may called Mercury code which clobbered the regs
+		code_info__clear_all_registers,
 
 		code_info__get_next_label(SkipLab),
-		code_info__grab_code_info(CodeInfo),
 		code_info__generate_failure(FailCode),
-		code_info__slap_code_info(CodeInfo),
 		{ CheckFailureCode = tree(node([
 			if_val(lval(reg(r(1))), label(SkipLab)) -
 				"Test for success of pragma_c_code"
@@ -819,14 +858,28 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, PredId, ModeId, Args,
 		code_info__unlock_reg(r(1))
 	;
 		{ ShuffleR1_Code = empty },
+
 		% c code goes here
+
+		% the C code may called Mercury code which clobbered the regs
+		code_info__clear_all_registers,
+
 		{ CheckFailureCode = empty },
+
 		pragma_acquire_regs(OutArgs, Regs)
 	),
 	place_pragma_output_args_in_regs(OutArgs, ArgNameMap, Regs, Outputs),
-	{ PragmaCode = node([pragma_c(Decls, Inputs, C_Code, Outputs) - 
+
+	{ string__append_list([
+			"\tsave_registers();\n{\n",
+			C_Code, "\n}\n",
+			"#ifndef CONSERVATIVE_GC\n",
+			"\trestore_registers();\n",
+			"#endif\n"
+		], Wrapped_C_Code) },
+	{ PragmaCode = node([pragma_c(Decls, Inputs, Wrapped_C_Code, Outputs) - 
 			"Pragma C inclusion"]) },
-	{ Instr = tree(tree(InputVarsCode, ShuffleR1_Code), 
+	{ Instr = tree(tree(tree(SaveVarsCode, InputVarsCode), ShuffleR1_Code), 
 			tree(PragmaCode, CheckFailureCode)) }.
 
 %---------------------------------------------------------------------------%
@@ -1187,6 +1240,9 @@ code_gen__generate_non_goal_2(unify(_L, _R, _U, _Uni, _C),
 							_GoalInfo, _Code) -->
 	{ error("Cannot have a nondet unification.") }.
 code_gen__generate_non_goal_2(pragma_c_code(A, B, C, D, E), F, G) -->
+	% it would make sense to abort, but we need to handle string__append,
+	% which is implemented using pragma c_code, and whose reverse mode
+	% is multidet (see library/string.m)
 	code_gen__generate_det_goal_2(pragma_c_code(A, B, C, D, E), F, G).
 
 %---------------------------------------------------------------------------%
