@@ -1,5 +1,6 @@
        1:      1  1 CALL pred multi_parameter:main/2-0 (det) 
-mdb> Command echo enabled.
+mdb> echo on
+Command echo enabled.
 mdb> 
        2:      2  2 CALL pred multi_parameter:foo/2-0 (det) 
 mdb> print *

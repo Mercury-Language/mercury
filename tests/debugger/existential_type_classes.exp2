@@ -1,5 +1,6 @@
        1:      1  1 CALL pred existential_type_classes:main/2-0 (det) 
-mdb> Command echo enabled.
+mdb> echo on
+Command echo enabled.
 mdb> alias P print *
 P      =>    print *
 mdb> register --quiet

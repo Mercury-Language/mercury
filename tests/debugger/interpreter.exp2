@@ -1,5 +1,7 @@
        1:      1  1 CALL pred interpreter:main/2-0 (det) 
-mdb> mdb> Command echo enabled.
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
 mdb> 10 step
 Pure Prolog Interpreter.
 

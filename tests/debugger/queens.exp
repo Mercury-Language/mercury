@@ -1,5 +1,6 @@
        1:      1  1 CALL pred queens:main/2-0 (cc_multi) 
-mdb> Command echo enabled.
+mdb> echo on
+Command echo enabled.
 mdb> print *
        HeadVar__1           		state('<<c_pointer>>')
 mdb> 

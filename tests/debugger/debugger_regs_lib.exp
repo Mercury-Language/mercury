@@ -1,9 +1,6 @@
-Melbourne Mercury Debugger, mdb version 0.8.
-Copyright 1998 University of Melbourne, Australia.
-mdb is free software, covered by the GNU General Public License.
-There is absolutely no warranty for mdb.
        1:      1  1 CALL pred debugger_regs_lib:main/2-0 (det) 
-mdb> Command echo enabled
+mdb> echo on
+Command echo enabled
 mdb> 
        2:      2  2 CALL pred debugger_regs_lib:data/41-0 (det) 
 mdb> 

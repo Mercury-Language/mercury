@@ -96,7 +96,9 @@ static	int			MR_scroll_limit = 24;
 static	int			MR_scroll_next = 0;
 
 /*
-** We echo each command just as it is executed iff this variable is TRUE.
+** We echo each command just as it is executed iff this variable is TRUE,
+** unless we're using GNU readline.  If we're using readline, then readline
+** echos things anyway, so in that case we ignore this variable.
 */
 
 static	bool			MR_echo_commands = FALSE;
@@ -441,10 +443,13 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		MR_insert_line_at_head(MR_copy_string(semicolon + 1));
 	}
 
+	/* if we're using readline, then readline does the echoing */
+#ifdef MR_NO_USE_READLINE
 	if (MR_echo_commands) {
 		fputs(line, MR_mdb_out);
 		putc('\n', MR_mdb_out);
 	}
+#endif
 
 	problem = MR_trace_parse_line(line, &words, &word_max, &word_count);
 	if (problem != NULL) {
@@ -1083,13 +1088,31 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	} else if (streq(words[0], "echo")) {
 		if (word_count == 2) {
 			if (streq(words[1], "off")) {
+#ifdef MR_NO_USE_READLINE
 				MR_echo_commands = FALSE;
 				if (MR_trace_internal_interacting) {
 					fprintf(MR_mdb_out,
 						"Command echo disabled.\n");
 				}
+#else
+				/* with readline, echoing is always enabled */
+				fprintf(MR_mdb_err, "Sorry, cannot disable "
+					"echoing when using GNU readline.\n");
+				
+#endif
 			} else if (streq(words[1], "on")) {
-				MR_echo_commands = TRUE;
+#ifdef MR_NO_USE_READLINE
+				if (!MR_echo_commands) {
+					/*
+					** echo the `echo on' command
+					** This is needed for testing, so that
+					** we get the same output both with
+					** and without readline.
+					*/
+					fprintf(MR_mdb_out, "echo on\n");
+					MR_echo_commands = TRUE;
+				}
+#endif
 				if (MR_trace_internal_interacting) {
 					fprintf(MR_mdb_out,
 						"Command echo enabled.\n");
@@ -1099,11 +1122,17 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			}
 		} else if (word_count == 1) {
 			fprintf(MR_mdb_out, "Command echo is ");
+#ifdef MR_NO_USE_READLINE
 			if (MR_echo_commands) {
 				fprintf(MR_mdb_out, "on.\n");
 			} else {
 				fprintf(MR_mdb_out, "off.\n");
 			}
+#else
+			/* with readline, echoing is always enabled */
+			fprintf(MR_mdb_out, "on.\n");
+#endif
+			
 		} else {
 			MR_trace_usage("parameter", "echo");
 		}

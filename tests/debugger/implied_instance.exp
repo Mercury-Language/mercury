@@ -1,5 +1,6 @@
        1:      1  1 CALL pred implied_instance:main/2-0 (det) 
-mdb> Command echo enabled.
+mdb> echo on
+Command echo enabled.
 mdb> register --quiet
 mdb> alias P print *
 P      =>    print *

@@ -1,5 +1,5 @@
-register --quiet
 echo on
+register --quiet
 45step
 vars
 print *
