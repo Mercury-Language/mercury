@@ -19,9 +19,9 @@ map(F, [H0|T0]) = [apply(F, H0) | map(F, T0)].
 
 main -->
 	{ L1 = [1,2,3] },
-	{ map((func(X::in) = (Y::out) is det :- Y = 2*X), L1, L2) },
-	{ map((func(X2) = Y2 :- Y2 = 5*X2), L2, L3) },
-	{ map(func(X3) = 10*X3, L3, L) },
+	{ L2 = map((func(X::in) = (Y::out) is det :- Y = 2*X), L1) },
+	{ L3 = map((func(X2) = Y2 :- Y2 = 5*X2), L2) },
+	{ L = map(func(X3) = 10*X3, L3) },
 	list__foldl(io__write_int, L),
 	io__write_string("\n").
 
