@@ -21,8 +21,9 @@ Changes to the Mercury standard library:
   version_array2d, version_bitmap, version_hash_table, and version_store,
   implementing non-unique versions of these types supporting O(1) access for
   non-persistent use.  A new module term_to_xml has been added for converting
-  arbitrary terms to XML documents. A new module svmap now provides a more
-  convenient way to update maps in code that uses state variables.
+  arbitrary terms to XML documents. Two new modules, svmap and svset, now
+  provide more convenient ways to update maps and sets in code that uses
+  state variables.
 * New procedures have been added to many of the existing standard library
   modules.  Most notably, these include procedures for creating
   directories and symbolic links, for checking file types and file
@@ -236,8 +237,6 @@ Changes to the Mercury standard library:
   systems which support IEEE floating point arithmetic.
 
 * We've added a function version of `hash_table__search/3'.
-
-* getopt.m now accepts a `maybe_string_special' option type.
 
 * We've added a predicate, copy_mutvar, to store.m.
 
@@ -697,11 +696,17 @@ Changes to the Mercury standard library:
   `ops__init_op_table' and `ops__max_priority'.
 
 * We've added a version of `getopt__process_options' which returns
-  the option arguments.
+  the option arguments as well as the nonoption arguments. Both versions
+  allow multi as well nondet predicates to specify the default values
+  of options.
 
-* `getopt__process_options' has been modified to allow negation of
+* We've added a new predicate `getopt__process_options_track', which can be
+  usefully invoked more than once to process separate sets of options.
+
+* All these predicates in getopt.m now allow the allow negation of
   accumulating options. Negating an accumulating option empties
-  the accumulated list of strings.
+  the accumulated list of strings. They also accept a `maybe_string_special'
+  option type.
 
 * We've added some functions to the term_io module to return printable
   representations of term components as strings.

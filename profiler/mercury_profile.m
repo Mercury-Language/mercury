@@ -42,7 +42,7 @@
 
 main(!IO) :-
 	io__command_line_arguments(Args0, !IO),
-	OptionOps = option_ops(short_option, long_option, option_defaults,
+	OptionOps = option_ops_multi(short_option, long_option, option_default,
 		special_handler),
 	getopt__process_options(OptionOps, Args0, Args, Result0),
 	postprocess_options(Result0, Args, Result, !IO),

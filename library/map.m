@@ -282,6 +282,8 @@
 	% Apply a transformation predicate to all the values
 	% in a map, while continuously updating an accumulator.
 :- pred map__map_foldl(pred(K, V, W, A, A), map(K, V), map(K, W), A, A).
+:- mode map__map_foldl(pred(in, in, out, di, uo) is det, in, out, di, uo)
+	is det.
 :- mode map__map_foldl(pred(in, in, out, in, out) is det, in, out, in, out)
 	is det.
 :- mode map__map_foldl(pred(in, in, out, in, out) is semidet, in, out, in, out)
@@ -392,8 +394,17 @@
 :- pragma type_spec(map__lookup/2, K = var(_)).
 :- pragma type_spec(map__lookup/2, K = int).
 
+:- pragma type_spec(map__insert(in, in, in, out), K = var(_)).
+:- pragma type_spec(map__insert(in, in, in, out), K = int).
+
+:- pragma type_spec(map__det_insert(in, in, in, out), K = var(_)).
+:- pragma type_spec(map__det_insert(in, in, in, out), K = int).
+
 :- pragma type_spec(map__set(in, in, in, out), K = var(_)).
-:- pragma type_spec(map__set/3, K = var(_)).
+:- pragma type_spec(map__set(in, in, in, out), K = int).
+
+:- pragma type_spec(map__update(in, in, in, out), K = var(_)).
+:- pragma type_spec(map__update(in, in, in, out), K = int).
 
 :- pragma type_spec(map__det_update/4, K = var(_)).
 :- pragma type_spec(map__det_update/4, K = int).

@@ -27,7 +27,7 @@
 main(!IO) :-
 	io__progname_base("mdprof_test", ProgName, !IO),
 	io__command_line_arguments(Args0, !IO),
-	getopt__process_options(option_ops(short, long, defaults),
+	getopt__process_options(option_ops_multi(short, long, defaults),
 		Args0, Args, MaybeOptions),
 	(
 		MaybeOptions = ok(Options),
@@ -214,18 +214,12 @@ long("test",			test).
 long("test-dir",		test_dir).
 long("version",			version).
 
-:- pred defaults(option::out, option_data::out) is nondet.
+:- pred defaults(option::out, option_data::out) is multi.
 
-defaults(Option, Data) :-
-	semidet_succeed,
-	defaults0(Option, Data).
-
-:- pred defaults0(option::out, option_data::out) is multi.
-
-defaults0(canonical_clique,	bool(no)).
-defaults0(help,			bool(no)).
-defaults0(test,			bool(no)).
-defaults0(test_dir,		string("deep_test")).
-defaults0(version,		bool(no)).
+defaults(canonical_clique,	bool(no)).
+defaults(help,			bool(no)).
+defaults(test,			bool(no)).
+defaults(test_dir,		string("deep_test")).
+defaults(version,		bool(no)).
 
 %-----------------------------------------------------------------------------%

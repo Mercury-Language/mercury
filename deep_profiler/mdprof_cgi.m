@@ -37,7 +37,8 @@ main(!IO) :-
 	io__get_environment_var("QUERY_STRING", MaybeQueryString, !IO),
 	(
 		MaybeQueryString = yes(QueryString0),
-		getopt__process_options(option_ops(short, long, defaults),
+		getopt__process_options(
+			option_ops_multi(short, long, defaults),
 			[], _, MaybeOptions),
 		(
 			MaybeOptions = ok(Options)
@@ -74,7 +75,7 @@ process_command_line(!IO) :-
 	% io__write_string("Args0: ", !IO),
 	% io__write_list(Args0, " ", write_bracketed_string, !IO),
 	% io__nl(!IO),
-	getopt__process_options(option_ops(short, long, defaults),
+	getopt__process_options(option_ops_multi(short, long, defaults),
 		Args0, Args, MaybeOptions),
 	(
 		MaybeOptions = ok(Options),
@@ -690,29 +691,23 @@ long("timeout",			timeout).
 long("version",			version).
 long("write-query-string",	write_query_string).
 
-:- pred defaults(option::out, option_data::out) is nondet.
+:- pred defaults(option::out, option_data::out) is multi.
 
-defaults(Option, Data) :-
-	semidet_succeed,
-	defaults0(Option, Data).
-
-:- pred defaults0(option::out, option_data::out) is multi.
-
-defaults0(canonical_clique,	bool(no)).
-defaults0(clique,		int(0)).
-defaults0(debug,		bool(no)).
-defaults0(detach_process,	bool(yes)).
-defaults0(help,			bool(no)).
-defaults0(modules,		bool(no)).
-defaults0(proc,			int(0)).
-defaults0(quit,			bool(no)).
-defaults0(root,			bool(no)).
-defaults0(record_loop,		bool(yes)).
-defaults0(record_startup,	bool(yes)).
-defaults0(server_process,	bool(yes)).
-defaults0(timeout,		int(30)).
-defaults0(version,		bool(no)).
-defaults0(write_query_string,	bool(yes)).
+defaults(canonical_clique,	bool(no)).
+defaults(clique,		int(0)).
+defaults(debug,			bool(no)).
+defaults(detach_process,	bool(yes)).
+defaults(help,			bool(no)).
+defaults(modules,		bool(no)).
+defaults(proc,			int(0)).
+defaults(quit,			bool(no)).
+defaults(root,			bool(no)).
+defaults(record_loop,		bool(yes)).
+defaults(record_startup,	bool(yes)).
+defaults(server_process,	bool(yes)).
+defaults(timeout,		int(30)).
+defaults(version,		bool(no)).
+defaults(write_query_string,	bool(yes)).
 
 :- func default_cmd(option_table) = cmd.
 

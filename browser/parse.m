@@ -378,9 +378,8 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
 			Command = set
 		;
 			MaybeArgWords = yes(ArgWords),
-			OptionOps = option_ops(short_setting_option,
-				long_setting_option,
-				setting_option_defaults_nondet),
+			OptionOps = option_ops_multi(short_setting_option,
+				long_setting_option, setting_option_defaults),
 			getopt__process_options(OptionOps, ArgWords,
 				RemainingWords, MaybeOptionTable),
 			lexer_words(RemainingWords, RemainingTokens),
@@ -418,9 +417,8 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
 			RemainingTokens = ArgTokens
 		;
 			MaybeArgWords = yes(ArgWords),
-			OptionOps = option_ops(short_format_option,
-				long_format_option,
-				format_option_defaults_nondet),
+			OptionOps = option_ops_multi(short_format_option,
+				long_format_option, format_option_defaults),
 			getopt__process_options(OptionOps, ArgWords,
 				RemainingWords, MaybeOptionTable),
 			MaybeMaybeOptionTable = yes(MaybeOptionTable),
@@ -438,8 +436,8 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
 	->
 		ArgTokens = [num(Depth)],
 		% compute the default MaybeOptionTable
-		OptionOps = option_ops(short_setting_option,
-			long_setting_option, setting_option_defaults_nondet),
+		OptionOps = option_ops_multi(short_setting_option,
+			long_setting_option, setting_option_defaults),
 		getopt__process_options(OptionOps, [], _, MaybeOptionTable),
 		Command = set(MaybeOptionTable, depth(Depth))
 	;
@@ -536,16 +534,6 @@ long_format_option("raw-pretty", raw_pretty).
 long_format_option("verbose", verbose).
 long_format_option("pretty", pretty).
 
-:- pred format_option_defaults_nondet(format_option::out, option_data::out)
-	is nondet.
-
-format_option_defaults_nondet(Option, Value) :-
-	( semidet_succeed ->
-		format_option_defaults(Option, Value)
-	;
-		fail
-	).
-
 :- pred format_option_defaults(format_option::out, option_data::out) is multi.
 
 format_option_defaults(flat,		bool(no)).
@@ -574,16 +562,6 @@ long_setting_option("flat", flat).
 long_setting_option("raw-pretty", raw_pretty).
 long_setting_option("verbose", verbose).
 long_setting_option("pretty", pretty).
-
-:- pred setting_option_defaults_nondet(setting_option::out, option_data::out)
-	is nondet.
-
-setting_option_defaults_nondet(Option, Value) :-
-	( semidet_succeed ->
-		setting_option_defaults(Option, Value)
-	;
-		fail
-	).
 
 :- pred setting_option_defaults(setting_option::out, option_data::out)
 	is multi.

@@ -173,6 +173,8 @@
 
 :- pred tree234__map_foldl(pred(K, V, W, A, A), tree234(K, V), tree234(K, W),
 	A, A).
+:- mode tree234__map_foldl(pred(in, in, out, di, uo) is det,
+	in, out, di, uo) is det.
 :- mode tree234__map_foldl(pred(in, in, out, in, out) is det,
 	in, out, in, out) is det.
 :- mode tree234__map_foldl(pred(in, in, out, in, out) is semidet,

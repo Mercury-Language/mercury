@@ -98,6 +98,7 @@
 :- import_module store.
 :- import_module string.
 :- import_module svmap.
+:- import_module svset.
 :- import_module term.
 :- import_module term_io.
 :- import_module term_to_xml.
@@ -223,6 +224,7 @@ mercury_std_library_module("std_util").
 mercury_std_library_module("store").
 mercury_std_library_module("string").
 mercury_std_library_module("svmap").
+mercury_std_library_module("svset").
 mercury_std_library_module("table_builtin").
 mercury_std_library_module("term").
 mercury_std_library_module("term_io").

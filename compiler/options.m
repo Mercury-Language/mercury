@@ -721,7 +721,7 @@ option_defaults(Option, Default) :-
 
 :- pred option_defaults_2(option_category, list(pair(option, option_data))).
 :- mode option_defaults_2(in, out) is det.
-:- mode option_defaults_2(out, out) is multidet.
+:- mode option_defaults_2(out, out) is multi.
 
 option_defaults_2(warning_option, [
 		% Warning Options

@@ -40,8 +40,7 @@
 		
 :- pred short_option(character::in, option::out) is semidet.
 :- pred long_option(string::in, option::out) is semidet.
-:- pred option_defaults(option::out, option_data::out) is nondet.
-:- pred option_default(option::out, option_data::out) is multidet.
+:- pred option_default(option::out, option_data::out) is multi.
 :- pred special_handler(option::in, special_data::in,
        option_table::in, maybe_option_table(option)::out) is semidet.
 
@@ -57,10 +56,6 @@
 
 :- implementation.
 :- import_module std_util, map.
-
-option_defaults(Option, Default) :-
-	semidet_succeed,
-	option_default(Option, Default).
 
 	% Verbosity Options
 option_default(verbose,		bool(no)).

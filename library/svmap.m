@@ -92,7 +92,31 @@
 
 %-----------------------------------------------------------------------------%
 
+% Everything below here is not intended to be part of the public interface,
+% and will not be included in the Mercury library reference manual.
+
+:- interface.
+
+:- import_module term. % for var/1.
+
+:- pragma type_spec(svmap__insert(in, in, in, out), K = var(_)).
+:- pragma type_spec(svmap__insert(in, in, in, out), K = int). 
+
+:- pragma type_spec(svmap__det_insert(in, in, in, out), K = var(_)).
+:- pragma type_spec(svmap__det_insert(in, in, in, out), K = int). 
+
+:- pragma type_spec(svmap__set(in, in, in, out), K = var(_)).
+:- pragma type_spec(svmap__set(in, in, in, out), K = var(_)).
+
+:- pragma type_spec(svmap__update(in, in, in, out), K = var(_)).
+:- pragma type_spec(svmap__update(in, in, in, out), K = int). 
+
+:- pragma type_spec(svmap__det_update(in, in, in, out), K = var(_)).
+:- pragma type_spec(svmap__det_update(in, in, in, out), K = int). 
+
 :- implementation.
+
+%-----------------------------------------------------------------------------%
 
 svmap__insert(K, V, Map0, Map) :-
 	map__insert(Map0, K, V, Map).
