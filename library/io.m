@@ -4742,17 +4742,17 @@ static MR_MercuryFileStruct mercury_open(string filename, string openmode,
         System.IO.Stream     stream = null;
 
 	try {
-		if (openmode == ""r"") {
+		if (openmode == ""r"" || openmode == ""rb"") {
 			// Like '<' in Bourne shell.
 			// Read a file.  The file must exist already.
 			mode   = System.IO.FileMode.Open;
 			access = System.IO.FileAccess.Read;
-		} else if (openmode == ""w"") {
+		} else if (openmode == ""w"" || openmode == ""wb"") {
 			// Like '>' in Bourne shell.
 			// Overwrite an existing file, or create a new file.
 			mode   = System.IO.FileMode.Create;
 			access = System.IO.FileAccess.Write;
-		} else if (openmode == ""a"") {
+		} else if (openmode == ""a"" || openmode == ""ab"") {
 			// Like '>>' in Bourne shell.
 			// Append to an existing file, or create a new file.
 			mode   = System.IO.FileMode.Append;
