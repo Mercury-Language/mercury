@@ -110,7 +110,7 @@ libmercury.a : $(library.os)
 	$(RANLIB) libmercury.a
 
 libmercury.so : $(library.pic_os)
-	$(MGNUC) $(MGNUCFLAGS) -shared -o libmercury.so $(library.pic_os)
+	$(LINK_SHARED_OBJ) -o libmercury.so $(library.pic_os)
 
 #-----------------------------------------------------------------------------#
 
