@@ -110,9 +110,17 @@ deforest__proc(proc(PredId, ProcId), CostDelta, SizeDelta) -->
 		PredInfo0, ProcInfo0) },
 	pd_info_init_unfold_info(proc(PredId, ProcId), PredInfo0, ProcInfo0),
 	{ proc_info_goal(ProcInfo0, Goal0) },
-	deforest__goal(Goal0, Goal1),
+
+	% Inlining may have created some opportunities for simplification.
+	pd_info_get_io_state(IOState0),
+	{ globals__io_get_globals(Globals, IOState0, IOState) },
+	pd_info_set_io_state(IOState),
+	{ simplify__find_simplifications(no, Globals, Simplifications) },
+	pd_util__simplify_goal(Simplifications, Goal0, Goal1),
+
+	deforest__goal(Goal1, Goal2),
 	pd_info_get_proc_info(ProcInfo1),
-	{ proc_info_set_goal(ProcInfo1, Goal1, ProcInfo2) },
+	{ proc_info_set_goal(ProcInfo1, Goal2, ProcInfo2) },
 	pd_info_get_changed(Changed),
 
 	( { Changed = yes } ->
@@ -139,9 +147,6 @@ deforest__proc(proc(PredId, ProcId), CostDelta, SizeDelta) -->
 			% then we re-run determinism analysis. As with
 			% inlining.m, this avoids problems with inlining
 			% erroneous procedures.
-			pd_info_get_io_state(IO10),
-			{ globals__io_get_globals(Globals, IO10, IO11) },
-			pd_info_set_io_state(IO11),
 			{ det_infer_proc(PredId, ProcId, ModuleInfo4,
 				ModuleInfo5, Globals, _, _, _) }
 		;
