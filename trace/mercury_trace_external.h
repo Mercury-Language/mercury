@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -11,10 +11,15 @@
 
 extern	void	MR_trace_init_external(void);
 extern	void	MR_trace_final_external(void);
-extern	void	MR_trace_event_external(MR_Trace_Cmd_Info *cmd,
-			const MR_Stack_Layout_Label *layout,
-			Word *saved_regs, MR_Trace_Port port, Unsigned seqno,
-			Unsigned depth, const char *path);
+extern	Code   *MR_trace_event_external(MR_Trace_Cmd_Info *cmd,
+			MR_Event_Info *event_info);
+
+/*
+** External debugger socket streams.
+*/
+
+extern MercuryFile MR_debugger_socket_in;
+extern MercuryFile MR_debugger_socket_out;
 
 #endif	/* MR_USE_EXTERNAL_DEBUGGER */
 

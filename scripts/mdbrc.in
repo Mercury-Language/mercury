@@ -11,3 +11,5 @@ alias	c	continue
 alias	b	break
 alias	h	help
 alias	?	help
+alias	EMPTY	step
+alias	NUMBER	step

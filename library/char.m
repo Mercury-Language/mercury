@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -369,8 +369,6 @@ char__digit_to_int(Digit, Int) :-
 	).
 
 %-----------------------------------------------------------------------------%
-
-:- char__lower_upper(X, Y) when X or Y.
 
 char__lower_upper('a', 'A').
 char__lower_upper('b', 'B').

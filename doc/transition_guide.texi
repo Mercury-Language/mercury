@@ -2,15 +2,11 @@
 @setfilename mercury_trans_guide.info
 @settitle The Prolog to Mercury transition guide
 
-@ignore
-@ifinfo
-@format
-START-INFO-DIR-ENTRY
-* Mercury: (mercury).                The Prolog to Mercury transition guide
-END-INFO-DIR-ENTRY
-@end format
-@end ifinfo
-@end ignore
+@c --- texi2html doesn't support the @dir commands yet
+@c @dircategory The Mercury Programming Language
+@c @direntry
+@c * Mercury Transition Guide: (mercury_trans_guide). The Prolog to Mercury Transition Guide.
+@c @end direntry
 
 @c @smallbook
 @c @cropmarks
@@ -150,25 +146,31 @@ OPERATOR        ASSOCIATIVITY   PRECEDENCE
 ~               fy              900
 all             fxy             950
 and             xfy             720
+div             yfx             400
 else            xfy             1170
 end_module      fx              1199
 func            fx              800
 if              fx              1160
 import_module   fx              1199
+include_module  fx              1199
 impure          fy              800
 inst            fx              1199
-is              xfx             700
+instance        fx              1199
+is              xfx             701
+lambda          fxy             950
 mod             xfx             300
 mode            fx              1199
 module          fx              1199
 not             fy              900
 or              xfy             740
+pragma          fx              1199
 pred            fx              800
 rule            fx              1199
 semipure        fy              800
 some            fxy             950
 then            xfx             1150
 type            fx              1180
+typeclass       fx              1199
 when            xfx             900
 where           xfx             1175
 @end example
@@ -549,7 +551,7 @@ The general solution to such problems is to use an if-then-else:
 
 @example
 :- pred factorial(int, int).
-:- mode factorial(int, int) is det.
+:- mode factorial(in, out) is det.
 
 factorial(N, F) :-
     ( N =< 0 ->

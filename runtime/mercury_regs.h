@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1998 The University of Melbourne.
+** Copyright (C) 1993-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -53,8 +53,9 @@
 ** hardware description layer, and includes that as a subset,
 ** but in addition it provides a few more conveniences.
 ** This layer defines macros mr(n) for n>36, and the macros
-** save_registers(), restore_registers(), save_transient_registers(),
-** and restore_transient_registers().
+** save_registers(), restore_registers(),
+** save_transient_registers(), restore_transient_registers(),
+** save_transient_hp(), and restore_transient_hp().
 ** This layer is defined here in mercury_regs.h.
 **
 ** The hardware abstraction layer thus provides a very large number
@@ -167,6 +168,25 @@
 		restore_transient_regs_from_mem(MR_fake_reg)
 #endif
 
+/*
+** The save_transient_hp() and restore_transient_hp() macros
+** are similar to save/restore_transient_regs(), except
+** that they only guarantee to save/restore the heap pointer,
+** if any.  (They might save/restore other regs too, though.)
+*/
+#ifdef CONSERVATIVE_GC
+  #define save_transient_hp() /* nothing */
+  #define restore_transient_hp() /* nothing */
+#else
+  /*
+  ** This code is suboptimal -- it would be more efficient to
+  ** save/restore just a single register rather than all the
+  ** transient registers.
+  */
+  #define save_transient_hp() save_transient_registers()
+  #define restore_transient_hp() restore_transient_registers()
+#endif
+
 /*---------------------------------------------------------------------------*/
 /*
 ** The Mercury abstract machine registers layer
@@ -240,6 +260,10 @@ extern	Word	set_reg(int, Word);
 #define	MR_MIN_HP_REC		(MR_ORD_RN + 8)
 #define	MR_MIN_SOL_HP_REC	(MR_ORD_RN + 9)
 #define	MR_GLOBAL_HP_RN		(MR_ORD_RN + 10)
-#define	MAX_RN			(MR_ORD_RN + 11)
+#define	MR_GEN_STACK_RN		(MR_ORD_RN + 11)
+#define	MR_GEN_NEXT_RN		(MR_ORD_RN + 12)
+#define	MR_CUT_STACK_RN		(MR_ORD_RN + 13)
+#define	MR_CUT_NEXT_RN		(MR_ORD_RN + 14)
+#define	MAX_RN			(MR_ORD_RN + 15)
 
 #endif /* not MERCURY_REGS_H */

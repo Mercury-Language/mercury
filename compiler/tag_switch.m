@@ -1142,15 +1142,15 @@ tag_switch__get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
 tag_switch__get_ptag_counts_2([], Max, Max, PtagCountMap, PtagCountMap).
 tag_switch__get_ptag_counts_2([ConsTag | TagList], MaxPrimary0, MaxPrimary,
 		PtagCountMap0, PtagCountMap) :-
-	( ConsTag = simple_tag(Primary) ->
+	( ConsTag = unshared_tag(Primary) ->
 		int__max(MaxPrimary0, Primary, MaxPrimary1),
 		( map__search(PtagCountMap0, Primary, _) ->
-			error("simple tag is shared")
+			error("unshared tag is shared")
 		;
 			map__det_insert(PtagCountMap0, Primary, none - (-1),
 				PtagCountMap1)
 		)
-	; ConsTag = complicated_tag(Primary, Secondary) ->
+	; ConsTag = shared_remote_tag(Primary, Secondary) ->
 		int__max(MaxPrimary0, Primary, MaxPrimary1),
 		( map__search(PtagCountMap0, Primary, Target) ->
 			Target = TagType - MaxSoFar,
@@ -1166,7 +1166,7 @@ tag_switch__get_ptag_counts_2([ConsTag | TagList], MaxPrimary0, MaxPrimary,
 			map__det_insert(PtagCountMap0, Primary,
 				remote - Secondary, PtagCountMap1)
 		)
-	; ConsTag = complicated_constant_tag(Primary, Secondary) ->
+	; ConsTag = shared_local_tag(Primary, Secondary) ->
 		int__max(MaxPrimary0, Primary, MaxPrimary1),
 		( map__search(PtagCountMap0, Primary, Target) ->
 			Target = TagType - MaxSoFar,
@@ -1200,16 +1200,16 @@ tag_switch__get_ptag_counts_2([ConsTag | TagList], MaxPrimary0, MaxPrimary,
 tag_switch__group_cases_by_ptag([], PtagCaseMap, PtagCaseMap).
 tag_switch__group_cases_by_ptag([Case0 | Cases0], PtagCaseMap0, PtagCaseMap) :-
 	Case0 = case(_Priority, Tag, _ConsId, Goal),
-	( Tag = simple_tag(Primary) ->
+	( Tag = unshared_tag(Primary) ->
 		( map__search(PtagCaseMap0, Primary, _Group) ->
-			error("simple tag is shared")
+			error("unshared tag is shared")
 		;
 			map__init(StagGoalMap0),
 			map__det_insert(StagGoalMap0, -1, Goal, StagGoalMap),
 			map__det_insert(PtagCaseMap0, Primary,
 				none - StagGoalMap, PtagCaseMap1)
 		)
-	; Tag = complicated_tag(Primary, Secondary) ->
+	; Tag = shared_remote_tag(Primary, Secondary) ->
 		( map__search(PtagCaseMap0, Primary, Group) ->
 			Group = StagLoc - StagGoalMap0,
 			( StagLoc = remote ->
@@ -1228,7 +1228,7 @@ tag_switch__group_cases_by_ptag([Case0 | Cases0], PtagCaseMap0, PtagCaseMap) :-
 			map__det_insert(PtagCaseMap0, Primary,
 				remote - StagGoalMap, PtagCaseMap1)
 		)
-	; Tag = complicated_constant_tag(Primary, Secondary) ->
+	; Tag = shared_local_tag(Primary, Secondary) ->
 		( map__search(PtagCaseMap0, Primary, Group) ->
 			Group = StagLoc - StagGoalMap0,
 			( StagLoc = local ->

@@ -14,12 +14,23 @@ include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-CFLAGS		= -I$(MERCURY_DIR)/browser -I$(MERCURY_DIR)/library \
-		  -I$(MERCURY_DIR)/runtime -I$(MERCURY_DIR)/boehm_gc \
-		  -g $(DLL_CFLAGS) $(EXTRA_CFLAGS)
-MGNUC		= MERCURY_C_INCL_DIR=. $(SCRIPTS_DIR)/mgnuc
-MGNUCFLAGS	= --no-ansi $(EXTRA_MGNUCFLAGS) $(CFLAGS)
-MOD2C		= $(SCRIPTS_DIR)/mod2c
+M_ENV		= MERCURY_ALL_C_INCL_DIRS="\
+			-I$(BROWSER_DIR) \
+			-I$(LIBRARY_DIR) \
+			-I$(RUNTIME_DIR) \
+			-I$(BOEHM_GC_DIR) \
+			-I$(BOEHM_GC_DIR)/include \
+		  "
+CFLAGS		= -g $(DLL_CFLAGS) $(EXTRA_CFLAGS)
+MGNUC		= $(M_ENV) $(SCRIPTS_DIR)/mgnuc
+MGNUCFLAGS	= --no-ansi
+
+#-----------------------------------------------------------------------------#
+
+# mercury_readline.c #includes the GNU readline headers, which
+# lack prototypes and `const', so we need to disable warnings
+# when compiling that file.
+MGNUCFLAGS-mercury_trace_readline = --no-check
 
 #-----------------------------------------------------------------------------#
 
@@ -32,6 +43,7 @@ HDRS		=	\
 			mercury_trace_external.h 	\
 			mercury_trace_help.h		\
 			mercury_trace_internal.h	\
+			mercury_trace_readline.h	\
 			mercury_trace_spy.h		\
 			mercury_trace_tables.h		\
 			mercury_trace_util.h
@@ -45,8 +57,17 @@ CFILES		= 	\
 			mercury_trace_external.c 	\
 			mercury_trace_help.c		\
 			mercury_trace_internal.c	\
+			mercury_trace_readline.c	\
 			mercury_trace_spy.c		\
 			mercury_trace_tables.c
+
+# The object files in this directory depend on many of the header files
+# in the runtime. However, changes to many of these header files require
+# a global make clean. Here we list only the header files from the runtime
+# whose changes don't usually require a make clean but which nevertheless
+# require the trace library to be recompiled.
+RUNTIME_HDRS	=	\
+			../runtime/mercury_stack_layout.h
 
 OBJS		= $(CFILES:.c=.o)
 PIC_OBJS	= $(CFILES:.c=.$(EXT_FOR_PIC_OBJECTS))
@@ -90,7 +111,7 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-$(OBJS) $(PIC_OBJS): $(HDRS)
+$(OBJS) $(PIC_OBJS): $(HDRS) $(RUNTIME_HDRS)
 
 #-----------------------------------------------------------------------------#
 

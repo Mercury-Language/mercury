@@ -14,7 +14,7 @@
 :- interface.
 
 :- import_module hlds_pred, llds, prog_data, (inst), term.
-:- import_module bool, list, map, std_util.
+:- import_module bool, list, map, std_util, set_bbbtree.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -34,7 +34,7 @@
 				% Used for constructing type_infos.
 				% Note that a pred_const is for a closure
 				% whereas a code_addr_const is just an address.
-			;	base_type_info_const(module_name, string, int)
+			;	type_ctor_info_const(module_name, string, int)
 				% module name, type name, type arity
 			;	base_typeclass_info_const(module_name,
 					class_id, int, string)
@@ -45,6 +45,11 @@
 				% class instance, a string encoding the type
 				% names and arities of the arguments to the
 				% instance declaration 
+			;	tabling_pointer_const(pred_id, proc_id)
+				% The address of the static variable
+				% that points to the table that implements
+				% memoization, loop checking or the minimal
+				% model semantics for the given procedure.
 			.
 
 	% A cons_defn is the definition of a constructor (i.e. a constant
@@ -72,13 +77,13 @@
 
 	% Given a cons_id and a list of argument terms, convert it into a
 	% term. Fails if the cons_id is a pred_const, code_addr_const or
-	% base_type_info_const.
+	% type_ctor_info_const.
 
 :- pred cons_id_and_args_to_term(cons_id, list(term(T)), term(T)).
 :- mode cons_id_and_args_to_term(in, in, out) is semidet.
 
 	% Get the arity of a cons_id, aborting on pred_const, code_addr_const
-	% and base_type_info_const.
+	% and type_ctor_info_const.
 
 :- pred cons_id_arity(cons_id, arity).
 :- mode cons_id_arity(in, out) is det.
@@ -123,10 +128,12 @@ cons_id_arity(pred_const(_, _), _) :-
 	error("cons_id_arity: can't get arity of pred_const").
 cons_id_arity(code_addr_const(_, _), _) :-
 	error("cons_id_arity: can't get arity of code_addr_const").
-cons_id_arity(base_type_info_const(_, _, _), _) :-
-	error("cons_id_arity: can't get arity of base_type_info_const").
+cons_id_arity(type_ctor_info_const(_, _, _), _) :-
+	error("cons_id_arity: can't get arity of type_ctor_info_const").
 cons_id_arity(base_typeclass_info_const(_, _, _, _), _) :-
 	error("cons_id_arity: can't get arity of base_typeclass_info_const").
+cons_id_arity(tabling_pointer_const(_, _), _) :-
+	error("cons_id_arity: can't get arity of tabling_pointer_const").
 
 make_functor_cons_id(term__atom(Name), Arity,
 		cons(unqualified(Name), Arity)).
@@ -200,7 +207,7 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 
 	% An `hlds_type_body' holds the body of a type definition:
 	% du = discriminated union, uu = undiscriminated union,
-	% eqv_type = equivalence type (a type defined to be equivalen
+	% eqv_type = equivalence type (a type defined to be equivalent
 	% to some other type)
 
 :- type hlds_type_body
@@ -255,8 +262,8 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 			% (used for constructing type_infos).
 			% The word just contains the address of the
 			% specified procedure.
-	;	base_type_info_constant(module_name, string, arity)
-			% This is how we refer to base_type_info structures
+	;	type_ctor_info_constant(module_name, string, arity)
+			% This is how we refer to type_ctor_info structures
 			% represented as global data. The args are
 			% the name of the module the type is defined in,
 			% and the name of the type, and its arity.
@@ -268,23 +275,32 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 			% third is the string which uniquely identifies the
 			% instance declaration (it is made from the type of
 			% the arguments to the instance decl).
-	;	simple_tag(tag_bits)
-			% This is for constants or functors which only
-			% require a simple tag.  (A "simple" tag is one
-			% which fits on the bottom of a pointer - i.e.
-			% two bits for 32-bit architectures, or three bits
-			% for 64-bit architectures).
+	;	tabling_pointer_constant(pred_id, proc_id)
+			% This is how we refer to tabling pointer variables
+			% represented as global data. The word just contains
+			% the address of the tabling pointer of the
+			% specified procedure.
+	;	unshared_tag(tag_bits)
+			% This is for constants or functors which can be
+			% distinguished with just a primary tag.
+			% An "unshared" tag is one which fits on the
+			% bottom of a pointer (i.e.  two bits for
+			% 32-bit architectures, or three bits for 64-bit
+			% architectures), and is used for just one
+			% functor.
 			% For constants we store a tagged zero, for functors
 			% we store a tagged pointer to the argument vector.
-	;	complicated_tag(tag_bits, int)
+	;	shared_remote_tag(tag_bits, int)
 			% This is for functors or constants which
 			% require more than just a two-bit tag. In this case,
 			% we use both a primary and a secondary tag.
+			% Several functors share the primary tag and are
+			% distinguished by the secondary tag.
 			% The secondary tag is stored as the first word of
 			% the argument vector. (If it is a constant, then
 			% in this case there is an argument vector of size 1
 			% which just holds the secondary tag.)
-	;	complicated_constant_tag(tag_bits, int)
+	;	shared_local_tag(tag_bits, int)
 			% This is for constants which require more than a
 			% two-bit tag. In this case, we use both a primary
 			% and a secondary tag, but this time the secondary
@@ -295,7 +311,7 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 			% In this case, we don't need to store the functor,
 			% and instead we store the argument directly.
 
-	% The type `tag_bits' holds a simple tag value.
+	% The type `tag_bits' holds a primary tag value.
 
 :- type tag_bits	==	int.	% actually only 2 (or maybe 3) bits
 
@@ -357,7 +373,9 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 :- type unify_inst_pair	--->	unify_inst_pair(is_live, inst, inst,
 					unify_is_real).
 
-:- type merge_inst_table ==	map(pair(inst), maybe_inst).
+:- type merge_inst_table ==	map(merge_inst_pair, maybe_inst).
+
+:- type merge_inst_pair --->	merge_inst_pair(is_live, inst, inst).
 
 :- type ground_inst_table == 	map(inst_name, maybe_inst_det).
 
@@ -366,6 +384,21 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 :- type shared_inst_table == 	map(inst_name, maybe_inst).
 
 :- type mostly_uniq_inst_table == map(inst_name, maybe_inst).
+
+:- type substitution_inst_table == map(substitution_inst, maybe_inst).
+
+:- type clobbered_inst_table == map(inst_name, maybe_inst).
+
+:- type substitution_inst
+	--->	substitution_inst(
+			inst_name,
+			inst_key_set,	% The set of inst_keys that have
+					% had their substitutions expanded.
+			inst_key_sub	% The substitution map used to expand
+					% the substitutions.
+		).
+
+:- type inst_key_set == set_bbbtree(inst_key).
 
 :- type maybe_inst	--->	unknown
 			;	known(inst).
@@ -408,16 +441,22 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 :- pred inst_table_init(inst_table).
 :- mode inst_table_init(out) is det.
 
-:- pred inst_table_get_all_tables(inst_table, unify_inst_table,
-	merge_inst_table, ground_inst_table, any_inst_table,
-	shared_inst_table, mostly_uniq_inst_table, inst_key_table).
-:- mode inst_table_get_all_tables(in, out, out, out, out, out, out, out) is det.
+:- pred inst_table_get_all_tables(inst_table, substitution_inst_table,
+	unify_inst_table, merge_inst_table, ground_inst_table, any_inst_table,
+	shared_inst_table, mostly_uniq_inst_table, clobbered_inst_table,
+	inst_key_table).
+:- mode inst_table_get_all_tables(in, out, out, out, out, out, out, out,
+	out, out) is det.
 
-:- pred inst_table_set_all_tables(inst_table, unify_inst_table,
-	merge_inst_table, ground_inst_table, any_inst_table,
-	shared_inst_table, mostly_uniq_inst_table, inst_key_table,
-	inst_table).
-:- mode inst_table_set_all_tables(in, in, in, in, in, in, in, in, out) is det.
+:- pred inst_table_set_all_tables(inst_table, substitution_inst_table,
+	unify_inst_table, merge_inst_table, ground_inst_table, any_inst_table,
+	shared_inst_table, mostly_uniq_inst_table, clobbered_inst_table,
+	inst_key_table, inst_table).
+:- mode inst_table_set_all_tables(in, in, in, in, in, in, in, in, in, in, out)
+	is det.
+
+:- pred inst_table_get_substitution_insts(inst_table, substitution_inst_table).
+:- mode inst_table_get_substitution_insts(in, out) is det.
 
 :- pred inst_table_get_unify_insts(inst_table, unify_inst_table).
 :- mode inst_table_get_unify_insts(in, out) is det.
@@ -437,8 +476,15 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 :- pred inst_table_get_mostly_uniq_insts(inst_table, mostly_uniq_inst_table).
 :- mode inst_table_get_mostly_uniq_insts(in, out) is det.
 
+:- pred inst_table_get_clobbered_insts(inst_table, clobbered_inst_table).
+:- mode inst_table_get_clobbered_insts(in, out) is det.
+
 :- pred inst_table_get_inst_key_table(inst_table, inst_key_table).
 :- mode inst_table_get_inst_key_table(in, out) is det.
+
+:- pred inst_table_set_substitution_insts(inst_table, substitution_inst_table,
+	inst_table).
+:- mode inst_table_set_substitution_insts(in, in, out) is det.
 
 :- pred inst_table_set_unify_insts(inst_table, unify_inst_table, inst_table).
 :- mode inst_table_set_unify_insts(in, in, out) is det.
@@ -458,6 +504,10 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 :- pred inst_table_set_mostly_uniq_insts(inst_table, mostly_uniq_inst_table,
 					inst_table).
 :- mode inst_table_set_mostly_uniq_insts(in, in, out) is det.
+
+:- pred inst_table_set_clobbered_insts(inst_table, clobbered_inst_table,
+					inst_table).
+:- mode inst_table_set_clobbered_insts(in, in, out) is det.
 
 :- pred inst_table_set_inst_key_table(inst_table, inst_key_table, inst_table).
 :- mode inst_table_set_inst_key_table(in, in, out) is det.
@@ -484,13 +534,14 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 
 :- type inst_table
 	--->	inst_table(
-			unit,
+			substitution_inst_table,
 			unify_inst_table,
 			merge_inst_table,
 			ground_inst_table,
 			any_inst_table,
 			shared_inst_table,
 			mostly_uniq_inst_table,
+			clobbered_inst_table,
 			inst_key_table
 		).
 
@@ -503,69 +554,91 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 				% qualifying the modes of lambda expressions.
 		).
 
-inst_table_init(inst_table(unit, UnifyInsts, MergeInsts, GroundInsts,
-			AnyInsts, SharedInsts, NondetLiveInsts, InstKeys)) :-
+inst_table_init(inst_table(SubInsts, UnifyInsts, MergeInsts, GroundInsts,
+			AnyInsts, SharedInsts, NondetLiveInsts, ClobberedInsts,
+			InstKeys)) :-
+	map__init(SubInsts),
 	map__init(UnifyInsts),
 	map__init(MergeInsts),
 	map__init(GroundInsts),
 	map__init(AnyInsts),
 	map__init(SharedInsts),
 	map__init(NondetLiveInsts),
+	map__init(ClobberedInsts),
 	inst_key_table_init(InstKeys).
 
-inst_table_get_all_tables(InstTable, UnifyInsts, MergeInsts, GroundInsts,
-		AnyInsts, SharedInsts, NondetLiveInsts, InstKeys) :-
-	InstTable = inst_table(unit, UnifyInsts, MergeInsts, GroundInsts,
-		AnyInsts, SharedInsts, NondetLiveInsts, InstKeys).
+inst_table_get_all_tables(InstTable, SubInsts, UnifyInsts, MergeInsts,
+		GroundInsts, AnyInsts, SharedInsts, NondetLiveInsts,
+		ClobberedInsts, InstKeys) :-
+	InstTable = inst_table(SubInsts, UnifyInsts, MergeInsts, GroundInsts,
+		AnyInsts, SharedInsts, NondetLiveInsts, ClobberedInsts,
+		InstKeys).
 
-inst_table_set_all_tables(InstTable0, UnifyInsts, MergeInsts, GroundInsts,
-		AnyInsts, SharedInsts, NondetLiveInsts, InstKeys, InstTable) :-
-	InstTable0 = inst_table(A, _, _, _, _, _, _, _),
-	InstTable  = inst_table(A, UnifyInsts, MergeInsts, GroundInsts,
-		AnyInsts, SharedInsts, NondetLiveInsts, InstKeys).
+inst_table_set_all_tables(_InstTable0, SubInsts, UnifyInsts, MergeInsts,
+		GroundInsts, AnyInsts, SharedInsts, NondetLiveInsts,
+		ClobberedInsts, InstKeys, InstTable) :-
+	InstTable  = inst_table(SubInsts, UnifyInsts, MergeInsts, GroundInsts,
+		AnyInsts, SharedInsts, NondetLiveInsts, ClobberedInsts,
+		InstKeys).
 
-inst_table_get_unify_insts(inst_table(_, UnifyInsts, _, _, _, _, _, _),
+inst_table_get_substitution_insts(inst_table(SubInsts, _, _, _, _, _, _, _, _),
+			SubInsts).
+
+inst_table_get_unify_insts(inst_table(_, UnifyInsts, _, _, _, _, _, _, _),
 			UnifyInsts).
 
-inst_table_get_merge_insts(inst_table(_, _, MergeInsts, _, _, _, _, _),
+inst_table_get_merge_insts(inst_table(_, _, MergeInsts, _, _, _, _, _, _),
 			MergeInsts).
 
-inst_table_get_ground_insts(inst_table(_, _, _, GroundInsts, _, _, _, _),
+inst_table_get_ground_insts(inst_table(_, _, _, GroundInsts, _, _, _, _, _),
 			GroundInsts).
 
-inst_table_get_any_insts(inst_table(_, _, _, _, AnyInsts, _, _, _), AnyInsts).
+inst_table_get_any_insts(inst_table(_, _, _, _, AnyInsts, _, _, _, _),
+			AnyInsts).
 
-inst_table_get_shared_insts(inst_table(_, _, _, _, _, SharedInsts, _, _),
+inst_table_get_shared_insts(inst_table(_, _, _, _, _, SharedInsts, _, _, _),
 			SharedInsts).
 
 inst_table_get_mostly_uniq_insts(
-			inst_table(_, _, _, _, _, _, NondetLiveInsts, _),
+			inst_table(_, _, _, _, _, _, NondetLiveInsts, _, _),
 			NondetLiveInsts).
 
-inst_table_get_inst_key_table(inst_table(_, _, _, _, _, _, _, InstKeyTable),
+inst_table_get_clobbered_insts(
+			inst_table(_, _, _, _, _, _, _, ClobberedInsts, _),
+			ClobberedInsts).
+
+inst_table_get_inst_key_table(inst_table(_, _, _, _, _, _, _, _, InstKeyTable),
 			InstKeyTable).
 
-inst_table_set_unify_insts(inst_table(A, _, C, D, E, F, G, H), UnifyInsts,
-			inst_table(A, UnifyInsts, C, D, E, F, G, H)).
+inst_table_set_substitution_insts(inst_table(_, B, C, D, E, F, G, H, I),
+			SubInsts,
+			inst_table(SubInsts, B, C, D, E, F, G, H, I)).
 
-inst_table_set_merge_insts(inst_table(A, B, _, D, E, F, G, H), MergeInsts,
-			inst_table(A, B, MergeInsts, D, E, F, G, H)).
+inst_table_set_unify_insts(inst_table(A, _, C, D, E, F, G, H, I), UnifyInsts,
+			inst_table(A, UnifyInsts, C, D, E, F, G, H, I)).
 
-inst_table_set_ground_insts(inst_table(A, B, C, _, E, F, G, H), GroundInsts,
-			inst_table(A, B, C, GroundInsts, E, F, G, H)).
+inst_table_set_merge_insts(inst_table(A, B, _, D, E, F, G, H, I), MergeInsts,
+			inst_table(A, B, MergeInsts, D, E, F, G, H, I)).
 
-inst_table_set_any_insts(inst_table(A, B, C, D, _, F, G, H), AnyInsts,
-			inst_table(A, B, C, D, AnyInsts, F, G, H)).
+inst_table_set_ground_insts(inst_table(A, B, C, _, E, F, G, H, I), GroundInsts,
+			inst_table(A, B, C, GroundInsts, E, F, G, H, I)).
 
-inst_table_set_shared_insts(inst_table(A, B, C, D, E, _, G, H), SharedInsts,
-			inst_table(A, B, C, D, E, SharedInsts, G, H)).
+inst_table_set_any_insts(inst_table(A, B, C, D, _, F, G, H, I), AnyInsts,
+			inst_table(A, B, C, D, AnyInsts, F, G, H, I)).
 
-inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, F, _, H),
+inst_table_set_shared_insts(inst_table(A, B, C, D, E, _, G, H, I), SharedInsts,
+			inst_table(A, B, C, D, E, SharedInsts, G, H, I)).
+
+inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, F, _, H, I),
 			NondetLiveInsts,
-			inst_table(A, B, C, D, E, F, NondetLiveInsts, H)).
+			inst_table(A, B, C, D, E, F, NondetLiveInsts, H, I)).
 
-inst_table_set_inst_key_table(inst_table(A, B, C, D, E, F, G, _), InstKeys,
-			inst_table(A, B, C, D, E, F, G, InstKeys)).
+inst_table_set_clobbered_insts(inst_table(A, B, C, D, E, F, G, _, I),
+			ClobberedInsts,
+			inst_table(A, B, C, D, E, F, G, ClobberedInsts, I)).
+
+inst_table_set_inst_key_table(inst_table(A, B, C, D, E, F, G, H, _), InstKeys,
+			inst_table(A, B, C, D, E, F, G, H, InstKeys)).
 
 user_inst_table_init(user_inst_table(InstDefns, InstIds)) :-
 	map__init(InstDefns),
@@ -772,7 +845,7 @@ determinism_to_code_model(failure,     model_semi).
 			prog_context,		% context of declaration
 			list(class_constraint), % Constraints
 			list(type), 		% ClassTypes 
-			instance_interface, 	% Methods
+			instance_body, 		% Methods
 			maybe(hlds_class_interface),
 						% After check_typeclass, we 
 						% will know the pred_ids and

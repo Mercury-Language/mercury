@@ -4,9 +4,10 @@ INTRODUCTION
 
 Mecury has been ported to Windows 95 and Windows NT
 using the "Cygwin" Unix emulation package from Cygnus.
+It should work on Windows 98 too, but we haven't tested that.
 
 This file documents how to install the binary distribution
-of Mercury on Windows 95 or Windows NT using Cygwin.
+of Mercury on Windows using Cygwin.
 
 (Note: we don't have any plans for a port to Windows 3.1.)
 
@@ -17,9 +18,14 @@ PREPARATION
 To use or install Mercury on Windows, you need to first get Cygwin
 from Cygnus, and install it. 
 
-(If you're going to use a binary distribution of Mercury for Windows,
-you need to make sure that you get the same version of gnu-win32 that
-the binary distribution was compiled with.)
+If you're going to use a binary distribution of Mercury for Windows,
+you need to make sure that you get a version of Cygwin that is
+compatible with the one that the binary distribution was compiled
+with.  This will normally be specified in the filename of the
+Mercury binary distribution.  For example, if the file name is
+mercury-0.8.1.pc-windows-cygwin-b20.1.tar.gz then it was compiled
+with version b20.1 of Cygwin, so you will need version b20.1
+(or any later version which preserves binary compatibility with b20.1).
 
 You can download Cygwin from <http://sourceware.cygnus.com/cygwin/>.
 Follow the installation instructions that come with Cygwin.
@@ -60,7 +66,7 @@ of GNU Emacs for NT and use it to browse the INFO version in
 /usr/local/mercury-<VERSION>/lib/mercury/info.
 
 There may still be some problems with case-insensitive filenames
-and the nameclash between `mmake' and `Mmake'.  If you run into any
+and the name clash between `mmake' and `Mmake'.  If you run into any
 such problems, rename the `Mmake' file in each subdirectory to `Mmakefile'.
 
 -----------------------------------------------------------------------------

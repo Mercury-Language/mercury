@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1998 The University of Melbourne.
+** Copyright (C) 1994-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -87,8 +87,6 @@ MR_do_init_label_tables(void)
 
 #ifdef	MR_NEED_ENTRY_LABEL_INFO
 
-static	int	compare_entry_addr(const void *e1, const void *e2);
-
 void
 MR_insert_entry_label(const char *name, Code *addr,
 	const MR_Stack_Layout_Entry *entry_layout)
@@ -96,17 +94,27 @@ MR_insert_entry_label(const char *name, Code *addr,
 	MR_do_init_label_tables();
 
 #ifdef	PROFILE_CALLS
-	if (MR_profiling) MR_prof_output_addr_decl(name, addr);
+	if (MR_profiling) {
+		MR_prof_output_addr_decl(name, addr);
+	}
 #endif
 
 #ifdef	MR_LOWLEVEL_DEBUG
 	if (MR_progdebug) {
-		printf("recording entry label %s at %p\n", name, addr);
+		/*
+		** We can't assume that MR_LOWLEVEL_DEBUG was turned on
+		** in the code that generated the call to this function
+		** just because MR_LOWLEVEL_DEBUG is turned on here.
+		*/
+		if (name != NULL) {
+			printf("recording entry label %s at %p\n", name, addr);
+		} else {
+			printf("recording entry label at %p\n", addr);
+		}
 	}
 #endif
 
 #ifdef	MR_NEED_ENTRY_LABEL_ARRAY
-
 	if (entry_array_next >= entry_array_size) {
 		entry_array_size *= 2;
 		entry_array = realloc(entry_array, 
@@ -127,6 +135,8 @@ MR_insert_entry_label(const char *name, Code *addr,
 #endif
 
 #ifdef	MR_NEED_ENTRY_LABEL_ARRAY
+
+static	int	compare_entry_addr(const void *e1, const void *e2);
 
 static int
 compare_entry_addr(const void *e1, const void *e2)
@@ -202,7 +212,17 @@ MR_insert_internal_label(const char *name, Code *addr,
 
 #ifdef	MR_LOWLEVEL_DEBUG
 	if (MR_progdebug) {
-		printf("inserting internal label %s at %p\n", name, addr);
+		/*
+		** We can't assume that MR_LOWLEVEL_DEBUG was turned on
+		** in the code that generated the call to this function
+		** just because MR_LOWLEVEL_DEBUG is turned on here.
+		*/
+		if (name != NULL) {
+			printf("inserting internal label %s at %p\n",
+				name, addr);
+		} else {
+			printf("inserting internal label at %p\n", addr);
+		}
 	}
 #endif
 

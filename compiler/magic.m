@@ -208,7 +208,13 @@ magic__process_module(ModuleInfo0, ModuleInfo) -->
 
 		% New procedures were created, so the dependency_info
 		% is out of date.
-	{ module_info_clobber_dependency_info(ModuleInfo3, ModuleInfo) }.
+	{ module_info_clobber_dependency_info(ModuleInfo3, ModuleInfo4) },
+	
+		% Recompute instmap_deltas for all Aditi procedures.
+	process_matching_nonimported_procs(
+		update_module(recompute_instmap_delta_proc),
+		hlds_pred__pred_info_is_aditi_relation,
+		ModuleInfo4, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -346,7 +352,8 @@ magic__process_base_relation(PredId0, ProcId0) -->
 
 	% Remove aditi:states, convert arguments to output.
 	{ pred_info_arg_types(PredInfo0, TVarSet, ExistQVars, ArgTypes0) },
-	{ proc_info_argmodes(ProcInfo0, ArgModes0) },
+	{ proc_info_argmodes(ProcInfo0,
+		argument_modes(ArgInstTable, ArgModes0)) },
 	{ proc_info_headvars(ProcInfo0, HeadVars0) },
 	{ magic_util__remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes) },
 	{ magic_util__remove_aditi_state(ArgTypes0, ArgModes0, ArgModes1) },
@@ -358,7 +365,8 @@ magic__process_base_relation(PredId0, ProcId0) -->
 	{ pred_info_set_indexes(PredInfo0, Indexes, PredInfo1) },
 	{ pred_info_set_arg_types(PredInfo1, TVarSet, ExistQVars,
 		ArgTypes, PredInfo) },
-	{ proc_info_set_argmodes(ProcInfo0, ArgModes, ProcInfo1) },
+	{ proc_info_set_argmodes(ProcInfo0,
+		argument_modes(ArgInstTable, ArgModes), ProcInfo1) },
 	{ proc_info_set_headvars(ProcInfo1, HeadVars, ProcInfo) },
 	{ module_info_set_pred_proc_info(ModuleInfo0,
 		PredProcId, PredInfo, ProcInfo, ModuleInfo) },
@@ -392,21 +400,26 @@ magic__get_scc_inputs([PredProcId | PredProcIds],
 	magic_info_get_module_info(ModuleInfo),
 	{ module_info_pred_proc_info(ModuleInfo, PredProcId,
 		PredInfo, ProcInfo) },
-	{ proc_info_argmodes(ProcInfo, ArgModes0) },
+	{ proc_info_argmodes(ProcInfo,
+		argument_modes(ArgInstTable, ArgModes0)) },
 	{ pred_info_arg_types(PredInfo, ArgTypes0) },
 	{ magic_util__remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes) },
 	{ magic_util__remove_aditi_state(ArgTypes0, ArgModes0, ArgModes) },
-	{ partition_args(ModuleInfo, ArgModes, ArgModes, InputModes, _) },
-	{ partition_args(ModuleInfo, ArgModes, ArgTypes, InputTypes, _) },
+
+	{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) },
+	{ partition_args(InstMap, ArgInstTable, ModuleInfo,
+		ArgModes, ArgModes, InputModes, _) },
+	{ partition_args(InstMap, ArgInstTable, ModuleInfo,
+		ArgModes, ArgTypes, InputTypes, _) },
 	{ term__context_init(Context) },
 	{ Type = term__functor(term__atom("pred"), InputTypes, Context) },
 	{ GetOutputMode = lambda([ArgMode::in, OutputMode::out] is det, (
 			mode_get_insts(ModuleInfo, ArgMode, _, OutputInst),
-			OutputMode = (free -> OutputInst)
+			OutputMode = (free(unique) -> OutputInst)
 		)) },
 	{ list__map(GetOutputMode, InputModes, InputRelModes) },
  	{ Inst = ground(unique, yes(pred_inst_info(predicate, 
-				InputRelModes, nondet))) },
+		argument_modes(ArgInstTable, InputRelModes), nondet))) },
 	{ Mode = (Inst -> Inst) },
 	magic__get_scc_inputs(PredProcIds, Types, Modes).
 
@@ -571,9 +584,13 @@ magic__adjust_args(CPredProcId, AditiPredProcId, InterfaceRequired,
 	{ pred_info_arg_types(PredInfo0, TVarSet, ExistQVars, ArgTypes0) },
 	{ proc_info_headvars(ProcInfo0, HeadVars0) },
 	{ pred_info_context(PredInfo0, Context) },
-	{ proc_info_argmodes(ProcInfo0, ArgModes0) },
-	magic_util__check_args(HeadVars0, ArgModes0, ArgTypes0, Context,
-		arg_number),
+	magic_info_get_module_info(ModuleInfo0),
+	{ proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap) },
+	{ proc_info_argmodes(ProcInfo0,
+		argument_modes(ArgInstTable, ArgModes0)) },
+
+	magic_util__check_args(HeadVars0, InstMap, ArgInstTable, ArgModes0,
+		ArgTypes0, Context, arg_number),
 
 	%
 	% Strip out the aditi__state argument.
@@ -586,7 +603,6 @@ magic__adjust_args(CPredProcId, AditiPredProcId, InterfaceRequired,
 	% Convert all of the original modes to output. The input
 	% will be carried in with the input closures.
 	%
-	magic_info_get_module_info(ModuleInfo0),
 	{ list__map(magic_util__mode_to_output_mode(ModuleInfo0),
 		ArgModes1, ArgModes2) },
 
@@ -601,37 +617,30 @@ magic__adjust_args(CPredProcId, AditiPredProcId, InterfaceRequired,
 	{ list__append(MagicModes, ArgModes2, ArgModes) },
 	{ list__append(MagicTypes, ArgTypes1, ArgTypes) },
 
-	%
-	% Ensure that the exported interface procedure gets the 
-	% correct argmodes.
-	%
-	{ instmap_delta_from_mode_list(HeadVars, ArgModes, 
-		ModuleInfo0, InstMapDelta) },
-	{ proc_info_goal(ProcInfo1, Goal0 - GoalInfo0) },
-	{ goal_info_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo) },
-	{ proc_info_set_goal(ProcInfo1, Goal0 - GoalInfo, ProcInfo2) },
-
 	% All Aditi procedures are considered nondet. The C interface
 	% procedures retain the old determinism, and abort if the number
 	% of answers returned doesn't match the determinism.
-	{ proc_info_set_inferred_determinism(ProcInfo2, nondet, ProcInfo3) },
+	{ proc_info_set_inferred_determinism(ProcInfo1, nondet, ProcInfo3) },
 
-	{ partition_args(ModuleInfo0, ArgModes1,
+	{ partition_args(InstMap, ArgInstTable, ModuleInfo0, ArgModes1,
 		ArgModes1, InputArgModes, _) },
-	{ partition_args(ModuleInfo0, ArgModes1,
+	{ partition_args(InstMap, ArgInstTable, ModuleInfo0, ArgModes1,
 		ArgTypes1, InputArgTypes, _) },
 
 	{ pred_info_set_arg_types(PredInfo0, TVarSet, ExistQVars,
 		ArgTypes, PredInfo) },
 	
 	{ proc_info_set_headvars(ProcInfo3, HeadVars, ProcInfo4) },
-	{ proc_info_set_argmodes(ProcInfo4, ArgModes, ProcInfo) },
+	{ proc_info_set_argmodes(ProcInfo4,
+		argument_modes(ArgInstTable, ArgModes), ProcInfo) },
 
 	( { InterfaceRequired = yes(Index) } ->
+		{ LocalArgModes = ArgModes },
 		magic__create_interface_proc(Index, CPredProcId,
 			AditiPredProcId, PredInfo0, ProcInfo3, ProcInfo,
-			HeadVars1, ArgTypes1, ArgModes2, MagicVars,
-			MagicTypes, MagicModes, LocalAditiPredProcId)
+			HeadVars1, ArgTypes1, ArgModes2, LocalArgModes,
+			MagicVars, MagicTypes, MagicModes,
+			LocalAditiPredProcId)
 	;
 		magic_info_get_module_info(ModuleInfo5),
 		{ module_info_set_pred_proc_info(ModuleInfo5, AditiPredProcId,
@@ -640,7 +649,8 @@ magic__adjust_args(CPredProcId, AditiPredProcId, InterfaceRequired,
 		{ LocalAditiPredProcId = AditiPredProcId }
 	),
 
-	{ ThisProcInfo = magic_proc_info(ArgModes1, MagicVars, 
+	{ ThisProcInfo = magic_proc_info(InstMap,
+		argument_modes(ArgInstTable, ArgModes1), MagicVars, 
 		MagicTypes, MagicModes, MaybeIndex) },
 	magic_info_get_magic_proc_info(MagicProcInfo0),
 	{ map__det_insert(MagicProcInfo0, LocalAditiPredProcId,
@@ -659,12 +669,13 @@ magic__adjust_args(CPredProcId, AditiPredProcId, InterfaceRequired,
 :- pred magic__create_interface_proc(int::in, pred_proc_id::in,
 		pred_proc_id::in, pred_info::in, proc_info::in, proc_info::in,
 		list(prog_var)::in, list(type)::in, list(mode)::in,
-		list(prog_var)::in, list(type)::in, list(mode)::in,
-		pred_proc_id::out, magic_info::in, magic_info::out) is det.
+		list(mode)::in, list(prog_var)::in, list(type)::in,
+		list(mode)::in, pred_proc_id::out,
+		magic_info::in, magic_info::out) is det.
 	
 magic__create_interface_proc(Index, CPredProcId, AditiPredProcId,
 		ExportedPredInfo0, ExportedProcInfo0, LocalProcInfo,
-		HeadVars1, ArgTypes1, ArgModes1, MagicVars,
+		HeadVars1, ArgTypes1, ArgModes1, LocalArgModes, MagicVars,
 		MagicTypes, MagicModes, LocalPredProcId) -->
 
 	%
@@ -678,6 +689,7 @@ magic__create_interface_proc(Index, CPredProcId, AditiPredProcId,
 	{ proc_info_headvars(LocalProcInfo, HeadVars) },
 	{ proc_info_vartypes(LocalProcInfo, VarTypes) },
 	{ proc_info_varset(LocalProcInfo, VarSet) },
+	{ proc_info_inst_table(LocalProcInfo, InstTable) },
 	{ pred_info_get_markers(ExportedPredInfo0, Markers) },
 	{ pred_info_get_aditi_owner(ExportedPredInfo0, Owner) },
 
@@ -686,13 +698,13 @@ magic__create_interface_proc(Index, CPredProcId, AditiPredProcId,
 	{ map__init(TCVarMap) },
 	{ varset__init(TVarSet) },
 	{ hlds_pred__define_new_pred(Goal, CallGoal, HeadVars, ExtraArgs,
-		InstMap, PredName, TVarSet, VarTypes, ClassContext, TVarMap,
-		TCVarMap, VarSet, Markers, Owner,
-		ModuleInfo1, ModuleInfo2, LocalPredProcId) },
+		InstMap, LocalArgModes, PredName, TVarSet, VarTypes,
+		ClassContext, TVarMap, TCVarMap, VarSet, Markers, Owner,
+		InstTable, ModuleInfo1, ModuleInfo2, LocalPredProcId) },
 	{ ExtraArgs = [] ->
 		true
 	;
-		error("magic__create_interface_proc: typeinfo arguments")
+		error("magic__create_interface_proc: extra typeinfo arguments")
 	},
 	magic_info_set_module_info(ModuleInfo2),
 
@@ -715,7 +727,8 @@ magic__create_interface_proc(Index, CPredProcId, AditiPredProcId,
 	{ proc_info_set_headvars(ExportedProcInfo0,
 		ExportedHeadVars, ExportedProcInfo1) },
 	{ proc_info_set_argmodes(ExportedProcInfo1,
-		ExportedArgModes, ExportedProcInfo2) },
+		argument_modes(InstTable, ExportedArgModes),
+		ExportedProcInfo2) },
 	{ pred_info_set_arg_types(ExportedPredInfo0, TVarSet, [],
 		ExportedArgTypes, ExportedPredInfo1) },
 
@@ -843,10 +856,13 @@ magic__create_input_join_proc(CPredProcId, AditiPredProcId, JoinPredProcId) -->
 	magic_info_get_module_info(ModuleInfo0),
 	{ module_info_pred_proc_info(ModuleInfo0, CPredProcId,
 		CPredInfo, CProcInfo) },
-	{ proc_info_argmodes(CProcInfo, ArgModes0) },
+	{ proc_info_argmodes(CProcInfo,
+		argument_modes(ArgInstTable, ArgModes0)) },
+	{ proc_info_get_initial_instmap(CProcInfo, ModuleInfo0, InstMap) },
+	{ proc_info_inst_table(CProcInfo, InstTable) },
 	{ pred_info_arg_types(CPredInfo, ArgTypes) },
 	{ magic_util__remove_aditi_state(ArgTypes, ArgModes0, ArgModes) },
-	{ partition_args(ModuleInfo0, ArgModes, ArgModes,
+	{ partition_args(InstMap, InstTable, ModuleInfo0, ArgModes, ArgModes,
 		InputArgModes, OutputArgModes) },
 	(
 		% If the Aditi procedure has no inputs we don't need to
@@ -875,8 +891,8 @@ magic__create_input_join_proc(CPredProcId, AditiPredProcId, JoinPredProcId) -->
 
 		% Build a call to the original C proc.
 		{ set__list_to_set(HeadVars, NonLocals) },
-		{ instmap_delta_from_mode_list(HeadVars0, ArgModes0,
-			ModuleInfo0, Delta) },
+		% This will be filled in by recompute_instmap_delta.
+		{ instmap_delta_init_reachable(Delta) },
 		{ proc_info_inferred_determinism(CProcInfo, Detism) },
 		{ goal_info_init(NonLocals, Delta, Detism, CallGoalInfo) },
 		{ pred_info_module(CPredInfo, PredModule) },
@@ -890,7 +906,8 @@ magic__create_input_join_proc(CPredProcId, AditiPredProcId, JoinPredProcId) -->
 		{ proc_info_set_headvars(JoinProcInfo0,
 			HeadVars, JoinProcInfo1) },
 		{ proc_info_set_argmodes(JoinProcInfo1,
-			ArgModes, JoinProcInfo2) },
+			argument_modes(ArgInstTable, ArgModes),
+			JoinProcInfo2) },
 
 		% Imported procedures such as base relations have nothing
 		% in their vartypes field, so create it here.
@@ -909,8 +926,8 @@ magic__create_input_join_proc(CPredProcId, AditiPredProcId, JoinPredProcId) -->
 		{ magic_util__remove_aditi_state(ArgTypes,
 			HeadVars0, HeadVars) },
 
-		{ partition_args(ModuleInfo0, ArgModes, HeadVars,
-			InputArgs, OutputArgs) },
+		{ partition_args(InstMap, InstTable, ModuleInfo0,
+			ArgModes, HeadVars, InputArgs, OutputArgs) },
 
 		{ map__apply_to_list(InputArgs, VarTypes0, InputVarTypes) },
 
@@ -927,12 +944,13 @@ magic__create_input_join_proc(CPredProcId, AditiPredProcId, JoinPredProcId) -->
 		% Build a goal to call the input closure.
 		{ set__list_to_set([ClosureVar | InputArgs],
 			HOCallNonLocals) },
-		{ instmap_delta_from_mode_list(InputArgs, MagicArgModes,
-			ModuleInfo0, HOCallDelta) },
+		% This will be filled in by recompute_instmap_delta.
+		{ instmap_delta_init_reachable(HOCallDelta) },
 		{ goal_info_init(HOCallNonLocals, HOCallDelta, nondet,
 			InputGoalInfo) },
 		{ InputGoal = higher_order_call(ClosureVar,
-			InputArgs, InputVarTypes, MagicArgModes,
+			InputArgs, InputVarTypes,
+			argument_modes(ArgInstTable, MagicArgModes),
 			nondet, predicate) - InputGoalInfo },
 
 		% Build a call to the original C proc.
@@ -953,10 +971,13 @@ magic__create_input_join_proc(CPredProcId, AditiPredProcId, JoinPredProcId) -->
 		),
 
 		{ ClosureInst = ground(shared,
-		    yes(pred_inst_info(predicate, MagicArgModes, nondet))) },
+		    yes(pred_inst_info(predicate,
+		    argument_modes(ArgInstTable, MagicArgModes), nondet))) },
 		{ ClosureMode = (ClosureInst -> ClosureInst) },
 		{ proc_info_set_argmodes(JoinProcInfo1,
-			[ClosureMode | OutputArgModes], JoinProcInfo2) },
+			argument_modes(ArgInstTable,
+				[ClosureMode | OutputArgModes]),
+			JoinProcInfo2) },
 		{ proc_info_set_headvars(JoinProcInfo2,
 			[ClosureVar | OutputArgs], JoinProcInfo3) },
 
@@ -979,8 +1000,8 @@ magic__create_input_join_proc(CPredProcId, AditiPredProcId, JoinPredProcId) -->
 			CallNonLocals, Goals),
 
 		magic_info_get_module_info(ModuleInfo10),
-		{ instmap_delta_from_mode_list(OutputArgs, OutputArgModes,
-			ModuleInfo10, GoalDelta) },
+		% This will be filled in by recompute_instmap_delta.
+		{ instmap_delta_init_reachable(GoalDelta) },
 		{ set__list_to_set([ClosureVar | OutputArgs],
 			GoalNonLocals) },
 		{ goal_info_init(GoalNonLocals, GoalDelta, nondet, GoalInfo) },
@@ -1055,8 +1076,11 @@ magic__create_aditi_call_proc(CPredProcId, AditiPredProcId) -->
 		CPredInfo0, CProcInfo0) },
 	{ pred_info_module(CPredInfo0, PredModule) },
 	{ pred_info_arg_types(CPredInfo0, TVarSet, ExistQVars, ArgTypes) },
-	{ proc_info_argmodes(CProcInfo0, ArgModes) },
+	{ proc_info_argmodes(CProcInfo0,
+		argument_modes(ArgInstTable, ArgModes)) },
+	{ proc_info_get_initial_instmap(CProcInfo0, ModuleInfo0, InstMap) },
 	{ proc_info_headvars(CProcInfo0, HeadVars) },
+	{ proc_info_inst_table(CProcInfo0, InstTable) },
 
 	% Base relations will have an empty vartypes field, so fill it in here.
 	{ map__from_corresponding_lists(HeadVars, ArgTypes, VarTypes0) },
@@ -1076,13 +1100,14 @@ magic__create_aditi_call_proc(CPredProcId, AditiPredProcId) -->
 
 	magic_info_get_module_info(ModuleInfo1),
 
-	{ partition_args(ModuleInfo1, ArgModes1, ArgTypes1,
-		InputArgTypes, OutputArgTypes) },
-	{ partition_args(ModuleInfo1, ArgModes1, ArgModes1,
-		InputArgModes, OutputArgModes) },
-	{ partition_args(ModuleInfo1, ArgModes1, TypeInfoVars,
+	{ partition_args(InstMap, ArgInstTable, ModuleInfo1,
+		ArgModes1, ArgTypes1, InputArgTypes, OutputArgTypes) },
+	{ partition_args(InstMap, ArgInstTable, ModuleInfo1,
+		ArgModes1, ArgModes1, InputArgModes, OutputArgModes) },
+	{ partition_args(InstMap, ArgInstTable, ModuleInfo1,
+		ArgModes1, TypeInfoVars,
 		InputTypeInfoVars, OutputTypeInfoVars) },
-	{ partition_args(ModuleInfo1, ArgModes1,
+	{ partition_args(InstMap, ArgInstTable, ModuleInfo1, ArgModes1,
 		HeadVars1, InputArgs, OutputArgs) },
 
 	{ construct_type(unqualified("int") - 0, [], IntType) },
@@ -1147,8 +1172,9 @@ magic__create_aditi_call_proc(CPredProcId, AditiPredProcId) -->
 	{ map__init(TVarMap) },
 	{ map__init(TCVarMap) },
 	{ proc_info_create(VarSet, DoCallAditiVarTypes, DoCallAditiHeadVars,
-		DoCallAditiArgModes, Detism, DummyGoal, DummyContext,
-		TVarMap, TCVarMap, compact, DoCallAditiProcInfo) },
+		argument_modes(ArgInstTable, DoCallAditiArgModes),
+		Detism, DummyGoal, DummyContext, TVarMap, TCVarMap,
+		compact, InstTable, DoCallAditiProcInfo) },
 
 	{ CPredProcId = proc(_, CProcId) },
 	magic_util__make_pred_name(CPredInfo1, CProcId, "Do_Aditi_Call_For",
@@ -1173,8 +1199,8 @@ magic__create_aditi_call_proc(CPredProcId, AditiPredProcId) -->
 	% Make the C procedure call the new alias for do_*_aditi_call.
 	%
 	{ set__list_to_set(DoCallAditiArgs, CallNonLocals) },
-	{ instmap_delta_from_mode_list(DoCallAditiArgs, DoCallAditiArgModes,
-		ModuleInfo2, GoalDelta) },
+	% This will be filled in by recompute_instmap_delta.
+	{ instmap_delta_init_reachable(GoalDelta) },
 	{ goal_info_init(CallNonLocals, GoalDelta, Detism, CallGoalInfo) },
 	{ DoCallAditiGoal = call(DoCallAditiPredId, DoCallAditiProcId,
 		DoCallAditiArgs, not_builtin, no, CallPredName)
@@ -1185,9 +1211,11 @@ magic__create_aditi_call_proc(CPredProcId, AditiPredProcId) -->
 	{ goal_list_determinism(Goals, GoalDetism) },
 	{ goal_info_init(GoalNonLocals, GoalDelta, GoalDetism, GoalInfo) },
 	{ Goal = conj(Goals) - GoalInfo },
-	{ proc_info_set_goal(CProcInfo5, Goal, CProcInfo) },
+	{ proc_info_set_goal(CProcInfo5, Goal, CProcInfo6) },
 
-	{ module_info_set_pred_proc_info(ModuleInfo3, CPredProcId,
+	{ recompute_instmap_delta_proc(CProcInfo6, CProcInfo,
+		ModuleInfo3, ModuleInfo4) },
+	{ module_info_set_pred_proc_info(ModuleInfo4, CPredProcId,
 		CPredInfo1, CProcInfo, ModuleInfo) },
 	magic_info_set_module_info(ModuleInfo).
 
@@ -1202,10 +1230,13 @@ magic__interface_pred_info(CPredProcId, PredProcId,
 	{ module_info_pred_proc_info(ModuleInfo, CPredProcId,
 		CPredInfo, CProcInfo) },
 	{ pred_info_arg_types(CPredInfo, ArgTypes0) },
-	{ proc_info_argmodes(CProcInfo, ArgModes0) },
+	{ proc_info_argmodes(CProcInfo,
+		argument_modes(ArgInstTable, ArgModes0)) },
+	{ proc_info_get_initial_instmap(CProcInfo, ModuleInfo, InstMap) },
 	{ magic_util__remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes) },
 	{ magic_util__remove_aditi_state(ArgTypes0, ArgModes0, ArgModes) },
-	{ partition_args(ModuleInfo, ArgModes, ArgTypes, InputArgTypes, _) },
+	{ partition_args(InstMap, ArgInstTable, ModuleInfo,
+		ArgModes, ArgTypes, InputArgTypes, _) },
 	{ rl__schema_to_string(ModuleInfo, InputArgTypes, InputSchema) }.
 
 :- pred magic__make_type_info_vars(list(type)::in, list(prog_var)::out,
@@ -1231,9 +1262,9 @@ magic__make_const(Type, ConsId, Var, Goal, ProcInfo0, ProcInfo) :-
 	proc_info_create_var_from_type(ProcInfo0, Type, Var, ProcInfo),
 	set__singleton_set(NonLocals, Var),
 	Inst = bound(unique, [functor(ConsId, [])]),
-	instmap_delta_init_reachable(Delta0),
-	instmap_delta_insert(Delta0, Var, Inst, Delta),
-	UnifyMode = (free -> Inst) - (Inst -> Inst),
+	% To be filled in by recompute_instmap_delta.
+	instmap_delta_init_reachable(Delta),
+	UnifyMode = (free(unique) - Inst) - (Inst - Inst),
 	Uni = construct(Var, ConsId, [], []),
 	Context = unify_context(explicit, []),
 	goal_info_init(NonLocals, Delta, det, GoalInfo),
@@ -1272,7 +1303,7 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 		InputModes0, OutputModes0) },
 
 	{ module_info_pred_proc_info(ModuleInfo0, PredProcId,
-		PredInfo, _) },
+		PredInfo, ProcInfo) },
 	{ pred_info_get_markers(PredInfo, Markers) },
 	{ check_marker(Markers, context) ->
 		% For magic context predicates, we get two copies of
@@ -1296,6 +1327,7 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 	},
 
 	{ list__append(MagicArgs, InputArgs, AllArgs) },
+	{ proc_info_inst_table(ProcInfo, InstTable) },
 	( { Index = yes(N) } ->
 		%
 		% If this predicate is an entry point to the sub-module,
@@ -1312,7 +1344,7 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 		{ goal_info_init(NonLocals0, InstMapDelta0,
 			nondet, GoalInfo0) },
 		{ Goal0 = higher_order_call(CurrPredVar, InputArgs0,
-			InputTypes, OutputModes0,
+			InputTypes, argument_modes(InstTable, OutputModes0),
 			nondet, predicate) - GoalInfo0 },
 		( { IsContext = yes(ArgsAL) } ->
 			% Create assignments to assign to the extra arguments.
@@ -1347,8 +1379,10 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 	{ map__init(TCVarMap) },
 
 	{ DummyArgsMethod = compact }, % never used
-	{ proc_info_create(VarSet, VarTypes, AllArgs, AllArgModes, nondet,
-		Goal, Context, TVarMap, TCVarMap, DummyArgsMethod, ProcInfo) },
+	{ proc_info_create(VarSet, VarTypes, AllArgs,
+		argument_modes(InstTable, AllArgModes),
+		nondet, Goal, Context, TVarMap, TCVarMap,
+		DummyArgsMethod, InstTable, MagicProcInfo) },
 	
 	%
 	% Fill in the pred_info.
@@ -1367,7 +1401,7 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 	{ ExistQVars = [] },
 	{ pred_info_create(ModuleName, SymName, TVarSet, ExistQVars,
 		AllArgTypes, true, Context, local, Markers, predicate,
-		ClassConstraints, Owner, ProcInfo, MagicProcId,
+		ClassConstraints, Owner, MagicProcInfo, MagicProcId,
 		MagicPredInfo) },
 
 	{ module_info_get_predicate_table(ModuleInfo0, PredTable0) },
@@ -1398,7 +1432,7 @@ magic__create_assignments(_, [_|_], [], _) :-
 magic__create_assignments(ModuleInfo, [Arg0 - Arg | ArgsAL],
 		[Mode | Modes], [Goal - GoalInfo | Assigns]) :-
 	mode_get_insts(ModuleInfo, Mode, _, Inst),
-	Goal = unify(Arg, var(Arg0), (free -> Inst) - (Inst -> Inst),
+	Goal = unify(Arg, var(Arg0), (free(unique) - Inst) - (Inst - Inst),
 			assign(Arg, Arg0), unify_context(explicit, [])),
 	set__list_to_set([Arg0, Arg], NonLocals),
 	instmap_delta_from_assoc_list([Arg - Inst], Delta),
@@ -1428,12 +1462,12 @@ magic__preprocess_proc(PredProcId, PredInfo, ProcInfo0, ProcInfo) -->
 		{ proc_info_varset(ProcInfo0, VarSet0) },
 		{ proc_info_vartypes(ProcInfo0, VarTypes0) },
 		magic_info_get_module_info(ModuleInfo0),
+		{ proc_info_inst_table(ProcInfo0, InstTable) },
 		{ proc_info_get_initial_instmap(ProcInfo0, 
 			ModuleInfo0, InstMap) },
 		{ goal_util__switch_to_disjunction(Var, Cases,
-			InstMap, Disjuncts, VarSet0, VarSet1, 
-			VarTypes0, VarTypes1, ModuleInfo0, ModuleInfo1) },
-		magic_info_set_module_info(ModuleInfo1),
+			InstMap, InstTable, Disjuncts, VarSet0, VarSet1, 
+			VarTypes0, VarTypes1, ModuleInfo0) },
 		{ proc_info_set_varset(ProcInfo0, VarSet1, ProcInfo1) },
 		{ proc_info_set_vartypes(ProcInfo1, VarTypes1, ProcInfo2) },
 		{ map__init(SM) },
@@ -1612,7 +1646,8 @@ magic__preprocess_goal_2(Goal0, Goals, HOMap0, HOMap) -->
 	).
 
 	% Introduce new variables and assignments to them for any
-	% duplicates in the list.
+	% duplicates in the list. This ensures that the call is in
+	% superhomogenous form.
 :- pred magic__preprocess_call_args(list(prog_var)::in, list(prog_var)::out,
 	set(prog_var)::in, list(prog_var)::in, list(prog_var)::out,
 	list(hlds_goal)::in, list(hlds_goal)::out,
@@ -1631,13 +1666,12 @@ magic__preprocess_call_args([Arg | Args], [NewArg | NewArgs], SeenArgs,
 			ArgType, NewArg, ProcInfo) },
 		magic_info_set_proc_info(ProcInfo),
 		{ IntroducedArgs1 = [NewArg | IntroducedArgs0] },
-		{ in_mode(InMode) },
-		{ out_mode(OutMode) },
-		{ Inst = ground(shared, no) },
+		{ Ground = ground(shared, no) },
 		{ set__list_to_set([Arg, NewArg], NonLocals) },
-		{ instmap_delta_from_assoc_list([NewArg - Inst], Delta) },
+		{ instmap_delta_from_assoc_list([NewArg - Ground], Delta) },
 		{ goal_info_init(NonLocals, Delta, det, GoalInfo) },
-		{ ExtraGoal = unify(NewArg, var(Arg), OutMode - InMode,
+		{ ExtraGoal = unify(NewArg, var(Arg),
+			(free(unique) - Ground) - (Ground - Ground),
 			assign(NewArg, Arg), unify_context(explicit, []))
 			- GoalInfo },
 		{ ExtraGoals1 = [ExtraGoal | ExtraGoals0] }
@@ -1792,8 +1826,9 @@ magic__process_proc(PredProcId0) -->
 		magic_info_set_proc_info(ProcInfo0),
 		magic_info_get_magic_proc_info(MagicProcInfo),
 		{ map__lookup(MagicProcInfo, PredProcId, ThisProcInfo) },
-		{ ThisProcInfo = magic_proc_info(OldArgModes, MagicInputs,
-					_, _, _) },
+		{ ThisProcInfo = magic_proc_info(OldInstMap,
+			argument_modes(ArgInstTable, OldArgModes),
+			MagicInputs, _, _, _) },
 		magic_info_set_magic_vars(MagicInputs),
 		{ set__init(ErrorVars) },
 		magic_info_set_error_vars(ErrorVars),
@@ -1802,7 +1837,7 @@ magic__process_proc(PredProcId0) -->
 
 		{ list__length(MagicInputs, NumMagicInputs) },
 		{ list__drop(NumMagicInputs, HeadVars, OldHeadVars) ->
-			partition_args(ModuleInfo0, 
+			partition_args(OldInstMap, ArgInstTable, ModuleInfo0, 
 				OldArgModes, OldHeadVars, Inputs, Outputs)
 		;
 			error("magic__process_proc: list__drop failed")
@@ -1943,14 +1978,13 @@ magic__get_next_db_pred([Goal | RevGoals], RevBeforeGoals,
 
 magic__create_magic_call(MagicCall) -->
 	magic_util__magic_call_info(MagicPredId, MagicProcId, PredName,
-		InputRels, InputArgs, MagicOutputModes),
+		InputRels, InputArgs, _MagicOutputModes),
 
 	{ list__append(InputRels, InputArgs, MagicArgs) },
 
 	{ set__list_to_set(MagicArgs, NonLocals) },
-	magic_info_get_module_info(ModuleInfo),
-	{ instmap_delta_from_mode_list(InputArgs, MagicOutputModes,
-		ModuleInfo, InstMapDelta) },
+	% To be filled in by recompute_instmap_delta.
+	{ instmap_delta_init_reachable(InstMapDelta) },
 	{ goal_info_init(NonLocals, InstMapDelta, nondet, GoalInfo) },
 
 	{ MagicCall = call(MagicPredId, MagicProcId, MagicArgs,

@@ -39,8 +39,8 @@
 
 :- import_module hlds_module, hlds_pred, prog_data, prog_out, code_util.
 :- import_module mode_util, type_util, code_aux, hlds_out, tree, arg_info.
-:- import_module inst_match.
-:- import_module term, bool, string, list, int, map, require, std_util.
+:- import_module globals, options, continuation_info, stack_layout, inst_match.
+:- import_module term, bool, string, int, list, map, require, std_util.
 
 :- type uni_val		--->	ref(prog_var)
 			;	lval(lval).
@@ -231,25 +231,28 @@ unify_gen__generate_tag_rval_2(pred_closure_tag(_, _), _Rval, _TestRval) :-
 unify_gen__generate_tag_rval_2(code_addr_constant(_, _), _Rval, _TestRval) :-
 	% This should never happen
 	error("Attempted code_addr unification").
-unify_gen__generate_tag_rval_2(base_type_info_constant(_, _, _), _, _) :-
+unify_gen__generate_tag_rval_2(type_ctor_info_constant(_, _, _), _, _) :-
 	% This should never happen
-	error("Attempted base_type_info unification").
+	error("Attempted type_ctor_info unification").
 unify_gen__generate_tag_rval_2(base_typeclass_info_constant(_, _, _), _, _) :-
 	% This should never happen
 	error("Attempted base_typeclass_info unification").
+unify_gen__generate_tag_rval_2(tabling_pointer_constant(_, _), _, _) :-
+	% This should never happen
+	error("Attempted tabling_pointer unification").
 unify_gen__generate_tag_rval_2(no_tag, _Rval, TestRval) :-
 	TestRval = const(true).
-unify_gen__generate_tag_rval_2(simple_tag(SimpleTag), Rval, TestRval) :-
+unify_gen__generate_tag_rval_2(unshared_tag(UnsharedTag), Rval, TestRval) :-
 	TestRval = binop(eq,	unop(tag, Rval),
-				unop(mktag, const(int_const(SimpleTag)))).
-unify_gen__generate_tag_rval_2(complicated_tag(Bits, Num), Rval, TestRval) :-
+				unop(mktag, const(int_const(UnsharedTag)))).
+unify_gen__generate_tag_rval_2(shared_remote_tag(Bits, Num), Rval, TestRval) :-
 	TestRval = binop(and,
 			binop(eq,	unop(tag, Rval),
 					unop(mktag, const(int_const(Bits)))), 
 			binop(eq,	lval(field(yes(Bits), Rval,
 						const(int_const(0)))),
 					const(int_const(Num)))).
-unify_gen__generate_tag_rval_2(complicated_constant_tag(Bits, Num), Rval,
+unify_gen__generate_tag_rval_2(shared_local_tag(Bits, Num), Rval,
 		TestRval) :-
 	TestRval = binop(eq,	Rval,
 			mkword(Bits, unop(mkbody, const(int_const(Num))))).
@@ -295,7 +298,7 @@ unify_gen__generate_construction_2(no_tag,
 		{ error(
 		"unify_gen__generate_construction_2: no_tag: arity != 1") }
 	).
-unify_gen__generate_construction_2(simple_tag(SimpleTag),
+unify_gen__generate_construction_2(unshared_tag(UnsharedTag),
 		Var, Args, Modes, IMDelta, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	code_info__get_inst_table(InstTable),
@@ -309,14 +312,15 @@ unify_gen__generate_construction_2(simple_tag(SimpleTag),
 	{ unify_gen__var_type_msg(VarType, VarTypeMsg) },
 	% XXX Later we will need to worry about
 	% whether the cell must be unique or not.
-	{ Expr = create(SimpleTag, RVals, no, CellNo, VarTypeMsg) },
+	{ Expr = create(UnsharedTag, RVals, uniform(no), can_be_either,
+		CellNo, VarTypeMsg) },
 	code_info__cache_expression(Var, Expr),
 	unify_gen__aliased_vars_set_location(Args, ArgTypes, Modes,
-		InstMap0, InstMap, InstTable, ModuleInfo, Var, SimpleTag,
+		InstMap0, InstMap, InstTable, ModuleInfo, Var, UnsharedTag,
 		0, Code0),
 	unify_gen__maybe_place_refs(Var, Code1),
 	{ Code = tree(Code0, Code1) }.
-unify_gen__generate_construction_2(complicated_tag(Bits0, Num0),
+unify_gen__generate_construction_2(shared_remote_tag(Bits0, Num0),
 		Var, Args, Modes, IMDelta, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	code_info__get_inst_table(InstTable),
@@ -332,17 +336,19 @@ unify_gen__generate_construction_2(complicated_tag(Bits0, Num0),
 	{ unify_gen__var_type_msg(VarType, VarTypeMsg) },
 	% XXX Later we will need to worry about
 	% whether the cell must be unique or not.
-	{ Expr = create(Bits0, RVals, no, CellNo, VarTypeMsg) },
+	{ Expr = create(Bits0, RVals, uniform(no), can_be_either,
+		CellNo, VarTypeMsg) },
 	code_info__cache_expression(Var, Expr),
 	unify_gen__aliased_vars_set_location(Args, ArgTypes, Modes, InstMap0,
 		InstMap, InstTable, ModuleInfo, Var, Bits0, 1, Code0),
 	unify_gen__maybe_place_refs(Var, Code1),
 	{ Code = tree(Code0, Code1) }.
-unify_gen__generate_construction_2(complicated_constant_tag(Bits1, Num1),
+unify_gen__generate_construction_2(shared_local_tag(Bits1, Num1),
 		Var, _Args, _Modes, _IMDelta, Code) -->
-	unify_gen__cache_unification(Var,
-		mkword(Bits1, unop(mkbody, const(int_const(Num1)))), Code).
-unify_gen__generate_construction_2(base_type_info_constant(ModuleName,
+	{ Code = empty },
+	code_info__cache_expression(Var,
+		mkword(Bits1, unop(mkbody, const(int_const(Num1))))).
+unify_gen__generate_construction_2(type_ctor_info_constant(ModuleName,
 		TypeName, TypeArity), Var, Args, _Modes, _IMDelta, Code) -->
 	( { Args = [] } ->
 		[]
@@ -350,7 +356,7 @@ unify_gen__generate_construction_2(base_type_info_constant(ModuleName,
 		{ error("unify_gen: type-info constant has args") }
 	),
 	unify_gen__cache_unification(Var, const(data_addr_const(data_addr(
-		ModuleName, base_type(info, TypeName, TypeArity)))), Code).
+		ModuleName, type_ctor(info, TypeName, TypeArity)))), Code).
 unify_gen__generate_construction_2(base_typeclass_info_constant(ModuleName,
 		ClassId, Instance), Var, Args, _Modes, _IMDelta, Code) -->
 	( { Args = [] } ->
@@ -358,8 +364,22 @@ unify_gen__generate_construction_2(base_typeclass_info_constant(ModuleName,
 	;
 		{ error("unify_gen: typeclass-info constant has args") }
 	),
-	unify_gen__cache_unification(Var, const(data_addr_const(data_addr(
-		ModuleName, base_typeclass_info(ClassId, Instance)))), Code).
+	{ Code = empty },
+	code_info__cache_expression(Var, const(data_addr_const(data_addr(
+		ModuleName, base_typeclass_info(ClassId, Instance))))).
+unify_gen__generate_construction_2(tabling_pointer_constant(PredId, ProcId),
+		Var, Args, _Modes, _IMDelta, Code) -->
+	( { Args = [] } ->
+		[]
+	;
+		{ error("unify_gen: tabling pointer constant has args") }
+	),
+	{ Code = empty },
+	code_info__get_module_info(ModuleInfo),
+	{ code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) },
+	{ module_info_name(ModuleInfo, ModuleName) },
+	{ DataAddr = data_addr(ModuleName, tabling_pointer(ProcLabel)) },
+	code_info__cache_expression(Var, const(data_addr_const(DataAddr))).
 unify_gen__generate_construction_2(code_addr_constant(PredId, ProcId),
 		Var, Args, _Modes, _IMDelta, Code) -->
 	( { Args = [] } ->
@@ -373,6 +393,9 @@ unify_gen__generate_construction_2(code_addr_constant(PredId, ProcId),
 		Code).
 unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 		Var, Args, Modes, IMDelta, Code) -->
+	% This code constructs or extends a closure.
+	% The structure of closures is defined in runtime/mercury_ho_call.h.
+
 	code_info__get_module_info(ModuleInfo),
 	{ module_info_preds(ModuleInfo, Preds) },
 	{ map__lookup(Preds, PredId, PredInfo) },
@@ -402,8 +425,16 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 % new closure P from the old closure P0 by appending the args X, Y, Z.
 % The advantage of this optimization is that when P is called, we
 % will only need to do one indirect call rather than two.
-% (Hmm... is this optimization really worth it?  It probably
-% doesn't happen very often, and it's not guaranteed to be a win.)
+% Its disadvantage is that the cost of creating the closure P is greater.
+% Whether this is a net win depend on the number of times P is called.
+%
+% The pattern that this optimization looks for happens rarely at the moment.
+% The reason is that although we allow the creation of closures with a simple
+% syntax (e.g. P0 = append4([1])), we don't allow their extension with a
+% similarly simple syntax (e.g. P = call(P0, [2])). In fact, typecheck.m
+% contains code to detect such constructs, because it does not have code
+% to typecheck them (you get a message about call/2 should be used as a goal,
+% not an expression).
 %
 	{ proc_info_goal(ProcInfo, ProcInfoGoal) },
 	{ proc_info_interface_code_model(ProcInfo, CodeModel) },
@@ -428,46 +459,63 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 		% closure
 		code_info__produce_variable(CallPred, Code98, Value)
 	    ;
-		code_info__get_next_label(LoopEnd),
 		code_info__get_next_label(LoopStart),
+		code_info__get_next_label(LoopTest),
 		code_info__acquire_reg(r, LoopCounter),
 		code_info__acquire_reg(r, NumOldArgs),
 		code_info__acquire_reg(r, NewClosure),
 		{ Zero = const(int_const(0)) },
 		{ One = const(int_const(1)) },
+		{ Two = const(int_const(2)) },
+		{ Three = const(int_const(3)) },
 		{ list__length(CallArgs, NumNewArgs) },
 		{ NumNewArgs_Rval = const(int_const(NumNewArgs)) },
-		{ NumNewArgsPlusTwo is NumNewArgs + 2 },
-		{ NumNewArgsPlusTwo_Rval =
-			const(int_const(NumNewArgsPlusTwo)) },
+		{ NumNewArgsPlusThree is NumNewArgs + 3 },
+		{ NumNewArgsPlusThree_Rval =
+			const(int_const(NumNewArgsPlusThree)) },
 		code_info__produce_variable(CallPred, Code1, OldClosure),
 		{ Code2 = node([
 			comment("build new closure from old closure") - "",
 			assign(NumOldArgs,
-				lval(field(yes(0), OldClosure, Zero)))
+				lval(field(yes(0), OldClosure, Two)))
 				- "get number of arguments",
 			incr_hp(NewClosure, no,
 				binop(+, lval(NumOldArgs),
-				NumNewArgsPlusTwo_Rval), "closure")
+				NumNewArgsPlusThree_Rval), "closure")
 				- "allocate new closure",
 			assign(field(yes(0), lval(NewClosure), Zero),
+				lval(field(yes(0), OldClosure, Zero)))
+				- "set closure layout structure",
+			assign(field(yes(0), lval(NewClosure), One),
+				lval(field(yes(0), OldClosure, One)))
+				- "set closure code pointer",
+			assign(field(yes(0), lval(NewClosure), Two),
 				binop(+, lval(NumOldArgs), NumNewArgs_Rval))
 				- "set new number of arguments",
-			assign(LoopCounter, Zero)
+			assign(NumOldArgs, binop(+, lval(NumOldArgs), Three))
+				- "set up loop limit",
+			assign(LoopCounter, Three)
 				- "initialize loop counter",
+			% It is possible for the number of hidden arguments
+			% to be zero, in which case the body of this loop
+			% should not be executed at all. This is why we
+			% jump to the loop condition test.
+			goto(label(LoopTest))
+				- "enter the copy loop at the conceptual top",
 			label(LoopStart) - "start of loop",
-			assign(LoopCounter,
-				binop(+, lval(LoopCounter), One))
-				- "increment loop counter",
 			assign(field(yes(0), lval(NewClosure),
 					lval(LoopCounter)),
 				lval(field(yes(0), OldClosure,
 					lval(LoopCounter))))
-				- "copy old field",
-			if_val(binop(<=, lval(LoopCounter),
-				lval(NumOldArgs)), label(LoopStart))
-				- "repeat the loop?",
-			label(LoopEnd) - "end of loop"
+				- "copy old hidden argument",
+			assign(LoopCounter,
+				binop(+, lval(LoopCounter), One))
+				- "increment loop counter",
+			label(LoopTest)
+				- "do we have more old arguments to copy?",
+			if_val(binop(<, lval(LoopCounter), lval(NumOldArgs)),
+				label(LoopStart))
+				- "repeat the loop?"
 		]) },
 		unify_gen__generate_extra_closure_args(CallArgs,
 			LoopCounter, NewClosure, Code3),
@@ -481,15 +529,50 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 	    { SkipFirstArg = yes }
 	;
 		{ Code98 = empty },
-		{ proc_info_arg_info(ProcInfo, ArgInfo) },
 		code_info__make_entry_label(ModuleInfo, PredId, ProcId, no,
-				CodeAddress),
-		code_info__get_next_cell_number(CellNo),
+			CodeAddr),
+		{ code_util__extract_proc_label_from_code_addr(CodeAddr,
+			ProcLabel) },
+		{ globals__lookup_bool_option(Globals, typeinfo_liveness,
+			TypeInfoLiveness) },
+		{
+			TypeInfoLiveness = yes,
+			continuation_info__generate_closure_layout(
+				ModuleInfo, PredId, ProcId, ClosureInfo),
+			MaybeClosureInfo = yes(ClosureInfo)
+		;
+			TypeInfoLiveness = no,
+			% In the absence of typeinfo liveness, procedures
+			% are not guaranteed to have typeinfos for all the
+			% type variables in their signatures. Such a missing
+			% typeinfo would cause a compile-time abort in
+			% continuation_info__generate_closure_layout,
+			% and even if that predicate was modified,
+			% we still couldn't generate a usable layout
+			% structure.
+			MaybeClosureInfo = no
+		},
+		code_info__get_cell_count(CNum0),
+		{ stack_layout__construct_closure_layout(ProcLabel,
+			MaybeClosureInfo, ClosureLayoutMaybeRvals,
+			ClosureLayoutArgTypes, CNum0, CNum) },
+		code_info__set_cell_count(CNum),
+		code_info__get_next_cell_number(ClosureLayoutCellNo),
+		{ ClosureLayout = create(0, ClosureLayoutMaybeRvals,
+			ClosureLayoutArgTypes, must_be_static,
+			ClosureLayoutCellNo, "closure_layout") },
 		{ list__length(Args, NumArgs) },
+		{ proc_info_arg_info(ProcInfo, ArgInfo) },
 		{ unify_gen__generate_pred_args(Args, ArgInfo, PredArgs) },
-		{ Vector = [yes(const(int_const(NumArgs))),
-			yes(const(code_addr_const(CodeAddress))) | PredArgs] },
-		{ Value = create(0, Vector, no, CellNo, "closure") },
+		{ Vector = [
+			yes(ClosureLayout),
+			yes(const(code_addr_const(CodeAddr))),
+			yes(const(int_const(NumArgs)))
+			| PredArgs
+		] },
+		code_info__get_next_cell_number(ClosureCellNo),
+		{ Value = create(0, Vector, uniform(no), can_be_either,
+			ClosureCellNo, "closure") },
 		{ NumExtraProcArgs = 0 },
 		{ SkipFirstArg = no }
 	),
@@ -552,25 +635,26 @@ unify_gen__generate_extra_closure_args([Var | Vars], LoopCounter,
 	code_info__produce_variable(Var, Code0, Value),
 	{ One = const(int_const(1)) },
 	{ Code1 = node([
-		assign(LoopCounter,
-			binop(+, lval(LoopCounter), One))
-			- "increment argument counter",
 		assign(field(yes(0), lval(NewClosure), lval(LoopCounter)),
 			Value)
-			- "set new argument field"
+			- "set new argument field",
+		assign(LoopCounter,
+			binop(+, lval(LoopCounter), One))
+			- "increment argument counter"
 	]) },
 	{ Code = tree(tree(Code0, Code1), Code2) },
 	unify_gen__generate_extra_closure_args(Vars, LoopCounter,
 		NewClosure, Code2).
 
 :- pred unify_gen__generate_pred_args(list(prog_var), list(arg_info),
-					list(maybe(rval))).
+	list(maybe(rval))).
 :- mode unify_gen__generate_pred_args(in, in, out) is det.
 
 unify_gen__generate_pred_args([], _, []).
 unify_gen__generate_pred_args([_|_], [], _) :-
 	error("unify_gen__generate_pred_args: insufficient args").
-unify_gen__generate_pred_args([Var|Vars], [ArgInfo|ArgInfos], [Rval|Rvals]) :-
+unify_gen__generate_pred_args([Var | Vars], [ArgInfo | ArgInfos],
+		[Rval | Rvals]) :-
 	ArgInfo = arg_info(_, ArgMode),
 	( ArgMode = top_in ->
 		Rval = yes(var(Var))
@@ -738,10 +822,13 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, IMDelta,
 		{ Tag = code_addr_constant(_, _) },
 		{ Code = empty }
 	;
-		{ Tag = base_type_info_constant(_, _, _) },
+		{ Tag = type_ctor_info_constant(_, _, _) },
 		{ Code = empty }
 	;
 		{ Tag = base_typeclass_info_constant(_, _, _) },
+		{ Code = empty }
+	;
+		{ Tag = tabling_pointer_constant(_, _) },
 		{ Code = empty }
 	;
 		{ Tag = no_tag },
@@ -753,15 +840,15 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, IMDelta,
 			{ error("unify_gen__generate_det_deconstruction: no_tag: arity != 1") }
 		)
 	;
-		{ Tag = simple_tag(SimpleTag) },
+		{ Tag = unshared_tag(UnsharedTag) },
 		{ Rval = var(Var) },
 		{ unify_gen__make_fields_and_argvars(Args, Rval, 0,
-			SimpleTag, Fields, ArgVars) },
+			UnsharedTag, Fields, ArgVars) },
 		unify_gen__var_types(Args, ArgTypes),
 		unify_gen__generate_unify_args(Fields, ArgVars,
 			Modes, ArgTypes, IMDelta, Code)
 	;
-		{ Tag = complicated_tag(Bits0, _Num0) },
+		{ Tag = shared_remote_tag(Bits0, _Num0) },
 		{ Rval = var(Var) },
 		{ unify_gen__make_fields_and_argvars(Args, Rval, 1,
 			Bits0, Fields, ArgVars) },
@@ -769,7 +856,7 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, IMDelta,
 		unify_gen__generate_unify_args(Fields, ArgVars,
 			Modes, ArgTypes, IMDelta, Code)
 	;
-		{ Tag = complicated_constant_tag(_Bits1, _Num1) },
+		{ Tag = shared_local_tag(_Bits1, _Num1) },
 		{ Code = empty } % if this is det, then nothing happens
 	).
 

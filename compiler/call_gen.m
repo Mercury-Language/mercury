@@ -84,7 +84,7 @@ call_gen__generate_call(CodeModel, PredId, ModeId, Arguments, GoalInfo, Code)
 		% Save possibly unknown variables on the stack as well
 		% if they may be needed on backtracking, and figure out the
 		% call model.
-	call_gen__prepare_for_call(CodeModel, FlushCode, CallModel, _, _),
+	call_gen__prepare_for_call(CodeModel, FlushCode, CallModel),
 
 		% Move the input arguments to their registers.
 	code_info__setup_call(ArgsInfos, caller, SetupCode),
@@ -114,7 +114,27 @@ call_gen__generate_call(CodeModel, PredId, ModeId, Arguments, GoalInfo, Code)
 
 		% Make the call.
 	code_info__get_module_info(ModuleInfo),
-	code_info__make_entry_label(ModuleInfo, PredId, ModeId, yes, Address),
+
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	{ pred_info_get_markers(PredInfo, Markers) },
+	( { check_marker(Markers, aditi_interface) } ->
+		% For a call to an Aditi procedure, just pass all the
+		% arguments to do_*_aditi_call, which is defined in
+		% extras/aditi/aditi.m.
+		{
+			CodeModel = model_det,
+			Address = do_det_aditi_call
+		;
+			CodeModel = model_semi,
+			Address = do_semidet_aditi_call
+		;
+			CodeModel = model_non,
+			Address = do_nondet_aditi_call
+		}
+	;
+		code_info__make_entry_label(ModuleInfo,
+			PredId, ModeId, yes, Address)
+	),
 	code_info__get_next_label(ReturnLabel),
 	{ call_gen__call_comment(CodeModel, CallComment) },
 	{ CallCode = node([
@@ -141,7 +161,7 @@ call_gen__generate_call(CodeModel, PredId, ModeId, Arguments, GoalInfo, Code)
 	%
 	% For a higher-order call,
 	% we split the arguments into inputs and outputs, put the inputs
-	% in the locations expected by do_call_<detism>_closure in
+	% in the locations expected by mercury__do_call_closure in
 	% runtime/mercury_ho_call.c, generate the call to that code,
 	% and pick up the outputs from the locations that we know
 	% the runtime system leaves them in.
@@ -167,8 +187,7 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 	{ set__list_to_set(OutVars, OutArgs) },
 	call_gen__save_variables(OutArgs, SaveCode),
 
-	call_gen__prepare_for_call(CodeModel, FlushCode, CallModel,
-		DoHigherCall, _),
+	call_gen__prepare_for_call(CodeModel, FlushCode, CallModel),
 
 		% place the immediate input arguments in registers
 		% starting at r4.
@@ -224,7 +243,7 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 	{ CallCode = node([
 		livevals(LiveVals)
 			- "",
-		call(DoHigherCall, label(ReturnLabel), ReturnLiveLvalues,
+		call(do_call_closure, label(ReturnLabel), ReturnLiveLvalues,
 			CallModel)
 			- "Setup and call higher order pred",
 		label(ReturnLabel)
@@ -250,7 +269,7 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 	%
 	% For a class method call,
 	% we split the arguments into inputs and outputs, put the inputs
-	% in the locations expected by do_call_<detism>_class_method in
+	% in the locations expected by mercury__do_call_class_method in
 	% runtime/mercury_ho_call.c, generate the call to that code,
 	% and pick up the outputs from the locations that we know
 	% the runtime system leaves them in.
@@ -276,8 +295,7 @@ call_gen__generate_class_method_call(_OuterCodeModel, TCVar, MethodNum, Args,
 	{ call_gen__partition_args(ArgsAndArgInfo, InVars, OutVars) },
 	{ set__list_to_set(OutVars, OutArgs) },
 	call_gen__save_variables(OutArgs, SaveCode),
-	call_gen__prepare_for_call(CodeModel, FlushCode, CallModel,
-		_, DoMethodCall),
+	call_gen__prepare_for_call(CodeModel, FlushCode, CallModel),
 
 		% place the immediate input arguments in registers
 		% starting at r5.
@@ -335,8 +353,8 @@ call_gen__generate_class_method_call(_OuterCodeModel, TCVar, MethodNum, Args,
 	{ CallCode = node([
 		livevals(LiveVals)
 			- "",
-		call(DoMethodCall, label(ReturnLabel), ReturnLiveLvalues,
-			CallModel)
+		call(do_call_class_method, label(ReturnLabel),
+			ReturnLiveLvalues, CallModel)
 			- "Setup and call class method",
 		label(ReturnLabel)
 			- "Continuation label"
@@ -359,29 +377,23 @@ call_gen__generate_class_method_call(_OuterCodeModel, TCVar, MethodNum, Args,
 %---------------------------------------------------------------------------%
 
 :- pred call_gen__prepare_for_call(code_model, code_tree, call_model,
-	code_addr, code_addr, code_info, code_info).
-:- mode call_gen__prepare_for_call(in, out, out, out, out, in, out) is det.
+	code_info, code_info).
+:- mode call_gen__prepare_for_call(in, out, out, in, out) is det.
 
-call_gen__prepare_for_call(CodeModel, FlushCode, CallModel, Higher, Method) -->
+call_gen__prepare_for_call(CodeModel, FlushCode, CallModel) -->
 	code_info__succip_is_used,
 	(
 		{ CodeModel = model_det },
 		{ CallModel = det },
-		{ Higher = do_det_closure },
-		{ Method = do_det_class_method },
 		{ FlushCode = empty }
 	;
 		{ CodeModel = model_semi },
 		{ CallModel = semidet },
-		{ Higher = do_semidet_closure },
-		{ Method = do_semidet_class_method },
 		{ FlushCode = empty }
 	;
 		{ CodeModel = model_non },
 		code_info__may_use_nondet_tailcall(TailCall),
 		{ CallModel = nondet(TailCall) },
-		{ Higher = do_nondet_closure },
-		{ Method = do_nondet_class_method },
 		code_info__flush_resume_vars_to_stack(FlushCode),
 		code_info__set_resume_point_and_frame_to_unknown
 	).

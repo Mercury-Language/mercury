@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1998 The University of Melbourne.
+** Copyright (C) 1997-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -39,22 +39,20 @@
 ** 	however on some platforms (notably, SPARCs) the 
 ** 	register-windows mean the transient Mercury registers
 ** 	may be lost. So before calling deep_copy, call
-** 		save_transient_registers();
+** 		save_transient_hp();
 **
-**	deep_copy will use restore_transient_registers()
-**	to restore the registers and modify the heap pointer, and
-**	then call save_transient_registers() to save them again.
-**	(This behaviour may change in future - it may be more
-**	efficient to just change the saved register - so do not rely on 
-**	it).
+**	deep_copy will use restore_transient_hp()
+**	to restore and modify the heap pointer, and
+**	then call save_transient_hp() to save it again.
+**	(This may also restore/save other registers in the process.)
 **
 **	After calling deep_copy, be sure to do a 
-**		restore_transient_registers();
+**		restore_transient_hp();
 **	so that the registers are restored.
 **
 **	If writing a C function that calls deep_copy, make sure
 **	you document that around your function,
-**	save_transient_registers()/restore_transient_registers()
+**	save_transient_hp()/restore_transient_hp()
 **	need to be used.
 **
 **	Deep copy does not preserve sharing of subterms.  Each
@@ -105,9 +103,10 @@ Word agc_deep_copy(Word *data_ptr, const Word *type_info,
 **	Note that in conservative GC grades nothing needs to be done, and
 **	hence the term is just returned.
 **
-**	When not using a conservative GC grade, save_transient_registers()
-**	and restore_transient_registers() need to be used around this
-**	function.
+**	When not using a conservative GC grade, save_transient_hp()
+**	and restore_transient_hp() need to be used around this
+**	function.  (When using a conservative GC grade, these macros
+**	are harmless, so they can be used then too.)
 */
 
 #define MR_make_permanent(term, type_info)			\

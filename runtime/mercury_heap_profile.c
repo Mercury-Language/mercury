@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997 The University of Melbourne.
+** Copyright (C) 1997, 1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -88,8 +88,20 @@ MR_increment_table_entry(MR_memprof_table *table, const char *name,
 	** create a new node for it.
 	*/
 	if (!found) {
+		char *copy_of_name;
+
 		node = MR_PROF_NEW(MR_memprof_record);
-		node->name = name;
+		/*
+		** We need to make a fresh copy of the name,
+		** rather than just copying the pointer, because
+		** our caller may deallocate its copy of the name.
+		** Normally the name will be a string literal,
+		** but even then it might be a string literal from
+		** a dlopen()'ed module which will later get dlclose()'d.
+		*/
+		copy_of_name = MR_PROF_NEW_ARRAY(char, strlen(name) + 1);
+		strcpy(copy_of_name, name);
+		node->name = copy_of_name;
 		node->addr = addr;
 		node->left = NULL;
 		node->right = NULL;

@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-1998 The University of Melbourne.
+# Copyright (C) 1995-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -50,6 +50,22 @@ Options:
 		hand-coded C code with \`INIT' comments, rather than
 		containing only C code that was automatically generated
 		by the Mercury compiler.)
+	-s <grade>, --grade <grade>
+	--asm-labels
+	--gcc-non-local-gotos
+	--gcc-global-registers
+	--gc {conservative, accurate, none}
+	-p, --profiling
+	--profile-calls
+	--profile-time
+	--profile-memory
+	--debug
+	--use-trail
+	--args {simple, compact}
+	--pic-reg
+		See the documentation in the \"Invocation\" section
+		of the Mercury User's Guide.
+
 Environment variables:
 	MERCURY_MOD_LIB_DIR, MERCURY_MOD_LIB_MODS, MERCURY_MKINIT.
 "
@@ -63,11 +79,6 @@ TRACE_LIB_NAME=mer_trace
 BROWSER_LIB_NAME=mer_browser
 
 MERCURY_MOD_LIB_DIR=${MERCURY_MOD_LIB_DIR=@LIBDIR@/modules}
-MERCURY_MOD_LIB_MODS=${MERCURY_MOD_LIB_MODS="\
-				$MERCURY_MOD_LIB_DIR/$RT_LIB_NAME.init \
-				$MERCURY_MOD_LIB_DIR/$STD_LIB_NAME.init \
-				$MERCURY_MOD_LIB_DIR/$BROWSER_LIB_NAME.init \
-			"}
 MKINIT=${MERCURY_MKINIT=mkinit}
 
 # maximum number of calls to put in a single function
@@ -133,19 +144,34 @@ while true; do
 	shift
 done
 
+# include the file `final_grade_options.sh-subr'
+@FINAL_GRADE_OPTIONS@
+
 case $require_tracing in
 	true)
-		trace_opt="-t"
+		trace_opt="-t" ;;
 esac
 
 case $stack_trace in
 	true)
-		init_opt="-i"
+		init_opt="-i" ;;
 esac
 
 case "$trace_opt" in
 	-t)
 		init_opt="-i"
+		MERCURY_MOD_LIB_MODS=${MERCURY_MOD_LIB_MODS="\
+				$MERCURY_MOD_LIB_DIR/$RT_LIB_NAME.init \
+				$MERCURY_MOD_LIB_DIR/$STD_LIB_NAME.init \
+				$MERCURY_MOD_LIB_DIR/$BROWSER_LIB_NAME.init \
+			"}
+		;;
+	*)
+		MERCURY_MOD_LIB_MODS=${MERCURY_MOD_LIB_MODS="\
+				$MERCURY_MOD_LIB_DIR/$RT_LIB_NAME.init \
+				$MERCURY_MOD_LIB_DIR/$STD_LIB_NAME.init \
+			"}
+		;;
 esac
 
 case $# in

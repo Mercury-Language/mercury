@@ -350,7 +350,7 @@ report_mode_error_conj_2([delayed_goal(Vars, Error, Goal) | Rest],
 		{ mode_info_get_instmap(ModeInfo, InstMap) }, 
 				% YYY is this the right instmap?
 		hlds_out__write_goal(Goal, InstMap, InstTable, ModuleInfo,
-			VarSet, no, 2, ".")
+			VarSet, no, 2, ".\n")
 	;
 		[]
 	),
@@ -657,7 +657,9 @@ report_mode_error_unify_pred(_InstTable, ModeInfo, X, RHS, Type, PredOrFunc) -->
 		mercury_output_var(Y, VarSet, no)
 	;
 		{ RHS = error_at_functor(ConsId, ArgVars) },
-		hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, no)
+		{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
+		hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet,
+			ModuleInfo, no)
 	;
 		{ RHS = error_at_lambda(ArgVars,
 			argument_modes(ArgInstTable, ArgModes)) },
@@ -762,12 +764,13 @@ report_mode_error_unify_var_functor(InstTable, ModeInfo, X, ConsId, Args,
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
+	{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
 	mode_info_write_context(ModeInfo),
 	prog_out__write_context(Context),
 	io__write_string("  mode error in unification of `"),
 	mercury_output_var(X, VarSet, no),
 	io__write_string("' and `"),
-	hlds_out__write_functor_cons_id(ConsId, Args, VarSet, no),
+	hlds_out__write_functor_cons_id(ConsId, Args, VarSet, ModuleInfo, no),
 	io__write_string("'.\n"),
 	prog_out__write_context(Context),
 	io__write_string("  Variable `"),
@@ -777,7 +780,7 @@ report_mode_error_unify_var_functor(InstTable, ModeInfo, X, ConsId, Args,
 	io__write_string("',\n"),
 	prog_out__write_context(Context),
 	io__write_string("  term `"),
-	hlds_out__write_functor_cons_id(ConsId, Args, VarSet, no),
+	hlds_out__write_functor_cons_id(ConsId, Args, VarSet, ModuleInfo, no),
 	( { Args \= [] } ->
 		io__write_string("'\n"),
 		prog_out__write_context(Context),

@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** Copyright (C) 1995-1998 The University of Melbourne.
+** Copyright (C) 1995-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -27,7 +27,10 @@
 #include <stdio.h>
 #include "mercury_std.h"
 
-static void demangle(char *name);
+/* We used this for the size of fixed-length buffers in a few places <sigh> */
+#define MAX_SYMBOL_LENGTH 1000
+
+static void demangle(const char *name);
 static const char *strip_module_name(char **start_ptr, char *end,
 		const char *trailing_context[]);
 static bool check_for_suffix(char *start, char *position, const char *suffix,
@@ -38,6 +41,7 @@ static bool cut_at_double_underscore(char **str, char *end);
 static bool cut_trailing_integer(char *str, char **end, int *num);
 static bool cut_trailing_underscore_integer(char *str, char **end, int *num);
 static bool strip_prefix(char **str, const char *prefix);
+static bool strip_leading_integer(char **start_ptr, int *num);
 
 /*
 ** Bloody SunOS 4.x doesn't have memmove()...
@@ -66,7 +70,7 @@ main(int argc, char **argv)
 		** every valid C identifier in the input
 		*/
 		for (;;) {
-			char buf[1000];
+			char buf[MAX_SYMBOL_LENGTH];
 			size_t len = 0;
 			int c = getchar();
 			while (c != EOF && (isalnum(c) || c == '_')) {
@@ -94,7 +98,7 @@ main(int argc, char **argv)
 */
 
 static void 
-demangle(char *name)
+demangle(const char *orig_name)
 {
 	static const char entry[]   = "_entry_";
 	static const char mercury[] = "mercury__";
@@ -115,10 +119,13 @@ demangle(char *name)
 	static const char ho_suffix[] = "__ho"; /* added by higher_order.m */
 
 	static const char mercury_data[] = "mercury_data_";
-	static const char base_type_layout[] = "base_type_layout_";
-	static const char base_type_info[] = "base_type_info_";
-	static const char base_type_functors[] = "base_type_functors_";
+	static const char type_ctor_layout[] = "type_ctor_layout_";
+	static const char type_ctor_info[] = "type_ctor_info_";
+	static const char type_ctor_functors[] = "type_ctor_functors_";
+	static const char base_typeclass_info[] = "__base_typeclass_info_";
 	static const char common[] = "common";
+	static const char arity_string[] = "arity";
+	static const char underscores_arity_string[] = "__arity";
 
 	static const char * trailing_context_1[] = {
 		introduced,
@@ -127,16 +134,22 @@ demangle(char *name)
 	};
 
 	static const char * trailing_context_2[] = {
-		base_type_layout,
-		base_type_info,
-		base_type_functors,
+		type_ctor_layout,
+		type_ctor_info,
+		type_ctor_functors,
 		common,
 		NULL
 	};
 
+	static const char * trailing_context_3[] = {
+		arity_string,
+		NULL
+	};
+
+	char name[MAX_SYMBOL_LENGTH];
 	char *start = name;
 	const char *module = "";	/* module name */
-	char *end = name + strlen(name);
+	char *end = name + strlen(orig_name);
 	char *position;		/* current position in string */
 	int mode_num;
 	int mode_num2;
@@ -152,6 +165,20 @@ demangle(char *name)
 	enum { ORDINARY, UNIFY, COMPARE, INDEX, LAMBDA, DEFORESTATION }
 		category;
 	enum { COMMON, INFO, LAYOUT, FUNCTORS } data_category;
+	const char * class_name;
+	int class_arity;
+	char class_arg_buf[MAX_SYMBOL_LENGTH];
+	int class_arg_num;
+	const char* class_arg;
+
+	/*
+	** copy orig_name to a local buffer which we can modify,
+	** making sure that we don't overflow the buffer
+	*/
+	if (strlen(orig_name) >= sizeof(name)) {
+		goto wrong_format;
+	}
+	strcpy(name, orig_name);
 
 	/*
 	** skip any leading underscore inserted by the C compiler
@@ -258,7 +285,7 @@ demangle(char *name)
 	do {
 		if (position == start) goto wrong_format;
 		position--;
-	} while (isdigit((unsigned char)*position));
+	} while (MR_isdigit(*position));
 		/* get the mode number */
 	
 	if (check_for_suffix(start, position, ua_suffix,
@@ -284,7 +311,7 @@ demangle(char *name)
 	do {
 		if (position == start) goto wrong_format;
 		position--;
-	} while (isdigit((unsigned char)*position));
+	} while (MR_isdigit(*position));
 	if (check_for_suffix(start, position, ho_suffix,
 			sizeof(ho_suffix), &mode_num2)) {
 		end = position + 1 - (sizeof(ho_suffix) - 1);
@@ -408,19 +435,23 @@ not_plain_mercury:
 		goto wrong_format;
 	}
 
+	if (strip_prefix(&start, base_typeclass_info)) {
+		goto typeclass_info;
+	}
+
 	module = strip_module_name(&start, end, trailing_context_2);
 
-	if (strip_prefix(&start, base_type_info)) {
+	if (strip_prefix(&start, type_ctor_info)) {
 		data_category = INFO;
 		if (!cut_trailing_underscore_integer(start, &end, &arity)) {
 			goto wrong_format;
 		}
-	} else if (strip_prefix(&start, base_type_layout)) {
+	} else if (strip_prefix(&start, type_ctor_layout)) {
 		data_category = LAYOUT;
 		if (!cut_trailing_underscore_integer(start, &end, &arity)) {
 			goto wrong_format;
 		}
-	} else if (strip_prefix(&start, base_type_functors)) {
+	} else if (strip_prefix(&start, type_ctor_functors)) {
 		data_category = FUNCTORS;
 		if (!cut_trailing_underscore_integer(start, &end, &arity)) {
 			goto wrong_format;
@@ -440,28 +471,28 @@ not_plain_mercury:
 
 	case INFO:
 		if (*module == '\0') {
-			printf("<base type_info for type '%s'/%d>",
+			printf("<type_ctor_info for type '%s'/%d>",
 				start, arity);
 		} else {
-			printf("<base type_info for type '%s:%s'/%d>",
+			printf("<type_ctor_info for type '%s:%s'/%d>",
 				module, start, arity);
 		}
 		break;
 	case LAYOUT:
 		if (*module == '\0') {
-			printf("<type layout for type '%s'/%d>",
+			printf("<type_ctor_layout for type '%s'/%d>",
 				start, arity);
 		} else {
-			printf("<type layout for type '%s:%s'/%d>",
+			printf("<type_ctor_layout for type '%s:%s'/%d>",
 				module, start, arity);
 		}
 		break;
 	case FUNCTORS:
 		if (*module == '\0') {
-			printf("<type functors for type '%s'/%d>",
+			printf("<type_ctor_functors for type '%s'/%d>",
 				start, arity);
 		} else {
-			printf("<type functors for type '%s:%s'/%d>",
+			printf("<type_ctor_functors for type '%s:%s'/%d>",
 				module, start, arity);
 		}
 		break;
@@ -476,8 +507,55 @@ not_plain_mercury:
 	}
 	return;
 
+typeclass_info:
+	/*
+	** Parse the class name and class arity, which have the following
+	** layout:
+	**	<module-qualified class name>__arity<arity>__
+	*/
+	class_name = strip_module_name(&start, end, trailing_context_3);
+	/* XXX fix_mangled_ascii() */
+	if (!(strip_prefix(&start, arity_string)
+		&& strip_leading_integer(&start, &class_arity)
+		&& strip_prefix(&start, "__")))
+	{
+		goto wrong_format;
+	}
+
+	/*
+	** Parse the class argument types, which each have the following
+	** layout:
+	**	<module-qualified type name>__arity<arity>__
+	**
+	** We store the human-readable formatted output in
+	** class_arg_buf as we go.
+	*/
+	fix_mangled_ascii(start, &end);
+	strcpy(class_arg_buf, "");
+	for (class_arg_num = 0; class_arg_num < class_arity; class_arg_num++) {
+		if (class_arg_num != 0) {
+			strcat(class_arg_buf, ", ");
+		}
+		class_arg = strip_module_name(&start, end, trailing_context_3);
+		if (!(strip_prefix(&start, arity_string)
+		      && strip_leading_integer(&start, &arity)
+		      && strip_prefix(&start, "__")))
+		{
+			goto wrong_format;
+		}
+		sprintf(class_arg_buf + strlen(class_arg_buf),
+			"%s/%d", class_arg, arity);
+	}
+		
+	/*
+	** now print the results
+	*/
+	printf("<instance declaration for %s(%s)>",
+		class_name, class_arg_buf);
+	return;
+
 wrong_format:
-	printf("%s", name);
+	printf("%s", orig_name);
 	return;
 } /* end demangle() */
 
@@ -567,6 +645,36 @@ strip_prefix(char **str, const char *prefix)
 }
 
 	/*
+	** If the string pointed to by *start_ptr starts with
+	** an integer, then advance *start_ptr past the leading integer,
+	** store the value of the integer in the int pointed to by `num',
+	** and return true; otherwise leave *start_ptr unchanged and
+	** return false.  (The string itself is always left unchanged.)
+	*/
+static bool 
+strip_leading_integer(char **start_ptr, int *num) 
+{
+	char *start = *start_ptr;
+	char save_char;
+	bool got_int;;
+
+	while(MR_isdigit(*start)) {
+		start++;
+	}
+	if (start == *start_ptr) return FALSE;
+	save_char = *start;
+	*start = '\0';
+	got_int = (sscanf(*start_ptr, "%d", num) == 1);
+	*start = save_char;
+	if (got_int) {
+		*start_ptr = start;
+		return TRUE;
+	} else {
+		return FALSE;
+	}
+}
+
+	/*
 	** Remove trailing integer (at the supplied `real_end' of the
 	** string), and return it in the int pointed to by `num'.   True
 	** is returned if there is an integer at the end, false if not.
@@ -581,7 +689,7 @@ cut_trailing_integer(char *str, char **real_end, int *num)
 	do { 
 		if (end == str) return FALSE;
 		end--;
-	} while (isdigit((unsigned char)*end));
+	} while (MR_isdigit(*end));
 
 	if (sscanf(end + 1, "%d", num) != 1) {
 		return FALSE;
@@ -680,12 +788,12 @@ fix_mangled_ascii(char *str, char **real_end)
 	** ASCII codes back into an identifier.
 	*/
 	if (strncmp(str, "f_", 2) == 0) {
-		char buf[1000];
+		char buf[MAX_SYMBOL_LENGTH];
 		char *num = str + 2;
 		int count = 0;
 		while (num < end) {
 			char *next_num = num;
-			while (isdigit((unsigned char)*next_num)) {
+			while (MR_isdigit(*next_num)) {
 				next_num++;
 			}
 			if (*next_num != '_' && *next_num != '\0') 

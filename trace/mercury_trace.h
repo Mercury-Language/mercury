@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1998 The University of Melbourne.
+** Copyright (C) 1997-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -20,6 +20,43 @@
 
 #ifndef MERCURY_TRACE_H
 #define MERCURY_TRACE_H
+
+/*
+** MR_Event_Info is used to hold the information for a trace event.  One
+** of these is built by MR_trace_event and is passed (by reference)
+** throughout the tracing system.
+*/
+
+typedef struct MR_Event_Info_Struct {
+	Unsigned			MR_event_number;
+	Unsigned			MR_call_seqno;
+	Unsigned			MR_call_depth;
+	MR_Trace_Port			MR_trace_port;
+	const MR_Stack_Layout_Label	*MR_event_sll;
+	const char 			*MR_event_path;
+	Word				MR_saved_regs[MAX_FAKE_REG];
+	int				MR_max_mr_num;
+} MR_Event_Info;
+
+/*
+** MR_Event_Details is used to save some globals across calls to
+** MR_trace_debug_cmd.  It is passed to MR_trace_retry which can
+** then override the saved values.
+*/
+
+typedef struct MR_Event_Details_Struct {
+	int			MR_call_seqno;
+	int			MR_call_depth;
+	int			MR_event_number;
+} MR_Event_Details;
+
+/* The initial size of arrays of argument values. */
+#define	MR_INIT_ARG_COUNT	20
+
+const char *	MR_trace_retry(MR_Event_Info *event_info,
+			MR_Event_Details *event_details, Code **jumpaddr);
+Word		MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, 
+			Word *saved_regs, const char *name, bool *succeeded);
 
 /*
 ** MR_trace_cmd says what mode the tracer is in, i.e. how events should be
@@ -81,6 +118,7 @@ typedef struct {
 				*/
 	bool			MR_trace_must_check;
 } MR_Trace_Cmd_Info;
+
 
 #define	MR_port_is_final(port)		((port) == MR_PORT_EXIT || \
 					 (port) == MR_PORT_FAIL || \

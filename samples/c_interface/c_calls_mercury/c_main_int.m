@@ -25,4 +25,5 @@
 
 	% Define the Mercury predicate c_main to call the C function
 	% c_main.
-:- pragma c_code(recursive, c_main(IO0::di, IO::uo), "c_main(); IO = IO0;").
+:- pragma c_code(c_main(IO0::di, IO::uo), [may_call_mercury],
+		"c_main(); IO = IO0;").

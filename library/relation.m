@@ -224,7 +224,7 @@
 
 	% relation__sc(R, SC) is true if SC is the
 	% symmetric closure of R.  In graph terms,
-	% symmetric closure % is the same as turning
+	% symmetric closure is the same as turning
 	% a directed graph into an undirected graph.
 :- pred relation__sc(relation(T), relation(T)).
 :- mode relation__sc(in, out) is det.

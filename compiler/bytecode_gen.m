@@ -644,24 +644,27 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 		ByteConsId = code_addr_const(ModuleName, PredName, Arity,
 			ProcInt)
 	;
-		ConsId = base_type_info_const(ModuleName, TypeName, TypeArity),
-		ByteConsId = base_type_info_const(ModuleName, TypeName,
+		ConsId = type_ctor_info_const(ModuleName, TypeName, TypeArity),
+		ByteConsId = type_ctor_info_const(ModuleName, TypeName,
 			TypeArity)
 	;
 		ConsId = base_typeclass_info_const(ModuleName, ClassId,
 			_, Instance),
 		ByteConsId = base_typeclass_info_const(ModuleName, ClassId,
 			Instance)
+	;
+		ConsId = tabling_pointer_const(_, _),
+		error("bytecode cannot implement tabling")
 	).
 
 :- pred bytecode_gen__map_cons_tag(cons_tag::in, byte_cons_tag::out) is det.
 
 bytecode_gen__map_cons_tag(no_tag, no_tag).
-bytecode_gen__map_cons_tag(simple_tag(Primary), simple_tag(Primary)).
-bytecode_gen__map_cons_tag(complicated_tag(Primary, Secondary),
-	complicated_tag(Primary, Secondary)).
-bytecode_gen__map_cons_tag(complicated_constant_tag(Primary, Secondary),
-	complicated_constant_tag(Primary, Secondary)).
+bytecode_gen__map_cons_tag(unshared_tag(Primary), unshared_tag(Primary)).
+bytecode_gen__map_cons_tag(shared_remote_tag(Primary, Secondary),
+	shared_remote_tag(Primary, Secondary)).
+bytecode_gen__map_cons_tag(shared_local_tag(Primary, Secondary),
+	shared_local_tag(Primary, Secondary)).
 bytecode_gen__map_cons_tag(string_constant(_), _) :-
 	error("string_constant cons tag for non-string_constant cons id").
 bytecode_gen__map_cons_tag(int_constant(IntVal), enum_tag(IntVal)).
@@ -671,10 +674,12 @@ bytecode_gen__map_cons_tag(pred_closure_tag(_, _), _) :-
 	error("pred_closure_tag cons tag for non-pred_const cons id").
 bytecode_gen__map_cons_tag(code_addr_constant(_, _), _) :-
 	error("code_addr_constant cons tag for non-address_const cons id").
-bytecode_gen__map_cons_tag(base_type_info_constant(_, _, _), _) :-
-	error("base_type_info_constant cons tag for non-base_type_info_constant cons id").
+bytecode_gen__map_cons_tag(type_ctor_info_constant(_, _, _), _) :-
+	error("type_ctor_info_constant cons tag for non-type_ctor_info_constant cons id").
 bytecode_gen__map_cons_tag(base_typeclass_info_constant(_, _, _), _) :-
 	error("base_typeclass_info_constant cons tag for non-base_typeclass_info_constant cons id").
+bytecode_gen__map_cons_tag(tabling_pointer_constant(_, _), _) :-
+	error("tabling_pointer_constant cons tag for non-tabling_pointer_constant cons id").
 
 %---------------------------------------------------------------------------%
 

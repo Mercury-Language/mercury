@@ -32,13 +32,11 @@
 :- type maybe2(T1, T2)	--->	error(string, term)
 			;	ok(T1, T2).
 
-:- type maybe1(T)	--->	error(string, term)
-			;	ok(T).
-
+:- type maybe1(T)	== 	maybe1(T, generic).
 :- type maybe1(T, U)	--->	error(string, term(U))
 			;	ok(T).
 
-:- type maybe_functor	== 	maybe2(sym_name, list(term)).
+:- type maybe_functor	== 	maybe_functor(generic).
 :- type maybe_functor(T) == 	maybe2(sym_name, list(term(T))).
 
 :- type maybe_item_and_context

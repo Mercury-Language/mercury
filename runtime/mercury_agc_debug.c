@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -87,7 +87,11 @@ MR_agc_dump_stack_frames(MR_Internal *label, MemoryZone *heap_zone,
 	*/
 
 	while (MR_DETISM_DET_STACK(entry_layout->MR_sle_detism)) {
-		fprintf(stderr, "    label: %s\n", label->i_name);
+		if (label->i_name != NULL) {
+			fprintf(stderr, "    label: %s\n", label->i_name);
+		} else {
+			fprintf(stderr, "    label: unknown\n");
+		}
 
 		if (success_ip == MR_stack_trace_bottom) {
 			break;

@@ -1,6 +1,6 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997 Mission Critical.
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997,1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -491,7 +491,7 @@ odbc_transaction_c_code(Word TypeInfo_for_T, Word Connection,
 	*/
 
 	odbc_connection = (SQLHDBC) Connection;
-	odbc_message_list = list_empty();
+	odbc_message_list = MR_list_empty();
 
 	/*
 	** Set up a location to jump to on a database exception.
@@ -539,7 +539,7 @@ transaction_error:
 transaction_done:
 
 	*Msgs = odbc_message_list;
-	odbc_message_list = list_empty();
+	odbc_message_list = MR_list_empty();
 	odbc_connection = SQL_NULL_HDBC;
 	odbc_ret_code = SQL_SUCCESS;
 	*IO = IO0;
@@ -574,7 +574,7 @@ odbc__rollback(Error) -->
 		will_not_call_mercury,
 "
 {
-	odbc_message_list = list_cons(Error, odbc_message_list);
+	odbc_message_list = MR_list_cons(Error, odbc_message_list);
 	DB = DB0;
 }
 ").
@@ -681,7 +681,7 @@ odbc__open_connection(Source, User, Password, Result - Messages) -->
 	odbc_check(odbc_env_handle, connect_handle, SQL_NULL_HSTMT, Status);
 
 	Messages = odbc_message_list;
-	odbc_message_list = list_empty();
+	odbc_message_list = MR_list_empty();
 
 	Handle = (Word) connect_handle;
 	odbc_connection = SQL_NULL_HDBC;
@@ -720,7 +720,7 @@ odbc__close_connection(Connection, Result) -->
 
 
 	Messages = odbc_message_list;
-	odbc_message_list = list_empty();
+	odbc_message_list = MR_list_empty();
 
 	IO = IO0;
 ").
@@ -1345,7 +1345,8 @@ void odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id);
 			Word overflow_message;
 			MODBC_overflow_message(&overflow_message);
 			odbc_message_list =
-				list_cons(overflow_message, odbc_message_list);
+				MR_list_cons(overflow_message,
+					odbc_message_list);
 			odbc_do_cleanup_statement(stat);
 			odbc_throw();
 		}
@@ -1504,7 +1505,7 @@ odbc_get_data_in_chunks(MODBC_Statement *stat, int column_id)
 
 	DEBUG(printf(""getting column %i in chunks\n"", column_id));
 
-	chunk_list = list_empty();
+	chunk_list = MR_list_empty();
 
 	col = &(stat->row[column_id]);
 
@@ -1533,7 +1534,7 @@ odbc_get_data_in_chunks(MODBC_Statement *stat, int column_id)
 			odbc_throw();
 		}
 
-		chunk_list = list_cons(this_bit, chunk_list);
+		chunk_list = MR_list_cons(this_bit, chunk_list);
 		incr_hp_atomic(this_bit, MODBC_CHUNK_WORDS);
 	}
 
@@ -1918,9 +1919,9 @@ odbc__data_sources(MaybeSources - Messages) -->
 		*/
 #ifdef MODBC_IODBC
 	Status = SQL_NO_DATA_FOUND;
-	SourceNames = list_empty();
-	SourceDescs = list_empty();
-	Messages = list_empty();
+	SourceNames = MR_list_empty();
+	SourceDescs = MR_list_empty();
+	Messages = MR_list_empty();
 #else /* !MODBC_IODBC */
 	Status = odbc_do_get_data_sources(&SourceNames, 
 			&SourceDescs, &Messages);
@@ -1951,9 +1952,9 @@ odbc_do_get_data_sources(Word *SourceNames, Word *SourceDescs, Word *Messages)
 	SWORD desc_len;
 	SQLRETURN rc;
 
-	odbc_message_list = list_empty();
-	*SourceNames = list_empty();
-	*SourceDescs = list_empty();
+	odbc_message_list = MR_list_empty();
+	*SourceNames = MR_list_empty();
+	*SourceDescs = MR_list_empty();
 
 	if (odbc_env_handle == SQL_NULL_HENV) {
 		rc = SQLAllocEnv(&odbc_env_handle);
@@ -1984,9 +1985,9 @@ odbc_do_get_data_sources(Word *SourceNames, Word *SourceDescs, Word *Messages)
 			** Copy the new data onto the Mercury heap
 			*/
 			make_aligned_string_copy(new_dsn, dsn);
-			*SourceNames = list_cons(new_dsn, *SourceNames);
+			*SourceNames = MR_list_cons(new_dsn, *SourceNames);
 			make_aligned_string_copy(new_desc, desc);
-			*SourceDescs = list_cons(new_desc, *SourceDescs);
+			*SourceDescs = MR_list_cons(new_desc, *SourceDescs);
 	
 			rc = SQLDataSources(odbc_env_handle,
 					SQL_FETCH_NEXT, dsn,
@@ -2000,7 +2001,7 @@ odbc_do_get_data_sources(Word *SourceNames, Word *SourceDescs, Word *Messages)
 	}
 
 	*Messages = odbc_message_list;
-	odbc_message_list = list_empty();
+	odbc_message_list = MR_list_empty();
 	return rc;
 }").
 
@@ -2324,7 +2325,7 @@ odbc_check(SQLHENV env_handle, SQLHDBC connection_handle,
 
 			/* Append the message onto the list. */
 			odbc_message_list = 
-				list_cons(new_message, odbc_message_list);
+				MR_list_cons(new_message, odbc_message_list);
 
 		}
 

@@ -25,11 +25,8 @@ happened to be a little bit harder to implement.  We may change this in
 a future release.)
 
 To use the shared libraries, you must compile your program with
-`mmc --pic-reg' and link with `ml --mercury-libs shared'
-or add `MGNUCFLAGS=--pic-reg' and `MLFLAGS=--mercury-libs shared'
-to your Mmake file.  If you are linking against Mercury libraries
-other than the standard library, replace `--mercury-libs shared'
-with `--shared'.
+`mmc --pic-reg' and link with `ml --shared' or add 
+`MGNUCFLAGS=--pic-reg' and `MLFLAGS=--shared' to your Mmake file.
 
 Mercury code compiled with `--pic-reg' or with gcc's `-fpic' option has
 what we shall call "PIC linkage", whereas Mercury code compiled without

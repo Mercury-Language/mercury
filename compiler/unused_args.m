@@ -778,10 +778,6 @@ unused_args_check_all_vars(VarUsage, Changed0, Changed, [Var| Vars],
 				% current variable depends on are used.
 				set__member(Argument, ArgDep0),
 				Argument = PredProc - ArgVar,
-/*###707 [cc] In clause for predicate `unused_args:unused_args_check_all_vars/6':%%%*/
-/*###707 [cc] in argument 2 of call to pred `var_is_used/3':%%%*/
-/*###707 [cc] type error: variable `ArgVar' has type `(term:var)',%%%*/
-/*###707 [cc] expected type was `(term:var((prog_data:prog_var_type)))'.%%%*/
 				var_is_used(PredProc, ArgVar, VarUsage)
 			;	
 				% Check whether any variables that the
@@ -1055,13 +1051,14 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, NameSuffix, Status,
 	pred_info_get_markers(PredInfo0, Markers),
 	pred_info_get_goal_type(PredInfo0, GoalType),
 	pred_info_get_class_context(PredInfo0, ClassContext),
+	pred_info_get_aditi_owner(PredInfo0, Owner),
 	map__init(EmptyProofs),
 		% *** This will need to be fixed when the condition
 		%	field of the pred_info becomes used.
 	pred_info_init(PredModule, qualified(PredModule, Name), Arity, Tvars,
 		ExistQVars, ArgTypes, true, Context, ClausesInfo, Status,
 		Markers, GoalType, PredOrFunc, ClassContext, EmptyProofs,
-		PredInfo1),
+		Owner, PredInfo1),
 	pred_info_set_typevarset(PredInfo1, TypeVars, PredInfo).
 
 	% Replace the goal in the procedure with one to call the given
@@ -1099,9 +1096,9 @@ create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule,
 		proc_call_info::in, proc_call_info::out,
 		module_info::in, module_info::out) is det.
 
- make_imported_unused_args_pred_infos([], ProcCallInfo, ProcCallInfo,
+make_imported_unused_args_pred_infos([], ProcCallInfo, ProcCallInfo,
 				ModuleInfo, ModuleInfo).
- make_imported_unused_args_pred_infos([OptProc | OptProcs],
+make_imported_unused_args_pred_infos([OptProc | OptProcs],
  		ProcCallInfo0, ProcCallInfo, ModuleInfo0, ModuleInfo) :-
 	module_info_unused_arg_info(ModuleInfo0, UnusedArgInfo),
 	map__lookup(UnusedArgInfo, OptProc, UnusedArgs),
@@ -1622,7 +1619,6 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
 		)
 	;
 		{ WarnedPredIds1 = WarnedPredIds0 }
-
 	),
 	output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo,
 		WriteOptPragmas, DoWarn, Rest, WarnedPredIds1).

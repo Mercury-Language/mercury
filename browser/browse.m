@@ -98,9 +98,9 @@ browse__print(State) -->
 	% we use portray_fmt(..., flat).
 	%
 	{ get_term(State, Univ) },
-	{ term_size(Univ, Size) },
 	{ max_print_size(MaxSize) },
-	( { Size =< MaxSize } ->
+	{ term_size_left_from_max(Univ, MaxSize, RemainingSize) },
+	( { RemainingSize >= 0 } ->
 		io__write_univ(Univ),
 		io__nl
 	;
@@ -127,6 +127,35 @@ term_size(Univ, TotalSize) :-
 	list__foldl(AddSizes, ArgSizes, Arity * 2, TotalArgsSize),
 	TotalSize = TotalArgsSize + FunctorSize.
 
+	% Estimate the total term size, in characters,
+	% We count the number of characters in the functor,
+	% plus two characters for each argument: "(" and ")"
+	% for the first, and ", " for each of the rest,
+	% plus the sizes of the arguments themselves.
+	% This is only approximate since it doesn't take into
+	% account all the special cases such as operators.
+	%
+	% This predicate returns not the estimated total term size,
+	% but the difference between the given maximum size the caller
+	% is interested in and the estimated total term size.
+	% This difference is positive if the term is smaller than the
+	% maximum and negative if it is bigger. If the difference is
+	% negative, term_size_left_from_max will return a negative difference
+	% but the value will usually not be accurate, since in such cases
+	% by definition the caller is not interested in the accurate value.
+:- pred term_size_left_from_max(univ::in, int::in, int::out) is det.
+term_size_left_from_max(Univ, MaxSize, RemainingSize) :-
+	( MaxSize < 0 ->
+		RemainingSize = MaxSize
+	;
+		deconstruct(Univ, Functor, Arity, Args),
+		string__length(Functor, FunctorSize),
+		PrincipalSize = FunctorSize + Arity * 2,
+		MaxArgsSize = MaxSize - PrincipalSize,
+		list__foldl(term_size_left_from_max,
+			Args, MaxArgsSize, RemainingSize)
+	).
+
 %---------------------------------------------------------------------------%
 %
 % Interactive display
@@ -145,8 +174,8 @@ browse__browse(Object, InputStream, OutputStream, State0, State) -->
 :- pred browse_main_loop(browser_state, browser_state, io__state, io__state).
 :- mode browse_main_loop(in, out, di, uo) is det.
 browse_main_loop(State0, State) -->
-	prompt,
-	parse__read_command(Command),
+	{ prompt(Prompt) },
+	parse__read_command(Prompt, Command),
 	( { Command = quit } ->
 		% io__write_string("quitting...\n")
 		{ State = State0 }
@@ -160,9 +189,8 @@ startup_message -->
 	io__write_string("-- Simple Mercury Term Browser.\n"),
 	io__write_string("-- Type \"help\" for help.\n\n").
 
-:- pred prompt(io__state::di, io__state::uo) is det.
-prompt -->
-	io__write_string("browser> ").
+:- pred prompt(string::out) is det.
+prompt("browser> ").
 
 
 :- pred run_command(command, browser_state, browser_state,

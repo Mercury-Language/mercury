@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %--------------------------------------------------------------------------%
@@ -213,8 +213,6 @@ bintree_set__is_member(E, S) :-
 
 %--------------------------------------------------------------------------%
 
-:- bintree_set__insert_list(_, Xs, _) when Xs.
-
 bintree_set__insert_list(S, [], S).
 bintree_set__insert_list(S0, [E|Es], S) :-
 	bintree_set__insert(S0, E, S1),
@@ -224,8 +222,6 @@ bintree_set__insert(S0, E, S) :-
 	bintree__set(S0, E, unit, S).
 
 %--------------------------------------------------------------------------%
-
-:- bintree_set__remove_list(_, Xs, _) when Xs.
 
 bintree_set__remove_list(S, [], S).
 bintree_set__remove_list(S0, [X | Xs], S) :-
@@ -237,8 +233,6 @@ bintree_set__remove(S0, E, S) :-
 	bintree__remove(S0, E, _, S).
 
 %--------------------------------------------------------------------------%
-
-:- bintree_set__delete_list(_, Xs, _) when Xs.
 
 bintree_set__delete_list(S, [], S).
 bintree_set__delete_list(S0, [X | Xs], S) :-

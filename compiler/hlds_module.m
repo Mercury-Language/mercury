@@ -12,6 +12,7 @@
 %	module_info
 %	dependency_info
 %	predicate_table
+%	global_data
 %
 % There is a separate interface section for each of these.
 
@@ -23,13 +24,13 @@
 
 :- import_module hlds_pred, hlds_data, prog_data, unify_proc, special_pred.
 :- import_module globals, llds, continuation_info.
-:- import_module relation, map, std_util, list, set.
+:- import_module relation, map, std_util, list, set, multi_map.
 
 :- implementation.
 
-:- import_module hlds_out, prog_out, prog_data, prog_util.
+:- import_module hlds_out, prog_out, prog_util.
 :- import_module typecheck, modules.
-:- import_module bool, require, int, string, set, multi_map.
+:- import_module bool, require, int, string.
 
 %-----------------------------------------------------------------------------%
 
@@ -51,7 +52,7 @@
 		).
 
 	% This structure contains the information we need to generate
-	% a base_type_info structure for a type defined in this module.
+	% a type_ctor_info structure for a type defined in this module.
 
 :- type base_gen_info
 	--->	base_gen_info(
@@ -62,14 +63,15 @@
 			import_status,	% of the type
 			maybe(int),	% eliminated procs?
 					% and how many if so
-			list(pred_proc_id)
+			list(pred_proc_id),
 					% the ids of the procs
 					% referred to from the
-					% base_type_info
+					% type_ctor_info
+			hlds_type_defn	% defn of type
 		).
 
 	% This structure contains the information we need to generate
-	% a base_type_layout structure for a type defined in this module.
+	% a type_ctor_layout structure for a type defined in this module.
 	
 :- type base_gen_layout
 	--->	base_gen_layout(
@@ -81,11 +83,45 @@
 			hlds_type_defn	% defn of type
 		).
 
-	% Various predicates for manipulating the module_info data structure
 	% map from proc to a list of unused argument numbers.
 :- type unused_arg_info == map(pred_proc_id, list(int)).
 
+	% List of procedures for which there are user-requested type
+	% specializations, and a list of predicates which should be
+	% processed by higher_order.m to ensure the production of those
+	% versions.
+:- type type_spec_info
+	---> type_spec_info(
+		set(pred_proc_id),	% Procedures for which there are
+					% user-requested type specializations.
+		set(pred_id),		% Set of procedures which need to be
+					% processed by higher_order.m to
+					% produce those specialized versions.
+		multi_map(pred_id, pred_id),
+					% Map from predicates for which the
+					% user requested a type specialization
+					% to the list of predicates which must
+					% be processed by higher_order.m to
+					% force the production of those
+					% versions. This is used by
+					% dead_proc_elim.m to avoid creating
+					% versions unnecessarily for versions
+					% in imported modules.
+		multi_map(pred_id, pragma_type)
+					% Type spec pragmas to be placed in
+					% the `.opt' file if a predicate
+					% becomes exported.
+	).
+
+        % This field should be set to `do_aditi_compilation' if there
+	% are local Aditi predicates.
+:- type do_aditi_compilation
+	--->    do_aditi_compilation
+	;       no_aditi_compilation.
+
 %-----------------------------------------------------------------------------%
+
+	% Various predicates for manipulating the module_info data structure
 
 	% Create an empty module_info for a given module name (and the
 	% global options).
@@ -112,12 +148,12 @@
 	module_info).
 :- mode module_info_set_special_pred_map(in, in, out) is det.
 
-:- pred module_info_get_continuation_info(module_info, continuation_info).
-:- mode module_info_get_continuation_info(in, out) is det.
+:- pred module_info_get_global_data(module_info, global_data).
+:- mode module_info_get_global_data(in, out) is det.
 
-:- pred module_info_set_continuation_info(module_info, continuation_info, 
+:- pred module_info_set_global_data(module_info, global_data, 
 	module_info).
-:- mode module_info_set_continuation_info(in, in, out) is det.
+:- mode module_info_set_global_data(in, in, out) is det.
 
 :- pred module_info_types(module_info, type_table).
 :- mode module_info_types(in, out) is det.
@@ -186,6 +222,9 @@
 :- pred module_info_globals(module_info, globals).
 :- mode module_info_globals(in, out) is det.
 
+:- pred module_info_set_globals(module_info, globals, module_info).
+:- mode module_info_set_globals(in, in, out) is det.
+
 :- pred module_info_get_c_header(module_info, c_header_info).
 :- mode module_info_get_c_header(in, out) is det.
 
@@ -248,6 +287,20 @@
 	module_info).
 :- mode module_info_set_stratified_preds(in, in, out) is det.
 
+:- pred module_info_get_do_aditi_compilation(module_info,
+		do_aditi_compilation).
+:- mode module_info_get_do_aditi_compilation(in, out) is det.
+
+:- pred module_info_set_do_aditi_compilation(module_info, module_info).
+:- mode module_info_set_do_aditi_compilation(in, out) is det.
+
+:- pred module_info_type_spec_info(module_info, type_spec_info).
+:- mode module_info_type_spec_info(in, out) is det.
+
+:- pred module_info_set_type_spec_info(module_info,
+		type_spec_info, module_info).
+:- mode module_info_set_type_spec_info(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- pred module_info_preds(module_info, pred_table).
@@ -262,6 +315,10 @@
 :- pred module_info_pred_proc_info(module_info, pred_id, proc_id,
 	pred_info, proc_info).
 :- mode module_info_pred_proc_info(in, in, in, out, out) is det.
+
+:- pred module_info_pred_proc_info(module_info, pred_proc_id,
+	pred_info, proc_info).
+:- mode module_info_pred_proc_info(in, in, out, out) is det.
 
 	% Return a list of the pred_ids of all the "valid" predicates.
 	% (Predicates whose definition contains a type error, etc.
@@ -297,6 +354,10 @@
 	pred_id, proc_id, pred_info, proc_info, module_info).
 :- mode module_info_set_pred_proc_info(in, in, in, in, in, out) is det.
 
+:- pred module_info_set_pred_proc_info(module_info,
+	pred_proc_id, pred_info, proc_info, module_info).
+:- mode module_info_set_pred_proc_info(in, in, in, in, out) is det.
+
 :- pred module_info_typeids(module_info, list(type_id)).
 :- mode module_info_typeids(in, out) is det.
 
@@ -311,6 +372,10 @@
 
 :- pred module_info_dependency_info(module_info, dependency_info).
 :- mode module_info_dependency_info(in, out) is det.
+
+:- pred module_info_aditi_dependency_ordering(module_info, 
+		aditi_dependency_ordering).
+:- mode module_info_aditi_dependency_ordering(in, out) is det.
 
 :- pred module_info_set_dependency_info(module_info, dependency_info,
 	module_info).
@@ -374,6 +439,9 @@
 :- pred module_sub_get_globals(module_sub_info, globals).
 :- mode module_sub_get_globals(in, out) is det.
 
+:- pred module_sub_set_globals(module_sub_info, globals, module_sub_info).
+:- mode module_sub_set_globals(in, in, out) is det.
+
 :- pred module_sub_get_c_header_info(module_sub_info, c_header_info).
 :- mode module_sub_get_c_header_info(in, out) is det.
 
@@ -412,6 +480,13 @@
 :- pred module_sub_get_imported_module_specifiers(module_sub_info,
 		set(module_specifier)).
 :- mode module_sub_get_imported_module_specifiers(in, out) is det.
+
+:- pred module_sub_get_do_aditi_compilation(module_sub_info,
+		do_aditi_compilation).
+:- mode module_sub_get_do_aditi_compilation(in, out) is det.
+
+:- pred module_sub_get_type_spec_info(module_sub_info, type_spec_info).
+:- mode module_sub_get_type_spec_info(in, out) is det.
 
 :- pred module_sub_set_c_header_info(module_sub_info, c_header_info,
 	module_sub_info).
@@ -459,13 +534,20 @@
 		set(module_specifier), module_sub_info).
 :- mode module_sub_set_imported_module_specifiers(in, in, out) is det.
 
+:- pred module_sub_set_do_aditi_compilation(module_sub_info, module_sub_info).
+:- mode module_sub_set_do_aditi_compilation(in, out) is det.
+
+:- pred module_sub_set_type_spec_info(module_sub_info,
+		type_spec_info, module_sub_info).
+:- mode module_sub_set_type_spec_info(in, in, out) is det.
+
 :- type module_info
 	--->	module(
 			module_sub_info,
 			predicate_table,
 			proc_requests,
 			special_pred_map,
-			continuation_info,
+			global_data,
 			type_table,
 			user_inst_table,
 			mode_table,
@@ -504,9 +586,15 @@
 					% in .opt files.
 			int,		% number of the structure types defined
 					% so far for model_non pragma C codes
-			set(module_specifier)
+			set(module_specifier),
 					% All the imported module specifiers
 					% (used during type checking).
+			do_aditi_compilation,
+					% are there any local Aditi predicates
+					% for which Aditi-RL must be produced.
+			type_spec_info
+					% data used for user-guided type
+					% specialization.
 		).
 
 	% A predicate which creates an empty module
@@ -518,18 +606,27 @@ module_info_init(Name, Globals, ModuleInfo) :-
 	map__init(Types),
 	user_inst_table_init(UserInsts),
 	mode_table_init(Modes),
-	continuation_info__init(ContinuationInfo),
+	global_data_init(GlobalData),
 	map__init(Ctors),
 	set__init(StratPreds),
 	map__init(UnusedArgInfo),
+
+	set__init(TypeSpecPreds),
+	set__init(TypeSpecForcePreds),
+	map__init(SpecMap),
+	map__init(PragmaMap),
+	TypeSpecInfo = type_spec_info(TypeSpecPreds,
+		TypeSpecForcePreds, SpecMap, PragmaMap),
+
 	map__init(ClassTable),
 	map__init(InstanceTable),
 	map__init(SuperClassTable),
 	set__init(ModuleNames),
 	ModuleSubInfo = module_sub(Name, Globals, [], [], no, 0, 0, [], 
-		[], [], StratPreds, UnusedArgInfo, 0, ModuleNames),
+		[], [], StratPreds, UnusedArgInfo, 0, ModuleNames,
+		no_aditi_compilation, TypeSpecInfo),
 	ModuleInfo = module(ModuleSubInfo, PredicateTable, Requests,
-		UnifyPredMap, ContinuationInfo, Types, UserInsts, Modes, Ctors,
+		UnifyPredMap, GlobalData, Types, UserInsts, Modes, Ctors,
 		ClassTable, SuperClassTable, InstanceTable, 0).
 
 %-----------------------------------------------------------------------------%
@@ -559,9 +656,13 @@ module_info_init(Name, Globals, ModuleInfo) :-
 %					% in .opt files.
 % M			int,		% number of the structure types defined
 %					% so far for model_non pragma C codes
-% N			set(module_name)
+% N			set(module_name),
 %					% All the imported module names
 %					% (used during type checking).
+% O			do_aditi_compilation
+%					% are there any local Aditi predicates
+%					% for which Aditi-RL must be produced.
+% P			type_spec_info
 %		).
 
 %-----------------------------------------------------------------------------%
@@ -569,98 +670,117 @@ module_info_init(Name, Globals, ModuleInfo) :-
 	% Various predicates which access the module_sub_info data structure.
 
 module_sub_get_name(MI0, A) :-
-	MI0 = module_sub(A, _, _, _, _, _, _, _, _, _, _, _, _, _).
+	MI0 = module_sub(A, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _).
 
 module_sub_get_globals(MI0, B) :-
-	MI0 = module_sub(_, B, _, _, _, _, _, _, _, _, _, _, _, _).
+	MI0 = module_sub(_, B, _, _, _, _, _, _, _, _, _, _, _, _, _, _).
 
 module_sub_get_c_header_info(MI0, C) :-
-	MI0 = module_sub(_, _, C, _, _, _, _, _, _, _, _, _, _, _).
+	MI0 = module_sub(_, _, C, _, _, _, _, _, _, _, _, _, _, _, _, _).
 
 module_sub_get_c_body_info(MI0, D) :-
-	MI0 = module_sub(_, _, _, D, _, _, _, _, _, _, _, _, _, _).
+	MI0 = module_sub(_, _, _, D, _, _, _, _, _, _, _, _, _, _, _, _).
 
 module_sub_get_maybe_dependency_info(MI0, E) :-
-	MI0 = module_sub(_, _, _, _, E, _, _, _, _, _, _, _, _, _).
+	MI0 = module_sub(_, _, _, _, E, _, _, _, _, _, _, _, _, _, _, _).
 
 module_sub_get_num_errors(MI0, F) :-
-	MI0 = module_sub(_, _, _, _, _, F, _, _, _, _, _, _, _, _).
+	MI0 = module_sub(_, _, _, _, _, F, _, _, _, _, _, _, _, _, _, _).
 
 module_sub_get_lambda_count(MI0, G) :-
-	MI0 = module_sub(_, _, _, _, _, _, G, _, _, _, _, _, _, _).
+	MI0 = module_sub(_, _, _, _, _, _, G, _, _, _, _, _, _, _, _, _).
 
 module_sub_get_pragma_exported_procs(MI0, H) :-
-	MI0 = module_sub(_, _, _, _, _, _, _, H, _, _, _, _, _, _).
+	MI0 = module_sub(_, _, _, _, _, _, _, H, _, _, _, _, _, _, _, _).
 
 module_sub_get_base_gen_infos(MI0, I) :-
-	MI0 = module_sub(_, _, _, _, _, _, _, _, I, _, _, _, _, _).
+	MI0 = module_sub(_, _, _, _, _, _, _, _, I, _, _, _, _, _, _, _).
 
 module_sub_get_base_gen_layouts(MI0, J) :-
-	MI0 = module_sub(_, _, _, _, _, _, _, _, _, J, _, _, _, _).
+	MI0 = module_sub(_, _, _, _, _, _, _, _, _, J, _, _, _, _, _, _).
 
 module_sub_get_stratified_preds(MI0, K) :-
-	MI0 = module_sub(_, _, _, _, _, _, _, _, _, _, K, _, _, _).
+	MI0 = module_sub(_, _, _, _, _, _, _, _, _, _, K, _, _, _, _, _).
 
 module_sub_get_unused_arg_info(MI0, L) :-
-	MI0 = module_sub(_, _, _, _, _, _, _, _, _, _, _, L, _, _).
+	MI0 = module_sub(_, _, _, _, _, _, _, _, _, _, _, L, _, _, _, _).
 
 module_sub_get_model_non_pragma_count(MI0, M) :-
-	MI0 = module_sub(_, _, _, _, _, _, _, _, _, _, _, _, M, _).
+	MI0 = module_sub(_, _, _, _, _, _, _, _, _, _, _, _, M, _, _, _).
 
 module_sub_get_imported_module_specifiers(MI0, N) :-
-	MI0 = module_sub(_, _, _, _, _, _, _, _, _, _, _, _, _, N).
+	MI0 = module_sub(_, _, _, _, _, _, _, _, _, _, _, _, _, N, _, _).
+
+module_sub_get_do_aditi_compilation(MI0, O) :-
+	MI0 = module_sub(_, _, _, _, _, _, _, _, _, _, _, _, _, _, O, _).
+
+module_sub_get_type_spec_info(MI0, P) :-
+	MI0 = module_sub(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, P).
 
 %-----------------------------------------------------------------------------%
 
 	% Various predicates which modify the module_sub_info data structure.
 
+module_sub_set_globals(MI0, B, MI) :-
+	MI0 = module_sub(A, _, C, D, E, F, G, H, I, J, K, L, M, N, O, P),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P).
+
 module_sub_set_c_header_info(MI0, C, MI) :-
-	MI0 = module_sub(A, B, _, D, E, F, G, H, I, J, K, L, M, N),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
+	MI0 = module_sub(A, B, _, D, E, F, G, H, I, J, K, L, M, N, O, P),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P).
 
 module_sub_set_c_body_info(MI0, D, MI) :-
-	MI0 = module_sub(A, B, C, _, E, F, G, H, I, J, K, L, M, N),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
+	MI0 = module_sub(A, B, C, _, E, F, G, H, I, J, K, L, M, N, O, P),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P).
 
 module_sub_set_maybe_dependency_info(MI0, E, MI) :-
-	MI0 = module_sub(A, B, C, D, _, F, G, H, I, J, K, L, M, N),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
+	MI0 = module_sub(A, B, C, D, _, F, G, H, I, J, K, L, M, N, O, P),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P).
 
 module_sub_set_num_errors(MI0, F, MI) :-
-	MI0 = module_sub(A, B, C, D, E, _, G, H, I, J, K, L, M, N),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
+	MI0 = module_sub(A, B, C, D, E, _, G, H, I, J, K, L, M, N, O, P),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P).
 
 module_sub_set_lambda_count(MI0, G, MI) :-
-	MI0 = module_sub(A, B, C, D, E, F, _, H, I, J, K, L, M, N),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
+	MI0 = module_sub(A, B, C, D, E, F, _, H, I, J, K, L, M, N, O, P),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P).
 
 module_sub_set_pragma_exported_procs(MI0, H, MI) :-
-	MI0 = module_sub(A, B, C, D, E, F, G, _, I, J, K, L, M, N),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
+	MI0 = module_sub(A, B, C, D, E, F, G, _, I, J, K, L, M, N, O, P),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P).
 
 module_sub_set_base_gen_infos(MI0, I, MI) :-
-	MI0 = module_sub(A, B, C, D, E, F, G, H, _, J, K, L, M, N),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
+	MI0 = module_sub(A, B, C, D, E, F, G, H, _, J, K, L, M, N, O, P),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P).
 
 module_sub_set_base_gen_layouts(MI0, J, MI) :-
-	MI0 = module_sub(A, B, C, D, E, F, G, H, I, _, K, L, M, N),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
+	MI0 = module_sub(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P).
 
 module_sub_set_stratified_preds(MI0, K, MI) :-
-	MI0 = module_sub(A, B, C, D, E, F, G, H, I, J, _, L, M, N),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
+	MI0 = module_sub(A, B, C, D, E, F, G, H, I, J, _, L, M, N, O, P),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P).
 
 module_sub_set_unused_arg_info(MI0, L, MI) :-
-	MI0 = module_sub(A, B, C, D, E, F, G, H, I, J, K, _, M, N),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
+	MI0 = module_sub(A, B, C, D, E, F, G, H, I, J, K, _, M, N, O, P),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P).
 
 module_sub_set_model_non_pragma_count(MI0, M, MI) :-
-	MI0 = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, _, N),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
+	MI0 = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, _, N, O, P),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P).
 
 module_sub_set_imported_module_specifiers(MI0, N, MI) :-
-	MI0 = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, _),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
+	MI0 = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, _, O, P),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P).
+
+module_sub_set_do_aditi_compilation(MI0, MI) :-
+	MI0 = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N, _, P),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N,
+		do_aditi_compilation, P).
+
+module_sub_set_type_spec_info(MI0, P, MI) :-
+	MI0 = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, _),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P).
 
 %-----------------------------------------------------------------------------%
 
@@ -670,7 +790,7 @@ module_sub_set_imported_module_specifiers(MI0, N, MI) :-
 % B			predicate_table,
 % C			proc_requests,
 % D			special_pred_map,
-% E			continuation_info,
+% E			global_data,
 % F			type_table,
 % G			user_inst_table,
 % H			mode_table,
@@ -700,7 +820,7 @@ module_info_get_proc_requests(MI0, C) :-
 module_info_get_special_pred_map(MI0, D) :-
 	MI0 = module(_, _, _, D, _, _, _, _, _, _, _, _, _).
 
-module_info_get_continuation_info(MI0, E) :-
+module_info_get_global_data(MI0, E) :-
 	MI0 = module(_, _, _, _, E, _, _, _, _, _, _, _, _).
 
 module_info_types(MI0, F) :-
@@ -747,7 +867,7 @@ module_info_set_special_pred_map(MI0, D, MI) :-
 	MI0 = module(A, B, C, _, E, F, G, H, I, J, K, L, M),
 	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L, M).
 
-module_info_set_continuation_info(MI0, E, MI) :-
+module_info_set_global_data(MI0, E, MI) :-
 	MI0 = module(A, B, C, D, _, F, G, H, I, J, K, L, M),
 	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L, M).
 
@@ -840,14 +960,27 @@ module_info_get_model_non_pragma_count(MI0, M) :-
 	module_info_get_sub_info(MI0, MS0),
 	module_sub_get_model_non_pragma_count(MS0, M).
 
-module_info_get_imported_module_specifiers(MI0, S) :-
+module_info_get_imported_module_specifiers(MI0, N) :-
 	module_info_get_sub_info(MI0, MS0),
-	module_sub_get_imported_module_specifiers(MS0, S).
+	module_sub_get_imported_module_specifiers(MS0, N).
+
+module_info_type_spec_info(MI0, P) :-
+	module_info_get_sub_info(MI0, MS0),
+	module_sub_get_type_spec_info(MS0, P).
+
+module_info_get_do_aditi_compilation(MI0, O) :-
+	module_info_get_sub_info(MI0, MS0),
+	module_sub_get_do_aditi_compilation(MS0, O).
 
 %-----------------------------------------------------------------------------%
 
 	% Various predicates which modify the module_sub_info data structure
 	% via the module_info structure.
+
+module_info_set_globals(MI0, B, MI) :-
+	module_info_get_sub_info(MI0, MS0),
+	module_sub_set_globals(MS0, B, MS),
+	module_info_set_sub_info(MI0, MS, MI).
 
 module_info_set_c_header(MI0, C, MI) :-
 	module_info_get_sub_info(MI0, MS0),
@@ -911,6 +1044,16 @@ module_add_imported_module_specifiers(Ss, MI0, MI) :-
 	module_sub_set_imported_module_specifiers(MS0, SpecSet, MS),
 	module_info_set_sub_info(MI0, MS, MI).
 
+module_info_set_do_aditi_compilation(MI0, MI) :-
+	module_info_get_sub_info(MI0, MS0),
+	module_sub_set_do_aditi_compilation(MS0, MS),
+	module_info_set_sub_info(MI0, MS, MI).
+
+module_info_set_type_spec_info(MI0, P, MI) :-
+	module_info_get_sub_info(MI0, MS0),
+	module_sub_set_type_spec_info(MS0, P, MS),
+	module_info_set_sub_info(MI0, MS, MI).
+
 %-----------------------------------------------------------------------------%
 
 	% Various predicates which do simple things that are nevertheless
@@ -935,6 +1078,9 @@ module_info_pred_proc_info(MI, PredId, ProcId, PredInfo, ProcInfo) :-
 	module_info_pred_info(MI, PredId, PredInfo),
 	pred_info_procedures(PredInfo, Procs),
 	map__lookup(Procs, ProcId, ProcInfo).
+
+module_info_pred_proc_info(MI, proc(PredId, ProcId), PredInfo, ProcInfo) :-
+	module_info_pred_proc_info(MI, PredId, ProcId, PredInfo, ProcInfo).
 
 module_info_predids(MI, PredIds) :-
 	module_info_get_predicate_table(MI, PredTable),
@@ -965,6 +1111,11 @@ module_info_set_pred_info(MI0, PredId, PredInfo, MI) :-
 	map__set(Preds0, PredId, PredInfo, Preds),
 	module_info_set_preds(MI0, Preds, MI).
 
+module_info_set_pred_proc_info(MI0, proc(PredId, ProcId),
+		PredInfo, ProcInfo, MI) :-
+	module_info_set_pred_proc_info(MI0, PredId, ProcId,
+		PredInfo, ProcInfo, MI).
+
 module_info_set_pred_proc_info(MI0, PredId, ProcId, PredInfo0, ProcInfo, MI) :-
 	pred_info_procedures(PredInfo0, Procs0),
 	map__set(Procs0, ProcId, ProcInfo, Procs),
@@ -993,6 +1144,16 @@ module_info_dependency_info(MI, DepInfo) :-
 		DepInfo = DepInfoPrime
 	;
 		error("Attempted to access invalid dependency_info")
+	).
+
+module_info_aditi_dependency_ordering(MI, AditiOrdering) :-
+	module_info_dependency_info(MI, DepInfo),
+	hlds_dependency_info_get_maybe_aditi_dependency_ordering(DepInfo,
+		MaybeOrdering),
+	( MaybeOrdering = yes(OrderingPrime) ->
+		AditiOrdering = OrderingPrime
+	;
+		error("Attempted to access invalid aditi_dependency_ordering")
 	).
 
 module_info_set_dependency_info(MI0, DependencyInfo, MI) :-
@@ -1026,7 +1187,7 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 	predicate_table_optimize(Preds0, Preds),
 	module_info_set_predicate_table(ModuleInfo0, Preds, ModuleInfo3),
 
-	% XXX Might want to optimize continuation_info here.
+	% XXX Might want to optimize global_data here.
 
 	module_info_types(ModuleInfo3, Types0),
 	map__optimize(Types0, Types),
@@ -1049,8 +1210,20 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 
 :- interface.
 
-:- type dependency_ordering	== list(list(pred_proc_id)).
-:- type dependency_graph	== relation(pred_proc_id).
+:- type dependency_ordering		== list(list(pred_proc_id)).
+
+:- type aditi_dependency_ordering	== list(aditi_scc).
+
+	% Each Aditi SCC contains one or more SCCs from the original 
+	% dependency ordering and the entry points of the SCC.
+	% SCCs which are only called from one other SCC and are not
+	% called through negation or aggregation are merged into the
+	% parent SCC. This makes the low-level RL optimizations more
+	% effective while maintaining stratification. 
+:- type aditi_scc
+	--->	aditi_scc(dependency_ordering, list(pred_proc_id)).
+
+:- type dependency_graph		== relation(pred_proc_id).
 :- type dependency_info.
 
 :- pred hlds_dependency_info_init(dependency_info).
@@ -1064,6 +1237,11 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 	dependency_ordering).
 :- mode hlds_dependency_info_get_dependency_ordering(in, out) is det.
 
+:- pred hlds_dependency_info_get_maybe_aditi_dependency_ordering(
+		dependency_info, maybe(aditi_dependency_ordering)).
+:- mode hlds_dependency_info_get_maybe_aditi_dependency_ordering(in, 
+		out) is det.
+
 :- pred hlds_dependency_info_set_dependency_graph(dependency_info,
 	dependency_graph, dependency_info).
 :- mode hlds_dependency_info_set_dependency_graph(in, in, out) is det.
@@ -1072,6 +1250,10 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 	dependency_ordering, dependency_info).
 :- mode hlds_dependency_info_set_dependency_ordering(in, in, out) is det.
 
+:- pred hlds_dependency_info_set_aditi_dependency_ordering(dependency_info,
+	aditi_dependency_ordering, dependency_info).
+:- mode hlds_dependency_info_set_aditi_dependency_ordering(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1079,27 +1261,37 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 :- type dependency_info --->
 		dependency_info(
 			dependency_graph,	% Dependency graph
-			dependency_ordering 	% Dependency ordering
+			dependency_ordering,	% Dependency ordering
+			maybe(aditi_dependency_ordering)
+					% Dependency ordering of Aditi SCCs 
 		).
 
 hlds_dependency_info_init(DepInfo) :-
 	relation__init(DepRel),
 	DepOrd = [],
-	DepInfo = dependency_info(DepRel, DepOrd).
+	DepInfo = dependency_info(DepRel, DepOrd, no).
 
 hlds_dependency_info_get_dependency_graph(DepInfo, A) :-
-	DepInfo = dependency_info(A, _).
+	DepInfo = dependency_info(A, _, _).
 
 hlds_dependency_info_get_dependency_ordering(DepInfo, B) :-
-	DepInfo = dependency_info(_, B).
+	DepInfo = dependency_info(_, B, _).
 
-hlds_dependency_info_set_dependency_graph(DepInfo0, A, DepInfo) :-
-	DepInfo0 = dependency_info(_, B),
-	DepInfo  = dependency_info(A, B).
+hlds_dependency_info_get_maybe_aditi_dependency_ordering(DepInfo, C) :-
+	DepInfo = dependency_info(_, _, C).
 
-hlds_dependency_info_set_dependency_ordering(DepInfo0, B, DepInfo) :-
-	DepInfo0 = dependency_info(A, _),
-	DepInfo  = dependency_info(A, B).
+hlds_dependency_info_set_dependency_graph(DepInfo0, DepRel, DepInfo) :-
+	DepInfo0 = dependency_info(_, B, C),
+	DepInfo = dependency_info(DepRel, B, C).
+
+hlds_dependency_info_set_dependency_ordering(DepInfo0, DepRel, DepInfo) :-
+	DepInfo0 = dependency_info(A, _, C),
+	DepInfo = dependency_info(A, DepRel, C).
+
+hlds_dependency_info_set_aditi_dependency_ordering(DepInfo0, 
+		DepOrd, DepInfo) :-
+	DepInfo0 = dependency_info(A, B, _),
+	DepInfo = dependency_info(A, B, yes(DepOrd)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1922,5 +2114,150 @@ predicate_arity(ModuleInfo, PredId, Arity) :-
 	module_info_preds(ModuleInfo, Preds),
 	map__lookup(Preds, PredId, PredInfo),
 	pred_info_arity(PredInfo, Arity).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- interface.
+
+:- type global_data.
+
+:- pred global_data_init(global_data::out) is det.
+
+:- pred global_data_add_new_proc_var(global_data::in,
+	pred_proc_id::in, comp_gen_c_var::in, global_data::out) is det.
+
+:- pred global_data_add_new_proc_layout(global_data::in,
+	pred_proc_id::in, proc_layout_info::in, global_data::out) is det.
+
+:- pred global_data_update_proc_layout(global_data::in,
+	pred_proc_id::in, proc_layout_info::in, global_data::out) is det.
+
+:- pred global_data_add_new_non_common_static_datas(global_data::in,
+	list(comp_gen_c_data)::in, global_data::out) is det.
+
+:- pred global_data_maybe_get_proc_layout(global_data::in, pred_proc_id::in,
+	proc_layout_info::out) is semidet.
+
+:- pred global_data_get_proc_layout(global_data::in, pred_proc_id::in,
+	proc_layout_info::out) is det.
+
+:- pred global_data_get_all_proc_vars(global_data::in,
+	list(comp_gen_c_var)::out) is det.
+
+:- pred global_data_get_all_proc_layouts(global_data::in,
+	list(proc_layout_info)::out) is det.
+
+:- pred global_data_get_all_non_common_static_data(global_data::in,
+	list(comp_gen_c_data)::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+:- type proc_var_map	==	map(pred_proc_id, comp_gen_c_var).
+:- type proc_layout_map	==	map(pred_proc_id, proc_layout_info).
+
+:- type global_data
+	--->	global_data(
+			proc_var_map,		% Information about the global
+						% variables defined by each
+						% procedure.
+			proc_layout_map,	% Information about the
+						% layout structures defined
+						% by each procedure.
+			list(comp_gen_c_data)	% The list of global data
+						% structures that do not need
+						% to be checked by llds_common,
+						% because their construction
+						% ensures no overlaps.
+		).
+
+global_data_init(global_data(EmptyDataMap, EmptyLayoutMap, [])) :-
+	map__init(EmptyDataMap),
+	map__init(EmptyLayoutMap).
+
+global_data_add_new_proc_var(GlobalData0, PredProcId, ProcVar,
+		GlobalData) :-
+	global_data_get_proc_var_map(GlobalData0, ProcVarMap0),
+	map__det_insert(ProcVarMap0, PredProcId, ProcVar, ProcVarMap),
+	global_data_set_proc_var_map(GlobalData0, ProcVarMap,
+		GlobalData).
+
+global_data_add_new_proc_layout(GlobalData0, PredProcId, ProcLayout,
+		GlobalData) :-
+	global_data_get_proc_layout_map(GlobalData0, ProcLayoutMap0),
+	map__det_insert(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
+	global_data_set_proc_layout_map(GlobalData0, ProcLayoutMap,
+		GlobalData).
+
+global_data_update_proc_layout(GlobalData0, PredProcId, ProcLayout,
+		GlobalData) :-
+	global_data_get_proc_layout_map(GlobalData0, ProcLayoutMap0),
+	map__det_update(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
+	global_data_set_proc_layout_map(GlobalData0, ProcLayoutMap,
+		GlobalData).
+
+global_data_add_new_non_common_static_datas(GlobalData0, NewNonCommonStatics,
+		GlobalData) :-
+	global_data_get_non_common_static_data(GlobalData0, NonCommonStatics0),
+	list__append(NewNonCommonStatics, NonCommonStatics0, NonCommonStatics),
+	global_data_set_non_common_static_data(GlobalData0, NonCommonStatics,
+		GlobalData).
+
+global_data_maybe_get_proc_layout(GlobalData0, PredProcId, ProcLayout) :-
+	global_data_get_proc_layout_map(GlobalData0, ProcLayoutMap),
+	map__search(ProcLayoutMap, PredProcId, ProcLayout).
+
+global_data_get_proc_layout(GlobalData0, PredProcId, ProcLayout) :-
+	global_data_get_proc_layout_map(GlobalData0, ProcLayoutMap),
+	map__lookup(ProcLayoutMap, PredProcId, ProcLayout).
+
+global_data_get_all_proc_vars(GlobalData, ProcVars) :-
+	global_data_get_proc_var_map(GlobalData, ProcVarMap),
+	map__values(ProcVarMap, ProcVars).
+
+global_data_get_all_proc_layouts(GlobalData, ProcLayouts) :-
+	global_data_get_proc_layout_map(GlobalData, ProcLayoutMap),
+	map__values(ProcLayoutMap, ProcLayouts).
+
+global_data_get_all_non_common_static_data(GlobalData, NonCommonStatics) :-
+	global_data_get_non_common_static_data(GlobalData, NonCommonStatics).
+
+%-----------------------------------------------------------------------------%
+
+:- pred global_data_get_proc_var_map(global_data::in, proc_var_map::out)
+	is det.
+:- pred global_data_get_proc_layout_map(global_data::in, proc_layout_map::out)
+	is det.
+:- pred global_data_get_non_common_static_data(global_data::in,
+	list(comp_gen_c_data)::out) is det.
+:- pred global_data_set_proc_var_map(global_data::in, proc_var_map::in,
+	global_data::out) is det.
+:- pred global_data_set_proc_layout_map(global_data::in, proc_layout_map::in,
+	global_data::out) is det.
+:- pred global_data_set_non_common_static_data(global_data::in,
+	list(comp_gen_c_data)::in, global_data::out) is det.
+
+global_data_get_proc_var_map(GD, A) :-
+	GD = global_data(A, _, _).
+
+global_data_get_proc_layout_map(GD, B) :-
+	GD = global_data(_, B, _).
+
+global_data_get_non_common_static_data(GD, C) :-
+	GD = global_data(_, _, C).
+
+global_data_set_proc_var_map(GD0, A, GD) :-
+	GD0 = global_data(_, B, C),
+	GD  = global_data(A, B, C).
+
+global_data_set_proc_layout_map(GD0, B, GD) :-
+	GD0 = global_data(A, _, C),
+	GD  = global_data(A, B, C).
+
+global_data_set_non_common_static_data(GD0, C, GD) :-
+	GD0 = global_data(A, B, _),
+	GD  = global_data(A, B, C).
 
 %-----------------------------------------------------------------------------%

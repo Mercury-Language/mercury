@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1998 The University of Melbourne.
+** Copyright (C) 1994-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -109,6 +109,10 @@ MemoryZone *nondetstack_zone;
   MemoryZone *heap_zone;
   MemoryZone *solutions_heap_zone;
 #endif
+#ifdef	MR_USE_MINIMAL_MODEL
+  MemoryZone *generatorstack_zone;
+  MemoryZone *cutstack_zone;
+#endif
 
 #ifdef	MR_LOWLEVEL_DEBUG
   MemoryZone *dumpstack_zone;
@@ -136,36 +140,43 @@ init_memory(void)
 	unit = max(page_size, pcache_size);
 
 #ifdef CONSERVATIVE_GC
-	heap_zone_size      = 0;
-	heap_size	    = 0;
+	heap_size		 = 0;
+	heap_zone_size		 = 0;
+	solutions_heap_size	 = 0;
 	solutions_heap_zone_size = 0;
-	solutions_heap_size = 0;
-	global_heap_zone_size = 0;
-	global_heap_size    = 0;
-	debug_heap_zone_size = 0;
-	debug_heap_size = 0;
+	global_heap_size	 = 0;
+	global_heap_zone_size	 = 0;
+	debug_heap_size		 = 0;
+	debug_heap_zone_size	 = 0;
 #else
-	heap_zone_size      = round_up(heap_zone_size * 1024, unit);
-	heap_size           = round_up(heap_size * 1024, unit);
+	heap_size		 = round_up(heap_size * 1024, unit);
+	heap_zone_size		 = round_up(heap_zone_size * 1024, unit);
+	solutions_heap_size	 = round_up(solutions_heap_size * 1024, unit);
 	solutions_heap_zone_size = round_up(solutions_heap_zone_size * 1024, 
-		unit);
-	solutions_heap_size = round_up(solutions_heap_size * 1024, unit);
-	global_heap_zone_size = round_up(global_heap_zone_size * 1024, unit);
-	global_heap_size    = round_up(global_heap_size * 1024, unit);
-	debug_heap_zone_size = round_up(debug_heap_zone_size * 1024, unit);
-	debug_heap_size    = round_up(debug_heap_size * 1024, unit);
+					unit);
+	global_heap_size	 = round_up(global_heap_size * 1024, unit);
+	global_heap_zone_size	 = round_up(global_heap_zone_size * 1024, unit);
+	debug_heap_size		 = round_up(debug_heap_size * 1024, unit);
+	debug_heap_zone_size	 = round_up(debug_heap_zone_size * 1024, unit);
 #endif
-	detstack_size       = round_up(detstack_size * 1024, unit);
-	detstack_zone_size  = round_up(detstack_zone_size * 1024, unit);
-	nondstack_size      = round_up(nondstack_size * 1024, unit);
-	nondstack_zone_size = round_up(nondstack_zone_size * 1024, unit);
+	detstack_size		 = round_up(detstack_size * 1024, unit);
+	detstack_zone_size	 = round_up(detstack_zone_size * 1024, unit);
+	nondstack_size		 = round_up(nondstack_size * 1024, unit);
+	nondstack_zone_size	 = round_up(nondstack_zone_size * 1024, unit);
+#ifdef	MR_USE_MINIMAL_MODEL
+	generatorstack_size	 = round_up(generatorstack_size * 1024, unit);
+	generatorstack_zone_size = round_up(generatorstack_zone_size * 1024,
+					unit);
+	cutstack_size		 = round_up(cutstack_size * 1024, unit);
+	cutstack_zone_size	 = round_up(cutstack_zone_size * 1024, unit);
+#endif
 
-#ifdef MR_USE_TRAIL
-	trail_size       = round_up(trail_size * 1024, unit);
-	trail_zone_size  = round_up(trail_zone_size * 1024, unit);
+#ifdef	MR_USE_TRAIL
+	trail_size		 = round_up(trail_size * 1024, unit);
+	trail_zone_size		 = round_up(trail_zone_size * 1024, unit);
 #else
-	trail_size	    = 0;
-	trail_zone_size	    = 0;
+	trail_size		 = 0;
+	trail_zone_size		 = 0;
 #endif
 
 	/*

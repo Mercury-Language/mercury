@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1998 The University of Melbourne.
+** Copyright (C) 1997-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -46,7 +46,6 @@
 #include "mercury_misc.h"
 #include "mercury_array_macros.h"
 #include <stdio.h>
-#include <unistd.h>		/* for the write system call */
 
 static	MR_Trace_Cmd_Info	MR_trace_ctrl = { MR_CMD_GOTO, 0, 0,
 					MR_PRINT_LEVEL_SOME, FALSE };
@@ -227,18 +226,25 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 	const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
 	Unsigned seqno, Unsigned depth, const char *path, int max_r_num)
 {
-	int	max_mr_num;
-	Code	*jumpaddr;
-	Word	saved_regs[MAX_FAKE_REG];
+	Code		*jumpaddr;
+	MR_Event_Info	event_info;
+	Word		*saved_regs = event_info.MR_saved_regs;
+
+	event_info.MR_event_number = MR_trace_event_number;
+	event_info.MR_call_seqno = seqno;
+	event_info.MR_call_depth = depth;
+	event_info.MR_trace_port = port;
+	event_info.MR_event_sll = layout;
+	event_info.MR_event_path = path;
 
 	if (max_r_num + MR_NUM_SPECIAL_REG > MR_MAX_SPECIAL_REG_MR) {
-		max_mr_num = max_r_num + MR_NUM_SPECIAL_REG;
+		event_info.MR_max_mr_num = max_r_num + MR_NUM_SPECIAL_REG;
 	} else {
-		max_mr_num = MR_MAX_SPECIAL_REG_MR;
+		event_info.MR_max_mr_num = MR_MAX_SPECIAL_REG_MR;
 	}
 
 	/* This also saves the regs in MR_fake_regs. */
-	MR_copy_regs_to_saved_regs(max_mr_num, saved_regs);
+	MR_copy_regs_to_saved_regs(event_info.MR_max_mr_num, saved_regs);
 
 #ifdef MR_USE_EXTERNAL_DEBUGGER
 	if (MR_trace_handler == MR_TRACE_EXTERNAL) {
@@ -246,13 +252,10 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 			fatal_error("reporting event for external debugger");
 		}
 
-		MR_trace_event_external(cmd, layout, saved_regs,
-			port, seqno, depth, path);
-		jumpaddr = NULL;
+		jumpaddr = MR_trace_event_external(cmd, &event_info);
 	} else {
 		jumpaddr = MR_trace_event_internal(cmd, interactive,
-				layout, saved_regs, port, seqno,
-				depth, path, &max_mr_num);
+				&event_info);
 	}
 #else
 	/*
@@ -260,9 +263,7 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 	** This is enforced by mercury_wrapper.c.
 	*/
 
-	jumpaddr = MR_trace_event_internal(cmd, interactive,
-			layout, saved_regs, port, seqno,
-			depth, path, &max_mr_num);
+	jumpaddr = MR_trace_event_internal(cmd, interactive, &event_info);
 #endif
 
 	/*
@@ -278,6 +279,175 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 
 	restore_transient_registers(); /* in case MR_global_hp is transient */
 	MR_saved_global_hp(saved_regs) = MR_global_hp;
-	MR_copy_saved_regs_to_regs(max_mr_num, saved_regs);
+	MR_copy_saved_regs_to_regs(event_info.MR_max_mr_num, saved_regs);
 	return jumpaddr;
 }
+
+const char *
+MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
+	Code **jumpaddr)
+{
+	const MR_Stack_Layout_Entry	*entry;
+	const MR_Stack_Layout_Label	*call_label;
+	const MR_Stack_Layout_Vars	*input_args;
+	Word				*args;
+	int				arg_max;
+	int				arg_num;
+	Word				arg_value;
+	int				i;
+	bool				succeeded;
+	const char			*message;
+	Word 				*saved_regs;
+
+	saved_regs = event_info->MR_saved_regs;
+	entry = event_info->MR_event_sll->MR_sll_entry;
+	call_label = entry->MR_sle_call_label;
+	input_args = &call_label->MR_sll_var_info;
+
+	if (input_args->MR_slvs_var_count < 0) {
+		message = "Cannot perform retry because information about "
+		          "the input arguments is not available.";
+		return message;
+	}
+
+	/*
+	** With the Boehm collector, args need not be considered a root, 
+	** since its contents are just copies of values from elsewhere,
+	** With the native collector, it need not be considered a root
+	** because its lifetime spans only this function, in which
+	** no native garbage collection can be triggered.
+	*/
+
+	args = NULL;
+	arg_max = 0;
+
+	for (i = 0; i < MR_all_desc_var_count(input_args); i++) {
+		arg_value = MR_trace_find_input_arg(event_info->MR_event_sll,
+				saved_regs, input_args->MR_slvs_names[i],
+				&succeeded);
+
+		if (! succeeded) {
+			message = "Cannot perform retry because the values of "
+				  "some input arguments are missing.";
+			return message;
+		}
+
+		if (i < MR_long_desc_var_count(input_args)) {
+			arg_num = MR_get_register_number_long(
+				MR_long_desc_var_locn(input_args, i));
+		} else {
+			arg_num = MR_get_register_number_short(
+				MR_short_desc_var_locn(input_args, i));
+		}
+
+		if (arg_num > 0) {
+			MR_ensure_big_enough(arg_num, arg, Word,
+				MR_INIT_ARG_COUNT);
+			args[arg_num] = arg_value;
+		} else {
+			fatal_error("illegal location for input argument");
+		}
+	}
+
+	MR_trace_call_seqno = event_info->MR_call_seqno - 1;
+	MR_trace_call_depth = event_info->MR_call_depth - 1;
+
+	if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
+		MR_Long_Lval	location;
+		Word		*this_frame;
+
+		/*
+		** We are at a final port, so both curfr and maxfr
+		** must already have been reset to their original values.
+		** We only need to set up the succip register for the "call",
+		** and then remove this frame from the det stack.
+		*/
+
+		location = entry->MR_sle_succip_locn;
+		if (MR_LONG_LVAL_TYPE(location) != MR_LONG_LVAL_TYPE_STACKVAR)
+		{
+			fatal_error("illegal location for stored succip");
+		}
+
+		this_frame = MR_saved_sp(saved_regs);
+		MR_saved_succip(saved_regs) = (Word *)
+				MR_based_stackvar(this_frame,
+				MR_LONG_LVAL_NUMBER(location));
+		MR_saved_sp(saved_regs) -= entry->MR_sle_stack_slots;
+		MR_trace_event_number = MR_event_num_stackvar(this_frame);
+	} else {
+		Word	*this_frame;
+
+		/*
+		** We are at a final port, so sp must already have been reset
+		** to its original value. We only need to set up the succip
+		** and curfr registers for the "call", and remove this frame,
+		** and any other frames above it, from the nondet stack.
+		*/
+
+		this_frame = MR_saved_curfr(saved_regs);
+
+		MR_saved_succip(saved_regs) = MR_succip_slot(this_frame);
+		MR_saved_curfr(saved_regs) = MR_succfr_slot(this_frame);
+		MR_saved_maxfr(saved_regs) = MR_prevfr_slot(this_frame);
+		MR_trace_event_number = MR_event_num_framevar(this_frame);
+	}
+
+	for (i = 1; i < arg_max; i++) {
+		saved_reg(saved_regs, i) = args[i];
+	}
+
+	if (args != NULL) {
+		free(args);
+	}
+
+	event_info->MR_max_mr_num = max(event_info->MR_max_mr_num, arg_max);
+	*jumpaddr = entry->MR_sle_code_addr;
+
+	/*
+	** Overriding MR_trace_call_seqno etc is not enough, because
+	** we will restore the values of those variables later. We must
+	** also override the saved copies.
+	*/
+
+	event_details->MR_call_seqno = MR_trace_call_seqno;
+	event_details->MR_call_depth = MR_trace_call_depth;
+	event_details->MR_event_number = MR_trace_event_number;
+
+	return NULL;
+}
+
+
+extern Word
+MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, Word *saved_regs,
+	const char *name, bool *succeeded)
+{
+	const MR_Stack_Layout_Vars	*vars;
+	int				i;
+
+	vars = &label->MR_sll_var_info;
+	if (vars->MR_slvs_names == NULL) {
+		*succeeded = FALSE;
+		return 0;
+	}
+
+	for (i = 0; i < MR_all_desc_var_count(vars); i++) {
+		if (streq(vars->MR_slvs_names[i], name)) {
+			if (i < MR_long_desc_var_count(vars)) {
+				return MR_lookup_long_lval_base(
+					MR_long_desc_var_locn(vars, i),
+					saved_regs, MR_saved_sp(saved_regs),
+					MR_saved_curfr(saved_regs), succeeded);
+			} else {
+				return MR_lookup_short_lval_base(
+					MR_short_desc_var_locn(vars, i),
+					saved_regs, MR_saved_sp(saved_regs),
+				MR_saved_curfr(saved_regs), succeeded);
+			}
+		}
+	}
+
+	*succeeded = FALSE;
+	return 0;
+}
+

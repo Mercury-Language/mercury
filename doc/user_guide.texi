@@ -2,15 +2,11 @@
 @setfilename mercury_user_guide.info
 @settitle The Mercury User's Guide
 
-@ignore
-@ifinfo
-@format
-START-INFO-DIR-ENTRY
-* Mercury: (mercury).                The Mercury User's Guide.
-END-INFO-DIR-ENTRY
-@end format
-@end ifinfo
-@end ignore
+@c --- texi2html doesn't support the @dir commands yet
+@c @dircategory The Mercury Programming Language
+@c @direntry
+@c * Mercury User's Guide: (mercury_user_guide).  The Mercury User's Guide.
+@c @end direntry
 
 @c Uncomment the line below to enable documentation of the Aditi interface.
 @c @set aditi
@@ -88,7 +84,6 @@ how to build and debug Mercury programs.
 * Invocation::      List of options for the Mercury compiler
 * Environment::     Environment variables used by the compiler and utilities
 * C compilers::     How to use a C compiler other than GNU C
-* Using Prolog::    Building and debugging Mercury programs with Prolog
 @ifset aditi 
 * Using Aditi::     Executing Mercury predicates using the Aditi
                     deductive database
@@ -167,8 +162,6 @@ which contain the rules for an entire program.
 As usual, @file{.c} files are C source code,
 @file{.h} files are C header files,
 @file{.o} files are object code,
-@file{.no} files are NU-Prolog object code, and
-@file{.ql} files are SICStus Prolog object code.
 In addition, @file{.pic_o} files are object code files
 that contain position-independent code (PIC).
 
@@ -187,9 +180,14 @@ Some of its options (e.g. @samp{-c}, @samp{-o}, and @samp{-I})
 have a similar meaning to that in other Unix compilers.
 
 Arguments to @samp{mmc} may be either file names (ending in @samp{.m}),
-or module names.  For a module name such as @samp{foo.bar.baz},
+or module names, with @samp{.} (rather than @samp{__} or @samp{:})
+as the module qualifier.  For a module name such as @samp{foo.bar.baz},
 the compiler will look for the source in files @file{foo.bar.baz.m},
 @file{bar.baz.m}, and @file{baz.m}, in that order.
+Note that if the file name does not include all the module
+qualifiers (e.g. if it is @file{bar.baz.m} or @file{baz.m}
+rather than @file{foo.bar.baz.m}), then the module name in the
+@samp{:- module} declaration for that module must be fully qualified.
 
 To compile a program which consists of just a single source file,
 use the command
@@ -417,22 +415,6 @@ with the Mercury compiler's @samp{--split-c-files} option enabled.
 @xref{Output-level (LLDS -> C) optimization options} for more information
 about @samp{--split-c-files}.
 
-@item @var{main-module}.nu
-Compiles and links @var{main-module} using NU-Prolog.
-
-@item @var{main-module}.nu.debug
-Compiles and links @var{main-module} using NU-Prolog.
-The resulting executable will start up in the NU-Prolog interpreter
-rather than calling main/2.
-
-@item @var{main-module}.sicstus
-Compiles and links @var{main-module} using SICStus Prolog.
-
-@item @var{main-module}.sicstus.debug
-Compiles and links @var{main-module} using SICStus Prolog.
-The resulting executable will start up in the SICStus Prolog interpreter
-rather than calling main/2.
-
 @item lib@var{main-module}
 Builds a library whose top-level module is @var{main-module}.
 This will build a static object library, a shared object library
@@ -503,7 +485,8 @@ The executable that invokes the Mercury compiler.
 
 @item GRADEFLAGS and EXTRA_GRADEFLAGS
 Compilation model options (@pxref{Compilation model options})
-to pass to the Mercury compiler, linker, and other tools.
+to pass to the Mercury compiler, linker, and other tools
+(in particular @code{mmc}, @code{mgnuc}, @code{ml}, and @code{c2init}).
 
 @item MCFLAGS and EXTRA_MCFLAGS
 Options to pass to the Mercury compiler.
@@ -963,7 +946,8 @@ The simpler way is to compile a program in a debugging grade,
 which you can do directly by specifying a grade
 that includes the word ``debug'' (e.g. @samp{asm_fast.gc.debug}),
 or indirectly by specifying the @samp{--debug} grade option
-to the compiler, linker, c2init and other tools.
+to the compiler, linker, and other tools
+(in particular @code{mmc}, @code{mgnuc}, @code{ml}, and @code{c2init}).
 If you follow this way,
 and accept the default settings of the various compiler options
 that control the selection of trace events (which are described below),
@@ -1054,17 +1038,26 @@ and full debugging capability in debugging grades.
 The table also shows that in a debugging grade,
 no module can be compiled with trace level @samp{none}.
 
-A small but vital part of preparing an executable for debugging
-is the setup of the initialization file for debugging.
-The initialization file is created by the c2init command,
-which can be told to set up the initialization file for debugging
-in one of two ways.
-First, c2init accepts the same set of grade options the compiler accepts.
-If these options specify a debugging grade,
-c2init will set up the initialization file for debugging.
-Even if these options specify a non-debugging grade,
-you can ask c2init to set up the initialization file for debugging
-by giving it the @samp{-t} (for @emph{trace}) option.
+@strong{Important note}:
+If you are not using a debugging grade, but you compile
+some modules with @samp{--trace shallow} or @samp{--trace deep},
+then you must also pass the @samp{--trace} (or @samp{-t}) option
+to c2init and to the Mercury linker.
+If you're using Mmake, then you can do this by including @samp{--trace}
+in the @samp{C2INITFLAGS} and @samp{MLFLAGS} variables.
+
+If you're using Mmake, then you can also set the compilation options
+for a single module named @var{Module} by setting the Mmake variable
+@samp{MCFLAGS-@var{Module}}.  For example, to compile the file
+@file{foo.m} with deep tracing, @file{bar.m} with shallow tracing,
+and everything else with no tracing, you could use the following:
+
+@example
+C2INITFLAGS = --trace
+MLFLAGS     = --trace
+MCFLAGS-foo = --trace deep
+MCFLAGS-bar = --trace shallow
+@end example
 
 @node Selecting trace events
 @section Selecting trace events
@@ -1328,6 +1321,7 @@ The debugger will treat the former as the latter,
 even if the number and the command are not separated by white space.
 
 @menu
+* Interactive query commands::
 * Forward movement commands::
 * Backward movement commands::
 * Browsing commands::
@@ -1338,6 +1332,61 @@ even if the number and the command are not separated by white space.
 * Developer commands::
 * Miscellaneous commands::
 @end menu
+
+@node Interactive query commands
+@subsection Interactive query commands
+
+@table @code
+@item query @var{module1} @var{module2} @dots{}
+@itemx cc_query @var{module1} @var{module2} @dots{}
+@itemx io_query @var{module1} @var{module2} @dots{}
+
+@c This documentation has been duplicated in 
+@c Opium-M/source/interactive_queries.op so please tell me (jahier@irisa.fr)
+@c to update my documentation on interactive queries if you update this 
+@c subsection.
+
+These commands allow you to type in queries (goals) interactively
+in the debugger.  When you use one of these commands, the debugger
+will respond with a query prompt (@samp{?-} or @samp{run <--}),
+at which you can type in a goal; the debugger will the compile
+and execute the goal and display the answer(s).
+You can return from the query prompt to the @samp{mdb>} prompt
+by typing the end-of-file indicator (typically control-D or control-Z),
+or by typing @samp{quit.}.
+@sp 1
+The module names @var{module1}, @var{module2}, @dots{} specify
+which modules will be imported.  Note that you can also
+add new modules to the list of imports directly at the query prompt,
+by using a command of the form @samp{[@var{module}]}, e.g. @samp{[int]}.
+You need to import all the modules that define symbols used in your query.
+Queries can only use symbols that are exported from a module;
+entities which are declared in a module's implementation section
+only cannot be used.
+@sp 1
+The three variants differ in what kind of goals they allow. 
+For goals which perform I/O, you need to use @samp{io_query};
+this lets you type in the goal using DCG syntax.
+For goals which don't do I/O, but which have determinism
+@samp{cc_nondet} or @samp{cc_multi}, you need to use @samp{cc_query};
+this finds only one solution to the specified goal.
+For all other goals, you can use plain @samp{query}, which
+finds all the solutions to the goal.
+@sp 1
+For @samp{query} and @samp{cc_query}, the debugger will print
+out all the variables in the goal using @samp{io__write}.
+The goal must bind all of its variables to ground terms,
+otherwise you will get a mode error.
+@sp 1
+The current implementation works by compiling the queries on-the-fly
+and then dynamically linking them into the program being debugged.
+Thus it may take a little while for your query to be executed.
+Each query will be written to a file named @file{query.m} in the current
+directory, so make sure you don't name your source file @file{query.m}.
+Note that dynamic linking may not be supported on some systems;
+if you are using a system for which dynamic linking is not supported,
+you will get an error message when you try to run these commands.
+@end table
 
 @node Forward movement commands
 @subsection Forward movement commands
@@ -1674,6 +1723,13 @@ and when listing debuggable modules and/or procedures.
 @subsection Parameter commands
 @sp 1
 @table @code
+@item mmc_options @var{option1} @var{option2} @dots{}
+This command sets the options that will be passed to @samp{mmc}
+to compile your query when you use one of the query commands:
+@samp{query}, @samp{cc_query}, or @samp{io_query}.
+For example, if a query results in a compile error,
+it may sometimes be helpful to use @samp{mmc_options --verbose-errors}.
+@sp 1
 @item printlevel none
 Sets the default print level to @samp{none}.
 @sp 1
@@ -1796,6 +1852,9 @@ i.e. sets the counts for all depths to zero.
 @end table
 @node Developer commands
 @subsection Developer commands
+@sp 1
+The following commands are intended for use by the developers
+of the Mercury implementation.
 @sp 1
 @table @code
 @item nondet_stack
@@ -2196,7 +2255,8 @@ mmc [@var{options}] @var{arguments}
 
 Arguments can be either module names or file names.
 Arguments ending in @samp{.m} are assumed to be file names,
-while other arguments are assumed to be module names.
+while other arguments are assumed to be module names, with
+@samp{.} (rather than @samp{__} or @samp{:}) as module qualifier.
 If you specify a module name such as @samp{foo.bar.baz},
 the compiler will look for the source in files @file{foo.bar.baz.m},
 @file{bar.baz.m}, and @file{baz.m}, in that order.
@@ -2537,13 +2597,13 @@ by an experimental debugger.
 Output a bytecode form of the module for use
 by an experimental debugger.
 
-@item --generate-prolog
-Convert the program to Prolog.  Output to file @file{@var{module}.pl}
-or @file{@var{module}.nl} (depending the the dialect).
-
-@item --prolog-dialect @var{dialect}
-Target the named dialect if generating Prolog code.
-The @var{dialect} should be one of @samp{sicstus}, @samp{nu}.
+@c @item --generate-prolog
+@c Convert the program to Prolog.  Output to file @file{@var{module}.pl}
+@c or @file{@var{module}.nl} (depending the the dialect).
+@c
+@c @item --prolog-dialect @var{dialect}
+@c Target the named dialect if generating Prolog code.
+@c The @var{dialect} should be one of @samp{sicstus}, @samp{nu}.
 
 @item --auto-comments
 Output comments in the @file{@var{module}.c} file.
@@ -2554,11 +2614,11 @@ The code may be easier to understand if you also use the
 @samp{--no-llds-optimize} option.
 
 @sp 1
-@item -n
-@itemx --line-numbers
-Output source line numbers in the generated code.
-This option only works in conjunction with the
-@samp{--convert-to-goedel} and @samp{--convert-to-mercury} options.
+@item --no-line-numbers
+Do not put source line numbers in the generated code.
+The generated code may be in C (the usual case),
+in Goedel (with @samp{--convert-to-goedel})
+or in Mercury (with @samp{--convert-to-mercury}).
 
 @sp 1
 @item --show-dependency-graph
@@ -2750,10 +2810,12 @@ settings of these options will generally result in an error at
 link time, typically of the form @samp{undefined symbol MR_grade_@dots{}}
 or @samp{symbol MR_runtime_grade multiply defined}.)
 
-The options below must be passed to @samp{mgnuc} and @samp{ml} as well
-as to @samp{mmc}.  If you are using Mmake, then you should specify
+The options below must be passed to @samp{mgnuc}, @samp{c2init}
+and @samp{ml} as well as to @samp{mmc}. 
+If you are using Mmake, then you should specify
 these options in the @samp{GRADEFLAGS} variable rather than specifying
-them in @samp{MCFLAGS}, @samp{MGNUCFLAGS}, and @samp{MLFLAGS}.
+them in @samp{MCFLAGS}, @samp{MGNUCFLAGS}, @samp{C2INITFLAGS}
+and @samp{MLFLAGS}.
 
 @table @asis
 @item @code{-s @var{grade}}
@@ -2884,20 +2946,6 @@ other grades use @samp{--gc none}.
 @samp{accurate} is not yet implemented.
 
 @sp 1
-@item @code{--tags @{none, low, high@}}
-(This option is not intended for general use.)
-Specify whether to use the low bits or the high bits of
-each word as tag bits (default: low).
-
-@sp 1
-@item @code{--num-tag-bits @var{n}}
-(This option is not intended for general use.)
-Use @var{n} tag bits.  This option is required if you specify
-@samp{--tags high}.
-With @samp{--tags low}, the default number of tag bits to use
-is determined by the auto-configuration script.
-
-@sp 1
 @item @code{--profiling}, @code{--time-profiling} (grades: any grade containing @samp{.prof})
 Enable time profiling.  Insert profiling hooks in the
 generated code, and also output some profiling
@@ -2942,9 +2990,47 @@ Enables the inclusion in the executable of code and data structures
 that allow the program to be debugged with @samp{mdb} (see @ref{Debugging}).
 
 @sp 1
+@item @code{--pic-reg} (grades: any grade containing `.pic_reg')
+[For Unix with intel x86 architecture only.]
+Select a register usage convention that is compatible
+with position-independent code (gcc's `-fpic' option).
+This is necessary when using shared libraries on Intel x86 systems
+running Unix.  On other systems it has no effect.
+
+@end table
+
+@menu
+* Developer compilation model options::
+@end menu
+
+@node Developer compilation model options
+@subsection Developer compilation model options
+
+Of the options listed below, the @samp{--num-tag-bits} option
+may be useful for cross-compilation, but apart from that
+these options are all experimental and are intended for
+use by developers of the Mercury implementation rather than by
+ordinary Mercury programmers.
+
+@table @asis
+@sp 1
+@item @code{--tags @{none, low, high@}}
+(This option is not intended for general use.)@*
+Specify whether to use the low bits or the high bits of
+each word as tag bits (default: low).
+
+@sp 1
+@item @code{--num-tag-bits @var{n}}
+(This option is not intended for general use.)@*
+Use @var{n} tag bits.  This option is required if you specify
+@samp{--tags high}.
+With @samp{--tags low}, the default number of tag bits to use
+is determined by the auto-configuration script.
+
+@sp 1
 @item @code{--args @{simple, compact@}}
 @item @code{--arg-convention @{simple, compact@}}
-(This option is not intended for general use.)
+(This option is not intended for general use.)@*
 Use the specified argument passing convention
 in the generated low-level C code.
 With the @samp{simple} convention,
@@ -2957,28 +3043,13 @@ generally leads to more efficient code.
 
 @sp 1
 @item @code{--no-type-layout}
-(This option is not intended for general use.)
+(This option is not intended for general use.)@*
 Don't output base_type_layout structures or references to them.
 This option will generate smaller executables, but will not allow the
 use of code that uses the layout information (e.g. @samp{functor},
 @samp{arg}). Using such code will result in undefined behaviour at
 runtime.  The C code also needs to be compiled with
 @samp{-DNO_TYPE_LAYOUT}.
-
-@sp 1
-@item @code{--max-jump-table-size}
-The maximum number of entries a jump table can have. The special value 0
-indicates that there is no limit on the jump table size.
-This option can be useful to avoid exceeding fixed limits
-imposed by some C compilers.
-
-@sp 1
-@item @code{--pic-reg} (grades: any grade containing `.pic_reg')
-[For Unix with intel x86 architecture only.]
-Select a register usage convention that is compatible
-with position-independent code (gcc's `-fpic' option).
-This is necessary when using shared libraries on Intel x86 systems
-running Unix.  On other systems it has no effect.
 
 @end table
 
@@ -3014,6 +3085,15 @@ Don't reclaim heap on backtracking in nondet code.
 @sp 1
 @item --no-reclaim-heap-on-semidet-failure
 Don't reclaim heap on backtracking in semidet code.
+
+@sp 1
+@item --no-reclaim-heap-on-failure
+Combines the effect of the two options above.
+
+@sp 1
+@item @code{--call-trace-struct}
+(This option is not intended for general use.)
+Pass information to the tracing system in one struct.
 
 @sp 1
 @item --cc @var{compiler-name}
@@ -3052,29 +3132,47 @@ default: 90).  A lower value means that the compiler will use
 larger tables, but there will generally be less hash collisions,
 so it may result in faster lookups.
 
-@sp 1
+@end table
+
+@menu
+* Code generation target options::
+@end menu
+
+@node Code generation target options
+@subsection Code generation target options
+
+The following options allow the Mercury compiler to optimize the generated
+C code based on the characteristics of the expected target architecture.
+The default values of these options will be whatever is appropriate
+for the host architecture that the Mercury compiler was installed on,
+so normally there is no need to set these options manually.  They might
+come in handy if you are cross-compiling.  But even when cross-compiling,
+it's probably not worth bothering to set these unless efficiency is
+absolutely paramount.
+
+@table @asis
 @item @code{--have-delay-slot}
-(This option is not intended for general use.)
+(This option is not intended for general use.)@*
 Assume that branch instructions have a delay slot.
 
 @sp 1
 @item @code{--num-real-r-regs @var{n}}
-(This option is not intended for general use.)
+(This option is not intended for general use.)@*
 Assume r1 up to r@var{n} are real general purpose registers.
 
 @sp 1
 @item @code{--num-real-f-regs @var{n}}
-(This option is not intended for general use.)
+(This option is not intended for general use.)@*
 Assume f1 up to f@var{n} are real floating point registers.
 
 @sp 1
 @item @code{--num-real-r-temps @var{n}}
-(This option is not intended for general use.)
+(This option is not intended for general use.)@*
 Assume that @var{n} non-float temporaries will fit into real machine registers.
 
 @sp 1
 @item @code{--num-real-f-temps @var{n}}
-(This option is not intended for general use.)
+(This option is not intended for general use.)@*
 Assume that @var{n} float temporaries will fit into real machine registers.
 
 @end table
@@ -3254,6 +3352,13 @@ Specialize calls to polymorphic predicates where
 the polymorphic types are known.
 
 @sp 1
+@item --user-guided-type-specialization
+Enable specialization of polymorphic predicates for which
+there are `:- pragma type_spec' declarations.
+See the ``Type specialization'' section in the ``Pragmas''
+chapter of the Mercury Language Reference Manual for more details.
+
+@sp 1
 @item --higher-order-size-limit
 Set the maximum goal size of specialized versions created by
 @samp{--optimize-higher-order} and @samp{--type-specialization}.
@@ -3304,6 +3409,9 @@ low-level intermediate code from our high-level data structure.
 @item --no-static-ground-terms
 Disable the optimization of constructing constant ground terms
 at compile time and storing them as static constants.
+Note that auxiliarity data structures created by the compiler
+for purposes such as debugging
+will still be created as static constants.
 
 @sp 1
 @item --no-smart-indexing
@@ -3535,13 +3643,6 @@ rather than in the current directory.
 @itemx --help
 Print a usage message.
 
-@c @item -H @var{n}
-@c @itemx --heap-space @var{n}
-@c Pre-allocate @var{n} kilobytes of heap space.
-@c This option is now obsolete.  In the past it was used to avoid
-@c NU-Prolog's "Panic: growing stacks has required shifting the heap"
-@c message.
-
 @sp 1
 @item --filenames-from-stdin
 Read then compile a newline terminated module name or file name from the
@@ -3655,36 +3756,6 @@ They are used to create the initialization file @file{*_init.c}.
 @sp 1
 @item MERCURY_MOD_LIB_MODS
 The names of the .init files in the Mercury library.
-
-@sp 1
-@item MERCURY_NU_LIB_DIR
-Directory for the NU-Prolog object files (@file{*.no}) for the
-NU-Prolog Mercury library.
-
-@sp 1
-@item MERCURY_NU_LIB_OBJS
-List of the NU-Prolog object files (@file{*.no}) for the Mercury
-library.
-
-@sp 1
-@item MERCURY_NU_OVERRIDING_LIB_OBJS
-List of the NU-Prolog object files (@file{*.no}) for the Mercury
-library which override definitions given in @samp{MERCURY_NU_LIB_OBJS}.
-
-@sp 1
-@item MERCURY_SP_LIB_DIR
-Directory for the Sicstus-Prolog object files (@file{*.ql}) for the
-Sicstus-Prolog Mercury library.
-
-@sp 1
-@item MERCURY_SP_LIB_OBJS
-List of the Sicstus-Prolog object files (@file{*.ql}) for the Mercury
-library.
-
-@sp 1
-@item MERCURY_SP_OVERRIDING_LIB_OBJS
-List of the Sicstus-Prolog object files (@file{*.ql}) for the Mercury
-library which override definitions given in @samp{MERCURY_SP_LIB_OBJS}.
 
 @sp 1
 @item MERCURY_COMPILER
@@ -3884,397 +3955,6 @@ enforcing ANSI compliance, you may also need to compile the Mercury
 code with @samp{--no-static-ground-terms}.
 
 @end itemize
-
-@node Using Prolog
-@chapter Using Prolog
-
-Earlier versions of the Mercury implementation did not provide
-a Mercury debugger; instead, they provided a way to build Mercury
-programs using a Prolog system, so that you could use the Prolog
-debugger.  This chapter documents how to do that.
-Now that we have a native Mercury debugger, the ability to
-build Mercury programs using a Prolog system is probably not
-very useful anymore.  So for most purposes this chapter is
-really of historical interest only.  We encourage all but
-the most avid of readers to skip the rest of this chapter.
-
-The feasibility of this technique is dependent upon the program
-being written in the intersection of the Prolog and Mercury languages,
-which is possible because the two languages have almost the same syntax.
-The Mercury implementation allows you to run a Mercury program
-using NU-Prolog or SICStus Prolog.
-
-However, there is no point in using a Prolog debugger to track down a bug
-that can be detected statically by the Mercury compiler.
-The command
-
-@example
-mmc -e @var{filename1}.m ...
-@end example
-
-causes the Mercury compiler
-to perform all its syntactic and semantic checks on the named modules,
-but not to generate any code.
-
-In our experience, omitting that step is not wise.
-If you do omit it, you often waste a lot of time
-debugging problems that the compiler could have detected for you.
-
-@menu
-* Using NU-Prolog::      Building and debugging Mercury programs with NU-Prolog
-* Using SICStus::        Building and debugging with SICStus Prolog
-* Controlling printout:: Controlling display of large terms during debugging
-* Prolog hazards::       The hazards of executing Mercury programs using Prolog
-@end menu
-
-@node Using NU-Prolog
-@section Using NU-Prolog
-
-You can compile a Mercury source file using NU-Prolog via the command
-
-@example
-mnc @var{filename1}.m ...
-@end example
-
-@samp{mnc} is the Mercury variant of @samp{nc}, the NU-Prolog compiler.
-It adapts @code{nc} to compile Mercury programs,
-e.g. by defining do-nothing predicates for the various Mercury declarations
-(which are executed by @code{nc}).
-
-Some invocations of @samp{mnc} will result in warnings such as
-
-@example
-Warning: main is a system predicate.
-It shouldn't be used as a non-terminal.
-@end example
-
-Such warnings should be ignored.
-
-@samp{mnc} compiles the modules it is given into NU-Prolog bytecode,
-stored in files with a @file{.no} suffix.
-You can link these together using the command
-
-@example
-mnl -o @var{main-module} @var{filename1}.no ...
-@end example
-
-Ignore any warnings such as
-
-@example
-Warning: main/2 redefined
-Warning: solutions/2 redefined
-Warning: !/0 redefined
-@end example
-
-@samp{mnl}, the Mercury NU-Prolog linker,
-will put the executable (actually a shell script invoking a save file)
-into the file @file{@var{main-module}.nu}.
-This can be executed normally using
-
-@example
-./@var{main-module}.nu @var{arguments}
-@end example
-
-Alternatively, one can execute such programs using @samp{mnp},
-the Mercury version of np, the NU-Prolog interpreter.
-The command
-
-@example
-mnp
-@end example
-
-will start up the Mercury NU-Prolog interpreter.
-Inside the interpreter, you can load your source files
-with a normal consulting command such as
-
-@example
-['@var{filename}.m'].
-@end example
-
-You can also use the @samp{--debug} option to @samp{mnl} when linking.
-This will produce an executable whose entry point is the NU-Prolog interpreter,
-rather than main/2 in your program.
-
-In both cases, you can start executing your program by typing
-
-@example
-r("@var{program-name} @var{arguments}").
-@end example
-
-at the prompt of the NU-Prolog interpreter.
-
-All the NU-Prolog debugging commands work as usual.
-The most useful ones are
-the @code{trace} and @code{spy} commands at the main prompt
-to turn on complete or selective tracing respectively,
-and the @code{l} (leap), @code{s} (skip), and @code{r} (redo)
-commands of the tracer.
-For more information, see the NU-Prolog documentation.
-
-By default the debugger only displays the top levels of terms;
-you can use the @samp{|} command to enter an interactive term browser.
-(Within the term browser, type @samp{h.} for help.)
-See @ref{Controlling printout} for more information on controlling the
-printout of terms.
-
-Also note that in the debugger, we use a version of @code{error/1}
-which fails rather than aborting after printing the ``Software Error:''
-message.  This makes debugging easier,
-but will of course change the behaviour after an error occurs.
-
-@node Using SICStus
-@section Using SICStus Prolog
-
-Using SICStus Prolog is similar to using NU-Prolog,
-except that the commands to use are @samp{msc}, @samp{msl}, and
-@samp{msp} rather than @samp{mnc}, @samp{mnl}, and @samp{mnp}.
-
-Due to shortcomings in SICStus Prolog
-(in particular, the lack of backslash escapes in character strings),
-you need to use @samp{sicstus_conv} to convert Mercury @samp{.m} files
-to the @samp{.pl} files that SICStus Prolog expects
-before you can load them into the interpreter.
-The command to use is just
-
-@example
-sicstus_conv @var{filename}.m
-@end example
-
-By default, @samp{msc} compiles files to machine code using
-SICStus Prolog's @samp{fastcode} mode.  If space is more important
-than speed, you can use the @samp{--mode compactcode} option,
-which instructs @code{msc} to use SICStus Prolog's @samp{compactcode}
-mode, which compiles files to a bytecode format.
-
-@node Controlling printout
-@section Controlling printout of large terms
-
-You can control the printout of terms shown as the results of queries,
-and as shown by the debugger, to a great extent.  At the coarsest level,
-you can limit the depth to which terms are shown, and the number of
-arguments of terms (and the number of elements of lists) to be shown.
-Further, you can ``hide'' some of the arguments of a term, based upon the
-functor of that term.  And finally, you can write your own code to print
-out certain kinds of terms in a more convenient manner.
-
-@menu
-* Limiting size::  Limiting Print Depth and Length
-* Hiding terms::   Hiding terms and subterms based upon term functor
-* Customization::  Customizing printout by writing your own printout code
-@end menu
-
-@node Limiting size
-@subsection Limiting print depth and length
-
-You can limit the depth to which terms will be printed.  When a term to
-be printed appears at the depth limit, only its name and arity will be
-shown, enclosed in angle brackets, for example @samp{<foo/3>}.
-
-You can also control the number of arguments of terms, and the lengths
-of lists, to be shown.  When this length limit is reached, an ellipsis
-mark (@samp{...}) will be printed.
-
-The following predicates control the print depth and length limits.
-
-@example
-set_print_depth(@var{Depth})
-@end example
-Sets the print depth limit to @var{Depth}.  If @var{Depth} is less than 0, the
-print depth is unlimited.  The default print depth limit is 2.
-
-@example
-print_depth(@var{Depth})
-@end example
-Unifies @var{Depth} with the current print depth limit.
-
-@example
-set_print_length(@var{Length})
-@end example
-Sets the print length limit to @var{Length}.  If @var{Length} is less
-than 0, the print length is unlimited.
-
-@example
-print_length(@var{Length})
-@end example
-Unifies @var{Length} with the current print length limit.
-
-
-@node Hiding terms
-@subsection Hiding terms and subterms
-
-Sometimes you will have terms which appear frequently during debugging
-and which tend to fill up the screen with lots of uninteresting text,
-even with depth limits in force.  In such cases, you may want to hide
-terms based upon their functor, regardless of their print depth.  You
-may also occasionally want to hide just a few of the arguments of a
-term.  These predicates allow you to do that.
-
-Note that if the @emph{top level} functor of the term to be printed is
-hidden, its first level arguments will be shown anyway.  This is to
-avoid answer substitutions being wholly hidden, and to make it easier to
-use the subterm viewing facility of the SICStus Prolog debugger (using
-the @key{^} command) to view parts of a term.
-
-
-@example
-hide(@var{Spec})
-hide(@var{Spec, Args})
-@end example
-Allows you to elide certain arguments of certain terms, or whole terms,
-based on the functor.  @var{Spec} specifies a functor; it must be either
-a @var{Name}@code{/}@var{Arity} term, or just a functor name (in which
-case all arities are specified).  @var{Args} specifies which arguments
-of such terms should be hidden.  If given, @var{Args} must be a single
-integer or a list of integers specifying which arguments to hide.
-Hidden arguments will be printed as just a hash (@samp{#}) character.
-Alternatively, @var{Args} may be the atom @code{term}, in which case
-only the name and arity of the term are written within angle brackets,
-(e.g., @samp{<foo/3>}).  If Args is not specified, it defaults to
-@code{term}.
-
-Hidden arguments are cumulative.  That is, new arguments to be hidden are
-added to the set of arguments already hidden.  For example, if you hide
-argument 3 of all terms with functor name @samp{foo}, and then hide
-argument 1 of terms with functor @samp{foo/3}, then for @samp{foo/3}
-terms, arguments 1 and 3 will be hidden, while for all other terms with
-functor name @samp{foo}, only argument 3 will be hidden.
-
-@example
-show
-Show(@var{Spec})
-show(@var{Spec, Args})
-@end example
-Undoes the effect of hiding some arguments of terms or whole terms.
-@var{Spec} specifies a functor; it must be either a
-@var{Name}@code{/}@var{Arity} term, or just a functor name (in which
-case all arities are specified).  @var{Args} specifies which arguments
-to stop hiding; it must be a list of argument numbers or a single
-argument number.  Alternatively, it may be the atom @code{term},
-indicating that no arguments should be hidden (the whole term should be
-shown).  @var{Args} defaults to @code{term}.  The predicate
-@code{show/0} reenables showing all arguments of all terms.
-
-Note that these predicates will not affect the depth limit of printing.
-Even if you ask to show a term in full, if it appears at the depth limit of
-the term being printed, its arguments will not be shown.  If it appears
-below the depth limit, you won't see it at all.
-
-You may use the @code{hide/1,2} and @code{show/2} predicates in concert
-to hide most of the arguments of a term by first hiding all arguments,
-and then explicitly showing the few of interest.
-
-@example
-hidden(@var{Spec, Args})
-@end example
-@var{Spec} is a @var{Name}@code{/}@var{Arity} term, and @var{Args} is a
-list of the argument numbers of terms with that @var{Name} and
-@var{Arity} which are hidden, or the atom @code{term} if the entire term
-is hidden.  @var{Arity} may be the atom @code{all}, indicating that the
-specified arguments are hidden for all terms with that @var{Name} and
-any arity.  This predicate may be used to backtrack through all the
-predicates which are hidden or have any arguments hidden.
-
-
-@node Customization
-@subsection Customization of printout
-
-Occasionally you will have a term that is important to understand during
-debugging but is shown in an inconvenient manner or may be difficult to
-understand as printed.  Traditionally in Prolog, you can define clauses
-for the predicate @code{portray/1} to specify special code to print such
-a term.  Unfortunately, this won't work very well with the other
-features of Mercury's printout system.  For this you will need to define
-clauses for the predicate @code{portray_term/3}:
-
-@example
-portray_term(@var{Term, DepthLimit, Precedence})
-@end example
-Like the standard Prolog @code{portray/1} hook predicate, this code
-should either fail without printing anything, or succeed after printing
-out Term as the user would like to see it printed.  @var{DepthLimit}, if
-greater than or equal to -1, is the number of levels of the subterms of
-@var{Term} that should be printed without being elided.  If it is -1,
-then @var{Term} should probably not be printed; only a marker indicating
-what sort of term it is.  The standard @code{print_term/3} code will
-print the name and arity of the functor enclosed in angle brackets
-(e.g., <foo/3>) if @code{portray_term/3} fails at this depth level.  Be
-careful, though: if @var{DepthLimit} is less than -1, then there should
-be no depth limit.  @var{Precedence} is the precedence of the context in
-which the term will be printed; if you wish to write a term with
-operators, then you should parenthesize the printout if @var{Precedence}
-is smaller than the precedence of that operator.
-
-In printing subterms, you should call @code{print_term/3}, described
-below.  Note that the @var{DepthLimit} argument passed to portray_term/3 is
-the depth limit for the @emph{subterms} of @var{Term}, so you should
-usually pass this value to @code{print_term/3} for printing subterms
-without decrementing it.  Note also that @var{Term} will always be bound
-when @code{portray_term/3} is called, so you needn't worry about
-checking for unbound variables.
-
-Mercury already supplies special-purpose printout code to print out
-lists of character codes as double-quoted strings, and to print out maps
-as @var{Key}@code{->}@var{Value} pairs, surrounded by @samp{MAP@{@}}.
-This code appears in the file @file{portray.nl} in the Mercury library,
-and may serve as a useful example of how to write customized printing
-code.
-
-@example
-print_term(@var{Term, DepthLimit, Precedence})
-@end example
-Print out @var{Term} to the current output stream, limiting print depth
-to @var{DepthLimit}, and parenthesizing the term if its principle
-functor is an operator with precedence greater than @var{Precedence}.
-@code{print_term/3} also respects the current set of hidden functors,
-and uses the user-supplied @code{portray_term/3} hook predicate when it
-succeeds.
-
-
-
-
-@node Prolog hazards
-@section Hazards of using Prolog
-
-There are some Mercury programs which are not valid Prolog programs.
-Programs which make use of the more advanced features of Mercury will
-not work with NU-Prolog or SICStus Prolog.
-In particular, Mercury programs that use functions will generally not
-be valid Prolog programs (with the exception that the basic arithmetic
-functions such as @samp{+}, @samp{-}, etc., will work fine if you use
-Prolog's @samp{is} predicate).
-Also the use of features such as type classes, lambda expressions,
-non-trivial use of the module system, etc. will cause problems.
-
-Also, Mercury will always reorder goals
-to ensure that they are mode-correct
-(or report a mode error if it cannot do so),
-but Prolog systems will not always do so,
-and will sometimes just silently give the wrong result.
-For example, in Mercury the following predicate will usually succeed,
-whereas in Prolog it will always fail.
-
-@example
-:- pred p(list(int)::in, list(int)::out) is semidet.
-p(L0, L) :-
-        L \= [],
-        q(L0, L).
-
-:- pred q(list(int)::in, list(int)::out) is det.
-@end example
-
-The reason is that in Mercury,
-the test @samp{L \= []} is reordered to after the call to @code{q/2},
-but in Prolog, it executes even though @code{L} is not bound,
-and consequently the test always fails.
-
-NU-Prolog has logical alternatives
-to the non-logical Prolog operations,
-and since Mercury supports both syntaxes,
-you can use NU-Prolog's logical alternatives to avoid this problem.
-However, during the development of the Mercury compiler
-we had to abandon their use for efficiency reasons.
-
-Another hazard is that NU-Prolog does not have a garbage collector.
 
 @contents
 @bye

@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1998 The University of Melbourne.
+# Copyright (C) 1998-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -14,11 +14,21 @@
 #---------------------------------------------------------------------------#
 
 #
-# .debug grade implies --use-trail
+# .tr grade is not compatible with .mm
+#	(see comment in runtime/mercury_tabling.c for rationale)
+#
+case $use_trail,$use_minimal_model in
+	true,true)
+		echo "trailing and minimal model tabling are not compatible" 1>&2
+		exit 1 ;;
+esac
+
+#
+# .debug grade implies --use-trail in the absence of .mm
 #	(see comment in compiler/handle_options.m for rationale)
 #
-case $stack_trace,$require_tracing in
-	true,true)
+case $stack_trace,$require_tracing,$use_minimal_model in
+	true,true,false)
 		use_trail=true ;;
 esac
 

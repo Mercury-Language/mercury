@@ -5,7 +5,7 @@
 %---------------------------------------------------------------------------%
 %
 % This module generates the LLDS code that defines global variables
-% to hold the base_type_info structures of the types defined by the
+% to hold the type_ctor_info structures of the types defined by the
 % current module.
 %
 % These global variables are needed only with when we are using the
@@ -15,7 +15,7 @@
 % compilation time and executable size.)
 %
 % See polymorphism.m for a description of the various ways to represent
-% type information, including a description of the base_type_info structures.
+% type information, including a description of the type_ctor_info structures.
 %
 % Author: zs.
 %
@@ -97,7 +97,8 @@ base_type_info__gen_base_gen_infos([TypeId | TypeIds], TypeTable, ModuleName,
 				Elim = yes(NumSpecials)
 			),
 			Info = base_gen_info(TypeId, ModuleName,
-				TypeName, TypeArity, Status, Elim, Procs),
+				TypeName, TypeArity, Status, Elim, Procs,
+				TypeDefn),
 			BaseGenInfos = [Info | BaseGenInfos1]
 		;
 			BaseGenInfos = BaseGenInfos1,
@@ -106,7 +107,7 @@ base_type_info__gen_base_gen_infos([TypeId | TypeIds], TypeTable, ModuleName,
 	;
 		SymName = unqualified(TypeName),
 		string__append_list(["unqualified type ", TypeName,
-			"found in base_type_info"], Msg),
+			"found in type_ctor_info"], Msg),
 		error(Msg)
 	).
 
@@ -126,27 +127,27 @@ base_type_info__gen_proc_list([Special | Specials], SpecMap, TypeId,
 
 base_type_info__generate_llds(ModuleInfo, CModules) :-
 	module_info_base_gen_infos(ModuleInfo, BaseGenInfos),
-	base_type_info__construct_base_type_infos(BaseGenInfos, ModuleInfo,
+	base_type_info__construct_type_ctor_infos(BaseGenInfos, ModuleInfo,
 		CModules1),
 	base_typeclass_info__generate_llds(ModuleInfo, CModules2),
 		% XXX make this use an accumulator
 	list__append(CModules1, CModules2, CModules).
 
-:- pred base_type_info__construct_base_type_infos(list(base_gen_info),
+:- pred base_type_info__construct_type_ctor_infos(list(base_gen_info),
 	module_info, list(comp_gen_c_data)).
-:- mode base_type_info__construct_base_type_infos(in, in, out) is det.
+:- mode base_type_info__construct_type_ctor_infos(in, in, out) is det.
 
-base_type_info__construct_base_type_infos([], _, []).
-base_type_info__construct_base_type_infos([BaseGenInfo | BaseGenInfos],
+base_type_info__construct_type_ctor_infos([], _, []).
+base_type_info__construct_type_ctor_infos([BaseGenInfo | BaseGenInfos],
 		ModuleInfo, [CModule | CModules]) :-
 	BaseGenInfo = base_gen_info(_TypeId, ModuleName, TypeName, TypeArity,
-		_Status, Elim, Procs),
+		_Status, Elim, Procs, HldsDefn),
 	base_type_info__construct_pred_addrs(Procs, Elim, ModuleInfo, 
 		PredAddrArgs),
 	ArityArg = yes(const(int_const(TypeArity))),
 
 /******
-It would be more efficient if we could make base_type_infos local,
+It would be more efficient if we could make type_ctor_infos local,
 but linkage/2 in llds_out.m requires that we make them all exported
 if any of them are exported, so that we can compute the linkage
 from the data_name, for use in forward declarations.
@@ -163,18 +164,20 @@ from the data_name, for use in forward declarations.
 			TypeArity, LayoutArg),
 		base_type_info__construct_functors(ModuleInfo, TypeName,
 			TypeArity, FunctorsArg),
+		base_type_info__construct_type_ctor_representation(HldsDefn,
+			Globals, TypeCtorArg),
 		prog_out__sym_name_to_string(ModuleName, ModuleNameString),
 		NameArg = yes(const(string_const(TypeName))),
 		ModuleArg = yes(const(string_const(ModuleNameString))),
-		list__append(PredAddrArgs, [LayoutArg, FunctorsArg, ModuleArg,
-			NameArg], FinalArgs)
+		list__append(PredAddrArgs, [TypeCtorArg, FunctorsArg, LayoutArg,
+			ModuleArg, NameArg], FinalArgs)
 	;
 		FinalArgs = PredAddrArgs
 	),
-	DataName = base_type(info, TypeName, TypeArity),
+	DataName = type_ctor(info, TypeName, TypeArity),
 	CModule = comp_gen_c_data(ModuleName, DataName, Exported,
-		[ArityArg | FinalArgs], Procs),
-	base_type_info__construct_base_type_infos(BaseGenInfos, ModuleInfo,
+		[ArityArg | FinalArgs], uniform(no), Procs),
+	base_type_info__construct_type_ctor_infos(BaseGenInfos, ModuleInfo,
 		CModules).
 
 :- pred	base_type_info__construct_layout(module_info, string, int, maybe(rval)).
@@ -182,7 +185,7 @@ from the data_name, for use in forward declarations.
 base_type_info__construct_layout(ModuleInfo, TypeName, TypeArity, Rval) :-
 	module_info_name(ModuleInfo, ModuleName),
 	Rval = yes(const(data_addr_const(data_addr(ModuleName, 
-		base_type(layout, TypeName, TypeArity))))).
+		type_ctor(layout, TypeName, TypeArity))))).
 
 :- pred base_type_info__construct_functors(module_info, string, int, 
 	maybe(rval)).
@@ -190,7 +193,7 @@ base_type_info__construct_layout(ModuleInfo, TypeName, TypeArity, Rval) :-
 base_type_info__construct_functors(ModuleInfo, TypeName, TypeArity, Rval) :-
 	module_info_name(ModuleInfo, ModuleName),
 	Rval = yes(const(data_addr_const(data_addr(ModuleName, 
-		base_type(functors, TypeName, TypeArity))))).
+		type_ctor(functors, TypeName, TypeArity))))).
 
 :- pred base_type_info__construct_pred_addrs(list(pred_proc_id), maybe(int), 
 	module_info, list(maybe(rval))).
@@ -237,3 +240,80 @@ base_type_info__construct_pred_addrs2([proc(PredId, ProcId) | Procs],
 	code_util__make_entry_label(ModuleInfo, PredId, ProcId, no, PredAddr),
 	PredAddrArg = yes(const(code_addr_const(PredAddr))),
 	base_type_info__construct_pred_addrs2(Procs, ModuleInfo, PredAddrArgs).
+
+
+:- type type_ctor_representation 
+	--->	enum
+	;	du
+	;	notag
+	;	equiv
+	;	int
+	;	char
+	;	float
+	;	string
+	;	(pred)
+	;	univ
+	;	void
+	;	c_pointer
+	;	typeinfo
+	;	typeclassinfo
+	;	array
+	;	unknown.
+
+:- pred base_type_info__type_ctor_rep_to_int(type_ctor_representation::in,
+	int::out) is det.
+base_type_info__type_ctor_rep_to_int(enum, 0).
+base_type_info__type_ctor_rep_to_int(du, 1).
+base_type_info__type_ctor_rep_to_int(notag, 2).
+base_type_info__type_ctor_rep_to_int(equiv, 3).
+base_type_info__type_ctor_rep_to_int(int, 4).
+base_type_info__type_ctor_rep_to_int(char, 5).
+base_type_info__type_ctor_rep_to_int(float, 6).
+base_type_info__type_ctor_rep_to_int(string, 7).
+base_type_info__type_ctor_rep_to_int(pred, 8).
+base_type_info__type_ctor_rep_to_int(univ, 9).
+base_type_info__type_ctor_rep_to_int(void, 10).
+base_type_info__type_ctor_rep_to_int(c_pointer, 11).
+base_type_info__type_ctor_rep_to_int(typeinfo, 12).
+base_type_info__type_ctor_rep_to_int(typeclassinfo, 13).
+base_type_info__type_ctor_rep_to_int(array, 14).
+base_type_info__type_ctor_rep_to_int(unknown, 15).
+
+
+:- pred base_type_info__construct_type_ctor_representation(hlds_type_defn,
+		globals, maybe(rval)).
+:- mode base_type_info__construct_type_ctor_representation(in, in, out) is det.
+
+base_type_info__construct_type_ctor_representation(HldsType, Globals, Rvals) :-
+	hlds_data__get_type_defn_body(HldsType, TypeBody),
+	(
+		TypeBody = uu_type(_Alts),
+		error("base_type_info__construct_type_ctor_representation: sorry, undiscriminated union unimplemented\n")
+	;
+		TypeBody = eqv_type(_Type),
+		TypeCtorRep = equiv
+	;
+		TypeBody = abstract_type,
+		TypeCtorRep = unknown
+	;
+		TypeBody = du_type(Ctors, _ConsTagMap, Enum, _EqualityPred),
+		(
+			Enum = yes,
+			TypeCtorRep = enum
+		;
+			Enum = no,
+			( 
+				type_is_no_tag_type(Ctors, Globals, _Name,
+						_TypeArg)
+			->
+				TypeCtorRep = notag
+			;
+				TypeCtorRep = du
+			)
+		)
+	),
+	base_type_info__type_ctor_rep_to_int(TypeCtorRep, TypeCtorRepInt),
+	Rvals = yes(const(int_const(TypeCtorRepInt))).
+
+
+

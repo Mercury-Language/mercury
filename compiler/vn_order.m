@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -635,7 +635,7 @@ vn_order__find_links(Vn, Sink, VnTables0, VnTables,
 			Predmap = Predmap0,
 			VnTables = VnTables0
 		;
-			Vnrval = vn_create(_, _, _, _, _),
+			Vnrval = vn_create(_, _, _, _, _, _),
 			Succmap = Succmap0,
 			Predmap = Predmap0,
 			VnTables = VnTables0

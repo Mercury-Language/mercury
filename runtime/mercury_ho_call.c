@@ -3,7 +3,7 @@ INIT mercury_sys_init_call
 ENDINIT
 */
 /*
-** Copyright (C) 1995-1998 The University of Melbourne.
+** Copyright (C) 1995-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -32,6 +32,7 @@ ENDINIT
 */
 
 #include "mercury_imp.h"
+#include "mercury_ho_call.h"
 
 	/* 
 	** Number of input arguments to do_call_*_closure, 
@@ -50,13 +51,29 @@ ENDINIT
 	*/
 #define MR_CLASS_METHOD_CALL_INPUTS	4
 
+/*
+** The following entries are obsolete, and are kept for bootstrapping only.
+*/
+
 Define_extern_entry(do_call_det_closure);
 Define_extern_entry(do_call_semidet_closure);
 Define_extern_entry(do_call_nondet_closure);
+Define_extern_entry(do_call_old_closure);
 
 Define_extern_entry(do_call_det_class_method);
 Define_extern_entry(do_call_semidet_class_method);
 Define_extern_entry(do_call_nondet_class_method);
+
+/*
+** These are the real implementations of higher order calls and method calls.
+*/
+
+Define_extern_entry(mercury__do_call_closure);
+Define_extern_entry(mercury__do_call_class_method);
+
+/*
+** These are the real implementations of unify, index and compare.
+*/
 
 Define_extern_entry(mercury__unify_2_0);
 Define_extern_entry(mercury__index_2_0);
@@ -101,11 +118,11 @@ MR_MAKE_STACK_LAYOUT_ENTRY(mercury__solve_equal_2_0)
   */
   MR_MAKE_PROC_LAYOUT(mercury__index_2_0,
 	MR_DETISM_DET, 2, MR_LIVE_LVAL_STACKVAR(2),
-	MR_PREDICATE, ""builtin"", ""index"", 2, 0);
+	MR_PREDICATE, "builtin", "index", 2, 0);
   MR_MAKE_INTERNAL_LAYOUT(mercury__index_2_0, 1);
   MR_MAKE_PROC_LAYOUT(mercury__compare_3_0,
 	MR_DETISM_DET, 2, MR_LIVE_LVAL_STACKVAR(2),
-	MR_PREDICATE, ""builtin"", ""compare"", 3, 0);
+	MR_PREDICATE, "builtin", "compare", 3, 0);
   MR_MAKE_INTERNAL_LAYOUT(mercury__compare_3_0, 1);
 #endif
 
@@ -113,10 +130,15 @@ BEGIN_MODULE(call_module)
 	init_entry_ai(do_call_det_closure);
 	init_entry_ai(do_call_semidet_closure);
 	init_entry_ai(do_call_nondet_closure);
+	init_entry_ai(do_call_old_closure);
+
+	init_entry_ai(mercury__do_call_closure);
 
 	init_entry_ai(do_call_det_class_method);
 	init_entry_ai(do_call_semidet_class_method);
 	init_entry_ai(do_call_nondet_class_method);
+
+	init_entry_ai(mercury__do_call_class_method);
 
 	init_entry_ai(mercury__unify_2_0);
 #ifdef	COMPACT_ARGS
@@ -135,6 +157,16 @@ BEGIN_MODULE(call_module)
 BEGIN_CODE
 
 Define_entry(do_call_det_closure);
+	tailcall(ENTRY(mercury__do_call_closure),
+		LABEL(do_call_det_closure));
+Define_entry(do_call_semidet_closure);
+	tailcall(ENTRY(mercury__do_call_closure),
+		LABEL(do_call_semidet_closure));
+Define_entry(do_call_nondet_closure);
+	tailcall(ENTRY(mercury__do_call_closure),
+		LABEL(do_call_nondet_closure));
+
+Define_entry(do_call_old_closure);
 {
 	Word	closure;
 	int	i, num_in_args, num_extra_args;
@@ -166,70 +198,60 @@ Define_entry(do_call_det_closure);
 	tailcall((Code *) field(0, closure, 1), LABEL(do_call_det_closure));
 }
 
-Define_entry(do_call_semidet_closure);
+Define_entry(mercury__do_call_closure);
 {
-	Word	closure;
-	int	i, num_in_args, num_extra_args;
+	MR_Closure	*closure;
+	int		num_extra_args;	/* # of args provided by our caller */
+	int		num_hidden_args;/* # of args hidden in the closure  */
+	int		i;
 
-	closure = r1; /* The closure */
-	num_in_args = field(0, closure, 0); /* number of input args */
-	num_extra_args = r2; /* the number of immediate input args */
+	closure = (MR_Closure *) r1;
 
-	save_registers();
-
-	if (num_in_args < MR_HO_CALL_INPUTS) {
-		for (i = 1; i <= num_extra_args; i++) {
-			virtual_reg(i + num_in_args) =
-				virtual_reg(i + MR_HO_CALL_INPUTS);
-		}
-	} else if (num_in_args > MR_HO_CALL_INPUTS) {
-		for (i = num_extra_args; i>0; i--) {
-			virtual_reg(i + num_in_args) =
-				virtual_reg(i + MR_HO_CALL_INPUTS);
-		}
-	} /* else do nothing because i == MR_HO_CALL_INPUTS */
-
-	for (i = 1; i <= num_in_args; i++) {
-		virtual_reg(i) = field(0, closure, i + 1); /* copy args */
+	/* This check is for bootstrapping only. */
+	if (((Word) closure->MR_closure_layout) < 1024) {
+		/* we found an old-style closure, call the old handler */
+		tailcall(ENTRY(do_call_old_closure),
+			LABEL(mercury__do_call_closure));
 	}
 
-	restore_registers();
-
-	tailcall((Code *) field(0, closure, 1), 
-		LABEL(do_call_semidet_closure));
-}
-
-Define_entry(do_call_nondet_closure);
-{
-	Word	closure;
-	int	i, num_in_args, num_extra_args;
-
-	closure = r1; /* The closure */
-	num_in_args = field(0, closure, 0); /* number of input args */
-	num_extra_args = r2; /* number of immediate input args */
+	num_extra_args = r2;
+	num_hidden_args = closure->MR_closure_num_hidden_args;
 
 	save_registers();
 
-	if (num_in_args < MR_HO_CALL_INPUTS) {
+	if (num_hidden_args < MR_HO_CALL_INPUTS) {
+		/* copy to the left, from the left */
 		for (i = 1; i <= num_extra_args; i++) {
-			virtual_reg(i + num_in_args) =
+			virtual_reg(i + num_hidden_args) =
 				virtual_reg(i + MR_HO_CALL_INPUTS);
 		}
-	} else if (num_in_args > MR_HO_CALL_INPUTS) {
+	} else if (num_hidden_args > MR_HO_CALL_INPUTS) {
+		/* copy to the right, from the right */
 		for (i = num_extra_args; i > 0; i--) {
-			virtual_reg(i + num_in_args) =
+			virtual_reg(i + num_hidden_args) =
 				virtual_reg(i + MR_HO_CALL_INPUTS);
 		}
-	} /* else do nothing because i == MR_HO_CALL_INPUTS */
+	} /* else the new args are in the right place */
 
-	for (i = 1; i <= num_in_args; i++) {
-		virtual_reg(i) = field(0, closure, i + 1); /* copy args */
+	for (i = 1; i <= num_hidden_args; i++) {
+		virtual_reg(i) = closure->MR_closure_hidden_args(i);
 	}
 
 	restore_registers();
 
-	tailcall((Code *) field(0, closure, 1), LABEL(do_call_nondet_closure));
+	tailcall(closure->MR_closure_code,
+		LABEL(mercury__do_call_closure));
 }
+
+Define_entry(do_call_det_class_method);
+	tailcall(ENTRY(mercury__do_call_class_method),
+		LABEL(do_call_det_class_method));
+Define_entry(do_call_semidet_class_method);
+	tailcall(ENTRY(mercury__do_call_class_method),
+		LABEL(do_call_semidet_class_method));
+Define_entry(do_call_nondet_class_method);
+	tailcall(ENTRY(mercury__do_call_class_method),
+		LABEL(do_call_nondet_class_method));
 
 	/*
 	** r1: the typeclass_info
@@ -238,10 +260,13 @@ Define_entry(do_call_nondet_closure);
 	** r4: number of output arguments
 	** r5+:input args
 	*/
-Define_entry(do_call_det_class_method);
+
+Define_entry(mercury__do_call_class_method);
 {
 	Code 	*destination;
-	int	i, num_in_args, num_arg_typeclass_infos;
+	int	num_in_args;
+	int	num_arg_typeclass_infos;
+	int	i;
 
 	destination = MR_typeclass_info_class_method(r1, r2);
 	num_arg_typeclass_infos = (int) MR_typeclass_info_instance_arity(r1);
@@ -251,21 +276,18 @@ Define_entry(do_call_det_class_method);
 	save_registers();
 
 	if (num_arg_typeclass_infos < MR_CLASS_METHOD_CALL_INPUTS) {
-			/* copy to the left, from the left */
+		/* copy to the left, from the left */
 		for (i = 1; i <= num_in_args; i++) {
 			virtual_reg(i + num_arg_typeclass_infos) =
 				virtual_reg(i + MR_CLASS_METHOD_CALL_INPUTS);
 		}
 	} else if (num_arg_typeclass_infos > MR_CLASS_METHOD_CALL_INPUTS) {
-			/* copy to the right, from the right */
+		/* copy to the right, from the right */
 		for (i = num_in_args; i > 0; i--) {
 			virtual_reg(i + num_arg_typeclass_infos) =
 				virtual_reg(i + MR_CLASS_METHOD_CALL_INPUTS);
 		}
-	} /*
-	  ** else do nothing because 
-	  ** num_arg_typeclass_infos == MR_CLASS_METHOD_CALL_INPUTS
-	  */
+	} /* else the new args are in the right place */
 
 	for (i = num_arg_typeclass_infos; i > 0; i--) {
 		virtual_reg(i) = 
@@ -274,85 +296,7 @@ Define_entry(do_call_det_class_method);
 
 	restore_registers();
 
-	tailcall(destination, LABEL(do_call_det_class_method));
-}
-
-Define_entry(do_call_semidet_class_method);
-{
-	Code 	*destination;
-	int	i, num_in_args, num_arg_typeclass_infos;
-
-	destination = MR_typeclass_info_class_method(r1, r2);
-	num_arg_typeclass_infos = (int) MR_typeclass_info_instance_arity(r1);
-
-	num_in_args = r3; /* number of input args */
-
-	save_registers();
-
-	if (num_arg_typeclass_infos < MR_CLASS_METHOD_CALL_INPUTS) {
-			/* copy to the left, from the left */
-		for (i = 1; i <= num_in_args; i++) {
-			virtual_reg(i + num_arg_typeclass_infos) =
-				virtual_reg(i + MR_CLASS_METHOD_CALL_INPUTS);
-		}
-	} else if (num_arg_typeclass_infos > MR_CLASS_METHOD_CALL_INPUTS) {
-			/* copy to the right, from the right */
-		for (i = num_in_args; i > 0; i--) {
-			virtual_reg(i + num_arg_typeclass_infos) =
-				virtual_reg(i + MR_CLASS_METHOD_CALL_INPUTS);
-		}
-	} /*
-	  ** else do nothing because
-	  ** num_arg_typeclass_infos == MR_CLASS_METHOD_CALL_INPUTS
-	  */
-
-	for (i = num_arg_typeclass_infos; i > 0; i--) {
-		virtual_reg(i) = 
-			MR_typeclass_info_arg_typeclass_info(virtual_reg(1),i);
-	}
-
-	restore_registers();
-
-	tailcall(destination, LABEL(do_call_semidet_class_method));
-}
-
-Define_entry(do_call_nondet_class_method);
-{
-	Code 	*destination;
-	int	i, num_in_args, num_arg_typeclass_infos;
-
-	destination = MR_typeclass_info_class_method(r1, r2);
-	num_arg_typeclass_infos = (int) MR_typeclass_info_instance_arity(r1);
-
-	num_in_args = r3; /* number of input args */
-
-	save_registers();
-
-	if (num_arg_typeclass_infos < MR_CLASS_METHOD_CALL_INPUTS) {
-			/* copy to the left, from the left */
-		for (i = 1; i <= num_in_args; i++) {
-			virtual_reg(i + num_arg_typeclass_infos) =
-				virtual_reg(i + MR_CLASS_METHOD_CALL_INPUTS);
-		}
-	} else if (num_arg_typeclass_infos > MR_CLASS_METHOD_CALL_INPUTS) {
-			/* copy to the right, from the right */
-		for (i = num_in_args; i > 0; i--) {
-			virtual_reg(i + num_arg_typeclass_infos) =
-				virtual_reg(i + MR_CLASS_METHOD_CALL_INPUTS);
-		}
-	} /* 
-	  ** else do nothing because
-	  ** num_arg_typeclass_infos == MR_CLASS_METHOD_CALL_INPUTS
-	  */
-
-	for (i = num_arg_typeclass_infos; i > 0; i--) {
-		virtual_reg(i) = 
-			MR_typeclass_info_arg_typeclass_info(virtual_reg(1),i);
-	}
-
-	restore_registers();
-
-	tailcall(destination, LABEL(do_call_nondet_class_method));
+	tailcall(destination, LABEL(mercury__do_call_class_method));
 }
 
 /*
@@ -381,20 +325,21 @@ Define_entry(mercury__unify_2_0);
 	Word	x, y;
 	int	i;
 
-	Word	base_type_info;
+	Word	type_ctor_info;
 
 	x = mercury__unify__x;
 	y = mercury__unify__y;
 
-	base_type_info = field(0, mercury__unify__typeinfo, 0);
-	if (base_type_info == 0) {
+	type_ctor_info = field(0, mercury__unify__typeinfo, 0);
+	if (type_ctor_info == 0) {
 		type_arity = 0;
 		unify_pred = (Code *) field(0, mercury__unify__typeinfo,
 				OFFSET_FOR_UNIFY_PRED);
 		/* args_base will not be needed */
+		args_base = 0; /* just to supress a gcc warning */
 	} else {
-		type_arity = field(0, base_type_info, OFFSET_FOR_COUNT);
-		unify_pred = (Code *) field(0, base_type_info,
+		type_arity = field(0, type_ctor_info, OFFSET_FOR_COUNT);
+		unify_pred = (Code *) field(0, type_ctor_info,
 				OFFSET_FOR_UNIFY_PRED);
 		args_base = mercury__unify__typeinfo;
 	}
@@ -442,17 +387,18 @@ Define_entry(mercury__index_2_0);
 	Word	x;
 	int	i;
 
-	Word	base_type_info;
+	Word	type_ctor_info;
 
 	x = r2;
-	base_type_info = field(0, r1, 0);
-	if (base_type_info == 0) {
+	type_ctor_info = field(0, r1, 0);
+	if (type_ctor_info == 0) {
 		type_arity = 0;
 		index_pred = (Code *) field(0, r1, OFFSET_FOR_INDEX_PRED);
 		/* args_base will not be needed */
+		args_base = 0; /* just to supress a gcc warning */
 	} else {
-		type_arity = field(0, base_type_info, OFFSET_FOR_COUNT);
-		index_pred = (Code *) field(0, base_type_info,
+		type_arity = field(0, type_ctor_info, OFFSET_FOR_COUNT);
+		index_pred = (Code *) field(0, type_ctor_info,
 				OFFSET_FOR_INDEX_PRED);
 		args_base = r1;
 	}
@@ -538,20 +484,21 @@ Define_entry(mercury__compare_3_3);
 	Word	x, y;
 	int	i;
 
-	Word	base_type_info;
+	Word	type_ctor_info;
 
 	x = mercury__compare__x;
 	y = mercury__compare__y;
 
-	base_type_info = field(0, mercury__compare__typeinfo, 0);
-	if (base_type_info == 0) {
+	type_ctor_info = field(0, mercury__compare__typeinfo, 0);
+	if (type_ctor_info == 0) {
 		type_arity = 0;
 		compare_pred = (Code *) field(0, mercury__compare__typeinfo,
 				OFFSET_FOR_COMPARE_PRED);
 		/* args_base will not be needed */
+		args_base = 0; /* just to supress a gcc warning */
 	} else {
-		type_arity = field(0, base_type_info, OFFSET_FOR_COUNT);
-		compare_pred = (Code *) field(0, base_type_info,
+		type_arity = field(0, type_ctor_info, OFFSET_FOR_COUNT);
+		compare_pred = (Code *) field(0, type_ctor_info,
 				OFFSET_FOR_COMPARE_PRED);
 		args_base = mercury__compare__typeinfo;
 	}

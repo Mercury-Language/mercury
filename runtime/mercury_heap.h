@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1998 The University of Melbourne.
+** Copyright (C) 1995-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -230,22 +230,22 @@
 ** Indended for use in handwritten C code where the Mercury registers
 ** may have been clobbered due to C function calls (eg, on the SPARC due
 ** to sliding register windows).
-** Remember to save_transient_registers() before calls to such code, and
-** restore_transient_registers() after.
+** Remember to save_transient_hp() before calls to such code, and
+** restore_transient_hp() after.
 */
 
 #define incr_saved_hp(A, B)					\
 	do { 							\
-		restore_transient_registers();			\
+		restore_transient_hp();				\
 		incr_hp((A), (B));				\
-		save_transient_registers();			\
+		save_transient_hp();				\
 	} while (0)
 
 #define incr_saved_hp_atomic(A, B) 				\
 	do { 							\
-		restore_transient_registers();			\
+		restore_transient_hp();				\
 		incr_hp_atomic((A), (B));			\
-		save_transient_registers();			\
+		save_transient_hp();				\
 	} while (0)
 
 #endif /* not MERCURY_HEAP_H */

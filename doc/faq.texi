@@ -2,15 +2,11 @@
 @setfilename mercury_faq.info
 @settitle The Mercury FAQ list
 
-@ignore
-@ifinfo
-@format
-START-INFO-DIR-ENTRY
-* Mercury FAQ: (mercury_faq).      The Mercury Frequently Asked Questions list
-END-INFO-DIR-ENTRY
-@end format
-@end ifinfo
-@end ignore
+@c --- texi2html doesn't support the @dir commands yet
+@c @dircategory The Mercury Programming Language
+@c @direntry
+@c * Mercury FAQ: (mercury_faq). The Mercury Frequently Asked Questions list.
+@c @end direntry
 
 @c failed attempt to control spacing
 @c @tex

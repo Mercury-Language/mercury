@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1998 The University of Melbourne.
+** Copyright (C) 1995-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -45,7 +45,7 @@
 #define	debugpop(val, sp)			((void)0)
 #define	debugregs(msg)				((void)0)
 #define	debugframe(msg)				((void)0)
-#define	debugmkframe()				((void)0)
+#define	debugmkframe(predname)			((void)0)
 #define	debugsucceed()				((void)0)
 #define	debugsucceeddiscard()			((void)0)
 #define	debugfail()				((void)0)
@@ -75,13 +75,16 @@
 		(save_transient_registers(), incr_hp_debug_msg((val), (hp))))
 
 #define	debugincrsp(val, sp) \
-	IF (MR_detstackdebug, (save_transient_registers(), incr_sp_msg((val), (sp))))
+	IF (MR_detstackdebug, \
+		(save_transient_registers(), incr_sp_msg((val), (sp))))
 
 #define	debugdecrsp(val, sp) \
-	IF (MR_detstackdebug, (save_transient_registers(), decr_sp_msg((val), (sp))))
+	IF (MR_detstackdebug, \
+		(save_transient_registers(), decr_sp_msg((val), (sp))))
 
 #define	debugpush(val, sp) \
-	IF (MR_detstackdebug, (save_transient_registers(), push_msg((val), (sp))))
+	IF (MR_detstackdebug, \
+		(save_transient_registers(), push_msg((val), (sp))))
 
 #define	debugpop(val, sp) \
 	IF (MR_detstackdebug, (save_transient_registers(), pop_msg(val, sp)))
@@ -89,8 +92,9 @@
 #define	debugregs(msg) \
 	IF (MR_progdebug, (save_transient_registers(), printregs(msg)))
 
-#define	debugmkframe() \
-	IF (MR_nondstackdebug, (save_transient_registers(), mkframe_msg()))
+#define	debugmkframe(predname) \
+	IF (MR_nondstackdebug, \
+		(save_transient_registers(), mkframe_msg(predname)))
 
 #define	debugframe(msg)	 \
 	IF (MR_progdebug, (save_transient_registers(), printframe(msg)))
@@ -99,7 +103,8 @@
 	IF (MR_nondstackdebug, (save_transient_registers(), succeed_msg()))
 
 #define	debugsucceeddiscard() \
-	IF (MR_nondstackdebug, (save_transient_registers(), succeeddiscard_msg()))
+	IF (MR_nondstackdebug, \
+		(save_transient_registers(), succeeddiscard_msg()))
 
 #define	debugfail() \
 	IF (MR_nondstackdebug, (save_transient_registers(), fail_msg()))
@@ -108,7 +113,8 @@
 	IF (MR_nondstackdebug, (save_transient_registers(), redo_msg()))
 
 #define	debugcall(proc, succ_cont) \
-	IF (MR_calldebug, (save_transient_registers(), call_msg(proc, succ_cont)))
+	IF (MR_calldebug, \
+		(save_transient_registers(), call_msg(proc, succ_cont)))
 
 #define	debugtailcall(proc) \
 	IF (MR_calldebug, (save_transient_registers(), tailcall_msg(proc)))

@@ -10,12 +10,6 @@
 #include "mercury_types.h"
 #include "mercury_trace.h"
 
-typedef struct MR_Event_Details_Struct {
-	int			MR_call_seqno;
-	int			MR_call_depth;
-	int			MR_event_number;
-} MR_Event_Details;
-
 #ifdef  MR_USE_DECLARATIVE_DEBUGGER
 
 /*
@@ -42,21 +36,11 @@ extern	MR_Trace_Mode	MR_trace_decl_mode;
 #endif	/* MR_USE_DECLARATIVE_DEBUGGER */
 
 extern	Code	*MR_trace_event_internal(MR_Trace_Cmd_Info *cmd,
-			bool interactive,
-			const MR_Stack_Layout_Label *layout,
-			Word *saved_regs, MR_Trace_Port port,
-			int seqno, int depth,
-			const char *path, int *max_mr_num);
+			bool interactive, MR_Event_Info *event_info);
 
-extern	void	MR_trace_retry(const MR_Stack_Layout_Label *layout,
-			Word *saved_regs, MR_Event_Details *event_details,
-			int seqno, int depth, int *max_mr_num,
-			Code **jumpaddr);
 
 extern	Code	*MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
-			const MR_Stack_Layout_Label *layout, Word *saved_regs,
-			MR_Trace_Port port, int seqno, int depth,
-			const char *path, int *max_mr_num);
+			MR_Event_Info *event_info);
 
 /*
 ** Debugger I/O streams.
@@ -70,5 +54,7 @@ extern	Code	*MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
 extern FILE *MR_mdb_in;
 extern FILE *MR_mdb_out;
 extern FILE *MR_mdb_err;
+
+extern	char	*MR_trace_getline(const char *prompt);
 
 #endif	/* MERCURY_TRACE_INTERNAL_H */

@@ -2,15 +2,11 @@
 @setfilename mercury_ref.info
 @settitle The Mercury Language Reference Manual
 
-@c @ignore
-@ifinfo
-@format
-START-INFO-DIR-ENTRY
-* Mercury: (mercury_ref).        The Mercury Language Reference Manual
-END-INFO-DIR-ENTRY
-@end format
-@end ifinfo
-@c @end ignore
+@c --- texi2html doesn't support the @dir commands yet
+@c @dircategory The Mercury Programming Language
+@c @direntry
+@c * Mercury Language: (mercury_ref).  The Mercury Language Reference Manual.
+@c @end direntry
 
 @c Uncomment the line below to enable documentation of the Aditi interface.
 @c @set aditi
@@ -22,7 +18,7 @@ END-INFO-DIR-ENTRY
 @ifinfo
 This file documents the Mercury programming language.
 
-Copyright (C) 1995-1998 The University of Melbourne.
+Copyright (C) 1995-1999 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -50,9 +46,12 @@ into another language, under the above conditions for modified versions.
 @author Thomas Conway
 @author Zoltan Somogyi
 @author David Jeffery
+@author Peter Schachte
+@author Simon Taylor
+@author Chris Speirs
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995-1998 The University of Melbourne.
+Copyright @copyright{} 1995-1999 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -200,7 +199,11 @@ number 101.
 
 @item string
 A string is a sequence of characters enclosed in double quotes (@code{"}).
-Strings may contain backslash escapes.  @samp{\a} stands for ``alert''
+Within a string, two adjacent double quotes stand for a single double quote.
+For example, the string @samp{ """" } is a string of length one, containing
+a single double quote: the outermost pair of double quotes encloses the
+string, and the innermost pair stand for a single double quote.
+Strings may also contain backslash escapes.  @samp{\a} stands for ``alert''
 (a beep character), @samp{\b} for backspace, @samp{\r} for carriage-return,
 @samp{\f} for form-feed, @samp{\t} for tab, @samp{\n} for newline,
 @samp{\v} for vertical-tab.  An escaped backslash, single-quote, or
@@ -219,7 +222,9 @@ source line.  (String literals may also contain embedded newlines.)
 A name is either an unquoted name or a quoted name.
 An unquoted name is a lowercase letter followed by zero or more letters,
 underscores, and digits.  A quoted name is any sequence of zero or more
-characters enclosed in single quotes (@code{'}).  Quoted names can contain
+characters enclosed in single quotes (@code{'}). 
+Within a quoted name, two adjacent single quotes stand for a single
+single quote.  Quoted names can also contain
 backslash escapes of the same form as for strings.
 
 @item variable
@@ -377,7 +382,7 @@ determines which predicate or function the fact belongs to;
 the predicate or function must have been declared
 in a preceding @samp{pred} or @samp{func} declaration in this module.
 The arguments of the head must be valid data-terms.
-A fact is equivalent to a rule whole body is @samp{true}.
+A fact is equivalent to a rule whose body is @samp{true}.
 
 @node Rules
 @section Rules
@@ -405,6 +410,23 @@ A goal is a term of one of the following forms:
 An existential quantification.
 @var{Vars} must be a list of variables.
 @var{Goal} must be a valid goal.
+
+Each existential quantification introduces a new scope.
+The variables in @var{Vars} are local to the goal @var{Goal}:
+for each variable named in @var{Vars},
+any occurrences of variables with that name in @var{Goal}
+are considered to name a different variable than any
+variables with the same name that occur outside of the
+existential quantification.
+
+Operationally, existential quantification has no effect,
+so apart from its effect on variable scoping,
+@samp{some @var{Vars} @var{Goal}} is the
+same as @samp{@var{Goal}}.
+
+Mercury's rules for implicit quantification (@pxref{Implicit quantification})
+mean that variables are often implicitly existentially quantified.
+There is usually no need to write existential quantifiers explicitly.
 
 @item @code{all @var{Vars} @var{Goal}}
 A universal quantification.
@@ -434,6 +456,7 @@ Always fails.
 A negation.
 The two different syntaxes have identical semantics.
 @var{Goal} must be a valid goal.
+Both forms are equivalent to @samp{if @var{Goal} then fail else true}.
 
 @item @code{@var{Goal1} => @var{Goal2}}
 An implication.
@@ -671,8 +694,19 @@ Mercury, they are not abbreviations for lists of character codes.
 The second is that Mercury terms may contain function applications,
 higher-order function applications, and lambda expressions.
 
-A data-term is either a variable, a data-functor, a higher-order
-function application, a conditional expression, or a lambda expression.
+A data-term is either a variable, a data-functor,
+a conditional expression, a lambda expression,
+or a higher-order function application.
+
+@menu
+* Data-functors::
+* Conditional expressions::
+* Lambda expressions::
+* Higher-order function applications::
+@end menu
+
+@node Data-functors
+@subsection Data-functors
 
 A data-functor is an integer, a float, a string, a character literal
 (any single-character name), a name, or a compound data-term.
@@ -682,6 +716,9 @@ function application and whose arguments are data-terms.
 If a data-functor is a name or a compound data-term, its top-level functor
 must name a function, predicate, or data constructor declared
 in the program or in the interface of an imported module.
+
+@node Conditional expressions
+@subsection Conditional expressions
 
 A conditional expression is an expression of either of the two following
 forms
@@ -697,18 +734,22 @@ both data-terms. The semantics of a conditional expression is that
 if @var{Goal} is true, then the expression has the meaning of
 @var{Expression1}, else the expression has the meaning of @var{Expression2}.
 
+@node Lambda expressions
+@subsection Lambda expressions
+
 A lambda expression is a compound term of one of the following forms
 
 @example
-lambda([Var1::Mode1, Var2::Mode2, @dots{}] is Det, Goal)
-pred(Var1::Mode1, Var2::Mode2, @dots{}) is Det :- Goal
-pred(Var1::Mode1, Var2::Mode2, @dots{}, DCGMode0, DCGMode1) is Det --> DCGGoal
-func(Var1::Mode1, Var2::Mode2, @dots{}) = (Var::Mode) is Det :- Goal
-func(Var1, Var2, @dots{}) = Var :- Goal
+lambda([Arg1::Mode1, Arg2::Mode2, @dots{}] is Det, Goal)
+pred(Arg1::Mode1, Arg2::Mode2, @dots{}) is Det :- Goal
+pred(Arg1::Mode1, Arg2::Mode2, @dots{}, DCGMode0, DCGMode1) is Det --> DCGGoal
+func(Arg1::Mode1, Arg2::Mode2, @dots{}) = (Result::Mode) is Det :- Goal
+func(Arg1, Arg2, @dots{}) = Result :- Goal
 @end example
 
 @noindent
-where Var1, Var2, @dots{} are zero or more variables,
+where Arg1, Arg2, @dots{} are zero or more data-terms,
+Result is a data-term,
 Mode1, Mode2, @dots{} are zero or more modes (@pxref{Modes}),
 DCGMode0 and DCGMode1 are modes (@pxref{Modes}),
 Det is a determinism (@pxref{Determinism}),
@@ -718,7 +759,20 @@ The @samp{:- Goal} part is optional;
 if it is not specified, then @samp{:- true} is assumed.
 A lambda expression denotes a higher-order predicate or function term
 whose value is the predicate or function of the specified arguments
-determined by the specified goal.
+determined by the specified goal.  @xref{Higher-order}.
+
+A lambda expression introduces a new scope: any variables occuring in
+the arguments Arg1, Arg2, ... are locally quantified, i.e.
+any occurrences of variables with that name in the lambda
+expression are considered to name a different variable than any
+variables with the same name that occur outside of the
+lambda expression.  For variables which occur in Result or Goal,
+but not in the arguments, the usual Mercury rules for implicit
+quantification apply (@pxref{Implicit quantification}).
+
+The form of lambda expression using @samp{lambda} as its top level functor
+is deprecated; please use the form using @samp{pred} instead.
+
 The form of lambda expression using @samp{-->} as its top level functor
 is a syntactic abbreviation: an expression of the form
 
@@ -737,8 +791,10 @@ pred(Var1::Mode1, Var2::Mode2, @dots{},
 @noindent
 where DCGVar0 and DCGVar1 are fresh variables,
 and Goal is the result of @samp{DCG-transform(DCGVar0, DCGVar1, DCGGoal)}
-where DCG-transform is the function specified in @pxref{DCG-goals}.
-@xref{Higher-order}.
+where DCG-transform is the function specified in @ref{DCG-goals}.
+
+@node Higher-order function applications
+@subsection Higher-order function applications
 
 A higher-order function application is a compound term of one
 of the following two forms
@@ -925,7 +981,7 @@ the same module is an error.
 
 @item
 Equivalence types: these are type abbreviations.
-They are defined using `==' as follows.
+They are defined using @samp{==} as follows.
 They may be polymorphic.
 
 @example
@@ -936,6 +992,10 @@ They may be polymorphic.
 
 Like discriminated union type definitions,
 equivalence type definitions must be transparent.
+Unlike discriminated union type definitions,
+equivalence type definitions must not be cyclic;
+that is, the type on the left hand side of the @samp{==}
+must not occur on the right hand side of the @samp{==}.
 
 Mercury treats an equivalence type
 as an abbreviation for the type on the right hand side of the definition;
@@ -2160,11 +2220,13 @@ Z = sum
 In the above example, the type of @samp{X}, @samp{Y}, and @samp{Z} is
 @samp{pred(list(int), int)}, which means a predicate of two
 arguments of types @samp{list(int)} and @samp{int} respectively.
-[The syntax using @samp{lambda} is supported to enable programs to work
-in both Mercury and Prolog, because the syntax using @samp{pred} and
-@samp{:-} can't be easily emulated in Prolog.  When we have implemented
-better debugging environments for Mercury, the syntax using @samp{lambda}
-will be deprecated.]
+
+The syntax using @samp{lambda} is deprecated;
+please use the syntax using @samp{pred} instead.
+[The syntax using @samp{lambda} was supported to enable programs to work
+in both Mercury and Prolog, because the syntax using @samp{pred} 
+can't be easily emulated in Prolog.  Now that we have implemented
+better debugging environments for Mercury, there is no need for this.]
 
 Similarly, given
 
@@ -2469,7 +2531,7 @@ higher-order terms is undecidable in the general case.
 For example, given the definition of @samp{foo} above, the goal
 
 @example
-        foo(lambda([X::out] is det, X = 6))
+        foo((pred(X::out) is det :- X = 6))
 @end example
 
 @noindent
@@ -2478,7 +2540,7 @@ for equivalence, you must program it yourself; for example,
 the above goal could legally be written as
 
 @example
-        P = lambda([X::out] is det, X = 6),
+        P = (pred(X::out) is det :- X = 6),
         foo(Q),
         all [X] (call(P, X) <=> call(Q, X)).
 @end example
@@ -2511,10 +2573,10 @@ this section specifies the entities that are exported by this module.
 Mercury provides support for abstract data types, by allowing the
 definition of a type to be kept hidden, with the interface
 only exporting the type name.
-The interface section may contain definitions of types, typeclasses,
-typeclass instances, data constructors, instantiation states, and
-modes, and declarations for abstract data types, functions, predicates,
-and (sub-)modules.
+The interface section may contain definitions of types,
+type classes, data constructors, instantiation states, and
+modes, and declarations for abstract data types, abstract type class
+instances, functions, predicates, and (sub-)modules.
 The interface section may not contain definitions for functions or
 predicates (i.e. clauses), or definitions of (sub-)modules. 
 
@@ -2523,9 +2585,10 @@ the start of the module's implementation section.
 Any entities declared in this section are local to the module
 (and its sub-modules) and cannot be used by other modules.
 The implementation section must contain definitions
-for all abstract data types, functions, predicates, and
-sub-modules exported by the module,
-as well as for all local types, functions, predicates, and sub-modules.
+for all abstract data types, abstract instance declarations,
+functions, predicates, and sub-modules exported by the module,
+as well as for all local types, type class instances, functions,
+predicates, and sub-modules.
 The implementation section can be omitted if it is empty.
 
 The module may optionally end with a @samp{:- end_module @var{ModuleName}}
@@ -2550,7 +2613,7 @@ entities are only used in the implementation section, the
 the implementation section.
 
 The names of predicates, functions, constructors, types, modes, insts,
-typeclasses,
+type classes,
 and (sub-)modules can be explicitly module qualified using the @samp{:}
 operator, e.g. @samp{module:name} or @samp{module:submodule:name}.
 This is useful both for readability and for resolving name conflicts.
@@ -2706,17 +2769,23 @@ of sub-modules.
 Each of the named sub-modules in an @samp{:- include_module} declaration
 must be defined in a separate source file.
 The mapping between module names and source file names is
-implementation-defined.  (The University of Melbourne Mercury
-implementation requires a module named @samp{foo:bar:baz} to be
-located in source file @file{foo.bar.baz.m}.)
+implementation-defined.  (For a module named @samp{foo:bar:baz},
+The University of Melbourne Mercury implementation requires the source
+to be located in a file named @file{foo.bar.baz.m}, @file{bar.baz.m},
+or @file{baz.m}.) 
 The separate source file must contain the declaration (interface)
 and definition (implementation) of the sub-module.
 It must start with a @samp{:- module} declaration
 which matches that in the @samp{:- include_module} declaration
 in the parent, followed by the interface and (if necessary)
 implementation sections, and it may optionally end with a @samp{:- end_module}
-declaration.  (Note: the module names in the @samp{:- module}
-and @samp{:- end_module} declaration need not be fully-qualified.)
+declaration.  (Note: the module names in the @samp{:- module},
+@samp{:- end_module}, and @samp{:- include_module} declarations
+need not be fully-qualified.  However,
+if the file name used for a particular module does
+not include all the module qualifiers, then the University of Melbourne
+Mercury implementation requires the module name in the @samp{:- module}
+declaration for that module to be fully qualified.)
 
 If an @samp{:- include_module} declaration occurs in the interface
 section of a module, then only the declarations (interfaces) of the sub-modules
@@ -2765,10 +2834,12 @@ When using nested modules,
 the Mercury build tool Mmake sometimes tries to build things in the
 wrong order and hence reports spurious errors about @samp{.int*} files
 not being found.  In these cases, simply typing @samp{mmake} again will
-usually solve the problem.
+usually solve the problem.  (If it doesn't, the work-around is
+to use separate sub-modules rather than nested sub-modules, i.e. put
+the sub-modules in a separate source file.)
 @item
 Using @samp{mmake} to do parallel makes (e.g. @samp{mmake --jobs 2})
-doesn't always work correctly if you're using nested sub modules.
+doesn't always work correctly if you're using nested sub-modules.
 (The work-around is to use separate sub-modules instead of nested
 sub-modules, i.e. to put the sub-modules in separate source files.)
 @end itemize
@@ -2778,47 +2849,53 @@ sub-modules, i.e. to put the sub-modules in separate source files.)
 
 Mercury supports constrained polymorphism in the form of type classes.  
 Type classes allow the programmer to write predicates and functions which 
-operate on variables of any type (or set of types) for which a certain set
-of operations is defined.  
+operate on variables of any type (or sequence of types) for which a certain
+set of operations is defined.  
 
 @menu
 * Typeclass declarations::
 * Instance declarations::
+* Abstract instance declarations::
 * Type class constraints on predicates and functions::
-* Type class constraints on typeclass declarations::
+* Type class constraints on type class declarations::
 * Type class constraints on instance declarations::
 @end menu
 
 @node Typeclass declarations
 @section Typeclass declarations
 
-A @samp{typeclass} declaration specifies a set of predicates and/or functions
-that must be defined on a type (or set of types) for it (them) to be
-considered to be a member of that type class.
+A @dfn{type class} is a name for a set of types (or a set of sequences of
+types) for which certain predicates and/or functions, called the @dfn{methods}
+of that type class, are defined.
+A @samp{typeclass} declaration defines a new type class, and
+specifies the set of predicates and/or functions
+that must be defined on a type (or sequence of types) for it (them) to be
+considered to be an instance of that type class.
 
-The @code{typeclass} declaration gives the name of the type class, the
+The @code{typeclass} declaration gives the name of the type class that
+it is defining, the
 names of the type variables which are parameters to the type class, and the
-operations ("methods") which form the interface of the type class.
+operations (i.e. methods) which form the interface of the type class.
 
 For example,
 
 @example
 :- typeclass point(T) where [
-	% coords(Point, X, Y):
-	%       X and Y are the cartesian coordinates of Point
-	pred coords(T, float, float),
-	mode coords(in, out, out) is det,
+        % coords(Point, X, Y):
+        %       X and Y are the cartesian coordinates of Point
+        pred coords(T, float, float),
+        mode coords(in, out, out) is det,
 
-	% translate(Point, X_Offset, Y_Offset) = NewPoint:
-	%       NewPoint is Point translated X_Offset units in the X direction
-	%       and Y_Offset units in the Y direction
-	func translate(T, float, float) = T
+        % translate(Point, X_Offset, Y_Offset) = NewPoint:
+        %       NewPoint is Point translated X_Offset units in the X direction
+        %       and Y_Offset units in the Y direction
+        func translate(T, float, float) = T
 ].
 @end example
 
 @noindent
-declares the typeclass @code{point}, which refers to points in two dimensional
-space. 
+declares the type class @code{point}, which
+represents points in two dimensional space. 
 
 @code{pred}, @code{func} and @code{mode} declarations are the only legal
 declarations inside a @code{typeclass} declaration.  The number of parameters 
@@ -2831,36 +2908,70 @@ is allowed:
 
 The parameters must be distinct variables.
 
-There must not be more than one typeclass declaration with the
+There must not be more than one type class declaration with the
 same name and arity in the same module.
 
 @node Instance declarations
 @section Instance declarations
 
-Once the interface of the typeclass has been declared in the @code{typeclass}
-declaration, we can use an @code{instance} declaration to specify how a
-particular type satisfies the interface declared in the @code{typeclass}
-declaration.
+Once the interface of the type class has been defined in the @code{typeclass}
+declaration, we can use an @code{instance} declaration to define how a
+particular type (or sequence of types) satisfies the interface declared
+in the @code{typeclass} declaration.
+
+An instance declaration has the form
+
+@example
+:- instance @var{classname}(@var{typename}(@var{typevar}, @dots{}), @dots{})
+        where [pred(@var{methodname}/@var{arity}) is @var{predname},
+               func(@var{methodname}/@var{arity}) is @var{funcname},
+               @dots{}].
+@end example
 
 An @samp{instance} declaration gives a type for each parameter of the
-typeclass.  Each of these types must be either a type with no arguments, or 
-a polymorphic type whose arguments are all distinct type variables.  e.g. 
-@code{int}, @code{list(T)} and @code{map(K,V)} are allowed but
-@code{T}, @code{list(int)} and @code{map(T,T)} are not.
+type class.  Each of these types must be either a type with no arguments, or 
+a polymorphic type whose arguments are all distinct type variables.
+For example @code{int}, @code{list(T)} and @code{bintree(K,V)} are allowed,
+but @code{T}, @code{list(int)} and @code{bintree(T,T)} are not.
+The types in an instance declaration must not be abstract types which
+are elsewhere defined as equivalence types.
 A program may not contain more than one @code{instance} declaration for a
-particular type (or set of types, in the case of a multi-parameter
-typeclass).  These restrictions ensure that there are no overlapping instance
+particular type (or sequence of types, in the case of a multi-parameter
+type class).  These restrictions ensure that there are no overlapping instance
 declarations, ie. there is at most one instance declaration that may be 
-applied to any type (or set of types).
+applied to any type (or sequence of types).
 
-For example:
+Each entry in the @samp{where [@dots{}]} part of an @code{instance}
+declaration defines the implementation of one of the class methods
+for this instance.
+The @var{predname} or @var{funcname} must name a function or
+predicate of the specified arity whose type, modes, determinism, and
+purity are at least as permissive as the declared type, modes,
+determinism, and purity of the class method with the specified
+@var{methodname} and @var{arity}, after the types of the arguments
+in the instance declaration have been substituted in place of the
+parameters in the type class declaration.
+Each @samp{instance} declaration must define an implementation for
+every method declared in the corresponding @samp{typeclass} declaration.
+It is an error to define more than one implemention for the same
+method within a single @samp{instance} declaration.
+
+Any call to a method must have argument types (and in the case of functions,
+return type) which are constrained to be a member of that method's
+type class, or which match one of the instance declarations visible at
+the point of the call.  A method call will invoke the 
+predicate or function specified for that method in the
+instance declaration that matches the types of the arguments
+to the call.
+
+Here's an example of some code using an instance declaration:
 
 @example
 :- type coordinate
-	---> coordinate(
-		float,		% X coordinate
-		float		% Y coordinate
-	).
+        ---> coordinate(
+                float,           % X coordinate
+                float            % Y coordinate
+        ).
 
 :- instance point(coordinate) where [
         pred(coords/3) is coordinate_coords,
@@ -2879,24 +2990,24 @@ coordinate_translate(coordinate(X, Y), Dx, Dy) = coordinate(X + Dx, Y + Dy).
 @end example
 
 We have now made the @code{coordinate} type an instance of the @code{point}
-typeclass.  If we introduce a new type, @code{coloured_coordinate} which
+type class.  If we introduce a new type, @code{coloured_coordinate} which
 represents a point in two dimensional space with a colour associated with it, 
-it can also become an instance of the typeclass:
+it can also become an instance of the type class:
 
 @example
 :- type rgb
-	---> rgb(
-		int,
-		int,
-		int
-	).
+        ---> rgb(
+                int,
+                int,
+                int
+        ).
 
 :- type coloured_coordinate
-	---> coloured_coordinate(
-		float,
-		float,
-		rgb
-	).
+        ---> coloured_coordinate(
+                float,
+                float,
+                rgb
+        ).
 
 :- instance point(coloured_coordinate) where [
         pred(coords/3) is coloured_coordinate_coords,
@@ -2910,29 +3021,77 @@ it can also become an instance of the typeclass:
 coloured_coordinate_coords(coloured_coordinate(X, Y, _), X, Y).
 
 :- func coloured_coordinate_translate(coloured_coordinate, float, float) 
-	= coloured_coordinate.
+        = coloured_coordinate.
 
 coloured_coordinate_translate(coloured_coordinate(X, Y, Colour), Dx, Dy) 
-	= coloured_coordinate(X + Dx, Y + Dy, Colour).
+        = coloured_coordinate(X + Dx, Y + Dy, Colour).
 @end example
 
-Further instances of the typeclass could be made, e.g. a type which represents
+If we call @samp{translate/3} with the first argument having type
+@samp{coloured_coordinate}, this will invoke
+@samp{coloured_coordinate_translate}.
+Likewise, if we call @samp{translate/3} with the first argument having type
+@samp{coordinate}, this will invoke @samp{coordinate_translate}.
+
+Further instances of the type class could be made, e.g. a type which represents
 the point using polar coordinates.
+
+@node Abstract instance declarations
+@section Abstract instance declarations
+
+Abstract instance declarations are instance declarations whose
+implementations are hidden.  An abstract instance declaration has the
+same form as an instance declaration, but without the @samp{where
+[@dots{}]} part.  An abstract instance declaration declares that
+a sequence of types is an instance of a particular type class without
+defining how the type class methods are implemented for those types.
+Like abstract type declarations,
+abstract instance declarations are only useful in the interface
+section of a module.  Each abstract instance declaration must
+be accompanied by a corresponding non-abstract instance declaration
+that defines how the type class methods are implemented.
+
+Here's an example:
+
+@example
+:- module hashable.
+:- interface.
+:- import_module int, string.
+
+:- typeclass hashable(T) where [func hash(T) = int].
+:- instance hashable(int).
+:- instance hashable(string).
+
+:- implementation.
+
+:- instance hashable(int) where [func(hash/1) is hash_int].
+:- instance hashable(string) where [func(hash/1) is hash_string].
+
+:- func hash_int(int) = int.
+hash_int(X) = X.
+
+:- func hash_string(string) = int.
+hash_string(S) = H :-
+        % use the standard library predicate string__hash/2
+        string__hash(S, H).
+
+:- end_module hashable.
+@end example
 
 @node Type class constraints on predicates and functions
 @section Type class constraints on predicates and functions
 
-Mercury allows a typeclass constraint to appear as part of a predicate or
+Mercury allows a type class constraint to appear as part of a predicate or
 functions's type signature.  This constrains the values that can be taken
-by type variables in the signature to belong to particular typeclasses.
+by type variables in the signature to belong to particular type classes.
 
-A typeclass constraint is of the form:
+A type class constraint is of the form:
 
 @example
-	<= @var{Typeclass}(@var{TypeVariable}, @dots{}), @dots{}
+        <= @var{Typeclass}(@var{TypeVariable}, @dots{}), @dots{}
 @end example
 
-where @var{Typeclass} is the name of a typeclass and @var{TypeVariable} is 
+where @var{Typeclass} is the name of a type class and @var{TypeVariable} is 
 a type variable that appears in the predicate's or function's type signature.
 
 For example
@@ -2942,11 +3101,11 @@ For example
 :- mode distance(in, in, out) is det.
 
 distance(A, B, Distance) :-
-	coords(A, Xa, Ya),
-	coords(B, Xb, Yb),
-	XDist = Xa - Xb,
-	YDist = Ya - Yb,
-	Distance = sqrt(XDist*XDist + YDist*YDist).
+        coords(A, Xa, Ya),
+        coords(B, Xb, Yb),
+        XDist = Xa - Xb,
+        YDist = Ya - Yb,
+        Distance = sqrt(XDist*XDist + YDist*YDist).
 @end example
 
 In the above example, the @code{distance} predicate is able to calculate the
@@ -2954,16 +3113,16 @@ distance between any two points, regardless of their representation, as long
 as the @code{coords} operation has been defined.  These
 constraints are checked at compile time.
 
-@node Type class constraints on typeclass declarations
-@section Type class constraints on typeclass declarations
+@node Type class constraints on type class declarations
+@section Type class constraints on type class declarations
 
 Type class constraints may also appear in @code{typeclass} declarations, 
-meaning that one typeclass is a ``superclass'' of another. 
+meaning that one type class is a ``superclass'' of another. 
 
-The variables that appear as arguments to the typeclasses in the constraints
-must also be arguments to the typeclass in question.
+The variables that appear as arguments to the type classes in the constraints
+must also be arguments to the type class in question.
 
-For example, the following declares the @samp{ring} typeclass, which describes
+For example, the following declares the @samp{ring} type class, which describes
 types with a particular set of numerical operations defined:
 
 @example
@@ -2972,9 +3131,7 @@ types with a particular set of numerical operations defined:
         func one = (T::out) is det,                     % '*' identity
         func plus(T::in, T::in) = (T::out) is det,      % '+'/2 (forward mode)
         func mult(T::in, T::in) = (T::out) is det,      % '*'/2 (forward mode)
-        func negative(T::in) = (T::out) is det,         % '-'/1 (forward mode)
-        func inverse(T::in) = (T::out) is semidet       % multiplicative 
-                                                        % inverse
+        func negative(T::in) = (T::out) is det          % '-'/1 (forward mode)
 ].
 @end example
 
@@ -2987,13 +3144,13 @@ We can now add the following declaration:
 ].
 @end example
 
-This introduces a new typeclass, @code{euclidean}, of which @code{ring} is a
-superclass.  The operations defined by the @code{euclidean} typeclass are
+This introduces a new type class, @code{euclidean}, of which @code{ring} is a
+superclass.  The operations defined by the @code{euclidean} type class are
 @code{div}, @code{mod}, as well as all those defined by the @code{ring}
-typeclass.  Any type declared to be an instance of @code{euclidean} must also 
+type class.  Any type declared to be an instance of @code{euclidean} must also 
 be declared to be an instance of @code{ring}.
 
-Typeclass constraints on typeclass declarations gives rise to a superclass
+Typeclass constraints on type class declarations gives rise to a superclass
 relation.  This relation must be acyclic.  That is, it is an error if a type 
 class is its own (direct or indirect) superclass.
 
@@ -3001,15 +3158,15 @@ class is its own (direct or indirect) superclass.
 @section Type class constraints on instance declarations
 
 Typeclass constraints may also be placed upon instance declarations.  The
-variables that appear as arguments to the typeclasses in the constraints must
+variables that appear as arguments to the type classes in the constraints must
 all be type variables that appear in the types in the instance declarations.
 
-For example, consider the following declaration of a typeclass of types that 
+For example, consider the following declaration of a type class of types that 
 may be printed:
 
 @example
 :- typeclass portrayable(T) where [
-	pred portray(T::in, io__state::di, io__state::uo) is det
+        pred portray(T::in, io__state::di, io__state::uo) is det
 ].
 @end example
 
@@ -3017,35 +3174,41 @@ The programmer could declare instances such as
 
 @example
 :- instance portrayable(int) where [
-	pred(portray/3) is io__write_int
+        pred(portray/3) is io__write_int
 ].
 
 :- instance portrayable(char) where [
-	pred(portray/3) is io__write_char
+        pred(portray/3) is io__write_char
 ].
 @end example
 
 However, when it comes to writing the instance declaration for a type such as
 @code{list(T)}, we want to be able print out the list elements using the
 @code{portray/3} for the particular type of the list elements.  This can be
-achieved by placing a typeclass constraint on the @code{instance} declaration,
+achieved by placing a type class constraint on the @code{instance} declaration,
 as in the following example:
 
 @example
 :- instance portrayable(list(T)) <= portrayable(T) where [
-	pred(portray/3) is portray_list
+        pred(portray/3) is portray_list
 ].
 
 :- pred portray_list(list(T), io__state, io__state) <= portrayable(T).
 :- mode portray_list(in, di, uo) is det.
 
 portray_list([]) --> 
-	[].
+        [].
 portray_list([X|Xs]) --> 
-	print(X),
+	portray(X),
 	io__write_char(' '),
 	portray_list(Xs).
 @end example
+
+For abstract instance declarations, the type class constraints on an
+abstract instance declaration must exactly match the type class
+constraints on the corresponding non-abstract instance declaration that
+defines that instance.
+@c XXX The current implementation does not enforce that rule.
 
 @node Semantics
 @chapter Semantics
@@ -3187,6 +3350,8 @@ There are several uses for @code{pragma} declarations:
 * Impurity::                    Users can write impure Mercury code
 * Inlining::                    Pragmas can be used to suggest or prevent
                                 procedure inlining.
+* Type specialization::		Pragmas can be used to produce specialized
+				versions of polymorphic procedures.
 * Obsolescence::                Library developers can declare old versions
                                 of predicates or functions to be obsolete.
 * Source file name::            The @samp{source_file} pragma and
@@ -3217,7 +3382,7 @@ There are several uses for @code{pragma} declarations:
                                         structures in Mercury code.
 * Memory management::                   Caveats about passing dynamically
                                         allocated memory to or from C.
-* Trailing::                   		Undoing side-effects on backtracking.
+* Trailing::                            Undoing side-effects on backtracking.
 @end menu
 
 The Mercury distribution includes a number of examples of the
@@ -3276,7 +3441,7 @@ modes of that predicate or function.  There must be no clauses
 for the specified Mercury procedure; instead, any calls to that
 procedure will be executed by calling the C function named
 @var{C_Name}.  The @var{Attributes} argument is optional; if present,
-it specifies properties of the given C function (see @pxref{C code attributes}).
+it specifies properties of the given C function (@pxref{C code attributes}).
 
 For example, the following code imports the C function @samp{cos()}
 as the Mercury function @samp{cos/1}:
@@ -3288,7 +3453,7 @@ as the Mercury function @samp{cos/1}:
 
 The interface to the C function for a given Mercury procedure is
 determined as follows.  Mercury types are converted to C types
-according to the rules in @xref{Passing data to and from C}.
+according to the rules in @ref{Passing data to and from C}.
 Mercury arguments declared with input modes are passed by value to the
 C function.  For output arguments, the Mercury implementation will pass
 to the C function an address in which to store the result. 
@@ -3316,7 +3481,7 @@ another polymorphic Mercury procedure (@pxref{Calling Mercury code from C}).
 You may not give a @samp{pragma import} declaration for a procedure
 with determinism @samp{nondet} or @samp{multi}.
 (It is however possible to define a @samp{nondet} or @samp{multi} procedure
-using @samp{pragma c_code} -- see @pxref{Nondet pragma c_code}).
+using @samp{pragma c_code} -- @pxref{Nondet pragma c_code}).
 
 @node pragma c_code
 @subsubsection pragma c_code
@@ -3343,15 +3508,18 @@ The C code fragment may refer to the specified variables
 (@var{Var1}, @var{Var2}, @dots{}, and @var{Var})
 directly by name.  These variables will have C types corresponding
 to their Mercury types, as determined by the rules specified in
-@xref{Passing data to and from C}.
+@ref{Passing data to and from C}.
 
 The C code fragment may declare local variables, but it should not
-declare any static variables unless there is also a Mercury
+declare any labels or static variables unless there is also a Mercury
 @samp{pragma no_inline} declaration (@pxref{Inlining}) for the procedure.
 The reason for this is that otherwise the Mercury implementation may
-inline the procedure by duplicating the C code fragment for each call,
-which would result in the program having multiple instances of the
-static variable, rather than a single shared instance.
+inline the procedure by duplicating the C code fragment for each call.
+If the C code fragment declared a static variable, inlining it in this
+way could result in the program having multiple instances of the static
+variable, rather than a single shared instance.  If the C code fragment
+declared a label, inlining it in this way could result in an error due
+to the same label being defined twice inside a single C function.
 
 If there is a @code{pragma import} or @code{pragma c_code} declaration for a
 mode of a predicate or function, then there must not be any clauses for that
@@ -3474,9 +3642,9 @@ keep track of the next alternative to return.
                 int state;
         "),
         first_code("
-                LOCALS->state = 0;
+                LOCALS->state = 1;
         "),
-	retry_code("
+        retry_code("
                 LOCALS->state++;
         "),
         common_code("
@@ -3518,7 +3686,7 @@ two pieces, using @samp{pragma c_code}.
         "),
         common_code("
                 S1 = copy_substring(LOCALS->s, 0, LOCALS->count);
-                S2 = copy_substring(LOCALS->s, LOCALS->count + 1,
+                S2 = copy_substring(LOCALS->s, LOCALS->count,
                                                LOCALS->len);
                 if (LOCALS->count < LOCALS->len) @{
                         SUCCEED;
@@ -3567,7 +3735,7 @@ then it must take appropriate steps to prevent this.
 University of Melbourne Mercury implementation protects
 @samp{not_thread_safe} code using a mutex:
 C code that is not thread-safe has code inserted around it to obtain
-and release a mutex.  All non-thread-safe C code shares a single mutex.]
+and release a mutex.  All non-thread-safe C code shares a single mutex.)
 @c XXX this can cause deadlocks if not_thread_safe C code calls
 @c     Mercury which calls C
 
@@ -3716,7 +3884,7 @@ the specified Mercury predicate or function.
 The interface to a Mercury procedure is determined as follows.
 (The rules here are just the converse of the rules for @samp{pragma import}).
 Mercury types are converted to C types according to the rules in
-@xref{Passing data to and from C}.
+@ref{Passing data to and from C}.
 Input arguments are passed by value.  For output arguments, the
 caller must pass the address in which to store the result.
 If the Mercury procedure can fail, then its C interface function
@@ -3808,11 +3976,11 @@ Mercury lists can be manipulated by C code using the following macros,
 which are defined by the Mercury implementation.
 
 @example
-list_is_empty(list)     /* test if a list is empty */
-list_head(list)         /* get the head of a list */
-list_tail(list)         /* get the tail of a list */
-list_empty()            /* create an empty list */
-list_cons(head,tail)    /* construct a list with the given head and tail */
+MR_list_is_empty(list)     /* test if a list is empty */
+MR_list_head(list)         /* get the head of a list */
+MR_list_tail(list)         /* get the tail of a list */
+MR_list_empty()            /* create an empty list */
+MR_list_cons(head,tail)    /* construct a list with the given head and tail */
 @end example
 
 Note that the use of these macros is subject to some caveats
@@ -4406,6 +4574,90 @@ simply for performance concerns (inlining can cause unwanted code bloat
 in some cases) or to prevent possibly dangerous inlining when using
 low-level C code.
 
+@node Type specialization
+@section Type specialization
+
+The overhead of polymorphism can in some cases be significant, especially
+where polymorphic predicates make heavy use of class method calls or the
+built-in unification and comparison routines. To avoid this, the programmer
+can suggest to the compiler that a specialized version of a procedure should
+be created for a specific set of argument types.
+
+@menu
+* Syntax and semantics of type specialization pragmas::
+* When to use type specialization::
+* Implementation specific details::
+@end menu
+
+@node Syntax and semantics of type specialization pragmas
+@subsection Syntax and semantics of type specialization pragmas
+
+A declaration of the form
+
+@example
+:- pragma type_spec(@var{Name}/@var{Arity}, @var{Subst}).
+:- pragma type_spec(@var{Name}(@var{Modes}), @var{Subst}).
+@end example
+
+@noindent
+suggests to the compiler that a specialized version of predicate(s)
+or function(s) with name @var{Name} and arity @var{Arity} should be
+created with the type substitution given by @var{Subst} applied to the
+argument types. The second form of the declaration only suggests
+specialization of the specified mode of the predicate or function.
+
+The substitution is written as a conjunction of bindings of the form
+@w{@samp{@var{TypeVar} = @var{Type}}}, for example @w{@samp{K = int}} or
+@w{@samp{(K = int, V = list(int))}}.
+
+The declarations
+
+@example
+:- pred map__lookup(map(K, V), K, V).
+:- pragma type_spec(map__lookup/3, K = int).
+@end example
+
+@noindent
+give a hint to the compiler that a version of @samp{map__lookup/3} should
+be created for integer keys.
+
+Implementations are free to ignore @samp{pragma type_spec} declarations.
+Implementations are also free to perform type specialization
+even in the absense of any @samp{pragma type_spec} declarations.
+
+@node When to use type specialization
+@subsection When to use type specialization
+
+The set of types for which a predicate or function should be specialized is
+best determined by profiling your application. Overuse of type specialization
+will result in code bloat. 
+
+Type specialization of predicates or functions which
+unify or compare polymorphic variables is most effective when
+the specialized types are built-in types such as @samp{int}, @samp{float}
+and @samp{string}, or enumeration types, since their unification and
+comparison procedures are simple and can be inlined.
+
+Predicates or functions which make use of type class method calls
+may also be candidates for specialization. Again, this is most effective
+when the called type class methods are simple enough to be inlined.
+
+@node Implementation specific details
+@subsection Implementation specific details
+
+The University of Melbourne Mercury compiler performs user-requested type
+specializations when invoked with @samp{--user-guided-type-specialization},
+which is enabled at optimization level @samp{-O2} or higher.
+
+In the current implementation, the replacement types must be ground.
+Substitutions such as @w{@samp{T = list(U)}} are not supported.
+The compiler will warn about such substitutions, and will ignore
+the request for specialization. This restriction may be lifted in the future.
+@c The main reason for this restriction is that it is tricky to ensure that
+@c any extra typeclass_infos that may be needed are ordered the same way in
+@c different modules. The efficiency gain from replacing a type variable with 
+@c a non-ground type will usually be pretty small anyway.
+
 @node Obsolescence
 @section Obsolescence
 
@@ -4491,14 +4743,14 @@ additional pragmas:
 
 @menu
 * Fact tables::                 Support for very large tables of facts.
-* Tabled evaluation::		Support for automatically recording previously
-				calculated results and detecting or avoiding
-				certain kinds of infinite loops.
-* Termination analysis::	Support for automatic proofs of termination.
+* Tabled evaluation::           Support for automatically recording previously
+                                calculated results and detecting or avoiding
+                                certain kinds of infinite loops.
+* Termination analysis::        Support for automatic proofs of termination.
 @ifset aditi
 * Aditi deductive database interface::
-				Support for bottom-up evaluation of Mercury
-				predicates.
+                                Support for bottom-up evaluation of Mercury
+                                predicates.
 @end ifset
 @end menu
 
@@ -4618,8 +4870,9 @@ Fortunately, however, this is usually what programmers intend.
 @c XXX give an example
 
 For more information on tabling, see K. Sagonas's PhD thesis
+@c XXX this citation doesn't come out properly in DVI format
 @cite{The SLG-WAM: A Search-Efficient Engine for Well-Founded Evaluation
-of Normal Logic Programs.} @ref{[4]}.
+of Normal Logic Programs.} @xref{[4]}.
 The operational semantics of procedures with a @samp{pragma minimal_model}
 declaration corresponds to what Sagonas calls ``SLGd resolution''.
 
@@ -4629,8 +4882,9 @@ the ability to delay goals and then wake them up again.
 The Mercury implementation uses a technique based on copying
 relevant parts of the stack to the heap when delaying goals,
 similar to the one described in
+@c XXX this citation doesn't come out properly in DVI format
 @cite{CAT: the copying approach to tabling},
-by B. Demoen and K. Sagonas @ref{[5]}.
+by B. Demoen and K. Sagonas.  @xref{[5]}.
 This ensures that code which does not use tabling does not pay any
 runtime overheads from the more complicated execution mechanism
 required by (minimal model) tabling.
@@ -4656,14 +4910,18 @@ or if you select a garbage collection method other than the default
 The compiler includes a termination analyser which can be used to prove 
 termination of predicates and functions.  Details of the analysis is
 available in ``Termination Analysis for Mercury'' by Chris Speirs, Zoltan
-Somogyi and Harald Sondergaard @ref{[1]}.
+Somogyi and Harald Sondergaard.  @xref{[1]}.
+@c XXX this citation doesn't come out properly in DVI format
 
 The analysis is based around an algorithm proposed by Gerhard Groger
 and Lutz Plumer in their paper ``Handling of mutual recursion in
-automatic termination proofs for logic programs.'' @ref{[2]}.
+automatic termination proofs for logic programs.'' @xref{[2]}.
+@c XXX this citation doesn't come out properly in DVI format
 
 For an introduction to termination analysis for logic programs, please
-refer to ``Termination Analysis for Logic Programs'' by Chris Speirs @ref{[3]}.
+refer to ``Termination Analysis for Logic Programs'' by Chris Speirs.
+@c XXX this citation doesn't come out properly in DVI format
+@xref{[3]}.
 
 Information about the termination properties of a predicate or function
 can be given to the compiler.  Pragmas are also available to require
@@ -4749,7 +5007,7 @@ rather than a tuple at a time as in the normal top-down execution of a
 Mercury program.
 
 @menu
-* Aditi glossary::		Glossary of Aditi terms
+* Aditi glossary::              Glossary of Aditi terms
 @end menu
 
 There are several restrictions on predicates to be evaluated using Aditi.
@@ -4841,7 +5099,7 @@ or ``guest'' if that is not set.
 @c eventually.
 @example
 :- pragma aditi_index(@var{Name}/@var{Arity},
-		@var{IndexType}, @var{Attributes}).
+                @var{IndexType}, @var{Attributes}).
 @end example
 
 The base relation has the given B-tree index. B-tree indexes allow efficient
@@ -4909,24 +5167,24 @@ programming language} @ref{[7]} and @file{extras/aditi/aditi.m} in the
 @chapter Bibliography
 
 @menu
-* [1]::		Spiers, Somogyi, and Sondergaard,
-		@cite{Termination Analysis for Mercury}.
-* [2]::		Groger and Plumer, @cite{Handling of mutual recursion in
-		automatic termination proofs for logic programs}.
-* [3]::		Spiers, @cite{Termination Analysis for logic programs}.
-* [4]::		Sagonas, @cite{The SLG-WAM: A Search-Efficient Engine
-		for Well-Founded Evaluation of Normal Logic Programs}.
-* [5]::		Demoen and Sagonas, @cite{CAT: the copying approach to tabling}.
+* [1]::         Spiers, Somogyi, and Sondergaard,
+                @cite{Termination Analysis for Mercury}.
+* [2]::        	Groger and Plumer, @cite{Handling of mutual recursion in
+                automatic termination proofs for logic programs}.
+* [3]::         Spiers, @cite{Termination Analysis for logic programs}.
+* [4]::         Sagonas, @cite{The SLG-WAM: A Search-Efficient Engine
+                for Well-Founded Evaluation of Normal Logic Programs}.
+* [5]::         Demoen and Sagonas, @cite{CAT: the copying approach to tabling}.
 @ifset aditi
-* [6]::		Kemp, Ramamohanarao and Somogyi,
-		@cite{Right-, left-, and multi-linear rule transformations
-		that maintain context information}.
-* [7]::		Kemp, Conway, Harris, Henderson, Ramamohanarao and Somogyi
-		@cite{Database transactions in a purely declarative
-		logic programming language}.
-* [8]::		Ramakrishnan, Srivistava and Sudarshan,
-		@cite{Rule ordering in bottom-up fixpoint evaluation
-		of logic programs}.
+* [6]::         Kemp, Ramamohanarao and Somogyi,
+                @cite{Right-, left-, and multi-linear rule transformations
+                that maintain context information}.
+* [7]::         Kemp, Conway, Harris, Henderson, Ramamohanarao and Somogyi
+                @cite{Database transactions in a purely declarative
+                logic programming language}.
+* [8]::         Ramakrishnan, Srivistava and Sudarshan,
+                @cite{Rule ordering in bottom-up fixpoint evaluation
+                of logic programs}.
 @end ifset
 @end menu
 

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1998 The University of Melbourne.
+** Copyright (C) 1994-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -16,6 +16,7 @@
 #include "mercury_std.h"		/* for `bool' */
 #include "mercury_stack_layout.h"	/* for `MR_Stack_Layout_Label' */
 #include "mercury_trace_base.h"		/* for `MR_trace_port' */
+#include "mercury_stacks.h"		/* for `MR_{Cut,Generator}StackFrame' */
 
 /*
 ** mercury_runtime_init() does some stuff to initialize the garbage collector
@@ -61,35 +62,32 @@ extern	void		(*address_of_init_gc)(void);
 #endif
 
 /*
-** Similarly, these are for the debugger interface; they're defined in
-** browser/debugger_interface.m.
-** XXX These are obsolete; the browser can call the ML_ versions directly.
+** MR_trace_getline(const char *) is defined in trace/mercury_trace_internal.c
+** but is called in browser/util.m.  As we cannot do direct calls from
+** browser/ to trace/, we do an indirect call via the following pointer.
 */
-extern	void	(*MR_DI_output_current_vars)(Word, Word, Word);
-		/* output_current_vars/3 */
-extern	void	(*MR_DI_output_current_nth_var)(Word, Word);
-		/* output_current_nth_var/2 */
-extern	void	(*MR_DI_output_current_live_var_names)(Word, Word, Word);
-		/* output_current_live_var_names/5 */
-extern	void	(*MR_DI_output_current_slots)(Integer, Integer, Integer, Word,
-		String, String, Integer, Integer, Integer, String, Word);
-		/* output_current_slots/13 */
-extern	bool	(*MR_DI_found_match)(Integer, Integer, Integer, Word, String,
-		String, Integer, Integer, Integer, Word, String, Word);
-		/* found_match/12 */
-extern	int	(*MR_DI_get_var_number)(Word);
-		/* get_var_number/1 */
-extern	void	(*MR_DI_read_request_from_socket)(Word, Word *, Integer *);
-		/* read_request_from_socket/5 */
+
+extern	char *		(*MR_address_of_trace_getline)(const char *);
 
 /*
-** ML_type_name() is defined in library/std_util.m and used in
-** trace/mercury_trace_external.c.
-** XXX This is obsolete; the tracer can call the ML_ version directly.
+** MR_trace_init_external() and MR_trace_final_external() are defined 
+** in trace/mercury_trace_external.c but are called in
+** runtime/mercury_trace_base.c. As we can not do direct calls from
+** runtime/ to trace/, we do an indirect call via a function
+** pointer MR_address_of_trace_init_external.
 */
 
-extern	String	(*MR_type_name)(Word);
-		/* normally ML_type_name (type_name/1) */ 
+extern	void		(*MR_address_of_trace_init_external)(void);
+extern	void		(*MR_address_of_trace_final_external)(void);
+
+/*
+** MR_edt_root_node(Word, Word *) is defined in
+** trace/mercury_trace_declarative.c but is referenced in
+** browser/declarative_debugger.m.  As we can not do direct calls from
+** browse/ to trace/, we do an indirect call via the following pointer.
+*/
+
+extern void		(*MR_address_of_edt_root_node)(Word, Word *);
 
 /*
 ** XXX This is obsolete too.
@@ -125,6 +123,8 @@ extern	size_t		solutions_heap_size;
 extern	size_t		trail_size;
 extern	size_t		global_heap_size;
 extern	size_t		debug_heap_size;
+extern	size_t		generatorstack_size;
+extern	size_t		cutstack_size;
 
 /* sizes of the red zones */
 extern	size_t		heap_zone_size;
@@ -134,11 +134,13 @@ extern	size_t		solutions_heap_zone_size;
 extern	size_t		trail_zone_size;
 extern	size_t		global_heap_zone_size;
 extern	size_t		debug_heap_zone_size;
+extern	size_t		generatorstack_zone_size;
+extern	size_t		cutstack_zone_size;
 
 /* file names for the mdb debugging streams */
-extern const char *MR_mdb_in_filename;
-extern const char *MR_mdb_out_filename;
-extern const char *MR_mdb_err_filename;
+extern	const char	*MR_mdb_in_filename;
+extern	const char	*MR_mdb_out_filename;
+extern	const char	*MR_mdb_err_filename;
 
 /* size of the primary cache */
 extern	size_t		pcache_size;

@@ -65,8 +65,9 @@
 
 :- import_module hlds_data, hlds_module, hlds_pred, type_util, prog_out.
 :- import_module prog_util, mercury_to_mercury, modules, globals, options.
-:- import_module (inst), instmap, term, varset.
-:- import_module int, map, require, set, std_util, string.
+:- import_module (inst), instmap.
+:- import_module int, map, require, set, std_util, string, term, varset.
+:- import_module assoc_list.
 
 module_qual__module_qualify_items(Items0, Items, ModuleName, ReportErrors,
 			Info, NumErrors, UndefTypes, UndefModes) -->
@@ -349,9 +350,9 @@ module_qualify_item(typeclass(Constraints0, Name, Vars, Interface0, VarSet) -
 	qualify_class_constraint_list(Constraints0, Constraints, Info1, Info2),
 	qualify_class_interface(Interface0, Interface, Info2, Info).
 
-module_qualify_item(instance(Constraints0, Name0, Types0, Interface0, VarSet) -
+module_qualify_item(instance(Constraints0, Name0, Types0, Body0, VarSet) -
 			Context, 
-		instance(Constraints, Name, Types, Interface, VarSet) -
+		instance(Constraints, Name, Types, Body, VarSet) -
 			Context, 
 		Info0, Info, yes) -->
 	{ list__length(Types0, Arity) },
@@ -362,7 +363,7 @@ module_qualify_item(instance(Constraints0, Name0, Types0, Interface0, VarSet) -
 	qualify_class_constraint_list(Constraints0, Constraints, Info1, Info2),
 	qualify_class_name(Id, Name - _, Info2, Info3),
 	qualify_type_list(Types0, Types, Info3, Info),
-	{ qualify_instance_interface(Name, Interface0, Interface) }.
+	{ qualify_instance_body(Name, Body0, Body) }.
 
 :- pred update_import_status(module_defn::in, mq_info::in, mq_info::out,
 							bool::out) is det.
@@ -565,7 +566,7 @@ qualify_inst_name(user_inst(SymName0, Insts0), user_inst(SymName, Insts),
 	{ list__length(Insts0, Arity) },
 	find_unique_match(SymName0 - Arity, SymName - _,
 				InstIds, inst_id, Info1, Info).
-qualify_inst_name(merge_inst(_, _), _, _, _) -->
+qualify_inst_name(merge_inst(_, _, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
 qualify_inst_name(unify_inst(_, _, _, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
@@ -580,6 +581,8 @@ qualify_inst_name(mostly_uniq_inst(_), _, _, _) -->
 qualify_inst_name(typed_ground(_, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
 qualify_inst_name(typed_inst(_, _), _, _, _) -->
+	{ error("compiler generated inst unexpected") }.
+qualify_inst_name(substitution_inst(_, _, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
 
 	% Qualify an inst of the form bound(functor(...)).
@@ -705,8 +708,39 @@ qualify_pragma(export(Name, PredOrFunc, Modes0, CFunc),
 	{ Modes = argument_modes(InstTable, ArgModes) }.
 qualify_pragma(unused_args(A, B, C, D, E), unused_args(A, B, C, D, E),
 				Info, Info) --> [].
+qualify_pragma(type_spec(A, B, C, D, MaybeModes0, Subst0, G),
+		type_spec(A, B, C, D, MaybeModes, Subst, G), Info0, Info) -->
+	(
+		{ MaybeModes0 = yes(argument_modes(InstTable, Modes0)) }
+	->
+		qualify_mode_list(Modes0, Modes, Info0, Info1),
+		{ MaybeModes = yes(argument_modes(InstTable, Modes)) }
+	;
+		{ Info1 = Info0 },
+		{ MaybeModes = no }
+	),
+	qualify_type_spec_subst(Subst0, Subst, Info1, Info).
 qualify_pragma(fact_table(SymName, Arity, FileName),
-	fact_table(SymName, Arity, FileName), Info, Info) --> [].
+		fact_table(SymName, Arity, FileName), Info, Info) --> [].
+qualify_pragma(aditi(SymName, Arity), aditi(SymName, Arity),
+		Info, Info) --> [].
+qualify_pragma(base_relation(SymName, Arity), base_relation(SymName, Arity),
+		Info, Info) --> [].
+qualify_pragma(aditi_index(SymName, Arity, Index),
+		aditi_index(SymName, Arity, Index), Info, Info) --> [].
+qualify_pragma(supp_magic(SymName, Arity), supp_magic(SymName, Arity),
+		Info, Info) --> [].
+qualify_pragma(context(SymName, Arity), context(SymName, Arity),
+		Info, Info) --> [].
+qualify_pragma(aditi_memo(A, B), aditi_memo(A, B), Info, Info) --> [].
+qualify_pragma(aditi_no_memo(SymName, Arity), aditi_no_memo(SymName, Arity),
+		Info, Info) --> [].
+qualify_pragma(naive(SymName, Arity), naive(SymName, Arity),
+		Info, Info) --> [].
+qualify_pragma(psn(SymName, Arity), psn(SymName, Arity),
+		Info, Info) --> [].
+qualify_pragma(owner(SymName, Arity, Owner), owner(SymName, Arity, Owner),
+		Info, Info) --> [].
 qualify_pragma(promise_pure(SymName, Arity), promise_pure(SymName, Arity),
 		Info, Info) --> [].
 qualify_pragma(termination_info(PredOrFunc, SymName, Modes0, Args, Term), 
@@ -729,6 +763,16 @@ qualify_pragma_vars([pragma_var(Var, Name, Mode0) | PragmaVars0],
 		[pragma_var(Var, Name, Mode) | PragmaVars], Info0, Info) -->
 	qualify_mode(Mode0, Mode, Info0, Info1),
 	qualify_pragma_vars(PragmaVars0, PragmaVars, Info1, Info).
+
+:- pred qualify_type_spec_subst(assoc_list(tvar, type)::in,
+		assoc_list(tvar, type)::out, mq_info::in, mq_info::out,
+		io__state::di, io__state::uo) is det.
+
+qualify_type_spec_subst([], [], Info, Info) --> [].
+qualify_type_spec_subst([Var - Type0 |  Subst0], [Var - Type | Subst],
+		Info0, Info) -->
+	qualify_type(Type0, Type, Info0, Info1),
+	qualify_type_spec_subst(Subst0, Subst, Info1, Info).
 
 :- pred qualify_class_constraints(class_constraints::in,
 	class_constraints::out, mq_info::in, mq_info::out, io__state::di,
@@ -824,10 +868,11 @@ qualify_class_method(
 	{ Modes = argument_modes(InstTable, ArgModes) },
 	qualify_mode(ReturnMode0, ReturnMode, MQInfo1, MQInfo).
 
-:- pred qualify_instance_interface(sym_name::in, instance_interface::in, 
-	instance_interface::out) is det. 
+:- pred qualify_instance_body(sym_name::in, instance_body::in, 
+	instance_body::out) is det. 
 
-qualify_instance_interface(ClassName, M0s, Ms) :-
+qualify_instance_body(_ClassName, abstract, abstract).
+qualify_instance_body(ClassName, concrete(M0s), concrete(Ms)) :-
 	( ClassName = unqualified(_) ->
 		Ms = M0s
 	;

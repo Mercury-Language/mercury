@@ -791,8 +791,6 @@ term__context_init(File, LineNumber, term__context(File, LineNumber)).
 	% Unify two terms (with occurs check), updating the bindings of
 	% the variables in the terms.  
 
-:- term__unify(X, Y, _, _) when X and Y.		% NU-Prolog indexing
-
 term__unify(term__variable(X), term__variable(Y), Bindings0, Bindings) :-
 	( %%% if some [BindingOfX]
 		map__search(Bindings0, X, BindingOfX)
@@ -1051,16 +1049,12 @@ term__apply_variable_renaming_to_list([Term0|Terms0], Renaming, [Term|Terms]) :-
 
 %-----------------------------------------------------------------------------%
 
-:- term__term_list_to_var_list(Terms, Vars) when Terms or Vars. % Indexing
-
 term__term_list_to_var_list(Terms, Vars) :-
 	( term__var_list_to_term_list(Vars0, Terms) ->
 		Vars = Vars0
 	;
 		error("term__term_list_to_var_list")
 	).
-
-:- term__var_list_to_term_list(Terms, Vars) when Terms or Vars. % Indexing
 
 term__var_list_to_term_list([], []).
 term__var_list_to_term_list([Var | Vars], [term__variable(Var) | Terms]) :-

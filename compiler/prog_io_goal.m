@@ -30,7 +30,7 @@
 :- mode parse_some_vars_goal(in, in, out, out, out) is det.
 
 	% parse_lambda_expression/3 converts the first argument to a lambda/2
-	% expression into a list of variables, a list of their corresponding
+	% expression into a list of arguments, a list of their corresponding
 	% modes, and a determinism.
 	% The syntax of a lambda expression is
 	%	`lambda([Var1::Mode1, ..., VarN::ModeN] is Det, Goal)'
@@ -53,7 +53,7 @@
 :- mode parse_pred_expression(in, out, out, out) is semidet.
 
 	% parse_dcg_pred_expression/3 converts the first argument to a -->/2
-	% higher-order dcg pred expression into a list of variables, a list
+	% higher-order dcg pred expression into a list of arguments, a list
 	% of their corresponding modes and the two dcg argument modes, and a
 	% determinism.
 	% This is a variant of the higher-order pred syntax:
@@ -65,7 +65,7 @@
 :- mode parse_dcg_pred_expression(in, out, out, out) is semidet.
 
 	% parse_func_expression/3 converts the first argument to a :-/2
-	% higher-order func expression into a list of variables, a list
+	% higher-order func expression into a list of arguments, a list
 	% of their corresponding modes, and a determinism.  The syntax
 	% of a higher-order func expression is
 	% 	`(func(Var1::Mode1, ..., VarN::ModeN) = (VarN1::ModeN1) is Det
@@ -254,56 +254,56 @@ parse_some_vars_goal(A0, VarSet0, Vars, A, VarSet) :-
 
 %-----------------------------------------------------------------------------%
 
-parse_lambda_expression(LambdaExpressionTerm, Vars, Modes, Det) :-
+parse_lambda_expression(LambdaExpressionTerm, Args, Modes, Det) :-
 	LambdaExpressionTerm = term__functor(term__atom("is"),
 				[LambdaArgsTerm, DetTerm], _),
 	DetTerm = term__functor(term__atom(DetString), [], _),
 	standard_det(DetString, Det),
-	parse_lambda_args(LambdaArgsTerm, Vars, Modes).
+	parse_lambda_args(LambdaArgsTerm, Args, Modes).
 
 :- pred parse_lambda_args(term, list(prog_term), list(mode)).
 :- mode parse_lambda_args(in, out, out) is semidet.
 
-parse_lambda_args(Term, Vars, Modes) :-
+parse_lambda_args(Term, Args, Modes) :-
 	( Term = term__functor(term__atom("."), [Head, Tail], _Context) ->
-		parse_lambda_arg(Head, Var, Mode),
-		Vars = [Var | Vars1],
+		parse_lambda_arg(Head, Arg, Mode),
+		Args = [Arg | Args1],
 		Modes = [Mode | Modes1],
-		parse_lambda_args(Tail, Vars1, Modes1)
+		parse_lambda_args(Tail, Args1, Modes1)
 	; Term = term__functor(term__atom("[]"), [], _) ->
-		Vars = [],
+		Args = [],
 		Modes = []
 	;
-		Vars = [Var],
+		Args = [Arg],
 		Modes = [Mode],
-		parse_lambda_arg(Term, Var, Mode)
+		parse_lambda_arg(Term, Arg, Mode)
 	).
 
 :- pred parse_lambda_arg(term, prog_term, mode).
 :- mode parse_lambda_arg(in, out, out) is semidet.
 
-parse_lambda_arg(Term, VarTerm, Mode) :-
-	Term = term__functor(term__atom("::"), [VarTerm0, ModeTerm], _),
-	term__coerce(VarTerm0, VarTerm),
+parse_lambda_arg(Term, ArgTerm, Mode) :-
+	Term = term__functor(term__atom("::"), [ArgTerm0, ModeTerm], _),
+	term__coerce(ArgTerm0, ArgTerm),
 	convert_mode(ModeTerm, Mode).
 
 %-----------------------------------------------------------------------------%
 
-parse_pred_expression(PredTerm, Vars, Modes, Det) :-
+parse_pred_expression(PredTerm, Args, Modes, Det) :-
 	PredTerm = term__functor(term__atom("is"), [PredArgsTerm, DetTerm], _),
 	DetTerm = term__functor(term__atom(DetString), [], _),
 	standard_det(DetString, Det),
 	PredArgsTerm = term__functor(term__atom("pred"), PredArgsList, _),
-	parse_pred_expr_args(PredArgsList, Vars, Modes).
+	parse_pred_expr_args(PredArgsList, Args, Modes).
 
-parse_dcg_pred_expression(PredTerm, Vars, Modes, Det) :-
+parse_dcg_pred_expression(PredTerm, Args, Modes, Det) :-
 	PredTerm = term__functor(term__atom("is"), [PredArgsTerm, DetTerm], _),
 	DetTerm = term__functor(term__atom(DetString), [], _),
 	standard_det(DetString, Det),
 	PredArgsTerm = term__functor(term__atom("pred"), PredArgsList, _),
-	parse_dcg_pred_expr_args(PredArgsList, Vars, Modes).
+	parse_dcg_pred_expr_args(PredArgsList, Args, Modes).
 
-parse_func_expression(FuncTerm, Vars, Modes, Det) :-
+parse_func_expression(FuncTerm, Args, Modes, Det) :-
 	%
 	% parse a func expression with specified modes and determinism
 	%
@@ -312,16 +312,16 @@ parse_func_expression(FuncTerm, Vars, Modes, Det) :-
 	DetTerm = term__functor(term__atom(DetString), [], _),
 	standard_det(DetString, Det),
 	FuncArgsTerm = term__functor(term__atom("func"), FuncArgsList, _),
-	parse_pred_expr_args(FuncArgsList, Vars0, Modes0),
-	parse_lambda_arg(RetTerm, RetVar, RetMode),
-	list__append(Vars0, [RetVar], Vars),
+	parse_pred_expr_args(FuncArgsList, Args0, Modes0),
+	parse_lambda_arg(RetTerm, RetArg, RetMode),
+	list__append(Args0, [RetArg], Args),
 	list__append(Modes0, [RetMode], Modes).
-parse_func_expression(FuncTerm, Vars, Modes, Det) :-
+parse_func_expression(FuncTerm, Args, Modes, Det) :-
 	%
 	% parse a func expression with unspecified modes and determinism
 	%
-	FuncTerm = term__functor(term__atom("="), [FuncArgsTerm, RetVar], _),
-	FuncArgsTerm = term__functor(term__atom("func"), Vars0, _),
+	FuncTerm = term__functor(term__atom("="), [FuncArgsTerm, RetArg], _),
+	FuncArgsTerm = term__functor(term__atom("func"), Args0, _),
 	%
 	% the argument modes default to `in',
 	% the return mode defaults to `out',
@@ -329,13 +329,13 @@ parse_func_expression(FuncTerm, Vars, Modes, Det) :-
 	%
 	in_mode(InMode),
 	out_mode(OutMode),
-	list__length(Vars0, NumVars),
-	list__duplicate(NumVars, InMode, Modes0),
+	list__length(Args0, NumArgs),
+	list__duplicate(NumArgs, InMode, Modes0),
 	RetMode = OutMode,
 	Det = det,
 	list__append(Modes0, [RetMode], Modes),
-	list__append(Vars0, [RetVar], Vars1),
-	list__map(term__coerce, Vars1, Vars).
+	list__append(Args0, [RetArg], Args1),
+	list__map(term__coerce, Args1, Args).
 
 :- pred parse_pred_expr_args(list(term), list(prog_term), list(mode)).
 :- mode parse_pred_expr_args(in, out, out) is semidet.

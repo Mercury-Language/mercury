@@ -38,8 +38,8 @@
 				module_info, module_info,
 				io__state, io__state))
 		% It would be better to use an existentiallly-quantified type
-		% rather than `univ' here, but Mercury 0.6 doesn't support
-		% existentially-quantified types.
+		% rather than `univ' here, but the current version of Mercury 
+		% doesn't support existentially-quantified types.
 		;	update_module_cookie(pred(
 				pred_id, proc_id, proc_info, proc_info,
 				univ, univ, module_info, module_info),
@@ -103,6 +103,21 @@ about unbound type variables.
 	io__state, io__state).
 :- mode process_all_nonimported_procs(task, in, out, di, uo) is det.
 
+	% Process procedures for which a given test succeeds.
+:- pred process_matching_nonimported_procs(task, pred(pred_info),
+	module_info, module_info, io__state, io__state).
+:- mode process_matching_nonimported_procs(task, pred(in) is semidet,
+	in, out, di, uo) is det.
+
+:- pred process_matching_nonimported_procs(task, task, pred(pred_info),
+	module_info, module_info, io__state, io__state).
+:- mode process_matching_nonimported_procs(task, out(task),
+	pred(in) is semidet, in, out, di, uo) is det.
+
+:- pred process_all_nonimported_nonaditi_procs(task, module_info, module_info,
+	io__state, io__state).
+:- mode process_all_nonimported_nonaditi_procs(task, in, out, di, uo) is det.
+
 :- pred process_all_nonimported_procs(task, task,
 	module_info, module_info, io__state, io__state).
 :- mode process_all_nonimported_procs(task, out(task), in, out, di, uo) is det.
@@ -145,29 +160,51 @@ about unbound type variables.
 :- import_module int, map, tree234, require.
 
 process_all_nonimported_procs(Task, ModuleInfo0, ModuleInfo) -->
+	{ True = lambda([_PredInfo::in] is semidet, true) },
+	process_matching_nonimported_procs(Task, True, 
+		ModuleInfo0, ModuleInfo).
+
+process_all_nonimported_nonaditi_procs(Task, ModuleInfo0, ModuleInfo) -->
+	{ NotAditi = lambda([PredInfo::in] is semidet, (
+			\+ hlds_pred__pred_info_is_aditi_relation(PredInfo)
+		)) }, 
+	process_matching_nonimported_procs(Task, NotAditi, 
+		ModuleInfo0, ModuleInfo).
+
+process_all_nonimported_procs(Task0, Task, ModuleInfo0, ModuleInfo) -->
+	{ True = lambda([_PredInfo::in] is semidet, true) },
+	process_matching_nonimported_procs(Task0, Task, True, 
+		ModuleInfo0, ModuleInfo).
+
+process_matching_nonimported_procs(Task, Filter, ModuleInfo0, ModuleInfo) -->
 	{ module_info_predids(ModuleInfo0, PredIds) },
 	( { Task = update_pred_error(Pred) } ->
-		list__foldl2(process_nonimported_pred(Pred), PredIds,
+		list__foldl2(process_nonimported_pred(Pred, Filter), PredIds,
 			ModuleInfo0, ModuleInfo)
 	;
-		process_nonimported_procs_in_preds(PredIds, Task, _,
+		process_nonimported_procs_in_preds(PredIds, Task, _, Filter,
 			ModuleInfo0, ModuleInfo)
 	).
 
-process_all_nonimported_procs(Task0, Task, ModuleInfo0, ModuleInfo) -->
+process_matching_nonimported_procs(Task0, Task, Filter, 
+		ModuleInfo0, ModuleInfo) -->
 	{ module_info_predids(ModuleInfo0, PredIds) },
-	process_nonimported_procs_in_preds(PredIds, Task0, Task,
+	process_nonimported_procs_in_preds(PredIds, Task0, Task, Filter,
 		ModuleInfo0, ModuleInfo).
 
-:- pred process_nonimported_pred(pred_error_task, pred_id,
+:- pred process_nonimported_pred(pred_error_task, pred(pred_info), pred_id, 
 	module_info, module_info, io__state, io__state).
-:- mode process_nonimported_pred(in(pred_error_task), in,
+:- mode process_nonimported_pred(in(pred_error_task), pred(in) is semidet, in,
 	in, out, di, uo) is det.
 
-process_nonimported_pred(Task, PredId, ModuleInfo0, ModuleInfo,
+process_nonimported_pred(Task, Filter, PredId, ModuleInfo0, ModuleInfo,
 		IO0, IO) :-
 	module_info_pred_info(ModuleInfo0, PredId, PredInfo0),
-	( pred_info_is_imported(PredInfo0) ->
+	(
+		( pred_info_is_imported(PredInfo0)
+		; \+ call(Filter, PredInfo0)
+		)
+	->
 		ModuleInfo = ModuleInfo0,
 		IO = IO0
 	;
@@ -180,20 +217,25 @@ process_nonimported_pred(Task, PredId, ModuleInfo0, ModuleInfo,
 	).
 
 :- pred process_nonimported_procs_in_preds(list(pred_id), task, task,
-	module_info, module_info, io__state, io__state).
-:- mode process_nonimported_procs_in_preds(in, task, out(task), in, out,
-	di, uo) is det.
+	pred(pred_info), module_info, module_info, io__state, io__state).
+:- mode process_nonimported_procs_in_preds(in, task, out(task), 
+	pred(in) is semidet, in, out, di, uo) is det.
 
-process_nonimported_procs_in_preds([], Task, Task, ModuleInfo, ModuleInfo)
+process_nonimported_procs_in_preds([], Task, Task, _, ModuleInfo, ModuleInfo)
 		--> [].
-process_nonimported_procs_in_preds([PredId | PredIds], Task0, Task,
+process_nonimported_procs_in_preds([PredId | PredIds], Task0, Task, Filter,
 		ModuleInfo0, ModuleInfo) -->
 	{ module_info_preds(ModuleInfo0, PredTable) },
 	{ map__lookup(PredTable, PredId, PredInfo) },
-	{ pred_info_non_imported_procids(PredInfo, ProcIds) },
-	process_nonimported_procs(ProcIds, PredId, Task0, Task1,
-		ModuleInfo0, ModuleInfo1),
-	process_nonimported_procs_in_preds(PredIds, Task1, Task,
+	( { call(Filter, PredInfo) } ->
+		{ pred_info_non_imported_procids(PredInfo, ProcIds) },
+		process_nonimported_procs(ProcIds, PredId, Task0, Task1,
+			ModuleInfo0, ModuleInfo1)
+	;
+		{ ModuleInfo1 = ModuleInfo0 },
+		{ Task1 = Task0 }
+	),
+	process_nonimported_procs_in_preds(PredIds, Task1, Task, Filter,
 		ModuleInfo1, ModuleInfo).
 
 :- pred process_nonimported_procs(list(proc_id), pred_id, task, task,
@@ -376,17 +418,13 @@ report_sizes(ModuleInfo) -->
 :- mode tree_stats(in, in, di, uo) is det.
 
 tree_stats(Description, Tree) -->
-	{ tree234__count(Tree, Count) },
-	% { tree234__depth(Tree, Depth) },
+	{ map__count(Tree, Count) },
 	io__write_string(Description),
 	io__write_string(": count = "),
 	io__write_int(Count),
-	% io__write_string(", depth = "),
-	% io__write_int(Depth),
 	io__write_string("\n").
 
 %-----------------------------------------------------------------------------%
-
 
 report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context) -->
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,

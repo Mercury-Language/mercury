@@ -11,13 +11,13 @@
 # corresponds to a version of the compiler that is built with the
 # MCFLAGS, EXTRA_CFLAGS and GRADE make variables being set from that line.
 #
-# The output goes in $batch.mercury_compile.$n.gz; the size of the versions
+# The output goes in $batch.mercury_compile.$n.gz; the sizes of the versions
 # are put in $batch.sizes. If a bootcheck fails, the bootcheck output goes
 # in $batch.out.$n; the compiler will be thrown away unless the -f flag is
 # given.
 #
 # The file $batch.checkpoint records which version is to be built next.
-# Reinvoking makebatch while this file exist will cause it to start from
+# Reinvoking makebatch while this file exists will cause it to start from
 # that version. When makebatch exits normally, it removes the file to indicate
 # completion.
 

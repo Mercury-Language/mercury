@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1998 The University of Melbourne. 
+# Copyright (C) 1995-1999 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -19,21 +19,23 @@ VPATH=$(LIBRARY_DIR)
 # Don't change these without good reason - if you want to
 # do a temporary change, change ../Mmake.params
 
-MCD	=	MERCURY_INT_DIR=. $(MC) --generate-dependencies
-MCI	=	MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) --make-interface
-MCSI	=	MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) --make-short-interface
-MCOI	=	MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) \
-			--make-optimization-interface
-MCTOI	=	MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) \
-			--make-transitive-optimization-interface
-MCG	=	MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
-		MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) --compile-to-c
-MCS	=	MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
-		MERCURY_INT_DIR=$(LIBRARY_DIR) \
-		$(MC) --cflags -I$(BOEHM_GC_DIR) --split-c-files -c 
-MGNUC	=	MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
-			$(SCRIPTS_DIR)/mgnuc
-MGNUCFLAGS =	$(EXTRA_MGNUCFLAGS) -I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)
+M_ENV	=	MERCURY_INT_DIR=$(LIBRARY_DIR) \
+		MERCURY_ALL_C_INCL_DIRS="\
+			-I$(TRACE_DIR) \
+			-I$(RUNTIME_DIR) \
+			-I$(BOEHM_GC_DIR) \
+			-I$(BOEHM_GC_DIR)/include \
+		"
+MCD	=	$(M_ENV) $(MC) --generate-dependencies
+MCI	=	$(M_ENV) $(MC) --make-interface
+MCPI	=	$(M_ENV) $(MC) --make-private-interface
+MCSI	=	$(M_ENV) $(MC) --make-short-interface
+MCOI	=	$(M_ENV) $(MC) --make-optimization-interface
+MCTOI	=	$(M_ENV) $(MC) --make-transitive-optimization-interface
+MCG	=	$(M_ENV) $(MC) --compile-to-c
+MCS	=	$(M_ENV) $(MC) --split-c-files -c --cflags $(ALL_CFLAGS)
+MGNUC	=	$(M_ENV) $(SCRIPTS_DIR)/mgnuc
+MGNUCFLAGS =	$(EXTRA_MGNUCFLAGS) $(EXTRA_CFLAGS)
 C2INIT =	MERCURY_MOD_LIB_MODS="$(BROWSER_DIR)/$(BROWSER_LIB_NAME).init $(LIBRARY_DIR)/$(STD_LIB_NAME).init $(RUNTIME_DIR)/$(RT_LIB_NAME).init" \
 		MERCURY_MKINIT=$(UTIL_DIR)/mkinit $(SCRIPTS_DIR)/c2init
 ML	=	MERCURY_C_LIB_DIR=. $(SCRIPTS_DIR)/ml
@@ -60,6 +62,33 @@ MTAGSFLAGS =
 
 #-----------------------------------------------------------------------------#
 
+# Rules for preprocessing `.pp' files.
+
+ifeq ($(INCLUDE_ADITI_OUTPUT),yes)
+
+# Remove the #if line and everything between the #else and #endif lines.
+%.m: %.pp
+	@-[ ! -f $@ ] || chmod +w $@
+	sed	-e '/^#if *INCLUDE_ADITI_OUTPUT/s/.*//' \
+		-e '/^#else/,/^#endif/s/.*//' \
+		$< > $@
+	@-chmod -w $@
+
+else
+
+# Remove everything between the #if line and the #else line,
+# and the #endif line.
+%.m: %.pp
+	@-[ ! -f $@ ] || chmod +w $@
+	sed	-e '/^#if *INCLUDE_ADITI_OUTPUT/,/^#else/s/.*//' \
+		-e '/^#endif/s/.*//' \
+		$< > $@
+	@-chmod -w $@
+
+endif
+
+#-----------------------------------------------------------------------------#
+
 # targets
 #
 # mercury_compile
@@ -70,6 +99,10 @@ MTAGSFLAGS =
 
 .PHONY: depend
 depend:		mercury_compile.depend
+
+# we need to make sure the .pp files get converted to .m before
+# we do the make depend
+mercury_compile.depend: rl_file.m rl_out.m
 
 .PHONY: all
 all:		mercury nuprolog sicstus
@@ -136,6 +169,11 @@ cs: $(mercury_compile.cs) $(cs_subdir)mercury_compile_init.c
 #-----------------------------------------------------------------------------#
 
 clean:
+	for file in *.pp; do \
+		if [ "$$file" != "*.pp" ]; then \
+			rm -f `basename $$file .pp`.m; \
+		fi; \
+	done
 
 realclean:
 	rm -f tags mercury_compile.stats
@@ -160,22 +198,25 @@ install_nuprolog: install_compiler_nu
 .PHONY: install_sicstus
 install_sicstus: install_compiler_sicstus
 
-.PHONY: install_compiler
-install_compiler: mercury_compile
+.PHONY: install_dirs
+install_dirs:
 	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
+	-[ -d $(INSTALL_NU_ARCH_DIR) ] || mkdir -p $(INSTALL_NU_ARCH_DIR) 
+	-[ -d $(INSTALL_SP_ARCH_DIR) ] || mkdir -p $(INSTALL_SP_ARCH_DIR) 
+
+.PHONY: install_compiler
+install_compiler: mercury_compile install_dirs
 	cp `vpath_find mercury_compile` $(INSTALL_MERC_BIN_DIR)
 
 .PHONY: install_compiler_nu
-install_compiler_nu: mercury_compile.nu
-	-[ -d $(INSTALL_NU_ARCH_DIR) ] || mkdir -p $(INSTALL_NU_ARCH_DIR) 
+install_compiler_nu: mercury_compile.nu install_dirs
 	sed "s^`pwd`^$(INSTALL_NU_ARCH_DIR)^g" `vpath_find mercury_compile.nu` \
 		> $(INSTALL_NU_ARCH_DIR)/mercury_compile.nu
 	-chmod +x $(INSTALL_NU_ARCH_DIR)/mercury_compile.nu
 	cp `vpath_find mercury_compile.nu.save` $(INSTALL_NU_ARCH_DIR)
 
 .PHONY: install_compiler_sicstus
-install_compiler_sicstus: mercury_compile.sicstus
-	-[ -d $(INSTALL_SP_ARCH_DIR) ] || mkdir -p $(INSTALL_SP_ARCH_DIR) 
+install_compiler_sicstus: mercury_compile.sicstus install_dirs
 	cp `vpath_find mercury_compile.sicstus` $(INSTALL_SP_ARCH_DIR)
 
 #-----------------------------------------------------------------------------#

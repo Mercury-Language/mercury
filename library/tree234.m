@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -31,6 +31,18 @@
 
 :- pred tree234__lookup(tree234(K, V), K, V).
 :- mode tree234__lookup(in, in, out) is det.
+
+:- pred tree234__lower_bound_search(tree234(K, V), K, K, V).
+:- mode tree234__lower_bound_search(in, in, out, out) is semidet.
+
+:- pred tree234__lower_bound_lookup(tree234(K, V), K, K, V).
+:- mode tree234__lower_bound_lookup(in, in, out, out) is det.
+
+:- pred tree234__upper_bound_search(tree234(K, V), K, K, V).
+:- mode tree234__upper_bound_search(in, in, out, out) is semidet.
+
+:- pred tree234__upper_bound_lookup(tree234(K, V), K, K, V).
+:- mode tree234__upper_bound_lookup(in, in, out, out) is det.
 
 :- pred tree234__insert(tree234(K, V), K, V, tree234(K, V)).
 :- mode tree234__insert(in, in, in, out) is semidet.
@@ -278,6 +290,335 @@ tree234__search(T, K, V) :-
 		)
 	).
 
+tree234__lookup(T, K, V) :-
+	( tree234__search(T, K, V0) ->
+		V = V0
+	;
+		report_lookup_error("tree234__lookup: key not found.", K, V)
+	).
+
+%------------------------------------------------------------------------------%
+
+tree234__lower_bound_search(T, SearchK, K, V) :-
+	(
+		T = empty,
+		fail
+	;
+		T = two(K0, _, _, _),
+		compare(Result, SearchK, K0),
+		(
+			Result = (<),
+			T = two(_, _, T0, _),
+			tree234__lower_bound_search(T0, SearchK, K, V)
+		;
+			Result = (=),
+			T = two(_, V0, _, _),
+			K = SearchK,
+			V = V0
+		;
+			Result = (>),
+			T = two(_, _, _, T1),
+			( tree234__lower_bound_search(T1, SearchK, Kp, Vp) ->
+				K = Kp,
+				V = Vp
+			;
+				T = two(_, V0, _, _),
+				K = K0,
+				V = V0
+			)
+		)
+	;
+		T = three(K0, _, _, _, _, _, _),
+		compare(Result0, SearchK, K0),
+		(
+			Result0 = (<),
+			T = three(_, _, _, _, T0, _, _),
+			tree234__lower_bound_search(T0, SearchK, K, V)
+		;
+			Result0 = (=),
+			T = three(_, V0, _, _, _, _, _),
+			K = SearchK,
+			V = V0
+		;
+			Result0 = (>),
+			T = three(_, _, K1, _, _, _, _),
+			compare(Result1, SearchK, K1),
+			(
+				Result1 = (<),
+				T = three(_, _, _, _, _, T1, _),
+				( tree234__lower_bound_search(T1, SearchK,
+					Kp, Vp)
+				-> 
+					K = Kp,
+					V = Vp
+				;
+					T = three(_, V0, _, _, _, _, _),
+					K = K0,
+					V = V0
+				)
+			;
+				Result1 = (=),
+				T = three(_, _, _, V1, _, _, _),
+				K = SearchK,
+				V = V1
+			;
+				Result1 = (>),
+				T = three(_, _, _, _, _, _, T2),
+				( tree234__lower_bound_search(T2, SearchK,
+					Kp, Vp)
+				-> 
+					K = Kp,
+					V = Vp
+				;
+					T = three(_, _, _, V1, _, _, _),
+					K = K1,
+					V = V1
+				)
+			)
+		)
+	;
+		T = four(_, _, K1, _, _, _, _, _, _, _),
+		compare(Result1, SearchK, K1),
+		(
+			Result1 = (<),
+			T = four(K0, _, _, _, _, _, _, _, _, _),
+			compare(Result0, SearchK, K0),
+			(
+				Result0 = (<),
+				T = four(_, _, _, _, _, _, T0, _, _, _),
+				tree234__lower_bound_search(T0, SearchK, K, V)
+			;
+				Result0 = (=),
+				T = four(_, V0, _, _, _, _, _, _, _, _),
+				K = SearchK,
+				V = V0
+			;
+				Result0 = (>),
+				T = four(_, _, _, _, _, _, _, T1, _, _),
+				( tree234__lower_bound_search(T1, SearchK,
+					Kp, Vp)
+				-> 
+					K = Kp,
+					V = Vp
+				;
+					T = four(_, V0, _, _, _, _, _, _, _, _),
+					K = K0,
+					V = V0
+				)
+			)
+		;
+			Result1 = (=),
+			T = four(_, _, _, V1, _, _, _, _, _, _),
+			K = SearchK,
+			V = V1
+		;
+			Result1 = (>),
+			T = four(_, _, _, _, K2, _, _, _, _, _),
+			compare(Result2, SearchK, K2),
+			(
+				Result2 = (<),
+				T = four(_, _, _, _, _, _, _, _, T2, _),
+				( tree234__lower_bound_search(T2, SearchK,
+					Kp, Vp)
+				-> 
+					K = Kp,
+					V = Vp
+				;
+					T = four(_, _, _, V1, _, _, _, _, _, _),
+					K = K1,
+					V = V1
+				)
+			;
+				Result2 = (=),
+				T = four(_, _, _, _, _, V2, _, _, _, _),
+				K = SearchK,
+				V = V2
+			;
+				Result2 = (>),
+				T = four(_, _, _, _, _, _, _, _, _, T3),
+				( tree234__lower_bound_search(T3, SearchK,
+					Kp, Vp)
+				-> 
+					K = Kp,
+					V = Vp
+				;
+					T = four(_, _, _, _, _, V2, _, _, _, _),
+					K = K2,
+					V = V2
+				)
+			)
+		)
+	).
+
+tree234__lower_bound_lookup(T, SearchK, K, V) :-
+	( tree234__lower_bound_search(T, SearchK, K0, V0) ->
+		K = K0,
+		V = V0
+	;
+		report_lookup_error("tree234__lower_bound_lookup: key not found.",
+			SearchK, V)
+	).
+
+%------------------------------------------------------------------------------%
+
+tree234__upper_bound_search(T, SearchK, K, V) :-
+	(
+		T = empty,
+		fail
+	;
+		T = two(K0, _, _, _),
+		compare(Result, SearchK, K0),
+		(
+			Result = (<),
+			T = two(_, _, T0, _),
+			( tree234__upper_bound_search(T0, SearchK, Kp, Vp) -> 
+				K = Kp,
+				V = Vp
+			;
+				T = two(_, V0, _, _),
+				K = K0,
+				V = V0
+			)
+		;
+			Result = (=),
+			T = two(_, V0, _, _),
+			K = SearchK,
+			V = V0
+		;
+			Result = (>),
+			T = two(_, _, _, T1),
+			tree234__upper_bound_search(T1, SearchK, K, V)
+		)
+	;
+		T = three(K0, _, _, _, _, _, _),
+		compare(Result0, SearchK, K0),
+		(
+			Result0 = (<),
+			T = three(_, _, _, _, T0, _, _),
+			( tree234__upper_bound_search(T0, SearchK, Kp, Vp) ->
+				K = Kp,
+				V = Vp
+			;
+				T = three(_, V0, _, _, _, _, _),
+				K = K0,
+				V = V0
+			)
+		;
+			Result0 = (=),
+			T = three(_, V0, _, _, _, _, _),
+			K = SearchK,
+			V = V0
+		;
+			Result0 = (>),
+			T = three(_, _, K1, _, _, _, _),
+			compare(Result1, SearchK, K1),
+			(
+				Result1 = (<),
+				T = three(_, _, _, _, _, T1, _),
+				( tree234__upper_bound_search(T1, SearchK,
+					Kp, Vp)
+				->
+					K = Kp,
+					V = Vp
+				;
+					T = three(_, _, _, V1, _, _, _),
+					K = K1,
+					V = V1
+				)
+			;
+				Result1 = (=),
+				T = three(_, _, _, V1, _, _, _),
+				K = SearchK,
+				V = V1
+			;
+				Result1 = (>),
+				T = three(_, _, _, _, _, _, T2),
+				tree234__upper_bound_search(T2, SearchK, K, V)
+			)
+		)
+	;
+		T = four(_, _, K1, _, _, _, _, _, _, _),
+		compare(Result1, SearchK, K1),
+		(
+			Result1 = (<),
+			T = four(K0, _, _, _, _, _, _, _, _, _),
+			compare(Result0, SearchK, K0),
+			(
+				Result0 = (<),
+				T = four(_, _, _, _, _, _, T0, _, _, _),
+				( tree234__upper_bound_search(T0, SearchK,
+					Kp, Vp)
+				->
+					K = Kp,
+					V = Vp
+				;
+					T = four(_, V0, _, _, _, _, _, _, _, _),
+					K = K0,
+					V = V0
+				)
+			;
+				Result0 = (=),
+				T = four(_, V0, _, _, _, _, _, _, _, _),
+				K = SearchK,
+				V = V0
+			;
+				Result0 = (>),
+				T = four(_, _, _, _, _, _, _, T1, _, _),
+				( tree234__upper_bound_search(T1, SearchK,
+					Kp, Vp)
+				->
+					K = Kp,
+					V = Vp
+				;
+					T = four(_, _, _, V1, _, _, _, _, _, _),
+					K = K1,
+					V = V1
+				)
+			)
+		;
+			Result1 = (=),
+			T = four(_, _, _, V1, _, _, _, _, _, _),
+			K = SearchK,
+			V = V1
+		;
+			Result1 = (>),
+			T = four(_, _, _, _, K2, _, _, _, _, _),
+			compare(Result2, SearchK, K2),
+			(
+				Result2 = (<),
+				T = four(_, _, _, _, _, _, _, _, T2, _),
+				( tree234__upper_bound_search(T2, SearchK,
+					Kp, Vp)
+				->
+					K = Kp,
+					V = Vp
+				;
+					T = four(_, _, _, _, _, V2, _, _, _, _),
+					K = K2,
+					V = V2
+				)
+			;
+				Result2 = (=),
+				T = four(_, _, _, _, _, V2, _, _, _, _),
+				K = SearchK,
+				V = V2
+			;
+				Result2 = (>),
+				T = four(_, _, _, _, _, _, _, _, _, T3),
+				tree234__upper_bound_search(T3, SearchK, K, V)
+			)
+		)
+	).
+
+tree234__upper_bound_lookup(T, SearchK, K, V) :-
+	( tree234__upper_bound_search(T, SearchK, K0, V0) ->
+		K = K0,
+		V = V0
+	;
+		report_lookup_error("tree234__upper_bound_lookup: key not found.",
+			SearchK, V)
+	).
+
 %------------------------------------------------------------------------------%
 
 tree234__update(Tin, K, V, Tout) :-
@@ -395,17 +736,6 @@ tree234__update(Tin, K, V, Tout) :-
 					T0, T1, T2, NewT3)
 			)
 		)
-	).
-
-%------------------------------------------------------------------------------%
-
-tree234__lookup(T, K, V) :-
-	(
-		tree234__search(T, K, V0)
-	->
-		V = V0
-	;
-		error("tree234__lookup: key not found.")
 	).
 
 %------------------------------------------------------------------------------%

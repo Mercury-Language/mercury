@@ -134,6 +134,10 @@
 	% may need to insert new merge_insts into the merge_inst table.
 	% If the first argument is yes, the instmap_deltas for calls
 	% and deconstruction unifications are also recomputed.
+:- pred recompute_instmap_delta_proc(proc_info, proc_info,
+		module_info, module_info).
+:- mode recompute_instmap_delta_proc(in, out, in, out) is det.
+
 :- pred recompute_instmap_delta(list(prog_var), list(is_live),
 		map(prog_var, type), hlds_goal, hlds_goal, instmap, inst_table,
 		inst_table, bool, module_info, module_info).
@@ -211,6 +215,13 @@
 	%
 :- pred get_live_vars(list(prog_var), list(is_live), list(prog_var)).
 :- mode get_live_vars(in, in, out) is det.
+
+%-----------------------------------------------------------------------------%
+
+	% Partition a list of arguments into inputs and others.
+:- pred partition_args(instmap, inst_table, module_info, list(mode),
+		list(T), list(T), list(T)).
+:- mode partition_args(in, in, in, in, in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -512,9 +523,10 @@ inst_lookup_2(InstName, InstTable, ModuleInfo, Inst) :-
 		;
 			Inst = defined_inst(InstName)
 		)
-	; InstName = merge_inst(A, B),
+	; InstName = merge_inst(IsLive, A, B),
 		inst_table_get_merge_insts(InstTable, MergeInstTable),
-		map__lookup(MergeInstTable, A - B, MaybeInst),
+		map__lookup(MergeInstTable, merge_inst_pair(IsLive, A, B),
+			MaybeInst),
 		( MaybeInst = known(Inst0) ->
 			Inst = Inst0
 		;
@@ -574,6 +586,15 @@ inst_lookup_2(InstName, InstTable, ModuleInfo, Inst) :-
 		map__init(Subst),
 		propagate_type_into_inst(Type, Subst, InstTable, ModuleInfo,
 			Inst0, Inst)
+	; InstName = substitution_inst(SubInstName, SubKeys, Sub),
+		inst_table_get_substitution_insts(InstTable, SubInsts),
+		map__lookup(SubInsts, substitution_inst(SubInstName, SubKeys,
+			Sub), MaybeInst),
+		( MaybeInst = known(Inst0) ->
+			Inst = Inst0
+		;
+			Inst = defined_inst(InstName)
+		)
 	),
 	!.
 
@@ -1191,8 +1212,8 @@ inst_name_apply_substitution(unify_inst(Live, InstA0, InstB0, Real), Subst,
 		unify_inst(Live, InstA, InstB, Real)) :-
 	inst_apply_substitution(InstA0, Subst, InstA),
 	inst_apply_substitution(InstB0, Subst, InstB).
-inst_name_apply_substitution(merge_inst(InstA0, InstB0), Subst,
-		merge_inst(InstA, InstB)) :-
+inst_name_apply_substitution(merge_inst(IsLive, InstA0, InstB0), Subst,
+		merge_inst(IsLive, InstA, InstB)) :-
 	inst_apply_substitution(InstA0, Subst, InstA),
 	inst_apply_substitution(InstB0, Subst, InstB).
 inst_name_apply_substitution(ground_inst(Inst0, IsLive, Uniq, Real), Subst,
@@ -1211,6 +1232,9 @@ inst_name_apply_substitution(typed_inst(T, Inst0), Subst,
 		typed_inst(T, Inst)) :-
 	inst_name_apply_substitution(Inst0, Subst, Inst).
 inst_name_apply_substitution(typed_ground(Uniq, T), _, typed_ground(Uniq, T)).
+inst_name_apply_substitution(substitution_inst(InstName0, K, S), Subst,
+		substitution_inst(InstName, K, S)) :-
+	inst_name_apply_substitution(InstName0, Subst, InstName).
 
 :- pred alt_list_apply_substitution(list(bound_inst), inst_subst,
 				list(bound_inst)).
@@ -1246,33 +1270,6 @@ mode_list_apply_substitution([], _, []).
 mode_list_apply_substitution([A0 | As0], Subst, [A | As]) :-
 	mode_apply_substitution(A0, Subst, A),
 	mode_list_apply_substitution(As0, Subst, As).
-
-:- pred recompute_instmap_delta_par_conj(list(hlds_goal), list(hlds_goal),
-		instmap, list(pair(instmap, set(prog_var))),
-		list(pair(instmap, set(prog_var))), recompute_info,
-		recompute_info).
-:- mode recompute_instmap_delta_par_conj(in, out, in, in, out, in, out) is det.
-
-recompute_instmap_delta_par_conj([], [], _, IMNonLocals, IMNonLocals) --> [].
-recompute_instmap_delta_par_conj([Goal0], [Goal],
-		InstMap0, IMNonLocals0, IMNonLocals) -->
-	recompute_instmap_delta_2(Goal0, Goal, InstMap0, InstMap, _),
-	{ instmap__vars(InstMap0, OuterNonLocals) },
-	{ Goal0 = _ - GoalInfo0 },
-	{ goal_info_get_nonlocals(GoalInfo0, InnerNonLocals) },
-	{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
-	{ IMNonLocals = [InstMap - NonLocals | IMNonLocals0] }.
-recompute_instmap_delta_par_conj([Goal0 | Goals0], [Goal | Goals],
-		InstMap0, IMNonLocals0, IMNonLocals) -->
-	{ Goals0 = [_|_] },
-	recompute_instmap_delta_2(Goal0, Goal, InstMap0, InstMap, _),
-	{ instmap__vars(InstMap0, OuterNonLocals) },
-	{ Goal0 = _ - GoalInfo0 },
-	{ goal_info_get_nonlocals(GoalInfo0, InnerNonLocals) },
-	{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
-	{ IMNonLocals1 = [InstMap - NonLocals | IMNonLocals0] },
-	recompute_instmap_delta_par_conj(Goals0, Goals, InstMap,
-			IMNonLocals1, IMNonLocals).
 
 %-----------------------------------------------------------------------------%
 
@@ -1356,6 +1353,13 @@ recompute_info_set_goal_changed(recompute_info(A, B, C, D, _),
 		recompute_info(A, B, C, D, yes)).
 
 
+:- pred recompute_info_get_live_vars_list(recompute_info, list(prog_var)).
+:- mode recompute_info_get_live_vars_list(in, out) is det.
+
+recompute_info_get_live_vars_list(RI, LiveVarsList) :-
+	recompute_info_get_live_vars(RI, LiveVarsBag),
+	bag__to_list_without_duplicates(LiveVarsBag, LiveVarsList).
+
 :- pred recompute_info_add_live_vars(set(prog_var), recompute_info,
 		recompute_info).
 :- mode recompute_info_add_live_vars(in, in, out) is det.
@@ -1402,6 +1406,19 @@ recompute_info_var_is_live(RI, Var, IsLive) :-
 	).
 
 %-----------------------------------------------------------------------------%
+
+recompute_instmap_delta_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) :-
+	proc_info_headvars(ProcInfo0, HeadVars),
+	proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives),
+	proc_info_vartypes(ProcInfo0, VarTypes),
+	proc_info_goal(ProcInfo0, Goal0),
+	proc_info_inst_table(ProcInfo0, InstTable0),
+	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
+	recompute_instmap_delta(HeadVars, ArgLives, VarTypes, Goal0, Goal,
+		InstMap0, InstTable0, InstTable, _GoalChanged,
+		ModuleInfo0, ModuleInfo),
+	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
+	proc_info_set_inst_table(ProcInfo1, InstTable, ProcInfo).
 
 recompute_instmap_delta(ArgVars, ArgLives, VarTypes, Goal0, Goal, Instmap,
 		InstTable0, InstTable, GoalChanged, M0, M) :-
@@ -1569,7 +1586,8 @@ recompute_instmap_delta_3(if_then_else(Vars, A0, B0, C0, SM), GoalInfo0,
 		=(RI4),
 		{ recompute_info_get_module_info(RI4, M4) },
 		{ recompute_info_get_inst_table(RI4, InstTable4) },
-		{ instmap__merge(NonLocals, [InstMap2, InstMap3],
+		{ recompute_info_get_live_vars_list(RI4, Liveness) },
+		{ instmap__merge(NonLocals, Liveness, [InstMap2, InstMap3],
 			InstMap0, InstMapAfter, M4, InstTable4, M, InstTable,
 			Errors) },
 		{ Errors = [] ->
@@ -1666,6 +1684,35 @@ recompute_instmap_delta_conj([Goal0 | Goals0], [Goal | Goals],
 
 %-----------------------------------------------------------------------------%
 
+:- pred recompute_instmap_delta_par_conj(list(hlds_goal), list(hlds_goal),
+		instmap, list(pair(instmap, set(prog_var))),
+		list(pair(instmap, set(prog_var))), recompute_info,
+		recompute_info).
+:- mode recompute_instmap_delta_par_conj(in, out, in, in, out, in, out) is det.
+
+recompute_instmap_delta_par_conj([], [], _, IMNonLocals, IMNonLocals) --> [].
+recompute_instmap_delta_par_conj([Goal0], [Goal],
+		InstMap0, IMNonLocals0, IMNonLocals) -->
+	recompute_instmap_delta_2(Goal0, Goal, InstMap0, InstMap, _),
+	{ instmap__vars(InstMap0, OuterNonLocals) },
+	{ Goal0 = _ - GoalInfo0 },
+	{ goal_info_get_nonlocals(GoalInfo0, InnerNonLocals) },
+	{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
+	{ IMNonLocals = [InstMap - NonLocals | IMNonLocals0] }.
+recompute_instmap_delta_par_conj([Goal0 | Goals0], [Goal | Goals],
+		InstMap0, IMNonLocals0, IMNonLocals) -->
+	{ Goals0 = [_|_] },
+	recompute_instmap_delta_2(Goal0, Goal, InstMap0, InstMap, _),
+	{ instmap__vars(InstMap0, OuterNonLocals) },
+	{ Goal0 = _ - GoalInfo0 },
+	{ goal_info_get_nonlocals(GoalInfo0, InnerNonLocals) },
+	{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
+	{ IMNonLocals1 = [InstMap - NonLocals | IMNonLocals0] },
+	recompute_instmap_delta_par_conj(Goals0, Goals, InstMap,
+			IMNonLocals1, IMNonLocals).
+
+%-----------------------------------------------------------------------------%
+
 :- pred recompute_instmap_delta_disj(list(hlds_goal), list(hlds_goal), instmap,
 		set(prog_var), instmap, recompute_info, recompute_info).
 :- mode recompute_instmap_delta_disj(in, out, in, in, out, in, out) is det.
@@ -1684,9 +1731,10 @@ recompute_instmap_delta_disj([Goal0 | Goals0], [Goal | Goals],
 	=(RI2),
 	{ recompute_info_get_module_info(RI2, M2) },
 	{ recompute_info_get_inst_table(RI2, InstTable2) },
-	{ instmap__merge(NonLocals, [InstMapBranches, InstMapThisBranch],
-		InstMap0, InstMapAfter, M2, InstTable2, M, InstTable,
-		Errors) },
+	{ recompute_info_get_live_vars_list(RI2, Liveness) },
+	{ instmap__merge(NonLocals, Liveness, 
+		[InstMapBranches, InstMapThisBranch], InstMap0, InstMapAfter,
+		M2, InstTable2, M, InstTable, Errors) },
 	{ Errors = [] ->
 		InstMap = InstMapAfter
 	;
@@ -1721,9 +1769,10 @@ recompute_instmap_delta_cases(Var, [Case0 | Cases0], [Case | Cases],
 	=(RI4),
 	{ recompute_info_get_module_info(RI4, M4) },
 	{ recompute_info_get_inst_table(RI4, InstTable4) },
-	{ instmap__merge(NonLocals, [InstMapBranches, InstMapThisBranch],
-		InstMap0, InstMapAfter, M4, InstTable4, M, InstTable,
-		Errors) },
+	{ recompute_info_get_live_vars_list(RI4, Liveness) },
+	{ instmap__merge(NonLocals, Liveness,
+		[InstMapBranches, InstMapThisBranch], InstMap0, InstMapAfter,
+		M4, InstTable4, M, InstTable, Errors) },
 	{ Errors = [] ->
 		InstMap = InstMapAfter
 	;
@@ -2459,6 +2508,25 @@ get_live_vars([Var|Vars], [IsLive|IsLives], LiveVars) :-
 		LiveVars = LiveVars0
 	),
 	get_live_vars(Vars, IsLives, LiveVars0).
+
+%-----------------------------------------------------------------------------%
+
+partition_args(_, _, _, [], [_|_], _, _) :-
+        error("partition_args").
+partition_args(_, _, _, [_|_], [], _, _) :-
+	error("partition_args").
+partition_args(_, _, _, [], [], [], []).
+partition_args(InstMap, InstTable, ModuleInfo, [ArgMode | ArgModes],
+		[Arg | Args], InputArgs, OutputArgs) :-
+	partition_args(InstMap, InstTable, ModuleInfo, ArgModes,
+		Args, InputArgs1, OutputArgs1),
+	( mode_is_input(InstMap, InstTable, ModuleInfo, ArgMode) ->
+		InputArgs = [Arg | InputArgs1],
+		OutputArgs = OutputArgs1
+	;
+		InputArgs = InputArgs1,
+		OutputArgs = [Arg | OutputArgs1]
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

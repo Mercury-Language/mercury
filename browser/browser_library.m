@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998 The University of Melbourne.
+% Copyright (C) 1998-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -12,12 +12,9 @@
 
 :- implementation.
 
-:- import_module help.
-:- import_module debugger_interface.
-:- import_module browse.
-:- import_module frame.
-:- import_module parse.
-:- import_module util.
+:- import_module browse, frame, help, parse, util.
+:- import_module debugger_interface, declarative_debugger, declarative_oracle.
+:- import_module interactive_query, dl, name_mangle.
 
 % See library/library.m for why we implement this predicate this way.
 

@@ -739,6 +739,7 @@ pd_info__define_new_pred(Goal, PredProcId, CallGoal) -->
 	{ pred_info_typevarset(PredInfo, TVarSet) },
 	{ pred_info_get_markers(PredInfo, Markers) },
 	{ pred_info_get_class_context(PredInfo, ClassContext) },
+	{ pred_info_get_aditi_owner(PredInfo, Owner) },
 	{ proc_info_varset(ProcInfo, VarSet) },
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
 	{ proc_info_typeinfo_varmap(ProcInfo, TVarMap) },
@@ -748,7 +749,7 @@ pd_info__define_new_pred(Goal, PredProcId, CallGoal) -->
 	% --typeinfo-liveness properly.
 	{ hlds_pred__define_new_pred(Goal, CallGoal, Args, _ExtraArgs, InstMap, 
 		Name, TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap,
-		VarSet, Markers, InstTable, ModuleInfo0, ModuleInfo,
+		VarSet, Markers, Owner, InstTable, ModuleInfo0, ModuleInfo,
 		PredProcId) },
 	pd_info_set_module_info(ModuleInfo).
 

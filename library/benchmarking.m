@@ -584,13 +584,12 @@ Declare_label(mercury__benchmarking__benchmark_nondet_5_0_i1);
 Declare_label(mercury__benchmarking__benchmark_nondet_5_0_i2);
 
 MR_MAKE_PROC_LAYOUT(mercury__benchmarking__benchmark_nondet_5_0,
-	MR_DETISM_NON, BENCHMARK_NONDET_STACK_SLOTS, MR_LVAL_TYPE_UNKNOWN,
+	MR_DETISM_NON, BENCHMARK_NONDET_STACK_SLOTS, MR_LONG_LVAL_TYPE_UNKNOWN,
 	MR_PREDICATE, ""benchmarking"", ""benchmark_nondet"", 5, 0);
 MR_MAKE_INTERNAL_LAYOUT(mercury__benchmarking__benchmark_nondet_5_0, 1);
 MR_MAKE_INTERNAL_LAYOUT(mercury__benchmarking__benchmark_nondet_5_0, 2);
 
-Declare_entry(do_call_nondet_closure);
-Declare_entry(do_call_det_closure);
+Declare_entry(mercury__do_call_closure);
 
 BEGIN_MODULE(benchmark_nondet_module)
 	init_entry_sl(mercury__benchmarking__benchmark_nondet_5_0);
@@ -640,7 +639,7 @@ Define_entry(mercury__benchmarking__benchmark_nondet_5_0);
 	r2 = (Word) 1;	/* the higher-order call has 1 extra input argument  */
 	r3 = (Word) 1;	/* the higher-order call has 1 extra output argument */
 	/* r4 already has the extra input argument */
-	call(ENTRY(do_call_nondet_closure),
+	call(ENTRY(mercury__do_call_closure),
 		LABEL(mercury__benchmarking__benchmark_nondet_5_0_i1),
 		LABEL(mercury__benchmarking__benchmark_nondet_5_0));
 
@@ -675,7 +674,7 @@ Define_label(mercury__benchmarking__benchmark_nondet_5_0_i2);
 		r2 = (Word) 1;
 		r3 = (Word) 1;
 		r4 = framevar(1);
-		call(ENTRY(do_call_nondet_closure),
+		call(ENTRY(mercury__do_call_closure),
 			LABEL(mercury__benchmarking__benchmark_nondet_5_0_i1),
 			LABEL(mercury__benchmarking__benchmark_nondet_5_0));
 	}
@@ -698,7 +697,7 @@ END_MODULE
 Define_extern_entry(mercury__benchmarking__benchmark_det_5_0);
 Declare_label(mercury__benchmarking__benchmark_det_5_0_i1);
 MR_MAKE_PROC_LAYOUT(mercury__benchmarking__benchmark_det_5_0,
-	MR_DETISM_NON, BENCHMARK_DET_STACK_SLOTS, MR_LIVE_LVAL_STACKVAR(6),
+	MR_DETISM_NON, BENCHMARK_DET_STACK_SLOTS, MR_LONG_LVAL_STACKVAR(6),
 	MR_PREDICATE, ""benchmarking"", ""benchmark_nondet"", 5, 0);
 MR_MAKE_INTERNAL_LAYOUT(mercury__benchmarking__benchmark_det_5_0, 1);
 
@@ -748,7 +747,7 @@ Define_entry(mercury__benchmarking__benchmark_det_5_0);
 	r2 = (Word) 1;	/* the higher-order call has 1 extra input argument  */
 	r3 = (Word) 1;	/* the higher-order call has 1 extra output argument */
 	/* r4 already has the extra input argument */
-	call(ENTRY(do_call_det_closure),
+	call(ENTRY(mercury__do_call_closure),
 		LABEL(mercury__benchmarking__benchmark_det_5_0_i1),
 		LABEL(mercury__benchmarking__benchmark_det_5_0));
 
@@ -773,7 +772,7 @@ Define_label(mercury__benchmarking__benchmark_det_5_0_i1);
 		r2 = (Word) 1;
 		r3 = (Word) 1;
 		r4 = detstackvar(2);
-		call(ENTRY(do_call_det_closure),
+		call(ENTRY(mercury__do_call_closure),
 			LABEL(mercury__benchmarking__benchmark_det_5_0_i1),
 			LABEL(mercury__benchmarking__benchmark_det_5_0));
 	}

@@ -14,7 +14,7 @@
 :- interface.
 
 :- import_module hlds_data, hlds_goal, hlds_module, llds, prog_data, instmap.
-:- import_module purity, globals, term_util.
+:- import_module purity, rl, globals, term_util.
 :- import_module bool, list, set, map, std_util, term, varset.
 
 :- implementation.
@@ -116,8 +116,8 @@
 			;	clauses		
 			;	none.
 
-	% The evaluation method that should be used for a pred
-
+	% The evaluation method that should be used for a pred.
+	% Ignored for Aditi procedures.
 :- type eval_method	--->	eval_normal		% normal mercury 
 							% evaluation
 			;	eval_loop_check		% loop check only
@@ -245,12 +245,54 @@
 				% inlined.
 				% Used for pragma(no_inline).
 				% Conflicts with `inline' marker.
+
+		% The default flags for Aditi predicates are
+		% aditi, dnf, supp_magic, psn and memo.
+
 	;	dnf		% Requests that this predicate be transformed
 				% into disjunctive normal form.
-	;	magic		% Requests that this predicate be transformed
-				% using the magic set transformation
-				% Used for pragma(memo).
-				% Used for pragma(memo).
+	;	aditi_memo	% Requests that this Aditi predicate be
+				% evaluated using memoing. This has no
+				% relation to eval_method field of the
+				% pred_info, which is ignored for Aditi
+				% predicates.
+	;	aditi_no_memo	% Ensure that this Aditi predicate
+				% is not memoed.
+	
+	;	aditi		% Generate Aditi-RL for this predicate.
+	;	base_relation	% This predicate is an Aditi base relation.
+
+			% `naive' and `psn' are mutually exclusive.
+	;	naive		% Use naive evaluation of this Aditi predicate.
+	;	psn		% Use predicate semi-naive evaluation of this
+				% Aditi predicate.
+
+			% `context' and `supp_magic' are mutually
+			% exclusive. One of them must be performed
+			% on all Aditi predicates. `supp_magic'
+			% is the default
+
+	;	supp_magic	% Perform the supplementary magic sets
+				% transformation on this predicate. See magic.m
+	;	context		% Perform the context transformation on
+				% the predicate. See context.m
+
+	;	generate_inline % Used for small Aditi predicates which
+				% project a relation to be used as input to a 
+				% call to an Aditi predicate in a lower SCC.
+				% The goal for the predicate should consist
+				% of fail, true or a single rule.
+				% These relations are never memoed.
+				% The reason for this marker is explained 
+				% where it is introduced in
+				% magic_util__create_closure.
+
+	;	aditi_interface	% No code is actually generated for this
+				% predicate type. A call to a predicate with
+				% this marker is generated as a call to
+				% do_*_aditi_call, which is defined in hand
+				% coded C in extras/aditi/aditi.m.
+
 	;	class_method	% Requests that this predicate be transformed
 				% into the appropriate call to a class method
 	;	(impure)	% Requests that no transformation that would
@@ -289,6 +331,10 @@
 				% then it must give an error message.
 	.
 
+	% Aditi predicates are identified by their owner as well as
+	% module, name and arity.
+:- type aditi_owner == string.
+
 :- type type_info_locn	
 	--->	type_info(prog_var)
 				% It is a normal type_info, i.e. the type
@@ -319,7 +365,8 @@
 
 	% hlds_pred__define_new_pred(Goal, CallGoal, Args, ExtraArgs, InstMap,
 	% 	PredName, TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap, 
-	%	VarSet, Markers, InstTable, ModuleInfo0, ModuleInfo, PredProcId)
+	%	VarSet, Markers, Owner, InstTable, ModuleInfo0, ModuleInfo,
+	%	PredProcId)
 	%
 	% Create a new predicate for the given goal, returning a goal to 
 	% call the created predicate. ExtraArgs is the list of extra
@@ -330,8 +377,22 @@
 		list(prog_var), instmap, string, tvarset, map(prog_var, type),
 		class_constraints, map(tvar, type_info_locn),
 		map(class_constraint, prog_var), prog_varset, pred_markers,
-		inst_table, module_info, module_info, pred_proc_id).
-:- mode hlds_pred__define_new_pred(in, out, in, out, in, in, in, in,
+		aditi_owner, inst_table, module_info, module_info,
+		pred_proc_id).
+:- mode hlds_pred__define_new_pred(in, out, in, out, in, in, in, in, in, in,
+		in, in, in, in, in, in, out, out) is det.
+
+	% Same as above, except that the argument modes are given explicitly
+	% rather than computed from the goal's instmap_delta. This is useful
+	% when the instmap_delta for the procedure is out of date and
+	% needs to be recomputed.
+:- pred hlds_pred__define_new_pred(hlds_goal, hlds_goal, list(prog_var),
+		list(prog_var), instmap, list(mode), string, tvarset,
+		map(prog_var, type), class_constraints,
+		map(tvar, type_info_locn), map(class_constraint, prog_var),
+		prog_varset, pred_markers, aditi_owner, inst_table,
+		module_info, module_info, pred_proc_id).
+:- mode hlds_pred__define_new_pred(in, out, in, out, in, in, in, in, in, in,
 		in, in, in, in, in, in, in, out, out) is det.
 
 	% Various predicates for accessing the information stored in the
@@ -340,14 +401,15 @@
 :- pred pred_info_init(module_name, sym_name, arity, tvarset, existq_tvars,
 	list(type), condition, prog_context, clauses_info, import_status,
 	pred_markers, goal_type, pred_or_func, class_constraints, 
-	map(class_constraint, constraint_proof), pred_info).
+	map(class_constraint, constraint_proof), aditi_owner, pred_info).
 :- mode pred_info_init(in, in, in, in, in, in, in, in, in, in, in, in, in,
-	in, in, out) is det.
+	in, in, in, out) is det.
 
 :- pred pred_info_create(module_name, sym_name, tvarset, existq_tvars,
 	list(type), condition, prog_context, import_status, pred_markers,
-	pred_or_func, class_constraints, proc_info, proc_id, pred_info).
-:- mode pred_info_create(in, in, in, in, in, in, in, in, in, in, in, in,
+	pred_or_func, class_constraints, aditi_owner, proc_info,
+	proc_id, pred_info).
+:- mode pred_info_create(in, in, in, in, in, in, in, in, in, in, in, in, in,
 	out, out) is det.
 
 :- pred pred_info_module(pred_info, module_name).
@@ -493,6 +555,18 @@
 	map(class_constraint, constraint_proof), pred_info).
 :- mode pred_info_set_constraint_proofs(in, in, out) is det.
 
+:- pred pred_info_get_aditi_owner(pred_info, string).
+:- mode pred_info_get_aditi_owner(in, out) is det.
+
+:- pred pred_info_set_aditi_owner(pred_info, string, pred_info).
+:- mode pred_info_set_aditi_owner(in, in, out) is det.
+
+:- pred pred_info_get_indexes(pred_info, list(index_spec)).
+:- mode pred_info_get_indexes(in, out) is det.
+
+:- pred pred_info_set_indexes(pred_info, list(index_spec), pred_info).
+:- mode pred_info_set_indexes(in, in, out) is det.
+
 :- pred pred_info_get_purity(pred_info, purity).
 :- mode pred_info_get_purity(in, out) is det.
 
@@ -522,9 +596,16 @@
 :- pred add_marker(pred_markers, marker, pred_markers).
 :- mode add_marker(in, in, out) is det.
 
+	% remove a marker from the set
+:- pred remove_marker(pred_markers, marker, pred_markers).
+:- mode remove_marker(in, in, out) is det.
+
 	% convert the set to a list
 :- pred markers_to_marker_list(pred_markers, list(marker)).
 :- mode markers_to_marker_list(in, out) is det.
+
+:- pred marker_list_to_markers(list(marker), pred_markers).
+:- mode marker_list_to_markers(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -665,30 +746,42 @@ status_defined_in_this_module(local,			yes).
 					% (the type_infos are returned from
 					% the called preds).
 					% Computed during type checking.
-			list(class_constraint)
-					% unproven class constraints on type variables
-					% in the predicate's body, if any
-					% (if this remains non-empty after type
-					% checking has finished, post_typecheck.m
-					% will report a type error).
+			list(class_constraint),
+					% unproven class constraints on type
+					% variables in the predicate's body,
+					% if any (if this remains non-empty
+					% after type checking has finished,
+					% post_typecheck.m will report a type
+					% error).
+			aditi_owner,
+					% The owner of this predicate if
+					% it is an Aditi predicate. Set to
+					% the value of --aditi-user if no
+					% `:- pragma owner' declaration exists.
+			list(index_spec)
+					% Indexes if this predicate is
+					% an Aditi base relation, ignored
+					% otherwise.
 		).
 
 pred_info_init(ModuleName, SymName, Arity, TypeVarSet, ExistQVars, Types,
 		Cond, Context, ClausesInfo, Status, Markers, GoalType,
-		PredOrFunc, ClassContext, ClassProofs, PredInfo) :-
+		PredOrFunc, ClassContext, ClassProofs, User, PredInfo) :-
 	map__init(Procs),
 	unqualify_name(SymName, PredName),
 	sym_name_get_module_name(SymName, ModuleName, PredModuleName),
 	term__vars_list(Types, TVars),
 	list__delete_elems(TVars, ExistQVars, HeadTypeParams),
 	UnprovenBodyConstraints = [],
+	Indexes = [],
 	PredInfo = predicate(TypeVarSet, Types, Cond, ClausesInfo, Procs,
 		Context, PredModuleName, PredName, Arity, Status, TypeVarSet, 
 		GoalType, Markers, PredOrFunc, ClassContext, ClassProofs,
-		ExistQVars, HeadTypeParams, UnprovenBodyConstraints).
+		ExistQVars, HeadTypeParams, UnprovenBodyConstraints, User,
+		Indexes).
 
 pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types, Cond,
-		Context, Status, Markers, PredOrFunc, ClassContext,
+		Context, Status, Markers, PredOrFunc, ClassContext, User,
 		ProcInfo, ProcId, PredInfo) :-
 	map__init(Procs0),
 	proc_info_declared_determinism(ProcInfo, MaybeDetism),
@@ -705,14 +798,16 @@ pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types, Cond,
 	term__vars_list(Types, TVars),
 	list__delete_elems(TVars, ExistQVars, HeadTypeParams),
 	UnprovenBodyConstraints = [],
+	Indexes = [],
 	PredInfo = predicate(TypeVarSet, Types, Cond, ClausesInfo, Procs,
 		Context, ModuleName, PredName, Arity, Status, TypeVarSet, 
 		clauses, Markers, PredOrFunc, ClassContext, ClassProofs,
-		ExistQVars, HeadTypeParams, UnprovenBodyConstraints).
+		ExistQVars, HeadTypeParams, UnprovenBodyConstraints, User,
+		Indexes).
 
 pred_info_procids(PredInfo, ProcIds) :-
 	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _, _, 
-		_, _, _, _, _, _, _),
+		_, _, _, _, _, _, _, _, _),
 	map__keys(Procs, ProcIds).
 
 pred_info_non_imported_procids(PredInfo, ProcIds) :-
@@ -745,57 +840,57 @@ pred_info_exported_procids(PredInfo, ProcIds) :-
 
 pred_info_clauses_info(PredInfo, Clauses) :-
 	PredInfo = predicate(_, _, _, Clauses, _, _, _, _, _, _, _, _, _,
-		_, _, _, _, _, _).
+		_, _, _, _, _, _, _, _).
 
 pred_info_set_clauses_info(PredInfo0, Clauses, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, _, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q, R, S),
+		Q, R, S, T, U),
 	PredInfo = predicate(A, B, C, Clauses, E, F, G, H, I, J, K, 
-		L, M, N, O, P, Q, R, S).
+		L, M, N, O, P, Q, R, S, T, U).
 
 pred_info_arg_types(PredInfo, ArgTypes) :-
 	pred_info_arg_types(PredInfo, _TypeVars, _ExistQVars, ArgTypes).
 
 pred_info_arg_types(PredInfo, TypeVars, ExistQVars, ArgTypes) :-
-	PredInfo = predicate(TypeVars, ArgTypes, 
-		_, _, _, _, _, _, _, _, _, _, _, _, _, _, ExistQVars, _, _).
+	PredInfo = predicate(TypeVars, ArgTypes, _, _, _, _, _, _, _, _, _,
+		_, _, _, _, _, ExistQVars, _, _, _, _).
 
 pred_info_set_arg_types(PredInfo0, TypeVarSet, ExistQVars, ArgTypes,
 		PredInfo) :-
 	PredInfo0 = predicate(_, _, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		_, R, S),
-	PredInfo = predicate(TypeVarSet, ArgTypes, 
-		C, D, E, F, G, H, I, J, K, L, M, N, O, P, ExistQVars, R, S).
+		_, R, S, T, U),
+	PredInfo = predicate(TypeVarSet, ArgTypes, C, D, E, F, G, H, I, J, K,
+		L, M, N, O, P, ExistQVars, R, S, T, U).
 
 pred_info_procedures(PredInfo, Procs) :-
 	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _, 
-		_, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _).
 
 pred_info_set_procedures(PredInfo0, Procedures, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, _, F, G, H, I, J, K, L, M, N, O, P,
-		Q, R, S),
+		Q, R, S, T, U),
 	PredInfo = predicate(A, B, C, D, Procedures, F, G, H, I, J, K, L, M, 
-		N, O, P, Q, R, S).
+		N, O, P, Q, R, S, T, U).
 
 pred_info_context(PredInfo, Context) :-
 	PredInfo = predicate(_, _, _, _, _, Context, _, _, _, 
-		_, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _, _).
 
 pred_info_module(PredInfo, Module) :-
 	PredInfo = predicate(_, _, _, _, _, _, Module, _, _, _, _, 
-		_, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _).
 
 pred_info_name(PredInfo, PredName) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, PredName, _, _, _, 
-		_, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _).
 
 pred_info_arity(PredInfo, Arity) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, Arity, _, _, 
-		_, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _).
 
 pred_info_import_status(PredInfo, ImportStatus) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, ImportStatus, _, _, _,
-				_, _, _, _, _, _).
+				_, _, _, _, _, _, _, _).
 
 pred_info_is_imported(PredInfo) :-
 	pred_info_import_status(PredInfo, imported).
@@ -828,35 +923,35 @@ procedure_is_exported(PredInfo, ProcId) :-
 
 pred_info_mark_as_external(PredInfo0, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P,
-		Q, R, S),
+		Q, R, S, T, U),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, imported, K, L, M, 
-		N, O, P, Q, R, S).
+		N, O, P, Q, R, S, T, U).
 
 pred_info_set_import_status(PredInfo0, Status, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P,
-		Q, R, S),
+		Q, R, S, T, U),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, Status, K, 
-		L, M, N, O, P, Q, R, S).
+		L, M, N, O, P, Q, R, S, T, U).
 
 pred_info_typevarset(PredInfo, TypeVarSet) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, TypeVarSet, _, _, 
-		_, _, _, _, _, _).
+		_, _, _, _, _, _, _, _).
 
 pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, _, L, M, N, O, P,
-		Q, R, S),
+		Q, R, S, T, U),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, TypeVarSet, L, M,
-				N, O, P, Q, R, S).
+				N, O, P, Q, R, S, T, U).
 
 pred_info_get_goal_type(PredInfo, GoalType) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, GoalType, _, 
-		_, _, _, _, _, _).
+		_, _, _, _, _, _, _, _).
 
 pred_info_set_goal_type(PredInfo0, GoalType, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, _, M, N, O, P,
-		Q, R, S),
+		Q, R, S, T, U),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, GoalType, M, 
-		N, O, P, Q, R, S).
+		N, O, P, Q, R, S, T, U).
 
 pred_info_requested_inlining(PredInfo0) :-
 	pred_info_get_markers(PredInfo0, Markers),
@@ -890,41 +985,41 @@ purity_to_markers(impure, [impure]).
 
 pred_info_get_markers(PredInfo, Markers) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, Markers, 
-		_, _, _, _, _, _).
+		_, _, _, _, _, _, _, _).
 
 pred_info_set_markers(PredInfo0, Markers, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, _, N, O, P,
-		Q, R, S),
+		Q, R, S, T, U),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, Markers, 
-		N, O, P, Q, R, S).
+		N, O, P, Q, R, S, T, U).
 
 pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _,
-			IsPredOrFunc, _, _, _, _, _).
+			IsPredOrFunc, _, _, _, _, _, _, _).
 
 pred_info_set_class_context(PredInfo0, ClassContext, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, _, P,
-		Q, R, S),
+		Q, R, S, T, U),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
-		ClassContext, P, Q, R, S).
+		ClassContext, P, Q, R, S, T, U).
 
 pred_info_get_class_context(PredInfo, ClassContext) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		ClassContext, _, _, _, _).
+		ClassContext, _, _, _, _, _, _).
 
 pred_info_set_constraint_proofs(PredInfo0, Proofs, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, _,
-		Q, R, S),
+		Q, R, S, T, U),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
-		O, Proofs, Q, R, S).
+		O, Proofs, Q, R, S, T, U).
 
 pred_info_get_constraint_proofs(PredInfo, ConstraintProofs) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		ConstraintProofs, _, _, _).
+		ConstraintProofs, _, _, _, _, _).
 
 pred_info_get_exist_quant_tvars(PredInfo, ExistQVars) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, ExistQVars, _, _).
+		_, ExistQVars, _, _, _, _).
 
 pred_info_get_univ_quant_tvars(PredInfo, UnivQVars) :-
 	pred_info_arg_types(PredInfo, ArgTypes),
@@ -935,24 +1030,45 @@ pred_info_get_univ_quant_tvars(PredInfo, UnivQVars) :-
 
 pred_info_get_head_type_params(PredInfo, HeadTypeParams) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, HeadTypeParams, _).
+		_, _, HeadTypeParams, _, _, _).
 
 pred_info_set_head_type_params(PredInfo0, HeadTypeParams, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q, _, S),
+		Q, _, S, T, U),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q, HeadTypeParams, S).
+		Q, HeadTypeParams, S, T, U).
 
 pred_info_get_unproven_body_constraints(PredInfo, UnprovenBodyConstraints) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, UnprovenBodyConstraints).
+		_, _, UnprovenBodyConstraints, _, _).
 
 pred_info_set_unproven_body_constraints(PredInfo0, UnprovenBodyConstraints,
 		PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q, R, _),
+		Q, R, _, T, U),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q, R, UnprovenBodyConstraints).
+		Q, R, UnprovenBodyConstraints, T, U).
+
+
+pred_info_get_aditi_owner(PredInfo, Owner) :-
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+		_, _, _, _, Owner, _).
+
+pred_info_set_aditi_owner(PredInfo0, Owner, PredInfo) :-
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N,
+		O, P, Q, R, S, _, U),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
+		O, P, Q, R, S, Owner, U).
+
+pred_info_get_indexes(PredInfo, Indexes) :-
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+		_, _, _, _, _, Indexes).
+
+pred_info_set_indexes(PredInfo0, Indexes, PredInfo) :-
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N,
+		O, P, Q, R, S, T, _),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
+		O, P, Q, R, S, T, Indexes).
 
 %-----------------------------------------------------------------------------%
 
@@ -973,21 +1089,38 @@ check_marker(Markers, Marker) :-
 
 add_marker(Markers, Marker, [Marker | Markers]).
 
+remove_marker(Markers0, Marker, Markers) :-
+	list__delete_all(Markers0, Marker, Markers).
+
 markers_to_marker_list(Markers, Markers).
+
+marker_list_to_markers(Markers, Markers).
 
 %-----------------------------------------------------------------------------%
 
 hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 		PredName, TVarSet, VarTypes0, ClassContext, TVarMap, TCVarMap,
-		VarSet0, Markers, InstTable, ModuleInfo0, ModuleInfo,
+		VarSet0, Markers, Owner, InstTable, ModuleInfo0, ModuleInfo,
 		PredProcId) :-
 	Goal0 = _GoalExpr - GoalInfo,
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+	
+	compute_arg_modes(ArgVars0, InstMap0, InstMap, ArgModes),
+	hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos,
+		InstMap0, ArgModes, PredName, TVarSet, VarTypes0,
+		ClassContext, TVarMap, TCVarMap, VarSet0, Markers,
+		Owner, InstTable, ModuleInfo0, ModuleInfo, PredProcId).
 
+hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, _InstMap0,
+		ArgModes, PredName, TVarSet, VarTypes0, ClassContext, TVarMap,
+		TCVarMap, VarSet0, Markers, Owner, InstTable,
+		ModuleInfo0, ModuleInfo, PredProcId) :-
 	% XXX The set of existentially quantified type variables
 	% here might not be correct.
 	ExistQVars = [],
+
+	Goal0 = _ - GoalInfo,
 
 	% If typeinfo_liveness is set, all type_infos for the argument
 	% variables need to be passed in, not just the ones that are used.
@@ -1008,12 +1141,15 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 
 	goal_info_get_context(GoalInfo, Context),
 	goal_info_get_determinism(GoalInfo, Detism),
-	compute_arg_types_modes(ArgVars, VarTypes0, InstMap0, InstMap,
-		ArgTypes, ArgModes),
+
+	list__length(ExtraTypeInfos, NumExtraTypeInfos),
+	in_mode(InMode),
+	list__duplicate(NumExtraTypeInfos, InMode, InModes),
+	list__append(InModes, ArgModes, AllArgModes),
 
 	module_info_name(ModuleInfo0, ModuleName),
 	SymName = qualified(ModuleName, PredName),
-	Modes = argument_modes(InstTable, ArgModes),	% YYY
+	Modes = argument_modes(InstTable, AllArgModes),	% YYY
 
 		% Remove unneeded variables from the vartypes and varset.
 	goal_util__goal_vars(Goal0, GoalVars0), 
@@ -1036,9 +1172,10 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 		ProcInfo0),
 	proc_info_set_maybe_termination_info(ProcInfo0, TermInfo, ProcInfo),
 
+	map__apply_to_list(ArgVars, VarTypes, ArgTypes),
 	pred_info_create(ModuleName, SymName, TVarSet, ExistQVars, ArgTypes,
 		true, Context, local, Markers, predicate, ClassContext, 
-		ProcInfo, ProcId, PredInfo),
+		Owner, ProcInfo, ProcId, PredInfo),
 
 	module_info_get_predicate_table(ModuleInfo0, PredTable0),
 	predicate_table_insert(PredTable0, PredInfo, PredId,
@@ -1050,18 +1187,15 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 	Goal = GoalExpr - GoalInfo,
 	PredProcId = proc(PredId, ProcId).
 
-:- pred compute_arg_types_modes(list(prog_var)::in, map(prog_var, type)::in,
-	instmap::in, instmap::in, list(type)::out, list(mode)::out) is det.
+:- pred compute_arg_modes(list(prog_var)::in, instmap::in, instmap::in,
+		list(mode)::out) is det.
 
-compute_arg_types_modes([], _, _, _, [], []).
-compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
-		[Type | Types], [Mode | Modes]) :-
-	map__lookup(VarTypes, Var, Type),
+compute_arg_modes([], _, _, []).
+compute_arg_modes([Var | Vars], InstMap0, InstMap, [Mode | Modes]) :-
 	instmap__lookup_var(InstMap0, Var, Inst0),
 	instmap__lookup_var(InstMap, Var, Inst),
 	Mode = (Inst0 -> Inst),
-	compute_arg_types_modes(Vars, VarTypes, InstMap0, InstMap,
-		Types, Modes).
+	compute_arg_modes(Vars, InstMap0, InstMap, Modes).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1827,6 +1961,118 @@ pred_args_to_func_args(PredArgs, FuncArgs, FuncReturn) :-
 
 %-----------------------------------------------------------------------------%
 
+	% Predicates to check whether a given predicate 
+	% is an Aditi query.
+
+:- interface.
+
+:- pred hlds_pred__is_base_relation(module_info, pred_id).
+:- mode hlds_pred__is_base_relation(in, in) is semidet.
+
+:- pred hlds_pred__is_derived_relation(module_info, pred_id).
+:- mode hlds_pred__is_derived_relation(in, in) is semidet.
+
+	% Is the given predicate a base or derived Aditi relation.
+:- pred hlds_pred__is_aditi_relation(module_info, pred_id).
+:- mode hlds_pred__is_aditi_relation(in, in) is semidet.
+
+	% Is the predicate `aditi:aggregate_compute_initial', declared
+	% in extras/aditi/aditi.m.
+	% Special code is generated for each call to this in rl_gen.m.
+:- pred hlds_pred__is_aditi_aggregate(module_info, pred_id).
+:- mode hlds_pred__is_aditi_aggregate(in, in) is semidet.
+
+:- pred hlds_pred__pred_info_is_aditi_relation(pred_info).
+:- mode hlds_pred__pred_info_is_aditi_relation(in) is semidet.
+
+:- pred hlds_pred__pred_info_is_aditi_aggregate(pred_info).
+:- mode hlds_pred__pred_info_is_aditi_aggregate(in) is semidet.
+
+:- pred hlds_pred__pred_info_is_base_relation(pred_info).
+:- mode hlds_pred__pred_info_is_base_relation(in) is semidet.
+
+	% Aditi can optionally memo the results of predicates
+	% between calls to reduce redundant computation.
+:- pred hlds_pred__is_aditi_memoed(module_info, pred_id).
+:- mode hlds_pred__is_aditi_memoed(in, in) is semidet.
+
+	% Differential evaluation is a method of evaluating recursive
+	% Aditi predicates which uses the just new tuples in each
+	% iteration where possible rather than the full relations,
+	% reducing the sizes of joins.
+:- pred hlds_pred__is_differential(module_info, pred_id).
+:- mode hlds_pred__is_differential(in, in) is semidet.
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+hlds_pred__is_base_relation(ModuleInfo, PredId) :-
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	hlds_pred__pred_info_is_base_relation(PredInfo).
+
+hlds_pred__pred_info_is_base_relation(PredInfo) :-
+	pred_info_get_markers(PredInfo, Markers),
+	check_marker(Markers, base_relation).
+
+hlds_pred__is_derived_relation(ModuleInfo, PredId) :-
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	pred_info_get_markers(PredInfo, Markers),
+	check_marker(Markers, aditi),
+	\+ hlds_pred__pred_info_is_base_relation(PredInfo),
+	\+ hlds_pred__pred_info_is_aditi_aggregate(PredInfo).
+
+hlds_pred__is_aditi_relation(ModuleInfo, PredId) :-
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	hlds_pred__pred_info_is_aditi_relation(PredInfo).
+
+hlds_pred__pred_info_is_aditi_relation(PredInfo) :-
+	pred_info_get_markers(PredInfo, Markers),
+	check_marker(Markers, aditi).
+
+hlds_pred__is_aditi_aggregate(ModuleInfo, PredId) :-
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	hlds_pred__pred_info_is_aditi_aggregate(PredInfo).
+
+hlds_pred__pred_info_is_aditi_aggregate(PredInfo) :-
+	pred_info_module(PredInfo, Module),
+	pred_info_name(PredInfo, Name),
+	pred_info_arity(PredInfo, Arity),
+	hlds_pred__aditi_aggregate(Module, Name, Arity).
+
+:- pred hlds_pred__aditi_aggregate(sym_name, string, int).
+:- mode hlds_pred__aditi_aggregate(in, in, in) is semidet.
+
+hlds_pred__aditi_aggregate(unqualified("aditi"),
+		"aggregate_compute_initial", 5).
+
+hlds_pred__is_aditi_memoed(ModuleInfo, PredId) :-
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	pred_info_get_markers(PredInfo, Markers),
+	(
+		check_marker(Markers, aditi_memo)
+	;
+		% Memoing is the default for Aditi procedures.
+		semidet_fail, 	% XXX leave it off for now to
+				% reduce memory usage.
+		check_marker(Markers, aditi),
+		\+ check_marker(Markers, aditi_no_memo)
+	).
+
+hlds_pred__is_differential(ModuleInfo, PredId) :-
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	pred_info_get_markers(PredInfo, Markers),
+	(
+		check_marker(Markers, psn)
+	;
+		% Predicate semi-naive evaluation is the default. 
+		check_marker(Markers, aditi),
+		\+ check_marker(Markers, naive)
+	).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- interface.
 
 	% Check if the given evaluation method is allowed with
@@ -1879,3 +2125,5 @@ eval_method_change_determinism(eval_loop_check, Detism, Detism).
 eval_method_change_determinism(eval_minimal, Det0, Det) :-
 	det_conjunction_detism(semidet, Det0, Det).
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

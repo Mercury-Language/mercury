@@ -1,7 +1,16 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998 The University of Melbourne.
+% Copyright (C) 1998-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
+%---------------------------------------------------------------------------%
+%
+% file: parse.m:
+% author: aet
+
+% This file contains the parser for the mdb browser command language.
+% This parses the stuff you type at the "browser> " prompt after
+% typing "browse" from the mdb prompt.
+
 %---------------------------------------------------------------------------%
 
 % The Command Language
@@ -51,7 +60,7 @@
 
 :- interface.
 
-:- import_module io, list.
+:- import_module io, list, string.
 
 :- type command
 	--->	ls(path)
@@ -90,8 +99,8 @@
 	;	pretty
 	;	verbose.
 
-:- pred parse__read_command(command, io__state, io__state).
-:- mode parse__read_command(out, di, uo) is det.
+:- pred parse__read_command(string, command, io__state, io__state).
+:- mode parse__read_command(in, out, di, uo) is det.
 
 :- pred default_depth(int).
 :- mode default_depth(out) is det.
@@ -99,7 +108,8 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module io, list, string, char, int, std_util.
+:- import_module char, int, std_util.
+:- import_module util.
 
 
 :- type token
@@ -114,8 +124,8 @@
 	;	unknown(char)
 	.
 
-parse__read_command(Comm) -->
-	io__read_line(Result),
+parse__read_command(Prompt, Comm) -->
+	util__trace_getline(Prompt, Result),
 	( { Result = ok(Cs) } ->
 		{ lexer(Cs, Tokens) },
 		( { parse(Tokens, Comm2) } ->

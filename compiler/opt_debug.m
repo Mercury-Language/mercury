@@ -540,7 +540,7 @@ opt_debug__dump_vnrval(vn_mkword(T, N), Str) :-
 opt_debug__dump_vnrval(vn_const(C), Str) :-
 	opt_debug__dump_const(C, C_str),
 	string__append_list(["vn_const(", C_str, ")"], Str).
-opt_debug__dump_vnrval(vn_create(T, MA, _U, L, _M), Str) :-
+opt_debug__dump_vnrval(vn_create(T, MA, _TA, _U, L, _M), Str) :-
 	string__int_to_string(T, T_str),
 	opt_debug__dump_maybe_rvals(MA, 3, MA_str),
 	string__int_to_string(L, L_str),
@@ -634,15 +634,18 @@ opt_debug__dump_rval(mkword(T, N), Str) :-
 opt_debug__dump_rval(const(C), Str) :-
 	opt_debug__dump_const(C, C_str),
 	string__append_list(["const(", C_str, ")"], Str).
-opt_debug__dump_rval(create(T, MA, U, L, _), Str) :-
+opt_debug__dump_rval(create(T, MA, _, U, L, _), Str) :-
 	string__int_to_string(T, T_str),
 	opt_debug__dump_maybe_rvals(MA, 3, MA_str),
 	(
-		U = yes,
-		U_str = "yes"
+		U = must_be_static,
+		U_str = "static"
 	;
-		U = no,
-		U_str = "no"
+		U = can_be_either,
+		U_str = "either"
+	;
+		U = must_be_dynamic,
+		U_str = "dynamic"
 	),
 	string__int_to_string(L, L_str),
 	string__append_list(["create(", T_str, ", ", MA_str, ", ",
@@ -702,8 +705,8 @@ opt_debug__dump_const(label_entry(Label), Str) :-
 opt_debug__dump_data_name(common(N), Str) :-
 	string__int_to_string(N, N_str),
 	string__append("common", N_str, Str).
-opt_debug__dump_data_name(base_type(BaseData, TypeName, TypeArity), Str) :-
-	llds_out__make_base_type_name(BaseData, TypeName, TypeArity, Str).
+opt_debug__dump_data_name(type_ctor(BaseData, TypeName, TypeArity), Str) :-
+	llds_out__make_type_ctor_name(BaseData, TypeName, TypeArity, Str).
 opt_debug__dump_data_name(base_typeclass_info(ClassId, InstanceNum), Str) :-
 	llds_out__make_base_typeclass_info_name(ClassId, InstanceNum, Str).
 opt_debug__dump_data_name(proc_layout(Label), Str) :-
@@ -712,6 +715,9 @@ opt_debug__dump_data_name(proc_layout(Label), Str) :-
 opt_debug__dump_data_name(internal_layout(Label), Str) :-
 	opt_debug__dump_label(Label, LabelStr),
 	string__append_list(["internal_layout(", LabelStr, ")"], Str).
+opt_debug__dump_data_name(tabling_pointer(ProcLabel), Str) :-
+	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
+	string__append_list(["tabling_pointer(", ProcLabelStr, ")"], Str).
 
 opt_debug__dump_unop(mktag, "mktag").
 opt_debug__dump_unop(tag, "tag").
@@ -758,12 +764,11 @@ opt_debug__dump_code_addr(do_succeed(Last), Str) :-
 opt_debug__dump_code_addr(do_redo, "do_redo").
 opt_debug__dump_code_addr(do_fail, "do_fail").
 opt_debug__dump_code_addr(do_trace_redo_fail, "do_trace_redo_fail").
-opt_debug__dump_code_addr(do_det_closure, "do_det_closure").
-opt_debug__dump_code_addr(do_semidet_closure, "do_semidet_closure").
-opt_debug__dump_code_addr(do_nondet_closure, "do_nondet_closure").
-opt_debug__dump_code_addr(do_det_class_method, "do_det_class_method").
-opt_debug__dump_code_addr(do_semidet_class_method, "do_semidet_class_method").
-opt_debug__dump_code_addr(do_nondet_class_method, "do_nondet_class_method").
+opt_debug__dump_code_addr(do_call_closure, "do_nondet_closure").
+opt_debug__dump_code_addr(do_call_class_method, "do_nondet_class_method").
+opt_debug__dump_code_addr(do_det_aditi_call, "do_det_aditi_call").
+opt_debug__dump_code_addr(do_semidet_aditi_call, "do_semidet_aditi_call").
+opt_debug__dump_code_addr(do_nondet_aditi_call, "do_nondet_aditi_call").
 opt_debug__dump_code_addr(do_not_reached, "do_not_reached").
 
 opt_debug__dump_code_addrs([], "").

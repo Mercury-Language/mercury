@@ -3,7 +3,7 @@ INIT mercury_sys_init_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1994-1998 The University of Melbourne.
+** Copyright (C) 1994-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -47,23 +47,25 @@ ENDINIT
 /* size of data areas (including redzones), in kilobytes */
 /* (but we later multiply by 1024 to convert to bytes) */
 #ifdef MR_DEBUG_AGC
-  size_t		heap_size =       128;
+  size_t	heap_size =		  128;
 #else
-  size_t		heap_size =	 4096;
+  size_t	heap_size =		 4096;
 #endif
-size_t		detstack_size =  	 2048;
+size_t		detstack_size =  	 4096;
 size_t		nondstack_size =  	  128;
 size_t		solutions_heap_size =	 1024;
 size_t		global_heap_size =	 1024;
 size_t		trail_size =		  128;
 size_t		debug_heap_size =	 4096;
+size_t		generatorstack_size =  	   32;
+size_t		cutstack_size =  	   32;
 
 /* size of the redzones at the end of data areas, in kilobytes */
 /* (but we later multiply by 1024 to convert to bytes) */
 #ifdef NATIVE_GC
-  size_t		heap_zone_size =   96;
+  size_t	heap_zone_size =	   96;
 #else
-  size_t		heap_zone_size =   16;
+  size_t	heap_zone_size =	   16;
 #endif
 size_t		detstack_zone_size =	   16;
 size_t		nondstack_zone_size =	   16;
@@ -71,14 +73,16 @@ size_t		solutions_heap_zone_size = 16;
 size_t		global_heap_zone_size =	   16;
 size_t		trail_zone_size =	   16;
 size_t		debug_heap_zone_size =	   16;
+size_t		generatorstack_zone_size = 16;
+size_t		cutstack_zone_size =	   16;
 
 /* primary cache size to optimize for, in bytes */
 size_t		pcache_size =	         8192;
 
 /* file names for mdb's debugger I/O streams */
-const char *MR_mdb_in_filename = NULL;
-const char *MR_mdb_out_filename = NULL;
-const char *MR_mdb_err_filename = NULL;
+const char	*MR_mdb_in_filename = NULL;
+const char	*MR_mdb_out_filename = NULL;
+const char	*MR_mdb_err_filename = NULL;
 
 /* other options */
 
@@ -127,12 +131,24 @@ bool		MR_profiling = TRUE;
 ** Hence the statically linked init file saves the addresses of those
 ** procedures in the following global variables.
 ** This ensures that there are no cyclic dependencies;
-** the order is user program -> library -> runtime -> gc,
+** the order is user program -> trace -> browser -> library -> runtime -> gc,
 ** where `->' means "depends on", i.e. "references a symbol of".
 */
 
 void	(*address_of_mercury_init_io)(void);
 void	(*address_of_init_modules)(void);
+
+char *	(*MR_address_of_trace_getline)(const char *);
+
+#ifdef	MR_USE_EXTERNAL_DEBUGGER
+void	(*MR_address_of_trace_init_external)(void);
+void	(*MR_address_of_trace_final_external)(void);
+#endif
+
+#ifdef	MR_USE_DECLARATIVE_DEBUGGER
+void	(*MR_address_of_edt_root_node)(Word, Word *);
+#endif
+
 #ifdef CONSERVATIVE_GC
 void	(*address_of_init_gc)(void);
 #endif
@@ -674,6 +690,8 @@ process_options(int argc, char **argv)
 				MR_sregdebug    = TRUE;
 			else if (streq(MR_optarg, "t"))
 				MR_tracedebug   = TRUE;
+			else if (streq(MR_optarg, "S"))
+				MR_tablestackdebug = TRUE;
 			else if (streq(MR_optarg, "T"))
 				MR_tabledebug   = TRUE;
 			else if (streq(MR_optarg, "a")) {
@@ -911,19 +929,19 @@ print_register_usage_counts(void)
 			switch (i) {
 
 			case SI_RN:
-				printf("succip");
+				printf("MR_succip");
 				break;
 			case HP_RN:
-				printf("hp");
+				printf("MR_hp");
 				break;
 			case SP_RN:
-				printf("sp");
+				printf("MR_sp");
 				break;
 			case CF_RN:
-				printf("curfr");
+				printf("MR_curfr");
 				break;
 			case MF_RN:
-				printf("maxfr");
+				printf("MR_maxfr");
 				break;
 			case MR_TRAIL_PTR_RN:
 				printf("MR_trail_ptr");
@@ -942,6 +960,18 @@ print_register_usage_counts(void)
 				break;
 			case MR_GLOBAL_HP_RN:
 				printf("MR_global_hp");
+				break;
+			case MR_GEN_STACK_RN:
+				printf("MR_gen_stack");
+				break;
+			case MR_GEN_NEXT_RN:
+				printf("MR_gen_next");
+				break;
+			case MR_CUT_STACK_RN:
+				printf("MR_cut_stack");
+				break;
+			case MR_CUT_NEXT_RN:
+				printf("MR_cut_next");
 				break;
 			default:
 				printf("UNKNOWN%d", i);
@@ -967,10 +997,12 @@ BEGIN_MODULE(interpreter_module)
 BEGIN_CODE
 
 Define_entry(do_interpreter);
-	push(MR_hp);
-	push(MR_succip);
-	push(MR_maxfr);
-	mkframe("interpreter", 1, LABEL(global_fail));
+	MR_incr_sp(3);
+	MR_stackvar(1) = (Word) MR_hp;
+	MR_stackvar(2) = (Word) MR_succip;
+	MR_stackvar(3) = (Word) MR_maxfr;
+
+	MR_mkframe("interpreter", 1, LABEL(global_fail));
 
 	MR_nondet_stack_trace_bottom = MR_maxfr;
 	MR_stack_trace_bottom = LABEL(global_success);
@@ -1017,9 +1049,10 @@ Define_label(all_done);
 	if (MR_profiling) MR_prof_turn_off_time_profiling();
 #endif
 
-	MR_maxfr = (Word *) pop();
-	MR_succip = (Code *) pop();
-	MR_hp = (Word *) pop();
+	MR_hp     = (Word *) MR_stackvar(1);
+	MR_succip = (Code *) MR_stackvar(2);
+	MR_maxfr  = (Word *) MR_stackvar(3);
+	MR_decr_sp(3);
 
 #ifdef MR_LOWLEVEL_DEBUG
 	if (MR_finaldebug && MR_detaildebug) {

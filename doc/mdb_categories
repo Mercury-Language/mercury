@@ -2,6 +2,11 @@ document_category 100 concepts
 concepts   - The concepts on which the Mercury debugger is based.
 
 end
+document_category 150 queries
+queries    - Commands for invoking goals interactively.
+             The commands for queries are
+	     `query', `cc_query', and `io_query'.
+end
 document_category 200 forward
 forward    - Commands that move execution forward.
              The forward commands are `step', `goto', `finish', `forward',
@@ -28,7 +33,7 @@ end
 document_category 600 parameter
 parameter  - Commands that let users access debugger parameters.
              The parameter commands are `printlevel', `echo', `scroll',
-	     `alias' and `unalias'.
+	     `mmc_options', `alias' and `unalias'.
 
 end
 document_category 700 help

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -669,7 +669,7 @@ opt_util__rval_refers_stackvars(lval(Lval), Refers) :-
 	opt_util__lval_refers_stackvars(Lval, Refers).
 opt_util__rval_refers_stackvars(var(_), _) :-
 	error("found var in rval_refers_stackvars").
-opt_util__rval_refers_stackvars(create(_, Rvals, _, _, _), Refers) :-
+opt_util__rval_refers_stackvars(create(_, Rvals, _, _, _, _), Refers) :-
 	opt_util__rvals_refer_stackvars(Rvals, Refers).
 opt_util__rval_refers_stackvars(mkword(_, Rval), Refers) :-
 	opt_util__rval_refers_stackvars(Rval, Refers).
@@ -1282,12 +1282,11 @@ opt_util__livevals_addr(do_succeed(_), yes).
 opt_util__livevals_addr(do_redo, no).
 opt_util__livevals_addr(do_fail, no).
 opt_util__livevals_addr(do_trace_redo_fail, no).
-opt_util__livevals_addr(do_det_closure, yes).
-opt_util__livevals_addr(do_semidet_closure, yes).
-opt_util__livevals_addr(do_nondet_closure, yes).
-opt_util__livevals_addr(do_det_class_method, yes).
-opt_util__livevals_addr(do_semidet_class_method, yes).
-opt_util__livevals_addr(do_nondet_class_method, yes).
+opt_util__livevals_addr(do_call_closure, yes).
+opt_util__livevals_addr(do_call_class_method, yes).
+opt_util__livevals_addr(do_det_aditi_call, yes).
+opt_util__livevals_addr(do_semidet_aditi_call, yes).
+opt_util__livevals_addr(do_nondet_aditi_call, yes).
 opt_util__livevals_addr(do_not_reached, no).
 
 opt_util__count_temps_instr_list([], R, R, F, F).
@@ -1479,7 +1478,7 @@ opt_util__touches_nondet_ctrl_lval(mem_ref(Rval), Touch) :-
 opt_util__touches_nondet_ctrl_rval(lval(Lval), Touch) :-
 	opt_util__touches_nondet_ctrl_lval(Lval, Touch).
 opt_util__touches_nondet_ctrl_rval(var(_), no).
-opt_util__touches_nondet_ctrl_rval(create(_, _, _, _, _), no).
+opt_util__touches_nondet_ctrl_rval(create(_, _, _, _, _, _), no).
 opt_util__touches_nondet_ctrl_rval(mkword(_, Rval), Touch) :-
 	opt_util__touches_nondet_ctrl_rval(Rval, Touch).
 opt_util__touches_nondet_ctrl_rval(const(_), no).
@@ -1559,7 +1558,7 @@ opt_util__rval_free_of_lval(lval(Lval), Forbidden) :-
 	opt_util__rvals_free_of_lval(Rvals, Forbidden).
 opt_util__rval_free_of_lval(var(_), _) :-
 	error("found var in opt_util__rval_free_of_lval").
-opt_util__rval_free_of_lval(create(_, _, _, _, _), _).
+opt_util__rval_free_of_lval(create(_, _, _, _, _, _), _).
 opt_util__rval_free_of_lval(mkword(_, Rval), Forbidden) :-
 	opt_util__rval_free_of_lval(Rval, Forbidden).
 opt_util__rval_free_of_lval(const(_), _).

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1996-1998 The University of Melbourne.
+** Copyright (C) 1996-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -23,12 +23,11 @@ static void print_ordinary_regs(void);
 #ifdef MR_LOWLEVEL_DEBUG
 
 void 
-mkframe_msg(void)
+mkframe_msg(const char *predname)
 {
 	restore_transient_registers();
 
-	printf("\nnew choice point for procedure %s\n",
-		MR_prednm_slot(MR_curfr));
+	printf("\nnew choice point %s for procedure %s\n", predname);
 	printf("new  fr: "); printnondstack(MR_curfr);
 	printf("prev fr: "); printnondstack(MR_prevfr_slot(MR_curfr));
 	printf("succ fr: "); printnondstack(MR_succfr_slot(MR_curfr));
@@ -38,8 +37,6 @@ mkframe_msg(void)
 	if (MR_detaildebug) {
 		dumpnondstack();
 	}
-
-	return;
 }
 
 void 
@@ -47,7 +44,7 @@ succeed_msg(void)
 {
 	restore_transient_registers();
 
-	printf("\nsucceeding from procedure %s\n", MR_prednm_slot(MR_curfr));
+	printf("\nsucceeding from procedure\n");
 	printf("curr fr: "); printnondstack(MR_curfr);
 	printf("succ fr: "); printnondstack(MR_succfr_slot(MR_curfr));
 	printf("succ ip: "); printlabel(MR_succip_slot(MR_curfr));
@@ -55,8 +52,6 @@ succeed_msg(void)
 	if (MR_detaildebug) {
 		printregs("registers at success");
 	}
-	
-	return;
 }
 
 void 
@@ -64,7 +59,7 @@ succeeddiscard_msg(void)
 {
 	restore_transient_registers();
 
-	printf("\nsucceeding from procedure %s, discarding frame\n", MR_prednm_slot(MR_curfr));
+	printf("\nsucceeding from procedure\n");
 	printf("curr fr: "); printnondstack(MR_curfr);
 	printf("succ fr: "); printnondstack(MR_succfr_slot(MR_curfr));
 	printf("succ ip: "); printlabel(MR_succip_slot(MR_curfr));
@@ -72,8 +67,6 @@ succeeddiscard_msg(void)
 	if (MR_detaildebug) {
 		printregs("registers at success");
 	}
-
-	return;
 }
 
 void 
@@ -81,12 +74,10 @@ fail_msg(void)
 {
 	restore_transient_registers();
 
-	printf("\nfailing from procedure %s\n", MR_prednm_slot(MR_curfr));
+	printf("\nfailing from procedure\n");
 	printf("curr fr: "); printnondstack(MR_curfr);
 	printf("fail fr: "); printnondstack(MR_prevfr_slot(MR_curfr));
 	printf("fail ip: "); printlabel(MR_redoip_slot(curprevfr_slot(MR_curfr)));
-
-	return;
 }
 
 void 
@@ -94,12 +85,10 @@ redo_msg(void)
 {
 	restore_transient_registers();
 
-	printf("\nredo from procedure %s\n", MR_prednm_slot(MR_curfr));
+	printf("\nredo from procedure\n");
 	printf("curr fr: "); printnondstack(MR_curfr);
 	printf("redo fr: "); printnondstack(MR_maxfr);
 	printf("redo ip: "); printlabel(MR_redoip_slot(MR_maxfr));
-
-	return;
 }
 
 void 
@@ -108,8 +97,6 @@ call_msg(/* const */ Code *proc, /* const */ Code *succcont)
 	printf("\ncalling      "); printlabel(proc);
 	printf("continuation "); printlabel(succcont);
 	printregs("registers at call");
-
-	return;
 }
 
 void 
@@ -120,8 +107,6 @@ tailcall_msg(/* const */ Code *proc)
 	printf("\ntail calling "); printlabel(proc);
 	printf("continuation "); printlabel(MR_succip);
 	printregs("registers at tailcall");
-
-	return;
 }
 
 void 
@@ -129,8 +114,6 @@ proceed_msg(void)
 {
 	printf("\nreturning from determinate procedure\n");
 	printregs("registers at proceed");
-
-	return;
 }
 
 void 
@@ -138,8 +121,6 @@ cr1_msg(Word val0, const Word *addr)
 {
 	printf("put value %9lx at ", (long) (Integer) val0);
 	printheap(addr);
-
-	return;
 }
 
 void 
@@ -148,20 +129,17 @@ cr2_msg(Word val0, Word val1, const Word *addr)
 	printf("put values %9lx,%9lx at ",	
 		(long) (Integer) val0, (long) (Integer) val1);
 	printheap(addr);
-
-	return;
 }
 
 void 
 incr_hp_debug_msg(Word val, const Word *addr)
 {
 #ifdef CONSERVATIVE_GC
-	printf("allocated %ld words at 0x%p\n", (long) (Integer) val, addr);
+	printf("allocated %ld words at %lu\n", (unsigned long) val, addr);
 #else
 	printf("increment hp by %ld from ", (long) (Integer) val);
 	printheap(addr);
 #endif
-	return;
 }
 
 void 
@@ -169,8 +147,6 @@ incr_sp_msg(Word val, const Word *addr)
 {
 	printf("increment sp by %ld from ", (long) (Integer) val);
 	printdetstack(addr);
-
-	return;
 }
 
 void 
@@ -178,8 +154,6 @@ decr_sp_msg(Word val, const Word *addr)
 {
 	printf("decrement sp by %ld from ", (long) (Integer) val);
 	printdetstack(addr);
-
-	return;
 }
 
 void 
@@ -187,8 +161,6 @@ push_msg(Word val, const Word *addr)
 {
 	printf("push value %9lx to ", (long) (Integer) val);
 	printdetstack(addr);
-
-	return;
 }
 
 void 
@@ -196,8 +168,6 @@ pop_msg(Word val, const Word *addr)
 {
 	printf("pop value %9lx from ", (long) (Integer) val);
 	printdetstack(addr);
-
-	return;
 }
 
 #endif /* defined(MR_LOWLEVEL_DEBUG) */
@@ -228,8 +198,6 @@ reg_msg(void)
 		printf("%8lx ", (long) x);
 	}
 	printf("\n");
-
-	return;
 }
 
 #endif /* defined(MR_DEBUG_GOTOS) */
@@ -244,67 +212,25 @@ void
 printint(Word n)
 {
 	printf("int %ld\n", (long) (Integer) n);
-
-	return;
 }
 
 void 
 printstring(const char *s)
 {
-	printf("string 0x%p %s\n", (const void *) s, s);
-
-	return;
+	printf("string %p %s\n", (const void *) s, s);
 }
 
 void 
 printheap(const Word *h)
 {
 #ifndef CONSERVATIVE_GC
-	printf("ptr 0x%p, offset %3ld words\n",
+	printf("ptr %p, offset %3ld words\n",
 		(const void *) h,
 		(long) (Integer) (h - MR_ENGINE(heap_zone)->min));
 #else
-	printf("ptr 0x%p\n",
+	printf("ptr %p\n",
 		(const void *) h);
 #endif
-	return;
-}
-
-void 
-printdetstack(const Word *s)
-{
-	printf("ptr 0x%p, offset %3ld words\n",
-		(const void *) s,
-		(long) (Integer) (s - MR_CONTEXT(detstack_zone)->min));
-	return;
-}
-
-void 
-printnondstack(const Word *s)
-{
-#ifndef	MR_DEBUG_NONDET_STACK
-	printf("ptr 0x%p, offset %3ld words\n",
-		(const void *) s,
-		(long) (Integer) (s - MR_CONTEXT(nondetstack_zone)->min));
-#else
-	if (s > MR_CONTEXT(nondetstack_zone)->min) {
-		printf("ptr 0x%p, offset %3ld words, procedure %s\n",
-			(const void *) s, 
-			(long) (Integer)
-				(s - MR_CONTEXT(nondetstack_zone)->min),
-			(const char *) s[PREDNM]);
-	} else {
-		/*
-		** This handles the case where the prevfr of the first frame
-		** is being printed.
-		*/
-		printf("ptr 0x%p, offset %3ld words\n",
-			(const void *) s, 
-			(long) (Integer)
-				(s - MR_CONTEXT(nondetstack_zone)->min));
-	}
-#endif
-	return;
 }
 
 void 
@@ -312,12 +238,9 @@ dumpframe(/* const */ Word *fr)
 {
 	reg	int	i;
 
-	printf("frame at ptr 0x%p, offset %3ld words\n",
+	printf("frame at ptr %p, offset %3ld words\n",
 		(const void *) fr, 
 		(long) (Integer) (fr - MR_CONTEXT(nondetstack_zone)->min));
-#ifdef	MR_DEBUG_NONDET_STACK
-	printf("\t predname  %s\n", MR_prednm_slot(fr));
-#endif
 	printf("\t succip    "); printlabel(MR_succip_slot(fr));
 	printf("\t redoip    "); printlabel(MR_redoip_slot(fr));
 	printf("\t succfr    "); printnondstack(MR_succfr_slot(fr));
@@ -328,7 +251,6 @@ dumpframe(/* const */ Word *fr)
 			i, (long) (Integer) MR_based_framevar(fr,i),
 			(unsigned long) MR_based_framevar(fr,i));
 	}
-	return;
 }
 
 void 
@@ -341,7 +263,6 @@ dumpnondstack(void)
 			fr = MR_prevfr_slot(fr)) {
 		dumpframe(fr);
 	}
-	return;
 }
 
 void 
@@ -351,7 +272,6 @@ printframe(const char *msg)
 	dumpframe(MR_curfr);
 
 	print_ordinary_regs();
-	return;
 }
 
 void 
@@ -368,8 +288,6 @@ printregs(const char *msg)
 	printf("%-9s", "sp:");      printdetstack(MR_sp);
 
 	print_ordinary_regs();
-
-	return;
 }
 
 static void 
@@ -396,24 +314,72 @@ print_ordinary_regs(void)
 #endif /* defined(MR_DEBUG_GOTOS) */
 
 void 
+MR_printdetstackptr(const Word *s)
+{
+	MR_print_detstackptr(stdout, s);
+}
+
+void 
+MR_print_detstackptr(FILE *fp, const Word *s)
+{
+	fprintf(fp, "det %3ld (%p)",
+		(long) (Integer) (s - MR_CONTEXT(detstack_zone)->min),
+		(const void *) s);
+}
+
+void 
+printdetstack(const Word *s)
+{
+	printf("ptr %p, offset %3ld words\n",
+		(const void *) s,
+		(long) (Integer) (s - MR_CONTEXT(detstack_zone)->min));
+}
+
+void 
+MR_printnondstackptr(const Word *s)
+{
+	MR_print_nondstackptr(stdout, s);
+}
+
+void 
+MR_print_nondstackptr(FILE *fp, const Word *s)
+{
+	fprintf(fp, "non %3ld (%p)",
+		(long) (Integer) (s - MR_CONTEXT(nondetstack_zone)->min),
+		(const void *) s);
+}
+
+void 
+printnondstack(const Word *s)
+{
+	printf("ptr %p, offset %3ld words\n",
+		(const void *) s,
+		(long) (Integer) (s - MR_CONTEXT(nondetstack_zone)->min));
+}
+
+void 
 printlabel(/* const */ Code *w)
 {
 	MR_Internal	*internal;
 
 	internal = MR_lookup_internal_by_addr(w);
 	if (internal != NULL) {
-		printf("label %s (0x%p)\n", internal->i_name, w);
+		if (internal->i_name != NULL) {
+			printf("label %s (%p)\n", internal->i_name, w);
+		} else {
+			printf("label (%p)\n", w);
+		}
 	} else {
 #ifdef	MR_DEBUG_GOTOS
 		MR_Entry	*entry;
 		entry = MR_prev_entry_by_addr(w);
-		if (entry->e_addr == w) {
-			printf("label %s (0x%p)\n", entry->e_name, w);
+		if (entry->e_addr == w && entry->e_name != NULL) {
+			printf("label %s (%p)\n", entry->e_name, w);
 		} else {
-			printf("label UNKNOWN (0x%p)\n", w);
+			printf("label UNKNOWN (%p)\n", w);
 		}
 #else
-		printf("label UNKNOWN (0x%p)\n", w);
+		printf("label UNKNOWN (%p)\n", w);
 #endif	/* not MR_DEBUG_GOTOS */
 	}
 }
@@ -501,12 +467,18 @@ fatal_error(const char *fmt, ...)
 	exit(EXIT_FAILURE);
 }
 
-	/* See header file for documentation on why we need this function */
+/*
+** See the header file for documentation on why we need this function.
+*/
+
 void
-MR_memcpy(char *dest, const char *src, size_t nbytes)
+MR_memcpy(void *dest, const void *src, size_t nbytes)
 {
+	char		*d = (char *) dest;
+	const char	*s = (const char *) src;
+
 	while (nbytes-- > 0)
-		*dest++ = *src++;
+		*d++ = *s++;
 }
 
 /*

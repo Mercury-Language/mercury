@@ -57,6 +57,12 @@
 :- pred code_util__make_uni_label(module_info, type_id, proc_id, proc_label).
 :- mode code_util__make_uni_label(in, in, in, out) is det.
 
+:- pred code_util__extract_proc_label_from_code_addr(code_addr, proc_label).
+:- mode code_util__extract_proc_label_from_code_addr(in, out) is det.
+
+:- pred code_util__extract_proc_label_from_label(label, proc_label).
+:- mode code_util__extract_proc_label_from_label(in, out) is det.
+
 :- pred code_util__arg_loc_to_register(arg_loc, lval).
 :- mode code_util__arg_loc_to_register(in, out) is det.
 
@@ -319,6 +325,29 @@ code_util__make_uni_label(ModuleInfo, TypeId, UniModeNum, ProcLabel) :-
 		error("code_util__make_uni_label: unqualified type_id")
 	).
 
+code_util__extract_proc_label_from_code_addr(CodeAddr, ProcLabel) :-
+	( code_util__proc_label_from_code_addr(CodeAddr, ProcLabelPrime) ->
+		ProcLabel = ProcLabelPrime
+	;
+		error("code_util__extract_label_from_code_addr failed")
+	).
+
+:- pred code_util__proc_label_from_code_addr(code_addr::in,
+	proc_label::out) is semidet.
+
+code_util__proc_label_from_code_addr(CodeAddr, ProcLabel) :-
+	(
+		CodeAddr = label(Label),
+		code_util__extract_proc_label_from_label(Label, ProcLabel)
+	;
+		CodeAddr = imported(ProcLabel)
+	).
+
+code_util__extract_proc_label_from_label(local(ProcLabel, _), ProcLabel).
+code_util__extract_proc_label_from_label(c_local(ProcLabel), ProcLabel).
+code_util__extract_proc_label_from_label(local(ProcLabel), ProcLabel).
+code_util__extract_proc_label_from_label(exported(ProcLabel), ProcLabel).
+
 %-----------------------------------------------------------------------------%
 
 code_util__arg_loc_to_register(ArgLoc, reg(r, ArgLoc)).
@@ -434,11 +463,11 @@ code_util__translate_builtin_2("int", "rem", 0, [X, Y, Z],
 	no, yes(Z - binop((mod), var(X), var(Y)))).
 code_util__translate_builtin_2("int", "builtin_left_shift", 0, [X, Y, Z],
 	no, yes(Z - binop((<<), var(X), var(Y)))).
-code_util__translate_builtin_2("int", "<<", 0, [X, Y, Z],
+code_util__translate_builtin_2("int", "unchecked_left_shift", 0, [X, Y, Z],
 	no, yes(Z - binop((<<), var(X), var(Y)))).
 code_util__translate_builtin_2("int", "builtin_right_shift", 0, [X, Y, Z],
 	no, yes(Z - binop((>>), var(X), var(Y)))).
-code_util__translate_builtin_2("int", ">>", 0, [X, Y, Z],
+code_util__translate_builtin_2("int", "unchecked_right_shift", 0, [X, Y, Z],
 	no, yes(Z - binop((>>), var(X), var(Y)))).
 code_util__translate_builtin_2("int", "builtin_bit_and", 0, [X, Y, Z],
 	no, yes(Z - binop((&), var(X), var(Y)))).
@@ -665,10 +694,12 @@ code_util__cons_id_to_tag(float_const(X), _, _, float_constant(X)).
 code_util__cons_id_to_tag(string_const(X), _, _, string_constant(X)).
 code_util__cons_id_to_tag(code_addr_const(P,M), _, _, code_addr_constant(P,M)).
 code_util__cons_id_to_tag(pred_const(P,M), _, _, pred_closure_tag(P,M)).
-code_util__cons_id_to_tag(base_type_info_const(M,T,A), _, _,
-		base_type_info_constant(M,T,A)).
+code_util__cons_id_to_tag(type_ctor_info_const(M,T,A), _, _,
+		type_ctor_info_constant(M,T,A)).
 code_util__cons_id_to_tag(base_typeclass_info_const(M,C,_,N), _, _,
 		base_typeclass_info_constant(M,C,N)).
+code_util__cons_id_to_tag(tabling_pointer_const(PredId,ProcId), _, _,
+		tabling_pointer_constant(PredId,ProcId)).
 code_util__cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo, Tag) :-
 	(
 			% handle the `character' type specially
@@ -901,7 +932,7 @@ code_util__output_args([_V - arg_info(Loc, Mode) | Args], Vs) :-
 code_util__lvals_in_rval(lval(Lval), [Lval | Lvals]) :-
 	code_util__lvals_in_lval(Lval, Lvals).
 code_util__lvals_in_rval(var(_), []).
-code_util__lvals_in_rval(create(_, _, _, _, _), []).
+code_util__lvals_in_rval(create(_, _, _, _, _, _), []).
 code_util__lvals_in_rval(mkword(_, Rval), Lvals) :-
 	code_util__lvals_in_rval(Rval, Lvals).
 code_util__lvals_in_rval(const(_), []).

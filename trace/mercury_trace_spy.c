@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -28,13 +28,38 @@ static	int		MR_spied_proc_max = 0;
 
 #define	INIT_SPY_TABLE_SIZE	10
 
+static	int	MR_compare_addr(const void *address1, const void *address2);
+static	int	MR_search_spy_table_for_proc(const MR_Stack_Layout_Entry
+			*entry);
+
+/*
+** Compare two addresses, and return an integer which is <0, 0, or >0
+** depending on whether the first address is less than, equal to, or
+** greater than the second.  Suitable for use with MR_bsearch() and
+** MR_prepare_insert_into_sorted().
+*/
+static int
+MR_compare_addr(const void *address1, const void *address2)
+{
+	/*
+	** Note that we can't just compare the pointers, because
+	** because on a segmented architecture, that might
+	** only compare the segments, not the offsets (ANSI C
+	** doesn't require pointer comparisons to work unless
+	** the pointers point into the same array, which is not
+	** necessarily going to be the case here).
+	** So instead we need to cast the pointers to integers
+	** and compare the integers.
+	*/
+	Unsigned num1 = (Unsigned) address1;
+	Unsigned num2 = (Unsigned) address2;
+	return (num1 > num2 ? 1 : num1 == num2 ? 0 : -1);
+}
+
 /*
 ** Return the index of the entry in MR_spied_procs whose spy_proc field
 ** is entry, or a negative number if absent.
 */
-static	int	MR_search_spy_table_for_proc(const MR_Stack_Layout_Entry
-			*entry);
-
 static int
 MR_search_spy_table_for_proc(const MR_Stack_Layout_Entry *entry)
 {
@@ -42,7 +67,7 @@ MR_search_spy_table_for_proc(const MR_Stack_Layout_Entry *entry)
 	bool	found;
 
 	MR_bsearch(MR_spied_proc_next, slot, found,
-		(Unsigned) entry - (Unsigned) MR_spied_procs[slot].spy_proc);
+		MR_compare_addr(MR_spied_procs[slot].spy_proc, entry));
 	if (found) {
 		return slot;
 	} else {
@@ -137,8 +162,7 @@ MR_add_spy_point(MR_Spy_When when, MR_Spy_Action action,
 			INIT_SPY_TABLE_SIZE);
 		MR_prepare_insert_into_sorted(MR_spied_procs,
 			MR_spied_proc_next, slot,
-			(Unsigned) entry -
-			(Unsigned) MR_spied_procs[slot].spy_proc);
+			MR_compare_addr(MR_spied_procs[slot].spy_proc, entry));
 		MR_spied_procs[slot].spy_proc = entry;
 		MR_spied_procs[slot].spy_points = NULL;
 	}

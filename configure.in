@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1998 The University of Melbourne. 
+# Copyright (C) 1995-1999 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -81,13 +81,11 @@ if test "$BOOTSTRAP_MC" != ""; then
 		:- import_module io.
 		:- pred main(io__state::di, io__state::uo) is det.
 		:- implementation.
+		:- import_module int.
 		main --> 
-			io__write_string(promise_only_solution(hello)).
-
-		:- pred hello(string).
-		:- mode hello(out) is cc_multi.
-		hello("Hello, world\n").
-		hello("Hello, world\n").
+			% check that we have unchecked_left_shift
+			{ _X = unchecked_left_shift(2,2) },
+			print("Hello, world\n").
 EOF
 	if
 	 	 echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
@@ -119,47 +117,6 @@ else
 	MERCURY_MSG("found GNU Make: $GNU_MAKE")
 fi
 AC_SUBST(GNU_MAKE)
-#-----------------------------------------------------------------------------#
-INSTALL_SICSTUS=
-SICSTUS=
-MERCURY_MSG("looking for SICStus Prolog...")
-AC_PROGRAMS_CHECK(SP,sp sicstus prolog)
-if test "$SP" != ""; then
-	case "`echo 'prolog_flag(version, V, V), write(V), nl, halt.' |
-			$SP 2>&1`" in
-		SICStus*)
-			INSTALL_SICSTUS=install_sicstus
-			SICSTUS=sicstus
-			;;
-	esac
-fi
-if test "$INSTALL_SICSTUS" = ""; then
-	AC_MSG_WARN(SICStus Prolog not found)
-else
-	MERCURY_MSG("found SICStus Prolog: $SP")
-fi
-AC_SUBST(INSTALL_SICSTUS)
-AC_SUBST(SICSTUS)
-#-----------------------------------------------------------------------------#
-INSTALL_NUPROLOG=
-NUPROLOG=
-MERCURY_MSG("looking for NU-Prolog...")
-AC_PROGRAMS_CHECK(NP,np)
-if test "$NP" != ""; then
-	case "`$NP < /dev/null 2>&1`" in
-		NU-Prolog*)
-			INSTALL_NUPROLOG=install_nuprolog
-			NUPROLOG=nuprolog
-			;;
-	esac
-fi
-if test "$INSTALL_NUPROLOG" = ""; then
-	AC_MSG_WARN(NU-Prolog not found)
-else
-	MERCURY_MSG("found NU-Prolog: $NP")
-fi
-AC_SUBST(INSTALL_NUPROLOG)
-AC_SUBST(NUPROLOG)
 #-----------------------------------------------------------------------------#
 MERCURY_MSG("looking for a way to create named pipes...")
 
@@ -218,6 +175,9 @@ if test "$MKTEMP" = ""; then
 fi
 AC_SUBST(MKTEMP)
 #-----------------------------------------------------------------------------#
+AC_PATH_PROG(INSTALL_INFO,install-info)
+AC_SUBST(INSTALL_INFO)
+#-----------------------------------------------------------------------------#
 AC_PROG_CC
 AC_SUBST(CC)
 
@@ -231,6 +191,15 @@ CFLAGS="-O"
 # we also need to add the appropriate `-I' options so that the test programs
 # can #include various Mercury runtime headers.
 CFLAGS="-I runtime -I runtime/machdeps $CFLAGS"
+
+# Make sure we search /usr/local/include and /usr/local/lib for
+# header files and libraries.  GNU C normally searches /usr/local/include
+# by default, but (inconsistently) it does _not_ search /usr/local/lib;
+# and in any case the user might be using a different C compiler that
+# doesn't search either of those by default.
+CFLAGS="-I /usr/local/include $CFLAGS"
+LIBS="-L/usr/local/lib $LIBS"
+
 AC_PROG_CPP
 AC_C_CROSS
 AC_PROG_RANLIB
@@ -279,6 +248,22 @@ if test "$HAVE_SYS_TIME_H" = 1; then
 	AC_DEFINE(HAVE_SYS_TIME)
 fi
 #-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(dlfcn.h, HAVE_DLFCN_H=1)
+if test "$HAVE_DLFCN_H" = 1; then
+	AC_DEFINE(HAVE_DLFCN_H)
+fi
+AC_CHECK_LIB(dl, dlopen, DL_LIBRARY="-ldl", DL_LIBRARY="")
+AC_SUBST(DL_LIBRARY)
+
+# temporarily add $DL_LIBRARY to LIBS while we check for dlopen etc.
+save_LIBS="$LIBS"
+LIBS="$LIBS $DL_LIBRARY"
+
+AC_HAVE_FUNCS(dlopen dlclose dlsym dlerror)
+
+# restore old value of LIBS
+LIBS="$save_LIBS"
+#-----------------------------------------------------------------------------#
 #
 # check the basics of sigaction
 #
@@ -326,55 +311,6 @@ if test "$ac_cv_func_sigaction" = yes; then
 	if test $mercury_cv_sigaction_field = sa_sigaction; then
 		AC_DEFINE(HAVE_SIGINFO)
 	fi
-fi
-#
-# see whether SA_RESTART is defined
-# (we use it if possible, if not available warn about it, because
-# it could cause problems with signal handling).
-#
-AC_MSG_CHECKING(for SA_RESTART)
-AC_CACHE_VAL(mercury_cv_sa_restart,
-AC_TRY_RUN([
-
-#include <signal.h>
-#include <stdlib.h>
-
-#define FAULT_ADDRESS ((int *)112)
-
-extern void handler(int signum, siginfo_t *info, void *context);
-
-int main() {
-	struct sigaction act;
-	act.sa_flags = SA_SIGINFO | SA_RESTART;
-	act.sa_sigaction = handler;
-	if (sigemptyset(&act.sa_mask) != 0)
-		exit(1);
-	if (sigaction(SIGSEGV, &act, NULL) != 0)
-		exit(1);
-	/* provoke a SIGSEGV */
-	(*FAULT_ADDRESS)++;
-	exit(1);
-}
-
-void handler(int signum, siginfo_t *info, void *context) {
-	if (signum == SIGSEGV &&
-	    info->si_signo == SIGSEGV &&
-	    info->si_code > 0 &&
-	    (int *)info->si_addr == FAULT_ADDRESS)
-	{
-		exit(0);
-	} else {
-		exit(1);
-	}
-}],
-[mercury_cv_sa_restart=yes],
-[mercury_cv_sa_restart=no],
-[mercury_cv_sa_restart=no]))
-AC_MSG_RESULT($mercury_cv_sa_restart)
-if test $mercury_cv_sa_restart = yes; then
-	AC_DEFINE(HAVE_SIGINFO)
-else
-	AC_MSG_WARN("using sigaction without SA_RESTART")
 fi
 #
 # check the basics of sigcontext_struct
@@ -727,63 +663,141 @@ else
 	fi
 fi
 #-----------------------------------------------------------------------------#
-AC_MSG_CHECKING(for an integer type with the same size as a pointer)
-AC_CACHE_VAL(mercury_cv_word_type,
-	AC_TRY_RUN([
-	#include <stdio.h>
-	int main() {
-		FILE *fp;
+AC_CHECK_HEADER(stdint.h, HAVE_STDINT_H=1)
+if test "$HAVE_STDINT_H" = 1; then
+	AC_DEFINE(HAVE_STDINT)
+else
+#-----------------------------------------------------------------------------#
+	AC_MSG_CHECKING(for an integer type with the same size as a pointer)
+	AC_CACHE_VAL(mercury_cv_word_type,
+		AC_TRY_RUN([
+		#include <stdio.h>
+		int main() {
+			FILE *fp;
 
-		fp = fopen("conftest.tags", "w");
-		if (fp == NULL)
+			fp = fopen("conftest.tags", "w");
+			if (fp == NULL)
+				exit(1);
+
+			if (sizeof(int) == sizeof(void *))
+			{
+				fprintf(fp, "int\n");
+				exit(0);
+			}
+
+			if (sizeof(long) == sizeof(void *))
+			{
+				fprintf(fp, "long\n");
+				exit(0);
+			}
+
+			fprintf(fp, "unknown\n");
 			exit(1);
+		}],
+		[mercury_cv_word_type=`cat conftest.tags`],
+		[mercury_cv_word_type=unknown],
+		[mercury_cv_word_type=unknown])
+	)
+	if test "$mercury_cv_word_type" = unknown; then
+		AC_TRY_RUN([
+		#include <stdio.h>
+		int main() {
+			FILE *fp;
 
-		if (sizeof(int) == sizeof(void *))
-		{
-			fprintf(fp, "int\n");
-			exit(0);
-		}
+			fp = fopen("conftest.tags", "w");
+			if (fp == NULL)
+				exit(1);
 
-		if (sizeof(long) == sizeof(void *))
-		{
-			fprintf(fp, "long\n");
-			exit(0);
-		}
+			if (sizeof(long long) == sizeof(void *))
+			{
+				fprintf(fp, "long long\n");
+				exit(0);
+			}
 
-		fprintf(fp, "unknown\n");
-		exit(1);
-	}],
-	[mercury_cv_word_type=`cat conftest.tags`],
-	[mercury_cv_word_type=unknown],
-	[mercury_cv_word_type=unknown])
-)
-if test "$mercury_cv_word_type" = unknown; then
-	AC_TRY_RUN([
-	#include <stdio.h>
-	int main() {
-		FILE *fp;
-
-		fp = fopen("conftest.tags", "w");
-		if (fp == NULL)
+			fprintf(fp, "unknown\n");
 			exit(1);
+		}],
+		[mercury_cv_word_type=`cat conftest.tags`],
+		[mercury_cv_word_type=unknown],
+		[mercury_cv_word_type=unknown])
+	fi
+	AC_MSG_RESULT($mercury_cv_word_type)
+	AC_DEFINE_UNQUOTED(MR_WORD_TYPE, $mercury_cv_word_type)
+	MR_WORD_TYPE=$mercury_cv_word_type
+	AC_SUBST(MR_WORD_TYPE)
+#-----------------------------------------------------------------------------#
+	AC_MSG_CHECKING(for an integer type of at least 32 bits)
+	AC_CACHE_VAL(mercury_cv_int_least32_type,
+		AC_TRY_RUN([
+		#include <stdio.h>
+		#include <limits.h>
+		int main() {
+			FILE *fp;
 
-		if (sizeof(long long) == sizeof(void *))
-		{
-			fprintf(fp, "long long\n");
-			exit(0);
-		}
+			fp = fopen("conftest.tags", "w");
+			if (fp == NULL)
+				exit(1);
 
-		fprintf(fp, "unknown\n");
-		exit(1);
-	}],
-	[mercury_cv_word_type=`cat conftest.tags`],
-	[mercury_cv_word_type=unknown],
-	[mercury_cv_word_type=unknown])
-fi
-AC_MSG_RESULT($mercury_cv_word_type)
-AC_DEFINE_UNQUOTED(WORD_TYPE, $mercury_cv_word_type)
-WORD_TYPE=$mercury_cv_word_type
-AC_SUBST(WORD_TYPE)
+			if (sizeof(int) * CHAR_BIT >= 32)
+			{
+				fprintf(fp, "int\n");
+				exit(0);
+			}
+
+			if (sizeof(long) * CHAR_BIT >= 32)
+			{
+				fprintf(fp, "long\n");
+				exit(0);
+			}
+
+			fprintf(fp, "unknown\n");
+			exit(1);
+		}],
+		[mercury_cv_int_least32_type=`cat conftest.tags`],
+		[mercury_cv_int_least32_type=unknown],
+		[mercury_cv_int_least32_type=unknown])
+	)
+	AC_MSG_RESULT($mercury_cv_int_least32_type)
+	AC_DEFINE_UNQUOTED(MR_INT_LEAST32_TYPE, $mercury_cv_int_least32_type)
+	MR_INT_LEAST32_TYPE=$mercury_cv_int_least32_type
+	AC_SUBST(MR_INT_LEAST32_TYPE)
+#-----------------------------------------------------------------------------#
+	AC_MSG_CHECKING(for an integer type of at least 16 bits)
+	AC_CACHE_VAL(mercury_cv_int_least16_type,
+		AC_TRY_RUN([
+		#include <stdio.h>
+		#include <limits.h>
+		int main() {
+			FILE *fp;
+
+			fp = fopen("conftest.tags", "w");
+			if (fp == NULL)
+				exit(1);
+
+			if (sizeof(short) * CHAR_BIT >= 16)
+			{
+				fprintf(fp, "short\n");
+				exit(0);
+			}
+
+			if (sizeof(int) * CHAR_BIT >= 16)
+			{
+				fprintf(fp, "int\n");
+				exit(0);
+			}
+
+			fprintf(fp, "unknown\n");
+			exit(1);
+		}],
+		[mercury_cv_int_least16_type=`cat conftest.tags`],
+		[mercury_cv_int_least16_type=unknown],
+		[mercury_cv_int_least16_type=unknown])
+	)
+	AC_MSG_RESULT($mercury_cv_int_least16_type)
+	AC_DEFINE_UNQUOTED(MR_INT_LEAST16_TYPE, $mercury_cv_int_least16_type)
+	MR_INT_LEAST16_TYPE=$mercury_cv_int_least16_type
+	AC_SUBST(MR_INT_LEAST16_TYPE)
+fi # ! HAVE_STDINT_H = 1
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(the number of low tag bits available)
 AC_CACHE_VAL(mercury_cv_low_tag_bits,
@@ -824,20 +838,12 @@ if test "$mercury_cv_low_tag_bits" -lt 2; then
 	if test "$BOOTSTRAP_MC" = ""; then
 		AC_MSG_ERROR("cannot bootstrap: low tag bits less than 2")
 		exit 1
-	else
-		MERCURY_MSG("rebuilding with fewer tag bits")
-		MERCURY_MSG("installation may take longer than usual")
-		rm -f library/*.c compiler/*.c browser/*.c profiler/*.c
 	fi
 fi
 if test "$mercury_cv_low_tag_bits" -gt 2; then
 	if test "$BOOTSTRAP_MC" = ""; then
 		AC_MSG_WARN("bootstrapping using only 2 low tag bits")
 		mercury_cv_low_tag_bits=2
-	else
-		MERCURY_MSG("rebuilding with extra tag bits")
-		MERCURY_MSG("installation may take longer than usual")
-		rm -f library/*.c compiler/*.c browser/*.c profiler/*.c
 	fi
 fi
 AC_DEFINE_UNQUOTED(LOW_TAG_BITS, $mercury_cv_low_tag_bits)
@@ -948,10 +954,6 @@ if test "$mercury_cv_unboxed_floats" = yes; then
 		AC_MSG_WARN(*** so you can use unboxed floats," \
 				"which are more efficient.)
 		mercury_cv_unboxed_floats=no
-	else
-		MERCURY_MSG("rebuilding with unboxed floats")
-		MERCURY_MSG("installation may take longer than usual")
-		rm -f library/*.c compiler/*.c browser/*.c profiler/*.c
 	fi
 fi
 if test "$mercury_cv_unboxed_floats" = yes; then
@@ -1232,12 +1234,14 @@ LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 		mercury_cv_gcc_labels=no
 		;;
 	sparc*)
-		case "`$CC --version`" in
-		    gcc-2.8*)
+		case $ac_cv_prog_gcc in yes)
+		    case "`$CC --version < /dev/null`" in 2.8*)
 			AC_MSG_WARN(*** Mercury might not work with " \
 				"gcc 2.8 on sparc!)
 			AC_MSG_WARN(We advise using gcc 2.7.x or egcs.)
 			;;
+		    esac
+		    ;;
 		esac
 		;;
 esac
@@ -1318,7 +1322,7 @@ fi
 # programs we attempt to compile below indirectly include it.
 test -f runtime/mercury_conf.h || {
 	cat > runtime/mercury_conf.h <<EOF
-#define WORD_TYPE $WORD_TYPE
+#define MR_WORD_TYPE $MR_WORD_TYPE
 EOF
 }
 #-----------------------------------------------------------------------------#
@@ -1555,6 +1559,17 @@ LIBGRADES="$LIBGRADES $DEFAULT_GRADE.tr.debug"
 LIBGRADES=` echo " $LIBGRADES " | sed "s/ $GRADE / /" `
 MERCURY_MSG("using \`LIBGRADES=$LIBGRADES' as the set of library grades to install")
 AC_SUBST(LIBGRADES)
+#-----------------------------------------------------------------------------#
+#
+# Add an option that enables declarative debugging support in the internal
+# debugger.  It is disabled by default.
+#
+AC_ARG_ENABLE(decl-debug,
+[  --enable-decl-debug     enable the declarative debugger],
+mercury_cv_enable_decl_debug=yes,mercury_cv_enable_decl_debug=no)
+if test $mercury_cv_enable_decl_debug = "yes"; then
+	AC_DEFINE(MR_USE_DECLARATIVE_DEBUGGER)
+fi
 #-----------------------------------------------------------------------------#
 
 # Determine how many of the r registers (r1, r2, ...) are real registers.
@@ -1884,10 +1899,242 @@ AC_SUBST_FILE(PARSE_GRADE_OPTIONS)
 AC_SUBST_FILE(FINAL_GRADE_OPTIONS)
 
 #-----------------------------------------------------------------------------#
+
+#
+# check whether we need -lsocket
+#
+AC_CHECK_LIB(socket, socket, SOCKET_LIBRARY=-lsocket, SOCKET_LIBRARY="")
+AC_SUBST(SOCKET_LIBRARY)
+
+#
+# temporarily add -lsocket to LIBS, for use by TRY_LINK
+#
+save_LIBS="$LIBS"
+LIBS="$LIBS $SOCKET_LIBRARY"
+
+#
+# use TRY_LINK to see whether we can use sockets
+#
+AC_MSG_CHECKING(whether we can use sockets (for Opium-M))
+AC_CACHE_VAL(mercury_cv_sockets_work,
+AC_TRY_LINK([
+	changequote(<<,>>) 
+	/*
+	** The following code was copied from
+	** runtime/mercury_trace_external.c
+	*/
+
+	#include <stdio.h>
+	#include <string.h>
+	#include <errno.h>
+	#include <stdarg.h>
+	#include <stdlib.h>
+	#include <sys/types.h>
+	#include <unistd.h>
+	#include <sys/socket.h>
+	#include <sys/un.h>
+	#include <arpa/inet.h>
+	#include <netinet/in.h>
+	#include <netdb.h>
+],[
+	static int MR_debug_socket = 1;
+
+	void
+	fatal_error(const char *s)
+	{
+		fprintf(stderr, "", s);
+		exit(1);
+	}
+
+	void
+	MR_trace_init_external(void)
+	{
+		int fd;
+		int len;
+		FILE *file_in;
+		FILE *file_out;
+		int addr_family;
+		char *unix_socket;
+		char *inet_socket;
+		struct sockaddr_un unix_address;
+		struct sockaddr_in inet_address;
+		struct sockaddr* addr;
+
+		/*
+		** We presume that the user's program has been invoked from
+		** within the debugger (e.g. Opium).
+		** The debugger (or the user) should set the
+		** MERCURY_DEBUGGER_UNIX_SOCKET or MERCURY_DEBUGGER_INET_SOCKET
+		** environment variable to tell the user's program which socket
+		** it needs to connect to.
+		*/
+		unix_socket = getenv("MERCURY_DEBUGGER_UNIX_SOCKET");
+		inet_socket = getenv("MERCURY_DEBUGGER_INET_SOCKET");
+		if (unix_socket == NULL && inet_socket == NULL) {
+			fatal_error("you must set either the "
+				"MERCURY_DEBUGGER_UNIX_SOCKET\n"
+				"or MERCURY_DEBUGGER_INET_SOCKET "
+				"environment variable");
+		}
+		if (unix_socket != NULL && inet_socket != NULL) {
+			fatal_error("you must set only one of the "
+				"MERCURY_DEBUGGER_UNIX_SOCKET "
+				"and MERCURY_DEBUGGER_INET_SOCKET\n"
+				"environment variables");
+		}
+		if (unix_socket) {
+		
+			addr_family = AF_UNIX;
+			memset(&unix_address, 0, sizeof(unix_address));
+			unix_address.sun_family = AF_UNIX;
+			strcpy(unix_address.sun_path, unix_socket);
+			addr = (struct sockaddr *) &unix_address;
+			len = strlen(unix_address.sun_path) + 
+				sizeof(unix_address.sun_family);
+		} else {
+			char hostname[255];
+			char port_string[255];
+			unsigned short port;
+			int host_addr;
+
+			/*
+			** Parse the MERCURY_DEBUGGER_INET_SOCKET environment variable.
+			** It should be in the format "<hostname> <port>",
+			** where <hostname> is numeric (e.g. "123.456.78.90").
+			*/
+
+			if (sscanf(inet_socket, "%254s %254s", hostname, port_string) 
+				!= 2)
+			{
+				fatal_error("MERCURY_DEBUGGER_INET_SOCKET invalid");
+			}
+			host_addr = inet_network(hostname);
+			if (host_addr == -1) {
+				fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
+					"invalid address");
+			}
+			if (sscanf(port_string, "%hu", &port) != 1) {
+				fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
+					"invalid port");
+			}
+
+			fprintf(stderr, "Mercury runtime: host = %s, port = %d\n",
+					hostname, port);
+		
+			inet_address.sin_family = AF_INET;
+			inet_address.sin_addr.s_addr = host_addr;
+			inet_address.sin_port = htons(port);
+			addr_family = AF_INET;
+			addr = (struct sockaddr *) &inet_address;
+			len = sizeof(inet_address);
+		}
+
+		/*
+		** Open the socket.
+		*/
+
+		fd = socket(addr_family, SOCK_STREAM, 0);
+		if (fd < 0) {
+			fprintf(stderr, "Mercury runtime: socket() failed: %s\n",
+				strerror(errno));
+			fatal_error("cannot open socket for debugger");
+		} else if (MR_debug_socket) {
+			fprintf(stderr,"Mercury runtime: creation of socket ok\n");
+		}
+
+		/*
+		** Connect to the socket
+		*/
+		if (connect(fd, addr, len) < 0) {
+			fprintf(stderr, "Mercury runtime: connect() failed: %s\n",
+				strerror(errno));
+			fatal_error("can't connect to debugger socket");
+		} else if (MR_debug_socket) {
+			fprintf(stderr, "Mercury runtime: connection to socket: ok\n");
+		}
+
+		/*
+		** Convert the socket fd to a Mercury stream
+		*/
+		file_in = fdopen(fd, "r");
+		file_out = fdopen(fd, "w");
+		if ((file_in == NULL)||(file_out == NULL)) {
+			fprintf(stderr, "Mercury runtime: fdopen() failed: %s\n",
+				strerror(errno));
+			fatal_error("cannot open debugger socket");
+		} else if (MR_debug_socket) {
+			fprintf(stderr, "Mercury runtime: fdopen(): ok\n");
+		}
+	}
+	changequote([,]) 
+],[mercury_cv_sockets_work=yes],[mercury_cv_sockets_work=no]))
+
+#
+# figure out whether the test succeeded, and if so,
+# enable the external debugger
+#
+if test "$mercury_cv_sockets_work" = yes; then
+	AC_MSG_RESULT(yes)
+	AC_DEFINE(MR_USE_EXTERNAL_DEBUGGER)
+else
+	AC_MSG_RESULT(no)
+fi
+
+#
+# restore the previous value of LIBS
+#
+LIBS="$save_LIBS"
+#-----------------------------------------------------------------------------#
+MERCURY_CHECK_READLINE
+#-----------------------------------------------------------------------------#
+to_keep=""
+to_delete=""
+if test "$BOOTSTRAP_MC" != "" ; then
+	MERCURY_MSG("checking whether any C files need to be rebuilt...")
+	for c_file in library/*.c compiler/*.c browser/*.c profiler/*.c
+	do
+		case $c_file in
+		*/'*.c')
+			;;
+		*)
+			sed -e '/END_OF_C_GRADE_INFO/,$d' < $c_file > confscratch
+			if grep "TAG_BITS=$mercury_cv_low_tag_bits" confscratch > /dev/null 2>&1
+			then
+				if grep "UNBOXED_FLOAT=$mercury_cv_unboxed_floats" confscratch > /dev/null 2>&1
+				then
+					to_keep="$to_keep $c_file"
+				else
+					to_delete="$to_delete $c_file"
+				fi
+			else
+				to_delete="$to_delete $c_file"
+			fi
+			;;
+		esac
+	done
+	if test "$to_delete" = "" ; then
+		if test "$to_keep" != "" ; then
+			MERCURY_MSG("no - they are compatible with autoconfigured settings")
+		else
+			MERCURY_MSG("there are no existing Mercury-generated C files")
+		fi
+	else
+		if test "$to_keep" != "" ; then
+			MERCURY_MSG("the following C files must be rebuilt in a grade")
+			MERCURY_MSG("that is consistent with autoconfigured settings")
+			MERCURY_MSG("$to_delete")
+		else
+			MERCURY_MSG("all Mercury generated C files must be rebuilt in a grade")
+			MERCURY_MSG("that is consistent with autoconfigured settings")
+		fi
+		MERCURY_MSG("installation may take longer than usual")
+	fi
+	rm -f confscratch $to_delete
+fi
+#-----------------------------------------------------------------------------#
 AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mmc scripts/mprof
 scripts/mercury_update_interface scripts/mgnuc scripts/ml
-scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init
-scripts/mdb scripts/mdbrc scripts/msc scripts/msl scripts/msp
+scripts/mmake scripts/c2init scripts/mdb scripts/mdbrc 
 scripts/sicstus_conv scripts/mkfifo_using_mknod bindist/bindist.build_vars
 ,
 for header in $CONFIG_HEADERS ; do

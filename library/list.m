@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1998 The University of Melbourne.
+% Copyright (C) 1993-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -364,6 +364,7 @@
 :- mode list__foldl(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode list__foldl(pred(in, in, out) is det, in, in, out) is det.
 :- mode list__foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode list__foldl(pred(in, in, out) is nondet, in, in, out) is nondet.
 
 	% list__foldr(Pred, List, Start, End) calls Pred with each
 	% element of List (working right-to-left) and an accumulator
@@ -372,6 +373,7 @@
 :- pred list__foldr(pred(X, Y, Y), list(X), Y, Y).
 :- mode list__foldr(pred(in, in, out) is det, in, in, out) is det.
 :- mode list__foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode list__foldr(pred(in, in, out) is nondet, in, in, out) is nondet.
 
 	% list__foldl2(Pred, List, Start, End, Start2, End2) 
 	% calls Pred with each element of List (working left-to-right),
@@ -384,6 +386,8 @@
 		in, in, out, in, out) is det.
 :- mode list__foldl2(pred(in, in, out, in, out) is semidet,
 		in, in, out, in, out) is semidet.
+:- mode list__foldl2(pred(in, in, out, in, out) is nondet,
+		in, in, out, in, out) is nondet.
 :- mode list__foldl2(pred(in, in, out, mdi, muo) is det,
 		in, in, out, mdi, muo) is det.
 :- mode list__foldl2(pred(in, in, out, di, uo) is det,
@@ -403,6 +407,8 @@
 								is det.
 :- mode list__map_foldl(pred(in, out, in, out) is semidet, in, out, in, out)
                                                                 is semidet.
+:- mode list__map_foldl(pred(in, out, in, out) is nondet, in, out, in, out)
+                                                                is nondet.
 
 	% list__filter(Pred, List, TrueList) takes a closure with one
 	% input argument and for each member of List `X', calls the closure.
@@ -488,8 +494,6 @@
 list__append([], Ys, Ys).
 list__append([X | Xs], Ys, [X | Zs]) :-
 	list__append(Xs, Ys, Zs).
-
-:- list__remove_suffix(_List, Suffix, _Prefix) when Suffix.
 
 list__remove_suffix(List, Suffix, Prefix) :-
 	list__length(List, ListLength),
@@ -814,8 +818,6 @@ list__zip([A|As], Bs, [A|Cs]) :-
 
 :- pred list__zip2(list(T), list(T), list(T)).
 :- mode list__zip2(in, in, out) is det.
-
-:- list__zip2(_, Bs, _) when Bs. % NU-Prolog indexing
 
 list__zip2(As, [], As).
 list__zip2(As, [B|Bs], [B|Cs]) :-

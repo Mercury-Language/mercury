@@ -10,7 +10,7 @@
 */
 
 #ifndef MERCURY_TAGS_H
-#define MERCURY_TAGS_H
+#define	MERCURY_TAGS_H
 
 #include <limits.h>		/* for `CHAR_BIT' */
 #include "mercury_conf.h"	/* for `LOW_TAG_BITS' */
@@ -18,7 +18,7 @@
 
 /* DEFINITIONS FOR WORD LAYOUT */
 
-#define	WORDBITS	(CHAR_BIT * sizeof(Word))
+#define	MR_WORDBITS	(CHAR_BIT * sizeof(Word))
 
 /* TAGBITS specifies the number of bits in each word that we can use for tags */
 #ifndef TAGBITS
@@ -35,91 +35,86 @@
 
 #ifdef	HIGHTAGS
 
-#define	mktag(t)	((Word)(t) << (WORDBITS - TAGBITS))
-#define	unmktag(w)	((Word)(w) >> (WORDBITS - TAGBITS))
-#define	tag(w)		((w) & ~(~(Word)0 >> TAGBITS))
-#define mkbody(i)	(i)
-#define unmkbody(w)	(w)
-#define	body(w, t)	((w) & (~(Word)0 >> TAGBITS))
-#define strip_tag(w)	((w) & (~(Word)0 >> TAGBITS))
+#define	MR_mktag(t)	((Word)(t) << (WORDBITS - TAGBITS))
+#define	MR_unmktag(w)	((Word)(w) >> (WORDBITS - TAGBITS))
+#define	MR_tag(w)	((w) & ~(~(Word)0 >> TAGBITS))
+#define	MR_mkbody(i)	(i)
+#define	MR_unmkbody(w)	(w)
+#define	MR_body(w, t)	((w) & (~(Word)0 >> TAGBITS))
+#define	MR_strip_tag(w)	((w) & (~(Word)0 >> TAGBITS))
 
 #else /* ! HIGHTAGS */
 
-#define	mktag(t)	(t)
-#define	unmktag(w)	(w)
-#define	tag(w)		((w) & ((1 << TAGBITS) - 1))
-#define mkbody(i)	((i) << TAGBITS)
-#define unmkbody(w)	((Word) (w) >> TAGBITS)
-#define	body(w, t)	((w) - (t))
-#define strip_tag(w)	((w) & (~(Word)0 << TAGBITS))
+#define	MR_mktag(t)	(t)
+#define	MR_unmktag(w)	(w)
+#define	MR_tag(w)	((w) & ((1 << TAGBITS) - 1))
+#define	MR_mkbody(i)	((i) << TAGBITS)
+#define	MR_unmkbody(w)	((Word) (w) >> TAGBITS)
+#define	MR_body(w, t)	((w) - (t))
+#define	MR_strip_tag(w)	((w) & (~(Word)0 << TAGBITS))
 
 #endif /* ! HIGHTAGS */
 
 /*
-** the result of mkword() is cast to (Word *), not to (Word)
-** because mkword() may be used in initializers for static constants
+** the result of MR_mkword() is cast to (Word *), not to (Word)
+** because MR_mkword() may be used in initializers for static constants
 ** and casts from pointers to integral types are not valid
 ** constant-expressions in ANSI C.  It cannot be (const Word *) because
 ** some ANSI C compilers won't allow assignments where the RHS is of type
 ** const and the LHS is not declared const.
 */
-#define	mkword(t, p)	((Word *)((char *)(p) + (t)))
 
-#define	field(t, p, i)		((Word *) body((p), (t)))[i]
-#define	const_field(t, p, i)	((const Word *) body((p), (t)))[i]
+#define	MR_mkword(t, p)			((Word *)((char *)(p) + (t)))
 
-#define	mask_field(p, i)	((Word *) strip_tag(p))[i]
-#define	const_mask_field(p, i)	((const Word *) strip_tag(p))[i]
+#define	MR_field(t, p, i)		((Word *) body((p), (t)))[i]
+#define	MR_const_field(t, p, i)		((const Word *) body((p), (t)))[i]
+
+#define	MR_mask_field(p, i)		((Word *) strip_tag(p))[i]
+#define	MR_const_mask_field(p, i)	((const Word *) strip_tag(p))[i]
 
 /*
-** the following list_* macros are used by handwritten C code
-** that needs to access Mercury lists.
+** the following MR_list_* macros are used by handwritten C code
+** that needs to access Mercury lists. The definitions of these macros
+** depend on the data representation scheme used by compiler/make_tags.m.
 */
 
 #ifdef MR_RESERVE_TAG
 
-#define	bTAG_NIL	1
-#define	bTAG_CONS	2
-#define	bTAG_VAR	0 	/* for Prolog-style variables */
+#define	MR_RAW_TAG_VAR		0	/* for Prolog-style variables */
+#define	MR_RAW_TAG_NIL		1
+#define	MR_RAW_TAG_CONS		2
 
 #else
 
-#define	bTAG_NIL	0
-#define	bTAG_CONS	1
-#define	bTAG_VAR	3 	/* for Prolog-style variables */
-				/* ... but currently not used */
+#define	MR_RAW_TAG_NIL		0
+#define	MR_RAW_TAG_CONS		1
 
 #endif
 
-#define	TAG_NIL		mktag(bTAG_NIL)
-#define	TAG_CONS	mktag(bTAG_CONS)
-#define	TAG_VAR		mktag(bTAG_VAR)
+#define	MR_TAG_NIL		MR_mktag(MR_RAW_TAG_NIL)
+#define	MR_TAG_CONS		MR_mktag(MR_RAW_TAG_CONS)
 
 #if TAGBITS > 0
 
-#define list_is_empty(list)	(tag(list) == TAG_NIL)
-#define list_head(list)		field(TAG_CONS, (list), 0)
-#define list_tail(list)		field(TAG_CONS, (list), 1)
-#define list_empty()		((Word) mkword(TAG_NIL, mkbody(0)))
-#define list_cons(head,tail)	\
-		((Word) mkword(TAG_CONS, create2((head),(tail))))
+#define	MR_list_is_empty(list)	(MR_tag(list) == MR_TAG_NIL)
+#define	MR_list_head(list)	MR_field(MR_TAG_CONS, (list), 0)
+#define	MR_list_tail(list)	MR_field(MR_TAG_CONS, (list), 1)
+#define	MR_list_empty()		((Word) MR_mkword(MR_TAG_NIL, MR_mkbody(0)))
+#define	MR_list_cons(head,tail)	((Word) MR_mkword(MR_TAG_CONS, \
+					create2((head),(tail))))
 
 #else
 
-#define list_is_empty(list)	(field(mktag(0), (list), 0) == bTAG_NIL)
-#define list_head(list)		field(mktag(0), (list), 1)
-#define list_tail(list)		field(mktag(0), (list), 2)
-#define list_empty()		((Word) mkword(mktag(0), create1(bTAG_NIL)))
-#define list_cons(head,tail)	\
-		((Word) mkword(mktag(0), create3(bTAG_CONS, (head), (tail))))
+#define	MR_list_is_empty(list)	(MR_field(MR_mktag(0), (list), 0) \
+					== MR_RAW_TAG_NIL)
+#define	MR_list_head(list)	MR_field(MR_mktag(0), (list), 1)
+#define	MR_list_tail(list)	MR_field(MR_mktag(0), (list), 2)
+#define	MR_list_empty()		((Word) MR_mkword(MR_mktag(0), \
+					create1(MR_RAW_TAG_NIL)))
+#define	MR_list_cons(head,tail)	((Word) MR_mkword(MR_mktag(0), \
+					create3(MR_RAW_TAG_CONS, \
+						(head), (tail))))
 
 #endif
-
-/* for Prolog-style variables... currently not used */
-#define	deref(pt)	do {						\
-				while (tag(pt) == TAG_VAR)		\
-					(pt) = * (Word *)		\
-						body((pt), TAG_VAR);	\
-			} while(0)
 
 #endif	/* not MERCURY_TAGS_H */

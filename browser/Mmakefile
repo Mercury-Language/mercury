@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998 The University of Melbourne.
+# Copyright (C) 1998-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -34,30 +34,24 @@ RM_C	=	$(LIBRARY_RM_C)
 # Don't change these without good reason - if you want to
 # do a temporary change, change ../Mmake.params.
 
-MCD	=	MERCURY_INT_DIR=$(LIBRARY_DIR) \
-		MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
-			$(MC) --generate-dependencies
-MCI	=	MERCURY_INT_DIR=$(LIBRARY_DIR) \
-		MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
-			$(MC) --make-interface
-MCOI	=	MERCURY_INT_DIR=$(LIBRARY_DIR) \
-		MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
-			$(MC) --make-opt-int
-MCTOI	=	MERCURY_INT_DIR=$(LIBRARY_DIR) \
-		MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
-			$(MC) --make-trans-opt
-MCG	=	MERCURY_INT_DIR=$(LIBRARY_DIR) \
-		MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
-			$(MC) --compile-to-c
-MCS	=	MERCURY_INT_DIR=$(LIBRARY_DIR) \
-		MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
-			$(MC) --split-c-files -c \
-			--cflags "-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
-			--cflags "-I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)"
-MGNUC	=	MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
-			$(SCRIPTS_DIR)/mgnuc
-MGNUCFLAGS =	-I$(TRACE_DIR) -I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) \
-			$(EXTRA_MGNUCFLAGS) $(DLL_CFLAGS) $(EXTRA_CFLAGS)
+M_ENV	=	MERCURY_INT_DIR=$(LIBRARY_DIR) \
+		MERCURY_ALL_C_INCL_DIRS="\
+			-I$(TRACE_DIR) \
+			-I$(RUNTIME_DIR) \
+			-I$(BOEHM_GC_DIR) \
+			-I$(BOEHM_GC_DIR)/include \
+		"
+
+MCD	=	$(M_ENV) $(MC) --generate-dependencies
+MCI	=	$(M_ENV) $(MC) --make-interface
+MCPI	=	$(M_ENV) $(MC) --make-private-interface
+MCSI	=	$(M_ENV) $(MC) --make-short-interface
+MCOI	=	$(M_ENV) $(MC) --make-opt-int
+MCTOI	=	$(M_ENV) $(MC) --make-trans-opt
+MCG	=	$(M_ENV) $(MC) --compile-to-c
+MCS	=	$(M_ENV) $(MC) --split-c-files -c --cflags "$(ALL_CFLAGS)"
+MGNUC	=	$(M_ENV) $(SCRIPTS_DIR)/mgnuc
+MGNUCFLAGS =	$(EXTRA_MGNUCFLAGS) $(DLL_CFLAGS) $(EXTRA_CFLAGS)
 LDFLAGS	=	-L$(LIBRARY_DIR) -L$(RUNTIME_DIR) -L$(BOEHM_GC_DIR)
 LDLIBS	=	-l$(STD_LIB_NAME) -l$(RT_LIB_NAME) \
 		` case "$(GRADE)" in 					\
@@ -174,15 +168,18 @@ realclean:
 .PHONY: install
 install: install_init install_library
 
-.PHONY: install_init
-install_init: $(BROWSER_LIB_NAME).init
+.PHONY: install_dirs
+install_dirs:
 	[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
+	[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
+
+.PHONY: install_init
+install_init: $(BROWSER_LIB_NAME).init install_dirs
 	cp `vpath_find $(BROWSER_LIB_NAME).init` $(INSTALL_MODULE_DIR)
 
 .PHONY: install_library
 install_library: lib$(BROWSER_LIB_NAME).a \
-		lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB)
-	[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
+		lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB) install_dirs
 	cp `vpath_find lib$(BROWSER_LIB_NAME).a \
 		lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)

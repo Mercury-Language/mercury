@@ -43,8 +43,8 @@ CHECKOUT_OPTS=-A
 # To build one of the official releases, uncomment the following two lines
 # which specify the release number and the cvs checkout option needed to
 # retrieve it.
-### RELEASE_VERSION=0.7
-### CHECKOUT_OPTS=-rversion-0_7		
+### RELEASE_VERSION=0.8.1
+### CHECKOUT_OPTS=-rversion-0_8_1
 
 #-----------------------------------------------------------------------------#
 
@@ -53,7 +53,7 @@ case $HOST in
 	murlibobo)	OPTIMIZE=-O5 ;;
 	kryten) 	OPTIMIZE=-O1 ;;
 	taifun) 	OPTIMIZE=-O1 ;;
-	mercury) 	OPTIMIZE=-O3 ;;
+	quicksilver) 	OPTIMIZE=-O3 ;;
 	hydra)		OPTIMIZE=-O2 ;;
 	muse)		OPTIMIZE=-O0 ;;
 	munta)		OPTIMIZE=-O0 ;;
@@ -67,8 +67,10 @@ TEST_CFLAGS=""
 TESTDIR=/home/mercury/public/test_mercury
 DIR=$TESTDIR/test_dirs/$HOST
 INSTALL_DIR=/home/mercury/public/mercury-latest/$FULLARCH
+### INSTALL_DIR=/home/mercury/public/mercury-0.8/$FULLARCH
 
-BETA_FTPDIR=/home/tsa/ftp/pub/mercury/beta-releases
+BETA_FTPHOST=ftp.mercury.cs.mu.oz.au
+BETA_FTPDIR=/home/ftp/pub/mercury/beta-releases
 BETA_WEBDIR=/local/dept/w3/unsupported/docs/mercury/download/files/beta-releases
 
 STABLE=$DIR/mercury-latest-stable
@@ -79,7 +81,8 @@ case $ARCH in
 		# due to a bug in the DEC loader, INSTALL_DIR should be
 		# as short as possible, to avoid overflow of fixed length
 		# buffers for -rpath options. The above definition is too long.
-		INSTALL_DIR=/home/mercury/public/.a
+		INSTALL_DIR=/home/mercury/public/.a	# for mercury-latest
+		### INSTALL_DIR=/home/mercury/public/.b	# for 0.8
 		;;
 esac
 
@@ -94,7 +97,7 @@ case $HOST in
 	mundook) 	PARALLEL=-j1 ;; # out of two CPUs
 	murlibobo)	PARALLEL=-j6 ;; # out of eight CPUs
 	hydra)		PARALLEL=-j2 ;; # out of two CPUs
-	mercury) 	PARALLEL= ;; 	# one CPU
+	quicksilver) 	PARALLEL= ;; 	# one CPU
 	*)		PARALLEL= ;;
 esac
 
@@ -171,7 +174,7 @@ set -x	# trace execution
 cd $DIR || { false; exit 1; }
 cvs checkout $CHECKOUT_OPTS mercury tests || { false; exit 1; }
 case $HOST in
-	murlibobo|kryten|mercury|hydra)
+	murlibobo|kryten|quicksilver|hydra)
 		(cd mercury/extras && cvs checkout $CHECKOUT_OPTS clpr) ||
 			{ false; exit 1; }
 		;;
@@ -295,7 +298,7 @@ case $HOST in
 	kryten|murlibobo)
 		GRADES="asm_fast.gc.tr asm_fast.tr"
 		;;
-	mercury|hydra)
+	quicksilver|hydra)
 		GRADES="asm_fast.gc.tr"
 		;;
 	*)
@@ -417,18 +420,22 @@ case $HOST in
 		GRADES="reg.gc asm_fast asm_fast.gc
 			reg.gc.prof asm_fast.gc.prof"
 		;;
-	mercury|hydra)
+	quicksilver|hydra)
 		GRADES="asm_fast.gc asm_fast \
 			asm_fast.gc.prof asm_fast.prof"
 		;;
 esac
 
 cd tests || { false; exit 1; }
+
+# We don't do this anymore, because we are phasing out the Prolog supprt.
+#
 # rebuild the `.exp' files on kryten only
-case $HOST in
-	kryten) ./generate_exp ;;
-	*) ;;
-esac
+# case $HOST in
+# 	kryten) ./generate_exp ;;
+# 	*) ;;
+# esac
+
 for grade in $GRADES
 do
 	echo "test_mercury starting tests for grade $grade at `date`" 1>&2
@@ -462,9 +469,10 @@ cd ..
 : update the unstable release
 
 case $HOST in murlibobo)
-	rm -f $BETA_FTPDIR/mercury-*-rotd-*-unstable.tar.gz &&
-	cp mercury-latest-unstable/mercury-*-$version-unstable.tar.gz \
-		$BETA_FTPDIR 
+	rsh $BETA_FTPHOST \
+		"rm -f $BETA_FTPDIR/mercury-*-rotd-*-unstable.tar.gz" &&
+	rcp mercury-latest-unstable/mercury-*-$version-unstable.tar.gz \
+		$BETA_FTPHOST:$BETA_FTPDIR 
 	rm -f $BETA_WEBDIR/mercury-*-rotd-*-unstable.tar.gz &&
 	cp mercury-latest-unstable/mercury-*-$version-unstable.tar.gz \
 		$BETA_WEBDIR
@@ -489,7 +497,10 @@ case $status in
     	cd $DIR &&
 	( [ -d $STABLE ] || mkdir $STABLE ) &&
 	rm -f $STABLE/mercury-*.$fullarch.tar.gz &&
-	cp $UNSTABLE/mercury-$version.$fullarch.tar.gz $STABLE
+	ln $UNSTABLE/mercury-$version.$fullarch.tar.gz $STABLE &&
+	rsh $BETA_FTPHOST "rm -f $BETA_FTPDIR/mercury-*.$fullarch.tar.gz" &&
+	rcp $STABLE/mercury-$version.$fullarch.tar.gz \
+		$BETA_FTPHOST:$BETA_FTPDIR 
        } || status=1
     ;;
 esac
@@ -505,6 +516,8 @@ case $status in
 	date >> $TESTDIR/logs/successful_tests.$HOST
 	case $HOST in murlibobo)
 	    cd $DIR &&
+		# Only delete the stable rotds.
+	    rm -f $STABLE/mercury-*-rotd-*[0-9].tar.gz &&
 	    ln $UNSTABLE/mercury-compiler-$version-unstable.tar.gz \
 	        $STABLE/mercury-compiler-$version.tar.gz &&
 	    ln $UNSTABLE/mercury-extras-$version-unstable.tar.gz \
@@ -513,13 +526,14 @@ case $status in
 	        $STABLE/mercury-tests-$version.tar.gz &&
 
 		# Only delete the stable rotds.
+	    rsh $BETA_FTPHOST "\
 	    rm -f $BETA_FTPDIR/mercury-*-rotd-*[0-9].tar.gz &&
 	    ln $BETA_FTPDIR/mercury-compiler-$version-unstable.tar.gz \
 	        $BETA_FTPDIR/mercury-compiler-$version.tar.gz &&
 	    ln $BETA_FTPDIR/mercury-extras-$version-unstable.tar.gz \
 	        $BETA_FTPDIR/mercury-extras-$version.tar.gz &&
 	    ln $BETA_FTPDIR/mercury-tests-$version-unstable.tar.gz \
-	        $BETA_FTPDIR/mercury-tests-$version.tar.gz &&
+	        $BETA_FTPDIR/mercury-tests-$version.tar.gz" &&
 
 		# Only delete the stable rotds.
 	    rm -f $BETA_WEBDIR/mercury-*-rotd-*[0-9].tar.gz &&

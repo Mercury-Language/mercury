@@ -3,7 +3,7 @@ INIT mercury_sys_init_engine
 ENDINIT
 */
 /*
-** Copyright (C) 1993-1998 The University of Melbourne.
+** Copyright (C) 1993-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -539,16 +539,16 @@ BEGIN_MODULE(special_labels_module)
 BEGIN_CODE
 
 Define_entry(do_redo);
-	redo();
+	MR_redo();
 
 Define_entry(do_fail);
-	fail();
+	MR_fail();
 
 Define_entry(do_succeed);
-	succeed();
+	MR_succeed();
 
 Define_entry(do_last_succeed);
-	succeed_discard();
+	MR_succeed_discard();
 
 Define_entry(do_not_reached);
 	printf("reached not_reached\n");

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997-1998 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -209,6 +209,11 @@
 :- mode array__bsearch(array_ui, in, pred(in, in, out) is det, out) is det.
 :- mode array__bsearch(in, in, pred(in, in, out) is det, out) is det.
 
+	% array__map(Closure, OldArray, NewArray) applys `Closure' to
+	% each of the elements of `OldArray' to create `NewArray'.
+:- pred array__map(pred(T1, T2), array(T1), array(T2)).
+:- mode array__map(pred(in, out) is det, array_di, array_uo) is det.
+
 %-----------------------------------------------------------------------------%
 :- implementation.
 
@@ -278,18 +283,18 @@ Define_extern_entry(mercury____SolveEqual___array__array_1_0);
 #ifdef  USE_TYPE_LAYOUT
 
 MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_array__base_type_layout_array_1_struct {
+const struct mercury_data_array__type_ctor_layout_array_1_struct {
 	TYPE_LAYOUT_FIELDS
-} mercury_data_array__base_type_layout_array_1 = {
-	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
-		mkbody(TYPELAYOUT_ARRAY_VALUE))
+} mercury_data_array__type_ctor_layout_array_1 = {
+	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
+		mkbody(MR_TYPE_CTOR_LAYOUT_ARRAY_VALUE))
 };
 
 MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_array__base_type_functors_array_1_struct {
+const struct mercury_data_array__type_ctor_functors_array_1_struct {
 	Integer f1;
-} mercury_data_array__base_type_functors_array_1 = {
-	MR_TYPEFUNCTORS_SPECIAL
+} mercury_data_array__type_ctor_functors_array_1 = {
+	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
 
 #endif
@@ -766,6 +771,34 @@ array__bsearch_2(Array, Lo, Hi, El, Compare, Result) :-
 		    array__bsearch_2(Array, Lo, Mid1, El, Compare, Result)
 	        )
 	    )
+	).
+
+%-----------------------------------------------------------------------------%
+
+array__map(Closure, OldArray, NewArray) :-
+	( array__semidet_lookup(OldArray, 0, Elem0) ->
+		array__size(OldArray, Size),
+		call(Closure, Elem0, Elem),
+		array__init(Size, Elem, NewArray0),
+		array__map_2(1, Size, Closure, OldArray,
+		NewArray0, NewArray)
+	;
+		array__make_empty_array(NewArray)
+	).
+
+:- pred array__map_2(int, int, pred(T1, T2), array(T1), array(T2), array(T2)).
+:- mode array__map_2(in, in, pred(in, out) is det, in, array_di, array_uo)
+		is det.
+
+array__map_2(N, Size, Closure, OldArray, NewArray0, NewArray) :-
+	( N >= Size ->
+		NewArray = NewArray0
+	;
+		array__lookup(OldArray, N, OldElem),
+		Closure(OldElem, NewElem),
+		array__set(NewArray0, N, NewElem, NewArray1),
+		array__map_2(N + 1, Size, Closure, OldArray,
+		NewArray1, NewArray)
 	).
 
 %-----------------------------------------------------------------------------%

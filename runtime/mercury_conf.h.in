@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1998 The University of Melbourne.
+** Copyright (C) 1995-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -37,12 +37,30 @@
 */
 
 /*
-** WORD_TYPE: the base type for the definition of Word.
+** MR_WORD_TYPE: the base type for the definition of Word.
 ** This must be a C integral type (e.g. int, long, or long long)
 ** without any explicit signedness.
 ** It ought to be the same size as the machine's general-purpose registers.
 */
-#undef	WORD_TYPE
+#undef	MR_WORD_TYPE
+
+/*
+** MR_INT_LEAST16_TYPE:
+** This must be a C integral type (e.g. short, int)
+** without any explicit signedness.
+** It ought to be at least 16 bits in size.
+** It may be bigger, but any bits beyond 16 are not used.
+*/
+#undef	MR_INT_LEAST16_TYPE
+
+/*
+** MR_INT_LEAST32_TYPE:
+** This must be a C integral type (e.g. short, int, long)
+** without any explicit signedness.
+** It ought to be at least 32 bits in size.
+** It may be bigger, but any bits beyond 32 are not used.
+*/
+#undef	MR_INT_LEAST32_TYPE
 
 /*
 ** LOW_TAG_BITS: an integer, specifying the number of low-order tag bits
@@ -72,6 +90,8 @@
 **	HAVE_SYS_TIME		we have <sys/time.h>
 **	HAVE_SYS_PARAM		we have <sys/param.h>
 **	HAVE_SYS_WAIT		we have <sys/wait.h>
+**	HAVE_DLFCN_H		we have <dlfcn.h>
+**	HAVE_STDINT		we have <stdint.h>
 */
 #undef	HAVE_SYS_SIGINFO
 #undef	HAVE_UCONTEXT
@@ -80,19 +100,25 @@
 #undef	HAVE_SYS_TIME
 #undef	HAVE_SYS_PARAM
 #undef	HAVE_SYS_WAIT
+#undef	HAVE_DLFCN_H
+#undef	HAVE_STDINT    
 
 /*
 ** The following macros are defined iff the corresponding function or
 ** system call is available:
 **
 **	HAVE_SYSCONF     	we have the sysconf() system call.
-**	HAVE_SIGACTION		we have the sigaction() sysstem call.
+**	HAVE_SIGACTION		we have the sigaction() system call.
 **	HAVE_GETPAGESIZE 	we have the getpagesize() system call.
 **	HAVE_MPROTECT    	we have the mprotect() system call.
 **	HAVE_MEMALIGN    	we have the memalign() function.
 **	HAVE_STRERROR    	we have the strerror() function.
 **	HAVE_SETITIMER   	we have the setitimer() function.
 **	HAVE_MEMMOVE   		we have the memmove() function.
+**	HAVE_DLOPEN   		we have the dlopen() function.
+**	HAVE_DLCLOSE   		we have the dlclose() function.
+**	HAVE_DLSYM   		we have the dlsym() function.
+**	HAVE_DLERROR   		we have the dlerror() function.
 */
 #undef	HAVE_SYSCONF
 #undef	HAVE_SIGACTION
@@ -102,6 +128,10 @@
 #undef	HAVE_STRERROR
 #undef	HAVE_SETITIMER
 #undef	HAVE_MEMMOVE
+#undef	HAVE_DLOPEN
+#undef	HAVE_DLCLOSE
+#undef	HAVE_DLSYM
+#undef	HAVE_DLERROR
 
 /*
 ** RETSIGTYPE: the return type of signal handlers.
@@ -238,6 +268,39 @@
 ** call and supporting data structures which while POSIX, are not ANSI.
 */
 #undef MR_CAN_DO_PENDING_IO
+
+/*
+** MR_USE_EXTERNAL_DEBUGGER:
+**	Allow MR_trace() to use an external process debugger
+**	(with communication done via a socket interface)
+**	rather than using the debugger that is part of
+**	the Mercury runtime.
+**	This requires that the system support sockets.
+**	See trace/mercury_trace_external.c.
+*/
+#undef  MR_USE_EXTERNAL_DEBUGGER
+
+/*
+** MR_USE_DECLARATIVE_DEBUGGER:
+**	Include declarative debugging support in the internal debugger.
+*/
+#undef	MR_USE_DECLARATIVE_DEBUGGER
+
+/*
+** MR_NO_USE_READLINE
+**	Set this if you want to prevent the debugger from using the GNU
+**	readline library for the command-line prompt.
+**	The autoconfiguration script sets this if it can't find a termcap
+**	library.
+**
+** HAVE_READLINE_READLINE
+** HAVE_READLINE_HISTORY
+**	Defined if the header files readline/readline.h and
+**	readline/history.h are available.
+*/
+#undef  MR_NO_USE_READLINE
+#undef  HAVE_READLINE_READLINE
+#undef  HAVE_READLINE_HISTORY
 
 /*---------------------------------------------------------------------------*/
 

@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-1998 The University of Melbourne.
+# Copyright (C) 1995-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -20,8 +20,15 @@ Usage: ml [<ml options>] [-- <gcc options>] files...
 Options:
 	-h, --help
 		Print this help message.
+
+Diagnostics options:
 	-v, --verbose
 		Echo the gcc command line before executing it.
+	--no-demangle
+		Don't pipe the output of the linker through the Mercury
+		demangler.
+
+Dynamic/static linking options:
 	--mercury-libs {shared, static, none}
 		Specify which version of the standard Mercury libraries to
 		link with:
@@ -40,17 +47,30 @@ Options:
 		libraries, not just the standard Mercury libraries.
 	--make-shared-lib
 		Produce a shared library, rather than an executable.
+
+Directory options:
 	-L <directory>, --lib-dir <directory>
 		Include <directory> in the list of directories that the
 		linker will use to search for libraries.
 	-R <directory>, --shared-lib-dir <directory>
 		Include <directory> in the list of directories that the
 		dynamic linker will use to search for shared libraries.
-	--no-demangle
-		Don't pipe the output of the linker through the Mercury
-		demangler.
-	-g, --no-strip, --c-debug
-		Do not strip debugging information.
+
+Debugging options:
+	-t, --trace
+		Link in the Mercury debugging libraries.
+		This option is needed if any of the modules being linked
+		were compiled with tracing enabled.  However, \`--debug'
+		implies \`--trace', so if you're using \`--debug',
+		then you don't need to explicitly specify \`--trace'.
+		Note that \`--trace' is incompatible with \`--static'
+		on some platforms (e.g. sparc-sun-solaris2.6).
+	-r-, --no-readline
+		Don't link in the GPL'd GNU Readline Library.
+	-g, --c-debug, --no-strip
+		Do not strip C debugging information.
+
+Grade options:
 	-s <grade>, --grade <grade>
 	--asm-labels
 	--gcc-non-local-gotos
@@ -87,6 +107,17 @@ SHLIB_RPATH_OPT=${MERCURY_SHLIB_RPATH_OPT="@SHLIB_RPATH_OPT@"}
 SHLIB_RPATH_SEP=${MERCURY_SHLIB_RPATH_SEP="@SHLIB_RPATH_SEP@"}
 SHARED_LIBS=${MERCURY_SHARED_LIBS="@SHARED_LIBS@"}
 
+# On some systems (Solaris for exemple), we need libraries to be able to 
+# use sockets. The name of the needed libraries is determined by autoconf
+# and passed through this variable.
+SOCKET_LIBRARY="@SOCKET_LIBRARY@"
+
+# Likewise for -ldl (libdl.so), which is often needed for dlopen() etc.
+DL_LIBRARY="@DL_LIBRARY@"
+
+# Likewise for -lreadline -l{termcap,curses,ncurses}
+READLINE_LIBRARIES="@READLINE_LIBRARIES@"
+
 # If you change these, you will also need to change Mmake.common.in,
 # scripts/c2init.in, tools/bootcheck, tools/binary, tools/binary_step
 # and tools/linear.
@@ -96,8 +127,10 @@ TRACE_LIB_NAME=mer_trace
 BROWSER_LIB_NAME=mer_browser
 
 verbose=false
+trace=false
+readline=true
 case $FULLARCH in
-	*-win95|*-winnt|*-win32|*-cygwin32)
+	*-win95|*-winnt|*-win32|*-cygwin32|*-cygwin)
 		# `gcc -s' is broken in gnu-win32
 		strip=false
 		;;
@@ -129,6 +162,18 @@ while : ; do
 		;;
 	--no-demangle)
 		demangle=false
+		;;
+	-t|--trace)
+		trace=true
+		;;
+	-t-|--no-trace)
+		trace=false
+		;;
+	-r|--readline)
+		readline=true
+		;;
+	-r-|--no-readline)
+		readline=false
 		;;
 	-g-|--no-c-debug|--strip)
 		strip=true
@@ -211,6 +256,12 @@ done
 
 # include the file `final_grade_options.sh-subr'
 @FINAL_GRADE_OPTIONS@
+
+# --require-tracing (which is implied by --debug) implies --trace
+case $require_tracing in
+	true)	trace=true ;;
+	false)	;;
+esac
 
 # If you haven't set mercury_libs, set it to the default value
 # (shared on most systems). Note that if you have set all_libs,
@@ -336,6 +387,26 @@ case "$GRADE" in
 		;;
 esac
 
+case $readline in
+	true)	;;
+	false)	READLINE_LIBRARIES=
+		;;
+esac
+
+case $trace in
+	true)	TRACE_LIBS="-l$TRACE_LIB_NAME -l$BROWSER_LIB_NAME"
+		TRACE_LIBS_SYSTEM="$SOCKET_LIBRARY $DL_LIBRARY \
+			$READLINE_LIBRARIES"
+		TRACE_STATIC_LIBS="\
+			$LIBDIR/$GRADE/$FULLARCH/lib$TRACE_LIB_NAME.a \
+			$LIBDIR/$GRADE/$FULLARCH/lib$BROWSER_LIB_NAME.a"
+		;;
+	false)	TRACE_LIBS=
+		TRACE_LIBS_SYSTEM=
+		TRACE_STATIC_LIBS=
+		;;
+esac
+		
 case $strip in
 	true)	STRIP_OPTS="-s" ;;
 	false)  STRIP_OPTS="" ;;
@@ -349,8 +420,8 @@ case $thread_safe in
 		*-solaris*)	THREAD_LIBS="-lpthread -ldl" ;;
 		*)		echo "$0: warning: don't know which" \
 					"library to use for pthreads" 1>&2
-				 THREAD_LIBS=""
-				 ;;
+				THREAD_LIBS=""
+				;;
 		esac ;;
 	false)	THREAD_LIBS="" ;;
 esac
@@ -373,30 +444,31 @@ esac
 merc_libdir_opts="\
 	-L$LIBDIR/$GRADE/$FULLARCH
 	-L$LIBDIR/$FULLARCH
+	-L/usr/local/lib
 "
 LIBDIR_OPTS="$user_libdir_opts $merc_libdir_opts"
 
 case $mercury_libs in
 	shared)
-		LIBS=${MERCURY_LIBS="-l$TRACE_LIB_NAME -l$BROWSER_LIB_NAME -l$STD_LIB_NAME -l$RT_LIB_NAME $LIBGC $STDLIBS"}
+		MERCURY_LIBS=${MERCURY_LIBS="$TRACE_LIBS -l$STD_LIB_NAME -l$RT_LIB_NAME $LIBGC"}
+		LIBS=${LIBS="$MERCURY_LIBS $TRACE_LIBS_SYSTEM $STDLIBS"}
 		merc_shlib_dirs="$merc_shlib_dirs $LIBDIR/$GRADE/$FULLARCH"
 		merc_shlib_dirs="$merc_shlib_dirs $LIBDIR/$FULLARCH"
 		;;
 	static)
-		LIBS=${MERCURY_LIBS="\
-			$LIBDIR/$GRADE/$FULLARCH/lib$TRACE_LIB_NAME.a \
-			$LIBDIR/$GRADE/$FULLARCH/lib$BROWSER_LIB_NAME.a \
+		MERCURY_LIBS=${MERCURY_LIBS="$TRACE_STATIC_LIBS
 			$LIBDIR/$GRADE/$FULLARCH/lib$STD_LIB_NAME.a \
 			$LIBDIR/$GRADE/$FULLARCH/lib$RT_LIB_NAME.a \
-			$LIBGC_STATIC \
-			$STDLIBS"}
+			$LIBGC_STATIC"}
+		LIBS=${LIBS="$MERCURY_LIBS $TRACE_LIBS_SYSTEM $STDLIBS"}
 		merc_shlib_dirs=""
 		;;
-	none)	LIBS="$STDLIBS"
+	none)	LIBS="$TRACE_LIBS_SYSTEM $STDLIBS"
 		LIBDIR_OPTS="$user_libdir_opts"
 		merc_shlib_dirs=""
 		;;
 esac
+
 
 RPATH_OPT_LIST=
 # only set RPATH_OPT_LIST if the system supports shared libraries
@@ -419,8 +491,10 @@ case $EXT_FOR_SHARED_LIB in so)
 	;;
 esac
 
-# On Irix 5, grades `fast' and `jump' only work in non_shared mode.
 case $FULLARCH in
+    #
+    # On Irix 5, grades `fast' and `jump' only work in non_shared mode.
+    #
     *-sgi-irix5*)
 	case $non_local_gotos in
 	    true)
@@ -429,6 +503,21 @@ case $FULLARCH in
 		LIBRARY_PATH="$NONSHARED_PATH:$LIBRARY_PATH"
 		export LIBRARY_PATH
 		;;
+	esac
+	;;
+    #
+    # On Linux ELF, `-rdynamic' is needed to make symbols
+    # exported for use in code linked in with dlopen(),
+    # which is used for interactive queries in the
+    # Mercury debugger.
+    #
+    *-linux*aout*)
+	# Linux a.out -- no special options needed
+	;;
+    *-linux*)
+	# Linux ELF -- need to add `-rdynamic' if using the debugger
+	case $trace in true)
+		ARCH_OPTS=-rdynamic
 	esac
 	;;
 esac

@@ -80,7 +80,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_goal.
-:- import_module io.
+:- import_module io, bool.
 
 :- type purity		--->	pure
 			;	(semipure)
@@ -88,8 +88,11 @@
 
 
 %  Purity check a whole module.
-:- pred puritycheck(module_info, module_info, io__state, io__state).
-:- mode puritycheck(in, out, di, uo) is det.
+%  The first argument specifies whether there were any type
+%  errors (if so, we suppress some diagnostics in post_typecheck.m
+%  because they are usually spurious).
+:- pred puritycheck(bool, module_info, module_info, io__state, io__state).
+:- mode puritycheck(in, in, out, di, uo) is det.
 
 %  Sort of a "maximum" for impurity.
 :- pred worst_purity(purity, purity, purity).
@@ -146,14 +149,14 @@
 %				Public Predicates
 
 
-puritycheck(HLDS0, HLDS) -->
+puritycheck(FoundTypeError, HLDS0, HLDS) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 	globals__io_lookup_bool_option(verbose, Verbose),
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, OldStream),
 
 	maybe_write_string(Verbose, "% Purity-checking clauses...\n"),
-	check_preds_purity(HLDS0, HLDS),
+	check_preds_purity(FoundTypeError, HLDS0, HLDS),
 	maybe_report_stats(Statistics),
 
 	io__set_output_stream(OldStream, _).
@@ -233,25 +236,27 @@ purity_name((impure), "impure").
 %-----------------------------------------------------------------------------%
 %	 Purity-check the code for all the predicates in a module
 
-:- pred check_preds_purity(module_info, module_info, io__state, io__state).
-:- mode check_preds_purity(in, out, di, uo) is det.
+:- pred check_preds_purity(bool, module_info, module_info,
+			io__state, io__state).
+:- mode check_preds_purity(in, in, out, di, uo) is det.
 
-check_preds_purity(ModuleInfo0, ModuleInfo) -->
+check_preds_purity(FoundTypeError, ModuleInfo0, ModuleInfo) -->
 	{ module_info_predids(ModuleInfo0, PredIds) },
-	check_preds_purity_2(PredIds, ModuleInfo0, ModuleInfo1, 0, NumErrors),
+	check_preds_purity_2(PredIds, FoundTypeError, ModuleInfo0,
+		ModuleInfo1, 0, NumErrors),
 	{ module_info_num_errors(ModuleInfo1, Errs0) },
 	{ Errs is Errs0 + NumErrors },
 	{ module_info_set_num_errors(ModuleInfo1, Errs, ModuleInfo) }.
 
 
-:- pred check_preds_purity_2(list(pred_id), module_info, module_info,
+:- pred check_preds_purity_2(list(pred_id), bool, module_info, module_info,
 			int, int, io__state, io__state).
-:- mode check_preds_purity_2(in, in, out, in, out, di, uo) is det.
+:- mode check_preds_purity_2(in, in, in, out, in, out, di, uo) is det.
 
-check_preds_purity_2([], ModuleInfo, ModuleInfo,
+check_preds_purity_2([], _, ModuleInfo, ModuleInfo,
 		NumErrors, NumErrors) --> [].
-check_preds_purity_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
-		NumErrors0, NumErrors) -->
+check_preds_purity_2([PredId | PredIds], FoundTypeError, ModuleInfo0,
+		ModuleInfo, NumErrors0, NumErrors) -->
 	{ module_info_preds(ModuleInfo0, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
 	(	
@@ -264,9 +269,19 @@ check_preds_purity_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
 	;
 		write_pred_progress_message("% Purity-checking ", PredId,
 					    ModuleInfo0),
-		post_typecheck__check_type_bindings(PredId, PredInfo0,
-				PredInfo1, ModuleInfo0,
-				UnboundTypeErrsInThisPred),
+		%
+		% Only check the type bindings if we didn't get any
+		% type errors already; this avoids a lot of spurious
+		% diagnostics.
+		%
+		( { FoundTypeError = no } ->
+			post_typecheck__check_type_bindings(PredId, PredInfo0,
+					PredInfo1, ModuleInfo0,
+					UnboundTypeErrsInThisPred)
+		;
+			{ PredInfo1 = PredInfo0 },
+			{ UnboundTypeErrsInThisPred = 0 }
+		),
 		puritycheck_pred(PredId, PredInfo1, PredInfo2, ModuleInfo0,
 				PurityErrsInThisPred),
 		post_typecheck__finish_pred(ModuleInfo0, PredId, PredInfo2,
@@ -279,7 +294,7 @@ check_preds_purity_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
 	{ predicate_table_set_preds(PredTable0, Preds, PredTable) },
 	{ module_info_set_predicate_table(ModuleInfo0, PredTable,
 					  ModuleInfo1) },
-	check_preds_purity_2(PredIds, ModuleInfo1, ModuleInfo,
+	check_preds_purity_2(PredIds, FoundTypeError, ModuleInfo1, ModuleInfo,
 				  NumErrors1, NumErrors).
 
 	% Purity-check the code for single predicate, reporting any errors.

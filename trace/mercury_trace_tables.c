@@ -15,6 +15,7 @@
 #include "mercury_label.h"
 #include "mercury_array_macros.h"
 #include "mercury_trace_tables.h"
+#include "mercury_trace.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -388,3 +389,11 @@ MR_process_matching_procedures_in_module(MR_Module_Info *module,
 		}
 	}
 }
+
+void
+MR_print_proc_id_for_debugger(FILE *fp,
+	const MR_Stack_Layout_Entry *entry_layout)
+{
+	MR_print_proc_id(fp, entry_layout, NULL, NULL, NULL);
+}
+

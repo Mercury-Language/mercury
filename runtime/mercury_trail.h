@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997 The University of Melbourne.
+** Copyright (C) 1997-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -76,19 +76,23 @@
 		++MR_ticket_counter;				\
 	} while(0)
 
-	  /*
-	  ** Unwind restoration info back to `old'.  `kind' indicates
-	  ** whether we are restoring or just discarding the info.
-	  */
+	/*
+	** Unwind restoration info back to `old'.  `kind' indicates
+	** whether we are restoring or just discarding the info.
+	** 
+	** Note that the commented out calls to save/restore
+	** transient registers are not needed because
+	** MR_trail_ptr is never a real register.
+	*/
 /* void MR_reset_ticket(Word, MR_untrail_reason); */
 #define MR_reset_ticket(old, kind)				\
 	do {							\
 		MR_TrailEntry *old_trail_ptr =  		\
 			(MR_TrailEntry *)old;			\
 		if (MR_trail_ptr != old_trail_ptr) {		\
-			save_transient_registers();		\
+			/* save_transient_registers(); */	\
 			MR_untrail_to(old_trail_ptr, kind);	\
-			restore_transient_registers();		\
+			/* restore_transient_registers(); */	\
 		}						\
 	} while(0)
 

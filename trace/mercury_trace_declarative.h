@@ -4,17 +4,19 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#include "mercury_imp.h"
-
 #ifndef MERCURY_TRACE_DECLARATIVE_H
 #define MERCURY_TRACE_DECLARATIVE_H
 
 /*
 ** This file defines the MR_Edt_Node data type, which stores nodes
 ** of an Evaluation Dependency Tree (EDT), used for declarative
-** debugging.  It also defines an interface to the back end of the
-** declarative debugger from the internal debugger.
+** debugging.  This is the underlying implementation of mercury_edt,
+** which is an instance of the evaluation_tree typeclass.  These
+** are defined in browser/declarative_debugger.m.
 */
+
+#include "mercury_imp.h"
+#include "mercury_trace.h"
 
 /*
 ** Each node in an EDT has a tag to denote its type.  At the moment
@@ -23,8 +25,16 @@
 ** represented nodes.
 **
 ** Implicit nodes are similar to explicit nodes, but they do not
-** store their children.  The children can be created by re-executing
-** the events in the stored range and collecting a new EDT.
+** store their children.  They do, however, store enough information
+** to allow execution to be resumed at that point, so children can
+** be created by re-executing the events in the stored range and
+** collecting a new EDT.  XXX this is not yet implemented, though.
+**
+** In the future there will also be nodes to handle:
+** 	- missing answer analysis
+** 	- calls to solutions/2 and related predicates
+** 	- exceptions
+** and possibly other things as well.
 */
 
 typedef enum {
@@ -63,12 +73,12 @@ struct MR_Edt_Node_Struct {
 		** The event numbers of the CALL and EXIT events for
 		** this proof.
 		*/
-	int				MR_edt_node_start_event;
-	int				MR_edt_node_end_event;
+	Unsigned			MR_edt_node_start_event;
+	Unsigned			MR_edt_node_end_event;
 		/*
 		** The sequence number of the CALL and EXIT events.
 		*/
-	int				MR_edt_node_seqno;
+	Unsigned			MR_edt_node_seqno;
 		/*
 		** The rightmost child of this node, or NULL if there
 		** are no children.
@@ -82,15 +92,19 @@ struct MR_Edt_Node_Struct {
 };
 
 /*
+** The following function is part of an interface to the EDT that can be
+** used by a front end written in Mercury (see browser/declarative_debugger.m).
+*/
+
+extern	void	MR_edt_root_node(Word EDT, Word *Node);
+
+/*
 ** When in declarative debugging mode, the internal debugger calls
 ** MR_trace_decl_wrong_answer for each event.  
 */
 
 extern	Code	*MR_trace_decl_wrong_answer(MR_Trace_Cmd_Info *cmd,
-			const MR_Stack_Layout_Label *layout,
-			Word *saved_regs, MR_Trace_Port port,
-			int seqno, int depth,
-			const char *path, int *max_mr_num);
+			MR_Event_Info *event_info);
 
 /*
 ** The internal (interactive) debugger calls this function to enter
@@ -100,9 +114,7 @@ extern	Code	*MR_trace_decl_wrong_answer(MR_Trace_Cmd_Info *cmd,
 */
 
 extern	bool	MR_trace_start_wrong_answer(MR_Trace_Cmd_Info *cmd,
-			const MR_Stack_Layout_Label *layout,
-			Word *saved_regs, MR_Event_Details *event_details,
-			int seqno, int depth, int *max_mr_num,
-			Code **jumpaddr);
+			MR_Event_Info *event_info,
+			MR_Event_Details *event_details, Code **jumpaddr);
 
 #endif	/* MERCURY_TRACE_DECLARATIVE_H */

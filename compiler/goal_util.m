@@ -26,8 +26,9 @@
 
 :- interface.
 
-:- import_module hlds_goal, hlds_pred, prog_data, term.
-:- import_module bool, list, set, map.
+:- import_module hlds_data, hlds_goal, hlds_module, hlds_pred.
+:- import_module instmap, prog_data.
+:- import_module bool, list, set, map, term.
 
 	% goal_util__rename_vars_in_goals(GoalList, MustRename, Substitution,
 	%	NewGoalList).
@@ -112,6 +113,7 @@
 	% Test whether the goal calls the given procedure.
 :- pred goal_calls(hlds_goal, pred_proc_id).
 :- mode goal_calls(in, in) is semidet.
+:- mode goal_calls(in, out) is nondet.
 
 	% Test whether the goal calls the given predicate.
 	% This is useful before mode analysis when the proc_ids
@@ -119,13 +121,34 @@
 :- pred goal_calls_pred_id(hlds_goal, pred_id).
 :- mode goal_calls_pred_id(in, in) is semidet.
 
+	% Convert a switch back into a disjunction. This is needed 
+	% for the magic set transformation.
+:- pred goal_util__switch_to_disjunction(prog_var, list(case), instmap,
+		inst_table, list(hlds_goal), prog_varset, prog_varset,
+		map(prog_var, type), map(prog_var, type), module_info).
+:- mode goal_util__switch_to_disjunction(in, in, in, in, out,
+		in, out, in, out, in) is det.
+
+:- pred goal_util__case_to_disjunct(prog_var, cons_id, hlds_goal, instmap,
+		inst_table, instmap_delta, hlds_goal, prog_varset, prog_varset,
+		map(prog_var, type), map(prog_var, type), module_info).
+:- mode goal_util__case_to_disjunct(in, in, in, in, in, in, out, in, out,
+		in, out, in) is det.
+
+	% Transform an if-then-else into ( Cond, Then ; \+ Cond, Else ),
+	% since magic.m and rl_gen.m don't handle if-then-elses.
+:- pred goal_util__if_then_else_to_disjunction(hlds_goal, hlds_goal,
+		hlds_goal, hlds_goal_info, hlds_goal_expr) is det.
+:- mode goal_util__if_then_else_to_disjunction(in, in, in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module hlds_data, mode_util, code_aux, instmap, varset.
-:- import_module int, std_util, assoc_list, require, string.
+:- import_module hlds_data, mode_util, code_aux, prog_data.
+:- import_module code_aux, det_analysis, inst_match, type_util, (inst).
+:- import_module int, std_util, string, assoc_list, require, varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -629,6 +652,7 @@ goal_calls(GoalExpr - _, PredProcId) :-
 
 :- pred goals_calls(list(hlds_goal), pred_proc_id).
 :- mode goals_calls(in, in) is semidet.
+:- mode goals_calls(in, out) is nondet.
 
 goals_calls([Goal | Goals], PredProcId) :-
 	(
@@ -639,6 +663,7 @@ goals_calls([Goal | Goals], PredProcId) :-
 
 :- pred cases_calls(list(case), pred_proc_id).
 :- mode cases_calls(in, in) is semidet.
+:- mode cases_calls(in, out) is nondet.
 
 cases_calls([case(_, _, Goal) | Cases], PredProcId) :-
 	(
@@ -649,6 +674,7 @@ cases_calls([case(_, _, Goal) | Cases], PredProcId) :-
 
 :- pred goal_expr_calls(hlds_goal_expr, pred_proc_id).
 :- mode goal_expr_calls(in, in) is semidet.
+:- mode goal_expr_calls(in, out) is nondet.
 
 goal_expr_calls(conj(Goals), PredProcId) :-
 	goals_calls(Goals, PredProcId).
@@ -717,6 +743,128 @@ goal_expr_calls_pred_id(not(Goal), PredId) :-
 goal_expr_calls_pred_id(some(_, Goal), PredId) :-
 	goal_calls_pred_id(Goal, PredId).
 goal_expr_calls_pred_id(call(PredId, _, _, _, _, _), PredId).
+
+%-----------------------------------------------------------------------------%
+
+goal_util__switch_to_disjunction(_, [], _, _, [], VarSet, VarSet, 
+		VarTypes, VarTypes, _).
+goal_util__switch_to_disjunction(Var, [case(ConsId, IMDelta, Goal0) | Cases],
+		InstMap, InstTable, [Goal | Goals], VarSet0, VarSet,
+		VarTypes0, VarTypes, ModuleInfo) :-
+	goal_util__case_to_disjunct(Var, ConsId, Goal0, InstMap, InstTable,
+		IMDelta, Goal, VarSet0, VarSet1, VarTypes0, VarTypes1,
+		ModuleInfo),
+	goal_util__switch_to_disjunction(Var, Cases, InstMap, InstTable, Goals,
+		VarSet1, VarSet, VarTypes1, VarTypes, ModuleInfo).
+
+goal_util__case_to_disjunct(Var, ConsId, CaseGoal, InstMap, InstTable,
+		InstMapDelta, Disjunct, VarSet0, VarSet, VarTypes0, VarTypes,
+		ModuleInfo) :-
+	cons_id_arity(ConsId, ConsArity),
+	varset__new_vars(VarSet0, ConsArity, ArgVars, VarSet),
+	map__lookup(VarTypes0, Var, VarType),
+	type_util__get_cons_id_arg_types(ModuleInfo,
+		VarType, ConsId, ArgTypes),
+	map__det_insert_from_corresponding_lists(VarTypes0, ArgVars,
+		ArgTypes, VarTypes),
+	instmap__lookup_var(InstMap, Var, Inst0),
+	(
+		inst_expand(InstMap, InstTable, ModuleInfo, Inst0, Inst1),
+		get_arg_insts(Inst1, ConsId, ConsArity, ArgInsts1)
+	->
+		ArgInsts = ArgInsts1
+	;
+		error("goal_util__case_to_disjunct - get_arg_insts failed")
+	),
+	InstToUniMode =
+		lambda([ArgInst::in, ArgUniMode::out] is det, (
+			ArgUniMode = ((ArgInst - free(unique))
+					-> (ArgInst - ArgInst))
+		)),
+	list__map(InstToUniMode, ArgInsts, UniModes),
+	UniMode = (Inst0 - Inst0) - (Inst0 - Inst0),
+	UnifyContext = unify_context(explicit, []),
+	Unification = deconstruct(Var, ConsId, ArgVars, UniModes, can_fail),
+	ExtraGoal = unify(Var, functor(ConsId, ArgVars),
+		UniMode, Unification, UnifyContext),
+	set__singleton_set(NonLocals, Var),
+	goal_info_init(NonLocals, InstMapDelta, semidet, ExtraGoalInfo),
+
+	% Conjoin the test and the rest of the case.
+	goal_to_conj_list(CaseGoal, CaseGoalConj),
+	GoalList = [ExtraGoal - ExtraGoalInfo | CaseGoalConj],
+
+	% Work out the nonlocals, instmap_delta and determinism
+	% of the entire conjunction.
+	CaseGoal = _ - CaseGoalInfo,
+	goal_info_get_nonlocals(CaseGoalInfo, CaseNonLocals0),
+	set__insert(CaseNonLocals0, Var, CaseNonLocals),
+	goal_info_get_instmap_delta(CaseGoalInfo, CaseInstMapDelta),
+	instmap_delta_apply_instmap_delta(InstMapDelta, 
+		CaseInstMapDelta, GoalInstMapDelta),
+	goal_info_get_determinism(CaseGoalInfo, CaseDetism0),
+	det_conjunction_detism(semidet, CaseDetism0, Detism),
+	goal_info_init(CaseNonLocals, GoalInstMapDelta,
+		Detism, CombinedGoalInfo),
+	Disjunct = conj(GoalList) - CombinedGoalInfo.
+
+%-----------------------------------------------------------------------------%
+
+goal_util__if_then_else_to_disjunction(Cond, Then, Else, GoalInfo, Goal) :-
+	goal_util__compute_disjunct_goal_info(Cond, Then, 
+		GoalInfo, CondThenInfo),
+	conj_list_to_goal([Cond, Then], CondThenInfo, CondThen),
+
+	Cond = _ - CondInfo,
+	goal_info_get_determinism(CondInfo, CondDetism),
+	det_negation_det(CondDetism, MaybeNegCondDet),
+	( MaybeNegCondDet = yes(NegCondDet1) ->
+		NegCondDet = NegCondDet1
+	;
+		error("goal_util__if_then_else_to_disjunction: inappropriate determinism in a negation.")
+	),
+	determinism_components(NegCondDet, _, NegCondMaxSoln),
+	( NegCondMaxSoln = at_most_zero ->
+		instmap_delta_init_unreachable(NegCondDelta)
+	;
+		instmap_delta_init_reachable(NegCondDelta)
+	),
+	goal_info_get_nonlocals(CondInfo, CondNonLocals),
+	goal_info_init(CondNonLocals, NegCondDelta, NegCondDet, NegCondInfo),
+
+	goal_util__compute_disjunct_goal_info(not(Cond) - NegCondInfo, Else, 
+		GoalInfo, NegCondElseInfo),
+	conj_list_to_goal([not(Cond) - NegCondInfo, Else], 
+		NegCondElseInfo, NegCondElse),
+
+	map__init(SM),
+	Goal = disj([CondThen, NegCondElse], SM).
+
+
+	% Compute a hlds_goal_info for a pair of conjoined goals.
+:- pred goal_util__compute_disjunct_goal_info(hlds_goal::in, hlds_goal::in, 
+		hlds_goal_info::in, hlds_goal_info::out) is det.
+
+goal_util__compute_disjunct_goal_info(Goal1, Goal2, GoalInfo, CombinedInfo) :-
+	Goal1 = _ - GoalInfo1,
+	Goal2 = _ - GoalInfo2,
+
+	goal_info_get_nonlocals(GoalInfo1, NonLocals1),
+	goal_info_get_nonlocals(GoalInfo2, NonLocals2),
+	goal_info_get_nonlocals(GoalInfo, OuterNonLocals),
+	set__union(NonLocals1, NonLocals2, CombinedNonLocals0),
+	set__intersect(CombinedNonLocals0, OuterNonLocals, CombinedNonLocals),
+
+	goal_info_get_instmap_delta(GoalInfo1, Delta1),
+	goal_info_get_instmap_delta(GoalInfo2, Delta2),
+	instmap_delta_apply_instmap_delta(Delta1, Delta2, CombinedDelta),
+
+	goal_info_get_determinism(GoalInfo1, Detism1),
+	goal_info_get_determinism(GoalInfo2, Detism2),
+	det_conjunction_detism(Detism1, Detism2, CombinedDetism),
+
+	goal_info_init(CombinedNonLocals, CombinedDelta, 
+		CombinedDetism, CombinedInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

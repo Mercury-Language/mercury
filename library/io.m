@@ -137,6 +137,9 @@
 %		Un-reads a character from the current input stream.
 %		You can put back as many characters as you like.
 %		You can even put back something that you didn't actually read.
+%		Note: `io__putback_char' uses the C library function ungetc().
+%		On some systems only one character of pushback is guaranteed.
+%		`io__putback_char' will abort with an error if ungetc() fails.
 
 :- pred io__read_char(io__input_stream, io__result(char),
 				io__state, io__state).
@@ -178,6 +181,9 @@
 %		Un-reads a character from specified stream.
 %		You can put back as many characters as you like.
 %		You can even put back something that you didn't actually read.
+%		Note: `io__putback_char' uses the C library function ungetc().
+%		On some systems only one character of pushback is guaranteed.
+%		`io__putback_char' will abort with an error if ungetc() fails.
 
 :- pred io__read(io__read_result(T), io__state, io__state).
 :- mode io__read(out, di, uo) is det.
@@ -953,11 +959,6 @@
 
 :- pred io__report_full_memory_stats(io__state, io__state).
 :- mode io__report_full_memory_stats(di, uo) is det.
-
-	% Preallocate heap space (to avoid NU-Prolog panic).
-
-:- pred io__preallocate_heap_space(int, io__state, io__state).
-:- mode io__preallocate_heap_space(in, di, uo) is det.
 
 /*** no longer supported, sorry
 :- pred io__gc_call(pred(io__state, io__state), io__state, io__state).
@@ -1896,7 +1897,7 @@ io__write_ordinary_term(Term, Priority) -->
 		{ Args = [ListHead, ListTail] }
 	->
 		io__write_char('['),
-		io__write_univ(ListHead),
+		io__write_arg(ListHead),
 		io__write_list_tail(ListTail),
 		io__write_char(']')
 	;
@@ -1983,7 +1984,7 @@ io__write_ordinary_term(Term, Priority) -->
 			{ Args = [X|Xs] }
 		->
 			io__write_char('('),
-			io__write_univ(X),
+			io__write_arg(X),
 			io__write_term_args(Xs),
 			io__write_char(')')
 		;
@@ -2016,7 +2017,7 @@ io__write_list_tail(Term) -->
 		{ deconstruct(Term, ".", _Arity, [ListHead, ListTail]) }
 	->
 		io__write_string(", "),
-		io__write_univ(ListHead),
+		io__write_arg(ListHead),
 		io__write_list_tail(ListTail)
 	;
 		{ deconstruct(Term, "[]", _Arity, []) }
@@ -2034,8 +2035,30 @@ io__write_list_tail(Term) -->
 io__write_term_args([]) --> [].
 io__write_term_args([X|Xs]) -->
 	io__write_string(", "),
-	io__write_univ(X),
+	io__write_arg(X),
 	io__write_term_args(Xs).
+
+:- pred io__write_arg(univ, io__state, io__state).
+:- mode io__write_arg(in, di, uo) is det.
+
+io__write_arg(X) -->
+	arg_priority(ArgPriority),
+	io__write_univ(X, ArgPriority).
+
+:- pred arg_priority(int, io__state, io__state).
+:- mode arg_priority(out, di, uo) is det.
+/*
+arg_priority(ArgPriority) -->
+	io__get_op_table(OpTable),
+	{ ops__lookup_infix_op(OpTable, ",", Priority, _, _) ->
+		ArgPriority = Priority }
+	;
+		error("arg_priority: can't find the priority of `,'")
+	}.
+*/
+% We could implement this as above, but it's more efficient to just
+% hard-code it.
+arg_priority(1000) --> [].
 
 %-----------------------------------------------------------------------------%
 
@@ -3120,9 +3143,9 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 		[will_not_call_mercury, thread_safe], "
 	/* convert mercury_argv from a vector to a list */
 	{ int i = mercury_argc;
-	  Args = list_empty();
+	  Args = MR_list_empty();
 	  while (--i >= 0) {
-		Args = list_cons((Word) mercury_argv[i], Args);
+		Args = MR_list_cons((Word) mercury_argv[i], Args);
 	  }
 	}
 	update_io(IO0, IO);
@@ -3137,14 +3160,6 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 :- pragma c_code(io__set_exit_status(ExitStatus::in, IO0::di, IO::uo),
 		will_not_call_mercury, "
 	mercury_exit_status = ExitStatus;
-	update_io(IO0, IO);
-").
-
-:- pragma c_code(io__preallocate_heap_space(HeapSpace::in, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "
-	/* HeapSpace not used */
-	/* don't do anything - preallocate_heap_space was just a
-	   hack for NU-Prolog */
 	update_io(IO0, IO);
 ").
 

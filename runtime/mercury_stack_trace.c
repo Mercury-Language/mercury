@@ -15,32 +15,17 @@
 #include <stdio.h>
 
 
-static const char * detism_names[] = {
-	"failure",	/* 0 */
-	"",		/* 1 */
-	"semidet",	/* 2 */
-	"nondet",	/* 3 */
-	"erroneous",	/* 4 */
-	"",		/* 5 */
-	"det",		/* 6 */
-	"multi",	/* 7 */
-	"",		/* 8 */
-	"",		/* 9 */
-	"cc_nondet",	/* 10 */
-	"",		/* 11 */
-	"",		/* 12 */
-	"",		/* 13 */
-	"cc_multi"	/* 14 */
-};
-
 static	void	MR_dump_stack_record_init(void);
 static	void	MR_dump_stack_record_frame(FILE *fp,
 			const MR_Stack_Layout_Entry *,
-			Word *base_sp, Word *base_curfr);
-static	void	MR_dump_stack_record_flush(FILE *fp);
-static	void	MR_dump_stack_record_print(FILE *fp,
-			const MR_Stack_Layout_Entry *, int, int,
-			Word *base_sp, Word *base_curfr);
+			Word *base_sp, Word *base_curfr, 
+			void (*print_stack_record)(
+				FILE *, const MR_Stack_Layout_Entry *, 
+				int, int, Word *, Word *));
+static	void	MR_dump_stack_record_flush(FILE *fp, 
+			void (*print_stack_record)(
+				FILE *, const MR_Stack_Layout_Entry *, 
+				int, int, Word *, Word *));
 
 void
 MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
@@ -64,7 +49,8 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 		layout = label->i_layout;
 		entry_layout = layout->MR_sll_entry;
 		result = MR_dump_stack_from_layout(stderr, entry_layout,
-			det_stack_pointer, current_frame, include_trace_data);
+			det_stack_pointer, current_frame, include_trace_data,
+			&MR_dump_stack_record_print);
 
 		if (result != NULL) {
 			fprintf(stderr, "%s\n", result);
@@ -75,7 +61,9 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 
 const char *
 MR_dump_stack_from_layout(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
-	Word *det_stack_pointer, Word *current_frame, bool include_trace_data)
+	Word *det_stack_pointer, Word *current_frame, bool include_trace_data,
+	void (*print_stack_record)(FILE *, const MR_Stack_Layout_Entry *, 
+	int, int, Word *, Word *))
 {
 	MR_Stack_Walk_Step_Result	result;
 	const MR_Stack_Layout_Label	*return_label_layout;
@@ -98,26 +86,28 @@ MR_dump_stack_from_layout(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
 		result = MR_stack_walk_step(entry_layout, &return_label_layout,
 				&stack_trace_sp, &stack_trace_curfr, &problem);
 		if (result == STEP_ERROR_BEFORE) {
-			MR_dump_stack_record_flush(fp);
+			MR_dump_stack_record_flush(fp, print_stack_record);
 			return problem;
 		} else if (result == STEP_ERROR_AFTER) {
 			if (include_trace_data) {
 				MR_dump_stack_record_frame(fp, entry_layout,
-					old_trace_sp, old_trace_curfr);
+					old_trace_sp, old_trace_curfr, 
+					print_stack_record);
 			} else {
 				MR_dump_stack_record_frame(fp, entry_layout,
-					NULL, NULL);
+					NULL, NULL, print_stack_record);
 			}
 
-			MR_dump_stack_record_flush(fp);
+			MR_dump_stack_record_flush(fp, print_stack_record);
 			return problem;
 		} else {
 			if (include_trace_data) {
 				MR_dump_stack_record_frame(fp, entry_layout,
-					old_trace_sp, old_trace_curfr);
+					old_trace_sp, old_trace_curfr, 
+					print_stack_record);
 			} else {
 				MR_dump_stack_record_frame(fp, entry_layout,
-					NULL, NULL);
+					NULL, NULL, print_stack_record);
 			}
 		}
 
@@ -128,7 +118,7 @@ MR_dump_stack_from_layout(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
 		entry_layout = return_label_layout->MR_sll_entry;
 	} while (TRUE); 
 
-	MR_dump_stack_record_flush(fp);
+	MR_dump_stack_record_flush(fp, print_stack_record);
 	return NULL;
 }
 
@@ -170,8 +160,8 @@ MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
 	const char **problem_ptr)
 {
 	MR_Internal		*label;
-	MR_Live_Lval		location;
-	MR_Lval_Type		type;
+	MR_Long_Lval		location;
+	MR_Long_Lval_Type	type;
 	int			number;
 	int			determinism;
 	Code			*success;
@@ -191,10 +181,10 @@ MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
 
 	if (MR_DETISM_DET_STACK(determinism)) {
 		location = entry_layout->MR_sle_succip_locn;
-		type = MR_LIVE_LVAL_TYPE(location);
-		number = MR_LIVE_LVAL_NUMBER(location);
+		type = MR_LONG_LVAL_TYPE(location);
+		number = MR_LONG_LVAL_NUMBER(location);
 
-		if (type != MR_LVAL_TYPE_STACKVAR) {
+		if (type != MR_LONG_LVAL_TYPE_STACKVAR) {
 			*problem_ptr = "can only handle stackvars";
 			return STEP_ERROR_AFTER;
 		}
@@ -235,40 +225,48 @@ MR_dump_nondet_stack_from_layout(FILE *fp, Word *base_maxfr)
 	do_init_modules();
 
 	/*
-	** Change the >= below to > if you don't want the trace to include
-	** the bottom frame created by mercury_wrapper.c (whose redoip/redofr
-	** field can be hijacked by other code).
+	** The comparison operator in the condition of the while loop
+	** should be >= if you want the trace to include the bottom frame
+	** created by mercury_wrapper.c (whose redoip/redofr field can be
+	** hijacked by other code), and > if you don't want the bottom
+	** frame to be included.
 	*/
 
 	while (base_maxfr >= MR_nondet_stack_trace_bottom) {
 		frame_size = base_maxfr - MR_prevfr_slot(base_maxfr);
 		if (frame_size == MR_NONDET_TEMP_SIZE) {
-			fprintf(fp, "%p: nondet temp, %d words\n",
-				base_maxfr, frame_size);
+			MR_print_nondstackptr(fp, base_maxfr);
+			fprintf(fp, ": temp\n");
 			fprintf(fp, " redoip: ");
 			printlabel(MR_redoip_slot(base_maxfr));
-			fprintf(fp, " redofr: %p\n",
-				MR_redofr_slot(base_maxfr));
+			fprintf(fp, " redofr: ");
+			MR_print_nondstackptr(fp, MR_redofr_slot(base_maxfr));
+			fprintf(fp, " \n");
 		} else if (frame_size == MR_DET_TEMP_SIZE) {
-			fprintf(fp, "%p: nondet temp, %d words\n",
-				base_maxfr, frame_size);
+			MR_print_nondstackptr(fp, base_maxfr);
+			fprintf(fp, ": temp\n");
 			fprintf(fp, " redoip: ");
 			printlabel(MR_redoip_slot(base_maxfr));
-			fprintf(fp, " redofr: %p\n",
-				MR_redofr_slot(base_maxfr));
-			fprintf(fp, " detfr:  %p\n",
-				MR_detfr_slot(base_maxfr));
+			fprintf(fp, " redofr: ");
+			MR_print_nondstackptr(fp, MR_redofr_slot(base_maxfr));
+			fprintf(fp, " \n");
+			fprintf(fp, " detfr: ");
+			MR_print_detstackptr(fp, MR_detfr_slot(base_maxfr));
+			fprintf(fp, " \n");
 		} else {
-			fprintf(fp, "%p: ordinary, %d words\n",
-				base_maxfr, frame_size);
+			MR_print_nondstackptr(fp, base_maxfr);
+			fprintf(fp, ": ordinary, %d words\n",
+				frame_size);
 			fprintf(fp, " redoip: ");
 			printlabel(MR_redoip_slot(base_maxfr));
-			fprintf(fp, " redofr: %p\n",
-				MR_redofr_slot(base_maxfr));
+			fprintf(fp, " redofr: ");
+			MR_print_nondstackptr(fp, MR_redofr_slot(base_maxfr));
+			fprintf(fp, " \n");
 			fprintf(fp, " succip: ");
 			printlabel(MR_succip_slot(base_maxfr));
-			fprintf(fp, " succfr: %p\n",
-				MR_succfr_slot(base_maxfr));
+			fprintf(fp, " succfr: ");
+			MR_print_nondstackptr(fp, MR_succfr_slot(base_maxfr));
+			fprintf(fp, " \n");
 		}
 
 		base_maxfr = MR_prevfr_slot(base_maxfr);
@@ -293,7 +291,8 @@ MR_dump_stack_record_init(void)
 
 static void
 MR_dump_stack_record_frame(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
-	Word *base_sp, Word *base_curfr)
+	Word *base_sp, Word *base_curfr, void (*print_stack_record)(
+		FILE *, const MR_Stack_Layout_Entry *, int, int, Word *, Word *))
 {
 	bool	must_flush;
 
@@ -319,7 +318,7 @@ MR_dump_stack_record_frame(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
 		((base_sp != NULL) || (base_curfr != NULL));
 
 	if (must_flush) {
-		MR_dump_stack_record_flush(fp);
+		MR_dump_stack_record_flush(fp, print_stack_record);
 
 		prev_entry_layout = entry_layout;
 		prev_entry_layout_count = 1;
@@ -334,16 +333,18 @@ MR_dump_stack_record_frame(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
 }
 
 static void
-MR_dump_stack_record_flush(FILE *fp)
+MR_dump_stack_record_flush(FILE *fp, void (*print_stack_record)(
+	FILE *, const MR_Stack_Layout_Entry *, int, int, Word *, Word *))
 {
 	if (prev_entry_layout != NULL) {
-		MR_dump_stack_record_print(fp, prev_entry_layout,
+		print_stack_record(fp, prev_entry_layout,
 			prev_entry_layout_count, prev_entry_start_level,
 			prev_entry_base_sp, prev_entry_base_curfr);
 	}
 }
 
-static void
+
+void
 MR_dump_stack_record_print(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
 	int count, int start_level, Word *base_sp, Word *base_curfr)
 {
@@ -365,13 +366,6 @@ MR_dump_stack_record_print(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
 }
 
 void
-MR_print_proc_id_for_debugger(FILE *fp,
-	const MR_Stack_Layout_Entry *entry_layout)
-{
-	MR_print_proc_id(fp, entry_layout, NULL, NULL, NULL);
-}
-
-void
 MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
 	const char *extra, Word *base_sp, Word *base_curfr)
 {
@@ -382,7 +376,8 @@ MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
 	if (base_sp != NULL && base_curfr != NULL) {
 		bool print_details = FALSE;
 		if (MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
-			Word maybe_from_full = entry->MR_sle_maybe_from_full;
+			Integer maybe_from_full =
+				entry->MR_sle_maybe_from_full;
 			if (maybe_from_full > 0) {
 				/*
 				** for procedures compiled with shallow
@@ -468,7 +463,7 @@ MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
 		}
 	}
 
-	fprintf(fp, " (%s)", detism_names[entry->MR_sle_detism]);
+	fprintf(fp, " (%s)", MR_detism_names[entry->MR_sle_detism]);
 
 	if (extra != NULL) {
 		fprintf(fp, " %s\n", extra);
@@ -476,3 +471,28 @@ MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
 		fprintf(fp, "\n");
 	}
 }
+
+
+/*
+** The different Mercury determinisms are internally represented by integers. 
+** This array gives the correspondance with the internal representation and 
+** the names that are usually used to denote determinisms.
+*/
+
+const char * MR_detism_names[] = {
+	"failure",	/* 0 */
+	"",		/* 1 */
+	"semidet",	/* 2 */
+	"nondet",	/* 3 */
+	"erroneous",	/* 4 */
+	"",		/* 5 */
+	"det",		/* 6 */
+	"multi",	/* 7 */
+	"",		/* 8 */
+	"",		/* 9 */
+	"cc_nondet",	/* 10 */
+	"",		/* 11 */
+	"",		/* 12 */
+	"",		/* 13 */
+	"cc_multi"	/* 14 */
+};

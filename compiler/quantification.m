@@ -366,7 +366,12 @@ implicitly_quantify_unify_rhs(
 			LambdaVars, Modes, Det, IMD, Goal),
 		Unification
 		) -->
-
+	%
+	% Note: make_hlds.m has already done most of the hard work
+	% for lambda expressions.  At this point, LambdaVars0
+	% should in fact be guaranteed to be fresh distinct
+	% variables.  However, the code below does not assume this.
+	%
 	quantification__get_outside(OutsideVars0),
 	{ set__list_to_set(LambdaVars0, QVars) },
 		% Figure out which variables have overlapping scopes
@@ -720,27 +725,32 @@ quantification__warn_overlapping_scope(OverlapVars, Context) -->
 :- mode quantification__rename_apart(in, out, in, out, in, out) is det.
 
 quantification__rename_apart(RenameSet, RenameMap, Goal0, Goal) -->
-	{ set__to_sorted_list(RenameSet, RenameList) },
-	quantification__get_varset(Varset0),
-	quantification__get_vartypes(VarTypes0),
-	{ map__init(RenameMap0) },
-	{ goal_util__create_variables(RenameList,
-		Varset0, VarTypes0, RenameMap0, VarTypes0, Varset0,
-			% ^ Accumulator		^ Reference ^Var names
-		Varset, VarTypes, RenameMap) },
-	{ goal_util__rename_vars_in_goal(Goal0, RenameMap, Goal) },
-	quantification__set_varset(Varset),
-	quantification__set_vartypes(VarTypes).
+	( { set__empty(RenameSet) } ->
+		{ map__init(RenameMap) },
+		{ Goal = Goal0 }
+	;
+		{ set__to_sorted_list(RenameSet, RenameList) },
+		quantification__get_varset(Varset0),
+		quantification__get_vartypes(VarTypes0),
+		{ map__init(RenameMap0) },
+		{ goal_util__create_variables(RenameList,
+			Varset0, VarTypes0, RenameMap0, VarTypes0, Varset0,
+				% ^ Accumulator		^ Reference ^Var names
+			Varset, VarTypes, RenameMap) },
+		{ goal_util__rename_vars_in_goal(Goal0, RenameMap, Goal) },
+		quantification__set_varset(Varset),
+		quantification__set_vartypes(VarTypes)
 /****
-	We don't need to add the newly created vars to the seen vars
-	because we won't find them anywhere else in the enclosing goal.
-	This is a performance improvement because it keeps the size of
-	the seen var set down.
-	quantification__get_seen(SeenVars0),
-	{ map__values(RenameMap, NewVarsList) },
-	{ set__insert_list(SeenVars0, NewVarsList, SeenVars) },
-	quantification__set_seen(SeenVars).
-***/
+		We don't need to add the newly created vars to the seen vars
+		because we won't find them anywhere else in the enclosing goal.
+		This is a performance improvement because it keeps the size of
+		the seen var set down.
+		quantification__get_seen(SeenVars0),
+		{ map__values(RenameMap, NewVarsList) },
+		{ set__insert_list(SeenVars0, NewVarsList, SeenVars) },
+		quantification__set_seen(SeenVars).
+****/
+	).
 
 %-----------------------------------------------------------------------------%
 

@@ -22,9 +22,19 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** Define offsets of fields in the base_type_info or type_info structure.
+** For now, we don't give a C definition of the structures of typeinfos
+** and pseudotypeinfos. We may change this later.
+*/
+
+typedef	Word	MR_TypeInfo;
+typedef	Word	MR_PseudoTypeInfo;
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** Define offsets of fields in the type_ctor_info or type_info structure.
 ** See polymorphism.m for explanation of these offsets and how the
-** type_info and base_type_info structures are laid out.
+** type_info and type_ctor_info structures are laid out.
 **
 ** ANY CHANGES HERE MUST BE MATCHED BY CORRESPONDING CHANGES
 ** TO THE DOCUMENTATION IN compiler/polymorphism.m.
@@ -38,15 +48,17 @@
 #define OFFSET_FOR_COMPARE_PRED 3
 #ifdef MR_USE_SOLVE_EQUAL
 #define OFFSET_FOR_SOLVE_EQUAL_PRED 4
-#define OFFSET_FOR_BASE_TYPE_LAYOUT 5
+#define OFFSET_FOR_TYPE_CTOR_REPRESENTATION 5
 #define OFFSET_FOR_BASE_TYPE_FUNCTORS 6
+#define OFFSET_FOR_BASE_TYPE_LAYOUT 7
+#define OFFSET_FOR_TYPE_MODULE_NAME 8
+#define OFFSET_FOR_TYPE_NAME 9
+#else
+#define OFFSET_FOR_TYPE_CTOR_REPRESENTATION 4
+#define OFFSET_FOR_BASE_TYPE_FUNCTORS 5
+#define OFFSET_FOR_BASE_TYPE_LAYOUT 6
 #define OFFSET_FOR_TYPE_MODULE_NAME 7
 #define OFFSET_FOR_TYPE_NAME 8
-#else
-#define OFFSET_FOR_BASE_TYPE_LAYOUT 4
-#define OFFSET_FOR_BASE_TYPE_FUNCTORS 5
-#define OFFSET_FOR_TYPE_MODULE_NAME 6
-#define OFFSET_FOR_TYPE_NAME 7
 #endif
 
 /*
@@ -57,9 +69,9 @@
 
 /*
 ** Where the predicate arity and args are stored in the type_info.
-** They are stored in the type_info (*not* the base_type_info).
+** They are stored in the type_info (*not* the type_ctor_info).
 ** This is brought about by higher-order predicates all using the
-** same base_type_info - pred/0.
+** same type_ctor_info - pred/0.
 */
 
 #define TYPEINFO_OFFSET_FOR_PRED_ARITY 1
@@ -144,7 +156,7 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** Definitions and macros for base_type_layout definition.
+** Definitions and macros for type_ctor_layout definition.
 **
 ** See compiler/base_type_layout.m for more information.
 **
@@ -243,12 +255,12 @@
 ** Some of the type-layout tags are shared.
 */
 
-#define TYPELAYOUT_CONST_TAG		0
-#define TYPELAYOUT_COMP_CONST_TAG	0 
-#define TYPELAYOUT_SIMPLE_TAG		1
-#define TYPELAYOUT_COMPLICATED_TAG	2
-#define TYPELAYOUT_EQUIV_TAG		3
-#define TYPELAYOUT_NO_TAG		3 
+#define TYPE_CTOR_LAYOUT_CONST_TAG		0
+#define TYPE_CTOR_LAYOUT_SHARED_LOCAL_TAG	0 
+#define TYPE_CTOR_LAYOUT_UNSHARED_TAG		1
+#define TYPE_CTOR_LAYOUT_SHARED_REMOTE_TAG	2
+#define TYPE_CTOR_LAYOUT_EQUIV_TAG		3
+#define TYPE_CTOR_LAYOUT_NO_TAG		3 
 
 /* 
 ** Values in type_layout structures,
@@ -256,7 +268,7 @@
 **
 ** Also intended for use in handwritten C code.
 **
-** Note that MR_TYPELAYOUT_UNASSIGNED_VALUE is not yet
+** Note that MR_TYPE_CTOR_LAYOUT_UNASSIGNED_VALUE is not yet
 ** used for anything.
 **
 ** Changes in this type may need to be reflected in
@@ -265,29 +277,44 @@
 */
 
 enum MR_TypeLayoutValue {
-	MR_TYPELAYOUT_UNASSIGNED_VALUE,
-	MR_TYPELAYOUT_UNUSED_VALUE,
-	MR_TYPELAYOUT_STRING_VALUE,
-	MR_TYPELAYOUT_FLOAT_VALUE,
-	MR_TYPELAYOUT_INT_VALUE,
-	MR_TYPELAYOUT_CHARACTER_VALUE,
-	MR_TYPELAYOUT_UNIV_VALUE,
-	MR_TYPELAYOUT_PREDICATE_VALUE,
-	MR_TYPELAYOUT_VOID_VALUE,
-	MR_TYPELAYOUT_ARRAY_VALUE,
-	MR_TYPELAYOUT_TYPEINFO_VALUE,
-	MR_TYPELAYOUT_C_POINTER_VALUE,
-	MR_TYPELAYOUT_TYPECLASSINFO_VALUE
+	MR_TYPE_CTOR_LAYOUT_UNASSIGNED_VALUE,
+	MR_TYPE_CTOR_LAYOUT_UNUSED_VALUE,
+	MR_TYPE_CTOR_LAYOUT_STRING_VALUE,
+	MR_TYPE_CTOR_LAYOUT_FLOAT_VALUE,
+	MR_TYPE_CTOR_LAYOUT_INT_VALUE,
+	MR_TYPE_CTOR_LAYOUT_CHARACTER_VALUE,
+	MR_TYPE_CTOR_LAYOUT_UNIV_VALUE,
+	MR_TYPE_CTOR_LAYOUT_PREDICATE_VALUE,
+	MR_TYPE_CTOR_LAYOUT_VOID_VALUE,
+	MR_TYPE_CTOR_LAYOUT_ARRAY_VALUE,
+	MR_TYPE_CTOR_LAYOUT_TYPEINFO_VALUE,
+	MR_TYPE_CTOR_LAYOUT_C_POINTER_VALUE,
+	MR_TYPE_CTOR_LAYOUT_TYPECLASSINFO_VALUE,
+		/*
+		** The following enum values represent the "types" of
+		** of values stored in lvals that the garbage collector
+		** needs to know about.
+		*/
+	MR_TYPE_CTOR_LAYOUT_SUCCIP_VALUE,
+	MR_TYPE_CTOR_LAYOUT_HP_VALUE,
+	MR_TYPE_CTOR_LAYOUT_CURFR_VALUE,
+	MR_TYPE_CTOR_LAYOUT_MAXFR_VALUE,
+	MR_TYPE_CTOR_LAYOUT_REDOFR_VALUE,
+	MR_TYPE_CTOR_LAYOUT_REDOIP_VALUE,
+	MR_TYPE_CTOR_LAYOUT_UNWANTED_VALUE
 };
 
 /* 
 ** Highest allowed type variable number
 ** (corresponds with argument number of type parameter).
+**
+** Should be kept in sync with the default value of MR_VARIABLE_SIZED
+** in mercury_conf_params.h.
 */
 
-#define TYPELAYOUT_MAX_VARINT		1024
+#define TYPE_CTOR_LAYOUT_MAX_VARINT		1024
 
-#define TYPEINFO_IS_VARIABLE(T)		( (Word) T <= TYPELAYOUT_MAX_VARINT )
+#define TYPEINFO_IS_VARIABLE(T)		( (Word) T <= TYPE_CTOR_LAYOUT_MAX_VARINT )
 
 /*
 ** This constant is also used for other information - for
@@ -297,19 +324,19 @@ enum MR_TypeLayoutValue {
 ** two (integer division).
 */
 
-#define MR_BASE_TYPEINFO_HO_PRED				\
-	((const Word *) &mercury_data___base_type_info_pred_0)
-#define MR_BASE_TYPEINFO_HO_FUNC				\
-	((const Word *) &mercury_data___base_type_info_func_0)
-#define MR_BASE_TYPEINFO_IS_HO_PRED(T)				\
-	(T == MR_BASE_TYPEINFO_HO_PRED)
-#define MR_BASE_TYPEINFO_IS_HO_FUNC(T)				\
-	(T == MR_BASE_TYPEINFO_HO_FUNC)
-#define MR_BASE_TYPEINFO_IS_HO(T)				\
-	(T == MR_BASE_TYPEINFO_HO_FUNC || T == MR_BASE_TYPEINFO_HO_PRED)
+#define MR_TYPE_CTOR_INFO_HO_PRED				\
+	((const Word *) &mercury_data___type_ctor_info_pred_0)
+#define MR_TYPE_CTOR_INFO_HO_FUNC				\
+	((const Word *) &mercury_data___type_ctor_info_func_0)
+#define MR_TYPE_CTOR_INFO_IS_HO_PRED(T)				\
+	(T == MR_TYPE_CTOR_INFO_HO_PRED)
+#define MR_TYPE_CTOR_INFO_IS_HO_FUNC(T)				\
+	(T == MR_TYPE_CTOR_INFO_HO_FUNC)
+#define MR_TYPE_CTOR_INFO_IS_HO(T)				\
+	(T == MR_TYPE_CTOR_INFO_HO_FUNC || T == MR_TYPE_CTOR_INFO_HO_PRED)
 
 #define MR_TYPECTOR_IS_HIGHER_ORDER(T)				\
-	( (Word) T <= TYPELAYOUT_MAX_VARINT )
+	( (Word) T <= TYPE_CTOR_LAYOUT_MAX_VARINT )
 #define MR_TYPECTOR_MAKE_PRED(Arity)				\
 	( (Word) ((Integer) (Arity) * 2) )
 #define MR_TYPECTOR_MAKE_FUNC(Arity)				\
@@ -320,10 +347,10 @@ enum MR_TypeLayoutValue {
 	((ConstString) ( ( ((Integer) (T)) % 2 ) ? "func" : "pred" ))
 #define MR_TYPECTOR_GET_HOT_MODULE_NAME(T)				\
 	((ConstString) "builtin")
-#define MR_TYPECTOR_GET_HOT_BASE_TYPE_INFO(T)			\
+#define MR_TYPECTOR_GET_HOT_TYPE_CTOR_INFO(T)			\
 	((Word) ( ( ((Integer) (T)) % 2 ) ?		\
-		(const Word *) &mercury_data___base_type_info_func_0 :	\
-		(const Word *) &mercury_data___base_type_info_pred_0 ))
+		(const Word *) &mercury_data___type_ctor_info_func_0 :	\
+		(const Word *) &mercury_data___type_ctor_info_pred_0 ))
 
 /*
 ** Offsets into the type_layout structure for functors and arities.
@@ -331,17 +358,17 @@ enum MR_TypeLayoutValue {
 ** Constant and enumeration values start at 0, so the functor
 ** is at OFFSET + const/enum value. 
 ** 
-** Functors for simple tags are at OFFSET + arity (the functor is
+** Functors for unshared tags are at OFFSET + arity (the functor is
 ** stored after all the argument info.
 **
 */
 
-#define TYPELAYOUT_CONST_FUNCTOR_OFFSET		2
-#define TYPELAYOUT_ENUM_FUNCTOR_OFFSET		2
-#define TYPELAYOUT_SIMPLE_FUNCTOR_OFFSET	1
+#define TYPE_CTOR_LAYOUT_CONST_FUNCTOR_OFFSET		2
+#define TYPE_CTOR_LAYOUT_ENUM_FUNCTOR_OFFSET		2
+#define TYPE_CTOR_LAYOUT_UNSHARED_FUNCTOR_OFFSET	1
 
-#define TYPELAYOUT_SIMPLE_ARITY_OFFSET  	0
-#define TYPELAYOUT_SIMPLE_ARGS_OFFSET       	1
+#define TYPE_CTOR_LAYOUT_UNSHARED_ARITY_OFFSET  	0
+#define TYPE_CTOR_LAYOUT_UNSHARED_ARGS_OFFSET       	1
 
 /*---------------------------------------------------------------------------*/
 
@@ -360,13 +387,13 @@ enum MR_TypeLayoutValue {
 
 /*
 ** Code for dealing with the static code addresses stored in
-** base_type_infos. 
+** type_ctor_infos. 
 */
 
 /*
-** Definitions for initialization of base_type_infos. If
+** Definitions for initialization of type_ctor_infos. If
 ** MR_STATIC_CODE_ADDRESSES are not available, we need to initialize
-** the special predicates in the base_type_infos.
+** the special predicates in the type_ctor_infos.
 */
 
 /*
@@ -384,25 +411,25 @@ enum MR_TypeLayoutValue {
 	MR_INIT_CODE_ADDR(Base, mercury____##Pred##___##TypeId, Offset)
 
 /*
-** Macros are provided here to initialize base_type_infos, both for
+** Macros are provided here to initialize type_ctor_infos, both for
 ** builtin types (such as in library/builtin.m) and user
 ** defined C types (like library/array.m). Also, the automatically
 ** generated code uses these initializers.
 **
 ** Examples of use:
 **
-** MR_INIT_BUILTIN_BASE_TYPE_INFO(
-** 	mercury_data__base_type_info_string_0, _string_);
+** MR_INIT_BUILTIN_TYPE_CTOR_INFO(
+** 	mercury_data__type_ctor_info_string_0, _string_);
 **
 ** note we use _string_ to avoid the redefinition of string via #define
 **
-** MR_INIT_BASE_TYPE_INFO(
-** 	mercury_data_group__base_type_info_group_1, group__group_1_0);
+** MR_INIT_TYPE_CTOR_INFO(
+** 	mercury_data_group__type_ctor_info_group_1, group__group_1_0);
 ** 
-** MR_INIT_BASE_TYPE_INFO_WITH_PRED(
-** 	mercury_date__base_type_info_void_0, mercury__unused_0_0);
+** MR_INIT_TYPE_CTOR_INFO_WITH_PRED(
+** 	mercury_date__type_ctor_info_void_0, mercury__unused_0_0);
 **
-** This will initialize a base_type_info with a single code address.
+** This will initialize a type_ctor_info with a single code address.
 **
 **
 */
@@ -417,7 +444,7 @@ enum MR_TypeLayoutValue {
 
     #ifdef MR_USE_SOLVE_EQUAL
 
-      #define	MR_INIT_BUILTIN_BASE_TYPE_INFO(B, T) \
+      #define	MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T) \
       do {								\
 	MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0, 		\
 		OFFSET_FOR_UNIFY_PRED);					\
@@ -433,7 +460,7 @@ enum MR_TypeLayoutValue {
 		OFFSET_FOR_TERM_TO_TYPE_PRED);				\
       } while (0)
 
-      #define	MR_INIT_BASE_TYPE_INFO_WITH_PRED(B, P)			\
+      #define	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)			\
       do {								\
 	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_UNIFY_PRED);			\
 	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INDEX_PRED);			\
@@ -443,7 +470,7 @@ enum MR_TypeLayoutValue {
 	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_TERM_TO_TYPE_PRED);		\
       } while (0)
 
-      #define	MR_INIT_BASE_TYPE_INFO(B, T) \
+      #define	MR_INIT_TYPE_CTOR_INFO(B, T) \
       do {								\
 	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_UNIFY_PRED, Unify);	\
 	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INDEX_PRED, Index);	\
@@ -455,7 +482,7 @@ enum MR_TypeLayoutValue {
 
     #else /* not MR_USE_SOLVE_EQUAL */
 
-      #define	MR_INIT_BUILTIN_BASE_TYPE_INFO(B, T) \
+      #define	MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T) \
       do {								\
 	MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0, 		\
 		OFFSET_FOR_UNIFY_PRED);					\
@@ -469,7 +496,7 @@ enum MR_TypeLayoutValue {
 		OFFSET_FOR_TERM_TO_TYPE_PRED);				\
       } while (0)
 
-      #define	MR_INIT_BASE_TYPE_INFO_WITH_PRED(B, P)			\
+      #define	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)			\
       do {								\
 	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_UNIFY_PRED);			\
 	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INDEX_PRED);			\
@@ -478,7 +505,7 @@ enum MR_TypeLayoutValue {
 	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_TERM_TO_TYPE_PRED);		\
       } while (0)
 
-      #define	MR_INIT_BASE_TYPE_INFO(B, T) \
+      #define	MR_INIT_TYPE_CTOR_INFO(B, T) \
       do {								\
 	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_UNIFY_PRED, Unify);	\
 	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INDEX_PRED, Index);	\
@@ -493,7 +520,7 @@ enum MR_TypeLayoutValue {
 
     #ifdef MR_USE_SOLVE_EQUAL
 
-      #define	MR_INIT_BUILTIN_BASE_TYPE_INFO(B, T) \
+      #define	MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T) \
       do {								\
 	MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0, 		\
 		OFFSET_FOR_UNIFY_PRED);					\
@@ -505,7 +532,7 @@ enum MR_TypeLayoutValue {
 		OFFSET_FOR_SOLVE_EQUAL_PRED);				\
       } while (0)
 
-      #define	MR_INIT_BASE_TYPE_INFO_WITH_PRED(B, P)			\
+      #define	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)			\
       do {								\
 	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_UNIFY_PRED);			\
 	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INDEX_PRED);			\
@@ -513,7 +540,7 @@ enum MR_TypeLayoutValue {
 	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_SOLVE_EQUAL_PRED);		\
       } while (0)
 
-      #define	MR_INIT_BASE_TYPE_INFO(B, T) \
+      #define	MR_INIT_TYPE_CTOR_INFO(B, T) \
       do {	\
 	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_UNIFY_PRED, Unify);     \
 	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INDEX_PRED, Index);     \
@@ -523,7 +550,7 @@ enum MR_TypeLayoutValue {
 
     #else /* not MR_USE_SOLVE_EQUAL */
 
-      #define	MR_INIT_BUILTIN_BASE_TYPE_INFO(B, T) \
+      #define	MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T) \
       do {								\
 	MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0, 	\
 		OFFSET_FOR_UNIFY_PRED);					\
@@ -533,14 +560,14 @@ enum MR_TypeLayoutValue {
 		OFFSET_FOR_COMPARE_PRED);				\
       } while (0)
 
-      #define	MR_INIT_BASE_TYPE_INFO_WITH_PRED(B, P)			\
+      #define	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)			\
       do {								\
 	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_UNIFY_PRED);			\
 	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INDEX_PRED);			\
 	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_COMPARE_PRED);		\
       } while (0)
 
-      #define	MR_INIT_BASE_TYPE_INFO(B, T) \
+      #define	MR_INIT_TYPE_CTOR_INFO(B, T) \
       do {	\
 	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_UNIFY_PRED, Unify);     \
 	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INDEX_PRED, Index);     \
@@ -557,13 +584,13 @@ enum MR_TypeLayoutValue {
 
   #define MR_STATIC_CODE_CONST const
 
-  #define MR_INIT_BUILTIN_BASE_TYPE_INFO(B, T) \
+  #define MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T) \
 	do { } while (0)
 
-  #define MR_INIT_BASE_TYPE_INFO_WITH_PRED(B, P) \
+  #define MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P) \
 	do { } while (0)
 
-  #define MR_INIT_BASE_TYPE_INFO(B, T) \
+  #define MR_INIT_TYPE_CTOR_INFO(B, T) \
 	do { } while (0)
 
 #endif /* MR_STATIC_CODE_ADDRESSES */
@@ -572,90 +599,93 @@ enum MR_TypeLayoutValue {
 
 /*
 ** Macros and defintions for defining and dealing with
-** base_type_functors.
+** type_ctor_functors.
 */
 
 /*
 ** All type_functors have an indicator.
 */
 
-#define MR_TYPEFUNCTORS_OFFSET_FOR_INDICATOR	((Integer) 0)
+#define MR_TYPE_CTOR_FUNCTORS_OFFSET_FOR_INDICATOR	((Integer) 0)
 
-#define MR_TYPEFUNCTORS_INDICATOR(Functors)				\
-	((Functors)[MR_TYPEFUNCTORS_OFFSET_FOR_INDICATOR])
+#define MR_TYPE_CTOR_FUNCTORS_INDICATOR(Functors)				\
+	((Functors)[MR_TYPE_CTOR_FUNCTORS_OFFSET_FOR_INDICATOR])
 
 
 /*
 ** Values that the indicator can take.
 */
 
-#define MR_TYPEFUNCTORS_DU	((Integer) 0)
-#define MR_TYPEFUNCTORS_ENUM	((Integer) 1)
-#define MR_TYPEFUNCTORS_EQUIV	((Integer) 2)
-#define MR_TYPEFUNCTORS_SPECIAL	((Integer) 3)
-#define MR_TYPEFUNCTORS_NO_TAG	((Integer) 4)
-#define MR_TYPEFUNCTORS_UNIV	((Integer) 5)
+#define MR_TYPE_CTOR_FUNCTORS_DU	((Integer) 0)
+#define MR_TYPE_CTOR_FUNCTORS_ENUM	((Integer) 1)
+#define MR_TYPE_CTOR_FUNCTORS_EQUIV	((Integer) 2)
+#define MR_TYPE_CTOR_FUNCTORS_SPECIAL	((Integer) 3)
+#define MR_TYPE_CTOR_FUNCTORS_NO_TAG	((Integer) 4)
+#define MR_TYPE_CTOR_FUNCTORS_UNIV	((Integer) 5)
 
 
 	/*
 	** Macros to access the data in a discriminated union
-	** type_functors, the number of functors, and the simple_vector
+	** type_functors, the number of functors, and the functor descriptor
 	** for functor number N (where N starts at 1). 
 	*/
 
-#define MR_TYPEFUNCTORS_DU_OFFSET_FOR_NUM_FUNCTORS	((Integer) 1)
-#define MR_TYPEFUNCTORS_DU_OFFSET_FOR_FUNCTORS_VECTOR	((Integer) 2)
+#define MR_TYPE_CTOR_FUNCTORS_DU_OFFSET_FOR_NUM_FUNCTORS	((Integer) 1)
+#define MR_TYPE_CTOR_FUNCTORS_DU_OFFSET_FOR_FUNCTOR_DESCRIPTORS	((Integer) 2)
 
-#define MR_TYPEFUNCTORS_DU_NUM_FUNCTORS(Functors)			\
-	((Functors)[MR_TYPEFUNCTORS_DU_OFFSET_FOR_NUM_FUNCTORS])
+#define MR_TYPE_CTOR_FUNCTORS_DU_NUM_FUNCTORS(Functors)			\
+	((Functors)[MR_TYPE_CTOR_FUNCTORS_DU_OFFSET_FOR_NUM_FUNCTORS])
 
-#define MR_TYPEFUNCTORS_DU_FUNCTOR_N(Functor, N)			\
+#define MR_TYPE_CTOR_FUNCTORS_DU_FUNCTOR_N(Functor, N)			\
 	((Word *) ((Functor)[						\
-		MR_TYPEFUNCTORS_DU_OFFSET_FOR_FUNCTORS_VECTOR + N]))
+		MR_TYPE_CTOR_FUNCTORS_DU_OFFSET_FOR_FUNCTOR_DESCRIPTORS + N]))
 
 	/*
 	** Macros to access the data in a enumeration type_functors, the
 	** number of functors, and the enumeration vector.
 	*/
 
-#define MR_TYPEFUNCTORS_ENUM_OFFSET_FOR_FUNCTORS_VECTOR		((Integer) 1)
+#define MR_TYPE_CTOR_FUNCTORS_ENUM_OFFSET_FOR_ENUM_VECTOR	\
+		((Integer) 1)
 
-#define MR_TYPEFUNCTORS_ENUM_NUM_FUNCTORS(Functors)			\
-	MR_TYPELAYOUT_ENUM_VECTOR_NUM_FUNCTORS(			\
-		MR_TYPEFUNCTORS_ENUM_FUNCTORS((Functors)))
+#define MR_TYPE_CTOR_FUNCTORS_ENUM_NUM_FUNCTORS(Functors)		\
+	MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_NUM_FUNCTORS(			\
+		MR_TYPE_CTOR_FUNCTORS_ENUM_VECTOR((Functors)))
 
-#define MR_TYPEFUNCTORS_ENUM_FUNCTORS(Functor)				\
-	((Word *) ((Functor)[MR_TYPEFUNCTORS_ENUM_OFFSET_FOR_FUNCTORS_VECTOR]))
+#define MR_TYPE_CTOR_FUNCTORS_ENUM_VECTOR(Functor)			\
+	((Word *) ((Functor)						\
+		[MR_TYPE_CTOR_FUNCTORS_ENUM_OFFSET_FOR_ENUM_VECTOR]))
 
 	/*
 	** Macros to access the data in a no_tag type_functors, the
-	** simple_vector for the functor (there can only be one functor
+	** functor descriptor for the functor (there can only be one functor
 	** with no_tags).
 	*/
 
-#define MR_TYPEFUNCTORS_NO_TAG_OFFSET_FOR_FUNCTORS_VECTOR	((Integer) 1)
+#define MR_TYPE_CTOR_FUNCTORS_NO_TAG_OFFSET_FOR_FUNCTOR_DESCRIPTOR \
+	((Integer) 1)
 
-#define MR_TYPEFUNCTORS_NO_TAG_FUNCTOR(Functors)			\
+#define MR_TYPE_CTOR_FUNCTORS_NO_TAG_FUNCTOR(Functors)			\
 	((Word *) ((Functors)						\
-		[MR_TYPEFUNCTORS_NO_TAG_OFFSET_FOR_FUNCTORS_VECTOR]))
+		[MR_TYPE_CTOR_FUNCTORS_NO_TAG_OFFSET_FOR_FUNCTOR_DESCRIPTOR]))
 
 	/*
 	** Macros to access the data in an equivalence type_functors,
 	** the equivalent type of this type.
 	*/
 
-#define MR_TYPEFUNCTORS_EQUIV_OFFSET_FOR_TYPE	((Integer) 1)
+#define MR_TYPE_CTOR_FUNCTORS_EQUIV_OFFSET_FOR_TYPE	((Integer) 1)
 
-#define MR_TYPEFUNCTORS_EQUIV_TYPE(Functors)				\
-	((Functors)[MR_TYPEFUNCTORS_EQUIV_OFFSET_FOR_TYPE])
+#define MR_TYPE_CTOR_FUNCTORS_EQUIV_TYPE(Functors)			\
+	((Functors)[MR_TYPE_CTOR_FUNCTORS_EQUIV_OFFSET_FOR_TYPE])
 
 /*---------------------------------------------------------------------------*/
 
 /*
-** Macros and defintions for defining and dealing with the vectors
-** created by base_type_layouts (these are the same vectors referred to
-** by base_type_functors)
-** 	- the simple_vector, describing a single functor
+** Macros and defintions for defining and dealing with the data structures
+** created by type_ctor_layouts (these are the same vectors referred to
+** by type_ctor_functors)
+** 	- the functor descriptor, describing a single functor
 ** 	- the enum_vector, describing an enumeration
 ** 	- the no_tag_vector, describing a single functor 
 */
@@ -674,59 +704,77 @@ typedef struct {
 */
 } MR_TypeLayout_EnumVector;
 
-#define MR_TYPELAYOUT_ENUM_VECTOR_IS_ENUM(Vector)			\
+#define MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_IS_ENUM(Vector)			\
 	((MR_TypeLayout_EnumVector *) (Vector))->enum_or_comp_const
 
-#define MR_TYPELAYOUT_ENUM_VECTOR_NUM_FUNCTORS(Vector)			\
+#define MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_NUM_FUNCTORS(Vector)		\
 	((MR_TypeLayout_EnumVector *) (Vector))->num_sharers
 
-#define MR_TYPELAYOUT_ENUM_VECTOR_FUNCTOR_NAME(Vector, N)		\
+#define MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_FUNCTOR_NAME(Vector, N)		\
 	( (&((MR_TypeLayout_EnumVector *)(Vector))->functor1) [N] )
 
 
 	/*
-	** Macros for dealing with simple vectors.
+	** Macros for dealing with functor descriptors.
+	**
+	** XXX we might like to re-organize this structure so the
+	**     variable length component isn't such a pain.
 	*/
 
-#define MR_TYPELAYOUT_SIMPLE_VECTOR_OFFSET_FOR_ARITY		((Integer) 0)
-#define MR_TYPELAYOUT_SIMPLE_VECTOR_OFFSET_FOR_ARGS		((Integer) 1)
+typedef struct {
+	Integer		arity;
+	Word		arg1;		
+/* other functors follow, arity of them.
+** 	Word		arg2;
+** 	...
+**	ConstString	functorname;
+**	Word		tagbits;
+*/
+} MR_TypeLayout_FunctorDescriptor;
+
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_ARITY	\
+	((Integer) 0)
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_ARGS	((Integer) 1)
 	/* Note, these offsets are from the end of the args */
-#define MR_TYPELAYOUT_SIMPLE_VECTOR_OFFSET_FOR_FUNCTOR_NAME	((Integer) 1)
-#define MR_TYPELAYOUT_SIMPLE_VECTOR_OFFSET_FOR_FUNCTOR_TAG	((Integer) 2)
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_FUNCTOR_NAME	\
+		((Integer) 1)
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_FUNCTOR_TAG	\
+		((Integer) 2)
 
-#define MR_TYPELAYOUT_SIMPLE_VECTOR_ARITY(V)				\
-		((V)[MR_TYPELAYOUT_SIMPLE_VECTOR_OFFSET_FOR_ARITY])
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARITY(V)			\
+		((V)[MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_ARITY])
 
-#define MR_TYPELAYOUT_SIMPLE_VECTOR_ARGS(V)				\
-		(V + MR_TYPELAYOUT_SIMPLE_VECTOR_OFFSET_FOR_ARGS)
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARGS(V)			\
+		(V + MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_ARGS)
 
-#define MR_TYPELAYOUT_SIMPLE_VECTOR_FUNCTOR_NAME(V)			\
-		((String) ((V)[MR_TYPELAYOUT_SIMPLE_VECTOR_ARITY(V) +	\
-			MR_TYPELAYOUT_SIMPLE_VECTOR_OFFSET_FOR_FUNCTOR_NAME]))
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_FUNCTOR_NAME(V)		\
+	((String) ((V)[MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARITY(V) + \
+	    MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_FUNCTOR_NAME]))
 
-#define MR_TYPELAYOUT_SIMPLE_VECTOR_TAG(V)				\
-		((Word) ((V)[MR_TYPELAYOUT_SIMPLE_VECTOR_ARITY(V) +	\
-			MR_TYPELAYOUT_SIMPLE_VECTOR_OFFSET_FOR_FUNCTOR_TAG]))
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_TAG(V)			\
+	((Word) ((V)[MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARITY(V) +	\
+		MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_FUNCTOR_TAG]))
 
 	/*
-	** Macros for dealing with complicated vectors.
+	** Macros for dealing with shared remote vectors.
 	*/
 
 typedef struct {
 	Word num_sharers;		
-	Word simple_vector1;
-/* other simple_vectors follow, num_sharers of them.
-**	Word simple_vector2;
+	Word functor_descriptor1;
+/* other functor descriptors follow, num_sharers of them.
+**	Word functor_descriptor2;
 ** 	...
 */
-} MR_TypeLayout_ComplicatedVector;
+} MR_TypeLayout_SharedRemoteVector;
 
-#define MR_TYPELAYOUT_COMPLICATED_VECTOR_NUM_SHARERS(Vector) 	\
-	((MR_TypeLayout_ComplicatedVector *) (Vector))->num_sharers
+#define MR_TYPE_CTOR_LAYOUT_SHARED_REMOTE_VECTOR_NUM_SHARERS(Vector) 	\
+	(((MR_TypeLayout_SharedRemoteVector *) (Vector))->num_sharers)
 
-#define MR_TYPELAYOUT_COMPLICATED_VECTOR_GET_SIMPLE_VECTOR(Vector, N) 	\
-	( (Word *) strip_tag((&((MR_TypeLayout_ComplicatedVector *)	\
-		(Vector))->simple_vector1) [N]) )
+#define MR_TYPE_CTOR_LAYOUT_SHARED_REMOTE_VECTOR_GET_FUNCTOR_DESCRIPTOR( \
+		Vector, N)						 \
+	( (Word *) strip_tag((&((MR_TypeLayout_SharedRemoteVector *)	 \
+		(Vector))->functor_descriptor1) [N]) )
 		
 	/* 
 	** Macros for dealing with no_tag vectors 
@@ -740,16 +788,16 @@ typedef struct {
 	ConstString name;
 } MR_TypeLayout_NoTagVector;
 
-#define MR_TYPELAYOUT_NO_TAG_VECTOR_IS_NO_TAG(Vector)			\
+#define MR_TYPE_CTOR_LAYOUT_NO_TAG_VECTOR_IS_NO_TAG(Vector)		\
 		((MR_TypeLayout_NoTagVector *) (Vector))->is_no_tag
 
-#define MR_TYPELAYOUT_NO_TAG_VECTOR_ARITY(Vector)			\
+#define MR_TYPE_CTOR_LAYOUT_NO_TAG_VECTOR_ARITY(Vector)			\
 		(1)
 
-#define MR_TYPELAYOUT_NO_TAG_VECTOR_ARGS(Vector)			\
+#define MR_TYPE_CTOR_LAYOUT_NO_TAG_VECTOR_ARGS(Vector)			\
 		&(((MR_TypeLayout_NoTagVector *) (Vector))->arg)
 		
-#define MR_TYPELAYOUT_NO_TAG_VECTOR_FUNCTOR_NAME(Vector)		\
+#define MR_TYPE_CTOR_LAYOUT_NO_TAG_VECTOR_FUNCTOR_NAME(Vector)		\
 		((MR_TypeLayout_NoTagVector *) (Vector))->name
 
 	/* 
@@ -761,43 +809,44 @@ typedef struct {
 	Word equiv_type;
 } MR_TypeLayout_EquivVector;
 
-#define MR_TYPELAYOUT_EQUIV_OFFSET_FOR_TYPE	((Integer) 1)
+#define MR_TYPE_CTOR_LAYOUT_EQUIV_OFFSET_FOR_TYPE	((Integer) 1)
 
-#define MR_TYPELAYOUT_EQUIV_IS_EQUIV(Vector)				\
+#define MR_TYPE_CTOR_LAYOUT_EQUIV_IS_EQUIV(Vector)			\
 		(!((MR_TypeLayout_EquivVector *) (Vector))->is_no_tag)
 
-#define MR_TYPELAYOUT_EQUIV_TYPE(Vector)				\
+#define MR_TYPE_CTOR_LAYOUT_EQUIV_TYPE(Vector)				\
 		((MR_TypeLayout_EquivVector *) (Vector))->equiv_type
 
 /*---------------------------------------------------------------------------*/
 
+
 	/* 
 	** Macros for retreiving things from type_infos and
-	** base_type_infos
+	** type_ctor_infos
 	*/
 
-#define MR_TYPEINFO_GET_BASE_TYPEINFO(TypeInfo)				\
+#define MR_TYPEINFO_GET_TYPE_CTOR_INFO(TypeInfo)			\
 		((*TypeInfo) ? (Word *) *TypeInfo : (Word *) (Word) TypeInfo)
 
 #define MR_TYPEINFO_GET_HIGHER_ARITY(TypeInfo)				\
 		((Integer) (Word *) (TypeInfo)[TYPEINFO_OFFSET_FOR_PRED_ARITY]) 
 
-#define MR_BASE_TYPEINFO_GET_TYPEFUNCTORS(BaseTypeInfo)			\
+#define MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_FUNCTORS(BaseTypeInfo)		\
 		((Word *) (BaseTypeInfo)[OFFSET_FOR_BASE_TYPE_FUNCTORS])
 
-#define MR_BASE_TYPEINFO_GET_TYPELAYOUT(BaseTypeInfo)			\
+#define MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_LAYOUT(BaseTypeInfo)		\
 		((Word *) (BaseTypeInfo)[OFFSET_FOR_BASE_TYPE_LAYOUT])
 
-#define MR_BASE_TYPEINFO_GET_TYPELAYOUT_ENTRY(BaseTypeInfo, Tag)	\
-		(MR_BASE_TYPEINFO_GET_TYPELAYOUT(BaseTypeInfo)[(Tag)])
+#define MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_LAYOUT_ENTRY(BaseTypeInfo, Tag)	\
+		(MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_LAYOUT(BaseTypeInfo)[(Tag)])
 
-#define MR_BASE_TYPEINFO_GET_TYPE_ARITY(BaseTypeInfo)			\
+#define MR_TYPE_CTOR_INFO_GET_TYPE_ARITY(BaseTypeInfo)			\
 		(((Word *) (BaseTypeInfo))[OFFSET_FOR_COUNT])
 
-#define MR_BASE_TYPEINFO_GET_TYPE_NAME(BaseTypeInfo)			\
+#define MR_TYPE_CTOR_INFO_GET_TYPE_NAME(BaseTypeInfo)			\
 		(((String *) (BaseTypeInfo))[OFFSET_FOR_TYPE_NAME])
 
-#define MR_BASE_TYPEINFO_GET_TYPE_MODULE_NAME(BaseTypeInfo)		\
+#define MR_TYPE_CTOR_INFO_GET_TYPE_MODULE_NAME(BaseTypeInfo)		\
 		(((String *) (BaseTypeInfo))[OFFSET_FOR_TYPE_MODULE_NAME])
 
 /*---------------------------------------------------------------------------*/
@@ -805,7 +854,7 @@ typedef struct {
 #if 0
 
 	/* XXX: We should use structs to represent the various
-	** data structures in the functors and layouts.
+	** data structures in the type_ctor_*
 	**
 	** To implement this: 
 	** 	1. The code that uses the data in the library and
@@ -823,24 +872,46 @@ typedef struct {
 
         /*
         **         ** IMPORTANT: the layout in memory of the following
-        **         struct must match the way that the Mercury compiler
-        **         generates code for it.
+        **         structs must match the way that the Mercury compiler
+        **         generates code for them.
         */         
 
 
-typedef struct {
-	Word arity;
-	Word arg1;		
-/* other arguments follow, there are arity of them,
-** then followed by functor name, and functor tag.
-** 	Word arg2;
-** 	...
-** 	Word argarity;
-**	ConstString functorname;
-**	Word tag;
-*/
-} MR_TypeLayout_SimpleVector;
+	/*
+	** Structs defining the structure of type_ctor_infos.
+	** A type_ctor_info describes the structure of a particular
+	** type constructor.  One of these is generated for every
+	** `:- type' declaration.
+	**
+	** XXX this is not used yet but we are aiming towards
+	** this structure.
+	*/
 
+typedef struct {
+	int arity;
+	Code *unify_pred;
+	Code *index_pred;
+	Code *compare_pred;
+		/* 
+		** The representation that is used for this
+		** constructor -- e.g. an enumeration, or a builtin
+		** type, or a no-tag type, etc.
+		*/
+	MR_TypeCtorRepresentation type_ctor_rep;
+		/*
+		** The names, arity and argument types of all the
+		** functors of this type if it is some sort of
+		** discriminated union.
+		*/
+	MR_TypeCtorFunctors type_ctor_functors;
+		/*
+		** The meanings of the primary tags of this type,
+		** if it is a discriminated union.
+		*/
+	MR_TypeCtorLayout type_ctor_layout;
+	String type_ctor_name;
+	String type_ctor_module_name;
+} MR_TypeCtorInfo;
 
 typedef struct {
 	Word arity;
@@ -907,17 +978,64 @@ void MR_deallocate(MR_MemoryList allocated_memory_cells);
 ** defintions and functions for categorizing data representations.
 */
 
+/*
+** MR_DataRepresentation is the representation for a particular type
+** constructor.  For the cases of MR_TYPE_CTOR_REP_DU the exact
+** representation depends on the tag value -- lookup the tag value in
+** type_ctor_layout to find out this information.
+**
+** 
+*/
+enum MR_TypeCtorRepresentation {
+	MR_TYPE_CTOR_REP_ENUM,
+	MR_TYPE_CTOR_REP_DU,
+	MR_TYPE_CTOR_REP_NOTAG,
+	MR_TYPE_CTOR_REP_EQUIV,
+	MR_TYPE_CTOR_REP_EQUIV_VAR,
+	MR_TYPE_CTOR_REP_INT,
+	MR_TYPE_CTOR_REP_CHAR,
+	MR_TYPE_CTOR_REP_FLOAT,
+	MR_TYPE_CTOR_REP_STRING,
+	MR_TYPE_CTOR_REP_PRED,
+	MR_TYPE_CTOR_REP_UNIV,
+	MR_TYPE_CTOR_REP_VOID,
+	MR_TYPE_CTOR_REP_C_POINTER,
+	MR_TYPE_CTOR_REP_TYPEINFO,
+	MR_TYPE_CTOR_REP_TYPECLASSINFO,
+	MR_TYPE_CTOR_REP_ARRAY,
+	MR_TYPE_CTOR_REP_UNKNOWN
+};
 
 /*
+** If the MR_TypeCtorRepresentation is MR_TYPE_CTOR_REP_DU, we have a
+** discriminated union type (other than a no-tag or enumeration).  Each
+** tag may have a different representation.
+*/
+enum MR_DiscUnionTagRepresentation {
+	MR_DISCUNIONTAG_SHARED_LOCAL,
+	MR_DISCUNIONTAG_UNSHARED,
+	MR_DISCUNIONTAG_SHARED_REMOTE
+};
+
+/*
+** MR_DataRepresentation is the representation for a particular value
+** of a type with this constructor.  It is similar to the
+** MR_TypeCtorRepresentaion but you need to know the primary tag value
+** (and, therefore, must have the data around to examine) to tell the
+** different cases for discriminated unions apart.
+**
 ** These have been ordered so that the most similar cases are next
 ** to each other, so a switch on this type can exploit fallthrough
 ** to cut down on code duplication.
+** 
+** XXX this type will be replaced by a combination of MR_TypeCtorRepresentaion
+** and MR_DiscUnionTagRepresentation.
 */
 enum MR_DataRepresentation {
 	MR_DATAREP_ENUM,
-	MR_DATAREP_COMPLICATED_CONST,
-	MR_DATAREP_COMPLICATED,
-	MR_DATAREP_SIMPLE,
+	MR_DATAREP_SHARED_LOCAL,
+	MR_DATAREP_SHARED_REMOTE,
+	MR_DATAREP_UNSHARED,
 	MR_DATAREP_NOTAG,
 	MR_DATAREP_EQUIV,
 	MR_DATAREP_EQUIV_VAR,
@@ -935,12 +1053,13 @@ enum MR_DataRepresentation {
 	MR_DATAREP_TYPECLASSINFO
 };
 
+
 /*
 ** Return the data representation used by the data with the given
 ** functors_indicator and layout_entry.
 **
-** functors_indicator is part of the base_type_functors data structure.
-** layout_entry is the base_type_layout entry corresponding to the
+** functors_indicator is part of the type_ctor_functors data structure.
+** layout_entry is the type_ctor_layout entry corresponding to the
 ** primary tag of the data.
 **
 */

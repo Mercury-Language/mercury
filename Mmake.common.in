@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1998 The University of Melbourne. 
+# Copyright (C) 1995-1999 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -71,9 +71,6 @@ GRADE			= @GRADE@
 # Specify the additional compilation models to install the library for
 LIBGRADES  		= @LIBGRADES@
 
-# Specify the name of the Sicstus Prolog interpreter.
-SP			= @SP@
-
 # Specify EXT_FOR_SHARED_LIB as `so' if the operating system
 # supports `.so' shared libraries,
 # `.dll' if it supports DLLs,
@@ -132,18 +129,6 @@ EXE_RPATH_SEP	= ''@EXE_RPATH_SEP@''
 # objects.
 SHARED_LIBS		= @SHARED_LIBS@
 
-# Set NUPROLOG to `nuprolog' and set INSTALL_NUPROLOG to `install_nuprolog'
-# if you have NU-Prolog and want use it for debugging Mercury programs.
-# Otherwise, leave them blank.
-NUPROLOG		= @NUPROLOG@
-INSTALL_NUPROLOG	= @INSTALL_NUPROLOG@
-
-# Set SICSTUS to `sicstus' and set INSTALL_SICSTUS to `install_sicstus'
-# if you have SICStus Prolog and want use it for debugging Mercury programs.
-# Otherwise, leave them blank.
-SICSTUS			= @SICSTUS@
-INSTALL_SICSTUS		= @INSTALL_SICSTUS@
-
 # You should not need to modify anything below here
 
 #-----------------------------------------------------------------------------#
@@ -158,10 +143,6 @@ INSTALL_MERC_GC_LIB_DIR	= $(INSTALL_LIBDIR)/lib/$(FULLARCH)
 FINAL_INSTALL_MERC_GC_LIB_DIR = $(FINAL_INSTALL_LIBDIR)/lib/$(FULLARCH)
 INSTALL_MERC_LIB_DIR	= $(INSTALL_LIBDIR)/lib/$(GRADE)/$(FULLARCH)
 FINAL_INSTALL_MERC_LIB_DIR = $(FINAL_INSTALL_LIBDIR)/lib/$(GRADE)/$(FULLARCH)
-INSTALL_NU_DIR		= $(INSTALL_LIBDIR)/nuprolog
-INSTALL_NU_ARCH_DIR 	= $(INSTALL_LIBDIR)/nuprolog/$(FULLARCH)
-INSTALL_SP_DIR		= $(INSTALL_LIBDIR)/sicstus
-INSTALL_SP_ARCH_DIR 	= $(INSTALL_LIBDIR)/sicstus/$(FULLARCH)
 
 SCRIPTS_DIR = $(MERCURY_DIR)/scripts
 RUNTIME_DIR = $(MERCURY_DIR)/runtime
@@ -196,6 +177,16 @@ MCFLAGS	= --no-infer-all --halt-at-warn
 # some problems are easier to track down without intermodule optimization
 # complicating things.
 LIBRARY_INTERMODULE = yes
+
+# Do we want to include the support for Aditi compilation in the compiler?
+# It is not practical to include the code to output Aditi-RL in the alias
+# branch compiler - it currently takes more than an hour to compile
+# compiler/rl_code.m, due to performance problems compiling large disjunctions
+# with the new mode checker.
+# To disable the Aditi support, put `INCLUDE_ADITI_OUTPUT = no'
+# in Mmake.stage.params. Do not put this into Mmake.params - we still
+# want to check that the Aditi code compiles after any changes.
+INCLUDE_ADITI_OUTPUT = yes
 
 #-----------------------------------------------------------------------------#
 

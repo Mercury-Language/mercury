@@ -2,15 +2,11 @@
 @setfilename mercury_library.info
 @settitle The Mercury Library Reference Manual
 
-@c @ignore
-@ifinfo
-@format
-START-INFO-DIR-ENTRY
-* Mercury Library: (mercury_library). The Mercury Library Reference Manual
-END-INFO-DIR-ENTRY
-@end format
-@end ifinfo
-@c @end ignore
+@c --- texi2html doesn't support the @dir commands yet
+@c @dircategory The Mercury Programming Language
+@c @direntry
+@c * Mercury Library: (mercury_library).  The Mercury Library Reference Manual.
+@c @end direntry
 
 @c @smallbook
 @c @cropmarks
@@ -19,7 +15,7 @@ END-INFO-DIR-ENTRY
 @ifinfo
 This file documents the Mercury standard library.
 
-Copyright (C) 1995-1997 The University of Melbourne.
+Copyright (C) 1995-1999 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice

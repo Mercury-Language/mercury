@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1998 The University of Melbourne. 
+# Copyright (C) 1995-1999 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -19,15 +19,24 @@ VPATH=$(LIBRARY_DIR)
 # Don't change these without good reason - if you want to
 # do a temporary change, change ../Mmake.params
 
-MCD	=	MERCURY_INT_DIR=. $(MC) --generate-dependencies
-MCI	=	MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) --make-interface
-MCG	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) \
-		MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) --compile-to-c
-MCS	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) \
-		MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) --split-c-files -c
-MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(SCRIPTS_DIR)/mgnuc
-MGNUCFLAGS =	$(EXTRA_MGNUCFLAGS) -I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)
-C2INIT =        MERCURY_MOD_LIB_MODS="$(BROWSER_DIR)/$(BROWSER_LIB_NAME).init $(LIBRARY_DIR)/$(STD_LIB_NAME).init $(RUNTIME_DIR)/$(RT_LIB_NAME).init" \
+M_ENV	=	MERCURY_INT_DIR=$(LIBRARY_DIR)  \
+		MERCURY_ALL_C_INCL_DIRS="\
+			-I$(TRACE_DIR) \
+			-I$(RUNTIME_DIR) \
+			-I$(BOEHM_GC_DIR) \
+			-I$(BOEHM_GC_DIR)/include \
+		"
+MCD	=	$(M_ENV) $(MC) --generate-dependencies
+MCI	=	$(M_ENV) $(MC) --make-interface
+MCPI	=	$(M_ENV) $(MC) --make-private-interface
+MCSI	=	$(M_ENV) $(MC) --make-short-interface
+MCOI	=	$(M_ENV) $(MC) --make-optimization-interface
+MCTOI	=	$(M_ENV) $(MC) --make-transitive-optimization-interface
+MCG	=	$(M_ENV) $(MC) --compile-to-c
+MCS	=	$(M_ENV) $(MC) --split-c-files -c --cflags "$(ALL_CFLAGS)"
+MGNUC	=	$(M_ENV) $(SCRIPTS_DIR)/mgnuc
+MGNUCFLAGS =	$(EXTRA_MGNUCFLAGS) $(EXTRA_CFLAGS)
+C2INIT	=	MERCURY_MOD_LIB_MODS="$(BROWSER_DIR)/$(BROWSER_LIB_NAME).init $(LIBRARY_DIR)/$(STD_LIB_NAME).init $(RUNTIME_DIR)/$(RT_LIB_NAME).init" \
                 MERCURY_MKINIT=$(UTIL_DIR)/mkinit $(SCRIPTS_DIR)/c2init
 ML	=	MERCURY_C_LIB_DIR=. $(SCRIPTS_DIR)/ml
 MLFLAGS =	--mercury-libs none $(EXTRA_MLFLAGS)

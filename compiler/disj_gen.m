@@ -28,7 +28,7 @@
 :- implementation.
 
 :- import_module prog_data, hlds_data, code_gen, code_util, trace.
-:- import_module options, globals.
+:- import_module options, globals, tree.
 :- import_module bool, set, tree, map, std_util, term, require.
 
 disj_gen__generate_disj(CodeModel, Goals, StoreMap, Code) -->
@@ -143,9 +143,9 @@ disj_gen__generate_disjuncts([], _, _, _, _, _, _, _, _, _, _, _, _, _) -->
 disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 		MaybeEntryResumePoint, HijackInfo, StoreMap, EndLabel,
 		ReclaimHeap, MaybeHpSlot0, MaybeTicketSlot,
-		BranchStart, MaybeEnd0, MaybeEnd, Code) -->
+		BranchStart0, MaybeEnd0, MaybeEnd, Code) -->
 
-	code_info__reset_to_position(BranchStart),
+	code_info__reset_to_position(BranchStart0),
 
 		% If this is not the first disjunct, generate the
 		% resume point by which arrive at this disjunct.
@@ -194,10 +194,28 @@ disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 			{ MaybeHpSlot0 = no }
 		->
 			code_info__save_hp(SaveHpCode, HpSlot),
-			{ MaybeHpSlot = yes(HpSlot) }
+			{ MaybeHpSlot = yes(HpSlot) },
+				% This method of updating BranchStart0 is
+				% ugly. The best alternative would be to
+				% arrange things so that a remember_position
+				% here could get BranchStart, but doing so
+				% is iffy because we have already created
+				% the resumption point for entry into this
+				% disjunction, which overwrites part of the
+				% location-dependent state originally in
+				% BranchStart0.
+			{ code_info__save_hp_in_branch(BranchSaveHpCode,
+				BranchHpSlot, BranchStart0, BranchStart) },
+			{ tree__flatten(SaveHpCode, HpCodeList) },
+			{ tree__flatten(BranchSaveHpCode, BranchHpCodeList) },
+			{ require(unify(HpCodeList, BranchHpCodeList),
+				"cannot use same code for saving hp") },
+			{ require(unify(HpSlot, BranchHpSlot),
+				"cannot allocate same slot for saved hp") }
 		;
 			{ SaveHpCode = empty },
-			{ MaybeHpSlot = MaybeHpSlot0 }
+			{ MaybeHpSlot = MaybeHpSlot0 },
+			{ BranchStart = BranchStart0 }
 		),
 
 		code_info__make_resume_point(ResumeVars, ResumeLocs,

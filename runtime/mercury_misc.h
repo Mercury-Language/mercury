@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1998 The University of Melbourne.
+** Copyright (C) 1995-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -20,7 +20,7 @@
 #include <stdlib.h>		/* for `size_t' */
 
 #ifdef MR_LOWLEVEL_DEBUG
-extern	void	mkframe_msg(void);
+extern	void	mkframe_msg(const char *);
 extern	void	succeed_msg(void);
 extern	void	succeeddiscard_msg(void);
 extern	void	fail_msg(void);
@@ -46,8 +46,6 @@ extern	void	reg_msg(void);
 extern	void	printint(Word n);
 extern	void	printstring(const char *s);
 extern	void	printheap(const Word *h);
-extern	void	printdetstack(const Word *s);
-extern	void	printnondstack(const Word *s);
 extern	void	dumpframe(/* const */ Word *);
 extern	void	dumpnondstack(void);
 extern	void	printlist(Word p);
@@ -55,6 +53,12 @@ extern	void	printframe(const char *);
 extern	void	printregs(const char *msg);
 #endif
 
+extern	void	printdetstack(const Word *s);
+extern	void	MR_printdetstackptr(const Word *s);
+extern	void	MR_print_detstackptr(FILE *fp, const Word *s);
+extern	void	printnondstack(const Word *s);
+extern	void	MR_printnondstackptr(const Word *s);
+extern	void	MR_print_nondstackptr(FILE *fp, const Word *s);
 extern	void	printlabel(/* const */ Code *w);
 
 #if __GNUC__
@@ -74,6 +78,6 @@ extern	void	fatal_error(const char *msg, ...) NO_RETURN;
 ** XXX We should fix this eventually by using -fno-builtin since pragma
 ** c_code may call the builtin functions.
 */
-extern	void	MR_memcpy(char *dest, const char *src, size_t nbytes);
+extern	void	MR_memcpy(void *dest, const void *src, size_t nbytes);
 
 #endif /* not MERCURY_MISC_H */

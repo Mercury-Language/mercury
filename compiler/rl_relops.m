@@ -96,7 +96,7 @@
 :- implementation.
 
 :- import_module code_aux, hlds_data, hlds_module, hlds_pred, mode_util.
-:- import_module tree, rl_key, globals, options.
+:- import_module tree, rl_key, globals, options, inst_match.
 :- import_module int, map, require, set.
 
 %-----------------------------------------------------------------------------%
@@ -143,11 +143,11 @@ rl_relops__get_dependent_goals(Vars, InstMap0,
 	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
 	{ instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap) },
 	rl_info_get_module_info(ModuleInfo),
+	rl_info_get_inst_table(InstTable),
 	{ IsInput = 
 		lambda([Var::in] is semidet, (
 			instmap__lookup_var(InstMap0, Var, Inst0),
-			instmap__lookup_var(InstMap, Var, Inst),
-			mode_is_input(ModuleInfo, (Inst0 -> Inst))
+			inst_is_bound(Inst0, InstMap0, InstTable, ModuleInfo)
 		)) },
 	{ list__filter(IsInput, NonLocalsList, InputNonLocalsList) },
 	{ set__sorted_list_to_set(InputNonLocalsList, InputNonLocals) },
@@ -434,10 +434,11 @@ rl_relops__goal(InstMap, Inputs, Outputs, Goals, RLGoal) -->
 	rl_info_get_proc_info(ProcInfo),
 	{ proc_info_varset(ProcInfo, VarSet) },
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
+	{ proc_info_inst_table(ProcInfo, InstTable) },
 	{ rl_key__extract_indexing(Inputs, Goals,
 		ModuleInfo, VarTypes, Bounds) },
 	{ RLGoal = rl_goal(yes(PredProcId), VarSet, VarTypes,
-		InstMap, Inputs, Outputs, Goals, Bounds) }.
+		InstMap, InstTable, Inputs, Outputs, Goals, Bounds) }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

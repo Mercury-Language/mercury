@@ -5,6 +5,7 @@
 #
 # You need GNU C (2.6.3 or later) and GNU Make (3.69 or later) in order
 # to use Mercury, though you don't need them to install this distribution.
+# To use the Mercury debugger, you may also need GNU Readline.
 #
 # Step 0.  Extract the files from the gzipped tar archive.
 #

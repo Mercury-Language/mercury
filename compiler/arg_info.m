@@ -89,18 +89,21 @@ generate_proc_list_arg_info(PredId, [ProcId | ProcIds],
 		ModuleInfo0, ModuleInfo) :-
 	module_info_preds(ModuleInfo0, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
-	pred_info_procedures(PredInfo0, ProcTable0),
-	pred_info_arg_types(PredInfo0, ArgTypes),
-	map__lookup(ProcTable0, ProcId, ProcInfo0),
+	( hlds_pred__pred_info_is_aditi_relation(PredInfo0) ->
+		ModuleInfo1 = ModuleInfo0
+	;
+		pred_info_procedures(PredInfo0, ProcTable0),
+		pred_info_arg_types(PredInfo0, ArgTypes),
+		map__lookup(ProcTable0, ProcId, ProcInfo0),
 
-	generate_proc_arg_info(ProcInfo0, ArgTypes, ModuleInfo0,
-		ProcInfo),
+		generate_proc_arg_info(ProcInfo0, ArgTypes, 
+			ModuleInfo0, ProcInfo),
 
-	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
-	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
-	map__det_update(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
-
+		map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+		pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
+		map__det_update(PredTable0, PredId, PredInfo, PredTable),
+		module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1)
+	),
 	generate_proc_list_arg_info(PredId, ProcIds, ModuleInfo1, ModuleInfo).
 
 :- pred generate_proc_arg_info(proc_info, list(type), module_info, proc_info).

@@ -504,7 +504,17 @@ module_name_to_lib_file_name(Prefix, ModuleName, Ext, MkDir, FileName) -->
 	choose_file_name(ModuleName, BaseName, Ext, MkDir, FileName).
 
 fact_table_file_name(ModuleName, FactTableFileName, Ext, FileName) -->
-	{ string__append(FactTableFileName, Ext, BaseName) },
+	extra_link_obj_file_name(ModuleName, FactTableFileName, Ext, FileName).
+
+	% extra_link_obj_file_name(Module, ExtraLinkObjName, Ext, FileName):
+	%	Returns the filename to use when compiling extra objects
+	%	that must be linked into the executable
+	%	(currently used only for fact tables).
+:- pred extra_link_obj_file_name(module_name, file_name, string, file_name,
+				io__state, io__state).
+:- mode extra_link_obj_file_name(in, in, in, out, di, uo) is det.
+extra_link_obj_file_name(ModuleName, ExtraLinkObjName, Ext, FileName) -->
+	{ string__append(ExtraLinkObjName, Ext, BaseName) },
 	choose_file_name(ModuleName, BaseName, Ext, no, FileName).
 
 :- pred choose_file_name(module_name, string, string, bool, file_name,
@@ -545,6 +555,8 @@ choose_file_name(_ModuleName, BaseName, Ext, MkDir, FileName) -->
 		; Ext = ".hlds_dump"
 		; Ext = ".dependency_graph"
 		; Ext = ".order"
+		; Ext = ".rla"
+		; Ext = ".rl_dump"
 		% Mmake targets
 		; Ext = ".clean"
 		; Ext = ".clean_nu"
@@ -829,8 +841,8 @@ split_clauses_and_decls([ItemAndContext0 | Items0],
 	).
 
 % pragma `obsolete', `terminates', `does_not_terminate' 
-% `termination_info' and `check_termination' declarations
-% are supposed to go in the interface,
+% `termination_info', `check_termination', `aditi', `base_relation'
+% and `owner' pragma declarations are supposed to go in the interface,
 % but all other pragma declarations are implementation
 % details only, and should go in the implementation.
 
@@ -852,10 +864,23 @@ pragma_allowed_in_interface(fact_table(_, _, _), no).
 pragma_allowed_in_interface(tabled(_, _, _, _, _), no).
 pragma_allowed_in_interface(promise_pure(_, _), no).
 pragma_allowed_in_interface(unused_args(_, _, _, _, _), no).
+pragma_allowed_in_interface(type_spec(_, _, _, _, _, _, _), yes).
 pragma_allowed_in_interface(termination_info(_, _, _, _, _), yes).
 pragma_allowed_in_interface(terminates(_, _), yes).
 pragma_allowed_in_interface(does_not_terminate(_, _), yes).
 pragma_allowed_in_interface(check_termination(_, _), yes).
+	% `aditi', `base_relation', `index' and `owner' pragmas must be in the
+	% interface for exported preds. This is checked in make_hlds.m.
+pragma_allowed_in_interface(aditi(_, _), yes).
+pragma_allowed_in_interface(base_relation(_, _), yes).
+pragma_allowed_in_interface(aditi_index(_, _, _), yes).
+pragma_allowed_in_interface(supp_magic(_, _), no).
+pragma_allowed_in_interface(context(_, _), no).
+pragma_allowed_in_interface(aditi_memo(_, _), no).
+pragma_allowed_in_interface(aditi_no_memo(_, _), no).
+pragma_allowed_in_interface(naive(_, _), no).
+pragma_allowed_in_interface(psn(_, _), no).
+pragma_allowed_in_interface(owner(_, _, _), yes).
 
 check_for_no_exports(Items, ModuleName) -->
 	globals__io_lookup_bool_option(warn_nothing_exported, ExportWarning),
@@ -1409,6 +1434,7 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 					OptDateFileName),
 		module_name_to_file_name(ModuleName, ".c", no, CFileName),
 		module_name_to_file_name(ModuleName, ".o", no, ObjFileName),
+		module_name_to_file_name(ModuleName, ".rlo", no, RLOFileName),
 		module_name_to_file_name(ModuleName, ".pic_o", no,
 							PicObjFileName),
 		io__write_strings(DepStream, ["\n\n",
@@ -1417,7 +1443,8 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 			CFileName, " ",
 			ErrFileName, " ",
 			PicObjFileName, " ",
-			ObjFileName, " : ",
+			ObjFileName, " ",
+			RLOFileName, " : ",
 			SourceFileName
 		] ),
 		write_dependencies_list(ParentDeps, ".int0", DepStream),
@@ -2249,17 +2276,29 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
-	io__write_string(DepStream, ".cs = "),
+	io__write_string(DepStream, ".init_cs = "),
 	write_compact_dependencies_list(Modules, "$(cs_subdir)", ".c",
 					Basis, DepStream),
-	write_file_dependencies_list(ExtraLinkObjs, ".c", DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, MakeVarName),
+	io__write_string(DepStream, ".cs = $("),
+	io__write_string(DepStream, MakeVarName),
+	io__write_string(DepStream, ".init_cs) "),
+	write_extra_link_dependencies_list(ExtraLinkObjs, ".c", DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".os = "),
 	write_compact_dependencies_list(Modules, "$(os_subdir)", ".o",
 					Basis, DepStream),
-	write_file_dependencies_list(ExtraLinkObjs, ".o", DepStream),
+	write_extra_link_dependencies_list(ExtraLinkObjs, ".o", DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, MakeVarName),
+	io__write_string(DepStream, ".rlos = "),
+	write_compact_dependencies_list(Modules, "$(rlos_subdir)", ".rlo",
+					Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
@@ -2364,6 +2403,15 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
+	io__write_string(DepStream, ".schemas = "),
+	write_compact_dependencies_list(Modules, "", ".base_schema",
+					Basis, DepStream),
+	io__write_string(DepStream, " "),
+	write_compact_dependencies_list(Modules, "", ".derived_schema",
+					Basis, DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".profs = "),
 	write_compact_dependencies_list(Modules, "", ".prof",
 					Basis, DepStream),
@@ -2454,7 +2502,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_strings(DepStream, [
 		InitCFileName, " : ", DepFileName, "\n",
 		"\t$(C2INIT) $(ALL_GRADEFLAGS) $(ALL_C2INITFLAGS) $(",
-			MakeVarName, ".cs) > ", InitCFileName, "\n\n"
+			MakeVarName, ".init_cs) > ", InitCFileName, "\n\n"
 	]),
 
 	module_name_to_file_name(SourceModuleName, ".nu", yes, NU_ExeFileName),
@@ -2491,6 +2539,9 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	module_name_to_file_name(ModuleName, ".opts", no, OptsTargetName),
 	module_name_to_file_name(ModuleName, ".trans_opts", no,
 						TransOptsTargetName),
+	module_name_to_file_name(ModuleName, ".rlos", no,
+						RLOsTargetName),
+
 	io__write_strings(DepStream, [
 		".PHONY : ", CheckTargetName, "\n",
 		CheckTargetName, " : $(", MakeVarName, ".errs)\n\n",
@@ -2502,7 +2553,9 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		OptsTargetName, " : $(", MakeVarName, ".optdates)\n\n",
 		".PHONY : ", TransOptsTargetName, "\n",
 		TransOptsTargetName, " : $(", MakeVarName,
-						".trans_opt_dates)\n\n"
+						".trans_opt_dates)\n\n",
+		".PHONY : ", RLOsTargetName, "\n",
+		RLOsTargetName, " : $(", MakeVarName, ".rlos)\n\n"
 	]),
 
 	module_name_to_file_name(SourceModuleName, ".clean", no,
@@ -2524,7 +2577,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", MakeVarName, ".profs)\n",
 		"\t-rm -f $(", MakeVarName, ".nos)\n",
 		"\t-rm -f $(", MakeVarName, ".qls)\n",
-		"\t-rm -f $(", MakeVarName, ".errs)\n"
+		"\t-rm -f $(", MakeVarName, ".errs)\n",
+		"\t-rm -f $(", MakeVarName, ".schemas)\n"
 	]),
 
 	io__write_string(DepStream, "\n"),
@@ -2568,7 +2622,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", MakeVarName, ".int3s)\n",
 		"\t-rm -f $(", MakeVarName, ".opts)\n",
 		"\t-rm -f $(", MakeVarName, ".ds)\n",
-		"\t-rm -f $(", MakeVarName, ".hs)\n"
+		"\t-rm -f $(", MakeVarName, ".hs)\n",
+		"\t-rm -f $(", MakeVarName, ".rlos)\n"
 	]),
 	module_name_to_file_name(SourceModuleName, ".nu.save", no,
 						NU_SaveExeFileName),
@@ -2628,22 +2683,26 @@ get_source_file(DepsMap, ModuleName, FileName) :-
 
 append_to_init_list(DepStream, InitFileName, Module) -->
 	{ llds_out__make_init_name(Module, InitFuncName) },
+	{ llds_out__make_rl_data_name(Module, RLName) },
 	io__write_strings(DepStream, [
-		"\techo ""INIT ", InitFuncName, """ >> ", InitFileName, "\n"
+		"\techo ""INIT ", InitFuncName, """ >> ", InitFileName, "\n",
+		"\techo ""ADITI_DATA ", RLName, """ >> ", InitFileName, "\n"
 	]).
 
 %-----------------------------------------------------------------------------%
 	% get_extra_link_objects(Modules, DepsMap, ExtraLinkObjs) },
 	% Find any extra .o files that should be linked into the executable.
 	% Currently only looks for fact table object files.
-:- pred get_extra_link_objects(list(module_name), deps_map, list(string)).
+:- pred get_extra_link_objects(list(module_name), deps_map,
+		assoc_list(file_name, module_name)).
 :- mode get_extra_link_objects(in, in, out) is det.
 
 get_extra_link_objects(Modules, DepsMap, ExtraLinkObjs) :-
 	get_extra_link_objects_2(Modules, DepsMap, [], ExtraLinkObjs).
 
 :- pred get_extra_link_objects_2(list(module_name), deps_map, 
-		list(string), list(string)).
+		assoc_list(file_name, module_name),
+		assoc_list(file_name, module_name)).
 :- mode get_extra_link_objects_2(in, in, in, out) is det.
 
 get_extra_link_objects_2([], _DepsMap, ExtraLinkObjs, ExtraLinkObjs).
@@ -2651,7 +2710,11 @@ get_extra_link_objects_2([Module | Modules], DepsMap,
 		ExtraLinkObjs0, ExtraLinkObjs) :-
 	map__lookup(DepsMap, Module, deps(_, ModuleImports)),
 	ModuleImports = module_imports(_, _, _, _, _, _, _, FactDeps, _, _),
-	list__append(FactDeps, ExtraLinkObjs0, ExtraLinkObjs1),
+	list__length(FactDeps, NumFactDeps),
+	list__duplicate(NumFactDeps, Module, ModuleList),
+	assoc_list__from_corresponding_lists(FactDeps, ModuleList,
+		NewLinkObjs),
+	list__append(NewLinkObjs, ExtraLinkObjs0, ExtraLinkObjs1),
 	get_extra_link_objects_2(Modules, DepsMap, ExtraLinkObjs1, 
 		ExtraLinkObjs).
 
@@ -2696,6 +2759,18 @@ write_fact_table_dependencies_list(Module, [FactTable | FactTables], Suffix,
 	io__write_string(DepStream, FileName),
 	write_fact_table_dependencies_list(Module, FactTables, Suffix,
 			DepStream).
+
+:- pred write_extra_link_dependencies_list(assoc_list(file_name, module_name),
+			string, io__output_stream, io__state, io__state).
+:- mode write_extra_link_dependencies_list(in, in, in, di, uo) is det.
+
+write_extra_link_dependencies_list([], _, _) --> [].
+write_extra_link_dependencies_list([ExtraLink - Module | ExtraLinks], Suffix,
+			DepStream) -->
+	extra_link_obj_file_name(Module, ExtraLink, Suffix, FileName),
+	io__write_string(DepStream, " \\\n\t"),
+	io__write_string(DepStream, FileName),
+	write_extra_link_dependencies_list(ExtraLinks, Suffix, DepStream).
 
 :- pred write_file_dependencies_list(list(string), string, io__output_stream,
 				io__state, io__state).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -466,7 +466,7 @@ wrap_exception(Exception, exception(Exception)).
 	#include <assert.h>
 	#include ""mercury_deep_copy.h""
 
-	MR_DECLARE_STRUCT(mercury_data_std_util__base_type_info_univ_0);
+	MR_DECLARE_STRUCT(mercury_data_std_util__type_ctor_info_univ_0);
 ").
 
 :- pragma c_code("
@@ -1059,7 +1059,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	assert(FRAMEVARS->heap_ptr <= FRAMEVARS->heap_zone->top);
 	save_transient_registers();
 	exception = deep_copy((Word *) exception,
-		(Word *) &mercury_data_std_util__base_type_info_univ_0,
+		(Word *) &mercury_data_std_util__type_ctor_info_univ_0,
 		FRAMEVARS->heap_ptr, FRAMEVARS->heap_zone->top);
 	restore_transient_registers();
 
@@ -1074,7 +1074,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	assert(FRAMEVARS->solns_heap_ptr <= MR_solutions_heap_zone->top);
 	save_transient_registers();
 	exception = deep_copy((Word *) exception,
-		(Word *) &mercury_data_std_util__base_type_info_univ_0,
+		(Word *) &mercury_data_std_util__type_ctor_info_univ_0,
 		saved_solns_heap_ptr, MR_solutions_heap_zone->top);
 	restore_transient_registers();
 

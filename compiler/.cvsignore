@@ -3,8 +3,6 @@
 *.pl
 *.prof
 *.err
-mercury_compile.m optimize.m code_gen.m
-conf.m
 mercury_compile.stats
 mercury_compile
 mercury_compile.dep

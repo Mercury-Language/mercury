@@ -1,12 +1,141 @@
 NEWS since Mercury release 0.8:
 -------------------------------
 
-* We've added a new predicate to the Mercury standard library:
-	bag__count_value/3.	
+Changes to the Mercury language:
+********************************
+
+* We've made a small change to the rule for quantification of lambda
+  expressions.  
+
+  The new rule is that all variables in the arguments of lambda
+  expressions are treated as locally quantified to that lambda expression.
+  For function lambda expressions, variables in the result term
+  use the normal quantification rules.  See the "Data-terms" section
+  of the "Syntax" chapter of the Mercury language reference manual
+  for details.
+  
+  Previously, the exact quantification rule for lambda expressions was
+  not documented, but the compiler would locally quantify variables in
+  function return values, and it would only locally quantify variables
+  occuring at the top level of an argument term, not those occurring in
+  subterms.  Both of these were rather surprising for functional
+  programmers.
+
+  It is possible that this change may break some existing code using
+  predicate lambda expressions with compound terms as arguments, but we
+  expect this to be extremely rare.  If it does occur, the compiler
+  will issue a warning about variables having overlapping scopes, and
+  the work-around is simple: use a fresh variable for the lambda
+  predicate argument and unify it with the compound term in the body of
+  the lambda expression.
+
+* The old-style syntax for predicate lambda expressions,
+  `lambda([<Args>] is <Det>, <Goal>)', is now officially deprecated.
+
+  Please use the new syntax-style `(pred([<Args>]) is <Det> :- <Goal>)'
+  instead.  The compiler still supports the old-style syntax, but
+  we plan to eventually drop this support in some future release.
+
+Changes to the Mercury standard library:
+****************************************
+
+* We've added some new predicates to the Mercury standard library:
+	array__map/3,
+	bag__count_value/3.
+
+* The following predicates have been replaced by functions with
+  the same names, and will be removed in a future release.
+  The predicate versions were intended for use in programs which needed
+  to work in both Prolog and Mercury, but executing Mercury programs using
+  Prolog is no longer supported.
+	float__ceiling_to_int/2,
+	float__floor_to_int/2,
+	float__round_to_int/2,
+	float__truncate_to_int/2,
+	float__abs/2,
+	float__max/3,
+	float__min/3,
+	float__pow/3,
+	float__hash/2,
+	float__max/1,
+	float__min/1,
+	float__epsilon/1,
+	float__radix/1,
+	float__mantissa_digits/1,
+	float__min_exponent/1,
+	float__max_exponent/1.
+
+* The implementations of `int:>>/2' and `int:<</2' have been changed to define
+  the results for negative shift counts and shift counts greater than the
+  word size.
+
+  For efficiency, we also provide the functions `int:unchecked_left_shift/2'
+  and `int:unchecked_right_shift/2' that, like the previous implementations
+  of `int:>>/2' and `int:<</2', do not check for these cases.
+
+New library packages in the Mercury extras distribution:
+********************************************************
+
+* We've added support for optional lazy evaluation.
+
+  The extras distribution now includes a new module `lazy',
+  which provides support for optional lazy evaluation
+  via a type `lazy(T)', with `delay' and `force' operations.
+  There's also a `lazy_list' module which uses the `lazy' module.
+  See the files in extras/lazy_evaluation for details.
 
 * The extras distribution now includes support for dynamic linking.
 
   The interface is based on the C functions dlopen(), dlsym(), and co.,
   which are supported by most modern Unix systems.
   See the files in extras/dynamic_linking for details.
+
+Changes to the Mercury implementation:
+**************************************
+
+* The Mercury debugger (mdb) now includes support for interactive queries.
+
+  See the "Interactive query commands" subsection of the "Debugger commands"
+  section of the "Debugging" chapter of the Mercury User's Guide for details.
+
+* The Mercury debugger (mdb) now optionally supports command-line editing
+  and command-line history.
+
+  This support uses the GNU Readline library.  For the source distribution,
+  the Mercury configure script will detect whether readline has been
+  installed and will only enable the command-line editing and history
+  support if readline has been installed.  For the binary distribution,
+  if the binary distribution was built with readline, then you will
+  need to install GNU readline in order to use the debugger.
+
+  For information on where to obtain GNU Readline, see the INSTALL file.
+
+* We've removed the support for using a Prolog debugger on Mercury programs.
+
+  Now that we have a working Mercury debugger, there's no longer any need to
+  use a Prolog debugger for debugging Mercury code.
+
+  Normally we would warn at least one or two releases in advance, if
+  any feature is to be removed.  However, in this case
+
+  	- it was an implementation feature rather than a language feature;
+	- the cost of maintaining the feature was quite high;
+	- the feature was already broken is various ways [one being that it
+	  doesn't work with the latest versions of SICStus Prolog, due to
+	  those versions removing support for a SICStus Prolog feature
+	  (save/1), apparently without any advance notice]; and
+	- a simple work-around is available if anything breaks as a result
+	  of the feature being removed. 
+
+  In the unlikely event that anyone happened to have any makefiles or
+  scripts that depended on the support for using Prolog, they can
+  install the latest Mercury distribution and still continue to use the
+  Prolog support from Mercury 0.8, just by including the `bin'
+  directories for both versions in their PATH, with the more recent one
+  first, of course.
+
+* We've added support for user-guided type specialization.
+
+  See the "Type specialization" section of the "Pragmas" chapter of the
+  Mercury Language Reference Manual for details.
 

@@ -160,21 +160,22 @@
 :- mode instmap_delta_apply_instmap_delta(in, in, out) is det.
 
 	% instmap_merge(NonLocalVars, InstMaps, MergeContext):
-	%       Merge the `InstMaps' resulting from different branches
-	%       of a disjunction or if-then-else, and update the
-	%       instantiatedness of all the nonlocal variables,
-	%       checking that it is the same for every branch.
+	%	Merge the `InstMaps' resulting from different branches
+	%	of a disjunction or if-then-else, and update the
+	%	instantiatedness of all the nonlocal variables,
+	%	checking that it is the same for every branch.
 	%
-:- pred instmap__merge(set(prog_var), list(instmap),
+:- pred instmap__merge(set(prog_var), list(prog_var), list(instmap),
 		instmap, instmap, module_info, inst_table,
 		module_info, inst_table, merge_errors).
-:- mode instmap__merge(in, in, in, out, in, in, out, out, out) is det.
+:- mode instmap__merge(in, in, in, in, out, in, in, out, out, out) is det.
 
-	% instmap_merge(NonLocalVars, InstMaps, MergeContext):
-	%       Merge the `InstMaps' resulting from different branches
-	%       of a disjunction or if-then-else, and update the
-	%       instantiatedness of all the nonlocal variables,
-	%       checking that it is the same for every branch.
+	% instmap_merge(NonLocalVars, LiveVars, InstMaps, InitialInstMap,
+	%		FinalInstMap, MergeContext):
+	%	Merge the `InstMaps' resulting from different branches
+	%	of a disjunction or if-then-else, and update the
+	%	instantiatedness of all the nonlocal variables,
+	%	checking that it is the same for every branch.
 	%
 :- pred instmap__merge(set(prog_var), list(instmap), merge_context,
 		mode_info, mode_info).
@@ -212,7 +213,7 @@
 %-----------------------------------------------------------------------------%
 
 	% instmap__unify(NonLocalVars, InstMapNonlocalvarsPairs):
-	%       Unify the `InstMaps' in the list of pairs resulting
+	%	Unify the `InstMaps' in the list of pairs resulting
 	%	from different branches of a parallel conjunction and
 	%	update the instantiatedness of all the nonlocal variables.
 	%	The variable locking that is done when modechecking
@@ -264,6 +265,11 @@
 :- pred instmap__inst_key_table_lookup(instmap, inst_key_table, inst_key,
 		inst).
 :- mode instmap__inst_key_table_lookup(in, in, in, out) is det.
+
+%-----------------------------------------------------------------------------%
+
+:- pred instmap__inst_keys_are_equivalent(inst_key, instmap, inst_key, instmap).
+:- mode instmap__inst_keys_are_equivalent(in, in, in, in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -319,13 +325,17 @@ instmap_delta_is_unreachable(unreachable).
 
 %-----------------------------------------------------------------------------%
 
-instmap__from_assoc_list(AL, reachable(Instmapping, AliasMap)) :-
-	map__from_assoc_list(AL, Instmapping),
-	map__init(AliasMap).
+instmap__from_assoc_list(AL, InstMap) :-
+	( list__member(_ - not_reached, AL) ->
+		InstMap = unreachable
+	;
+		map__from_assoc_list(AL, Instmapping),
+		map__init(AliasMap),
+		InstMap = reachable(Instmapping, AliasMap)
+	).
 
-instmap_delta_from_assoc_list(AL, reachable(Instmapping, AliasMap)) :-
-	map__from_assoc_list(AL, Instmapping),
-	map__init(AliasMap).
+instmap_delta_from_assoc_list(AL, InstMapDelta) :-
+	instmap__from_assoc_list(AL, InstMapDelta).
 
 %-----------------------------------------------------------------------------%
 
@@ -490,16 +500,29 @@ instmap_delta_delete_vars_2([V | Vs], IM0, IM) :-
 %-----------------------------------------------------------------------------%
 
 	% instmap__merge(NonLocalVars, InstMaps, MergeContext):
-	%       Merge the `InstMaps' resulting from different branches
-	%       of a disjunction or if-then-else, and update the
-	%       instantiatedness of all the nonlocal variables,
-	%       checking that it is the same for every branch.
+	%	Merge the `InstMaps' resulting from different branches
+	%	of a disjunction or if-then-else, and update the
+	%	instantiatedness of all the nonlocal variables,
+	%	checking that it is the same for every branch.
+	% Algorithm:
+	%	1. Remove unreachable instmaps.
+	%	2. Take the first two instmaps and remove singleton inst_keys
+	%	   from each.
+	%	3. Expand any inst_key substitutions that occur in one instmap
+	%	   but not the other (done by `instmap__merge_subs').
+	%	4. Call `inst_merge' for each non-local variable.
+	%	5. Work out which inst_keys need to become shared and make
+	%	   them shared (uses information collected by `inst_merge').
+	%	6. Recursively merge the resulting instmap with the instmap
+	%	   from the next branch (go back to step 2).
 
 instmap__merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMapBefore),
 	mode_info_get_inst_table(ModeInfo0, InstTable0),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
-	instmap__merge(NonLocals, InstMapList, InstMapBefore,
+	mode_info_get_liveness(ModeInfo0, Liveness),
+	set__to_sorted_list(Liveness, LiveList),
+	instmap__merge(NonLocals, LiveList, InstMapList, InstMapBefore,
 		InstMapAfter, ModuleInfo0, InstTable0, ModuleInfo, InstTable,
 		ErrorList),
 	( ErrorList = [FirstError | _] ->
@@ -516,12 +539,12 @@ instmap__merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 	mode_info_set_instmap(InstMapAfter, ModeInfo2, ModeInfo3),
 	mode_info_set_inst_table(InstTable, ModeInfo3, ModeInfo).
 
-instmap__merge(NonLocals, InstMapList, InstMap0,
+instmap__merge(NonLocals, Liveness, InstMapList0, InstMap0,
 		InstMap, ModuleInfo0, InstTable0, ModuleInfo, InstTable,
 		ErrorList) :-
-	get_reachable_instmaps(InstMapList, InstMappingList),
+	get_reachable_instmaps(InstMapList0, InstMapList1),
 	(
-		InstMappingList = []
+		InstMapList1 = []
 	->
 		InstMap = unreachable,
 		ModuleInfo = ModuleInfo0,
@@ -529,22 +552,21 @@ instmap__merge(NonLocals, InstMapList, InstMap0,
 		ErrorList = []
 	;
 		InstMap0 = reachable(_, _),
-		InstMappingList = [InstMapping - AliasMap]
+		InstMapList1 = [InstMap1]
 	->
-		instmap__restrict(reachable(InstMapping, AliasMap), NonLocals,
-				InstMap),
+		InstMap = InstMap1,
 		ModuleInfo = ModuleInfo0,
 		InstTable = InstTable0,
 		ErrorList = []
 	;
-		InstMap0 = reachable(InstMapping0, _AliasMap0)
+		InstMap0 = reachable(_, _)
 	->
-		set__to_sorted_list(NonLocals, NonLocalsList),
-		instmap__merge_2(NonLocalsList, InstMapList, InstTable0,
-			ModuleInfo0, InstMapping0, InstTable, ModuleInfo,
-			InstMapping, ErrorList),
-		map__init(AliasMap),
-		InstMap = reachable(InstMapping, AliasMap)
+		instmap__vars(InstMap0, Vars0),
+		set__union(NonLocals, Vars0, AllNonLocals),
+		set__to_sorted_list(AllNonLocals, AllNonLocalsList),
+		instmap__merge_2(AllNonLocalsList, Liveness, InstMapList1,
+			InstTable0, ModuleInfo0, InstMap0, InstTable,
+			ModuleInfo, InstMap, ErrorList)
 	;
 		InstMap = unreachable,
 		ModuleInfo = ModuleInfo0,
@@ -552,187 +574,588 @@ instmap__merge(NonLocals, InstMapList, InstMap0,
 		ErrorList = []
 	).
 
-:- pred get_reachable_instmaps(list(instmap),
-		list(pair(map(prog_var, inst), inst_key_sub))).
+:- pred get_reachable_instmaps(list(instmap), list(instmap)).
 :- mode get_reachable_instmaps(in, out) is det.
 
-get_reachable_instmaps([], []).
-get_reachable_instmaps([InstMap | InstMaps], Reachables) :-
-	( InstMap = reachable(InstMapping, AliasMap) ->
-		Reachables = [InstMapping - AliasMap | Reachables1],
-		get_reachable_instmaps(InstMaps, Reachables1)
-	;
-		get_reachable_instmaps(InstMaps, Reachables)
-	).
+get_reachable_instmaps -->
+	list__filter(instmap__is_reachable).
 
 %-----------------------------------------------------------------------------%
 
-	% instmap__get_relevant_inst_keys(Vars, InstMaps, InstTable, SeenKeys,
+:- interface.
+
+% Export this stuff for use in inst_util.m.
+  
+:- type uniq_count
+	--->	known(int)
+	;	many.
+
+:- type uniq_counts(T) == map(T, uniq_count).
+
+:- type inst_key_counts == uniq_counts(inst_key).
+
+:- pred inc_uniq_count(T, uniq_counts(T), uniq_counts(T)).
+:- mode inc_uniq_count(in, in, out) is det.
+
+:- pred dec_uniq_count(T, uniq_counts(T), uniq_counts(T)).
+:- mode dec_uniq_count(in, in, out) is det.
+
+:- pred has_count_zero(uniq_counts(T), T).
+:- mode has_count_zero(in, in) is semidet.
+
+:- pred has_count_one(uniq_counts(T), T).
+:- mode has_count_one(in, in) is semidet.
+
+:- pred has_count_many(uniq_counts(T), T).
+:- mode has_count_many(in, in) is semidet.
+
+:- pred set_count_many(T, uniq_counts(T), uniq_counts(T)).
+:- mode set_count_many(in, in, out) is det.
+
+:- pred uniq_count_max(uniq_count, uniq_count, uniq_count).
+:- mode uniq_count_max(in, in, out) is det.
+
+:- pred uniq_counts_max_merge(uniq_counts(T), uniq_counts(T), uniq_counts(T)).
+:- mode uniq_counts_max_merge(in, in, out) is det.
+
+:- implementation.
+
+:- import_module int.
+
+inc_uniq_count(Item, Map0, Map) :-
+	( map__search(Map0, Item, C0) ->
+		(
+			C0 = known(N),
+			map__det_update(Map0, Item, known(N + 1), Map)
+		;
+			C0 = many,
+			Map = Map0
+		)
+	;
+		map__det_insert(Map0, Item, known(1), Map)
+	).
+
+dec_uniq_count(Item, Map0, Map) :-
+	( map__search(Map0, Item, C0) ->
+		(
+			C0 = known(N0),
+			int__max(N0 - 1, 0, N),
+			map__det_update(Map0, Item, known(N), Map)
+		;
+			C0 = many,
+			Map = Map0
+		)
+	;
+		Map = Map0
+	).
+
+has_count_zero(Map, Item) :-
+	map__search(Map, Item, Count) => Count = known(0).
+
+has_count_one(Map, Item) :-
+	map__search(Map, Item, known(1)).
+
+has_count_many(Map, Item) :-
+	map__search(Map, Item, Count),
+	( Count = known(N), N > 1
+	; Count = many
+	).
+
+set_count_many(Item, Map0, Map) :-
+	map__set(Map0, Item, many, Map).
+
+uniq_count_max(many, _, many).
+uniq_count_max(known(_), many, many).
+uniq_count_max(known(A), known(B), known(C)) :-
+	int__max(A, B, C).
+
+uniq_counts_max_merge(MapA, MapB, Map) :-
+	map__foldl(lambda([Item::in, CountA::in, M0::in, M::out] is det,
+		( map__search(M0, Item, CountB) ->
+			uniq_count_max(CountA, CountB, Count),
+			( Count = CountB ->
+				M = M0
+			;
+				map__det_update(M0, Item, Count, M)
+			)
+		;
+			map__det_insert(M0, Item, CountA, M)
+		)), MapA, MapB, Map).
+
+%-----------------------------------------------------------------------------%
+
+	% instmap__count_inst_keys(Vars, InstMaps, InstTable, SeenKeys,
 	%		DuplicateKeys, InstKeys):
 	%	Return a set of all inst_keys which appear more than
 	%	once in the instmaps.
 
-:- pred instmap__get_relevant_inst_keys(list(prog_var), list(instmap),
-		module_info, inst_table, set_bbbtree(inst_key)).
-:- mode instmap__get_relevant_inst_keys(in, in, in, in, out) is det.
+:- pred instmap__count_inst_keys_in_instmaps(list(prog_var), list(instmap),
+		module_info, inst_table, inst_key_counts).
+:- mode instmap__count_inst_keys_in_instmaps(in, in, in, in, out) is det.
 
-instmap__get_relevant_inst_keys(Vars, InstMaps, ModuleInfo, InstTable,
-		RelevantIKs) :-
-	set_bbbtree__init(Seen0),
-	set_bbbtree__init(Duplicate0),
-	list__foldl2(instmap__get_relevant_inst_keys_2(Vars, ModuleInfo,
-				InstTable),
-		InstMaps, Seen0, _Seen, Duplicate0, Duplicate),
-	RelevantIKs = Duplicate.
+instmap__count_inst_keys_in_instmaps(Vars, InstMaps, ModuleInfo, InstTable,
+		IKCounts) :-
+	map__init(IKCounts0),
+	list__foldl(instmap__count_inst_keys_2(Vars, ModuleInfo, InstTable),
+		InstMaps, IKCounts0, IKCounts).
 
-:- pred instmap__get_relevant_inst_keys_2(list(prog_var), module_info,
-		inst_table, instmap, set_bbbtree(inst_key),
-		set_bbbtree(inst_key), set_bbbtree(inst_key),
-		set_bbbtree(inst_key)).
-:- mode instmap__get_relevant_inst_keys_2(in, in, in, in,
-		in, out, in, out) is det.
+:- pred instmap__count_inst_keys(list(prog_var), module_info, inst_table,
+	instmap, inst_key_counts).
+:- mode instmap__count_inst_keys(in, in, in, in, out) is det.
 
-instmap__get_relevant_inst_keys_2([], _InstTable, _ModuleInfo, _InstMap,
-		Seen, Seen, Duplicate, Duplicate).
-instmap__get_relevant_inst_keys_2([V | Vs], ModuleInfo, InstTable, InstMap,
-		Seen0, Seen, Duplicate0, Duplicate) :-
-	instmap__lookup_var(InstMap, V, Inst),
-	set_bbbtree__init(Recursive),
-	instmap__get_relevant_inst_keys_in_inst(Inst, Recursive, ModuleInfo,
-		InstTable, Seen0, Seen1, Duplicate0, Duplicate1),
-	instmap__get_relevant_inst_keys_2(Vs, ModuleInfo, InstTable, InstMap,
-		Seen1, Seen, Duplicate1, Duplicate).
+instmap__count_inst_keys(Vars, ModuleInfo, InstTable, InstMap, IKCounts) :-
+	map__init(IKCounts0),
+	instmap__count_inst_keys_2(Vars, ModuleInfo, InstTable, InstMap,
+		IKCounts0, IKCounts).
 
-:- pred instmap__get_relevant_inst_keys_in_inst(inst, set_bbbtree(inst_name),
-		module_info, inst_table, set_bbbtree(inst_key),
-		set_bbbtree(inst_key), set_bbbtree(inst_key),
-		set_bbbtree(inst_key)).
-:- mode instmap__get_relevant_inst_keys_in_inst(in, in, in, in,
-		in, out, in, out) is det.
+:- pred instmap__count_inst_keys_2(list(prog_var), module_info,
+	inst_table, instmap, inst_key_counts, inst_key_counts).
+:- mode instmap__count_inst_keys_2(in, in, in, in, in, out) is det.
 
-instmap__get_relevant_inst_keys_in_inst(any(_), _, _, _, S, S, D, D).
-instmap__get_relevant_inst_keys_in_inst(alias(Key), Recursive, ModuleInfo,
-		InstTable, S0, S, D0, D) :-
-	inst_table_get_inst_key_table(InstTable, IKT),
-	inst_key_table_lookup(IKT, Key, Inst),
-	( set_bbbtree__member(Key, S0) ->
-		set_bbbtree__insert(D0, Key, D1),
-		S1 = S0
+instmap__count_inst_keys_2([], _InstTable, _ModuleInfo, _InstMap) --> [].
+instmap__count_inst_keys_2([V | Vs], ModuleInfo, InstTable, InstMap) -->
+	{ instmap__lookup_var(InstMap, V, Inst) },
+	{ set__init(SeenTwice) },
+	instmap__count_inst_keys_in_inst(no, InstMap, InstTable, ModuleInfo,
+		SeenTwice, Inst),
+	instmap__count_inst_keys_2(Vs, ModuleInfo, InstTable, InstMap).
+
+:- pred instmap__count_inst_keys_in_inst(bool, instmap, inst_table, module_info,
+	set(inst_name), inst, inst_key_counts, inst_key_counts).
+:- mode instmap__count_inst_keys_in_inst(in, in, in, in, in, in, in, out)
+	is det.
+
+instmap__count_inst_keys_in_inst(SetCountMany, InstMap, InstTable, ModuleInfo,
+		SeenTwice, Inst) -->
+	inst_fold(InstMap, InstTable, ModuleInfo,
+	    count_inst_keys_before(SetCountMany), 
+	    count_inst_keys_after(InstMap, InstTable, ModuleInfo, SeenTwice),
+	    uniq_counts_max_merge, Inst).
+
+:- pred count_inst_keys_before(bool::in, (inst)::in, set(inst_name)::in,
+	inst_key_counts::in, inst_key_counts::out) is semidet.
+
+count_inst_keys_before(SetCountMany, alias(Key), _) -->
+	(
+		{ SetCountMany = yes },
+		set_count_many(Key)
 	;
-		set_bbbtree__insert(S0, Key, S1),
-		D1 = D0
-	),
-	instmap__get_relevant_inst_keys_in_inst(Inst, Recursive, ModuleInfo,
-		InstTable, S1, S, D1, D).
-instmap__get_relevant_inst_keys_in_inst(free(_), _, _, _, S, S, D, D).
-instmap__get_relevant_inst_keys_in_inst(free(_, _), _, _, _, S, S, D, D).
-instmap__get_relevant_inst_keys_in_inst(bound(_, BoundInsts), Rec, ModuleInfo,
-		InstTable, S0, S, D0, D) :-
-	list__foldl2(lambda([BoundInst :: in, AS0 :: in, AS :: out,
-				AD0 :: in, AD :: out] is det,
-			( BoundInst = functor(_, Insts),
-			  list__foldl2(lambda([Inst :: in, BS0 :: in, BS :: out,
-						BD0 :: in, BD :: out] is det,
-				instmap__get_relevant_inst_keys_in_inst(Inst,
-					Rec, ModuleInfo, InstTable,
-					BS0, BS, BD0, BD)),
-				Insts, AS0, AS, AD0, AD)
-			)
-		), BoundInsts, S0, S, D0, D).
-instmap__get_relevant_inst_keys_in_inst(ground(_, _), _, _, _, S, S, D, D).
-instmap__get_relevant_inst_keys_in_inst(not_reached, _, _, _, _, _, _, _) :-
-	error("instmap__get_relevant_inst_keys_in_inst: not_reached").
-instmap__get_relevant_inst_keys_in_inst(inst_var(_), _, _, _, _, _, _, _) :-
-	error("instmap__get_relevant_inst_keys_in_inst: inst_var").
-instmap__get_relevant_inst_keys_in_inst(defined_inst(InstName), Recursive0,
-		ModuleInfo, InstTable, S0, S, D0, D) :-
-	% This is tricky, because an inst_key is "relevant" if it
-	% appears only once in an inst which is recursive.  (If we
-	% were to unfold the inst, it would appear multiple times.)
-	( set_bbbtree__member(InstName, Recursive0) ->
-		set_bbbtree__union(S0, D0, D),
-		S = S0
-	;
-		set_bbbtree__insert(Recursive0, InstName, Recursive),
-		set_bbbtree__init(NewS0),
-		inst_lookup(InstTable, ModuleInfo, InstName, Inst),
-		instmap__get_relevant_inst_keys_in_inst(Inst, Recursive,
-			ModuleInfo, InstTable, NewS0, NewS, D0, D1),
-		set_bbbtree__intersect(NewS, S0, NewD),
-		set_bbbtree__union(NewD, D1, D),
-		set_bbbtree__union(NewS, S0, S)
+		{ SetCountMany = no },
+		inc_uniq_count(Key)
 	).
-instmap__get_relevant_inst_keys_in_inst(abstract_inst(_, Insts), Rec,
-		ModuleInfo, InstTable, S0, S, D0, D) :-
-	list__foldl2(lambda([Inst :: in, AS0 :: in, AS :: out,
-				AD0 :: in, AD :: out] is det,
-			instmap__get_relevant_inst_keys_in_inst(Inst,
-				Rec, ModuleInfo, InstTable, AS0, AS, AD0, AD)),
-		Insts, S0, S, D0, D).
+
+:- pred count_inst_keys_after(instmap::in, inst_table::in, module_info::in,
+	set(inst_name)::in, (inst)::in, set(inst_name)::in,
+	inst_key_counts::in, inst_key_counts::out) is semidet.
+
+count_inst_keys_after(InstMap, InstTable, ModuleInfo, SeenTwice0,
+		defined_inst(InstName), SeenOnce) -->
+	{ set__member(InstName, SeenOnce) },
+	{ \+ set__member(InstName, SeenTwice0) },
+	{ set__insert(SeenTwice0, InstName, SeenTwice) },
+
+		% We need to count the inst_keys in a recursive inst twice
+		% because the inst may be unfolded an arbitrary number of
+		% times.
+	instmap__count_inst_keys_in_inst(yes, InstMap, InstTable, ModuleInfo,
+		SeenTwice, defined_inst(InstName)).
 
 %-----------------------------------------------------------------------------%
 
-	% instmap__merge_2(Vars, InstMaps, ModuleInfo, ErrorList):
-	%       Let `ErrorList' be the list of variables in `Vars' for
+	% instmap__merge_2(Vars, Liveness, InstMaps, ModuleInfo, ErrorList):
+	%       Let `ErrorList' be the list of variables in `Vars' for which
 	%       there are two instmaps in `InstMaps' for which the inst
 	%       the variable is incompatible.
 
-:- pred instmap__merge_2(list(prog_var), list(instmap), inst_table, module_info,
-			map(prog_var, inst), inst_table, module_info,
-			map(prog_var, inst), merge_errors).
-:- mode instmap__merge_2(in, in, in, in, in, out, out, out, out) is det.
+:- pred instmap__merge_2(list(prog_var), list(prog_var), list(instmap),
+		inst_table, module_info, instmap, inst_table, module_info,
+		instmap, merge_errors).
+:- mode instmap__merge_2(in, in, in, in, in, in, out, out, out, out) is det.
 
-instmap__merge_2([], _, InstTable, ModuleInfo, InstMap, InstTable, ModuleInfo,
-			InstMap, []).
-instmap__merge_2([Var|Vars], InstMapList, InstTable0, ModuleInfo0, InstMap0,
-			InstTable, ModuleInfo, InstMap, ErrorList) :-
-	instmap__merge_2(Vars, InstMapList, InstTable0, ModuleInfo0, InstMap0,
-			InstTable1, ModuleInfo1, InstMap1, ErrorList1),
-	instmap__merge_var(InstMapList, Var, InstTable1, ModuleInfo1,
-			Insts, Inst, InstTable, ModuleInfo, Error),
-	( Error = yes ->
-		ErrorList = [Var - Insts | ErrorList1],
-		map__set(InstMap1, Var, not_reached, InstMap)
-	;
-		ErrorList = ErrorList1,
-		map__set(InstMap1, Var, Inst, InstMap)
-	).
+instmap__merge_2(_, _, [], InstTable, ModuleInfo, InstMap, InstTable,
+		ModuleInfo, InstMap, []).
+instmap__merge_2(Vars, Liveness, [InstMapA | InstMaps], InstTable0, ModuleInfo0,
+		InstMap0, InstTable, ModuleInfo, InstMap, ErrorList) :-
+	instmap__merge_3(Vars, Liveness, InstMapA, InstMaps, InstTable0,
+		ModuleInfo0, InstMap0, InstTable, ModuleInfo, InstMap1,
+		ErrorList),
+	instmap__remove_singleton_inst_keys(Vars, ModuleInfo, InstTable,
+		InstMap1, InstMap).
 
-	% instmap_merge_var(InstMaps, Var, ModuleInfo, Insts, Error):
-	%       Let `Insts' be the list of the inst of `Var' in the
-	%       corresponding `InstMaps'.  Let `Error' be yes iff
-	%       there are two instmaps for which the inst of `Var'
-	%       is incompatible.
+:- pred instmap__merge_3(list(prog_var), list(prog_var), instmap,
+		list(instmap), inst_table, module_info, instmap, inst_table,
+		module_info, instmap, merge_errors).
+:- mode instmap__merge_3(in, in, in, in, in, in, in, out, out, out, out)
+		is det.
 
-:- pred instmap__merge_var(list(instmap), prog_var, inst_table, module_info,
-			list(inst), inst, inst_table, module_info, bool).
-:- mode instmap__merge_var(in, in, in, in, out, out, out, out, out) is det.
+instmap__merge_3(_, _, InstMap, [], InstTable, ModuleInfo, _InstMap0,
+		InstTable, ModuleInfo, InstMap, []).
+instmap__merge_3(Vars, Liveness, InstMapA0, [InstMapB0 | InstMaps], InstTable0,
+		ModuleInfo0, InstMap00, InstTable, ModuleInfo, InstMap,
+		ErrorList) :-
+	instmap__remove_singleton_inst_keys(Vars, ModuleInfo0, InstTable0,
+		InstMapA0, InstMapA1),
+	instmap__remove_singleton_inst_keys(Vars, ModuleInfo0, InstTable0,
+		InstMapB0, InstMapB1),
 
-instmap__merge_var([], _, InstTable, ModuleInfo, [],
-		not_reached, InstTable, ModuleInfo, no).
-instmap__merge_var([InstMap | InstMaps], Var, InstTable0, ModuleInfo0,
-		InstList, Inst, InstTable, ModuleInfo, Error) :-
-	instmap__merge_var(InstMaps, Var, InstTable0, ModuleInfo0,
-		InstList0, Inst0, InstTable1, ModuleInfo1, Error0),
-	instmap__lookup_var(InstMap, Var, VarInst0),
-	inst_table_get_inst_key_table(InstTable1, IKT1),
-	inst_expand_fully(IKT1, InstMap, VarInst0, VarInst),
-	InstList = [VarInst | InstList0],
+	instmap__merge_subs(InstMapA1, InstMapB1, InstMap00, InstTable0,
+		ModuleInfo0, InstMapA, InstMapB, InstMap0, InstTable1),
+
+	instmap__count_inst_keys(Liveness, ModuleInfo0, InstTable1, InstMapA,
+		LiveCountsA),
+	instmap__count_inst_keys(Liveness, ModuleInfo0, InstTable1, InstMapB,
+		LiveCountsB),
+	instmap__count_inst_keys(Vars, ModuleInfo0, InstTable1, InstMapA,
+		TotalCountsA),
+	instmap__count_inst_keys(Vars, ModuleInfo0, InstTable1, InstMapB,
+		TotalCountsB),
+	RefCounts0 = ref_counts(LiveCountsA, LiveCountsB, TotalCountsA,
+		TotalCountsB),
+
+	map__init(MergeSubs0),
+	MergeInfo0 = merge_info(MergeSubs0, RefCounts0),
+	instmap__merge_4(Vars, InstMapA, InstMapB, Liveness, InstTable1,
+		ModuleInfo0, InstMap0, MergeInfo0, InstTable2,
+		ModuleInfo1, InstMapAB0, MergeInfo, ErrorList0),
+	MergeInfo = merge_info(MergeSubs, _RefCounts),
+
+	% Work out which inst keys need to be made shared.
+	solutions(lambda([I::out] is nondet, (
+		map__member(MergeSubs, IKA0 - IKB0, IK),
+		map__member(MergeSubs, IKA1 - IKB1, _),
+		\+ (
+			instmap__inst_keys_are_equivalent(IKA0, InstMapAB0,
+				IKA1, InstMapAB0)
+		<=>
+			instmap__inst_keys_are_equivalent(IKB0, InstMapAB0,
+				IKB1, InstMapAB0)
+		),
+		I = alias(IK) )), Insts),
+	make_shared_inst_list(Insts, InstTable2, ModuleInfo1, InstMapAB0,
+		_, InstTable3, ModuleInfo2, InstMapAB),
+
+	instmap__merge_3(Vars, Liveness, InstMapAB, InstMaps, InstTable3,
+		ModuleInfo2, InstMap0, InstTable, ModuleInfo, InstMap,
+		ErrorList1),
+	list__append(ErrorList0, ErrorList1, ErrorList).
+
+:- pred instmap__merge_4(list(prog_var), instmap, instmap, list(prog_var),
+	inst_table, module_info, instmap, merge_info, inst_table, module_info,
+	instmap, merge_info, merge_errors).
+:- mode instmap__merge_4(in, in, in, in, in, in, in, in, out, out, out,
+	out, out) is det.
+
+instmap__merge_4([], _, _, _, InstTable, ModuleInfo, InstMap, MergeInfo,
+		InstTable, ModuleInfo, InstMap, MergeInfo, []).
+instmap__merge_4([Var | Vars], InstMapA, InstMapB, Liveness, InstTable0,
+		ModuleInfo0, InstMap0, MergeInfo0, InstTable, ModuleInfo,
+		InstMap, MergeInfo, Errors) :-
+	instmap__merge_4(Vars, InstMapA, InstMapB, Liveness, InstTable0,
+		ModuleInfo0, InstMap0, MergeInfo0, InstTable1,
+		ModuleInfo1, InstMap1, MergeInfo1,  Errors1),
+	instmap__lookup_var(InstMapA, Var, InstA),
+	instmap__lookup_var(InstMapB, Var, InstB),
+	IsLive = ( list__member(Var, Liveness) -> live ; dead ),
 	(
-		% YYY Not sure about the returned InstMap here.
-		inst_merge(Inst0, VarInst, InstMap, InstTable1, ModuleInfo1,
-			Inst1, _, InstTable2, ModuleInfo2)
+		inst_merge(InstA, InstB, IsLive, InstMap1, InstTable1,
+			ModuleInfo1, MergeInfo1, Inst, InstMap2, InstTable2,
+			ModuleInfo2, MergeInfo2)
 	->
-		Inst = Inst1,
+		instmap__set(InstMap2, Var, Inst, InstMap),
+		Errors = Errors1,
 		ModuleInfo = ModuleInfo2,
-		Error = Error0,
-		InstTable = InstTable2
+		InstTable = InstTable2,
+		MergeInfo = MergeInfo2
 	;
-		Error = yes,
+		instmap__set(InstMap1, Var, not_reached, InstMap),
+		Errors = [Var - [InstA, InstB] | Errors1],
 		ModuleInfo = ModuleInfo1,
-		Inst = not_reached,
-		InstTable = InstTable1
+		InstTable = InstTable1,
+		MergeInfo = MergeInfo1
 	).
+
+:- pred instmap__merge_subs(instmap, instmap, instmap, inst_table, module_info,
+		instmap, instmap, instmap, inst_table).
+:- mode instmap__merge_subs(in, in, in, in, in, out, out, out, out) is det.
+
+instmap__merge_subs(InstMapA0, InstMapB0, InstMap00, InstTable0, ModuleInfo,
+		InstMapA, InstMapB, InstMap0, InstTable) :-
+	(
+		InstMapA0 = reachable(InstMappingA0, SubA0),
+		InstMapB0 = reachable(InstMappingB0, SubB0)
+	->
+		solutions(lambda([K::out] is nondet,
+			(
+				map__member(SubA0, K, V),
+				\+ map__search(SubB0, K, V)
+			;
+				map__member(SubB0, K, V),
+				\+ map__search(SubA0, K, V)
+			)), KeysList),
+		set_bbbtree__sorted_list_to_set(KeysList, Keys),
+		instmap__expand_subs(Keys, ModuleInfo, SubA0, InstMappingA0,
+			InstMappingA, InstTable0, InstTable1),
+		instmap__expand_subs(Keys, ModuleInfo, SubB0, InstMappingB0,
+			InstMappingB, InstTable1, InstTable),
+		map__delete_list(SubA0, KeysList, Sub),
+		InstMapA = reachable(InstMappingA, Sub),
+		InstMapB = reachable(InstMappingB, Sub),
+		( InstMap00 = reachable(InstMapping0, _) ->
+			InstMap0 = reachable(InstMapping0, Sub)
+		;
+			error("instmap__merge_subs: initial instmap unreachable")
+		)
+	;
+		error("instmap__merge_subs: unreachable instmap(s)")
+	).
+
+:- pred instmap__expand_subs(inst_key_set, module_info, inst_key_sub,
+		instmapping, instmapping, inst_table, inst_table).
+:- mode instmap__expand_subs(in, in, in, in, out, in, out) is det.
+
+instmap__expand_subs(Keys, ModuleInfo, Sub, InstMapping0, InstMapping,
+		InstTable0, InstTable) :-
+	map__to_assoc_list(InstMapping0, AL0),
+	map__init(SeenIKs),
+	instmap__expand_subs_2(Keys, ModuleInfo, Sub, SeenIKs, AL0, AL,
+		InstTable0, InstTable),
+	map__from_assoc_list(AL, InstMapping).
+
+:- pred instmap__expand_subs_2(inst_key_set, module_info, inst_key_sub,
+		inst_key_sub, assoc_list(prog_var, inst),
+		assoc_list(prog_var, inst), inst_table, inst_table).
+:- mode instmap__expand_subs_2(in, in, in, in, in, out, in, out) is det.
+
+instmap__expand_subs_2(_, _, _, _, [], [], InstTable, InstTable).
+instmap__expand_subs_2(Keys, ModuleInfo, Sub, SeenIKs0,
+		[Var - Inst0 | VarInsts0], [Var - Inst | VarInsts],
+		InstTable0, InstTable) :-
+	instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
+		Inst0, Inst, InstTable0, InstTable1),
+	instmap__expand_subs_2(Keys, ModuleInfo, Sub, SeenIKs,
+		VarInsts0, VarInsts, InstTable1, InstTable).
+
+:- pred instmap__expand_inst_sub(inst_key_set, module_info,
+	inst_key_sub, inst_key_sub, inst_key_sub, inst, inst,
+	inst_table, inst_table).
+:- mode instmap__expand_inst_sub(in, in, in, in, out, in, out, in, out) is det.
+
+instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
+		alias(IK0), Inst, InstTable0, InstTable) :-
+	( map__search(SeenIKs0, IK0, IK1) ->
+		% We have seen IK0 before and replaced it with IK1.
+		Inst = alias(IK1),
+		SeenIKs = SeenIKs0,
+		InstTable = InstTable0
+	; map__search(Sub, IK0, IK1) ->
+		% IK0 has a substitution so recursively expand it.
+		instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0,
+			SeenIKs1, alias(IK1), Inst1, InstTable0, InstTable),
+		(
+			Inst1 = alias(IK1),
+			\+ set_bbbtree__member(IK0, Keys)
+		->
+			Inst = alias(IK0),
+			map__det_insert(SeenIKs1, IK0, IK0, SeenIKs)
+		;
+			Inst = Inst1,
+			( Inst = alias(IK2) ->
+				map__det_insert(SeenIKs1, IK0, IK2, SeenIKs)
+			;
+				error("instmap__expand_inst_sub")
+			)
+		)
+	;
+		inst_table_get_inst_key_table(InstTable0, IKT0),
+		inst_key_table_lookup(IKT0, IK0, Inst0),
+		instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0,
+			SeenIKs1, Inst0, Inst1, InstTable0, InstTable1),
+		( Inst0 = Inst1 ->
+			Inst = alias(IK0),
+			InstTable = InstTable1,
+			map__det_insert(SeenIKs1, IK0, IK0, SeenIKs)
+		;
+			% Inst has changed so we need to create a new inst_key.
+			inst_table_get_inst_key_table(InstTable1, IKT1),
+			inst_key_table_add(IKT1, Inst1, IK1, IKT),
+			inst_table_set_inst_key_table(InstTable1, IKT,
+				InstTable),
+			map__det_insert(SeenIKs1, IK0, IK1, SeenIKs),
+			Inst = alias(IK1)
+		)
+	).
+instmap__expand_inst_sub(_, _, _, SeenIKs, SeenIKs, any(U), any(U),
+		InstTable, InstTable).
+instmap__expand_inst_sub(_, _, _, SeenIKs, SeenIKs, free(A), free(A),
+		InstTable, InstTable).
+instmap__expand_inst_sub(_, _, _, SeenIKs, SeenIKs, free(A, T),
+		free(A, T), InstTable, InstTable).
+instmap__expand_inst_sub(_, _, _, SeenIKs, SeenIKs, ground(U, P),
+		ground(U, P), InstTable, InstTable).
+instmap__expand_inst_sub(_, _, _, SeenIKs, SeenIKs, not_reached,
+		not_reached, InstTable, InstTable).
+instmap__expand_inst_sub(_, _, _, _, _, inst_var(_), _, _, _) :-
+	error("instmap__expand_inst_sub: inst_var(_)").
+instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
+		bound(U, BoundInsts0), bound(U, BoundInsts),
+		InstTable0, InstTable) :-
+	instmap__expand_bound_insts_sub(Keys, ModuleInfo, Sub, SeenIKs0,
+		SeenIKs, BoundInsts0, BoundInsts, InstTable0, InstTable).
+instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
+		abstract_inst(N, Insts0), abstract_inst(N, Insts),
+		InstTable0, InstTable) :-
+	instmap__expand_inst_list_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
+		Insts0, Insts, InstTable0, InstTable).
+instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
+		defined_inst(InstName), Inst, InstTable0, InstTable) :-
+	inst_table_get_substitution_insts(InstTable0, SubInsts0),
+	SubInst = substitution_inst(InstName, Keys, Sub),
+	SubInstName = substitution_inst(InstName, Keys, Sub),
+	(
+		map__search(SubInsts0, SubInst, Result)
+	->
+		( Result = known(Inst0) ->
+			Inst2 = Inst0
+		;
+			Inst2 = defined_inst(SubInstName)
+		),
+		SeenIKs = SeenIKs0,
+		InstTable = InstTable0
+	;
+		% Insert the inst_name in the substitution_inst_table with
+		% value `unknown' for the moment.
+		map__det_insert(SubInsts0, SubInst, unknown, SubInsts1),
+		inst_table_set_substitution_insts(InstTable0, SubInsts1,
+			InstTable1),
+
+		% Recursively expand the inst.
+		inst_lookup(InstTable1, ModuleInfo, InstName, Inst0),
+		inst_expand_defined_inst(InstTable1, ModuleInfo, Inst0, Inst1),
+		instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0,
+			SeenIKs, Inst1, Inst2, InstTable1, InstTable2),
+
+		% Update the substitution_inst_table with the known value.
+		inst_table_get_substitution_insts(InstTable2, SubInsts2),
+		map__det_update(SubInsts2, SubInst, known(Inst2), SubInsts),
+		inst_table_set_substitution_insts(InstTable2, SubInsts,
+			InstTable)
+	),
+		% Avoid expanding recursive insts.
+	map__init(InstMapping),
+	(
+			% InstMapping is not used by inst_contains_instname.
+		inst_contains_instname(Inst2, reachable(InstMapping, Sub),
+			InstTable, ModuleInfo, InstName)
+	->
+		Inst = defined_inst(InstName)
+	;
+			% InstMapping is not used by inst_contains_instname.
+		inst_contains_instname(Inst2, reachable(InstMapping, Sub),
+			InstTable, ModuleInfo, SubInstName)
+	->
+		Inst = defined_inst(SubInstName)
+	;
+		Inst = Inst2
+	).
+
+:- pred instmap__expand_bound_insts_sub(inst_key_set, module_info,
+	inst_key_sub, inst_key_sub, inst_key_sub, list(bound_inst),
+	list(bound_inst), inst_table, inst_table).
+:- mode instmap__expand_bound_insts_sub(in, in, in, in, out, in, out, in, out)
+	is det.
+
+instmap__expand_bound_insts_sub(_, _, _, SeenIKs, SeenIKs, [], [],
+		InstTable, InstTable).
+instmap__expand_bound_insts_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
+		[functor(ConsId, Insts0) | BoundInsts0],
+		[functor(ConsId, Insts) | BoundInsts], InstTable0, InstTable) :-
+	instmap__expand_inst_list_sub(Keys, ModuleInfo, Sub,
+		SeenIKs0, SeenIKs1, Insts0, Insts, InstTable0, InstTable1),
+	instmap__expand_bound_insts_sub(Keys, ModuleInfo, Sub,
+		SeenIKs1, SeenIKs, BoundInsts0, BoundInsts,
+		InstTable1, InstTable).
+
+:- pred instmap__expand_inst_list_sub(inst_key_set, module_info,
+	inst_key_sub, inst_key_sub, inst_key_sub, list(inst), list(inst),
+	inst_table, inst_table).
+:- mode instmap__expand_inst_list_sub(in, in, in, in, out, in, out, in, out)
+	is det.
+
+instmap__expand_inst_list_sub(_, _, _, SeenIKs, SeenIKs, [], [],
+		InstTable, InstTable).
+instmap__expand_inst_list_sub(Keys, ModuleInfo, Sub,
+		SeenIKs0, SeenIKs, [Inst0 | Insts0], [Inst | Insts],
+		InstTable0, InstTable) :-
+	instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0,
+		SeenIKs1, Inst0, Inst, InstTable0, InstTable1),
+	instmap__expand_inst_list_sub(Keys, ModuleInfo, Sub,
+		SeenIKs1, SeenIKs, Insts0, Insts, InstTable1, InstTable).
+
+%-----------------------------------------------------------------------------%
+
+:- pred instmap__remove_singleton_inst_keys(list(prog_var), module_info,
+	inst_table, instmap, instmap).
+:- mode instmap__remove_singleton_inst_keys(in, in, in, in, out) is det.
+
+instmap__remove_singleton_inst_keys(Vars, ModuleInfo, InstTable, InstMap0,
+		InstMap) :-
+	instmap__count_inst_keys(Vars, ModuleInfo, InstTable, InstMap0,
+		IKCounts),
+	list__foldl(instmap__remove_singleton_inst_keys_2(IKCounts, ModuleInfo,
+		InstTable), Vars, InstMap0, InstMap).
+
+:- pred instmap__remove_singleton_inst_keys_2(inst_key_counts,
+	module_info, inst_table, prog_var, instmap, instmap).
+:- mode instmap__remove_singleton_inst_keys_2(in, in, in, in, in, out) is det.
+
+instmap__remove_singleton_inst_keys_2(IKCounts, ModuleInfo, InstTable, Var,
+		InstMap0, InstMap) :-
+	instmap__lookup_var(InstMap0, Var, Inst0),
+	instmap__remove_singleton_inst_key_from_inst(IKCounts, ModuleInfo,
+		InstTable, InstMap0, Inst0, Inst),
+	instmap__set(InstMap0, Var, Inst, InstMap).
+
+:- pred instmap__remove_singleton_inst_key_from_inst(inst_key_counts,
+	module_info, inst_table, instmap, inst, inst).
+:- mode instmap__remove_singleton_inst_key_from_inst(in, in, in, in, in, out)
+	is det.
+
+instmap__remove_singleton_inst_key_from_inst(IKCounts, ModuleInfo, InstTable,
+		InstMap, alias(IK), Inst) :-
+	( has_count_one(IKCounts, IK) ->
+		inst_table_get_inst_key_table(InstTable, IKT),
+		instmap__inst_key_table_lookup(InstMap, IKT, IK, Inst1),
+		instmap__remove_singleton_inst_key_from_inst(IKCounts,
+			ModuleInfo, InstTable, InstMap, Inst1, Inst)
+	;
+		Inst = alias(IK)
+	).
+instmap__remove_singleton_inst_key_from_inst(_, _, _, _, any(U), any(U)).
+instmap__remove_singleton_inst_key_from_inst(_, _, _, _, free(A), free(A)).
+instmap__remove_singleton_inst_key_from_inst(_, _, _, _,
+		free(A, T), free(A, T)).
+instmap__remove_singleton_inst_key_from_inst(_, _, _, _,
+		ground(U, P), ground(U, P)).
+instmap__remove_singleton_inst_key_from_inst(_, _, _, _,
+		not_reached, not_reached).
+instmap__remove_singleton_inst_key_from_inst(_, _, _, _,
+		defined_inst(N), defined_inst(N)).
+instmap__remove_singleton_inst_key_from_inst(_, _, _, _, inst_var(_), _) :-
+	error("instmap__remove_singleton_inst_key_from_inst: inst_var").
+instmap__remove_singleton_inst_key_from_inst(IKCounts, ModuleInfo, InstTable,
+		InstMap, bound(U, BoundInsts0), bound(U, BoundInsts)) :-
+	list__map(lambda([BI0::in, BI::out] is det, (
+		BI0 = functor(C, Insts0),
+		list__map(instmap__remove_singleton_inst_key_from_inst(IKCounts,
+				ModuleInfo, InstTable, InstMap),
+			Insts0, Insts),
+		BI = functor(C, Insts)
+		)), BoundInsts0, BoundInsts).
+instmap__remove_singleton_inst_key_from_inst(IKCounts, ModuleInfo, InstTable,
+		InstMap, abstract_inst(N, Insts0), abstract_inst(N, Insts)) :-
+	list__map(instmap__remove_singleton_inst_key_from_inst(IKCounts,
+			ModuleInfo, InstTable, InstMap),
+		Insts0, Insts).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -829,10 +1252,10 @@ instmap__unify(_NonLocals, InstMapBefore, InstMapList,
 % 
 % 	% instmap__unify_var(InstMaps, Var, InitialInstMap, ModuleInfo,
 % 	%		Insts, Error):
-% 	%       Let `Insts' be the list of the inst of `Var' in
-% 	%       each of the corresponding `InstMaps'.  Let `Error' be yes
+% 	%	Let `Insts' be the list of the inst of `Var' in
+% 	%	each of the corresponding `InstMaps'.  Let `Error' be yes
 % 	%	iff there are two instmaps for which the inst of `Var'
-% 	%       is incompatible.
+% 	%	is incompatible.
 % 
 % :- pred instmap__unify_var(list(pair(instmap, set(prog_var))), prog_var,
 % 		list(inst), list(inst), inst, inst, inst_table, inst_table,
@@ -951,66 +1374,6 @@ instmap__no_output_vars_2([Var | Vars], InstMap0, InstMap,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred merge_instmapping_delta(instmap, set(prog_var), instmapping,
-		instmapping, instmapping, inst_table, inst_table,
-		module_info, module_info).
-:- mode merge_instmapping_delta(in, in, in, in, out, in, out, in, out) is det.
-
-merge_instmapping_delta(InstMap, NonLocals, InstMappingA,
-		InstMappingB, InstMapping, InstTable0, InstTable) -->
-	{ map__keys(InstMappingA, VarsInA) },
-	{ map__keys(InstMappingB, VarsInB) },
-	{ set__sorted_list_to_set(VarsInA, SetofVarsInA) },
-	{ set__insert_list(SetofVarsInA, VarsInB, SetofVars0) },
-	{ set__intersect(SetofVars0, NonLocals, SetofVars) },
-	{ map__init(InstMapping0) },
-	{ set__to_sorted_list(SetofVars, ListofVars) },
-	merge_instmapping_delta_2(ListofVars, InstMap, InstMappingA,
-		InstMappingB, InstMapping0, InstMapping, InstTable0, InstTable).
-
-:- pred merge_instmapping_delta_2(list(prog_var), instmap, instmapping,
-		instmapping, instmapping, instmapping, inst_table, inst_table,
-		module_info, module_info).
-:- mode merge_instmapping_delta_2(in, in, in, in, in, out, in, out, in, out)
-		is det.
-
-merge_instmapping_delta_2([], _, _, _, InstMapping, InstMapping,
-			InstTable, InstTable, ModInfo, ModInfo).
-merge_instmapping_delta_2([Var | Vars], InstMap, InstMappingA, InstMappingB,
-			InstMapping0, InstMapping, InstTable0, InstTable,
-			ModuleInfo0, ModuleInfo) :-
-	( map__search(InstMappingA, Var, InstInA) ->
-		InstA = InstInA
-	;
-		instmap__lookup_var(InstMap, Var, InstA)
-	),
-	( map__search(InstMappingB, Var, InstInB) ->
-		InstB = InstInB
-	;
-		instmap__lookup_var(InstMap, Var, InstB)
-	),
-	(
-		% YYY Not sure about the returned InstMap here.
-		inst_merge(InstA, InstB, InstMap, InstTable0, ModuleInfo0,
-			Inst, _, InstTable1, ModuleInfo1)
-	->
-		ModuleInfo2 = ModuleInfo1,
-		InstTable2 = InstTable1,
-		map__det_insert(InstMapping0, Var, Inst, InstMapping1)
-	;
-		term__var_to_int(Var, VarInt),
-		string__format(
-			"merge_instmapping_delta_2: error merging var %i",
-			[i(VarInt)], Msg),
-		error(Msg)
-	),
-	merge_instmapping_delta_2(Vars, InstMap, InstMappingA, InstMappingB,
-		InstMapping1, InstMapping, InstTable2, InstTable,
-		ModuleInfo2, ModuleInfo).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
 instmap__bind_var_to_functor(Var, ConsId, InstMap0, InstMap,
 		InstTable0, InstTable, ModuleInfo0, ModuleInfo) :-
 	instmap__lookup_var(InstMap0, Var, Inst0),
@@ -1075,7 +1438,11 @@ instmap_delta_apply_sub_2([V - I | AL], Must, Sub, IM0, IM) :-
 		( Must = no,
 			N = V
 		; Must = yes,
-			error("instmap_delta_apply_sub_2: no substitute")
+			term__var_to_int(V, VInt),
+			string__format(
+			"instmap_delta_apply_sub_2: no substitute for var %i", 
+				[i(VInt)], Msg),
+			error(Msg)
 		)
 	),
 	% XXX temporary hack alert XXX
@@ -1118,6 +1485,18 @@ instmap__inst_key_table_lookup(reachable(_, Alias), IKT, Key0, Inst) :-
 	inst_apply_sub(Alias, Inst0, Inst).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+instmap__inst_keys_are_equivalent(KeyA, InstMapA, KeyB, InstMapB) :-
+	(
+		KeyA = KeyB
+	;
+		InstMapA = reachable(_, AliasMapA),
+		InstMapB = reachable(_, AliasMapB),
+		find_latest_inst_key(AliasMapA, KeyA, Key),
+		find_latest_inst_key(AliasMapB, KeyB, Key)
+	).
+
 %-----------------------------------------------------------------------------%
 
 instmap__get_inst_key_sub(unreachable, Sub) :-

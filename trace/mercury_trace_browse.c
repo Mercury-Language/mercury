@@ -9,7 +9,8 @@
 **
 ** Main author: fjh
 **
-** This file provides the C interface to browser/browse.m.
+** This file provides the C interface to browser/browse.m
+** and browser/interactive_query.m.
 */
 
 /*
@@ -26,7 +27,9 @@
 #include "mercury_trace_internal.h"
 #include "mercury_deep_copy.h"
 #include "browse.h"
+#include "interactive_query.h"
 #include "std_util.h"
+#include "mercury_trace_external.h"
 #include <stdio.h>
 
 static	Word		MR_trace_browser_state;
@@ -97,4 +100,46 @@ MR_trace_browse_ensure_init(void)
 					(Word *) MR_trace_browser_state_type);
 		done = TRUE;
 	}
+}
+
+void
+MR_trace_query(MR_Query_Type type, const char *options, int num_imports,
+	char *imports[])
+{
+	ConstString options_on_heap;
+	Word imports_list;
+	MercuryFile mdb_in, mdb_out;
+	int i;
+
+	MR_c_file_to_mercury_file(MR_mdb_in, &mdb_in);
+	MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
+
+	if (options == NULL) options = "";
+
+        MR_TRACE_USE_HP(
+		make_aligned_string(options_on_heap, options);
+
+		imports_list = list_empty();
+		for (i = num_imports; i > 0; i--) {
+			ConstString this_import;
+			make_aligned_string(this_import, imports[i - 1]);
+			imports_list = list_cons(this_import, imports_list);
+		}
+	);
+
+	MR_TRACE_CALL_MERCURY(
+		ML_query(type, imports_list, (String) options_on_heap,
+			(Word) &mdb_in, (Word) &mdb_out);
+	);
+}
+
+void
+MR_trace_query_external(MR_Query_Type type, String options, int num_imports,
+	Word imports_list)
+{
+	MR_TRACE_CALL_MERCURY(
+		ML_query_external(type, imports_list,  options,
+			(Word) &MR_debugger_socket_in, 
+			(Word) &MR_debugger_socket_out);
+	);
 }

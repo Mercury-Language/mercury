@@ -67,15 +67,15 @@
 	% C_ProcCode is the C code for the procedure,
 	% C_ExtraCode is extra C code that should be included in the module
 	%
-	% XXX   model_non pragma c is not completely supported by the compiler
-	% at the moment -- the programmer has no control over how the nondet
-	% stack frames are set up (e.g. how many framevars are used) or how
-	% many labels are declared.  To get around this, the C_ProcCode
+	% XXX   model_non pragma c was not supported by the compiler
+	% when this code was written.  To get around this, the C_ProcCode
 	% generated for model_non code pops off the stack frame that is
 	% automatically created by the compiler and jumps to the code contained
 	% in C_ExtraCode.  C_ExtraCode declares the required labels and creates
 	% a new stack frame with the required number of framevars.  It then 
 	% does all the work required to lookup the fact table.
+	% This should really be rewritten to work using model_non pragma c
+	% now that model_non pragma c is implemented.
 :- pred fact_table_generate_c_code(sym_name, list(pragma_var), proc_id,
 		proc_id, proc_info, list(type), module_info, string, string,
 		io__state, io__state).
@@ -2183,8 +2183,7 @@ fact_table_hash(HashSize, Key, HashVal) :-
 		% XXX This method of hashing floats may not work cross-compiling
 		% between architectures that have different floating-point
 		% representations.
-		float__hash(Float, N0),
-		int__abs(N0, N),
+		int__abs(float__hash(Float), N),
 		Ns = [N]
 	;
 		error("fact_table_hash: unsupported type in key")
@@ -2540,8 +2539,7 @@ fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID,
 
 %---------------------------------------------------------------------------%
 
-	% XXX this should change to use the new model_non pragma c_code when
-	% it has been implemented.
+	% XXX this should be changed to use the new model_non pragma c_code
 :- pred generate_multidet_code(string, list(pragma_var), proc_id, 
 		list(type), args_method, instmap, inst_table, module_info,
 		int, string, string).

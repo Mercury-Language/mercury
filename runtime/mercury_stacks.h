@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1998 The University of Melbourne.
+** Copyright (C) 1995-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -14,13 +14,14 @@
 #include "mercury_overflow.h"
 #include "mercury_debug.h"
 #include "mercury_goto.h"
+#include "mercury_tabling.h"
 
 /* DEFINITIONS FOR MANIPULATING THE DET STACK */
 
 #define	MR_based_stackvar(base_sp, n)	((base_sp)[-(n)])
 #define	MR_stackvar(n)			MR_based_stackvar(MR_sp, n)
 
-#define	incr_sp_push_msg(n, msg)				\
+#define	MR_incr_sp_push_msg(n, msg)				\
 			(					\
 				debugincrsp(n, MR_sp),		\
 				dump_push_msg(msg),		\
@@ -29,7 +30,7 @@
 				(void)0				\
 			)
 
-#define	decr_sp_pop_msg(n)					\
+#define	MR_decr_sp_pop_msg(n)					\
 			(					\
 				debugdecrsp(n, MR_sp),		\
 				dump_pop_msg(),			\
@@ -38,33 +39,18 @@
 				(void)0				\
 			)
 
-#define	incr_sp(n)	(					\
+#define	MR_incr_sp(n)	(					\
 				debugincrsp(n, MR_sp),		\
 				MR_sp = MR_sp + (n),		\
 				detstack_overflow_check(),	\
 				(void)0				\
 			)
 
-#define	decr_sp(n)	(					\
+#define	MR_decr_sp(n)	(					\
 				debugdecrsp(n, MR_sp),		\
 				MR_sp = MR_sp - (n),		\
 				detstack_underflow_check(),	\
 				(void)0				\
-			)
-
-#define	push(w)		(					\
-				*MR_sp = (Word) (w),		\
-				debugpush(*MR_sp, MR_sp),	\
-				MR_sp = MR_sp + 1,		\
-				detstack_overflow_check(),	\
-				(void)0				\
-			)
-
-#define	pop()		(					\
-				MR_sp = MR_sp - 1,		\
-				debugpop(*MR_sp, MR_sp),	\
-				detstack_underflow_check(),	\
-				/* return */ *MR_sp		\
 			)
 
 /* DEFINITIONS FOR NONDET STACK FRAMES */
@@ -76,26 +62,27 @@
 #define	MR_SUCCFR	(-4)	/* frame of caller proc, set up at call	*/
 #define	MR_DETFR	(-3)	/* sp, in model_det temp frames only	*/
 
-#ifdef MR_DEBUG_NONDET_STACK
-  #define MR_PREDNM		(-5)	/* for debugging, set up at call */
-  #define MR_prednm_slot(fr)	LVALUE_CAST(const char *, \
-		  			((Word *) fr)[MR_PREDNM])
-  #define MR_NONDET_FIXED_SIZE	6	/* units: words */
-#else
-  #define MR_prednm_slot(fr)	"unknown"
-  #define MR_NONDET_FIXED_SIZE	5	/* units: words */
-#endif
-
 /*
 ** Code that traverses the nondet stack depends on the relationship
 ** MR_NONDET_TEMP_SIZE < MR_DET_TEMP_SIZE < MR_NONDET_FIXED_SIZE.
+** All three sizes are measured in words.
 */
 
-#define	MR_NONDET_TEMP_SIZE	3	/* prevfr, redoip, redofr */
-#define	MR_DET_TEMP_SIZE	4	/* prevfr, redoip, redofr, detfr */
+#define	MR_NONDET_TEMP_SIZE	3 /* prevfr, redoip, redofr */
+#define	MR_DET_TEMP_SIZE	4 /* prevfr, redoip, redofr, detfr */
+#define	MR_NONDET_FIXED_SIZE	5 /* prevfr, redoip, redofr, succip, succfr */
 
 #define	MR_SAVEVAL		(-MR_NONDET_FIXED_SIZE)
 				/* saved values start at this offset	*/
+
+#define	MR_prevfr_addr(fr)	(&((Word *) (fr))[MR_PREVFR])
+#define	MR_redoip_addr(fr)	(&((Word *) (fr))[MR_REDOIP])
+#define	MR_redofr_addr(fr)	(&((Word *) (fr))[MR_REDOFR])
+#define	MR_succip_addr(fr)	(&((Word *) (fr))[MR_SUCCIP])
+#define	MR_succfr_addr(fr)	(&((Word *) (fr))[MR_SUCCFR])
+#define	MR_detfr_addr(fr)	(&((Word *) (fr))[MR_DETFR])
+#define	MR_based_framevar_addr(fr, n) \
+				(&(((Word *) (fr))[MR_SAVEVAL + 1 - (n)]))
 
 #define	MR_prevfr_slot(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[MR_PREVFR])
 #define	MR_redoip_slot(fr)	LVALUE_CAST(Code *, ((Word *) (fr))[MR_REDOIP])
@@ -109,13 +96,7 @@
 
 /* DEFINITIONS FOR MANIPULATING THE NONDET STACK */
 
-#ifdef MR_DEBUG_NONDET_STACK
-  #define mkframe_save_prednm(prednm) (MR_prednm_slot(MR_curfr) = prednm)
-#else
-  #define mkframe_save_prednm(prednm) /* nothing */
-#endif
-
-#define	mkframe(prednm, numslots, redoip)				\
+#define	MR_mkframe(predname, numslots, redoip)				\
 			do {						\
 				reg	Word	*prevfr;		\
 				reg	Word	*succfr;		\
@@ -129,8 +110,7 @@
 				MR_succip_slot(MR_curfr) = MR_succip;	\
 				MR_succfr_slot(MR_curfr) = succfr;	\
 				MR_redofr_slot(MR_curfr) = MR_curfr;	\
-				mkframe_save_prednm(prednm);		\
-				debugmkframe();				\
+				debugmkframe(predname);			\
 				nondstack_overflow_check();		\
 			} while (0)
 
@@ -139,7 +119,7 @@
 
 /* just like mkframe, but also reserves space for a struct     */
 /* with the given tag at the bottom of the nondet stack frame  */
-#define	mkpragmaframe(prednm, numslots, structname, redoip)		\
+#define	MR_mkpragmaframe(predname, numslots, structname, redoip)	\
 	do {								\
 		reg	Word	*prevfr;				\
 		reg	Word	*succfr;				\
@@ -154,12 +134,11 @@
 		MR_succip_slot(MR_curfr) = MR_succip;			\
 		MR_succfr_slot(MR_curfr) = succfr;			\
 		MR_redofr_slot(MR_curfr) = MR_curfr;			\
-		mkframe_save_prednm(prednm);				\
-		debugmkframe();						\
+		debugmkframe(predname);					\
 		nondstack_overflow_check();				\
 	} while (0)
 
-#define	mktempframe(redoip)						\
+#define	MR_mktempframe(redoip)						\
 			do {						\
 				reg	Word	*prevfr;		\
 				reg	Word	*succfr;		\
@@ -173,7 +152,7 @@
 				nondstack_overflow_check();		\
 			} while (0)
 
-#define	mkdettempframe(redoip)						\
+#define	MR_mkdettempframe(redoip)					\
 			do {						\
 				reg	Word	*prevfr;		\
 				reg	Word	*succfr;		\
@@ -188,7 +167,7 @@
 				nondstack_overflow_check();		\
 			} while (0)
 
-#define	succeed()	do {						\
+#define	MR_succeed()	do {						\
 				reg	Word	*childfr;		\
 									\
 				debugsucceed();				\
@@ -197,7 +176,7 @@
 				GOTO(MR_succip_slot(childfr));		\
 			} while (0)
 
-#define	succeed_discard()						\
+#define	MR_succeed_discard()						\
 			do {						\
 				reg	Word	*childfr;		\
 									\
@@ -209,7 +188,7 @@
 			} while (0)
 
 
-#define	fail()		do {						\
+#define	MR_fail()	do {						\
 				debugfail();				\
 				MR_maxfr = MR_prevfr_slot(MR_maxfr);	\
 				nondstack_underflow_check();		\
@@ -218,10 +197,46 @@
 			} while (0)
 
 
-#define	redo()		do {						\
+#define	MR_redo()	do {						\
 				debugredo();				\
 				MR_curfr = MR_redofr_slot(MR_maxfr);	\
 				GOTO(MR_redoip_slot(MR_maxfr));		\
 			} while (0)
 
-#endif /* not MERCURY_STACKS_H */
+#ifdef	MR_USE_MINIMAL_MODEL
+
+/* DEFINITIONS FOR GENERATOR STACK FRAMES */
+
+typedef struct MR_GeneratorStackFrameStruct {
+	Word			*generator_frame;
+	MR_Subgoal		*generator_table;
+} MR_GeneratorStackFrame;
+
+extern	void			MR_push_generator(Word *frame_addr,
+					MR_Subgoal *table_addr);
+extern	MR_Subgoal		*MR_top_generator_table(void);
+extern	void			MR_pop_generator(void);
+extern	void			MR_print_gen_stack(FILE *fp);
+
+/* DEFINITIONS FOR CUT STACK FRAMES */
+
+typedef struct MR_CutGeneratorListNode *MR_CutGeneratorList;
+struct MR_CutGeneratorListNode {
+	MR_Subgoal		**generator_ptr;
+	MR_CutGeneratorList	next_generator;
+};
+
+typedef struct MR_CutStackFrameStruct {
+	Word			*frame;
+	Integer			gen_next;
+	MR_CutGeneratorList	generators;
+} MR_CutStackFrame;
+
+extern	void			MR_commit_mark(void);
+extern	void			MR_commit_cut(void);
+
+extern	void			MR_register_generator_ptr(MR_Subgoal **);
+
+#endif	/* MR_USE_MINIMAL_MODEL */
+
+#endif	/* not MERCURY_STACKS_H */

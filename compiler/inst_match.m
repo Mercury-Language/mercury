@@ -263,8 +263,13 @@ mode system to distinguish between different representations.
 	% Succeed iff the specified inst contains (directly or indirectly)
 	% the specified inst_name.
 
-:- pred inst_contains_instname(inst, instmap, inst_table, module_info, inst_name).
+:- pred inst_contains_instname(inst, instmap, inst_table, module_info,
+		inst_name).
 :- mode inst_contains_instname(in, in, in, in, in) is semidet.
+
+:- pred inst_contains_inst_key(instmap, inst_table, module_info, inst, 
+		inst_key).
+:- mode inst_contains_inst_key(in, in, in, in, in) is semidet.
 
 	% Nondeterministically produce all the inst_vars contained
 	% in the specified list of modes.
@@ -1455,6 +1460,49 @@ inst_list_contains_instname([Inst|Insts], InstMap, InstTable, ModuleInfo,
 		inst_list_contains_instname(Insts, InstMap, InstTable,
 				ModuleInfo, Expansions, InstName)
 	).
+
+%-----------------------------------------------------------------------------%
+
+inst_contains_inst_key(InstMap, InstTable, ModuleInfo, Inst, Key) :-
+	set__init(Expansions),
+	inst_contains_inst_key_2(InstMap, InstTable, ModuleInfo, Expansions,
+		Inst, Key).
+
+:- pred inst_contains_inst_key_2(instmap, inst_table, module_info,
+		set(inst_name), inst, inst_key).
+:- mode inst_contains_inst_key_2(in, in, in, in, in, in) is semidet.
+
+inst_contains_inst_key_2(InstMap, InstTable, ModuleInfo, Expansions,
+		alias(Key0), Key) :-
+	( instmap__inst_keys_are_equivalent(Key0, InstMap, Key, InstMap) ->
+		true
+	;
+		inst_table_get_inst_key_table(InstTable, IKT),
+		instmap__inst_key_table_lookup(InstMap, IKT, Key0, Inst),
+		inst_contains_inst_key_2(InstMap, InstTable, ModuleInfo,
+			Expansions, Inst, Key)
+	).
+inst_contains_inst_key_2(InstMap, InstTable, ModuleInfo, Expansions,
+		bound(_, BoundInsts), Key) :-
+	list__member(functor(_, Insts), BoundInsts),
+	list__member(Inst, Insts),
+	inst_contains_inst_key_2(InstMap, InstTable, ModuleInfo, Expansions,
+		Inst, Key).
+inst_contains_inst_key_2(InstMap, InstTable, ModuleInfo, Expansions0,
+		defined_inst(InstName), Key) :-
+	( set__member(InstName, Expansions0) ->
+		fail
+	;
+		set__insert(Expansions0, InstName, Expansions),
+		inst_lookup(InstTable, ModuleInfo, InstName, Inst),
+		inst_contains_inst_key_2(InstMap, InstTable, ModuleInfo,
+			Expansions, Inst, Key)
+	).
+inst_contains_inst_key_2(InstMap, InstTable, ModuleInfo, Expansions,
+		abstract_inst(_, Insts), Key) :-
+	list__member(Inst, Insts),
+	inst_contains_inst_key_2(InstMap, InstTable, ModuleInfo, Expansions,
+		Inst, Key).
 
 %-----------------------------------------------------------------------------%
 

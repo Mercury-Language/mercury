@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1998 The University of Melbourne.
+** Copyright (C) 1995-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -26,10 +26,23 @@
 ** this is ensured by the autoconfiguration script.
 */
 
-typedef	unsigned WORD_TYPE	Word;
-typedef WORD_TYPE		Integer;
-typedef unsigned WORD_TYPE	Unsigned;
-typedef WORD_TYPE		Bool;
+#ifdef	HAVE_STDINT
+  #include <stdint.h>
+#else
+  typedef unsigned MR_WORD_TYPE		uintptr_t;
+  typedef MR_WORD_TYPE			intptr_t;
+  typedef unsigned MR_INT_LEAST32_TYPE	uint_least32_t;
+  typedef MR_INT_LEAST32_TYPE		int_least32_t;
+  typedef unsigned MR_INT_LEAST16_TYPE	uint_least16_t;
+  typedef MR_INT_LEAST16_TYPE		int_least16_t;
+  typedef unsigned char			uint_least8_t;
+  typedef signed char			int_least8_t;
+#endif
+
+typedef	uintptr_t		Word;
+typedef	intptr_t		Integer;
+typedef	uintptr_t		Unsigned;
+typedef	intptr_t		Bool;
 
 /*
 ** `Code *' is used as a generic pointer-to-label type that can point

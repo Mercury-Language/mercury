@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997 The University of Melbourne.
+** Copyright (C) 1997-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -27,7 +27,10 @@ Unsigned	MR_ticket_counter_var = 1;
 void
 MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
 {
-    MR_TrailEntry *tr_ptr = MR_trail_ptr;
+    MR_TrailEntry *tr_ptr;
+    /* not needed, since MR_trail_ptr is never a real reg: */
+    /* restore_transient_registers(); */
+    tr_ptr = MR_trail_ptr;
 
     switch (reason) {
 	case MR_solve:
@@ -64,6 +67,8 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
 		}
 	    }
 	    MR_trail_ptr = tr_ptr;
+	    /* not needed, since MR_trail_ptr is never a real reg: */
+	    /* save_transient_registers(); */
 	    break;
 	
 	default:

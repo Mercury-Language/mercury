@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -423,9 +423,7 @@ rl_liveness__insert_unset_instructions(Instr0, Instrs0, Instrs,
 		% Produce instructions to unset all the relation variables
 		% made dead by this instruction.
 		set__difference(LiveRels, LiveRels0, KilledRels0),
-		set__difference(OutputSet, LiveRels0, StillBornRels),
-		set__union(KilledRels0, StillBornRels, KilledRels1),
-		set__to_sorted_list(KilledRels1, KilledRels),
+		set__to_sorted_list(KilledRels0, KilledRels),
 		list__map(rl_liveness__drop_rel, KilledRels, PostInstrs),
 
 		(

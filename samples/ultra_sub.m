@@ -7,7 +7,7 @@
 %
 % 'ultra_sub' is an extended version of zs' 'sub' command. The idea is that
 % it takes a pattern, a template and some strings, and matches the strings
-% against the patter, binding some variables in the process. Then it
+% against the pattern, binding some variables in the process. Then it
 % substitutes the variables in the template for the bindings from the pattern.
 %
 % usage: ultra_sub <pattern> <template> [strings...]

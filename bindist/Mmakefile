@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1996-1998 The University of Melbourne.
+# Copyright (C) 1996-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -14,8 +14,7 @@ MERCURY_VERSION	= mercury-$(VERSION).$(FULLARCH)
 
 INSTALL_LIB_DIR	= $(INSTALL_PREFIX)/lib
 
-LIB_FILES	= bin doc html inc ints lib mdb/mdb_doc modules \
-		  $(NUPROLOG) $(SICSTUS)
+LIB_FILES	= bin doc html inc ints lib mdb/mdb_doc modules
 
 UTILS		= $(INSTALL_PREFIX)/bin/mkinit \
 		  $(INSTALL_PREFIX)/bin/mdemangle \
@@ -110,8 +109,8 @@ binary_distribution: bindist.configure bindist.build_vars
 	gzip ../$(MERCURY_VERSION).tar
 	rm -rf $(MERCURY_VERSION)
 
-bindist.configure: bindist.configure.in
-	autoconf bindist.configure.in > bindist.configure
+bindist.configure: bindist.configure.in ../aclocal.m4
+	autoconf -l .. bindist.configure.in > bindist.configure
 
 bindist.build_vars: bindist.build_vars.in
 	CONFIG_FILES=bindist.build_vars CONFIG_HEADERS= \

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -80,7 +80,7 @@
 					arity, byte_proc_id)
 			;	code_addr_const(byte_module_id, byte_pred_id,
 					arity, byte_proc_id)
-			;	base_type_info_const(byte_module_id, string,
+			;	type_ctor_info_const(byte_module_id, string,
 					int)
 			;	base_typeclass_info_const(byte_module_id,
 					class_id, string)
@@ -90,9 +90,9 @@
 :- type byte_var_info	--->	var_info(string, type).
 
 :- type byte_cons_tag	--->	no_tag
-			;	simple_tag(tag_bits)
-			;	complicated_tag(tag_bits, int)
-			;	complicated_constant_tag(tag_bits, int)
+			;	unshared_tag(tag_bits)
+			;	shared_remote_tag(tag_bits, int)
+			;	shared_local_tag(tag_bits, int)
 			;	enum_tag(int)
 			.
 
@@ -124,7 +124,7 @@
 
 :- implementation.
 
-:- import_module hlds_pred, prog_out, llds_out.
+:- import_module bytecode_data, hlds_pred, prog_out, llds_out.
 :- import_module library, int, string, require.
 
 :- pred bytecode__version(int::out) is det.
@@ -718,7 +718,7 @@ output_cons_id(code_addr_const(ModuleId, PredId, Arity, ProcId)) -->
 	output_pred_id(PredId),
 	output_length(Arity),
 	output_proc_id(ProcId).
-output_cons_id(base_type_info_const(ModuleId, TypeName, TypeArity)) -->
+output_cons_id(type_ctor_info_const(ModuleId, TypeName, TypeArity)) -->
 	output_byte(6),
 	output_module_id(ModuleId),
 	output_string(TypeName),
@@ -763,8 +763,8 @@ debug_cons_id(code_addr_const(ModuleId, PredId, Arity, ProcId)) -->
 	debug_pred_id(PredId),
 	debug_length(Arity),
 	debug_proc_id(ProcId).
-debug_cons_id(base_type_info_const(ModuleId, TypeName, TypeArity)) -->
-	debug_string("base_type_info_const"),
+debug_cons_id(type_ctor_info_const(ModuleId, TypeName, TypeArity)) -->
+	debug_string("type_ctor_info_const"),
 	debug_module_id(ModuleId),
 	debug_string(TypeName),
 	debug_int(TypeArity).
@@ -787,14 +787,14 @@ debug_cons_id(char_const(Char)) -->
 :- pred output_tag(byte_cons_tag, io__state, io__state).
 :- mode output_tag(in, di, uo) is det.
 
-output_tag(simple_tag(Primary)) -->
+output_tag(unshared_tag(Primary)) -->
 	output_byte(0),
 	output_byte(Primary).
-output_tag(complicated_tag(Primary, Secondary)) -->
+output_tag(shared_remote_tag(Primary, Secondary)) -->
 	output_byte(1),
 	output_byte(Primary),
 	output_int(Secondary).
-output_tag(complicated_constant_tag(Primary, Secondary)) -->
+output_tag(shared_local_tag(Primary, Secondary)) -->
 	output_byte(2),
 	output_byte(Primary),
 	output_int(Secondary).
@@ -807,15 +807,15 @@ output_tag(no_tag) -->
 :- pred debug_tag(byte_cons_tag, io__state, io__state).
 :- mode debug_tag(in, di, uo) is det.
 
-debug_tag(simple_tag(Primary)) -->
-	debug_string("simple_tag"),
+debug_tag(unshared_tag(Primary)) -->
+	debug_string("unshared_tag"),
 	debug_int(Primary).
-debug_tag(complicated_tag(Primary, Secondary)) -->
-	debug_string("complicated_tag"),
+debug_tag(shared_remote_tag(Primary, Secondary)) -->
+	debug_string("shared_remote_tag"),
 	debug_int(Primary),
 	debug_int(Secondary).
-debug_tag(complicated_constant_tag(Primary, Secondary)) -->
-	debug_string("complicated_constant_tag"),
+debug_tag(shared_local_tag(Primary, Secondary)) -->
+	debug_string("shared_local_tag"),
 	debug_int(Primary),
 	debug_int(Secondary).
 debug_tag(enum_tag(Enum)) -->
@@ -1079,14 +1079,6 @@ unop_debug((not),		"not").
 
 %---------------------------------------------------------------------------%
 
-:- pred output_string(string, io__state, io__state).
-:- mode output_string(in, di, uo) is det.
-
-output_string(Val) -->
-	io__write_bytes(Val),
-	io__write_byte(0).
-
-
 /*
 **	debug_cstring prints a string quoted in the manner of C.
 */
@@ -1101,166 +1093,6 @@ debug_cstring(Str) -->
 	% the string as a bytecode argument. This is not very elegant.
 	io__write_char('"'),
 	io__write_char(' ').
-	
-
-:- pred output_byte(int, io__state, io__state).
-:- mode output_byte(in, di, uo) is det.
-
-output_byte(Val) -->
-	( { Val < 256 } ->
-		io__write_byte(Val)
-	;
-		{ error("byte does not fit in eight bits") }
-	).
-
-/*
-** Spit out a `short' in a portable format.
-** This format is: big-endian, 16-bit, 2's-complement.
-**
-** NOTE: We -assume- the machine architecture uses 2's-complement.
-*/
-:- pred output_short(int, io__state, io__state).
-:- mode output_short(in, di, uo) is det.
-
-output_short(Val) -->
-	{ Val1 is Val >> 8 },
-	{ Val2 is Val mod 256 },
-	( { Val1 < 256 } ->
-		io__write_byte(Val1),
-		io__write_byte(Val2)
-	;
-		{ error("small integer does not fit in sixteen bits") }
-	).
-
-/*
-** Spit out an `int' in a portable `highest common denominator' format.
-** This format is: big-endian, 64-bit, 2's-complement int.
-**
-** NOTE: We -assume- the machine architecture uses 2's-complement.
-*/
-:- pred output_int(int, io__state, io__state).
-:- mode output_int(in, di, uo) is det.
-
-output_int(IntVal) -->
-	{ int__bits_per_int(IntBits) },
-	( { IntBits > bytecode_int_bits } ->
-		{ error("size of int is larger than size of bytecode integer.")}
-	;
-		{ ZeroPadBytes is (bytecode_int_bits - IntBits) // 
-			bits_per_byte },
-		output_padding_zeros(ZeroPadBytes),
-		{ FirstByteToDump is bytecode_int_bytes - ZeroPadBytes - 1 },
-		output_int_bytes(FirstByteToDump, IntVal)
-	).
-
-:- func bytecode_int_bits = int.
-:- mode bytecode_int_bits = out is det.
-
-bytecode_int_bits = bits_per_byte * bytecode_int_bytes.
-
-:- func bytecode_int_bytes = int.
-:- mode bytecode_int_bytes = out is det.
-
-bytecode_int_bytes = 8.
-
-:- func bits_per_byte = int.
-:- mode bits_per_byte = out is det.
-
-bits_per_byte = 8.
-
-:- pred output_padding_zeros(int, io__state, io__state).
-:- mode output_padding_zeros(in, di, uo) is det.
-
-output_padding_zeros(NumBytes) -->
-	( { NumBytes > 0 } ->
-		io__write_byte(0),
-		{ NumBytes1 is NumBytes - 1 },
-		output_padding_zeros(NumBytes1)
-	;
-		{ true }
-	).
-
-:- pred output_int_bytes(int, int, io__state, io__state).
-:- mode output_int_bytes(in, in, di, uo) is det.
-
-output_int_bytes(ByteNum, IntVal) -->
-	( { ByteNum >= 0 } ->
-		{ BitShifts is ByteNum * bits_per_byte },
-		{ Byte is (IntVal >> BitShifts) mod (1 << bits_per_byte) },
-		{ ByteNum1 is ByteNum - 1 },
-		io__write_byte(Byte),
-		output_int_bytes(ByteNum1, IntVal)
-	;
-		{ true }
-	).
-
-/*
-** Spit out a `float' in a portable `highest common denominator format.
-** This format is: big-endian, 64-bit, IEEE-754 floating point value.
-**
-** NOTE: We -assume- the machine architecture uses IEEE-754.
-*/
-:- pred output_float(float, io__state, io__state).
-:- mode output_float(in, di, uo) is det.
-
-output_float(Val) -->
-	{ float_to_float64_bytes(Val, B0, B1, B2, B3, B4, B5, B6, B7) },
-	output_byte(B0),
-	output_byte(B1),
-	output_byte(B2),
-	output_byte(B3),
-	output_byte(B4),
-	output_byte(B5),
-	output_byte(B6),
-	output_byte(B7).
-
-/*
-** Convert a `float' to the representation used in the bytecode.
-** That is, a sequence of eight bytes.
-*/
-:- pred float_to_float64_bytes(float::in, 
-		int::out, int::out, int::out, int::out, 
-		int::out, int::out, int::out, int::out) is det.
-:- pragma c_code(
-	float_to_float64_bytes(FloatVal::in, B0::out, B1::out, B2::out, B3::out,
-		B4::out, B5::out, B6::out, B7::out),
-	will_not_call_mercury,
-	"
-
-	{
-		Float64		float64;
-		unsigned char	*raw_mem_p;
-
-		float64 = (Float64) FloatVal;
-		raw_mem_p = (unsigned char*) &float64;
-
-		#if defined(MR_BIG_ENDIAN)
-			B0 = raw_mem_p[0];
-			B1 = raw_mem_p[1];
-			B2 = raw_mem_p[2];
-			B3 = raw_mem_p[3];
-			B4 = raw_mem_p[4];
-			B5 = raw_mem_p[5];
-			B6 = raw_mem_p[6];
-			B7 = raw_mem_p[7];
-		#elif defined(MR_LITTLE_ENDIAN)
-			B7 = raw_mem_p[0];
-			B6 = raw_mem_p[1];
-			B5 = raw_mem_p[2];
-			B4 = raw_mem_p[3];
-			B3 = raw_mem_p[4];
-			B2 = raw_mem_p[5];
-			B1 = raw_mem_p[6];
-			B0 = raw_mem_p[7];
-		#else
-			#error	Weird-endian architecture
-		#endif
-	}
-	
-	"
-).
-
-%---------------------------------------------------------------------------%
 
 :- pred debug_string(string, io__state, io__state).
 :- mode debug_string(in, di, uo) is det.

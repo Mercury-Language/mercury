@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1995, 1997-1998 The University of Melbourne.
+** Copyright (C) 1994-1995, 1997-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -101,6 +101,14 @@
 			count_usage(MR_MIN_HP_REC, mr(40)))
 #define MR_global_hp	LVALUE_CAST(Word *,	\
 			count_usage(MR_GLOBAL_HP_RN, mr(41)))
+#define MR_gen_next	LVALUE_CAST(Integer,	\
+			count_usage(MR_GEN_NEXT_RN, mr(42)))
+#define MR_gen_stack	LVALUE_CAST(struct MR_GeneratorStackFrameStruct *, \
+			count_usage(MR_GEN_STACK_RN, mr(43)))
+#define MR_cut_next	LVALUE_CAST(Integer,	\
+			count_usage(MR_CUT_NEXT_RN, mr(44)))
+#define MR_cut_stack	LVALUE_CAST(struct MR_CutStackFrameStruct *, \
+			count_usage(MR_CUT_STACK_RN, mr(45)))
 
 #define MR_trail_ptr	count_usage(MR_TRAIL_PTR_RN, MR_trail_ptr_var)
 #define MR_ticket_counter	 \
@@ -114,10 +122,10 @@
 #define MR_NUM_VERY_SPECIAL_REG	6
 
 /* the number of special-purpose Mercury registers */
-#define MR_NUM_SPECIAL_REG	12
+#define MR_NUM_SPECIAL_REG	16
 
 /* the maximum mrN number of special registers */
-#define	MR_MAX_SPECIAL_REG_MR	41
+#define	MR_MAX_SPECIAL_REG_MR	45
 
 /*
 ** The MR_saved_foo macros are like MR_foo except that
@@ -134,6 +142,14 @@
 #define MR_saved_min_hp_rec(save_area)	LVALUE_CAST(Word *, save_area[39])
 #define MR_saved_min_sol_hp_rec(save_area) LVALUE_CAST(Word *, save_area[40])
 #define MR_saved_global_hp(save_area)	LVALUE_CAST(Word *, save_area[41])
+#define MR_saved_gen_stack(save_area)	LVALUE_CAST(Integer, save_area[42])
+#define MR_saved_gen_next(save_area)	LVALUE_CAST(			      \
+					struct MR_GeneratorStackFrameStruct *,\
+					save_area[43])
+#define MR_saved_cut_stack(save_area)	LVALUE_CAST(Integer, save_area[44])
+#define MR_saved_cut_next(save_area)	LVALUE_CAST(			      \
+					struct MR_CutStackFrameStruct *,      \
+					save_area[45])
 
 #define VIRTUAL_REG_MAP_BODY	{ \
 	3, \
@@ -243,6 +259,14 @@
 #define MR_trail_ptr	count_usage(MR_TRAIL_PTR_RN, MR_trail_ptr_var)
 #define MR_ticket_counter	 \
 		count_usage(MR_TICKET_COUNTER_RN, MR_ticket_counter_var)
+#define MR_gen_next	LVALUE_CAST(Integer,	\
+			count_usage(MR_GEN_NEXT_RN, mr(41)))
+#define MR_gen_stack	LVALUE_CAST(struct MR_GeneratorStackFrameStruct *, \
+			count_usage(MR_GEN_STACK_RN, mr(42)))
+#define MR_cut_next	LVALUE_CAST(Integer,	\
+			count_usage(MR_CUT_NEXT_RN, mr(43)))
+#define MR_cut_stack	LVALUE_CAST(struct MR_CutStackFrameStruct *, \
+			count_usage(MR_CUT_STACK_RN, mr(44)))
 
 /*
 ** the number of "very special" registers, i.e. special registers that can
@@ -252,10 +276,10 @@
 #define MR_NUM_VERY_SPECIAL_REG	5
 
 /* the number of special registers */
-#define MR_NUM_SPECIAL_REG	11
+#define MR_NUM_SPECIAL_REG	15
 
 /* the maximum mrN number of special, non rN registers */
-#define	MR_MAX_SPECIAL_REG_MR	40
+#define	MR_MAX_SPECIAL_REG_MR	44
 
 /*
 ** The MR_saved_foo macros are like MR_foo except that
@@ -272,6 +296,14 @@
 #define MR_saved_min_hp_rec(save_area)	LVALUE_CAST(Word *, save_area[38])
 #define MR_saved_min_sol_hp_rec(save_area) LVALUE_CAST(Word *, save_area[39])
 #define MR_saved_global_hp(save_area)	LVALUE_CAST(Word *, save_area[40])
+#define MR_saved_gen_stack(save_area)	LVALUE_CAST(Integer, save_area[41])
+#define MR_saved_gen_next(save_area)	LVALUE_CAST(			      \
+					struct MR_GeneratorStackFrameStruct *,\
+					save_area[42])
+#define MR_saved_cut_stack(save_area)	LVALUE_CAST(Integer, save_area[43])
+#define MR_saved_cut_next(save_area)	LVALUE_CAST(			      \
+					struct MR_CutStackFrameStruct *,      \
+					save_area[44])
 
 #define VIRTUAL_REG_MAP_BODY	{ \
 	2, \

@@ -489,12 +489,8 @@ context__factor_goal_list(PredProcId, FirstCall,
 
 		{ Call = db_call(_, _ - GoalInfo0, _, Args, InputArgs, _, _) },
 		magic_info_get_curr_pred_proc_id(proc(PredId, ProcId)),
-		magic_info_get_magic_proc_info(MagicProcInfo),	
-		{ map__lookup(MagicProcInfo, proc(PredId, ProcId), 
-			ThisProcInfo) },
-		{ ThisProcInfo = magic_proc_info(OldArgModes, _, _, _, _) },
 		magic_util__create_input_test_unifications(Args, InputArgs,
-			OldArgModes, NewArgs, [], Tests,
+			NewArgs, [], Tests,
 			GoalInfo0, GoalInfo),
 		magic_info_get_pred_info(PredInfo),
 		{ pred_info_module(PredInfo, PredModule) },
@@ -515,7 +511,7 @@ context__factor_goal_list(PredProcId, FirstCall,
 
 context__create_magic_call(MagicCall, RenameInputs, Subn, MagicInputArgs) -->
 	magic_util__magic_call_info(MagicPredId, MagicProcId, PredName,
-		InputRels, InputArgs, MagicOutputModes),
+		InputRels, InputArgs, _MagicOutputModes),
 
 	magic_info_get_proc_info(ProcInfo0),
 	{ proc_info_vartypes(ProcInfo0, VarTypes0) },
@@ -528,22 +524,16 @@ context__create_magic_call(MagicCall, RenameInputs, Subn, MagicInputArgs) -->
 		{ map__from_corresponding_lists(InputArgs,
 			NewInputArgs, Subn) },
 		{ list__append(InputRels, InputArgs, MagicInputArgs) },
-		{ list__append(MagicInputArgs, NewInputArgs, MagicArgs) },
-
-		{ list__append(InputArgs, NewInputArgs, AllInputArgs) }
+		{ list__append(MagicInputArgs, NewInputArgs, MagicArgs) }
 	;
 		{ map__init(Subn) },
 		{ list__append(InputRels, NewInputArgs, MagicInputArgs) },
-		{ list__append(MagicInputArgs, InputArgs, MagicArgs) },
-		
-		{ list__append(NewInputArgs, InputArgs, AllInputArgs) }
+		{ list__append(MagicInputArgs, InputArgs, MagicArgs) }
 	),
 
 	{ set__list_to_set(MagicArgs, NonLocals) },
-	{ list__append(MagicOutputModes, MagicOutputModes, AllOutputModes) },
-	magic_info_get_module_info(ModuleInfo),
-	{ instmap_delta_from_mode_list(AllInputArgs, AllOutputModes,
-		ModuleInfo, InstMapDelta) },
+	% To be filled in by recompute_instmap_delta.
+	{ instmap_delta_init_reachable(InstMapDelta) },
 	{ goal_info_init(NonLocals, InstMapDelta, nondet, GoalInfo) },
 
 	{ MagicCall = call(MagicPredId, MagicProcId, MagicArgs, 

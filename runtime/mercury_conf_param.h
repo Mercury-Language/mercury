@@ -48,6 +48,7 @@
 ** NO_TYPE_LAYOUT
 ** BOXED_FLOAT
 ** MR_USE_TRAIL
+** MR_USE_MINIMAL_MODEL
 **	See the documentation for
 **		--gcc-global-registers
 **		--gcc-non-local-gotos
@@ -58,6 +59,7 @@
 **		--no-type-layout
 **		--unboxed-float
 **		--use-trail
+**		--use-minimal-model
 **	(respectively) in the mmc help message or the Mercury User's Guide.
 **
 ** USE_SINGLE_PREC_FLOAT:
@@ -70,6 +72,11 @@
 **
 ** PARALLEL
 **	Enable support for parallelism [not yet working].
+**
+** MR_NO_BACKWARDS_COMPAT
+**	Disable backwards compatibility with C code using obsolete low-level
+**	constructs, e.g. referring to variables and macros without their MR_
+**	prefixes.
 */
 
 /*
@@ -103,13 +110,6 @@
 **	Note that MR_REQUIRE_TRACING is talking about execution tracing,
 **	not stack tracing; these are two independently configurable features.
 **
-** MR_USE_EXTERNAL_DEBUGGER:
-**	Allow MR_trace() to use an external process debugger
-**	(with communication done via a socket interface)
-**	rather than using the debugger that is part of
-**	the Mercury runtime.
-**	[The external debugger has not yet been written.]
-**
 ** MR_LOWLEVEL_DEBUG
 **	Enables various low-level debugging stuff,
 **	that was in the distant past used to debug
@@ -117,20 +117,15 @@
 **	Causes the generated code to become VERY big and VERY inefficient.
 **	Slows down compilation a LOT.
 **
-** MR_USE_DECLARATIVE_DEBUGGER
-**	Enable this if you want declarative debugging support in the
-**	internal debugger.
+** MR_DEBUG_DD_BACK_END
+**	Enables low-level debugging messages on the operation of the
+**	declarative debugging back end.
 **
 ** MR_DEBUG_GOTOS
 **	(Implied by MR_LOWLEVEL_DEBUG.)
 **	Enables low-level debugging of gotos.
 **	Causes the generated code to become bigger and less efficient.
 **	Slows down compilation.
-**
-** MR_DEBUG_NONDET_STACK
-**	Include a "name" field in the nondet stack frames.
-**	(Since this affects binary compatibility,
-**	this is a "compilation model" option which affects the grade.)
 **
 ** MR_DEBUG_AGC_SCHEDULING
 **	Display debugging information while scheduling accurate garbage
@@ -218,6 +213,7 @@
 ** Static code addresses are available unless using gcc non-local gotos,
 ** without assembler labels.
 */
+
 #ifdef MR_STATIC_CODE_ADDRESSES
   #error "MR_STATIC_CODE_ADDRESSES should not be defined on the command line"
 #endif
@@ -231,11 +227,43 @@
 **			   to be run some time before the first use of the
 **			   label table).
 */
+
 #ifdef MR_INSERT_LABELS
   #error "MR_INSERT_LABELS should not be defined on the command line"
 #endif
 #if defined(MR_STACK_TRACE) || defined(NATIVE_GC) || defined(MR_DEBUG_GOTOS)
   #define MR_INSERT_LABELS
+#endif
+
+/*
+** MR_INSERT_ENTRY_LABEL_NAMES -- the internal label table should contain
+**				  the names of labels as well as their
+**				  addresses and layouts (label names are
+**				  quite big, so prefer not to include them
+**				  unless they are necessary).
+*/
+
+#ifdef MR_INSERT_ENTRY_LABEL_NAMES
+  #error "MR_INSERT_ENTRY_LABEL_NAMES should not be defined on the command line"
+#endif
+#if defined(PROFILE_CALLS) || defined(MR_LOWLEVEL_DEBUG) \
+		|| defined(MR_DEBUG_AGC_SCHEDULING)
+  #define MR_INSERT_ENTRY_LABEL_NAMES
+#endif
+
+/*
+** MR_INSERT_INTERNAL_LABEL_NAMES -- the internal label table should contain
+**				     the names of labels as well as their
+**				     addresses and layouts (label names are
+**				     quite big, so prefer not to include them
+**				     unless they are necessary).
+*/
+
+#ifdef MR_INSERT_INTERNAL_LABEL_NAMES
+  #error "MR_INSERT_INTERNAL_LABEL_NAMES should not be defined on the command line"
+#endif
+#if defined(MR_LOWLEVEL_DEBUG) || defined(MR_DEBUG_AGC_SCHEDULING)
+  #define MR_INSERT_INTERNAL_LABEL_NAMES
 #endif
 
 /*
@@ -247,6 +275,7 @@
 ** code addresses, for profiling, and any time you need to insert
 ** labels into the label table.
 */
+
 #ifdef MR_NEED_INITIALIZATION_AT_START
   #error "MR_NEED_INITIALIZATION_AT_START should not be defined on the command line"
 #endif
@@ -263,6 +292,7 @@
 ** code addresses, for profiling, and any time you need to insert
 ** labels into the label table.
 */
+
 #ifdef MR_MAY_NEED_INITIALIZATION
   #error "MR_MAY_NEED_INITIALIZATION should not be defined on the command line"
 #endif

@@ -1,13 +1,20 @@
-%---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+%-----------------------------------------------------------------------------%
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
-% int - some predicates for dealing with machine-size integer numbers.
-%
+% File: int.m.
 % Main authors: conway, fjh.
 % Stability: medium.
+%
+% Predicates and functions for dealing with machine-size integer numbers.
+%
+% The behaviour of a computation for which overflow occurs is undefined.
+% (In the current implementation, the predicates and functions in this
+% module do not check for overflow, and the results you get are those
+% delivered by the C compiler.  However, future implementations
+% might check for overflow.)
 %
 %-----------------------------------------------------------------------------%
 
@@ -106,13 +113,33 @@
 :- func int rem int = int.
 :- mode in rem in = uo is det.
 
-	% left shift
+	% Left shift.
+	% X << Y returns X "left shifted" by Y bits. 
+	% To be precise, if Y is negative, the result is
+	% X div (2^(-Y)), otherwise the result is X * (2^Y).
 :- func int << int = int.
 :- mode in  << in  = uo  is det.
 
-	% (arithmetic) right shift
+	% unchecked_left_shift(X, Y) is the same as X << Y
+	% except that the behaviour is undefined if Y is negative,
+	% or greater than or equal to the result of `int__bits_per_int/1'.
+	% It will typically be implemented more efficiently than X << Y.
+:- func unchecked_left_shift(int, int) = int.
+:- mode unchecked_left_shift(in, in) = uo is det.
+
+	% Right shift.
+	% X >> Y returns X "arithmetic right shifted" by Y bits.
+	% To be precise, if Y is negative, the result is
+	% X * (2^(-Y)), otherwise the result is X div (2^Y).
 :- func int >> int = int.
 :- mode in  >> in  = uo  is det.
+
+	% unchecked_right_shift(X, Y) is the same as X >> Y
+	% except that the behaviour is undefined if Y is negative,
+	% or greater than or equal to the result of `int__bits_per_int/1'.
+	% It will typically be implemented more efficiently than X >> Y.
+:- func unchecked_right_shift(int, int) = int.
+:- mode unchecked_right_shift(in, in) = uo is det.
 
 	% bitwise and
 :- func int /\ int = int.
@@ -156,49 +183,77 @@
 	% on this machine.
 :- pred int__bits_per_int(int::out) is det.
 
-/* The following routines are builtins that the compiler knows about.
-   Don't use them; use the functions above.
-   These will go away in some future release.
-*/
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
+:- implementation.
+:- interface.
+
+	% Everything below here will not appear in the
+	% Mercury Library Reference Manual.
+
+%-----------------------------------------------------------------------------%
+
+%
+% The following routines are builtins that the compiler knows about.
+% Don't use them; use the functions above.
+% These will go away in some future release.
+%
+
+:- pragma obsolete(builtin_plus/3).
 :- pred builtin_plus(int, int, int).
 :- mode builtin_plus(in, in, uo) is det.
 
+:- pragma obsolete(builtin_unary_plus/2).
 :- pred builtin_unary_plus(int, int).
 :- mode builtin_unary_plus(in, uo) is det.
 
+:- pragma obsolete(builtin_minus/3).
 :- pred builtin_minus(int, int, int).
 :- mode builtin_minus(in, in, uo) is det.
 
+:- pragma obsolete(builtin_unary_minus/2).
 :- pred builtin_unary_minus(int, int).
 :- mode builtin_unary_minus(in, uo) is det.
 
+:- pragma obsolete(builtin_times/3).
 :- pred builtin_times(int, int, int).
 :- mode builtin_times(in, in, uo) is det.
 
+:- pragma obsolete(builtin_div/3).
 :- pred builtin_div(int, int, int).
 :- mode builtin_div(in, in, uo) is det.
 
+:- pragma obsolete(builtin_mod/3).
 :- pred builtin_mod(int, int, int).
 :- mode builtin_mod(in, in, uo) is det.
 
+:- pragma obsolete(builtin_left_shift/3).
 :- pred builtin_left_shift(int, int, int).
 :- mode builtin_left_shift(in, in, uo) is det.
 
+:- pragma obsolete(builtin_right_shift/3).
 :- pred builtin_right_shift(int, int, int).
 :- mode builtin_right_shift(in, in, uo) is det.
 
+:- pragma obsolete(builtin_bit_or/3).
 :- pred builtin_bit_or(int, int, int).
 :- mode builtin_bit_or(in, in, uo) is det.
 
+:- pragma obsolete(builtin_bit_and/3).
 :- pred builtin_bit_and(int, int, int).
 :- mode builtin_bit_and(in, in, uo) is det.
 
+:- pragma obsolete(builtin_bit_xor/3).
 :- pred builtin_bit_xor(int, int, int).
 :- mode builtin_bit_xor(in, in, uo) is det.
 
+:- pragma obsolete(builtin_bit_neg/2).
 :- pred builtin_bit_neg(int, int).
 :- mode builtin_bit_neg(in, uo) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module require.
@@ -220,6 +275,40 @@ X div Y = Div :-
 	).
 
 X mod Y = X - (X div Y) * Y.
+
+X << Y = Z :-
+	int__bits_per_int(IntBits),
+	( Y >= 0 ->
+		( Y >= IntBits ->
+			Z = 0
+		;
+			Z = unchecked_left_shift(X, Y)
+		)
+	;
+		( Y =< -IntBits ->
+			Z = (if X >= 0 then 0 else -1)
+		;
+			Z = unchecked_right_shift(X, -Y)
+		)
+	).
+
+	% Note: this assumes two's complement arithmetic.
+	% tests/hard_coded/shift_test.m will fail if this is not the case.
+X >> Y = Z :-
+	int__bits_per_int(IntBits),
+	( Y >= 0 ->
+		( Y >= IntBits ->
+			Z = (if X >= 0 then 0 else -1)
+		;
+			Z = unchecked_right_shift(X, Y)
+		)
+	;
+		( Y =< -IntBits ->
+			Z = 0
+		;
+			Z = unchecked_left_shift(X, -Y)
+		)
+	).
 
 int__abs(Num, Abs) :-
 	(
@@ -292,11 +381,7 @@ int__log2_2(X, N0, N) :-
 % is/2 is replaced with `=' in the parser, but the following is useful
 % in case you should take the address of `is' or something weird like that.
 
-% we use `pragma c_code' to avoid complaints about redefinition of is/2
-% from the Prolog compilers.
-
-:- pragma c_code(is(X::uo, Y::di),  will_not_call_mercury, "X = Y;").
-:- pragma c_code(is(X::out, Y::in), will_not_call_mercury, "X = Y;").
+is(X, X).
 
 %-----------------------------------------------------------------------------%
 

@@ -101,7 +101,7 @@ depend_profiler:
 #-----------------------------------------------------------------------------#
 
 .PHONY: all
-all: README INSTALL $(SUBDIRS)
+all: README INSTALL mercury-compiler.spec $(SUBDIRS)
 
 .PHONY: util
 util: scripts
@@ -113,7 +113,7 @@ scripts:
 
 .PHONY: boehm_gc
 boehm_gc: scripts
-	case "$$grade" in \
+	case $(GRADE) in \
 	    *.prof*) \
 		prof=_prof \
 		;; \
@@ -174,7 +174,7 @@ tags_profiler:
 
 #-----------------------------------------------------------------------------#
 
-configure: configure.in
+configure: configure.in aclocal.m4
 	autoconf
 
 config.status: configure VERSION
@@ -193,6 +193,10 @@ README: .README.in VERSION
 
 INSTALL: .INSTALL.in VERSION
 	sed 's/@VERSION@/$(VERSION)/g' .INSTALL.in > INSTALL
+
+mercury-compiler.spec: .mercury-compiler.spec.in VERSION
+	sed 's/@VERSION@/$(VERSION)/g' .mercury-compiler.spec.in \
+		> mercury-compiler.spec
 
 #-----------------------------------------------------------------------------#
 
@@ -232,14 +236,17 @@ tar: README INSTALL
 	# will unpack into mercury-extras-$(VERSION).
 	# Put the tests directory into a gzipped tar archive that
 	# will unpack into mercury-tests-$(VERSION).
+	DIRNAME="`pwd`";						\
+	ROOTNAME="`basename $$DIRNAME`";				\
+	export ROOTNAME;						\
 	cd .. && (							\
 		mkdir stuff-to-exclude;					\
-		mv mercury/trial	stuff-to-exclude;		\
-		mv mercury/bytecode	stuff-to-exclude;		\
-		mv mercury/lp_solve	stuff-to-exclude;		\
-		mv mercury/extras/aditi stuff-to-exclude;		\
-		mv mercury/extras	mercury-extras-$(VERSION);	\
-		mv mercury		mercury-compiler-$(VERSION);	\
+		mv $$ROOTNAME/trial	stuff-to-exclude;		\
+		mv $$ROOTNAME/bytecode	stuff-to-exclude;		\
+		mv $$ROOTNAME/lp_solve	stuff-to-exclude;		\
+		mv $$ROOTNAME/extras/aditi stuff-to-exclude;		\
+		mv $$ROOTNAME/extras	mercury-extras-$(VERSION);	\
+		mv $$ROOTNAME		mercury-compiler-$(VERSION);	\
 		mv tests		mercury-tests-$(VERSION);	\
 		tar -cf - mercury-compiler-$(VERSION) |			\
 			gzip -9 > mercury-compiler-$(VERSION).tar.gz;	\
@@ -247,11 +254,11 @@ tar: README INSTALL
 			gzip -9 > mercury-extras-$(VERSION).tar.gz;	\
 		tar -cf - mercury-tests-$(VERSION) |			\
 			gzip -9 > mercury-tests-$(VERSION).tar.gz;	\
-		mv mercury-compiler-$(VERSION)	mercury;		\
-		mv mercury-extras-$(VERSION)	mercury/extras;		\
+		mv mercury-compiler-$(VERSION)	$$ROOTNAME;		\
+		mv mercury-extras-$(VERSION)	$$ROOTNAME/extras;	\
 		mv mercury-tests-$(VERSION)	tests;			\
-		mv stuff-to-exclude/aditi	mercury/extras/aditi;	\
-		mv stuff-to-exclude/*		mercury;		\
+		mv stuff-to-exclude/aditi	$$ROOTNAME/extras/aditi;\
+		mv stuff-to-exclude/*		$$ROOTNAME;		\
 		rmdir stuff-to-exclude;					\
 	)
 
@@ -267,6 +274,17 @@ fullarch:
 
 .PHONY: install
 install: install_main install_grades
+	@echo
+	@echo "-- Installation complete."
+	@echo
+	@echo "-- Don't forget to add $(INSTALL_BINDIR) to your PATH,"
+	@echo "-- $(INSTALL_MAN_DIR) to your MANPATH,"
+	@echo "-- and $(INSTALL_INFO_DIR) to your INFOPATH,"
+	@echo "-- and to add the following lines to the \`.emacs' file"
+	@echo "-- in your home directory:"
+	@echo "	(setq load-path (cons (expand-file-name "
+	@echo "		\"$(INSTALL_ELISP_DIR)\") load-path))"
+	@echo "	(autoload 'mdb \"gud\" \"Invoke the Mercury debugger\" t)"
 
 .PHONY: install_main
 install_main: all $(PREINSTALL_HACK) \
@@ -293,7 +311,7 @@ install_trace: trace
 
 .PHONY: install_boehm_gc
 install_boehm_gc: boehm_gc
-	case "$$grade" in \
+	case $(GRADE) in \
 	    *.prof*) \
 		prof=_prof \
 		;; \

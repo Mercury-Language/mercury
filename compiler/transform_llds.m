@@ -49,8 +49,8 @@ transform_llds(LLDS0, LLDS) -->
 :- pred transform_c_file(c_file, c_file, io__state, io__state).
 :- mode transform_c_file(in, out, di, uo) is det.
 
-transform_c_file(c_file(ModuleName, HeaderInfo, A, B, C, Modules0),
-		c_file(ModuleName, HeaderInfo, A, B, C, Modules)) -->
+transform_c_file(c_file(ModuleName, HeaderInfo, A, B, C, D, Modules0),
+		c_file(ModuleName, HeaderInfo, A, B, C, D, Modules)) -->
 	transform_c_module_list(Modules0, Modules).
 
 %-----------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -60,13 +60,14 @@ Define_extern_entry(mercury__garbage_collect_0_0);
 void
 MR_schedule_agc(Code *pc_at_signal, Word *sp_at_signal)
 {
-	MR_Stack_Layout_Label	*layout;
+	MR_Stack_Layout_Label		*layout;
 	const MR_Stack_Layout_Entry	*entry_layout;
-	MR_Lval_Type		type;
-	MR_Live_Lval		location;
-	const char		*reason;
-	MR_Entry		*entry_label = NULL;
-	int			determinism, number;
+	MR_Lval_Type			type;
+	MR_Live_Lval			location;
+	const char			*reason;
+	MR_Entry			*entry_label = NULL;
+	int				number;
+	MR_Determinism			determinism;
 
 	if (gc_running) {
 		/*
@@ -106,16 +107,30 @@ MR_schedule_agc(Code *pc_at_signal, Word *sp_at_signal)
 		** This means we have reached some handwritten code that has
 		** no further information about the stack frame.
 		*/
-		fprintf(stderr, "Mercury runtime: LABEL: %s has no stack"
-				"layout info\n", entry_label->e_name);
+		fprintf(stderr, "Mercury runtime: the label ");
+		if (entry_label->e_name != NULL) {
+			fprintf(stderr, "%s has no stack layout info\n",
+				entry_label->e_name);
+		} else {
+			fprintf(stderr, "at address %p "
+				"has no stack layout info\n",
+				entry_label->e_addr);
+		}
+
 		fprintf(stderr, "Mercury runtime: Trying to continue...\n");
 		return;
 	}
 
 #ifdef MR_DEBUG_AGC_SCHEDULING
-	fprintf(stderr, "scheduling called at: %s (%ld %lx)\n",
-		entry_label->e_name, (long) entry_label->e_addr,
-		(long) entry_label->e_addr);
+	if (entry_label->e_name != NULL) {
+		fprintf(stderr, "scheduling called at: %s (%ld %lx)\n",
+			entry_label->e_name, (long) entry_label->e_addr,
+			(long) entry_label->e_addr);
+	} else {
+		fprintf(stderr, "scheduling called at: (%ld %lx)\n",
+			(long) entry_label->e_addr,
+			(long) entry_label->e_addr);
+	}
 	fflush(NULL);
 #endif
 
@@ -215,7 +230,6 @@ garbage_collect(Code *success_ip, Word *stack_pointer, Word *current_frame)
 {
     MR_Internal                     *label, *first_label;
     int                             i, var_count, count;
-    MR_Determinism                  determinism;
     const MR_Stack_Layout_Label     *internal_layout;
     const MR_Stack_Layout_Vars      *vars;
     MemoryZone                      *old_heap, *new_heap;

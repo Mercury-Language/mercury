@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-1998 The University of Melbourne.
+# Copyright (C) 1995-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -59,8 +59,11 @@ Environment variables:
 
 FULLARCH=@FULLARCH@
 NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=@NONSHARED_LIB_DIR@}
-C_INCL_DIR=${MERCURY_C_INCL_DIR=@LIBDIR@/inc}
-ALL_C_INCL_DIRS=${MERCURY_ALL_C_INCL_DIRS=-I$C_INCL_DIR}
+MERC_C_INCL_DIR=${MERCURY_C_INCL_DIR=@LIBDIR@/inc}
+MERC_ALL_C_INCL_DIRS=${MERCURY_ALL_C_INCL_DIRS=-I$MERC_C_INCL_DIR}
+LOCAL_C_INCL_DIR=${MERCURY_LOCAL_C_INCL_DIR=/usr/local/include}
+ALL_LOCAL_C_INCL_DIRS=${MERCURY_ALL_LOCAL_C_INCL_DIRS=-I$LOCAL_C_INCL_DIR}
+
 DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 CC=${MERCURY_C_COMPILER="@CC@"}
 CFLAGS_FOR_REGS="@CFLAGS_FOR_REGS@"
@@ -69,7 +72,7 @@ AS="@AS@"
 
 case "$CC" in
     *gcc*)
-	ANSI_OPTS="" # --no-ansi to avoid syntax errors in Solaris pthread.h
+	ANSI_OPTS="-ansi"
 	CHECK_OPTS="
 	      -Wall -Wwrite-strings -Wpointer-arith -Wtraditional
 	      -Wshadow -Wstrict-prototypes -Wmissing-prototypes -Wno-unused"
@@ -276,6 +279,11 @@ case $use_solve_equal in
 	false)		SOLVE_EQUAL_OPTS="" ;;
 esac
 
+case $use_minimal_model in
+	true)		MINIMAL_MODEL_OPTS="-DMR_USE_MINIMAL_MODEL" ;;
+	false)		MINIMAL_MODEL_OPTS="" ;;
+esac
+
 case $thread_safe in
 	true)
 	case $FULLARCH in
@@ -352,7 +360,7 @@ LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 		# disabling the warning.
 		CHECK_OPTS="$CHECK_OPTS -Wno-uninitialized"
 		;;
-	sparc-*)
+	*-solaris*|*-sunos*)
 		# The solaris headers for pthreads are not ANSI :-(
 		case $thread_safe in true)
 			ANSI_OPTS=""
@@ -439,18 +447,18 @@ case $assemble in true)
 esac
 
 
-ALL_CC_OPTS="$ALL_C_INCL_DIRS $ANSI_OPTS $CHECK_OPTS $OPT_OPTS \
+ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS $ANSI_OPTS $CHECK_OPTS $OPT_OPTS \
 		$GRADE_OPTS $GC_OPTS $DEFINE_OPTS \
 		$TRACE_OPTS $STACK_TRACE_OPTS $LLDEBUG_OPTS $C_DEBUG_OPTS \
 		$PROF_TIME_OPTS $PROF_CALLS_OPTS $PROF_MEMORY_OPTS \
 		$INLINE_ALLOC_OPTS $TRAIL_OPTS $RESERVE_TAG_OPTS \
-		$SOLVE_EQUAL_OPTS $SPLIT_OPTS $THREAD_OPTS $PICREG_OPTS \
-		$ARCH_OPTS $ARG_OPTS"
+		$SOLVE_EQUAL_OPTS $MINIMAL_MODEL_OPTS $SPLIT_OPTS \
+		$THREAD_OPTS $PICREG_OPTS $ARCH_OPTS $ARG_OPTS"
 
 case $verbose in true)
-	echo $CC $ALL_CC_OPTS "$@" $OVERRIDE_OPTS ;;
+	echo $CC $ALL_CC_OPTS "$@" $OVERRIDE_OPTS $ALL_LOCAL_C_INCL_DIRS;;
 esac
 case $# in
 	0) exec $CC $ALL_CC_OPTS $OVERRIDE_OPTS ;;
-	*) exec $CC $ALL_CC_OPTS "$@" $OVERRIDE_OPTS ;;
+	*) exec $CC $ALL_CC_OPTS "$@" $OVERRIDE_OPTS $ALL_LOCAL_C_INCL_DIRS;;
 esac

@@ -25,6 +25,24 @@
 				&(paste(mercury_data__layout__,label))
 
 /*
+** Passing the name of a label to MR_insert_{internal,entry}_label
+** causes that name to be included in the executable as static readonly data.
+** Since label names are quite big, we include them only when needed.
+*/
+
+#if defined(MR_INSERT_INTERNAL_LABEL_NAMES)
+  #define MR_insert_internal(n, a, l)	MR_insert_internal_label(n, a, l)
+#else
+  #define MR_insert_internal(n, a, l)	MR_insert_internal_label(NULL, a, l)
+#endif
+
+#if defined(MR_INSERT_ENTRY_LABEL_NAMES)
+  #define MR_insert_entry(n, a, l)	MR_insert_entry_label(n, a, l)
+#else
+  #define MR_insert_entry(n, a, l)	MR_insert_entry_label(NULL, a, l)
+#endif
+
+/*
 ** Taking the address of a label can inhibit gcc's optimization,
 ** because it assumes that anything can jump there.
 ** Therefore we want to do it only if we're debugging,
@@ -37,16 +55,16 @@
 ** a layout structure, use the _sl variant.
 */
 
-#define make_label_ai(n, a, l)		MR_insert_internal_label(n, a, NULL)
-#define make_label_sl(n, a, l)		MR_insert_internal_label(n, a, \
+#define make_label_ai(n, a, l)		MR_insert_internal(n, a, NULL)
+#define make_label_sl(n, a, l)		MR_insert_internal(n, a, \
 						MR_INTERNAL_LAYOUT(l))
 
-#define make_local_ai(n, a, l)		MR_insert_entry_label(n, a, NULL)
-#define make_local_sl(n, a, l)		MR_insert_entry_label(n, a, \
+#define make_local_ai(n, a, l)		MR_insert_entry(n, a, NULL)
+#define make_local_sl(n, a, l)		MR_insert_entry(n, a, \
 						MR_ENTRY_LAYOUT(l))
 
-#define make_entry_ai(n, a, l)		MR_insert_entry_label(n, a, NULL)
-#define make_entry_sl(n, a, l)		MR_insert_entry_label(n, a, \
+#define make_entry_ai(n, a, l)		MR_insert_entry(n, a, NULL)
+#define make_entry_sl(n, a, l)		MR_insert_entry(n, a, \
 						MR_ENTRY_LAYOUT(l))
 
 #if defined(MR_INSERT_LABELS)

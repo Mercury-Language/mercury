@@ -3,7 +3,7 @@ INIT mercury_scheduler_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1995-1998 The University of Melbourne.
+** Copyright (C) 1995-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -116,6 +116,26 @@ init_context(MR_Context *c)
 	MR_prevfr_slot(c->context_curfr) = NULL;
 	MR_succip_slot(c->context_curfr) = ENTRY(do_not_reached);
 	MR_succfr_slot(c->context_curfr) = NULL;
+
+#ifdef	MR_USE_MINIMAL_MODEL
+	if (c->generatorstack_zone != NULL) {
+		reset_redzone(c->generatorstack_zone);
+	} else {
+		c->generatorstack_zone = create_zone("generatorstack", 0,
+			generatorstack_size, next_offset(),
+			generatorstack_zone_size, default_handler);
+	}
+	c->context_gen_next = 0;
+
+	if (c->cutstack_zone != NULL) {
+		reset_redzone(c->cutstack_zone);
+	} else {
+		c->cutstack_zone = create_zone("cutstack", 0,
+			cutstack_size, next_offset(),
+			cutstack_zone_size, default_handler);
+	}
+	c->context_cut_next = 0;
+#endif
 
 #ifdef MR_USE_TRAIL
 	if (c->trail_zone != NULL) {

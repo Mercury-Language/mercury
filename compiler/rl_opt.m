@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -64,7 +64,6 @@ rl_opt__proc(ModuleInfo, Proc0, Proc) -->
 	),
 
 	globals__io_lookup_bool_option(optimize_rl, Opt),
-	globals__io_lookup_bool_option(optimize_rl_index, OptIndex),
 	( { Opt = yes } ->
 		% rl_block_opt.m requires liveness to have been run.
 		maybe_write_string(VeryVerbose, 
@@ -82,14 +81,8 @@ rl_opt__proc(ModuleInfo, Proc0, Proc) -->
 		maybe_write_string(VeryVerbose, NameStr),
 		maybe_write_string(VeryVerbose, "..."),
 		maybe_flush_output(VeryVerbose),
-
-		{ Flags0 = [merge_output_projections] },
-		{ OptIndex = yes ->
-			Flags = [add_uniondiff | Flags0]
-		;
-			Flags = Flags0
-		},
-		rl_block_opt(Flags, Info15, Info20),
+		rl_block_opt([add_uniondiff, merge_output_projections],
+			Info15, Info20),
 		maybe_write_string(VeryVerbose, "done.\n"),
 		rl_opt__maybe_dump_rl(Debug, NameStr,
 			"20", "block_opt", Info20)
@@ -106,6 +99,7 @@ rl_opt__proc(ModuleInfo, Proc0, Proc) -->
 	rl_opt__maybe_dump_rl(Debug, NameStr, "30", "liveness", Info30),
 	maybe_write_string(VeryVerbose, "done.\n"),
 
+	globals__io_lookup_bool_option(optimize_rl_index, OptIndex),
 	( { OptIndex = yes } ->
 		maybe_write_string(VeryVerbose,
 			"% Optimizing sorting and indexing in "),

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -222,8 +222,6 @@ bag__insert(Bag0, Item, Bag) :-
 
 %---------------------------------------------------------------------------%
 
-:- bag__insert_list(_, List, _) when List.
-
 bag__insert_list(Bag, [], Bag).
 bag__insert_list(Bag0, [Item|Items], Bag) :-
 	bag__insert(Bag0, Item, Bag1),
@@ -282,8 +280,6 @@ bag__det_remove(Bag0, Item, Bag) :-	% det
 	;
 		error("bag__det_remove: Missing item in bag.")
 	).
-
-:- bag__remove_list(_, List, _) when List.
 
 bag__remove_list(Bag, [], Bag).
 bag__remove_list(Bag0, [X | Xs], Bag) :-

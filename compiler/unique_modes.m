@@ -10,6 +10,10 @@
 % This module checks that variables with a unique mode (as opposed to
 % a mostly-unique mode) really are unique, and not nondet live - i.e.,
 % that they cannot be referenced on backtracking.
+% (Actually the term "nondet live" is a bit of a misnomer, because
+% really we are just interested in whether something can be referenced
+% on backtracking, and this can occur after backtracking in semidet
+% code too, not just in nondet code.)
 
 % Basically we just traverse each goal, keeping track of which variables
 % are nondet live.  At each procedure call, we check that any arguments
@@ -19,7 +23,9 @@
 
 % Variables can become nondet live in several places:
 % in negations, in the conditions of if-then-elses,
-% and in disjunctions, and at nondet calls.
+% in disjunctions, and at nondet calls.
+% These are the only places at which we can resume execution
+% after backtracking.
 
 % XXX we currently make the conservative assumption that
 % any non-local variable in a disjunction or nondet call
@@ -248,10 +254,10 @@ make_var_mostly_uniq(Var, ModeInfo0, ModeInfo) :-
 
 unique_modes__check_goal_2(conj(List0), GoalInfo0, conj(List)) -->
 	mode_checkpoint(enter, "conj", GoalInfo0),
-	mode_info_add_goals_live_vars(List0),
 	( { List0 = [] } ->	% for efficiency, optimize common case
 		{ List = [] }
 	;
+		mode_info_add_goals_live_vars(List0),
 		unique_modes__check_conj(List0, List)
 	),
 	mode_checkpoint(exit, "conj", GoalInfo0).
@@ -274,25 +280,15 @@ unique_modes__check_goal_2(disj(List0, SM), GoalInfo0, disj(List, SM)) -->
 		{ instmap__init_unreachable(InstMap) },
 		mode_info_set_instmap(InstMap)
 	;
-		mode_info_dcg_get_instmap(InstMap0),
-		{ instmap__vars(InstMap0, OuterNonLocals) },
-		{ goal_info_get_nonlocals(GoalInfo0, InnerNonLocals) },
-		{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
-
-		{ goal_info_get_code_model(GoalInfo0, CodeModel) },
-		% does this disjunction create a choice point?
-		( { CodeModel = model_non } ->
-			%
-			% Mark all the variables which are nondet-live at the
-			% start of the disjunction and whose inst is `unique'
-			% as instead being only `mostly_unique'.
-			%
-			mode_info_add_live_vars(InnerNonLocals),
-			make_all_nondet_live_vars_mostly_uniq,
-			mode_info_remove_live_vars(InnerNonLocals)
-		;
-			[]
-		),
+		%
+		% Mark all the variables which are nondet-live at the
+		% start of the disjunction and whose inst is `unique'
+		% as instead being only `mostly_unique'.
+		%
+		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
+		mode_info_add_live_vars(NonLocals),
+		make_all_nondet_live_vars_mostly_uniq,
+		mode_info_remove_live_vars(NonLocals),
 
 		%
 		% Now just modecheck each disjunct in turn, and then
@@ -326,6 +322,23 @@ unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal)
 	% safe to leave it as `unique' on entry to the condition.
 	% The only case we need to set it to `mostly_unique' is
 	% if the condition would clobber it.
+	%
+	% XXX actually that is not true; the code below does
+	% the wrong thing for examples such as this one:
+	%
+	% :- mode p(di).
+	% p(Var) :-
+	%	(if 
+	%		(if semidet_succeed then
+	%			clobber(Var), fail
+	%		else
+	%			true
+	%		)
+	%	then
+	%		blah
+	%	else
+	%		use(Var)
+	%	).
 	%
 	mode_info_add_live_vars(C_Vars),
 	=(ModeInfo),

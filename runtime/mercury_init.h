@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1998 The University of Melbourne.
+** Copyright (C) 1993-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -76,9 +76,10 @@ extern	int	mercury_terminate(void);
 ** by C programs that wish to interface to Mercury.
 */
 
-#include "mercury_goto.h"		/* for Declare_entry */
+#include "mercury_regs.h"	/* must come before system headers */
+#include "mercury_goto.h"	/* for Declare_entry */
 #include "mercury_types.h"	/* for `Word' */
-#include "mercury_wrapper.h"		/* for do_init_modules,
+#include "mercury_wrapper.h"	/* for do_init_modules,
 				   mercury_runtime_init(),
 				   mercury_runtime_main(),
 				   mercury_runtime_terminate(),
@@ -115,6 +116,16 @@ extern	void	ML_io_stdout_stream(Word *);
 extern	void	ML_io_stdin_stream(Word *);
 extern	void	ML_io_print_to_cur_stream(Word, Word);
 extern	void	ML_io_print_to_stream(Word, Word, Word);
+
+/* in trace/mercury_trace_internal.h */
+extern	char	*MR_trace_getline(const char *);
+
+/* in trace/mercury_trace_declarative.h */
+extern	void	MR_edt_root_node(Word EDT, Word *Node);
+
+/* in trace/mercury_trace_external.h */
+extern	void	MR_trace_init_external(void);
+extern	void	MR_trace_final_external(void);
 
 /* in browser/debugger_interface.h */
 extern	void	ML_DI_output_current_vars(Word, Word, Word);
