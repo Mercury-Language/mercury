@@ -384,17 +384,19 @@ the following example:
 </pre>
 
 A group of related predicate, mode and function declarations may be grouped
-together under a single description provided that it is formatted as above. 
+together under a single description provided that it is formatted as above.
+If there is a function declaration in such a grouping then it should be listed
+before the others. 
 
-For example
+For example:
 
 <pre>
 	
 		% Insert a new key and corresponding value into a map.
 		% Fail if the key already exists.
 		%
-	:- pred map.insert(map(K, V)::in, K::in, V::in, map(K, V)::out) is det.
 	:- func map.insert(map(K, V), K, V) = map(K, V).
+	:- pred map.insert(map(K, V)::in, K::in, V::in, map(K, V)::out) is det.
 
 </pre>
 
@@ -442,6 +444,6 @@ contains more information on review policy.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 2004-04-05 13:45:51 $ by $Author: juliensf $@cs.mu.oz.au. <br>
+Last update was $Date: 2004-10-14 04:31:32 $ by $Author: juliensf $@cs.mu.oz.au. <br>
 </body>
 </html>
