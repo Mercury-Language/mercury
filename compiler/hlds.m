@@ -163,7 +163,7 @@
 	% Here's how goals are represented
 
 %%% :- export_type hlds__goal.
-:- type hlds__goal		--->	hlds__goal_expr - hlds__goal_info.
+:- type hlds__goal		== pair(hlds__goal_expr, hlds__goal_info).
 
 %%% :- export_type hlds__goal_expr.
 :- type hlds__goal_expr    	--->	
