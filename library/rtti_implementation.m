@@ -813,14 +813,18 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
 		Arguments = []
 	;
 		TypeCtorRep = array,
-		det_dynamic_cast(Term, Array),
+
+		% Constrain the T in array(T) to the correct element type.
 		std_util__type_ctor_and_args(std_util__type_of(Term), _, Args),
 		( Args = [ElemType] ->
 			std_util__has_type(Elem, ElemType),
 			same_array_elem_type(Array, Elem)
 		;
-			error("An array which doesn't have type_ctor arg")
+			error("An array which doesn't have a type_ctor arg")
 		),
+
+		det_dynamic_cast(Term, Array),
+
 		Functor = "<<array>>", 
 		Arity = array__size(Array),
 		Arguments = array__foldr(
