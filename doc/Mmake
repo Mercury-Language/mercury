@@ -120,11 +120,13 @@ install_dvi: dvi
 
 #-----------------------------------------------------------------------------#
 
-clean: clean_texi
+clean: distclean clean_texi
+
+.PHONY: distclean
+	rm -f *.aux *.cp *.fn *.ky *.log *.pg *.toc *.tp *.vr
 
 .PHONY: clean_texi
 clean_texi:
-	rm -f *.aux *.cp *.fn *.ky *.log *.pg *.toc *.tp *.vr
 	rm -f library-menu.texi library-chapters.texi
 
 realclean: realclean_texi
