@@ -297,7 +297,7 @@ split_c_to_obj(ErrorStream, ModuleName,
 % WARNING: The code here duplicates the functionality of scripts/mgnuc.in.
 % Any changes there may also require changes here, and vice versa.
 
-:- type compiler_type ---> gcc ; lcc ; unknown.
+:- type compiler_type ---> gcc ; lcc ; cl ; unknown.
 
 compile_c_file(ErrorStream, PIC, ModuleName, Succeeded) -->
 	module_name_to_file_name(ModuleName, ".c", yes, C_File),
@@ -323,6 +323,16 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded) -->
 	globals__io_lookup_accumulating_option(cflags, C_Flags_List),
 	{ join_string_list(C_Flags_List, "", "", " ", CFLAGS) },
 	
+	{ string__sub_string_search(CC, "gcc", _) ->
+		CompilerType = gcc
+	; string__sub_string_search(CC, "lcc", _) ->
+		CompilerType = lcc
+	; string__sub_string_search(string__to_lower(CC), "cl", _) ->
+		CompilerType = cl
+	;
+		CompilerType = unknown
+	},
+
 	(
 		{ PIC = pic },
 		globals__io_lookup_string_option(cflags_for_pic,
@@ -478,7 +488,15 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded) -->
 	},
 	globals__io_lookup_bool_option(target_debug, Target_Debug),
 	{ Target_Debug = yes ->
-		Target_DebugOpt = "-g "
+		( CompilerType = gcc,
+			Target_DebugOpt = "-g "
+		; CompilerType = lcc,
+			Target_DebugOpt = "-g "
+		; CompilerType = cl,
+			Target_DebugOpt = "/Zi "
+		; CompilerType = unknown,
+			Target_DebugOpt = "-g "
+		)
 	;
 		Target_DebugOpt = ""
 	},
@@ -487,13 +505,6 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded) -->
 		LL_DebugOpt = "-DMR_LOW_LEVEL_DEBUG "
 	;
 		LL_DebugOpt = ""
-	},
-	{ string__sub_string_search(CC, "gcc", _) ->
-		CompilerType = gcc
-	; string__sub_string_search(CC, "lcc", _) ->
-		CompilerType = lcc
-	;
-		CompilerType = unknown
 	},
 	globals__io_lookup_bool_option(use_trail, UseTrail),
 	{ UseTrail = yes ->

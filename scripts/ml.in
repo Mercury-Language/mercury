@@ -262,6 +262,15 @@ case $strip in
 	false)  STRIP_OPTS="" ;;
 esac
 
+# Determine whether to link the executable with debugging symbols when using
+# MSVC.
+if [ $strip = "false" -a $COMPILER = "cl" ]
+then
+    DEBUG_FLAG="/DEBUG"
+else
+    DEBUG_FLAG=""
+fi
+
 case $gc_method in mps)
 	use_thread_libs=true ;;
 esac
@@ -437,7 +446,7 @@ case "$highlevel_code" in
 esac
 
 LINKER_PRE_FLAGS="$UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS"
-LINKER_POST_FLAGS="@LINK_OPT_SEP@ $LIBDIR_OPTS $RPATH_OPT_LIST $LIBS"
+LINKER_POST_FLAGS="@LINK_OPT_SEP@ $DEBUG_FLAG $LIBDIR_OPTS $RPATH_OPT_LIST $LIBS"
 
 case $verbose in
     true)

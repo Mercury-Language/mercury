@@ -193,8 +193,8 @@ Mmake.runtime.params: ;
 
 #-----------------------------------------------------------------------------#
 
-CFLAGS	+= -g $(DLL_CFLAGS) -DMERCURY_BOOTSTRAP_H -DMERCURY_CONF_BOOTSTRAP_H
-MGNUCFLAGS	+= --no-ansi
+CFLAGS	+= $(DLL_CFLAGS) -DMERCURY_BOOTSTRAP_H -DMERCURY_CONF_BOOTSTRAP_H
+MGNUCFLAGS	+= --c-debug --no-ansi
 
 #-----------------------------------------------------------------------------#
 

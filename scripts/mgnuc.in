@@ -52,24 +52,28 @@ case "$CC" in
 # -Wunused		causes various spurious warnings
 
 	OPT_OPTS="-O2 -fomit-frame-pointer"
+	DEBUG_OPT="-g"
 	COMPILER=gcc
 	;;
     *lcc*)
 	ANSI_OPTS=
 	CHECK_OPTS="-w"     # turn off all warnings due to spurious warnings.
 	OPT_OPTS=""
+	DEBUG_OPT="-g"
 	COMPILER=lcc
 	;;
     *cl* | *CL*)
 	ANSI_OPTS=""
 	CHECK_OPTS=""
 	OPT_OPTS=""
+	DEBUG_OPT="/Zi"
 	COMPILER=cl
 	;;
     *)
 	ANSI_OPTS=
 	CHECK_OPTS=
 	OPT_OPTS="-O"
+	DEBUG_OPT="-g"
 	COMPILER=unknown
 	;;
 esac
@@ -243,7 +247,7 @@ ALL_LOCAL_C_INCL_DIRS=${MERCURY_ALL_LOCAL_C_INCL_DIRS=@ALL_LOCAL_C_INCL_DIRS@}
 #
 
 case $c_debug in
-	true)		C_DEBUG_OPTS="-g" ;;
+	true)		C_DEBUG_OPTS="$DEBUG_OPT" ;;
 	false)		C_DEBUG_OPTS="" ;;
 esac
 
