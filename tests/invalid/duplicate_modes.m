@@ -7,7 +7,7 @@ p.
 :- pred q(int, int).
 :- mode q(ground -> ground, free -> ground) is det.
 :- mode q(in, out) is det.
-
+:- mode q(in, out) is det.
 q(X, X).
 
 :- pred r(int, int).
