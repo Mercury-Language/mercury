@@ -15,7 +15,7 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module char, int, float.
+:- import_module char, int, float, io, require, std_util.
 
 :- pred string__length(string, int).
 :- mode string__length(in, out) is det.
@@ -195,6 +195,31 @@
 :- pred string__hash(string, int).
 :- mode string__hash(in, out) is det.
 %	Compute a hash value for a string.
+
+
+:- pred string__stringf(string, list(io__poly_type), string).
+:- mode string__stringf(in, in, out) is det.
+
+%	Note:	A string may print incorretly if you specify a precision longer
+%		than the string, and '0' padding.
+%
+%		%x will print with uppercase hex numbers.
+%
+%		%g, %G don't convert to %f correctly.  (They effectively go
+%		to %f through %#g %#G, IE have trailing zeros.)
+%
+%		%#.0e, %#.0E won't print a '.' in the answer ('#' ignored).
+
+
+%------------------------------------------------------------------------------%
+
+:- type string__poly_type == io__poly_type.
+%			--->	
+%		f(float)
+%	;	i(int)
+%	;	s(string)
+%	;	c(char).
+
 
 %-----------------------------------------------------------------------------%
 
@@ -510,6 +535,623 @@ string__combine_hash(H0, X, H) :-
 	H1 is H0 << 5,
 	H2 is H1 ^ H0,
 	H is H2 ^ X.
+
+
+%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%
+
+%	There is a bit of black-magic numbering in this file.  A precision or 
+%	width of -1 means that the real number is to be read from the list of
+%	arguements.  A precision of -6 means that the precision was not 
+%	specified.  The default precisions for "float"s are 6, 0 for "int"s and 
+%	infinite for a "string".
+
+%	XXXXX when string__to_lower exits, fix %x option.
+
+
+string__stringf( Fstring, Poly_list, Ostring ) :-
+	(
+		string__length(Fstring, 0)
+	->
+		Fstring = Ostring
+	;
+		string__to_char_list(Fstring, Clist),
+		string__stringf_2(Clist, Poly_list, Ostring)
+	).
+
+
+:- pred	string__stringf_2(list(char), list(io__poly_type), string).
+:- mode string__stringf_2(in, in, out) is det.
+%
+%	string__stringf_2( stream, char_f, vars, IO, IO).
+%		The main function, with different input types.
+%
+string__stringf_2( [], _, "").
+string__stringf_2( [A|Bs], Vars, Ostring) :-
+	(
+		A = '%'
+	->	
+		(
+			string__stringf_3(Bs, Cs, Vars, Vo, String_1)
+		->
+			string__stringf_2(Cs, Vo, String_2),
+			string__append(String_1, String_2, Ostring)
+		;
+			error("string__stringf: Number|type of arguements.")
+		)
+	;
+		string__first_char(Ostring, A, O2),
+		string__stringf_2(Bs, Vars, O2)
+	).
+
+
+:- pred string__stringf_3( list(char), list(char), list(io__poly_type), list(io__poly_type), string).
+:- mode string__stringf_3(in, out, in, out, out) is semidet.
+%
+%	string__stringf_3( formated string in, out, var in, out, Out string)
+%		Return a string of the formatted varible.
+%
+string__stringf_3(['%'|Bs], Bs, [], [], Out_string) :-
+	string__char_to_string( '%', Out_string ).
+%
+%
+string__stringf_3( As, Cs, [V|Va], Vso, Out_string ) :-
+	string__stringf_takewhile1( As, [C|Cs], Fmt),
+	string__stringf_4( Fmt, Char_list_flags, Int_width, Int_precis, Char_mods),
+	string__stringf_ds0( Precision, V, T, C),
+	string__stringf_ds1( Char_mods, B, T),
+	string__stringf_ds2( Vs, Va, Width, Int_width, Precision, Int_precis),
+	string__stringf_ds3(B, Vso, Vs, V, Ostring, Precision, Char_list_flags, Mv_width1),
+	string__stringf_ds4( Ostring2, Ostring, Char_list_flags, V, Mv_width1, Mv_width2),
+	string__stringf_ds6( Ostring2, Width, Char_list_flags, Out_string, Mv_width2).
+
+
+
+:- pred string__stringf_ds0( int, io__poly_type, char, char).
+:- mode string__stringf_ds0( in, in, out, in) is det.
+string__stringf_ds0( Precision, V, B, C) :- 
+	(
+		C = 'i'
+	->
+		B = 'd'
+	;
+		C = 'g'
+	->
+		(V = f(F)
+		->
+			string__float_abs(F, Ft),
+			int__pow(10, Precision, P),
+			int__to_float(P, Pe),
+			( builtin_float_gt(Ft, 0.0001), builtin_float_gt(Pe, Ft)
+			->
+				B = 'f'
+			;
+				B = 'e'
+			)
+		;
+			error("string__stringf:  type info incorrect.")
+		)
+	;
+		C = 'G'
+	->
+		(V = f(F)
+		->
+			string__float_abs(F, Ft),
+			int__pow(10, Precision, P),
+			int__to_float(P, Pe),
+			( builtin_float_gt(Ft, 0.0001), builtin_float_gt(Pe, Ft)
+			->
+				B = 'f'
+			;
+				B = 'E'
+			)
+		;
+			error("string__stringf:  type info incorrect.")
+		)
+	;
+		B = C
+	).
+
+
+
+:- pred string__stringf_ds1( char, char, char).
+:- mode string__stringf_ds1( in, out, in) is det.
+string__stringf_ds1( Char_mods, B, C) :- 
+	(
+		Char_mods = 'h'
+	->
+		B = C
+	;
+		Char_mods = 'l'
+	->
+		B = C
+	;
+		Char_mods = 'L'
+	->
+		B = C
+	;
+		B = C
+	).
+
+
+:- pred string__stringf_ds2( list(io__poly_type), list(io__poly_type), int, int, int, int).
+:- mode string__stringf_ds2( out, in, out, in, out, in) is semidet.
+string__stringf_ds2( Vs, Va, Width, Int_width, Precision, Int_precis) :-
+	(Int_width = -1
+	->
+		Va = [ i(Width) |  Vb]
+	;
+		Va = Vb,
+		Int_width = Width
+	),
+	(Int_precis = -1
+	->
+		Vb = [ i(Precision) | Vs]
+	;
+		Vs = Vb,
+		Int_precis = Precision
+	).
+
+
+
+:- pred string__stringf_ds3( char, list(io__poly_type), list(io__poly_type), io__poly_type, string, int, list(char), int).
+:- mode string__stringf_ds3( in, out, in, in, out, in, in, out) is semidet.
+string__stringf_ds3( B, Vso, Vso, V, Ostring, Precision, Char_list_flags, Mv_width) :-
+	(
+		B is 'd' ,
+			V = i(I),
+			string__int_to_string(I, S),
+			string__stringf_int_precision(S, Ostring, Precision, _),
+			(
+			I < 0
+			->
+				Mv_width is 1
+			;
+				Mv_width is 0 
+			)
+				
+	; 
+		B is 'o',
+			V = i(I),
+			( I = 0
+			->
+				S = "0",
+				string__stringf_int_precision(S, Ostring, Precision, _),
+				Tw = 0
+			;
+				string__int_to_base_string(I, 8, S),
+				string__stringf_int_precision(S, SS, Precision, _),
+				( list__member('#', Char_list_flags)
+				->
+					string__first_char(Ostring, '0', SS),
+					Tw = 1
+				;
+					Ostring = SS,
+					Tw = 0
+				)
+			),
+			(I < 0 -> Mv_width is Tw + 1 ; Mv_width is Tw)
+	;
+		B is 'x' ,
+			V = i(I),
+			( I = 0
+			->
+				SS = "0",
+				Tw = 0,
+				string__stringf_int_precision(SS, Ostring, Precision, _)
+			;
+				string__int_to_base_string(I, 16, S),
+				string__stringf_int_precision(S, SS, Precision, _),
+				( list__member( '#', Char_list_flags)
+				->
+					string__append( "0x", SS, Ostring),
+					Tw = 2
+				;
+					Ostring = SS,
+					Tw = 0
+				)
+			),
+			(I < 0 -> Mv_width is Tw + 1 ; Mv_width is Tw)
+	;
+		B is 'X',
+			V = i(I),
+			(
+			I = 0
+			->
+				SS = "0",
+				Tw = 0,
+				string__stringf_int_precision(SS, Ostring, Precision, _)
+			;
+				string__int_to_base_string(I, 16, Otemp),
+				string__to_upper(Otemp, S),
+				string__stringf_int_precision(S, SS, Precision, _),
+				( list__member( '#', Char_list_flags)
+				->
+					string__append( "0X", SS, Ostring),
+					Tw = 2
+				;
+					SS = Ostring,
+					Tw = 0
+				)
+			),
+			(I < 0 -> Mv_width is Tw + 1 ; Mv_width is Tw )
+	;
+		B is 'u' ,
+			V = i(I),
+			int__abs(I, J),
+			string__int_to_string(J, S),
+			string__stringf_int_precision(S, Ostring, Precision, Mvt),
+			Mv_width = Mvt
+	;	
+		B is 'c' ,
+			V = c(C),
+			string__char_to_string( C, Ostring),
+			Mv_width = 0
+	;
+		B is 's' ,
+			V = s(S),
+			(
+			Precision = -6
+			->
+				S = Ostring
+			;
+				string__split(S, Precision, Ostring, _)
+			),
+			Mv_width = 0
+	;
+		B is 'f' ,
+			V = f(F),
+			string__float_to_string(F, Fstring),
+			string__stringf_calc_prec(Fstring, Ostring, Precision),
+			(builtin_float_lt(F, 0.0)-> Mv_width = 1 ; Mv_width = 0)
+	;	
+		B is 'e',
+			V = f(F),
+			string__stringf_calc_exp(F, Ostring, Precision, 0),
+			(builtin_float_lt(F, 0.0)-> Mv_width = 1 ; Mv_width = 0)
+	;
+		B is 'E' ,
+			V = f(F),
+			string__to_upper(Otemp, Ostring),
+			string__stringf_calc_exp(F, Otemp, Precision, 0),
+			(builtin_float_lt(F, 0.0)-> Mv_width = 1 ; Mv_width = 0)
+	;
+		B is 'p' ,
+			V = i(I),
+			string__int_to_string(I, Ostring),
+			((I < 0) -> Mv_width = 1 ; Mv_width = 0)
+	;
+			error("string__stringf:  statement has used an unsupported varible type\n")
+	).
+
+
+
+
+:- pred string__stringf_int_precision(string, string, int, int).
+:- mode string__stringf_int_precision( in, out, in, out) is semidet.
+string__stringf_int_precision(S, Ostring, Precision, Added_width) :-
+	(
+	Precision = -6
+	->
+		Prec = 0
+	;
+		Prec = Precision
+	),
+	string__length(S, L),
+	(string__first_char(S, '-', _)
+		->
+		Xzeros is Prec - L + 1
+		;
+		Xzeros is Prec - L
+	),
+	Added_width = Xzeros,
+	(
+	Xzeros > 0
+	->	
+		string__duplicate_char( '0', Xzeros, Pfix),
+		string__first_char(S, C, Rest),
+		(
+		C \= ('-'),
+		C \= ('+')
+		->
+			string__append(Pfix, S, Ostring)
+		;
+			string__append( Pfix, Rest, Temps),
+			string__first_char( Ostring, C, Temps)
+		)
+	;
+		Ostring = S
+	).
+
+
+:- pred string__stringf_calc_exp(float, string, int, int).
+:- mode string__stringf_calc_exp(in, out, in, in) is det.
+string__stringf_calc_exp(F, Fstring, Precision, Exp) :-
+	builtin_float_lt(F, 0.0)
+	-> 	
+		builtin_float_minus( 0.0, F, Tf),
+		string__stringf_calc_exp( Tf, Tst, Precision, Exp),
+		string__first_char(Fstring, '-', Tst)
+	;
+		(
+		builtin_float_lt(F, 1.0)
+		->
+			Texp is Exp - 1,
+			builtin_float_times(F, 10.0, FF),
+			string__stringf_calc_exp( FF, Fstring, Precision, Texp)
+		;
+		(
+		builtin_float_ge(F, 10.0)
+		->
+			Texp is Exp + 1,
+			builtin_float_divide(F, 10.0, FF),
+			string__stringf_calc_exp( FF, Fstring, Precision, Texp)
+		;
+			string__float_to_string(F, Fs),
+			string__stringf_calc_prec(Fs, Fs2, Precision),
+			string__int_to_string(Exp, Exps),
+			(Exp < 0
+			->
+				string__append_list([ Fs2, "e", Exps], Fstring)
+			;
+				string__append_list([ Fs2, "e+", Exps], Fstring)
+			)
+		)
+		).
+
+	
+
+:- pred string__stringf_calc_prec(string, string, int).
+:- mode string__stringf_calc_prec(in, out, in) is det.
+string__stringf_calc_prec(Istring, Ostring, Precision) :-
+	(Precision = -6
+	->
+		Prec is 6
+	;
+		Prec is Precision),
+	(
+	find__index( Istring, '.', 1, Index)
+	->
+		Spa is Prec + Index + 1
+	;
+		error("stringf:  An error with conversion  float==>string")
+	),
+	(
+	string__length(Istring, L1),
+	L1 < Spa
+	->
+		string__duplicate_char('0', Precision, P0s),
+		string__append( Istring, P0s, Mstring)
+	;
+		Mstring = Istring
+	),
+	(
+	Precision = 0
+	->
+		Space is Spa - 1
+	;
+		Space is Spa
+	),
+	string__split(Mstring, Space, Ostring, _).
+
+
+
+:- pred find__index( string, char, int, int).
+:- mode find__index( in, in, in, out) is semidet.
+find__index( A, Ch, Check, Ret) :-
+	string__length(A, Len),
+	Len < Check
+	->
+		fail
+	;
+	string__index(A, Check, Ch)
+	->
+		Ret = Check
+	;
+		Check2 is Check + 1,
+		find__index( A, Ch, Check2, Ret)
+	.
+
+
+
+
+
+
+%	Add a '+' or ' ' sign, if it is needed in this output.
+%
+:- pred string__stringf_ds4( string, string, list(char), io__poly_type, int, int).
+:- mode string__stringf_ds4( out, in, in, in, in, out) is det.
+string__stringf_ds4( Ostring, Istring, Char_list_flags, _V, Mvw1, Mvw2) :-
+	T1 is Mvw1 - 1,
+	(
+	string__index(Istring, T1, '-')
+	->
+		Ostring = Istring,
+		Mvw2 = Mvw1
+	;
+		string__split(Istring, Mvw1, Lstring, Rstring),
+		(
+		list__member(('+'), Char_list_flags)
+		->
+			string__append_list( [Lstring, "+", Rstring], Ostring),
+			Mvw2 is Mvw1 + 1
+		;
+			list__member(' ', Char_list_flags)
+			->
+				string__append_list( [Lstring, " ", Rstring], Ostring),
+				Mvw2 is Mvw1 + 1
+			; 
+				Ostring is Istring,
+				Mvw2 = Mvw1
+		)
+	).
+
+
+
+%
+% This function pads some characters to the left or right of a string that is
+% shorter than it's width.
+%
+:- pred string__stringf_ds6( string, int, list(char), string, int).
+:- mode string__stringf_ds6( in, in, in, out, in) is det.
+%			( String in, width, flags, Output string, #Moveables).
+string__stringf_ds6( O_string, Width, Char_list_flags, Out_string, Mv_cs) :-
+	string__length(O_string, Len),
+	(Len < Width
+	->
+		% time for some FLAG tests
+		Xspace is Width - Len,
+		(
+		list__member('0', Char_list_flags)
+		->
+			Pad_char = '0'
+		;
+			Pad_char = ' '
+		),
+		string__duplicate_char(Pad_char, Xspace, Pad_string),
+		(
+		list__member('-', Char_list_flags)
+		->
+			string__append(O_string, Pad_string, Out_string)
+		;
+			list__member('0', Char_list_flags)
+			->
+				string__split(O_string, Mv_cs, B4, After),
+				string__append_list( [B4, Pad_string, After], Out_string)
+			;
+			string__append( Pad_string, O_string,  Out_string)
+		)
+	;
+		Out_string is O_string
+	).
+
+
+:- pred string__stringf_4( list(char), list(char), int, int, char).
+:- mode string__stringf_4( in, out, out, out, out) is det.
+%	string__stringf_4( format info, flags, width, precision, modifier)
+%		format is assumed to be in ANSI C format.
+%		p243-4 of Kernighan & Ritchie 2nd Ed. 1988
+%		"Parse" format informtion.
+%
+% A function to do some basic parsing on the optional printf arguements.
+%
+string__stringf_4( [], Flags, Width, Precision, Mods) :-
+		Flags = [],
+		Width = 0,
+		Precision = -6,
+		Mods = ' '.
+string__stringf_4( [A|As], Flags, Width, Precision, Mods) :-
+		(A = (-) ; A = (+) ; A = ' ' ; A = '0' ; A = '#' )
+	->
+		string__stringf_4( As, Oflags, Width, Precision, Mods),
+		UFlags = [A | Oflags],
+		list__sort(UFlags, Flags)
+	;
+		( A = (.) ; A = '1' ; A = '2' ; A = '3' ; A = '4' ;
+		  A = '5' ; A = '6' ; A = '7' ; A = '8' ; A = '9' )
+	->
+		string__ds_to_intchar([A|As], Bs, Numl1, Numl2, yes),
+		string__ds_int_from_char_list( Numl1, Width),
+		string__ds_int_from_char_list( Numl2, Precision),
+		string__stringf_4( Bs, Flags, _, _, Mods)
+	;
+		( A = 'h' ; A = 'l' ; A = 'L' )
+	->
+		Mods = A,
+		string__stringf_4( As, Flags, Width, Precision, _)
+	;
+		A = ('*')
+	->
+		string__stringf_4( As, Flags, _W, P, Mods),
+		(P = -6
+			->
+		Precision = -1
+			; 
+		Precision = P),
+		Width = -1
+	;
+		error("string__stringf:  Unrecognised formatting information\n")
+	.
+
+:- pred string__stringf_takewhile1(list(char), list(char), list(char)).
+:- mode string__stringf_takewhile1(in, out, out) is det.
+%	string__stringf_takewhile(formatted string in, out, format info).
+%		A HACK.  Would be much nicer with a proper string__takewhile.
+%		Looses the format info from the front of the first arguement,
+%		puts this in the last arguement, while the second is the
+%		remainder of the string.
+%
+string__stringf_takewhile1([], [], []).
+string__stringf_takewhile1( [A|As], Rem, Finf) :-
+	if	( A = 'd';A = 'i';A = 'o';A = 'x';A = 'X';A = 'u';A = 's';
+		  A = 'c';A = 'f';A = 'e';A = 'E';A = 'g';A = 'G';A = 'p')
+	then	
+		Rem = [A|As],
+		Finf = []
+	else
+		string__stringf_takewhile1(As, Rem, F),
+		Finf = [A|F].
+	
+:- pred string__ds_to_intchar(list(char), list(char), list(char), list(char), bool).
+:- mode string__ds_to_intchar(in, out, out, out, in) is det.
+%	string__ds_to_intchar( String in, out, Number1, Number2, seen '.' yet?)
+%		Takes in a char list and splits off the rational at the 
+%		start of the list.  This is split into 2 parts - an int and a
+%		fraction.
+%
+string__ds_to_intchar( [A|As], Bs, Int1, Int2, Bool) :-
+	char__is_digit(A)
+	->
+	(	Bool = yes
+		->
+			string__ds_to_intchar( As, Bs, I1, Int2, yes),
+			Int1 = [A|I1]
+		;
+			string__ds_to_intchar(As, Bs, Int1, I2, no),
+			Int2 = [A|I2]
+	)
+	;
+	(	A = ('.')
+		->
+			string__ds_to_intchar( As, Bs, Int1, Int2, no)
+		;
+			Bs = [A|As],
+			Int1 = [],
+			Int2 = []
+	).
+string__ds_to_intchar( [], [], [], [], _).
+
+			
+			
+
+
+	:- pred string__ds_int_from_char_list( list(char), int).
+	:- mode string__ds_int_from_char_list( in, out) is det.
+	%		Convert a char_list to an int
+%
+string__ds_int_from_char_list( [], 0).
+string__ds_int_from_char_list( [L|Ls], I) :-
+	string__from_char_list( [L|Ls], S),
+	string__to_int( S, I_hack)
+		->
+	I = I_hack
+		;
+	I = 0.
+
+
+:- pred string__float_abs(float, float).
+:- mode string__float_abs(in, out) is det.
+string__float_abs(Fin, Fout) :-
+	builtin_float_lt(Fin, 0.0)
+	->
+		builtin_float_minus(0.0, Fin, Fout)
+	;
+		Fout = Fin
+	.
+
+
+
+
 
 :- end_module string.
 
