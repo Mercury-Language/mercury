@@ -2519,6 +2519,7 @@ mercury_output_pragma_source_file(SourceFileString) -->
 mercury_output_pragma_foreign_body_code(Lang, ForeignCodeString) -->
 	io__write_string(":- pragma foreign_code("),
 	mercury_format_foreign_language_string(Lang),
+	io__write_string(", "),
 	mercury_format_foreign_code_string(ForeignCodeString),
 	io__write_string(").\n").
 
