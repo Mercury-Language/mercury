@@ -69,6 +69,16 @@ spawn_call_back_to_mercury_cc_multi:
 #endif
 	IO = IO0;
 }").
+:- pragma foreign_proc("C#",
+		spawn(Goal::(pred(di, uo) is cc_multi), _IO0::di, _IO::uo),
+		[will_not_call_mercury, thread_safe, promise_pure], "{
+	System.Threading.Thread t;
+	MercuryThread mt = new MercuryThread(Goal);
+	
+	t = new System.Threading.Thread(
+			new System.Threading.ThreadStart(mt.execute_goal));
+	t.Start();
+}").
 
 :- pragma no_inline(yield/2).
 :- pragma c_code(yield(IO0::di, IO::uo),
@@ -85,6 +95,7 @@ yield_skip_to_the_end:
 	IO = IO0;
 
 }").
+yield --> [].
 
 :- pred call_back_to_mercury(pred(io__state, io__state), io__state, io__state).
 :- mode call_back_to_mercury(pred(di, uo) is cc_multi, di, uo) is cc_multi.
@@ -128,4 +139,20 @@ call_back_to_mercury(Goal) -->
 	return NULL;
   }
 #endif
+").
+
+:- pragma foreign_code("C#", "
+public class MercuryThread {
+	object[] Goal;
+
+	public MercuryThread(object[] g)
+	{
+		Goal = g;
+	}
+
+	public void execute_goal()
+	{
+		spawn.mercury_code.call_back_to_mercury_cc_multi(Goal);
+	}
+}
 ").
