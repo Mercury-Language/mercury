@@ -1,0 +1,13 @@
+ext_type.m:016: In clause for predicate `ext_type:p/2':
+ext_type.m:016:   type error in unification of variable `Z'
+ext_type.m:016:   and functor `q/1'.
+ext_type.m:016:   variable `Z' has type `(some [QT] QT)',
+ext_type.m:016:   functor `q/1' has type 
+ext_type.m:016:   `q(int) :: (some [QT] QT)'.
+ext_type.m:019: In clause for predicate `ext_type:r/0':
+ext_type.m:019:   type error in unification of argument
+ext_type.m:019:   and functor `q/1'.
+ext_type.m:019:   argument has type `(some [QT] QT)',
+ext_type.m:019:   functor `q/1' has type 
+ext_type.m:019:   `q(int) :: (some [QT] QT)'.
+For more information, try recompiling with `-E'.

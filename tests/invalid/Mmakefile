@@ -45,6 +45,7 @@ SINGLEMODULE_SOURCES= \
 	errors1.m \
 	errors2.m \
 	external.m \
+	ext_type.m \
 	ext_type_bug.m \
 	exported_mode.m \
 	field_syntax_error.m \

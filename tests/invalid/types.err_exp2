@@ -18,7 +18,7 @@ types.m:014:   in call to predicate `p'.
 types.m:039: In clause for predicate `types:bar/1':
 types.m:039:   type error in unification of variable `X'
 types.m:039:   and constant `0'.
-types.m:039:   variable `X' has type `BarTypeParam',
+types.m:039:   variable `X' has type `(some [BarTypeParam] BarTypeParam)',
 types.m:039:   constant `0' has type `int'.
 types.m:050: Error: no clauses for predicate `types:bar2/1'.
 types.m:018: In clause for predicate `types:r/0':

@@ -1,5 +1,5 @@
 ext_type_bug.m:011: In clause for predicate `ext_type_bug:foo/1':
 ext_type_bug.m:011:   in argument 1 of call to predicate `make_bar/1':
 ext_type_bug.m:011:   type error: variable `Bar' has type `(ext_type_bug:bar(int))',
-ext_type_bug.m:011:   expected type was `(ext_type_bug:bar(T))'.
+ext_type_bug.m:011:   expected type was `(some [T] (ext_type_bug:bar(T)))'.
 For more information, try recompiling with `-E'.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2001 The University of Melbourne.
+% Copyright (C) 1993-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1880,13 +1880,14 @@ typecheck_var_has_type(VarId, Type, TypeCheckInfo0, TypeCheckInfo) :-
 	% Given a type assignment set and a variable id,
 	% return the list of possible different types for the variable.
 
-:- type type_stuff ---> type_stuff(type, tvarset, tsubst).
+:- type type_stuff ---> type_stuff(type, tvarset, tsubst, head_type_params).
 
 :- pred get_type_stuff(type_assign_set, prog_var, list(type_stuff)).
 :- mode get_type_stuff(in, in, out) is det.
 get_type_stuff([], _VarId, []).
 get_type_stuff([TypeAssign | TypeAssigns], VarId, L) :-
 	get_type_stuff(TypeAssigns, VarId, L0),
+	type_assign_get_head_type_params(TypeAssign, HeadTypeParams),
 	type_assign_get_type_bindings(TypeAssign, TypeBindings),
 	type_assign_get_typevarset(TypeAssign, TVarSet),
 	type_assign_get_var_types(TypeAssign, VarTypes),
@@ -1901,7 +1902,7 @@ get_type_stuff([TypeAssign | TypeAssigns], VarId, L) :-
 		term__context_init(Context),
 		Type = term__functor(term__atom("<any>"), [], Context)
 	),
-	TypeStuff = type_stuff(Type, TVarSet, TypeBindings),
+	TypeStuff = type_stuff(Type, TVarSet, TypeBindings, HeadTypeParams),
 	(
 		list__member(TypeStuff, L0)
 	->
@@ -1914,7 +1915,8 @@ get_type_stuff([TypeAssign | TypeAssigns], VarId, L) :-
 	% return the list of possible different types for the argument
 	% and the variable.
 
-:- type arg_type_stuff ---> arg_type_stuff(type, type, tvarset).
+:- type arg_type_stuff --->
+	arg_type_stuff(type, type, tvarset, head_type_params).
 
 :- pred get_arg_type_stuff(args_type_assign_set, prog_var,
 		list(arg_type_stuff)).
@@ -1923,6 +1925,7 @@ get_arg_type_stuff([], _VarId, []).
 get_arg_type_stuff([args(TypeAssign, ArgTypes, _) | ArgTypeAssigns], 
 			VarId, L) :-
 	get_arg_type_stuff(ArgTypeAssigns, VarId, L0),
+	type_assign_get_head_type_params(TypeAssign, HeadTypeParams),
 	type_assign_get_type_bindings(TypeAssign, TypeBindings),
 	type_assign_get_typevarset(TypeAssign, TVarSet),
 	type_assign_get_var_types(TypeAssign, VarTypes),
@@ -1940,7 +1943,7 @@ get_arg_type_stuff([args(TypeAssign, ArgTypes, _) | ArgTypeAssigns],
 	list__index0_det(ArgTypes, 0, ArgType),
 	term__apply_rec_substitution(ArgType, TypeBindings, ArgType2),
 	term__apply_rec_substitution(VarType, TypeBindings, VarType2),
-	TypeStuff = arg_type_stuff(ArgType2, VarType2, TVarSet),
+	TypeStuff = arg_type_stuff(ArgType2, VarType2, TVarSet, HeadTypeParams),
 	(
 		list__member(TypeStuff, L0)
 	->
@@ -4893,8 +4896,9 @@ report_error_functor_arg_types(TypeCheckInfo, Var, ConsDefnList,
 			prog_var,	% variable in that position
 			type,		% actual type of that variable
 			type,		% expected type of that variable
-			tvarset		% the type vars in the expected
+			tvarset,	% the type vars in the expected
 					% and expected types
+			head_type_params % existentially quantified type vars
 		).
 
 :- pred find_mismatched_args(assoc_list(prog_var, type), type_assign_set, int,
@@ -4907,7 +4911,8 @@ find_mismatched_args([Arg - ExpType | ArgExpTypes], TypeAssignSet, ArgNum0,
 	ArgNum1 is ArgNum0 + 1,
 	find_mismatched_args(ArgExpTypes, TypeAssignSet, ArgNum1, Mismatched1),
 	get_type_stuff(TypeAssignSet, Arg, TypeStuffList),
-	TypeStuffList = [type_stuff(ArgType, TVarSet, TypeBindings)],
+	TypeStuffList = [type_stuff(ArgType, TVarSet, TypeBindings,
+		HeadTypeParams)],
 	term__apply_rec_substitution(ArgType, TypeBindings, FullArgType),
 	term__apply_rec_substitution(ExpType, TypeBindings, FullExpType),
 	(
@@ -4924,7 +4929,7 @@ find_mismatched_args([Arg - ExpType | ArgExpTypes], TypeAssignSet, ArgNum0,
 		Mismatched = Mismatched1
 	;
 		Mismatched = [mismatch(ArgNum0, Arg, FullArgType, FullExpType,
-				TVarSet) | Mismatched1]
+				TVarSet, HeadTypeParams) | Mismatched1]
 	).
 
 :- pred report_mismatched_args(list(mismatch_info), bool, prog_varset, cons_id,
@@ -4934,7 +4939,8 @@ find_mismatched_args([Arg - ExpType | ArgExpTypes], TypeAssignSet, ArgNum0,
 report_mismatched_args([], _, _, _, _) --> [].
 report_mismatched_args([Mismatch | Mismatches], First, VarSet, Functor,
 		Context) -->
-	{ Mismatch = mismatch(ArgNum, Var, ActType, ExpType, TVarSet) },
+	{ Mismatch = mismatch(ArgNum, Var, ActType, ExpType, TVarSet,
+		HeadTypeParams) },
 	prog_out__write_context(Context),
 	(
 		% Handle higher-order syntax such as ''(F, A) specially:
@@ -4969,11 +4975,11 @@ report_mismatched_args([Mismatch | Mismatches], First, VarSet, Functor,
 		[]
 	),
 	io__write_string(" has type `"),
-	mercury_output_term(ActType, TVarSet, no),
+	output_type(ActType, TVarSet, HeadTypeParams),
 	io__write_string("',\n"),
 	prog_out__write_context(Context),
 	io__write_string("  expected type was `"),
-	mercury_output_term(ExpType, TVarSet, no),
+	output_type(ExpType, TVarSet, HeadTypeParams),
 	( { Mismatches = [] } ->
 		io__write_string("'.\n")
 	;
@@ -5080,13 +5086,11 @@ write_type_of_functor(Functor, Arity, Context, ConsDefnList) -->
 :- mode write_cons_type(in, in, in, di, uo) is det.
 
 	% XXX Should we mention the context here?
-write_cons_type(cons_type_info(TVarSet, _ExistQVars, ConsType0, ArgTypes0, _), 
+write_cons_type(cons_type_info(TVarSet, ExistQVars, ConsType, ArgTypes, _), 
 		Functor, _) -->
-	{ strip_builtin_qualifier_from_cons_id(Functor, Functor1) },
-	{ strip_builtin_qualifiers_from_type_list(ArgTypes0, ArgTypes) },
 	( { ArgTypes \= [] } ->
-		( { cons_id_and_args_to_term(Functor1, ArgTypes, Term) } ->
-			mercury_output_term(Term, TVarSet, no)
+		( { cons_id_and_args_to_term(Functor, ArgTypes, Term) } ->
+			output_type(Term, TVarSet, ExistQVars)
 		;
 			{ error("typecheck:write_cons_type - invalid cons_id") }
 		),	
@@ -5094,8 +5098,7 @@ write_cons_type(cons_type_info(TVarSet, _ExistQVars, ConsType0, ArgTypes0, _),
 	;
 		[]
 	),
-	{ strip_builtin_qualifiers_from_type(ConsType0, ConsType) },
-	mercury_output_term(ConsType, TVarSet, no).
+	output_type(ConsType, TVarSet, ExistQVars).
 
 :- pred write_cons_type_list(list(cons_type_info), cons_id, int, prog_context,
 				io__state, io__state).
@@ -5268,6 +5271,14 @@ write_type_assign_constraints(Operator, [Constraint | Constraints],
 
 	% write_type_b writes out a type after applying the type bindings.
 
+:- pred write_type_b(type, tvarset, tsubst, head_type_params,
+		io__state, io__state).
+:- mode write_type_b(in, in, in, in, di, uo) is det.
+
+write_type_b(Type0, TypeVarSet, TypeBindings, HeadTypeParams) -->
+	{ Type = maybe_add_existential_quantifier(HeadTypeParams, Type0) },
+	write_type_b(Type, TypeVarSet, TypeBindings).
+
 :- pred write_type_b(type, tvarset, tsubst, io__state, io__state).
 :- mode write_type_b(in, in, in, di, uo) is det.
 
@@ -5279,10 +5290,34 @@ write_type_b(Type, TypeVarSet, TypeBindings) -->
 :- func typestuff_to_typestr(type_stuff) = string.
 
 typestuff_to_typestr(TypeStuff) = TypeStr :-
-	TypeStuff = type_stuff(Type0, TypeVarSet, TypeBindings),
+	TypeStuff = type_stuff(Type0, TypeVarSet, TypeBindings, HeadTypeParams),
 	term__apply_rec_substitution(Type0, TypeBindings, Type1),
-	strip_builtin_qualifiers_from_type(Type1, Type),
+	strip_builtin_qualifiers_from_type(Type1, Type2),
+	Type = maybe_add_existential_quantifier(HeadTypeParams, Type2),
 	TypeStr = mercury_term_to_string(Type, TypeVarSet, no).
+
+	%
+	% Check if any of the type variables in the type are existentially
+	% quantified (occur in HeadTypeParams), and if so, add an
+	% appropriate existential quantifier at the front of the type.
+	%
+:- func maybe_add_existential_quantifier(head_type_params, (type)) = (type).
+maybe_add_existential_quantifier(HeadTypeParams, Type0) = Type :-
+	type_util__vars(Type0, TVars),
+	ExistQuantTVars = set__to_sorted_list(set__intersect(
+		set__list_to_set(HeadTypeParams), set__list_to_set(TVars))),
+	( ExistQuantTVars = [] ->
+		Type = Type0
+	;
+		Type = term__functor(term__atom("some"), [make_list_term(
+			ExistQuantTVars), Type0],
+			term__context_init)
+	).
+
+:- func make_list_term(list(tvar)) = (type).
+make_list_term([]) = term__functor(term__atom("[]"), [], term__context_init).
+make_list_term([V|Vs]) = term__functor(term__atom("[|]"),
+	[term__variable(V), make_list_term(Vs)], term__context_init).
 
 %-----------------------------------------------------------------------------%
 
@@ -5305,13 +5340,14 @@ report_error_var(TypeCheckInfo, VarId, Type, TypeAssignSet0) -->
 	io__write_string("  type error: "),
 	( { TypeStuffList = [SingleTypeStuff] } ->
 		write_argument_name(VarSet, VarId),
-		{ SingleTypeStuff = type_stuff(VType, TVarSet, TBinding) },
+		{ SingleTypeStuff = type_stuff(VType, TVarSet, TBinding,
+			HeadTypeParams) },
 		io__write_string(" has type `"),
-		write_type_b(VType, TVarSet, TBinding),
+		write_type_b(VType, TVarSet, TBinding, HeadTypeParams),
 		io__write_string("',\n"),
 		prog_out__write_context(Context),
 		io__write_string("  expected type was `"),
-		write_type_b(Type, TVarSet, TBinding),
+		write_type_b(Type, TVarSet, TBinding, HeadTypeParams),
 		io__write_string("'.\n")
 	;
 		io__write_string("type of "),
@@ -5352,15 +5388,14 @@ report_error_arg_var(TypeCheckInfo, VarId, ArgTypeAssignSet0) -->
 	io__write_string("  type error: "),
 	( { ArgTypeStuffList = [SingleArgTypeStuff] } ->
 		write_argument_name(VarSet, VarId),
-		{ SingleArgTypeStuff = arg_type_stuff(Type0, VType0, TVarSet) },
+		{ SingleArgTypeStuff = arg_type_stuff(Type0, VType0, TVarSet,
+			HeadTypeParams) },
 		io__write_string(" has type `"),
-		{ strip_builtin_qualifiers_from_type(VType0, VType) },
-		mercury_output_term(VType, TVarSet, no),
+		output_type(VType0, TVarSet, HeadTypeParams),
 		io__write_string("',\n"),
 		prog_out__write_context(Context),
 		io__write_string("  expected type was `"),
-		{ strip_builtin_qualifiers_from_type(Type0, Type) },
-		mercury_output_term(Type, TVarSet, no),
+		output_type(Type0, TVarSet, HeadTypeParams),
 		io__write_string("'.\n")
 	;
 		io__write_string("type of "),
@@ -5382,6 +5417,13 @@ report_error_arg_var(TypeCheckInfo, VarId, ArgTypeAssignSet0) -->
 	),
 	write_args_type_assign_set_msg(ArgTypeAssignSet0, VarSet).
 
+:- pred output_type((type)::in, tvarset::in, head_type_params::in,
+		io__state::di, io__state::uo) is det.
+output_type(Type0, TVarSet, HeadTypeParams) -->
+	{ strip_builtin_qualifiers_from_type(Type0, Type1) },
+	{ Type = maybe_add_existential_quantifier(HeadTypeParams, Type1) },
+	mercury_output_term(Type, TVarSet, no).
+
 :- pred write_types_list(prog_context::in, list(string)::in,
 	io__state::di, io__state::uo) is det.
 
@@ -5400,8 +5442,8 @@ write_types_list(Context, [Type | Types]) -->
 :- pred write_type_stuff(type_stuff, io__state, io__state).
 :- mode write_type_stuff(in, di, uo) is det.
 
-write_type_stuff(type_stuff(T, TVarSet, TBinding)) -->
-	write_type_b(T, TVarSet, TBinding).
+write_type_stuff(type_stuff(T, TVarSet, TBinding, HeadTypeParams)) -->
+	write_type_b(T, TVarSet, TBinding, HeadTypeParams).
 
 :- pred write_var_type_stuff_list(list(type_stuff), type, io__state, io__state).
 :- mode write_var_type_stuff_list(in, in, di, uo) is det.
@@ -5412,10 +5454,10 @@ write_var_type_stuff_list(Ts, T) -->
 :- pred write_var_type_stuff(type, type_stuff, io__state, io__state).
 :- mode write_var_type_stuff(in, in, di, uo) is det.
 	
-write_var_type_stuff(T, type_stuff(VT, TVarSet, TBinding)) -->
-	write_type_b(VT, TVarSet, TBinding),
+write_var_type_stuff(T, type_stuff(VT, TVarSet, TBinding, HeadTypeParams)) -->
+	write_type_b(VT, TVarSet, TBinding, HeadTypeParams),
 	io__write_string("/"),
-	write_type_b(T, TVarSet, TBinding).
+	write_type_b(T, TVarSet, TBinding, HeadTypeParams).
 
 :- pred write_arg_type_stuff_list(list(arg_type_stuff), io__state, io__state).
 :- mode write_arg_type_stuff_list(in, di, uo) is det.
@@ -5426,12 +5468,10 @@ write_arg_type_stuff_list(Ts) -->
 :- pred write_arg_type_stuff(arg_type_stuff, io__state, io__state).
 :- mode write_arg_type_stuff(in, di, uo) is det.
 
-write_arg_type_stuff(arg_type_stuff(T0, VT0, TVarSet)) -->
-	{ strip_builtin_qualifiers_from_type(VT0, VT) },
-	mercury_output_term(VT, TVarSet, no),
+write_arg_type_stuff(arg_type_stuff(T, VT, TVarSet, HeadTypeParams)) -->
+	output_type(VT, TVarSet, HeadTypeParams),
 	io__write_string("/"),
-	{ strip_builtin_qualifiers_from_type(T0, T) },
-	mercury_output_term(T, TVarSet, no).
+	output_type(T, TVarSet, HeadTypeParams).
 
 %-----------------------------------------------------------------------------%
 
@@ -5993,12 +6033,14 @@ report_ambiguity_error_2([V | Vs], VarSet, TypeCheckInfo, TypeAssign1,
 	{ type_assign_get_var_types(TypeAssign2, VarTypes2) },
 	{ type_assign_get_type_bindings(TypeAssign1, TypeBindings1) },
 	{ type_assign_get_type_bindings(TypeAssign2, TypeBindings2) },
+	{ type_assign_get_head_type_params(TypeAssign1, HeadTypeParams1) },
+	{ type_assign_get_head_type_params(TypeAssign2, HeadTypeParams2) },
 	( {
 		map__search(VarTypes1, V, Type1),
 		map__search(VarTypes2, V, Type2),
-		term__apply_rec_substitution(Type1, TypeBindings1, T1a),
-		term__apply_rec_substitution(Type2, TypeBindings2, T2a),
-		\+ identical_types(T1a, T2a)
+		term__apply_rec_substitution(Type1, TypeBindings1, T1),
+		term__apply_rec_substitution(Type2, TypeBindings2, T2),
+		\+ identical_types(T1, T2)
 	} ->
 		{ typecheck_info_get_context(TypeCheckInfo, Context) },
 		( { Found0 = no } ->
@@ -6013,12 +6055,10 @@ report_ambiguity_error_2([V | Vs], VarSet, TypeCheckInfo, TypeAssign1,
 		mercury_output_var(V, VarSet, no),
 		io__write_string(" :: "),
 		{ type_assign_get_typevarset(TypeAssign1, TVarSet1) },
-		{ strip_builtin_qualifiers_from_type(T1a, T1) },
-		mercury_output_term(T1, TVarSet1, no),
+		output_type(T1, TVarSet1, HeadTypeParams1),
 		io__write_string(" or "),
 		{ type_assign_get_typevarset(TypeAssign2, TVarSet2) },
-		{ strip_builtin_qualifiers_from_type(T2a, T2) },
-		mercury_output_term(T2, TVarSet2, no),
+		output_type(T2, TVarSet2, HeadTypeParams2),
 		io__write_string("\n")
 	;
 		{ Found1 = Found0 }

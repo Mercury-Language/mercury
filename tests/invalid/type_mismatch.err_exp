@@ -14,20 +14,20 @@ type_mismatch.m:025: In clause for predicate `type_mismatch:p3/2':
 type_mismatch.m:025:   in unification of variable `Tuple'
 type_mismatch.m:025:   and term `f3(V_5, Field, V_6)':
 type_mismatch.m:025:   type error in argument(s) of functor `f3/3'.
-type_mismatch.m:025:   Argument 2 (Field) has type `F3c',
-type_mismatch.m:025:   expected type was `F3b'.
+type_mismatch.m:025:   Argument 2 (Field) has type `(some [F3c] F3c)',
+type_mismatch.m:025:   expected type was `(some [F3b] F3b)'.
 type_mismatch.m:032: In clause for predicate `type_mismatch:p4a/2':
 type_mismatch.m:032:   in unification of variable `Tuple'
 type_mismatch.m:032:   and term `f4(Field, V_5, V_6)':
 type_mismatch.m:032:   type error in argument(s) of functor `f4/3'.
 type_mismatch.m:032:   Argument 1 (Field) has type `float',
-type_mismatch.m:032:   expected type was `F4'.
+type_mismatch.m:032:   expected type was `(some [F4] F4)'.
 type_mismatch.m:035: In clause for predicate `type_mismatch:p4b/3':
 type_mismatch.m:035:   in unification of variable `Tuple'
 type_mismatch.m:035:   and term `f4(Field1, Field2, V_7)':
 type_mismatch.m:035:   type error in argument(s) of functor `f4/3'.
 type_mismatch.m:035:   Argument 1 (Field1) has type `float',
-type_mismatch.m:035:   expected type was `F4';
+type_mismatch.m:035:   expected type was `(some [F4] F4)';
 type_mismatch.m:035:   argument 2 (Field2) has type `float',
 type_mismatch.m:035:   expected type was `int'.
 For more information, try recompiling with `-E'.
