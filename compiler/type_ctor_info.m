@@ -254,13 +254,17 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 		TypeTables = [],
 		NumPtags = -1
 	;
+			% We treat foreign_types as equivalent to the
+			% type builtin__c_pointer.
 		TypeBody = foreign_type(_, _),
-		TypeCtorRep = unknown,
-		NumFunctors = -1,
-		FunctorsInfo = no_functors,
-		LayoutInfo = no_layout,
-		TypeTables = [],
-		NumPtags = -1
+		Ctxt = term__context("builtin.m", 1),
+		Type = functor(term__atom(":"), [
+				functor(term__atom("builtin"), [], Ctxt),
+				functor(term__atom("c_pointer"), [], Ctxt)],
+				Ctxt),
+		gen_layout_info_eqv_type(Type, TypeArity,
+				TypeCtorRep, NumFunctors, FunctorsInfo,
+				LayoutInfo, NumPtags, TypeTables)
 	;
 		TypeBody = eqv_type(Type),
 		( term__is_ground(Type) ->
@@ -327,6 +331,31 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 			)
 		)
 	).
+
+:- pred gen_layout_info_eqv_type((type)::in, int::in,
+		type_ctor_rep::out, int::out, type_ctor_functors_info::out,
+		type_ctor_layout_info::out, int::out,
+		list(rtti_data)::out) is det.
+
+gen_layout_info_eqv_type(Type, TypeArity,
+		TypeCtorRep, NumFunctors, FunctorsInfo,
+		LayoutInfo, NumPtags, TypeTables) :-
+	( term__is_ground(Type) ->
+		TypeCtorRep = equiv(equiv_type_is_ground)
+	;
+		TypeCtorRep = equiv(equiv_type_is_not_ground)
+	),
+	NumFunctors = -1,
+	FunctorsInfo = no_functors,
+	UnivTvars = TypeArity,
+		% There can be no existentially typed args to an
+		% equivalence.
+	ExistTvars = [],
+	make_pseudo_type_info_and_tables(Type,
+		UnivTvars, ExistTvars, PseudoTypeInfoRttiData,
+		[], TypeTables),
+	LayoutInfo = equiv_layout(PseudoTypeInfoRttiData),
+	NumPtags = -1.
 
 % Construct an rtti_data for a pseudo_type_info,
 % and also construct rtti_data definitions for all of the pseudo_type_infos

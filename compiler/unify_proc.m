@@ -738,40 +738,51 @@ unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
 		)
 	;
 		{ TypeBody = eqv_type(EqvType) },
-		% We should check whether EqvType is a type variable,
-		% an abstract type or a concrete type.
-		% If it is type variable, then we should generate the same code
-		% we generate now. If it is an abstract type, we should call
-		% its unification procedure directly; if it is a concrete type,
-		% we should generate the body of its unification procedure
-		% inline here.
-		unify_proc__make_fresh_named_var_from_type(EqvType,
-			"Cast_HeadVar", 1, CastVar1),
-		unify_proc__make_fresh_named_var_from_type(EqvType,
-			"Cast_HeadVar", 2, CastVar2),
-		unify_proc__build_call("unsafe_type_cast", [H1, CastVar1],
-			Context, Cast1Goal),
-		unify_proc__build_call("unsafe_type_cast", [H2, CastVar2],
-			Context, Cast2Goal),
-		{ create_atomic_unification(CastVar1, var(CastVar2), Context,
-			explicit, [], UnifyGoal) },
-
-		{ goal_info_init(GoalInfo0) },
-		{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
-		{ conj_list_to_goal([Cast1Goal, Cast2Goal, UnifyGoal],
-			GoalInfo, Goal) },
-		unify_proc__quantify_clauses_body([H1, H2], Goal, Context,
-			Clauses)
+		generate_unify_clauses_eqv_type(EqvType, H1, H2,
+				Context, Clauses)
 	;
+		% We treat foreign_type as if they were an equivalent to
+		% the builtin type c_pointer.
 		{ TypeBody = foreign_type(_, _) },
-		unify_proc__build_call("nyi_foreign_type_unify", [H1, H2],
-				Context, Goal),
-		unify_proc__quantify_clauses_body([H1, H2], Goal, Context,
-			Clauses)
+		{ Ctxt = term__context("builtin.m", 1) },
+		{ Type = functor(term__atom(":"), [
+				functor(term__atom("builtin"), [], Ctxt),
+				functor(term__atom("c_pointer"), [], Ctxt)],
+				Ctxt) },
+		generate_unify_clauses_eqv_type(Type, H1, H2, Context, Clauses)
 	;
 		{ TypeBody = abstract_type },
 		{ error("trying to create unify proc for abstract type") }
 	).
+
+:- pred generate_unify_clauses_eqv_type((type)::in, prog_var::in, prog_var::in,
+		prog_context::in, list(clause)::out,
+		unify_proc_info::in, unify_proc_info::out) is det.
+
+generate_unify_clauses_eqv_type(EqvType, H1, H2, Context, Clauses) -->
+	% We should check whether EqvType is a type variable,
+	% an abstract type or a concrete type.
+	% If it is type variable, then we should generate the same code
+	% we generate now. If it is an abstract type, we should call
+	% its unification procedure directly; if it is a concrete type,
+	% we should generate the body of its unification procedure
+	% inline here.
+	unify_proc__make_fresh_named_var_from_type(EqvType,
+		"Cast_HeadVar", 1, CastVar1),
+	unify_proc__make_fresh_named_var_from_type(EqvType,
+		"Cast_HeadVar", 2, CastVar2),
+	unify_proc__build_call("unsafe_type_cast", [H1, CastVar1],
+		Context, Cast1Goal),
+	unify_proc__build_call("unsafe_type_cast", [H2, CastVar2],
+		Context, Cast2Goal),
+	{ create_atomic_unification(CastVar1, var(CastVar2), Context,
+		explicit, [], UnifyGoal) },
+
+	{ goal_info_init(GoalInfo0) },
+	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
+	{ conj_list_to_goal([Cast1Goal, Cast2Goal, UnifyGoal],
+		GoalInfo, Goal) },
+	unify_proc__quantify_clauses_body([H1, H2], Goal, Context, Clauses).
 
 	% This predicate generates the bodies of index predicates for the
 	% types that need index predicates.
@@ -871,40 +882,52 @@ unify_proc__generate_compare_clauses(Type, TypeBody, Res, H1, H2, Context,
 		)
 	;
 		{ TypeBody = eqv_type(EqvType) },
-		% We should check whether EqvType is a type variable,
-		% an abstract type or a concrete type.
-		% If it is type variable, then we should generate the same code
-		% we generate now. If it is an abstract type, we should call
-		% its comparison procedure directly; if it is a concrete type,
-		% we should generate the body of its comparison procedure
-		% inline here.
-		unify_proc__make_fresh_named_var_from_type(EqvType,
-			"Cast_HeadVar", 1, CastVar1),
-		unify_proc__make_fresh_named_var_from_type(EqvType,
-			"Cast_HeadVar", 2, CastVar2),
-		unify_proc__build_call("unsafe_type_cast", [H1, CastVar1],
-			Context, Cast1Goal),
-		unify_proc__build_call("unsafe_type_cast", [H2, CastVar2],
-			Context, Cast2Goal),
-		unify_proc__build_call("compare", [Res, CastVar1, CastVar2],
-			Context, CompareGoal),
-
-		{ goal_info_init(GoalInfo0) },
-		{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
-		{ conj_list_to_goal([Cast1Goal, Cast2Goal, CompareGoal],
-			GoalInfo, Goal) },
-		unify_proc__quantify_clauses_body([Res, H1, H2], Goal, Context,
-			Clauses)
+		generate_compare_clauses_eqv_type(EqvType,
+				Res, H1, H2, Context, Clauses)
 	;
 		{ TypeBody = foreign_type(_, _) },
-		unify_proc__build_call("nyi_foreign_type_compare",
-				[Res, H1, H2], Context, Goal),
-		unify_proc__quantify_clauses_body([Res, H1, H2], Goal, Context,
-			Clauses)
+		{ Ctxt = term__context("builtin.m", 1) },
+		{ CPointerType = functor(term__atom(":"), [
+				functor(term__atom("builtin"), [], Ctxt),
+				functor(term__atom("c_pointer"), [], Ctxt)],
+				Ctxt) },
+		generate_compare_clauses_eqv_type(CPointerType,
+				Res, H1, H2, Context, Clauses)
 	;
 		{ TypeBody = abstract_type },
 		{ error("trying to create compare proc for abstract type") }
 	).
+
+:- pred generate_compare_clauses_eqv_type((type)::in,
+		prog_var::in, prog_var::in, prog_var::in,
+		prog_context::in, list(clause)::out,
+		unify_proc_info::in, unify_proc_info::out) is det.
+
+generate_compare_clauses_eqv_type(EqvType, Res, H1, H2, Context, Clauses) -->
+	% We should check whether EqvType is a type variable,
+	% an abstract type or a concrete type.
+	% If it is type variable, then we should generate the same code
+	% we generate now. If it is an abstract type, we should call
+	% its comparison procedure directly; if it is a concrete type,
+	% we should generate the body of its comparison procedure
+	% inline here.
+	unify_proc__make_fresh_named_var_from_type(EqvType,
+		"Cast_HeadVar", 1, CastVar1),
+	unify_proc__make_fresh_named_var_from_type(EqvType,
+		"Cast_HeadVar", 2, CastVar2),
+	unify_proc__build_call("unsafe_type_cast", [H1, CastVar1],
+		Context, Cast1Goal),
+	unify_proc__build_call("unsafe_type_cast", [H2, CastVar2],
+		Context, Cast2Goal),
+	unify_proc__build_call("compare", [Res, CastVar1, CastVar2],
+		Context, CompareGoal),
+
+	{ goal_info_init(GoalInfo0) },
+	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
+	{ conj_list_to_goal([Cast1Goal, Cast2Goal, CompareGoal],
+		GoalInfo, Goal) },
+	unify_proc__quantify_clauses_body([Res, H1, H2], Goal, Context,
+		Clauses).
 
 :- pred unify_proc__quantify_clauses_body(list(prog_var)::in, hlds_goal::in,
 	prog_context::in, list(clause)::out,
