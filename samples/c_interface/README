@@ -1,0 +1,26 @@
+
+This directory contains some examples of mixed Mercury/C programs using
+the C interface.
+
+short_example.m                 A short example of Mercury code calling C.
+
+mercury_calls_c                 A detailed example of Mercury code
+                                calling C code.
+
+c_calls_mercury                 A detailed example of C code calling
+                                Mercury code.
+
+mercury_calls_cplusplus         A detailed example of Mercury code
+                                calling C++ code.
+
+cplusplus_calls_mercury         A detailed example of C++ code calling
+                                Mercury code.
+
+mercury_calls_fortran           This directory contains a detailed
+                                example of Mercury code calling Fortran code.
+
+simpler_c_calls_mercury         A simpler example of C code calling Mercury.
+
+simpler_cplusplus_calls_mercury A simpler example of C++ code calling
+                                Mercury.
+

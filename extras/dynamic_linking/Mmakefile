@@ -1,0 +1,10 @@
+# enable C-level debugging
+CFLAGS = -g
+MLFLAGS = --no-strip
+
+main_target: libdl
+depend: dl.depend dl_test.depend hello.depend
+
+check: dl_test libhello.so
+	./dl_test > dl_test.out
+	diff -c dl_test.out dl_test.exp

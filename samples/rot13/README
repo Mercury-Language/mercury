@@ -1,0 +1,25 @@
+
+This directory contains various implementations of `rot13', which
+is a simple encryption technique.
+
+From the Jargon File: 
+
+        rot13 /rot ther'teen/ /n.,v./ [Usenet: from `rotate alphabet
+    13 places'] The simple Caesar-cypher encryption that replaces each
+    English letter with the one 13 places forward or back along the
+    alphabet, so that "The butler did it!" becomes "Gur ohgyre qvq vg!"
+    Most Usenet news reading and posting programs include a rot13
+    feature. It is used to enclose the text in a sealed wrapper that the
+    reader must choose to open -- e.g., for posting things that might
+    offend some readers, or {spoiler}s. A major advantage of rot13 over
+    rot(N) for other N is that it is self-inverse, so the same code can
+    be used for encoding and decoding.
+
+The different implementations are intended to show different styles
+of Mercury programs, and different trade-offs that can be made
+between conciseness, readability, correctness, error-handling, etc.
+
+To build these samples, install the Mercury compiler and type
+	mmake depend
+	mmake
+

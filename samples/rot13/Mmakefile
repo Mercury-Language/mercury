@@ -1,0 +1,29 @@
+#-----------------------------------------------------------------------------#
+# This source file is hereby placed in the public domain.  -trd (the author).
+#-----------------------------------------------------------------------------#
+
+# samples/rot13/Mmakefile - this is the Makefile for building the sample
+# rot13 programs.
+
+# To build these programs, first install the Mercury compiler,
+# type `mmake depend', and then type `mmake'.
+
+PROGS= rot13_gustavo rot13_juergen rot13_verbose rot13_concise
+
+DEPENDS=$(PROGS:%=%.depend)
+
+MAIN_TARGET=all
+
+MCFLAGS-rot13_concise=--infer-all
+
+#-----------------------------------------------------------------------------#
+
+# targets
+
+.PHONY: all
+all : $(PROGS)
+
+.PHONY: depend
+depend: $(DEPENDS)
+
+#-----------------------------------------------------------------------------#
