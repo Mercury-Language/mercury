@@ -3,7 +3,7 @@
 % Main author: rafe
 % vim: ft=mercury ts=4 sw=4 et tw=0 wm=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2003 The University of Melbourne.
+% Copyright (C) 2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -126,6 +126,7 @@
 :- import_module check_hlds__purity.
 :- import_module hlds__error_util.
 :- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_data.
 :- import_module hlds__instmap.
 :- import_module hlds__quantification.
 :- import_module parse_tree__inst.
@@ -197,6 +198,15 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, ProcInfo0, ProcInfo,
             % constructions where the RHS has no arguments) or deconstructions
             % (it's probably cheaper to do the dereference than pass an extra
             % argument).
+            %
+            % We also don't want to hoist out goals that can't succeed,
+            % e.g. calls to error/1, and in fact we MUST NOT hoist out
+            % such goals, because if we hoisted out such goals, later
+            % passes might think that the code which follows is actually
+            % reachable, which may lead to internal errors because code
+            % which follow a call to error/1 need not be determinism-correct.
+            %
+            % We also must not hoist impure goals.
             %
             % So here we compute the subset of InvGoals (and the corresponding
             % InvVars) that should not be hoisted.
@@ -601,8 +611,8 @@ dont_hoist_2(MI, Goal, DHGs0, DHGs, DHVs0, DHVs) :-
     ( if
         (   const_construction(Goal)
         ;   deconstruction(Goal)
-        ;   const_goal(MI, Goal)
         ;   impure_goal(Goal)
+        ;   cannot_succeed(Goal)
         )
       then
         DHGs = [Goal | DHGs0],
@@ -637,21 +647,21 @@ deconstruction(GoalExpr - _GoalInfo) :-
 
 %------------------------------------------------------------------------------%
 
-    % A const goal has no inputs.
-    %
-:- pred const_goal(module_info, hlds_goal).
-:- mode const_goal(in, in) is semidet.
-
-const_goal(ModuleInfo, Goal) :-
-    goal_inputs(ModuleInfo, Goal) = [].
-
-%------------------------------------------------------------------------------%
-
 :- pred impure_goal(hlds_goal).
 :- mode impure_goal(in) is semidet.
 
 impure_goal(_GoalExpr - GoalInfo) :-
     goal_info_is_impure(GoalInfo).
+
+%------------------------------------------------------------------------------%
+
+:- pred cannot_succeed(hlds_goal).
+:- mode cannot_succeed(in) is semidet.
+
+cannot_succeed(_GoalExpr - GoalInfo) :-
+    goal_info_get_determinism(GoalInfo, Detism),
+    determinism_components(Detism, _CanFail, MaxSolns),
+    MaxSolns = at_most_zero.
 
 %------------------------------------------------------------------------------%
 

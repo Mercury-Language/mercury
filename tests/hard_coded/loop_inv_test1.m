@@ -11,11 +11,6 @@
 % This test checks that we do loop invariant hoisting for
 % invariant goals which have no input arguments.
 
-% XXX We do not yet pass this test case, because the loop invariant 
-%     pass has some code which explicitly disables the optimization
-%     if there are no input arguments. (Why???)
-%     This should be very easy to fix.
-
 :- module loop_inv_test1.
 :- interface.
 :- import_module io.

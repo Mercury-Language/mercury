@@ -101,6 +101,7 @@ ORDINARY_PROGS=	\
 	intermod_type_qual \
 	join_list \
 	loop_inv_test \
+	loop_inv_test1 \
 	mapped_module \
 	merge_and_remove_dups \
 	minint_bug \
@@ -294,7 +295,7 @@ endif
 #     floats in Mercury aren't consistent -- see the comments at the
 #     top of library/float.m.
 #
-# XXX loop_inv_test0, loop_inv_test1, loop_inv_test2:
+# XXX loop_inv_test0, loop_inv_test2:
 #     These test cases test some more sophisticated cases of loop invariant
 #     optimization which are current loop_inv pass is not capable of
 #     optimizing.
