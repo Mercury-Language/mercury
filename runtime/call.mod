@@ -314,10 +314,10 @@ mercury__unify_2_0:
 
 
 mercury__term_to_type_2_0:
+{
 #if OFFSET_FOR_ARG_TYPE_INFOS != 6
 	fatal_error("type_to_term/2 and term_to_type/2 not implemented");
 #else
-{
 	/* we get called as 'term_to_type(TypeInfo, Term, X)' */
 	/* in the mode 'term_to_type(in, in, out) is semidet'. */
 	/* r1 will hold the success/failure indication */
@@ -354,9 +354,13 @@ mercury__term_to_type_2_0:
 	push(type_arity);
 	call(term_to_type_pred, LABEL(mercury__term_to_type_2_0_i1),
 		LABEL(mercury__term_to_type_2_0));
+#endif
 }
 mercury__term_to_type_2_0_i1:
 {
+#if OFFSET_FOR_ARG_TYPE_INFOS != 6
+	fatal_error("type_to_term/2 and term_to_type/2 not implemented");
+#else
 	/* r1 already contains the truth result of the semidet pred
 	** mercury__term_to_type_2_0 so r1 does not have to be updated. */
 
@@ -367,14 +371,14 @@ mercury__term_to_type_2_0_i1:
 	save_registers();
 	r4 = virtual_reg(type_arity + 3);
 	proceed();
-}
 #endif
+}
 
 mercury__type_to_term_2_0:
+{
 #if OFFSET_FOR_ARG_TYPE_INFOS != 6
 	fatal_error("type_to_term/2 and term_to_type/2 not implemented");
 #else
-{
 	Word type_info;
 	Code *type_to_term_pred;
 	Word x;
@@ -407,9 +411,13 @@ mercury__type_to_term_2_0:
 	push(type_arity);
 	call(type_to_term_pred, LABEL(mercury__type_to_term_2_0_i1),
 		LABEL(mercury__type_to_term_2_0));
+#endif
 }
 mercury__type_to_term_2_0_i1:
 {
+#if OFFSET_FOR_ARG_TYPE_INFOS != 6
+	fatal_error("type_to_term/2 and term_to_type/2 not implemented");
+#else
 	int type_arity;
 	
 	type_arity = pop();
@@ -417,8 +425,7 @@ mercury__type_to_term_2_0_i1:
 	save_registers();
 	r3 = virtual_reg(type_arity + 2);
 	proceed();
-}
-
 #endif
+}
 
 END_MODULE
