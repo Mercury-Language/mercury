@@ -3622,6 +3622,16 @@ With @samp{--tags low}, the default number of tag bits to use
 is determined by the auto-configuration script.
 
 @sp 1
+@item @code{--use-foreign-language @var{foreign language}}
+Use the given foreign language to implement predicates
+written in foreign languages.  Any name that can be used
+to specify foreign languages in @samp{pragma foreign} declarations
+is valid, but not all foreign languages are implemented
+in all backends.
+Default value is `C' for the LLDS and MLDS->C backends,
+or `ManagedC++' for the .NET backend.
+
+@sp 1
 @item @code{--no-type-layout}
 (This option is not intended for general use.)@*
 Don't output base_type_layout structures or references to them.
