@@ -5,7 +5,7 @@
 
 :- import_module io.
 
-:- pred main(io:state, io:state).
+:- pred main(io.state, io.state).
 :- mode main(di, uo) is det.
 
 :- implementation.
@@ -13,16 +13,16 @@
 :- import_module rational, int, integer, string, list, io.
 
 main -->
-	io:write_string(rat2s(cf2rat(root2_cf(80)))), io:nl,
-	io:write_string(rat2s(cf2rat(e_cf(20)))), io:nl.
+	io.write_string(rat2s(cf2rat(root2_cf(80)))), io.nl,
+	io.write_string(rat2s(cf2rat(e_cf(20)))), io.nl.
 
 :- func rat2s(rational) = string.
 rat2s(Rat) = S :-
 	Num = numer(Rat),
 	Den = denom(Rat),
-	NS = integer:to_string(Num),
-	ND = integer:to_string(Den),
-	string:append_list([NS," / ",ND],S).
+	NS = integer.to_string(Num),
+	ND = integer.to_string(Den),
+	string.append_list([NS," / ",ND],S).
 
 :- func cf2rat(list(int)) = rational.
 cf2rat([]) = one.
@@ -32,7 +32,7 @@ cf2rat([N|Ns]) = rational(N,1) + rational__reciprocal(CF) :-
 	% Continued fraction expansion of Euler's constant `e'.
 :- func e_cf(int) = list(int).
 e_cf(N) = CF :-
-	list:append([2,1,2],Rest,CF),
+	list.append([2,1,2],Rest,CF),
 	Rest = e_aux(N,4).
 
 :- func e_aux(int, int) = list(int).
