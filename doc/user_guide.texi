@@ -4481,6 +4481,13 @@ is enabled.
 @item --warn-dead-procs
 @findex --warn-dead-procs
 Warn about procedures which are never called.
+
+@sp 1
+@item --no-warn-table-with-inline
+@findex --no-warn-table-with-inline
+Disable warnings about tabled procedures that also have
+a `pragma inline' declaration.
+
 @end table
 
 @node Verbosity options

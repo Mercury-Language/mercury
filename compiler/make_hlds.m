@@ -5376,6 +5376,28 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
 		true
 	),
 
+	% Issue a warning if this predicate/function has a pragma inline
+	% declaration.  Tabled procedures cannot be inlined.
+	pred_info_get_markers(PredInfo0, Markers),
+	globals.io_lookup_bool_option(warn_table_with_inline, WarnInline, !IO),	
+	( check_marker(Markers, inline), WarnInline = yes ->
+		PredNameStr = hlds_out.simple_call_id_to_string(PredOrFunc, PredName/Arity),
+		TablePragmaStr = string.format("`:- pragma %s'", [s(EvalMethodS)]),
+		InlineWarning = [
+			words("Warning: "), fixed(PredNameStr), 
+			words("has a"), nl, fixed(TablePragmaStr),
+			words("declaration but also has a"), fixed("`:- pragma inline'"),
+			words("declaration."), nl,
+			words("This inline pragma will be ignored"),
+			words("since tabled predicates cannot be inlined."), nl,
+			words("You can use the"),
+			fixed("`--no-warn-table-with-inline'"),
+			words("option to suppress this warning.")
+		],
+		error_util.report_warning(Context, 0, InlineWarning, !IO)
+	;
+		true
+	),
 	( pred_info_is_imported(PredInfo0) ->
 		module_info_incr_errors(!ModuleInfo),
 		prog_out__write_context(Context, !IO),

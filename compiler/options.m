@@ -95,6 +95,7 @@
 		;	warn_up_to_date
 		;	warn_stubs
 		;	warn_dead_procs
+		;	warn_table_with_inline
 	% Verbosity options
 		;	verbose
 		;	very_verbose
@@ -755,7 +756,8 @@ option_defaults_2(warning_option, [
 	warn_target_code	-	bool(yes),
 	warn_up_to_date -		bool(yes),
 	warn_stubs		-	bool(yes),
-	warn_dead_procs	-		bool(no)
+	warn_dead_procs	-		bool(no),
+	warn_table_with_inline	-	bool(yes)
 ]).
 option_defaults_2(verbosity_option, [
 		% Verbosity Options
@@ -1387,6 +1389,7 @@ long_option("warn-target-code",		warn_target_code).
 long_option("warn-up-to-date",		warn_up_to_date).
 long_option("warn-stubs",		warn_stubs).
 long_option("warn-dead-procs",		warn_dead_procs).
+long_option("warn-table-with-inline", 	warn_table_with_inline).
 
 % verbosity options
 long_option("verbose",			verbose).
@@ -2606,7 +2609,10 @@ options_help_warning -->
 		"\tWarn about procedures which are never called.",
 		"--no-warn-target-code",
 		"\tDisable warnings from the compiler used to process the",
-		"\ttarget code (e.g. gcc)."
+		"\ttarget code (e.g. gcc).",
+		"--no-warn-table-with-inline",
+		"\tDisable warnings about tabled procedures that also have",
+		"\ta `pragma inline' declaration."
 	]).
 
 :- pred options_help_verbosity(io::di, io::uo) is det.

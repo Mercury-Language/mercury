@@ -343,12 +343,14 @@ intermod__should_be_processed(ProcessLocalPreds, PredId, PredInfo,
 		globals__get_target(Globals, Target),
 		\+ clauses_contain_noninlinable_foreign_code(Target, Clauses),
 
+		% Don't export tabled predicates since they are not inlinable.
+		proc_info_eval_method(ProcInfo, eval_normal),
+
 		(
 			inlining__is_simple_clause_list(Clauses,
 				InlineThreshold + Arity),
 			pred_info_get_markers(PredInfo, Markers),
-			\+ check_marker(Markers, no_inline),
-			proc_info_eval_method(ProcInfo, eval_normal)
+			\+ check_marker(Markers, no_inline)
 		;
 			pred_info_requested_inlining(PredInfo)
 		;

@@ -26,6 +26,7 @@ ERRORCHECK_PROGS= \
 	simple_code \
 	singleton_test \
 	state_vars_test \
+	table_with_inline \
 	unused_args_analysis \
 	unused_args_test \
 	unused_import \
