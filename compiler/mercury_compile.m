@@ -40,7 +40,8 @@
 :- import_module deforest, dnf, magic, dead_proc_elim.
 :- import_module unused_args, lco, saved_vars, liveness.
 :- import_module follow_code, live_vars, arg_info, store_alloc, goal_path.
-:- import_module code_gen, optimize, export, base_type_info, base_type_layout.
+:- import_module code_gen, optimize, export.
+:- import_module type_ctor_info, base_typeclass_info.
 :- import_module rl_gen, rl_opt, rl_out.
 :- import_module llds_common, transform_llds, llds_out.
 :- import_module continuation_info, stack_layout.
@@ -993,13 +994,9 @@ mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50) -->
 	mercury_compile__maybe_termination(HLDS27, Verbose, Stats, HLDS28),
 	mercury_compile__maybe_dump_hlds(HLDS28, "28", "termination"), !,
 
-	mercury_compile__maybe_type_ctor_infos(HLDS28, Verbose, Stats, HLDS29),
+	mercury_compile__maybe_type_ctor_infos(HLDS28, Verbose, Stats, HLDS30),
 	!,
-	mercury_compile__maybe_dump_hlds(HLDS29, "29", "type_ctor_infos"), !,
-
-	mercury_compile__maybe_type_ctor_layouts(HLDS29, Verbose, Stats,HLDS30),
-	!,
-	mercury_compile__maybe_dump_hlds(HLDS30, "30", "type_ctor_layouts"), !,
+	mercury_compile__maybe_dump_hlds(HLDS30, "30", "type_ctor_infos"), !,
 
 	mercury_compile__maybe_bytecodes(HLDS30, ModuleName, Verbose, Stats),
 	!,
@@ -1613,34 +1610,11 @@ mercury_compile__maybe_type_ctor_infos(HLDS0, Verbose, Stats, HLDS) -->
 		maybe_write_string(Verbose,
 			"% Generating type_ctor_info structures..."),
 		maybe_flush_output(Verbose),
-		{ base_type_info__generate_hlds(HLDS0, HLDS) },
+		{ type_ctor_info__generate_hlds(HLDS0, HLDS) },
 		maybe_write_string(Verbose, " done.\n"),
 		maybe_report_stats(Stats)
 	;
 		{ HLDS0 = HLDS }
-	).
-
-	% We only add type_ctor_layouts if shared-one-or-two-cell
-	% type_infos are being used (the layouts refer to the
-	% type_ctor_infos, so will fail to link without them).
-
-:- pred mercury_compile__maybe_type_ctor_layouts(module_info, bool, bool,
-	module_info, io__state, io__state).
-:- mode mercury_compile__maybe_type_ctor_layouts(in, in, in, out, di, uo) is det.
-
-mercury_compile__maybe_type_ctor_layouts(HLDS0, Verbose, Stats, HLDS) -->
-	globals__io_lookup_bool_option(type_layout, TypeLayoutOption),
-	( 
-		{ TypeLayoutOption = yes } 
-	->
-		maybe_write_string(Verbose,
-			"% Generating type_ctor_layout structures..."),
-		maybe_flush_output(Verbose),
-		{ base_type_layout__generate_hlds(HLDS0, HLDS) },
-		maybe_write_string(Verbose, " done.\n"),
-		maybe_report_stats(Stats)
-	;
-		{ HLDS = HLDS0 }
 	).
 
 :- pred mercury_compile__maybe_bytecodes(module_info, module_name, bool, bool,
@@ -2059,25 +2033,24 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 	globals__io_lookup_bool_option(common_data, CommonData),
-	{ base_type_info__generate_llds(HLDS0, TypeCtorInfos) },
-	{ base_type_layout__generate_llds(HLDS0, HLDS1, TypeCtorLayouts) },
+	{ type_ctor_info__generate_llds(HLDS0, HLDS1, TypeCtorTables) },
+	{ base_typeclass_info__generate_llds(HLDS1, TypeClassInfos) },
 	{ stack_layout__generate_llds(HLDS1, HLDS, GlobalData,
 		PossiblyDynamicLayouts, StaticLayouts, LayoutLabels) },
 	{ get_c_interface_info(HLDS, C_InterfaceInfo) },
 	{ global_data_get_all_proc_vars(GlobalData, GlobalVars) },
 	{ global_data_get_all_non_common_static_data(GlobalData,
 		NonCommonStaticData) },
-	{ list__append(StaticLayouts, TypeCtorLayouts, StaticData0) },
-	(  { CommonData = yes } ->
-		{ llds_common(Procs0, StaticData0, ModuleName, Procs1,
-			StaticData1) }
+	{ list__append(StaticLayouts, TypeCtorTables, CommonableData0) },
+	( { CommonData = yes } ->
+		{ llds_common(Procs0, CommonableData0, ModuleName, Procs1,
+			CommonableData) }
 	;
-		{ StaticData1 = StaticData0 },
+		{ CommonableData = CommonableData0 },
 		{ Procs1 = Procs0 }
 	),
-	{ list__append(StaticData1, NonCommonStaticData, StaticData) },
-	{ list__condense([TypeCtorInfos, PossiblyDynamicLayouts, StaticData],
-		AllData) },
+	{ list__condense([CommonableData, NonCommonStaticData,
+		TypeClassInfos, PossiblyDynamicLayouts], AllData) },
 	mercury_compile__construct_c_file(C_InterfaceInfo, Procs1, GlobalVars,
 		AllData, CFile, NumChunks),
 	mercury_compile__output_llds(ModuleName, CFile, LayoutLabels,

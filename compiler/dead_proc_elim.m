@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -114,8 +114,8 @@ dead_proc_elim__initialize(ModuleInfo, Queue, Needed) :-
 	module_info_get_pragma_exported_procs(ModuleInfo, PragmaExports),
 	dead_proc_elim__initialize_pragma_exports(PragmaExports,
 		Queue1, Queue2, Needed1, Needed2),
-	module_info_base_gen_infos(ModuleInfo, BaseGenInfos),
-	dead_proc_elim__initialize_base_gen_infos(BaseGenInfos,
+	module_info_type_ctor_gen_infos(ModuleInfo, TypeCtorGenInfos),
+	dead_proc_elim__initialize_base_gen_infos(TypeCtorGenInfos,
 		Queue2, Queue3, Needed2, Needed3),
 	module_info_classes(ModuleInfo, Classes),
 	module_info_instances(ModuleInfo, Instances),
@@ -169,15 +169,16 @@ dead_proc_elim__initialize_pragma_exports([PragmaProc | PragmaProcs],
 	dead_proc_elim__initialize_pragma_exports(PragmaProcs,
 		Queue1, Queue, Needed1, Needed).
 
-:- pred dead_proc_elim__initialize_base_gen_infos(list(base_gen_info),
+:- pred dead_proc_elim__initialize_base_gen_infos(list(type_ctor_gen_info),
 	entity_queue, entity_queue, needed_map, needed_map).
 :- mode dead_proc_elim__initialize_base_gen_infos(in, in, out, in, out) is det.
 
 dead_proc_elim__initialize_base_gen_infos([], Queue, Queue, Needed, Needed).
-dead_proc_elim__initialize_base_gen_infos([BaseGenInfo | BaseGenInfos],
+dead_proc_elim__initialize_base_gen_infos([TypeCtorGenInfo | TypeCtorGenInfos],
 		Queue0, Queue, Needed0, Needed) :-
-	BaseGenInfo = base_gen_info(_TypeId, ModuleName, TypeName,
-		Arity, _Status, _Elim, _Procs, _HldsDefn),
+	TypeCtorGenInfo = type_ctor_gen_info(_TypeId, ModuleName, TypeName,
+		Arity, _Status, _HldsDefn, _Unify, _Compare, _Index,
+		_Solver, _Init, _Pretty),
 	(
 		% XXX: We'd like to do this, but there are problems.
 		% status_is_exported(Status, yes)
@@ -204,7 +205,7 @@ dead_proc_elim__initialize_base_gen_infos([BaseGenInfo | BaseGenInfos],
 		Queue1 = Queue0,
 		Needed1 = Needed0
 	),
-	dead_proc_elim__initialize_base_gen_infos(BaseGenInfos,
+	dead_proc_elim__initialize_base_gen_infos(TypeCtorGenInfos,
 		Queue1, Queue, Needed1, Needed).
 
 :- pred dead_proc_elim__initialize_class_methods(class_table, instance_table, 
@@ -311,10 +312,10 @@ dead_proc_elim__examine(Queue0, Examined0, ModuleInfo, Needed0, Needed) :-
 
 dead_proc_elim__examine_base_gen_info(ModuleName, TypeName, Arity, ModuleInfo,
 		Queue0, Queue, Needed0, Needed) :-
-	module_info_base_gen_infos(ModuleInfo, BaseGenInfos),
+	module_info_type_ctor_gen_infos(ModuleInfo, TypeCtorGenInfos),
 	(
 		dead_proc_elim__find_base_gen_info(ModuleName, TypeName,
-			Arity, BaseGenInfos, Refs)
+			Arity, TypeCtorGenInfos, Refs)
 	->
 		dead_proc_elim__examine_refs(Refs, Queue0, Queue,
 			Needed0, Needed)
@@ -324,20 +325,36 @@ dead_proc_elim__examine_base_gen_info(ModuleName, TypeName, Arity, ModuleInfo,
 	).
 
 :- pred dead_proc_elim__find_base_gen_info(module_name, string, arity,
-	list(base_gen_info), list(pred_proc_id)).
+	list(type_ctor_gen_info), list(pred_proc_id)).
 :- mode dead_proc_elim__find_base_gen_info(in, in, in, in, out) is semidet.
 
 dead_proc_elim__find_base_gen_info(ModuleName, TypeName, TypeArity,
-		[BaseGenInfo | BaseGenInfos], Refs) :-
+		[TypeCtorGenInfo | TypeCtorGenInfos], Refs) :-
 	(
-		BaseGenInfo = base_gen_info(_TypeId, ModuleName, TypeName,
-			TypeArity, _Status, _Elim, Refs0, _HldsDefn)
+		TypeCtorGenInfo = type_ctor_gen_info(_TypeId, ModuleName,
+			TypeName, TypeArity, _Status, _HldsDefn,
+			MaybeUnify, MaybeIndex, MaybeCompare,
+			MaybeSolver, MaybeInit, MaybePretty)
 	->
-		Refs = Refs0
+		Refs0 = [],
+		dead_proc_elim__maybe_add_ref(MaybeUnify,   Refs0, Refs1),
+		dead_proc_elim__maybe_add_ref(MaybeIndex,   Refs1, Refs2),
+		dead_proc_elim__maybe_add_ref(MaybeCompare, Refs2, Refs3),
+		dead_proc_elim__maybe_add_ref(MaybeSolver,  Refs3, Refs4),
+		dead_proc_elim__maybe_add_ref(MaybeInit,    Refs4, Refs5),
+		dead_proc_elim__maybe_add_ref(MaybePretty,  Refs5, Refs6),
+		Refs = Refs6
 	;
 		dead_proc_elim__find_base_gen_info(ModuleName, TypeName,
-			TypeArity, BaseGenInfos, Refs)
+			TypeArity, TypeCtorGenInfos, Refs)
 	).
+
+:- pred dead_proc_elim__maybe_add_ref(maybe(pred_proc_id),
+	list(pred_proc_id), list(pred_proc_id)).
+:- mode dead_proc_elim__maybe_add_ref(in, in, out) is det.
+
+dead_proc_elim__maybe_add_ref(no, Refs, Refs).
+dead_proc_elim__maybe_add_ref(yes(Ref), Refs, [Ref | Refs]).
 
 :- pred dead_proc_elim__examine_refs(list(pred_proc_id),
 	entity_queue, entity_queue, needed_map, needed_map).
@@ -522,11 +539,11 @@ dead_proc_elim__eliminate(ModuleInfo0, Needed0, ModuleInfo, State0, State) :-
 	ElimInfo = elimination_info(Needed, ModuleInfo1, PredTable),
 
 	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo2),
-	module_info_base_gen_infos(ModuleInfo2, BaseGenInfos0),
-	dead_proc_elim__eliminate_base_gen_infos(BaseGenInfos0, Needed,
-		BaseGenInfos),
-	module_info_set_base_gen_infos(ModuleInfo2, BaseGenInfos, ModuleInfo).
-
+	module_info_type_ctor_gen_infos(ModuleInfo2, TypeCtorGenInfos0),
+	dead_proc_elim__eliminate_base_gen_infos(TypeCtorGenInfos0, Needed,
+		TypeCtorGenInfos),
+	module_info_set_type_ctor_gen_infos(ModuleInfo2, TypeCtorGenInfos,
+		ModuleInfo).
 
 		% eliminate any unused procedures for this pred
 
@@ -627,38 +644,30 @@ dead_proc_elim__eliminate_proc(PredId, Keep, ElimInfo, ProcId,
 		{ map__delete(ProcTable0, ProcId, ProcTable) }
 	).
 
-:- pred dead_proc_elim__eliminate_base_gen_infos(list(base_gen_info),
-	needed_map, list(base_gen_info)).
+:- pred dead_proc_elim__eliminate_base_gen_infos(list(type_ctor_gen_info),
+	needed_map, list(type_ctor_gen_info)).
 :- mode dead_proc_elim__eliminate_base_gen_infos(in, in, out) is det.
 
 dead_proc_elim__eliminate_base_gen_infos([], _Needed, []).
-dead_proc_elim__eliminate_base_gen_infos([BaseGenInfo0 | BaseGenInfos0], Needed,
-		BaseGenInfos) :-
-	dead_proc_elim__eliminate_base_gen_infos(BaseGenInfos0, Needed,	
-		BaseGenInfos1),
-	BaseGenInfo0 = base_gen_info(TypeId, ModuleName, TypeName,
-		Arity, Status, Elim0, Procs, HldsDefn),
+dead_proc_elim__eliminate_base_gen_infos([TypeCtorGenInfo0 | TypeCtorGenInfos0],
+		Needed, TypeCtorGenInfos) :-
+	dead_proc_elim__eliminate_base_gen_infos(TypeCtorGenInfos0, Needed,	
+		TypeCtorGenInfos1),
+	TypeCtorGenInfo0 = type_ctor_gen_info(TypeId, ModuleName,
+		TypeName, Arity, Status, HldsDefn,
+		_MaybeUnify, _MaybeIndex, _MaybeCompare,
+		_MaybeSolver, _MaybeInit, _MaybePretty),
 	(
 		Entity = base_gen_info(ModuleName, TypeName, Arity),
 		map__search(Needed, Entity, _)
 	->
-		BaseGenInfos = [BaseGenInfo0 | BaseGenInfos1]
+		TypeCtorGenInfos = [TypeCtorGenInfo0 | TypeCtorGenInfos1]
 	;
-		list__length(Procs, ProcsLength),
-
-			% Procs may have been eliminated elsewhere, if so
-			% we sum the eliminated procs together.
-		(
-			Elim0 = yes(NumProcs0)
-		->
-			NumProcs is ProcsLength + NumProcs0
-		;
-			NumProcs = ProcsLength
-		),
-		NeuteredBaseGenInfo = base_gen_info(TypeId, ModuleName, 
-			TypeName, Arity, Status, yes(NumProcs), [],
-			HldsDefn),
-		BaseGenInfos = [NeuteredBaseGenInfo | BaseGenInfos1]
+		NeuteredTypeCtorGenInfo = type_ctor_gen_info(TypeId,
+			ModuleName, TypeName, Arity, Status, HldsDefn,
+			no, no, no, no, no, no),
+		TypeCtorGenInfos = [NeuteredTypeCtorGenInfo |
+			TypeCtorGenInfos1]
 	).
 
 %-----------------------------------------------------------------------------%

@@ -43,6 +43,9 @@
 #define MR_RAW_TABLE_TYPEINFO(table, type_info)				\
 	MR_type_info_lookup_or_add((table), (type_info))
 
+#define MR_RAW_TABLE_TYPECLASSINFO(table, typeclass_info)		\
+	MR_type_info_lookup_or_add((table), (typeclass_info))
+
 #ifdef	MR_TABLE_DEBUG
 
 #define	MR_DEBUG_NEW_TABLE_ANY(table, table0, type_info, value)		\
@@ -212,6 +215,24 @@
 		}							\
 	} while (0)
 
+#define	MR_DEBUG_NEW_TABLE_TYPECLASSINFO(table, table0, value)		\
+	do {								\
+		(table) = MR_RAW_TABLE_TYPECLASSINFO((table0), (value));\
+		if (MR_tabledebug) {					\
+			printf("TABLE %p: typeclassinfo %p => %p\n",	\
+				(table), (value), (table));		\
+		}							\
+	} while (0)
+#define	MR_DEBUG_TABLE_TYPECLASSINFO(table, value)			\
+	do {								\
+		MR_TrieNode prev_table = (table);			\
+		(table) = MR_RAW_TABLE_TYPECLASSINFO((table), (value));	\
+		if (MR_tabledebug) {					\
+			printf("TABLE %p: typeclassinfo %p => %p\n",	\
+				prev_table, (value), (table));		\
+		}							\
+	} while (0)
+
 #else	/* not MR_TABLE_DEBUG */
 
 #define	MR_DEBUG_NEW_TABLE_ANY(table, table0, type_info, value)		\
@@ -293,6 +314,15 @@
 #define	MR_DEBUG_TABLE_TYPEINFO(table, value)				\
 	do {								\
 		(table) = MR_RAW_TABLE_TYPEINFO((table), (value));	\
+	} while (0)
+
+#define	MR_DEBUG_NEW_TABLE_TYPECLASSINFO(table, table0, value)		\
+	do {								\
+		(table) = MR_RAW_TABLE_TYPECLASSINFO((table0), (value));\
+	} while (0)
+#define	MR_DEBUG_TABLE_TYPECLASSINFO(table, value)			\
+	do {								\
+		(table) = MR_RAW_TABLE_TYPECLASSINFO((table), (value));	\
 	} while (0)
 
 #endif	/* MR_TABLE_DEBUG */

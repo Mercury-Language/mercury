@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -12,7 +12,7 @@
 % type information, including a description of the type_ctor_info structures.
 %
 % WARNING: if you change this file, you will probably also need to
-% modify base_type_info.m, which does the same thing for the LLDS back-end.
+% modify type_ctor_info.m, which does the same thing for the LLDS back-end.
 %
 % Author: fjh.
 %
@@ -28,7 +28,7 @@
 :- mode ml_base_type_info__generate_mlds(in, out) is det.
 
 :- implementation.
-:- import_module base_type_info, ml_code_util.
+:- import_module type_ctor_info, ml_code_util.
 
 :- import_module base_typeclass_info.
 :- import_module prog_data, prog_util, prog_out.
@@ -56,9 +56,9 @@
 type_ctor_info_rtti_version = 3.
 
 ml_base_type_info__generate_mlds(ModuleInfo, Defns) :-
-	module_info_base_gen_infos(ModuleInfo, BaseGenInfos),
-	ml_base_type_info__construct_type_ctor_infos(BaseGenInfos, ModuleInfo,
-		Defns).
+	module_info_type_ctor_gen_infos(ModuleInfo, TypeCtorGenInfos),
+	ml_base_type_info__construct_type_ctor_infos(TypeCtorGenInfos,
+		ModuleInfo, Defns).
 	/***
 	% XXX type classes are not yet implemented in the MLDS back-end
 	ml_base_typeclass_info__generate_mlds(ModuleInfo, Defns2),
@@ -66,77 +66,82 @@ ml_base_type_info__generate_mlds(ModuleInfo, Defns) :-
 	list__append(Defns1, Defns2, Defns).
 	***/
 
-:- pred ml_base_type_info__construct_type_ctor_infos(list(base_gen_info),
+:- pred ml_base_type_info__construct_type_ctor_infos(list(type_ctor_gen_info),
 	module_info, mlds__defns).
 :- mode ml_base_type_info__construct_type_ctor_infos(in, in, out) is det.
 
-ml_base_type_info__construct_type_ctor_infos([], _, []).
-ml_base_type_info__construct_type_ctor_infos([BaseGenInfo | BaseGenInfos],
-		ModuleInfo, [Defn | Defns]) :-
-	BaseGenInfo = base_gen_info(_TypeId, ModuleName, TypeName, TypeArity,
-		Status, Elim, Procs, HLDS_TypeDefn),
+ml_base_type_info__construct_type_ctor_infos(_, _, []).
 
-	status_is_exported(Status, Exported),
-	Flags = ml_gen_base_type_info_decl_flags(Exported),
-
-	ml_base_type_info__construct_pred_addrs(Procs, Elim, ModuleInfo, 
-		PredAddrArgs),
-	ArityArg = const(int_const(TypeArity)),
-
-	module_info_globals(ModuleInfo, Globals),
-	globals__lookup_bool_option(Globals, type_layout, TypeLayoutOption),
-	(
-		TypeLayoutOption = yes
-	->
-		ml_base_type_info__construct_type_ctor_representation(HLDS_TypeDefn,
-			TypeCtorArg),
-		/*****
-		% XXX generation of the base_type_layout and base_type_functors
-		% is not yet implemented for the MLDS back-end
-		ml_base_type_info__construct_layout(ModuleInfo, TypeName,
-			TypeArity, LayoutArg),
-		ml_base_type_info__construct_functors(ModuleInfo, TypeName,
-			TypeArity, FunctorsArg),
-		******/
-		LayoutArg = const(int_const(0)),
-		FunctorsArg = const(int_const(0)),
-		prog_out__sym_name_to_string(ModuleName, ModuleNameString),
-		ModuleArg = const(string_const(ModuleNameString)),
-		NameArg = const(string_const(TypeName)),
-		VersionArg = const(int_const(type_ctor_info_rtti_version)),
-		list__append(PredAddrArgs, [TypeCtorArg, FunctorsArg, LayoutArg,
-			ModuleArg, NameArg, VersionArg], FinalArgs)
-	;
-		FinalArgs = PredAddrArgs
-	),
-
-	DataName = type_ctor(info, TypeName, TypeArity),
-	hlds_data__get_type_defn_context(HLDS_TypeDefn, Context),
-	MLDS_Context = mlds__make_context(Context),
-	Initializer = [ArityArg | FinalArgs],
-	MLDS_Type = mlds__base_type_info_type,
-	DefnBody = mlds__data(MLDS_Type, yes(Initializer)),
-	Defn = mlds__defn(data(DataName), MLDS_Context, Flags, DefnBody),
-
-	ml_base_type_info__construct_type_ctor_infos(BaseGenInfos, ModuleInfo,
-		Defns).
-
-	% Return the declaration flags appropriate for a base_type_info.
-	%
-:- func ml_gen_base_type_info_decl_flags(bool) = mlds__decl_flags.
-ml_gen_base_type_info_decl_flags(Exported) = MLDS_DeclFlags :-
-	( Exported = yes ->
-		Access = public
-	;
-		Access = private
-	),
-	PerInstance = per_instance,
-	Virtuality = non_virtual,
-	Finality = overridable,
-	Constness = const,
-	Abstractness = concrete,
-	MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
-		Virtuality, Finality, Constness, Abstractness).
+% ml_base_type_info__construct_type_ctor_infos([], _, []).
+% ml_base_type_info__construct_type_ctor_infos(
+% 		[TypeCtorGenInfo | TypeCtorGenInfos], ModuleInfo,
+% 		[Defn | Defns]) :-
+% 	TypeCtorGenInfo = type_ctor_gen_info(_TypeId,
+% 		ModuleName, TypeName, TypeArity, Status, HLDS_TypeDefn,
+% 		MaybeUnify, MaybeIndex, MaybeCompare,
+% 		MaybeSolver, MaybeInit, MaybePretty),
+% 
+% 	status_is_exported(Status, Exported),
+% 	Flags = ml_gen_base_type_info_decl_flags(Exported),
+% 
+% 	ml_base_type_info__construct_pred_addrs(Procs, Elim, ModuleInfo, 
+% 		PredAddrArgs),
+% 	ArityArg = const(int_const(TypeArity)),
+% 
+% 	module_info_globals(ModuleInfo, Globals),
+% 	globals__lookup_bool_option(Globals, type_layout, TypeLayoutOption),
+% 	(
+% 		TypeLayoutOption = yes
+% 	->
+% 		ml_base_type_info__construct_type_ctor_representation(HLDS_TypeDefn,
+% 			TypeCtorArg),
+% 		/*****
+% 		% XXX generation of the base_type_layout and base_type_functors
+% 		% is not yet implemented for the MLDS back-end
+% 		ml_base_type_info__construct_layout(ModuleInfo, TypeName,
+% 			TypeArity, LayoutArg),
+% 		ml_base_type_info__construct_functors(ModuleInfo, TypeName,
+% 			TypeArity, FunctorsArg),
+% 		******/
+% 		LayoutArg = const(int_const(0)),
+% 		FunctorsArg = const(int_const(0)),
+% 		prog_out__sym_name_to_string(ModuleName, ModuleNameString),
+% 		ModuleArg = const(string_const(ModuleNameString)),
+% 		NameArg = const(string_const(TypeName)),
+% 		VersionArg = const(int_const(type_ctor_info_rtti_version)),
+% 		list__append(PredAddrArgs, [TypeCtorArg, FunctorsArg, LayoutArg,
+% 			ModuleArg, NameArg, VersionArg], FinalArgs)
+% 	;
+% 		FinalArgs = PredAddrArgs
+% 	),
+% 
+% 	DataName = type_ctor(info, TypeName, TypeArity),
+% 	hlds_data__get_type_defn_context(HLDS_TypeDefn, Context),
+% 	MLDS_Context = mlds__make_context(Context),
+% 	Initializer = [ArityArg | FinalArgs],
+% 	MLDS_Type = mlds__base_type_info_type,
+% 	DefnBody = mlds__data(MLDS_Type, yes(Initializer)),
+% 	Defn = mlds__defn(data(DataName), MLDS_Context, Flags, DefnBody),
+% 
+% 	ml_base_type_info__construct_type_ctor_infos(TypeCtorGenInfos, ModuleInfo,
+% 		Defns).
+% 
+% 	% Return the declaration flags appropriate for a base_type_info.
+% 	%
+% :- func ml_gen_base_type_info_decl_flags(bool) = mlds__decl_flags.
+% ml_gen_base_type_info_decl_flags(Exported) = MLDS_DeclFlags :-
+% 	( Exported = yes ->
+% 		Access = public
+% 	;
+% 		Access = private
+% 	),
+% 	PerInstance = per_instance,
+% 	Virtuality = non_virtual,
+% 	Finality = overridable,
+% 	Constness = const,
+% 	Abstractness = concrete,
+% 	MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
+% 		Virtuality, Finality, Constness, Abstractness).
 
 :- pred	ml_base_type_info__construct_layout(module_info, string, int,
 		mlds__rval).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1996, 1998-1999 The University of Melbourne.
+% Copyright (C) 1994-1996, 1998-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -80,7 +80,8 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 			% (unless it is type_info/1)
 			type_is_no_tag_type(Ctors, SingleFunc, SingleArg)
 		->
-			create_cons_id(SingleFunc, [SingleArg], SingleConsId),
+			make_cons_id_from_qualified_sym_name(SingleFunc,
+				[SingleArg], SingleConsId),
 			map__set(CtorTags0, SingleConsId, no_tag, CtorTags)
 		;
 			NumTagBits = 0
@@ -110,7 +111,7 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 assign_enum_constants([], _, CtorTags, CtorTags).
 assign_enum_constants([Ctor | Rest], Val, CtorTags0, CtorTags) :-
 	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
-	create_cons_id(Name, Args, ConsId),
+	make_cons_id_from_qualified_sym_name(Name, Args, ConsId),
 	Tag = int_constant(Val),
 	map__set(CtorTags0, ConsId, Tag, CtorTags1),
 	Val1 is Val + 1,
@@ -147,7 +148,7 @@ assign_constant_tags(Constants, CtorTags0, CtorTags1, NextTag) :-
 assign_unshared_tags([], _, _, CtorTags, CtorTags).
 assign_unshared_tags([Ctor | Rest], Val, MaxTag, CtorTags0, CtorTags) :-
 	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
-	create_cons_id(Name, Args, ConsId),
+	make_cons_id_from_qualified_sym_name(Name, Args, ConsId),
 		% if we're about to run out of unshared tags, start assigning
 		% shared remote tags instead
 	( Val = MaxTag, Rest \= [] ->
@@ -168,7 +169,7 @@ assign_shared_remote_tags([], _, _, CtorTags, CtorTags).
 assign_shared_remote_tags([Ctor | Rest], PrimaryVal, SecondaryVal,
 		CtorTags0, CtorTags) :-
 	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
-	create_cons_id(Name, Args, ConsId),
+	make_cons_id_from_qualified_sym_name(Name, Args, ConsId),
 	Tag = shared_remote_tag(PrimaryVal, SecondaryVal),
 	map__set(CtorTags0, ConsId, Tag, CtorTags1),
 	SecondaryVal1 is SecondaryVal + 1,
@@ -183,7 +184,7 @@ assign_shared_local_tags([], _, _, CtorTags, CtorTags).
 assign_shared_local_tags([Ctor | Rest], PrimaryVal, SecondaryVal,
 			CtorTags0, CtorTags) :-
 	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
-	create_cons_id(Name, Args, ConsId),
+	make_cons_id_from_qualified_sym_name(Name, Args, ConsId),
 	Tag = shared_local_tag(PrimaryVal, SecondaryVal),
 	map__set(CtorTags0, ConsId, Tag, CtorTags1),
 	SecondaryVal1 is SecondaryVal + 1,
@@ -226,14 +227,6 @@ split_constructors([Ctor | Ctors], Constants, Functors) :-
 		Functors = [Ctor | Functors0]
 	),
 	split_constructors(Ctors, Constants0, Functors0).
-
-%-----------------------------------------------------------------------------%
-
-:- pred create_cons_id(sym_name, list(_), cons_id).
-:- mode create_cons_id(in, in, out) is det.
-
-create_cons_id(SymName, Args, cons(SymName, Arity)) :-
-	list__length(Args, Arity).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

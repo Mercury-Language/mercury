@@ -214,6 +214,9 @@ static	void	make_argv(const char *, char **, char ***, int *);
 #ifdef MEASURE_REGISTER_USAGE
 static	void	print_register_usage_counts(void);
 #endif
+#ifdef MR_CTOR_REP_STATS
+static	void	MR_print_type_ctor_stats(void);
+#endif
 
 Declare_entry(do_interpreter);
 
@@ -927,186 +930,7 @@ mercury_runtime_main(void)
 	}
 
 #ifdef	MR_CTOR_REP_STATS
-	{
-		FILE	*fp;
-
-		fp = fopen(MR_CTOR_REP_STATS, "a");
-		if (fp != NULL) {
-			fprintf(fp, "UNIFY ENUM %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_ENUM]);
-			fprintf(fp, "UNIFY ENUM_USEREQ %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_ENUM_USEREQ]);
-			fprintf(fp, "UNIFY DU %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_DU]);
-			fprintf(fp, "UNIFY DU_USEREQ %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_DU_USEREQ]);
-			fprintf(fp, "UNIFY NOTAG %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_NOTAG]);
-			fprintf(fp, "UNIFY NOTAG_USEREQ %ld\n",
-				MR_ctor_rep_unify[
-					MR_TYPECTOR_REP_NOTAG_USEREQ]);
-			fprintf(fp, "UNIFY EQUIV %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_EQUIV]);
-			fprintf(fp, "UNIFY EQUIV_VAR %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_EQUIV_VAR]);
-			fprintf(fp, "UNIFY INT %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_INT]);
-			fprintf(fp, "UNIFY CHAR %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_CHAR]);
-			fprintf(fp, "UNIFY FLOAT %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_FLOAT]);
-			fprintf(fp, "UNIFY STRING %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_STRING]);
-			fprintf(fp, "UNIFY PRED %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_PRED]);
-			fprintf(fp, "UNIFY UNIV %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_UNIV]);
-			fprintf(fp, "UNIFY VOID %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_VOID]);
-			fprintf(fp, "UNIFY C_POINTER %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_C_POINTER]);
-			fprintf(fp, "UNIFY TYPEINFO %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_TYPEINFO]);
-			fprintf(fp, "UNIFY TYPECLASSINFO %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_TYPECLASSINFO]);
-			fprintf(fp, "UNIFY ARRAY %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_ARRAY]);
-			fprintf(fp, "UNIFY SUCCIP %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_SUCCIP]);
-			fprintf(fp, "UNIFY HP %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_HP]);
-			fprintf(fp, "UNIFY CURFR %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_CURFR]);
-			fprintf(fp, "UNIFY MAXFR %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_MAXFR]);
-			fprintf(fp, "UNIFY REDOFR %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_REDOFR]);
-			fprintf(fp, "UNIFY REDOIP %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_REDOIP]);
-			fprintf(fp, "UNIFY TRAIL_PTR %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_TRAIL_PTR]);
-			fprintf(fp, "UNIFY TICKET %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_TICKET]);
-			fprintf(fp, "UNIFY UNKNOWN %ld\n",
-				MR_ctor_rep_unify[MR_TYPECTOR_REP_UNKNOWN]);
-
-			fprintf(fp, "INDEX ENUM %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_ENUM]);
-			fprintf(fp, "INDEX ENUM_USEREQ %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_ENUM_USEREQ]);
-			fprintf(fp, "INDEX DU %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_DU]);
-			fprintf(fp, "INDEX DU_USEREQ %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_DU_USEREQ]);
-			fprintf(fp, "INDEX NOTAG %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_NOTAG]);
-			fprintf(fp, "INDEX NOTAG_USEREQ %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_NOTAG_USEREQ]);
-			fprintf(fp, "INDEX EQUIV %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_EQUIV]);
-			fprintf(fp, "INDEX EQUIV_VAR %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_EQUIV_VAR]);
-			fprintf(fp, "INDEX INT %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_INT]);
-			fprintf(fp, "INDEX CHAR %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_CHAR]);
-			fprintf(fp, "INDEX FLOAT %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_FLOAT]);
-			fprintf(fp, "INDEX STRING %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_STRING]);
-			fprintf(fp, "INDEX PRED %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_PRED]);
-			fprintf(fp, "INDEX UNIV %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_UNIV]);
-			fprintf(fp, "INDEX VOID %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_VOID]);
-			fprintf(fp, "INDEX C_POINTER %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_C_POINTER]);
-			fprintf(fp, "INDEX TYPEINFO %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_TYPEINFO]);
-			fprintf(fp, "INDEX TYPECLASSINFO %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_TYPECLASSINFO]);
-			fprintf(fp, "INDEX ARRAY %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_ARRAY]);
-			fprintf(fp, "INDEX SUCCIP %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_SUCCIP]);
-			fprintf(fp, "INDEX HP %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_HP]);
-			fprintf(fp, "INDEX CURFR %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_CURFR]);
-			fprintf(fp, "INDEX MAXFR %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_MAXFR]);
-			fprintf(fp, "INDEX REDOFR %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_REDOFR]);
-			fprintf(fp, "INDEX REDOIP %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_REDOIP]);
-			fprintf(fp, "INDEX TRAIL_PTR %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_TRAIL_PTR]);
-			fprintf(fp, "INDEX TICKET %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_TICKET]);
-			fprintf(fp, "INDEX UNKNOWN %ld\n",
-				MR_ctor_rep_index[MR_TYPECTOR_REP_UNKNOWN]);
-
-			fprintf(fp, "COMPARE ENUM %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_ENUM]);
-			fprintf(fp, "COMPARE ENUM_USEREQ %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_ENUM_USEREQ]);
-			fprintf(fp, "COMPARE DU %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_DU]);
-			fprintf(fp, "COMPARE DU_USEREQ %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_DU_USEREQ]);
-			fprintf(fp, "COMPARE NOTAG %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_NOTAG]);
-			fprintf(fp, "COMPARE NOTAG_USEREQ %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_NOTAG_USEREQ]);
-			fprintf(fp, "COMPARE EQUIV %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_EQUIV]);
-			fprintf(fp, "COMPARE EQUIV_VAR %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_EQUIV_VAR]);
-			fprintf(fp, "COMPARE INT %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_INT]);
-			fprintf(fp, "COMPARE CHAR %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_CHAR]);
-			fprintf(fp, "COMPARE FLOAT %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_FLOAT]);
-			fprintf(fp, "COMPARE STRING %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_STRING]);
-			fprintf(fp, "COMPARE PRED %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_PRED]);
-			fprintf(fp, "COMPARE UNIV %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_UNIV]);
-			fprintf(fp, "COMPARE VOID %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_VOID]);
-			fprintf(fp, "COMPARE C_POINTER %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_C_POINTER]);
-			fprintf(fp, "COMPARE TYPEINFO %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_TYPEINFO]);
-			fprintf(fp, "COMPARE TYPECLASSINFO %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_TYPECLASSINFO]);
-			fprintf(fp, "COMPARE ARRAY %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_ARRAY]);
-			fprintf(fp, "COMPARE SUCCIP %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_SUCCIP]);
-			fprintf(fp, "COMPARE HP %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_HP]);
-			fprintf(fp, "COMPARE CURFR %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_CURFR]);
-			fprintf(fp, "COMPARE MAXFR %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_MAXFR]);
-			fprintf(fp, "COMPARE REDOFR %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_REDOFR]);
-			fprintf(fp, "COMPARE REDOIP %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_REDOIP]);
-			fprintf(fp, "COMPARE TRAIL_PTR %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_TRAIL_PTR]);
-			fprintf(fp, "COMPARE TICKET %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_TICKET]);
-			fprintf(fp, "COMPARE UNKNOWN %ld\n",
-				MR_ctor_rep_compare[MR_TYPECTOR_REP_UNKNOWN]);
-
-			(void) fclose(fp);
-		}
-	}
+	MR_print_type_ctor_stats();
 #endif
 
 	/*
@@ -1118,6 +942,51 @@ mercury_runtime_main(void)
 	restore_regs_from_mem(c_regs);
 
 } /* end mercury_runtime_main() */
+
+#ifdef	MR_CTOR_REP_STATS
+
+static	ConstString	MR_ctor_rep_name[] = {
+	MR_CTOR_REP_NAMES
+};
+
+static void
+MR_print_type_ctor_stats(void)
+{
+	FILE	*fp;
+	int	i;
+
+	fp = fopen(MR_CTOR_REP_STATS, "a");
+	if (fp != NULL) {
+
+		for (i = 0; i < (int) MR_TYPECTOR_REP_UNKNOWN; i++) {
+			if (MR_ctor_rep_unify[i] > 0) {
+				fprintf(fp, "UNIFY   %-15s %20ld\n",
+					MR_ctor_rep_name[i],
+					MR_ctor_rep_unify[i]);
+			}
+		}
+
+		for (i = 0; i < (int) MR_TYPECTOR_REP_UNKNOWN; i++) {
+			if (MR_ctor_rep_index[i] > 0) {
+				fprintf(fp, "INDEX   %-15s %20ld\n",
+					MR_ctor_rep_name[i],
+					MR_ctor_rep_index[i]);
+			}
+		}
+
+		for (i = 0; i < (int) MR_TYPECTOR_REP_UNKNOWN; i++) {
+			if (MR_ctor_rep_compare[i] > 0) {
+				fprintf(fp, "COMPARE %-15s %20ld\n",
+					MR_ctor_rep_name[i],
+					MR_ctor_rep_compare[i]);
+			}
+		}
+
+		(void) fclose(fp);
+	}
+}
+
+#endif
 
 #ifdef MEASURE_REGISTER_USAGE
 static void 

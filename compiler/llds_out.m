@@ -18,6 +18,7 @@
 :- interface.
 
 :- import_module llds, builtin_ops, prog_data, hlds_data, rl_file.
+:- import_module globals.
 :- import_module set_bbbtree, bool, io, std_util.
 
 	% Given a 'c_file' structure, output the LLDS code inside it
@@ -29,6 +30,65 @@
 :- pred output_llds(c_file, set_bbbtree(label), maybe(rl_file),
 		io__state, io__state).
 :- mode output_llds(in, in, in, di, uo) is det.
+
+	% output_rval_decls(Rval, FirstIndent, LaterIndent, N0, N,
+	% DeclSet0, DeclSet) outputs the declarations of any static constants,
+	% etc. that need to be declared before output_rval(Rval) is called.
+	% FirstIndent is output before the first declaration, while
+	% LaterIndent is output before all later declaration; N0 and N
+	% give the number of declarations output before and after this call.
+	%
+	% Every time we emit a declaration for a symbol, we insert it into the
+	% set of symbols we've already declared. That way, we avoid generating
+	% the same symbol twice, which would cause an error in the C code.
+
+:- pred output_rval_decls(rval, string, string, int, int, decl_set, decl_set,
+	io__state, io__state).
+:- mode output_rval_decls(in, in, in, in, out, in, out, di, uo) is det.
+
+	% output an rval (not converted to any particular type,
+	% but instead output as its "natural" type)
+
+:- pred output_rval(rval, io__state, io__state).
+:- mode output_rval(in, di, uo) is det.
+
+	% output_code_addr_decls(CodeAddr, ...) outputs the declarations of any
+	% extern symbols, etc. that need to be declared before
+	% output_code_addr(CodeAddr) is called. The meanings of the other
+	% arguments are as above.
+
+:- pred output_code_addr_decls(code_addr, string, string, int, int,
+	decl_set, decl_set, io__state, io__state).
+:- mode output_code_addr_decls(in, in, in, in, out, in, out, di, uo) is det.
+
+:- pred output_code_addr(code_addr, io__state, io__state).
+:- mode output_code_addr(in, di, uo) is det.
+
+	% output_data_addr_decls(DataAddr, ...) outputs the declarations of
+	% any static constants, etc. that need to be declared before
+	% output_data_addr(DataAddr) is called. The meanings of the other
+	% arguments are as above.
+
+:- pred output_data_addr_decls(data_addr::in, string::in, string::in,
+	int::in, int::out, decl_set::in, decl_set::out,
+	io__state::di, io__state::uo) is det.
+
+:- pred output_data_addr(data_addr::in, io__state::di, io__state::uo) is det.
+
+	% All the C data structures we generate which are either fully static
+	% or static after initialization should have this prefix.
+:- func mercury_data_prefix = string.
+
+	% Given the default linkage of a data item, and a bool saying whether
+	% it is being defined, return a C string that gives its storage class.
+
+:- pred c_data_linkage_string(globals::in, linkage::in, bool::in, string::out)
+	is det.
+
+	% Given a boolean that states whether a data item includes code
+	% addresses or not, return a C string that gives its "const-ness".
+
+:- pred c_data_const_string(globals::in, bool::in, string::out) is det.
 
 	% Convert an lval to a string description of that lval.
 
@@ -113,11 +173,6 @@
 :- pred output_c_quoted_multi_string(int, string, io__state, io__state).
 :- mode output_c_quoted_multi_string(in, in, di, uo) is det.
 
-	% Create a name for type_ctor_*
-
-:- pred llds_out__make_type_ctor_name(base_data, string, arity, string).
-:- mode llds_out__make_type_ctor_name(in, in, in, out) is det.
-
 	% Create a name for base_typeclass_info
 
 :- pred llds_out__make_base_typeclass_info_name(class_id, string, string).
@@ -147,25 +202,8 @@
 :- pred llds_out__trace_port_to_num(trace_port, int).
 :- mode llds_out__trace_port_to_num(in, out) is det.
 
-%-----------------------------------------------------------------------------%
-
-:- implementation.
-
-:- import_module globals, options.
-:- import_module exprn_aux, prog_util, prog_out, hlds_pred.
-:- import_module export, mercury_to_mercury, modules.
-:- import_module c_util.
-
-:- import_module int, list, char, string, map, std_util.
-:- import_module set, bintree_set, assoc_list, require.
-:- import_module varset, term.
-:- import_module library.	% for the version number.
-
-%-----------------------------------------------------------------------------%
-
-% Every time we emit a declaration for a symbol, we insert it into the
-% set of symbols we've already declared.  That way, we avoid generating
-% the same symbol twice, which would cause an error in the C code.
+	% The following are exported to rtti_out. It may be worthwhile
+	% to put these in a new module (maybe llds_out_util).
 
 :- type decl_id --->	create_label(int)
 		;	float_label(string)
@@ -173,19 +211,56 @@
 		;	data_addr(data_addr)
 		;	pragma_c_struct(string).
 
-:- type decl_set ==	map(decl_id, unit).
+:- type decl_set.
+
+% Every time we emit a declaration for a symbol, we insert it into the
+% set of symbols we've already declared.  That way, we avoid generating
+% the same symbol twice, which would cause an error in the C code.
 
 :- pred decl_set_init(decl_set::out) is det.
+
+:- pred decl_set_insert(decl_set::in, decl_id::in, decl_set::out) is det.
+
+:- pred decl_set_is_member(decl_id::in, decl_set::in) is semidet.
+
+%-----------------------------------------------------------------------------%
+
+%
+% Note that we need to know the linkage not just at the definition,
+% but also at every use, because if the use is prior to the definition,
+% then we need to declare the name first, and the linkage used in that
+% declaration must be consistent with the linkage in the definition.
+% For this reason, the field in c_data (which holds the information about
+% the definition) which says whether or not a data name is exported
+% is not useful.  Instead, we need to determine whether or not something
+% is exported from its `data_name'.
+%
+
+:- type linkage ---> extern ; static.
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+:- import_module rtti, rtti_out, options.
+:- import_module exprn_aux, prog_util, prog_out, hlds_pred.
+:- import_module export, mercury_to_mercury, modules.
+:- import_module c_util.
+
+:- import_module int, list, char, string, std_util.
+:- import_module map, set, bintree_set, assoc_list, require.
+:- import_module varset, term.
+:- import_module library.	% for the version number.
+
+%-----------------------------------------------------------------------------%
+
+:- type decl_set ==	map(decl_id, unit).
 
 decl_set_init(DeclSet) :-
 	map__init(DeclSet).
 
-:- pred decl_set_insert(decl_set::in, decl_id::in, decl_set::out) is det.
-
 decl_set_insert(DeclSet0, DeclId, DeclSet) :-
 	map__set(DeclSet0, DeclId, unit, DeclSet).
-
-:- pred decl_set_is_member(decl_id::in, decl_set::in) is semidet.
 
 decl_set_is_member(DeclId, DeclSet) :-
 	map__search(DeclSet, DeclId, _).
@@ -397,7 +472,7 @@ output_single_c_file(CFile, SplitFiles, StackLayoutLabels, MaybeRLFile) -->
 		output_c_label_decl_list(Labels, StackLayoutLabels,
 			DeclSet0, DeclSet1),
 		output_comp_gen_c_var_list(Vars, DeclSet1, DeclSet2),
-		output_c_data_def_list(Datas, DeclSet2, DeclSet3),
+		output_c_data_type_def_list(Datas, DeclSet2, DeclSet3),
 		output_comp_gen_c_data_list(Datas, DeclSet3, DeclSet4),
 		output_comp_gen_c_module_list(Modules, StackLayoutLabels,
 			DeclSet4, _DeclSet),
@@ -573,28 +648,12 @@ output_c_data_init_list_decls([Data | Datas]) -->
 output_c_data_init_list([]) --> [].
 output_c_data_init_list([Data | Datas]) -->
 	(
-		{ Data = comp_gen_c_data(ModuleName, DataName, _, _, _, _) },
-		{ DataName = type_ctor(info, TypeName, Arity) }
+		{ Data = rtti_data(RttiData) }
 	->
-		io__write_string("\t\tMR_INIT_TYPE_CTOR_INFO(\n\t\t"),
-		output_data_addr(ModuleName, DataName),
-		io__write_string(",\n\t\t\t"),
-		{ llds_out__sym_name_mangle(ModuleName, ModuleNameString) },
-		{ string__append(ModuleNameString, "__", UnderscoresModule) },
-		( 
-			{ string__append(UnderscoresModule, _, TypeName) } 
-		->
-			[]
-		;
-			io__write_string(UnderscoresModule)
-		),
-		{ llds_out__name_mangle(TypeName, MangledTypeName) },
-		io__write_string(MangledTypeName),
-		io__write_string("_"),
-		io__write_int(Arity),
-		io__write_string("_0);\n")
+		rtti_out__init_rtti_data_if_nec(RttiData)
 	;
-		{ Data = comp_gen_c_data(ModuleName, DataName, _, ArgRvals, _, _) },
+		{ Data = comp_gen_c_data(ModuleName, DataName, _, ArgRvals,
+			_, _) },
 		{ DataName = base_typeclass_info(_ClassName, _ClassArity) }
 	->
 		io__write_string("#ifndef MR_STATIC_CODE_ADDRESSES\n"),
@@ -683,30 +742,28 @@ output_bunch_name(ModuleName, InitStatus, Number) -->
 	io__write_int(Number).
 
 	%
-	% output_c_data_def_list outputs all the type definitions of
+	% output_c_data_type_def_list outputs all the type definitions of
 	% the module.  This is needed because some compilers need the
 	% data definition to appear before any use of the type in
 	% forward declarations of static constants.
 	%
-:- pred output_c_data_def_list(list(comp_gen_c_data), decl_set, decl_set, 
+:- pred output_c_data_type_def_list(list(comp_gen_c_data), decl_set, decl_set,
 	io__state, io__state).
-:- mode output_c_data_def_list(in, in, out, di, uo) is det.
+:- mode output_c_data_type_def_list(in, in, out, di, uo) is det.
 
-output_c_data_def_list([], DeclSet, DeclSet) --> [].
-output_c_data_def_list([M | Ms], DeclSet0, DeclSet) -->
-	output_c_data_def(M, DeclSet0, DeclSet1),
-	output_c_data_def_list(Ms, DeclSet1, DeclSet).
+output_c_data_type_def_list([], DeclSet, DeclSet) --> [].
+output_c_data_type_def_list([M | Ms], DeclSet0, DeclSet) -->
+	output_c_data_type_def(M, DeclSet0, DeclSet1),
+	output_c_data_type_def_list(Ms, DeclSet1, DeclSet).
 
-:- pred output_c_data_def(comp_gen_c_data, decl_set, decl_set,
+:- pred output_c_data_type_def(comp_gen_c_data, decl_set, decl_set,
 	io__state, io__state).
-:- mode output_c_data_def(in, in, out, di, uo) is det.
+:- mode output_c_data_type_def(in, in, out, di, uo) is det.
 
-output_c_data_def(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
+output_c_data_type_def(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
 		ArgVals, ArgTypes, _Refs), DeclSet0, DeclSet) -->
 	io__write_string("\n"),
-	{ DataAddr = data_addr(data_addr(ModuleName, VarName)) },
-
-	{ linkage(VarName, Linkage) },
+	{ data_name_linkage(VarName, Linkage) },
 	{
 		( Linkage = extern, ExportedFromModule = yes
 		; Linkage = static, ExportedFromModule = no
@@ -729,9 +786,12 @@ output_c_data_def(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
 		{ ExportedFromFile = SplitFiles }
 	),
 
-	output_const_term_decl(ArgVals, ArgTypes, DataAddr, ExportedFromFile, 
-			yes, yes, no, "", "", 0, _),
-	{ decl_set_insert(DeclSet0, DataAddr, DeclSet) }.
+	{ DeclId = data_addr(data_addr(ModuleName, VarName)) },
+	output_const_term_decl(ArgVals, ArgTypes, DeclId, ExportedFromFile,
+		yes, yes, no, "", "", 0, _),
+	{ decl_set_insert(DeclSet0, DeclId, DeclSet) }.
+output_c_data_type_def(rtti_data(RttiData), DeclSet0, DeclSet) -->
+	output_rtti_data_decl(RttiData, DeclSet0, DeclSet).
 
 :- pred output_comp_gen_c_module_list(list(comp_gen_c_module)::in,
 	set_bbbtree(label)::in, decl_set::in, decl_set::out,
@@ -798,7 +858,6 @@ output_comp_gen_c_data_list([Data | Datas], DeclSet0, DeclSet) -->
 output_comp_gen_c_data(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
 		ArgVals, ArgTypes, _Refs), DeclSet0, DeclSet) -->
 	io__write_string("\n"),
-	{ DataAddr = data_addr(data_addr(ModuleName, VarName)) },
 	output_cons_arg_decls(ArgVals, "", "", 0, _, DeclSet0, DeclSet1),
 
 	%
@@ -807,7 +866,7 @@ output_comp_gen_c_data(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
 	% computed by linkage/2 from the dataname, which we use for any
 	% prior declarations.
 	%
-	{ linkage(VarName, Linkage) },
+	{ data_name_linkage(VarName, Linkage) },
 	{
 		( Linkage = extern, ExportedFromModule = yes
 		; Linkage = static, ExportedFromModule = no
@@ -817,7 +876,7 @@ output_comp_gen_c_data(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
 	;
 		error("linkage mismatch")
 	},
-	
+
 		% The code for data local to a Mercury module
 		% should normally be visible only within the C file
 		% generated for that module. However, if we generate
@@ -829,9 +888,12 @@ output_comp_gen_c_data(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
 		globals__io_lookup_bool_option(split_c_files, SplitFiles),
 		{ ExportedFromFile = SplitFiles }
 	),
-	output_const_term_decl(ArgVals, ArgTypes, DataAddr, ExportedFromFile,
+	{ DeclId = data_addr(data_addr(ModuleName, VarName)) },
+	output_const_term_decl(ArgVals, ArgTypes, DeclId, ExportedFromFile,
 		no, yes, yes, "", "", 0, _),
-	{ decl_set_insert(DeclSet1, DataAddr, DeclSet) }.
+	{ decl_set_insert(DeclSet1, DeclId, DeclSet) }.
+output_comp_gen_c_data(rtti_data(RttiData), DeclSet0, DeclSet) -->
+	output_rtti_data_defn(RttiData, DeclSet0, DeclSet).
 
 llds_out__trace_port_to_string(call, "MR_PORT_CALL").
 llds_out__trace_port_to_string(exit, "MR_PORT_EXIT").
@@ -1123,7 +1185,7 @@ output_c_procedure(Proc, PrintComments, EmitCLoops) -->
 	output_instruction_list(Instrs, PrintComments,
 		CallerLabel - ContLabelSet, WhileSet).
 
-	% Find the entry label for the procedure, 
+	% Find the entry label for the procedure,
 	% for use as the profiling "caller label"
 	% field in calls within this procedure.
 
@@ -1161,7 +1223,7 @@ llds_out__find_cont_labels([Instr - _ | Instrs], ContLabelSet0, ContLabelSet)
 		;
 			Instr = join_and_continue(_, ContLabel)
 		;
-			Instr = assign(redoip(lval(_)), 
+			Instr = assign(redoip(lval(_)),
 				const(code_addr_const(label(ContLabel))))
 		)
 	->
@@ -1254,7 +1316,7 @@ output_instruction_list_decls([Instr0 - _Comment0 | Instrs],
 output_instruction_decls(comment(_), DeclSet, DeclSet) --> [].
 output_instruction_decls(livevals(_), DeclSet, DeclSet) --> [].
 output_instruction_decls(block(_TempR, _TempF, Instrs),
-		DeclSet0, DeclSet) --> 
+		DeclSet0, DeclSet) -->
 	output_instruction_list_decls(Instrs, DeclSet0, DeclSet).
 output_instruction_decls(assign(Lval, Rval), DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet1),
@@ -1732,7 +1794,7 @@ output_pragma_c_component(pragma_c_fail_to(Label)) -->
 	io__write_string(");\n").
 output_pragma_c_component(pragma_c_noop) --> [].
 
-	% Output the local variable declarations at the top of the 
+	% Output the local variable declarations at the top of the
 	% pragma_c_code code.
 :- pred output_pragma_decls(list(pragma_c_decl), io__state, io__state).
 :- mode output_pragma_decls(in, di, uo) is det.
@@ -1769,7 +1831,7 @@ output_pragma_input_rval_decls([I | Inputs], DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, "\t", "\t", 0, _N, DeclSet0, DeclSet1),
 	output_pragma_input_rval_decls(Inputs, DeclSet1, DeclSet).
 
-	% Output the input variable assignments at the top of the 
+	% Output the input variable assignments at the top of the
 	% pragma_c_code code.
 :- pred output_pragma_inputs(list(pragma_c_input), io__state, io__state).
 :- mode output_pragma_inputs(in, di, uo) is det.
@@ -1812,7 +1874,7 @@ output_pragma_output_lval_decls([O | Outputs], DeclSet0, DeclSet) -->
 :- mode output_pragma_outputs(in, di, uo) is det.
 
 output_pragma_outputs([]) --> [].
-output_pragma_outputs([O|Outputs]) --> 
+output_pragma_outputs([O|Outputs]) -->
 	{ O = pragma_c_output(Lval, Type, VarName) },
 	io__write_string("\t"),
 	output_lval_as_word(Lval),
@@ -1944,7 +2006,7 @@ output_live_value_type(hp) --> io__write_string("type hp").
 output_live_value_type(trail_ptr) --> io__write_string("type trail_ptr").
 output_live_value_type(ticket) --> io__write_string("type ticket").
 output_live_value_type(unwanted) --> io__write_string("unwanted").
-output_live_value_type(var(Var, Name, Type, LldsInst)) --> 
+output_live_value_type(var(Var, Name, Type, LldsInst)) -->
 	io__write_string("var("),
 	{ term__var_to_int(Var, VarInt) },
 	io__write_int(VarInt),
@@ -1969,13 +2031,13 @@ output_live_value_type(var(Var, Name, Type, LldsInst)) -->
 :- pred output_temp_decls(int, string, io__state, io__state).
 :- mode output_temp_decls(in, in, di, uo) is det.
 
-output_temp_decls(N, Type) --> 
+output_temp_decls(N, Type) -->
 	output_temp_decls_2(1, N, Type).
 
 :- pred output_temp_decls_2(int, int, string, io__state, io__state).
 :- mode output_temp_decls_2(in, in, in, di, uo) is det.
 
-output_temp_decls_2(Next, Max, Type) --> 
+output_temp_decls_2(Next, Max, Type) -->
 	( { Next =< Max } ->
 		( { Next > 1 } ->
 			io__write_string(", ")
@@ -1991,26 +2053,14 @@ output_temp_decls_2(Next, Max, Type) -->
 		[]
 	).
 
-% output_rval_decls(Rval, ...) outputs the declarations of any
-% static constants, etc. that need to be declared before
-% output_rval(Rval) is called.
-
-% Every time we emit a declaration for a symbol, we insert it into the
-% set of symbols we've already declared. That way, we avoid generating
-% the same symbol twice, which would cause an error in the C code.
-
-:- pred output_rval_decls(rval, string, string, int, int, decl_set, decl_set,
-	io__state, io__state).
-:- mode output_rval_decls(in, in, in, in, out, in, out, di, uo) is det.
-
 output_rval_decls(lval(Lval), FirstIndent, LaterIndent, N0, N,
 		DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, FirstIndent, LaterIndent, N0, N,
 		DeclSet0, DeclSet).
-output_rval_decls(var(_), _, _, _, _, _, _) --> 
+output_rval_decls(var(_), _, _, _, _, _, _) -->
 	{ error("output_rval_decls: unexpected var") }.
 output_rval_decls(mkword(_, Rval), FirstIndent, LaterIndent, N0, N,
-		DeclSet0, DeclSet) --> 
+		DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, FirstIndent, LaterIndent, N0, N,
 		DeclSet0, DeclSet).
 output_rval_decls(const(Const), FirstIndent, LaterIndent, N0, N,
@@ -2026,7 +2076,7 @@ output_rval_decls(const(Const), FirstIndent, LaterIndent, N0, N,
 		% If floats are boxed, and the static ground terms
 		% option is enabled, then for each float constant
 		% which we might want to box we declare a static const
-		% variable holding that constant. 
+		% variable holding that constant.
 		%
 		globals__io_lookup_bool_option(unboxed_float, UnboxedFloat),
 		globals__io_lookup_bool_option(static_ground_terms,
@@ -2072,7 +2122,7 @@ output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent, N0, N,
 		% If floats are boxed, and the static ground terms
 		% option is enabled, then for each float constant
 		% which we might want to box we declare a static const
-		% variable holding that constant. 
+		% variable holding that constant.
 		%
 	( { c_util__float_op(Op, OpStr) } ->
 	    globals__io_lookup_bool_option(unboxed_float, UnboxFloat),
@@ -2202,7 +2252,7 @@ llds_out__float_literal_name(Float, FloatName) :-
 
 :- pred llds_out__float_op_name(binary_op, string).
 :- mode llds_out__float_op_name(in, out) is semidet.
-	
+
 % succeed iff the binary operator is an operator whose return
 % type is float; bind the output string to a name for that operator
 % that is suitable for use in a C identifier
@@ -2218,10 +2268,10 @@ llds_out__float_op_name(float_divide, "divide").
 	%
 	%	static const struct <foo>_struct {
 	%		Word field1;			// Def
-	%		Float field2;			
+	%		Float field2;
 	%		Word * field3;
 	%		...
-	%	} 
+	%	}
 	%	<foo> 					// Decl
 	%	= {					// Init
 	%		...
@@ -2265,13 +2315,13 @@ output_const_term_decl(ArgVals, CreateArgTypes, DeclId, Exported,
 		globals__io_get_globals(Globals),
 		{ globals__have_static_code_addresses(Globals, StaticCode) },
 		(
-				% Don't make the structure `const' 
+				% Don't make the structure `const'
 				% if the structure will eventually include
 				% code addresses but we don't have static code
 				% addresses.
 			{ StaticCode = no },
-			{ DeclId = data_addr(data_addr(_, DataName)) },
-			{ data_name_would_include_code_address(DataName, yes) }
+			{ DeclId = data_addr(DataAddr) },
+			{ data_addr_would_include_code_address(DataAddr, yes) }
 		->
 			[]
 		;
@@ -2282,24 +2332,16 @@ output_const_term_decl(ArgVals, CreateArgTypes, DeclId, Exported,
 	),
 	io__write_string("struct "),
 
-	% If it's a type_ctor_info struct, use the MR_TypeCtorInfo_struct
-	% type, and don't emit a definition.
+	output_decl_id(DeclId),
+	io__write_string("_struct"),
 	(
-		{ decl_id_is_type_ctor_info(DeclId) }
+		{ Def = yes }
 	->
-		io__write_string("MR_TypeCtorInfo_struct")
+		io__write_string(" {\n"),
+		output_cons_arg_types(ArgVals, CreateArgTypes, "\t", 1),
+		io__write_string("} ")
 	;
-		output_decl_id(DeclId),
-		io__write_string("_struct"),
-		(
-			{ Def = yes }
-		->
-			io__write_string(" {\n"),
-			output_cons_arg_types(ArgVals, CreateArgTypes, "\t", 1),
-			io__write_string("} ")
-		;
-			[]
-		)
+		[]
 	),
 	(
 		{ Decl = yes }
@@ -2320,13 +2362,6 @@ output_const_term_decl(ArgVals, CreateArgTypes, DeclId, Exported,
 		io__write_string(";\n")
 	).
 
-	% Succeed if the decl_id is for a type constructor info structure.
-
-:- pred decl_id_is_type_ctor_info(decl_id).
-:- mode decl_id_is_type_ctor_info(in) is semidet.
-
-decl_id_is_type_ctor_info(data_addr(data_addr(_, type_ctor(info, _, _)))).
-
 	% Return true if a data structure of the given type will eventually
 	% include code addresses. Note that we can't just test the data
 	% structure itself, since in the absence of code addresses the earlier
@@ -2334,18 +2369,23 @@ decl_id_is_type_ctor_info(data_addr(data_addr(_, type_ctor(info, _, _)))).
 	% that will have to be overridden with the real code address at
 	% initialization time.
 
+:- pred data_addr_would_include_code_address(data_addr, bool).
+:- mode data_addr_would_include_code_address(in, out) is det.
+
+data_addr_would_include_code_address(data_addr(_, DataName), CodeAddr) :-
+	data_name_would_include_code_address(DataName, CodeAddr).
+data_addr_would_include_code_address(rtti_addr(_, RttiName), CodeAddr) :-
+	rtti__name_would_include_code_address(RttiName, CodeAddr).
+
 :- pred data_name_would_include_code_address(data_name, bool).
 :- mode data_name_would_include_code_address(in, out) is det.
 
-data_name_would_include_code_address(common(_), no).
-data_name_would_include_code_address(type_ctor(info, _, _), yes).
-data_name_would_include_code_address(type_ctor(layout, _, _), no).
-data_name_would_include_code_address(type_ctor(functors, _, _), no).
+data_name_would_include_code_address(common(_),                 no).
 data_name_would_include_code_address(base_typeclass_info(_, _), yes).
-data_name_would_include_code_address(module_layout, no).
-data_name_would_include_code_address(proc_layout(_), yes).
-data_name_would_include_code_address(internal_layout(_), no).
-data_name_would_include_code_address(tabling_pointer(_), no).
+data_name_would_include_code_address(module_layout,             no).
+data_name_would_include_code_address(proc_layout(_),            yes).
+data_name_would_include_code_address(internal_layout(_),        no).
+data_name_would_include_code_address(tabling_pointer(_),        no).
 
 :- pred output_decl_id(decl_id, io__state, io__state).
 :- mode output_decl_id(in, di, uo) is det.
@@ -2353,8 +2393,8 @@ data_name_would_include_code_address(tabling_pointer(_), no).
 output_decl_id(create_label(N)) -->
 	io__write_string("mercury_const_"),
 	io__write_int(N).
-output_decl_id(data_addr(data_addr(ModuleName, VarName))) -->
-	output_data_addr(ModuleName, VarName).
+output_decl_id(data_addr(DataAddr)) -->
+	output_data_addr(DataAddr).
 output_decl_id(code_addr(_CodeAddress)) -->
 	{ error("output_decl_id: code_addr unexpected") }.
 output_decl_id(float_label(_Label)) -->
@@ -2520,7 +2560,7 @@ output_uniform_cons_args([Arg | Args], MaybeType, Indent) -->
 		globals__io_get_globals(Globals),
 		(
 			%
-			% Don't output code_addr_consts if they are not 
+			% Don't output code_addr_consts if they are not
 			% actually const; instead just output `NULL' here in
 			% the static initializer.  The value will be supplied
 			% by the dynamic initialization code.
@@ -2647,14 +2687,6 @@ output_lval_decls(mem_ref(Rval), FirstIndent, LaterIndent, N0, N,
 	output_rval_decls(Rval, FirstIndent, LaterIndent, N0, N,
 		DeclSet0, DeclSet).
 
-% output_code_addr_decls(CodeAddr, ...) outputs the declarations of any
-% extern symbols, etc. that need to be declared before
-% output_code_addr(CodeAddr) is called.
-
-:- pred output_code_addr_decls(code_addr, string, string, int, int,
-	decl_set, decl_set, io__state, io__state).
-:- mode output_code_addr_decls(in, in, in, in, out, in, out, di, uo) is det.
-
 output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent, N0, N,
 		DeclSet0, DeclSet) -->
 	( { decl_set_is_member(code_addr(CodeAddress), DeclSet0) } ->
@@ -2676,7 +2708,7 @@ output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent, N0, N,
 :- mode need_code_addr_decls(in, out, di, uo) is det.
 
 need_code_addr_decls(label(Label), Need) -->
-	{ 
+	{
 		Label = exported(_),
 		Need = yes
 	;
@@ -2801,102 +2833,103 @@ output_label_as_code_addr_decls(local(ProcLabel)) -->
 output_label_as_code_addr_decls(c_local(_)) --> [].
 output_label_as_code_addr_decls(local(_, _)) --> [].
 
-:- pred output_data_addr_decls(data_addr, string, string, int, int,
-		decl_set, decl_set, io__state, io__state).
-:- mode output_data_addr_decls(in, in, in, in, out, in, out, di, uo) is det.
-
 output_data_addr_decls(DataAddr, FirstIndent, LaterIndent, N0, N,
 		DeclSet0, DeclSet) -->
 	( { decl_set_is_member(data_addr(DataAddr), DeclSet0) } ->
 		{ N = N0 },
 		{ DeclSet = DeclSet0 }
 	;
-		{ decl_set_insert(DeclSet0, data_addr(DataAddr),
-			DeclSet) },
+		{ decl_set_insert(DeclSet0, data_addr(DataAddr), DeclSet) },
 		output_data_addr_decls_2(DataAddr,
 			FirstIndent, LaterIndent, N0, N)
 	).
 
-:- pred output_data_addr_decls_2(data_addr, string, string, int, int,
-	io__state, io__state).
-:- mode output_data_addr_decls_2(in, in, in, in, out, di, uo) is det.
+:- pred output_data_addr_decls_2(data_addr::in, string::in, string::in,
+	int::in, int::out, io__state::di, io__state::uo) is det.
 
-output_data_addr_decls_2(data_addr(ModuleName, VarName),
-		FirstIndent, LaterIndent, N0, N) -->
+output_data_addr_decls_2(DataAddr, FirstIndent, LaterIndent, N0, N) -->
 	output_indent(FirstIndent, LaterIndent, N0),
 	{ N is N0 + 1 },
-
-	%
-	% Previously we used to always write `extern' here, but
-	% declaring something `extern' and then later defining it as
-	% `static' causes undefined behavior -- on many systems, it
-	% works, but on some systems such as RS/6000s running AIX
-	% it results in link errors.
-	%
-	{ linkage(VarName, Linkage) },
-	globals__io_lookup_bool_option(split_c_files, SplitFiles),
 	(
-		( { Linkage = extern }
-		; { SplitFiles = yes }
-		)
-	->
-		io__write_string("extern ")
+		{ DataAddr = data_addr(ModuleName, DataVarName) },
+		output_data_addr_storage_type_name(ModuleName, DataVarName, no,
+			LaterIndent)
 	;
-		io__write_string("static ")
+		{ DataAddr = rtti_addr(RttiTypeId, RttiVarName) },
+		output_rtti_addr_storage_type_name(RttiTypeId, RttiVarName, no)
 	),
-
-	globals__io_get_globals(Globals),
-
-		% Don't make decls of type_ctor_infos etc.
-		% `const' if we don't have static code addresses.
-	(
-		{ data_name_would_include_code_address(VarName, yes) },
-		{ globals__have_static_code_addresses(Globals, no) }
-	->
-		[]
-	;
-		io__write_string("const ")
-	),
-	io__write_string("struct "),
-
-	% If it's a type_ctor_info struct, use the
-	% MR_TypeCtorInfo_struct type.
-	(
-		{ VarName = type_ctor(info, _, _) }
-	->
-		io__write_string("MR_TypeCtorInfo_struct\n")
-	;
-		output_data_addr(ModuleName, VarName), 
-		io__write_string("_struct\n")
-	),
-	io__write_string(LaterIndent),
-	io__write_string("\t"),
-	output_data_addr(ModuleName, VarName), 
 	io__write_string(";\n").
 
-%
-% Note that we need to know the linkage not just at the definition,
-% but also at every use, because if the use is prior to the definition,
-% then we need to declare the name first, and the linkage used in that
-% declaration must be consistent with the linkage in the definition.
-% For this reason, the field in c_data (which holds the information about
-% the definition) which says whether or not a data name is exported
-% is not useful.  Instead, we need to determine whether or not something
-% is exported from its `data_name'.
-%
+c_data_linkage_string(Globals, DefaultLinkage, BeingDefined, LinkageStr) :-
+	globals__lookup_bool_option(Globals, split_c_files, SplitFiles),
+	(
+		( DefaultLinkage = extern
+		; SplitFiles = yes
+		)
+	->
+		(
+			BeingDefined = yes,
+			LinkageStr = ""
+		;
+			BeingDefined = no,
+			LinkageStr = "extern "
+		)
+	;
+		%
+		% Previously we used to always write `extern' here, but
+		% declaring something `extern' and then later defining it as
+		% `static' causes undefined behavior -- on many systems, it
+		% works, but on some systems such as RS/6000s running AIX
+		% it results in link errors.
+		%
+		LinkageStr = "static "
+	).
 
-:- type linkage ---> extern ; static.
+c_data_const_string(Globals, InclCodeAddr, ConstStr) :-
+	(
+		InclCodeAddr = yes,
+		globals__have_static_code_addresses(Globals, no)
+	->
+		ConstStr = ""
+	;
+		ConstStr = "const "
+	).
 
-:- pred linkage(data_name::in, linkage::out) is det.
-linkage(common(_),                 static).
-linkage(type_ctor(info, _, _),     extern).
-linkage(type_ctor(layout, _, _),   static).
-linkage(type_ctor(functors, _, _), static).
-linkage(base_typeclass_info(_, _), extern).
-linkage(module_layout,             static).
-linkage(proc_layout(_),            static).
-linkage(internal_layout(_),        static).
-linkage(tabling_pointer(_),        static).
+	% This predicate outputs the storage class, type and name
+	% of the variable specified by the first two arguments.
+	% The third argument should be true if the variable is being
+	% defined, and false if it is only being declared (since the
+	% storage class "extern" is needed only on declarations).
+
+:- pred output_data_addr_storage_type_name(module_name::in, data_name::in,
+	bool::in, string::in, io__state::di, io__state::uo) is det.
+
+output_data_addr_storage_type_name(ModuleName, DataVarName, BeingDefined,
+		LaterIndent) -->
+	{ data_name_linkage(DataVarName, Linkage) },
+	globals__io_get_globals(Globals),
+	{ c_data_linkage_string(Globals, Linkage, BeingDefined, LinkageStr) },
+	io__write_string(LinkageStr),
+
+	{ data_name_would_include_code_address(DataVarName, InclCodeAddr) },
+	{ c_data_const_string(Globals, InclCodeAddr, ConstStr) },
+	io__write_string(ConstStr),
+
+	io__write_string("struct "),
+	output_data_addr(ModuleName, DataVarName),
+	io__write_string("_struct\n"),
+	io__write_string(LaterIndent),
+	io__write_string("\t"),
+	output_data_addr(ModuleName, DataVarName).
+
+:- pred data_name_linkage(data_name::in, linkage::out) is det.
+
+data_name_linkage(common(_),                 static).
+data_name_linkage(base_typeclass_info(_, _), extern).
+data_name_linkage(module_layout,             static).
+data_name_linkage(proc_layout(_),            static).
+data_name_linkage(internal_layout(_),        static).
+data_name_linkage(tabling_pointer(_),        static).
 
 %-----------------------------------------------------------------------------%
 
@@ -3083,9 +3116,6 @@ output_call(Target, Continuation, CallerLabel) -->
 	output_label_as_code_addr(CallerLabel),
 	io__write_string(");\n").
 
-:- pred output_code_addr(code_addr, io__state, io__state).
-:- mode output_code_addr(in, di, uo) is det.
-
 output_code_addr(label(Label)) -->
 	output_label_as_code_addr(Label).
 output_code_addr(imported(ProcLabel)) -->
@@ -3141,54 +3171,94 @@ llds_out__make_stack_layout_name(Label, Name) :-
 		LabelName
 	], Name).
 
-	% Output a data address. 
+	% Output a maybe data address, with a `no' meaning NULL.
 
-:- pred output_data_addr(module_name, data_name, io__state, io__state).
-:- mode output_data_addr(in, in, di, uo) is det.
+:- pred output_maybe_data_addr(maybe(data_addr)::in,
+	io__state::di, io__state::uo) is det.
+
+output_maybe_data_addr(MaybeDataAddr) -->
+	(
+		{ MaybeDataAddr = yes(DataAddr) },
+		output_data_addr(DataAddr)
+	;
+		{ MaybeDataAddr = no },
+		io__write_string("NULL")
+	).
+
+	% Output a list of maybe data addresses, with a `no' meaning NULL.
+
+:- pred output_maybe_data_addrs(list(maybe(data_addr))::in,
+	io__state::di, io__state::uo) is det.
+
+output_maybe_data_addrs([]) --> [].
+output_maybe_data_addrs([MaybeDataAddr | MaybeDataAddrs]) -->
+	io__write_string("\t"),
+	io__write_list([MaybeDataAddr | MaybeDataAddrs], ",\n\t",
+		output_maybe_data_addr),
+	io__write_string("\n").
+
+	% Output a list of data addresses.
+
+:- pred output_data_addrs(list(data_addr)::in, io__state::di, io__state::uo)
+	is det.
+
+output_data_addrs([]) --> [].
+output_data_addrs([DataAddr | DataAddrs]) -->
+	io__write_string("\t"),
+	io__write_list([DataAddr | DataAddrs], ",\n\t",
+		output_data_addr),
+	io__write_string("\n").
+
+	% Output a data address.
+
+output_data_addr(data_addr(ModuleName, DataName)) -->
+	output_data_addr(ModuleName, DataName).
+output_data_addr(rtti_addr(RttiTypeId, RttiName)) -->
+	output_rtti_addr(RttiTypeId, RttiName).
+
+mercury_data_prefix = "mercury_data_".
+
+:- pred output_data_addr(module_name::in, data_name::in,
+	io__state::di, io__state::uo) is det.
 
 output_data_addr(ModuleName, VarName) -->
 	(
 		{ VarName = common(N) },
 		{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
-		io__write_string("mercury_data_"),
+		io__write_string(mercury_data_prefix),
 		io__write_string(MangledModuleName),
 		io__write_string("__common_"),
 		{ string__int_to_string(N, NStr) },
 		io__write_string(NStr)
 	;
-		{ VarName = type_ctor(BaseData, TypeName0, TypeArity) },
-		{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
-		io__write_string("mercury_data_"),
-		io__write_string(MangledModuleName),
-		{ llds_out__make_type_ctor_name(BaseData, TypeName0, TypeArity,
-			Str) },
-		io__write_string("__"),
-		io__write_string(Str)
-	;
 			% We don't want to include the module name as part
 			% of the name if it is a base_typeclass_info, since
 			% we _want_ to cause a link error for overlapping
-			% instance decls, even if they are in a different 
+			% instance decls, even if they are in a different
 			% module
 		{ VarName = base_typeclass_info(ClassId, TypeNames) },
-		{ llds_out__make_base_typeclass_info_name(ClassId, TypeNames, 
+		{ llds_out__make_base_typeclass_info_name(ClassId, TypeNames,
 			Str) },
-		io__write_string("mercury_data___"),
+		io__write_string(mercury_data_prefix),
+		io__write_string("__"),
 		io__write_string(Str)
 	;
 		{ VarName = module_layout },
-		io__write_string("mercury_data__module_layout_"),
+		io__write_string(mercury_data_prefix),
+		io__write_string("_module_layout_"),
 		{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
 		io__write_string(MangledModuleName)
 	;
 		% Keep this code in sync with make_stack_layout_name/3.
 		{ VarName = proc_layout(Label) },
-		io__write_string("mercury_data__layout__"),
+		io__write_string(mercury_data_prefix),
+		io__write_string("_layout__"),
 		output_label(Label)
 	;
 		% Keep this code in sync with make_stack_layout_name/3.
 		{ VarName = internal_layout(Label) },
-		io__write_string("mercury_data__layout__"),
+		io__write_string(mercury_data_prefix),
+		io__write_string("_layout__"),
 		output_label(Label)
 	;
 		{ VarName = tabling_pointer(ProcLabel) },
@@ -3321,12 +3391,12 @@ llds_out__get_proc_label(proc(DefiningModule, PredOrFunc, PredModule,
 	string__int_to_string(OrigArity, ArityString),
 	proc_id_to_int(ModeNum0, ModeInt),
 	string__int_to_string(ModeInt, ModeNumString),
-	string__append_list([LabelName, "_", ArityString, "_", ModeNumString], 
+	string__append_list([LabelName, "_", ArityString, "_", ModeNumString],
 		ProcLabelString).
 
 	% For a special proc, output a label of the form:
 	% mercury____<PredName>___<TypeModule>__<TypeName>_<TypeArity>_<Mode>
-llds_out__get_proc_label(special_proc(Module, PredName, TypeModule, 
+llds_out__get_proc_label(special_proc(Module, PredName, TypeModule,
 		TypeName, TypeArity, ModeNum0), AddPrefix, ProcLabelString) :-
 	% figure out the LabelName
 	DummyArity = -1,	% not used by get_label_name.
@@ -3354,8 +3424,8 @@ llds_out__get_proc_label(special_proc(Module, PredName, TypeModule,
 		FullyQualifiedMangledTypeName),
 
 	% join it all together
-	string__append_list( [LabelName, "_", FullyQualifiedMangledTypeName, 
-		"_", TypeArityString, "_", ModeNumString], 
+	string__append_list( [LabelName, "_", FullyQualifiedMangledTypeName,
+		"_", TypeArityString, "_", ModeNumString],
 		ProcLabelString).
 
 	%  get a label name, given the defining module, predicate or
@@ -3376,7 +3446,7 @@ get_label_name(DefiningModule, PredOrFunc, DeclaringModule,
 	llds_out__sym_name_mangle(DeclaringModule, DeclaringModuleName),
 	llds_out__sym_name_mangle(DefiningModule, DefiningModuleName),
 	(
-		( 
+		(
 			mercury_private_builtin_module(DeclaringModule)
 		;
 			mercury_public_builtin_module(DeclaringModule)
@@ -3415,7 +3485,7 @@ get_label_name(DefiningModule, PredOrFunc, DeclaringModule,
 		PredOrFunc = predicate,
 		LabelName3 = LabelName2
 	),
-	( 
+	(
 		AddPrefix = yes
 	->
 		get_label_prefix(Prefix),
@@ -3430,7 +3500,7 @@ get_label_name(DefiningModule, PredOrFunc, DeclaringModule,
 :- pred get_label_prefix(string).
 :- mode get_label_prefix(out) is det.
 
-get_label_prefix("mercury__"). 
+get_label_prefix("mercury__").
 
 :- pred output_reg(reg_type, int, io__state, io__state).
 :- mode output_reg(in, in, di, uo) is det.
@@ -3489,7 +3559,7 @@ output_rval_as_type(Rval, DesiredType) -->
 			output_rval(Rval)
 		)
 	).
-	
+
 	% types_match(DesiredType, ActualType) is true iff
 	% a value of type ActualType can be used as a value of
 	% type DesiredType without casting.
@@ -3557,12 +3627,6 @@ output_float_rval_as_word(Rval) -->
 		output_rval(Rval),
 		io__write_string(")")
 	).
-
-	% output an rval (not converted to any particular type,
-	% but instead output as its "natural" type)
-	%
-:- pred output_rval(rval, io__state, io__state).
-:- mode output_rval(in, di, uo) is det.
 
 output_rval(const(Const)) -->
 	output_rval_const(Const).
@@ -3755,11 +3819,11 @@ output_rval_const(false) -->
 	io__write_string("FALSE").
 output_rval_const(code_addr_const(CodeAddress)) -->
 	output_code_addr(CodeAddress).
-output_rval_const(data_addr_const(data_addr(ModuleName, VarName))) -->
+output_rval_const(data_addr_const(DataAddr)) -->
 	% data addresses are all assumed to be of type `Word *';
 	% we need to cast them here to avoid type errors
 	io__write_string("(Word *) &"),
-	output_data_addr(ModuleName, VarName).
+	output_data_addr(DataAddr).
 output_rval_const(label_entry(Label)) -->
 	io__write_string("ENTRY("),
 	output_label(Label),
@@ -3829,9 +3893,9 @@ output_rval_static_const(false) -->
 	io__write_string("FALSE").
 output_rval_static_const(code_addr_const(CodeAddress)) -->
 	output_code_addr(CodeAddress).
-output_rval_static_const(data_addr_const(data_addr(ModuleName, VarName))) -->
+output_rval_static_const(data_addr_const(DataAddr)) -->
 	io__write_string("(Word *) &"),
-	output_data_addr(ModuleName, VarName).
+	output_data_addr(DataAddr).
 output_rval_static_const(label_entry(Label)) -->
 	io__write_string("ENTRY("),
 	output_label(Label),
@@ -4023,7 +4087,7 @@ llds_out__sym_name_mangle(qualified(ModuleName, PlainName), MangledName) :-
 	llds_out__name_mangle(PlainName, MangledPlainName),
 	llds_out__qualify_name(MangledModuleName, MangledPlainName,
 			MangledName).
-	
+
 	% Convert a Mercury predicate name into something that can form
 	% part of a C identifier.  This predicate is necessary because
 	% quoted names such as 'name with embedded spaces' are valid
@@ -4051,7 +4115,7 @@ llds_out__name_mangle(Name, MangledName) :-
 :- pred llds_out__convert_to_valid_c_identifier(string, string).
 :- mode llds_out__convert_to_valid_c_identifier(in, out) is det.
 
-llds_out__convert_to_valid_c_identifier(String, Name) :-	
+llds_out__convert_to_valid_c_identifier(String, Name) :-
 	(
 		llds_out__name_conversion_table(String, Name0)
 	->
@@ -4115,7 +4179,7 @@ llds_out__name_conversion_table("!", "f_cut").
 :- pred llds_out__convert_to_valid_c_identifier_2(string, string).
 :- mode llds_out__convert_to_valid_c_identifier_2(in, out) is det.
 
-llds_out__convert_to_valid_c_identifier_2(String, Name) :-	
+llds_out__convert_to_valid_c_identifier_2(String, Name) :-
 	(
 		string__first_char(String, Char, Rest)
 	->
@@ -4128,25 +4192,6 @@ llds_out__convert_to_valid_c_identifier_2(String, Name) :-
 		% String is the empty string
 		Name = String
 	).
-
-%-----------------------------------------------------------------------------%
-
-llds_out__make_type_ctor_name(BaseData, TypeName0, TypeArity, Str) :-
-	(
-		BaseData = info,
-		BaseString = "info"
-	;
-		BaseData = layout,
-		BaseString = "layout"
-	;
-		BaseData = functors,
-		BaseString = "functors"
-	),
-	llds_out__name_mangle(TypeName0, TypeName),
-	string__int_to_string(TypeArity, A_str),
-        string__append_list(["type_ctor_", BaseString, "_", TypeName, "_", 
-		A_str], Str).
-
 
 %-----------------------------------------------------------------------------%
 
@@ -4238,7 +4283,7 @@ output_rl_file(ModuleName, MaybeRLFile) -->
 			{ Length = 0 }
 		),
 
-		% Store the length of the data in 
+		% Store the length of the data in
 		% mercury__aditi_rl_data__<module>__length.
 
 		{ string__append(RLDataConstName, "__length",

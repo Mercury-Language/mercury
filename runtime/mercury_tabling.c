@@ -552,11 +552,11 @@ MR_int_start_index_lookup_or_add(MR_TrieNode table, Integer start, Integer key)
 MR_TrieNode
 MR_type_info_lookup_or_add(MR_TrieNode table, Word *type_info)
 {
-	MR_TypeInfo	collapsed_type_info;
+	MR_TypeInfo		collapsed_type_info;
 	MR_TypeCtorInfo	type_ctor_info;
-	MR_TrieNode	node;
-	Word		**type_info_args;
-	int		i;
+	MR_TrieNode		node;
+	Word			**type_info_args;
+	int				i;
 
 	/* XXX memory allocation here should be optimized */
 	collapsed_type_info = MR_collapse_equivalences((Word) type_info);
@@ -585,6 +585,13 @@ MR_type_info_lookup_or_add(MR_TrieNode table, Word *type_info)
 	return node;
 }
 
+MR_TrieNode
+MR_type_class_info_lookup_or_add(MR_TrieNode table, Word *type_class_info)
+{
+	fatal_error("tabling of typeclass_infos not yet implemented");
+	return NULL;
+}
+
 /*---------------------------------------------------------------------------*/
 
 /*
@@ -598,29 +605,15 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_func_0);
 ** Due to the depth of the control here, we'll use 4 space indentation.
 **
 ** NOTE: changes to this function will probably also have to be reflected
-** in mercury_deep_copy.c and std_util::ML_expand().
+** in the places listed in mercury_type_info.h.
 */
 
 MR_TrieNode
 MR_table_type(MR_TrieNode table, Word *type_info, Word data)
 {
-    MR_TypeCtorInfo	type_ctor_info;
-    MR_TypeCtorLayout	type_ctor_layout;
-    MR_TypeCtorFunctors	type_ctor_functors;
-    MR_DiscUnionTagRepresentation tag_rep;
-    MR_MemoryList	allocated_memory_cells = NULL;
-
-    Word		layout_for_tag;
-    Word		*layout_vector_for_tag;
-    Word		*data_value;
-    int			data_tag;
-
-    data_tag = MR_tag(data);
-    data_value = (Word *) MR_body(data, data_tag);
+    MR_TypeCtorInfo type_ctor_info;
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
-    type_ctor_layout = type_ctor_info->type_ctor_layout;
-    type_ctor_functors = type_ctor_info->type_ctor_functors;
 
 #ifdef  MR_TABLE_DEBUG
     if (MR_tabledebug) {
@@ -632,119 +625,283 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
     switch (type_ctor_info->type_ctor_rep) {
         case MR_TYPECTOR_REP_ENUM: 
         case MR_TYPECTOR_REP_ENUM_USEREQ: 
-	{
-            int functors;
+            if (type_ctor_info->type_ctor_version <= MR_RTTI_VERSION__USEREQ) {
+                MR_TypeCtorLayout   type_ctor_layout;
+                Word                layout_for_tag;
+                Word                *layout_vector_for_tag;
+                int                 data_tag;
+                int                 functors;
 
-            layout_for_tag = type_ctor_layout[data_tag];
-            layout_vector_for_tag = (Word *) MR_strip_tag(layout_for_tag);
-            functors = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_NUM_FUNCTORS(
-                                layout_vector_for_tag);
-            MR_DEBUG_TABLE_ENUM(table, functors, data);
+                data_tag = MR_tag(data);
+                type_ctor_layout = type_ctor_info->type_ctor_layout;
+
+                layout_for_tag = type_ctor_layout[data_tag];
+                layout_vector_for_tag = (Word *) MR_strip_tag(layout_for_tag);
+                functors = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_NUM_FUNCTORS(
+                                    layout_vector_for_tag);
+                MR_DEBUG_TABLE_ENUM(table, functors, data);
+            } else {
+                MR_DEBUG_TABLE_ENUM(table,
+                        type_ctor_info->type_ctor_num_functors, data);
+            }
             break;
-        }
+
         case MR_TYPECTOR_REP_DU: 
         case MR_TYPECTOR_REP_DU_USEREQ: 
-	{
-            layout_for_tag = type_ctor_layout[data_tag];
-            layout_vector_for_tag = (Word *) MR_strip_tag(layout_for_tag);
-            tag_rep = MR_get_tag_representation((Word) layout_for_tag);
-            switch(tag_rep) {
-            case MR_DISCUNIONTAG_SHARED_LOCAL: {
-                int functors = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_NUM_FUNCTORS(
-                                layout_vector_for_tag);
-                MR_DEBUG_TABLE_TAG(table, data_tag);
-                MR_DEBUG_TABLE_ENUM(table, functors, MR_unmkbody(data));
-                break;
-            }
-            case MR_DISCUNIONTAG_UNSHARED: {
-                int arity, i;
-                Word *argument_vector, *type_info_vector, *new_type_info;
-    
-                argument_vector = data_value;
-    
-                arity = layout_vector_for_tag[
-                            TYPE_CTOR_LAYOUT_UNSHARED_ARITY_OFFSET];
-                type_info_vector = &layout_vector_for_tag[
-                            TYPE_CTOR_LAYOUT_UNSHARED_ARGS_OFFSET];
+            if (type_ctor_info->type_ctor_version <= MR_RTTI_VERSION__USEREQ) {
+                MR_DiscUnionTagRepresentation tag_rep;
+                MR_TypeCtorLayout   type_ctor_layout;
+                MR_MemoryList       allocated_memory_cells = NULL;
+                Word                layout_for_tag;
+                Word                *layout_vector_for_tag;
+                Word                *data_value;
+                int                 data_tag;
 
-                MR_DEBUG_TABLE_TAG(table, data_tag);
+                data_tag = MR_tag(data);
+                layout_for_tag = type_ctor_layout[data_tag];
+                layout_vector_for_tag = (Word *) MR_strip_tag(layout_for_tag);
+                tag_rep = MR_get_tag_representation((Word) layout_for_tag);
 
-                     /* copy arguments */
-                for (i = 0; i < arity; i++) {
-                    new_type_info = MR_make_type_info(type_info,
-                        (Word *) type_info_vector[i], &allocated_memory_cells);
-
-                    MR_DEBUG_TABLE_ANY(table, new_type_info,
-                        argument_vector[i]);
+                switch(tag_rep) {
+                case MR_DISCUNIONTAG_SHARED_LOCAL: {
+                    int functors = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_NUM_FUNCTORS(
+                                    layout_vector_for_tag);
+                    MR_DEBUG_TABLE_TAG(table, data_tag);
+                    MR_DEBUG_TABLE_ENUM(table, functors, MR_unmkbody(data));
+                    break;
                 }
-                break;
-            }
-            case MR_DISCUNIONTAG_SHARED_REMOTE: {
-                int     arity, i;
-                Word    *argument_vector;
-                Word    *type_info_vector;
-                Word    *new_type_info;
-                Word    secondary_tag;
-                Word    num_sharers;
-                Word    *new_layout_vector;
+                case MR_DISCUNIONTAG_UNSHARED: {
+                    Word    *argument_vector;
+                    Word    *type_info_vector;
+                    Word    *new_type_info;
+                    int     arity;
+                    int     i;
+        
+                    argument_vector = (Word *) MR_body(data, data_tag);
+        
+                    arity = layout_vector_for_tag[
+                                TYPE_CTOR_LAYOUT_UNSHARED_ARITY_OFFSET];
+                    type_info_vector = &layout_vector_for_tag[
+                                TYPE_CTOR_LAYOUT_UNSHARED_ARGS_OFFSET];
 
-                secondary_tag = *data_value;
-                argument_vector = data_value + 1;
+                    MR_DEBUG_TABLE_TAG(table, data_tag);
 
-                num_sharers = MR_TYPE_CTOR_LAYOUT_SHARED_REMOTE_VECTOR_NUM_SHARERS(
-                                layout_vector_for_tag);
-                new_layout_vector =
-                    MR_TYPE_CTOR_LAYOUT_SHARED_REMOTE_VECTOR_GET_FUNCTOR_DESCRIPTOR(
-                    layout_vector_for_tag, secondary_tag);
-                arity = new_layout_vector[TYPE_CTOR_LAYOUT_UNSHARED_ARITY_OFFSET];
-                type_info_vector =
-                    &new_layout_vector[TYPE_CTOR_LAYOUT_UNSHARED_ARGS_OFFSET];
+                         /* copy arguments */
+                    for (i = 0; i < arity; i++) {
+                        new_type_info = MR_make_type_info(type_info,
+                            (Word *) type_info_vector[i],
+                            &allocated_memory_cells);
 
-                MR_DEBUG_TABLE_TAG(table, data_tag);
-                MR_DEBUG_TABLE_ENUM(table, num_sharers, secondary_tag);
-
-                for (i = 0; i < arity; i++) {
-                    new_type_info = MR_make_type_info(type_info,
-                        (Word *) type_info_vector[i], &allocated_memory_cells);
-
-                    MR_DEBUG_TABLE_ANY(table, new_type_info,
-                        argument_vector[i]);
+                        MR_DEBUG_TABLE_ANY(table, new_type_info,
+                            argument_vector[i]);
+                    }
+                    break;
                 }
-                break;
-            }
+                case MR_DISCUNIONTAG_SHARED_REMOTE: {
+                    int     arity, i;
+                    Word    *argument_vector;
+                    Word    *type_info_vector;
+                    Word    *new_type_info;
+                    Word    secondary_tag;
+                    Word    num_sharers;
+                    Word    *new_layout_vector;
+
+                    data_value = (Word *) MR_body(data, data_tag);
+                    secondary_tag = *data_value;
+                    argument_vector = data_value + 1;
+
+                    num_sharers =
+                        MR_TYPE_CTOR_LAYOUT_SHARED_REMOTE_VECTOR_NUM_SHARERS(
+                                    layout_vector_for_tag);
+                    new_layout_vector =
+                        MR_TYPE_CTOR_LAYOUT_SHARED_REMOTE_VECTOR_GET_FUNCTOR_DESCRIPTOR(
+                        layout_vector_for_tag, secondary_tag);
+                    arity = new_layout_vector[
+                        TYPE_CTOR_LAYOUT_UNSHARED_ARITY_OFFSET];
+                    type_info_vector = &new_layout_vector[
+                        TYPE_CTOR_LAYOUT_UNSHARED_ARGS_OFFSET];
+
+                    MR_DEBUG_TABLE_TAG(table, data_tag);
+                    MR_DEBUG_TABLE_ENUM(table, num_sharers, secondary_tag);
+
+                    for (i = 0; i < arity; i++) {
+                        new_type_info = MR_make_type_info(type_info,
+                            (Word *) type_info_vector[i],
+                            &allocated_memory_cells);
+
+                        MR_DEBUG_TABLE_ANY(table, new_type_info,
+                            argument_vector[i]);
+                    }
+                    break;
+                }
+
+                MR_deallocate(allocated_memory_cells);
+                }
+            } else {
+                MR_MemoryList           allocated_memory_cells = NULL;
+                const MR_DuPtagLayout   *ptag_layout;
+                const MR_DuFunctorDesc  *functor_desc;
+                const MR_DuExistInfo    *exist_info;
+                Word                    *arg_type_info;
+                int                     ptag;
+                Word                    sectag;
+                Word                    *arg_vector;
+                int                     meta_args;
+                int                     i;
+
+                ptag = MR_tag(data);
+                ptag_layout = &type_ctor_info->type_layout.layout_du[ptag];
+
+                switch (ptag_layout->MR_sectag_locn) {
+                case MR_SECTAG_NONE:
+                    functor_desc = ptag_layout->MR_sectag_alternatives[0];
+                    arg_vector = (Word *) MR_body(data, ptag);
+                    break;
+                case MR_SECTAG_LOCAL:
+                    sectag = MR_unmkbody(data);
+                    functor_desc = ptag_layout->MR_sectag_alternatives[sectag];
+                    assert(functor_desc->MR_du_functor_orig_arity == 0);
+                    assert(functor_desc->MR_du_functor_exist_info == NULL);
+                    arg_vector = NULL;
+                    break;
+                case MR_SECTAG_REMOTE:
+                    sectag = MR_field(ptag, data, 0);
+                    functor_desc = ptag_layout->MR_sectag_alternatives[sectag];
+                    arg_vector = (Word *) MR_body(data, ptag) + 1;
+                    break;
+                }
+
+                MR_DEBUG_TABLE_ENUM(table,
+                        type_ctor_info->type_ctor_num_functors,
+                        functor_desc->MR_du_functor_ordinal);
+
+                exist_info = functor_desc->MR_du_functor_exist_info;
+                if (exist_info != NULL) {
+                    for (i = 0; i < exist_info->MR_exist_typeinfos_plain; i++)
+                    {
+                        MR_DEBUG_TABLE_TYPEINFO(table, (Word *) arg_vector[i]);
+                    }
+                    meta_args = exist_info->MR_exist_typeinfos_plain;
+                    for (i = 0; i < exist_info->MR_exist_tcis; i++) {
+                        MR_DEBUG_TABLE_TYPECLASSINFO(table,
+                            (Word *) arg_vector[meta_args + i]);
+                    }
+                    meta_args += exist_info->MR_exist_tcis;
+                } else {
+                    meta_args = 0;
+                }
+
+                for (i = 0; i < functor_desc->MR_du_functor_orig_arity; i++) {
+                    if (MR_arg_type_may_contain_var(functor_desc, i)) {
+                        arg_type_info = MR_make_type_info_maybe_existq(
+                            type_info,
+                            (Word *) functor_desc->MR_du_functor_arg_types[i],
+                            (Word *) MR_body(data, ptag),
+                            type_ctor_info->type_ctor_version,
+                            functor_desc, &allocated_memory_cells);
+                    } else {
+                        arg_type_info = (Word *)
+                            functor_desc->MR_du_functor_arg_types[i];
+                    }
+
+                    MR_DEBUG_TABLE_ANY(table, arg_type_info,
+                        arg_vector[meta_args + i]);
+                }
+
+                MR_deallocate(allocated_memory_cells);
             }
             break;
-        }
+
         case MR_TYPECTOR_REP_NOTAG: 
         case MR_TYPECTOR_REP_NOTAG_USEREQ:
-	{
-            Word *new_type_info;
+            if (type_ctor_info->type_ctor_version <= MR_RTTI_VERSION__USEREQ) {
+                MR_TypeCtorLayout   type_ctor_layout;
+                MR_MemoryList       allocated_memory_cells = NULL;
+                Word                layout_for_tag;
+                Word                *layout_vector_for_tag;
+                int                 data_tag;
+                Word                *new_type_info;
 
-            layout_for_tag = type_ctor_layout[data_tag];
-            layout_vector_for_tag = (Word *) MR_strip_tag(layout_for_tag);
-            new_type_info = MR_make_type_info(type_info,
-                (Word *) *MR_TYPE_CTOR_LAYOUT_NO_TAG_VECTOR_ARGS(
-                    layout_vector_for_tag),
-                &allocated_memory_cells);
-            MR_DEBUG_TABLE_ANY(table, new_type_info, data);
-            break;
-        }
-        case MR_TYPECTOR_REP_EQUIV: {
-            Word *new_type_info;
+                data_tag = MR_tag(data);
+                layout_for_tag = type_ctor_layout[data_tag];
+                layout_vector_for_tag = (Word *) MR_strip_tag(layout_for_tag);
+                new_type_info = MR_make_type_info(type_info,
+                    (Word *) *MR_TYPE_CTOR_LAYOUT_NO_TAG_VECTOR_ARGS(
+                        layout_vector_for_tag),
+                    &allocated_memory_cells);
+                MR_DEBUG_TABLE_ANY(table, new_type_info, data);
+                MR_deallocate(allocated_memory_cells);
+            } else {
+                MR_MemoryList       allocated_memory_cells = NULL;
+                Word                *eqv_type_info;
 
-            layout_for_tag = type_ctor_layout[data_tag];
-            layout_vector_for_tag = (Word *) MR_strip_tag(layout_for_tag);
-            new_type_info = MR_make_type_info(type_info,
-                (Word *) MR_TYPE_CTOR_LAYOUT_EQUIV_TYPE(layout_vector_for_tag),
-                &allocated_memory_cells);
-            MR_DEBUG_TABLE_ANY(table, new_type_info, data);
+                eqv_type_info = MR_make_type_info(type_info,
+                    (Word *) type_ctor_info->type_layout.layout_notag->
+                        MR_notag_functor_arg_type, &allocated_memory_cells);
+                MR_DEBUG_TABLE_ANY(table, eqv_type_info, data);
+                MR_deallocate(allocated_memory_cells);
+            }
             break;
-        }
+
+        case MR_TYPECTOR_REP_NOTAG_GROUND: 
+        case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
+            MR_DEBUG_TABLE_ANY(table, (Word *) type_ctor_info->type_layout.
+                layout_notag->MR_notag_functor_arg_type, data);
+            break;
+
+        case MR_TYPECTOR_REP_EQUIV:
+            if (type_ctor_info->type_ctor_version <= MR_RTTI_VERSION__USEREQ) {
+                MR_TypeCtorLayout   type_ctor_layout;
+                MR_MemoryList       allocated_memory_cells = NULL;
+                Word                layout_for_tag;
+                Word                *layout_vector_for_tag;
+                int                 data_tag;
+                Word                *new_type_info;
+
+                data_tag = MR_tag(data);
+                layout_for_tag = type_ctor_layout[data_tag];
+                layout_vector_for_tag = (Word *) MR_strip_tag(layout_for_tag);
+                new_type_info = MR_make_type_info(type_info, (Word *)
+                    MR_TYPE_CTOR_LAYOUT_EQUIV_TYPE(layout_vector_for_tag),
+                    &allocated_memory_cells);
+                MR_DEBUG_TABLE_ANY(table, new_type_info, data);
+                MR_deallocate(allocated_memory_cells);
+            } else {
+                MR_MemoryList       allocated_memory_cells = NULL;
+                Word                *eqv_type_info;
+
+                eqv_type_info = MR_make_type_info(type_info,
+                    (Word *) type_ctor_info->type_layout.layout_equiv,
+                    &allocated_memory_cells);
+                MR_DEBUG_TABLE_ANY(table, eqv_type_info, data);
+                MR_deallocate(allocated_memory_cells);
+            }
+            break;
+
+        case MR_TYPECTOR_REP_EQUIV_GROUND:
+            MR_DEBUG_TABLE_ANY(table, (Word *) type_ctor_info->type_layout.
+                layout_equiv, data);
+            break;
+
         case MR_TYPECTOR_REP_EQUIV_VAR:
-            layout_for_tag = type_ctor_layout[data_tag];
-            layout_vector_for_tag = (Word *) MR_strip_tag(layout_for_tag);
-            MR_DEBUG_TABLE_ANY(table,
-                (Word *) type_info[(Word) layout_vector_for_tag], data);
+            if (type_ctor_info->type_ctor_version <= MR_RTTI_VERSION__USEREQ) {
+                MR_TypeCtorLayout   type_ctor_layout;
+                Word                layout_for_tag;
+                Word                *layout_vector_for_tag;
+                int                 data_tag;
+
+                data_tag = MR_tag(data);
+                layout_for_tag = type_ctor_layout[data_tag];
+                layout_vector_for_tag = (Word *) MR_strip_tag(layout_for_tag);
+                MR_DEBUG_TABLE_ANY(table,
+                    (Word *) type_info[(Word) layout_vector_for_tag], data);
+            } else {
+                /*
+                ** The current version of the RTTI gives all equivalence types
+                ** the EQUIV type_ctor_rep, not EQUIV_VAR.
+                */
+                fatal_error("unexpected EQUIV_VAR type_ctor_rep");
+            }
             break;
 
         case MR_TYPECTOR_REP_INT:
@@ -764,37 +921,50 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
             break;
 
         case MR_TYPECTOR_REP_PRED: {
-	    /*
-	    ** XXX tabling of the closures by tabling their code address
-	    ** and arguments is not yet implemented, due to the difficulty
-	    ** of figuring out the closure argument types.
-	    */
-	#if 0
-	    MR_closure closure = (MR_Closure *) data_value;
-            Word num_hidden_args = closure->MR_closure_num_hidden_args;
-            int i;
+            /*
+            ** XXX tabling of the closures by tabling their code address
+            ** and arguments is not yet implemented, due to the difficulty
+            ** of figuring out the closure argument types.
+            */
+    #if 0
+            MR_closure  closure = (MR_Closure *) data_value;
+            Word        num_hidden_args = closure->MR_closure_num_hidden_args;
+            int         i;
 
             MR_DEBUG_TABLE_INT(table, closure->MR_closure_code);
             for (i = 1; i <= num_hidden_args; i++) {
-        	MR_DEBUG_TABLE_ANY(table,
+                MR_DEBUG_TABLE_ANY(table,
                     <type_info for hidden closure argument number i>,
                     closure->MR_closure_hidden_args(i));
             }
-            break;
-	#endif
-	    /*
-	    ** Instead, we use the following rather simplistic means of
-	    ** tabling closures: we just table based on the closure address.
-	    */
+    #else
+            /*
+            ** Instead, we use the following rather simplistic means of
+            ** tabling closures: we just table based on the closure address.
+            */
+            Word    *data_value;
+            int     data_tag;
+
+            data_tag = MR_tag(data);
+            data_value = (Word *) MR_body(data, data_tag);
             MR_DEBUG_TABLE_INT(table, (Word) data_value);
+    #endif
+            break;
         }
-        case MR_TYPECTOR_REP_UNIV:
+        case MR_TYPECTOR_REP_UNIV: {
+            Word    *data_value;
+            int     data_tag;
+
+            data_tag = MR_tag(data);
+            data_value = (Word *) MR_body(data, data_tag);
+
             MR_DEBUG_TABLE_TYPEINFO(table,
                 (Word *) data_value[UNIV_OFFSET_FOR_TYPEINFO]);
             MR_DEBUG_TABLE_ANY(table,
                 (Word *) data_value[UNIV_OFFSET_FOR_TYPEINFO],
                 data_value[UNIV_OFFSET_FOR_DATA]);
             break;
+        }
 
         case MR_TYPECTOR_REP_VOID:
             fatal_error("Cannot table a void type");
@@ -804,19 +974,27 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
             fatal_error("Attempt to table a C_POINTER");
             break;
 
-        case MR_TYPECTOR_REP_TYPEINFO:
+        case MR_TYPECTOR_REP_TYPEINFO: {
+            Word    *data_value;
+            int     data_tag;
+
+            data_tag = MR_tag(data);
+            data_value = (Word *) MR_body(data, data_tag);
             MR_DEBUG_TABLE_TYPEINFO(table, (Word *) data_value);
             break;
+        }
 
         case MR_TYPECTOR_REP_TYPECLASSINFO:
             fatal_error("Attempt to table a type_class_info");
             break;
 
         case MR_TYPECTOR_REP_ARRAY: {
-            int i;
-            MR_ArrayType *array;
-            Word *new_type_info;
-            Integer array_size;
+            MR_MemoryList   allocated_memory_cells = NULL;
+            Word            *data_value;
+            int             i;
+            MR_ArrayType    *array;
+            Word            *new_type_info;
+            Integer         array_size;
 
             array = (MR_ArrayType *) data_value;
             array_size = array->size;
@@ -827,6 +1005,8 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
             for (i = 0; i < array_size; i++) {
                 MR_DEBUG_TABLE_ANY(table, new_type_info, array->elements[i]);
             }
+
+            MR_deallocate(allocated_memory_cells);
             break;
         }
 
@@ -867,8 +1047,6 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
             fatal_error("Unknown layout tag in table_any");
             break;
     }
-
-    MR_deallocate(allocated_memory_cells);
 
     return table;
 } /* end table_any() */

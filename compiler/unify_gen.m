@@ -37,7 +37,7 @@
 
 :- implementation.
 
-:- import_module builtin_ops.
+:- import_module rtti, builtin_ops.
 :- import_module hlds_module, hlds_pred, prog_data, prog_out, code_util.
 :- import_module mode_util, type_util, code_aux, hlds_out, tree, arg_info.
 :- import_module globals, options, continuation_info, stack_layout.
@@ -344,8 +344,9 @@ unify_gen__generate_construction_2(type_ctor_info_constant(ModuleName,
 		{ error("unify_gen: type-info constant has args") }
 	),
 	{ Code = empty },
-	code_info__cache_expression(Var, const(data_addr_const(data_addr(
-		ModuleName, type_ctor(info, TypeName, TypeArity))))).
+	{ RttiTypeId = rtti_type_id(ModuleName, TypeName, TypeArity) },
+	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
+	code_info__cache_expression(Var, const(data_addr_const(DataAddr))).
 unify_gen__generate_construction_2(base_typeclass_info_constant(ModuleName,
 		ClassId, Instance), Var, Args, _Modes, _, Code) -->
 	( { Args = [] } ->

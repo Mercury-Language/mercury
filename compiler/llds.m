@@ -17,7 +17,7 @@
 :- interface.
 
 :- import_module hlds_pred, hlds_data, tree, prog_data, (inst).
-:- import_module builtin_ops.
+:- import_module rtti, builtin_ops.
 
 :- import_module bool, assoc_list, list, map, set, std_util.
 
@@ -150,6 +150,9 @@
 						% arguments of the create.
 			list(pred_proc_id)	% The procedures referenced.
 						% Used by dead_proc_elim.
+		)
+	;	rtti_data(
+			rtti_data
 		).
 
 :- type comp_gen_c_module
@@ -513,7 +516,7 @@
 
 	% A pragma_c_output represents the code that stores one of
 	% of the outputs for a pragma_c instruction.
-:- type pragma_c_output  
+:- type pragma_c_output
 	--->	pragma_c_output(lval, type, string).
 				% where to put the output val, type and name
 				% of variable containing the output val
@@ -582,7 +585,7 @@
 
 	% live_value_type describes the different sorts of data that
 	% can be considered live.
-:- type live_value_type 
+:- type live_value_type
 	--->	succip				% A stored succip.
 	;	curfr				% A stored curfr.
 	;	maxfr				% A stored maxfr.
@@ -843,13 +846,13 @@
 			% the address of the label (uses ENTRY macro).
 
 :- type data_addr
-	--->	data_addr(module_name, data_name).
+	--->	data_addr(module_name, data_name)
 			% module name; which var
+	;	rtti_addr(rtti_type_id, rtti_name).
+			% type id; which var
 
 :- type data_name
 	--->	common(int)
-	;	type_ctor(base_data, string, arity)
-			% base_data, type name, type arity
 	;	base_typeclass_info(class_id, string)
 			% class name & class arity, names and arities of the
 			% types
@@ -864,14 +867,6 @@
 			% A variable that contains a pointer that points to
 			% the table used to implement memoization, loopcheck
 			% or minimal model semantics for the given procedure.
-
-:- type base_data
-	--->	info
-			% basic information, including special preds
-	;	layout
-			% layout information
-	;	functors.
-			% information on functors
 
 :- type reg_type	
 	--->	r		% general-purpose (integer) regs
@@ -1001,6 +996,8 @@
 				% signed or unsigned
 				% (used for registers, stack slots, etc).
 
+:- pred llds__wrap_rtti_data(rtti_data::in, comp_gen_c_data::out) is det.
+
 	% given a non-var rval, figure out its type
 :- pred llds__rval_type(rval::in, llds_type::out) is det.
 
@@ -1030,7 +1027,10 @@
 :- pred llds__type_is_word_size_as_arg(llds_type::in, bool::out) is det.
 
 :- implementation.
+
 :- import_module require.
+
+llds__wrap_rtti_data(RttiData, rtti_data(RttiData)).
 
 llds__lval_type(reg(RegType, _), Type) :-
 	llds__register_type(RegType, Type).

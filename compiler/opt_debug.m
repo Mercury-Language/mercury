@@ -15,7 +15,7 @@
 :- interface.
 
 :- import_module vn_type, vn_table, livemap.
-:- import_module llds, builtin_ops, atsort.
+:- import_module llds, rtti, builtin_ops, atsort.
 
 :- import_module io, bool, list, assoc_list, std_util.
 
@@ -136,8 +136,17 @@
 :- pred opt_debug__dump_const(rval_const, string).
 :- mode opt_debug__dump_const(in, out) is det.
 
+:- pred opt_debug__dump_data_addr(data_addr, string).
+:- mode opt_debug__dump_data_addr(in, out) is det.
+
 :- pred opt_debug__dump_data_name(data_name, string).
 :- mode opt_debug__dump_data_name(in, out) is det.
+
+:- pred opt_debug__dump_rtti_type_id(rtti_type_id, string).
+:- mode opt_debug__dump_rtti_type_id(in, out) is det.
+
+:- pred opt_debug__dump_rtti_name(rtti_name, string).
+:- mode opt_debug__dump_rtti_name(in, out) is det.
 
 :- pred opt_debug__dump_unop(unary_op, string).
 :- mode opt_debug__dump_unop(in, out) is det.
@@ -700,19 +709,28 @@ opt_debug__dump_const(multi_string_const(L, _S), Str) :-
 opt_debug__dump_const(code_addr_const(CodeAddr), Str) :-
 	opt_debug__dump_code_addr(CodeAddr, C_str),
 	string__append_list(["code_addr_const(", C_str, ")"], Str).
-opt_debug__dump_const(data_addr_const(data_addr(BaseName, VarName)), Str) :-
-	opt_debug__dump_data_name(VarName, N_str),
-	prog_out__sym_name_to_string(BaseName, BaseName_str),
+opt_debug__dump_const(data_addr_const(DataAddr), Str) :-
+	opt_debug__dump_data_addr(DataAddr, DataAddr_str),
 	string__append_list(
-		["data_addr_const(", BaseName_str, ", ", N_str, ")"], Str).
+		["data_addr_const(", DataAddr_str, ")"], Str).
 opt_debug__dump_const(label_entry(Label), Str) :-
 	opt_debug__dump_label(Label, LabelStr),
 	string__append_list(["label_entry(", LabelStr, ")"], Str).
+
+opt_debug__dump_data_addr(data_addr(ModuleName, DataName), Str) :-
+	prog_out__sym_name_to_string(ModuleName, ModuleName_str),
+	opt_debug__dump_data_name(DataName, DataName_str),
+	string__append_list(
+		["data_addr(", ModuleName_str, ", ", DataName_str, ")"], Str).
+opt_debug__dump_data_addr(rtti_addr(RttiTypeId, DataName), Str) :-
+	opt_debug__dump_rtti_type_id(RttiTypeId, RttiTypeId_str),
+	opt_debug__dump_rtti_name(DataName, DataName_str),
+	string__append_list(
+		["rtti_addr(", RttiTypeId_str, ", ", DataName_str, ")"], Str).
+
 opt_debug__dump_data_name(common(N), Str) :-
 	string__int_to_string(N, N_str),
 	string__append("common", N_str, Str).
-opt_debug__dump_data_name(type_ctor(BaseData, TypeName, TypeArity), Str) :-
-	llds_out__make_type_ctor_name(BaseData, TypeName, TypeArity, Str).
 opt_debug__dump_data_name(base_typeclass_info(ClassId, InstanceNum), Str) :-
 	llds_out__make_base_typeclass_info_name(ClassId, InstanceNum, Str).
 opt_debug__dump_data_name(module_layout, "module_layout").
@@ -725,6 +743,46 @@ opt_debug__dump_data_name(internal_layout(Label), Str) :-
 opt_debug__dump_data_name(tabling_pointer(ProcLabel), Str) :-
 	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
 	string__append_list(["tabling_pointer(", ProcLabelStr, ")"], Str).
+
+opt_debug__dump_rtti_type_id(rtti_type_id(ModuleName, TypeName, Arity), Str) :-
+	llds_out__sym_name_mangle(ModuleName, ModuleName_str),
+	llds_out__name_mangle(TypeName, TypeName_str),
+	string__int_to_string(Arity, Arity_str),
+	string__append_list(["rtti_type_id(", ModuleName_str, ", ",
+		TypeName_str, Arity_str, ")"], Str).
+
+opt_debug__dump_rtti_name(exist_locns(Ordinal), Str) :-
+	string__int_to_string(Ordinal, Ordinal_str),
+	string__append("exist_locns_", Ordinal_str, Str).
+opt_debug__dump_rtti_name(exist_info(Ordinal), Str) :-
+	string__int_to_string(Ordinal, Ordinal_str),
+	string__append("exist_info_", Ordinal_str, Str).
+opt_debug__dump_rtti_name(field_names(Ordinal), Str) :-
+	string__int_to_string(Ordinal, Ordinal_str),
+	string__append("field_names_", Ordinal_str, Str).
+opt_debug__dump_rtti_name(enum_functor_desc(Ordinal), Str) :-
+	string__int_to_string(Ordinal, Ordinal_str),
+	string__append("enum_functor_desc_", Ordinal_str, Str).
+opt_debug__dump_rtti_name(notag_functor_desc, Str) :-
+	Str = "notag_functor_desc_".
+opt_debug__dump_rtti_name(du_functor_desc(Ordinal), Str) :-
+	string__int_to_string(Ordinal, Ordinal_str),
+	string__append("du_functor_desc_", Ordinal_str, Str).
+opt_debug__dump_rtti_name(enum_name_ordered_table, Str) :-
+	Str = "enum_name_ordered_table".
+opt_debug__dump_rtti_name(enum_value_ordered_table, Str) :-
+	Str = "enum_value_ordered_table".
+opt_debug__dump_rtti_name(du_name_ordered_table, Str) :-
+	Str = "du_name_ordered_table".
+opt_debug__dump_rtti_name(du_stag_ordered_table(Ptag), Str) :-
+	string__int_to_string(Ptag, Ptag_str),
+	string__append("du_stag_ordered_table_", Ptag_str, Str).
+opt_debug__dump_rtti_name(du_ptag_ordered_table, Str) :-
+	Str = "du_ptag_ordered_table".
+opt_debug__dump_rtti_name(type_ctor_info, Str) :-
+	Str = "type_ctor_info".
+opt_debug__dump_rtti_name(type_hashcons_pointer, Str) :-
+	Str = "type_hashcons_pointer".
 
 opt_debug__dump_unop(mktag, "mktag").
 opt_debug__dump_unop(tag, "tag").

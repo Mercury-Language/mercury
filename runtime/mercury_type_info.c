@@ -18,7 +18,7 @@
 static Word *
 MR_get_arg_type_info(const Word *term_type_info, 
 	const Word *arg_pseudo_type_info, const Word *data_value, 
-	const Word *functor_descriptor);
+	int rtti_version, const MR_DuFunctorDesc *functor_desc);
 
 /*---------------------------------------------------------------------------*/
 
@@ -60,13 +60,18 @@ extern	struct MR_TypeCtorInfo_struct	mercury_data___type_ctor_info_func_0;
 	** to change the code in MR_make_type_info in this module 
 	** which does much the same thing, only allocating using MR_GC_malloc()
 	** instead of on the Mercury heap.
+	**
+	** The rtti version number we pass in the call below is a placeholder;
+	** its value does not matter because the functor_desc we pass, whose
+	** format it describes, is NULL.
 	*/
 
 Word * 
 MR_create_type_info(const Word *term_type_info, const Word *arg_pseudo_type_info)
 {
 	return MR_create_type_info_maybe_existq(term_type_info, 
-		arg_pseudo_type_info, NULL, NULL);
+		arg_pseudo_type_info, NULL,
+		MR_RTTI_VERSION__CLEAN_LAYOUT, NULL);
 }
 
 	/*
@@ -81,18 +86,24 @@ MR_create_type_info(const Word *term_type_info, const Word *arg_pseudo_type_info
 	** If the term_type_info has a NULL type_ctor_info,
 	** or if the arg_pseudo_type_info does not contain any
 	** existentially typed type variables, then it is OK
-	** for the data_value and functor_descriptor to be NULL.
+	** for the data_value and functor_desc to be NULL.
+	**
+	** XXX The rtti_version argument is only temporary; it should not be
+	** needed once we have bootstrapped the CLEAN_LAYOUT change and
+	** dropped support for older type_ctor_info versions.
 	*/
 
 Word * 
 MR_create_type_info_maybe_existq(const Word *term_type_info, 
 	const Word *arg_pseudo_type_info, const Word *data_value, 
-	const Word *functor_descriptor)
+	int rtti_version, const MR_DuFunctorDesc *functor_desc)
 {
-	int i, arity, extra_args;
-	MR_TypeCtorInfo type_ctor_info;
-	Word *arg_type_info;
-	Word *type_info;
+	MR_TypeCtorInfo	type_ctor_info;
+	Word		*arg_type_info;
+	Word		*type_info;
+	int		arity;
+	int		extra_args;
+	int		i;
 
 	/* 
 	** The arg_pseudo_type_info might be a polymorphic variable.
@@ -101,7 +112,8 @@ MR_create_type_info_maybe_existq(const Word *term_type_info,
 	if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
 
 		arg_type_info = MR_get_arg_type_info(term_type_info, 
-			arg_pseudo_type_info, data_value, functor_descriptor);
+			arg_pseudo_type_info, data_value,
+			rtti_version, functor_desc);
 
 		if (TYPEINFO_IS_VARIABLE(arg_type_info)) {
 			fatal_error("MR_create_type_info: "
@@ -136,7 +148,7 @@ MR_create_type_info_maybe_existq(const Word *term_type_info,
 	for (i = extra_args; i < arity + extra_args; i++) {
 		arg_type_info = MR_create_type_info_maybe_existq(term_type_info,
 				(Word *) arg_pseudo_type_info[i],
-				data_value, functor_descriptor);
+				data_value, rtti_version, functor_desc);
 		if (TYPEINFO_IS_VARIABLE(arg_type_info)) {
 			fatal_error("MR_create_type_info_maybe_existq: "
 				"unbound type variable");
@@ -166,10 +178,10 @@ MR_create_type_info_maybe_existq(const Word *term_type_info,
 static Word *
 MR_get_arg_type_info(const Word *term_type_info, 
 	const Word *arg_pseudo_type_info, const Word *data_value, 
-	const Word *functor_descriptor)
+	int rtti_version, const MR_DuFunctorDesc *functor_desc)
 {
-	Word *arg_type_info;
-	Unsigned arg_num;
+	Word		*arg_type_info;
+	Unsigned	arg_num;
 
 	arg_num = (Unsigned) arg_pseudo_type_info;
 
@@ -177,20 +189,24 @@ MR_get_arg_type_info(const Word *term_type_info,
 		/*
 		** This is a universally quantified type variable
 		*/
-		arg_type_info = (Word *) term_type_info[arg_num];
-	} else {
-		/*
-		** This is an existentially quantified type variable
-		*/
+		return (Word *) term_type_info[arg_num];
+	}
 
-		Word *type_info_locns;
-		Word type_info_locn;
+	/*
+	** This is an existentially quantified type variable
+	*/
 
+	if (rtti_version <= MR_RTTI_VERSION__USEREQ) {
+		const Word	*functor_descriptor;
+		Word		*type_info_locns;
+		Word		type_info_locn;
+
+		functor_descriptor = (Word *) functor_desc;
 		type_info_locns = (Word *) 
 			MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_TYPE_INFO_LOCNS(
 				functor_descriptor);
-		type_info_locn =
-			type_info_locns[arg_num - MR_EXISTENTIAL_VAR_BASE - 1];
+		type_info_locn = type_info_locns[arg_num
+				- MR_PSEUDOTYPEINFO_EXIST_VAR_BASE - 1];
 
 		if (MR_TYPE_INFO_LOCN_IS_INDIRECT(type_info_locn)) {
 			/*
@@ -219,6 +235,28 @@ MR_get_arg_type_info(const Word *term_type_info,
 				MR_TYPE_INFO_LOCN_DIRECT_GET_TYPEINFO_NUMBER(
 					type_info_locn);
 			arg_type_info = (Word *) data_value[typeinfo_number];
+		}
+	} else {
+		const MR_DuExistInfo	*exist_info;
+		MR_DuExistLocn		exist_locn;
+		int			exist_varnum;
+		int			slot;
+		int			offset;
+
+		exist_info = functor_desc->MR_du_functor_exist_info;
+		if (exist_info == NULL) {
+			fatal_error("MR_get_arg_type_info: no exist_info");
+		}
+
+		exist_varnum = arg_num - MR_PSEUDOTYPEINFO_EXIST_VAR_BASE - 1;
+		exist_locn = exist_info->MR_exist_typeinfo_locns[exist_varnum];
+		slot = exist_locn.MR_exist_arg_num;
+		offset = exist_locn.MR_exist_offset_in_tci;
+		if (offset < 0) {
+			arg_type_info = (Word *) data_value[slot];
+		} else {
+			arg_type_info = (Word *) MR_typeclass_info_type_info(
+					data_value[slot], offset);
 		}
 	}
 
@@ -357,26 +395,34 @@ Word
 MR_collapse_equivalences(Word maybe_equiv_type_info) 
 {
 	MR_TypeCtorInfo	type_ctor_info;
-	Word		*functors;
 	Word		equiv_type_info;
 	
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) 
 					maybe_equiv_type_info);
 
 		/* Look past equivalences */
-	while (type_ctor_info->type_ctor_rep == MR_TYPECTOR_REP_EQUIV
-		|| type_ctor_info->type_ctor_rep == MR_TYPECTOR_REP_EQUIV_VAR)
+	while (type_ctor_info->type_ctor_rep == MR_TYPECTOR_REP_EQUIV_GROUND
+		|| type_ctor_info->type_ctor_rep == MR_TYPECTOR_REP_EQUIV_VAR
+		|| type_ctor_info->type_ctor_rep == MR_TYPECTOR_REP_EQUIV)
 	{
-		functors = type_ctor_info->type_ctor_functors;
-		equiv_type_info = (Word)
-				MR_TYPE_CTOR_FUNCTORS_EQUIV_TYPE(functors);
+		if (type_ctor_info->type_ctor_version <=
+			MR_RTTI_VERSION__USEREQ)
+		{
+			equiv_type_info = (Word)
+				MR_TYPE_CTOR_FUNCTORS_EQUIV_TYPE(
+				type_ctor_info->type_ctor_functors);
+		} else {
+			equiv_type_info = (Word) type_ctor_info->type_layout.
+				layout_equiv;
+		}
+
 		equiv_type_info = (Word) MR_create_type_info(
 				(Word *) maybe_equiv_type_info, 
 				(Word *) equiv_type_info);
 
 		maybe_equiv_type_info = equiv_type_info;
-		type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) 
-						maybe_equiv_type_info);
+		type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(
+				(Word *) maybe_equiv_type_info);
 	}
 
 	return maybe_equiv_type_info;
@@ -438,7 +484,8 @@ MR_make_type_info(const Word *term_type_info, const Word *arg_pseudo_type_info,
 	MR_MemoryList *allocated) 
 {
 	return MR_make_type_info_maybe_existq(term_type_info, 
-		arg_pseudo_type_info, NULL, NULL, allocated);
+		arg_pseudo_type_info, NULL,
+		MR_RTTI_VERSION__CLEAN_LAYOUT, NULL, allocated);
 }
 
 	/*
@@ -452,12 +499,15 @@ MR_make_type_info(const Word *term_type_info, const Word *arg_pseudo_type_info,
 Word *
 MR_make_type_info_maybe_existq(const Word *term_type_info, 
 	const Word *arg_pseudo_type_info, const Word *data_value, 
-	const Word *functor_descriptor, MR_MemoryList *allocated) 
+	int rtti_version, const MR_DuFunctorDesc *functor_desc,
+	MR_MemoryList *allocated) 
 {
-	int i, arity, extra_args;
-	MR_TypeCtorInfo type_ctor_info;
-	Word *arg_type_info;
-	Word *type_info;
+	MR_TypeCtorInfo	type_ctor_info;
+	Word		*arg_type_info;
+	Word		*type_info;
+	int		extra_args;
+	int		arity;
+	int		i;
 
 	/* 
 	** The arg_pseudo_type_info might be a polymorphic variable.
@@ -466,7 +516,8 @@ MR_make_type_info_maybe_existq(const Word *term_type_info,
 	if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
 
 		arg_type_info = MR_get_arg_type_info(term_type_info, 
-			arg_pseudo_type_info, data_value, functor_descriptor);
+			arg_pseudo_type_info, data_value, rtti_version,
+			functor_desc);
 
 		if (TYPEINFO_IS_VARIABLE(arg_type_info)) {
 			fatal_error("make_type_info: "

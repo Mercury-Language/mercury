@@ -308,6 +308,13 @@ extern	MR_TrieNode	MR_type_info_lookup_or_add(MR_TrieNode table,
 				Word *type_info);
 
 /*
+** This function tables typeclass_infos in a hash table.
+*/
+
+extern	MR_TrieNode	MR_type_class_info_lookup_or_add(MR_TrieNode table,
+				Word *type_class_info);
+
+/*
 ** This function tables values of arbitrary types; the form of the data
 ** structure depends on the actual type of the value.
 */

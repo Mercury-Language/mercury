@@ -132,6 +132,18 @@
 :- pred make_cons_id(sym_name, list(constructor_arg), type_id, cons_id).
 :- mode make_cons_id(in, in, in, out) is det.
 
+	% Another way of making a cons_id from a functor.
+	% Given the name, argument types, and type_id of a functor,
+	% create a cons_id for that functor.
+	%
+	% Differs from make_cons_id in that (a) it requires the sym_name
+	% to be already module qualified, which means that it does not
+	% need the module qualification of the type, (b) it can compute the
+	% arity from any list of the right length.
+
+:- pred make_cons_id_from_qualified_sym_name(sym_name, list(_), cons_id).
+:- mode make_cons_id_from_qualified_sym_name(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -190,6 +202,9 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 			SymName = qualified(TypeModule, ConsName)
 		)
 	),
+	list__length(Args, Arity).
+
+make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 	list__length(Args, Arity).
 
 %-----------------------------------------------------------------------------%
