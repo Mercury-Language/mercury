@@ -30,6 +30,7 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
     MR_TrailEntry *tr_ptr = MR_trail_ptr;
 
     switch (reason) {
+	case MR_solve:
 	case MR_commit:
 	    /* Just handle the function trail entries */
 	    while (tr_ptr != old_trail_ptr) {
