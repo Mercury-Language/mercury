@@ -363,6 +363,8 @@ lib%.install_grades:
 		if [ "$$grade" != "x" ]; then \
 			$(MMAKE) GRADE=$$grade $*.depend || \
 				exit 1; \
+			$(MMAKE) GRADE=$$grade lib$*.install_hdrs || \
+				exit 1; \
 			$(MMAKE) GRADE=$$grade lib$*.install_library || \
 				exit 1; \
 			rm -f $(deps_subdir)$*.dep $($*.hs) $($*.cs) $($*.os) \
