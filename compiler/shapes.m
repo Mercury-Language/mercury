@@ -3,12 +3,8 @@
 % File: shapes.nl
 % Main author: trd 
 %
-% This module creates the shape table information in a C
-% readable format.
-%
-% The data is intendend to be written into a machine-independent
-% file of offsets, which will be demand loaded by the program when
-% garbage collection is required.
+% This file prepares the shape information that is required by each
+% module.
 %
 % shapes__request_shape_number is called during code generation
 % and gathers information about the shape if it isn't already within the
@@ -42,7 +38,7 @@
 :- module shapes.
 :- interface.
 
-:- import_module int, map, std_util, list, io, hlds, require,
+:- import_module int, map, std_util, list, hlds, require,
 		 prog_io, type_util, string, term.
 
 :- type tagged_num	==	pair(shape_num,tag_type).

@@ -232,6 +232,22 @@ io__read_char_code(S, C) -->
 	{ get0(S, C) }.
 	%%% io__update_state.
 
+io__read_anything(S, Result) -->
+	{ read(S, Term) },
+	{ eof(Term) ->
+		Result = eof
+	;
+		Result = ok(Term)
+	}.
+
+io__read_anything(Result) -->
+	{ read(Term) },
+	{ eof(Term) ->
+		Result = eof
+	;
+		Result = ok(Term)
+	}.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

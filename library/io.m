@@ -86,6 +86,20 @@
 %		You can put back as many characters as you like.
 %		You can even put back something that you didn't actually read.
 
+:- pred io__read_anything(_T, io__state, io__state).
+:- mode io__read_anything(in, di, uo) is det.
+%		Reads its argument to the current output stream.
+%		The argument may be of any type. 
+%		The term read had better be of the right type!
+%		This is a hack!
+
+:- pred io__read_anything(io__output_stream, _T, io__state, io__state).
+:- mode io__read_anything(in, in, di, uo) is det.
+%		Reads its argument to the specified stream.
+%		The argument may be of any type.
+%		The term read had better be of the right type!
+%		This is a hack!
+
 %-----------------------------------------------------------------------------%
 
 % Output predicates.
@@ -451,6 +465,8 @@
 */
 
 :- external(io__progname/4).
+:- external(io__read_anything/3).
+:- external(io__read_anything/4).
 :- external(io__read_char_code/4).
 :- external(io__write_char/3).
 :- external(io__write_char/4).

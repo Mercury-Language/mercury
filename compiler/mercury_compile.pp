@@ -20,7 +20,7 @@
 
 :- implementation.
 :- import_module prog_io, make_hlds, typecheck, modes, switch_detection.
-:- import_module polymorphism.
+:- import_module polymorphism, garbage_out.
 :- import_module liveness, det_analysis, follow_code, follow_vars, live_vars.
 :- import_module arg_info, store_alloc, code_gen, optimize, llds, inlining.
 :- import_module prog_out, prog_util, hlds_out.
@@ -1030,7 +1030,7 @@ mercury_compile(module(Module, _, _, _, _)) -->
 #endif
 
 	( { DoCodeGen = yes } ->
-		mercury_compile__generate_code(HLDS12, _HLDS13, LLDS1),
+		mercury_compile__generate_code(HLDS12, HLDS13, LLDS1),
 #if NU_PROLOG
 		[]
 	;
@@ -1060,6 +1060,19 @@ mercury_compile(module(Module, _, _, _, _)) -->
 	( { DoCodeGen = yes } ->
 #endif
 		mercury_compile__output_llds(Module, LLDS2),
+#if NU_PROLOG
+		[]
+	;
+		[]
+	),
+	{ putprop(mc, mc, LLDS2 - [DoCodeGen, CompileToC, Compile]),
+	fail }.
+mercury_compile(module(Module, _, _, _, _)) -->
+	{ getprop(mc, mc, LLDS2 - [DoCodeGen, CompileToC, Compile], Ref),
+	erase(Ref) },
+	( { DoCodeGen = yes } ->
+#endif
+		mercury_compile__maybe_write_gc(Module, HLDS13, LLDS2),
 		(
 			{ CompileToC = yes ; Compile = yes }
 		->
@@ -1394,6 +1407,28 @@ mercury_compile__output_llds(ModuleName, LLDS) -->
 	maybe_write_string(Verbose, " done.\n"),
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics).
+
+:- pred mercury_compile__maybe_write_gc(module_name, module_info, c_file,
+						io__state, io__state).
+:- mode mercury_compile__maybe_write_gc(in, in, in, di, uo) is det.
+mercury_compile__maybe_write_gc(ModuleName, HLDS, LLDS) -->
+	globals__io_lookup_string_option(gc, Garbage),
+	(
+		{ Garbage = "accurate" }
+	->
+		globals__io_lookup_bool_option(verbose, Verbose),
+		maybe_write_string(Verbose, "% Writing gc info to `"),
+		maybe_write_string(Verbose, ModuleName),
+		maybe_write_string(Verbose, ".garb'..."),
+		maybe_flush_output(Verbose),
+		garbage_out__do_garbage_out(HLDS, LLDS),
+		maybe_write_string(Verbose, " done.\n"),
+		globals__io_lookup_bool_option(statistics, Statistics),
+		maybe_report_stats(Statistics)
+	;
+		[]		
+	).
+
 
 %-----------------------------------------------------------------------------%
 
