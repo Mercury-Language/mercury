@@ -201,8 +201,7 @@ generate_method_csharp_code(_ModuleName,
 		{ has_foreign_languages(Statement, Langs) },
 		{ list__member(csharp, Langs) }
 	->
-		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
-		{ DataRep = il_data_rep(HighLevelData) },
+		get_il_data_rep(DataRep),
 		{ Params = mlds__func_params(Inputs, Outputs) },
 		{ Outputs = [] ->
 			ReturnType = void
@@ -418,8 +417,7 @@ write_csharp_defn_decl(Defn) -->
 :- pred write_csharp_parameter_type(mlds__type, io__state, io__state).
 :- mode write_csharp_parameter_type(in, di, uo) is det.
 write_csharp_parameter_type(Type) -->
-	globals__io_lookup_bool_option(highlevel_data, HighLevelData),
-	{ DataRep = il_data_rep(HighLevelData) },
+	get_il_data_rep(DataRep),
 	{ ILType = mlds_type_to_ilds_type(DataRep, Type) },
 	write_il_type_as_csharp_type(ILType).
 
@@ -516,8 +514,7 @@ write_il_type_modifier_as_csharp_type(volatile) -->
 	pair(mlds__entity_name, mlds__type)::in,
 	io__state::di, io__state::uo) is det.
 write_input_arg_as_csharp_type(EntityName - Type) --> 
-	globals__io_lookup_bool_option(highlevel_data, HighLevelData),
-	{ DataRep = il_data_rep(HighLevelData) },
+	get_il_data_rep(DataRep),
 	write_il_type_as_csharp_type(mlds_type_to_ilds_type(DataRep, Type)),
 	io__write_string(" "),
 	( { EntityName = data(var(VarName)) } ->

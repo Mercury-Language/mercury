@@ -294,6 +294,18 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 	;
 		[]
 	),
+
+	% Set --put-nondet-env-on-heap if --verifiable-code is specified,
+	% unless both --il-funcptr-types and --il-refany-fields
+	% are specified.
+	globals__io_lookup_bool_option(il_funcptr_types, ILFuncPtrTypes),
+	globals__io_lookup_bool_option(il_refany_fields, ILRefAnyFields),
+	( { ILFuncPtrTypes = yes, ILRefAnyFields = yes } ->
+		[]
+	;
+		option_implies(verifiable_code, put_nondet_env_on_heap, bool(yes))
+	),
+
 	% Generating Java implies high-level code, turning off nested functions,
 	% using copy-out for both det and nondet output arguments,
 	% using no tags, not optimizing tailcalls and no static ground terms.

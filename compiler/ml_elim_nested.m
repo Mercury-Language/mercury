@@ -376,12 +376,11 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName, Globals,
 	%		<LocalVars>
 	%	};
 	%
-		% IL uses classes instead of structs, so the code
-		% generated needs to be a little different.
-		% XXX Perhaps if we used value classes this could go
-		% away.
-	globals__get_target(Globals, Target),
-	( Target = il ->
+		% If we're allocating it on the heap, then we need to use 
+		% a class type rather than a struct (value type).
+		% This is needed for the IL back-end.
+	globals__lookup_bool_option(Globals, put_nondet_env_on_heap, OnHeap),
+	( OnHeap = yes ->
 		EnvTypeKind = mlds__class
 	;
 		EnvTypeKind = mlds__struct
@@ -392,11 +391,10 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName, Globals,
 	EnvTypeFlags = env_type_decl_flags,
 	Fields = list__map(convert_local_to_field, LocalVars),
 
-		% IL uses classes instead of structs, so the code
-		% generated needs to be a little different.
-		% XXX Perhaps if we used value classes this could go
-		% away.
-	( Target = il ->
+		% If we're allocating it on the heap, then we're using
+		% a class type, and (for some back-ends, at least, e.g. IL)
+		% that means we need to define a constructor for it.
+	( OnHeap = yes ->
 			% Generate a ctor for the class.
 
 			% We generate an empty block for the body of the
@@ -412,12 +410,14 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName, Globals,
 			% determined by the backend convention.
 		CtorDefn = mlds__defn(export("<constructor>"), Context,
 				CtorFlags, Ctor),
-		Ctors = [CtorDefn]
+		Ctors = [CtorDefn],
+		BaseClasses = [mlds__generic_env_ptr_type]
 	;
-		Ctors = []
+		Ctors = [],
+		BaseClasses = []
 	),
 	EnvTypeDefnBody = mlds__class(mlds__class_defn(EnvTypeKind, [], 
-		[mlds__generic_env_ptr_type], [], Ctors, Fields)),
+		BaseClasses, [], Ctors, Fields)),
 	EnvTypeDefn = mlds__defn(EnvTypeEntityName, Context, EnvTypeFlags,
 		EnvTypeDefnBody),
 
@@ -438,11 +438,12 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName, Globals,
 	%
 	EnvVar = qual(ModuleName, mlds__var_name("env", no)),
 
-		% IL uses classes instead of structs, so the code
-		% generated needs to be a little different.
-		% XXX Perhaps if we used value classes this could go
-		% away.
-	( Target = il ->
+	%
+	% generate code to initialize the environment pointer,
+	% either by allocating an object on the heap, or by
+	% just taking the address of the struct we put on the stack
+	%
+	( OnHeap = yes ->
 		EnvVarAddr = lval(var(EnvVar, EnvTypeName)),
 		ml_init_env(EnvTypeName, EnvVarAddr, Context, ModuleName,
 			 Globals, EnvPtrVarDecl, InitEnv0),
@@ -502,7 +503,7 @@ convert_local_to_global(mlds__defn(Name, Context, Flags0, Body)) =
 	% to
 	%	<Ret> <Func>(<Args>) {
 	%		struct <EnvClassName> *env_ptr;
-	%		env_ptr = &env_ptr_arg;
+	%		env_ptr = (<EnvClassName> *) env_ptr_arg;
 	%		<Body>
 	%	}
 	%
@@ -524,7 +525,12 @@ ml_insert_init_env(TypeName, ModuleName, Globals, Defn0, Defn, Init0, Init) :-
 				mlds__var_name("env_ptr_arg", no)),
 				mlds__generic_env_ptr_type)),
 		EnvPtrVarType = ml_make_env_ptr_type(Globals, TypeName),
+
+			% Insert a cast, to downcast from
+			% mlds__generic_env_ptr_type to the specific
+			% environment type for this procedure.
 		CastEnvPtrVal = unop(cast(EnvPtrVarType), EnvPtrVal),
+
 		ml_init_env(TypeName, CastEnvPtrVal, Context, ModuleName,
 			Globals, EnvPtrDecl, InitEnvPtr),
 		FuncBody = mlds__statement(block([EnvPtrDecl],
@@ -539,13 +545,12 @@ ml_insert_init_env(TypeName, ModuleName, Globals, Defn0, Defn, Init0, Init) :-
 	).
 
 :- func ml_make_env_ptr_type(globals, mlds__type) = mlds__type.
-ml_make_env_ptr_type(Globals, EnvType)  = EnvPtrType :-
+ml_make_env_ptr_type(Globals, EnvType) = EnvPtrType :-
+	globals__lookup_bool_option(Globals, put_nondet_env_on_heap, OnHeap),
+	globals__get_target(Globals, Target),
+	( Target = il, OnHeap = yes ->
 		% IL uses classes instead of structs, so the type
 		% is a little different.
-		% XXX Perhaps if we used value classes this could go
-		% away.
-	globals__get_target(Globals, Target),
-	( Target = il ->
 		EnvPtrType = EnvType
 	;
 		EnvPtrType = mlds__ptr_type(EnvType)

@@ -215,6 +215,21 @@
 		;	det_copy_out
 		;	nondet_copy_out
 		;	put_commit_in_own_func
+		;	put_nondet_env_on_heap
+			% IL back-end compilation model options
+		;	verifiable_code
+		;	il_refany_fields
+		;	il_funcptr_types
+		;	il_byref_tailcalls % Currently this is not really a
+					   % compilation model option,
+					   % i.e. it doesn't affect the ABI.
+					   % In future it might become one,
+					   % though -- we should return
+					   % multiple values in value types,
+					   % rather than using byrefs.
+					   % Also it's nicer to keep it with
+					   % the other IL back-end options here.
+
 
 	% Options for internal use only
 	% (the values of these options are implied by the
@@ -656,7 +671,14 @@ option_defaults_2(compilation_model_option, [
 	gcc_nested_functions	-	bool(no),
 	det_copy_out		-	bool(no),
 	nondet_copy_out		-	bool(no),
-	put_commit_in_own_func	-	bool(no)
+	put_commit_in_own_func	-	bool(no),
+	put_nondet_env_on_heap	-	bool(no),
+
+		% IL back-end compilation model options
+	verifiable_code		-	bool(no),
+	il_funcptr_types	- 	bool(no),
+	il_refany_fields	- 	bool(no),
+	il_byref_tailcalls	- 	bool(no)
 ]).
 option_defaults_2(internal_use_option, [
 		% Options for internal use only
@@ -1083,6 +1105,16 @@ long_option("gcc-nested-functions",	gcc_nested_functions).
 long_option("det-copy-out",		det_copy_out).
 long_option("nondet-copy-out",		nondet_copy_out).
 long_option("put-commit-in-own-func",	put_commit_in_own_func).
+long_option("put-nondet-env-on-heap",	put_nondet_env_on_heap).
+	% IL back-end compilation model options
+long_option("verifiable-code",		verifiable_code).
+long_option("verifiable",		verifiable_code).
+long_option("il-funcptr-types",		il_funcptr_types).
+long_option("IL-funcptr-types",		il_funcptr_types).
+long_option("il-refany-fields",		il_refany_fields).
+long_option("IL-refany-fields",		il_refany_fields).
+long_option("il-byref-tailcalls",	il_byref_tailcalls).
+long_option("IL-byref-tailcalls",	il_byref_tailcalls).
 
 % internal use options
 long_option("backend-foreign-languages",
@@ -2190,6 +2222,47 @@ your program compiled with different options.
 %		"\twhere commits are implemented via setjmp()/longjmp(),",
 %		"\tsince longjmp() may clobber any non-volatile local vars",
 %		"\tin the function that called setjmp().",
+% The --put-nondet-env-on-heap option is not documented because
+% it is enabled automatically (by handle_options) in the situations
+% where it is needed; the user should never need to set it.
+%		"--put-nondet-env-on-heap",
+%		"\tAllocate the environment structures used for",
+%		"\tnondeterministic Mercury procedures on the heap,",
+%		"\trather than on the stack.",
+%
+%	]),
+%	io__write_string("\n      IL back-end compilation model options:\n"),
+%	write_tabbed_lines([
+%
+% The --verifiable-code option is not yet documented because it is not yet fully
+% implemented.
+%		"--verifiable, --verifiable-code\t\t\t",
+%		"\tEnsure that the generated IL code is verifiable.",
+%
+% The --il-refany-fields option is not documented because currently there
+% are no IL implementations for which it is useful.
+%		"--il-refany-fields",
+%		"\tGenerate IL code that assumes that the CLI implementation",
+%		"\tsupports value types with fields of type `refany'.",
+%		"\tUsing this option could in theory allow more efficient",
+%		"\tverifiable IL code for nondeterministic Mercury procedures,",
+%		"\tif the CLI implementation supported it."
+%		"\tHowever, the current Microsoft CLR does not support it."
+%
+% The --il-byref-tailcalls option is not documented because currently there
+% are no IL implementations for which it is useful.
+%		"--il-byref-tailcalls",
+%		"\tGenerate IL code that assumes that the CLI verifier",
+%		"\tsupports tail calls with byref arguments."
+%
+% The --il-funcptr-types option is not documented because currently there
+% are no IL implementations for which it is useful.
+%		"--il-funcptr-types",
+%		"\tGenerate IL code that assumes that the IL assembler",
+%		"\tsupports function pointer types."
+%		"\tThe ECMA CLI specification allows function pointer types,"
+%		"\tbut the current (Beta 2) Microsoft CLR implementation"
+%		"\tdoes not support them."
 	]),
 
 	io__write_string("\n    Developer compilation model options:\n"),

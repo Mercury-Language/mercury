@@ -104,9 +104,13 @@
 :- pred mangle_mlds_var(mlds__var, ilds__id).
 :- mode mangle_mlds_var(in, out) is det.
 
+	% This type stores information affecting our IL data representation.
 :- type il_data_rep ---> il_data_rep(
-	highlevel_data	:: bool		% do we use high level data?
+		highlevel_data	:: bool,	% do we use high-level data?
+		il_envptr_type :: ilds__type	% what IL type do we use for
+						% mlds__generic_env_ptr_type?
 	).
+:- pred get_il_data_rep(il_data_rep::out, io__state::di, io__state::uo) is det.
 
 	% Get the corresponding ILDS type for an MLDS type 
 	% (this depends on which representation you happen to be using).
@@ -195,11 +199,11 @@ generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
 	ModuleName = mercury_module_name_to_mlds(MercuryModuleName),
 	prog_out__sym_name_to_string(mlds_module_name_to_sym_name(ModuleName),
 			".", AssemblyName),
-	globals__io_lookup_bool_option(highlevel_data, HighLevelData, IO0, IO1),
+	get_il_data_rep(ILDataRep, IO0, IO1),
 	globals__io_lookup_bool_option(debug_il_asm, DebugIlAsm, IO1, IO),
 
 	IlInfo0 = il_info_init(ModuleName, AssemblyName, Imports,
-			il_data_rep(HighLevelData), DebugIlAsm),
+			ILDataRep, DebugIlAsm),
 
 	list__map_foldl(mlds_defn_to_ilasm_decl, Defns, ILDecls,
 			IlInfo0, IlInfo),
@@ -232,6 +236,12 @@ generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
 	generate_extern_assembly(AssemblerRefs, ExternAssemblies),
 	Namespace = [namespace(NamespaceName, ILDecls)],
 	ILAsm = list__condense([ThisAssembly, ExternAssemblies, Namespace]).
+
+get_il_data_rep(ILDataRep, IO0, IO) :-
+	globals__io_get_globals(Globals, IO0, IO),
+	globals__lookup_bool_option(Globals, highlevel_data, HighLevelData),
+	ILEnvPtrType = choose_il_envptr_type(Globals),
+	ILDataRep = il_data_rep(HighLevelData, ILEnvPtrType).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1964,31 +1974,94 @@ unaryop_to_il(std_unop(bitwise_complement), _, node([not])) --> [].
 unaryop_to_il(std_unop((not)), _,
 	node([ldc(int32, i(1)), clt(unsigned)])) --> [].
 
-		% if we are casting from an unboxed type, we should box
-		% it first.
-unaryop_to_il(cast(Type), Rval, Instrs) -->
+unaryop_to_il(cast(DestType), SrcRval, Instrs) -->
 	DataRep =^ il_data_rep,
-	{ ILType = mlds_type_to_ilds_type(DataRep, Type) },
-	{ rval_to_type(Rval, RvalType) },
-	{ RvalILType = mlds_type_to_ilds_type(DataRep, RvalType) },
-	{ already_boxed(ILType) ->
-		( already_boxed(RvalILType) ->
-			( RvalType = Type ->
+	{ DestILType = mlds_type_to_ilds_type(DataRep, DestType) },
+	{ rval_to_type(SrcRval, SrcType) },
+	{ SrcILType = mlds_type_to_ilds_type(DataRep, SrcType) },
+
+	%
+	% we need to handle casts to/from "refany" specially --
+	% IL has special instructions for those
+	%
+	{
+		% is it a cast to refany?
+		DestILType = ilds__type(_, refany)
+	->
+		(
+			% is it from refany?
+			SrcILType = ilds__type(_, refany)
+		->
+			% cast from refany to refany is a NOP
+			Instrs = empty
+		;
+			% cast to refany: use "mkrefany" instruction
+			( SrcILType = ilds__type(_Qual, '&'(ReferencedType)) ->
+				Instrs = node([mkrefany(ReferencedType)])
+			;
+				unexpected(this_file,
+					"cast from non-ref type to refany")
+			)
+		)
+	;
+		% is it a cast from refany?
+		SrcRval = lval(_),
+		rval_to_type(SrcRval, SrcType),
+		SrcILType = mlds_type_to_ilds_type(DataRep, SrcType),
+		SrcILType = ilds__type(_, refany)
+	->
+		% cast from refany: use "refanyval" instruction
+		( DestILType = ilds__type(_Qual, '&'(ReferencedType)) ->
+			Instrs = node([refanyval(ReferencedType)])
+		;
+			unexpected(this_file,
+				"cast from non-ref type to refany")
+		)
+	;
+	%
+	% we need to handle casts to/from unmanaged pointers specially --
+	% .castclass doesn't work for those.  These casts are generated
+	% by ml_elim_nested.m for the environment pointers.  If we're
+	% using unmanaged pointers, then this must be unverifiable code.
+	% We don't need to use any explicit conversion in the IL
+	%
+	% XXX Currently ilds uses `native_uint' for unmanaged pointers,
+	% because that's what IL does, but we should probably define a
+	% separate ilds type for this.
+	%
+		( DestILType = ilds__type(_, native_uint)
+		; SrcILType = ilds__type(_, native_uint)
+		)
+	->
+		Instrs = empty
+	;
+	%
+	% if we are casting from an unboxed type to a boxed type,
+	% we should box it first, and then cast.
+	%
+		already_boxed(DestILType)
+	->
+		( already_boxed(SrcILType) ->
+			( SrcType = DestType ->
 				Instrs = empty
 			;
-				Instrs = node([castclass(ILType)])
+				% cast one boxed type to another boxed type
+				Instrs = node([castclass(DestILType)])
 			)
 		;
+			% convert an unboxed type to a boxed type:
+			% box it first, then cast
 			Instrs = tree__list([
-				convert_to_object(RvalILType),
-				instr_node(castclass(ILType))
+				convert_to_object(SrcILType),
+				instr_node(castclass(DestILType))
 			])
 		)
 	;
-		( already_boxed(RvalILType) ->
-			( RvalType = mercury_type(_, user_type) ->
+		( already_boxed(SrcILType) ->
+			( SrcType = mercury_type(_, user_type) ->
 				% XXX we should look into a nicer way to
 				% generate MLDS so we don't need to do this
+				% XXX This looks wrong for --high-level-data. -fjh.
 				Instrs = tree__list([
 					comment_node(
 						"loading out of an MR_Word"),
@@ -1997,17 +2070,15 @@ unaryop_to_il(cast(Type), Rval, Instrs) -->
 						il_generic_simple_type)),
 					comment_node(
 						"turning a cast into an unbox"),
-					convert_from_object(ILType)
+					convert_from_object(DestILType)
 				])
-
-
 			;
 				% XXX It would be nicer if the MLDS used an
 				% unbox to do this.
 				Instrs = tree__list([
 					comment_node(
 					"turning a cast into an unbox"),
-					convert_from_object(ILType)
+					convert_from_object(DestILType)
 				])
 			)
 		;
@@ -2468,7 +2539,8 @@ mlds_type_to_ilds_type(_, mlds__class_type(Class, Arity, Kind)) =
 
 mlds_type_to_ilds_type(_, mlds__commit_type) = il_commit_type.
 
-mlds_type_to_ilds_type(_, mlds__generic_env_ptr_type) = il_envptr_type.
+mlds_type_to_ilds_type(ILDataRep, mlds__generic_env_ptr_type) =
+	ILDataRep^il_envptr_type.
 
 	% XXX we ought to use the IL bool type
 mlds_type_to_ilds_type(_, mlds__native_bool_type) = ilds__type([], int32).
@@ -3241,18 +3313,48 @@ il_exception_class_name = mercury_runtime_name(["Exception"]).
 
 %-----------------------------------------------------------------------------%
 %
-% The mapping to the environment type.
+% The mapping to the generic environment pointer type.
 %
 
-:- func il_envptr_type = ilds__type.
-il_envptr_type = ilds__type([], il_envptr_simple_type).
+% Unfortunately the .NET CLR doesn't have any verifiable way of creating a
+% generic pointer to an environment, unless you allocate them on the heap.
+% Using "refany" (a.k.a. "typedref") *almost* works, except that we need
+% to be able to put these pointers in environment structs, and the CLR
+% doesn't allow that (see ECMA CLI Partition 1, 8.6.1.3 "Local Signatures").
+% So we only do that if the --il-refany-fields option is set.
+% If it is not set, then handle_options.m will ensure that we allocate
+% the environments on the heap if verifiable code is requested.
 
-:- func il_envptr_simple_type = simple_type.
-il_envptr_simple_type = class(il_envptr_class_name).
+% For unverifiable code we allocate environments on the stack and use
+% unmanaged pointers.
 
-:- func il_envptr_class_name = ilds__class_name.
-il_envptr_class_name = mercury_runtime_name(["Environment"]).
+:- func choose_il_envptr_type(globals) = ilds__type.
+choose_il_envptr_type(Globals) = ILType :-
+	globals__lookup_bool_option(Globals, put_nondet_env_on_heap, OnHeap),
+	globals__lookup_bool_option(Globals, verifiable_code, Verifiable),
+	( OnHeap = yes ->
+		% Use an object reference type
+		ILType = il_heap_envptr_type
+	; Verifiable = yes ->
+		% Use "refany", the generic managed pointer type
+		ILType = ilds__type([], refany)
+	;
+		% Use unmanaged pointers
+		ILType = ilds__type([], native_uint)
+		% XXX we should introduce an ILDS type for unmanaged pointers,
+		%     rather than using native_uint; that's what IL does, but
+		%     it sucks -- we should delay the loss of type information
+		%     to the last possible moment, i.e. when writing out IL.
+	).
 
+:- func il_heap_envptr_type = ilds__type.
+il_heap_envptr_type = ilds__type([], il_heap_envptr_simple_type).
+
+:- func il_heap_envptr_simple_type = simple_type.
+il_heap_envptr_simple_type = class(il_heap_envptr_class_name).
+ 
+:- func il_heap_envptr_class_name = ilds__class_name.
+il_heap_envptr_class_name = mercury_runtime_name(["Environment"]).
 
 %-----------------------------------------------------------------------------%
 %

@@ -221,8 +221,7 @@ generate_method_mcpp_code(ModuleName,
 			{ list__member(managed_cplusplus, Langs) }
 		)
 	->
-		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
-		{ DataRep = il_data_rep(HighLevelData) },
+		get_il_data_rep(DataRep),
 		{ ILSignature = params_to_il_signature(DataRep, ModuleName,
 			Params) },
 		{ predlabel_to_id(PredLabel, ProcId, MaybeSeqNum, Id) },
@@ -274,7 +273,7 @@ generate_method_mcpp_code(ModuleName,
 	io__state, io__state).
 :- mode write_managed_cpp_statement(in, di, uo) is det.
 write_managed_cpp_statement(Statement) -->
-	globals__io_lookup_bool_option(highlevel_data, HighLevelData),
+	get_il_data_rep(ILDataRep),
 	( 
 			% XXX this ignores the language target.
 		{ Statement = statement(atomic(inline_target_code(
@@ -341,8 +340,7 @@ write_managed_cpp_statement(Statement) -->
 		{ Statement = statement(atomic(
 			new_object(Target, _MaybeTag, Type, _MaybeSize, 
 				_MaybeCtorName, _Args, _ArgTypes)), _) },
-		{ ClassName = mlds_type_to_ilds_class_name(
-			il_data_rep(HighLevelData), Type) }
+		{ ClassName = mlds_type_to_ilds_class_name(ILDataRep, Type) }
 	->
 		write_managed_cpp_lval(Target),
 		io__write_string(" = new "),
@@ -521,8 +519,7 @@ write_mlds_varname(var_name(Var, no)) -->
 :- pred write_managed_cpp_type(mlds__type, io__state, io__state).
 :- mode write_managed_cpp_type(in, di, uo) is det.
 write_managed_cpp_type(Type) -->
-	globals__io_lookup_bool_option(highlevel_data, HighLevelData),
-	{ DataRep = il_data_rep(HighLevelData) },
+	get_il_data_rep(DataRep),
 	write_il_type_as_managed_cpp_type(
 		mlds_type_to_ilds_type(DataRep, Type)).
 
