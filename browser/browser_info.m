@@ -166,7 +166,7 @@
 	string::out, int::out, list(univ)::out, maybe(univ)::out) is cc_multi.
 
 :- pred limited_deconstruct_browser_term_cc(browser_term::in, int::in,
-	string::out, int::out, list(univ)::out, maybe(univ)::out) is cc_nondet.
+	maybe({string, int, list(univ)})::out, maybe(univ)::out) is cc_multi.
 
 :- pred functor_browser_term_cc(browser_term::in, string::out, int::out,
 	bool::out) is cc_multi.
@@ -504,24 +504,24 @@ browser_persistent_state_type(type_of(State)) :-
 deconstruct_browser_term_cc(BrowserTerm, Functor, Arity, Args, MaybeReturn) :-
 	(
 		BrowserTerm = plain_term(Univ),
-		deconstruct(univ_value(Univ), include_details_cc,
-			Functor, Arity, Args),
+		deconstruct_cc(univ_value(Univ), Functor, Arity, Args),
 		MaybeReturn = no
 	;
 		BrowserTerm = synthetic_term(Functor, Args, MaybeReturn),
 		list__length(Args, Arity)
 	).
 
-limited_deconstruct_browser_term_cc(BrowserTerm, Limit, Functor, Arity, Args,
+limited_deconstruct_browser_term_cc(BrowserTerm, Limit, MaybeFunctorArityArgs,
 		MaybeReturn) :-
 	(
 		BrowserTerm = plain_term(Univ),
-		limited_deconstruct(univ_value(Univ), include_details_cc,
-			Limit, Functor, Arity, Args),
+		std_util__limited_deconstruct_cc(univ_value(Univ), Limit,
+				MaybeFunctorArityArgs),
 		MaybeReturn = no
 	;
 		BrowserTerm = synthetic_term(Functor, Args, MaybeReturn),
-		list__length(Args, Arity)
+		list__length(Args, Arity),
+		MaybeFunctorArityArgs = yes({Functor, Arity, Args})
 	).
 
 functor_browser_term_cc(BrowserTerm, Functor, Arity, IsFunc) :-

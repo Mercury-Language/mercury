@@ -309,9 +309,10 @@ annotate_with_size(BrowserTerm, Params, Limit, SizedTerm2) :-
 
 first_pass(BrowserTerm, Params, Limit, Size) :-
 	MaxFunctors = maximum_functors(Limit, Params),
+	limited_deconstruct_browser_term_cc(BrowserTerm, MaxFunctors,
+			MaybeFunctorArityArgs, _MaybeReturn),
 	(
-		limited_deconstruct_browser_term_cc(BrowserTerm, MaxFunctors,
-			Functor, Arity, Args, _MaybeReturn)
+		MaybeFunctorArityArgs = yes({Functor, Arity, Args})
 	->
 		measured_split(BrowserTerm, Params, Limit, Arity, yes,
 			FunctorSize, MaybeInitArgLimit, NewLimit, NewParams),

@@ -653,11 +653,12 @@ browser_term_to_string(BrowserTerm, MaxSize, MaxDepth, Str) :-
 
 browser_term_to_string_2(BrowserTerm, MaxSize, CurSize, NewSize,
 		MaxDepth, CurDepth, Str) :-
+	limited_deconstruct_browser_term_cc(BrowserTerm, MaxSize,
+			MaybeFunctorArityArgs, MaybeReturn),
 	(
 		CurSize < MaxSize,
 		CurDepth < MaxDepth,
-		limited_deconstruct_browser_term_cc(BrowserTerm, MaxSize,
-			Functor, _Arity, Args, MaybeReturn)
+		MaybeFunctorArityArgs = yes({Functor, _Arity, Args})
 	->
 		browser_term_to_string_3(Functor, Args, MaybeReturn,
 			MaxSize, CurSize, NewSize, MaxDepth, CurDepth, Str)
@@ -723,9 +724,10 @@ list_tail_to_string_list(TailUniv, MaxSize, Size0, Size, MaxDepth, Depth0,
 	% We want the limit to be at least two to ensure that the limited
 	% deconstruct won't fail for any list term.
 	Limit = max(MaxSize, 2),
+	limited_deconstruct_browser_term_cc(plain_term(TailUniv),
+			Limit, MaybeFunctorArityArgs, MaybeReturn),
 	(
-		limited_deconstruct_browser_term_cc(plain_term(TailUniv),
-			Limit, Functor, _Arity, Args, MaybeReturn)
+		MaybeFunctorArityArgs = yes({Functor, _Arity, Args})
 	->
 		(
 			Functor = "[]",
@@ -873,11 +875,12 @@ browser_term_to_string_verbose(BrowserTerm, MaxSize, MaxDepth, X, Y, Str) :-
 
 browser_term_to_string_verbose_2(BrowserTerm, MaxSize, CurSize, NewSize,
 		MaxDepth, CurDepth, Frame) :-
+	limited_deconstruct_browser_term_cc(BrowserTerm, MaxSize,
+			MaybeFunctorArityArgs, MaybeReturn),
 	(
 		CurSize < MaxSize,
 		CurDepth < MaxDepth,
-		limited_deconstruct_browser_term_cc(BrowserTerm, MaxSize,
-			Functor, _Arity, Args0, MaybeReturn)
+		MaybeFunctorArityArgs = yes({Functor, _Arity, Args0})
 	->
 		% XXX we should consider formatting function terms differently.
 		(
