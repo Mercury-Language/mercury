@@ -10096,7 +10096,7 @@ report_illegal_state_var_update(Context, VarSet, StateVar) -->
 	{ Name = varset__lookup_name(VarSet, StateVar) },
 	prog_out__write_context(Context),
 	report_error(string__format("\
-cannot use !:%s in this context;\n", [s(Name)])),
+cannot use !:%s in this context;", [s(Name)])),
 	prog_out__write_context(Context),
 	io__format("\
   however !.%s may be used here.\n", [s(Name)]).
@@ -10111,7 +10111,7 @@ report_non_visible_state_var(DorC, Context, VarSet, StateVar) -->
 	{ Name = varset__lookup_name(VarSet, StateVar) },
 	prog_out__write_context(Context),
 	report_error(string__format("\
-state variable !%s%s is not visible in this context.\n", [s(DorC), s(Name)])).
+state variable !%s%s is not visible in this context.", [s(DorC), s(Name)])).
 
 %------------------------------------------------------------------------------%
 
@@ -10122,7 +10122,7 @@ report_unitialized_state_var(Context, VarSet, StateVar) -->
 	{ Name = varset__lookup_name(VarSet, StateVar) },
 	prog_out__write_context(Context),
 	report_warning(string__format("\
-Warning: reference to unitialized state variable !.%s.\n", [s(Name)])).
+Warning: reference to unitialized state variable !.%s.", [s(Name)])).
 
 %------------------------------------------------------------------------------%
 
@@ -10134,7 +10134,7 @@ report_illegal_func_svar_result(Context, VarSet, StateVar) -->
 	{ Name = varset__lookup_name(VarSet, StateVar) },
 	prog_out__write_context(Context),
 	report_error(string__format("\
-!%s cannot be a function result.\n", [s(Name)])),
+!%s cannot be a function result.", [s(Name)])),
 	prog_out__write_context(Context),
 	io__format("\
   You probably meant !.%s or !:%s.\n", [s(Name), s(Name)]).
@@ -10149,7 +10149,7 @@ report_illegal_bang_svar_lambda_arg(Context, VarSet, StateVar) -->
 	{ Name = varset__lookup_name(VarSet, StateVar) },
 	prog_out__write_context(Context),
 	report_error(string__format("\
-!%s cannot be a lambda argument.\n", [s(Name)])),
+!%s cannot be a lambda argument.", [s(Name)])),
 	prog_out__write_context(Context),
 	io__format("\
   Perhaps you meant !.%s or !:%s.\n", [s(Name), s(Name)]).
