@@ -1715,28 +1715,19 @@ code_exprn__maybe_add_evaled(yes(Var), NewRval) -->
 	exprn_info, exprn_info).
 :- mode code_exprn__get_spare_reg_start_from(in, in, out, in, out) is det.
 
-code_exprn__get_spare_reg_start_from(RegType, N, Lval) -->
-	code_exprn__get_regs(Regs),
-	{ code_exprn__get_spare_reg_2(RegType, N, Regs, Lval) }.
+code_exprn__get_spare_reg_start_from(RegType, N0, Lval) -->
+	{ TrialLval = reg(RegType, N0) },
+	( code_exprn__lval_in_use(TrialLval) ->
+		code_exprn__get_spare_reg_start_from(RegType, N0 + 1, Lval)
+	;
+		{ Lval = TrialLval }
+	).
 
 :- pred code_exprn__get_spare_reg(reg_type, lval, exprn_info, exprn_info).
 :- mode code_exprn__get_spare_reg(in, out, in, out) is det.
 
 code_exprn__get_spare_reg(RegType, Lval) -->
-	code_exprn__get_regs(Regs),
-	{ code_exprn__get_spare_reg_2(RegType, 1, Regs, Lval) }.
-
-:- pred code_exprn__get_spare_reg_2(reg_type, int, bag(lval), lval).
-:- mode code_exprn__get_spare_reg_2(in, in, in, out) is det.
-
-code_exprn__get_spare_reg_2(RegType, N0, Regs, Lval) :-
-	TrialLval = reg(RegType, N0),
-	( bag__contains(Regs, TrialLval) ->
-		N1 is N0 + 1,
-		code_exprn__get_spare_reg_2(RegType, N1, Regs, Lval)
-	;
-		Lval = TrialLval
-	).
+	code_exprn__get_spare_reg_start_from(RegType, 1, Lval).
 
 %------------------------------------------------------------------------------%
 
