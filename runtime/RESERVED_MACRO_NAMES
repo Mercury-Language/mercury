@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2000-2001 The University of Melbourne.
+# Copyright (C) 2000-2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -81,6 +81,7 @@ HAVE_FDOPEN
 HAVE_FILENO
 HAVE_FSTAT
 HAVE_GETPAGESIZE
+HAVE_ISATTY
 HAVE_MEMALIGN
 HAVE_MEMMOVE
 HAVE_MPROTECT

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2000,2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -30,6 +30,9 @@
   #ifdef HAVE_READLINE_HISTORY
     #include "readline/history.h"
   #endif
+  #ifdef HAVE_UNISTD_H
+     #include <unistd.h>	/* for isatty() */
+  #endif
 #endif
 
 #include <stdio.h>
@@ -48,43 +51,45 @@
 char *
 MR_trace_readline(const char *prompt, FILE *in, FILE *out)
 {
-	char	*line;
+#if (defined(isatty) || defined(HAVE_ISATTY)) \
+ && (defined(fileno) || defined(HAVE_FILENO)) \
+ && !defined(MR_NO_USE_READLINE)
+	/* use readline, if the input file is a terminal */
+	if (isatty(fileno(in))) {
+		char	*line;
 
-#ifdef MR_NO_USE_READLINE
+		rl_instream = in;
+		rl_outstream = out;
 
+		line = readline((char *) prompt);
+
+		/*
+		** readline() allocates with malloc(), and we want
+		** to return something allocated with MR_malloc(),
+		** but that's OK, because MR_malloc() and malloc()
+		** are interchangable.
+		*/
+#if 0
+		{
+			char *tmp = line;
+
+			line = MR_copy_string(line);
+			free(tmp);
+		}
+#endif
+
+		if (line != NULL && line[0] != '\0') {
+			add_history(line);
+		}
+
+		return line;
+	}
+#endif /* have isatty && have fileno && !MR_NO_USE_READLINE */
+
+	/* otherwise, don't use readline */
 	fprintf(out, "%s", prompt);
 	fflush(out);
-	line = MR_trace_readline_raw(in);
-
-#else /* use readline */
-
-	rl_instream = in;
-	rl_outstream = out;
-
-	line = readline((char *) prompt);
-
-	/*
-	** readline() allocates with malloc(), and we want
-	** to return something allocated with MR_malloc(),
-	** but that's OK, because MR_malloc() and malloc()
-	** are interchangable.
-	*/
-#if 0
-	{
-		char *tmp = line;
-
-		line = MR_copy_string(line);
-		free(tmp);
-	}
-#endif
-
-	if (line != NULL && line[0] != '\0') {
-		add_history(line);
-	}
-
-#endif
-
-	return line;
+	return MR_trace_readline_raw(in);
 }
 
 /*

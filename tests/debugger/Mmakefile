@@ -40,13 +40,9 @@ DEBUGGER_PROGS=	\
 	shallow				\
 	tabled_read
 
-# The following tests are disabled, since currently they get some spurious
-# failures if readline support is enabled:
-#	interactive
-# Note that some of the make rules for interactive are disabled too.
-
 MCFLAGS-shallow = --trace shallow
 MCFLAGS-tabled_read = --trace-table-io
+
 MCFLAGS = --trace deep
 MLFLAGS = --trace
 C2INITFLAGS = --trace
@@ -55,6 +51,14 @@ C2INITFLAGS = --trace
 # The following is necessary for shared libraries to work on Linux.
 GRADEFLAGS-interactive = --pic-reg
 MLFLAGS-interactive = --shared
+
+# Since the `interactive' test case requires the use of shared libraries,
+# this means it won't work properly if MERCURY_LIBS is set to point
+# to static libraries (as is done by tools/bootcheck and tools/lmc).
+# So we only enable it if MERCURY_LIBS is not set.
+ifeq "$(origin MERCURY_LIBS)" "undefined"
+	RETRY_PROGS := $(RETRY_PROGS) interactive
+endif
 
 # The debugging tests don't work in MLDS grades (hl*).
 # Also base grades `jump' and `fast' cannot be used with
@@ -218,11 +222,8 @@ tabled_read.out: tabled_read tabled_read.inp
 # interactive.inp contains interactive queries that require interactive.ints
 # to have been built.
 
-# This rule is commented out while the interactive test case is disabled,
-# because otherwise we get an undefined variable warning from make.
-
-# interactive.out.orig: interactive interactive.inp $(interactive.ints)
-# 	$(MDB) ./interactive < interactive.inp > interactive.out.orig 2>&1
+interactive.out.orig: interactive interactive.inp $(interactive.ints)
+	$(MDB) ./interactive < interactive.inp > interactive.out.orig 2>&1
 
 # We pipe the output through sed to remove some spurious warnings that
 # `ld' issues.

@@ -20,7 +20,7 @@ mdb>
 mdb> print *
        HeadVar__1             	[1, 2, 3, 4, 5]
 mdb> 
-       6:      4  3 SWTC pred interactive:qperm/2-0 (nondet) s1; interactive.m:47
+       6:      4  3 SWTC pred interactive:qperm/2-0 (nondet) s2; interactive.m:47
 mdb> print *
        HeadVar__1             	[1, 2, 3, 4, 5]
 mdb> 
@@ -56,7 +56,7 @@ mdb>
 mdb> print *
        HeadVar__1             	[2, 3, 4, 5]
 mdb> 
-      11:      6  4 SWTC pred interactive:qperm/2-0 (nondet) s1; interactive.m:47
+      11:      6  4 SWTC pred interactive:qperm/2-0 (nondet) s2; interactive.m:47
 mdb> print *
        HeadVar__1             	[2, 3, 4, 5]
 mdb> 
@@ -76,7 +76,7 @@ mdb> print *
 mdb> 
       15:      8  5 CALL pred interactive:qperm/2-0 (nondet) interactive.m:46 (interactive.m:50)
 mdb> goto -a 20
-      16:      8  5 SWTC pred interactive:qperm/2-0 (nondet) s1; interactive.m:47
+      16:      8  5 SWTC pred interactive:qperm/2-0 (nondet) s2; interactive.m:47
       17:      9  6 CALL pred interactive:qdelete/3-0 (nondet) interactive.m:52 (interactive.m:48)
       18:      9  6 DISJ pred interactive:qdelete/3-0 (nondet) c2;d1; interactive.m:52
       19:      9  6 EXIT pred interactive:qdelete/3-0 (nondet) interactive.m:52 (interactive.m:48)
@@ -86,12 +86,12 @@ mdb> stack
    4       pred interactive:queen/2-0 (nondet) (interactive.m:43)
    5       pred interactive:main/2-0 (cc_multi) (interactive.m:19)
 mdb> stack -d
-   0      20      10    6 pred interactive:qperm/2-0 (nondet) (interactive.m:46)
-   1      15       8    5 pred interactive:qperm/2-0 (nondet) (interactive.m:50)
-   2      10       6    4 pred interactive:qperm/2-0 (nondet) (interactive.m:50)
-   3       5       4    3 pred interactive:qperm/2-0 (nondet) (interactive.m:50)
-   4       4       3    2 pred interactive:queen/2-0 (nondet) (interactive.m:43)
-   5       1       1    1 pred interactive:main/2-0 (cc_multi) (interactive.m:19)
+   0      20      10    6 pred interactive:qperm/2-0 (nondet) (interactive.m:46) (empty)
+   1      15       8    5 pred interactive:qperm/2-0 (nondet) (interactive.m:50) s2;c2;
+   2      10       6    4 pred interactive:qperm/2-0 (nondet) (interactive.m:50) s2;c2;
+   3       5       4    3 pred interactive:qperm/2-0 (nondet) (interactive.m:50) s2;c2;
+   4       4       3    2 pred interactive:queen/2-0 (nondet) (interactive.m:43) c2;
+   5       1       1    1 pred interactive:main/2-0 (cc_multi) (interactive.m:19) ?;c2;q!;
 mdb> print *
        HeadVar__1             	[4, 5]
 mdb> #
@@ -105,6 +105,7 @@ mdb> mmc_options
 mdb> query interactive list
 ?- <stdin>:026: Inferred :- pred query((list:list(character)), (list:list(character))).
 <stdin>:026: Inferred :- mode query(out, out) is multi.
+append(X, Y, ['a', 'b', 'c']).
 X = [], Y = ['a', 'b', 'c'], true ;
 X = ['a'], Y = ['b', 'c'], true ;
 X = ['a', 'b'], Y = ['c'], true ;
@@ -113,6 +114,7 @@ fail.
 No (more) solutions.
 ?- <stdin>:026: Inferred :- pred query((list:list(int))).
 <stdin>:026: Inferred :- mode query(out) is nondet.
+qperm([1,2,3], List).
 List = [1, 2, 3], true ;
 List = [1, 3, 2], true ;
 List = [2, 1, 3], true ;
@@ -135,6 +137,7 @@ No (more) solutions.
 <stdin>:001:   warning: variable `_2' occurs more than once in this scope.
 <stdin>:026: Inferred :- pred query((list:list(int)), (list:list(int))).
 <stdin>:026: Inferred :- mode query(out, out) is nondet.
+qperm([1,2,3], List), List = [2 | _].
 List = [2, 1, 3], _2 = [1, 3], true ;
 List = [2, 3, 1], _2 = [3, 1], true ;
 fail.
@@ -153,34 +156,45 @@ No (more) solutions.
 <stdin>:001:   warning: variable `_2' occurs more than once in this scope.
 <stdin>:026: Inferred :- pred query((list:list(int)), (list:list(int))).
 <stdin>:026: Inferred :- mode query(out, out) is nondet.
+qperm([1,2,3], List), List = [4 | _].
 fail.
 No (more) solutions.
 ?- <stdin>:001: In clause for predicate `query:query/1':
 <stdin>:001:   in argument 1 of call to predicate `qperm/2':
-<stdin>:001:   in argument 2 of functor `./2':
-<stdin>:001:   in argument 2 of functor `./2':
-<stdin>:001:   in argument 1 of functor `./2':
+<stdin>:001:   in argument 2 of functor `[|]/2':
+<stdin>:001:   in argument 2 of functor `[|]/2':
+<stdin>:001:   in argument 1 of functor `[|]/2':
 <stdin>:001:   type error in unification of argument
 <stdin>:001:   and constant `"foo"'.
 <stdin>:001:   argument has type `int',
 <stdin>:001:   constant `"foo"' has type `string'.
 For more information, try recompiling with `-E'.
+qperm([1,2,"foo"], List).
 Compilation error(s) occurred.
 ?- <stdin>:026: Inferred :- pred query((list:list(int))).
-<stdin>:001: In clause for `query(out(not_reached))':
-<stdin>:001:   in argument 1 of call to predicate `interactive:qperm/2':
-<stdin>:001:   mode error: variable `List' has instantiatedness `free',
-<stdin>:001:   expected instantiatedness was `ground'.
-<stdin>:026: Inferred :- mode query(out(free)).
+<stdin>:014: In clause for `run(di, uo)':
+<stdin>:014:   in call to predicate `query:query/1':
+<stdin>:014:   mode error: arguments `List'
+<stdin>:014:   have insts `free',
+<stdin>:014:   which does not match any of the valid modes for
+<stdin>:014:   the callee, because of the following error.
+<stdin>:026: In clause for `query(out(not_reached))':
+<stdin>:026:   in argument 1 of call to predicate `interactive:qperm/2':
+<stdin>:026:   mode error: variable `HeadVar__2' has instantiatedness `free',
+<stdin>:026:   expected instantiatedness was `ground'.
 For more information, try recompiling with `-E'.
+qperm(List, [1]).
 Compilation error(s) occurred.
-?- 
-mdb>  cc_query interactive list
+?- quit.
+
+mdb> cc_query interactive list
 ?- <stdin>:017: Inferred :- pred query((list:list(character)), (list:list(character))).
 <stdin>:017: Inferred :- mode query(out, out) is multi.
+append(X, Y, ['a', 'b', 'c']).
 X = [], Y = ['a', 'b', 'c'], true.
 ?- <stdin>:017: Inferred :- pred query((list:list(int))).
 <stdin>:017: Inferred :- mode query(out) is nondet.
+qperm([1,2,3], List).
 List = [1, 2, 3], true.
 ?- <stdin>:011: In clause for predicate `query:run/2':
 <stdin>:011:   warning: variable `_2' occurs more than once in this scope.
@@ -192,6 +206,7 @@ List = [1, 2, 3], true.
 <stdin>:001:   warning: variable `_2' occurs more than once in this scope.
 <stdin>:017: Inferred :- pred query((list:list(int)), (list:list(int))).
 <stdin>:017: Inferred :- mode query(out, out) is nondet.
+qperm([1,2,3], List), List = [2 | _].
 List = [2, 1, 3], _2 = [1, 3], true.
 ?- <stdin>:011: In clause for predicate `query:run/2':
 <stdin>:011:   warning: variable `_2' occurs more than once in this scope.
@@ -203,35 +218,39 @@ List = [2, 1, 3], _2 = [1, 3], true.
 <stdin>:001:   warning: variable `_2' occurs more than once in this scope.
 <stdin>:017: Inferred :- pred query((list:list(int)), (list:list(int))).
 <stdin>:017: Inferred :- mode query(out, out) is nondet.
+qperm([1,2,3], List), List = [4 | _].
 No solution.
-?- 
-mdb>  io_query interactive list
-run <-- [1, 3, 5, 2, 4]
-run <-- X = [], Y = ['a', 'b', 'c']
-run <-- [1, 2, 3]
-run <-- [2, 1, 3]
-run <-- No solution, as expected.
-run <-- 
-mdb> 
-      21:     10  6 SWTC pred interactive:qperm/2-0 (nondet) s1;
+?- quit.
+
+mdb> io_query interactive list
+run <-- main.
+[1, 3, 5, 2, 4]
+run <-- if { append(X, Y, ['a', 'b', 'c']) } then print("X = "), print(X), print(", Y = "), print(Y), nl else print("No solution\n").
+X = [], Y = ['a', 'b', 'c']
+run <-- if { qperm([1,2,3], List) } then print(List), nl else [].
+[1, 2, 3]
+run <-- if { qperm([1,2,3], List), List = [2 | _] } then print(List), nl else { true }.
+[2, 1, 3]
+run <-- if { qperm([1,2,3], List), List = [4 | _] } then print(List), nl else print("No solution, as expected."), io__nl.
+No solution, as expected.
+run <-- quit.
+
 mdb> retry
-      34:     10  6 EXIT pred interactive:qperm/2-0 (nondet) 
-retry
-      20:     10  6 CALL pred interactive:qperm/2-0 (nondet) 
+This command is a no-op from this port.
 mdb> print *
        HeadVar__1             	[4, 5]
 mdb> finish -a
-      21:     10  6 SWTC pred interactive:qperm/2-0 (nondet) s1; interactive.m:47
+      21:     10  6 SWTC pred interactive:qperm/2-0 (nondet) s2; interactive.m:47
       22:     11  7 CALL pred interactive:qdelete/3-0 (nondet) interactive.m:52 (interactive.m:48)
       23:     11  7 DISJ pred interactive:qdelete/3-0 (nondet) c2;d1; interactive.m:52
       24:     11  7 EXIT pred interactive:qdelete/3-0 (nondet) interactive.m:52 (interactive.m:48)
       25:     12  7 CALL pred interactive:qperm/2-0 (nondet) interactive.m:46 (interactive.m:50)
-      26:     12  7 SWTC pred interactive:qperm/2-0 (nondet) s1; interactive.m:47
+      26:     12  7 SWTC pred interactive:qperm/2-0 (nondet) s2; interactive.m:47
       27:     13  8 CALL pred interactive:qdelete/3-0 (nondet) interactive.m:52 (interactive.m:48)
       28:     13  8 DISJ pred interactive:qdelete/3-0 (nondet) c2;d1; interactive.m:52
       29:     13  8 EXIT pred interactive:qdelete/3-0 (nondet) interactive.m:52 (interactive.m:48)
       30:     14  8 CALL pred interactive:qperm/2-0 (nondet) interactive.m:46 (interactive.m:50)
-      31:     14  8 SWTC pred interactive:qperm/2-0 (nondet) s2; interactive.m:46
+      31:     14  8 SWTC pred interactive:qperm/2-0 (nondet) s1; interactive.m:46
       32:     14  8 EXIT pred interactive:qperm/2-0 (nondet) interactive.m:46 (interactive.m:50)
       33:     12  7 EXIT pred interactive:qperm/2-0 (nondet) interactive.m:46 (interactive.m:50)
       34:     10  6 EXIT pred interactive:qperm/2-0 (nondet) interactive.m:46 (interactive.m:50)
@@ -245,10 +264,10 @@ mdb> continue -a
       36:      6  4 EXIT pred interactive:qperm/2-0 (nondet) interactive.m:46 (interactive.m:50)
       37:      4  3 EXIT pred interactive:qperm/2-0 (nondet) interactive.m:46 (interactive.m:43)
       38:     15  3 CALL pred interactive:safe/1-0 (semidet) interactive.m:56 (interactive.m:44)
-      39:     15  3 SWTC pred interactive:safe/1-0 (semidet) s1; interactive.m:57
+      39:     15  3 SWTC pred interactive:safe/1-0 (semidet) s2; interactive.m:57
       40:     16  4 CALL pred interactive:nodiag/3-0 (semidet) interactive.m:61 (interactive.m:58)
-      41:     16  4 SWTC pred interactive:nodiag/3-0 (semidet) s1; interactive.m:62
-      42:     16  4 THEN pred interactive:nodiag/3-0 (semidet) s1;c4;t; interactive.m:66
+      41:     16  4 SWTC pred interactive:nodiag/3-0 (semidet) s2; interactive.m:62
+      42:     16  4 THEN pred interactive:nodiag/3-0 (semidet) s2;c4;t; interactive.m:66
       43:     16  4 FAIL pred interactive:nodiag/3-0 (semidet) interactive.m:61 (interactive.m:58)
       44:     15  3 FAIL pred interactive:safe/1-0 (semidet) interactive.m:56 (interactive.m:44)
       45:      4  3 REDO pred interactive:qperm/2-0 (nondet) interactive.m:46 (interactive.m:43)
@@ -268,6 +287,6 @@ mdb> step -aS 5
 mdb> disable 1
  1: - stop  interface pred interactive:qdelete/3-0 (nondet)
 mdb> continue -n
-     675:    141  2 CALL pred interactive:print_list/3-0 (det) interactive.m:83 (interactive.m:22)
+     675:    141  2 CALL pred interactive:print_list/3-0 (det) interactive.m:83 (interactive.m:20)
 mdb> continue -n -S
 [1, 3, 5, 2, 4]
