@@ -411,7 +411,7 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		map__from_corresponding_lists(OrigVars, OrigArgModes,
 			OrigArgModesMap),
 		map__overlay(ArgModesMap, OrigArgModesMap, ArgModesMap1),
-		map__values(ArgModesMap1, ArgModes1),
+		map__apply_to_list(ArgVars, ArgModesMap1, ArgModes1),
 
 		% Recompute the uni_modes. 
 		mode_util__modes_to_uni_modes(ArgModes1, ArgModes1, 

@@ -51,6 +51,7 @@ OTHER_SOURCES= \
 	intermod_test.m \
 	lambda_inference.m\
 	lambda_instmap_bug.m \
+	lambda_output.m \
 	lambda_quant.m \
 	lambda_quant_bug.m \
 	lambda_recompute.m \
