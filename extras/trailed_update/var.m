@@ -641,26 +641,6 @@ destructively_update_binding(VarPtr, NewBinding) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_header_code("
-
-#include ""var.h""
-
-/* XXX should change the name in runtime/mercury_trail.h */
-#ifndef MR_trail_current_value
-  #define MR_trail_current_value(addr) MR_trail_value_at_address((addr))
-#endif
-
-/* XXX this should go in runtime/tags.h */
-#ifndef strip_tag
-  #ifdef HIGH_TAGS
-    #define strip_tag(w)	((w) & ((~(Word)0) >> TAGBITS))
-  #else
-    #define strip_tag(w)	((w) & ((~(Word)0) << TAGBITS))
-  #endif
-#endif
-
-").
-
 :- pragma c_code(
 	setarg(MercuryTerm::in(any), ArgNum::in, NewValue::in(any)),
 	will_not_call_mercury,
