@@ -43,7 +43,7 @@
 :- implementation.
 
 :- import_module tree, list, map, std_util, require, bintree_set.
-:- import_module prog_io, arg_info, type_util, unify_proc.
+:- import_module prog_io, arg_info, type_util, mode_util, unify_proc.
 
 	% To generate a call to a deterministic predicate, first
 	% we get the arginfo for the callee.
@@ -274,20 +274,36 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	code_info__variable_type(Var1, VarType),
 	( { type_to_type_id(VarType, VarTypeId, _) } ->
-		code_info__get_requests(Requests),
-		{ unify_proc__lookup_num(Requests, VarTypeId, UniMode,
-			ModeNum) },
+		% We handle (in, in) unifications specially - they
+		% are always mode zero, and the procedure is global
+		% rather than local
+		(
+			{ UniMode = (XInitial - YInitial -> _Final) },
+			{ inst_is_ground(ModuleInfo, XInitial) },
+			{ inst_is_ground(ModuleInfo, YInitial) }
+		->
+			{ ModeNum = 0 }
+		;
+			code_info__get_requests(Requests),
+			{ unify_proc__lookup_num(Requests, VarTypeId, UniMode,
+				ModeNum) }
+		),
 		{ call_gen__input_args(ArgInfo, InputArguments) },
 		call_gen__generate_call_livevals(InputArguments, CodeC0),
 		{ code_util__make_uni_label(ModuleInfo, VarTypeId, ModeNum,
 			UniLabel) },
-		{ Address = label(local(UniLabel)) },
+		{ ModeNum = 0 ->
+			Address = imported(UniLabel)
+		;
+			Address = label(local(UniLabel))
+		},
 		{ CodeC1 = node([
 			call(Address, label(ReturnLabel)) -
 				"branch to out-of-line unification procedure",
 			label(ReturnLabel) - "Continuation label"
 		]) }
 	;
+		% type_to_type_id failed - the type must be a type variable
 		% { error("sorry, polymorphic unifications not implemented") }
 		% XXX a temporary hack
 		{ CodeC0 = empty },
