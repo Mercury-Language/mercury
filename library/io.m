@@ -43,6 +43,10 @@
 
 :- type io__state.
 
+	% An alternative, more concise name for `io__state'.
+
+:- type io__io == io__state.
+
 	% Opaque handles for text I/O streams.
 
 :- type io__input_stream.
