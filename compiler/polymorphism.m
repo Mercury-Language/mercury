@@ -2647,7 +2647,7 @@ polymorphism__make_type_info_var(Type, Context, Var, ExtraGoals,
 			% variable to be that type_info variable.
 			%
 			polymorphism__new_type_info_var(Type, "type_info",
-				Var, Info0, Info1),
+				typeinfo_prefix, Var, Info0, Info1),
 			map__det_insert(TypeInfoMap0, TypeVar, type_info(Var),
 				TypeInfoMap),
 			poly_info_set_type_info_map(TypeInfoMap, Info1, Info),
@@ -2871,8 +2871,8 @@ polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 	TypeInfoTerm = functor(ConsId, ArgVars),
 
 	% introduce a new variable
-	polymorphism__new_type_info_var(Type, Symbol, VarSet0, VarTypes0,
-		TypeInfoVar, VarSet, VarTypes),
+	polymorphism__new_type_info_var_raw(Type, Symbol, typeinfo_prefix,
+		VarSet0, VarTypes0, TypeInfoVar, VarSet, VarTypes),
 
 	% create the construction unification to initialize the variable
 	UniMode = (free - ground(shared, none) ->
@@ -2930,8 +2930,9 @@ polymorphism__init_const_type_ctor_info_var(Type, TypeCtor,
 	TypeInfoTerm = functor(ConsId, []),
 
 	% introduce a new variable
-	polymorphism__new_type_info_var(Type, "type_ctor_info",
-		VarSet0, VarTypes0, TypeCtorInfoVar, VarSet, VarTypes),
+	polymorphism__new_type_info_var_raw(Type, "type_ctor_info",
+		typectorinfo_prefix, VarSet0, VarTypes0,
+		TypeCtorInfoVar, VarSet, VarTypes),
 
 	% create the construction unification to initialize the variable
 	RLExprnId = no,
@@ -2961,7 +2962,8 @@ polymorphism__init_const_type_ctor_info_var(Type, TypeCtor,
 polymorphism__make_head_vars([], _, []) --> [].
 polymorphism__make_head_vars([TypeVar|TypeVars], TypeVarSet, TypeInfoVars) -->
 	{ Type = term__variable(TypeVar) },
-	polymorphism__new_type_info_var(Type, "type_info", Var),
+	polymorphism__new_type_info_var(Type, "type_info", typeinfo_prefix,
+		Var),
 	( { varset__search_name(TypeVarSet, TypeVar, TypeVarName) } ->
 		=(Info0),
 		{ poly_info_get_varset(Info0, VarSet0) },
@@ -2974,34 +2976,40 @@ polymorphism__make_head_vars([TypeVar|TypeVars], TypeVarSet, TypeInfoVars) -->
 	{ TypeInfoVars = [Var | TypeInfoVars1] },
 	polymorphism__make_head_vars(TypeVars, TypeVarSet, TypeInfoVars1).
 
+:- pred polymorphism__new_type_info_var(type, string, string, prog_var,
+	poly_info, poly_info).
+:- mode polymorphism__new_type_info_var(in, in, in, out, in, out) is det.
 
-:- pred polymorphism__new_type_info_var(type, string, prog_var,
-					poly_info, poly_info).
-:- mode polymorphism__new_type_info_var(in, in, out, in, out) is det.
-
-polymorphism__new_type_info_var(Type, Symbol, Var, Info0, Info) :-
+polymorphism__new_type_info_var(Type, Symbol, Prefix, Var, Info0, Info) :-
 	poly_info_get_varset(Info0, VarSet0),
 	poly_info_get_var_types(Info0, VarTypes0),
-	polymorphism__new_type_info_var(Type, Symbol, VarSet0, VarTypes0,
-					Var, VarSet, VarTypes),
+	polymorphism__new_type_info_var_raw(Type, Symbol, Prefix,
+		VarSet0, VarTypes0, Var, VarSet, VarTypes),
 	poly_info_set_varset_and_types(VarSet, VarTypes, Info0, Info).
 
+:- pred polymorphism__new_type_info_var_raw(type, string, string, prog_varset,
+	map(prog_var, type), prog_var, prog_varset, map(prog_var, type)).
+:- mode polymorphism__new_type_info_var_raw(in, in, in, in, in, out, out, out)
+	is det.
 
-:- pred polymorphism__new_type_info_var(type, string, prog_varset,
-		map(prog_var, type), prog_var, prog_varset,
-		map(prog_var, type)).
-:- mode polymorphism__new_type_info_var(in, in, in, in, out, out, out) is det.
-
-polymorphism__new_type_info_var(Type, Symbol, VarSet0, VarTypes0,
-				Var, VarSet, VarTypes) :-
+polymorphism__new_type_info_var_raw(Type, Symbol, Prefix, VarSet0, VarTypes0,
+		Var, VarSet, VarTypes) :-
 	% introduce new variable
 	varset__new_var(VarSet0, Var, VarSet1),
 	term__var_to_int(Var, VarNum),
 	string__int_to_string(VarNum, VarNumStr),
-	string__append("TypeInfo_", VarNumStr, Name),
+	string__append(Prefix, VarNumStr, Name),
 	varset__name_var(VarSet1, Var, Name, VarSet),
 	polymorphism__build_type_info_type(Symbol, Type, TypeInfoType),
 	map__set(VarTypes0, Var, TypeInfoType, VarTypes).
+
+:- func typeinfo_prefix = string.
+
+typeinfo_prefix = "TypeInfo_".
+
+:- func typectorinfo_prefix = string.
+
+typectorinfo_prefix = "TypeCtorInfo_".
 
 %---------------------------------------------------------------------------%
 
@@ -3071,8 +3079,9 @@ polymorphism__gen_extract_type_info(TypeVar, TypeClassInfoVar, Index,
 	polymorphism__make_count_var(Index, VarSet0, VarTypes0, IndexVar,
 		IndexGoal, VarSet1, VarTypes1),
 
-	polymorphism__new_type_info_var(term__variable(TypeVar), "type_info",
-		VarSet1, VarTypes1, TypeInfoVar, VarSet, VarTypes),
+	polymorphism__new_type_info_var_raw(term__variable(TypeVar),
+		"type_info", typeinfo_prefix, VarSet1, VarTypes1,
+		TypeInfoVar, VarSet, VarTypes),
 
 		% Make the goal info for the call.
 		% `type_info_from_typeclass_info' does not require an extra
