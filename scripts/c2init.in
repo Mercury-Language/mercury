@@ -54,8 +54,9 @@ Environment variables:
 
 MERCURY_MOD_LIB_DIR=${MERCURY_MOD_LIB_DIR=@LIBDIR@/modules}
 MERCURY_MOD_LIB_MODS=${MERCURY_MOD_LIB_MODS="\
-				$MERCURY_MOD_LIB_DIR/libmercury.init\
-				$MERCURY_MOD_LIB_DIR/runtime.init\
+				$MERCURY_MOD_LIB_DIR/mer_rt.init \
+				$MERCURY_MOD_LIB_DIR/mer_std.init \
+				$MERCURY_MOD_LIB_DIR/mer_browser.init \
 			"}
 MKINIT=${MERCURY_MKINIT=mkinit}
 
