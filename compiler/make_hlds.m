@@ -138,19 +138,20 @@
 
 parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
 		InvalidTypes, InvalidModes, !IO) :-
+   some [!Module] (
 	globals__io_get_globals(Globals, !IO),
 	mq_info_get_partial_qualifier_info(MQInfo0, PQInfo),
-	module_info_init(Name, Items, Globals, PQInfo, no, Module0),
-	add_item_list_decls_pass_1(Items,
-		item_status(local, may_be_unqualified), Module0, Module1,
-		no, InvalidModes0, !IO),
+		module_info_init(Name, Items, Globals, PQInfo, no, !:Module),
+		add_item_list_decls_pass_1(Items,
+			item_status(local, may_be_unqualified), !Module,
+			no, InvalidModes0, !IO),
 	globals__io_lookup_bool_option(statistics, Statistics, !IO),
 	maybe_report_stats(Statistics, !IO),
 
 	check_for_errors(
 		add_item_list_decls_pass_2(Items,
 			item_status(local, may_be_unqualified)),
-		InvalidTypes1, Module1, Module2, !IO),
+		InvalidTypes1, !Module, !IO),
 
 	% Add constructors and special preds to the HLDS.
 	% This must be done after adding all type and
@@ -159,19 +160,19 @@ parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
 	% doing this may cause a compiler abort.
 	(
 		InvalidTypes1 = no,
-		module_info_types(Module2, Types),
+		module_info_types(!.Module, Types),
 		map__foldl3(process_type_defn, Types,
-			no, InvalidTypes2, Module2, Module3a, !IO)
+			no, InvalidTypes2, !Module, !IO)
 	;
 		InvalidTypes1 = yes,
-		InvalidTypes2 = yes,
-		Module3a = Module2
+		InvalidTypes2 = yes
 	),
 
-	% Add the special preds for the builtins
+	% Add the special preds for the builtin types which don't have a
+	% type declaration, hence no hlds_type_defn is generated for them.
 	(
 		Name = mercury_public_builtin_module,
-		compiler_generated_rtti_for_the_builtins(Module3a)
+		compiler_generated_rtti_for_the_builtins(!.Module)
 	->
 		varset__init(TVarSet),
 		Body = abstract_type(non_solver_type),
@@ -182,18 +183,17 @@ parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
 				construct_type(TypeCtor, [], Type),
 				add_special_preds(TVarSet, Type, TypeCtor,
 						Body, Context, Status, M0, M)
-			), builtin_type_ctors, Module3a, Module3)
+			), builtin_type_ctors_with_no_type_defn, !Module)
 	;
-		Module3 = Module3a
+		true
 	),
 
 	maybe_report_stats(Statistics, !IO),
 		% balance the binary trees
-	module_info_optimize(Module3, Module4),
+	module_info_optimize(!Module),
 	maybe_report_stats(Statistics, !IO),
 	init_qual_info(MQInfo0, EqvMap, QualInfo0),
-	add_item_list_clauses(Items, local, Module4, Module5,
-		QualInfo0, QualInfo, !IO),
+	add_item_list_clauses(Items, local, !Module, QualInfo0, QualInfo, !IO),
 
 	qual_info_get_mq_info(QualInfo, MQInfo),
 	mq_info_get_type_error_flag(MQInfo, InvalidTypes3),
@@ -202,12 +202,14 @@ parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
 	InvalidModes = InvalidModes0 `or` InvalidModes1,
 	mq_info_get_num_errors(MQInfo, MQ_NumErrors),
 
-	module_info_num_errors(Module5, NumErrors5),
+	module_info_num_errors(!.Module, NumErrors5),
 	NumErrors = NumErrors5 + MQ_NumErrors,
-	module_info_set_num_errors(NumErrors, Module5, Module6),
+	module_info_set_num_errors(NumErrors, !Module),
 		% the predid list is constructed in reverse order, for
 		% efficiency, so we return it to the correct order here.
-	module_info_reverse_predids(Module6, Module).
+	module_info_reverse_predids(!Module),
+	Module = !.Module
+    ).
 
 :- pred check_for_errors(pred(module_info, module_info, io__state, io__state),
 		bool, module_info, module_info, io__state, io__state).
