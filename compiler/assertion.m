@@ -65,7 +65,8 @@
 	% defined in the implementation of that module.
 	%
 :- pred assertion__in_interface_check(hlds_goal::in, pred_info::in,
-		module_info::in, io__state::di, io__state::uo) is det.
+		module_info::in, module_info::out,
+		io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -363,8 +364,8 @@ assertion__normalise_goals([Goal0 | Goal0s], [Goal | Goals]) :-
 %-----------------------------------------------------------------------------%
 
 assertion__in_interface_check(call(PredId,_,_,_,_,SymName) - GoalInfo,
-		_PredInfo, ModuleInfo) -->
-	{ module_info_pred_info(ModuleInfo, PredId, CallPredInfo)  },
+		_PredInfo, Module0, Module) -->
+	{ module_info_pred_info(Module0, PredId, CallPredInfo)  },
 	{ pred_info_import_status(CallPredInfo, ImportStatus) },
 	(
 		{ is_defined_in_implementation_section(ImportStatus, yes) }
@@ -373,19 +374,21 @@ assertion__in_interface_check(call(PredId,_,_,_,_,SymName) - GoalInfo,
 		{ pred_info_get_is_pred_or_func(CallPredInfo, PredOrFunc) },
 		{ pred_info_arity(CallPredInfo, Arity) },
 		write_assertion_interface_error(Context,
-				call(PredOrFunc, SymName, Arity), ModuleInfo)
+				call(PredOrFunc, SymName, Arity),
+				Module0, Module)
 	;
-		[]
+		{ Module = Module0 }
 	).
-assertion__in_interface_check(generic_call(_,_,_,_) - _, _, _) --> [].
+assertion__in_interface_check(generic_call(_,_,_,_) - _, _,
+		Module, Module) --> [].
 assertion__in_interface_check(unify(Var,RHS,_,_,_) - GoalInfo,
-		PredInfo, ModuleInfo) -->
+		PredInfo, Module0, Module) -->
 	{ goal_info_get_context(GoalInfo, Context) },
 	assertion__in_interface_check_unify_rhs(RHS, Var, Context,
-			PredInfo, ModuleInfo).
+			PredInfo, Module0, Module).
 assertion__in_interface_check(pragma_c_code(_,PredId,_,_,_,_,_) - GoalInfo,
-		_PredInfo, ModuleInfo) -->
-	{ module_info_pred_info(ModuleInfo, PredId, PragmaPredInfo) },
+		_PredInfo, Module0, Module) -->
+	{ module_info_pred_info(Module0, PredId, PragmaPredInfo) },
 	{ pred_info_import_status(PragmaPredInfo, ImportStatus) },
 	(
 		{ is_defined_in_implementation_section(ImportStatus, yes) }
@@ -396,48 +399,50 @@ assertion__in_interface_check(pragma_c_code(_,PredId,_,_,_,_,_) - GoalInfo,
 		{ SymName = unqualified(Name) },
 		{ pred_info_arity(PragmaPredInfo, Arity) },
 		write_assertion_interface_error(Context,
-				call(PredOrFunc, SymName, Arity), ModuleInfo)
+				call(PredOrFunc, SymName, Arity),
+				Module0, Module)
 	;
-		[]
+		{ Module = Module0 }
 	).
-assertion__in_interface_check(conj(Goals) - _, PredInfo, ModuleInfo) -->
-	assertion__in_interface_check_list(Goals, PredInfo, ModuleInfo).
-assertion__in_interface_check(switch(_,_,_,_) - _, _, _) -->
+assertion__in_interface_check(conj(Goals) - _, PredInfo, Module0, Module) -->
+	assertion__in_interface_check_list(Goals, PredInfo, Module0, Module).
+assertion__in_interface_check(switch(_,_,_,_) - _, _, _, _) -->
 	{ error("assertion__in_interface_check: assertion contains switch.") }.
-assertion__in_interface_check(disj(Goals,_) - _, PredInfo, ModuleInfo) -->
-	assertion__in_interface_check_list(Goals, PredInfo, ModuleInfo).
-assertion__in_interface_check(not(Goal) - _, PredInfo, ModuleInfo) -->
-	assertion__in_interface_check(Goal, PredInfo, ModuleInfo).
-assertion__in_interface_check(some(_,_,Goal) - _, PredInfo, ModuleInfo) -->
-	assertion__in_interface_check(Goal, PredInfo, ModuleInfo).
+assertion__in_interface_check(disj(Goals,_) - _, PredInfo, Module0, Module) -->
+	assertion__in_interface_check_list(Goals, PredInfo, Module0, Module).
+assertion__in_interface_check(not(Goal) - _, PredInfo, Module0, Module) -->
+	assertion__in_interface_check(Goal, PredInfo, Module0, Module).
+assertion__in_interface_check(some(_,_,Goal) - _, PredInfo, Module0, Module) -->
+	assertion__in_interface_check(Goal, PredInfo, Module0, Module).
 assertion__in_interface_check(if_then_else(_, If, Then, Else, _) - _,
-		PredInfo, ModuleInfo) -->
-	assertion__in_interface_check(If, PredInfo, ModuleInfo),
-	assertion__in_interface_check(Then, PredInfo, ModuleInfo),
-	assertion__in_interface_check(Else, PredInfo, ModuleInfo).
-assertion__in_interface_check(par_conj(Goals,_) - _, PredInfo, ModuleInfo) -->
-	assertion__in_interface_check_list(Goals, PredInfo, ModuleInfo).
+		PredInfo, Module0, Module) -->
+	assertion__in_interface_check(If, PredInfo, Module0, Module1),
+	assertion__in_interface_check(Then, PredInfo, Module1, Module2),
+	assertion__in_interface_check(Else, PredInfo, Module2, Module).
+assertion__in_interface_check(par_conj(Goals,_) - _, PredInfo,
+		Module0, Module) -->
+	assertion__in_interface_check_list(Goals, PredInfo, Module0, Module).
 assertion__in_interface_check(bi_implication(LHS, RHS) - _, PredInfo,
-		ModuleInfo) -->
-	assertion__in_interface_check(LHS, PredInfo, ModuleInfo),
-	assertion__in_interface_check(RHS, PredInfo, ModuleInfo).
+		Module0, Module) -->
+	assertion__in_interface_check(LHS, PredInfo, Module0, Module1),
+	assertion__in_interface_check(RHS, PredInfo, Module1, Module).
 
 %-----------------------------------------------------------------------------%
 
 :- pred assertion__in_interface_check_unify_rhs(unify_rhs::in, prog_var::in,
 		prog_context::in, pred_info::in, module_info::in,
-		io__state::di, io__state::uo) is det.
+		module_info::out, io__state::di, io__state::uo) is det.
 
-assertion__in_interface_check_unify_rhs(var(_), _, _, _, _) --> [].
+assertion__in_interface_check_unify_rhs(var(_), _, _, _, Module, Module) --> [].
 assertion__in_interface_check_unify_rhs(functor(ConsId, _), Var, Context,
-		PredInfo, ModuleInfo) -->
+		PredInfo, Module0, Module) -->
 	{ pred_info_clauses_info(PredInfo, ClausesInfo) },
 	{ clauses_info_vartypes(ClausesInfo, VarTypes) },
 	{ map__lookup(VarTypes, Var, Type) },
 	(
 		{ type_to_type_id(Type, TypeId, _) }
 	->
-		{ module_info_types(ModuleInfo, Types) },
+		{ module_info_types(Module0, Types) },
 		{ map__lookup(Types, TypeId, TypeDefn) },
 		{ hlds_data__get_type_defn_status(TypeDefn, TypeStatus) },
 		(
@@ -445,26 +450,28 @@ assertion__in_interface_check_unify_rhs(functor(ConsId, _), Var, Context,
 					yes) }
 		->
 			write_assertion_interface_error(Context,
-					cons(ConsId), ModuleInfo)
+					cons(ConsId), Module0, Module)
 		;
-			[]
+			{ Module = Module0 }
 		)
 	;
 		{ error("assertion__in_interface_check_unify_rhs: type_to_type_id failed.") }
 	).
 assertion__in_interface_check_unify_rhs(lambda_goal(_,_,_,_,_,_,_,Goal),
-		_Var, _Context, PredInfo, ModuleInfo) -->
-	assertion__in_interface_check(Goal, PredInfo, ModuleInfo).
+		_Var, _Context, PredInfo, Module0, Module) -->
+	assertion__in_interface_check(Goal, PredInfo, Module0, Module).
 
 %-----------------------------------------------------------------------------%
 
 :- pred assertion__in_interface_check_list(hlds_goals::in, pred_info::in,
-		module_info::in, io__state::di, io__state::uo)is det.
+		module_info::in, module_info::out,
+		io__state::di, io__state::uo)is det.
 
-assertion__in_interface_check_list([], _, _) --> [].
-assertion__in_interface_check_list([Goal0 | Goal0s], PredInfo, ModuleInfo) -->
-	assertion__in_interface_check(Goal0, PredInfo, ModuleInfo),
-	assertion__in_interface_check_list(Goal0s, PredInfo, ModuleInfo).
+assertion__in_interface_check_list([], _, Module, Module) --> [].
+assertion__in_interface_check_list([Goal0 | Goal0s], PredInfo,
+		Module0, Module) -->
+	assertion__in_interface_check(Goal0, PredInfo, Module0, Module1),
+	assertion__in_interface_check_list(Goal0s, PredInfo, Module1, Module).
 
 %-----------------------------------------------------------------------------%
 
@@ -480,8 +487,9 @@ assertion__in_interface_check_list([Goal0 | Goal0s], PredInfo, ModuleInfo) -->
 is_defined_in_implementation_section(abstract_exported, yes).
 is_defined_in_implementation_section(exported_to_submodules, yes).
 is_defined_in_implementation_section(local, yes).
-is_defined_in_implementation_section(imported, yes).
+is_defined_in_implementation_section(imported(implementation), yes).
 
+is_defined_in_implementation_section(imported(interface), no).
 is_defined_in_implementation_section(opt_imported, no).
 is_defined_in_implementation_section(abstract_imported, no).
 is_defined_in_implementation_section(pseudo_imported, no).
@@ -495,11 +503,12 @@ is_defined_in_implementation_section(pseudo_exported, no).
 	;	cons(cons_id).
 
 :- pred write_assertion_interface_error(prog_context::in,
-		call_or_consid::in, module_info::in,
+		call_or_consid::in, module_info::in, module_info::out,
 		io__state::di, io__state::uo) is det.
 
-write_assertion_interface_error(Context, Type, ModuleInfo) -->
-	{ module_info_name(ModuleInfo, ModuleName) },
+write_assertion_interface_error(Context, Type, Module0, Module) -->
+	{ module_info_incr_errors(Module0, Module) },
+	{ module_info_name(Module, ModuleName) },
 	prog_out__write_context(Context),
 	io__write_string("In interface for module `"),
 	prog_out__write_sym_name(ModuleName),
