@@ -159,9 +159,10 @@
 :- type module_info	--->	module(
 					string,		% module name
 					map(pred_id, pred_info),
-					map(type_id, type_body)
-					map(inst_id, inst_body)
-					map(mode_id, mode_body)
+					map(type_id, type_body),
+					map(inst_id, inst_body),
+					map(mode_id, mode_body),
+					map(pair(pred_id, mode_id), category)
 				).
 
 :- type pred_info	--->	predicate(
@@ -170,30 +171,35 @@
 					% not needed: list(type) for args
 				).
 
-:- type proc_info	--->	mode(
-					map(var_id, var_info),
+:- type proc_info	--->	procedure(
+					category,
 					list(var_id),	% usually [1,2,...]
-					goal,
-					map(pair(pred_id, mode_id), category),
-					map(type_id, type_body)
+					map(var_id, var_info), % all vars
+					list(clause)  % singleton for det...
+				).
 
 :- type pred_id 	=	pred(string, string, int).
 			%	module, predname, arity
 
+:- type proc_id		=	proc(pred_id, mode_id).
+
 :- type mode_id		=	int.
 
-:- type clause		--->	clause(var_info, list(var), goal).
-			%	variable types, head variables, body
+:- type clause		--->	clause(list(var_id), goal).
+			%	head variables, body
 
 :- type var_info	--->	var_info(
-					map(var, string),	% var names
-					map(var, type)		% var types
+					string, % name
+					type
 				).
 
-:- type liveness_info	=	map(var_id, is_live)
+:- type goalinfo	=	goalinfo (
+					map(var_id, is_live)
+				).
+
 :- type is_live		--->	live ; dead.
 
-:- type mode_info	=	map(var, instantiatedness).
+:- type mode_info	=	map(var_id, instantiatedness).
 
 %-----------------------------------------------------------------------------%
 
