@@ -149,7 +149,13 @@ move_follow_code_in_conj([Goal0 | Goals0], ModuleInfo, [Goal | Goals]) :-
 		move_follow_code_is_branched(Goal1)
 	->
 		move_follow_code_select(Goals0, FollowGoals, RestGoals0),
-		move_follow_code_move_goals(Goal1, FollowGoals, Goal),
+		(
+			FollowGoals = []
+		->
+			Goal = Goal1
+		;
+			move_follow_code_move_goals(Goal1, FollowGoals, Goal)
+		),
 		move_follow_code_in_conj(RestGoals0, ModuleInfo, Goals)
 	;
 		Goal = Goal1,
