@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2002 The University of Melbourne.
+** Copyright (C) 1997-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -439,6 +439,12 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 
     /* This also saves the regs in MR_fake_regs. */
     MR_copy_regs_to_saved_regs(event_info.MR_max_mr_num, saved_regs);
+
+#if defined(MR_USE_MINIMAL_MODEL) && defined(MR_TABLE_DEBUG)
+    if (port == MR_PORT_CALL) {
+        MR_subgoal_debug_cur_proc = layout->MR_sll_entry;
+    }
+#endif
 
 #ifdef MR_USE_EXTERNAL_DEBUGGER
     if (MR_trace_handler == MR_TRACE_EXTERNAL) {
@@ -1247,8 +1253,8 @@ MR_check_minimal_model_calls(MR_Event_Info *event_info, int ancestor_level,
         trienode = (MR_TrieNode) MR_based_framevar(cur_maxfr, 
                     proc_layout->MR_sle_maybe_call_table);
         subgoal = trienode->MR_subgoal;
-        if (subgoal->leader != NULL) {
-            leader = subgoal->leader;
+        if (subgoal->MR_sg_leader != NULL) {
+            leader = subgoal->MR_sg_leader;
         } else {
             leader = subgoal;
         }
@@ -1261,7 +1267,7 @@ MR_check_minimal_model_calls(MR_Event_Info *event_info, int ancestor_level,
         record_ptrs[record_ptr_next].found_leader_generator = MR_FALSE;
         record_ptr_next++;
 
-        if (cur_maxfr == MR_gen_stack[cur_gen].generator_frame) {
+        if (cur_maxfr == MR_gen_stack[cur_gen].MR_generator_frame) {
             for (i = 0; i < record_ptr_next; i++) {
                 if (record_ptrs[i].record_leader == subgoal) {
                     record_ptrs[i].found_leader_generator = MR_TRUE;

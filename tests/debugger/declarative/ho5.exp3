@@ -1,0 +1,48 @@
+       1:      1  1 CALL pred ho5.main/2-0 (cc_multi) ho5.m:8
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> break p
+ 0: + stop  interface pred ho5.p/2-0 (det)
+mdb> continue
+       2:      2  2 CALL pred ho5.p/2-0 (det) ho5.m:18
+mdb> finish
+       9:      2  2 EXCP pred ho5.p/2-0 (det) c2; ho5.m:18
+mdb> dd
+Call p(1, _)
+Throws zero
+Expected? no
+q(1, 0)
+Valid? yes
+Call r(0, _)
+Throws zero
+Expected? yes
+Found unhandled exception:
+p(1, _)
+zero
+Is this a bug? yes
+       9:      2  2 EXCP pred ho5.p/2-0 (det) c2; ho5.m:18
+mdb> continue
+mdb: warning: reached label with no stack layout info
+This may result in some exception events
+being omitted from the trace.
+exception(univ_cons('<<function>>'))
+      10:      5  2 CALL pred ho5.p/2-0 (det) ho5.m:18
+mdb> finish
+      17:      5  2 EXCP pred ho5.p/2-0 (det) c2; ho5.m:18
+mdb> dd
+Call p(2, _)
+Throws zero
+Expected? no
+q(2, 0)
+Valid? yes
+Found unhandled exception:
+p(2, _)
+zero
+Is this a bug? yes
+      17:      5  2 EXCP pred ho5.p/2-0 (det) c2; ho5.m:18
+mdb> continue
+mdb: warning: reached label with no stack layout info
+This may result in some exception events
+being omitted from the trace.
+exception(univ_cons('<<function>>'))

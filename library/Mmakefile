@@ -347,7 +347,8 @@ $(os_subdir)std_util.pic_o \
 
 $(os_subdir)table_builtin.$O \
 $(os_subdir)table_builtin.pic_o \
-	: ../runtime/mercury_tabling_macros.h
+	: ../runtime/mercury_tabling_macros.h \
+	../runtime/mercury_minimal_model.h
 
 #-----------------------------------------------------------------------------#
 

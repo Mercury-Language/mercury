@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2002 The University of Melbourne.
+** Copyright (C) 1995-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -236,6 +236,7 @@
 		MR_prevfr_slot(MR_maxfr) = prevfr;			\
 		MR_redoip_slot(MR_maxfr) = redoip;			\
 		MR_redofr_slot(MR_maxfr) = MR_curfr;			\
+		MR_debugmktempframe();					\
 		MR_nondstack_overflow_check();				\
 	} while (0)
 
@@ -249,6 +250,7 @@
 		MR_redoip_slot(MR_maxfr) = redoip;			\
 		MR_redofr_slot(MR_maxfr) = MR_curfr;			\
 		MR_tmp_detfr_slot(MR_maxfr)  = MR_sp;			\
+		MR_debugmkdettempframe();				\
 		MR_nondstack_overflow_check();				\
 	} while (0)
 
@@ -460,35 +462,67 @@ typedef struct MR_Exception_Handler_Frame_struct {
 
 /* DEFINITIONS FOR GENERATOR STACK FRAMES */
 
-typedef struct MR_GeneratorStackFrameStruct {
-	MR_Word			*generator_frame;
-	MR_TrieNode		generator_table;
-} MR_GeneratorStackFrame;
+struct MR_GenStackFrameStruct {
+	MR_Word			*MR_generator_frame;
+	MR_TrieNode		MR_generator_table;
+};
 
 extern	void			MR_push_generator(MR_Word *frame_addr,
 					MR_TrieNode table_addr);
 extern	MR_Subgoal		*MR_top_generator_table(void);
 extern	void			MR_pop_generator(void);
 extern	void			MR_print_gen_stack(FILE *fp);
+extern	void			MR_print_any_gen_stack(FILE *fp,
+					MR_Integer gen_next,
+					MR_GenStackFrame *gen_block);
 
 /* DEFINITIONS FOR CUT STACK FRAMES */
 
 typedef struct MR_CutGeneratorListNode *MR_CutGeneratorList;
 struct MR_CutGeneratorListNode {
-	MR_TrieNode		generator_ptr;
-	MR_CutGeneratorList	next_generator;
+	MR_TrieNode		MR_cut_generator_ptr;
+	MR_CutGeneratorList	MR_cut_next_generator;
 };
 
-typedef struct MR_CutStackFrameStruct {
-	MR_Word			*frame;
-	MR_Integer		gen_next;
-	MR_CutGeneratorList	generators;
-} MR_CutStackFrame;
+struct MR_CutStackFrameStruct {
+	MR_Word			*MR_cut_frame;
+	MR_Integer		MR_cut_gen_next;
+	MR_CutGeneratorList	MR_cut_generators;
+	int			MR_cut_depth;
+};
 
 extern	void			MR_commit_mark(void);
 extern	void			MR_commit_cut(void);
 
 extern	void			MR_register_generator_ptr(MR_TrieNode);
+extern	void			MR_print_cut_stack(FILE *fp);
+extern	void			MR_print_any_cut_stack(FILE *fp,
+					MR_Integer cut_next,
+					MR_CutStackFrame *cut_block);
+
+/* DEFINITIONS FOR PNEG STACK FRAMES */
+
+struct MR_PNegConsumerListNodeStruct {
+	MR_Subgoal		*MR_pneg_consumer_ptr;
+	MR_PNegConsumerList	MR_pneg_next_consumer;
+};
+
+struct MR_PNegStackFrameStruct {
+	MR_Word			*MR_pneg_frame;
+	MR_Integer		MR_pneg_gen_next;
+	MR_PNegConsumerList	MR_pneg_consumers;
+	int			MR_pneg_depth;
+};
+
+extern	void			MR_register_suspension(MR_Subgoal *subgoal);
+extern	void			MR_pneg_enter_cond(void);
+extern	void			MR_pneg_enter_then(void);
+extern	void			MR_pneg_enter_else(void);
+
+extern	void			MR_print_pneg_stack(FILE *fp);
+extern	void			MR_print_any_pneg_stack(FILE *fp,
+					MR_Integer pneg_next,
+					MR_PNegStackFrame *pneg_block);
 
 #endif	/* MR_USE_MINIMAL_MODEL */
 

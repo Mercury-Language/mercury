@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2002 The University of Melbourne.
+** Copyright (C) 1995-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -48,6 +48,8 @@
 #define	MR_debugregs(msg)			((void)0)
 #define	MR_debugframe(msg)			((void)0)
 #define	MR_debugmkframe(predname)		((void)0)
+#define	MR_debugmktempframe()			((void)0)
+#define	MR_debugmkdettempframe()		((void)0)
 #define	MR_debugsucceed()			((void)0)
 #define	MR_debugsucceeddiscard()		((void)0)
 #define	MR_debugfail()				((void)0)
@@ -85,13 +87,21 @@
 #define	MR_debugregs(msg) \
 	MR_IF (MR_progdebug, (MR_save_transient_registers(), MR_printregs(msg)))
 
+#define	MR_debugframe(msg)	 \
+	MR_IF (MR_progdebug, \
+		(MR_save_transient_registers(), MR_printframe(msg)))
+
 #define	MR_debugmkframe(predname) \
 	MR_IF (MR_nondstackdebug, \
 		(MR_save_transient_registers(), MR_mkframe_msg(predname)))
 
-#define	MR_debugframe(msg)	 \
-	MR_IF (MR_progdebug, \
-		(MR_save_transient_registers(), MR_printframe(msg)))
+#define	MR_debugmktempframe() \
+	MR_IF (MR_nondstackdebug, \
+		(MR_save_transient_registers(), MR_mktempframe_msg()))
+
+#define	MR_debugmkdettempframe() \
+	MR_IF (MR_nondstackdebug, \
+		(MR_save_transient_registers(), MR_mkdettempframe_msg()))
 
 #define	MR_debugsucceed() \
 	MR_IF (MR_calldebug, \
@@ -147,6 +157,8 @@
 
 #ifdef MR_LOWLEVEL_DEBUG
 extern	void	MR_mkframe_msg(const char *);
+extern	void	MR_mktempframe_msg(void);
+extern	void	MR_mkdettempframe_msg(void);
 extern	void	MR_succeed_msg(void);
 extern	void	MR_succeeddiscard_msg(void);
 extern	void	MR_fail_msg(void);

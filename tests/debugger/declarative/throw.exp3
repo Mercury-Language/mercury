@@ -1,0 +1,53 @@
+       1:      1  1 CALL pred throw.main/2-0 (cc_multi) throw.m:10
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> break p
+ 0: + stop  interface pred throw.p/1-0 (cc_nondet)
+mdb> break q
+ 1: + stop  interface pred throw.q/1-0 (semidet)
+mdb> continue
+       2:      2  2 CALL pred throw.p/1-0 (cc_nondet) throw.m:20
+mdb> finish
+      31:      2  2 EXCP pred throw.p/1-0 (cc_nondet)
+mdb> dd
+Call p(_)
+Throws "Too big"
+Expected? no
+a(3)
+Valid? yes
+Call b(3, _)
+Throws "Too big"
+Expected? yes
+Found unhandled exception:
+p(_)
+"Too big"
+Is this a bug? yes
+      31:      2  2 EXCP pred throw.p/1-0 (cc_nondet)
+mdb> continue
+mdb: warning: reached label with no stack layout info
+This may result in some exception events
+being omitted from the trace.
+exception(univ_cons("Too big"))
+      32:      6  2 CALL pred throw.q/1-0 (semidet) throw.m:48
+mdb> finish
+      65:      6  2 EXCP pred throw.q/1-0 (semidet)
+mdb> dd
+Call q(_)
+Throws "Too big"
+Expected? no
+a2(3)
+Valid? yes
+Call b2(3, _)
+Throws "Too big"
+Expected? yes
+Found unhandled exception:
+q(_)
+"Too big"
+Is this a bug? yes
+      65:      6  2 EXCP pred throw.q/1-0 (semidet)
+mdb> continue
+mdb: warning: reached label with no stack layout info
+This may result in some exception events
+being omitted from the trace.
+exception(univ_cons("Too big"))

@@ -37,6 +37,27 @@ static	void	call_engine_inner(MR_Code *entry_point) MR_NO_RETURN;
 
 MR_bool	MR_debugflag[MR_MAXFLAG];
 
+MR_Debug_Flag_Info	MR_debug_flag_info[MR_MAXFLAG] = {
+	{ "prog",	MR_PROGFLAG },
+	{ "goto",	MR_GOTOFLAG },
+	{ "call",	MR_CALLFLAG },
+	{ "heap",	MR_HEAPFLAG },
+	{ "detstack",	MR_DETSTACKFLAG },
+	{ "nondstack",	MR_NONDSTACKFLAG },
+	{ "final",	MR_FINALFLAG },
+	{ "mem",	MR_MEMFLAG },
+	{ "sreg",	MR_SREGFLAG },
+	{ "trace",	MR_TRACEFLAG },
+	{ "table",	MR_TABLEFLAG },
+	{ "hash",	MR_TABLEHASHFLAG },
+	{ "tablestack",	MR_TABLESTACKFLAG },
+	{ "unbuf",	MR_UNBUFFLAG },
+	{ "agc",	MR_AGC_FLAG },
+	{ "ordreg",	MR_ORDINARY_REG_FLAG },
+	{ "anyreg",	MR_ANY_REG_FLAG },
+	{ "detail",	MR_DETAILFLAG }
+};
+
 #ifndef MR_THREAD_SAFE
   MercuryEngine	MR_engine_base;
 #endif

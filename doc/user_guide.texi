@@ -3183,10 +3183,45 @@ The following commands are intended for use by the developers
 of the Mercury implementation.
 @sp 1
 @table @code
+@item flag @var{flagname}
+@kindex flag (mdb command)
+Prints the value of the specified runtime lowlevel debugging flag.
+@sp 1
+@item flag @var{flagname} on
+Sets the specified runtime lowlevel debugging flag to true.
+@sp 1
+@item flag @var{flagname} off
+Sets the specified runtime lowlevel debugging flag to false.
+@sp 1
+@item subgoal @var{n}
+@kindex subgoal (mdb command)
+In minimal model grades,
+prints the details of the specified subgoal.
+In other grades, it reports an error.
+@sp 1
+@item consumer @var{n}
+@kindex consumer (mdb command)
+In minimal model grades,
+prints the details of the specified consumer.
+In other grades, it reports an error.
+@sp 1
 @item gen_stack
 @kindex gen_stack (mdb command)
-Prints the contents of the frames on the generator stack,
-which is part of the implementation of minimal model tabling.
+In minimal model grades,
+prints the contents of the frames on the generator stack.
+In other grades, it reports an error.
+@sp 1
+@item cut_stack
+@kindex cut_stack (mdb command)
+In minimal model grades,
+prints the contents of the frames on the cut stack.
+In other grades, it reports an error.
+@sp 1
+@item pneg_stack
+@kindex pneg_stack (mdb command)
+In minimal model grades,
+prints the contents of the frames on the possible negated context stack.
+In other grades, it reports an error.
 @sp 1
 @item nondet_stack [-d]
 @kindex nondet_stack (mdb command)

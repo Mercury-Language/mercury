@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2002 The University of Melbourne.
+** Copyright (C) 1997-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -111,6 +111,10 @@ struct MR_Context_Struct {
 		/* pointer to the cutstack_zone for this context */
 	MR_Integer	MR_ctxt_cut_next;
 		/* saved cut stack index for this context */
+	MR_MemoryZone	*MR_ctxt_pnegstack_zone;
+		/* pointer to the pnegstack_zone for this context */
+	MR_Integer	MR_ctxt_pneg_next;
+		/* saved pneg stack index for this context */
   #endif /* MR_USE_MINIMAL_MODEL */
 #endif /* !MR_HIGHLEVEL_CODE */
 
@@ -352,6 +356,7 @@ extern	void		MR_schedule(MR_Context *ctxt);
 		  MR_IF_USE_MINIMAL_MODEL(				\
 			MR_gen_next = load_context_c->MR_ctxt_gen_next;	\
 			MR_cut_next = load_context_c->MR_ctxt_cut_next;	\
+			MR_pneg_next = load_context_c->MR_ctxt_pneg_next;\
 		  )							\
 		)							\
 	        MR_IF_USE_TRAIL(					\
@@ -372,12 +377,17 @@ extern	void		MR_schedule(MR_Context *ctxt);
 				load_context_c->MR_ctxt_genstack_zone;	\
 		    MR_ENGINE(MR_eng_context).MR_ctxt_cutstack_zone =   \
 				load_context_c->MR_ctxt_cutstack_zone;	\
-		    MR_gen_stack = (MR_GeneratorStackFrame *)		\
+		    MR_ENGINE(MR_eng_context).MR_ctxt_pnegstack_zone =  \
+				load_context_c->MR_ctxt_pnegstack_zone;	\
+		    MR_gen_stack = (MR_GenStackFrame *)			\
 				MR_ENGINE(MR_eng_context).		\
 					MR_ctxt_genstack_zone;		\
 		    MR_cut_stack = (MR_CutStackFrame *)			\
 				MR_ENGINE(MR_eng_context).		\
 					MR_ctxt_cutstack_zone;		\
+		    MR_pneg_stack = (MR_PNegStackFrame *)		\
+				MR_ENGINE(MR_eng_context).		\
+					MR_ctxt_pnegstack_zone;		\
 	    	  )							\
 	    	)							\
 		MR_set_min_heap_reclamation_point(load_context_c);	\
@@ -396,6 +406,7 @@ extern	void		MR_schedule(MR_Context *ctxt);
 		  MR_IF_USE_MINIMAL_MODEL(				\
 			save_context_c->MR_ctxt_gen_next = MR_gen_next;	\
 			save_context_c->MR_ctxt_cut_next = MR_cut_next;	\
+			save_context_c->MR_ctxt_pneg_next = MR_pneg_next;\
 		  )							\
 		)							\
 		MR_IF_USE_TRAIL(					\
@@ -420,12 +431,18 @@ extern	void		MR_schedule(MR_Context *ctxt);
 		    save_context_c->MR_ctxt_cutstack_zone =		\
 				MR_ENGINE(MR_eng_context).		\
 					MR_ctxt_cutstack_zone;		\
-		    assert(MR_gen_stack == (MR_GeneratorStackFrame *)	\
+		    save_context_c->MR_ctxt_pnegstack_zone =		\
+				MR_ENGINE(MR_eng_context).		\
+					MR_ctxt_pnegstack_zone;		\
+		    assert(MR_gen_stack == (MR_GenStackFrame *)		\
 				MR_ENGINE(MR_eng_context).		\
 					MR_ctxt_genstack_zone);		\
 		    assert(MR_cut_stack == (MR_CutStackFrame *)		\
 				MR_ENGINE(MR_eng_context).		\
 					MR_ctxt_cutstack_zone);		\
+		    assert(MR_pneg_stack == (MR_PNegStackFrame *)	\
+				MR_ENGINE(MR_eng_context).		\
+					MR_ctxt_pnegstack_zone);	\
 		  )							\
 		)							\
 		MR_save_hp_in_context(save_context_c);			\

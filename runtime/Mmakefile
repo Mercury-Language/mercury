@@ -14,8 +14,8 @@ HDRS		=	\
 			mercury_accurate_gc.h	\
 			mercury_agc_debug.h	\
 			mercury_array_macros.h	\
-			mercury_builtin_types.h	\
 			mercury_bootstrap.h	\
+			mercury_builtin_types.h	\
 			mercury_calls.h		\
 			mercury_conf.h		\
 			mercury_conf_bootstrap.h \
@@ -28,10 +28,10 @@ HDRS		=	\
 			mercury_deep_copy.h	\
 			mercury_deep_profiling.h \
 			mercury_deep_profiling_hand.h \
-			mercury_dummy.h		\
 			mercury_dlist.h		\
+			mercury_dummy.h		\
 			mercury_dword.h		\
-		  	mercury_engine.h	\
+			mercury_engine.h	\
 			mercury_file.h		\
 			mercury_float.h		\
 			mercury_getopt.h	\
@@ -48,8 +48,9 @@ HDRS		=	\
 			mercury_layout_util.h	\
 			mercury_library_types.h	\
 			mercury_memory.h	\
-			mercury_memory_zones.h	\
 			mercury_memory_handlers.h	\
+			mercury_memory_zones.h	\
+			mercury_minimal_model.h	\
 			mercury_misc.h		\
 			mercury_overflow.h	\
 			mercury_prof.h		\
@@ -61,10 +62,10 @@ HDRS		=	\
 			mercury_regs.h		\
 			mercury_runtime_util.h	\
 			mercury_signal.h	\
-			mercury_std.h		\
 			mercury_stack_layout.h	\
 			mercury_stack_trace.h	\
 			mercury_stacks.h	\
+			mercury_std.h		\
 			mercury_string.h	\
 			mercury_tabling.h	\
 			mercury_tabling_macros.h	\
@@ -73,10 +74,10 @@ HDRS		=	\
 			mercury_timing.h	\
 			mercury_trace_base.h	\
 			mercury_trail.h		\
-			mercury_types.h		\
 			mercury_type_desc.h	\
 			mercury_type_info.h	\
 			mercury_type_tables.h	\
+			mercury_types.h		\
 			mercury_wrapper.h	\
 			$(LIB_DLL_H)
 
@@ -146,6 +147,7 @@ CFILES		= 	\
 			mercury_memory.c	\
 			mercury_memory_handlers.c	\
 			mercury_memory_zones.c	\
+			mercury_minimal_model.c	\
 			mercury_misc.c		\
 			mercury_prof.c		\
 			mercury_prof_mem.c	\

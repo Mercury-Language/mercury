@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2002 The University of Melbourne.
+** Copyright (C) 1994-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -190,8 +190,9 @@ extern	size_t		MR_solutions_heap_size;
 extern	size_t		MR_trail_size;
 extern	size_t		MR_global_heap_size;
 extern	size_t		MR_debug_heap_size;
-extern	size_t		MR_generatorstack_size;
+extern	size_t		MR_genstack_size;
 extern	size_t		MR_cutstack_size;
+extern	size_t		MR_pnegstack_size;
 
 /* sizes of the red zones */
 extern	size_t		MR_heap_zone_size;
@@ -201,8 +202,9 @@ extern	size_t		MR_solutions_heap_zone_size;
 extern	size_t		MR_trail_zone_size;
 extern	size_t		MR_global_heap_zone_size;
 extern	size_t		MR_debug_heap_zone_size;
-extern	size_t		MR_generatorstack_zone_size;
+extern	size_t		MR_genstack_zone_size;
 extern	size_t		MR_cutstack_zone_size;
+extern	size_t		MR_pnegstack_zone_size;
 
 /* heap margin for MLDS->C accurate GC (documented in mercury_wrapper.c) */
 extern	size_t		MR_heap_margin_size;

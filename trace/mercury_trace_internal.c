@@ -386,200 +386,80 @@ static	void	MR_trace_internal_init_from_home_dir(void);
 static	MR_Next	MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			MR_Event_Info *event_info,
 			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static	MR_Next	MR_trace_handle_cmd(char **words, int word_count,
+
+typedef MR_Next MR_TraceCmdFunc(char **words, int word_count,
 			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 			MR_Event_Details *event_details, MR_Code **jumpaddr);
 
-static MR_Next	MR_trace_cmd_step(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_goto(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_next(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_finish(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_fail(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_exception(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_return(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_forward(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_mindepth(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_maxdepth(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_continue(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_retry(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_level(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_up(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_down(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_vars(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_print(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_browse(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_stack(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_current(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_set(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_view(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_break(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_ignore(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_enable(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_disable(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_delete(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_register(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_modules(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_procedures(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_query(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_cc_query(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_io_query(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_printlevel(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_mmc_options(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_scroll(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_context(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_scope(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_echo(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_alias(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_unalias(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_document_category(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_document(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_help(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
+static	MR_TraceCmdFunc	MR_trace_handle_cmd;
 
-static MR_Next	MR_trace_cmd_histogram_all(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_histogram_exp(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_clear_histogram(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-
-static MR_Next	MR_trace_cmd_gen_stack(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-
-static MR_Next	MR_trace_cmd_nondet_stack(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_stack_regs(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_all_regs(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_table_io(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_proc_stats(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_label_stats(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_proc_body(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_print_optionals(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_unhide_events(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_table(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_save(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_quit(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-
-static MR_Next	MR_trace_cmd_dd(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
-static MR_Next	MR_trace_cmd_dd_dd(char **words, int word_count,
-			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
+static	MR_TraceCmdFunc	MR_trace_cmd_step;
+static	MR_TraceCmdFunc	MR_trace_cmd_goto;
+static	MR_TraceCmdFunc	MR_trace_cmd_next;
+static	MR_TraceCmdFunc	MR_trace_cmd_finish;
+static	MR_TraceCmdFunc	MR_trace_cmd_fail;
+static	MR_TraceCmdFunc	MR_trace_cmd_exception;
+static	MR_TraceCmdFunc	MR_trace_cmd_return;
+static	MR_TraceCmdFunc	MR_trace_cmd_forward;
+static	MR_TraceCmdFunc	MR_trace_cmd_mindepth;
+static	MR_TraceCmdFunc	MR_trace_cmd_maxdepth;
+static	MR_TraceCmdFunc	MR_trace_cmd_continue;
+static	MR_TraceCmdFunc	MR_trace_cmd_retry;
+static	MR_TraceCmdFunc	MR_trace_cmd_level;
+static	MR_TraceCmdFunc	MR_trace_cmd_up;
+static	MR_TraceCmdFunc	MR_trace_cmd_down;
+static	MR_TraceCmdFunc	MR_trace_cmd_vars;
+static	MR_TraceCmdFunc	MR_trace_cmd_print;
+static	MR_TraceCmdFunc	MR_trace_cmd_browse;
+static	MR_TraceCmdFunc	MR_trace_cmd_stack;
+static	MR_TraceCmdFunc	MR_trace_cmd_current;
+static	MR_TraceCmdFunc	MR_trace_cmd_set;
+static	MR_TraceCmdFunc	MR_trace_cmd_view;
+static	MR_TraceCmdFunc	MR_trace_cmd_break;
+static	MR_TraceCmdFunc	MR_trace_cmd_ignore;
+static	MR_TraceCmdFunc	MR_trace_cmd_enable;
+static	MR_TraceCmdFunc	MR_trace_cmd_disable;
+static	MR_TraceCmdFunc	MR_trace_cmd_delete;
+static	MR_TraceCmdFunc	MR_trace_cmd_register;
+static	MR_TraceCmdFunc	MR_trace_cmd_modules;
+static	MR_TraceCmdFunc	MR_trace_cmd_procedures;
+static	MR_TraceCmdFunc	MR_trace_cmd_query;
+static	MR_TraceCmdFunc	MR_trace_cmd_cc_query;
+static	MR_TraceCmdFunc	MR_trace_cmd_io_query;
+static	MR_TraceCmdFunc	MR_trace_cmd_printlevel;
+static	MR_TraceCmdFunc	MR_trace_cmd_mmc_options;
+static	MR_TraceCmdFunc	MR_trace_cmd_scroll;
+static	MR_TraceCmdFunc	MR_trace_cmd_context;
+static	MR_TraceCmdFunc	MR_trace_cmd_scope;
+static	MR_TraceCmdFunc	MR_trace_cmd_echo;
+static	MR_TraceCmdFunc	MR_trace_cmd_alias;
+static	MR_TraceCmdFunc	MR_trace_cmd_unalias;
+static	MR_TraceCmdFunc	MR_trace_cmd_document_category;
+static	MR_TraceCmdFunc	MR_trace_cmd_document;
+static	MR_TraceCmdFunc	MR_trace_cmd_help;
+static	MR_TraceCmdFunc	MR_trace_cmd_histogram_all;
+static	MR_TraceCmdFunc	MR_trace_cmd_histogram_exp;
+static	MR_TraceCmdFunc	MR_trace_cmd_clear_histogram;
+static	MR_TraceCmdFunc	MR_trace_cmd_flag;
+static	MR_TraceCmdFunc	MR_trace_cmd_subgoal;
+static	MR_TraceCmdFunc	MR_trace_cmd_consumer;
+static	MR_TraceCmdFunc	MR_trace_cmd_gen_stack;
+static	MR_TraceCmdFunc	MR_trace_cmd_cut_stack;
+static	MR_TraceCmdFunc	MR_trace_cmd_pneg_stack;
+static	MR_TraceCmdFunc	MR_trace_cmd_nondet_stack;
+static	MR_TraceCmdFunc	MR_trace_cmd_stack_regs;
+static	MR_TraceCmdFunc	MR_trace_cmd_all_regs;
+static	MR_TraceCmdFunc	MR_trace_cmd_table_io;
+static	MR_TraceCmdFunc	MR_trace_cmd_proc_stats;
+static	MR_TraceCmdFunc	MR_trace_cmd_label_stats;
+static	MR_TraceCmdFunc	MR_trace_cmd_proc_body;
+static	MR_TraceCmdFunc	MR_trace_cmd_print_optionals;
+static	MR_TraceCmdFunc	MR_trace_cmd_unhide_events;
+static	MR_TraceCmdFunc	MR_trace_cmd_table;
+static	MR_TraceCmdFunc	MR_trace_cmd_save;
+static	MR_TraceCmdFunc	MR_trace_cmd_quit;
+static	MR_TraceCmdFunc	MR_trace_cmd_dd;
+static	MR_TraceCmdFunc	MR_trace_cmd_dd_dd;
 
 static	void	MR_maybe_print_spy_point(int slot, const char *problem);
 static	void	MR_print_unsigned_var(FILE *fp, const char *var,
@@ -682,10 +562,14 @@ static	void	MR_trace_cmd_table_print_tip(const MR_Proc_Layout *proc,
 /* Prints the given subgoal of the given procedure to MR_mdb_out. */
 static	void	MR_trace_print_subgoal(const MR_Proc_Layout *proc,
 			MR_Subgoal *subgoal);
+static	void	MR_trace_print_subgoal_debug(const MR_Proc_Layout *proc,
+			MR_SubgoalDebug *subgoal_debug);
 
-/* Prints the given answer_block of the given procedure to MR_mdb_out. */
-static	void	MR_print_answerblock(const MR_Proc_Layout *proc,
-			MR_Word *answer_block);
+/* Prints the given consumer of the given procedure to MR_mdb_out. */
+static	void	MR_trace_print_consumer(const MR_Proc_Layout *proc,
+			MR_Consumer *consumer);
+static	void	MR_trace_print_consumer_debug(const MR_Proc_Layout *proc,
+			MR_ConsumerDebug *consumer_debug);
 
 static	void	MR_trace_set_level_and_report(int ancestor_level,
 			MR_bool detailed, MR_bool print_optionals);
@@ -722,6 +606,8 @@ static	const MR_Trace_Command_Info	*MR_trace_valid_command(
 static	char	*MR_trace_command_completer_next(const char *word,
 			size_t word_len, MR_Completer_Data *data);
 
+static	MR_bool	MR_saved_tabledebug;
+
 MR_Code *
 MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 		MR_Event_Info *event_info)
@@ -730,7 +616,6 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 	char			*line;
 	MR_Next			res;
 	MR_Event_Details	event_details;
-	MR_bool			saved_tabledebug;
 
 	if (! interactive) {
 		return MR_trace_event_internal_report(cmd, event_info);
@@ -748,7 +633,7 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 	*/
 
 	MR_trace_enabled = MR_FALSE;
-	saved_tabledebug = MR_tabledebug;
+	MR_saved_tabledebug = MR_tabledebug;
 	MR_tabledebug = MR_FALSE;
 	MR_saved_io_tabling_enabled = MR_io_tabling_enabled;
 	MR_io_tabling_enabled = MR_FALSE;
@@ -792,7 +677,7 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 
 	MR_scroll_next = 0;
 	MR_trace_enabled = MR_TRUE;
-	MR_tabledebug = saved_tabledebug;
+	MR_tabledebug = MR_saved_tabledebug;
 	MR_io_tabling_enabled = MR_saved_io_tabling_enabled;
 	return jumpaddr;
 }
@@ -1798,7 +1683,7 @@ MR_trace_cmd_retry(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	across_io = MR_RETRY_IO_INTERACTIVE;
 	assume_all_io_is_tabled = MR_FALSE;
 	if (! MR_trace_options_retry(&across_io, &assume_all_io_is_tabled,
-			&words, &word_count, "backward", "retry"))
+		&words, &word_count, "backward", "retry"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 2 &&
@@ -3266,6 +3151,140 @@ MR_trace_cmd_clear_histogram(char **words, int word_count,
 }
 
 static MR_Next
+MR_trace_cmd_flag(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+	MR_Event_Info *event_info, MR_Event_Details *event_details,
+	MR_Code **jumpaddr)
+{
+	const char	*name;
+	MR_bool		*flagptr;
+	int		i;
+	MR_bool		found;
+
+	if (word_count >= 2) {
+		name = words[1];
+	} else {
+		MR_trace_usage("developer", "flag");
+		return KEEP_INTERACTING;
+	}
+
+	found = MR_FALSE;
+	for (i = 0; i < MR_MAXFLAG; i++) {
+		if (MR_streq(MR_debug_flag_info[i].MR_debug_flag_name, name)) {
+			flagptr = &MR_debugflag[
+				MR_debug_flag_info[i].MR_debug_flag_index];
+
+			if (flagptr == &MR_tabledebug) {
+				/*
+				** The true value of MR_tabledebug is stored
+				** in MR_saved_tabledebug inside the call tree
+				** of MR_trace_event.
+				*/
+				flagptr = &MR_saved_tabledebug;
+			}
+
+			found = MR_TRUE;
+			break;
+		}
+	}
+
+	if (!found) {
+		fprintf(MR_mdb_out, "There is no flag named %s.\n", name);
+		return KEEP_INTERACTING;
+	}
+
+	if (word_count == 2) {
+		if (*flagptr) {
+			fprintf(MR_mdb_out, "Flag %s is set.\n", name);
+		} else {
+			fprintf(MR_mdb_out, "Flag %s is clear.\n", name);
+		}
+	} else if (word_count == 3) {
+		if (MR_streq(words[2], "on")) {
+			*flagptr = MR_TRUE;
+			fprintf(MR_mdb_out, "Flag %s is now set.\n", name);
+		} else if (MR_streq(words[2], "off")) {
+			*flagptr = MR_FALSE;
+			fprintf(MR_mdb_out, "Flag %s is now clear.\n", name);
+		} else {
+			MR_trace_usage("developer", "flag");
+		}
+	} else {
+		MR_trace_usage("developer", "flag");
+	}
+
+	return KEEP_INTERACTING;
+}
+
+static MR_Next
+MR_trace_cmd_subgoal(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+	MR_Event_Info *event_info, MR_Event_Details *event_details,
+	MR_Code **jumpaddr)
+{
+#ifdef	MR_USE_MINIMAL_MODEL
+
+	MR_SubgoalDebug	*subgoal_debug;
+	MR_Subgoal	*subgoal;
+	int		n;
+
+	if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
+		MR_trace_init_modules();
+
+		subgoal_debug = MR_lookup_subgoal_debug_num(n);
+		if (subgoal_debug == NULL) {
+			fprintf(MR_mdb_out, "no such subgoal\n");
+		} else {
+			MR_trace_print_subgoal_debug(NULL, subgoal_debug);
+		}
+	} else {
+		MR_trace_usage("developer", "subgoal");
+	}
+
+#else	/* MR_USE_MINIMAL_MODEL */
+
+	fprintf(MR_mdb_out, "mdb: the `subgoal' command is available "
+		"only in minimal model tabling grades.\n");
+
+#endif	/* MR_USE_MINIMAL_MODEL */
+
+	return KEEP_INTERACTING;
+}
+
+static MR_Next
+MR_trace_cmd_consumer(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+	MR_Event_Info *event_info, MR_Event_Details *event_details,
+	MR_Code **jumpaddr)
+{
+#ifdef	MR_USE_MINIMAL_MODEL
+
+	MR_ConsumerDebug	*consumer_debug;
+	MR_Consumer		*consumer;
+	int			n;
+
+	if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
+		MR_trace_init_modules();
+
+		consumer_debug = MR_lookup_consumer_debug_num(n);
+		if (consumer_debug == NULL) {
+			fprintf(MR_mdb_out, "no such consumer\n");
+		} else {
+			MR_trace_print_consumer_debug(NULL, consumer_debug);
+		}
+	} else {
+		MR_trace_usage("developer", "consumer");
+	}
+
+#else	/* MR_USE_MINIMAL_MODEL */
+
+	fprintf(MR_mdb_out, "mdb: the `consumer' command is available "
+		"only in minimal model tabling grades.\n");
+
+#endif	/* MR_USE_MINIMAL_MODEL */
+
+	return KEEP_INTERACTING;
+}
+
+
+static MR_Next
 MR_trace_cmd_gen_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
@@ -3287,6 +3306,64 @@ MR_trace_cmd_gen_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 #else	/* MR_USE_MINIMAL_MODEL */
 
 	fprintf(MR_mdb_out, "mdb: the `gen_stack' command is available "
+		"only in minimal model grades.\n");
+
+#endif	/* MR_USE_MINIMAL_MODEL */
+
+	return KEEP_INTERACTING;
+}
+
+static MR_Next
+MR_trace_cmd_cut_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+	MR_Event_Info *event_info, MR_Event_Details *event_details,
+	MR_Code **jumpaddr)
+{
+#ifdef	MR_USE_MINIMAL_MODEL
+
+	if (word_count == 1) {
+		MR_bool	saved_tabledebug;
+
+		MR_trace_init_modules();
+		saved_tabledebug = MR_tabledebug;
+		MR_tabledebug = MR_TRUE;
+		MR_print_cut_stack(MR_mdb_out);
+		MR_tabledebug = saved_tabledebug;
+	} else {
+		MR_trace_usage("developer", "cut_stack");
+	}
+
+#else	/* MR_USE_MINIMAL_MODEL */
+
+	fprintf(MR_mdb_out, "mdb: the `cut_stack' command is available "
+		"only in minimal model grades.\n");
+
+#endif	/* MR_USE_MINIMAL_MODEL */
+
+	return KEEP_INTERACTING;
+}
+
+static MR_Next
+MR_trace_cmd_pneg_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+	MR_Event_Info *event_info, MR_Event_Details *event_details,
+	MR_Code **jumpaddr)
+{
+#ifdef	MR_USE_MINIMAL_MODEL
+
+	if (word_count == 1) {
+		MR_bool	saved_tabledebug;
+
+		MR_trace_init_modules();
+		saved_tabledebug = MR_tabledebug;
+		MR_tabledebug = MR_TRUE;
+		MR_print_pneg_stack(MR_mdb_out);
+		MR_tabledebug = saved_tabledebug;
+	} else {
+		MR_trace_usage("developer", "pneg_stack");
+	}
+
+#else	/* MR_USE_MINIMAL_MODEL */
+
+	fprintf(MR_mdb_out, "mdb: the `pneg_stack' command is available "
 		"only in minimal model grades.\n");
 
 #endif	/* MR_USE_MINIMAL_MODEL */
@@ -4294,7 +4371,7 @@ MR_trace_cmd_table_print_tip(const MR_Proc_Layout *proc, int num_inputs,
 				break;
 			default:
 				fprintf(MR_mdb_out, "succeeded <");
-				MR_print_answerblock(proc,
+				MR_print_answerblock(MR_mdb_out, proc,
 					table->MR_answerblock);
 				fprintf(MR_mdb_out, ">\n");
 				break;
@@ -4319,56 +4396,43 @@ MR_trace_cmd_table_print_tip(const MR_Proc_Layout *proc, int num_inputs,
 static void
 MR_trace_print_subgoal(const MR_Proc_Layout *proc, MR_Subgoal *subgoal)
 {
-	fprintf(MR_mdb_out, "cannot print subgoals yet\n");
+#ifdef	MR_USE_MINIMAL_MODEL
+	MR_print_subgoal(MR_mdb_out, proc, subgoal);
+#else
+	fprintf(MR_mdb_out, "minimal model tabling is not enabled\n");
+#endif
 }
 
 static void
-MR_print_answerblock(const MR_Proc_Layout *proc, MR_Word *answer_block)
+MR_trace_print_subgoal_debug(const MR_Proc_Layout *proc,
+	MR_SubgoalDebug *subgoal_debug)
 {
-	const MR_PseudoTypeInfo	*ptis;
-	MR_PseudoTypeInfo	pti;
-	MR_TypeCtorInfo		tci;
-	int			num_inputs;
-	int			num_outputs;
-	int			i;
-
-	num_inputs = proc->MR_sle_table_info.MR_table_gen->
-		MR_table_gen_num_inputs;
-	num_outputs = proc->MR_sle_table_info.MR_table_gen->
-		MR_table_gen_num_outputs;
-
-	ptis = proc->MR_sle_table_info.MR_table_gen->MR_table_gen_ptis;
-	ptis += num_inputs;
-
-	for (i = 0; i < num_outputs; i++) {
-		if (i > 0) {
-			fprintf(MR_mdb_out, ", ");
-		}
-
-		pti = ptis[i];
-		if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pti)) {
-			fprintf(MR_mdb_out, "poly");
-			continue;
-		}
-
-		tci = MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pti);
-		if (tci == &MR_TYPE_CTOR_INFO_NAME(builtin, int, 0)) {
-			fprintf(MR_mdb_out, "%ld", (long) answer_block[i]);
-		} else if (tci == &MR_TYPE_CTOR_INFO_NAME(builtin, float, 0)) {
-			fprintf(MR_mdb_out, "%f",
-#ifdef	MR_HIGHLEVEL_CODE
-				(double) MR_unbox_float(
-						(MR_Box) answer_block[i]));
+#ifdef	MR_USE_MINIMAL_MODEL
+	MR_print_subgoal_debug(MR_mdb_out, proc, subgoal_debug);
 #else
-				(double) MR_word_to_float(answer_block[i]));
+	fprintf(MR_mdb_out, "minimal model tabling is not enabled\n");
 #endif
-		} else if (tci == &MR_TYPE_CTOR_INFO_NAME(builtin, string, 0)) {
-			fprintf(MR_mdb_out, "\"%s\"",
-				(char *) answer_block[i]);
-		} else {
-			fprintf(MR_mdb_out, "value of unsupported type");
-		}
-	}
+}
+
+static void
+MR_trace_print_consumer(const MR_Proc_Layout *proc, MR_Consumer *consumer)
+{
+#ifdef	MR_USE_MINIMAL_MODEL
+	MR_print_consumer(MR_mdb_out, proc, consumer);
+#else
+	fprintf(MR_mdb_out, "minimal model tabling is not enabled\n");
+#endif
+}
+
+static void
+MR_trace_print_consumer_debug(const MR_Proc_Layout *proc,
+	MR_ConsumerDebug *consumer_debug)
+{
+#ifdef	MR_USE_MINIMAL_MODEL
+	MR_print_consumer_debug(MR_mdb_out, proc, consumer_debug);
+#else
+	fprintf(MR_mdb_out, "minimal model tabling is not enabled\n");
+#endif
 }
 
 static MR_Next
@@ -6218,7 +6282,17 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 	{ "exp", "clear_histogram", MR_trace_cmd_clear_histogram,
 		NULL, MR_trace_null_completer },
 
+	{ "developer", "flag", MR_trace_cmd_flag,
+		NULL, MR_trace_null_completer },
+	{ "developer", "subgoal", MR_trace_cmd_subgoal,
+		NULL, MR_trace_null_completer },
+	{ "developer", "consumer", MR_trace_cmd_consumer,
+		NULL, MR_trace_null_completer },
 	{ "developer", "gen_stack", MR_trace_cmd_gen_stack,
+		NULL, MR_trace_null_completer },
+	{ "developer", "cut_stack", MR_trace_cmd_cut_stack,
+		NULL, MR_trace_null_completer },
+	{ "developer", "pneg_stack", MR_trace_cmd_pneg_stack,
 		NULL, MR_trace_null_completer },
 	{ "developer", "nondet_stack", MR_trace_cmd_nondet_stack,
 		MR_trace_stack_cmd_args, MR_trace_null_completer },

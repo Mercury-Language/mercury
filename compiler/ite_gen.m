@@ -46,7 +46,7 @@
 :- import_module ll_backend__trace.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, set, term, list, map, std_util, require.
+:- import_module bool, string, set, term, list, map, std_util, require.
 
 ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo,
 		Code) -->
@@ -183,6 +183,8 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo,
 		label(EndLabel)
 			- "end of if-then-else"
 	]) },
+	{ make_pneg_context_wrappers(Globals, PNegCondCode, PNegThenCode,
+		PNegElseCode) },
 	{ Code =
 		tree(FlushCode,
 		tree(SaveHpCode,
@@ -190,10 +192,12 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo,
 		tree(PrepareHijackCode,
 		tree(EffectResumeCode,
 		tree(CondTraceCode,
+		tree(PNegCondCode,
 		tree(CondCode,
 		tree(ThenNeckCode,
 		tree(ResetTicketCode,
 		tree(ThenTraceCode,
+		tree(PNegThenCode,
 		tree(ThenCode,
 		tree(ThenSaveCode,
 		tree(JumpToEndCode,
@@ -202,9 +206,10 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo,
 		tree(RestoreHpCode,
 		tree(RestoreTicketCode,
 		tree(ElseTraceCode,
+		tree(PNegElseCode,
 		tree(ElseCode,
 		tree(ElseSaveCode,
-		     EndLabelCode))))))))))))))))))))
+		     EndLabelCode)))))))))))))))))))))))
 	},
 	code_info__after_all_branches(StoreMap, MaybeEnd).
 
@@ -355,6 +360,8 @@ generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
 	trace__maybe_generate_negated_event_code(Goal, NotGoalInfo,
 		neg_success, SuccessTraceCode),
 
+	{ make_pneg_context_wrappers(Globals, PNegCondCode, PNegThenCode,
+		PNegElseCode) },
 	{ Code =
 		tree(FlushCode,
 		tree(PrepareHijackCode,
@@ -362,16 +369,86 @@ generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
 		tree(SaveHpCode,
 		tree(SaveTicketCode,
 		tree(EnterTraceCode,
+		tree(PNegCondCode,
 		tree(GoalCode,
 		tree(ThenNeckCode,
 		tree(PruneTicketCode,
 		tree(FailTraceCode,
+		tree(PNegThenCode,
 		tree(FailCode,
 		tree(ResumeCode,
 		tree(ElseNeckCode,
 		tree(RestoreTicketCode,
 		tree(RestoreHpCode,
-		     SuccessTraceCode)))))))))))))))
+		tree(SuccessTraceCode,
+		     PNegElseCode))))))))))))))))))
 	}.
+
+%---------------------------------------------------------------------------%
+
+	% If the code in the condition depends on a consumer
+	% of a generator that is not complete by the time we finish
+	% executing the condition, then failure out of the condition
+	% does not necessarily mean that the condition has no solution;
+	% it may mean simply that the condition's solution depends on
+	% a generator solution that hasn't been produced yet and thus
+	% hasn't been given to the consumer yet.
+	%
+	% Detecting such situations requires knowing whether tabled
+	% subgoals (both generators and consumers) are started inside
+	% possibly negated contexts or not, which is why we wrap the
+	% condition inside MR_pneg_enter_{cond,then,exit}.
+
+:- pred make_pneg_context_wrappers(globals::in, code_tree::out, code_tree::out,
+	code_tree::out) is det.
+
+make_pneg_context_wrappers(Globals, PNegCondCode, PNegThenCode, PNegElseCode)
+		:-
+	globals__lookup_bool_option(Globals, use_minimal_model,
+		UseMinimalModel),
+	(
+		UseMinimalModel = yes,
+
+		PNegCondComponents = [
+			pragma_c_raw_code(
+				wrap_transient("\t\tMR_pneg_enter_cond();\n"),
+				live_lvals_info(set__init))
+		],
+		PNegThenComponents = [
+			pragma_c_raw_code(
+				wrap_transient("\t\tMR_pneg_enter_then();\n"),
+				live_lvals_info(set__init))
+		],
+		PNegElseComponents = [
+			pragma_c_raw_code(
+				wrap_transient("\t\tMR_pneg_enter_else();\n"),
+				live_lvals_info(set__init))
+		],
+		PNegCondCode = node([
+			pragma_c([], PNegCondComponents, will_not_call_mercury,
+				no, no, no, no, yes) - ""
+		]),
+		PNegThenCode = node([
+			pragma_c([], PNegThenComponents, will_not_call_mercury,
+				no, no, no, no, yes) - ""
+		]),
+		PNegElseCode = node([
+			pragma_c([], PNegElseComponents, will_not_call_mercury,
+				no, no, no, no, yes) - ""
+		])
+	;
+		UseMinimalModel = no,
+		PNegCondCode = empty,
+		PNegThenCode = empty,
+		PNegElseCode = empty
+	).
+
+:- func wrap_transient(string) = string.
+
+wrap_transient(Code) =
+	string__append_list([
+		"\t\tMR_save_transient_registers();\n",
+		Code,
+		"\t\tMR_restore_transient_registers();\n"]).
 
 %---------------------------------------------------------------------------%

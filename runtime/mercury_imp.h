@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1998, 2000 The University of Melbourne.
+** Copyright (C) 1993-1998,2000,2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -80,8 +80,10 @@
 #include	"mercury_misc.h"
 
 #include	"mercury_tabling.h"
+#ifdef MR_USE_MINIMAL_MODEL
+#include	"mercury_minimal_model.h"
+#endif
 
 #include	"mercury_grade.h"
-
 
 #endif /* not MERCURY_IMP_H */

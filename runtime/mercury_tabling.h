@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000,2002 The University of Melbourne.
+** Copyright (C) 1997-2000,2002-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -20,28 +20,14 @@
 #include "mercury_float.h"
 #include "mercury_reg_workarounds.h"
 #include "mercury_dlist.h"
+#include "mercury_goto.h"		/* for MR_declare_entry */
+#include "mercury_stack_layout.h"	/* for MR_Proc_Layout */
 
 #ifndef MR_CONSERVATIVE_GC
   #include "mercury_deep_copy.h"
 #endif
 
 #include <stdio.h>
-
-/*---------------------------------------------------------------------------*/
-
-/*
-** Forward declarations of type names.
-*/
-
-typedef	struct MR_HashTable_Struct		MR_HashTable;
-typedef	struct MR_Subgoal_Struct		MR_Subgoal;
-typedef	struct MR_SubgoalListNode_Struct	MR_SubgoalListNode;
-typedef	struct MR_AnswerListNode_Struct		MR_AnswerListNode;
-typedef	struct MR_ConsumerListNode_Struct	MR_ConsumerListNode;
-
-typedef	MR_SubgoalListNode			*MR_SubgoalList;
-typedef	MR_AnswerListNode			*MR_AnswerList;
-typedef	MR_ConsumerListNode			*MR_ConsumerList;
 
 /*---------------------------------------------------------------------------*/
 
@@ -149,122 +135,6 @@ typedef enum {
 	MR_SUBGOAL_COMPLETE
 } MR_SubgoalStatus;
 
-struct MR_AnswerListNode_Struct {
-	MR_Integer	answer_num;
-	MR_TableNode	answer_data; /* always uses the MR_answerblock member */
-	MR_AnswerList	next_answer;
-};
-
-/*
-** The saved state of a generator or a consumer. While consumers get
-** suspended while they are waiting for generators to produce more solutions,
-** generators need their state saved when they restore the state of a consumer
-** to consume a new solution.
-**
-** The saved state contains copies of
-**
-** - several virtual machine registers:
-**   MR_succip, MR_sp, MR_curfr and MR_maxfr
-**
-** - segments of the nondet and det stacks:
-**   the parts that cannot possibly change between the times of saving
-**   and restoring the saved state are not saved.
-**
-**   The segments are described by three fields each. The *_block_start
-**   field gives the address of the first word in the real stack
-**   that is part of the saved segment, the *_block_size field
-**   gives the size of the saved segment in words, and the *_block
-**   field points to the area of memory containing the saved segment.
-**
-** - the entire generator stack and the entire cut stack:
-**   they are usually so small, it is faster to save them all
-**   than to figure out which parts need saving.
-**
-**   Each stack is described by its size in words and a pointer to
-**   an area of memory containing the entire saved stack.
-*/
-
-typedef struct {
-	MR_Code			*succ_ip;
-	MR_Word			*s_p;
-	MR_Word			*cur_fr;
-	MR_Word			*max_fr;
-	MR_Word			*non_stack_block_start;
-	MR_Word			non_stack_block_size;
-	MR_Word			*non_stack_block;
-	MR_Word			*det_stack_block_start;
-	MR_Word			det_stack_block_size;
-	MR_Word			*det_stack_block;
-	MR_Integer		gen_next;
-	char			*generator_stack_block;
-	MR_Integer		cut_next;
-	char			*cut_stack_block;
-} MR_SavedState;
-
-/* The state of a consumer subgoal */
-typedef struct {
-	MR_SavedState		saved_state;
-	MR_AnswerList		*remaining_answer_list_ptr;
-} MR_Consumer;
-
-struct MR_ConsumerListNode_Struct {
-	MR_Consumer		*item;
-	MR_ConsumerList		next;
-};
-
-/*
-** The following structure is used to hold the state and variables used in 
-** the table_resume procedure.
-*/
-
-typedef struct {
-	MR_SavedState		leader_state;
-	MR_SubgoalList		subgoal_list;
-	MR_Subgoal		*cur_subgoal;
-	MR_ConsumerList		consumer_list;	/* for the current subgoal */
-	MR_Consumer		*cur_consumer;
-	MR_AnswerList		cur_consumer_answer_list;
-	MR_bool			changed;
-} MR_ResumeInfo;
-
-struct MR_SubgoalListNode_Struct {
-	MR_Subgoal		*item;
-	MR_SubgoalList		next;
-};
-
-/* Used to save info about a single subgoal in the table */
-struct MR_Subgoal_Struct {
-	MR_SubgoalStatus	status;
-	MR_Subgoal		*leader;
-	MR_SubgoalList		followers;
-	MR_SubgoalList		*followers_tail;
-	MR_ResumeInfo		*resume_info;
-	MR_Word			answer_table;	/* Table of answers returned */
-						/* by the subgoal */
-	MR_Integer		num_ans;	/* # of answers returned */
-						/* by the subgoal */
-	MR_Integer		num_committed_ans;
-						/* # of answers our leader */
-						/* is committed to returning */
-						/* to every consumer. */
-	MR_AnswerList		answer_list;	/* List of answers returned */
-						/* by the subgoal */
-	MR_AnswerList		*answer_list_tail;
-						/* Pointer to the tail of */
-						/* the answer list. This is */
-						/* used to update the tail. */
-	MR_ConsumerList		consumer_list;	/* List of suspended calls */
-						/* to the subgoal */
-	MR_ConsumerList		*consumer_list_tail;
-						/* As for answer_list_tail */
-	MR_Word			*generator_maxfr;
-						/* MR_maxfr at the time of */
-						/* the call to the generator */
-	MR_Word			*generator_sp;
-						/* MR_sp at the time of the */
-						/* call to the generator */
-};
-
 /*---------------------------------------------------------------------------*/
 
 /*
@@ -362,6 +232,14 @@ extern	MR_bool		MR_get_string_hash_table_contents(MR_TrieNode t,
 
 extern	void		MR_table_report_statistics(FILE *fp);
 
+/*
+** Prints the given answer_block of the given procedure to fp.
+*/
+extern	void		MR_print_answerblock(FILE *fp,
+				const MR_Proc_Layout *proc,
+				MR_Word *answer_block);
+
+
 /*---------------------------------------------------------------------------*/
 
 #ifndef MR_NATIVE_GC
@@ -375,17 +253,30 @@ extern	void		MR_table_report_statistics(FILE *fp);
   #define MR_TABLE_RESIZE_ARRAY(ptr, type, count)			\
 	MR_GC_RESIZE_ARRAY((ptr), type, (count))
 
+#if 0
   #define MR_table_allocate_bytes(size)					\
 	MR_GC_malloc((size))
 
   #define MR_table_reallocate_bytes(pointer, size)			\
 	MR_GC_realloc((pointer), (size))
+#endif
 
   #define MR_table_allocate_words(size)					\
-	MR_GC_malloc(sizeof(MR_Word) * (size))
+	((MR_Word *) MR_GC_malloc(sizeof(MR_Word) * (size)))
 
   #define MR_table_reallocate_words(pointer, size)			\
-	MR_GC_realloc((pointer), sizeof(MR_Word) * (size))
+	(MR_CHECK_EXPR_TYPE((pointer), MR_Word *),			\
+	(MR_Word *) MR_GC_realloc((pointer), sizeof(MR_Word) * (size)))
+
+  #define MR_table_allocate_struct(type)				\
+	((type *) MR_GC_malloc(sizeof(type)))
+
+  #define MR_table_allocate_structs(num, type)				\
+	((type *) MR_GC_malloc(sizeof(type) * (num)))
+
+  #define MR_table_reallocate_structs(pointer, num, type)		\
+	(MR_CHECK_EXPR_TYPE((pointer), type *),				\
+	(type *) MR_GC_realloc((pointer), sizeof(type) * (num)))
 
   #define MR_table_free(pointer)					\
 	MR_GC_free((pointer))
@@ -407,16 +298,27 @@ extern	void		MR_table_report_statistics(FILE *fp);
   #define MR_TABLE_RESIZE_ARRAY(pointer, type, count)			\
 	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),			\
 	(void *) NULL)
+#if 0
   #define MR_table_allocate_bytes(size)					\
 	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),			\
 	(void *) NULL)
   #define MR_table_reallocate_bytes(pointer, size)			\
 	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),			\
 	(void *) NULL)
+#endif
   #define MR_table_allocate_words(size)					\
 	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG), 			\
 	(void *) NULL)
   #define MR_table_reallocate_words(pointer, size)			\
+	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG), 			\
+	(void *) NULL)
+  #define MR_table_allocate_struct(type)				\
+	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG), 			\
+	(void *) NULL)
+  #define MR_table_allocate_structs(num, type)				\
+	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG), 			\
+	(void *) NULL)
+  #define MR_table_reallocate_structs(pointer, num, type)		\
 	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG), 			\
 	(void *) NULL)
   #define MR_table_free(pointer)					\
@@ -431,7 +333,16 @@ extern	void		MR_table_report_statistics(FILE *fp);
 	MR_memcpy((dest), (source), (size))
 
 #define MR_table_copy_words(dest, source, size)				\
-	MR_memcpy((char *) (dest), (char *) (source), sizeof(MR_Word) * (size))
+	(MR_CHECK_EXPR_TYPE((dest), MR_Word *),				\
+	(MR_CHECK_EXPR_TYPE((source), MR_Word *),			\
+	MR_memcpy((char *) (dest), (char *) (source),			\
+		sizeof(MR_Word) * (size))))
+
+#define MR_table_copy_structs(dest, source, num, type)			\
+	(MR_CHECK_EXPR_TYPE((dest), type *),				\
+	(MR_CHECK_EXPR_TYPE((source), type *),				\
+	MR_memcpy((char *) (dest), (char *) (source),			\
+		sizeof(type) * (num))))
 
 /*---------------------------------------------------------------------------*/
 

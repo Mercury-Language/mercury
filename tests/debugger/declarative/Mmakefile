@@ -48,7 +48,7 @@ DECLARATIVE_PROGS=		\
 	tabled_read_decl	\
 	throw
 
-# The following should not be run in `debug' grades.
+# The following should not be run in `debug' or `mm' grades.
 #
 NONDEBUG_DECLARATIVE_PROGS=	\
 	untraced_subgoal
@@ -63,8 +63,13 @@ ifneq "$(findstring .debug,$(GRADE))" ""
     PROGS_2=$(DECLARATIVE_PROGS)
     INP=inp2
 else
-    PROGS_2=$(DECLARATIVE_PROGS) $(NONDEBUG_DECLARATIVE_PROGS)
-    INP=inp
+    ifneq "$(findstring .mm,$(GRADE))" ""
+        PROGS_2=$(DECLARATIVE_PROGS)
+        INP=inp
+    else
+        PROGS_2=$(DECLARATIVE_PROGS) $(NONDEBUG_DECLARATIVE_PROGS)
+        INP=inp
+    endif
 endif
 
 # Debugging does not work in MLDS (hl*, il*, and java*) grades

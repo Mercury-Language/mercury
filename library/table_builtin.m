@@ -685,6 +685,17 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 :- semipure pred table_multi_return_all_ans(ml_subgoal_table_node::in,
 	ml_answer_block::out) is multi.
 
+	% This type should correspond exactly to the type MR_SubgoalStatus
+	% defined in runtime/mercury_tabling.h.
+
+:- type subgoal_status
+	--->	inactive
+	;	active
+	;	complete.
+
+:- semipure pred table_subgoal_status(ml_subgoal_table_node::in,
+	subgoal_status::out) is det.
+
 	% N.B. interface continued below
 
 %-----------------------------------------------------------------------------%
@@ -721,25 +732,51 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 
 		subgoal = MR_TABLE_NEW(MR_Subgoal);
 
-		subgoal->status = MR_SUBGOAL_INACTIVE;
-		subgoal->leader = NULL;
-		subgoal->followers = MR_TABLE_NEW(MR_SubgoalListNode);
-		subgoal->followers->item = subgoal;
-		subgoal->followers->next = NULL;
-		subgoal->followers_tail = &(subgoal->followers->next);
-		subgoal->answer_table = (MR_Word) NULL;
-		subgoal->num_ans = 0;
-		subgoal->answer_list = NULL;
-		subgoal->answer_list_tail = &subgoal->answer_list;
-		subgoal->consumer_list = NULL;
-		subgoal->consumer_list_tail = &subgoal->consumer_list;
+		subgoal->MR_sg_status = MR_SUBGOAL_INACTIVE;
+		subgoal->MR_sg_leader = NULL;
+		subgoal->MR_sg_followers = MR_TABLE_NEW(MR_SubgoalListNode);
+		subgoal->MR_sg_followers->MR_sl_item = subgoal;
+		subgoal->MR_sg_followers->MR_sl_next = NULL;
+		subgoal->MR_sg_followers_tail =
+			&(subgoal->MR_sg_followers->MR_sl_next);
+		subgoal->MR_sg_answer_table = (MR_Word) NULL;
+		subgoal->MR_sg_num_ans = 0;
+		subgoal->MR_sg_answer_list = NULL;
+		subgoal->MR_sg_answer_list_tail =
+			&subgoal->MR_sg_answer_list;
+		subgoal->MR_sg_consumer_list = NULL;
+		subgoal->MR_sg_consumer_list_tail =
+			&subgoal->MR_sg_consumer_list;
 
 #ifdef	MR_TABLE_DEBUG
+		/*
+		** MR_subgoal_debug_cur_proc refers to the last procedure
+		** that executed a call event, if any. If the procedure that is
+		** executing table_nondet_setup is traced, this will be that
+		** procedure, and recording the layout structure of the
+		** processor in the subgoal allows us to interpret the contents
+		** of the subgoal's answer tables. If the procedure executing
+		** table_nondet_setup is not traced, then the layout structure
+		** belongs to another procedure and the any use of the
+		** MR_sg_proc_layout field will probably cause a core dump.
+		** For implementors debugging minimal model tabling, this is
+		** the right tradeoff.
+		*/
+		subgoal->MR_sg_proc_layout = MR_subgoal_debug_cur_proc;
+
+		MR_enter_subgoal_debug(subgoal);
+
 		if (MR_tabledebug) {
-			printf(""setting up table %p -> %p, "",
-				table, subgoal);
+			printf(""setting up subgoal %p -> %s, "",
+				table, MR_subgoal_addr_name(subgoal));
 			printf(""answer slot %p\\n"",
-				subgoal->answer_list_tail);
+				subgoal->MR_sg_answer_list_tail);
+			if (subgoal->MR_sg_proc_layout != NULL) {
+				printf(""proc: "");
+				MR_print_proc_id(stdout,
+					subgoal->MR_sg_proc_layout);
+				printf(""\\n"");
+			}
 		}
 
 		if (MR_maxfr != MR_curfr) {
@@ -747,13 +784,7 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 				""MR_maxfr != MR_curfr at table setup\\n"");
 		}
 #endif
-#ifdef MR_HIGHLEVEL_CODE
- 		MR_fatal_error(""sorry, not implemented: ""
-			""minimal_model tabling with --high-level-code"");
-#else
-		subgoal->generator_maxfr = MR_prevfr_slot(MR_maxfr);
-		subgoal->generator_sp = MR_sp;
-#endif
+		subgoal->MR_sg_generator_fr = MR_curfr;
 		table->MR_subgoal = subgoal;
 	}
 	T = T0;
@@ -801,7 +832,7 @@ XXX :- external stops us from using these two definitions
 	table = T;
 
 	SUCCESS_INDICATOR =
-		(table->MR_subgoal->status == MR_SUBGOAL_COMPLETE);
+		(table->MR_subgoal->MR_sg_status == MR_SUBGOAL_COMPLETE);
 #else
 	MR_fatal_error(""minimal model code entered when not enabled"");
 #endif
@@ -817,7 +848,7 @@ XXX :- external stops us from using these two definitions
 	table = T;
 
 	SUCCESS_INDICATOR =
-		(table->MR_subgoal->status == MR_SUBGOAL_ACTIVE);
+		(table->MR_subgoal->MR_sg_status == MR_SUBGOAL_ACTIVE);
 #else
 	MR_fatal_error(""minimal model code entered when not enabled"");
 #endif
@@ -834,7 +865,7 @@ XXX :- external stops us from using these two definitions
 
 	MR_push_generator(MR_curfr, table);
 	MR_register_generator_ptr(table);
-	table->MR_subgoal->status = MR_SUBGOAL_ACTIVE;
+	table->MR_subgoal->MR_sg_status = MR_SUBGOAL_ACTIVE;
 #else
 	MR_fatal_error(""minimal model code entered when not enabled"");
 #endif
@@ -849,7 +880,7 @@ XXX :- external stops us from using these two definitions
 
 	table = T;
 
-	AT = (MR_TrieNode) &(table->MR_subgoal->answer_table);
+	AT = (MR_TrieNode) &(table->MR_subgoal->MR_sg_answer_table);
 #else
 	MR_fatal_error(""minimal model code entered when not enabled"");
 #endif
@@ -893,7 +924,7 @@ XXX :- external stops us from using these two definitions
 
 	table = T;
 	subgoal = table->MR_subgoal;
-	subgoal->num_ans++;
+	subgoal->MR_sg_num_ans++;
 
 	/*
 	**
@@ -903,22 +934,25 @@ XXX :- external stops us from using these two definitions
 	*/
 
 	answer_node = MR_TABLE_NEW(MR_AnswerListNode);
-	answer_node->answer_num = subgoal->num_ans;
-	answer_node->answer_data.MR_integer = 0;
-	answer_node->next_answer = NULL;
+	answer_node->MR_aln_answer_num = subgoal->MR_sg_num_ans;
+	answer_node->MR_aln_answer_data.MR_integer = 0;
+	answer_node->MR_aln_next_answer = NULL;
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf(""new answer slot %d at %p(%p), storing into %p\\n"",
-			subgoal->num_ans, answer_node,
-			&answer_node->answer_data, subgoal->answer_list_tail);
+		printf(""%s: new answer slot %d at %p(%p)\n"",
+			MR_subgoal_addr_name(subgoal),
+			subgoal->MR_sg_num_ans, answer_node,
+			&answer_node->MR_aln_answer_data);
+		printf(""\tstoring into %p\\n"",
+			subgoal->MR_sg_answer_list_tail);
 	}
 #endif
 
-	*(subgoal->answer_list_tail) = answer_node;
-	subgoal->answer_list_tail = &(answer_node->next_answer);
+	*(subgoal->MR_sg_answer_list_tail) = answer_node;
+	subgoal->MR_sg_answer_list_tail = &(answer_node->MR_aln_next_answer);
 
-	Slot = (MR_Word) &(answer_node->answer_data);
+	Slot = (MR_TrieNode) &(answer_node->MR_aln_answer_data);
 #endif
 ").
 
@@ -961,12 +995,12 @@ table_nondet_return_all_ans_2(CurNode0, Answer) :-
 	MR_TrieNode	table;
 
 	table = T;
-	CurNode = table->MR_subgoal->answer_list;
+	CurNode = table->MR_subgoal->MR_sg_answer_list;
 
   #ifdef MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf(""restoring all answers in %p -> %p\\n"",
-			table, table->MR_subgoal);
+		printf(""restoring all answers in %p -> %s\\n"",
+			table, MR_subgoal_addr_name(table->MR_subgoal));
 	}
   #endif
 #else
@@ -985,10 +1019,21 @@ table_nondet_return_all_ans_2(CurNode0, Answer) :-
 	if (CurNode0 == NULL) {
 		SUCCESS_INDICATOR = MR_FALSE;
 	} else {
-		AnswerBlock = &CurNode0->answer_data;
-		CurNode = CurNode0->next_answer;
+		AnswerBlock = &CurNode0->MR_aln_answer_data;
+		CurNode = CurNode0->MR_aln_next_answer;
 		SUCCESS_INDICATOR = MR_TRUE;
 	}
+#else
+	MR_fatal_error(""minimal model code entered when not enabled"");
+#endif
+").
+
+:- pragma foreign_proc("C",
+	table_subgoal_status(T::in, Status::out),
+	[will_not_call_mercury],
+"
+#ifdef MR_USE_MINIMAL_MODEL
+	Status = MR_CONVERT_C_ENUM_CONSTANT(T->MR_subgoal->MR_sg_status);
 #else
 	MR_fatal_error(""minimal model code entered when not enabled"");
 #endif
@@ -1045,6 +1090,13 @@ return_next_answer(_, _, _) :-
 	% matching foreign_proc version.
 	impure private_builtin__imp,
 	private_builtin__sorry("return_next_answer").
+
+:- pragma promise_semipure(table_subgoal_status/2).
+table_subgoal_status(_, _) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry("table_subgoal_status").
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1995, 1997-2000 The University of Melbourne.
+** Copyright (C) 1994-1995,1997-2000,2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -115,13 +115,18 @@
 #define MR_gen_next		MR_LVALUE_CAST(MR_Integer,		\
 				MR_count_usage(MR_GEN_NEXT_RN, MR_mr(42)))
 #define MR_gen_stack		MR_LVALUE_CAST(				\
-				struct MR_GeneratorStackFrameStruct *,	\
+				struct MR_GenStackFrameStruct *,	\
 				MR_count_usage(MR_GEN_STACK_RN, MR_mr(43)))
 #define MR_cut_next		MR_LVALUE_CAST(MR_Integer,		\
 				MR_count_usage(MR_CUT_NEXT_RN, MR_mr(44)))
 #define MR_cut_stack		MR_LVALUE_CAST(				\
 				struct MR_CutStackFrameStruct *,	\
 				MR_count_usage(MR_CUT_STACK_RN, MR_mr(45)))
+#define MR_pneg_next		MR_LVALUE_CAST(MR_Integer,		\
+				MR_count_usage(MR_CUT_NEXT_RN, MR_mr(46)))
+#define MR_pneg_stack		MR_LVALUE_CAST(				\
+				struct MR_PNegStackFrameStruct *,	\
+				MR_count_usage(MR_CUT_STACK_RN, MR_mr(47)))
 #define MR_trail_ptr		MR_count_usage(MR_TRAIL_PTR_RN,		\
 				MR_trail_ptr_var)
 #define MR_ticket_counter	MR_count_usage(MR_TICKET_COUNTER_RN,	\
@@ -141,7 +146,7 @@
 #define MR_NUM_SPECIAL_REG	16
 
 /* the maximum MR_mrN number of special registers */
-#define	MR_MAX_SPECIAL_REG_MR	45
+#define	MR_MAX_SPECIAL_REG_MR	47
 
 /*
 ** The MR_saved_foo macros are like MR_foo except that
@@ -170,13 +175,18 @@
 #define MR_saved_gen_next(save_area)	MR_LVALUE_CAST(MR_Integer, \
 						save_area[42])
 #define MR_saved_gen_stack(save_area)	MR_LVALUE_CAST(struct \
-						MR_GeneratorStackFrameStruct *,\
+						MR_GenStackFrameStruct *, \
 						save_area[43])
 #define MR_saved_cut_next(save_area)	MR_LVALUE_CAST(MR_Integer, \
 						save_area[44])
 #define MR_saved_cut_stack(save_area)	MR_LVALUE_CAST(struct \
 						MR_CutStackFrameStruct *, \
 						save_area[45])
+#define MR_saved_pneg_next(save_area)	MR_LVALUE_CAST(MR_Integer, \
+						save_area[46])
+#define MR_saved_pneg_stack(save_area)	MR_LVALUE_CAST(struct \
+						MR_PNegStackFrameStruct *, \
+						save_area[47])
 
 #define MR_VIRTUAL_REG_MAP_BODY	{ \
 	3, \
@@ -303,13 +313,18 @@
 #define MR_gen_next		MR_LVALUE_CAST(MR_Integer,		\
 				MR_count_usage(MR_GEN_NEXT_RN, MR_mr(41)))
 #define MR_gen_stack		MR_LVALUE_CAST(				\
-				struct MR_GeneratorStackFrameStruct *,	\
+				struct MR_GenStackFrameStruct *,	\
 				MR_count_usage(MR_GEN_STACK_RN, MR_mr(42)))
 #define MR_cut_next		MR_LVALUE_CAST(MR_Integer,		\
 				MR_count_usage(MR_CUT_NEXT_RN, MR_mr(43)))
 #define MR_cut_stack		MR_LVALUE_CAST(				\
 				struct MR_CutStackFrameStruct *,	\
 				MR_count_usage(MR_CUT_STACK_RN, MR_mr(44)))
+#define MR_pneg_next		MR_LVALUE_CAST(MR_Integer,		\
+				MR_count_usage(MR_CUT_NEXT_RN, MR_mr(45)))
+#define MR_pneg_stack		MR_LVALUE_CAST(				\
+				struct MR_PNegStackFrameStruct *,	\
+				MR_count_usage(MR_CUT_STACK_RN, MR_mr(46)))
 
 /*
 ** the number of "very special" registers, i.e. special registers that can
@@ -323,7 +338,7 @@
 #define MR_NUM_SPECIAL_REG	15
 
 /* the maximum MR_mrN number of special, non rN registers */
-#define	MR_MAX_SPECIAL_REG_MR	44
+#define	MR_MAX_SPECIAL_REG_MR	46
 
 /*
 ** The MR_saved_foo macros are like MR_foo except that
@@ -352,13 +367,18 @@
 #define MR_saved_gen_stack(save_area)	MR_LVALUE_CAST(MR_Integer, \
 						save_area[41])
 #define MR_saved_gen_next(save_area)	MR_LVALUE_CAST(struct \
-						MR_GeneratorStackFrameStruct *,\
+						MR_GenStackFrameStruct *, \
 						save_area[42])
 #define MR_saved_cut_stack(save_area)	MR_LVALUE_CAST(MR_Integer, \
 						save_area[43])
 #define MR_saved_cut_next(save_area)	MR_LVALUE_CAST(struct \
 						MR_CutStackFrameStruct *,\
 						save_area[44])
+#define MR_saved_pneg_stack(save_area)	MR_LVALUE_CAST(MR_Integer, \
+						save_area[45])
+#define MR_saved_pneg_next(save_area)	MR_LVALUE_CAST(struct \
+						MR_PNegStackFrameStruct *,\
+						save_area[46])
 
 #define MR_VIRTUAL_REG_MAP_BODY	{ \
 	2, \

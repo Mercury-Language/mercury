@@ -1,0 +1,22 @@
+       1:      1  1 CALL pred all_solutions.main/2-0 (det) all_solutions.m:16
+mdb> echo on
+Command echo enabled.
+mdb> context none
+Contexts will not be printed.
+mdb> register --quiet
+mdb> break hello
+ 0: + stop  interface pred all_solutions.hello/1-0 (multi)
+mdb> continue
+       2:      2  2 CALL pred all_solutions.hello/1-0 (multi)
+mdb> stack
+   0       pred all_solutions.hello/1-0 (multi)
+reached label with no stack layout info.
+mdb> retry 1
+reached label with no stack layout info
+mdb> retry 2
+reached label with no stack layout info
+mdb> retry 3
+reached label with no stack layout info
+mdb> continue -n -S
+Hello again, world
+Hello, world

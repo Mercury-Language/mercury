@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2000,2002 The University of Melbourne.
+** Copyright (C) 1994-2000,2002-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -103,8 +103,9 @@
 */
 
 #ifdef	MR_USE_MINIMAL_MODEL
-  MR_MemoryZone *MR_generatorstack_zone;
+  MR_MemoryZone *MR_genstack_zone;
   MR_MemoryZone *MR_cutstack_zone;
+  MR_MemoryZone *MR_pnegstack_zone;
 #endif
 
 size_t		MR_unit;
@@ -168,14 +169,18 @@ MR_init_memory(void)
 	MR_nondstack_zone_size	 = MR_round_up(MR_nondstack_zone_size * 1024,
 					MR_unit);
 #ifdef	MR_USE_MINIMAL_MODEL
-	MR_generatorstack_size	 = MR_round_up(MR_generatorstack_size * 1024,
+	MR_genstack_size	 = MR_round_up(MR_genstack_size * 1024,
 					MR_unit);
-	MR_generatorstack_zone_size = MR_round_up(
-					MR_generatorstack_zone_size * 1024,
+	MR_genstack_zone_size = MR_round_up(
+					MR_genstack_zone_size * 1024,
 					MR_unit);
 	MR_cutstack_size	 = MR_round_up(MR_cutstack_size * 1024,
 					MR_unit);
 	MR_cutstack_zone_size	 = MR_round_up(MR_cutstack_zone_size * 1024,
+					MR_unit);
+	MR_pnegstack_size	 = MR_round_up(MR_pnegstack_size * 1024,
+					MR_unit);
+	MR_pnegstack_zone_size	 = MR_round_up(MR_pnegstack_zone_size * 1024,
 					MR_unit);
 #endif
 

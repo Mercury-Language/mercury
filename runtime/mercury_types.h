@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1995-2002 The University of Melbourne.
+** Copyright (C) 1995-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -134,6 +134,29 @@ typedef struct MR_Label_Layout_Struct           MR_Label_Layout;
 
 typedef union MR_TableNode_Union                MR_TableNode;
 typedef MR_TableNode                            *MR_TrieNode;
+
+typedef struct MR_HashTable_Struct              MR_HashTable;
+typedef struct MR_Subgoal_Struct                MR_Subgoal;
+typedef struct MR_SubgoalListNode_Struct        MR_SubgoalListNode;
+typedef struct MR_AnswerListNode_Struct         MR_AnswerListNode;
+typedef struct MR_Consumer_Struct               MR_Consumer;
+typedef struct MR_ConsumerListNode_Struct       MR_ConsumerListNode;
+
+typedef MR_SubgoalListNode                      *MR_SubgoalList;
+typedef MR_AnswerListNode                       *MR_AnswerList;
+typedef MR_ConsumerListNode                     *MR_ConsumerList;
+
+typedef struct MR_GenStackFrameStruct           MR_GenStackFrame;
+typedef struct MR_CutStackFrameStruct           MR_CutStackFrame;
+typedef struct MR_PNegStackFrameStruct          MR_PNegStackFrame;
+
+typedef struct MR_PNegConsumerListNodeStruct    MR_PNegConsumerListNode;
+typedef MR_PNegConsumerListNode                 *MR_PNegConsumerList;
+
+typedef struct MR_ConsumerDebug_Struct          MR_ConsumerDebug;
+typedef struct MR_SubgoalDebug_Struct           MR_SubgoalDebug;
+
+/*---------------------------------------------------------------------------*/
 
 /*
 ** The MR_Box type is used for representing polymorphic types.

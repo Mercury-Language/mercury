@@ -39,7 +39,8 @@ extern	MR_bool	MR_debugflag[];
 
 /*
 ** These #defines, except MR_MAXFLAG, should not be used anywhere
-** except in the immediately following block of #defines.
+** except in the immediately following block of #defines, and in the
+** array that maps these names to their slots in the source file.
 */
 
 #define	MR_PROGFLAG		0
@@ -131,6 +132,13 @@ extern	MR_bool	MR_debugflag[];
 #define	MR_ordregdebug		MR_debugflag[MR_ORDINARY_REG_FLAG]
 #define	MR_anyregdebug		MR_debugflag[MR_ANY_REG_FLAG]
 #define	MR_detaildebug		MR_debugflag[MR_DETAILFLAG]
+
+typedef struct {
+	const char		*MR_debug_flag_name;
+	int			MR_debug_flag_index;
+} MR_Debug_Flag_Info;
+
+extern	MR_Debug_Flag_Info	MR_debug_flag_info[MR_MAXFLAG];
 
 	/* 
 	** MR_setjmp and MR_longjmp are wrappers around setjmp and longjmp 

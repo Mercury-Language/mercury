@@ -129,10 +129,9 @@ MR_init_context(MR_Context *c)
 	if (c->MR_ctxt_genstack_zone != NULL) {
 		MR_reset_redzone(c->MR_ctxt_genstack_zone);
 	} else {
-		c->MR_ctxt_genstack_zone = MR_create_zone(
-			"generatorstack", 0,
-			MR_generatorstack_size, MR_next_offset(),
-			MR_generatorstack_zone_size, MR_default_handler);
+		c->MR_ctxt_genstack_zone = MR_create_zone("genstack", 0,
+			MR_genstack_size, MR_next_offset(),
+			MR_genstack_zone_size, MR_default_handler);
 	}
 	c->MR_ctxt_gen_next = 0;
 
@@ -144,6 +143,15 @@ MR_init_context(MR_Context *c)
 			MR_cutstack_zone_size, MR_default_handler);
 	}
 	c->MR_ctxt_cut_next = 0;
+
+	if (c->MR_ctxt_pnegstack_zone != NULL) {
+		MR_reset_redzone(c->MR_ctxt_pnegstack_zone);
+	} else {
+		c->MR_ctxt_pnegstack_zone = MR_create_zone("pnegstack", 0,
+			MR_pnegstack_size, MR_next_offset(),
+			MR_pnegstack_zone_size, MR_default_handler);
+	}
+	c->MR_ctxt_pneg_next = 0;
   #endif /* MR_USE_MINIMAL_MODEL */
 #endif /* !MR_HIGHLEVEL_CODE */
 

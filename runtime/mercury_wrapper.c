@@ -63,13 +63,14 @@ ENDINIT
   size_t	MR_heap_size =			4096;
 #endif
 size_t		MR_detstack_size =		4096;
-size_t		MR_nondstack_size = 		 128;
+size_t		MR_nondstack_size =	 	 128;
 size_t		MR_solutions_heap_size =	1024;
 size_t		MR_global_heap_size =		1024;
 size_t		MR_trail_size =			 128;
 size_t		MR_debug_heap_size =		4096;
-size_t		MR_generatorstack_size =	  32;
+size_t		MR_genstack_size =		  32;
 size_t		MR_cutstack_size =		  32;
+size_t		MR_pnegstack_size =		  32;
 
 /* size of the redzones at the end of data areas, in kilobytes */
 /* (but we later multiply by 1024 to convert to bytes) */
@@ -80,8 +81,9 @@ size_t		MR_solutions_heap_zone_size =	  16;
 size_t		MR_global_heap_zone_size =	  16;
 size_t		MR_trail_zone_size =		  16;
 size_t		MR_debug_heap_zone_size =	  16;
-size_t		MR_generatorstack_zone_size =	  16;
+size_t		MR_genstack_zone_size =		  16;
 size_t		MR_cutstack_zone_size =		  16;
+size_t		MR_pnegstack_zone_size =	  16;
 
 /*
 ** MR_heap_margin_size is used for accurate GC with the MLDS->C back-end.
@@ -387,14 +389,14 @@ mercury_runtime_init(int argc, char **argv)
 
 #if defined(MR_LOWLEVEL_DEBUG) || defined(MR_TABLE_DEBUG)
 	if (MR_unbufdebug) {
-	/*
-	** Ensure stdio & stderr are unbuffered even if redirected.
-	** Using setvbuf() is more complicated than using setlinebuf(),
-	** but also more portable.
-	*/
+		/*
+		** Ensure stdio & stderr are unbuffered even if redirected.
+		** Using setvbuf() is more complicated than using setlinebuf(),
+		** but also more portable.
+		*/
 
-	setvbuf(stdout, NULL, _IONBF, 0);
-	setvbuf(stderr, NULL, _IONBF, 0);
+		setvbuf(stdout, NULL, _IONBF, 0);
+		setvbuf(stderr, NULL, _IONBF, 0);
 	}
 #endif
 
@@ -1724,6 +1726,16 @@ MR_define_entry(MR_do_interpreter);
 	MR_nondet_stack_trace_bottom = MR_maxfr;
 	MR_stack_trace_bottom = MR_LABEL(global_success);
 
+#ifdef	MR_LOWLEVEL_DEBUG
+	if (MR_finaldebug) {
+		MR_save_transient_registers();
+		MR_printregs("do_interpreter started");
+		if (MR_detaildebug) {
+			MR_dumpnondstack();
+		}
+	}
+#endif
+
 	if (MR_program_entry_point == NULL) {
 		MR_fatal_error("no program entry point supplied");
 	}
@@ -1742,8 +1754,9 @@ MR_define_label(global_success);
 	if (MR_finaldebug) {
 		MR_save_transient_registers();
 		MR_printregs("global succeeded");
-		if (MR_detaildebug)
+		if (MR_detaildebug) {
 			MR_dumpnondstack();
+		}
 	}
 #endif
 

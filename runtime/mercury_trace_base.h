@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2002 The University of Melbourne.
+** Copyright (C) 1997-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -19,6 +19,7 @@
 #include "mercury_stack_layout.h"
 #include "mercury_std.h"
 #include "mercury_tabling.h"	/* for MR_TableNode */
+#include "mercury_goto.h"	/* for MR_declare_entry */
 
 /*
 ** This enum should EXACTLY match the definition of the `trace_port_type'
@@ -345,5 +346,12 @@ extern	void	MR_trace_print_histogram(FILE *fp, const char *which,
 			int *histogram, int max);
 
 #endif	/* MR_TRACE_HISTOGRAM */
+
+#ifndef	MR_HIGHLEVEL_CODE
+
+MR_declare_entry(MR_do_trace_redo_fail_shallow);
+MR_declare_entry(MR_do_trace_redo_fail_deep);
+
+#endif	/* !MR_HIGHLEVEL_CODE */
 
 #endif /* MERCURY_TRACE_BASE_H */

@@ -56,7 +56,52 @@ MR_mkframe_msg(const char *predname)
 	printf("prev fr: "); MR_printnondstack(MR_prevfr_slot(MR_curfr));
 	printf("succ fr: "); MR_printnondstack(MR_succfr_slot(MR_curfr));
 	printf("succ ip: "); MR_printlabel(stdout, MR_succip_slot(MR_curfr));
+	printf("redo fr: "); MR_printnondstack(MR_redofr_slot(MR_curfr));
 	printf("redo ip: "); MR_printlabel(stdout, MR_redoip_slot(MR_curfr));
+#ifdef	MR_USE_MINIMAL_MODEL
+	printf("det fr:  "); MR_printdetstack(MR_table_detfr_slot(MR_curfr));
+#endif
+
+	if (MR_detaildebug) {
+		MR_dumpnondstack();
+	}
+}
+
+void 
+MR_mktempframe_msg(void)
+{
+	MR_restore_transient_registers();
+
+	if (!MR_lld_print_enabled) {
+		return;
+	}
+
+	printf("\nnew temp nondet frame\n");
+	printf("new  fr: "); MR_printnondstack(MR_maxfr);
+	printf("prev fr: "); MR_printnondstack(MR_prevfr_slot(MR_maxfr));
+	printf("redo fr: "); MR_printnondstack(MR_redofr_slot(MR_maxfr));
+	printf("redo ip: "); MR_printlabel(stdout, MR_redoip_slot(MR_maxfr));
+
+	if (MR_detaildebug) {
+		MR_dumpnondstack();
+	}
+}
+
+void 
+MR_mkdettempframe_msg(void)
+{
+	MR_restore_transient_registers();
+
+	if (!MR_lld_print_enabled) {
+		return;
+	}
+
+	printf("\nnew det temp nondet frame\n");
+	printf("new  fr: "); MR_printnondstack(MR_maxfr);
+	printf("prev fr: "); MR_printnondstack(MR_prevfr_slot(MR_maxfr));
+	printf("redo fr: "); MR_printnondstack(MR_redofr_slot(MR_maxfr));
+	printf("redo ip: "); MR_printlabel(stdout, MR_redoip_slot(MR_maxfr));
+	printf("det fr:  "); MR_printdetstack(MR_tmp_detfr_slot(MR_maxfr));
 
 	if (MR_detaildebug) {
 		MR_dumpnondstack();
@@ -681,7 +726,7 @@ MR_printdetstackptr(const MR_Word *s)
 void 
 MR_print_detstackptr(FILE *fp, const MR_Word *s)
 {
-	fprintf(fp, "det %3ld ",
+	fprintf(fp, "det %3ld",
 		(long) (MR_Integer)
 			(s - MR_CONTEXT(MR_ctxt_detstack_zone)->min));
 

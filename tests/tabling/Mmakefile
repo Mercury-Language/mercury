@@ -24,6 +24,7 @@ NONDET_PROGS = \
 	coup_no_commit \
 	coup_non_tabled_frame \
 	generator_in_commit \
+	mday \
 	repeat \
 	seq \
 	tc_loop \
@@ -36,7 +37,6 @@ NONDET_PROGS = \
 #	consumer_in_commit
 #	consumer_in_solutions
 #	combine
-#	mday
 
 # Tabling does not yet work in .rt grades
 ifneq "$(findstring .gc,$(GRADE))" ""
