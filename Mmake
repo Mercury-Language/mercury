@@ -12,11 +12,9 @@ include Mmake.common
 SUBDIRS = scripts runtime boehm_gc library compiler doc
 
 SUBDIR_MMAKE =	PATH=../scripts:$$PATH \
-		MERCURY_INT_DIR=../library \
-		MMAKE_VPATH=. \
 		MMAKE_VARS=../scripts/Mmake.vars \
 		MMAKE_RULES=../scripts/Mmake.rules \
-		$(MMAKE) $(MMAKEFLAGS)
+		../scripts/mmake $(MMAKEFLAGS)
 
 #-----------------------------------------------------------------------------#
 
