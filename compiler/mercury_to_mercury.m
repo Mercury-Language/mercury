@@ -1757,6 +1757,7 @@ mercury_output_type_defn(TVarSet, Name, Args,
 	; ForeignType = java(java(ForeignTypeStr))
 	},
 	io__write_string(ForeignTypeStr),
+	io__write_string("\""),
 	(
 		{ Assertions = [] }
 	;
@@ -1766,7 +1767,7 @@ mercury_output_type_defn(TVarSet, Name, Args,
 			mercury_output_foreign_type_assertion),
 		io__write_string("]")
 	),
-	io__write_string("\")"),
+	io__write_string(")"),
 	( { MaybeEqCompare = yes(_) } ->
 		io__write_string(" ")
 	;
