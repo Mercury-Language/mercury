@@ -293,14 +293,19 @@ jumpopt__short_labels([Label0 | Labels0], Instrmap, [Label | Labels], Mod) :-
 	% Find the final destination of a given instruction at a given label.
 	% We follow gotos as well as consecutive labels.
 
-	% Currently we don't check for infinite loops.  This is OK at
-	% the moment since the compiler never generates code containing
-	% infinite loops, but it may cause problems in the future.
-
 :- pred jumpopt__final_dest(label, instruction, instrmap, label, instruction).
 :- mode jumpopt__final_dest(in, in, in, out, out) is det.
 
+:- pred jumpopt__final_dest_2(label, instruction, instrmap, list(label),
+	label, instruction).
+:- mode jumpopt__final_dest_2(in, in, in, in, out, out) is det.
+
 jumpopt__final_dest(SrcLabel, SrcInstr, Instrmap, DestLabel, DestInstr) :-
+	jumpopt__final_dest_2(SrcLabel, SrcInstr, Instrmap, [],
+		DestLabel, DestInstr).
+
+jumpopt__final_dest_2(SrcLabel, SrcInstr, Instrmap, LabelsSofar,
+		DestLabel, DestInstr) :-
 	(
 		SrcInstr = SrcUinstr - _Comment,
 		(
@@ -308,10 +313,11 @@ jumpopt__final_dest(SrcLabel, SrcInstr, Instrmap, DestLabel, DestInstr) :-
 		;
 			SrcUinstr = label(TargetLabel)
 		),
-		map__search(Instrmap, TargetLabel, TargetInstr)
+		map__search(Instrmap, TargetLabel, TargetInstr),
+		\+ list__member(SrcLabel, LabelsSofar)
 	->
-		jumpopt__final_dest(TargetLabel, TargetInstr,
-			Instrmap, DestLabel, DestInstr)
+		jumpopt__final_dest_2(TargetLabel, TargetInstr, Instrmap,
+			[SrcLabel | LabelsSofar], DestLabel, DestInstr)
 	;
 		DestLabel = SrcLabel,
 		DestInstr = SrcInstr
