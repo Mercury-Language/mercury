@@ -45,8 +45,11 @@ MLLIBS  =	$(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A \
 		$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A \
 		$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A ` \
 		    case $(GRADE) in \
-			*.gc*.prof*)    echo $(BOEHM_GC_DIR)/libgc_prof.$A ;; \
-			*.gc*)          echo $(BOEHM_GC_DIR)/libgc.$A ;; \
+			*.par*.gc*.prof*) \
+				echo $(BOEHM_GC_DIR)/libpar_gc_prof.$A ;; \
+			*.par*.gc*)	echo $(BOEHM_GC_DIR)/libpar_gc.$A ;; \
+			*.gc*.prof*)	echo $(BOEHM_GC_DIR)/libgc_prof.$A ;; \
+			*.gc*)		echo $(BOEHM_GC_DIR)/libgc.$A ;; \
 		    esac \
 		` -lm
 MSL	=	MERCURY_SP_LIB_DIR=$(LIBRARY_DIR) $(SCRIPTS_DIR)/msl

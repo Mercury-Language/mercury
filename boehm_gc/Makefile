@@ -247,10 +247,10 @@ $(OBJS) test.o dyn_load.o dyn_load_sunos53.o: $(srcdir)/gc_priv.h $(srcdir)/gc_h
 mark.o typd_mlc.o finalize.o: $(srcdir)/gc_mark.h
 
 # Mercury-specific target:
-libgc$(PROF)$(DLL_DEF_LIB).a: gc.a
-	rm -f libgc$(PROF)$(DLL_DEF_LIB).a
+lib$(GC_GRADE)$(DLL_DEF_LIB).a: gc.a
+	rm -f lib$(GC_GRADE)$(DLL_DEF_LIB).a
 	# `ln -s' here doesn't work with gnu-win32, so we use `cp' instead
-	cp gc.a libgc$(PROF)$(DLL_DEF_LIB).a
+	cp gc.a lib$(GC_GRADE)$(DLL_DEF_LIB).a
 
 base_lib gc.a: $(OBJS) dyn_load.o $(UTILS)
 	echo > base_lib
@@ -297,16 +297,16 @@ dyn_load_sunos53.o: dyn_load.c
 
 # Mercury-specific target:
 # generic shared library version of the collector
-libgc$(PROF).so: $(OBJS) $(UTILS) # dyn_load_sunos53.o
+lib$(GC_GRADE).so: $(OBJS) $(UTILS) # dyn_load_sunos53.o
 	rm -f on_sparc_sunos5_so
 	./if_mach SPARC SUNOS5 touch on_sparc_sunos5_so
 	./if_mach SPARC SUNOS5 $(MAKE) dyn_load_sunos53.o
 	./if_mach SPARC SUNOS5 \
-	$(LINK_SHARED_OBJ) -o libgc$(PROF).so $(OBJS) dyn_load_sunos53.o \
+	$(LINK_SHARED_OBJ) -o lib$(GC_GRADE).so $(OBJS) dyn_load_sunos53.o \
 		-ldl `./threadlibs`
 	./if_not_there on_sparc_sunos5_so $(MAKE) dyn_load.o
 	./if_not_there on_sparc_sunos5_so \
-	$(LINK_SHARED_OBJ) -o libgc$(PROF).so $(OBJS) dyn_load.o -lc
+	$(LINK_SHARED_OBJ) -o lib$(GC_GRADE).so $(OBJS) dyn_load.o -lc
 
 
 # SunOS5 shared library version of the collector
@@ -489,10 +489,10 @@ user_namespace: $(SRCS)
 # so we need targets `a', `so', and `dll'.
 
 .PHONY: a
-a: libgc$(PROF).a
+a: lib$(GC_GRADE).a
 
 .PHONY: so
-so: libgc$(PROF).so
+so: lib$(GC_GRADE).so
 
 #-----------------------------------------------------------------------------#
 # support for DLLs using gnu-win32
@@ -509,7 +509,7 @@ dll: libgc.dll libgc.a libgc_dll.h libgc_globals.h
 	@echo Made DLL
 
 # GNU Make seems to need these extra dependencies as a hint
-libgc$(PROF).dll: libgc$(PROF)$(DLL_DEF_LIB) libgc.def
+lib$(GC_GRADE).dll: lib$(GC_GRADE)$(DLL_DEF_LIB) libgc.def
 
 test_dll.o: test.c libgc_dll.h libgc_globals.h
 	$(CC) $(CFLAGS) -UGC_DEFINE_DLL -c test.c -o test_dll.o

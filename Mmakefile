@@ -104,15 +104,8 @@ scripts:
 
 .PHONY: boehm_gc
 boehm_gc: scripts
-	case $(GRADE) in \
-	    *.prof*) \
-		prof=_prof \
-		;; \
-	    *) \
-		prof= \
-		;; \
-	esac; \
-	cd boehm_gc && $(SUBDIR_MMAKE) PROF=$$prof
+	gc_grade=`scripts/ml --grade $(GRADE) --print-gc-grade`
+	cd boehm_gc && $(SUBDIR_MMAKE) GC_GRADE=$$gc_grade
 
 .PHONY: runtime
 runtime: scripts boehm_gc
@@ -303,15 +296,8 @@ install_trace: trace
 
 .PHONY: install_boehm_gc
 install_boehm_gc: boehm_gc
-	case $(GRADE) in \
-	    *.prof*) \
-		prof=_prof \
-		;; \
-	    *) \
-		prof= \
-		;; \
-	esac; \
-	cd boehm_gc && $(SUBDIR_MMAKE) install PROF=$$prof
+	gc_grade=`scripts/ml --grade $(GRADE) --print-gc-grade`
+	cd boehm_gc && $(SUBDIR_MMAKE) install GC_GRADE=$$gc_grade
 
 .PHONY: install_library
 install_library: dep_library library
@@ -358,16 +344,9 @@ install_grades: scripts
 	#
 	for grade in x $(LIBGRADES); do \
 	    if [ "$$grade" != "x" ]; then \
-	        case "$$grade" in \
-	            *.prof*) \
-		        prof=_prof \
-		        ;; \
-		    *) \
-		        prof= \
-		        ;; \
-	        esac; \
+	    	gc_grade=`scripts/ml --grade $$grade --print-gc-grade`
 	        ( cd boehm_gc && \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade PROF=$$prof \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade GC_GRADE=$$gc_grade \
 		  	install_lib ) && \
 		( cd runtime && \
 		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_lib ) && \

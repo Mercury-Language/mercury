@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-1999 The University of Melbourne.
+# Copyright (C) 1997-2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -39,8 +39,10 @@ ORIG_CS		= bytecode.c dict.c disasm.c machine.c mbi.c mbi_main.c \
 
 LIBS		= -lmer ` \
                   case "$(GRADE)" in \
-                        *.gc.prof*) echo "-lgc_prof" ;; \
-                        *.gc) echo "-lgc" ;; \
+		    *.par*.gc*.prof*)	echo "-lpar_gc_prof" ;;		\
+		    *.par*.gc*)		echo "-lpar_gc" ;;		\
+		    *.gc*.prof*)	echo "-lgc_prof" ;;		\
+		    *.gc*)		echo "-lgc" ;;			\
                   esac \
                   `
 

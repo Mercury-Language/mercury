@@ -24,8 +24,8 @@ OBJS= alloc.obj reclaim.obj allchblk.obj misc.obj mach_dep.obj os_dep.obj mark_r
 
 all: gctest.exe cord\de.exe test_cpp.exe
 
-dll: libgcd$(PROF)$(DLL_DEF_LIB).dll
-libgc$(PROF)$(DLL_DEF_LIB).dll: libgcd.dll
+dll: lib$(GC_GRADE)d$(DLL_DEF_LIB).dll
+lib$(GC_GRADE)$(DLL_DEF_LIB).dll: libgcd.dll
 # had -DSMALL_CONFIG
 %.obj:%.c
 	$(cc) $(cdebug) $(CFLAGS) $(cvars)  -DSILENT -DLARGE_CONFIG -DALL_INTERIOR_POINTERS -D__STDC__  /c /Fo$*.obj $*.c
@@ -38,16 +38,16 @@ $(OBJS) test.obj: gc_priv.h gc_hdrs.h gc.h
 gc.lib: $(OBJS)
 	lib /MACHINE:i386 /out:gc.lib $(OBJS)
 # a .def defining exports should be made....
-libgcd$(PROF)$(DLL_DEF_LIB).dll: $(OBJS)
-#	$(link) /MACHINE:i386 /DLL /out:libgcd.dll $(OBJS)
+lib$(GC_GRADE)d$(DLL_DEF_LIB).dll: $(OBJS)
+#	$(link) /MACHINE:i386 /DLL /out:lib$(GC_GRADE)d.dll $(OBJS)
 
 # The original NT SDK used lib32 instead of lib
 
 
-libgc$(PROF)$(DLL_DEF_LIB).lib: gc.lib
-	rm -f libgc$(PROF)$(DLL_DEF_LIB).lib
+lib$(GC_GRADE)$(DLL_DEF_LIB).lib: gc.lib
+	rm -f lib$(GC_GRADE)$(DLL_DEF_LIB).lib
 	# `ln -s' here doesn't work with gnu-win32, so we use `cp' instead
-	cp gc.lib libgc$(PROF)$(DLL_DEF_LIB).lib
+	cp gc.lib lib$(GC_GRADE)$(DLL_DEF_LIB).lib
 
 gctest.exe: test.obj libgc.lib
 #	The following works for win32 debugging.  For win32s debugging use debugtype:coff
@@ -91,7 +91,7 @@ clean:
 # so we need targets `a', `so', and `dll'.
 
 .PHONY: lib
-lib: libgc$(PROF).lib
+lib: lib$(GC_GRADE).lib
 
 .PHONY: so
 so:

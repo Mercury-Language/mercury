@@ -56,8 +56,10 @@ MGNUCFLAGS =	$(DLL_CFLAGS)
 LDFLAGS	=	-L$(LIBRARY_DIR) -L$(RUNTIME_DIR) -L$(BOEHM_GC_DIR)
 LDLIBS	=	-l$(STD_LIB_NAME) -l$(RT_LIB_NAME) \
 		` case "$(GRADE)" in 					\
-		    *.gc*.prof*) echo "-lgc_prof" ;;			\
-		    *.gc*)	 echo "-lgc" ;;				\
+		    *.par*.gc*.prof*)	echo "-lpar_gc_prof" ;;		\
+		    *.par*.gc*)		echo "-lpar_gc" ;;		\
+		    *.gc*.prof*)	echo "-lgc_prof" ;;		\
+		    *.gc*)		echo "-lgc" ;;			\
 		  esac							\
 		`
 
