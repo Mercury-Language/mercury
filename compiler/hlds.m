@@ -1188,6 +1188,9 @@ pred_info_mark_as_external(PredInfo0, PredInfo) :-
 :- pred proc_info_variables(proc_info, varset).
 :- mode proc_info_variables(in, out) is det.
 
+:- pred proc_info_set_variables(proc_info, varset, proc_info).
+:- mode proc_info_set_variables(in, in, out) is det.
+
 :- pred proc_info_vartypes(proc_info, map(var, type)).
 :- mode proc_info_vartypes(in, out) is det.
 
@@ -1347,6 +1350,10 @@ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, reachable(InstMapping)) :-
 		% XXX propagate type info!
 	mode_list_get_initial_insts(ArgModes, ModuleInfo, InitialInsts),
 	map__from_corresponding_lists(HeadVars, InitialInsts, InstMapping).
+
+proc_info_set_variables(ProcInfo0, Vars, ProcInfo) :-
+	ProcInfo0 = procedure(A, _, C, D, E, F, G, H, I, J, K, L),
+	ProcInfo = procedure(A, Vars, C, D, E, F, G, H, I, J, K, L).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

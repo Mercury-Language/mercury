@@ -21,7 +21,7 @@
 :- implementation.
 :- import_module prog_io, make_hlds, typecheck, modes, switch_detection.
 :- import_module liveness, det_analysis, follow_code, follow_vars, live_vars.
-:- import_module arg_info, store_alloc, code_gen, peephole, llds.
+:- import_module arg_info, store_alloc, code_gen, peephole, llds, inlining.
 :- import_module prog_out, prog_util, hlds_out.
 :- import_module mercury_to_mercury, mercury_to_goedel.
 :- import_module getopt, options, globals.
@@ -889,7 +889,9 @@ mercury_compile(module(_, _, _, _, _)) -->
 	( { DoModeCheck = yes } ->
 		mercury_compile__modecheck(HLDS2, HLDS3, FoundModeError),
 
-		mercury_compile__detect_switches(HLDS3, HLDS5),
+		mercury_compile__detect_switches(HLDS3, HLDS5a),
+
+		mercury_compile__inlining(HLDS5a, HLDS5),
 
 		mercury_compile__maybe_migrate_followcode(HLDS5, HLDS6),
 
@@ -897,6 +899,7 @@ mercury_compile(module(_, _, _, _, _)) -->
 			FoundDeterminismError),
 
 		mercury_compile__compute_liveness(HLDS7, HLDS8)
+
 	;
 		{ HLDS8 = HLDS2 },
 		{ FoundModeError = no },
@@ -1138,6 +1141,19 @@ mercury_compile__compute_liveness(HLDS0, HLDS) -->
 	maybe_write_string(Verbose, "% Computing liveness..."),
 	maybe_flush_output(Verbose),
 	{ detect_liveness(HLDS0, HLDS) },
+	maybe_write_string(Verbose, " done.\n"),
+	globals__io_lookup_bool_option(statistics, Statistics),
+	maybe_report_stats(Statistics).
+
+:- pred mercury_compile__inlining(module_info, module_info,
+						io__state, io__state).
+:- mode mercury_compile__inlining(in, out, di, uo) is det.
+
+mercury_compile__inlining(HLDS0, HLDS) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	maybe_write_string(Verbose, "% Inlining..."),
+	maybe_flush_output(Verbose),
+	{ inlining(HLDS0, HLDS) },
 	maybe_write_string(Verbose, " done.\n"),
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics).
