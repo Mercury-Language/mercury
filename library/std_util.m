@@ -2380,7 +2380,8 @@ extern  void    ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
 
     /*
     ** NB. ML_arg() is also used by arg_ref and new_arg_ref
-    ** in store.m and in extras/trailed_update/tr_store.m.
+    ** in store.m, in trace/mercury_trace_vars.m, and in
+    ** extras/trailed_update/tr_store.m.
     */
 extern  bool    ML_arg(MR_TypeInfo type_info, Word *term, int arg_index,
                     MR_TypeInfo *arg_type_info_ptr, Word **argument_ptr);
