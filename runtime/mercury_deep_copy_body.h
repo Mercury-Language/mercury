@@ -360,7 +360,7 @@ try_again:
 		    ** reference to thread-local storage that we haven't
 		    ** allocated.
 		    */
-                    new_data = MR_box_float(MR_unbox_float(data));
+                    new_data = (MR_Word) MR_box_float(MR_unbox_float(data));
 #else
                     new_data = MR_float_to_word(MR_word_to_float(data));
 #endif
