@@ -477,14 +477,21 @@ code_info__flush_variable(Var, Code) -->
 	% unused - do nothing.
 code_info__generate_expression(unused, _, []) --> [].
 code_info__generate_expression(lval(Lval), TargetReg, Code) -->
-	{ Code = [assign(TargetReg, lval(Lval)) - "Copy lvalue"] }.
+	(
+		{ Lval = TargetReg }
+	->
+		{ Code = [] }
+	;
+		{ Code = [assign(TargetReg, lval(Lval)) - "Copy lvalue"] }
+	).
 code_info__generate_expression(var(Var), TargetReg, Code) -->
 	code_info__get_variable(Var, VarStat),
 	(
 		{ VarStat = evaluated(Lvals0) }
 	->
 		(
-			{ code_info__select_lvalue(Lvals0, TargetReg, Lval0) }
+			{ code_info__select_lvalue(Lvals0, TargetReg, Lval0) },
+			{ not Lval0 = TargetReg }
 		->
 			code_info__make_assignment_comment(Var,
 							TargetReg, Comment),
@@ -1007,13 +1014,22 @@ code_info__get_live_variables_2([Var|Vars0], Vars) -->
 code_info__generate_forced_saves([], empty) --> [].
 code_info__generate_forced_saves([Var - Slot|VarSlots], Code) --> 
 	(
-		code_info__variable_is_live(Var)
+		code_info__variable_is_live(Var),
+		code_info__get_variables(Variables),
+		{ map__contains(Variables, Var) }
 	->
 		code_info__generate_expression(var(Var), stackvar(Slot),
 								Code0),
 		code_info__add_lvalue_to_variable(stackvar(Slot), Var),
 		code_info__generate_forced_saves(VarSlots, RestCode),
 		{ Code = tree(node(Code0), RestCode) }
+	;
+			% This case should only occur in the presence
+			% of `erroneous' procedures.
+		code_info__variable_is_live(Var)
+	->
+		code_info__add_lvalue_to_variable(stackvar(Slot), Var),
+		code_info__generate_forced_saves(VarSlots, Code)
 	;
 		code_info__generate_forced_saves(VarSlots, Code)
 	).
@@ -1152,7 +1168,16 @@ code_info__lvalues_dependencies(Var, [L|Ls], V0, V) -->
 						in, out, in, out) is det.
 
 code_info__lvalue_dependencies(_Var, stackvar(_), V, V) --> [].
-code_info__lvalue_dependencies(_Var, reg(_), V, V) --> [].
+code_info__lvalue_dependencies(_Var, reg(R), V0, V) -->
+	code_info__get_registers(Registers),
+	(
+		{ map__search(Registers, R, vars(Vars0)) }
+	->
+		{ set__to_sorted_list(Vars0, Vars) },
+		{ code_info__update_variables_2(Vars, reg(R), V0, V) }
+	;
+		{ V = V0 }
+	).
 code_info__lvalue_dependencies(Var, field(_, Lval, _), V0, V) -->
 	code_info__lvalue_dependencies(Var, Lval, V0, V).
 
@@ -1170,6 +1195,16 @@ code_info__update_variables(Var, VarStat, Variables0, Variables) :-
 	;
 		Variables = Variables0
 	).
+
+:- pred code_info__update_variables_2(list(var), lval,
+					variable_info, variable_info).
+:- mode code_info__update_variables_2(in, in, in, out) is det.
+
+code_info__update_variables_2([], _L, V, V).
+code_info__update_variables_2([Var|Vars], Lval, V0, V) :-
+	set__singleton_set(Lvals, Lval),
+	code_info__update_variables(Var, evaluated(Lvals), V0, V1),
+	code_info__update_variables_2(Vars, Lval, V1, V).
 
 %---------------------------------------------------------------------------%
 
@@ -1198,6 +1233,10 @@ code_info__reenter_registers(Var, [L|Ls]) -->
 		{ L = reg(R) }
 	->
 		code_info__add_variable_to_register(Var, R)
+	;
+		{ L = field(_, reg(R1), _) }
+	->
+		code_info__add_variable_to_register(Var, R1)
 	;
 		{ true }
 	),
