@@ -10001,11 +10001,12 @@ reconciled_svar_infos(VarSet, Dots, Colons,
 			Dots,
 			SInfo0
 		 ),
-	SInfo  = set__fold(
+	SInfo2 = set__fold(
 			reconciled_svar_infos_colons(VarSet, SInfoX),
 			Colons,
 			SInfo1
-		 ).
+		 ),
+	SInfo  = ( SInfo2 ^ num := max(SInfo0 ^ num, SInfoX ^ num) ).
 
 
 :- func reconciled_svar_infos_dots(prog_varset, svar_info, svar, svar_info) =
