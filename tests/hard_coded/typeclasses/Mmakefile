@@ -8,6 +8,7 @@ PROGS=	\
 	arbitrary_constraint_class \
 	arbitrary_constraint_pred_2 \
 	arbitrary_constraint_pred_1 \
+	complicated_constraint \
 	constrained_lambda \
 	extract_typeinfo \
 	exist_disjunction \
@@ -62,10 +63,6 @@ PROGS=	\
 	unbound_tvar \
 	unqualified_method \
 	use_abstract_instance
-
-# The following tests are not enabled:
-#	complicated_constraint --
-#		because we don't support that feature yet
 
 TESTS = $(PROGS)
 SUBDIRS=
