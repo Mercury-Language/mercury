@@ -389,7 +389,6 @@ MR_get_type_base(const MR_Stack_Layout_Vars *vars, int i,
 	Word *saved_regs, Word *base_sp, Word *base_curfr,
 	Word *type_params, Word *type_info)
 {
-	bool	succeeded;
 	Word	*pseudo_type_info;
 
 	pseudo_type_info = MR_var_pti(vars, i);
