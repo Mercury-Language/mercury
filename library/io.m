@@ -1786,8 +1786,8 @@ io__read_file_as_string(Stream, Result) -->
 
 :- pred io__read_file_as_string_2(io__input_stream, buffer, int, int,
 		buffer, int, int, io__state, io__state).
-:- mode io__read_file_as_string_2(in, di, in, in,
-		uo, out, out, di, uo) is det.
+:- mode io__read_file_as_string_2(in, buffer_di, in, in,
+		buffer_uo, out, out, di, uo) is det.
 
 io__read_file_as_string_2(Stream, Buffer0, Pos0, Size0, Buffer, Pos, Size) -->
 	io__read_into_buffer(Stream, Buffer0, Pos0, Size0,
@@ -2085,11 +2085,23 @@ io__file_modification_time_2(_, _, _, _) -->
 % A `buffer' is just an array of Chars.
 % Buffer sizes are measured in Chars.
 
-:- type buffer ---> buffer(c_pointer).
+:- type buffer.
+:- pragma foreign_type(c, buffer, "MR_Char *").
 
-:- pred io__alloc_buffer(int::in, buffer::uo) is det.
+	% XXX It would be better to use a char_array (e.g. defined as char[] in
+	% C#) type rather than array(char).  This is because on the Java and IL
+	% backends indexing into an array whose element type is known
+	% statically requires less overhead.
+:- type buffer ---> buffer(array(char)).
+
+	% XXX Extend the workaround for no `ui' modes in array.m.
+:- inst uniq_buffer = bound(buffer(uniq_array)).
+:- mode buffer_di == di(uniq_buffer).
+:- mode buffer_uo == out(uniq_buffer).
+
+:- pred io__alloc_buffer(int::in, buffer::buffer_uo) is det.
 :- pragma foreign_proc("C", 
-	io__alloc_buffer(Size::in, Buffer::uo),
+	io__alloc_buffer(Size::in, Buffer::buffer_uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
 	MR_incr_hp_atomic_msg(Buffer,
@@ -2098,15 +2110,16 @@ io__file_modification_time_2(_, _, _, _) -->
 		MR_PROC_LABEL, ""io:buffer/0"");
 }").
 
-io__alloc_buffer(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("io__alloc_buffer").
+io__alloc_buffer(Size, buffer(Array)) :-
+		% XXX '0' is used as Mercury doesn't recognise '\0' as 
+		% a char constant.
+	array__init(Size, '0', Array).
 
-:- pred io__resize_buffer(buffer::di, int::in, int::in, buffer::uo) is det.
+:- pred io__resize_buffer(buffer::buffer_di, int::in, int::in,
+		buffer::buffer_uo) is det.
 :- pragma foreign_proc("C",
-	io__resize_buffer(Buffer0::di, OldSize::in,
-		NewSize::in, Buffer::uo),
+	io__resize_buffer(Buffer0::buffer_di, OldSize::in,
+		NewSize::in, Buffer::buffer_uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
 	MR_Char *buffer0 = (MR_Char *) Buffer0;
@@ -2142,44 +2155,41 @@ io__alloc_buffer(_, _) :-
 	Buffer = (MR_Word) buffer;
 }").
 
-io__resize_buffer(_, _, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("io__resize_buffer").
+io__resize_buffer(buffer(Array0), _OldSize, NewSize, buffer(Array)) :-
+		% XXX '0' is used as Mercury doesn't recognise '\0' as 
+		% a char constant.
+	array__resize(Array0, NewSize, '0', Array).
 
-:- pred io__buffer_to_string(buffer::di, int::in, string::uo) is det.
+:- pred io__buffer_to_string(buffer::buffer_di, int::in, string::uo) is det.
 :- pragma foreign_proc("C", 
-	io__buffer_to_string(Buffer::di, Len::in, Str::uo),
+	io__buffer_to_string(Buffer::buffer_di, Len::in, Str::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
 	Str = (MR_String) Buffer;
 	Str[Len] = '\\0';
 }").
 
-io__buffer_to_string(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("io__buffer_to_string/3").
+io__buffer_to_string(buffer(Array), Len, from_char_list(List)) :-
+	array__fetch_items(Array, min(Array), min(Array) + Len - 1, List).
 
-:- pred io__buffer_to_string(buffer::di, string::uo) is det.
+:- pred io__buffer_to_string(buffer::buffer_di, string::uo) is det.
 :- pragma foreign_proc("C",
-	io__buffer_to_string(Buffer::di, Str::uo),
+	io__buffer_to_string(Buffer::buffer_di, Str::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
 	Str = (MR_String) Buffer;
 }").
 
-io__buffer_to_string(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("io__buffer_to_string/2").
+io__buffer_to_string(buffer(Array), from_char_list(List)) :-
+	array__fetch_items(Array, min(Array), max(Array), List).
 
-:- pred io__read_into_buffer(stream::in, buffer::di, int::in, int::in,
-		    buffer::uo, int::out, io__state::di, io__state::uo) is det.
+:- pred io__read_into_buffer(stream::in, buffer::buffer_di, int::in, int::in,
+		    buffer::buffer_uo, int::out,
+		    io__state::di, io__state::uo) is det.
 
 :- pragma foreign_proc("C",
-	io__read_into_buffer(Stream::in, Buffer0::di, Pos0::in, Size::in,
-		    Buffer::uo, Pos::out, IO0::di, IO::uo),
+	io__read_into_buffer(Stream::in, Buffer0::buffer_di, Pos0::in,
+		    Size::in, Buffer::buffer_uo, Pos::out, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io,
 			thread_safe],
 "{
@@ -2194,11 +2204,28 @@ io__buffer_to_string(_, _) :-
 	MR_update_io(IO0, IO);
 }").
 
+io__read_into_buffer(Stream, buffer(Array0), Pos0, Size, buffer(Array), Pos) -->
+	io__read_into_array(Stream, Array0, Pos0, Size, Array, Pos).
 
-io__read_into_buffer(_, _, _, _, _, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__read_into_buffer") }.
+:- pred io__read_into_array(stream::in, array(char)::array_di, int::in, int::in,
+		    array(char)::array_uo, int::out,
+		    io__state::di, io__state::uo) is det.
+
+io__read_into_array(Stream, Array0, Pos0, Size, Array, Pos) -->
+	( { Pos0 >= Size } ->
+		{ Array = Array0 },
+		{ Pos = Pos0 }
+	;
+		io__read_char(Stream, CharResult),
+		( { CharResult = ok(Char) } ->
+			{ array__set(Array0, Pos0, Char, Array1) },
+			io__read_into_array(Stream, Array1, Pos0 + 1,
+					Size, Array, Pos)
+		;
+			{ Array = Array0 },
+			{ Pos = Pos0}
+		)
+	).
 
 %-----------------------------------------------------------------------------%
 
