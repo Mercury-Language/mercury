@@ -89,10 +89,11 @@
 
 :- external(term_io__read_term/3).
 
-% /***
+/**** This line is only in sp_lib.nl, because for efficiency we'd rather
+      use the Prolog parser in term_io.nu.nl if we can.
 term_io__read_term(Result) -->
 	parser__read_term(Result).
-% ****/
+****/
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
