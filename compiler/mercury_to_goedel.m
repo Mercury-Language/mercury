@@ -27,7 +27,7 @@
 :- interface.
 
 :- import_module string, list, prog_io, io.
-:- import_module globals, options.
+:- import_module globals, options, require.
 
 :- pred convert_to_goedel(string, list(item_and_context), io__state, io__state).
 :- mode convert_to_goedel(in, in, di, uo) is det.
@@ -407,6 +407,14 @@ goedel_output_goal(fail, _, _) -->
 
 goedel_output_goal(true, _, _) -->
 	io__write_string("True").
+
+	% Implication and equivalence should have been transformed out
+	% by now
+goedel_output_goal(implies(_G1,_G2), _VarSet, _Indent) -->
+	{ error("mercury_to_goedel: implies/2 in goedel_output_goal")}.
+
+goedel_output_goal(equivalent(_G1,_G2), _VarSet, _Indent) -->
+	{ error("mercury_to_goedel: equivalent/2 in goedel_output_goal")}.
 
 goedel_output_goal(some(Vars, Goal), VarSet, Indent) -->
 	( { Vars = [] } ->

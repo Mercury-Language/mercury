@@ -35,7 +35,11 @@
 :- import_module prog_util, prog_out, hlds_out.
 :- import_module globals, options.
 :- import_module make_tags, quantification.
+<<<<<<< make_hlds.nl
+:- import_module unify_proc, type_util, implication.
+=======
 :- import_module unify_proc.
+>>>>>>> 1.96
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ module_info_init(Name, Module0) },
@@ -782,6 +786,12 @@ vars_in_goal(some(Vs, G)) -->
 vars_in_goal(all(Vs, G)) -->
 	list__append(Vs),
 	vars_in_goal(G).
+vars_in_goal(implies(A,B)) -->
+	vars_in_goal(A),
+	vars_in_goal(B).
+vars_in_goal(equivalent(A,B)) -->
+	vars_in_goal(A),
+	vars_in_goal(B).
 vars_in_goal(unify(A, B)) -->
 	vars_in_term(A),
 	vars_in_term(B).
@@ -900,6 +910,14 @@ transform_goal((A0;B0), VarSet0, Subst, Goal, VarSet) :-
 	get_disj(A0, Subst, L0, VarSet1, L, VarSet),
 	goal_info_init(GoalInfo),
 	disj_list_to_goal(L, GoalInfo, Goal).
+
+transform_goal(implies(Goal0,Goal1), VarSet0, Subst, Goal, VarSet) :-
+	implication__expand_implication(Goal0, Goal1, TransformedGoal),
+	transform_goal(TransformedGoal, VarSet0, Subst, Goal, VarSet).
+
+transform_goal(equivalent(Goal0,Goal1), VarSet0, Subst,	Goal, VarSet) :-
+	implication__expand_equivalence(Goal0, Goal1, TransformedGoal),
+	transform_goal(TransformedGoal, VarSet0, Subst, Goal, VarSet).
 
 transform_goal(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 

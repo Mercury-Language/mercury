@@ -33,6 +33,10 @@
 % predicates.  For the moment, just be careful that any changes
 % you make are reflected correctly in all similar parts of this
 % file.
+%
+% Implication and equivalence implemented by squirrel, who would also
+% like to get her hands on this file and give it a good clean up and
+% put it into good clean "mercury" style!
 
 % Wishlist:
 %
@@ -108,9 +112,9 @@
 %-----------------------------------------------------------------------------%
 
 	% Here's how clauses and goals are represented.
-	% (Constructs like "=>", "<=", and "<=>" are considered to be
-	% just higher-order predicates, and so aren't represented
-	% specially here.)
+	% a => b --> implies(vars, a, b)
+	% a <= b --> implies(vars, b, a) [just flips the goals around!]
+	% a <=> b --> equivalent(vars, a, b)
 
 % clause/4 defined above
 
@@ -123,6 +127,8 @@
 			;	not(vars,goal)
 			;	some(vars,goal)
 			;	all(vars,goal)
+			;	implies(goal,goal)
+			;	equivalent(goal,goal)
 			;	if_then(vars,goal,goal)
 			;	if_then_else(vars,goal,goal,goal)
 			;	call(term)
@@ -712,6 +718,21 @@ parse_goal_2("\\+", [A0], not([],A) ) :-
 parse_goal_2("all", [Vars0,A0], all(Vars,A) ):-
 	term__vars(Vars0, Vars),
 	parse_goal(A0, A).
+	
+	% handle implication
+parse_goal_2("<=", [A0,B0], implies(B,A) ):-
+	parse_goal(A0, A),
+	parse_goal(B0, B).
+
+parse_goal_2("=>", [A0,B0], implies(A,B) ):-
+	parse_goal(A0, A),
+	parse_goal(B0, B).
+
+	% handle equivalence
+parse_goal_2("<=>", [A0,B0], equivalent(A,B) ):-
+	parse_goal(A0, A),
+	parse_goal(B0, B).
+
 parse_goal_2("some", [Vars0,A0], some(Vars,A) ):-
 	term__vars(Vars0, Vars),
 	parse_goal(A0, A).
@@ -900,6 +921,25 @@ parse_dcg_goal_2("->", [A0,B0], _, VarSet0, N0, Var0,
 			unify(term__variable(Var), term__variable(Var0)))
 	).
 
+	% Handle implication operators
+parse_dcg_goal_2("=>", [Goal0, Goal1], _, VarSet0, N0, Var0,
+		implies(Goal2, Goal3), VarSet, N, Var) :-
+	parse_dcg_goal(Goal0, VarSet0, N0, Var0, Goal2, VarSet1, N1, Var1),
+	parse_dcg_goal(Goal1, VarSet1, N1, Var1, Goal3, VarSet, N, Var).
+
+parse_dcg_goal_2("<=", [Goal0, Goal1], _, VarSet0, N0, Var0,
+		implies(Goal3, Goal2), VarSet, N, Var) :-
+	parse_dcg_goal(Goal0, VarSet0, N0, Var0, Goal2, VarSet1, N1, Var1),
+	parse_dcg_goal(Goal1, VarSet1, N1, Var1, Goal3, VarSet, N, Var).
+
+	% Handle equivalence
+parse_dcg_goal_2("<=>", [Goal0, Goal1], _, VarSet0, N0, Var0,
+		equivalent(Goal2, Goal3), VarSet, N, Var) :-
+	parse_dcg_goal(Goal0, VarSet0, N0, Var0, Goal2, VarSet1, N1, Var1),
+	parse_dcg_goal(Goal1, VarSet1, N1, Var1, Goal3, VarSet, N, Var).
+
+
+
 	% If-then (NU-Prolog syntax).
 parse_dcg_goal_2("if", [
 			term__functor(term__atom("then"),[A0,B0],_)
@@ -1087,7 +1127,6 @@ process_dcg_clause(error(ErrMessage, Term), _, _, _, _,
 		error(ErrMessage, Term)).
 
 %-----------------------------------------------------------------------------%
-
 	% parse a declaration
 
 :- pred parse_decl(varset, term, maybe1(item)).

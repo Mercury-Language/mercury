@@ -52,7 +52,7 @@
 
 :- implementation.
 :- import_module int, set, prog_out, prog_util, term_io, std_util.
-:- import_module globals, options.
+:- import_module globals, options, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -579,6 +579,15 @@ mercury_output_goal(fail, _, _) -->
 
 mercury_output_goal(true, _, _) -->
 	io__write_string("true").
+
+	% Implication and equivalence should have been transformed out
+	% by now
+mercury_output_goal(implies(_G1,_G2), _VarSet, _Indent) -->
+	{ error("mercury_to_mercury: implies/2 in mercury_output_goal")}.
+
+mercury_output_goal(equivalent(_G1,_G2), _VarSet, _Indent) -->
+	{ error("mercury_to_mercury: equivalent/2 in mercury_output_goal")}.
+
 
 mercury_output_goal(some(Vars, Goal), VarSet, Indent) -->
 	( { Vars = [] } ->
