@@ -57,13 +57,7 @@
 assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 
 		% work out how many tag bits there are
-	globals__get_options(Globals, OptionTable),
-	map__lookup(OptionTable, num_tag_bits, OptionData),
-	( OptionData = int(NumTagBits0) ->
-		NumTagBits = NumTagBits0
-	;
-		error("assign_constructor_tags: invalid int option")
-	),
+	globals__lookup_int_option(Globals, num_tag_bits, NumTagBits),
 
 		% now assign them
 	map__init(CtorTags0),
