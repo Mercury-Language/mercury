@@ -1,5 +1,5 @@
 
-We are pleased to announce the first public release of the Mercury system.
+We are pleased to announce the release of version 0.4 of the Mercury system.
 
 Mercury is a new, purely declarative logic programming language.
 Like Prolog and other existing logic programming languages, it is a
@@ -10,6 +10,36 @@ Mercury is designed for the construction of large, reliable, efficient
 software systems by teams of programmers.  As a consequence,
 programming in Mercury has a different flavor than programming in
 Prolog.
+
+Here's what new in this release:
+
+	* Higher-order predicates and lambda expressions are now implemented.
+	  (This means that `call/{1,2,3,4}' and `solutions/2' are now usable;
+	  unfortunately call/{5,6,...} are still not yet implemented.)
+	* Unique modes are now partially implemented (but don't use them
+	  for anything except I/O, as the implementation is not yet complete).
+	* Partially instantiated modes are now closer to being fully
+	  implemented.
+	* The installation process is more standard (basically
+	  just `configure; make; make install').
+	* Autoconfiguration is a bit more robust.
+	* `msc' and `mnc' now produce somewhat smaller object files.
+	* Error and warning messages are a little better in some cases.
+	* Fixed a few code generation bugs.
+	* Ported to DEC Alpha/OSF and BSDI BSD/386.
+	* We've improved the efficiency of the 386 port by about 70%.
+	  (50% because asm_fast.gc mode now works on the 386, the rest
+	  due to better optimization).
+	* We generate better code for calls to `\='.
+	* We generate better code for `compare/3'.
+	* A few other new optimizations.
+	* The profiler now works (documentation is sparse, though - see
+	  the file profiler/README).
+	* Some new library predicates, including `string__format'
+	  (like C's sprintf).
+	* `set__join/2' has been renamed as `set__power_union/2'.
+	* `list__sort/2' has been renamed as `list__sort_and_remove_dups/2'.
+	* There is a new `list__sort/2' which does not remove duplicates.
 
 The main features of Mercury are:
 
@@ -119,6 +149,9 @@ The main features of Mercury are:
 	that are not exported, Mercury supports automatic determinism
 	inference.
 
+     o  Mercury supports higher-order programming,
+	with closures, currying, and lambda expressions.
+
      o  Mercury is very efficient (in comparison with existing logic
 	programming languages).  Strong types, modes, and determinism
 	provide the compiler with the information it needs to generate
@@ -132,19 +165,20 @@ remaining part of the program is mostly compatible with Prolog syntax.
 The Mercury compiler compiles Mercury programs to C, which it uses as a
 portable assembler. The system can exploit some GNU C extensions to the
 C language, if they are available: the ability to declare global
-register variables and the ability to take the addresses of labels.
-Using these extensions, it generates code that is significantly better
-than all previous Prolog systems known to us. However, the system does
-not need these extensions, and will work in their absence.
+register variables, the ability to take the addresses of labels, and
+the ability to use inline assembler.  Using these extensions, it
+generates code that is significantly better than all previous Prolog
+systems known to us. However, the system does not need these
+extensions, and will work in their absence.
 
 The current Mercury system runs on Unix machines. It is known to run on
-Solaris 2.x, IRIX 5.x, Ultrix 4.3, BSDI 1.1, and Linux. It should run
-without too many changes on other Unix variants as well. The current
-distribution uses gcc as the compiler. We require gcc version 2.6.3 or
-higher, due to a bug in some earlier versions of gcc. You will also
-need GNU make.
+Solaris 2.x, IRIX 5.x, Ultrix 4.3, OSF/1.1, BSDI 1.1, and Linux. It
+should run without too many changes on other Unix variants as well. The
+current distribution uses gcc as the compiler. We require gcc version
+2.6.3 or higher, due to a bug in some earlier versions of gcc. You will
+also need GNU make.
 
-This first Mercury distribution contains:
+The Mercury distribution contains:
 
      o  an autoconfiguration script
      o  the Mercury source for the compiler
@@ -153,6 +187,7 @@ This first Mercury distribution contains:
         and the stardard library
      o  the runtime system (written in C)
      o  Hans Boehm's conservative garbage collector for C
+     o  a profiler
      o  some utility programs, including a make front-end for Mercury
 	with automatic dependency recomputation
      o  the Mercury language reference manual
@@ -162,9 +197,18 @@ This first Mercury distribution contains:
      o  the Prolog to Mercury transition guide
      o  some sample Mercury programs
 
-You can get the distribution by ftp from
-turiel.cs.mu.oz.au (128.250.1.10) as /pub/mercury/mercury-0.3.tar.gz
-or by WWW from <http://www.cs.mu.oz.au/~fjh/mercury/mercury-0.3.tar.gz>.
+The Mercury distribution is available via anonymous ftp or WWW
+from the following locations:
+
+	Australia:
+		ftp://ftp.cs.mu.oz.au/pub/mercury
+		ftp://turiel.cs.mu.oz.au/pub/mercury
+		http://www.cs.mu.oz.au/~fjh/mercury
+	USA:
+		ftp://ftp.cs.sunysb.edu/pub/XSB/mercury
+	Europe:
+		ftp://ftp.csd.uu.se/pub/Mercury
+
 The home page of the project on the Web is
 <http://www.cs.mu.oz.au/~zs/mercury.html>.
 
@@ -172,4 +216,4 @@ Fergus Henderson	<fjh@cs.mu.oz.au>
 Thomas Conway		<conway@cs.mu.oz.au> 
 Zoltan Somogyi		<zs@cs.mu.oz.au> 
 
-Department of Computer Science, University of Melbourne, AUSTRALIA
+Department of Computer Science, University of Melbourne, Australia

@@ -1,6 +1,6 @@
 
 The current implementation does not yet completely implement
-the Mercury language. The features which are not yet fully
+the Mercury language. The main features which are not yet fully
 implemented are
 
 	- partially instantiated modes
@@ -9,6 +9,10 @@ implemented are
 
 These features are also not yet documented. :-(
 
-We'd also like to provide a much better C interface and
-a better garbage collector.
+When the above features are implemented, we will consider the
+implementation to be in some sense "complete", and release version 1.0.
+Of course, those are not the only things we're working on.  Amoung
+other things, we'd like to provide a much better C interface and a
+better garbage collector.  We're also working on a parallel/multithreaded
+version of Mercury.
 

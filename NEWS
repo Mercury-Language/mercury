@@ -1,25 +1,31 @@
 NEWS for Mercury release 0.4
 ----------------------------
 
-Higher-order predicates and lambda expressions are now implemented.
-(This means that `call/{1,2,3}' and `solutions/2' are now usable;
-unfortunately call/{4,5,6,...} are still not yet implemented.)
-Unique modes are now partially implemented (but don't use them
-for anything except I/O, as the implementation is not yet complete).
-Partially instantiated modes are now closer to being fully implemented.
-The installation process is more standard (configure; make; make install).
-Autoconfiguration is a bit more robust.
-`msc' and `mnc' now produce somewhat smaller object files.
-Error messages are a little better in some cases.
-Fixed a few code generation bugs.
-Ported to DEC Alpha/OSF and BSDI BSD/386.
-We've improved the efficiency of the 386 port by about 50%
-(the asm_fast.gc mode now works on the 386).
-We generate better code for calls to `\='.
-We generate better code for `compare/3'.
-A few other new optimizations.
-The profiler now works (documentation is sparse, though - see profiler/README).
-Some new library predicates, including `string__format' (like C's sprintf).
-`set__join/2' has been renamed as `set__power_union/2'.
-`list__sort/2' has been renamed as `list__sort_and_remove_dups/2'.
-There is a new `list__sort/2' which does not remove duplicates.
+* Higher-order predicates and lambda expressions are now implemented.
+  (This means that `call/{1,2,3,4}' and `solutions/2' are now usable;
+  unfortunately call/{5,6,...} are still not yet implemented.)
+* Unique modes are now partially implemented (but don't use them
+  for anything except I/O, as the implementation is not yet complete).
+* Partially instantiated modes are now closer to being fully
+  implemented.
+* The installation process is more standard (basically
+  just `configure; make; make install').
+* Autoconfiguration is a bit more robust.
+* `msc' and `mnc' now produce somewhat smaller object files.
+* Error and warning messages are a little better in some cases.
+* Fixed a few code generation bugs.
+* Ported to DEC Alpha/OSF and BSDI BSD/386.
+* We've improved the efficiency of the 386 port by about 70%.
+  (50% because asm_fast.gc mode now works on the 386, the rest
+  due to better optimization).
+* We generate better code for calls to `\='.
+* We generate better code for `compare/3'.
+* A few other new optimizations.
+* The profiler now works (documentation is sparse, though - see
+  the file profiler/README).
+* Some new library predicates, including `string__format'
+  (like C's sprintf).
+* `set__join/2' has been renamed as `set__power_union/2'.
+* `list__sort/2' has been renamed as `list__sort_and_remove_dups/2'.
+* There is a new `list__sort/2' which does not remove duplicates.
+
