@@ -2,6 +2,16 @@ NEWS since Mercury release 0.10.1:
 ----------------------------------
 
 Changes to the Mercury language:
+
+* If a higher-order function term has inst 'ground' it is now assumed to have
+  the standard higher-order function inst 'func(in, .., in) = out is det'.  
+  This makes higher-order functional programming much easier, particularly when
+  passing functions to polymorphic predicates.
+
+  This change is not backwards compatible since, for safety, we must now
+  disallow calls that would cause a variable that has a nonstandard function
+  inst to become 'ground'.
+
 * The constructor for lists is now called '[|]' rather than '.'.
   `./2' will eventually become the module qualification operator.
   This change only affects programs which use `./2' explicitly.

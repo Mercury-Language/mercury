@@ -18,6 +18,7 @@ MULTIMODULE_SOURCES= \
 	aditi_update_errors.m \
 	aditi_update_mode_errors.m \
 	duplicate_instance_2.m \
+	ho_default_func_2.m \
 	imported_mode.m \
 	partial_implied_mode.m \
 	test_nested.m \
@@ -45,6 +46,8 @@ SINGLEMODULE_SOURCES= \
 	field_syntax_error.m \
 	func_errors.m \
 	funcs_as_preds.m \
+	ho_default_func_1.m \
+	ho_default_func_3.m \
 	ho_type_mode_bug.m \
 	ho_unique_error.m \
 	impure_method_impl.m \
@@ -134,6 +137,9 @@ SOURCES= $(SINGLEMODULE_SOURCES) $(MULTIMODULE_SOURCES)
 #			the type class name should be in quotes)
 #	typeclass_mode_{2,3,4}.m (compiler calls error/1)
 #	cyclic_typeclass.m (compiler goes into an infinite loop)
+#	ho_default_func_4.m (due to a bug in the mode-checker ---
+#			see XXX comment in inst_match:inst_matches_final_3)
+#	inst_matches_final_bug.m (due to same bug as ho_default_func_4.m)
 
 # Inter-module optimization changes the diagnostics for some
 # tests (in most cases reporting diagnostics when writing the `.opt'

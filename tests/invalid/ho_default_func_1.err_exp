@@ -1,0 +1,6 @@
+ho_default_func_1.m:029: In clause for `baz(in, out)':
+ho_default_func_1.m:029:   in call to function `std_util:univ/1':
+ho_default_func_1.m:029:   mode error: arguments `TypeInfo_13, V_7, V_6'
+ho_default_func_1.m:029:   have insts `unique(private_builtin:type_info(unique(<type_ctor_info for :func/0>), unique(2), unique(<type_ctor_info for :int/0>), unique(<type_ctor_info for :int/0>))), /* unique */(func((free -> ground)) = (ground -> ground) is det), free',
+ho_default_func_1.m:029:   which does not match any of the modes for function `std_util:univ/1'.
+For more information, try recompiling with `-E'.

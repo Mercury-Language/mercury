@@ -142,7 +142,7 @@
 :- import_module unused_args, inst_match, (inst), quantification, mode_util.
 :- import_module code_aux, purity, mode_info, unique_modes, pd_debug.
 :- import_module type_util, det_util, det_analysis, options, goal_util.
-:- import_module det_report.
+:- import_module det_report, inst_util.
 :- import_module assoc_list, int, require, set, term.
 
 pd_util__goal_get_calls(Goal0, CalledPreds) :-
@@ -898,6 +898,8 @@ bound_inst_list_MSG(Xs, Ys, Expansions, ModuleInfo, Uniq, List, Inst) :-
 			Uniq = unique,
 			inst_is_unique(ModuleInfo, bound(unique, List))
 		),		
+		\+ inst_contains_nonstandard_func_mode(bound(shared, List),
+			ModuleInfo),
 		Inst = ground(Uniq, none)
 	).
 

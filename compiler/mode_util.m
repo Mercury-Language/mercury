@@ -1793,7 +1793,8 @@ normalise_inst(Inst0, Type, ModuleInfo, NormalisedInst) :-
 			% don't infer unique modes for introduced type_infos
 			% arguments, because that leads to an increase
 			% in the number of inferred modes without any benefit
-			\+ is_introduced_type_info_type(Type)
+			\+ is_introduced_type_info_type(Type),
+			\+ inst_contains_nonstandard_func_mode(Inst, ModuleInfo)
 		->
 			NormalisedInst = ground(unique, none)
 		;
@@ -1802,12 +1803,14 @@ normalise_inst(Inst0, Type, ModuleInfo, NormalisedInst) :-
 			% don't infer unique modes for introduced type_infos
 			% arguments, because that leads to an increase
 			% in the number of inferred modes without any benefit
-			\+ is_introduced_type_info_type(Type)
+			\+ is_introduced_type_info_type(Type),
+			\+ inst_contains_nonstandard_func_mode(Inst, ModuleInfo)
 		->
 			NormalisedInst = ground(mostly_unique, none)
 		;
 			inst_is_ground(ModuleInfo, Inst),
-			\+ inst_is_clobbered(ModuleInfo, Inst)
+			\+ inst_is_clobbered(ModuleInfo, Inst),
+			\+ inst_contains_nonstandard_func_mode(Inst, ModuleInfo)
 		->
 			NormalisedInst = ground(shared, none)
 		;

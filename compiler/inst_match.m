@@ -145,12 +145,18 @@ mode system to distinguish between different representations.
         % succeed if the inst is fully ground (i.e. contains only
         % `ground', `bound', and `not_reached' insts, with no `free'
         % or `any' insts).
+	% This predicate succeeds for non-standard function insts so some care
+	% needs to be taken since these insts may not be replaced by a less
+	% precise inst that uses the higher-order mode information.
 :- pred inst_is_ground(module_info, inst).
 :- mode inst_is_ground(in, in) is semidet.
 
         % succeed if the inst is not partly free (i.e. contains only
         % `any', `ground', `bound', and `not_reached' insts, with no
         % `free' insts).
+	% This predicate succeeds for non-standard function insts so some care
+	% needs to be taken since these insts may not be replaced by a less
+	% precise inst that uses the higher-order mode information.
 :- pred inst_is_ground_or_any(module_info, inst).
 :- mode inst_is_ground_or_any(in, in) is semidet.
 
@@ -370,7 +376,10 @@ inst_matches_initial_3(bound(Uniq, List), abstract_inst(_,_), _, Info, Info) :-
 	Uniq = mostly_unique,
 	bound_inst_list_is_ground(List, Info^module_info),
 	bound_inst_list_is_mostly_unique(List, Info^module_info).
-inst_matches_initial_3(ground(UniqA, _PredInst), any(UniqB), _, I, I) :-
+inst_matches_initial_3(ground(UniqA, GroundInstInfoA), any(UniqB), _,
+		Info, Info) :-
+	\+ ground_inst_info_is_nonstandard_func_mode(GroundInstInfoA,
+		Info^module_info),
 	unique_matches_initial(UniqA, UniqB).
 inst_matches_initial_3(ground(_Uniq, _PredInst), free, _, I, I).
 inst_matches_initial_3(ground(UniqA, GII_A), bound(UniqB, ListB), MaybeType,
@@ -534,7 +543,15 @@ update_inst_var_sub(InstVar, InstA, MaybeType, ModuleInfo0, ModuleInfo,
 		uniqueness, maybe(type), inst_match_info, inst_match_info).
 :- mode ground_inst_info_matches_initial(in, in, in, in, in, out) is semidet.
 
-ground_inst_info_matches_initial(_, none, _, _) --> [].
+ground_inst_info_matches_initial(GroundInstInfoA, none, _, _) -->
+	ModuleInfo =^ module_info,
+	{ \+ ground_inst_info_is_nonstandard_func_mode(GroundInstInfoA,
+		ModuleInfo) }.
+ground_inst_info_matches_initial(none, higher_order(PredInstB), _, Type) -->
+	{ PredInstB = pred_inst_info(function, ArgModes, _Det) },
+	{ Arity = list__length(ArgModes) },
+	{ PredInstA = pred_inst_info_standard_func_mode(Arity) },
+	pred_inst_matches_initial(PredInstA, PredInstB, Type).
 ground_inst_info_matches_initial(higher_order(PredInstA),
 		higher_order(PredInstB), _, MaybeType) -->
 	pred_inst_matches_initial(PredInstA, PredInstB, MaybeType).
@@ -785,10 +802,15 @@ inst_matches_final_3(bound(UniqA, ListA), ground(UniqB, none), _,
 	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_is_ground(ListA, Info^module_info),
 	bound_inst_list_matches_uniq(ListA, UniqB, Info^module_info).
-inst_matches_final_3(ground(UniqA, _), any(UniqB), _, I, I) :-
-	unique_matches_final(UniqA, UniqB).
-inst_matches_final_3(ground(UniqA, _), bound(UniqB, ListB), MaybeType,
+inst_matches_final_3(ground(UniqA, GroundInstInfoA), any(UniqB), _,
 		Info, Info) :-
+	\+ ground_inst_info_is_nonstandard_func_mode(GroundInstInfoA,
+		Info^module_info),
+	unique_matches_final(UniqA, UniqB).
+inst_matches_final_3(ground(UniqA, GroundInstInfoA), bound(UniqB, ListB),
+		MaybeType, Info, Info) :-
+	\+ ground_inst_info_is_nonstandard_func_mode(GroundInstInfoA,
+		Info^module_info),
 	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_is_ground(ListB, Info^module_info),
 	uniq_matches_bound_inst_list(UniqA, ListB, Info^module_info),
@@ -821,7 +843,15 @@ inst_matches_final_3(not_reached, _, _, I, I).
 		maybe(type), inst_match_info, inst_match_info).
 :- mode ground_inst_info_matches_final(in, in, in, in, out) is semidet.
 
-ground_inst_info_matches_final(_, none, _) --> [].
+ground_inst_info_matches_final(GroundInstInfoA, none, _) -->
+	ModuleInfo =^ module_info,
+	{ \+ ground_inst_info_is_nonstandard_func_mode(GroundInstInfoA,
+		ModuleInfo) }.
+ground_inst_info_matches_final(none, higher_order(PredInstB), Type) -->
+	{ PredInstB = pred_inst_info(function, ArgModes, _Det) },
+	{ Arity = list__length(ArgModes) },
+	{ PredInstA = pred_inst_info_standard_func_mode(Arity) },
+	pred_inst_matches_2(PredInstA, PredInstB, Type).
 ground_inst_info_matches_final(higher_order(PredInstA),
 		higher_order(PredInstB), MaybeType) -->
 	pred_inst_matches_2(PredInstA, PredInstB, MaybeType).
@@ -936,6 +966,12 @@ inst_matches_binding_3(not_reached, _, _, I, I).
 :- mode ground_inst_info_matches_binding(in, in, in, in) is semidet.
 
 ground_inst_info_matches_binding(_, none, _, _).
+ground_inst_info_matches_binding(none, higher_order(PredInstB), MaybeType,
+		ModuleInfo) :-
+	PredInstB = pred_inst_info(function, ArgModes, _Det),
+	Arity = list__length(ArgModes),
+	PredInstA = pred_inst_info_standard_func_mode(Arity),
+	pred_inst_matches_1(PredInstA, PredInstB, MaybeType, ModuleInfo).
 ground_inst_info_matches_binding(higher_order(PredInstA),
 		higher_order(PredInstB), MaybeType, ModuleInfo) :-
 	pred_inst_matches_1(PredInstA, PredInstB, MaybeType, ModuleInfo).

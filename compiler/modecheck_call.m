@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -69,7 +69,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module hlds_data, instmap, prog_data, (inst).
+:- import_module hlds_data, instmap, prog_data, (inst), inst_util, type_util.
 :- import_module mode_info, mode_debug, modes, mode_util, mode_errors.
 :- import_module clause_to_proc, inst_match.
 :- import_module det_report, unify_proc.
@@ -87,7 +87,20 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Modes, Det,
 	inst_expand(ModuleInfo0, PredVarInst0, PredVarInst),
 	list__length(Args0, Arity),
 	(
-		PredVarInst = ground(_Uniq, higher_order(PredInstInfo)),
+		PredVarInst = ground(_Uniq, GroundInstInfo),
+		(
+			GroundInstInfo = higher_order(PredInstInfo)
+		;
+			% If PredVar has no higher-order inst
+			% information, but is a function type, then
+			% assume the default function mode.
+			GroundInstInfo = none,
+			mode_info_get_var_types(ModeInfo0, VarTypes),
+			map__lookup(VarTypes, PredVar, Type),
+			type_is_higher_order(Type, function, _, ArgTypes),
+			PredInstInfo = pred_inst_info_standard_func_mode(
+					list__length(ArgTypes))
+		),
 		PredInstInfo = pred_inst_info(PredOrFunc, Modes0, Det0),
 		list__length(Modes0, Arity)
 	->

@@ -98,6 +98,34 @@ in the general case.
 	%       the same in both.
 
 %-----------------------------------------------------------------------------%
+
+:- pred inst_contains_nonstandard_func_mode(inst, module_info).
+:- mode inst_contains_nonstandard_func_mode(in, in) is semidet.
+
+	% inst_contains_nonstandard_func_mode(Inst, ModuleInfo) succeeds iff the
+	% inst contains a higher-order function inst that does not match the
+	% standard function mode `(in, ..., in) = out is det'.
+	% E.g. this predicate fails for "func(in) = uo" because that matches the
+	% standard func mode "func(in) = out", even though it isn't the same as
+	% the standard func mode.
+
+:- pred pred_inst_info_is_nonstandard_func_mode(pred_inst_info, module_info).
+:- mode pred_inst_info_is_nonstandard_func_mode(in, in) is semidet.
+
+	% Succeed iff the first argument is a function pred_inst_info
+	% whose mode does not match the standard func mode.
+
+:- pred ground_inst_info_is_nonstandard_func_mode(ground_inst_info,
+			module_info).
+:- mode ground_inst_info_is_nonstandard_func_mode(in, in) is semidet.
+
+	% Succeed iff the first argument is a function ground_inst_info
+	% whose mode does not match the standard func mode.
+
+:- func pred_inst_info_standard_func_mode(arity) = pred_inst_info.
+
+	% Return the standard mode for a function of the given arity.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1407,6 +1435,13 @@ inst_merge_3(ground(UniqA, GroundInstInfoA), ground(UniqB, GroundInstInfoB),
 		; pred_inst_matches(PredB, PredA, ModuleInfo) ->
 			GroundInstInfo = higher_order(PredA)
 		;
+			% If either is a function inst with non-standard
+			% modes, don't allow the higher-order
+			% information to be lost.
+			\+ pred_inst_info_is_nonstandard_func_mode(PredA,
+				ModuleInfo),
+			\+ pred_inst_info_is_nonstandard_func_mode(PredB,
+				ModuleInfo),
 			GroundInstInfo = none
 		)
 	;       
@@ -1415,6 +1450,10 @@ inst_merge_3(ground(UniqA, GroundInstInfoA), ground(UniqB, GroundInstInfoB),
 	->
 		GroundInstInfo = constrained_inst_var(V)
 	;
+		\+ ground_inst_info_is_nonstandard_func_mode(GroundInstInfoA,
+			ModuleInfo),
+		\+ ground_inst_info_is_nonstandard_func_mode(GroundInstInfoB,
+			ModuleInfo),
 		GroundInstInfo = none
 	),
 	merge_uniq(UniqA, UniqB, Uniq).
@@ -1601,4 +1640,48 @@ bound_inst_list_merge(Xs, Ys, MaybeType, ModuleInfo0, Zs, ModuleInfo) :-
 	).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+inst_contains_nonstandard_func_mode(Inst, ModuleInfo) :-
+	set__init(Expansions0),
+	inst_contains_nonstandard_func_mode_2(Inst, ModuleInfo, Expansions0).
+
+:- pred inst_contains_nonstandard_func_mode_2(inst, module_info, set(inst)).
+:- mode inst_contains_nonstandard_func_mode_2(in, in, in) is semidet.
+
+inst_contains_nonstandard_func_mode_2(ground(_, GroundInstInfo), ModuleInfo,
+		_Expansions) :-
+	ground_inst_info_is_nonstandard_func_mode(GroundInstInfo, ModuleInfo).
+inst_contains_nonstandard_func_mode_2(bound(_, BoundInsts), ModuleInfo,
+		Expansions) :-
+	list__member(functor(_, Insts), BoundInsts),
+	list__member(Inst, Insts),
+	inst_contains_nonstandard_func_mode_2(Inst, ModuleInfo, Expansions).
+inst_contains_nonstandard_func_mode_2(inst_var(_), _, _) :-
+	error("internal error: uninstantiated inst parameter").
+inst_contains_nonstandard_func_mode_2(Inst, ModuleInfo, Expansions0) :-
+	Inst = defined_inst(InstName),
+	\+ set__member(Inst, Expansions0),
+	set__insert(Expansions0, Inst, Expansions1),
+	inst_lookup(ModuleInfo, InstName, Inst2),
+	inst_contains_nonstandard_func_mode_2(Inst2, ModuleInfo, Expansions1).
+
+%-----------------------------------------------------------------------------%
+
+pred_inst_info_is_nonstandard_func_mode(PredInstInfo, ModuleInfo) :-
+	PredInstInfo = pred_inst_info(function, ArgModes, _),
+	Arity = list__length(ArgModes),
+	\+ pred_inst_matches(PredInstInfo,
+		pred_inst_info_standard_func_mode(Arity), ModuleInfo).
+
+ground_inst_info_is_nonstandard_func_mode(GroundInstInfo, ModuleInfo) :-
+	GroundInstInfo = higher_order(PredInstInfo),
+	pred_inst_info_is_nonstandard_func_mode(PredInstInfo, ModuleInfo).
+
+pred_inst_info_standard_func_mode(Arity) =
+		pred_inst_info(function, ArgModes, det) :-
+	in_mode(InMode),
+	out_mode(OutMode),
+	ArgModes = list__duplicate(Arity - 1, InMode) ++ [OutMode].
+
 %-----------------------------------------------------------------------------%

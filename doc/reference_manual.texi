@@ -3435,6 +3435,22 @@ unifications; indirect attempts (via polymorphic predicates, for
 example @samp{(list__append([], [P], [Q])} may result in an error at
 run-time rather than at compile-time.
 
+In order to call a higher-order term, the compiler must know its higher-order
+inst.  This can cause problems when higher-order terms are placed into a
+polymorphic collection type and then extracted, since the declared mode for the
+extraction will typically be @samp{out} and the higher-order inst information
+will be lost.
+To partially alleviate this problem, and to make higher-order functional
+programming easier, if the term to be called has a function
+type, but no higher-order inst information, we assume that it has the default
+higher-order function inst
+@samp{func(in, @dots{}, in) = out is @var{Determinism}}.
+
+As a consequence of this, it is a mode error to pass a higher-order function
+term that does not match this standard mode to somewhere where its higher-order
+inst information may be lost, such as to a polymorphic predicate where the
+argument mode is @samp{in}.
+
 @node Modules
 @chapter Modules
 

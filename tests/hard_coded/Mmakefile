@@ -64,6 +64,7 @@ ORDINARY_PROGS=	\
 	higher_order_syntax \
 	higher_order_syntax2 \
 	higher_order_type_manip \
+	ho_func_default_inst \
 	ho_func_reg \
 	ho_order \
 	ho_order2 \
