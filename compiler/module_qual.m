@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -647,6 +647,10 @@ qualify_pragma(memo(A, B), memo(A, B), Info, Info) --> [].
 qualify_pragma(inline(A, B), inline(A, B), Info, Info) --> [].
 qualify_pragma(no_inline(A, B), no_inline(A, B), Info, Info) --> [].
 qualify_pragma(obsolete(A, B), obsolete(A, B), Info, Info) --> [].
+qualify_pragma(import(Name, PredOrFunc, Modes0, MayCallMercury, CFunc),
+		import(Name, PredOrFunc, Modes, MayCallMercury, CFunc),
+		Info0, Info) -->
+	qualify_mode_list(Modes0, Modes, Info0, Info).
 qualify_pragma(export(Name, PredOrFunc, Modes0, CFunc),
 		export(Name, PredOrFunc, Modes, CFunc), Info0, Info) -->
 	qualify_mode_list(Modes0, Modes, Info0, Info).

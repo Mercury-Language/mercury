@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -294,6 +294,11 @@ mercury_output_item(pragma(Pragma), Context) -->
 			SavedVars, LabelNames, VarSet, C_CodeString) }, 
 		mercury_output_pragma_c_code(MayCallMercury, Pred, PredOrFunc, 
 			Vars, yes(SavedVars - LabelNames), VarSet, C_CodeString)
+	;
+		{ Pragma = import(Pred, PredOrFunc, ModeList, MayCallMercury,
+			C_Function) },
+		mercury_output_pragma_import(Pred, PredOrFunc, ModeList,
+			MayCallMercury, C_Function)
 	;
 		{ Pragma = export(Pred, PredOrFunc, ModeList, C_Function) },
 		mercury_output_pragma_export(Pred, PredOrFunc, ModeList,
@@ -1918,6 +1923,38 @@ mercury_output_pragma_decl(PredName, Arity, PredOrFunc, PragmaName) -->
 
 %-----------------------------------------------------------------------------%
 
+:- pred mercury_output_pragma_import(sym_name, pred_or_func, list(mode),
+	may_call_mercury, string, io__state, io__state).
+:- mode mercury_output_pragma_import(in, in, in, in, in, di, uo) is det.
+
+mercury_output_pragma_import(Name, PredOrFunc, ModeList, MayCallMercury,
+		C_Function) -->
+	{ varset__init(Varset) }, % the varset isn't really used.
+	io__write_string(":- pragma import("),
+	mercury_output_sym_name(Name),
+	(
+		{ PredOrFunc = function },
+		{ pred_args_to_func_args(ModeList, ArgModes, RetMode) },
+		io__write_string("("),
+		mercury_output_mode_list(ArgModes, Varset),
+		io__write_string(") = "),
+		mercury_output_mode(RetMode, Varset)
+	;
+		{ PredOrFunc = predicate },
+		io__write_string("("),
+		mercury_output_mode_list(ModeList, Varset),
+		io__write_string(")")
+	),
+	(
+		{ MayCallMercury = may_call_mercury },
+		io__write_string(", may_call_mercury, ")
+	; 
+		{ MayCallMercury = will_not_call_mercury },
+		io__write_string(", will_not_call_mercury, ")
+	),
+	io__write_string(C_Function),
+	io__write_string(").\n").
+
 :- pred mercury_output_pragma_export(sym_name, pred_or_func, list(mode),
 	string, io__state, io__state).
 :- mode mercury_output_pragma_export(in, in, in, in, di, uo) is det.
@@ -1937,8 +1974,9 @@ mercury_output_pragma_export(Name, PredOrFunc, ModeList, C_Function) -->
 		{ PredOrFunc = predicate },
 		io__write_string("("),
 		mercury_output_mode_list(ModeList, Varset),
-		io__write_string("), ")
+		io__write_string(")")
 	),
+	io__write_string(", "),
 	io__write_string(C_Function),
 	io__write_string(").\n").
 

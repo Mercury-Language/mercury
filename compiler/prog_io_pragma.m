@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -149,6 +149,149 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 	    "wrong number of arguments in `:- pragma c_code' declaration", 
 		    ErrorTerm)
 	).
+
+parse_pragma_type(ModuleName, "import", PragmaTerms,
+			ErrorTerm, _VarSet, Result) :-
+       (
+	    PragmaTerms = [PredAndModesTerm, MayCallMercuryTerm,
+			C_FunctionTerm]
+       ->
+	    (
+		PredAndModesTerm = term__functor(_, _, _),
+		C_FunctionTerm = term__functor(term__string(C_Function), [], _)
+	    ->
+		(
+		    PredAndModesTerm = term__functor(term__atom("="),
+				[FuncAndArgModesTerm, RetModeTerm], _)
+		->
+		    parse_qualified_term(ModuleName, FuncAndArgModesTerm,
+			PredAndModesTerm, "pragma import declaration",
+			FuncAndArgModesResult),  
+		    (
+			FuncAndArgModesResult = ok(FuncName, ArgModeTerms),
+			(
+		    	    convert_mode_list(ArgModeTerms, ArgModes),
+			    convert_mode(RetModeTerm, RetMode)
+			->
+			    list__append(ArgModes, [RetMode], Modes),
+			    (
+				parse_may_call_mercury(MayCallMercuryTerm,
+					MayCallMercury)
+			    ->
+			        Result = ok(pragma(import(FuncName, function,
+				    Modes, MayCallMercury, C_Function)))
+			    ;
+				Result = error("invalid second argument in `:- pragma import/3' declaration -- expecting either `may_call_mercury' or `will_not_call_mercury'",
+					MayCallMercuryTerm)
+			    )
+			;
+	   		    Result = error(
+"expected pragma import(FuncName(ModeList) = Mode, MayCallMercury, C_Function)",
+				PredAndModesTerm)
+			)
+		    ;
+			FuncAndArgModesResult = error(Msg, Term),
+			Result = error(Msg, Term)
+		    )
+		;
+		    parse_qualified_term(ModuleName, PredAndModesTerm,
+			ErrorTerm, "pragma import declaration",
+			PredAndModesResult),  
+		    (
+			PredAndModesResult = ok(PredName, ModeTerms),
+			(
+		    	    convert_mode_list(ModeTerms, Modes)
+			->
+			    (
+				parse_may_call_mercury(MayCallMercuryTerm,
+					MayCallMercury)
+			    ->
+			        Result = ok(pragma(import(PredName, predicate,
+				    Modes, MayCallMercury, C_Function)))
+			    ;
+				Result = error("invalid second argument in `:- pragma import/3' declaration -- expecting either `may_call_mercury' or `will_not_call_mercury'",
+					MayCallMercuryTerm)
+			    )
+			;
+	   		    Result = error(
+"expected pragma import(PredName(ModeList), MayCallMercury, C_Function)",
+				PredAndModesTerm)
+			)
+		    ;
+			PredAndModesResult = error(Msg, Term),
+			Result = error(Msg, Term)
+		    )
+		)
+	    ;
+	    	Result = error(
+"expected pragma import(PredName(ModeList), MayCallMercury, C_Function)",
+		     PredAndModesTerm)
+	    )
+	;
+	    PragmaTerms = [PredAndModesTerm, C_FunctionTerm]
+	->
+	    MayCallMercury = may_call_mercury,
+	    (
+		PredAndModesTerm = term__functor(_, _, _),
+		C_FunctionTerm = term__functor(term__string(C_Function), [], _)
+	    ->
+		(
+		    PredAndModesTerm = term__functor(term__atom("="),
+				[FuncAndArgModesTerm, RetModeTerm], _)
+		->
+		    parse_qualified_term(ModuleName, FuncAndArgModesTerm,
+			PredAndModesTerm, "pragma import declaration",
+			FuncAndArgModesResult),  
+		    (
+			FuncAndArgModesResult = ok(FuncName, ArgModeTerms),
+			(
+		    	    convert_mode_list(ArgModeTerms, ArgModes),
+			    convert_mode(RetModeTerm, RetMode)
+			->
+			    list__append(ArgModes, [RetMode], Modes),
+			    Result = ok(pragma(import(FuncName, function,
+				    Modes, MayCallMercury, C_Function)))
+			;
+	   		    Result = error(
+"expected pragma import(FuncName(ModeList) = Mode, C_Function)",
+				PredAndModesTerm)
+			)
+		    ;
+			FuncAndArgModesResult = error(Msg, Term),
+			Result = error(Msg, Term)
+		    )
+		;
+		    parse_qualified_term(ModuleName, PredAndModesTerm,
+			ErrorTerm, "pragma import declaration",
+			PredAndModesResult),  
+		    (
+			PredAndModesResult = ok(PredName, ModeTerms),
+			(
+		    	    convert_mode_list(ModeTerms, Modes)
+			->
+			    Result = ok(pragma(import(PredName, predicate,
+				    Modes, MayCallMercury, C_Function)))
+			;
+	   		    Result = error(
+	"expected pragma import(PredName(ModeList), C_Function)",
+				PredAndModesTerm)
+			)
+		    ;
+			PredAndModesResult = error(Msg, Term),
+			Result = error(Msg, Term)
+		    )
+		)
+	    ;
+	    	Result = error(
+	"expected pragma import(PredName(ModeList), C_Function)",
+		     PredAndModesTerm)
+	    )
+	;
+	    Result = 
+	    	error(
+		"wrong number of arguments in `pragma import(...)' declaration",
+		ErrorTerm)
+       ).
 
 parse_pragma_type(_ModuleName, "export", PragmaTerms,
 			ErrorTerm, _VarSet, Result) :-

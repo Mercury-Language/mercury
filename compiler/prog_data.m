@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -110,7 +110,7 @@
 			varset, string)
 			% Whether or not the C code may call Mercury,
 			% PredName, Predicate or Function, Vars/Mode, 
-			% SavedeVars, LabelNames, VarNames, C Code
+			% SavedVars, LabelNames, VarNames, C Code
 
 	;	memo(sym_name, arity)
 			% Predname, Arity
@@ -127,6 +127,12 @@
 	;	export(sym_name, pred_or_func, list(mode),
 			string)
 			% Predname, Predicate/function, Modes,
+			% C function name.
+
+	;	import(sym_name, pred_or_func, list(mode),
+			may_call_mercury, string)
+			% Predname, Predicate/function, Modes,
+			% whether or not the C function may call Mercury,
 			% C function name.
 
 	;	source_file(string)

@@ -61,7 +61,7 @@
 :- import_module make_tags, quantification, (inst).
 :- import_module code_util, unify_proc, special_pred, type_util, mode_util.
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc, inst_match.
-:- import_module fact_table, purity, term_util.
+:- import_module fact_table, purity, term_util, export, llds.
 
 :- import_module string, char, int, set, bintree, list, map, require.
 :- import_module bool, getopt, assoc_list, term, term_io, varset.
@@ -328,6 +328,11 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		{ Pragma = obsolete(Name, Arity) },
 		add_pred_marker(Module0, "obsolete", Name, Arity, Context,
 			obsolete, [], Module)
+	;
+		% Handle pragma import decls later on (when we process
+		% clauses and pragma c_code).
+		{ Pragma = import(_, _, _, _, _) },
+		{ Module = Module0 }
 	;
 		{ Pragma = export(Name, PredOrFunc, Modes, C_Function) },
 		{ module_info_get_predicate_table(Module0, PredTable) },
@@ -597,6 +602,13 @@ add_item_clause(pragma(Pragma), Status, Status, Context,
 			Vars, VarSet, C_Code, Status, Context, no,
 			Module0, Module, Info0, Info)
 	;
+		{ Pragma = import(Name, PredOrFunc, Modes, MayCallMercury,
+			C_Function) }
+	->
+		module_add_pragma_import(Name, PredOrFunc, Modes,
+			MayCallMercury, C_Function, Status, Context,
+			Module0, Module, Info0, Info)
+	;
 		{ Pragma = c_code(MayCallMercury, Pred, PredOrFunc, Vars, 
 			SavedVars, LabelNames, VarSet, C_Code) }
 	->
@@ -616,10 +628,10 @@ add_item_clause(pragma(Pragma), Status, Status, Context,
 		{ Info = Info0 }	
 	).
 add_item_clause(nothing, Status, Status, _, Module, Module, Info, Info) --> [].
-add_item_clause(typeclass(_, _, _, _, _)
-	, Status, Status, _, Module, Module, Info, Info) --> [].
-add_item_clause(instance(_, _, _, _, _)
-	, Status, Status, _, Module, Module, Info, Info) --> [].
+add_item_clause(typeclass(_, _, _, _, _),
+	Status, Status, _, Module, Module, Info, Info) --> [].
+add_item_clause(instance(_, _, _, _, _),
+	Status, Status, _, Module, Module, Info, Info) --> [].
 
 %-----------------------------------------------------------------------------%
 
@@ -1794,7 +1806,7 @@ module_add_func_clause(ModuleInfo0, ClauseVarSet, FuncName, Args0, Result, Body,
 module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 			Context, PredOrFunc, ModuleInfo, Info0, Info) -->
 		% Lookup the pred declaration in the predicate table.
-		% (if it's not there, call maybe_undefined_pred_error
+		% (If it's not there, call maybe_undefined_pred_error
 		% and insert an implicit declaration for the predicate.)
 	{ module_info_name(ModuleInfo0, ModuleName) },
 	{ list__length(Args, Arity) },
@@ -1820,6 +1832,8 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		% and then save the pred_info.
 	{ predicate_table_get_preds(PredicateTable1, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
+	% opt_imported preds are initially tagged as imported and are
+	% tagged as opt_imported only if/when we see a clause for them
 	{ Status = opt_imported ->
 		pred_info_set_import_status(PredInfo0, opt_imported, PredInfo1)
 	;
@@ -1907,6 +1921,328 @@ module_add_c_body_code(C_Body_Code, Context, Module0, Module) :-
 	module_info_set_c_body_code(Module0, C_Body_List, Module).
 	
 %-----------------------------------------------------------------------------%
+%
+% module_add_pragma_import:
+%	Handles `pragma import' declarations, by figuring out which predicate
+%	the `pragma import' declaration applies to, and adding a clause
+%	for that predicate containing an appropriate HLDS `pragma_c_code'
+%	instruction.
+%	(Note: `pragma import' and `pragma c_code' are distinct at the
+%	parse_tree stage, but make_hlds converts both `pragma import'
+%	and `pragma c_code' into HLDS `pragma_c_code' instructions,
+%	so from HLDS onwards they are indistinguishable.)
+%
+%	NB. Any changes here might also require similar changes to the
+%	handling of `pragma export' declarations, in export.m.
+
+:- pred module_add_pragma_import(sym_name, pred_or_func, list(mode),
+		may_call_mercury, string, import_status, term__context,
+		module_info, module_info, qual_info, qual_info,
+		io__state, io__state).
+:- mode module_add_pragma_import(in, in, in, in, in, in, in, in, out,
+		in, out, di, uo) is det.
+
+module_add_pragma_import(PredName, PredOrFunc, Modes, MayCallMercury,
+		C_Function, Status, Context, ModuleInfo0, ModuleInfo,
+		Info0, Info) -->
+	{ module_info_name(ModuleInfo0, ModuleName) },
+	{ list__length(Modes, Arity) },
+
+		%
+		% print out a progress message
+		%
+	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
+	( 
+		{ VeryVerbose = yes }
+	->
+		io__write_string("% Processing `:- pragma import' for "),
+		hlds_out__write_call_id(PredOrFunc, PredName/Arity),
+		io__write_string("...\n")
+	;
+		[]
+	),
+
+		%
+		% Lookup the pred declaration in the predicate table.
+		% (If it's not there, print an error message and insert
+		% a dummy declaration for the predicate.) 
+		%
+	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) }, 
+	( 
+		{ predicate_table_search_pf_sym_arity(PredicateTable0,
+			PredOrFunc, PredName, Arity, [PredId0]) }
+	->
+		{ PredId = PredId0 },
+		{ PredicateTable1 = PredicateTable0 }
+	;
+		maybe_undefined_pred_error(PredName, Arity, PredOrFunc,
+			Context, "`:- pragma import' declaration"),
+		{ preds_add_implicit(PredicateTable0,
+				ModuleName, PredName, Arity, Context,
+				PredOrFunc, PredId, PredicateTable1) }
+	),
+		%
+		% Lookup the pred_info for this pred,
+		% and check that it is valid.
+		%
+	{ predicate_table_get_preds(PredicateTable1, Preds0) },
+	{ map__lookup(Preds0, PredId, PredInfo0) },
+	% opt_imported preds are initially tagged as imported and are
+	% tagged as opt_imported only if/when we see a clause (including
+	% a `pragma import' clause) for them
+	{ Status = opt_imported ->
+		pred_info_set_import_status(PredInfo0, opt_imported, PredInfo1)
+	;
+		PredInfo1 = PredInfo0
+	},
+	( 
+		{ pred_info_is_imported(PredInfo1) }
+	->
+		{ module_info_incr_errors(ModuleInfo0, ModuleInfo) },
+		prog_out__write_context(Context),
+		io__write_string("Error: `:- pragma import' "),
+		io__write_string("declaration for imported "),
+		hlds_out__write_call_id(PredOrFunc, PredName/Arity),
+		io__write_string(".\n"),
+		{ Info = Info0 }
+	;	
+		{ pred_info_get_goal_type(PredInfo1, clauses) }
+	->
+		{ module_info_incr_errors(ModuleInfo0, ModuleInfo) },
+		prog_out__write_context(Context),
+		io__write_string("Error: `:- pragma import' declaration "),
+		io__write_string("for "),
+		hlds_out__write_call_id(PredOrFunc, PredName/Arity),
+		io__write_string("\n"),
+		prog_out__write_context(Context),
+		io__write_string("  with preceding clauses.\n"),
+		{ Info = Info0 }
+	;
+		{ pred_info_set_goal_type(PredInfo1, pragmas, PredInfo2) },
+		%
+		% add the pragma declaration to the proc_info for this procedure
+		%
+		{ pred_info_procedures(PredInfo2, Procs) },
+		{ map__to_assoc_list(Procs, ExistingProcs) },
+		(
+			{ get_procedure_matching_argmodes(ExistingProcs, Modes,
+						ModuleInfo0, ProcId) }
+		->
+			pred_add_pragma_import(PredInfo2, PredId, ProcId,
+				MayCallMercury, C_Function, Context,
+				ModuleInfo0, PredInfo, Info0, Info),
+			{ map__det_update(Preds0, PredId, PredInfo, Preds) },
+			{ predicate_table_set_preds(PredicateTable1, Preds,
+				PredicateTable) },
+			{ module_info_set_predicate_table(ModuleInfo0,
+				PredicateTable, ModuleInfo) }
+		;
+			{ module_info_incr_errors(ModuleInfo0, ModuleInfo) }, 
+			io__stderr_stream(StdErr),
+			io__set_output_stream(StdErr, OldStream),
+			prog_out__write_context(Context),
+			io__write_string("Error: `:- pragma import' "),
+			io__write_string("declaration for undeclared mode "),
+			io__write_string("of "),
+			hlds_out__write_call_id(PredOrFunc, PredName/Arity),
+			io__write_string(".\n"),
+			io__set_output_stream(OldStream, _),
+			{ Info = Info0 }
+		)
+	).
+
+% pred_add_pragma_import:
+%	This is a subroutine of module_add_pragma_import which adds
+%	the c_code for a `pragma import' declaration to a pred_info.
+
+:- pred pred_add_pragma_import(pred_info, pred_id, proc_id, may_call_mercury,
+		string, term__context, module_info, pred_info,
+		qual_info, qual_info, io__state, io__state).
+:- mode pred_add_pragma_import(in, in, in, in, in, in, in, out, in, out,
+		di, uo) is det.
+pred_add_pragma_import(PredInfo0, PredId, ProcId, MayCallMercury, C_Function,
+		Context, ModuleInfo, PredInfo, Info0, Info) -->
+	%
+	% lookup some information we need from the pred_info and proc_info
+	%
+	{ pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc) },
+	{ pred_info_clauses_info(PredInfo0, Clauses0) },
+	{ pred_info_arg_types(PredInfo0, _TVarSet, ArgTypes) },
+	{ pred_info_get_purity(PredInfo0, Purity) },
+	{ pred_info_procedures(PredInfo0, Procs) },
+	{ map__lookup(Procs, ProcId, ProcInfo) },
+	{ proc_info_argmodes(ProcInfo, Modes) },
+	{ proc_info_interface_code_model(ProcInfo, CodeModel) },
+
+	%
+	% Build a list of argument variables, together with their
+	% names, modes, and types.
+	%
+	{ varset__init(VarSet0) },
+	{ list__length(Modes, Arity) },
+	{ varset__new_vars(VarSet0, Arity, Vars, VarSet) },
+	{ create_pragma_vars(Vars, Modes, 0, PragmaVars) },
+	{ assoc_list__from_corresponding_lists(PragmaVars, ArgTypes,
+			PragmaVarsAndTypes) },
+
+	%
+	% Construct the C_Code string for calling C_Function.
+	% This C code fragment invokes the specified C function
+	% with the appropriate arguments from the list constructed
+	% above, passed in the appropriate manner (by value, or by
+	% passing the address to simulate pass-by-reference), and
+	% assigns the return value (if any) to the appropriate place.
+	%
+	{ handle_return_value(CodeModel, PredOrFunc, PragmaVarsAndTypes,
+			ModuleInfo, ArgPragmaVarsAndTypes, C_Code0) },
+	{ string__append_list([C_Code0, C_Function, "("], C_Code1) },
+	{ assoc_list__keys(ArgPragmaVarsAndTypes, ArgPragmaVars) },
+	{ create_pragma_import_c_code(ArgPragmaVars, ModuleInfo,
+			C_Code1, C_Code2) },
+	{ string__append(C_Code2, ");", C_Code) },
+
+	%
+	% Add the C_Code for this `pragma import' to the clauses_info
+	%
+	{ ExtraInfo = no },
+	clauses_info_add_pragma_c_code(Clauses0, Purity, MayCallMercury,
+		PredId, ProcId, VarSet, PragmaVars, ArgTypes, C_Code, Context,
+		ExtraInfo, Clauses, Info0, Info),
+
+	%
+	% Store the clauses_info etc. back into the pred_info
+	%
+	{ pred_info_set_clauses_info(PredInfo0, Clauses, PredInfo) }.
+
+%
+% handle_return_value(CodeModel, PredOrFunc, Args0, M, Args, C_Code0):
+%	Figures out what to do with the C function's return value,
+%	based on Mercury procedure's code model, whether it is a predicate
+%	or a function, and (if it is a function) the type and mode of the
+%	function result.  Constructs a C code fragment `C_Code0' which
+%	is a string of the form "<Something> =" that assigns the return
+%	value to the appropriate place, if there is a return value,
+%	or is an empty string, if there is no return value.
+%	Returns in Args all of Args0 that must be passed as arguments
+%	(i.e. all of them, or all of them except the return value).
+%
+:- pred handle_return_value(code_model, pred_or_func,
+		assoc_list(pragma_var, type), module_info,
+		assoc_list(pragma_var, type), string).
+:- mode handle_return_value(in, in, in, in, out, out) is det.
+
+handle_return_value(CodeModel, PredOrFunc, Args0, ModuleInfo, Args, C_Code0) :-
+	( CodeModel = model_det,
+		(
+			PredOrFunc = function,
+			pred_args_to_func_args(Args0, Args1, RetArg),
+			RetArg = pragma_var(_, RetArgName, RetMode) - RetType,
+			mode_to_arg_mode(ModuleInfo, RetMode, RetType,
+				RetArgMode),
+			RetArgMode = top_out,
+			\+ export__exclude_argument_type(RetType)
+		->
+			string__append(RetArgName, " = ", C_Code0),
+			Args2 = Args1
+		;
+			C_Code0 = "",
+			Args2 = Args0
+		)
+	; CodeModel = model_semi,
+		% we treat semidet functions the same as semidet predicates,
+		% which means that for Mercury functions the Mercury return
+		% value becomes the last argument, and the C return value
+		% is a bool that is used to indicate success or failure.
+		C_Code0 = "SUCCESS_INDICATOR = ",
+		Args2 = Args0
+	; CodeModel = model_non,
+		% XXX we should report an error here, rather than generating
+		% C code with `#error'...
+		C_Code0 = "\n#error ""cannot import nondet procedure""\n",
+		Args2 = Args0
+	),
+	list__filter(include_import_arg(ModuleInfo), Args2, Args).
+
+%
+% include_import_arg(M, Arg):
+%	Succeeds iff Arg should be included in the arguments of the C
+%	function.  Fails if `Arg' has a type such as `io__state' that
+%	is just a dummy argument that should not be passed to C.
+%
+:- pred include_import_arg(module_info, pair(pragma_var, type)).
+:- mode include_import_arg(in, in) is semidet.
+
+include_import_arg(ModuleInfo, pragma_var(_Var, _Name, Mode) - Type) :-
+	mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
+	ArgMode \= top_unused,
+	\+ export__exclude_argument_type(Type).
+
+%
+% create_pragma_vars(Vars, Modes, ArgNum0, PragmaVars):
+%	given list of vars and modes, and an initial argument number,
+%	allocate names to all the variables, and
+%	construct a single list containing the variables, names, and modes.
+%
+:- pred create_pragma_vars(list(var), list(mode), int, list(pragma_var)).
+:- mode create_pragma_vars(in, in, in, out) is det.
+
+create_pragma_vars([], [], _Num, []).
+
+create_pragma_vars([Var|Vars], [Mode|Modes], ArgNum0,
+		[PragmaVar | PragmaVars]) :-
+	%
+	% Figure out a name for the C variable which will hold this argument
+	%
+	ArgNum is ArgNum0 + 1,
+	string__int_to_string(ArgNum, ArgNumString),
+	string__append("Arg", ArgNumString, ArgName),
+
+	PragmaVar = pragma_var(Var, ArgName, Mode),
+
+	create_pragma_vars(Vars, Modes, ArgNum, PragmaVars).
+
+create_pragma_vars([_|_], [], _, _) :-
+	error("create_pragma_vars: length mis-match").
+create_pragma_vars([], [_|_], _, _) :-
+	error("create_pragma_vars: length mis-match").
+
+%
+% create_pragma_import_c_code(PragmaVars, M, C_Code0, C_Code):
+%	This predicate creates the C code fragments for each argument
+%	in PragmaVars, and appends them to C_Code0, returning C_Code.
+%
+:- pred create_pragma_import_c_code(list(pragma_var), module_info,
+				string, string).
+:- mode create_pragma_import_c_code(in, in, in, out) is det.
+
+create_pragma_import_c_code([], _ModuleInfo, C_Code, C_Code).
+
+create_pragma_import_c_code([PragmaVar | PragmaVars], ModuleInfo,
+		C_Code0, C_Code) :-
+	PragmaVar = pragma_var(_Var, ArgName, Mode),
+
+	%
+	% Construct the C code fragment for passing this argument,
+	% and append it to C_Code0.
+	% Note that C handles output arguments by passing the variable'
+	% address, so if the mode is output, we need to put an `&' before
+	% the variable name.
+	%
+	( mode_is_output(ModuleInfo, Mode) ->
+		string__append(C_Code0, "&", C_Code1)
+	;
+		C_Code1 = C_Code0
+	),
+	string__append(C_Code1, ArgName, C_Code2),
+	( PragmaVars \= [] ->
+		string__append(C_Code2, ", ", C_Code3)
+	;
+		C_Code3 = C_Code2
+	),
+
+	create_pragma_import_c_code(PragmaVars, ModuleInfo, C_Code3, C_Code).
+
+%-----------------------------------------------------------------------------%
 
 :- pred module_add_pragma_c_code(may_call_mercury, sym_name, pred_or_func, 
 		list(pragma_var), varset, string, import_status, term__context, 
@@ -1933,7 +2269,7 @@ module_add_pragma_c_code(MayCallMercury, PredName, PredOrFunc, PVars, VarSet,
 	),
 
 		% Lookup the pred declaration in the predicate table.
-		% (if it's not there, print an error message and insert
+		% (If it's not there, print an error message and insert
 		% a dummy declaration for the predicate.) 
 	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) }, 
 	( 
@@ -1954,6 +2290,9 @@ module_add_pragma_c_code(MayCallMercury, PredName, PredOrFunc, PVars, VarSet,
 		% pred_info, and save the pred_info.
 	{ predicate_table_get_preds(PredicateTable1, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
+	% opt_imported preds are initially tagged as imported and are
+	% tagged as opt_imported only if/when we see a clause (including
+	% a `pragma c_code' clause) for them
 	{ Status = opt_imported ->
 		pred_info_set_import_status(PredInfo0, opt_imported, PredInfo1)
 	;
@@ -1979,7 +2318,7 @@ module_add_pragma_c_code(MayCallMercury, PredName, PredOrFunc, PVars, VarSet,
 		hlds_out__write_call_id(PredOrFunc, PredName/Arity),
 		io__write_string("\n"),
 		prog_out__write_context(Context),
-		io__write_string("  with clauses preceding.\n"),
+		io__write_string("  with preceding clauses.\n"),
 		{ Info = Info0 }
 	;
 		% add the pragma declaration to the proc_info for this procedure

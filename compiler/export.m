@@ -1,11 +1,14 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
 % This module defines predicates to produce the functions which are
 % exported to C via a `pragma export' declaration.
+
+% Note: any changes here might also require similar changes to the handling
+% of `pragma import' declarations, which are handled in make_hlds.m.
 
 % Main authors: dgj.
 
@@ -44,6 +47,14 @@
 	% floats if required) and return the resulting C code as a string.
 :- pred convert_type_from_mercury(string, type, string).
 :- mode convert_type_from_mercury(in, in, out) is det.
+
+	% Certain types, namely io__state and store__store(S),
+	% are just dummy types used to ensure logical semantics;
+	% there is no need to actually pass them, and so when
+	% importing or exporting procedures to/from C, we don't
+	% include arguments with these types.
+:- pred export__exclude_argument_type(type).
+:- mode export__exclude_argument_type(in) is semidet.
 
 :- implementation.
 
@@ -413,10 +424,9 @@ convert_type_from_mercury(Rval, Type, ConvertedRval) :-
 % Certain types, namely io__state and store__store(S),
 % are just dummy types used to ensure logical semantics;
 % there is no need to actually pass them, and so when
-% exporting procedures to C, we don't include arguments with
-% these types.
+% importing or exporting procedures to/from C, we don't
+% include arguments with these types.
 
-:- pred export__exclude_argument_type((type)::in) is semidet.
 export__exclude_argument_type(Type) :-
 	Type = term__functor(term__atom(":"), [
 			term__functor(term__atom(ModuleName), [], _),
