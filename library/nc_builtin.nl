@@ -47,6 +47,8 @@
 :- op(1179, xfy, (--->)).
 :- op(1175, xfx, (::)).
 
+:- op(950, fxy, (lambda)).
+
 % Prevent warnings about undefined predicates
 % when the interpreter tries to execute the new declarations.
 % We replace all Mercury declarations with `:- fail',

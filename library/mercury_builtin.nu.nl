@@ -67,3 +67,72 @@ np_builtin__split_env_string([C | Cs], Var, Rest) :-
 	    np_builtin__split_env_string(Cs, Var0, Rest)
 	).
 
+lambda(LambdaVars0, Goal0, Arg1) :-
+	duplicate([LambdaVars0|Goal0], [LambdaVars|Goal]),
+	( LambdaVars = Var1, var(Var1) ->
+		Var1 = Arg1
+	; LambdaVars = [Var1], var(Var1) ->
+		Var1 = Arg1
+	; LambdaVars = (Var1::_Mode1) ->
+		Var1 = Arg1
+	; LambdaVars = [Var1::_Mode1] ->
+		Var1 = Arg1
+	;
+		error("error in use of `lambda'")
+	),
+	call(Goal).
+
+lambda(LambdaVars0, Goal0, Arg1, Arg2) :-
+	duplicate([LambdaVars0|Goal0], [LambdaVars|Goal]),
+	( LambdaVars = [Var1, Var2], var(Var1), var(Var2) ->
+		Var1 = Arg1, Var2 = Arg2
+	; LambdaVars = [Var1::_Mode1, Var2::_Mode2] ->
+		Var1 = Arg1, Var2 = Arg2
+	;
+		error("error in use of `lambda'")
+	),
+	call(Goal).
+
+lambda(LambdaVars0, Goal0, Arg1, Arg2, Arg3) :-
+	duplicate([LambdaVars0|Goal0], [LambdaVars|Goal]),
+	( LambdaVars = [Var1, Var2, Var3], var(Var1), var(Var2), var(Var3) ->
+		Var1 = Arg1, Var2 = Arg2, Var3 = Arg3
+	; LambdaVars = [Var1::_Mode1, Var2::_Mode2, Var3::_Mode3] ->
+		Var1 = Arg1, Var2 = Arg2, Var3 = Arg3
+	;
+		error("error in use of `lambda'")
+	),
+	call(Goal).
+
+lambda(LambdaVars0, Goal0, Arg1, Arg2, Arg3, Arg4) :-
+	duplicate([LambdaVars0|Goal0], [LambdaVars|Goal]),
+	(
+		LambdaVars = [Var1, Var2, Var3, Var4],
+		var(Var1), var(Var2), var(Var3), var(Var4)
+	->
+		Var1 = Arg1, Var2 = Arg2, Var3 = Arg3, Var4 = Arg4
+	;
+		LambdaVars = [Var1::_, Var2::_, Var3::_, Var4::_]
+	->
+		Var1 = Arg1, Var2 = Arg2, Var3 = Arg3, Var4 = Arg4
+	;
+		error("error in use of `lambda'")
+	),
+	call(Goal).
+
+lambda(LambdaVars0, Goal0, Arg1, Arg2, Arg3, Arg4, Arg5) :-
+	duplicate([LambdaVars0|Goal0], [LambdaVars|Goal]),
+	(	
+		LambdaVars = [Var1, Var2, Var3, Var4, Var5],
+	  	var(Var1), var(Var2), var(Var3), var(Var4), var(Var5)
+	->
+		Var1 = Arg1, Var2 = Arg2, Var3 = Arg3, Var4 = Arg4, Var5 = Arg5
+	;
+		LambdaVars = [Var1::_, Var2::_, Var3::_, Var4::_, Var5::_]
+	->
+		Var1 = Arg1, Var2 = Arg2, Var3 = Arg3, Var4 = Arg4, Var5 = Arg5
+	;
+		error("error in use of `lambda'")
+	),
+	call(Goal).
+

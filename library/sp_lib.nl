@@ -83,6 +83,9 @@ intToString(I, S) :-
 string__to_float(String, Float) :-
 	number_chars(Float, String).
 
+duplicate(Term, Copy) :-
+	copy_term(Term, Copy).
+
 %-----------------------------------------------------------------------------%
 
 % Sheesh - do I really have to define these myself!

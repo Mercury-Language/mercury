@@ -71,9 +71,7 @@ my_member_2([H|T], _, X) :-
 
 %-----------------------------------------------------------------------------%
 
-	% We call findall/3 rather than solutions/3 for efficiency.
-
-solutions(P, L) :-
+builtin_solutions(P, L) :-
 	findall(X, call(P, X), L).
 
 %-----------------------------------------------------------------------------%
