@@ -235,7 +235,7 @@
 	%
 	% Warning: support for existential types is still experimental.
 	%
-:- some [T] pred has_type(T::unused, type_info::in) is det.
+:- some([T], pred has_type(T::unused, type_info::in) is det).
 
 	% type_name(Type) returns the name of the specified type
 	% (e.g. type_name(type_of([2,3])) = "list:list(int)").
