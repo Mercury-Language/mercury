@@ -261,7 +261,7 @@ mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
 		% them from the asm file!) and pass that to mlds_to_c.m
 		{ ForeignMLDS = mlds(ModuleName, ForeignCode, Imports,
 			list__map(make_public, ForeignDefns)) },
-		mlds_to_c__output_mlds(ForeignMLDS),
+		mlds_to_c__output_mlds(ForeignMLDS, ""),
 		% XXX currently the only foreign code we handle is C;
 		%     see comments above (at the declaration for
 		%     mlds_to_c__compile_to_asm)

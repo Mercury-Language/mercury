@@ -729,46 +729,57 @@ choose_file_name(ModuleName, BaseName, Ext, MkDir, FileName) -->
 		% output files intended for use by the user,
 		% and phony Mmake targets names go in the current directory
 		%
-		{ Ext = ".m"
-		% executable files
-		; Ext = ""
-		; Ext = ".split"
-		% library files
-		; Ext = ".a"
-		; Ext = ".$A"
-		; Ext = ".so"
-		; Ext = ".$(EXT_FOR_SHARED_LIB)"
-		; Ext = ".split.a"
-		; Ext = ".split.$A"
-		; Ext = ".split.so"
-		; Ext = ".split.$(EXT_FOR_SHARED_LIB)"
-		; Ext = ".init"
-		% output files intended for use by the user
-		; Ext = ".h"
-		; Ext = ".err"
-		; Ext = ".ugly"
-		; Ext = ".hlds_dump"
-		; Ext = ".dependency_graph"
-		; Ext = ".order"
-		; Ext = ".rla"
-		; Ext = ".rl_dump"
-		% Mmake targets
-		; Ext = ".clean"
-		; Ext = ".realclean"
-		; Ext = ".depend"
-		; Ext = ".install_ints"
-		; Ext = ".install_hdrs"
-		; Ext = ".check"
-		; Ext = ".ints"
-		; Ext = ".int3s"
-		; Ext = ".rlos"
-		; Ext = ".ils"
-		; Ext = ".opts"
-		; Ext = ".trans_opts"
-		% The current interface to `mercury_update_interface'
-		% requires .h.tmp files to be in the same directory as
-		% the .h files
-		; Ext = ".h.tmp"
+		{
+			( Ext = ".m"
+			% executable files
+			; Ext = ""
+			; Ext = ".split"
+			% library files
+			; Ext = ".a"
+			; Ext = ".$A"
+			; Ext = ".so"
+			; Ext = ".$(EXT_FOR_SHARED_LIB)"
+			; Ext = ".split.a"
+			; Ext = ".split.$A"
+			; Ext = ".split.so"
+			; Ext = ".split.$(EXT_FOR_SHARED_LIB)"
+			; Ext = ".init"
+			% output files intended for use by the user
+			% (the .h_dump* and .c_dump* MLDS dumps also
+			% fit into this category, but for efficiency,
+			% to keep this as a switch, we deal with them below)
+			; Ext = ".h"
+			; Ext = ".err"
+			; Ext = ".ugly"
+			; Ext = ".hlds_dump"
+			; Ext = ".mlds_dump"
+			; Ext = ".dependency_graph"
+			; Ext = ".order"
+			; Ext = ".rla"
+			; Ext = ".rl_dump"
+			% Mmake targets
+			; Ext = ".clean"
+			; Ext = ".realclean"
+			; Ext = ".depend"
+			; Ext = ".install_ints"
+			; Ext = ".install_hdrs"
+			; Ext = ".check"
+			; Ext = ".ints"
+			; Ext = ".int3s"
+			; Ext = ".rlos"
+			; Ext = ".ils"
+			; Ext = ".opts"
+			; Ext = ".trans_opts"
+			% The current interface to `mercury_update_interface'
+			% requires .h.tmp files to be in the same directory as
+			% the .h files
+			; Ext = ".h.tmp"
+			)
+		;
+			% output files intended for use by the user
+			( string__prefix(Ext, ".c_dump")
+			; string__prefix(Ext, ".h_dump")
+			)
 		}
 	->
 		{ FileName0 = BaseName }

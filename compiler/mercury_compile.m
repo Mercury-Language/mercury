@@ -3177,7 +3177,7 @@ mercury_compile__mlds_to_high_level_c(MLDS) -->
 	globals__io_lookup_bool_option(statistics, Stats),
 
 	maybe_write_string(Verbose, "% Converting MLDS to C...\n"),
-	mlds_to_c__output_mlds(MLDS),
+	mlds_to_c__output_mlds(MLDS, ""),
 	maybe_write_string(Verbose, "% Finished converting MLDS to C.\n"),
 	maybe_report_stats(Stats).
 
@@ -3865,7 +3865,11 @@ mercury_compile__maybe_dump_mlds(MLDS, StageNum, StageName) -->
 		{ string__append_list(
 			[BaseFileName, ".", StageNum, "-", StageName],
 			DumpFile) },
-		mercury_compile__dump_mlds(DumpFile, MLDS)
+		mercury_compile__dump_mlds(DumpFile, MLDS),
+
+		{ string__append_list(["_dump.", StageNum, "-", StageName],
+			DumpSuffix) },
+		mlds_to_c__output_mlds(MLDS, DumpSuffix)
 	;
 		[]
 	).

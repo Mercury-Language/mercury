@@ -22,8 +22,15 @@
 :- import_module mlds.
 :- import_module io.
 
-:- pred mlds_to_c__output_mlds(mlds, io__state, io__state).
-:- mode mlds_to_c__output_mlds(in, di, uo) is det.
+	% output_mlds(MLDS, Suffix):
+	%	Output C code to the appropriate C file and header file.
+	%	The file names are determined by the module name,
+	%	with the specified Suffix appended at the end.
+	%	(The suffix is used for debugging dumps.  For normal
+	%	output, the suffix should be the empty string.)
+	%	
+:- pred mlds_to_c__output_mlds(mlds, string, io__state, io__state).
+:- mode mlds_to_c__output_mlds(in, in, di, uo) is det.
 
 	% output an MLDS context in C #line format. 
 	% this is useful for other foreign language interfaces such as
@@ -64,7 +71,7 @@
 
 %-----------------------------------------------------------------------------%
 
-mlds_to_c__output_mlds(MLDS) -->
+mlds_to_c__output_mlds(MLDS, Suffix) -->
 	%
 	% We need to use the MLDS package name to compute the header file
 	% names, giving e.g. `mercury.io.h', `mercury.time.h' etc.,
@@ -90,11 +97,14 @@ mlds_to_c__output_mlds(MLDS) -->
 	% next time Mmake is run.
 	%
 	{ ModuleName = mlds__get_module_name(MLDS) },
-	module_name_to_file_name(ModuleName, ".c", yes, SourceFile),
+	module_name_to_file_name(ModuleName, ".c" ++ Suffix, yes,
+		SourceFile),
 	{ MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName) },
 	{ ModuleSymName = mlds_module_name_to_sym_name(MLDS_ModuleName) },
-	module_name_to_file_name(ModuleSymName, ".h.tmp", yes, TmpHeaderFile),
-	module_name_to_file_name(ModuleSymName, ".h", yes, HeaderFile),
+	module_name_to_file_name(ModuleSymName, ".h" ++ Suffix ++ ".tmp", yes,
+		TmpHeaderFile),
+	module_name_to_file_name(ModuleSymName, ".h" ++ Suffix, yes,
+		HeaderFile),
 	{ Indent = 0 },
 	output_to_file(SourceFile, mlds_output_src_file(Indent, MLDS)),
 	output_to_file(TmpHeaderFile, mlds_output_hdr_file(Indent, MLDS)),
