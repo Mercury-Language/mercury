@@ -2105,7 +2105,8 @@ gen_default(_, default_is_unreachable) -->
 gen_default(FuncInfo, default_case(Statement)) -->
 	gcc__build_unnamed_label(Label),
 	gcc__gen_default_case_label(Label),
-	gen_statement(FuncInfo, Statement).
+	gen_statement(FuncInfo, Statement),
+	gcc__gen_break.
 
 %-----------------------------------------------------------------------------%
 
