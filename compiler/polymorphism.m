@@ -267,11 +267,11 @@ polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 		pred_info_set_arg_types(PredInfo0, TypeVarSet, ArgTypes,
 			PredInfo),
 		map__det_update(PredTable0, PredId, PredInfo, PredTable),
-		module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
-		polymorphism__fixup_preds(PredIds, ModuleInfo1, ModuleInfo)
+		module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1)
 	;
-		ModuleInfo = ModuleInfo0
-	).
+		ModuleInfo1 = ModuleInfo0
+	),
+	polymorphism__fixup_preds(PredIds, ModuleInfo1, ModuleInfo).
 
 %---------------------------------------------------------------------------%
 
