@@ -496,9 +496,7 @@ delete_unreachable_cases([Case | Cases0], [ConsId | ConsIds], Cases) :-
 
 functors_to_cons_ids([], []).
 functors_to_cons_ids([Functor|Functors], [ConsId|ConsIds]) :-
-	Functor = functor(Const, ArgInsts),
-	list__length(ArgInsts, Arity),
-	make_functor_cons_id(Const, Arity, ConsId),
+	Functor = functor(ConsId, _ArgInsts),
 	functors_to_cons_ids(Functors, ConsIds).
 
 

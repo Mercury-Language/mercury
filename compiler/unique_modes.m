@@ -354,7 +354,10 @@ make_var_mostly_uniq(Var, ModeInfo0, ModeInfo) :-
 		InstMap0 = reachable(InstMapping0),
 		map__search(InstMapping0, Var, Inst0),
 		inst_expand(ModuleInfo0, Inst0, Inst1),
-		( Inst1 = ground(unique, _) ; Inst1 = bound(unique, _) )
+		( Inst1 = ground(unique, _)
+		; Inst1 = bound(unique, _)
+		; Inst1 = any(unique)
+		)
 	->
 		make_mostly_uniq_inst(Inst0, ModuleInfo0, Inst, ModuleInfo),
 		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
@@ -651,10 +654,10 @@ unique_modes__check_case_list([Case0 | Cases0], Var,
 
 		% record the fact that Var was bound to ConsId in the
 		% instmap before processing this case
-	( { cons_id_to_const(ConsId, Const, Arity) } ->
+	( { cons_id_to_const(ConsId, _Const, Arity) } ->
 		{ list__duplicate(Arity, free, ArgInsts) },
 		modecheck_set_var_inst(Var,
-			bound(unique, [functor(Const, ArgInsts)]))
+			bound(unique, [functor(ConsId, ArgInsts)]))
 	;
 		% cons_id_to_const will fail for pred_consts and
 		% address_consts; we don't worry about them,

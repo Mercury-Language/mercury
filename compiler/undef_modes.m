@@ -193,6 +193,7 @@ find_undef_inst_list([Inst|Insts], ErrorContext, ModeDefns, InstDefns) -->
 				io__state, io__state).
 :- mode find_undef_inst(in, in, in, in, di, uo) is det.
 
+find_undef_inst(any(_), _, _, _) --> [].
 find_undef_inst(free, _, _, _) --> [].
 find_undef_inst(ground(_, MaybePredInfo), ErrorContext, ModeDefns, InstDefns)
 		-->

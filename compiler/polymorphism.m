@@ -768,9 +768,8 @@ polymorphism__init_with_int_constant(CountVar, Num, CountUnifyGoal) :-
 	CountConsId = int_const(Num),
 	CountUnification = construct(CountVar, CountConsId, [], []),
 
-	CountConst = term__integer(Num),
-	CountTerm = functor(CountConst, []),
-	CountInst = bound(shared, [functor(CountConst, [])]),
+	CountTerm = functor(term__integer(Num), []),
+	CountInst = bound(unique, [functor(int_const(Num), [])]),
 	CountUnifyMode = (free -> CountInst) - (CountInst -> CountInst),
 	CountUnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
@@ -828,10 +827,8 @@ polymorphism__get_special_proc_list([Id | Ids],
 
 	Unification = construct(Var, ConsId, [], []),
 
-	Functor = term__atom(PredName2),
-	Term = functor(Functor, []),
-
-	Inst = bound(shared, [functor(Functor, [])]),
+	Term = functor(term__atom(PredName2), []),
+	Inst = bound(unique, [functor(cons(PredName2, 0), [])]),
 	UnifyMode = (free -> Inst) - (Inst -> Inst),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
@@ -924,9 +921,8 @@ polymorphism__get_pred_id(Name, Arity, ModuleInfo, PredId) :-
 polymorphism__init_type_info_var(Type, ArgVars, VarSet0, VarTypes0,
 			TypeInfoVar, TypeInfoGoal, VarSet, VarTypes) :-
 
-	TypeInfoFunctor = term__atom("type_info"),
 	ConsId = cons("type_info", 1),
-	TypeInfoTerm = functor(TypeInfoFunctor, ArgVars),
+	TypeInfoTerm = functor(term__atom("type_info"), ArgVars),
 
 	% introduce a new variable
 	polymorphism__new_type_info_var(Type, VarSet0, VarTypes0,
@@ -952,10 +948,11 @@ polymorphism__init_type_info_var(Type, ArgVars, VarSet0, VarTypes0,
 	map__init(InstMapping0),
 	list__duplicate(NumArgVars, ground(shared, no), ArgInsts),
 		% note that we could perhaps be more accurate than
-		% `ground(shared)', but hopefully it shouldn't make any
+		% `ground(shared)', but it shouldn't make any
 		% difference.
+	InstConsId = cons("type_info", NumArgVars),
 	map__set(InstMapping0, TypeInfoVar,
-		bound(shared, [functor(TypeInfoFunctor, ArgInsts)]),
+		bound(unique, [functor(InstConsId, ArgInsts)]),
 		InstMapping),
 	goal_info_set_instmap_delta(GoalInfo1, reachable(InstMapping),
 		GoalInfo2),

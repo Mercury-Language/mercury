@@ -244,6 +244,8 @@ mode_util__modes_to_uni_modes([X|Xs], [Y|Ys], ModuleInfo, [A|As]) :-
 
 :- inst_is_clobbered(_, X) when X.		% NU-Prolog indexing.
 
+inst_is_clobbered(_, any(mostly_clobbered)).
+inst_is_clobbered(_, any(clobbered)).
 inst_is_clobbered(_, ground(clobbered, _)).
 inst_is_clobbered(_, ground(mostly_clobbered, _)).
 inst_is_clobbered(_, bound(clobbered, _)).
@@ -273,6 +275,7 @@ inst_is_free(ModuleInfo, defined_inst(InstName)) :-
 
 :- inst_is_bound(_, X) when X.		% NU-Prolog indexing.
 
+inst_is_bound(_, any(_)).
 inst_is_bound(_, ground(_, _)).
 inst_is_bound(_, bound(_, _)).
 inst_is_bound(_, inst_var(_)) :-
@@ -348,6 +351,7 @@ inst_is_unique(ModuleInfo, Inst) :-
 
 inst_is_unique_2(ModuleInfo, bound(unique, List), _, Expansions) :-
 	bound_inst_list_is_unique_2(List, ModuleInfo, Expansions).
+inst_is_unique_2(_, any(unique), _, _).
 inst_is_unique_2(_, free, _, _).
 inst_is_unique_2(_, ground(unique, _), _, _).
 inst_is_unique_2(_, inst_var(_), _, _) :-
@@ -384,6 +388,8 @@ inst_is_mostly_unique_2(ModuleInfo, bound(mostly_unique, List), _, Expansions)
 inst_is_mostly_unique_2(ModuleInfo, bound(mostly_unique, List), _, Expansions)
 		:-
 	bound_inst_list_is_mostly_unique_2(List, ModuleInfo, Expansions).
+inst_is_mostly_unique_2(_, any(unique), _, _).
+inst_is_mostly_unique_2(_, any(mostly_unique), _, _).
 inst_is_mostly_unique_2(_, free, _, _).
 inst_is_mostly_unique_2(_, ground(unique, _), _, _).
 inst_is_mostly_unique_2(_, ground(mostly_unique, _), _, _).
@@ -419,6 +425,7 @@ inst_is_not_partly_unique(ModuleInfo, Inst) :-
 inst_is_not_partly_unique_2(ModuleInfo, bound(shared, List), _, Expansions) :-
 	bound_inst_list_is_not_partly_unique_2(List, ModuleInfo, Expansions).
 inst_is_not_partly_unique_2(_, free, _, _).
+inst_is_not_partly_unique_2(_, any(shared), _, _).
 inst_is_not_partly_unique_2(_, ground(shared, _), _, _).
 inst_is_not_partly_unique_2(_, inst_var(_), _, _) :-
 	error("internal error: uninstantiated inst parameter").
@@ -456,6 +463,8 @@ inst_is_not_fully_unique_2(ModuleInfo, bound(shared, List), _, Expansions) :-
 inst_is_not_fully_unique_2(ModuleInfo, bound(mostly_unique, List), _,
 		Expansions) :-
 	bound_inst_list_is_not_fully_unique_2(List, ModuleInfo, Expansions).
+inst_is_not_fully_unique_2(_, any(shared), _, _).
+inst_is_not_fully_unique_2(_, any(mostly_unique), _, _).
 inst_is_not_fully_unique_2(_, free, _, _).
 inst_is_not_fully_unique_2(_, ground(shared, _), _, _).
 inst_is_not_fully_unique_2(_, ground(mostly_unique, _), _, _).
@@ -787,6 +796,8 @@ ex_propagate_type_info_inst(Type, ModuleInfo, Inst0, Inst) :-
 :- pred propagate_ctor_info(inst, type, list(constructor), module_info, inst).
 :- mode propagate_ctor_info(in, in, in, in, out) is det.
 
+propagate_ctor_info(any(Uniq), _Type, _, _, any(Uniq)).	% XXX loses type info!
+
 % propagate_ctor_info(free, Type, _, _, free(Type)).	% temporarily disabled
 propagate_ctor_info(free, _Type, _, _, free).	% XXX temporary hack
 
@@ -827,6 +838,8 @@ propagate_ctor_info(defined_inst(InstName), Type, Ctors, ModuleInfo, Inst) :-
 % ex_propagate_ctor_info(free, Type, _, _, free(Type)).	% temporarily disabled
 ex_propagate_ctor_info(free, _Type, _, _, free).	% XXX temporary hack
 
+ex_propagate_ctor_info(any(Uniq), _Type, _, _, any(Uniq)).
+						% XXX loses type info!
 ex_propagate_ctor_info(free(_), _, _, _, _) :-
 	error("ex_propagate_ctor_info: type info already present").
 ex_propagate_ctor_info(bound(Uniq, BoundInsts0), _Type, Constructors,
@@ -864,7 +877,8 @@ constructors_to_bound_insts([Ctor | Ctors], Uniq, ModuleInfo,
 	Ctor = Name0 - Args,
 	type_list_to_inst_list(Args, Uniq, Insts),
 	unqualify_name(Name0, Name),
-	BoundInst = functor(term__atom(Name), Insts),
+	list__length(Insts, Arity),
+	BoundInst = functor(cons(Name, Arity), Insts),
 	constructors_to_bound_insts(Ctors, Uniq, ModuleInfo, BoundInsts).
 
 :- pred type_list_to_inst_list(list(type), uniqueness, list(inst)).
@@ -972,6 +986,7 @@ inst_list_apply_substitution([A0 | As0], Subst, [A | As]) :-
 :- pred inst_apply_substitution(inst, inst_subst, inst).
 :- mode inst_apply_substitution(in, in, out) is det.
 
+inst_apply_substitution(any(Uniq), _, any(Uniq)).
 inst_apply_substitution(free, _, free).
 inst_apply_substitution(free(T), _, free(T)).
 inst_apply_substitution(ground(Uniq, PredStuff), _, ground(Uniq, PredStuff)).

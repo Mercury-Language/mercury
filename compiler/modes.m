@@ -948,10 +948,10 @@ modecheck_case_list([Case0 | Cases0], Var,
 
 		% record the fact that Var was bound to ConsId in the
 		% instmap before processing this case
-	( { cons_id_to_const(ConsId, Const, Arity) } ->
+	( { cons_id_to_const(ConsId, _Const, Arity) } ->
 		{ list__duplicate(Arity, free, ArgInsts) },
 		modecheck_set_var_inst(Var,
-			bound(unique, [functor(Const, ArgInsts)]))
+			bound(unique, [functor(ConsId, ArgInsts)]))
 	;
 		% cons_id_to_const will fail for pred_consts and
 		% address_consts; we don't worry about them,
@@ -1398,7 +1398,12 @@ handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
 		% the initial inst specified in the pred's mode declaration,
 		% then it's not a call to an implied mode, it's an exact
 		% match with a genuine mode.
-		inst_matches_binding(VarInst0, InitialInst, ModuleInfo0)
+		( inst_matches_binding(VarInst0, InitialInst, ModuleInfo0)
+		; VarInst0 = any(_), InitialInst = any(_)
+		  % XXX this doesn't handle `any's that are nested inside
+		  % the inst -- we really ought to define a predicate
+		  % like inst_matches_binding but which allows anys to match
+		)
 	->
 		Var = Var0,
 		Goals = [] - [],
@@ -1886,7 +1891,9 @@ modecheck_unify_functor(X, Name, ArgVars0, Unification0,
 	instmap_lookup_arg_list(ArgVars0, InstMap0, InstArgs),
 	mode_info_var_is_live(ModeInfo0, X, LiveX),
 	mode_info_var_list_is_live(ArgVars0, ModeInfo0, LiveArgs),
-	InstOfY = bound(unique, [functor(Name, InstArgs)]),
+	list__length(ArgVars0, Arity),
+	make_functor_cons_id(Name, Arity, ConsId),
+	InstOfY = bound(unique, [functor(ConsId, InstArgs)]),
 	(
 		% The occur check: X = f(X) is considered a mode error
 		% unless X is ground.  (Actually it wouldn't be that
@@ -1938,9 +1945,8 @@ modecheck_unify_functor(X, Name, ArgVars0, Unification0,
 			error("get_mode_of_args failed")
 		),
 		(
-			list__length(ArgVars0, Arity),
 			inst_expand(ModuleInfo1, InstOfX, InstOfX1),
-			get_arg_insts(InstOfX1, Name, Arity, InstOfXArgs),
+			get_arg_insts(InstOfX1, ConsId, Arity, InstOfXArgs),
 			get_mode_of_args(Inst, InstOfXArgs, ModeOfXArgs0)
 		->
 			ModeOfXArgs = ModeOfXArgs0
@@ -2148,36 +2154,37 @@ ground_args(Uniq, [Arg | Args]) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred get_arg_insts(inst, const, arity, list(inst)).
+:- pred get_arg_insts(inst, cons_id, arity, list(inst)).
 :- mode get_arg_insts(in, in, in, out) is semidet.
 
-get_arg_insts(not_reached, _Name, Arity, ArgInsts) :-
+get_arg_insts(not_reached, _ConsId, Arity, ArgInsts) :-
 	list__duplicate(Arity, not_reached, ArgInsts).
-get_arg_insts(ground(Uniq, _PredInst), _Name, Arity, ArgInsts) :-
+get_arg_insts(ground(Uniq, _PredInst), _ConsId, Arity, ArgInsts) :-
 	list__duplicate(Arity, ground(Uniq, no), ArgInsts).
-get_arg_insts(bound(_Uniq, List), Name, Arity, ArgInsts) :-
-	( get_arg_insts_2(List, Name, Arity, ArgInsts0) ->
+get_arg_insts(bound(_Uniq, List), ConsId, Arity, ArgInsts) :-
+	( get_arg_insts_2(List, ConsId, ArgInsts0) ->
 		ArgInsts = ArgInsts0
 	;
 		% the code is unreachable
 		list__duplicate(Arity, not_reached, ArgInsts)
 	).
-get_arg_insts(free, _Name, Arity, ArgInsts) :-
+get_arg_insts(free, _ConsId, Arity, ArgInsts) :-
 	list__duplicate(Arity, free, ArgInsts).
-get_arg_insts(free(_Type), _Name, Arity, ArgInsts) :-
+get_arg_insts(free(_Type), _ConsId, Arity, ArgInsts) :-
 	list__duplicate(Arity, free, ArgInsts).
+get_arg_insts(any(Uniq), _ConsId, Arity, ArgInsts) :-
+	list__duplicate(Arity, any(Uniq), ArgInsts).
 
-:- pred get_arg_insts_2(list(bound_inst), const, arity, list(inst)).
-:- mode get_arg_insts_2(in, in, in, out) is semidet.
+:- pred get_arg_insts_2(list(bound_inst), cons_id, list(inst)).
+:- mode get_arg_insts_2(in, in, out) is semidet.
 
-get_arg_insts_2([BoundInst | BoundInsts], Name, Arity, ArgInsts) :-
+get_arg_insts_2([BoundInst | BoundInsts], ConsId, ArgInsts) :-
 	(
-		BoundInst = functor(Name, ArgInsts0),
-		list__length(ArgInsts0, Arity)
+		BoundInst = functor(ConsId, ArgInsts0)
 	->
 		ArgInsts = ArgInsts0
 	;
-		get_arg_insts_2(BoundInsts, Name, Arity, ArgInsts)
+		get_arg_insts_2(BoundInsts, ConsId, ArgInsts)
 	).
 
 % get_mode_of_args(FinalInst, InitialArgInsts, ArgModes):
@@ -2191,6 +2198,8 @@ get_arg_insts_2([BoundInst | BoundInsts], Name, Arity, ArgInsts) :-
 
 get_mode_of_args(not_reached, ArgInsts, ArgModes) :-
 	mode_set_args(ArgInsts, not_reached, ArgModes).
+get_mode_of_args(any(Uniq), ArgInsts, ArgModes) :-
+	mode_set_args(ArgInsts, any(Uniq), ArgModes).
 get_mode_of_args(ground(Uniq, no), ArgInsts, ArgModes) :-
 	mode_set_args(ArgInsts, ground(Uniq, no), ArgModes).
 get_mode_of_args(bound(_Uniq, List), ArgInstsA, ArgModes) :-

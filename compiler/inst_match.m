@@ -9,7 +9,28 @@
 %
 % This module defines some utility routines for comparing insts
 % that are used by modes.m and det_analysis.m.
-%
+
+/*
+The handling of `any' insts is not complete.
+It would be nice to allow `free', `bound' and `ground' to
+match `any', but right now we don't.  Also currently we
+don't allow any unifications with variables of mode `any'.
+The reason is that although the mode analysis would be pretty
+straight-forward, generating the correct code is quite a bit trickier.
+In fact, much of the mode analysis code in this file is already
+done, just commented out with the remark "not yet".
+The exception is abstract unification, which hasn't been done.
+In addition, modes.m would have to be changed to handle the implicit
+conversions from `free'/`bound'/`ground' to `any' at
+
+	(1) procedure calls (this is just an extension of implied modes)
+	(2) the end of branched goals
+	(3) the end of predicates.
+
+Since that is not yet done, we currently require the user to
+insert explicit calls to initialize constraint variables.
+*/
+
 %-----------------------------------------------------------------------------%
 
 :- module inst_match.
@@ -64,6 +85,7 @@
 	%	not_reached matches_final with anything,
 	%	but not everything matches_final with not_reached -
 	%	in fact only not_reached matches_final with not_reached.
+	%	It is also asymmetric with respect to unique insts.
 
 	% It might be a good idea to fold inst_matches_initial and
 	% inst_matches_final into a single predicate inst_matches(When, ...)
@@ -73,10 +95,11 @@
 :- mode inst_matches_binding(in, in, in) is semidet.
 
 	% inst_matches_binding(InstA, InstB, ModuleInfo):
-	%	Succeed iff the binding of InstA is the same as that
-	%	of InstB.  This is the same as inst_matches_final
-	%	except that it ignores uniqueness.  It is used to
-	%	check whether variables get bound in negated contexts.
+	%	 Succeed iff the binding of InstA is definitely exactly the
+	%	 same as that of InstB.  This is the same as
+	%	 inst_matches_final except that it ignores uniqueness, and
+	%	 that `any' does not match itself.  It is used to check
+	%	 whether variables get bound in negated contexts.
 
 %-----------------------------------------------------------------------------%
 
@@ -165,22 +188,27 @@ inst_matches_initial_2(InstA, InstB, ModuleInfo, Expansions) :-
 	% inst_matches_initial is true for any pairs of insts which
 	% occur in `Expansions'.
 
+inst_matches_initial_3(any(UniqA), any(UniqB), _, _) :-
+	unique_matches_initial(UniqA, UniqB).
+/* not yet:
+inst_matches_initial_3(any(_), free, _, _).
+inst_matches_initial_3(free, any(_), _, _).
+*/
 inst_matches_initial_3(free, free, _, _).
+/* not yet:
+inst_matches_initial_3(bound(UniqA, ListA), any(UniqB), ModuleInfo, _) :-
+	unique_matches_initial(UniqA, UniqB),
+	bound_inst_list_matches_uniq(ListA, UniqB, ModuleInfo).
+*/
 inst_matches_initial_3(bound(_Uniq, _List), free, _, _).
 inst_matches_initial_3(bound(UniqA, ListA), bound(UniqB, ListB), ModuleInfo,
 		Expansions) :-
 	unique_matches_initial(UniqA, UniqB),
 	bound_inst_list_matches_initial(ListA, ListB, ModuleInfo, Expansions).
-inst_matches_initial_3(bound(UniqA, List), ground(UniqB, no), ModuleInfo, _) :-
+inst_matches_initial_3(bound(UniqA, ListA), ground(UniqB, no), ModuleInfo, _) :-
 	unique_matches_initial(UniqA, UniqB),
-	bound_inst_list_is_ground(List, ModuleInfo),
-	( UniqB = unique ->
-		bound_inst_list_is_unique(List, ModuleInfo)
-	; UniqB = mostly_unique ->
-		bound_inst_list_is_mostly_unique(List, ModuleInfo)
-	;
-		true
-	).
+	bound_inst_list_is_ground(ListA, ModuleInfo),
+	bound_inst_list_matches_uniq(ListA, UniqB, ModuleInfo).
 inst_matches_initial_3(bound(Uniq, List), abstract_inst(_,_), ModuleInfo, _) :-
 	Uniq = unique,
 	bound_inst_list_is_ground(List, ModuleInfo),
@@ -189,16 +217,14 @@ inst_matches_initial_3(bound(Uniq, List), abstract_inst(_,_), ModuleInfo, _) :-
 	Uniq = mostly_unique,
 	bound_inst_list_is_ground(List, ModuleInfo),
 	bound_inst_list_is_mostly_unique(List, ModuleInfo).
+/* not yet:
+inst_matches_initial_3(ground(UniqA, _PredInst), any(UniqB), _, _) :-
+	unique_matches_initial(UniqA, UniqB).
+*/
 inst_matches_initial_3(ground(_Uniq, _PredInst), free, _, _).
 inst_matches_initial_3(ground(UniqA, _), bound(UniqB, List), ModuleInfo, _) :-
 	unique_matches_initial(UniqA, UniqB),
-	( UniqA = shared ->
-		bound_inst_list_is_not_partly_unique(List, ModuleInfo)
-	; UniqA = mostly_unique ->
-		bound_inst_list_is_not_fully_unique(List, ModuleInfo)
-	;
-		true
-	),
+	uniq_matches_bound_inst_list(UniqA, List, ModuleInfo),
 	fail.	% XXX BUG! should fail only if 
 		% List does not include all the constructors for the type,
 		% or if List contains some not_reached insts.
@@ -212,6 +238,9 @@ inst_matches_initial_3(ground(_UniqA, no), abstract_inst(_,_), _, _) :-
 		% I don't know what this should do.
 		% Abstract insts aren't really supported.
 	error("inst_matches_initial(ground, abstract_inst) == ??").
+/* not yet:
+inst_matches_initial_3(abstract_inst(_,_), any(shared), _, _).
+*/
 inst_matches_initial_3(abstract_inst(_,_), free, _, _).
 inst_matches_initial_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 				ModuleInfo, Expansions) :-
@@ -246,6 +275,38 @@ unique_matches_initial(mostly_clobbered, mostly_clobbered).
 unique_matches_initial(mostly_clobbered, clobbered).
 unique_matches_initial(clobbered, clobbered).
 
+:- pred unique_matches_final(uniqueness, uniqueness).
+:- mode unique_matches_final(in, in) is semidet.
+
+unique_matches_final(A, B) :-
+	unique_matches_initial(A, B).
+
+:- pred bound_inst_list_matches_uniq(list(bound_inst), uniqueness,
+					module_info).
+:- mode bound_inst_list_matches_uniq(in, in, in) is semidet.
+
+bound_inst_list_matches_uniq(List, Uniq, ModuleInfo) :-
+	( Uniq = unique ->
+		bound_inst_list_is_unique(List, ModuleInfo)
+	; Uniq = mostly_unique ->
+		bound_inst_list_is_mostly_unique(List, ModuleInfo)
+	;
+		true
+	).
+
+:- pred uniq_matches_bound_inst_list(uniqueness, list(bound_inst),
+					module_info).
+:- mode uniq_matches_bound_inst_list(in, in, in) is semidet.
+
+uniq_matches_bound_inst_list(Uniq, List, ModuleInfo) :-
+	( Uniq = shared ->
+		bound_inst_list_is_not_partly_unique(List, ModuleInfo)
+	; Uniq = mostly_unique ->
+		bound_inst_list_is_not_fully_unique(List, ModuleInfo)
+	;
+		true
+	).
+
 	% Here we check that the functors in the first list are a
 	% subset of the functors in the second list. 
 	% (If a bound(...) inst only specifies the insts for some of
@@ -261,18 +322,16 @@ unique_matches_initial(clobbered, clobbered).
 
 bound_inst_list_matches_initial([], _, _, _).
 bound_inst_list_matches_initial([X|Xs], [Y|Ys], ModuleInfo, Expansions) :-
-	X = functor(NameX, ArgsX),
-	Y = functor(NameY, ArgsY),
-	list__length(ArgsX, ArityX),
-	list__length(ArgsY, ArityY),
-	( NameX = NameY, ArityX = ArityY ->
+	X = functor(ConsIdX, ArgsX),
+	Y = functor(ConsIdY, ArgsY),
+	( ConsIdX = ConsIdY ->
 		inst_list_matches_initial(ArgsX, ArgsY, ModuleInfo, Expansions),
 		bound_inst_list_matches_initial(Xs, Ys, ModuleInfo, Expansions)
 	;
-		compare(>, X, Y),
-			% NameY/ArityY does not occur in [X|Xs].
+		compare(>, ConsIdX, ConsIdY),
+			% ConsIdY does not occur in [X|Xs].
 			% Hence [X|Xs] implicitly specifies `not_reached'
-			% for the args of NameY/ArityY, and hence 
+			% for the args of ConsIdY, and hence 
 			% automatically matches_initial Y.  We just need to
 			% check that [X|Xs] matches_initial Ys.
 		bound_inst_list_matches_initial([X|Xs], Ys, ModuleInfo,
@@ -326,7 +385,19 @@ inst_matches_final_2(InstA, InstB, ModuleInfo, Expansions) :-
 
 :- inst_matches_final_3(A, B, _, _) when A and B.
 
+inst_matches_final_3(any(UniqA), any(UniqB), _, _) :-
+	unique_matches_final(UniqA, UniqB).
+/***
+	% not yet:
+inst_matches_final_3(free, any(_), _, _).
+***/
 inst_matches_final_3(free, free, _, _).
+/*
+not yet:
+inst_matches_final_3(bound(UniqA, ListA), any(UniqB), ModuleInfo, Expansions) :-
+	unique_matches_final(UniqA, UniqB),
+	bound_inst_list_matches_uniq(ListA, UniqB).
+*/
 inst_matches_final_3(bound(UniqA, ListA), bound(UniqB, ListB), ModuleInfo,
 		Expansions) :-
 	unique_matches_final(UniqA, UniqB),
@@ -335,24 +406,16 @@ inst_matches_final_3(bound(UniqA, ListA), ground(UniqB, no), ModuleInfo,
 		_Exps) :-
 	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_is_ground(ListA, ModuleInfo),
-	( UniqB = unique ->
-		bound_inst_list_is_unique(ListA, ModuleInfo)
-	; UniqB = mostly_unique ->
-		bound_inst_list_is_mostly_unique(ListA, ModuleInfo)
-	;
-		true
-	).
+	bound_inst_list_matches_uniq(ListA, UniqB, ModuleInfo).
+/* not yet:
+inst_matches_final_3(ground(UniqA, _), any(UniqB), ModuleInfo, Expansions) :-
+	unique_matches_final(UniqA, UniqB).
+*/
 inst_matches_final_3(ground(UniqA, _), bound(UniqB, ListB), ModuleInfo,
 			_Exps) :-
 	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_is_ground(ListB, ModuleInfo),
-	( UniqA = shared ->
-		bound_inst_list_is_not_partly_unique(ListB, ModuleInfo)
-	; UniqA = mostly_unique ->
-		bound_inst_list_is_not_fully_unique(ListB, ModuleInfo)
-	;
-		true
-	).
+	uniq_matches_bound_inst_list(UniqA, ListB, ModuleInfo).
 		% XXX BUG! Should fail if there are not_reached
 		% insts in ListB, or if ListB does not contain a complete list
 		% of all the constructors for the type in question.
@@ -361,6 +424,9 @@ inst_matches_final_3(ground(UniqA, PredInstA), ground(UniqB, PredInstB),
 		_, _) :-
 	pred_inst_matches_final(PredInstA, PredInstB),
 	unique_matches_final(UniqA, UniqB).
+/* not yet:
+inst_matches_final_2(abstract_inst(_, _), any(shared), _, _).
+*/
 inst_matches_final_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 		ModuleInfo, Expansions) :-
 	inst_list_matches_final(ArgsA, ArgsB, ModuleInfo, Expansions).
@@ -375,12 +441,6 @@ pred_inst_matches_final(yes(PredInstA), yes(PredInstB)) :-
 	PredInstA = PredInstB.
 	% We require higher-order pred insts to match exactly;
 	% this requirement may be too strict and hence may need to be relaxed.
-
-:- pred unique_matches_final(uniqueness, uniqueness).
-:- mode unique_matches_final(in, in) is semidet.
-
-unique_matches_final(A, B) :-
-	unique_matches_initial(A, B).
 
 :- pred inst_list_matches_final(list(inst), list(inst), module_info,
 				expansions).
@@ -407,18 +467,16 @@ inst_list_matches_final([ArgA | ArgsA], [ArgB | ArgsB], ModuleInfo,
 
 bound_inst_list_matches_final([], _, _, _).
 bound_inst_list_matches_final([X|Xs], [Y|Ys], ModuleInfo, Expansions) :-
-	X = functor(NameX, ArgsX),
-	Y = functor(NameY, ArgsY),
-	list__length(ArgsX, ArityX),
-	list__length(ArgsY, ArityY),
-	( NameX = NameY, ArityX = ArityY ->
+	X = functor(ConsIdX, ArgsX),
+	Y = functor(ConsIdY, ArgsY),
+	( ConsIdX = ConsIdY ->
 		inst_list_matches_final(ArgsX, ArgsY, ModuleInfo, Expansions),
 		bound_inst_list_matches_final(Xs, Ys, ModuleInfo, Expansions)
 	;
-		compare(>, X, Y),
-			% NameY/ArityY does not occur in [X|Xs].
+		compare(>, ConsIdX, ConsIdY),
+			% ConsIdY does not occur in [X|Xs].
 			% Hence [X|Xs] implicitly specifies `not_reached'
-			% for the args of NameY/ArityY, and hence 
+			% for the args of ConsIdY, and hence 
 			% automatically matches_final Y.  We just need to
 			% check that [X|Xs] matches_final Ys.
 		bound_inst_list_matches_final([X|Xs], Ys, ModuleInfo,
@@ -451,6 +509,7 @@ inst_matches_binding_2(InstA, InstB, ModuleInfo, Expansions) :-
 
 :- inst_matches_binding_3(A, B, _, _) when A and B.
 
+% Note that `any' is *not* considered to match `any'.
 inst_matches_binding_3(free, free, _, _).
 inst_matches_binding_3(bound(_UniqA, ListA), bound(_UniqB, ListB), ModuleInfo,
 		Expansions) :-
@@ -508,18 +567,16 @@ inst_list_matches_binding([ArgA | ArgsA], [ArgB | ArgsB], ModuleInfo,
 
 bound_inst_list_matches_binding([], _, _, _).
 bound_inst_list_matches_binding([X|Xs], [Y|Ys], ModuleInfo, Expansions) :-
-	X = functor(NameX, ArgsX),
-	Y = functor(NameY, ArgsY),
-	list__length(ArgsX, ArityX),
-	list__length(ArgsY, ArityY),
-	( NameX = NameY, ArityX = ArityY ->
+	X = functor(ConsIdX, ArgsX),
+	Y = functor(ConsIdY, ArgsY),
+	( ConsIdX = ConsIdY ->
 		inst_list_matches_binding(ArgsX, ArgsY, ModuleInfo, Expansions),
 		bound_inst_list_matches_binding(Xs, Ys, ModuleInfo, Expansions)
 	;
-		compare(>, X, Y),
-			% NameY/ArityY does not occur in [X|Xs].
+		compare(>, ConsIdX, ConsIdY),
+			% ConsIdX does not occur in [X|Xs].
 			% Hence [X|Xs] implicitly specifies `not_reached'
-			% for the args of NameY/ArityY, and hence 
+			% for the args of ConsIdY, and hence 
 			% automatically matches_binding Y.  We just need to
 			% check that [X|Xs] matches_binding Ys.
 		bound_inst_list_matches_binding([X|Xs], Ys, ModuleInfo,
@@ -602,6 +659,24 @@ inst_merge_2(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
 
 :- inst_merge_3(A, B, _, _, _) when A and B.
 
+inst_merge_3(any(UniqA), any(UniqB), M, any(Uniq), M) :-
+	merge_uniq(UniqA, UniqB, Uniq).
+/* not yet:
+inst_merge_3(any(Uniq), free, M, any(Uniq), M).
+inst_merge_3(any(UniqA), bound(UniqB, ListB), M, any(Uniq), M) :-
+	merge_uniq_bound(UniqA, UniqB, ListB, ModuleInfo, Uniq),
+inst_merge_3(any(UniqA), ground(UniqB, _), M, any(Uniq), M) :-
+	merge_uniq(UniqA, UniqB, Uniq).
+inst_merge_3(any(UniqA), abstract_inst(_, _), M, any(Uniq), M) :-
+	merge_uniq(UniqA, shared, Uniq).
+inst_merge_3(free, any(Uniq), M, any(Uniq), M).
+inst_merge_3(bound(UniqA, ListA), any(UniqB), M, any(Uniq), M) :-
+	merge_uniq_bound(UniqB, UniqA, ListA, ModuleInfo, Uniq),
+inst_merge_3(ground(UniqA, _), any(UniqB), M, any(Uniq), M) :-
+	merge_uniq(UniqA, UniqB).
+inst_merge_3(abstract_inst(_, _), any(UniqB), M, any(Uniq), M) :-
+	merge_uniq(shared, UniqB, Uniq).
+*/
 inst_merge_3(free, free, M, free, M).
 inst_merge_3(bound(UniqA, ListA), bound(UniqB, ListB), ModuleInfo0,
 		bound(Uniq, List), ModuleInfo) :-
@@ -609,11 +684,11 @@ inst_merge_3(bound(UniqA, ListA), bound(UniqB, ListB), ModuleInfo0,
 	bound_inst_list_merge(ListA, ListB, ModuleInfo0, List, ModuleInfo).
 inst_merge_3(bound(UniqA, ListA), ground(UniqB, _), ModuleInfo,
 		ground(Uniq, no), ModuleInfo) :-
-	merge_uniq(UniqA, UniqB, Uniq),
+	merge_uniq_bound(UniqB, UniqA, ListA, ModuleInfo, Uniq),
 	bound_inst_list_is_ground(ListA, ModuleInfo).
 inst_merge_3(ground(UniqA, _), bound(UniqB, ListB), ModuleInfo,
 		ground(Uniq, no), ModuleInfo) :-
-	merge_uniq(UniqA, UniqB, Uniq),
+	merge_uniq_bound(UniqA, UniqB, ListB, ModuleInfo, Uniq),
 	bound_inst_list_is_ground(ListB, ModuleInfo).
 inst_merge_3(ground(UniqA, PredA), ground(UniqB, PredB), M,
 		ground(Uniq, Pred), M) :-
@@ -648,6 +723,67 @@ merge_uniq(UniqA, UniqB, Merged) :-
 		Merged = UniqA
 	).
 
+	% merge_uniq_bound(UniqA, UniqB, ListB, ModuleInfo, Uniq) succeeds iff
+	% Uniq is the result of merging
+
+:- pred merge_uniq_bound(uniqueness, uniqueness, list(bound_inst), module_info,
+			uniqueness).
+:- mode merge_uniq_bound(in, in, in, in, out) is det.
+
+merge_uniq_bound(UniqA, UniqB, ListB, ModuleInfo, Uniq) :-
+	merge_uniq(UniqA, UniqB, Uniq0),
+	set__init(Expansions),
+	merge_bound_inst_list_uniq(ListB, Uniq0, ModuleInfo, Expansions, Uniq).
+
+:- pred merge_bound_inst_list_uniq(list(bound_inst), uniqueness, module_info,
+			set(inst_name), uniqueness).
+:- mode merge_bound_inst_list_uniq(in, in, in, in, out) is det.
+
+merge_bound_inst_list_uniq([], Uniq, _, _, Uniq).
+merge_bound_inst_list_uniq([BoundInst | BoundInsts], Uniq0,
+			ModuleInfo, Expansions, Uniq) :-
+	BoundInst = functor(_ConsId, ArgInsts),
+	merge_inst_list_uniq(ArgInsts, Uniq0, ModuleInfo, Expansions, Uniq1),
+	merge_bound_inst_list_uniq(BoundInsts, Uniq1, ModuleInfo, Expansions,
+		Uniq).
+
+:- pred merge_inst_list_uniq(list(inst), uniqueness, module_info,
+			set(inst_name), uniqueness).
+:- mode merge_inst_list_uniq(in, in, in, in, out) is det.
+
+merge_inst_list_uniq([], Uniq, _, _, Uniq).
+merge_inst_list_uniq([Inst | Insts], Uniq0, ModuleInfo, Expansions, Uniq) :-
+	merge_inst_uniq(Inst, Uniq0, ModuleInfo, Expansions, Uniq1),
+	merge_inst_list_uniq(Insts, Uniq1, ModuleInfo, Expansions, Uniq).
+
+:- pred merge_inst_uniq(inst, uniqueness, module_info, set(inst_name),
+			uniqueness).
+:- mode merge_inst_uniq(in, in, in, in, out) is det.
+
+merge_inst_uniq(any(UniqA), UniqB, _, _, Uniq) :-
+	merge_uniq(UniqA, UniqB, Uniq).
+merge_inst_uniq(free, Uniq, _, _, Uniq).
+merge_inst_uniq(free(_), Uniq, _, _, Uniq).
+merge_inst_uniq(bound(UniqA, ListA), UniqB, ModuleInfo, Expansions, Uniq) :-
+	merge_uniq(UniqA, UniqB, Uniq0),
+	merge_bound_inst_list_uniq(ListA, Uniq0, ModuleInfo, Expansions, Uniq).
+merge_inst_uniq(ground(UniqA, _), UniqB, _, _, Uniq) :-
+	merge_uniq(UniqA, UniqB, Uniq).
+merge_inst_uniq(abstract_inst(_,_), UniqB, _, _, Uniq) :-
+	merge_uniq(shared, UniqB, Uniq).
+merge_inst_uniq(defined_inst(InstName), UniqB, ModuleInfo, Expansions,
+		Uniq) :-
+	( set__member(InstName, Expansions) ->
+		Uniq = UniqB
+	;
+		set__insert(Expansions, InstName, Expansions1),
+		inst_lookup(ModuleInfo, InstName, Inst),
+		merge_inst_uniq(Inst, UniqB, ModuleInfo, Expansions1, Uniq)
+	).
+merge_inst_uniq(not_reached, Uniq, _, _, Uniq).
+merge_inst_uniq(inst_var(_), _, _, _, _) :-
+	error("merge_inst_uniq: unexpected inst_var").
+
 %-----------------------------------------------------------------------------%
 
 :- pred inst_list_merge(list(inst), list(inst), module_info, list(inst),
@@ -680,18 +816,16 @@ bound_inst_list_merge(Xs, Ys, ModuleInfo0, Zs, ModuleInfo) :-
 	;
 		Xs = [X | Xs1],
 		Ys = [Y | Ys1],
-		X = functor(NameX, ArgsX),
-		Y = functor(NameY, ArgsY),
-		list__length(ArgsX, ArityX),
-		list__length(ArgsY, ArityY),
-		( NameX = NameY, ArityX = ArityY ->
+		X = functor(ConsIdX, ArgsX),
+		Y = functor(ConsIdY, ArgsY),
+		( ConsIdX = ConsIdY ->
 			inst_list_merge(ArgsX, ArgsY, ModuleInfo0,
 					Args, ModuleInfo1),
-			Z = functor(NameX, Args),
+			Z = functor(ConsIdX, Args),
 			Zs = [Z | Zs1],
 			bound_inst_list_merge(Xs1, Ys1, ModuleInfo1,
 				Zs1, ModuleInfo)
-		; compare(<, X, Y) ->
+		; compare(<, ConsIdX, ConsIdY) ->
 			Zs = [X | Zs1],
 			bound_inst_list_merge(Xs1, Ys, ModuleInfo0,
 						Zs1, ModuleInfo)
@@ -780,7 +914,22 @@ abstractly_unify_inst_2(IsLive, InstA, InstB, UnifyIsReal, ModuleInfo0,
 
 :- abstractly_unify_inst_3(A, B, C, _, _, _, _, _) when A and B and C.
 
+% XXX could be extended to handle `any' insts better
+
 abstractly_unify_inst_3(live, not_reached, _, _,	M, not_reached, det, M).
+
+abstractly_unify_inst_3(live, any(UniqX), any(UniqY), Real, M,
+					any(Uniq), det, M) :-
+	Real = fake_unify,
+	unify_uniq(live, Real, UniqX, UniqY, Uniq).
+
+abstractly_unify_inst_3(live, any(UniqX), free, Real, M,
+					any(Uniq), det, M) :-
+	unify_uniq(live, Real, UniqX, unique, Uniq).
+
+abstractly_unify_inst_3(live, free, any(UniqY), Real, M,
+					any(Uniq), det, M) :-
+	unify_uniq(live, Real, unique, UniqY, Uniq).
 
 % abstractly_unify_inst_3(live, free,	free, _,	_, _, _, _) :- fail.
 
@@ -876,6 +1025,14 @@ abstractly_unify_inst_3(live, abstract_inst(Name, ArgsA),
 ***/
 
 abstractly_unify_inst_3(dead, not_reached, _, _, M, not_reached, det, M).
+
+abstractly_unify_inst_3(dead, any(UniqX), any(UniqY), Real, M,
+					any(Uniq), det, M) :-
+	Real = fake_unify,
+	unify_uniq(dead, Real, UniqX, UniqY, Uniq).
+
+abstractly_unify_inst_3(dead, any(UniqX), free, _Real, M,
+					any(UniqX), det, M).
 
 abstractly_unify_inst_3(dead, free, Inst, _, M, Inst, det, M).
 
@@ -1070,36 +1227,40 @@ abstractly_unify_inst_list([X|Xs], [Y|Ys], Live, Real, ModuleInfo0,
 
 abstractly_unify_inst_functor(Live, InstA, Name, ArgInsts, ArgLives,
 		Real, ModuleInfo0, Inst, ModuleInfo) :-
+	list__length(ArgInsts, Arity),
+	make_functor_cons_id(Name, Arity, ConsId),
 	inst_expand(ModuleInfo0, InstA, InstA2),
-	abstractly_unify_inst_functor_2(Live, InstA2, Name, ArgInsts, ArgLives,
-			Real, ModuleInfo0, Inst, ModuleInfo).
+	abstractly_unify_inst_functor_2(Live, InstA2, ConsId, ArgInsts,
+			ArgLives, Real, ModuleInfo0, Inst, ModuleInfo).
 
-:- pred abstractly_unify_inst_functor_2(is_live, inst, const, list(inst),
+:- pred abstractly_unify_inst_functor_2(is_live, inst, cons_id, list(inst),
 			list(is_live), unify_is_real, module_info,
 			inst, module_info).
 :- mode abstractly_unify_inst_functor_2(in, in, in, in, in, in, in, out, out)
 	is semidet.
 
+	% XXX need to handle `any' insts
+
 abstractly_unify_inst_functor_2(live, not_reached, _, _, _, _, M,
 			not_reached, M).
 
-abstractly_unify_inst_functor_2(live, free, Name, Args0, ArgLives, _Real,
+abstractly_unify_inst_functor_2(live, free, ConsId, Args0, ArgLives, _Real,
 			ModuleInfo0,
-			bound(unique, [functor(Name, Args)]), ModuleInfo) :-
+			bound(unique, [functor(ConsId, Args)]), ModuleInfo) :-
 	inst_list_is_ground_or_dead(Args0, ArgLives, ModuleInfo0),
 	maybe_make_shared_inst_list(Args0, ArgLives, ModuleInfo0,
 			Args, ModuleInfo).
 
-abstractly_unify_inst_functor_2(live, bound(Uniq, ListX), Name, Args,
+abstractly_unify_inst_functor_2(live, bound(Uniq, ListX), ConsId, Args,
 				ArgLives, Real, M0, bound(Uniq, List), M) :-
-	abstractly_unify_bound_inst_list_lives(ListX, Name, Args, ArgLives,
+	abstractly_unify_bound_inst_list_lives(ListX, ConsId, Args, ArgLives,
 					Real, M0, List, M).
 
-abstractly_unify_inst_functor_2(live, ground(Uniq, _), Name, ArgInsts,
+abstractly_unify_inst_functor_2(live, ground(Uniq, _), ConsId, ArgInsts,
 		ArgLives, Real, M0, Inst, M) :-
 	make_ground_inst_list_lives(ArgInsts, live, ArgLives, Uniq, Real, M0,
 		GroundArgInsts, M), 
-	Inst = bound(Uniq, [functor(Name, GroundArgInsts)]).
+	Inst = bound(Uniq, [functor(ConsId, GroundArgInsts)]).
 
 % abstractly_unify_inst_functor_2(live, abstract_inst(_,_), _, _, _, _, _, _) :-
 % 	fail.
@@ -1107,20 +1268,20 @@ abstractly_unify_inst_functor_2(live, ground(Uniq, _), Name, ArgInsts,
 abstractly_unify_inst_functor_2(dead, not_reached, _, _, _, _, M,
 					not_reached, M).
 
-abstractly_unify_inst_functor_2(dead, free, Name, Args, _ArgLives, _Real, M,
-			bound(unique, [functor(Name, Args)]), M).
+abstractly_unify_inst_functor_2(dead, free, ConsId, Args, _ArgLives, _Real, M,
+			bound(unique, [functor(ConsId, Args)]), M).
 
-abstractly_unify_inst_functor_2(dead, bound(Uniq, ListX), Name, Args,
+abstractly_unify_inst_functor_2(dead, bound(Uniq, ListX), ConsId, Args,
 			_ArgLives, Real, M0, bound(Uniq, List), M) :-
-	ListY = [functor(Name, Args)],
+	ListY = [functor(ConsId, Args)],
 	abstractly_unify_bound_inst_list(dead, ListX, ListY, Real, M0,
 		List, _, M). 
 
-abstractly_unify_inst_functor_2(dead, ground(Uniq, _), Name, ArgInsts,
+abstractly_unify_inst_functor_2(dead, ground(Uniq, _), ConsId, ArgInsts,
 		_ArgLives, Real, M0, Inst, M) :-
 	make_ground_inst_list(ArgInsts, dead, Uniq, Real, M0,
 		GroundArgInsts, M),
-	Inst = bound(Uniq, [functor(Name, GroundArgInsts)]).
+	Inst = bound(Uniq, [functor(ConsId, GroundArgInsts)]).
 
 % abstractly_unify_inst_functor_2(dead, abstract_inst(_,_), _, _, _, _, _, _) :-
 % 	fail.
@@ -1166,6 +1327,8 @@ make_ground_inst_list([Inst0 | Insts0], Live, Uniq, Real, ModuleInfo0,
 :- mode make_ground_inst(in, in, in, in, in, out, out) is semidet.
 
 make_ground_inst(not_reached, _, _, _, M, not_reached, M).
+make_ground_inst(any(Uniq0), IsLive, Uniq1, Real, M, ground(Uniq, no), M) :-
+	unify_uniq(IsLive, Real, Uniq0, Uniq1, Uniq).
 make_ground_inst(free, IsLive, Uniq0, Real, M, ground(Uniq, no), M) :-
 	unify_uniq(IsLive, Real, unique, Uniq0, Uniq).
 make_ground_inst(free(T), IsLive, Uniq0, Real, M,
@@ -1238,10 +1401,10 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, ModuleInfo0,
 make_ground_bound_inst_list([], _, _, _, ModuleInfo, [], ModuleInfo).
 make_ground_bound_inst_list([Bound0 | Bounds0], IsLive, Uniq, Real, ModuleInfo0,
 			[Bound | Bounds], ModuleInfo) :-
-	Bound0 = functor(Name, ArgInsts0),
+	Bound0 = functor(ConsId, ArgInsts0),
 	make_ground_inst_list(ArgInsts0, IsLive, Uniq, Real, ModuleInfo0,
 				ArgInsts, ModuleInfo1),
-	Bound = functor(Name, ArgInsts),
+	Bound = functor(ConsId, ArgInsts),
 	make_ground_bound_inst_list(Bounds0, IsLive, Uniq, Real, ModuleInfo1,
 				Bounds, ModuleInfo).
 
@@ -1284,6 +1447,8 @@ make_shared_inst_list([Inst0 | Insts0], ModuleInfo0,
 :- mode make_shared_inst(in, in, out, out) is det.
 
 make_shared_inst(not_reached, M, not_reached, M).
+make_shared_inst(any(Uniq0), M, ground(Uniq, no), M) :-
+	make_shared(Uniq0, Uniq).
 make_shared_inst(free, M, free, M).
 make_shared_inst(free(T), M, free(T), M).
 make_shared_inst(bound(Uniq0, BoundInsts0), M0, bound(Uniq, BoundInsts), M) :-
@@ -1357,10 +1522,10 @@ make_shared(clobbered, clobbered).
 make_shared_bound_inst_list([], ModuleInfo, [], ModuleInfo).
 make_shared_bound_inst_list([Bound0 | Bounds0], ModuleInfo0,
 				[Bound | Bounds], ModuleInfo) :-
-	Bound0 = functor(Name, ArgInsts0),
+	Bound0 = functor(ConsId, ArgInsts0),
 	make_shared_inst_list(ArgInsts0, ModuleInfo0,
 				ArgInsts, ModuleInfo1),
-	Bound = functor(Name, ArgInsts),
+	Bound = functor(ConsId, ArgInsts),
 	make_shared_bound_inst_list(Bounds0, ModuleInfo1,
 				Bounds, ModuleInfo).
 
@@ -1371,6 +1536,8 @@ make_shared_bound_inst_list([Bound0 | Bounds0], ModuleInfo0,
 % change the insts of semidet-live or nondet-live insts.)
 
 make_mostly_uniq_inst(not_reached, M, not_reached, M).
+make_mostly_uniq_inst(any(Uniq0), M, any(Uniq), M) :-
+	make_mostly_uniq(Uniq0, Uniq).
 make_mostly_uniq_inst(free, M, free, M).
 make_mostly_uniq_inst(free(T), M, free(T), M).
 make_mostly_uniq_inst(bound(Uniq0, BoundInsts0), M0, bound(Uniq, BoundInsts),
@@ -1447,10 +1614,10 @@ make_mostly_uniq(clobbered, clobbered).
 make_mostly_uniq_bound_inst_list([], ModuleInfo, [], ModuleInfo).
 make_mostly_uniq_bound_inst_list([Bound0 | Bounds0], ModuleInfo0,
 				[Bound | Bounds], ModuleInfo) :-
-	Bound0 = functor(Name, ArgInsts0),
+	Bound0 = functor(ConsId, ArgInsts0),
 	make_mostly_uniq_inst_list(ArgInsts0, ModuleInfo0,
 				ArgInsts, ModuleInfo1),
-	Bound = functor(Name, ArgInsts),
+	Bound = functor(ConsId, ArgInsts),
 	make_mostly_uniq_bound_inst_list(Bounds0, ModuleInfo1,
 				Bounds, ModuleInfo).
 
@@ -1507,15 +1674,13 @@ abstractly_unify_bound_inst_list(_, [], [_|_], _, M, [], semidet, M).
 abstractly_unify_bound_inst_list(_, [_|_], [], _, M, [], semidet, M).
 abstractly_unify_bound_inst_list(Live, [X|Xs], [Y|Ys], Real, ModuleInfo0,
 		L, Det, ModuleInfo) :-
-	X = functor(NameX, ArgsX),
-	list__length(ArgsX, ArityX),
-	Y = functor(NameY, ArgsY),
-	list__length(ArgsY, ArityY),
-	( NameX = NameY, ArityX = ArityY ->
+	X = functor(ConsIdX, ArgsX),
+	Y = functor(ConsIdY, ArgsY),
+	( ConsIdX = ConsIdY ->
 	    ( abstractly_unify_inst_list(ArgsX, ArgsY, Live, Real, ModuleInfo0,
 			Args, Det1, ModuleInfo1)
 	    ->
-		L = [functor(NameX, Args) | L1],
+		L = [functor(ConsIdX, Args) | L1],
 		abstractly_unify_bound_inst_list(Live, Xs, Ys, Real,
 					ModuleInfo1, L1, Det2, ModuleInfo),
 		( Det1 = semidet ->
@@ -1529,7 +1694,7 @@ abstractly_unify_bound_inst_list(Live, [X|Xs], [Y|Ys], Real, ModuleInfo0,
 	    )
 	;
 	    Det = semidet,
-	    ( compare(<, X, Y) ->
+	    ( compare(<, ConsIdX, ConsIdY) ->
 		abstractly_unify_bound_inst_list(Live, Xs, [Y|Ys], Real,
 						ModuleInfo0, L, _, ModuleInfo)
 	    ;
@@ -1538,7 +1703,7 @@ abstractly_unify_bound_inst_list(Live, [X|Xs], [Y|Ys], Real, ModuleInfo0,
 	    )
 	).
 
-:- pred abstractly_unify_bound_inst_list_lives(list(bound_inst), const,
+:- pred abstractly_unify_bound_inst_list_lives(list(bound_inst), cons_id,
 	list(inst), list(is_live), unify_is_real, module_info,
 	list(bound_inst), module_info).
 :- mode abstractly_unify_bound_inst_list_lives(in, in, in, in, in, in, out, out)
@@ -1546,20 +1711,17 @@ abstractly_unify_bound_inst_list(Live, [X|Xs], [Y|Ys], Real, ModuleInfo0,
 
 abstractly_unify_bound_inst_list_lives([], _, _, _, _, ModuleInfo,
 					[], ModuleInfo).
-abstractly_unify_bound_inst_list_lives([X|Xs], NameY, ArgsY, LivesY, Real,
+abstractly_unify_bound_inst_list_lives([X|Xs], ConsIdY, ArgsY, LivesY, Real,
 		ModuleInfo0, L, ModuleInfo) :-
-	X = functor(NameX, ArgsX),
-	list__length(ArgsX, ArityX),
-	list__length(ArgsY, ArityY),
+	X = functor(ConsIdX, ArgsX),
 	( 
-		NameX = NameY,
-		ArityX = ArityY
+		ConsIdX = ConsIdY
 	->
 		abstractly_unify_inst_list_lives(ArgsX, ArgsY, LivesY, Real,
 			ModuleInfo0, Args, ModuleInfo),
-		L = [functor(NameX, Args)]
+		L = [functor(ConsIdX, Args)]
 	;
-		abstractly_unify_bound_inst_list_lives(Xs, NameY, ArgsY, 
+		abstractly_unify_bound_inst_list_lives(Xs, ConsIdY, ArgsY, 
 				LivesY, Real, ModuleInfo0, L, ModuleInfo)
 	).
 

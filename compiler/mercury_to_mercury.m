@@ -239,6 +239,8 @@ mercury_output_inst_list([Inst | Insts], VarSet) -->
 		mercury_output_inst_list(Insts, VarSet)
 	).
 
+mercury_output_inst(any(Uniq), _) -->
+	mercury_output_any_uniqueness(Uniq).
 mercury_output_inst(free, _) -->
 	io__write_string("free").
 mercury_output_inst(free(_T), _) -->
@@ -364,12 +366,31 @@ mercury_output_uniqueness(clobbered, _) -->
 mercury_output_uniqueness(mostly_clobbered, _) -->
 	io__write_string("mostly_clobbered").
 
+:- pred mercury_output_any_uniqueness(uniqueness, io__state, io__state).
+:- mode mercury_output_any_uniqueness(in, di, uo) is det.
+
+mercury_output_any_uniqueness(shared) -->
+	io__write_string("any").
+mercury_output_any_uniqueness(unique) -->
+	io__write_string("unique_any").
+mercury_output_any_uniqueness(mostly_unique) -->
+	io__write_string("mostly_unique_any").
+mercury_output_any_uniqueness(clobbered) -->
+	io__write_string("clobbered_any").
+mercury_output_any_uniqueness(mostly_clobbered) -->
+	io__write_string("mostly_clobbered_any").
+
 :- pred mercury_output_bound_insts(list(bound_inst), varset, io__state,
 		io__state).
 :- mode mercury_output_bound_insts(in, in, di, uo) is det.
 
 mercury_output_bound_insts([], _) --> [].
-mercury_output_bound_insts([functor(Name, Args) | BoundInsts], VarSet) -->
+mercury_output_bound_insts([functor(ConsId, Args) | BoundInsts], VarSet) -->
+	{ cons_id_to_const(ConsId, Name0, _Arity) ->
+		Name = Name0
+	;
+		error("mercury_output_bound_insts: cons_id_to_const failed")
+	},
 	( { Args = [] } ->
 		mercury_output_bracketed_constant(Name)
 	;

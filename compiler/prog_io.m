@@ -61,6 +61,7 @@
 :- interface.
 :- import_module string, int, list, varset, term, std_util, require.
 :- import_module globals, options.
+:- import_module hlds. % for cons_id
 
 %-----------------------------------------------------------------------------%
 
@@ -207,7 +208,8 @@
 	% probably inst parameters should be variables not terms
 :- type inst_param	==	term.
 
-:- type (inst)		--->	free
+:- type (inst)		--->	any(uniqueness)
+			;	free
 			;	free(type)
 			;	bound(uniqueness, list(bound_inst))
 					% The list(bound_inst) must be sorted
@@ -251,7 +253,7 @@
 			determinism 		% the determinism of the pred
 	).
 
-:- type bound_inst	--->	functor(const, list(inst)).
+:- type bound_inst	--->	functor(cons_id, list(inst)).
 
 :- type inst_name	--->	user_inst(sym_name, list(inst))
 			;	merge_inst(inst, inst)
@@ -2321,8 +2323,23 @@ convert_inst_list([H0|T0], [H|T]) :-
 :- mode convert_inst(in, out) is semidet.
 convert_inst(term__variable(V), inst_var(V)).
 convert_inst(term__functor(Name, Args0, Context), Result) :-
+	% `free' insts
 	( Name = term__atom("free"), Args0 = [] ->
 		Result = free
+
+	% `any' insts
+	; Name = term__atom("any"), Args0 = [] ->
+		Result = any(shared)
+	; Name = term__atom("unique_any"), Args0 = [] ->
+		Result = any(unique)
+	; Name = term__atom("mostly_unique_any"), Args0 = [] ->
+		Result = any(mostly_unique)
+	; Name = term__atom("clobbered_any"), Args0 = [] ->
+		Result = any(clobbered)
+	; Name = term__atom("mostly_clobbered_any"), Args0 = [] ->
+		Result = any(mostly_clobbered)
+
+	% `ground' insts
 	; Name = term__atom("ground"), Args0 = [] ->
 		Result = ground(shared, no)
 	; Name = term__atom("unique"), Args0 = [] ->
@@ -2351,8 +2368,12 @@ convert_inst(term__functor(Name, Args0, Context), Result) :-
 		convert_mode_list(ArgModesTerm, ArgModes),
 		PredInst = pred_inst_info(ArgModes, Detism),
 		Result = ground(shared, yes(PredInst))
+
+	% `not_reached' inst
 	; Name = term__atom("not_reached"), Args0 = [] ->
 		Result = not_reached
+
+	% `bound' insts
 	; Name = term__atom("bound"), Args0 = [Disj] ->
 		disjunction_to_list(Disj, List),
 		convert_bound_inst_list(List, Functors0),
@@ -2374,6 +2395,8 @@ convert_inst(term__functor(Name, Args0, Context), Result) :-
 		convert_bound_inst_list(List, Functors0),
 		list__sort_and_remove_dups(Functors0, Functors),
 		Result = bound(mostly_unique, Functors)
+
+	% anything else must be a user-defined inst
 	;
 		parse_qualified_term(term__functor(Name, Args0, Context),
 			"", ok(QualifiedName, Args1)),
@@ -2390,7 +2413,9 @@ convert_bound_inst_list([H0|T0], [H|T]) :-
 
 :- pred convert_bound_inst(term, bound_inst).
 :- mode convert_bound_inst(in, out) is semidet.
-convert_bound_inst(term__functor(Name, Args0, _), functor(Name, Args)) :-
+convert_bound_inst(term__functor(Name0, Args0, _), functor(ConsId, Args)) :-
+	list__length(Args0, Arity),
+	make_functor_cons_id(Name0, Arity, ConsId),
 	convert_inst_list(Args0, Args).
 
 :- pred process_inst_defn(maybe1(inst_defn), varset, condition, maybe1(item)).
