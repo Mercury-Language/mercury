@@ -1,0 +1,94 @@
+echo on
+context none
+register --quiet
+b p
+c
+f -n
+table p
+table p 5
+table p 5 2
+c
+f -n
+table p
+table p 5
+table p 5 2
+table p 4
+table p 4 2
+c
+f -n
+table p
+table p 5
+table p 5 2
+table p 4
+table p 2 1
+c
+f -n
+table p
+table p 5
+table p 5 2
+table p 4
+table p 2 1
+table p 1 0
+delete 1
+b q
+c
+f -n
+table q
+table q 3
+table q 3 2
+table q 4
+c
+f -n
+table q
+table q 3
+table q 3 2
+table q 3 0
+table q 4 2
+table q 4 1
+table q 4 0
+delete 1
+b r
+c
+table r
+s
+table r
+table r 3
+c
+table r
+f -n
+table r
+f -n 1
+table r
+delete 1
+b s
+c
+table s
+f -n
+table s
+c
+f -n
+table s
+table s 3.5
+table s 3.51
+table s 3.5 1
+table s 3.5 1 abc
+c
+f -n
+c
+f -n
+c
+f -n
+table s
+table s 3.5
+table s 3.51
+table s 3.5 1
+table s 3.5 1 abc
+table s 3.5 2
+table s 3.5 2 abc
+table s 3.5 2 xyz
+table s 9.1 2 abc
+table s 9.2 2 abc
+table s 9.2 2 def
+table s 9.2 2 xyz
+delete 1
+c -S -n
