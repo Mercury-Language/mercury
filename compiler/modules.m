@@ -2474,11 +2474,29 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	module_name_to_file_name(ModuleName, "_init.pic_o", yes,
 							InitPicObjFileName),
 
+	% Note we have to do some ``interesting'' hacks to get
+	% `$(ALL_MLLIBS_DEP)' and `$(ALL_C2INITARGS)' to work in the
+	% dependency list (and not complain about undefined variables).
+	% These hacks rely on features of GNU Make, so should not be used
+	% if we cannot assume we are using GNU Make.
+	globals__io_lookup_bool_option(assume_gmake, Gmake),
+	{ Gmake = yes ->
+		append_list(["\\\n\t\t$(foreach @,", MakeVarName,
+				",$(ALL_MLLIBS_DEP))"],
+				All_MLLibsDepString),
+		append_list(["\\\n\t\t$(foreach @,undefined,$(foreach *,",
+				MakeVarName, ",$(ALL_C2INITARGS)))"],
+				All_C2InitArgsDepString)
+	;
+		All_MLLibsDepString = "$(ALL_MLLIBS_DEP)",
+		All_C2InitArgsDepString = "$(ALL_C2INITARGS)"
+	},
+
 	module_name_to_file_name(SourceModuleName, "", no, ExeFileName),
 	io__write_strings(DepStream, [
-		"MLOBJS_DEPS += ", ExeFileName, "\n",
 		ExeFileName, " : $(", MakeVarName, ".os) ",
-			InitObjFileName, "\n",
+			InitObjFileName, " $(MLOBJS) ", All_MLLibsDepString,
+			"\n",
 		"\t$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -o ",
 			ExeFileName, " ", InitObjFileName, " \\\n",
 		"\t	$(", MakeVarName, ".os) $(MLOBJS) $(ALL_MLLIBS)\n\n"
@@ -2489,15 +2507,14 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	module_name_to_file_name(ModuleName, ".split.a", yes, SplitLibFileName),
 	io__write_strings(DepStream, [
 		SplitExeFileName, " : ", SplitLibFileName, " ",
-			InitObjFileName, "\n",
+			InitObjFileName, " ", All_MLLibsDepString, "\n",
 		"\t$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -o ",
 			SplitExeFileName, " ", InitObjFileName, " \\\n",
 		"\t	", SplitLibFileName, " $(ALL_MLLIBS)\n\n"
 	]),
 
 	io__write_strings(DepStream, [
-		"MLOBJS_DEPS += ", SplitLibFileName, "\n",
-		SplitLibFileName, " : $(", MakeVarName, ".dir_os)\n",
+		SplitLibFileName, " : $(", MakeVarName, ".dir_os) $(MLOBJS)\n",
 		"\trm -f ", SplitLibFileName, "\n",
 		"\t$(AR) $(ALL_ARFLAGS) ", SplitLibFileName, " $(MLOBJS)\n",
 		"\tfor dir in $(", MakeVarName, ".dirs); do \\\n",
@@ -2524,8 +2541,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	]),
 
 	io__write_strings(DepStream, [
-		"MLPICOBJS_DEPS += ", SharedLibFileName, "\n",
-		SharedLibFileName, " : $(", MakeVarName, ".pic_os)\n",
+		SharedLibFileName, " : $(", MakeVarName,
+			".pic_os) $(MLPICOBJS) ", All_MLLibsDepString, "\n",
 		"\t$(ML) --make-shared-lib $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) ",
 			"-o ", SharedLibFileName, " \\\n",
 		"\t\t$(", MakeVarName, ".pic_os) $(MLPICOBJS) ",
@@ -2533,8 +2550,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	]),
 
 	io__write_strings(DepStream, [
-		"MLOBJS_DEPS += ", LibFileName, "\n",
-		LibFileName, " : $(", MakeVarName, ".os)\n",
+		LibFileName, " : $(", MakeVarName, ".os) $(MLOBJS)\n",
 		"\trm -f ", LibFileName, "\n",
 		"\t$(AR) $(ALL_ARFLAGS) ", LibFileName, " ",
 			"$(", MakeVarName, ".os) $(MLOBJS)\n",
@@ -2551,21 +2567,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n"),
 
 	io__write_strings(DepStream, [
-		InitCFileName, " : ", DepFileName, " ", DvFileName
-	]),
-	globals__io_lookup_bool_option(assume_gmake, Gmake),
-	( { Gmake = yes } ->
-		% Note we have to do some ``interesting'' hacks to get
-		% `$(ALL_C2INITARGS)' to work in the dependency list (and
-		% not complain about undefined variables).
-		io__write_strings(DepStream, [
-			" $(foreach @,undefined,$(foreach *,", MakeVarName,
-			",$(ALL_C2INITARGS)))\n"
-		])
-	;
-		io__write_string(DepStream, " $(ALL_C2INITARGS)\n")
-	),
-	io__write_strings(DepStream, [
+		InitCFileName, " : ", DepFileName, " ", DvFileName, " ",
+			All_C2InitArgsDepString, "\n",
 		"\t$(C2INIT) $(ALL_GRADEFLAGS) $(ALL_C2INITFLAGS) $(",
 			MakeVarName, ".init_cs) $(ALL_C2INITARGS) > ",
 			InitCFileName, "\n\n"

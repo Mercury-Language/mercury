@@ -100,6 +100,11 @@ EXTRA_MLFLAGS	=
 MLOBJS		=
 MLPICOBJS	= $(MLOBJS:.o=.$(EXT_FOR_PIC_OBJECTS))
 ALL_MLLIBS	= $(MLLIBS) $(EXTRA_MLLIBS) $(TARGET_MLLIBS)
+# XXX ALL_MLLIBS_DEP should contain a list of the file names of the
+# libraries specified in ALL_MLLIBS, but I can't see how to know whether
+# they should be `.a' or `.so' libraries, so for now we leave it empty.
+#ALL_MLLIBS_DEP	= $(patsubst -l%,lib%.???,$(ALL_MLLIBS))
+ALL_MLLIBS_DEP	=
 MLLIBS		=
 EXTRA_MLLIBS	=
 
