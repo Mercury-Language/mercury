@@ -11,6 +11,8 @@
 
 % arrays are created with any two integer bounds on the indices.
 
+% XXX should replace NU-Prolog if-then-else with Prolog If -> Then ; Else.
+
 %-----------------------------------------------------------------------------%
 
 :- module array.
