@@ -151,7 +151,7 @@ do_handle_release () {
 		release_id_underscores="${version}_unstable"
 		;;
 	    *-*([0-9.])*)
-		echo "XXX [release_id=$release_id	file=$file]" 1>&2
+		#echo "XXX [release_id=$release_id	file=$file]" 1>&2
 		version=`expr "$file" : ".*-\([0-9.]*[0-9]\).*"`
 		release_name="Release $version"
 		release_id="$version"
@@ -164,7 +164,7 @@ do_handle_release () {
 		return 0
 		;;
 	esac
-	echo "[release_id=$release_id	file=$file]" 1>&2
+	#echo "[release_id=$release_id	file=$file]" 1>&2
 
 	echo "<li> $release_name" >> $INDEX
 	echo '<ul>' >> $INDEX
