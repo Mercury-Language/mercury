@@ -239,9 +239,6 @@
 		% to the input. To introduce this, the compiler must know that
 		% there are no later references in the code to the input
 		% relation.
-		% I'm not 100% sure that the reference counts maintained
-		% by Aditi can be used in this way - currently we always
-		% do the copy. 
 		% Make sure the output has the given set of indexes, even
 		% if it isn't copied.
 		make_unique(
