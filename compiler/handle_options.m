@@ -360,7 +360,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, PrologDialect,
 	),
 
 	% Deep profiling requires `procid' stack layouts
-	option_neg_implies(profile_deep, procid_stack_layout, bool(yes)),
+	option_implies(profile_deep, procid_stack_layout, bool(yes)),
 
 	% --no-reorder-conj implies --no-deforestation.
 	option_neg_implies(reorder_conj, deforestation, bool(no)),
