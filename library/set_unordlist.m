@@ -252,9 +252,8 @@ set_unordlist__union(Set0, Set1, Set) :-
 	list__append(Set1, Set0, Set).
 
 set_unordlist__power_union(PS, S) :-
-	set_unordlist__to_sorted_list(PS, SL),
 	set_unordlist__init(S0),
-	set_unordlist__power_union_2(SL, S0, S1),
+	set_unordlist__power_union_2(PS, S0, S1),
 	list__sort_and_remove_dups(S1, S).
 
 :- pred set_unordlist__power_union_2(list(set_unordlist(T)), set_unordlist(T),
