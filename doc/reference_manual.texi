@@ -940,7 +940,7 @@ the argument type specified in the corresponding @samp{:- pred} declaration.
 
 The type assigned to each head argument in a function clause must exactly match
 the argument type specified in the corresponding @samp{:- func} declaration,
-and the type assigned to the result term in a functin clause must exactly
+and the type assigned to the result term in a function clause must exactly
 match the result type specified in the corresponding @samp{:- func} declaration.
 
 (Here ``match'' means to be an instance of,
@@ -2373,7 +2373,7 @@ guaranteed to work on any other implementation.  However,
 implementations are also allowed to support other operational
 semantics, which may have non-determinism, so long as they are sound
 with respect to the declarative semantics, and so long as they meet a
-mimimum level of completeness (they must be at least as complete as the
+minimum level of completeness (they must be at least as complete as the
 strict commutative semantics, in the sense that every program which
 terminates for all possible orderings must must also terminate in any
 implementation-defined operational semantics).
@@ -2431,6 +2431,10 @@ There are several uses for @code{pragma} declarations:
                                 from Mercury code, and vice versa.
 * Inlining::                    Calls to Mercury predicates can be inlined
                                 by the compiler to improve efficiency.
+@c * Tabling::                     Mercury predicates can be evaluated
+@c                                 using a three different forms of tabled
+@c                                 evaluation.
+
 * Obsolescence::		Library developers can declare old versions
 				of predicates or functions to be obsolete.
 * Source file name::		The @samp{source_file} pragma and
@@ -2671,6 +2675,20 @@ Mercury implementation, cross-module inlining is not yet supported, so
 if a predicate for which there is an @samp{inline} pragma is called
 from a module other than the one it is defined in, the compiler will
 ignore the hint.
+
+@c @node Tabling
+@c @section Tabling
+@c 
+@c A declaration of the form
+@c 
+@c @example
+@c :- pragma memo(@var{Name}/@var{Arity}).
+@c @end example
+@c 
+@c @noindent
+@c is a hint to the compiler that the predicate(s) or function(s)
+@c with name @var{Name} and arity @var{Arity} should be evaluated using
+@c memoing.
 
 @node Obsolescence
 @section Obsolescence

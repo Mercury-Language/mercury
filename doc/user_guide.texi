@@ -975,6 +975,15 @@ used in the interface.
 @sp 1
 @item --warn-missing-opt-files
 Warn about @samp{.opt} files that cannot be opened.
+
+@sp 1
+@item --warn-non-stratification
+Warn about possible non-stratification of the predicates/functions in the 
+module.
+Non-stratification occurs when a predicate/function can call itself
+negatively through some path along its call graph.
+
+
 @end table
 
 @node Verbosity options
