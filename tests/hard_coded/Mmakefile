@@ -106,6 +106,7 @@ ORDINARY_PROGS=	\
 	nullary_ho_func \
 	null_char \
 	pprint_test \
+	pprint_test2 \
 	pragma_c_code \
 	pragma_export \
 	pragma_import \

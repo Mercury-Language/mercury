@@ -1,0 +1,441 @@
+f(f(a))
+f(- a)
+f(~ a)
+f((:- a))
+f(a ++ a)
+f(a -- a)
+f(a == a)
+f((a -> a))
+f(some a a)
+- f(a)
+- (- a)
+- (~ a)
+- (:- a)
+- (a ++ a)
+- (a -- a)
+- (a == a)
+- (a -> a)
+- (some a a)
+~ f(a)
+~ - a
+~ ~ a
+~ (:- a)
+~ a ++ a
+~ a -- a
+~ a == a
+~ (a -> a)
+~ (some a a)
+(:- f(a))
+(:- - a)
+(:- ~ a)
+(:- (:- a))
+(:- a ++ a)
+(:- a -- a)
+(:- a == a)
+(:- a -> a)
+(:- some a a)
+f(a) ++ f(a)
+f(a) ++ - a
+f(a) ++ (~ a)
+f(a) ++ (:- a)
+f(a) ++ a ++ a
+f(a) ++ a -- a
+f(a) ++ (a == a)
+f(a) ++ (a -> a)
+f(a) ++ (some a a)
+- a ++ f(a)
+- a ++ - a
+- a ++ (~ a)
+- a ++ (:- a)
+- a ++ a ++ a
+- a ++ a -- a
+- a ++ (a == a)
+- a ++ (a -> a)
+- a ++ (some a a)
+(~ a) ++ f(a)
+(~ a) ++ - a
+(~ a) ++ (~ a)
+(~ a) ++ (:- a)
+(~ a) ++ a ++ a
+(~ a) ++ a -- a
+(~ a) ++ (a == a)
+(~ a) ++ (a -> a)
+(~ a) ++ (some a a)
+(:- a) ++ f(a)
+(:- a) ++ - a
+(:- a) ++ (~ a)
+(:- a) ++ (:- a)
+(:- a) ++ a ++ a
+(:- a) ++ a -- a
+(:- a) ++ (a == a)
+(:- a) ++ (a -> a)
+(:- a) ++ (some a a)
+(a ++ a) ++ f(a)
+(a ++ a) ++ - a
+(a ++ a) ++ (~ a)
+(a ++ a) ++ (:- a)
+(a ++ a) ++ a ++ a
+(a ++ a) ++ a -- a
+(a ++ a) ++ (a == a)
+(a ++ a) ++ (a -> a)
+(a ++ a) ++ (some a a)
+(a -- a) ++ f(a)
+(a -- a) ++ - a
+(a -- a) ++ (~ a)
+(a -- a) ++ (:- a)
+(a -- a) ++ a ++ a
+(a -- a) ++ a -- a
+(a -- a) ++ (a == a)
+(a -- a) ++ (a -> a)
+(a -- a) ++ (some a a)
+(a == a) ++ f(a)
+(a == a) ++ - a
+(a == a) ++ (~ a)
+(a == a) ++ (:- a)
+(a == a) ++ a ++ a
+(a == a) ++ a -- a
+(a == a) ++ (a == a)
+(a == a) ++ (a -> a)
+(a == a) ++ (some a a)
+(a -> a) ++ f(a)
+(a -> a) ++ - a
+(a -> a) ++ (~ a)
+(a -> a) ++ (:- a)
+(a -> a) ++ a ++ a
+(a -> a) ++ a -- a
+(a -> a) ++ (a == a)
+(a -> a) ++ (a -> a)
+(a -> a) ++ (some a a)
+(some a a) ++ f(a)
+(some a a) ++ - a
+(some a a) ++ (~ a)
+(some a a) ++ (:- a)
+(some a a) ++ a ++ a
+(some a a) ++ a -- a
+(some a a) ++ (a == a)
+(some a a) ++ (a -> a)
+(some a a) ++ (some a a)
+f(a) -- f(a)
+f(a) -- - a
+f(a) -- (~ a)
+f(a) -- (:- a)
+f(a) -- (a ++ a)
+f(a) -- (a -- a)
+f(a) -- (a == a)
+f(a) -- (a -> a)
+f(a) -- (some a a)
+- a -- f(a)
+- a -- - a
+- a -- (~ a)
+- a -- (:- a)
+- a -- (a ++ a)
+- a -- (a -- a)
+- a -- (a == a)
+- a -- (a -> a)
+- a -- (some a a)
+(~ a) -- f(a)
+(~ a) -- - a
+(~ a) -- (~ a)
+(~ a) -- (:- a)
+(~ a) -- (a ++ a)
+(~ a) -- (a -- a)
+(~ a) -- (a == a)
+(~ a) -- (a -> a)
+(~ a) -- (some a a)
+(:- a) -- f(a)
+(:- a) -- - a
+(:- a) -- (~ a)
+(:- a) -- (:- a)
+(:- a) -- (a ++ a)
+(:- a) -- (a -- a)
+(:- a) -- (a == a)
+(:- a) -- (a -> a)
+(:- a) -- (some a a)
+a ++ a -- f(a)
+a ++ a -- - a
+a ++ a -- (~ a)
+a ++ a -- (:- a)
+a ++ a -- (a ++ a)
+a ++ a -- (a -- a)
+a ++ a -- (a == a)
+a ++ a -- (a -> a)
+a ++ a -- (some a a)
+a -- a -- f(a)
+a -- a -- - a
+a -- a -- (~ a)
+a -- a -- (:- a)
+a -- a -- (a ++ a)
+a -- a -- (a -- a)
+a -- a -- (a == a)
+a -- a -- (a -> a)
+a -- a -- (some a a)
+(a == a) -- f(a)
+(a == a) -- - a
+(a == a) -- (~ a)
+(a == a) -- (:- a)
+(a == a) -- (a ++ a)
+(a == a) -- (a -- a)
+(a == a) -- (a == a)
+(a == a) -- (a -> a)
+(a == a) -- (some a a)
+(a -> a) -- f(a)
+(a -> a) -- - a
+(a -> a) -- (~ a)
+(a -> a) -- (:- a)
+(a -> a) -- (a ++ a)
+(a -> a) -- (a -- a)
+(a -> a) -- (a == a)
+(a -> a) -- (a -> a)
+(a -> a) -- (some a a)
+(some a a) -- f(a)
+(some a a) -- - a
+(some a a) -- (~ a)
+(some a a) -- (:- a)
+(some a a) -- (a ++ a)
+(some a a) -- (a -- a)
+(some a a) -- (a == a)
+(some a a) -- (a -> a)
+(some a a) -- (some a a)
+f(a) == f(a)
+f(a) == - a
+f(a) == (~ a)
+f(a) == (:- a)
+f(a) == a ++ a
+f(a) == a -- a
+f(a) == (a == a)
+f(a) == (a -> a)
+f(a) == (some a a)
+- a == f(a)
+- a == - a
+- a == (~ a)
+- a == (:- a)
+- a == a ++ a
+- a == a -- a
+- a == (a == a)
+- a == (a -> a)
+- a == (some a a)
+(~ a) == f(a)
+(~ a) == - a
+(~ a) == (~ a)
+(~ a) == (:- a)
+(~ a) == a ++ a
+(~ a) == a -- a
+(~ a) == (a == a)
+(~ a) == (a -> a)
+(~ a) == (some a a)
+(:- a) == f(a)
+(:- a) == - a
+(:- a) == (~ a)
+(:- a) == (:- a)
+(:- a) == a ++ a
+(:- a) == a -- a
+(:- a) == (a == a)
+(:- a) == (a -> a)
+(:- a) == (some a a)
+a ++ a == f(a)
+a ++ a == - a
+a ++ a == (~ a)
+a ++ a == (:- a)
+a ++ a == a ++ a
+a ++ a == a -- a
+a ++ a == (a == a)
+a ++ a == (a -> a)
+a ++ a == (some a a)
+a -- a == f(a)
+a -- a == - a
+a -- a == (~ a)
+a -- a == (:- a)
+a -- a == a ++ a
+a -- a == a -- a
+a -- a == (a == a)
+a -- a == (a -> a)
+a -- a == (some a a)
+(a == a) == f(a)
+(a == a) == - a
+(a == a) == (~ a)
+(a == a) == (:- a)
+(a == a) == a ++ a
+(a == a) == a -- a
+(a == a) == (a == a)
+(a == a) == (a -> a)
+(a == a) == (some a a)
+(a -> a) == f(a)
+(a -> a) == - a
+(a -> a) == (~ a)
+(a -> a) == (:- a)
+(a -> a) == a ++ a
+(a -> a) == a -- a
+(a -> a) == (a == a)
+(a -> a) == (a -> a)
+(a -> a) == (some a a)
+(some a a) == f(a)
+(some a a) == - a
+(some a a) == (~ a)
+(some a a) == (:- a)
+(some a a) == a ++ a
+(some a a) == a -- a
+(some a a) == (a == a)
+(some a a) == (a -> a)
+(some a a) == (some a a)
+(f(a) -> f(a))
+(f(a) -> - a)
+(f(a) -> ~ a)
+(f(a) -> (:- a))
+(f(a) -> a ++ a)
+(f(a) -> a -- a)
+(f(a) -> a == a)
+(f(a) -> a -> a)
+(f(a) -> some a a)
+(- a -> f(a))
+(- a -> - a)
+(- a -> ~ a)
+(- a -> (:- a))
+(- a -> a ++ a)
+(- a -> a -- a)
+(- a -> a == a)
+(- a -> a -> a)
+(- a -> some a a)
+(~ a -> f(a))
+(~ a -> - a)
+(~ a -> ~ a)
+(~ a -> (:- a))
+(~ a -> a ++ a)
+(~ a -> a -- a)
+(~ a -> a == a)
+(~ a -> a -> a)
+(~ a -> some a a)
+((:- a) -> f(a))
+((:- a) -> - a)
+((:- a) -> ~ a)
+((:- a) -> (:- a))
+((:- a) -> a ++ a)
+((:- a) -> a -- a)
+((:- a) -> a == a)
+((:- a) -> a -> a)
+((:- a) -> some a a)
+(a ++ a -> f(a))
+(a ++ a -> - a)
+(a ++ a -> ~ a)
+(a ++ a -> (:- a))
+(a ++ a -> a ++ a)
+(a ++ a -> a -- a)
+(a ++ a -> a == a)
+(a ++ a -> a -> a)
+(a ++ a -> some a a)
+(a -- a -> f(a))
+(a -- a -> - a)
+(a -- a -> ~ a)
+(a -- a -> (:- a))
+(a -- a -> a ++ a)
+(a -- a -> a -- a)
+(a -- a -> a == a)
+(a -- a -> a -> a)
+(a -- a -> some a a)
+(a == a -> f(a))
+(a == a -> - a)
+(a == a -> ~ a)
+(a == a -> (:- a))
+(a == a -> a ++ a)
+(a == a -> a -- a)
+(a == a -> a == a)
+(a == a -> a -> a)
+(a == a -> some a a)
+((a -> a) -> f(a))
+((a -> a) -> - a)
+((a -> a) -> ~ a)
+((a -> a) -> (:- a))
+((a -> a) -> a ++ a)
+((a -> a) -> a -- a)
+((a -> a) -> a == a)
+((a -> a) -> a -> a)
+((a -> a) -> some a a)
+(some a a -> f(a))
+(some a a -> - a)
+(some a a -> ~ a)
+(some a a -> (:- a))
+(some a a -> a ++ a)
+(some a a -> a -- a)
+(some a a -> a == a)
+(some a a -> a -> a)
+(some a a -> some a a)
+some f(a) f(a)
+some f(a) - a
+some f(a) ~ a
+some f(a) (:- a)
+some f(a) a ++ a
+some f(a) a -- a
+some f(a) a == a
+some f(a) (a -> a)
+some f(a) some a a
+some - a f(a)
+some - a - a
+some - a ~ a
+some - a (:- a)
+some - a a ++ a
+some - a a -- a
+some - a a == a
+some - a (a -> a)
+some - a some a a
+some ~ a f(a)
+some ~ a - a
+some ~ a ~ a
+some ~ a (:- a)
+some ~ a a ++ a
+some ~ a a -- a
+some ~ a a == a
+some ~ a (a -> a)
+some ~ a some a a
+some (:- a) f(a)
+some (:- a) - a
+some (:- a) ~ a
+some (:- a) (:- a)
+some (:- a) a ++ a
+some (:- a) a -- a
+some (:- a) a == a
+some (:- a) (a -> a)
+some (:- a) some a a
+some a ++ a f(a)
+some a ++ a - a
+some a ++ a ~ a
+some a ++ a (:- a)
+some a ++ a a ++ a
+some a ++ a a -- a
+some a ++ a a == a
+some a ++ a (a -> a)
+some a ++ a some a a
+some a -- a f(a)
+some a -- a - a
+some a -- a ~ a
+some a -- a (:- a)
+some a -- a a ++ a
+some a -- a a -- a
+some a -- a a == a
+some a -- a (a -> a)
+some a -- a some a a
+some a == a f(a)
+some a == a - a
+some a == a ~ a
+some a == a (:- a)
+some a == a a ++ a
+some a == a a -- a
+some a == a a == a
+some a == a (a -> a)
+some a == a some a a
+some (a -> a) f(a)
+some (a -> a) - a
+some (a -> a) ~ a
+some (a -> a) (:- a)
+some (a -> a) a ++ a
+some (a -> a) a -- a
+some (a -> a) a == a
+some (a -> a) (a -> a)
+some (a -> a) some a a
+some (some a a) f(a)
+some (some a a) - a
+some (some a a) ~ a
+some (some a a) (:- a)
+some (some a a) a ++ a
+some (some a a) a -- a
+some (some a a) a == a
+some (some a a) (a -> a)
+some (some a a) some a a

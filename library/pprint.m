@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2002 The University of Melbourne
+% Copyright (C) 2000-2003 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -370,7 +370,7 @@
 
 :- implementation.
 
-:- import_module array, map, sparse_bitset, enum, term, exception.
+:- import_module array, map, sparse_bitset, enum, term, exception, ops.
 
 :- type doc
     --->    'NIL'
@@ -392,6 +392,10 @@
     %
 :- type map_pair(K, V)
     --->    map_pair(K, V).
+
+    % Used for depth-limit arguments.
+    %
+:- type depth == int.
 
 %-----------------------------------------------------------------------------%
 
@@ -647,10 +651,18 @@ to_doc(X) = to_doc(int__max_int, X).
 
 %-----------------------------------------------------------------------------%
 
+    % Infix "," has precedence 1000 in standard Mercury.
+    %
+to_doc(Depth, X) = to_doc(Depth, 1000, X).
+
+%-----------------------------------------------------------------------------%
+
     % This may throw an exception or cause a runtime abort if the term
     % in question has user-defined equality.
     %
-to_doc(Depth, X) =
+:- func to_doc(int, priority, T) = doc.
+
+to_doc(Depth, Priority, X) =
     ( if      dynamic_cast_to_var(X, Var)
       then    var_to_doc(Depth, Var)
 
@@ -675,34 +687,144 @@ to_doc(Depth, X) =
       else if dynamic_cast_to_map_pair(X, MapPair)
       then    map_pair_to_doc(Depth, MapPair)
 
-      else    generic_term_to_doc(Depth, X)
+      else    generic_term_to_doc(Depth, Priority, X)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- func generic_term_to_doc(int, T) = doc.
+:- func generic_term_to_doc(depth, priority, T) = doc.
 
-generic_term_to_doc(Depth, X) = Doc :-
-    ( if Depth =< 0
+generic_term_to_doc(Depth, Priority, X) = Doc :-
+
+    ( if
+
+    	Depth =< 0
+
       then
+
         functor(X, Name, Arity),
-        Doc =
-            ( if Arity = 0
-              then text(Name)
-              else Name ++ "/" ++ Arity
-            )
+        Doc = ( if Arity = 0 then text(Name) else Name ++ "/" ++ Arity )
+
       else
-        deconstruct(X, Name, Arity, UnivArgs),
+
+        deconstruct(X, Name, _Arity, UnivArgs),
+        Table = init_mercury_op_table,
         Doc =
-            ( if Arity = 0
-              then  text(Name)
-              else  group(
-                        Name ++ parentheses(
-                            nest(2, packed_cs_univ_args(Depth - 1, UnivArgs))
+            ( if
+
+                UnivArgs = [UnivArg],
+                lookup_prefix_op(Table, Name, OpPri, Assoc)
+
+              then
+
+                maybe_parens(Priority, OpPri,
+                    Name ++
+                    space ++
+                    univ_to_doc(Depth - 1, OpPri `adjusted_by` Assoc,
+                        UnivArg)
+                )
+
+              else if
+
+                UnivArgs = [UnivArg],
+                lookup_postfix_op(Table, Name, OpPri, Assoc)
+
+              then
+
+                maybe_parens(Priority, OpPri,
+                    univ_to_doc(Depth - 1, OpPri `adjusted_by` Assoc,
+                        UnivArg) ++
+                    space ++
+                    Name
+                )
+
+              else if
+
+                UnivArgs = [UnivArgL, UnivArgR],
+                lookup_infix_op(Table, Name, OpPri, AssocL, AssocR)
+
+              then
+
+                maybe_parens(Priority, OpPri,
+                    univ_to_doc(Depth - 1, OpPri `adjusted_by` AssocL,
+                        UnivArgL) ++
+                    space ++
+                    Name ++
+                    space ++
+                    group(line ++
+                        nest(2,
+                            univ_to_doc(Depth - 2, OpPri `adjusted_by` AssocR,
+                                UnivArgR)
                         )
                     )
+                )
+
+              else if
+
+                UnivArgs = [UnivArgR1, UnivArgR2],
+                lookup_binary_prefix_op(Table, Name, OpPri, AssocR1, AssocR2)
+
+              then
+
+                maybe_parens(Priority, OpPri,
+                    Name ++
+                    space ++
+                    univ_to_doc(Depth - 2, OpPri `adjusted_by` AssocR1,
+                        UnivArgR1) ++
+                    space ++
+                    group(line ++
+                        nest(2,
+                            univ_to_doc(Depth - 2, OpPri `adjusted_by` AssocR2,
+                                UnivArgR2)
+                        )
+                    )
+                )
+
+              else if
+
+                UnivArgs = []
+
+              then
+
+                text(Name)
+
+              else
+
+                group(
+                    Name ++ parentheses(
+                        nest(2, packed_cs_univ_args(Depth - 1, UnivArgs))
+                    )
+                )
             )
     ).
+
+%-----------------------------------------------------------------------------%
+
+    % We need to put parentheses around a subterm if its top-level
+    % functor has a higher priority than its parent functor.
+    %
+:- func maybe_parens(priority, priority, doc) = doc.
+
+maybe_parens(ParentPriority, OpPriority, Doc) =
+    ( if ParentPriority < OpPriority then parentheses(Doc) else Doc ).
+
+%-----------------------------------------------------------------------------%
+
+    % An x priority adjustment lowers the effective priority by one.
+    % A y priority adjustment does not affect the effective priority.
+    %
+:- func priority `adjusted_by` assoc = priority.
+
+Priority `adjusted_by` x = Priority - 1.
+Priority `adjusted_by` y = Priority.
+
+%-----------------------------------------------------------------------------%
+
+    % Convert a univ encapsulated value into a doc.
+    %
+:- func univ_to_doc(int, priority, univ) = doc.
+
+univ_to_doc(Depth, Priority, Univ) = to_doc(Depth, Priority, univ_value(Univ)).
 
 %-----------------------------------------------------------------------------%
 
