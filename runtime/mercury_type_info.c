@@ -3,7 +3,7 @@ INIT mercury_sys_init_type_info
 ENDINIT
 */
 /*
-** Copyright (C) 1995-1998 The University of Melbourne.
+** Copyright (C) 1995-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -173,7 +173,7 @@ END_MODULE
 	**
 	** NOTE: If you are changing this code, you might also need
 	** to change the code in MR_make_type_info in this module 
-	** which does much the same thing, only allocating using malloc
+	** which does much the same thing, only allocating using newmem
 	** instead of on the heap.
 	*/
 
@@ -409,8 +409,8 @@ MR_deallocate(MR_MemoryList allocated)
 {
 	while (allocated != NULL) {
 		MR_MemoryList next = allocated->next;
-		free(allocated->data);
-		free(allocated);
+		oldmem(allocated->data);
+		oldmem(allocated);
 		allocated = next;
 	}
 }
@@ -430,19 +430,22 @@ MR_deallocate(MR_MemoryList allocated)
 	** arg_pseudo_type_info with all the type variables filled in.
 	** If there are no type variables to fill in, we return the
 	** arg_pseudo_type_info, unchanged. Otherwise, we allocate
-	** memory using malloc().  Any such memory allocated will be
+	** memory using newmem().  Any such memory allocated will be
 	** inserted into the list of allocated memory cells.
 	** It is the caller's responsibility to free these cells
 	** by calling MR_deallocate() on the list when they are no longer
 	** needed.
 	**
 	** This code could be tighter. In general, we want to
-	** handle our own allocations rather than using malloc().
+	** handle our own allocations rather than using newmem().
+	** (Note: we need to use newmem() rather than malloc()
+	** because the Boehm collector doesn't trace memory
+	** allocated with malloc().)
 	**
 	** NOTE: If you are changing this code, you might also need
 	** to change the code in MR_create_type_info (defined above),
 	** which does much the same thing, only allocating on the 
-	** heap instead of using malloc.
+	** heap instead of using newmem.
 	*/
 
 Word *
@@ -507,9 +510,9 @@ MR_make_type_info(const Word *term_type_info, const Word *arg_pseudo_type_info,
 				MR_MemoryList node;
 				/*
 				** allocate a new type_info and copy the
-				** data across from arg_pseduo_type_info
+				** data across from arg_pseudo_type_info
 				*/
-				type_info = checked_malloc(
+				type_info = newmem(
 					(arity + extra_args) * sizeof(Word));
 				memcpy(type_info, arg_pseudo_type_info,
 					(arity + extra_args) * sizeof(Word));
@@ -518,7 +521,7 @@ MR_make_type_info(const Word *term_type_info, const Word *arg_pseudo_type_info,
 				** list of allocated memory cells, so we can
 				** free it later on
 				*/
-				node = checked_malloc(sizeof(*node));
+				node = newmem(sizeof(*node));
 				node->data = type_info;
 				node->next = *allocated;
 				*allocated = node;
