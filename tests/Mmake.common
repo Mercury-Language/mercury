@@ -75,9 +75,7 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-# .PRECIOUS: %.c %.o %_init.c
-
-%_init.c: Entry
+.PRECIOUS: %.res %.err_res %.out %.err
 
 #
 # If there is a `.inp' file, then we pipe that in as the command's input.
