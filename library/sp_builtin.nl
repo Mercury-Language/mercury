@@ -95,6 +95,9 @@ mercury_declaration(func(_)).
 mercury_declaration(mode(_)).
 mercury_declaration(inst(_)).
 
+mercury_declaration(impure(_)).
+mercury_declaration(semipure(_)).
+
 mercury_declaration(module(_)).
 mercury_declaration(end_module(_)).
 mercury_declaration(interface).
