@@ -42,8 +42,7 @@ main_loop(Database) -->
 :- pred main_loop_2(read_term, database, io__state, io__state).
 :- mode main_loop_2(in, in, di, uo) is det.
 
-main_loop_2(eof, _Database) -->
-	io__seen.
+main_loop_2(eof, _Database) --> [].
 main_loop_2(error(ErrorMessage, LineNumber), Database) -->
 	io__write_string("Error reading term at line "),
 	io__write_int(LineNumber),
