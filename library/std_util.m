@@ -1894,7 +1894,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 :- pragma foreign_proc("MC++", type_ctor_and_args(_TypeDesc::in,
 		_TypeCtorDesc::out, _ArgTypes::out), will_not_call_mercury, "
 {
-	mercury::runtime::Errors::SORRY(""compare for type_desc"");
+	mercury::runtime::Errors::SORRY(""type_ctor_and_args"");
 }
 ").
 
@@ -1948,7 +1948,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 	make_type(_TypeCtorDesc::in, _ArgTypes::in) = (_TypeDesc::out),
 		will_not_call_mercury, "
 {
-	mercury::runtime::Errors::SORRY(""compare for type_desc"");
+	mercury::runtime::Errors::SORRY(""make_type"");
 }
 ").
 
@@ -2402,7 +2402,7 @@ construct_tuple(Args) =
 	construct_tuple_2(_Args::in, _ArgTypes::in, _Arity::in) = (_Term::out),
 		will_not_call_mercury, "
 {
-	mercury.runtime.Errors.SORRY(""compare for type_desc"");
+	mercury.runtime.Errors.SORRY(""construct_tuple_2"");
 	_Term = null;
 }
 ").

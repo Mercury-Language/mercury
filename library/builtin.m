@@ -428,87 +428,25 @@ sys_init_builtin_types_module_write_out_proc_statics(FILE *fp)
 
 ").
 
+
+:- interface.
+:- pred call_rtti_generic_unify(T::in, T::in) is semidet.
+:- pred call_rtti_generic_compare(comparison_result::out, T::in, T::in) is det.
+:- implementation.
+:- use_module rtti_implementation.
+
+call_rtti_generic_unify(X, Y) :-
+	rtti_implementation__generic_unify(X, Y).
+call_rtti_generic_compare(Res, X, Y) :-
+	rtti_implementation__generic_compare(Res, X, Y).
+
 :- pragma foreign_code("MC++", "
 
 static void compare_3(MR_TypeInfo TypeInfo_for_T, MR_Word_Ref Res, 
 		MR_Box X, MR_Box Y) 
 {
-
-        MR_TypeInfo             type_info;
-        MR_TypeCtorInfo         type_ctor_info;
-        int                     arity;
-        MR_TypeInfoParams       params;
-        MR_Word                 *args;
-        MR_Box                  ComparePred;
-
-        type_info = (MR_TypeInfo) TypeInfo_for_T;
-        type_ctor_info = dynamic_cast<MR_Word> (type_info->GetValue(
-		MR_TYPEINFO_TYPE_CTOR_INFO_SLOT));
-
-        if (type_ctor_info == 0) {
-            type_ctor_info = type_info;
-        }
-
-        if (0) {
-            // XXX code for higher order still needs to be written...
-        } else {
-            arity = System::Convert::ToInt32(
-		type_ctor_info->GetValue(MR_TYPE_CTOR_INFO_ARITY_SLOT));
-        }
-
-	ComparePred = type_ctor_info->GetValue(
-		MR_TYPE_CTOR_INFO_COMPARE_PRED_SLOT);
-
-        switch(arity) {
-	case 0: 
-		mercury::runtime::GenericCall::result_call_4(
-			ComparePred,
-			Res, X, Y);
-	break;
-	case 1:
-		mercury::runtime::GenericCall::result_call_5(
-			ComparePred,
-			type_info->GetValue(1), 
-			Res, X, Y);
-	break;
-	case 2:
-		mercury::runtime::GenericCall::result_call_6(
-			ComparePred,
-			type_info->GetValue(1), 
-			type_info->GetValue(2), 
-			Res, X, Y);
-	break;
-	case 3:
-		mercury::runtime::GenericCall::result_call_7(
-			ComparePred,
-			type_info->GetValue(1), 
-			type_info->GetValue(2), 
-			type_info->GetValue(3), 
-			Res, X, Y);
-	break;
-	case 4:
-		mercury::runtime::GenericCall::result_call_8(
-			ComparePred,
-			type_info->GetValue(1), 
-			type_info->GetValue(2), 
-			type_info->GetValue(3), 
-			type_info->GetValue(4), 
-			Res, X, Y);
-	break;
-	case 5:
-		mercury::runtime::GenericCall::result_call_9(
-			ComparePred,
-			type_info->GetValue(1), 
-			type_info->GetValue(2), 
-			type_info->GetValue(3), 
-			type_info->GetValue(4), 
-			type_info->GetValue(5), 
-			Res, X, Y);
-	break; 
-	default:
-		mercury::runtime::Errors::fatal_error(
-			""compare/3: type arity > 5 not supported"");
-	}
+	mercury::builtin::mercury_code::call_rtti_generic_compare_3(
+			TypeInfo_for_T, Res, X, Y);
 }
 
 void compare_3_m1(MR_TypeInfo TypeInfo_for_T, MR_Word_Ref Res, 
@@ -545,95 +483,13 @@ void copy_2_m1(MR_TypeInfo TypeInfo_for_T,
 
 ").
 
+
 :- pragma foreign_code("MC++", "
 
-static MR_Integer unify_2_p(MR_TypeInfo TypeInfo_for_T, MR_Box X, MR_Box Y) 
+static MR_Integer unify_2_p(MR_TypeInfo ti, MR_Box X, MR_Box Y) 
 {
-	int			SUCCESS_INDICATOR;
-        MR_TypeInfo             type_info;
-        MR_TypeCtorInfo         type_ctor_info;
-        MR_Box                  tmp;
-        int                     arity;
-        MR_TypeInfoParams       params;
-        MR_Box       		UnifyPred;
-	
-        type_info = (MR_TypeInfo) TypeInfo_for_T;
-
-        type_ctor_info = dynamic_cast<MR_Word> (type_info->GetValue(
-		MR_TYPEINFO_TYPE_CTOR_INFO_SLOT));
-        if (type_ctor_info == 0) {
-            type_ctor_info = type_info;
-        }
-
-        // XXX insert code to handle higher order....
-        if (0) {
-
-        } else {
-            arity = System::Convert::ToInt32(
-		type_ctor_info->GetValue(MR_TYPE_CTOR_INFO_ARITY_SLOT));
-        }
-
-	UnifyPred = type_ctor_info->GetValue(
-		MR_TYPE_CTOR_INFO_UNIFY_PRED_SLOT);
-
-	switch(arity) {
-	case 0: 
-                SUCCESS_INDICATOR = 
-			mercury::runtime::GenericCall::semidet_call_3(
-				UnifyPred,
-				X, Y);
-	break;
-	case 1:
-                SUCCESS_INDICATOR = 
-			mercury::runtime::GenericCall::semidet_call_4(
-				UnifyPred,
-				type_info->GetValue(1), 
-				X, Y);
-	break;
-	case 2:
-		SUCCESS_INDICATOR = 
-			mercury::runtime::GenericCall::semidet_call_5(
-				UnifyPred,
-				type_info->GetValue(1), 
-				type_info->GetValue(2), 
-				X, Y);
-	break;
-	case 3:
-		SUCCESS_INDICATOR =
-			mercury::runtime::GenericCall::semidet_call_6(
-				UnifyPred,
-				type_info->GetValue(1), 
-				type_info->GetValue(2), 
-				type_info->GetValue(3), 
-				X, Y);
-	break;
-	case 4:
-		SUCCESS_INDICATOR =
-			mercury::runtime::GenericCall::semidet_call_7(
-				UnifyPred,
-				type_info->GetValue(1), 
-				type_info->GetValue(2), 
-				type_info->GetValue(3), 
-				type_info->GetValue(4), 
-				X, Y);
-	break;
-	case 5:
-		SUCCESS_INDICATOR = 
-			mercury::runtime::GenericCall::semidet_call_8(
-				UnifyPred,
-				type_info->GetValue(1), 
-				type_info->GetValue(2), 
-				type_info->GetValue(3), 
-				type_info->GetValue(4), 
-				type_info->GetValue(5), 
-				X, Y);
-	break;
-	default:
-		mercury::runtime::Errors::fatal_error(
-			""unify/2: type arity > 5 not supported"");
-	}
-
-	return SUCCESS_INDICATOR;
+	return mercury::builtin::mercury_code::call_rtti_generic_unify_2_p(
+			ti, X, Y);
 }
 
 ").
