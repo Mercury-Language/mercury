@@ -235,7 +235,8 @@ int	mercury_compare_type_info(Word type_info_1, Word type_info_2);
 
 /*
 ** Compare two type_info structures, using an arbitrary ordering
-** (based on the addresses of the unification predicates).
+** (based on the addresses of the unification predicates, or in
+** the case of higher order types, the arity).
 */
 
 int
@@ -282,17 +283,55 @@ mercury_compare_type_info(Word type_info_1, Word type_info_2)
 
 	/*
 	** If the addresses of the unify preds are equal, we don't need to
-	** compare the arity of the types - they must be the same.
+	** compare the arity of the types - they must be the same -
+	** unless they are higher-order (which are all mapped to
+	** pred/0 when using ONE_OR_TWO_CELL_TYPE_INFO).
 	** But we need to recursively compare the argument types, if any.
 	*/
 
 #ifdef	ONE_OR_TWO_CELL_TYPE_INFO
+
+	/*
+	** Higher order preds can't be optimised into the
+	** type_info == base_type_info, so we don't need 
+	** to check for them in this case.
+	*/
 	if (base_type_info_1 == 0)
 		return COMPARE_EQUAL;
 	else
 	{
-		num_arg_types = field(mktag(0), base_type_info_1,
-				OFFSET_FOR_COUNT);
+		extern const struct mercury_data___base_type_info_pred_0_struct
+			mercury_data___base_type_info_pred_0;
+
+				/* Check for higher order */
+		if (base_type_info_1 ==
+				(Word) &mercury_data___base_type_info_pred_0) {
+			int num_arg_types_2;
+
+				/* Get number of arguments from type_info */
+			num_arg_types = field(mktag(0), type_info_1, 
+				TYPEINFO_OFFSET_FOR_PRED_ARITY);
+
+			num_arg_types_2 = field(mktag(0), type_info_2, 
+				TYPEINFO_OFFSET_FOR_PRED_ARITY);
+
+				/* Check arity */
+			if (num_arg_types < num_arg_types_2) {
+				return COMPARE_LESS;
+			} else if(num_arg_types > num_arg_types_2) {
+				return COMPARE_GREATER;
+			}
+
+				/*
+				** Increment, so arguments are at the
+				** expected offset.
+				*/
+			type_info_1 += sizeof(Word);
+			type_info_2 += sizeof(Word);
+		} else {
+			num_arg_types = field(mktag(0), base_type_info_1,
+					OFFSET_FOR_COUNT);
+		}
 		for (i = 1; i <= num_arg_types; i++) {
 			Word arg_type_info_1 = field(mktag(0),
 						type_info_1, i);

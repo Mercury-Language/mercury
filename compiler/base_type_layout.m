@@ -786,11 +786,14 @@ base_type_layout__generate_pseudo_type_info(Type, LayoutInfo0, LayoutInfo,
 		->
 			TypeModule = "",
 			TypeName = "pred",
-			Arity = 0
+			Arity = 0,
+			TypeId = _QualTypeName - RealArity,
+			RealArityArg = [yes(const(int_const(RealArity)))]
 		;
 			TypeId = QualTypeName - Arity,
 			unqualify_name(QualTypeName, TypeName),
-			sym_name_get_module_name(QualTypeName, "", TypeModule)
+			sym_name_get_module_name(QualTypeName, "", TypeModule),
+			RealArityArg = []
 		),
 		base_type_layout__get_next_label(LayoutInfo0, NextLabel),
 		base_type_layout__incr_next_label(LayoutInfo0, LayoutInfo1),
@@ -800,7 +803,9 @@ base_type_layout__generate_pseudo_type_info(Type, LayoutInfo0, LayoutInfo,
 			% generate args, but remove one level of create()s.
 		base_type_layout__generate_pseudo_type_infos(TypeArgs,
 			LayoutInfo1, LayoutInfo, PseudoArgs0),
-		base_type_layout__remove_creates(PseudoArgs0, PseudoArgs),
+		base_type_layout__remove_creates(PseudoArgs0, PseudoArgs1),
+
+		list__append(RealArityArg, PseudoArgs1, PseudoArgs),
 
 		Pseudo = yes(create(0, [Pseudo0 | PseudoArgs], no, 
 			NextLabel))

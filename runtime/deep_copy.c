@@ -145,9 +145,10 @@ Word deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
 
                             /* copy arguments */
                         for (i = 0; i < args; i++) {
-                            new_closure[i+2] = deep_copy(data_value[i+2], 
-                                (Word *) type_info[i+1], lower_limit,
-                                upper_limit);
+                            new_closure[i + 2] = deep_copy(data_value[i + 2],
+                                (Word *)
+                                type_info[i + TYPEINFO_OFFSET_FOR_PRED_ARGS],
+                                lower_limit, upper_limit);
                         }
                         new_data = (Word) new_closure;
                     }

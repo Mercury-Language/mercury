@@ -59,6 +59,7 @@
 #define OFFSET_FOR_TERM_TO_TYPE_PRED 4
 #define OFFSET_FOR_TYPE_TO_TERM_PRED 5
 
+
 /* 
 ** USE_TYPE_TO_TERM is presently undefined. Code may break if it is
 ** just redefined here - changes also need to be made to the compiler.
@@ -70,6 +71,23 @@
 #else
 	#define OFFSET_FOR_ARG_TYPE_INFOS 4
 	#define OFFSET_FOR_BASE_TYPE_LAYOUT 4
+#endif
+
+/*
+** Where the predicate arity and args are stored in the type_info.
+** For one-or-two-cell, they are stored in the type_info (*not* the
+** base_type_info).
+** This is brought about by higher-order predicates all using the
+** same base_type_info - pred/0.
+** For one-cell, the arity is at the same offset as the count.
+*/
+
+#ifdef ONE_OR_TWO_CELL_TYPE_INFO
+	#define TYPEINFO_OFFSET_FOR_PRED_ARITY 1
+	#define TYPEINFO_OFFSET_FOR_PRED_ARGS OFFSET_FOR_ARG_TYPE_INFOS
+#else
+	#define TYPEINFO_OFFSET_FOR_PRED_ARITY OFFSET_FOR_COUNT
+	#define TYPEINFO_OFFSET_FOR_PRED_ARGS 2
 #endif
 
 #define COMPARE_EQUAL 0
