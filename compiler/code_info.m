@@ -24,6 +24,10 @@
 %		`don't care' mode are ignored, and that assignments
 %		are cached.
 %
+% Note: Any new "state" arguments (eg counters) that should be strictly
+% threaded (for example the counter used for allocating new labels) will
+% require changes to code_info__slap_code_info/3.
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -423,6 +427,12 @@
 
 :- pred code_info__can_generate_direct_branch(code_addr, code_info, code_info).
 :- mode code_info__can_generate_direct_branch(out, in, out) is semidet.
+
+	% Given a list of type variables, find the lvals where the 
+	% corresponding type_infos are being stored.
+
+:- pred code_info__find_type_infos(list(var), list(lval), code_info, code_info).
+:- mode code_info__find_type_infos(in, out, in, out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -2149,7 +2159,9 @@ code_info__generate_stack_livelvals(Args, LiveVals) -->
         { set__init(LiveVals0) },
         code_info__generate_stack_livelvals_2(VarList, LiveVals0, LiveVals1),
 	{ set__to_sorted_list(LiveVals1, LiveVals2) },
-	code_info__livevals_to_livelvals(LiveVals2, LiveVals3),
+	code_info__get_globals(Globals),
+	{ globals__get_gc_method(Globals, GC_Method) },
+	code_info__livevals_to_livelvals(LiveVals2, LiveVals3, GC_Method),
         code_info__get_pushed_values(Pushed0),
 	code_info__get_commit_vals(CommitVals),
 	{ stack__push_list(Pushed0, CommitVals, Pushed) },
@@ -2176,7 +2188,7 @@ code_info__generate_stack_livelvals_3(Stack0, LiveInfo0, LiveInfo) :-
 		stack__pop(Stack0, Top - StoredLval , Stack1)
 	->
 		code_info__get_shape_num(StoredLval, S_Num),
-		LiveInfo = [live_lvalue(Top, S_Num) | Lives],
+		LiveInfo = [live_lvalue(Top, S_Num, no) | Lives],
 		code_info__generate_stack_livelvals_3(Stack1, LiveInfo0, Lives)
 	;
 		LiveInfo = LiveInfo0
@@ -2203,22 +2215,41 @@ code_info__get_shape_num(lval(framevar(_)), unwanted).
 code_info__get_shape_num(ticket, ticket).
 
 :- pred code_info__livevals_to_livelvals(list(pair(lval, var)), list(liveinfo),
-					 code_info, code_info).
-:- mode code_info__livevals_to_livelvals(in, out, in, out) is det.
+				gc_method, code_info, code_info).
+:- mode code_info__livevals_to_livelvals(in, out, in, in, out) is det.
 
-code_info__livevals_to_livelvals([], [], C, C).
+code_info__livevals_to_livelvals([], [], _GC_Method, C, C).
 code_info__livevals_to_livelvals([L - V|Ls], 
-			[live_lvalue(L, num(S_Num))|Lives]) --> 
-	code_info__get_module_info(Module),
-	code_info__get_shapes(S_Tab0),
-	{ module_info_types(Module, Type_Table) },
-	code_info__variable_type(V, Type),
-		% We don't yet support partial insts when allocating
-		% shapes, so pass ground(shared, no) as a placeholder.
-	{ shapes__request_shape_number(Type - ground(shared, no), Type_Table, 
-					S_Tab0, S_Tab1, S_Num) },
-	code_info__set_shapes(S_Tab1),
-	code_info__livevals_to_livelvals(Ls, Lives).
+		[live_lvalue(L, num(S_Num), TypeParams)|Lives], GC_Method) --> 
+	( 
+		{ GC_Method = accurate }
+	->
+		code_info__get_module_info(ModuleInfo),
+		code_info__get_shapes(S_Tab0),
+		{ module_info_types(ModuleInfo, Type_Table) },
+		code_info__variable_type(V, Type),
+
+		% XXX We don't yet support partial insts when allocating
+		% XXX shapes, so pass ground(shared, no) as a placeholder.
+		{ shapes__request_shape_number(Type - ground(shared, no), 
+			Type_Table, S_Tab0, S_Tab1, S_Num) },
+		{ type_util__vars(Type, TypeVars) },
+		(
+			% if not polymorphic
+			{ TypeVars = [] }
+		->
+			{ TypeParams = no }
+		;
+			code_info__find_type_infos(TypeVars, Lvals),
+			{ TypeParams = yes(Lvals) }
+		),
+		code_info__set_shapes(S_Tab1)
+	;
+		% Dummy values
+		{ TypeParams = no },
+		{ S_Num = 0 }
+	),
+	code_info__livevals_to_livelvals(Ls, Lives, GC_Method).
 
 %---------------------------------------------------------------------------%
 
@@ -2524,13 +2555,41 @@ code_info__slap_code_info(C0, C1, C) :-
 	code_info__get_fall_through(J, C0, _),
 	code_info__set_fall_through(J, C4, C5),
 	code_info__get_max_push_count(PC, C1, _),
-	code_info__set_max_push_count(PC, C5, C).
+	code_info__set_max_push_count(PC, C5, C6),
+	code_info__get_shapes(Shapes, C1, _),
+	code_info__set_shapes(Shapes, C6, C).
 
 %---------------------------------------------------------------------------%
 
 code_info__variable_to_string(Var, Name) -->
 	code_info__get_varset(Varset),
 	{ varset__lookup_name(Varset, Var, Name) }.
+
+%---------------------------------------------------------------------------%
+
+code_info__find_type_infos([], []) --> [].
+code_info__find_type_infos([TVar | TVars], [Lval | Lvals]) --> 
+	code_info__get_proc_info(ProcInfo),
+	{ proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap) },
+	(
+		{ map__search(TypeInfoMap, TVar, Var0) }
+	->
+		{ Var = Var0 }
+	;
+		{ error("cannot find var for type variable") }
+	),
+	{ proc_info_call_info(ProcInfo, CallInfo) },
+	( 
+		{ map__search(CallInfo, Var, Lval0) }
+	->
+		{ Lval = Lval0 }
+	;
+		code_info__variable_to_string(Var, VarString),
+		{ string__format("code_info__find_type_infos: can't find lval for type_info var %s",
+			[s(VarString)], ErrStr) },
+		{ error(ErrStr) }
+	),
+	code_info__find_type_infos(TVars, Lvals).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

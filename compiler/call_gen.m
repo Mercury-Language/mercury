@@ -210,7 +210,19 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 call_gen__save_variables(Args, Code) -->
 	code_info__get_live_variables(Variables0),
 	{ set__list_to_set(Variables0, Vars0) },
-	{ set__difference(Vars0, Args, Vars) },
+	{ set__difference(Vars0, Args, Vars1) },
+	code_info__get_globals(Globals),
+	{ globals__get_gc_method(Globals, GC_Method) },
+	( 
+		{ GC_Method = accurate }
+	->
+		code_info__get_proc_info(ProcInfo),
+		{ proc_info_get_used_typeinfos_setwise(ProcInfo, Vars1, 
+			TypeInfoVars) },
+		{ set__union(Vars1, TypeInfoVars, Vars) }
+	;
+		{ Vars = Vars1 }
+	),
 	{ set__to_sorted_list(Vars, Variables) },
 	call_gen__save_variables_2(Variables, Code).
 
@@ -504,39 +516,57 @@ call_gen__insert_arg_livevals([L | As], LiveVals0, LiveVals) :-
 					list(liveinfo), code_info, code_info).
 :- mode call_gen__generate_return_livevals(in, in, out, in, out) is det.
 
-call_gen__generate_return_livevals(OutArgs, OutputArgs, LiveVals, Code0, Code)
-		:-
-	code_info__generate_stack_livelvals(OutArgs, LiveVals0, Code0, Code1),
-	code_info__get_module_info(Module, Code1, Code2),
-	code_info__get_shapes(S_Tab0, Code2, Code3),
-	call_gen__insert_arg_livelvals(OutputArgs, Module,
-		LiveVals0, LiveVals, Code3, Code4, S_Tab0, S_Tab),
-	code_info__set_shapes(S_Tab, Code4, Code).
+call_gen__generate_return_livevals(OutArgs, OutputArgs, LiveVals) -->
+	code_info__generate_stack_livelvals(OutArgs, LiveVals0),
+	code_info__get_globals(Globals),
+	{ globals__get_gc_method(Globals, GC_Method) },
+	call_gen__insert_arg_livelvals(OutputArgs, GC_Method, LiveVals0, 
+		LiveVals).
+	
 
 % Maybe a varlist to type_id list would be a better way to do this...
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__insert_arg_livelvals(list(pair(var, arg_loc)),
-					module_info, list(liveinfo),
-					list(liveinfo), code_info, code_info,
-					shape_table, shape_table).
-:- mode call_gen__insert_arg_livelvals(in, in, in, out, in, out,
-					in, out) is det.
+:- pred call_gen__insert_arg_livelvals(list(pair(var, arg_loc)), gc_method, 
+	list(liveinfo), list(liveinfo), code_info, code_info).
+:- mode call_gen__insert_arg_livelvals(in, in, in, out, in, out) is det.
 
-call_gen__insert_arg_livelvals([], _, LiveVals, LiveVals, C, C, S, S).
-call_gen__insert_arg_livelvals([Var - L | As], Module_Info, LiveVals0, LiveVals,
-				 	Code0, Code, S_Tab0, S_Tab) :-
-	code_util__arg_loc_to_register(L, R),
-	code_info__variable_type(Var, Type, Code0, Code1),
-	module_info_types(Module_Info, Type_Table),
-		% XXX what does this do?  Is `ground(shared, no)' right???
-	shapes__request_shape_number(Type - ground(shared, no), Type_Table,
-			S_Tab0, S_Tab1, S_Number),
-	LiveVal = live_lvalue(reg(R), num(S_Number)),
-	call_gen__insert_arg_livelvals(As, Module_Info, 
-			[LiveVal | LiveVals0], LiveVals, Code1,
-			 Code, S_Tab1, S_Tab).
+call_gen__insert_arg_livelvals([], _, LiveVals, LiveVals) --> [].
+call_gen__insert_arg_livelvals([Var - L | As], GC_Method, LiveVals0,
+		LiveVals) -->
+	(
+		{ GC_Method = accurate }
+	->
+		code_info__get_shapes(S_Tab0),
+		code_info__variable_type(Var, Type),
+		code_info__get_module_info(Module_Info),
+		{ module_info_types(Module_Info, Type_Table) },
+
+		% XXX we really should check that the inst of Var is
+		% XXX ground - but that would probably break things when
+		% XXX partial insts get implemented.
+		{ shapes__request_shape_number(Type - ground(shared, no), 
+			Type_Table, S_Tab0, S_Tab1, S_Number) },
+		{ type_util__vars(Type, TypeVars) },
+		(
+			% if not polymorphic
+			{ TypeVars = [] }
+		->
+			{ TypeParams = no }
+		;
+			code_info__find_type_infos(TypeVars, Lvals),
+			{ TypeParams = yes(Lvals) }
+		),
+		code_info__set_shapes(S_Tab1)
+	;
+		{ TypeParams = no },
+		{ S_Number = 0 }
+	),
+	{ code_util__arg_loc_to_register(L, R) },
+	{ LiveVal = live_lvalue(reg(R), num(S_Number), TypeParams) },
+	call_gen__insert_arg_livelvals(As, GC_Method, [LiveVal | LiveVals0], 
+		LiveVals).
 
 %---------------------------------------------------------------------------%
 

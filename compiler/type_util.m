@@ -98,6 +98,11 @@
 :- pred type_unify_list(list(type), list(type), list(tvar), tsubst, tsubst).
 :- mode type_unify_list(in, in, in, in, out) is semidet.
 
+	% Return a list of the type variables of a type.
+
+:- pred type_util__vars(type, list(tvar)).
+:- mode type_util__vars(in, out) is det.
+
 	% type_list_subsumes(TypesA, TypesB, Subst) succeeds iff the list
 	% TypesA subsumes (is more general than) TypesB, producing a
 	% type substitution which when applied to TypesA will give TypesB.
@@ -454,6 +459,11 @@ type_unify_head_type_param(Var, HeadVar, HeadTypeParams, Bindings0,
 				Bindings)
 		)
 	).
+
+%-----------------------------------------------------------------------------%
+
+type_util__vars(Type, Tvars) :-
+	term__vars(Type, Tvars).
 
 %-----------------------------------------------------------------------------%
 

@@ -139,7 +139,7 @@ process_module_2(ModuleName) -->
 	maybe_write_string(Verbose, "% Parsing `"),
 	maybe_write_string(Verbose, ModuleName),
 	maybe_write_string(Verbose, ".m' and imported interfaces...\n"),
-	io__gc_call(read_mod(ModuleName, ".m", "Reading module",
+	io__gc_call(read_mod(ModuleName, ".m", "Reading module", yes,
 			Items0, Error)),
 	globals__io_lookup_bool_option(statistics, Stats),
 	maybe_report_stats(Stats),
@@ -172,7 +172,6 @@ process_module_2(ModuleName) -->
 		)
 	).
 
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 	% Some of the following predicates use NU-Prolog hacks to avoid
@@ -1455,6 +1454,8 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	globals__io_get_gc_method(GC_Method),
 	{ GC_Method = conservative ->
 		GC_Opt = "-DCONSERVATIVE_GC "
+	; GC_Method = accurate ->
+		GC_Opt = "-DNATIVE_GC"
 	;
 		GC_Opt = ""
 	},

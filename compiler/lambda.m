@@ -41,12 +41,12 @@
 :- pred lambda__process_pred(pred_id, module_info, module_info).
 :- mode lambda__process_pred(in, in, out) is det.
 
-:- pred lambda__transform_lambda(pred_or_func, list(var), list(mode),
+:- pred lambda__transform_lambda(pred_or_func, list(var), list(mode), 
 		determinism, set(var), hlds__goal, unification,
-		varset, map(var, type), tvarset, module_info,
+		varset, map(var, type), tvarset, map(tvar, var), module_info,
 		unify_rhs, unification, module_info).
 :- mode lambda__transform_lambda(in, in, in, in, in, in, in, in, in, in, in,
-		out, out, out) is det.
+		in, out, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -63,6 +63,7 @@
 			varset,			% from the proc_info
 			map(var, type),		% from the proc_info
 			tvarset,		% from the proc_info
+			map(tvar, var),		% from the proc_info (typeinfos)
 			module_info
 		).
 
@@ -113,16 +114,20 @@ lambda__process_proc_2(ProcInfo0, PredInfo0, ModuleInfo0,
 	proc_info_variables(ProcInfo0, VarSet0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_goal(ProcInfo0, Goal0),
+	proc_info_typeinfo_varmap(ProcInfo0, TVarMap0),
 
 	% process the goal
-	Info0 = lambda_info(VarSet0, VarTypes0, TypeVarSet0, ModuleInfo0),
+	Info0 = lambda_info(VarSet0, VarTypes0, TypeVarSet0, TVarMap0, 
+		ModuleInfo0),
 	lambda__process_goal(Goal0, Goal, Info0, Info),
-	Info = lambda_info(VarSet, VarTypes, TypeVarSet, ModuleInfo),
+	Info = lambda_info(VarSet, VarTypes, TypeVarSet, TVarMap, 
+		ModuleInfo),
 
 	% set the new values of the fields in proc_info and pred_info
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
 	proc_info_set_variables(ProcInfo1, VarSet, ProcInfo2),
-	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo),
+	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3),
+	proc_info_set_typeinfo_varmap(ProcInfo3, TVarMap, ProcInfo),
 	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo).
 
 :- pred lambda__process_goal(hlds__goal, hlds__goal,
@@ -208,14 +213,16 @@ lambda__process_cases([case(ConsId, Goal0) | Cases0],
 
 lambda__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
 		Unification0, Functor, Unification, LambdaInfo0, LambdaInfo) :-
-	LambdaInfo0 = lambda_info(VarSet, VarTypes, TVarSet, ModuleInfo0),
-	lambda__transform_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals0,
-		LambdaGoal, Unification0, VarSet, VarTypes, TVarSet,
+	LambdaInfo0 = lambda_info(VarSet, VarTypes, TVarSet, TVarMap, 
+			ModuleInfo0),
+	lambda__transform_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals0, 
+		LambdaGoal, Unification0, VarSet, VarTypes, TVarSet, TVarMap, 
 		ModuleInfo0, Functor, Unification, ModuleInfo),
-	LambdaInfo = lambda_info(VarSet, VarTypes, TVarSet, ModuleInfo).
+	LambdaInfo = lambda_info(VarSet, VarTypes, TVarSet, TVarMap, 
+		ModuleInfo).
 
-lambda__transform_lambda(PredOrFunc, Vars, Modes, Detism, OrigNonLocals0,
-		LambdaGoal, Unification0, VarSet, VarTypes, TVarSet,
+lambda__transform_lambda(PredOrFunc, Vars, Modes, Detism, OrigNonLocals0, 
+		LambdaGoal, Unification0, VarSet, VarTypes, TVarSet, TVarMap, 
 		ModuleInfo0, Functor, Unification, ModuleInfo) :-
 	(
 		Unification0 = construct(Var0, _, _, UniModes0)
@@ -332,7 +339,8 @@ lambda__transform_lambda(PredOrFunc, Vars, Modes, Detism, OrigNonLocals0,
 
 		proc_info_create(VarSet, VarTypes, PermutedArgVars,
 			PermutedArgModes, Detism, LambdaGoal, LambdaContext,
-			ProcInfo),
+			TVarMap, ProcInfo),
+
 		pred_info_create(ModuleName, PredName, TVarSet, ArgTypes,
 			true, LambdaContext, local, [], PredOrFunc, ProcInfo,
 			ProcId, PredInfo),

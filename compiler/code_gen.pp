@@ -1306,8 +1306,8 @@ code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
 		Instrn0 = call(Target, ReturnLabel, LiveVals0, CM)
 	->
 		Instrn  = call(Target, ReturnLabel, 
-			[live_lvalue(stackvar(StackLoc), succip) | LiveVals0], 
-			CM)
+			[live_lvalue(stackvar(StackLoc), succip, no) |
+			LiveVals0], CM)
 	;
 		Instrn = Instrn0
 	),

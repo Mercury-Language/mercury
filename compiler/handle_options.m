@@ -252,17 +252,23 @@ convert_grade_option(Grade0) -->
 	( { string__remove_suffix(Grade4, ".gc", Grade5) } ->
 		{ Grade = Grade5 },
 		{ GC = conservative }
+	; { string__remove_suffix(Grade4, ".agc", Grade5) } ->
+		{ Grade = Grade5 },
+		{ GC = accurate }
 	;
 		{ Grade = Grade4 },
 		{ GC = none }
 	),
 	% Set the type of gc that the grade option implies.
-	% 'accurate' is not set in the grade, so we don't override it here.
-	( get_string_opt(gc, "accurate") ->
-		[]
-	; { GC = conservative } ->
+	% 'accurate' is now set in the grade, so we can override it here.
+	( 
+		{ GC = accurate }, 
+		set_string_opt(gc, "accurate") 
+	; 
+		{ GC = conservative },
 		set_string_opt(gc, "conservative")
 	;
+		{ GC = none },
 		set_string_opt(gc, "none")
 	),
 	convert_grade_option_2(Grade).

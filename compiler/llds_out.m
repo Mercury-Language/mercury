@@ -198,7 +198,8 @@ output_c_module_init_list(BaseName, Modules) -->
 	io__write_string("#if (defined(USE_GCC_NONLOCAL_GOTOS) && "),
 	io__write_string("!defined(USE_ASM_LABELS)) \\\n\t|| "),
 	io__write_string("defined(PROFILE_CALLS) || defined(DEBUG_GOTOS) \\\n"),
-	io__write_string("\t|| defined(DEBUG_LABELS) || !defined(SPEED)\n\n"),
+	io__write_string("\t|| defined(DEBUG_LABELS) || !defined(SPEED) \\\n"),
+	io__write_string("\t|| defined(NATIVE_GC) \n\n"),
 	io__write_string("static void "),
 	output_bunch_name(BaseName, 0),
 	io__write_string("(void)\n"),
@@ -215,7 +216,8 @@ output_c_module_init_list(BaseName, Modules) -->
 	io__write_string("#if (defined(USE_GCC_NONLOCAL_GOTOS) && "),
 	io__write_string("!defined(USE_ASM_LABELS)) \\\n\t|| "),
 	io__write_string("defined(PROFILE_CALLS) || defined(DEBUG_GOTOS) \\\n"),
-	io__write_string("\t|| defined(DEBUG_LABELS) || !defined(SPEED)\n\n"),
+	io__write_string("\t|| defined(DEBUG_LABELS) || !defined(SPEED) \\\n"),
+	io__write_string("\t|| defined(NATIVE_GC) \n\n"),
 	output_c_module_init_list_3(0, BaseName, InitFuncs),
 	io__write_string("#endif\n}\n").
 
@@ -1030,13 +1032,28 @@ output_gc_livevals(LiveVals) -->
 :- mode output_gc_livevals_2(in, di, uo) is det.
 
 output_gc_livevals_2([]) --> [].
-output_gc_livevals_2([live_lvalue(Lval, Shape)|Lvals]) -->
+output_gc_livevals_2([live_lvalue(Lval, Shape, TypeParams)|Lvals]) -->
 	io__write_string(" *\t"),
 	output_lval(Lval),
 	io__write_string("\t"),
 	shapes__write_shape_num(Shape),
+	(
+		{ TypeParams = yes(ParamLocs) },
+		io__write_string("\t"),
+		output_gc_livevals_params(ParamLocs)
+	;
+		{ TypeParams = no }
+	),
 	io__write_string("\n"),
 	output_gc_livevals_2(Lvals).
+
+:- pred output_gc_livevals_params(list(lval), io__state, io__state).
+:- mode output_gc_livevals_params(in, di, uo) is det.
+output_gc_livevals_params([]) --> [].
+output_gc_livevals_params([L|Lvals]) -->
+	output_lval(L),
+	io__write_string("  "),
+	output_gc_livevals_params(Lvals).
 
 :- pred output_temp_decls(int, string, io__state, io__state).
 :- mode output_temp_decls(in, in, di, uo) is det.

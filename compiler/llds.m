@@ -186,7 +186,23 @@
 				% of variable containing the output val
 
 
-:- type liveinfo	--->	live_lvalue(lval, shape_num).
+:- type liveinfo	--->	live_lvalue(
+					lval,
+						% What stackslot/reg does
+						% this lifeinfo structure
+						% refer to?
+					shape_num,
+						% What is the shape of this
+						% (bound) variable?
+					maybe(list(lval))
+						% Where are the typeinfos
+						% the determine the types
+						% of the actual parameters
+						% of the type parameters of
+						% this shape (if it is poly-
+						% morphic), in the order of
+						% the arguments.
+				).
 
 :- type lval		--->	reg(reg)	% either an int or float reg
 			;	stackvar(int)	% det stack slots

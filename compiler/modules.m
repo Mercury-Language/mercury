@@ -24,9 +24,9 @@
 	%	Given a module name and a file extension (e.g. `.m',
 	%	`.int', or `int2'), read in the list of items in that file.
 	%
-:- pred read_mod(string, string, string, item_list, module_error,
+:- pred read_mod(string, string, string, bool, item_list, module_error,
 		io__state, io__state).
-:- mode read_mod(in, in, in, out, out, di, uo) is det.
+:- mode read_mod(in, in, in, in, out, out, di, uo) is det.
 
 	% make_interface(ModuleName, Items):
 	%	Given a module name and the list of items in that module,
@@ -438,8 +438,8 @@ generate_deps_map([], DepsMap, DepsMap) --> [].
 generate_deps_map([Module | Modules], DepsMap0, DepsMap) -->
 		% Look up the module's dependencies, and determine whether
 		% it has been processed yet.
-	lookup_dependencies(Module, DepsMap0, Done, Error, IntDeps, ImplDeps,
-				DepsMap1),
+	lookup_dependencies(Module, DepsMap0, no, Done, Error, ImplDeps, 
+				IntDeps, DepsMap1),
 		% If the module hadn't been processed yet, compute its
 		% transitive dependencies (we already know its primary ones),
 		% (1) output this module's dependencies to its `.d' file
@@ -449,7 +449,7 @@ generate_deps_map([Module | Modules], DepsMap0, DepsMap) -->
 	( { Done = no } ->
 		{ map__set(DepsMap1, Module,
 			deps(yes, Error, IntDeps, ImplDeps), DepsMap2) },
-		transitive_dependencies(ImplDeps, DepsMap2, SecondaryDeps,
+		transitive_dependencies(ImplDeps, DepsMap2, no, SecondaryDeps,
 			DepsMap3),
 		( { Error \= fatal } ->
 			write_dependency_file(Module, ImplDeps, SecondaryDeps)
@@ -567,13 +567,49 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	write_dependencies_list(Modules, ".int3", DepStream),
 	io__write_string(DepStream, "\n\n"),
 
-	io__write_strings(DepStream, [
-		ModuleName, " : $(", ModuleName, ".os) ",
-				ModuleName, "_init.o\n",
+	globals__io_lookup_string_option(gc, GC_Opt),
+	( { GC_Opt = "accurate" } ->
+		{ map__init(AllMap) },
+		trans_impl_dependencies([ModuleName], AllMap, yes,
+			AllDeps, _),
+		io__write_string(DepStream, ModuleName),
+		io__write_string(DepStream, ".garbs = "),
+		write_dependencies_list(AllDeps, ".garb", DepStream),
+		io__write_string(DepStream, "\n\n")
+	;
+		[]
+	),
+
+	( { GC_Opt = "accurate" } ->
+		io__write_strings(DepStream, [
+			ModuleName, "_garb.c : $(",
+			ModuleName, ".garbs)\n",
+                        "\t$(MLINK) $(MLINKFLAGS) -o ", ModuleName,
+                        "_garb.c $(", ModuleName, ".garbs)\n\n"
+		])
+	;
+		[]
+	),
+
+	( { GC_Opt = "accurate" } ->
+		io__write_strings(DepStream, [
+			ModuleName, " : $(", ModuleName, ".os) ",
+			ModuleName, "_init.o ",
+			ModuleName, "_garb.o\n",
 		"\t$(ML) -s $(GRADE) $(MLFLAGS) -o ", ModuleName, " ",
+			ModuleName, "_garb.o ",
 			ModuleName, "_init.o \\\n",
 			"\t$(", ModuleName, ".os) $(MLLIBS)\n\n"
-	]),
+		])
+	;
+		io__write_strings(DepStream, [
+			ModuleName, " : $(", ModuleName, ".os) ",
+			ModuleName, "_init.o\n",
+			"\t$(ML) -s $(GRADE) $(MLFLAGS) -o ", ModuleName, " ",
+			ModuleName, "_init.o \\\n",
+			"\t$(", ModuleName, ".os) $(MLLIBS)\n\n"
+		])
+	),
 
 	io__write_strings(DepStream, [
 		ModuleName, ".split : ", ModuleName, ".split.a ",
@@ -730,23 +766,24 @@ write_dependencies_list([Module | Modules], Suffix, DepStream) -->
 	% Given a list of modules, return a list of those modules
 	% and all their transitive interface dependencies.
 
-:- pred transitive_dependencies(list(string), deps_map, list(string), deps_map,
-				io__state, io__state).
-:- mode transitive_dependencies(in, in, out, out, di, uo) is det.
+:- pred transitive_dependencies(list(string), deps_map, bool, list(string), 
+				deps_map, io__state, io__state).
+:- mode transitive_dependencies(in, in, in, out, out, di, uo) is det.
 
-transitive_dependencies(Modules, DepsMap0, Dependencies, DepsMap) -->
+transitive_dependencies(Modules, DepsMap0, Search, Dependencies, DepsMap) -->
 	{ set__init(Dependencies0) },
-	transitive_dependencies_2(Modules, Dependencies0, DepsMap0,
+	transitive_dependencies_2(Modules, Dependencies0, DepsMap0, Search,
 		Dependencies1, DepsMap),
 	{ set__to_sorted_list(Dependencies1, Dependencies) }.
 
-:- pred transitive_dependencies_2(list(string), set(string), deps_map,
+:- pred transitive_dependencies_2(list(string), set(string), deps_map, bool,
 				set(string), deps_map,
 				io__state, io__state).
-:- mode transitive_dependencies_2(in, in, in, out, out, di, uo) is det.
+:- mode transitive_dependencies_2(in, in, in, in, out, out, di, uo) is det.
 
-transitive_dependencies_2([], Deps, DepsMap, Deps, DepsMap) --> [].
-transitive_dependencies_2([Module | Modules0], Deps0, DepsMap0, Deps, DepsMap)
+transitive_dependencies_2([], Deps, DepsMap, _Search, Deps, DepsMap) --> [].
+transitive_dependencies_2([Module | Modules0], Deps0, DepsMap0, Search, Deps, 
+		DepsMap)
 		-->
 	( { set__member(Module, Deps0) } ->
 		{ Deps1 = Deps0 },
@@ -754,11 +791,50 @@ transitive_dependencies_2([Module | Modules0], Deps0, DepsMap0, Deps, DepsMap)
 		{ Modules1 = Modules0 }
 	;
 		{ set__insert(Deps0, Module, Deps1) },
-		lookup_dependencies(Module, DepsMap0,
+		lookup_dependencies(Module, DepsMap0, Search, 
 					_, _, IntDeps, _ImplDeps, DepsMap1),
 		{ list__append(IntDeps, Modules0, Modules1) }
 	),
-	transitive_dependencies_2(Modules1, Deps1, DepsMap1, Deps, DepsMap).
+	transitive_dependencies_2(Modules1, Deps1, DepsMap1, Search, Deps, 
+		DepsMap).
+
+%-----------------------------------------------------------------------------%
+
+        % Given a list of modules, return a list of those modules
+        % and all their transitive implementation dependencies.
+
+:- pred trans_impl_dependencies(list(string), deps_map, bool,
+                        list(string), deps_map, io__state, io__state).
+:- mode trans_impl_dependencies(in, in, in, out, out, di, uo) is det.
+
+trans_impl_dependencies(Modules, DepsMap0, Search, Dependencies, DepsMap) -->
+        { set__init(Dependencies0) },
+        trans_impl_dependencies_2(Modules, Dependencies0, DepsMap0, Search,
+                Dependencies1, DepsMap),
+        { set__to_sorted_list(Dependencies1, Dependencies) }.
+
+:- pred trans_impl_dependencies_2(list(string), set(string), deps_map, bool,
+                                set(string), deps_map,
+                                io__state, io__state).
+:- mode trans_impl_dependencies_2(in, in, in, in, out, out, di, uo) is det.
+
+trans_impl_dependencies_2([], Deps, DepsMap, _Search, Deps, DepsMap) --> [].
+trans_impl_dependencies_2([Module | Modules0], Deps0, DepsMap0, Search, Deps,
+                DepsMap)
+                -->
+        ( { set__member(Module, Deps0) } ->
+                { Deps1 = Deps0 },
+                { DepsMap1 = DepsMap0 },
+                { Modules2 = Modules0 }
+        ;
+                { set__insert(Deps0, Module, Deps1) },
+                lookup_dependencies(Module, DepsMap0, Search,
+                                        _, _, IntDeps, ImplDeps, DepsMap1),
+                { list__append(IntDeps, Modules0, Modules1) },
+                { list__append(ImplDeps, Modules1, Modules2) }
+        ),
+        trans_impl_dependencies_2(Modules2, Deps1, DepsMap1, Search, Deps,
+                DepsMap).
 
 %-----------------------------------------------------------------------------%
 
@@ -766,12 +842,13 @@ transitive_dependencies_2([Module | Modules0], Deps0, DepsMap0, Deps, DepsMap)
 	% If we don't know its dependencies, read the
 	% module and save the dependencies in the dependency map.
 
-:- pred lookup_dependencies(string, deps_map,
+:- pred lookup_dependencies(string, deps_map, bool,
 		bool, module_error, list(string), list(string), deps_map,
 		io__state, io__state).
-:- mode lookup_dependencies(in, in, out, out, out, out, out, di, uo) is det.
+:- mode lookup_dependencies(in, in, in, out, out, out, out, out, di, uo) is det.
 
-lookup_dependencies(Module, DepsMap0, Done, Error, IntDeps, ImplDeps, DepsMap)
+lookup_dependencies(Module, DepsMap0, Search, Done, Error, IntDeps, 
+		ImplDeps, DepsMap)
 		-->
 	(
 		{ map__search(DepsMap0, Module,
@@ -783,7 +860,7 @@ lookup_dependencies(Module, DepsMap0, Done, Error, IntDeps, ImplDeps, DepsMap)
 		{ ImplDeps = ImplDeps0 },
 		{ DepsMap = DepsMap0 }
 	;
-		read_dependencies(Module, IntDeps, ImplDeps, Error),
+		read_dependencies(Module, Search, ImplDeps, IntDeps, Error),
 		{ map__set(DepsMap0, Module, deps(no, Error, IntDeps, ImplDeps),
 			DepsMap) },
 		{ Done = no }
@@ -791,16 +868,17 @@ lookup_dependencies(Module, DepsMap0, Done, Error, IntDeps, ImplDeps, DepsMap)
 
 	% Read a module to determine its dependencies.
 
-:- pred read_dependencies(string, list(string), list(string), module_error,
-				io__state, io__state).
-:- mode read_dependencies(in, out, out, out, di, uo) is det.
+:- pred read_dependencies(string, bool, list(string), list(string), 
+				module_error, io__state, io__state).
+:- mode read_dependencies(in, in, out, out, out, di, uo) is det.
 
-read_dependencies(Module, InterfaceDeps, ImplementationDeps, Error) -->
+read_dependencies(Module, Search, InterfaceDeps, ImplementationDeps, Error) -->
 	io__gc_call(read_mod_ignore_errors(Module, ".m",
-			"Getting dependencies for module", Items0, Error)),
+			"Getting dependencies for module", Search, Items0, Error)),
 	( { Items0 = [], Error = fatal } ->
-		io__gc_call(read_mod_ignore_errors(Module, ".int",
-		    "Getting dependencies for module interface", Items, _Error))
+		io__gc_call(read_mod_ignore_errors(Module, ".int", 
+		    "Getting dependencies for module interface", Search, 
+		    Items, _Error))
 	;
 		{ Items = Items0 }
 	),
@@ -811,7 +889,7 @@ read_dependencies(Module, InterfaceDeps, ImplementationDeps, Error) -->
 
 %-----------------------------------------------------------------------------%
 
-read_mod(ModuleName, Extension, Descr, Items, Error) -->
+read_mod(ModuleName, Extension, Descr, Search, Items, Error) -->
 	{ dir__basename(ModuleName, Module) },
 	{ string__append(ModuleName, Extension, FileName) },
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
@@ -821,7 +899,7 @@ read_mod(ModuleName, Extension, Descr, Items, Error) -->
 	maybe_write_string(VeryVerbose, FileName),
 	maybe_write_string(VeryVerbose, "'... "),
 	maybe_flush_output(VeryVerbose),
-	prog_io__read_module(FileName, Module, Error, Messages, Items),
+	prog_io__read_module(FileName, Module, Search, Error, Messages, Items),
 	( { Error = fatal } ->
 		maybe_write_string(VeryVerbose, "fatal error(s).\n"),
 		io__set_exit_status(1)
@@ -844,11 +922,11 @@ combine_module_errors(yes, no, yes).
 combine_module_errors(no, Error, Error).
 */
 
-:- pred read_mod_ignore_errors(string, string, string, item_list, module_error,
-		io__state, io__state).
-:- mode read_mod_ignore_errors(in, in, in, out, out, di, uo) is det.
+:- pred read_mod_ignore_errors(string, string, string, bool, item_list, 
+		module_error, io__state, io__state).
+:- mode read_mod_ignore_errors(in, in, in, in, out, out, di, uo) is det.
 
-read_mod_ignore_errors(ModuleName, Extension, Descr, Items, Error) -->
+read_mod_ignore_errors(ModuleName, Extension, Descr, Search, Items, Error) -->
 	{ dir__basename(ModuleName, Module) },
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	maybe_write_string(VeryVerbose, "% "),
@@ -858,22 +936,21 @@ read_mod_ignore_errors(ModuleName, Extension, Descr, Items, Error) -->
 	maybe_write_string(VeryVerbose, "'... "),
 	maybe_flush_output(VeryVerbose),
 	{ string__append(ModuleName, Extension, FileName) },
-	prog_io__read_module(FileName, Module, Error, _Messages, Items),
+	prog_io__read_module(FileName, Module, Search, Error, _Messages, Items),
 	maybe_write_string(VeryVerbose, "done.\n").
 
-:- pred read_mod_short_interface(string, string, string, item_list,
-			module_error, io__state, io__state).
-:- mode read_mod_short_interface(in, in, in, out, out, di, uo) is det.
+:- pred read_mod_short_interface(string, string, string, bool, item_list, 
+		module_error, io__state, io__state).
+:- mode read_mod_short_interface(in, in, in, in, out, out, di, uo) is det.
+read_mod_short_interface(Module, Ext, Descr, Search, Items, Error) -->
+	read_mod(Module, Ext, Descr, Search, Items, Error).
 
-read_mod_short_interface(Module, Ext, Descr, Items, Error) -->
-	read_mod(Module, Ext, Descr, Items, Error).
-
-:- pred read_mod_interface(string, string, item_list, module_error,
+:- pred read_mod_interface(string, string, bool, item_list, module_error,
 				io__state, io__state).
-:- mode read_mod_interface(in, in, out, out, di, uo) is det.
+:- mode read_mod_interface(in, in, in, out, out, di, uo) is det.
 
-read_mod_interface(Module, Descr, Items, Error) -->
-	read_mod(Module, ".int", Descr, Items, Error).
+read_mod_interface(Module, Descr, Search, Items, Error) -->
+	read_mod(Module, ".int", Descr, Search, Items, Error).
 
 %-----------------------------------------------------------------------------%
 
@@ -909,7 +986,7 @@ process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
 	;
 		io__gc_call(
 			read_mod_interface(Import,
-				"Reading interface for module",
+				"Reading interface for module", yes, 
 				LongIntItems1, Error1)
 		),
 		% strip off the `:- interface' declaration at the start, if any
@@ -974,7 +1051,7 @@ process_module_short_interfaces([Import | Imports], Ext, Module0, Module) -->
 	;
 		io__gc_call(
 			read_mod_short_interface(Import, Ext,
-				"Reading short interface for module",
+				"Reading short interface for module", yes,
 					ShortIntItems1, Error1)
 		),
 		% strip off the `:- interface' declaration at the start, if any
@@ -1038,7 +1115,6 @@ get_dependencies_2([Item - _Context | Items], Deps0, Deps) :-
 
 :- pred get_interface(item_list, bool, item_list).
 :- mode get_interface(in, in, out) is det.
-
 get_interface(Items0, IncludeImported, Items) :-
 	get_interface_2(Items0, no, IncludeImported, [], RevItems),
 	list__reverse(RevItems, Items).

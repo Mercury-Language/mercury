@@ -14,10 +14,8 @@
 % corresponding shape information.
 %
 % We don't yet handle some of the optimizations that mercury can throw
-% at us - eg middle recursion optimization removes the stack frame
-% altogether. We also use io__write_anything, which is a bit dodgy,
-% and is a real hack.
-%
+% at us - eg middle recursion optimization removes the stack frame 
+% altogether. 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -68,14 +66,15 @@
 % Note, we don't yet get the exported abstract type table.
 %-----------------------------------------------------------------------------%
 garbage_out__do_garbage_out(ShapeInfo, c_file(Name, _C_Header, Modules)) -->
-	{ ShapeInfo = shape_info(ShapeTable, Abs_Exports) },
+	{ ShapeInfo = shape_info(ShapeTable, Abs_Exports, SpecialPredShapes) },
 	{ string__append(Name, ".garb", FileName) },
 	io__tell(FileName, Result),
 	(
 		{ Result = ok }
 	->
 		{ garbage_out__create_cont_list(Modules, CList) },
-		garbage_out__output(CList, ShapeTable, Abs_Exports),
+		garbage_out__output(CList, ShapeTable, Abs_Exports, 
+			SpecialPredShapes),
 		io__told
 	;
 		io__progname_base("garbage_out.m", ProgName),
@@ -146,84 +145,67 @@ garbage_out__proc_instr_list([I - _Comment | Is ], Cs0, Cout) :-
 
 garbage_out__proc_instr(I, Cs, Cout) :-
 	(
-		I = call(_Target, Contn, LiveInfo0, _)
+		I = call(_Target, Contn, LiveInfo, _)
 	->
-		garbage_out__remove_fields(LiveInfo0, LiveInfo1),
-		garbage_out__get_det(LiveInfo1, none, Det),
-		list__length(LiveInfo1, Length),
-		C = gc_label_info(Contn, Det, Length, LiveInfo1),
+		garbage_out__get_det(LiveInfo, no, Det),
+		list__length(LiveInfo, Length),
+		C = gc_label_info(Contn, Det, Length, LiveInfo),
 		Cout = [C | Cs]
 	;
 		Cout = Cs
 	).
 
 %-----------------------------------------------------------------------------%
-% Strip the (erroneously present) fields(...) from the liveinfo.
-%-----------------------------------------------------------------------------%
-:- pred garbage_out__remove_fields(list(liveinfo), list(liveinfo)).
-:- mode garbage_out__remove_fields(in, out) is det.
-
-garbage_out__remove_fields([], []).
-garbage_out__remove_fields([L|Ls], Ms) :-
-	garbage_out__remove_fields(Ls, Xs),
-	(
-		L = live_lvalue(field(_, _, _), _)
-	->
-		Ms = Xs
-	;
-		Ms = [L | Xs]
-	).
-
-%-----------------------------------------------------------------------------%
 % Find the determinism of this label by looking for framevars or stackvars
-% or succip. If there is no succip, then we assume nondet.
-% XXX Should deal with this properly - commits must be detected also.
+% or succip. If there are none of these, then we assume nondet.
+% XXX Is it safe to accept nondet?
+% XXX It's kind of hard to categorize determinism at this end, perhaps it 
+% XXX would be better if this information was obtained elsewhere.
 %-----------------------------------------------------------------------------%
 
-:- type so_far_det	--->	det ; nondet ; commit ; none.
-
-:- pred garbage_out__get_det(list(liveinfo), so_far_det, det).
+:- pred garbage_out__get_det(list(liveinfo), maybe(det), det).
 :- mode garbage_out__get_det(in, in, out) is det.
 
-garbage_out__get_det([], none, _) :-
-	error("garbage_out__get_det: Unable to determine determinism.").
-	% nondeterministic is a pretty safe bet though.
-garbage_out__get_det([], commit, commit).
-garbage_out__get_det([], nondet, nondeterministic).
-garbage_out__get_det([], det, deterministic).
+garbage_out__get_det([], no, nondeterministic).
+	% XXX Is nondeterministic is a safe bet ?.
+	% or should we :
+	% error("garbage_out__get_det: Unable to determine determinism.").
+garbage_out__get_det([], yes(commit), commit).
+garbage_out__get_det([], yes(nondeterministic), nondeterministic).
+garbage_out__get_det([], yes(deterministic), deterministic).
 
 garbage_out__get_det([L | Ls], OldD, NewDet) :-
 	(
-		L = live_lvalue(stackvar(_), _)
+		L = live_lvalue(stackvar(_), _, _)
 	->
 		(
-			OldD = none,
-			Det = det
+			OldD = yes(Detism)
+		->
+			( 
+				Detism = nondeterministic 
+			->
+				Det = yes(commit)
+			;
+				Det = OldD
+			)	
 		;
-			OldD = nondet,
-			Det = commit
-		;
-			OldD = det,
-			Det = det
-		;
-			OldD = commit,
-			Det = commit
+			Det = yes(deterministic)
 		)
 	;
-		L = live_lvalue(framevar(_), _)
+		L = live_lvalue(framevar(_), _, _)
 	->
 		(
-			OldD = none,
-			Det = nondet
+			OldD = yes(Detism)
+		->
+			(
+				Detism = deterministic
+			->
+				Det = yes(commit)
+			;
+				Det = OldD
+			)
 		;
-			OldD = nondet,
-			Det = OldD
-		;
-			OldD = det,
-			Det = commit
-		;
-			OldD = commit,
-			Det = commit
+			Det = yes(nondeterministic)
 		)
 	;
 		Det = OldD
@@ -234,14 +216,15 @@ garbage_out__get_det([L | Ls], OldD, NewDet) :-
 % Actually write the garbage information.
 %-----------------------------------------------------------------------------%
 :- pred garbage_out__output(cont_list, shape_table, abs_exports,
-				io__state, io__state).
-:- mode garbage_out__output(in, in, in, di, uo) is det.
-
-garbage_out__output(List, Shapes, Abs_Exports) -->
+				map(label, shape_num), io__state, io__state).
+:- mode garbage_out__output(in, in, in, in, di, uo) is det.
+garbage_out__output(List, Shapes, Abs_Exports, SpecialPredShapes) -->
 	garbage_out__write_cont_list(List),
 	garbage_out__write_shape_table(Shapes),
 	{ map__to_assoc_list(Abs_Exports, Abs_Exports_List) },
-	garbage_out__write_abs_exports(Abs_Exports_List).
+	garbage_out__write_abs_exports(Abs_Exports_List),
+	{ map__to_assoc_list(SpecialPredShapes, SpecialPredList) },
+	garbage_out__write_special_preds(SpecialPredList).
 
 %-----------------------------------------------------------------------------%
 % Write the continuation list.
@@ -319,12 +302,33 @@ garbage_out__write_code_addr(L) -->
 :- pred garbage_out__write_liveinfo_list(list(liveinfo), io__state, io__state).
 :- mode garbage_out__write_liveinfo_list(in, di, uo) is det.
 garbage_out__write_liveinfo_list([]) --> { true }.
-garbage_out__write_liveinfo_list([live_lvalue(L, S)| Ls]) -->
-	garbage_out__write_liveval(L),
+garbage_out__write_liveinfo_list(
+		[live_lvalue(LiveVal, ShapeNum, Params)| Ls]) -->
+	garbage_out__write_liveval(LiveVal),
 	io__write_string(" - "),
-	shapes__write_shape_num(S),
+	shapes__write_shape_num(ShapeNum),
+	( 
+		{ Params = yes(LvalList) }
+	->
+		io__write_string(" - ["),
+		garbage_out__write_lval_list(LvalList),
+		io__write_string("]")
+	;
+		[]
+	),
 	garbage_out__maybe_write_comma_space(Ls),
 	garbage_out__write_liveinfo_list(Ls).
+
+%-----------------------------------------------------------------------------%
+% Write a list of lvals.
+%-----------------------------------------------------------------------------%
+:- pred garbage_out__write_lval_list(list(lval), io__state, io__state).
+:- mode garbage_out__write_lval_list(in, di, uo) is det.
+
+garbage_out__write_lval_list([]) --> [].
+garbage_out__write_lval_list([Lval | Ls]) --> 
+	garbage_out__write_liveval(Lval),
+	garbage_out__write_lval_list(Ls).
 
 %-----------------------------------------------------------------------------%
 % Write a single lval.
@@ -573,3 +577,19 @@ garbage_out__write_type_id(unqualified(TypeName) - Arity) -->
 garbage_out__write_type_id(qualified(Module,TypeName) - Arity) -->
 	io__write_strings(["qualified(", Module, ", ", TypeName, ") - "]),
 	io__write_int(Arity).
+
+%-----------------------------------------------------------------------------%
+% Write out the special pred shapes.
+%-----------------------------------------------------------------------------%
+:- pred garbage_out__write_special_preds(assoc_list(label, shape_num), 
+				io__state, io__state).
+:- mode garbage_out__write_special_preds(in, di, uo) is det.
+garbage_out__write_special_preds([]) --> [].
+garbage_out__write_special_preds([Label - ShapeNum | SpecialPreds]) -->
+	io__write_string("special_pred_shape("),
+	output_label(Label),
+	io__write_string(", "),
+	shapes__write_shape_num(ShapeNum),
+	io__write_string("). \n"),
+	garbage_out__write_special_preds(SpecialPreds).
+

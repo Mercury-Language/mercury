@@ -373,8 +373,9 @@ dnf__define_new_pred(Goal0, Goal, InstMap0, PredName, DnfInfo,
 
 	module_info_name(ModuleInfo0, ModuleName),
 	SymName = qualified(ModuleName, PredName),
+	map__init(TVarMap), % later, polymorphism.m will fill this in. 
 	proc_info_create(VarSet, VarTypes, ArgVars, ArgModes, Detism,
-		Goal0, Context, ProcInfo),
+		Goal0, Context, TVarMap, ProcInfo),
 	pred_info_create(ModuleName, SymName, TVarSet, ArgTypes, true,
 		Context, local, Markers, predicate, ProcInfo, ProcId, PredInfo),
 

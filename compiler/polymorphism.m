@@ -223,19 +223,20 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 
 	% process any polymorphic calls inside the goal
 	map__from_corresponding_lists(HeadTypeVars, ExtraHeadVars,
-				TypeInfoMap),
+				TypeInfoMap0),
 	Info0 = poly_info(VarSet1, VarTypes1, TypeVarSet0,
-				TypeInfoMap, ModuleInfo0),
+				TypeInfoMap0, ModuleInfo0),
 	polymorphism__process_goal(Goal0, Goal1, Info0, Info1),
 	polymorphism__fixup_quantification(Goal1, Goal, Info1, Info),
-	Info = poly_info(VarSet, VarTypes, TypeVarSet, _, ModuleInfo),
+	Info = poly_info(VarSet, VarTypes, TypeVarSet, TypeInfoMap, ModuleInfo),
 
 	% set the new values of the fields in proc_info and pred_info
 	proc_info_set_headvars(ProcInfo0, HeadVars, ProcInfo1),
 	proc_info_set_goal(ProcInfo1, Goal, ProcInfo2),
 	proc_info_set_varset(ProcInfo2, VarSet, ProcInfo3),
 	proc_info_set_vartypes(ProcInfo3, VarTypes, ProcInfo4),
-	proc_info_set_argmodes(ProcInfo4, ArgModes, ProcInfo),
+	proc_info_set_argmodes(ProcInfo4, ArgModes, ProcInfo5),
+	proc_info_set_typeinfo_varmap(ProcInfo5, TypeInfoMap, ProcInfo),
 	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo).
 
 :- pred polymorphism__process_goal(hlds__goal, hlds__goal,
@@ -571,14 +572,14 @@ polymorphism__fixup_quantification(Goal0, Goal, Info0, Info) :-
 :- mode polymorphism__process_lambda(in, in, in, in, in, in, in, out, out,
 		in, out) is det.
 
-polymorphism__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals,
-		LambdaGoal, Unification0, Functor, Unification,
+polymorphism__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals, 
+		LambdaGoal, Unification0, Functor, Unification, 
 		PolyInfo0, PolyInfo) :-
-	PolyInfo0 = poly_info(VarSet, VarTypes, TVarSet, X, ModuleInfo0),
-	lambda__transform_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals,
-		LambdaGoal, Unification0, VarSet, VarTypes, TVarSet,
+	PolyInfo0 = poly_info(VarSet, VarTypes, TVarSet, TVarMap, ModuleInfo0),
+	lambda__transform_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals, 
+		LambdaGoal, Unification0, VarSet, VarTypes, TVarSet, TVarMap, 
 		ModuleInfo0, Functor, Unification, ModuleInfo),
-	PolyInfo = poly_info(VarSet, VarTypes, TVarSet, X, ModuleInfo).
+	PolyInfo = poly_info(VarSet, VarTypes, TVarSet, TVarMap, ModuleInfo).
 
 %---------------------------------------------------------------------------%
 

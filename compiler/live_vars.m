@@ -84,7 +84,7 @@ detect_live_vars_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 	detect_initial_live_vars(ProcInfo0, ModuleInfo, Liveness0),
 	set__init(LiveSets0),
 	detect_live_vars_in_goal(Goal0, Liveness0, LiveSets0,
-		CodeModel, ModuleInfo, _Liveness, LiveSets),
+		CodeModel, ModuleInfo, ProcInfo0, _Liveness, LiveSets),
 	graph_colour__group_elements(LiveSets, ColourSets),
 	set__to_sorted_list(ColourSets, ColourList),
 	live_vars__allocate_call_info(ColourList, CodeModel, CallInfo),
@@ -100,11 +100,11 @@ detect_live_vars_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 
 :- pred detect_live_vars_in_goal(hlds__goal, 
 		liveness_info, set(set(var)), code_model, module_info,
-		liveness_info, set(set(var))).
-:- mode detect_live_vars_in_goal(in, in, in, in, in, out, out) is det.
+		proc_info, liveness_info, set(set(var))).
+:- mode detect_live_vars_in_goal(in, in, in, in, in, in, out, out) is det.
 
 detect_live_vars_in_goal(Goal0 - GoalInfo, Liveness0,
-		LiveSets0, CodeModel, ModuleInfo,
+		LiveSets0, CodeModel, ModuleInfo, ProcInfo,
 			Liveness, LiveSets) :-
 	goal_info_pre_delta_liveness(GoalInfo, PreDelta),
 	PreDelta = PreBirths - PreDeaths,
@@ -128,7 +128,7 @@ detect_live_vars_in_goal(Goal0 - GoalInfo, Liveness0,
 	goal_info_nondet_lives(GoalInfo, NondetLives),
 
 	detect_live_vars_in_goal_2(Goal0, NondetLives, Liveness3, LiveSets0,
-		CodeModel, ModuleInfo, Liveness4, LiveSets1),
+		CodeModel, ModuleInfo, ProcInfo, Liveness4, LiveSets1),
 
 	(
 		goal_is_atomic(Goal0)
@@ -167,17 +167,18 @@ detect_live_vars_in_goal(Goal0 - GoalInfo, Liveness0,
 	% live again on backtracking.
 
 :- pred detect_live_vars_in_goal_2(hlds__goal_expr, set(var), liveness_info,
-			set(set(var)), code_model, module_info,
+			set(set(var)), code_model, module_info, proc_info,
 			liveness_info, set(set(var))).
-:- mode detect_live_vars_in_goal_2(in, in, in, in, in, in, out, out) is det.
+:- mode detect_live_vars_in_goal_2(in, in, in, in, in, in, in, out, out) is det.
 
 detect_live_vars_in_goal_2(conj(Goals0), _NondetLives, Liveness0, LiveSets0,
-		CodeModel, ModuleInfo, Liveness, LiveSets) :-
+		CodeModel, ModuleInfo, ProcInfo, Liveness, LiveSets) :-
 	detect_live_vars_in_conj(Goals0, Liveness0, LiveSets0,
-		CodeModel, ModuleInfo, Liveness, LiveSets).
+		CodeModel, ModuleInfo, ProcInfo, Liveness, LiveSets).
 
 detect_live_vars_in_goal_2(disj(Goals0, _), NondetLives, Liveness0, LiveSets0,
-		CodeModel, ModuleInfo, Liveness, LiveSets) :-
+		CodeModel, ModuleInfo, ProcInfo, Liveness, LiveSets) :-
+
 		% All the currently live variables need to be saved
 		% on the stack at the start of a disjunction, since we
 		% may need them on backtracking.  Therefore they need to
@@ -186,42 +187,42 @@ detect_live_vars_in_goal_2(disj(Goals0, _), NondetLives, Liveness0, LiveSets0,
 	set__union(Liveness0, NondetLives, LiveVars),
 	set__insert(LiveSets0, LiveVars, LiveSets1),
 	detect_live_vars_in_disj(Goals0, Liveness0, LiveSets1,
-		CodeModel, ModuleInfo, Liveness, LiveSets).
+		CodeModel, ModuleInfo, ProcInfo, Liveness, LiveSets).
 
-detect_live_vars_in_goal_2(switch(_Var, _Det, Cases0, _),
+detect_live_vars_in_goal_2(switch(_Var, _Det, Cases0, _), 
 		_NondetLives, Liveness0, LiveSets0, CodeModel,
-			ModuleInfo, Liveness, LiveSets) :-
+			ModuleInfo, ProcInfo, Liveness, LiveSets) :-
 	detect_live_vars_in_cases(Cases0, Liveness0, LiveSets0,
-		CodeModel, ModuleInfo, Liveness, LiveSets).
+		CodeModel, ModuleInfo, ProcInfo, Liveness, LiveSets).
 
 detect_live_vars_in_goal_2(if_then_else(_Vars, Cond0, Then0, Else0, _),
 		NondetLives, Liveness0, LiveSets0, CodeModel,
-			ModuleInfo, Liveness, LiveSets) :-
+			ModuleInfo, ProcInfo, Liveness, LiveSets) :-
 	set__union(Liveness0, NondetLives, LiveVars),
 	set__insert(LiveSets0, LiveVars, LiveSets0A),
 	detect_live_vars_in_goal(Cond0, Liveness0, LiveSets0A,
-		CodeModel, ModuleInfo, Liveness1, LiveSets1),
+		CodeModel, ModuleInfo, ProcInfo, Liveness1, LiveSets1),
 	detect_live_vars_in_goal(Then0, Liveness1, LiveSets1,
-		CodeModel, ModuleInfo, _Liveness2, LiveSets2),
+		CodeModel, ModuleInfo, ProcInfo, _Liveness2, LiveSets2),
 	detect_live_vars_in_goal(Else0, Liveness0, LiveSets2,
-		CodeModel, ModuleInfo, Liveness, LiveSets).
+		CodeModel, ModuleInfo, ProcInfo, Liveness, LiveSets).
 
 detect_live_vars_in_goal_2(not(Goal0), NondetLives, Liveness0, LiveSets0,
-		CodeModel, ModuleInfo, Liveness, LiveSets) :-
+		CodeModel, ModuleInfo, ProcInfo, Liveness, LiveSets) :-
 	set__union(Liveness0, NondetLives, LiveVars),
 	set__insert(LiveSets0, LiveVars, LiveSets1),
 	detect_live_vars_in_goal(Goal0, Liveness0, LiveSets1,
-		CodeModel, ModuleInfo, Liveness, LiveSets).
+		CodeModel, ModuleInfo, ProcInfo, Liveness, LiveSets).
 
 detect_live_vars_in_goal_2(some(_Vs, Goal0), _NondetLives, Liveness0, LiveSets0,
-		CodeModel, ModuleInfo, Liveness, LiveSets) :-
+		CodeModel, ModuleInfo, ProcInfo, Liveness, LiveSets) :-
 	detect_live_vars_in_goal(Goal0, Liveness0, LiveSets0,
-		CodeModel, ModuleInfo, Liveness, LiveSets).
+		CodeModel, ModuleInfo, ProcInfo, Liveness, LiveSets).
 
 detect_live_vars_in_goal_2(higher_order_call(_PredVar, ArgVars, Types, Modes,
 		Det, _Follow),
 		NondetLives, Liveness, LiveSets0,
-		_CodeModel, ModuleInfo, Liveness, LiveSets) :-
+		_CodeModel, ModuleInfo, ProcInfo, Liveness, LiveSets) :-
 	% The variables which need to be saved onto the stack
 	% before the call are all the variables that are live
 	% after the call, except for the output arguments produced
@@ -230,17 +231,25 @@ detect_live_vars_in_goal_2(higher_order_call(_PredVar, ArgVars, Types, Modes,
 	% To figure out which variables are output, we use the arg_info;
 	% but it shouldn't matter which arg convention we're using,
 	% so we can just pass convention `simple' to make_arg_infos.
+
 	determinism_to_code_model(Det, CodeModel),
 	make_arg_infos(simple, Types, Modes, CodeModel, ModuleInfo, ArgInfos),
 	find_output_vars_from_arg_info(ArgVars, ArgInfos, OutVars),
 	set__difference(Liveness, OutVars, LiveVars0),
-	set__union(LiveVars0, NondetLives, LiveVars),
+	set__union(LiveVars0, NondetLives, LiveVars1),
+
+	% Might need to add more live variables with accurate GC.
+
+	live_vars__maybe_add_accurate_gc_typeinfos(ModuleInfo, ProcInfo, 
+		OutVars, LiveVars1, LiveVars),
+
 	set__insert(LiveSets0, LiveVars, LiveSets).
+
 
 detect_live_vars_in_goal_2(
 		call(PredId, ProcId, ArgVars, Builtin, _, _, _),
 		NondetLives, Liveness, LiveSets0,
-		_CodeModel, ModuleInfo, Liveness, LiveSets) :-
+		_CodeModel, ModuleInfo, ProcInfo, Liveness, LiveSets) :-
 	(
 		hlds__is_builtin_is_inline(Builtin)
 	->
@@ -253,12 +262,18 @@ detect_live_vars_in_goal_2(
 		% live at the call.
 		find_output_vars(PredId, ProcId, ArgVars, ModuleInfo, OutVars),
 		set__difference(Liveness, OutVars, LiveVars0),
-		set__union(LiveVars0, NondetLives, LiveVars),
+		set__union(LiveVars0, NondetLives, LiveVars1),
+
+		% Might need to add more live variables with accurate GC.
+
+		live_vars__maybe_add_accurate_gc_typeinfos(ModuleInfo, 
+			ProcInfo, OutVars, LiveVars1, LiveVars),
+
 		set__insert(LiveSets0, LiveVars, LiveSets)
 	).
 
 detect_live_vars_in_goal_2(unify(_,_,_,D,_), NondetLives, Liveness, LiveSets0,
-		_CodeModel, _ModuleInfo, Liveness, LiveSets) :-
+		_CodeModel, _ModuleInfo, _ProcInfo, Liveness, LiveSets) :-
 	(
 		D = complicated_unify(_, _, _)
 	->
@@ -274,7 +289,7 @@ detect_live_vars_in_goal_2(unify(_,_,_,D,_), NondetLives, Liveness, LiveSets0,
 detect_live_vars_in_goal_2(
 		pragma_c_code(_C_Code, IsRecursive, PredId, ProcId, Args,
 				_ArgNameMap), 
-		NondetLives, Liveness, LiveSets0, _Model, ModuleInfo,
+		NondetLives, Liveness, LiveSets0, _Model, ModuleInfo, ProcInfo,
 		Liveness, LiveSets) :-
 
 	( IsRecursive = non_recursive ->
@@ -292,52 +307,58 @@ detect_live_vars_in_goal_2(
 
 		find_output_vars(PredId, ProcId, Args, ModuleInfo, OutVars),
 		set__difference(Liveness, OutVars, LiveVars0),
-		set__union(LiveVars0, NondetLives, LiveVars),
+		set__union(LiveVars0, NondetLives, LiveVars1),
+
+		% Might need to add more live variables with accurate GC.
+
+		live_vars__maybe_add_accurate_gc_typeinfos(ModuleInfo, 
+			ProcInfo, OutVars, LiveVars1, LiveVars),
+
 		set__insert(LiveSets0, LiveVars, LiveSets)
 	).
 
 %-----------------------------------------------------------------------------%
 
 :- pred detect_live_vars_in_conj(list(hlds__goal), liveness_info,
-	set(set(var)), code_model, module_info, 
+	set(set(var)), code_model, module_info, proc_info,
 	liveness_info, set(set(var))).
-:- mode detect_live_vars_in_conj(in, in, in, in, in, out, out) is det.
+:- mode detect_live_vars_in_conj(in, in, in, in, in, in, out, out) is det.
 
 detect_live_vars_in_conj([], Liveness, LiveVars,
-		_CodeModel, _ModuleInfo, Liveness, LiveVars).
+		_CodeModel, _ModuleInfo, _ProcInfo, Liveness, LiveVars).
 detect_live_vars_in_conj([Goal0|Goals0], Liveness0, LiveVars0,
-		CodeModel, ModuleInfo, Liveness, LiveVars) :-
+		CodeModel, ModuleInfo, ProcInfo, Liveness, LiveVars) :-
 	(
 		Goal0 = _ - GoalInfo,
 		goal_info_get_instmap_delta(GoalInfo, unreachable)
 	->
 		detect_live_vars_in_goal(Goal0, Liveness0,
-			LiveVars0, CodeModel, ModuleInfo,
+			LiveVars0, CodeModel, ModuleInfo, ProcInfo,
 				Liveness, LiveVars)
 	;
 		detect_live_vars_in_goal(Goal0, Liveness0,
-			LiveVars0, CodeModel, ModuleInfo,
+			LiveVars0, CodeModel, ModuleInfo, ProcInfo,
 				Liveness1, LiveVars1),
 		detect_live_vars_in_conj(Goals0, Liveness1,
-			LiveVars1, CodeModel, ModuleInfo,
+			LiveVars1, CodeModel, ModuleInfo, ProcInfo,
 				Liveness, LiveVars)
 	).
 
 %-----------------------------------------------------------------------------%
 
 :- pred detect_live_vars_in_disj(list(hlds__goal), liveness_info,
-	set(set(var)), code_model, module_info, liveness_info,
+	set(set(var)), code_model, module_info, proc_info, liveness_info,
 	set(set(var))).
-:- mode detect_live_vars_in_disj(in, in, in, in, in, out, out) is det.
+:- mode detect_live_vars_in_disj(in, in, in, in, in, in, out, out) is det.
 
 detect_live_vars_in_disj([], Liveness, LiveSets,
-		_CodeModel, _ModuleInfo, Liveness, LiveSets).
+		_CodeModel, _ModuleInfo, _ProcInfo, Liveness, LiveSets).
 detect_live_vars_in_disj([Goal0|Goals0], Liveness0, LiveSets0,
-		CodeModel, ModuleInfo, Liveness, LiveSets) :-
+		CodeModel, ModuleInfo, ProcInfo, Liveness, LiveSets) :-
 	detect_live_vars_in_goal(Goal0, Liveness0, LiveSets0,
-		CodeModel,ModuleInfo, Liveness, LiveSets1),
+		CodeModel,ModuleInfo, ProcInfo, Liveness, LiveSets1),
 	detect_live_vars_in_disj(Goals0, Liveness0, LiveSets1,
-		CodeModel, ModuleInfo, _Liveness2, LiveSets).
+		CodeModel, ModuleInfo, ProcInfo, _Liveness2, LiveSets).
 	% set__union(Liveness1, Liveness2, Liveness).
 	% This predicate call is unnecessary because the post-deaths and
 	% pre-births sets *should* be taking care of everything.
@@ -345,19 +366,19 @@ detect_live_vars_in_disj([Goal0|Goals0], Liveness0, LiveSets0,
 %-----------------------------------------------------------------------------%
 
 :- pred detect_live_vars_in_cases(list(case), liveness_info,
-		set(set(var)), code_model, module_info,
+		set(set(var)), code_model, module_info, proc_info,
 		liveness_info, set(set(var))).
-:- mode detect_live_vars_in_cases(in, in, in, in, in, out, out) is det.
+:- mode detect_live_vars_in_cases(in, in, in, in, in, in, out, out) is det.
 
 detect_live_vars_in_cases([], Liveness, LiveSets,
-		_CodeModel, _ModuleInfo, Liveness, LiveSets).
+		_CodeModel, _ModuleInfo, _ProcInfo, Liveness, LiveSets).
 detect_live_vars_in_cases([case(_Cons, Goal0)|Goals0], Liveness0,
-		LiveSets0, CodeModel, ModuleInfo,
+		LiveSets0, CodeModel, ModuleInfo, ProcInfo,
 			Liveness, LiveSets) :-
 	detect_live_vars_in_goal(Goal0, Liveness0, LiveSets0,
-		CodeModel, ModuleInfo, Liveness, LiveSets1),
+		CodeModel, ModuleInfo, ProcInfo, Liveness, LiveSets1),
 	detect_live_vars_in_cases(Goals0, Liveness0, LiveSets1,
-		CodeModel, ModuleInfo, _Liveness2, LiveSets).
+		CodeModel, ModuleInfo, ProcInfo, _Liveness2, LiveSets).
 	% set__union(Liveness1, Liveness2, Liveness).
 	% This predicate call is unnecessary because the post-deaths and
 	% pre-births sets *should* be taking care of everything.
@@ -390,6 +411,48 @@ detect_initial_live_vars_2([V - M|VAs], ModuleInfo,
 		Liveness1 = Liveness0
 	),
 	detect_initial_live_vars_2(VAs, ModuleInfo, Liveness1, Liveness).
+
+%-----------------------------------------------------------------------------%
+
+
+	% If doing accurate garbage collection, any typeinfos for 
+	% output variables or live variables are also live. 
+	% This is because if you want to collect, you need to 
+	% know what shape the polymorphic args of the variables 
+	% are, so you need the typeinfos to be present on the stack.
+
+	% The live variables obviously need their typeinfos 
+	% live, but the output variables also need their typeinfos
+	% saved (otherwise we would throw out typeinfos and might
+	% need one at a continuation point just after a call).
+
+	% live_vars__maybe_add_accurate_gc_typeinfos takes a set of vars 
+	% (output vars) and a set of live vars and if we 
+	% are doing accurate GC, add the appropriate typeinfo variables to the 
+	% set of variables. If not, return the live vars unchanged.
+
+	% Make sure you get the output vars first, and the live vars second,
+	% since this makes a significant difference to the output set of vars.
+
+:- pred live_vars__maybe_add_accurate_gc_typeinfos(module_info, proc_info,
+	set(var), set(var), set(var)).
+:- mode live_vars__maybe_add_accurate_gc_typeinfos(in, in, in, in, out) is det.
+live_vars__maybe_add_accurate_gc_typeinfos(ModuleInfo, ProcInfo, OutVars, 
+	LiveVars1, LiveVars) :-
+	module_info_globals(ModuleInfo, Globals),
+	globals__get_gc_method(Globals, GC_Method),
+	( 
+		GC_Method = accurate
+	->
+		proc_info_get_used_typeinfos_setwise(ProcInfo, LiveVars1, 
+			TypeInfoVarsLive),
+		proc_info_get_used_typeinfos_setwise(ProcInfo, OutVars, 
+			TypeInfoVarsOut),
+		set__union(LiveVars1, TypeInfoVarsOut, LiveVars2),
+		set__union(LiveVars2, TypeInfoVarsLive, LiveVars)
+	;
+		LiveVars = LiveVars1
+	).
 
 %-----------------------------------------------------------------------------%
 

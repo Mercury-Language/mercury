@@ -57,7 +57,8 @@
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc.
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
-	{ module_info_init(Name, Module0) },
+	globals__io_get_globals(Globals),
+	{ module_info_init(Name, Globals, Module0) },
 	add_item_list_decls_pass_1(Items, local, Module0, Module1),
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
@@ -566,7 +567,17 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, Cond, Context, Status,
 			{ add_special_pred_list(SpecialPredIds,
 					Module1, TVarSet, Type, TypeId,
 					Body, Context, Status, Module2a) },
-			{ add_abstract_export(Module2a, Type, TypeId, Module2) }
+			( 
+				{ Status \= imported }
+				% Only want to handle exports for types that 
+				% are defined locally (cuts down on 
+				% duplicates). 
+			->
+				{ add_abstract_export(Module2a, Type, 
+					TypeId, Module2) }
+			;
+				{ Module2 = Module2a }
+			)
 		),
 		{ module_info_set_types(Module2, Types, Module) },
 		( { Body = uu_type(_) } ->
@@ -585,10 +596,10 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, Cond, Context, Status,
 :- mode add_abstract_export(in, in, in, out) is det.
 add_abstract_export(Module0, Type, TypeId, Module) :-
 	module_info_shape_info(Module0, Shape_Info0),
-	Shape_Info0 = shape_info(Shapes, Abs_Exports0),
+	Shape_Info0 = shape_info(Shapes, Abs_Exports0, SpecialPredShapes),
 	S_Num = no(Type),
 	map__set(Abs_Exports0, TypeId, S_Num, Abs_Exports1),
-	Shape_Info = shape_info(Shapes, Abs_Exports1),
+	Shape_Info = shape_info(Shapes, Abs_Exports1, SpecialPredShapes),
 	module_info_set_shape_info(Module0, Shape_Info, Module).
 
 :- pred convert_type_defn(type_defn, globals,
