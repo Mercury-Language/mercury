@@ -1,6 +1,6 @@
 #!/bin/sh
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-1998 The University of Melbourne. 
+# Copyright (C) 1997-1998, 2002 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -27,9 +27,9 @@ quote="'"
 
 manpage="`$program --help 2>&1 \
 	| sed	\
-		-e '/^[A-Za-z ]*:[ 	]/s//.SH &\\
+		-e '/^[\/A-Za-z ]*:[ 	]/s//.SH &\\
 /'			\
-		-e '/^[A-Za-z ]*:/s//.SH &\\
+		-e '/^[\/A-Za-z ]*:/s//.SH &\\
 /'			\
 		-e '/^	[^-	].*:/s/^	.*$/	.Ve\\
 .B\\
@@ -47,7 +47,7 @@ manpage="`$program --help 2>&1 \
 		-e 's/^		/	\\\\\\&	/g' 	\
 		-e 's/^	//' \
 	| sed	\
-		-e '/^.SH [A-Za-z ]*:/y/\
+		-e '/^.SH [\/A-Za-z ]*:/y/\
 abcdefghijklmnopqrstuvwxyz:/\
 ABCDEFGHIJKLMNOPQRSTUVWXYZ /' \
 		-e 's/^.SH USAGE/.SH SYNOPSIS/' \
