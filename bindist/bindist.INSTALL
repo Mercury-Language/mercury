@@ -35,6 +35,13 @@
 #	   documentation from the DVI files in
 #	   /usr/local/mercury-<VERSION>/lib/mercury/doc.
 #
+#	   If the binary distribution includes the deep profiler, then check
+#	   whether "make install" was able to copy scripts/mdprof to the web
+#	   server's CGI directory (normally /usr/lib/cgi-bin). This directory
+#	   is often writeable only by root or by the web server administrator,
+#	   so you may need more than your usual set of privileges to do the
+#	   copy (i.e. you may need to "su" to the appropriate user).
+#
 #	   To use the emacs debugger interface ("M-x mdb"), you also need to
 #	   add the following lines to the `.emacs' file in your home directory:
 #
