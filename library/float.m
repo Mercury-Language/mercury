@@ -59,7 +59,7 @@
 :- mode in    * in    = uo  is det.
 
 	% division
-	% Throws an `math__domain_error' exception if the right
+	% Throws a `math__domain_error' exception if the right
 	% operand is zero. See the comments at the top of math.m
 	% to find out how to disable this check.
 :- func float / float = float.
@@ -135,9 +135,9 @@
 :- func min(float, float) = float.
 
 	% pow(Base, Exponent) returns Base raised to the power Exponent.
-	% The exponent must be an integer greater or equal to 0.
-	% Currently this function runs at O(n), where n is the value
-	% of the exponent.
+	% Fewer domain restrictions than math__pow: works for negative Base,
+	% and float__pow(B, 0) = 1.0 for all B, even B=0.0.
+	% Only pow(0, <negative>) throws a `math__domain_error' exception.
 :- func pow(float, int) = float.
 
 	% Compute a non-negative integer hash value for a float.
@@ -337,20 +337,57 @@ float__min(X, Y) = Min :-
 		Min = Y
 	).
 
-% float_pow(Base, Exponent) = Answer.
-%	XXXX This function could be more efficient, with an int_mod pred, to
-%	reduce O(N) to O(logN) of the exponent.
-float__pow(X, Exp) = Ans :-
-	( Exp < 0 ->
-		throw(math__domain_error("float__pow"))
-	; Exp = 1 ->
-		Ans =  X
-	; Exp = 0 ->
-		Ans = 1.0
+
+float__pow(Base, Exp) = Ans :-
+	( Exp >= 0 ->
+		Ans = float__multiply_by_pow(1.0, Base, Exp)
 	;
-		New_e is Exp - 1,
-		Ans is X * float__pow(X, New_e)
+		( domain_checks, Base = 0.0 ->
+			throw(math__domain_error("float:pow"))
+		;
+			Ans = unchecked_quotient(1.0,
+				float__multiply_by_pow(1.0, Base, -Exp))
+			% See below re use of unchecked_quotient.
+		)
 	).
+
+:- func float__multiply_by_pow(float, float, int) = float.
+	% Returns Scale0 * (Base ** Exp) (where X ** 0 == 1.0 for all X).
+	% Requires that Exp >= 0.
+	% Uses a simple "Russian peasants" algorithm.  O(lg(Exp+1)).
+float__multiply_by_pow(Scale0, Base, Exp) = Result :-
+	( Exp = 0 ->
+		Result = Scale0
+	;
+		( odd(Exp) ->
+			Scale1 = Scale0 * Base
+		;
+			Scale1 = Scale0
+		),
+		Result = float__multiply_by_pow(Scale1, Base * Base, Exp div 2)
+	).
+
+	% The reason for using unchecked_quotient in float__pow is so
+	% that float__pow(+/-0.5, -1111) gives +/-infinity rather than
+	% a domain error.  (N.B. This relies on unchecked_quotient(1.0,
+	% +/-0.0) giving +/-infinity, whereas the documentation in
+	% float.m says that the results are undefined.)
+	% Using Result = float__multiply_by_pow(1.0, 1.0 / Base, -Exp)
+	% would give the right behaviour for underflow, but isn't
+	% generally as accurate.
+
+	% (Efficiency note: An optimization used by `power' in SGI's STL
+	%  implementation is to test for Exp=0 and (for non-zero Exp) handle
+	%  low zero bits in Exp before calling this loop: the loop for the low
+	%  zero bits needs only square Base, it needn't update Acc until the
+	%  end of that loop at which point Acc can be simply assigned from the
+	%  then-current value of Base.  This optimization would be especially
+	%  valuable for expensive `*' operations; maybe provide a
+	%  std_util__monoid_pow(func(T,T)=T MonoidOperator, T Identity, int
+	%  Exp, T Base) = T Result function to complement the existing
+	%  std_util__pow function.)
+
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C", float__hash(F::in) = (H::out),
 	[will_not_call_mercury, promise_pure, thread_safe],

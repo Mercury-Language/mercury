@@ -173,6 +173,14 @@
 :- func unchecked_right_shift(int, int) = int.
 :- mode unchecked_right_shift(in, in) = uo is det.
 
+	% even(X) is equivalent to (X mod 2 = 0).
+:- pred even(int).
+:- mode even(in) is semidet.
+
+	% odd(X) is equivalent to (not even(X)), i.e. (X mod 2 = 1).
+:- pred odd(int).
+:- mode odd(in) is semidet.
+
 	% bitwise and
 :- func int /\ int = int.
 :- mode in  /\ in  = uo  is det.
@@ -381,6 +389,14 @@ X >> Y = Z :-
 		)
 	).
 
+:- pragma inline(even/1).
+even(X):-
+	(X /\ 1) = 0.
+
+:- pragma inline(odd/1).
+odd(X):-
+	(X /\ 1) \= 0.
+
 int__abs(Num) = Abs :-
 	int__abs(Num, Abs).
 
@@ -417,26 +433,29 @@ int__min(X, Y, Min) :-
 		Min = Y
 	).
 
-int__pow(Val, Exp) = Result :-
-	int__pow(Val, Exp, Result).
+int__pow(Base, Exp) = Result :-
+	int__pow(Base, Exp, Result).
 
-int__pow(Val, Exp, Result) :-
+int__pow(Base, Exp, Result) :-
 	( domain_checks, Exp < 0 ->
 		throw(math__domain_error("int__pow"))
 	;
-		int__pow_2(Val, Exp, 1, Result)
+		Result = int__multiply_by_pow(1, Base, Exp)
 	).
 
-:- pred int__pow_2(int, int, int, int).
-:- mode int__pow_2(in, in, in, out) is det.
-
-int__pow_2(Val, Exp, Result0, Result) :-
+:- func int__multiply_by_pow(int, int, int) = int.
+	% Returns Scale0 * (Base ** Exp).
+	% Requires that Exp >= 0.
+int__multiply_by_pow(Scale0, Base, Exp) = Result :-
 	( Exp = 0 ->
-		Result = Result0
+		Result = Scale0
 	;
-		Exp1 is Exp - 1,
-		Result1 is Result0 * Val,
-		int__pow_2(Val, Exp1, Result1, Result)
+		( odd(Exp) ->
+			Scale1 = Scale0 * Base
+		;
+			Scale1 = Scale0
+		),
+		Result = int__multiply_by_pow(Scale1, Base * Base, Exp div 2)
 	).
 
 int__log2(X) = N :-

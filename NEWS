@@ -139,7 +139,7 @@ Changes to the Mercury standard library:
   `ops__init_op_table' has been renamed `ops__init_mercury_op_table'.
   `ops__max_priority' is now a function taking an operator table argument.
 
-* The predicates and functions in int.m, float, math.m and array.m now
+* The predicates and functions in int.m, float.m, math.m and array.m now
   generate exceptions rather than program aborts on domain errors and
   out-of-bounds array accesses. There are new functions
   `float__unchecked_quotient/2', `int__unchecked_quotient/2' and
@@ -149,6 +149,9 @@ Changes to the Mercury standard library:
 * We've removed the reverse modes of the arithmetic functions in
   float.m and extras/complex_numbers.  (Because of rounding errors,
   the functions aren't actually reversible.)
+
+* float__pow now works for negative exponents, and runs much faster
+  for large exponents.
 
 * We've removed the destructive update modes of string__set_char,
   string__set_char_det and string__unsafe_set_char. The compiler
@@ -206,6 +209,8 @@ Changes to the Mercury standard library:
   representations of term components as strings.
 
 * We've made the outputs of the string concatenation primitives unique.
+
+* New convenience/readability predicates `int__even/1' and `int__odd/1'.
 
 * We've removed the long obsolete `int__builtin_*' and
   `float__builtin_float_*' predicates, which were synonyms
