@@ -434,31 +434,18 @@ term__term_to_univ_special_case("array", "array", [ElemType], Term, _Type,
 	% convert the term representing the list of elements back to a list,
 	% and then (if successful) we just call the array/1 function.
 	%
-	ListTypeCtor = type_ctor(type_of([0])),
-	ListType = det_make_type(ListTypeCtor, [ElemType]),
+	has_type(Elem, ElemType),
+	ListType = type_of([Elem]),
 	ArgContext = arg_context(term__atom("array"), 1, TermContext),
 	NewContext = [ArgContext | PrevContext],
 	term__try_term_to_univ_2(ArgList, ListType, NewContext, ArgResult),
 	(
 		ArgResult = ok(ListUniv),
-/***************
-% XXX existential types not yet implemented...
-		% :- some [T] pred has_type(T::unused, type_info::in) is det.
-		has_type(List, ListType),
+		has_type(Elem2, ElemType),
+		same_type(List, [Elem2]),
 		det_univ_to_type(ListUniv, List),
 		Array = array(List),
 		Result = ok(univ(Array))
-****************/
-		% since we don't have existential types, we have to use
-		% some unsafe casts...
-		require_equal(univ_type(ListUniv), ListType),
-		list_of_any(List),   % explicit type qualification
-				     % to avoid unbound type variables
-		List = unsafe_cast(univ_value_as_type_any(ListUniv)),
-		Array = array(List),
-		ArrayTypeCtor = type_ctor(type_of(Array)),
-		ArrayType = det_make_type(ArrayTypeCtor, [ElemType]),
-		Result = ok(unsafe_any_to_univ(ArrayType, unsafe_cast(Array)))
 	;
 		ArgResult = error(Error),
 		Result = error(Error)
@@ -475,9 +462,6 @@ term__term_to_univ_special_case("std_util", "univ", _, _, _, _, _) :-
 term__term_to_univ_special_case("std_util", "type_info", _, _, _, _, _) :-
 	% ditto
 	fail.
-
-:- pred same_type(T::unused, T::unused) is det.
-same_type(_, _).
 
 :- pred term__term_list_to_univ_list(list(term)::in, list(type_info)::in,
 		term__const::in, int::in, term_to_type_context::in,
@@ -539,48 +523,6 @@ term__det_term_to_type(Term, X) :-
 			"'"], Message),
 		error(Message)
 	).
-
-%-----------------------------------------------------------------------------%
-
-/**********
-XXX existential types not yet implemented
-:- some [T] pred has_type(T::unused, type_info::in) is det.
-:- pragma c_code(has_type(Arg::unused, TypeInfo::in), will_not_call_mercury,
-	"TypeInfo_for_T = TypeInfo;"
-).
-**********/
-
-:- func unsafe_cast(T1::in) = (T2::out) is det.
-:- pragma c_code(unsafe_cast(VarIn::in) = (VarOut::out), will_not_call_mercury,
-	"VarOut = VarIn;").
-
-:- type any == c_pointer.
-
-:- pred array_of_any(array(any)::unused) is det.
-array_of_any(_).
-
-:- pred list_of_any(list(any)::unused) is det.
-list_of_any(_).
-
-:- func univ_value_as_type_any(univ) = any.
-:- pragma c_code(univ_value_as_type_any(Univ::in) = (Val::out),
-		will_not_call_mercury,
-"
-	Val = field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA);
-").
-
-:- func unsafe_any_to_univ(type_info, any) = univ.
-	% Forward mode - convert from type to univ.
-	% Allocate heap space, set the first field to contain the address
-	% of the type_info for this type, and then store the input argument
-	% in the second field.
-:- pragma c_code(unsafe_any_to_univ(TypeInfo::in, Value::in) = (Univ::out),
-		will_not_call_mercury,
-"
-	incr_hp(Univ, 2);
-	field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO) = (Word) TypeInfo;
-	field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA) = (Word) Value;
-").
 
 %-----------------------------------------------------------------------------%
 
@@ -661,36 +603,21 @@ term__univ_to_term_special_case("std_util", "univ", [], Univ, Context, Term) :-
 			[term__functor(term__atom(":"),	 % TYPE_QUAL_OP
 				[ValueTerm, TypeTerm],
 				Context)], Context),
-/****
-XXX existential types not implemented
-	det_univ_to_type(univ_value(Univ), UnivValue),
-****/
-	% instead, we use some unsafe casts...
-	require_equal(univ_type(Univ), type_of(UnivValue)),
-	UnivValue = unsafe_cast(univ_value_as_type_any(Univ)),
-
-	type_info_to_term(Context, univ_type(UnivValue), TypeTerm),
-	term__univ_to_term(UnivValue, ValueTerm).
+	type_info_to_term(Context, univ_type(Univ), TypeTerm),
+	UnivValue = univ_value(Univ),
+	term__type_to_term(UnivValue, ValueTerm).
 
 term__univ_to_term_special_case("array", "array", [ElemType], Univ, Context, 
 		Term) :-
 	Term = term__functor(term__atom("array"), [ArgsTerm], Context),
-	ListTypeCtor = type_ctor(type_of([0])),
-	ListType = det_make_type(ListTypeCtor, [ElemType]),
-/***
-XXX existential types not yet implemented
-	has_type(List, ListType),
-	det__univ_to_type(Univ, Array),	
+	has_type(Elem, ElemType),
+	same_type(List, [Elem]),
+	det_univ_to_type(Univ, Array),	
 	array__to_list(Array, List),
 	term__type_to_term(List, ArgsTerm).
-***/
-	% instead, we need to use some unsafe casts...
-	array_of_any(Array), % explicit type qualification
-			     % to avoid unbound type variables
-	Array = unsafe_cast(univ_value_as_type_any(Univ)),	
-	array__to_list(Array, List),
-	ListUniv = unsafe_any_to_univ(ListType, unsafe_cast(List)),
-	term__univ_to_term(ListUniv, ArgsTerm).
+
+:- pred same_type(T::unused, T::unused) is det.
+same_type(_, _).
 
 :- pred term__univ_list_to_term_list(list(univ)::in,
 				list(term)::out) is det.

@@ -78,6 +78,14 @@
 	%
 :- func univ_type(univ) = type_info.
 
+
+	% univ_value(Univ):
+	%	returns the value of the object stored in Univ.
+	%
+	% Warning: support for existential types is still experimental.
+	%
+:- some [T] func univ_value(univ) = T.
+
 %-----------------------------------------------------------------------------%
 
 % The "maybe" type.
@@ -214,10 +222,20 @@
 	% get_functor/5 and construct/3 will fail if used upon a value
 	% of this type.)
 
-	% type_of(Data) returns a representation of the type of Data.
+	% The function type_of/1 returns a representation of the type
+	% of its argument.
 	%
 :- func type_of(T) = type_info.
 :- mode type_of(unused) = out is det.
+
+	% The predicate has_type/2 is basically an existentially typed
+	% inverse to the function type_of/1.  It constrains the type
+	% of the first argument to be the type represented by the
+	% second argument.
+	%
+	% Warning: support for existential types is still experimental.
+	%
+:- some [T] pred has_type(T::unused, type_info::in) is det.
 
 	% type_name(Type) returns the name of the specified type
 	% (e.g. type_name(type_of([2,3])) = "list:list(int)").
@@ -970,23 +988,10 @@ det_univ_to_type(Univ, X) :-
 		error(ErrorString)
 	).
 
-/****
-
-% univ_value/1 can't be implemented yet, due to the lack of support for
-% existential types in Mercury.
-
-	% univ_value(Univ):
-	%	returns the value of the object stored in Univ.
-:- some [T] (
-   func univ_value(univ) = T
-).
-
-:- pragma c_code(univ_value(Univ::uo) = (Value), will_not_call_mercury, "
+:- pragma c_code(univ_value(Univ::in) = (Value::out), will_not_call_mercury, "
 	TypeInfo_for_T = field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
-	Value = field(mktag(0), Univ, UNIV_OFFSET_FOR_Data);
+	Value = field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA);
 ").
-
-****/
 
 :- pragma c_header_code("
 /*
@@ -1322,14 +1327,9 @@ Word 	ML_make_type(int arity, Word *base_type_info, Word arg_type_list);
 	% small integers.  See runtime/type_info.h.
 :- type type_ctor_info == c_pointer.  
 
-:- pragma c_code(type_of(Value::unused) = (TypeInfo::out),
+:- pragma c_code(type_of(_Value::unused) = (TypeInfo::out),
 	will_not_call_mercury, " 
 {
-	/* 
-	** `Value' isn't used in this c_code, but the compiler
-	** gives a warning if you don't mention it.
-	*/ 
-
 	TypeInfo = TypeInfo_for_T;
 
 	/*
@@ -1345,6 +1345,10 @@ Word 	ML_make_type(int arity, Word *base_type_info, Word arg_type_list);
 #endif
 
 }
+").
+
+:- pragma c_code(has_type(_Arg::unused, TypeInfo::in), will_not_call_mercury, "
+	TypeInfo_for_T = TypeInfo;
 ").
 
 % Export this function in order to use it in runtime/mercury_trace_external.c
