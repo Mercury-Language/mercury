@@ -20,7 +20,9 @@
 	% 	Options are recognized using the short_option/3 and
 	%	long_option/3 predicate provided in options.nl.
 	%
-	%	TODO: check POSIX conformance.
+	%	TODO:
+	%		check POSIX conformance.
+	%		improve error messages.
 
 :- type option_table == map(option, option_data).
 
@@ -38,8 +40,11 @@ getopt__process_options(Args0, Args, Result) :-
 	map__from_assoc_list(OptionDefaultsList, OptionTable0),
 	process_options_2(Args0, OptionTable0, Args, Result).
 
-:- pred process_options_2(list(string)::in, option_table::in,
-			list(string)::out, maybe_option_table::out) is det.
+% :- pred process_options_2(list(string)::in, option_table::in,
+% 			list(string)::out, maybe_option_table::out) is det.
+:- pred process_options_2(list(string), option_table,
+			list(string), maybe_option_table).
+:- mode process_options_2(in, in, out, out) is det.
 
 process_options_2([], OptionTable, [], ok(OptionTable)).
 process_options_2([Option | Args0], OptionTable0, Args, Result) :-

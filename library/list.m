@@ -20,10 +20,19 @@
 
 :- pred list__append(list(T), list(T), list(T)).
 :- mode list__append(in, in, out) is det.
+:- mode list__append(in, out, in) is semidet.
 :- mode list__append(out, out, in) is nondet.
-% 	% semidet, but the compiler can't deduce that
-% :- mode list__append(in, out, in) is semidet.
+%	The following mode is semidet in the sense that it doesn't
+%	succeed more than once - but it does create a choice-point,
+%	which means it's inefficient and that the compiler can't deduce
+%	that it is semidet.  Use list__remove_prefix instead.
 % :- mode list__append(out, in, in) is semidet.
+
+:- pred list__remove_suffix(list(T), list(T), list(T)).
+:- mode list__remove_suffix(in, in, out) is semidet.
+%	list__remove_suffix(List, Suffix, Prefix):
+%	The same as list__append(Prefix, Suffix, List) except that
+%	this is semidet whereas list__append(out, in, in) is nondet.
 
 	% merge - see NU-Prolog documentation
 
@@ -176,6 +185,15 @@ list__delete_all([X | Xs], Y, Zs) :-
 list__append([], Ys, Ys).
 list__append([X | Xs], Ys, [X | Zs]) :-
 	list__append(Xs, Ys, Zs).
+
+:- list__remove_suffix(_List, Suffix, _Prefix) when Suffix.
+
+list__remove_suffix(List, Suffix, Prefix) :-
+	length(List, ListLength),
+	length(Suffix, SuffixLength),
+	PrefixLength is ListLength - SuffixLength,
+	list__split_list(PrefixLength, List, Prefix, Suffix0),
+	Suffix = Suffix0.	% work around bug in determinism analysis
 
 list__member(X, [X | _]).
 list__member(X, [_ | Xs]) :-

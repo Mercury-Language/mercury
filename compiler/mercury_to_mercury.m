@@ -1006,7 +1006,7 @@ mercury_convert_var_name(Name, ConvertedName) :-
 :- mode strip_trailing_primes(in, out, out) is det.
 
 strip_trailing_primes(Name0, Name, Num) :-
-	( string__append(Name1, "'", Name0) ->
+	( string__remove_suffix(Name0, "'", Name1) ->
 		strip_trailing_primes(Name1, Name, Num0),
 		Num is Num0 + 1
 	;

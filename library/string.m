@@ -21,14 +21,27 @@
 
 :- pred string__append(string, string, string).
 :- mode string__append(in, in, out) is det.
+:- mode string__append(in, out, in) is semidet.
 :- mode string__append(out, out, in) is nondet.
-	% append two strings together
+%	Append two strings together.
+%
+%       The following mode is semidet in the sense that it doesn't
+%       succeed more than once - but it does create a choice-point,
+%       which means it's inefficient and that the compiler can't deduce
+%       that it is semidet.  Use string__remove_suffix instead.
+% :- mode string__append(out, in, in) is semidet.
+
+:- pred string__remove_suffix(string, string, string).
+:- mode string__remove_suffix(in, in, out) is semidet.
+%	string__remove_suffix(String, Suffix, Prefix):
+%       The same as string__append(Prefix, Suffix, List) except that
+%       this is semidet whereas string__append(out, in, in) is nondet.
 
 :- pred string__prefix(string, string).
 :- mode string__prefix(in, in) is semidet.
 :- mode string__prefix(in, out) is nondet.
 	% string__prefix(String, Prefix) is true iff Prefix is a
-	% prefix of String
+	% prefix of String.  Same as string__append(Prefix, _, String).
 
 :- pred string__char_to_string(character, string).
 :- mode string__char_to_string(in, out) is det.
@@ -129,6 +142,12 @@ string__append(A, B, C) :-
 	string__to_int_list(B, LB),
 	string__to_int_list(C, LC),
 	list__append(LA, LB, LC).
+
+string__remove_suffix(A, B, C) :-
+	string__to_int_list(A, LA),
+	string__to_int_list(B, LB),
+	string__to_int_list(C, LC),
+	list__remove_suffix(LA, LB, LC).
 
 string__prefix(String, Prefix) :-
 	string__append(Prefix, _, String).

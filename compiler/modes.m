@@ -1741,8 +1741,6 @@ abstractly_unify_inst_3(dead, bound(List), abstract_inst(N,As), ModuleInfo,
 abstractly_unify_inst_3(dead, ground,		Inst0,	M0, Inst, M) :-
 	make_ground_inst(Inst0, M0, Inst, M).
 
-abstractly_unify_inst_3(dead, abstract_inst(N,As), abstract_inst(N,As), _, _, _)
-						:- fail.
 abstractly_unify_inst_3(dead, abstract_inst(N,As), bound(List), ModuleInfo, 
 							Result, ModuleInfo) :-
 	( bound_inst_list_is_ground(List, ModuleInfo) ->

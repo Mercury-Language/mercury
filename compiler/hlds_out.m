@@ -358,6 +358,10 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 		mercury_output_newline(Indent),
 		io__write_string("% deaths: "),
 		mercury_output_vars(DeathList, VarSet),
+		mercury_output_newline(Indent),
+		io__write_string("% determinism: "),
+		{ goal_info_inferred_determinism(GoalInfo, Category) },
+		hlds_out__write_category(Category),
 		mercury_output_newline(Indent)
 	;
 		[]
