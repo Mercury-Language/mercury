@@ -19,29 +19,59 @@
 
 :- type byte	==	int.	% Using low 8 bits only.
 
+	% text(String) = Text
+	% takes a Mercury string `String' and returns the same data in the
+	% text representation `Text'.
 :- func text(string) = text.
 :- mode (text(in) = uo) is det.
 
+	% create(Size, Init, Text)
+	% creates a text object of `Size' bytes each initialized to `Init',
+	% and binds it to `Text'.
 :- pred create(int, byte, text).
 :- mode create(in, in, uo) is det.
 
+	% index(Text, Index, Value)
+	% binds `Value' to the `Index'th element of `Text'. Indices are
+	% 0 offset (Like C arrays). index/3 aborts if `Index' is out of
+	% range.
 :- pred index(text, int, byte).
 :- mode index(ui, in, out) is det.
 :- mode index(in, in, out) is det.
 
+	% update(Index, Value, OldText, NewText)
+	% destroys `OldText' and binds `NewText' to a text object that
+	% is the same as `OldText' except that the byte at `Index' is
+	% replaced with `Value'. update/4 aborts if `Index' is out of
+	% range.
 :- pred update(int, byte, text, text).
 :- mode update(in, in, di, uo) is det.
 
+	% length(Text, Length)
+	% binds `Length' to the number of bytes in the text object `Text'.
 :- pred length(text, int).
 :- mode length(ui, out) is det.
 :- mode length(in, out) is det.
 
+	% unique(SharedText) = UniqueText
+	% performs an unsafe uniqueness cast on `SharedText' to make
+	% `UniqueText'. This is useful if you're storing text objects
+	% inside other data structures, but is of course risky since
+	% it is unchecked by the compiler. USE AT OWN RISK!
 :- func unique(text) = text.
-:- mode (unique(in) = uo) is det.
+:- mode unique(in) = uo is det.
 
+	% split(WholeText, Index, FirstPart, SecondPart)
+	% splits `WholeText' into two parts: `FirstPart' and `SecondPart'
+	% on the boundary `Index'.
 :- pred split(text, int, text, text).
 :- mode split(di, in, uo, uo) is det.
 
+	% combine(FirstPart, SecondPart, WholeText)
+	% combines two text objects that were created by splitting `WholeText'.
+	% combine/3 aborts if `FirstPart' and `SecondPart' did not come from
+	% the same text object (in an operational sense, not a declarative
+	% sense - this is a bug, or at least a missing feature).
 :- pred combine(text, text, text).
 :- mode combine(di, di, uo) is det.
 
@@ -60,7 +90,7 @@
 	** ME_words(amt) returns the number of words necessary to
 	** to store `amt' bytes.
 	*/
-	#define ME_words(x)	(1+(x)/sizeof(Word))
+	#define ME_words(x)	(((x) + sizeof(Word) - 1) / sizeof(Word))
 ").
 
 %------------------------------------------------------------------------------%
@@ -111,8 +141,6 @@ text_2([C|Cs], N, Text0, Text) :-
 	Val = txtptr->data[Ind];
 
 }").
-
-%------------------------------------------------------------------------------%
 
 :- pragma c_code(index(Txt::in, Ind::in, Val::out),
 		[will_not_call_mercury, thread_safe], "{

@@ -4,22 +4,22 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
 %
-% module posix:socket.
+% module posix__socket.
 % main author: conway@cs.mu.oz.au
 %
 %------------------------------------------------------------------------------%
-:- module posix:socket.
+:- module posix__socket.
 
 :- interface.
 
 :- import_module std_util.
 
-:- type posix:socket:domain
+:- type posix__socket__domain
 	--->	unix
 	;	inet
 	.
 
-:- type posix:socket:(type)
+:- type posix__socket__type
 	--->	stream
 	;	dgram
 	;	raw
@@ -41,20 +41,20 @@
 :- type inet_addr
 	--->	inet_addr(int).
 
-:- pred socket(domain, (type), protocol, posix:result(fd),
+:- pred socket(domain, (type), protocol, posix__result(fd),
 		io__state, io__state).
 :- mode socket(in, in, in, out, di, uo) is det.
 
-:- pred accept(fd, posix:result(fd), io__state, io__state).
+:- pred accept(fd, posix__result(fd), io__state, io__state).
 :- mode accept(in, out, di, uo) is det.
 
-:- pred bind(fd, sockaddr, posix:result, io__state, io__state).
+:- pred bind(fd, sockaddr, posix__result, io__state, io__state).
 :- mode bind(in, in, out, di, uo) is det.
 
-:- pred connect(fd, sockaddr, posix:result, io__state, io__state).
+:- pred connect(fd, sockaddr, posix__result, io__state, io__state).
 :- mode connect(in, in, out, di, uo) is det.
 
-:- pred listen(fd, int, posix:result, io__state, io__state).
+:- pred listen(fd, int, posix__result, io__state, io__state).
 :- mode listen(in, in, out, di, uo) is det.
 
 %------------------------------------------------------------------------------%
@@ -97,7 +97,7 @@ socket(Dom, Typ, protocol(Prot), Result) -->
 
 :- pragma c_code(domain(D::in) = (V::out),
 		[will_not_call_mercury, thread_safe], "{
-	static int domain_values[] = {
+	static const int domain_values[] = {
 		AF_UNIX, AF_INET
 	};
 
@@ -109,7 +109,7 @@ socket(Dom, Typ, protocol(Prot), Result) -->
 
 :- pragma c_code(type(T::in) = (V::out),
 		[will_not_call_mercury, thread_safe], "{
-	static int type_values[] = {
+	static const int type_values[] = {
 		SOCK_STREAM, SOCK_DGRAM, SOCK_RAW, SOCK_SEQPACKET, SOCK_RDM
 	};
 
@@ -156,7 +156,7 @@ mksockaddr_struct(inet(Port, Addr), Ptr, Len) :-
 	incr_hp(Ptr, (1 + sizeof(struct sockaddr_in)/sizeof(Word)));
 	ptr = (struct sockaddr_in *) Ptr;
 
-	memset((void *) ptr, 0, sizeof(struct sockaddr_in));
+	memset(ptr, 0, sizeof(struct sockaddr_in));
 	ptr->sin_family = AF_INET;
 	ptr->sin_addr.s_addr = A;
 	ptr->sin_port = htons(P);

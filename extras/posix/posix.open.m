@@ -4,14 +4,14 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
 %
-% module: posix:open.
+% module: posix__open.
 % main author: conway@cs.mu.oz.au
 %
 % This module provides and interface to the open function and its
 % relatives.
 %
 %------------------------------------------------------------------------------%
-:- module posix:open.
+:- module posix__open.
 
 :- interface.
 
@@ -30,17 +30,17 @@
 	;	sync
 	.
 
-:- pred open(string, list(oflag), posix:result(fd), io__state, io__state).
+:- pred open(string, list(oflag), posix__result(fd), io__state, io__state).
 :- mode open(in, in, out, di, uo) is det.
 
-:- pred open(string, list(oflag), (mode), posix:result(fd),
+:- pred open(string, list(oflag), (mode), posix__result(fd),
 		io__state, io__state).
 :- mode open(in, in, in, out, di, uo) is det.
 
-:- pred creat(string, (mode), posix:result(fd), io__state, io__state).
+:- pred creat(string, (mode), posix__result(fd), io__state, io__state).
 :- mode creat(in, in, out, di, uo) is det.
 
-:- pred close(fd, posix:result, io__state, io__state).
+:- pred close(fd, posix__result, io__state, io__state).
 :- mode close(in, out, di, uo) is det.
 
 %------------------------------------------------------------------------------%
@@ -154,9 +154,10 @@ orflags([F|Fs], Or0, Or) :-
 
 :- pragma c_code(oflagval(F::in) = (V::out),
 		[will_not_call_mercury, thread_safe], "{
-	static int oflag_values[] = {
+	static const int oflag_values[] = {
 		O_RDONLY, O_WRONLY, O_RDWR, O_CREAT, O_EXCL, O_NOCTTY,
-		O_TRUNC, O_APPEND, O_NDELAY, O_SYNC };
+		O_TRUNC, O_APPEND, O_NDELAY, O_SYNC
+	};
 
 	V = oflag_values[F];
 }").

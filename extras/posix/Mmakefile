@@ -1,5 +1,6 @@
 
-MLLIBS = posix_workarounds.o
+MLOBJS = posix_workarounds.o
+MLPICOBJS = posix_workarounds.o
 
 depend : hello.depend
 

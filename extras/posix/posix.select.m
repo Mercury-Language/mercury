@@ -4,35 +4,35 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
 %
-% module: posix:select.m
+% module: posix__select.m
 % main author: conway@cs.mu.oz.au
 %
 %------------------------------------------------------------------------------%
-:- module posix:select.
+:- module posix__select.
 
 :- interface.
 
 :- import_module bool.
 
-:- type fdset.
+:- type fdset_ptr.
 
-:- pred select(int, fdset, fdset, fdset, timeval, posix:result(int),
+:- pred select(int, fdset_ptr, fdset_ptr, fdset_ptr, timeval, posix__result(int),
 		io__state, io__state).
 :- mode select(in, in, in, in, in, out, di, uo) is det.
 
-:- pred new_fdset(fdset, io__state, io__state).
-:- mode new_fdset(out, di, uo) is det.
+:- pred new_fdset_ptr(fdset_ptr, io__state, io__state).
+:- mode new_fdset_ptr(out, di, uo) is det.
 
-:- pred fd_clr(fd, fdset, io__state, io__state).
+:- pred fd_clr(fd, fdset_ptr, io__state, io__state).
 :- mode fd_clr(in, in, di, uo) is det.
 
-:- pred fd_isset(fd, fdset, bool, io__state, io__state).
+:- pred fd_isset(fd, fdset_ptr, bool, io__state, io__state).
 :- mode fd_isset(in, in, out, di, uo) is det.
 
-:- pred fd_set(fd, fdset, io__state, io__state).
+:- pred fd_set(fd, fdset_ptr, io__state, io__state).
 :- mode fd_set(in, in, di, uo) is det.
 
-:- pred fd_zero(fdset, io__state, io__state).
+:- pred fd_zero(fdset_ptr, io__state, io__state).
 :- mode fd_zero(in, di, uo) is det.
 
 %------------------------------------------------------------------------------%
@@ -49,8 +49,8 @@
 	#include ""posix_workarounds.h""
 ").
 
-:- type fdset
-	--->	fdset(c_pointer).
+:- type fdset_ptr
+	--->	fdset_ptr(c_pointer).
 
 %------------------------------------------------------------------------------%
 
@@ -64,7 +64,7 @@ select(Fd, R, W, E, Timeout, Result) -->
 		{ Result = ok(Res) }
 	).
 
-:- pred select0(int, fdset, fdset, fdset, int, int, int, io__state, io__state).
+:- pred select0(int, fdset_ptr, fdset_ptr, fdset_ptr, int, int, int, io__state, io__state).
 :- mode select0(in, in, in, in, in, in, out, di, uo) is det.
 
 :- pragma c_code(select0(N::in, R::in, W::in, E::in, TS::in, TM::in, Res::out,
@@ -80,7 +80,7 @@ select(Fd, R, W, E, Timeout, Result) -->
 
 %------------------------------------------------------------------------------%
 
-:- pragma c_code(new_fdset(Fds::out, IO0::di, IO::uo),
+:- pragma c_code(new_fdset_ptr(Fds::out, IO0::di, IO::uo),
 		[will_not_call_mercury, thread_safe], "{
 
 	incr_hp(Fds, 1+sizeof(fd_set)/sizeof(Word));

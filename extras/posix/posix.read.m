@@ -4,17 +4,17 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
 %
-% module: posix:read.m
+% module: posix__read.m
 % main author: conway@cs.mu.oz.au
 %
 %------------------------------------------------------------------------------%
-:- module posix:read.
+:- module posix__read.
 
 :- interface.
 
 :- import_module text.
 
-:- pred read(fd, int, posix:result(int), text, text, io__state, io__state).
+:- pred read(fd, int, posix__result(int), text, text, io__state, io__state).
 :- mode read(in, in, out, di, uo, di, uo) is det.
 
 %------------------------------------------------------------------------------%

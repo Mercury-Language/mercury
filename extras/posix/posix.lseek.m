@@ -4,11 +4,11 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
 %
-% module: posix:lseek.m
+% module: posix__lseek.m
 % main author: conway@cs.mu.oz.au
 %
 %------------------------------------------------------------------------------%
-:- module posix:lseek.
+:- module posix__lseek.
 
 :- interface.
 
@@ -18,7 +18,7 @@
 	;	end
 	.
 
-:- pred lseek(fd, int, lseek:whence, posix:result(int), io__state, io__state).
+:- pred lseek(fd, int, lseek__whence, posix__result(int), io__state, io__state).
 :- mode lseek(in, in, in, out, di, uo) is det.
 
 %------------------------------------------------------------------------------%
@@ -58,7 +58,7 @@ lseek(Fd, Offset, Whence, Result) -->
 
 :- pragma c_code(whence(W::in) = (V::out),
 		[will_not_call_mercury, thread_safe], "{
-	static int whence_flags[] = { SEEK_SET, SEEK_CUR, SEEK_END } ;
+	static const int whence_flags[] = { SEEK_SET, SEEK_CUR, SEEK_END } ;
 	V = whence_flags[W];
 }").
 

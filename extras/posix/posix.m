@@ -33,12 +33,12 @@
 
 :- import_module io.
 
-:- include_module posix:lseek.
-:- include_module posix:open.
-:- include_module posix:read.
-:- include_module posix:select.
-:- include_module posix:socket.
-:- include_module posix:write.
+:- include_module posix__lseek.
+:- include_module posix__open.
+:- include_module posix__read.
+:- include_module posix__select.
+:- include_module posix__socket.
+:- include_module posix__write.
 
 	% Generic file descriptors.
 :- type fd --->	fd(int).
@@ -90,14 +90,14 @@
 	;	unknown(int, string)	% unknown(Errno, Msg)
 	.
 
-:- type posix:result
+:- type posix__result
 	--->	ok
-	;	error(posix:error)
+	;	error(posix__error)
 	.
 
-:- type posix:result(T)
+:- type posix__result(T)
 	--->	ok(T)
-	;	error(posix:error)
+	;	error(posix__error)
 	.
 
 :- type (mode)	--->	mode(int).
@@ -105,7 +105,7 @@
 :- type timeval
 	--->	timeval(int, int). % time(Sec, uSec)
 
-:- pred errno(posix:error, io__state, io__state).
+:- pred errno(posix__error, io__state, io__state).
 :- mode errno(out, di, uo) is det.
 
 :- implementation.
@@ -130,7 +130,7 @@ errno(Error) -->
 	IO = IO0;
 }").
 
-:- func error(int) = posix:error.
+:- func error(int) = posix__error.
 
 error(Num) = Res :-
 	((	Num = 0,	Err = e2BIG

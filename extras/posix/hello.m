@@ -4,12 +4,12 @@
 
 :- import_module io.
 
-:- pred main(io:state, io:state).
+:- pred main(io__state, io__state).
 :- mode main(di, uo) is det.
 
 :- implementation.
 
-:- import_module posix, posix:open, posix:write, text.
+:- import_module posix, posix__open, posix__write, text.
 :- import_module list, string.
 
 main -->

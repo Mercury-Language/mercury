@@ -4,17 +4,17 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
 %
-% module: posix:write.m
+% module: posix__write.m
 % main author: conway@cs.mu.oz.au
 %
 %------------------------------------------------------------------------------%
-:- module posix:write.
+:- module posix__write.
 
 :- interface.
 
 :- import_module text.
 
-:- pred write(fd, int, text, posix:result(int), io__state, io__state).
+:- pred write(fd, int, text, posix__result(int), io__state, io__state).
 :- mode write(in, in, in, out, di, uo) is det.
 
 %------------------------------------------------------------------------------%
