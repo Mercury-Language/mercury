@@ -745,11 +745,12 @@ dead_pred_elim(ModuleInfo0, ModuleInfo) :-
 			SpecMap0, PragmaMap0),
 		ModuleInfo2),
 
-	set__list_to_set(PredIds, PredIdSet),
-	set__difference(PredIdSet, NeededPreds, DeadPreds),
-	set__to_sorted_list(DeadPreds, DeadPredList),
-	list__foldl(module_info_remove_predicate, DeadPredList,
-		ModuleInfo2, ModuleInfo).
+	module_info_get_predicate_table(ModuleInfo2, PredTable0),
+	module_info_get_partial_qualifier_info(ModuleInfo2, PartialQualInfo),
+	predicate_table_restrict(PartialQualInfo, PredTable0,
+			set__to_sorted_list(NeededPreds), PredTable),
+	module_info_set_predicate_table(ModuleInfo2, PredTable, ModuleInfo).
+
 
 :- pred dead_pred_elim_add_entity(entity::in, queue(pred_id)::in,
 	queue(pred_id)::out, set(pred_id)::in, set(pred_id)::out) is det.

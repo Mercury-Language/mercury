@@ -284,6 +284,7 @@ MR_get_num_functors(MR_TypeInfo type_info)
         case MR_TYPECTOR_REP_NOTAG_GROUND:
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
         case MR_TYPECTOR_REP_TUPLE:
+        case MR_TYPECTOR_REP_UNIV:
             functors = 1;
             break;
 

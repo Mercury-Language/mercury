@@ -976,6 +976,8 @@ hlds_out__marker_name(naive, "naive").
 hlds_out__marker_name(psn, "psn").
 hlds_out__marker_name(supp_magic, "supp_magic").
 hlds_out__marker_name(context, "context").
+hlds_out__marker_name(only_accessible_via_fully_qualifed_name,
+		"only_accessible_via_fully_qualifed_name").
 
 hlds_out__write_marker(Marker) -->
 	{ hlds_out__marker_name(Marker, Name) },

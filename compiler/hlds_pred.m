@@ -500,6 +500,10 @@
 				% the termination of this predicate.
 				% If the compiler cannot guarantee termination
 				% then it must give an error message.
+
+	;	only_accessible_via_fully_qualifed_name
+				% This predicate can only be accessed by 
+				% its fully qualified name.
 	.
 
 

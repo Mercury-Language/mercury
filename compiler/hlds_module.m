@@ -1088,6 +1088,16 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepInfo0,
 :- pred predicate_table_get_preds(predicate_table, pred_table).
 :- mode predicate_table_get_preds(in, out) is det.
 
+	% Restrict the predicate table to the list of predicates.
+	% This predicate should only be used when the set of predicates
+	% to restrict the table to is significantly smaller then the
+	% predicate_table size, as rather than removing entries from
+	% the table it builds a new table from scratch.
+
+:- pred predicate_table_restrict(partial_qualifier_info::in,
+		predicate_table::in, list(pred_id)::in,
+		predicate_table::out) is det.
+
 	% Set the pred_id->pred_info map.
 	% NB You shouldn't modify the keys in this table, only
 	% use predicate_table_insert, predicate_table_remove_predid and
@@ -1756,44 +1766,86 @@ predicate_table_search_pf_sym(PredicateTable, IsFullyQualified,
 
 %-----------------------------------------------------------------------------%
 
+predicate_table_restrict(PartialQualInfo,
+		OrigPredicateTable, PredIds, PredicateTable) :-
+	predicate_table_reset(OrigPredicateTable, PredicateTable0),
+	predicate_table_get_preds(OrigPredicateTable, Preds),
+	PredicateTable = list__foldl(
+			(func(PredId, Table0) = Table :-
+				PredInfo = map__lookup(Preds, PredId),
+				pred_info_get_markers(PredInfo, Markers),
+				(
+				    check_marker(Markers,
+					only_accessible_via_fully_qualifed_name)
+				->
+				    NeedQual = must_be_qualified,
+				    MaybeQualInfo = no
+				;
+				    NeedQual = may_be_unqualified,
+				    MaybeQualInfo = yes(PartialQualInfo)
+				),
+
+				predicate_table_insert_2(Table0,
+						yes(PredId), PredInfo,
+						NeedQual, MaybeQualInfo,
+						_, Table)
+				
+			), PredIds, PredicateTable0).
+
+:- pred predicate_table_reset(predicate_table::in, predicate_table::out) is det.
+
+predicate_table_reset(PredicateTable0, PredicateTable) :-
+	PredicateTable0 = predicate_table(_, NextPredId, _, _, _, _, _, _, _),
+	PredicateTable = predicate_table(map__init, NextPredId, [], map__init,
+			map__init, map__init, map__init, map__init, map__init).
+
+%-----------------------------------------------------------------------------%
+
 predicate_table_insert(PredicateTable0, PredInfo, PredId, PredicateTable) :-
-	predicate_table_insert_2(PredicateTable0, PredInfo,
+	predicate_table_insert_2(PredicateTable0, no, PredInfo,
 			must_be_qualified, no, PredId, PredicateTable).
 
 predicate_table_insert(PredicateTable0, PredInfo, NeedQual, QualInfo,
 		PredId, PredicateTable) :-
-	predicate_table_insert_2(PredicateTable0, PredInfo,
+	predicate_table_insert_2(PredicateTable0, no, PredInfo,
 			NeedQual, yes(QualInfo),
 			PredId, PredicateTable).
 
-:- pred predicate_table_insert_2(predicate_table, pred_info, need_qualifier,
+:- pred predicate_table_insert_2(predicate_table, maybe(pred_id),
+		pred_info, need_qualifier,
 		maybe(partial_qualifier_info), pred_id, predicate_table).
-:- mode predicate_table_insert_2(in, in, in, in, out, out) is det.
+:- mode predicate_table_insert_2(in, in, in, in, in, out, out) is det.
 
-predicate_table_insert_2(PredicateTable0, PredInfo, NeedQual, MaybeQualInfo,
-		PredId, PredicateTable) :-
+predicate_table_insert_2(PredicateTable0, MaybePredId, PredInfo0,
+		NeedQual, MaybeQualInfo, PredId, PredicateTable) :-
 
 	PredicateTable0 = predicate_table(Preds0, NextPredId0, PredIds0,
 				Pred_N_Index0, Pred_NA_Index0, Pred_MNA_Index0,
 				Func_N_Index0, Func_NA_Index0, Func_MNA_Index0),
-	pred_info_module(PredInfo, Module),
-	pred_info_name(PredInfo, Name),
-	pred_info_arity(PredInfo, Arity),
+	pred_info_module(PredInfo0, Module),
+	pred_info_name(PredInfo0, Name),
+	pred_info_arity(PredInfo0, Arity),
+
+	( MaybePredId = yes(PredId),
+		NextPredId = NextPredId0
 
 		% allocate a new pred_id
-	PredId = NextPredId0,
-	hlds_pred__next_pred_id(PredId, NextPredId),
+	; MaybePredId = no,
+		PredId = NextPredId0,
+		hlds_pred__next_pred_id(PredId, NextPredId)
+	),
 
 		% insert the pred_id into either the function or predicate
 		% indices, as appropriate
-	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc),
 	( 
 		PredOrFunc = predicate,
 		predicate_table_do_insert(Module, Name, Arity,
 			NeedQual, MaybeQualInfo, PredId,
 			Pred_N_Index0, Pred_N_Index, 
 			Pred_NA_Index0, Pred_NA_Index,
-			Pred_MNA_Index0, Pred_MNA_Index),
+			Pred_MNA_Index0, Pred_MNA_Index,
+			PredInfo0, PredInfo),
 
 		Func_N_Index = Func_N_Index0,
 		Func_NA_Index = Func_NA_Index0,
@@ -1807,7 +1859,8 @@ predicate_table_insert_2(PredicateTable0, PredInfo, NeedQual, MaybeQualInfo,
 			NeedQual, MaybeQualInfo, PredId,
 			Func_N_Index0, Func_N_Index, 
 			Func_NA_Index0, Func_NA_Index,
-			Func_MNA_Index0, Func_MNA_Index),
+			Func_MNA_Index0, Func_MNA_Index,
+			PredInfo0, PredInfo),
 
 		Pred_N_Index = Pred_N_Index0,
 		Pred_NA_Index = Pred_NA_Index0,
@@ -1827,13 +1880,14 @@ predicate_table_insert_2(PredicateTable0, PredInfo, NeedQual, MaybeQualInfo,
 :- pred predicate_table_do_insert(module_name, string, arity,
 	need_qualifier, maybe(partial_qualifier_info),
 	pred_id, name_index, name_index, name_arity_index,
-	name_arity_index, module_name_arity_index, module_name_arity_index).
+	name_arity_index, module_name_arity_index, module_name_arity_index,
+	pred_info, pred_info).
 :- mode predicate_table_do_insert(in, in, in, in, in, in,
-	in, out, in, out, in, out) is det.
+	in, out, in, out, in, out, in, out) is det.
 
 predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
 		PredId, N_Index0, N_Index, NA_Index0, NA_Index, 
-		MNA_Index0, MNA_Index) :-
+		MNA_Index0, MNA_Index, PredInfo0, PredInfo) :-
 	( NeedQual = may_be_unqualified ->
 			% insert the unqualified name into the name index
 		multi_map__set(N_Index0, Name, PredId, N_Index),
@@ -1841,10 +1895,17 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
 			% insert the unqualified name/arity into the
 			% name/arity index
 		NA = Name / Arity,
-		multi_map__set(NA_Index0, NA, PredId, NA_Index)
+		multi_map__set(NA_Index0, NA, PredId, NA_Index),
+
+		PredInfo = PredInfo0
 	;
 		N_Index = N_Index0,
-		NA_Index = NA_Index0
+		NA_Index = NA_Index0,
+
+		pred_info_get_markers(PredInfo0, Markers0),
+		add_marker(Markers0, only_accessible_via_fully_qualifed_name,
+				Markers),
+		pred_info_set_markers(PredInfo0, Markers, PredInfo)
 	),
 
 	( MaybeQualInfo = yes(QualInfo) ->

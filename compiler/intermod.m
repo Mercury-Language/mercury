@@ -1817,6 +1817,7 @@ intermod__should_output_marker(check_termination, no).
 intermod__should_output_marker(generate_inline, _) :-
 	% This marker should only occur after the magic sets transformation.
 	error("intermod__should_output_marker: generate_inline").
+intermod__should_output_marker(only_accessible_via_fully_qualifed_name, no).
 
 :- pred get_pragma_foreign_code_vars(list(prog_var)::in,
 		list(maybe(pair(string, mode)))::in, prog_varset::in,
