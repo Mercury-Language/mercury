@@ -1683,8 +1683,7 @@ your program compiled with different options.
 ********************/
 		"--debug\t\t\t\t(grade modifier: `.debug')",
 		"\tEnable Mercury-level debugging.",
-		"\tSee the [XXX not yet written!] chapter of the",
-		"\tMercury User's Guide for details.",
+		"\tSee the Debugging chapter of the Mercury User's Guide for details.",
 		"--pic-reg\t\t\t(grade modifier: `.pic_reg')",
 		"[For Unix with intel x86 architecture only]",
 		"\tSelect a register usage convention that is compatible,",
