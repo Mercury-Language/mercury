@@ -244,16 +244,16 @@ deallocate_memory(void *ptr)
 {
 #ifdef CONSERVATIVE_GC
 	GC_FREE(ptr);
-
 #else
 	free(ptr);
 #endif
 }
 
-		/* Note: checked_malloc()ed structures */
-		/* never contain pointers into GCed    */
-		/* memory, so we don't need to         */
-		/* GC_malloc() them. (cf. newmem())    */
+/*
+** Note: checked_malloc()ed structures never contain pointers into GCed memory,
+** so we don't need to GC_malloc() them. (cf. newmem())
+*/
+
 void *
 checked_malloc(size_t n)
 {
@@ -266,7 +266,6 @@ checked_malloc(size_t n)
 
 	return p;
 }
-
 
 void *
 checked_realloc(void *old, size_t n)
@@ -281,3 +280,14 @@ checked_realloc(void *old, size_t n)
 	return p;
 }
 
+char *
+MR_copy_string(const char *s)
+{
+	int	len;
+	char	*copy;
+
+	len = strlen(s);
+	copy = checked_malloc(len + 1);
+	strcpy(copy, s);
+	return copy;
+}
