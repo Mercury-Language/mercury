@@ -3080,40 +3080,9 @@ at the time of trailing, then the update will be undone.
 If the Mercury compiler determines that it will never
 need to backtrack to a particular choice point, then it will
 ``prune'' away that choice point.  If a choice point is pruned,
-the trail entries for those updates will be discarded;
-any updates occurring after that choice point will not be undone.
-
-Note that execution may subsequently backtrack to a @emph{prior} choice point,
-but if so, the values updated will not be live at that point, so
-there is no need to undo the updates.  The reason that the updated values
-are guaranteed to not be live is that the Mercury compiler will only
-prune choice points when it is guaranteed to be safe to do so.
-The compiler may commit to a goal in two circumstances: if it is guaranteed
-that execution will never attempt to backtrack over that goal, or
-if the goal has no outputs.  In the former case, execution
-cannot backtrack to a prior choice point, and in the latter case,
-the values updated within the goal cannot be live after the goal
-has succeeded, since the goal has no outputs.
-
-For example:
-
-@example
-
-:- mode q(mdi, muo) is nondet.
-:- mode p(mdi) is semidet.
-p(X) :- q(X, _Y), fail.
-
-@end example
-
-Here any choice points created in @code{q/2} will be pruned away
-before the call to @code{fail/1}.  At the call to @code{fail},
-execution will backtrack; any updates performed inside @code{q/2}
-will not be undone, but that should be OK, because the variable
-@samp{_Y} will no longer be live.
-
-Oh, but @samp{X} @emph{will} be live.  Oh-oh...
-
-XXX we really should fix that bug.
+the trail entries for those updates will not necessarily be discarded,
+because in general they may still be necessary in case we backtrack
+to a prior choice point.
 
 @node Value trailing
 @subsubsection Value trailing
