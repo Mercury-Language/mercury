@@ -25,19 +25,6 @@ namespace mercury {
 
 namespace runtime {
 
-	// A user exception -- really just a wrapper for the exception
-	// data.
-
-__gc public class Exception : public System::Exception
-{
-public:
-   Exception(MR_Word data) 
-   {
-   	mercury_exception = data;	
-   }
-   MR_Word mercury_exception;
-};
-
 __gc public class SystemException : public System::Exception
 {
 public:

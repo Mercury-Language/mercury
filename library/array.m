@@ -609,7 +609,7 @@ sys_init_array_module_builtins_write_out_proc_statics(FILE *fp)
     MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(array, array, 1, MR_TYPECTOR_REP_ARRAY)
 
     static int
-    special___Unify___array_1_0(MR_Word type_info, MR_Array x, MR_Array y)
+    special___Unify___array_1_0(MR_TypeInfo type_info, MR_Array x, MR_Array y)
     {
             return mercury::array::mercury_code::ML_array_equal(
 	    	type_info, x, y);
@@ -617,14 +617,14 @@ sys_init_array_module_builtins_write_out_proc_statics(FILE *fp)
 
     static void
     special___Compare___array_1_0(
-            MR_Word type_info, MR_Word_Ref result, MR_Array x, MR_Array y)
+            MR_TypeInfo type_info, MR_ComparisonResult *result, MR_Array x, MR_Array y)
     {
             mercury::array::mercury_code::ML_array_compare(
 	    	type_info, result, x, y);
     }
 
     static int
-    do_unify__array_1_0(MR_Word type_info, MR_Box x, MR_Box y)
+    do_unify__array_1_0(MR_TypeInfo type_info, MR_Box x, MR_Box y)
     {
             return mercury::array__cpp_code::mercury_code::special___Unify___array_1_0(
                     type_info, 
@@ -634,7 +634,7 @@ sys_init_array_module_builtins_write_out_proc_statics(FILE *fp)
 
     static void
     do_compare__array_1_0(
-            MR_Word type_info, MR_Word_Ref result, MR_Box x, MR_Box y)
+            MR_TypeInfo type_info, MR_ComparisonResult *result, MR_Box x, MR_Box y)
     {
             mercury::array__cpp_code::mercury_code::special___Compare___array_1_0(
                     type_info, result, 

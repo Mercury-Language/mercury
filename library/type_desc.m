@@ -368,23 +368,29 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(type_desc, type_ctor_desc, 0,
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(type_desc, type_desc, 0, 
 	MR_TYPECTOR_REP_TYPEDESC)
 
-static int MR_compare_type_info(MR_Word t1, MR_Word t2) {
-	MR_Word res;
+static int MR_compare_type_info(MR_TypeInfo_0 t1, MR_TypeInfo_0 t2) {
+	MR_ComparisonResult res;
 
 	mercury::type_desc::mercury_code::ML_call_rtti_compare_type_infos(
 		&res, t1, t2);
+/*
+#ifdef MR_HIGHLEVEL_DATA
+	return res->data_tag;
+#else
+*/
 	return System::Convert::ToInt32(res[0]);
+// #endif
 }
 
 static void
 __Compare____type_ctor_desc_0_0(
-	MR_Word_Ref result, MR_Word x, MR_Word y)
+	MR_ComparisonResult *result, MR_TypeInfo_0 x, MR_TypeInfo_0 y)
 {
 	mercury::runtime::Errors::SORRY(""foreign code for comparing type_ctor_descs"");
 }
 
 static MR_bool
-__Unify____type_ctor_desc_0_0(MR_Word x, MR_Word y)
+__Unify____type_ctor_desc_0_0(MR_TypeInfo_0 x, MR_TypeInfo_0 y)
 {
 	mercury::runtime::Errors::SORRY(""foreign code for unifying type_ctor_descs"");
 	return 0;
@@ -392,13 +398,13 @@ __Unify____type_ctor_desc_0_0(MR_Word x, MR_Word y)
 
 static void
 special___Compare___type_ctor_desc_0_0(
-	MR_Word_Ref result, MR_Word x, MR_Word y)
+	MR_ComparisonResult *result, MR_TypeInfo_0 x, MR_TypeInfo_0 y)
 {
 	mercury::runtime::Errors::SORRY(""foreign code for comparing type_ctor_descs"");
 }
 
 static MR_bool
-special___Unify___type_ctor_desc_0_0(MR_Word x, MR_Word y)
+special___Unify___type_ctor_desc_0_0(MR_TypeInfo_0 x, MR_TypeInfo_0 y)
 {
 	mercury::runtime::Errors::SORRY(""foreign code for unifying type_ctor_descs"");
 	return 0;
@@ -408,44 +414,44 @@ static int
 do_unify__type_ctor_desc_0_0(MR_Box x, MR_Box y)
 {
 	return mercury::type_desc__cpp_code::mercury_code::__Unify____type_ctor_desc_0_0(
-		dynamic_cast<MR_Word>(x),
-		dynamic_cast<MR_Word>(y));
+		dynamic_cast<MR_TypeInfo_0>(x),
+		dynamic_cast<MR_TypeInfo_0>(y));
 }
 
 static void
 do_compare__type_ctor_desc_0_0(
-	MR_Word_Ref result, MR_Box x, MR_Box y)
+	MR_ComparisonResult *result, MR_Box x, MR_Box y)
 {
 	mercury::type_desc__cpp_code::mercury_code::__Compare____type_ctor_desc_0_0(
 		result,
-		dynamic_cast<MR_Word>(x),
-		dynamic_cast<MR_Word>(y));
+		dynamic_cast<MR_TypeInfo_0>(x),
+		dynamic_cast<MR_TypeInfo_0>(y));
 }
 
 static void
 __Compare____type_desc_0_0(
-	MR_Word_Ref result, MR_Word x, MR_Word y)
+	MR_ComparisonResult *result, MR_TypeInfo_0 x, MR_TypeInfo_0 y)
 {
 	mercury::type_desc::mercury_code::ML_call_rtti_compare_type_infos(
 		result, x, y);
 }
 
 static MR_bool
-__Unify____type_desc_0_0(MR_Word x, MR_Word y)
+__Unify____type_desc_0_0(MR_TypeInfo_0 x, MR_TypeInfo_0 y)
 {
 	return (MR_compare_type_info(x, y) == MR_COMPARE_EQUAL);
 }
 
 static void
 special___Compare___type_desc_0_0(
-	MR_Word_Ref result, MR_Word x, MR_Word y)
+	MR_ComparisonResult *result, MR_TypeInfo_0 x, MR_TypeInfo_0 y)
 {
 	mercury::type_desc::mercury_code::ML_call_rtti_compare_type_infos(
 		result, x, y);
 }
 
 static MR_bool
-special___Unify___type_desc_0_0(MR_Word x, MR_Word y)
+special___Unify___type_desc_0_0(MR_TypeInfo_0 x, MR_TypeInfo_0 y)
 {
 	return (MR_compare_type_info(x, y) == MR_COMPARE_EQUAL);
 }
@@ -454,18 +460,18 @@ static int
 do_unify__type_desc_0_0(MR_Box x, MR_Box y)
 {
 	return mercury::type_desc__cpp_code::mercury_code::__Unify____type_desc_0_0(
-		dynamic_cast<MR_Word>(x),
-		dynamic_cast<MR_Word>(y));
+		dynamic_cast<MR_TypeInfo_0>(x),
+		dynamic_cast<MR_TypeInfo_0>(y));
 }
 
 static void
 do_compare__type_desc_0_0(
-	MR_Word_Ref result, MR_Box x, MR_Box y)
+	MR_ComparisonResult *result, MR_Box x, MR_Box y)
 {
 	mercury::type_desc__cpp_code::mercury_code::__Compare____type_desc_0_0(
 		result,
-		dynamic_cast<MR_Word>(x),
-		dynamic_cast<MR_Word>(y));
+		dynamic_cast<MR_TypeInfo_0>(x),
+		dynamic_cast<MR_TypeInfo_0>(y));
 }
 
 ").
@@ -523,7 +529,7 @@ type_of(_) = _ :-
 	TypeInfo_for_T = TypeInfo;
 ").
 
-has_type(_, _) :-
+has_type("dummy value", _) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
 	private_builtin__sorry("has_type").

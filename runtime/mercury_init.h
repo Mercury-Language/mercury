@@ -87,6 +87,8 @@ extern	int	mercury_terminate(void);
 #include "mercury_trace_base.h"	/* for MR_trace_port */
 #include "mercury_type_info.h"	/* for MR_TypeCtorInfo_Struct */
 
+#include "mercury_library_types.h" /* for MercuryFile */
+
 #ifdef MR_CONSERVATIVE_GC
   #include "gc.h"
 #endif
@@ -113,11 +115,11 @@ extern	int	mercury_terminate(void);
 extern	void	mercury_init_io(void);
 extern	void	ML_io_init_state(void);
 extern	void	ML_io_finalize_state(void);
-extern	void	ML_io_stderr_stream(MR_Word *);
-extern	void	ML_io_stdout_stream(MR_Word *);
-extern	void	ML_io_stdin_stream(MR_Word *);
+extern	void	ML_io_stderr_stream(MercuryFile **);
+extern	void	ML_io_stdout_stream(MercuryFile **);
+extern	void	ML_io_stdin_stream(MercuryFile **);
 
-extern	void	ML_io_print_to_stream(MR_Word, MR_Word, MR_Word);
+extern	void	ML_io_print_to_stream(MR_Word, MercuryFile *, MR_Word);
 extern	void	ML_io_print_to_cur_stream(MR_Word, MR_Word);
 
 /* in trace/mercury_trace_internal.h */

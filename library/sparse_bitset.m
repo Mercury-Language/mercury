@@ -780,18 +780,6 @@ mask(N) = \ unchecked_left_shift(\ 0, N).
 	MR_field(MR_mktag(ML_BITSET_TAG), Pair, 1) = B;
 }").
 
-% XXX this needs to take reserve-tag into account too
-:- pragma foreign_proc("C#", make_bitset_elem(A::in, B::in) = (Pair::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
-"{
-#if MR_RESERVE_TAG
-    #error ""sparse_bitset not implemented for .NET in .rt grades""
-#endif
-	Pair = mercury.runtime.LowLevelData.make_MR_Word(0, 2);
-	mercury.runtime.LowLevelData.set_MR_Word_field(Pair, 1, A);
-	mercury.runtime.LowLevelData.set_MR_Word_field(Pair, 2, B);
-}").
-
 make_bitset_elem(Offset, Bits) = bitset_elem(Offset, Bits).
 
 %-----------------------------------------------------------------------------%

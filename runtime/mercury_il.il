@@ -137,8 +137,9 @@ get_ftn_ptr_type_ctor_info_unify() {
 get_ftn_ptr_type_ctor_desc_compare() {
 	ldftn void ['mercury'] 'mercury'.'type_desc__cpp_code'.'mercury_code'::
 	do_compare__type_ctor_desc_0_0(
-		class [mscorlib]System.Object[]&, class [mscorlib]System.Object,
-		class [mscorlib]System.Object)
+		class [mscorlib]System.Object[]&,
+		// class [mercury]mercury.builtin.comparison_result_0*,
+		class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }
 
@@ -326,6 +327,7 @@ get_ftn_ptr_type_desc_compare() {
 	ldftn void ['mercury'] 'mercury'.'type_desc__cpp_code'.'mercury_code'::
 	do_compare__type_desc_0_0(
 		class [mscorlib]System.Object[]&,
+		// class [mercury]mercury.builtin.comparison_result_0*,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }

@@ -880,40 +880,6 @@ string__from_char_list(CharList, Str) :-
 	Str[size] = '\\0';
 }").
 
-:- pragma foreign_proc("MC++", string__to_char_list(Str::in, CharList::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
-        MR_Integer length, i; 
-        MR_Word tmp;
-        MR_Word prev;
-
-        length = Str->get_Length();
-      
-        MR_list_nil(prev);
-
-        for (i = length - 1; i >= 0; i--) {
-		MR_list_cons(tmp, __box(Str->get_Chars(i)), prev);
-		prev = tmp;
-        }
-        CharList = tmp;
-}").
-
-:- pragma foreign_proc("MC++", string__to_char_list(Str::uo, CharList::in),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
-        System::Text::StringBuilder *tmp;
-	MR_Char c;
-       
-        tmp = new System::Text::StringBuilder();
-        while (1) {
-            if (MR_list_is_cons(CharList)) {
-		c = System::Convert::ToChar(MR_list_head(CharList));
-                tmp->Append(c);
-                CharList = MR_list_tail(CharList);
-            } else {
-                break;
-            }
-        }
-        Str = tmp->ToString();
-}").
 
 string__to_char_list(Str::in, CharList::out) :-
 	string__to_char_list_2(Str, 0, CharList).
@@ -981,40 +947,6 @@ string__to_char_list_2(Str, Index, CharList) :-
 	}
 }").
 
-:- pragma foreign_proc("MC++", string__to_char_list(Str::in, CharList::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
-        MR_Integer length, i; 
-        MR_Word tmp;
-        MR_Word prev;
-
-        length = Str->get_Length();
-      
-        MR_list_nil(prev);
-
-        for (i = length - 1; i >= 0; i--) {
-		MR_list_cons(tmp, __box(Str->get_Chars(i)), prev);
-		prev = tmp;
-        }
-        CharList = tmp;
-}").
-
-:- pragma foreign_proc("MC++", string__to_char_list(Str::uo, CharList::in),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
-        System::Text::StringBuilder *tmp;
-	MR_Char c;
-       
-        tmp = new System::Text::StringBuilder();
-        while (1) {
-            if (MR_list_is_cons(CharList)) {
-		c = System::Convert::ToChar(MR_list_head(CharList));
-                tmp->Append(c);
-                CharList = MR_list_tail(CharList);
-            } else {
-                break;
-            }
-        }
-        Str = tmp->ToString();
-}").
 
 string__from_rev_char_list(Chars::in, Str::uo) :- 
 	Str = string__from_char_list(list__reverse(Chars)).
@@ -1217,20 +1149,6 @@ string__append_list(Lists, string__append_list(Lists)).
 	Str[len] = '\\0';
 }").
 
-:- pragma foreign_proc("C#",
-		string__append_list(Strs::in) = (Str::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
-{
-        System.Text.StringBuilder tmp = new System.Text.StringBuilder();
-
-	while (mercury.runtime.LowLevelData.list_is_cons(Strs)) {
-		tmp.Append(mercury.runtime.LowLevelData.list_get_head(Strs));
-		Strs = mercury.runtime.LowLevelData.list_get_tail(Strs);
-	}
-	Str = tmp.ToString();
-}
-").
-
 string__append_list(Strs::in) = (Str::uo) :-
 	( Strs = [X | Xs] ->
 		Str = X ++ append_list(Xs)
@@ -1238,23 +1156,16 @@ string__append_list(Strs::in) = (Str::uo) :-
 		Str = ""
 	).
 
-:- pragma foreign_proc("C#",
-		string__join_list(Sep::in, Strs::in) = (Str::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
-{	
-	System.Text.StringBuilder tmpStr = new System.Text.StringBuilder();
+string__join_list(_, []) = "".
+string__join_list(Sep, [H|T]) = H ++ string__join_list_2(Sep, T).
 
-	while(mercury.runtime.LowLevelData.list_is_cons(Strs)) {
-		tmpStr.Append(mercury.runtime.LowLevelData.list_get_head(Strs));
-		Strs = mercury.runtime.LowLevelData.list_get_tail(Strs);
+:- func string__join_list_2(string::in, list(string)::in) = (string::uo) is det.
 
-		if (mercury.runtime.LowLevelData.list_is_cons(Strs)) {
-			tmpStr.Append(Sep);
-		}
-	}
+string__join_list_2(_, []) = "".
+string__join_list_2(Sep, [H|T]) = Sep ++ H ++ string__join_list_2(Sep, T).
 
-	Str = tmpStr.ToString();
-}").
+	
+
 
 %-----------------------------------------------------------------------------%
 
@@ -1980,23 +1891,6 @@ string__to_float(_, _) :-
 		IntList = MR_list_cons_msg((MR_UnsignedChar) *p, IntList,
 			MR_PROC_LABEL);
 	}
-}").
-:- pragma foreign_proc("MC++",
-	string__to_int_list(Str::in, IntList::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
-        MR_Integer length, i; 
-        MR_Word tmp;
-        MR_Word prev;
-
-        length = Str->get_Length();
-      
-        MR_list_nil(prev);
-
-        for (i = length - 1; i >= 0; i--) {
-		MR_list_cons(tmp, __box((MR_Integer) Str->get_Chars(i)), prev);
-		prev = tmp;
-        }
-        IntList = tmp;
 }").
 string__to_int_list(String, IntList) :-
 	string__to_char_list(String, CharList),

@@ -1092,17 +1092,7 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember) -->
 			[], UnivMercuryType) },	
 		{ UnivMLDSType = mercury_type(UnivMercuryType,
 				user_type, non_foreign_type(UnivMercuryType)) },
-		%
-		% XXX Nasty hack alert!
-		%
-		% Currently the library doesn't build with --high-level-data.
-		% So here we explicitly set --high-level-data to `no'
-		% to reflect the fact that we're linking against the
-		% version of the library compiled with --low-level-data.
-		%
-		{ XXX_LibraryDataRep = DataRep ^ highlevel_data := no },
-		{ UnivType = mlds_type_to_ilds_type(XXX_LibraryDataRep,
-			UnivMLDSType) },
+		{ UnivType = mlds_type_to_ilds_type(DataRep, UnivMLDSType) },
 
 		{ RenameNode = (func(N) = list__map(RenameRets, N)) },
 
@@ -3319,6 +3309,7 @@ mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 				; Name = "type_info", Arity = 1
 				; Name = "base_typeclass_info", Arity = 1
 				; Name = "typeclass_info", Arity = 1
+				; Name = "heap_pointer", Arity = 0
 				)
 			)		  
 		;

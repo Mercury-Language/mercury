@@ -49,7 +49,20 @@ typedef __gc public class System::Array  * MR_Array;
 typedef MR_Ref(MR_Box) MR_Box_Ref;
 typedef MR_Ref(MR_Word) MR_Word_Ref;
 
-typedef __gc public class System::Object * MR_TypeInfo[];
+/*
+#ifdef MR_HIGHLEVEL_DATA
+  typedef __gc public class mercury::private_builtin::type_info_1* MR_TypeInfo;
+  typedef __gc public class mercury::rtti_implementation::type_info_0* MR_TypeInfo_0;
+  typedef __gc public class mercury::builtin::comparison_result_0 *MR_ComparisonResult;
+  typedef __gc public class mercury::std_util::univ_0 *MR_Univ;
+#else
+*/
+  typedef __gc public class System::Object * MR_TypeInfo[];
+  typedef __gc public class System::Object * MR_TypeInfo_0[];
+  typedef __gc public class System::Object * MR_ComparisonResult[];
+  typedef __gc public class System::Object * MR_Univ[];
+// #endif
+
 typedef __gc public class System::Object * MR_TypeCtorInfo[];
 typedef __gc public class System::Object * MR_TypeInfoParams[];
 typedef __gc public class System::Object * MR_TypeClassInfo[];

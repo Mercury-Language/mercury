@@ -1,3 +1,4 @@
+*.module_dep
 *.il
 *.c
 *.d

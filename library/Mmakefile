@@ -230,6 +230,9 @@ mercury_il.dll: ../runtime/mercury_il.dll
 mercury_mcpp.dll: ../runtime/mercury_mcpp.dll
 	cp ../runtime/mercury_mcpp.dll .
 
+exception__csharp_code.dll : exception__cpp_code.dll
+CSHARP_ASSEMBLY_REFS-exception__csharp_code += /addmodule:exception__cpp_code.dll
+
 else	# GRADE != il
 
 # The following dependency is just there to improve compilation speed;
@@ -248,6 +251,7 @@ $(STD_LIB_NAME).init: $(deps_subdir)$(STD_LIB_NAME).dep
 		grep '^INIT ' $$file; \
 		echo "INIT mercury__`basename $$file .m`__init"; \
 	done > $(STD_LIB_NAME).init
+
 
 else
 

@@ -979,6 +979,7 @@ get_subterm(_::in, _::in, _::in, _::in) = (42::out) :-
 :- pragma foreign_proc("C#",
 	get_subterm(TypeInfo::in, Term::in, Index::in,
 		TagOffset::in) = (Arg::out), [promise_pure], "
+	// XXX This will not work for high level data.
 	Arg = ((object[]) Term)[Index + TagOffset];
 	TypeInfo_for_T = TypeInfo;
 ").
@@ -1293,10 +1294,6 @@ exist_info_tcis(X::in) = (unsafe_cast(X)::out) :-
 			exist_info_field_nums.tcis];
 ").
 
-
-
-
-
 :- func exist_arg_num(typeinfo_locn) = int.
 
 exist_arg_num(X::in) = (unsafe_cast(X)::out) :- 
@@ -1340,8 +1337,6 @@ typeclass_info_type_info(TypeClassInfo, Index) = unsafe_cast(TypeInfo) :-
 		Index, TypeInfo
 			`with_type` private_builtin__type_info(int)).
 
-
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1371,8 +1366,6 @@ update_type_info_index(_::in, _::in, X::di, X::uo) :-
 	OldTypeInfo[X] = NewValue;
 	NewTypeInfo = OldTypeInfo;
 ").
-
-
 
 :- pred semidet_unimplemented(string::in) is semidet.
 semidet_unimplemented(S) :-
@@ -1428,7 +1421,7 @@ type_ctor_arity(_) = _ :-
 	MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
 	UnifyPred = (MR_Integer) tci->MR_type_ctor_unify_pred;
 ").
-type_ctor_unify_pred(_) = _ :-
+type_ctor_unify_pred(_) = "dummy value" :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
 	private_builtin__sorry("type_ctor_unify_pred").
@@ -1448,7 +1441,7 @@ type_ctor_unify_pred(_) = _ :-
 	MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
 	UnifyPred = (MR_Integer) tci->MR_type_ctor_compare_pred;
 ").
-type_ctor_compare_pred(_) = _ :-
+type_ctor_compare_pred(_) = "dummy value" :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
 	private_builtin__sorry("type_ctor_compare_pred").

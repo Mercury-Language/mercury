@@ -478,26 +478,30 @@ call_rtti_generic_compare(Res, X, Y) :-
 
 :- pragma foreign_code("MC++", "
 
-static void compare_3(MR_TypeInfo TypeInfo_for_T, MR_Word_Ref Res, 
+static void compare_3(MR_TypeInfo TypeInfo_for_T,
+		MR_Ref(MR_ComparisonResult) Res, 
 		MR_Box X, MR_Box Y) 
 {
 	mercury::builtin::mercury_code::call_rtti_generic_compare_3(
 			TypeInfo_for_T, Res, X, Y);
 }
 
-void compare_3_m1(MR_TypeInfo TypeInfo_for_T, MR_Word_Ref Res, 
+void compare_3_m1(MR_TypeInfo TypeInfo_for_T,
+		MR_Ref(MR_ComparisonResult) Res, 
 		MR_Box X, MR_Box Y) 
 {
 	compare_3(TypeInfo_for_T, Res, X, Y);
 }
 
-void compare_3_m2(MR_TypeInfo TypeInfo_for_T, MR_Word_Ref Res, 
+void compare_3_m2(MR_TypeInfo TypeInfo_for_T,
+		MR_Ref(MR_ComparisonResult) Res, 
 		MR_Box X, MR_Box Y) 
 {
 	compare_3(TypeInfo_for_T, Res, X, Y);
 }
 
-void compare_3_m3(MR_TypeInfo TypeInfo_for_T, MR_Word_Ref Res, 
+void compare_3_m3(MR_TypeInfo TypeInfo_for_T,
+		MR_Ref(MR_ComparisonResult) Res, 
 		MR_Box X, MR_Box Y) 
 {
 	compare_3(TypeInfo_for_T, Res, X, Y);

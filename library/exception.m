@@ -1097,6 +1097,22 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 	% For the .NET backend we override throw_impl as it is easier to 
 	% implement these things using foreign_proc.
 
+:- pragma foreign_decl("MC++", "
+namespace mercury {
+	namespace runtime {
+		__gc public class Exception : public System::Exception
+		{
+		public:
+		   Exception(MR_Univ data) 
+		   {
+			mercury_exception = data;	
+		   }
+		   MR_Univ mercury_exception;
+		};
+	}
+}
+").
+
 :- pragma foreign_proc("C#", throw_impl(T::in),
 		[will_not_call_mercury, promise_pure], "
 	throw new mercury.runtime.Exception(T);
@@ -2047,7 +2063,7 @@ report_uncaught_exception(Exception) -->
 report_uncaught_exception_2(Exception, unit) -->
 	io__flush_output,
 	io__stderr_stream(StdErr),
-	io__write_string(StdErr, "Uncaught exception:\n"),
+	io__write_string(StdErr, "Uncaught Mercury exception:\n"),
 	( { univ_to_type(Exception, software_error(Message)) } ->
 		io__format(StdErr, "Software Error: %s\n", [s(Message)])
 	;
