@@ -72,7 +72,7 @@ mercury_getc(MercuryFile* mf)
 	}
 	return c;
 }
-	
+
 static void
 mercury_close(MercuryFile* mf)
 {
@@ -158,6 +158,10 @@ mercury__io__flush_output_3_0:
 
 /* stream predicates */
 
+mercury__unify_io__stream_0_0:
+	r1 = ((MercuryFile*) r2 == (MercuryFile *)r3);
+	proceed();
+
 mercury__io__stdin_stream_3_0:
 	r1 = (int) &mercury_stdin;
 	update_io(r2, r3);
@@ -178,6 +182,16 @@ mercury__io__input_stream_3_0:
 	update_io(r2, r3);
 	proceed();
 
+mercury__io__get_line_number_3_0:
+	r1 = mercury_current_input->line_number;
+	update_io(r2, r3);
+	proceed();
+	
+mercury__io__get_line_number_4_0:
+	r2 = ((MercuryFile*) r1)->line_number;
+	update_io(r3, r4);
+	proceed();
+	
 mercury__io__output_stream_3_0:
 	r1 = (int) mercury_current_output;
 	update_io(r2, r3);
@@ -240,6 +254,12 @@ mercury__io__call_system_code_4_0:
 	update_io(r3, r4);
 	proceed();
 
+mercury__unify_io__external_state_0_0:
+	/* the unique mode system should prevent this */
+	fatal_error("cannot unify io__external_state");
+
+/*---------------------------------------------------------------------------*/
+
 /* error/1, from require.nl */
 
 mercury__error_1_0:
@@ -248,6 +268,8 @@ mercury__error_1_0:
 #ifndef	USE_GCC_NONLOCAL_GOTOS
 	return 0;	/* suppress some dumb warnings */
 #endif
+
+/*---------------------------------------------------------------------------*/
 
 /* report_stats/0 and type_to_univ/2, from std_util.nl */
 
@@ -273,7 +295,6 @@ mercury__type_to_univ_2_0:
 	 *  On exit r3 contains the output argument of type univ.
 	 */
 	incr_hp(r3, 2); /* allocate heap space */
-	r3 = mkword(mktag(0), mkbody(r3)); /* tag pointer (this is a no-op) */
 	field(mktag(0), r3, 0) = r1;
 		/* set the first field to contain the address of the
 		   unification predicate */
@@ -294,7 +315,7 @@ mercury__type_to_univ_2_1:
 	 *  unification procedure address may be the same even if the types
 	 *  are not - for example, for different enumeration types.
 	 */
-	if (field(mktag(0), r4, 1) != r2) {
+	if (field(mktag(0), r4, 0) != r2) {
 		r1 = FALSE;
 		proceed();
 	}
@@ -302,15 +323,27 @@ mercury__type_to_univ_2_1:
 	r1 = TRUE;
 	proceed();
 
+mercury__unify_univ_0_0:
+	r1 = field(mktag(0), r2, 0);
+	if (r1 != field(mktag(0), r3, 0)) {
+		r1 = FALSE;
+		proceed();
+	}
+	r2 = field(mktag(0), r2, 1);
+	r3 = field(mktag(0), r2, 1);
+	tailcall((Code *)r1);
+
+/*---------------------------------------------------------------------------*/
+
 /* from string.nl */
 
-mercury__intToString_2_0:
-		/* mode intToString(out, in) is semidet */
-	{ int tmp;
+mercury__string__to_float_2_0:
+		/* mode string__to_float(in, out) is semidet */
+	{ float tmp;
 		/* use a temporary, since we can't take the address of a reg */
-	  r1 = sscanf((char *)r3, "%d", &tmp);
+	  r1 = sscanf((char *)r2, "%f", &tmp);
 		/* r1 is TRUE if sscanf succeeds, FALSE otherwise */
-	  r2 = tmp;
+	  r3 = *(Word*)&tmp;
 	}
 	proceed();
 
@@ -382,10 +415,15 @@ mercury__string__to_int_list_2_2_i1:
 	decr_sp(1);
 	proceed();
 		
+/*-----------------------------------------------------------------------*/
+
 /* XXX The following predicates have not yet been implemented! */
+
+mercury__opt_debug__write_1_0:
+	fatal_error("opt_debug__write/1 not implemented");
 
 mercury__compare_3_0:
 mercury__compare_3_1:
-	fatal_error("not yet implemented");
+	fatal_error("compare/3 not yet implemented");
 
 END_MODULE
