@@ -296,7 +296,7 @@ maybe_tuple_scc(TraceCounts, TuningParams, DepGraph, SCC,
 
 scc_has_local_callers(CalleeProcs, DepGraph) :-
 	some [CalleeProc] (
-		CalleeProc `member` CalleeProcs,
+		CalleeProc `list.member` CalleeProcs,
 		proc_has_local_callers(CalleeProc, DepGraph)
 	).
 
@@ -667,7 +667,7 @@ make_transformed_proc(CellVar, FieldVarsList, InsertMap, !ProcInfo) :-
 	proc_info_argmodes(!.ProcInfo, ArgModes0),
 	HeadVarsAndModes = list__filter_map_corresponding(
 		(func(Var, Mode) = (Var - Mode) is semidet :-
-			not Var `member` FieldVarsList),
+			not Var `list.member` FieldVarsList),
 		HeadVars0, ArgModes0),
 	assoc_list__keys_and_values(HeadVarsAndModes, HeadVars, ArgModes),
 	proc_info_set_headvars(HeadVars ++ [CellVar], !ProcInfo),
@@ -1183,8 +1183,8 @@ count_load_stores_in_call_to_tupled(Goal - GoalInfo, CountInfo,
 		% TODO: If we kept track of the aliases of field variables,
 		% then they could be checked also.
 		get_own_tupling_proposal(CountInfo) = tupling(_, _, _),
-		all [Var] Var `member` FieldVars => (
-			Var `member` InputArgs0,
+		all [Var] Var `list.member` FieldVars => (
+			Var `set.member` InputArgs0,
 			assoc_list__search(FieldVarArgPos, Var, Pos),
 			list__nth_member_search(ArgVars, Var, Pos)
 		)
@@ -1326,7 +1326,7 @@ cls_require_in_reg(CountInfo, Var, !CountState) :-
 	(
 		TuplingProposal = get_own_tupling_proposal(CountInfo),
 		TuplingProposal = tupling(_, FieldVars, _),
-		Var `member` FieldVars
+		Var `list.member` FieldVars
 	->
 		cls_require_field_var_in_reg(CountInfo, TuplingProposal,
 			Var, !CountState)
@@ -1349,14 +1349,14 @@ cls_require_normal_var_in_reg(CountInfo, Var, !CountState) :-
 cls_require_field_var_in_reg(CountInfo, TuplingProposal, FieldVar,
 		CountState0, CountState) :-
 	CountState0 = count_state(RegVars0, StackVars, Loads0, Stores),
-	( FieldVar `member` RegVars0 ->
+	( FieldVar `set.member` RegVars0 ->
 		CountState = CountState0
 	;
 		TuplingProposal = tupling(CellVar, _, _),
 		TuningParams = CountInfo ^ count_info_params,
 		CvLoadCost = float(TuningParams ^ cell_var_load_cost),
 		FvLoadCost = float(TuningParams ^ field_var_load_cost),
-		( CellVar `member` RegVars0 ->
+		( CellVar `set.member` RegVars0 ->
 			RegVars = RegVars0 `insert` FieldVar,
 			Loads = Loads0 + FvLoadCost
 		;
@@ -1371,7 +1371,7 @@ cls_require_field_var_in_reg(CountInfo, TuplingProposal, FieldVar,
 
 cls_require_var_in_reg_with_cost(LoadCost, Var, CountState0, CountState) :-
 	CountState0 = count_state(RegVars0, StackVars, Loads0, Stores),
-	( Var `member` RegVars0 ->
+	( Var `set.member` RegVars0 ->
 		CountState = CountState0
 	;
 		RegVars = RegVars0 `insert` Var,
@@ -1446,7 +1446,7 @@ cls_require_flushed_2(no_tupling, TuningParams, Var, !CountState) :-
 
 cls_require_flushed_2(tupling(CellVar, FieldVars, _), TuningParams, Var,
 		!CountState) :-
-	( Var `member` FieldVars ->
+	( Var `list.member` FieldVars ->
 		FvStoreCost = TuningParams ^ field_var_store_cost,
 		cls_require_flushed_with_cost(FvStoreCost, CellVar,
 			!CountState)
@@ -1461,7 +1461,7 @@ cls_require_flushed_2(tupling(CellVar, FieldVars, _), TuningParams, Var,
 cls_require_flushed_with_cost(StoreCost, Var,
 		count_state(RegVars, StackVars0, Loads, Stores0),
 		count_state(RegVars, StackVars, Loads, Stores)) :-
-	( Var `member` StackVars0 ->
+	( Var `set.member` StackVars0 ->
 		StackVars = StackVars0,
 		Stores = Stores0
 	;
@@ -1832,7 +1832,7 @@ extract_tupled_args_from_list(ArgList, Indices, Selected, NotSelected) :-
 
 extract_tupled_args_from_list_2([], _Num, _Indices, []).
 extract_tupled_args_from_list_2([H | T], Num, Indices, NotSelected) :-
-	( Num `member` Indices ->
+	( Num `list.member` Indices ->
 		extract_tupled_args_from_list_2(T, Num+1, Indices,
 			NotSelected)
 	;
