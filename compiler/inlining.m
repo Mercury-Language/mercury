@@ -840,9 +840,11 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 	module_info_globals(ModuleInfo, Globals),
 	globals__get_target(Globals, Target),
 	(
+		(
 		CalledGoal = pragma_foreign_code(ForeignAttributes,
 			_,_,_,_,_,_) - _,
 		foreign_language(ForeignAttributes, ForeignLanguage)
+		)
 	=>
 		ok_to_inline_language(ForeignLanguage, Target)
 	),
