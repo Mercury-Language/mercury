@@ -380,6 +380,7 @@ ifeq "$(filter hl% il% java%,$(GRADE))" ""
 	
 	BACKEND_PROGS = \
 		$(BACKEND_PROGS_2) \
+		closure_arg_comparison \
 		compare_representation \
 		compare_rep_usereq \
 		stable_foreign \
