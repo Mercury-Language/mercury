@@ -313,6 +313,10 @@ set -x	# trace execution
 
 : checkout the sources
 cd $DIR || { false; exit 1; }
+# we need to manually remove this copy of dl.m to avoid spurious cvs
+# conflicts when switching between the release branch (where it is in cvs)
+# and the main branch (where it is generated automatically).
+rm -f mercury/extras/dynamic_linking/dl.m
 cvs checkout $CHECKOUT_OPTS mercury tests || { false; exit 1; }
 case $HOST in
 	murlibobo|kryten|taifun|quicksilver|hg|hydra|roy)
