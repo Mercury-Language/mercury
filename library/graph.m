@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -167,9 +167,9 @@
 
 :- type graph__arc_supply	==	int.
 
-:- type node(N)			==	int.
+:- type node(N)			--->	node(int).
 
-:- type arc(A)			==	int.
+:- type arc(A)			--->	arc(int).
 
 :- type arc_info(N, A)	--->	arc_info(node(N), node(N), A).
 
@@ -183,19 +183,19 @@ graph__init(Graph) :-
 
 %------------------------------------------------------------------------------%
 
-graph__set_node(G0, NInfo, N, G) :-
+graph__set_node(G0, NInfo, node(N), G) :-
 	graph__get_node_supply(G0, NS0),
 	NS is NS0 + 1,
 	N = NS,
 	graph__set_node_supply(G0, NS, G1),
 
 	graph__get_nodes(G1, Nodes0),
-	map__set(Nodes0, N, NInfo, Nodes),
+	map__set(Nodes0, node(N), NInfo, Nodes),
 	graph__set_nodes(G1, Nodes, G2),
 
 	graph__get_edges(G2, Edges0),
 	map__init(EdgeMap),
-	map__set(Edges0, N, EdgeMap, Edges),
+	map__set(Edges0, node(N), EdgeMap, Edges),
 	graph__set_edges(G2, Edges, G).
 
 graph__det_insert_node(G0, NInfo, N, G) :-
@@ -208,7 +208,7 @@ graph__det_insert_node(G0, NInfo, N, G) :-
 		error("graph__det_insert_node: node already exists.")
 	).
 
-graph__insert_node(G0, NInfo, N, G) :-
+graph__insert_node(G0, NInfo, node(N), G) :-
 		% Make sure that the graph doesn't contain
 		% NInfo already.
 	graph__get_nodes(G0, Nodes0),
@@ -220,12 +220,12 @@ graph__insert_node(G0, NInfo, N, G) :-
 	graph__set_node_supply(G0, NS, G1),
 
 	graph__get_nodes(G1, Nodes1),
-	map__set(Nodes1, N, NInfo, Nodes),
+	map__set(Nodes1, node(N), NInfo, Nodes),
 	graph__set_nodes(G1, Nodes, G2),
 
 	graph__get_edges(G2, Edges0),
 	map__init(EdgeSet),
-	map__set(Edges0, N, EdgeSet, Edges),
+	map__set(Edges0, node(N), EdgeSet, Edges),
 	graph__set_edges(G2, Edges, G).
 
 %------------------------------------------------------------------------------%
@@ -276,7 +276,7 @@ graph__nodes(G, Ns) :-
 graph__set_edge(G0, Start, End, Info, Arc, G) :-
 	graph__get_arc_supply(G0, AS0),
 	AS is AS0 + 1,
-	Arc = AS,
+	Arc = arc(AS),
 	graph__set_arc_supply(G0, AS, G1),
 
 	graph__get_arcs(G1, Arcs0),
@@ -304,7 +304,7 @@ graph__det_insert_edge(G0, Start, End, Info, Arc, G) :-
 graph__insert_edge(G0, Start, End, Info, Arc, G) :-
 	graph__get_arc_supply(G0, AS0),
 	AS is AS0 + 1,
-	Arc = AS,
+	Arc = arc(AS),
 	graph__set_arc_supply(G0, AS, G1),
 
 	graph__get_arcs(G1, Arcs0),
