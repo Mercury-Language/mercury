@@ -544,7 +544,7 @@ static void complex_bushandler(int sig, siginfo_t *info, void *context)
 {
 	if (sig != SIGBUS || info->si_signo != SIGBUS)
 	{
-		printf("\n*** caught strange bus error ***\n");
+		fprintf(stderr, "\n*** caught strange bus error ***\n");
 		exit(1);
 	}
 
@@ -552,7 +552,7 @@ static void complex_bushandler(int sig, siginfo_t *info, void *context)
 
 	if (info->si_code > 0)
 	{
-		printf("cause: ");
+		fprintf(stderr, "cause: ");
 		switch (info->si_code)
 		{
 
@@ -570,24 +570,27 @@ static void complex_bushandler(int sig, siginfo_t *info, void *context)
 }
 
 static void explain_segv(siginfo_t *info, void *context) {
-	printf("\n*** Mercury runtime: caught segmentation violation ***\n");
+	fprintf(stderr,
+		"\n*** Mercury runtime: caught segmentation violation ***\n");
 
 	if (info->si_code > 0)
 	{
-		printf("cause: ");
+		fprintf(stderr, "cause: ");
 		switch (info->si_code)
 		{
 
-	case SEGV_MAPERR:	printf("address not mapped to object\n");
-	when SEGV_ACCERR:	printf("invalid permissions for mapped object\n");
-	otherwise:		printf("unknown\n");
+	case SEGV_MAPERR:	fprintf(stderr,
+				"address not mapped to object\n");
+	when SEGV_ACCERR:	fprintf(stderr,
+				"invalid permissions for mapped object\n");
+	otherwise:		fprintf(stderr, "unknown\n");
 
 		}
 
-		printf("PC at signal: %d (%x)\n",
+		fprintf(stderr, "PC at signal: %d (%x)\n",
 			((ucontext_t *) context)->uc_mcontext.gregs[PC_INDEX],
 			((ucontext_t *) context)->uc_mcontext.gregs[PC_INDEX]);
-		printf("address involved: %p\n", (void *) info->si_addr);
+		fprintf(stderr, "address involved: %p\n", (void *) info->si_addr);
 
 	}
 }
