@@ -244,10 +244,10 @@ write_prog_to_stream(prog(QueryType, Imports, Term, VarSet)) -->
 			unsorted_aggregate(
 				(pred(res(A,B,C)::out) is nondet :-
 					query(A,B,C)),
-				(pred(res(A,B,C)::in, di, uo) -->
-					print("A = "), print(A), print(","),
-					print("B = "), print(B), print(","),
-					print("C = "), print(C), print(","),
+				(pred(res(A,B,C)::in, di, uo) is cc_multi -->
+					print("A = "), print_cc(A), print(","),
+					print("B = "), print_cc(B), print(","),
+					print("C = "), print_cc(C), print(","),
 					print("true ;\n"))
 			),
 			print(""fail.\n""),
@@ -256,7 +256,7 @@ write_prog_to_stream(prog(QueryType, Imports, Term, VarSet)) -->
 		:- type res(A, B, C) ---> res(A, B, C).
 
 		% :- mode query(out, out, out) is nondet.
-		query(res(A, B, C, D)) :-
+		query(res(A, B, C)) :-
 				...
 */
 		io__write_string("
@@ -269,7 +269,7 @@ write_prog_to_stream(prog(QueryType, Imports, Term, VarSet)) -->
 		io__write_string("),"),
 		io__write_string("(pred(res"),
 		write_args(Vars, VarSet),
-		io__write_string("::in, di, uo) is det -->
+		io__write_string("::in, di, uo) is cc_multi -->
 						"),
 		list__foldl(write_code_to_print_one_var(VarSet), Vars),
 		io__write_string("
@@ -364,7 +364,7 @@ write_line_directive -->
 write_code_to_print_one_var(VarSet, Var) -->
 	io__write_string("io__write_string("""),
 	term_io__write_variable(Var, VarSet),
-	io__write_string(" = ""), write("),
+	io__write_string(" = ""), io__write_cc("),
 	term_io__write_variable(Var, VarSet),
 	print("), io__write_string("", ""), ").
 

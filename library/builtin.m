@@ -219,52 +219,83 @@
 %	call/N
 
 %-----------------------------------------------------------------------------%
+:- implementation.
+
+% Everything below here is not intended to be part of the public interface,
+% and will not be included in the Mercury library reference manual.
+
+%-----------------------------------------------------------------------------%
+:- interface.
+
+% `get_one_solution' and `get_one_solution_io' are impure alternatives
+% to `promise_one_solution' and `promise_one_solution_io', respectively.
+% They get a solution to the procedure, without requiring any promise
+% that there is only one solution.  However, they can only be used in
+% impure code.
+
+:- impure func get_one_solution(pred(T)) = T.
+:-        mode get_one_solution(pred(out) is cc_multi) = out is det.
+:-        mode get_one_solution(pred(out) is cc_nondet) = out is semidet.
+
+:- impure pred get_one_solution_io(pred(T, IO, IO), T, IO, IO).
+:-        mode get_one_solution_io(pred(out, di, uo) is cc_multi,
+		out, di, uo) is det.
 
 :- implementation.
 :- import_module require, string, std_util, int, float, char, string, list.
 
 %-----------------------------------------------------------------------------%
 
-promise_only_solution(Pred) = OutVal :-
-        call(cc_cast(Pred), OutVal).
+:- pragma promise_pure(promise_only_solution/1).
+promise_only_solution(CCPred) = OutVal :-
+	impure OutVal = get_one_solution(CCPred).
 
-:- func cc_cast(pred(T)) = pred(T).
+get_one_solution(CCPred) = OutVal :-
+	impure Pred = cc_cast(CCPred),
+	call(Pred, OutVal).
+
+:- impure func cc_cast(pred(T)) = pred(T).
 :- mode cc_cast(pred(out) is cc_nondet) = out(pred(out) is semidet) is det.
 :- mode cc_cast(pred(out) is cc_multi) = out(pred(out) is det) is det.
 
 :- pragma foreign_proc("C", cc_cast(X :: (pred(out) is cc_multi)) =
                         (Y :: out(pred(out) is det)),
-                [will_not_call_mercury, promise_pure, thread_safe],
+                [will_not_call_mercury, thread_safe],
                 "Y = X;").
 :- pragma foreign_proc("C", cc_cast(X :: (pred(out) is cc_nondet)) =
                         (Y :: out(pred(out) is semidet)),
-                [will_not_call_mercury, promise_pure, thread_safe],
+                [will_not_call_mercury, thread_safe],
                 "Y = X;").
 :- pragma foreign_proc("C#", cc_cast(X :: (pred(out) is cc_multi)) =
                         (Y :: out(pred(out) is det)),
-                [will_not_call_mercury, promise_pure, thread_safe],
+                [will_not_call_mercury, thread_safe],
                 "Y = X;").
 :- pragma foreign_proc("C#", cc_cast(X :: (pred(out) is cc_nondet)) =
                         (Y :: out(pred(out) is semidet)),
-                [will_not_call_mercury, promise_pure, thread_safe],
+                [will_not_call_mercury, thread_safe],
                 "Y = X;").
 
+:- pragma promise_pure(promise_only_solution_io/4).
 promise_only_solution_io(Pred, X) -->
-	call(cc_cast_io(Pred), X).
+	impure get_one_solution_io(Pred, X).
 
-:- func cc_cast_io(pred(T, IO, IO)) = pred(T, IO, IO).
+get_one_solution_io(Pred, X) -->
+	{ impure DetPred = cc_cast_io(Pred) },
+	call(DetPred, X).
+
+:- impure func cc_cast_io(pred(T, IO, IO)) = pred(T, IO, IO).
 :- mode cc_cast_io(pred(out, di, uo) is cc_multi) =
 	out(pred(out, di, uo) is det) is det.
 
 :- pragma foreign_proc("C",
 	cc_cast_io(X :: (pred(out, di, uo) is cc_multi)) = 
 		(Y :: out(pred(out, di, uo) is det)),
-                [will_not_call_mercury, promise_pure, thread_safe],
+                [will_not_call_mercury, thread_safe],
                 "Y = X;").
 :- pragma foreign_proc("C#", 
 		cc_cast_io(X :: (pred(out, di, uo) is cc_multi)) =
 		(Y :: out(pred(out, di, uo) is det)),
-                [will_not_call_mercury, promise_pure, thread_safe],
+                [will_not_call_mercury, thread_safe],
                 "Y = X;").
 
 %-----------------------------------------------------------------------------%
