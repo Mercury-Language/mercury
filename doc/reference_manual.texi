@@ -2724,7 +2724,7 @@ with a @samp{use_module} declaration for the child, or vice versa,
 then the compiler may report some spurious errors.
 @item
 Using @samp{mmake} to do parallel makes (e.g. @samp{mmake --jobs 2})
-don't always work correctly in the case of nested sub-modules.
+doesn't always work correctly in the case of nested sub-modules.
 @end itemize
 
 @node Type classes
