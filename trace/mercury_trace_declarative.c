@@ -333,6 +333,13 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 		}
 	}
 
+	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)) {
+		/*
+		** Filter out events for compiler generated procedures.
+		*/
+		return NULL;
+	}
+
 #ifdef MR_USE_DECL_STACK_SLOT
 	if (entry->MR_sle_maybe_decl_debug < 1) {
 		/*
@@ -1099,6 +1106,13 @@ MR_trace_start_decl_debug(const char *outfile, MR_Trace_Cmd_Info *cmd,
 		fprintf(MR_mdb_err, "mdb: cannot start declarative debugging, "
 				"because this procedure was not\n"
 				"compiled with execution tracing enabled.\n");
+		return FALSE;
+	}
+
+	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)) {
+		fflush(MR_mdb_out);
+		fprintf(MR_mdb_err, "mdb: cannot start declarative debugging "
+				"at compiler generated procedures.\n");
 		return FALSE;
 	}
 

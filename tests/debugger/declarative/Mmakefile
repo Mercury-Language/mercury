@@ -23,6 +23,7 @@ DECLARATIVE_PROGS=		\
 	args			\
 	backtrack		\
 	big			\
+	comp_gen		\
 	filter			\
 	gcf			\
 	if_then_else		\
@@ -87,6 +88,9 @@ backtrack.out: backtrack backtrack.inp
 
 big.out: big big.inp
 	$(MDB) ./big < big.inp > big.out 2>&1
+
+comp_gen.out: comp_gen comp_gen.inp
+	$(MDB) ./comp_gen < comp_gen.inp > comp_gen.out 2>&1
 
 family.out: family family.inp
 	$(MDB) ./family < family.inp > family.out 2>&1

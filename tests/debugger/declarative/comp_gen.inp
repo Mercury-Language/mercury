@@ -1,0 +1,12 @@
+echo on
+register --quiet
+break p
+continue
+step
+finish
+dd
+continue
+dd
+yes
+continue
+
