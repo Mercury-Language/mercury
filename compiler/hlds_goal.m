@@ -40,16 +40,21 @@
 		% proc_id and the builtin_state field.
 
 	;	call(
-			pred_id,	% which predicate are we calling?
-			proc_id,	% which mode of the predicate?
-			list(prog_var),	% the list of argument variables
-			builtin_state,	% is the predicate builtin, and if yes,
+			call_pred_id	:: pred_id,
+					% which predicate are we calling?
+			call_proc_id	:: proc_id,
+					% which mode of the predicate?
+			call_args	:: list(prog_var),
+					% the list of argument variables
+			call_builtin	:: builtin_state,
+					% is the predicate builtin, and if yes,
 					% do we generate inline code for it?
-			maybe(call_unify_context),
+			call_unify_context :: maybe(call_unify_context),
 					% was this predicate call originally
 					% a unification?  If so, we store the
 					% context of the unification.
-			sym_name	% the name of the predicate
+			call_sym_name	:: sym_name
+					% the name of the predicate
 		)
 
 		% A generic call implements operations which are too
@@ -61,26 +66,32 @@
 		% calls, Aditi calls and the Aditi update goals.
 	
 	;	generic_call(
-			generic_call,
-			list(prog_var),	% the list of argument variables
-			list(mode),	% The modes of the argument variables.
+			gcall_details	:: generic_call,
+			gcall_args	:: list(prog_var),
+					% the list of argument variables
+			gcall_modes	:: list(mode),
+					% The modes of the argument variables.
 					% For higher_order calls, this field
 					% is junk until after mode analysis.
 					% For aditi_builtins, this field
 					% is junk until after purity checking.
-			determinism	% the determinism of the call
+			gcall_detism	:: determinism
+					% the determinism of the call
 		)
 
 		% Deterministic disjunctions are converted
 		% into switches by the switch detection pass.
 
 	;	switch(
-			prog_var,	% the variable we are switching on
-			can_fail,	% whether or not the switch test itself
+			switch_var	:: prog_var,
+					% the variable we are switching on
+			switch_canfail	:: can_fail,
+					% whether or not the switch test itself
 					% can fail (i.e. whether or not it
 					% covers all the possible cases)
-			list(case),
-			store_map	% a map saying where each live variable
+			switch_cases	:: list(case),
+			switch_store_map :: store_map
+					% a map saying where each live variable
 					% should be at the end of each arm of
 					% the switch. This field is filled in
 					% with advisory information by the
@@ -94,15 +105,20 @@
 		% are known. Mode analysis fills in the missing information.
 
 	;	unify(
-			prog_var,	% the variable on the left hand side
+			unify_lhs	:: prog_var,
+					% the variable on the left hand side
 					% of the unification
-			unify_rhs,	% whatever is on the right hand side
+			unify_rhs	:: unify_rhs,
+					% whatever is on the right hand side
 					% of the unification
-			unify_mode,	% the mode of the unification
-			unification,	% this field says what category of
+			unify_mode	:: unify_mode,
+					% the mode of the unification
+			unify_kind	:: unification,
+					% this field says what category of
 					% unification it is, and contains
 					% information specific to each category
-			unify_context	% the location of the unification
+			unify_context	:: unify_context
+					% the location of the unification
 					% in the original source code
 					% (for use in error messages)
 		)
@@ -137,7 +153,11 @@
 		% closures for the builtin aditi update predicates -
 		% they should be kept close to the update call where
 		% possible to make it easier to use indexes for the update.
-	;	{ some(list(prog_var), can_remove, hlds_goal) }
+	;	{ some(
+			some_exist_vars	:: list(prog_var),
+			some_can_remove	:: can_remove,
+			some_goal	:: hlds_goal
+		) }
 
 		% An if-then-else,
 		% `if some <Vars> <Condition> then <Then> else <Else>'.
@@ -146,12 +166,14 @@
 		% but not the <Else> part.
 
 	;	if_then_else(
-			list(prog_var),	% The locally existentially quantified
+			ite_exist_vars	:: list(prog_var),
+					% The locally existentially quantified
 					% variables <Vars>.
-			hlds_goal,	% The <Condition>
-			hlds_goal,	% The <Then> part
-			hlds_goal,	% The <Else> part
-			store_map	% a map saying where each live variable
+			ite_cond	:: hlds_goal,	% The <Condition>
+			ite_then	:: hlds_goal,	% The <Then> part
+			ite_else	:: hlds_goal,	% The <Else> part
+			ite_store_map	:: store_map
+					% a map saying where each live variable
 					% should be at the end of each arm of
 					% the disj. This field is filled in
 					% with advisory information by the
@@ -163,11 +185,14 @@
 		% Foreign code from a pragma foreign_proc(...) decl.
 
 	;	foreign_proc(
-			pragma_foreign_proc_attributes,
-			pred_id,	% The called predicate
-			proc_id, 	% The mode of the predicate
-			list(prog_var),	% The (Mercury) argument variables
-			list(maybe(pair(string, mode))),
+			foreign_attr	:: pragma_foreign_proc_attributes,
+			foreign_pred_id	:: pred_id,
+					% The called predicate
+			foreign_proc_id	:: proc_id,
+					% The mode of the predicate
+			foreign_args	:: list(prog_var),
+					% The (Mercury) argument variables
+			foreign_names	:: list(maybe(pair(string, mode))),
 					% Foreign variable names and the
 					% original mode declaration for each
 					% of the arguments. A no for a
@@ -176,10 +201,11 @@
 					% particular, the type_info variables
 					% introduced by polymorphism.m might
 					% be represented in this way).
-			list(type),	% The original types of the arguments.
+			foreign_types	:: list(type),
+					% The original types of the arguments.
 					% (With inlining, the actual types may
 					% be instances of the original types.)
-			pragma_foreign_code_impl
+			foreign_impl	:: pragma_foreign_code_impl
 					% Extra information for model_non
 					% pragma_foreign_codes; none for others.
 		)
@@ -196,12 +222,7 @@
 		% All shorthand goals are eliminated during or shortly after
 		% the construction of the hlds, so most passes of the compiler
 		% will just call error/1 if they occur.
-	;	shorthand(
-			shorthand_goal_expr
-			)
-	.
-
-		
+	;	shorthand(shorthand_goal_expr).
 
 	% Instances of these `shorthand' goals are implemented by a
 	% hlds --> hlds transformation that replaces them with
@@ -215,10 +236,7 @@
 		% do that for bi-implications, because if expansion
 		% of bi-implications is done before implicit quantification,
 		% then the quantification would be wrong
-	--->	bi_implication(hlds_goal, hlds_goal)
-	.
-
-	
+	--->	bi_implication(hlds_goal, hlds_goal).
 
 %-----------------------------------------------------------------------------%
 %
@@ -322,23 +340,27 @@
 		% Constructions are written using `:=', e.g. Y := f(X).
 
 	--->	construct(
-			prog_var,	% the variable being constructed
+			construct_cell_var	:: prog_var,
+					% the variable being constructed
 					% e.g. Y in above example
-			cons_id,	% the cons_id of the functor
+			construct_cons_id	:: cons_id,
+					% the cons_id of the functor
 					% f/1 in the above example
-			list(prog_var),	% the list of argument variables
+			construct_args		:: list(prog_var),
+					% the list of argument variables
 					% [X] in the above example
 					% For a unification with a lambda
 					% expression, this is the list of
 					% the non-local variables of the
 					% lambda expression.
-			list(uni_mode),	% The list of modes of the arguments
+			construct_arg_modes	:: list(uni_mode),
+					% The list of modes of the arguments
 					% sub-unifications.
 					% For a unification with a lambda
 					% expression, this is the list of
 					% modes of the non-local variables
 					% of the lambda expression.
-			how_to_construct,
+			construct_how		:: how_to_construct,
 					% Specify whether to allocate
 					% statically, to allocate dynamically,
 					% or to reuse an existing cell
@@ -346,9 +368,10 @@
 					% Constructions for which this
 					% field is `reuse_cell(_)' are
 					% described as "reconstructions".
-			cell_is_unique,	% Can the cell be allocated
+			construct_is_unique	:: cell_is_unique,
+					% Can the cell be allocated
 					% in shared data.
-			maybe(rl_exprn_id)
+			construct_exprn_id	:: maybe(rl_exprn_id)
 					% Used for `aditi_top_down' closures
 					% passed to `aditi_delete' and
 					% `aditi_modify' calls where the
@@ -373,17 +396,23 @@
 		% a mode error.
 
 	;	deconstruct(
-			prog_var,	% The variable being deconstructed
+			deconstruct_cell_var	:: prog_var,
+					% The variable being deconstructed
 					% e.g. Y in the above example.
-			cons_id,	% The cons_id of the functor,
+			deconstruct_cons_id	:: cons_id,
+					% The cons_id of the functor,
 					% e.g. f/1 in the above example
-			list(prog_var),	% The list of argument variables,
+			deconstruct_args	:: list(prog_var),
+					% The list of argument variables,
 					% e.g. [X] in the above example.
-			list(uni_mode), % The lists of modes of the argument
+			deconstruct_arg_modes	:: list(uni_mode),
+					% The lists of modes of the argument
 					% sub-unifications.
-			can_fail,	% Whether or not the unification
+			deconstruct_can_fail	:: can_fail,
+					% Whether or not the unification
 					% could possibly fail.
-			can_cgc		% Can compile time GC this cell,
+			deconstruct_can_cgc	:: can_cgc
+					% Can compile time GC this cell,
 					% ie explicitly deallocate it
 					% after the deconstruction.
 		)
@@ -392,14 +421,17 @@
 		% written Y := X.
 
 	;	assign(
-			prog_var, % variable being assigned to
-			prog_var  % variable whose value is being assigned
+			assign_to_var		:: prog_var,
+			assign_from_var		:: prog_var
 		)
 
 		% Y = X where the type of X and Y is an atomic
 		% type and they are both input, written Y == X.
 
-	;	simple_test(prog_var, prog_var)
+	;	simple_test(
+			test_var1		:: prog_var,
+			test_var2		:: prog_var
+		)
 
 		% Y = X where the type of Y and X is not an
 		% atomic type, and where the top-level node
@@ -410,8 +442,10 @@
 		% type & mode.
 
 	;	complicated_unify(
-			uni_mode,	% The mode of the unification.
-			can_fail,	% Whether or not it could possibly fail
+			compl_unify_mode	:: uni_mode,
+					% The mode of the unification.
+			compl_unify_can_fail	:: can_fail,
+					% Whether or not it could possibly fail
 
 			% When unifying polymorphic types such as
 			% map/2, we need to pass type_info variables
@@ -431,7 +465,8 @@
 			% It is also checked by simplify.m when
 			% it converts complicated unifications
 			% into procedure calls.
-			list(prog_var)	% The type_info variables needed
+			compl_unify_typeinfos	:: list(prog_var)
+					% The type_info variables needed
 					% by this unification, if it ends up
 					% being a complicated unify.
 		).
@@ -556,8 +591,6 @@
 					% of insts to a pair of new insts
 					% Each pair represents the insts
 					% of the LHS and the RHS respectively
-
-
 
 %-----------------------------------------------------------------------------%
 %
@@ -697,7 +730,6 @@
 :- pred goal_info_resume_vars_and_loc(resume_point, set(prog_var), resume_locs).
 :- mode goal_info_resume_vars_and_loc(in, out, out) is det.
 
-
 :- type goal_feature
 	--->	constraint	% This is included if the goal is
 				% a constraint.  See constraint.m
@@ -712,7 +744,6 @@
 				% tells the code generator when this happens.
 	;	tailcall.	% This goal represents a tail call. This marker
 				% is used by deep profiling.
-
 
 	% We can think of the goal that defines a procedure to be a tree,
 	% whose leaves are primitive goals and whose interior nodes are
@@ -862,7 +893,6 @@
 :- pred set_goal_contexts(prog_context, hlds_goal, hlds_goal).
 :- mode set_goal_contexts(in, in, out) is det.
 
-
 	% Create the hlds_goal for a unification, filling in all the as yet
 	% unknown slots with dummy values.
 :- pred create_atomic_unification(prog_var, unify_rhs, prog_context,
@@ -936,7 +966,6 @@
 :- pred make_const_construction(cons_id, (type), hlds_goal, prog_var,
 		proc_info, proc_info).
 :- mode make_const_construction(in, in, out, out, in, out) is det.
-
 
 	% Given the variable info field from a pragma foreign_code, get all the
 	% variable names.
@@ -1049,7 +1078,6 @@
 					%	X = 1)
 					%    )
 	.
-
 
 	% For lambda expressions built automatically for Aditi updates
 	% the modes of `aditi__state' arguments may need to be fixed
@@ -1241,7 +1269,6 @@ simple_call_id_pred_or_func(PredOrFunc - _) = PredOrFunc.
 				% The path to this goal from the root in
 				% reverse order.
 	).
-
 
 goal_info_init(GoalInfo) :-
 	Detism = erroneous,
@@ -1542,7 +1569,6 @@ goal_has_foreign(Goal) = HasForeign :-
 		HasForeign = goal_has_foreign_shorthand(ShorthandGoal)
 	).
 
-
 	% Return yes if the shorthand goal contains any foreign code
 :- func goal_has_foreign_shorthand(shorthand_goal_expr) = bool.
 :- mode goal_has_foreign_shorthand(in) = out is det.
@@ -1556,15 +1582,12 @@ goal_has_foreign_shorthand(bi_implication(Goal2, Goal3)) = HasForeign :-
 	;	no
 	).
 
-
-
 goal_list_has_foreign([]) = no.
 goal_list_has_foreign([X | Xs]) =
 	(	goal_has_foreign(X) = yes
 	->	yes
 	;	goal_list_has_foreign(Xs)
 	).
-
 
 %-----------------------------------------------------------------------------%
 
