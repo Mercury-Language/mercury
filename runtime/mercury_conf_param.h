@@ -488,7 +488,7 @@
   #error "MR_NEED_INITIALIZATION_AT_START should not be defined on the command line"
 #endif
 #if !defined(MR_STATIC_CODE_ADDRESSES) || defined(MR_MPROF_PROFILE_CALLS) \
-	|| defined(MR_MPROF_PROFILE_TIME) || defined(DEBUG_LABELS)
+	|| defined(MR_MPROF_PROFILE_TIME) || defined(MR_DEBUG_LABEL_NAMES)
   #define MR_NEED_INITIALIZATION_AT_START
 #endif
 
