@@ -26,6 +26,7 @@ OTHER_SOURCES= \
 	complicated_unify.m \
 	constructor_arg_names.m \
 	dcg_test.m \
+	deforest_loop.m \
 	deforest_rerun_det.m \
 	det_condition.m \
 	det_inference.m \
@@ -144,6 +145,8 @@ GRADEFLAGS-agc_unbound_typevars2 = --gc accurate
 GRADEFLAGS-agc_unused_in	= --gc accurate
 MCFLAGS-compl_unify_bug		= -O3
 MCFLAGS-complex_failure		= --use-trail
+MCFLAGS-deforest_loop		= -O3 --intermodule-optimization
+MCFLAGS-deforest_rerun_det	= -O3 --check-termination
 MCFLAGS-double_vn		= -O4
 MCFLAGS-explicit_quant		= --halt-at-warn
 MCFLAGS-higher_order_implied_mode = -O-1
@@ -157,7 +160,6 @@ MCFLAGS-simplify_bug		= -O-1
 MCFLAGS-two_way_unif		= -O-1
 MCFLAGS-type_inf_ambig_test	= --infer-all
 MCFLAGS-vn_float		= -O5
-MCFLAGS-deforest_rerun_det	= -O3 --check-termination
 
 # intermod_lambda.m needs inter-module optimization
 intermod_lambda.c:

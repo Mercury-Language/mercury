@@ -680,44 +680,62 @@ pd_util__recompute_instmap_delta(Goal0, Goal) -->
 	% 	optimization, not loss of correctness.
 
 inst_MSG(InstA, InstB, ModuleInfo, Inst) :-
+	set__init(Expansions),
+	inst_MSG_1(InstA, InstB, Expansions, ModuleInfo, Inst).
+
+:- type expansions == set(pair(inst)).
+
+:- pred inst_MSG_1(inst, inst, expansions, module_info, inst).
+:- mode inst_MSG_1(in, in, in, in, out) is semidet.
+
+inst_MSG_1(InstA, InstB, Expansions, ModuleInfo, Inst) :-
 	( InstA = InstB ->
 		Inst = InstA
 	;
+		% We don't do recursive MSGs (we could,
+		% but it's probably not worth it).
+		\+ set__member(InstA - InstB, Expansions),
 		inst_expand(ModuleInfo, InstA, InstA2),
 		inst_expand(ModuleInfo, InstB, InstB2),
+		set__insert(Expansions, InstA - InstB, Expansions1),
 		( InstB2 = not_reached ->
 			Inst = InstA2
 		;
-			inst_MSG_2(InstA2, InstB2, ModuleInfo, Inst)
+			inst_MSG_2(InstA2, InstB2, Expansions1,
+				ModuleInfo, Inst)
 		)
 	).
 
-:- pred inst_MSG_2(inst, inst, module_info, inst).
-:- mode inst_MSG_2(in, in, in, out) is semidet.
+:- pred inst_MSG_2(inst, inst, expansions, module_info, inst).
+:- mode inst_MSG_2(in, in, in, in, out) is semidet.
 
-inst_MSG_2(any(_), any(Uniq), _, any(Uniq)).
-inst_MSG_2(free, free, _M, free).
+inst_MSG_2(any(_), any(Uniq), _, _, any(Uniq)).
+inst_MSG_2(free, free, _M, _, free).
 
-inst_MSG_2(bound(_, ListA), bound(UniqB, ListB), ModuleInfo, Inst) :-
-	bound_inst_list_MSG(ListA, ListB, ModuleInfo, UniqB, ListB, Inst).
-inst_MSG_2(bound(_, _), ground(UniqB, InfoB), _, ground(UniqB, InfoB)).
+inst_MSG_2(bound(_, ListA), bound(UniqB, ListB), Expansions,
+		ModuleInfo, Inst) :-
+	bound_inst_list_MSG(ListA, ListB, Expansions,
+		ModuleInfo, UniqB, ListB, Inst).
+inst_MSG_2(bound(_, _), ground(UniqB, InfoB), _, _, ground(UniqB, InfoB)).
 
 	% fail here, since the increasing inst size could 
 	% cause termination problems for deforestation.
-inst_MSG_2(ground(_, _), bound(_UniqB, _ListB), _, _) :- fail.
-inst_MSG_2(ground(_, _), ground(UniqB, InfoB), _, ground(UniqB, InfoB)). 
+inst_MSG_2(ground(_, _), bound(_UniqB, _ListB), _, _, _) :- fail.
+inst_MSG_2(ground(_, _), ground(UniqB, InfoB), _, _, ground(UniqB, InfoB)). 
 inst_MSG_2(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
-		ModuleInfo, abstract_inst(Name, Args)) :-
-	inst_list_MSG(ArgsA, ArgsB, ModuleInfo, Args).
-inst_MSG_2(not_reached, Inst, _, Inst).
+		Expansions, ModuleInfo, abstract_inst(Name, Args)) :-
+	inst_list_MSG(ArgsA, ArgsB, Expansions, ModuleInfo, Args).
+inst_MSG_2(not_reached, Inst, _, _, Inst).
 
-:- pred inst_list_MSG(list(inst), list(inst), module_info, list(inst)).
-:- mode inst_list_MSG(in, in, in, out) is semidet.
+:- pred inst_list_MSG(list(inst), list(inst), expansions,
+		module_info, list(inst)).
+:- mode inst_list_MSG(in, in, in, in, out) is semidet.
 
-inst_list_MSG([], [], _ModuleInfo, []).
-inst_list_MSG([ArgA | ArgsA], [ArgB | ArgsB], ModuleInfo, [Arg | Args]) :-
-	inst_MSG(ArgA, ArgB, ModuleInfo, Arg),
-	inst_list_MSG(ArgsA, ArgsB, ModuleInfo, Args).
+inst_list_MSG([], [], _, _ModuleInfo, []).
+inst_list_MSG([ArgA | ArgsA], [ArgB | ArgsB], Expansions,
+		ModuleInfo, [Arg | Args]) :-
+	inst_MSG_1(ArgA, ArgB, Expansions, ModuleInfo, Arg),
+	inst_list_MSG(ArgsA, ArgsB, Expansions, ModuleInfo, Args).
 
 	% bound_inst_list_MSG(Xs, Ys, ModuleInfo, Zs):
 	% The two input lists Xs and Ys must already be sorted.
@@ -729,10 +747,10 @@ inst_list_MSG([ArgA | ArgsA], [ArgB | ArgsB], ModuleInfo, [Arg | Args]) :-
 	% Otherwise, the take the msg of the argument insts.
 
 :- pred bound_inst_list_MSG(list(bound_inst), list(bound_inst),
-		module_info, uniqueness, list(bound_inst), inst).
-:- mode bound_inst_list_MSG(in, in, in, in, in, out) is semidet.
+		expansions, module_info, uniqueness, list(bound_inst), inst).
+:- mode bound_inst_list_MSG(in, in, in, in, in, in, out) is semidet.
 
-bound_inst_list_MSG(Xs, Ys, ModuleInfo, Uniq, List, Inst) :-
+bound_inst_list_MSG(Xs, Ys, Expansions, ModuleInfo, Uniq, List, Inst) :-
 	(
 		Xs = [],
 		Ys = []
@@ -744,9 +762,10 @@ bound_inst_list_MSG(Xs, Ys, ModuleInfo, Uniq, List, Inst) :-
 		X = functor(ConsId, ArgsX),
 		Y = functor(ConsId, ArgsY)
 	->
-		inst_list_MSG(ArgsX, ArgsY, ModuleInfo, Args),
+		inst_list_MSG(ArgsX, ArgsY, Expansions, ModuleInfo, Args),
 		Z = functor(ConsId, Args),
-		bound_inst_list_MSG(Xs1, Ys1, ModuleInfo, Uniq, List, Inst1),
+		bound_inst_list_MSG(Xs1, Ys1, Expansions,
+			ModuleInfo, Uniq, List, Inst1),
 		( Inst1 = bound(Uniq, Zs) ->
 			Inst = bound(Uniq, [Z | Zs])
 		;
