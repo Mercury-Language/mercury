@@ -323,8 +323,8 @@ hlds_out__write_pred_id(ModuleInfo, PredId) -->
 			{ error("special_pred_get_type failed!") }
 		)
 	; 
-		{ string__prefix(Name,
-			check_typeclass__introduced_pred_name_prefix) } 
+		{ pred_info_get_markers(PredInfo, Markers) },
+		{ check_marker(Markers, class_instance_method) }
 	->
 		io__write_string("type class method implementation")
 	;
@@ -819,6 +819,7 @@ hlds_out__marker_name(no_inline, "no_inline").
 hlds_out__marker_name(dnf, "dnf").
 hlds_out__marker_name(obsolete, "obsolete").
 hlds_out__marker_name(class_method, "class_method").
+hlds_out__marker_name(class_instance_method, "class_instance_method").
 hlds_out__marker_name((impure), "impure").
 hlds_out__marker_name((semipure), "semipure").
 hlds_out__marker_name(promised_pure, "promise_pure").
@@ -2536,8 +2537,8 @@ hlds_out__write_class_defn(Indent, ClassId - ClassDefn) -->
 	hlds_out__write_class_id(ClassId),
 	io__write_string(":\n"),
 
-	{ ClassDefn = hlds_class_defn(Constraints, Vars, Interface, VarSet,
-				Context) },
+	{ ClassDefn = hlds_class_defn(_, Constraints, Vars, _, Interface,
+				VarSet, Context) },
 
 	{ term__context_file(Context, FileName) },
 	{ term__context_line(Context, LineNumber) },

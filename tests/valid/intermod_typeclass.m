@@ -1,5 +1,5 @@
-% Test overloading resolution for cross-module optimization.
-:- module intermod_test.
+% Test handling of typeclasses with intermodule optimization.
+:- module intermod_typeclass.
 :- interface.
 
 :- import_module int.
@@ -12,7 +12,7 @@
 
 :- implementation.
 
-:- import_module intermod_test2.
+:- import_module intermod_typeclass2.
 
 :- pragma inline(p/1).
 p(X) :-
@@ -20,7 +20,7 @@ p(X) :-
 	Y = f(_),
 	Lambda = lambda([Z::int_mode] is det, Z = 2),
 	local(Lambda, X),
-	intermod_test2__baz(X).
+	intermod_typeclass2__baz(X).
 
 :- mode int_mode :: out.
 

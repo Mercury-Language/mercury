@@ -309,6 +309,7 @@
 
 :- import_module hlds_goal, hlds_module, hlds_pred, hlds_data.
 :- import_module prog_data, special_pred.
+:- import_module globals, options.
 
 :- import_module io, list, term, map.
 
@@ -2173,8 +2174,8 @@ polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
 				% Look up the definition of the subclass
 			module_info_classes(ModuleInfo, ClassTable),
 			map__lookup(ClassTable, SubClassId, SubClassDefn), 
-			SubClassDefn = hlds_class_defn(SuperClasses0,
-				SubClassVars, _, _, _),
+			SubClassDefn = hlds_class_defn(_, SuperClasses0,
+				SubClassVars, _, _, _, _),
 
 				% Work out which superclass typeclass_info to
 				% take
@@ -2373,8 +2374,8 @@ polymorphism__get_arg_superclass_vars(ClassDefn, InstanceTypes,
 	poly_info_get_proofs(Info0, Proofs),
 
 	poly_info_get_typevarset(Info0, TVarSet0),
-	ClassDefn = hlds_class_defn(SuperClasses0, ClassVars0, 
-		_, ClassTVarSet, _),
+	ClassDefn = hlds_class_defn(_, SuperClasses0, ClassVars0, 
+		_, _, ClassTVarSet, _),
 	varset__merge_subst(TVarSet0, ClassTVarSet, TVarSet1, Subst),
 	poly_info_set_typevarset(TVarSet1, Info0, Info1),
 
@@ -2984,7 +2985,7 @@ polymorphism__make_typeclass_info_head_vars_2([C|Cs],
 	ClassId = class_id(ClassName0, ClassArity),
 	module_info_classes(ModuleInfo, ClassTable),
 	map__lookup(ClassTable, ClassId, ClassDefn),
-	ClassDefn = hlds_class_defn(SuperClasses, _, _, _, _),
+	ClassDefn = hlds_class_defn(_, SuperClasses, _, _, _, _, _),
 	list__length(SuperClasses, NumSuperClasses),
 
 	unqualify_name(ClassName0, ClassName),
@@ -3129,10 +3130,14 @@ polymorphism__is_typeclass_info_manipulator(ModuleInfo,
 
 %---------------------------------------------------------------------------%
 
-	% Expand the bodies of all class methods for typeclasses which
-	% were defined in this module. The expansion involves inserting a
-	% class_method_call with the appropriate arguments, which is 
-	% responsible for extracting the appropriate part of the dictionary.
+	% Expand the bodies of all class methods.
+	% Class methods for imported classes are only expanded if
+	% we are performing type specialization, so that method lookups
+	% for imported classes can be optimized.
+	%
+	% The expansion involves inserting a class_method_call with the
+	% appropriate arguments, which is responsible for extracting the
+	% appropriate part of the dictionary.
 :- pred polymorphism__expand_class_method_bodies(module_info, module_info).
 :- mode polymorphism__expand_class_method_bodies(in, out) is det.
 
@@ -3141,20 +3146,29 @@ polymorphism__expand_class_method_bodies(ModuleInfo0, ModuleInfo) :-
 	module_info_name(ModuleInfo0, ModuleName),
 	map__keys(Classes, ClassIds0),
 
-		% Don't expand classes from other modules
-	FromThisModule = lambda([ClassId::in] is semidet,
-		(
-			ClassId = class_id(qualified(ModuleName, _), _)
-		)),
-	list__filter(FromThisModule, ClassIds0, ClassIds),
-
+	module_info_globals(ModuleInfo0, Globals), 
+	globals__lookup_bool_option(Globals, user_guided_type_specialization,
+		TypeSpec),
+	(
+		TypeSpec = no,
+		
+			% Don't expand classes from other modules
+		FromThisModule = lambda([ClassId::in] is semidet,
+			(
+				ClassId = class_id(qualified(ModuleName, _), _)
+			)),
+		list__filter(FromThisModule, ClassIds0, ClassIds)
+	;
+		TypeSpec = yes,
+		ClassIds = ClassIds0
+	),
 	map__apply_to_list(ClassIds, Classes, ClassDefns),
 	list__foldl(expand_bodies, ClassDefns, ModuleInfo0, ModuleInfo).
 
 :- pred expand_bodies(hlds_class_defn, module_info, module_info).
 :- mode expand_bodies(in, in, out) is det.
 
-expand_bodies(hlds_class_defn(_, _, Interface, _, _), 
+expand_bodies(hlds_class_defn(_, _, _, _, Interface, _, _), 
 		ModuleInfo0, ModuleInfo) :-
 	list__foldl2(expand_one_body, Interface, 1, _, ModuleInfo0, ModuleInfo).
 
@@ -3226,7 +3240,14 @@ expand_one_body(hlds_class_proc(PredId, ProcId), ProcNum0, ProcNum,
 
 	proc_info_set_goal(ProcInfo0, BodyGoal, ProcInfo),
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
-	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
+	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo1),
+	
+	( pred_info_is_imported(PredInfo1) ->
+		pred_info_set_import_status(PredInfo1, opt_imported, PredInfo)
+	;
+		PredInfo = PredInfo1
+	),
+
 	map__det_update(PredTable0, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo),
 

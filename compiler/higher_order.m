@@ -39,7 +39,7 @@
 :- import_module code_util, globals, make_hlds, mode_util, goal_util.
 :- import_module type_util, options, prog_data, prog_out, quantification.
 :- import_module mercury_to_mercury, inlining, polymorphism, prog_util.
-:- import_module special_pred, passes_aux, check_typeclass.
+:- import_module special_pred, passes_aux.
 
 :- import_module assoc_list, bool, char, int, list, map, require, set.
 :- import_module std_util, string, varset, term.
@@ -1245,15 +1245,13 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
 				% Without this, user-specified specialized
 				% versions of class methods won't be called.
 				UserTypeSpec = yes,
+				pred_info_get_markers(CalledPredInfo,
+					Markers),
 				(
-					pred_info_get_markers(CalledPredInfo,
-						Markers),
 					check_marker(Markers, class_method)
 				;
-					pred_info_name(CalledPredInfo,
-						CalledPredName),
-					string__prefix(CalledPredName,
-				check_typeclass__introduced_pred_name_prefix)
+					check_marker(Markers,
+						class_instance_method)
 				)
 			;
 				HigherOrder = yes,

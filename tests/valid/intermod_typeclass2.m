@@ -1,4 +1,5 @@
-:- module intermod_test2.
+
+:- module intermod_typeclass2.
 
 :- interface.
 
@@ -20,7 +21,7 @@
 :- mode int_mode :: int_mode1.
 :- mode int_mode1 :: in.
 
-baz(X) :- T = f(1), bar(T, X).
+baz(X) :- T = f(1), bar(T, X), method(X).
 
 :- pred bar(t::in, int::int_mode) is semidet.
 
@@ -37,4 +38,16 @@ bar(T, 2) :-
 :- pragma inline(plusone/1).
 
 plusone(Int0) = Int :- Int is Int0 + 1.
+
+:- typeclass class(T) where [
+		pred method(T::in) is semidet
+	].
+
+:- instance class(int) where [
+		pred(method/1) is int_method
+	].
+
+:- pred int_method(int::in) is semidet.
+
+int_method(1).
 

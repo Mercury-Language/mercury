@@ -159,7 +159,8 @@ base_typeclass_info__gen_superclass_rvals(ClassId, ModuleInfo, InstanceTypes,
 		SuperClassRvals) :-
 	module_info_classes(ModuleInfo, ClassTable),
 	map__lookup(ClassTable, ClassId, ClassDefn),
-	ClassDefn = hlds_class_defn(SuperClassConstraints, ClassVars, _, _, _),
+	ClassDefn = hlds_class_defn(_, SuperClassConstraints, ClassVars,
+			_, _, _, _),
 	map__from_corresponding_lists(ClassVars, InstanceTypes, VarToType),
 	GetRval = lambda([Constraint::in, Rval::out] is det,
 		(

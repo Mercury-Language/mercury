@@ -729,8 +729,15 @@ determinism_to_code_model(failure,     model_semi).
 	% Information about a single `typeclass' declaration
 :- type hlds_class_defn 
 	--->	hlds_class_defn(
+			import_status,
 			list(class_constraint), % SuperClasses
 			list(tvar),		% ClassVars 
+			class_interface,	% The interface from the
+						% original declaration,
+						% used by intermod.m to
+						% write out the interface
+						% for a local typeclass to
+						% the `.opt' file.
 			hlds_class_interface, 	% Methods
 			tvarset,		% VarNames
 			prog_context		% Location of declaration

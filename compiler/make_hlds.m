@@ -2135,14 +2135,20 @@ module_add_class_defn(Module0, Constraints, Name, Vars, Interface, VarSet,
 	{ module_info_superclasses(Module0, SuperClasses0) },
 	{ list__length(Vars, ClassArity) },
 	{ ClassId = class_id(Name, ClassArity) },
+	{ Status = item_status(ImportStatus, _) },
 	(
 		{ map__search(Classes0, ClassId, OldValue) }
 	->
-		{ OldValue = hlds_class_defn(_, _, _, _, OldContext) },
-		multiple_def_error(Name, ClassArity, "typeclass", 
-			Context, OldContext),
-		io__set_exit_status(1),
-		{ Module = Module0 }
+		{ Module = Module0 },
+		( { ImportStatus \= opt_imported } ->
+			{ OldValue = hlds_class_defn(_, _, _, _, _, _,
+					OldContext) },
+			multiple_def_error(Name, ClassArity, "typeclass", 
+				Context, OldContext),
+			io__set_exit_status(1)
+		;
+			[]
+		)
 	;
 		module_add_class_interface(Module0, Name, Vars, Interface,
 			Status, PredProcIds0, Module1),
@@ -2162,8 +2168,8 @@ module_add_class_defn(Module0, Constraints, Name, Vars, Interface, VarSet,
 			%
 		{ list__sort(PredProcIds1, PredProcIds) },
 
-		{ Value = hlds_class_defn(Constraints, Vars, PredProcIds, 
-			VarSet, Context) },
+		{ Value = hlds_class_defn(ImportStatus, Constraints,
+			Vars, Interface, PredProcIds, VarSet, Context) },
 		{ map__det_insert(Classes0, ClassId, Value, Classes) },
 		{ module_info_set_classes(Module1, Classes, Module2) },
 

@@ -351,6 +351,11 @@
 
 	;	class_method	% Requests that this predicate be transformed
 				% into the appropriate call to a class method
+	;	class_instance_method
+				% This predicate was automatically
+				% generated for the implementation of
+				% a class method for an instance.
+
 	;	(impure)	% Requests that no transformation that would
 				% be inappropriate for impure code be
 				% performed on calls to this predicate.  This
