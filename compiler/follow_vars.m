@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -202,9 +202,9 @@ find_follow_vars_in_goal_expr(unify(A,B,C,D,E), _, _ModuleInfo,
 		FollowVarsMap = FollowVarsMap0
 	).
 
-find_follow_vars_in_goal_expr(pragma_foreign_code(A,B,C,D,E,F,G),
+find_follow_vars_in_goal_expr(foreign_proc(A,B,C,D,E,F,G),
 		_, _ModuleInfo, FollowVarsMap, NextNonReserved,
-		pragma_foreign_code(A,B,C,D,E,F,G),
+		foreign_proc(A,B,C,D,E,F,G),
 		FollowVarsMap, NextNonReserved).
 
 find_follow_vars_in_goal_expr(bi_implication(_,_), _, _, _, _, _, _, _) :-

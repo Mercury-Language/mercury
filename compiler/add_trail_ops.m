@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -252,7 +252,7 @@ goal_expr_add_trail_ops(generic_call(A,B,C,D), GI, generic_call(A,B,C,D) - GI)
 goal_expr_add_trail_ops(unify(A,B,C,D,E), GI, unify(A,B,C,D,E) - GI) --> [].
 
 goal_expr_add_trail_ops(PragmaForeign, GoalInfo, Goal) -->
-	{ PragmaForeign = pragma_foreign_code(_,_,_,_,_,_,Impl) },
+	{ PragmaForeign = foreign_proc(_,_,_,_,_,_,Impl) },
 	( { Impl = nondet(_,_,_,_,_,_,_,_,_) } ->
 		% XXX Implementing trailing for nondet pragma foreign_code
 		% via transformation is difficult, because there's nowhere

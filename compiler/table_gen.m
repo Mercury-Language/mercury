@@ -296,7 +296,7 @@ table_gen__process_procs(PredId, [ProcId | ProcIds], Module0,
 		proc_info_goal(ProcInfo0, BodyGoal),
 		some [SubGoal] (
 			goal_contains_goal(BodyGoal, SubGoal),
-			SubGoal = pragma_foreign_code(Attrs, _,_,_,_,_,_)
+			SubGoal = foreign_proc(Attrs, _,_,_,_,_,_)
 				- _,
 			tabled_for_io(Attrs, tabled_for_io)
 		)

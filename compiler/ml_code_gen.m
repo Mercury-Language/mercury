@@ -2012,7 +2012,7 @@ ml_gen_goal_expr(unify(_A, _B, _, Unification, _), CodeModel, Context,
 	ml_gen_unification(Unification, CodeModel, Context,
 		MLDS_Decls, MLDS_Statements).
 
-ml_gen_goal_expr(pragma_foreign_code(Attributes,
+ml_gen_goal_expr(foreign_proc(Attributes,
                 PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes, PragmaImpl),
 		CodeModel, OuterContext, MLDS_Decls, MLDS_Statements) -->
         (
@@ -2043,7 +2043,7 @@ ml_gen_goal_expr(bi_implication(_, _), _, _, _, _) -->
 	% these should have been expanded out by now
 	{ error("ml_gen_goal_expr: unexpected bi_implication") }.
 
-:- pred ml_gen_nondet_pragma_c_code(code_model, pragma_foreign_code_attributes,
+:- pred ml_gen_nondet_pragma_c_code(code_model, pragma_foreign_proc_attributes,
 		pred_id, proc_id, list(prog_var),
 		list(maybe(pair(string, mode))), list(prog_type), prog_context,
 		string, maybe(prog_context), string, maybe(prog_context),
@@ -2240,7 +2240,7 @@ ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
 	{ MLDS_Decls = ConvDecls }.
 
 :- pred ml_gen_ordinary_pragma_c_code(code_model, 
-		pragma_foreign_code_attributes,
+		pragma_foreign_proc_attributes,
 		pred_id, proc_id, list(prog_var),
 		list(maybe(pair(string, mode))), list(prog_type),
 		string, prog_context,

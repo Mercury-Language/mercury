@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -200,7 +200,7 @@ code_aux__goal_is_flat_2(some(_Vars, _, Goal)) :-
 code_aux__goal_is_flat_2(generic_call(_, _, _, _)).
 code_aux__goal_is_flat_2(call(_, _, _, _, _, _)).
 code_aux__goal_is_flat_2(unify(_, _, _, _, _)).
-code_aux__goal_is_flat_2(pragma_foreign_code(_, _, _, _, _, _, _)).
+code_aux__goal_is_flat_2(foreign_proc(_, _, _, _, _, _, _)).
 
 %-----------------------------------------------------------------------------%
 

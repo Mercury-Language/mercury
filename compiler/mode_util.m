@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1393,8 +1393,8 @@ recompute_instmap_delta_2(Atomic, unify(A, Rhs0, UniMode0, Uni, E), GoalInfo,
 	).
 
 recompute_instmap_delta_2(_, 
-		pragma_foreign_code(A, PredId, ProcId, Args, E, F, G), _,
-		pragma_foreign_code(A, PredId, ProcId, Args, E, F, G), 
+		foreign_proc(A, PredId, ProcId, Args, E, F, G), _,
+		foreign_proc(A, PredId, ProcId, Args, E, F, G), 
 		VarTypes, InstMap, InstMapDelta) -->
 	recompute_instmap_delta_call(PredId, ProcId,
 		Args, VarTypes, InstMap, InstMapDelta).

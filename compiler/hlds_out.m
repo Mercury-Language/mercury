@@ -1569,11 +1569,11 @@ hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
 		[]
 	).
 
-hlds_out__write_goal_2(pragma_foreign_code(Attributes, _, _, ArgVars,
+hlds_out__write_goal_2(foreign_proc(Attributes, _, _, ArgVars,
 		ArgNames, _, PragmaCode), _, _, _, Indent, Follow, _) -->
 	{ foreign_language(Attributes, ForeignLang) },
 	hlds_out__write_indent(Indent),
-	io__write_string("$pragma_foreign_code( /* "),
+	io__write_string("$pragma_foreign_proc( /* "),
 	io__write_string(foreign_language_string(ForeignLang)),
 	io__write_string(" */ ["),
 	hlds_out__write_varnum_list(ArgVars),

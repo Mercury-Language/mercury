@@ -276,8 +276,8 @@ lambda__process_goal_2(generic_call(A,B,C,D), GoalInfo,
 lambda__process_goal_2(call(A,B,C,D,E,F), GoalInfo,
 			call(A,B,C,D,E,F) - GoalInfo) -->
 	[].
-lambda__process_goal_2(pragma_foreign_code(A,B,C,D,E,F,G), GoalInfo,
-			pragma_foreign_code(A,B,C,D,E,F,G) - GoalInfo) -->
+lambda__process_goal_2(foreign_proc(A,B,C,D,E,F,G), GoalInfo,
+			foreign_proc(A,B,C,D,E,F,G) - GoalInfo) -->
 	[].
 lambda__process_goal_2(bi_implication(_, _), _, _) -->
 	% these should have been expanded out by now

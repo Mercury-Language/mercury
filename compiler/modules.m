@@ -1027,8 +1027,8 @@ split_clauses_and_decls([ItemAndContext0 | Items0],
 % header file, which currently we don't.
 
 pragma_allowed_in_interface(foreign_decl(_, _), no).
-pragma_allowed_in_interface(foreign(_, _), no).
-pragma_allowed_in_interface(foreign(_, _, _, _, _, _), no).
+pragma_allowed_in_interface(foreign_code(_, _), no).
+pragma_allowed_in_interface(foreign_proc(_, _, _, _, _, _), no).
 pragma_allowed_in_interface(inline(_, _), no).
 pragma_allowed_in_interface(no_inline(_, _), no).
 pragma_allowed_in_interface(obsolete(_, _), yes).
@@ -3277,8 +3277,8 @@ item_list_contains_foreign_code([Item|Items]) :-
 		% do if there is some foreign_code, not just foreign_decls.
 		% Counting foreign_decls here causes problems with
 		% intermodule optimization.
-		(	Pragma = foreign(_Lang, _)
-		;	Pragma = foreign(_, _, _, _, _, _)
+		(	Pragma = foreign_code(_Lang, _)
+		;	Pragma = foreign_proc(_, _, _, _, _, _)
 		;	% XXX `pragma export' should not be treated as
 			% foreign, but currently mlds_to_gcc.m doesn't
 			% handle that declaration, and instead just punts

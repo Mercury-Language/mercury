@@ -631,8 +631,8 @@ inlining__inlining_in_goal(unify(A, B, C, D, E) - GoalInfo,
 		unify(A, B, C, D, E) - GoalInfo) --> [].
 
 inlining__inlining_in_goal(
-		pragma_foreign_code(A, B, C, D, E, F, G) - GoalInfo,
-		pragma_foreign_code(A, B, C, D, E, F, G) - GoalInfo) --> [].
+		foreign_proc(A, B, C, D, E, F, G) - GoalInfo,
+		foreign_proc(A, B, C, D, E, F, G) - GoalInfo) --> [].
 
 inlining__inlining_in_goal(bi_implication(_, _) - _, _) -->
 	% these should have been expanded out by now
@@ -890,7 +890,7 @@ inlining__can_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 	proc_info_goal(ProcInfo, CalledGoal),
 	\+ (
 		HighLevelCode = no,
-		CalledGoal = pragma_foreign_code(_,_,_,_,_,_,_) - _,
+		CalledGoal = foreign_proc(_,_,_,_,_,_,_) - _,
 		proc_info_interface_determinism(ProcInfo, Detism),
 		( Detism = nondet ; Detism = multidet )
 	),
@@ -901,7 +901,7 @@ inlining__can_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 	globals__get_target(Globals, Target),
 	(
 		(
-		CalledGoal = pragma_foreign_code(ForeignAttributes,
+		CalledGoal = foreign_proc(ForeignAttributes,
 			_,_,_,_,_,_) - _,
 		foreign_language(ForeignAttributes, ForeignLanguage)
 		)

@@ -745,7 +745,7 @@ compute_expr_purity(if_then_else(Vars,Goali0,Goalt0,Goale0,Store),
 	{ worst_purity(Purity1, Purity2, Purity12) },
 	{ worst_purity(Purity12, Purity3, Purity) }.
 compute_expr_purity(Ccode, Ccode, _, _, Purity) -->
-	{ Ccode = pragma_foreign_code(_,PredId,_,_,_,_,_) },
+	{ Ccode = foreign_proc(_,PredId,_,_,_,_,_) },
 	ModuleInfo =^ module_info,
 	{ module_info_preds(ModuleInfo, Preds) },
 	{ map__lookup(Preds, PredId, CalledPredInfo) },

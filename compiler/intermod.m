@@ -503,8 +503,8 @@ intermod__traverse_goal(if_then_else(Vars, Cond0, Then0, Else0, SM) - Info,
 
 	% Inlineable exported pragma_foreign_code goals can't use any
 	% non-exported types, so we just write out the clauses. 
-intermod__traverse_goal(pragma_foreign_code(A,B,C,D,E,F,G) - Info,
-		pragma_foreign_code(A,B,C,D,E,F,G) - Info, yes) --> [].
+intermod__traverse_goal(foreign_proc(A,B,C,D,E,F,G) - Info,
+		foreign_proc(A,B,C,D,E,F,G) - Info, yes) --> [].
 
 intermod__traverse_goal(bi_implication(_, _) - _, _, _) -->
 	% these should have been expanded out by now
@@ -1721,13 +1721,13 @@ intermod__write_foreign_code(SymName, PredOrFunc, HeadVars, Varset,
 			{ Goal = conj(Goals) - _ },
 			{ list__filter(
 				lambda([X::in] is semidet, (
-				    X = pragma_foreign_code(_,_,_,_,_,_,_) - _
+				    X = foreign_proc(_,_,_,_,_,_,_) - _
 				)),
 				Goals, [ForeignCodeGoal]) },
-			{ ForeignCodeGoal = pragma_foreign_code(Attributes,
+			{ ForeignCodeGoal = foreign_proc(Attributes,
 				_, _, Vars, Names, _, PragmaCode) - _ }
 		;
-			{ Goal = pragma_foreign_code(Attributes,
+			{ Goal = foreign_proc(Attributes,
 				_, _, Vars, Names, _, PragmaCode) - _ }
 		)
 	->	
@@ -1742,7 +1742,7 @@ intermod__write_foreign_code(SymName, PredOrFunc, HeadVars, Varset,
 
 :- pred intermod__write_foreign_clauses(proc_table::in, list(proc_id)::in, 
 		pred_or_func::in, pragma_foreign_code_impl::in,
-		pragma_foreign_code_attributes::in, list(prog_var)::in,
+		pragma_foreign_proc_attributes::in, list(prog_var)::in,
 		prog_varset::in, list(maybe(pair(string, mode)))::in,
 		sym_name::in, io__state::di, io__state::uo) is det.
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -214,8 +214,8 @@ detect_switches_in_goal_2(switch(Var, CanFail, Cases0, SM), _, InstMap,
 		VarTypes, ModuleInfo, switch(Var, CanFail, Cases, SM)) :-
 	detect_switches_in_cases(Cases0, InstMap, VarTypes, ModuleInfo, Cases).
 
-detect_switches_in_goal_2(pragma_foreign_code(A,B,C,D,E,F,G), _, _, _, _,
-		pragma_foreign_code(A,B,C,D,E,F,G)).
+detect_switches_in_goal_2(foreign_proc(A,B,C,D,E,F,G), _, _, _, _,
+		foreign_proc(A,B,C,D,E,F,G)).
 detect_switches_in_goal_2(bi_implication(_, _), _, _, _, _, _) :-
 	% these should have been expanded out by now
 	error("detect_switches_in_goal_2: unexpected bi_implication").

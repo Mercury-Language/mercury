@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -91,8 +91,8 @@ lco_in_goal_2(call(A,B,C,D,E,F), _ModuleInfo, call(A,B,C,D,E,F)).
 
 lco_in_goal_2(unify(A,B,C,D,E), _ModuleInfo, unify(A,B,C,D,E)).
 
-lco_in_goal_2(pragma_foreign_code(A,B,C,D,E,F,G), _,
-		pragma_foreign_code(A,B,C,D,E,F,G)).
+lco_in_goal_2(foreign_proc(A,B,C,D,E,F,G), _,
+		foreign_proc(A,B,C,D,E,F,G)).
 
 lco_in_goal_2(bi_implication(_, _), _, _) :-
 	% these should have been expanded out by now

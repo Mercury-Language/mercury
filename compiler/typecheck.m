@@ -1074,8 +1074,8 @@ typecheck_goal_2(unify(A, B0, Mode, Info, UnifyContext),
 	typecheck_unification(A, B0, B).
 typecheck_goal_2(switch(_, _, _, _), _) -->
 	{ error("unexpected switch") }.
-typecheck_goal_2(pragma_foreign_code(A, PredId, C, Args, E, F, G), 
-		pragma_foreign_code(A, PredId, C, Args, E, F, G)) -->
+typecheck_goal_2(foreign_proc(A, PredId, C, Args, E, F, G), 
+		foreign_proc(A, PredId, C, Args, E, F, G)) -->
 	% pragma_foreign_codes are automatically generated, so they
 	% will always be type-correct, but we need to do
 	% the type analysis in order to correctly compute the

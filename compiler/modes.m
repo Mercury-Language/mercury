@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1269,7 +1269,7 @@ modecheck_goal_expr(switch(Var, CanFail, Cases0, SM), GoalInfo0,
 
 	% to modecheck a pragma_c_code, we just modecheck the proc for 
 	% which it is the goal.
-modecheck_goal_expr(pragma_foreign_code(Attributes, PredId, ProcId0,
+modecheck_goal_expr(foreign_proc(Attributes, PredId, ProcId0,
 		Args0, ArgNameMap, OrigArgTypes, PragmaCode),
 		GoalInfo, Goal) -->
 	mode_checkpoint(enter, "pragma_foreign_code"),
@@ -1283,7 +1283,7 @@ modecheck_goal_expr(pragma_foreign_code(Attributes, PredId, ProcId0,
 	modecheck_call_pred(PredId, ProcId0, Args0, DeterminismKnown,
 				ProcId, Args, ExtraGoals),
 
-	{ Pragma = pragma_foreign_code(Attributes, PredId, ProcId,
+	{ Pragma = foreign_proc(Attributes, PredId, ProcId,
 			Args0, ArgNameMap, OrigArgTypes, PragmaCode) },
 	handle_extra_goals(Pragma, ExtraGoals, GoalInfo, Args0, Args,
 			InstMap0, Goal),

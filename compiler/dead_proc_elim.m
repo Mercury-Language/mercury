@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -485,7 +485,7 @@ dead_proc_elim__examine_expr(call(PredId, ProcId, _,_,_,_),
 		NewNotation = yes(1),
 		map__set(Needed0, proc(PredId, ProcId), NewNotation, Needed)
 	).
-dead_proc_elim__examine_expr(pragma_foreign_code(_, PredId, ProcId, _, 
+dead_proc_elim__examine_expr(foreign_proc(_, PredId, ProcId, _, 
 		_, _, _), _CurrProc, Queue0, Queue, Needed0, Needed) :-
 	queue__put(Queue0, proc(PredId, ProcId), Queue),
 	map__set(Needed0, proc(PredId, ProcId), no, Needed).
@@ -881,7 +881,7 @@ pre_modecheck_examine_goal(some(_, _, Goal) - _) -->
 	pre_modecheck_examine_goal(Goal).
 pre_modecheck_examine_goal(call(_, _, _, _, _, PredName) - _) -->
 	dead_pred_info_add_pred_name(PredName).
-pre_modecheck_examine_goal(pragma_foreign_code(_, _, _, _, _, _, _) - _) -->
+pre_modecheck_examine_goal(foreign_proc(_, _, _, _, _, _, _) - _) -->
 	[].
 pre_modecheck_examine_goal(unify(_, Rhs, _, _, _) - _) -->
 	pre_modecheck_examine_unify_rhs(Rhs).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 University of Melbourne.
+% Copyright (C) 1998-2001 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -853,8 +853,8 @@ rl_exprn__goal(switch(Var, _, Cases, _) - _, Fail, Code) -->
 	{ Code = tree(SwitchCode, node([rl_PROC_label(EndSwitch)])) }.
 rl_exprn__goal(generic_call(_, _, _, _) - _, _, _) -->
 	{ error("rl_exprn__goal: higher-order and class-method calls not yet implemented") }.
-rl_exprn__goal(pragma_foreign_code(_, _, _, _, _, _, _) - _, _, _) -->
-	{ error("rl_exprn__goal: pragma_c_code not yet implemented") }.
+rl_exprn__goal(foreign_proc(_, _, _, _, _, _, _) - _, _, _) -->
+	{ error("rl_exprn__goal: foreign_proc not yet implemented") }.
 rl_exprn__goal(some(_, _, Goal) - _, Fail, Code) -->
 	rl_exprn__goal(Goal, Fail, Code).
 rl_exprn__goal(bi_implication(_, _) - _, _, _) -->

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -508,18 +508,18 @@ unique_modes__check_goal_2(switch(Var, CanFail, Cases0, SM), GoalInfo0,
 
 	% to modecheck a pragma_c_code, we just modecheck the proc for 
 	% which it is the goal.
-unique_modes__check_goal_2(pragma_foreign_code(Attributes,
+unique_modes__check_goal_2(foreign_proc(Attributes,
 		PredId, ProcId0, Args, ArgNameMap, OrigArgTypes, PragmaCode),
 		_GoalInfo, Goal) -->
-	mode_checkpoint(enter, "pragma_c_code"),
+	mode_checkpoint(enter, "foreign_proc"),
 	=(ModeInfo),
 	{ mode_info_get_call_id(ModeInfo, PredId, CallId) },
 	mode_info_set_call_context(call(call(CallId))),
 	unique_modes__check_call(PredId, ProcId0, Args, ProcId),
-	{ Goal = pragma_foreign_code(Attributes, PredId, ProcId, Args,
+	{ Goal = foreign_proc(Attributes, PredId, ProcId, Args,
 			ArgNameMap, OrigArgTypes, PragmaCode) },
 	mode_info_unset_call_context,
-	mode_checkpoint(exit, "pragma_c_code").
+	mode_checkpoint(exit, "foreign_proc").
 
 unique_modes__check_goal_2(bi_implication(_, _), _, _) -->
 	% these should have been expanded out by now

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -51,9 +51,9 @@
 	% this interface may change.
 :- pred foreign__extrude_pragma_implementation(foreign_language,
 		list(pragma_var), sym_name, pred_or_func, prog_context,
-		module_info, pragma_foreign_code_attributes,
+		module_info, pragma_foreign_proc_attributes,
 		pragma_foreign_code_impl, 
-		module_info, pragma_foreign_code_attributes,
+		module_info, pragma_foreign_proc_attributes,
 		pragma_foreign_code_impl).
 :- mode foreign__extrude_pragma_implementation(in, in, in, in, in,
 		in, in, in, out, out, out) is det.

@@ -436,9 +436,9 @@ traverse_goal(_, generic_call(GenericCall, Args, _, _), UseInf0, UseInf) :-
 	set_list_vars_used(UseInf0, CallArgs, UseInf1),
 	set_list_vars_used(UseInf1, Args, UseInf).
 
-% handle pragma foreign(...) -
+% handle pragma foreign_proc(...) -
 % only those arguments which have names can be used in the foreign code.
-traverse_goal(_, pragma_foreign_code(_, _, _, Args, Names, _, _),
+traverse_goal(_, foreign_proc(_, _, _, Args, Names, _, _),
 		UseInf0, UseInf) :-
 	assoc_list__from_corresponding_lists(Args, Names, ArgsAndNames),
 	ArgIsUsed = lambda([ArgAndName::in, Arg::out] is semidet, (
@@ -1275,7 +1275,7 @@ fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 
 fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-
-	GoalExpr = pragma_foreign_code(_, _, _, _, _, _, _).
+	GoalExpr = foreign_proc(_, _, _, _, _, _, _).
 
 fixup_goal_expr(_, _, _, _, bi_implication(_, _) - _, _) :-
 	% these should have been expanded out by now

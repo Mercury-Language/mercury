@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -238,7 +238,7 @@ dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 		NewPredIds = NewPredIds0,
 		Goal = Goal0
 	;
-		GoalExpr0 = pragma_foreign_code(_, _, _, _, _, _, _),
+		GoalExpr0 = foreign_proc(_, _, _, _, _, _, _),
 		ModuleInfo = ModuleInfo0,
 		NewPredIds = NewPredIds0,
 		Goal = Goal0
@@ -473,7 +473,7 @@ dnf__is_atomic_expr(MaybeNonAtomic, InNeg, InSome,
 		IsAtomic = no
 	).
 dnf__is_atomic_expr(_, _, _, if_then_else(_, _, _, _, _), no).
-dnf__is_atomic_expr(_, _, _, pragma_foreign_code(_, _, _, _, _, _, _), yes).
+dnf__is_atomic_expr(_, _, _, foreign_proc(_, _, _, _, _, _, _), yes).
 dnf__is_atomic_expr(_, _, _, bi_implication(_, _), no).
 
 :- pred dnf__free_of_nonatomic(hlds_goal::in,
@@ -512,7 +512,7 @@ dnf__free_of_nonatomic(if_then_else(_, Cond, Then, Else, _) - GoalInfo,
 	dnf__free_of_nonatomic(Cond, NonAtomic),
 	dnf__free_of_nonatomic(Then, NonAtomic),
 	dnf__free_of_nonatomic(Else, NonAtomic).
-dnf__free_of_nonatomic(pragma_foreign_code(_, _, _, _, _, _, _) - _,
+dnf__free_of_nonatomic(foreign_proc(_, _, _, _, _, _, _) - _,
 		_NonAtomic).
 
 :- pred dnf__goals_free_of_nonatomic(list(hlds_goal)::in,

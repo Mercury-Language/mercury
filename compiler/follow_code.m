@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -122,8 +122,8 @@ move_follow_code_in_goal_2(call(A,B,C,D,E,F), call(A,B,C,D,E,F), _, R, R).
 
 move_follow_code_in_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E), _, R, R).
 
-move_follow_code_in_goal_2(pragma_foreign_code(A,B,C,D,E,F,G), 
-			pragma_foreign_code(A,B,C,D,E,F,G), _, R, R).
+move_follow_code_in_goal_2(foreign_proc(A,B,C,D,E,F,G), 
+			foreign_proc(A,B,C,D,E,F,G), _, R, R).
 
 move_follow_code_in_goal_2(bi_implication(_, _), _, _, _, _) :-
 	% these should have been expanded out by now

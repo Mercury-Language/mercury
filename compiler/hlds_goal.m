@@ -160,22 +160,22 @@
 					% information.
 		)
 
-		% Foreign code from a pragma foreign_code(...) decl.
+		% Foreign code from a pragma foreign_proc(...) decl.
 
-	;	pragma_foreign_code(
-			pragma_foreign_code_attributes,
+	;	foreign_proc(
+			pragma_foreign_proc_attributes,
 			pred_id,	% The called predicate
 			proc_id, 	% The mode of the predicate
 			list(prog_var),	% The (Mercury) argument variables
 			list(maybe(pair(string, mode))),
-					% C variable names and the original
-					% mode declaration for each of the
-					% arguments. A no for a particular 
-					% argument means that it is not used
-					% by the C code.  (In particular, the
-					% type_info variables introduced by
-					% polymorphism.m might be represented
-					% in this way).
+					% Foreign variable names and the
+					% original mode declaration for each
+					% of the arguments. A no for a
+					% particular argument means that it is
+					% not used by the foreign code.  (In
+					% particular, the type_info variables
+					% introduced by polymorphism.m might
+					% be represented in this way).
 			list(type),	% The original types of the arguments.
 					% (With inlining, the actual types may
 					% be instances of the original types.)
@@ -1519,7 +1519,7 @@ goal_has_foreign(Goal) = HasForeign :-
 		;	no
 		)
 	;
-		GoalExpr = pragma_foreign_code(_, _, _, _, _, _, _),
+		GoalExpr = foreign_proc(_, _, _, _, _, _, _),
 		HasForeign = yes
 	;
 		GoalExpr = par_conj(Goals, _),
@@ -1550,7 +1550,7 @@ goal_is_atomic(disj([], _)).
 goal_is_atomic(generic_call(_,_,_,_)).
 goal_is_atomic(call(_,_,_,_,_,_)).
 goal_is_atomic(unify(_,_,_,_,_)).
-goal_is_atomic(pragma_foreign_code(_,_,_,_,_,_,_)).
+goal_is_atomic(foreign_proc(_,_,_,_,_,_,_)).
 
 %-----------------------------------------------------------------------------%
 
@@ -1645,7 +1645,7 @@ set_goal_contexts_2(_, Goal, Goal) :-
 set_goal_contexts_2(_, Goal, Goal) :-
 	Goal = unify(_, _, _, _, _).
 set_goal_contexts_2(_, Goal, Goal) :-
-	Goal = pragma_foreign_code(_, _, _, _, _, _, _).
+	Goal = foreign_proc(_, _, _, _, _, _, _).
 set_goal_contexts_2(Context, bi_implication(LHS0, RHS0),
 		bi_implication(LHS, RHS)) :-
 	set_goal_contexts(Context, LHS0, LHS),

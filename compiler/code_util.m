@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -475,12 +475,12 @@ code_util__goal_may_allocate_heap_2(unify(_, _, _, Unification, _), May) :-
 	;
 		May = no
 	).
-	% We cannot safely say that a C code fragment does not allocate memory
-	% without knowing all the #defined macros that expand to incr_hp and
-	% variants thereof.
-	% XXX although you could make it an attribute of the C code and
+	% We cannot safely say that a foreign code fragment does not
+	% allocate memory without knowing all the #defined macros that
+	% expand to incr_hp and variants thereof.
+	% XXX although you could make it an attribute of the foreign code and
 	% trust the programmer
-code_util__goal_may_allocate_heap_2(pragma_foreign_code(_,_,_,_,_,_,_), yes).
+code_util__goal_may_allocate_heap_2(foreign_proc(_,_,_,_,_,_,_), yes).
 code_util__goal_may_allocate_heap_2(some(_Vars, _, Goal), May) :-
 	code_util__goal_may_allocate_heap(Goal, May).
 code_util__goal_may_allocate_heap_2(not(Goal), May) :-
@@ -544,11 +544,11 @@ code_util__goal_may_alloc_temp_frame(Goal - _GoalInfo, May) :-
 code_util__goal_may_alloc_temp_frame_2(generic_call(_, _, _, _), no).
 code_util__goal_may_alloc_temp_frame_2(call(_, _, _, _, _, _), no).
 code_util__goal_may_alloc_temp_frame_2(unify(_, _, _, _, _), no).
-	% We cannot safely say that a C code fragment does not allocate
+	% We cannot safely say that a foreign code fragment does not allocate
 	% temporary nondet frames without knowing all the #defined macros
 	% that expand to mktempframe and variants thereof. The performance
 	% impact of being too conservative is probably not too bad.
-code_util__goal_may_alloc_temp_frame_2(pragma_foreign_code(_,_,_,_,_,_,_),
+code_util__goal_may_alloc_temp_frame_2(foreign_proc(_,_,_,_,_,_,_),
 		yes).
 code_util__goal_may_alloc_temp_frame_2(some(_Vars, _, Goal), May) :-
 	Goal = _ - GoalInfo,
@@ -811,7 +811,7 @@ code_util__count_recursive_calls_2(some(_, _, Goal),
 code_util__count_recursive_calls_2(unify(_, _, _, _, _), _, _, 0, 0).
 code_util__count_recursive_calls_2(generic_call(_, _, _, _), _, _,
 		0, 0).
-code_util__count_recursive_calls_2(pragma_foreign_code(_, _, _, _, _, _, _),
+code_util__count_recursive_calls_2(foreign_proc(_, _, _, _, _, _, _),
 		_, _, 0, 0).
 code_util__count_recursive_calls_2(call(CallPredId, CallProcId, _, _, _, _),
 		PredId, ProcId, Count, Count) :-

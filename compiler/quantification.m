@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -474,8 +474,8 @@ implicitly_quantify_goal_2(
 	{ union(NonLocalVars1, NonLocalVars2, NonLocalVars) },
 	quantification__set_nonlocals(NonLocalVars).
 
-implicitly_quantify_goal_2(pragma_foreign_code(A,B,C,Vars,E,F,G), _,
-		pragma_foreign_code(A,B,C,Vars,E,F,G)) --> 
+implicitly_quantify_goal_2(foreign_proc(A,B,C,Vars,E,F,G), _,
+		foreign_proc(A,B,C,Vars,E,F,G)) --> 
 	implicitly_quantify_atomic_goal(Vars).
 
 implicitly_quantify_goal_2(bi_implication(LHS0, RHS0), Context, Goal) -->
@@ -985,7 +985,7 @@ quantification__goal_vars_2(NonLocalsToRecompute,
 	union(Set5, Set6, Set),
 	union(LambdaSet5, LambdaSet6, LambdaSet).
 
-quantification__goal_vars_2(_, pragma_foreign_code(_,_,_, ArgVars, _, _, _),
+quantification__goal_vars_2(_, foreign_proc(_,_,_, ArgVars, _, _, _),
 		Set0, LambdaSet, Set, LambdaSet) :-
 	insert_list(Set0, ArgVars, Set).
 

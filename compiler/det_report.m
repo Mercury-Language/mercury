@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000 The University of Melbourne.
+% Copyright (C) 1995-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -640,7 +640,7 @@ det_diagnose_goal_2(some(_Vars, _, Goal), _, Desired, Actual,
 	det_diagnose_goal(Goal, InternalDesired, SwitchContext, DetInfo,
 		Diagnosed).
 
-det_diagnose_goal_2(pragma_foreign_code(_, _, _, _, _, _, _), GoalInfo,
+det_diagnose_goal_2(foreign_proc(_, _, _, _, _, _, _), GoalInfo,
 		Desired, _, _, _, yes) -->
 	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),

@@ -279,7 +279,7 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 			tree(ElseCode,
 			     EndofIfCode))))))
 	;
-		GoalExpr = pragma_foreign_code(_, _, _, _, _, _, _),
+		GoalExpr = foreign_proc(_, _, _, _, _, _, _),
 		Code = node([not_supported]),
 		ByteInfo = ByteInfo0
 	;
