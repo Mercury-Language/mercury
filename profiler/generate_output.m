@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -378,7 +378,7 @@ process_prof_node_children([C | Cs], CycleNum, CycleMap, Prof, OutputChildList,
 
 % remove_child_cycle_members
 %	removes any members of the same cycle from the child listing
-%	of a predicate and add's them to a new list
+%	of a predicate and adds them to a new list
 %
 :- pred remove_child_cycle_members(list(pred_info), int, cycle_map, 
 						list(pred_info), list(child)).
