@@ -75,7 +75,7 @@ prove_termination_in_scc(SCC, Module, PassInfo, SingleArgs, Termination) :-
 			% Don't try single arg analysis if it cannot cure
 			% the reason for the failure of the main analysis.
 			\+ (
-				member(Error, Errors),
+				list__member(Error, Errors),
 				Error = _ - imported_pred
 			),
 			prove_termination_in_scc_single_arg(SCC,

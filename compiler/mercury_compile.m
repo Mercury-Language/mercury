@@ -306,7 +306,7 @@ compiling_to_asm(Globals) :-
 		make_optimization_interface,
 		make_transitive_opt_interface,
 		typecheck_only, errorcheck_only],
-	BoolList = map((func(Opt) = Bool :-
+	BoolList = list__map((func(Opt) = Bool :-
 		globals__lookup_bool_option(Globals, Opt, Bool)),
 		OptionList),
 	bool__or_list(BoolList) = no.

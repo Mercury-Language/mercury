@@ -566,11 +566,11 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		add_pred_marker(Module0, "promise_semipure", Name, Arity,
 			ImportStatus, Context, promised_semipure, [], Module)
 	;
-		{ Pragma = termination_info(PredOrFunc, SymName, ModeList, 
-			MaybeArgSizeInfo, MaybeTerminationInfo) },
-		add_pragma_termination_info(PredOrFunc, SymName, ModeList,
-			MaybeArgSizeInfo, MaybeTerminationInfo, Context,
-			Module0, Module)
+		% Handle pragma termination_info decls later on, in pass 3 --
+		% we need to add function default modes before handling
+		% these pragmas
+		{ Pragma = termination_info(_, _, _, _, _) },
+		{ Module = Module0 }
 	;
 		{ Pragma = terminates(Name, Arity) },
 		add_pred_marker(Module0, "terminates", Name, Arity,
@@ -804,15 +804,25 @@ add_item_clause(pragma(Pragma), Status, Status, Context,
 		add_pragma_type_spec(Pragma, Context, Module0, Module,
 			Info0, Info)
 	;
+ 		{ Pragma = termination_info(PredOrFunc, SymName, ModeList, 
+ 			MaybeArgSizeInfo, MaybeTerminationInfo) }
+ 	->
+ 		add_pragma_termination_info(PredOrFunc, SymName, ModeList,
+ 			MaybeArgSizeInfo, MaybeTerminationInfo, Context,
+ 			Module0, Module),
+ 		{ Info = Info0 }
+ 	;
 		{ Pragma = foreign_type(_, _, Name) }
 	->
 		check_foreign_type(Name, Context, Module0, Module),
 		{ Info = Info0 }	
 	;
-		% don't worry about any pragma decs but c_code, tabling,
-		% type_spec and fact_table here
-		{ Module = Module0 },
-		{ Info = Info0 }	
+ 		% don't worry about any pragma declarations other than the
+ 		% clause-like pragmas (c_code, tabling and fact_table),
+		% foreign_type and the termination_info pragma here,
+		% since they've already been handled earlier, in pass 2
+  		{ Module = Module0 },
+  		{ Info = Info0 }	
 	).
 	
 add_item_clause(promise(PromiseType, Goal, VarSet, UnivVars),

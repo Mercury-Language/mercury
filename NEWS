@@ -287,6 +287,13 @@ Changes to the Mercury compiler:
   (or `--local-constraint-propagation' for a more restricted
   version of the transformation).
 
+* The Mercury compiler can now perform inter-module optimization using
+  information from transitively imported modules. This is especially
+  useful for back-ends which do not support abstract equivalence types
+  properly (for example the .NET backend). To disable this behaviour and
+  only optimize using information from directly imported modules, use the
+  option `--no-read-opt-files-transitively'.
+
 * The `--convert-to-goedel' option has been removed.
   It never really worked anyway.
 

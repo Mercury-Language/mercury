@@ -361,6 +361,7 @@
 		;	opt_level
 		;	opt_space	% default is to optimize time
 		;	intermodule_optimization
+		;	read_opt_files_transitively
 		;	use_opt_files
 		;	use_trans_opt_files
 		;	transitive_optimization
@@ -853,6 +854,7 @@ option_defaults_2(special_optimization_option, [
 	opt_level		-	int_special,
 	opt_space		-	special,
 	intermodule_optimization -	bool(no),
+	read_opt_files_transitively -	bool(yes),
 	use_opt_files		-	bool(no),
 	use_trans_opt_files	-	bool(no),
 	transitive_optimization -	bool(no),
@@ -1390,6 +1392,7 @@ long_option("optimize-space",		opt_space).
 long_option("optimise-space",		opt_space).
 long_option("intermodule-optimization", intermodule_optimization).
 long_option("intermodule-optimisation", intermodule_optimization).
+long_option("read-opt-files-transitively", read_opt_files_transitively).
 long_option("use-opt-files",		use_opt_files).
 long_option("use-trans-opt-files",	use_trans_opt_files).
 long_option("transitive-intermodule-optimization", 
@@ -2908,6 +2911,10 @@ options_help_optimization -->
 		"--transitive-intermodule-optimization",
 		"\tImport the transitive intermodule optimization data.",
 		"\tThis data is imported from `<module>.trans_opt' files.",
+		"--no-read-opt-files-transitively",
+		"\tOnly read the inter-module optimization information",
+		"\tfor directly imported modules, not the transitive",
+		"\tclosure of the imports.",
 		"--use-opt-files",
 		"\tPerform inter-module optimization using any",
 		"\t`.opt' files which are already built,",

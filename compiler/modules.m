@@ -2085,7 +2085,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 					[ModuleName | LongDeps], IntermodDirs,
 					OptDeps, TransOptDeps),
 				{ OptInt0Deps = sort_and_remove_dups(
-					condense(map(get_ancestors,
+					condense(list__map(get_ancestors,
 					OptDeps))) },
 				write_dependencies_list(OptDeps,
 					".opt", DepStream),
@@ -2111,7 +2111,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 					[ModuleName | LongDeps],
 					IntermodDirs, ".opt", OptDeps),
 				{ OptInt0Deps = sort_and_remove_dups(
-					condense(map(get_ancestors,
+					condense(list__map(get_ancestors,
 					OptDeps))) },
 				write_dependencies_list(OptDeps,
 					".opt", DepStream),
@@ -2983,12 +2983,25 @@ generate_dependencies_write_d_files([Dep | Deps],
 	% and save them in the module_imports structure.
 	%
 	{ module_imports_get_module_name(Module0, ModuleName) },
-	{ get_dependencies_from_relation(IntDepsRel, ModuleName, IntDeps) },
-	{ get_dependencies_from_relation(ImplDepsRel, ModuleName, ImplDeps) },
-	{ get_dependencies_from_relation(IndirectDepsRel, ModuleName,
-			IndirectDeps) },
 	{ get_dependencies_from_relation(IndirectOptDepsRel, ModuleName,
 			IndirectOptDeps) },
+	globals__io_lookup_bool_option(intermodule_optimization, Intermod),
+	{ Intermod = yes ->
+		% Be conservative with inter-module optimization -- assume
+		% a module depends on the `.int', `.int2' and `.opt' files
+		% for all transitively imported modules.
+		IntDeps = IndirectOptDeps,
+		ImplDeps = IndirectOptDeps,
+		IndirectDeps = IndirectOptDeps
+	;
+		get_dependencies_from_relation(IntDepsRel,
+			ModuleName, IntDeps),
+		get_dependencies_from_relation(ImplDepsRel,
+			ModuleName, ImplDeps),
+		get_dependencies_from_relation(IndirectDepsRel,
+			ModuleName, IndirectDeps)
+	},
+	
 	{ module_imports_set_int_deps(Module0, IntDeps, Module1) },
 	{ module_imports_set_impl_deps(Module1, ImplDeps, Module2) },
 	{ module_imports_set_indirect_deps(Module2, IndirectDeps, Module) },

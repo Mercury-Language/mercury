@@ -337,8 +337,9 @@ direct_imports(ModuleName, Success, Modules, Info0, Info) -->
 	    { Modules = set__init }
 	;
 		%
-		% We also read `.int' files for modules imported
-		% by `.opt' files.
+		% We also read `.int' files for the modules for
+		% which we read `.opt' files, and for the modules
+		% imported by those modules.
 		%
 	    intermod_imports(ModuleName, Success1,
 			IntermodModules, Info1, Info2),
@@ -350,7 +351,8 @@ direct_imports(ModuleName, Success, Modules, Info0, Info) -->
 		foldl3_maybe_stop_at_error(Info2 ^ keep_going,
 			union_deps(non_intermod_direct_imports),
 			set__to_sorted_list(IntermodModules), Success2,
-			Modules0, Modules1, Info2, Info3),
+			set__union(Modules0, IntermodModules), Modules1,
+			Info2, Info3),
 		{ Success = Success0 `and` Success1 `and` Success2 },
 		{ Modules = set__delete(Modules1, ModuleName) }
 	    )
@@ -464,9 +466,17 @@ intermod_imports(ModuleName, Success, Modules, Info0, Info) -->
 	globals__io_lookup_bool_option(intermodule_optimization, Intermod),
 	(
 		{ Intermod = yes },
-		% XXX Read `.opt' files transitively.
-		non_intermod_direct_imports(ModuleName, Success,
-			Modules, Info0, Info)
+		globals__io_lookup_bool_option(read_opt_files_transitively,
+			Transitive),
+		(
+			{ Transitive = yes },
+			find_transitive_implementation_imports(ModuleName,
+				Success, Modules, Info0, Info)
+		;
+			{ Transitive = no },
+			non_intermod_direct_imports(ModuleName, Success,
+				Modules, Info0, Info)
+		)
 	;
 		{ Intermod = no },
 		{ Info = Info0 },
@@ -592,6 +602,16 @@ init_cached_transitive_dependencies = map__init.
 find_reachable_local_modules(ModuleName, Success, Modules, Info0, Info) -->
 	find_transitive_module_dependencies(all_dependencies, local_module,
 		ModuleName, Success, Modules, Info0, Info).
+
+:- pred find_transitive_implementation_imports(module_name::in, bool::out,
+		set(module_name)::out, make_info::in, make_info::out,
+		io__state::di, io__state::uo) is det.
+
+find_transitive_implementation_imports(ModuleName, Success, Modules,
+		Info0, Info) -->
+	find_transitive_module_dependencies(all_dependencies, any_module,
+		ModuleName, Success, Modules0, Info0, Info),
+	{ Modules = set__insert(Modules0, ModuleName) }.
 
 :- pred find_transitive_interface_imports(module_name::in, bool::out,
 		set(module_name)::out, make_info::in, make_info::out,

@@ -1283,7 +1283,7 @@ wrap_layout_data(LayoutData) = layout_data(LayoutData).
 global_data_init(LayoutData, GlobalData) :-
 	map__init(EmptyDataMap),
 	map__init(EmptyLayoutMap),
-	NonCommon = map(wrap_layout_data, LayoutData),
+	NonCommon = list__map(wrap_layout_data, LayoutData),
 	GlobalData = global_data(EmptyDataMap, EmptyLayoutMap, [], NonCommon).
 
 global_data_add_new_proc_var(GlobalData0, PredProcId, ProcVar, GlobalData) :-

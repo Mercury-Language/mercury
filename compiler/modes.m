@@ -1593,9 +1593,9 @@ check_for_impurity_error(Goal, ImpurityErrors0, ImpurityErrors) -->
 no_non_headvar_unification_goals([], _).
 no_non_headvar_unification_goals([delayed_goal(_,_,Goal-_)|Goals], HeadVars) :-
 	Goal = unify(Var,Rhs,_,_,_),
-	(   member(Var, HeadVars)
+	(   list__member(Var, HeadVars)
 	;   Rhs = var(OtherVar),
-	    member(OtherVar, HeadVars)
+	    list__member(OtherVar, HeadVars)
 	),
 	no_non_headvar_unification_goals(Goals, HeadVars).
 

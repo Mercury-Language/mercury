@@ -365,7 +365,7 @@ figure_out_rec_call_numbers(Goal, N0, N, TailCallSites0, TailCallSites) :-
 		;
 			N = N0
 		),
-		( member(tailcall, Features) ->
+		( set__member(tailcall, Features) ->
 			TailCallSites = [N0|TailCallSites0]
 		;
 			TailCallSites = TailCallSites0
@@ -1085,7 +1085,7 @@ wrap_call(GoalPath, Goal0, Goal, DeepInfo0, DeepInfo) :-
 	classify_call(ModuleInfo, GoalExpr, CallKind),
 	(
 		CallKind = normal(PredProcId),
-		( member(tailcall, GoalFeatures) ->
+		( set__member(tailcall, GoalFeatures) ->
 			generate_call(ModuleInfo, "prepare_for_tail_call", 1,
 				[SiteNumVar], [], PrepareGoal)
 		;
@@ -1175,7 +1175,7 @@ wrap_call(GoalPath, Goal0, Goal, DeepInfo0, DeepInfo) :-
 	DeepInfo4 = DeepInfo3 ^ call_sites :=
 		(DeepInfo3 ^ call_sites ++ [CallSite]),
 	(
-		member(tailcall, GoalFeatures),
+		set__member(tailcall, GoalFeatures),
 		DeepInfo4 ^ maybe_rec_info = yes(RecInfo),
 		RecInfo ^ role = outer_proc(_)
 	->

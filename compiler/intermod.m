@@ -2056,9 +2056,14 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 	{ Ancestors0 = Module0 ^ parent_deps },
 	{ InterfaceDeps0 = Module0 ^ int_deps },
 	{ ImplementationDeps0 = Module0 ^ impl_deps },
-	{ list__condense([Ancestors0, InterfaceDeps0, ImplementationDeps0],
-		OptFiles) },
-	read_optimization_interfaces(OptFiles, [], OptItems, no, OptError),
+	{ OptFiles = list__sort_and_remove_dups(list__condense(
+		[Ancestors0, InterfaceDeps0, ImplementationDeps0])) },
+	globals__io_lookup_bool_option(read_opt_files_transitively,
+		Transitive),
+	{ ModulesProcessed = set__insert(set__sorted_list_to_set(OptFiles),
+				ModuleName) },
+	read_optimization_interfaces(Transitive, ModuleName, OptFiles,
+		ModulesProcessed, [], OptItems, no, OptError),
 
 		%
 		% Append the items to the current item list, using
@@ -2079,8 +2084,8 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 		%
 	globals__io_lookup_bool_option(intermod_unused_args, UnusedArgs),
 	( { UnusedArgs = yes } ->
-		read_optimization_interfaces([ModuleName], [],
-				LocalItems, no, UAError),
+		read_optimization_interfaces(no, ModuleName, [ModuleName],
+				set__init, [], LocalItems, no, UAError),
 		{ IsPragmaUnusedArgs = lambda([Item::in] is semidet, (
 					Item = pragma(PragmaType) - _,
 					PragmaType = unused_args(_,_,_,_,_)
@@ -2112,12 +2117,10 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 	globals__io_get_globals(Globals),
 	{ get_implicit_dependencies(OptItems, Globals,
 		NewImplicitImportDeps0, NewImplicitUseDeps0) },
-	{ NewDeps0 = list__condense([NewImportDeps0, NewUseDeps0,
+	{ NewDeps = list__sort_and_remove_dups(list__condense(
+		[NewImportDeps0, NewUseDeps0,
 		NewImplicitImportDeps0, NewImplicitUseDeps0,
-		AncestorImports1, AncestorImports2]) },
-	{ set__list_to_set(NewDeps0, NewDepsSet0) },
-	{ set__delete_list(NewDepsSet0, [ModuleName | OptFiles], NewDepsSet) },
-	{ set__to_sorted_list(NewDepsSet, NewDeps) },
+		AncestorImports1, AncestorImports2])) },
 
 		%
 		% Read in the .int, and .int2 files needed by the .opt files.
@@ -2143,30 +2146,51 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 		FoundError = no
 	}.
 
-:- pred read_optimization_interfaces(list(module_name)::in, item_list::in,
-			item_list::out, bool::in, bool::out,
-			io__state::di, io__state::uo) is det.
+:- pred read_optimization_interfaces(bool::in, module_name::in,
+	list(module_name)::in, set(module_name)::in,
+	item_list::in, item_list::out, bool::in, bool::out,
+	io__state::di, io__state::uo) is det.
 
-read_optimization_interfaces([], Items, Items, Error, Error) --> [].
-read_optimization_interfaces([Import | Imports],
+read_optimization_interfaces(_, _, [], _, Items, Items, Error, Error) --> [].
+read_optimization_interfaces(Transitive, ModuleName,
+		[ModuleToRead | ModulesToRead], ModulesProcessed0,
 		Items0, Items, Error0, Error) -->
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	maybe_write_string(VeryVerbose,
 			"% Reading optimization interface for module"),
 	maybe_write_string(VeryVerbose, " `"),
-	{ prog_out__sym_name_to_string(Import, ImportString) },
-	maybe_write_string(VeryVerbose, ImportString),
+	{ prog_out__sym_name_to_string(ModuleToRead, ModuleToReadString) },
+	maybe_write_string(VeryVerbose, ModuleToReadString),
 	maybe_write_string(VeryVerbose, "'...\n"),
 	maybe_flush_output(VeryVerbose),
 
-	module_name_to_file_name(Import, ".opt", no, FileName),
-	prog_io__read_opt_file(FileName, Import,
-			ModuleError, Messages, Items1),
+	module_name_to_file_name(ModuleToRead, ".opt", no, FileName),
+	prog_io__read_opt_file(FileName, ModuleToRead,
+			ModuleError, Messages, OptItems),
 	update_error_status(opt, FileName, ModuleError, Messages,
 			Error0, Error1),
-	{ list__append(Items0, Items1, Items2) },
+	{ Items1 = Items0 ++ OptItems },
 	maybe_write_string(VeryVerbose, "% done.\n"),
-	read_optimization_interfaces(Imports, Items2, Items, Error1, Error).
+
+	globals__io_get_globals(Globals),
+	{ Transitive = yes ->
+		get_dependencies(OptItems, NewImportDeps0, NewUseDeps0),
+		get_implicit_dependencies(OptItems, Globals,
+			NewImplicitImportDeps0, NewImplicitUseDeps0),
+		NewDeps0 = list__condense([NewImportDeps0,
+			NewUseDeps0, NewImplicitImportDeps0,
+			NewImplicitUseDeps0]),
+		set__list_to_set(NewDeps0, NewDepsSet0),
+		set__difference(NewDepsSet0, ModulesProcessed0, NewDepsSet),
+		set__union(ModulesProcessed0, NewDepsSet, ModulesProcessed),
+		set__to_sorted_list(NewDepsSet, NewDeps)
+	;
+		ModulesProcessed = ModulesProcessed0,
+		NewDeps = []
+	},
+	read_optimization_interfaces(Transitive, ModuleName,
+		NewDeps ++ ModulesToRead, ModulesProcessed,
+		Items1, Items, Error1, Error).
 
 update_error_status(FileType, FileName, ModuleError, Messages,
 		Error0, Error1) -->

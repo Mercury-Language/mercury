@@ -166,12 +166,14 @@ MCFLAGS-any_mode	=	--infer-types
 # is reported correctly when building the `.opt' file.
 MCFLAGS-assert_in_interface =	--no-intermodule-optimization
 
+MCFLAGS-children =		--no-intermodule-optimization
 MCFLAGS-duplicate_modes	=	--verbose-error-messages
 MCFLAGS-exported_mode =		--infer-all --no-intermodule-optimization
 MCFLAGS-foreign_type =		--compile-only
 MCFLAGS-imported_mode =		--infer-all --no-intermodule-optimization
 MCFLAGS-missing_det_decls =	--no-infer-det
 MCFLAGS-missing_interface_import = --make-interface
+MCFLAGS-missing_parent_import = --no-intermodule-optimization
 MCFLAGS-multisoln_func	=	--infer-types
 MCFLAGS-mode_inf	=	--infer-all
 MCFLAGS-no_exports = 		--halt-at-warn

@@ -5023,6 +5023,13 @@ are different to the @file{@var{module}.opt} files as @samp{.trans_opt}
 files may depend on other @samp{.trans_opt} files, whereas each
 @samp{.opt} file may only depend on the corresponding @samp{.m} file. 
 
+@sp 1
+@item --no-read-opt-files-transitively
+@findex --no-read-opt-files-transitively
+Only read the inter-module optimization information
+for directly imported modules, not the transitive
+closure of the imports.
+
 @item --use-opt-files
 @findex --use-opt-files
 Perform inter-module optimization using any @samp{.opt} files which are 
