@@ -1,10 +1,12 @@
 ;;; gud.el --- Grand Unified Debugger mode for gdb, sdb, dbx, or xdb under Emacs
+;; Modified to also support Mercury debugging using mdb.
 
 ;; Author: Eric S. Raymond <esr@snark.thyrsus.com>
 ;; Maintainer: FSF
 ;; Keywords: unix, tools
 
 ;; Copyright (C) 1992, 1993, 1994, 1995, 1996 Free Software Foundation, Inc.
+;; Copyright (C) 1998 Fergus Henderson.
 
 ;; This file is part of GNU Emacs.
 
@@ -35,6 +37,8 @@
 ;; added the IRIX kluge, re-implemented the Mips-ish variant and added
 ;; a menu. Brian D. Carlstrom <bdc@ai.mit.edu> combined the IRIX kluge with 
 ;; the gud-xdb-directories hack producing gud-dbx-directories.
+;; Fergus Henderson <fjh@cs.mu.oz.au> added support for mdb
+;; (the Mercury debugger).
 
 ;;; Code:
 
@@ -59,15 +63,23 @@
   (apply gud-marker-filter args))
 
 (defun gud-find-file (file)
+  ;;; The commented out code below is a bad idea, because
+  ;;; (1) double-slashes are meaningful on some systems, e.g. cygwin
+  ;;; (2) the argument FILE might not be a string
+  ;
   ;; Don't get confused by double slashes in the name that comes from GDB.
-  (while (string-match "//+" file)
-    (setq file (replace-match "/" t t file)))
+  ;  (while (string-match "//+" file)
+  ;  (setq file (replace-match "/" t t file)))
+  ;
   (funcall gud-find-file file))
+
+(defvar gud-menu-name "Gud"
+  "Name of the top-level menu entry for the debugger.")
 
 ;; Keymap definitions for menu bar entries common to all debuggers and
 ;; slots for debugger-dependent ones in sensible places.  (Defined here
 ;; before use.)
-(defvar gud-menu-map (make-sparse-keymap "Gud") nil)
+(defvar gud-menu-map (make-sparse-keymap gud-menu-name) nil)
 (define-key gud-menu-map [refresh] '("Refresh" . gud-refresh))
 (define-key gud-menu-map [remove] '("Remove Breakpoint" . gud-remove))
 (define-key gud-menu-map [tbreak] nil)	; gdb, sdb and xdb
@@ -103,6 +115,7 @@ are interpreted specially if present.  These are:
   %d	directory of current source file. 
   %l	number of current source line
   %e	text of the C lvalue or function-call expression surrounding point.
+  %i	identifier (i.e. [a-zA-Z0-9_:/-]*) surrounding point.
   %a	text of the hexadecimal address surrounding point
   %p	prefix argument to the command (if any) as a number
 
@@ -159,7 +172,7 @@ we're in the GUD buffer)."
 ;; the rest.
 ;;
 ;; The job of the find-file method is to visit and return the buffer indicated
-;; by the car of gud-tag-frame.  This may be a file name, a tag name, or
+;; by the car of gud-last-frame.  This may be a file name, a tag name, or
 ;; something else.  It would be good if it also copied the Gud menubar entry.
 
 ;; ======================================================================
@@ -229,7 +242,7 @@ we're in the GUD buffer)."
 
 (defun gud-new-keymap (map)
   "Return a new keymap which inherits from MAP and has name `Gud'."
-  (nconc (make-sparse-keymap "Gud") map))
+  (nconc (make-sparse-keymap gud-menu-name) map))
 
 (defun gud-make-debug-menu ()
   "Make sure the current local map has a [menu-bar debug] submap.
@@ -240,7 +253,7 @@ and create such a submap in that new map."
       nil
     (use-local-map (gud-new-keymap (current-local-map)))
     (define-key (current-local-map) [menu-bar debug]
-      (cons "Gud" (gud-new-keymap gud-menu-map)))))
+      (cons gud-menu-name (gud-new-keymap gud-menu-map)))))
 
 (defun gud-gdb-find-file (f)
   (save-excursion
@@ -1023,6 +1036,256 @@ and source-file directory for your debugger."
   (run-hooks 'perldb-mode-hook)
   )
 
+
+;; ======================================================================
+;; mdb (Mercury debugger) functions
+
+;;; History of argument lists passed to mdb.
+(defvar gud-mdb-history nil)
+
+(defun gud-mdb-massage-args (file args)
+  args)
+
+;; There's no guarantee that Emacs will hand the filter the entire
+;; marker at once; it could be broken up across several strings.  We
+;; might even receive a big chunk with several markers in it.  If we
+;; receive a chunk of text which looks like it might contain the
+;; beginning of a marker, we save it here between calls to the
+;; filter.
+(defvar gud-mdb-marker-acc "")
+
+;; mdb does not print the lines all at once, so we have to accumulate them
+(defun gud-mdb-marker-filter (string)
+  (let ((result))
+    (if (or (string-match comint-prompt-regexp string)
+            (string-match "^browser> " string)
+            (string-match "^cat> " string)
+            (string-match "^mdb: are you sure you want to quit? " string)
+            (string-match ".*\012" string))
+        (setq result (concat gud-marker-acc string)
+              gud-marker-acc "")
+      (setq gud-marker-acc (concat gud-marker-acc string)))
+;; mdb's status line looks like so:
+;;        2:      2  2 CALL pred io:read_line/3-0 (det)
+;; We need to extend mdb so that it can report file names & line numbers,
+;; like gdb does with the `--fullname' option.  Currently we just
+;; extract the module name and procedure name, and then use those to
+;; look up the procedure in the tags table.
+    (if result
+        (if (or (string-match
+            " *[0-9]+: *[0-9]+ *[0-9]+ \\([A-Z]+ pred \\([^:]+\\):\\([^:/]+\\)/[^\012]*\\)"
+			      result)
+                (string-match
+            " *[0-9]+: *[0-9]+ *[0-9]+ \\([A-Z]+ func \\([^:]+\\):\\([^:/]+\\)/[^\012]*\\)"
+                              result))
+	    (let
+		((msg (substring result (match-beginning 1) (match-end 1)))
+		 (module (substring result (match-beginning 2) (match-end 2)))
+		 (proc (substring result (match-beginning 3) (match-end 3))))
+	      (let*
+		  ((buf (save-excursion
+			  (condition-case nil
+			      (find-tag-noselect (concat module "__" proc))
+			    (error (find-tag-noselect proc)))))
+		   (line (gud-linenum buf)))
+		(message "%s" msg)
+		(setq gud-last-frame (cons buf line))))))
+    string))
+
+(defun gud-mdb-nexttag ()
+  "Move the arrow to the next matching location"
+  (interactive (gud-mdb-find-tag nil t)))
+
+(defun gud-mdb-prevtag ()
+  "Move the arrow to the previous matching location"
+  (interactive (gud-mdb-find-tag nil '-)))
+
+(defun gud-mdb-find-tag (tag next) "Find and display the specified tag"
+  (let (frame cur-buf old-buf new-buf)
+    (setq frame (or gud-last-frame gud-last-last-frame)
+	  old-buf (if (consp frame) (car frame)
+		     (error "Source location not yet known"))
+	  cur-buf (current-buffer))
+    (unwind-protect
+	(progn (set-buffer old-buf)
+	       (setq new-buf (find-tag-noselect tag next))
+	       (set-buffer new-buf)
+	       (setq gud-last-frame (cons new-buf (gud-linenum new-buf)))
+	       (gud-display-frame))
+      (set-buffer cur-buf))))
+
+(defun gud-mdb-new-keymap (map name)
+  "Return a new keymap which inherits from MAP and has name MDB NAME'."
+  (nconc (make-sparse-keymap (concat "MDB " name)) map))
+
+(defvar gud-mdb-menu-map (make-sparse-keymap "MDB") nil)
+
+(defun gud-mdb-define-menu-entries ()
+  ;; forward movement
+  (gud-def gud-mdb-step   "step"      "\C-s" "Step to next trace event.")
+  (gud-def gud-mdb-cont   "continue"  "\C-r" "Continue execution.")
+  (gud-def gud-mdb-finish "finish"    "\C-f" "Finish executing current function.")
+  (gud-def gud-mdb-forward "forward"  nil    "Forward (skip backtracking).")
+  (gud-def gud-mdb-return "return"    nil    "Return (skip exits).")
+
+  ;; backward movement
+  (gud-def gud-mdb-retry  "retry"    nil     "Retry")
+
+  ;; data browsing
+  (gud-def gud-mdb-stack  "stack"     "\C-d" "Show stack")
+  (gud-def gud-mdb-up     "up %p"     "<"    "Up N stack frames (numeric arg).")
+  (gud-def gud-mdb-down   "down %p"   ">"    "Down N stack frames (numeric arg).")
+  (gud-def gud-mdb-vars   "vars"      "\C-v" "Show variables")
+  (gud-def gud-mdb-print  "print %i"  "\C-p" "Print Mercury variable at point.")
+  (gud-def gud-mdb-browse "browse %i" "\C-b" "Browse Mercury variable at point.")
+  (gud-def gud-mdb-modules "modules"  nil    "List debuggable modules.")
+  (gud-def gud-mdb-procs "procedures %i" nil "List procedures in a module.")
+  ;; NYI: level, current
+
+  ;; breakpoints
+  (gud-def gud-mdb-break  "break %i" "\C-b" "Set procedure breakpoint.")
+
+  ;; option settings
+  (gud-def gud-mdb-printlevel-none "printlevel none" nil "Set printlevel none.")
+  (gud-def gud-mdb-printlevel-some "printlevel some" nil "Set printlevel some.")
+  (gud-def gud-mdb-printlevel-all "printlevel all" nil "Set printlevel all.")
+  (gud-def gud-mdb-printlevel "printlevel" nil "Show printlevel.")
+  (gud-def gud-mdb-echo-on "echo on" nil "Set echo on")
+  (gud-def gud-mdb-echo-off "echo off" nil "Set echo off")
+  (gud-def gud-mdb-echo "echo" nil "Show echoing")
+  ;; NYI: scroll
+
+  ;; NYI: help category
+  ;; NYI: experimental category
+  ;; NYI: developer commands category
+
+  ;; misc
+  ;; NYI: source
+  ;; (gud-def gud-mdb-source "source <NYI>" nil "Source file")
+  (gud-def gud-mdb-quit "quit" nil "Quit")
+)
+
+(defun gud-mdb-make-debug-menu (name)
+  (if (and (current-local-map)
+	   (lookup-key (current-local-map) [menu-bar debug (name)]))
+      nil
+    (use-local-map (gud-mdb-new-keymap (current-local-map) name))
+    (define-key (current-local-map) [menu-bar debug (arg)]
+      (cons (concat "MDB " name) (gud-mdb-new-keymap gud-menu-map name)))))
+
+(defun gud-mdb-add-menu (path name)
+  (if (and (current-local-map)
+	   (lookup-key (current-local-map) path))
+      nil
+    (use-local-map (gud-mdb-new-keymap (current-local-map) name))
+    (define-key (current-local-map) path
+      (cons name (gud-mdb-new-keymap gud-mdb-menu-map name)))))
+
+(defun gud-mdb-add-menu-entries ()
+  ;; menu entries, in reverse order
+
+  ;; top-level menu entry
+  (gud-mdb-add-menu [menu-bar debug] "MDB")
+
+  ;; misc
+  (gud-mdb-add-menu [menu-bar debug misc] "Miscellaneous Commands")
+  (local-set-key [menu-bar debug misc quit] '("Quit" . gud-mdb-quit))
+  (local-set-key [menu-bar debug misc prevtag]
+		 '("Previous location matching tag" . gud-mdb-prevtag))
+  (local-set-key [menu-bar debug misc nexttag]
+		 '("Next location matching tag" . gud-mdb-nexttag))
+
+  ;; settings
+  (gud-mdb-add-menu [menu-bar debug settings] "Option Settings")
+  (local-set-key [menu-bar debug settings printlevel]
+		 '("Show Printlevel" . gud-mdb-printlevel))
+  (local-set-key [menu-bar debug settings printlevel-none]
+		 '("Set Printlevel None" . gud-mdb-printlevel-all))
+  (local-set-key [menu-bar debug settings printlevel-some]
+		 '("Show Printlevel Some" . gud-mdb-printlevel-some))
+  (local-set-key [menu-bar debug settings printlevel-all]
+		 '("Show Printlevel All" . gud-mdb-printlevel-all))
+  ;; not useful: echo
+
+  ;; breakpoints
+  (gud-mdb-add-menu [menu-bar debug breakpoints] "Breakpoint Commands")
+  (local-set-key [menu-bar debug breakpoints break]
+		 '("Procedure breakpoint" . gud-mdb-break))
+
+  ;; browsing
+  (gud-mdb-add-menu [menu-bar debug browsing] "Data Browsing Commands")
+  (local-set-key [menu-bar debug browsing browse]
+		 '("Browse Variable" . gud-mdb-browse))
+  (local-set-key [menu-bar debug browsing print]
+		 '("Print Variable" . gud-mdb-print))
+  (local-set-key [menu-bar debug browsing vars] '("Variables" . gud-mdb-vars))
+  (local-set-key [menu-bar debug browsing down] '("Down Stack" . gud-mdb-down))
+  (local-set-key [menu-bar debug browsing up] '("Up Stack" . gud-mdb-up))
+  (local-set-key [menu-bar debug browsing stack] '("Show Stack" . gud-mdb-stack))
+
+  ;; backward
+  (gud-mdb-add-menu [menu-bar debug backward] "Backward Movement Commands")
+  (local-set-key [menu-bar debug backward retry] '("Retry" . gud-mdb-retry))
+
+  ;; forward
+  (gud-mdb-add-menu [menu-bar debug forward] "Forward Movement Commands")
+  (local-set-key [menu-bar debug forward finish]
+		 '("Finish procedure" . gud-mdb-finish))
+  (local-set-key [menu-bar debug forward continue]
+		 '("Continue execution" . gud-mdb-cont))
+  (local-set-key [menu-bar debug forward step]
+		 '("Step to next trace event" . gud-mdb-step))
+  (local-set-key [menu-bar debug forward forward]
+		 '("Forward (skip backtracking)" . gud-mdb-forward))
+  (local-set-key [menu-bar debug forward return]
+		 '("Return (skip exits)" . gud-mdb-return))
+  ;; NYI: mindepth, maxdepth, goto
+
+  )
+
+(defun gud-mdb-find-file (buf)
+  (save-excursion
+    (set-buffer buf)
+    (display-buffer buf)
+    (gud-mdb-add-menu-entries)
+    buf))
+
+(defvar mdb-command-name "mdb"
+  "Command name for executing mdb.")
+
+;;;###autoload
+(defun mdb (command-line)
+  "Run mdb (the Mercury debugger) on program FILE in buffer *gud-FILE*.
+The directory containing FILE becomes the initial working directory
+and source-file directory for your debugger."
+  (interactive
+   (list (read-from-minibuffer "Run mdb (like this): "
+			       (if (consp gud-mdb-history)
+				   (car gud-mdb-history)
+				 (concat mdb-command-name " "))
+			       nil nil
+			       '(gud-mdb-history . 1))))
+
+;  (if (not (and (boundp 'tags-file-name)
+;		(stringp tags-file-name)
+;		(file-exists-p tags-file-name)))
+;      (error "The mdb support requires a valid tags table to work."))
+
+  (setq gud-menu-name "MDB")
+  (setq gud-show-commands t)
+
+  (gud-common-init command-line 'gud-mdb-massage-args
+		   'gud-mdb-marker-filter 'gud-mdb-find-file)
+
+  (gud-mdb-define-menu-entries)
+  (gud-mdb-add-menu-entries)
+
+  (setq comint-prompt-regexp "^mdb> ")
+  (setq paragraph-start comint-prompt-regexp)
+
+  (run-hooks 'mdb-mode-hook)
+  )
+
 ;;
 ;; End of debugger-specific information
 ;;
@@ -1382,10 +1645,12 @@ Obeying it means displaying in another window the specified file and line."
 (defun gud-format-command (str arg)
   (let ((insource (not (eq (current-buffer) gud-comint-buffer)))
 	(frame (or gud-last-frame gud-last-last-frame))
-	result)
-    (while (and str (string-match "\\([^%]*\\)%\\([adeflp]\\)" str))
-      (let ((key (string-to-char (substring str (match-beginning 2))))
-	    subst)
+	result match2)
+    (while (and str (string-match "\\([^%]*\\)%\\([adefilp]\\)" str))
+      (let* ((key (string-to-char (substring str (match-beginning 2))))
+	     (match1 (substring str (match-beginning 1) (match-end 1)))
+	     subst)
+	(setq match2 (substring str (match-end 2)))
 	(cond
 	 ((eq key ?f)
 	  (setq subst (file-name-nondirectory (if insource
@@ -1406,12 +1671,12 @@ Obeying it means displaying in another window the specified file and line."
 	  (setq subst (find-c-expr)))
 	 ((eq key ?a)
 	  (setq subst (gud-read-address)))
+	 ((eq key ?i)
+	  (setq subst (gud-read-identifier)))
 	 ((eq key ?p)
 	  (setq subst (if arg (int-to-string arg) ""))))
-	(setq result (concat result
-			     (substring str (match-beginning 1) (match-end 1))
-			     subst)))
-      (setq str (substring str (match-end 2))))
+	(setq result (concat result match1 subst)))
+      (setq str match2))
     ;; There might be text left in STR when the loop ends.
     (concat result str)))
 
@@ -1434,11 +1699,26 @@ Obeying it means displaying in another window the specified file and line."
 	  (forward-char -1)
 	  (buffer-substring begin (point)))))))
 
+(defun gud-read-identifier ()
+  "Return a string containing an identifier found in the buffer at point."
+  (save-excursion
+    (let (begin end)
+      (re-search-backward "[^0-9a-zA-Z_:/-]")
+      (forward-char 1)
+      (setq begin (point))
+      (re-search-forward "[^0-9a-zA-Z_:/-]")
+      (backward-char 1)
+      (setq end (point))
+      (buffer-substring begin end))))
+
 (defun gud-call (fmt &optional arg)
   (let ((msg (gud-format-command fmt arg)))
     (message "Command: %s" msg)
     (sit-for 0)
     (gud-basic-call msg)))
+
+(defvar gud-show-commands nil
+  "Non-nil to show the debugger commands.")
 
 (defun gud-basic-call (command)
   "Invoke the debugger COMMAND displaying source in other window."
@@ -1448,12 +1728,14 @@ Obeying it means displaying in another window the specified file and line."
 	(proc (get-buffer-process gud-comint-buffer)))
     (or proc (error "Current buffer has no process"))
     ;; Arrange for the current prompt to get deleted.
-    (save-excursion
-      (set-buffer gud-comint-buffer)
-      (goto-char (process-mark proc))
-      (beginning-of-line)
-      (if (looking-at comint-prompt-regexp)
-	  (set-marker gud-delete-prompt-marker (point))))
+    (if gud-show-commands
+	(comint-output-filter proc command)
+      (save-excursion
+	(set-buffer gud-comint-buffer)
+	(goto-char (process-mark proc))
+	(beginning-of-line)
+	(if (looking-at comint-prompt-regexp)
+	    (set-marker gud-delete-prompt-marker (point)))))
     (process-send-string proc command)))
 
 (defun gud-refresh (&optional arg)
@@ -1600,6 +1882,15 @@ Link exprs of the form:
 	  (t nil))
 	 )
      (t nil))))
+
+(defun gud-linenum (buf)
+  "Return the current line number of BUF"
+  (save-excursion
+    (set-buffer buf)
+    (beginning-of-line)
+    (save-restriction
+      (widen) 
+      (1+ (count-lines 1 (point))))))
 
 (provide 'gud)
 

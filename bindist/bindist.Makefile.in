@@ -14,11 +14,14 @@ INSTALL_BINDIR	= $(INSTALL_PREFIX)/bin
 INSTALL_LIBDIR	= $(INSTALL_PREFIX)/lib/mercury
 INSTALL_INFODIR = $(INSTALL_PREFIX)/info
 INSTALL_MAN_DIR = $(INSTALL_PREFIX)/man
+INSTALL_ELISP_DIR = $(INSTALL_PREFIX)/lib/mercury/elisp
 
 INSTALL_SCRIPTS		= scripts/c2init scripts/mmc \
 			scripts/mercury_update_interface scripts/mgnuc \
 			scripts/ml scripts/mmake scripts/mprof \
 			scripts/mdb scripts/mkfifo_using_mknod
+
+EMACS_SCRIPTS		= scripts/gud.el
 
 SICSTUS_SCRIPTS		= scripts/msc scripts/msl \
 			scripts/msp scripts/sicstus_conv
@@ -53,7 +56,12 @@ install: install_lib install_info install_man install_scripts install_mmake \
 	@echo
 	@echo "-- Don't forget to add $(INSTALL_BINDIR) to your PATH,"
 	@echo "-- $(INSTALL_MAN_DIR) to your MANPATH,"
-	@echo "-- and $(INSTALL_INFODIR) to your INFOPATH."
+	@echo "-- and $(INSTALL_INFODIR) to your INFOPATH,"
+	@echo "-- and to add the following lines to the \`.emacs' file"
+	@echo "-- in your home directory:"
+	@echo "	(setq load-path (cons (expand-file-name "
+	@echo "		\"$(INSTALL_ELISP_DIR)\") load-path))
+	@echo "	(autoload 'mdb \"gud\" \"Invoke the Mercury debugger\" t)"
 
 .PHONY: install_lib
 install_lib:
@@ -110,6 +118,11 @@ install_scripts:
 		chmod +w $(INSTALL_BINDIR)/$$base ;\
 	done
 	@echo "-- Done."
+
+install_emacs_scripts:
+	@echo "-- Installing Emacs lisp scripts in $(INSTALL_ELISP_DIR)"
+	test -d $(INSTALL_ELISP_DIR) || mkdir -p $(INSTALL_ELISP_DIR)
+	cp $(INSTALL_EMACS_SCRIPTS) $(INSTALL_ELISP_DIR)
 
 .PHONY: install_mmake
 install_mmake: 

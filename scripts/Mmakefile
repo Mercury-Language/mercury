@@ -18,6 +18,7 @@ SCRIPTS = mmake mmc mdb c2init mgnuc ml mprof mprof_merge_runs \
 	  sicstus_conv mtags vpath_find mercury_update_interface \
 	  mkfifo_using_mknod
 DEBUGGER_SCRIPTS = mdbrc
+EMACS_SCRIPTS = gud.el
 NUPROLOG_SCRIPTS = mnc mnl mnp
 SICSTUS_SCRIPTS = msc msl msp
 
@@ -33,7 +34,7 @@ SICSTUS_SCRIPTS = msc msl msp
 #-----------------------------------------------------------------------------#
 
 .PHONY: all
-all: $(SCRIPTS) $(DEBUGGER_SCRIPTS)
+all: $(SCRIPTS) $(DEBUGGER_SCRIPTS) $(EMACS_SCRIPTS)
 all: $(NUPROLOG_SCRIPTS) $(SICSTUS_SCRIPTS) Mmake.vars
 
 #-----------------------------------------------------------------------------#
@@ -64,6 +65,11 @@ install_scripts: $(SCRIPTS)
 	for file in $(SCRIPTS); do \
 		chmod u+w $(INSTALL_BINDIR)/$$file ;\
 	done
+
+.PHONY: install_emacs_scripts
+install_emacs_scripts: $(EMACS_SCRIPTS) install_libdir
+	[ -d $(INSTALL_ELISP_DIR) ] || mkdir -p $(INSTALL_ELISP_DIR)
+	cp $(EMACS_SCRIPTS) $(INSTALL_ELISP_DIR)
 
 .PHONY: install_debugger_scripts
 install_debugger_scripts: $(DEBUGGER_SCRIPTS)

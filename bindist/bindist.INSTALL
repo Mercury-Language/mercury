@@ -26,12 +26,20 @@
 #
 # Step 3.  Check the permissions on the installed files.
 #	   Add /usr/local/mercury-<VERSION>/bin to your PATH, and
+#	   add /usr/local/mercury-<VERSION>/man to your MANPATH.
 #	   add /usr/local/mercury-<VERSION>/info to your INFOPATH.
 #	   You can also add a WWW link to the Mercury documentation in
 #	   /usr/local/mercury-<VERSION>/lib/mercury/html to your WWW
 #	   home page, and you may want to print out a hard-copy of the
 #	   documentation from the DVI files in
 #	   /usr/local/mercury-<VERSION>/lib/mercury/doc.
+#
+#	   To use the emacs debugger interface ("M-x mdb"), you also need to
+#	   add the following lines to the `.emacs' file in your home directory:
+#
+#	   	(setq load-path (cons (expand-file-name
+#		  "/usr/local/mercury-@VERSION@/lib/mercury/elisp") load-path))
+#		(autoload 'mdb "gud" "Invoke the Mercury debugger" t)
 #
 # As a short-cut, steps 1 & 2 are listed below, so they can be replaced
 # by just executing this script.
