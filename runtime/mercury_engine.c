@@ -343,6 +343,24 @@ call_engine_inner(Code *entry_point)
 	debugmsg1("in `call_engine_inner', locals at %p\n", (void *)locals);
 
 	/*
+	** We need to ensure that there is at least one
+	** real function call in call_engine_inner(), because
+	** otherwise gcc thinks that it doesn't need to
+	** restore the caller-save registers (such as
+	** the return address!) because it thinks call_engine_inner() is
+	** a leaf routine which doesn't call anything else,
+	** and so it thinks that they won't have been clobbered.
+	**
+	** This probably isn't necessary now that we exit from this function
+	** using longjmp(), but it doesn't do much harm, so I'm leaving it in.
+	**
+	** Also for gcc versions >= egcs1.1, we need to ensure that
+	** there is at least one jump to an unknown label.
+	*/
+	goto *dummy_identify_function(&&dummy_label);
+dummy_label:
+
+	/*
 	** Increment the number of times we've entered this
 	** engine from C, and mark the current context as being
 	** owned by this thread.
@@ -396,21 +414,6 @@ Define_label(engine_done);
 	MR_ENGINE(this_context)->owner_thread = val;
 }
 #endif
-
-	/*
-	** We need to ensure that there is at least one
-	** real function call in call_engine_inner(), because
-	** otherwise gcc thinks that it doesn't need to
-	** restore the caller-save registers (such as
-	** the return address!) because it thinks call_engine_inner() is
-	** a leaf routine which doesn't call anything else,
-	** and so it thinks that they won't have been clobbered.
-	**
-	** This probably isn't necessary now that we exit from this function
-	** using longjmp(), but it doesn't do much harm, so I'm leaving it in.
-	*/
-
-	dummy_function_call();
 
 	debugmsg1("in label `engine_done', locals at %p\n", locals);
 
