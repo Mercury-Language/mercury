@@ -125,6 +125,8 @@ $(BROWSER_LIB_NAME).dep $(BROWSER_LIB_NAME).depend:
 	mv RENAMED_program_representation.m program_representation.m; \
 	exit $$status
 
+lib$(BROWSER_LIB_NAME).so: lib$(MDBCOMP_LIB_NAME).so
+
 # This directory contains source files for which the module
 # name doesn't match the file name, so smart recompilation
 # won't work without the Mercury.modules file.
