@@ -2100,9 +2100,15 @@ join_module_list([Module0 | Modules0], Separator, Terminator,
 mercury_compile__maybe_dump_hlds(HLDS, StageNum, StageName) -->
 	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
 	(
-		{ list__member(StageNum, DumpStages)
-		; list__member(StageName, DumpStages)
-		; list__member("all", DumpStages)
+		{
+			list__member(StageNum, DumpStages)
+		;
+			list__member(StageName, DumpStages)
+		;
+			list__member("all", DumpStages)
+		;
+			string__append("0", StrippedStageNum, StageNum),
+			list__member(StrippedStageNum, DumpStages)
 		}
 	->
 		{ module_info_name(HLDS, ModuleName) },
