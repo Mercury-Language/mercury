@@ -2826,7 +2826,9 @@ typecheck_info_add_type_assign_constraints(NewConstraints, TypecheckInfo0,
 typecheck_constraints(yes, TypeCheckInfo, TypeCheckInfo).
 typecheck_constraints(no, TypeCheckInfo0, TypeCheckInfo) :-
 		%get the declared constraints
-	typecheck_info_get_constraints(TypeCheckInfo0, DeclaredConstraints),
+	typecheck_info_get_constraints(TypeCheckInfo0, DeclaredConstraints0),
+	list__sort_and_remove_dups(DeclaredConstraints0, DeclaredConstraints),
+
 
 	typecheck_info_get_type_assign_set(TypeCheckInfo0, TypeAssignSet0),
 
