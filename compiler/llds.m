@@ -377,6 +377,9 @@
 				% is FieldNum words. If Tag is yes, the
 				% arg gives the value of the tag; if it is
 				% no, the tag bits will have to be masked off.
+				% The value of the tag should be given if
+				% it is known, since this will lead to
+				% faster code.
 
 	/* values somewhere in memory */
 

@@ -26,7 +26,7 @@
 %	and substitute this code for the code of the copy of the block
 %	that step 4 has decided to keep.
 %
-% 5.	Convert the (possibly reduced) list of basic blocks back to a
+% 6.	Convert the (possibly reduced) list of basic blocks back to a
 %	list of instructions and substitute all references to the labels
 %	starting eliminated blocks to refer to their noneliminated version.
 %
@@ -60,8 +60,8 @@
 
 	% cluster(Exemplar, OtherLabels) means that references to labels
 	% in OtherLabels can be replaced with references to Exemplar
-	% once its block has been replaced with the most specific antiunified
-	% version of the blocks started by Exemplar and OtherLabels.
+	% once its block has been replaced with the most specific
+	% generalization of the blocks started by Exemplar and OtherLabels.
 	% OtherLabels must be nonempty.
 :- type cluster		--->	cluster(label, list(label)).
 
@@ -89,6 +89,10 @@ dupelim_main(Instrs0, Instrs) :-
 
 %-----------------------------------------------------------------------------%
 
+% dupelim__build_maps builds up a map mapping standardized instruction
+% sequences to the label(s) that start basic blocks with that standardized
+% form, and a set showing which labels are fallen into.
+
 :- pred dupelim__build_maps(list(label)::in, block_map::in,
 	std_map::in, std_map::out, set(label)::in, set(label)::out) is det.
 
@@ -110,6 +114,11 @@ dupelim__build_maps([Label | Labels], BlockMap, StdMap0, StdMap,
 	),
 	dupelim__build_maps(Labels, BlockMap, StdMap1, StdMap,
 		FallInto1, FallInto).
+
+% For each set of labels that start basic blocks with identical standard forms,
+% find_clusters finds out whether we can eliminate some of those blocks;
+% if yes, it decides which blocks can be eliminated and which other block
+% should stand in their place.
 
 % If two or more blocks have the same standardized form, it may be possible
 % to eliminate all but one of the blocks. However, blocks that can be fallen
@@ -146,6 +155,12 @@ find_clusters([Labels | LabelsList], FallInto, Clusters0, Clusters) :-
 
 %-----------------------------------------------------------------------------%
 
+% For each cluster, a set of blocks in which all but one are to be eliminated
+% favor of the remaining one, find their most specific common generalization
+% (which must exist), and substitute this code for the code of the copy of
+% the block that is to be kept. Remove the eliminated labels from the
+% label sequence and map them to their replacements.
+
 :- pred process_clusters(list(cluster)::in, list(label)::in, list(label)::out,
 	block_map::in, block_map::out,
 	map(label, label)::in, map(label, label)::out) is det.
@@ -167,6 +182,16 @@ process_clusters([Cluster | Clusters], LabelSeq0, LabelSeq,
 	map__det_update(BlockMap0, Exemplar, ExemplarInfo, BlockMap1),
 	process_clusters(Clusters, LabelSeq1, LabelSeq, BlockMap1, BlockMap,
 		ReplMap1, ReplMap).
+
+% Given the current form of a basic block (instructions and fallthrough),
+% compute its most specific generalization with the basic blocks headed
+% by the given labels, whose basic blocks are to be eliminated.
+%
+% On the same traversal of the list of to-be-eliminated labels, remove each
+% such label from the sequence of labels whose basic blocks will make up
+% the final code of the procedure, and add the mapping of the eliminated
+% label to the replacement (exemplar) label to the set of substitutions
+% that will need to be done.
 
 :- pred process_elim_labels(list(label)::in, list(instruction)::in,
 	maybe(label)::in, list(label)::in, list(label)::out, block_map::in,
