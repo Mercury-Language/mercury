@@ -24,18 +24,18 @@
 %	- contexts (line numbers)
 %	- commits
 %	- while and do/while loops
+%	- struct initializers
+%	- RTTI
 
 % TODO:
 % 	Lots.
 %	- delete code copied from mlds_to_c.m
 %	- fix comments copied from mlds_to_c.m
 %	- boxing of floats
-%	- struct initializers
 %	- computed_goto
 %	- support --high-level-data
 %	- higher-order (or is this already done?)
 %	- tuples (?)
-%	- RTTI
 %	- --static-ground-terms
 %	- --nondet-copy-out
 %	- C interface
@@ -76,7 +76,8 @@
 :- import_module export.	% for export__type_to_type_string
 :- import_module globals, options, passes_aux.
 :- import_module builtin_ops, c_util, modules.
-:- import_module prog_data, prog_out, type_util, error_util.
+:- import_module prog_data, prog_out, prog_util, type_util, error_util.
+:- import_module pseudo_type_info.
 
 :- import_module bool, int, string, library, list, map.
 :- import_module assoc_list, term, std_util, require.
@@ -590,7 +591,7 @@ gen_defn_body(Name, Context, DefnBody, GlobalInfo0, GlobalInfo) -->
 			LabelTable) },
 		{ GCC_Name = build_qualified_name(Name) },
 		build_type(Type, GlobalInfo0, GCC_Type),
-		build_initializer(Initializer, Type, FuncInfo, GCC_Initializer),
+		build_initializer(Initializer, GCC_Type, FuncInfo, GCC_Initializer),
 		gcc__build_global_var_decl(GCC_Name, GCC_Type, GCC_Initializer,
 			GCC_Defn),
 		%
@@ -664,7 +665,7 @@ build_local_data_defn(Name, Type, Initializer, FuncInfo, GCC_Defn) -->
 	( { Initializer = no_initializer } ->
 		[]
 	;
-		build_initializer(Initializer, Type, FuncInfo, GCC_Expr),
+		build_initializer(Initializer, GCC_Type, FuncInfo, GCC_Expr),
 		gcc__gen_assign(gcc__var_expr(GCC_Defn), GCC_Expr)
 	).
 
@@ -689,11 +690,11 @@ build_field_data_defn(Name, Type, Initializer, GlobalInfo, GCC_Defn) -->
 		{ sorry(this_file, "build_field_data_defn: initializer") }
 	).
 
-:- pred build_initializer(mlds__initializer, mlds__type, func_info,
+:- pred build_initializer(mlds__initializer, gcc__type, func_info,
 		gcc__expr, io__state, io__state) is det.
 :- mode build_initializer(in, in, in, out, di, uo) is det.
 
-build_initializer(Initializer, Type, FuncInfo, GCC_Expr) -->
+build_initializer(Initializer, GCC_Type, FuncInfo, GCC_Expr) -->
 	(
 		{ Initializer = no_initializer },
 		{ unexpected(this_file, "no_initializer (build_initializer)") }
@@ -701,37 +702,51 @@ build_initializer(Initializer, Type, FuncInfo, GCC_Expr) -->
 		{ Initializer = init_obj(Rval) },
 		build_rval(Rval, FuncInfo, GCC_Expr)
 	;
-		{ Initializer = init_struct(_) },
-		{ sorry(this_file, "init_struct") }
+		{ Initializer = init_struct(InitList) },
+		gcc__get_struct_field_decls(GCC_Type, GCC_FieldDecls),
+		build_struct_initializer(InitList, GCC_FieldDecls, FuncInfo,
+			GCC_InitList),
+		gcc__build_initializer_expr(GCC_InitList, GCC_Type, GCC_Expr)
 	;
 		{ Initializer = init_array(InitList) },
-		{ Type = mlds__array_type(ElemType0) ->
-			ElemType = ElemType0
-		;
-			% XXX we assume that for everything else,
-			% the argument type must be MR_Box
-			ElemType = mlds__generic_type
-		},
-		build_array_initializer(InitList, ElemType, 0, FuncInfo,
+		gcc__get_array_elem_type(GCC_Type, GCC_ElemType),
+		build_array_initializer(InitList, GCC_ElemType, 0, FuncInfo,
 			GCC_InitList),
-		build_type(Type, initializer_array_size(Initializer),
-			FuncInfo ^ global_info, GCC_Type),
 		gcc__build_initializer_expr(GCC_InitList, GCC_Type, GCC_Expr)
 	).
 
-:- pred build_array_initializer(list(mlds__initializer), mlds__type, int,
+:- pred build_array_initializer(list(mlds__initializer), gcc__type, int,
 		func_info, gcc__init_list, io__state, io__state) is det.
 :- mode build_array_initializer(in, in, in, in, out, di, uo) is det.
 
 build_array_initializer([], _, _, _, GCC_InitList) -->
 	gcc__empty_init_list(GCC_InitList).
-build_array_initializer([Init | Inits], ElemType, Index, FuncInfo,
+build_array_initializer([Init | Inits], GCC_ElemType, Index, FuncInfo,
 		GCC_InitList) -->
-	build_array_initializer(Inits, ElemType, Index + 1, FuncInfo,
+	gcc__array_elem_initializer(Index, GCC_InitIndex),
+	build_initializer(Init, GCC_ElemType, FuncInfo, GCC_InitValue),
+	build_array_initializer(Inits, GCC_ElemType, Index + 1, FuncInfo,
 		GCC_InitList0),
-	gcc__init_array_elem(Index, GCC_Index),
-	build_initializer(Init, ElemType, FuncInfo, GCC_Init),
-	gcc__cons_init_list(GCC_Index, GCC_Init, GCC_InitList0, GCC_InitList).
+	gcc__cons_init_list(GCC_InitIndex, GCC_InitValue,
+		GCC_InitList0, GCC_InitList).
+
+:- pred build_struct_initializer(list(mlds__initializer), gcc__field_decls,
+		func_info, gcc__init_list, io__state, io__state) is det.
+:- mode build_struct_initializer(in, in, in, out, di, uo) is det.
+
+build_struct_initializer([], _, _, GCC_InitList) -->
+	gcc__empty_init_list(GCC_InitList).
+build_struct_initializer([Init | Inits], GCC_FieldDecls, FuncInfo,
+		GCC_InitList) -->
+	gcc__next_field_decl(GCC_FieldDecls, GCC_ThisFieldDecl,
+		GCC_RemainingFieldDecls),
+	gcc__struct_field_initializer(GCC_ThisFieldDecl, GCC_InitField),
+	gcc__field_type(GCC_ThisFieldDecl, GCC_ThisFieldType),
+	build_initializer(Init, GCC_ThisFieldType, FuncInfo, GCC_InitValue),
+	build_struct_initializer(Inits, GCC_RemainingFieldDecls, FuncInfo,
+		GCC_InitList0),
+	gcc__cons_init_list(GCC_InitField, GCC_InitValue, GCC_InitList0,
+		GCC_InitList).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1311,9 +1326,7 @@ build_type(mlds__func_type(Params), _, GlobalInfo, GCC_FuncPtrType) -->
 	gcc__build_pointer_type(GCC_FuncType, GCC_FuncPtrType).
 build_type(mlds__generic_type, _, _, 'MR_Box') --> [].
 build_type(mlds__generic_env_ptr_type, _, _, gcc__ptr_type_node) --> [].
-build_type(mlds__pseudo_type_info_type, _, _, _) -->
-	{ sorry(this_file, "pseudo_type_info") }.
-	% io__write_string("MR_PseudoTypeInfo").
+build_type(mlds__pseudo_type_info_type, _, _, 'MR_PseudoTypeInfo') --> [].
 build_type(mlds__cont_type(ArgTypes), _, _, GCC_Type) -->
 	( { ArgTypes = [] } ->
 		globals__io_lookup_bool_option(gcc_nested_functions,
@@ -1356,32 +1369,41 @@ build_sized_array_type(GCC_Type, ArraySize, GCC_ArrayType) -->
 		io__state, io__state).
 :- mode build_rtti_type(in, in, out, di, uo) is det.
 
-build_rtti_type(exist_locns(_), _, _GCC_Type) -->
-	% typedef struct {
-	%    MR_int_least16_t    MR_exist_arg_num;
-	%    MR_int_least16_t    MR_exist_offset_in_tci;
-	% } MR_DuExistLocn;
-	{ sorry(this_file, "rtti_type exist_locns") }.
-build_rtti_type(exist_info(_), _, _GCC_Type) -->
-	{ sorry(this_file, "rtti_type exist_info") }.
+% The types constructed here should be the same as the types
+% defined in runtime/mercury_type_info.h for the C back-end.
+% See that file for documentation on these types.
+
+% XXX it would be more efficient to construct these types once,
+% at initialization time, rather than every time they are used.
+
+build_rtti_type(exist_locns(_), Size, GCC_Type) -->
+	build_du_exist_locn_type(MR_DuExistLocn),
+	build_sized_array_type(MR_DuExistLocn, Size, GCC_Type).
+build_rtti_type(exist_info(_), _, MR_DuExistInfo) -->
+	build_du_exist_info_type(MR_DuExistInfo).
 build_rtti_type(field_names(_), Size, GCC_Type) -->
-	build_sized_array_type(gcc__string_type_node, Size, GCC_Type).
+	build_sized_array_type('MR_ConstString', Size, GCC_Type).
 build_rtti_type(field_types(_), Size, GCC_Type) -->
-	{ PseudoTypeInfoType = gcc__ptr_type_node },
-	build_sized_array_type(PseudoTypeInfoType, Size, GCC_Type).
-build_rtti_type(enum_functor_desc(_), _, _GCC_Type) -->
+	build_sized_array_type('MR_PseudoTypeInfo', Size, GCC_Type).
+build_rtti_type(enum_functor_desc(_), _, GCC_Type) -->
 	% typedef struct {
 	%     MR_ConstString      MR_enum_functor_name;
 	%     MR_int_least32_t    MR_enum_functor_ordinal;
 	% } MR_EnumFunctorDesc;
-	{ sorry(this_file, "rtti_type enum_functor_desc") }.
-build_rtti_type(notag_functor_desc, _, _GCC_Type) -->
+	build_struct_type("MR_EnumFunctorDesc",
+		['MR_ConstString'	- "MR_enum_functor_name",
+		 'MR_int_least32_t'	- "MR_enum_functor_ordinal"],
+		GCC_Type).
+build_rtti_type(notag_functor_desc, _, GCC_Type) -->
 	% typedef struct {
 	%     MR_ConstString      MR_notag_functor_name;
 	%     MR_PseudoTypeInfo   MR_notag_functor_arg_type;
 	% } MR_NotagFunctorDesc;
-	{ sorry(this_file, "rtti_type MR_NotagFunctorDesc") }.
-build_rtti_type(du_functor_desc(_), _, _GCC_Type) -->
+	build_struct_type("MR_NotagFunctorDesc",
+		['MR_ConstString'	- "MR_notag_functor_name",
+		 'MR_PseudoTypeInfo'	- "MR_notag_functor_arg_type"],
+		GCC_Type).
+build_rtti_type(du_functor_desc(_), _, GCC_Type) -->
 	% typedef struct {
 	%     MR_ConstString          MR_du_functor_name;
 	%     MR_int_least16_t        MR_du_functor_orig_arity;
@@ -1394,27 +1416,49 @@ build_rtti_type(du_functor_desc(_), _, _GCC_Type) -->
 	%     const MR_ConstString    *MR_du_functor_arg_names;
 	%     const MR_DuExistInfo    *MR_du_functor_exist_info;
 	% } MR_DuFunctorDesc;
-	{ sorry(this_file, "rtti_type MR_DuFunctorDesc") }.
-build_rtti_type(enum_name_ordered_table, _, GCC_Type) -->
-	% { sorry(this_file, "rtti_type EnumFunctorDescPtr") }.
-	{ GCC_Type = gcc__ptr_type_node }.
-build_rtti_type(enum_value_ordered_table, _, GCC_Type) -->
-	% { sorry(this_file, "rtti_type EnumFunctorDescPtr") }.
-	{ GCC_Type = gcc__ptr_type_node }.
-build_rtti_type(du_name_ordered_table, _, GCC_Type) -->
-	% { sorry(this_file, "rtti_type DuFunctorDescPtr") }.
-	{ GCC_Type = gcc__ptr_type_node }.
-build_rtti_type(du_stag_ordered_table(_), _, GCC_Type) -->
-	% { sorry(this_file, "rtti_type DuFunctorDescPtr" }.
-	{ GCC_Type = gcc__ptr_type_node }.
-build_rtti_type(du_ptag_ordered_table, _, _GCC_Type) -->
+	build_du_exist_info_type(MR_DuExistInfo),
+	gcc__build_pointer_type('MR_PseudoTypeInfo', MR_PseudoTypeInfoPtr),
+	gcc__build_pointer_type(MR_DuExistInfo, MR_DuExistInfoPtr),
+	gcc__build_pointer_type('MR_ConstString', MR_ConstStringPtr),
+	build_struct_type("MR_DuFunctorDesc",
+		['MR_ConstString'	- "MR_notag_functor_name",
+		 'MR_PseudoTypeInfo'	- "MR_notag_functor_arg_type",
+		 'MR_ConstString'	- "MR_du_functor_name",
+		 'MR_int_least16_t'	- "MR_du_functor_orig_arity",
+		 'MR_int_least16_t'	- "MR_du_functor_arg_type_contains_var",
+		 'MR_Sectag_Locn'	- "MR_du_functor_sectag_locn",
+		 'MR_int_least8_t'	- "MR_du_functor_primary",
+		 'MR_int_least32_t'	- "MR_du_functor_secondary",
+		 'MR_int_least32_t'	- "MR_du_functor_ordinal",
+		 MR_PseudoTypeInfoPtr	- "MR_du_functor_arg_types",
+		 MR_ConstStringPtr	- "MR_du_functor_arg_names",
+		 MR_DuExistInfoPtr	- "MR_du_functor_exist_info"],
+		GCC_Type).
+build_rtti_type(enum_name_ordered_table, Size, GCC_Type) -->
+	{ MR_EnumFunctorDescPtr = gcc__ptr_type_node },
+	build_sized_array_type(MR_EnumFunctorDescPtr, Size, GCC_Type).
+build_rtti_type(enum_value_ordered_table, Size, GCC_Type) -->
+	{ MR_EnumFunctorDescPtr = gcc__ptr_type_node },
+	build_sized_array_type(MR_EnumFunctorDescPtr, Size, GCC_Type).
+build_rtti_type(du_name_ordered_table, Size, GCC_Type) -->
+	{ MR_DuFunctorDescPtr = gcc__ptr_type_node },
+	build_sized_array_type(MR_DuFunctorDescPtr, Size, GCC_Type).
+build_rtti_type(du_stag_ordered_table(_), Size, GCC_Type) -->
+	{ MR_DuFunctorDescPtr = gcc__ptr_type_node },
+	build_sized_array_type(MR_DuFunctorDescPtr, Size, GCC_Type).
+build_rtti_type(du_ptag_ordered_table, Size, GCC_Type) -->
 	% typedef struct {
 	%     MR_int_least32_t        MR_sectag_sharers;
 	%     MR_Sectag_Locn          MR_sectag_locn;
 	%     const MR_DuFunctorDesc * const * MR_sectag_alternatives;
 	% } MR_DuPtagLayout;
-	{ sorry(this_file, "rtti_type DuPtagLayout") }.
-build_rtti_type(type_ctor_info, _, _GCC_Type) -->
+	build_struct_type("MR_DuPtagLayout",
+		['MR_int_least32_t'	- "MR_sectag_sharers",
+		 'MR_Sectag_Locn'	- "MR_sectag_locn",
+		 gcc__ptr_type_node	- "MR_sectag_alternatives"],
+		MR_DuPtagLayout),
+	build_sized_array_type(MR_DuPtagLayout, Size, GCC_Type).
+build_rtti_type(type_ctor_info, _, GCC_Type) -->
 	% struct MR_TypeCtorInfo_Struct {
 	%     MR_Integer          arity;
 	%     MR_ProcAddr         unify_pred;
@@ -1430,20 +1474,179 @@ build_rtti_type(type_ctor_info, _, _GCC_Type) -->
 	%     MR_TypeLayout       type_layout;
 	%     MR_int_least32_t    type_ctor_num_functors;
 	%     MR_int_least8_t     type_ctor_num_ptags;    /* if DU */
-	%
 	% /*
 	% ** The following fields will be added later, once we can exploit them:
 	% **  union MR_TableNode_Union    **type_std_table;
 	% **  MR_ProcAddr         prettyprinter;
 	% */
 	% };
-	{ sorry(this_file, "rtti_type TypeCtorInfo_Struct") }.
-build_rtti_type(base_typeclass_info(_, _, _), _, GCC_Type) -->
-	{ GCC_Type = gcc__ptr_type_node }.
-build_rtti_type(pseudo_type_info(_), _, GCC_Type) -->
-	{ GCC_Type = gcc__ptr_type_node }.
-build_rtti_type(type_hashcons_pointer, _, GCC_Type) -->
-	{ GCC_Type = gcc__ptr_type_node }.
+	{ MR_ProcAddr = gcc__ptr_type_node },
+	build_struct_type("MR_TypeFunctors",
+		[gcc__ptr_type_node	- "functors_init"],
+		MR_TypeFunctors),
+	build_struct_type("MR_TypeLayout",
+		[gcc__ptr_type_node	- "layout_init"],
+		MR_TypeLayout),
+	build_struct_type("MR_TypeCtorInfo_Struct",
+		['MR_Integer'		- "arity",
+		 MR_ProcAddr		- "unify_pred",
+		 MR_ProcAddr		- "new_unify_pred",
+		 MR_ProcAddr		- "compare_pred",
+		 'MR_TypeCtorRep'	- "type_ctor_rep",
+		 MR_ProcAddr		- "solver_pred",
+		 MR_ProcAddr		- "init_pred",
+		 'MR_ConstString'	- "type_ctor_module_name",
+		 'MR_ConstString'	- "type_ctor_name",
+		 'MR_Integer'		- "type_ctor_version",
+		 MR_TypeFunctors	- "type_functors",
+		 MR_TypeLayout		- "type_layout",
+		 'MR_int_least32_t'	- "type_ctor_num_functors",
+		 'MR_int_least8_t'	- "type_ctor_num_ptags"],
+		GCC_Type).
+build_rtti_type(base_typeclass_info(_, _, _), Size, GCC_Type) -->
+	{ MR_BaseTypeclassInfo = gcc__ptr_type_node },
+	build_sized_array_type(MR_BaseTypeclassInfo, Size, GCC_Type).
+build_rtti_type(pseudo_type_info(PseudoTypeInfo), _, GCC_Type) -->
+	build_pseudo_type_info_type(PseudoTypeInfo, GCC_Type).
+build_rtti_type(type_hashcons_pointer, _, MR_TableNodePtrPtr) -->
+	{ MR_TableNodePtrPtr = gcc__ptr_type_node }.
+
+:- pred build_pseudo_type_info_type(pseudo_type_info::in,
+		gcc__type::out, io__state::di, io__state::uo) is det.
+
+build_pseudo_type_info_type(type_var(_), _) -->
+	% we use small integers to represent type_vars,
+	% rather than pointers, so there is no pointed-to type
+	{ error("mlds_rtti_type: type_var") }.
+build_pseudo_type_info_type(type_ctor_info(_), GCC_Type) -->
+	build_rtti_type(type_ctor_info, no_size, GCC_Type).
+build_pseudo_type_info_type(type_info(_TypeId, ArgTypes), GCC_Type) -->
+	{ Arity = list__length(ArgTypes) },
+	% typedef struct {
+	%     MR_TypeCtorInfo     MR_pti_type_ctor_info;
+	%     MR_PseudoTypeInfo   MR_pti_first_order_arg_pseudo_typeinfos[<ARITY>];
+	% } MR_FO_PseudoTypeInfo_Struct<ARITY>;
+	{ MR_TypeCtorInfo = gcc__ptr_type_node },
+	gcc__build_array_type('MR_PseudoTypeInfo', Arity,
+		MR_PseudoTypeInfoArray),
+	{ StructName = string__format("MR_FO_PseudoTypeInfo_Struct%d",
+		[i(Arity)]) },
+	build_struct_type(StructName,
+		[MR_TypeCtorInfo	- "MR_pti_type_ctor_info",
+		 MR_PseudoTypeInfoArray	- "MR_pti_first_order_arg_pseudo_typeinfos"],
+		GCC_Type).
+build_pseudo_type_info_type(higher_order_type_info(_TypeId, _Arity,
+		ArgTypes), GCC_Type) -->
+	{ Arity = list__length(ArgTypes) },
+	% struct NAME {							\
+	%    MR_TypeCtorInfo     MR_pti_type_ctor_info;			\
+	%    MR_Integer          MR_pti_higher_order_arity;			\
+	%    MR_PseudoTypeInfo   MR_pti_higher_order_arg_pseudo_typeinfos[ARITY]; \
+	% }
+	{ MR_TypeCtorInfo = gcc__ptr_type_node },
+	gcc__build_array_type('MR_PseudoTypeInfo', Arity,
+		MR_PseudoTypeInfoArray),
+	{ StructName = string__format("MR_HO_PseudoTypeInfo_Struct%d",
+		[i(Arity)]) },
+	build_struct_type(StructName,
+		[MR_TypeCtorInfo	- "MR_pti_type_ctor_info",
+		 'MR_Integer'		- "MR_pti_higher_order_arity",
+		 MR_PseudoTypeInfoArray	- "MR_pti_higher_order_arg_pseudo_typeinfos"],
+		GCC_Type).
+
+:- pred build_du_exist_locn_type(gcc__type, io__state, io__state).
+:- mode build_du_exist_locn_type(out, di, uo) is det.
+
+build_du_exist_locn_type(MR_DuExistLocn) -->
+	% typedef struct {
+	%    MR_int_least16_t    MR_exist_arg_num;
+	%    MR_int_least16_t    MR_exist_offset_in_tci;
+	% } MR_DuExistLocn;
+	build_struct_type("MR_DuExistLocn",
+		['MR_int_least16_t'	- "MR_exist_arg_num",
+		 'MR_int_least16_t'	- "MR_exist_offset_in_tci"],
+		MR_DuExistLocn).
+
+:- pred build_du_exist_info_type(gcc__type, io__state, io__state).
+:- mode build_du_exist_info_type(out, di, uo) is det.
+
+build_du_exist_info_type(MR_DuExistInfo) -->
+	% typedef struct {
+	%     MR_int_least16_t        MR_exist_typeinfos_plain;
+	%     MR_int_least16_t        MR_exist_typeinfos_in_tci;
+	%     MR_int_least16_t        MR_exist_tcis;
+	%     const MR_DuExistLocn    *MR_exist_typeinfo_locns;
+	% } MR_DuExistInfo;
+	build_du_exist_locn_type(MR_DuExistLocn),
+	gcc__build_pointer_type(MR_DuExistLocn, MR_DuExistLocnPtr),
+	build_struct_type("MR_DuExistInfo",
+		['MR_int_least16_t'	- "MR_exist_typeinfos_plain",
+		 'MR_int_least16_t'	- "MR_exist_typeinfos_in_tci",
+		 'MR_int_least16_t'	- "MR_exist_tcis",
+		 MR_DuExistLocnPtr	- "MR_exist_typeinfo_locns"],
+		MR_DuExistInfo).
+
+	% rtti_enum_const(Name, Value):
+	% 	Succeed iff Name is the name of an RTTI
+	% 	enumeration constant whose integer value is Value.
+	% 	The values here must match the definitions of the
+	% 	MR_TypeCtor and MR_Sectag_Locn enumerations in
+	% 	runtime/mercury_type_info.h.
+:- pred rtti_enum_const(string::in, int::out) is semidet.
+rtti_enum_const("MR_TYPECTOR_REP_ENUM", 0).
+rtti_enum_const("MR_TYPECTOR_REP_ENUM_USEREQ", 1).
+rtti_enum_const("MR_TYPECTOR_REP_DU", 2).
+rtti_enum_const("MR_TYPECTOR_REP_DU_USEREQ", 3).
+rtti_enum_const("MR_TYPECTOR_REP_NOTAG", 4).
+rtti_enum_const("MR_TYPECTOR_REP_NOTAG_USEREQ", 5).
+rtti_enum_const("MR_TYPECTOR_REP_EQUIV", 6).
+rtti_enum_const("MR_TYPECTOR_REP_EQUIV_VAR", 7).
+rtti_enum_const("MR_TYPECTOR_REP_INT", 8).
+rtti_enum_const("MR_TYPECTOR_REP_CHAR", 9).
+rtti_enum_const("MR_TYPECTOR_REP_FLOAT", 10).
+rtti_enum_const("MR_TYPECTOR_REP_STRING", 11).
+rtti_enum_const("MR_TYPECTOR_REP_PRED", 12).
+rtti_enum_const("MR_TYPECTOR_REP_UNIV", 13).
+rtti_enum_const("MR_TYPECTOR_REP_VOID", 14).
+rtti_enum_const("MR_TYPECTOR_REP_C_POINTER", 15).
+rtti_enum_const("MR_TYPECTOR_REP_TYPEINFO", 16).
+rtti_enum_const("MR_TYPECTOR_REP_TYPECLASSINFO", 17).
+rtti_enum_const("MR_TYPECTOR_REP_ARRAY", 18).
+rtti_enum_const("MR_TYPECTOR_REP_SUCCIP", 19).
+rtti_enum_const("MR_TYPECTOR_REP_HP", 20).
+rtti_enum_const("MR_TYPECTOR_REP_CURFR", 21).
+rtti_enum_const("MR_TYPECTOR_REP_MAXFR", 22).
+rtti_enum_const("MR_TYPECTOR_REP_REDOFR", 23).
+rtti_enum_const("MR_TYPECTOR_REP_REDOIP", 24).
+rtti_enum_const("MR_TYPECTOR_REP_TRAIL_PTR", 25).
+rtti_enum_const("MR_TYPECTOR_REP_TICKET", 26).
+rtti_enum_const("MR_TYPECTOR_REP_NOTAG_GROUND", 27).
+rtti_enum_const("MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ", 28).
+rtti_enum_const("MR_TYPECTOR_REP_EQUIV_GROUND", 29).
+rtti_enum_const("MR_TYPECTOR_REP_TUPLE", 30).
+rtti_enum_const("MR_TYPECTOR_REP_UNKNOWN", 31).
+rtti_enum_const("MR_SECTAG_NONE", 0).
+rtti_enum_const("MR_SECTAG_LOCAL", 1).
+rtti_enum_const("MR_SECTAG_REMOTE", 2).
+
+:- pred build_struct_type(gcc__struct_name::in,
+		list(pair(gcc__type, gcc__field_name))::in,
+		gcc__type::out, io__state::di, io__state::uo) is det.
+
+build_struct_type(StructName, Fields, GCC_Type) -->
+	build_fields(Fields, GCC_Fields),
+	gcc__build_struct_type_decl(StructName, GCC_Fields, GCC_TypeDecl),
+	{ GCC_Type = gcc__declared_type(GCC_TypeDecl) }.
+
+:- pred build_fields(list(pair(gcc__type, gcc__field_name))::in,
+		gcc__field_decls::out, io__state::di, io__state::uo) is det.
+
+build_fields([], GCC_Fields) -->
+	gcc__empty_field_list(GCC_Fields).
+build_fields([Type - Name | Fields0], GCC_Fields) -->
+	build_fields(Fields0, GCC_Fields0),
+	gcc__build_field_decl(Name, Type, FieldDecl),
+	gcc__cons_field_list(FieldDecl, GCC_Fields0, GCC_Fields).
 
 :- pred mlds_output_func_decl(indent, qualified_entity_name, mlds__context,
 		func_params, io__state, io__state).
@@ -1749,7 +1952,9 @@ build_data_name(var(Name)) = MangledName :-
 	llds_out__name_mangle(Name, MangledName).
 build_data_name(common(Num)) =
 	string__format("common_%d", [i(Num)]).
-build_data_name(rtti(RttiTypeId, RttiName)) = RttiAddrName :-
+build_data_name(rtti(RttiTypeId0, RttiName0)) = RttiAddrName :-
+	RttiTypeId = fixup_rtti_type_id(RttiTypeId0),
+	RttiName = fixup_rtti_name(RttiName0),
 	rtti__addr_to_string(RttiTypeId, RttiName, RttiAddrName).
 build_data_name(base_typeclass_info(ClassId, InstanceStr)) = Name :-
 	llds_out__make_base_typeclass_info_name(ClassId, InstanceStr,
@@ -1769,6 +1974,43 @@ build_data_name(tabling_pointer(ProcLabel)) = TablingPointerName :-
 	Name = function(PredLabel, ProcId, MaybeSeqNum, InvalidPredId),
 	get_func_name(Name, _FuncName, AsmFuncName),
 	TablingPointerName = string__append("table_for_", AsmFuncName).
+
+	% XXX sometimes earlier stages of the compiler forget to add
+	% the appropriate qualifiers for stuff in the `builtin' module;
+	% we fix that here.
+:- func fixup_rtti_type_id(rtti_type_id) = rtti_type_id.
+fixup_rtti_type_id(RttiTypeId0) = RttiTypeId :-
+	(
+		RttiTypeId0 = rtti_type_id(ModuleName0, Name, Arity),
+		ModuleName0 = unqualified("")
+	->
+		ModuleName = unqualified("builtin"),
+		RttiTypeId = rtti_type_id(ModuleName, Name, Arity)
+	;
+		RttiTypeId = RttiTypeId0
+	).
+
+:- func fixup_rtti_name(rtti_name) = rtti_name.
+fixup_rtti_name(RttiTypeId0) = RttiTypeId :-
+	(
+		RttiTypeId0 = pseudo_type_info(PseudoTypeInfo0)
+	->
+		RttiTypeId = pseudo_type_info(
+			fixup_pseudo_type_info(PseudoTypeInfo0))
+	;
+		RttiTypeId = RttiTypeId0
+	).
+
+:- func fixup_pseudo_type_info(pseudo_type_info) = pseudo_type_info.
+fixup_pseudo_type_info(PseudoTypeInfo0) = PseudoTypeInfo :-
+	(
+		PseudoTypeInfo0 = type_ctor_info(RttiTypeId0)
+	->
+		PseudoTypeInfo = type_ctor_info(
+			fixup_rtti_type_id(RttiTypeId0))
+	;
+		PseudoTypeInfo = PseudoTypeInfo0
+	).
 
 :- pred mlds_output_data_name(mlds__data_name, io__state, io__state).
 :- mode mlds_output_data_name(in, di, uo) is det.
@@ -2673,8 +2915,12 @@ gen_stmt(FuncInfo, try_commit(Ref, Stmt, Handler), _) -->
 	%       else
 	%               <Handler>
 	%
-	build_call(gcc__setjmp_func_decl, [mem_addr(Ref)], FuncInfo, GCC_CallSetjmp),
-	gcc__gen_start_cond(GCC_CallSetjmp),
+	build_call(gcc__setjmp_func_decl, [mem_addr(Ref)], FuncInfo,
+		GCC_CallSetjmp),
+	gcc__build_int(0, GCC_Zero),
+	gcc__build_binop(gcc__eq_expr, gcc__boolean_type_node,
+		GCC_CallSetjmp, GCC_Zero, GCC_SetjmpEqZero),
+	gcc__gen_start_cond(GCC_SetjmpEqZero),
 	gen_statement(FuncInfo, Stmt),
 	gcc__gen_start_else,
 	gen_statement(FuncInfo, Handler),
@@ -3270,7 +3516,7 @@ build_lval(field(MaybeTag, Rval, offset(OffsetRval),
 	build_rval(OffsetRval, FuncInfo, GCC_OffsetInWords),
 	globals__io_lookup_int_option(bytes_per_word, BytesPerWord),
 	gcc__build_int(BytesPerWord, GCC_BytesPerWord),
-	gcc__build_binop(gcc__mult_expr, gcc__integer_type_node,
+	gcc__build_binop(gcc__mult_expr, 'MR_intptr_t',
 		GCC_OffsetInWords, GCC_BytesPerWord, GCC_OffsetInBytes),
 	gcc__build_binop(gcc__plus_expr, gcc__ptr_type_node,
 		GCC_Pointer, GCC_OffsetInBytes, GCC_FieldPointer0),
@@ -3326,18 +3572,31 @@ build_lval(var(qual(ModuleName, VarName)), FuncInfo, Expr) -->
 	% Look up the variable in the symbol table.
 	% We try the symbol table for local vars first,
 	% and then if its not there, we look in the global vars
-	% symbol table.
+	% symbol table.  If it's not in either of those,
+	% we check if its an RTTI enumeration constant.
 	%
 	{ Name = qual(ModuleName, data(var(VarName))) },
-	{ 
-		map__search(FuncInfo ^ local_vars, Name, LocalVarDecl)
+	( 
+		{ map__search(FuncInfo ^ local_vars, Name, LocalVarDecl) }
 	->
-		VarDecl = LocalVarDecl
+		{ Expr = gcc__var_expr(LocalVarDecl) }
 	;
-		VarDecl = map__lookup(FuncInfo ^ global_info ^ global_vars, 
-			Name)
-	},
-	{ Expr = gcc__var_expr(VarDecl) }.
+		{ map__search(FuncInfo ^ global_info ^ global_vars,
+			Name, GlobalVarDecl) }
+	->
+		{ Expr = gcc__var_expr(GlobalVarDecl) }
+	;
+		% check if its in the private_builtin module
+		% and is an RTTI enumeration constant
+		{ mercury_private_builtin_module(PrivateBuiltin) },
+		{ mercury_module_name_to_mlds(PrivateBuiltin) = ModuleName },
+		{ rtti_enum_const(VarName, IntVal) }
+	->
+		gcc__build_int(IntVal, Expr)
+	;
+		{ unexpected(this_file, "undeclared variable: " ++
+			build_qualified_name(Name)) }
+	).
 
 :- func get_class_type_name(mlds__type) = mlds__qualified_entity_name.
 get_class_type_name(Type) = Name :-
@@ -3645,18 +3904,18 @@ build_unop_expr(mktag, Tag, Tag) --> [].
 build_unop_expr(tag, Arg, Expr) -->
 	globals__io_lookup_int_option(num_tag_bits, TagBits),
 	gcc__build_int((1 << TagBits) - 1, Mask),
-	gcc__build_binop(gcc__bit_and_expr, gcc__integer_type_node,
+	gcc__build_binop(gcc__bit_and_expr, 'MR_intptr_t',
 		Arg, Mask, Expr).
 build_unop_expr(unmktag, Tag, Tag) --> [].
 build_unop_expr(mkbody, Arg, Expr) -->
 	globals__io_lookup_int_option(num_tag_bits, TagBits),
 	gcc__build_int(TagBits, TagBitsExpr),
-	gcc__build_binop(gcc__lshift_expr, gcc__integer_type_node,
+	gcc__build_binop(gcc__lshift_expr, 'MR_intptr_t',
 		Arg, TagBitsExpr, Expr).
 build_unop_expr(unmkbody, Arg, Expr) -->
 	globals__io_lookup_int_option(num_tag_bits, TagBits),
 	gcc__build_int(TagBits, TagBitsExpr),
-	gcc__build_binop(gcc__rshift_expr, gcc__integer_type_node,
+	gcc__build_binop(gcc__rshift_expr, 'MR_intptr_t',
 		Arg, TagBitsExpr, Expr).
 build_unop_expr(cast_to_unsigned, _, _) -->
 	{ sorry(this_file, "cast_to_unsigned") }.
@@ -3669,7 +3928,7 @@ build_unop_expr(hash_string, Arg, Expr) -->
 	gcc__build_call_expr(HashStringFuncExpr, GCC_ArgList, IsTailCall,
 		Expr).
 build_unop_expr(bitwise_complement, Arg, Expr) -->
-	gcc__build_unop(gcc__bit_not_expr, gcc__integer_type_node, Arg, Expr).
+	gcc__build_unop(gcc__bit_not_expr, 'MR_Integer', Arg, Expr).
 build_unop_expr((not), Arg, Expr) -->
 	gcc__build_unop(gcc__truth_not_expr, gcc__boolean_type_node, Arg, Expr).
 
@@ -3714,26 +3973,26 @@ string_compare_op(str_ge, gcc__ge_expr).
 :- mode convert_binary_op(in, out, out) is det.
 
 		% Operator	GCC operator	     GCC result type
-convert_binary_op(+,		gcc__plus_expr,      gcc__integer_type_node).
-convert_binary_op(-,		gcc__minus_expr,     gcc__integer_type_node).
-convert_binary_op(*,		gcc__mult_expr,      gcc__integer_type_node).
-convert_binary_op(/,		gcc__trunc_div_expr, gcc__integer_type_node).
-convert_binary_op((mod),	gcc__trunc_mod_expr, gcc__integer_type_node).
-convert_binary_op((<<),		gcc__lshift_expr,    gcc__integer_type_node).
-convert_binary_op((>>),		gcc__rshift_expr,    gcc__integer_type_node).
-convert_binary_op((&),		gcc__bit_and_expr,   gcc__integer_type_node).
-convert_binary_op(('|'),	gcc__bit_ior_expr,   gcc__integer_type_node).
-convert_binary_op((^),		gcc__bit_xor_expr,   gcc__integer_type_node).
+convert_binary_op(+,		gcc__plus_expr,      'MR_Integer').
+convert_binary_op(-,		gcc__minus_expr,     'MR_Integer').
+convert_binary_op(*,		gcc__mult_expr,      'MR_Integer').
+convert_binary_op(/,		gcc__trunc_div_expr, 'MR_Integer').
+convert_binary_op((mod),	gcc__trunc_mod_expr, 'MR_Integer').
+convert_binary_op((<<),		gcc__lshift_expr,    'MR_Integer').
+convert_binary_op((>>),		gcc__rshift_expr,    'MR_Integer').
+convert_binary_op((&),		gcc__bit_and_expr,   'MR_Integer').
+convert_binary_op(('|'),	gcc__bit_ior_expr,   'MR_Integer').
+convert_binary_op((^),		gcc__bit_xor_expr,   'MR_Integer').
 convert_binary_op((and),	gcc__truth_andif_expr, gcc__boolean_type_node).
 convert_binary_op((or),		gcc__truth_orif_expr, gcc__boolean_type_node).
 convert_binary_op(eq,		gcc__eq_expr,	     gcc__boolean_type_node).
 convert_binary_op(ne,		gcc__ne_expr,	     gcc__boolean_type_node).
-convert_binary_op(body,		gcc__minus_expr,     gcc__integer_type_node).
+convert_binary_op(body,		gcc__minus_expr,     'MR_intptr_t').
 convert_binary_op(array_index,  gcc__array_ref,	     Type) :-
 	% XXX temp hack -- this is wrong.
 	% We should change builtin_ops:array_index
 	% so that it takes the type as an argument.
-	Type = gcc__integer_type_node.
+	Type = 'MR_Integer'.
 convert_binary_op(str_eq, _, _) :- unexpected(this_file, "str_eq").
 convert_binary_op(str_ne, _, _) :- unexpected(this_file, "str_ne").
 convert_binary_op(str_lt, _, _) :- unexpected(this_file, "str_lt").
@@ -3744,10 +4003,10 @@ convert_binary_op((<),		gcc__le_expr,	     gcc__boolean_type_node).
 convert_binary_op((>),		gcc__gt_expr,	     gcc__boolean_type_node).
 convert_binary_op((<=),		gcc__le_expr,	     gcc__boolean_type_node).
 convert_binary_op((>=),		gcc__ge_expr,	     gcc__boolean_type_node).
-convert_binary_op(float_plus,	gcc__plus_expr,	     gcc__double_type_node).
-convert_binary_op(float_minus,	gcc__minus_expr,     gcc__double_type_node).
-convert_binary_op(float_times,	gcc__mult_expr,	     gcc__double_type_node).
-convert_binary_op(float_divide,	gcc__trunc_div_expr, gcc__double_type_node).
+convert_binary_op(float_plus,	gcc__plus_expr,	     'MR_Float').
+convert_binary_op(float_minus,	gcc__minus_expr,     'MR_Float').
+convert_binary_op(float_times,	gcc__mult_expr,	     'MR_Float').
+convert_binary_op(float_divide,	gcc__trunc_div_expr, 'MR_Float').
 convert_binary_op(float_eq,	gcc__eq_expr,	     gcc__boolean_type_node).
 convert_binary_op(float_ne,	gcc__ne_expr,	     gcc__boolean_type_node).
 convert_binary_op(float_lt,	gcc__lt_expr,	     gcc__boolean_type_node).
@@ -4239,20 +4498,47 @@ gen_context(MLDS_Context) -->
 % We use the same names for types as in the MLDS -> C back-end.
 %
 
-:- func 'MR_Box'	= gcc__type.
-:- func 'MR_Integer'	= gcc__type.
-:- func 'MR_Float'	= gcc__type.
-:- func 'MR_Char'	= gcc__type.
-:- func 'MR_String'	= gcc__type.
-:- func 'MR_Word'	= gcc__type.
+:- func 'MR_Box'		= gcc__type.
+:- func 'MR_Integer'		= gcc__type.
+:- func 'MR_Float'		= gcc__type.
+:- func 'MR_Char'		= gcc__type.
+:- func 'MR_String'		= gcc__type.
+:- func 'MR_ConstString'	= gcc__type.
+:- func 'MR_Word'		= gcc__type.
+:- func 'MR_PseudoTypeInfo'	= gcc__type.
+:- func 'MR_Sectag_Locn'	= gcc__type.
+:- func 'MR_TypeCtorRep'	= gcc__type.
 
-'MR_Box'	= gcc__ptr_type_node.
-'MR_Integer'	= gcc__integer_type_node.
-'MR_Float'	= gcc__double_type_node.
-'MR_Char'	= gcc__char_type_node.
-'MR_String'	= gcc__string_type_node.
-'MR_Word'	= gcc__integer_type_node.
+:- func 'MR_int_least8_t'	= gcc__type.
+:- func 'MR_int_least16_t'	= gcc__type.
+:- func 'MR_int_least32_t'	= gcc__type.
+:- func 'MR_int_least64_t'	= gcc__type.
+:- func 'MR_intptr_t'		= gcc__type.
+
+'MR_Box'		= gcc__ptr_type_node.
+'MR_Integer'		= gcc__intptr_type_node.
+'MR_Float'		= gcc__double_type_node.
+'MR_Char'		= gcc__char_type_node.
+'MR_String'		= gcc__string_type_node.
+	% XXX 'MR_ConstString' should really be const
+'MR_ConstString'	= gcc__string_type_node.
 	% XXX 'MR_Word' should perhaps be unsigned, to match the C back-end
+'MR_Word'		= gcc__intptr_type_node.
+
+'MR_PseudoTypeInfo'	= gcc__ptr_type_node.
+
+	% XXX MR_Sectag_Locn and MR_TypeCtorRep are actually enums
+	% in the C back-end.  Binary compatibility between this
+	% back-end and the C back-end only works if the C compiler
+	% represents these enums the same as `int'.
+'MR_Sectag_Locn'	= gcc__integer_type_node.
+'MR_TypeCtorRep'	= gcc__integer_type_node.
+
+'MR_int_least8_t'	= gcc__int8_type_node.
+'MR_int_least16_t'	= gcc__int16_type_node.
+'MR_int_least32_t'	= gcc__int32_type_node.
+'MR_int_least64_t'	= gcc__int64_type_node.
+'MR_intptr_t'		= gcc__intptr_type_node.
 
 %-----------------------------------------------------------------------------%
 

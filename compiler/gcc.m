@@ -26,6 +26,12 @@
 % of gcc, should go in gcc/mercury/mercury-gcc.c rather than in
 % inline C code here.
 
+% This module makes no attempt to be a *complete* interface to the
+% gcc back-end; we only define interfaces to those parts of the gcc
+% back-end that we need.
+
+%-----------------------------------------------------------------------------%
+
 :- module gcc.
 :- interface.
 :- import_module io, bool.
@@ -43,14 +49,25 @@
 
 % A GCC `tree' representing a type.
 :- type gcc__type.
+
+	% Builtin types
 :- func void_type_node = gcc__type.
-:- func integer_type_node = gcc__type.
-:- func string_type_node = gcc__type.
-:- func double_type_node = gcc__type.
-:- func char_type_node = gcc__type.
 :- func boolean_type_node = gcc__type.
+:- func char_type_node = gcc__type.
+:- func string_type_node = gcc__type.	% `char *'
+:- func double_type_node = gcc__type.
 :- func ptr_type_node = gcc__type.	% `void *'
+:- func integer_type_node = gcc__type.	% C `int'.
+					% (Note that we use `intptr_t' for
+					% the Mercury `int' type.)
+:- func int8_type_node = gcc__type.	% C99 `int8_t'
+:- func int16_type_node = gcc__type.	% C99 `int16_t'
+:- func int32_type_node = gcc__type.	% C99 `int32_t'
+:- func int64_type_node = gcc__type.	% C99 `int64_t'
+:- func intptr_type_node = gcc__type.	% C99 `intptr_t'
 :- func jmpbuf_type_node = gcc__type.	% `__builtin_jmpbuf', i.e. `void *[5]'
+					% This is used for `__builtin_setjmp'
+					% and `__builtin_longjmp'.
 	
 	% Given a type `T', produce a pointer type `T *'.
 :- pred build_pointer_type(gcc__type::in, gcc__type::out,
@@ -70,7 +87,22 @@
 :- pred build_function_type(gcc__type::in, gcc__param_types::in,
 		gcc__type::out, io__state::di, io__state::uo) is det.
 
+	% Return a type that was defined in a type declaration
+	% (see the section on type declarations, below).
 :- func declared_type(gcc__type_decl) = gcc__type.
+
+	% Given an array type, return the array element type.
+	% This procedure must only be called with an array type,
+	% otherwise it will abort.
+:- pred get_array_elem_type(gcc__type::in, gcc__type::out,
+		io__state::di, io__state::uo) is det.
+
+	% Given a struct type, return the field declarations for
+	% that struct.
+	% This procedure must only be called with a struct type,
+	% otherwise it will abort.
+:- pred get_struct_field_decls(gcc__type::in, gcc__field_decls::out,
+		io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -150,15 +182,30 @@
 :- pred build_field_decl(field_name::in, gcc__type::in, gcc__field_decl::out,
 		io__state::di, io__state::uo) is det.
 
+	% get the type of a field
+:- pred field_type(gcc__field_decl::in, gcc__type::out,
+		io__state::di, io__state::uo) is det.
+
 	% A GCC `tree' representing a list of field declarations
 :- type gcc__field_decls.
 
+	% Construct an empty field list.
 :- pred empty_field_list(gcc__field_decls, io__state, io__state).
 :- mode empty_field_list(out, di, uo) is det.
 
+	% Give a new field decl, cons it into the start of a field list.
+	% Note that each field decl can only be on one field list.
 :- pred cons_field_list(gcc__field_decl, gcc__field_decls, gcc__field_decls,
 		io__state, io__state).
 :- mode cons_field_list(in, in, out, di, uo) is det.
+
+	% Given a non-empty field list, return the first field decl
+	% and the remaining field decls.
+	% This procedure must only be called with a non-empty input list,
+	% otherwise it will abort.
+:- pred next_field_decl(gcc__field_decls, gcc__field_decl, gcc__field_decls,
+		io__state, io__state).
+:- mode next_field_decl(in, out, out, di, uo) is det.
 
 :- type gcc__type_decl.
 
@@ -313,9 +360,14 @@
 
 	% Create a gcc__init_elem that represents an initializer
 	% for an array element at the given array index.
-	% XXX any ideas for a better name for this one?
-:- pred init_array_elem(int, gcc__init_elem, io__state, io__state).
-:- mode init_array_elem(in, out, di, uo) is det.
+:- pred array_elem_initializer(int, gcc__init_elem, io__state, io__state).
+:- mode array_elem_initializer(in, out, di, uo) is det.
+
+	% Create a gcc__init_elem that represents an initializer
+	% for the given field of a structure.
+:- pred struct_field_initializer(gcc__field_decl, gcc__init_elem,
+		io__state, io__state).
+:- mode struct_field_initializer(in, out, di, uo) is det.
 
 	% A GCC `tree' representing a list of initializers
 	% for an array or structure.
@@ -502,8 +554,11 @@
 :- pragma c_code(void_type_node = (Type::out), [will_not_call_mercury], "
 	Type = (MR_Word) void_type_node;
 ").
-:- pragma c_code(integer_type_node = (Type::out), [will_not_call_mercury], "
-	Type = (MR_Word) integer_type_node;
+:- pragma c_code(boolean_type_node = (Type::out), [will_not_call_mercury], "
+	Type = (MR_Word) boolean_type_node;
+").
+:- pragma c_code(char_type_node = (Type::out), [will_not_call_mercury], "
+	Type = (MR_Word) char_type_node;
 ").
 :- pragma c_code(string_type_node = (Type::out), [will_not_call_mercury], "
 	/*
@@ -515,14 +570,26 @@
 :- pragma c_code(double_type_node = (Type::out), [will_not_call_mercury], "
 	Type = (MR_Word) double_type_node;
 ").
-:- pragma c_code(char_type_node = (Type::out), [will_not_call_mercury], "
-	Type = (MR_Word) char_type_node;
-").
-:- pragma c_code(boolean_type_node = (Type::out), [will_not_call_mercury], "
-	Type = (MR_Word) boolean_type_node;
-").
 :- pragma c_code(ptr_type_node = (Type::out), [will_not_call_mercury], "
 	Type = (MR_Word) ptr_type_node;
+").
+:- pragma c_code(integer_type_node = (Type::out), [will_not_call_mercury], "
+	Type = (MR_Word) integer_type_node;
+").
+:- pragma c_code(int8_type_node = (Type::out), [will_not_call_mercury], "
+	Type = (MR_Word) merc_int8_type_node;
+").
+:- pragma c_code(int16_type_node = (Type::out), [will_not_call_mercury], "
+	Type = (MR_Word) merc_int16_type_node;
+").
+:- pragma c_code(int32_type_node = (Type::out), [will_not_call_mercury], "
+	Type = (MR_Word) merc_int32_type_node;
+").
+:- pragma c_code(int64_type_node = (Type::out), [will_not_call_mercury], "
+	Type = (MR_Word) merc_int64_type_node;
+").
+:- pragma c_code(intptr_type_node = (Type::out), [will_not_call_mercury], "
+	Type = (MR_Word) merc_intptr_type_node;
 ").
 :- pragma c_code(jmpbuf_type_node = (Type::out), [will_not_call_mercury], "
 	Type = (MR_Word) merc_jmpbuf_type_node;
@@ -570,6 +637,18 @@
 	Type = (MR_Word) TREE_TYPE((tree) TypeDecl);
 ").
 
+:- pragma c_code(get_array_elem_type(ArrayType::in, ElemType::out,
+	_IO0::di, _IO::uo), [will_not_call_mercury],
+"
+	ElemType = (MR_Word) TREE_TYPE((tree) ArrayType);
+").
+
+:- pragma c_code(get_struct_field_decls(StructType::in, FieldDecls::out,
+	_IO0::di, _IO::uo), [will_not_call_mercury],
+"
+	FieldDecls = (MR_Word) TYPE_FIELDS((tree) StructType);
+").
+
 %-----------------------------------------------------------------------------%
 %
 % Declarations
@@ -590,9 +669,8 @@
 :- pragma c_code(build_global_var_decl(Name::in, Type::in, Init::in, Decl::out,
 	_IO0::di, _IO::uo), [will_not_call_mercury],
 "
-	tree decl = merc_build_extern_var_decl(Name, (tree) Type);
-	DECL_INITIAL(decl) = (tree) Init;
-	Decl = (MR_Word) decl;
+	Decl = (MR_Word) merc_build_global_var_decl(Name, (tree) Type,
+		(tree) Init);
 ").
 
 :- pragma c_code(build_local_var_decl(Name::in, Type::in, Decl::out,
@@ -674,6 +752,12 @@
 	Decl = (MR_Word) merc_build_field_decl(Name, (tree) Type);
 ").
 
+:- pragma c_code(field_type(Decl::in, Type::out,
+	_IO0::di, _IO::uo), [will_not_call_mercury],
+"
+	Type = (MR_Word) TREE_TYPE((tree) Decl);
+").
+
 :- type gcc__field_decls == gcc__tree.
 
 :- pragma c_code(empty_field_list(Decl::out, _IO0::di, _IO::uo),
@@ -686,6 +770,15 @@
 	_IO0::di, _IO::uo), [will_not_call_mercury],
 "
 	Decls = (MR_Word) merc_cons_field_list((tree) Decl, (tree) Decls0);
+").
+
+:- pragma c_code(next_field_decl(Decls::in, Decl::out, RemainingDecls::out,
+	_IO0::di, _IO::uo), [will_not_call_mercury],
+"
+	/* XXX Move to mercury-gcc.c? */
+	assert ((tree) Decls != NULL_TREE);
+	Decl = (MR_Word) (tree) Decls;
+	RemainingDecls = (MR_Word) TREE_CHAIN ((tree) Decls);
 ").
 
 :- type gcc__type_decl == gcc__tree.
@@ -960,8 +1053,10 @@ build_func_addr_expr(FuncDecl, Expr) -->
 
 :- type gcc__init_elem == gcc__tree.
 
-gcc__init_array_elem(Int, GCC_Int) -->
+gcc__array_elem_initializer(Int, GCC_Int) -->
 	build_int(Int, GCC_Int).
+
+gcc__struct_field_initializer(FieldDecl, FieldDecl) --> [].
 
 :- type gcc__init_list == gcc__tree.
 
