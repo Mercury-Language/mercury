@@ -18,15 +18,16 @@ MAIN_TARGET=mercury
 # Don't change these without good reason - if you want to
 # do a temporary change, change ../Mmake.params.
 
-MNC	=	MERCURY_NC_BUILTIN="`vpath_find nc_builtin.nl`" mnc
+MNC	=	MERCURY_NC_BUILTIN="`vpath_find nc_builtin.nl`" \
+		$(SCRIPTS_DIR)/mnc
 MNL	=	MERCURY_LIB_DIR=. \
 	MERCURY_LIB_NOS="`vpath_find $(library.nos) $(NU_LIBRARY_NOS)`" \
-		mnl
+		$(SCRIPTS_DIR)/mnl
 
-MSC	=	MERCURY_SICSTUS_COMPILER=./sicstus_compile msc
+MSC	=	MERCURY_SICSTUS_COMPILER=./sicstus_compile $(SCRIPTS_DIR)/msc
 MSL	=	MERCURY_SP_LIB_DIR=. MERCURY_SICSTUS_PROLOG=sp \
 MERCURY_SP_LIB_OBJS="`vpath_find sp_builtin.ql $(library.qls) $(NU_LIBRARY_QLS)`" \
-		msl
+		$(SCRIPTS_DIR)/msl
 
 MCD	=	MERCURY_INT_DIR=. \
 		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) --generate-dependencies
@@ -34,7 +35,7 @@ MCI	=	MERCURY_INT_DIR=. \
 		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) --make-interface
 MCG	=	MERCURY_INT_DIR=. \
 		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) --compile-to-c
-MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mgnuc
+MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS =	-I $(BOEHM_GC_DIR) $(PROFFLAGS)
 
 #-----------------------------------------------------------------------------#
@@ -110,7 +111,8 @@ libmercury.a : $(library.os)
 	$(RANLIB) libmercury.a
 
 libmercury.so : $(library.pic_os)
-	$(LINK_SHARED_OBJ) -o libmercury.so $(library.pic_os)
+	$(LINK_SHARED_OBJ) -o libmercury.so $(library.pic_os) \
+		-L$(RUNTIME_DIR) -L$(BOEHM_GC_DIR) -lmer -lgc
 
 library.init: $(library.cs)
 	cat `vpath_find $(library.cs)` | grep '^INIT ' > library.init
@@ -195,13 +197,13 @@ install_library: libmercury.a libmercury.$(SO)
 install_nuprolog: install_library_nu install_interpreter_nu
 
 .PHONY: install_library_nu
-install_library_nu: $(library.nos) $(NU_LIBRARY_NOS) debug.no portray.no \
-			nc_builtin.nl np_builtin.nl
+install_library_nu: $(library.nos) $(NU_LIBRARY_NOS) \
+			error.no debug.no portray.no nc_builtin.nl np_builtin.nl
 	[ -d $(INSTALL_NU_DIR) ] || mkdir -p $(INSTALL_NU_DIR)
 	cp `vpath_find nc_builtin.nl np_builtin.nl` $(INSTALL_NU_DIR)
 	[ -d $(INSTALL_NU_ARCH_DIR) ] || mkdir -p $(INSTALL_NU_ARCH_DIR)
-	cp `vpath_find $(library.nos) $(NU_LIBRARY_NOS) debug.no portray.no` \
-		$(INSTALL_NU_ARCH_DIR)
+	cp `vpath_find $(library.nos) $(NU_LIBRARY_NOS) \
+		error.no debug.no portray.no` $(INSTALL_NU_ARCH_DIR)
 
 .PHONY: install_interpreter_nu
 install_interpreter_nu: library.nu
