@@ -96,39 +96,6 @@ EOF
 	fi
 	rm -f conftest*
 fi
-if test "$BOOTSTRAP_MC" = ""; then
-# No `mmc' was installed - perhaps there was an `mc' around.
-# XXX This is only temporary.
-AC_PATH_PROG(BOOTSTRAP_MC_2,mc)
-if test "$BOOTSTRAP_MC_2" != ""; then
-	AC_MSG_CHECKING(whether $BOOTSTRAP_MC_2 works and is sufficiently recent)
-	cat > conftest.m << EOF
-		% this module contains features which didn't work in
-		% previous versions of the Mercury compiler
-		:- module conftest.
-		:- interface.
-		:- import_module io.
-		:- pred main(io__state::unique->clobbered, io__state::uo)
-			is det.
-		:- implementation.
-		:- pragma(c_code, "").
-		:- type type_containing_pred(T) ---> foo(pred(T)).
-		main --> io__write_string("Hello, world\n").
-EOF
-	if
-		 echo $BOOTSTRAP_MC_2 conftest >&AC_FD_CC 2>&1 &&
-		 $BOOTSTRAP_MC_2 conftest </dev/null >&AC_FD_CC 2>&1 &&
-		 test "`./conftest 2>&1`" = "Hello, world"
-	then
-		AC_MSG_RESULT(yes)
-	else
-		BOOTSTRAP_MC_2=
-		AC_MSG_RESULT(no)
-	fi
-	rm -f conftest*
-fi
-BOOTSTRAP_MC=$BOOTSTRAP_MC_2
-fi
 #-----------------------------------------------------------------------------#
 MERCURY_MSG("looking for GNU Make...")
 AC_PROGRAMS_CHECK(GNU_MAKE,gmake make)
