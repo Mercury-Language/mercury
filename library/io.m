@@ -2022,9 +2022,9 @@ void		mercury_close(MercuryFile* mf);
 
 :- pragma(c_code, "
 
-MercuryFile mercury_stdin = { NULL, 0 };
-MercuryFile mercury_stdout = { NULL, 0 };
-MercuryFile mercury_stderr = { NULL, 0 };
+MercuryFile mercury_stdin = { NULL, 1 };
+MercuryFile mercury_stdout = { NULL, 1 };
+MercuryFile mercury_stderr = { NULL, 1 };
 MercuryFile *mercury_current_text_input = &mercury_stdin;
 MercuryFile *mercury_current_text_output = &mercury_stdout;
 MercuryFile *mercury_current_binary_input = &mercury_stdin;
