@@ -339,8 +339,12 @@ extern const MR_TypeCtorInfo_Struct
 	mercury__builtin__builtin__type_ctor_info_character_0
 #define mercury__builtin____type_ctor_info_pred_0 \
 	mercury__builtin__builtin__type_ctor_info_pred_0
+#define mercury__builtin____type_ctor_info_func_0 \
+	mercury__builtin__builtin__type_ctor_info_func_0
 #define mercury__builtin____type_ctor_info_tuple_0 \
 	mercury__builtin__builtin__type_ctor_info_tuple_0
+#define mercury__builtin____type_ctor_info_void_0 \
+	mercury__builtin__builtin__type_ctor_info_void_0
 
 /*
 ** The compiler used to generate references to this constant.

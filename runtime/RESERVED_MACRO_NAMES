@@ -142,10 +142,12 @@ HAVE_WAIT
 # The `mercury__' prefix is unique enough.
 mercury__builtin____type_ctor_info_character_0
 mercury__builtin____type_ctor_info_float_0
+mercury__builtin____type_ctor_info_func_0
 mercury__builtin____type_ctor_info_int_0
 mercury__builtin____type_ctor_info_pred_0
 mercury__builtin____type_ctor_info_string_0
 mercury__builtin____type_ctor_info_tuple_0
+mercury__builtin____type_ctor_info_void_0
 mercury__private_builtin__SIZEOF_WORD
 mercury__private_builtin__unsafe_type_cast_2_p_0
 #-----------------------------------------------------------------------------#
