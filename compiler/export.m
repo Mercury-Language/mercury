@@ -85,7 +85,7 @@ export__get_c_export_decls(HLDS, C_ExportDecls) :-
 export__get_c_export_decls_2(_Preds, [], []).
 export__get_c_export_decls_2(Preds, [E|ExportedProcs], C_ExportDecls) :-
 	E = pragma_exported_proc(PredId, ProcId, C_Function),
-	get_export_info(Preds, PredId, ProcId, C_RetType,
+	get_export_info(Preds, PredId, ProcId, _Exported, C_RetType,
 		_DeclareReturnVal, _FailureAction, _SuccessAction,
 		HeadArgInfoTypes),
 	get_argument_declarations(HeadArgInfoTypes, no, ArgDecls),
@@ -164,7 +164,7 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 export__to_c(_Preds, [], _Module, []).
 export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	E = pragma_exported_proc(PredId, ProcId, C_Function),
-	get_export_info(Preds, PredId, ProcId,
+	get_export_info(Preds, PredId, ProcId, Exported,
 		C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSucceed,
 		ArgInfoTypes),
 	get_argument_declarations(ArgInfoTypes, yes, ArgDecls),
@@ -176,6 +176,12 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	
 	code_util__make_proc_label(Module, PredId, ProcId, ProcLabel),
 	llds_out__get_proc_label(ProcLabel, yes, ProcLabelString),
+
+	( Exported = yes ->
+		DeclareString = "Declare_entry"
+	;
+		DeclareString = "Declare_static"
+	),
 
 	string__append_list([	"\n",
 				C_RetType, "\n", 
@@ -189,7 +195,7 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 				"\trestore_registers();\n", 
 				InputArgs,
 				"\tsave_transient_registers();\n",
-				"\t{\n\tDeclare_entry(",
+				"\t{\n\t", DeclareString, "(",
 				ProcLabelString,
 				");\n",
 				"\t(void) MR_call_engine(ENTRY(",
@@ -213,14 +219,19 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	%	Figure out the C return type, the actions on success
 	%	and failure, and the argument locations/modes/types
 	%	for a given procedure.
-:- pred get_export_info(pred_table, pred_id, proc_id,
+:- pred get_export_info(pred_table, pred_id, proc_id, bool,
 			string, string, string, string,
 			assoc_list(arg_info, type)).
-:- mode get_export_info(in, in, in, out, out, out, out, out) is det.
+:- mode get_export_info(in, in, in, out, out, out, out, out, out) is det.
 
-get_export_info(Preds, PredId, ProcId, C_RetType,
+get_export_info(Preds, PredId, ProcId, Exported, C_RetType,
 		MaybeDeclareRetval, MaybeFail, MaybeSucceed, ArgInfoTypes) :-
 	map__lookup(Preds, PredId, PredInfo),
+	( procedure_is_exported(PredInfo, ProcId) ->
+		Exported = yes
+	;
+		Exported = no
+	),
 	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
 	pred_info_procedures(PredInfo, ProcTable),
 	map__lookup(ProcTable, ProcId, ProcInfo),
