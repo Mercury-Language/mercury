@@ -83,6 +83,8 @@ typedef enum {
 MercuryFile MR_debugger_socket_in;
 MercuryFile MR_debugger_socket_out;
 
+static String	MR_mmc_options;
+
 /*
 ** Use a GNU C extension to enforce static type checking
 ** for printf-style functions. 
@@ -204,6 +206,12 @@ MR_trace_init_external(void)
 	struct sockaddr* addr;
 	Word debugger_request;
 	Integer debugger_request_type;
+
+	/* 
+	** MR_mmc_options contains the options to pass to mmc when compiling 
+	** queries. We initialise it to the String "".
+	*/
+	MR_TRACE_CALL_MERCURY(ML_DI_init_mercury_string(&MR_mmc_options));
 
 	/*
 	** We presume that the user's program has been invoked from
@@ -400,7 +408,6 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	Word		*saved_regs = event_info->MR_saved_regs;
 	Integer		modules_list_length;
 	Word		modules_list;
-	static String	MR_mmc_options;
 
 	MR_trace_enabled = FALSE;
 
@@ -415,12 +422,6 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	event_details.MR_call_seqno = MR_trace_call_seqno;
 	event_details.MR_call_depth = MR_trace_call_depth;
 	event_details.MR_event_number = MR_trace_event_number;
-
-	/* 
-	** MR_mmc_options contains the options to pass to mmc when compiling 
-	** queries. We initialise it to the String "".
-	*/
-	MR_TRACE_CALL_MERCURY(ML_DI_init_mercury_string(&MR_mmc_options));
 
 	MR_trace_init_point_vars(event_info->MR_event_sll,
 		event_info->MR_saved_regs);
