@@ -2793,7 +2793,7 @@ mercury_io_error(MercuryFile* mf, const char *format, ...)
 
 	/* copy the error message to a Mercury string */
 	restore_registers(); /* for MR_hp */
-	MR_make_aligned_string(message_as_mercury_string, message);
+	MR_make_aligned_string_copy(message_as_mercury_string, message);
 	save_registers(); /* for MR_hp */
 
 	/* call some Mercury code to throw the exception */
