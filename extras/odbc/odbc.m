@@ -272,7 +272,7 @@
 
 :- pragma c_header_code("
 
-#include ""imp.h""
+#include ""mercury_imp.h""
 #include <stdio.h>
 #include <stdlib.h>
 #include <setjmp.h>
