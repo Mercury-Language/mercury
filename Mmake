@@ -92,6 +92,9 @@ doc: scripts
 util: scripts
 	cd util && $(SUBDIR_MMAKE)
 
+.PHONY: prof
+prof: profiler
+
 .PHONY: profiler
 profiler: scripts
 	cd prof && $(SUBDIR_MMAKE)
@@ -99,7 +102,7 @@ profiler: scripts
 #-----------------------------------------------------------------------------#
 
 .PHONY: tags
-tags: tags_compiler tags_library tags_profiler
+tags: tags_compiler tags_profiler tags_library
 
 .PHONY: tags_compiler
 tags_compiler:
@@ -122,7 +125,8 @@ config.status: configure
 	if [ -f ./config.status ]; then \
 		./config.status --recheck; \
 	else \
-		./configure; \
+		echo "======> You need to run configure!"; \
+		exit 1; \
 	fi
 
 Mmake.common: Mmake.common.in config.status
