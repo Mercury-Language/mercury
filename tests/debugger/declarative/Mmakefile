@@ -13,6 +13,7 @@ DECLARATIVE_PROGS=		\
 	browse_arg		\
 	catch			\
 	comp_gen		\
+	confirm_abort		\
 	deep_warning		\
 	dependency		\
 	dependency2		\
@@ -134,6 +135,9 @@ catch.out: catch catch.$(INP)
 
 comp_gen.out: comp_gen comp_gen.inp
 	$(MDB) ./comp_gen < comp_gen.inp > comp_gen.out 2>&1
+
+confirm_abort.out: confirm_abort confirm_abort.inp
+	$(MDB) ./confirm_abort < confirm_abort.inp > confirm_abort.out 2>&1
 
 deep_warning.out: deep_warning deep_warning.inp
 	$(MDB) ./deep_warning < deep_warning.inp > deep_warning.out 2>&1
