@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2046,7 +2046,10 @@ opt_level(2, _, [
 	common_struct		-	bool(yes),
 	user_guided_type_specialization
 				-	bool(yes),
-	optimize_duplicate_calls -	bool(yes),
+	% XXX While inst `array' is defined as `ground', we
+	% can't optimize duplicate calls (we might combine
+	% calls to `array.init').
+	% optimize_duplicate_calls -	bool(yes),
 	simple_neg		-	bool(yes),
 
 	optimize_rl		-	bool(yes),
