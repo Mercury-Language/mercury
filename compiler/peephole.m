@@ -83,11 +83,11 @@ peephole__match(computed_goto(_, Labels), Comment, Instrs0, Instrs) :-
 	% A conditional branch whose condition is constant
 	% can be either elimininated or replaced by an unconditional goto.
 
-peephole__match(if_val(Rval, label(Target)), Comment, Instrs0, Instrs) :-
+peephole__match(if_val(Rval, CodeAddr), Comment, Instrs0, Instrs) :-
 	opt_util__is_const_condition(Rval, Taken),
 	(
 		Taken = yes,
-		Instrs = [goto(label(Target)) - Comment | Instrs0]
+		Instrs = [goto(CodeAddr) - Comment | Instrs0]
 	;
 		Taken = no,
 		Instrs = Instrs0
