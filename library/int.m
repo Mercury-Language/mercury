@@ -33,6 +33,13 @@
 
 :- pred int__pow(int, int, int).
 :- mode int__pow(in, in, out) is det.
+	% int__pow(X, Y, Z): Z is X raised to the Yth power
+	% Y must not be negative.
+
+:- pred int__log2(int, int).
+:- mode int__log2(in, out) is det.
+	% int__log2(X, N): N is the least integer such that 2 to the power N
+	% is greater than or equal to X.  X must be positive.
 
 /*
 
@@ -53,8 +60,14 @@
 :- type int__simple_expr --->	(int + int)
 			;	(int * int)
 			;	(int - int)
-			;	(int mod int)
-			;	(int // int).
+			;	(int mod int)	% modulus
+			;	(int // int)	% integer division
+			;	(int << int)	% left shift
+			;	(int >> int)	% right shift
+			;	(int /\ int)	% bitwise and
+			;	(int \/ int)	% bitwise or
+			;	(int ^ int)	% bitwise exclusive or
+			;	(\ int).	% bitwise complement
 
 :- pred is(int :: out, int__simple_expr :: in) is det.
 
@@ -77,6 +90,18 @@
 
 :- pred builtin_mod(int, int, int).
 :- mode builtin_mod(in, in, out) is det.
+
+:- pred builtin_bit_or(int, int, int).
+:- mode builtin_bit_or(in, in, out) is det.
+
+:- pred builtin_bit_and(int, int, int).
+:- mode builtin_bit_and(in, in, out) is det.
+
+:- pred builtin_bit_xor(int, int, int).
+:- mode builtin_bit_xor(in, in, out) is det.
+
+:- pred builtin_bit_neg(int, int).
+:- mode builtin_bit_neg(in, out) is det.
 
 :- implementation.
 
@@ -134,6 +159,26 @@ int__pow_2(Val, Exp, Result0, Result) :-
 		Exp1 is Exp - 1,
 		Result1 is Result0 * Val,
 		int__pow_2(Val, Exp1, Result1, Result)
+	).
+
+int__log2(X, N) :-
+	( X =< 0 ->
+		error("int__log2: cannot take log of a non-positive number")
+	;
+		int__log2_2(X, 0, N)
+	).
+
+:- pred int__log2_2(int, int, int).
+:- mode int__log2_2(in, in, out) is det.
+
+int__log2_2(X, N0, N) :-
+	( X = 1 ->
+		N = N0
+	;
+		X1 is X + 1,
+		X2 is X1 // 2,
+		N1 is N0 + 1,
+		int__log2_2(X2, N1, N)
 	).
 
 %-----------------------------------------------------------------------------%

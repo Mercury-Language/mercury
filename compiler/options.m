@@ -86,6 +86,7 @@
 		;	peephole_label_elim
 		;	peephole_value_number
 		;	static_ground_terms
+		;	smart_indexing
 		;	optimize
 		;	debug
 		;	grade
@@ -147,6 +148,7 @@ option_defaults([
 	peephole_label_elim	-	bool(yes),
 	peephole_value_number	-	bool(no),
 	static_ground_terms	-	bool(yes),
+	smart_indexing		-	bool(yes),
 		% Miscellaneous Options
 	builtin_module		-	string("mercury_builtin"),
 	heap_space		-	int(0),
@@ -176,6 +178,7 @@ short_option('s', 			statistics).
 short_option('S', 			grade).
 short_option('T', 			debug_types).
 short_option('v', 			verbose).
+short_option('x', 			smart_indexing).
 short_option('V', 			very_verbose).
 short_option('w', 			warn_singleton_vars).
 
@@ -233,6 +236,7 @@ long_option("peephole-jump-opt",	peephole_jump_opt).
 long_option("peephole-label-elim",	peephole_label_elim).
 long_option("peephole-value-number",	peephole_value_number).
 long_option("static-ground-terms",	static_ground_terms).
+long_option("smart-indexing",		smart_indexing).
 
 options_help -->
 	io__write_string("\t-h, --help\n"),
@@ -347,6 +351,9 @@ options_help -->
 	io__write_string("\t\tConstruct all terms at runtime; disable the optimization\n"),
 	io__write_string("\t\tof constructing constant ground terms at compile time\n"),
 	io__write_string("\t\tand storing them as static constants.\n"),
+	io__write_string("\t--no-smart-indexing\n"),
+	io__write_string("\t\tGenerate deterministic switches as a simple if-then-else chain;\n"),
+	io__write_string("\t\tdisable string hashing and integer table-lookup indexing.\n"),
 	io__write_string("\t--optimize\n"),
 	io__write_string("\t\tEnable the C compiler's optimizations.\n"),
 

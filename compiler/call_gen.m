@@ -214,10 +214,15 @@ call_gen__generate_det_builtin(PredId, _ProcId, Args, empty) -->
 	code_info__get_module_info(ModuleInfo),
 	{ predicate_name(ModuleInfo, PredId, OpStr) },
 	(
-		{ atom_to_operator(OpStr, Op) },
+		{ code_util__atom_to_binop(OpStr, BinOp) },
 		{ Args = [ X, Y, Var ] }
 	->
-		code_info__cache_expression(Var, binop(Op, var(X), var(Y)))
+		code_info__cache_expression(Var, binop(BinOp, var(X), var(Y)))
+	;
+		{ code_util__atom_to_unop(OpStr, UnOp) },
+		{ Args = [ X, Var ] }
+	->
+		code_info__cache_expression(Var, unop(UnOp, var(X)))
 	;
 		{ error("Unknown builtin predicate") }
 	).
@@ -228,14 +233,22 @@ call_gen__generate_semidet_builtin(PredId, _ProcId, Args, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	{ predicate_name(ModuleInfo, PredId, OpStr) },
 	(
-		{ atom_to_operator(OpStr, Op) },
+		{ code_util__atom_to_binop(OpStr, BinOp) },
 		{ Args = [ X, Y ] }
 	->
 		code_info__produce_variable(X, CodeX, XRval),
 		code_info__produce_variable(Y, CodeY, YRval),
 		code_info__generate_test_and_fail(
-			binop(Op, XRval, YRval), TestCode),
+			binop(BinOp, XRval, YRval), TestCode),
 		{ Code = tree(tree(CodeX,CodeY), TestCode) }
+	;
+		{ code_util__atom_to_unop(OpStr, UnOp) },
+		{ Args = [ X ] }
+	->
+		code_info__produce_variable(X, CodeX, XRval),
+		code_info__generate_test_and_fail(
+			unop(UnOp, XRval), TestCode),
+		{ Code = tree(CodeX, TestCode) }
 	;
 		{ error("Unknown builtin predicate") }
 	).
@@ -243,7 +256,7 @@ call_gen__generate_semidet_builtin(PredId, _ProcId, Args, Code) -->
 %---------------------------------------------------------------------------%
 
 call_gen__generate_nondet_builtin(_PredId, _ProcId, _Args, _Code) -->
-	{ error("Unknown builtin predicate") }.
+	{ error("Unknown nondet builtin predicate") }.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

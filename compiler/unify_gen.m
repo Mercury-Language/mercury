@@ -113,7 +113,7 @@ unify_gen__generate_tag_rval(Var, ConsId, TestRval, Code) -->
 :- mode unify_gen__generate_tag_rval_2(in, in, out) is det.
 
 unify_gen__generate_tag_rval_2(string_constant(String), Rval, TestRval) :-
-	TestRval = binop(streq, Rval, const(string_const(String))).
+	TestRval = binop(str_eq, Rval, const(string_const(String))).
 unify_gen__generate_tag_rval_2(float_constant(_String), _, _) :-
 	error("Sorry, float tests not implemented").
 unify_gen__generate_tag_rval_2(int_constant(Int), Rval, TestRval) :-
@@ -161,13 +161,11 @@ unify_gen__generate_construction(Var, Cons, Args, Modes, Code) -->
 		{ Tag = simple_tag(SimpleTag) }
 	->
 		code_info__get_module_info(ModuleInfo),
-		code_info__get_label_count(LabelCount),
-		{ LabelCount1 is LabelCount + 1 },
-		code_info__set_label_count(LabelCount1),
+		code_info__get_next_label_number(LabelCount),
 		{ unify_gen__generate_cons_args(Args, ModuleInfo, Modes,
 			RVals) },
 		code_info__cache_expression(Var, create(SimpleTag, RVals,
-						LabelCount1)),
+						LabelCount)),
 			% we need to flush the expression immediately,
 			% since the expression cache doesn't handle the
 			% dependencies in create expressions
@@ -176,15 +174,13 @@ unify_gen__generate_construction(Var, Cons, Args, Modes, Code) -->
 		{ Tag = complicated_tag(Bits0, Num0) }
 	->
 		code_info__get_module_info(ModuleInfo),
-		code_info__get_label_count(LabelCount),
-		{ LabelCount1 is LabelCount + 1 },
-		code_info__set_label_count(LabelCount1),
+		code_info__get_next_label_number(LabelCount),
 		{ unify_gen__generate_cons_args(Args, ModuleInfo, Modes,
 			RVals0) },
 			% the first field holds the secondary tag
 		{ RVals = [yes(const(int_const(Num0))) | RVals0] },
 		code_info__cache_expression(Var, create(Bits0, RVals,
-						LabelCount1)),
+						LabelCount)),
 			% we need to flush the expression immediately,
 			% since the expression cache doesn't handle the
 			% dependencies in create expressions

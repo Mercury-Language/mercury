@@ -45,9 +45,13 @@
 :- pred code_util__neg_rval(rval, rval).
 :- mode code_util__neg_rval(in, out) is det.
 
-:- pred atom_to_operator(string, operator).
-:- mode atom_to_operator(in, out) is semidet.
-:- mode atom_to_operator(out, in) is semidet.
+:- pred code_util__atom_to_binop(string, operator).
+:- mode code_util__atom_to_binop(in, out) is semidet.
+:- mode code_util__atom_to_binop(out, in) is semidet.
+
+:- pred code_util__atom_to_unop(string, unary_op).
+:- mode code_util__atom_to_unop(in, out) is semidet.
+:- mode code_util__atom_to_unop(out, in) is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -102,15 +106,22 @@ code_util__arg_loc_to_register(ArgLoc, r(ArgLoc)).
 
 %-----------------------------------------------------------------------------%
 
-atom_to_operator("builtin_plus", (+)).
-atom_to_operator("builtin_minus", (-)).
-atom_to_operator("builtin_times", (*)).
-atom_to_operator("builtin_div", (/)).
-atom_to_operator("builtin_mod", (mod)).
-atom_to_operator(">", (>)).
-atom_to_operator("<", (<)).
-atom_to_operator(">=", (>=)).
-atom_to_operator("=<", (<=)).
+code_util__atom_to_binop("builtin_plus", (+)).
+code_util__atom_to_binop("builtin_minus", (-)).
+code_util__atom_to_binop("builtin_times", (*)).
+code_util__atom_to_binop("builtin_div", (/)).
+code_util__atom_to_binop("builtin_mod", (mod)).
+code_util__atom_to_binop("builtin_left_shift", (<<)).
+code_util__atom_to_binop("builtin_right_shift", (>>)).
+code_util__atom_to_binop("builtin_and", (&)).
+code_util__atom_to_binop("builtin_or", (|)).
+code_util__atom_to_binop("builtin_xor", (^)).
+code_util__atom_to_binop(">", (>)).
+code_util__atom_to_binop("<", (<)).
+code_util__atom_to_binop(">=", (>=)).
+code_util__atom_to_binop("=<", (<=)).
+
+code_util__atom_to_unop("\\", bitwise_complement).
 
 %-----------------------------------------------------------------------------%
 
@@ -189,5 +200,11 @@ code_util__neg_op(<, >=).
 code_util__neg_op(<=, >).
 code_util__neg_op(>, <=).
 code_util__neg_op(>=, <).
+code_util__neg_op(str_eq, str_ne).
+code_util__neg_op(str_ne, str_eq).
+code_util__neg_op(str_lt, str_ge).
+code_util__neg_op(str_le, str_gt).
+code_util__neg_op(str_gt, str_le).
+code_util__neg_op(str_ge, str_lt).
 
 %-----------------------------------------------------------------------------%

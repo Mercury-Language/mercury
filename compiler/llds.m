@@ -88,11 +88,12 @@
 :- type lval		--->	reg(reg)	% either an int or float reg
 			;	stackvar(int)	% det stack slots
 			;	framevar(int)	% nondet stack slots
-			;	succip
-			;	maxfr
-			;	curredoip
-			;	hp
-			;	sp
+			;	succip		% det return address
+			;	maxfr		% top of nondet stack
+			;	curredoip	% the redoip of the current
+						% nondet stack frame
+			;	hp		% heap pointer
+			;	sp		% top of det stack
 			;	field(tag, lval, int)
 			;	lvar(var)
 			;	temp(int).	% only inside blocks
@@ -113,11 +114,20 @@
 			;	unop(unary_op, rval)
 			;	binop(operator, rval, rval).
 
+			/* any additions to `rval' also require additions in
+			   code_info__generate_expression
+			   code_info__generate_expression_vars
+			   code_info__expression_dependencies
+			   value_number__make_live
+			*/
+
 :- type unary_op	--->	mktag
 			;	tag
 			;	mkbody
 			;	body
 			;	cast_to_unsigned
+			;	hash_string
+			;	bitwise_complement
 			;	not.
 
 :- type rval_const	--->	true
@@ -125,25 +135,29 @@
 			;	int_const(int)
 			;	string_const(string).
 
-			/* any additions here also require additions in
-			   code_info__generate_expression
-			   code_info__generate_expression_vars
-			   code_info__expression_dependencies
-			   value_number__make_live
-			*/
-
 % should be renamed binary_op
-:- type operator	--->	(+)
+:- type operator	--->	(+)	% integer arithmetic
 			;	(-)
 			;	(*)
 			;	(/)
 			;	(mod)
+			;	(<<)	% left shift
+			;	(>>)	% right shift
+			;	(&)	% bitwise and
+			;	(|)	% bitwise or
+			;	(^)	% bitwise xor
 			;	and	% logical and
 			;	or	% logical or
 			;	eq	% ==
 			;	ne	% !=
-			;	streq	% string equality
-			;	(<)
+			;	array_index
+			;	str_eq	% string comparisons
+			;	str_ne	
+			;	str_lt
+			;	str_gt
+			;	str_le
+			;	str_ge
+			;	(<)	% integer comparions
 			;	(>)
 			;	(<=)
 			;	(>=).
@@ -182,6 +196,9 @@
 
 :- pred llds__lval_to_string(lval, string).
 :- mode llds__lval_to_string(in, out) is semidet.
+
+:- pred llds__operator_to_string(operator, string).
+:- mode llds__operator_to_string(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -438,17 +455,27 @@ output_temp_decls_2(Next, Max) -->
 :- pred output_rval_decls(rval, io__state, io__state).
 :- mode output_rval_decls(in, di, uo) is det.
 
-output_rval_decls(Rval) --> 
-	( { Rval = create(_Tag, ArgVals, Label) } ->
-		output_cons_arg_decls(ArgVals),
-		io__write_string("static const Word mercury_const_"),
-		io__write_int(Label),
-		io__write_string("[] = {\n\t\t"),
-		output_cons_args(ArgVals),
-		io__write_string("};\n\t  ")
-	;
-		[]
-	).
+output_rval_decls(lval(Lval)) --> 
+	output_lval_decls(Lval).
+output_rval_decls(var(_)) --> 
+	{ error("output_rval_decls: unexpected var") }.
+output_rval_decls(mkword(_, Rval)) --> 
+	output_rval_decls(Rval).
+output_rval_decls(field(_, Rval, _)) --> 
+	output_rval_decls(Rval).
+output_rval_decls(const(_)) --> [].
+output_rval_decls(unop(_, Rval)) -->
+	output_rval_decls(Rval).
+output_rval_decls(binop(_, Rval1, Rval2)) -->
+	output_rval_decls(Rval1),
+	output_rval_decls(Rval2).
+output_rval_decls(create(_Tag, ArgVals, Label)) -->
+	output_cons_arg_decls(ArgVals),
+	io__write_string("static const Word mercury_const_"),
+	io__write_int(Label),
+	io__write_string("[] = {\n\t\t"),
+	output_cons_args(ArgVals),
+	io__write_string("};\n\t  ").
 
 :- pred output_cons_arg_decls(list(maybe(rval)), io__state, io__state).
 :- mode output_cons_arg_decls(in, di, uo) is det.
@@ -681,12 +708,21 @@ output_rval(unop(UnaryOp, Exprn)) -->
 	output_rval(Exprn),
 	io__write_string(")").
 output_rval(binop(Op, X, Y)) -->
-	( { Op = streq } ->
-		io__write_string("string_equal("),
+	( { Op = array_index } ->
+		io__write_string("((Word *)"),
 		output_rval(X),
-		io__write_string(", "),
+		io__write_string(")["),
 		output_rval(Y),
-		io__write_string(")")
+		io__write_string("]")
+	; { llds__string_op(Op, OpStr) } ->
+		io__write_string("(strcmp((char *)"),
+		output_rval(X),
+		io__write_string(", (char *)"),
+		output_rval(Y),
+		io__write_string(")"),
+		io__write_string(" "),
+		io__write_string(OpStr),
+		io__write_string("0)")
 	;
 		io__write_string("("),
 		output_rval(X),
@@ -711,7 +747,7 @@ output_rval(field(Tag, Rval, Field)) -->
 	io__write_int(Field),
 	io__write_string(")").
 output_rval(lval(Lval)) -->
-	output_lval(Lval).
+	output_rval_lval(Lval).
 output_rval(create(Tag, _Args, LabelNum)) -->
 		% emit a reference to the static constant which we
 		% declared in output_rval_decls.
@@ -735,10 +771,24 @@ output_unary_op(mkbody) -->
 	io__write_string("mkbody").
 output_unary_op(body) -->
 	io__write_string("body").
+output_unary_op(hash_string) -->
+	io__write_string("hash_string").
+output_unary_op(bitwise_complement) -->
+	io__write_string("~").
 output_unary_op(not) -->
 	io__write_string("!").
 output_unary_op(cast_to_unsigned) -->
 	io__write_string("(unsigned)").
+
+:- pred llds__string_op(operator, string).
+:- mode llds__string_op(in, out) is semidet.
+
+llds__string_op(str_eq, "==").
+llds__string_op(str_ne, "!=").
+llds__string_op(str_le, "<=").
+llds__string_op(str_ge, ">=").
+llds__string_op(str_lt, "<").
+llds__string_op(str_gt, ">").
 
 :- pred output_rval_const(rval_const, io__state, io__state).
 :- mode output_rval_const(in, di, uo) is det.
@@ -804,6 +854,54 @@ output_lval(temp(N)) -->
 	io__write_string("temp"),
 	io__write_int(N).
 
+:- pred output_rval_lval(lval, io__state, io__state).
+:- mode output_rval_lval(in, di, uo) is det.
+
+output_rval_lval(reg(R)) -->
+	io__write_string("(int)"),
+	output_reg(R).
+output_rval_lval(stackvar(N)) -->
+	{ (N < 0) ->
+		error("stack var out of range")
+	;
+		true
+	},
+	io__write_string("(int)detstackvar("),
+	io__write_int(N),
+	io__write_string(")").
+output_rval_lval(framevar(N)) -->
+	{ (N < 0) ->
+		error("nondet stack var out of range")
+	;
+		true
+	},
+	io__write_string("(int)framevar("),
+	io__write_int(N),
+	io__write_string(")").
+output_rval_lval(succip) -->
+	io__write_string("(int)succip").
+output_rval_lval(sp) -->
+	io__write_string("(int)sp").
+output_rval_lval(hp) -->
+	io__write_string("(int)hp").
+output_rval_lval(maxfr) -->
+	io__write_string("(int)maxfr").
+output_rval_lval(curredoip) -->
+	io__write_string("(int)curredoip").
+output_rval_lval(field(Tag, Lval, FieldNum)) -->
+	io__write_string("field("),
+	output_tag(Tag),
+	io__write_string(", "),
+	output_rval_lval(Lval),
+	io__write_string(", "),
+	io__write_int(FieldNum),
+	io__write_string(")").
+output_rval_lval(lvar(_)) -->
+	{ error("Illegal to output an lvar") }.
+output_rval_lval(temp(N)) -->
+	io__write_string("temp"),
+	io__write_int(N).
+
 %-----------------------------------------------------------------------------%
 
 :- pred output_c_quoted_string(string, io__state, io__state).
@@ -836,34 +934,37 @@ quote_c_char('\b', 'b').
 :- pred output_operator(operator, io__state, io__state).
 :- mode output_operator(in, di, uo) is det.
 
-output_operator(streq) -->
-	io__write_string("streq").
-output_operator(+) -->
-	io__write_string("+").
-output_operator(-) -->
-	io__write_string("-").
-output_operator(*) -->
-	io__write_string("*").
-output_operator(/) -->
-	io__write_string("/").
-output_operator(mod) -->
-	io__write_string("%").
-output_operator(eq) -->
-	io__write_string("==").
-output_operator(ne) -->
-	io__write_string("!=").
-output_operator(and) -->
-	io__write_string("&&").
-output_operator(or) -->
-	io__write_string("||").
-output_operator(<) -->
-	io__write_string("<").
-output_operator(>) -->
-	io__write_string(">").
-output_operator(<=) -->
-	io__write_string("<=").
-output_operator(>=) -->
-	io__write_string(">=").
+output_operator(Op) -->
+	{ llds__operator_to_string(Op, String) },
+	io__write_string(String).
+
+llds__operator_to_string(+, "+").
+llds__operator_to_string(-, "-").
+llds__operator_to_string(*, "*").
+llds__operator_to_string(/, "/").
+llds__operator_to_string(<<, "<<").
+llds__operator_to_string(>>, ">>").
+llds__operator_to_string(&, "&").
+llds__operator_to_string(|, "|").
+llds__operator_to_string(^, "^").
+llds__operator_to_string(mod, "%").
+llds__operator_to_string(eq, "==").
+llds__operator_to_string(ne, "!=").
+llds__operator_to_string(and, "&&").
+llds__operator_to_string(or, "||").
+llds__operator_to_string(<, "<").
+llds__operator_to_string(>, ">").
+llds__operator_to_string(<=, "<=").
+llds__operator_to_string(>=, ">=").
+	% The following is just for debugging purposes -
+	% string operators are not output as `str_eq', etc.
+llds__operator_to_string(array_index, "array_index").
+llds__operator_to_string(str_eq, "str_eq").
+llds__operator_to_string(str_ne, "str_ne").
+llds__operator_to_string(str_lt, "str_lt").
+llds__operator_to_string(str_gt, "str_gt").
+llds__operator_to_string(str_le, "str_le").
+llds__operator_to_string(str_ge, "str_ge").
 
 %-----------------------------------------------------------------------------%
 

@@ -216,19 +216,10 @@ opt_debug__dump_unop(tag, "tag").
 opt_debug__dump_unop(mkbody, "mkbody").
 opt_debug__dump_unop(body, "body").
 opt_debug__dump_unop(not, "not").
+opt_debug__dump_unop(hash_string, "hash_string").
+opt_debug__dump_unop(bitwise_complement, "bitwise_complement").
 opt_debug__dump_unop(cast_to_unsigned, "cast_to_unsigned").
 
-opt_debug__dump_binop(streq, "streq").
-opt_debug__dump_binop((+), "+").
-opt_debug__dump_binop((-), "-").
-opt_debug__dump_binop((*), "*").
-opt_debug__dump_binop((/), "/").
-opt_debug__dump_binop(mod, "%").
-opt_debug__dump_binop(eq, "==").
-opt_debug__dump_binop(ne, "!=").
-opt_debug__dump_binop(and, "&&").
-opt_debug__dump_binop(or, "||").
-opt_debug__dump_binop((<), "<").
-opt_debug__dump_binop((>), ">").
-opt_debug__dump_binop((<=), "<=").
-opt_debug__dump_binop((>=), ">=").
+opt_debug__dump_binop(Op, String) :-
+	llds__operator_to_string(Op, String).
+

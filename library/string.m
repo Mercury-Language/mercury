@@ -165,6 +165,10 @@
 :- mode string__append_list(out, in) is nondet.
 %	Append a list of strings together.
 
+:- pred string__hash(string, int).
+:- mode string__hash(in, out) is det.
+%	Compute a hash value for a string.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -440,6 +444,33 @@ string__append_list([], "").
 string__append_list([S | Ss], L) :-
 	string__append_list(Ss, L0),
 	string__append(S, L0, L).
+
+%-----------------------------------------------------------------------------%
+
+	% Note - string__hash is also defined in code/imp.h
+	% The two definitions must be kept identical.
+
+string__hash(String, HashVal) :-
+	string__length(String, Length),
+	string__to_int_list(String, CodeList),
+	string__hash_2(CodeList, 0, HashVal0),
+	HashVal is HashVal0 ^ Length.
+
+:- pred string__hash_2(list(int), int, int).
+:- mode string__hash_2(in, in, out) is det.
+
+string__hash_2([], HashVal, HashVal).
+string__hash_2([X | Xs], HashVal0, HashVal) :-
+	string__combine_hash(HashVal0, X, HashVal1),
+	string__hash_2(Xs, HashVal1, HashVal).
+
+:- pred string__combine_hash(int, int, int).
+:- mode string__combine_hash(in, in, out) is det.
+
+string__combine_hash(H0, X, H) :-
+	H1 is H0 << 5,
+	H2 is H1 ^ H0,
+	H is H2 ^ X.
 
 :- end_module string.
 

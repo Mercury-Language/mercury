@@ -46,6 +46,10 @@
 :- pred code_info__get_next_label(label, code_info, code_info).
 :- mode code_info__get_next_label(out, in, out) is det.
 
+		% Generate the next local label number in sequence.
+:- pred code_info__get_next_label_number(int, code_info, code_info).
+:- mode code_info__get_next_label_number(out, in, out) is det.
+
 		% Get the variables for the current procedure.
 :- pred code_info__get_varset(varset, code_info, code_info).
 :- mode code_info__get_varset(out, in, out) is det.
@@ -343,11 +347,6 @@
 						code_info, code_info).
 :- mode code_info__generate_call_livevals(in, out, in, out) is det.
 
-:- pred code_info__get_label_count(int, code_info, code_info).
-:- mode code_info__get_label_count(out, in, out) is det.
-
-:- pred code_info__set_label_count(int, code_info, code_info).
-:- mode code_info__set_label_count(in, in, out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -356,6 +355,12 @@
 :- import_module string, require, char, list, map, bimap, tree, int.
 :- import_module bintree_set, varset, term, stack.
 :- import_module type_util, options.
+
+:- pred code_info__get_label_count(int, code_info, code_info).
+:- mode code_info__get_label_count(out, in, out) is det.
+
+:- pred code_info__set_label_count(int, code_info, code_info).
+:- mode code_info__set_label_count(in, in, out) is det.
 
 :- type code_info	--->
 		code_info(
@@ -1239,10 +1244,13 @@ code_info__reserve_register(Reg) -->
 code_info__get_next_label(Label) -->
 	code_info__get_pred_id(PredId),
 	code_info__get_proc_id(ProcId),
+	code_info__get_next_label_number(N),
+	code_info__get_module_info(ModuleInfo),
+	{ code_util__make_local_label(ModuleInfo, PredId, ProcId, N, Label) }.
+
+code_info__get_next_label_number(N) -->
 	code_info__get_label_count(N0),
 	{ N is N0 + 1 },
-	code_info__get_module_info(ModuleInfo),
-	{ code_util__make_local_label(ModuleInfo, PredId, ProcId, N, Label) },
 	code_info__set_label_count(N).
 
 %---------------------------------------------------------------------------%

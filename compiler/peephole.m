@@ -390,7 +390,7 @@ peephole__opt_instr(Instr0, Comment0, Procmap, Instructions0, Instructions,
 	%       <comments, labels>		<comments, labels>
 	%	decr_sp(N)			decr_sp(N)
 	%       <comments, labels>		<comments, labels>
-	%	livevals(L2)			decr_sp(L2)
+	%	livevals(L2)			livevals(L2)
 	%       <comments, labels>		<comments, labels>
 	%	proceed				proceed
 	%
