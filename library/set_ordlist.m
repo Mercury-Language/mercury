@@ -517,17 +517,7 @@ set_ordlist__divide_by_set(DivideBySet, Set, TruePart, FalsePart) :-
 	set_ordlist__divide_by_set_2(DivideBySet, Set,
 		[], RevTruePart, [], RevFalsePart),
 	list__reverse(RevTruePart, TruePart),
-	list__reverse(RevFalsePart, FalsePart),
-	(
-		set_ordlist__divide(set_ordlist__contains(DivideBySet),
-			Set, TruePart, FalsePart)
-	->
-		true
-	;
-		error("divide_by_set")
-	).
-
-:- import_module require.
+	list__reverse(RevFalsePart, FalsePart).
 
 :- pred set_ordlist__divide_by_set_2(set_ordlist(T1)::in,
 	set_ordlist(T1)::in,
