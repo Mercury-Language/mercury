@@ -43,12 +43,12 @@ Date: Tue, 26 June 2001
 
 This problem occurs with several different combinations of GCC version
 and C source file.
-   
+
 This seems to be a bug in GCC's handling of global register variables.
 The GCC maintainers have shown no interest in fixing it. They appear
 to consider global register variables to be a deprecated feature, even
 though it isn't documented as such in the GCC manual.
-   
+
 If this problem occurs when compiling the source distribution, install
 from the binary distribution instead.
    
@@ -63,8 +63,8 @@ few possible work-arounds:
   the high-level C back-end.
 * Use `asm_jump.*' compilation grades instead of `asm_fast.*'
   grades. Note that `asm_jump.*' grades are not usually installed.
-* Try a newer version of GCC. Avoid GCC version 2.96 (distributed by
-  Red Hat) and any other unofficial releases of GCC.
+* Try a newer version of GCC.  Avoid GCC version 2.96 (distributed by
+  Red Hat) and 3.0.
 
 -----------------------------------------------------------------------------
 Subject: bug report - Inf and NaN

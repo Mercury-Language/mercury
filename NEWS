@@ -1,5 +1,5 @@
-NEWS since Mercury release 0.10.1:
-----------------------------------
+NEWS for Mercury release 0.11:
+------------------------------
 
 HIGHLIGHTS
 ==========
@@ -27,6 +27,7 @@ Major improvements to the Mercury debugger, including:
 
 Numerous minor improvements to the Mercury standard library.
 
+A new testing tool in the extras distribution.
 
 DETAILED LISTING
 ================
@@ -286,6 +287,9 @@ Changes to the Mercury standard library:
   distinct random numbers that can be generated.
 
 Changes to the extras distribution:
+
+* There's a new testing tool called "quickcheck", which is similar to
+  Haskell's "QuickCheck".  See quickcheck/tutes/index.html.
 
 * The interface to Moose has been changed in a non-backwards compatible
   way to support user-defined modes for the parser state and integrate

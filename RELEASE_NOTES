@@ -1,7 +1,7 @@
 
-We are pleased to announce the release of version 0.10 of the Mercury system.
+We are pleased to announce the release of version 0.11 of the Mercury system.
 
-Mercury is a new general-purpose programming language, designed and
+Mercury is a modern general-purpose programming language, designed and
 implemented by a small group of researchers at the University of
 Melbourne, Australia.  Mercury is based on the paradigm of purely
 declarative programming, and was designed to be useful for the
@@ -141,16 +141,22 @@ generates code that is significantly better than all previous Prolog
 systems known to us.  However, the system does not need these
 extensions, and will work in their absence.
 
-The current Mercury system has been tested extensively on Solaris 2.x,
-OSF/1.1, and Linux, and has in the past been known to run on IRIX 5.x,
+The current Mercury system has been tested on Linux (x86),
+Linux (Alpha), Solaris 2.7 (SPARC), Solaris 2.8 (x86),
+Compaq Tru64 Unix (Alpha), MacOS X (PowerPC), and Windows (x86).
+For Windows, we have tested this release only on Windows 2000,
+but it should also run fine on Windows 95, 98, ME, NT, and XP.
+
+Mercury has in the past been known to run on Digital Unix, OSF1, IRIX 5.x,
 Ultrix 4.3, BSDI 1.1, AIX, and HPUX; it should run without too many
-changes on other Unix variants as well.  It also runs on Windows 95
-and Windows NT, using the Cygwin library.  If you do encounter any
+changes on other Unix variants as well.  If you do encounter any
 problems, please report them to <mercury-bugs@cs.mu.oz.au> (see the
 BUGS file).
 
 We recommend that you use gcc as the C compiler, preferably gcc
-version 2.95.2 or later.  If you're using gcc, you will need at least
+version 2.95.2 or later.  But do not use gcc version 2.96 or 3.0;
+those versions have bugs which cause trouble for Mercury.
+If you're using gcc, you will need at least
 version 2.7.2 or higher, except on Solaris, where you need version
 2.95 or higher.  You will also need GNU make version 3.69 or higher.
 
@@ -164,7 +170,7 @@ The "mercury-compiler" distribution contains:
      o  the runtime system (written in C)
      o  Hans Boehm's conservative garbage collector for C
      o  a debugger
-     o  a profiler
+     o  some profilers
      o  some utility programs, including a make front-end for Mercury
 	with automatic dependency recomputation
      o  the Mercury language reference manual
@@ -197,6 +203,7 @@ and
      o  two (!) curses bindings, one more complete than the other
      o  a general purpose lexer
      o  Moose, a parser generator for Mercury.
+     o  quickcheck, an autotesting tool similar to Haskell's QuickCheck.
 
 The "mercury-tests" distribution contains a test suite.
 
