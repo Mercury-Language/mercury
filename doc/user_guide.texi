@@ -75,6 +75,7 @@ into another language, under the above conditions for modified versions.
 @author Zoltan Somogyi
 @author Peter Ross
 @author Tyson Dowd
+@author Mark Brown
 @page
 @vskip 0pt plus 1filll
 Copyright @copyright{} 1995--2002 The University of Melbourne.
@@ -1158,6 +1159,7 @@ EXTRA_LIBRARIES-foo = mylib4foo
 * Mercury debugger invocation::
 * Mercury debugger concepts::
 * Debugger commands::
+* Declarative debugging::
 @end menu
 
 @node Quick overview
@@ -1595,7 +1597,8 @@ This is why Mercury also supports another way
 to prepare a program for debugging,
 one that does not require the use of a debugging grade.
 With this way, you can decide, individually for each module,
-which of three trace levels, @samp{none}, @samp{shallow} and @samp{deep},
+which of five trace levels,
+@samp{none}, @samp{shallow}, @samp{deep}, @samp{decl} and @samp{rep}
 you want to compile them with:
 
 @cindex debugger trace level
@@ -1609,10 +1612,34 @@ will never generate any events.
 @item deep
 A procedure compiled with trace level @samp{deep}
 will always generate all the events requested by the user.
-By default, this is all possible events,
+By default, this is all the usual events,
 but you can tell the compiler that
 you are not interested in some kinds of events
 via compiler options (see below).
+@item decl
+A procedure compiled with trace level @samp{decl}
+will always generate all possible events,
+including all the events generated at trace level @samp{deep}
+as well as other events which describe
+the entry into and exit from negations.
+These events are required for the declarative debugging feature
+to operate properly,
+so the @samp{dd} command will only be available under @samp{mdb}
+at trace levels that generate all events,
+i.e. at trace levels decl and rep.
+For more details see @ref{Declarative debugging}.
+@item rep
+This trace level is the same as trace level @samp{decl},
+except that a representation of the module is stored in the executable
+along with the usual debugging information.
+The declarative debugger is able to use this extra information
+to help it avoid asking unnecessary questions,
+so this trace level has the effect of better declarative debugging
+at the cost of increased executable size.
+@c XXX The following line is commented out because we don't currently mention
+@c the effect of this trace level in the declarative debugging section; this
+@c will change when term dependency tracking is documented:
+@c For more details see @ref{Declarative debugging}.
 @item shallow
 A procedure compiled with trace level @samp{shallow}
 will generate interface events
@@ -1634,6 +1661,15 @@ You should compile a module with trace level @samp{deep}
 if you suspect there may be a bug in the module,
 or if you think that being able to examine what happens inside that module
 can help you locate a bug.
+@item decl
+You should compile a module with trace level @samp{decl}
+if you suspect there may be a bug in the module,
+and you wish to use the declarative debugger to help locate it.
+@item rep
+You should compile a module with trace level @samp{rep}
+if you suspect there may be a bug in the module,
+you wish to use the full power of the declarative debugger,
+and you are not concerned about the size of the executable.
 @item shallow
 You should compile a module with trace level @samp{shallow}
 if you believe the code of the module is reliable and unlikely to have bugs,
@@ -1648,7 +1684,8 @@ would not significantly benefit you in your debugging.
 @end table
 
 In general, it is a good idea for most or all modules
-that can be called from modules compiled with trace level @samp{deep}
+that can be called from modules compiled with trace level
+@samp{deep}, @samp{decl} or @samp{rep}
 to be compiled with at least trace level @samp{shallow}.
 
 You can control what trace level a module is compiled with
@@ -1659,6 +1696,10 @@ by giving one of the following compiler options:
 This always sets the trace level to @samp{shallow}.
 @item --trace deep
 This always sets the trace level to @samp{deep}.
+@item --trace decl
+This always sets the trace level to @samp{decl}.
+@item --trace rep
+This always sets the trace level to @samp{rep}.
 @item --trace minimum
 In debugging grades, this sets the trace level to @samp{shallow};
 in non-debugging grades, it sets the trace level to @samp{none}.
@@ -1667,7 +1708,7 @@ In debugging grades, this sets the trace level to @samp{deep};
 in non-debugging grades, it sets the trace level to @samp{none}.
 @end table
 
-As the name implies, the fourth alternative is the default,
+As the name implies, the last alternative is the default,
 which is why by default you get
 no debugging capability in non-debugging grades
 and full debugging capability in debugging grades.
@@ -1675,8 +1716,8 @@ The table also shows that in a debugging grade,
 no module can be compiled with trace level @samp{none}.
 
 @strong{Important note}:
-If you are not using a debugging grade, but you compile
-some modules with @samp{--trace shallow} or @samp{--trace deep},
+If you are not using a debugging grade, but you compile some modules with
+a trace level other than none,
 then you must also pass the @samp{--trace} (or @samp{-t}) option
 to c2init and to the Mercury linker.
 If you're using Mmake, then you can do this by including @samp{--trace}
@@ -3007,7 +3048,242 @@ If the option @samp{-y} is not present, asks for confirmation first.
 Any answer starting with @samp{y}, or end-of-file, is considered confirmation.
 @sp 1
 End-of-file on the debugger's input is considered a quit command.
+@sp 1
+@item dd
+Starts declarative debugging,
+using the current event as the initial symptom.
+For details, see @ref{Declarative debugging}.
 @end table
+
+@node Declarative debugging
+@section Declarative debugging
+
+The debugger incorporates a declarative debugger
+which can be accessed from its command line.
+Starting from an event that exhibits a bug,
+e.g. an event giving a wrong answer,
+the declarative debugger can find a bug which explains that behaviour
+using knowledge of the intended interpretation of the program only.
+
+Note that this is a work in progress,
+so there are some limitations in the implementation.
+The main limitations are pointed out in the following sections.
+
+@menu
+* Declarative debugging concepts::
+* Oracle questions::
+* Declarative debugging commands::
+* Diagnoses::
+@c * Improving the search::
+@end menu
+
+@node Declarative debugging concepts
+@subsection Concepts
+
+Every CALL event corresponds to an atomic goal,
+the one printed by the "print" command at that event.
+This atom has the actual arguments in the input argument positions
+and distinct free variables in the output argument positions
+(including the return value for functions).
+We refer to this as the @emph{call atom} of the event.
+
+The same view can be taken of EXIT events,
+although in this case the outputs as well as the inputs will be bound.
+We refer to this as the @emph{exit atom} of the event.
+The exit atom is always an instance of
+the call atom for the corresponding CALL event.
+
+Using these concepts, it is possible to interpret
+the events at which control leaves a procedure
+as assertions about the semantics of the program.
+These assertions may be true or false, depending on whether or not
+the program's actual semantics are consistent with its intended semantics.
+@sp 1
+@table @asis
+@item EXIT
+The assertion corresponding to an EXIT event is that
+the exit atom is valid in the intended interpretation.
+In other words, the procedure generates correct outputs
+for the given inputs.
+@sp 1
+@item FAIL
+Every FAIL event has a matching CALL event,
+and a (possibly empty) set of matching EXIT events
+between the call and fail.
+The assertion corresponding to a FAIL event is that
+every instance of the call atom which is true in the intended interpretation
+is an instance of one of the exit atoms.
+In other words, the procedure generates the complete set of answers
+for the given inputs.
+(Note that this does not imply that all exit atoms represent correct answers;
+some exit atoms may in fact be wrong,
+but the truth of the assertion is not affected by this.)
+@sp 1
+@item EXCP
+Every EXCP event is associated with an exception term,
+and has a matching CALL event.
+The assertion corresponding to an EXCP event is that
+the call atom can abnormally terminate with the given exception.
+In other words, the thrown exception was expected for that call.
+@end table
+
+If one of these assertions is wrong,
+then we consider the event to represent incorrect behaviour of the program.
+If the user encounters an event for which the assertion is wrong,
+then they can request the declarative debugger to
+diagnose the incorrect behaviour by giving the @samp{dd} command
+to the procedural debugger at that event.
+
+@node Oracle questions
+@subsection Oracle questions
+
+Once the @samp{dd} command has been given,
+the declarative debugger asks the user
+a series of questions about the truth of various assertions
+in the intended interpretation.
+The first question in this series will be about
+the validity of the event for which the @samp{dd} command was given.
+The answer to this question will nearly always be ``no'',
+since the user has just implied the assertion is false
+by giving the @samp{dd} command.
+Later questions will be about other events
+in the execution of the program,
+not all of them necessarily of the same kind as the first.
+
+The user is expected to act as an ``oracle''
+and provide answers to these questions
+based on their knowledge of the intended interpretation.
+The debugger provides some help here:
+previous answers are remembered and used where possible,
+so repeat questions are avoided.
+Commands are available to provide answers,
+as well as to browse the arguments more closely
+or to change the order in which the questions are asked.
+See the next section for details of the commands that are available.
+
+When seeking to determine the validity of
+the assertion corresponding to an EXIT event,
+the declarative debugger prints the exit atom,
+on a single line if possible,
+and prints the question @samp{Valid?} for the user to answer.
+If the atom does not fit on one line,
+the predicate/function name is printed on the first line and
+the arguments are printed one per line
+using the same mechanism that the debugger uses to print values.
+This means they may be abbreviated if they are too large.
+
+When seeking to determine the validity of
+the assertion corresponding to a FAIL event,
+the declarative debugger prints the call atom, prefixed by @samp{Call},
+followed by each of the exit atoms
+(indented, and on multiple lines if need be),
+and prints the question @samp{Complete?} for the user to answer.
+Note that the user is not required to provide any missing instance
+in the case that the answer is no.
+(A limitation of the current implementation is that
+it is difficult to browse a specific exit atom.
+This will be addressed in the near future.)
+
+When seeking to determine the validity of
+the assertion corresponding to an EXCP event,
+the declarative debugger prints the call atom
+followed by the exception that was thrown,
+and prints the question @samp{Expected?} for the user to answer.
+
+@node Declarative debugging commands
+@subsection Commands
+
+At the above mentioned prompts, the following commands may be given.
+Each command can also be abbreviated to just its first letter.
+@sp 1
+@table @code
+@item yes
+Answer that the assertion is correct.
+@sp 1
+@item no
+Answer that the assertion is wrong.
+@sp 1
+@item skip
+Skip this question and ask a different one if possible.
+@sp 1
+@item restart
+Ask the skipped questions again.
+@sp 1
+@item browse @var{n}
+Browse the @var{n}th argument before answering.
+@sp 1
+@item abort
+End the declarative debugging session and return to
+the event at which the @samp{dd} command was given.
+@sp 1
+@item help
+Summarize the list of available commands.
+@end table
+
+@node Diagnoses
+@subsection Diagnoses
+
+If the oracle keeps providing answers to the asked questions,
+then the declarative debugger will eventually locate a bug.
+A ``bug'', for our purposes,
+is an assertion about some call which is false,
+but for which the assertions about every child of that call are not false.
+There are three different classes of bugs that this debugger can diagnose,
+one associated with each kind of assertion.
+@c XXX The preceding comment, and the following discussion, will need to be
+@c updated when we support three-valued debugging.
+
+Assertions about EXIT events
+lead to a kind of bug we call an ``incorrect contour''.
+This is a contour (an execution path through the body of a clause)
+which results in a wrong answer for that clause.
+When the debugger diagnoses a bug of this kind,
+it displays the exit atom for the event at the end of the contour.
+The program event associated with this bug, which we call the ``bug event'',
+is the exit event at the end of the contour.
+(The current implementation does not yet display a representation
+of which contour was at fault.)
+
+Assertions about FAIL events lead to a kind of bug we call
+a ``partially uncovered atom''.
+This is a call atom which has some instance which is valid,
+but which is not covered by any of the applicable clauses.
+When the debugger diagnoses a bug of this kind,
+it displays the call atom;
+it does not, however,
+provide an actual instance that satisfies the above condition.
+The bug event in this case is the fail event
+reached after all the solutions were exhausted.
+
+Assertions about EXCP events lead to a kind of bug we call
+an ``unhandled exception''.
+This is a contour which throws an exception
+that needs to be handled but which is not handled.
+When the debugger diagnoses a bug of this kind,
+it displays the call atom
+followed by the exception which was not handled.
+The bug event in this case is the exception event
+for the call in question.
+
+After the diagnosis is displayed, the user is asked to confirm
+that the event located by the declarative debugger
+does in fact represent a bug.
+If the user does confirm the diagnosis,
+they are returned to the procedural debugger
+at the event which was found to be the bug event.
+This gives the user an opportunity, if they need it,
+to investigate (procedurally) the events in the neighbourhood of the bug.
+If the user does not confirm the diagnosis,
+which implies that some of their earlier answers must have been mistakes,
+they are returned to the event at which the @samp{dd} command was given.
+In the future, users should have the option of
+revising those of their answers which directly led to the diagnosis,
+but the current implementation doesn't do this yet.
+
+@c @node Improving the search
+@c @subsection Improving the search
+
+@c XXX describe how to mark suspicious subterms, and how this can help.
 
 @c ----------------------------------------------------------------------------
 
