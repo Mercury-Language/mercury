@@ -393,7 +393,7 @@ options_help -->
 
 	io__write_string("\nCode generation options\n"),
 	io__write_string("\t-p-, --no-polymorphism\n"),
-	io__write_string("\t\tDon't handle test unifications for variables of polymorphic types.\n"),
+	io__write_string("\t\tDon't handle polymorphic types.\n"),
 	io__write_string("\t\t(Generates slightly more efficient code, but stops\n"),
 	io__write_string("\t\t(polymorphism from working except in special cases.)\n"),
 	io__write_string("\t-s <grade>, --grade <grade>\n"),
@@ -424,7 +424,6 @@ options_help -->
 	io__write_string("\t\tDon't use GNU C's ""labels as values"" extension.\n"),
 	io__write_string("\t--no-asm-labels\n"),
 	io__write_string("\t\tDon't use inline assembler labels.\n"),
-	io__write_string("\t--tags {none, low, high}\n"),
 	io__write_string("\t--tags {none, low, high}\n"),
 	io__write_string("\t\tSpecify whether to use the low bits or the high bits of \n"),
 	io__write_string("\t\teach word as tag bits (default: low).\n"),
