@@ -118,7 +118,7 @@
   #define MR_GRADE_PART_9	_debug
 #endif
 
-#ifdef PIC_REG
+#if defined(PIC_REG) && defined(USE_GCC_GLOBAL_REGISTERS) && defined(__i386__)
   #define MR_GRADE_PART_10	_picreg
 #else
   #define MR_GRADE_PART_10
