@@ -31,6 +31,9 @@
 :- pred llds_out__lval_to_string(lval, string).
 :- mode llds_out__lval_to_string(in, out) is semidet.
 
+:- pred llds_out__reg_to_string(reg_type, int, string).
+:- mode llds_out__reg_to_string(in, in, out) is det.
+
 :- pred llds_out__binary_op_to_string(binary_op, string).
 :- mode llds_out__binary_op_to_string(in, out) is det.
 
@@ -64,6 +67,9 @@
 
 :- pred llds_out__maybe_qualify_name(string, string, string).
 :- mode llds_out__maybe_qualify_name(in, in, out) is det.
+
+:- pred output_c_quoted_string(string, io__state, io__state).
+:- mode output_c_quoted_string(in, di, uo) is det.
 
 	% Create a name for base_type_*
 
@@ -2223,16 +2229,9 @@ get_label_prefix("mercury__").
 :- pred output_reg(reg_type, int, io__state, io__state).
 :- mode output_reg(in, in, di, uo) is det.
 
-	% this code ought to be harmonised with llds_out__reg_to_string
 output_reg(r, N) -->
-	( { N > 32 } ->
-		io__write_string("r("),
-		io__write_int(N),
-		io__write_string(")")
-	;
-		io__write_string("r"),
-		io__write_int(N)
-	).
+	{ llds_out__reg_to_string(r, N, RegName) },
+	io__write_string(RegName).
 output_reg(f, _) -->
 	{ error("Floating point registers not implemented") }.
 
@@ -2689,9 +2688,6 @@ output_lval(mem_ref(Rval)) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_c_quoted_string(string, io__state, io__state).
-:- mode output_c_quoted_string(in, di, uo) is det.
-
 output_c_quoted_string(S0) -->
 	( { string__first_char(S0, Char, S1) } ->
 		( { quote_c_char(Char, QuoteChar) } ->
@@ -2832,14 +2828,13 @@ llds_out__lval_to_string(reg(RegType, RegNum), Description) :-
 	string__append("reg(", Reg_String, Tmp),
 	string__append(Tmp, ")", Description).
 
-:- pred llds_out__reg_to_string(reg_type, int, string).
-:- mode llds_out__reg_to_string(in, in, out) is det.
-
-	% this code ought to be harmonised with output_reg
 llds_out__reg_to_string(r, N, Description) :-
-	string__int_to_string(N, N_String),
-	string__append("r(", N_String, Tmp),
-	string__append(Tmp, ")", Description).
+	( N > 32 ->
+		Template = "r(%d)"
+	;
+		Template = "r%d"
+	),
+	string__format(Template, [i(N)], Description).
 llds_out__reg_to_string(f, N, Description) :-
 	string__int_to_string(N, N_String),
 	string__append("f(", N_String, Tmp),
