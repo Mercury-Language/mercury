@@ -1232,7 +1232,7 @@ inst_merge(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
 		)
 	;
 			% insert ThisInstPair into the table with value
-			%`unknown'
+			% `unknown'
 		map__det_insert(MergeInstTable0, ThisInstPair, unknown,
 			MergeInstTable1),
 		inst_table_set_merge_insts(InstTable0, MergeInstTable1,
