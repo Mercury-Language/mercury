@@ -460,7 +460,7 @@ Changes to the Mercury implementation:
   (this port has not been tested well, though). 
   See README.MS-Windows for details.
 
-* We've updated to version 4.12 of the Boehm garbage collector.
+* We've updated to version 4.13alpha2 of the Boehm garbage collector.
 
 * Numerous bug fixes.
 

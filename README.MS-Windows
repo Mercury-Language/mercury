@@ -4,6 +4,7 @@ INTRODUCTION
 
 Mecury has been ported to Windows 95 and Windows NT
 using the gnu-win32 Unix emulation package from Cygnus.
+It may well work on Windows 98 too, but we haven't tested that.
 
 This file documents how to build the source distribution
 of Mercury on Windows 95 or Windows NT using gnu-win32.

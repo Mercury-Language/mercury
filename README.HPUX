@@ -1,0 +1,6 @@
+Mercury installs fine out-of-the-box on HPUX 10.20, according to
+Rodney Brown <rodneybrown@pmsc.com>.  However, you may need to
+use an egcs release (see <http://egcs.cygnus.com>) instead of
+standard gcc.  I belive Rodney Brown used an egcs snapshot
+slightly prior to egcs version 1.1, so it should probably work
+fine with egcs version 1.1.
