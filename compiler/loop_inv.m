@@ -565,7 +565,7 @@ inv_goals_vars(ModuleInfo, UniquelyUsedVars,
 inv_goals_vars_2(MI, UUVs, Goal, IGs0, IGs, IVs0, IVs) :-
     ( if
         not invariant_goal(IGs0, Goal),
-        input_args_are_invariant(MI, Goal, IVs0)
+        input_args_are_invariant(MI, UUVs, Goal, IVs0)
       then
         IGs = [Goal | IGs0],
         IVs = add_outputs(MI, UUVs, Goal, IVs0)
@@ -585,13 +585,19 @@ invariant_goal(InvariantGoals, Goal) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred input_args_are_invariant(module_info, hlds_goal, prog_vars).
-:- mode input_args_are_invariant(in, in, in) is semidet.
+:- pred input_args_are_invariant(module_info, prog_vars, hlds_goal, prog_vars).
+:- mode input_args_are_invariant(in, in, in, in) is semidet.
 
-input_args_are_invariant(ModuleInfo, Goal, InvVars) :-
+input_args_are_invariant(ModuleInfo, UniquelyUsedVars, Goal, InvVars) :-
     Inputs = goal_inputs(ModuleInfo, Goal),
-    all [V]
-        ( list__member(V, Inputs) => list__member(V, InvVars) ).
+    all [V] (
+        list__member(V, Inputs)
+    =>
+        (
+            list__member(V, InvVars),
+            not list__member(V, UniquelyUsedVars)
+        )
+    ).
 
 %------------------------------------------------------------------------------%
 
