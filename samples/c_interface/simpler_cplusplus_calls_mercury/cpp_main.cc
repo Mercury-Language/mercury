@@ -5,13 +5,13 @@ extern "C" {
 
 #include <stdio.h>
 
-typedef Word MercuryList;
+typedef MR_Word MercuryList;
 
 static void print_list(MercuryList);
 
 int main(int argc, char **argv) {
 	char dummy;
-	Integer value;
+	MR_Integer value;
 	MercuryList list;
 	int exit_status;
 
@@ -94,15 +94,15 @@ int main(int argc, char **argv) {
 }
 
 static void print_list(MercuryList list) {
-	if (list_is_empty(list)) {
+	if (MR_list_is_empty(list)) {
 		printf("[]");
 	} else {
 		printf("[");
 		printf("%ld", (long) list_head(list));
-		list = list_tail(list);
+		list = MR_list_tail(list);
 		while (!list_is_empty(list)) {
-			printf(", %ld", (long) list_head(list));
-			list = list_tail(list);
+			printf(", %ld", (long) MR_list_head(list));
+			list = MR_list_tail(list);
 		}
 		printf("]");
 	}
