@@ -121,6 +121,18 @@ Declare_entry(do_interpreter);
 
 int mercury_runtime_main(int argc, char **argv)
 {
+#if NUM_REAL_REGS > 0
+	Word c_regs[NUM_REAL_REGS];
+#endif
+
+	/*
+	** Save the callee-save registers; we're going to start using them
+	** as global registers variables now, which will clobber them,
+	** and we need to preserve them, because they're callee-save,
+	** and our caller may need them ;-)
+	*/
+	save_regs_to_mem(c_regs);
+
 #ifndef	SPEED
 	/*
 	** Ensure stdio & stderr are unbuffered even if redirected.
@@ -178,7 +190,13 @@ int mercury_runtime_main(int argc, char **argv)
 	init_engine();
 	run_code();
 
-	exit(mercury_exit_status);
+	/*
+	** Restore the callee-save registers before returning,
+	** since they may be used by the C code that called us.
+	*/
+	restore_regs_from_mem(c_regs);
+
+	return mercury_exit_status;
 }
 
 void do_init_modules(void)
