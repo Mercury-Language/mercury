@@ -847,7 +847,7 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 
 	io__write_strings(DepStream, [
 		"lib", ModuleName, ".so : $(", ModuleName, ".pic_os)\n",
-		"\t$(ML) --make-shared-lib $(MLFLAGS) -o ",
+		"\t$(ML) --make-shared-lib --grade $(GRADE) $(MLFLAGS) -o ",
 			"lib", ModuleName, ".so \\\n",
 		"\t\t$(", ModuleName, ".pic_os) $(MLLIBS)\n\n"
 	]),
