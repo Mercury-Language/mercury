@@ -71,7 +71,18 @@ member(Element, List, SubList) :-
 
 system(Command, Status) :-
 	atom_chars(Com, Command),
-	unix(shell(Com, Status)).
+	( sicstus3 ->
+		system:system(Com, Status)
+	;
+		unix(system(Com, Status))
+	).
+
+	% test whether we are running version 3 of SICStus or not
+sicstus3 :-
+	% there is probably a more elegant way of doing this, but the
+	% following test seems to do the trick - it fails with SICStus 2.x
+	% but succeeds with SICStus 3.x
+	prolog_flag(argv, _).
 
 portray(Stream, Term) :-
 	currentOutput(S),
