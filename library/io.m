@@ -206,7 +206,8 @@
 		% computing term_contexts, for use e.g. in error messages).
 		% Offsets start at zero.
 
-:- pred io__read_from_string(string, string, int, io__read_result(T), posn, posn).
+:- pred io__read_from_string(string, string, int, io__read_result(T),
+				posn, posn).
 :- mode io__read_from_string(in, in, in, out, in, out) is det.
 % mode io__read_from_string(FileName, String, MaxPos, Result, Posn0, Posn):
 %		Same as io__read/4 except that it reads from
