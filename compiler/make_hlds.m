@@ -30,7 +30,7 @@
 :- import_module term, term_io, varset.
 :- import_module prog_util, prog_out, hlds_out.
 :- import_module globals, options.
-:- import_module make_tags.
+:- import_module make_tags, quantification.
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ module_info_init(Name, Module0) },
@@ -182,33 +182,17 @@ module_add_inst_defn(Module0, VarSet, InstDefn, Cond, Context, Module) -->
 			user_inst_table, io__state, io__state).
 :- mode insts_add(in, in, in, in, in, out, di, uo) is det.
 insts_add(Insts0, VarSet, eqv_inst(Name, Args, Body), Cond, Context, Insts) -->
-	{ list__length(Args, Arity),
-	  I = hlds__inst_defn(VarSet, Args, eqv_inst(Body), Cond, Context) },
+	{ list__length(Args, Arity) },
 	(
-		% some [I2]		% NU-Prolog inconsistency
-		{ map__search(Insts0, Name - Arity, I2) }
+		{ map__contains(Insts0, Name - Arity) }
 	->
 		{ Insts = Insts0 },
-		(
-			{ inst_is_compat(I, I2) }
-		->
-			duplicate_def_warning(Name, Arity, "inst", Context)
-		;
-			multiple_def_error(Name, Arity, "inst", Context)
-		)
+		multiple_def_error(Name, Arity, "inst", Context)
 	;
+	 	{ I = hlds__inst_defn(VarSet, Args, eqv_inst(Body), Cond,
+			Context) },
 		{ map__insert(Insts0, Name - Arity, I, Insts) }
 	).
-
-	% Two different inst definitions are compatible if
-	% their mode parameters and their bodies are identical.
-	% (This is perhaps more strict than it need be.)
-
-:- pred inst_is_compat(hlds__inst_defn, hlds__inst_defn).
-:- mode inst_is_compat(in, in) is semidet.
-
-inst_is_compat(hlds__inst_defn(_, Args, Body, _, _),
-		hlds__inst_defn(_, Args, Body, _, _)).
 
 %-----------------------------------------------------------------------------%
 
@@ -226,21 +210,15 @@ module_add_mode_defn(Module0, VarSet, ModeDefn, Cond, Context, Module) -->
 :- mode modes_add(in, in, in, in, in, out, di, uo) is det.
 
 modes_add(Modes0, VarSet, eqv_mode(Name, Args, Body), Cond, Context, Modes) -->
-	{ list__length(Args, Arity),
-	  I = hlds__mode_defn(VarSet, Args, eqv_mode(Body), Cond, Context) },
+	{ list__length(Args, Arity) },
 	(
-		% some [I2]		% NU-Prolog inconsistency
-		{ map__search(Modes0, Name - Arity, I2) }
+		{ map__contains(Modes0, Name - Arity) }
 	->
 		{ Modes = Modes0 },
-		(
-			{ mode_is_compat(I, I2) }
-		->
-			duplicate_def_warning(Name, Arity, "mode", Context)
-		;
-			multiple_def_error(Name, Arity, "mode", Context)
-		)
+		multiple_def_error(Name, Arity, "mode", Context)
 	;
+		{ I = hlds__mode_defn(VarSet, Args, eqv_mode(Body), Cond,
+			Context) },
 		{ map__insert(Modes0, Name - Arity, I, Modes) }
 	).
 
@@ -248,12 +226,6 @@ modes_add(Modes0, VarSet, eqv_mode(Name, Args, Body), Cond, Context, Modes) -->
 :- mode mode_name_args(in, out, out, out) is det.
 
 mode_name_args(eqv_mode(Name, Args, Body), Name, Args, eqv_mode(Body)).
-
-:- pred mode_is_compat(hlds__mode_defn, hlds__mode_defn).
-:- mode mode_is_compat(in, in) is semidet.
-
-mode_is_compat(hlds__mode_defn(_, Args, Body, _, _),
-		hlds__mode_defn(_, Args, Body, _, _)).
 
 %-----------------------------------------------------------------------------%
 
@@ -284,11 +256,7 @@ module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module) -->
 		->
 			[]
 		;
-			% otherwise give a warning or an error
-			{ type_is_compat(T, T2) }
-		->
-			duplicate_def_warning(Name, Arity, "type", Context)
-		;
+			% otherwise issue an error message
 			multiple_def_error(Name, Arity, "type", Context)
 		)
 	;
@@ -327,15 +295,6 @@ type_name_args(du_type(Name, Args, Body), Name, Args,
 type_name_args(uu_type(Name, Args, Body), Name, Args, uu_type(Body)).
 type_name_args(eqv_type(Name, Args, Body), Name, Args, eqv_type(Body)).
 type_name_args(abstract_type(Name, Args), Name, Args, abstract_type).
-
-	% Two type definitions are compatible if they have exactly the
-	% same argument lists and bodies.
-
-:- pred type_is_compat(hlds__type_defn, hlds__type_defn).
-:- mode type_is_compat(in, in) is semidet.
-
-type_is_compat( hlds__type_defn(_, Args, Body, _, _),
-		hlds__type_defn(_, Args, Body, _, _)).
 
 :- pred ctors_add(list(constructor), type_id, term__context, cons_table,
 			cons_table, io__state, io__state).
@@ -998,260 +957,6 @@ make_fresh_arg_vars_2([Arg | Args], Vars0, VarSet0, Vars, VarSet) :-
 
 %-----------------------------------------------------------------------------%
 
-	% Make implicit quantification explicit.
-	% For the rules on implicit quantification, see the
-	% file compiler/notes/IMPLICIT_QUANTIFICATION.
-	%
-	% Rather than making implicit quantification explicit by
-	% inserting additional existential quantifiers in the form of
-	% `some/2' goals, we instead record existential quantification
-	% in the goal_info for each goal.  In fact we could (should?)
-	% even remove any explicit existential quantifiers that were
-	% present in the source code, since the information they convey
-	% will be stored in the goal_info, although currently we don't
-	% do that.
-	% 
-	% The important piece of information that later stages of the
-	% compilation process want to know is "Does this goal bind any
-	% of its non-local variables?".  So, rather than storing a list
-	% of the variables which _are_ existentially quantified in the
-	% goal_info, we store the set of variables which are _not_
-	% quantified.
-	%
-	% XXX we ought to rename variables with overlapping scopes
-	% caused by explicit quantifiers here (and issue a warning
-	% at the same time).
-
-:- pred implicitly_quantify_clause_body(list(var), hlds__goal, hlds__goal).
-:- mode implicitly_quantify_clause_body(in, in, out) is det.
-
-implicitly_quantify_clause_body(HeadVars, Goal0, Goal) :-
-	set__init(Set0),
-	set__insert_list(Set0, HeadVars, Set),
-	implicitly_quantify_goal(Goal0, Set, Goal, _).
-
-:- pred implicitly_quantify_goal(hlds__goal, set(var), hlds__goal, set(var)).
-:- mode implicitly_quantify_goal(in, in, out, out) is det.
-
-implicitly_quantify_goal(Goal0 - GoalInfo0, OutsideVars,
-			Goal - GoalInfo, NonLocalVars) :-
-	implicitly_quantify_goal_2(Goal0, OutsideVars, Goal, NonLocalVars),
-	goal_info_set_nonlocals(GoalInfo0, NonLocalVars, GoalInfo).
-
-:- pred implicitly_quantify_goal_2(hlds__goal_expr, set(var),
-				   hlds__goal_expr, set(var)).
-:- mode implicitly_quantify_goal_2(in, in, out, out) is det.
-
-implicitly_quantify_goal_2(some(Vars, Goal0), OutsideVars,
-			   some(Vars, Goal), NonLocals) :-
-	set__insert_list(OutsideVars, Vars, OutsideVars1),
-	implicitly_quantify_goal(Goal0, OutsideVars1, Goal, NonLocals0),
-	set__remove_list(NonLocals0, Vars, NonLocals).
-
-/********
-	% perhaps we should instead remove explicit quantifiers
-	% as follows (and also for not/2):
-implicitly_quantify_goal_2(some(Vars, Goal0), OutsideVars, Goal, NonLocals) :-
-	set__remove_list(OutsideVars, Vars, OutsideVars1),
-	implicitly_quantify_goal(Goal0, OutsideVars1, Goal1, NonLocals0),
-	set__remove_list(NonLocals0, Vars, NonLocals),
-	Goal1 = G - GoalInfo1,
-	goal_info_set_nonlocals(GoalInfo1, NonLocals, GoalInfo).
-	Goal = G - GoalInfo.
-*********/
-
-implicitly_quantify_goal_2(conj(List0), OutsideVars,
-			   conj(List), NonLocalVars) :-
-	implicitly_quantify_conj(List0, OutsideVars, List, NonLocalVars).
-
-implicitly_quantify_goal_2(disj(Goals0), OutsideVars,
-			   disj(Goals), NonLocalVars) :-
-	implicitly_quantify_disj(Goals0, OutsideVars, Goals, NonLocalVars).
-
-implicitly_quantify_goal_2(not(Vars, Goal0), OutsideVars,
-		    not(Vars, Goal), NonLocals) :-
-	set__insert_list(OutsideVars, Vars, OutsideVars1),
-	implicitly_quantify_goal(Goal0, OutsideVars1, Goal, NonLocals0),
-	set__remove_list(NonLocals0, Vars, NonLocals).
-
-implicitly_quantify_goal_2(if_then_else(Vars, A0, B0, C0), OutsideVars,
-		if_then_else(Vars, A, B, C), NonLocals) :-
-	set__insert_list(OutsideVars, Vars, OutsideVars0),
-	goal_vars(B0, VarsB),
-	set__union(OutsideVars0, VarsB, OutsideVars1),
-	implicitly_quantify_goal(A0, OutsideVars1, A, NonLocalsA),
-	set__union(OutsideVars, NonLocalsA, OutsideVars2),
-	implicitly_quantify_goal(B0, OutsideVars2, B, NonLocalsB),
-	implicitly_quantify_goal(C0, OutsideVars, C, NonLocalsC),
-	set__union(NonLocalsA, NonLocalsB, NonLocalsSuccess),
-	set__union(NonLocalsSuccess, NonLocalsC, NonLocalsIfThenElse),
-	set__intersect(NonLocalsIfThenElse, OutsideVars, NonLocals).
-
-implicitly_quantify_goal_2(call(A, B, HeadArgs, D, E), OutsideVars,
-		call(A, B, HeadArgs, D, E), NonLocalVars) :-
-	term__vars_list(HeadArgs, HeadVars),
-	set__list_to_set(HeadVars, GoalVars),
-	set__intersect(GoalVars, OutsideVars, NonLocalVars).
-
-implicitly_quantify_goal_2(unify(TermA, TermB, X, Y, Z), OutsideVars,
-			unify(TermA, TermB, X, Y, Z), NonLocalVars) :-
-	term__vars(TermA, VarsA),
-	term__vars(TermB, VarsB),
-	list__append(VarsA, VarsB, Vars),
-	set__list_to_set(Vars, GoalVars),
-	set__intersect(GoalVars, OutsideVars, NonLocalVars).
-
-:- pred implicitly_quantify_conj(list(hlds__goal), set(var),
-				 list(hlds__goal), set(var)).
-:- mode implicitly_quantify_conj(in, in, out, out) is det.
-
-implicitly_quantify_conj(Goals0, OutsideVars, Goals, NonLocalVars) :-
-	get_vars(Goals0, FollowingVarsList),
-	implicitly_quantify_conj_2(Goals0, FollowingVarsList, OutsideVars,
-				Goals, NonLocalVars).
-
-:- pred implicitly_quantify_conj_2(list(hlds__goal), list(set(var)), set(var),
-			list(hlds__goal), set(var)).
-:- mode implicitly_quantify_conj_2(in, in, in, out, out) is det.
-
-implicitly_quantify_conj_2([], _, _, [], NonLocalVars) :-
-	set__init(NonLocalVars).
-implicitly_quantify_conj_2([Goal0 | Goals0],
-			[FollowingVars | FollowingVarsList],
-			OutsideVars,
-			[Goal | Goals], NonLocalVars) :-
-	set__union(OutsideVars, FollowingVars, OutsideVars1),
-	implicitly_quantify_goal(Goal0, OutsideVars1, Goal, NonLocalVars1),
-	set__union(OutsideVars, NonLocalVars1, OutsideVars2),
-	implicitly_quantify_conj_2(Goals0, FollowingVarsList, OutsideVars2,
-				Goals, NonLocalVars2),
-	set__union(NonLocalVars1, NonLocalVars2, NonLocalVarsConj),
-	set__intersect(NonLocalVarsConj, OutsideVars, NonLocalVars).
-
-/********** OLD
-implicitly_quantify_conj([], _, [], NonLocalVars) :-
-	set__init(NonLocalVars).
-implicitly_quantify_conj([Goal0 | Goals0], OutsideVars,
-			[Goal | Goals], NonLocalVars) :-
-	goal_list_vars(Goals0, FollowingVars),
-	set__union(OutsideVars, FollowingVars, OutsideVars1),
-	implicitly_quantify_goal(Goal0, OutsideVars1, Goal, NonLocalVars1),
-	set__union(OutsideVars, NonLocalVars1, OutsideVars2),
-	implicitly_quantify_conj(Goals0, OutsideVars2, Goals, NonLocalVars2),
-	set__union(NonLocalVars1, NonLocalVars2, NonLocalVars).
-
-****************/
-
-:- pred implicitly_quantify_disj(list(hlds__goal), set(var),
-				 list(hlds__goal), set(var)).
-:- mode implicitly_quantify_disj(in, in, out, out) is det.
-
-implicitly_quantify_disj([], _, [], NonLocalVars) :-
-	set__init(NonLocalVars).
-implicitly_quantify_disj([Goal0 | Goals0], OutsideVars,
-			[Goal | Goals], NonLocalVars) :-
-	implicitly_quantify_goal(Goal0, OutsideVars, Goal, NonLocalVars0),
-	implicitly_quantify_disj(Goals0, OutsideVars, Goals, NonLocalVars1),
-	set__union(NonLocalVars0, NonLocalVars1, NonLocalVars).
-
-%-----------------------------------------------------------------------------%
-
-	% Given a list of goals, produce a corresponding list of sets
-	% of following variables, where is the set of following variables
-	% for each goal is those variables which occur in any of the
-	% following goals in the list.
-
-:- pred get_vars(list(hlds__goal), list(set(var))).
-:- mode get_vars(in, out) is det.
-
-get_vars([], []).
-get_vars([_Goal|Goals], [Set|Sets]) :-
-	get_vars_2(Goals, Set, Sets).
-
-:- pred get_vars_2(list(hlds__goal), set(var), list(set(var))).
-:- mode get_vars_2(in, out, out) is det.
-
-get_vars_2([], Set, []) :-
-	set__init(Set).
-get_vars_2([Goal | Goals], Set, SetList) :-
-	get_vars_2(Goals, Set0, SetList0),
-	goal_vars(Goal, Set1),
-	set__union(Set0, Set1, Set),
-	SetList = [Set0 | SetList0].
-
-	% `goal_list_vars(Goal, Vars)' is true iff 
-	% `Vars' is the set of unquantified variables in Goal.
-
-:- pred goal_list_vars(list(hlds__goal), set(var)).
-:- mode goal_list_vars(in, out) is det.
-
-goal_list_vars(Goals, S) :-	
-	set__init(S0),
-	goal_list_vars_2(Goals, S0, S).
-
-
-:- pred goal_list_vars_2(list(hlds__goal), set(var), set(var)).
-:- mode goal_list_vars_2(in, in, out) is det.
-
-goal_list_vars_2([], Set, Set).
-goal_list_vars_2([Goal - _GoalInfo| Goals], Set0, Set) :-
-	goal_vars_2(Goal, Set0, Set1),
-	goal_list_vars_2(Goals, Set1, Set).
-
-:- pred goal_vars(hlds__goal, set(var)).
-:- mode goal_vars(in, out) is det.
-
-goal_vars(Goal - _GoalInfo, Set) :-
-	set__init(Set0),
-	goal_vars_2(Goal, Set0, Set).
-
-:- pred goal_vars_2(hlds__goal_expr, set(var), set(var)).
-:- mode goal_vars_2(in, in, out) is det.
-
-goal_vars_2(unify(A, B, _, _, _), Set0, Set) :-
-	term__vars(A, VarsA),
-	set__insert_list(Set0, VarsA, Set1),
-	term__vars(B, VarsB),
-	set__insert_list(Set1, VarsB, Set).
-
-goal_vars_2(call(_, _, Args, _, _), Set0, Set) :-
-	term__vars_list(Args, Vars),
-	set__insert_list(Set0, Vars, Set).
-
-goal_vars_2(conj(Goals), Set0, Set) :-
-	goal_list_vars_2(Goals, Set0, Set).
-
-goal_vars_2(disj(Goals), Set0, Set) :-
-	goal_list_vars_2(Goals, Set0, Set).
-
-goal_vars_2(some(Vars, Goal), Set0, Set) :-
-	goal_vars(Goal, Set1),
-	set__remove_list(Set1, Vars, Set2),
-	set__union(Set0, Set2, Set).
-
-goal_vars_2(not(Vars, Goal), Set0, Set) :-
-	goal_vars(Goal, Set1),
-	set__remove_list(Set1, Vars, Set2),
-	set__union(Set0, Set2, Set).
-
-goal_vars_2(if_then_else(Vars, A, B, C), Set0, Set) :-
-		% Let
-		%	Set = Set0 + ( (vars(A) + vars(B)) \ Vars ) + vars(C)
-		%
-		% where `+' is set union and `-' is relative complement.
-		%
-		% (It's times like this you wish you had a functional
-		% notation ;-)
-	goal_vars(A, Set1),
-	goal_vars(B, Set2),
-	set__union(Set1, Set2, Set3),
-	set__remove_list(Set3, Vars, Set4),
-	set__union(Set0, Set4, Set5),
-	goal_vars(C, Set6),
-	set__union(Set5, Set6, Set).
-
-%-----------------------------------------------------------------------------%
-
 :- pred unravel_unification(term, term, unify_main_context,
 				unify_sub_contexts, varset, hlds__goal, varset).
 :- mode unravel_unification(in, in, in, in, in, out, out) is det.
@@ -1413,20 +1118,6 @@ get_disj(Goal, Subst, Disj0, VarSet0, Disj, VarSet) :-
 %-----------------------------------------------------------------------------%
 
 	% Predicates to write out the different warning and error messages.
-
-:- pred duplicate_def_warning(sym_name, int, string, term__context,
-				io__state, io__state).
-:- mode duplicate_def_warning(in, in, in, in, di, uo) is det.
-
-duplicate_def_warning(Name, Arity, DefType, Context) -->
-	prog_out__write_context(Context),
-	io__write_string("Warning: duplicate definition for "),
-	io__write_string(DefType),
-	io__write_string(" `"),
-	prog_out__write_sym_name(Name),
-	io__write_string("/"),
-	io__write_int(Arity),
-	io__write_string("'\n").
 
 :- pred multiple_def_error(sym_name, int, string, term__context,
 				io__state, io__state).
