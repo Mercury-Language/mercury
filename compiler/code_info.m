@@ -1910,7 +1910,7 @@ code_info__generate_pre_commit_saves(Slots, Code) -->
 		% can figure out what is going on later.
 		code_info__get_module_info(ModuleInfo),
 		code_info__get_pred_id(PredId),
-		{ predicate_name(ModuleInfo, PredId, ModuleName) },
+		{ predicate_module(ModuleInfo, PredId, ModuleName) },
 		{ predicate_name(ModuleInfo, PredId, PredName) },
 		{ string__append_list(["commit in ", ModuleName, ":", PredName],
 			Message) },
