@@ -9,6 +9,8 @@
 % 
 % Implements a rational number type and a set of basic operations on 
 % rational numbers.
+%
+%-----------------------------------------------------------------------------%
 
 :- module rational.
 
@@ -18,36 +20,43 @@
 
 :- type rational.
 
-:- pred rational:'<'(rational, rational).
-:- mode rational:'<'(in, in) is semidet.
+:- pred '<'(rational, rational).
+:- mode '<'(in, in) is semidet.
 
-:- pred rational:'>'(rational, rational).
-:- mode rational:'>'(in, in) is semidet.
+:- pred '>'(rational, rational).
+:- mode '>'(in, in) is semidet.
 
-:- pred rational:'=<'(rational, rational).
-:- mode rational:'=<'(in, in) is semidet.
+:- pred '=<'(rational, rational).
+:- mode '=<'(in, in) is semidet.
 
-:- pred rational:'>='(rational, rational).
-:- mode rational:'>='(in, in) is semidet.
+:- pred '>='(rational, rational).
+:- mode '>='(in, in) is semidet.
 
+:- func rational__rational(int) = rational.
 
-:- func rational(int, int) = rational.
+:- func rational__rational(int, int) = rational.
 
-:- func rational_from_integers(integer, integer) = rational.
+:- func rational__from_integer(integer) = rational.
+
+:- func rational__from_integers(integer, integer) = rational.
+
+	% New programs should use rational.from_integers/2. 
+:- pragma obsolete(rational_from_integers/2).
+:- func rational__rational_from_integers(integer, integer) = rational.
 
 % :- func float(rational) = float.
 
-:- func rational:'+'(rational) = rational.
+:- func '+'(rational) = rational.
 
-:- func rational:'-'(rational) = rational.
+:- func '-'(rational) = rational.
 
-:- func rational:'+'(rational, rational) = rational.
+:- func rational + rational = rational.
 
-:- func rational:'-'(rational, rational) = rational.
+:- func rational - rational = rational.
 
-:- func rational:'*'(rational, rational) = rational.
+:- func rational * rational = rational.
 
-:- func rational:'/'(rational, rational) = rational.
+:- func rational / rational = rational.
 
 :- func rational__numer(rational) = integer.
 
@@ -55,10 +64,12 @@
 
 :- func rational__abs(rational) = rational.
 
-:- func one = rational.
+:- func rational__one = rational.
 
-:- func zero = rational.
+:- func rational__zero = rational.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -83,23 +94,29 @@
 :- type rational
 	--->	r(integer, integer).
 
-rational:'<'(R1, R2) :-
+'<'(R1, R2) :-
 	Cmp = cmp(R1, R2),
 	Cmp = lessthan.
 
-rational:'>'(R1, R2) :-
+'>'(R1, R2) :-
 	Cmp = cmp(R1, R2),
 	Cmp = greaterthan.
 
-rational:'=<'(R1, R2) :-
+'=<'(R1, R2) :-
 	Cmp = cmp(R1, R2),
 	(Cmp = lessthan ; Cmp = equal).
 
-rational:'>='(R1, R2) :-
+'>='(R1, R2) :-
 	Cmp = cmp(R1, R2),
 	(Cmp = greaterthan ; Cmp = equal).
 
-rational(Num, Den) = rational_norm(integer(Num), integer(Den)).
+rational__rational(Int) = rational_norm(integer(Int), integer__one).
+
+rational__rational(Num, Den) = rational_norm(integer(Num), integer(Den)).
+
+rational__from_integer(Integer) = rational_norm(Integer, integer__one).
+
+rational__from_integers(Num, Den) = rational_norm(Num, Den).
 
 rational_from_integers(Num, Den) = rational_norm(Num, Den).
 
@@ -108,88 +125,82 @@ rational_from_integers(Num, Den) = rational_norm(Num, Den).
 % rational__float(r(Num, Den)) =
 %	float:'/'(integer__float(Num), integer__float(Den)).
 
-one = r(integer(1), integer(1)).
+rational__one = r(integer__one, integer__one).
 
-zero = r(integer(0), integer(1)).
+rational__zero = r(integer__zero, integer__one).
 
-rational:'+'(Rat) = Rat.
+'+'(Rat) = Rat.
 
-rational:'-'(r(Num, Den)) = r(-Num, Den).
+'-'(r(Num, Den)) = r(-Num, Den).
 
-rational:'+'(r(An, Ad), r(Bn, Bd)) = rational_norm(Numer, M) :-
-	Numer = An * CA + Bn * CB,
+r(An, Ad) + r(Bn, Bd) = rational_norm(Numer, M) :-
 	M = lcm(Ad, Bd),
 	CA = M // Ad,
-	CB = M // Bd.
+	CB = M // Bd,
+	Numer = An * CA + Bn * CB.
 
-rational:'-'(R1, R2) =
-	R1 + (-R2).
+R1 - R2 = R1 + (-R2).
 
 	% XXX: need we call rational_norm here?
-rational:'*'(r(An, Ad), r(Bn, Bd)) = rational_norm(Numer, Denom) :-
-	Numer = (An//G1) * (Bn//G2),
-	Denom = (Ad//G2) * (Bd//G1),
+r(An, Ad) * r(Bn, Bd) = rational_norm(Numer, Denom) :-
 	G1 = gcd(An, Bd),
-	G2 = gcd(Ad, Bn).
+	G2 = gcd(Ad, Bn),
+	Numer = (An // G1) * (Bn // G2),
+	Denom = (Ad // G2) * (Bd // G1).
 
-rational:'/'(R1, R2) =
-	R1 * inverse(R2).
+R1 / R2 = R1 * inverse(R2).
 
 :- func inverse(rational) = rational.
-inverse(r(Num, Den)) = Rat :-
-	( Num = izero ->
-		error("rational__inverse: division by zero")
+
+inverse(r(Num, Den)) = 
+	( Num = integer__zero ->
+		func_error("rational__inverse: division by zero")
 	;
-		Rat = r(signum(Num)*Den, abs(Num))
+		r(signum(Num) * Den, integer__abs(Num))
 	).
 
 rational__numer(r(Num, _)) = Num.
 
 rational__denom(r(_, Den)) = Den.
 
-rational__abs(r(Num, Den)) = r(abs(Num), Den).
+rational__abs(r(Num, Den)) = r(integer__abs(Num), Den).
 
 :- func rational_norm(integer, integer) = rational.
+
 rational_norm(Num, Den) = Rat :-
-	( Den = izero ->
+	( Den = integer__zero ->
 		error("rational__rational_norm: division by zero")
-	; Num = izero ->
-		Rat = r(izero, ione)
+	; Num = integer__zero ->
+		Rat = r(integer__zero, integer__one)
 	;
-		Rat = r(Num2//G, Den2//G),
+		G    = gcd(Num, Den),
 		Num2 = Num * signum(Den),
-		Den2 = abs(Den),
-		G = gcd(Num, Den)
+		Den2 = integer__abs(Den),
+		Rat  = r(Num2 // G, Den2 // G)
 	).
 
 :- func gcd(integer, integer) = integer.
-gcd(A, B) =
-	gcd_2(abs(A), abs(B)).
+
+gcd(A, B) = gcd_2(integer__abs(A), integer__abs(B)).
 
 :- func gcd_2(integer, integer) = integer.
-gcd_2(A, B) =
-	( B = izero -> A
-	; gcd_2(B, A rem B)
-	).
+
+gcd_2(A, B) = ( B = integer__zero -> A ; gcd_2(B, A rem B) ).
 
 :- func lcm(integer, integer) = integer.
+
 lcm(A, B) =
-	( A = izero -> izero
-	; B = izero -> izero
-	; abs((A // gcd(A, B)) * B)
+	( A = integer__zero -> integer__zero
+	; B = integer__zero -> integer__zero
+	; integer__abs((A // gcd(A, B)) * B)
 	).
 
-:- func izero = integer.
-izero = integer(0).
-
-:- func ione = integer.
-ione = integer(1).
-
 :- func signum(integer) = integer.
+
 signum(N) =
-	( N = izero -> izero
-	; N < izero -> -ione
-	; ione
+	( N = integer__zero -> integer__zero
+	; N < integer__zero -> -integer__one
+	; integer__one
 	).
 
 :- type comparison
@@ -198,6 +209,7 @@ signum(N) =
 	;	greaterthan.
 
 :- func cmp(rational, rational) = comparison.
+
 cmp(R1, R2) = Cmp :-
 	Diff = R1 - R2,
 	( is_zero(Diff) ->
@@ -208,14 +220,15 @@ cmp(R1, R2) = Cmp :-
 		Cmp = greaterthan
 	).
 
-:- pred is_zero(rational).
-:- mode is_zero(in) is semidet.
-is_zero(r(Num, _)) :-
-	Num = izero.
+:- pred is_zero(rational::in) is semidet.
 
-:- pred is_negative(rational).
-:- mode is_negative(in) is semidet.
+is_zero(r(integer__zero, _)).
+
+:- pred is_negative(rational::in) is semidet.
+
 is_negative(r(Num, _)) :-
-	Zero = izero,
-	Num < Zero.
+	Num < integer__zero.
 
+%------------------------------------------------------------------------------%
+:- end_module rational.
+%------------------------------------------------------------------------------%
