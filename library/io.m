@@ -2139,7 +2139,8 @@ io__stream_name(Stream, Name) -->
 :- pred io__get_stream_names(io__stream_names, io__state, io__state).
 :- mode io__get_stream_names(out, di, uo) is det.
 
-:- pragma c_code(io__get_stream_names(StreamNames::out, IO0::di, IO::uo), "
+:- pragma c_code(io__get_stream_names(StreamNames::out, IO0::di, IO::uo), 
+		will_not_call_mercury, "
 	StreamNames = ML_io_stream_names;
 	update_io(IO0, IO);
 ").
@@ -2147,7 +2148,8 @@ io__stream_name(Stream, Name) -->
 :- pred io__set_stream_names(io__stream_names, io__state, io__state).
 :- mode io__set_stream_names(in, di, uo) is det.
 
-:- pragma c_code(io__set_stream_names(StreamNames::in, IO0::di, IO::uo), "
+:- pragma c_code(io__set_stream_names(StreamNames::in, IO0::di, IO::uo), 
+		will_not_call_mercury, "
 	ML_io_stream_names = StreamNames;
 	update_io(IO0, IO);
 ").
@@ -2176,12 +2178,14 @@ io__insert_stream_name(Stream, Name) -->
 	% XXX design flaw with regard to unique modes
 	% and io__get_globals/3: the `Globals::uo' mode here is a lie.
 
-:- pragma c_code(io__get_globals(Globals::uo, IOState0::di, IOState::uo), "
+:- pragma c_code(io__get_globals(Globals::uo, IOState0::di, IOState::uo), 
+		will_not_call_mercury, "
 	Globals = ML_io_user_globals;
 	update_io(IOState0, IOState);
 ").
 
-:- pragma c_code(io__set_globals(Globals::di, IOState0::di, IOState::uo), "
+:- pragma c_code(io__set_globals(Globals::di, IOState0::di, IOState::uo), 
+		will_not_call_mercury, "
 	ML_io_user_globals = Globals;
 	update_io(IOState0, IOState);
 ").
@@ -2268,7 +2272,7 @@ io__finalize_state -->
 :- mode io__gc_init(in, in, di, uo) is det.
 
 :- pragma c_code(io__gc_init(StreamNamesType::in, UserGlobalsType::in,
-		IO0::di, IO::uo), "
+		IO0::di, IO::uo), will_not_call_mercury, "
 	/* for Windows DLLs, we need to call GC_INIT() from each DLL */
 #ifdef CONSERVATIVE_GC
 	GC_INIT();
@@ -2326,7 +2330,7 @@ io__set_op_table(_OpTable) --> [].
 ** They are also implemented for NU-Prolog in `io.nu.nl'.
 */
 
-:- pragma(c_header_code, "
+:- pragma c_header_code("
 
 #include ""mercury_init.h""
 #include ""mercury_wrapper.h""
@@ -2363,7 +2367,7 @@ int		mercury_getc(MercuryFile* mf);
 void		mercury_close(MercuryFile* mf);
 ").
 
-:- pragma(c_code, "
+:- pragma c_code("
 
 MercuryFile mercury_stdin = { NULL, 1 };
 MercuryFile mercury_stdout = { NULL, 1 };
@@ -2383,7 +2387,7 @@ mercury_init_io(void)
 
 ").
 
-:- pragma(c_code, "
+:- pragma c_code("
 
 MercuryFile*
 mercury_open(const char *filename, const char *type)
@@ -2401,7 +2405,7 @@ mercury_open(const char *filename, const char *type)
 
 ").
 
-:- pragma(c_code, "
+:- pragma c_code("
 
 void
 mercury_fatal_io_error(void)
@@ -2411,7 +2415,7 @@ mercury_fatal_io_error(void)
 
 ").
 
-:- pragma(c_code, "
+:- pragma c_code("
 
 int
 mercury_output_error(MercuryFile* mf)
@@ -2424,7 +2428,7 @@ mercury_output_error(MercuryFile* mf)
 
 ").
 
-:- pragma(c_code, "
+:- pragma c_code("
 
 void
 mercury_print_string(MercuryFile* mf, const char *s)
@@ -2441,7 +2445,7 @@ mercury_print_string(MercuryFile* mf, const char *s)
 
 ").
 
-:- pragma(c_code, "
+:- pragma c_code("
 
 void
 mercury_print_binary_string(MercuryFile* mf, const char *s)
@@ -2453,7 +2457,7 @@ mercury_print_binary_string(MercuryFile* mf, const char *s)
 
 ").
 
-:- pragma(c_code, "
+:- pragma c_code("
 
 int
 mercury_getc(MercuryFile* mf)
@@ -2467,7 +2471,7 @@ mercury_getc(MercuryFile* mf)
 
 ").
 
-:- pragma(c_code, "
+:- pragma c_code("
 
 void
 mercury_close(MercuryFile* mf)
@@ -2490,14 +2494,14 @@ mercury_close(MercuryFile* mf)
 
 /* input predicates */
 
-:- pragma(c_code, io__read_char_code(File::in, CharCode::out, IO0::di, IO::uo),
-"
+:- pragma c_code(io__read_char_code(File::in, CharCode::out, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	CharCode = mercury_getc((MercuryFile *) File);
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__putback_char(File::in, Character::in, IO0::di, IO::uo),
-"{
+:- pragma c_code(io__putback_char(File::in, Character::in, IO0::di, IO::uo),
+		will_not_call_mercury, "{
 	MercuryFile* mf = (MercuryFile *)File;
 	if (Character == '\\n') {
 		mf->line_number--;
@@ -2509,8 +2513,8 @@ mercury_close(MercuryFile* mf)
 	update_io(IO0, IO);
 }").
 
-:- pragma(c_code, io__putback_byte(File::in, Character::in, IO0::di, IO::uo),
-"{
+:- pragma c_code(io__putback_byte(File::in, Character::in, IO0::di, IO::uo),
+		will_not_call_mercury, "{
 	MercuryFile* mf = (MercuryFile *)File;
 	/* XXX should work even if ungetc() fails */
 	if (ungetc(Character, mf->file) == EOF) {
@@ -2521,12 +2525,14 @@ mercury_close(MercuryFile* mf)
 
 /* output predicates - with output to mercury_current_text_output */
 
-:- pragma(c_code, io__write_string(Message::in, IO0::di, IO::uo), "
+:- pragma c_code(io__write_string(Message::in, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	mercury_print_string(mercury_current_text_output, Message);
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__write_char(Character::in, IO0::di, IO::uo), "
+:- pragma c_code(io__write_char(Character::in, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	if (putc(Character, mercury_current_text_output->file) < 0) {
 		mercury_output_error(mercury_current_text_output);
 	}
@@ -2536,21 +2542,24 @@ mercury_close(MercuryFile* mf)
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__write_int(Val::in, IO0::di, IO::uo), "
+:- pragma c_code(io__write_int(Val::in, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	if (fprintf(mercury_current_text_output->file, ""%ld"", (long) Val) < 0) {
 		mercury_output_error(mercury_current_text_output);
 	}
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__write_float(Val::in, IO0::di, IO::uo), "
+:- pragma c_code(io__write_float(Val::in, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	if (fprintf(mercury_current_text_output->file, ""%#.15g"", Val) < 0) {
 		mercury_output_error(mercury_current_text_output);
 	}
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__write_byte(Byte::in, IO0::di, IO::uo), "
+:- pragma c_code(io__write_byte(Byte::in, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	/* call putc with a strictly non-negative byte-sized integer */
 	if (putc((int) ((unsigned char) Byte),
 			mercury_current_binary_output->file) < 0) {
@@ -2559,19 +2568,22 @@ mercury_close(MercuryFile* mf)
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__write_bytes(Message::in, IO0::di, IO::uo), "{
+:- pragma c_code(io__write_bytes(Message::in, IO0::di, IO::uo),
+		will_not_call_mercury, "{
 	mercury_print_binary_string(mercury_current_binary_output, Message);
 	update_io(IO0, IO);
 }").
 
-:- pragma(c_code, io__flush_output(IO0::di, IO::uo), "
+:- pragma c_code(io__flush_output(IO0::di, IO::uo),
+		will_not_call_mercury, "
 	if (fflush(mercury_current_text_output->file) < 0) {
 		mercury_output_error(mercury_current_text_output);
 	}
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__flush_binary_output(IO0::di, IO::uo), "
+:- pragma c_code(io__flush_binary_output(IO0::di, IO::uo),
+		will_not_call_mercury, "
 	if (fflush(mercury_current_binary_output->file) < 0) {
 		mercury_output_error(mercury_current_binary_output);
 	}
@@ -2594,7 +2606,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 :- mode io__seek_binary_2(in, in, in, di, uo) is det.
 
 :- pragma c_code(io__seek_binary_2(Stream::in, Flag::in, Off::in,
-	IO0::di, IO::uo),
+	IO0::di, IO::uo), will_not_call_mercury,
 "{
 	static const int seek_flags[] = { SEEK_SET, SEEK_CUR, SEEK_END };
 	MercuryFile *stream = (MercuryFile *) Stream;
@@ -2603,7 +2615,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 }").
 
 :- pragma c_code(io__binary_stream_offset(Stream::in, Offset::out,
-		IO0::di, IO::uo),
+		IO0::di, IO::uo), will_not_call_mercury,
 "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	Offset = ftell(stream->file);
@@ -2613,14 +2625,16 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 
 /* output predicates - with output to the specified stream */
 
-:- pragma(c_code, io__write_string(Stream::in, Message::in, IO0::di, IO::uo),
+:- pragma c_code(io__write_string(Stream::in, Message::in, IO0::di, IO::uo),
+		will_not_call_mercury, 
 "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	mercury_print_string(stream, Message);
 	update_io(IO0, IO);
 }").
 
-:- pragma(c_code, io__write_char(Stream::in, Character::in, IO0::di, IO::uo),
+:- pragma c_code(io__write_char(Stream::in, Character::in, IO0::di, IO::uo),
+		will_not_call_mercury, 
 "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	if (putc(Character, stream->file) < 0) {
@@ -2632,7 +2646,8 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	update_io(IO0, IO);
 }").
 
-:- pragma(c_code, io__write_int(Stream::in, Val::in, IO0::di, IO::uo), "{
+:- pragma c_code(io__write_int(Stream::in, Val::in, IO0::di, IO::uo),
+		will_not_call_mercury, "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	if (fprintf(stream->file, ""%ld"", (long) Val) < 0) {
 		mercury_output_error(stream);
@@ -2640,7 +2655,8 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	update_io(IO0, IO);
 }").
 
-:- pragma(c_code, io__write_float(Stream::in, Val::in, IO0::di, IO::uo), "{
+:- pragma c_code(io__write_float(Stream::in, Val::in, IO0::di, IO::uo),
+		will_not_call_mercury, "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	if (fprintf(stream->file, ""%#.15g"", Val) < 0) {
 		mercury_output_error(stream);
@@ -2648,7 +2664,8 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	update_io(IO0, IO);
 }").
 
-:- pragma(c_code, io__write_byte(Stream::in, Byte::in, IO0::di, IO::uo), "{
+:- pragma c_code(io__write_byte(Stream::in, Byte::in, IO0::di, IO::uo),
+		will_not_call_mercury, "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	/* call putc with a strictly non-negative byte-sized integer */
 	if (putc((int) ((unsigned char) Byte), stream->file) < 0) {
@@ -2657,13 +2674,15 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	update_io(IO0, IO);
 }").
 
-:- pragma(c_code, io__write_bytes(Stream::in, Message::in, IO0::di, IO::uo), "{
+:- pragma c_code(io__write_bytes(Stream::in, Message::in, IO0::di, IO::uo),
+		will_not_call_mercury, "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	mercury_print_binary_string(stream, Message);
 	update_io(IO0, IO);
 }").
 
-:- pragma(c_code, io__flush_output(Stream::in, IO0::di, IO::uo), "{
+:- pragma c_code(io__flush_output(Stream::in, IO0::di, IO::uo),
+		will_not_call_mercury, "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	if (fflush(stream->file) < 0) {
 		mercury_output_error(stream);
@@ -2671,7 +2690,8 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	update_io(IO0, IO);
 }").
 
-:- pragma(c_code, io__flush_binary_output(Stream::in, IO0::di, IO::uo), "{
+:- pragma c_code(io__flush_binary_output(Stream::in, IO0::di, IO::uo),
+		will_not_call_mercury, "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	if (fflush(stream->file) < 0) {
 		mercury_output_error(stream);
@@ -2681,98 +2701,111 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 
 /* stream predicates */
 
-:- pragma(c_code, io__stdin_stream(Stream::out, IO0::di, IO::uo), "
+:- pragma c_code(io__stdin_stream(Stream::out, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	Stream = (Word) &mercury_stdin;
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__stdout_stream(Stream::out, IO0::di, IO::uo), "
+:- pragma c_code(io__stdout_stream(Stream::out, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	Stream = (Word) &mercury_stdout;
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__stderr_stream(Stream::out, IO0::di, IO::uo), "
+:- pragma c_code(io__stderr_stream(Stream::out, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	Stream = (Word) &mercury_stderr;
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__stdin_binary_stream(Stream::out, IO0::di, IO::uo), "
+:- pragma c_code(io__stdin_binary_stream(Stream::out, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	Stream = (Word) &mercury_stdin;
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__stdout_binary_stream(Stream::out, IO0::di, IO::uo), "
+:- pragma c_code(io__stdout_binary_stream(Stream::out, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	Stream = (Word) &mercury_stdout;
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__input_stream(Stream::out, IO0::di, IO::uo), "
+:- pragma c_code(io__input_stream(Stream::out, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	Stream = (Word) mercury_current_text_input;
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__output_stream(Stream::out, IO0::di, IO::uo), "
+:- pragma c_code(io__output_stream(Stream::out, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	Stream = (Word) mercury_current_text_output;
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__binary_input_stream(Stream::out, IO0::di, IO::uo), "
+:- pragma c_code(io__binary_input_stream(Stream::out, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	Stream = (Word) mercury_current_binary_input;
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__binary_output_stream(Stream::out, IO0::di, IO::uo), "
+:- pragma c_code(io__binary_output_stream(Stream::out, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	Stream = (Word) mercury_current_binary_output;
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__get_line_number(LineNum::out, IO0::di, IO::uo), "
+:- pragma c_code(io__get_line_number(LineNum::out, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	LineNum = mercury_current_text_input->line_number;
 	update_io(IO0, IO);
 ").
 	
-:- pragma(c_code,
+:- pragma c_code(
 	io__get_line_number(Stream::in, LineNum::out, IO0::di, IO::uo),
-"{
+		will_not_call_mercury, "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	LineNum = stream->line_number;
 	update_io(IO0, IO);
 }").
 	
-:- pragma(c_code, io__set_line_number(LineNum::in, IO0::di, IO::uo), "
+:- pragma c_code(io__set_line_number(LineNum::in, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	mercury_current_text_input->line_number = LineNum;
 	update_io(IO0, IO);
 ").
 	
-:- pragma(c_code,
+:- pragma c_code(
 	io__set_line_number(Stream::in, LineNum::in, IO0::di, IO::uo),
-"{
+		will_not_call_mercury, "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	stream->line_number = LineNum;
 	update_io(IO0, IO);
 }").
 	
-:- pragma(c_code, io__get_output_line_number(LineNum::out, IO0::di, IO::uo), "
+:- pragma c_code(io__get_output_line_number(LineNum::out, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	LineNum = mercury_current_text_output->line_number;
 	update_io(IO0, IO);
 ").
 	
-:- pragma(c_code,
+:- pragma c_code(
 	io__get_output_line_number(Stream::in, LineNum::out, IO0::di, IO::uo),
-"{
+		will_not_call_mercury, "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	LineNum = stream->line_number;
 	update_io(IO0, IO);
 }").
 
-:- pragma(c_code, io__set_output_line_number(LineNum::in, IO0::di, IO::uo), "
+:- pragma c_code(io__set_output_line_number(LineNum::in, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	mercury_current_text_output->line_number = LineNum;
 	update_io(IO0, IO);
 ").
 	
-:- pragma(c_code,
+:- pragma c_code(
 	io__set_output_line_number(Stream::in, LineNum::in, IO0::di, IO::uo),
-"{
+		will_not_call_mercury, "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	stream->line_number = LineNum;
 	update_io(IO0, IO);
@@ -2781,35 +2814,33 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 % io__set_input_stream(NewStream, OldStream, IO0, IO1)
 %	Changes the current input stream to the stream specified.
 %	Returns the previous stream.
-:- pragma(c_code,
+:- pragma c_code(
 	io__set_input_stream(NewStream::in, OutStream::out, IO0::di, IO::uo),
-"
+		will_not_call_mercury, "
 	OutStream = (Word) mercury_current_text_input;
 	mercury_current_text_input = (MercuryFile*) NewStream;
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code,
+:- pragma c_code(
 	io__set_output_stream(NewStream::in, OutStream::out, IO0::di, IO::uo),
-"
+		will_not_call_mercury, "
 	OutStream = (Word) mercury_current_text_output;
 	mercury_current_text_output = (MercuryFile*) NewStream;
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code,
+:- pragma c_code(
 	io__set_binary_input_stream(NewStream::in, OutStream::out,
-					IO0::di, IO::uo),
-"
+			IO0::di, IO::uo), will_not_call_mercury, "
 	OutStream = (Word) mercury_current_binary_input;
 	mercury_current_binary_input = (MercuryFile*) NewStream;
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code,
+:- pragma c_code(
 	io__set_binary_output_stream(NewStream::in, OutStream::out,
-					IO0::di, IO::uo),
-"
+			IO0::di, IO::uo), will_not_call_mercury, "
 	OutStream = (Word) mercury_current_binary_output;
 	mercury_current_binary_output = (MercuryFile*) NewStream;
 	update_io(IO0, IO);
@@ -2820,40 +2851,44 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 % io__do_open(File, Mode, ResultCode, Stream, IO0, IO1).
 %	Attempts to open a file in the specified mode.
 %	ResultCode is 0 for success, -1 for failure.
-:- pragma(c_code,
+:- pragma c_code(
 	io__do_open(FileName::in, Mode::in, ResultCode::out,
-			Stream::out, IO0::di, IO::uo),
+			Stream::out, IO0::di, IO::uo), will_not_call_mercury,
 "
 	Stream = (Word) mercury_open(FileName, Mode);
 	ResultCode = (Stream ? 0 : -1);
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__close_input(Stream::in, IO0::di, IO::uo), "
+:- pragma c_code(io__close_input(Stream::in, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	mercury_close((MercuryFile*)Stream);
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__close_output(Stream::in, IO0::di, IO::uo), "
+:- pragma c_code(io__close_output(Stream::in, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	mercury_close((MercuryFile*)Stream);
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__close_binary_input(Stream::in, IO0::di, IO::uo), "
+:- pragma c_code(io__close_binary_input(Stream::in, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	mercury_close((MercuryFile*)Stream);
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__close_binary_output(Stream::in, IO0::di, IO::uo), "
+:- pragma c_code(io__close_binary_output(Stream::in, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	mercury_close((MercuryFile*)Stream);
 	update_io(IO0, IO);
 ").
 
 /* miscellaneous predicates */
 
-:- pragma(c_code,
+:- pragma c_code(
 	io__progname(DefaultProgname::in, PrognameOut::out, IO0::di, IO::uo),
-"
+		will_not_call_mercury, "
 	if (progname) {
 		/* The silly casting below is needed to avoid
 		   a gcc warning about casting away const.
@@ -2869,7 +2904,8 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__command_line_arguments(Args::out, IO0::di, IO::uo), "
+:- pragma c_code(io__command_line_arguments(Args::out, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	/* convert mercury_argv from a vector to a list */
 	{ int i = mercury_argc;
 	  Args = list_empty();
@@ -2880,27 +2916,29 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__get_exit_status(ExitStatus::out, IO0::di, IO::uo), "
+:- pragma c_code(io__get_exit_status(ExitStatus::out, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	ExitStatus = mercury_exit_status;
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__set_exit_status(ExitStatus::in, IO0::di, IO::uo), "
+:- pragma c_code(io__set_exit_status(ExitStatus::in, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	mercury_exit_status = ExitStatus;
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code, io__preallocate_heap_space(HeapSpace::in, IO0::di, IO::uo),
-"
+:- pragma c_code(io__preallocate_heap_space(HeapSpace::in, IO0::di, IO::uo),
+		will_not_call_mercury, "
 	/* HeapSpace not used */
 	/* don't do anything - preallocate_heap_space was just a
 	   hack for NU-Prolog */
 	update_io(IO0, IO);
 ").
 
-:- pragma(c_code,
+:- pragma c_code(
 	io__call_system_code(Command::in, Status::out, IO0::di, IO::uo),
-"
+		will_not_call_mercury, "
 	Status = system(Command);
 	if ( Status == -1 || Status == 127 ) {
 		/* 
@@ -2936,12 +2974,12 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 
 /* io__getenv and io__putenv, from io.m */
 
-:- pragma(c_code, io__getenv(Var::in, Value::out), "{
+:- pragma c_code(io__getenv(Var::in, Value::out), will_not_call_mercury, "{
 	Value = getenv(Var);
 	SUCCESS_INDICATOR = (Value != 0);
 }").
 
-:- pragma(c_code, io__putenv(VarAndValue::in), "
+:- pragma c_code(io__putenv(VarAndValue::in), will_not_call_mercury, "
 	SUCCESS_INDICATOR = (putenv(VarAndValue) == 0);
 ").
 

@@ -170,7 +170,7 @@
 
 % These operations are all implemented using the C interface.
 
-:- pragma(c_header_code, "
+:- pragma c_header_code("
 
 	#include <math.h>
 
@@ -186,7 +186,7 @@
 
 "). % end pragma c_header_code
 
-:- pragma(c_code, "
+:- pragma c_code("
 
 	#include <stdio.h>
 
@@ -639,29 +639,29 @@
 % Mathematical constants from math.m
 %
 	% Pythagoras' number
-:- pragma(c_code, math__pi(Pi::out), "Pi = MERCURY_FLOAT__PI;").
+:- pragma c_code(math__pi(Pi::out), "Pi = MERCURY_FLOAT__PI;").
 
 	% Base of natural logarithms
-:- pragma(c_code, math__e(E::out), "E = MERCURY_FLOAT__E;").
+:- pragma c_code(math__e(E::out), "E = MERCURY_FLOAT__E;").
 
 %
 % math__ceiling(X, Ceil) is true if Ceil is the smallest integer
 % not less than X.
 %
-:- pragma(c_code, math__ceiling(Num::in, Ceil::out), "Ceil = ceil(Num);").
+:- pragma c_code(math__ceiling(Num::in, Ceil::out), "Ceil = ceil(Num);").
 
 %
 % math__floor(X, Floor) is true if Floor is the largest integer
 % not greater than X.
 %
-:- pragma(c_code, math__floor(Num::in, Floor::out), "Floor = floor(Num);").
+:- pragma c_code(math__floor(Num::in, Floor::out), "Floor = floor(Num);").
 
 %
 % math__round(X, Round) is true if Round is the integer
 % closest to X.  If X has a fractional component of 0.5,
 % it is rounded up.
 %
-:- pragma(c_code, math__round(Num::in, Rounded::out), "
+:- pragma c_code(math__round(Num::in, Rounded::out), "
 	Rounded = floor(Num+0.5);
 ").
 
@@ -669,7 +669,7 @@
 % math__truncate(X, Trunc) is true if Trunc is the integer
 % closest to X such that |Trunc| =< |X|.
 %
-:- pragma(c_code, math__truncate(X::in, Trunc::out), "
+:- pragma c_code(math__truncate(X::in, Trunc::out), "
 	if (X < 0.0) {
 	    Trunc = ceil(X);
 	} else {
@@ -684,7 +684,7 @@
 % Domain restrictions:
 %		X >= 0
 %
-:- pragma(c_code, math__sqrt(X::in, SquareRoot::out), "
+:- pragma c_code(math__sqrt(X::in, SquareRoot::out), "
 	if (X < 0.0) {
 	    mercury_domain_error(""math__sqrt"");
 	}
@@ -699,7 +699,7 @@
 %		X >= 0
 %		X = 0 implies Y > 0
 %
-:- pragma(c_code, math__pow(X::in, Y::in, Res::out), "
+:- pragma c_code(math__pow(X::in, Y::in, Res::out), "
 	if (X < 0.0) {
 	    mercury_domain_error(""math__pow"");
 	}
@@ -717,7 +717,7 @@
 % math__exp(X, Exp) is true if Exp is X raised to the
 % power of e.
 %
-:- pragma(c_code, math__exp(X::in, Exp::out), "Exp = exp(X);").
+:- pragma c_code(math__exp(X::in, Exp::out), "Exp = exp(X);").
 
 %
 % math__ln(X, Log) is true if Log is the natural logarithm
@@ -726,7 +726,7 @@
 % Domain restrictions:
 %		X > 0
 %
-:- pragma(c_code, math__ln(X::in, Log::out), "
+:- pragma c_code(math__ln(X::in, Log::out), "
 	if (X <= 0.0) {
 	    mercury_domain_error(""math__ln"");
 	}
@@ -740,7 +740,7 @@
 % Domain restrictions:
 %		X > 0
 %
-:- pragma(c_code, math__log10(X::in, Log10::out), "
+:- pragma c_code(math__log10(X::in, Log10::out), "
 	if (X <= 0.0)
 	    mercury_domain_error(""math__log10"");
 	Log10 = log10(X);
@@ -753,7 +753,7 @@
 % Domain restrictions:
 %		X > 0
 %
-:- pragma(c_code, math__log2(X::in, Log2::out), "
+:- pragma c_code(math__log2(X::in, Log2::out), "
 	if (X <= 0.0) {
 	    mercury_domain_error(""math__log2"");
 	}
@@ -769,7 +769,7 @@
 %		B > 0
 %		B \= 1
 %
-:- pragma(c_code, math__log(B::in, X::in, Log::out), "
+:- pragma c_code(math__log(B::in, X::in, Log::out), "
 	if (X <= 0.0 || B <= 0.0) {
 	    mercury_domain_error(""math__log"");
 	}
@@ -782,17 +782,17 @@
 %
 % math__sin(X, Sin) is true if Sin is the sine of X.
 %
-:- pragma(c_code, math__sin(X::in, Sin::out), "Sin = sin(X);").
+:- pragma c_code(math__sin(X::in, Sin::out), "Sin = sin(X);").
 
 %
 % math__cos(X, Sin) is true if Cos is the cosine of X.
 %
-:- pragma(c_code, math__cos(X::in, Cos::out), "Cos = cos(X);").
+:- pragma c_code(math__cos(X::in, Cos::out), "Cos = cos(X);").
 
 %
 % math__tan(X, Tan) is true if Tan is the tangent of X.
 %
-:- pragma(c_code, math__tan(X::in, Tan::out), "Tan = tan(X);").
+:- pragma c_code(math__tan(X::in, Tan::out), "Tan = tan(X);").
 
 %
 % math__asin(X, ASin) is true if ASin is the inverse
@@ -801,7 +801,7 @@
 % Domain restrictions:
 %		X must be in the range [-1,1]
 %
-:- pragma(c_code, math__asin(X::in, ASin::out), "
+:- pragma c_code(math__asin(X::in, ASin::out), "
 	if (X < -1.0 || X > 1.0) {
 	    mercury_domain_error(""math__asin"");
 	}
@@ -815,7 +815,7 @@
 % Domain restrictions:
 %		X must be in the range [-1,1]
 %
-:- pragma(c_code, math__acos(X::in, ACos::out), "
+:- pragma c_code(math__acos(X::in, ACos::out), "
 	if (X < -1.0 || X > 1.0) {
 	    mercury_domain_error(""math__acos"");
 	}
@@ -826,13 +826,13 @@
 % math__atan(X, ATan) is true if ATan is the inverse
 % tangent of X, where ATan is in the range [-pi/2,pi/2].
 %
-:- pragma(c_code, math__atan(X::in, ATan::out), "ATan = atan(X);").
+:- pragma c_code(math__atan(X::in, ATan::out), "ATan = atan(X);").
 
 %
 % math__atan2(Y, X, ATan) is true if ATan is the inverse
 % tangent of Y/X, where ATan is in the range [-pi,pi].
 %
-:- pragma(c_code, math__atan2(Y::in, X::in, ATan2::out), "
+:- pragma c_code(math__atan2(Y::in, X::in, ATan2::out), "
 	ATan2 = atan2(Y, X);
 ").
 
@@ -840,19 +840,19 @@
 % math__sinh(X, Sinh) is true if Sinh is the hyperbolic
 % sine of X.
 %
-:- pragma(c_code, math__sinh(X::in, Sinh::out), "Sinh = sinh(X);").
+:- pragma c_code(math__sinh(X::in, Sinh::out), "Sinh = sinh(X);").
 
 %
 % math__cosh(X, Cosh) is true if Cosh is the hyperbolic
 % cosine of X.
 %
-:- pragma(c_code, math__cosh(X::in, Cosh::out), "Cosh = cosh(X);").
+:- pragma c_code(math__cosh(X::in, Cosh::out), "Cosh = cosh(X);").
 
 %
 % math__tanh(X, Tanh) is true if Tanh is the hyperbolic
 % tangent of X.
 %
-:- pragma(c_code, math__tanh(X::in, Tanh::out), "Tanh = tanh(X);").
+:- pragma c_code(math__tanh(X::in, Tanh::out), "Tanh = tanh(X);").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
