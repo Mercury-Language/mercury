@@ -90,12 +90,10 @@
 % types of the arguments for that predicate.
 %
 %-----------------------------------------------------------------------------%
-%  TODO:
-%
-%	error reporting could still be improved, in particular
-%	unification of var with function	
-%
 %  Wish list:
+%
+%	improve the error reporting for the unify var & functor case
+%
 % 	we should handle explicit type qualifications
 % 	(and remove them here) but we don't do so yet
 %

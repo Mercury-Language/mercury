@@ -56,6 +56,7 @@
 :- type unit		--->	unit.
 
 :- type pair(T1, T2)	--->	(T1 - T2).
+:- type pair(T)		==	pair(T,T).
 
 :- type assoc_list(K,V)	==	list(pair(K,V)).
 
