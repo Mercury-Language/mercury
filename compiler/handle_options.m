@@ -250,6 +250,10 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, PrologDialect,
 
 	globals__io_set_option(num_tag_bits, int(NumTagBits)),
 
+	option_implies(highlevel_c, gcc_non_local_gotos, bool(no)),
+	option_implies(highlevel_c, gcc_global_registers, bool(no)),
+	option_implies(highlevel_c, asm_labels, bool(no)),
+
 	option_implies(verbose_check_termination, check_termination,bool(yes)),
 	option_implies(check_termination, termination, bool(yes)),
 	option_implies(make_transitive_opt_interface, transitive_optimization,
