@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2002 The University of Melbourne.
+% Copyright (C) 1997-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -999,18 +999,22 @@ check_for_indistinguishable_modes(_, _, [], _, PredInfo, PredInfo) --> [].
 check_for_indistinguishable_modes(ModuleInfo, PredId, [ProcId | ProcIds],
 		PrevProcIds, PredInfo0, PredInfo) -->
 	check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId,
-		PrevProcIds, PredInfo0, PredInfo1),
+		PrevProcIds, Removed, PredInfo0, PredInfo1),
+	{ PrevProcIds1 =
+		( if Removed = yes then PrevProcIds
+		  else [ProcId | PrevProcIds]
+		) },
 	check_for_indistinguishable_modes(ModuleInfo, PredId, ProcIds,
-		[ProcId | PrevProcIds], PredInfo1, PredInfo).
+		PrevProcIds1, PredInfo1, PredInfo).
 
 :- pred check_for_indistinguishable_mode(module_info, pred_id, proc_id,
-		list(proc_id), pred_info, pred_info, io__state, io__state).
+	list(proc_id), bool, pred_info, pred_info, io__state, io__state).
 :- mode check_for_indistinguishable_mode(in, in, in,
-		in, in, out, di, uo) is det.
+	in, out, in, out, di, uo) is det.
 
-check_for_indistinguishable_mode(_, _, _, [], PredInfo, PredInfo) --> [].
+check_for_indistinguishable_mode(_, _, _, [], no, PredInfo, PredInfo) --> [].
 check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
-		[ProcId | ProcIds], PredInfo0, PredInfo) -->
+		[ProcId | ProcIds], Removed, PredInfo0, PredInfo) -->
 	(
 		{ modes_are_indistinguishable(ProcId, ProcId1,
 			PredInfo0, ModuleInfo) }
@@ -1037,12 +1041,12 @@ check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
 		;
 			[]
 		),
-		{ pred_info_remove_procid(PredInfo0, ProcId1, PredInfo1) }
+		{ pred_info_remove_procid(PredInfo0, ProcId1, PredInfo) },
+		{ Removed = yes }
 	;
-		{ PredInfo1 = PredInfo0 }
-	),
-	check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
-		ProcIds, PredInfo1, PredInfo).
+		check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
+			ProcIds, Removed, PredInfo0, PredInfo)
+	).
 
 %-----------------------------------------------------------------------------%
 

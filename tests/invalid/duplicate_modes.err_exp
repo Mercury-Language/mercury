@@ -10,6 +10,12 @@ duplicate_modes.m:008:   Modes `q(in, out) is det'
 duplicate_modes.m:008:   and `q((ground -> ground), (free -> ground)) is det'
 duplicate_modes.m:008:   are indistinguishable.
 duplicate_modes.m:009:   Here is the conflicting mode declaration.
+duplicate_modes.m:008: In mode declarations for predicate `duplicate_modes:q/2':
+duplicate_modes.m:008:   error: duplicate mode declaration.
+duplicate_modes.m:008:   Modes `q(in, out) is det'
+duplicate_modes.m:008:   and `q((ground -> ground), (free -> ground)) is det'
+duplicate_modes.m:008:   are indistinguishable.
+duplicate_modes.m:010:   Here is the conflicting mode declaration.
 duplicate_modes.m:014: In mode declarations for predicate `duplicate_modes:r/2':
 duplicate_modes.m:014:   error: duplicate mode declaration.
 duplicate_modes.m:014:   Modes `r(in, in) is semidet'
