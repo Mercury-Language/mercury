@@ -52,8 +52,9 @@ typedef struct {
 	const char		*MR_var_spec_name;  /* valid if NAME   */
 } MR_Var_Spec;
 
-extern	void		MR_trace_init_point_vars(const MR_Stack_Layout_Label
-				*top_layout, Word *saved_regs);
+extern	void		MR_trace_init_point_vars(
+				const MR_Stack_Layout_Label *top_layout,
+				Word *saved_regs, MR_Trace_Port port);
 extern	const char	*MR_trace_set_level(int ancestor_level);
 extern	int		MR_trace_current_level(void);
 extern	void		MR_trace_current_level_details(

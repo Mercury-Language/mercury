@@ -136,6 +136,7 @@ optimize__repeated(Instrs0, DoVn, Final, LayoutLabelSet, Instrs, Mod) -->
 	globals__io_lookup_bool_option(optimize_fulljumps, FullJumpopt),
 	globals__io_lookup_bool_option(checked_nondet_tailcalls,
 		CheckedNondetTailCalls),
+	globals__io_get_trace_level(TraceLevel),
 	( { Jumpopt = yes } ->
 		( { VeryVerbose = yes } ->
 			io__write_string("% Optimizing jumps for "),
@@ -144,8 +145,9 @@ optimize__repeated(Instrs0, DoVn, Final, LayoutLabelSet, Instrs, Mod) -->
 		;
 			[]
 		),
-		{ jumpopt_main(Instrs1, LayoutLabelSet, FullJumpopt, Final,
-			CheckedNondetTailCalls, Instrs2, Mod1) },
+		{ jumpopt_main(Instrs1, LayoutLabelSet, TraceLevel,
+			FullJumpopt, Final, CheckedNondetTailCalls,
+			Instrs2, Mod1) },
 		( { Mod1 = yes } ->
 			opt_debug__msg(DebugOpt, "after jump optimization"),
 			opt_debug__dump_instrs(DebugOpt, Instrs2)
@@ -253,6 +255,7 @@ optimize__middle(Instrs0, Final, LayoutLabelSet, Instrs) -->
 		globals__io_lookup_bool_option(optimize_fulljumps, FullJumpopt),
 		globals__io_lookup_bool_option(checked_nondet_tailcalls,
 			CheckedNondetTailCalls),
+		globals__io_get_trace_level(TraceLevel),
 		( { Jumps = yes, FullJumpopt = yes } ->
 			( { VeryVerbose = yes } ->
 				io__write_string("% Optimizing jumps for "),
@@ -261,9 +264,9 @@ optimize__middle(Instrs0, Final, LayoutLabelSet, Instrs) -->
 			;
 				[]
 			),
-			{ jumpopt_main(Instrs1, LayoutLabelSet, FullJumpopt,
-				Final, CheckedNondetTailCalls, Instrs2,
-				Mod2) },
+			{ jumpopt_main(Instrs1, LayoutLabelSet, TraceLevel,
+				FullJumpopt, Final, CheckedNondetTailCalls,
+				Instrs2, Mod2) },
 			( { Mod2 = yes } ->
 				opt_debug__msg(DebugOpt, "after jump optimization"),
 				opt_debug__dump_instrs(DebugOpt, Instrs2)

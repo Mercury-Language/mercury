@@ -20,6 +20,7 @@ DEBUGGER_PROGS=	\
 	breakpoints			\
 	browser_test			\
 	debugger_regs			\
+	exception_vars			\
 	existential_type_classes	\
 	implied_instance		\
 	interpreter			\
@@ -70,6 +71,9 @@ browser_test.out: browser_test browser_test.inp
 
 debugger_regs.out: debugger_regs debugger_regs.inp
 	$(MDB) ./debugger_regs < debugger_regs.inp > debugger_regs.out 2>&1
+
+exception_vars.out: exception_vars exception_vars.inp
+	$(MDB) ./exception_vars < exception_vars.inp > exception_vars.out 2>&1
 
 existential_type_classes.out: existential_type_classes \
 			existential_type_classes.inp

@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module llds.
+:- import_module llds, globals.
 :- import_module list, set, bool.
 
 	% Take an instruction list and optimize jumps. This includes jumps
@@ -23,7 +23,8 @@
 	% The second argument gives the set of labels that have layout
 	% structures. This module will not optimize jumps to labels in this
 	% set, since this may interfere with the RTTI recorded for these
-	% labels.
+	% labels. The third argument gives the trace level, which we also
+	% use to avoid optimizations that may interfere with RTTI.
 	%
 	% The three bool inputs should be
 	%
@@ -37,9 +38,9 @@
 	% The bool output says whether the instruction sequence was modified
 	% by the optimization.
 
-:- pred jumpopt_main(list(instruction), set(label), bool, bool, bool,
-	list(instruction), bool).
-:- mode jumpopt_main(in, in, in, in, in, out, out) is det.
+:- pred jumpopt_main(list(instruction)::in, set(label)::in, trace_level::in,
+	bool::in, bool::in, bool::in, list(instruction)::out, bool::out)
+	is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -74,8 +75,8 @@
 % numbering, which can do a better job of optimizing this block, have
 % been applied.
 
-jumpopt_main(Instrs0, LayoutLabels, Blockopt, Recjump, MostlyDetTailCall,
-		Instrs, Mod) :-
+jumpopt_main(Instrs0, LayoutLabels, TraceLevel, Blockopt, Recjump,
+		MostlyDetTailCall, Instrs, Mod) :-
 	map__init(Instrmap0),
 	map__init(Lvalmap0),
 	map__init(Procmap0),
@@ -96,7 +97,7 @@ jumpopt_main(Instrs0, LayoutLabels, Blockopt, Recjump, MostlyDetTailCall,
 	),
 	jumpopt__instr_list(Instrs0, comment(""), Instrmap, Blockmap, Lvalmap,
 		Procmap, Sdprocmap, Forkmap, Succmap, LayoutLabels,
-		CheckedNondetTailCallInfo, _, Instrs1),
+		TraceLevel, CheckedNondetTailCallInfo, _, Instrs1),
 	opt_util__filter_out_bad_livevals(Instrs1, Instrs),
 	( Instrs = Instrs0 ->
 		Mod = no
@@ -214,19 +215,19 @@ jumpopt__build_forkmap([Instr - _Comment|Instrs], Sdprocmap,
 	% between the if-val and the goto.
 
 :- pred jumpopt__instr_list(list(instruction), instr, instrmap, tailmap,
-	lvalmap, tailmap, tailmap, tailmap, tailmap, set(label),
+	lvalmap, tailmap, tailmap, tailmap, tailmap, set(label), trace_level,
 	maybe(pair(proc_label, int)), maybe(pair(proc_label, int)),
 	list(instruction)).
-:- mode jumpopt__instr_list(in, in, in, in, in, in, in, in, in, in,
+:- mode jumpopt__instr_list(in, in, in, in, in, in, in, in, in, in, in,
 	in, out, out) is det.
 
 jumpopt__instr_list([], _PrevInstr, _Instrmap, _Blockmap, _Lvalmap,
 		_Procmap, _Sdprocmap, _Forkmap, _Succmap, _LayoutLabels,
-		CheckedNondetTailCallInfo, CheckedNondetTailCallInfo, []).
+		_, CheckedNondetTailCallInfo, CheckedNondetTailCallInfo, []).
 jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 		Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap, LayoutLabels,
-		CheckedNondetTailCallInfo0, CheckedNondetTailCallInfo,
-		Instrs) :-
+		TraceLevel, CheckedNondetTailCallInfo0,
+		CheckedNondetTailCallInfo, Instrs) :-
 	Instr0 = Uinstr0 - Comment0,
 	string__append(Comment0, " (redirected return)", Redirect),
 	(
@@ -241,6 +242,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			( CallModel = det ; CallModel = semidet ),
 			map__search(Procmap, RetLabel, Between0),
 			PrevInstr = livevals(Livevals),
+			TraceLevel = none,
 			not set__member(RetLabel, LayoutLabels)
 		->
 			opt_util__filter_out_livevals(Between0, Between1),
@@ -253,6 +255,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			CallModel = semidet,
 			map__search(Forkmap, RetLabel, Between),
 			PrevInstr = livevals(Livevals),
+			TraceLevel = none,
 			not set__member(RetLabel, LayoutLabels)
 		->
 			list__append(Between, [livevals(Livevals) - "",
@@ -266,6 +269,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			map__search(Succmap, RetLabel, BetweenIncl),
 			BetweenIncl = [livevals(_) - _, goto(_) - _],
 			PrevInstr = livevals(Livevals),
+			TraceLevel = none,
 			not set__member(RetLabel, LayoutLabels)
 		->
 			NewInstrs = [
@@ -289,6 +293,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			map__search(Succmap, RetLabel, BetweenIncl),
 			BetweenIncl = [livevals(_) - _, goto(_) - _],
 			PrevInstr = livevals(Livevals),
+			TraceLevel = none,
 			not set__member(RetLabel, LayoutLabels)
 		->
 			NewLabel = local(ProcLabel, LabelNum0),
@@ -313,6 +318,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 		;
 			% Short circuit the return label if possible.
 			map__search(Instrmap, RetLabel, RetInstr),
+			TraceLevel = none,
 			not set__member(RetLabel, LayoutLabels)
 		->
 			jumpopt__final_dest(RetLabel, RetInstr, Instrmap,
@@ -413,7 +419,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			jumpopt__instr_list(AdjustedBlock, comment(""),
 				Instrmap, CrippledBlockmap, Lvalmap, Procmap,
 				Sdprocmap, Forkmap, Succmap, LayoutLabels,
-				CheckedNondetTailCallInfo0,
+				TraceLevel, CheckedNondetTailCallInfo0,
 				CheckedNondetTailCallInfo1, NewInstrs),
 			RemainInstrs = Instrs0
 		;
@@ -607,8 +613,8 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 	),
 	jumpopt__instr_list(RemainInstrs, NewPrevInstr, Instrmap, Blockmap,
 		Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap, LayoutLabels,
-		CheckedNondetTailCallInfo1, CheckedNondetTailCallInfo,
-		Instrs9),
+		TraceLevel, CheckedNondetTailCallInfo1,
+		CheckedNondetTailCallInfo, Instrs9),
 	list__append(NewInstrs, Instrs9, Instrs).
 
 % We avoid generating statements that redefine the value of a location

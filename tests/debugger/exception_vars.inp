@@ -1,0 +1,4 @@
+goto 2
+finish
+print *
+continue

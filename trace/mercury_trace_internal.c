@@ -234,7 +234,7 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 	event_details.MR_event_number = MR_trace_event_number;
 
 	MR_trace_init_point_vars(event_info->MR_event_sll,
-		event_info->MR_saved_regs);
+		event_info->MR_saved_regs, event_info->MR_trace_port);
 
 	/* by default, return where we came from */
 	jumpaddr = NULL;
