@@ -119,19 +119,31 @@ main_target: $(MAIN_TARGET)
 # to make them clean up more than just the stuff listed here.
 
 .PHONY: clean
-clean:
+clean: sub_clean
+
+.PHONY: sub_clean
+sub_clean:
 	for dep in *.dep ; do mmake "`basename $dep .dep`.clean" ; done
 
 .PHONY: realclean
-realclean:
+realclean: sub_realclean
+
+.PHONY: sub_realclean
+sub_realclean:
 	for dep in *.dep ; do mmake "`basename $dep .dep`.realclean" ; done
 
 .PHONY: clean_nu
-clean_nu:
+clean_nu: sub_clean_nu
+
+.PHONY: sub_clean_nu
+sub_clean_nu:
 	for dep in *.dep ; do mmake "`basename $dep .dep`.clean_nu" ; done
 
 .PHONY: clean_sicstus
-clean_sicstus:
+clean_sicstus: sub_clean_sicstus
+
+.PHONY: sub_clean_sicstus
+sub_clean_sicstus:
 	for dep in *.dep ; do mmake "`basename $dep .dep`.clean_sicstus" ; done
 
 #-----------------------------------------------------------------------------#
