@@ -295,10 +295,10 @@
 :- pred code_info__generate_commit(label, code_tree, code_info, code_info).
 :- mode code_info__generate_commit(in, out, in, out) is det.
 
-:- pred code_info__get_continuation(maybe(label), code_info, code_info).
+:- pred code_info__get_continuation(unit, code_info, code_info).
 :- mode code_info__get_continuation(out, in, out) is det.
 
-:- pred code_info__set_continuation(maybe(label), code_info, code_info).
+:- pred code_info__set_continuation(unit, code_info, code_info).
 :- mode code_info__set_continuation(in, in, out) is det.
 
 :- pred code_info__save_hp(code_tree, code_info, code_info).
@@ -329,7 +329,7 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module string, require, list, map, bimap, tree, int.
+:- import_module string, require, char, list, map, bimap, tree, int.
 :- import_module varset, term, stack.
 :- import_module type_util.
 
@@ -362,8 +362,7 @@
 					% Store Map - where to put things
 			pair(category),	% The category of the current procedure
 					% and the current context (respectively)
-			maybe(label),	% The first failure continuation for
-					% nondet code
+			unit,		% UNUSED
 			pair(int),	% The current and maximum (respectively)
 					% number of extra temporary stackslots
 					% that have been pushed during the
@@ -418,7 +417,7 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 		Liveness,
 		StoreMapStack,
 		Category - Category,
-		no,
+		unit,
 		0 - 0,
 		Globals
 	).
@@ -1324,26 +1323,40 @@ code_info__cons_id_to_tag(Var, cons(Name, Arity), Tag) -->
 	code_info__get_proc_info(ProcInfo),
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
 	{ map__lookup(VarTypes, Var, Type) },
-	{ type_to_type_id(Type, TypeId0, _) ->
-		TypeId = TypeId0
+	(
+		% handle the `character' type specially
+		{ Type = term__functor(term__atom("character"), [], _) },
+	 	{ string__char_to_string(Char, Name) }
+	->
+		{ char_to_int(Char, CharCode) },
+		{ Tag = int_constant(CharCode) }
 	;
-		error("cons_info__cons_id_to_tag: invalid type")
-	},
+		{ type_to_type_id(Type, TypeId0, _) ->
+			TypeId = TypeId0
+		;
+			error("cons_info__cons_id_to_tag: invalid type")
+		},
 
-		%
-		% Given the type_id, lookup up the constructor tag
-		% table for that type
-		%
-	code_info__get_module_info(ModuleInfo),
-	{ module_info_types(ModuleInfo, TypeTable) },
-	{ map__lookup(TypeTable, TypeId, TypeDefn) },
-	{ TypeDefn = hlds__type_defn(_, _, du_type(_, ConsTable0, _), _, _) ->
-		ConsTable = ConsTable0
-	;
-		error("code_info__cons_id_to_tag: type is not d.u. type?")
-	},
-		% Finally look up the cons_id in the table
-	{ map__lookup(ConsTable, cons(Name, Arity), Tag) }.
+			%
+			% Given the type_id, lookup up the constructor tag
+			% table for that type
+			%
+		code_info__get_module_info(ModuleInfo),
+		{ module_info_types(ModuleInfo, TypeTable) },
+		{ map__lookup(TypeTable, TypeId, TypeDefn) },
+		{
+			TypeDefn = hlds__type_defn(_, _,
+				du_type(_, ConsTable0, _), _, _)
+		->
+			ConsTable = ConsTable0
+		;
+			error(
+			"code_info__cons_id_to_tag: type is not d.u. type?"
+			)
+		},
+			% Finally look up the cons_id in the table
+		{ map__lookup(ConsTable, cons(Name, Arity), Tag) }
+	).
 
 %---------------------------------------------------------------------------%
 

@@ -164,15 +164,21 @@ detect_liveness_in_goal_2(switch(Var, Cases0), Liveness0,
 	set__union(Liveness0, Union, Liveness).
 
 detect_liveness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Liveness0,
-		ModuleInfo, Liveness, if_then_else(Vars, Cond, Then, Else)) :-
-	detect_liveness_in_goal(Cond0, Liveness0, ModuleInfo, Liveness1, Cond),
-	detect_liveness_in_goal(Then0, Liveness1, ModuleInfo, Liveness2, Then1),
-	detect_liveness_in_goal(Else0, Liveness0, ModuleInfo, Liveness3, Else1),
-	set__difference(Liveness3, Liveness2, Residue0),
-	stuff_liveness_residue_into_goal(Then1, Residue0, Then),
-	set__difference(Liveness2, Liveness3, Residue1),
-	stuff_liveness_residue_into_goal(Else1, Residue1, Else),
-	set__union(Liveness2, Liveness3, Liveness).
+		M, Liveness, if_then_else(Vars, Cond, Then, Else)) :-
+	detect_liveness_in_goal(Cond0, Liveness0, M, LivenessCond, Cond),
+	detect_liveness_in_goal(Then0, LivenessCond, M, LivenessThen, Then1),
+	detect_liveness_in_goal(Else0, Liveness0, M, LivenessElse, Else1),
+
+	set__difference(LivenessThen, LivenessCond, ProducedInThen),
+	set__difference(LivenessElse, Liveness0, ProducedInElse),
+
+	set__difference(ProducedInElse, ProducedInThen, ResidueThen),
+	set__difference(ProducedInThen, ProducedInElse, ResidueElse),
+
+	stuff_liveness_residue_into_goal(Then1, ResidueThen, Then),
+	stuff_liveness_residue_into_goal(Else1, ResidueElse, Else),
+
+	set__union(LivenessThen, LivenessElse, Liveness).
 
 detect_liveness_in_goal_2(some(Vars, Goal0), Liveness0, ModuleInfo,
 		Liveness, some(Vars, Goal)) :-

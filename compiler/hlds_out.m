@@ -391,7 +391,7 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 			[]
 		;
 			io__write_string("% new insts: "),
-			hlds_out__write_instmap(InstMapDelta, VarSet),
+			hlds_out__write_instmap(InstMapDelta, VarSet, Indent),
 			mercury_output_newline(Indent)
 		),
 		{ goal_info_post_delta_liveness(GoalInfo, PostBirths - PostDeaths) },
@@ -611,21 +611,21 @@ hlds_out__write_builtin(is_builtin) -->
 hlds_out__write_builtin(not_builtin) -->
 	io__write_string("not_builtin").
 
-:- pred hlds_out__write_instmap(instmap, varset, io__state, io__state).
-:- mode hlds_out__write_instmap(in, in, di, uo) is det.
+:- pred hlds_out__write_instmap(instmap, varset, int, io__state, io__state).
+:- mode hlds_out__write_instmap(in, in, in, di, uo) is det.
 
-hlds_out__write_instmap(unreachable, _) -->
+hlds_out__write_instmap(unreachable, _, _) -->
 	io__write_string("unreachable").
-hlds_out__write_instmap(reachable(InstMapping), VarSet) -->
+hlds_out__write_instmap(reachable(InstMapping), VarSet, Indent) -->
 	{ map__to_assoc_list(InstMapping, AssocList) },
-	hlds_out__write_instmap_2(AssocList, VarSet).
+	hlds_out__write_instmap_2(AssocList, VarSet, Indent).
 
-:- pred hlds_out__write_instmap_2(assoc_list(var, inst), varset,
+:- pred hlds_out__write_instmap_2(assoc_list(var, inst), varset, int,
 					io__state, io__state).
-:- mode hlds_out__write_instmap_2(in, in, di, uo) is det.
+:- mode hlds_out__write_instmap_2(in, in, in, di, uo) is det.
 
-hlds_out__write_instmap_2([], _) --> [].
-hlds_out__write_instmap_2([Var - Inst | Rest], VarSet) -->
+hlds_out__write_instmap_2([], _, _) --> [].
+hlds_out__write_instmap_2([Var - Inst | Rest], VarSet, Indent) -->
 	mercury_output_var(Var, VarSet),
 	io__write_string(" -> "),
 	{ varset__init(InstVarSet) },
@@ -633,8 +633,9 @@ hlds_out__write_instmap_2([Var - Inst | Rest], VarSet) -->
 	( { Rest = [] } ->
 		[]
 	;
-		io__write_string(", "),
-		hlds_out__write_instmap_2(Rest, VarSet)
+		mercury_output_newline(Indent),
+		io__write_string("%            "),
+		hlds_out__write_instmap_2(Rest, VarSet, Indent)
 	).
 
 :- pred hlds_out__write_var_types(int, varset, map(var, type), varset,

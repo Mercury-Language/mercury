@@ -706,7 +706,15 @@ apply_instmap_delta(reachable(InstMapping0), reachable(InstMappingDelta),
 
 %-----------------------------------------------------------------------------%
 
-	% Given two instmap deltas, choose whichever one is reachable.
+	% Given two instmap deltas, merge them to produce a new instmap.
+	%
+	% Currently implemented by just choosing whichever one is reachable.
+	%
+	% XXX Bug! This gets the instantiatedness right, but the
+	% binding info may be wrong.  For example, if one branch has
+	% X -> bound(f) and the other branch has X -> bound(g), the
+	% correct merged instmap has X -> bound(f ; g), but this
+	% predicate will just randomly pick X -> bound(f).
 
 :- pred merge_instmap_delta(instmap_delta, instmap_delta, instmap).
 :- mode merge_instmap_delta(in, in, out) is det.
@@ -716,14 +724,35 @@ merge_instmap_delta(reachable(InstMapping), _, reachable(InstMapping)).
 
 %-----------------------------------------------------------------------------%
 
-recompute_instmap_delta(Goal0, Goal) :-
-	recompute_instmap_delta(Goal0, Goal, _).
+:- pred instmap_restrict(instmap, set(var), instmap).
+:- mode instmap_restrict(in, in, out) is det.
 
+instmap_restrict(unreachable, _, unreachable).
+instmap_restrict(reachable(InstMapping0), Vars, reachable(InstMapping)) :-
+	map_restrict(InstMapping0, Vars, InstMapping).
+
+:- pred map_restrict(map(K,V), set(K), map(K,V)).
+:- mode map_restrict(in, in, out) is det.
+
+map_restrict(Map0, Domain0, Map) :-
+	map__keys(Map0, MapKeys),
+	set__sorted_list_to_set(MapKeys, MapKeysSet),
+	set__intersect(Domain0, MapKeysSet, Domain),
+	set__to_sorted_list(Domain, Keys),
+	map__apply_to_list(Keys, Map0, Values),
+	assoc_list__from_corresponding_lists(Keys, Values, AssocList),
+	map__from_sorted_assoc_list(AssocList, Map).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% Use the instmap deltas for all the atomic sub-goals to recompute
 	% the instmap deltas for all the non-atomic sub-goals of a goal.
 	% Used to ensure that the instmap deltas remain valid after
 	% code has been re-arranged, e.g. by followcode.
+
+recompute_instmap_delta(Goal0, Goal) :-
+	recompute_instmap_delta(Goal0, Goal, _).
 
 :- pred recompute_instmap_delta(hlds__goal, hlds__goal, instmap_delta).
 :- mode recompute_instmap_delta(in, out, out) is det.
@@ -734,7 +763,9 @@ recompute_instmap_delta(Goal0 - GoalInfo0, Goal - GoalInfo, InstMapDelta) :-
 		Goal = Goal0,
 		GoalInfo = GoalInfo0
 	;
-		recompute_instmap_delta_2(Goal0, Goal, InstMapDelta),
+		recompute_instmap_delta_2(Goal0, Goal, InstMapDelta0),
+		goal_info_get_nonlocals(GoalInfo0, NonLocals),
+		instmap_restrict(InstMapDelta0, NonLocals, InstMapDelta),
 		goal_info_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo)
 	).
 

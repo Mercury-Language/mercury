@@ -83,8 +83,8 @@ detect_live_vars_in_procs([ProcId | ProcIds], PredId,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred detect_live_vars_in_goal(hlds__goal, liveness_info, set(var), module_info,
-				liveness_info, set(var)).
+:- pred detect_live_vars_in_goal(hlds__goal, liveness_info, set(var),
+				module_info, liveness_info, set(var)).
 :- mode detect_live_vars_in_goal(in, in, in, in, out, out) is det.
 
 detect_live_vars_in_goal(Goal0 - GoalInfo, Liveness0, LiveVars0, ModuleInfo,
@@ -141,7 +141,7 @@ detect_live_vars_in_goal_2(if_then_else(_Vars, Cond0, Then0, Else0),
 					ModuleInfo, Liveness1, LiveVars1),
 	detect_live_vars_in_goal(Then0, Liveness1, LiveVars1,
 					ModuleInfo, _Liveness2, LiveVars2),
-	detect_live_vars_in_goal(Else0, Liveness1, LiveVars2,
+	detect_live_vars_in_goal(Else0, Liveness0, LiveVars2,
 					ModuleInfo, Liveness, LiveVars).
 
 detect_live_vars_in_goal_2(some(_Vars, Goal0), Liveness0, LiveVars0,

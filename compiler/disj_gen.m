@@ -82,15 +82,6 @@ disj_gen__generate_non_disj(Goals, tree(SaveCode, GoalsCode)) -->
 	code_info__generate_nondet_saves(SaveCode),
 	code_info__get_next_label(ContLab),
 	code_info__push_failure_cont(ContLab),
-		% we remember the first failure continuation label,
-		% so we can use it in the mkframe() in the procedure prologue
-	(
-		code_info__get_continuation(no)
-	->
-		code_info__set_continuation(yes(ContLab))
-	;
-		{ true }
-	),
 	code_info__get_next_label(EndLab),
 	disj_gen__generate_non_disj_2(Goals, EndLab, GoalsCode).
 

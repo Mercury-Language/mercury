@@ -93,6 +93,7 @@
 			;	or	% logical or
 			;	eq	% ==
 			;	ne	% !=
+			;	streq	% string equality
 			;	(<)
 			;	(>)
 			;	(<=)
@@ -148,9 +149,9 @@ output_c_file(c_file(Name, Modules)) -->
 		io__progname("llds.nl", ProgName),
 		io__write_string("\n"),
 		io__write_string(ProgName),
-		io__write_string(": can't open '"),
+		io__write_string(": can't open `"),
 		io__write_string(FileName),
-		io__write_string(" for output\n")
+		io__write_string("' for output\n")
 	).
 
 :- pred output_c_module_list(list(c_module), io__state, io__state).
@@ -348,9 +349,9 @@ output_instruction(if_val(Rval, Label)) -->
 
 output_instruction(if_not_val(Rval, Label)) -->
 	io__write_string("\t"),
-	io__write_string("if(!( "),
+	io__write_string("if(! "),
 	output_rval(Rval),
-	io__write_string(" )) \n\t\tGOTO_LABEL("),
+	io__write_string(" ) \n\t\tGOTO_LABEL("),
 	output_label(Label),
 	io__write_string(");").
 
@@ -455,13 +456,21 @@ output_tag(Tag) -->
 :- mode output_rval(in, di, uo) is det.
 
 output_rval(binop(Op, X, Y)) -->
-	io__write_string("(("),
-	output_rval(X),
-	io__write_string(") "),
-	output_operator(Op),
-	io__write_string(" ("),
-	output_rval(Y),
-	io__write_string("))").
+	( { Op = streq } ->
+		io__write_string("string_equal("),
+		output_rval(X),
+		io__write_string(", "),
+		output_rval(Y),
+		io__write_string(")")
+	;
+		io__write_string("("),
+		output_rval(X),
+		io__write_string(" "),
+		output_operator(Op),
+		io__write_string(" "),
+		output_rval(Y),
+		io__write_string(")")
+	).
 output_rval(iconst(N)) -->
 	io__write_int(N).
 output_rval(sconst(String)) -->
@@ -588,6 +597,8 @@ quote_c_char('\b', 'b').
 :- pred output_operator(operator, io__state, io__state).
 :- mode output_operator(in, di, uo) is det.
 
+output_operator(streq) -->
+	io__write_string("streq").
 output_operator(+) -->
 	io__write_string("+").
 output_operator(-) -->

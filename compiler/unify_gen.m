@@ -100,8 +100,10 @@ unify_gen__generate_tag_test(Var, ConsId, Code) -->
 							code_info, code_info).
 :- mode unify_gen__generate_tag_test_2(in, in, out, in, out) is det.
 
-unify_gen__generate_tag_test_2(string_constant(_String), _, _) -->
-	{ error("String tests unimplemented") }.
+unify_gen__generate_tag_test_2(string_constant(String), Lval, TestCode) -->
+	code_info__generate_test_and_fail(
+				binop(streq, lval(Lval), sconst(String)),
+								TestCode).
 unify_gen__generate_tag_test_2(float_constant(_String), _, _) -->
 	{ error("Float tests unimplemented") }.
 unify_gen__generate_tag_test_2(int_constant(Int), Lval, TestCode) -->
@@ -136,8 +138,8 @@ unify_gen__generate_tag_rval(Var, ConsId, Rval, Code) -->
 :- pred unify_gen__generate_tag_rval_2(cons_tag, lval, rval).
 :- mode unify_gen__generate_tag_rval_2(in, in, out) is det.
 
-unify_gen__generate_tag_rval_2(string_constant(_String), _, _) :-
-	error("String tests unimplemented").
+unify_gen__generate_tag_rval_2(string_constant(String), Lval, Rval) :-
+	Rval = binop(streq, lval(Lval), sconst(String)).
 unify_gen__generate_tag_rval_2(float_constant(_String), _, _) :-
 	error("Float tests unimplemented").
 unify_gen__generate_tag_rval_2(int_constant(Int), Lval, Rval) :-
@@ -245,7 +247,7 @@ unify_gen__make_fields_and_argvars([Var|Vars], Lval, Field0, TagNum,
 
 	% Generate a deterministic deconstruction. In a deterministic
 	% deconstruction, we know the value of the tag, so we don't
-	% need to generate a test. XXX handle strings and floats.
+	% need to generate a test.
 
 	% Deconstructions are generated semi-eagerly. Any test sub-
 	% unifications are generate eagerly (they _must_ be), but
@@ -253,19 +255,20 @@ unify_gen__make_fields_and_argvars([Var|Vars], Lval, Field0, TagNum,
 
 unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 	code_info__cons_id_to_tag(Var, Cons, Tag),
+	% For constants, if the deconstruction is det, then we already know
+	% the value of the constant, so Code = empty.
 	(
 		{ Tag = string_constant(_String) }
 	->
-		{ error("String deconstructions unimplemented") }
+		{ Code = empty }
 	;
 		{ Tag = int_constant(_Int) }
 	->
-		{ Code = empty }	% If this is det, then we already
-					% know the value of the int.
+		{ Code = empty }
 	;
 		{ Tag = float_constant(_Float) }
 	->
-		{ error("Float deconstructions unimplemented") }
+		{ Code = empty }
 	;
 		{ Tag = simple_tag(SimpleTag) }
 	->
@@ -413,6 +416,10 @@ unify_gen__generate_semi_sub_unify(L, R, M, Code) -->
 		{ mode_is_input(ModuleInfo, (LI -> LF)) },
 		{ mode_is_input(ModuleInfo, (RI -> RF)) }
 	->
+		% This shouldn't happen, since the transformation to
+		% super-homogeneous form should avoid tests in the arguments
+		% of a construction or deconstruction unification.
+		{ error("test in arg of [de]construction - tell fjh to fix that bug in make_hlds.nl") },
 		unify_gen__generate_sub_test(L, R, Code)
 	;
 			% Input - Output== assignment ->
