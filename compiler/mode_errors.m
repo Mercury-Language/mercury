@@ -925,6 +925,14 @@ write_mode_context(call(PredId, ArgNum), Context, ModuleInfo) -->
 	prog_out__write_context(Context),
 	io__write_string("  in "),
 	( { ArgNum =< 0 } ->
+		% Argument numbers that are less than or equal to zero
+		% are used for the type_info and typeclass_info arguments
+		% that are introduced by polymorphism.m.
+		% I think argument number equal to zero might also be used
+		% in some other cases when we just don't have any information
+		% about which argument it is.
+		% For both of these, we just say "in call to"
+		% rather than "in argument N of call to".
 		[]
 	;
 		io__write_string("argument "),
