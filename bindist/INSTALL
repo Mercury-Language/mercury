@@ -18,7 +18,7 @@
 #	   This step will copy the various files that make up the distribution
 #	   to their final places.
 #
-# Step 4.  Check the permissions on the installed files.
+# Step 3.  Check the permissions on the installed files.
 #	   Add /usr/local/mercury-0.4/bin to your PATH, and
 #	   add /usr/local/mercury-0.4/info to your INFOPATH.
 #	   You can also add a WWW link to the Mercury documentation in
@@ -27,12 +27,7 @@
 #	   from the DVI files in /usr/local/mercury-0.4/lib/mercury/doc.
 #
 # As a short-cut, steps 1 & 2 are listed below, so they can be replaced
-# by just executing this file.  It's advisable to redirect the output
-# into a file, just in case anything should go wrong.  I suggest you
-# run it in the background, and read the Mercury documentation in the
-# `doc' directory while you are waiting.  You can use the command 
-#	sh -c './INSTALL > errs 2>&1' &
-# to do this; the output will be redirected to the file `errs'.
+# by just executing this script.
 
 sh configure &&
 make install

@@ -147,8 +147,6 @@ AC_PROG_CC
 AC_SUBST(CC)
 #-----------------------------------------------------------------------------#
 
-# XXX compiler/conf.m - problems with bootstrapping
-
 AC_OUTPUT(Makefile scripts/mc scripts/mprof
 scripts/mercury_update_interface scripts/mgnuc scripts/mint scripts/ml
 scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init

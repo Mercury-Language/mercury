@@ -21,7 +21,7 @@ UTILS		= $(INSTALL_PREFIX)/bin/mkinit \
 		$(INSTALL_PREFIX)/bin/mdemangle \
 		$(INSTALL_PREFIX)/bin/mtags \
 
-MISC_FILES	= INSTALL README bindist Makefile.in configure
+MISC_FILES	= INSTALL README bindist Makefile.in configure configure.in
 
 binary_distribution: configure bindist
 	# Make a quick check that there is a mercury installation in
