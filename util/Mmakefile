@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2001 The University of Melbourne.
+# Copyright (C) 1995-2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -15,7 +15,7 @@ include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-MGNUC   = MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(SCRIPTS_DIR)/mgnuc
+MGNUC   = $(SCRIPTS_DIR)/mgnuc
 CFLAGS	= -I$(RUNTIME_DIR) -O0
 # we need -I ../runtime for "mercury_std.h", etc.
 # the -O0 is to get around a stupid compiler bug in gcc 2.7.2.3 on cyclone
