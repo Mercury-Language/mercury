@@ -65,7 +65,7 @@ All three declarations are restricted in the following ways:
 <ol>
 <li>	Any variable that occurs in more than one disjunct must be
 	explicitly quantified.
-<li>	Any variable occuring in only one disjunct is existentially quantified.
+<li>	Any variable occurring in only one disjunct is existentially quantified.
 	This is similarly applicable when an underscore is used in place of a 
 	variable.
 </ol>
@@ -102,7 +102,7 @@ structures etc. have been defined are in italics.
 	<ul>
 	<li>	post typechecking processing initiated for promise ex 
 		declarations (purity.m)
-	<li>	promise_exlusive and promise_exhaustive declarations are
+	<li>	promise_exclusive and promise_exhaustive declarations are
 		indexed by the predicate calls made in them in the exclusive 
 		table (post_typecheck.m)
 	<li>	<i>definition of exclusive table as part of HLDS, and
@@ -111,7 +111,7 @@ structures etc. have been defined are in italics.
 	<li>	(*) where a promise_exhaustive declaration is paired with a
 		promise_exclusive declaration, they are merged into a
 		promise_exclusive_exhaustive declaration; otherwise the
-		promise_exhaustive declartion is entered in the exhaustive
+		promise_exhaustive declaration is entered in the exhaustive
 		table of the HLDS (post_typecheck.m)
 	<li>	(*) <i>definition of exhaustive table as part of HLDS, and
 		operations on the table </i> 
