@@ -679,12 +679,17 @@ opt_debug__dump_const(data_addr_const(data_addr(BaseName, VarName)), Str) :-
 	opt_debug__dump_data_name(VarName, N_str),
 	string__append_list(["data_addr_const(", BaseName, ", ", N_str, ")"],
 		Str).
-
+opt_debug__dump_const(label_entry(Label), Str) :-
+	opt_debug__dump_label(Label, LabelStr),
+	string__append_list(["label_entry(", LabelStr, ")"], Str).
 opt_debug__dump_data_name(common(N), Str) :-
 	string__int_to_string(N, N_str),
 	string__append("common", N_str, Str).
 opt_debug__dump_data_name(base_type(BaseData, TypeName, TypeArity), Str) :-
 	llds_out__make_base_type_name(BaseData, TypeName, TypeArity, Str).
+opt_debug__dump_data_name(stack_layout(Label), Str) :-
+	opt_debug__dump_label(Label, LabelStr),
+	string__append_list(["stack_layout(", LabelStr, ")"], Str).
 
 opt_debug__dump_unop(mktag, "mktag").
 opt_debug__dump_unop(tag, "tag").

@@ -132,6 +132,7 @@
 		;	args
 		;	type_info
 		;	type_layout
+		;	stack_layout
 		;	highlevel_c
 		;	unboxed_float
 	% Code generation options
@@ -372,6 +373,7 @@ option_defaults_2(compilation_model_option, [
 	args			-	string("compact"),
 	type_info		-	string("default"),
 	type_layout		-	bool(yes),
+	stack_layout		-	bool(no),
 	highlevel_c		-	bool(no),
 	unboxed_float		-	bool(no)
 ]).
@@ -653,6 +655,7 @@ long_option("arg-convention",		args).
 long_option("type-info",		type_info).
 long_option("type-info-convention",	type_info).
 long_option("type-layout",		type_layout).
+long_option("stack-layout",		type_layout).
 long_option("highlevel-C",		highlevel_c).
 long_option("highlevel-c",		highlevel_c).
 long_option("high-level-C",		highlevel_c).
@@ -1384,11 +1387,17 @@ options_help_compilation_model -->
 %	io__write_string("\t\ttype_info structures. Only one option, shared-one-or-two-cell,\n"),
 %	io__write_string("\t\tis presently available.\n"),
 
+
 	io__write_string("\t--no-type-layout\n"),
 	io__write_string("\t(This option is not for general use.)\n"),
 	io__write_string("\t\tDon't output base_type_layout structures or references\n"),
 	io__write_string("\t\tto them. (The C code also needs to be compiled with\n"),
 	io__write_string("\t\t`-DNO_TYPE_LAYOUT').\n"),
+
+	io__write_string("\t--stack-layout\n"),
+	io__write_string("\t(This option is not for general use.)\n"),
+	io__write_string("\t\tGenerate stack_layout structures.\n"),
+
 	io__write_string("\t--unboxed-float\n"),
 	io__write_string("\t(This option is not for general use.)\n"),
 	io__write_string("\t\tDon't box floating point numbers.\n"),

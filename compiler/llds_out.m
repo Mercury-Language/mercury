@@ -61,9 +61,18 @@
 :- mode output_proc_label(in, di, uo) is det.
 
 	% Get a proc label string (used by procs which are exported to C).
+	% The boolean controls whether a prefix ("mercury__") is added to the
+	% proc label.
 
-:- pred get_proc_label(proc_label, string).
-:- mode get_proc_label(in, out) is det.
+:- pred llds_out__get_proc_label(proc_label, bool, string).
+:- mode llds_out__get_proc_label(in, in, out) is det.
+
+	% Get a label string.
+	% The boolean controls whether a prefix ("mercury__") is added to the
+	% label.
+
+:- pred llds_out__get_label(label, bool, string).
+:- mode llds_out__get_label(in, in, out) is det.
 
 	% Mangle an arbitrary name into a C identifier
 
@@ -601,7 +610,7 @@ output_c_procedure_list([Proc | Procs], PrintComments, EmitCLoops) -->
 :- mode output_c_procedure_decls(in, in, out, di, uo) is det.
 
 output_c_procedure_decls(Proc, DeclSet0, DeclSet) -->
-	{ Proc = c_procedure(_Name, _Arity, _ModeNum0, Instrs) },
+	{ Proc = c_procedure(_Name, _Arity, _ModeNum0, _PredProcId, Instrs) },
 	output_instruction_list_decls(Instrs, DeclSet0, DeclSet).
 
 :- pred output_c_procedure(c_procedure, bool, bool,
@@ -609,7 +618,7 @@ output_c_procedure_decls(Proc, DeclSet0, DeclSet) -->
 :- mode output_c_procedure(in, in, in, di, uo) is det.
 
 output_c_procedure(Proc, PrintComments, EmitCLoops) -->
-	{ Proc = c_procedure(Name, Arity, ModeNum0, Instrs) },
+	{ Proc = c_procedure(Name, Arity, ModeNum0, _PredProcId, Instrs) },
 	( { PrintComments = yes } ->
 		io__write_string("\n/*-------------------------------------"),
 		io__write_string("------------------------------------*/\n")
@@ -2087,24 +2096,32 @@ output_code_addr(do_nondet_closure) -->
 output_code_addr(do_not_reached) -->
 	io__write_string("ENTRY(do_not_reached)").
 
+
+	% Output a data address. 
+
 :- pred output_data_addr(string, data_name, io__state, io__state).
 :- mode output_data_addr(in, in, di, uo) is det.
 
 output_data_addr(BaseName0, VarName) -->
 	{ llds_out__name_mangle(BaseName0, BaseName) },
 	io__write_string("mercury_data_"),
-	io__write_string(BaseName),
 	(
 		{ VarName = common(N) },
+		io__write_string(BaseName),
 		io__write_string("__common_"),
 		{ string__int_to_string(N, NStr) },
 		io__write_string(NStr)
 	;
 		{ VarName = base_type(BaseData, TypeName0, TypeArity) },
+		io__write_string(BaseName),
 		{ llds_out__make_base_type_name(BaseData, TypeName0, TypeArity,
 			Str) },
 		io__write_string("__"),
 		io__write_string(Str)
+	;
+		{ VarName = stack_layout(Label) },
+		io__write_string("_stack_layout__"),
+		output_label(Label)
 	).
 
 :- pred output_label_as_code_addr(label, io__state, io__state).
@@ -2195,25 +2212,28 @@ output_label_defn(local(ProcLabel, Num)) -->
 % is referred to as local(_) in type_info structures and as c_local(_)
 % in the recursive call.
 
-output_label(exported(ProcLabel)) -->
-	output_proc_label(ProcLabel).
-output_label(local(ProcLabel)) -->
-	output_proc_label(ProcLabel).
-output_label(c_local(ProcLabel)) -->
-	output_proc_label(ProcLabel).
-output_label(local(ProcLabel, Num)) -->
-	output_proc_label(ProcLabel),
-	io__write_string("_i"),		% i for "internal" (not Intel ;-)
-	io__write_int(Num).
+output_label(Label) -->
+	{ llds_out__get_label(Label, yes, LabelStr) },
+	io__write_string(LabelStr).
 
 output_proc_label(ProcLabel) -->
-	{ get_proc_label(ProcLabel, ProcLabelString) },
+	{ llds_out__get_proc_label(ProcLabel, yes, ProcLabelString) },
 	io__write_string(ProcLabelString).
 
-get_proc_label(proc(DefiningModule, PredOrFunc, PredModule,
-		PredName, Arity, ModeNum0), ProcLabelString) :-
+llds_out__get_label(exported(ProcLabel), AddPrefix, ProcLabelStr) :-
+	llds_out__get_proc_label(ProcLabel, AddPrefix, ProcLabelStr).
+llds_out__get_label(local(ProcLabel), AddPrefix, ProcLabelStr) :-
+	llds_out__get_proc_label(ProcLabel, AddPrefix, ProcLabelStr).
+llds_out__get_label(c_local(ProcLabel), AddPrefix, ProcLabelStr) :-
+	llds_out__get_proc_label(ProcLabel, AddPrefix, ProcLabelStr).
+llds_out__get_label(local(ProcLabel, Num), AddPrefix, LabelStr) :-
+	llds_out__get_proc_label(ProcLabel, AddPrefix, ProcLabelStr),
+	string__format("%s_i%i", [s(ProcLabelStr), i(Num)], LabelStr).
+
+llds_out__get_proc_label(proc(DefiningModule, PredOrFunc, PredModule,
+		PredName, Arity, ModeNum0), AddPrefix, ProcLabelString) :-
 	get_label_name(DefiningModule, PredOrFunc, PredModule,
-		PredName, Arity, LabelName),
+		PredName, Arity, AddPrefix, LabelName),
 	( PredOrFunc = function ->
 		OrigArity is Arity - 1
 	;
@@ -2228,11 +2248,12 @@ get_proc_label(proc(DefiningModule, PredOrFunc, PredModule,
 
 	% For a special proc, output a label of the form:
 	% mercury____<PredName>___<TypeModule>__<TypeName>_<TypeArity>_<Mode>
-get_proc_label(special_proc(Module, PredName, TypeModule, TypeName, TypeArity,
-				ModeNum0), ProcLabelString) :-
+llds_out__get_proc_label(special_proc(Module, PredName, TypeModule, 
+		TypeName, TypeArity, ModeNum0), AddPrefix, ProcLabelString) :-
 	% figure out the LabelName
 	DummyArity = -1,	% not used by get_label_name.
-	get_label_name("", predicate, "", PredName, DummyArity, LabelName),
+	get_label_name("", predicate, "", PredName, DummyArity, AddPrefix,
+		LabelName),
 
 	% figure out the ModeNumString
 	string__int_to_string(TypeArity, TypeArityString),
@@ -2260,11 +2281,15 @@ get_proc_label(special_proc(Module, PredName, TypeModule, TypeName, TypeArity,
 		"_", TypeArityString, "_", ModeNumString], 
 		ProcLabelString).
 
-:- pred get_label_name(string, pred_or_func, string, string, int, string).
-:- mode get_label_name(in, in, in, in, in, out) is det.
+	%  get a label name, given the defining module, predicate or
+	%  function indicator, declaring module, predicate name, arity,
+	%  and whether or not to add a prefix.
+
+:- pred get_label_name(string, pred_or_func, string, string, int, bool, string).
+:- mode get_label_name(in, in, in, in, in, in, out) is det.
 
 get_label_name(DefiningModule, PredOrFunc, DeclaringModule,
-		Name0, Arity, LabelName) :-
+		Name0, Arity, AddPrefix, LabelName) :-
 	(
 		( 
 			DeclaringModule = "mercury_builtin"
@@ -2303,8 +2328,14 @@ get_label_name(DefiningModule, PredOrFunc, DeclaringModule,
 		PredOrFunc = predicate,
 		LabelName3 = LabelName2
 	),
-	get_label_prefix(Prefix),
-	string__append(Prefix, LabelName3, LabelName).
+	( 
+		AddPrefix = yes
+	->
+		get_label_prefix(Prefix),
+		string__append(Prefix, LabelName3, LabelName)
+	;
+		LabelName = LabelName3
+	).
 
 	% To ensure that Mercury labels don't clash with C symbols, we
 	% prefix them with `mercury__'.
@@ -2683,6 +2714,10 @@ output_rval_const(data_addr_const(data_addr(BaseName, VarName))) -->
 	% we need to cast them here to avoid type errors
 	io__write_string("(const Word *) &"),
 	output_data_addr(BaseName, VarName).
+output_rval_const(label_entry(Label)) -->
+	io__write_string("ENTRY("),
+	output_label(Label),
+	io__write_string(")").
 
 :- pred output_lval_as_word(lval, io__state, io__state).
 :- mode output_lval_as_word(in, di, uo) is det.
@@ -3035,7 +3070,7 @@ gather_labels_from_c_module(c_export(_), Labels, Labels).
 :- mode gather_labels_from_c_procs(in, in, out) is det.
 
 gather_labels_from_c_procs([], Labels, Labels).
-gather_labels_from_c_procs([c_procedure(_, _, _, Instrs) | Procs],
+gather_labels_from_c_procs([c_procedure(_, _, _, _, Instrs) | Procs],
 		Labels0, Labels) :-
 	gather_labels_from_instrs(Instrs, Labels0, Labels1),
 	gather_labels_from_c_procs(Procs, Labels1, Labels).

@@ -138,9 +138,9 @@ llds_common__process_procs([Proc0 | Procs0], Info0, Info, [Proc | Procs]) :-
 :- mode llds_common__process_proc(in, in, out, out) is det.
 
 llds_common__process_proc(Proc0, Info0, Info, Proc) :-
-	Proc0 = c_procedure(Name, Arity, Mode, Instrs0),
+	Proc0 = c_procedure(Name, Arity, Mode, PredProcId, Instrs0),
 	llds_common__process_instrs(Instrs0, Info0, Info, Instrs),
-	Proc = c_procedure(Name, Arity, Mode, Instrs).
+	Proc = c_procedure(Name, Arity, Mode, PredProcId, Instrs).
 
 :- pred llds_common__process_instrs(list(instruction),
 	common_info, common_info, list(instruction)).

@@ -38,7 +38,7 @@
 :- import_module lco, liveness, stratify.
 :- import_module follow_code, live_vars, arg_info, store_alloc, goal_path.
 :- import_module code_gen, optimize, export, base_type_info, base_type_layout.
-:- import_module llds_common, llds_out.
+:- import_module llds_common, llds_out, continuation_info, stack_layout.
 
 	% miscellaneous compiler modules
 :- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds.
@@ -754,7 +754,11 @@ mercury_compile__backend_pass_by_phases(HLDS50, HLDS99, LLDS) -->
 	!,
 	mercury_compile__maybe_dump_hlds(HLDS95, "95", "codegen"), !,
 
-	{ HLDS99 = HLDS95 },
+	mercury_compile__maybe_generate_stack_layouts(HLDS95, LLDS1, Verbose, 
+		Stats, HLDS97), !,
+	mercury_compile__maybe_dump_hlds(HLDS97, "97", "stack_layout"), !,
+
+	{ HLDS99 = HLDS97 },
 	mercury_compile__maybe_dump_hlds(HLDS99, "99", "final"), !,
 
 	mercury_compile__maybe_do_optimize(LLDS1, Verbose, Stats, LLDS).
@@ -882,16 +886,31 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 	{ module_info_get_continuation_info(ModuleInfo3, ContInfo0) },
 	{ module_info_get_cell_count(ModuleInfo3, CellCount0) },
 	{ generate_proc_code(ProcInfo7, ProcId, PredId, ModuleInfo3, Globals,
-		ContInfo0, CellCount0, ContInfo, CellCount, Proc0) },
-	{ module_info_set_continuation_info(ModuleInfo3, ContInfo, 
+		ContInfo0, CellCount0, ContInfo1, CellCount, Proc0) },
+	{ module_info_set_continuation_info(ModuleInfo3, ContInfo1, 
 		ModuleInfo4) },
-	{ module_info_set_cell_count(ModuleInfo4, CellCount, ModuleInfo) },
+	{ module_info_set_cell_count(ModuleInfo4, CellCount, ModuleInfo5) },
 	{ globals__lookup_bool_option(Globals, optimize, Optimize) },
 	( { Optimize = yes } ->
 		optimize__proc(Proc0, Proc)
 	;
 		{ Proc = Proc0 }
+	),
+	{ globals__lookup_bool_option(Globals, stack_layout, StackLayout) },
+	( { StackLayout = yes } ->
+		{ Proc = c_procedure(_, _, _, PredProcId, Instructions) },
+		{ module_info_get_continuation_info(ModuleInfo5, ContInfo2) },
+		write_proc_progress_message(
+			"% Generating stack layout information for ",
+					PredId, ProcId, ModuleInfo5),
+		{ continuation_info__process_instructions(PredProcId,
+			Instructions, ContInfo2, ContInfo3) },
+		{ module_info_set_continuation_info(ModuleInfo5, ContInfo3, 
+			ModuleInfo) }
+	;
+		{ ModuleInfo = ModuleInfo5 }
 	).
+	
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1488,6 +1507,29 @@ mercury_compile__maybe_do_optimize(LLDS0, Verbose, Stats, LLDS) -->
 		{ LLDS = LLDS0 }
 	).
 
+:- pred mercury_compile__maybe_generate_stack_layouts(module_info, 
+	list(c_procedure), bool, bool, module_info, io__state, io__state).
+:- mode mercury_compile__maybe_generate_stack_layouts(in, in, in, in, out, 
+	di, uo) is det.
+
+mercury_compile__maybe_generate_stack_layouts(ModuleInfo0, LLDS0, Verbose, 
+		Stats, ModuleInfo) -->
+	globals__io_lookup_bool_option(stack_layout, StackLayout),
+	( { StackLayout = yes } ->
+		maybe_write_string(Verbose,
+			"% Generating stack layout information..."),
+		maybe_flush_output(Verbose),
+		{ module_info_get_continuation_info(ModuleInfo0, ContInfo0) },
+		{ continuation_info__process_llds(LLDS0, ContInfo0,
+			ContInfo) },
+		{ module_info_set_continuation_info(ModuleInfo0, ContInfo,
+			ModuleInfo) },
+		maybe_write_string(Verbose, " done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ ModuleInfo = ModuleInfo0 }
+	).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1497,14 +1539,17 @@ mercury_compile__maybe_do_optimize(LLDS0, Verbose, Stats, LLDS) -->
 	bool, io__state, io__state).
 :- mode mercury_compile__output_pass(in, in, in, out, di, uo) is det.
 
-mercury_compile__output_pass(HLDS, LLDS0, ModuleName, CompileErrors) -->
+mercury_compile__output_pass(HLDS0, LLDS0, ModuleName, CompileErrors) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
-	{ base_type_info__generate_llds(HLDS, BaseTypeInfos) },
-	{ base_type_layout__generate_llds(HLDS, BaseTypeLayouts) },
+	{ base_type_info__generate_llds(HLDS0, BaseTypeInfos) },
+	{ base_type_layout__generate_llds(HLDS0, HLDS1, BaseTypeLayouts) },
+	{ stack_layout__generate_llds(HLDS1, HLDS, StackLayouts) },
 
-	{ llds_common(LLDS0, BaseTypeLayouts, ModuleName, LLDS1, 
+	{ list__append(StackLayouts, BaseTypeLayouts, StaticData0) },
+
+	{ llds_common(LLDS0, StaticData0, ModuleName, LLDS1, 
 		StaticData, CommonData) },
 
 	{ list__append(BaseTypeInfos, StaticData, AllData) },

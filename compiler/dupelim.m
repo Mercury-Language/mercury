@@ -268,6 +268,7 @@ dupelim__replace_labels_rval_const(code_addr_const(Addr0), Replmap,
 	dupelim__replace_labels_code_addr(Addr0, Replmap, Addr).
 dupelim__replace_labels_rval_const(data_addr_const(DataAddr), _,
 		data_addr_const(DataAddr)).
+dupelim__replace_labels_rval_const(label_entry(Label), _, label_entry(Label)).
 
 :- pred dupelim__replace_labels_code_addr(code_addr, map(label, label),
 	code_addr).

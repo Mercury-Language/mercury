@@ -75,6 +75,7 @@
 			string,			% predicate name
 			int,			% arity
 			llds_proc_id,		% mode number
+			pred_proc_id,		% the pred_proc_id this code
 			list(instruction)	% the code for this procedure
 		).
 
@@ -425,7 +426,9 @@
 	;	float_const(float)
 	;	string_const(string)
 	;	code_addr_const(code_addr)
-	;	data_addr_const(data_addr).
+	;	data_addr_const(data_addr)
+	;	label_entry(label).
+			% the address of the label (uses ENTRY macro).
 
 :- type data_addr
 	--->	data_addr(string, data_name).
@@ -433,8 +436,10 @@
 
 :- type data_name
 	--->	common(int)
-	;	base_type(base_data, string, arity).
+	;	base_type(base_data, string, arity)
 			% base_data, type name, type arity
+	;	stack_layout(label).	
+			% stack_layout for a given label
 
 :- type base_data
 	--->	info
@@ -641,6 +646,7 @@ llds__const_type(float_const(_), float).
 llds__const_type(string_const(_), data_ptr).
 llds__const_type(code_addr_const(_), code_ptr).
 llds__const_type(data_addr_const(_), data_ptr).
+llds__const_type(label_entry(_), code_ptr).
 
 llds__unop_return_type(mktag, word).
 llds__unop_return_type(tag, word).

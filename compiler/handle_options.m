@@ -525,7 +525,8 @@ convert_grade_option(Grade0) -->
 	% 'accurate' is now set in the grade, so we can override it here.
 	( 
 		{ GC = accurate }, 
-		set_string_opt(gc, "accurate") 
+		set_string_opt(gc, "accurate"), 
+		set_bool_opt(stack_layout, yes) 
 	; 
 		{ GC = conservative },
 		set_string_opt(gc, "conservative")
