@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 The University of Melbourne.
+% Copyright (C) 1998-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -982,8 +982,18 @@ debug_freeze(Msg, X, Pred, Y) :-
 		fail
 	).
 
-:- impure pred debug_pred(string, pred(T), T) is semidet.
+:- /* impure */
+   pred debug_pred(string, pred(T), T) is semidet.
 :- mode debug_pred(in, pred(in) is semidet, in) is semidet.
+
+	% XXX the `pragma promise_pure' here is a lie,
+	% but it's needed, because currently Mercury doesn't
+	% support taking the address of an impure procedure.
+	% The `pragma no_inline' is intended to reduce the
+	% likelihood of the false `pragma promise_pure' causing
+	% trouble.
+:- pragma promise_pure(debug_pred/3).
+:- pragma no_inline(debug_pred/3).
 
 debug_pred(Msg, Pred, Var) :-
 	impure unsafe_perform_io(print("woke: ")),
@@ -1006,8 +1016,18 @@ debug_pred(Msg, Pred, Var) :-
 		semidet_fail
 	).
 
-:- impure pred debug_pred2(string, pred(T1, T2), T1, T2) is semidet.
+:- /* impure */
+   pred debug_pred2(string, pred(T1, T2), T1, T2) is semidet.
 :- mode debug_pred2(in, pred(in, out) is semidet, in, out) is semidet.
+
+	% XXX the `pragma promise_pure' here is a lie,
+	% but it's needed, because currently Mercury doesn't
+	% support taking the address of an impure procedure.
+	% The `pragma no_inline' is intended to reduce the
+	% likelihood of the false `pragma promise_pure' causing
+	% trouble.
+:- pragma promise_pure(debug_pred2/4).
+:- pragma no_inline(debug_pred2/4).
 
 debug_pred2(Msg, Pred, X, Y) :-
 	impure unsafe_perform_io(print("woke: ")),
