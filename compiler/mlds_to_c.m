@@ -2836,10 +2836,31 @@ mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context) -->
 
 	{ FuncInfo = func_info(FuncName, _FuncSignature) },
 	mlds_maybe_output_heap_profile_instr(Context, Indent + 1, Args,
-			FuncName, MaybeCtorName),
+		FuncName, MaybeCtorName),
 
+	% When filling in the fields of a newly allocated cell, use a fresh
+	% local variable as the base address for the field references in
+	% preference to an lval that is more expensive to access. This yields
+	% a speedup of about 0.3%.
+
+	( { Target = var(_, _) } ->
+		{ Base = lval(Target) }
+	;
+		% It doesn't matter what string we pick for BaseVarName,
+		% as long as its declaration doesn't hide any of the variables
+		% inside Args. This is not hard to ensure, since the printed
+		% forms of the variables inside Args all include "__".
+		{ BaseVarName = "base" },
+		{ Base = string(BaseVarName) },
+		mlds_indent(Context, Indent + 1),
+		mlds_output_type_prefix(Type),
+		io__write_string(" "),
+		io__write_string(BaseVarName),
+		mlds_output_type_suffix(Type),
+		io__write_string(";\n")
+	),
 	mlds_indent(Context, Indent + 1),
-	mlds_output_lval(Target),
+	write_lval_or_string(Base),
 	io__write_string(" = "),
 	( { MaybeTag = yes(Tag0) } ->
 		{ Tag = Tag0 },
@@ -2883,7 +2904,17 @@ mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context) -->
 	io__write_string(")"),
 	io__write_string(EndMkword),
 	io__write_string(";\n"),
-	mlds_output_init_args(Args, ArgTypes, Context, 0, Target, Tag,
+	(
+		{ Base = lval(_) }
+	;
+		{ Base = string(BaseVarName1) },
+		mlds_indent(Context, Indent + 1),
+		mlds_output_lval(Target),
+		io__write_string(" = "),
+		io__write_string(BaseVarName1),
+		io__write_string(";\n")
+	),
+	mlds_output_init_args(Args, ArgTypes, Context, 0, Base, Tag,
 		Indent + 1),
 	mlds_indent(Context, Indent),
 	io__write_string("}\n").
@@ -2993,8 +3024,12 @@ type_needs_forwarding_pointer_space(mlds__unknown_type) = _ :-
 	unexpected(this_file,
 		"type_needs_forwarding_pointer_space: unknown_type"). 
 
+:- type lval_or_string
+	--->	lval(mlds__lval)
+	;	string(string).
+
 :- pred mlds_output_init_args(list(mlds__rval), list(mlds__type), mlds__context,
-		int, mlds__lval, mlds__tag, indent, io__state, io__state).
+	int, lval_or_string, mlds__tag, indent, io__state, io__state).
 :- mode mlds_output_init_args(in, in, in, in, in, in, in, di, uo) is det.
 
 mlds_output_init_args([_|_], [], _, _, _, _, _) -->
@@ -3003,7 +3038,7 @@ mlds_output_init_args([], [_|_], _, _, _, _, _) -->
 	{ error("mlds_output_init_args: length mismatch") }.
 mlds_output_init_args([], [], _, _, _, _, _) --> [].
 mlds_output_init_args([Arg|Args], [ArgType|ArgTypes], Context,
-		ArgNum, Target, Tag, Indent) -->
+		ArgNum, Base, Tag, Indent) -->
 	%
 	% The MR_hl_field() macro expects its argument to
 	% have type MR_Box, so we need to box the arguments
@@ -3019,14 +3054,25 @@ mlds_output_init_args([Arg|Args], [ArgType|ArgTypes], Context,
 	io__write_string("MR_hl_field("),
 	mlds_output_tag(Tag),
 	io__write_string(", "),
-	mlds_output_lval(Target),
+	write_lval_or_string(Base),
 	io__write_string(", "),
 	io__write_int(ArgNum),
 	io__write_string(") = "),
 	mlds_output_boxed_rval(ArgType, Arg),
 	io__write_string(";\n"),
 	mlds_output_init_args(Args, ArgTypes, Context,
-		ArgNum + 1, Target, Tag, Indent).
+		ArgNum + 1, Base, Tag, Indent).
+
+:- pred write_lval_or_string(lval_or_string::in, io::di, io::uo) is det.
+
+write_lval_or_string(Base) -->
+	(
+		{ Base = lval(Target) },
+		mlds_output_lval(Target)
+	;
+		{ Base = string(BaseVarName) },
+		io__write_string(BaseVarName)
+	).
 
 %-----------------------------------------------------------------------------%
 %
