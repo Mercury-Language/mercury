@@ -1,5 +1,9 @@
+any_mode.m:005: Error: mode declaration for predicate `any_mode:p/1'
+any_mode.m:005:   without preceding `pred' declaration.
 any_mode.m:005: Error: no determinism declaration for exported
 any_mode.m:005:   predicate `any_mode:p/1'.
+any_mode.m:008: Error: mode declaration for predicate `any_mode:q/1'
+any_mode.m:008:   without preceding `pred' declaration.
 any_mode.m:008: Error: no determinism declaration for exported
 any_mode.m:008:   predicate `any_mode:q/1'.
 any_mode.m:006: Warning: clause in module interface.
