@@ -4,3 +4,4 @@ threadlibs
 base_lib
 on_sparc_sunos5
 gctest
+libgc_dll.h
