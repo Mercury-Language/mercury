@@ -331,7 +331,7 @@ case $HOST in
 		DEFAULT_GRADE="hlc.gc"
 		export DEFAULT_GRADE
 		INSTALL_GRADE="hlc.gc"
-		INSTALL_LIBGRADES="hlc.gc.prof hlc.gc.memprof
+		INSTALL_LIBGRADES="hlc.gc.prof hlc.gc.memprof \
 				hlc.gc.tr hlc.par.gc"
 		# Test the asm_fast.gc.tr.rt grade, but not on the 0.10 branch,
 		# since the asm_fast.gc.tr.rt grade is not yet implemented
@@ -343,8 +343,8 @@ case $HOST in
 		# fixed on the main branch.
 		case $BRANCH in
 			0.10)	;;
-			*)	INSTALL_LIBGRADES="$INSTALL_LIBGRADES
-					asm_fast.gc.tr.rt hl.gc hl.gc.prof
+			*)	INSTALL_LIBGRADES="$INSTALL_LIBGRADES \
+					asm_fast.gc.tr.rt hl.gc hl.gc.prof \
 					hl.gc.memprof hl.gc.tr hl.par.gc" ;;
 		esac
 		;;
