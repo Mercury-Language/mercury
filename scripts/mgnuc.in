@@ -265,8 +265,8 @@ esac
 
 #
 # Kludge for gcc-2.6.3 bug on mips: if you use gcc global registers and -O2,
-# gcc 2.6.3 gets an internal error compiling library/int.c.
-# As a work-around, we compile that file with -O1.
+# gcc 2.6.3 gets an internal error compiling library/int.c and
+# compiler/bytecode.c.  As a work-around, we compile those file with -O1.
 # Similarly library/bag.c needs to be compiled with -O0.
 # Similarly for gcc-2.6.3 on alpha with compiler/modules.c.
 #
@@ -275,6 +275,10 @@ case $COMPILER in gcc)
 		mips*)
 			case "$*" in
 			*" int.c "*|*" int.dir/int_"*".c "*)
+				case "`$CC --version 2>/dev/null`" in 2.6.*)
+					ARCH_OPTS="$ARCH_OPTS -O1" ;;
+				esac;;
+			*" bytecode.c "*|*" bytecode.dir/bytecode_"*".c "*)
 				case "`$CC --version 2>/dev/null`" in 2.6.*)
 					ARCH_OPTS="$ARCH_OPTS -O1" ;;
 				esac;;
