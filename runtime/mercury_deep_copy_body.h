@@ -397,6 +397,8 @@ try_again:
             **
             ** Their type-infos have a pointer to type_ctor_info for
             ** pred/0, arity, and then argument typeinfos.
+	    **
+	    ** XXX pred needs to handle traversals.
             */
             if (in_range(data_value)) {
                 MR_Unsigned            args, i;
@@ -408,6 +410,9 @@ try_again:
                 old_closure = (MR_Closure *) data_value;
                 closure_layout = old_closure->MR_closure_layout;
                 args = old_closure->MR_closure_num_hidden_args;
+
+                /* get number of curried arguments */
+                args = data_value[0];
 
                 /* create new closure */
                 incr_saved_hp(LVALUE_CAST(MR_Word, new_closure), args + 3);
@@ -438,6 +443,8 @@ try_again:
 
                 new_data = (MR_Word) new_closure;
                 leave_forwarding_pointer(data_ptr, new_data);
+	    } else if (in_range(data_value)) {
+		fatal_error("sorry, unimplemented: traversal of closures");
             } else {
                 new_data = data;
                 found_forwarding_pointer(data);
@@ -514,6 +521,15 @@ try_again:
                         (MR_TypeInfo *) &data_value[UNIV_OFFSET_FOR_TYPEINFO],
                         lower_limit, upper_limit);
                 leave_forwarding_pointer(data_ptr, new_data);
+	    } else if (in_traverse_range(data_value)) {
+		copy(&data_value[UNIV_OFFSET_FOR_DATA],
+			(const MR_TypeInfo) 
+			    data_value[UNIV_OFFSET_FOR_TYPEINFO],
+			lower_limit, upper_limit);
+	        copy_type_info(
+			(MR_TypeInfo *) &data_value[UNIV_OFFSET_FOR_TYPEINFO],
+			lower_limit, upper_limit);
+		new_data = data;
             } else {
                 new_data = data;
                 found_forwarding_pointer(data);
@@ -550,6 +566,19 @@ try_again:
                 }
                 new_data = (MR_Word) new_array;
                 leave_forwarding_pointer(data_ptr, new_data);
+            } else if (in_traverse_range(data_value)) {
+                MR_ArrayType *old_array;
+                Integer array_size;
+
+                old_array = (MR_ArrayType *) data_value;
+                array_size = old_array->size;
+                for (i = 0; i < array_size; i++) {
+                    copy_arg(NULL, 
+			&old_array->elements[i], NULL, 
+                        MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                        (const MR_PseudoTypeInfo) 1, lower_limit, upper_limit);
+                }
+                new_data = data;
             } else {
                 new_data = data;
                 found_forwarding_pointer(data);
@@ -571,7 +600,7 @@ try_again:
             data_tag = MR_tag(data);
             data_value = (MR_Word *) MR_body(data, data_tag);
 
-            if (in_range(data_value)) {
+            if (in_range(data_value) || in_traverse_range(data_value)) {
                 /*
                 ** This error occurs if we try to copy() a
                 ** `c_pointer' type that points to memory allocated
@@ -653,8 +682,8 @@ copy_arg(maybeconst MR_Word *parent_data_ptr, maybeconst MR_Word *data_ptr,
 }
 
 static MR_TypeInfo
-copy_type_info(maybeconst MR_TypeInfo *type_info_ptr, const MR_Word *lower_limit,
-    const MR_Word *upper_limit)
+copy_type_info(maybeconst MR_TypeInfo *type_info_ptr,
+	const MR_Word *lower_limit, const MR_Word *upper_limit)
 {
     MR_TypeInfo type_info = *type_info_ptr;
 

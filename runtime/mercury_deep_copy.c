@@ -27,6 +27,9 @@
 #define in_range(X)	(lower_limit == NULL || \
 				((X) >= lower_limit && (X) <= upper_limit))
 
+#undef  in_traverse_range(X)
+#define in_traverse_range(X)	(FALSE)
+
 #undef	maybeconst
 #define	maybeconst	const
 
@@ -54,9 +57,15 @@
 /*
 ** agc_deep_copy(): see mercury_deep_copy.h for documentation.
 */
+#ifdef NATIVE_GC
 
 #undef  in_range
 #define in_range(X)	((X) >= lower_limit && (X) <= upper_limit)
+
+#undef  in_traverse_range(X)
+#define in_traverse_range(X)	\
+		((X) >= MR_ENGINE(solutions_heap_zone)->min && \
+			(X) <= MR_ENGINE(solutions_heap_zone)->hardmax)
 
 #undef	maybeconst
 #define	maybeconst
@@ -93,6 +102,8 @@
 		FORWARD_DEBUG_MSG("not on this heap: %lx\n", (long) Data);
 
 #include "mercury_deep_copy_body.h"
+
+#endif
 
 /*---------------------------------------------------------------------------*/
 

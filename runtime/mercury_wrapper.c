@@ -50,8 +50,8 @@ ENDINIT
 
 /* size of data areas (including redzones), in kilobytes */
 /* (but we later multiply by 1024 to convert to bytes) */
-#ifdef MR_DEBUG_AGC
-  size_t	heap_size =		  128;
+#ifdef MR_DEBUG_AGC_SMALL_HEAP
+  size_t	heap_size =      	   52;
 #else
   size_t	heap_size =		 4096;
 #endif
@@ -66,11 +66,7 @@ size_t		cutstack_size =  	   32;
 
 /* size of the redzones at the end of data areas, in kilobytes */
 /* (but we later multiply by 1024 to convert to bytes) */
-#ifdef NATIVE_GC
-  size_t	heap_zone_size =	   96;
-#else
-  size_t	heap_zone_size =	   16;
-#endif
+size_t		heap_zone_size =	   16;
 size_t		detstack_zone_size =	   16;
 size_t		nondstack_zone_size =	   16;
 size_t		solutions_heap_zone_size = 16;

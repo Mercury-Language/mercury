@@ -399,10 +399,10 @@ MR_get_type_base(const MR_Stack_Layout_Vars *vars, int i,
 }
 
 void
-MR_write_variable(MR_Word type_info, MR_Word value)
+MR_write_variable(MR_TypeInfo type_info, MR_Word value)
 {
 	MR_Word	stdout_stream;
 
 	(*MR_io_stdout_stream)(&stdout_stream);
-	(*MR_io_print_to_stream)(type_info, stdout_stream, value);
+	(*MR_io_print_to_stream)((MR_Word) type_info, stdout_stream, value);
 }

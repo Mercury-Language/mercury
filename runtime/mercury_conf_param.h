@@ -148,7 +148,10 @@
 **	Display the values of live variables during accurate garbage
 **	collection.
 **
-** MR_DEBUG_AGC
+** MR_DEBUG_AGC_SMALL_HEAP
+**	Use a small heap to trigger garbage collection more often.
+**
+** MR_DEBUG_AGC_ALL
 ** 	Turn on all debugging information for accurate garbage
 ** 	collection.  (Equivalent to all MR_DEBUG_AGC_* macros above).
 **
@@ -160,11 +163,12 @@
 ** 	code handling exceptions.
 */
 
-#if MR_DEBUG_AGC
+#if MR_DEBUG_AGC_ALL
   #define MR_DEBUG_AGC_SCHEDULING
   #define MR_DEBUG_AGC_COLLECTION
   #define MR_DEBUG_AGC_FORWARDING
   #define MR_DEBUG_AGC_PRINT_VARS
+  #define MR_DEBUG_AGC_SMALL_HEAP
 #endif
 
 /*

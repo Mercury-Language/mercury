@@ -135,6 +135,6 @@ extern	bool	MR_get_type_base(const MR_Stack_Layout_Vars *vars, int var,
 **	and it may also clobber the real registers.
 */
 
-extern	void	MR_write_variable(MR_Word type_info, MR_Word value);
+extern	void	MR_write_variable(MR_TypeInfo type_info, MR_Word value);
 
 #endif	/* MERCURY_LAYOUT_UTIL_H */

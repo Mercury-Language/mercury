@@ -77,9 +77,9 @@ typedef	MR_int_least16_t	MR_Determinism;
 ** lval.
 **
 ** What kind of location an MR_Long_Lval refers to is encoded using
-** a low tag with MR_LONG_LVAL_TAGBITS bits; the type MR_Lval_Type describes
-** the different tag values. The interpretation of the rest of the word
-** depends on the location type:
+** a low tag with MR_LONG_LVAL_TAGBITS bits; the type MR_Long_Lval_Type
+** describes the different tag values. The interpretation of the rest of
+** the word depends on the location type:
 **
 **  Locn		Tag	Rest
 **  r(Num)		 0	Num (register number)
@@ -186,6 +186,9 @@ typedef enum {
 #define MR_SHORT_LVAL_TYPE(Locn) 					\
 	((MR_Short_Lval_Type)						\
 		(((MR_Word) Locn) & ((1 << MR_SHORT_LVAL_TAGBITS) - 1)))
+
+#define MR_SHORT_LVAL_NUMBER(Locn) 					\
+	((int) ((MR_Word) Locn) >> MR_SHORT_LVAL_TAGBITS)
 
 #define	MR_SHORT_LVAL_STACKVAR(n)					\
 	((MR_Short_Lval) (((n) << MR_SHORT_LVAL_TAGBITS)		\

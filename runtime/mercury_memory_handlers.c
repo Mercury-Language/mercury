@@ -130,6 +130,7 @@ static	bool	try_munprotect(void *address, void *context);
 static	char	*explain_context(void *context);
 static	MR_Code	*get_pc_from_context(void *the_context);
 static	MR_Word	*get_sp_from_context(void *the_context);
+static	MR_Word	*get_curfr_from_context(void *the_context);
 
 #define STDERR 2
 
@@ -245,7 +246,8 @@ default_handler(MR_Word *fault_addr, MemoryZone *zone, void *context)
 	}
   #ifdef NATIVE_GC
 	MR_schedule_agc(get_pc_from_context(context),
-		get_sp_from_context(context));
+		get_sp_from_context(context),
+		get_curfr_from_context(context));
   #endif
 	return TRUE;
     } else {
@@ -942,6 +944,37 @@ get_sp_from_context(void *the_context)
 #endif /* !NATIVE_GC */
 
 	return sp_at_signal;
+}
+
+/*
+** get_sp_from_context:
+** 	Given the signal context, return the Mercury register "MR_sp" at
+** 	the time of the signal, if available.  If it is unavailable,
+** 	return NULL.
+**
+** XXX We only define this function in accurate gc grades for the moment,
+** because it's unlikely to compile everywhere.  It relies on
+** MR_real_reg_number_sp being defined, which is the name/number of the
+** machine register that is used for MR_sp.
+** Need to fix this so it works when the register is in a fake reg too.
+*/
+static MR_Word *
+get_curfr_from_context(void *the_context)
+{
+	MR_Word *curfr_at_signal;
+	
+	/*
+	** XXX this is implementation dependent, need a better way
+	** to do register accesses at signals.
+	**
+	** It's in mr8 or mr9 which is in the fake regs on some architectures,
+	** and is a machine register on others.
+	** So don't run the garbage collector on those archs.
+	*/
+
+	curfr_at_signal = MR_curfr;
+
+	return curfr_at_signal;
 }
 
 static void 
