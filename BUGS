@@ -131,25 +131,6 @@ test(Args0) :-
 
 -----------------------------------------------------------------------------
 
-Subject: Formatted printing of floating point numbers broken
-Date: Thu, 27 May 1999 15:26:58 +1000
-
-It seems as though the formatted printing of floating point numbers is 
-broken if one uses the %g or %G format specifiers.  In particular, if it 
-decides that the %f format should be used, everything after the decimal 
-point is discarded.
-
-Note also that, from inspection of the code, it seems the "#" format 
-modifier is being ignored for the "feEgG" formats, contrary to the 
-documentation for string__format.  It'd also be nice if, by default, the 
-%g/%G format didn't print trailing zeros (as per the C standard [and implied 
-by the Mercury docs] and the reason I was trying to use it in the first 
-place: I don't like outputting 0.500000000000000, but I don't want to be 
-aggressive about pruning the precision in case it's actually significant 
-sometime).
-
------------------------------------------------------------------------------
-
 Subject: `:- pragma does_not_terminate'
 Date: Wed, 9 Jun 1999 16:29:09 +1000 (EST)
 
