@@ -17,7 +17,7 @@
 
 :- module lexer.
 :- interface.
-:- import_module list, std_util, io.
+:- import_module io.
 
 :- type	token
 	--->	name(string)
@@ -45,7 +45,9 @@
 
 :- type token_context == int.	% line number
 
-:- type token_list == list(pair(token, token_context)).
+% This "fat list" representation is more efficient than a list of pairs.
+:- type token_list	--->	token_cons(token, token_context, token_list)
+			;	token_nil.
 
 :- pred lexer__get_token_list(token_list, io__state, io__state).
 :- mode lexer__get_token_list(out, di, uo) is det.
@@ -70,7 +72,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, char, string, int.
+:- import_module list, require, char, string, int.
 
 lexer__token_to_string(name(Name), String) :-
 	string__append_list(["token '", Name, "'"], String).
@@ -118,11 +120,11 @@ lexer__token_to_string(error(Message), String) :-
 lexer__get_token_list(Tokens) -->
 	lexer__get_token(Token, Context),
 	( { Token = eof } ->
-		{ Tokens = [] }
+		{ Tokens = token_nil }
 	; { Token = end ; Token = error(_) ; Token = io_error(_) } ->
-		{ Tokens = [Token - Context] }
+		{ Tokens = token_cons(Token, Context, token_nil) }
 	;
-		{ Tokens = [Token - Context | Tokens1] },
+		{ Tokens = token_cons(Token, Context, Tokens1) },
 		lexer__get_token_list(Tokens1)
 	).
 
