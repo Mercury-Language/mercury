@@ -209,9 +209,6 @@
 :- pred code_info__slap_code_info(code_info, code_info, code_info).
 :- mode code_info__slap_code_info(in, in, out) is det.
 
-:- pred code_info__register_variables(reg, set(var), code_info, code_info).
-:- mode code_info__register_variables(in, out, in, out) is semidet.
-
 :- pred code_info__get_proc_info(proc_info, code_info, code_info).
 :- mode code_info__get_proc_info(out, in, out) is det.
 
@@ -580,25 +577,35 @@ code_info__init_var_info_2([arg_info(ArgLoc, Mode)|ArgVars], N0, HeadVars,
 code_info__get_free_register(Reg) -->
 	code_info__get_registers(Registers0),
 	{ map__keys(Registers0, RegList) },
-	{ code_info__get_free_register_2(1, RegList, RegNum) },
+	code_info__get_free_register_2(1, RegList, RegNum),
 	{ Reg = r(RegNum) },
 	{ map__set(Registers0, Reg, reserved, Registers) },
 	code_info__set_registers(Registers).
 
-:- pred code_info__get_free_register_2(int, list(reg), int).
-:- mode code_info__get_free_register_2(in, in, out) is det.
+:- pred code_info__get_free_register_2(int, list(reg), int,
+						code_info, code_info).
+:- mode code_info__get_free_register_2(in, in, out, in, out) is det.
 
-code_info__get_free_register_2(N, [], N).
-code_info__get_free_register_2(N, [R|Rs], RegNum) :-
+code_info__get_free_register_2(N0, [], N) -->
 	(
-		R = r(RN),
-		N < RN
+		code_info__lval_is_free_reg(reg(r(N0)))
 	->
-		RegNum = N
+		{ N = N0 }
 	;
-		R = r(NR0)
+		{ N1 is N0 + 1 },
+		code_info__get_free_register_2(N1, [], N)
+	).
+code_info__get_free_register_2(N, [R|Rs], RegNum) -->
+	(
+		{ R = r(RN) },
+		{ N < RN },
+		code_info__lval_is_free_reg(reg(R))
 	->
-		NR is NR0 + 1,
+		{ RegNum = N }
+	;
+		{ R = r(NR0) }
+	->
+		{ NR is NR0 + 1 },
 		code_info__get_free_register_2(NR, Rs, RegNum)
 	;
 		code_info__get_free_register_2(N, Rs, RegNum)
@@ -620,7 +627,7 @@ code_info__get_next_free_register(Reg, NewReg) -->
 		{ error("Next free register!") }
 	),
 	{ code_info__filter_register_list(N1, RegList0, RegList) },
-	{ code_info__get_free_register_2(N1, RegList, RegNum) },
+	code_info__get_free_register_2(N1, RegList, RegNum),
 	{ NewReg = r(RegNum) },
 	{ map__set(Registers0, Reg, reserved, Registers) },
 	code_info__set_registers(Registers).
@@ -1123,7 +1130,14 @@ code_info__lval_is_free_reg(Lval) -->
 		{ Lval = reg(Reg) }
 	->
 		code_info__get_registers(Registers),
-		{ \+ map__contains(Registers, Reg) }
+		{ \+ map__contains(Registers, Reg) },
+		code_info__get_variables(Variables),
+		{ \+ ( % some [Lval0]
+			map__values(Variables, Values),
+			list__member(evaluated(Lvals), Values),
+			set__member(Lval0, Lvals),
+			code_info__lval_contains(Lval0, Lval)
+		) }
 	;
 		{ true }
 	).
@@ -1577,13 +1591,6 @@ code_info__variable_has_register(Var, Lval) -->
 	{ map__search(Variables, Var, VarStat) },
 	{ VarStat = evaluated(Lvals) },
 	{ set__member(Lval, Lvals) }.
-
-%---------------------------------------------------------------------------%
-
-code_info__register_variables(Reg, Vars) -->
-	code_info__get_registers(Registers),
-	{ map__search(Registers, Reg, RegStat) },
-	{ RegStat = vars(Vars) }.
 
 %---------------------------------------------------------------------------%
 
@@ -2344,11 +2351,6 @@ code_info__reenter_registers(Var, [L|Ls]) -->
 		{ L = reg(R) }
 	->
 		code_info__add_variable_to_register(Var, R)
-	;
-		% XXX should this be transitive?
-		{ L = field(_, lval(reg(R1)), _) }
-	->
-		code_info__add_variable_to_register(Var, R1)
 	;
 		{ true }
 	),
