@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2001 The University of Melbourne.
+% Copyright (C) 1995-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -104,7 +104,7 @@ dupelim__build_maps([Label | Labels], BlockMap, StdMap0, StdMap,
 		Fixed0, Fixed) :-
 	map__lookup(BlockMap, Label, BlockInfo),
 	BlockInfo = block_info(_, _, Instrs, _, MaybeFallThrough),
-	standardize_block(Instrs, MaybeFallThrough, StdInstrs),
+	standardize_instr_block(Instrs, MaybeFallThrough, StdInstrs),
 	( map__search(StdMap0, StdInstrs, Cluster) ->
 		map__det_update(StdMap0, StdInstrs, [Label | Cluster], StdMap1)
 	;
@@ -236,21 +236,21 @@ process_clusters([Cluster | Clusters], LabelSeq0, LabelSeq,
 
 process_elim_labels([], Instrs, MaybeFT, LabelSeq, LabelSeq, _,
 		_, ReplMap, ReplMap, Instrs, MaybeFT).
-process_elim_labels([Label | Labels], Instrs0, MaybeFallThrough0,
+process_elim_labels([ElimLabel | ElimLabels], Instrs0, MaybeFallThrough0,
 		LabelSeq0, LabelSeq, BlockMap, Exemplar, ReplMap0, ReplMap,
 		Instrs, MaybeFallThrough) :-
-	map__lookup(BlockMap, Label, LabelInfo),
-	LabelInfo = block_info(ElimLabel, _, ElimInstrs,
+	map__lookup(BlockMap, ElimLabel, ElimLabelInfo),
+	ElimLabelInfo = block_info(ElimLabel2, _, ElimInstrs,
 		_, ElimMaybeFallThrough),
-	require(unify(Label, ElimLabel), "elim label mismatch"),
+	require(unify(ElimLabel, ElimLabel2), "elim label mismatch"),
 	(
-		most_specific_instrs(Instrs0, MaybeFallThrough0,
+		most_specific_block(Instrs0, MaybeFallThrough0,
 			ElimInstrs, ElimMaybeFallThrough,
 			Instrs1, MaybeFallThrough1)
 	->
-		list__delete_all(LabelSeq0, Label, LabelSeq1),
-		map__det_insert(ReplMap0, Label, Exemplar, ReplMap1),
-		process_elim_labels(Labels, Instrs1, MaybeFallThrough1,
+		list__delete_all(LabelSeq0, ElimLabel, LabelSeq1),
+		map__det_insert(ReplMap0, ElimLabel, Exemplar, ReplMap1),
+		process_elim_labels(ElimLabels, Instrs1, MaybeFallThrough1,
 			LabelSeq1, LabelSeq, BlockMap,
 			Exemplar, ReplMap1, ReplMap, Instrs, MaybeFallThrough)
 	;
@@ -263,20 +263,22 @@ process_elim_labels([Label | Labels], Instrs0, MaybeFallThrough0,
 	% The code of this section is concerned with computing the standard
 	% form (most general generalization) of a sequence of instructions.
 
-:- pred standardize_block(list(instruction)::in, maybe(label)::in,
-	list(instr)::out) is det.
-
 	% If a block can fall through, we add a goto to the following label
 	% at the end. This way, it will match with other blocks that have
 	% identical (standardized) content except for an explicit goto to our
 	% fallthrough label.
 
-standardize_block(Instrs0, MaybeFallThrough, Uinstrs) :-
+:- pred standardize_instr_block(list(instruction)::in, maybe(label)::in,
+	list(instr)::out) is det.
+
+standardize_instr_block(Instrs0, MaybeFallThrough, Uinstrs) :-
 	standardize_instrs(Instrs0, Uinstrs1),
-	( MaybeFallThrough = yes(Label) ->
+	(
+		MaybeFallThrough = yes(Label),
 		Goto = goto(label(Label)),
 		list__append(Uinstrs1, [Goto], Uinstrs)
 	;
+		MaybeFallThrough = no,
 		Uinstrs = Uinstrs1
 	).
 
@@ -499,12 +501,56 @@ standardize_rval(Rval1, Rval) :-
 	% This predicate computes the most specific code sequence that
 	% generalizes both input sequences.
 
-:- pred most_specific_instrs(list(instruction)::in, maybe(label)::in,
+	% If a block can fall through, we add a goto to the following label
+	% at the end. This way, it will match with other blocks that have
+	% identical (standardized) content except for an explicit goto to our
+	% fallthrough label.
+
+:- pred standardize_block(list(instruction)::in, maybe(label)::in,
+	list(instruction)::out) is det.
+
+standardize_block(Instrs, MaybeFallThrough, StdInstrs) :-
+	(
+		MaybeFallThrough = yes(Label),
+		(
+			list__last(Instrs, LastInstr),
+			LastInstr = goto(label(Label)) - _
+		->
+			StdInstrs = Instrs
+		;
+			Goto = goto(label(Label)) - "",
+			list__append(Instrs, [Goto], StdInstrs)
+		)
+	;
+		MaybeFallThrough = no,
+		StdInstrs = Instrs
+	).
+
+:- pred most_specific_block(list(instruction)::in, maybe(label)::in,
 	list(instruction)::in, maybe(label)::in,
 	list(instruction)::out, maybe(label)::out) is semidet.
 
-most_specific_instrs(Instrs1, MaybeFallThrough1,
+most_specific_block(Instrs1, MaybeFallThrough1,
 		Instrs2, MaybeFallThrough2, Instrs, MaybeFallThrough) :-
+	standardize_block(Instrs1, MaybeFallThrough1, StdInstrs1),
+	standardize_block(Instrs2, MaybeFallThrough2, StdInstrs2),
+	most_specific_instrs(StdInstrs1, StdInstrs2, Instrs),
+		% A basic block cannot be empty after standardization, since
+		% standardization adds a goto to basic blocks that previously
+		% had no executable instructions. While most_specific_instrs
+		% can delete comments from its input instruction sequences,
+		% it cannot delete executable instructions.
+	list__last_det(Instrs, LastInstr),
+	( LastInstr = goto(label(Label)) - _ ->
+		MaybeFallThrough = yes(Label)
+	;
+		MaybeFallThrough = no
+	).
+
+:- pred most_specific_instrs(list(instruction)::in, list(instruction)::in,
+	list(instruction)::out) is semidet.
+
+most_specific_instrs(Instrs1, Instrs2, Instrs) :-
 	(
 		Instrs1 = [Instr1 | Tail1],
 		Instrs2 = [Instr2 | Tail2]
@@ -520,22 +566,16 @@ most_specific_instrs(Instrs1, MaybeFallThrough1,
 				Comment = "unified intruction"
 			),
 			Instr = Uinstr - Comment,
-			most_specific_instrs(Tail1, MaybeFallThrough1,
-				Tail2, MaybeFallThrough2,
-				Tail, MaybeFallThrough),
+			most_specific_instrs(Tail1, Tail2, Tail),
 			Instrs = [Instr | Tail]
 		;
 			Uinstr1 = comment(_)
 		->
-			most_specific_instrs(Tail1, MaybeFallThrough1,
-				Instrs2, MaybeFallThrough2,
-				Instrs, MaybeFallThrough)
+			most_specific_instrs(Tail1, Instrs2, Instrs)
 		;
 			Uinstr2 = comment(_)
 		->
-			most_specific_instrs(Instrs1, MaybeFallThrough1,
-				Tail2, MaybeFallThrough2,
-				Instrs, MaybeFallThrough)
+			most_specific_instrs(Instrs1, Tail2, Instrs)
 		;
 			fail
 		)
@@ -543,26 +583,17 @@ most_specific_instrs(Instrs1, MaybeFallThrough1,
 		Instrs1 = [],
 		Instrs2 = []
 	->
-		require(unify(MaybeFallThrough1, no), "two empty lists with fallthrough"),
-		require(unify(MaybeFallThrough2, no), "two empty lists with fallthrough"),
-		Instrs = [],
-		MaybeFallThrough = no
+		Instrs = []
 	;
-		Instrs1 = [Instr1],
-		Instrs2 = [],
-		Instr1 = goto(label(Target)) - _,
-		MaybeFallThrough2 = yes(Target)
+		Instrs1 = [Instr1 | Tail1],
+		Instr1 = comment(_) - _
 	->
-		Instrs = [Instr1],
-		MaybeFallThrough = no
+		most_specific_instrs(Tail1, Instrs2, Instrs)
 	;
-		Instrs1 = [],
-		Instrs2 = [Instr2],
-		Instr2 = goto(label(Target)) - _,
-		MaybeFallThrough1 = yes(Target)
+		Instrs2 = [Instr2 | Tail2],
+		Instr2 = comment(_) - _
 	->
-		Instrs = [Instr2],
-		MaybeFallThrough = no
+		most_specific_instrs(Instrs1, Tail2, Instrs)
 	;
 		fail
 	).
