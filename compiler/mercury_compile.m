@@ -1429,7 +1429,7 @@ mercury_compile__chunk_llds(HLDS, Procedures, BaseTypeData, CommonDataModules,
 	{ module_info_name(HLDS, Name) },
 	{ string__append(Name, "_module", ModName) },
 	globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
-	{ module_info_get_c_header(HLDS, C_HeaderCode) },
+	{ module_info_get_c_header(HLDS, C_HeaderCode0) },
 	{ module_info_get_c_body_code(HLDS, C_BodyCode0) },
 	{ get_c_body_code(C_BodyCode0, C_BodyCode) },
 	( { ProcsPerFunc = 0 } ->
@@ -1442,9 +1442,44 @@ mercury_compile__chunk_llds(HLDS, Procedures, BaseTypeData, CommonDataModules,
 			ProcModules) }
 	),
 	{ export__get_pragma_exported_procs(HLDS, PragmaExports) },
+	maybe_add_header_file_include(PragmaExports, Name, C_HeaderCode0,
+		C_HeaderCode),
 	{ list__condense([C_BodyCode, BaseTypeData, CommonDataModules,
 		ProcModules, [c_export(PragmaExports)]], ModuleList) },
 	{ list__length(ModuleList, NumChunks) }.
+
+:- pred maybe_add_header_file_include(list(c_export), string,
+	c_header_info, c_header_info, io__state, io__state).
+:- mode maybe_add_header_file_include(in, in, in, out, di, uo) is det.
+
+maybe_add_header_file_include(PragmaExports, BaseName, 
+		C_HeaderCode0, C_HeaderCode) -->
+	(
+		{ PragmaExports = [] },
+		{ C_HeaderCode = C_HeaderCode0 }
+	;
+		{ PragmaExports = [_|_] },
+                globals__io_lookup_bool_option(split_c_files, SplitFiles),
+                { 
+			SplitFiles = yes,
+                        string__append_list(
+                                ["#include ""../", BaseName, ".h""\n"],
+				Include0)
+                ;
+			SplitFiles = no,
+                        string__append_list(
+				["#include """, BaseName, ".h""\n"],
+				Include0)
+                },
+
+		{ term__context_init(Context) },
+		{ Include = Include0 - Context },
+
+			% We put the new include at the end since the list is
+			% stored in reverse, and we want this include to come
+			% first.
+		{ list__append(C_HeaderCode0, [Include], C_HeaderCode) }
+	).
 
 :- pred get_c_body_code(c_body_info, list(c_module)).
 :- mode get_c_body_code(in, out) is det.

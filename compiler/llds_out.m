@@ -445,22 +445,8 @@ output_c_module(c_code(C_Code, Context), DeclSet, DeclSet, _) -->
 	io__write_string(C_Code),
 	io__write_string("\n").
 
-output_c_module(c_export(PragmaExports), DeclSet, DeclSet, BaseName) -->
-	(
-		{ PragmaExports = [_|_] }
-	->
-		globals__io_lookup_bool_option(split_c_files, SplitFiles),
-		( { SplitFiles = yes } ->
-			io__write_strings(
-				["#include ""../", BaseName, ".h""\n"])
-		;
-			io__write_strings(["#include """, BaseName, ".h""\n"])
-		),
-		output_exported_c_functions(PragmaExports)
-	;
-		% Don't spit out a #include if there are no pragma exports
-		[]	
-	).
+output_c_module(c_export(PragmaExports), DeclSet, DeclSet, _BaseName) -->
+	output_exported_c_functions(PragmaExports).
 
 	% output_c_header_include_lines reverses the list of c header lines
 	% and passes them to output_c_header_include_lines_2 which outputs them.
