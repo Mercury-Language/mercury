@@ -168,6 +168,10 @@ Changes to the Mercury standard library:
 
 Changes to the Mercury implementation:
 
+* We've added a new compiler option `--warn-non-tail-recursion', which
+  causes the compiler to issue a warning about any directly recursive
+  call that is not a tail call.
+
 * The debugger can now print goals just as Prolog debuggers do. At an exit
   port of e.g. append, the command "print goal" will print the current goal
   in a form such as "append([1], [2], [1, 2])".
