@@ -85,6 +85,7 @@
 
 :- import_module backend_libs__builtin_ops.
 :- import_module backend_libs__rtti.
+:- import_module backend_libs__type_class_info.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
 :- import_module hlds__hlds_code_util.
@@ -411,31 +412,28 @@ ml_gen_constant(type_ctor_info_constant(ModuleName0, TypeName, TypeArity),
 	RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
 	DataAddr = data_addr(MLDS_Module,
 		rtti(ctor_rtti_id(RttiTypeCtor, type_ctor_info))),
-	Rval = unop(cast(MLDS_VarType),
-		const(data_addr_const(DataAddr))).
+	Rval = unop(cast(MLDS_VarType), const(data_addr_const(DataAddr))).
 
 ml_gen_constant(base_typeclass_info_constant(ModuleName, ClassId, Instance),
 		VarType, Rval, !Info) :-
 	ml_gen_type(!.Info, VarType, MLDS_VarType),
 	MLDS_Module = mercury_module_name_to_mlds(ModuleName),
-	DataAddr = data_addr(MLDS_Module, rtti(tc_rtti_id(
-		base_typeclass_info(ModuleName, ClassId, Instance)))),
-	Rval = unop(cast(MLDS_VarType),
-		const(data_addr_const(DataAddr))).
+	TCName = generate_class_name(ClassId),
+	DataAddr = data_addr(MLDS_Module, rtti(tc_rtti_id(TCName,
+		base_typeclass_info(ModuleName, Instance)))),
+	Rval = unop(cast(MLDS_VarType), const(data_addr_const(DataAddr))).
 
 ml_gen_constant(tabling_pointer_constant(PredId, ProcId), VarType, Rval,
 		!Info) :-
 	ml_gen_type(!.Info, VarType, MLDS_VarType),
 	ml_gen_info_get_module_info(!.Info, ModuleInfo),
-	ml_gen_pred_label(ModuleInfo, PredId, ProcId,
-		PredLabel, PredModule),
-	DataAddr = data_addr(PredModule,
-		tabling_pointer(PredLabel - ProcId)),
-	Rval = unop(cast(MLDS_VarType),
-		const(data_addr_const(DataAddr))).
+	ml_gen_pred_label(ModuleInfo, PredId, ProcId, PredLabel, PredModule),
+	DataAddr = data_addr(PredModule, tabling_pointer(PredLabel - ProcId)),
+	Rval = unop(cast(MLDS_VarType), const(data_addr_const(DataAddr))).
 
 ml_gen_constant(deep_profiling_proc_static_tag(_), _, _, !Info) :-
-	error("ml_gen_constant: deep_profiling_proc_static_tag not yet supported").
+	error("ml_gen_constant: " ++
+		"deep_profiling_proc_static_tag not yet supported").
 
 ml_gen_constant(table_io_decl_tag(_), _, _, !Info) :-
 	error("ml_gen_constant: table_io_decl_tag not yet supported").
@@ -443,8 +441,7 @@ ml_gen_constant(table_io_decl_tag(_), _, _, !Info) :-
 ml_gen_constant(reserved_address(ReservedAddr), VarType, Rval, !Info) :-
 	ml_gen_info_get_module_info(!.Info, ModuleInfo),
 	ml_gen_type(!.Info, VarType, MLDS_VarType),
-	Rval = ml_gen_reserved_address(ModuleInfo, ReservedAddr,
-		MLDS_VarType).
+	Rval = ml_gen_reserved_address(ModuleInfo, ReservedAddr, MLDS_VarType).
 
 ml_gen_constant(shared_with_reserved_addresses(_, ThisTag), VarType, Rval,
 		!Info) :-

@@ -276,7 +276,7 @@ gen_type_class_decl_defn(TCDecl, RttiId, ModuleInfo, Init, SubDefns) :-
 	TCId = tc_id(TCName, TVarNames, MethodIds),
 	TCName = tc_name(ModuleSymName, ClassName, Arity),
 	module_info_name(ModuleInfo, ModuleName),
-	TVarNamesRttiId = tc_rtti_id(type_class_id_var_names(TCName)),
+	TVarNamesRttiId = tc_rtti_id(TCName, type_class_id_var_names),
 	(
 		TVarNames = [],
 		TVarNameDefns = [],
@@ -288,7 +288,7 @@ gen_type_class_decl_defn(TCDecl, RttiId, ModuleInfo, Init, SubDefns) :-
 		TVarNameDefns = [TVarNameDefn],
 		TVarNamesInit = gen_init_rtti_id(ModuleName, TVarNamesRttiId)
 	),
-	MethodIdsRttiId = tc_rtti_id(type_class_id_method_ids(TCName)),
+	MethodIdsRttiId = tc_rtti_id(TCName, type_class_id_method_ids),
 	(
 		MethodIds = [],
 		MethodIdDefns = [],
@@ -301,7 +301,7 @@ gen_type_class_decl_defn(TCDecl, RttiId, ModuleInfo, Init, SubDefns) :-
 		MethodIdDefns = [MethodIdDefn],
 		MethodIdsInit = gen_init_rtti_id(ModuleName, MethodIdsRttiId)
 	),
-	TCIdRttiId = tc_rtti_id(type_class_id(TCName)),
+	TCIdRttiId = tc_rtti_id(TCName, type_class_id),
 	prog_out__sym_name_to_string(ModuleSymName, ModuleSymNameStr),
 	list__length(TVarNames, NumTVars),
 	list__length(MethodIds, NumMethods),
@@ -325,12 +325,12 @@ gen_type_class_decl_defn(TCDecl, RttiId, ModuleInfo, Init, SubDefns) :-
 		list__map_foldl2(gen_tc_constraint(ModuleInfo,
 			make_decl_super_id(TCName)), Supers, SuperRttiIds,
 			counter__init(1), _, [], SuperConstrDefns),
-		SuperArrayRttiId = tc_rtti_id(SuperArrayRttiName),
+		SuperArrayRttiName = type_class_decl_supers,
+		SuperArrayRttiId = tc_rtti_id(TCName, SuperArrayRttiName),
 		ElementType = mlds__rtti_type(element_type(SuperArrayRttiId)),
 		SuperArrayInit = gen_init_array(
 			gen_init_cast_rtti_id(ElementType, ModuleName),
 			SuperRttiIds),
-		SuperArrayRttiName = type_class_decl_supers(TCName),
 		rtti_id_and_init_to_defn(SuperArrayRttiId, SuperArrayInit,
 			SuperDefn),
 		list__append(SuperConstrDefns, [SuperDefn], SuperDefns),
@@ -351,8 +351,8 @@ gen_type_class_decl_defn(TCDecl, RttiId, ModuleInfo, Init, SubDefns) :-
 	is det.
 
 make_decl_super_id(TCName, TCNum, Arity, RttiId) :-
-	TCRttiName = type_class_decl_super(TCName, TCNum, Arity),
-	RttiId = tc_rtti_id(TCRttiName).
+	TCRttiName = type_class_decl_super(TCNum, Arity),
+	RttiId = tc_rtti_id(TCName, TCRttiName).
 
 :- pred gen_tc_id_var_names(rtti_id::in, list(string)::in, mlds__defn::out)
 	is det.
@@ -372,7 +372,7 @@ gen_tc_id_method_ids(RttiId, TCName, MethodIds, Defn) :-
 
 gen_tc_id_method_id(TCName, MethodId) = Init :-
 	MethodId = tc_method_id(MethodName, MethodArity, PredOrFunc),
-	RttiId = tc_rtti_id(type_class_id_method_ids(TCName)),
+	RttiId = tc_rtti_id(TCName, type_class_id_method_ids),
 	Init = init_struct(mlds__rtti_type(element_type(RttiId)), [
 		gen_init_string(MethodName),
 		gen_init_int(MethodArity),
@@ -387,14 +387,14 @@ gen_tc_id_method_id(TCName, MethodId) = Init :-
 gen_type_class_instance_defn(Instance, RttiId, ModuleInfo, Init, SubDefns) :-
 	Instance = tc_instance(TCName, Types, NumTypeVars,
 		InstanceConstraints, _Methods),
-	TCDeclRttiId = tc_rtti_id(type_class_decl(TCName)),
+	TCDeclRttiId = tc_rtti_id(TCName, type_class_decl),
 	list__length(InstanceConstraints, NumInstanceConstraints),
 	InstanceTypesTCRttiName =
-		type_class_instance_tc_type_vector(TCName, Types),
-	InstanceTypesRttiId = tc_rtti_id(InstanceTypesTCRttiName),
+		type_class_instance_tc_type_vector(Types),
+	InstanceTypesRttiId = tc_rtti_id(TCName, InstanceTypesTCRttiName),
 	InstanceConstrsTCRttiName =
-		type_class_instance_constraints(TCName, Types),
-	InstanceConstrsRttiId = tc_rtti_id(InstanceConstrsTCRttiName),
+		type_class_instance_constraints(Types),
+	InstanceConstrsRttiId = tc_rtti_id(TCName, InstanceConstrsTCRttiName),
 	module_info_name(ModuleInfo, ModuleName),
 
 	TypeRttiDatas = list__map(maybe_pseudo_type_info_to_rtti_data, Types),
@@ -427,8 +427,8 @@ gen_type_class_instance_defn(Instance, RttiId, ModuleInfo, Init, SubDefns) :-
 	int::in, int::in, rtti_id::out) is det.
 
 make_instance_constr_id(TCName, Types, TCNum, Arity, RttiId) :-
-	RttiName = type_class_instance_constraint(TCName, Types, TCNum, Arity),
-	RttiId = tc_rtti_id(RttiName).
+	RttiName = type_class_instance_constraint(Types, TCNum, Arity),
+	RttiId = tc_rtti_id(TCName, RttiName).
 
 %-----------------------------------------------------------------------------%
 
@@ -776,13 +776,13 @@ gen_tc_constraint(ModuleInfo, MakeRttiId, Constraint, RttiId, !Counter,
 	list__length(Types, Arity),
 	counter__allocate(TCNum, !Counter),
 	MakeRttiId(TCNum, Arity, RttiId),
-	TCDeclRttiName = type_class_decl(TCName),
+	TCDeclRttiName = type_class_decl,
 	module_info_name(ModuleInfo, ModuleName),
 	TypeRttiDatas = list__map(maybe_pseudo_type_info_to_rtti_data, Types),
 	gen_pseudo_type_info_array(ModuleInfo, TypeRttiDatas, PTIInits,
 		PTIDefns),
  	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
-		gen_init_tc_rtti_name(ModuleName, TCDeclRttiName),
+		gen_init_tc_rtti_name(ModuleName, TCName, TCDeclRttiName),
 		PTIInits
  	]),
 	rtti_id_and_init_to_defn(RttiId, Init, ConstrDefn),
@@ -1121,17 +1121,17 @@ gen_init_cast_rtti_data(DestType, ModuleName, RttiData) = Initializer :-
 		Initializer = init_obj(unop(gen_cast(SrcType, DestType),
 			const(int_const(VarNum))))
 	;
-		RttiData = base_typeclass_info(InstanceModuleName, ClassId,
+		RttiData = base_typeclass_info(TCName, InstanceModuleName,
 			InstanceString, _)
 	->
-		SrcType = rtti_type(item_type(tc_rtti_id(
+		SrcType = rtti_type(item_type(tc_rtti_id(TCName,
 			base_typeclass_info(InstanceModuleName,
-			ClassId, InstanceString)))),
+			InstanceString)))),
 		MLDS_ModuleName = mercury_module_name_to_mlds(
 			InstanceModuleName),
-		MLDS_DataName = rtti(tc_rtti_id(
+		MLDS_DataName = rtti(tc_rtti_id(TCName,
 			base_typeclass_info(InstanceModuleName,
-				ClassId, InstanceString))),
+				InstanceString))),
 		DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),
 		Rval = const(data_addr_const(DataAddr)),
 		Initializer = init_obj(unop(gen_cast(SrcType, DestType),
@@ -1161,8 +1161,8 @@ gen_init_rtti_data(ModuleName, RttiData) = Initializer :-
 
 gen_init_rtti_id(ModuleName, ctor_rtti_id(RttiTypeCtor, RttiName)) =
 	gen_init_rtti_name(ModuleName, RttiTypeCtor, RttiName).
-gen_init_rtti_id(ModuleName, tc_rtti_id(TCRttiName)) =
-	gen_init_tc_rtti_name(ModuleName, TCRttiName).
+gen_init_rtti_id(ModuleName, tc_rtti_id(TCName, TCRttiName)) =
+	gen_init_tc_rtti_name(ModuleName, TCName, TCRttiName).
 
 	% Generate an MLDS initializer comprising just the
 	% the rval for a given rtti_name
@@ -1174,11 +1174,11 @@ gen_init_rtti_name(ModuleName, RttiTypeCtor, RttiName) =
 
 	% Generate an MLDS initializer comprising just the
 	% the rval for a given tc_rtti_name
-:- func gen_init_tc_rtti_name(module_name, tc_rtti_name) =
+:- func gen_init_tc_rtti_name(module_name, tc_name, tc_rtti_name) =
 	mlds__initializer.
 
-gen_init_tc_rtti_name(ModuleName, TCRttiName) =
-	init_obj(gen_tc_rtti_name(ModuleName, TCRttiName)).
+gen_init_tc_rtti_name(ModuleName, TCName, TCRttiName) =
+	init_obj(gen_tc_rtti_name(ModuleName, TCName, TCRttiName)).
 
 	% Generate the MLDS initializer comprising the rtti_name
 	% for a given rtti_name, converted to the given type.
@@ -1195,8 +1195,8 @@ gen_init_cast_rtti_id(DestType, ModuleName, RttiId) = Initializer :-
 
 gen_rtti_id(ThisModuleName, ctor_rtti_id(RttiTypeCtor, RttiName)) =
 	gen_rtti_name(ThisModuleName, RttiTypeCtor, RttiName).
-gen_rtti_id(ThisModuleName, tc_rtti_id(TCRttiName)) =
-	gen_tc_rtti_name(ThisModuleName, TCRttiName).
+gen_rtti_id(ThisModuleName, tc_rtti_id(TCName, TCRttiName)) =
+	gen_tc_rtti_name(ThisModuleName, TCName, TCRttiName).
 
 :- func gen_rtti_name(module_name, rtti_type_ctor, ctor_rtti_name)
 	= mlds__rval.
@@ -1245,49 +1245,49 @@ gen_rtti_name(ThisModuleName, RttiTypeCtor0, RttiName) = Rval :-
 	DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),
 	Rval = const(data_addr_const(DataAddr)).
 
-:- func gen_tc_rtti_name(module_name, tc_rtti_name) = mlds__rval.
+:- func gen_tc_rtti_name(module_name, tc_name, tc_rtti_name) = mlds__rval.
 
-gen_tc_rtti_name(_ThisModuleName, TCRttiName) = Rval :-
+gen_tc_rtti_name(_ThisModuleName, TCName, TCRttiName) = Rval :-
 	(
-		TCRttiName = base_typeclass_info(InstanceModuleName, _, _),
+		TCRttiName = base_typeclass_info(InstanceModuleName, _),
 		MLDS_ModuleName =
 			mercury_module_name_to_mlds(InstanceModuleName)
 	;
-		TCRttiName = type_class_id(TCName),
+		TCRttiName = type_class_id,
 		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
 	;
-		TCRttiName = type_class_decl(TCName),
+		TCRttiName = type_class_decl,
 		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
 	;
-		TCRttiName = type_class_decl_super(TCName, _, _),
+		TCRttiName = type_class_decl_super(_, _),
 		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
 	;
-		TCRttiName = type_class_decl_supers(TCName),
+		TCRttiName = type_class_decl_supers,
 		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
 	;
-		TCRttiName = type_class_id_var_names(TCName),
+		TCRttiName = type_class_id_var_names,
 		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
 	;
-		TCRttiName = type_class_id_method_ids(TCName),
+		TCRttiName = type_class_id_method_ids,
 		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
 	;
-		TCRttiName = type_class_instance(TCName, _Types),
+		TCRttiName = type_class_instance(_Types),
 		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
 	;
-		TCRttiName = type_class_instance_tc_type_vector(TCName, _Types),
+		TCRttiName = type_class_instance_tc_type_vector(_Types),
 		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
 	;
-		TCRttiName = type_class_instance_constraint(TCName, _Types,
+		TCRttiName = type_class_instance_constraint(_Types,
 			_, _),
 		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
 	;
-		TCRttiName = type_class_instance_constraints(TCName, _Types),
+		TCRttiName = type_class_instance_constraints(_Types),
 		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
 	;
-		TCRttiName = type_class_instance_methods(TCName, _Types),
+		TCRttiName = type_class_instance_methods(_Types),
 		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
 	),
-	MLDS_DataName = rtti(tc_rtti_id(TCRttiName)),
+	MLDS_DataName = rtti(tc_rtti_id(TCName, TCRttiName)),
 	DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),
 	Rval = const(data_addr_const(DataAddr)).
 

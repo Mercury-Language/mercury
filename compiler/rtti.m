@@ -567,8 +567,8 @@
 			rtti_pseudo_type_info
 		)
 	;	base_typeclass_info(
+			tc_name,	% identifies the type class
 			module_name,	% module containing instance decl.
-			class_id,	% specifies class name & class arity
 			string,		% encodes the names and arities of the
 					% types in the instance declaration
 
@@ -591,7 +591,7 @@
 
 :- type rtti_id
 	--->	ctor_rtti_id(rtti_type_ctor, ctor_rtti_name)
-	;	tc_rtti_id(tc_rtti_name).
+	;	tc_rtti_id(tc_name, tc_rtti_name).
 
 :- type ctor_rtti_name
 	--->	exist_locns(int)		% functor ordinal
@@ -628,24 +628,23 @@
 :- type tc_rtti_name
 	--->	base_typeclass_info(
 			module_name,	% module containing instance decl.
-			class_id,	% specifies class name & class arity
 			string		% encodes the names and arities of the
 					% types in the instance declaration
 		)
-	;	type_class_id(tc_name)
-	;	type_class_id_var_names(tc_name)
-	;	type_class_id_method_ids(tc_name)
-	;	type_class_decl(tc_name)
-	;	type_class_decl_super(tc_name, int, int)
+	;	type_class_id
+	;	type_class_id_var_names
+	;	type_class_id_method_ids
+	;	type_class_decl
+	;	type_class_decl_super(int, int)
 			% superclass ordinal, constraint arity
-	;	type_class_decl_supers(tc_name)
-	;	type_class_instance(tc_name, list(tc_type))
-	;	type_class_instance_tc_type_vector(tc_name, list(tc_type))
-	;	type_class_instance_constraint(tc_name, list(tc_type),
+	;	type_class_decl_supers
+	;	type_class_instance(list(tc_type))
+	;	type_class_instance_tc_type_vector(list(tc_type))
+	;	type_class_instance_constraint(list(tc_type),
 			int, int)
 			% constraint ordinal, constraint arity
-	;	type_class_instance_constraints(tc_name, list(tc_type))
-	;	type_class_instance_methods(tc_name, list(tc_type)).
+	;	type_class_instance_constraints(list(tc_type))
+	;	type_class_instance_methods(list(tc_type)).
 
 %-----------------------------------------------------------------------------%
 %
@@ -835,13 +834,13 @@ rtti_data_to_id(type_info(TypeInfo),
 rtti_data_to_id(pseudo_type_info(PseudoTypeInfo),
 		ctor_rtti_id(RttiTypeCtor, pseudo_type_info(PseudoTypeInfo))) :-
 	RttiTypeCtor = pti_get_rtti_type_ctor(PseudoTypeInfo).
-rtti_data_to_id(base_typeclass_info(Module, ClassId, Instance, _),
-		tc_rtti_id(base_typeclass_info(Module, ClassId, Instance))).
+rtti_data_to_id(base_typeclass_info(TCName, Module, Instance, _),
+		tc_rtti_id(TCName, base_typeclass_info(Module, Instance))).
 rtti_data_to_id(type_class_decl(tc_decl(TCId, _, _)),
-		tc_rtti_id(type_class_decl(TCName))) :-
+		tc_rtti_id(TCName, type_class_decl)) :-
 	TCId = tc_id(TCName, _, _).
 rtti_data_to_id(type_class_instance(tc_instance(TCName, TCTypes, _, _, _)),
-		tc_rtti_id(type_class_instance(TCName, TCTypes))).
+		tc_rtti_id(TCName, type_class_instance(TCTypes))).
 
 tcd_get_rtti_type_ctor(TypeCtorData) = RttiTypeCtor :-
 	ModuleName = TypeCtorData ^ tcr_module_name,
@@ -896,7 +895,7 @@ rtti_id_maybe_element_has_array_type(element_type(RttiId)) = no :-
 
 rtti_id_has_array_type(ctor_rtti_id(_, RttiName)) =
 	ctor_rtti_name_has_array_type(RttiName).
-rtti_id_has_array_type(tc_rtti_id(TCRttiName)) =
+rtti_id_has_array_type(tc_rtti_id(_, TCRttiName)) =
 	tc_rtti_name_has_array_type(TCRttiName).
 
 ctor_rtti_name_has_array_type(RttiName) = IsArray :-
@@ -907,7 +906,7 @@ tc_rtti_name_has_array_type(TCRttiName) = IsArray :-
 
 rtti_id_is_exported(ctor_rtti_id(_, RttiName)) =
 	ctor_rtti_name_is_exported(RttiName).
-rtti_id_is_exported(tc_rtti_id(TCRttiName)) =
+rtti_id_is_exported(tc_rtti_id(_, TCRttiName)) =
 	tc_rtti_name_is_exported(TCRttiName).
 
 ctor_rtti_name_is_exported(exist_locns(_))		= no.
@@ -941,18 +940,18 @@ ctor_rtti_name_is_exported(pseudo_type_info(PseudoTypeInfo)) =
 	pseudo_type_info_is_exported(PseudoTypeInfo).
 ctor_rtti_name_is_exported(type_hashcons_pointer)       = no.
 
-tc_rtti_name_is_exported(base_typeclass_info(_, _, _)) = yes.
-tc_rtti_name_is_exported(type_class_id(_)) = no.
-tc_rtti_name_is_exported(type_class_id_var_names(_)) = no.
-tc_rtti_name_is_exported(type_class_id_method_ids(_)) = no.
-tc_rtti_name_is_exported(type_class_decl(_)) = yes.
-tc_rtti_name_is_exported(type_class_decl_super(_, _, _)) = no.
-tc_rtti_name_is_exported(type_class_decl_supers(_)) = no.
-tc_rtti_name_is_exported(type_class_instance(_, _)) = yes.
-tc_rtti_name_is_exported(type_class_instance_tc_type_vector(_, _)) = no.
-tc_rtti_name_is_exported(type_class_instance_constraint(_, _, _, _)) = no.
-tc_rtti_name_is_exported(type_class_instance_constraints(_, _)) = no.
-tc_rtti_name_is_exported(type_class_instance_methods(_, _)) = no.
+tc_rtti_name_is_exported(base_typeclass_info(_, _)) = yes.
+tc_rtti_name_is_exported(type_class_id) = no.
+tc_rtti_name_is_exported(type_class_id_var_names) = no.
+tc_rtti_name_is_exported(type_class_id_method_ids) = no.
+tc_rtti_name_is_exported(type_class_decl) = yes.
+tc_rtti_name_is_exported(type_class_decl_super(_, _)) = no.
+tc_rtti_name_is_exported(type_class_decl_supers) = no.
+tc_rtti_name_is_exported(type_class_instance(_)) = yes.
+tc_rtti_name_is_exported(type_class_instance_tc_type_vector(_)) = no.
+tc_rtti_name_is_exported(type_class_instance_constraint(_, _, _)) = no.
+tc_rtti_name_is_exported(type_class_instance_constraints(_)) = no.
+tc_rtti_name_is_exported(type_class_instance_methods(_)) = no.
 
 :- func type_info_is_exported(rtti_type_info) = bool.
 
@@ -1000,8 +999,8 @@ rtti__proc_label_pred_proc_id(ProcLabel, PredId, ProcId) :-
 
 rtti__id_to_c_identifier(ctor_rtti_id(RttiTypeCtor, RttiName), Str) :-
 	rtti__name_to_string(RttiTypeCtor, RttiName, Str).
-rtti__id_to_c_identifier(tc_rtti_id(TCRttiName), Str) :-
-	rtti__tc_name_to_string(TCRttiName, Str).
+rtti__id_to_c_identifier(tc_rtti_id(TCName, TCRttiName), Str) :-
+	rtti__tc_name_to_string(TCName, TCRttiName, Str).
 
 :- pred rtti__name_to_string(rtti_type_ctor::in, ctor_rtti_name::in,
 	string::out) is det.
@@ -1135,58 +1134,59 @@ rtti__name_to_string(RttiTypeCtor, RttiName, Str) :-
 			TypeName, "_", A_str], Str)
 	).
 
-:- pred rtti__tc_name_to_string(tc_rtti_name::in, string::out) is det.
+:- pred rtti__tc_name_to_string(tc_name::in, tc_rtti_name::in, string::out)
+	is det.
 
-rtti__tc_name_to_string(TCRttiName, Str) :-
-	TCRttiName = base_typeclass_info(_ModuleName, ClassId, InstanceStr),
-	Str = make_base_typeclass_info_name(ClassId, InstanceStr).
-rtti__tc_name_to_string(TCRttiName, Str) :-
-	TCRttiName = type_class_id(TCName),
+rtti__tc_name_to_string(TCName, TCRttiName, Str) :-
+	TCRttiName = base_typeclass_info(_ModuleName, InstanceStr),
+	Str = make_base_typeclass_info_name(TCName, InstanceStr).
+rtti__tc_name_to_string(TCName, TCRttiName, Str) :-
+	TCRttiName = type_class_id,
 	rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName,
 		ArityStr),
 	string__append_list([ModuleName, "__type_class_id_",
 		ClassName, "_", ArityStr], Str).
-rtti__tc_name_to_string(TCRttiName, Str) :-
-	TCRttiName = type_class_id_method_ids(TCName),
+rtti__tc_name_to_string(TCName, TCRttiName, Str) :-
+	TCRttiName = type_class_id_method_ids,
 	rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName,
 		ArityStr),
 	string__append_list([ModuleName, "__type_class_id_method_ids_",
 		ClassName, "_", ArityStr], Str).
-rtti__tc_name_to_string(TCRttiName, Str) :-
-	TCRttiName = type_class_id_var_names(TCName),
+rtti__tc_name_to_string(TCName, TCRttiName, Str) :-
+	TCRttiName = type_class_id_var_names,
 	rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName,
 		ArityStr),
 	string__append_list([ModuleName, "__type_class_id_var_names_",
 		ClassName, "_", ArityStr], Str).
-rtti__tc_name_to_string(TCRttiName, Str) :-
-	TCRttiName = type_class_decl(TCName),
+rtti__tc_name_to_string(TCName, TCRttiName, Str) :-
+	TCRttiName = type_class_decl,
 	rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName,
 		ArityStr),
 	string__append_list([ModuleName, "__type_class_decl_",
 		ClassName, "_", ArityStr], Str).
-rtti__tc_name_to_string(TCRttiName, Str) :-
-	TCRttiName = type_class_decl_supers(TCName),
+rtti__tc_name_to_string(TCName, TCRttiName, Str) :-
+	TCRttiName = type_class_decl_supers,
 	rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName,
 		ArityStr),
 	string__append_list([ModuleName, "__type_class_decl_supers_",
 		ClassName, "_", ArityStr], Str).
-rtti__tc_name_to_string(TCRttiName, Str) :-
-	TCRttiName = type_class_decl_super(TCName, Ordinal, _),
+rtti__tc_name_to_string(TCName, TCRttiName, Str) :-
+	TCRttiName = type_class_decl_super(Ordinal, _),
 	rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName,
 		ArityStr),
 	string__int_to_string(Ordinal, OrdinalStr),
 	string__append_list([ModuleName, "__type_class_decl_super_",
 		ClassName, "_", ArityStr, "_", OrdinalStr], Str).
-rtti__tc_name_to_string(TCRttiName, Str) :-
-	TCRttiName = type_class_instance(TCName, TCTypes),
+rtti__tc_name_to_string(TCName, TCRttiName, Str) :-
+	TCRttiName = type_class_instance(TCTypes),
 	rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName,
 		ArityStr),
 	TypeStrs = list__map(rtti__encode_tc_instance_type, TCTypes),
 	TypeVectorStr = string__append_list(TypeStrs),
 	string__append_list([ModuleName, "__type_class_instance_",
 		ClassName, "_", ArityStr, "_", TypeVectorStr], Str).
-rtti__tc_name_to_string(TCRttiName, Str) :-
-	TCRttiName = type_class_instance_tc_type_vector(TCName, TCTypes),
+rtti__tc_name_to_string(TCName, TCRttiName, Str) :-
+	TCRttiName = type_class_instance_tc_type_vector(TCTypes),
 	rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName,
 		ArityStr),
 	TypeStrs = list__map(rtti__encode_tc_instance_type, TCTypes),
@@ -1194,9 +1194,8 @@ rtti__tc_name_to_string(TCRttiName, Str) :-
 	string__append_list([ModuleName,
 		"__type_class_instance_tc_type_vector_",
 		ClassName, "_", ArityStr, "_", TypeVectorStr], Str).
-rtti__tc_name_to_string(TCRttiName, Str) :-
-	TCRttiName =
-		type_class_instance_constraint(TCName, TCTypes, Ordinal, _),
+rtti__tc_name_to_string(TCName, TCRttiName, Str) :-
+	TCRttiName = type_class_instance_constraint(TCTypes, Ordinal, _),
 	rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName,
 		ArityStr),
 	TypeStrs = list__map(rtti__encode_tc_instance_type, TCTypes),
@@ -1205,16 +1204,16 @@ rtti__tc_name_to_string(TCRttiName, Str) :-
 	string__append_list([ModuleName, "__type_class_instance_constraint_",
 		ClassName, "_", ArityStr, "_", OrdinalStr, "_", TypeVectorStr],
 		Str).
-rtti__tc_name_to_string(TCRttiName, Str) :-
-	TCRttiName = type_class_instance_constraints(TCName, TCTypes),
+rtti__tc_name_to_string(TCName, TCRttiName, Str) :-
+	TCRttiName = type_class_instance_constraints(TCTypes),
 	rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName,
 		ArityStr),
 	TypeStrs = list__map(rtti__encode_tc_instance_type, TCTypes),
 	TypeVectorStr = string__append_list(TypeStrs),
 	string__append_list([ModuleName, "__type_class_instance_constraints_",
 		ClassName, "_", ArityStr, "_", TypeVectorStr], Str).
-rtti__tc_name_to_string(TCRttiName, Str) :-
-	TCRttiName = type_class_instance_methods(TCName, TCTypes),
+rtti__tc_name_to_string(TCName, TCRttiName, Str) :-
+	TCRttiName = type_class_instance_methods(TCTypes),
 	rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName,
 		ArityStr),
 	TypeStrs = list__map(rtti__encode_tc_instance_type, TCTypes),
@@ -1589,7 +1588,7 @@ res_addr_is_numeric(small_pointer(_)).
 
 rtti_id_would_include_code_addr(ctor_rtti_id(_, RttiName)) =
 	ctor_rtti_name_would_include_code_addr(RttiName).
-rtti_id_would_include_code_addr(tc_rtti_id(TCRttiName)) =
+rtti_id_would_include_code_addr(tc_rtti_id(_, TCRttiName)) =
 	tc_rtti_name_would_include_code_addr(TCRttiName).
 
 ctor_rtti_name_would_include_code_addr(exist_locns(_)) =		no.
@@ -1623,22 +1622,20 @@ ctor_rtti_name_would_include_code_addr(type_info(TypeInfo)) =
 ctor_rtti_name_would_include_code_addr(pseudo_type_info(PseudoTypeInfo)) =
 	pseudo_type_info_would_incl_code_addr(PseudoTypeInfo).
 
-tc_rtti_name_would_include_code_addr(base_typeclass_info(_, _, _)) = yes.
-tc_rtti_name_would_include_code_addr(type_class_id(_)) = no.
-tc_rtti_name_would_include_code_addr(type_class_id_var_names(_)) = no.
-tc_rtti_name_would_include_code_addr(type_class_id_method_ids(_)) = no.
-tc_rtti_name_would_include_code_addr(type_class_decl(_)) = no.
-tc_rtti_name_would_include_code_addr(type_class_decl_super(_, _, _)) = no.
-tc_rtti_name_would_include_code_addr(type_class_decl_supers(_)) = no.
-tc_rtti_name_would_include_code_addr(type_class_instance(_, _)) = no.
-tc_rtti_name_would_include_code_addr(type_class_instance_tc_type_vector(_, _))
+tc_rtti_name_would_include_code_addr(base_typeclass_info(_, _)) = yes.
+tc_rtti_name_would_include_code_addr(type_class_id) = no.
+tc_rtti_name_would_include_code_addr(type_class_id_var_names) = no.
+tc_rtti_name_would_include_code_addr(type_class_id_method_ids) = no.
+tc_rtti_name_would_include_code_addr(type_class_decl) = no.
+tc_rtti_name_would_include_code_addr(type_class_decl_super(_, _)) = no.
+tc_rtti_name_would_include_code_addr(type_class_decl_supers) = no.
+tc_rtti_name_would_include_code_addr(type_class_instance(_)) = no.
+tc_rtti_name_would_include_code_addr(type_class_instance_tc_type_vector(_))
 	= no.
-tc_rtti_name_would_include_code_addr(type_class_instance_constraint(_, _, _, _))
+tc_rtti_name_would_include_code_addr(type_class_instance_constraint(_, _, _))
 	= no.
-tc_rtti_name_would_include_code_addr(type_class_instance_constraints(_, _))
-	= no.
-tc_rtti_name_would_include_code_addr(type_class_instance_methods(_, _))
-	= no.
+tc_rtti_name_would_include_code_addr(type_class_instance_constraints(_)) = no.
+tc_rtti_name_would_include_code_addr(type_class_instance_methods(_)) = no.
 
 type_info_would_incl_code_addr(plain_arity_zero_type_info(_)) = yes.
 type_info_would_incl_code_addr(plain_type_info(_, _)) =	no.
@@ -1664,7 +1661,7 @@ rtti_id_maybe_element_c_type(element_type(RttiId), CTypeName, IsArray) :-
 
 rtti_id_c_type(ctor_rtti_id(_, RttiName), CTypeName, IsArray) :-
 	ctor_rtti_name_c_type(RttiName, CTypeName, IsArray).
-rtti_id_c_type(tc_rtti_id(TCRttiName), CTypeName, IsArray) :-
+rtti_id_c_type(tc_rtti_id(_, TCRttiName), CTypeName, IsArray) :-
 	tc_rtti_name_c_type(TCRttiName, CTypeName, IsArray).
 
 ctor_rtti_name_c_type(RttiName, CTypeName, IsArray) :-
@@ -1689,7 +1686,7 @@ rtti_id_maybe_element_java_type(element_type(RttiId), CTypeName, IsArray) :-
 
 rtti_id_java_type(ctor_rtti_id(_, RttiName), JavaTypeName, IsArray) :-
 	ctor_rtti_name_java_type(RttiName, JavaTypeName, IsArray).
-rtti_id_java_type(tc_rtti_id(TCRttiName), JavaTypeName, IsArray) :-
+rtti_id_java_type(tc_rtti_id(_, TCRttiName), JavaTypeName, IsArray) :-
 	tc_rtti_name_java_type(TCRttiName, JavaTypeName, IsArray).
 
 ctor_rtti_name_java_type(RttiName, JavaTypeName, IsArray) :-
@@ -1803,22 +1800,22 @@ ctor_rtti_name_type(pseudo_type_info(PseudoTypeInfo), TypeName, no) :-
 	% tc_rtti_name_type(RttiName, Type, IsArray):
 :- pred tc_rtti_name_type(tc_rtti_name::in, string::out, bool::out) is det.
 
-tc_rtti_name_type(base_typeclass_info(_, _, _), "BaseTypeclassInfo", yes).
-tc_rtti_name_type(type_class_id(_),		"TypeClassId", no).
-tc_rtti_name_type(type_class_id_var_names(_),	"ConstString", yes).
-tc_rtti_name_type(type_class_id_method_ids(_),	"TypeClassMethod", yes).
-tc_rtti_name_type(type_class_decl(_),		"TypeClassDeclStruct", no).
-tc_rtti_name_type(type_class_decl_super(_, _, N), TypeName, no) :-
+tc_rtti_name_type(base_typeclass_info(_, _),    "BaseTypeclassInfo", yes).
+tc_rtti_name_type(type_class_id,		"TypeClassId", no).
+tc_rtti_name_type(type_class_id_var_names,	"ConstString", yes).
+tc_rtti_name_type(type_class_id_method_ids,	"TypeClassMethod", yes).
+tc_rtti_name_type(type_class_decl,		"TypeClassDeclStruct", no).
+tc_rtti_name_type(type_class_decl_super(_, N), TypeName, no) :-
 	TypeName = tc_constraint_type_name(N).
-tc_rtti_name_type(type_class_decl_supers(_),	"TypeClassConstraint", yes).
-tc_rtti_name_type(type_class_instance(_, _),	"InstanceStruct", no).
-tc_rtti_name_type(type_class_instance_tc_type_vector(_, _),
+tc_rtti_name_type(type_class_decl_supers,	"TypeClassConstraint", yes).
+tc_rtti_name_type(type_class_instance(_),	"InstanceStruct", no).
+tc_rtti_name_type(type_class_instance_tc_type_vector(_),
 						"PseudoTypeInfo", yes).
-tc_rtti_name_type(type_class_instance_constraint(_, _, _, N), TypeName, no) :-
+tc_rtti_name_type(type_class_instance_constraint(_, _, N), TypeName, no) :-
 	TypeName = tc_constraint_type_name(N).
-tc_rtti_name_type(type_class_instance_constraints(_, _),
+tc_rtti_name_type(type_class_instance_constraints(_),
 						"TypeClassConstraint", yes).
-tc_rtti_name_type(type_class_instance_methods(_, _),
+tc_rtti_name_type(type_class_instance_methods(_),
 						"CodePtr", yes).
 
 :- func tc_constraint_type_name(int) = string.
@@ -1858,7 +1855,7 @@ module_qualify_name_of_rtti_id(RttiId) = ShouldModuleQualify :-
 		ShouldModuleQualify =
 			module_qualify_name_of_ctor_rtti_name(CtorRttiName)
 	;
-		RttiId = tc_rtti_id(TCRttiName),
+		RttiId = tc_rtti_id(_, TCRttiName),
 		ShouldModuleQualify =
 			module_qualify_name_of_tc_rtti_name(TCRttiName)
 	).
@@ -1875,7 +1872,7 @@ module_qualify_name_of_ctor_rtti_name(_) = yes.
 % This decision is implemented separately in rtti__tc_name_to_string.
 
 module_qualify_name_of_tc_rtti_name(TCRttiName) =
-	( TCRttiName = base_typeclass_info(_, _, _) ->
+	( TCRttiName = base_typeclass_info(_, _) ->
 		no
 	;
 		yes

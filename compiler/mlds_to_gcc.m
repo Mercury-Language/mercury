@@ -1971,7 +1971,7 @@ build_rtti_type(RttiIdMaybeElement, Size, GCC_Type, !IO) :-
 		RttiId = ctor_rtti_id(_, RttiName), 
 		build_rtti_type_name(RttiName, BaseType, !IO)
 	;
-		RttiId = tc_rtti_id(TCRttiName),
+		RttiId = tc_rtti_id(_, TCRttiName),
 		build_rtti_type_tc_name(TCRttiName, BaseType, !IO)
 	),
 	IsArray = rtti_id_has_array_type(RttiId),
@@ -2171,32 +2171,30 @@ build_rtti_type_name(type_hashcons_pointer, gcc__ptr_type_node, !IO).
 :- pred build_rtti_type_tc_name(tc_rtti_name::in, gcc__type::out,
 	io__state::di, io__state::uo) is det.
 
-build_rtti_type_tc_name(base_typeclass_info(_, _, _), gcc__ptr_type_node, !IO).
-build_rtti_type_tc_name(type_class_id(_), GCC_Type, !IO) :-
+build_rtti_type_tc_name(base_typeclass_info(_, _), gcc__ptr_type_node, !IO).
+build_rtti_type_tc_name(type_class_id, GCC_Type, !IO) :-
 	build_tc_id_type(GCC_Type, !IO).
-build_rtti_type_tc_name(type_class_id_var_names(_), 'MR_ConstString', !IO).
-build_rtti_type_tc_name(type_class_id_method_ids(_), GCC_Type, !IO) :-
+build_rtti_type_tc_name(type_class_id_var_names, 'MR_ConstString', !IO).
+build_rtti_type_tc_name(type_class_id_method_ids, GCC_Type, !IO) :-
 	build_tc_id_method_type(GCC_Type, !IO).
-build_rtti_type_tc_name(type_class_decl(_), GCC_Type, !IO) :-
+build_rtti_type_tc_name(type_class_decl, GCC_Type, !IO) :-
 	build_tc_decl_type(GCC_Type, !IO).
-build_rtti_type_tc_name(type_class_decl_super(_, _, N), GCC_Type, !IO) :-
+build_rtti_type_tc_name(type_class_decl_super(_, N), GCC_Type, !IO) :-
 	build_tc_constr_struct_type(N, GCC_Type, !IO).
-build_rtti_type_tc_name(type_class_decl_supers(_), GCC_Type, !IO) :-
+build_rtti_type_tc_name(type_class_decl_supers, GCC_Type, !IO) :-
 	build_tc_constr_type(StructType, !IO),
 	gcc__build_pointer_type(StructType, GCC_Type, !IO).
-build_rtti_type_tc_name(type_class_instance(_, _), GCC_Type, !IO) :-
+build_rtti_type_tc_name(type_class_instance(_), GCC_Type, !IO) :-
 	build_tc_instance_type(GCC_Type, !IO).
-build_rtti_type_tc_name(type_class_instance_tc_type_vector(_, _),
+build_rtti_type_tc_name(type_class_instance_tc_type_vector(_),
 		'MR_PseudoTypeInfo', !IO).
-build_rtti_type_tc_name(type_class_instance_constraint(_, _, _, N),
+build_rtti_type_tc_name(type_class_instance_constraint(_, _, N),
 		GCC_Type, !IO) :-
 	build_tc_constr_struct_type(N, GCC_Type, !IO).
-build_rtti_type_tc_name(type_class_instance_constraints(_, _),
-		GCC_Type, !IO) :-
+build_rtti_type_tc_name(type_class_instance_constraints(_), GCC_Type, !IO) :-
 	build_tc_constr_type(StructType, !IO),
 	gcc__build_pointer_type(StructType, GCC_Type, !IO).
-build_rtti_type_tc_name(type_class_instance_methods(_, _),
-		_GCC_Type, !IO) :-
+build_rtti_type_tc_name(type_class_instance_methods(_), _GCC_Type, !IO) :-
 	sorry(this_file,
 		"build_rtti_type_tc_name: type_class_instance_methods").
 
@@ -2588,12 +2586,13 @@ fixup_rtti_id(ctor_rtti_id(RttiTypeCtor0, RttiName0))
 		= ctor_rtti_id(RttiTypeCtor, RttiName) :-
 	RttiTypeCtor = fixup_rtti_type_ctor(RttiTypeCtor0),
 	RttiName = fixup_rtti_name(RttiName0).
-fixup_rtti_id(tc_rtti_id(TCRttiName)) = tc_rtti_id(TCRttiName).
+fixup_rtti_id(tc_rtti_id(TCName, TCRttiName)) = tc_rtti_id(TCName, TCRttiName).
 
 	% XXX sometimes earlier stages of the compiler forget to add
 	% the appropriate qualifiers for stuff in the `builtin' module;
 	% we fix that here.
 :- func fixup_rtti_type_ctor(rtti_type_ctor) = rtti_type_ctor.
+
 fixup_rtti_type_ctor(RttiTypeCtor0) = RttiTypeCtor :-
 	(
 		RttiTypeCtor0 = rtti_type_ctor(ModuleName0, Name, Arity),
@@ -2606,6 +2605,7 @@ fixup_rtti_type_ctor(RttiTypeCtor0) = RttiTypeCtor :-
 	).
 
 :- func fixup_rtti_name(ctor_rtti_name) = ctor_rtti_name.
+
 fixup_rtti_name(RttiTypeCtor0) = RttiTypeCtor :-
 	(
 		RttiTypeCtor0 = pseudo_type_info(PseudoTypeInfo)

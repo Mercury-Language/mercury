@@ -96,9 +96,9 @@ output_rtti_data_defn(pseudo_type_info(PseudoTypeInfo), !DeclSet, !IO) :-
 	output_pseudo_type_info_defn(PseudoTypeInfo, !DeclSet, !IO).
 output_rtti_data_defn(type_ctor_info(TypeCtorData), !DeclSet, !IO) :-
 	output_type_ctor_data_defn(TypeCtorData, !DeclSet, !IO).
-output_rtti_data_defn(base_typeclass_info(InstanceModuleName, ClassId,
+output_rtti_data_defn(base_typeclass_info(TCName, InstanceModuleName,
 		InstanceString, BaseTypeClassInfo), !DeclSet, !IO) :-
-	output_base_typeclass_info_defn(InstanceModuleName, ClassId,
+	output_base_typeclass_info_defn(TCName, InstanceModuleName,
 		InstanceString, BaseTypeClassInfo, !DeclSet, !IO).
 output_rtti_data_defn(type_class_decl(TCDecl), !DeclSet, !IO) :-
 	output_type_class_decl_defn(TCDecl, !DeclSet, !IO).
@@ -107,18 +107,18 @@ output_rtti_data_defn(type_class_instance(InstanceDecl), !DeclSet, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_base_typeclass_info_defn(module_name::in, class_id::in,
+:- pred output_base_typeclass_info_defn(tc_name::in, module_name::in,
 	string::in, base_typeclass_info::in, decl_set::in, decl_set::out,
 	io__state::di, io__state::uo) is det.
 
-output_base_typeclass_info_defn(InstanceModuleName, ClassId, InstanceString,
+output_base_typeclass_info_defn(TCName, InstanceModuleName, InstanceString,
 		base_typeclass_info(N1, N2, N3, N4, N5, Methods),
 		!DeclSet, !IO) :-
 	CodeAddrs = list__map(make_code_addr, Methods),
 	list__foldl2(output_code_addr_decls, CodeAddrs, !DeclSet, !IO),
 	io__write_string("\n", !IO),
-	RttiId = tc_rtti_id(base_typeclass_info(InstanceModuleName,
-		ClassId, InstanceString)),
+	RttiId = tc_rtti_id(TCName,
+		base_typeclass_info(InstanceModuleName, InstanceString)),
 	output_rtti_id_storage_type_name(RttiId, yes, !IO),
 	% XXX It would be nice to avoid generating redundant declarations
 	% of base_typeclass_infos, but currently we don't.
@@ -139,16 +139,16 @@ output_type_class_decl_defn(TCDecl, !DeclSet, !IO) :-
 	TCId = tc_id(TCName, TVarNames, MethodIds),
 	TCName = tc_name(ModuleSymName, ClassName, Arity),
 
-	TCIdVarNamesRttiName = type_class_id_var_names(TCName),
-	TCIdVarNamesRttiId = tc_rtti_id(TCIdVarNamesRttiName),
-	TCIdMethodIdsRttiName = type_class_id_method_ids(TCName),
-	TCIdMethodIdsRttiId = tc_rtti_id(TCIdMethodIdsRttiName),
-	TCIdRttiName = type_class_id(TCName),
-	TCIdRttiId = tc_rtti_id(TCIdRttiName),
-	TCDeclSupersRttiName = type_class_decl_supers(TCName),
-	TCDeclSupersRttiId = tc_rtti_id(TCDeclSupersRttiName),
-	TCDeclRttiName = type_class_decl(TCName),
-	TCDeclRttiId = tc_rtti_id(TCDeclRttiName),
+	TCIdVarNamesRttiName = type_class_id_var_names,
+	TCIdVarNamesRttiId = tc_rtti_id(TCName, TCIdVarNamesRttiName),
+	TCIdMethodIdsRttiName = type_class_id_method_ids,
+	TCIdMethodIdsRttiId = tc_rtti_id(TCName, TCIdMethodIdsRttiName),
+	TCIdRttiName = type_class_id,
+	TCIdRttiId = tc_rtti_id(TCName, TCIdRttiName),
+	TCDeclSupersRttiName = type_class_decl_supers,
+	TCDeclSupersRttiId = tc_rtti_id(TCName, TCDeclSupersRttiName),
+	TCDeclRttiName = type_class_decl,
+	TCDeclRttiId = tc_rtti_id(TCName, TCDeclRttiName),
 
 	(
 		TVarNames = []
@@ -262,7 +262,7 @@ output_type_class_id_method_id(MethodId, !IO) :-
 	is det.
 
 make_tc_decl_super_id(TCName, Ordinal, NumTypes, RttiId) :-
-	RttiId = tc_rtti_id(type_class_decl_super(TCName, Ordinal, NumTypes)).
+	RttiId = tc_rtti_id(TCName, type_class_decl_super(Ordinal, NumTypes)).
 
 %-----------------------------------------------------------------------------%
 
@@ -276,16 +276,16 @@ output_type_class_instance_defn(Instance, !DeclSet, !IO) :-
 		!DeclSet, !IO),
 	TCTypeRttiDatas = list__map(maybe_pseudo_type_info_to_rtti_data,
 		TCTypes),
-	TCInstanceTypesRttiId = tc_rtti_id(
-		type_class_instance_tc_type_vector(TCName, TCTypes)),
+	TCInstanceTypesRttiId = tc_rtti_id(TCName, 
+		type_class_instance_tc_type_vector(TCTypes)),
 	output_generic_rtti_data_defn_start(TCInstanceTypesRttiId,
 		!DeclSet, !IO),
 	io__write_string(" = {\n", !IO),
 	output_cast_addr_of_rtti_datas("(MR_PseudoTypeInfo) ", TCTypeRttiDatas,
 		!IO),
 	io__write_string("};\n", !IO),
-	TCInstanceConstraintsRttiId = tc_rtti_id(
-		type_class_instance_constraints(TCName, TCTypes)),
+	TCInstanceConstraintsRttiId = tc_rtti_id(TCName,
+		type_class_instance_constraints(TCTypes)),
 	(
 		Constraints = []
 	;
@@ -316,9 +316,9 @@ output_type_class_instance_defn(Instance, !DeclSet, !IO) :-
 %		list__foldl(output_code_addr_in_list, MethodCodeAddrs, !IO),
 %		io__write_string("};\n", !IO)
 %	),
-	TCDeclRttiId = tc_rtti_id(type_class_decl(TCName)),
+	TCDeclRttiId = tc_rtti_id(TCName, type_class_decl),
 	output_rtti_id_decls(TCDeclRttiId, "", "", 0, _, !DeclSet, !IO),
-	TCInstanceRttiId = tc_rtti_id(type_class_instance(TCName, TCTypes)),
+	TCInstanceRttiId = tc_rtti_id(TCName, type_class_instance(TCTypes)),
 	output_generic_rtti_data_defn_start(TCInstanceRttiId, !DeclSet, !IO),
 	io__write_string(" = {\n\t&", !IO),
 	output_rtti_id(TCDeclRttiId, !IO),
@@ -351,8 +351,8 @@ output_type_class_instance_defn(Instance, !DeclSet, !IO) :-
 	int::in, int::in, rtti_id::out) is det.
 
 make_tc_instance_constraint_id(TCName, TCTypes, Ordinal, NumTypes, RttiId) :-
-	RttiId = tc_rtti_id(type_class_instance_constraint(TCName, TCTypes,
-		Ordinal, NumTypes)).
+	RttiId = tc_rtti_id(TCName,
+		type_class_instance_constraint(TCTypes, Ordinal, NumTypes)).
 
 :- pred output_code_addr_in_list(code_addr::in,
 	io__state::di, io__state::uo) is det.
@@ -375,7 +375,7 @@ output_type_class_constraint(MakeRttiId, Constraint, TCDeclSuperRttiId,
 	list__length(Types, NumTypes),
 	counter__allocate(TCNum, !Counter),
 	MakeRttiId(TCNum, NumTypes, TCDeclSuperRttiId),
-	TCDeclRttiId = tc_rtti_id(type_class_decl(TCName)),
+	TCDeclRttiId = tc_rtti_id(TCName, type_class_decl),
 	output_generic_rtti_data_decl(TCDeclRttiId, !DeclSet, !IO),
 	list__foldl2(output_maybe_pseudo_type_info_defn, Types, !DeclSet, !IO),
 	TypeRttiDatas = list__map(maybe_pseudo_type_info_to_rtti_data, Types),
@@ -1306,7 +1306,7 @@ MR_DECLARE_ALL_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY(%d);
 ",
 		io__format(Template, [i(Arity), i(Arity), i(Arity)], !IO)
 	;
-		RttiId = tc_rtti_id(TCRttiName),
+		RttiId = tc_rtti_id(_, TCRttiName),
 		rtti_type_class_constraint_template_arity(TCRttiName, Arity),
 		Arity > max_always_declared_arity_type_class_constraint
 	->
@@ -1349,9 +1349,9 @@ max_always_declared_arity_type_ctor = 20.
 	is semidet.
 
 rtti_type_class_constraint_template_arity(TCRttiName, Arity) :-
-	TCRttiName = type_class_decl_super(_, _, Arity).
+	TCRttiName = type_class_decl_super(_, Arity).
 rtti_type_class_constraint_template_arity(TCRttiName, Arity) :-
-	TCRttiName = type_class_instance_constraint(_, _, _, Arity).
+	TCRttiName = type_class_instance_constraint(_, _, Arity).
 
 :- func max_always_declared_arity_type_class_constraint = int.
 
@@ -1383,7 +1383,7 @@ rtti_out__init_rtti_data_if_nec(Data, !IO) :-
 		io__write_int(Arity, !IO),
 		io__write_string("_0);\n", !IO)
 	;
-		Data = base_typeclass_info(_ModName, ClassName, ClassArity,
+		Data = base_typeclass_info(TCName, _ModuleName, ClassArity,
 			base_typeclass_info(_N1, _N2, _N3, _N4, _N5,
 			Methods))
 	->
@@ -1394,7 +1394,7 @@ rtti_out__init_rtti_data_if_nec(Data, !IO) :-
 		FirstFieldNum = 5,
 		CodeAddrs = list__map(make_code_addr, Methods),
 		output_init_method_pointers(FirstFieldNum, CodeAddrs,
-			ClassName, ClassArity, !IO),
+			TCName, ClassArity, !IO),
 		io__write_string("#endif /* MR_STATIC_CODE_ADDRESSES */\n",
 			!IO)
 	;
@@ -1432,7 +1432,7 @@ rtti_out__register_rtti_data_if_nec(Data, SplitFiles, !IO) :-
 	->
 		TCDecl = tc_decl(TCId, _, _),
 		TCId = tc_id(TCName, _, _),
-		RttiId = tc_rtti_id(type_class_decl(TCName)),
+		RttiId = tc_rtti_id(TCName, type_class_decl),
 		io__write_string("\t{\n\t", !IO),
 		(
 			SplitFiles = yes,
@@ -1448,7 +1448,7 @@ rtti_out__register_rtti_data_if_nec(Data, SplitFiles, !IO) :-
 		Data = type_class_instance(TCInstance)
 	->
 		TCInstance = tc_instance(TCName, TCTypes, _, _, _),
-		RttiId = tc_rtti_id(type_class_instance(TCName, TCTypes)),
+		RttiId = tc_rtti_id(TCName, type_class_instance(TCTypes)),
 		io__write_string("\t{\n\t", !IO),
 		(
 			SplitFiles = yes,
@@ -1466,19 +1466,18 @@ rtti_out__register_rtti_data_if_nec(Data, SplitFiles, !IO) :-
 	).
 
 
-:- pred output_init_method_pointers(int, list(code_addr), class_id, string,
-		io__state, io__state).
-:- mode output_init_method_pointers(in, in, in, in, di, uo) is det.
+:- pred output_init_method_pointers(int::in, list(code_addr)::in, tc_name::in,
+	string::in, io::di, io::uo) is det.
 
 output_init_method_pointers(_, [], _, _, !IO).
-output_init_method_pointers(FieldNum, [Arg|Args], ClassId, InstanceStr, !IO) :-
+output_init_method_pointers(FieldNum, [Arg|Args], TCName, InstanceStr, !IO) :-
 	io__write_string("\t\t", !IO),
 	io__write_string("MR_field(MR_mktag(0), ", !IO),
-	output_base_typeclass_info_name(ClassId, InstanceStr, !IO),
+	output_base_typeclass_info_name(TCName, InstanceStr, !IO),
 	io__format(", %d) =\n\t\t\t", [i(FieldNum)], !IO),
 	output_code_addr(Arg, !IO),
 	io__write_string(";\n", !IO),
-	output_init_method_pointers(FieldNum + 1, Args, ClassId, InstanceStr,
+	output_init_method_pointers(FieldNum + 1, Args, TCName, InstanceStr,
 		!IO).
 
 %-----------------------------------------------------------------------------%

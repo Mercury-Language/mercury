@@ -44,6 +44,7 @@
 :- import_module backend_libs__builtin_ops.
 :- import_module backend_libs__proc_label.
 :- import_module backend_libs__rtti.
+:- import_module backend_libs__type_class_info.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
 :- import_module hlds__arg_info.
@@ -407,9 +408,10 @@ unify_gen__generate_construction_2(base_typeclass_info_constant(ModuleName,
 	;
 		error("unify_gen: typeclass-info constant has args")
 	),
+	TCName = generate_class_name(ClassId),
 	code_info__assign_const_to_var(Var,
-		const(data_addr_const(rtti_addr(tc_rtti_id(
-			base_typeclass_info(ModuleName, ClassId, Instance))),
+		const(data_addr_const(rtti_addr(tc_rtti_id(TCName,
+			base_typeclass_info(ModuleName, Instance))),
 			no)), !CI).
 unify_gen__generate_construction_2(tabling_pointer_constant(PredId, ProcId),
 		Var, Args, _Modes, _, _, empty, !CI) :-

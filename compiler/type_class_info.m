@@ -21,6 +21,7 @@
 :- interface.
 
 :- import_module backend_libs__rtti.
+:- import_module hlds__hlds_data.
 :- import_module hlds__hlds_module.
 :- import_module parse_tree__prog_data.
 
@@ -31,10 +32,11 @@
 
 :- func generate_class_constraint(class_constraint) = tc_constraint.
 
+:- func generate_class_name(class_id) = tc_name.
+
 :- implementation.
 
 :- import_module check_hlds__type_util.
-:- import_module hlds__hlds_data.
 :- import_module hlds__hlds_out.
 :- import_module hlds__hlds_pred.
 :- import_module libs__globals.
@@ -181,8 +183,6 @@ generate_method_proc_label(ModuleInfo, hlds_class_proc(PredId, ProcId)) =
 	make_rtti_proc_label(ModuleInfo, PredId, ProcId).
 
 %---------------------------------------------------------------------------%
-
-:- func generate_class_name(class_id) = tc_name.
 
 generate_class_name(class_id(SymName, Arity)) = TCName :-
 	(

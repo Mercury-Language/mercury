@@ -21,7 +21,7 @@
 :- interface.
 
 :- import_module backend_libs__proc_label.
-:- import_module hlds__hlds_data.
+:- import_module backend_libs__rtti.
 :- import_module parse_tree__prog_data.
 
 :- import_module io, bool, string.
@@ -55,12 +55,12 @@
 
 	% Create a name for base_typeclass_info.
 
-:- func make_base_typeclass_info_name(class_id, string) = string.
+:- func make_base_typeclass_info_name(tc_name, string) = string.
 
 	% Output the name for base_typeclass_info,
 	% with the appropriate mercury_data_prefix.
 
-:- pred output_base_typeclass_info_name(class_id::in, string::in,
+:- pred output_base_typeclass_info_name(tc_name::in, string::in,
 	io__state::di, io__state::uo) is det.
 
 	% Prints the name of the initialization function
@@ -342,14 +342,15 @@ convert_to_valid_c_identifier_2(String) = Name :-
 
 %-----------------------------------------------------------------------------%
 
-output_base_typeclass_info_name(ClassId, TypeNames, !IO) :-
-	Str = make_base_typeclass_info_name(ClassId, TypeNames),
+output_base_typeclass_info_name(TCName, TypeNames, !IO) :-
+	Str = make_base_typeclass_info_name(TCName, TypeNames),
 	io__write_string(mercury_data_prefix, !IO),
 	io__write_string("__", !IO),
 	io__write_string(Str, !IO).
 
-make_base_typeclass_info_name(class_id(ClassSym, ClassArity), TypeNames)
-		= Str :-
+make_base_typeclass_info_name(TCName, TypeNames) = Str :-
+	TCName = tc_name(ModuleName, ClassName, ClassArity),
+	ClassSym = qualified(ModuleName, ClassName),
 	MangledClassString = sym_name_mangle(ClassSym),
 	string__int_to_string(ClassArity, ArityString),
 	MangledTypeNames = name_mangle(TypeNames),

@@ -32,6 +32,7 @@
 
 :- implementation.
 
+:- import_module backend_libs__type_class_info.
 :- import_module check_hlds__type_util.
 :- import_module hlds__hlds_code_util.
 :- import_module hlds__hlds_data.
@@ -91,8 +92,9 @@ base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
 		base_typeclass_info__gen_body(PredProcIds,
 			InstanceTypes, InstanceConstraints, ModuleInfo, 
 			ClassId, BaseTypeClassInfo),
-		RttiData = base_typeclass_info(InstanceModule,
-			ClassId, InstanceString, BaseTypeClassInfo),
+		TCName = generate_class_name(ClassId),
+		RttiData = base_typeclass_info(TCName, InstanceModule,
+			InstanceString, BaseTypeClassInfo),
 		RttiDataList = [RttiData | RttiDataList1]
 	;
 			% The instance decl is from another module,
