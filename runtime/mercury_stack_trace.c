@@ -33,8 +33,13 @@ static  MR_Stack_Walk_Step_Result
 
 #ifndef MR_HIGHLEVEL_CODE
 
-static  const char  *MR_step_over_nondet_frame(FILE *fp,
-                        int level_number, MR_Word *fr);
+static MR_Traverse_Nondet_Frame_Func MR_dump_nondet_stack_frame;
+static  const char  *MR_step_over_nondet_frame(
+                        MR_Traverse_Nondet_Frame_Func *func, void *func_data,
+                        FILE *fp, int level_number, MR_Word *fr);
+static void         MR_init_nondet_branch_infos(MR_Word *base_maxfr,
+                    	const MR_Label_Layout *top_layout, MR_Word *base_sp,
+                        MR_Word *base_curfr);
 static  MR_bool     MR_find_matching_branch(MR_Word *fr, int *branch_ptr);
 static  void        MR_record_temp_redoip(MR_Word *fr);
 static  MR_bool     MR_nofail_ip(MR_Code *ip);
@@ -294,9 +299,10 @@ MR_dump_nondet_stack_from_layout(FILE *fp, int limit, MR_Word *base_maxfr,
 #else   /* !MR_HIGHLEVEL_CODE */
 
 /*
-** Detailed nondet stack dumps include the values of the local variables in
-** each nondet stack frame. To find out what variables are live in each frame,
-** we must know through what label control will go back to that frame, so we
+** Detailed nondet stack dumps and accurate GC both need to know
+** the values of the local variables in each nondet stack frame.
+** To find out what variables are live in each frame, we must know
+** through what label control will go back to that frame, so we
 ** can use that label's layout structure.
 **
 ** Control can reach a frame through one of three means.
@@ -365,7 +371,7 @@ MR_dump_nondet_stack_from_layout(FILE *fp, int limit, MR_Word *base_maxfr,
     int             level_number;
     MR_bool         print_vars;
     const char      *problem;
-    int             frames_dumped_so_far;
+    int             frames_traversed_so_far;
 
     MR_do_init_modules();
 
@@ -374,13 +380,8 @@ MR_dump_nondet_stack_from_layout(FILE *fp, int limit, MR_Word *base_maxfr,
         && MR_address_of_trace_browse_all_on_level != NULL)
     {
         print_vars = MR_TRUE;
-        MR_ensure_room_for_next(MR_nondet_branch_info, MR_Nondet_Branch_Info,
-                MR_INIT_NONDET_BRANCH_ARRAY_SIZE);
-        MR_nondet_branch_infos[0].branch_sp = base_sp;
-        MR_nondet_branch_infos[0].branch_curfr = base_curfr;
-        MR_nondet_branch_infos[0].branch_layout = top_layout;
-        MR_nondet_branch_infos[0].branch_topfr = base_curfr;
-        MR_nondet_branch_info_next++;
+        MR_init_nondet_branch_infos(base_maxfr, top_layout, base_sp,
+                base_curfr);
     } else {
         print_vars = MR_FALSE;
     }
@@ -393,10 +394,10 @@ MR_dump_nondet_stack_from_layout(FILE *fp, int limit, MR_Word *base_maxfr,
     ** frame to be included.
     */
 
-    frames_dumped_so_far = 0;
+    frames_traversed_so_far = 0;
     level_number = 0;
     while (base_maxfr >= MR_nondet_stack_trace_bottom) {
-        if (limit > 0 && frames_dumped_so_far >= limit) {
+        if (limit > 0 && frames_traversed_so_far >= limit) {
             fprintf(fp, "<more stack frames snipped>\n");
             return;
         }
@@ -446,8 +447,9 @@ MR_dump_nondet_stack_from_layout(FILE *fp, int limit, MR_Word *base_maxfr,
 
             level_number++;
             if (print_vars && base_maxfr > MR_nondet_stack_trace_bottom) {
-                problem = MR_step_over_nondet_frame(fp, level_number,
-                            base_maxfr);
+                problem = MR_step_over_nondet_frame(
+                        MR_dump_nondet_stack_frame, fp,
+                        fp, level_number, base_maxfr);
                 if (problem != NULL) {
                     fprintf(fp, "%s\n", problem);
                     return;
@@ -456,12 +458,85 @@ MR_dump_nondet_stack_from_layout(FILE *fp, int limit, MR_Word *base_maxfr,
         }
 
         base_maxfr = MR_prevfr_slot(base_maxfr);
-        frames_dumped_so_far++;
+        frames_traversed_so_far++;
     }
 }
 
+static void
+MR_dump_nondet_stack_frame(void *fp,
+    const MR_Label_Layout *top_layout, MR_Word *base_sp, MR_Word *base_curfr,
+    int level_number)
+{
+    /* XXX we ignore the return value */
+    (*MR_address_of_trace_browse_all_on_level) (fp, top_layout, base_sp,
+        base_curfr, level_number, MR_TRUE);
+}
+
+void
+MR_traverse_nondet_stack_from_layout(MR_Word *base_maxfr,
+    const MR_Label_Layout *top_layout, MR_Word *base_sp, MR_Word *base_curfr,
+    MR_Traverse_Nondet_Frame_Func *func, void *func_data)
+{
+    int             frame_size;
+    int             level_number;
+    const char      *problem;
+    int             frames_traversed_so_far;
+
+    assert(top_layout != NULL && base_sp != NULL && base_curfr != NULL);
+
+    MR_do_init_modules();
+
+    MR_init_nondet_branch_infos(base_maxfr, top_layout, base_sp, base_curfr);
+
+    /*
+    ** The comparison operator in the condition of the while loop
+    ** should be >= if you want the trace to include the bottom frame
+    ** created by mercury_wrapper.c (whose redoip/redofr field can be
+    ** hijacked by other code), and > if you don't want the bottom
+    ** frame to be included.
+    */
+
+    frames_traversed_so_far = 0;
+    level_number = 0;
+    while (base_maxfr >= MR_nondet_stack_trace_bottom) {
+        frame_size = base_maxfr - MR_prevfr_slot(base_maxfr);
+        if (frame_size == MR_NONDET_TEMP_SIZE) {
+            MR_record_temp_redoip(base_maxfr);
+        } else if (frame_size == MR_DET_TEMP_SIZE) {
+            /* do nothing */
+        } else {
+            level_number++;
+            if (base_maxfr > MR_nondet_stack_trace_bottom) {
+                problem = MR_step_over_nondet_frame(func, func_data,
+                        NULL, level_number, base_maxfr);
+                if (problem != NULL) {
+                    MR_fatal_error(problem);
+                }
+            }
+        }
+
+        base_maxfr = MR_prevfr_slot(base_maxfr);
+        frames_traversed_so_far++;
+    }
+}
+
+static void
+MR_init_nondet_branch_infos(MR_Word *base_maxfr,
+	const MR_Label_Layout *top_layout, MR_Word *base_sp, MR_Word *base_curfr)
+{
+    MR_nondet_branch_info_next = 0;
+    MR_ensure_room_for_next(MR_nondet_branch_info, MR_Nondet_Branch_Info,
+            MR_INIT_NONDET_BRANCH_ARRAY_SIZE);
+    MR_nondet_branch_infos[0].branch_sp = base_sp;
+    MR_nondet_branch_infos[0].branch_curfr = base_curfr;
+    MR_nondet_branch_infos[0].branch_layout = top_layout;
+    MR_nondet_branch_infos[0].branch_topfr = base_curfr;
+    MR_nondet_branch_info_next++;
+}
+
 static const char *
-MR_step_over_nondet_frame(FILE *fp, int level_number, MR_Word *fr)
+MR_step_over_nondet_frame(MR_Traverse_Nondet_Frame_Func *func,
+    void *func_data, FILE *dump_fp, int level_number, MR_Word *fr)
 {
     MR_Stack_Walk_Step_Result       result;
     MR_Determinism                  determinism;
@@ -482,17 +557,19 @@ MR_step_over_nondet_frame(FILE *fp, int level_number, MR_Word *fr)
         base_curfr = MR_nondet_branch_infos[branch].branch_curfr;
         label_layout = MR_nondet_branch_infos[branch].branch_layout;
         topfr = MR_nondet_branch_infos[branch].branch_topfr;
-        if (base_sp == NULL) {
-            fprintf(fp, " internal frame on nondet side branch ");
-            MR_printnondstackptr(topfr);
-            fprintf(fp, "\n");
-        } else {
-            fprintf(fp, " on main nondet branch ");
-            MR_printnondstackptr(topfr);
-            fprintf(fp, "\n");
+        if (dump_fp) {
+            if (base_sp == NULL) {
+                fprintf(dump_fp, " internal frame on nondet side branch ");
+                MR_printnondstackptr(topfr);
+                fprintf(dump_fp, "\n");
+            } else {
+                fprintf(dump_fp, " on main nondet branch ");
+                MR_printnondstackptr(topfr);
+                fprintf(dump_fp, "\n");
+            }
         }
-        (*MR_address_of_trace_browse_all_on_level)(fp, label_layout,
-            base_sp, base_curfr, level_number, MR_TRUE);
+        (*func)(func_data, label_layout, base_sp, base_curfr,
+                level_number);
         MR_erase_temp_redoip(fr);
         proc_layout = label_layout->MR_sll_entry;
 
@@ -519,7 +596,7 @@ MR_step_over_nondet_frame(FILE *fp, int level_number, MR_Word *fr)
                 /*
                 ** We will handle this call to a model_non
                 ** procedure when the sweep in
-                ** MR_dump_nondet_stack_from_layout reaches it.
+                ** MR_traverse_nondet_stack_from_layout reaches it.
                 ** For now, we only put it into the table.
                 */
                 break;
@@ -534,14 +611,8 @@ MR_step_over_nondet_frame(FILE *fp, int level_number, MR_Word *fr)
         }
 
         last = MR_nondet_branch_info_next - 1;
-        MR_nondet_branch_infos[branch].branch_layout =
-            MR_nondet_branch_infos[last].branch_layout;
-        MR_nondet_branch_infos[branch].branch_sp =
-            MR_nondet_branch_infos[last].branch_sp;
-        MR_nondet_branch_infos[branch].branch_curfr =
-            MR_nondet_branch_infos[last].branch_curfr;
-        MR_nondet_branch_infos[branch].branch_topfr =
-            MR_nondet_branch_infos[last].branch_topfr;
+        MR_assign_structure(MR_nondet_branch_infos[branch],
+                MR_nondet_branch_infos[last]);
         MR_nondet_branch_info_next--;
     } else {
         redoip = MR_find_nofail_temp_redoip(fr);
@@ -550,10 +621,12 @@ MR_step_over_nondet_frame(FILE *fp, int level_number, MR_Word *fr)
         }
 
         if (redoip == NULL) {
-
-            fprintf(fp, " terminal top frame of a nondet side branch ");
-            MR_printnondstackptr(fr);
-            fprintf(fp, "\n");
+            if (dump_fp) {
+                fprintf(dump_fp,
+                        " terminal top frame of a nondet side branch ");
+                MR_printnondstackptr(fr);
+                fprintf(dump_fp, "\n");
+            }
             MR_erase_temp_redoip(fr);
 
             success = MR_succip_slot(fr);
@@ -569,11 +642,12 @@ MR_step_over_nondet_frame(FILE *fp, int level_number, MR_Word *fr)
             }
 
             label_layout = internal->i_layout;
-            fprintf(fp, " top frame of a nondet side branch ");
-            MR_printnondstackptr(fr);
-            fprintf(fp, "\n");
-            (*MR_address_of_trace_browse_all_on_level)(fp, label_layout,
-                NULL, fr, level_number, MR_TRUE);
+            if (dump_fp) {
+                fprintf(dump_fp, " top frame of a nondet side branch ");
+                MR_printnondstackptr(fr);
+                fprintf(dump_fp, "\n");
+            }
+            (*func)(func_data, label_layout, NULL, fr, level_number);
             MR_erase_temp_redoip(fr);
 
             /*

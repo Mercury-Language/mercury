@@ -652,6 +652,9 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 
     /* 
     ** Next, traverse the whole of the nondet stack.
+    ** XXX The code below is broken.  We should use
+    **     MR_traverse_nondet_stack_from_layout() instead.
+    **
     ** XXX Will we need correct value of stack_pointer (the pointer
     **     to the det stack)?
     **     Hopefully not, since I think that for nondet code, all values

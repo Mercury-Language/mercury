@@ -95,6 +95,23 @@ extern	void	MR_dump_nondet_stack_from_layout(FILE *fp, int limit,
 			MR_Word *base_sp, MR_Word *base_curfr);
 
 /*
+** MR_traverse_nondet_stack_from_layout:
+**	This function traverses the nondet stack, calling the specified
+**	function for each frame.
+*/
+
+typedef void MR_Traverse_Nondet_Frame_Func(void *user_data,
+			const MR_Label_Layout *layout, MR_Word *base_sp,
+			MR_Word *base_curfr, int level_number);
+
+extern	void	MR_traverse_nondet_stack_from_layout(
+			MR_Word *maxfr, const MR_Label_Layout *label_layout,
+			MR_Word *base_sp, MR_Word *base_curfr,
+			MR_Traverse_Nondet_Frame_Func *traverse_frame_func,
+			void *traverse_frame_func_data);
+
+
+/*
 ** MR_find_nth_ancestor:
 **	Return the layout structure of the return label of the call
 **	ancestor_level levels above the current call. Label_layout
