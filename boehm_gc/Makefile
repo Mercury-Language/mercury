@@ -55,8 +55,8 @@ AS=../scripts/mgnuc --grade $(GRADE) --assemble
 # PIC code, e.g. -fPIC on Linux.
 
 # Mercury-specific CFLAGS:
-CFLAGS= -DSILENT -DDONT_DEFINE_READ -DNO_DEBUGGING -DNO_EXECUTE_PERMISSION \
-	$(CFLAGS_FOR_PIC) $(DLL_CFLAGS) $(EXTRA_CFLAGS)
+CFLAGS= -I$(srcdir)/private -DSILENT -DDONT_DEFINE_READ -DNO_DEBUGGING \
+	-DNO_EXECUTE_PERMISSION $(CFLAGS_FOR_PIC) $(DLL_CFLAGS) $(EXTRA_CFLAGS)
 # Note that the `mgnuc' script also passes -DNO_SIGNALS, unless
 # profiling was enabled (see comments in runtime/mercury_prof_mem.h for why).
 # We need $(CFLAGS_FOR_PIC) because we might be building a shared library.
@@ -253,7 +253,7 @@ CURSES= -lcurses -ltermlib
 # the SHELL environment variable.
 SHELL= /bin/sh
 
-SPECIALCFLAGS = 
+SPECIALCFLAGS = -I$(srcdir)/private
 # Alternative flags to the C compiler for mach_dep.c.
 # Mach_dep.c often doesn't like optimization, and it's
 # not time-critical anyway.
