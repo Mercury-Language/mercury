@@ -200,7 +200,7 @@ lcss__build_thresh(N, MatchList, Inf, Thresh, Link) :-
 		array(int), array(lcss),
 		array(int), array(lcss)).
 :- mode lcss__build_thresh2(in, in, in, in, in, out, out) is det.
-lcss__build_thresh2(N, I, [], Thresh0, Link0, Thresh0, Link0).
+lcss__build_thresh2(_N, _I, [], Thresh0, Link0, Thresh0, Link0).
 lcss__build_thresh2(N, I, [Matches | MatchRest], Thresh0, Link0,
 						Thresh1, Link1) :-
 	I1 is I + 1,
