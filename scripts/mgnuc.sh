@@ -32,7 +32,7 @@ CHECK_OPTS="-ansi
 OPT_OPTS="-O2 -fomit-frame-pointer -DSPEED"
 DEBUG_OPTS="-g"
 
-grade=fast
+grade=asm_fast.gc
 verbose=false
 
 while true; do
