@@ -2580,7 +2580,10 @@ then the behaviour is undefined --- your program may misbehave or crash.)
 
 The C code in a @code{pragma c_code} declaration
 for a semidet mode of a predicate
-must assign a truth value to the variable @var{SUCCESS_INDICATOR}.
+must assign a truth value to the macro @var{SUCCESS_INDICATOR}.
+SUCCESS_INDICATOR should not be used other as the target of an assignment.
+(For example, it may be @code{#define}d to a register, so you should not try to
+take its address.)
 
 @c XXX must assign to output args iff SUCCESS_INDICATOR is set to true
 
