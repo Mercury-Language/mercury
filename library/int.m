@@ -248,20 +248,6 @@ int__log2_2(X, N0, N) :-
 
 %-----------------------------------------------------------------------------%
 
-% builtin_unary_minus and builtin_unary_plus aren't actually builtin yet,
-% although they should be... still, cross-module inlining would do the trick
-
-% These are actually implemented as builtins.
-% Their explicit definitions are necessary only for bootstrapping.
-
-- X = 0 - X.
-+ X = 0 + X.
-
-builtin_unary_minus(X, Y) :- Y is 0 - X.
-builtin_unary_plus(X, Y)  :- Y is 0 + X.
-
-%-----------------------------------------------------------------------------%
-
 % is/2 is replaced with `=' in the parser, but the following is useful
 % in case you should take the address of `is' or something wierd like that.
 
