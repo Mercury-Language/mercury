@@ -111,10 +111,10 @@ is/2 is currently defined in int.m, for historical reasons.
 'prolog__=:='(X, X).
 'prolog__=\\='(X, Y) :- X \= Y.
 
-'prolog__@<'(X, X) :- compare(<, X, Y).
+'prolog__@<'(X, Y) :- compare(<, X, Y).
 'prolog__@>'(X, Y) :- compare(>, X, Y).
-'prolog__@=<'(X, Y) :- compare(=<, X, Y).
-'prolog__@>='(X, Y) :- compare(>=, X, Y).
+'prolog__@=<'(X, Y) :- compare(R, X, Y), R \= (>).
+'prolog__@>='(X, Y) :- compare(R, X, Y), R \= (<).
 
 'prolog__=..'(Term, Functor - Args) :-
 	deconstruct(Term, Functor, _Arity, Args).
