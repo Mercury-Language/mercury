@@ -241,7 +241,7 @@ then
 
 	if
 		cd stage2_sicstus/library &&
-		mmake $mmake_opts $jfactor ints &&
+		mmake $mmake_opts $jfactor all-ints &&
 		mmake $mmake_opts $jfactor cs
 	then
 		echo "building of SICStus stage 2 library successful"
@@ -512,7 +512,9 @@ then
 	MMAKE_DIR=$root/scripts
 	export MMAKE_DIR
 
-	if (cd stage3/library && mmake $mmake_opts $jfactor ints && mmake $mmake_opts $jfactor cs)
+	if 	(cd stage3/library &&
+		mmake $mmake_opts $jfactor all-ints &&
+		mmake $mmake_opts $jfactor cs)
 	then
 		echo "building of stage 3 library successful"
 	else
