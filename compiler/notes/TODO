@@ -119,6 +119,19 @@ code generation:
 general
 -------
 
+- if-then-else and quantification: currently in
+	(if
+		some [V] P
+	then
+		Q
+	else
+		R
+	)
+   the scope of V is P and Q, not just P.  This is counter-intuitive.
+   We should probably require people to write `if_some' rather than
+   `if some' to get that effect.  (No obvious similar solution for
+   `(some [V] P -> Q ; R)', unfortunately.)
+
 - switch detection: handle multi-level indexing (cse)
 
 - more work on module system, separate compilation, and the multiple
