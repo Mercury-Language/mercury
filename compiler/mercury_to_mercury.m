@@ -613,9 +613,32 @@ mercury_output_item(_UnqualifiedItemNames, pragma(Pragma), Context) -->
 			"check_termination")
 	).
 
-mercury_output_item(_, assertion(Goal, VarSet), _) -->
-	io__write_string(":- promise "),
+mercury_output_item(_, promise(PromiseType, Goal0, VarSet, UnivVars), _) -->
 	{ Indent = 1 },
+	( { PromiseType = true } ->
+			% for an assertion, we put back any universally
+			% quantified variables that were stripped off during
+			% parsing so that the clause will output correctly
+		io__write_string(":- promise "),
+		( { \+ UnivVars = [] } ->
+			{ Goal0 = _GoalExpr - Context },
+			{ Goal = all(UnivVars, Goal0) - Context }
+		;
+			{ Goal = Goal0 }
+		)
+	;
+			% a promise ex declaration has a slightly different
+			% standard formatting from an assertion; the universal
+			% quantification comes before the rest of the
+			% declaration
+		io__write_string(":- all ["),
+		{ AppendVarNum = no },
+		mercury_output_vars(UnivVars, VarSet, AppendVarNum),
+		io__write_string("]"),
+		mercury_output_newline(Indent),
+		prog_out__write_promise_type(PromiseType),
+		{ Goal0 = Goal }
+	),
 	mercury_output_newline(Indent),
 	mercury_output_goal(Goal, VarSet, Indent),
 	io__write_string(".\n").
@@ -682,6 +705,13 @@ mercury_output_item(_, instance(Constraints, ClassName, Types, Body,
 	),
 	io__write_string(".\n").
 
+:- func mercury_to_string_promise_type(promise_type) = string.
+mercury_to_string_promise_type(exclusive) = "promise_exclusive".
+mercury_to_string_promise_type(exhaustive) = "promise_exhaustive".
+mercury_to_string_promise_type(exclusive_exhaustive) = 
+		"promise_exclusive_exhaustive".
+mercury_to_string_promise_type(true) = "promise".
+	
 %-----------------------------------------------------------------------------%
 
 :- pred output_class_methods(list(class_method), io__state, io__state).

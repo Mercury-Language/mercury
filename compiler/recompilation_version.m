@@ -432,7 +432,7 @@ item_to_item_id_2(Item, yes(item_id(ItemType, SymName - Arity))) :-
 	% We need to handle these separately because some pragmas
 	% may affect a predicate and a function.
 item_to_item_id_2(pragma(_), no).
-item_to_item_id_2(assertion(_, _), no).
+item_to_item_id_2(promise(_, _, _, _), no).
 item_to_item_id_2(Item, yes(item_id((typeclass), ClassName - ClassArity))) :-
 	Item = typeclass(_, ClassName, ClassVars, _, _),
 	list__length(ClassVars, ClassArity).	
@@ -552,8 +552,8 @@ item_is_unchanged(instance(Constraints, Name, Types, Body, _VarSet, Module),
 	% doesn't work with inter-module optimization yet.
 item_is_unchanged(clause(_VarSet, PorF, SymName, Args, Goal), Item2) =
 		( Item2 = clause(_, PorF, SymName, Args, Goal) -> yes ; no ).
-item_is_unchanged(assertion(Goal, _VarSet), Item2) =
-		( Item2 = assertion(Goal, _) -> yes ; no ).
+item_is_unchanged(promise(PromiseType, Goal, _, UnivVars), Item2) =
+		( Item2 = promise(PromiseType, Goal, _, UnivVars) -> yes ; no ).
 
 	% We do need to compare the variable names in `:- pragma type_spec'
 	% declarations because the names of the variables are used

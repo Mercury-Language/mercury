@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2000 The University of Melbourne.
+% Copyright (C) 1993-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -85,6 +85,14 @@
 :- pred prog_out__write_list(list(T), pred(T, io__state, io__state),
 		io__state, io__state).
 :- mode prog_out__write_list(in, pred(in, di, uo) is det, di, uo) is det.
+
+:- pred prog_out__write_promise_type(promise_type, io__state, io__state).
+:- mode prog_out__write_promise_type(in, di, uo) is det.
+
+:- func prog_out__promise_to_string(promise_type) = string.
+:- mode prog_out__promise_to_string(in) = out is det.
+:- mode prog_out__promise_to_string(out) = in is semidet.
+:- mode prog_out__promise_to_string(out) = out is multi.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -273,6 +281,16 @@ prog_out__write_list([Import], Writer) -->
 	call(Writer, Import).
 prog_out__write_list([], _) -->
 	{ error("prog_out__write_module_list") }.
+
+prog_out__promise_to_string(true) = "promise".
+prog_out__promise_to_string(exclusive) = "promise_exclusive".
+prog_out__promise_to_string(exhaustive) =  "promise_exhaustive".
+prog_out__promise_to_string(exclusive_exhaustive) = 
+		"promise_exclusive_exhaustive".
+
+prog_out__write_promise_type(PromiseType) -->
+	io__write_string(prog_out__promise_to_string(PromiseType)).
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

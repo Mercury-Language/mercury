@@ -1,0 +1,119 @@
+
+<html>
+<head>
+<title>
+	Promise Ex Declarations
+</title>
+</head>
+
+<body
+	bgcolor="#ffffff"
+	text="#000000"
+>
+
+<hr>
+<!-------------------------->
+<h1> Promise Ex Declarations</h1>
+
+This document is a description of promise ex declarations,
+which are currently unfinished and as such are undocumented 
+in the reference manual.
+
+<p>
+
+<hr>
+<!-------------------------->
+<h2> Syntax </h2>
+
+There are currently three promise ex declarations: promise_exclusive, 
+promise_exhaustive, and promise_exclusive_exhaustive. They are used to 
+denote determinism properties of a disjunction, and denote either exclusivity
+exhaustiveness or both. The examples of each, given below, also show
+the different ways that existential quantification can be handled.
+
+<ul>
+<li>	Mutual exclusivity:
+	<pre>
+	:- all [X, Y] promise_exclusive
+		some [Z] ( 
+			p(X, Y, Z) 
+		; 
+			q(X, Y, Z) 
+		).
+	</pre>
+<li>	Exhaustiveness:
+	<pre>
+	:- all [X] promise_exhaustive 
+		( 
+			p(X, _) 
+		; 
+			q(X, _) 
+		).  
+	</pre>
+<li>	Both together:
+	<pre> 
+	:- all [X] promise_exclusive_exhaustive  
+		some [Y] ( 
+			p(X, Y) 
+		; 
+			q(X, Y, Z)
+		).
+	</pre>
+</ul>
+
+All three declarations are restricted in the following ways:
+<ol>
+<li>	Any variable that occurs in more than one disjunct must be
+	explicitly quantified.
+<li>	Any variable occuring in only one disjunct is existentially quantified.
+	This is similarly applicable when an underscore is used in place of a 
+	variable.
+</ol>
+<p>
+
+<hr>
+<!--------------------------> 
+<h2> Development </h2>
+
+This tracks the use of promise ex declarations through the compiler, and
+may be useful as a quick summary of the current state of development. Items
+marked with an asterisk (*) are not yet implemented. Places where data 
+structures etc. have been defined are in italics.
+
+<ol>
+<li>	the declarations enter the parse tree
+	<ul>
+	<li>	<i>the operators are defined</i> (library/ops.m)
+	<li>	<i>the structure for promise ex declarations in the parse tree 
+		is defined</i> (prog_data.m)
+	<li>	they are parsed and entered into the parse tree (prog_io.m)
+	</ul>
+<li>	they may be pretty printed (mercury_to_mercury.m, prog_out.m).
+<li> 	(*) they are error checked, and entered in to the HLDS as 
+	dummy predicates
+	<ul>
+	<li>	<i>definition of promise ex table as part of HLDS </i> 
+		(hlds_module.m)
+	<li>	<i>operations on promise ex table</i> (hlds_data.m) 
+	<li>	error checking (make_hlds.m)
+	<li>	entering of declarations into the HLDS as dummy predicates 
+		(make_hlds.m)
+	</ul>
+<li>	(*) go through typechecking as predicates; after typechecking they 
+	are removed from processing as predicates and entered into the
+	promise_ex_table of the HLDS
+	<ul>
+	<li>	<i>predicates for finishing promise ex declaration processing
+		defined</i> (post_typecheck.m)
+	<li>	post typechecking processing initiated for promise ex 
+		declarations (purity.m)
+	</ul>
+<li>	(*) exclusivity information is used during switch detection, and 
+	where it leads to a full switch being made, applicable exhaustiveness 
+	information is also used (switch_detection.m)
+<li>	(*) exhaustiveness information is used during determinism analysis
+	(det_analysis.m)
+</ol>
+
+</body>
+</html>

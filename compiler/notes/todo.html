@@ -63,6 +63,23 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 
 <h2> determinism analysis </h2>
 
+<p>
+
+<ul>
+<li> add functionality for promise ex declarations:
+     <ul>
+     	<li> add error checking and type checking as for assertions
+	<li> include declaration information in the module_info
+	<li> take into account mutual exclusivity from promise_exclusive
+	     and promise_exclusive_exhaustive declarations during switch
+	     detection
+	<li> take into account exhaustiveness from promise_exhaustive and 
+	     promise_exclusive_exhaustive declarations during
+	     determinism analysis
+     </ul>
+</ul>
+     
+
 <h2> unique modes </h2>
 
 <ul>
@@ -335,6 +352,6 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 2001-05-02 17:34:47 $ by $Author: stayl $@cs.mu.oz.au. <br>
+Last update was $Date: 2002-02-08 02:27:12 $ by $Author: lljy $@cs.mu.oz.au. <br>
 </body>
 </html>

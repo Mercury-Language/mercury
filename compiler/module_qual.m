@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -260,7 +260,8 @@ collect_mq_info_2(pragma(Pragma), Info0, Info) :-
 	;
 		Info = Info0
 	).
-collect_mq_info_2(assertion(Goal, _ProgVarSet), Info0, Info) :-
+collect_mq_info_2(promise(_PromiseType, Goal, _ProgVarSet, _UnivVars), Info0, 
+		Info) :-
 	process_assert(Goal, SymNames, Success),
 	(
 		Success = yes,
@@ -276,7 +277,7 @@ collect_mq_info_2(assertion(Goal, _ProgVarSet), Info0, Info) :-
 			), 
 			SymNames, Info0, Info)
 	;
-			% Any unqualified symbol in the assertion might
+			% Any unqualified symbol in the promise might
 			% come from *any* of the imported modules.
 			% There's no way for us to tell which ones.  So
 			% we conservatively assume that it uses all of
@@ -568,8 +569,8 @@ module_qualify_item(pragma(Pragma0) - Context, pragma(Pragma) - Context,
 						Info0, Info, yes) -->
 	{ mq_info_set_error_context(Info0, (pragma) - Context, Info1) },
 	qualify_pragma(Pragma0, Pragma, Info1, Info).
-module_qualify_item(assertion(G, V) - Context, assertion(G, V) - Context,
-						Info, Info, yes) --> [].
+module_qualify_item(promise(T, G, V, U) - Context, 
+		promise(T, G, V, U) - Context, Info, Info, yes) --> [].
 module_qualify_item(nothing(A) - Context, nothing(A) - Context,
 						Info, Info, yes) --> [].
 module_qualify_item(typeclass(Constraints0, Name, Vars, Interface0, VarSet) -

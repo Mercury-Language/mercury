@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2001 The University of Melbourne.
+% Copyright (C) 1995-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -330,6 +330,10 @@ ops__op_table("or", after, xfy, 740).		% NU-Prolog extension
 ops__op_table("pragma", before, fx, 1199).	% Mercury extension
 ops__op_table("pred", before, fx, 800).		% Mercury/NU-Prolog extension
 ops__op_table("promise", before, fx, 1199).	% Mercury extension
+ops__op_table("promise_exclusive", before, fy, 950). % Mercury extension 
+ops__op_table("promise_exhaustive", before, fy, 950). % Mercury extension 
+ops__op_table("promise_exclusive_exhaustive", before, fy, 950). 
+						% Mercury extension 
 ops__op_table("rem", after, xfx, 400).		% Standard ISO Prolog
 ops__op_table("rule", before, fx, 1199).	% NU-Prolog extension
 ops__op_table("semipure", before, fy, 800).	% Mercury extension

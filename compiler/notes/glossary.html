@@ -15,10 +15,11 @@
 
 <dl>
 
-<dt> assertion/promise
+<dt> assertion
 	<dd>
-    A declaration that specifies a law that holds for the
-    predicates/functions in the declaration.
+	A particular form of promise which claims to the compiler 
+	that the specified goal will always hold. If useful, the 
+	compiler may use this information to perform optimisations.
 
 <dt> class context 
 	<dd>
@@ -90,6 +91,22 @@
 	the structure in HLDS which contains
 	information about a procedure.
 
+<dt> promise
+	<dd>
+    	A declaration that specifies a law that holds for the 
+	predicates/functions in the declaration. Thus, examples of promises
+	are assertions and promise ex declarations.  More generally, the term 
+	promise is often used for a declaration where extra information is 
+	given to the compiler which it cannot check itself, for example in
+	purity pragmas.
+
+<dt> promise ex
+	<dd>
+	A shorthand for promise_exclusive, promise_exhaustive, and
+	promise_exclusive_exhaustive declarations. These declarations 
+	are used to tell the compiler determinism properties of a 
+	disjunction.
+
 <dt> RTTI
 	<dd>
 	The "RunTime Type Information". See rtti.m. A copy of a paper given
@@ -112,6 +129,6 @@
 <hr>
 <!-------------------------->
 
-Last update was $Date: 2002-01-09 04:48:59 $ by $Author: ndw $@cs.mu.oz.au. <br>
+Last update was $Date: 2002-02-08 02:27:12 $ by $Author: lljy $@cs.mu.oz.au. <br>
 </body>
 </html>

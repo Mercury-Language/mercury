@@ -253,7 +253,8 @@ add_item_decl_pass_1(
 
 add_item_decl_pass_1(pragma(_), _, Status, Module, Status, Module) --> [].
 
-add_item_decl_pass_1(assertion(_, _), _, Status, Module, Status, Module) --> [].
+add_item_decl_pass_1(promise(_, _, _, _), _, Status, Module, Status, Module)
+	--> [].
 
 add_item_decl_pass_1(module_defn(_VarSet, ModuleDefn), Context,
 		Status0, Module0, Status, Module) -->
@@ -609,7 +610,8 @@ add_item_decl_pass_2(
 		)
 	}.
 
-add_item_decl_pass_2(assertion(_, _), _, Status, Module, Status, Module) --> [].
+add_item_decl_pass_2(promise(_, _, _, _), _, Status, Module, Status, Module) 
+	--> [].
 add_item_decl_pass_2(clause(_, _, _, _, _), _, Status, Module, Status,
 		Module) --> [].
 add_item_decl_pass_2(inst_defn(_, _, _, _, _), _, Status, Module,
@@ -796,8 +798,10 @@ add_item_clause(pragma(Pragma), Status, Status, Context,
 		{ Module = Module0 },
 		{ Info = Info0 }	
 	).
-add_item_clause(assertion(Goal0, VarSet),
+	
+add_item_clause(promise(PromiseType, Goal, VarSet, UnivVars),
 		Status, Status, Context, Module0, Module, Info0, Info) -->
+	( { PromiseType = true } ->	% promise is an assertion
 
 		%
 		% If the outermost existentially quantified variables
@@ -806,19 +810,10 @@ add_item_clause(assertion(Goal0, VarSet),
 		% type variables as this implicity adds a universal
 		% quantification of the typevariables needed.
 		%
-	(
-		{ Goal0 = all(Vars, AllGoal) - _Context }
-	->
-		{ term__var_list_to_term_list(Vars, HeadVars) },
-		{ Goal = AllGoal }
-	;
-		{ HeadVars = [] },
-		{ Goal = Goal0 }
-	),
-
+		{ term__var_list_to_term_list(UnivVars, HeadVars) },
 	{ term__context_line(Context, Line) },
 	{ term__context_file(Context, File) },
-	{ string__format("assertion__%d__%s", [i(Line), s(File)], Name) },
+		{ string__format("assertion__%d__%s", [i(Line), s(File)],Name)},
 
 		%
 		% The assertions are recorded as a predicate whose
@@ -835,8 +830,14 @@ add_item_clause(assertion(Goal0, VarSet),
 		%
 	{ IsAssertion = yes },
 	module_add_clause(Module0, VarSet, predicate, unqualified(Name),
-			HeadVars, Goal, Status, Context, IsAssertion, Module,
-			Info0, Info).
+				HeadVars, Goal, Status, Context, IsAssertion, 
+				Module, Info0, Info)
+	;
+			% promise is a promise ex declaration,
+			% not yet implemented
+		{ Module0 = Module },
+		{ Info0 = Info }
+	).
 
 add_item_clause(nothing(_), Status, Status, _,
 	Module, Module, Info, Info) --> [].
@@ -3279,7 +3280,7 @@ add_special_pred_decl_for_real(SpecialPredId,
 	PredName = unqualified(Name),
 	special_pred_info(SpecialPredId, Type, Name, ArgTypes, ArgModes, Det),
 	special_pred_name_arity(SpecialPredId, _, _, Arity),
-	Cond = true,
+	Cond `with_type` condition = true,
 	clauses_info_init(Arity, ClausesInfo0),
 	adjust_special_pred_status(Status0, SpecialPredId, Status),
 	map__init(Proofs),

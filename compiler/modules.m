@@ -1062,7 +1062,7 @@ strip_imported_items([Item - Context | Rest], Items0, Items) :-
 strip_assertions([], []).
 strip_assertions([Item - Context | Rest], Items) :-
 	( 
-		Item = assertion(_, _)
+		Item = promise(true, _, _, _)
 	->
 		strip_assertions(Rest, Items)
 	; 

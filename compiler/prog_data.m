@@ -73,7 +73,9 @@
 
 	;	pragma(pragma_type)
 
-	;	assertion(goal, prog_varset)
+	;	promise(promise_type, goal, prog_varset, prog_vars)
+		% 	PromiseType, PromiseClause, ProgVariables, 
+		% 	UniversallyQuantifiedVars
 
 	;	typeclass(list(class_constraint), class_name, list(tvar),
 			class_interface, tvarset)
@@ -89,6 +91,17 @@
 		% used for items that should be ignored (e.g.
 		% NU-Prolog `when' declarations, which are silently
 		% ignored for backwards compatibility).
+	
+	% indicates the type of information the compiler should get from the 
+	% declaration's clause
+:- type promise_type
+		% promise ex declarations
+	--->	exclusive		% each disjunct is mutually exclusive
+	;	exhaustive		% disjunction cannot fail
+	;	exclusive_exhaustive	% both of the above
+
+		% assertions
+	; 	true.			% promise goal is true
 
 :- type type_and_mode	
 	--->	type_only(type)

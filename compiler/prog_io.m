@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2001 The University of Melbourne.
+% Copyright (C) 1993-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -856,7 +856,7 @@ process_func_clause(error(ErrMessage, Term0), _, _, _,
 
 :- type decl_attribute
 	--->	purity(purity)
-	;	quantifier(quantifier_type, list(tvar))
+	;	quantifier(quantifier_type, list(var))
 	;	constraints(quantifier_type, term).
 		% the term here is the (not yet parsed) list of constraints
 
@@ -1136,8 +1136,23 @@ process_decl(ModuleName, VarSet, "pragma", Pragma, Attributes, Result):-
 	check_no_attributes(Result0, Attributes, Result).
 
 process_decl(ModuleName, VarSet, "promise", Assertion, Attributes, Result):-
-	parse_assertion(ModuleName, VarSet, Assertion, Result0),
+	parse_promise(ModuleName, true, VarSet, Assertion, Attributes, Result0),
 	check_no_attributes(Result0, Attributes, Result).
+
+process_decl(ModuleName, VarSet, "promise_exclusive", PromiseGoal, Attributes,
+		Result):-
+	parse_promise(ModuleName, exclusive, VarSet, PromiseGoal, Attributes, 
+			Result).
+
+process_decl(ModuleName, VarSet, "promise_exhaustive", PromiseGoal, Attributes,
+		Result):-
+	parse_promise(ModuleName, exhaustive, VarSet, PromiseGoal, Attributes, 
+			Result).
+
+process_decl(ModuleName, VarSet, "promise_exclusive_exhaustive", PromiseGoal, 
+		Attributes, Result):-
+	parse_promise(ModuleName, exclusive_exhaustive, VarSet, PromiseGoal, 
+		Attributes, Result).
 
 process_decl(ModuleName, VarSet, "typeclass", Args, Attributes, Result):-
 	parse_typeclass(ModuleName, VarSet, Args, Result0),
@@ -1203,13 +1218,11 @@ parse_decl_attribute("<=", [Decl, Constraints],
 		constraints(univ, Constraints), Decl).
 parse_decl_attribute("=>", [Decl, Constraints],
 		constraints(exist, Constraints), Decl).
-parse_decl_attribute("some", [TVars0, Decl],
+parse_decl_attribute("some", [TVars, Decl],
 		quantifier(exist, TVarsList), Decl) :-
-	term__coerce(TVars0, TVars),
 	parse_list_of_vars(TVars, TVarsList).
-parse_decl_attribute("all", [TVars0, Decl],
+parse_decl_attribute("all", [TVars, Decl],
 		quantifier(univ, TVarsList), Decl) :-
-	term__coerce(TVars0, TVars),
 	parse_list_of_vars(TVars, TVarsList).
 
 :- pred check_no_attributes(maybe1(item), decl_attrs, maybe1(item)).
@@ -1239,14 +1252,17 @@ attribute_description(constraints(exist, _),
 
 %-----------------------------------------------------------------------------%
 
-	% parse the assertion declaration. 
-:- pred parse_assertion(module_name, varset, list(term), maybe1(item)).
-:- mode parse_assertion(in, in, in, out) is semidet.
-
-parse_assertion(_ModuleName, VarSet, [AssertionTerm], Result) :-
-	varset__coerce(VarSet, ProgVarSet),
-	parse_goal(AssertionTerm, ProgVarSet, AssertGoal, AssertVarSet),
-	Result = ok(assertion(AssertGoal, AssertVarSet)).
+:- pred parse_promise(module_name, promise_type, varset, list(term), decl_attrs,
+		maybe1(item)).
+:- mode parse_promise(in, in, in, in, in, out) is semidet.
+parse_promise(ModuleName, PromiseType, VarSet, [Term], Attributes, Result) :-
+		% get universally quantified variables
+	get_quant_vars(univ, ModuleName, Attributes, [], _, UnivVars0),
+	list__map(term__coerce_var, UnivVars0, UnivVars),
+	
+	varset__coerce(VarSet, ProgVarSet0),
+	parse_goal(Term, ProgVarSet0, PromiseGoal, ProgVarSet),
+	Result = ok(promise(PromiseType, PromiseGoal, ProgVarSet, UnivVars)).
 
 %-----------------------------------------------------------------------------%
 
@@ -1876,10 +1892,11 @@ get_class_context(ModuleName, RevAttributes0, RevAttributes, MaybeContext) :-
 	% error message.)
 
 	list__reverse(RevAttributes0, Attributes0),
-	get_quant_tvars(univ, ModuleName, Attributes0, [],
+	get_quant_vars(univ, ModuleName, Attributes0, [],
 					Attributes1, _UnivQVars),
-	get_quant_tvars(exist, ModuleName, Attributes1, [],
-					Attributes2, ExistQVars),
+	get_quant_vars(exist, ModuleName, Attributes1, [],
+					Attributes2, ExistQVars0),
+	list__map(term__coerce_var, ExistQVars0, ExistQVars),
 	get_constraints(univ, ModuleName, Attributes2,
 					Attributes3, MaybeUnivConstraints),
 	get_constraints(exist, ModuleName, Attributes3,
@@ -1900,21 +1917,21 @@ combine_quantifier_results(
 	ok(UnivConstraints), ok(ExistConstraints), ExistQVars,
 	ok(ExistQVars, constraints(UnivConstraints, ExistConstraints))).
 
-:- pred get_quant_tvars(quantifier_type, module_name, decl_attrs, list(tvar),
-		decl_attrs, list(tvar)).
-:- mode get_quant_tvars(in, in, in, in, out, out) is det.
+:- pred get_quant_vars(quantifier_type, module_name, decl_attrs, list(var),
+		decl_attrs, list(var)).
+:- mode get_quant_vars(in, in, in, in, out, out) is det.
 
-get_quant_tvars(QuantType, ModuleName, Attributes0, TVars0,
-		Attributes, TVars) :-
+get_quant_vars(QuantType, ModuleName, Attributes0, Vars0,
+		Attributes, Vars) :-
 	(	
-		Attributes0 = [quantifier(QuantType, TVars1) - _ | Attributes1]
+		Attributes0 = [quantifier(QuantType, Vars1) - _ | Attributes1]
 	->
-		list__append(TVars0, TVars1, TVars2),
-		get_quant_tvars(QuantType, ModuleName, Attributes1, TVars2,
-			Attributes, TVars)
+		list__append(Vars0, Vars1, Vars2),
+		get_quant_vars(QuantType, ModuleName, Attributes1, Vars2,
+			Attributes, Vars)
 	;
 		Attributes = Attributes0,
-		TVars = TVars0
+		Vars = Vars0
 	).
 
 :- pred get_constraints(quantifier_type, module_name, decl_attrs, decl_attrs, 
