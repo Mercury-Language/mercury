@@ -145,6 +145,31 @@ lower bounds other than zero are not supported
 		Word *elements;
 	} UniqArrayType;
 
+Define_extern_entry(mercury____Unify___uniq_array_1_0);
+Define_extern_entry(mercury____Compare___uniq_array_1_0);
+Define_extern_entry(mercury____Index___uniq_array_1_0);
+/* Define_extern_entry(mercury____TypeToTerm___uniq_array_1_0); */
+/* Define_extern_entry(mercury____TermToType___uniq_array_1_0); */
+
+BEGIN_MODULE(uniq_array_module)
+        init_entry(mercury____Unify___uniq_array_1_0);
+        init_entry(mercury____Compare___uniq_array_1_0);
+        init_entry(mercury____Index___uniq_array_1_0);
+/*        init_entry(mercury____TypeToTerm___uniq_array_1_0); */
+/*        init_entry(mercury____TermToType___uniq_array_1_0); */
+BEGIN_CODE
+
+Define_entry(mercury____Unify___uniq_array_1_0);
+        fatal_error(""cannot unify uniq_arrays"");
+
+Define_entry(mercury____Compare___uniq_array_1_0);
+        fatal_error(""cannot compare uniq_arrays"");
+
+Define_entry(mercury____Index___uniq_array_1_0);
+        fatal_error(""cannot index uniq_array"");
+
+END_MODULE
+
 ").
 
 %-----------------------------------------------------------------------------%

@@ -71,11 +71,23 @@
 :- pred eqvclass__partition_list(eqvclass(T), list(set(T))).
 :- mode eqvclass__partition_list(in, out) is det.
 
+	% Create an equivalence class from a partition set.
+	% It is an error if the sets are not disjoint.
+
+:- pred eqvclass__partition_set_to_eqvclass(set(set(T)), eqvclass(T)).
+:- mode eqvclass__partition_set_to_eqvclass(in, out) is det.
+
+	% Create an equivalence class from a list of partitions.
+	% It is an error if the sets are not disjoint.
+
+:- pred eqvclass__partition_list_to_eqvclass(list(set(T)), eqvclass(T)).
+:- mode eqvclass__partition_list_to_eqvclass(in, out) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module map, int, require.
+:- import_module map, int, require, set.
 
 :- type eqvclass(T)	--->
 		eqvclass(
@@ -230,3 +242,39 @@ eqvclass__id_to_partition(EqvClass0, Id, Partition) :-
 	;
 		error("partition id not known to equivalence class")
 	).
+
+%---------------------------------------------------------------------------%
+
+eqvclass__partition_set_to_eqvclass(SetSet, EqvClass) :-
+	set__to_sorted_list(SetSet, ListSet),
+	eqvclass__partition_list_to_eqvclass(ListSet, EqvClass).
+
+eqvclass__partition_list_to_eqvclass([], EqvClass) :-
+	eqvclass__init(EqvClass).
+eqvclass__partition_list_to_eqvclass([Partition | Ps], EqvClass) :-
+	eqvclass__partition_list_to_eqvclass(Ps, EqvClass0),
+	EqvClass0 = eqvclass(NextId0, PartitionMap0, ElementMap0),
+	set__to_sorted_list(Partition, Elements),
+	( Elements = [] ->
+	    NextId = NextId0,
+	    ElementMap0 = ElementMap,
+	    PartitionMap0 = PartitionMap
+	;
+	    Id = NextId0,
+	    NextId is NextId0 + 1,
+	    eqvclass__make_partition(Elements, Id, ElementMap0, ElementMap),
+	    map__det_insert(PartitionMap0, Id, Partition, PartitionMap)
+	),
+	EqvClass = eqvclass(NextId, PartitionMap, ElementMap).
+
+:- pred eqvclass__make_partition(list(T), partition_id,
+	map(T, partition_id), map(T, partition_id)).
+:- mode eqvclass__make_partition(in, in, in, out) is det.
+
+eqvclass__make_partition([], _Id, ElementMap, ElementMap).
+eqvclass__make_partition([Element | Elements], Id, ElementMap0, ElementMap) :-
+	map__det_insert(ElementMap0, Element, Id, ElementMap1),
+	eqvclass__make_partition(Elements, Id, ElementMap1, ElementMap).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
