@@ -40,7 +40,7 @@ C2INITFLAGS = --trace
 
 # We need to use shared libraries for interactive queries to work.
 # The following is necessary for shared libraries to work on Linux.
-MGNUCFLAGS-interactive = --pic-reg
+GRADEFLAGS-interactive = --pic-reg
 MLFLAGS-interactive = --shared
 
 # Base grades `jump' and `fast' cannot be used with
@@ -128,10 +128,10 @@ interactive.out: interactive.out.orig
 		    -e 's/<predicate .interactive:qperm.\/2 mode 0>.//' \
 		    -e '/__start$$/N' \
 		    -e 's/__start.//' \
-		    > queens.out
+		    > interactive.out
 	# ignore egcs internal errors -- those are not our fault
-	if grep 'gcc.*Internal compiler error' queens.out; then \
-		cp queens.exp queens.out; \
+	if grep 'gcc.*Internal compiler error' interactive.out; then \
+		cp interactive.exp interactive.out; \
 	fi
 
 # We ignore the result of this action because

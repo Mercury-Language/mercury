@@ -43,19 +43,19 @@ print *
 #
 mmc_options --use-subdirs
 mmc_options
-query queens list
+query interactive list
 append(X, Y, ['a', 'b', 'c']).
 qperm([1,2,3], List).
 qperm([1,2,3], List), List = [2 | _].
 qperm([1,2,3], List), List = [4 | _].
 qperm([1,2,"foo"], List).
 qperm(List, [1]).
-quit. cc_query queens list
+quit. cc_query interactive list
 append(X, Y, ['a', 'b', 'c']).
 qperm([1,2,3], List).
 qperm([1,2,3], List), List = [2 | _].
 qperm([1,2,3], List), List = [4 | _].
-quit. io_query queens list
+quit. io_query interactive list
 main.
 if { append(X, Y, ['a', 'b', 'c']) } then
 	print("X = "), print(X), 
