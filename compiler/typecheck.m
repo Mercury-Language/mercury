@@ -2753,7 +2753,17 @@ report_ambiguity_error(TypeInfo, TypeAssign1, TypeAssign2) -->
 	{ type_assign_get_var_types(TypeAssign1, VarTypes1) },
 	{ map__keys(VarTypes1, Vars1) },
 	report_ambiguity_error_2(Vars1, VarSet, TypeInfo,
-					TypeAssign1, TypeAssign2).
+					TypeAssign1, TypeAssign2),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+	( { VerboseErrors = yes } ->
+		io__write_string("\tYou will need to add an explicit type qualification to resolve the\n"),
+		io__write_string("\ttype ambiguity.\n"),
+		io__write_string("\tThe way to add an explicit type qualification\n"),
+		io__write_string("\tis to insert a call to a dummy predicate whose `:- pred'\n"),
+		io__write_string("\tdeclaration specifies the appropriate argument types.\n")
+	;
+		[]
+	).
 
 :- pred report_ambiguity_error_2(list(var), varset, type_info,
 				type_assign, type_assign,
@@ -2773,7 +2783,7 @@ report_ambiguity_error_2([V | Vs], VarSet, TypeInfo, TypeAssign1, TypeAssign2)
 		map__search(VarTypes2, V, Type2),
 		term__apply_rec_substitution(Type1, TypeBindings1, T1),
 		term__apply_rec_substitution(Type2, TypeBindings2, T2),
-		T1 \= T2
+		\+ identical_types(T1, T2)
 	} ->
 		{ type_info_get_context(TypeInfo, Context) },
 		prog_out__write_context(Context),
@@ -2791,6 +2801,17 @@ report_ambiguity_error_2([V | Vs], VarSet, TypeInfo, TypeAssign1, TypeAssign2)
 	report_ambiguity_error_2(Vs, VarSet, TypeInfo,
 				TypeAssign1, TypeAssign2).
 
+	% Check whether two types are identical ignoring their
+	% term__contexts, i.e. whether they can be unified without
+	% binding any type parameters.
+
+:- pred identical_types(type, type).
+:- mode identical_types(in, in) is semidet.
+
+identical_types(Type1, Type2) :-
+	map__init(TypeSubst0),
+	type_unify(Type1, Type2, [], TypeSubst0, TypeSubst),
+	TypeSubst = TypeSubst0.
 	
 %-----------------------------------------------------------------------------%
 
