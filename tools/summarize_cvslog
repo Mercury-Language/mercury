@@ -70,6 +70,7 @@ while(<>) {
 	$next_asterisk_line = $next;
 
 	$log_message =~ s/^Log Message:\n\n//;
+	$log_message =~ s/\n\n*$/\n\n/;
 
 	if (0) {
 		print "[[[DEBUG INFO]]]\n" .
