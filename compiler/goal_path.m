@@ -72,9 +72,9 @@ fill_expr_slots(not(Goal0), _, Path0, SlotInfo, not(Goal)) :-
 fill_expr_slots(some(A, B, Goal0), OuterInfo, Path0, SlotInfo,
 		some(A, B, Goal)) :-
 	Goal0 = _ - InnerInfo,
-	goal_info_get_code_model(OuterInfo, OuterModel),
-	goal_info_get_code_model(InnerInfo, InnerModel),
-	( InnerModel = OuterModel ->
+	goal_info_get_determinism(OuterInfo, OuterDetism),
+	goal_info_get_determinism(InnerInfo, InnerDetism),
+	( InnerDetism = OuterDetism ->
 		MaybeCut = no_cut
 	;
 		MaybeCut = cut

@@ -14,6 +14,11 @@
 :- module mercury_to_mercury.
 :- interface.
 
+:- import_module prog_data, (inst).
+:- import_module hlds_goal, hlds_data.
+
+:- import_module bool, std_util, list, io, varset, term.
+
 :- type needs_brackets
 	--->	needs_brackets		% needs brackets, if it is an op
 	;	does_not_need_brackets.	% doesn't need brackets
@@ -22,9 +27,6 @@
 	--->	next_to_graphic_token		% needs quotes, if it
 						% is another graphic token
 	;	not_next_to_graphic_token.	% doesn't need quotes
-
-:- import_module hlds_goal, hlds_data, prog_data, (inst).
-:- import_module bool, std_util, list, io, varset, term.
 
 %	convert_to_mercury(ModuleName, OutputFileName, Items)
 :- pred convert_to_mercury(module_name, string, list(item_and_context),

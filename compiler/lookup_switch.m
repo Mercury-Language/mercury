@@ -41,8 +41,9 @@
 
 :- interface.
 
-:- import_module prog_data, hlds_goal, hlds_data.
-:- import_module switch_util.
+:- import_module prog_data.
+:- import_module hlds_goal, hlds_data, switch_util.
+:- import_module code_model.
 :- import_module llds, code_info.
 
 :- import_module std_util, map, set, list.
@@ -68,9 +69,11 @@
 
 :- implementation.
 
-:- import_module builtin_ops, code_gen, type_util, tree.
-:- import_module dense_switch, globals, options, mode_util.
-:- import_module exprn_aux, getopt, prog_data, instmap.
+:- import_module prog_data.
+:- import_module type_util, mode_util, instmap.
+:- import_module builtin_ops.
+:- import_module dense_switch, code_gen, exprn_aux.
+:- import_module globals, options, tree.
 
 :- import_module int, require, bool, assoc_list.
 
@@ -92,8 +95,7 @@ lookup_switch__is_lookup_switch(CaseVar, TaggedCases, GoalInfo, SwitchCanFail,
 		% heuristic to get it right, so, lets just use a simple
 		% one - no static ground terms, no lookup switch.
 	code_info__get_globals(Globals),
-	{ globals__get_options(Globals, Options) },
-	{ getopt__lookup_bool_option(Options, static_ground_terms, yes) },
+	{ globals__lookup_bool_option(Globals, static_ground_terms, yes) },
 	{
 		% We want to generate a lookup switch for any switch
 		% that is dense enough - we don't care how many cases
@@ -397,8 +399,7 @@ lookup_switch__generate_bitvec_test(Index, CaseVals, Start, _End,
 lookup_switch__get_word_bits(WordBits, Log2WordBits) -->
 	{ int__bits_per_int(HostWordBits) },
 	code_info__get_globals(Globals),
-	{ globals__get_options(Globals, Options) },
-	{ getopt__lookup_int_option(Options, bits_per_word, TargetWordBits) },
+	{ globals__lookup_int_option(Globals, bits_per_word, TargetWordBits) },
 	{ int__min(HostWordBits, TargetWordBits, WordBits0) },
 	% round down to the nearest power of 2
 	{ Log2WordBits = log2_rounded_down(WordBits0) },

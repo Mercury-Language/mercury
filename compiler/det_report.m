@@ -14,8 +14,10 @@
 
 :- interface.
 
+:- import_module prog_data.
 :- import_module hlds_module, hlds_pred, hlds_goal.
-:- import_module det_util, prog_data.
+:- import_module det_util.
+
 :- import_module io, list.
 
 :- type det_msg	--->
@@ -120,10 +122,13 @@
 
 :- implementation.
 
+:- import_module prog_out. 
 :- import_module hlds_data, type_util, mode_util, inst_match.
-:- import_module globals, options, prog_out, hlds_out, mercury_to_mercury.
-:- import_module passes_aux, term, varset.
+:- import_module hlds_out, mercury_to_mercury.
+:- import_module passes_aux.
+:- import_module globals, options.
 
+:- import_module term, varset.
 :- import_module bool, int, map, set, std_util, require, string.
 
 %-----------------------------------------------------------------------------%
@@ -204,9 +209,8 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0,
 	
 	% make sure the code model is valid given the eval method
 	{ proc_info_eval_method(ProcInfo0, EvalMethod) },
-	{ determinism_to_code_model(InferredDetism, CodeMod) },
 	( 
-		{ valid_code_model_for_eval_method(EvalMethod, CodeMod) }
+		{ valid_determinism_for_eval_method(EvalMethod, InferredDetism) }
 	->
 		{
 		    proc_info_set_eval_method(ProcInfo0, EvalMethod, ProcInfo),
@@ -240,11 +244,25 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0,
 	).
 
 :- pred get_valid_dets(eval_method, determinism).
-:- mode get_valid_dets(in, out) is multidet.
+:- mode get_valid_dets(in, out) is nondet.
 
-get_valid_dets(EvalMethod, Det) :-
-	valid_code_model_for_eval_method(EvalMethod, CodeModel),
-	determinism_to_code_model(Det, CodeModel).
+get_valid_dets(EvalMethod, Detism) :-
+	determinism(Detism),
+	valid_determinism_for_eval_method(EvalMethod, Detism).
+
+	% generate all the possible determinisms
+:- pred determinism(determinism).
+:- mode determinism(out) is multi.
+:- mode determinism(in) is det. % to ensure we don't forget any
+
+determinism(det).
+determinism(semidet).
+determinism(multidet).
+determinism(nondet).
+determinism(cc_multidet).
+determinism(cc_nondet).
+determinism(erroneous).
+determinism(failure).
 
 :- pred print_dets(list(determinism), io__state, io__state).
 :- mode print_dets(in, di, uo) is det.

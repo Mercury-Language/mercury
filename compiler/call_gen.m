@@ -18,7 +18,7 @@
 
 :- interface.
 
-:- import_module prog_data, hlds_pred, hlds_goal, llds, code_info.
+:- import_module prog_data, hlds_pred, hlds_goal, code_model, llds, code_info.
 :- import_module list, assoc_list.
 
 :- pred call_gen__generate_call(code_model::in, pred_id::in, proc_id::in,
@@ -53,9 +53,13 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_data, code_util, builtin_ops, rl.
-:- import_module arg_info, type_util, mode_util, unify_proc, instmap.
-:- import_module polymorphism, trace, globals, options.
+:- import_module hlds_module, hlds_data.
+:- import_module polymorphism, type_util, mode_util, unify_proc, instmap.
+:- import_module builtin_ops.
+:- import_module arg_info, code_util, trace.
+:- import_module rl.
+:- import_module globals, options.
+
 :- import_module std_util, bool, int, tree, map, set.
 :- import_module varset, require, string.
 

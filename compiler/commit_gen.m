@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module hlds_goal, llds, code_info.
+:- import_module hlds_goal, code_model, llds, code_info.
 
 :- pred commit_gen__generate_commit(code_model::in, hlds_goal::in,
 	code_tree::out, code_info::in, code_info::out) is det.

@@ -30,7 +30,10 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal, llds, code_info.
+:- import_module hlds_module, hlds_pred, hlds_goal.
+:- import_module code_model.
+:- import_module llds, code_info.
+
 :- import_module list, io, counter.
 
 		% Translate a HLDS module to LLDS.
@@ -59,12 +62,22 @@
 
 :- implementation.
 
+% Parse tree modules
+:- import_module prog_data, prog_out, prog_util.
+
+% HLDS modules
+:- import_module hlds_out, instmap, type_util, mode_util, goal_util.
+
+% LLDS code generator modules.
 :- import_module call_gen, unify_gen, ite_gen, switch_gen, disj_gen.
 :- import_module par_conj_gen, pragma_c_gen, commit_gen.
-:- import_module continuation_info, trace, trace_params, options, hlds_out.
-:- import_module code_aux, middle_rec, passes_aux, llds_out.
-:- import_module code_util, type_util, mode_util, goal_util.
-:- import_module prog_data, prog_out, prog_util, instmap, globals.
+:- import_module continuation_info, trace, trace_params.
+:- import_module code_aux, code_util, middle_rec, passes_aux, llds_out.
+
+% Misc compiler modules
+:- import_module globals, options.
+
+% Standard library modules
 :- import_module bool, char, int, string.
 :- import_module map, assoc_list, set, term, tree, std_util, require, varset.
 

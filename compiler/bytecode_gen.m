@@ -37,10 +37,12 @@
 % arg_info.m so that it didn't depend on the LLDS.
 
 :- import_module arg_info, call_gen. % XXX for arg passing convention
-:- import_module llds.		% XXX for code_model
 :- import_module code_util.	% XXX for cons_id_to_tag
-:- import_module hlds_pred, hlds_goal, hlds_data, prog_data, type_util.
-:- import_module passes_aux, mode_util, goal_util, builtin_ops.
+
+:- import_module prog_data.
+:- import_module hlds_pred, hlds_goal, hlds_data.
+:- import_module type_util, mode_util, goal_util.
+:- import_module builtin_ops, code_model, passes_aux.
 :- import_module globals, tree.
 
 :- import_module bool, int, string, list, assoc_list, set, map, varset.

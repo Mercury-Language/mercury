@@ -21,8 +21,11 @@
 
 :- interface.
 
-:- import_module hlds_goal, hlds_pred, prog_data.
+:- import_module prog_data.
+:- import_module hlds_goal, hlds_pred.
+:- import_module code_model.
 :- import_module llds, code_info.
+
 :- import_module list, std_util.
 
 :- pred pragma_c_gen__generate_pragma_c_code(code_model::in,

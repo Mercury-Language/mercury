@@ -16,17 +16,12 @@
 
 :- interface.
 
-:- import_module hlds_pred, hlds_goal, hlds_data, tree, prog_data, (inst).
-:- import_module rtti, builtin_ops.
+:- import_module prog_data, (inst).
+:- import_module hlds_pred, hlds_goal, hlds_data.
+:- import_module code_model, rtti, builtin_ops.
+:- import_module tree.
 
 :- import_module bool, assoc_list, list, map, set, std_util, counter.
-
-%-----------------------------------------------------------------------------%
-
-:- type code_model
-	--->	model_det		% functional & total
-	;	model_semi		% just functional
-	;	model_non.		% not functional
 
 %-----------------------------------------------------------------------------%
 

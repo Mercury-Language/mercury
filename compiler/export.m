@@ -18,7 +18,7 @@
 
 :- interface.
 
-:- import_module hlds_module, prog_data, llds.
+:- import_module prog_data, hlds_module, llds.
 :- import_module io.
 
 	% From the module_info, get a list of foreign_export_decls,
@@ -70,8 +70,10 @@
 
 :- implementation.
 
-:- import_module code_gen, code_util, hlds_pred, llds_out, modules.
-:- import_module type_util.
+:- import_module modules.
+:- import_module hlds_pred, type_util.
+:- import_module code_model.
+:- import_module code_gen, code_util, llds_out.
 
 :- import_module term, varset.
 :- import_module library, map, int, string, std_util, assoc_list, require.

@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module prog_data, hlds_data, hlds_goal.
+:- import_module prog_data, hlds_data, hlds_goal, code_model.
 :- import_module switch_util, type_util.
 :- import_module llds, code_info.
 

@@ -18,8 +18,10 @@
 
 :- interface.
 
-:- import_module hlds_goal, hlds_data, llds, code_info.
 :- import_module prog_data.
+:- import_module hlds_goal, hlds_data.
+:- import_module code_model.
+:- import_module llds, code_info.
 
 :- type test_sense
 	--->	branch_on_success

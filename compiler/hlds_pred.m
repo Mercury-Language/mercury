@@ -13,14 +13,25 @@
 
 :- interface.
 
-:- import_module hlds_data, hlds_goal, hlds_module, llds, prog_data, instmap.
-:- import_module globals, term_util.
+:- import_module prog_data.
+:- import_module hlds_data, hlds_goal, hlds_module, instmap, term_util.
+:- import_module globals.
+
 :- import_module bool, list, set, map, std_util, term, varset.
 
 :- implementation.
 
-:- import_module code_aux, goal_util, make_hlds, prog_util.
-:- import_module inst_match, mode_util, type_util, options.
+% Parse tree modules.
+:- import_module prog_util.
+
+% HLDS modules.
+:- import_module code_aux, goal_util, make_hlds.
+:- import_module inst_match, mode_util, type_util.
+
+% Misc
+:- import_module options.
+
+% Standard library modules.
 :- import_module int, string, require, assoc_list.
 
 %-----------------------------------------------------------------------------%
@@ -1269,11 +1280,9 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- pred proc_info_inferred_determinism(proc_info, determinism).
 :- mode proc_info_inferred_determinism(in, out) is det.
 
+	% See also proc_info_interface_code_model in code_model.m.
 :- pred proc_info_interface_determinism(proc_info, determinism).
 :- mode proc_info_interface_determinism(in, out) is det.
-
-:- pred proc_info_interface_code_model(proc_info, code_model).
-:- mode proc_info_interface_code_model(in, out) is det.
 
 	% proc_info_never_succeeds(ProcInfo, Result):
 	% return Result = yes if the procedure is known to never succeed
@@ -1698,10 +1707,6 @@ proc_info_interface_determinism(ProcInfo, Determinism) :-
 	;
 		MaybeDeterminism = yes(Determinism)
 	).
-
-proc_info_interface_code_model(ProcInfo, CodeModel) :-
-	proc_info_interface_determinism(ProcInfo, Determinism),
-	determinism_to_code_model(Determinism, CodeModel).
 
 	% Return Result = yes if the called predicate is known to never succeed.
 	%
@@ -2274,10 +2279,9 @@ hlds_pred__is_differential(ModuleInfo, PredId) :-
 :- interface.
 
 	% Check if the given evaluation method is allowed with
-	% the given code model.
-:- pred valid_code_model_for_eval_method(eval_method, code_model).
-:- mode valid_code_model_for_eval_method(in, in) is semidet.
-:- mode valid_code_model_for_eval_method(in, out) is multidet.
+	% the given determinism.
+:- pred valid_determinism_for_eval_method(eval_method, determinism).
+:- mode valid_determinism_for_eval_method(in, in) is semidet.
 
 	% Convert an evaluation method to a string.
 :- pred eval_method_to_string(eval_method, string).
@@ -2314,17 +2318,11 @@ hlds_pred__is_differential(ModuleInfo, PredId) :-
 
 :- import_module det_analysis.
 
-valid_code_model_for_eval_method(eval_normal, model_det).
-valid_code_model_for_eval_method(eval_normal, model_semi).
-valid_code_model_for_eval_method(eval_normal, model_non).
-valid_code_model_for_eval_method(eval_memo, model_det).
-valid_code_model_for_eval_method(eval_memo, model_semi).
-valid_code_model_for_eval_method(eval_memo, model_non).
-valid_code_model_for_eval_method(eval_loop_check, model_det).
-valid_code_model_for_eval_method(eval_loop_check, model_semi).
-valid_code_model_for_eval_method(eval_loop_check, model_non).
-valid_code_model_for_eval_method(eval_minimal, model_semi).
-valid_code_model_for_eval_method(eval_minimal, model_non).
+valid_determinism_for_eval_method(eval_normal, _).
+valid_determinism_for_eval_method(eval_memo, _).
+valid_determinism_for_eval_method(eval_loop_check, _).
+valid_determinism_for_eval_method(eval_minimal, Determinism) :-
+	determinism_components(Determinism, can_fail, _).
 
 eval_method_to_string(eval_normal,		"normal").
 eval_method_to_string(eval_memo,		"memo").

@@ -18,7 +18,7 @@
 :- interface.
 
 :- import_module prog_data, hlds_data, hlds_goal.
-:- import_module switch_util.
+:- import_module switch_util, code_model.
 :- import_module llds, code_info.
 
 :- pred string_switch__generate(cases_list, prog_var, code_model,

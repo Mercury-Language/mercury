@@ -33,9 +33,24 @@
 
 :- implementation.
 
-:- import_module llds, arg_info, prog_data, hlds_goal, hlds_data, mode_util.
-:- import_module liveness, code_aux, globals, trace_params, trace.
-:- import_module graph_colour, instmap, options.
+% Parse tree modules
+:- import_module prog_data.
+
+% HLDS modules
+:- import_module hlds_goal, hlds_data, mode_util, instmap, code_aux.
+:- import_module liveness.
+
+% Modules shared between different back-ends.
+:- import_module code_model.
+
+% LLDS modules
+:- import_module llds, arg_info, trace_params, trace.
+
+% Misc
+:- import_module globals, options, graph_colour.
+
+
+% Standard library modules
 :- import_module list, map, set, std_util, assoc_list, bool.
 :- import_module int, require.
 

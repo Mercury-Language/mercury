@@ -24,9 +24,9 @@
 
 :- interface.
 
-:- import_module llds.	% XXX for code_model
+:- import_module prog_data.
 :- import_module hlds_module, hlds_pred, hlds_data.
-:- import_module prog_data, pseudo_type_info.
+:- import_module pseudo_type_info, code_model.
 
 :- import_module bool, list, std_util.
 

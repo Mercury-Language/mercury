@@ -112,8 +112,8 @@ unique_modes__check_goal(Goal0, Goal, ModeInfo0, ModeInfo) :-
 	% If the goal is not nondet, then nothing is nondet-live,
 	% so reset the bag of nondet-live vars to be empty.
 	%
-	goal_info_get_code_model(GoalInfo0, CodeModel),
-	( CodeModel = model_non ->
+	goal_info_get_determinism(GoalInfo0, Detism),
+	( determinism_components(Detism, _, at_most_many) ->
 		ModeInfo2 = ModeInfo1
 	;
 		mode_info_set_nondet_live_vars([], ModeInfo1, ModeInfo2)
@@ -295,9 +295,9 @@ unique_modes__check_goal_2(disj(List0, SM), GoalInfo0, disj(List, SM)) -->
 		% disjunct, in unique_modes__check_disj.
 		%
 		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
-		{ goal_info_get_code_model(GoalInfo0, CodeModel) },
+		{ goal_info_get_determinism(GoalInfo0, Determinism) },
 		% does this disjunction create a choice point?
-		( { CodeModel = model_non } ->
+		( { determinism_components(Determinism, _, at_most_many) } ->
 			mode_info_add_live_vars(NonLocals),
 			make_all_nondet_live_vars_mostly_uniq,
 			mode_info_remove_live_vars(NonLocals)
@@ -309,7 +309,7 @@ unique_modes__check_goal_2(disj(List0, SM), GoalInfo0, disj(List, SM)) -->
 		% Now just modecheck each disjunct in turn, and then
 		% merge the resulting instmaps.
 		%
-		unique_modes__check_disj(List0, CodeModel, NonLocals,
+		unique_modes__check_disj(List0, Determinism, NonLocals,
 			List, InstMapList),
 		instmap__merge(NonLocals, InstMapList, disj)
 	),
@@ -436,7 +436,6 @@ unique_modes__check_goal_2(generic_call(GenericCall, Args, Modes, Det),
 	;
 		NeverSucceeds = no
 	},
-	{ determinism_to_code_model(Det, CodeModel) },
 
 	{
 		GenericCall = higher_order(_, _, _),
@@ -462,7 +461,7 @@ unique_modes__check_goal_2(generic_call(GenericCall, Args, Modes, Det),
 	},
 
 	unique_modes__check_call_modes(Args, Modes, ArgOffset,
-		CodeModel, NeverSucceeds),
+		Det, NeverSucceeds),
 	{ Goal = generic_call(GenericCall, Args, Modes, Det) },
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "generic_call").
@@ -549,10 +548,11 @@ unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId,
 		PredInfo, ProcInfo),
 	compute_arg_offset(PredInfo, ArgOffset),
 	proc_info_argmodes(ProcInfo, ProcArgModes0),
-	proc_info_interface_code_model(ProcInfo, CodeModel),
+	proc_info_interface_determinism(ProcInfo, InterfaceDeterminism),
 	proc_info_never_succeeds(ProcInfo, NeverSucceeds),
 	unique_modes__check_call_modes(ArgVars, ProcArgModes0, ArgOffset,
-			CodeModel, NeverSucceeds, ModeInfo1, ModeInfo2),
+			InterfaceDeterminism, NeverSucceeds,
+			ModeInfo1, ModeInfo2),
 
 	%
 	% see whether or not that worked
@@ -608,12 +608,12 @@ unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId,
 	% inst was unique.
 
 :- pred unique_modes__check_call_modes(list(prog_var), list(mode), int,
-		code_model, bool, mode_info, mode_info).
+		determinism, bool, mode_info, mode_info).
 :- mode unique_modes__check_call_modes(in, in, in, in, in,
 			mode_info_di, mode_info_uo) is det.
 
 unique_modes__check_call_modes(ArgVars, ProcArgModes, ArgOffset,
-		CodeModel, NeverSucceeds, ModeInfo0, ModeInfo) :-
+		Determinism, NeverSucceeds, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	mode_list_get_initial_insts(ProcArgModes, ModuleInfo,
 				InitialInsts),
@@ -639,7 +639,7 @@ unique_modes__check_call_modes(ArgVars, ProcArgModes, ArgOffset,
 		% If so, mark all the currently nondet-live variables
 		% whose inst is `unique' as instead being only `mostly_unique'.
 		%
-		( CodeModel = model_non ->
+		( determinism_components(Determinism, _, at_most_many) ->
 			make_all_nondet_live_vars_mostly_uniq(ModeInfo2,
 				ModeInfo)
 		;
@@ -754,22 +754,22 @@ unique_modes__check_par_conj_1([Goal0 | Goals0], [Goal | Goals],
 	% the original instmap before processing the next one.
 	% Collect up a list of the resulting instmaps.
 
-:- pred unique_modes__check_disj(list(hlds_goal), code_model, set(prog_var),
+:- pred unique_modes__check_disj(list(hlds_goal), determinism, set(prog_var),
 		list(hlds_goal), list(instmap), mode_info, mode_info).
 :- mode unique_modes__check_disj(in, in, in, out, out,
 		mode_info_di, mode_info_uo) is det.
 
 unique_modes__check_disj([], _, _, [], []) --> [].
-unique_modes__check_disj([Goal0 | Goals0], DisjCodeModel, DisjNonLocals,
+unique_modes__check_disj([Goal0 | Goals0], DisjDetism, DisjNonLocals,
 		[Goal | Goals], [InstMap | InstMaps]) -->
 	mode_info_dcg_get_instmap(InstMap0),
 	(
 		%
 		% If the disjunction was model_nondet, then we already marked
 		% all the non-locals as only being mostly-unique, so we
-		% don't need to do anything speical here...
+		% don't need to do anything special here...
 		%
-		{ DisjCodeModel \= model_non },
+		{ \+ determinism_components(DisjDetism, _, at_most_many) },
 
 		%
 		% ... but for model_semi or model_det disjunctions, if the
@@ -791,7 +791,7 @@ unique_modes__check_disj([Goal0 | Goals0], DisjCodeModel, DisjNonLocals,
 	unique_modes__check_goal(Goal0, Goal),
 	mode_info_dcg_get_instmap(InstMap),
 	mode_info_set_instmap(InstMap0),
-	unique_modes__check_disj(Goals0, DisjCodeModel, DisjNonLocals,
+	unique_modes__check_disj(Goals0, DisjDetism, DisjNonLocals,
 		Goals, InstMaps).
 
 %-----------------------------------------------------------------------------%

@@ -43,8 +43,12 @@
 
 :- implementation.
 
-:- import_module hlds_data, llds, mode_util, prog_data, call_gen.
-:- import_module code_util, quantification, arg_info, globals.
+:- import_module prog_data.
+:- import_module hlds_data, quantification, mode_util.
+:- import_module code_model.
+:- import_module llds, call_gen, code_util, arg_info.
+:- import_module globals.
+
 :- import_module bool, int, list, assoc_list, map, set, std_util, require.
 
 %-----------------------------------------------------------------------------%

@@ -32,9 +32,12 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
-:- import_module prog_data, llds, instmap, term.
-:- import_module io, bool, list.
+% Parse tree modules
+:- import_module prog_data.
+% HLDS modules
+:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, instmap.
+
+:- import_module io, bool, list, term.
 
 %-----------------------------------------------------------------------------%
 
@@ -130,9 +133,6 @@
 
 :- pred hlds_out__write_can_fail(can_fail, io__state, io__state).
 :- mode hlds_out__write_can_fail(in, di, uo) is det.
-
-:- pred hlds_out__write_code_model(code_model, io__state, io__state).
-:- mode hlds_out__write_code_model(in, di, uo) is det.
 
 :- pred hlds_out__write_import_status(import_status, io__state, io__state).
 :- mode hlds_out__write_import_status(in, di, uo) is det.
@@ -243,10 +243,23 @@
 
 :- implementation.
 
-:- import_module mercury_to_mercury, globals, options, purity, special_pred.
-:- import_module llds_out, prog_out, prog_util, (inst), instmap, trace.
-:- import_module rl, code_util, termination, term_errors, check_typeclass.
+% Parse tree modules.
+:- import_module prog_out, prog_util, (inst).
 
+% HLDS modules.
+:- import_module mercury_to_mercury, purity, special_pred, instmap.
+:- import_module termination, term_errors, check_typeclass.
+
+% RL back-end modules (XXX should avoid using those here).
+:- import_module rl.
+
+% LLDS back-end modules (XXX should avoid using those here).
+:- import_module code_util, llds, llds_out, trace.
+
+% Misc
+:- import_module globals, options.
+
+% Standard library modules
 :- import_module int, string, set, assoc_list, map, multi_map.
 :- import_module require, getopt, std_util, term_io, varset.
 
@@ -1039,6 +1052,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarnums,
 	( { string__contains_char(Verbose, 'P') } ->
 		{ goal_info_get_goal_path(GoalInfo, Path) },
 		( { Path \= [] } ->
+			% XXX should avoid dependency on trace.m here
 			{ trace__path_to_string(Path, PathStr) },
 			hlds_out__write_indent(Indent),
 			io__write_string("% goal path: "),
@@ -1676,6 +1690,7 @@ hlds_out__write_aditi_builtin(ModuleInfo,
 		Indent, Follow) -->
 	hlds_out__write_indent(Indent),	
 	io__write_string("aditi_call "),
+	% XXX should avoid dependency on rl.m here
 	{ rl__get_entry_proc_name(ModuleInfo, PredProcId, ProcName) },
 	io__write(ProcName),
 	io__write_string("("),
@@ -3044,13 +3059,6 @@ hlds_out__write_can_fail(can_fail) -->
 	io__write_string("can_fail").
 hlds_out__write_can_fail(cannot_fail) -->
 	io__write_string("cannot_fail").
-
-hlds_out__write_code_model(model_det) -->
-	io__write_string("model_det").
-hlds_out__write_code_model(model_semi) -->
-	io__write_string("model_semi").
-hlds_out__write_code_model(model_non) -->
-	io__write_string("model_non").
 
 :- pred hlds_out__write_indent(int, io__state, io__state).
 :- mode hlds_out__write_indent(in, di, uo) is det.

@@ -696,8 +696,8 @@
 :- interface.
 
 :- import_module hlds_module, hlds_goal.
+:- import_module code_model.
 :- import_module mlds, ml_code_util.
-:- import_module llds. % XXX needed for `code_model'.
 :- import_module io.
 
 %-----------------------------------------------------------------------------%
@@ -732,7 +732,7 @@
 
 :- import_module ml_type_gen, ml_call_gen, ml_unify_gen, ml_switch_gen.
 :- import_module ml_code_util.
-:- import_module arg_info, llds_out. % XXX needed for pragma foreign code
+:- import_module arg_info, llds, llds_out. % XXX needed for pragma foreign code
 :- import_module export, foreign. % XXX needed for pragma foreign code
 :- import_module hlds_pred, hlds_goal, hlds_data, prog_data.
 :- import_module goal_util, type_util, mode_util, builtin_ops.

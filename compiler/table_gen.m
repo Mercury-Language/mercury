@@ -177,6 +177,7 @@
 :- import_module hlds_module, hlds_goal, hlds_data, (inst), inst_match.
 :- import_module globals, options, passes_aux, prog_data, mode_util, type_util.
 :- import_module code_util, quantification, modes, purity, prog_util.
+:- import_module code_model.
 
 :- import_module term, varset.
 :- import_module bool, list, set, map, require, std_util, int.

@@ -29,20 +29,25 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal, llds, instmap, trace.
-:- import_module continuation_info, prog_data, hlds_data, globals.
+:- import_module prog_data.
+:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, instmap.
+:- import_module code_model.
+:- import_module llds, continuation_info, trace.
+:- import_module globals.
 
 :- import_module bool, set, list, map, std_util, assoc_list, counter.
 
 :- implementation.
 
-:- import_module code_util, code_exprn, var_locn, llds_out, prog_out.
-:- import_module exprn_aux, arg_info, type_util, mode_util.
-:- import_module trace_params, options.
+:- import_module prog_out.
+:- import_module type_util, mode_util.
+:- import_module arg_info, code_util, code_exprn, exprn_aux, var_locn.
+:- import_module trace_params, llds_out.
+:- import_module options, tree.
 
 :- import_module term, varset.
 :- import_module set, stack.
-:- import_module string, require, char, bimap, tree, int.
+:- import_module string, require, char, bimap, int.
 
 %---------------------------------------------------------------------------%
 

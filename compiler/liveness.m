@@ -160,11 +160,19 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, llds, quantification, (inst), instmap.
-:- import_module hlds_out, mode_util, code_util, quantification, options.
-:- import_module polymorphism, passes_aux, prog_util.
-:- import_module trace_params, trace, globals.
+% Parse tree modules
+:- import_module prog_util, (inst).
+% HLDS modules
+:- import_module hlds_goal, hlds_data, hlds_out, instmap, mode_util.
+:- import_module quantification, polymorphism.
+% Modules shared between different back-ends.
+:- import_module code_model, passes_aux.
+% LLDS modules
+:- import_module llds, code_util, trace_params, trace.
+% Misc
+:- import_module globals, options.
 
+% Standard library modules
 :- import_module bool, string, map, std_util, list, assoc_list, require.
 :- import_module term, varset.
 

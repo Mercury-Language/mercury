@@ -18,8 +18,9 @@
 
 :- interface.
 
-:- import_module prog_data, llds.
+:- import_module prog_data.
 :- import_module hlds_module, hlds_pred.
+:- import_module llds.
 
 :- import_module list.
 
@@ -76,6 +77,7 @@
 :- import_module require.
 
 :- import_module hlds_pred, hlds_module, type_util, mode_util.
+:- import_module code_model.
 
 foreign__filter_decls(WantedLang, Decls0, LangDecls, NotLangDecls) :-
 	list__filter((pred(foreign_decl_code(Lang, _, _)::in) is semidet :-

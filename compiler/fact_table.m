@@ -86,13 +86,21 @@
 
 :- implementation.
 
+% Standard library modules
 :- import_module int, map, std_util, assoc_list, char, require, library, bool.
 :- import_module float, math, getopt, string.
-:- import_module parser, term_io.
+:- import_module parser, term, term_io.
 
-:- import_module prog_util, prog_out, llds_out, modules, hlds_out, hlds_data.
-:- import_module globals, options, passes_aux, arg_info, llds, mode_util.
-:- import_module prog_io, code_util, export, inst_match, term.
+% Parse tree modules
+:- import_module prog_util, prog_io, prog_out, modules.
+% HLDS modules
+:- import_module hlds_out, hlds_data, mode_util, inst_match.
+% LLDS back-end modules
+:- import_module arg_info, llds, llds_out, code_util, export.
+% Modules shared between different back-ends.
+:- import_module passes_aux, code_model.
+% Misc
+:- import_module globals, options.
 
 :- type fact_result
 	--->	ok ; error.

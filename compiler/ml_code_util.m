@@ -17,9 +17,8 @@
 
 :- import_module prog_data.
 :- import_module hlds_module, hlds_pred.
-:- import_module rtti.
+:- import_module rtti, code_model.
 :- import_module mlds.
-:- import_module llds. % XXX for `code_model'.
 :- import_module globals.
 
 :- import_module bool, int, list, map, std_util.

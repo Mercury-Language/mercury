@@ -186,7 +186,7 @@
 
 :- implementation.
 
-:- import_module builtin_ops, prog_util, type_util, special_pred.
+:- import_module prog_util, type_util, special_pred, builtin_ops, code_model.
 
 :- import_module char, int, string, set, map, term, varset.
 :- import_module require, std_util, assoc_list.

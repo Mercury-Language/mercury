@@ -17,8 +17,8 @@
 
 :- import_module prog_data.
 :- import_module hlds_module, hlds_pred, hlds_data, hlds_goal.
+:- import_module code_model.
 :- import_module mlds, ml_code_util.
-:- import_module llds. % XXX for `code_model'
 
 %-----------------------------------------------------------------------------%
 

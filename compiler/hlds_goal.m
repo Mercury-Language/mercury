@@ -602,9 +602,7 @@
 :- pred goal_info_set_post_deaths(hlds_goal_info, set(prog_var), hlds_goal_info).
 :- mode goal_info_set_post_deaths(in, in, out) is det.
 
-:- pred goal_info_get_code_model(hlds_goal_info, code_model).
-:- mode goal_info_get_code_model(in, out) is det.
-
+	% see also goal_info_get_code_model in code_model.m
 :- pred goal_info_get_determinism(hlds_goal_info, determinism).
 :- mode goal_info_get_determinism(in, out) is det.
 
@@ -1312,10 +1310,6 @@ goal_info_set_resume_point(GoalInfo0, ResumePoint,
 
 goal_info_set_goal_path(GoalInfo0, GoalPath,
 		GoalInfo0 ^ goal_path := GoalPath).
-
-goal_info_get_code_model(GoalInfo, CodeModel) :-
-	goal_info_get_determinism(GoalInfo, Determinism),
-	determinism_to_code_model(Determinism, CodeModel).
 
 goal_info_add_feature(GoalInfo0, Feature, GoalInfo) :-
 	goal_info_get_features(GoalInfo0, Features0),

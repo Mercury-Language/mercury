@@ -62,8 +62,10 @@
 
 :- interface.
 
-:- import_module prog_data, hlds_goal, hlds_data, mlds, ml_code_util.
-:- import_module llds. % XXX for code_model
+:- import_module prog_data.
+:- import_module hlds_goal, hlds_data.
+:- import_module code_model.
+:- import_module mlds, ml_code_util.
 :- import_module globals.
 
 :- import_module list.

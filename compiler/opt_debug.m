@@ -14,8 +14,9 @@
 
 :- interface.
 
-:- import_module vn_type, vn_table, livemap.
-:- import_module llds, rtti, builtin_ops, atsort.
+:- import_module llds, vn_type, vn_table, livemap.
+:- import_module code_model, rtti, builtin_ops.
+:- import_module atsort.
 
 :- import_module io, bool, list, assoc_list, std_util.
 
@@ -194,8 +195,10 @@
 
 :- implementation.
 
-:- import_module llds_out, opt_util, vn_util, hlds_pred, globals, options.
 :- import_module prog_out.
+:- import_module hlds_pred.
+:- import_module llds_out, opt_util, vn_util.
+:- import_module globals, options.
 
 :- import_module int, set, map, string.
 

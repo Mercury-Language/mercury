@@ -202,6 +202,8 @@
 	% for a redo event. Otherwise, generate empty code.
 :- pred trace__maybe_setup_redo_event(trace_info::in, code_tree::out) is det.
 
+	% Convert a goal path to a string, using the format documented
+	% in the Mercury user's guide.
 :- pred trace__path_to_string(goal_path::in, string::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -210,6 +212,8 @@
 
 :- import_module continuation_info, trace_params, type_util, llds_out, tree.
 :- import_module (inst), instmap, inst_match, code_util, mode_util, options.
+:- import_module code_model.
+
 :- import_module list, bool, int, string, map, std_util, require, term, varset.
 
 	% Information specific to a trace port.

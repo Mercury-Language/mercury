@@ -138,13 +138,20 @@
 
 :- implementation.
 
-:- import_module globals, options, llds.
-:- import_module term, varset.
-:- import_module dead_proc_elim, type_util, mode_util, goal_util.
-:- import_module passes_aux, code_aux, quantification, det_analysis, prog_data.
+% Parse tree modules
+:- import_module prog_data.
 
-:- import_module bool, int, list, assoc_list, set, std_util.
-:- import_module require, hlds_data, dependency_graph.
+% HLDS modules
+:- import_module hlds_data, type_util, mode_util, goal_util, det_analysis.
+:- import_module quantification, code_aux, dead_proc_elim, dependency_graph.
+:- import_module passes_aux.
+
+% Misc
+:- import_module globals, options.
+
+% Standard library modules
+:- import_module bool, int, list, assoc_list, set, std_util, require.
+:- import_module term, varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -824,7 +831,8 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 	\+ (
 		HighLevelCode = no,
 		CalledGoal = pragma_foreign_code(_,_,_,_,_,_,_) - _,
-		proc_info_interface_code_model(ProcInfo, model_non)
+		proc_info_interface_determinism(ProcInfo, Detism),
+		( Detism = nondet ; Detism = multidet )
 	),
 
 	% Don't inline memoed Aditi predicates.
