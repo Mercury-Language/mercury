@@ -296,8 +296,7 @@ typecheck_var_has_type(VarId, Type, TypeInfo0, TypeInfo) :-
 		typeinfo_set_found_error(TypeInfo1, true, TypeInfo2),
 		typeinfo_set_type_assign_set(TypeInfo2, TypeAssignSet, TypeInfo)
 	else
-		typeinfo_set_type_assign_set(TypeInfo0, TypeAssignSet0,
-						TypeInfo).
+		typeinfo_set_type_assign_set(TypeInfo0, TypeAssignSet, TypeInfo)
 	).
 
 :- pred typecheck_var_has_type_2(type_assign_set, var_id, type,
@@ -340,8 +339,67 @@ typecheck_term_has_type_list([Arg | Args], [Type | Types]) -->
 :- pred typecheck_term_has_type(term, type, type_info, type_info).
 :- mode typecheck_term_has_type(input, input, input, typeinfo_di, typeinfo_uo).
 
-typecheck_term_has_type(Term, Type, TypeInfo0, TypeInfo) :-
-	XXX.
+typecheck_term_has_type(term_variable(Var), Type, TypeInfo0, TypeInfo) :-
+	typecheck_var_has_type(Var, Type, TypeInfo0, TypeInfo).
+
+typecheck_term_has_type(term_functor(F, As, C), Type, TypeInfo0, TypeInfo) :-
+	length(As, Arity),
+	typeinfo_get_ctor_list(TypeInfo, cons(F, Arity), ConsDefnList),
+	typeinfo_get_type_assign_set(TypeInfo0, TypeAssignSet0),
+	typecheck_cons_has_type(TypeAssignSet0, ConsDefnList, As, Type,  [],
+		TypeAssignSet),
+	(if
+		TypeAssignSet = [],
+		(not TypeAssignSet0 = [])
+	then
+		typeinfo_get_iostate(TypeInfo0, IOState0),
+		typeinfo_get_moduleinfo(TypeInfo0, ModuleInfo),
+			% XXX should improve error reporting
+		report_error_2(VarId, Type, ModuleInfo, IOState0, IOState),
+		typeinfo_set_iostate(TypeInfo0, IOState, TypeInfo1),
+		typeinfo_set_found_error(TypeInfo1, true, TypeInfo2),
+		typeinfo_set_type_assign_set(TypeInfo2, TypeAssignSet, TypeInfo)
+	else
+		typeinfo_set_type_assign_set(TypeInfo0, TypeAssignSet, TypeInfo)
+	).
+
+:- pred typecheck_cons_has_type(type_assign_set, list(hlds__cons_defn),
+		list(term), list(type), type_assign_set, type_assign_set).
+:- mode typecheck_cons_has_type(input, input, input, input, input, output).
+
+typecheck_cons_has_type([], _, _, _) --> [].
+typecheck_cons_has_type([TypeAssign|TypeAssigns], ConsDefnList, Args, Type) -->
+	type_assign_cons_has_type(ConsDefnList, TypeAssign, Args, Type),
+	typecheck_cons_has_type(TypeAssigns, ConsDefnList, Args, Type).
+
+type_assign_cons_has_type([], _TypeAssign0, _Args, _Type) --> [].
+type_assign_cons_has_type([ConsDefn | ConsDefns], TypeAssign0, Args, Type) -->
+	type_assign_cons_has_type_2(ConsDefn, TypeAssign0, Args, Type),
+	type_assign_cons_has_type(ConsDefns, TypeAssign0, Args, Type).
+
+type_assign_cons_has_type_2(ConsDefn, TypeAssign0, Args, Type) -->
+	{
+	  ConsDefn = hlds__cons_defn(ArgTypes, TypeId, _Context),
+
+		% construct the type of this constructor
+	  type_asssign_get_typevarset(TypeAssign0, TypeVarSet0),
+	  type_id_to_type(TypeId, TypeVarSet0, ConsType, TypeVarSet),
+	  type_asssign_set_typevarset(TypeAssign0, TypeVarSet, TypeAssign1)
+	},
+	(if %%% some [TypeAssign2] {
+		type_assign_unify_type(TypeAssign1, ConsType, Type, TypeAssign2)
+	} then
+		type_assign_term_has_type_list(Args, ArgTypes, TypeAssign2)
+	else
+		[]
+	).
+
+type_assign_term_has_type_list([], [], _) --> [].
+type_assign_term_has_type_list([Arg | Args], [Type | Types], TypeAssign0) -->
+	type_assign_term_has_type_list(Args, Types, TypeAssign0).
+	type_assign_term_has_type_list(Args, Types, TypeAssign0).
+	
+
 
 %-----------------------------------------------------------------------------%
 
@@ -506,7 +564,8 @@ type_assign_unify_var_functor([ConsDefn | ConsDefns], Args, Y, TypeAssign0,
 	(if some [TypeY]
 		map__search(VarTypes0, Y, TypeY)
 	then
-		type_unify_assign(TypeAssign1, ConsType, TypeY, TypeAssign2)
+		type_assign_unify_type(TypeAssign1, ConsType, TypeY,
+					TypeAssign2)
 	else
 		map__set(VarTypes0, Y, Type, VarTypes),
 		type_assign_set_var_types(TypeAssign1, VarTypes, TypeAssign2)
@@ -1033,6 +1092,21 @@ typeinfo_get_io_state(typeinfo(IOState,_,_,_,_,_,_,_), IOState).
 
 typeinfo_set_io_state( typeinfo(A,B,C,D,E,F,G,_), TypeAssignSet,
 			typeinfo(A,B,C,D,E,F,G,TypeAssignSet)).
+
+%-----------------------------------------------------------------------------%
+
+:- pred typeinfo_get_ctor_list(type_info, cons_id, list(hlds__cons_defn)).
+:- mode typeinfo_get_ctor_list(input, input, output).
+
+typeinfo_get_ctor_list(TypeInfo, ConsId, ConsDefnList) :-
+	typeinfo_get_ctors(TypeInfo, Ctors),
+	(if some [ConsDefnList0]
+		map__search(Ctors, ConsId, ConsDefnList)
+	then
+		ConsDefnList = ConsDefnList0
+	else
+		ConsDefnList = []
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
