@@ -16,11 +16,21 @@
 :- implementation.
 
 main -->
+	{ String = "asdfjkfhaslks" },
+	{ FString = "iii %s.\n"},
 	{ string:string__format(FString, [s(String)], Out1) },
 	io:io__write_string(Out1),
 	{ qual_strang:string__format(FString, [s(String)], Out2) },
 	io__write_string(Out2),
 	{ qual_strung:string__format(FString, [s(String)], Out3) },
 	io__write_string(Out3),
-	{ String = "asdfjkfhaslks" },
-	{ FString = "iii %s.\n"}.
+	{ Out4 = qual_strang:string__format_func(FString, [s(String)]) },
+	{ Out5 = qual_strung:string__format_func(FString, [s(String)]) },
+	(
+		{ Out4 = Out2 },
+		{ Out5 = Out3 }
+	->
+		io__write_string("ok\n")
+	;
+		io__write_string("failed\n")
+	).

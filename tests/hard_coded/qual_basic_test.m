@@ -1,6 +1,7 @@
 :- module qual_basic_test.
 
-% A test to ensure a qualified predicate is parsed correctly.
+% A test to ensure qualified predicates, function calls
+% and higher-order constants are parsed correctly.
 
 :- interface.
 
@@ -10,4 +11,19 @@
 
 :- implementation.
 
-qual_basic_test:main --> io:io__write_string("Gotcha!\n").
+:- import_module int.
+
+qual_basic_test:main -->
+	io:io__write_string("Gotcha1!\n"),
+	{ A is qual_basic_test:test },
+	{ X is int:(A + 2) },
+	io:io__write_int(X),	
+	io__write_string("\n"),
+	{ Pred = int:int__max },
+	{ call(Pred, 1, 2, Y) },
+	io__write_int(Y),
+	io__write_string("\n").
+
+:- func test = int.
+
+test = 2.

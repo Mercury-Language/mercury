@@ -13,9 +13,14 @@
 :- pred string__format(string, list(string__poly_type), string).
 :- mode string__format(in, in, out) is det.
 
+:- func string__format_func(string, list(string__poly_type)) = string.
+:- mode string__format_func(in, in) = out is det.
+
 :- implementation.
 :- import_module bool, char, int, float, require, std_util.
 
+string__format_func(FString, PolyList) = String :-
+	qual_strung:string__format(FString, PolyList, String).
 
 string__format( Fstring, Poly_list, Ostring ) :-
 	string__to_char_list(Fstring, Clist),
