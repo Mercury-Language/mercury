@@ -8,6 +8,9 @@
 ** mercury_signal.h - functions for setting up signal handlers.
 **
 ** This defines a generic signal handler setup mechanism.
+**
+** NOTE: If `struct sigcontext' is needed, mercury_signal.h must be
+** included before anything which could include <signal.h>.
 */
 
 #ifndef	MERCURY_SIGNAL_H

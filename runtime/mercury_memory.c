@@ -35,6 +35,11 @@
 /*---------------------------------------------------------------------------*/
 
 #include "mercury_imp.h"
+
+/* 
+** This include must come before anything else that might include <signal.h>.
+** See the commments in mercury_signal.h.
+*/
 #include "mercury_signal.h"
 
 #ifdef HAVE_UNISTD_H
