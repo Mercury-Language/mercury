@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1998 The University of Melbourne.
+** Copyright (C) 1997-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -226,13 +226,20 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
                 /* allocate space for a univ */
                 incr_saved_hp(new_data, 2);
                 new_data_ptr = (Word *) new_data;
-                new_data_ptr[UNIV_OFFSET_FOR_TYPEINFO] = 
-                    (Word) copy_type_info( 
-                        &data_value[UNIV_OFFSET_FOR_TYPEINFO],
-                        lower_limit, upper_limit);
+		/*
+		** Copy the fields across.
+		** Note: we must copy the data before the type_info,
+		** because when copying the data, we need the type_info
+		** to still contain the type rather than just holding
+		** a forwarding pointer.
+		*/
                 new_data_ptr[UNIV_OFFSET_FOR_DATA] = copy(
                         &data_value[UNIV_OFFSET_FOR_DATA], 
                         (const Word *) data_value[UNIV_OFFSET_FOR_TYPEINFO],
+                        lower_limit, upper_limit);
+                new_data_ptr[UNIV_OFFSET_FOR_TYPEINFO] = 
+                    (Word) copy_type_info( 
+                        &data_value[UNIV_OFFSET_FOR_TYPEINFO],
                         lower_limit, upper_limit);
                 leave_forwarding_pointer(data_ptr, new_data);
             } else {
@@ -329,30 +336,49 @@ copy_type_info(maybeconst Word *type_info_ptr, const Word *lower_limit,
 {
 	Word *type_info = (Word *) *type_info_ptr;
 
+
 	if (in_range(type_info)) {
 		Word *base_type_info;
 		Word *new_type_info;
-		Integer arity, i;
+		Integer arity, offset, i;
 
-		/* XXX this doesn't handle higher-order types properly */
+		/*
+		** Note that we assume base_type_infos will always be
+		** allocated statically, so we never copy them.
+		*/
 
 		base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO((Word *)
 			type_info);
-		arity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
-		incr_saved_hp(LVALUE_CAST(Word, new_type_info), arity + 1);
-		new_type_info[0] = type_info[0];
-		for (i = 1; i < arity + 1; i++) {
-			new_type_info[i] = (Word) copy_type_info(
-				(Word *) type_info[i],
+		/*
+		** optimize special case: if there's no arguments,
+		** we don't need to construct a type_info; instead,
+		** we can just return the base_type_info.
+		*/
+		if (type_info == base_type_info) {
+			return base_type_info;
+		}
+		if (MR_BASE_TYPEINFO_IS_HO(base_type_info)) {
+			arity = MR_TYPEINFO_GET_HIGHER_ARITY(type_info);
+			incr_saved_hp(LVALUE_CAST(Word, new_type_info),
+				arity + 2);
+			new_type_info[0] = (Word) base_type_info;
+			new_type_info[1] = arity;
+			offset = 2;
+		} else {
+			arity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
+			incr_saved_hp(LVALUE_CAST(Word, new_type_info),
+				arity + 1);
+			new_type_info[0] = (Word) base_type_info;
+			offset = 1;
+		}
+		for (i = offset; i < arity + offset; i++) {
+			new_type_info[i] = (Word) copy_type_info(&type_info[i],
 				lower_limit, upper_limit);
 		}
-                leave_forwarding_pointer(type_info_ptr, (Word) new_type_info);
+		leave_forwarding_pointer(type_info_ptr, (Word) new_type_info);
 		return new_type_info;
 	} else {
 		found_forwarding_pointer(type_info);
 		return type_info;
 	}
 }
-
-
-
