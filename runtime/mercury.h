@@ -40,24 +40,6 @@
 
 /*---------------------------------------------------------------------------*/
 /*
-** XXX this is a hack to work-around the current lack of
-** support for `pragma export'.
-*/
-#ifndef MR_BOOTSTRAPPED_PRAGMA_EXPORT
-  #ifndef MR_HIGHLEVEL_DATA
-    #define ML_report_uncaught_exception \
-			 mercury__exception__report_uncaught_exception_3_p_0
-    #define ML_throw_io_error		mercury__io__throw_io_error_1_p_0
-    #define ML_io_finalize_state	mercury__io__finalize_state_2_p_0
-    #define ML_io_init_state		mercury__io__init_state_2_p_0
-    #define ML_io_stderr_stream		mercury__io__stderr_stream_3_p_0
-    #define ML_io_stdin_stream		mercury__io__stdin_stream_3_p_0
-    #define ML_io_stdout_stream		mercury__io__stdout_stream_3_p_0
-  #endif
-#endif
-
-/*---------------------------------------------------------------------------*/
-/*
 ** Type definitions
 */
 
@@ -418,19 +400,6 @@ void mercury__private_builtin____Compare____typeclass_info_1_0(
 void mercury__private_builtin____Compare____base_typeclass_info_1_0(
 	MR_Type_Info type_info, MR_Comparison_Result *result,
 	MR_Base_TypeClass_Info x, MR_Base_TypeClass_Info y);
-
-/*---------------------------------------------------------------------------*/
-
-/*
-** XXX this is a hack to work-around the current lack of
-** support for `pragma export'.
-*/
-#ifndef MR_BOOTSTRAPPED_PRAGMA_EXPORT
-void ML_io_print_to_cur_stream(MR_Word ti, MR_Word x);
-void ML_io_print_to_stream(MR_Word ti, MR_Word stream, MR_Word x);
-void ML_report_uncaught_exception(MR_Word ti);
-void ML_throw_io_error(MR_String);
-#endif
 
 /*---------------------------------------------------------------------------*/
 

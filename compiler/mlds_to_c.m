@@ -126,9 +126,6 @@ mlds_output_to_file(FileName, Action) -->
 :- mode mlds_output_hdr_file(in, in, di, uo) is det.
 
 mlds_output_hdr_file(Indent, MLDS) -->
-	% XXX for bootstrapping the use of pragma export.
-	io__write_string("#define MR_BOOTSTRAPPED_PRAGMA_EXPORT\n"),
-
 	{ MLDS = mlds(ModuleName, ForeignCode, Imports, Defns) },
 	mlds_output_hdr_start(Indent, ModuleName), io__nl,
 	mlds_output_hdr_imports(Indent, Imports), io__nl,
