@@ -9,9 +9,9 @@
 **
 ** This file implements the back end of the declarative debugger.  The
 ** back end is an extension to the internal debugger which collects
-** related trace events and builds them into an execution tree.  Once
-** built, the tree is passed to the front end where it can be analysed
-** to find bugs.  The front end is implemented in
+** related trace events and builds them into an annotated trace.  Once
+** built, the structure is passed to the front end where it can be
+** analysed to find bugs.  The front end is implemented in
 ** browse/declarative_debugger.m.
 **
 ** The interface between the front and back ends is via the
@@ -39,7 +39,9 @@
 #include "mercury_trace_util.h"
 #include "mercury_layout_util.h"
 #include "mercury_deep_copy.h"
+#include "mercury_stack_trace.h"
 #include "mercury_string.h"
+#include "mercury_trace_base.h"
 #include "mdb.declarative_debugger.h"
 #include "mdb.declarative_execution.h"
 #include "std_util.h"
@@ -47,11 +49,45 @@
 #include <errno.h>
 
 /*
-** We only build the execution tree to a certain depth.  The following
-** macro gives the default depth limit (relative to the starting depth).
+** We only build the annotated trace for events down to a certain
+** depth.  The following macro gives the default depth limit (relative
+** to the starting depth).  In future it would be nice to dynamically
+** adjust this factor based on profiling information.
 */
 
 #define MR_EDT_DEPTH_STEP_SIZE		128
+
+/*
+** These macros are to aid debugging of the code which constructs
+** the annotated trace.
+*/
+
+#ifdef MR_DEBUG_DD_BACK_END
+
+#define MR_decl_checkpoint_event(event_info)				\
+		MR_decl_checkpoint_event_imp(event_info)
+
+#define MR_decl_checkpoint_find(location)				\
+		MR_decl_checkpoint_loc("FIND", location)
+
+#define MR_decl_checkpoint_step(location)				\
+		MR_decl_checkpoint_loc("STEP", location)
+
+#define MR_decl_checkpoint_match(location)				\
+		MR_decl_checkpoint_loc("MATCH", location)
+
+#define MR_decl_checkpoint_alloc(location)				\
+		MR_decl_checkpoint_loc("ALLOC", location)
+
+#else /* !MR_DEBUG_DD_BACK_END */
+
+#define MR_decl_checkpoint_event(event_info)
+#define MR_decl_checkpoint_find(location)
+#define MR_decl_checkpoint_step(location)
+#define MR_decl_checkpoint_match(location)
+#define MR_decl_checkpoint_alloc(location)
+
+#endif
 
 /*
 ** The declarative debugger back end is controlled by the
@@ -101,35 +137,41 @@ static	MR_Trace_Node	MR_trace_current_node;
 
 static	FILE		*MR_trace_store_file;
 
-static	void
-MR_trace_decl_call(MR_Event_Info *event_info);
+static	MR_Trace_Node
+MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev);
 
-static	void
-MR_trace_decl_exit(MR_Event_Info *event_info);
+static	MR_Trace_Node
+MR_trace_decl_exit(MR_Event_Info *event_info, MR_Trace_Node prev);
 
-static	void
-MR_trace_decl_redo(MR_Event_Info *event_info);
+static	MR_Trace_Node
+MR_trace_decl_redo(MR_Event_Info *event_info, MR_Trace_Node prev);
 
-static	void
-MR_trace_decl_fail(MR_Event_Info *event_info);
+static	MR_Trace_Node
+MR_trace_decl_fail(MR_Event_Info *event_info, MR_Trace_Node prev);
 
-static	void
-MR_trace_decl_switch(MR_Event_Info *event_info);
+static	MR_Trace_Node
+MR_trace_decl_switch(MR_Event_Info *event_info, MR_Trace_Node prev);
 
-static	void
-MR_trace_decl_disj(MR_Event_Info *event_info);
+static	MR_Trace_Node
+MR_trace_decl_disj(MR_Event_Info *event_info, MR_Trace_Node prev);
 
-static	void
-MR_trace_decl_cond(MR_Event_Info *event_info);
+static	MR_Trace_Node
+MR_trace_decl_cond(MR_Event_Info *event_info, MR_Trace_Node prev);
 
-static	void
-MR_trace_decl_then_else(MR_Event_Info *event_info);
+static	MR_Trace_Node
+MR_trace_decl_then(MR_Event_Info *event_info, MR_Trace_Node prev);
 
-static	void
-MR_trace_decl_enter_neg(MR_Event_Info *event_info);
+static	MR_Trace_Node
+MR_trace_decl_else(MR_Event_Info *event_info, MR_Trace_Node prev);
 
-static	void
-MR_trace_decl_leave_neg(MR_Event_Info *event_info);
+static	MR_Trace_Node
+MR_trace_decl_neg_enter(MR_Event_Info *event_info, MR_Trace_Node prev);
+
+static	MR_Trace_Node
+MR_trace_decl_neg_success(MR_Event_Info *event_info, MR_Trace_Node prev);
+
+static	MR_Trace_Node
+MR_trace_decl_neg_failure(MR_Event_Info *event_info, MR_Trace_Node prev);
 
 static	MR_Trace_Node
 MR_trace_decl_get_slot(const MR_Stack_Layout_Entry *entry, Word *saved_regs);
@@ -137,6 +179,12 @@ MR_trace_decl_get_slot(const MR_Stack_Layout_Entry *entry, Word *saved_regs);
 static	void
 MR_trace_decl_set_slot(const MR_Stack_Layout_Entry *entry, Word *saved_regs,
 		MR_Trace_Node node);
+
+static	MR_Trace_Node
+MR_trace_matching_call(MR_Trace_Node node);
+
+static	bool
+MR_trace_first_disjunct(MR_Event_Info *event_info);
 
 static	bool
 MR_trace_matching_cond(const char *path, MR_Trace_Node node);
@@ -171,14 +219,33 @@ MR_decl_diagnosis_test(MR_Trace_Node root);
 static	String
 MR_trace_node_path(MR_Trace_Node node);
 
+static	MR_Trace_Port
+MR_trace_node_port(MR_Trace_Node node);
+
+static	Unsigned
+MR_trace_node_seqno(MR_Trace_Node node);
+
 static	MR_Trace_Node
-MR_trace_scan_backwards(MR_Trace_Node node);
+MR_trace_node_first_disj(MR_Trace_Node node);
+
+static	MR_Trace_Node
+MR_trace_step_left_in_context(MR_Trace_Node node);
+
+static	MR_Trace_Node
+MR_trace_find_prev_contour(MR_Trace_Node node);
+
+static	void
+MR_decl_checkpoint_event_imp(MR_Event_Info *event_info);
+
+static	void
+MR_decl_checkpoint_loc(const char *str, MR_Trace_Node node);
 
 Code *
 MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 {
 	MR_Stack_Layout_Entry 	*entry;
 	Unsigned		depth;
+	MR_Trace_Node		trace;
 
 	entry = event_info->MR_event_sll->MR_sll_entry;
 	depth = event_info->MR_call_depth;
@@ -198,66 +265,80 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 		fatal_error("layout has no execution tracing");
 	}
 
-	if (depth > MR_edt_max_depth ||
-		depth < MR_edt_min_depth ||
-		entry->MR_sle_maybe_decl_debug < 1 ) {
+	if (depth > MR_edt_max_depth || depth < MR_edt_min_depth) {
 		/*
-		** We ignore any event for a procedure that does not have
-		** slots reserved for declarative debugging.  Such
-		** procedures are assumed to be correct.  We also filter
-		** out events with a depth outside the range given by
-		** MR_edt_{min,max}_depth.  These events are either
-		** irrelevant, or else implicitly represented in the
-		** structure being built.  See comment in
+		** We filter out events with a depth outside the range
+		** given by MR_edt_{min,max}_depth.  These events are
+		** either irrelevant, or else implicitly represented in
+		** the structure being built.  See comment in
 		** trace/mercury_trace_declarative.h.
 		*/
 		return NULL;
 	}
 
-	MR_trace_enabled = FALSE;
+#ifdef MR_USE_DECL_STACK_SLOT
+	if (entry->MR_sle_maybe_decl_debug < 1) {
+		/*
+		** If using reserved stack slots, we ignore any event
+		** for a procedure that does not have a slot reserved.
+		** Such procedures are effectively assumed correct.
+		*/
+		return NULL;
+	}
+#endif /* MR_USE_DECL_STACK_SLOT */
 
+	MR_trace_enabled = FALSE;
+	MR_decl_checkpoint_event(event_info);
+	trace = MR_trace_current_node;
 	switch (event_info->MR_trace_port) {
 		case MR_PORT_CALL:
-			MR_trace_decl_call(event_info);
+			trace = MR_trace_decl_call(event_info, trace);
 			break;
 		case MR_PORT_EXIT:
-			MR_trace_decl_exit(event_info);
+			trace = MR_trace_decl_exit(event_info, trace);
 			break;
 		case MR_PORT_REDO:
-			MR_trace_decl_redo(event_info);
+			trace = MR_trace_decl_redo(event_info, trace);
 			break;
 		case MR_PORT_FAIL:
-			MR_trace_decl_fail(event_info);
+			trace = MR_trace_decl_fail(event_info, trace);
 			break;
 		case MR_PORT_DISJ:
-			MR_trace_decl_disj(event_info);
+			trace = MR_trace_decl_disj(event_info, trace);
 			break;
 		case MR_PORT_SWITCH:
-			MR_trace_decl_switch(event_info);
+			trace = MR_trace_decl_switch(event_info, trace);
 			break;
 		case MR_PORT_COND:
-			MR_trace_decl_cond(event_info);
+			trace = MR_trace_decl_cond(event_info, trace);
 			break;
 		case MR_PORT_THEN:
+			trace = MR_trace_decl_then(event_info, trace);
+			break;
 		case MR_PORT_ELSE:
-			MR_trace_decl_then_else(event_info);
+			trace = MR_trace_decl_else(event_info, trace);
 			break;
 		case MR_PORT_NEG_ENTER:
-			MR_trace_decl_enter_neg(event_info);
+			trace = MR_trace_decl_neg_enter(event_info, trace);
 			break;
 		case MR_PORT_NEG_SUCCESS:
+			trace = MR_trace_decl_neg_success(event_info, trace);
+			break;
 		case MR_PORT_NEG_FAILURE:
-			MR_trace_decl_leave_neg(event_info);
+			trace = MR_trace_decl_neg_failure(event_info, trace);
 			break;
 		case MR_PORT_PRAGMA_FIRST:
 		case MR_PORT_PRAGMA_LATER:
-			break;
+			fatal_error("MR_trace_decl_debug: "
+				"foreign language code is not handled (yet)");
 		case MR_PORT_EXCEPTION:
 			fatal_error("MR_trace_decl_debug: "
 				"exceptions are not handled (yet)");
 		default:
 			fatal_error("MR_trace_decl_debug: unknown port");
 	}
+	MR_decl_checkpoint_alloc(trace);
+	MR_trace_current_node = trace;
 	
 	if (MR_trace_event_number == MR_edt_last_event) {
 		switch (MR_trace_decl_mode) {
@@ -288,8 +369,8 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	return NULL;
 }
 
-static	void
-MR_trace_decl_call(MR_Event_Info *event_info)
+static	MR_Trace_Node
+MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
 {
 	MR_Trace_Node			node;
 	Word				atom;
@@ -298,16 +379,20 @@ MR_trace_decl_call(MR_Event_Info *event_info)
 	atom = MR_decl_make_atom(layout, event_info->MR_saved_regs);
 	MR_TRACE_CALL_MERCURY(
 		node = (MR_Trace_Node) MR_DD_construct_call_node(
-					(Word) MR_trace_current_node, atom);
+					(Word) prev, atom,
+					(Word) event_info->MR_call_seqno);
 	);
+
+#ifdef MR_USE_DECL_STACK_SLOT
 	MR_trace_decl_set_slot(layout->MR_sll_entry,
 					event_info->MR_saved_regs, node);
+#endif
 
-	MR_trace_current_node = node;
+	return node;
 }
 	
-static	void
-MR_trace_decl_exit(MR_Event_Info *event_info)
+static	MR_Trace_Node
+MR_trace_decl_exit(MR_Event_Info *event_info, MR_Trace_Node prev)
 {
 	MR_Trace_Node		node;
 	MR_Trace_Node		call;
@@ -315,245 +400,324 @@ MR_trace_decl_exit(MR_Event_Info *event_info)
 
 	atom = MR_decl_make_atom(event_info->MR_event_sll,
 				event_info->MR_saved_regs);
+
+#ifdef MR_USE_DECL_STACK_SLOT
 	call = MR_trace_decl_get_slot(event_info->MR_event_sll->MR_sll_entry,
 				event_info->MR_saved_regs);
+#else
+	call = MR_trace_matching_call(prev);
+	MR_decl_checkpoint_match(call);
+#endif
+	
 	MR_TRACE_CALL_MERCURY(
 		node = (MR_Trace_Node) MR_DD_construct_exit_node(
-					(Word) MR_trace_current_node, 
-					(Word) call,
-					MR_trace_call_node_answer(call),
-					atom);
+				(Word) prev, (Word) call,
+				MR_trace_call_node_last_interface(call),
+				atom);
 	);
-	MR_trace_call_node_answer(call) = (Word) node;
+	MR_trace_call_node_last_interface(call) = (Word) node;
 
-	MR_trace_current_node = node;
+	return node;
 }
 
-static	void
-MR_trace_decl_redo(MR_Event_Info *event_info)
+static	MR_Trace_Node
+MR_trace_decl_redo(MR_Event_Info *event_info, MR_Trace_Node prev)
 {
 	MR_Trace_Node		node;
 	MR_Trace_Node		call;
+	MR_Trace_Node		next;
 
+#ifdef MR_USE_DECL_STACK_SLOT
 	call = MR_trace_decl_get_slot(event_info->MR_event_sll->MR_sll_entry,
 				event_info->MR_saved_regs);
+#else
+	/*
+	** Search through previous contour for a matching EXIT event.
+	*/
+	next = MR_trace_find_prev_contour(prev);
+	while (MR_trace_node_port(next) != MR_PORT_EXIT
+		|| MR_trace_node_seqno(next) != event_info->MR_call_seqno)
+	{
+		next = MR_trace_step_left_in_context(next);
+	}
+	MR_decl_checkpoint_match(next);
+
+	MR_TRACE_CALL_MERCURY(
+		MR_trace_node_store++;
+		if (!MR_DD_trace_node_call(MR_trace_node_store, (Word) next,
+					(Word *) &call))
+		{
+			fatal_error("MR_trace_decl_redo: no matching EXIT");
+		}
+	);
+#endif /* !MR_USE_DECL_STACK_SLOT */
+
 	MR_TRACE_CALL_MERCURY(
 		node = (MR_Trace_Node) MR_DD_construct_redo_node(
-					(Word) MR_trace_current_node,
-					MR_trace_call_node_answer(call));
+					(Word) prev,
+				MR_trace_call_node_last_interface(call));
 	);
-	MR_trace_call_node_answer(call) = (Word) node;
+	MR_trace_call_node_last_interface(call) = (Word) node;
 
-	MR_trace_current_node = node;
+	return node;
 }
 
-static	void
-MR_trace_decl_fail(MR_Event_Info *event_info)
+static	MR_Trace_Node
+MR_trace_decl_fail(MR_Event_Info *event_info, MR_Trace_Node prev)
 {
 	MR_Trace_Node		node;
+	MR_Trace_Node		next;
 	MR_Trace_Node		call;
+	MR_Trace_Node		redo;
 
+#ifdef MR_USE_DECL_STACK_SLOT
 	call = MR_trace_decl_get_slot(event_info->MR_event_sll->MR_sll_entry,
 				event_info->MR_saved_regs);
+#else
+	if (MR_trace_node_port(prev) == MR_PORT_CALL)
+	{
+		/*
+		** We are already at the corresponding call, so there
+		** is no need to search for it.
+		*/
+		call = prev;
+	}
+	else
+	{
+		next = MR_trace_find_prev_contour(prev);
+		call = MR_trace_matching_call(next);
+	}
+	MR_decl_checkpoint_match(call);
+#endif
+
+	redo = MR_trace_call_node_last_interface(call);
 	MR_TRACE_CALL_MERCURY(
 		node = (MR_Trace_Node) MR_DD_construct_fail_node(
-						(Word) MR_trace_current_node,
-						(Word) call);
+						(Word) prev,
+						(Word) call,
+						(Word) redo);
 	);
 
-	MR_trace_current_node = node;
+	MR_trace_call_node_last_interface(call) = (Word) node;
+	return node;
 }
 
-static	void
-MR_trace_decl_cond(MR_Event_Info *event_info)
+static	MR_Trace_Node
+MR_trace_decl_cond(MR_Event_Info *event_info, MR_Trace_Node prev)
 {
 	MR_Trace_Node		node;
 
 	MR_TRACE_CALL_MERCURY(
 		node = (MR_Trace_Node) MR_DD_construct_cond_node(
-					(Word) MR_trace_current_node,
+					(Word) prev,
 					(String) event_info->MR_event_path);
 	);
-	MR_trace_current_node = node;
+	return node;
 }
 
-static	void
-MR_trace_decl_then_else(MR_Event_Info *event_info)
+static	MR_Trace_Node
+MR_trace_decl_then(MR_Event_Info *event_info, MR_Trace_Node prev)
 {
 	MR_Trace_Node		node;
-	MR_Trace_Node		prev;
-
-	prev = MR_trace_current_node;
+	MR_Trace_Node		next;
+	MR_Trace_Node		cond;
+	const char		*path = event_info->MR_event_path;
 
 	/*
-	** Search through previous nodes for a matching COND event.
+	** Search through current contour for a matching COND event.
 	*/
-	while (prev != (MR_Trace_Node) NULL)
+	next = prev;
+	while (!MR_trace_matching_cond(path, next))
 	{
-		if (MR_trace_matching_cond(event_info->MR_event_path, prev))
-		{
-			break;
-		}
-		prev = MR_trace_scan_backwards(prev);
+		next = MR_trace_step_left_in_context(next);
 	}
-	if (prev == (MR_Trace_Node) NULL) {
-		fatal_error("MR_trace_decl_then_else: no matching COND");
-	}
+	cond = next;
+	MR_decl_checkpoint_match(cond);
 	
-	switch (event_info->MR_trace_port) {
-		case MR_PORT_THEN:
-			MR_trace_cond_node_status(prev) =
-					MR_TRACE_STATUS_SUCCEEDED;
-			MR_TRACE_CALL_MERCURY(
-				node = (MR_Trace_Node)
-					MR_DD_construct_then_node(
-						(Word) MR_trace_current_node,
-						(Word) prev);
-			);
-			break;
-		case MR_PORT_ELSE:
-			MR_trace_cond_node_status(prev) =
-					MR_TRACE_STATUS_FAILED;
-			MR_TRACE_CALL_MERCURY(
-				node = (MR_Trace_Node)
-					MR_DD_construct_else_node(
-						(Word) MR_trace_current_node,
-						(Word) prev);
-			);
-			break;
-		default:
-			fatal_error("MR_trace_decl_then_else: invalid node");
-			break;
-	}
+	MR_trace_cond_node_status(cond) = MR_TRACE_STATUS_SUCCEEDED;
 
-	MR_trace_current_node = node;
+	MR_TRACE_CALL_MERCURY(
+		node = (MR_Trace_Node) MR_DD_construct_then_node(
+					(Word) prev,
+					(Word) cond);
+	);
+	return node;
 }
 
-static	void
-MR_trace_decl_enter_neg(MR_Event_Info *event_info)
+static	MR_Trace_Node
+MR_trace_decl_else(MR_Event_Info *event_info, MR_Trace_Node prev)
+{
+	MR_Trace_Node		node;
+	MR_Trace_Node		cond;
+	const char		*path = event_info->MR_event_path;
+
+	/*
+	** Search through previous contour for a matching COND event.
+	*/
+	if (MR_trace_matching_cond(path, prev))
+	{
+		cond = prev;
+	}
+	else
+	{
+		MR_Trace_Node		next;
+
+		next = prev;
+		while (!MR_trace_matching_cond(path, next))
+		{
+			next = MR_trace_step_left_in_context(next);
+		}
+		cond = next;
+	}
+	MR_decl_checkpoint_match(cond);
+	
+	MR_trace_cond_node_status(cond) = MR_TRACE_STATUS_FAILED;
+	MR_TRACE_CALL_MERCURY(
+		node = (MR_Trace_Node) MR_DD_construct_else_node(
+					(Word) prev,
+					(Word) cond);
+	);
+	return node;
+}
+
+static	MR_Trace_Node
+MR_trace_decl_neg_enter(MR_Event_Info *event_info, MR_Trace_Node prev)
 {
 	MR_Trace_Node		node;
 
 	MR_TRACE_CALL_MERCURY(
 		node = (MR_Trace_Node) MR_DD_construct_neg_node(
-					(Word) MR_trace_current_node,
+					(Word) prev,
 					(String) event_info->MR_event_path);
 	);
-	MR_trace_current_node = node;
+	return node;
 }
 
-static	void
-MR_trace_decl_leave_neg(MR_Event_Info *event_info)
+static	MR_Trace_Node
+MR_trace_decl_neg_success(MR_Event_Info *event_info, MR_Trace_Node prev)
 {
 	MR_Trace_Node		node;
-	MR_Trace_Node		prev;
-
-	prev = MR_trace_current_node;
+	MR_Trace_Node		nege;
+	const char		*path = event_info->MR_event_path;
 
 	/*
-	** Search through previous nodes for a matching NEGE event.
+	** Search through previous contour for a matching NEGE event.
 	*/
-	while (prev != (MR_Trace_Node) NULL)
+	if (MR_trace_matching_neg(path, prev))
 	{
-		if (MR_trace_matching_neg(event_info->MR_event_path, prev))
-		{
-			break;
-		}
-		prev = MR_trace_scan_backwards(prev);
+		nege = MR_trace_current_node;
 	}
-	if (prev == (MR_Trace_Node) NULL) {
-		fatal_error("MR_trace_decl_leave_neg: no matching NEGE");
-	}
-	
-	switch (event_info->MR_trace_port) {
-		case MR_PORT_NEG_SUCCESS:
-			MR_trace_neg_node_status(prev) =
-					MR_TRACE_STATUS_SUCCEEDED;
-			MR_TRACE_CALL_MERCURY(
-				node = (MR_Trace_Node)
-					MR_DD_construct_neg_succ_node(
-						(Word) MR_trace_current_node,
-						(Word) prev);
-			);
-			break;
-		case MR_PORT_NEG_FAILURE:
-			MR_trace_neg_node_status(prev) =
-					MR_TRACE_STATUS_FAILED;
-			MR_TRACE_CALL_MERCURY(
-				node = (MR_Trace_Node)
-					MR_DD_construct_neg_fail_node(
-						(Word) MR_trace_current_node,
-						(Word) prev);
-			);
-			break;
-		default:
-			fatal_error("MR_trace_decl_leave_neg: invalid node");
-			break;
-	}
+	else
+	{
+		MR_Trace_Node		next;
 
-	MR_trace_current_node = node;
+		next = prev;
+		while (!MR_trace_matching_neg(path, next))
+		{
+			next = MR_trace_step_left_in_context(next);
+		}
+		nege = next;
+	}
+	MR_decl_checkpoint_match(nege);
+	
+	MR_trace_neg_node_status(nege) = MR_TRACE_STATUS_SUCCEEDED;
+	MR_TRACE_CALL_MERCURY(
+		node = (MR_Trace_Node) MR_DD_construct_neg_succ_node(
+						(Word) prev,
+						(Word) nege);
+	);
+	return node;
 }
 
-static	void
-MR_trace_decl_switch(MR_Event_Info *event_info)
+static	MR_Trace_Node
+MR_trace_decl_neg_failure(MR_Event_Info *event_info, MR_Trace_Node prev)
+{
+	MR_Trace_Node		node;
+	MR_Trace_Node		next;
+
+	/*
+	** Search through current context for a matching NEGE event.
+	*/
+	next = prev;
+	while (!MR_trace_matching_neg(event_info->MR_event_path, next))
+	{
+		next = MR_trace_step_left_in_context(next);
+	}
+	MR_decl_checkpoint_match(next);
+	
+	MR_trace_neg_node_status(next) = MR_TRACE_STATUS_FAILED;
+	MR_TRACE_CALL_MERCURY(
+		node = (MR_Trace_Node) MR_DD_construct_neg_fail_node(
+						(Word) prev,
+						(Word) next);
+	);
+	return node;
+}
+
+static	MR_Trace_Node
+MR_trace_decl_switch(MR_Event_Info *event_info, MR_Trace_Node prev)
 {
 	MR_Trace_Node		node;
 
 	MR_TRACE_CALL_MERCURY(
-		node = (MR_Trace_Node) MR_DD_construct_first_disj_node(
-					(Word) MR_trace_current_node,
-					(String) event_info->MR_event_path,
-					(Word) TRUE);
+		node = (MR_Trace_Node) MR_DD_construct_switch_node(
+					(Word) prev,
+					(String) event_info->MR_event_path);
 	);
-	MR_trace_current_node = node;
+	return node;
 }
 
-static	void
-MR_trace_decl_disj(MR_Event_Info *event_info)
+static	MR_Trace_Node
+MR_trace_decl_disj(MR_Event_Info *event_info, MR_Trace_Node prev)
 {
 	MR_Trace_Node		node;
-	MR_Trace_Node		prev;
-	MR_Trace_Node		back;
+	const char		*path = event_info->MR_event_path;
 
-	prev = MR_trace_current_node;
-
-	/*
-	** Search through previous nodes for a matching DISJ event.
-	*/
-	while (prev != (MR_Trace_Node) NULL)
+	if (MR_trace_first_disjunct(event_info))
 	{
-		if (MR_trace_matching_disj(event_info->MR_event_path, prev))
-		{
-			break;
-		}
-		prev = MR_trace_scan_backwards(prev);
-	}
-
-	if (prev == (MR_Trace_Node) NULL) {
-		/*
-		** This is a first_disj.
-		*/
 		MR_TRACE_CALL_MERCURY(
 			node = (MR_Trace_Node) MR_DD_construct_first_disj_node(
-					(Word) MR_trace_current_node,
-					(String) event_info->MR_event_path,
-					(Word) FALSE);
+					(Word) prev,
+					(String) path);
 		);
-	} else {
+	}
+	else
+	{
+		MR_Trace_Node		next;
+		MR_Trace_Node		first;
+
 		/*
-		** This is a later_disj.
+		** Search through previous nodes for a matching DISJ event.
 		*/
-		back = MR_trace_scan_backwards(prev);
+		next = MR_trace_find_prev_contour(prev);
+		while (!MR_trace_matching_disj(path, next))
+		{
+			next = MR_trace_step_left_in_context(next);
+		}
+		MR_decl_checkpoint_match(next);
+
+		/*
+		** Find the first disj event of this disjunction.
+		*/
+		first = MR_trace_node_first_disj(next);
+		if (first == (MR_Trace_Node) NULL)
+		{
+			first = next;
+		}
+
 		MR_TRACE_CALL_MERCURY(
 			node = (MR_Trace_Node) MR_DD_construct_later_disj_node(
-					(Word) MR_trace_current_node,
-					(Word) back,
-					(String) event_info->MR_event_path);
+						MR_trace_node_store,
+						(Word) prev,
+						(String) path,
+						(Word) first);
 		);
 	}
 
-	MR_trace_current_node = node;
+	return node;
 }
+
+#ifdef MR_USE_DECL_STACK_SLOT
 
 static	MR_Trace_Node
 MR_trace_decl_get_slot(const MR_Stack_Layout_Entry *entry, Word *saved_regs)
@@ -596,6 +760,47 @@ MR_trace_decl_set_slot(const MR_Stack_Layout_Entry *entry,
 	}
 }
 
+#endif /* MR_USE_DECL_STACK_SLOT */
+
+static	MR_Trace_Node
+MR_trace_matching_call(MR_Trace_Node node)
+{
+	MR_Trace_Node		next;
+
+	/*
+	** Search through contour for any CALL event.  Since there
+	** is only one CALL event which can be reached, we assume it
+	** is the correct one.
+	*/
+	next = node;
+	while (MR_trace_node_port(next) != MR_PORT_CALL)
+	{
+		next = MR_trace_step_left_in_context(next);
+	}
+	return next;
+}
+
+static	bool
+MR_trace_first_disjunct(MR_Event_Info *event_info)
+{
+	const char		*path;
+
+	/*
+	** Return TRUE iff the last component of the path is "d1;".
+	*/
+	path = event_info->MR_event_path;
+	while (*path)
+	{
+		if (MR_string_equal(path, "d1;"))
+		{
+			return TRUE;
+		}
+		path++;
+	}
+
+	return FALSE;
+}
+	
 static	bool
 MR_trace_matching_cond(const char *path, MR_Trace_Node node)
 {
@@ -640,7 +845,7 @@ MR_trace_matching_disj(const char *path, MR_Trace_Node node)
 	MR_TRACE_CALL_MERCURY(
 		port = (MR_Trace_Port) MR_DD_trace_node_port(node);
 	);
-	if (port == MR_PORT_DISJ || port == MR_PORT_SWITCH) {
+	if (port == MR_PORT_DISJ) {
 		node_path = MR_trace_node_path(node);
 		return MR_trace_same_construct(path, node_path);
 	} else {
@@ -812,7 +1017,6 @@ MR_trace_start_decl_debug(const char *outfile, MR_Trace_Cmd_Info *cmd,
 		Code **jumpaddr)
 {
 	MR_Stack_Layout_Entry 	*entry;
-	int			decl_slot;
 	const char		*message;
 	FILE			*out;
 
@@ -821,11 +1025,12 @@ MR_trace_start_decl_debug(const char *outfile, MR_Trace_Cmd_Info *cmd,
 		return FALSE;
 	}
 
-	decl_slot = entry->MR_sle_maybe_decl_debug;
-	if (decl_slot < 1) {
+#ifdef MR_USE_DECL_STACK_SLOT
+	if (entry->MR_sle_maybe_decl_debug < 1) {
 		/* No slots are reserved for declarative debugging */
 		return FALSE;
 	}
+#endif /* MR_USE_DECL_STACK_SLOT */
 
 	message = MR_trace_retry(event_info, event_details, jumpaddr);
 	if (message != NULL) {
@@ -871,6 +1076,13 @@ MR_decl_diagnosis(MR_Trace_Node root)
 {
 	Word			response;
 
+#if 0
+	/*
+	** This is a quick and dirty way to debug the front end.
+	*/
+	MR_trace_enabled = TRUE;
+#endif
+
 	MR_TRACE_CALL_MERCURY(
 		MR_DD_decl_diagnosis(MR_trace_node_store, root, &response,
 				MR_trace_front_end_state,
@@ -912,17 +1124,109 @@ MR_trace_node_path(MR_Trace_Node node)
 	return path;
 }
 
-static	MR_Trace_Node
-MR_trace_scan_backwards(MR_Trace_Node node)
+static	MR_Trace_Port
+MR_trace_node_port(MR_Trace_Node node)
 {
-	MR_Trace_Node		prev;
+	MR_Trace_Port		port;
+
+	MR_TRACE_CALL_MERCURY(
+		port = (MR_Trace_Port) MR_DD_trace_node_port((Word) node);
+	);
+	return port;
+}
+
+static	Unsigned
+MR_trace_node_seqno(MR_Trace_Node node)
+{
+	Unsigned		seqno;
 
 	MR_trace_node_store++;
 	MR_TRACE_CALL_MERCURY(
-		prev = (MR_Trace_Node) MR_DD_scan_backwards(
+		if (!MR_DD_trace_node_seqno(MR_trace_node_store,
+					(Word) node,
+					(Word *) &seqno))
+		{
+			fatal_error("MR_trace_node_seqno: "
+				"not an interface event");
+		}
+	);
+	return seqno;
+}
+
+static	MR_Trace_Node
+MR_trace_node_first_disj(MR_Trace_Node node)
+{
+	MR_Trace_Node		first;
+
+	MR_TRACE_CALL_MERCURY(
+		if (!MR_DD_trace_node_first_disj((Word) node, (Word *) &first))
+		{
+			fatal_error("MR_trace_node_first_disj: "
+				"not a DISJ event");
+		}
+	);
+	return first;
+}
+
+static	MR_Trace_Node
+MR_trace_step_left_in_context(MR_Trace_Node node)
+{
+	MR_Trace_Node		next;
+
+	MR_decl_checkpoint_step(node);
+
+	MR_trace_node_store++;
+	MR_TRACE_CALL_MERCURY(
+		next = (MR_Trace_Node) MR_DD_step_left_in_context(
 						MR_trace_node_store, node);
 	);
-	return prev;
+	return next;
 }
+
+static	MR_Trace_Node
+MR_trace_find_prev_contour(MR_Trace_Node node)
+{
+	MR_Trace_Node		next;
+
+	MR_decl_checkpoint_find(node);
+
+	MR_trace_node_store++;
+	MR_TRACE_CALL_MERCURY(
+		next = (MR_Trace_Node) MR_DD_find_prev_contour(
+						MR_trace_node_store, node);
+	);
+	return next;
+}
+
+#ifdef MR_DEBUG_DD_BACK_END
+
+static	void
+MR_decl_checkpoint_event_imp(MR_Event_Info *event_info)
+{
+	fprintf(MR_mdb_out, "DD EVENT %ld: #%ld %ld %s ",
+			(long) event_info->MR_event_number,
+			(long) event_info->MR_call_seqno,
+			(long) event_info->MR_call_depth,
+			MR_port_names[event_info->MR_trace_port]);
+	MR_print_proc_id(MR_mdb_out, event_info->MR_event_sll->MR_sll_entry);
+	fprintf(MR_mdb_out, "\n");
+}
+
+static	void
+MR_decl_checkpoint_loc(const char *str, MR_Trace_Node node)
+{
+	MercuryFile		mdb_out;
+
+	mdb_out.file = MR_mdb_out;
+	mdb_out.line_number = 1;
+
+	fprintf(MR_mdb_out, "DD %s: %ld ", str, (long) node);
+	MR_TRACE_CALL_MERCURY(
+		MR_DD_print_trace_node((Word) &mdb_out, (Word) node);
+	);
+	fprintf(MR_mdb_out, "\n");
+}
+
+#endif /* MR_DEBUG_DD_BACK_END */
 
 #endif /* defined(MR_USE_DECLARATIVE_DEBUGGER) */

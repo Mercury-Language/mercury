@@ -7,17 +7,19 @@
 % Author: Mark Brown
 %
 % This module defines a Mercury representation of Mercury program
-% execution.  The declarative debugging infrastructure in the trace
-% directory builds such a representation, using predicates exported
-% from this module.  The debugging front end analyses the structure
+% execution, the annotated trace.  This structure is described in
+% papers/decl_debug.  The declarative debugging infrastructure in the
+% trace directory builds an annotated trace, using predicates exported
+% from this module.  Once built, the structure is passed to the front
+% end (in browser/declarative_debugger.m) where it is analysed
 % to produce a bug diagnosis.
 
 :- module mdb__declarative_execution.
 :- interface.
-:- import_module bool, list, std_util, string, io.
+:- import_module list, std_util, string, io.
 :- import_module mdb__util.
 
-	% This type represents a port in a stored event trace.
+	% This type represents a port in the annotated trace.
 	% The type R is the type of references to other nodes
 	% in the store.
 	%
@@ -29,12 +31,13 @@
 	--->	call(
 			R,			% Preceding event.
 			R,			% Last EXIT or REDO event.
-			trace_atom		% Atom that was called.
+			trace_atom,		% Atom that was called.
+			sequence_number		% Call sequence number.
 		)
 	;	exit(
 			R,			% Preceding event.
 			R,			% CALL event.
-			R,			% Previous REDO event.
+			R,			% Previous REDO event, if any.
 			trace_atom		% Atom in its final state.
 		)
 	;	redo(
@@ -43,17 +46,21 @@
 		)
 	;	fail(
 			R,			% Preceding event.
-			R			% CALL event.
+			R,			% CALL event.
+			R			% Previous REDO event, if any.
+		)
+	;	switch(
+			R,			% Preceding event.
+			goal_path		% Path for this event.
 		)
 	;	first_disj(
 			R,			% Preceding event.
-			goal_path,		% Path for this event.
-			bool			% Was this a switch?
+			goal_path		% Path for this event.
 		)
 	;	later_disj(
 			R,			% Preceding event.
-			R,			% Event before the first DISJ.
-			goal_path		% Path for this event.
+			goal_path,		% Path for this event.
+			R			% Event of the first DISJ.
 		)
 	;	cond(
 			R,			% Preceding event.
@@ -106,8 +113,10 @@
 
 :- type goal_path == goal_path_string.
 
-	% Members of this typeclass represent an entire stored
-	% event trace.  The second parameter is the type of identifiers
+:- type sequence_number == int.
+
+	% Members of this typeclass represent an entire annotated
+	% trace.  The second parameter is the type of identifiers
 	% for trace nodes, and the first parameter is the type of
 	% an abstract mapping from the identfiers to the nodes they
 	% identify.
@@ -129,7 +138,7 @@
 :- pred det_trace_node_from_id(S, R, trace_node(R)) <= execution_tree(S, R).
 :- mode det_trace_node_from_id(in, in, out) is det.
 
-:- inst trace_node_call = bound(call(ground, ground, ground)).
+:- inst trace_node_call = bound(call(ground, ground, ground, ground)).
 
 :- pred call_node_from_id(S, R, trace_node(R)) <= execution_tree(S, R).
 :- mode call_node_from_id(in, in, out(trace_node_call)) is det.
@@ -156,6 +165,17 @@
 
 :- pred neg_node_from_id(S, R, trace_node(R)) <= execution_tree(S, R).
 :- mode neg_node_from_id(in, in, out(trace_node_neg)) is det.
+
+:- inst trace_node_first_disj = bound(first_disj(ground, ground)).
+
+:- pred first_disj_node_from_id(S, R, trace_node(R)) <= execution_tree(S, R).
+:- mode first_disj_node_from_id(in, in, out(trace_node_first_disj)) is det.
+
+:- inst trace_node_disj = bound(first_disj(ground, ground);
+				later_disj(ground, ground, ground)).
+
+:- pred disj_node_from_id(S, R, trace_node(R)) <= execution_tree(S, R).
+:- mode disj_node_from_id(in, in, out(trace_node_disj)) is det.
 
 	% Load an execution tree which was previously saved by
 	% the back end.
@@ -207,7 +227,7 @@ det_trace_node_from_id(Store, NodeId, Node) :-
 call_node_from_id(Store, NodeId, Node) :-
 	(
 		trace_node_from_id(Store, NodeId, Node0),
-		Node0 = call(_, _, _)
+		Node0 = call(_, _, _, _)
 	->
 		Node = Node0
 	;
@@ -254,6 +274,28 @@ neg_node_from_id(Store, NodeId, Node) :-
 		error("neg_node_from_id: not a NEG node")
 	).
 
+first_disj_node_from_id(Store, NodeId, Node) :-
+	(
+		trace_node_from_id(Store, NodeId, Node0),
+		Node0 = first_disj(_, _)
+	->
+		Node = Node0
+	;
+		error("first_disj_node_from_id: not a first DISJ node")
+	).
+
+disj_node_from_id(Store, NodeId, Node) :-
+	(
+		trace_node_from_id(Store, NodeId, Node0),
+		( Node0 = first_disj(_, _)
+		; Node0 = later_disj(_, _, _)
+		)
+	->
+		Node = Node0
+	;
+		error("disj_node_from_id: not a DISJ node")
+	).
+
 %-----------------------------------------------------------------------------%
 
 :- instance execution_tree(trace_node_store, trace_node_id) where [
@@ -296,12 +338,12 @@ neg_node_from_id(Store, NodeId, Node) :-
 :- pragma export(trace_node_port(in) = out,
 		"MR_DD_trace_node_port").
 
-trace_node_port(call(_, _, _))		= call.
+trace_node_port(call(_, _, _, _))	= call.
 trace_node_port(exit(_, _, _, _))	= exit.
 trace_node_port(redo(_, _))		= redo.
-trace_node_port(fail(_, _))		= fail.
-trace_node_port(first_disj(_, _, yes))	= switch.
-trace_node_port(first_disj(_, _, no))	= disj.
+trace_node_port(fail(_, _, _))		= fail.
+trace_node_port(switch(_, _))		= switch.
+trace_node_port(first_disj(_, _))	= disj.
 trace_node_port(later_disj(_, _, _))	= disj.
 trace_node_port(cond(_, _, _))		= ite_cond.
 trace_node_port(then(_, _))		= ite_then.
@@ -315,12 +357,13 @@ trace_node_port(neg_fail(_, _))		= neg_failure.
 :- pragma export(trace_node_path(in, in) = out,
 		"MR_DD_trace_node_path").
 
-trace_node_path(_, call(_, _, _)) = "".
+trace_node_path(_, call(_, _, _, _)) = "".
 trace_node_path(_, exit(_, _, _, _)) = "".
 trace_node_path(_, redo(_, _)) = "".
-trace_node_path(_, fail(_, _)) = "".
-trace_node_path(_, first_disj(_, P, _)) = P.
-trace_node_path(_, later_disj(_, _, P)) = P.
+trace_node_path(_, fail(_, _, _)) = "".
+trace_node_path(_, switch(_, P)) = P.
+trace_node_path(_, first_disj(_, P)) = P.
+trace_node_path(_, later_disj(_, P, _)) = P.
 trace_node_path(_, cond(_, P, _)) = P.
 trace_node_path(S, then(_, Cond)) = P :-
 	cond_node_from_id(S, Cond, cond(_, P, _)).
@@ -332,40 +375,134 @@ trace_node_path(S, neg_succ(_, Neg)) = P :-
 trace_node_path(S, neg_fail(_, Neg)) = P :-
 	neg_node_from_id(S, Neg, neg(_, P, _)).
 
-	% Given any node in a stored event trace, find the most recent
+:- pred trace_node_seqno(trace_node_store, trace_node(trace_node_id),
+		sequence_number).
+:- mode trace_node_seqno(in, in, out) is semidet.
+
+:- pragma export(trace_node_seqno(in, in, out), "MR_DD_trace_node_seqno").
+
+trace_node_seqno(S, Node, SeqNo) :-
+	(
+		Node = call(_, _, _, SeqNo0)
+	->
+		SeqNo = SeqNo0
+	;
+		trace_node_call(S, Node, Call),
+		call_node_from_id(S, Call, call(_, _, _, SeqNo))
+	).
+
+:- pred trace_node_call(trace_node_store, trace_node(trace_node_id),
+		trace_node_id).
+:- mode trace_node_call(in, in, out) is semidet.
+
+:- pragma export(trace_node_call(in, in, out), "MR_DD_trace_node_call").
+
+trace_node_call(_, exit(_, Call, _, _), Call).
+trace_node_call(S, redo(_, Exit), Call) :-
+	exit_node_from_id(S, Exit, exit(_, Call, _, _)).
+trace_node_call(_, fail(_, Call, _), Call).
+
+:- pred trace_node_first_disj(trace_node(trace_node_id), trace_node_id).
+:- mode trace_node_first_disj(in, out) is semidet.
+
+:- pragma export(trace_node_first_disj(in, out),
+		"MR_DD_trace_node_first_disj").
+
+trace_node_first_disj(first_disj(_, _), NULL) :-
+	null_trace_node_id(NULL).
+trace_node_first_disj(later_disj(_, _, FirstDisj), FirstDisj).	
+
+	% Given any node in an annotated trace, find the most recent
 	% node in the same context which has not been backtracked over,
 	% skipping negations, conditions, the bodies of calls, and
 	% alternative disjuncts.  Return the NULL reference if there
 	% is no such node (eg. if we are at the start of a negation,
 	% condition, or call).
 	%
-:- func scan_backwards(trace_node_store, trace_node(trace_node_id))
+:- func step_left_in_context(trace_node_store, trace_node(trace_node_id))
 		= trace_node_id.
-:- pragma export(scan_backwards(in, in) = out,
-		"MR_DD_scan_backwards").
+:- pragma export(step_left_in_context(in, in) = out,
+		"MR_DD_step_left_in_context").
 
-scan_backwards(_, call(_, _, _)) = NULL :-
-	null_trace_node_id(NULL).
-scan_backwards(_, cond(_, _, _)) = NULL :-
-	null_trace_node_id(NULL).
-scan_backwards(_, neg(_, _, _)) = NULL :-
-	null_trace_node_id(NULL).
-scan_backwards(Store, exit(_, Call, _, _)) = Prec :-
-	call_node_from_id(Store, Call, call(Prec, _, _)).
-scan_backwards(Store, fail(_, Call)) = Prec :-
-	call_node_from_id(Store, Call, call(Prec, _, _)).
-scan_backwards(Store, redo(_, Exit)) = Prec :-
-	exit_node_from_id(Store, Exit, exit(Prec, _, _, _)).
-scan_backwards(_, first_disj(Prec, _, _)) = Prec.
-scan_backwards(_, later_disj(_, Back, _)) = Back.
-scan_backwards(Store, then(_, Cond)) = Prec :-
+step_left_in_context(_, call(_, _, _, _)) = _ :-
+	error("step_left_in_context: unexpected CALL node").
+step_left_in_context(_, cond(Prec, _, Status)) = Node :-
+	(
+		Status = succeeded
+	->
+		Node = Prec
+	;
+		null_trace_node_id(Node)
+	).
+step_left_in_context(_, neg(_, _, _)) = _ :-
+	error("step_left_in_context: unexpected NEGE node").
+step_left_in_context(Store, exit(_, Call, _, _)) = Prec :-
+	call_node_from_id(Store, Call, call(Prec, _, _, _)).
+step_left_in_context(Store, fail(_, Call, _)) = Prec :-
+	call_node_from_id(Store, Call, call(Prec, _, _, _)).
+step_left_in_context(_, redo(_, _)) = _ :-
+	error("step_left_in_context: unexpected REDO node").
+step_left_in_context(_, switch(Prec, _)) = Prec.
+step_left_in_context(_, first_disj(Prec, _)) = Prec.
+step_left_in_context(Store, later_disj(_, _, FirstDisj)) = Prec :-
+	first_disj_node_from_id(Store, FirstDisj, first_disj(Prec, _)).
+step_left_in_context(_, then(Prec, _)) = Prec.
+step_left_in_context(Store, else(_, Cond)) = Prec :-
 	cond_node_from_id(Store, Cond, cond(Prec, _, _)).
-scan_backwards(Store, else(_, Cond)) = Prec :-
-	cond_node_from_id(Store, Cond, cond(Prec, _, _)).
-scan_backwards(Store, neg_succ(_, Neg)) = Prec :-
+step_left_in_context(Store, neg_succ(_, Neg)) = Prec :-
 	neg_node_from_id(Store, Neg, neg(Prec, _, _)).
-scan_backwards(Store, neg_fail(_, Neg)) = Prec :-
+step_left_in_context(Store, neg_fail(_, Neg)) = Prec :-
 	neg_node_from_id(Store, Neg, neg(Prec, _, _)).
+
+	% Given any node in an annotated trace, find a node in
+	% the previous contour.
+	%
+:- func find_prev_contour(trace_node_store, trace_node_id)
+		= trace_node_id.
+:- pragma export(find_prev_contour(in, in) = out,
+		"MR_DD_find_prev_contour").
+
+find_prev_contour(Store, NodeId) = OnContour :-
+	det_trace_node_from_id(Store, NodeId, Node),
+	find_prev_contour_1(Store, NodeId, Node, OnContour).
+
+:- pred find_prev_contour_1(trace_node_store, trace_node_id,
+		trace_node(trace_node_id), trace_node_id).
+:- mode find_prev_contour_1(in, in, in, out) is det.
+
+find_prev_contour_1(_, _, call(_, _, _, _), _) :-
+	error("find_prev_contour: reached CALL node").
+find_prev_contour_1(_, Exit, exit(_, _, _, _), Exit).
+find_prev_contour_1(Store, _, redo(_, Exit), OnContour) :-
+	exit_node_from_id(Store, Exit, exit(OnContour, _, _, _)).
+find_prev_contour_1(Store, _, fail(_, Call, _), OnContour) :-
+	call_node_from_id(Store, Call, call(OnContour, _, _, _)).
+find_prev_contour_1(_, _, cond(_, _, _), _) :-
+	error("find_prev_contour: reached COND node").
+find_prev_contour_1(_, Then, then(_, _), Then).
+find_prev_contour_1(_, Else, else(_, _), Else).
+find_prev_contour_1(_, _, neg(_, _, _), _) :-
+	error("find_prev_contour: reached NEGE node").
+find_prev_contour_1(_, NegS, neg_succ(_, _), NegS).
+find_prev_contour_1(Store, _, neg_fail(_, Neg), OnContour) :-
+	neg_node_from_id(Store, Neg, neg(OnContour, _, _)).
+find_prev_contour_1(_, Swtc, switch(_, _), Swtc).
+find_prev_contour_1(_, FirstDisj, first_disj(_, _), FirstDisj).
+find_prev_contour_1(_, LaterDisj, later_disj(_, _, _), LaterDisj).
+
+	% Print a text representation of a trace node, useful
+	% for debugging purposes.
+	%
+:- pred print_trace_node(io__output_stream, trace_node(trace_node_id),
+		io__state, io__state).
+:- mode print_trace_node(in, in, di, uo) is det.
+:- pragma export(print_trace_node(in, in, di, uo), "MR_DD_print_trace_node").
+
+print_trace_node(OutStr, Node) -->
+	{ convert_node(Node, CNode) },
+	io__write(OutStr, CNode).
+
+%-----------------------------------------------------------------------------%
 
 	%
 	% Each node type has a Mercury function which constructs
@@ -373,12 +510,13 @@ scan_backwards(Store, neg_fail(_, Neg)) = Prec :-
 	% that the back end can build an execution tree.
 	%
 
-:- func construct_call_node(trace_node_id, trace_atom)
+:- func construct_call_node(trace_node_id, trace_atom, sequence_number)
 		= trace_node(trace_node_id).
-:- pragma export(construct_call_node(in, in) = out,
+:- pragma export(construct_call_node(in, in, in) = out,
 		"MR_DD_construct_call_node").
 
-construct_call_node(Preceding, Atom) = call(Preceding, Answer, Atom) :-
+construct_call_node(Preceding, Atom, SeqNo) = Call :-
+	Call = call(Preceding, Answer, Atom, SeqNo),
 	null_trace_node_id(Answer).
 
 
@@ -387,8 +525,8 @@ construct_call_node(Preceding, Atom) = call(Preceding, Answer, Atom) :-
 :- pragma export(construct_exit_node(in, in, in, in) = out,
 		"MR_DD_construct_exit_node").
 
-construct_exit_node(Preceding, Call, Previous, Atom)
-		= exit(Preceding, Call, Previous, Atom).
+construct_exit_node(Preceding, Call, MaybeRedo, Atom)
+		= exit(Preceding, Call, MaybeRedo, Atom).
 
 
 :- func construct_redo_node(trace_node_id, trace_node_id)
@@ -399,30 +537,45 @@ construct_exit_node(Preceding, Call, Previous, Atom)
 construct_redo_node(Preceding, Exit) = redo(Preceding, Exit).
 
 
-:- func construct_fail_node(trace_node_id, trace_node_id)
+:- func construct_fail_node(trace_node_id, trace_node_id, trace_node_id)
 		= trace_node(trace_node_id).
-:- pragma export(construct_fail_node(in, in) = out,
+:- pragma export(construct_fail_node(in, in, in) = out,
 		"MR_DD_construct_fail_node").
 
-construct_fail_node(Preceding, Call) = fail(Preceding, Call).
+construct_fail_node(Preceding, Call, Redo) = fail(Preceding, Call, Redo).
 
 
-:- func construct_first_disj_node(trace_node_id, goal_path_string, bool)
+:- func construct_switch_node(trace_node_id, goal_path_string)
 		= trace_node(trace_node_id).
-:- pragma export(construct_first_disj_node(in, in, in) = out,
+:- pragma export(construct_switch_node(in, in) = out,
+		"MR_DD_construct_switch_node").
+
+construct_switch_node(Preceding, Path) =
+		switch(Preceding, Path).
+
+:- func construct_first_disj_node(trace_node_id, goal_path_string)
+		= trace_node(trace_node_id).
+:- pragma export(construct_first_disj_node(in, in) = out,
 		"MR_DD_construct_first_disj_node").
 
-construct_first_disj_node(Preceding, Path, Flag) =
-		first_disj(Preceding, Path, Flag).
+construct_first_disj_node(Preceding, Path) =
+		first_disj(Preceding, Path).
 
 
-:- func construct_later_disj_node(trace_node_id, trace_node_id,
-		goal_path_string) = trace_node(trace_node_id).
-:- pragma export(construct_later_disj_node(in, in, in) = out,
+:- func construct_later_disj_node(trace_node_store, trace_node_id,
+		goal_path_string, trace_node_id) = trace_node(trace_node_id).
+:- pragma export(construct_later_disj_node(in, in, in, in) = out,
 		"MR_DD_construct_later_disj_node").
 
-construct_later_disj_node(Preceding, Back, Path)
-		= later_disj(Preceding, Back, Path).
+construct_later_disj_node(Store, Preceding, Path, PrevDisj)
+		= later_disj(Preceding, Path, FirstDisj) :-
+	disj_node_from_id(Store, PrevDisj, PrevDisjNode),
+	(
+		PrevDisjNode = first_disj(_, _),
+		FirstDisj = PrevDisj
+	;
+		PrevDisjNode = later_disj(_, _, FirstDisj)
+	).
 
 
 :- func construct_cond_node(trace_node_id, goal_path_string)
@@ -574,17 +727,18 @@ node_map(Store, NodeId, map(Map0), Map) :-
 		[will_not_call_mercury, thread_safe],
 		"N2 = N1;").
 
-	% Given a node in a stored trace, return a reference to
+	% Given a node in an annotated trace, return a reference to
 	% the preceding node in the trace, or a NULL reference if
 	% it is the first.
 	%
 :- func preceding_node(trace_node(T)) = T.
 
-preceding_node(call(P, _, _))		= P.
+preceding_node(call(P, _, _, _))	= P.
 preceding_node(exit(P, _, _, _))	= P.
 preceding_node(redo(P, _))		= P.
-preceding_node(fail(P, _))		= P.
-preceding_node(first_disj(P, _, _))	= P.
+preceding_node(fail(P, _, _))		= P.
+preceding_node(switch(P, _))		= P.
+preceding_node(first_disj(P, _))	= P.
 preceding_node(later_disj(P, _, _))	= P.
 preceding_node(cond(P, _, _))		= P.
 preceding_node(then(P, _))		= P.

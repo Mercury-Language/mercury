@@ -250,10 +250,10 @@ diagnosis_store(Store, Node, Response, State0, State) -->
 trace_root(wrap(Store), dynamic(Ref), Root) :-
 	det_trace_node_from_id(Store, Ref, Node),
 	(
-		Node = fail(_, CallId)
+		Node = fail(_, CallId, RedoId)
 	->
 		call_node_from_id(Store, CallId, Call),
-		Call = call(_, RedoId, CallAtom),
+		Call = call(_, _, CallAtom, _),
 		get_answers(Store, RedoId, [], Answers),
 		Root = missing_answer(CallAtom, Answers)
 	;
@@ -291,7 +291,7 @@ trace_children(wrap(Store), dynamic(Ref), Children) :-
 
 	det_trace_node_from_id(Store, Ref, Node),
 	(
-		Node = fail(PrecId, _)
+		Node = fail(PrecId, _, _)
 	->
 		missing_answer_children(Store, PrecId, [], Children)
 	;
@@ -309,21 +309,21 @@ trace_children(wrap(Store), dynamic(Ref), Children) :-
 wrong_answer_children(Store, NodeId, Ns0, Ns) :-
 	det_trace_node_from_id(Store, NodeId, Node),
 	(
-		Node = call(_, _, _),
+		Node = call(_, _, _, _),
 		Ns = Ns0
 	;
 		Node = neg(_, _, _),
 		Ns = Ns0
 	;
 		Node = exit(_, Call, _, _),
-		call_node_from_id(Store, Call, call(Prec, _, _)),
+		call_node_from_id(Store, Call, call(Prec, _, _, _)),
 		wrong_answer_children(Store, Prec, [dynamic(NodeId) | Ns0], Ns)
 	;
 		Node = redo(_, _),
 		error("wrong_answer_children: unexpected REDO node")
 	;
-		Node = fail(_, Call),
-		call_node_from_id(Store, Call, call(Prec, _, _)),
+		Node = fail(_, Call, _),
+		call_node_from_id(Store, Call, call(Prec, _, _, _)),
 		wrong_answer_children(Store, Prec, [dynamic(NodeId) | Ns0], Ns)
 	;
 		Node = cond(Prec, _, Flag),
@@ -335,10 +335,14 @@ wrong_answer_children(Store, NodeId, Ns0, Ns) :-
 			Ns = Ns0
 		)
 	;
-		Node = first_disj(Back, _, _),
+		Node = switch(Back, _),
 		wrong_answer_children(Store, Back, Ns0, Ns)
 	;
-		Node = later_disj(_, Back, _),
+		Node = first_disj(Back, _),
+		wrong_answer_children(Store, Back, Ns0, Ns)
+	;
+		Node = later_disj(_, _, FirstDisj),
+		first_disj_node_from_id(Store, FirstDisj, first_disj(Back, _)),
 		wrong_answer_children(Store, Back, Ns0, Ns)
 	;
 		Node = then(Back, _),
@@ -367,7 +371,7 @@ wrong_answer_children(Store, NodeId, Ns0, Ns) :-
 missing_answer_children(Store, NodeId, Ns0, Ns) :-
 	det_trace_node_from_id(Store, NodeId, Node),
 	(
-		Node = call(_, _, _),
+		Node = call(_, _, _, _),
 		Ns = Ns0
 	;
 		Node = neg(_, _, _),
@@ -379,7 +383,7 @@ missing_answer_children(Store, NodeId, Ns0, Ns) :-
 		->
 			Prec = Prec0
 		;
-			call_node_from_id(Store, Call, call(Prec, _, _))
+			call_node_from_id(Store, Call, call(Prec, _, _, _))
 		),
 		missing_answer_children(Store, Prec, [dynamic(NodeId) | Ns0],
 				Ns)
@@ -388,13 +392,15 @@ missing_answer_children(Store, NodeId, Ns0, Ns) :-
 		exit_node_from_id(Store, Exit, exit(Prec, _, _, _)),
 		missing_answer_children(Store, Prec, Ns0, Ns)
 	;
-		Node = fail(_, Call),
-		call_node_from_id(Store, Call, call(Back, Answer, _)),
+		Node = fail(_, CallId, MaybeRedo),
 		(
-			maybe_redo_node_from_id(Store, Answer, redo(Prec, _))
+			maybe_redo_node_from_id(Store, MaybeRedo, Redo)
 		->
+			Redo = redo(Prec, _),
 			Next = Prec
 		;
+			call_node_from_id(Store, CallId, Call),
+			Call = call(Back, _, _, _),
 			Next = Back
 		),
 		missing_answer_children(Store, Next, [dynamic(NodeId) | Ns0],
@@ -409,7 +415,10 @@ missing_answer_children(Store, NodeId, Ns0, Ns) :-
 			Ns = Ns0
 		)
 	;
-		Node = first_disj(Prec, _, _),
+		Node = switch(Prec, _),
+		missing_answer_children(Store, Prec, Ns0, Ns)
+	;
+		Node = first_disj(Prec, _),
 		missing_answer_children(Store, Prec, Ns0, Ns)
 	;
 		Node = later_disj(Prec, _, _),
@@ -433,4 +442,3 @@ missing_answer_children(Store, NodeId, Ns0, Ns) :-
 		neg_node_from_id(Store, Neg, neg(Back, _, _)),
 		missing_answer_children(Store, Back, Ns1, Ns)
 	).
-

@@ -1,16 +1,12 @@
 echo on
 register --quiet
-break a
-break b
+break p
 continue
 finish
 dd
 no
 yes
-continue
-finish
-dd
-no
-no
+yes
+yes
 yes
 continue

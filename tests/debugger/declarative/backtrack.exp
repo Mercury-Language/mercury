@@ -1,0 +1,30 @@
+       1:      1  1 CALL pred backtrack:main/2-0 (det) backtrack.m:8
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> break p
+ 0: + stop  interface pred backtrack:p/2-0 (det)
+mdb> continue
+       2:      2  2 CALL pred backtrack:p/2-0 (det) backtrack.m:23 (backtrack.m:9)
+mdb> finish
+      17:      2  2 EXIT pred backtrack:p/2-0 (det) backtrack.m:23 (backtrack.m:9)
+mdb> dd
+atom("p", [univ(1 : int), univ(no : bool:bool)])
+Valid? no
+atom("q", [univ(1 : int), univ(1 : int)])
+Valid? yes
+atom("q", [univ(1 : int), univ(2 : int)])
+Valid? yes
+atom("q", [univ(1 : int), univ(3 : int)])
+Valid? yes
+Call atom("q", [univ(1 : int)])
+Solutions:
+	atom("q", [univ(1 : int), univ(1 : int)])
+	atom("q", [univ(1 : int), univ(2 : int)])
+	atom("q", [univ(1 : int), univ(3 : int)])
+Complete? yes
+Incorrect node found:
+wrong_answer(atom("p", [univ(1 : int), univ(no : bool:bool)]))
+      17:      2  2 EXIT pred backtrack:p/2-0 (det) backtrack.m:23 (backtrack.m:9)
+mdb> continue
+no

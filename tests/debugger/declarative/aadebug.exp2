@@ -21,19 +21,19 @@ Incorrect node found:
 wrong_answer(atom("p", [univ('a' : character), univ(30 : int)]))
       15:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> continue
-      18:      2  2 REDO pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
+      20:      2  2 REDO pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> finish
-      20:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
+      22:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> dd
 atom("p", [univ('a' : character), univ(31 : int)])
 Valid? no
 Incorrect node found:
 wrong_answer(atom("p", [univ('a' : character), univ(31 : int)]))
-      20:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
+      22:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> continue
-      23:      2  2 REDO pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
+      27:      2  2 REDO pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> finish
-      35:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
+      39:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> dd
 atom("p", [univ('a' : character), univ(32 : int)])
 Valid? no
@@ -47,11 +47,11 @@ Solutions:
 Complete? yes
 Incorrect node found:
 wrong_answer(atom("p", [univ('a' : character), univ(32 : int)]))
-      35:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
+      39:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> continue
-      38:      2  2 REDO pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
+      44:      2  2 REDO pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> finish
-      41:      2  2 FAIL pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
+      47:      2  2 FAIL pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> dd
 Call atom("p", [univ('a' : character)])
 Solutions:
@@ -66,6 +66,6 @@ Solutions:
 Complete? yes
 Incorrect node found:
 missing_answer(atom("p", [univ('a' : character)]), [atom("p", [univ('a' : character), univ(30 : int)]), atom("p", [univ('a' : character), univ(31 : int)]), atom("p", [univ('a' : character), univ(32 : int)])])
-      41:      2  2 FAIL pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
+      47:      2  2 FAIL pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> continue
 no

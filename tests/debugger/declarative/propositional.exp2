@@ -14,14 +14,14 @@ mdb> dd
 atom("a", [])
 Valid? no
 atom("c", [])
-Valid? no
+Valid? yes
 Incorrect node found:
-wrong_answer(atom("c", []))
+wrong_answer(atom("a", []))
       15:      2  2 EXIT pred propositional:a/0-0 (semidet) propositional.m:27 (propositional.m:10)
 mdb> continue
-      16:    203  2 CALL pred propositional:b/0-0 (semidet) propositional.m:29 (propositional.m:10)
+      16:    235  2 CALL pred propositional:b/0-0 (semidet) propositional.m:29 (propositional.m:10)
 mdb> finish
-      30:    203  2 EXIT pred propositional:b/0-0 (semidet) propositional.m:29 (propositional.m:10)
+      30:    235  2 EXIT pred propositional:b/0-0 (semidet) propositional.m:29 (propositional.m:10)
 mdb> dd
 atom("b", [])
 Valid? no
@@ -31,6 +31,6 @@ atom("i", [])
 Valid? yes
 Incorrect node found:
 wrong_answer(atom("f", []))
-      30:    203  2 EXIT pred propositional:b/0-0 (semidet) propositional.m:29 (propositional.m:10)
+      30:    235  2 EXIT pred propositional:b/0-0 (semidet) propositional.m:29 (propositional.m:10)
 mdb> continue
 yes

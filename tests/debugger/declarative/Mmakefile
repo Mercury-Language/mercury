@@ -19,6 +19,7 @@ MDB = MERCURY_SUPPRESS_MDB_BANNER=yes mdb
 DECLARATIVE_PROGS=		\
 	aadebug			\
 	app			\
+	backtrack		\
 	big			\
 	gcf			\
 	if_then_else		\
@@ -35,7 +36,6 @@ NONWORKING_DECLARATIVE_PROGS=	\
 	higher_order		\
 	ite_2			\
 	solutions
-
 
 MCFLAGS = --trace deep --trace-decl
 MLFLAGS = --trace
@@ -74,6 +74,9 @@ aadebug.out: aadebug aadebug.inp
 
 app.out: app app.inp
 	$(MDB) ./app < app.inp > app.out 2>&1
+
+backtrack.out: backtrack backtrack.inp
+	$(MDB) ./backtrack < backtrack.inp > backtrack.out 2>&1
 
 big.out: big big.inp
 	$(MDB) ./big < big.inp > big.out 2>&1
