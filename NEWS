@@ -194,6 +194,9 @@ Changes to the Mercury standard library:
   to update a constant string will cause a crash. Fixing this properly
   will be a lot of work, so for now we have just removed the modes.
 
+* We've added string__suffix, string__words/1, string__foldr,
+  string__foldl_substring and string__foldr_substring.
+
 * The exception module has a new predicate `try_store', which is
   like `try_io', but which works with stores rather than io__states.
 
