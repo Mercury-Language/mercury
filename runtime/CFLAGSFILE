@@ -1,13 +1,14 @@
 # Use these options for optimizing compiles with cc on munta
-# -ansi -w -g3 -O2 -DSPEED
+# -g3 -O2 -DSPEED
 
 # Use these options for optimizing compiles with gcc
 -g -O2 -fomit-frame-pointer -DSPEED
 
 # Use this option only with gcc
+# Currently only supported for mips and sparc cpus.
 -DUSE_GCC_GLOBAL_REGISTERS
 
-# Use this option only with gcc
+# Use this option only with gcc.
 # If you enable this option, you must ensure that MOD2CFLAGSFILE contains -l.
 # If you disable this option, you must ensure that it doesn't contains -l.
 -DUSE_GCC_NONLOCAL_GOTOS

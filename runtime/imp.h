@@ -109,18 +109,17 @@ extern	Code	*dofastnegproceed;
 
 #include "regs.h"
 
-/* DEFINITIONS FOR THE "PORTABLE ASSEMBLER" CONSTRUCTS */
+/* DEFINITIONS FOR THE "PORTABLE ASSEMBLER" NON-LOCAL GOTOS */
 
 #ifdef USE_GCC_NONLOCAL_GOTOS
-
-#define LABEL(label)		(&&label)
-#define GOTO(label)		do { assert(label); goto *(label); } while(0)
-
+  #ifndef __GNUC__
+  #error "You must use gcc if you define USE_GCC_NONLOCAL_GOTOS"
+  #endif
+  #define LABEL(label)		(&&label)
+  #define GOTO(label)		do { assert(label); goto *(label); } while(0)
 #else
-
-#define LABEL(label)		(label)
-#define GOTO(label)		do { assert(label); return (label); } while(0)
-
+  #define LABEL(label)		(label)
+  #define GOTO(label)		do { assert(label); return (label); } while(0)
 #endif
 
 /* DEFINITIONS FOR CALLS AND RETURNS */
