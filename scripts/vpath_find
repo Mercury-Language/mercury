@@ -11,8 +11,10 @@
 #
 # Usage: vpath_find <files>...
 #
+exit_status=0
 VPATHS="`echo "$VPATH" | sed 's/:/ /'`"
 for file in "$@"; do
+	found=false
 	for dir in "" $VPATHS; do
 		if [ "$dir" = "" ]; then
 			f="$file"
@@ -21,7 +23,15 @@ for file in "$@"; do
 		fi
 		if [ -f $f ]; then
 			echo $f
+			found=true
 			break
 		fi
 	done
+	if $found; then
+		:
+	else
+		echo "`basename $0`: cannot find $file" 1>&2
+		exit_status=1
+	fi
 done
+exit $exit_status
