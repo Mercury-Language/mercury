@@ -990,6 +990,7 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName) -->
 			; Ext = ".$A"
 			; Ext = ".so"
 			; Ext = ".$(EXT_FOR_SHARED_LIB)"
+			; Ext = ".jar"
 			; Ext = ".split.a"
 			; Ext = ".split.$A"
 			; Ext = ".split.so"
