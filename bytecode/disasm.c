@@ -1,5 +1,5 @@
 /*
- *	$Id: disasm.c,v 1.5 1997-02-01 13:36:01 aet Exp $
+ *	$Id: disasm.c,v 1.6 1997-02-03 08:02:42 aet Exp $
  *
  *	Copyright: The University of Melbourne, 1996
  */
@@ -8,6 +8,7 @@
 
 #include	<stdlib.h>
 #include	<stdio.h>
+#include	<string.h>
 #include	<assert.h>
 
 #include	<util.h>
@@ -420,7 +421,8 @@ print_cons_id(Cons_id cons_id)
 			 * XXX: This string printing is shitful.
 			 * Should quote newlines, backslashes, etc.
 			 */
-			printf("string_const \"%s\"", cons_id.opt.string_const);
+			printf("string_const \"%s\"", 
+				quote_cstring(cons_id.opt.string_const));
 		}
 		break;
 	case CONSID_FLOAT_CONST:
@@ -729,11 +731,82 @@ unop_to_name(Byte unop)
 
 /*
  * Return a quoted C String.
+ * Allocs a string, which caller must free.
+ * Uses a highwater-marked static string buffer.
  * XXX: put in util module?
  */
 static CString
 quote_cstring(CString str)
 {
-	/* XXX: Stubbed out for now. */
-	return str;
-}
+	static char	*str_s = NULL;
+	static int	str_size_s = 1;
+	int		i;	/* index into str */
+	int		j;	/* index into str_s */
+
+	/* Allocate initial static string */
+	if (NULL == str_s)
+	{
+		str_s = malloc(sizeof(char) * str_size_s);
+	}
+
+	i = j = 0;
+	for (;;)
+	{
+		/* Check our static string is big enough */
+		if (i+2 > str_size_s)
+		{
+			str_size_s *= 2; /* Double buffer size */
+			str_s = realloc(str_s, str_size_s * sizeof(char));
+			assert(str_s != NULL); /* XXX */
+		}
+
+		/*
+		 * XXX: According to K&R 2nd ed, page 194, string literals
+		 * may do not have newline or double-quotes; they must be
+		 * quoted. (And of course the backslash must also be
+		 * quoted. There is no mention of other limitations
+		 * on what characters may be within a string literal.
+		 */
+		switch(str[i])
+		{
+		/* following two cases are identical */
+		case '\\': 
+		case '\"':
+			{
+				str_s[j] = '\\';
+				str_s[j+1] = str[i];
+				j += 2;
+				i++;
+			}
+			break;
+		case '\n':
+			{
+				str_s[j] = '\\';
+				str_s[j+1] = 'n';
+				j += 2;
+				i++;
+			}
+			break;
+		case '\0':
+			{
+				CString		ret_str;
+
+				str_s[j] = '\0';
+				ret_str = malloc((strlen(str_s) + 1) 
+					* sizeof(char));
+				strcpy(ret_str, str_s);
+				return ret_str;
+			}
+			break;
+		default:
+			{
+				str_s[j] = str[i];
+				j++;
+				i++;
+			}
+			break;
+		} /* switch */
+	} /* for */
+} /* quote_cstring */
+
+
