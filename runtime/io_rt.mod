@@ -185,7 +185,12 @@ mercury__io__write_string_3_0:
 	proceed();
 
 mercury__io__write_char_3_0:
-	fprintf(mercury_current_output->file, "%c", (char) r1);
+		/* Note!  We cast r1 to int, not to char.
+		   This is very slightly more efficient, but
+		   more importantly it avoids a gcc internal
+		   error for gcc-2.7.0 on i386.
+		*/
+	fprintf(mercury_current_output->file, "%c", (int) r1);
 	update_io(r2, r3);
 	proceed();
 
