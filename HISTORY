@@ -527,7 +527,7 @@ Mercury 0.7, 15 August 1997
     eventually move the definitions of cut (`!') and `is' here too.
     
   - We've finally implemented generic input-output predicates,
-    namely io__print/3, io__write/3, and io__read/3, using the the
+    namely io__print/3, io__write/3, and io__read/3, using the
     functions and predicates described above.  These can read or write
     data of any type.  We've also added io__nl/3 to print a newline.
     Together with the change to make module qualifiers optional, these
@@ -828,7 +828,7 @@ Changes to the Mercury compiler:
   lp_solve subdirectory of the Mercury source distribution. Note
   that the copyright of lp_solve includes substantial restrictions.
 
-  Details of the analysis is available in "Termination Analysis for
+  Details of the analysis are available in "Termination Analysis for
   Mercury" by Chris Speirs, Zoltan Somogyi and Harald Sondergaard. In P.
   Van Hentenryck, editor, "Static Analysis: Proceedings of the Fourth
   International Symposium", Lecture Notes in Computer Science. Springer,
