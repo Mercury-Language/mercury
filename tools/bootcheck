@@ -126,7 +126,15 @@ make_opts="-k"
 outfile=""
 runtests=true
 do_bootcheck=true
-check_namespace=true
+if [ -f /bin/cygwin1.dll ]; then
+	# Don't run check_namespace on Cygwin, unless explicitly asked,
+	# because the `-nostdinc' option doesn't work with gcc 2.95 on Cygwin.
+	# (This has been fixed in later versions of gcc, e.g. 3.2, so
+	# we should reenable this at some point...)
+	check_namespace=false
+else
+	check_namespace=true
+fi
 grade=
 target=c
 test_grade=
@@ -239,6 +247,8 @@ while [ $# -gt 0 ]; do
 	-p|--copy-profiler)
 		copy_profiler=true ;;
 
+	--check-namespace)
+		check_namespace=true ;;
 	--no-check-namespace)
 		check_namespace=false ;;
 
