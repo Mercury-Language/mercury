@@ -141,12 +141,14 @@ parser__parse_whole_term(Term) -->
 		( parser__get_token(end) ->
 			{ Term = Term0 }
 		;
-			parser__error("operator or `.' expected", Term)
+			parser__unexpected("operator or `.' expected", Term)
 		)
 	;
 		% propagate error upwards
 		{ Term = Term0 }
 	).
+
+
 
 :- pred parser__parse_term(parse(term), parser__state, parser__state).
 :- mode parser__parse_term(out, in, out) is det.
@@ -330,6 +332,7 @@ parser__parse_simple_term_2(name(Atom), Context, Prec, Term) -->
 			{ Term = ok(term__functor(term__atom(Atom), Args,
 				TermContext)) }
 		;
+			% propagate error upwards
 			{ Args0 = error(Message, Tokens) },
 			{ Term = error(Message, Tokens) }
 		)
@@ -365,25 +368,15 @@ parser__parse_simple_term_2(open, _, _, Term) -->
 		( parser__get_token(close) ->
 			{ Term = Term0 }
 		;
-			parser__error("missing `)'", Term)
+			parser__unexpected("expecting `)' or operator", Term)
 		)
 	;
 		% propagate error upwards
 		{ Term = Term0 }
 	).
 
-parser__parse_simple_term_2(open_ct, _, _, Term) -->
-	parser__parse_term(Term0),
-	( { Term0 = ok(_) } ->
-		( parser__get_token(close) ->
-			{ Term = Term0 }
-		;
-			parser__error("missing `)'", Term)
-		)
-	;
-		% propagate error upwards
-		{ Term = Term0 }
-	).
+parser__parse_simple_term_2(open_ct, Context, Prec, Term) -->
+	parser__parse_simple_term_2(open, Context, Prec, Term).
 
 parser__parse_simple_term_2(open_list, Context, _, Term) -->
 	( parser__get_token(close_list) ->
@@ -404,7 +397,8 @@ parser__parse_simple_term_2(open_curly, Context, _, Term) -->
 				{ Term = ok(term__functor(term__atom("{}"), 
 					[SubTerm], TermContext)) }
 			;
-				parser__error("missing `}'", Term)
+				parser__unexpected("expecting `}' or operator",
+					Term)
 			)
 		;
 			% propagate error upwards
@@ -436,17 +430,20 @@ parser__parse_list(List) -->
 		            { List = ok(term__functor(term__atom("."),
 					[Arg, Tail], TermContext)) }
 			;
-			    parser__error("missing ']'", List)
+			    parser__unexpected("expecting ']' or operator",
+				List)
 			)
 		    ;
 			% propagate error
 			{ List = Tail0 }
 		    )
 		; { Token = close_list } ->
-		    { List = ok(term__functor(term__atom("[]"), [Arg],
+		    { Tail = term__functor(term__atom("[]"), [], TermContext) },
+		    { List = ok(term__functor(term__atom("."), [Arg, Tail],
 				TermContext)) }
 		;
-		    parser__error("expected comma, `|', or `]'", List)
+		    parser__unexpected_tok(Token,
+			"expected comma, `|', `]', or operator", List)
 		)
 	    ;
 		% XXX error message should state the line that the
@@ -476,7 +473,8 @@ parser__parse_args(List) -->
 		; { Token = close } ->
 		    { List = ok([Arg]) }
 		;
-		    parser__error("expected `,' or `)'", List)
+		    parser__unexpected_tok(Token,
+				"expected `,', `)', or operator", List)
 		)
 	    ;
 		parser__error("unexpected end-of-file in argument list", List)
@@ -501,6 +499,43 @@ parser__parse_args(List) -->
 			token_list	% the remaining tokens
 		).
 
+%-----------------------------------------------------------------------------%
+
+	% We encountered an error.  See if the next token
+	% was an infix or postfix operator.  If so, it would
+	% normally form part of the term, so the error must
+	% have been an operator precedence error.  Otherwise,
+	% it was some other sort of error, so issue the usual
+	% error message.
+
+:- pred parser__unexpected(string, parse(T), parser__state, parser__state).
+:- mode parser__unexpected(in, out, di, uo) is det.
+
+parser__unexpected(UsualMessage, Error) -->
+	( parser__get_token(Token) ->
+		parser__unexpected_tok(Token, UsualMessage, Error)
+	;
+		parser__error(UsualMessage, Error)
+	).
+
+:- pred parser__unexpected_tok(token, string, parse(T),
+				parser__state, parser__state).
+:- mode parser__unexpected_tok(in, in, out, di, uo) is det.
+
+parser__unexpected_tok(Token, UsualMessage, Error) -->
+	(
+		{ Token = name(Op)
+		; Token = comma, Op = ","
+		},
+		parser__get_ops_table(OpTable),
+		{ ops__lookup_infix_op(OpTable, Op, _, _, _)
+		; ops__lookup_postfix_op(OpTable, Op, _, _)
+		}
+	->
+		parser__error("operator precedence error", Error)
+	;
+		parser__error(UsualMessage, Error)
+	).
 
 %-----------------------------------------------------------------------------%
 
