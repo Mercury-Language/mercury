@@ -788,11 +788,11 @@ interface_id_to_class_name(_) = Result :-
 %-----------------------------------------------------------------------------%
 
 :- pred generate_method(ilds__class_name::in, maybe(ilds__class_name)::in,
-		mlds__defn::in, class_membmers::out,
+		mlds__defn::in, class_member::out,
 		il_info::in, il_info::out) is det.
 
 generate_method(ClassName, _, defn(Name, Context, Flags, Entity),
-		ClassMembers) -->
+		ClassMember) -->
 	{ Entity = data(Type, DataInitializer) },
 
 	{ FieldName = entity_name_to_ilds_id(Name) },
@@ -3976,7 +3976,7 @@ il_info_remove_locals(RemoveLocals, Info0, Info) :-
 	map__delete_list(Info0 ^ locals, Keys, NewLocals),
 	Info = Info0 ^ locals := NewLocals.
 
-:- pred il_info_add_class_member(list(class_members), il_info, il_info).
+:- pred il_info_add_class_member(list(class_member), il_info, il_info).
 :- mode il_info_add_class_member(in, in, out) is det.
 il_info_add_class_member(ClassMembers, Info0, Info) :- 
 	Info = Info0 ^ class_members := 
