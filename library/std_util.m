@@ -1491,6 +1491,11 @@ ML_make_type_ctor_desc(MR_TypeInfo type_info, MR_TypeCtorInfo type_ctor_info)
 	return type_ctor_desc;
 }
 
+/*
+** You need to wrap save/restore_transient_registers() around
+** calls to this function.
+*/
+
 void
 ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 	MR_TypeCtorDesc *type_ctor_desc_ptr, Word *arg_type_info_list_ptr)
@@ -1498,8 +1503,6 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 	MR_TypeCtorInfo type_ctor_info;
 	MR_TypeCtorDesc type_ctor_desc;
 	Integer		arity;
-
-	save_transient_registers();
 
 	if (collapse_equivalences) {
 		type_info = MR_collapse_equivalences(type_info);
@@ -1518,8 +1521,6 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 		*arg_type_info_list_ptr = ML_type_params_vector_to_list(arity,
 			MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info));
 	}
-
-	restore_transient_registers();
 }
 ").
 
@@ -1529,9 +1530,13 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 	MR_TypeCtorDesc type_ctor_desc;
 	MR_TypeInfo	type_info;
 
+	save_transient_registers();
+
 	type_info = (MR_TypeInfo) TypeDesc;
 	ML_type_ctor_and_args(type_info, TRUE, &type_ctor_desc, &ArgTypes);
 	TypeCtorDesc = (Word) type_ctor_desc;
+
+	restore_transient_registers();
 }
 ").
 
@@ -1591,9 +1596,13 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 	MR_TypeCtorDesc type_ctor_desc;
 	MR_TypeInfo	type_info;
 
+	save_transient_registers();
+
 	type_info = (MR_TypeInfo) TypeDesc;
 	ML_type_ctor_and_args(type_info, FALSE, &type_ctor_desc, &ArgTypes);
 	TypeCtorDesc = (Word) type_ctor_desc;
+
+	restore_transient_registers();
 }
 ").
 
