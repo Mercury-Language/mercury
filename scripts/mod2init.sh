@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# MOD2INIT - Convert *.mod to *_init.c
+# MOD2INIT - Convert *.mod (or *.c) to *_init.c
 #
-# This script outputs an appropriate init.c, given the .mod files.
+# This script outputs an appropriate init.c, given the .mod (or .c) files.
 #
 # Usage: mod2init [-w<entry_point>] modules...
 #

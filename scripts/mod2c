@@ -1,9 +1,6 @@
 #!/usr/local/bin/perl
 
 # This converts .mod files to .c files.
-# It accepts two options: -g, which causes it to generate
-# the gcc-specific output instead of the portable output,
-# and -l, which causes it to generate #line directives in the output file.
 
 sub println {
     local ($line) = @_;
