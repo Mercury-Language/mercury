@@ -29,7 +29,7 @@ ifeq ("$(TEXI2DVI)","")
 	INSTALL_DVI=
 else
 	DVI=dvi
-	INSTALL_HTML=install_dvi
+	INSTALL_DVI=install_dvi
 endif
 
 ifeq ("$(MAKEINFO)","")
