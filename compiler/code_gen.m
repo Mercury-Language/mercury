@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -40,26 +40,27 @@
 
 :- import_module list, io.
 
-		% Translate a HLDS module to LLDS.
+	% Translate a HLDS module to LLDS.
 
 :- pred generate_code(module_info::in, global_data::in, global_data::out,
 	list(c_procedure)::out, io::di, io::uo) is det.
 
-		% Translate a HLDS procedure to LLDS, threading through
-		% the data structure that records information about layout
-		% structures.
+	% Translate a HLDS procedure to LLDS, threading through
+	% the data structure that records information about layout
+	% structures.
 
 :- pred generate_proc_code(pred_info::in, proc_info::in,
 	proc_id::in, pred_id::in, module_info::in,
 	global_data::in, global_data::out, c_procedure::out) is det.
 
-		% Translate a HLDS goal to LLDS.
+	% Translate a HLDS goal to LLDS.
 
 :- pred code_gen__generate_goal(code_model::in, hlds_goal::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
-		% Return the message that identifies the procedure to pass to
-		% the incr_sp_push_msg macro in the generated C code.
+	% Return the message that identifies the procedure to pass to
+	% the incr_sp_push_msg macro in the generated C code.
+
 :- func code_gen__push_msg(module_info, pred_id, proc_id) = string.
 
 %---------------------------------------------------------------------------%
