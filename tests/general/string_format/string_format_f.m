@@ -23,12 +23,14 @@
 %------------------------------------------------------------------------------%
 
 main -->
-	list__foldl(output_list(standard_floats), format_strings("f")),
-	list__foldl(output_list(trailing_zero_floats), format_strings("f")),
-	list__foldl(output_list(rounding_floats), format_strings("f")),
-	list__foldl(output_list(extreme_floats), format_strings("f")),
-	list__foldl(output_list(denormal_floats), format_strings("f")),
-	list__foldl(output_list(infinite_floats), format_strings("f")),
+	{ FormatStrs_f = format_strings("f") },
+
+	list__foldl(output_list(standard_floats), FormatStrs_f),
+	list__foldl(output_list(trailing_zero_floats), FormatStrs_f),
+	list__foldl(output_list(rounding_floats), FormatStrs_f),
+	list__foldl(output_list(extreme_floats), FormatStrs_f),
+	list__foldl(output_list(denormal_floats), FormatStrs_f),
+	list__foldl(output_list(infinite_floats), FormatStrs_f),
 	[].
 
 %------------------------------------------------------------------------------%

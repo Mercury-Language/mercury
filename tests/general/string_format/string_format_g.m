@@ -23,19 +23,22 @@
 %------------------------------------------------------------------------------%
 
 main -->
-	list__foldl(output_list(standard_floats), format_strings("g")),
-	list__foldl(output_list(trailing_zero_floats), format_strings("g")),
-	list__foldl(output_list(rounding_floats), format_strings("g")),
-	list__foldl(output_list(extreme_floats), format_strings("g")),
-	list__foldl(output_list(denormal_floats), format_strings("g")),
-	list__foldl(output_list(infinite_floats), format_strings("g")),
+	{ FormatStrs_g = format_strings("g") },
+	{ FormatStrs_G = format_strings("G") },
 
-	list__foldl(output_list(standard_floats), format_strings("G")),
-	list__foldl(output_list(trailing_zero_floats), format_strings("G")),
-	list__foldl(output_list(rounding_floats), format_strings("G")),
-	list__foldl(output_list(extreme_floats), format_strings("G")),
-	list__foldl(output_list(denormal_floats), format_strings("G")),
-	list__foldl(output_list(infinite_floats), format_strings("G")),
+	list__foldl(output_list(standard_floats), FormatStrs_g),
+	list__foldl(output_list(trailing_zero_floats), FormatStrs_g),
+	list__foldl(output_list(rounding_floats), FormatStrs_g),
+	list__foldl(output_list(extreme_floats), FormatStrs_g),
+	list__foldl(output_list(denormal_floats), FormatStrs_g),
+	list__foldl(output_list(infinite_floats), FormatStrs_g),
+
+	list__foldl(output_list(standard_floats), FormatStrs_G),
+	list__foldl(output_list(trailing_zero_floats), FormatStrs_G),
+	list__foldl(output_list(rounding_floats), FormatStrs_G),
+	list__foldl(output_list(extreme_floats), FormatStrs_G),
+	list__foldl(output_list(denormal_floats), FormatStrs_G),
+	list__foldl(output_list(infinite_floats), FormatStrs_G),
 	[].
 
 %------------------------------------------------------------------------------%

@@ -6,7 +6,7 @@ THIS_DIR = general/string_format
 
 # Any program added here should also be added to the `.cvsignore' file.
 
-PROGS=	\
+STRING_FORMAT_PROGS=	\
 		string_format_c \
 		string_format_d \
 		string_format_e \
@@ -16,6 +16,15 @@ PROGS=	\
 		string_format_s \
 		string_format_u \
 		string_format_x 
+
+
+	# The tests don't work in the *.agc grades, because I think they
+	# take too long to finsih and the CPU time limit is breached.
+ifneq "$(findstring .agc,$(GRADE))" ""
+	PROGS=
+else
+	PROGS=$(STRING_FORMAT_PROGS)
+endif
 
 SUBDIRS = 
 TESTS=$(PROGS)
