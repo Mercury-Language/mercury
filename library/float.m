@@ -330,25 +330,13 @@
 % The other arithmetic and comparison operators are builtins,
 % which the compiler expands inline.  We don't need to define them here.
 
-	% XXX This pragma declaration should be uncommented once the
-	% change to make `//'/2 a non-builtin is installed everywhere.
-%:- pragma inline('/'/2).
+:- pragma inline('/'/2).
 X / Y = Z :-
 	( domain_checks, Y = 0.0 ->
 		throw(math__domain_error("float:'/'"))
 	;
 		Z = unchecked_quotient(X, Y)
 	).
-
-	% implementation of int__unchecked_quotient.
-	% XXX Remove this clause once the change to make unchecked_quotient
-	% a builtin is installed everywhere. (Note that this clause doesn't
-	% cause an infinite loop because the compiler will ignore the
-	% clause for `/'/2 or unchecked_quotient/2 depending on how far
-	% it is through the bootstrapping process. When compiling the
-	% stage 1 compiler, `/' is builtin. During stages 2 and 3,
-	% unchecked_quotient is builtin.
-unchecked_quotient(X, Y) = X / Y.
 
 	% This code is included here rather than just calling
 	% the version in math.m because we currently don't do

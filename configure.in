@@ -97,23 +97,24 @@ if test "$BOOTSTRAP_MC" != ""; then
 		:- module conftest.
 		:- interface.
 		:- import_module io.
-		:- pred main(io__state::di, io__state::uo) is det.
+		:- pred main(io__state::di, io__state::uo) is cc_multi.
 
 		:- implementation.
-	
+		:- import_module int, exception.
         
-		% Different bodies for different modes.
-		:- pragma promise_pure(foo/1).
-		:- pred foo(int).
-		:- mode foo(out) is det.
-		:- mode foo(in) is semidet.
-		foo(X::in) :-
-			X = 42.
-		foo(X::out) :-
-			X = 42.
-
+		% Check that X/0 throws an exception. If it doesn't,
+		% the old compiler will report an error for the clauses
+		% for int:// and float:/, which according to the old
+		% compiler should be builtins.
+		% Also check for unchecked_int_quotient, which is a builtin
+		% present only in recent compilers.
 		main --> 
-			( { foo(42) } ->
+			{ try(
+				(pred(Value::out) is det :-
+					Value = 42 // 0 +
+						unchecked_quotient(10, 2)
+				), Result) },
+			( { Result = exception(_) } ->
 				print("Hello, world\n")
 			;
 				print("Nope.\n")
